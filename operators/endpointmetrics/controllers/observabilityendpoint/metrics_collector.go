@@ -436,6 +436,7 @@ func createAlertingRule(params CollectorParams) *monitoringv1.PrometheusRule {
 		replace = "acm_uwl_metrics_collector_"
 	}
 
+	forDuration := monitoringv1.Duration("10m")
 	return &monitoringv1.PrometheusRule{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "acm-" + name + "-alerting-rules",
@@ -453,7 +454,7 @@ func createAlertingRule(params CollectorParams) *monitoringv1.PrometheusRule {
 								"description": "There are errors when federating from platform Prometheus",
 							},
 							Expr: intstr.FromString(`(sum by (status_code, type) (rate(` + replace + `federate_requests_total{status_code!~"2.*"}[10m]))) > 10`),
-							For:  "10m",
+							For:  &forDuration,
 							Labels: map[string]string{
 								"severity": "critical",
 							},
@@ -465,7 +466,7 @@ func createAlertingRule(params CollectorParams) *monitoringv1.PrometheusRule {
 								"description": "There are errors when remote writing to Hub hub Thanos",
 							},
 							Expr: intstr.FromString(`(sum by (status_code, type) (rate(` + replace + `forward_write_requests_total{status_code!~"2.*"}[10m]))) > 10`),
-							For:  "10m",
+							For:  &forDuration,
 							Labels: map[string]string{
 								"severity": "critical",
 							},
@@ -511,12 +512,12 @@ func createServiceMonitor(params CollectorParams) *monitoringv1.ServiceMonitor {
 					Port:   "metrics",
 					Path:   "/metrics",
 					Scheme: "http",
-					MetricRelabelConfigs: []*monitoringv1.RelabelConfig{
+					MetricRelabelConfigs: []monitoringv1.RelabelConfig{
 						{
 							Action:       "replace",
 							Regex:        "(.+)",
-							Replacement:  replace,
-							SourceLabels: []string{"__name__"},
+							Replacement:  &replace,
+							SourceLabels: []monitoringv1.LabelName{"__name__"},
 							TargetLabel:  "__name__",
 						},
 					},
