@@ -96,3 +96,4 @@ mce_hs_addon_request_based_hcp_capacity_current_gauge
 coredns_forward_responses_total
 cnv:vmi_status_running:count
 kubevirt_hyperconverged_operator_health_status
+kubevirt_hco_system_health_status
