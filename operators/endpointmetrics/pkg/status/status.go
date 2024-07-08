@@ -7,89 +7,160 @@ package status
 import (
 	"context"
 	"fmt"
-	"sort"
 	"time"
 
+	"github.com/go-logr/logr"
 	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/retry"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-type ConditionReason string
+// component defines the components of the ObservabilityAddon
+// each reports its own status condition
+type component string
 
 const (
-	Deployed                 ConditionReason = "Deployed"
-	Disabled                 ConditionReason = "Disabled"
-	Degraded                 ConditionReason = "Degraded"
-	NotSupported             ConditionReason = "NotSupported"
-	MaxStatusConditionsCount                 = 10
+	MetricsCollector    component = "MetricsCollector"
+	UwlMetricsCollector component = "UwlMetricsCollector"
+)
+
+// reason defines the reason for the status condition
+type reason string
+
+var (
+	// When adding a new Reason, make sure to update the status controller package
+	// to aggreagate correctly the status of the ObservabilityAddon
+	UpdateSuccessful  reason = "UpdateSuccessful"
+	UpdateFailed      reason = "UpdateFailed"
+	ForwardSuccessful reason = "ForwardSuccessful"
+	ForwardFailed     reason = "ForwardFailed"
+	Disabled          reason = "Disabled"
+	NotSupported      reason = "NotSupported"
 )
 
 var (
-	conditions = map[ConditionReason]oav1beta1.StatusCondition{
-		Deployed: {
-			Type:    "Progressing",
-			Reason:  string(Deployed),
-			Message: "Metrics collector deployed",
-			Status:  metav1.ConditionTrue,
+	// componentTransitions defines the valid transitions between component conditions
+	componentTransitions = map[reason]map[reason]struct{}{
+		UpdateSuccessful: {
+			UpdateFailed:      {},
+			ForwardSuccessful: {},
+			ForwardFailed:     {},
+			Disabled:          {},
+			NotSupported:      {},
+		},
+		UpdateFailed: {
+			UpdateSuccessful: {},
+			Disabled:         {},
+			NotSupported:     {},
+		},
+		ForwardSuccessful: {
+			ForwardFailed:    {},
+			UpdateSuccessful: {},
+			UpdateFailed:     {},
+			Disabled:         {},
+			NotSupported:     {},
+		},
+		ForwardFailed: {
+			ForwardSuccessful: {},
+			UpdateSuccessful:  {},
+			UpdateFailed:      {},
+			Disabled:          {},
+			NotSupported:      {},
 		},
 		Disabled: {
-			Type:    "Disabled",
-			Reason:  string(Disabled),
-			Message: "enableMetrics is set to False",
-			Status:  metav1.ConditionTrue,
-		},
-		Degraded: {
-			Type:    "Degraded",
-			Reason:  string(Degraded),
-			Message: "Metrics collector deployment not successful",
-			Status:  metav1.ConditionTrue,
+			UpdateSuccessful: {},
+			UpdateFailed:     {},
+			NotSupported:     {},
 		},
 		NotSupported: {
-			Type:    "NotSupported",
-			Reason:  string(NotSupported),
-			Message: "No Prometheus service found in this cluster",
-			Status:  metav1.ConditionTrue,
+			UpdateSuccessful: {},
+			UpdateFailed:     {},
+			Disabled:         {},
 		},
 	}
-	log = ctrl.Log.WithName("status")
 )
 
-func ReportStatus(ctx context.Context, client client.Client, conditionReason ConditionReason, addonName, addonNs string) error {
-	newCondition := conditions[conditionReason]
-	newCondition.LastTransitionTime = metav1.NewTime(time.Now())
+// Status provides a method to update the status of the ObservabilityAddon for a specific component
+type Status struct {
+	client    client.Client
+	addonName string
+	addonNs   string
+	logger    logr.Logger
+}
 
-	// Fetch the ObservabilityAddon instance in local cluster, and update the status
-	// Retry on conflict
-	obsAddon := &oav1beta1.ObservabilityAddon{}
+// NewStatus creates a new Status instance
+func NewStatus(client client.Client, addonName, addonNs string, logger logr.Logger) Status {
+	return Status{
+		client:    client,
+		addonName: addonName,
+		addonNs:   addonNs,
+		logger:    logger,
+	}
+}
+
+// UpdateComponentCondition updates the status condition of a specific component of the ObservabilityAddon
+// It returns an error if the update fails for a permanent reason or after exhausting retries on conflict.
+// It will also return an error if the transition between conditions is invalid, to avoid flapping.
+func (s Status) UpdateComponentCondition(ctx context.Context, componentName component, newReason reason, newMessage string) error {
 	retryErr := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
-		if err := client.Get(ctx, types.NamespacedName{Name: addonName, Namespace: addonNs}, obsAddon); err != nil {
+		addon, err := s.fetchAddon(ctx)
+		if err != nil {
 			return err
 		}
 
-		if !shouldUpdateConditions(obsAddon.Status.Conditions, newCondition) {
+		newCondition := oav1beta1.StatusCondition{
+			Type:               string(componentName),
+			Reason:             string(newReason),
+			Message:            newMessage,
+			Status:             metav1.ConditionTrue,
+			LastTransitionTime: metav1.NewTime(time.Now()),
+		}
+
+		currentCondition := getConditionByType(addon.Status.Conditions, string(componentName))
+
+		// check if the condition needs to be updated
+		isSameCondition := currentCondition != nil && currentCondition.Reason == newCondition.Reason && currentCondition.Message == newCondition.Message && currentCondition.Status == newCondition.Status
+		if isSameCondition {
 			return nil
 		}
 
-		obsAddon.Status.Conditions = deduplicateConditions(obsAddon.Status.Conditions)
-		obsAddon.Status.Conditions = resetMainConditionsStatus(obsAddon.Status.Conditions)
-		obsAddon.Status.Conditions = mutateOrAppend(obsAddon.Status.Conditions, newCondition)
-
-		log.Info(fmt.Sprintf("Updating status of ObservabilityAddon %s/%s", addonNs, addonName), "type", newCondition.Type, "reason", newCondition.Reason)
-
-		if len(obsAddon.Status.Conditions) > MaxStatusConditionsCount {
-			obsAddon.Status.Conditions = obsAddon.Status.Conditions[len(obsAddon.Status.Conditions)-MaxStatusConditionsCount:]
+		// check if the transition is valid for the component
+		// this is to avoid flapping between conditions
+		if currentCondition != nil {
+			if _, ok := componentTransitions[reason(currentCondition.Reason)][newReason]; !ok {
+				return fmt.Errorf("invalid transition from %s to %s for component %s", currentCondition.Reason, newReason, componentName)
+			}
 		}
 
-		return client.Status().Update(ctx, obsAddon)
+		addon.Status.Conditions = mutateOrAppend(addon.Status.Conditions, newCondition)
+
+		s.logger.Info("Updating status of ObservabilityAddon", "component", componentName, "reason", newReason, "addon", addon.Name, "namespace", addon.Namespace)
+
+		return s.client.Status().Update(ctx, addon)
 	})
 	if retryErr != nil {
 		return retryErr
 	}
 
+	return nil
+}
+
+func (s Status) fetchAddon(ctx context.Context) (*oav1beta1.ObservabilityAddon, error) {
+	obsAddon := &oav1beta1.ObservabilityAddon{}
+	if err := s.client.Get(ctx, types.NamespacedName{Name: s.addonName, Namespace: s.addonNs}, obsAddon); err != nil {
+		return nil, fmt.Errorf("failed to get ObservabilityAddon %s/%s: %w", s.addonNs, s.addonName, err)
+	}
+	return obsAddon, nil
+}
+
+func getConditionByType(conditions []oav1beta1.StatusCondition, conditionType string) *oav1beta1.StatusCondition {
+	for _, condition := range conditions {
+		if condition.Type == conditionType {
+			return &condition
+		}
+	}
 	return nil
 }
 
@@ -110,54 +181,4 @@ func mutateOrAppend(conditions []oav1beta1.StatusCondition, newCondition oav1bet
 	}
 	// If the condition type does not exist, append the new condition
 	return append(conditions, newCondition)
-}
-
-// shouldAppendCondition checks if the new condition should be appended to the status conditions
-// based on the last condition in the slice.
-func shouldUpdateConditions(conditions []oav1beta1.StatusCondition, newCondition oav1beta1.StatusCondition) bool {
-	if len(conditions) == 0 {
-		return true
-	}
-
-	sort.Slice(conditions, func(i, j int) bool {
-		return conditions[i].LastTransitionTime.Before(&conditions[j].LastTransitionTime)
-	})
-
-	lastCondition := conditions[len(conditions)-1]
-
-	return lastCondition.Type != newCondition.Type ||
-		lastCondition.Status != newCondition.Status ||
-		lastCondition.Reason != newCondition.Reason ||
-		lastCondition.Message != newCondition.Message
-}
-
-// deduplicateConditions removes duplicate conditions from the list of conditions.
-// It removes duplicated conditions introduced by PR #1427.
-func deduplicateConditions(conditions []oav1beta1.StatusCondition) []oav1beta1.StatusCondition {
-	conditionMap := make(map[string]oav1beta1.StatusCondition)
-	for _, condition := range conditions {
-		if v, ok := conditionMap[condition.Type]; ok {
-			if condition.LastTransitionTime.After(v.LastTransitionTime.Time) {
-				conditionMap[condition.Type] = condition
-			}
-		} else {
-			conditionMap[condition.Type] = condition
-		}
-	}
-
-	deduplicatedConditions := []oav1beta1.StatusCondition{}
-	for _, condition := range conditionMap {
-		deduplicatedConditions = append(deduplicatedConditions, condition)
-	}
-
-	return deduplicatedConditions
-}
-
-func resetMainConditionsStatus(conditions []oav1beta1.StatusCondition) []oav1beta1.StatusCondition {
-	for i := range conditions {
-		if conditions[i].Type == "Available" || conditions[i].Type == "Degraded" || conditions[i].Type == "Progressing" {
-			conditions[i].Status = metav1.ConditionFalse
-		}
-	}
-	return conditions
 }

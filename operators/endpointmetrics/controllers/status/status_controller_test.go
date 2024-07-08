@@ -6,23 +6,27 @@ package status_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"reflect"
+	"sort"
 	"testing"
+	"time"
 
-	"k8s.io/apimachinery/pkg/api/errors"
+	"github.com/go-logr/logr"
+	"github.com/stretchr/testify/assert"
+	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
+	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-
-	"github.com/go-logr/logr"
-	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/controllers/status"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/util"
@@ -30,28 +34,35 @@ import (
 	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 )
 
-const (
-	name             = "observability-addon"
-	testNamespace    = "test-ns"
-	testHubNamespace = "test-hub-ns"
-	obAddonName      = "observability-addon"
-)
+func TestStatusController_HubNominalCase(t *testing.T) {
+	addonName := "observability-addon"
+	addonNamespace := "test-ns"
+	spokeOba := newObservabilityAddon(addonName, addonNamespace)
+	spokeClient := newClient(spokeOba)
 
-func TestStatusController_NominalCase(t *testing.T) {
-	spokeOba := newObservabilityAddon(name, testNamespace)
-	c := newClient(spokeOba)
-
-	hubOba := newObservabilityAddon(name, testHubNamespace)
+	addonHubNamespace := "test-ns"
+	hubOba := newObservabilityAddon(addonName, addonHubNamespace)
 	hubOba.Spec.Interval = 12341 // add variation in the spec, not status
 	custumHubClient := newClientWithUpdateError(newClient(hubOba), nil, nil)
-	r := newStatusReconciler(c, func() (client.Client, error) { return custumHubClient, nil })
+	reloadableHubClient, err := util.NewReloadableHubClientWithReloadFunc(func() (client.Client, error) { return custumHubClient, nil })
+	if err != nil {
+		t.Fatalf("Failed to create reloadable hub client: %v", err)
+	}
+	statusReconciler := &status.StatusReconciler{
+		Client:       spokeClient,
+		HubClient:    reloadableHubClient,
+		Namespace:    addonNamespace,
+		HubNamespace: addonHubNamespace,
+		ObsAddonName: addonName,
+		Logger:       logr.Discard(),
+	}
 
 	// no status difference triggers no update
-	resp, err := r.Reconcile(context.Background(), newRequest())
+	resp, err := statusReconciler.Reconcile(context.Background(), ctrl.Request{})
 	if err != nil {
 		t.Fatalf("Failed to reconcile: %v", err)
 	}
-	if !reflect.DeepEqual(resp, ctrl.Result{}) {
+	if !resp.IsZero() {
 		t.Fatalf("Expected no requeue")
 	}
 	if custumHubClient.UpdateCallsCount() > 0 {
@@ -59,19 +70,21 @@ func TestStatusController_NominalCase(t *testing.T) {
 	}
 
 	// update status in spoke
-	addCondition(spokeOba, "Deployed", metav1.ConditionTrue)
-	err = c.Status().Update(context.Background(), spokeOba)
+	spokeOba.Status.Conditions = append(spokeOba.Status.Conditions, oav1beta1.StatusCondition{
+		Type: "Available",
+	})
+	err = spokeClient.Status().Update(context.Background(), spokeOba)
 
 	if err != nil {
 		t.Fatalf("Failed to update status in spoke: %v", err)
 	}
 
 	// status difference should trigger update in hub
-	resp, err = r.Reconcile(context.Background(), newRequest())
+	resp, err = statusReconciler.Reconcile(context.Background(), ctrl.Request{})
 	if err != nil {
 		t.Fatalf("Failed to reconcile: %v", err)
 	}
-	if !reflect.DeepEqual(resp, ctrl.Result{}) {
+	if !resp.IsZero() {
 		t.Fatalf("Expected no requeue")
 	}
 	if custumHubClient.UpdateCallsCount() != 1 {
@@ -80,7 +93,7 @@ func TestStatusController_NominalCase(t *testing.T) {
 
 	// check status in hub
 	hubObsAddon := &oav1beta1.ObservabilityAddon{}
-	err = custumHubClient.Get(context.Background(), types.NamespacedName{Name: obAddonName, Namespace: testHubNamespace}, hubObsAddon)
+	err = custumHubClient.Get(context.Background(), types.NamespacedName{Name: addonName, Namespace: addonHubNamespace}, hubObsAddon)
 	if err != nil {
 		t.Fatalf("Failed to get oba in hub: %v", err)
 	}
@@ -90,48 +103,63 @@ func TestStatusController_NominalCase(t *testing.T) {
 }
 
 func TestStatusController_UpdateHubAddonFailures(t *testing.T) {
-	spokeOba := newObservabilityAddon(name, testNamespace)
-	addCondition(spokeOba, "Deployed", metav1.ConditionTrue) // add status to trigger update
-	c := newClient(spokeOba)
+	addonName := "observability-addon"
+	addonNamespace := "test-ns"
+	spokeOba := newObservabilityAddon(addonName, addonNamespace)
+	// add status to trigger update
+	spokeOba.Status.Conditions = append(spokeOba.Status.Conditions, oav1beta1.StatusCondition{
+		Type: "Available",
+	})
+	spokeClient := newClient(spokeOba)
 
-	hubOba := newObservabilityAddon(name, testHubNamespace)
+	addonHubNamespace := "test-ns"
+	hubOba := newObservabilityAddon(addonName, addonHubNamespace)
 	var updateErr error
 	hubClientWithConflict := newClientWithUpdateError(newClient(hubOba), updateErr, nil)
-	r := newStatusReconciler(c, func() (client.Client, error) { return hubClientWithConflict, nil })
+	reloadableHubClient, err := util.NewReloadableHubClientWithReloadFunc(func() (client.Client, error) { return hubClientWithConflict, nil })
+	if err != nil {
+		t.Fatalf("Failed to create reloadable hub client: %v", err)
+	}
+	statusReconciler := &status.StatusReconciler{
+		Client:       spokeClient,
+		HubClient:    reloadableHubClient,
+		Namespace:    addonNamespace,
+		HubNamespace: addonHubNamespace,
+		ObsAddonName: addonName,
+		Logger:       logr.Discard(),
+	}
 
 	testCases := map[string]struct {
 		updateErr       error
-		reconcileErr    error
+		terminalErr     bool
 		requeue         bool
-		requeueAfter    bool
 		requeueAfterVal int
 		updateCallsMin  int
 		updateCallsMax  int
 	}{
 		"Conflict": {
-			updateErr:      errors.NewConflict(schema.GroupResource{Group: oav1beta1.GroupVersion.Group, Resource: "FakeResource"}, name, fmt.Errorf("fake conflict")),
+			updateErr:      apiErrors.NewConflict(schema.GroupResource{Group: oav1beta1.GroupVersion.Group, Resource: "FakeResource"}, addonName, fmt.Errorf("fake conflict")),
 			requeue:        true,
 			updateCallsMin: 1,
 		},
 		"Server unavailable": {
-			updateErr:      errors.NewServiceUnavailable("service unavailable"),
+			updateErr:      apiErrors.NewServiceUnavailable("service unavailable"),
 			requeue:        true,
 			updateCallsMax: 1,
 		},
 		"internal error": {
-			updateErr: errors.NewInternalError(fmt.Errorf("internal error")),
-			// reconcileErr:   errors.NewInternalError(fmt.Errorf("fake internal error")),
+			updateErr:      apiErrors.NewInternalError(fmt.Errorf("internal error")),
 			updateCallsMax: 1,
 			requeue:        true,
 		},
 		"Permanent error": {
-			updateErr:      errors.NewBadRequest("bad request"),
-			reconcileErr:   errors.NewBadRequest("bad request"),
+			updateErr:      apiErrors.NewBadRequest("bad request"),
+			terminalErr:    true,
 			updateCallsMax: 1,
 		},
 		"Too many requests": {
-			updateErr:       errors.NewTooManyRequests("too many requests", 10),
-			requeueAfter:    true,
+			updateErr:       apiErrors.NewTooManyRequests("too many requests", 10),
+			requeue:         true,
 			requeueAfterVal: 10,
 			updateCallsMax:  1,
 		},
@@ -148,16 +176,17 @@ func TestStatusController_UpdateHubAddonFailures(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			hubClientWithConflict.UpdateError = tc.updateErr
 			hubClientWithConflict.Reset()
-			resp, err := r.Reconcile(context.Background(), newRequest())
-			if (tc.reconcileErr != nil && err == nil) || (tc.reconcileErr == nil && err != nil) {
-				t.Fatalf("Invalid reconcile error: got %v, expected %v", err, tc.reconcileErr)
+			resp, err := statusReconciler.Reconcile(context.Background(), ctrl.Request{})
+			isTerminalErr := errors.Is(err, reconcile.TerminalError(nil))
+			if tc.terminalErr != isTerminalErr {
+				t.Fatalf("Invalid reconcile error: got %v, expected %v", err, tc.terminalErr)
 			}
-			if tc.requeue != resp.Requeue {
-				t.Fatalf("Invalid requeue: got %v, expected %v", resp.Requeue, tc.requeue)
+
+			isRequeued := (!resp.IsZero() && err == nil) || (err != nil && !errors.Is(err, reconcile.TerminalError(nil)))
+			if tc.requeue != isRequeued {
+				t.Fatalf("Expected requeue")
 			}
-			if tc.requeueAfter != (resp.RequeueAfter > 0) {
-				t.Fatalf("Invalid requeue after: got %v, expected %v", resp.RequeueAfter > 0, tc.requeueAfter)
-			}
+
 			if tc.requeueAfterVal > 0 && int(resp.RequeueAfter.Seconds()) != tc.requeueAfterVal {
 				t.Fatalf("Invalid requeue after value: got %v, expected %v", int(resp.RequeueAfter.Seconds()), tc.requeueAfterVal)
 			}
@@ -172,42 +201,59 @@ func TestStatusController_UpdateHubAddonFailures(t *testing.T) {
 }
 
 func TestStatusController_GetHubAddonFailures(t *testing.T) {
-	spokeOba := newObservabilityAddon(name, testNamespace)
-	addCondition(spokeOba, "Deployed", metav1.ConditionTrue) // add status to trigger update
-	c := newClient(spokeOba)
+	addonName := "observability-addon"
+	addonNamespace := "test-ns"
+	spokeOba := newObservabilityAddon(addonName, addonNamespace)
+	// add status to trigger update
+	spokeOba.Status.Conditions = append(spokeOba.Status.Conditions, oav1beta1.StatusCondition{
+		Type: "Available",
+	})
+	spokeClient := newClient(spokeOba)
 
-	hubOba := newObservabilityAddon(name, testHubNamespace)
+	addonHubNamespace := "test-ns"
+	hubOba := newObservabilityAddon(addonName, addonHubNamespace)
 	hubClientWithConflict := newClientWithUpdateError(newClient(hubOba), nil, nil)
+
 	var reloadCount int
-	r := newStatusReconciler(c, func() (client.Client, error) {
+	reloadableHubClient, err := util.NewReloadableHubClientWithReloadFunc(func() (client.Client, error) {
 		reloadCount++
 		return hubClientWithConflict, nil
 	})
+	if err != nil {
+		t.Fatalf("Failed to create reloadable hub client: %v", err)
+	}
+	statusReconciler := &status.StatusReconciler{
+		Client:       spokeClient,
+		HubClient:    reloadableHubClient,
+		Namespace:    addonNamespace,
+		HubNamespace: addonHubNamespace,
+		ObsAddonName: addonName,
+		Logger:       logr.Discard(),
+	}
 
 	testCases := map[string]struct {
 		getErr          error
-		reconcileErr    error
+		terminalErr     bool
 		requeue         bool
-		requeueAfter    bool
 		requeueAfterVal int
 		reloadCount     int
 	}{
 		"Unauthorized": {
-			getErr:      errors.NewUnauthorized("unauthorized"),
+			getErr:      apiErrors.NewUnauthorized("unauthorized"),
 			requeue:     true,
 			reloadCount: 1,
 		},
 		"Permanent error": {
-			getErr:       errors.NewBadRequest("bad request"),
-			reconcileErr: errors.NewBadRequest("bad request"),
+			getErr:      apiErrors.NewBadRequest("bad request"),
+			terminalErr: true,
 		},
 		"Servers unavailable": {
-			getErr:  errors.NewServiceUnavailable("service unavailable"),
+			getErr:  apiErrors.NewServiceUnavailable("service unavailable"),
 			requeue: true,
 		},
 		"Too many requests": {
-			getErr:          errors.NewTooManyRequests("too many requests", 10),
-			requeueAfter:    true,
+			getErr:          apiErrors.NewTooManyRequests("too many requests", 10),
+			requeue:         true,
 			requeueAfterVal: 10,
 		},
 	}
@@ -216,22 +262,160 @@ func TestStatusController_GetHubAddonFailures(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			hubClientWithConflict.GetError = tc.getErr
 			reloadCount = 0
-			// hubClientWithConflict.Reset()
-			resp, err := r.Reconcile(context.Background(), newRequest())
-			if (tc.reconcileErr != nil && err == nil) || (tc.reconcileErr == nil && err != nil) {
-				t.Fatalf("Invalid reconcile error: got %v, expected %v", err, tc.reconcileErr)
+			resp, err := statusReconciler.Reconcile(context.Background(), ctrl.Request{})
+			isTerminalErr := errors.Is(err, reconcile.TerminalError(nil))
+			if tc.terminalErr != isTerminalErr {
+				t.Fatalf("Invalid reconcile error: got %v, expected %v", err, tc.terminalErr)
 			}
-			if tc.requeue != resp.Requeue {
-				t.Fatalf("Invalid requeue: got %v, expected %v", resp.Requeue, tc.requeue)
-			}
-			if tc.requeueAfter != (resp.RequeueAfter > 0) {
-				t.Fatalf("Invalid requeue after: got %v, expected %v", resp.RequeueAfter > 0, tc.requeueAfter)
+			isRequeued := (!resp.IsZero() && err == nil) || (err != nil && !errors.Is(err, reconcile.TerminalError(nil)))
+			if tc.requeue != isRequeued {
+				t.Fatalf("Expected requeue")
 			}
 			if tc.requeueAfterVal > 0 && int(resp.RequeueAfter.Seconds()) != tc.requeueAfterVal {
 				t.Fatalf("Invalid requeue after value: got %v, expected %v", int(resp.RequeueAfter.Seconds()), tc.requeueAfterVal)
 			}
 			if tc.reloadCount != reloadCount {
 				t.Fatalf("Expected reload %d times, got %d", tc.reloadCount, reloadCount)
+			}
+		})
+	}
+}
+
+func TestStatusController_UpdateSpokeAddon(t *testing.T) {
+	addonName := "observability-addon"
+	addonNamespace := "test-ns"
+
+	addonHubNamespace := "test-ns"
+	hubOba := newObservabilityAddon(addonName, addonHubNamespace)
+	var updateErr error
+	hubClientWithConflict := newClientWithUpdateError(newClient(hubOba), updateErr, nil)
+	reloadableHubClient, err := util.NewReloadableHubClientWithReloadFunc(func() (client.Client, error) { return hubClientWithConflict, nil })
+	if err != nil {
+		t.Fatalf("Failed to create reloadable hub client: %v", err)
+	}
+
+	newCondition := func(t, r, m string, status metav1.ConditionStatus, lastTransitionTime time.Time) oav1beta1.StatusCondition {
+		return oav1beta1.StatusCondition{
+			Type:               t,
+			Reason:             r,
+			Message:            m,
+			Status:             status,
+			LastTransitionTime: metav1.NewTime(lastTransitionTime),
+		}
+	}
+
+	testCases := map[string]struct {
+		spokeAddonConditions []oav1beta1.StatusCondition
+		expectConditions     []oav1beta1.StatusCondition
+	}{
+		"no condition": {
+			spokeAddonConditions: []oav1beta1.StatusCondition{},
+			expectConditions:     []oav1beta1.StatusCondition{},
+		},
+		"no component condition": {
+			spokeAddonConditions: []oav1beta1.StatusCondition{
+				newCondition("Available", "ForwardSuccessful", "MetricsCollector: Metrics sent", metav1.ConditionTrue, time.Now().Add(-time.Minute)),
+			},
+			expectConditions: []oav1beta1.StatusCondition{
+				newCondition("Available", "ForwardSuccessful", "MetricsCollector: Metrics sent", metav1.ConditionTrue, time.Now().Add(-time.Minute)),
+			},
+		},
+		"single component aggregation": {
+			spokeAddonConditions: []oav1beta1.StatusCondition{
+				newCondition("MetricsCollector", "ForwardSuccessful", "Metrics sent", metav1.ConditionTrue, time.Now()),
+			},
+			expectConditions: []oav1beta1.StatusCondition{
+				newCondition("MetricsCollector", "ForwardSuccessful", "Metrics sent", metav1.ConditionTrue, time.Now()),
+				newCondition("Available", "ForwardSuccessful", "MetricsCollector: Metrics sent", metav1.ConditionTrue, time.Now()),
+			},
+		},
+		"multi aggregation with same reason": {
+			spokeAddonConditions: []oav1beta1.StatusCondition{
+				newCondition("MetricsCollector", "ForwardSuccessful", "Metrics sent", metav1.ConditionTrue, time.Now()),
+				newCondition("UwlMetricsCollector", "ForwardSuccessful", "Metrics sent", metav1.ConditionTrue, time.Now()),
+			},
+			expectConditions: []oav1beta1.StatusCondition{
+				newCondition("MetricsCollector", "ForwardSuccessful", "Metrics sent", metav1.ConditionTrue, time.Now()),
+				newCondition("UwlMetricsCollector", "ForwardSuccessful", "Metrics sent", metav1.ConditionTrue, time.Now()),
+				newCondition("Available", "ForwardSuccessful", "MetricsCollector: Metrics sent; UwlMetricsCollector: Metrics sent", metav1.ConditionTrue, time.Now()),
+			},
+		},
+		"multi aggregation with highest priority reason": {
+			spokeAddonConditions: []oav1beta1.StatusCondition{
+				newCondition("MetricsCollector", "ForwardSuccessful", "Metrics sent", metav1.ConditionTrue, time.Now()),
+				newCondition("UwlMetricsCollector", "ForwardFailed", "Metrics failed", metav1.ConditionTrue, time.Now()),
+			},
+			expectConditions: []oav1beta1.StatusCondition{
+				newCondition("MetricsCollector", "ForwardSuccessful", "Metrics sent", metav1.ConditionTrue, time.Now()),
+				newCondition("UwlMetricsCollector", "ForwardFailed", "Metrics failed", metav1.ConditionTrue, time.Now()),
+				newCondition("Degraded", "ForwardFailed", "UwlMetricsCollector: Metrics failed; MetricsCollector: Metrics sent", metav1.ConditionTrue, time.Now()),
+			},
+		},
+		"conditions are not updated if they are the same": {
+			spokeAddonConditions: []oav1beta1.StatusCondition{
+				newCondition("MetricsCollector", "ForwardSuccessful", "Metrics sent", metav1.ConditionTrue, time.Now()),
+				newCondition("UwlMetricsCollector", "ForwardFailed", "Metrics failed", metav1.ConditionTrue, time.Now()),
+				newCondition("Degraded", "ForwardFailed", "UwlMetricsCollector: Metrics failed; MetricsCollector: Metrics sent", metav1.ConditionTrue, time.Now().Add(-time.Minute)),
+				newCondition("Available", "ForwardSuccessful", "", metav1.ConditionFalse, time.Now()),
+			},
+			expectConditions: []oav1beta1.StatusCondition{
+				newCondition("MetricsCollector", "ForwardSuccessful", "Metrics sent", metav1.ConditionTrue, time.Now()),
+				newCondition("UwlMetricsCollector", "ForwardFailed", "Metrics failed", metav1.ConditionTrue, time.Now()),
+				newCondition("Available", "ForwardSuccessful", "", metav1.ConditionFalse, time.Now()),
+				newCondition("Degraded", "ForwardFailed", "UwlMetricsCollector: Metrics failed; MetricsCollector: Metrics sent", metav1.ConditionTrue, time.Now().Add(-time.Minute)),
+			},
+		},
+		"status is updated if the condition is different": {
+			spokeAddonConditions: []oav1beta1.StatusCondition{
+				newCondition("MetricsCollector", "ForwardFailed", "Metrics failed", metav1.ConditionTrue, time.Now()),
+				newCondition("Available", "ForwardSuccessful", "MetricsCollector: Metrics sent", metav1.ConditionTrue, time.Now().Add(-time.Minute)),
+			},
+			expectConditions: []oav1beta1.StatusCondition{
+				newCondition("MetricsCollector", "ForwardFailed", "Metrics failed", metav1.ConditionTrue, time.Now()),
+				newCondition("Available", "ForwardSuccessful", "MetricsCollector: Metrics sent", metav1.ConditionFalse, time.Now().Add(-time.Minute)),
+				newCondition("Degraded", "ForwardFailed", "MetricsCollector: Metrics failed", metav1.ConditionTrue, time.Now()),
+			},
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			spokeOba := newObservabilityAddon(addonName, addonNamespace)
+			spokeOba.Status.Conditions = tc.spokeAddonConditions
+			spokeClient := newClient(spokeOba)
+			statusReconciler := &status.StatusReconciler{
+				Client:       spokeClient,
+				HubClient:    reloadableHubClient,
+				Namespace:    addonNamespace,
+				HubNamespace: addonHubNamespace,
+				ObsAddonName: addonName,
+				Logger:       logr.Discard(),
+			}
+
+			resp, err := statusReconciler.Reconcile(context.Background(), ctrl.Request{})
+			assert.NoError(t, err)
+			assert.True(t, resp.IsZero())
+
+			newSpokeOba := &oav1beta1.ObservabilityAddon{}
+			err = spokeClient.Get(context.Background(), types.NamespacedName{Name: addonName, Namespace: addonNamespace}, newSpokeOba)
+			if err != nil {
+				t.Fatalf("Failed to get oba in spoke: %v", err)
+			}
+
+			assert.Equal(t, len(tc.expectConditions), len(newSpokeOba.Status.Conditions))
+
+			sort.Slice(newSpokeOba.Status.Conditions, func(i, j int) bool {
+				return newSpokeOba.Status.Conditions[i].Type < newSpokeOba.Status.Conditions[j].Type
+			})
+			sort.Slice(tc.expectConditions, func(i, j int) bool {
+				return tc.expectConditions[i].Type < tc.expectConditions[j].Type
+			})
+			for i := range tc.expectConditions {
+				assert.Equal(t, tc.expectConditions[i].Type, newSpokeOba.Status.Conditions[i].Type)
+				assert.Equal(t, tc.expectConditions[i].Reason, newSpokeOba.Status.Conditions[i].Reason)
+				assert.Equal(t, tc.expectConditions[i].Message, newSpokeOba.Status.Conditions[i].Message)
+				assert.Equal(t, tc.expectConditions[i].Status, newSpokeOba.Status.Conditions[i].Status)
+				assert.WithinDuration(t, tc.expectConditions[i].LastTransitionTime.Time, newSpokeOba.Status.Conditions[i].LastTransitionTime.Time, time.Second)
 			}
 		})
 	}
@@ -317,40 +501,5 @@ func newObservabilityAddon(name string, ns string) *oav1beta1.ObservabilityAddon
 			EnableMetrics: true,
 			Interval:      60,
 		},
-	}
-}
-
-func addCondition(oba *oav1beta1.ObservabilityAddon, statusType string, status metav1.ConditionStatus) {
-	condition := oav1beta1.StatusCondition{
-		Type:    statusType,
-		Status:  status,
-		Reason:  "DummyReason",
-		Message: "DummyMessage",
-	}
-	oba.Status.Conditions = append(oba.Status.Conditions, condition)
-}
-
-func newRequest() ctrl.Request {
-	return ctrl.Request{
-		NamespacedName: types.NamespacedName{
-			Name:      "install",
-			Namespace: testNamespace,
-		},
-	}
-}
-
-func newStatusReconciler(c client.Client, hubReload func() (client.Client, error)) *status.StatusReconciler {
-	hc, err := util.NewReloadableHubClientWithReloadFunc(hubReload)
-	if err != nil {
-		panic(err)
-	}
-
-	return &status.StatusReconciler{
-		Client:       c,
-		HubClient:    hc,
-		Namespace:    testNamespace,
-		HubNamespace: testHubNamespace,
-		ObsAddonName: obAddonName,
-		Logger:       logr.Discard(),
 	}
 }
