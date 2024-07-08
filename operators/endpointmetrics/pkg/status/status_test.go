@@ -2,7 +2,7 @@
 // Copyright Contributors to the Open Cluster Management project
 // Licensed under the Apache License 2.0
 
-package status_test
+package status
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/status"
+	"github.com/go-logr/logr"
 	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/stretchr/testify/assert"
@@ -24,46 +24,44 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-func newObservabilityAddon(name string, ns string) *oav1beta1.ObservabilityAddon {
-	return &oav1beta1.ObservabilityAddon{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: oav1beta1.GroupVersion.String(),
-			Kind:       "ObservabilityAddon",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: ns,
-		},
-	}
-}
-
 func TestReportStatus(t *testing.T) {
 	s := scheme.Scheme
 	assert.NoError(t, oav1beta1.AddToScheme(s))
 	assert.NoError(t, addonv1alpha1.AddToScheme(s))
 	assert.NoError(t, mcov1beta2.AddToScheme(s))
 
+	type updateParams struct {
+		component component
+		reason    reason
+		message   string
+	}
+
 	testCases := map[string]struct {
 		currentConditions []oav1beta1.StatusCondition
-		newCondition      status.ConditionReason
-		expects           func(*testing.T, []oav1beta1.StatusCondition)
+		updateParams      updateParams
+		expects           func(*testing.T, error, []oav1beta1.StatusCondition)
 	}{
 		"new status should be appended": {
 			currentConditions: []oav1beta1.StatusCondition{},
-			newCondition:      status.Deployed,
-			expects: func(t *testing.T, conditions []oav1beta1.StatusCondition) {
+			updateParams: updateParams{
+				component: "MetricsCollector",
+				reason:    UpdateSuccessful,
+				message:   "Metrics collector updated",
+			},
+			expects: func(t *testing.T, updateErr error, conditions []oav1beta1.StatusCondition) {
+				assert.NoError(t, updateErr)
 				assert.Len(t, conditions, 1)
-				assert.EqualValues(t, status.Deployed, conditions[0].Reason)
+				assert.EqualValues(t, UpdateSuccessful, conditions[0].Reason)
 				assert.Equal(t, metav1.ConditionTrue, conditions[0].Status)
-				assert.Equal(t, "Progressing", conditions[0].Type)
+				assert.Equal(t, "MetricsCollector", conditions[0].Type)
 				assert.InEpsilon(t, time.Now().Unix(), conditions[0].LastTransitionTime.Unix(), 1)
 			},
 		},
 		"existing status should be updated": {
 			currentConditions: []oav1beta1.StatusCondition{
 				{
-					Type:    "Progressing",
-					Reason:  string(status.Deployed),
+					Type:    "MetricsCollector",
+					Reason:  string(ForwardSuccessful),
 					Message: "Metrics collector deployed",
 					Status:  metav1.ConditionTrue,
 					LastTransitionTime: metav1.Time{
@@ -71,109 +69,95 @@ func TestReportStatus(t *testing.T) {
 					},
 				},
 				{
-					Type:    "Disabled",
-					Reason:  string(status.Disabled),
-					Message: "enableMetrics is set to False",
+					Type:    "Available",
+					Reason:  string(ForwardSuccessful),
+					Message: "Metrics collector available",
 					Status:  metav1.ConditionTrue,
 					LastTransitionTime: metav1.Time{
 						Time: time.Now().Add(-2 * time.Minute),
 					},
 				},
 			},
-			newCondition: status.Disabled,
-			expects: func(t *testing.T, conditions []oav1beta1.StatusCondition) {
-				assert.Len(t, conditions, 2)
-				found := false
+			updateParams: updateParams{
+				component: "MetricsCollector",
+				reason:    UpdateFailed,
+				message:   "Metrics collector disabled",
+			},
+			expects: func(t *testing.T, updateErr error, conditions []oav1beta1.StatusCondition) {
+				assert.NoError(t, updateErr)
+				condMap := make(map[string]oav1beta1.StatusCondition)
 				for _, c := range conditions {
-					if c.Reason == string(status.Disabled) {
-						found = true
-						assert.EqualValues(t, status.Disabled, c.Reason)
-						assert.Equal(t, metav1.ConditionTrue, c.Status)
-						assert.Equal(t, "Disabled", c.Type)
-						assert.InEpsilon(t, time.Now().Unix(), c.LastTransitionTime.Unix(), 1)
-					} else {
-						// other condition should not be changed
-						assert.EqualValues(t, status.Deployed, c.Reason)
-						assert.InEpsilon(t, time.Now().Add(-time.Minute).Unix(), c.LastTransitionTime.Unix(), 1)
-					}
+					condMap[c.Type] = c
 				}
-				assert.True(t, found, "condition not found")
+				assert.Len(t, condMap, 2)
+				mcCond := condMap["MetricsCollector"]
+				assert.EqualValues(t, UpdateFailed, mcCond.Reason)
+				assert.Equal(t, metav1.ConditionTrue, mcCond.Status)
+				assert.InEpsilon(t, time.Now().Unix(), mcCond.LastTransitionTime.Unix(), 1)
+				availCond := condMap["Available"]
+				assert.EqualValues(t, ForwardSuccessful, availCond.Reason)
+				assert.InEpsilon(t, time.Now().Add(-2*time.Minute).Unix(), availCond.LastTransitionTime.Unix(), 1)
 			},
 		},
 		"existing status should not be updated if same": {
 			currentConditions: []oav1beta1.StatusCondition{
 				{
-					Type:    "Progressing",
-					Reason:  string(status.Deployed),
+					Type:    "MetricsCollector",
+					Reason:  string(ForwardSuccessful),
 					Message: "Metrics collector deployed",
 					Status:  metav1.ConditionTrue,
 					LastTransitionTime: metav1.Time{
-						Time: time.Now().Add(-time.Minute), // current state (most recent)
+						Time: time.Now().Add(-3 * time.Minute), // current state (most recent)
 					},
 				},
 				{
-					Type: "Disabled",
+					Type:    "Available",
+					Reason:  string(ForwardSuccessful),
+					Message: "Metrics collector available",
+					Status:  metav1.ConditionTrue,
 					LastTransitionTime: metav1.Time{
 						Time: time.Now().Add(-2 * time.Minute),
 					},
 				},
 			},
-			newCondition: status.Deployed,
-			expects: func(t *testing.T, conditions []oav1beta1.StatusCondition) {
-				assert.Len(t, conditions, 2)
-				assert.EqualValues(t, status.Deployed, conditions[0].Reason)
-				assert.InEpsilon(t, time.Now().Add(-time.Minute).Unix(), conditions[0].LastTransitionTime.Unix(), 1)
+			updateParams: updateParams{
+				component: "MetricsCollector",
+				reason:    ForwardSuccessful,
+				message:   "Metrics collector deployed",
 			},
-		},
-		"number of conditions should not exceed MaxStatusConditionsCount": {
-			currentConditions: []oav1beta1.StatusCondition{
-				{Type: "1"}, {Type: "2"}, {Type: "3"}, {Type: "4"}, {Type: "5"},
-				{Type: "6"}, {Type: "7"}, {Type: "8"}, {Type: "9"}, {Type: "10"},
-			},
-			newCondition: status.Deployed,
-			expects: func(t *testing.T, conditions []oav1beta1.StatusCondition) {
-				assert.Len(t, conditions, status.MaxStatusConditionsCount)
-				assert.EqualValues(t, status.Deployed, conditions[len(conditions)-1].Reason)
-			},
-		},
-		"duplicated conditions should be removed": {
-			currentConditions: []oav1beta1.StatusCondition{
-				{Type: "Progressing", LastTransitionTime: metav1.Time{Time: time.Now()}}, // most recent duplicated condition
-				{Type: "Degraded", LastTransitionTime: metav1.Time{Time: time.Now().Add(-time.Minute)}},
-				{Type: "Progressing", LastTransitionTime: metav1.Time{Time: time.Now().Add(-time.Minute)}},
-				{Type: "Degraded", LastTransitionTime: metav1.Time{Time: time.Now().Add(-time.Minute)}},
-			},
-			newCondition: status.Deployed,
-			expects: func(t *testing.T, conditions []oav1beta1.StatusCondition) {
-				assert.Len(t, conditions, 2)
+			expects: func(t *testing.T, updateErr error, conditions []oav1beta1.StatusCondition) {
+				assert.NoError(t, updateErr)
+				condMap := make(map[string]oav1beta1.StatusCondition)
 				for _, c := range conditions {
-					switch c.Type {
-					case "Progressing":
-						assert.InEpsilon(t, time.Now().Unix(), c.LastTransitionTime.Unix(), 1)
-					case "Degraded":
-						assert.InEpsilon(t, time.Now().Add(-time.Minute).Unix(), c.LastTransitionTime.Unix(), 1)
-					default:
-						t.Fatalf("unexpected condition type: %s", c.Type)
-					}
+					condMap[c.Type] = c
 				}
+				assert.Len(t, condMap, 2)
+				mcCond := condMap["MetricsCollector"]
+				// check that the time has not been updated
+				assert.InEpsilon(t, time.Now().Add(-3*time.Minute).Unix(), mcCond.LastTransitionTime.Unix(), 1)
 			},
 		},
-		"only one of the main conditions should be true": {
+		"invalid transitions should be rejected": {
 			currentConditions: []oav1beta1.StatusCondition{
-				{Type: "Progressing", Status: metav1.ConditionTrue},
-				{Type: "Degraded", Status: metav1.ConditionTrue},
-				{Type: "Available", Status: metav1.ConditionTrue},
+				{
+					Type:    "MetricsCollector",
+					Reason:  string(UpdateFailed),
+					Message: "Metrics collector broken",
+					Status:  metav1.ConditionTrue,
+					LastTransitionTime: metav1.Time{
+						Time: time.Now().Add(-time.Minute), // current state (most recent)
+					},
+				},
 			},
-			newCondition: status.Deployed,
-			expects: func(t *testing.T, conditions []oav1beta1.StatusCondition) {
-				assert.Len(t, conditions, 3)
-				for _, c := range conditions {
-					if c.Type == "Progressing" {
-						assert.Equal(t, metav1.ConditionTrue, c.Status)
-					} else {
-						assert.Equal(t, metav1.ConditionFalse, c.Status)
-					}
-				}
+			updateParams: updateParams{
+				component: "MetricsCollector",
+				reason:    ForwardSuccessful,
+				message:   "Metrics collector is now working",
+			},
+			expects: func(t *testing.T, resultErr error, conditions []oav1beta1.StatusCondition) {
+				assert.Len(t, conditions, 1)
+				assert.Error(t, resultErr)
+				assert.Contains(t, resultErr.Error(), "invalid transition")
 			},
 		},
 	}
@@ -191,19 +175,14 @@ func TestReportStatus(t *testing.T) {
 			}
 
 			// test
-			if err := status.ReportStatus(context.Background(), client, tc.newCondition, baseAddon.Name, baseAddon.Namespace); err != nil {
-				t.Fatalf("Error reporting status: %v", err)
-			}
+			statusUpdater := NewStatus(client, baseAddon.Name, baseAddon.Namespace, logr.Logger{})
+			updateErr := statusUpdater.UpdateComponentCondition(context.Background(), tc.updateParams.component, tc.updateParams.reason, tc.updateParams.message)
+
 			newAddon := &oav1beta1.ObservabilityAddon{}
 			if err := client.Get(context.Background(), types.NamespacedName{Name: baseAddon.Name, Namespace: baseAddon.Namespace}, newAddon); err != nil {
 				t.Fatalf("Error getting observabilityaddon: (%v)", err)
 			}
-			tc.expects(t, newAddon.Status.Conditions)
-
-			// cleanup
-			if err := client.Delete(context.Background(), newAddon); err != nil {
-				t.Fatalf("Error deleting observabilityaddon: %v", err)
-			}
+			tc.expects(t, updateErr, newAddon.Status.Conditions)
 		})
 	}
 }
@@ -218,12 +197,27 @@ func TestReportStatus_Conflict(t *testing.T) {
 	fakeClient := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(oa).Build()
 	conflictErr := errors.NewConflict(schema.GroupResource{Group: oav1beta1.GroupVersion.Group, Resource: "resource"}, name, fmt.Errorf("conflict"))
 
-	c := newClientWithUpdateError(fakeClient, conflictErr)
-	if err := status.ReportStatus(context.Background(), c, status.Deployed, name, testNamespace); err == nil {
-		t.Fatalf("Conflict error should be retried and return an error if it fails")
+	client := newClientWithUpdateError(fakeClient, conflictErr)
+	statusUpdater := NewStatus(client, name, testNamespace, logr.Logger{})
+	if err := statusUpdater.UpdateComponentCondition(context.Background(), "MetricsCollector", UpdateSuccessful, "Metrics collector updated"); err == nil {
+		t.Fatalf("Conflict error should be retried and return no error if it succeeds")
 	}
-	if c.UpdateCallsCount() <= 1 {
-		t.Errorf("Conflict error should be retried, called %d times", c.UpdateCallsCount())
+
+	if client.UpdateCallsCount() <= 1 {
+		t.Errorf("Conflict error should be retried, called %d times", client.UpdateCallsCount())
+	}
+}
+
+func newObservabilityAddon(name string, ns string) *oav1beta1.ObservabilityAddon {
+	return &oav1beta1.ObservabilityAddon{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: oav1beta1.GroupVersion.String(),
+			Kind:       "ObservabilityAddon",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: ns,
+		},
 	}
 }
 
