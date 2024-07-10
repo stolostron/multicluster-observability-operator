@@ -908,7 +908,10 @@ func (m *MetricsCollector) getMetricsAllowlist(ctx context.Context) (*operatorco
 	err := m.Client.Get(ctx, types.NamespacedName{Name: operatorconfig.AllowlistConfigMapName,
 		Namespace: m.Namespace}, cm)
 	if err != nil {
-		m.Log.Error(err, "Failed to get configmap", "name", operatorconfig.AllowlistConfigMapName, "namespace", m.Namespace)
+		if !errors.IsNotFound(err) {
+			return allowList, userAllowList, fmt.Errorf("failed to get configmap %s/%s: %w", m.Namespace, operatorconfig.AllowlistConfigMapName, err)
+		}
+		m.Log.Info(fmt.Sprintf("AllowList configmap not found %s/%s: %v", m.Namespace, operatorconfig.AllowlistConfigMapName, err))
 	}
 
 	if cm.Data != nil {
