@@ -53,7 +53,8 @@ var (
 	restCfgHub   *rest.Config
 )
 
-// TestIntegrationReconcileAddon ensures that addon directives are applied the the resources in the cluster.
+// TestIntegrationReconcileAddon ensures that addon directives are applied to the resources in the cluster.
+// This includes enabled/disabled, interval, and resources requirements.
 func TestIntegrationReconcileAddon(t *testing.T) {
 	scheme := createBaseScheme()
 	assert.NoError(t, ocinfrav1.AddToScheme(scheme))
@@ -273,10 +274,10 @@ func TestIntegrationReconcileAddon(t *testing.T) {
 	}
 
 	// delete the addon and check that resources are removed
-
 }
 
 // TestIntegrationReconcileHypershift tests the reconcile function for hypershift CRDs.
+// It ensures that the service monitors are created for the hypershift resources.
 func TestIntegrationReconcileHypershift(t *testing.T) {
 	testNamespace := "test-ns"
 
