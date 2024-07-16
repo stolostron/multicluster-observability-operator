@@ -7,6 +7,7 @@ COPY go.sum go.mod ./
 COPY ./operators/endpointmetrics ./operators/endpointmetrics
 COPY ./operators/multiclusterobservability/api ./operators/multiclusterobservability/api
 COPY ./operators/pkg ./operators/pkg
+COPY ./pkg ./pkg
 
 RUN CGO_ENABLED=1 go build -a -installsuffix cgo -o build/_output/bin/endpoint-monitoring-operator operators/endpointmetrics/main.go
 
