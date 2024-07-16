@@ -7,6 +7,7 @@ WORKDIR /workspace
 COPY go.sum go.mod ./
 COPY ./operators/multiclusterobservability ./operators/multiclusterobservability
 COPY ./operators/pkg ./operators/pkg
+COPY ./pkg ./pkg
 
 RUN CGO_ENABLED=1 GOFLAGS="" go build -a -installsuffix cgo -o bin/manager operators/multiclusterobservability/main.go
 
