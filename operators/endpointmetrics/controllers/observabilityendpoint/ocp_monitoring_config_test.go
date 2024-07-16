@@ -49,6 +49,9 @@ alertmanager-router-ca: |
 prometheusK8s:
   externalLabels:
     managed_cluster: kind-cluster-id
+  remoteWrite:
+  - url: http://test-endpoint
+    bearerTokenFile: hello.yaml
   additionalAlertManagerConfigs:
   - apiVersion: v2
     bearerToken:
@@ -342,6 +345,10 @@ func TestClusterMonitoringConfigAlertsDisabled(t *testing.T) {
 
 		if foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs == nil {
 			t.Fatalf("AlertmanagerConfigs is nil after reenabling alerts")
+		}
+
+		if foundClusterMonitoringConfiguration.PrometheusK8sConfig.RemoteWrite[0].URL != "http://test-endpoint" {
+			t.Fatalf("RemoteWrite URL not set to http://test-endpoint")
 		}
 	})
 }
