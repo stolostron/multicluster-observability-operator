@@ -18,6 +18,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	meta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -213,10 +214,15 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 
 		clusterID, err = openshift.GetClusterID(ctx, r.Client)
 		if err != nil {
-			if !errors.IsNotFound(err) {
+			if meta.IsNoMatchError(err) {
+				// ClusterVersion kind does not exist in OCP 3.x
+				log.Info("ClusterVersion kind does not exist, treat spoke as OCP 3.x", "error", err)
+			} else if errors.IsNotFound(err) {
+				// If no ClusterVersion found, treat it as OCP 3.x (should not happen)
+				log.Info("Cluster id not found, treat spoke as OCP 3.x", "error", err)
+			} else {
 				return ctrl.Result{}, fmt.Errorf("failed to get cluster id: %w", err)
 			}
-			log.Error(err, "Failed to get cluster id")
 
 			// OCP 3.11 has no cluster id, set it as empty string
 			clusterID = ""
