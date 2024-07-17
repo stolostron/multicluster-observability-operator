@@ -215,8 +215,13 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 		if err != nil {
 			if !errors.IsNotFound(err) {
 				return ctrl.Result{}, fmt.Errorf("failed to get cluster id: %w", err)
+			} else if errors.IsInvalid(err) {
+				// ClusterVersion kind does not exist in OCP 3.x
+				log.Info("ClusterVersion kind does not exist in OCP 3.x")
+			} else {
+				// TODO: once the IsInvalid check is validated on OCP 3.x, return error instead of logging
+				log.Error(err, "Failed to get cluster id")
 			}
-			log.Error(err, "Failed to get cluster id")
 
 			// OCP 3.11 has no cluster id, set it as empty string
 			clusterID = ""
