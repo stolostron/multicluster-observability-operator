@@ -747,6 +747,7 @@ func getClusterList(userMetricsAccess map[string][]string) []string {
 	for clusterName := range userMetricsAccess {
 		clusterList = append(clusterList, clusterName)
 	}
+	slices.Sort(clusterList)
 	return clusterList
 }
 
