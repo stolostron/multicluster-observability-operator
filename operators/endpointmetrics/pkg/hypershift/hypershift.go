@@ -11,6 +11,7 @@ import (
 
 	hyperv1 "github.com/openshift/hypershift/api/v1alpha1"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	operatorutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -91,6 +92,21 @@ func DeleteServiceMonitors(ctx context.Context, c client.Client) error {
 // This is a helper function to centralize the logic for creating the namespace name
 func HostedClusterNamespace(cluster *hyperv1.HostedCluster) string {
 	return fmt.Sprintf("%s-%s", cluster.ObjectMeta.Namespace, cluster.ObjectMeta.Name)
+}
+
+func IsHypershiftCluster() (bool, error) {
+	var isHypershift bool
+	crdClient, err := operatorutil.GetOrCreateCRDClient()
+	if err != nil {
+		return false, fmt.Errorf("failed to get/create CRD client: %w", err)
+	}
+
+	isHypershift, err = operatorutil.CheckCRDExist(crdClient, "hostedclusters.hypershift.openshift.io")
+	if err != nil {
+		return false, fmt.Errorf("failed to check if the CRD hostedclusters.hypershift.openshift.io exists: %w", err)
+	}
+
+	return isHypershift, nil
 }
 
 func createOrUpdateSM(ctx context.Context, c client.Client, smDesired *promv1.ServiceMonitor) error {
