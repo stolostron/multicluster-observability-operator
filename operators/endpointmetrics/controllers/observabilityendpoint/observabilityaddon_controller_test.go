@@ -18,14 +18,17 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	meta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 
@@ -297,30 +300,6 @@ alertmanager-router-ca: |
 		t.Fatal("Finalizer not set in observabilityAddon")
 	}
 
-	// test reconcile w/o clusterversion(OCP 3.11)
-	c.Delete(ctx, cv)
-	req = ctrl.Request{
-		NamespacedName: types.NamespacedName{
-			Name:      "install",
-			Namespace: testNamespace,
-		},
-	}
-	_, err = r.Reconcile(ctx, req)
-	if err != nil {
-		t.Fatalf("reconcile: (%v)", err)
-	}
-	err = c.Get(ctx, types.NamespacedName{Name: metricsCollectorName,
-		Namespace: namespace}, deploy)
-	if err != nil {
-		t.Fatalf("Metrics collector deployment not created: (%v)", err)
-	}
-	commands := deploy.Spec.Template.Spec.Containers[0].Command
-	for _, cmd := range commands {
-		if strings.Contains(cmd, "clusterID=") && !strings.Contains(cmd, "test-cluster") {
-			t.Fatalf("Found wrong clusterID in command: (%s)", cmd)
-		}
-	}
-
 	// test reconcile metrics collector deployment updated if cert secret updated
 	found := &appv1.Deployment{}
 	err = c.Get(ctx, types.NamespacedName{Name: metricsCollectorName,
@@ -421,4 +400,133 @@ alertmanager-router-ca: |
 	if slices.Contains(foundOba1.Finalizers, obsAddonFinalizer) {
 		t.Fatal("Finalizer not removed from observabilityAddon")
 	}
+}
+
+func TestObservabilityAddonController_OCP3(t *testing.T) {
+	hubInfoData := []byte(`
+endpoint: "http://test-endpoint"
+alertmanager-endpoint: "http://test-alertamanger-endpoint"
+alertmanager-router-ca: |
+    -----BEGIN CERTIFICATE-----
+    xxxxxxxxxxxxxxxxxxxxxxxxxxx
+    -----END CERTIFICATE-----
+`)
+
+	hubObjs := []runtime.Object{
+		newObservabilityAddon(name, testHubNamspace),
+	}
+	hubInfo := newHubInfoSecret(hubInfoData, testNamespace)
+	amAccessSrt := newAMAccessorSecret(testNamespace)
+	allowList := getAllowlistCM()
+	images := newImagesCM(testNamespace)
+	objs := []runtime.Object{hubInfo, amAccessSrt, allowList, images, infra,
+		&corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "extension-apiserver-authentication",
+				Namespace: "kube-system",
+			},
+			Data: map[string]string{
+				"client-ca-file": "test",
+			},
+		},
+		&corev1.Namespace{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "test-ns",
+			},
+		},
+		newObservabilityAddon(name, testNamespace),
+		newPromSvc(),
+	}
+
+	scheme := scheme.Scheme
+	addonv1alpha1.AddToScheme(scheme)
+	mcov1beta2.AddToScheme(scheme)
+	oav1beta1.AddToScheme(scheme)
+	corev1.AddToScheme(scheme)
+	clusterv1.AddToScheme(scheme)
+	ocinfrav1.AddToScheme(scheme)
+
+	hubClient := fake.NewClientBuilder().
+		WithScheme(scheme).
+		WithRuntimeObjects(hubObjs...).
+		WithStatusSubresource(
+			&addonv1alpha1.ManagedClusterAddOn{},
+			&mcov1beta2.MultiClusterObservability{},
+			&oav1beta1.ObservabilityAddon{},
+		).
+		Build()
+
+	var errClientGetInterceptor error
+
+	c := fake.NewClientBuilder().
+		WithScheme(scheme).
+		WithRuntimeObjects(objs...).
+		WithStatusSubresource(
+			&addonv1alpha1.ManagedClusterAddOn{},
+			&mcov1beta2.MultiClusterObservability{},
+			&oav1beta1.ObservabilityAddon{},
+		).
+		WithInterceptorFuncs(interceptor.Funcs{
+			Get: func(ctx context.Context, client client.WithWatch, key types.NamespacedName, obj client.Object, opts ...client.GetOption) error {
+				if _, ok := obj.(*ocinfrav1.ClusterVersion); ok {
+					return errClientGetInterceptor
+				}
+				return client.Get(ctx, key, obj, opts...)
+			},
+		}).
+		Build()
+
+	hubClientWithReload, err := util.NewReloadableHubClientWithReloadFunc(func() (client.Client, error) {
+		return hubClient, nil
+	})
+	if err != nil {
+		t.Fatalf("Failed to create hub client with reload: %v", err)
+	}
+	r := &ObservabilityAddonReconciler{
+		Client:    c,
+		HubClient: hubClientWithReload,
+	}
+
+	checkMetricsCollector := func() {
+		deploy := &appv1.Deployment{}
+		err = c.Get(context.Background(), types.NamespacedName{Name: metricsCollectorName,
+			Namespace: namespace}, deploy)
+		if err != nil {
+			t.Fatalf("Metrics collector deployment not created: (%v)", err)
+		}
+		commands := deploy.Spec.Template.Spec.Containers[0].Command
+		for _, cmd := range commands {
+			if strings.Contains(cmd, "clusterID=") && !strings.Contains(cmd, "test-cluster") {
+				t.Fatalf("Found wrong clusterID in command: (%s)", cmd)
+			}
+		}
+	}
+
+	// test reconcile successfully
+	// ClusterVersion CRD does not exist
+	errClientGetInterceptor = &meta.NoKindMatchError{
+		GroupKind:        schema.GroupKind{Group: "example.com", Kind: "CustomResource"},
+		SearchedVersions: []string{"v1"},
+	}
+	req := ctrl.Request{
+		NamespacedName: types.NamespacedName{
+			Name:      "install",
+			Namespace: testNamespace,
+		},
+	}
+
+	_, err = r.Reconcile(context.Background(), req)
+	if err != nil {
+		t.Fatalf("reconcile: (%v)", err)
+	}
+	checkMetricsCollector()
+
+	// test reconcile successfully
+	// ClusterVersion is not found
+	errClientGetInterceptor = errors.NewNotFound(schema.GroupResource{Group: "config.openshift.io", Resource: "clusterversions"}, "version")
+	_, err = r.Reconcile(context.Background(), req)
+	if err != nil {
+		t.Fatalf("reconcile: (%v)", err)
+	}
+	checkMetricsCollector()
 }
