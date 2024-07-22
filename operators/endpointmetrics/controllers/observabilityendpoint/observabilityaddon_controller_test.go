@@ -24,6 +24,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	kubescheme "k8s.io/client-go/kubernetes/scheme"
+	clusterv1 "open-cluster-management.io/api/cluster/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -399,13 +400,15 @@ alertmanager-router-ca: |
     xxxxxxxxxxxxxxxxxxxxxxxxxxx
     -----END CERTIFICATE-----
 `)
+	testNamespace := "test-ns"
+	testHubNamespace := "test-hub-ns"
 
 	hubObjs := []runtime.Object{
-		newObservabilityAddon(name, testHubNamspace),
+		newObservabilityAddon(name, testHubNamespace),
 	}
 	hubInfo := newHubInfoSecret(hubInfoData, testNamespace)
-	amAccessSrt := newAMAccessorSecret(testNamespace)
-	allowList := getAllowlistCM()
+	amAccessSrt := newAMAccessorSecret(testNamespace, "test-token")
+	allowList := getAllowlistCM(testNamespace)
 	images := newImagesCM(testNamespace)
 	objs := []runtime.Object{hubInfo, amAccessSrt, allowList, images, infra,
 		&corev1.ConfigMap{
@@ -424,15 +427,22 @@ alertmanager-router-ca: |
 		},
 		newObservabilityAddon(name, testNamespace),
 		newPromSvc(),
+		&appv1.Deployment{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "endpoint-observability-operator",
+				Namespace: "test-ns",
+			},
+		},
 	}
 
-	scheme := scheme.Scheme
+	scheme := runtime.NewScheme()
+	kubescheme.AddToScheme(scheme)
 	addonv1alpha1.AddToScheme(scheme)
 	mcov1beta2.AddToScheme(scheme)
 	oav1beta1.AddToScheme(scheme)
-	corev1.AddToScheme(scheme)
 	clusterv1.AddToScheme(scheme)
 	ocinfrav1.AddToScheme(scheme)
+	promv1.AddToScheme(scheme)
 
 	hubClient := fake.NewClientBuilder().
 		WithScheme(scheme).
@@ -471,14 +481,19 @@ alertmanager-router-ca: |
 		t.Fatalf("Failed to create hub client with reload: %v", err)
 	}
 	r := &ObservabilityAddonReconciler{
-		Client:    c,
-		HubClient: hubClientWithReload,
+		Client:                c,
+		HubClient:             hubClientWithReload,
+		Scheme:                scheme,
+		IsHubMetricsCollector: false,
+		Namespace:             testNamespace,
+		HubNamespace:          testHubNamespace,
+		ServiceAccountName:    "test-sa",
 	}
 
 	checkMetricsCollector := func() {
 		deploy := &appv1.Deployment{}
 		err = c.Get(context.Background(), types.NamespacedName{Name: metricsCollectorName,
-			Namespace: namespace}, deploy)
+			Namespace: testNamespace}, deploy)
 		if err != nil {
 			t.Fatalf("Metrics collector deployment not created: (%v)", err)
 		}
