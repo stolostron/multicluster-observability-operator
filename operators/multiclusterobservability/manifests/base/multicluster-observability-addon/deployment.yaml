@@ -17,6 +17,7 @@ spec:
       labels:
         app: multicluster-observability-addon-manager
     spec:
+      automountServiceAccountToken: false
       serviceAccountName: multicluster-observability-addon-manager
       containers:
         - name: manager
@@ -24,6 +25,14 @@ spec:
           imagePullPolicy: IfNotPresent
           args:
             - "controller"
+          resources:
+            limits:
+              cpu: 200m
+              memory: 512Mi
+              ephemeral-storage: "2Gi"
+            requests:
+              cpu: 100m
+              memory: 256Mi
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
