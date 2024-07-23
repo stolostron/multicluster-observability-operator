@@ -102,7 +102,7 @@ func getDefaultResourceMemoryLimit(component string) string {
 	case Grafana:
 		return GrafanaMemoryLimit
 	case MultiClusterObservabilityAddon:
-		return MCOACPULimits
+		return MCOAMemoryLimits
 	default:
 		return ""
 	}

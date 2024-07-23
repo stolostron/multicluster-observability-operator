@@ -157,6 +157,7 @@ type AdvancedConfig struct {
 	// +optional
 	Store *StoreSpec `json:"store,omitempty"`
 	// spec for multicluster-obervability-addon
+	// +optional
 	MultiClusterObservabilityAddon *CommonSpec `json:"multiClusterObservabilityAddon,omitempty"`
 }
 
