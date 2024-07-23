@@ -370,12 +370,12 @@ func (m *MetricsCollector) ensureServiceMonitor(ctx context.Context, isUWL bool)
 					Port:   "metrics",
 					Path:   "/metrics",
 					Scheme: "http",
-					MetricRelabelConfigs: []*monitoringv1.RelabelConfig{
+					MetricRelabelConfigs: []monitoringv1.RelabelConfig{
 						{
 							Action:       "replace",
 							Regex:        "(.+)",
-							Replacement:  replace,
-							SourceLabels: []string{"__name__"},
+							Replacement:  &replace,
+							SourceLabels: []monitoringv1.LabelName{"__name__"},
 							TargetLabel:  "__name__",
 						},
 					},
@@ -429,7 +429,7 @@ func (m *MetricsCollector) ensureAlertingRule(ctx context.Context, isUWL bool) e
 	}
 
 	name := fmt.Sprintf("acm-%s-alerting-rules", baseName)
-
+	forDuration := monitoringv1.Duration("10m")
 	desiredPromRule := &monitoringv1.PrometheusRule{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
@@ -447,7 +447,7 @@ func (m *MetricsCollector) ensureAlertingRule(ctx context.Context, isUWL bool) e
 								"description": "There are errors when federating from platform Prometheus",
 							},
 							Expr: intstr.FromString(`(sum by (status_code, type) (rate(` + replace + `federate_requests_total{status_code!~"2.*"}[10m]))) > 10`),
-							For:  "10m",
+							For:  &forDuration,
 							Labels: map[string]string{
 								"severity": "critical",
 							},
@@ -459,7 +459,7 @@ func (m *MetricsCollector) ensureAlertingRule(ctx context.Context, isUWL bool) e
 								"description": "There are errors when remote writing to Hub hub Thanos",
 							},
 							Expr: intstr.FromString(`(sum by (status_code, type) (rate(` + replace + `forward_write_requests_total{status_code!~"2.*"}[10m]))) > 10`),
-							For:  "10m",
+							For:  &forDuration,
 							Labels: map[string]string{
 								"severity": "critical",
 							},
