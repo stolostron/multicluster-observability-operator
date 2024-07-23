@@ -59,7 +59,7 @@
     # The addon will need to create secrets to ensure secure communication
     - apiGroups: [""]
       resources: ["secrets"]
-      verbs: ["get", "list", "watch", "create", "update", "delete", "patch"]
+      verbs: ["get", "list", "watch"]
     # Roles for addon to perform logging specific actions
     - apiGroups: ["logging.openshift.io"]
       resources: ["clusterlogforwarders"]
