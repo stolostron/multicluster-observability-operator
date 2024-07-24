@@ -48,7 +48,7 @@ require (
 	k8s.io/client-go v0.31.0-alpha.2
 	k8s.io/klog v1.0.0
 	k8s.io/kubectl v0.29.3
-	k8s.io/utils v0.0.0-20240310230437-4693a0247e57
+	k8s.io/utils v0.0.0-20240502163921-fe8a2dddb1d0
 	open-cluster-management.io/addon-framework v0.9.2
 	open-cluster-management.io/api v0.13.0
 	sigs.k8s.io/controller-runtime v0.18.1-0.20240626171621-700befecdffa
