@@ -540,6 +540,21 @@ func (r *ObservabilityAddonReconciler) SetupWithManager(mgr ctrl.Manager) error 
 			builder.WithPredicates(getPred(openshift.CaConfigmapName, r.Namespace, false, true, true)),
 		).
 		Watches(
+			&corev1.ConfigMap{},
+			&handler.EnqueueRequestForObject{},
+			builder.WithPredicates(getPred(operatorconfig.ImageConfigMap, r.Namespace, true, true, false)),
+		).
+		Watches(
+			&corev1.ConfigMap{},
+			enqueueForAPIServerAuth(r.Namespace),
+			builder.WithPredicates(predicate.ResourceVersionChangedPredicate{}),
+		).
+		Watches(
+			&corev1.ConfigMap{},
+			&handler.EnqueueRequestForObject{},
+			builder.WithPredicates(getPred(clusterMonitoringConfigName, promNamespace, true, true, false)),
+		).
+		Watches(
 			&appsv1.Deployment{},
 			&handler.EnqueueRequestForObject{},
 			builder.WithPredicates(getPred(metricsCollectorName, r.Namespace, true, true, true)),
@@ -550,39 +565,36 @@ func (r *ObservabilityAddonReconciler) SetupWithManager(mgr ctrl.Manager) error 
 			builder.WithPredicates(getPred(uwlMetricsCollectorName, r.Namespace, true, true, true)),
 		).
 		Watches(
-			&rbacv1.ClusterRoleBinding{},
-			&handler.EnqueueRequestForObject{},
-			builder.WithPredicates(getPred(openshift.ClusterRoleBindingName, "", false, true, true)),
-		).
-		Watches(
-			&corev1.ConfigMap{},
-			&handler.EnqueueRequestForObject{},
-			builder.WithPredicates(getPred(operatorconfig.ImageConfigMap, r.Namespace, true, true, false)),
-		).
-		Watches(
 			&appsv1.StatefulSet{},
 			&handler.EnqueueRequestForObject{},
 			builder.WithPredicates(getPred(operatorconfig.PrometheusUserWorkload, uwlNamespace, true, false, true)),
 		).
-		// Watch the kube-system extension-apiserver-authentication ConfigMap for changes
-		Watches(&corev1.ConfigMap{}, handler.EnqueueRequestsFromMapFunc(
-			func(ctx context.Context, a client.Object) []reconcile.Request {
-				if a.GetName() == "extension-apiserver-authentication" && a.GetNamespace() == "kube-system" {
-					return []reconcile.Request{
-						{NamespacedName: types.NamespacedName{
-							Name:      "metrics-collector-clientca-metric",
-							Namespace: r.Namespace,
-						}},
-						{NamespacedName: types.NamespacedName{
-							Name:      "uwl-metrics-collector-clientca-metric",
-							Namespace: r.Namespace,
-						}},
-					}
-				}
-				return nil
-			}), builder.WithPredicates(predicate.ResourceVersionChangedPredicate{}),
+		Watches(
+			&rbacv1.ClusterRoleBinding{},
+			&handler.EnqueueRequestForObject{},
+			builder.WithPredicates(getPred(openshift.ClusterRoleBindingName, "", false, true, true)),
 		).
 		Complete(r)
+}
+
+// Watch the kube-system extension-apiserver-authentication ConfigMap for changes
+func enqueueForAPIServerAuth(namespace string) handler.EventHandler {
+	return handler.EnqueueRequestsFromMapFunc(
+		func(ctx context.Context, a client.Object) []reconcile.Request {
+			if a.GetName() == "extension-apiserver-authentication" && a.GetNamespace() == "kube-system" {
+				return []reconcile.Request{
+					{NamespacedName: types.NamespacedName{
+						Name:      "metrics-collector-clientca-metric",
+						Namespace: namespace,
+					}},
+					{NamespacedName: types.NamespacedName{
+						Name:      "uwl-metrics-collector-clientca-metric",
+						Namespace: namespace,
+					}},
+				}
+			}
+			return nil
+		})
 }
 
 func remove(list []string, s string) []string {
