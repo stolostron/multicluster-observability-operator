@@ -175,7 +175,7 @@ var (
 
 	ThanosCompactCPURequest ResourceSizeMap = map[observabilityv1beta2.TShirtSize]string{
 		Minimal:    "250m",
-		Default:    "100m",
+		Default:    "500m",
 		Small:      "500m",
 		Medium:     "1",
 		Large:      "3",
@@ -185,7 +185,7 @@ var (
 	}
 	ThanosCompactMemoryRequest ResourceSizeMap = map[observabilityv1beta2.TShirtSize]string{
 		Minimal:    "512Mi",
-		Default:    "512Mi",
+		Default:    "1Gi",
 		Small:      "1Gi",
 		Medium:     "2Gi",
 		Large:      "4Gi",
