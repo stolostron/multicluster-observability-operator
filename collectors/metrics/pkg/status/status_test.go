@@ -16,8 +16,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 
-	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/status"
 	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
+	"github.com/stolostron/multicluster-observability-operator/operators/pkg/status"
 )
 
 func init() {

@@ -29,9 +29,9 @@ import (
 
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/openshift"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/rendering"
-	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/status"
 	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
+	"github.com/stolostron/multicluster-observability-operator/operators/pkg/status"
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 )
 

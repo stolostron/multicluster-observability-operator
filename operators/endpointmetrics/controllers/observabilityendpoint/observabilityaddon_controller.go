@@ -32,13 +32,13 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/hypershift"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/openshift"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/rendering"
-	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/status"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/util"
 	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	oav1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/deploying"
 	rendererutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering"
+	"github.com/stolostron/multicluster-observability-operator/operators/pkg/status"
 )
 
 var (
