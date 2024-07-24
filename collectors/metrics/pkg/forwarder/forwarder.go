@@ -29,10 +29,12 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/metricsclient"
 	"github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/simulator"
 	"github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/status"
+	statuslib "github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/status"
 )
 
 const (
 	failedStatusReportMsg = "Failed to report status"
+	uwlPromURL            = "https://prometheus-user-workload.openshift-user-workload-monitoring.svc:9092"
 )
 
 type RuleMatcher interface {
@@ -297,7 +299,9 @@ func New(cfg Config) (*Worker, error) {
 	}
 	w.recordingRules = recordingRules
 
-	s, err := status.New(logger)
+	standalone := os.Getenv("STANDALONE") == "true"
+	isUwl := strings.Contains(os.Getenv("FROM"), uwlPromURL)
+	s, err := status.New(logger, standalone, isUwl)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create StatusReport: %w", err)
 	}
@@ -366,6 +370,12 @@ func (w *Worker) forward(ctx context.Context) error {
 	w.lock.Lock()
 	defer w.lock.Unlock()
 
+	updateStatus := func(reason statuslib.Reason, message string) {
+		if err := w.status.UpdateStatus(ctx, reason, message); err != nil {
+			rlogger.Log(w.logger, rlogger.Warn, "msg", failedStatusReportMsg, "err", err)
+		}
+	}
+
 	var families []*clientmodel.MetricFamily
 	var err error
 	if w.simulatedTimeseriesFile != "" {
@@ -378,19 +388,13 @@ func (w *Worker) forward(ctx context.Context) error {
 	} else {
 		families, err = w.getFederateMetrics(ctx)
 		if err != nil {
-			statusErr := w.status.UpdateStatus(ctx, "Degraded", "Failed to retrieve metrics")
-			if statusErr != nil {
-				rlogger.Log(w.logger, rlogger.Warn, "msg", failedStatusReportMsg, "err", statusErr)
-			}
+			updateStatus(statuslib.ForwardFailed, "Failed to retrieve metrics")
 			return err
 		}
 
 		rfamilies, err := w.getRecordingMetrics(ctx)
 		if err != nil && len(rfamilies) == 0 {
-			statusErr := w.status.UpdateStatus(ctx, "Degraded", "Failed to retrieve recording metrics")
-			if statusErr != nil {
-				rlogger.Log(w.logger, rlogger.Warn, "msg", failedStatusReportMsg, "err", statusErr)
-			}
+			updateStatus(statuslib.ForwardFailed, "Failed to retrieve recording metrics")
 			return err
 		} else {
 			families = append(families, rfamilies...)
@@ -399,10 +403,7 @@ func (w *Worker) forward(ctx context.Context) error {
 
 	before := metricfamily.MetricsCount(families)
 	if err := metricfamily.Filter(families, w.transformer); err != nil {
-		statusErr := w.status.UpdateStatus(ctx, "Degraded", "Failed to filter metrics")
-		if statusErr != nil {
-			rlogger.Log(w.logger, rlogger.Warn, "msg", failedStatusReportMsg, "err", statusErr)
-		}
+		updateStatus(statuslib.ForwardFailed, "Failed to filter metrics")
 		return err
 	}
 
@@ -416,34 +417,24 @@ func (w *Worker) forward(ctx context.Context) error {
 
 	if len(families) == 0 {
 		rlogger.Log(w.logger, rlogger.Warn, "msg", "no metrics to send, doing nothing")
-		statusErr := w.status.UpdateStatus(ctx, "Available", "No metrics to send")
-		if statusErr != nil {
-			rlogger.Log(w.logger, rlogger.Warn, "msg", failedStatusReportMsg, "err", statusErr)
-		}
+		updateStatus(statuslib.ForwardSuccessful, "No metrics to send")
 		return nil
 	}
 
 	if w.to == nil {
 		rlogger.Log(w.logger, rlogger.Warn, "msg", "to is nil, doing nothing")
-		statusErr := w.status.UpdateStatus(ctx, "Available", "Metrics is not required to send")
-		if statusErr != nil {
-			rlogger.Log(w.logger, rlogger.Warn, "msg", failedStatusReportMsg, "err", statusErr)
-		}
+		updateStatus(statuslib.ForwardSuccessful, "Metrics is not required to send")
 		return nil
 	}
 
 	req := &http.Request{Method: "POST", URL: w.to}
 	if err := w.toClient.RemoteWrite(ctx, req, families, w.interval); err != nil {
-		if err := w.status.UpdateStatus(ctx, "Degraded", "Failed to send metrics"); err != nil {
-			rlogger.Log(w.logger, rlogger.Warn, "msg", failedStatusReportMsg, "err", err)
-		}
+		updateStatus(statuslib.ForwardFailed, "Failed to send metrics")
 		return err
 	}
 
 	if w.simulatedTimeseriesFile == "" {
-		if err := w.status.UpdateStatus(ctx, "Available", "Cluster metrics sent successfully"); err != nil {
-			rlogger.Log(w.logger, rlogger.Warn, "msg", failedStatusReportMsg, "err", err)
-		}
+		updateStatus(statuslib.ForwardSuccessful, "Cluster metrics sent successfully")
 	} else {
 		rlogger.Log(w.logger, rlogger.Warn, "msg", "Simulated metrics sent successfully")
 	}

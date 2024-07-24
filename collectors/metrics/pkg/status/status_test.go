@@ -11,9 +11,12 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 
+	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/status"
 	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 )
 
@@ -24,72 +27,126 @@ func init() {
 }
 
 func TestUpdateStatus(t *testing.T) {
-	s, err := New(log.NewNopLogger())
-	if err != nil {
-		t.Fatalf("Failed to create new Status struct: (%v)", err)
-	}
 
-	addon := &oav1beta1.ObservabilityAddon{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: namespace,
+	testCases := map[string]struct {
+		reason            status.Reason
+		message           string
+		isUwl             bool
+		initialConditions []oav1beta1.StatusCondition
+		expectedCondition oav1beta1.StatusCondition
+	}{
+		"new status should be appended": {
+			reason:            status.ForwardSuccessful,
+			message:           "Forwarding metrics successful",
+			initialConditions: []oav1beta1.StatusCondition{},
+			expectedCondition: oav1beta1.StatusCondition{
+				Type:               string(status.MetricsCollector),
+				Status:             metav1.ConditionTrue,
+				Reason:             string(status.ForwardSuccessful),
+				Message:            "Forwarding metrics successful",
+				LastTransitionTime: metav1.NewTime(time.Now()),
+			},
 		},
-		Status: oav1beta1.ObservabilityAddonStatus{
-			Conditions: []oav1beta1.StatusCondition{
+		"existing status should be updated": {
+			reason:  status.ForwardFailed,
+			message: "Forwarding metrics failed",
+			initialConditions: []oav1beta1.StatusCondition{
 				{
-					Type:               "Ready",
+					Type:               string(status.MetricsCollector),
 					Status:             metav1.ConditionTrue,
-					Reason:             "Deployed",
-					Message:            "Metrics collector deployed and functional",
-					LastTransitionTime: metav1.NewTime(time.Now()),
+					Reason:             string(status.ForwardSuccessful),
+					Message:            "Forwarding metrics successful",
+					LastTransitionTime: metav1.NewTime(time.Now().Add(-3 * time.Minute)),
 				},
+			},
+			expectedCondition: oav1beta1.StatusCondition{
+				Type:               string(status.MetricsCollector),
+				Status:             metav1.ConditionTrue,
+				Reason:             string(status.ForwardFailed),
+				Message:            "Forwarding metrics failed",
+				LastTransitionTime: metav1.NewTime(time.Now()),
+			},
+		},
+		"same status should not be updated": {
+			reason:  status.ForwardSuccessful,
+			message: "Forwarding metrics successful",
+			initialConditions: []oav1beta1.StatusCondition{
+				{
+					Type:               string(status.MetricsCollector),
+					Status:             metav1.ConditionTrue,
+					Reason:             string(status.ForwardSuccessful),
+					Message:            "Forwarding metrics successful",
+					LastTransitionTime: metav1.NewTime(time.Now().Add(-3 * time.Minute)),
+				},
+			},
+			expectedCondition: oav1beta1.StatusCondition{
+				Type:               string(status.MetricsCollector),
+				Status:             metav1.ConditionTrue,
+				Reason:             string(status.ForwardSuccessful),
+				Message:            "Forwarding metrics successful",
+				LastTransitionTime: metav1.NewTime(time.Now().Add(-3 * time.Minute)),
+			},
+		},
+		"updateFailed to forward transition should not be allowed": {
+			reason:  status.ForwardSuccessful,
+			message: "Forwarding metrics successful",
+			initialConditions: []oav1beta1.StatusCondition{
+				{
+					Type:               string(status.MetricsCollector),
+					Status:             metav1.ConditionTrue,
+					Reason:             string(status.UpdateFailed),
+					Message:            "Update failed",
+					LastTransitionTime: metav1.NewTime(time.Now().Add(-3 * time.Minute)),
+				},
+			},
+			expectedCondition: oav1beta1.StatusCondition{
+				Type:               string(status.MetricsCollector),
+				Status:             metav1.ConditionTrue,
+				Reason:             string(status.UpdateFailed),
+				Message:            "Update failed",
+				LastTransitionTime: metav1.NewTime(time.Now().Add(-3 * time.Minute)),
 			},
 		},
 	}
-	ctx := context.Background()
-	err = s.statusClient.Create(ctx, addon)
-	if err != nil {
-		t.Fatalf("Failed to create observabilityAddon: (%v)", err)
-	}
 
-	err = s.UpdateStatus(ctx, "Disabled", "enableMetrics is set to False")
-	if err != nil {
-		t.Fatalf("Failed to update status: (%v)", err)
-	}
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			addon := &oav1beta1.ObservabilityAddon{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      addonName,
+					Namespace: addonNamespace,
+				},
+				Status: oav1beta1.ObservabilityAddonStatus{
+					Conditions: tc.initialConditions,
+				},
+			}
 
-	err = s.UpdateStatus(ctx, "Ready", "Metrics collector deployed and functional")
-	if err != nil {
-		t.Fatalf("Failed to update status: (%v)", err)
-	}
+			s, err := New(log.NewLogfmtLogger(os.Stdout), false, tc.isUwl)
+			if err != nil {
+				t.Fatalf("Failed to create new Status struct: (%v)", err)
+			}
 
-	err = s.UpdateStatus(ctx, "Ready", "Metrics collector deployed and updated")
-	if err != nil {
-		t.Fatalf("Failed to update status: (%v)", err)
-	}
+			if err := s.statusClient.Create(context.Background(), addon); err != nil {
+				t.Fatalf("Failed to create observabilityAddon: (%v)", err)
+			}
 
-	err = s.UpdateStatus(ctx, "Available", "Cluster metrics sent successfully")
-	if err != nil {
-		t.Fatalf("Failed to update status: (%v)", err)
-	}
+			s.UpdateStatus(context.Background(), tc.reason, tc.message)
 
-	os.Setenv("FROM", uwlPromURL)
-	err = s.UpdateStatus(ctx, "Degraded", "Failed to retrieve metrics")
-	if err != nil {
-		t.Fatalf("Failed to update status: (%v)", err)
-	}
+			foundAddon := &oav1beta1.ObservabilityAddon{}
+			if err := s.statusClient.Get(context.Background(), types.NamespacedName{Name: addonName, Namespace: addonNamespace}, foundAddon); err != nil {
+				t.Fatalf("Failed to get observabilityAddon: (%v)", err)
+			}
 
-	err = s.UpdateStatus(ctx, "Degraded", "Failed to send metrics")
-	if err != nil {
-		t.Fatalf("Failed to update status: (%v)", err)
-	}
+			if len(foundAddon.Status.Conditions) == 0 {
+				t.Fatalf("No conditions found in observabilityAddon")
+			}
 
-	err = s.UpdateStatus(ctx, "Available", "Cluster metrics sent successfully")
-	if err != nil {
-		t.Fatalf("Failed to update status: (%v)", err)
-	}
-	os.Setenv("FROM", "")
-	err = s.UpdateStatus(ctx, "Available", "Cluster metrics sent successfully")
-	if err != nil {
-		t.Fatalf("Failed to update status: (%v)", err)
+			condition := foundAddon.Status.Conditions[0]
+			assert.Equal(t, tc.expectedCondition.Type, condition.Type)
+			assert.Equal(t, tc.expectedCondition.Status, condition.Status)
+			assert.Equal(t, tc.expectedCondition.Reason, condition.Reason)
+			assert.Equal(t, tc.expectedCondition.Message, condition.Message)
+			assert.InEpsilon(t, tc.expectedCondition.LastTransitionTime.Unix(), condition.LastTransitionTime.Unix(), 1)
+		})
 	}
 }

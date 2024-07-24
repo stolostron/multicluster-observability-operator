@@ -31,8 +31,8 @@ func TestReportStatus(t *testing.T) {
 	assert.NoError(t, mcov1beta2.AddToScheme(s))
 
 	type updateParams struct {
-		component component
-		reason    reason
+		component Component
+		reason    Reason
 		message   string
 	}
 
