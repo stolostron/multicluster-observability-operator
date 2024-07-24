@@ -17,8 +17,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/status"
 	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
+	"github.com/stolostron/multicluster-observability-operator/operators/pkg/status"
 )
 
 const (

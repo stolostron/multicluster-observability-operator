@@ -29,7 +29,7 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/metricsclient"
 	"github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/simulator"
 	"github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/status"
-	statuslib "github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/status"
+	statuslib "github.com/stolostron/multicluster-observability-operator/operators/pkg/status"
 )
 
 const (
