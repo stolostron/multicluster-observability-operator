@@ -19,7 +19,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	kustomizeres "sigs.k8s.io/kustomize/api/resource"
 )
@@ -53,7 +53,7 @@ func TestRenderMCOADeployment(t *testing.T) {
 			ImagePullPolicy: corev1.PullIfNotPresent,
 			AdvancedConfig: &mcov1beta2.AdvancedConfig{
 				MultiClusterObservabilityAddon: &mcov1beta2.CommonSpec{
-					Replicas: pointer.Int32(1),
+					Replicas: ptr.To[int32](1),
 					Resources: &corev1.ResourceRequirements{
 						Requests: corev1.ResourceList{
 							corev1.ResourceCPU:    resource.MustParse("100m"),

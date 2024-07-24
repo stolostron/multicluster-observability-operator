@@ -110,10 +110,11 @@ func (r *MCORenderer) renderMCOADeployment(
 		return nil, err
 	}
 
+	mcoaResources := mcoconfig.GetResources(mcoconfig.MultiClusterObservabilityAddon, r.cr.Spec.InstanceSize, r.cr.Spec.AdvancedConfig)
 	patchContainer := &corev1.Container{
 		Image:           img,
 		ImagePullPolicy: mcoconfig.GetImagePullPolicy(r.cr.Spec),
-		Resources:       mcoconfig.GetResources(mcoconfig.MultiClusterObservabilityAddon, r.cr.Spec.InstanceSize, r.cr.Spec.AdvancedConfig),
+		Resources:       mcoaResources,
 	}
 
 	if err := mergo.Merge(&obj.Spec.Template.Spec.Containers[0], patchContainer, mergo.WithOverride); err != nil {
