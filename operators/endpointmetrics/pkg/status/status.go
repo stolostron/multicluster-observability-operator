@@ -17,32 +17,32 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// component defines the components of the ObservabilityAddon
+// Component defines the components of the ObservabilityAddon
 // each reports its own status condition
-type component string
+type Component string
 
 const (
-	MetricsCollector    component = "MetricsCollector"
-	UwlMetricsCollector component = "UwlMetricsCollector"
+	MetricsCollector    Component = "MetricsCollector"
+	UwlMetricsCollector Component = "UwlMetricsCollector"
 )
 
-// reason defines the reason for the status condition
-type reason string
+// Reason defines the Reason for the status condition
+type Reason string
 
 var (
 	// When adding a new Reason, make sure to update the status controller package
 	// to aggreagate correctly the status of the ObservabilityAddon
-	UpdateSuccessful  reason = "UpdateSuccessful"
-	UpdateFailed      reason = "UpdateFailed"
-	ForwardSuccessful reason = "ForwardSuccessful"
-	ForwardFailed     reason = "ForwardFailed"
-	Disabled          reason = "Disabled"
-	NotSupported      reason = "NotSupported"
+	UpdateSuccessful  Reason = "UpdateSuccessful"
+	UpdateFailed      Reason = "UpdateFailed"
+	ForwardSuccessful Reason = "ForwardSuccessful"
+	ForwardFailed     Reason = "ForwardFailed"
+	Disabled          Reason = "Disabled"
+	NotSupported      Reason = "NotSupported"
 )
 
 var (
 	// componentTransitions defines the valid transitions between component conditions
-	componentTransitions = map[reason]map[reason]struct{}{
+	componentTransitions = map[Reason]map[Reason]struct{}{
 		UpdateSuccessful: {
 			UpdateFailed:      {},
 			ForwardSuccessful: {},
@@ -103,7 +103,7 @@ func NewStatus(client client.Client, addonName, addonNs string, logger logr.Logg
 // UpdateComponentCondition updates the status condition of a specific component of the ObservabilityAddon
 // It returns an error if the update fails for a permanent reason or after exhausting retries on conflict.
 // It will also return an error if the transition between conditions is invalid, to avoid flapping.
-func (s Status) UpdateComponentCondition(ctx context.Context, componentName component, newReason reason, newMessage string) error {
+func (s Status) UpdateComponentCondition(ctx context.Context, componentName Component, newReason Reason, newMessage string) error {
 	retryErr := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 		addon, err := s.fetchAddon(ctx)
 		if err != nil {
@@ -129,14 +129,14 @@ func (s Status) UpdateComponentCondition(ctx context.Context, componentName comp
 		// check if the transition is valid for the component
 		// this is to avoid flapping between conditions
 		if currentCondition != nil {
-			if _, ok := componentTransitions[reason(currentCondition.Reason)][newReason]; !ok {
+			if _, ok := componentTransitions[Reason(currentCondition.Reason)][newReason]; !ok {
 				return fmt.Errorf("invalid transition from %s to %s for component %s", currentCondition.Reason, newReason, componentName)
 			}
 		}
 
 		addon.Status.Conditions = mutateOrAppend(addon.Status.Conditions, newCondition)
 
-		s.logger.Info("Updating status of ObservabilityAddon", "component", componentName, "reason", newReason, "addon", addon.Name, "namespace", addon.Namespace)
+		s.logger.Info("Updating status of ObservabilityAddon", "conditionType", componentName, "reason", newReason, "addon", addon.Name, "namespace", addon.Namespace)
 
 		return s.client.Status().Update(ctx, addon)
 	})

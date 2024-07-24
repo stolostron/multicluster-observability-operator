@@ -192,7 +192,8 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 				// ACM 8509: Special case for hub/local cluster metrics collection
 				// We do not report status for hub endpoint operator
 				if !r.IsHubMetricsCollector {
-					if err := status.ReportStatus(ctx, r.Client, status.NotSupported, obsAddon.Name, obsAddon.Namespace); err != nil {
+					statusReporter := status.NewStatus(r.Client, obsAddon.Name, obsAddon.Namespace, log)
+					if err := statusReporter.UpdateComponentCondition(ctx, status.MetricsCollector, status.NotSupported, "Prometheus service not found"); err != nil {
 						log.Error(err, "Failed to report status")
 					}
 				}

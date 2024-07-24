@@ -57,16 +57,16 @@ type reason struct {
 
 func newReason(s string) reason {
 	switch s {
-	case string(status.ForwardSuccessful):
-		return reason{string(status.ForwardSuccessful), 1, Available}
-	case string(status.UpdateSuccessful):
-		return reason{string(status.UpdateSuccessful), 2, Progressing}
-	case string(status.ForwardFailed):
-		return reason{string(status.ForwardFailed), 3, Degraded}
-	case string(status.UpdateFailed):
-		return reason{string(status.UpdateFailed), 4, Degraded}
 	case string(status.Disabled):
-		return reason{string(status.Disabled), 5, Degraded}
+		return reason{string(status.Disabled), 1, Degraded}
+	case string(status.ForwardSuccessful):
+		return reason{string(status.ForwardSuccessful), 2, Available}
+	case string(status.UpdateSuccessful):
+		return reason{string(status.UpdateSuccessful), 3, Progressing}
+	case string(status.ForwardFailed):
+		return reason{string(status.ForwardFailed), 4, Degraded}
+	case string(status.UpdateFailed):
+		return reason{string(status.UpdateFailed), 5, Degraded}
 	case string(status.NotSupported):
 		return reason{string(status.NotSupported), 6, Degraded}
 	default:
@@ -146,7 +146,7 @@ func (s *StatusReconciler) updateSpokeAddon(ctx context.Context) (ctrl.Result, e
 	})
 
 	if retryErr != nil {
-		if errors.IsConflict(retryErr) || isTransientErr(retryErr) {
+		if errors.IsConflict(retryErr) || util.IsTransientClientErr(retryErr) {
 			return s.requeueWithOptionalDelay(fmt.Errorf("failed to update status in spoke cluster with retryable error: %w", retryErr))
 		}
 		return ctrl.Result{}, reconcile.TerminalError(retryErr)
@@ -155,23 +155,23 @@ func (s *StatusReconciler) updateSpokeAddon(ctx context.Context) (ctrl.Result, e
 	return ctrl.Result{}, nil
 }
 
-func (r *StatusReconciler) updateHubAddon(ctx context.Context) (ctrl.Result, error) {
+func (s *StatusReconciler) updateHubAddon(ctx context.Context) (ctrl.Result, error) {
 	// Fetch the ObservabilityAddon instance in hub cluster
 	hubObsAddon := &oav1beta1.ObservabilityAddon{}
-	err := r.HubClient.Get(ctx, types.NamespacedName{Name: r.ObsAddonName, Namespace: r.HubNamespace}, hubObsAddon)
+	err := s.HubClient.Get(ctx, types.NamespacedName{Name: s.ObsAddonName, Namespace: s.HubNamespace}, hubObsAddon)
 	if err != nil {
 		if isAuthOrConnectionErr(err) {
 			// Try reloading the kubeconfig for the hub cluster
 			var reloadErr error
-			if r.HubClient, reloadErr = r.HubClient.Reload(); reloadErr != nil {
+			if s.HubClient, reloadErr = s.HubClient.Reload(); reloadErr != nil {
 				return ctrl.Result{}, reconcile.TerminalError(fmt.Errorf("failed to reload the hub client: %w", reloadErr))
 			}
 			return ctrl.Result{}, fmt.Errorf("failed to get ObservabilityAddon in hub cluster, reloaded hub client: %w", err)
 		}
 
 		if util.IsTransientClientErr(err) {
-			r.Logger.Info("Failed to get ObservabilityAddon in hub cluster, requeue with delay", "error", err)
-			return requeueWithOptionalDelay(err), nil
+			s.Logger.Info("Failed to get ObservabilityAddon in hub cluster, requeue with delay", "error", err)
+			return s.requeueWithOptionalDelay(err)
 		}
 
 		return ctrl.Result{}, reconcile.TerminalError(fmt.Errorf("failed to get ObservabilityAddon in hub cluster: %w", err))
@@ -182,7 +182,7 @@ func (r *StatusReconciler) updateHubAddon(ctx context.Context) (ctrl.Result, err
 	retryErr := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 		// Fetch the ObservabilityAddon instance in local cluster
 		obsAddon := &oav1beta1.ObservabilityAddon{}
-		if err != r.Client.Get(ctx, types.NamespacedName{Name: r.ObsAddonName, Namespace: r.Namespace}, obsAddon) {
+		if err != s.Client.Get(ctx, types.NamespacedName{Name: s.ObsAddonName, Namespace: s.Namespace}, obsAddon) {
 			return err
 		}
 
@@ -195,12 +195,12 @@ func (r *StatusReconciler) updateHubAddon(ctx context.Context) (ctrl.Result, err
 		updatedAddon.Status = obsAddon.Status
 
 		// Update the status in hub cluster
-		return r.HubClient.Status().Update(ctx, updatedAddon)
+		return s.HubClient.Status().Update(ctx, updatedAddon)
 	})
 	if retryErr != nil {
 		if util.IsTransientClientErr(retryErr) || errors.IsConflict(retryErr) {
-			r.Logger.Info("Retryable error while updating status, request will be retried.", "error", retryErr)
-			return requeueWithOptionalDelay(retryErr), nil
+			s.Logger.Info("Retryable error while updating status, request will be retried.", "error", retryErr)
+			return s.requeueWithOptionalDelay(retryErr)
 		}
 
 		return ctrl.Result{}, reconcile.TerminalError(fmt.Errorf("failed to update status in hub cluster: %w", retryErr))
