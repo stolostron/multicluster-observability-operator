@@ -60,8 +60,9 @@ func TestRenderMCOADeployment(t *testing.T) {
 							corev1.ResourceMemory: resource.MustParse("256M"),
 						},
 						Limits: corev1.ResourceList{
-							corev1.ResourceCPU:    resource.MustParse("200m"),
-							corev1.ResourceMemory: resource.MustParse("512M"),
+							corev1.ResourceCPU:              resource.MustParse("200m"),
+							corev1.ResourceMemory:           resource.MustParse("512M"),
+							corev1.ResourceEphemeralStorage: resource.MustParse("4Gi"),
 						},
 					},
 				},
