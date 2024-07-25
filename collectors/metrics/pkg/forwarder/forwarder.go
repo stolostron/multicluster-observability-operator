@@ -100,7 +100,8 @@ type Worker struct {
 
 	status status.StatusReport
 
-	metrics *workerMetrics
+	metrics         *workerMetrics
+	forwardFailures int
 }
 
 func CreateFromClient(cfg Config, metrics *workerMetrics, interval time.Duration, name string,
@@ -371,6 +372,16 @@ func (w *Worker) forward(ctx context.Context) error {
 	defer w.lock.Unlock()
 
 	updateStatus := func(reason statuslib.Reason, message string) {
+		if reason == statuslib.ForwardFailed {
+			w.forwardFailures += 1
+		} else {
+			w.forwardFailures = 0
+		}
+
+		if w.forwardFailures < 3 {
+			return
+		}
+
 		if err := w.status.UpdateStatus(ctx, reason, message); err != nil {
 			rlogger.Log(w.logger, rlogger.Warn, "msg", failedStatusReportMsg, "err", err)
 		}
