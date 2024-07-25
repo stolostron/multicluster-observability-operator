@@ -10,6 +10,7 @@ import (
 	"fmt"
 
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	promcommon "github.com/prometheus/common/config"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -20,24 +21,23 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
-	etcdClientCertSecretName = "etcd-client-cert" //nolint:gosec
+	etcdClientCertSecretName  = "etcd-client-cert" //nolint:gosec
+	prometheusScrapeCfgSecret = "prometheus-scrape-config"
+	scrapeConfigKey           = "scrape-config.yaml"
 )
 
 type Microshift struct {
 	client         client.Client
 	addonNamespace string
-	hostIP         string
 }
 
-func NewMicroshift(c client.Client, addonNs, hostIP string) *Microshift {
+func NewMicroshift(c client.Client, addonNs string) *Microshift {
 	return &Microshift{
 		addonNamespace: addonNs,
-		hostIP:         hostIP,
 		client:         c,
 	}
 }
@@ -80,6 +80,13 @@ func (m *Microshift) renderPrometheus(res []*unstructured.Unstructured) error {
 
 	prom.Spec.Secrets = append(prom.Spec.Secrets, etcdClientCertSecretName)
 	prom.Spec.HostNetwork = true
+	// add scrape config for etcd that is running on the host
+	prom.Spec.AdditionalScrapeConfigs = &corev1.SecretKeySelector{
+		LocalObjectReference: corev1.LocalObjectReference{
+			Name: prometheusScrapeCfgSecret,
+		},
+		Key: scrapeConfigKey,
+	}
 
 	promRes.Object, err = runtime.DefaultUnstructuredConverter.ToUnstructured(prom)
 	if err != nil {
@@ -344,70 +351,45 @@ func (m *Microshift) renderCronJobExposingMicroshiftSecrets() ([]*unstructured.U
 func (m *Microshift) renderEtcdResources() ([]*unstructured.Unstructured, error) {
 	ret := []*unstructured.Unstructured{}
 
-	// Expose etcd endpoint in the addon namespace
-	endpoint := &corev1.Endpoints{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: "v1",
-			Kind:       "Endpoints",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "etcd",
-			Namespace: m.addonNamespace,
-			Labels: map[string]string{
-				"app": "etcd",
-			},
-		},
-		Subsets: []corev1.EndpointSubset{
-			{
-				Addresses: []corev1.EndpointAddress{
-					{
-						IP: m.hostIP,
-					},
-				},
-				Ports: []corev1.EndpointPort{
-					{
-						Name:     "metrics",
-						Port:     2381,
-						Protocol: corev1.ProtocolTCP,
-					},
-				},
-			},
+	// create secret containing scrape config for etcd running on the host
+	scrapeCfg := ScrapeConfig{}
+	scrapeCfg.JobName = "etcd"
+	scrapeCfg.Scheme = "https"
+	scrapeCfg.HTTPClientConfig = promcommon.HTTPClientConfig{
+		TLSConfig: promcommon.TLSConfig{
+			CertFile: fmt.Sprintf("/etc/prometheus/secrets/%s/ca.crt", etcdClientCertSecretName),
+			KeyFile:  fmt.Sprintf("/etc/prometheus/secrets/%s/ca.key", etcdClientCertSecretName),
+			CAFile:   fmt.Sprintf("/etc/prometheus/secrets/%s/ca.crt", etcdClientCertSecretName),
 		},
 	}
+	scrapeCfg.StaticConfigs = []StaticConfig{
+		{
+			Targets: []string{"localhost:2381"},
+		},
+	}
+	scapeCfgs := ScrapeConfigs{
+		ScrapeConfigs: []ScrapeConfig{scrapeCfg},
+	}
 
-	unstructuredEndpoint, err := convertToUnstructured(endpoint)
+	scrapeCfgsYaml, err := scapeCfgs.MarshalYAML()
 	if err != nil {
-		return nil, fmt.Errorf("failed to convert endpoint to unstructured: %w", err)
+		return nil, fmt.Errorf("failed to marshal scrape config: %w", err)
 	}
-	ret = append(ret, unstructuredEndpoint)
 
-	service := &corev1.Service{
+	scrapeSecret := &corev1.Secret{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "v1",
-			Kind:       "Service",
+			Kind:       "Secret",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "etcd",
+			Name:      prometheusScrapeCfgSecret,
 			Namespace: m.addonNamespace,
-			Labels: map[string]string{
-				"app": "etcd",
-			},
 		},
-		Spec: corev1.ServiceSpec{
-			Ports: []corev1.ServicePort{
-				{
-					Name:       "metrics",
-					Port:       2381,
-					TargetPort: intstr.FromInt(2381),
-				},
-			},
-			Selector: map[string]string{
-				"app": "etcd",
-			},
+		Data: map[string][]byte{
+			scrapeConfigKey: scrapeCfgsYaml,
 		},
 	}
-
-	unstructuredService, err := convertToUnstructured(service)
+	unstructuredService, err := convertToUnstructured(scrapeSecret)
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert service to unstructured: %w", err)
 	}
