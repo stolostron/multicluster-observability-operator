@@ -374,13 +374,12 @@ func (w *Worker) forward(ctx context.Context) error {
 	updateStatus := func(reason statuslib.Reason, message string) {
 		if reason == statuslib.ForwardFailed {
 			w.forwardFailures += 1
-		} else {
-			w.forwardFailures = 0
+			if w.forwardFailures < 3 {
+				return
+			}
 		}
 
-		if w.forwardFailures < 3 {
-			return
-		}
+		w.forwardFailures = 0
 
 		if err := w.status.UpdateStatus(ctx, reason, message); err != nil {
 			rlogger.Log(w.logger, rlogger.Warn, "msg", failedStatusReportMsg, "err", err)
