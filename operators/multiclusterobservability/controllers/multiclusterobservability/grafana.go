@@ -54,6 +54,7 @@ type GrafanaDatasource struct {
 	Type              string          `yaml:"type,omitempty"`
 	URL               string          `yaml:"url,omitempty"`
 	Version           int             `yaml:"version,omitempty"`
+	UID               string          `yaml:"uid,omitempty"`
 	JSONData          *JsonData       `yaml:"jsonData,omitempty"`
 	SecureJSONData    *SecureJsonData `yaml:"secureJsonData,omitempty"`
 }
@@ -101,6 +102,7 @@ func GenerateGrafanaDataSource(
 					config.ProxyServiceName,
 					config.GetDefaultNamespace(),
 				),
+				UID: "000000001",
 				JSONData: &JsonData{
 					Timeout:               "300",
 					CustomQueryParameters: "max_source_resolution=auto",
@@ -118,6 +120,7 @@ func GenerateGrafanaDataSource(
 					config.ProxyServiceName,
 					config.GetDefaultNamespace(),
 				),
+				UID: "000000002",
 				JSONData: &JsonData{
 					Timeout:               "300",
 					CustomQueryParameters: "max_source_resolution=auto",
