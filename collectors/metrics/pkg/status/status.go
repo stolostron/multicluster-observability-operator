@@ -31,6 +31,7 @@ type StatusReport struct {
 	standalone     bool
 	isUwl          bool
 	statusReporter status.Status
+	logger         log.Logger
 }
 
 func New(logger log.Logger, standalone, isUwl bool) (*StatusReport, error) {
@@ -66,6 +67,7 @@ func New(logger log.Logger, standalone, isUwl bool) (*StatusReport, error) {
 		standalone:     standalone,
 		isUwl:          isUwl,
 		statusReporter: status.NewStatus(kubeClient, addonName, addonNamespace, statusLogger),
+		logger:         logger,
 	}, nil
 }
 
@@ -80,6 +82,8 @@ func (s *StatusReport) UpdateStatus(ctx context.Context, reason status.Reason, m
 	if s.isUwl {
 		component = status.UwlMetricsCollector
 	}
+
+	s.logger.Log("msg", "Updating status", "component", component, "reason", reason, "message", message)
 
 	if err := s.statusReporter.UpdateComponentCondition(ctx, component, reason, message); err != nil {
 		return err
