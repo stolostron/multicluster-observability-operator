@@ -5,8 +5,6 @@
 package proxy
 
 import (
-	"bytes"
-	"compress/gzip"
 	"errors"
 	"io"
 	"net/http"
@@ -34,18 +32,32 @@ var (
 	serverHost   = ""
 )
 
-func shouldModifyAPISeriesResponse(res http.ResponseWriter, req *http.Request) bool {
-	if strings.HasSuffix(req.URL.Path, "/api/v1/series") {
+func requestContainsRBACProxyLabeMetricName(req *http.Request) bool {
+	if req.Method == "POST" {
 		body, err := io.ReadAll(req.Body)
 		if err != nil {
 			klog.Errorf("failed to read body: %v", err)
 		}
+		req.Body = io.NopCloser(strings.NewReader(string(body)))
+		req.ContentLength = int64(len([]rune(string(body))))
+		return strings.Contains(string(body), proxyconfig.GetRBACProxyLabelMetricName())
+	} else if req.Method == "GET" {
+		queryParams := req.URL.Query()
+		return strings.Contains(queryParams.Get("match[]"), proxyconfig.GetRBACProxyLabelMetricName())
+	}
+	return false
+}
 
-		if strings.Contains(string(body), proxyconfig.GetRBACProxyLabelMetricName()) {
+func shouldModifyAPISeriesResponse(res http.ResponseWriter, req *http.Request) bool {
+	// Different Grafana versions uses different calls, we handle:
+	// GET/POST requests for series and label_name
+	if strings.HasSuffix(req.URL.Path, "/api/v1/series") ||
+		strings.HasSuffix(req.URL.Path, "/api/v1/label/label_name/values") {
+		if requestContainsRBACProxyLabeMetricName(req) {
 			managedLabelList := proxyconfig.GetManagedClusterLabelList()
 
-			query := createQueryResponse(managedLabelList.RegexLabelList, proxyconfig.GetRBACProxyLabelMetricName())
-			_, err = res.Write([]byte(query))
+			query := createQueryResponse(managedLabelList.RegexLabelList, proxyconfig.GetRBACProxyLabelMetricName(), req.URL.Path)
+			_, err := res.Write([]byte(query))
 			if err == nil {
 				return true
 			} else {
@@ -53,17 +65,20 @@ func shouldModifyAPISeriesResponse(res http.ResponseWriter, req *http.Request) b
 			}
 		}
 
-		req.Body = io.NopCloser(strings.NewReader(string(body)))
-		req.ContentLength = int64(len([]rune(string(body))))
 	}
 
 	return false
 }
 
-func createQueryResponse(labels []string, metricName string) string {
+func createQueryResponse(labels []string, metricName string, urlPath string) string {
 	query := `{"status":"success","data":[`
 	for index, label := range labels {
-		query += `{"__name__":"` + metricName + `","label_name":"` + label + `"}`
+		if strings.HasSuffix(urlPath, "/api/v1/label/label_name/values") {
+			query += `"` + label + `"`
+		} else {
+			// series
+			query += `{"__name__":"` + metricName + `","label_name":"` + label + `"}`
+		}
 		if index != len(labels)-1 {
 			query += ","
 		}
@@ -147,33 +162,7 @@ func preCheckRequest(req *http.Request) error {
 }
 
 func newEmptyMatrixHTTPBody() []byte {
-	var bodyBuff bytes.Buffer
-	gz := gzip.NewWriter(&bodyBuff)
-	if _, err := gz.Write([]byte(`{"status":"success","data":{"resultType":"matrix","result":[]}}`)); err != nil {
-		klog.Errorf("failed to write body: %v", err)
-	}
-
-	if err := gz.Close(); err != nil {
-		klog.Errorf("failed to close gzip writer: %v", err)
-	}
-
-	var gzipBuff bytes.Buffer
-	err := gzipWrite(&gzipBuff, bodyBuff.Bytes())
-	if err != nil {
-		klog.Errorf("failed to write with gizp: %v", err)
-	}
-
-	return gzipBuff.Bytes()
-}
-
-func gzipWrite(w io.Writer, data []byte) error {
-	gw, err := gzip.NewWriterLevel(w, gzip.BestSpeed)
-	if err != nil {
-		return err
-	}
-	defer gw.Close()
-	_, err = gw.Write(data)
-	return err
+	return []byte(`{"status":"success","data":{"resultType":"matrix","result":[]}}`)
 }
 
 func proxyRequest(r *http.Request) {
