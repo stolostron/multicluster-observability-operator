@@ -293,6 +293,7 @@ func TestStatusController_UpdateSpokeAddon(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create reloadable hub client: %v", err)
 	}
+	availableMsg := "observability-controller add-on is available."
 
 	newCondition := func(t, r, m string, status metav1.ConditionStatus, lastTransitionTime time.Time) oav1beta1.StatusCondition {
 		return oav1beta1.StatusCondition{
@@ -326,7 +327,7 @@ func TestStatusController_UpdateSpokeAddon(t *testing.T) {
 			},
 			expectConditions: []oav1beta1.StatusCondition{
 				newCondition("MetricsCollector", "ForwardSuccessful", "Metrics sent", metav1.ConditionTrue, time.Now()),
-				newCondition("Available", "ForwardSuccessful", "MetricsCollector: Metrics sent", metav1.ConditionTrue, time.Now()),
+				newCondition("Available", "ForwardSuccessful", availableMsg, metav1.ConditionTrue, time.Now()),
 			},
 		},
 		"multi aggregation with same reason": {
@@ -337,7 +338,7 @@ func TestStatusController_UpdateSpokeAddon(t *testing.T) {
 			expectConditions: []oav1beta1.StatusCondition{
 				newCondition("MetricsCollector", "ForwardSuccessful", "Metrics sent", metav1.ConditionTrue, time.Now()),
 				newCondition("UwlMetricsCollector", "ForwardSuccessful", "Metrics sent", metav1.ConditionTrue, time.Now()),
-				newCondition("Available", "ForwardSuccessful", "MetricsCollector: Metrics sent; UwlMetricsCollector: Metrics sent", metav1.ConditionTrue, time.Now()),
+				newCondition("Available", "ForwardSuccessful", availableMsg, metav1.ConditionTrue, time.Now()),
 			},
 		},
 		"multi aggregation with highest priority reason": {
