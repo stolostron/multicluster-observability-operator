@@ -138,9 +138,8 @@ func (s Status) UpdateComponentCondition(ctx context.Context, componentName Comp
 		}
 
 		addon.Status.Conditions = mutateOrAppend(addon.Status.Conditions, newCondition)
-
-		s.logger.Info("Updating status of ObservabilityAddon", "conditionType", componentName, "reason", newReason, "addon", addon.Name, "namespace", addon.Namespace)
 		wasUpdated = true
+
 		return s.client.Status().Update(ctx, addon)
 	})
 	if retryErr != nil {
