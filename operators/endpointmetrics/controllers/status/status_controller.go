@@ -364,6 +364,13 @@ func aggregateComponentsConditions(conditions []oav1beta1.StatusCondition) *oav1
 		}
 	}
 
+	// If the aggregated condition is Available, override the message with the same message as the registration-agent
+	// It avoids confusion for the user. Because at some point, the registration-agent overrides the "Available" condition
+	// with its own message.
+	if aggregatedCondition.Type == string(Available) {
+		aggregatedCondition.Message = "observability-controller add-on is available."
+	}
+
 	// truncate the message if it exceeds the limit
 	limit := 256
 	if len(aggregatedCondition.Message) > limit {
