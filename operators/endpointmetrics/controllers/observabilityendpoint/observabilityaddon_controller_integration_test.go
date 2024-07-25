@@ -184,7 +184,6 @@ func TestIntegrationReconcileMicroshift(t *testing.T) {
 	reconciler := ObservabilityAddonReconciler{
 		Client:                k8sClientSpoke,
 		HubClient:             hubClientWithReload,
-		HostIP:                "192.168.10.10",
 		Scheme:                scheme,
 		IsHubMetricsCollector: false,
 		Namespace:             testNamespace,

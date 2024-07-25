@@ -70,7 +70,6 @@ type ObservabilityAddonReconciler struct {
 	HubNamespace          string
 	ServiceAccountName    string
 	InstallPrometheus     bool
-	HostIP                string
 }
 
 // +kubebuilder:rbac:groups=observability.open-cluster-management.io.open-cluster-management.io,resources=observabilityaddons,verbs=get;list;watch;create;update;patch;delete
@@ -254,7 +253,7 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 			}
 
 			if len(microshiftVersion) > 0 {
-				mcs := microshift.NewMicroshift(r.Client, r.Namespace, r.HostIP)
+				mcs := microshift.NewMicroshift(r.Client, r.Namespace)
 				toDeploy, err = mcs.Render(ctx, toDeploy)
 				if err != nil {
 					return ctrl.Result{}, fmt.Errorf("failed to render microshift templates: %w", err)
