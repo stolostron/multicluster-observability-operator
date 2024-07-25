@@ -12,6 +12,7 @@ import (
 
 	prometheusv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -59,6 +60,8 @@ func NewDeployer(client client.Client) *Deployer {
 		"ServiceMonitor":           deployer.updateServiceMonitor,
 		"AddOnDeploymentConfig":    deployer.updateAddOnDeploymentConfig,
 		"ClusterManagementAddOn":   deployer.updateClusterManagementAddOn,
+		"Endpoints":                deployer.updateEndpoints,
+		"CronJob":                  deployer.updateCronJob,
 	}
 	return deployer
 }
@@ -371,10 +374,6 @@ func (d *Deployer) updateAddOnDeploymentConfig(
 	desiredObj, runtimeObj *unstructured.Unstructured,
 ) error {
 	desiredAODC, runtimeAODC, err := unstructuredPairToTyped[addonv1alpha1.AddOnDeploymentConfig](desiredObj, runtimeObj)
-	if err != nil {
-		return err
-	}
-
 	if !apiequality.Semantic.DeepDerivative(desiredAODC.Spec, runtimeAODC.Spec) {
 		logUpdateInfo(runtimeObj)
 		if desiredAODC.ResourceVersion != runtimeAODC.ResourceVersion {
@@ -391,16 +390,40 @@ func (d *Deployer) updateClusterManagementAddOn(
 	desiredObj, runtimeObj *unstructured.Unstructured,
 ) error {
 	desiredCMAO, runtimeCMAO, err := unstructuredPairToTyped[addonv1alpha1.ClusterManagementAddOn](desiredObj, runtimeObj)
-	if err != nil {
-		return err
-	}
-
 	if !apiequality.Semantic.DeepDerivative(desiredCMAO.Spec, runtimeCMAO.Spec) {
 		logUpdateInfo(runtimeObj)
 		if desiredCMAO.ResourceVersion != runtimeCMAO.ResourceVersion {
 			desiredCMAO.ResourceVersion = runtimeCMAO.ResourceVersion
 		}
 		return d.client.Update(ctx, desiredCMAO)
+	}
+
+	return nil
+}
+
+func (d *Deployer) updateEndpoints(ctx context.Context, desiredObj, runtimeObj *unstructured.Unstructured) error {
+	desiredEndpoints, runtimeEndpoints, err := unstructuredPairToTyped[corev1.Endpoints](desiredObj, runtimeObj)
+	if err != nil {
+		return err
+	}
+
+	if !apiequality.Semantic.DeepDerivative(desiredEndpoints.Subsets, runtimeEndpoints.Subsets) {
+		logUpdateInfo(runtimeObj)
+		return d.client.Update(ctx, desiredEndpoints)
+	}
+
+	return nil
+}
+
+func (d *Deployer) updateCronJob(ctx context.Context, desiredObj, runtimeObj *unstructured.Unstructured) error {
+	desiredCronJob, runtimeCronJob, err := unstructuredPairToTyped[batchv1.CronJob](desiredObj, runtimeObj)
+	if err != nil {
+		return err
+	}
+
+	if !apiequality.Semantic.DeepDerivative(desiredCronJob.Spec, runtimeCronJob.Spec) {
+		logUpdateInfo(runtimeObj)
+		return d.client.Update(ctx, desiredCronJob)
 	}
 
 	return nil
