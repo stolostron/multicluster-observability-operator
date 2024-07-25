@@ -61,6 +61,8 @@ func New(logger log.Logger, standalone, isUwl bool) (*StatusReport, error) {
 		}
 	}
 
+	logger.Log("msg", "Creating status client", "standalone", standalone, "isUwl", isUwl)
+
 	statusLogger := logr.FromSlogHandler(slog.New(slog.NewTextHandler(os.Stdout, nil)).With("component", "statusclient").Handler())
 	return &StatusReport{
 		statusClient:   kubeClient,
