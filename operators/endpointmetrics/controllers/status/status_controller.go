@@ -10,7 +10,6 @@ import (
 	"net"
 	"reflect"
 	"sort"
-	"strings"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -341,34 +340,21 @@ func aggregateComponentsConditions(conditions []oav1beta1.StatusCondition) *oav1
 	aggregatedCondition := &oav1beta1.StatusCondition{
 		Status:             metav1.ConditionTrue,
 		LastTransitionTime: metav1.Now(),
+		Reason:             filteredConditions[0].Reason,
+		Type:               string(newReason(filteredConditions[0].Reason).StdType()),
+		Message:            fmt.Sprintf("%s: %s", filteredConditions[0].Type, filteredConditions[0].Message),
 	}
 
-	for _, condition := range filteredConditions {
-		// Keep the highest priority reason
-		if condition.Status != metav1.ConditionTrue {
-			aggregatedCondition.Status = metav1.ConditionFalse
-		}
-
-		if newReason(aggregatedCondition.Reason).Priority() < newReason(condition.Reason).Priority() {
-			aggregatedCondition.Reason = condition.Reason
-			aggregatedCondition.Type = string(newReason(condition.Reason).StdType())
-		}
-
-		message := fmt.Sprintf("%s: %s", condition.Type, condition.Message)
-
-		// Aggregate the messages
-		if aggregatedCondition.Message == "" {
-			aggregatedCondition.Message = message
-		} else {
-			aggregatedCondition.Message = strings.Join([]string{aggregatedCondition.Message, message}, "; ")
-		}
-	}
-
-	// If the aggregated condition is Available, override the message with the same message as the registration-agent
-	// It avoids confusion for the user. Because at some point, the registration-agent overrides the "Available" condition
-	// with its own message.
+	// Set some standard messages for the aggregated condition. It aligns with the registration-agent available message (see below)
 	if aggregatedCondition.Type == string(Available) {
+		// If the aggregated condition is Available, override the message with the same message as the registration-agent
+		// It avoids confusion for the user. Because at some point, the registration-agent overrides the "Available" condition
+		// with its own message.
 		aggregatedCondition.Message = "observability-controller add-on is available."
+	} else if aggregatedCondition.Type == string(Progressing) {
+		aggregatedCondition.Message = "observability-controller add-on is progressing."
+	} else if aggregatedCondition.Type == string(Degraded) && aggregatedCondition.Reason == string(status.Disabled) {
+		aggregatedCondition.Message = "observability-controller add-on is disabled."
 	}
 
 	// truncate the message if it exceeds the limit

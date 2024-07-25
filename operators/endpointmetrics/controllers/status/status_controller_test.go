@@ -349,21 +349,21 @@ func TestStatusController_UpdateSpokeAddon(t *testing.T) {
 			expectConditions: []oav1beta1.StatusCondition{
 				newCondition("MetricsCollector", "ForwardSuccessful", "Metrics sent", metav1.ConditionTrue, time.Now()),
 				newCondition("UwlMetricsCollector", "ForwardFailed", "Metrics failed", metav1.ConditionTrue, time.Now()),
-				newCondition("Degraded", "ForwardFailed", "UwlMetricsCollector: Metrics failed; MetricsCollector: Metrics sent", metav1.ConditionTrue, time.Now()),
+				newCondition("Degraded", "ForwardFailed", "UwlMetricsCollector: Metrics failed", metav1.ConditionTrue, time.Now()),
 			},
 		},
 		"conditions are not updated if they are the same": {
 			spokeAddonConditions: []oav1beta1.StatusCondition{
 				newCondition("MetricsCollector", "ForwardSuccessful", "Metrics sent", metav1.ConditionTrue, time.Now()),
 				newCondition("UwlMetricsCollector", "ForwardFailed", "Metrics failed", metav1.ConditionTrue, time.Now()),
-				newCondition("Degraded", "ForwardFailed", "UwlMetricsCollector: Metrics failed; MetricsCollector: Metrics sent", metav1.ConditionTrue, time.Now().Add(-time.Minute)),
+				newCondition("Degraded", "ForwardFailed", "UwlMetricsCollector: Metrics failed", metav1.ConditionTrue, time.Now().Add(-time.Minute)),
 				newCondition("Available", "ForwardSuccessful", "", metav1.ConditionFalse, time.Now()),
 			},
 			expectConditions: []oav1beta1.StatusCondition{
 				newCondition("MetricsCollector", "ForwardSuccessful", "Metrics sent", metav1.ConditionTrue, time.Now()),
 				newCondition("UwlMetricsCollector", "ForwardFailed", "Metrics failed", metav1.ConditionTrue, time.Now()),
 				newCondition("Available", "ForwardSuccessful", "", metav1.ConditionFalse, time.Now()),
-				newCondition("Degraded", "ForwardFailed", "UwlMetricsCollector: Metrics failed; MetricsCollector: Metrics sent", metav1.ConditionTrue, time.Now().Add(-time.Minute)),
+				newCondition("Degraded", "ForwardFailed", "UwlMetricsCollector: Metrics failed", metav1.ConditionTrue, time.Now().Add(-time.Minute)),
 			},
 		},
 		"status is updated if the condition is different": {
@@ -375,6 +375,24 @@ func TestStatusController_UpdateSpokeAddon(t *testing.T) {
 				newCondition("MetricsCollector", "ForwardFailed", "Metrics failed", metav1.ConditionTrue, time.Now()),
 				newCondition("Available", "ForwardSuccessful", "MetricsCollector: Metrics sent", metav1.ConditionFalse, time.Now().Add(-time.Minute)),
 				newCondition("Degraded", "ForwardFailed", "MetricsCollector: Metrics failed", metav1.ConditionTrue, time.Now()),
+			},
+		},
+		"override progressing message": {
+			spokeAddonConditions: []oav1beta1.StatusCondition{
+				newCondition("MetricsCollector", "UpdateSuccessful", "Metrics updated", metav1.ConditionTrue, time.Now()),
+			},
+			expectConditions: []oav1beta1.StatusCondition{
+				newCondition("MetricsCollector", "UpdateSuccessful", "Metrics updated", metav1.ConditionTrue, time.Now()),
+				newCondition("Progressing", "UpdateSuccessful", "observability-controller add-on is progressing.", metav1.ConditionTrue, time.Now()),
+			},
+		},
+		"override disabled message": {
+			spokeAddonConditions: []oav1beta1.StatusCondition{
+				newCondition("MetricsCollector", "Disabled", "Metrics disabled", metav1.ConditionTrue, time.Now()),
+			},
+			expectConditions: []oav1beta1.StatusCondition{
+				newCondition("MetricsCollector", "Disabled", "Metrics disabled", metav1.ConditionTrue, time.Now()),
+				newCondition("Degraded", "Disabled", "observability-controller add-on is disabled.", metav1.ConditionTrue, time.Now()),
 			},
 		},
 	}
