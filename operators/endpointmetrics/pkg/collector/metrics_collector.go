@@ -164,10 +164,12 @@ func (m *MetricsCollector) reportStatus(ctx context.Context, component status.Co
 	if m.ClusterInfo.IsHubMetricsCollector {
 		return
 	}
-	m.Log.Info("Reporting status", "conditionReason", conditionReason)
+
 	statusReporter := status.NewStatus(m.Client, m.ObsAddon.Name, m.Namespace, m.Log)
-	if err := statusReporter.UpdateComponentCondition(ctx, component, conditionReason, message); err != nil {
+	if wasUpdated, err := statusReporter.UpdateComponentCondition(ctx, component, conditionReason, message); err != nil {
 		m.Log.Error(err, "Failed to report status")
+	} else if wasUpdated {
+		m.Log.Info("Status reported", "component", component, "conditionReason", conditionReason, "message", message)
 	}
 }
 

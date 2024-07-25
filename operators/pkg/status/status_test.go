@@ -39,7 +39,7 @@ func TestReportStatus(t *testing.T) {
 	testCases := map[string]struct {
 		currentConditions []oav1beta1.StatusCondition
 		updateParams      updateParams
-		expects           func(*testing.T, error, []oav1beta1.StatusCondition)
+		expects           func(*testing.T, bool, error, []oav1beta1.StatusCondition)
 	}{
 		"new status should be appended": {
 			currentConditions: []oav1beta1.StatusCondition{},
@@ -48,13 +48,14 @@ func TestReportStatus(t *testing.T) {
 				reason:    UpdateSuccessful,
 				message:   "Metrics collector updated",
 			},
-			expects: func(t *testing.T, updateErr error, conditions []oav1beta1.StatusCondition) {
+			expects: func(t *testing.T, wasUpdated bool, updateErr error, conditions []oav1beta1.StatusCondition) {
 				assert.NoError(t, updateErr)
 				assert.Len(t, conditions, 1)
 				assert.EqualValues(t, UpdateSuccessful, conditions[0].Reason)
 				assert.Equal(t, metav1.ConditionTrue, conditions[0].Status)
 				assert.Equal(t, "MetricsCollector", conditions[0].Type)
 				assert.InEpsilon(t, time.Now().Unix(), conditions[0].LastTransitionTime.Unix(), 1)
+				assert.True(t, wasUpdated)
 			},
 		},
 		"existing status should be updated": {
@@ -83,7 +84,7 @@ func TestReportStatus(t *testing.T) {
 				reason:    UpdateFailed,
 				message:   "Metrics collector disabled",
 			},
-			expects: func(t *testing.T, updateErr error, conditions []oav1beta1.StatusCondition) {
+			expects: func(t *testing.T, wasUpdated bool, updateErr error, conditions []oav1beta1.StatusCondition) {
 				assert.NoError(t, updateErr)
 				condMap := make(map[string]oav1beta1.StatusCondition)
 				for _, c := range conditions {
@@ -97,6 +98,7 @@ func TestReportStatus(t *testing.T) {
 				availCond := condMap["Available"]
 				assert.EqualValues(t, ForwardSuccessful, availCond.Reason)
 				assert.InEpsilon(t, time.Now().Add(-2*time.Minute).Unix(), availCond.LastTransitionTime.Unix(), 1)
+				assert.True(t, wasUpdated)
 			},
 		},
 		"existing status should not be updated if same": {
@@ -125,7 +127,7 @@ func TestReportStatus(t *testing.T) {
 				reason:    ForwardSuccessful,
 				message:   "Metrics collector deployed",
 			},
-			expects: func(t *testing.T, updateErr error, conditions []oav1beta1.StatusCondition) {
+			expects: func(t *testing.T, wasUpdated bool, updateErr error, conditions []oav1beta1.StatusCondition) {
 				assert.NoError(t, updateErr)
 				condMap := make(map[string]oav1beta1.StatusCondition)
 				for _, c := range conditions {
@@ -135,6 +137,7 @@ func TestReportStatus(t *testing.T) {
 				mcCond := condMap["MetricsCollector"]
 				// check that the time has not been updated
 				assert.InEpsilon(t, time.Now().Add(-3*time.Minute).Unix(), mcCond.LastTransitionTime.Unix(), 1)
+				assert.False(t, wasUpdated)
 			},
 		},
 		"invalid transitions should be rejected": {
@@ -154,7 +157,7 @@ func TestReportStatus(t *testing.T) {
 				reason:    ForwardSuccessful,
 				message:   "Metrics collector is now working",
 			},
-			expects: func(t *testing.T, resultErr error, conditions []oav1beta1.StatusCondition) {
+			expects: func(t *testing.T, wasUpdated bool, resultErr error, conditions []oav1beta1.StatusCondition) {
 				assert.Len(t, conditions, 1)
 				assert.Error(t, resultErr)
 				assert.Contains(t, resultErr.Error(), "invalid transition")
@@ -176,13 +179,13 @@ func TestReportStatus(t *testing.T) {
 
 			// test
 			statusUpdater := NewStatus(client, baseAddon.Name, baseAddon.Namespace, logr.Logger{})
-			updateErr := statusUpdater.UpdateComponentCondition(context.Background(), tc.updateParams.component, tc.updateParams.reason, tc.updateParams.message)
+			wasUpdated, updateErr := statusUpdater.UpdateComponentCondition(context.Background(), tc.updateParams.component, tc.updateParams.reason, tc.updateParams.message)
 
 			newAddon := &oav1beta1.ObservabilityAddon{}
 			if err := client.Get(context.Background(), types.NamespacedName{Name: baseAddon.Name, Namespace: baseAddon.Namespace}, newAddon); err != nil {
 				t.Fatalf("Error getting observabilityaddon: (%v)", err)
 			}
-			tc.expects(t, updateErr, newAddon.Status.Conditions)
+			tc.expects(t, wasUpdated, updateErr, newAddon.Status.Conditions)
 		})
 	}
 }
@@ -199,7 +202,7 @@ func TestReportStatus_Conflict(t *testing.T) {
 
 	client := newClientWithUpdateError(fakeClient, conflictErr)
 	statusUpdater := NewStatus(client, name, testNamespace, logr.Logger{})
-	if err := statusUpdater.UpdateComponentCondition(context.Background(), "MetricsCollector", UpdateSuccessful, "Metrics collector updated"); err == nil {
+	if _, err := statusUpdater.UpdateComponentCondition(context.Background(), "MetricsCollector", UpdateSuccessful, "Metrics collector updated"); err == nil {
 		t.Fatalf("Conflict error should be retried and return no error if it succeeds")
 	}
 
