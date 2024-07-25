@@ -103,7 +103,10 @@ func NewStatus(client client.Client, addonName, addonNs string, logger logr.Logg
 // UpdateComponentCondition updates the status condition of a specific component of the ObservabilityAddon
 // It returns an error if the update fails for a permanent reason or after exhausting retries on conflict.
 // It will also return an error if the transition between conditions is invalid, to avoid flapping.
-func (s Status) UpdateComponentCondition(ctx context.Context, componentName Component, newReason Reason, newMessage string) error {
+// Finally it return a boolean indicating if the condition was updated or not. This is useful to avoid
+// unnecessary logging when the condition is not updated because it is the same as the current one.
+func (s Status) UpdateComponentCondition(ctx context.Context, componentName Component, newReason Reason, newMessage string) (bool, error) {
+	var wasUpdated bool
 	retryErr := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 		addon, err := s.fetchAddon(ctx)
 		if err != nil {
@@ -137,14 +140,14 @@ func (s Status) UpdateComponentCondition(ctx context.Context, componentName Comp
 		addon.Status.Conditions = mutateOrAppend(addon.Status.Conditions, newCondition)
 
 		s.logger.Info("Updating status of ObservabilityAddon", "conditionType", componentName, "reason", newReason, "addon", addon.Name, "namespace", addon.Namespace)
-
+		wasUpdated = true
 		return s.client.Status().Update(ctx, addon)
 	})
 	if retryErr != nil {
-		return retryErr
+		return wasUpdated, retryErr
 	}
 
-	return nil
+	return wasUpdated, nil
 }
 
 func (s Status) fetchAddon(ctx context.Context) (*oav1beta1.ObservabilityAddon, error) {

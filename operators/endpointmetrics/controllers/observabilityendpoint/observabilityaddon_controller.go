@@ -193,8 +193,10 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 				// We do not report status for hub endpoint operator
 				if !r.IsHubMetricsCollector {
 					statusReporter := status.NewStatus(r.Client, obsAddon.Name, obsAddon.Namespace, log)
-					if err := statusReporter.UpdateComponentCondition(ctx, status.MetricsCollector, status.NotSupported, "Prometheus service not found"); err != nil {
+					if wasReported, err := statusReporter.UpdateComponentCondition(ctx, status.MetricsCollector, status.NotSupported, "Prometheus service not found"); err != nil {
 						log.Error(err, "Failed to report status")
+					} else if wasReported {
+						log.Info("Status updated", "component", status.MetricsCollector, "reason", status.NotSupported)
 					}
 				}
 

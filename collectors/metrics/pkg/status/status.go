@@ -85,10 +85,10 @@ func (s *StatusReport) UpdateStatus(ctx context.Context, reason status.Reason, m
 		component = status.UwlMetricsCollector
 	}
 
-	s.logger.Log("msg", "Updating status", "component", component, "reason", reason, "message", message)
-
-	if err := s.statusReporter.UpdateComponentCondition(ctx, component, reason, message); err != nil {
+	if wasReported, err := s.statusReporter.UpdateComponentCondition(ctx, component, reason, message); err != nil {
 		return err
+	} else if wasReported {
+		s.logger.Log("msg", "Status updated", "component", component, "reason", reason, "message", message)
 	}
 
 	return nil
