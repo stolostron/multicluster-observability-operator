@@ -262,7 +262,7 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 
 	// only update managedclusteraddon status when obs addon's status updated
 	if req.Name == obsAddonName {
-		err = updateAddonStatus(r.Client, *obsAddonList)
+		err = updateAddonStatus(ctx, r.Client, *obsAddonList)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
