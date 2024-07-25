@@ -27,8 +27,9 @@ func TestUpdateAddonStatus(t *testing.T) {
 		currentObsAddonConditions      []mcov1beta1.StatusCondition
 		currentClusterAddonConditions  []metav1.Condition
 		expectedClusterAddonConditions []metav1.Condition
+		isUpdated                      bool
 	}{
-		"new condition should be appended": {
+		"updated addon conditions should be applied": {
 			currentObsAddonConditions: []mcov1beta1.StatusCondition{
 				{
 					Type:               "Available",
@@ -48,13 +49,14 @@ func TestUpdateAddonStatus(t *testing.T) {
 					Message:            "It is deployed",
 				},
 			},
+			isUpdated: true,
 		},
-		"existing condition should be updated": { // updating status to false
+		"same conditions should not be updated": {
 			currentObsAddonConditions: []mcov1beta1.StatusCondition{
 				{
 					Type:               "Available",
-					Status:             metav1.ConditionFalse,
-					LastTransitionTime: metav1.NewTime(time.Now()),
+					Status:             metav1.ConditionTrue,
+					LastTransitionTime: metav1.NewTime(time.Unix(1e9, 0)),
 					Reason:             "Deployed",
 					Message:            "It is deployed",
 				},
@@ -63,7 +65,7 @@ func TestUpdateAddonStatus(t *testing.T) {
 				{
 					Type:               "Available",
 					Status:             metav1.ConditionTrue,
-					LastTransitionTime: metav1.NewTime(time.Now()),
+					LastTransitionTime: metav1.NewTime(time.Unix(1e9, 0)),
 					Reason:             "Deployed",
 					Message:            "It is deployed",
 				},
@@ -71,48 +73,13 @@ func TestUpdateAddonStatus(t *testing.T) {
 			expectedClusterAddonConditions: []metav1.Condition{
 				{
 					Type:               "Available",
-					Status:             metav1.ConditionFalse,
-					LastTransitionTime: metav1.NewTime(time.Now()),
+					Status:             metav1.ConditionTrue,
+					LastTransitionTime: metav1.NewTime(time.Unix(1e9, 0)),
 					Reason:             "Deployed",
 					Message:            "It is deployed",
 				},
 			},
-		},
-		"unrelated conditions should not be updated": {
-			currentObsAddonConditions: []mcov1beta1.StatusCondition{
-				{
-					Type:               "Available",
-					Status:             metav1.ConditionTrue,
-					LastTransitionTime: metav1.NewTime(time.Now()),
-					Reason:             "Deployed",
-					Message:            "It is deployed",
-				},
-			},
-			currentClusterAddonConditions: []metav1.Condition{
-				{
-					Type:               "Unrelated",
-					Status:             metav1.ConditionTrue,
-					LastTransitionTime: metav1.NewTime(time.Now()),
-					Reason:             "Deployed",
-					Message:            "It is deployed",
-				},
-			},
-			expectedClusterAddonConditions: []metav1.Condition{
-				{
-					Type:               "Unrelated",
-					Status:             metav1.ConditionTrue,
-					LastTransitionTime: metav1.NewTime(time.Now()),
-					Reason:             "Deployed",
-					Message:            "It is deployed",
-				},
-				{
-					Type:               "Available",
-					Status:             metav1.ConditionTrue,
-					LastTransitionTime: metav1.NewTime(time.Now()),
-					Reason:             "Deployed",
-					Message:            "It is deployed",
-				},
-			},
+			isUpdated: false,
 		},
 	}
 
@@ -167,18 +134,31 @@ func TestUpdateAddonStatus(t *testing.T) {
 				},
 			}
 
+			foundClusterAddon := &addonv1alpha1.ManagedClusterAddOn{}
+			if err := c.Get(context.Background(), types.NamespacedName{
+				Name:      util.ManagedClusterAddonName,
+				Namespace: namespace,
+			}, foundClusterAddon); err != nil {
+				t.Fatalf("Failed to get managedclusteraddon: (%v)", err)
+			}
+			initVersion := foundClusterAddon.ResourceVersion
+
 			err := updateAddonStatus(context.Background(), c, addonList)
 			if err != nil {
 				t.Fatalf("Failed to update status for managedclusteraddon: (%v)", err)
 			}
 
-			foundClusterAddon := &addonv1alpha1.ManagedClusterAddOn{}
-			err = c.Get(context.Background(), types.NamespacedName{
+			if err := c.Get(context.Background(), types.NamespacedName{
 				Name:      util.ManagedClusterAddonName,
 				Namespace: namespace,
-			}, foundClusterAddon)
-			if err != nil {
+			}, foundClusterAddon); err != nil {
 				t.Fatalf("Failed to get managedclusteraddon: (%v)", err)
+			}
+
+			if tc.isUpdated {
+				assert.NotEqual(t, initVersion, foundClusterAddon.ResourceVersion)
+			} else {
+				assert.Equal(t, initVersion, foundClusterAddon.ResourceVersion)
 			}
 
 			slices.SortFunc(foundClusterAddon.Status.Conditions, sortConditionsFunc)
