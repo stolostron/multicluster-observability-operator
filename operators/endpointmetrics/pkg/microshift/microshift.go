@@ -524,7 +524,6 @@ func IsMicroshiftCluster(ctx context.Context, client client.Client) (string, err
 
 func getResource(res []*unstructured.Unstructured, kind, name string) (*unstructured.Unstructured, error) {
 	for _, r := range res {
-		fmt.Println("Resource: ", r.GetKind(), r.GetName())
 		if r.GetKind() == kind && r.GetName() == name {
 			return r, nil
 		}
