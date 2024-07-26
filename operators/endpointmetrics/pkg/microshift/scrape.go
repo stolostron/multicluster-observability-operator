@@ -6,7 +6,7 @@ import (
 )
 
 type ScrapeConfigs struct {
-	ScrapeConfigs []ScrapeConfig `yaml:"scrape_configs"`
+	ScrapeConfigs []ScrapeConfig `yaml:",inline"`
 }
 
 type ScrapeConfig struct {
@@ -18,10 +18,17 @@ type StaticConfig struct {
 	Targets []string `yaml:"targets"`
 }
 
-func (sc ScrapeConfigs) MarshalYAML() ([]byte, error) {
-	ret, err := yaml.Marshal(sc)
+func (sc *ScrapeConfigs) MarshalYAML() ([]byte, error) {
+	ret, err := yaml.Marshal(sc.ScrapeConfigs)
 	if err != nil {
 		return nil, err
 	}
 	return ret, nil
+}
+
+func (sc *ScrapeConfigs) UnmarshalYAML(data []byte) error {
+	if sc.ScrapeConfigs == nil {
+		sc.ScrapeConfigs = []ScrapeConfig{}
+	}
+	return yaml.Unmarshal(data, &sc.ScrapeConfigs)
 }

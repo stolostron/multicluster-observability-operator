@@ -6,9 +6,11 @@ package microshift
 
 import (
 	"context"
+	"strings"
 
 	"fmt"
 
+	"github.com/go-logr/logr"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	promcommon "github.com/prometheus/common/config"
 	batchv1 "k8s.io/api/batch/v1"
@@ -26,19 +28,21 @@ import (
 
 const (
 	etcdClientCertSecretName  = "etcd-client-cert" //nolint:gosec
-	prometheusScrapeCfgSecret = "prometheus-scrape-config"
-	scrapeConfigKey           = "scrape-config.yaml"
+	prometheusScrapeCfgSecret = "prometheus-scrape-targets"
+	scrapeConfigKey           = "scrape-targets.yaml"
 )
 
 type Microshift struct {
 	client         client.Client
 	addonNamespace string
+	logger         logr.Logger
 }
 
-func NewMicroshift(c client.Client, addonNs string) *Microshift {
+func NewMicroshift(c client.Client, addonNs string, logger logr.Logger) *Microshift {
 	return &Microshift{
 		addonNamespace: addonNs,
 		client:         c,
+		logger:         logger.WithName("microshift"),
 	}
 }
 
@@ -62,6 +66,10 @@ func (m *Microshift) Render(ctx context.Context, resources []*unstructured.Unstr
 		return nil, fmt.Errorf("failed to render prometheus: %w", err)
 	}
 
+	if err := m.renderScrapeConfig(resources); err != nil {
+		return nil, fmt.Errorf("failed to render scrape config: %w", err)
+	}
+
 	return resources, nil
 }
 
@@ -80,12 +88,10 @@ func (m *Microshift) renderPrometheus(res []*unstructured.Unstructured) error {
 
 	prom.Spec.Secrets = append(prom.Spec.Secrets, etcdClientCertSecretName)
 	prom.Spec.HostNetwork = true
-	// add scrape config for etcd that is running on the host
-	prom.Spec.AdditionalScrapeConfigs = &corev1.SecretKeySelector{
-		LocalObjectReference: corev1.LocalObjectReference{
-			Name: prometheusScrapeCfgSecret,
-		},
-		Key: scrapeConfigKey,
+
+	// check that additional scrape config is as expected
+	if prom.Spec.AdditionalScrapeConfigs == nil || prom.Spec.AdditionalScrapeConfigs.LocalObjectReference.Name != prometheusScrapeCfgSecret {
+		return fmt.Errorf(fmt.Sprintf("additional scrape config is not as expected, want %s, got %s", prometheusScrapeCfgSecret, prom.Spec.AdditionalScrapeConfigs.LocalObjectReference.Name))
 	}
 
 	promRes.Object, err = runtime.DefaultUnstructuredConverter.ToUnstructured(prom)
@@ -95,6 +101,62 @@ func (m *Microshift) renderPrometheus(res []*unstructured.Unstructured) error {
 
 	return nil
 
+}
+
+func (m *Microshift) renderScrapeConfig(res []*unstructured.Unstructured) error {
+	secret, err := getResource(res, "Secret", prometheusScrapeCfgSecret)
+	if err != nil {
+		return fmt.Errorf("failed to get prometheus scrape secret resource: %w", err)
+	}
+
+	scrapeSecret := &corev1.Secret{}
+	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(secret.Object, scrapeSecret); err != nil {
+		return fmt.Errorf("failed to convert unstructured object to secret object: %w", err)
+	}
+
+	etcdScrapeCfg := ScrapeConfig{}
+	etcdScrapeCfg.JobName = "etcd"
+	etcdScrapeCfg.Scheme = "https"
+	etcdScrapeCfg.HTTPClientConfig = promcommon.HTTPClientConfig{
+		TLSConfig: promcommon.TLSConfig{
+			CertFile: fmt.Sprintf("/etc/prometheus/secrets/%s/ca.crt", etcdClientCertSecretName),
+			KeyFile:  fmt.Sprintf("/etc/prometheus/secrets/%s/ca.key", etcdClientCertSecretName),
+			CAFile:   fmt.Sprintf("/etc/prometheus/secrets/%s/ca.crt", etcdClientCertSecretName),
+		},
+	}
+	etcdScrapeCfg.StaticConfigs = []StaticConfig{
+		{
+			Targets: []string{"localhost:2381"},
+		},
+	}
+	newScrapeCfgs := &ScrapeConfigs{
+		ScrapeConfigs: []ScrapeConfig{etcdScrapeCfg},
+	}
+
+	// Append additional scrape config for etcd on the host
+	// We don't unmarshal the existing scrape config to avoid adding default values
+	// when marshalling the new scrape config. Instead, we append the new scrape config
+	// to the existing scrape config.
+	var ret strings.Builder
+	ret.WriteString(strings.TrimSpace(scrapeSecret.StringData[scrapeConfigKey]))
+
+	scrapeCfgsYaml, err := newScrapeCfgs.MarshalYAML()
+	if err != nil {
+		return fmt.Errorf("failed to marshal scrape config: %w", err)
+	}
+
+	ret.WriteString("\n")
+	ret.WriteString(strings.TrimSpace(string(scrapeCfgsYaml)))
+	newScrapeConfigYaml := ret.String()
+
+	scrapeSecret.StringData[scrapeConfigKey] = newScrapeConfigYaml
+
+	secret.Object, err = runtime.DefaultUnstructuredConverter.ToUnstructured(scrapeSecret)
+	if err != nil {
+		return fmt.Errorf("failed to convert secret object to unstructured object: %w", err)
+	}
+
+	return nil
 }
 
 // renderCronJobExposingMicroshiftSecrets creates a cronjob to expose Microshift's host secrets needed in Microshift itself.
@@ -462,6 +524,7 @@ func IsMicroshiftCluster(ctx context.Context, client client.Client) (string, err
 
 func getResource(res []*unstructured.Unstructured, kind, name string) (*unstructured.Unstructured, error) {
 	for _, r := range res {
+		fmt.Println("Resource: ", r.GetKind(), r.GetName())
 		if r.GetKind() == kind && r.GetName() == name {
 			return r, nil
 		}

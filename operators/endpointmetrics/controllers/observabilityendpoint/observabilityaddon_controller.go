@@ -253,7 +253,7 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 			}
 
 			if len(microshiftVersion) > 0 {
-				mcs := microshift.NewMicroshift(r.Client, r.Namespace)
+				mcs := microshift.NewMicroshift(r.Client, r.Namespace, log)
 				toDeploy, err = mcs.Render(ctx, toDeploy)
 				if err != nil {
 					return ctrl.Result{}, fmt.Errorf("failed to render microshift templates: %w", err)
