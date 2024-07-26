@@ -222,17 +222,28 @@ func (r *StatusReconciler) requeueWithOptionalDelay(err error) (ctrl.Result, err
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *StatusReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	filterOutStandardConditions := func(c []oav1beta1.StatusCondition) []oav1beta1.StatusCondition {
+		var filtered []oav1beta1.StatusCondition
+		for _, condition := range c {
+			if condition.Type == "Available" || condition.Type == "Progressing" || condition.Type == "Degraded" {
+				continue
+			}
+			filtered = append(filtered, condition)
+		}
+		return filtered
+	}
 	pred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 			return false
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			if e.ObjectNew.GetNamespace() == r.Namespace &&
-				!reflect.DeepEqual(e.ObjectNew.(*oav1beta1.ObservabilityAddon).Status,
-					e.ObjectOld.(*oav1beta1.ObservabilityAddon).Status) {
-				return true
+			if e.ObjectNew.GetNamespace() != r.Namespace {
+				return false
 			}
-			return false
+
+			newConditions := filterOutStandardConditions(e.ObjectNew.(*oav1beta1.ObservabilityAddon).Status.Conditions)
+			oldConditions := filterOutStandardConditions(e.ObjectOld.(*oav1beta1.ObservabilityAddon).Status.Conditions)
+			return !reflect.DeepEqual(newConditions, oldConditions)
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
 			return false
