@@ -128,18 +128,20 @@ func TestRenderAddonDeploymentConfig(t *testing.T) {
 		Spec: mcov1beta2.MultiClusterObservabilitySpec{
 			Capabilities: &mcov1beta2.CapabilitiesSpec{
 				Platform: &mcov1beta2.PlatformCapabilitiesSpec{
-					Logs: mcov1beta2.LogsCollectionSpec{
+					Logs: mcov1beta2.PlatformLogsCollectionSpec{
 						Enabled: true,
 					},
 				},
 				UserWorkloads: &mcov1beta2.UserWorkloadCapabilitiesSpec{
 					Logs: mcov1beta2.UserWorkloadLogsSpec{
-						ClusterLogForwarder: mcov1beta2.ClusterLogForwarderSpec{
-							Enabled: true,
+						Collection: mcov1beta2.UserWorkloadLogsCollectionSpec{
+							ClusterLogForwarder: mcov1beta2.ClusterLogForwarderSpec{
+								Enabled: true,
+							},
 						},
 					},
 					Traces: mcov1beta2.UserWorkloadTracesSpec{
-						OpenTelemetry: mcov1beta2.OpenTelemetrySpec{
+						Collection: mcov1beta2.OpenTelemetryCollectionSpec{
 							Collector: mcov1beta2.OpenTelemetryCollectorSpec{
 								Enabled: true,
 							},

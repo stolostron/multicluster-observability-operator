@@ -158,7 +158,7 @@ const (
 
 	MultiClusterObservabilityAddonImgRepo      = "quay.io/rhobs"
 	MultiClusterObservabilityAddonImgName      = "multicluster-observability-addon"
-	MultiClusterObservabilityAddonImgTagSuffix = "0.0.1"
+	MultiClusterObservabilityAddonImgTagSuffix = "v0.0.1"
 	MultiClusterObservabilityAddonImgKey       = "multicluster_observability_addon"
 
 	RBACQueryProxyImgName = "rbac-query-proxy"

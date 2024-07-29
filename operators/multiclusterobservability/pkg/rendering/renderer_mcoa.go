@@ -182,13 +182,13 @@ func (r *MCORenderer) renderAddonDeploymentConfig(
 		}
 
 		if cs.UserWorkloads != nil {
-			if cs.UserWorkloads.Logs.ClusterLogForwarder.Enabled {
+			if cs.UserWorkloads.Logs.Collection.ClusterLogForwarder.Enabled {
 				appendCustomVar(aodc, nameUserWorkloadLogsCollection, clfV1)
 			}
-			if cs.UserWorkloads.Traces.OpenTelemetry.Collector.Enabled {
+			if cs.UserWorkloads.Traces.Collection.Collector.Enabled {
 				appendCustomVar(aodc, nameUserWorkloadTracesCollection, otelV1beta1)
 			}
-			if cs.UserWorkloads.Traces.OpenTelemetry.Instrumentation.Enabled {
+			if cs.UserWorkloads.Traces.Collection.Instrumentation.Enabled {
 				appendCustomVar(aodc, nameUserWorkloadInstrumentation, instrV1alpha1)
 			}
 		}

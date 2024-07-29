@@ -49,7 +49,7 @@ metadata:
         }
       ]
     capabilities: Basic Install
-    createdAt: "2024-07-24T08:42:01Z"
+    createdAt: "2024-07-29T07:45:11Z"
     operators.operatorframework.io/builder: operator-sdk-v1.34.2
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
   name: multicluster-observability-operator.v0.1.0
@@ -69,6 +69,84 @@ spec:
       displayName: MultiClusterObservability
       kind: MultiClusterObservability
       name: multiclusterobservabilities.observability.open-cluster-management.io
+      specDescriptors:
+      - description: 'Capabilities defines the platform and user workload observabilities
+          capabilities managed exclusively by the multicluster-observability-addon.
+          Enabling any of these capabilities will result in deploying the following
+          resources: - The addon Deployment, ServiceAccount and RBAC. - A ClusterManagementAddon
+          managing placement for capability related custom resources. - An AddonDeploymentConfig
+          managing the addon feature gates for activated capabilities.'
+        displayName: Capabilities
+        path: capabilities
+      - description: 'Platform defines the spec for platform observability capabilities
+          managed by the addon. The platform is defined as the ACM/OCM/OCP components
+          running on managed clusters to run, manage and observe the managed clusters
+          themselves locally as well as remotely from a hub. Such components live
+          on namespaces with prefixes for example: - openshift- - open-cluster-management-
+          - default'
+        displayName: Platform
+        path: capabilities.platform
+      - description: Logs defines the configuration spec for collecting and storing
+          logs from platform components running on fleet managed clusters.
+        displayName: Logs
+        path: capabilities.platform.logs
+      - description: Enabled defines a flag to enable/disable the platform log collection.
+        displayName: Enable
+        path: capabilities.platform.logs.enabled
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
+      - description: UserWorkloads defines the spec for user workloads observability
+          capabilities managed by the addon. As user workloads are defined any containers
+          hosted on spoke clusters and execute any task unrelated to managing the
+          fleet or the individual managed cluster itself.
+        displayName: User Workloads
+        path: capabilities.userWorkloads
+      - description: Logs defines the spec for the addon to collect, forward and store
+          logs from user workloads hosted on fleet managed clusters.
+        displayName: Logs
+        path: capabilities.userWorkloads.logs
+      - description: Collection defines the spec for the addon to collect and forward
+          logs from user workloads hosted on fleet managed clusters.
+        displayName: Collection
+        path: capabilities.userWorkloads.logs.collection
+      - description: Enabled defines a flag to enable/disable the platform log collection
+          using the ClusterLogForwarder resource.
+        displayName: ClusterLogForwarder
+        path: capabilities.userWorkloads.logs.collection.clusterLogForwarder
+      - description: Enabled defines a flag to enable/disable the platform log collection
+          using the ClusterLogForwarder resource.
+        displayName: Enable
+        path: capabilities.userWorkloads.logs.collection.clusterLogForwarder.enabled
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
+      - description: Traces defines the spec for the addon to collect, forward and
+          store traces from user workloads hosted on fleet managed clusters.
+        displayName: Traces
+        path: capabilities.userWorkloads.traces
+      - description: Collection defines the spec for the addon to collect and forward
+          traces from user workloads hosted on fleet managed clusters.
+        displayName: Collection
+        path: capabilities.userWorkloads.traces.collection
+      - description: Collector defines the spec for the user workload observability
+          collection using the OpenTelemetryCollector resource.
+        displayName: OpenTelemetryCollector
+        path: capabilities.userWorkloads.traces.collection.collector
+      - description: Enabled defines a flag to enable/disable the user workload observability
+          collection using the OpenTelemetryCollector resource.
+        displayName: Enable
+        path: capabilities.userWorkloads.traces.collection.collector.enabled
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
+      - description: Instrumentation defines the spec for the user workload observability
+          collection using the Instrumentation resource.
+        displayName: Instrumentation
+        path: capabilities.userWorkloads.traces.collection.instrumentation
+      - description: Enabled defines a flag to enable/disable the user workload observability
+          collection using the Instrumentation resource.
+        displayName: Enable
+        path: capabilities.userWorkloads.traces.collection.instrumentation.enabled
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
       version: v1beta2
     - description: ObservabilityAddon is the Schema for the observabilityaddon API
       displayName: ObservabilityAddon

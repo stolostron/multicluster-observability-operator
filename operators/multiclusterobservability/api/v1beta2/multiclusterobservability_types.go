@@ -13,8 +13,16 @@ import (
 
 // MultiClusterObservabilitySpec defines the desired state of MultiClusterObservability.
 type MultiClusterObservabilitySpec struct {
-	// Platform and UserWorkload Observability Capabilities
+	// Capabilities defines the platform and user workload observabilities capabilities
+	// managed exclusively by the multicluster-observability-addon. Enabling any of these
+	// capabilities will result in deploying the following resources:
+	//   - The addon Deployment, ServiceAccount and RBAC.
+	//   - A ClusterManagementAddon managing placement for capability related custom resources.
+	//   - An AddonDeploymentConfig managing the addon feature gates for activated capabilities.
+	//
 	// +optional
+	// +kubebuilder:validation:Optional
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Capabilities"
 	Capabilities *CapabilitiesSpec `json:"capabilities,omitempty"`
 	// Advanced configurations for observability
 	// +optional
@@ -51,58 +59,159 @@ type MultiClusterObservabilitySpec struct {
 // +kubebuilder:validation:Enum:={"default","minimal","small","medium","large","xlarge","2xlarge","4xlarge"}
 type TShirtSize string
 
-type LogsCollectionSpec struct {
+// PlatformLogsCollectionSpec defines the spec for the addon to collect and forward logs
+// from fleet managed clusters.
+type PlatformLogsCollectionSpec struct {
+	// Enabled defines a flag to enable/disable the platform log collection.
+	//
 	// +optional
+	// +kubebuilder:validation:Optional
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,xDescriptors="urn:alm:descriptor:com.tectonic.ui:booleanSwitch",displayName="Enable"
 	Enabled bool `json:"enabled,omitempty"`
 }
 
+// PlatformCapabilitiesSpec defines the observability capabilities managed by the addon
+// for platform components.
 type PlatformCapabilitiesSpec struct {
+	// Logs defines the configuration spec for collecting and storing logs from
+	// platform components running on fleet managed clusters.
+	//
 	// +optional
-	Logs LogsCollectionSpec `json:"logs,omitempty"`
+	// +kubebuilder:validation:Optional
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Logs"
+	Logs PlatformLogsCollectionSpec `json:"logs,omitempty"`
 }
 
+// ClusterLogForwarderSpec defines the spec for the addon to collect and forward logs
+// using the ClusterLogForwarder custom resource.
 type ClusterLogForwarderSpec struct {
+	// Enabled defines a flag to enable/disable the platform log collection using the ClusterLogForwarder resource.
+	//
 	// +optional
+	// +kubebuilder:validation:Optional
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,xDescriptors="urn:alm:descriptor:com.tectonic.ui:booleanSwitch",displayName="Enable"
 	Enabled bool `json:"enabled,omitempty"`
 }
 
-type UserWorkloadLogsSpec struct {
+// UserWorkloadLogsCollectionSpec defines the spec for the addon to collect and forward logs
+// from user workloads hosted on fleet managed clusters.
+type UserWorkloadLogsCollectionSpec struct {
+	// Enabled defines a flag to enable/disable the platform log collection using the ClusterLogForwarder resource.
+	//
+	// +optional
+	// +kubebuilder:validation:Optional
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="ClusterLogForwarder"
 	ClusterLogForwarder ClusterLogForwarderSpec `json:"clusterLogForwarder,omitempty"`
 }
 
-type OpenTelemetrySpec struct {
+// UserWorkloadLogsSpec defines the spec for the addon to collect,forward and store logs
+// from user workloads hosted on fleet managed clusters.
+type UserWorkloadLogsSpec struct {
+	// Collection defines the spec for the addon to collect and forward logs
+	// from user workloads hosted on fleet managed clusters.
+	//
 	// +optional
+	// +kubebuilder:validation:Optional
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Collection"
+	Collection UserWorkloadLogsCollectionSpec `json:"collection,omitempty"`
+}
+
+// OpenTelemetryCollectorSpec defines the spec for the addon to collect and forward observability signals
+// using the OpenTelemetryCollector custom resource.
+type OpenTelemetryCollectorSpec struct {
+	// Enabled defines a flag to enable/disable the user workload observability collection using the OpenTelemetryCollector resource.
+	//
+	// +optional
+	// +kubebuilder:validation:Optional
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,xDescriptors="urn:alm:descriptor:com.tectonic.ui:booleanSwitch",displayName="Enable"
+	Enabled bool `json:"enabled,omitempty"`
+}
+
+// OpenTelemetryCollectorSpec defines the spec for the addon to collect observability signals
+// using the Instrumentation custom resource.
+type InstrumentationSpec struct {
+	// Enabled defines a flag to enable/disable the user workload observability collection using the Instrumentation resource.
+	//
+	// +optional
+	// +kubebuilder:validation:Optional
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,xDescriptors="urn:alm:descriptor:com.tectonic.ui:booleanSwitch",displayName="Enable"
+	Enabled bool `json:"enabled,omitempty"`
+}
+
+// OpenTelemetryCollectionSpec defines the spec for the addon to collect and forward observability signals
+// from user workloads hosted on fleet managed clusters using the OpenTelemetryCollector with or without
+// instrumentation.
+type OpenTelemetryCollectionSpec struct {
+	// Collector defines the spec for the user workload observability collection using the OpenTelemetryCollector resource.
+	//
+	// +optional
+	// +kubebuilder:validation:Optional
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="OpenTelemetryCollector"
 	Collector OpenTelemetryCollectorSpec `json:"collector,omitempty"`
+	// Instrumentation defines the spec for the user workload observability collection using the Instrumentation resource.
+	//
 	// +optional
+	// +kubebuilder:validation:Optional
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Instrumentation"
 	Instrumentation InstrumentationSpec `json:"instrumentation,omitempty"`
 }
 
-type OpenTelemetryCollectorSpec struct {
-	// +optional
-	Enabled bool `json:"enabled,omitempty"`
-}
-
-type InstrumentationSpec struct {
-	// +optional
-	Enabled bool `json:"enabled,omitempty"`
-}
-
+// UserWorkloadTracesSpec defines the spec for the addon to collect, forward and store traces
+// from user workloads hosted on fleet managed clusters.
 type UserWorkloadTracesSpec struct {
+	// Collection defines the spec for the addon to collect and forward traces
+	// from user workloads hosted on fleet managed clusters.
+	//
 	// +optional
-	OpenTelemetry OpenTelemetrySpec `json:"opentelemetry,omitempty"`
+	// +kubebuilder:validation:Optional
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Collection"
+	Collection OpenTelemetryCollectionSpec `json:"collection,omitempty"`
 }
 
+// UserWorkloadCapabilitiesSpec defines the spec for user workload observability capabilities managed by the addon.
 type UserWorkloadCapabilitiesSpec struct {
+	// Logs defines the spec for the addon to collect, forward and store logs
+	// from user workloads hosted on fleet managed clusters.
+	//
 	// +optional
+	// +kubebuilder:validation:Optional
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Logs"
 	Logs UserWorkloadLogsSpec `json:"logs,omitempty"`
+	// Traces defines the spec for the addon to collect, forward and store traces
+	// from user workloads hosted on fleet managed clusters.
+	//
 	// +optional
+	// +kubebuilder:validation:Optional
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Traces"
 	Traces UserWorkloadTracesSpec `json:"traces,omitempty"`
 }
 
+// CapabilitiesSpec defines the platform and user workload observabilities capabilities
+// managed exclusively by the multicluster-observability-addon. Enabling any of these
+// capabilities will result in deploying the following resources:
+//   - The addon Deployment, ServiceAccount and RBAC.
+//   - A ClusterManagementAddon managing placement for capability related custom resources.
+//   - An AddonDeploymentConfig managing the addon feature gates for activated capabilities.
 type CapabilitiesSpec struct {
+	// Platform defines the spec for platform observability capabilities managed by the addon.
+	// The platform is defined as the ACM/OCM/OCP components running on managed clusters to run,
+	// manage and observe the managed clusters themselves locally as well as remotely from a hub.
+	// Such components live on namespaces with prefixes for example:
+	//   - openshift-
+	//   - open-cluster-management-
+	//   - default
+	//
 	// +optional
+	// +kubebuilder:validation:Optional
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Platform"
 	Platform *PlatformCapabilitiesSpec `json:"platform,omitempty"`
+	// UserWorkloads defines the spec for user workloads observability capabilities managed by the addon.
+	// As user workloads are defined any containers hosted on spoke clusters and execute any task unrelated
+	// to managing the fleet or the individual managed cluster itself.
+	//
 	// +optional
+	// +kubebuilder:validation:Optional
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="User Workloads"
 	UserWorkloads *UserWorkloadCapabilitiesSpec `json:"userWorkloads,omitempty"`
 }
 
