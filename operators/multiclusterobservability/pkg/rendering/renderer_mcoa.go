@@ -176,7 +176,7 @@ func (r *MCORenderer) renderAddonDeploymentConfig(
 		}
 
 		if cs.Platform != nil {
-			if cs.Platform.Logs.Enabled {
+			if cs.Platform.Logs.Collection.Enabled {
 				appendCustomVar(aodc, namePlatformLogsCollection, clfV1)
 			}
 		}

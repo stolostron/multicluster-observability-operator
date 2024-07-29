@@ -60,7 +60,7 @@ type MultiClusterObservabilitySpec struct {
 type TShirtSize string
 
 // PlatformLogsCollectionSpec defines the spec for the addon to collect and forward logs
-// from fleet managed clusters.
+// from fleet managed clusters using the ClusterLogForwarder custom resource.
 type PlatformLogsCollectionSpec struct {
 	// Enabled defines a flag to enable/disable the platform log collection.
 	//
@@ -68,6 +68,18 @@ type PlatformLogsCollectionSpec struct {
 	// +kubebuilder:validation:Optional
 	// +operator-sdk:csv:customresourcedefinitions:type=spec,xDescriptors="urn:alm:descriptor:com.tectonic.ui:booleanSwitch",displayName="Enable"
 	Enabled bool `json:"enabled,omitempty"`
+}
+
+// PlatformLogsSpec defines the spec for the addon to collect, forward and store logs
+// from fleet managed clusters.
+type PlatformLogsSpec struct {
+	// Collection defines the spec for the addon to collect and forward logs
+	// from fleet managed clusters.
+	//
+	// +optional
+	// +kubebuilder:validation:Optional
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Collection"
+	Collection PlatformLogsCollectionSpec `json:"collection,omitempty"`
 }
 
 // PlatformCapabilitiesSpec defines the observability capabilities managed by the addon
@@ -79,7 +91,7 @@ type PlatformCapabilitiesSpec struct {
 	// +optional
 	// +kubebuilder:validation:Optional
 	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Logs"
-	Logs PlatformLogsCollectionSpec `json:"logs,omitempty"`
+	Logs PlatformLogsSpec `json:"logs,omitempty"`
 }
 
 // ClusterLogForwarderSpec defines the spec for the addon to collect and forward logs

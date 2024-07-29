@@ -49,7 +49,7 @@ metadata:
         }
       ]
     capabilities: Basic Install
-    createdAt: "2024-07-29T07:45:11Z"
+    createdAt: "2024-07-29T12:28:25Z"
     operators.operatorframework.io/builder: operator-sdk-v1.34.2
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
   name: multicluster-observability-operator.v0.1.0
@@ -90,9 +90,13 @@ spec:
           logs from platform components running on fleet managed clusters.
         displayName: Logs
         path: capabilities.platform.logs
+      - description: Collection defines the spec for the addon to collect and forward
+          logs from fleet managed clusters.
+        displayName: Collection
+        path: capabilities.platform.logs.collection
       - description: Enabled defines a flag to enable/disable the platform log collection.
         displayName: Enable
-        path: capabilities.platform.logs.enabled
+        path: capabilities.platform.logs.collection.enabled
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
       - description: UserWorkloads defines the spec for user workloads observability

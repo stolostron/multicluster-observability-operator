@@ -128,8 +128,10 @@ func TestRenderAddonDeploymentConfig(t *testing.T) {
 		Spec: mcov1beta2.MultiClusterObservabilitySpec{
 			Capabilities: &mcov1beta2.CapabilitiesSpec{
 				Platform: &mcov1beta2.PlatformCapabilitiesSpec{
-					Logs: mcov1beta2.PlatformLogsCollectionSpec{
-						Enabled: true,
+					Logs: mcov1beta2.PlatformLogsSpec{
+						Collection: mcov1beta2.PlatformLogsCollectionSpec{
+							Enabled: true,
+						},
 					},
 				},
 				UserWorkloads: &mcov1beta2.UserWorkloadCapabilitiesSpec{
