@@ -21,6 +21,7 @@ get_latest_snapshot() {
   # z version 1-2 digits
   # -SNAPSHOT
   MATCH=$SNAPSHOT_RELEASE".\d{1,2}-SNAPSHOT"
+  # let's test if we need -H "X-Requested-With: XMLHttpRequest"
   LATEST_SNAPSHOT=$(curl "https://quay.io/api/v1/repository/stolostron/multicluster-observability-operator/tag/?filter_tag_name=like:$SNAPSHOT_RELEASE&limit=100" | jq --arg MATCH "$MATCH" '.tags[] | select(.name | match($MATCH; "i")  ).name' | sort -r --version-sort | head -n 1)
 
   # trim the leading and tailing quotes
