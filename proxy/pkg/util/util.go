@@ -19,6 +19,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-co-op/gocron"
@@ -45,8 +46,11 @@ const (
 )
 
 var (
-	allManagedClusterNames      map[string]string
-	allManagedClusterLabelNames map[string]bool
+	allManagedClusterNames    map[string]string
+	allManagedClusterNamesMtx sync.RWMutex
+
+	allManagedClusterLabelNames    map[string]bool
+	allManagedClusterLabelNamesMtx sync.RWMutex
 
 	managedLabelList = proxyconfig.GetManagedClusterLabelList()
 	syncLabelList    = proxyconfig.GetSyncLabelList()
@@ -103,20 +107,26 @@ func addManagedClusterLabelNames(managedLabelList *proxyconfig.ManagedClusterLab
 	for _, key := range managedLabelList.LabelList {
 		if _, ok := allManagedClusterLabelNames[key]; !ok {
 			klog.Infof("added managedcluster label: %s", key)
+			allManagedClusterLabelNamesMtx.Lock()
 			allManagedClusterLabelNames[key] = true
+			allManagedClusterLabelNamesMtx.Unlock()
 
 		} else if slice.ContainsString(managedLabelList.IgnoreList, key, nil) {
 			klog.V(2).Infof("managedcluster label <%s> set to ignore, remove label from ignore list to enable.", key)
 
 		} else if isEnabled := allManagedClusterLabelNames[key]; !isEnabled {
 			klog.Infof("enabled managedcluster label: %s", key)
+			allManagedClusterLabelNamesMtx.Lock()
 			allManagedClusterLabelNames[key] = true
+			allManagedClusterLabelNamesMtx.Unlock()
 		}
 	}
 
 	managedLabelList.RegexLabelList = []string{}
 	regex := regexp.MustCompile(`[^\w]+`)
 
+	allManagedClusterLabelNamesMtx.RLock()
+	defer allManagedClusterLabelNamesMtx.RUnlock()
 	for key, isEnabled := range allManagedClusterLabelNames {
 		if isEnabled {
 			managedLabelList.RegexLabelList = append(
@@ -144,6 +154,8 @@ func ignoreManagedClusterLabelNames(managedLabelList *proxyconfig.ManagedCluster
 	managedLabelList.RegexLabelList = []string{}
 	regex := regexp.MustCompile(`[^\w]+`)
 
+	allManagedClusterLabelNamesMtx.RLock()
+	defer allManagedClusterLabelNamesMtx.RUnlock()
 	for key, isEnabled := range allManagedClusterLabelNames {
 		if isEnabled {
 			managedLabelList.RegexLabelList = append(
@@ -242,7 +254,9 @@ func GetManagedClusterEventHandler() cache.ResourceEventHandlerFuncs {
 		AddFunc: func(obj interface{}) {
 			clusterName := obj.(*clusterv1.ManagedCluster).Name
 			klog.Infof("added a managedcluster: %s \n", obj.(*clusterv1.ManagedCluster).Name)
+			allManagedClusterNamesMtx.Lock()
 			allManagedClusterNames[clusterName] = clusterName
+			allManagedClusterNamesMtx.Unlock()
 			CleanExpiredProjectInfo(1)
 
 			clusterLabels := obj.(*clusterv1.ManagedCluster).Labels
@@ -254,14 +268,19 @@ func GetManagedClusterEventHandler() cache.ResourceEventHandlerFuncs {
 		DeleteFunc: func(obj interface{}) {
 			clusterName := obj.(*clusterv1.ManagedCluster).Name
 			klog.Infof("deleted a managedcluster: %s \n", obj.(*clusterv1.ManagedCluster).Name)
+			allManagedClusterNamesMtx.Lock()
 			delete(allManagedClusterNames, clusterName)
+			allManagedClusterNamesMtx.Unlock()
 			CleanExpiredProjectInfo(1)
 		},
 
 		UpdateFunc: func(oldObj, newObj interface{}) {
 			clusterName := newObj.(*clusterv1.ManagedCluster).Name
 			klog.Infof("changed a managedcluster: %s \n", newObj.(*clusterv1.ManagedCluster).Name)
+
+			allManagedClusterNamesMtx.Lock()
 			allManagedClusterNames[clusterName] = clusterName
+			allManagedClusterNamesMtx.Unlock()
 
 			clusterLabels := newObj.(*clusterv1.ManagedCluster).Labels
 			if ok := shouldUpdateManagedClusterLabelNames(clusterLabels, managedLabelList); ok {
@@ -481,6 +500,8 @@ func canAccessAllClusters(projectList []string) bool {
 		return false
 	}
 
+	allManagedClusterNamesMtx.RLock()
+	defer allManagedClusterNamesMtx.RUnlock()
 	for name := range allManagedClusterNames {
 		if !slices.Contains(projectList, name) {
 			return false
@@ -497,10 +518,12 @@ func getUserClusterList(projectList []string) []string {
 	}
 
 	for _, projectName := range projectList {
+		allManagedClusterLabelNamesMtx.RLock()
 		clusterName, ok := allManagedClusterNames[projectName]
 		if ok {
 			clusterList = append(clusterList, clusterName)
 		}
+		allManagedClusterLabelNamesMtx.RUnlock()
 	}
 
 	return clusterList
