@@ -6,7 +6,9 @@ package placementrule
 
 import (
 	"context"
-	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/openshift"
+	"fmt"
+	ocinfrav1 "github.com/openshift/api/config/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"os"
 	client "sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -20,8 +22,17 @@ var (
 	spokeNameSpace = os.Getenv("SPOKE_NAMESPACE")
 )
 
+func GetClusterID(ctx context.Context, c client.Client) (string, error) {
+	clusterVersion := &ocinfrav1.ClusterVersion{}
+	if err := c.Get(ctx, types.NamespacedName{Name: "version"}, clusterVersion); err != nil {
+		return "", fmt.Errorf("failed to get clusterVersion: %w", err)
+	}
+
+	return string(clusterVersion.Spec.ClusterID), nil
+}
+
 func getSpokeNameSpace(c client.Client) string {
-	clusterID, _ := openshift.GetClusterID(context.TODO(), c)
+	clusterID, _ := GetClusterID(context.TODO(), c)
 	spokeNameSpace = spokeNameSpace + "-" + clusterID
 	return spokeNameSpace
 }
