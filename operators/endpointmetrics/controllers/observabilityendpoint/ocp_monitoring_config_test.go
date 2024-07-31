@@ -19,9 +19,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	yamltool "github.com/ghodss/yaml"
-	cmomanifests "github.com/openshift/cluster-monitoring-operator/pkg/manifests"
-
+	cmomanifests "github.com/stolostron/multicluster-observability-operator/operators/pkg/cmo"
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
+
 	"gopkg.in/yaml.v2"
 )
 
