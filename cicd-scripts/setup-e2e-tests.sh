@@ -33,20 +33,31 @@ LATEST_SNAPSHOT=${LATEST_SNAPSHOT:-$(get_latest_snapshot)}
 # deploy the hub and spoke core via OLM
 deploy_hub_spoke_core() {
   cd ${ROOTDIR}
-  # we are pinned here so no need to re-fetch if we have the project locally.
-  if [[ ! -d "registration-operator" ]]; then
-    git clone --depth 1 -b release-2.4 https://github.com/stolostron/registration-operator.git
+  OCM_VERSION='2.11.1-SNAPSHOT-2024-07-30-23-37-56'
+
+  export OCM_BRANCH=main
+  export IMAGE_NAME=quay.io/stolostron/registration-operator:$OCM_VERSION
+  export REGISTRATION_OPERATOR_IMAGE=quay.io/stolostron/registration-operator:$OCM_VERSION
+  export REGISTRATION_IMAGE=quay.io/stolostron/registration:$OCM_VERSION
+  export WORK_IMAGE=quay.io/stolostron/work:$OCM_VERSION
+  export PLACEMENT_IMAGE=quay.io/stolostron/placement:$OCM_VERSION
+  export ADDON_MANAGER_IMAGE=quay.io/stolostron/addon-manager:$OCM_VERSION
+
+  if [[ ! -d "_repo_ocm" ]]; then
+    git clone --depth 1 --branch $OCM_BRANCH https://github.com/stolostron/ocm.git ./_repo_ocm
   fi
-  cd registration-operator
-  ${SED_COMMAND} "s~clusterName: cluster1$~clusterName: ${MANAGED_CLUSTER}~g" deploy/klusterlet/config/samples/operator_open-cluster-management_klusterlets.cr.yaml
-  # deploy hub and spoke via OLM
-  REGISTRATION_LATEST_SNAPSHOT='2.4.9-SNAPSHOT-2022-11-17-20-19-31'
-  make cluster-ip IMAGE_REGISTRY=quay.io/stolostron IMAGE_TAG=${REGISTRATION_LATEST_SNAPSHOT} WORK_TAG=${REGISTRATION_LATEST_SNAPSHOT} REGISTRATION_TAG=${REGISTRATION_LATEST_SNAPSHOT} PLACEMENT_TAG=${REGISTRATION_LATEST_SNAPSHOT}
-  make deploy IMAGE_REGISTRY=quay.io/stolostron IMAGE_TAG=${REGISTRATION_LATEST_SNAPSHOT} WORK_TAG=${REGISTRATION_LATEST_SNAPSHOT} REGISTRATION_TAG=${REGISTRATION_LATEST_SNAPSHOT} PLACEMENT_TAG=${REGISTRATION_LATEST_SNAPSHOT}
+  ${SED_COMMAND} "s~clusterName: cluster1$~clusterName: ${MANAGED_CLUSTER}~g" ./_repo_ocm/deploy/klusterlet/config/samples/operator_open-cluster-management_klusterlets.cr.yaml
+
+  make deploy-hub cluster-ip deploy-spoke-operator apply-spoke-cr -C ./_repo_ocm
 
   # wait until hub and spoke are ready
-  wait_for_deployment_ready 10 60s ${HUB_NS} cluster-manager-registration-controller cluster-manager-registration-webhook cluster-manager-work-webhook
-  wait_for_deployment_ready 10 60s ${AGENT_NS} klusterlet-registration-agent klusterlet-work-agent
+  wait_for_deployment_ready 10 60s "${OCM_DEFAULT_NS}" cluster-manager
+  kubectl -n "${OCM_DEFAULT_NS}" rollout status deploy cluster-manager --timeout=120s
+
+  wait_for_deployment_ready 10 60s "${HUB_NS}" cluster-manager-registration-controller
+  kubectl -n "${HUB_NS}" rollout status deploy cluster-manager-registration-controller --timeout=120s
+  kubectl -n "${HUB_NS}" rollout status deploy cluster-manager-registration-webhook --timeout=120s
+  kubectl -n "${HUB_NS}" rollout status deploy cluster-manager-work-webhook --timeout=120s
 }
 
 # approve the CSR for cluster join request
