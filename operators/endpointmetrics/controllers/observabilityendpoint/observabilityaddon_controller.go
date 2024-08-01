@@ -557,6 +557,11 @@ func (r *ObservabilityAddonReconciler) SetupWithManager(mgr ctrl.Manager) error 
 			builder.WithPredicates(getPred(openshift.CaConfigmapName, namespace, false, true, true)),
 		).
 		Watches(
+			&corev1.ConfigMap{},
+			&handler.EnqueueRequestForObject{},
+			builder.WithPredicates(getPred(clusterMonitoringConfigName, promNamespace, false, true, true)),
+		).
+		Watches(
 			&appsv1.Deployment{},
 			&handler.EnqueueRequestForObject{},
 			builder.WithPredicates(getPred(metricsCollectorName, namespace, true, true, true)),
