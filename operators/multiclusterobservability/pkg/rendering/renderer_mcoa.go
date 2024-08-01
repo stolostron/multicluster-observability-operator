@@ -67,8 +67,12 @@ func (r *MCORenderer) renderMCOADeployment(
 	)
 	found, replacement := mcoconfig.ReplaceImage(
 		r.cr.Annotations,
-		mcoconfig.DefaultImgRepository,
-		mcoconfig.MultiClusterObservabilityAddonImgKey)
+		fmt.Sprintf("%s/%s",
+			mcoconfig.DefaultImgRepository,
+			mcoconfig.MultiClusterObservabilityAddonImgName,
+		),
+		mcoconfig.MultiClusterObservabilityAddonImgKey,
+	)
 	if found {
 		img = replacement
 	}
