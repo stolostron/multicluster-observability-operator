@@ -81,7 +81,11 @@ func (r *MCORenderer) renderMCOADeployment(
 			Name: mcoconfig.GetOperandName(mcoconfig.MultiClusterObservabilityAddon),
 		},
 		Spec: appsv1.DeploymentSpec{
-			Replicas: mcoconfig.GetReplicas(mcoconfig.MultiClusterObservabilityAddon, r.cr.Spec.InstanceSize, r.cr.Spec.AdvancedConfig),
+			Replicas: mcoconfig.GetReplicas(
+				mcoconfig.MultiClusterObservabilityAddon,
+				r.cr.Spec.InstanceSize,
+				r.cr.Spec.AdvancedConfig,
+			),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					crLabelKey: r.cr.Name,
@@ -110,7 +114,12 @@ func (r *MCORenderer) renderMCOADeployment(
 		return nil, err
 	}
 
-	mcoaResources := mcoconfig.GetResources(mcoconfig.MultiClusterObservabilityAddon, r.cr.Spec.InstanceSize, r.cr.Spec.AdvancedConfig)
+	mcoaResources := mcoconfig.GetResources(
+		mcoconfig.MultiClusterObservabilityAddon,
+		r.cr.Spec.InstanceSize,
+		r.cr.Spec.AdvancedConfig,
+	)
+
 	patchContainer := &corev1.Container{
 		Image:           img,
 		ImagePullPolicy: mcoconfig.GetImagePullPolicy(r.cr.Spec),

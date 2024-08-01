@@ -17,6 +17,7 @@ spec:
       labels:
         app: multicluster-observability-addon-manager
     spec:
+      automountServiceAccountToken: false
       serviceAccountName: multicluster-observability-addon-manager
       containers:
         - name: manager

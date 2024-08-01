@@ -22,7 +22,6 @@ type MultiClusterObservabilitySpec struct {
 	//
 	// +optional
 	// +kubebuilder:validation:Optional
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Capabilities"
 	Capabilities *CapabilitiesSpec `json:"capabilities,omitempty"`
 	// Advanced configurations for observability
 	// +optional
@@ -66,7 +65,6 @@ type PlatformLogsCollectionSpec struct {
 	//
 	// +optional
 	// +kubebuilder:validation:Optional
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,xDescriptors="urn:alm:descriptor:com.tectonic.ui:booleanSwitch",displayName="Enable"
 	Enabled bool `json:"enabled,omitempty"`
 }
 
@@ -78,7 +76,6 @@ type PlatformLogsSpec struct {
 	//
 	// +optional
 	// +kubebuilder:validation:Optional
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Collection"
 	Collection PlatformLogsCollectionSpec `json:"collection,omitempty"`
 }
 
@@ -90,7 +87,6 @@ type PlatformCapabilitiesSpec struct {
 	//
 	// +optional
 	// +kubebuilder:validation:Optional
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Logs"
 	Logs PlatformLogsSpec `json:"logs,omitempty"`
 }
 
@@ -101,7 +97,6 @@ type ClusterLogForwarderSpec struct {
 	//
 	// +optional
 	// +kubebuilder:validation:Optional
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,xDescriptors="urn:alm:descriptor:com.tectonic.ui:booleanSwitch",displayName="Enable"
 	Enabled bool `json:"enabled,omitempty"`
 }
 
@@ -112,7 +107,6 @@ type UserWorkloadLogsCollectionSpec struct {
 	//
 	// +optional
 	// +kubebuilder:validation:Optional
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="ClusterLogForwarder"
 	ClusterLogForwarder ClusterLogForwarderSpec `json:"clusterLogForwarder,omitempty"`
 }
 
@@ -124,7 +118,6 @@ type UserWorkloadLogsSpec struct {
 	//
 	// +optional
 	// +kubebuilder:validation:Optional
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Collection"
 	Collection UserWorkloadLogsCollectionSpec `json:"collection,omitempty"`
 }
 
@@ -135,7 +128,6 @@ type OpenTelemetryCollectorSpec struct {
 	//
 	// +optional
 	// +kubebuilder:validation:Optional
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,xDescriptors="urn:alm:descriptor:com.tectonic.ui:booleanSwitch",displayName="Enable"
 	Enabled bool `json:"enabled,omitempty"`
 }
 
@@ -146,7 +138,6 @@ type InstrumentationSpec struct {
 	//
 	// +optional
 	// +kubebuilder:validation:Optional
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,xDescriptors="urn:alm:descriptor:com.tectonic.ui:booleanSwitch",displayName="Enable"
 	Enabled bool `json:"enabled,omitempty"`
 }
 
@@ -158,13 +149,11 @@ type OpenTelemetryCollectionSpec struct {
 	//
 	// +optional
 	// +kubebuilder:validation:Optional
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="OpenTelemetryCollector"
 	Collector OpenTelemetryCollectorSpec `json:"collector,omitempty"`
 	// Instrumentation defines the spec for the user workload observability collection using the Instrumentation resource.
 	//
 	// +optional
 	// +kubebuilder:validation:Optional
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Instrumentation"
 	Instrumentation InstrumentationSpec `json:"instrumentation,omitempty"`
 }
 
@@ -176,7 +165,6 @@ type UserWorkloadTracesSpec struct {
 	//
 	// +optional
 	// +kubebuilder:validation:Optional
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Collection"
 	Collection OpenTelemetryCollectionSpec `json:"collection,omitempty"`
 }
 
@@ -187,14 +175,12 @@ type UserWorkloadCapabilitiesSpec struct {
 	//
 	// +optional
 	// +kubebuilder:validation:Optional
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Logs"
 	Logs UserWorkloadLogsSpec `json:"logs,omitempty"`
 	// Traces defines the spec for the addon to collect, forward and store traces
 	// from user workloads hosted on fleet managed clusters.
 	//
 	// +optional
 	// +kubebuilder:validation:Optional
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Traces"
 	Traces UserWorkloadTracesSpec `json:"traces,omitempty"`
 }
 
@@ -215,7 +201,6 @@ type CapabilitiesSpec struct {
 	//
 	// +optional
 	// +kubebuilder:validation:Optional
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Platform"
 	Platform *PlatformCapabilitiesSpec `json:"platform,omitempty"`
 	// UserWorkloads defines the spec for user workloads observability capabilities managed by the addon.
 	// As user workloads are defined any containers hosted on spoke clusters and execute any task unrelated
@@ -223,7 +208,6 @@ type CapabilitiesSpec struct {
 	//
 	// +optional
 	// +kubebuilder:validation:Optional
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="User Workloads"
 	UserWorkloads *UserWorkloadCapabilitiesSpec `json:"userWorkloads,omitempty"`
 }
 

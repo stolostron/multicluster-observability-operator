@@ -366,7 +366,10 @@ func (d *Deployer) updateServiceMonitor(ctx context.Context, desiredObj, runtime
 	return nil
 }
 
-func (d *Deployer) updateAddOnDeploymentConfig(ctx context.Context, desiredObj, runtimeObj *unstructured.Unstructured) error {
+func (d *Deployer) updateAddOnDeploymentConfig(
+	ctx context.Context,
+	desiredObj, runtimeObj *unstructured.Unstructured,
+) error {
 	desiredAODC, runtimeAODC, err := unstructuredPairToTyped[addonv1alpha1.AddOnDeploymentConfig](desiredObj, runtimeObj)
 	if err != nil {
 		return err
@@ -383,7 +386,10 @@ func (d *Deployer) updateAddOnDeploymentConfig(ctx context.Context, desiredObj, 
 	return nil
 }
 
-func (d *Deployer) updateClusterManagementAddOn(ctx context.Context, desiredObj, runtimeObj *unstructured.Unstructured) error {
+func (d *Deployer) updateClusterManagementAddOn(
+	ctx context.Context,
+	desiredObj, runtimeObj *unstructured.Unstructured,
+) error {
 	desiredCMAO, runtimeCMAO, err := unstructuredPairToTyped[addonv1alpha1.ClusterManagementAddOn](desiredObj, runtimeObj)
 	if err != nil {
 		return err

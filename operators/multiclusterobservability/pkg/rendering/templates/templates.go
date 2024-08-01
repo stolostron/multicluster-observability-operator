@@ -13,7 +13,16 @@ import (
 )
 
 // *Templates contains all kustomize resources.
-var genericTemplates, grafanaTemplates, alertManagerTemplates, thanosTemplates, proxyTemplates, endpointObservabilityTemplates, prometheusTemplates, mcoaTemplates []*resource.Resource
+var (
+	genericTemplates               []*resource.Resource
+	grafanaTemplates               []*resource.Resource
+	alertManagerTemplates          []*resource.Resource
+	thanosTemplates                []*resource.Resource
+	proxyTemplates                 []*resource.Resource
+	endpointObservabilityTemplates []*resource.Resource
+	prometheusTemplates            []*resource.Resource
+	mcoaTemplates                  []*resource.Resource
+)
 
 // GetOrLoadGenericTemplates reads base manifest.
 func GetOrLoadGenericTemplates(r *templates.TemplateRenderer) ([]*resource.Resource, error) {
