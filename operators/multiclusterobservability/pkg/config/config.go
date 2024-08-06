@@ -156,26 +156,32 @@ const (
 	EndpointControllerImgName = "endpoint-monitoring-operator"
 	EndpointControllerKey     = "endpoint_monitoring_operator"
 
+	MultiClusterObservabilityAddonImgRepo      = "quay.io/rhobs"
+	MultiClusterObservabilityAddonImgName      = "multicluster-observability-addon"
+	MultiClusterObservabilityAddonImgTagSuffix = "v0.0.1"
+	MultiClusterObservabilityAddonImgKey       = "multicluster_observability_addon"
+
 	RBACQueryProxyImgName = "rbac-query-proxy"
 	RBACQueryProxyKey     = "rbac_query_proxy"
 
-	ObservatoriumAPI             = "observatorium-api"
-	ThanosCompact                = "thanos-compact"
-	ThanosQuery                  = "thanos-query"
-	ThanosQueryFrontend          = "thanos-query-frontend"
-	ThanosQueryFrontendMemcached = "thanos-query-frontend-memcached"
-	ThanosRule                   = "thanos-rule"
-	ThanosReceive                = "thanos-receive-default"
-	ThanosStoreMemcached         = "thanos-store-memcached"
-	ThanosStoreShard             = "thanos-store-shard"
-	MemcachedExporter            = "memcached-exporter"
-	Grafana                      = "grafana"
-	RBACQueryProxy               = "rbac-query-proxy"
-	Alertmanager                 = "alertmanager"
-	ThanosReceiveController      = "thanos-receive-controller"
-	ObservatoriumOperator        = "observatorium-operator"
-	MetricsCollector             = "metrics-collector"
-	Observatorium                = "observatorium"
+	ObservatoriumAPI               = "observatorium-api"
+	ThanosCompact                  = "thanos-compact"
+	ThanosQuery                    = "thanos-query"
+	ThanosQueryFrontend            = "thanos-query-frontend"
+	ThanosQueryFrontendMemcached   = "thanos-query-frontend-memcached"
+	ThanosRule                     = "thanos-rule"
+	ThanosReceive                  = "thanos-receive-default"
+	ThanosStoreMemcached           = "thanos-store-memcached"
+	ThanosStoreShard               = "thanos-store-shard"
+	MemcachedExporter              = "memcached-exporter"
+	Grafana                        = "grafana"
+	RBACQueryProxy                 = "rbac-query-proxy"
+	Alertmanager                   = "alertmanager"
+	ThanosReceiveController        = "thanos-receive-controller"
+	ObservatoriumOperator          = "observatorium-operator"
+	MetricsCollector               = "metrics-collector"
+	Observatorium                  = "observatorium"
+	MultiClusterObservabilityAddon = "multicluster-observability-addon"
 
 	RetentionResolutionRaw = "365d"
 	RetentionResolution5m  = "365d"
@@ -689,6 +695,7 @@ func SetOperandNames(c client.Client) error {
 	operandNames[ObservatoriumOperator] = GetOperandNamePrefix() + ObservatoriumOperator
 	operandNames[Observatorium] = GetDefaultCRName()
 	operandNames[ObservatoriumAPI] = GetOperandNamePrefix() + ObservatoriumAPI
+	operandNames[MultiClusterObservabilityAddon] = GetOperandNamePrefix() + MultiClusterObservabilityAddon
 
 	// Check if the Observatorium CR already exists
 	opts := &client.ListOptions{
@@ -712,6 +719,7 @@ func SetOperandNames(c client.Client) error {
 						operandNames[ObservatoriumOperator] = ObservatoriumOperator
 						operandNames[Observatorium] = observatorium.Name
 						operandNames[ObservatoriumAPI] = observatorium.Name + "-" + ObservatoriumAPI
+						operandNames[MultiClusterObservabilityAddon] = MultiClusterObservabilityAddon
 					}
 					break
 				}
@@ -794,7 +802,8 @@ func GetMulticloudConsoleHost(client client.Client, isStandalone bool) (string, 
 	found := &routev1.Route{}
 
 	err := client.Get(context.TODO(), types.NamespacedName{
-		Name: MulticloudConsoleRouteName, Namespace: namespace}, found)
+		Name: MulticloudConsoleRouteName, Namespace: namespace,
+	}, found)
 	if err != nil {
 		return "", err
 	}

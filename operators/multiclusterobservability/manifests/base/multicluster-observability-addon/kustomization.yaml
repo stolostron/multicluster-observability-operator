@@ -1,0 +1,7 @@
+resources:
+- addon_deployment_config.yaml
+- cluster_management_addon.yaml
+- cluster_role_binding.yaml
+- cluster_role.yaml
+- deployment.yaml
+- service_account.yaml
