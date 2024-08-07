@@ -219,6 +219,20 @@ const (
 	HubEndpointSaName          = "endpoint-observability-operator-sa"
 )
 
+const (
+	ClusterLogForwarderCRDName    = "clusterlogforwarders.logging.openshift.io"
+	OpenTelemetryCollectorCRDName = "opentelemetrycollectors.opentelemetry.io"
+	InstrumentationCRDName        = "instrumentations.opentelemetry.io"
+)
+
+var (
+	mcoaSupportedCRDs = map[string]string{
+		ClusterLogForwarderCRDName:    "v1",
+		OpenTelemetryCollectorCRDName: "v1beta1",
+		InstrumentationCRDName:        "v1alpha1",
+	}
+)
+
 // ObjectStorgeConf is used to Unmarshal from bytes to do validation.
 type ObjectStorgeConf struct {
 	Type   string `yaml:"type"`
@@ -827,4 +841,32 @@ func IsAlertingDisabledInSpec(mco *observabilityv1beta2.MultiClusterObservabilit
 
 	annotations := mco.GetAnnotations()
 	return annotations != nil && annotations[AnnotationDisableMCOAlerting] == "true"
+}
+
+func GetMCOASupportedCRDNames() []string {
+	var names []string
+	for name := range mcoaSupportedCRDs {
+		names = append(names, name)
+	}
+	return names
+}
+
+func GetMCOASupportedCRDVersion(name string) string {
+	version, ok := mcoaSupportedCRDs[name]
+	if !ok {
+		return ""
+	}
+
+	return version
+}
+
+func GetMCOASupportedCRDFQDN(name string) string {
+	version, ok := mcoaSupportedCRDs[name]
+	if !ok {
+		return ""
+	}
+
+	parts := strings.SplitN(name, ".", 2)
+
+	return fmt.Sprintf("%s.%s.%s", parts[0], version, parts[1])
 }

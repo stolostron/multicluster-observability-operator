@@ -26,11 +26,6 @@ const (
 	nameUserWorkloadLogsCollection   = "userWorkloadLogsCollection"
 	nameUserWorkloadTracesCollection = "userWorkloadTracesCollection"
 	nameUserWorkloadInstrumentation  = "userWorkloadInstrumentation"
-
-	// AODC CustomizedVariable Values
-	clfV1         = "clusterlogforwarders.v1.logging.openshift.io"
-	otelV1beta1   = "opentelemetrycollectors.v1beta1.opentelemetry.io"
-	instrV1alpha1 = "instrumentations.v1alpha1.opentelemetry.io"
 )
 
 func (r *MCORenderer) newMCOARenderer() {
@@ -190,19 +185,23 @@ func (r *MCORenderer) renderAddonDeploymentConfig(
 
 		if cs.Platform != nil {
 			if cs.Platform.Logs.Collection.Enabled {
-				appendCustomVar(aodc, namePlatformLogsCollection, clfV1)
+				fqdn := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.ClusterLogForwarderCRDName)
+				appendCustomVar(aodc, namePlatformLogsCollection, fqdn)
 			}
 		}
 
 		if cs.UserWorkloads != nil {
 			if cs.UserWorkloads.Logs.Collection.ClusterLogForwarder.Enabled {
-				appendCustomVar(aodc, nameUserWorkloadLogsCollection, clfV1)
+				fqdn := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.ClusterLogForwarderCRDName)
+				appendCustomVar(aodc, nameUserWorkloadLogsCollection, fqdn)
 			}
 			if cs.UserWorkloads.Traces.Collection.Collector.Enabled {
-				appendCustomVar(aodc, nameUserWorkloadTracesCollection, otelV1beta1)
+				fqdn := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.OpenTelemetryCollectorCRDName)
+				appendCustomVar(aodc, nameUserWorkloadTracesCollection, fqdn)
 			}
 			if cs.UserWorkloads.Traces.Collection.Instrumentation.Enabled {
-				appendCustomVar(aodc, nameUserWorkloadInstrumentation, instrV1alpha1)
+				fqdn := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.InstrumentationCRDName)
+				appendCustomVar(aodc, nameUserWorkloadInstrumentation, fqdn)
 			}
 		}
 
