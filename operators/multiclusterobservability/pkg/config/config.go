@@ -217,6 +217,8 @@ const (
 	HubEndpointSaName          = "endpoint-observability-operator-sa"
 )
 
+const schemeHttps = "https"
+
 const (
 	OauthProxyImageStreamName      = "oauth-proxy"
 	OauthProxyImageStreamNamespace = "openshift"
@@ -404,7 +406,7 @@ func GetObsAPIExternalURL(ctx context.Context, client client.Client, namespace s
 	if err != nil {
 		return nil, err
 	}
-	return url.Parse("https://" + routeHost)
+	return url.Parse(fmt.Sprintf("%s://%s", schemeHttps, routeHost))
 }
 
 func GetRouteHost(client client.Client, name string, namespace string) (string, error) {
@@ -468,11 +470,11 @@ func GetAlertmanagerURL(ctx context.Context, client client.Client, namespace str
 		if err != nil {
 			return nil, err
 		}
-		return url.Parse("https://" + AlertmanagerRouteName + "-" + namespace + "." + domain)
+		return url.Parse(fmt.Sprintf("%s://%s-%s.%s", schemeHttps, AlertmanagerRouteName, namespace, domain))
 	} else if err != nil {
 		return nil, err
 	}
-	return url.Parse("https://" + found.Spec.Host)
+	return url.Parse(fmt.Sprintf("%s://%s", schemeHttps, found.Spec.Host))
 }
 
 // getDomainForIngressController get the domain for the given ingresscontroller instance.
