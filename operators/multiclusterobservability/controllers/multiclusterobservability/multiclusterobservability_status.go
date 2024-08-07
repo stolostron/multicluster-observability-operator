@@ -25,7 +25,8 @@ import (
 )
 
 const (
-	typeMCOADegraded = "MultiClusterObservabilityAddonDegraded"
+	typeDegraded       = "Degraded"
+	reasonMCOADegraded = "MultiClusterObservabilityAddonDegraded"
 )
 
 var (
@@ -297,7 +298,7 @@ outer:
 	}
 
 	if len(missing) == 0 {
-		removeStatusCondition(conds, typeMCOADegraded)
+		removeStatusCondition(conds, reasonMCOADegraded)
 		return
 	}
 
@@ -461,9 +462,9 @@ func newMCOADegradedCondition(missing []string) *mcoshared.Condition {
 	msg := fmt.Sprintf(tmpl, strings.Join(missingVersions, ", "))
 
 	return &mcoshared.Condition{
-		Type:    typeMCOADegraded,
+		Type:    typeDegraded,
 		Status:  "True",
-		Reason:  typeMCOADegraded,
+		Reason:  reasonMCOADegraded,
 		Message: msg,
 	}
 }
