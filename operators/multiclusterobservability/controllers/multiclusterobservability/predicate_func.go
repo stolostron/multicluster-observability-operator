@@ -16,7 +16,7 @@ import (
 func GetMCOPredicateFunc() predicate.Funcs {
 	return predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
-			//set request name to be used in placementrule controller
+			// set request name to be used in placementrule controller
 			config.SetMonitoringCRName(e.Object.GetName())
 			return true
 		},
@@ -58,8 +58,8 @@ func GetConfigMapPredicateFunc() predicate.Funcs {
 			if e.ObjectNew.GetNamespace() == config.GetDefaultNamespace() {
 				if e.ObjectNew.GetName() == config.AlertRuleCustomConfigMapName {
 					// Grafana dynamically loads AlertRule configmap, nothing more to do
-					//config.SetCustomRuleConfigMap(true)
-					//return e.ObjectOld.GetResourceVersion() != e.ObjectNew.GetResourceVersion()
+					// config.SetCustomRuleConfigMap(true)
+					// return e.ObjectOld.GetResourceVersion() != e.ObjectNew.GetResourceVersion()
 					return false
 				} else if _, ok := e.ObjectNew.GetLabels()[config.BackupLabelName]; ok {
 					// resource already has backup label
@@ -187,5 +187,14 @@ func GetNamespacePredicateFunc() predicate.Funcs {
 		DeleteFunc: func(e event.DeleteEvent) bool {
 			return false
 		},
+	}
+}
+
+func GetMCOACRDPredicateFunc() predicate.Funcs {
+	return predicate.Funcs{
+		CreateFunc:  func(_ event.CreateEvent) bool { return true },
+		UpdateFunc:  func(_ event.UpdateEvent) bool { return false },
+		DeleteFunc:  func(_ event.DeleteEvent) bool { return true },
+		GenericFunc: func(_ event.GenericEvent) bool { return false },
 	}
 }

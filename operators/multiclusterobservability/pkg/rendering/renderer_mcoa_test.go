@@ -166,6 +166,10 @@ func TestRenderAddonDeploymentConfig(t *testing.T) {
 	err = runtime.DefaultUnstructuredConverter.FromUnstructured(uobj.Object, got)
 	assert.NoError(t, err)
 
+	clfV1 := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.ClusterLogForwarderCRDName)
+	otelV1beta1 := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.OpenTelemetryCollectorCRDName)
+	instrV1alpha1 := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.InstrumentationCRDName)
+
 	assert.Len(t, got.Spec.CustomizedVariables, 5)
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1alpha1.CustomizedVariable{Name: namePlatformLogsCollection, Value: clfV1})
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1alpha1.CustomizedVariable{Name: nameUserWorkloadLogsCollection, Value: clfV1})
