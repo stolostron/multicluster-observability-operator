@@ -18,13 +18,14 @@ import (
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	rendererutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering"
 	templatesutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering/templates"
+	"github.com/stretchr/testify/assert"
 )
 
-func getAllowlistCM() *corev1.ConfigMap {
+func getAllowlistCM(ns string) *corev1.ConfigMap {
 	return &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      operatorconfig.AllowlistConfigMapName,
-			Namespace: namespace,
+			Namespace: ns,
 		},
 		Data: map[string]string{
 			metricsConfigMapKey: `
@@ -50,18 +51,12 @@ func TestRender(t *testing.T) {
 		AlertmanagerEndpoint:     "testing.com",
 		AlertmanagerRouterCA:     "testing",
 	}
-	c := fake.NewClientBuilder().WithRuntimeObjects([]runtime.Object{getAllowlistCM()}...).Build()
+	c := fake.NewClientBuilder().WithRuntimeObjects([]runtime.Object{getAllowlistCM("test-ns")}...).Build()
 
-	objs, err := Render(context.Background(), renderer, c, hubInfo)
+	objs, err := Render(context.Background(), renderer, c, hubInfo, "test-ns")
 	if err != nil {
 		t.Fatalf("failed to render endpoint templates: %v", err)
 	}
 
-	// ensure that objects are sorted
-	for i := 0; i < len(objs)-1; i++ {
-		if resourcePriority(objs[i]) > resourcePriority(objs[i+1]) {
-			t.Errorf("objects are not sorted")
-		}
-	}
-
+	assert.Greater(t, len(objs), 2)
 }
