@@ -125,19 +125,6 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	// In the case when hubSelfManagement is enabled, we will delete it from the list and modify the object
 	// to cater to the use case of deploying in open-cluster-management-observability namespace
 	if req.Name == "local-cluster" {
-		//if _, ok := managedClusterList["local-cluster"]; !ok {
-		//	obj := &clusterv1.ManagedCluster{
-		//		ObjectMeta: metav1.ObjectMeta{
-		//			Name:      "local-cluster",
-		//			Namespace: config.GetDefaultNamespace(),
-		//			Labels: map[string]string{
-		//				"openshiftVersion": "mimical",
-		//			},
-		//		},
-		//	}
-		//
-		//	updateManagedClusterList(obj)
-		//}
 		reqLogger.Info("Coleen request for local cluster managed cluster")
 		installMetricsWithoutAddon = true
 	}
@@ -181,24 +168,12 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	}
 
 	if !deleteAll && installMetricsWithoutAddon {
-		//obsAddonList.Items = append(obsAddonList.Items, mcov1beta1.ObservabilityAddon{
-		//	ObjectMeta: metav1.ObjectMeta{
-		//		Name:      obsAddonName,
-		//		Namespace: config.GetDefaultNamespace(),
-		//		Labels: map[string]string{
-		//			ownerLabelKey: ownerLabelValue,
-		//		},
-		//	},
-		//})
 		err = deleteObsAddon(r.Client, localClusterName)
 		if err != nil {
 			log.Error(err, "Failed to delete observabilityaddon")
 			return ctrl.Result{}, err
 		}
 	}
-	//if operatorconfig.IsMCOTerminating {
-	//	delete(managedClusterList, "local-cluster")
-	//}
 
 	if !deleteAll {
 		if err := createAllRelatedRes(
