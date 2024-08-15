@@ -6,7 +6,6 @@ package observabilityendpoint
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/url"
 	"reflect"
@@ -30,7 +29,6 @@ const (
 	clusterMonitoringConfigName    = "cluster-monitoring-config"
 	clusterMonitoringRevertedName  = "cluster-monitoring-reverted"
 	clusterMonitoringConfigDataKey = "config.yaml"
-	clusterLabelKeyForAlerts       = "cluster"
 	endpointMonitoringOperatorMgr  = "endpoint-monitoring-operator"
 )
 
@@ -45,8 +43,7 @@ func initPersistedRevertState(ctx context.Context, client client.Client, ns stri
 	if !persistedRevertStateRead {
 		// check if reverted configmap is present
 		found := &corev1.ConfigMap{}
-		err := client.Get(ctx, types.NamespacedName{Name: clusterMonitoringRevertedName,
-			Namespace: ns}, found)
+		err := client.Get(ctx, types.NamespacedName{Name: clusterMonitoringRevertedName, Namespace: ns}, found)
 		if err != nil {
 			// treat this as non-fatal error
 			if errors.IsNotFound(err) {
@@ -115,8 +112,7 @@ func unsetConfigReverted(ctx context.Context, client client.Client, ns string) e
 
 	// delete any persistent state if present
 	c := &corev1.ConfigMap{}
-	err = client.Get(ctx, types.NamespacedName{Name: clusterMonitoringRevertedName,
-		Namespace: ns}, c)
+	err = client.Get(ctx, types.NamespacedName{Name: clusterMonitoringRevertedName, Namespace: ns}, c)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			log.Info("persistent state already set. cluster-monitoring-reverted configmap does not exist")
@@ -156,8 +152,7 @@ func createHubAmRouterCASecret(
 	}
 
 	found := &corev1.Secret{}
-	err := client.Get(ctx, types.NamespacedName{Name: hubAmRouterCASecretName,
-		Namespace: targetNamespace}, found)
+	err := client.Get(ctx, types.NamespacedName{Name: hubAmRouterCASecretName, Namespace: targetNamespace}, found)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			log.Info(fmt.Sprintf("creating %s/%s secret", targetNamespace, hubAmRouterCASecretName))
@@ -202,8 +197,7 @@ func createHubAmAccessorTokenSecret(ctx context.Context, client client.Client, n
 	}
 
 	found := &corev1.Secret{}
-	err = client.Get(ctx, types.NamespacedName{Name: hubAmAccessorSecretName,
-		Namespace: targetNamespace}, found)
+	err = client.Get(ctx, types.NamespacedName{Name: hubAmAccessorSecretName, Namespace: targetNamespace}, found)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			err = client.Create(ctx, hubAmAccessorTokenSecret)
@@ -352,15 +346,9 @@ func createOrUpdateClusterMonitoringConfig(
 		PrometheusK8sConfig: newPmK8sConfig,
 	}
 
-	// marshal new CMO configuration to json then to yaml
-	newClusterMonitoringConfigurationJSONBytes, err := json.Marshal(newClusterMonitoringConfiguration)
+	newClusterMonitoringConfigurationYAMLBytes, err := yaml.Marshal(newClusterMonitoringConfiguration)
 	if err != nil {
-		log.Error(err, "failed to marshal the cluster monitoring config")
-		return err
-	}
-	newClusterMonitoringConfigurationYAMLBytes, err := yaml.JSONToYAML(newClusterMonitoringConfigurationJSONBytes)
-	if err != nil {
-		log.Error(err, "failed to transform JSON to YAML", "JSON", newClusterMonitoringConfigurationJSONBytes)
+		log.Error(err, "failed to marshal cluster monitoring config to YAML", "name", clusterMonitoringConfigName)
 		return err
 	}
 
@@ -374,81 +362,44 @@ func createOrUpdateClusterMonitoringConfig(
 
 	// try to retrieve the current configmap in the cluster
 	found := &corev1.ConfigMap{}
-	err = client.Get(ctx, types.NamespacedName{Name: clusterMonitoringConfigName,
-		Namespace: promNamespace}, found)
+	err = client.Get(ctx, types.NamespacedName{Name: clusterMonitoringConfigName, Namespace: promNamespace}, found)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			log.Info("configmap not found, try to create it", "name", clusterMonitoringConfigName)
-			err = client.Create(ctx, newCusterMonitoringConfigMap)
-			if err != nil {
-				log.Error(err, "failed to create configmap", "name", clusterMonitoringConfigName)
-				return err
-			}
-			log.Info("configmap created", "name", clusterMonitoringConfigName)
-			return unset(ctx, client, namespace)
-		} else {
-			log.Error(err, "failed to check configmap", "name", clusterMonitoringConfigName)
-			return err
+			log.Info("cluster monitoring configmap not found, trying to create it", "name", clusterMonitoringConfigName)
+			return createCMOConfigMapAndUnset(ctx, client, newCusterMonitoringConfigMap, namespace)
 		}
+		log.Error(err, "failed to check cluster monitoring configmap", "name", clusterMonitoringConfigName)
+		return err
 	}
 
-	log.Info("configmap already exists, check if it needs update", "name", clusterMonitoringConfigName)
-	foundClusterMonitoringConfigurationYAMLString, ok := found.Data[clusterMonitoringConfigDataKey]
+	log.Info("cluster monitoring configmap exists", "name", clusterMonitoringConfigName)
+	foundClusterMonitoringConfigurationYAMLString, ok := hasClusterMonitoringConfigData(found)
 	if !ok {
-		log.Info(
-			"configmap data doesn't contain key, try to update it",
-			"name",
-			clusterMonitoringConfigName,
-			"key",
-			clusterMonitoringConfigDataKey,
-		)
 		// replace config.yaml in configmap
 		found.Data[clusterMonitoringConfigDataKey] = string(newClusterMonitoringConfigurationYAMLBytes)
-		err = client.Update(ctx, found)
-		if err != nil {
-			log.Error(err, "failed to update configmap", "name", clusterMonitoringConfigName)
-			return err
-		}
-		log.Info("configmap updated", "name", clusterMonitoringConfigName)
-		return unset(ctx, client, namespace)
+		return updateClusterMonitoringConfigAndUnset(ctx, client, found, namespace)
 	}
 
-	log.Info("configmap already exists and key config.yaml exists, check if the value needs update",
-		"name", clusterMonitoringConfigName,
-		"key", clusterMonitoringConfigDataKey)
-	foundClusterMonitoringConfigurationJSONBytes, err := yaml.YAMLToJSON(
-		[]byte(foundClusterMonitoringConfigurationYAMLString),
-	)
-	if err != nil {
-		log.Error(err, "failed to transform YAML to JSON", "YAML", foundClusterMonitoringConfigurationYAMLString)
-		return err
-	}
 	foundClusterMonitoringConfiguration := &cmomanifests.ClusterMonitoringConfiguration{}
-	if err := json.Unmarshal([]byte(foundClusterMonitoringConfigurationJSONBytes), foundClusterMonitoringConfiguration); err != nil {
-		log.Error(err, "failed to marshal the cluster monitoring config")
+	if err := yaml.Unmarshal([]byte(foundClusterMonitoringConfigurationYAMLString), foundClusterMonitoringConfiguration); err != nil {
+		log.Error(err, "failed to unmarshal the cluster monitoring config")
 		return err
 	}
 
-	if foundClusterMonitoringConfiguration.PrometheusK8sConfig == nil {
-		foundClusterMonitoringConfiguration.PrometheusK8sConfig = newPmK8sConfig
-	} else {
+	if foundClusterMonitoringConfiguration.PrometheusK8sConfig != nil {
+
 		// check if externalLabels exists
-		if foundClusterMonitoringConfiguration.PrometheusK8sConfig.ExternalLabels == nil {
-			foundClusterMonitoringConfiguration.PrometheusK8sConfig.ExternalLabels = newExternalLabels
-		} else {
+		if foundClusterMonitoringConfiguration.PrometheusK8sConfig.ExternalLabels != nil {
 			foundClusterMonitoringConfiguration.PrometheusK8sConfig.ExternalLabels[operatorconfig.ClusterLabelKeyForAlerts] = clusterID
+		} else {
+			foundClusterMonitoringConfiguration.PrometheusK8sConfig.ExternalLabels = newExternalLabels
 		}
 
 		// check if alertmanagerConfigs exists
-		if foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs == nil {
-			foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs = newAlertmanagerConfigs
-		} else {
+		if foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs != nil {
 			additionalAlertmanagerConfigExists := false
 			for _, v := range foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs {
-				if v.TLSConfig != (cmomanifests.TLSConfig{}) &&
-					v.TLSConfig.CA != nil &&
-					v.TLSConfig.CA.LocalObjectReference != (corev1.LocalObjectReference{}) &&
-					v.TLSConfig.CA.LocalObjectReference.Name == hubAmRouterCASecretName {
+				if isManaged(v) {
 					additionalAlertmanagerConfigExists = true
 					break
 				}
@@ -458,29 +409,135 @@ func createOrUpdateClusterMonitoringConfig(
 					foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs,
 					newAdditionalAlertmanagerConfig(hubInfo))
 			}
+		} else {
+			foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs = newAlertmanagerConfigs
 		}
+
+	} else {
+		foundClusterMonitoringConfiguration.PrometheusK8sConfig = newPmK8sConfig
 	}
 
-	// prepare to write back the cluster monitoring configuration
-	updatedClusterMonitoringConfigurationJSONBytes, err := json.Marshal(foundClusterMonitoringConfiguration)
+	updatedClusterMonitoringConfigurationYAMLBytes, err := yaml.Marshal(foundClusterMonitoringConfiguration)
+	if err != nil {
+		log.Error(err, "failed to marshal the cluster monitoring config to yaml")
+	}
+
+	found.Data[clusterMonitoringConfigDataKey] = string(updatedClusterMonitoringConfigurationYAMLBytes)
+	return updateClusterMonitoringConfigAndUnset(ctx, client, found, namespace)
+}
+
+// RevertClusterMonitoringConfig reverts the configmap cluster-monitoring-config and relevant resources
+// (observability-alertmanager-accessor and hub-alertmanager-router-ca) for the openshift cluster monitoring stack.
+func RevertClusterMonitoringConfig(ctx context.Context, client client.Client) error {
+	log.Info("RevertClusterMonitoringConfig called")
+
+	found := &corev1.ConfigMap{}
+	err := client.Get(ctx, types.NamespacedName{Name: clusterMonitoringConfigName, Namespace: promNamespace}, found)
+	if err != nil && !errors.IsNotFound(err) {
+		log.Error(err, "failed to check configmap", "name", clusterMonitoringConfigName)
+		return err
+	}
+
+	log.Info("configmap exists, check if it needs revert", "name", clusterMonitoringConfigName)
+	found = found.DeepCopy()
+	if !inManagedFields(found) {
+		return nil
+	}
+
+	foundClusterMonitoringConfigurationYAML, ok := hasClusterMonitoringConfigData(found)
+	if !ok {
+		return nil
+	}
+
+	foundClusterMonitoringConfiguration := &cmomanifests.ClusterMonitoringConfiguration{}
+	err = yaml.Unmarshal([]byte(foundClusterMonitoringConfigurationYAML), foundClusterMonitoringConfiguration)
 	if err != nil {
 		log.Error(err, "failed to marshal the cluster monitoring config")
 		return err
 	}
-	updatedclusterMonitoringConfigurationYAMLBytes, err := yaml.JSONToYAML(
-		updatedClusterMonitoringConfigurationJSONBytes,
-	)
+
+	if foundClusterMonitoringConfiguration.PrometheusK8sConfig == nil {
+		log.Info("configmap data doesn't contain 'prometheusK8s', no need action", "name", clusterMonitoringConfigName)
+		return nil
+	}
+	// check if externalLabels exists
+	if foundClusterMonitoringConfiguration.PrometheusK8sConfig.ExternalLabels != nil {
+		delete(foundClusterMonitoringConfiguration.PrometheusK8sConfig.ExternalLabels, operatorconfig.ClusterLabelKeyForAlerts)
+
+		if len(foundClusterMonitoringConfiguration.PrometheusK8sConfig.ExternalLabels) == 0 {
+			foundClusterMonitoringConfiguration.PrometheusK8sConfig.ExternalLabels = nil
+		}
+	}
+
+	// check if alertmanagerConfigs exists
+	if foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs != nil {
+		copiedAlertmanagerConfigs := make([]cmomanifests.AdditionalAlertmanagerConfig, 0)
+		for _, v := range foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs {
+			if !isManaged(v) {
+				copiedAlertmanagerConfigs = append(copiedAlertmanagerConfigs, v)
+			}
+		}
+
+		foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs = copiedAlertmanagerConfigs
+		if len(copiedAlertmanagerConfigs) == 0 {
+			foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs = nil
+			if reflect.DeepEqual(*foundClusterMonitoringConfiguration.PrometheusK8sConfig, cmomanifests.PrometheusK8sConfig{}) {
+				foundClusterMonitoringConfiguration.PrometheusK8sConfig = nil
+			}
+		}
+	}
+
+	// check if the foundClusterMonitoringConfiguration is empty ClusterMonitoringConfiguration
+	if reflect.DeepEqual(*foundClusterMonitoringConfiguration, cmomanifests.ClusterMonitoringConfiguration{}) {
+		log.Info("empty ClusterMonitoringConfiguration, deleting configmap if it still exists", "name", clusterMonitoringConfigName)
+		err = client.Delete(ctx, found)
+		if err != nil && !errors.IsNotFound(err) {
+			log.Error(err, "failed to delete configmap", "name", clusterMonitoringConfigName)
+			return err
+		}
+		log.Info("configmap deleted", "name", clusterMonitoringConfigName)
+		return nil
+	}
+
+	updatedClusterMonitoringConfigurationYAMLBytes, err := yaml.Marshal(foundClusterMonitoringConfiguration)
 	if err != nil {
-		log.Error(err, "failed to transform JSON to YAML", "JSON", updatedClusterMonitoringConfigurationJSONBytes)
+		log.Error(err, "failed to marshal the cluster monitoring config")
 		return err
 	}
-	found.Data[clusterMonitoringConfigDataKey] = string(updatedclusterMonitoringConfigurationYAMLBytes)
-	err = client.Update(ctx, found)
+
+	found.Data[clusterMonitoringConfigDataKey] = string(updatedClusterMonitoringConfigurationYAMLBytes)
+	return updateClusterMonitoringConfig(ctx, client, found)
+}
+
+// createCMOConfigMapAndUnset creates the configmap cluster-monitoring-config in the openshift-monitoring namespace.
+// the namespace parameter is used to call unset function.
+func createCMOConfigMapAndUnset(ctx context.Context, client client.Client, obj client.Object, namespace string) error {
+	err := client.Create(ctx, obj)
+	if err != nil {
+		log.Error(err, "failed to create configmap", "name", clusterMonitoringConfigName)
+		return err
+	}
+	log.Info("configmap created", "name", clusterMonitoringConfigName)
+	return unset(ctx, client, namespace)
+}
+
+func updateClusterMonitoringConfig(ctx context.Context, client client.Client, obj client.Object) error {
+	err := client.Update(ctx, obj)
 	if err != nil {
 		log.Error(err, "failed to update configmap", "name", clusterMonitoringConfigName)
 		return err
 	}
 	log.Info("configmap updated", "name", clusterMonitoringConfigName)
+	return nil
+}
+
+// updateClusterMonitoringConfigAndUnset updates the configmap cluster-monitoring-config in the openshift-monitoring namespace.
+// the namespace parameter is used to call unset function.
+func updateClusterMonitoringConfigAndUnset(ctx context.Context, client client.Client, obj client.Object, namespace string) error {
+	err := updateClusterMonitoringConfig(ctx, client, obj)
+	if err != nil {
+		return err
+	}
 	return unset(ctx, client, namespace)
 }
 
@@ -494,149 +551,40 @@ func unset(ctx context.Context, client client.Client, ns string) error {
 	return err
 }
 
-// RevertClusterMonitoringConfig reverts the configmap cluster-monitoring-config and relevant resources
-// (observability-alertmanager-accessor and hub-alertmanager-router-ca) for the openshift cluster monitoring stack.
-func RevertClusterMonitoringConfig(ctx context.Context, client client.Client) error {
-	log.Info("RevertClusterMonitoringConfig called")
-
-	// try to retrieve the current configmap in the cluster
-	found := &corev1.ConfigMap{}
-	err := client.Get(ctx, types.NamespacedName{Name: clusterMonitoringConfigName,
-		Namespace: promNamespace}, found)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			log.Info("configmap not found, no need action", "name", clusterMonitoringConfigName)
-			return nil
-		} else {
-			log.Error(err, "failed to check configmap", "name", clusterMonitoringConfigName)
-			return err
-		}
-	}
-
-	// do not touch the configmap if are not already a manager
-	touched := false
-	log.Info("checking field.Manager")
-	for _, field := range found.GetManagedFields() {
-		log.Info("filed.Manager", "manager", field.Manager)
+// inManagedFields checks if the configmap has had a CRUD operation by endpoint-monitoring-operator
+func inManagedFields(cm *corev1.ConfigMap) bool {
+	for _, field := range cm.GetManagedFields() {
 		if field.Manager == endpointMonitoringOperatorMgr {
-			touched = true
-			break
+			return true
 		}
 	}
-
-	if !touched {
-		log.Info(
-			"endpoint-monitoring-operator is not a manager of configmap, no action needed",
-			"name",
-			clusterMonitoringConfigName,
-		)
-		return nil
-	}
-
-	// revert the existing cluster-monitor-config configmap
-	log.Info("configmap exists, check if it needs revert", "name", clusterMonitoringConfigName)
-	foundClusterMonitoringConfigurationYAML, ok := found.Data[clusterMonitoringConfigDataKey]
-	if !ok {
-		log.Info(
-			"configmap data doesn't contain key, no action need",
-			"name",
-			clusterMonitoringConfigName,
-			"key",
-			clusterMonitoringConfigDataKey,
-		)
-		return nil
-	}
-	foundClusterMonitoringConfigurationJSON, err := yaml.YAMLToJSON([]byte(foundClusterMonitoringConfigurationYAML))
-	if err != nil {
-		log.Error(err, "failed to transform YAML to JSON", "YAML", foundClusterMonitoringConfigurationYAML)
-		return err
-	}
-
 	log.Info(
-		"configmap exists and key config.yaml exists, check if the value needs revert",
+		"endpoint-monitoring-operator is not a manager of configmap",
 		"name",
 		clusterMonitoringConfigName,
-		"key",
-		clusterMonitoringConfigDataKey,
 	)
-	foundClusterMonitoringConfiguration := &cmomanifests.ClusterMonitoringConfiguration{}
-	if err := json.Unmarshal([]byte(foundClusterMonitoringConfigurationJSON), foundClusterMonitoringConfiguration); err != nil {
-		log.Error(err, "failed to marshal the cluster monitoring config")
-		return err
-	}
+	return false
+}
 
-	if foundClusterMonitoringConfiguration.PrometheusK8sConfig == nil {
+// isManaged checks if the additional alertmanager config is managed by ACM
+func isManaged(amc cmomanifests.AdditionalAlertmanagerConfig) bool {
+	if amc.TLSConfig.CA != nil && amc.TLSConfig.CA.LocalObjectReference.Name == hubAmRouterCASecretName {
+		return true
+	}
+	return false
+}
+
+// hasClusterMonitoringConfigData checks if the configmap has the required key and logs if not
+func hasClusterMonitoringConfigData(cm *corev1.ConfigMap) (string, bool) {
+	data, ok := cm.Data[clusterMonitoringConfigDataKey]
+	if !ok {
 		log.Info(
-			"configmap data doesn't key: prometheusK8s, no need action",
+			"configmap doesn't contain required key",
 			"name",
 			clusterMonitoringConfigName,
 			"key",
 			clusterMonitoringConfigDataKey,
 		)
-		return nil
-	} else {
-		// check if externalLabels exists
-		if foundClusterMonitoringConfiguration.PrometheusK8sConfig.ExternalLabels != nil {
-			delete(foundClusterMonitoringConfiguration.PrometheusK8sConfig.ExternalLabels, operatorconfig.ClusterLabelKeyForAlerts)
-
-			if len(foundClusterMonitoringConfiguration.PrometheusK8sConfig.ExternalLabels) == 0 {
-				foundClusterMonitoringConfiguration.PrometheusK8sConfig.ExternalLabels = nil
-			}
-		}
-
-		// check if alertmanagerConfigs exists
-		if foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs != nil {
-			copiedAlertmanagerConfigs := make([]cmomanifests.AdditionalAlertmanagerConfig, 0)
-			for _, v := range foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs {
-				if v.TLSConfig == (cmomanifests.TLSConfig{}) ||
-					v.TLSConfig.CA == nil ||
-					v.TLSConfig.CA.LocalObjectReference == (corev1.LocalObjectReference{}) ||
-					v.TLSConfig.CA.LocalObjectReference.Name != hubAmRouterCASecretName {
-					copiedAlertmanagerConfigs = append(copiedAlertmanagerConfigs, v)
-				}
-			}
-			if len(copiedAlertmanagerConfigs) == 0 {
-				foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs = nil
-				if reflect.DeepEqual(*foundClusterMonitoringConfiguration.PrometheusK8sConfig, cmomanifests.PrometheusK8sConfig{}) {
-					foundClusterMonitoringConfiguration.PrometheusK8sConfig = nil
-				}
-			} else {
-				foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs = copiedAlertmanagerConfigs
-			}
-		}
 	}
-
-	// check if the foundClusterMonitoringConfiguration is empty ClusterMonitoringConfiguration
-	if reflect.DeepEqual(*foundClusterMonitoringConfiguration, cmomanifests.ClusterMonitoringConfiguration{}) {
-		log.Info("empty ClusterMonitoringConfiguration, should delete configmap", "name", clusterMonitoringConfigName)
-		err = client.Delete(ctx, found)
-		if err != nil {
-			log.Error(err, "failed to delete configmap", "name", clusterMonitoringConfigName)
-			return err
-		}
-		log.Info("configmap delete", "name", clusterMonitoringConfigName)
-		return nil
-	}
-
-	// prepare to write back the cluster monitoring configuration
-	updatedClusterMonitoringConfigurationJSONBytes, err := json.Marshal(foundClusterMonitoringConfiguration)
-	if err != nil {
-		log.Error(err, "failed to marshal the cluster monitoring config")
-		return err
-	}
-	updatedClusterMonitoringConfigurationYAMLBytes, err := yaml.JSONToYAML(
-		updatedClusterMonitoringConfigurationJSONBytes,
-	)
-	if err != nil {
-		log.Error(err, "failed to transform JSON to YAML", "JSON", updatedClusterMonitoringConfigurationJSONBytes)
-		return err
-	}
-	found.Data[clusterMonitoringConfigDataKey] = string(updatedClusterMonitoringConfigurationYAMLBytes)
-	err = client.Update(ctx, found)
-	if err != nil {
-		log.Error(err, "failed to update configmap", "name", clusterMonitoringConfigName)
-		return err
-	}
-	log.Info("configmap updated", "name", clusterMonitoringConfigName)
-	return nil
+	return data, ok
 }
