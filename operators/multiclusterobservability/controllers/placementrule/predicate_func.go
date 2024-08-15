@@ -24,13 +24,6 @@ func getClusterPreds() predicate.Funcs {
 	createFunc := func(e event.CreateEvent) bool {
 		log.Info("CreateFunc", "managedCluster", e.Object.GetName())
 
-		//ACM 8509: Special case for local-cluster, we do not react changes to
-		//local-cluster as it is expected to be always present in the managed cluster list
-		//whether hubSelfManagement is enabled or not
-		//if e.Object.GetName() == "local-cluster" {
-		//	return true
-		//}
-
 		if isAutomaticAddonInstallationDisabled(e.Object) {
 			return false
 		}
@@ -45,10 +38,6 @@ func getClusterPreds() predicate.Funcs {
 
 	updateFunc := func(e event.UpdateEvent) bool {
 		log.Info("UpdateFunc", "managedCluster", e.ObjectNew.GetName())
-
-		//if e.ObjectNew.GetName() == "local-cluster" {
-		//	return true
-		//}
 
 		if e.ObjectNew.GetResourceVersion() == e.ObjectOld.GetResourceVersion() {
 			return false

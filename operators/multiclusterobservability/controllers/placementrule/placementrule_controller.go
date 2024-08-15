@@ -125,7 +125,6 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	// In the case when hubSelfManagement is enabled, we will delete it from the list and modify the object
 	// to cater to the use case of deploying in open-cluster-management-observability namespace
 	if req.Name == "local-cluster" {
-		reqLogger.Info("Coleen request for local cluster managed cluster")
 		installMetricsWithoutAddon = true
 	}
 	if !deleteAll && !mco.Spec.ObservabilityAddonSpec.EnableMetrics {
@@ -590,6 +589,8 @@ func areManagedClusterLabelsReady(obj client.Object) bool {
 func updateManagedClusterList(obj client.Object) {
 	managedClusterListMutex.Lock()
 	defer managedClusterListMutex.Unlock()
+	//ACM 8509: Special case for local-cluster, we deploy endpoint and metrics collector in the hub
+	//whether hubSelfManagement is enabled or not
 	if obj.GetName() == localClusterName {
 		managedClusterList[obj.GetName()] = "mimical"
 		return
