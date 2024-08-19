@@ -42,7 +42,7 @@ LABEL org.label-schema.vendor="Red Hat" \
     io.k8s.description="$IMAGE_DESCRIPTION" \
     io.openshift.tags="$IMAGE_OPENSHIFT_TAGS"
 
-RUN microdnf update &&\
+RUN microdnf update -y &&\
     microdnf install ca-certificates vi -y --nodocs &&\
     mkdir /licenses &&\
     microdnf clean all
