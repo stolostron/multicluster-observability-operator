@@ -6,9 +6,7 @@ package proxy
 
 import (
 	"bytes"
-	"compress/gzip"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -20,39 +18,10 @@ import (
 
 func TestNewEmptyMatrixHTTPBody(t *testing.T) {
 	body := newEmptyMatrixHTTPBody()
-	gr, err := gzip.NewReader(bytes.NewBuffer([]byte(body)))
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer func() {
-		if err := gr.Close(); err != nil {
-			log.Fatal(err)
-		}
-	}()
-	data, err := io.ReadAll(gr)
-	if err != nil {
-		log.Fatal(err)
-	}
 
-	var decompressedBuff bytes.Buffer
-	gr, err = gzip.NewReader(bytes.NewBuffer([]byte(data)))
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer func() {
-		if err := gr.Close(); err != nil {
-			log.Fatal(err)
-		}
-	}()
-	data, err = io.ReadAll(gr)
-	if err != nil {
-		t.Errorf("failed to ReadAll: %v", err)
-	}
-
-	decompressedBuff.Write(data)
 	emptyMatrix := `{"status":"success","data":{"resultType":"matrix","result":[]}}`
-	if decompressedBuff.String() != emptyMatrix {
-		t.Errorf("(%v) is not the expected: (%v)", decompressedBuff.String(), emptyMatrix)
+	if string(body) != emptyMatrix {
+		t.Errorf("(%v) is not the expected: (%v)", body, emptyMatrix)
 	}
 }
 
@@ -125,33 +94,6 @@ func TestPreCheckRequest(t *testing.T) {
 
 }
 
-func TestGzipWrite(t *testing.T) {
-	originalStr := "test"
-	var compressedBuff bytes.Buffer
-	err := gzipWrite(&compressedBuff, []byte(originalStr))
-	if err != nil {
-		t.Errorf("failed to compressed: %v", err)
-	}
-	var decompressedBuff bytes.Buffer
-	gr, err := gzip.NewReader(bytes.NewBuffer(compressedBuff.Bytes()))
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer func() {
-		if err := gr.Close(); err != nil {
-			log.Fatal(err)
-		}
-	}()
-	data, err := io.ReadAll(gr)
-	if err != nil {
-		t.Errorf("failed to decompressed: %v", err)
-	}
-	decompressedBuff.Write(data)
-	if decompressedBuff.String() != originalStr {
-		t.Errorf("(%v) is not the expected: (%v)", originalStr, decompressedBuff.String())
-	}
-}
-
 func TestProxyRequest(t *testing.T) {
 	req := http.Request{}
 	req.URL = &url.URL{}
@@ -196,7 +138,7 @@ func TestProxyRequest(t *testing.T) {
 	}
 }
 
-func TestModifyAPISeriesResponse(t *testing.T) {
+func TestModifyAPISeriesResponseSeriesPOST(t *testing.T) {
 	testCase := struct {
 		name     string
 		expected bool
@@ -207,6 +149,7 @@ func TestModifyAPISeriesResponse(t *testing.T) {
 	req := http.Request{}
 	req.URL = &url.URL{}
 	req.URL.Path = "/api/v1/series"
+	req.Method = "POST"
 	req.Header = http.Header(map[string][]string{})
 
 	stringReader := strings.NewReader(config.GetRBACProxyLabelMetricName())
@@ -222,6 +165,59 @@ func TestModifyAPISeriesResponse(t *testing.T) {
 	stringReader = strings.NewReader("kube_pod_info")
 	stringReadClose = io.NopCloser(stringReader)
 	req.Body = stringReadClose
+
+	if ok := shouldModifyAPISeriesResponse(resp, &req); ok {
+		t.Errorf("case (%v) output: (%v) is not the expected: (%v)", testCase.name, ok, !testCase.expected)
+	}
+}
+
+func TestModifyAPISeriesResponseSeriesGET(t *testing.T) {
+	testCase := struct {
+		name     string
+		expected bool
+	}{
+		"should modify the api series response",
+		true,
+	}
+	req := http.Request{}
+	req.URL, _ = url.Parse("https://dummy.com/api/v1/series?match[]=" + config.GetRBACProxyLabelMetricName())
+	req.Method = "GET"
+	req.Header = http.Header(map[string][]string{})
+
+	resp := NewFakeResponse(t)
+	config.GetManagedClusterLabelList().RegexLabelList = []string{"cloud", "vendor"}
+	if ok := shouldModifyAPISeriesResponse(resp, &req); !ok {
+		t.Errorf("case (%v) output: (%v) is not the expected: (%v)", testCase.name, ok, testCase.expected)
+	}
+
+	req.URL, _ = url.Parse("https://dummy.com/api/v1/series?match[]=kube_pod_info")
+
+	if ok := shouldModifyAPISeriesResponse(resp, &req); ok {
+		t.Errorf("case (%v) output: (%v) is not the expected: (%v)", testCase.name, ok, !testCase.expected)
+	}
+}
+
+func TestModifyAPISeriesResponseLabelsGET(t *testing.T) {
+	testCase := struct {
+		name     string
+		expected bool
+	}{
+		"should modify the api series response",
+		true,
+	}
+	req := http.Request{}
+	req.URL, _ = url.Parse("https://dummy.com/api/v1/label/label_name/values?match[]=" + config.GetRBACProxyLabelMetricName())
+	req.Method = "GET"
+
+	req.Header = http.Header(map[string][]string{})
+
+	resp := NewFakeResponse(t)
+	config.GetManagedClusterLabelList().RegexLabelList = []string{"cloud", "vendor"}
+	if ok := shouldModifyAPISeriesResponse(resp, &req); !ok {
+		t.Errorf("case (%v) output: (%v) is not the expected: (%v)", testCase.name, ok, testCase.expected)
+	}
+
+	req.URL, _ = url.Parse("https://dummy.com/api/v1/label/label_name/values?matchf[]=kube_pod_info")
 
 	if ok := shouldModifyAPISeriesResponse(resp, &req); ok {
 		t.Errorf("case (%v) output: (%v) is not the expected: (%v)", testCase.name, ok, !testCase.expected)

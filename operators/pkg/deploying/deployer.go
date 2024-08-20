@@ -20,6 +20,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
+	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -56,6 +57,8 @@ func NewDeployer(client client.Client) *Deployer {
 		"ServiceAccount":           deployer.updateServiceAccount,
 		"DaemonSet":                deployer.updateDaemonSet,
 		"ServiceMonitor":           deployer.updateServiceMonitor,
+		"AddOnDeploymentConfig":    deployer.updateAddOnDeploymentConfig,
+		"ClusterManagementAddOn":   deployer.updateClusterManagementAddOn,
 	}
 	return deployer
 }
@@ -358,6 +361,46 @@ func (d *Deployer) updateServiceMonitor(ctx context.Context, desiredObj, runtime
 	if !apiequality.Semantic.DeepDerivative(desiredServiceMonitor.Spec, runtimeServiceMonitor.Spec) {
 		logUpdateInfo(runtimeObj)
 		return d.client.Update(ctx, desiredServiceMonitor)
+	}
+
+	return nil
+}
+
+func (d *Deployer) updateAddOnDeploymentConfig(
+	ctx context.Context,
+	desiredObj, runtimeObj *unstructured.Unstructured,
+) error {
+	desiredAODC, runtimeAODC, err := unstructuredPairToTyped[addonv1alpha1.AddOnDeploymentConfig](desiredObj, runtimeObj)
+	if err != nil {
+		return err
+	}
+
+	if !apiequality.Semantic.DeepDerivative(desiredAODC.Spec, runtimeAODC.Spec) {
+		logUpdateInfo(runtimeObj)
+		if desiredAODC.ResourceVersion != runtimeAODC.ResourceVersion {
+			desiredAODC.ResourceVersion = runtimeAODC.ResourceVersion
+		}
+		return d.client.Update(ctx, desiredAODC)
+	}
+
+	return nil
+}
+
+func (d *Deployer) updateClusterManagementAddOn(
+	ctx context.Context,
+	desiredObj, runtimeObj *unstructured.Unstructured,
+) error {
+	desiredCMAO, runtimeCMAO, err := unstructuredPairToTyped[addonv1alpha1.ClusterManagementAddOn](desiredObj, runtimeObj)
+	if err != nil {
+		return err
+	}
+
+	if !apiequality.Semantic.DeepDerivative(desiredCMAO.Spec, runtimeCMAO.Spec) {
+		logUpdateInfo(runtimeObj)
+		if desiredCMAO.ResourceVersion != runtimeCMAO.ResourceVersion {
+			desiredCMAO.ResourceVersion = runtimeCMAO.ResourceVersion
+		}
+		return d.client.Update(ctx, desiredCMAO)
 	}
 
 	return nil

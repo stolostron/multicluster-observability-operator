@@ -26,6 +26,7 @@ data:
       "gnetId": null,
       "graphTooltip": 0,
       "id": 29,
+      "uid": "OmpD1ZoSk",
       "iteration": 1709210609633,
       "links": [],
       "panels": [
@@ -357,7 +358,7 @@ data:
                     "value": [
                       {
                         "title": "",
-                        "url": "d/OmpD1ZoSk/openshift-virtualization-overview?${__url_time_range}&orgId=1&var-alert=All&var-severity=$${severity:queryparam}&refresh=5m&var-health_impact=$${health_impact:queryparam}&var-cluster=${__data.fields.Cluster}"
+                        "url": "d/OmpD1ZoSk/openshift-virtualization-overview?${__url_time_range}&orgId=1&var-alert=All&${severity:queryparam}&refresh=5m&${health_impact:queryparam}&var-cluster=${__data.fields.Cluster}"
                       }
                     ]
                   }

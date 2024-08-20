@@ -2015,6 +2015,63 @@ spec:
                             type: object
                         type: object
                     type: object
+                  multiClusterObservabilityAddon:
+                    description: spec for multicluster-obervability-addon
+                    properties:
+                      replicas:
+                        description: Replicas for this component.
+                        format: int32
+                        type: integer
+                      resources:
+                        description: Compute Resources required by this component.
+                        properties:
+                          claims:
+                            description: "Claims lists the names of resources, defined
+                              in spec.resourceClaims, that are used by this container.
+                              \n This is an alpha field and requires enabling the
+                              DynamicResourceAllocation feature gate. \n This field
+                              is immutable. It can only be set for containers."
+                            items:
+                              description: ResourceClaim references one entry in PodSpec.ResourceClaims.
+                              properties:
+                                name:
+                                  description: Name must match the name of one entry
+                                    in pod.spec.resourceClaims of the Pod where this
+                                    field is used. It makes that resource available
+                                    inside a container.
+                                  type: string
+                              required:
+                              - name
+                              type: object
+                            type: array
+                            x-kubernetes-list-map-keys:
+                            - name
+                            x-kubernetes-list-type: map
+                          limits:
+                            additionalProperties:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                              x-kubernetes-int-or-string: true
+                            description: 'Limits describes the maximum amount of compute
+                              resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
+                            type: object
+                          requests:
+                            additionalProperties:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                              x-kubernetes-int-or-string: true
+                            description: 'Requests describes the minimum amount of
+                              compute resources required. If Requests is omitted for
+                              a container, it defaults to Limits if that is explicitly
+                              specified, otherwise to an implementation-defined value.
+                              Requests cannot exceed Limits. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
+                            type: object
+                        type: object
+                    type: object
                   observatoriumAPI:
                     description: Spec of observatorium api
                     properties:
@@ -10111,6 +10168,106 @@ spec:
                               a container, it defaults to Limits if that is explicitly
                               specified, otherwise to an implementation-defined value.
                               Requests cannot exceed Limits. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
+                            type: object
+                        type: object
+                    type: object
+                type: object
+              capabilities:
+                description: 'Capabilities defines the platform and user workload
+                  observabilities capabilities managed exclusively by the multicluster-observability-addon.
+                  Enabling any of these capabilities will result in deploying the
+                  following resources: - The addon Deployment, ServiceAccount and
+                  RBAC. - A ClusterManagementAddon managing placement for capability
+                  related custom resources. - An AddonDeploymentConfig managing the
+                  addon feature gates for activated capabilities.'
+                properties:
+                  platform:
+                    description: 'Platform defines the spec for platform observability
+                      capabilities managed by the addon. The platform is defined as
+                      the ACM/OCM/OCP components running on managed clusters to run,
+                      manage and observe the managed clusters themselves locally as
+                      well as remotely from a hub. Such components live on namespaces
+                      with prefixes for example: - openshift- - open-cluster-management-
+                      - default'
+                    properties:
+                      logs:
+                        description: Logs defines the configuration spec for collecting
+                          and storing logs from platform components running on fleet
+                          managed clusters.
+                        properties:
+                          collection:
+                            description: Collection defines the spec for the addon
+                              to collect and forward logs from fleet managed clusters.
+                            properties:
+                              enabled:
+                                description: Enabled defines a flag to enable/disable
+                                  the platform log collection.
+                                type: boolean
+                            type: object
+                        type: object
+                    type: object
+                  userWorkloads:
+                    description: UserWorkloads defines the spec for user workloads
+                      observability capabilities managed by the addon. As user workloads
+                      are defined any containers hosted on spoke clusters and execute
+                      any task unrelated to managing the fleet or the individual managed
+                      cluster itself.
+                    properties:
+                      logs:
+                        description: Logs defines the spec for the addon to collect,
+                          forward and store logs from user workloads hosted on fleet
+                          managed clusters.
+                        properties:
+                          collection:
+                            description: Collection defines the spec for the addon
+                              to collect and forward logs from user workloads hosted
+                              on fleet managed clusters.
+                            properties:
+                              clusterLogForwarder:
+                                description: Enabled defines a flag to enable/disable
+                                  the platform log collection using the ClusterLogForwarder
+                                  resource.
+                                properties:
+                                  enabled:
+                                    description: Enabled defines a flag to enable/disable
+                                      the platform log collection using the ClusterLogForwarder
+                                      resource.
+                                    type: boolean
+                                type: object
+                            type: object
+                        type: object
+                      traces:
+                        description: Traces defines the spec for the addon to collect,
+                          forward and store traces from user workloads hosted on fleet
+                          managed clusters.
+                        properties:
+                          collection:
+                            description: Collection defines the spec for the addon
+                              to collect and forward traces from user workloads hosted
+                              on fleet managed clusters.
+                            properties:
+                              collector:
+                                description: Collector defines the spec for the user
+                                  workload observability collection using the OpenTelemetryCollector
+                                  resource.
+                                properties:
+                                  enabled:
+                                    description: Enabled defines a flag to enable/disable
+                                      the user workload observability collection using
+                                      the OpenTelemetryCollector resource.
+                                    type: boolean
+                                type: object
+                              instrumentation:
+                                description: Instrumentation defines the spec for
+                                  the user workload observability collection using
+                                  the Instrumentation resource.
+                                properties:
+                                  enabled:
+                                    description: Enabled defines a flag to enable/disable
+                                      the user workload observability collection using
+                                      the Instrumentation resource.
+                                    type: boolean
+                                type: object
                             type: object
                         type: object
                     type: object

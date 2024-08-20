@@ -361,6 +361,27 @@ var (
 		TwoXLarge:  "100Mi",
 		FourXLarge: "100Mi",
 	}
+
+	MCOACPURequest ResourceSizeMap = map[observabilityv1beta2.TShirtSize]string{
+		Minimal:    "100m",
+		Default:    "100m",
+		Small:      "100m",
+		Medium:     "100m",
+		Large:      "100m",
+		XLarge:     "100m",
+		TwoXLarge:  "100m",
+		FourXLarge: "100m",
+	}
+	MCOAMemoryRequest ResourceSizeMap = map[observabilityv1beta2.TShirtSize]string{
+		Minimal:    "256Mi",
+		Default:    "256Mi",
+		Small:      "256Mi",
+		Medium:     "256Mi",
+		Large:      "256Mi",
+		XLarge:     "256Mi",
+		TwoXLarge:  "256Mi",
+		FourXLarge: "256Mi",
+	}
 )
 
 const (
@@ -369,6 +390,9 @@ const (
 
 	MetricsCollectorCPULimits    = ""
 	MetricsCollectorMemoryLimits = ""
+
+	MCOACPULimits    = "200m"
+	MCOAMemoryLimits = "512Mi"
 )
 
 type ReplicaMap map[observabilityv1beta2.TShirtSize]*int32
@@ -491,6 +515,16 @@ var (
 			XLarge:     intptr(3),
 			TwoXLarge:  intptr(3),
 			FourXLarge: intptr(3),
+		},
+		MultiClusterObservabilityAddon: {
+			Minimal:    intptr(1),
+			Default:    intptr(1),
+			Small:      intptr(1),
+			Medium:     intptr(1),
+			Large:      intptr(1),
+			XLarge:     intptr(1),
+			TwoXLarge:  intptr(1),
+			FourXLarge: intptr(1),
 		},
 	}
 )
