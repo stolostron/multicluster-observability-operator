@@ -62,10 +62,11 @@ type JsonData struct {
 	TLSAuth   bool `yaml:"tlsAuth,omitempty"`
 	TLSAuthCA bool `yaml:"tlsAuthWithCACert,omitempty"`
 	// Timeout is the request timeout in seconds for an HTTP datasource.
-	Timeout               string `yaml:"timeout,omitempty"`
-	HttpMethod            string `yaml:"httpMethod,omitempty"`
-	TimeInterval          string `yaml:"timeInterval,omitempty"`
-	CustomQueryParameters string `yaml:"customQueryParameters,omitempty"`
+	Timeout               string   `yaml:"timeout,omitempty"`
+	HttpMethod            string   `yaml:"httpMethod,omitempty"`
+	TimeInterval          string   `yaml:"timeInterval,omitempty"`
+	CustomQueryParameters string   `yaml:"customQueryParameters,omitempty"`
+	ForwardHeaders        []string `yaml:"forwardHeaders,omitempty"`
 }
 
 type SecureJsonData struct {
@@ -104,6 +105,7 @@ func GenerateGrafanaDataSource(
 					Timeout:               "300",
 					CustomQueryParameters: "max_source_resolution=auto",
 					TimeInterval:          fmt.Sprintf("%ds", mco.Spec.ObservabilityAddonSpec.Interval),
+					ForwardHeaders:        []string{"X-Forwarded-Access-Token", "X-Forwarded-User"},
 				},
 			},
 			{
@@ -120,6 +122,7 @@ func GenerateGrafanaDataSource(
 					Timeout:               "300",
 					CustomQueryParameters: "max_source_resolution=auto",
 					TimeInterval:          fmt.Sprintf("%ds", DynamicTimeInterval),
+					ForwardHeaders:        []string{"X-Forwarded-Access-Token", "X-Forwarded-User"},
 				},
 			},
 		},
