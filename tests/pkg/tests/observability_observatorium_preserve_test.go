@@ -29,7 +29,7 @@ var _ = Describe("Observability:", func() {
 			testOptions.HubCluster.KubeContext)
 	})
 
-	Context("[P1][Sev1][observability] Should revert any manual changes on observatorium cr (observatorium_preserve/g0) -", func() {
+	Context("[P1][Sev1][observability] Should revert any manual changes on observatorium cr (observatorium_preserve/g0) -", func() { // move to unit tests or integration ALL
 		It("[Stable] Updating observatorium cr (spec.thanos.compact.retentionResolution1h) should be automatically reverted", func() {
 			oldCRResourceVersion := ""
 			updateRetention := "10d"

@@ -493,14 +493,14 @@ func readCRDFiles(crdPaths ...string) []*apiextensionsv1.CustomResourceDefinitio
 	for _, crdPath := range crdPaths {
 		crdYamlData, err := os.ReadFile(crdPath)
 		if err != nil {
-			panic(fmt.Sprintf("Failed to read CRD file: %v", err))
+			panic(fmt.Sprintf("Failed to read CRD file at path %s: %v", crdPath, err))
 		}
 
 		dec := yaml.NewDecodingSerializer(unstructured.UnstructuredJSONScheme)
 		var crd apiextensionsv1.CustomResourceDefinition
 		_, _, err = dec.Decode(crdYamlData, nil, &crd)
 		if err != nil {
-			panic(fmt.Sprintf("Failed to decode CRD: %v", err))
+			panic(fmt.Sprintf("Failed to decode CRD at path %s: %v", crdPath, err))
 		}
 
 		ret = append(ret, &crd)

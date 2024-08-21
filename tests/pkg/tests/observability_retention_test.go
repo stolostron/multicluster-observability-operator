@@ -64,7 +64,7 @@ var _ = Describe("Observability:", func() {
 		}
 	})
 
-	It("[P2][Sev2][observability][Stable] Check compact args (retention/g0):", func() {
+	It("[P2][Sev2][observability][Stable] Check compact args (retention/g0):", func() { // move to unit tests or integration ALL
 		By("--delete-delay=" + deleteDelay)
 		Eventually(func() error {
 			compacts, err := hubClient.AppsV1().StatefulSets(MCO_NAMESPACE).List(context.TODO(), metav1.ListOptions{
@@ -83,7 +83,7 @@ var _ = Describe("Observability:", func() {
 		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
-	It("[P2][Sev2][observability][Stable] Check store args (retention/g0):", func() {
+	It("[P2][Sev2][observability][Stable] Check store args (retention/g0):", func() { // move to unit tests or integration
 		By("--ignore-deletion-marks-delay=" + ignoreDeletionMarksDelay)
 		Eventually(func() error {
 			stores, err := hubClient.AppsV1().StatefulSets(MCO_NAMESPACE).List(context.TODO(), metav1.ListOptions{
@@ -105,7 +105,7 @@ var _ = Describe("Observability:", func() {
 		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
-	It("[P2][Sev2][observability][Stable] Check receive args (retention/g0):", func() {
+	It("[P2][Sev2][observability][Stable] Check receive args (retention/g0):", func() { // move to unit tests or integration
 		By("--tsdb.retention=" + retentionInLocal)
 		Eventually(func() error {
 			receives, err := hubClient.AppsV1().StatefulSets(MCO_NAMESPACE).List(context.TODO(), metav1.ListOptions{
@@ -127,7 +127,7 @@ var _ = Describe("Observability:", func() {
 		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
-	It("[P2][Sev2][observability][Stable] Check rule args (retention/g0):", func() {
+	It("[P2][Sev2][observability][Stable] Check rule args (retention/g0):", func() { // move to unit tests or integration
 		By("--tsdb.retention=" + retentionInLocal)
 		Eventually(func() error {
 			rules, err := hubClient.AppsV1().StatefulSets(MCO_NAMESPACE).List(context.TODO(), metav1.ListOptions{
@@ -149,7 +149,7 @@ var _ = Describe("Observability:", func() {
 		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
-	It("[P2][Sev2][observability][Stable] Check rule args (retention/g0):", func() {
+	It("[P2][Sev2][observability][Stable] Check rule args (retention/g0):", func() { // move to unit tests or integration
 		By("--tsdb.block-duration=" + blockDuration)
 		Eventually(func() error {
 			rules, err := hubClient.AppsV1().StatefulSets(MCO_NAMESPACE).List(context.TODO(), metav1.ListOptions{

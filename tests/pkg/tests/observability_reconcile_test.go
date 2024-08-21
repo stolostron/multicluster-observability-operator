@@ -41,7 +41,7 @@ var _ = Describe("Observability:", func() {
 			testOptions.HubCluster.KubeContext)
 	})
 
-	It("[P2][Sev2][observability][Stable] Modifying MCO CR for reconciling (reconcile/g0)", func() {
+	It("[P2][Sev2][observability][Stable] Modifying MCO CR for reconciling (reconcile/g0)", func() { // move to unit tests or integration ALL
 		By("Modifying MCO CR for reconciling")
 		err := utils.ModifyMCOCR(testOptions)
 		Expect(err).ToNot(HaveOccurred())

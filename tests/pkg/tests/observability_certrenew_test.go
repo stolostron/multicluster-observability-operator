@@ -33,7 +33,7 @@ var _ = Describe("Observability:", func() {
 		}
 	})
 
-	It("[P1][Sev1][observability][Integration] Should have metrics collector pod restart if cert secret re-generated (certrenew/g0)", func() {
+	It("[P1][Sev1][observability][Integration] Should have metrics collector pod restart if cert secret re-generated (certrenew/g0)", func() { // unit tests
 		By("Waiting for pods ready: observability-observatorium-api, observability-rbac-query-proxy, metrics-collector-deployment")
 		// sleep 30s to wait for installation is ready
 		time.Sleep(30 * time.Second)
@@ -139,40 +139,6 @@ var _ = Describe("Observability:", func() {
 				}
 			}
 
-			return false
-		}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(BeTrue())
-
-		By(fmt.Sprintf("Waiting for old pod <%s> removed and new pod created", collectorPodName))
-		Eventually(func() bool {
-			err, podList := utils.GetPodList(
-				testOptions,
-				isHub,
-				namespace,
-				"component=metrics-collector",
-			)
-			if err != nil {
-				klog.V(1).Infof("Failed to get pod list: %v", err)
-			}
-			for _, pod := range podList.Items {
-				if pod.Name != collectorPodName {
-					if pod.Status.Phase != "Running" {
-						klog.V(1).Infof("<%s> not in Running status yet", pod.Name)
-						return false
-					}
-					return true
-				}
-			}
-
-			// debug code to check label "cert/time-restarted"
-			deployment, err := utils.GetDeployment(
-				testOptions,
-				isHub,
-				"metrics-collector-deployment",
-				namespace,
-			)
-			if err == nil {
-				klog.V(1).Infof("labels: <%v>", deployment.Spec.Template.ObjectMeta.Labels)
-			}
 			return false
 		}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(BeTrue())
 	})

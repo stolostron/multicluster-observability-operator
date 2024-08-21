@@ -40,7 +40,7 @@ var _ = Describe("Observability:", func() {
 			testOptions.HubCluster.KubeContext)
 	})
 
-	It("@BVT - [P1][Sev1][observability][Integration] Should access metrics via rbac-query-proxy route (route/g0)", func() {
+	It("@BVT - [P1][Sev1][observability][Integration] Should access metrics via rbac-query-proxy route (route/g0)", func() { // to keep somewhat
 		Eventually(func() error {
 			query := "/api/v1/query?query=cluster_version"
 			url := "https://rbac-query-proxy-open-cluster-management-observability.apps." + testOptions.HubCluster.BaseDomain + query

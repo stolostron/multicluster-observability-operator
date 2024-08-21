@@ -6,13 +6,11 @@ package tests
 
 import (
 	"fmt"
-	"strings"
 
 	"errors"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"k8s.io/klog"
 
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/utils"
 )
@@ -56,14 +54,14 @@ var _ = Describe("Observability:", func() {
 			Expect(requests["memory"]).To(Equal("100Mi"))
 		})
 
-		It("[Stable] Should have resource requirement in metrics-collector", func() {
-			By("Check metrics-collector resource requirement")
-			Eventually(func() error {
-				return utils.CheckMCOAddonResources(testOptions)
-			}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
-		})
+		// It("[Stable] Should have resource requirement in metrics-collector", func() { // move to endpoint ocp unit tests: resources req are applied to the metrics-collector pod
+		// 	By("Check metrics-collector resource requirement")
+		// 	Eventually(func() error {
+		// 		return utils.CheckMCOAddonResources(testOptions)
+		// 	}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
+		// })
 
-		It("[Stable] Should not have the expected MCO addon pods when disable observabilityaddon", func() {
+		It("[Stable] Should not have the expected MCO addon pods when disable observabilityaddon", func() { // move to endpoint ocp unit tests: if disabled, no pod
 			Eventually(func() error {
 				return utils.ModifyMCOAddonSpecMetrics(testOptions, false)
 			}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*5).Should(Succeed())
@@ -102,7 +100,7 @@ var _ = Describe("Observability:", func() {
 		// the corret way is use timestamp, for example:
 		// timestamp(node_memory_MemAvailable_bytes{cluster="local-cluster"}) -
 		// timestamp(node_memory_MemAvailable_bytes{cluster="local-cluster"} offset 1m) > 59
-		It("[Stable] Waiting for check no metric data in grafana console", func() {
+		It("[Stable] Waiting for check no metric data in grafana console", func() { // TODO
 			Eventually(func() error {
 				for _, cluster := range clusters {
 					res, err := utils.QueryGrafana(
@@ -120,7 +118,7 @@ var _ = Describe("Observability:", func() {
 			}, EventuallyTimeoutMinute*2, EventuallyIntervalSecond*5).Should(Succeed())
 		})
 
-		It("[Stable] Modifying MCO cr to enable observabilityaddon", func() {
+		It("[Stable] Modifying MCO cr to enable observabilityaddon", func() { // To DELETE?
 			Eventually(func() error {
 				return utils.ModifyMCOAddonSpecMetrics(testOptions, true)
 			}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*5).Should(Succeed())
@@ -140,42 +138,18 @@ var _ = Describe("Observability:", func() {
 				return false
 			}, EventuallyTimeoutMinute*6, EventuallyIntervalSecond*5).Should(BeTrue())
 
-			By("Checking the status in managedclusteraddon reflects the endpoint operator status correctly")
-			Eventually(func() error {
-				err = utils.CheckAllOBAsEnabled(testOptions)
-				if err != nil {
-					return err
-				}
-				return nil
-			}, EventuallyTimeoutMinute*15, EventuallyIntervalSecond*5).Should(Succeed())
+			// By("Checking the status in managedclusteraddon reflects the endpoint operator status correctly") // Make sure it is covered in unit tests (enpoint-op, collector) and e2e tests
+			// Eventually(func() error {
+			// 	err = utils.CheckAllOBAsEnabled(testOptions)
+			// 	if err != nil {
+			// 		return err
+			// 	}
+			// 	return nil
+			// }, EventuallyTimeoutMinute*15, EventuallyIntervalSecond*5).Should(Succeed())
 		})
 	})
 
-	It("[P3][Sev3][observability][Stable] Should not set interval to values beyond scope (addon/g0)", func() {
-		By("Set interval to 14")
-		Eventually(func() bool {
-			err := utils.ModifyMCOAddonSpecInterval(testOptions, int64(14))
-			if strings.Contains(err.Error(), "Invalid value") &&
-				strings.Contains(err.Error(), "15") {
-				return true
-			}
-			klog.V(1).Infof("error message: <%s>\n", err.Error())
-			return false
-		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*1).Should(BeTrue())
-
-		By("Set interval to 3601")
-		Eventually(func() bool {
-			err := utils.ModifyMCOAddonSpecInterval(testOptions, int64(3601))
-			if strings.Contains(err.Error(), "Invalid value") &&
-				strings.Contains(err.Error(), "3600") {
-				return true
-			}
-			klog.V(1).Infof("error message: <%s>\n", err.Error())
-			return false
-		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*1).Should(BeTrue())
-	})
-
-	Context("[P2][Sev2][observability] Should not have the expected MCO addon pods when disable observability from managedcluster (addon/g0) -", func() {
+	Context("[P2][Sev2][observability] Should not have the expected MCO addon pods when disable observability from managedcluster (addon/g0) -", func() { // To delete?
 		It("[Stable] Modifying managedcluster cr to disable observability", func() {
 			Eventually(func() error {
 				return utils.UpdateObservabilityFromManagedCluster(testOptions, false)

@@ -153,7 +153,7 @@ var _ = Describe("Observability:", func() {
 		},
 	}
 
-	It("@BVT - [P1][Sev1][observability][Integration] Checking replicas in advanced config for each component (config/g0)", func() {
+	It("@BVT - [P1][Sev1][observability][Integration] Checking replicas in advanced config for each component (config/g0)", func() { // move to unit tests or integration ALL
 
 		mcoRes, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).
 			Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})

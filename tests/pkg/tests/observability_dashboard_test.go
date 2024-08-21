@@ -33,7 +33,7 @@ var _ = Describe("Observability:", func() {
 			testOptions.HubCluster.KubeContext)
 	})
 
-	It("[P2][Sev2][observability][Stable] Should have custom dashboard which defined in configmap (dashboard/g0)", func() {
+	It("[P2][Sev2][observability][Stable] Should have custom dashboard which defined in configmap (dashboard/g0)", func() { // move to integration
 		By("Creating custom dashboard configmap")
 		yamlB, _ := kustomize.Render(
 			kustomize.Options{KustomizationPath: "../../../examples/dashboards/sample_custom_dashboard"},

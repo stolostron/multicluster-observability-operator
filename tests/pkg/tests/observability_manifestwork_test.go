@@ -32,7 +32,7 @@ var _ = Describe("Observability:", func() {
 		}
 	})
 
-	Context("[P2][Sev2][observability][Stable] Should be automatically created within 1 minute when delete manifestwork (manifestwork/g0) -", func() {
+	Context("[P2][Sev2][observability][Stable] Should be automatically created within 1 minute when delete manifestwork (manifestwork/g0) -", func() { // move to unit tests or integration ALL
 		manifestWorkName := "endpoint-observability-work"
 		clientDynamic := utils.GetKubeClientDynamic(testOptions, true)
 		clusterName := utils.GetManagedClusterName(testOptions)

@@ -77,7 +77,7 @@ var _ = Describe("Observability:", func() {
 				return false
 			}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*1).Should(BeTrue())
 		})
-		It("[Stable] Updating metrics-collector deployment", func() {
+		It("[Stable] Updating metrics-collector deployment", func() { // TO DELETE or move to integration
 			updateSaName := "test-serviceaccount"
 			Eventually(func() error {
 				newDep, err = utils.GetDeployment(
@@ -118,7 +118,7 @@ var _ = Describe("Observability:", func() {
 		})
 	})
 
-	It("[P2][Sev2][observability][Stable] Should revert any manual changes on metrics-collector-view clusterolebinding (endpoint_preserve/g0)", func() {
+	It("[P2][Sev2][observability][Stable] Should revert any manual changes on metrics-collector-view clusterolebinding (endpoint_preserve/g0)", func() { // TO DELETE or move to integration
 		if os.Getenv("IS_KIND_ENV") == trueStr {
 			Skip("Skip the case due to run in KinD")
 		}
@@ -155,7 +155,7 @@ var _ = Describe("Observability:", func() {
 		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*1).Should(BeTrue())
 	})
 
-	It("[P2][Sev2][observability][Stable] Should recreate on metrics-collector-serving-certs-ca-bundle configmap if deleted (endpoint_preserve/g0)", func() {
+	It("[P2][Sev2][observability][Stable] Should recreate on metrics-collector-serving-certs-ca-bundle configmap if deleted (endpoint_preserve/g0)", func() { // TO DELETE or move to integration
 		if os.Getenv("IS_KIND_ENV") == trueStr {
 			Skip("Skip the case due to run in KinD")
 		}
