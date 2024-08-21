@@ -29,9 +29,9 @@ import (
 
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/openshift"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/rendering"
-	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/status"
 	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
+	"github.com/stolostron/multicluster-observability-operator/operators/pkg/status"
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 )
 
@@ -103,39 +103,46 @@ type deploymentParams struct {
 func (m *MetricsCollector) Update(ctx context.Context, req ctrl.Request) error {
 	deployParams, err := m.generateDeployParams(ctx, req)
 	if err != nil {
-		m.reportStatus(ctx, status.Degraded)
+		m.reportStatus(ctx, status.MetricsCollector, status.UpdateFailed, "Failed to generate deployment parameters")
 		return err
 	}
 
-	var mcResult, uwlResult ensureDeploymentResult
-	if mcResult, err = m.updateMetricsCollector(ctx, false, deployParams); err != nil {
-		m.reportStatus(ctx, status.Degraded)
+	if err := m.updateMetricsCollector(ctx, false, deployParams); err != nil {
+		m.reportStatus(ctx, status.MetricsCollector, status.UpdateFailed, "Failed to update metrics collector")
 		return err
+	} else {
+		if m.ObsAddon.Spec.EnableMetrics {
+			m.reportStatus(ctx, status.MetricsCollector, status.UpdateSuccessful, "Metrics collector updated")
+		} else {
+			m.reportStatus(ctx, status.MetricsCollector, status.Disabled, "Metrics collector disabled")
+		}
 	}
 
 	isUwl, err := m.isUWLMonitoringEnabled(ctx)
 	if err != nil {
-		m.reportStatus(ctx, status.Degraded)
+		m.reportStatus(ctx, status.UwlMetricsCollector, status.UpdateFailed, "Failed to check if UWL monitoring is enabled")
 		return err
 	}
 
 	uwlMetricsLen := len(deployParams.uwlList.NameList) + len(deployParams.uwlList.MatchList)
 	if isUwl && uwlMetricsLen != 0 {
-		if uwlResult, err = m.updateMetricsCollector(ctx, true, deployParams); err != nil {
-			m.reportStatus(ctx, status.Degraded)
+		if err := m.updateMetricsCollector(ctx, true, deployParams); err != nil {
+			m.reportStatus(ctx, status.UwlMetricsCollector, status.UpdateFailed, "Failed to update UWL Metrics collector")
 			return err
+		} else {
+			if m.ObsAddon.Spec.EnableMetrics {
+				m.reportStatus(ctx, status.UwlMetricsCollector, status.UpdateSuccessful, "UWL Metrics collector updated")
+			} else {
+				m.reportStatus(ctx, status.UwlMetricsCollector, status.Disabled, "UWL Metrics collector disabled")
+			}
 		}
 	} else {
 		if err := m.deleteMetricsCollector(ctx, true); err != nil {
-			m.reportStatus(ctx, status.Degraded)
+			m.reportStatus(ctx, status.UwlMetricsCollector, status.UpdateFailed, err.Error())
 			return err
+		} else {
+			m.reportStatus(ctx, status.UwlMetricsCollector, status.Disabled, "UWL Metrics collector disabled")
 		}
-	}
-
-	if mcResult == deploymentCreated || uwlResult == deploymentCreated {
-		m.reportStatus(ctx, status.Deployed)
-	} else if mcResult == deploymentUpdated && !m.ObsAddon.Spec.EnableMetrics {
-		m.reportStatus(ctx, status.Disabled)
 	}
 
 	return nil
@@ -153,13 +160,16 @@ func (m *MetricsCollector) Delete(ctx context.Context) error {
 	return nil
 }
 
-func (m *MetricsCollector) reportStatus(ctx context.Context, conditionReason status.ConditionReason) {
+func (m *MetricsCollector) reportStatus(ctx context.Context, component status.Component, conditionReason status.Reason, message string) {
 	if m.ClusterInfo.IsHubMetricsCollector {
 		return
 	}
-	m.Log.Info("Reporting status", "conditionReason", conditionReason)
-	if err := status.ReportStatus(ctx, m.Client, conditionReason, m.ObsAddon.Name, m.Namespace); err != nil {
+
+	statusReporter := status.NewStatus(m.Client, m.ObsAddon.Name, m.Namespace, m.Log)
+	if wasUpdated, err := statusReporter.UpdateComponentCondition(ctx, component, conditionReason, message); err != nil {
 		m.Log.Error(err, "Failed to report status")
+	} else if wasUpdated {
+		m.Log.Info("Status reported", "component", component, "conditionReason", conditionReason, "message", message)
 	}
 }
 
@@ -247,25 +257,24 @@ func (m *MetricsCollector) deleteMetricsCollector(ctx context.Context, isUWL boo
 	return nil
 }
 
-func (m *MetricsCollector) updateMetricsCollector(ctx context.Context, isUWL bool, deployParams *deploymentParams) (ensureDeploymentResult, error) {
+func (m *MetricsCollector) updateMetricsCollector(ctx context.Context, isUWL bool, deployParams *deploymentParams) error {
 	if err := m.ensureService(ctx, isUWL); err != nil {
-		return "", err
+		return err
 	}
 
 	if err := m.ensureServiceMonitor(ctx, isUWL); err != nil {
-		return "", err
+		return err
 	}
 
 	if err := m.ensureAlertingRule(ctx, isUWL); err != nil {
-		return "", err
+		return err
 	}
 
-	res, err := m.ensureDeployment(ctx, isUWL, deployParams)
-	if err != nil {
-		return "", err
+	if err := m.ensureDeployment(ctx, isUWL, deployParams); err != nil {
+		return err
 	}
 
-	return res, nil
+	return nil
 }
 
 func (m *MetricsCollector) ensureService(ctx context.Context, isUWL bool) error {
@@ -504,15 +513,7 @@ func (m *MetricsCollector) ensureAlertingRule(ctx context.Context, isUWL bool) e
 	return nil
 }
 
-type ensureDeploymentResult string
-
-const (
-	deploymentCreated ensureDeploymentResult = "created"
-	deploymentUpdated ensureDeploymentResult = "updated"
-	deploymentNoop    ensureDeploymentResult = "noop"
-)
-
-func (m *MetricsCollector) ensureDeployment(ctx context.Context, isUWL bool, deployParams *deploymentParams) (ensureDeploymentResult, error) {
+func (m *MetricsCollector) ensureDeployment(ctx context.Context, isUWL bool, deployParams *deploymentParams) error {
 	secretName := metricsCollector
 	if isUWL {
 		secretName = uwlMetricsCollector
@@ -744,8 +745,6 @@ func (m *MetricsCollector) ensureDeployment(ctx context.Context, isUWL bool, dep
 		desiredMetricsCollectorDep.Spec.Template.Spec.Containers[0].Resources = *m.ObsAddon.Spec.Resources
 	}
 
-	result := deploymentNoop
-
 	retryErr := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 		foundMetricsCollectorDep := &appsv1.Deployment{}
 		err := m.Client.Get(ctx, types.NamespacedName{Name: name, Namespace: m.Namespace}, foundMetricsCollectorDep)
@@ -755,7 +754,6 @@ func (m *MetricsCollector) ensureDeployment(ctx context.Context, isUWL bool, dep
 				return fmt.Errorf("failed to create Deployment %s/%s: %w", m.Namespace, name, err)
 			}
 
-			result = deploymentCreated
 			return nil
 		}
 		if err != nil {
@@ -776,7 +774,6 @@ func (m *MetricsCollector) ensureDeployment(ctx context.Context, isUWL bool, dep
 				return fmt.Errorf("failed to update Deployment %s/%s: %w", m.Namespace, name, err)
 			}
 
-			result = deploymentUpdated
 			return nil
 		}
 
@@ -784,10 +781,10 @@ func (m *MetricsCollector) ensureDeployment(ctx context.Context, isUWL bool, dep
 	})
 
 	if retryErr != nil {
-		return deploymentNoop, retryErr
+		return retryErr
 	}
 
-	return result, nil
+	return nil
 }
 
 func (m *MetricsCollector) getCommands(isUSW bool, deployParams *deploymentParams) []string {

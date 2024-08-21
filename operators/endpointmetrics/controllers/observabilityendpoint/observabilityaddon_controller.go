@@ -32,13 +32,13 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/hypershift"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/openshift"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/rendering"
-	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/status"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/util"
 	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	oav1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/deploying"
 	rendererutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering"
+	"github.com/stolostron/multicluster-observability-operator/operators/pkg/status"
 )
 
 var (
@@ -192,8 +192,11 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 				// ACM 8509: Special case for hub/local cluster metrics collection
 				// We do not report status for hub endpoint operator
 				if !r.IsHubMetricsCollector {
-					if err := status.ReportStatus(ctx, r.Client, status.NotSupported, obsAddon.Name, obsAddon.Namespace); err != nil {
+					statusReporter := status.NewStatus(r.Client, obsAddon.Name, obsAddon.Namespace, log)
+					if wasReported, err := statusReporter.UpdateComponentCondition(ctx, status.MetricsCollector, status.NotSupported, "Prometheus service not found"); err != nil {
 						log.Error(err, "Failed to report status")
+					} else if wasReported {
+						log.Info("Status updated", "component", status.MetricsCollector, "reason", status.NotSupported)
 					}
 				}
 
