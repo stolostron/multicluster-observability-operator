@@ -70,6 +70,7 @@ func init() {
 	utilruntime.Must(observabilityv1beta2.AddToScheme(scheme))
 	utilruntime.Must(observatoriumAPIs.AddToScheme(scheme))
 	utilruntime.Must(prometheusv1.AddToScheme(scheme))
+	utilruntime.Must(addonv1alpha1.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
 }
 

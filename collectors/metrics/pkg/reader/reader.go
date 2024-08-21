@@ -9,22 +9,6 @@ import (
 	"io"
 )
 
-type limitReadCloser struct {
-	io.Reader
-	closer io.ReadCloser
-}
-
-func NewLimitReadCloser(r io.ReadCloser, n int64) io.ReadCloser {
-	return limitReadCloser{
-		Reader: LimitReader(r, n),
-		closer: r,
-	}
-}
-
-func (c limitReadCloser) Close() error {
-	return c.closer.Close()
-}
-
 var ErrTooLong = errors.New("the incoming sample data is too long")
 
 // LimitReader returns a Reader that reads from r

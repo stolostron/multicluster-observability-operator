@@ -17,6 +17,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -27,7 +28,6 @@ var (
 )
 
 func TestDeploy(t *testing.T) {
-
 	cases := []struct {
 		name            string
 		createObj       runtime.Object
@@ -782,6 +782,133 @@ func TestDeploy(t *testing.T) {
 				}
 			},
 		},
+		{
+			name: "create and update AddOnDeploymentConfig",
+			createObj: &addonv1alpha1.AddOnDeploymentConfig{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "addon.open-cluster-management.io/v1alpha1",
+					Kind:       "AddOnDeploymentConfig",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-aodc",
+					Namespace: "ns1",
+				},
+				Spec: addonv1alpha1.AddOnDeploymentConfigSpec{
+					CustomizedVariables: []addonv1alpha1.CustomizedVariable{
+						{
+							Name:  "test",
+							Value: "value",
+						},
+					},
+				},
+			},
+			updateObj: &addonv1alpha1.AddOnDeploymentConfig{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "addon.open-cluster-management.io/v1alpha1",
+					Kind:       "AddOnDeploymentConfig",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:            "test-aodc",
+					Namespace:       "ns1",
+					ResourceVersion: "1",
+				},
+				Spec: addonv1alpha1.AddOnDeploymentConfigSpec{
+					CustomizedVariables: []addonv1alpha1.CustomizedVariable{
+						{
+							Name:  "test",
+							Value: "value",
+						},
+						{
+							Name:  "other",
+							Value: "more",
+						},
+					},
+				},
+			},
+			validateResults: func(client client.Client) {
+				namespacedName := types.NamespacedName{
+					Name:      "test-aodc",
+					Namespace: "ns1",
+				}
+				obj := &addonv1alpha1.AddOnDeploymentConfig{}
+				client.Get(context.Background(), namespacedName, obj)
+
+				if len(obj.Spec.CustomizedVariables) != 2 {
+					t.Fatalf("Missing Customied Variables, got %#v", obj.Spec.CustomizedVariables)
+				}
+			},
+		},
+		{
+			name: "create and update ClusterManagementAddOn",
+			createObj: &addonv1alpha1.ClusterManagementAddOn{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "addon.open-cluster-management.io/v1alpha1",
+					Kind:       "ClusterManagementAddOn",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-cmao",
+					Namespace: "ns1",
+				},
+				Spec: addonv1alpha1.ClusterManagementAddOnSpec{
+					SupportedConfigs: []addonv1alpha1.ConfigMeta{
+						{
+							ConfigGroupResource: addonv1alpha1.ConfigGroupResource{Group: "test.io", Resource: "TestRes"},
+						},
+					},
+					InstallStrategy: addonv1alpha1.InstallStrategy{
+						Type:       "Placements",
+						Placements: []addonv1alpha1.PlacementStrategy{},
+					},
+				},
+			},
+			updateObj: &addonv1alpha1.ClusterManagementAddOn{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "addon.open-cluster-management.io/v1alpha1",
+					Kind:       "ClusterManagementAddOn",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:            "test-cmao",
+					Namespace:       "ns1",
+					ResourceVersion: "1",
+				},
+				Spec: addonv1alpha1.ClusterManagementAddOnSpec{
+					SupportedConfigs: []addonv1alpha1.ConfigMeta{
+						{
+							ConfigGroupResource: addonv1alpha1.ConfigGroupResource{Group: "test.io", Resource: "TestRes"},
+						},
+						{
+							ConfigGroupResource: addonv1alpha1.ConfigGroupResource{Group: "example.io", Resource: "ExampleRes"},
+						},
+					},
+					InstallStrategy: addonv1alpha1.InstallStrategy{
+						Type: "Placements",
+						Placements: []addonv1alpha1.PlacementStrategy{
+							{
+								PlacementRef: addonv1alpha1.PlacementRef{Namespace: "test", Name: "test-res"},
+							},
+							{
+								PlacementRef: addonv1alpha1.PlacementRef{Namespace: "example", Name: "exaple-res"},
+							},
+						},
+					},
+				},
+			},
+			validateResults: func(client client.Client) {
+				namespacedName := types.NamespacedName{
+					Name:      "test-cmao",
+					Namespace: "ns1",
+				}
+				obj := &addonv1alpha1.ClusterManagementAddOn{}
+				client.Get(context.Background(), namespacedName, obj)
+
+				if len(obj.Spec.SupportedConfigs) != 2 {
+					t.Fatalf("Missing Supported Configs, got %#v", obj.Spec.SupportedConfigs)
+				}
+				if len(obj.Spec.InstallStrategy.Placements) != 2 {
+					t.Fatalf("Missing Placements, got %#v", obj.Spec.InstallStrategy.Placements)
+				}
+			},
+		},
 	}
 
 	scheme := runtime.NewScheme()
@@ -791,6 +918,7 @@ func TestDeploy(t *testing.T) {
 	rbacv1.AddToScheme(scheme)
 	prometheusv1.AddToScheme(scheme)
 	networkingv1.AddToScheme(scheme)
+	addonv1alpha1.AddToScheme(scheme)
 	client := fake.NewClientBuilder().WithScheme(scheme).Build()
 
 	deployer := NewDeployer(client)
@@ -813,7 +941,6 @@ func TestDeploy(t *testing.T) {
 			c.validateResults(client)
 		})
 	}
-
 }
 
 func toPtr(t *testing.T, s string) *string {

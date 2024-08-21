@@ -16,6 +16,7 @@ import (
 	"time"
 
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
+	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 
 	"github.com/go-logr/logr"
 	routev1 "github.com/openshift/api/route/v1"
@@ -376,7 +377,8 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 }
 
 func (r *MultiClusterObservabilityReconciler) initFinalization(
-	mco *mcov1beta2.MultiClusterObservability) (bool, error) {
+	mco *mcov1beta2.MultiClusterObservability,
+) (bool, error) {
 	if mco.GetDeletionTimestamp() != nil && slices.Contains(mco.GetFinalizers(), resFinalizer) {
 		log.Info("To delete resources across namespaces")
 		// clean up the cluster resources, eg. clusterrole, clusterrolebinding, etc
@@ -467,6 +469,10 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 		Owns(&corev1.Service{}).
 		// Watch for changes to secondary Observatorium CR and requeue the owner MultiClusterObservability
 		Owns(&observatoriumv1alpha1.Observatorium{}).
+		// Watch for changes to secondary AddOnDeploymentConfig CR and requeue the owner MultiClusterObservability
+		Owns(&addonv1alpha1.AddOnDeploymentConfig{}).
+		// Watch for changes to secondary ClusterManagementAddOn CR and requeue the owner MultiClusterObservability
+		Owns(&addonv1alpha1.ClusterManagementAddOn{}).
 		// Watch the configmap for thanos-ruler-custom-rules update
 		Watches(&corev1.ConfigMap{}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(cmPred)).
 		// Watch the secret for deleting event of alertmanager-config
@@ -517,7 +523,6 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 }
 
 func checkStorageChanged(mcoOldConfig, mcoNewConfig *mcov1beta2.StorageConfig) {
-
 	if mcoOldConfig.AlertmanagerStorageSize != mcoNewConfig.AlertmanagerStorageSize {
 		isAlertmanagerStorageSizeChanged = true
 	}
@@ -540,8 +545,8 @@ func checkStorageChanged(mcoOldConfig, mcoNewConfig *mcov1beta2.StorageConfig) {
 // 2. Removed StatefulSet and
 // wait for operator to re-create the StatefulSet with the correct size on the claim
 func (r *MultiClusterObservabilityReconciler) HandleStorageSizeChange(
-	mco *mcov1beta2.MultiClusterObservability) (*reconcile.Result, error) {
-
+	mco *mcov1beta2.MultiClusterObservability,
+) (*reconcile.Result, error) {
 	if isAlertmanagerStorageSizeChanged {
 		isAlertmanagerStorageSizeChanged = false
 		err := updateStorageSizeChange(r.Client,
@@ -642,7 +647,8 @@ func updateStorageSizeChange(c client.Client, matchLabels map[string]string, sto
 // GenerateAlertmanagerRoute create route for Alertmanager endpoint
 func GenerateAlertmanagerRoute(
 	runclient client.Client, scheme *runtime.Scheme,
-	mco *mcov1beta2.MultiClusterObservability) (*ctrl.Result, error) {
+	mco *mcov1beta2.MultiClusterObservability,
+) (*ctrl.Result, error) {
 	amGateway := &routev1.Route{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      config.AlertmanagerRouteName,
@@ -737,7 +743,8 @@ func GenerateAlertmanagerRoute(
 // GenerateProxyRoute create route for Proxy endpoint
 func GenerateProxyRoute(
 	runclient client.Client, scheme *runtime.Scheme,
-	mco *mcov1beta2.MultiClusterObservability) (*ctrl.Result, error) {
+	mco *mcov1beta2.MultiClusterObservability,
+) (*ctrl.Result, error) {
 	proxyGateway := &routev1.Route{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      config.ProxyRouteName,
@@ -832,7 +839,8 @@ func GenerateProxyRoute(
 // The cluster scoped resources need to be deleted manually because they don't have ownerrefenence set as the MCO CR
 func cleanUpClusterScopedResources(
 	r *MultiClusterObservabilityReconciler,
-	mco *mcov1beta2.MultiClusterObservability) error {
+	mco *mcov1beta2.MultiClusterObservability,
+) error {
 	matchLabels := map[string]string{config.GetCrLabelKey(): mco.Name}
 	listOpts := []client.ListOption{
 		client.MatchingLabels(matchLabels),
@@ -871,8 +879,8 @@ func cleanUpClusterScopedResources(
 }
 
 func (r *MultiClusterObservabilityReconciler) ensureOpenShiftNamespaceLabel(ctx context.Context,
-	m *mcov1beta2.MultiClusterObservability) (reconcile.Result, error) {
-
+	m *mcov1beta2.MultiClusterObservability,
+) (reconcile.Result, error) {
 	log := logf.FromContext(ctx)
 	existingNs := &corev1.Namespace{}
 	resNS := m.GetNamespace()
@@ -907,8 +915,10 @@ func (r *MultiClusterObservabilityReconciler) ensureOpenShiftNamespaceLabel(ctx 
 
 func (r *MultiClusterObservabilityReconciler) deleteSpecificPrometheusRule(ctx context.Context) error {
 	promRule := &monitoringv1.PrometheusRule{}
-	err := r.Client.Get(ctx, client.ObjectKey{Name: "acm-observability-alert-rules",
-		Namespace: "openshift-monitoring"}, promRule)
+	err := r.Client.Get(ctx, client.ObjectKey{
+		Name:      "acm-observability-alert-rules",
+		Namespace: "openshift-monitoring",
+	}, promRule)
 	if err == nil {
 		err = r.Client.Delete(ctx, promRule)
 		if err != nil {

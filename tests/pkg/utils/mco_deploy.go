@@ -183,7 +183,7 @@ func CheckAllPodsAffinity(opt TestOptions) error {
 
 	for _, pod := range podList {
 		if pod.Labels["name"] == "endpoint-observability-operator" || pod.Labels["component"] == "metrics-collector" ||
-			pod.Labels["component"] == "uwl-metrics-collector" {
+			pod.Labels["component"] == "uwl-metrics-collector" || pod.Labels["app"] == "multicluster-observability-addon-manager" {
 			// No affinity set for endpoint-operator and metrics-collector in the hub
 			continue
 		}
