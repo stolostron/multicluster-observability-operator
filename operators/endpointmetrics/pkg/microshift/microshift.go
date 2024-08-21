@@ -135,7 +135,7 @@ func (m *Microshift) renderScrapeConfig(res []*unstructured.Unstructured) error 
 
 	// Append additional scrape config for etcd on the host
 	// We don't unmarshal the existing scrape config to avoid adding default values
-	// when marshalling the new scrape config. Instead, we append the new scrape config
+	// when marshaling the new scrape config. Instead, we append the new scrape config
 	// to the existing scrape config.
 	var ret strings.Builder
 	ret.WriteString(strings.TrimSpace(scrapeSecret.StringData[scrapeConfigKey]))

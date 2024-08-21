@@ -374,6 +374,10 @@ func (d *Deployer) updateAddOnDeploymentConfig(
 	desiredObj, runtimeObj *unstructured.Unstructured,
 ) error {
 	desiredAODC, runtimeAODC, err := unstructuredPairToTyped[addonv1alpha1.AddOnDeploymentConfig](desiredObj, runtimeObj)
+	if err != nil {
+		return err
+	}
+
 	if !apiequality.Semantic.DeepDerivative(desiredAODC.Spec, runtimeAODC.Spec) {
 		logUpdateInfo(runtimeObj)
 		if desiredAODC.ResourceVersion != runtimeAODC.ResourceVersion {
@@ -390,6 +394,10 @@ func (d *Deployer) updateClusterManagementAddOn(
 	desiredObj, runtimeObj *unstructured.Unstructured,
 ) error {
 	desiredCMAO, runtimeCMAO, err := unstructuredPairToTyped[addonv1alpha1.ClusterManagementAddOn](desiredObj, runtimeObj)
+	if err != nil {
+		return err
+	}
+
 	if !apiequality.Semantic.DeepDerivative(desiredCMAO.Spec, runtimeCMAO.Spec) {
 		logUpdateInfo(runtimeObj)
 		if desiredCMAO.ResourceVersion != runtimeCMAO.ResourceVersion {
