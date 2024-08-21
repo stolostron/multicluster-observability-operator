@@ -8,6 +8,8 @@ import (
 	"crypto/tls"
 	"flag"
 	"fmt"
+	imagev1client "github.com/openshift/client-go/image/clientset/versioned/typed/image/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"os"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
@@ -281,14 +283,34 @@ func main() {
 		config.MCGHCrdName:                    mcghCrdExists,
 	}
 
+	if _, err := mgr.GetRESTMapper().KindFor(schema.GroupVersionResource{
+		Group:    "image.openshift.io",
+		Version:  "v1",
+		Resource: "imagestreams",
+	}); err != nil {
+		if meta.IsNoMatchError(err) {
+			setupLog.Info("image.openshift.io/v1/imagestreams is not available")
+		} else {
+			setupLog.Error(err, "failed to get kind for image.openshift.io/v1/imagestreams")
+			os.Exit(1)
+		}
+	}
+
+	imageClient, err := imagev1client.NewForConfig(ctrl.GetConfigOrDie())
+	if err != nil {
+		setupLog.Error(err, "failed to create openshift image client")
+		os.Exit(1)
+	}
+
 	if err = (&mcoctrl.MultiClusterObservabilityReconciler{
-		Manager:    mgr,
-		Client:     mgr.GetClient(),
-		Log:        ctrl.Log.WithName("controllers").WithName("MultiClusterObservability"),
-		Scheme:     mgr.GetScheme(),
-		CRDMap:     crdMaps,
-		APIReader:  mgr.GetAPIReader(),
-		RESTMapper: mgr.GetRESTMapper(),
+		Manager:     mgr,
+		Client:      mgr.GetClient(),
+		Log:         ctrl.Log.WithName("controllers").WithName("MultiClusterObservability"),
+		Scheme:      mgr.GetScheme(),
+		CRDMap:      crdMaps,
+		APIReader:   mgr.GetAPIReader(),
+		RESTMapper:  mgr.GetRESTMapper(),
+		ImageClient: imageClient,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "MultiClusterObservability")
 		os.Exit(1)

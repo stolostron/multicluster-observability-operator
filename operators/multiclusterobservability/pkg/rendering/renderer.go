@@ -5,6 +5,7 @@
 package rendering
 
 import (
+	imagev1client "github.com/openshift/client-go/image/clientset/versioned/typed/image/v1"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -24,6 +25,7 @@ var log = logf.Log.WithName("renderer")
 
 type MCORenderer struct {
 	kubeClient            client.Client
+	imageClient           *imagev1client.ImageV1Client
 	renderer              *rendererutil.Renderer
 	cr                    *obv1beta2.MultiClusterObservability
 	renderGrafanaFns      map[string]rendererutil.RenderFn
@@ -32,11 +34,12 @@ type MCORenderer struct {
 	renderProxyFns        map[string]rendererutil.RenderFn
 }
 
-func NewMCORenderer(multipleClusterMonitoring *obv1beta2.MultiClusterObservability, kubeClient client.Client) *MCORenderer {
+func NewMCORenderer(multipleClusterMonitoring *obv1beta2.MultiClusterObservability, kubeClient client.Client, imageClient *imagev1client.ImageV1Client) *MCORenderer {
 	mcoRenderer := &MCORenderer{
-		renderer:   rendererutil.NewRenderer(),
-		cr:         multipleClusterMonitoring,
-		kubeClient: kubeClient,
+		renderer:    rendererutil.NewRenderer(),
+		cr:          multipleClusterMonitoring,
+		kubeClient:  kubeClient,
+		imageClient: imageClient,
 	}
 	mcoRenderer.newGranfanaRenderer()
 	mcoRenderer.newAlertManagerRenderer()

@@ -8,6 +8,8 @@ import (
 	"context"
 	cerr "errors"
 	"fmt"
+	imagev1 "github.com/openshift/api/image/v1"
+	imagev1client "github.com/openshift/client-go/image/clientset/versioned/typed/image/v1"
 	"os"
 	"reflect"
 	"strings"
@@ -79,13 +81,14 @@ var (
 
 // MultiClusterObservabilityReconciler reconciles a MultiClusterObservability object
 type MultiClusterObservabilityReconciler struct {
-	Manager    manager.Manager
-	Client     client.Client
-	Log        logr.Logger
-	Scheme     *runtime.Scheme
-	CRDMap     map[string]bool
-	APIReader  client.Reader
-	RESTMapper meta.RESTMapper
+	Manager     manager.Manager
+	Client      client.Client
+	Log         logr.Logger
+	Scheme      *runtime.Scheme
+	CRDMap      map[string]bool
+	APIReader   client.Reader
+	RESTMapper  meta.RESTMapper
+	ImageClient *imagev1client.ImageV1Client
 }
 
 // +kubebuilder:rbac:groups=observability.open-cluster-management.io,resources=multiclusterobservabilities,verbs=get;list;watch;create;update;patch;delete
@@ -249,8 +252,9 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		return ctrl.Result{}, err
 	}
 	instance.Spec.StorageConfig.StorageClass = storageClassSelected
+
 	// Render the templates with a specified CR
-	renderer := rendering.NewMCORenderer(instance, r.Client)
+	renderer := rendering.NewMCORenderer(instance, r.Client, r.ImageClient)
 	toDeploy, err := renderer.Render()
 	if err != nil {
 		reqLogger.Error(err, "Failed to render multiClusterMonitoring templates")
@@ -446,6 +450,7 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 	cmPred := GetConfigMapPredicateFunc()
 	secretPred := GetAlertManagerSecretPredicateFunc()
 	namespacePred := GetNamespacePredicateFunc()
+	imageStreamPred := GetImageStreamPredicateFunc()
 
 	ctrBuilder := ctrl.NewControllerManagedBy(mgr).
 		// Watch for changes to primary resource MultiClusterObservability with predicate
@@ -469,6 +474,9 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 		// Watch the namespace for changes
 		Watches(&corev1.Namespace{}, &handler.EnqueueRequestForObject{},
 			builder.WithPredicates(namespacePred)).
+		// Watch the imagestream for changes
+		Watches(&imagev1.ImageStream{}, &handler.EnqueueRequestForObject{},
+			builder.WithPredicates(imageStreamPred)).
 		// Watch the kube-system extension-apiserver-authentication ConfigMap for changes
 		Watches(&corev1.ConfigMap{}, handler.EnqueueRequestsFromMapFunc(
 			func(ctx context.Context, a client.Object) []reconcile.Request {
