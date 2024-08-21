@@ -59,7 +59,7 @@ func TestRender(t *testing.T) {
 	}
 	kubeClient := fake.NewClientBuilder().WithObjects(clientCa).Build()
 
-	renderer := NewMCORenderer(mchcr, kubeClient)
+	renderer := NewMCORenderer(mchcr, kubeClient, nil)
 	_, err = renderer.Render()
 	if err != nil {
 		t.Fatalf("failed to render MultiClusterObservability: %v", err)

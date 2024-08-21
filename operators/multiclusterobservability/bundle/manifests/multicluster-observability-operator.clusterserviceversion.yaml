@@ -454,6 +454,14 @@ spec:
           - get
           - list
           - watch
+        - apiGroups:
+            - image.openshift.io
+          resources:
+            - imagestreams
+          verbs:
+            - get
+            - list
+            - watch          -
         serviceAccountName: multicluster-observability-operator
       deployments:
       - label:

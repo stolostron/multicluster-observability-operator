@@ -7,8 +7,10 @@ package config
 import (
 	"context"
 	"fmt"
+	imagev1client "github.com/openshift/client-go/image/clientset/versioned/typed/image/v1"
 	"net/url"
 	"os"
+	"reflect"
 	"strings"
 	"time"
 
@@ -148,11 +150,6 @@ const (
 	KubeRBACProxyKey              = "kube_rbac_proxy"
 	KubeRBACProxyImgName          = "kube-rbac-proxy"
 
-	OauthProxyImgRepo      = "quay.io/stolostron"
-	OauthProxyImgName      = "origin-oauth-proxy"
-	OauthProxyImgTagSuffix = "2.0.12-SNAPSHOT-2021-06-11-19-40-10"
-	OauthProxyKey          = "oauth_proxy"
-
 	EndpointControllerImgName = "endpoint-monitoring-operator"
 	EndpointControllerKey     = "endpoint_monitoring_operator"
 
@@ -162,7 +159,7 @@ const (
 	ObservatoriumAPI             = "observatorium-api"
 	ThanosCompact                = "thanos-compact"
 	ThanosQuery                  = "thanos-query"
-	ThanosQueryFrontend          = "thanos-query-frontend"
+	ThanosQueryFrontend          = "THANOS-QUERY-FRONTEND"
 	ThanosQueryFrontendMemcached = "thanos-query-frontend-memcached"
 	ThanosRule                   = "thanos-rule"
 	ThanosReceive                = "thanos-receive-default"
@@ -211,6 +208,11 @@ const (
 	HubUwlMetricsCollectorName = "uwl-metrics-collector-deployment"
 	HubUwlMetricsCollectorNs   = "openshift-user-workload-monitoring"
 	HubEndpointSaName          = "endpoint-observability-operator-sa"
+)
+
+const (
+	OauthProxyImageStreamName      = "oauth-proxy"
+	OauthProxyImageStreamNamespace = "openshift"
 )
 
 // ObjectStorgeConf is used to Unmarshal from bytes to do validation.
@@ -818,4 +820,28 @@ func IsAlertingDisabledInSpec(mco *observabilityv1beta2.MultiClusterObservabilit
 
 	annotations := mco.GetAnnotations()
 	return annotations != nil && annotations[AnnotationDisableMCOAlerting] == "true"
+}
+
+func GetOauthProxyImage(imageClient imagev1client.ImageV1Interface) (bool, string) {
+	if imageClient != nil && !reflect.ValueOf(imageClient).IsNil() {
+		// set oauth-proxy from imagestream.image.openshift.io
+		oauthImageStream, err := imageClient.ImageStreams(OauthProxyImageStreamNamespace).
+			Get(context.TODO(), OauthProxyImageStreamName, v1.GetOptions{})
+		if err != nil {
+			if !errors.IsNotFound(err) {
+				return false, ""
+			}
+			// do not expect error = IsNotFound in OCP environment.
+			// But for e2e test, it can be. for this case, just ignore
+		} else {
+			if oauthImageStream.Spec.Tags != nil {
+				tag := oauthImageStream.Spec.Tags[0]
+				if tag.From != nil && tag.From.Kind == "DockerImage" && len(tag.From.Name) > 0 {
+					return true, tag.From.Name
+				}
+			}
+		}
+	}
+	return false, ""
+
 }

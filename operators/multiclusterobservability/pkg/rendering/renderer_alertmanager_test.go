@@ -237,7 +237,7 @@ func renderTemplates(t *testing.T, kubeClient client.Client, mco *mcov1beta2.Mul
 	defer os.Unsetenv(templatesutil.TemplatesPathEnvVar)
 
 	config.ReadImageManifestConfigMap(kubeClient, "v1")
-	renderer := NewMCORenderer(mco, kubeClient)
+	renderer := NewMCORenderer(mco, kubeClient, nil)
 
 	//load and render alertmanager templates
 	alertTemplates, err := templates.GetOrLoadAlertManagerTemplates(templatesutil.GetTemplateRenderer())

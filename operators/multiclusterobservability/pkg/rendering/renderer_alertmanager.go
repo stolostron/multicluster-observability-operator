@@ -100,10 +100,8 @@ func (r *MCORenderer) renderAlertManagerStatefulSet(res *resource.Resource,
 	if found {
 		spec.Containers[1].Image = image
 	}
-	// the oauth-proxy image only exists in mch-image-manifest configmap
-	// pass nil annotation to make sure oauth-proxy overrided from mch-image-manifest
-	found, image = mcoconfig.ReplaceImage(nil, mcoconfig.OauthProxyImgRepo,
-		mcoconfig.OauthProxyKey)
+
+	found, image = mcoconfig.GetOauthProxyImage(r.imageClient)
 	if found {
 		spec.Containers[2].Image = image
 	}
