@@ -56,7 +56,7 @@ func (r *StatusReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 			return ctrl.Result{Requeue: true}, nil
 		}
 
-		if isTransientErr(err) {
+		if util.IsTransientClientErr(err) {
 			r.Logger.Info("Failed to get ObservabilityAddon in hub cluster, requeue with delay", "error", err)
 			return requeueWithOptionalDelay(err), nil
 		}
@@ -85,7 +85,7 @@ func (r *StatusReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		return r.HubClient.Status().Update(ctx, updatedAddon)
 	})
 	if retryErr != nil {
-		if isTransientErr(retryErr) || errors.IsConflict(retryErr) {
+		if util.IsTransientClientErr(retryErr) || errors.IsConflict(retryErr) {
 			r.Logger.Info("Retryable error while updating status, request will be retried.", "error", retryErr)
 			return requeueWithOptionalDelay(retryErr), nil
 		}
@@ -118,23 +118,6 @@ func (r *StatusReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&oav1beta1.ObservabilityAddon{}, builder.WithPredicates(pred)).
 		Complete(r)
-}
-
-// isTransientErr checks if the error is a transient error
-// This suggests that a retry (without any change) might be successful
-func isTransientErr(err error) bool {
-	if _, ok := err.(net.Error); ok {
-		return true
-	}
-
-	if statusErr, ok := err.(*errors.StatusError); ok {
-		code := statusErr.Status().Code
-		if code >= 500 && code < 600 && code != 501 {
-			return true
-		}
-	}
-
-	return errors.IsTimeout(err) || errors.IsServerTimeout(err) || errors.IsTooManyRequests(err)
 }
 
 // isAuthOrConnectionErr checks if the error is an authentication error or a connection error

@@ -15,6 +15,7 @@ import (
 
 func TestPredFunc(t *testing.T) {
 	name := "test-obj"
+	testNamespace := "test-ns"
 	caseList := []struct {
 		caseName       string
 		namespace      string
@@ -59,6 +60,7 @@ func TestPredFunc(t *testing.T) {
 
 	for _, c := range caseList {
 		t.Run(c.caseName, func(t *testing.T) {
+			replicas := int32(2)
 			pred := getPred(name, c.namespace, c.create, c.update, c.delete)
 			ce := event.CreateEvent{
 				Object: &appsv1.Deployment{
@@ -67,7 +69,7 @@ func TestPredFunc(t *testing.T) {
 						Namespace: c.namespace,
 					},
 					Spec: appsv1.DeploymentSpec{
-						Replicas: int32Ptr(2),
+						Replicas: &replicas,
 					},
 				},
 			}
@@ -141,7 +143,7 @@ func TestPredFunc(t *testing.T) {
 						Namespace: c.namespace,
 					},
 					Spec: appsv1.DeploymentSpec{
-						Replicas: int32Ptr(2),
+						Replicas: &replicas,
 					},
 				},
 			}

@@ -67,6 +67,7 @@ prometheusK8s:
 )
 
 func TestClusterMonitoringConfig(t *testing.T) {
+	testNamespace := "test-ns"
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&zap.Options{Development: true})))
 	tests := []struct {
 		name                                    string
@@ -137,7 +138,8 @@ prometheusK8s:
 		t.Fatalf("Failed to unmarshal hubInfo: (%v)", err)
 	}
 	hubInfoObj := newHubInfoSecret([]byte(hubInfoYAML), testNamespace)
-	amAccessSrt := newAMAccessorSecret(testNamespace)
+	tokenValue := "test-token"
+	amAccessSrt := newAMAccessorSecret(testNamespace, tokenValue)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -145,12 +147,13 @@ prometheusK8s:
 			if tt.ClusterMonitoringConfigCMExist {
 				objs = append(objs, newClusterMonitoringConfigCM(tt.ClusterMonitoringConfigDataYaml, tt.Manager))
 			}
-			testCreateOrUpdateClusterMonitoringConfig(t, hubInfo, fake.NewClientBuilder().WithRuntimeObjects(objs...).Build(), tt.ExpectedDeleteClusterMonitoringConfigCM)
+			testCreateOrUpdateClusterMonitoringConfig(t, hubInfo, fake.NewClientBuilder().WithRuntimeObjects(objs...).Build(), tt.ExpectedDeleteClusterMonitoringConfigCM, tokenValue, testNamespace)
 		})
 	}
 }
 
 func TestClusterMonitoringConfigAlertsDisabled(t *testing.T) {
+	testNamespace := "test-ns"
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&zap.Options{Development: true})))
 	ctx := context.TODO()
 
@@ -160,7 +163,7 @@ func TestClusterMonitoringConfigAlertsDisabled(t *testing.T) {
 		t.Fatalf("Failed to unmarshal hubInfo: (%v)", err)
 	}
 	hubInfoObj := newHubInfoSecret([]byte(hubInfoYAMLAlertsDisabled), testNamespace)
-	amAccessSrt := newAMAccessorSecret(testNamespace)
+	amAccessSrt := newAMAccessorSecret(testNamespace, "test-token")
 
 	// Scenario 1:
 	//   create cluster-monitoring-config configmap with "manager: endpoint-monitoring-operator"
@@ -298,14 +301,14 @@ func TestClusterMonitoringConfigAlertsDisabled(t *testing.T) {
 		t.Fatalf("could not recreate hubInfoObject to enable alerts again")
 	}
 	t.Run("Reenable alert forwarding", func(t *testing.T) {
-		err = createOrUpdateClusterMonitoringConfig(ctx, hubInfo, testClusterID, c, false)
+		err = createOrUpdateClusterMonitoringConfig(ctx, hubInfo, testClusterID, c, false, testNamespace)
 		if err != nil {
 			t.Fatalf("Failed to create or update the cluster-monitoring-config configmap: (%v)", err)
 		}
 
 		foundclusterMonitoringRevertedCM := &corev1.ConfigMap{}
 		err = c.Get(ctx, types.NamespacedName{Name: clusterMonitoringRevertedName,
-			Namespace: namespace}, foundclusterMonitoringRevertedCM)
+			Namespace: testNamespace}, foundclusterMonitoringRevertedCM)
 		if err == nil {
 			t.Fatalf("configmap %s still present after reenabling alerts", clusterMonitoringRevertedName)
 		}
@@ -346,9 +349,9 @@ func TestClusterMonitoringConfigAlertsDisabled(t *testing.T) {
 	})
 }
 
-func testCreateOrUpdateClusterMonitoringConfig(t *testing.T, hubInfo *operatorconfig.HubInfo, c client.Client, expectedCMDelete bool) {
+func testCreateOrUpdateClusterMonitoringConfig(t *testing.T, hubInfo *operatorconfig.HubInfo, c client.Client, expectedCMDelete bool, tokenValue, ns string) {
 	ctx := context.TODO()
-	err := createOrUpdateClusterMonitoringConfig(ctx, hubInfo, testClusterID, c, false)
+	err := createOrUpdateClusterMonitoringConfig(ctx, hubInfo, testClusterID, c, false, ns)
 	if err != nil {
 		t.Fatalf("Failed to create or update the cluster-monitoring-config configmap: (%v)", err)
 	}
@@ -402,8 +405,8 @@ func testCreateOrUpdateClusterMonitoringConfig(t *testing.T, hubInfo *operatorco
 			if !ok {
 				t.Fatalf("no key %s found in the observability-alertmanager-accessor secret", hubAmAccessorSecretKey)
 			}
-			if string(foundAmAccessorToken) != testBearerToken {
-				t.Fatalf("incorrect token found in the observability-alertmanager-accessor secret, got token: %s, expected value %s", foundAmAccessorToken, testBearerToken)
+			if string(foundAmAccessorToken) != tokenValue {
+				t.Fatalf("incorrect token found in the observability-alertmanager-accessor secret, got token: %s, expected value %s", foundAmAccessorToken, tokenValue)
 			}
 		}
 	}

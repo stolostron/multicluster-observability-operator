@@ -12,7 +12,6 @@ import (
 	"strings"
 
 	prometheusv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
-	"golang.org/x/exp/slices"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -34,7 +33,6 @@ const (
 )
 
 var (
-	namespace       = os.Getenv("WATCH_NAMESPACE")
 	log             = logf.Log.WithName("renderer")
 	disabledMetrics = []string{
 		"apiserver_admission_controller_admission_duration_seconds_bucket",
@@ -60,6 +58,7 @@ func Render(
 	r *rendererutil.Renderer,
 	c runtimeclient.Client,
 	hubInfo *operatorconfig.HubInfo,
+	namespace string,
 ) ([]*unstructured.Unstructured, error) {
 
 	isKindTest := false
@@ -225,7 +224,7 @@ func Render(
 			}
 
 			// replace the disabled metrics
-			disabledMetricsSt, err := getDisabledMetrics(ctx, c)
+			disabledMetricsSt, err := getDisabledMetrics(ctx, c, namespace)
 			if err != nil {
 				return nil, err
 			}
@@ -270,36 +269,10 @@ func Render(
 		}
 	}
 
-	// Ordering resources to ensure they are applied in the correct order
-	slices.SortFunc(resources, func(a, b *unstructured.Unstructured) int {
-		aPriority := resourcePriority(a)
-		bPriority := resourcePriority(b)
-		if aPriority < bPriority {
-			return -1
-		}
-		if aPriority > bPriority {
-			return 1
-		}
-		return 0
-	})
-
 	return resources, nil
 }
 
-func resourcePriority(resource *unstructured.Unstructured) int {
-	switch resource.GetKind() {
-	case "Role", "ClusterRole":
-		return 1
-	case "RoleBinding", "ClusterRoleBinding":
-		return 2
-	case "CustomResourceDefinition":
-		return 3
-	default:
-		return 4
-	}
-}
-
-func getDisabledMetrics(ctx context.Context, c runtimeclient.Client) (string, error) {
+func getDisabledMetrics(ctx context.Context, c runtimeclient.Client, namespace string) (string, error) {
 	cm := &corev1.ConfigMap{}
 	err := c.Get(ctx, types.NamespacedName{Name: operatorconfig.AllowlistConfigMapName,
 		Namespace: namespace}, cm)
