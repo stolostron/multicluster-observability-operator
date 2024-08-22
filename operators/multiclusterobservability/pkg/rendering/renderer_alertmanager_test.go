@@ -57,12 +57,12 @@ func TestAlertManagerRenderer(t *testing.T) {
 		Data: map[string]string{
 			"prometheus_alertmanager": "quay.io/rhacm2/alertmanager:latest",
 			"configmap_reloader":      "quay.io/rhacm2/configmap-reloader:latest",
-			"oauth_proxy":             "quay.io/rhacm2/oauth_proxy:latest",
 			"kube_rbac_proxy":         "quay.io/rhacm2/kube-rbac-proxy:latest",
 		},
 	}
 
 	kubeClient := fake.NewClientBuilder().WithObjects(clientCa, mchImageManifest).Build()
+
 	alertResources := renderTemplates(t, kubeClient, makeBaseMco())
 
 	// clientCa configmap must be filled with the client-ca-file data
