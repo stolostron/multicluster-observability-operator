@@ -73,6 +73,9 @@ type PlacementRuleReconciler struct {
 	Scheme     *runtime.Scheme
 	CRDMap     map[string]bool
 	RESTMapper meta.RESTMapper
+
+	statusIsInitialized bool
+	statusMu            sync.Mutex
 }
 
 // +kubebuilder:rbac:groups=observability.open-cluster-management.io,resources=placementrules,verbs=get;list;watch;create;update;patch;delete
@@ -261,12 +264,17 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	}
 
 	// only update managedclusteraddon status when obs addon's status updated
-	if req.Name == obsAddonName {
-		err = updateAddonStatus(r.Client, *obsAddonList)
+	// ensure the status is updated once in the reconcile loop when the controller starts
+	r.statusMu.Lock()
+	if req.Name == obsAddonName || !r.statusIsInitialized {
+		r.statusIsInitialized = true
+		err = updateAddonStatus(ctx, r.Client, *obsAddonList)
 		if err != nil {
+			r.statusMu.Unlock()
 			return ctrl.Result{}, err
 		}
 	}
+	r.statusMu.Unlock()
 
 	if deleteAll {
 		// delete managedclusteraddon for local-cluster

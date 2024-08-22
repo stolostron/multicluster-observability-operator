@@ -1,0 +1,23 @@
+name: Check pull request against latest release branch
+on:
+  pull_request_target:
+    types:
+      - opened
+      - reopened
+      - synchronize
+jobs:
+  check-branches:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Check branches
+        run: |
+          git fetch
+          LATEST_RELEASE=$(git branch -a | grep -o "release-[[:digit:]].\([[:digit:]]*\)" | sed -e "s/^release-//" | sort -V | tail -n 1)
+          echo "$LATEST_RELEASE"
+          echo ${{ github.base_ref }}
+          if [ ${{ github.base_ref }} == "release-$LATEST_RELEASE" ]; then
+            echo "You are trying to merge to the latest release branch. Create a PR for main instead."
+            exit 1
+          fi
