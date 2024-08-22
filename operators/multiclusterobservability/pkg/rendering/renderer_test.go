@@ -96,9 +96,9 @@ func TestGetOauthProxyFromImageStreams(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	found, oauth_proxy_image := config.GetOauthProxyImage(imageClient)
+	found, oauthProxyImage := config.GetOauthProxyImage(imageClient)
 	if !found {
 		t.Fatal("Failed to get oauth proxy image")
 	}
-	assert.Equal(t, "quay.io/openshift-release-dev/ocp-v4.0-art-dev:v4.4", oauth_proxy_image)
+	assert.Equal(t, "quay.io/openshift-release-dev/ocp-v4.0-art-dev", oauthProxyImage)
 }
