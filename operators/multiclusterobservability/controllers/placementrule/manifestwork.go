@@ -438,6 +438,7 @@ func createManifestWorks(
 	}
 
 	if pullSecret != nil && !hasCustomRegistry {
+		log.Info("Coleen debug: inject pull secret into work")
 		manifests = injectIntoWork(manifests, pullSecret)
 	}
 

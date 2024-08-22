@@ -453,8 +453,6 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 	cmPred := GetConfigMapPredicateFunc()
 	secretPred := GetAlertManagerSecretPredicateFunc()
 	namespacePred := GetNamespacePredicateFunc()
-	imageStreamPred := GetImageStreamPredicateFunc()
-
 	ctrBuilder := ctrl.NewControllerManagedBy(mgr).
 		// Watch for changes to primary resource MultiClusterObservability with predicate
 		For(&mcov1beta2.MultiClusterObservability{}, builder.WithPredicates(mcoPred)).
@@ -481,9 +479,6 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 		// Watch the namespace for changes
 		Watches(&corev1.Namespace{}, &handler.EnqueueRequestForObject{},
 			builder.WithPredicates(namespacePred)).
-		// Watch the imagestream for changes
-		Watches(&imagev1.ImageStream{}, &handler.EnqueueRequestForObject{},
-			builder.WithPredicates(imageStreamPred)).
 		// Watch the kube-system extension-apiserver-authentication ConfigMap for changes
 		Watches(&corev1.ConfigMap{}, handler.EnqueueRequestsFromMapFunc(
 			func(ctx context.Context, a client.Object) []reconcile.Request {
@@ -497,6 +492,23 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 				}
 				return nil
 			}), builder.WithPredicates(predicate.ResourceVersionChangedPredicate{}))
+
+	if _, err := mgr.GetRESTMapper().KindFor(schema.GroupVersionResource{
+		Group:    "image.openshift.io",
+		Version:  "v1",
+		Resource: "imagestreams",
+	}); err != nil {
+		if meta.IsNoMatchError(err) {
+			log.Info("image.openshift.io/v1/imagestreams is not available")
+		} else {
+			log.Error(err, "failed to get kind for image.openshift.io/v1/imagestreams")
+			os.Exit(1)
+		}
+	} else {
+		// Images stream is only available in OpenShift
+		imageStreamPred := GetImageStreamPredicateFunc()
+		ctrBuilder = ctrBuilder.Watches(&imagev1.ImageStream{}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(imageStreamPred))
+	}
 
 	mchGroupKind := schema.GroupKind{Group: mchv1.GroupVersion.Group, Kind: "MultiClusterHub"}
 	if _, err := r.RESTMapper.RESTMapping(mchGroupKind, mchv1.GroupVersion.Version); err == nil {

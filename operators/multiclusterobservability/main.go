@@ -10,9 +10,9 @@ import (
 	"fmt"
 	"os"
 
-	imagev1client "github.com/openshift/client-go/image/clientset/versioned/typed/image/v1"
-	"k8s.io/apimachinery/pkg/api/meta"
+	imagev1 "github.com/openshift/api/image/v1"
 
+	imagev1client "github.com/openshift/client-go/image/clientset/versioned/typed/image/v1"
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
 
@@ -72,6 +72,7 @@ func init() {
 	utilruntime.Must(observatoriumAPIs.AddToScheme(scheme))
 	utilruntime.Must(prometheusv1.AddToScheme(scheme))
 	utilruntime.Must(addonv1alpha1.AddToScheme(scheme))
+	utilruntime.Must(imagev1.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
 }
 
@@ -283,19 +284,6 @@ func main() {
 		config.StorageVersionMigrationCrdName: svmCrdExists,
 		config.IngressControllerCRD:           ingressCtlCrdExists,
 		config.MCGHCrdName:                    mcghCrdExists,
-	}
-
-	if _, err := mgr.GetRESTMapper().KindFor(schema.GroupVersionResource{
-		Group:    "image.openshift.io",
-		Version:  "v1",
-		Resource: "imagestreams",
-	}); err != nil {
-		if meta.IsNoMatchError(err) {
-			setupLog.Info("image.openshift.io/v1/imagestreams is not available")
-		} else {
-			setupLog.Error(err, "failed to get kind for image.openshift.io/v1/imagestreams")
-			os.Exit(1)
-		}
 	}
 
 	imageClient, err := imagev1client.NewForConfig(ctrl.GetConfigOrDie())

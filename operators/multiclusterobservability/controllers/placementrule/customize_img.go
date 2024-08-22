@@ -45,6 +45,7 @@ var (
 
 func updateManagedClusterImageRegistry(obj client.Object) {
 	if imageReg, ok := obj.GetAnnotations()[ClusterImageRegistriesAnnotation]; ok {
+		log.Info("Coleen: updateManagedClusterImageRegistry")
 		managedClusterImageRegistryMutex.Lock()
 		managedClusterImageRegistry[obj.GetName()] = imageReg
 		managedClusterImageRegistryMutex.Unlock()
