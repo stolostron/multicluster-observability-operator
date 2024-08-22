@@ -7,12 +7,13 @@ package config
 import (
 	"context"
 	"fmt"
-	imagev1client "github.com/openshift/client-go/image/clientset/versioned/typed/image/v1"
 	"net/url"
 	"os"
 	"reflect"
 	"strings"
 	"time"
+
+	imagev1client "github.com/openshift/client-go/image/clientset/versioned/typed/image/v1"
 
 	ocinfrav1 "github.com/openshift/api/config/v1"
 	operatorv1 "github.com/openshift/api/operator/v1"

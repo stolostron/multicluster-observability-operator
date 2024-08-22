@@ -8,12 +8,13 @@ import (
 	"context"
 	cerr "errors"
 	"fmt"
-	imagev1 "github.com/openshift/api/image/v1"
-	imagev1client "github.com/openshift/client-go/image/clientset/versioned/typed/image/v1"
 	"os"
 	"reflect"
 	"strings"
 	"time"
+
+	imagev1 "github.com/openshift/api/image/v1"
+	imagev1client "github.com/openshift/client-go/image/clientset/versioned/typed/image/v1"
 
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"

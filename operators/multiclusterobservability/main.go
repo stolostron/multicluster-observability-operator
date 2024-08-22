@@ -8,9 +8,10 @@ import (
 	"crypto/tls"
 	"flag"
 	"fmt"
+	"os"
+
 	imagev1client "github.com/openshift/client-go/image/clientset/versioned/typed/image/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
-	"os"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
