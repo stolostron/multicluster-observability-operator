@@ -415,7 +415,7 @@ func testCreateOrUpdateClusterMonitoringConfig(t *testing.T, hubInfo *operatorco
 		t.Fatalf("no AlertmanagerConfig for OCM in ClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs: %v", foundClusterMonitoringConfiguration)
 	}
 
-	err = revertClusterMonitoringConfig(ctx, c)
+	err = RevertClusterMonitoringConfig(ctx, c)
 	if err != nil {
 		t.Fatalf("Failed to revert cluster-monitoring-config configmap: (%v)", err)
 	}
@@ -442,7 +442,7 @@ func testCreateOrUpdateClusterMonitoringConfig(t *testing.T, hubInfo *operatorco
 		t.Fatalf("the secret %s should not be deleted", hubAmRouterCASecretName)
 	}
 
-	err = revertClusterMonitoringConfig(ctx, c)
+	err = RevertClusterMonitoringConfig(ctx, c)
 	if err != nil {
 		t.Fatalf("Run into error when try to revert cluster-monitoring-config configmap twice: (%v)", err)
 	}
