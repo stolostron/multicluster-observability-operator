@@ -48,7 +48,7 @@ var _ = Describe("", func() {
 			var url string
 
 			if strings.Contains(cloudProvider, substring1) && strings.Contains(cloudProvider, substring2) {
-
+				Skip("skip on rosa-hcp")
 				url = "https://rbac-query-proxy-open-cluster-management-observability.apps.rosa." + testOptions.HubCluster.BaseDomain + query
 
 			} else {
@@ -106,6 +106,14 @@ var _ = Describe("", func() {
 
 	It("@BVT - [P1][Sev1][observability][Integration] Should access alert via alertmanager route (route/g0)", func() {
 		Eventually(func() error {
+			cloudProvider := strings.ToLower(os.Getenv("CLOUD_PROVIDER"))
+			substring1 := "rosa"
+			substring2 := "hcp"
+
+			if strings.Contains(cloudProvider, substring1) && strings.Contains(cloudProvider, substring2) {
+				Skip("skip on rosa-hcp")
+			}
+
 			query := "/api/v2/alerts"
 			url := "https://alertmanager-open-cluster-management-observability.apps." + testOptions.HubCluster.BaseDomain + query
 			alertJson := `

@@ -309,7 +309,7 @@ var _ = Describe("", func() {
 		var amURL *url.URL
 
 		if strings.Contains(cloudProvider, substring1) && strings.Contains(cloudProvider, substring2) {
-
+			Skip("skip on rosa-hcp")
 			amURL = &url.URL{
 				Scheme: "https",
 				Host:   "alertmanager-open-cluster-management-observability.apps.rosa." + testOptions.HubCluster.BaseDomain,
@@ -441,7 +441,7 @@ var _ = Describe("", func() {
 		var amURL *url.URL
 
 		if strings.Contains(cloudProvider, substring1) && strings.Contains(cloudProvider, substring2) {
-
+			Skip("skip on rosa-hcp")
 			amURL = &url.URL{
 				Scheme: "https",
 				Host:   "alertmanager-open-cluster-management-observability.apps.rosa." + testOptions.HubCluster.BaseDomain,
