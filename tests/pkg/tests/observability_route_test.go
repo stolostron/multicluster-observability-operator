@@ -40,7 +40,22 @@ var _ = Describe("", func() {
 	It("RHACM4K-1693: Observability: Verify Observability working with new OCP API Server certs - @BVT - [P1][Sev1][observability][Integration]@ocpInterop @post-upgrade @post-restore Should access metrics via rbac-query-proxy route @e2e (route/g0)", func() {
 		Eventually(func() error {
 			query := "/api/v1/query?query=cluster_version"
-			url := "https://rbac-query-proxy-open-cluster-management-observability.apps." + testOptions.HubCluster.BaseDomain + query
+
+			cloudProvider := strings.ToLower(os.Getenv("CLOUD_PROVIDER"))
+			substring1 := "rosa"
+			substring2 := "hcp"
+
+			var url string
+
+			if strings.Contains(cloudProvider, substring1) && strings.Contains(cloudProvider, substring2) {
+
+				url = "https://rbac-query-proxy-open-cluster-management-observability.apps.rosa." + testOptions.HubCluster.BaseDomain + query
+
+			} else {
+				url = "https://rbac-query-proxy-open-cluster-management-observability.apps." + testOptions.HubCluster.BaseDomain + query
+
+			}
+
 			req, err := http.NewRequest(
 				"GET",
 				url,
