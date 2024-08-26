@@ -301,11 +301,30 @@ var _ = Describe("", func() {
 	})
 
 	It("RHACM4K-3457: Observability: Verify managed cluster alert would be forward to hub alert manager - Should have alert named Watchdog forwarded to alertmanager [P2][Sev2][Observability][Integration]@ocpInterop @post-upgrade @post-restore @e2e (alertforward/g0)", func() {
-		amURL := url.URL{
-			Scheme: "https",
-			Host:   "alertmanager-open-cluster-management-observability.apps." + testOptions.HubCluster.BaseDomain,
-			Path:   "/api/v2/alerts",
+
+		cloudProvider := strings.ToLower(os.Getenv("CLOUD_PROVIDER"))
+		substring1 := "rosa"
+		substring2 := "hcp"
+
+		var amURL *url.URL
+
+		if strings.Contains(cloudProvider, substring1) && strings.Contains(cloudProvider, substring2) {
+
+			amURL = &url.URL{
+				Scheme: "https",
+				Host:   "alertmanager-open-cluster-management-observability.apps.rosa." + testOptions.HubCluster.BaseDomain,
+				Path:   "/api/v2/alerts",
+			}
+
+		} else {
+			amURL = &url.URL{
+				Scheme: "https",
+				Host:   "alertmanager-open-cluster-management-observability.apps." + testOptions.HubCluster.BaseDomain,
+				Path:   "/api/v2/alerts",
+			}
+
 		}
+
 		q := amURL.Query()
 		q.Set("filter", "alertname=Watchdog")
 		amURL.RawQuery = q.Encode()
@@ -333,6 +352,7 @@ var _ = Describe("", func() {
 		}
 
 		expectedOCPClusterIDs, err := utils.ListOCPManagedClusterIDs(testOptions, "4.8.0")
+		Expect(err).NotTo(HaveOccurred())
 		expectedLocalClusterIDs, err := utils.ListLocalClusterIDs(testOptions)
 		expectedOCPClusterIDs = append(expectedOCPClusterIDs, expectedLocalClusterIDs...)
 		klog.V(3).Infof("expectedOCPClusterIDs is %s", expectedOCPClusterIDs)
@@ -414,10 +434,27 @@ var _ = Describe("", func() {
 	})
 
 	It("RHACM4K-22427: Observability: Disable the managedcluster's alerts forward to the Hub [P2][Sev2][Observability][Integration] @e2e (alertforward/g1)", func() {
-		amURL := url.URL{
-			Scheme: "https",
-			Host:   "alertmanager-open-cluster-management-observability.apps." + testOptions.HubCluster.BaseDomain,
-			Path:   "/api/v2/alerts",
+		cloudProvider := strings.ToLower(os.Getenv("CLOUD_PROVIDER"))
+		substring1 := "rosa"
+		substring2 := "hcp"
+
+		var amURL *url.URL
+
+		if strings.Contains(cloudProvider, substring1) && strings.Contains(cloudProvider, substring2) {
+
+			amURL = &url.URL{
+				Scheme: "https",
+				Host:   "alertmanager-open-cluster-management-observability.apps.rosa." + testOptions.HubCluster.BaseDomain,
+				Path:   "/api/v2/alerts",
+			}
+
+		} else {
+			amURL = &url.URL{
+				Scheme: "https",
+				Host:   "alertmanager-open-cluster-management-observability.apps." + testOptions.HubCluster.BaseDomain,
+				Path:   "/api/v2/alerts",
+			}
+
 		}
 		q := amURL.Query()
 		q.Set("filter", "alertname=Watchdog")
