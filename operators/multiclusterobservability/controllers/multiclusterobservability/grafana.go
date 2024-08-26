@@ -105,7 +105,7 @@ func GenerateGrafanaDataSource(
 					Timeout:               "300",
 					CustomQueryParameters: "max_source_resolution=auto",
 					TimeInterval:          fmt.Sprintf("%ds", mco.Spec.ObservabilityAddonSpec.Interval),
-					ForwardHeaders:        []string{"X-Forwarded-Access-Token", "X-Forwarded-User"},
+					ForwardHeaders:        []string{"X-Forwarded-Access-Token"},
 				},
 			},
 			{
@@ -122,7 +122,7 @@ func GenerateGrafanaDataSource(
 					Timeout:               "300",
 					CustomQueryParameters: "max_source_resolution=auto",
 					TimeInterval:          fmt.Sprintf("%ds", DynamicTimeInterval),
-					ForwardHeaders:        []string{"X-Forwarded-Access-Token", "X-Forwarded-User"},
+					ForwardHeaders:        []string{"X-Forwarded-Access-Token"},
 				},
 			},
 		},
