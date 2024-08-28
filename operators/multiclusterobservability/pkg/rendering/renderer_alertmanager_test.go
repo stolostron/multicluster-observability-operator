@@ -148,8 +148,10 @@ func TestAlertManagerRendererMCOConfig(t *testing.T) {
 				ret := makeBaseMco()
 				replicas := int32(3)
 				ret.Spec.AdvancedConfig = &mcov1beta2.AdvancedConfig{
-					Alertmanager: &mcov1beta2.CommonSpec{
-						Replicas: &replicas,
+					Alertmanager: &mcov1beta2.AlertmanagerSpec{
+						CommonSpec: mcov1beta2.CommonSpec{
+							Replicas: &replicas,
+						},
 					},
 				}
 				return ret
@@ -171,15 +173,18 @@ func TestAlertManagerRendererMCOConfig(t *testing.T) {
 			mco: func() *mcov1beta2.MultiClusterObservability {
 				ret := makeBaseMco()
 				ret.Spec.AdvancedConfig = &mcov1beta2.AdvancedConfig{
-					Alertmanager: &mcov1beta2.CommonSpec{
-						Resources: &corev1.ResourceRequirements{
-							Limits: corev1.ResourceList{
-								corev1.ResourceCPU:    resource.MustParse("1"),
-								corev1.ResourceMemory: resource.MustParse("1Gi"),
-							},
-							Requests: corev1.ResourceList{
-								corev1.ResourceCPU:    resource.MustParse("500m"),
-								corev1.ResourceMemory: resource.MustParse("500Mi"),
+
+					Alertmanager: &mcov1beta2.AlertmanagerSpec{
+						CommonSpec: mcov1beta2.CommonSpec{
+							Resources: &corev1.ResourceRequirements{
+								Limits: corev1.ResourceList{
+									corev1.ResourceCPU:    resource.MustParse("1"),
+									corev1.ResourceMemory: resource.MustParse("1Gi"),
+								},
+								Requests: corev1.ResourceList{
+									corev1.ResourceCPU:    resource.MustParse("500m"),
+									corev1.ResourceMemory: resource.MustParse("500Mi"),
+								},
 							},
 						},
 					},
@@ -191,6 +196,48 @@ func TestAlertManagerRendererMCOConfig(t *testing.T) {
 				assert.Equal(t, resource.MustParse("1Gi"), sts.Spec.Template.Spec.Containers[0].Resources.Limits[corev1.ResourceMemory])
 				assert.Equal(t, resource.MustParse("500m"), sts.Spec.Template.Spec.Containers[0].Resources.Requests[corev1.ResourceCPU])
 				assert.Equal(t, resource.MustParse("500Mi"), sts.Spec.Template.Spec.Containers[0].Resources.Requests[corev1.ResourceMemory])
+			},
+		},
+		"secrets": {
+			mco: func() *mcov1beta2.MultiClusterObservability {
+				ret := makeBaseMco()
+				ret.Spec.AdvancedConfig = &mcov1beta2.AdvancedConfig{
+					Alertmanager: &mcov1beta2.AlertmanagerSpec{
+						Secrets: []string{"this", "that"},
+					},
+				}
+				return ret
+			},
+			expect: func(t *testing.T, sts *appsv1.StatefulSet) {
+				name := "secret-this"
+				assert.Contains(t, sts.Spec.Template.Spec.Volumes, corev1.Volume{
+					Name: name,
+					VolumeSource: corev1.VolumeSource{
+						Secret: &corev1.SecretVolumeSource{
+							SecretName: "this",
+						},
+					},
+				})
+				assert.Contains(t, sts.Spec.Template.Spec.Containers[0].VolumeMounts, corev1.VolumeMount{
+					Name:      name,
+					MountPath: "/etc/alertmanager/secrets/this",
+					ReadOnly:  true,
+				})
+
+				name = "secret-that"
+				assert.Contains(t, sts.Spec.Template.Spec.Volumes, corev1.Volume{
+					Name: name,
+					VolumeSource: corev1.VolumeSource{
+						Secret: &corev1.SecretVolumeSource{
+							SecretName: "that",
+						},
+					},
+				})
+				assert.Contains(t, sts.Spec.Template.Spec.Containers[0].VolumeMounts, corev1.VolumeMount{
+					Name:      name,
+					MountPath: "/etc/alertmanager/secrets/that",
+					ReadOnly:  true,
+				})
 			},
 		},
 	}
