@@ -233,7 +233,7 @@ type AdvancedConfig struct {
 	Grafana *CommonSpec `json:"grafana,omitempty"`
 	// The spec of alertmanager
 	// +optional
-	Alertmanager *CommonSpec `json:"alertmanager,omitempty"`
+	Alertmanager *AlertmanagerSpec `json:"alertmanager,omitempty"`
 	// Specifies the store memcached
 	// +optional
 	StoreMemcached *CacheConfig `json:"storeMemcached,omitempty"`
@@ -273,6 +273,17 @@ type CommonSpec struct {
 	// Replicas for this component.
 	// +optional
 	Replicas *int32 `json:"replicas,omitempty"`
+}
+
+// AlertmanagerSpec defines the spec for the Alertmanager component.
+type AlertmanagerSpec struct {
+	// Secrets is a list of Secrets in the same namespace as the MCO object.
+	// Each of these Secrets shall be mounted into the Alertmanager Pods.
+	// Secrets are added to the StatefulSet as a volume named secret-<secret-name>.
+	// Secrets are mounted into /etc/alertmanager/secrets/<secret-name> in the 'alertmanager' container.
+	Secrets []string `json:"secrets,omitempty"`
+	// +optional
+	CommonSpec `json:",inline"`
 }
 
 // Thanos Query Spec.
