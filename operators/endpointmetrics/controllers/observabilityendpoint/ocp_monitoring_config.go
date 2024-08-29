@@ -296,7 +296,6 @@ func createOrUpdateClusterMonitoringConfig(
 
 	// create the hub-alertmanager-router-ca secret if it doesn't exist or update it if needed
 	if err := createHubAmRouterCASecret(ctx, hubInfo, client, targetNamespace); err != nil {
-		log.Error(err, "failed to create or update the hub-alertmanager-router-ca secret")
 		return fmt.Errorf("failed to create or update the hub-alertmanager-router-ca secret: %w", err)
 	}
 
@@ -348,8 +347,7 @@ func createOrUpdateClusterMonitoringConfig(
 
 	newClusterMonitoringConfigurationYAMLBytes, err := yaml.Marshal(newClusterMonitoringConfiguration)
 	if err != nil {
-		log.Error(err, "failed to marshal cluster monitoring config to YAML", "name", clusterMonitoringConfigName)
-		return err
+		return fmt.Errorf("failed to marshal cluster monitoring config to YAML: %w", err)
 	}
 
 	newCusterMonitoringConfigMap := &corev1.ConfigMap{
@@ -368,8 +366,7 @@ func createOrUpdateClusterMonitoringConfig(
 			log.Info("cluster monitoring configmap not found, trying to create it", "name", clusterMonitoringConfigName)
 			return createCMOConfigMapAndUnset(ctx, client, newCusterMonitoringConfigMap, namespace)
 		}
-		log.Error(err, "failed to check cluster monitoring configmap", "name", clusterMonitoringConfigName)
-		return err
+		return fmt.Errorf("failed to check configmap %s: %w", clusterMonitoringConfigName, err)
 	}
 
 	log.Info("cluster monitoring configmap exists", "name", clusterMonitoringConfigName)
@@ -382,8 +379,7 @@ func createOrUpdateClusterMonitoringConfig(
 
 	foundClusterMonitoringConfiguration := &cmomanifests.ClusterMonitoringConfiguration{}
 	if err := yaml.Unmarshal([]byte(foundClusterMonitoringConfigurationYAMLString), foundClusterMonitoringConfiguration); err != nil {
-		log.Error(err, "failed to unmarshal the cluster monitoring config")
-		return err
+		return fmt.Errorf("failed to unmarshal the cluster monitoring config: %w", err)
 	}
 
 	if foundClusterMonitoringConfiguration.PrometheusK8sConfig != nil {
@@ -419,7 +415,7 @@ func createOrUpdateClusterMonitoringConfig(
 
 	updatedClusterMonitoringConfigurationYAMLBytes, err := yaml.Marshal(foundClusterMonitoringConfiguration)
 	if err != nil {
-		log.Error(err, "failed to marshal the cluster monitoring config to yaml")
+		return fmt.Errorf("failed to marshal the cluster monitoring config to yaml: %w", err)
 	}
 
 	found.Data[clusterMonitoringConfigDataKey] = string(updatedClusterMonitoringConfigurationYAMLBytes)
@@ -434,8 +430,7 @@ func RevertClusterMonitoringConfig(ctx context.Context, client client.Client) er
 	found := &corev1.ConfigMap{}
 	err := client.Get(ctx, types.NamespacedName{Name: clusterMonitoringConfigName, Namespace: promNamespace}, found)
 	if err != nil && !errors.IsNotFound(err) {
-		log.Error(err, "failed to check configmap", "name", clusterMonitoringConfigName)
-		return err
+		return fmt.Errorf("failed to check configmap %s: %w", clusterMonitoringConfigName, err)
 	}
 
 	log.Info("configmap exists, check if it needs revert", "name", clusterMonitoringConfigName)
@@ -452,8 +447,7 @@ func RevertClusterMonitoringConfig(ctx context.Context, client client.Client) er
 	foundClusterMonitoringConfiguration := &cmomanifests.ClusterMonitoringConfiguration{}
 	err = yaml.Unmarshal([]byte(foundClusterMonitoringConfigurationYAML), foundClusterMonitoringConfiguration)
 	if err != nil {
-		log.Error(err, "failed to marshal the cluster monitoring config")
-		return err
+		return fmt.Errorf("failed to unmarshal the cluster monitoring config: %w", err)
 	}
 
 	if foundClusterMonitoringConfiguration.PrometheusK8sConfig == nil {
@@ -492,8 +486,7 @@ func RevertClusterMonitoringConfig(ctx context.Context, client client.Client) er
 		log.Info("empty ClusterMonitoringConfiguration, deleting configmap if it still exists", "name", clusterMonitoringConfigName)
 		err = client.Delete(ctx, found)
 		if err != nil && !errors.IsNotFound(err) {
-			log.Error(err, "failed to delete configmap", "name", clusterMonitoringConfigName)
-			return err
+			return fmt.Errorf("failed to delete configmap %s: %w", clusterMonitoringConfigName, err)
 		}
 		log.Info("configmap deleted", "name", clusterMonitoringConfigName)
 		return nil
@@ -501,8 +494,7 @@ func RevertClusterMonitoringConfig(ctx context.Context, client client.Client) er
 
 	updatedClusterMonitoringConfigurationYAMLBytes, err := yaml.Marshal(foundClusterMonitoringConfiguration)
 	if err != nil {
-		log.Error(err, "failed to marshal the cluster monitoring config")
-		return err
+		return fmt.Errorf("failed to marshal the cluster monitoring config: %w", err)
 	}
 
 	found.Data[clusterMonitoringConfigDataKey] = string(updatedClusterMonitoringConfigurationYAMLBytes)
@@ -524,8 +516,7 @@ func createCMOConfigMapAndUnset(ctx context.Context, client client.Client, obj c
 func updateClusterMonitoringConfig(ctx context.Context, client client.Client, obj client.Object) error {
 	err := client.Update(ctx, obj)
 	if err != nil {
-		log.Error(err, "failed to update configmap", "name", clusterMonitoringConfigName)
-		return err
+		return fmt.Errorf("failed to update configmap %s: %w", clusterMonitoringConfigName, err)
 	}
 	log.Info("configmap updated", "name", clusterMonitoringConfigName)
 	return nil
