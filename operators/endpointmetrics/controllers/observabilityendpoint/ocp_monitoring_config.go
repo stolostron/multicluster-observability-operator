@@ -320,7 +320,7 @@ func createOrUpdateClusterMonitoringConfig(
 			return err
 		}
 		if !revertedAlready {
-			if err = revertClusterMonitoringConfig(ctx, client); err != nil {
+			if err = RevertClusterMonitoringConfig(ctx, client); err != nil {
 				return err
 			}
 			if err = setConfigReverted(ctx, client, namespace); err != nil {
@@ -494,10 +494,10 @@ func unset(ctx context.Context, client client.Client, ns string) error {
 	return err
 }
 
-// revertClusterMonitoringConfig reverts the configmap cluster-monitoring-config and relevant resources
+// RevertClusterMonitoringConfig reverts the configmap cluster-monitoring-config and relevant resources
 // (observability-alertmanager-accessor and hub-alertmanager-router-ca) for the openshift cluster monitoring stack.
-func revertClusterMonitoringConfig(ctx context.Context, client client.Client) error {
-	log.Info("revertClusterMonitoringConfig called")
+func RevertClusterMonitoringConfig(ctx context.Context, client client.Client) error {
+	log.Info("RevertClusterMonitoringConfig called")
 
 	// try to retrieve the current configmap in the cluster
 	found := &corev1.ConfigMap{}
