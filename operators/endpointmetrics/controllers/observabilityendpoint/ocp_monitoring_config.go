@@ -429,11 +429,15 @@ func RevertClusterMonitoringConfig(ctx context.Context, client client.Client) er
 
 	found := &corev1.ConfigMap{}
 	err := client.Get(ctx, types.NamespacedName{Name: clusterMonitoringConfigName, Namespace: promNamespace}, found)
-	if err != nil && !errors.IsNotFound(err) {
+	if err != nil {
+		if errors.IsNotFound(err) {
+			log.Info("configmap not found, no need action", "name", clusterMonitoringConfigName)
+			return nil
+		}
 		return fmt.Errorf("failed to check configmap %s: %w", clusterMonitoringConfigName, err)
 	}
 
-	log.Info("configmap exists, check if it needs revert", "name", clusterMonitoringConfigName)
+	log.Info("checking if cluster monitoring config needs revert", "name", clusterMonitoringConfigName)
 	found = found.DeepCopy()
 	if !inManagedFields(found) {
 		return nil
@@ -488,7 +492,6 @@ func RevertClusterMonitoringConfig(ctx context.Context, client client.Client) er
 		if err != nil && !errors.IsNotFound(err) {
 			return fmt.Errorf("failed to delete configmap %s: %w", clusterMonitoringConfigName, err)
 		}
-		log.Info("configmap deleted", "name", clusterMonitoringConfigName)
 		return nil
 	}
 
