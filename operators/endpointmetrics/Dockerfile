@@ -8,7 +8,8 @@ COPY ./operators/endpointmetrics ./operators/endpointmetrics
 COPY ./operators/multiclusterobservability/api ./operators/multiclusterobservability/api
 COPY ./operators/pkg ./operators/pkg
 
-RUN CGO_ENABLED=1 go build -a -installsuffix cgo -o build/_output/bin/endpoint-monitoring-operator operators/endpointmetrics/main.go
+RUN CGO_ENABLED=1 GOFLAGS="" go build -a -installsuffix cgo -o build/_output/bin/endpoint-monitoring-operator operators/endpointmetrics/main.go
+RUN CGO_ENABLED=1 GOFLAGS="" go build -a -installsuffix cgo -o build/_output/bin/cmo-config-revert operators/endpointmetrics/cmd/cmo-config-revert/main.go
 
 FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
 
@@ -53,6 +54,8 @@ COPY ./operators/endpointmetrics/manifests /usr/local/manifests
 
 # install operator binary
 COPY --from=builder /workspace/build/_output/bin/endpoint-monitoring-operator ${OPERATOR}
-USER ${USER_UID}
+# install cmo-config-revert binary
+COPY --from=builder /workspace/build/_output/bin/cmo-config-revert cmo-config-revert
 
+USER ${USER_UID}
 ENTRYPOINT ["/usr/local/bin/endpoint-monitoring-operator"]
