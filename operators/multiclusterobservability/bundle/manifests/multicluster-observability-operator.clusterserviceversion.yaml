@@ -457,6 +457,14 @@ spec:
           - create
           - patch
           - delete
+        - apiGroups:
+            - image.openshift.io
+          resources:
+            - imagestreams
+          verbs:
+            - get
+            - list
+            - watch  -
         serviceAccountName: multicluster-observability-operator
       deployments:
       - label:
