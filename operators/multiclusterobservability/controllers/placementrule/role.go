@@ -222,7 +222,7 @@ func createResourceRole(c client.Client) error {
 	found := &rbacv1.ClusterRole{}
 	err := c.Get(context.TODO(), types.NamespacedName{Name: resRoleName}, found)
 	if err != nil && errors.IsNotFound(err) {
-		log.Info("Creating endpoint-observability-res-role clusterrole")
+		log.Info("Creating endpoint-observability-res-role clusterrole test")
 		err = c.Create(context.TODO(), role)
 		if err != nil {
 			log.Error(err, "Failed to create endpoint-observability-res-role clusterrole")
