@@ -104,7 +104,7 @@ func installMCO() {
 		By("Waiting for MCO ready status")
 		allPodsIsReady := false
 		Eventually(func() error {
-			instance, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).
+			instance, err := dynClient.Resource(utils.NewMCOGVRV1BETA1()).
 				Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
 			if err == nil {
 				allPodsIsReady = utils.StatusContainsTypeEqualTo(instance, "Ready")
