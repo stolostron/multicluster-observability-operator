@@ -82,7 +82,7 @@ func main() {
 	}
 
 	if err := util.InitAccessReviewer(kubeConfig); err != nil {
-		klog.Fatalf("failed to Initialize Access Reviewer: %v", err)
+		klog.Fatalf("failed to Initialize Access Reviewer: %v test", err)
 	}
 
 	// watch all managed clusters
