@@ -33,15 +33,14 @@ LATEST_SNAPSHOT=${LATEST_SNAPSHOT:-$(get_latest_snapshot)}
 # deploy the hub and spoke core via OLM
 deploy_hub_spoke_core() {
   cd ${ROOTDIR}
-  OCM_VERSION='2.11.1-SNAPSHOT-2024-07-30-23-37-56'
 
   export OCM_BRANCH=main
-  export IMAGE_NAME=quay.io/stolostron/registration-operator:$OCM_VERSION
-  export REGISTRATION_OPERATOR_IMAGE=quay.io/stolostron/registration-operator:$OCM_VERSION
-  export REGISTRATION_IMAGE=quay.io/stolostron/registration:$OCM_VERSION
-  export WORK_IMAGE=quay.io/stolostron/work:$OCM_VERSION
-  export PLACEMENT_IMAGE=quay.io/stolostron/placement:$OCM_VERSION
-  export ADDON_MANAGER_IMAGE=quay.io/stolostron/addon-manager:$OCM_VERSION
+  export IMAGE_NAME=quay.io/stolostron/registration-operator:$LATEST_SNAPSHOT
+  export REGISTRATION_OPERATOR_IMAGE=quay.io/stolostron/registration-operator:$LATEST_SNAPSHOT
+  export REGISTRATION_IMAGE=quay.io/stolostron/registration:$LATEST_SNAPSHOT
+  export WORK_IMAGE=quay.io/stolostron/work:$LATEST_SNAPSHOT
+  export PLACEMENT_IMAGE=quay.io/stolostron/placement:$LATEST_SNAPSHOT
+  export ADDON_MANAGER_IMAGE=quay.io/stolostron/addon-manager:$LATEST_SNAPSHOT
 
   if [[ ! -d "_repo_ocm" ]]; then
     git clone --depth 1 --branch $OCM_BRANCH https://github.com/stolostron/ocm.git ./_repo_ocm
