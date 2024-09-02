@@ -70,6 +70,9 @@ func MergeAllowlist(allowlist, customAllowlist, ocp3Allowlist, uwlAllowlist,
 		//check if rules are specified for backward compatibility
 		allowlist.RecordingRuleList = append(allowlist.RecordingRuleList, customAllowlist.RuleList...)
 	}
+	if customAllowlist.RenameMap == nil {
+		customAllowlist.RenameMap = make(map[string]string)
+	}
 	for k, v := range customAllowlist.RenameMap {
 		allowlist.RenameMap[k] = v
 	}
@@ -77,6 +80,9 @@ func MergeAllowlist(allowlist, customAllowlist, ocp3Allowlist, uwlAllowlist,
 		ocp3Allowlist.NameList = mergeMetrics(ocp3Allowlist.NameList, customAllowlist.NameList)
 		ocp3Allowlist.MatchList = mergeMetrics(ocp3Allowlist.MatchList, customAllowlist.MatchList)
 		ocp3Allowlist.RuleList = append(ocp3Allowlist.RuleList, customAllowlist.RuleList...)
+		if ocp3Allowlist.RenameMap == nil {
+			ocp3Allowlist.RenameMap = make(map[string]string)
+		}
 		for k, v := range customAllowlist.RenameMap {
 			ocp3Allowlist.RenameMap[k] = v
 		}
@@ -84,6 +90,9 @@ func MergeAllowlist(allowlist, customAllowlist, ocp3Allowlist, uwlAllowlist,
 	uwlAllowlist.NameList = mergeMetrics(uwlAllowlist.NameList, customUwlAllowlist.NameList)
 	uwlAllowlist.MatchList = mergeMetrics(uwlAllowlist.MatchList, customUwlAllowlist.MatchList)
 	uwlAllowlist.RuleList = append(uwlAllowlist.RuleList, customUwlAllowlist.RuleList...)
+	if uwlAllowlist.RenameMap == nil {
+		uwlAllowlist.RenameMap = make(map[string]string)
+	}
 	for k, v := range customUwlAllowlist.RenameMap {
 		uwlAllowlist.RenameMap[k] = v
 	}

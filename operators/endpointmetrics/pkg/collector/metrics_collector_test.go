@@ -29,6 +29,7 @@ import (
 	oashared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
 	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
+	"github.com/stretchr/testify/assert"
 )
 
 const (
@@ -76,23 +77,23 @@ func TestMetricsCollectorResourcesUpdate(t *testing.T) {
 			newMetricsCollector: func() *collector.MetricsCollector {
 				return baseMetricsCollector()
 			},
-			clientObjects: func() []runtime.Object { return []runtime.Object{getEndpointOperatorDeployment()} },
+			clientObjects: func() []runtime.Object { return []runtime.Object{getEndpointOperatorDeployment(namespace)} },
 			expects: func(t *testing.T, deployment, uwlDeployment *appsv1.Deployment) {
 				// Check env vars
-				operatorEnv := getEndpointOperatorDeployment().Spec.Template.Spec.Containers[0].Env
+				operatorEnv := getEndpointOperatorDeployment(namespace).Spec.Template.Spec.Containers[0].Env
 				collectorEnv := deployment.Spec.Template.Spec.Containers[0].Env
 				if err := checkProxyEnvVars(operatorEnv, collectorEnv); err != nil {
 					t.Fatalf("Failed to ensure proxy env vars: %v", err)
 				}
 
 				// Check toleration and node selector
-				if !slices.Equal(deployment.Spec.Template.Spec.Tolerations, getEndpointOperatorDeployment().Spec.Template.Spec.Tolerations) {
+				if !slices.Equal(deployment.Spec.Template.Spec.Tolerations, getEndpointOperatorDeployment(namespace).Spec.Template.Spec.Tolerations) {
 					t.Fatalf("Tolerations are not set correctly: expected %v, got %v",
-						getEndpointOperatorDeployment().Spec.Template.Spec.Tolerations, deployment.Spec.Template.Spec.Tolerations)
+						getEndpointOperatorDeployment(namespace).Spec.Template.Spec.Tolerations, deployment.Spec.Template.Spec.Tolerations)
 				}
-				if !maps.Equal(deployment.Spec.Template.Spec.NodeSelector, getEndpointOperatorDeployment().Spec.Template.Spec.NodeSelector) {
+				if !maps.Equal(deployment.Spec.Template.Spec.NodeSelector, getEndpointOperatorDeployment(namespace).Spec.Template.Spec.NodeSelector) {
 					t.Fatalf("NodeSelector is not set correctly: expected %v, got %v",
-						getEndpointOperatorDeployment().Spec.Template.Spec.NodeSelector, deployment.Spec.Template.Spec.NodeSelector)
+						getEndpointOperatorDeployment(namespace).Spec.Template.Spec.NodeSelector, deployment.Spec.Template.Spec.NodeSelector)
 				}
 
 				// Check annotations
@@ -113,7 +114,7 @@ func TestMetricsCollectorResourcesUpdate(t *testing.T) {
 				ret.ClusterInfo.IsHubMetricsCollector = false
 				return ret
 			},
-			clientObjects: func() []runtime.Object { return []runtime.Object{getEndpointOperatorDeployment()} },
+			clientObjects: func() []runtime.Object { return []runtime.Object{getEndpointOperatorDeployment(namespace)} },
 			expects: func(t *testing.T, deployment *appsv1.Deployment, uwlDeployment *appsv1.Deployment) {
 				if *deployment.Spec.Replicas != 0 {
 					t.Fatalf("Replicas should be 0 when metrics is disabled and is not hub collector")
@@ -127,7 +128,7 @@ func TestMetricsCollectorResourcesUpdate(t *testing.T) {
 				ret.ClusterInfo.IsHubMetricsCollector = true
 				return ret
 			},
-			clientObjects: func() []runtime.Object { return []runtime.Object{getEndpointOperatorDeployment()} },
+			clientObjects: func() []runtime.Object { return []runtime.Object{getEndpointOperatorDeployment(namespace)} },
 			expects: func(t *testing.T, deployment *appsv1.Deployment, uwlDeployment *appsv1.Deployment) {
 				if *deployment.Spec.Replicas != 1 {
 					t.Fatalf("Hub metrics collector should have 1 replica even if metrics is disabled")
@@ -139,7 +140,7 @@ func TestMetricsCollectorResourcesUpdate(t *testing.T) {
 				return baseMetricsCollector()
 			},
 			clientObjects: func() []runtime.Object {
-				ret := []runtime.Object{getEndpointOperatorDeployment()}
+				ret := []runtime.Object{getEndpointOperatorDeployment(namespace)}
 				metricsCollector := &appsv1.Deployment{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      metricsCollectorName,
@@ -169,7 +170,7 @@ func TestMetricsCollectorResourcesUpdate(t *testing.T) {
 					},
 				}
 				uwlAllowlistCM := newAllowListCm(operatorconfig.AllowlistCustomConfigMapName, "default", data)
-				ret := []runtime.Object{getEndpointOperatorDeployment(), newUwlPrometheus(), uwlAllowlistCM}
+				ret := []runtime.Object{getEndpointOperatorDeployment(namespace), newUwlPrometheus(), uwlAllowlistCM}
 				return ret
 			},
 			expects: func(t *testing.T, deployment *appsv1.Deployment, uwlDeployment *appsv1.Deployment) {
@@ -188,7 +189,7 @@ func TestMetricsCollectorResourcesUpdate(t *testing.T) {
 				return baseMetricsCollector()
 			},
 			clientObjects: func() []runtime.Object {
-				ret := []runtime.Object{getEndpointOperatorDeployment(), newUwlPrometheus()}
+				ret := []runtime.Object{getEndpointOperatorDeployment(namespace), newUwlPrometheus()}
 				return ret
 			},
 			expects: func(t *testing.T, deployment *appsv1.Deployment, uwlDeployment *appsv1.Deployment) {
@@ -214,7 +215,7 @@ func TestMetricsCollectorResourcesUpdate(t *testing.T) {
 					},
 				}
 				uwlAllowlistCM := newAllowListCm(operatorconfig.AllowlistCustomConfigMapName, "default", data)
-				ret := []runtime.Object{getEndpointOperatorDeployment(), uwlAllowlistCM, uwlDeploy}
+				ret := []runtime.Object{getEndpointOperatorDeployment(namespace), uwlAllowlistCM, uwlDeploy}
 				return ret
 			},
 			expects: func(t *testing.T, deployment *appsv1.Deployment, uwlDeployment *appsv1.Deployment) {
@@ -237,19 +238,284 @@ func TestMetricsCollectorResourcesUpdate(t *testing.T) {
 				t.Fatalf("Failed to update metrics collector: %v", err)
 			}
 
-			deployment := getMetricsCollectorDeployment(t, context.Background(), c, metricsCollectorName)
-			uwlDeployment := getMetricsCollectorDeployment(t, context.Background(), c, uwlMetricsCollectorName)
+			deployment := getMetricsCollectorDeployment(t, context.Background(), c, metricsCollectorName, namespace)
+			uwlDeployment := getMetricsCollectorDeployment(t, context.Background(), c, uwlMetricsCollectorName, namespace)
 			tc.expects(t, deployment, uwlDeployment)
 		})
 	}
 
 }
 
-func getEndpointOperatorDeployment() *appsv1.Deployment {
+// TestMetricsLists ensures that configured metrics are collected appropriately.
+func TestMetricsLists(t *testing.T) {
+	addonNamespace := "test-namespace"
+	endpointOperatorDeploy := getEndpointOperatorDeployment(addonNamespace)
+	s := scheme.Scheme
+	promv1.AddToScheme(s)
+	testCases := map[string]struct {
+		resources               []runtime.Object
+		expectMetricsCommand    func(*testing.T, []string)
+		expectUwlMetricsCommand func(*testing.T, []string)
+	}{
+		"Should collect platform metrics": {
+			resources: []runtime.Object{
+				newAllowListCm(operatorconfig.AllowlistConfigMapName, addonNamespace, map[string]operatorconfig.MetricsAllowlist{
+					operatorconfig.MetricsConfigMapKey: {
+						NameList:  []string{"a"},
+						MatchList: []string{"b"},
+					},
+				}),
+			},
+			expectMetricsCommand: func(t *testing.T, commands []string) {
+				assert.Contains(t, commands, `--match={__name__="a"}`)
+			},
+			expectUwlMetricsCommand: func(t *testing.T, commands []string) {
+				assert.Len(t, commands, 0)
+			},
+		},
+		"Should collect uwl metrics": {
+			resources: []runtime.Object{
+				newAllowListCm(operatorconfig.AllowlistConfigMapName, addonNamespace, map[string]operatorconfig.MetricsAllowlist{
+					operatorconfig.UwlMetricsConfigMapKey: {
+						NameList: []string{"c"},
+					},
+				}),
+				newAllowListCm(operatorconfig.AllowlistCustomConfigMapName, addonNamespace, map[string]operatorconfig.MetricsAllowlist{
+					operatorconfig.UwlMetricsConfigMapKey: {
+						NameList: []string{"b"},
+					},
+				}),
+			},
+			expectMetricsCommand: func(t *testing.T, commands []string) {
+				assert.NotContains(t, commands, `--match={__name__="b"}`)
+				assert.NotContains(t, commands, `--match={__name__="c"}`)
+			},
+			expectUwlMetricsCommand: func(t *testing.T, commands []string) {
+				assert.Contains(t, commands, `--match={__name__="b"}`)
+				assert.Contains(t, commands, `--match={__name__="c"}`)
+			},
+		},
+		"Should set recording rules": {
+			resources: []runtime.Object{
+				newAllowListCm(operatorconfig.AllowlistConfigMapName, addonNamespace, map[string]operatorconfig.MetricsAllowlist{
+					operatorconfig.MetricsConfigMapKey: {
+						RecordingRuleList: []operatorconfig.RecordingRule{
+							{
+								Record: "test_record",
+								Expr:   "test_expr",
+							},
+						},
+					},
+				}),
+				newAllowListCm(operatorconfig.AllowlistCustomConfigMapName, addonNamespace, map[string]operatorconfig.MetricsAllowlist{
+					operatorconfig.UwlMetricsConfigMapKey: {
+						RecordingRuleList: []operatorconfig.RecordingRule{
+							{
+								Record: "test_record_b",
+								Expr:   "test_expr_b",
+							},
+						},
+					},
+				}),
+			},
+			expectMetricsCommand: func(t *testing.T, commands []string) {
+				assert.Contains(t, commands, `--recordingrule={"name":"test_record","query":"test_expr"}`)
+				assert.NotContains(t, commands, `--recordingrule={"name":"test_record_b","query":"test_expr_b"}`)
+			},
+			// expectUwlMetricsCommand: func(t *testing.T, commands []string) {
+			// 	assert.NotContains(t, commands, `--recordingrule={"name":"test_record","query":"test_expr"}`)
+			// 	assert.Contains(t, commands, `--recordingrule={"name":"test_record_b","query":"test_expr_b"}`)
+			// },
+		},
+		"Should ignore deprecated rules list field": {
+			resources: []runtime.Object{
+				newAllowListCm(operatorconfig.AllowlistConfigMapName, addonNamespace, map[string]operatorconfig.MetricsAllowlist{
+					operatorconfig.MetricsConfigMapKey: {
+						RuleList: []operatorconfig.RecordingRule{
+							{
+								Record: "test_record",
+								Expr:   "test_expr",
+							},
+						},
+					},
+				}),
+				newAllowListCm(operatorconfig.AllowlistCustomConfigMapName, addonNamespace, map[string]operatorconfig.MetricsAllowlist{
+					operatorconfig.UwlMetricsConfigMapKey: {
+						RuleList: []operatorconfig.RecordingRule{
+							{
+								Record: "test_record_b",
+								Expr:   "test_expr_b",
+							},
+						},
+					},
+				}),
+			},
+			expectMetricsCommand: func(t *testing.T, commands []string) {
+				assert.NotContains(t, commands, `--recordingrule={"name":"test_record","query":"test_expr"}`)
+				assert.NotContains(t, commands, `--recordingrule={"name":"test_record_b","query":"test_expr_b"}`)
+			},
+			expectUwlMetricsCommand: func(t *testing.T, commands []string) {
+				assert.NotContains(t, commands, `--recordingrule={"name":"test_record","query":"test_expr"}`)
+				assert.NotContains(t, commands, `--recordingrule={"name":"test_record_b","query":"test_expr_b"}`)
+			},
+		},
+		"Should set rename map": {
+			resources: []runtime.Object{
+				newAllowListCm(operatorconfig.AllowlistConfigMapName, addonNamespace, map[string]operatorconfig.MetricsAllowlist{
+					operatorconfig.MetricsConfigMapKey: {
+						RenameMap: map[string]string{
+							"old_name": "new_name",
+						},
+					},
+				}),
+				newAllowListCm(operatorconfig.AllowlistCustomConfigMapName, addonNamespace, map[string]operatorconfig.MetricsAllowlist{
+					operatorconfig.UwlMetricsConfigMapKey: {
+						RenameMap: map[string]string{
+							"old_name_b": "new_name_b",
+						},
+					},
+				}),
+			},
+			expectMetricsCommand: func(t *testing.T, commands []string) {
+				assert.Contains(t, commands, `--rename="old_name=new_name"`)
+				assert.NotContains(t, commands, `--rename="old_name_b=new_name_b"`)
+			},
+			// expectUwlMetricsCommand: func(t *testing.T, commands []string) {
+			// 	assert.NotContains(t, commands, `--rename={"old_name":"new_name"}`)
+			// 	assert.Contains(t, commands, `--rename={"old_name_b":"new_name_b"}`)
+			// },
+		},
+		"Should set collect rule groups": {
+			resources: []runtime.Object{
+				newAllowListCm(operatorconfig.AllowlistConfigMapName, addonNamespace, map[string]operatorconfig.MetricsAllowlist{
+					operatorconfig.MetricsConfigMapKey: {
+						CollectRuleGroupList: []operatorconfig.CollectRuleGroup{
+							{
+								Name: "test_job",
+								Annotations: map[string]string{
+									"test": "test",
+								},
+								Selector: operatorconfig.CollectRuleSelector{
+									MatchExpression: []metav1.LabelSelectorRequirement{
+										{
+											Key:      "clusterType",
+											Operator: metav1.LabelSelectorOpIn,
+											Values:   []string{"sno"},
+										},
+									},
+								},
+								CollectRuleList: []operatorconfig.CollectRule{
+									{
+										Collect: "test_rule",
+										Expr:    "test_expr",
+										For:     "5m",
+										Annotations: map[string]string{
+											"test": "test",
+										},
+										Metrics: operatorconfig.DynamicMetrics{
+											NameList:  []string{"a"},
+											MatchList: []string{"b"},
+										},
+									},
+								},
+							},
+							{
+								Name: "test_job",
+								Annotations: map[string]string{
+									"test": "test",
+								},
+								Selector: operatorconfig.CollectRuleSelector{
+									MatchExpression: []metav1.LabelSelectorRequirement{
+										{
+											Key:      "clusterType",
+											Operator: metav1.LabelSelectorOpIn,
+											Values:   []string{"not-sno"},
+										},
+									},
+								},
+								CollectRuleList: []operatorconfig.CollectRule{
+									{
+										Collect: "not_sno_rule",
+										Expr:    "test_expr",
+										For:     "5m",
+										Annotations: map[string]string{
+											"test": "test",
+										},
+										Metrics: operatorconfig.DynamicMetrics{
+											NameList:  []string{"a"},
+											MatchList: []string{"b"},
+										},
+									},
+								},
+							},
+						},
+					},
+				}),
+			},
+			expectMetricsCommand: func(t *testing.T, commands []string) {
+				assert.Contains(t, commands, `--collectrule={"name":"test_rule","expr":"test_expr","for":"5m","names":["a"],"matches":["b"]}`)
+				assert.NotContains(t, commands, `--collectrule={"name":"not_sno_rule","expr":"test_expr","for":"5m","names":["a"],"matches":["b"]}`)
+			},
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			resources := []runtime.Object{endpointOperatorDeploy, newPrometheusUwlResources()}
+			resources = append(resources, tc.resources...)
+			c := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(resources...).Build()
+
+			metricsCollector := &collector.MetricsCollector{
+				Client: c,
+				ClusterInfo: collector.ClusterInfo{
+					ClusterID:   "test-cluster",
+					ClusterType: "sno",
+				},
+				HubInfo: &operatorconfig.HubInfo{
+					ClusterName:              "mycluster",
+					ObservatoriumAPIEndpoint: "http://test-endpoint",
+				},
+				Log:       logr.Logger{},
+				Namespace: addonNamespace,
+				ObsAddon: &oav1beta1.ObservabilityAddon{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "observability-addon",
+						Namespace: addonNamespace,
+					},
+					Spec: oashared.ObservabilityAddonSpec{},
+				},
+				ServiceAccountName: "test-sa",
+			}
+			if err := metricsCollector.Update(context.Background(), ctrl.Request{}); err != nil {
+				t.Fatalf("Failed to update metrics collector: %v", err)
+			}
+
+			// Get metrics-collector and uwl metrics-collector deployments
+			metricsColDeploy := getMetricsCollectorDeployment(t, context.Background(), c, metricsCollectorName, addonNamespace)
+			metricsColCommands := metricsColDeploy.Spec.Template.Spec.Containers[0].Command
+			uwlMetricsColDeploy := getMetricsCollectorDeployment(t, context.Background(), c, uwlMetricsCollectorName, addonNamespace)
+			uwlMetricsColCommands := []string{}
+			if uwlMetricsColDeploy != nil {
+				uwlMetricsColCommands = uwlMetricsColDeploy.Spec.Template.Spec.Containers[0].Command
+			}
+
+			if tc.expectMetricsCommand != nil {
+				tc.expectMetricsCommand(t, metricsColCommands)
+			}
+
+			if tc.expectUwlMetricsCommand != nil {
+				tc.expectUwlMetricsCommand(t, uwlMetricsColCommands)
+			}
+		})
+	}
+
+}
+
+func getEndpointOperatorDeployment(ns string) *appsv1.Deployment {
 	return &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "endpoint-observability-operator",
-			Namespace: namespace,
+			Namespace: ns,
 		},
 		Spec: appsv1.DeploymentSpec{
 			Template: corev1.PodTemplateSpec{
@@ -283,9 +549,9 @@ func getEndpointOperatorDeployment() *appsv1.Deployment {
 	}
 }
 
-func getMetricsCollectorDeployment(t *testing.T, ctx context.Context, c client.Client, name string) *appsv1.Deployment {
+func getMetricsCollectorDeployment(t *testing.T, ctx context.Context, c client.Client, name, ns string) *appsv1.Deployment {
 	deployment := &appsv1.Deployment{}
-	err := c.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, deployment)
+	err := c.Get(ctx, types.NamespacedName{Name: name, Namespace: ns}, deployment)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return nil
@@ -319,6 +585,38 @@ func newAllowListCm(name, namespace string, data map[string]operatorconfig.Metri
 			Namespace: namespace,
 		},
 		Data: cmData,
+	}
+}
+
+func newPrometheusUwlResources() client.Object {
+	return &appsv1.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "prometheus-user-workload",
+			Namespace: "openshift-user-workload-monitoring",
+		},
+		Spec: appsv1.StatefulSetSpec{
+			// Replicas: util.Int32Ptr(1),
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"app": "prometheus-user-workload",
+				},
+			},
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						"app": "prometheus-user-workload",
+					},
+				},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name:  "prometheus-user-workload",
+							Image: "test",
+						},
+					},
+				},
+			},
+		},
 	}
 }
 

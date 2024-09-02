@@ -26,7 +26,7 @@ var _ = Describe("Observability:", func() {
 			testOptions.HubCluster.KubeContext)
 	})
 
-	It("@BVT - [P1][Sev1][observability][Stable] Should have metric data in grafana console (grafana/g0)", func() {
+	It("@BVT - [P1][Sev1][observability][Stable] Should have metric data in grafana console (grafana/g0)", func() { // redundant with metrics forwarded correctly check
 		Eventually(func() error {
 			clusters, err := utils.ListManagedClusters(testOptions)
 			if err != nil {

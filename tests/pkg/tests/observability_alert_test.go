@@ -55,7 +55,7 @@ var _ = Describe("Observability:", func() {
 	}
 	secret := "alertmanager-config"
 
-	It("@BVT - [P1][Sev1][observability][Stable] Should have the expected statefulsets (alert/g0)", func() {
+	It("@BVT - [P1][Sev1][observability][Stable] Should have the expected statefulsets (alert/g0)", func() { // move all to integration
 		By("Checking if STS: Alertmanager and observability-thanos-rule exist")
 		for _, label := range statefulsetLabels {
 			sts, err := hubClient.AppsV1().
