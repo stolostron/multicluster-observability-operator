@@ -189,3 +189,20 @@ func GetNamespacePredicateFunc() predicate.Funcs {
 		},
 	}
 }
+
+func GetImageStreamPredicateFunc() predicate.Funcs {
+	return predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			return e.Object.GetName() == config.OauthProxyImageStreamName
+		},
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			if e.ObjectNew.GetName() != config.OauthProxyImageStreamName {
+				return false
+			}
+			return e.ObjectOld.GetGeneration() != e.ObjectNew.GetGeneration()
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			return false
+		},
+	}
+}

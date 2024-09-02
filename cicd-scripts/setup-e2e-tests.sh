@@ -152,7 +152,7 @@ deploy_mco_operator() {
     cd ${ROOTDIR}/operators/multiclusterobservability/config/manager && kustomize edit set image quay.io/stolostron/multicluster-observability-operator="${IMAGE_REPO}/multicluster-observability-operator:${LATEST_SNAPSHOT}"
   fi
   cd ${ROOTDIR}
-  kustomize build ${ROOTDIR}/operators/multiclusterobservability/config/default | kubectl apply -n ${OCM_DEFAULT_NS} --server-side=true -f -
+  kustomize build ${ROOTDIR}/operators/multiclusterobservability/config/default | kubectl apply -n ${OCM_DEFAULT_NS} --server-side=true --force-conflicts -f -
 
   # wait until mco is ready
   wait_for_deployment_ready 10 60s ${OCM_DEFAULT_NS} multicluster-observability-operator

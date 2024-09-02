@@ -10,6 +10,9 @@ import (
 	"fmt"
 	"os"
 
+	imagev1 "github.com/openshift/api/image/v1"
+
+	imagev1client "github.com/openshift/client-go/image/clientset/versioned/typed/image/v1"
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
 
@@ -69,6 +72,7 @@ func init() {
 	utilruntime.Must(observatoriumAPIs.AddToScheme(scheme))
 	utilruntime.Must(prometheusv1.AddToScheme(scheme))
 	utilruntime.Must(addonv1alpha1.AddToScheme(scheme))
+	utilruntime.Must(imagev1.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
 }
 
@@ -282,14 +286,21 @@ func main() {
 		config.MCGHCrdName:                    mcghCrdExists,
 	}
 
+	imageClient, err := imagev1client.NewForConfig(ctrl.GetConfigOrDie())
+	if err != nil {
+		setupLog.Error(err, "failed to create openshift image client")
+		os.Exit(1)
+	}
+
 	if err = (&mcoctrl.MultiClusterObservabilityReconciler{
-		Manager:    mgr,
-		Client:     mgr.GetClient(),
-		Log:        ctrl.Log.WithName("controllers").WithName("MultiClusterObservability"),
-		Scheme:     mgr.GetScheme(),
-		CRDMap:     crdMaps,
-		APIReader:  mgr.GetAPIReader(),
-		RESTMapper: mgr.GetRESTMapper(),
+		Manager:     mgr,
+		Client:      mgr.GetClient(),
+		Log:         ctrl.Log.WithName("controllers").WithName("MultiClusterObservability"),
+		Scheme:      mgr.GetScheme(),
+		CRDMap:      crdMaps,
+		APIReader:   mgr.GetAPIReader(),
+		RESTMapper:  mgr.GetRESTMapper(),
+		ImageClient: imageClient,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "MultiClusterObservability")
 		os.Exit(1)

@@ -40,10 +40,9 @@ func TestAlertManagerRenderer(t *testing.T) {
 	}
 
 	containerNameToMchKey := map[string]string{
-		"alertmanager":       "prometheus_alertmanager",
-		"config-reloader":    "configmap_reloader",
-		"alertmanager-proxy": "oauth_proxy",
-		"kube-rbac-proxy":    "kube_rbac_proxy",
+		"alertmanager":    "prometheus_alertmanager",
+		"config-reloader": "configmap_reloader",
+		"kube-rbac-proxy": "kube_rbac_proxy",
 	}
 	mchImageManifest := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
@@ -57,12 +56,12 @@ func TestAlertManagerRenderer(t *testing.T) {
 		Data: map[string]string{
 			"prometheus_alertmanager": "quay.io/rhacm2/alertmanager:latest",
 			"configmap_reloader":      "quay.io/rhacm2/configmap-reloader:latest",
-			"oauth_proxy":             "quay.io/rhacm2/oauth_proxy:latest",
 			"kube_rbac_proxy":         "quay.io/rhacm2/kube-rbac-proxy:latest",
 		},
 	}
 
 	kubeClient := fake.NewClientBuilder().WithObjects(clientCa, mchImageManifest).Build()
+
 	alertResources := renderTemplates(t, kubeClient, makeBaseMco())
 
 	// clientCa configmap must be filled with the client-ca-file data
@@ -75,6 +74,11 @@ func TestAlertManagerRenderer(t *testing.T) {
 			sts := &appsv1.StatefulSet{}
 			runtime.DefaultUnstructuredConverter.FromUnstructured(obj.Object, sts)
 			for _, container := range sts.Spec.Template.Spec.Containers {
+				// oauth-proxy container is not in the mch-image-manifest configmap
+				// we use image-streams to get image for oauth-proxy
+				if container.Name == "alertmanager-proxy" {
+					continue
+				}
 				assert.Equal(t, mchImageManifest.Data[containerNameToMchKey[container.Name]], container.Image)
 			}
 		}
@@ -237,7 +241,7 @@ func renderTemplates(t *testing.T, kubeClient client.Client, mco *mcov1beta2.Mul
 	defer os.Unsetenv(templatesutil.TemplatesPathEnvVar)
 
 	config.ReadImageManifestConfigMap(kubeClient, "v1")
-	renderer := NewMCORenderer(mco, kubeClient)
+	renderer := NewMCORenderer(mco, kubeClient, nil)
 
 	//load and render alertmanager templates
 	alertTemplates, err := templates.GetOrLoadAlertManagerTemplates(templatesutil.GetTemplateRenderer())
