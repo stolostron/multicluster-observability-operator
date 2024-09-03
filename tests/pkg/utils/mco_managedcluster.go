@@ -53,13 +53,8 @@ func ListManagedClusters(opt TestOptions) ([]string, error) {
 		name := metadata["name"].(string)
 		labels := metadata["labels"].(map[string]interface{})
 		if labels != nil {
-			if obsController, ok := labels["feature.open-cluster-management.io/addon-observability-controller"]; !ok {
-				continue
-			} else {
-				obsControllerStr := obsController.(string)
-				if obsControllerStr != "unreachable" {
-					clusterNames = append(clusterNames, name)
-				}
+			if obsController, ok := labels["feature.open-cluster-management.io/addon-observability-controller"]; ok && obsController.(string) != "unreachable" {
+				clusterNames = append(clusterNames, name)
 			}
 		}
 	}
