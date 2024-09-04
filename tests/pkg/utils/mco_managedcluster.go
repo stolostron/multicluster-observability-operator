@@ -7,7 +7,6 @@ package utils
 import (
 	"context"
 	"errors"
-	"github.com/cloudflare/cfssl/log"
 	goversion "github.com/hashicorp/go-version"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"os"
@@ -66,7 +65,6 @@ func ListManagedClusters(opt TestOptions) ([]string, error) {
 	}
 
 	if len(clusterNames) == 0 {
-		log.Info("Coleen no clusters", "clusterNames", clusterNames)
 		return clusterNames, errors.New("no managedcluster found")
 	}
 
