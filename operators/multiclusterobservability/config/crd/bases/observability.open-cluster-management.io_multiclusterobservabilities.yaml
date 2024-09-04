@@ -145,6 +145,12 @@ spec:
                           More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
                         type: object
                     type: object
+                  scrapeSizeLimitBytes:
+                    default: 1073741824
+                    description: |-
+                      ScrapeSizeLimitBytes is the max size in bytes for a single metrics scrape from in-cluster Prometheus.
+                      Default is 1 GiB.
+                    type: integer
                 type: object
               retentionResolution1h:
                 default: 30d
@@ -10170,6 +10176,12 @@ spec:
                           More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
                         type: object
                     type: object
+                  scrapeSizeLimitBytes:
+                    default: 1073741824
+                    description: |-
+                      ScrapeSizeLimitBytes is the max size in bytes for a single metrics scrape from in-cluster Prometheus.
+                      Default is 1 GiB.
+                    type: integer
                 type: object
               storageConfig:
                 description: Specifies the storage to be used by Observability

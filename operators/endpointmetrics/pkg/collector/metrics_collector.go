@@ -822,7 +822,7 @@ func (m *MetricsCollector) getCommands(isUSW bool, deployParams *deploymentParam
 		"--to-upload-key=/tlscerts/certs/tls.key",
 		"--interval=" + interval,
 		"--evaluate-interval=" + evaluateInterval,
-		"--limit-bytes=" + strconv.Itoa(limitBytes),
+		"--limit-bytes=" + strconv.Itoa(m.ObsAddon.Spec.ScrapeSizeLimitBytes),
 		fmt.Sprintf("--label=\"cluster=%s\"", m.HubInfo.ClusterName),
 		fmt.Sprintf("--label=\"clusterID=%s\"", clusterID),
 	}

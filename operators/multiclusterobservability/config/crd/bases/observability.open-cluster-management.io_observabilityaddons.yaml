@@ -109,6 +109,12 @@ spec:
                       More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
                     type: object
                 type: object
+              scrapeSizeLimitBytes:
+                default: 1073741824
+                description: |-
+                  ScrapeSizeLimitBytes is the max size in bytes for a single metrics scrape from in-cluster Prometheus.
+                  Default is 1 GiB.
+                type: integer
             type: object
           status:
             description: ObservabilityAddonStatus defines the observed state of ObservabilityAddon
