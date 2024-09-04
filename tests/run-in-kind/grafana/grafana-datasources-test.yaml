@@ -16,6 +16,7 @@ stringData:
       version: 0
       jsonData: null
       secureJsonData: null
+      uid: "000000001"
 kind: Secret
 metadata:
   name: grafana-datasources-test
