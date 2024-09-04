@@ -7,6 +7,7 @@ package utils
 import (
 	"context"
 	"errors"
+	"github.com/cloudflare/cfssl/log"
 
 	goversion "github.com/hashicorp/go-version"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -52,7 +53,9 @@ func ListManagedClusters(opt TestOptions) ([]string, error) {
 		metadata := obj.Object["metadata"].(map[string]interface{})
 		name := metadata["name"].(string)
 		labels := metadata["labels"].(map[string]interface{})
+		log.Info("Coleen ListManagedClusters", "name", name, "labels", labels)
 		if labels != nil {
+			log.Info("Coleen ListManagedClusters", "name", name, "labels", labels)
 			if obsController, ok := labels["feature.open-cluster-management.io/addon-observability-controller"]; ok && obsController.(string) != "unreachable" {
 				clusterNames = append(clusterNames, name)
 			}
@@ -60,6 +63,7 @@ func ListManagedClusters(opt TestOptions) ([]string, error) {
 	}
 
 	if len(clusterNames) == 0 {
+		log.Info("Coleen no clusters", "clusterNames", clusterNames)
 		return clusterNames, errors.New("no managedcluster found")
 	}
 
