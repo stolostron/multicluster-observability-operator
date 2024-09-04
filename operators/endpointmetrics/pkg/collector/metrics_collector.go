@@ -47,7 +47,6 @@ const (
 	mtlsCertName            = "observability-controller-open-cluster-management.io-observability-signer-client-cert"
 	mtlsCaName              = "observability-managed-cluster-certs"
 	mtlsServerCaName        = "observability-server-ca-certs"
-	limitBytes              = 1073741824
 	defaultInterval         = "30s"
 	uwlNamespace            = "openshift-user-workload-monitoring"
 	uwlSts                  = "prometheus-user-workload"
