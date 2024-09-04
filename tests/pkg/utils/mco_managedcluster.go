@@ -7,9 +7,10 @@ package utils
 import (
 	"context"
 	"errors"
+	"os"
+
 	goversion "github.com/hashicorp/go-version"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"os"
 )
 
 func UpdateObservabilityFromManagedCluster(opt TestOptions, enableObservability bool) error {
