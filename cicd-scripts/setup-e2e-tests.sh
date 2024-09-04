@@ -132,6 +132,8 @@ approve_csr_joinrequest() {
           # update vendor label for KinD env
           kubectl label managedcluster ${clustername} vendor-
           kubectl label managedcluster ${clustername} vendor=GKE
+          # update with label  "feature.open-cluster-management.io/addon-observability-controller": "available"
+          kubectl label managedcluster ${clustername} feature.open-cluster-management.io/addon-observability-controller=available
         fi
       done
       break
