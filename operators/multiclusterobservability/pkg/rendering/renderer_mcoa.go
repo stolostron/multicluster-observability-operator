@@ -26,6 +26,7 @@ const (
 	nameUserWorkloadLogsCollection   = "userWorkloadLogsCollection"
 	nameUserWorkloadTracesCollection = "userWorkloadTracesCollection"
 	nameUserWorkloadInstrumentation  = "userWorkloadInstrumentation"
+	nameOpenshiftLoggingChannel      = "openshiftLoggingChannel"
 
 	// AODC CustomizedVariable Values
 	clfV1         = "clusterlogforwarders.v1.logging.openshift.io"
@@ -187,6 +188,8 @@ func (r *MCORenderer) renderAddonDeploymentConfig(
 				addonapiv1alpha1.CustomizedVariable{Name: name, Value: value},
 			)
 		}
+
+		appendCustomVar(aodc, nameOpenshiftLoggingChannel, cloSubscriptionChannel)
 
 		if cs.Platform != nil {
 			if cs.Platform.Logs.Collection.Enabled {

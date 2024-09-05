@@ -21,6 +21,7 @@ var (
 	proxyTemplates                 []*resource.Resource
 	endpointObservabilityTemplates []*resource.Resource
 	prometheusTemplates            []*resource.Resource
+	cloTemplates                   []*resource.Resource
 	mcoaTemplates                  []*resource.Resource
 )
 
@@ -103,6 +104,21 @@ func GetOrLoadProxyTemplates(r *templates.TemplateRenderer) ([]*resource.Resourc
 		return proxyTemplates, err
 	}
 	return proxyTemplates, nil
+}
+
+// GetOrLoadCLOTemplates reads the cluster-logging-operator manifests.
+func GetOrLoadCLOTemplates(r *templates.TemplateRenderer) ([]*resource.Resource, error) {
+	if len(cloTemplates) > 0 {
+		return cloTemplates, nil
+	}
+
+	basePath := path.Join(r.GetTemplatesPath(), "base")
+
+	// add mcoa templates
+	if err := r.AddTemplateFromPath(path.Join(basePath, "cluster-logging-operator"), &cloTemplates); err != nil {
+		return mcoaTemplates, err
+	}
+	return cloTemplates, nil
 }
 
 // GetOrLoadMCOATemplates reads the multicluster-observability-addon manifests.

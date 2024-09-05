@@ -17,13 +17,17 @@ import (
 	imagev1client "github.com/openshift/client-go/image/clientset/versioned/typed/image/v1"
 
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 
 	"github.com/go-logr/logr"
 	routev1 "github.com/openshift/api/route/v1"
+	operatorsv1 "github.com/operator-framework/api/pkg/operators/v1"
+	operatorsv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	mchv1 "github.com/stolostron/multiclusterhub-operator/api/v1"
 	observatoriumv1alpha1 "github.com/stolostron/observatorium-operator/api/v1alpha1"
+
 	"golang.org/x/exp/slices"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -255,8 +259,18 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	}
 	instance.Spec.StorageConfig.StorageClass = storageClassSelected
 
+	renderCLO, err := renderCLO(r.Client, instance)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
 	// Render the templates with a specified CR
-	renderer := rendering.NewMCORenderer(instance, r.Client, r.ImageClient)
+	renderOptions := &rendering.RenderOptions{
+		RenderCLO: renderCLO,
+	}
+	renderer := rendering.NewMCORenderer(instance, r.Client, r.ImageClient).
+		WithRenderOptions(renderOptions)
+
 	toDeploy, err := renderer.Render()
 	if err != nil {
 		reqLogger.Error(err, "Failed to render multiClusterMonitoring templates")
@@ -472,6 +486,10 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 		Owns(&addonv1alpha1.AddOnDeploymentConfig{}).
 		// Watch for changes to secondary ClusterManagementAddOn CR and requeue the owner MultiClusterObservability
 		Owns(&addonv1alpha1.ClusterManagementAddOn{}).
+		// Watch for changes to secondary Subscription CR and requeue the owner MultiClusterObservability
+		Owns(&operatorsv1alpha1.Subscription{}).
+		// Watch for changes to secondary OperatorGroup CR and requeue the owner MultiClusterObservability
+		Owns(&operatorsv1.OperatorGroup{}).
 		// Watch the configmap for thanos-ruler-custom-rules update
 		Watches(&corev1.ConfigMap{}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(cmPred)).
 		// Watch the secret for deleting event of alertmanager-config
@@ -966,4 +984,33 @@ func (r *MultiClusterObservabilityReconciler) deleteServiceMonitorInOpenshiftMon
 		}
 	}
 	return nil
+}
+
+func renderCLO(kubeClient client.Client, instance *mcov1beta2.MultiClusterObservability) (bool, error) {
+	// MCO should not install CLO if capabilities is not enabled
+	if instance.Spec.Capabilities == nil {
+		return false, nil
+	}
+
+	crd := &apiextensionsv1.CustomResourceDefinition{}
+	key := client.ObjectKey{Name: "clusterlogforwarders.logging.openshift.io"}
+	if err := kubeClient.Get(context.TODO(), key, crd); err != nil {
+		if apierrors.IsNotFound(err) {
+			return true, nil
+		}
+		return false, err
+	}
+
+	// TODO @JoaoBraveCoding: maybe we should check if the namespace also exists
+
+	subscription := operatorsv1alpha1.Subscription{}
+	key = client.ObjectKey{Name: "cluster-logging", Namespace: "openshift-logging"}
+	if err := kubeClient.Get(context.TODO(), key, &subscription); err != nil {
+		if apierrors.IsNotFound(err) {
+			return true, nil
+		}
+		return false, err
+	}
+
+	return true, nil
 }

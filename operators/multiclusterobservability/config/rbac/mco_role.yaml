@@ -381,3 +381,15 @@ rules:
   - get
   - list
   - watch
+- apiGroups:
+  - operators.coreos.com
+  resources:
+  - operatorgroups
+  - subscriptions
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - patch
+  - delete

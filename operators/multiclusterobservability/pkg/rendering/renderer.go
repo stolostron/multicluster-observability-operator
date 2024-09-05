@@ -23,15 +23,21 @@ import (
 
 var log = logf.Log.WithName("renderer")
 
+type RenderOptions struct {
+	RenderCLO bool
+}
+
 type MCORenderer struct {
 	kubeClient            client.Client
 	imageClient           *imagev1client.ImageV1Client
 	renderer              *rendererutil.Renderer
 	cr                    *obv1beta2.MultiClusterObservability
+	options               *RenderOptions
 	renderGrafanaFns      map[string]rendererutil.RenderFn
 	renderAlertManagerFns map[string]rendererutil.RenderFn
 	renderThanosFns       map[string]rendererutil.RenderFn
 	renderProxyFns        map[string]rendererutil.RenderFn
+	renderCLOFns          map[string]rendererutil.RenderFn
 	renderMCOAFns         map[string]rendererutil.RenderFn
 }
 
@@ -46,8 +52,14 @@ func NewMCORenderer(multipleClusterMonitoring *obv1beta2.MultiClusterObservabili
 	mcoRenderer.newAlertManagerRenderer()
 	mcoRenderer.newThanosRenderer()
 	mcoRenderer.newProxyRenderer()
+	mcoRenderer.newCLORenderer()
 	mcoRenderer.newMCOARenderer()
 	return mcoRenderer
+}
+
+func (r *MCORenderer) WithRenderOptions(options *RenderOptions) *MCORenderer {
+	r.options = options
+	return r
 }
 
 func (r *MCORenderer) Render() ([]*unstructured.Unstructured, error) {
@@ -109,6 +121,18 @@ func (r *MCORenderer) Render() ([]*unstructured.Unstructured, error) {
 	}
 	resources = append(resources, proxyResources...)
 
+	// load and render cluster-logging-operator templates
+	if r.options != nil && r.options.RenderCLO {
+		cloTemplates, err := templates.GetOrLoadCLOTemplates(templatesutil.GetTemplateRenderer())
+		if err != nil {
+			return nil, err
+		}
+		cloResources, err := r.renderCLOTemplates(cloTemplates, namespace, labels)
+		if err != nil {
+			return nil, err
+		}
+		resources = append(resources, cloResources...)
+	}
 	// load and render multicluster-observability-addon templates
 	mcoaTemplates, err := templates.GetOrLoadMCOATemplates(templatesutil.GetTemplateRenderer())
 	if err != nil {
