@@ -339,7 +339,7 @@ func (r *ObservabilityAddonReconciler) initFinalization(
 		}
 
 		// revert the change to cluster monitoring stack
-		err := revertClusterMonitoringConfig(ctx, r.Client)
+		err := RevertClusterMonitoringConfig(ctx, r.Client)
 		if err != nil {
 			return false, err
 		}

@@ -13,6 +13,9 @@ import (
 	"strings"
 	"time"
 
+	imagev1 "github.com/openshift/api/image/v1"
+	imagev1client "github.com/openshift/client-go/image/clientset/versioned/typed/image/v1"
+
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 
@@ -80,13 +83,14 @@ var (
 
 // MultiClusterObservabilityReconciler reconciles a MultiClusterObservability object
 type MultiClusterObservabilityReconciler struct {
-	Manager    manager.Manager
-	Client     client.Client
-	Log        logr.Logger
-	Scheme     *runtime.Scheme
-	CRDMap     map[string]bool
-	APIReader  client.Reader
-	RESTMapper meta.RESTMapper
+	Manager     manager.Manager
+	Client      client.Client
+	Log         logr.Logger
+	Scheme      *runtime.Scheme
+	CRDMap      map[string]bool
+	APIReader   client.Reader
+	RESTMapper  meta.RESTMapper
+	ImageClient *imagev1client.ImageV1Client
 }
 
 // +kubebuilder:rbac:groups=observability.open-cluster-management.io,resources=multiclusterobservabilities,verbs=get;list;watch;create;update;patch;delete
@@ -250,8 +254,9 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		return ctrl.Result{}, err
 	}
 	instance.Spec.StorageConfig.StorageClass = storageClassSelected
+
 	// Render the templates with a specified CR
-	renderer := rendering.NewMCORenderer(instance, r.Client)
+	renderer := rendering.NewMCORenderer(instance, r.Client, r.ImageClient)
 	toDeploy, err := renderer.Render()
 	if err != nil {
 		reqLogger.Error(err, "Failed to render multiClusterMonitoring templates")
@@ -448,7 +453,6 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 	cmPred := GetConfigMapPredicateFunc()
 	secretPred := GetAlertManagerSecretPredicateFunc()
 	namespacePred := GetNamespacePredicateFunc()
-
 	ctrBuilder := ctrl.NewControllerManagedBy(mgr).
 		// Watch for changes to primary resource MultiClusterObservability with predicate
 		For(&mcov1beta2.MultiClusterObservability{}, builder.WithPredicates(mcoPred)).
@@ -488,6 +492,23 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 				}
 				return nil
 			}), builder.WithPredicates(predicate.ResourceVersionChangedPredicate{}))
+
+	if _, err := mgr.GetRESTMapper().KindFor(schema.GroupVersionResource{
+		Group:    "image.openshift.io",
+		Version:  "v1",
+		Resource: "imagestreams",
+	}); err != nil {
+		if meta.IsNoMatchError(err) {
+			log.Info("image.openshift.io/v1/imagestreams is not available")
+		} else {
+			log.Error(err, "failed to get kind for image.openshift.io/v1/imagestreams")
+			os.Exit(1)
+		}
+	} else {
+		// Images stream is only available in OpenShift
+		imageStreamPred := GetImageStreamPredicateFunc()
+		ctrBuilder = ctrBuilder.Watches(&imagev1.ImageStream{}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(imageStreamPred))
+	}
 
 	mchGroupKind := schema.GroupKind{Group: mchv1.GroupVersion.Group, Kind: "MultiClusterHub"}
 	if _, err := r.RESTMapper.RESTMapping(mchGroupKind, mchv1.GroupVersion.Version); err == nil {

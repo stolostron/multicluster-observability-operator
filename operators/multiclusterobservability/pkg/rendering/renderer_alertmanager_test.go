@@ -40,10 +40,9 @@ func TestAlertManagerRenderer(t *testing.T) {
 	}
 
 	containerNameToMchKey := map[string]string{
-		"alertmanager":       "prometheus_alertmanager",
-		"config-reloader":    "configmap_reloader",
-		"alertmanager-proxy": "oauth_proxy",
-		"kube-rbac-proxy":    "kube_rbac_proxy",
+		"alertmanager":    "prometheus_alertmanager",
+		"config-reloader": "configmap_reloader",
+		"kube-rbac-proxy": "kube_rbac_proxy",
 	}
 	mchImageManifest := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
@@ -57,12 +56,12 @@ func TestAlertManagerRenderer(t *testing.T) {
 		Data: map[string]string{
 			"prometheus_alertmanager": "quay.io/rhacm2/alertmanager:latest",
 			"configmap_reloader":      "quay.io/rhacm2/configmap-reloader:latest",
-			"oauth_proxy":             "quay.io/rhacm2/oauth_proxy:latest",
 			"kube_rbac_proxy":         "quay.io/rhacm2/kube-rbac-proxy:latest",
 		},
 	}
 
 	kubeClient := fake.NewClientBuilder().WithObjects(clientCa, mchImageManifest).Build()
+
 	alertResources := renderTemplates(t, kubeClient, makeBaseMco())
 
 	// clientCa configmap must be filled with the client-ca-file data
@@ -75,6 +74,11 @@ func TestAlertManagerRenderer(t *testing.T) {
 			sts := &appsv1.StatefulSet{}
 			runtime.DefaultUnstructuredConverter.FromUnstructured(obj.Object, sts)
 			for _, container := range sts.Spec.Template.Spec.Containers {
+				// oauth-proxy container is not in the mch-image-manifest configmap
+				// we use image-streams to get image for oauth-proxy
+				if container.Name == "alertmanager-proxy" {
+					continue
+				}
 				assert.Equal(t, mchImageManifest.Data[containerNameToMchKey[container.Name]], container.Image)
 			}
 		}
@@ -144,8 +148,10 @@ func TestAlertManagerRendererMCOConfig(t *testing.T) {
 				ret := makeBaseMco()
 				replicas := int32(3)
 				ret.Spec.AdvancedConfig = &mcov1beta2.AdvancedConfig{
-					Alertmanager: &mcov1beta2.CommonSpec{
-						Replicas: &replicas,
+					Alertmanager: &mcov1beta2.AlertmanagerSpec{
+						CommonSpec: mcov1beta2.CommonSpec{
+							Replicas: &replicas,
+						},
 					},
 				}
 				return ret
@@ -167,15 +173,18 @@ func TestAlertManagerRendererMCOConfig(t *testing.T) {
 			mco: func() *mcov1beta2.MultiClusterObservability {
 				ret := makeBaseMco()
 				ret.Spec.AdvancedConfig = &mcov1beta2.AdvancedConfig{
-					Alertmanager: &mcov1beta2.CommonSpec{
-						Resources: &corev1.ResourceRequirements{
-							Limits: corev1.ResourceList{
-								corev1.ResourceCPU:    resource.MustParse("1"),
-								corev1.ResourceMemory: resource.MustParse("1Gi"),
-							},
-							Requests: corev1.ResourceList{
-								corev1.ResourceCPU:    resource.MustParse("500m"),
-								corev1.ResourceMemory: resource.MustParse("500Mi"),
+
+					Alertmanager: &mcov1beta2.AlertmanagerSpec{
+						CommonSpec: mcov1beta2.CommonSpec{
+							Resources: &corev1.ResourceRequirements{
+								Limits: corev1.ResourceList{
+									corev1.ResourceCPU:    resource.MustParse("1"),
+									corev1.ResourceMemory: resource.MustParse("1Gi"),
+								},
+								Requests: corev1.ResourceList{
+									corev1.ResourceCPU:    resource.MustParse("500m"),
+									corev1.ResourceMemory: resource.MustParse("500Mi"),
+								},
 							},
 						},
 					},
@@ -187,6 +196,48 @@ func TestAlertManagerRendererMCOConfig(t *testing.T) {
 				assert.Equal(t, resource.MustParse("1Gi"), sts.Spec.Template.Spec.Containers[0].Resources.Limits[corev1.ResourceMemory])
 				assert.Equal(t, resource.MustParse("500m"), sts.Spec.Template.Spec.Containers[0].Resources.Requests[corev1.ResourceCPU])
 				assert.Equal(t, resource.MustParse("500Mi"), sts.Spec.Template.Spec.Containers[0].Resources.Requests[corev1.ResourceMemory])
+			},
+		},
+		"secrets": {
+			mco: func() *mcov1beta2.MultiClusterObservability {
+				ret := makeBaseMco()
+				ret.Spec.AdvancedConfig = &mcov1beta2.AdvancedConfig{
+					Alertmanager: &mcov1beta2.AlertmanagerSpec{
+						Secrets: []string{"this", "that"},
+					},
+				}
+				return ret
+			},
+			expect: func(t *testing.T, sts *appsv1.StatefulSet) {
+				name := "secret-this"
+				assert.Contains(t, sts.Spec.Template.Spec.Volumes, corev1.Volume{
+					Name: name,
+					VolumeSource: corev1.VolumeSource{
+						Secret: &corev1.SecretVolumeSource{
+							SecretName: "this",
+						},
+					},
+				})
+				assert.Contains(t, sts.Spec.Template.Spec.Containers[0].VolumeMounts, corev1.VolumeMount{
+					Name:      name,
+					MountPath: "/etc/alertmanager/secrets/this",
+					ReadOnly:  true,
+				})
+
+				name = "secret-that"
+				assert.Contains(t, sts.Spec.Template.Spec.Volumes, corev1.Volume{
+					Name: name,
+					VolumeSource: corev1.VolumeSource{
+						Secret: &corev1.SecretVolumeSource{
+							SecretName: "that",
+						},
+					},
+				})
+				assert.Contains(t, sts.Spec.Template.Spec.Containers[0].VolumeMounts, corev1.VolumeMount{
+					Name:      name,
+					MountPath: "/etc/alertmanager/secrets/that",
+					ReadOnly:  true,
+				})
 			},
 		},
 	}
@@ -237,7 +288,7 @@ func renderTemplates(t *testing.T, kubeClient client.Client, mco *mcov1beta2.Mul
 	defer os.Unsetenv(templatesutil.TemplatesPathEnvVar)
 
 	config.ReadImageManifestConfigMap(kubeClient, "v1")
-	renderer := NewMCORenderer(mco, kubeClient)
+	renderer := NewMCORenderer(mco, kubeClient, nil)
 
 	//load and render alertmanager templates
 	alertTemplates, err := templates.GetOrLoadAlertManagerTemplates(templatesutil.GetTemplateRenderer())

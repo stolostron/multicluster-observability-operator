@@ -373,3 +373,12 @@ rules:
   - create
   - patch
   - delete
+  - update
+- apiGroups:
+  - image.openshift.io
+  resources:
+  - imagestreams
+  verbs:
+  - get
+  - list
+  - watch

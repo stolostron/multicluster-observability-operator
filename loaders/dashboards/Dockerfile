@@ -1,12 +1,12 @@
 # Copyright Contributors to the Open Cluster Management project
 
-FROM registry.ci.openshift.org/stolostron/builder:go1.21-linux AS builder
+FROM registry.ci.openshift.org/stolostron/builder:go1.22-linux AS builder
 
 WORKDIR /workspace
 COPY go.sum go.mod ./loaders/dashboards ./
 COPY ./loaders/dashboards ./loaders/dashboards
 
-RUN CGO_ENABLED=1 go build -a -installsuffix cgo -v -o main loaders/dashboards/cmd/main.go
+RUN CGO_ENABLED=1 GOFLAGS="" go build -a -installsuffix cgo -v -o main loaders/dashboards/cmd/main.go
 
 FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
 

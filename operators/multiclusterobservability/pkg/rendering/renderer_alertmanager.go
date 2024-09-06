@@ -40,88 +40,103 @@ func (r *MCORenderer) newAlertManagerRenderer() {
 	}
 }
 
-func (r *MCORenderer) renderAlertManagerStatefulSet(res *resource.Resource,
-	namespace string, labels map[string]string) (*unstructured.Unstructured, error) {
+func (r *MCORenderer) renderAlertManagerStatefulSet(res *resource.Resource, namespace string, labels map[string]string) (*unstructured.Unstructured, error) {
 	u, err := r.renderer.RenderNamespace(res, namespace, labels)
 	if err != nil {
 		return nil, err
 	}
+
 	obj := util.GetK8sObj(u.GetKind())
 	err = runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, obj)
 	if err != nil {
 		return nil, err
 	}
+
 	crLabelKey := mcoconfig.GetCrLabelKey()
+	imagePullPolicy := mcoconfig.GetImagePullPolicy(r.cr.Spec)
 	dep := obj.(*v1.StatefulSet)
 	dep.ObjectMeta.Labels[crLabelKey] = r.cr.Name
+	dep.Name = mcoconfig.GetOperandName(mcoconfig.Alertmanager)
 	dep.Spec.Selector.MatchLabels[crLabelKey] = r.cr.Name
 	dep.Spec.Template.ObjectMeta.Labels[crLabelKey] = r.cr.Name
-	dep.Name = mcoconfig.GetOperandName(mcoconfig.Alertmanager)
 	dep.Spec.Replicas = mcoconfig.GetReplicas(mcoconfig.Alertmanager, r.cr.Spec.InstanceSize, r.cr.Spec.AdvancedConfig)
 
 	spec := &dep.Spec.Template.Spec
+	spec.NodeSelector = r.cr.Spec.NodeSelector
+	spec.Tolerations = r.cr.Spec.Tolerations
+	spec.ImagePullSecrets = []corev1.LocalObjectReference{{Name: mcoconfig.GetImagePullSecret(r.cr.Spec)}}
 
-	imagePullPolicy := mcoconfig.GetImagePullPolicy(r.cr.Spec)
-	spec.Containers[0].ImagePullPolicy = imagePullPolicy
-	args := spec.Containers[0].Args
+	if len(spec.Containers) != 4 {
+		return nil, fmt.Errorf("expected 4 containers in alertmanager statefulset, got %d", len(spec.Containers))
+	}
 
+	// set the container names for readability
+	alertManagerContainer := &spec.Containers[0]
+	configReloaderContainer := &spec.Containers[1]
+	oauthProxyContainer := &spec.Containers[2]
+	kubeRbacProxyContainer := &spec.Containers[3]
+
+	alertManagerContainer.ImagePullPolicy = imagePullPolicy
 	if *dep.Spec.Replicas > 1 {
 		for i := int32(0); i < *dep.Spec.Replicas; i++ {
-			args = append(args, "--cluster.peer="+
+			alertManagerContainer.Args = append(alertManagerContainer.Args, "--cluster.peer="+
 				mcoconfig.GetOperandName(mcoconfig.Alertmanager)+"-"+
 				strconv.Itoa(int(i))+".alertmanager-operated."+
 				mcoconfig.GetDefaultNamespace()+".svc:9094")
 		}
 	}
-
-	spec.Containers[0].Args = args
-	spec.Containers[0].Resources = mcoconfig.GetResources(mcoconfig.Alertmanager, r.cr.Spec.InstanceSize, r.cr.Spec.AdvancedConfig)
-
-	spec.Containers[1].ImagePullPolicy = imagePullPolicy
-	spec.NodeSelector = r.cr.Spec.NodeSelector
-	spec.Tolerations = r.cr.Spec.Tolerations
-	spec.ImagePullSecrets = []corev1.LocalObjectReference{
-		{Name: mcoconfig.GetImagePullSecret(r.cr.Spec)},
-	}
-
-	spec.Containers[0].Image = mcoconfig.DefaultImgRepository + "/" + mcoconfig.AlertManagerImgName +
-		":" + mcoconfig.DefaultImgTagSuffix
-	//replace the alertmanager and config-reloader images
-	found, image := mcoconfig.ReplaceImage(
-		r.cr.Annotations,
-		mcoconfig.DefaultImgRepository+"/"+mcoconfig.AlertManagerImgName,
-		mcoconfig.AlertManagerImgKey)
+	alertManagerContainer.Resources = mcoconfig.GetResources(mcoconfig.Alertmanager, r.cr.Spec.InstanceSize, r.cr.Spec.AdvancedConfig)
+	alertManagerContainer.Image = mcoconfig.DefaultImgRepository + "/" + mcoconfig.AlertManagerImgName + ":" + mcoconfig.DefaultImgTagSuffix
+	//replace the alertmanager image
+	found, image := mcoconfig.ReplaceImage(r.cr.Annotations, mcoconfig.DefaultImgRepository+"/"+mcoconfig.AlertManagerImgName, mcoconfig.AlertManagerImgKey)
 	if found {
-		spec.Containers[0].Image = image
+		alertManagerContainer.Image = image
 	}
 
-	found, image = mcoconfig.ReplaceImage(r.cr.Annotations, mcoconfig.ConfigmapReloaderImgRepo,
-		mcoconfig.ConfigmapReloaderKey)
-	if found {
-		spec.Containers[1].Image = image
-	}
-	// the oauth-proxy image only exists in mch-image-manifest configmap
-	// pass nil annotation to make sure oauth-proxy overrided from mch-image-manifest
-	found, image = mcoconfig.ReplaceImage(nil, mcoconfig.OauthProxyImgRepo,
-		mcoconfig.OauthProxyKey)
-	if found {
-		spec.Containers[2].Image = image
-	}
-	spec.Containers[2].ImagePullPolicy = imagePullPolicy
+	// mount the secrets referenced in the advanced config as volumes
+	if r.cr.Spec.AdvancedConfig != nil && r.cr.Spec.AdvancedConfig.Alertmanager != nil {
+		for _, secret := range r.cr.Spec.AdvancedConfig.Alertmanager.Secrets {
+			name := fmt.Sprintf("secret-%s", secret)
+			volume := corev1.Volume{
+				Name: name,
+				VolumeSource: corev1.VolumeSource{
+					Secret: &corev1.SecretVolumeSource{
+						SecretName: secret,
+					},
+				},
+			}
+			mount := corev1.VolumeMount{
+				Name:      name,
+				MountPath: fmt.Sprintf("/etc/alertmanager/secrets/%s", secret),
+				ReadOnly:  true,
+			}
 
-	// fail if kube-rbac-proxy container is not at the expected index
-	if spec.Containers[3].Name != "kube-rbac-proxy" {
-		return nil, fmt.Errorf("kube-rbac-proxy container not found in statefulset")
+			dep.Spec.Template.Spec.Volumes = append(dep.Spec.Template.Spec.Volumes, volume)
+			alertManagerContainer.VolumeMounts = append(alertManagerContainer.VolumeMounts, mount)
+		}
 	}
+
+	configReloaderContainer.ImagePullPolicy = imagePullPolicy
+	//replace the config-reloader image
+	found, image = mcoconfig.ReplaceImage(r.cr.Annotations, mcoconfig.ConfigmapReloaderImgRepo, mcoconfig.ConfigmapReloaderKey)
+	if found {
+		configReloaderContainer.Image = image
+	}
+
+	found, image = mcoconfig.GetOauthProxyImage(r.imageClient)
+	if found {
+		oauthProxyContainer.Image = image
+	}
+	oauthProxyContainer.ImagePullPolicy = imagePullPolicy
+
 	if ok, image := mcoconfig.ReplaceImage(r.cr.Annotations, mcoconfig.DefaultImgRepository+"/"+mcoconfig.KubeRBACProxyImgName, mcoconfig.KubeRBACProxyKey); ok {
-		spec.Containers[3].Image = image
+		kubeRbacProxyContainer.Image = image
 	}
-	spec.Containers[3].ImagePullPolicy = imagePullPolicy
+	kubeRbacProxyContainer.ImagePullPolicy = imagePullPolicy
 
 	//replace the volumeClaimTemplate
 	dep.Spec.VolumeClaimTemplates[0].Spec.StorageClassName = &r.cr.Spec.StorageConfig.StorageClass
-	dep.Spec.VolumeClaimTemplates[0].Spec.Resources.Requests[corev1.ResourceStorage] =
-		apiresource.MustParse(r.cr.Spec.StorageConfig.AlertmanagerStorageSize)
+	dep.Spec.VolumeClaimTemplates[0].Spec.Resources.Requests[corev1.ResourceStorage] = apiresource.MustParse(r.cr.Spec.StorageConfig.AlertmanagerStorageSize)
 
 	unstructuredObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
 	if err != nil {
