@@ -15,6 +15,7 @@ import (
 	oauthv1 "github.com/openshift/api/oauth/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	"github.com/stretchr/testify/assert"
 
 	mchv1 "github.com/stolostron/multiclusterhub-operator/api/v1"
 	observatoriumv1alpha1 "github.com/stolostron/observatorium-operator/api/v1alpha1"
@@ -26,9 +27,9 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering/templates"
 
 	"gopkg.in/yaml.v2"
-
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -36,9 +37,11 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
-
+	"k8s.io/client-go/util/workqueue"
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
+	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -1097,5 +1100,74 @@ func TestServiceMonitorRemovedFromOpenshiftMonitoringNamespace(t *testing.T) {
 	err := r.deleteServiceMonitorInOpenshiftMonitoringNamespace(context.TODO())
 	if err != nil {
 		t.Fatalf("Failed to delete ServiceMonitor: (%v)", err)
+	}
+}
+
+func TestNewMCOACRDEventHandler(t *testing.T) {
+	// Register the necessary schemes
+	scheme := runtime.NewScheme()
+	mcov1beta2.AddToScheme(scheme)
+
+	existingObjs := []runtime.Object{
+		&mcov1beta2.MultiClusterObservability{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-mco",
+				Namespace: "default",
+			},
+		},
+	}
+
+	tests := []struct {
+		name         string
+		crdName      string
+		expectedReqs []reconcile.Request
+	}{
+		{
+			name:         "CRD created is not a dependency",
+			crdName:      "non-supported-crd",
+			expectedReqs: []reconcile.Request{},
+		},
+		{
+			name:    "CRD created is a dependency",
+			crdName: "clusterlogforwarders.logging.openshift.io",
+			expectedReqs: []reconcile.Request{
+				{
+					NamespacedName: types.NamespacedName{
+						Name:      "test-mco",
+						Namespace: "default",
+					},
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client := fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(existingObjs...).Build()
+			handler := newMCOACRDEventHandler(client)
+
+			obj := &apiextensionsv1.CustomResourceDefinition{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: tt.crdName,
+				},
+			}
+
+			createEvent := event.CreateEvent{
+				Object: obj,
+			}
+
+			// Create a workqueue
+			queue := workqueue.NewNamedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[any](), "TestQueue")
+			handler.Create(context.TODO(), createEvent, queue)
+
+			reqs := []reconcile.Request{}
+			for queue.Len() > 0 {
+				item, _ := queue.Get()
+				reqs = append(reqs, item.(reconcile.Request))
+				queue.Done(item)
+			}
+
+			assert.Equal(t, tt.expectedReqs, reqs)
+		})
 	}
 }

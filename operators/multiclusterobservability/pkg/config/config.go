@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"reflect"
+	"sort"
 	"strings"
 	"time"
 
@@ -876,6 +877,7 @@ func GetMCOASupportedCRDNames() []string {
 	for name := range mcoaSupportedCRDs {
 		names = append(names, name)
 	}
+	sort.Strings(names)
 	return names
 }
 

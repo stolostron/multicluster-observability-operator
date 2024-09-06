@@ -10,18 +10,19 @@ import (
 	"testing"
 	"time"
 
+	mcoshared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
+	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
+	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
+	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-
-	mcoshared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
-	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
-	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
-	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 )
 
 func TestFillupStatus(t *testing.T) {
@@ -275,5 +276,115 @@ func TestStartStatusUpdate(t *testing.T) {
 
 	if findStatusCondition(instance.Status.Conditions, "MetricsDisabled") != nil {
 		t.Fatal("failed to update mco status to remove MetricsDisabled")
+	}
+}
+
+func TestUpdateMCOAStatus(t *testing.T) {
+	// Register the necessary schemes
+	s := scheme.Scheme
+	s.AddKnownTypes(mcov1beta2.GroupVersion, &mcov1beta2.MultiClusterObservability{})
+	s.AddKnownTypes(apiextensionsv1.SchemeGroupVersion, &apiextensionsv1.CustomResourceDefinition{})
+
+	tests := []struct {
+		name           string
+		instance       *mcov1beta2.MultiClusterObservability
+		existingObjs   []runtime.Object
+		expectedStatus *mcoshared.Condition
+	}{
+		{
+			name: "Capabilities not set",
+			instance: &mcov1beta2.MultiClusterObservability{
+				Spec: mcov1beta2.MultiClusterObservabilitySpec{
+					Capabilities: nil,
+				},
+			},
+			expectedStatus: nil,
+		},
+		{
+			name: "Capabilities set but not configured",
+			instance: &mcov1beta2.MultiClusterObservability{
+				Spec: mcov1beta2.MultiClusterObservabilitySpec{
+					Capabilities: &mcov1beta2.CapabilitiesSpec{},
+				},
+			},
+			expectedStatus: nil,
+		},
+		{
+			name: "Capabilities set but CRDs missing",
+			instance: &mcov1beta2.MultiClusterObservability{
+				Spec: mcov1beta2.MultiClusterObservabilitySpec{
+					Capabilities: &mcov1beta2.CapabilitiesSpec{
+						Platform: &mcov1beta2.PlatformCapabilitiesSpec{
+							Logs: mcov1beta2.PlatformLogsSpec{
+								Collection: mcov1beta2.PlatformLogsCollectionSpec{
+									Enabled: true,
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedStatus: &mcoshared.Condition{
+				Type:    reasonMCOADegraded,
+				Status:  metav1.ConditionTrue,
+				Reason:  reasonMCOADegraded,
+				Message: "MultiCluster-Observability-Addon degraded because the following CRDs are not installed on the hub: clusterlogforwarders.logging.openshift.io(v1), instrumentations.opentelemetry.io(v1alpha1), opentelemetrycollectors.opentelemetry.io(v1beta1)",
+			},
+		},
+		{
+			name: "Capabilities set and CRDs present",
+			instance: &mcov1beta2.MultiClusterObservability{
+				Spec: mcov1beta2.MultiClusterObservabilitySpec{
+					Capabilities: &mcov1beta2.CapabilitiesSpec{
+						Platform: &mcov1beta2.PlatformCapabilitiesSpec{
+							Logs: mcov1beta2.PlatformLogsSpec{
+								Collection: mcov1beta2.PlatformLogsCollectionSpec{
+									Enabled: true,
+								},
+							},
+						},
+					},
+				},
+			},
+			existingObjs: []runtime.Object{
+				&apiextensionsv1.CustomResourceDefinition{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "clusterlogforwarders.logging.openshift.io",
+					},
+					Spec: apiextensionsv1.CustomResourceDefinitionSpec{
+						Versions: []apiextensionsv1.CustomResourceDefinitionVersion{
+							{
+								Name:   "v1",
+								Served: true,
+							},
+						},
+					},
+				},
+			},
+			expectedStatus: &mcoshared.Condition{
+				Type:    reasonMCOADegraded,
+				Status:  metav1.ConditionTrue,
+				Reason:  reasonMCOADegraded,
+				Message: "MultiCluster-Observability-Addon degraded because the following CRDs are not installed on the hub: instrumentations.opentelemetry.io(v1alpha1), opentelemetrycollectors.opentelemetry.io(v1beta1)",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(tt.existingObjs...).Build()
+			conds := []mcoshared.Condition{}
+			updateMCOAStatus(client, &conds, tt.instance)
+
+			if tt.expectedStatus == nil {
+				assert.Empty(t, conds)
+			} else {
+				assert.NotEmpty(t, conds)
+				assert.Equal(t, tt.expectedStatus.Type, conds[0].Type)
+				assert.Equal(t, tt.expectedStatus.Status, conds[0].Status)
+				assert.Equal(t, tt.expectedStatus.Reason, conds[0].Reason)
+				assert.Contains(t, conds[0].Message, tt.expectedStatus.Message)
+			}
+		})
 	}
 }

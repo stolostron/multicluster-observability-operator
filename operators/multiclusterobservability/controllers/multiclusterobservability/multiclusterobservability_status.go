@@ -25,7 +25,6 @@ import (
 )
 
 const (
-	typeDegraded       = "Degraded"
 	reasonMCOADegraded = "MultiClusterObservabilityAddonDegraded"
 )
 
@@ -417,7 +416,7 @@ func checkAddonSpecStatus(mco *mcov1beta2.MultiClusterObservability) *mcoshared.
 func newInstallingCondition() *mcoshared.Condition {
 	return &mcoshared.Condition{
 		Type:    "Installing",
-		Status:  "True",
+		Status:  metav1.ConditionTrue,
 		Reason:  "Installing",
 		Message: "Installation is in progress",
 	}
@@ -426,7 +425,7 @@ func newInstallingCondition() *mcoshared.Condition {
 func newReadyCondition() *mcoshared.Condition {
 	return &mcoshared.Condition{
 		Type:    "Ready",
-		Status:  "True",
+		Status:  metav1.ConditionTrue,
 		Reason:  "Ready",
 		Message: "Observability components are deployed and running",
 	}
@@ -444,7 +443,7 @@ func newFailedCondition(reason string, msg string) *mcoshared.Condition {
 func newMetricsDisabledCondition() *mcoshared.Condition {
 	return &mcoshared.Condition{
 		Type:    "MetricsDisabled",
-		Status:  "True",
+		Status:  metav1.ConditionTrue,
 		Reason:  "MetricsDisabled",
 		Message: "Collect metrics from the managed clusters is disabled",
 	}
@@ -462,8 +461,8 @@ func newMCOADegradedCondition(missing []string) *mcoshared.Condition {
 	msg := fmt.Sprintf(tmpl, strings.Join(missingVersions, ", "))
 
 	return &mcoshared.Condition{
-		Type:    typeDegraded,
-		Status:  "True",
+		Type:    reasonMCOADegraded,
+		Status:  metav1.ConditionTrue,
 		Reason:  reasonMCOADegraded,
 		Message: msg,
 	}
