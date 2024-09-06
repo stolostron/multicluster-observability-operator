@@ -554,7 +554,7 @@ func (r *ObservabilityAddonReconciler) SetupWithManager(mgr ctrl.Manager) error 
 		).
 		Watches(
 			&corev1.ConfigMap{},
-			&handler.EnqueueRequestForObject{},
+			enqueueForCMOConfigMap(),
 			builder.WithPredicates(getPred(clusterMonitoringConfigName, promNamespace, true, true, false)),
 		).
 		Watches(
@@ -578,6 +578,19 @@ func (r *ObservabilityAddonReconciler) SetupWithManager(mgr ctrl.Manager) error 
 			builder.WithPredicates(getPred(openshift.ClusterRoleBindingName, "", false, true, true)),
 		).
 		Complete(r)
+}
+
+func enqueueForCMOConfigMap() handler.EventHandler {
+	return handler.EnqueueRequestsFromMapFunc(
+		func(ctx context.Context, a client.Object) []reconcile.Request {
+			return []reconcile.Request{
+				{NamespacedName: types.NamespacedName{
+					Name:      "observability-addon",
+					Namespace: "open-cluster-management-addon-observability",
+				},
+				},
+			}
+		})
 }
 
 // Watch the kube-system extension-apiserver-authentication ConfigMap for changes
