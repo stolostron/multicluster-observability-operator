@@ -554,7 +554,7 @@ func (r *ObservabilityAddonReconciler) SetupWithManager(mgr ctrl.Manager) error 
 		).
 		Watches(
 			&corev1.ConfigMap{},
-			&handler.EnqueueRequestForObject{},
+			enqueueForCMOConfigMap(r),
 			builder.WithPredicates(getPred(clusterMonitoringConfigName, promNamespace, true, true, true)),
 		).
 		Watches(
@@ -608,6 +608,31 @@ func remove(list []string, s string) []string {
 		}
 	}
 	return result
+}
+
+func enqueueForCMOConfigMap(obsR *ObservabilityAddonReconciler) handler.EventHandler {
+	return handler.EnqueueRequestsFromMapFunc(
+		func(ctx context.Context, a client.Object) []reconcile.Request {
+
+			obsList := &oav1beta1.ObservabilityAddonList{}
+			err := obsR.Client.List(ctx, obsList)
+			if err != nil {
+				log.Error(err, "Failed to list ObservabilityAddon")
+				return nil
+			}
+			log.Info("Enqueue for CMO Config ObservabilityAddonList", "items", len(obsList.Items))
+
+			var requests []reconcile.Request
+			for _, obs := range obsList.Items {
+				requests = append(requests, reconcile.Request{
+					NamespacedName: types.NamespacedName{
+						Name:      obs.Name,
+						Namespace: obs.Namespace,
+					},
+				})
+			}
+			return requests
+		})
 }
 
 // resourcePriority returns the priority of the resource.

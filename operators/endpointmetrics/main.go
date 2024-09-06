@@ -96,6 +96,10 @@ func main() {
 			{FieldSelector: fmt.Sprintf("metadata.name==%s,metadata.namespace!=%s",
 				operatorconfig.AllowlistCustomConfigMapName, "open-cluster-management-observability")},
 		},
+		v1.SchemeGroupVersion.WithKind("ConfigMap"): {
+			{FieldSelector: fmt.Sprintf("metadata.name==%s,metadata.namespace==%s",
+				"cluster-monitoring-config", "openshift-monitoring")},
+		},
 		appsv1.SchemeGroupVersion.WithKind("Deployment"): {
 			{FieldSelector: namespaceSelector},
 		},

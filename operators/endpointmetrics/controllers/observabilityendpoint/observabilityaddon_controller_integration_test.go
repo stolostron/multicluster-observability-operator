@@ -2,8 +2,6 @@
 // Copyright Contributors to the Open Cluster Management project
 // Licensed under the Apache License 2.0
 
-//go:build integration
-
 package observabilityendpoint
 
 import (
@@ -99,6 +97,12 @@ alertmanager-router-ca: |
 			Immutable:  nil,
 			Data:       nil,
 			StringData: map[string]string{hubAmAccessorSecretKey: "lol"},
+		},
+		&oav1beta1.ObservabilityAddon{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "observability-addon",
+				Namespace: namespace,
+			},
 		},
 	}
 	if err := createResources(k8sClient, resourcesDeps...); err != nil {
