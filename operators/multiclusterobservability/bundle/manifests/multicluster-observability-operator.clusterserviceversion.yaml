@@ -49,7 +49,7 @@ metadata:
         }
       ]
     capabilities: Basic Install
-    createdAt: "2024-08-29T11:39:17Z"
+    createdAt: "2024-09-09T14:04:08Z"
     operators.operatorframework.io/builder: operator-sdk-v1.34.2
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
   name: multicluster-observability-operator.v0.1.0
@@ -457,6 +457,7 @@ spec:
           - create
           - patch
           - delete
+          - update
         - apiGroups:
           - image.openshift.io
           resources:

@@ -375,7 +375,7 @@ func (d *Deployer) updateAddOnDeploymentConfig(
 		return err
 	}
 
-	if !apiequality.Semantic.DeepDerivative(desiredAODC.Spec, runtimeAODC.Spec) {
+	if !apiequality.Semantic.DeepEqual(desiredAODC.Spec, runtimeAODC.Spec) {
 		logUpdateInfo(runtimeObj)
 		if desiredAODC.ResourceVersion != runtimeAODC.ResourceVersion {
 			desiredAODC.ResourceVersion = runtimeAODC.ResourceVersion
@@ -395,7 +395,7 @@ func (d *Deployer) updateClusterManagementAddOn(
 		return err
 	}
 
-	if !apiequality.Semantic.DeepDerivative(desiredCMAO.Spec, runtimeCMAO.Spec) {
+	if !apiequality.Semantic.DeepEqual(desiredCMAO.Spec, runtimeCMAO.Spec) {
 		logUpdateInfo(runtimeObj)
 		if desiredCMAO.ResourceVersion != runtimeCMAO.ResourceVersion {
 			desiredCMAO.ResourceVersion = runtimeCMAO.ResourceVersion
