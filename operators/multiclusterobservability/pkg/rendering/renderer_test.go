@@ -102,3 +102,121 @@ func TestGetOauthProxyFromImageStreams(t *testing.T) {
 	}
 	assert.Equal(t, "quay.io/openshift-release-dev/ocp-v4.0-art-dev", oauthProxyImage)
 }
+func TestMCOAEnabled(t *testing.T) {
+	tests := []struct {
+		name     string
+		cr       *mcov1beta2.MultiClusterObservability
+		expected bool
+	}{
+		{
+			name: "Capabilities not set",
+			cr: &mcov1beta2.MultiClusterObservability{
+				Spec: mcov1beta2.MultiClusterObservabilitySpec{
+					Capabilities: nil,
+				},
+			},
+			expected: false,
+		},
+		{
+			name: "Platform logs collection enabled",
+			cr: &mcov1beta2.MultiClusterObservability{
+				Spec: mcov1beta2.MultiClusterObservabilitySpec{
+					Capabilities: &mcov1beta2.CapabilitiesSpec{
+						Platform: &mcov1beta2.PlatformCapabilitiesSpec{
+							Logs: mcov1beta2.PlatformLogsSpec{
+								Collection: mcov1beta2.PlatformLogsCollectionSpec{
+									Enabled: true,
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: true,
+		},
+		{
+			name: "User workloads logs collection enabled",
+			cr: &mcov1beta2.MultiClusterObservability{
+				Spec: mcov1beta2.MultiClusterObservabilitySpec{
+					Capabilities: &mcov1beta2.CapabilitiesSpec{
+						UserWorkloads: &mcov1beta2.UserWorkloadCapabilitiesSpec{
+							Logs: mcov1beta2.UserWorkloadLogsSpec{
+								Collection: mcov1beta2.UserWorkloadLogsCollectionSpec{
+									ClusterLogForwarder: mcov1beta2.ClusterLogForwarderSpec{
+										Enabled: true,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: true,
+		},
+		{
+			name: "User workloads traces collection enabled",
+			cr: &mcov1beta2.MultiClusterObservability{
+				Spec: mcov1beta2.MultiClusterObservabilitySpec{
+					Capabilities: &mcov1beta2.CapabilitiesSpec{
+						UserWorkloads: &mcov1beta2.UserWorkloadCapabilitiesSpec{
+							Traces: mcov1beta2.UserWorkloadTracesSpec{
+								Collection: mcov1beta2.OpenTelemetryCollectionSpec{
+									Collector: mcov1beta2.OpenTelemetryCollectorSpec{
+										Enabled: true,
+									},
+									Instrumentation: mcov1beta2.InstrumentationSpec{
+										Enabled: true,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: true,
+		},
+		{
+			name: "All capabilities disabled",
+			cr: &mcov1beta2.MultiClusterObservability{
+				Spec: mcov1beta2.MultiClusterObservabilitySpec{
+					Capabilities: &mcov1beta2.CapabilitiesSpec{
+						Platform: &mcov1beta2.PlatformCapabilitiesSpec{
+							Logs: mcov1beta2.PlatformLogsSpec{
+								Collection: mcov1beta2.PlatformLogsCollectionSpec{
+									Enabled: false,
+								},
+							},
+						},
+						UserWorkloads: &mcov1beta2.UserWorkloadCapabilitiesSpec{
+							Logs: mcov1beta2.UserWorkloadLogsSpec{
+								Collection: mcov1beta2.UserWorkloadLogsCollectionSpec{
+									ClusterLogForwarder: mcov1beta2.ClusterLogForwarderSpec{
+										Enabled: false,
+									},
+								},
+							},
+							Traces: mcov1beta2.UserWorkloadTracesSpec{
+								Collection: mcov1beta2.OpenTelemetryCollectionSpec{
+									Collector: mcov1beta2.OpenTelemetryCollectorSpec{
+										Enabled: false,
+									},
+									Instrumentation: mcov1beta2.InstrumentationSpec{
+										Enabled: false,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := MCOAEnabled(tt.cr)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}

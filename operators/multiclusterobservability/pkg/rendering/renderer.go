@@ -56,10 +56,7 @@ func (r *MCORenderer) Render() ([]*unstructured.Unstructured, error) {
 	if err != nil {
 		return nil, err
 	}
-	namespace := mcoconfig.GetDefaultNamespace()
-	labels := map[string]string{
-		mcoconfig.GetCrLabelKey(): r.cr.Name,
-	}
+	namespace, labels := r.NamespaceAndLabels()
 	resources, err := r.renderer.RenderTemplates(genericTemplates, namespace, labels)
 	if err != nil {
 		return nil, err
@@ -109,16 +106,14 @@ func (r *MCORenderer) Render() ([]*unstructured.Unstructured, error) {
 	}
 	resources = append(resources, proxyResources...)
 
-	// load and render multicluster-observability-addon templates
-	mcoaTemplates, err := templates.GetOrLoadMCOATemplates(templatesutil.GetTemplateRenderer())
-	if err != nil {
-		return nil, err
+	// load and render multicluster-observability-addon templates if capabilities is enabled
+	if MCOAEnabled(r.cr) {
+		mcoaResources, err := r.MCOAResources(namespace, labels)
+		if err != nil {
+			return nil, err
+		}
+		resources = append(resources, mcoaResources...)
 	}
-	mcoaResources, err := r.renderMCOATemplates(mcoaTemplates, namespace, labels)
-	if err != nil {
-		return nil, err
-	}
-	resources = append(resources, mcoaResources...)
 
 	for idx := range resources {
 		if resources[idx].GetKind() == "Deployment" {
@@ -166,4 +161,41 @@ func (r *MCORenderer) Render() ([]*unstructured.Unstructured, error) {
 	}
 
 	return resources, nil
+}
+
+func (r *MCORenderer) NamespaceAndLabels() (string, map[string]string) {
+	namespace := mcoconfig.GetDefaultNamespace()
+	labels := map[string]string{
+		mcoconfig.GetCrLabelKey(): r.cr.Name,
+	}
+	return namespace, labels
+}
+
+func MCOAEnabled(cr *obv1beta2.MultiClusterObservability) bool {
+	if cr.Spec.Capabilities == nil {
+		return false
+	}
+	mcoaEnabled := false
+	if cr.Spec.Capabilities.Platform != nil {
+		mcoaEnabled = mcoaEnabled || cr.Spec.Capabilities.Platform.Logs.Collection.Enabled
+	}
+	if cr.Spec.Capabilities.UserWorkloads != nil {
+		mcoaEnabled = mcoaEnabled || cr.Spec.Capabilities.UserWorkloads.Logs.Collection.ClusterLogForwarder.Enabled
+		mcoaEnabled = mcoaEnabled || cr.Spec.Capabilities.UserWorkloads.Traces.Collection.Collector.Enabled
+		mcoaEnabled = mcoaEnabled || cr.Spec.Capabilities.UserWorkloads.Traces.Collection.Instrumentation.Enabled
+	}
+	return mcoaEnabled
+}
+
+func (r *MCORenderer) MCOAResources(namespace string, labels map[string]string) ([]*unstructured.Unstructured, error) {
+	mcoaTemplates, err := templates.GetOrLoadMCOATemplates(templatesutil.GetTemplateRenderer())
+	if err != nil {
+		return nil, err
+	}
+	mcoaResources, err := r.renderMCOATemplates(mcoaTemplates, namespace, labels)
+	if err != nil {
+		return nil, err
+	}
+
+	return mcoaResources, nil
 }
