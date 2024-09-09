@@ -14,6 +14,9 @@ import (
 	"testing"
 	"time"
 
+	yaml2 "github.com/ghodss/yaml"
+	ocinfrav1 "github.com/openshift/api/config/v1"
+	cmomanifests "github.com/openshift/cluster-monitoring-operator/pkg/manifests"
 	hyperv1 "github.com/openshift/hypershift/api/hypershift/v1alpha1"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/hypershift"
@@ -46,6 +49,154 @@ var (
 	testEnvHub   *envtest.Environment
 	restCfgHub   *rest.Config
 )
+
+func TestCMOConfigWatching(t *testing.T) {
+	namespace := "test-cmo-config"
+
+	scheme := createBaseScheme()
+	ocinfrav1.AddToScheme(scheme)
+
+	k8sClient, err := client.New(restCfgHub, client.Options{Scheme: scheme})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	defer tearDownCommonHubResources(t, k8sClient, namespace)
+
+	// Create resources required for the cmo case
+	resourcesDeps := []client.Object{
+		makeNamespace(promNamespace),
+		makeNamespace(namespace),
+		newImagesCM(namespace),
+		newHubInfoSecret([]byte(`
+endpoint: "http://test-endpoint"
+alertmanager-endpoint: "http://test-alertamanger-endpoint"
+alertmanager-router-ca: |
+    -----BEGIN CERTIFICATE-----
+    xxxxxxxxxxxxxxxxxxxxxxxxxxx
+    -----END CERTIFICATE-----
+`), namespace),
+		&corev1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      promSvcName,
+				Namespace: promNamespace,
+			},
+			Spec: corev1.ServiceSpec{
+				Ports: []corev1.ServicePort{{Name: "metrics", Port: 9090}},
+			},
+			Status: corev1.ServiceStatus{},
+		},
+		&ocinfrav1.ClusterVersion{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "version",
+			},
+		},
+		&corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      hubAmAccessorSecretName,
+				Namespace: namespace,
+			},
+			Immutable:  nil,
+			Data:       nil,
+			StringData: map[string]string{hubAmAccessorSecretKey: "lol"},
+		},
+		&oav1beta1.ObservabilityAddon{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "observability-addon",
+				Namespace: namespace,
+			},
+		},
+	}
+	if err := createResources(k8sClient, resourcesDeps...); err != nil {
+		t.Fatalf("Failed to create resources: %v", err)
+	}
+
+	mgr, err := ctrl.NewManager(testEnvHub.Config, ctrl.Options{
+		Scheme:  k8sClient.Scheme(),
+		Metrics: metricsserver.Options{BindAddress: "0"}, // Avoids port conflict with the default port 8080
+	})
+	assert.NoError(t, err)
+
+	hubClientWithReload, err := util.NewReloadableHubClientWithReloadFunc(func() (client.Client, error) {
+		return k8sClient, nil
+	})
+	assert.NoError(t, err)
+	reconciler := ObservabilityAddonReconciler{
+		Client:                k8sClient,
+		HubClient:             hubClientWithReload,
+		IsHubMetricsCollector: true,
+		Scheme:                scheme,
+		Namespace:             namespace,
+		HubNamespace:          "local-cluster",
+		ServiceAccountName:    "endpoint-monitoring-operator",
+		InstallPrometheus:     false,
+	}
+
+	err = reconciler.SetupWithManager(mgr)
+	assert.NoError(t, err)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go func() {
+		err = mgr.Start(ctx)
+		assert.NoError(t, err)
+	}()
+
+	cm := &corev1.ConfigMap{}
+	err = wait.Poll(1*time.Second, time.Minute, func() (bool, error) {
+		err := k8sClient.Get(context.Background(), types.NamespacedName{Namespace: promNamespace, Name: clusterMonitoringConfigName}, cm)
+		if err != nil && errors.IsNotFound(err) {
+			return false, nil
+		}
+
+		return true, err
+	})
+	assert.NoError(t, err)
+
+	foundClusterMonitoringConfiguration := &cmomanifests.ClusterMonitoringConfiguration{}
+	err = yaml2.Unmarshal([]byte(cm.Data[clusterMonitoringConfigDataKey]), foundClusterMonitoringConfiguration)
+	assert.NoError(t, err)
+
+	assert.Len(t, foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs, 1)
+	assert.Equal(t, foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs[0].Scheme, "https")
+
+	foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs[0].Scheme = "http"
+	foundClusterMonitoringConfiguration.PrometheusK8sConfig.Retention = "infinity-and-beyond"
+
+	b, err := yaml2.Marshal(foundClusterMonitoringConfiguration)
+	assert.NoError(t, err)
+	cm.Data[clusterMonitoringConfigDataKey] = string(b)
+	err = k8sClient.Update(context.Background(), cm)
+	assert.NoError(t, err)
+
+	// repeat the test and expect a partial revert
+	err = wait.Poll(1*time.Second, time.Minute, func() (bool, error) {
+		updated := &corev1.ConfigMap{}
+		err := k8sClient.Get(context.Background(), types.NamespacedName{Namespace: promNamespace, Name: clusterMonitoringConfigName}, updated)
+		if err != nil && errors.IsNotFound(err) {
+			return false, nil
+		}
+
+		foundUpdatedClusterMonitoringConfiguration := &cmomanifests.ClusterMonitoringConfiguration{}
+		err = yaml2.Unmarshal([]byte(updated.Data[clusterMonitoringConfigDataKey]), foundUpdatedClusterMonitoringConfiguration)
+		if err != nil {
+			return false, nil
+		}
+
+		if foundUpdatedClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs[0].Scheme != "https" {
+			return false, nil
+		}
+
+		if foundUpdatedClusterMonitoringConfiguration.PrometheusK8sConfig.Retention != "infinity-and-beyond" {
+			return false, nil
+		}
+
+		return true, err
+	})
+	assert.NoError(t, err)
+
+}
 
 // TestIntegrationReconcileHypershift tests the reconcile function for hypershift CRDs.
 func TestIntegrationReconcileHypershift(t *testing.T) {
