@@ -377,10 +377,10 @@ var (
 		Default:    "256Mi",
 		Small:      "256Mi",
 		Medium:     "256Mi",
-		Large:      "256Mi",
-		XLarge:     "256Mi",
-		TwoXLarge:  "256Mi",
-		FourXLarge: "256Mi",
+		Large:      "1Gi",
+		XLarge:     "1Gi",
+		TwoXLarge:  "1Gi",
+		FourXLarge: "1Gi",
 	}
 )
 
@@ -390,9 +390,6 @@ const (
 
 	MetricsCollectorCPULimits    = ""
 	MetricsCollectorMemoryLimits = ""
-
-	MCOACPULimits    = "200m"
-	MCOAMemoryLimits = "512Mi"
 )
 
 type ReplicaMap map[observabilityv1beta2.TShirtSize]*int32
