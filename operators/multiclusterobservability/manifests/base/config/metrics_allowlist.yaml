@@ -143,6 +143,20 @@ data:
       - cnv:vmi_status_running:count
       - kubevirt_hyperconverged_operator_health_status
       - kubevirt_hco_system_health_status
+      - kubevirt_vmi_info
+      - kubevirt_vm_running_status_last_transition_timestamp_seconds
+      - kubevirt_vm_non_running_status_last_transition_timestamp_seconds
+      - kubevirt_vm_error_status_last_transition_timestamp_seconds
+      - kubevirt_vm_starting_status_last_transition_timestamp_seconds
+      - kubevirt_vm_migrating_status_last_transition_timestamp_seconds
+      - kubevirt_vmi_memory_available_bytes
+      - kubevirt_vmi_phase_count
+      - kubevirt_vmi_cpu_usage_seconds_total
+      - kubevirt_vmi_network_receive_bytes_total
+      - kubevirt_vmi_network_transmit_bytes_total
+      - kubevirt_vmi_storage_iops_read_total
+      - kubevirt_vmi_storage_iops_write_total
+
     matches:
       - __name__="workqueue_queue_duration_seconds_bucket",job="apiserver"
       - __name__="workqueue_adds_total",job="apiserver"

@@ -35,3 +35,7 @@ resources:
 - dash-k8s-pods-in-namespace-ocp311.yaml
 - dash-k8s-summary-by-node-ocp311.yaml
 - dash-acm-openshift-virtualization-overview.yaml
+- dash-acm-virtual-machines-inventory.yaml
+- dash-acm-virtual-machines-by-time-in-status.yaml
+- dash-acm-openshift-virtualization-single-cluster-view.yaml
+- dash-acm-openshift-virtualization-single-vm-view.yaml
