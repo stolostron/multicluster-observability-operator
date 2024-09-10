@@ -439,12 +439,14 @@ func createOrUpdateClusterMonitoringConfig(
 			foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs = newAlertmanagerConfigs
 		} else {
 			additionalAlertmanagerConfigExists := false
-			for _, v := range foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs {
+			var atIndex int
+			for i, v := range foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs {
 				if v.TLSConfig != (cmomanifests.TLSConfig{}) &&
 					v.TLSConfig.CA != nil &&
 					v.TLSConfig.CA.LocalObjectReference != (corev1.LocalObjectReference{}) &&
 					v.TLSConfig.CA.LocalObjectReference.Name == hubAmRouterCASecretName {
 					additionalAlertmanagerConfigExists = true
+					atIndex = i
 					break
 				}
 			}
@@ -452,6 +454,8 @@ func createOrUpdateClusterMonitoringConfig(
 				foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs = append(
 					foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs,
 					newAdditionalAlertmanagerConfig(hubInfo))
+			} else {
+				foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs[atIndex] = newAdditionalAlertmanagerConfig(hubInfo)
 			}
 		}
 	}
