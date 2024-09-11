@@ -51,8 +51,6 @@ const (
 	ownerLabelKey                   = "owner"
 	ownerLabelValue                 = "observabilityaddon"
 	obsAddonFinalizer               = "observability.open-cluster-management.io/addon-cleanup"
-	promSvcName                     = "prometheus-k8s"
-	promNamespace                   = "openshift-monitoring"
 	openShiftClusterMonitoringlabel = "openshift.io/cluster-monitoring"
 )
 
@@ -66,6 +64,11 @@ var (
 	namespace             = os.Getenv("WATCH_NAMESPACE")
 	hubNamespace          = os.Getenv("HUB_NAMESPACE")
 	isHubMetricsCollector = os.Getenv("HUB_ENDPOINT_OPERATOR") == "true"
+)
+
+const (
+	promSvcName   = operatorconfig.OCPClusterMonitoringPrometheusService
+	promNamespace = operatorconfig.OCPClusterMonitoringNamespace
 )
 
 // ObservabilityAddonReconciler reconciles a ObservabilityAddon object.
@@ -544,7 +547,7 @@ func (r *ObservabilityAddonReconciler) SetupWithManager(mgr ctrl.Manager) error 
 		Watches(
 			&source.Kind{Type: &corev1.ConfigMap{}},
 			&handler.EnqueueRequestForObject{},
-			builder.WithPredicates(getPred(clusterMonitoringConfigName, promNamespace, false, true, true)),
+			builder.WithPredicates(getPred(clusterMonitoringConfigName, promNamespace, true, true, true)),
 		).
 		Watches(
 			&source.Kind{Type: &appsv1.Deployment{}},

@@ -29,6 +29,13 @@ const (
 )
 
 const (
+	OCPClusterMonitoringNamespace         = "openshift-monitoring"
+	OCPClusterMonitoringConfigMapName     = "cluster-monitoring-config"
+	OCPClusterMonitoringConfigMapKey      = "config.yaml"
+	OCPClusterMonitoringPrometheusService = "prometheus-k8s"
+)
+
+const (
 	MetricsCollectorImgName = "metrics-collector"
 	MetricsCollectorKey     = "metrics_collector"
 
