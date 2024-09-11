@@ -803,3 +803,50 @@ func TestGetOperandName(t *testing.T) {
 		})
 	}
 }
+
+func TestGetMCOASupportedCRDNames(t *testing.T) {
+	expected := []string{
+		"clusterlogforwarders.logging.openshift.io",
+		"opentelemetrycollectors.opentelemetry.io",
+		"instrumentations.opentelemetry.io",
+	}
+
+	result := GetMCOASupportedCRDNames()
+	assert.ElementsMatch(t, expected, result)
+}
+
+func TestGetMCOASupportedCRDFQDN(t *testing.T) {
+	tests := []struct {
+		name     string
+		crdName  string
+		expected string
+	}{
+		{
+			name:     "Valid CRD name with version",
+			crdName:  "clusterlogforwarders.logging.openshift.io",
+			expected: "clusterlogforwarders.v1.logging.openshift.io",
+		},
+		{
+			name:     "Valid CRD name with different version",
+			crdName:  "opentelemetrycollectors.opentelemetry.io",
+			expected: "opentelemetrycollectors.v1beta1.opentelemetry.io",
+		},
+		{
+			name:     "Valid CRD name with another version",
+			crdName:  "instrumentations.opentelemetry.io",
+			expected: "instrumentations.v1alpha1.opentelemetry.io",
+		},
+		{
+			name:     "Invalid CRD name",
+			crdName:  "invalid.crd.name",
+			expected: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := GetMCOASupportedCRDFQDN(tt.crdName)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}

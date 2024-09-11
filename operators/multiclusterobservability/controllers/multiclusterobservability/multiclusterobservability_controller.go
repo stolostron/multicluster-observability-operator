@@ -29,6 +29,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	storev1 "k8s.io/api/storage/v1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -453,6 +454,8 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 	cmPred := GetConfigMapPredicateFunc()
 	secretPred := GetAlertManagerSecretPredicateFunc()
 	namespacePred := GetNamespacePredicateFunc()
+	mcoaCRDPred := GetMCOACRDPredicateFunc()
+
 	ctrBuilder := ctrl.NewControllerManagedBy(mgr).
 		// Watch for changes to primary resource MultiClusterObservability with predicate
 		For(&mcov1beta2.MultiClusterObservability{}, builder.WithPredicates(mcoPred)).
@@ -491,7 +494,8 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 					}
 				}
 				return nil
-			}), builder.WithPredicates(predicate.ResourceVersionChangedPredicate{}))
+			}), builder.WithPredicates(predicate.ResourceVersionChangedPredicate{})).
+		Watches(&apiextensionsv1.CustomResourceDefinition{}, newMCOACRDEventHandler(c), builder.WithPredicates(mcoaCRDPred))
 
 	if _, err := mgr.GetRESTMapper().KindFor(schema.GroupVersionResource{
 		Group:    "image.openshift.io",
@@ -966,4 +970,41 @@ func (r *MultiClusterObservabilityReconciler) deleteServiceMonitorInOpenshiftMon
 		}
 	}
 	return nil
+}
+
+func newMCOACRDEventHandler(c client.Client) handler.EventHandler {
+	return handler.EnqueueRequestsFromMapFunc(
+		func(ctx context.Context, obj client.Object) []reconcile.Request {
+			var reqs []reconcile.Request
+
+			var isDependency bool
+			for _, name := range config.GetMCOASupportedCRDNames() {
+				if name == obj.GetName() {
+					isDependency = true
+					break
+				}
+			}
+
+			if !isDependency {
+				return reqs
+			}
+
+			mcos := &mcov1beta2.MultiClusterObservabilityList{}
+			err := c.List(ctx, mcos, &client.ListOptions{})
+			if err != nil {
+				return nil
+			}
+
+			for _, mco := range mcos.Items {
+				reqs = append(reqs, reconcile.Request{
+					NamespacedName: types.NamespacedName{
+						Name:      mco.GetName(),
+						Namespace: mco.GetNamespace(),
+					},
+				})
+			}
+
+			return reqs
+		},
+	)
 }

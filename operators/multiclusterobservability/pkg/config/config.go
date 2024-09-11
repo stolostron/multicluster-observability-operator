@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"reflect"
+	"sort"
 	"strings"
 	"time"
 
@@ -217,9 +218,25 @@ const (
 	HubEndpointSaName          = "endpoint-observability-operator-sa"
 )
 
+const schemeHttps = "https"
+
 const (
 	OauthProxyImageStreamName      = "oauth-proxy"
 	OauthProxyImageStreamNamespace = "openshift"
+)
+
+const (
+	ClusterLogForwarderCRDName    = "clusterlogforwarders.logging.openshift.io"
+	OpenTelemetryCollectorCRDName = "opentelemetrycollectors.opentelemetry.io"
+	InstrumentationCRDName        = "instrumentations.opentelemetry.io"
+)
+
+var (
+	mcoaSupportedCRDs = map[string]string{
+		ClusterLogForwarderCRDName:    "v1",
+		OpenTelemetryCollectorCRDName: "v1beta1",
+		InstrumentationCRDName:        "v1alpha1",
+	}
 )
 
 // ObjectStorgeConf is used to Unmarshal from bytes to do validation.
@@ -390,7 +407,7 @@ func GetObsAPIExternalURL(ctx context.Context, client client.Client, namespace s
 	if err != nil {
 		return nil, err
 	}
-	return url.Parse("https://" + routeHost)
+	return url.Parse(fmt.Sprintf("%s://%s", schemeHttps, routeHost))
 }
 
 func GetRouteHost(client client.Client, name string, namespace string) (string, error) {
@@ -454,11 +471,11 @@ func GetAlertmanagerURL(ctx context.Context, client client.Client, namespace str
 		if err != nil {
 			return nil, err
 		}
-		return url.Parse("https://" + AlertmanagerRouteName + "-" + namespace + "." + domain)
+		return url.Parse(fmt.Sprintf("%s://%s-%s.%s", schemeHttps, AlertmanagerRouteName, namespace, domain))
 	} else if err != nil {
 		return nil, err
 	}
-	return url.Parse("https://" + found.Spec.Host)
+	return url.Parse(fmt.Sprintf("%s://%s", schemeHttps, found.Spec.Host))
 }
 
 // getDomainForIngressController get the domain for the given ingresscontroller instance.
@@ -853,5 +870,33 @@ func GetOauthProxyImage(imageClient imagev1client.ImageV1Interface) (bool, strin
 		}
 	}
 	return false, ""
+}
 
+func GetMCOASupportedCRDNames() []string {
+	var names []string
+	for name := range mcoaSupportedCRDs {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
+}
+
+func GetMCOASupportedCRDVersion(name string) string {
+	version, ok := mcoaSupportedCRDs[name]
+	if !ok {
+		return ""
+	}
+
+	return version
+}
+
+func GetMCOASupportedCRDFQDN(name string) string {
+	version, ok := mcoaSupportedCRDs[name]
+	if !ok {
+		return ""
+	}
+
+	parts := strings.SplitN(name, ".", 2)
+
+	return fmt.Sprintf("%s.%s.%s", parts[0], version, parts[1])
 }

@@ -8,11 +8,13 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strings"
 	"sync"
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -20,6 +22,10 @@ import (
 	mcoshared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+)
+
+const (
+	reasonMCOADegraded = "MultiClusterObservabilityAddonDegraded"
 )
 
 var (
@@ -108,6 +114,7 @@ func updateStatus(c client.Client) {
 	updateInstallStatus(&newStatus.Conditions)
 	updateReadyStatus(&newStatus.Conditions, c, instance)
 	updateAddonSpecStatus(&newStatus.Conditions, instance)
+	updateMCOAStatus(c, &newStatus.Conditions, instance)
 	fillupStatus(&newStatus.Conditions)
 	instance.Status.Conditions = newStatus.Conditions
 	if !reflect.DeepEqual(newStatus.Conditions, oldStatus.Conditions) {
@@ -136,7 +143,6 @@ func updateInstallStatus(conditions *[]mcoshared.Condition) {
 }
 
 func checkReadyStatus(c client.Client, mco *mcov1beta2.MultiClusterObservability) bool {
-
 	if findStatusCondition(mco.Status.Conditions, "Ready") != nil {
 		return true
 	}
@@ -158,8 +164,8 @@ func checkReadyStatus(c client.Client, mco *mcov1beta2.MultiClusterObservability
 func updateReadyStatus(
 	conditions *[]mcoshared.Condition,
 	c client.Client,
-	mco *mcov1beta2.MultiClusterObservability) {
-
+	mco *mcov1beta2.MultiClusterObservability,
+) {
 	if findStatusCondition(*conditions, "Ready") != nil {
 		return
 	}
@@ -247,13 +253,56 @@ func findStatusCondition(conditions []mcoshared.Condition, conditionType string)
 
 func updateAddonSpecStatus(
 	conditions *[]mcoshared.Condition,
-	mco *mcov1beta2.MultiClusterObservability) {
+	mco *mcov1beta2.MultiClusterObservability,
+) {
 	addonStatus := checkAddonSpecStatus(mco)
 	if addonStatus != nil {
 		setStatusCondition(conditions, *addonStatus)
 	} else {
 		removeStatusCondition(conditions, "MetricsDisabled")
 	}
+}
+
+func updateMCOAStatus(c client.Client, conds *[]mcoshared.Condition, mco *mcov1beta2.MultiClusterObservability) {
+	if mco.Spec.Capabilities == nil {
+		return
+	}
+
+	if mco.Spec.Capabilities.Platform == nil && mco.Spec.Capabilities.UserWorkloads == nil {
+		return
+	}
+
+	var missing []string
+
+outer:
+	for _, crdName := range config.GetMCOASupportedCRDNames() {
+		crd := &apiextensionsv1.CustomResourceDefinition{}
+		key := client.ObjectKey{Name: crdName}
+
+		err := c.Get(context.TODO(), key, crd)
+		if client.IgnoreAlreadyExists(err) != nil {
+			missing = append(missing, crdName)
+			continue
+		}
+
+		version := config.GetMCOASupportedCRDVersion(crdName)
+
+		for _, crdVersion := range crd.Spec.Versions {
+			if crdVersion.Name == version && crdVersion.Served {
+				continue outer
+			}
+		}
+
+		missing = append(missing, crdName)
+	}
+
+	if len(missing) == 0 {
+		removeStatusCondition(conds, reasonMCOADegraded)
+		return
+	}
+
+	mcoaDegraded := newMCOADegradedCondition(missing)
+	setStatusCondition(conds, *mcoaDegraded)
 }
 
 func getExpectedDeploymentNames() []string {
@@ -327,7 +376,8 @@ func checkStatefulSetStatus(c client.Client) *mcoshared.Condition {
 
 func checkObjStorageStatus(
 	c client.Client,
-	mco *mcov1beta2.MultiClusterObservability) *mcoshared.Condition {
+	mco *mcov1beta2.MultiClusterObservability,
+) *mcoshared.Condition {
 	objStorageConf := mco.Spec.StorageConfig.MetricObjectStorage
 	secret := &corev1.Secret{}
 	namespacedName := types.NamespacedName{
@@ -366,7 +416,7 @@ func checkAddonSpecStatus(mco *mcov1beta2.MultiClusterObservability) *mcoshared.
 func newInstallingCondition() *mcoshared.Condition {
 	return &mcoshared.Condition{
 		Type:    "Installing",
-		Status:  "True",
+		Status:  metav1.ConditionTrue,
 		Reason:  "Installing",
 		Message: "Installation is in progress",
 	}
@@ -375,7 +425,7 @@ func newInstallingCondition() *mcoshared.Condition {
 func newReadyCondition() *mcoshared.Condition {
 	return &mcoshared.Condition{
 		Type:    "Ready",
-		Status:  "True",
+		Status:  metav1.ConditionTrue,
 		Reason:  "Ready",
 		Message: "Observability components are deployed and running",
 	}
@@ -393,8 +443,27 @@ func newFailedCondition(reason string, msg string) *mcoshared.Condition {
 func newMetricsDisabledCondition() *mcoshared.Condition {
 	return &mcoshared.Condition{
 		Type:    "MetricsDisabled",
-		Status:  "True",
+		Status:  metav1.ConditionTrue,
 		Reason:  "MetricsDisabled",
 		Message: "Collect metrics from the managed clusters is disabled",
+	}
+}
+
+func newMCOADegradedCondition(missing []string) *mcoshared.Condition {
+	tmpl := "MultiCluster-Observability-Addon degraded because the following CRDs are not installed on the hub: %s"
+
+	var missingVersions []string
+	for _, name := range missing {
+		version := config.GetMCOASupportedCRDVersion(name)
+		missingVersions = append(missingVersions, fmt.Sprintf("%s(%s)", name, version))
+	}
+
+	msg := fmt.Sprintf(tmpl, strings.Join(missingVersions, ", "))
+
+	return &mcoshared.Condition{
+		Type:    reasonMCOADegraded,
+		Status:  metav1.ConditionTrue,
+		Reason:  reasonMCOADegraded,
+		Message: msg,
 	}
 }
