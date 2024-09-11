@@ -4,6 +4,10 @@
 
 The endpoint-monitoring-operator is a component of ACM observability feature. It is designed to install into Spoke Cluster.
 
+## Design documents
+
+- [Addon Status](/docs/design/addon-status.md)
+
 ## Developer Guide
 
 The guide is used for developer to build and install the endpoint-monitoring-operator . It can be running in [kind][install_kind] if you don't have a OCP environment.
