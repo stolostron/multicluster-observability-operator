@@ -31,7 +31,7 @@ data:
       "gnetId": null,
       "graphTooltip": 0,
       "id": 66,
-      "iteration": 1723648580486,
+      "iteration": 1726066358580,
       "links": [],
       "panels": [
         {
@@ -60,7 +60,7 @@ data:
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "blue",
+                    "color": "semi-dark-blue",
                     "value": null
                   }
                 ]
@@ -114,12 +114,11 @@ data:
                 "mode": "thresholds"
               },
               "mappings": [],
-              "noValue": "-",
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "blue",
+                    "color": "semi-dark-blue",
                     "value": null
                   }
                 ]
@@ -133,17 +132,17 @@ data:
             "x": 3,
             "y": 1
           },
-          "id": 16,
+          "id": 14,
           "options": {
             "colorMode": "background",
             "graphMode": "none",
             "justifyMode": "auto",
-            "orientation": "auto",
+            "orientation": "horizontal",
             "reduceOptions": {
               "calcs": [
                 "lastNotNull"
               ],
-              "fields": "/^version$/",
+              "fields": "/^openshiftVersion$/",
               "values": false
             },
             "text": {},
@@ -153,14 +152,15 @@ data:
           "targets": [
             {
               "exemplar": true,
-              "expr": "csv_succeeded{name=~\".*hyperconverged.*\", cluster=~\"$cluster\"}",
+              "expr": "count(acm_managed_cluster_labels{name=~\"$cluster\"}) by (openshiftVersion)",
               "format": "table",
+              "instant": true,
               "interval": "",
               "legendFormat": "",
               "refId": "A"
             }
           ],
-          "title": "Openshift Virt Version",
+          "title": "Openshift Version",
           "transparent": true,
           "type": "stat"
         },
@@ -421,10 +421,10 @@ data:
           "fieldConfig": {
             "defaults": {
               "color": {
-                "fixedColor": "green",
-                "mode": "fixed"
+                "mode": "continuous-BlYlRd"
               },
               "mappings": [],
+              "min": 0,
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
@@ -433,7 +433,8 @@ data:
                     "value": null
                   }
                 ]
-              }
+              },
+              "unit": "dtdhms"
             },
             "overrides": []
           },
@@ -443,44 +444,48 @@ data:
             "x": 18,
             "y": 1
           },
-          "id": 62,
+          "id": 81,
           "options": {
-            "colorMode": "value",
-            "graphMode": "none",
-            "justifyMode": "auto",
+            "displayMode": "lcd",
             "orientation": "horizontal",
             "reduceOptions": {
-              "calcs": [],
+              "calcs": [
+                "lastNotNull"
+              ],
               "fields": "",
-              "values": false
+              "values": true
             },
-            "text": {},
-            "textMode": "name"
+            "showUnfilled": true,
+            "text": {}
           },
           "pluginVersion": "8.1.3",
           "targets": [
             {
               "exemplar": true,
-              "expr": "topk(5,increase(container_start_time_seconds{cluster=~\"$cluster\", namespace=~\".*\", container=\"compute\", pod=~\"virt-launcher.*\"}[1h])) by (pod, namespace,node)",
-              "format": "time_series",
+              "expr": "bottomk(4, sum by (name) (sort(time() - kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\"}) / 1 ))",
+              "format": "table",
               "hide": false,
-              "instant": false,
+              "instant": true,
               "interval": "",
-              "legendFormat": "{{pod}} ",
-              "refId": "C"
+              "legendFormat": "{{name}}",
+              "refId": "A"
             }
           ],
-          "title": "Latest Created VMs",
+          "title": "VMs started in the last 7 day",
           "transformations": [
             {
-              "id": "renameByRegex",
+              "id": "sortBy",
               "options": {
-                "regex": "^(virt-launcher)-(.*)-(.*)$",
-                "renamePattern": "$2"
+                "fields": {},
+                "sort": [
+                  {
+                    "field": "Value"
+                  }
+                ]
               }
             }
           ],
-          "type": "stat"
+          "type": "bargauge"
         },
         {
           "datasource": null,
@@ -494,7 +499,7 @@ data:
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "blue",
+                    "color": "semi-dark-blue",
                     "value": null
                   }
                 ]
@@ -547,11 +552,12 @@ data:
                 "mode": "thresholds"
               },
               "mappings": [],
+              "noValue": "-",
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "blue",
+                    "color": "semi-dark-blue",
                     "value": null
                   }
                 ]
@@ -565,17 +571,17 @@ data:
             "x": 3,
             "y": 3
           },
-          "id": 14,
+          "id": 16,
           "options": {
             "colorMode": "background",
             "graphMode": "none",
             "justifyMode": "auto",
-            "orientation": "horizontal",
+            "orientation": "auto",
             "reduceOptions": {
               "calcs": [
                 "lastNotNull"
               ],
-              "fields": "/^openshiftVersion$/",
+              "fields": "/^version$/",
               "values": false
             },
             "text": {},
@@ -585,15 +591,14 @@ data:
           "targets": [
             {
               "exemplar": true,
-              "expr": "count(acm_managed_cluster_labels{name=~\"$cluster\"}) by (openshiftVersion)",
+              "expr": "csv_succeeded{name=~\".*hyperconverged.*\", cluster=~\"$cluster\"}",
               "format": "table",
-              "instant": true,
               "interval": "",
               "legendFormat": "",
               "refId": "A"
             }
           ],
-          "title": "Openshift Version",
+          "title": "Openshift Virt Version",
           "transparent": true,
           "type": "stat"
         },
@@ -746,7 +751,7 @@ data:
             ]
           },
           "gridPos": {
-            "h": 8,
+            "h": 10,
             "w": 12,
             "x": 0,
             "y": 7
@@ -754,8 +759,10 @@ data:
           "id": 26,
           "options": {
             "legend": {
-              "calcs": [],
-              "displayMode": "list",
+              "calcs": [
+                "lastNotNull"
+              ],
+              "displayMode": "table",
               "placement": "bottom"
             },
             "tooltip": {
@@ -776,111 +783,244 @@ data:
           "type": "timeseries"
         },
         {
-          "aliasColors": {},
-          "bars": true,
-          "dashLength": 10,
-          "dashes": false,
           "datasource": null,
           "fieldConfig": {
             "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 0,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "min": 0,
+              "noValue": "0",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              },
               "unit": "short"
             },
-            "overrides": []
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "starting"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "blue",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "running"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "semi-dark-green",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "non-running"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "semi-dark-red",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "migrating"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "error"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "yellow",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "stopped"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "semi-dark-red",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              }
+            ]
           },
-          "fill": 1,
-          "fillGradient": 0,
           "gridPos": {
-            "h": 8,
+            "h": 10,
             "w": 12,
             "x": 12,
             "y": 7
           },
-          "hiddenSeries": false,
-          "id": 71,
-          "legend": {
-            "avg": false,
-            "current": false,
-            "hideEmpty": false,
-            "hideZero": false,
-            "max": false,
-            "min": false,
-            "show": false,
-            "total": false,
-            "values": false
-          },
-          "lines": false,
-          "linewidth": 1,
-          "nullPointMode": "connected",
+          "id": 83,
           "options": {
-            "alertThreshold": false
+            "legend": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "displayMode": "table",
+              "placement": "right"
+            },
+            "tooltip": {
+              "mode": "single"
+            }
           },
-          "percentage": false,
           "pluginVersion": "8.1.3",
-          "pointradius": 2,
-          "points": false,
-          "renderer": "flot",
-          "seriesOverrides": [],
-          "spaceLength": 10,
-          "stack": true,
-          "steppedLine": false,
           "targets": [
             {
               "exemplar": true,
-              "expr": "sum(kubevirt_vmi_phase_count{cluster=~\"$cluster\",namespace=~\".*\",phase=~\".*\"}) by (phase)",
+              "expr": "sum(count(kubevirt_vm_starting_status_last_transition_timestamp_seconds{cluster=~\"$cluster\"} > 0)) or vector(0)",
+              "format": "time_series",
+              "hide": false,
               "instant": false,
               "interval": "",
-              "legendFormat": "{{phase}}",
-              "refId": "A"
-            }
-          ],
-          "thresholds": [],
-          "timeFrom": null,
-          "timeRegions": [],
-          "timeShift": null,
-          "title": "VMs by Phase",
-          "tooltip": {
-            "shared": false,
-            "sort": 0,
-            "value_type": "individual"
-          },
-          "type": "graph",
-          "xaxis": {
-            "buckets": null,
-            "mode": "series",
-            "name": null,
-            "show": true,
-            "values": [
-              "current"
-            ]
-          },
-          "yaxes": [
-            {
-              "$$hashKey": "object:59",
-              "decimals": 0,
-              "format": "short",
-              "label": null,
-              "logBase": 1,
-              "max": null,
-              "min": null,
-              "show": true
+              "intervalFactor": 1,
+              "legendFormat": "starting",
+              "refId": "B"
             },
             {
-              "$$hashKey": "object:60",
-              "format": "short",
-              "label": null,
-              "logBase": 1,
-              "max": null,
-              "min": null,
-              "show": true
+              "exemplar": true,
+              "expr": "sum(count(kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\"} > 0)) or vector(0)",
+              "format": "time_series",
+              "hide": false,
+              "instant": false,
+              "interval": "",
+              "legendFormat": "running",
+              "refId": "D"
+            },
+            {
+              "exemplar": true,
+              "expr": "sum(count(kubevirt_vm_migrating_status_last_transition_timestamp_seconds{cluster=~\"$cluster\"} > 0)) or vector(0)",
+              "format": "time_series",
+              "hide": false,
+              "instant": false,
+              "interval": "",
+              "legendFormat": "migrating",
+              "refId": "A"
+            },
+            {
+              "exemplar": true,
+              "expr": "sum(count(kubevirt_vm_error_status_last_transition_timestamp_seconds{cluster=~\"$cluster\"} > 0)) or vector(0)",
+              "format": "time_series",
+              "hide": false,
+              "instant": false,
+              "interval": "",
+              "legendFormat": "error",
+              "refId": "C"
+            },
+            {
+              "exemplar": true,
+              "expr": "sum(count(kubevirt_vm_non_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\"} > 0)) or vector(0)",
+              "format": "time_series",
+              "hide": false,
+              "instant": false,
+              "interval": "",
+              "legendFormat": "stopped",
+              "refId": "E"
             }
           ],
-          "yaxis": {
-            "align": false,
-            "alignLevel": null
-          }
+          "timeFrom": null,
+          "timeShift": null,
+          "title": "VMs by Phase",
+          "transformations": [
+            {
+              "id": "filterFieldsByName",
+              "options": {
+                "include": {
+                  "names": [
+                    "Time",
+                    "starting",
+                    "running",
+                    "migrating",
+                    "error",
+                    "stopped"
+                  ]
+                }
+              }
+            }
+          ],
+          "type": "timeseries"
         },
         {
           "datasource": null,
+          "description": "Top 50 nodes",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -948,16 +1088,18 @@ data:
             ]
           },
           "gridPos": {
-            "h": 8,
+            "h": 10,
             "w": 12,
             "x": 0,
-            "y": 15
+            "y": 17
           },
           "id": 69,
           "options": {
             "legend": {
-              "calcs": [],
-              "displayMode": "list",
+              "calcs": [
+                "lastNotNull"
+              ],
+              "displayMode": "table",
               "placement": "bottom"
             },
             "tooltip": {
@@ -968,10 +1110,11 @@ data:
           "targets": [
             {
               "exemplar": true,
-              "expr": "sum(kubevirt_vmi_phase_count{cluster=~\"$cluster\",namespace=~\".*\", phase=~\"running\"}) by (cluster,phase,node)",
+              "expr": "topk(50, sum(kubevirt_vmi_phase_count{cluster=~\"$cluster\",namespace=~\".*\", phase=~\"running\"}) by (cluster,phase,node))",
+              "hide": false,
               "instant": false,
               "interval": "",
-              "legendFormat": "{{cluster}} | {{node}}",
+              "legendFormat": "{{node}}",
               "refId": "A"
             }
           ],
@@ -988,6 +1131,8 @@ data:
                 "mode": "thresholds"
               },
               "mappings": [],
+              "min": 0,
+              "noValue": "0",
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
@@ -1006,10 +1151,10 @@ data:
             "overrides": []
           },
           "gridPos": {
-            "h": 8,
+            "h": 10,
             "w": 12,
             "x": 12,
-            "y": 15
+            "y": 17
           },
           "id": 34,
           "options": {
@@ -1047,7 +1192,7 @@ data:
             "h": 1,
             "w": 24,
             "x": 0,
-            "y": 23
+            "y": 27
           },
           "id": 36,
           "panels": [],
@@ -1056,6 +1201,7 @@ data:
         },
         {
           "datasource": null,
+          "description": "Top 50 nodes",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -1106,10 +1252,10 @@ data:
             "overrides": []
           },
           "gridPos": {
-            "h": 10,
+            "h": 12,
             "w": 12,
             "x": 0,
-            "y": 24
+            "y": 28
           },
           "id": 73,
           "options": {
@@ -1128,7 +1274,7 @@ data:
           "targets": [
             {
               "exemplar": true,
-              "expr": "sum(label_replace(rate(instance:node_cpu_utilisation:rate1m{cluster=~\"$cluster\"}[1h]), \"node\", \"$1\", \"instance\", \"(.*)\")) by (node, cluster)\n* on(node, cluster) group_left()\nsum(kubevirt_vmi_cpu_user_usage_seconds_total{cluster=~\"$cluster\"}) by (node, cluster)",
+              "expr": "topk(50,sum(label_replace(rate(instance:node_cpu_utilisation:rate1m{cluster=~\"$cluster\"}[1h]), \"node\", \"$1\", \"instance\", \"(.*)\")) by (node, cluster)\n* on(node, cluster) group_left()\nsum(kubevirt_vmi_cpu_user_usage_seconds_total{cluster=~\"$cluster\"}) by (node, cluster))",
               "hide": false,
               "interval": "",
               "legendFormat": "{{node}}",
@@ -1140,7 +1286,7 @@ data:
         },
         {
           "datasource": "Observatorium-Dynamic",
-          "description": "",
+          "description": "Top 50 VMs",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -1196,10 +1342,10 @@ data:
             "overrides": []
           },
           "gridPos": {
-            "h": 10,
+            "h": 12,
             "w": 12,
             "x": 12,
-            "y": 24
+            "y": 28
           },
           "id": 42,
           "options": {
@@ -1209,7 +1355,7 @@ data:
                 "max"
               ],
               "displayMode": "table",
-              "placement": "right"
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "single"
@@ -1218,7 +1364,7 @@ data:
           "targets": [
             {
               "exemplar": true,
-              "expr": "sum by (name) (rate(kubevirt_vmi_cpu_usage_seconds_total{cluster=~\"$cluster\",namespace=~\".*\"}[1h]))",
+              "expr": "topk(50,sum by (name) (rate(kubevirt_vmi_cpu_usage_seconds_total{cluster=~\"$cluster\",namespace=~\".*\"}[1h])))",
               "hide": false,
               "instant": false,
               "interval": "",
@@ -1231,7 +1377,7 @@ data:
         },
         {
           "datasource": null,
-          "description": "Only on node with virtualization workload",
+          "description": "Top 50 nodes with virtualization workloads",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -1282,10 +1428,10 @@ data:
             "overrides": []
           },
           "gridPos": {
-            "h": 10,
+            "h": 12,
             "w": 12,
             "x": 0,
-            "y": 34
+            "y": 40
           },
           "id": 40,
           "options": {
@@ -1303,7 +1449,7 @@ data:
           "targets": [
             {
               "exemplar": true,
-              "expr": "sum(label_replace(rate(instance:node_memory_utilisation:ratio{cluster=~\"$cluster\"}[1h]), \"node\", \"$1\", \"instance\", \"(.*)\")) by (node, cluster)\n* on(node, cluster) group_left()\nsum(kubevirt_vmi_memory_used_bytes{cluster=~\"$cluster\"}) by (node, cluster)",
+              "expr": "topk(50,sum(label_replace(rate(instance:node_memory_utilisation:ratio{cluster=~\"$cluster\"}[1h]), \"node\", \"$1\", \"instance\", \"(.*)\")) by (node, cluster)\n* on(node, cluster) group_left()\nsum(kubevirt_vmi_memory_used_bytes{cluster=~\"$cluster\"}) by (node, cluster))",
               "hide": false,
               "interval": "",
               "legendFormat": "{{node}}",
@@ -1315,7 +1461,7 @@ data:
         },
         {
           "datasource": "Observatorium-Dynamic",
-          "description": "",
+          "description": "Top 50 VMs ",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -1371,10 +1517,10 @@ data:
             "overrides": []
           },
           "gridPos": {
-            "h": 10,
+            "h": 12,
             "w": 12,
             "x": 12,
-            "y": 34
+            "y": 40
           },
           "id": 44,
           "options": {
@@ -1384,7 +1530,7 @@ data:
                 "max"
               ],
               "displayMode": "table",
-              "placement": "right"
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "single"
@@ -1393,7 +1539,7 @@ data:
           "targets": [
             {
               "exemplar": true,
-              "expr": "sum by (name) (rate(kubevirt_vmi_memory_used_bytes{cluster=~\"$cluster\",namespace=~\".*\"}[1h]))",
+              "expr": "topk(50,sum by (name) (rate(kubevirt_vmi_memory_used_bytes{cluster=~\"$cluster\",namespace=~\".*\"}[1h])))",
               "hide": false,
               "instant": false,
               "interval": "",
@@ -1406,7 +1552,7 @@ data:
         },
         {
           "datasource": "Observatorium-Dynamic",
-          "description": "",
+          "description": "Top 50 nodes",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -1459,10 +1605,10 @@ data:
             "overrides": []
           },
           "gridPos": {
-            "h": 9,
+            "h": 11,
             "w": 12,
             "x": 0,
-            "y": 44
+            "y": 52
           },
           "id": 75,
           "options": {
@@ -1482,7 +1628,7 @@ data:
           "targets": [
             {
               "exemplar": false,
-              "expr": "sum(label_replace(rate(instance:node_network_receive_bytes_excluding_lo:rate1m{cluster=\"rosa-hcp\"}[1h]), \"node\", \"$1\", \"instance\", \"(.*)\")) by (node, cluster)\n* on(node, cluster) group_left()\nsum(kubevirt_vmi_network_receive_packets_total{cluster=\"rosa-hcp\"}) by (node, cluster)",
+              "expr": "topk(50,sum(label_replace(rate(instance:node_network_receive_bytes_excluding_lo:rate1m{cluster=\"rosa-hcp\"}[1h]), \"node\", \"$1\", \"instance\", \"(.*)\")) by (node, cluster)\n* on(node, cluster) group_left()\nsum(kubevirt_vmi_network_receive_packets_total{cluster=\"rosa-hcp\"}) by (node, cluster))",
               "hide": false,
               "instant": false,
               "interval": "",
@@ -1491,7 +1637,7 @@ data:
             },
             {
               "exemplar": true,
-              "expr": "sum(label_replace(rate(instance:node_network_transmit_bytes_excluding_lo:rate1m{cluster=\"rosa-hcp\"}[1h]), \"node\", \"$1\", \"instance\", \"(.*)\")) by (node, cluster)\n* on(node, cluster) group_left()\nsum(kubevirt_vmi_network_transmit_packets_total{cluster=\"rosa-hcp\"}) by (node, cluster)",
+              "expr": "topk(50,sum(label_replace(rate(instance:node_network_transmit_bytes_excluding_lo:rate1m{cluster=\"rosa-hcp\"}[1h]), \"node\", \"$1\", \"instance\", \"(.*)\")) by (node, cluster)\n* on(node, cluster) group_left()\nsum(kubevirt_vmi_network_transmit_packets_total{cluster=\"rosa-hcp\"}) by (node, cluster))",
               "hide": false,
               "interval": "",
               "legendFormat": "{{node}} - Transmit",
@@ -1506,7 +1652,7 @@ data:
         },
         {
           "datasource": "Observatorium-Dynamic",
-          "description": "",
+          "description": "Top 50 VMs",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -1559,10 +1705,10 @@ data:
             "overrides": []
           },
           "gridPos": {
-            "h": 9,
+            "h": 11,
             "w": 12,
             "x": 12,
-            "y": 44
+            "y": 52
           },
           "id": 76,
           "options": {
@@ -1572,7 +1718,7 @@ data:
                 "max"
               ],
               "displayMode": "table",
-              "placement": "right"
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "single"
@@ -1582,7 +1728,7 @@ data:
           "targets": [
             {
               "exemplar": false,
-              "expr": "sum(rate(kubevirt_vmi_network_receive_bytes_total{cluster=~\"$cluster\"}[1h])) by (name)",
+              "expr": "topk(50,sum(rate(kubevirt_vmi_network_receive_bytes_total{cluster=~\"$cluster\"}[1h])) by (name))",
               "hide": false,
               "instant": false,
               "interval": "",
@@ -1591,7 +1737,7 @@ data:
             },
             {
               "exemplar": true,
-              "expr": "sum(rate(kubevirt_vmi_network_transmit_bytes_total{cluster=~\"$cluster\"}[1h])) by (name)",
+              "expr": "topk(50,sum(rate(kubevirt_vmi_network_transmit_bytes_total{cluster=~\"$cluster\"}[1h])) by (name))",
               "hide": false,
               "instant": false,
               "interval": "",
@@ -1607,7 +1753,7 @@ data:
         },
         {
           "datasource": "Observatorium-Dynamic",
-          "description": "",
+          "description": "Top 50 nodes",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -1663,10 +1809,10 @@ data:
             "overrides": []
           },
           "gridPos": {
-            "h": 9,
+            "h": 11,
             "w": 12,
             "x": 0,
-            "y": 53
+            "y": 63
           },
           "id": 78,
           "options": {
@@ -1684,7 +1830,7 @@ data:
           "targets": [
             {
               "exemplar": true,
-              "expr": "sum by (node) (rate(kubevirt_vmi_storage_iops_read_total{cluster=~\"$cluster\",drive=\"rootdisk\"}[1h]) + rate(kubevirt_vmi_storage_iops_write_total{cluster=~\"$cluster\",drive=\"rootdisk\"}[1h]))",
+              "expr": "topk(50,sum by (node) (rate(kubevirt_vmi_storage_iops_read_total{cluster=~\"$cluster\",drive=\"rootdisk\"}[1h]) + rate(kubevirt_vmi_storage_iops_write_total{cluster=~\"$cluster\",drive=\"rootdisk\"}[1h])))",
               "format": "time_series",
               "hide": false,
               "instant": false,
@@ -1698,7 +1844,7 @@ data:
         },
         {
           "datasource": "Observatorium-Dynamic",
-          "description": "",
+          "description": "Top 50 VMs",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -1754,10 +1900,10 @@ data:
             "overrides": []
           },
           "gridPos": {
-            "h": 9,
+            "h": 11,
             "w": 12,
             "x": 12,
-            "y": 53
+            "y": 63
           },
           "id": 79,
           "options": {
@@ -1767,7 +1913,7 @@ data:
                 "max"
               ],
               "displayMode": "table",
-              "placement": "right"
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "single"
@@ -1776,7 +1922,7 @@ data:
           "targets": [
             {
               "exemplar": true,
-              "expr": "sum by (name) (rate(kubevirt_vmi_storage_iops_read_total{cluster=~\"$cluster\",drive=\"rootdisk\"}[1h]) + rate(kubevirt_vmi_storage_iops_write_total{cluster=~\"$cluster\",drive=\"rootdisk\"}[1h]))",
+              "expr": "topk(50,sum by (name) (rate(kubevirt_vmi_storage_iops_read_total{cluster=~\"$cluster\",drive=\"rootdisk\"}[1h]) + rate(kubevirt_vmi_storage_iops_write_total{cluster=~\"$cluster\",drive=\"rootdisk\"}[1h])))",
               "format": "time_series",
               "hide": false,
               "instant": false,
@@ -1795,7 +1941,7 @@ data:
             "h": 1,
             "w": 24,
             "x": 0,
-            "y": 62
+            "y": 74
           },
           "id": 46,
           "panels": [],
@@ -1828,7 +1974,7 @@ data:
             "h": 3,
             "w": 8,
             "x": 0,
-            "y": 63
+            "y": 75
           },
           "id": 50,
           "options": {
@@ -1885,7 +2031,7 @@ data:
             "h": 3,
             "w": 8,
             "x": 8,
-            "y": 63
+            "y": 75
           },
           "id": 52,
           "options": {
@@ -1942,7 +2088,7 @@ data:
             "h": 3,
             "w": 8,
             "x": 16,
-            "y": 63
+            "y": 75
           },
           "id": 54,
           "options": {
@@ -2047,10 +2193,10 @@ data:
             ]
           },
           "gridPos": {
-            "h": 7,
+            "h": 11,
             "w": 24,
             "x": 0,
-            "y": 66
+            "y": 78
           },
           "id": 58,
           "options": {
@@ -2109,8 +2255,8 @@ data:
             "allValue": null,
             "current": {
               "selected": false,
-              "text": "rosa-hcp",
-              "value": "rosa-hcp"
+              "text": "aro-central",
+              "value": "aro-central"
             },
             "datasource": null,
             "definition": "label_values(kubevirt_hyperconverged_operator_health_status{name=~\".*hyperconverged.*\"},cluster)",
@@ -2135,13 +2281,12 @@ data:
         ]
       },
       "time": {
-        "from": "now-3h",
+        "from": "now-2d",
         "to": "now"
       },
       "timepicker": {},
       "timezone": "",
-      "title": "OpenShift Virtualization - Single-Cluster View (Work in Progress)",
+      "title": "OpenShift Virtualization - Single-Cluster View",
       "uid": "WfJLo3rSz",
-      "version": 43
+      "version": 59
     }
-    
