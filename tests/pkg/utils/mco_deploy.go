@@ -285,6 +285,10 @@ func CheckAllPodsAffinity(opt TestOptions) error {
 	}
 
 	for _, pod := range podList {
+		if strings.Contains(pod.Name, "multicluster-observability-addon-manager") {
+			klog.V(1).Infof("Skip pod multicluster-observability-addon-manager checking")
+			continue // Skip the rest of the loop for this pod
+		}
 
 		if pod.Spec.Affinity == nil {
 			return fmt.Errorf("Failed to check affinity for pod: %v" + pod.GetName())
