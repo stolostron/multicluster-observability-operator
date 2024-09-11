@@ -75,19 +75,21 @@ To accurately reflect the aggregated state, we introduce two additional conditio
 
 These special condition types store the latest reasons for the metrics collector and the UWL metrics collector. These reasons can be mapped to the standard types, which the status controller uses to update the addon status:
 
-- **ForwardFailure** reason corresponds to **Degraded** status type.
+- **ForwardFailed** reason corresponds to **Degraded** status type.
 - **ForwardSuccessful** reason corresponds to **Available** status type.
-- **UpdateFailure** reason corresponds to **Degraded** status type.
+- **UpdateFailed** reason corresponds to **Degraded** status type.
 - **UpdateSuccesful** reason corresponds to **Progressing** status type.
 
-We set a priority for the reasons to ensure that the most critical reason is reflected in the aggregated state. The priority is as follows:
+We set a priority for the reasons to ensure that the most critical reason is reflected in the aggregated state. The priority is as follows, from lowest to highest:
 
-1. **UpdateFailure**
-2. **ForwardFailure**
-3. **UpdateSuccesful**
-4. **ForwardSuccessful**
+- **Disabled**: Lowest priority. If the uwl metrics collector is disabled, the aggregated state is the same as the metrics collector.
+- **ForwardSuccessful**
+- **UpdateSuccesful**
+- **ForwardFailed**
+- **UpdateFailed**
+- **NotSupported**
 
-The aggregated state is then determined by the highest priority reason. For example, if the condition type MetricsCollector' reason is **ForwardFailure** and the condition type UwlMetricsCollector' reason is **ForwardSuccessful**, the aggregated reason is **ForwardFailure** and the aggregated type is **Degraded**.
+The aggregated state is then determined by the highest priority reason. For example, if the condition type MetricsCollector' reason is **ForwardFailed** and the condition type UwlMetricsCollector' reason is **ForwardSuccessful**, the aggregated reason is **ForwardFailed** and the aggregated type is **Degraded**.
 
 Finally, individual state details of each collector can be explicitly set in the message field of the aggregated condition by the status controller.
 
@@ -128,17 +130,17 @@ The following table maps the reasons to the actors that manage them and the cond
 
 | Condition Type \ Actor | Endpoint Operator | Status Controller | Metrics Collector | UWL Metrics Collector |
 |----------------|-------------------|-------------------|-------------------|-----------------------|
-| MetricsCollector | UpdateSuccesful <br />UpdateFailure | | ForwardSuccessful <br />ForwardFailure | | 
-| UwlMetricsCollector | UpdateSuccesful <br />UpdateFailure | | | ForwardSuccessful <br />ForwardFailure |
+| MetricsCollector | UpdateSuccesful <br />UpdateFailed | | ForwardSuccessful <br />ForwardFailed | | 
+| UwlMetricsCollector | UpdateSuccesful <br />UpdateFailed | | | ForwardSuccessful <br />ForwardFailed |
 | Progressing | | UpdateSuccesful | | |
 | Available | | ForwardSuccessful | | |
-| Degraded | Disabled <br /> NotSupported | ForwardFailure <br /> UpdateFailure | |
+| Degraded | Disabled <br /> NotSupported | ForwardFailed <br /> UpdateFailed | |
 
 ### Ensuring Consistent Individual States
 
-At this stage, individual states are still subject to flapping, as is the aggregated state. This is especially true when the endpoint operator fails to update a collector while it is still forwarding metrics, causing the reason to flip between **UpdateFailure** and **ForwardSuccessful**. The aggregated state would then flip between **Degraded** and **Available**.
+At this stage, individual states are still subject to flapping, as is the aggregated state. This is especially true when the endpoint operator fails to update a collector while it is still forwarding metrics, causing the reason to flip between **UpdateFailed** and **ForwardSuccessful**. The aggregated state would then flip between **Degraded** and **Available**.
 
-To ensure a consistent state, we apply strict transition rules between reasons. If the current reason is not compatible with the new reason/state, the transition is not allowed. For example, if the current reason for the condition type **MetricsCollectorStatus** is **UpdateFailure**, the transition to **ForwardSuccessful** is not permitted. The endpoint operator must first update the collector successfully and transition to **UpdateSuccesful** before the collector can transition to **ForwardSuccessful**.
+To ensure a consistent state, we apply strict transition rules between reasons. If the current reason is not compatible with the new reason/state, the transition is not allowed. For example, if the current reason for the condition type **MetricsCollector** is **UpdateFailed**, the transition to **ForwardSuccessful** is not permitted. The endpoint operator must first update the collector successfully and transition to **UpdateSuccesful** before the collector can transition to **ForwardSuccessful**.
 
 The following state diagram illustrates the allowed transitions between reasons:
 
@@ -146,18 +148,19 @@ The following state diagram illustrates the allowed transitions between reasons:
 stateDiagram-v2
     UpdateSuccesful --> ForwardSuccessful
     ForwardSuccessful --> UpdateSuccesful
-    UpdateFailure --> UpdateSuccesful
-    UpdateSuccesful --> UpdateFailure
-    ForwardSuccessful --> UpdateFailure
-    ForwardFailure --> UpdateFailure
-    ForwardFailure --> ForwardSuccessful
-    ForwardFailure --> UpdateSuccesful
-    ForwardSuccessful --> ForwardFailure
+    UpdateFailed --> UpdateSuccesful
+    UpdateSuccesful --> UpdateFailed
+    UpdateSuccesful --> ForwardFailed
+    ForwardSuccessful --> UpdateFailed
+    ForwardFailed --> UpdateFailed
+    ForwardFailed --> ForwardSuccessful
+    ForwardFailed --> UpdateSuccesful
+    ForwardSuccessful --> ForwardFailed
 ```
 
 Notes:
 
-- The transitions toward the reason **UpdateSuccesful** are only triggered when the **deployement** resource is updated or created. For example, we avoid flipping the state if only the service resource is updated, to prevent unnecessary and confusing state changes.
-- To keep the state diagram readable, we have omitted **NotSupported** and **Disabled** reasons. They are directly set on the standard **Degraded** type by the endpoint operator. And in that case, there is no aggragation of atomic metric collectors states as they are not deployed. There is no restriction to transition toward these reasons. Transitions from these reasons are restricted to **UpdateSuccesful** or **UpdateFailure**. 
+- The transitions toward the reason **UpdateSuccesful** are only triggered when the **deployement** resource kind is updated or created. For example, we avoid flipping the state if only the service resource kind is updated, to prevent unnecessary and confusing state changes.
+- To keep the state diagram readable, we have omitted **NotSupported** and **Disabled** reasons. There is no restriction to transition toward these reasons. Transitions from these reasons are restricted to **UpdateSuccesful** or **UpdateFailed**. 
 
 
