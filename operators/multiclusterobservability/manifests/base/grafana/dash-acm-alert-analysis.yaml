@@ -22,10 +22,9 @@ data:
         ]
       },
       "editable": true,
-      "gnetId": null,
+      "fiscalYearStartMonth": 0,
       "graphTooltip": 0,
       "id": 2,
-      "iteration": 1685474074229,
       "links": [
         {
           "asDropdown": false,
@@ -105,6 +104,7 @@ data:
             "graphMode": "area",
             "justifyMode": "auto",
             "orientation": "auto",
+            "percentChangeColorMode": "standard",
             "reduceOptions": {
               "calcs": [
                 "lastNotNull"
@@ -112,10 +112,12 @@ data:
               "fields": "",
               "values": false
             },
+            "showPercentChange": false,
             "text": {},
-            "textMode": "auto"
+            "textMode": "auto",
+            "wideLayout": true
           },
-          "pluginVersion": "8.5.20",
+          "pluginVersion": "11.1.0",
           "targets": [
             {
               "exemplar": true,
@@ -168,6 +170,7 @@ data:
             "graphMode": "area",
             "justifyMode": "auto",
             "orientation": "auto",
+            "percentChangeColorMode": "standard",
             "reduceOptions": {
               "calcs": [
                 "lastNotNull"
@@ -175,10 +178,12 @@ data:
               "fields": "",
               "values": false
             },
+            "showPercentChange": false,
             "text": {},
-            "textMode": "auto"
+            "textMode": "auto",
+            "wideLayout": true
           },
-          "pluginVersion": "8.5.20",
+          "pluginVersion": "11.1.0",
           "targets": [
             {
               "exemplar": true,
@@ -231,6 +236,7 @@ data:
             "graphMode": "area",
             "justifyMode": "auto",
             "orientation": "auto",
+            "percentChangeColorMode": "standard",
             "reduceOptions": {
               "calcs": [
                 "lastNotNull"
@@ -238,12 +244,15 @@ data:
               "fields": "",
               "values": false
             },
+            "showPercentChange": false,
             "text": {},
-            "textMode": "auto"
+            "textMode": "auto",
+            "wideLayout": true
           },
-          "pluginVersion": "8.5.20",
+          "pluginVersion": "11.1.0",
           "targets": [
             {
+              "datasource": null,
               "exemplar": true,
               "expr": "sum(ALERTS{alertstate=\"firing\",severity=\"warning\"}) or vector(0)",
               "interval": "",
@@ -294,6 +303,7 @@ data:
             "graphMode": "area",
             "justifyMode": "auto",
             "orientation": "auto",
+            "percentChangeColorMode": "standard",
             "reduceOptions": {
               "calcs": [
                 "lastNotNull"
@@ -301,12 +311,15 @@ data:
               "fields": "",
               "values": false
             },
+            "showPercentChange": false,
             "text": {},
-            "textMode": "auto"
+            "textMode": "auto",
+            "wideLayout": true
           },
-          "pluginVersion": "8.5.20",
+          "pluginVersion": "11.1.0",
           "targets": [
             {
+              "datasource": null,
               "exemplar": true,
               "expr": "sum(ALERTS{alertstate=\"firing\",severity=\"moderate\"}) or vector(0)",
               "interval": "",
@@ -357,6 +370,7 @@ data:
             "graphMode": "area",
             "justifyMode": "auto",
             "orientation": "auto",
+            "percentChangeColorMode": "standard",
             "reduceOptions": {
               "calcs": [
                 "lastNotNull"
@@ -364,12 +378,15 @@ data:
               "fields": "",
               "values": false
             },
+            "showPercentChange": false,
             "text": {},
-            "textMode": "auto"
+            "textMode": "auto",
+            "wideLayout": true
           },
-          "pluginVersion": "8.5.20",
+          "pluginVersion": "11.1.0",
           "targets": [
             {
+              "datasource": null,
               "exemplar": true,
               "expr": "sum(ALERTS{alertstate=\"firing\",severity=\"low\"}) or vector(0)",
               "interval": "",
@@ -420,6 +437,7 @@ data:
             "graphMode": "area",
             "justifyMode": "auto",
             "orientation": "auto",
+            "percentChangeColorMode": "standard",
             "reduceOptions": {
               "calcs": [
                 "lastNotNull"
@@ -427,12 +445,15 @@ data:
               "fields": "",
               "values": false
             },
+            "showPercentChange": false,
             "text": {},
-            "textMode": "auto"
+            "textMode": "auto",
+            "wideLayout": true
           },
-          "pluginVersion": "8.5.20",
+          "pluginVersion": "11.1.0",
           "targets": [
             {
+              "datasource": null,
               "exemplar": true,
               "expr": "sum(ALERTS{alertstate=\"firing\",severity=\"important\"}) or vector(0)",
               "interval": "",
@@ -451,6 +472,9 @@ data:
                 "mode": "palette-classic"
               },
               "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
@@ -462,6 +486,7 @@ data:
                   "tooltip": false,
                   "viz": false
                 },
+                "insertNulls": false,
                 "lineInterpolation": "linear",
                 "lineWidth": 2,
                 "pointSize": 5,
@@ -506,10 +531,12 @@ data:
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom"
+              "placement": "bottom",
+              "showLegend": true
             },
             "tooltip": {
-              "mode": "single"
+              "mode": "single",
+              "sort": "none"
             }
           },
           "targets": [
@@ -534,6 +561,9 @@ data:
                 "mode": "palette-classic"
               },
               "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
@@ -545,6 +575,7 @@ data:
                   "tooltip": false,
                   "viz": false
                 },
+                "insertNulls": false,
                 "lineInterpolation": "linear",
                 "lineWidth": 1,
                 "pointSize": 5,
@@ -589,10 +620,12 @@ data:
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom"
+              "placement": "bottom",
+              "showLegend": true
             },
             "tooltip": {
-              "mode": "single"
+              "mode": "single",
+              "sort": "none"
             }
           },
           "pluginVersion": "8.1.3",
@@ -620,8 +653,11 @@ data:
               },
               "custom": {
                 "align": "auto",
-                "displayMode": "auto",
-                "filterable": true
+                "cellOptions": {
+                  "type": "auto"
+                },
+                "filterable": true,
+                "inspect": false
               },
               "links": [],
               "mappings": [],
@@ -684,6 +720,15 @@ data:
           },
           "id": 22,
           "options": {
+            "cellHeight": "sm",
+            "footer": {
+              "countRows": false,
+              "fields": "",
+              "reducer": [
+                "sum"
+              ],
+              "show": false
+            },
             "showHeader": true,
             "sortBy": [
               {
@@ -692,7 +737,7 @@ data:
               }
             ]
           },
-          "pluginVersion": "8.5.20",
+          "pluginVersion": "11.1.0",
           "targets": [
             {
               "exemplar": true,
@@ -723,7 +768,7 @@ data:
           "type": "table"
         },
         {
-          "collapsed": true,
+          "collapsed": false,
           "datasource": null,
           "gridPos": {
             "h": 1,
@@ -732,139 +777,155 @@ data:
             "y": 24
           },
           "id": 18,
-          "panels": [
+          "panels": [],
+          "targets": [
             {
               "datasource": null,
-              "fieldConfig": {
-                "defaults": {
-                  "color": {
-                    "mode": "thresholds"
-                  },
-                  "displayName": "${__series.name}",
-                  "mappings": [],
-                  "thresholds": {
-                    "mode": "absolute",
-                    "steps": [
-                      {
-                        "color": "green",
-                        "value": null
-                      },
-                      {
-                        "color": "red",
-                        "value": 80
-                      }
-                    ]
-                  }
-                },
-                "overrides": []
-              },
-              "gridPos": {
-                "h": 8,
-                "w": 12,
-                "x": 0,
-                "y": 25
-              },
-              "id": 10,
-              "options": {
-                "displayMode": "basic",
-                "orientation": "horizontal",
-                "reduceOptions": {
-                  "calcs": [
-                    "lastNotNull"
-                  ],
-                  "fields": "",
-                  "values": false
-                },
-                "showUnfilled": true,
-                "text": {}
-              },
-              "pluginVersion": "8.5.20",
-              "targets": [
-                {
-                  "exemplar": true,
-                  "expr": "sum(sum_over_time(ALERTS{alertstate=\"firing\",severity=~\"$severity\"}[$__range])) by (alertname)",
-                  "interval": "",
-                  "legendFormat": "{{alertname}}",
-                  "refId": "A"
-                }
-              ],
-              "title": "Most Firing Alerts",
-              "transformations": [],
-              "transparent": true,
-              "type": "bargauge"
-            },
-            {
-              "datasource": null,
-              "fieldConfig": {
-                "defaults": {
-                  "color": {
-                    "mode": "thresholds"
-                  },
-                  "displayName": "${__series.name}",
-                  "mappings": [],
-                  "thresholds": {
-                    "mode": "absolute",
-                    "steps": [
-                      {
-                        "color": "green",
-                        "value": null
-                      },
-                      {
-                        "color": "red",
-                        "value": 80
-                      }
-                    ]
-                  }
-                },
-                "overrides": []
-              },
-              "gridPos": {
-                "h": 8,
-                "w": 12,
-                "x": 12,
-                "y": 25
-              },
-              "id": 11,
-              "options": {
-                "displayMode": "basic",
-                "orientation": "horizontal",
-                "reduceOptions": {
-                  "calcs": [
-                    "lastNotNull"
-                  ],
-                  "fields": "",
-                  "values": false
-                },
-                "showUnfilled": true,
-                "text": {}
-              },
-              "pluginVersion": "8.5.20",
-              "targets": [
-                {
-                  "exemplar": true,
-                  "expr": "sum(sum_over_time(ALERTS{alertstate=\"firing\", cluster!=\"\",severity=~\"$severity\"}[$__range])) by (cluster)",
-                  "interval": "",
-                  "legendFormat": "{{cluster}}",
-                  "refId": "A"
-                }
-              ],
-              "title": "Most Affected Clusters",
-              "transparent": true,
-              "type": "bargauge"
+              "refId": "A"
             }
           ],
           "title": "Historical Analysis",
           "type": "row"
+        },
+        {
+          "datasource": null,
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "displayName": "${__series.name}",
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 25
+          },
+          "id": 10,
+          "options": {
+            "displayMode": "basic",
+            "maxVizHeight": 300,
+            "minVizHeight": 16,
+            "minVizWidth": 8,
+            "namePlacement": "auto",
+            "orientation": "horizontal",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showUnfilled": true,
+            "sizing": "auto",
+            "text": {},
+            "valueMode": "color"
+          },
+          "pluginVersion": "11.1.0",
+          "targets": [
+            {
+              "datasource": null,
+              "exemplar": true,
+              "expr": "sum(sum_over_time(ALERTS{alertstate=\"firing\",severity=~\"$severity\"}[$__range])) by (alertname)",
+              "interval": "",
+              "legendFormat": "{{alertname}}",
+              "refId": "A"
+            }
+          ],
+          "title": "Most Firing Alerts",
+          "transparent": true,
+          "type": "bargauge"
+        },
+        {
+          "datasource": null,
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "displayName": "${__series.name}",
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 25
+          },
+          "id": 11,
+          "options": {
+            "displayMode": "basic",
+            "maxVizHeight": 300,
+            "minVizHeight": 16,
+            "minVizWidth": 8,
+            "namePlacement": "auto",
+            "orientation": "horizontal",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showUnfilled": true,
+            "sizing": "auto",
+            "text": {},
+            "valueMode": "color"
+          },
+          "pluginVersion": "11.1.0",
+          "targets": [
+            {
+              "datasource": null,
+              "exemplar": true,
+              "expr": "sum(sum_over_time(ALERTS{alertstate=\"firing\", cluster!=\"\",severity=~\"$severity\"}[$__range])) by (cluster)",
+              "interval": "",
+              "legendFormat": "{{cluster}}",
+              "refId": "A"
+            }
+          ],
+          "title": "Most Affected Clusters",
+          "transparent": true,
+          "type": "bargauge"
         }
       ],
       "refresh": "",
-      "schemaVersion": 30,
-      "style": "dark",
+      "schemaVersion": 39,
       "tags": [],
       "templating": {
         "list": [
           {
-            "allValue": null,
             "current": {
               "selected": true,
               "text": [
@@ -877,7 +938,6 @@ data:
             "datasource": null,
             "definition": "label_values(ALERTS, severity)",
             "description": "Policy severity level",
-            "error": null,
             "hide": 0,
             "includeAll": true,
             "label": "Severity",
@@ -904,7 +964,8 @@ data:
       "timezone": "",
       "title": "Alert Analysis",
       "uid": "w1V3PRTnk",
-      "version": 1
+      "version": 2,
+      "weekStart": ""
     }
 kind: ConfigMap
 metadata:
