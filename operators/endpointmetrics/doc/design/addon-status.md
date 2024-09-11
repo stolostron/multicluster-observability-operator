@@ -71,7 +71,7 @@ The addon state is an aggregation of the states of the metrics collector and the
 
 ### Defining the Aggregated State Accurately
 
-To accurately reflect the aggregated state, we introduce two additional condition types specific to the collectors: **MetricsCollectorStatus** and **UwlMetricsCollectorStatus**. These conditions are updated by the metrics collector, the UWL metrics collector, and the endpoint controller. The status controller then aggregates these specific conditions to update the standard condition types of the addon status. A predicate function ensures that the status controller is not triggered by its own updates.
+To accurately reflect the aggregated state, we introduce two additional condition types specific to the collectors: **MetricsCollector** and **UwlMetricsCollector**. These conditions are updated by the metrics collector, the UWL metrics collector, and the endpoint controller. The status controller then aggregates these specific conditions to update the standard condition types of the addon status. A predicate function ensures that the status controller is not triggered by its own updates.
 
 These special condition types store the latest reasons for the metrics collector and the UWL metrics collector. These reasons can be mapped to the standard types, which the status controller uses to update the addon status:
 
@@ -87,7 +87,7 @@ We set a priority for the reasons to ensure that the most critical reason is ref
 3. **UpdateSuccesful**
 4. **ForwardSuccessful**
 
-The aggregated state is then determined by the highest priority reason. For example, if the condition type MetricsCollectorStatus' reason is **ForwardFailure** and the condition type UwlMetricsCollectorStatus' reason is **ForwardSuccessful**, the aggregated reason is **ForwardFailure** and the aggregated type is **Degraded**.
+The aggregated state is then determined by the highest priority reason. For example, if the condition type MetricsCollector' reason is **ForwardFailure** and the condition type UwlMetricsCollector' reason is **ForwardSuccessful**, the aggregated reason is **ForwardFailure** and the aggregated type is **Degraded**.
 
 Finally, individual state details of each collector can be explicitly set in the message field of the aggregated condition by the status controller.
 
@@ -103,17 +103,17 @@ sequenceDiagram
     participant HubAddon
     participant ObservatoriumAPI
     EndpointController->>MetricsCollector: Deploys
-    EndpointController->>SpokeAddon: Updates MetricsCollectorStatus condition with UpdateSuccesful
+    EndpointController->>SpokeAddon: Updates MetricsCollector condition with UpdateSuccesful
     EndpointController->>UwlMetricsCollector: Deploys
-    EndpointController->>SpokeAddon: Updates UwlMetricsCollectorStatus condition with UpdateSuccesful
+    EndpointController->>SpokeAddon: Updates UwlMetricsCollector condition type with UpdateSuccesful
     StatusController->>SpokeAddon: Updates the standard Progressing condition with UpdateSuccesful
     StatusController->>HubAddon: Replicates spoke addon status
     MetricsCollector->>ObservatoriumAPI: Forwards metrics successfully
-    MetricsCollector->>SpokeAddon: Updates MetricsCollectorStatus condition with ForwardSuccessful
+    MetricsCollector->>SpokeAddon: Updates MetricsCollector condition type with ForwardSuccessful
     StatusController->>SpokeAddon: Updates the progress condition message
     StatusController->>HubAddon: Replicates spoke addon status
     UwlMetricsCollector->>ObservatoriumAPI: Forwards metrics successfully
-    UwlMetricsCollector->>SpokeAddon: Updates UwlMetricsCollectorStatus condition with ForwardSuccessful
+    UwlMetricsCollector->>SpokeAddon: Updates UwlMetricsCollector condition type with ForwardSuccessful
     StatusController->>SpokeAddon: Updates the Available condition 
     StatusController->>HubAddon: Replicates spoke addon status
 ```
@@ -128,8 +128,8 @@ The following table maps the reasons to the actors that manage them and the cond
 
 | Condition Type \ Actor | Endpoint Operator | Status Controller | Metrics Collector | UWL Metrics Collector |
 |----------------|-------------------|-------------------|-------------------|-----------------------|
-| MetricsCollectorStatus | UpdateSuccesful <br />UpdateFailure | | ForwardSuccessful <br />ForwardFailure | | 
-| UwlMetricsCollectorStatus | UpdateSuccesful <br />UpdateFailure | | | ForwardSuccessful <br />ForwardFailure |
+| MetricsCollector | UpdateSuccesful <br />UpdateFailure | | ForwardSuccessful <br />ForwardFailure | | 
+| UwlMetricsCollector | UpdateSuccesful <br />UpdateFailure | | | ForwardSuccessful <br />ForwardFailure |
 | Progressing | | UpdateSuccesful | | |
 | Available | | ForwardSuccessful | | |
 | Degraded | Disabled <br /> NotSupported | ForwardFailure <br /> UpdateFailure | |
