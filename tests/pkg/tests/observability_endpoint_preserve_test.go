@@ -29,7 +29,7 @@ var _ = Describe("", func() {
 			testOptions.HubCluster.KubeContext)
 	})
 
-	Context("RHACM4K-1659: Observability: Verify metrics collector is prevent to be configured manually [P2][Sev2][Observability]@ocpInterop @post-upgrade @post-restore @e2e @post-release (endpoint_preserve/g0) -", func() {
+	Context("RHACM4K-1659: Observability: Verify metrics collector is prevent to be configured manually [P2][Sev2][Observability]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release (endpoint_preserve/g0) -", func() {
 		newDep := &appv1.Deployment{}
 		It("[Stable] Deleting metrics-collector deployment", func() {
 			var (
@@ -112,7 +112,7 @@ var _ = Describe("", func() {
 		})
 	})
 
-	It("RHACM4K-1659: Observability: Verify metrics collector is prevent to be configured manually - Should revert any manual changes on metrics-collector-view clusterolebinding [P2][Sev2][Observability][Stable]@ocpInterop @post-upgrade @post-restore @e2e @post-release (endpoint_preserve/g0)", func() {
+	It("RHACM4K-1659: Observability: Verify metrics collector is prevent to be configured manually - Should revert any manual changes on metrics-collector-view clusterolebinding [P2][Sev2][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release (endpoint_preserve/g0)", func() {
 		if os.Getenv("IS_KIND_ENV") == "true" {
 			Skip("Skip the case due to run in KinD")
 		}
@@ -150,7 +150,7 @@ var _ = Describe("", func() {
 		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*1).Should(BeTrue())
 	})
 
-	It("RHACM4K-1659: Observability: Verify metrics collector is prevent to be configured manually - Should recreate on metrics-collector-serving-certs-ca-bundle configmap if deleted [P2][Sev2][Observability][Stable]@ocpInterop @post-upgrade @post-restore @e2e @post-release (endpoint_preserve/g0)", func() {
+	It("RHACM4K-1659: Observability: Verify metrics collector is prevent to be configured manually - Should recreate on metrics-collector-serving-certs-ca-bundle configmap if deleted [P2][Sev2][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release (endpoint_preserve/g0)", func() {
 		if os.Getenv("IS_KIND_ENV") == "true" {
 			Skip("Skip the case due to run in KinD")
 		}

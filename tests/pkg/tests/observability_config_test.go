@@ -32,7 +32,7 @@ var _ = Describe("", func() {
 			testOptions.HubCluster.KubeContext)
 	})
 
-	It("RHACM4K-31474: Observability: Verify memcached setting max_item_size is populated on thanos-store - [P1][Sev1][Observability][Stable]@ocpInterop @post-upgrade @post-restore @e2e @post-release(config/g1)", func() {
+	It("RHACM4K-31474: Observability: Verify memcached setting max_item_size is populated on thanos-store - [P1][Sev1][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release(config/g1)", func() {
 
 		By("Updating mco cr to update values in storeMemcached")
 		yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: "../../../examples/maxitemsize/updatemcocr"})
@@ -71,7 +71,7 @@ var _ = Describe("", func() {
 		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*10).Should(BeTrue())
 	})
 
-	It("RHACM4K-31475: Observability: Verify memcached setting max_item_size is populated on thanos-query-frontend - [P1][Sev1][Observability][Stable]@ocpInterop @post-upgrade @post-restore @e2e @post-release(config/g1)", func() {
+	It("RHACM4K-31475: Observability: Verify memcached setting max_item_size is populated on thanos-query-frontend - [P1][Sev1][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release(config/g1)", func() {
 
 		By("Updating mco cr to update values in storeMemcached")
 		yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: "../../../examples/maxitemsize/updatemcocr"})
@@ -110,7 +110,7 @@ var _ = Describe("", func() {
 		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*10).Should(BeTrue())
 	})
 
-	It("RHACM4K-1235: Observability: Verify metrics data global setting on the managed cluster @BVT - [P1][Sev1][Observability][Stable]@ocpInterop @post-upgrade @post-restore @e2e @post-release(config/g0)", func() {
+	It("RHACM4K-1235: Observability: Verify metrics data global setting on the managed cluster @BVT - [P1][Sev1][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release(config/g0)", func() {
 		/*
 			if os.Getenv("SKIP_INSTALL_STEP") == "true" {
 				Skip("Skip the case due to MCO CR was created customized")
@@ -126,7 +126,7 @@ var _ = Describe("", func() {
 		Expect(observabilityAddonSpec["interval"]).To(Equal(int64(300)))
 	})
 
-	It("RHACM4K-1065: Observability: Verify MCO CR storage class and PVC @BVT - [P1][Sev1][Observability][Stable]@ocpInterop @post-upgrade @post-restore @e2e @post-release (config/g0)", func() {
+	It("RHACM4K-1065: Observability: Verify MCO CR storage class and PVC @BVT - [P1][Sev1][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release (config/g0)", func() {
 		/*
 			if os.Getenv("SKIP_INSTALL_STEP") == "true" {
 				Skip("Skip the case due to MCO CR was created customized")
@@ -318,7 +318,7 @@ var _ = Describe("", func() {
 		}
 	})
 
-	It("RHACM4K-11169: Observability: Verify ACM Observability with Security Service Token credentials - [P2][Sev2][observability][Integration]@ocpInterop @post-upgrade @post-restore @e2e @pre-upgrade Checking service account annotations is set for store/query/rule/compact/receive @e2e (config/g0)", func() {
+	It("RHACM4K-11169: Observability: Verify ACM Observability with Security Service Token credentials - [P2][Sev2][observability][Integration]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @pre-upgrade Checking service account annotations is set for store/query/rule/compact/receive @e2e (config/g0)", func() {
 
 		mcoRes, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).
 			Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})

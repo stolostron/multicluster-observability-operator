@@ -31,7 +31,7 @@ var _ = Describe("", func() {
 			testOptions.HubCluster.KubeContext)
 	})
 
-	It("RHACM4K-1066: Observability: Verify Grafana - Should have metric data in grafana console @BVT - [P1][Sev1][Observability][Stable]@ocpInterop @post-upgrade @post-restore @e2e @post-release (grafana/g0)", func() {
+	It("RHACM4K-1066: Observability: Verify Grafana - Should have metric data in grafana console @BVT - [P1][Sev1][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release (grafana/g0)", func() {
 		Eventually(func() error {
 			clusters, err := utils.ListManagedClusters(testOptions)
 			if err != nil {
@@ -52,7 +52,7 @@ var _ = Describe("", func() {
 		}, EventuallyTimeoutMinute*6, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
-	It("RHACM4K-23537: Observability: Verify managed cluster labels in Grafana dashboards(2.7) - [P1][Sev1][Observability][Stable]@ocpInterop @post-upgrade @post-restore @e2e @post-release (grafana/g1)", func() {
+	It("RHACM4K-23537: Observability: Verify managed cluster labels in Grafana dashboards(2.7) - [P1][Sev1][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release (grafana/g1)", func() {
 		Eventually(func() bool {
 			clientDynamic := utils.GetKubeClientDynamic(testOptions, true)
 			objs, err := clientDynamic.Resource(utils.NewOCMManagedClustersGVR()).List(context.TODO(), metav1.ListOptions{})

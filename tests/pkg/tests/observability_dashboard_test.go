@@ -30,7 +30,7 @@ var _ = Describe("", func() {
 			testOptions.HubCluster.KubeContext)
 	})
 
-	It("RHACM4K-1669: Observability: Verify new customized Grafana dashboard - Should have custom dashboard which defined in configmap [P2][Sev2][Observability][Stable]@ocpInterop @post-upgrade @post-restore @e2e @post-release @pre-upgrade (dashboard/g0)", func() {
+	It("RHACM4K-1669: Observability: Verify new customized Grafana dashboard - Should have custom dashboard which defined in configmap [P2][Sev2][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release @pre-upgrade (dashboard/g0)", func() {
 		By("Creating custom dashboard configmap")
 		yamlB, _ := kustomize.Render(
 			kustomize.Options{KustomizationPath: "../../../examples/dashboards/sample_custom_dashboard"},
@@ -47,7 +47,7 @@ var _ = Describe("", func() {
 		}, EventuallyTimeoutMinute*3, EventuallyIntervalSecond*5).Should(BeTrue())
 	})
 
-	It("RHACM4K-1669: Observability: Verify new customized Grafana dashboard - Should have update custom dashboard after configmap updated [P2][Sev2][Observability][Stable]@ocpInterop @post-upgrade @post-restore @e2e @post-release @pre-upgrade (dashboard/g0)", func() {
+	It("RHACM4K-1669: Observability: Verify new customized Grafana dashboard - Should have update custom dashboard after configmap updated [P2][Sev2][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release @pre-upgrade (dashboard/g0)", func() {
 		By("Updating custom dashboard configmap")
 		yamlB, _ := kustomize.Render(
 			kustomize.Options{KustomizationPath: "../../../examples/dashboards/update_sample_custom_dashboard"},
@@ -68,7 +68,7 @@ var _ = Describe("", func() {
 		}, EventuallyTimeoutMinute*3, EventuallyIntervalSecond*5).Should(BeTrue())
 	})
 
-	It("RHACM4K-1669: Observability: Verify new customized Grafana dashboard - Should have no custom dashboard in grafana after related configmap removed [P2][Sev2][Observability][Stable]@ocpInterop @post-upgrade @post-restore @e2e @post-release @pre-upgrade (dashboard/g0)", func() {
+	It("RHACM4K-1669: Observability: Verify new customized Grafana dashboard - Should have no custom dashboard in grafana after related configmap removed [P2][Sev2][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release @pre-upgrade (dashboard/g0)", func() {
 		By("Deleting custom dashboard configmap")
 		err = utils.DeleteConfigMap(testOptions, true, dashboardName, MCO_NAMESPACE)
 		Expect(err).ToNot(HaveOccurred())
