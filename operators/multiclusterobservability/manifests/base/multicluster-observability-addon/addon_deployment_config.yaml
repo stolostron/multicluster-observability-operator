@@ -7,4 +7,4 @@ spec:
   customizedVariables:
   # Operator Subscription Channels
   - name: openshiftLoggingChannel
-    value: stable-5.9
+    value: stable-6.0
