@@ -101,8 +101,6 @@ func getDefaultResourceMemoryLimit(component string) string {
 	switch component {
 	case Grafana:
 		return GrafanaMemoryLimit
-	case MultiClusterObservabilityAddon:
-		return MCOAMemoryLimits
 	default:
 		return ""
 	}
@@ -113,8 +111,6 @@ func getDefaultResourceCPULimit(component string) string {
 	switch component {
 	case Grafana:
 		return GrafanaCPULimit
-	case MultiClusterObservabilityAddon:
-		return MCOACPULimits
 	default:
 		return ""
 	}
