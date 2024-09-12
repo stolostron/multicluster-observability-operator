@@ -837,6 +837,7 @@ func (m *MetricsCollector) getCommands(isUSW bool, deployParams *deploymentParam
 		commands = append(commands, fmt.Sprintf("--label=\"clusterType=%s\"", m.ClusterInfo.ClusterType))
 	}
 
+	metricsArgsStartIdx := len(commands)
 	dynamicMetricList := map[string]bool{}
 	for _, group := range allowList.CollectRuleGroupList {
 		if group.Selector.MatchExpression != nil {
@@ -886,7 +887,6 @@ func (m *MetricsCollector) getCommands(isUSW bool, deployParams *deploymentParam
 	for k := range allowList.RenameMap {
 		renamekeys = append(renamekeys, k)
 	}
-	sort.Strings(renamekeys)
 	for _, k := range renamekeys {
 		commands = append(commands, fmt.Sprintf("--rename=\"%s=%s\"", k, allowList.RenameMap[k]))
 	}
@@ -896,6 +896,7 @@ func (m *MetricsCollector) getCommands(isUSW bool, deployParams *deploymentParam
 			fmt.Sprintf("--recordingrule={\"name\":\"%s\",\"query\":\"%s\"}", rule.Record, rule.Expr),
 		)
 	}
+	sort.Strings(commands[metricsArgsStartIdx:])
 	return commands
 }
 

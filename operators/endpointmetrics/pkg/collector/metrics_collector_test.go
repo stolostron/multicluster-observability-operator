@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"maps"
 	"slices"
+	"sort"
 	"testing"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -220,6 +221,37 @@ func TestMetricsCollectorResourcesUpdate(t *testing.T) {
 			expects: func(t *testing.T, deployment *appsv1.Deployment, uwlDeployment *appsv1.Deployment) {
 				if uwlDeployment != nil {
 					t.Fatalf("Should delete uwl metrics collector if uwl prometheus is removed")
+				}
+			},
+		},
+		"metrics arguments should be sorted": {
+			newMetricsCollector: func() *collector.MetricsCollector {
+				return baseMetricsCollector()
+			},
+			clientObjects: func() []runtime.Object {
+				data := map[string]operatorconfig.MetricsAllowlist{
+					operatorconfig.MetricsConfigMapKey: {
+						NameList:  []string{"c", "a", "b"},
+						MatchList: []string{"__name__=\"mc\"", "__name__=\"ma\"", "__name__=\"mb\""},
+						RenameMap: map[string]string{"c": "c1", "a": "a1", "b": "b1"},
+					},
+				}
+				allowlistCM := newAllowListCm(operatorconfig.AllowlistCustomConfigMapName, "default", data)
+				ret := []runtime.Object{getEndpointOperatorDeployment(), allowlistCM}
+				return ret
+			},
+			expects: func(t *testing.T, deployment *appsv1.Deployment, uwlDeployment *appsv1.Deployment) {
+				command := deployment.Spec.Template.Spec.Containers[0].Command
+				startIdx := slices.Index(command, `--match={__name__="a"}`)
+				if startIdx == -1 {
+					t.Fatalf("Missing metric: %v", command)
+				}
+				metricsListCommand := command[startIdx:]
+				if len(metricsListCommand) != 9 {
+					t.Fatalf("Metrics arguments should be sorted: %v", metricsListCommand)
+				}
+				if !sort.IsSorted(sort.StringSlice(metricsListCommand)) {
+					t.Fatalf("Metrics arguments should be sorted: %v", metricsListCommand)
 				}
 			},
 		},
