@@ -16,17 +16,24 @@ import (
 	"sigs.k8s.io/kustomize/api/resource"
 
 	"github.com/imdario/mergo"
+	obv1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	rendererutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering"
 )
 
 const (
+	cmaoKind = "ClusterManagementAddOn"
+
 	// AODC CustomizedVariable Names
 	namePlatformLogsCollection       = "platformLogsCollection"
 	nameUserWorkloadLogsCollection   = "userWorkloadLogsCollection"
 	nameUserWorkloadTracesCollection = "userWorkloadTracesCollection"
 	nameUserWorkloadInstrumentation  = "userWorkloadInstrumentation"
 )
+
+type MCOARendererOptions struct {
+	DisableCMAORender bool
+}
 
 func (r *MCORenderer) newMCOARenderer() {
 	r.renderMCOAFns = map[string]rendererutil.RenderFn{
@@ -230,6 +237,15 @@ func (r *MCORenderer) renderMCOATemplates(
 ) ([]*unstructured.Unstructured, error) {
 	uobjs := []*unstructured.Unstructured{}
 	for _, template := range templates {
+		// Skip rendering the ClusterManagementAddOn resource if,
+		// MCOA is enabled && the MCOA redering options disable it.
+		// The goal is for MCO to create this resource but then allow
+		// users to manage it.
+		if MCOAEnabled(r.cr) && template.GetKind() == cmaoKind &&
+			r.rendererOptions != nil && r.rendererOptions.MCOAOptions.DisableCMAORender {
+			continue
+		}
+
 		render, ok := r.renderMCOAFns[template.GetKind()]
 		if !ok {
 			m, err := template.Map()
@@ -251,4 +267,20 @@ func (r *MCORenderer) renderMCOATemplates(
 	}
 
 	return uobjs, nil
+}
+
+func MCOAEnabled(cr *obv1beta2.MultiClusterObservability) bool {
+	if cr.Spec.Capabilities == nil {
+		return false
+	}
+	mcoaEnabled := false
+	if cr.Spec.Capabilities.Platform != nil {
+		mcoaEnabled = mcoaEnabled || cr.Spec.Capabilities.Platform.Logs.Collection.Enabled
+	}
+	if cr.Spec.Capabilities.UserWorkloads != nil {
+		mcoaEnabled = mcoaEnabled || cr.Spec.Capabilities.UserWorkloads.Logs.Collection.ClusterLogForwarder.Enabled
+		mcoaEnabled = mcoaEnabled || cr.Spec.Capabilities.UserWorkloads.Traces.Collection.Collector.Enabled
+		mcoaEnabled = mcoaEnabled || cr.Spec.Capabilities.UserWorkloads.Traces.Collection.Instrumentation.Enabled
+	}
+	return mcoaEnabled
 }

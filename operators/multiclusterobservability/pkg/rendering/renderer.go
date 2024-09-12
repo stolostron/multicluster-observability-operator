@@ -23,11 +23,16 @@ import (
 
 var log = logf.Log.WithName("renderer")
 
+type RendererOptions struct {
+	MCOAOptions MCOARendererOptions
+}
+
 type MCORenderer struct {
 	kubeClient            client.Client
 	imageClient           *imagev1client.ImageV1Client
 	renderer              *rendererutil.Renderer
 	cr                    *obv1beta2.MultiClusterObservability
+	rendererOptions       *RendererOptions
 	renderGrafanaFns      map[string]rendererutil.RenderFn
 	renderAlertManagerFns map[string]rendererutil.RenderFn
 	renderThanosFns       map[string]rendererutil.RenderFn
@@ -48,6 +53,11 @@ func NewMCORenderer(multipleClusterMonitoring *obv1beta2.MultiClusterObservabili
 	mcoRenderer.newProxyRenderer()
 	mcoRenderer.newMCOARenderer()
 	return mcoRenderer
+}
+
+func (r *MCORenderer) WithRendererOptions(options *RendererOptions) *MCORenderer {
+	r.rendererOptions = options
+	return r
 }
 
 func (r *MCORenderer) Render() ([]*unstructured.Unstructured, error) {
@@ -169,22 +179,6 @@ func (r *MCORenderer) NamespaceAndLabels() (string, map[string]string) {
 		mcoconfig.GetCrLabelKey(): r.cr.Name,
 	}
 	return namespace, labels
-}
-
-func MCOAEnabled(cr *obv1beta2.MultiClusterObservability) bool {
-	if cr.Spec.Capabilities == nil {
-		return false
-	}
-	mcoaEnabled := false
-	if cr.Spec.Capabilities.Platform != nil {
-		mcoaEnabled = mcoaEnabled || cr.Spec.Capabilities.Platform.Logs.Collection.Enabled
-	}
-	if cr.Spec.Capabilities.UserWorkloads != nil {
-		mcoaEnabled = mcoaEnabled || cr.Spec.Capabilities.UserWorkloads.Logs.Collection.ClusterLogForwarder.Enabled
-		mcoaEnabled = mcoaEnabled || cr.Spec.Capabilities.UserWorkloads.Traces.Collection.Collector.Enabled
-		mcoaEnabled = mcoaEnabled || cr.Spec.Capabilities.UserWorkloads.Traces.Collection.Instrumentation.Enabled
-	}
-	return mcoaEnabled
 }
 
 func (r *MCORenderer) MCOAResources(namespace string, labels map[string]string) ([]*unstructured.Unstructured, error) {
