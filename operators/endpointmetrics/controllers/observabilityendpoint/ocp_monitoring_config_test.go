@@ -152,6 +152,44 @@ prometheusK8s:
 	}
 }
 
+// When the cluster-monitoring-config is unchanged, no need to update it
+func TestClusterMonitoringConfigUnchanged(t *testing.T) {
+	testNamespace := "test-ns"
+	amAccessSrt := newAMAccessorSecret(testNamespace, "test-token")
+	hubInfo := &operatorconfig.HubInfo{
+		ClusterName:              "test-cluster",
+		ObservatoriumAPIEndpoint: "http://test-endpoint",
+		AlertmanagerEndpoint:     "http://test-alertamanger-endpoint",
+	}
+	cmoCfg := newClusterMonitoringConfigCM(clusterMonitoringConfigDataYaml, endpointMonitoringOperatorMgr)
+	client := fake.NewClientBuilder().WithRuntimeObjects(newHubInfoSecret([]byte(hubInfoYAML), testNamespace), cmoCfg, amAccessSrt).Build()
+	err := createOrUpdateClusterMonitoringConfig(context.Background(), hubInfo, testClusterID, client, false, testNamespace)
+	if err != nil {
+		t.Fatalf("Failed to create or update the cluster-monitoring-config configmap: (%v)", err)
+	}
+
+	cmoCfgBeforeUpdate := &corev1.ConfigMap{}
+	err = client.Get(context.Background(), types.NamespacedName{Name: clusterMonitoringConfigName, Namespace: promNamespace}, cmoCfgBeforeUpdate)
+	if err != nil {
+		t.Fatalf("failed to check configmap %s: %v", clusterMonitoringConfigName, err)
+	}
+
+	err = createOrUpdateClusterMonitoringConfig(context.Background(), hubInfo, testClusterID, client, false, testNamespace)
+	if err != nil {
+		t.Fatalf("Failed to create or update the cluster-monitoring-config configmap: (%v)", err)
+	}
+
+	cmoCfgAfterUpdate := &corev1.ConfigMap{}
+	err = client.Get(context.Background(), types.NamespacedName{Name: clusterMonitoringConfigName, Namespace: promNamespace}, cmoCfgAfterUpdate)
+	if err != nil {
+		t.Fatalf("failed to check configmap %s: %v", clusterMonitoringConfigName, err)
+	}
+
+	if cmoCfgBeforeUpdate.ResourceVersion != cmoCfgAfterUpdate.ResourceVersion {
+		t.Fatalf("The cluster-monitoring-config configmap should not be updated")
+	}
+}
+
 func TestClusterMonitoringConfigAlertsDisabled(t *testing.T) {
 	testNamespace := "test-ns"
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&zap.Options{Development: true})))
