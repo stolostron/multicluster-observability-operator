@@ -108,6 +108,7 @@ func getCommands(params CollectorParams) []string {
 		commands = append(commands, fmt.Sprintf("--label=\"clusterType=%s\"", params.clusterType))
 	}
 
+	metricsArgsStartIdx := len(commands)
 	dynamicMetricList := map[string]bool{}
 	for _, group := range params.allowlist.CollectRuleGroupList {
 		if group.Selector.MatchExpression != nil {
@@ -157,7 +158,6 @@ func getCommands(params CollectorParams) []string {
 	for k := range params.allowlist.RenameMap {
 		renamekeys = append(renamekeys, k)
 	}
-	sort.Strings(renamekeys)
 	for _, k := range renamekeys {
 		commands = append(commands, fmt.Sprintf("--rename=\"%s=%s\"", k, params.allowlist.RenameMap[k]))
 	}
@@ -167,6 +167,7 @@ func getCommands(params CollectorParams) []string {
 			fmt.Sprintf("--recordingrule={\"name\":\"%s\",\"query\":\"%s\"}", rule.Record, rule.Expr),
 		)
 	}
+	sort.Strings(commands[metricsArgsStartIdx:])
 	return commands
 }
 
