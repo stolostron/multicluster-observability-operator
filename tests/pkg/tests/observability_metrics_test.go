@@ -48,7 +48,7 @@ var _ = Describe("", func() {
 		}, EventuallyTimeoutMinute*6, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
-	It("RHACM4K-1449 - Observability - Verify metrics data consistency [P2][Sev2][Observability][Integration]@ocpInterop @post-upgrade @post-restore @e2e @post-release @pre-upgrade (metrics/g1)", func() {
+	It("RHACM4K-1449 - Observability - Verify metrics data consistency [P2][Sev2][Observability][Integration]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release @pre-upgrade (metrics/g1)", func() {
 		metricList := utils.GetDefaultMetricList(testOptions)
 		ignoreMetricMap := utils.GetIgnoreMetricMap()
 		_, etcdPodList := utils.GetPodList(
@@ -73,7 +73,7 @@ var _ = Describe("", func() {
 		}
 	})
 
-	It("RHACM4K-1658: Observability: Customized metrics data are collected [P2][Sev2][Observability][Integration]@ocpInterop @post-upgrade @post-restore @e2e @post-release @pre-upgrade (metrics/g0)", func() {
+	It("RHACM4K-1658: Observability: Customized metrics data are collected [P2][Sev2][Observability][Integration]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release @pre-upgrade (metrics/g0)", func() {
 		By("Adding custom metrics allowlist configmap")
 		yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: "../../../examples/metrics/allowlist"})
 		Expect(err).ToNot(HaveOccurred())
@@ -102,7 +102,7 @@ var _ = Describe("", func() {
 		}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
-	It("RHACM4K-3063: Observability: Metrics removal from default allowlist [P2][Sev2][Observability][Integration]@ocpInterop @post-upgrade @post-restore @e2e @post-release @pre-upgrade (metrics/g0)", func() {
+	It("RHACM4K-3063: Observability: Metrics removal from default allowlist [P2][Sev2][Observability][Integration]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release @pre-upgrade (metrics/g0)", func() {
 		By("Waiting for deleted metrics disappear on grafana console")
 		Eventually(func() error {
 			for _, cluster := range clusters {
@@ -120,7 +120,7 @@ var _ = Describe("", func() {
 		}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(MatchError("Failed to find metric name from response"))
 	})
 
-	It("RHACM4K-3063: Observability: Metrics removal from default allowlist [P2][Sev2][Observability][Integration]@ocpInterop @post-upgrade @post-restore @e2e @post-release @pre-upgrade (metrics/g0)", func() {
+	It("RHACM4K-3063: Observability: Metrics removal from default allowlist [P2][Sev2][Observability][Integration]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release @pre-upgrade (metrics/g0)", func() {
 		By("Waiting for deleted metrics disappear on grafana console")
 		Eventually(func() error {
 			for _, cluster := range clusters {
@@ -138,7 +138,7 @@ var _ = Describe("", func() {
 		}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(MatchError("Failed to find metric name from response"))
 	})
 
-	It("RHACM4K-3063: Observability: Metrics removal from default allowlist [P2][Sev2][Observability][Integration]@ocpInterop @post-upgrade @post-restore @e2e @post-release @pre-upgrade (metrics/g0)", func() {
+	It("RHACM4K-3063: Observability: Metrics removal from default allowlist [P2][Sev2][Observability][Integration]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release @pre-upgrade (metrics/g0)", func() {
 		By("Deleting custom metrics allowlist configmap")
 		Eventually(func() error {
 			err := hubClient.CoreV1().
@@ -164,7 +164,7 @@ var _ = Describe("", func() {
 		}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(MatchError("Failed to find metric name from response"))
 	})
 
-	It("RHACM4K-3339: Observability: Verify recording rule - Should have metrics which used grafana dashboard [P2][Sev2][Observability][Integration]@ocpInterop @post-upgrade @post-restore @e2e @post-release @pre-upgrade (ssli/g1)", func() {
+	It("RHACM4K-3339: Observability: Verify recording rule - Should have metrics which used grafana dashboard [P2][Sev2][Observability][Integration]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release @pre-upgrade (ssli/g1)", func() {
 		metricList := utils.GetDefaultMetricList(testOptions)
 		ignoreMetricMap := utils.GetIgnoreMetricMap()
 		_, etcdPodList := utils.GetPodList(

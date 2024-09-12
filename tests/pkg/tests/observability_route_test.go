@@ -37,7 +37,7 @@ var _ = Describe("", func() {
 			testOptions.HubCluster.KubeContext)
 	})
 
-	It("RHACM4K-1693: Observability: Verify Observability working with new OCP API Server certs - @BVT - [P1][Sev1][observability][Integration]@ocpInterop @post-upgrade @post-restore Should access metrics via rbac-query-proxy route @e2e (route/g0)", func() {
+	It("RHACM4K-1693: Observability: Verify Observability working with new OCP API Server certs - @BVT - [P1][Sev1][observability][Integration]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore Should access metrics via rbac-query-proxy route @e2e (route/g0)", func() {
 		Eventually(func() error {
 			query := "/api/v1/query?query=cluster_version"
 

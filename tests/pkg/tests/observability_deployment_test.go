@@ -30,7 +30,7 @@ var _ = Describe("", func() {
 			testOptions.HubCluster.KubeContext)
 	})
 
-	It("RHACM4K-1064: Observability: Verify MCO deployment - [P1][Sev1][Observability][Stable]@ocpInterop @post-upgrade @post-restore @e2e @post-release @pre-upgrade (deployment/g0)", func() {
+	It("RHACM4K-1064: Observability: Verify MCO deployment - [P1][Sev1][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release @pre-upgrade (deployment/g0)", func() {
 		By("Check MCO in ready status")
 		Eventually(func() error {
 			err = utils.CheckMCOComponents(testOptions)
@@ -56,7 +56,7 @@ var _ = Describe("", func() {
 
 	})
 
-	It("RHACM4K-1288: Observability: Verify Observability function working on the hub cluster - [P1][Sev1][Observability][Stable]@ocpInterop @post-upgrade @post-restore @e2e @post-release @pre-upgrade (deployment/g0)", func() {
+	It("RHACM4K-1288: Observability: Verify Observability function working on the hub cluster - [P1][Sev1][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release @pre-upgrade (deployment/g0)", func() {
 		By("Check etrics-collector pod is ready")
 		Eventually(func() error {
 
@@ -92,7 +92,7 @@ var _ = Describe("", func() {
 
 	})
 
-	It("RHACM4K-30645: Observability: Verify setting in CM cluster-monitoring-config is not removed after MCO enabled - [P1][Sev1][Observability][Stable]@ocpInterop @post-upgrade @post-restore @e2e @post-release @pre-upgrade (deployment/g1)", func() {
+	It("RHACM4K-30645: Observability: Verify setting in CM cluster-monitoring-config is not removed after MCO enabled - [P1][Sev1][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release @pre-upgrade (deployment/g1)", func() {
 		By("Check enableUserAlertmanagerConfig value is not replaced in the CM cluster-monitoring-config")
 		if os.Getenv("SKIP_INSTALL_STEP") == "true" {
 			Skip("Skip the case due to this case is only available before MCOCR deployment")
