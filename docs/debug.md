@@ -5,7 +5,7 @@
 Assuming that thanos is working correctly (it is able to ingest and query data). You can proceed with the following steps to debug the issue:
 
 * Check if the Grafana exlorer is working by querying a random metric like `up`.
-  * If it is not working, check communication between the components on the read path using the user token as Grafana does. 
+  * If it is not working, check [communication](#the-read-path) between the components on the read path using the user token as Grafana does. 
   * Otherwise, Grafana is able to fetch data, and there is an issue with the dashboards specifically. Continue to the next step.
 * Check if the `Label` and `Value` fields are correctly populated in the top left corner. If they contain data, well, it should be working... Otherwise continue to the next step.
 * These fields are populated using the `acm_managed_cluster_labels` metric and the `observability-managed-cluster-label-allowlist` configmap. This configmap is read by the `rbac-query-proxy`. Check if you see error logs in the `rbac-query-proxy` pod that points to an issue with those. You can restart it to make sure they have latest configmap data.
@@ -17,24 +17,27 @@ Assuming that thanos is working correctly (it is able to ingest and query data).
 
 ## Prometheus scraping issues
 
-You expect some metrics in Prometheus but they are not there, and prometheus is up and working. You can do some of the following checks from the UI. But we focus here on debugging using shells. You can run the commands from the console, getting a terminal from the target pod, or from your local machine using `oc exec -n openshift-monitoring prometheus-k8s-0 -c prometheus -- `. Here are some steps to debug the issue:
+You expect some metrics in Prometheus but they are not there, and prometheus is up and working. You can do some of the following checks from the Prometheus UI, the Console -> Observe section. We focus here mainly on debugging using shells. You can run the commands from the console, getting a terminal from the target pod, or from your local machine using `oc exec -n openshift-monitoring prometheus-k8s-0 -c prometheus -- `. Here are some steps to debug the issue:
 
-* Check if prometheus can reach the target by fetching the `metrics` path of the target from the prometheus pod in the `openshift-monitoring` namespace:
-```bash
-curl http://<TARGET_SERVICE>:<TARGET_PORT>/metrics
-```
-  Make sure that you find the metrics you are looking for.
-  * If it fails check the network policies.
-* Check if the `serviceMonitor` for the target exists and is correctly configured. Make sure that relabelling rules are not impacting your metrics.
-* Check the currently loaded configuration of the prometheus pod to see if you find the scraping job named after it, and if it is correctly configured:
+* Check if the target exists in Prometheus:
+  * Go in the Console -> Targets section. Look for the serviceMonitor in your namespace and check if the target is there.
+  * Or check the currently loaded configuration of the prometheus pod to see if you find the scraping job named after it, and if it is correctly configured:
 ```bash
 curl http://localhost:9090/api/v1/status/config | sed 's/\\n/\n/g' | grep "job_name: serviceMonitor/NAMESPACE/SERVICE_MONITOR_NAME" -A100 
 # or from your local machine, pipe in less and search for the job name
 curl -s http://localhost:9090/api/v1/status/config | jq -r '.data.yaml' | yq '.scrape_configs' | less
 ```
+* If the target was not discovered, check if prometheus can reach the target by fetching the `metrics` path of the target from the prometheus pod in the `openshift-monitoring` namespace:
+```bash
+curl http://<TARGET_SERVICE>:<TARGET_PORT>/metrics
+```
+  * Make sure that you find the metrics you are looking for.
+  * If it fails check the network policies.
+* If the target exists, make sure that relabelling rules are not impacting your metrics.
 * Check the state of the target:
-  * check the metric `up{job="<JOB_NAME>"}`. If it is `0`, the scrape failed. If it is `1`, the target is reachable.
-* Look for target scraping errors. This command needs jq to parse the output, so from your local machine. Check the `lastError` field for the active targets:
+  * Go in the Console -> Targets section. Look for the target you are interested in and click on it. You'll see the last scrape time and the last error.
+  * Or check the metric `up{job="<JOB_NAME>"}`. If it is `0`, the scrape failed. If it is `1`, the target is reachable.
+  * Or look for target scraping errors using the prometheus API. This command needs jq to parse the output, so from your local machine. Check the `lastError` field for the active targets:
 ```bash
 curl 'http://localhost:9090/api/v1/targets?scrapePool=serviceMonitor%2F<NAMESPACE>%2F<SERVICE_MONITOR_NAME>%2F0' | jq 'del(.data.droppedTargets, .data.droppedTargetCounts)'
 ```
@@ -55,7 +58,7 @@ curl -k -H "Authorization: Bearer $(cat /var/run/secrets/kubernetes.io/serviceac
 
 If the communication is working, and you receive a `502` response code, it probably means that the query is too big, and takes too much time to complete. There is a limit of `30s` set on the [oauth proxy](https://github.com/openshift/oauth-proxy/blob/master/options.go#L25) of the prometheus pod. There is a flag to customize this value, but it is not exposed by CMO. It is considered that a query that takes more than `30s` to complete is an abusive use of the federation endpoint.
 
-## Communication checks on the Hub
+## Communication checks on the Hub 
 
 ### The read path
 
