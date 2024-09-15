@@ -60,10 +60,10 @@ const (
 )
 
 var (
-	ocpPromURL  = "https://prometheus-k8s.openshift-monitoring.svc:9091"
+	ocpPromURL  = "https://prometheus-k8s.openshift-monitoring.svc:9092"
 	uwlPromURL  = "https://prometheus-user-workload.openshift-user-workload-monitoring.svc:9092"
-	uwlQueryURL = "https://thanos-querier.openshift-monitoring.svc:9091"
-	promURL     = "https://prometheus-k8s:9091"
+	uwlQueryURL = "https://thanos-querier.openshift-monitoring.svc:9092"
+	promURL     = "https://prometheus-k8s:9092"
 )
 
 type ClusterInfo struct {
