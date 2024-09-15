@@ -797,6 +797,11 @@ func (m *MetricsCollector) getCommands(isUSW bool, deployParams *deploymentParam
 		evaluateInterval = interval
 	}
 
+	scrapeSizeLimitBytes := 1073741824
+	if m.ObsAddon.Spec.ScrapeSizeLimitBytes != 0 {
+		scrapeSizeLimitBytes = m.ObsAddon.Spec.ScrapeSizeLimitBytes
+	}
+
 	caFile := caMounthPath + "/service-ca.crt"
 	clusterID := m.ClusterInfo.ClusterID
 	if clusterID == "" {
@@ -821,7 +826,7 @@ func (m *MetricsCollector) getCommands(isUSW bool, deployParams *deploymentParam
 		"--to-upload-key=/tlscerts/certs/tls.key",
 		"--interval=" + interval,
 		"--evaluate-interval=" + evaluateInterval,
-		"--limit-bytes=" + strconv.Itoa(m.ObsAddon.Spec.ScrapeSizeLimitBytes),
+		"--limit-bytes=" + strconv.Itoa(scrapeSizeLimitBytes),
 		fmt.Sprintf("--label=\"cluster=%s\"", m.HubInfo.ClusterName),
 		fmt.Sprintf("--label=\"clusterID=%s\"", clusterID),
 	}
