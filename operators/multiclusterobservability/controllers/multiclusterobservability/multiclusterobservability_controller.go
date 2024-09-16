@@ -291,6 +291,22 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		}
 	}
 
+	if !rendering.MCOAEnabled(instance) {
+		namespace, labels := renderer.NamespaceAndLabels()
+		toDelete, err := renderer.MCOAResources(namespace, labels)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		for _, res := range toDelete {
+			resNS := res.GetNamespace()
+			if err := deployer.Undeploy(ctx, res); err != nil {
+				reqLogger.Error(err, fmt.Sprintf("Failed to undeploy %s %s/%s",
+					res.GetKind(), resNS, res.GetName()))
+				return ctrl.Result{}, err
+			}
+		}
+	}
+
 	_, err = r.ensureOpenShiftNamespaceLabel(ctx, instance)
 	if err != nil {
 		r.Log.Error(err, "Failed to add to %s label to namespace: %s", config.OpenShiftClusterMonitoringlabel,

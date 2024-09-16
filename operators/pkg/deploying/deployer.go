@@ -435,3 +435,21 @@ func unstructuredPairToTyped[T any](obja, objb *unstructured.Unstructured) (*T, 
 func logUpdateInfo(obj *unstructured.Unstructured) {
 	log.Info("Update", "kind", obj.GroupVersionKind().Kind, "kindVersion", obj.GroupVersionKind().Version, "name", obj.GetName())
 }
+
+func (d *Deployer) Undeploy(ctx context.Context, obj *unstructured.Unstructured) error {
+	found := &unstructured.Unstructured{}
+	found.SetGroupVersionKind(obj.GroupVersionKind())
+	err := d.client.Get(
+		ctx,
+		types.NamespacedName{Name: obj.GetName(), Namespace: obj.GetNamespace()},
+		found,
+	)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return nil
+		}
+		return err
+	}
+
+	return d.client.Delete(ctx, obj)
+}
