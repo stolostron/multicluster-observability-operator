@@ -44,6 +44,11 @@ type ObservabilityAddonSpec struct {
 	// +kubebuilder:validation:Maximum=3600
 	Interval int32 `json:"interval,omitempty"`
 
+	// ScrapeSizeLimitBytes is the max size in bytes for a single metrics scrape from in-cluster Prometheus.
+	// Default is 1 GiB.
+	// +kubebuilder:default:=1073741824
+	ScrapeSizeLimitBytes int `json:"scrapeSizeLimitBytes,omitempty"`
+
 	// Resource requirement for metrics-collector
 	// +optional
 	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
