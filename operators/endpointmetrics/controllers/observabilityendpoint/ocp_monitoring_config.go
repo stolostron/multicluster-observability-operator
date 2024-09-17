@@ -12,6 +12,7 @@ import (
 	"reflect"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -429,23 +430,29 @@ func createOrUpdateClusterMonitoringConfig(
 		return err
 	}
 
-	if foundClusterMonitoringConfiguration.PrometheusK8sConfig == nil {
-		foundClusterMonitoringConfiguration.PrometheusK8sConfig = newPmK8sConfig
+	newCMOCfg := &cmomanifests.ClusterMonitoringConfiguration{}
+	if err := json.Unmarshal([]byte(foundClusterMonitoringConfigurationJSONBytes), newCMOCfg); err != nil {
+		log.Error(err, "failed to unmarshal the cluster monitoring config")
+		return err
+	}
+
+	if newCMOCfg.PrometheusK8sConfig == nil {
+		newCMOCfg.PrometheusK8sConfig = newPmK8sConfig
 	} else {
 		// check if externalLabels exists
-		if foundClusterMonitoringConfiguration.PrometheusK8sConfig.ExternalLabels == nil {
-			foundClusterMonitoringConfiguration.PrometheusK8sConfig.ExternalLabels = newExternalLabels
+		if newCMOCfg.PrometheusK8sConfig.ExternalLabels == nil {
+			newCMOCfg.PrometheusK8sConfig.ExternalLabels = newExternalLabels
 		} else {
-			foundClusterMonitoringConfiguration.PrometheusK8sConfig.ExternalLabels[operatorconfig.ClusterLabelKeyForAlerts] = clusterID
+			newCMOCfg.PrometheusK8sConfig.ExternalLabels[operatorconfig.ClusterLabelKeyForAlerts] = clusterID
 		}
 
 		// check if alertmanagerConfigs exists
-		if foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs == nil {
-			foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs = newAlertmanagerConfigs
+		if newCMOCfg.PrometheusK8sConfig.AlertmanagerConfigs == nil {
+			newCMOCfg.PrometheusK8sConfig.AlertmanagerConfigs = newAlertmanagerConfigs
 		} else {
 			additionalAlertmanagerConfigExists := false
 			var atIndex int
-			for i, v := range foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs {
+			for i, v := range newCMOCfg.PrometheusK8sConfig.AlertmanagerConfigs {
 				if v.TLSConfig != (cmomanifests.TLSConfig{}) &&
 					v.TLSConfig.CA != nil &&
 					v.TLSConfig.CA.LocalObjectReference != (corev1.LocalObjectReference{}) &&
@@ -456,17 +463,21 @@ func createOrUpdateClusterMonitoringConfig(
 				}
 			}
 			if !additionalAlertmanagerConfigExists {
-				foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs = append(
-					foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs,
+				newCMOCfg.PrometheusK8sConfig.AlertmanagerConfigs = append(
+					newCMOCfg.PrometheusK8sConfig.AlertmanagerConfigs,
 					newAdditionalAlertmanagerConfig(hubInfo))
 			} else {
-				foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs[atIndex] = newAdditionalAlertmanagerConfig(hubInfo)
+				newCMOCfg.PrometheusK8sConfig.AlertmanagerConfigs[atIndex] = newAdditionalAlertmanagerConfig(hubInfo)
 			}
 		}
 	}
 
+	if equality.Semantic.DeepEqual(*foundClusterMonitoringConfiguration, *newCMOCfg) {
+		return nil
+	}
+
 	// prepare to write back the cluster monitoring configuration
-	updatedClusterMonitoringConfigurationJSONBytes, err := json.Marshal(foundClusterMonitoringConfiguration)
+	updatedClusterMonitoringConfigurationJSONBytes, err := json.Marshal(newCMOCfg)
 	if err != nil {
 		log.Error(err, "failed to marshal the cluster monitoring config")
 		return err
