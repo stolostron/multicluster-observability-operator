@@ -151,16 +151,15 @@ prometheusK8s:
 
 // When the cluster-monitoring-config is unchanged, no need to update it
 func TestClusterMonitoringConfigUnchanged(t *testing.T) {
-	testNamespace := "test-ns"
-	amAccessSrt := newAMAccessorSecret(testNamespace, "test-token")
+	amAccessSrt := newAMAccessorSecret()
 	hubInfo := &operatorconfig.HubInfo{
 		ClusterName:              "test-cluster",
 		ObservatoriumAPIEndpoint: "http://test-endpoint",
 		AlertmanagerEndpoint:     "http://test-alertamanger-endpoint",
 	}
 	cmoCfg := newClusterMonitoringConfigCM(clusterMonitoringConfigDataYaml, endpointMonitoringOperatorMgr)
-	client := fake.NewClientBuilder().WithRuntimeObjects(newHubInfoSecret([]byte(hubInfoYAML), testNamespace), cmoCfg, amAccessSrt).Build()
-	err := createOrUpdateClusterMonitoringConfig(context.Background(), hubInfo, testClusterID, client, false, testNamespace)
+	client := fake.NewClientBuilder().WithRuntimeObjects(newHubInfoSecret([]byte(hubInfoYAML)), cmoCfg, amAccessSrt).Build()
+	err := createOrUpdateClusterMonitoringConfig(context.Background(), hubInfo, testClusterID, client, false)
 	if err != nil {
 		t.Fatalf("Failed to create or update the cluster-monitoring-config configmap: (%v)", err)
 	}
@@ -171,7 +170,7 @@ func TestClusterMonitoringConfigUnchanged(t *testing.T) {
 		t.Fatalf("failed to check configmap %s: %v", clusterMonitoringConfigName, err)
 	}
 
-	err = createOrUpdateClusterMonitoringConfig(context.Background(), hubInfo, testClusterID, client, false, testNamespace)
+	err = createOrUpdateClusterMonitoringConfig(context.Background(), hubInfo, testClusterID, client, false)
 	if err != nil {
 		t.Fatalf("Failed to create or update the cluster-monitoring-config configmap: (%v)", err)
 	}
