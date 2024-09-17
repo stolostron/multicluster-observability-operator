@@ -149,7 +149,7 @@ data:
       - __name__="workqueue_depth",job="apiserver"
       - __name__="go_goroutines",job="apiserver"
       - __name__="process_cpu_seconds_total",job="apiserver"
-      - __name__="process_resident_memory_bytes",job="apiserver"
+      - __name__="process_resident_memory_bytes",job=~"apiserver|etcd"
       - __name__="container_memory_cache",container!=""
       - __name__="container_memory_rss",container!=""
       - __name__="container_memory_swap",container!=""

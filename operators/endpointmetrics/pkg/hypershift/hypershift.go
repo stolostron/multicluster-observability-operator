@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strings"
 
 	hyperv1 "github.com/openshift/hypershift/api/hypershift/v1alpha1"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
@@ -146,6 +147,27 @@ func getEtcdServiceMonitor(ctx context.Context, c client.Client, namespace, clus
 	}
 
 	originalEndpoint := hypershiftEtcdSM.Spec.Endpoints[0]
+	metricsList := []string{
+		"etcd_disk_backend_commit_duration_seconds_bucket",
+		"etcd_disk_wal_fsync_duration_seconds_bucket",
+		"etcd_mvcc_db_total_size_in_bytes",
+		"etcd_mvcc_db_total_size_in_use_in_bytes",
+		"etcd_network_client_grpc_received_bytes_total",
+		"etcd_network_client_grpc_sent_bytes_total",
+		"etcd_network_peer_received_bytes_total",
+		"etcd_network_peer_round_trip_time_seconds_bucket",
+		"etcd_network_peer_sent_bytes_total",
+		"etcd_server_has_leader",
+		"etcd_server_leader_changes_seen_total",
+		"etcd_server_leader_changes_seen_total",
+		"etcd_server_proposals_applied_total",
+		"etcd_server_proposals_committed_total",
+		"etcd_server_proposals_failed_total",
+		"etcd_server_proposals_pending",
+		"grpc_server_handled_total",
+		"grpc_server_started_total",
+		"process_resident_memory_bytes",
+	}
 
 	return &promv1.ServiceMonitor{
 		ObjectMeta: metav1.ObjectMeta{
@@ -164,11 +186,7 @@ func getEtcdServiceMonitor(ctx context.Context, c client.Client, namespace, clus
 						{
 							SourceLabels: []promv1.LabelName{"__name__"},
 							Action:       "keep",
-							Regex: "(etcd_server_has_leader|etcd_disk_wal_fsync_duration_seconds_bucket|" +
-								"etcd_mvcc_db_total_size_in_bytes|etcd_network_peer_round_trip_time_seconds_bucket|" +
-								"etcd_mvcc_db_total_size_in_use_in_bytes|" +
-								"etcd_disk_backend_commit_duration_seconds_bucket|" +
-								"etcd_server_leader_changes_seen_total)",
+							Regex:        fmt.Sprintf("(%s)", strings.Join(metricsList, "|")),
 						},
 						{
 							TargetLabel: "_id",
@@ -220,6 +238,21 @@ func getKubeServiceMonitor(ctx context.Context, c client.Client, namespace, clus
 
 	originalEndpoint := hypershiftKubeSM.Spec.Endpoints[0]
 
+	metricsList := []string{
+		"apiserver_current_inflight_requests",
+		"apiserver_request_count",
+		"apiserver_request_duration_seconds_bucket",
+		"apiserver_request_total",
+		"apiserver_storage_objects",
+		"go_goroutines",
+		"process_cpu_seconds_total",
+		"process_resident_memory_bytes",
+		"up",
+		"workqueue_adds_total",
+		"workqueue_depth",
+		"workqueue_queue_duration_seconds_bucket",
+	}
+
 	return &promv1.ServiceMonitor{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      AcmApiServerSmName,
@@ -237,8 +270,7 @@ func getKubeServiceMonitor(ctx context.Context, c client.Client, namespace, clus
 						{
 							SourceLabels: []promv1.LabelName{"__name__"},
 							Action:       "keep",
-							Regex: "(up|apiserver_request_duration_seconds_bucket|apiserver_storage_objects|" +
-								"apiserver_request_total|apiserver_current_inflight_requests)",
+							Regex:        fmt.Sprintf("(%s)", strings.Join(metricsList, "|")),
 						},
 						{
 							TargetLabel: "_id",

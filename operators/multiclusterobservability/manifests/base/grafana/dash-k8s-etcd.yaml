@@ -568,7 +568,7 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "process_resident_memory_bytes{cluster=\"$cluster\"}",
+              "expr": "process_resident_memory_bytes{cluster=\"$cluster\",job=\"etcd\"}",
               "interval": "",
               "intervalFactor": 2,
               "legendFormat": "{{instance}} Resident Memory",
@@ -1071,7 +1071,7 @@ data:
               "step": 2
             },
             {
-              "expr": "sum(rate(etcd_server_proposals_committed_total{job=\"$cluster\"}[$__rate_interval]))",
+              "expr": "sum(rate(etcd_server_proposals_committed_total{cluster=\"$cluster\", job=\"etcd\"}[$__rate_interval]))",
               "intervalFactor": 2,
               "legendFormat": "Proposal Commit Rate",
               "metric": "etcd_server_proposals_committed_total",
@@ -1079,7 +1079,7 @@ data:
               "step": 2
             },
             {
-              "expr": "sum(rate(etcd_server_proposals_applied_total{job=\"$cluster\"}[$__rate_interval]))",
+              "expr": "sum(rate(etcd_server_proposals_applied_total{cluster=\"$cluster\", job=\"etcd\"}[$__rate_interval]))",
               "intervalFactor": 2,
               "legendFormat": "Proposal Apply Rate",
               "refId": "D",
