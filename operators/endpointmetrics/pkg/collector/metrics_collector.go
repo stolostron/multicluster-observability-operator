@@ -60,10 +60,11 @@ const (
 )
 
 var (
-	ocpPromURL  = "https://prometheus-k8s.openshift-monitoring.svc:9092"
-	uwlPromURL  = "https://prometheus-user-workload.openshift-user-workload-monitoring.svc:9092"
-	uwlQueryURL = "https://thanos-querier.openshift-monitoring.svc:9091"
-	promURL     = "https://prometheus-k8s:9091"
+	ocpPromURL      = "https://prometheus-k8s.openshift-monitoring.svc:9092"
+	ocpPromQueryURL = "https://prometheus-k8s.openshift-monitoring.svc:9091"
+	uwlPromURL      = "https://prometheus-user-workload.openshift-user-workload-monitoring.svc:9092"
+	uwlQueryURL     = "https://thanos-querier.openshift-monitoring.svc:9091"
+	promURL         = "https://prometheus-k8s:9091"
 )
 
 type ClusterInfo struct {
@@ -616,7 +617,7 @@ func (m *MetricsCollector) ensureDeployment(ctx context.Context, isUWL bool, dep
 		}
 	}
 
-	fromQuery := from
+	fromQuery := ocpPromQueryURL
 	name := metricsCollectorName
 	if isUWL {
 		fromQuery = uwlQueryURL
