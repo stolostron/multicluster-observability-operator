@@ -256,8 +256,25 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	}
 	instance.Spec.StorageConfig.StorageClass = storageClassSelected
 
+	// Disable rendering the MCOA ClusterManagementAddOn resource if already exists
+	mcoaCMAO := &addonv1alpha1.ClusterManagementAddOn{}
+	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: config.MultiClusterObservabilityAddon}, mcoaCMAO)
+	if err != nil {
+		if !apierrors.IsNotFound(err) {
+			return ctrl.Result{}, err
+		}
+	}
+	disableMCOACMAORender := !apierrors.IsNotFound(err)
+
+	// Build render options
+	rendererOptions := &rendering.RendererOptions{
+		MCOAOptions: rendering.MCOARendererOptions{
+			DisableCMAORender: disableMCOACMAORender,
+		},
+	}
+
 	// Render the templates with a specified CR
-	renderer := rendering.NewMCORenderer(instance, r.Client, r.ImageClient)
+	renderer := rendering.NewMCORenderer(instance, r.Client, r.ImageClient).WithRendererOptions(rendererOptions)
 	toDeploy, err := renderer.Render()
 	if err != nil {
 		reqLogger.Error(err, "Failed to render multiClusterMonitoring templates")
