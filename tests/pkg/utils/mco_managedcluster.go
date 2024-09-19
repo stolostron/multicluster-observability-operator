@@ -53,15 +53,45 @@ func ListManagedClusters(opt TestOptions) ([]string, error) {
 		metadata := obj.Object["metadata"].(map[string]interface{})
 		name := metadata["name"].(string)
 		labels := metadata["labels"].(map[string]interface{})
+
 		if os.Getenv("IS_KIND_ENV") == "true" {
 			// We do not have the obs add on label added in kind cluster
 			clusterNames = append(clusterNames, name)
 			continue
 		}
-		if labels != nil {
-			if obsController, ok := labels["feature.open-cluster-management.io/addon-observability-controller"]; ok && obsController.(string) != "unreachable" {
-				clusterNames = append(clusterNames, name)
+
+		// Skip "local-cluster" by name or label
+		if name == "local-cluster" || (labels != nil && labels["local-cluster"] == "true") {
+			continue
+		}
+
+		status, ok := obj.Object["status"].(map[string]interface{})
+		if !ok {
+			// No status found, skip this cluster
+			continue
+		}
+
+		conditions, ok := status["conditions"].([]interface{})
+		if !ok {
+			// No conditions found, skip this cluster
+			continue
+		}
+
+		available := false
+		for _, condition := range conditions {
+			conditionMap, ok := condition.(map[string]interface{})
+			if !ok {
+				continue
 			}
+			if conditionMap["type"] == "ManagedClusterConditionAvailable" && conditionMap["status"] == "True" {
+				available = true
+				break
+			}
+		}
+
+		// Only add clusters with ManagedClusterConditionAvailable status == True
+		if available {
+			clusterNames = append(clusterNames, name)
 		}
 	}
 
