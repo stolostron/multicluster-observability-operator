@@ -52,16 +52,10 @@ func ListManagedClusters(opt TestOptions) ([]string, error) {
 	for _, obj := range objs.Items {
 		metadata := obj.Object["metadata"].(map[string]interface{})
 		name := metadata["name"].(string)
-		labels := metadata["labels"].(map[string]interface{})
 
 		if os.Getenv("IS_KIND_ENV") == "true" {
 			// We do not have the obs add on label added in kind cluster
 			clusterNames = append(clusterNames, name)
-			continue
-		}
-
-		// Skip "local-cluster" by name or label
-		if name == "local-cluster" || (labels != nil && labels["local-cluster"] == "true") {
 			continue
 		}
 
