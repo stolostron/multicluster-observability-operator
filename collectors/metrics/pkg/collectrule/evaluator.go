@@ -329,7 +329,7 @@ func (e *Evaluator) evaluate(ctx context.Context) {
 		from.RawQuery = v.Encode()
 
 		req := &http.Request{Method: "GET", URL: from}
-		result, err := e.fromClient.RetrievRecordingMetrics(ctx, req, r.Name)
+		result, err := e.fromClient.RetrieveRecordingMetrics(ctx, req, r.Name)
 		if err != nil {
 			rlogger.Log(e.logger, rlogger.Error, "msg", "failed to evaluate collect rule", "err", err, "rule", r.Expr)
 			continue

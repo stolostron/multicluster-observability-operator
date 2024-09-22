@@ -36,6 +36,9 @@ import (
 const (
 	failedStatusReportMsg = "Failed to report status"
 	uwlPromURL            = "https://prometheus-user-workload.openshift-user-workload-monitoring.svc:9092"
+
+	matchParam = "match[]"
+	queryParam = "query"
 )
 
 // Config defines the parameters that can be used to configure a worker.
@@ -362,7 +365,11 @@ func New(cfg Config) (*Worker, error) {
 	return &w, nil
 }
 
-// Reconfigure temporarily stops a worker and reconfigures is with the provided Config.
+// TODO(saswatamcode): This is a relic of telemeter code, but with how our workers are configured, there will often
+// be no meaningful reload semantics, as most values are often kept as a flags which need restarts.
+// There is an option to explore this later, by instead "watching" matcherfile.
+// Keeping this method for now, but it is effectively unused.
+// Reconfigure temporarily stops a worker and reconfigures is with the provided Condfig.
 // Is thread safe and can run concurrently with `LastMetrics` and `Run`.
 func (w *Worker) Reconfigure(cfg Config) error {
 	worker, err := New(cfg)
@@ -388,6 +395,9 @@ func (w *Worker) Reconfigure(cfg Config) error {
 	return nil
 }
 
+// TODO(saswatamcode): This is a relic of telemeter code, remove this.
+// There is no such utility to exposing this information as to what the last value of metrics sent was
+// Rarely would this be used as a tool for debugging, when you already have remote write metrics.
 func (w *Worker) LastMetrics() []*clientmodel.MetricFamily {
 	w.lock.Lock()
 	defer w.lock.Unlock()
@@ -395,25 +405,24 @@ func (w *Worker) LastMetrics() []*clientmodel.MetricFamily {
 }
 
 func (w *Worker) Run(ctx context.Context) {
+	ticker := time.NewTicker(w.interval)
+	defer ticker.Stop()
+
 	for {
-		// Ensure that the Worker does not access critical configuration during a reconfiguration.
-		w.lock.Lock()
-		wait := w.interval
-		// The critical section ends here.
-		w.lock.Unlock()
-
-		if err := w.forward(ctx); err != nil {
-			rlogger.Log(w.logger, rlogger.Error, "msg", "unable to forward results", "err", err)
-			wait = time.Minute
-		}
-
 		select {
 		// If the context is canceled, then we're done.
 		case <-ctx.Done():
+			ticker.Stop()
 			return
-		case <-time.After(wait):
+		case <-ticker.C:
+			if err := w.forward(ctx); err != nil {
+				rlogger.Log(w.logger, rlogger.Error, "msg", "unable to forward results", "err", err)
+			}
 		// We want to be able to interrupt a sleep to immediately apply a new configuration.
 		case <-w.reconfigure:
+			w.lock.Lock()
+			ticker.Reset(w.interval)
+			w.lock.Unlock()
 		}
 	}
 }
@@ -511,8 +520,12 @@ func (w *Worker) getFederateMetrics(ctx context.Context) ([]*clientmodel.MetricF
 	from := w.from
 	from.RawQuery = ""
 	v := from.Query()
+	if len(w.matchers) == 0 {
+		return families, nil
+	}
+
 	for _, matcher := range w.matchers {
-		v.Add("match[]", matcher)
+		v.Add(matchParam, matcher)
 	}
 	from.RawQuery = v.Encode()
 
@@ -532,6 +545,10 @@ func (w *Worker) getRecordingMetrics(ctx context.Context) ([]*clientmodel.Metric
 
 	from := w.fromQuery
 
+	if len(w.recordingRules) == 0 {
+		return families, nil
+	}
+
 	for _, rule := range w.recordingRules {
 		var r map[string]string
 		err := json.Unmarshal(([]byte)(rule), &r)
@@ -546,11 +563,11 @@ func (w *Worker) getRecordingMetrics(ctx context.Context) ([]*clientmodel.Metric
 		// reset query from last invocation, otherwise match rules will be appended
 		from.RawQuery = ""
 		v := w.fromQuery.Query()
-		v.Add("query", rquery)
+		v.Add(queryParam, rquery)
 		from.RawQuery = v.Encode()
 
 		req := &http.Request{Method: "GET", URL: from}
-		rfamilies, err := w.fromClient.RetrievRecordingMetrics(ctx, req, rname)
+		rfamilies, err := w.fromClient.RetrieveRecordingMetrics(ctx, req, rname)
 		if err != nil {
 			rlogger.Log(w.logger, rlogger.Warn, "msg", "Failed to retrieve recording metrics", "err", err, "url", from)
 			e = err

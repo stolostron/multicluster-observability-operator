@@ -88,7 +88,7 @@ type MetricsResult struct {
 	Value  []interface{}     `json:"value"`
 }
 
-func (c *Client) RetrievRecordingMetrics(
+func (c *Client) RetrieveRecordingMetrics(
 	ctx context.Context,
 	req *http.Request,
 	name string) ([]*clientmodel.MetricFamily, error) {
