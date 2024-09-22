@@ -25,7 +25,7 @@ func TestMultiWorkers(t *testing.T) {
 	opt := &Options{
 		Listen:                  "localhost:9002",
 		LimitBytes:              200 * 1024,
-		Rules:                   []string{`{__name__="instance:node_vmstat_pgmajfault:rate1m"}`},
+		Matchers:                []string{`{__name__="instance:node_vmstat_pgmajfault:rate1m"}`},
 		Interval:                4*time.Minute + 30*time.Second,
 		WorkerNum:               2,
 		SimulatedTimeseriesFile: "../../testdata/timeseries.txt",
@@ -35,11 +35,6 @@ func TestMultiWorkers(t *testing.T) {
 			"cluster=local-cluster",
 			"clusterID=245c2253-7b0d-4080-8e33-f6f0d6c6ff73",
 		},
-		FromCAFile:             "../../testdata/service-ca.crt",
-		FromTokenFile:          "../../testdata/token",
-		ToUploadCA:             "../../testdata/tls/ca.crt",
-		ToUploadCert:           "../../testdata/tls/tls.crt",
-		ToUploadKey:            "../../testdata/tls/tls.key",
 		DisableHyperShift:      true,
 		DisableStatusReporting: true,
 	}

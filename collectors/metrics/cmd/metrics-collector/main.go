@@ -44,7 +44,7 @@ func main() {
 		From:                   "http://localhost:9090",
 		Listen:                 "localhost:9002",
 		LimitBytes:             200 * 1024,
-		Rules:                  []string{`{__name__="up"}`},
+		Matchers:               []string{`{__name__="up"}`},
 		Interval:               4*time.Minute + 30*time.Second,
 		EvaluateInterval:       30 * time.Second,
 		WorkerNum:              1,
@@ -133,37 +133,26 @@ func main() {
 		opt.LimitBytes,
 		"The maxiumum acceptable size of a response returned when scraping Prometheus.")
 
-	// TODO: more complex input definition, such as a JSON struct
 	cmd.Flags().StringArrayVar(
-		&opt.Rules,
+		&opt.Matchers,
 		"match",
-		opt.Rules,
+		opt.Matchers,
 		"Match rules to federate.")
 	cmd.Flags().StringVar(
-		&opt.RulesFile,
+		&opt.MatcherFile,
 		"match-file",
-		opt.RulesFile,
+		opt.MatcherFile,
 		"A file containing match rules to federate, one rule per line.")
 	cmd.Flags().StringArrayVar(
 		&opt.RecordingRules,
 		"recordingrule",
 		opt.RecordingRules,
 		"Define recording rule is to generate new metrics based on specified query expression.")
-	cmd.Flags().StringVar(
-		&opt.RecordingRulesFile,
-		"recording-file",
-		opt.RulesFile,
-		"A file containing recording rules.")
 	cmd.Flags().StringArrayVar(
 		&opt.CollectRules,
 		"collectrule",
 		opt.CollectRules,
 		"Define metrics collect rule is to collect additional metrics based on specified event.")
-	cmd.Flags().StringVar(
-		&opt.RecordingRulesFile,
-		"collect-file",
-		opt.RecordingRulesFile,
-		"A file containing collect rules.")
 
 	cmd.Flags().StringSliceVar(
 		&opt.LabelFlag,
@@ -209,13 +198,6 @@ func main() {
 		"log-level",
 		opt.LogLevel,
 		"Log filtering level. e.g info, debug, warn, error")
-
-	// deprecated opt
-	cmd.Flags().StringVar(
-		&opt.Identifier,
-		"id",
-		opt.Identifier,
-		"The unique identifier for metrics sent with this client.")
 
 	// simulation test
 	cmd.Flags().StringVar(
@@ -266,12 +248,10 @@ type Options struct {
 	AnonymizeSalt     string
 	AnonymizeSaltFile string
 
-	Rules              []string
-	RulesFile          string
-	RecordingRules     []string
-	RecordingRulesFile string
-	CollectRules       []string
-	CollectRulesFile   string
+	Matchers       []string
+	MatcherFile    string
+	RecordingRules []string
+	CollectRules   []string
 
 	LabelFlag []string
 	Labels    map[string]string
@@ -281,9 +261,6 @@ type Options struct {
 
 	LogLevel string
 	Logger   log.Logger
-
-	// deprecated
-	Identifier string
 
 	// simulation file
 	SimulatedTimeseriesFile string
@@ -432,8 +409,7 @@ func runMultiWorkers(o *Options, cfg *forwarder.Config) error {
 			ToUploadCA:              o.ToUploadCA,
 			ToUploadCert:            o.ToUploadCert,
 			ToUploadKey:             o.ToUploadKey,
-			Rules:                   o.Rules,
-			RenameFlag:              o.RenameFlag,
+			Matchers:                o.Matchers,
 			RecordingRules:          o.RecordingRules,
 			Interval:                o.Interval,
 			Labels:                  map[string]string{},
@@ -570,6 +546,10 @@ func initConfig(o *Options) (*forwarder.Config, error) {
 	transformer.With(metricfamily.TransformerFunc(metricfamily.PackMetrics))
 	transformer.With(metricfamily.TransformerFunc(metricfamily.SortMetrics))
 
+	// TODO(saswatamcode): Kill this feature.
+	// This is too messy of an approach, to get hypershift specific labels into metrics we send.
+	// There is much better way to do this, with relabel configs.
+	// A collection agent shouldn't be calling out to Kube API server just to add labels.
 	if !o.DisableHyperShift {
 		isHypershift, err := metricfamily.CheckCRDExist(o.Logger)
 		if err != nil {
@@ -599,16 +579,39 @@ func initConfig(o *Options) (*forwarder.Config, error) {
 		}
 	}
 
+	// Configure matchers.
+	matchers := o.Matchers
+	if len(o.MatcherFile) > 0 {
+		data, err := os.ReadFile(o.MatcherFile)
+		if err != nil {
+			return nil, fmt.Errorf("unable to read match-file: %w", err)
+		}
+		matchers = append(matchers, strings.Split(string(data), "\n")...)
+	}
+	for i := 0; i < len(matchers); {
+		s := strings.TrimSpace(matchers[i])
+		if len(s) == 0 {
+			matchers = append(matchers[:i], matchers[i+1:]...)
+			continue
+		}
+		matchers[i] = s
+		i++
+	}
+
 	f := forwarder.Config{
-		From:          from,
-		FromQuery:     fromQuery,
-		ToUpload:      toUpload,
-		FromToken:     o.FromToken,
-		FromTokenFile: o.FromTokenFile,
-		FromCAFile:    o.FromCAFile,
-		ToUploadCA:    o.ToUploadCA,
-		ToUploadCert:  o.ToUploadCert,
-		ToUploadKey:   o.ToUploadKey,
+		FromClientConfig: forwarder.FromClientConfig{
+			URL:       from,
+			QueryURL:  fromQuery,
+			Token:     o.FromToken,
+			TokenFile: o.FromTokenFile,
+			CAFile:    o.FromCAFile,
+		},
+		ToClientConfig: forwarder.ToClientConfig{
+			URL:      toUpload,
+			CAFile:   o.ToUploadCA,
+			CertFile: o.ToUploadCert,
+			KeyFile:  o.ToUploadKey,
+		},
 
 		AnonymizeLabels:   o.AnonymizeLabels,
 		AnonymizeSalt:     o.AnonymizeSalt,
@@ -617,8 +620,7 @@ func initConfig(o *Options) (*forwarder.Config, error) {
 		Interval:          o.Interval,
 		EvaluateInterval:  o.EvaluateInterval,
 		LimitBytes:        o.LimitBytes,
-		Rules:             o.Rules,
-		RulesFile:         o.RulesFile,
+		Matchers:          matchers,
 		RecordingRules:    o.RecordingRules,
 		CollectRules:      o.CollectRules,
 		Transformer:       transformer,
@@ -627,6 +629,10 @@ func initConfig(o *Options) (*forwarder.Config, error) {
 		SimulatedTimeseriesFile: o.SimulatedTimeseriesFile,
 	}
 
+	// TODO(saswatamcode): Evaluate better way for status reporting.
+	// Currently, it reports status for every 3 errors in forward request. This is too much of an overhead
+	// Every remote write request error does not need to be reported.
+	// Instead we can try to do this with metrics-collector meta-monitoring
 	if !o.DisableStatusReporting {
 		config, err := clientcmd.BuildConfigFromFlags("", "")
 		if err != nil {

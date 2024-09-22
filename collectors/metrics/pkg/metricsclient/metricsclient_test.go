@@ -22,7 +22,7 @@ func TestDefaultTransport(t *testing.T) {
 		TLSHandshakeTimeout: 10 * time.Second,
 		DisableKeepAlives:   true,
 	}
-	http := DefaultTransport(logger, true)
+	http := DefaultTransport(logger)
 	if http.Dial == nil || reflect.TypeOf(http) != reflect.TypeOf(want) {
 		t.Errorf("Default transport doesn't match expected format")
 	}

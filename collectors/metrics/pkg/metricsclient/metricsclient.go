@@ -363,7 +363,7 @@ func MTLSTransport(logger log.Logger, caCertFile, tlsCrtFile, tlsKeyFile string)
 
 }
 
-func DefaultTransport(logger log.Logger, isTLS bool) *http.Transport {
+func DefaultTransport(logger log.Logger) *http.Transport {
 	return &http.Transport{
 		Dial: (&net.Dialer{
 			Timeout:   30 * time.Second,

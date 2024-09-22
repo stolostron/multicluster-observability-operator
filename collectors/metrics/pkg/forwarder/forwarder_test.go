@@ -38,133 +38,132 @@ func TestNew(t *testing.T) {
 		{
 			// Empty configuration should error.
 			c: Config{
-				Logger:       log.NewNopLogger(),
-				ToUploadCA:   "../../testdata/tls/ca.crt",
-				ToUploadCert: "../../testdata/tls/tls.crt",
-				ToUploadKey:  "../../testdata/tls/tls.key",
+				Logger: log.NewNopLogger(),
 			},
 			err: true,
 		},
 		{
 			// Only providing a `From` should not error.
 			c: Config{
-				From:         from,
-				Logger:       log.NewNopLogger(),
-				ToUploadCA:   "../../testdata/tls/ca.crt",
-				ToUploadCert: "../../testdata/tls/tls.crt",
-				ToUploadKey:  "../../testdata/tls/tls.key",
+				FromClientConfig: FromClientConfig{
+					URL: from,
+				},
+				Logger: log.NewNopLogger(),
 			},
 			err: false,
 		},
 		{
 			// Providing `From` and `ToUpload` should not error.
 			c: Config{
-				From:         from,
-				ToUpload:     toUpload,
-				Logger:       log.NewNopLogger(),
-				ToUploadCA:   "../../testdata/tls/ca.crt",
-				ToUploadCert: "../../testdata/tls/tls.crt",
-				ToUploadKey:  "../../testdata/tls/tls.key",
+				FromClientConfig: FromClientConfig{
+					URL: from,
+				},
+				ToClientConfig: ToClientConfig{
+					URL: toUpload,
+				},
+				Logger: log.NewNopLogger(),
 			},
 			err: false,
 		},
 		{
 			// Providing an invalid `FromTokenFile` file should error.
 			c: Config{
-				From:          from,
-				FromTokenFile: "/this/path/does/not/exist",
-				Logger:        log.NewNopLogger(),
-				ToUploadCA:    "../../testdata/tls/ca.crt",
-				ToUploadCert:  "../../testdata/tls/tls.crt",
-				ToUploadKey:   "../../testdata/tls/tls.key",
+				FromClientConfig: FromClientConfig{
+					URL:       from,
+					TokenFile: "/this/path/does/not/exist",
+				},
+				Logger: log.NewNopLogger(),
 			},
 			err: true,
 		},
 		{
 			// Providing only `AnonymizeSalt` should not error.
 			c: Config{
-				From:          from,
+				FromClientConfig: FromClientConfig{
+					URL: from,
+				},
 				AnonymizeSalt: "1",
 				Logger:        log.NewNopLogger(),
-				ToUploadCA:    "../../testdata/tls/ca.crt",
-				ToUploadCert:  "../../testdata/tls/tls.crt",
-				ToUploadKey:   "../../testdata/tls/tls.key",
 			},
 			err: false,
 		},
 		{
 			// Providing only `AnonymizeLabels` should error.
 			c: Config{
-				From:            from,
+				FromClientConfig: FromClientConfig{
+					URL: from,
+				},
 				AnonymizeLabels: []string{"foo"},
 				Logger:          log.NewNopLogger(),
-				ToUploadCA:      "../../testdata/tls/ca.crt",
-				ToUploadCert:    "../../testdata/tls/tls.crt",
-				ToUploadKey:     "../../testdata/tls/tls.key",
 			},
 			err: true,
 		},
 		{
 			// Providing only `AnonymizeSalt` and `AnonymizeLabels should not error.
 			c: Config{
-				From:            from,
+				FromClientConfig: FromClientConfig{
+					URL: from,
+				},
 				AnonymizeLabels: []string{"foo"},
 				AnonymizeSalt:   "1",
 				Logger:          log.NewNopLogger(),
-				ToUploadCA:      "../../testdata/tls/ca.crt",
-				ToUploadCert:    "../../testdata/tls/tls.crt",
-				ToUploadKey:     "../../testdata/tls/tls.key",
 			},
 			err: false,
 		},
 		{
 			// Providing an invalid `AnonymizeSaltFile` should error.
 			c: Config{
-				From:              from,
+				FromClientConfig: FromClientConfig{
+					URL: from,
+				},
 				AnonymizeLabels:   []string{"foo"},
 				AnonymizeSaltFile: "/this/path/does/not/exist",
 				Logger:            log.NewNopLogger(),
-				ToUploadCA:        "../../testdata/tls/ca.crt",
-				ToUploadCert:      "../../testdata/tls/tls.crt",
-				ToUploadKey:       "../../testdata/tls/tls.key",
 			},
 			err: true,
 		},
 		{
 			// Providing `AnonymizeSalt` takes preference over an invalid `AnonymizeSaltFile` and should not error.
 			c: Config{
-				From:              from,
+				FromClientConfig: FromClientConfig{
+					URL: from,
+				},
 				AnonymizeLabels:   []string{"foo"},
 				AnonymizeSalt:     "1",
 				AnonymizeSaltFile: "/this/path/does/not/exist",
 				Logger:            log.NewNopLogger(),
-				ToUploadCA:        "../../testdata/tls/ca.crt",
-				ToUploadCert:      "../../testdata/tls/tls.crt",
-				ToUploadKey:       "../../testdata/tls/tls.key",
+				ToClientConfig: ToClientConfig{
+					CAFile:   "../../testdata/tls/ca.crt",
+					CertFile: "../../testdata/tls/tls.crt",
+					KeyFile:  "../../testdata/tls/tls.key",
+				},
 			},
 			err: false,
 		},
 		{
 			// Providing an invalid `FromCAFile` should error.
 			c: Config{
-				From:         from,
-				FromCAFile:   "/this/path/does/not/exist",
-				Logger:       log.NewNopLogger(),
-				ToUploadCA:   "../../testdata/tls/ca.crt",
-				ToUploadCert: "../../testdata/tls/tls.crt",
-				ToUploadKey:  "../../testdata/tls/tls.key",
+				FromClientConfig: FromClientConfig{
+					URL:    from,
+					CAFile: "/this/path/does/not/exist",
+				},
+				Logger: log.NewNopLogger(),
 			},
 			err: true,
 		},
 		{
 			// Providing CustomCA should not error.
 			c: Config{
-				From:         from,
-				ToUpload:     toUpload,
-				Logger:       log.NewNopLogger(),
-				ToUploadCA:   "../../testdata/tls/ca.crt",
-				ToUploadCert: "../../testdata/tls/tls.crt",
-				ToUploadKey:  "../../testdata/tls/tls.key",
+				FromClientConfig: FromClientConfig{
+					URL: from,
+				},
+				ToClientConfig: ToClientConfig{
+					URL:      toUpload,
+					CAFile:   "../../testdata/tls/ca.crt",
+					CertFile: "../../testdata/tls/tls.crt",
+					KeyFile:  "../../testdata/tls/tls.key",
+				},
+				Logger: log.NewNopLogger(),
 			},
 			err: false,
 		},
@@ -191,12 +190,11 @@ func TestReconfigure(t *testing.T) {
 		t.Fatalf("failed to parse `from` URL: %v", err)
 	}
 	c := Config{
-		From:         from,
-		Logger:       log.NewNopLogger(),
-		Metrics:      NewWorkerMetrics(prometheus.NewRegistry()),
-		ToUploadCA:   "../../testdata/tls/ca.crt",
-		ToUploadCert: "../../testdata/tls/tls.crt",
-		ToUploadKey:  "../../testdata/tls/tls.key",
+		FromClientConfig: FromClientConfig{
+			URL: from,
+		},
+		Logger:  log.NewNopLogger(),
+		Metrics: NewWorkerMetrics(prometheus.NewRegistry()),
 	}
 	w, err := New(c)
 	if err != nil {
@@ -215,33 +213,28 @@ func TestReconfigure(t *testing.T) {
 		{
 			// Empty configuration should error.
 			c: Config{
-				Logger:       log.NewNopLogger(),
-				ToUploadCA:   "../../testdata/tls/ca.crt",
-				ToUploadCert: "../../testdata/tls/tls.crt",
-				ToUploadKey:  "../../testdata/tls/tls.key",
+				Logger: log.NewNopLogger(),
 			},
 			err: true,
 		},
 		{
 			// Configuration with new `From` should not error.
 			c: Config{
-				From:         from2,
-				Logger:       log.NewNopLogger(),
-				ToUploadCA:   "../../testdata/tls/ca.crt",
-				ToUploadCert: "../../testdata/tls/tls.crt",
-				ToUploadKey:  "../../testdata/tls/tls.key",
+				FromClientConfig: FromClientConfig{
+					URL: from2,
+				},
+				Logger: log.NewNopLogger(),
 			},
 			err: false,
 		},
 		{
 			// Configuration with new invalid field should error.
 			c: Config{
-				From:          from,
-				FromTokenFile: "/this/path/does/not/exist",
-				Logger:        log.NewNopLogger(),
-				ToUploadCA:    "../../testdata/tls/ca.crt",
-				ToUploadCert:  "../../testdata/tls/tls.crt",
-				ToUploadKey:   "../../testdata/tls/tls.key",
+				FromClientConfig: FromClientConfig{
+					URL:       from,
+					TokenFile: "/this/path/does/not/exist",
+				},
+				Logger: log.NewNopLogger(),
 			},
 			err: true,
 		},
@@ -270,13 +263,17 @@ func TestReconfigure(t *testing.T) {
 func TestRun(t *testing.T) {
 	c := Config{
 		// Use a dummy URL.
-		From:         &url.URL{},
-		FromQuery:    &url.URL{},
-		Logger:       log.NewNopLogger(),
-		Metrics:      NewWorkerMetrics(prometheus.NewRegistry()),
-		ToUploadCA:   "../../testdata/tls/ca.crt",
-		ToUploadCert: "../../testdata/tls/tls.crt",
-		ToUploadKey:  "../../testdata/tls/tls.key",
+		FromClientConfig: FromClientConfig{
+			URL:      &url.URL{},
+			QueryURL: &url.URL{},
+		},
+		Logger:  log.NewNopLogger(),
+		Metrics: NewWorkerMetrics(prometheus.NewRegistry()),
+		ToClientConfig: ToClientConfig{
+			CAFile:   "../../testdata/tls/ca.crt",
+			CertFile: "../../testdata/tls/tls.crt",
+			KeyFile:  "../../testdata/tls/tls.key",
+		},
 	}
 	w, err := New(c)
 	if err != nil {
@@ -307,13 +304,16 @@ func TestRun(t *testing.T) {
 				stdlog.Fatalf("failed to parse second test server URL: %v", err)
 			}
 			if err := w.Reconfigure(Config{
-				From:         from,
-				FromQuery:    from,
-				Logger:       log.NewNopLogger(),
-				Metrics:      NewWorkerMetrics(prometheus.NewRegistry()),
-				ToUploadCA:   "../../testdata/tls/ca.crt",
-				ToUploadCert: "../../testdata/tls/tls.crt",
-				ToUploadKey:  "../../testdata/tls/tls.key",
+				FromClientConfig: FromClientConfig{
+					URL: from,
+				},
+				Logger:  log.NewNopLogger(),
+				Metrics: NewWorkerMetrics(prometheus.NewRegistry()),
+				ToClientConfig: ToClientConfig{
+					CAFile:   "../../testdata/tls/ca.crt",
+					CertFile: "../../testdata/tls/tls.crt",
+					KeyFile:  "../../testdata/tls/tls.key",
+				},
 			}); err != nil {
 				stdlog.Fatalf("failed to reconfigure worker with second test server url: %v", err)
 			}
@@ -326,14 +326,17 @@ func TestRun(t *testing.T) {
 		t.Fatalf("failed to parse first test server URL: %v", err)
 	}
 	if err := w.Reconfigure(Config{
-		From:           from,
-		FromQuery:      from,
+		FromClientConfig: FromClientConfig{
+			URL: from,
+		},
 		RecordingRules: []string{"{\"name\":\"test\",\"query\":\"test\"}"},
 		Logger:         log.NewNopLogger(),
 		Metrics:        NewWorkerMetrics(prometheus.NewRegistry()),
-		ToUploadCA:     "../../testdata/tls/ca.crt",
-		ToUploadCert:   "../../testdata/tls/tls.crt",
-		ToUploadKey:    "../../testdata/tls/tls.key",
+		ToClientConfig: ToClientConfig{
+			CAFile:   "../../testdata/tls/ca.crt",
+			CertFile: "../../testdata/tls/tls.crt",
+			KeyFile:  "../../testdata/tls/tls.key",
+		},
 	}); err != nil {
 		t.Fatalf("failed to reconfigure worker with first test server url: %v", err)
 	}
