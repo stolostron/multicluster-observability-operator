@@ -21,31 +21,38 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/oklog/run"
+	hyperv1 "github.com/openshift/hypershift/api/hypershift/v1alpha1"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/common/expfmt"
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/util/uuid"
+	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/tools/clientcmd"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/collectrule"
 	"github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/forwarder"
 	collectorhttp "github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/http"
 	"github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/logger"
 	"github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/metricfamily"
+	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 )
 
 func main() {
 	opt := &Options{
-		From:             "http://localhost:9090",
-		Listen:           "localhost:9002",
-		LimitBytes:       200 * 1024,
-		Rules:            []string{`{__name__="up"}`},
-		Interval:         4*time.Minute + 30*time.Second,
-		EvaluateInterval: 30 * time.Second,
-		WorkerNum:        1,
+		From:                   "http://localhost:9090",
+		Listen:                 "localhost:9002",
+		LimitBytes:             200 * 1024,
+		Rules:                  []string{`{__name__="up"}`},
+		Interval:               4*time.Minute + 30*time.Second,
+		EvaluateInterval:       30 * time.Second,
+		WorkerNum:              1,
+		DisableHyperShift:      false,
+		DisableStatusReporting: false,
 	}
 	cmd := &cobra.Command{
-		Short:         "Federate Prometheus via push",
+		Short:         "Remote write federated metrics from prometheus",
 		SilenceErrors: true,
 		SilenceUsage:  true,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -284,8 +291,13 @@ type Options struct {
 	// how many threads are running
 	// for production, it is always 1
 	WorkerNum int64
+
+	DisableHyperShift      bool
+	DisableStatusReporting bool
 }
 
+// Run is the entry point of the metrics collector
+// It is in charge of running forwarders, collectrule agent and recording rule agents.
 func (o *Options) Run() error {
 	var g run.Group
 
@@ -301,7 +313,7 @@ func (o *Options) Run() error {
 	// Some packages still use default Register. Replace to have those metrics.
 	prometheus.DefaultRegisterer = metricsReg
 
-	err, cfg := initConfig(o)
+	cfg, err := initConfig(o)
 	if err != nil {
 		return err
 	}
@@ -427,6 +439,8 @@ func runMultiWorkers(o *Options, cfg *forwarder.Config) error {
 			Labels:                  map[string]string{},
 			SimulatedTimeseriesFile: o.SimulatedTimeseriesFile,
 			Logger:                  o.Logger,
+			DisableHyperShift:       o.DisableHyperShift,
+			DisableStatusReporting:  o.DisableStatusReporting,
 		}
 		for _, flag := range o.LabelFlag {
 			values := strings.SplitN(flag, "=", 2)
@@ -441,7 +455,8 @@ func runMultiWorkers(o *Options, cfg *forwarder.Config) error {
 			}
 			opt.Labels[values[0]] = values[1]
 		}
-		err, forwardCfg := initConfig(opt)
+
+		forwardCfg, err := initConfig(opt)
 		if err != nil {
 			return err
 		}
@@ -462,15 +477,15 @@ func runMultiWorkers(o *Options, cfg *forwarder.Config) error {
 	return nil
 }
 
-func initConfig(o *Options) (error, *forwarder.Config) {
+func initConfig(o *Options) (*forwarder.Config, error) {
 	if len(o.From) == 0 {
-		return errors.New("you must specify a Prometheus server to federate from (e.g. http://localhost:9090)"), nil
+		return nil, errors.New("you must specify a Prometheus server to federate from (e.g. http://localhost:9090)")
 	}
 
 	for _, flag := range o.LabelFlag {
 		values := strings.SplitN(flag, "=", 2)
 		if len(values) != 2 {
-			return fmt.Errorf("--label must be of the form key=value: %s", flag), nil
+			return nil, fmt.Errorf("--label must be of the form key=value: %s", flag)
 		}
 		if o.Labels == nil {
 			o.Labels = make(map[string]string)
@@ -484,7 +499,7 @@ func initConfig(o *Options) (error, *forwarder.Config) {
 		}
 		values := strings.SplitN(flag, "=", 2)
 		if len(values) != 2 {
-			return fmt.Errorf("--rename must be of the form OLD_NAME=NEW_NAME: %s", flag), nil
+			return nil, fmt.Errorf("--rename must be of the form OLD_NAME=NEW_NAME: %s", flag)
 		}
 		if o.Renames == nil {
 			o.Renames = make(map[string]string)
@@ -494,7 +509,7 @@ func initConfig(o *Options) (error, *forwarder.Config) {
 
 	from, err := url.Parse(o.From)
 	if err != nil {
-		return fmt.Errorf("--from is not a valid URL: %w", err), nil
+		return nil, fmt.Errorf("--from is not a valid URL: %w", err)
 	}
 	from.Path = strings.TrimRight(from.Path, "/")
 	if len(from.Path) == 0 {
@@ -503,8 +518,9 @@ func initConfig(o *Options) (error, *forwarder.Config) {
 
 	fromQuery, err := url.Parse(o.FromQuery)
 	if err != nil {
-		return fmt.Errorf("--from-query is not a valid URL: %w", err), nil
+		return nil, fmt.Errorf("--from-query is not a valid URL: %w", err)
 	}
+
 	fromQuery.Path = strings.TrimRight(fromQuery.Path, "/")
 	if len(fromQuery.Path) == 0 {
 		fromQuery.Path = "/api/v1/query"
@@ -514,12 +530,12 @@ func initConfig(o *Options) (error, *forwarder.Config) {
 	if len(o.ToUpload) > 0 {
 		toUpload, err = url.Parse(o.ToUpload)
 		if err != nil {
-			return fmt.Errorf("--to-upload is not a valid URL: %w", err), nil
+			return nil, fmt.Errorf("--to-upload is not a valid URL: %w", err)
 		}
 	}
 
 	if toUpload == nil {
-		return errors.New("--to-upload must be specified"), nil
+		return nil, errors.New("--to-upload must be specified")
 	}
 
 	var transformer metricfamily.MultiTransformer
@@ -554,21 +570,36 @@ func initConfig(o *Options) (error, *forwarder.Config) {
 	transformer.With(metricfamily.TransformerFunc(metricfamily.PackMetrics))
 	transformer.With(metricfamily.TransformerFunc(metricfamily.SortMetrics))
 
-	isHypershift, err := metricfamily.CheckCRDExist(o.Logger)
-	if err != nil {
-		return err, nil
-	}
-	if isHypershift {
-		hyperTransformer, err := metricfamily.NewHypershiftTransformer(o.Logger, nil, o.Labels)
+	if !o.DisableHyperShift {
+		isHypershift, err := metricfamily.CheckCRDExist(o.Logger)
 		if err != nil {
-			return err, nil
+			return nil, err
 		}
-		transformer.WithFunc(func() metricfamily.Transformer {
-			return hyperTransformer
-		})
+		if isHypershift {
+			config, err := clientcmd.BuildConfigFromFlags("", "")
+			if err != nil {
+				return nil, errors.New("failed to create the kube config for hypershiftv1")
+			}
+			s := scheme.Scheme
+			if err := hyperv1.AddToScheme(s); err != nil {
+				return nil, errors.New("failed to add observabilityaddon into scheme")
+			}
+			hClient, err := client.New(config, client.Options{Scheme: s})
+			if err != nil {
+				return nil, errors.New("failed to create the kube client")
+			}
+
+			hyperTransformer, err := metricfamily.NewHypershiftTransformer(hClient, o.Logger, o.Labels)
+			if err != nil {
+				return nil, err
+			}
+			transformer.WithFunc(func() metricfamily.Transformer {
+				return hyperTransformer
+			})
+		}
 	}
 
-	return nil, &forwarder.Config{
+	f := forwarder.Config{
 		From:          from,
 		FromQuery:     fromQuery,
 		ToUpload:      toUpload,
@@ -595,6 +626,24 @@ func initConfig(o *Options) (error, *forwarder.Config) {
 		Logger:                  o.Logger,
 		SimulatedTimeseriesFile: o.SimulatedTimeseriesFile,
 	}
+
+	if !o.DisableStatusReporting {
+		config, err := clientcmd.BuildConfigFromFlags("", "")
+		if err != nil {
+			return nil, errors.New("failed to create the kube config for status")
+		}
+		s := scheme.Scheme
+		if err := oav1beta1.AddToScheme(s); err != nil {
+			return nil, errors.New("failed to add observabilityaddon into scheme")
+		}
+
+		f.StatusClient, err = client.New(config, client.Options{Scheme: s})
+		if err != nil {
+			return nil, errors.New("failed to create the kube client")
+		}
+	}
+
+	return &f, nil
 }
 
 // serveLastMetrics retrieves the last set of metrics served.

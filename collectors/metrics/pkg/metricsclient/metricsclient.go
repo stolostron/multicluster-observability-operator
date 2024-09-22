@@ -319,12 +319,6 @@ func withCancel(ctx context.Context, client *http.Client, req *http.Request, fn 
 }
 
 func MTLSTransport(logger log.Logger, caCertFile, tlsCrtFile, tlsKeyFile string) (*http.Transport, error) {
-	testMode := os.Getenv("UNIT_TEST") != ""
-	if testMode {
-		caCertFile = "../../testdata/tls/ca.crt"
-		tlsKeyFile = "../../testdata/tls/tls.key"
-		tlsCrtFile = "../../testdata/tls/tls.crt"
-	}
 	// Load Server CA cert
 	var caCert []byte
 	var err error

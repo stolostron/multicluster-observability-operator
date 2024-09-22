@@ -22,6 +22,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	clientmodel "github.com/prometheus/client_model/go"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	metricshttp "github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/http"
 	rlogger "github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/logger"
@@ -44,6 +45,8 @@ type RuleMatcher interface {
 // Config defines the parameters that can be used to configure a worker.
 // The only required field is `From`.
 type Config struct {
+	StatusClient client.Client
+
 	From          *url.URL
 	FromQuery     *url.URL
 	ToUpload      *url.URL
@@ -98,7 +101,7 @@ type Worker struct {
 
 	simulatedTimeseriesFile string
 
-	status status.StatusReport
+	status status.Reporter
 
 	metrics         *workerMetrics
 	forwardFailures int
@@ -300,13 +303,16 @@ func New(cfg Config) (*Worker, error) {
 	}
 	w.recordingRules = recordingRules
 
-	standalone := os.Getenv("STANDALONE") == "true"
-	isUwl := strings.Contains(os.Getenv("FROM"), uwlPromURL)
-	s, err := status.New(logger, standalone, isUwl)
-	if err != nil {
-		return nil, fmt.Errorf("unable to create StatusReport: %w", err)
+	w.status = &status.NoopReporter{}
+	if cfg.StatusClient != nil {
+		standalone := os.Getenv("STANDALONE") == "true"
+		isUwl := strings.Contains(os.Getenv("FROM"), uwlPromURL)
+		s, err := status.New(cfg.StatusClient, logger, standalone, isUwl)
+		if err != nil {
+			return nil, fmt.Errorf("unable to create StatusReport: %w", err)
+		}
+		w.status = s
 	}
-	w.status = *s
 
 	return &w, nil
 }

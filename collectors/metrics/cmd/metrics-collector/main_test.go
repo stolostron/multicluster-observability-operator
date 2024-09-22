@@ -15,14 +15,13 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/forwarder"
 	"github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/logger"
+	"k8s.io/client-go/kubernetes/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 )
 
-func init() {
-	os.Setenv("UNIT_TEST", "true")
-}
-
 func TestMultiWorkers(t *testing.T) {
-
 	opt := &Options{
 		Listen:                  "localhost:9002",
 		LimitBytes:              200 * 1024,
@@ -36,8 +35,13 @@ func TestMultiWorkers(t *testing.T) {
 			"cluster=local-cluster",
 			"clusterID=245c2253-7b0d-4080-8e33-f6f0d6c6ff73",
 		},
-		FromCAFile:    "../../testdata/service-ca.crt",
-		FromTokenFile: "../../testdata/token",
+		FromCAFile:             "../../testdata/service-ca.crt",
+		FromTokenFile:          "../../testdata/token",
+		ToUploadCA:             "../../testdata/tls/ca.crt",
+		ToUploadCert:           "../../testdata/tls/tls.crt",
+		ToUploadKey:            "../../testdata/tls/tls.key",
+		DisableHyperShift:      true,
+		DisableStatusReporting: true,
 	}
 
 	l := log.NewLogfmtLogger(log.NewSyncWriter(os.Stderr))
@@ -47,7 +51,19 @@ func TestMultiWorkers(t *testing.T) {
 	stdlog.SetOutput(log.NewStdlibAdapter(l))
 	opt.Logger = l
 
-	err := runMultiWorkers(opt, &forwarder.Config{Metrics: forwarder.NewWorkerMetrics(prometheus.NewRegistry())})
+	sc := scheme.Scheme
+	if err := oav1beta1.AddToScheme(sc); err != nil {
+		t.Fatal("failed to add observabilityaddon into scheme")
+	}
+	kubeClient := fake.NewClientBuilder().
+		WithScheme(sc).
+		WithStatusSubresource(&oav1beta1.ObservabilityAddon{}).
+		Build()
+
+	err := runMultiWorkers(opt, &forwarder.Config{
+		Metrics:      forwarder.NewWorkerMetrics(prometheus.NewRegistry()),
+		StatusClient: kubeClient,
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
