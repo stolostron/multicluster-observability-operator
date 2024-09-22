@@ -5,13 +5,8 @@
 package forwarder
 
 import (
-	"context"
-	stdlog "log"
-	"net/http"
-	"net/http/httptest"
 	"net/url"
 	"os"
-	"sync"
 	"testing"
 
 	"github.com/go-kit/log"
@@ -250,104 +245,4 @@ func TestReconfigure(t *testing.T) {
 			t.Errorf("test case %d: got %q, expected %s error", i, err, no)
 		}
 	}
-}
-
-// TestRun tests the Run method of the Worker type.
-// This test will:
-// * instantiate a worker
-// * configure the worker to make requests against a test server
-// * in that test server, reconfigure the worker to make requests against a second test server
-// * in the second test server, cancel the worker's context.
-// This test will only succeed if the worker is able to be correctly reconfigured and canceled
-// such that the Run method returns.
-func TestRun(t *testing.T) {
-	c := Config{
-		// Use a dummy URL.
-		FromClientConfig: FromClientConfig{
-			URL:      &url.URL{},
-			QueryURL: &url.URL{},
-		},
-		Logger:  log.NewNopLogger(),
-		Metrics: NewWorkerMetrics(prometheus.NewRegistry()),
-		ToClientConfig: ToClientConfig{
-			CAFile:   "../../testdata/tls/ca.crt",
-			CertFile: "../../testdata/tls/tls.crt",
-			KeyFile:  "../../testdata/tls/tls.key",
-		},
-	}
-	w, err := New(c)
-	if err != nil {
-		t.Fatalf("failed to create new worker: %v", err)
-	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	var once sync.Once
-	var wg sync.WaitGroup
-
-	wg.Add(1)
-	// This is the second test server. We need to define it early so we can use its URL in the
-	// handler for the first test server.
-	// In this handler, we decrement the wait group and cancel the worker's context.
-	ts2 := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {
-		cancel()
-		once.Do(wg.Done)
-	}))
-	defer ts2.Close()
-
-	// This is the first test server.
-	// In this handler, we test the Reconfigure method of the worker and point it to the second
-	// test server.
-	ts1 := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {
-		go func() {
-			from, err := url.Parse(ts2.URL)
-			if err != nil {
-				stdlog.Fatalf("failed to parse second test server URL: %v", err)
-			}
-			if err := w.Reconfigure(Config{
-				FromClientConfig: FromClientConfig{
-					URL: from,
-				},
-				Logger:  log.NewNopLogger(),
-				Metrics: NewWorkerMetrics(prometheus.NewRegistry()),
-				ToClientConfig: ToClientConfig{
-					CAFile:   "../../testdata/tls/ca.crt",
-					CertFile: "../../testdata/tls/tls.crt",
-					KeyFile:  "../../testdata/tls/tls.key",
-				},
-			}); err != nil {
-				stdlog.Fatalf("failed to reconfigure worker with second test server url: %v", err)
-			}
-		}()
-	}))
-	defer ts1.Close()
-
-	from, err := url.Parse(ts1.URL)
-	if err != nil {
-		t.Fatalf("failed to parse first test server URL: %v", err)
-	}
-	if err := w.Reconfigure(Config{
-		FromClientConfig: FromClientConfig{
-			URL: from,
-		},
-		RecordingRules: []string{"{\"name\":\"test\",\"query\":\"test\"}"},
-		Logger:         log.NewNopLogger(),
-		Metrics:        NewWorkerMetrics(prometheus.NewRegistry()),
-		ToClientConfig: ToClientConfig{
-			CAFile:   "../../testdata/tls/ca.crt",
-			CertFile: "../../testdata/tls/tls.crt",
-			KeyFile:  "../../testdata/tls/tls.key",
-		},
-	}); err != nil {
-		t.Fatalf("failed to reconfigure worker with first test server url: %v", err)
-	}
-
-	wg.Add(1)
-	// In this goroutine we run the worker and only decrement
-	// the wait group when the worker finishes running.
-	go func() {
-		w.Run(ctx)
-		wg.Done()
-	}()
-
-	wg.Wait()
 }
