@@ -88,7 +88,7 @@ type MetricsResult struct {
 	Value  []interface{}     `json:"value"`
 }
 
-func (c *Client) RetrievRecordingMetrics(
+func (c *Client) RetrieveRecordingMetrics(
 	ctx context.Context,
 	req *http.Request,
 	name string) ([]*clientmodel.MetricFamily, error) {
@@ -319,12 +319,6 @@ func withCancel(ctx context.Context, client *http.Client, req *http.Request, fn 
 }
 
 func MTLSTransport(logger log.Logger, caCertFile, tlsCrtFile, tlsKeyFile string) (*http.Transport, error) {
-	testMode := os.Getenv("UNIT_TEST") != ""
-	if testMode {
-		caCertFile = "../../testdata/tls/ca.crt"
-		tlsKeyFile = "../../testdata/tls/tls.key"
-		tlsCrtFile = "../../testdata/tls/tls.crt"
-	}
 	// Load Server CA cert
 	var caCert []byte
 	var err error
@@ -369,12 +363,12 @@ func MTLSTransport(logger log.Logger, caCertFile, tlsCrtFile, tlsKeyFile string)
 
 }
 
-func DefaultTransport(logger log.Logger, isTLS bool) *http.Transport {
+func DefaultTransport(logger log.Logger) *http.Transport {
 	return &http.Transport{
-		Dial: (&net.Dialer{
+		DialContext: (&net.Dialer{
 			Timeout:   30 * time.Second,
 			KeepAlive: 30 * time.Second,
-		}).Dial,
+		}).DialContext,
 		TLSHandshakeTimeout: 10 * time.Second,
 		DisableKeepAlives:   true,
 	}

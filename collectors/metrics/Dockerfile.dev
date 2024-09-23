@@ -1,0 +1,17 @@
+FROM golang:1.22-alpine3.18 AS builder
+
+WORKDIR /workspace
+COPY go.sum go.mod ./
+COPY ./collectors/metrics ./collectors/metrics
+COPY ./operators/pkg ./operators/pkg
+COPY ./operators/multiclusterobservability/api ./operators/multiclusterobservability/api
+RUN go build -v -o metrics-collector ./collectors/metrics/cmd/metrics-collector/main.go
+
+FROM alpine:3.18 AS runner
+
+USER 1001:1001
+
+COPY --from=builder /workspace/metrics-collector /usr/bin/
+
+
+CMD ["/bin/bash", "-c", "/usr/bin/metrics-collector"]

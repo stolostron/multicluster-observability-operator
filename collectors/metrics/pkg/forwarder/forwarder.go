@@ -22,6 +22,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	clientmodel "github.com/prometheus/client_model/go"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	metricshttp "github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/http"
 	rlogger "github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/logger"
@@ -35,95 +36,102 @@ import (
 const (
 	failedStatusReportMsg = "Failed to report status"
 	uwlPromURL            = "https://prometheus-user-workload.openshift-user-workload-monitoring.svc:9092"
+
+	matchParam = "match[]"
+	queryParam = "query"
 )
 
-type RuleMatcher interface {
-	MatchRules() []string
-}
-
 // Config defines the parameters that can be used to configure a worker.
-// The only required field is `From`.
 type Config struct {
-	From          *url.URL
-	FromQuery     *url.URL
-	ToUpload      *url.URL
-	FromToken     string
-	FromTokenFile string
-	FromCAFile    string
-	ToUploadCA    string
-	ToUploadCert  string
-	ToUploadKey   string
+	// StatusClient is a kube client used to report status to the hub.
+	StatusClient client.Client
+	Logger       log.Logger
+	Metrics      *workerMetrics
 
-	AnonymizeLabels    []string
-	AnonymizeSalt      string
-	AnonymizeSaltFile  string
-	Debug              bool
-	Interval           time.Duration
-	EvaluateInterval   time.Duration
-	LimitBytes         int64
-	Rules              []string
-	RulesFile          string
-	RecordingRules     []string
-	RecordingRulesFile string
-	CollectRules       []string
-	CollectRulesFile   string
-	Transformer        metricfamily.Transformer
+	// FromClientConfig is the config for the client used in sending /federate requests to Prometheus.
+	FromClientConfig FromClientConfig
+	// ToClientConfig is the config for the client used in sending remote write requests to Thanos Receive.
+	ToClientConfig ToClientConfig
+	// Enable debug roundtrippers for from and to clients.
+	Debug bool
+	// LimitBytes limits the size of the requests made to from and to clients.
+	LimitBytes int64
 
-	Logger                  log.Logger
+	// Interval is the interval at which workers will federate Prometheus and send remote write requests.
+	// 4m30s by default
+	Interval time.Duration
+	// EvaluateInterval is actually used to configure collectrule evaluator in collectrule/evaluator.go.
+	EvaluateInterval time.Duration
+
+	// Fields for anonymizing metrics.
+	AnonymizeLabels   []string
+	AnonymizeSalt     string
+	AnonymizeSaltFile string
+
+	// Matchers is the list of matchers to use for filtering metrics, they are appended to URL during /federate calls.
+	Matchers []string
+	// RecordingRules is the list of recording rules to evaluate and send as a new series in remote write.
+	// TODO(saswatamcode): Kill this feature.
+	RecordingRules []string
+	// CollectRules are unique rules, that basically add matchers, based on some PromQL rule.
+	// They are used to collect additional metrics when things are going wrong.
+	// TODO(saswatamcode): Do this some place else or re-evaluate if we even need this.
+	CollectRules []string
+	// SimulateTimeseriesFile provides configuration for sending simulated data. Used in perfscale tests?
+	// TODO(saswatamcode): Kill this feature, simulation testing logic should not be included in business logic.
 	SimulatedTimeseriesFile string
 
-	Metrics *workerMetrics
+	// Transformer is used to transform metrics before sending them to Thanos Receive.
+	// We pass in transformers for eliding labels, hypershift etc.
+	Transformer metricfamily.Transformer
 }
 
-// Worker represents a metrics forwarding agent. It collects metrics from a source URL and forwards them to a sink.
-// A Worker should be configured with a `Config` and instantiated with the `New` func.
-// Workers are thread safe; all access to shared fields are synchronized.
-type Worker struct {
-	fromClient *metricsclient.Client
-	toClient   *metricsclient.Client
-	from       *url.URL
-	fromQuery  *url.URL
-	to         *url.URL
-
-	interval       time.Duration
-	transformer    metricfamily.Transformer
-	rules          []string
-	recordingRules []string
-
-	lastMetrics []*clientmodel.MetricFamily
-	lock        sync.Mutex
-	reconfigure chan struct{}
-
-	logger log.Logger
-
-	simulatedTimeseriesFile string
-
-	status status.StatusReport
-
-	metrics         *workerMetrics
-	forwardFailures int
+type FromClientConfig struct {
+	URL       *url.URL
+	QueryURL  *url.URL
+	CAFile    string
+	Token     string
+	TokenFile string
 }
 
-func CreateFromClient(cfg Config, metrics *workerMetrics, interval time.Duration, name string,
-	logger log.Logger) (*metricsclient.Client, error) {
-	fromTransport := metricsclient.DefaultTransport(logger, false)
-	if len(cfg.FromCAFile) > 0 {
+type ToClientConfig struct {
+	URL      *url.URL
+	CAFile   string
+	CertFile string
+	KeyFile  string
+}
+
+// CreateFromClient creates a new metrics client for the from URL.
+// Needs to be exported here so that it can be used in collectrule evaluator.
+func (cfg Config) CreateFromClient(
+	metrics *workerMetrics,
+	interval time.Duration,
+	name string,
+	logger log.Logger,
+) (*metricsclient.Client, error) {
+	fromTransport := metricsclient.DefaultTransport(logger)
+
+	if len(cfg.FromClientConfig.CAFile) > 0 {
 		if fromTransport.TLSClientConfig == nil {
 			fromTransport.TLSClientConfig = &tls.Config{
 				MinVersion: tls.VersionTLS12,
 			}
 		}
+
 		pool, err := x509.SystemCertPool()
 		if err != nil {
 			return nil, fmt.Errorf("failed to read system certificates: %w", err)
 		}
-		data, err := os.ReadFile(cfg.FromCAFile)
+
+		data, err := os.ReadFile(cfg.FromClientConfig.CAFile)
 		if err != nil {
 			return nil, fmt.Errorf("failed to read from-ca-file: %w", err)
 		}
+
 		if !pool.AppendCertsFromPEM(data) {
 			rlogger.Log(logger, rlogger.Warn, "msg", "no certs found in from-ca-file")
 		}
+
 		fromTransport.TLSClientConfig.RootCAs = pool
 	} else {
 		if fromTransport.TLSClientConfig == nil {
@@ -140,25 +148,60 @@ func CreateFromClient(cfg Config, metrics *workerMetrics, interval time.Duration
 	if cfg.Debug {
 		fromClient.Transport = metricshttp.NewDebugRoundTripper(logger, fromClient.Transport)
 	}
-	if len(cfg.FromToken) == 0 && len(cfg.FromTokenFile) > 0 {
-		data, err := os.ReadFile(cfg.FromTokenFile)
+
+	if len(cfg.FromClientConfig.Token) == 0 && len(cfg.FromClientConfig.TokenFile) > 0 {
+		data, err := os.ReadFile(cfg.FromClientConfig.TokenFile)
 		if err != nil {
 			return nil, fmt.Errorf("unable to read from-token-file: %w", err)
 		}
-		cfg.FromToken = strings.TrimSpace(string(data))
-	}
-	if len(cfg.FromToken) > 0 {
-		fromClient.Transport = metricshttp.NewBearerRoundTripper(cfg.FromToken, fromClient.Transport)
+		cfg.FromClientConfig.Token = strings.TrimSpace(string(data))
 	}
 
-	from := metricsclient.New(logger, metrics.clientMetrics, fromClient, cfg.LimitBytes, interval, "federate_from")
+	if len(cfg.FromClientConfig.Token) > 0 {
+		fromClient.Transport = metricshttp.NewBearerRoundTripper(cfg.FromClientConfig.Token, fromClient.Transport)
+	}
 
-	return from, nil
+	return metricsclient.New(logger, metrics.clientMetrics, fromClient, cfg.LimitBytes, interval, "federate_from"), nil
 }
 
-func createClients(cfg Config, metrics *metricsclient.ClientMetrics, interval time.Duration,
-	logger log.Logger) (*metricsclient.Client, *metricsclient.Client, metricfamily.MultiTransformer, error) {
+// CreateToClient creates a new metrics client for the to URL.
+// Uses config for CA, Cert, Key for configuring mTLS transport.
+// Skips if nothing is provided.
+func (cfg Config) CreateToClient(
+	metrics *workerMetrics,
+	interval time.Duration,
+	name string,
+	logger log.Logger,
+) (*metricsclient.Client, error) {
+	var err error
+	toTransport := metricsclient.DefaultTransport(logger)
 
+	if len(cfg.ToClientConfig.CAFile) > 0 {
+		toTransport, err = metricsclient.MTLSTransport(logger, cfg.ToClientConfig.CAFile, cfg.ToClientConfig.CertFile, cfg.ToClientConfig.KeyFile)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create TLS transport: %w", err)
+		}
+	} else {
+		if toTransport.TLSClientConfig == nil {
+			// #nosec G402 -- Only used if no TLS config is provided.
+			toTransport.TLSClientConfig = &tls.Config{
+				MinVersion:         tls.VersionTLS12,
+				InsecureSkipVerify: true,
+			}
+		}
+	}
+
+	toTransport.Proxy = http.ProxyFromEnvironment
+	toClient := &http.Client{Transport: toTransport}
+	if cfg.Debug {
+		toClient.Transport = metricshttp.NewDebugRoundTripper(logger, toClient.Transport)
+	}
+
+	return metricsclient.New(logger, metrics.clientMetrics, toClient, cfg.LimitBytes, interval, name), nil
+}
+
+// GetTransformer creates a new transformer based on the provided Config.
+func (cfg Config) GetTransformer(logger log.Logger) (metricfamily.MultiTransformer, error) {
 	var transformer metricfamily.MultiTransformer
 
 	// Configure the anonymization.
@@ -166,42 +209,56 @@ func createClients(cfg Config, metrics *metricsclient.ClientMetrics, interval ti
 	if len(cfg.AnonymizeSalt) == 0 && len(cfg.AnonymizeSaltFile) > 0 {
 		data, err := os.ReadFile(cfg.AnonymizeSaltFile)
 		if err != nil {
-			return nil, nil, transformer, fmt.Errorf("failed to read anonymize-salt-file: %w", err)
+			return transformer, fmt.Errorf("failed to read anonymize-salt-file: %w", err)
 		}
 		anonymizeSalt = strings.TrimSpace(string(data))
 	}
+
 	if len(cfg.AnonymizeLabels) != 0 && len(anonymizeSalt) == 0 {
-		return nil, nil, transformer, errors.New("anonymize-salt must be specified if anonymize-labels is set")
+		return transformer, errors.New("anonymize-salt must be specified if anonymize-labels is set")
 	}
+
 	if len(cfg.AnonymizeLabels) == 0 {
 		rlogger.Log(logger, rlogger.Warn, "msg", "not anonymizing any labels")
 	}
 
-	// Configure a transformer.
+	// Combine with config transformer
 	if cfg.Transformer != nil {
 		transformer.With(cfg.Transformer)
 	}
+
 	if len(cfg.AnonymizeLabels) > 0 {
 		transformer.With(metricfamily.NewMetricsAnonymizer(anonymizeSalt, cfg.AnonymizeLabels, nil))
 	}
-	from, err := CreateFromClient(cfg, cfg.Metrics, interval, "federate_from", logger)
-	if err != nil {
-		return nil, nil, transformer, err
-	}
 
-	// Create the `toClient`.
+	return transformer, nil
+}
 
-	toTransport, err := metricsclient.MTLSTransport(logger, cfg.ToUploadCA, cfg.ToUploadCert, cfg.ToUploadKey)
-	if err != nil {
-		return nil, nil, transformer, fmt.Errorf("failed to create TLS transport: %w", err)
-	}
-	toTransport.Proxy = http.ProxyFromEnvironment
-	toClient := &http.Client{Transport: toTransport}
-	if cfg.Debug {
-		toClient.Transport = metricshttp.NewDebugRoundTripper(logger, toClient.Transport)
-	}
-	to := metricsclient.New(logger, metrics, toClient, cfg.LimitBytes, interval, "federate_to")
-	return from, to, transformer, nil
+// Worker represents a metrics forwarding agent. It collects metrics from a source URL and forwards them to a sink.
+// A Worker should be configured with a `Config` and instantiated with the `New` func.
+// Workers are thread safe; all access to shared fields are synchronized.
+type Worker struct {
+	logger          log.Logger
+	status          status.Reporter
+	reconfigure     chan struct{}
+	lock            sync.Mutex
+	metrics         *workerMetrics
+	forwardFailures int
+
+	fromClient *metricsclient.Client
+	toClient   *metricsclient.Client
+	from       *url.URL
+	fromQuery  *url.URL
+	to         *url.URL
+
+	interval time.Duration
+
+	transformer             metricfamily.Transformer
+	matchers                []string
+	recordingRules          []string
+	simulatedTimeseriesFile string
+
+	lastMetrics []*clientmodel.MetricFamily
 }
 
 type workerMetrics struct {
@@ -236,20 +293,21 @@ func NewWorkerMetrics(reg *prometheus.Registry) *workerMetrics {
 	}
 }
 
-// New creates a new Worker based on the provided Config. If the Config contains invalid
-// values, then an error is returned.
+// New creates a new Worker based on the provided Config.
 func New(cfg Config) (*Worker, error) {
-	if cfg.From == nil {
+	if cfg.FromClientConfig.URL == nil {
 		return nil, errors.New("a URL from which to scrape is required")
 	}
+
 	logger := log.With(cfg.Logger, "component", "forwarder")
-	rlogger.Log(logger, rlogger.Warn, "msg", cfg.ToUpload)
+	rlogger.Log(logger, rlogger.Warn, "msg", cfg.ToClientConfig.URL)
+
 	w := Worker{
-		from:                    cfg.From,
-		fromQuery:               cfg.FromQuery,
+		from:                    cfg.FromClientConfig.URL,
+		fromQuery:               cfg.FromClientConfig.QueryURL,
 		interval:                cfg.Interval,
 		reconfigure:             make(chan struct{}),
-		to:                      cfg.ToUpload,
+		to:                      cfg.ToClientConfig.URL,
 		logger:                  log.With(cfg.Logger, "component", "forwarder/worker"),
 		simulatedTimeseriesFile: cfg.SimulatedTimeseriesFile,
 		metrics:                 cfg.Metrics,
@@ -259,33 +317,26 @@ func New(cfg Config) (*Worker, error) {
 		w.interval = 4*time.Minute + 30*time.Second
 	}
 
-	fromClient, toClient, transformer, err := createClients(cfg, w.metrics.clientMetrics, w.interval, logger)
+	fromClient, err := cfg.CreateFromClient(w.metrics, w.interval, "federate_from", logger)
 	if err != nil {
 		return nil, err
 	}
+
+	toClient, err := cfg.CreateToClient(w.metrics, w.interval, "federate_to", logger)
+	if err != nil {
+		return nil, err
+	}
+
+	transformer, err := cfg.GetTransformer(logger)
+	if err != nil {
+		return nil, err
+	}
+
 	w.fromClient = fromClient
 	w.toClient = toClient
 	w.transformer = transformer
 
-	// Configure the matching rules.
-	rules := cfg.Rules
-	if len(cfg.RulesFile) > 0 {
-		data, err := os.ReadFile(cfg.RulesFile)
-		if err != nil {
-			return nil, fmt.Errorf("unable to read match-file: %w", err)
-		}
-		rules = append(rules, strings.Split(string(data), "\n")...)
-	}
-	for i := 0; i < len(rules); {
-		s := strings.TrimSpace(rules[i])
-		if len(s) == 0 {
-			rules = append(rules[:i], rules[i+1:]...)
-			continue
-		}
-		rules[i] = s
-		i++
-	}
-	w.rules = rules
+	w.matchers = cfg.Matchers
 
 	// Configure the recording rules.
 	recordingRules := cfg.RecordingRules
@@ -300,18 +351,25 @@ func New(cfg Config) (*Worker, error) {
 	}
 	w.recordingRules = recordingRules
 
-	standalone := os.Getenv("STANDALONE") == "true"
-	isUwl := strings.Contains(os.Getenv("FROM"), uwlPromURL)
-	s, err := status.New(logger, standalone, isUwl)
-	if err != nil {
-		return nil, fmt.Errorf("unable to create StatusReport: %w", err)
+	w.status = &status.NoopReporter{}
+	if cfg.StatusClient != nil {
+		standalone := os.Getenv("STANDALONE") == "true"
+		isUwl := strings.Contains(os.Getenv("FROM"), uwlPromURL)
+		s, err := status.New(cfg.StatusClient, logger, standalone, isUwl)
+		if err != nil {
+			return nil, fmt.Errorf("unable to create StatusReport: %w", err)
+		}
+		w.status = s
 	}
-	w.status = *s
 
 	return &w, nil
 }
 
-// Reconfigure temporarily stops a worker and reconfigures is with the provided Config.
+// TODO(saswatamcode): This is a relic of telemeter code, but with how our workers are configured, there will often
+// be no meaningful reload semantics, as most values are often kept as a flags which need restarts.
+// There is an option to explore this later, by instead "watching" matcherfile.
+// Keeping this method for now, but it is effectively unused.
+// Reconfigure temporarily stops a worker and reconfigures is with the provided Condfig.
 // Is thread safe and can run concurrently with `LastMetrics` and `Run`.
 func (w *Worker) Reconfigure(cfg Config) error {
 	worker, err := New(cfg)
@@ -328,7 +386,7 @@ func (w *Worker) Reconfigure(cfg Config) error {
 	w.from = worker.from
 	w.to = worker.to
 	w.transformer = worker.transformer
-	w.rules = worker.rules
+	w.matchers = worker.matchers
 	w.recordingRules = worker.recordingRules
 
 	// Signal a restart to Run func.
@@ -337,6 +395,9 @@ func (w *Worker) Reconfigure(cfg Config) error {
 	return nil
 }
 
+// TODO(saswatamcode): This is a relic of telemeter code, remove this.
+// There is no such utility to exposing this information as to what the last value of metrics sent was
+// Rarely would this be used as a tool for debugging, when you already have remote write metrics.
 func (w *Worker) LastMetrics() []*clientmodel.MetricFamily {
 	w.lock.Lock()
 	defer w.lock.Unlock()
@@ -344,25 +405,24 @@ func (w *Worker) LastMetrics() []*clientmodel.MetricFamily {
 }
 
 func (w *Worker) Run(ctx context.Context) {
+	ticker := time.NewTicker(w.interval)
+	defer ticker.Stop()
+
 	for {
-		// Ensure that the Worker does not access critical configuration during a reconfiguration.
-		w.lock.Lock()
-		wait := w.interval
-		// The critical section ends here.
-		w.lock.Unlock()
-
-		if err := w.forward(ctx); err != nil {
-			rlogger.Log(w.logger, rlogger.Error, "msg", "unable to forward results", "err", err)
-			wait = time.Minute
-		}
-
 		select {
 		// If the context is canceled, then we're done.
 		case <-ctx.Done():
+			ticker.Stop()
 			return
-		case <-time.After(wait):
+		case <-ticker.C:
+			if err := w.forward(ctx); err != nil {
+				rlogger.Log(w.logger, rlogger.Error, "msg", "unable to forward results", "err", err)
+			}
 		// We want to be able to interrupt a sleep to immediately apply a new configuration.
 		case <-w.reconfigure:
+			w.lock.Lock()
+			ticker.Reset(w.interval)
+			w.lock.Unlock()
 		}
 	}
 }
@@ -460,8 +520,12 @@ func (w *Worker) getFederateMetrics(ctx context.Context) ([]*clientmodel.MetricF
 	from := w.from
 	from.RawQuery = ""
 	v := from.Query()
-	for _, rule := range w.rules {
-		v.Add("match[]", rule)
+	if len(w.matchers) == 0 {
+		return families, nil
+	}
+
+	for _, matcher := range w.matchers {
+		v.Add(matchParam, matcher)
 	}
 	from.RawQuery = v.Encode()
 
@@ -481,6 +545,10 @@ func (w *Worker) getRecordingMetrics(ctx context.Context) ([]*clientmodel.Metric
 
 	from := w.fromQuery
 
+	if len(w.recordingRules) == 0 {
+		return families, nil
+	}
+
 	for _, rule := range w.recordingRules {
 		var r map[string]string
 		err := json.Unmarshal(([]byte)(rule), &r)
@@ -495,11 +563,11 @@ func (w *Worker) getRecordingMetrics(ctx context.Context) ([]*clientmodel.Metric
 		// reset query from last invocation, otherwise match rules will be appended
 		from.RawQuery = ""
 		v := w.fromQuery.Query()
-		v.Add("query", rquery)
+		v.Add(queryParam, rquery)
 		from.RawQuery = v.Encode()
 
 		req := &http.Request{Method: "GET", URL: from}
-		rfamilies, err := w.fromClient.RetrievRecordingMetrics(ctx, req, rname)
+		rfamilies, err := w.fromClient.RetrieveRecordingMetrics(ctx, req, rname)
 		if err != nil {
 			rlogger.Log(w.logger, rlogger.Warn, "msg", "Failed to retrieve recording metrics", "err", err, "url", from)
 			e = err

@@ -104,6 +104,7 @@ spec:
   observabilityAddonSpec:
     scrapeSizeLimitBytes: 1073741824
     enableMetrics: true
+    workers: 1
     interval: 30
     resources:
       limits:

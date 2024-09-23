@@ -12,40 +12,44 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"os/signal"
 	"regexp"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/oklog/run"
+	hyperv1 "github.com/openshift/hypershift/api/hypershift/v1alpha1"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
-	"github.com/prometheus/common/expfmt"
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/util/uuid"
+	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/tools/clientcmd"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/collectrule"
 	"github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/forwarder"
 	collectorhttp "github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/http"
 	"github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/logger"
 	"github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/metricfamily"
+	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 )
 
 func main() {
 	opt := &Options{
-		From:             "http://localhost:9090",
-		Listen:           "localhost:9002",
-		LimitBytes:       200 * 1024,
-		Rules:            []string{`{__name__="up"}`},
-		Interval:         4*time.Minute + 30*time.Second,
-		EvaluateInterval: 30 * time.Second,
-		WorkerNum:        1,
+		From:                   "http://localhost:9090",
+		Listen:                 "localhost:9002",
+		LimitBytes:             200 * 1024,
+		Matchers:               []string{`{__name__="up"}`},
+		Interval:               4*time.Minute + 30*time.Second,
+		EvaluateInterval:       30 * time.Second,
+		WorkerNum:              1,
+		DisableHyperShift:      false,
+		DisableStatusReporting: false,
 	}
 	cmd := &cobra.Command{
-		Short:         "Federate Prometheus via push",
+		Short:         "Remote write federated metrics from prometheus",
 		SilenceErrors: true,
 		SilenceUsage:  true,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -57,7 +61,7 @@ func main() {
 		&opt.WorkerNum,
 		"worker-number",
 		opt.WorkerNum,
-		"The number of client runs in the simulate environment.")
+		"The number of workers that will work in parallel to send metrics.")
 	cmd.Flags().StringVar(
 		&opt.Listen,
 		"listen",
@@ -126,37 +130,26 @@ func main() {
 		opt.LimitBytes,
 		"The maxiumum acceptable size of a response returned when scraping Prometheus.")
 
-	// TODO: more complex input definition, such as a JSON struct
 	cmd.Flags().StringArrayVar(
-		&opt.Rules,
+		&opt.Matchers,
 		"match",
-		opt.Rules,
+		opt.Matchers,
 		"Match rules to federate.")
 	cmd.Flags().StringVar(
-		&opt.RulesFile,
+		&opt.MatcherFile,
 		"match-file",
-		opt.RulesFile,
+		opt.MatcherFile,
 		"A file containing match rules to federate, one rule per line.")
 	cmd.Flags().StringArrayVar(
 		&opt.RecordingRules,
 		"recordingrule",
 		opt.RecordingRules,
 		"Define recording rule is to generate new metrics based on specified query expression.")
-	cmd.Flags().StringVar(
-		&opt.RecordingRulesFile,
-		"recording-file",
-		opt.RulesFile,
-		"A file containing recording rules.")
 	cmd.Flags().StringArrayVar(
 		&opt.CollectRules,
 		"collectrule",
 		opt.CollectRules,
 		"Define metrics collect rule is to collect additional metrics based on specified event.")
-	cmd.Flags().StringVar(
-		&opt.RecordingRulesFile,
-		"collect-file",
-		opt.RecordingRulesFile,
-		"A file containing collect rules.")
 
 	cmd.Flags().StringSliceVar(
 		&opt.LabelFlag,
@@ -203,12 +196,17 @@ func main() {
 		opt.LogLevel,
 		"Log filtering level. e.g info, debug, warn, error")
 
-	// deprecated opt
-	cmd.Flags().StringVar(
-		&opt.Identifier,
-		"id",
-		opt.Identifier,
-		"The unique identifier for metrics sent with this client.")
+	cmd.Flags().BoolVar(
+		&opt.DisableStatusReporting,
+		"disable-status-reporting",
+		opt.DisableStatusReporting,
+		"Disable status reporting to hub cluster.")
+
+	cmd.Flags().BoolVar(
+		&opt.DisableHyperShift,
+		"disable-hypershift",
+		opt.DisableHyperShift,
+		"Disable hypershift related metrics collection.")
 
 	// simulation test
 	cmd.Flags().StringVar(
@@ -259,12 +257,10 @@ type Options struct {
 	AnonymizeSalt     string
 	AnonymizeSaltFile string
 
-	Rules              []string
-	RulesFile          string
-	RecordingRules     []string
-	RecordingRulesFile string
-	CollectRules       []string
-	CollectRulesFile   string
+	Matchers       []string
+	MatcherFile    string
+	RecordingRules []string
+	CollectRules   []string
 
 	LabelFlag []string
 	Labels    map[string]string
@@ -275,17 +271,19 @@ type Options struct {
 	LogLevel string
 	Logger   log.Logger
 
-	// deprecated
-	Identifier string
-
 	// simulation file
 	SimulatedTimeseriesFile string
 
 	// how many threads are running
 	// for production, it is always 1
 	WorkerNum int64
+
+	DisableHyperShift      bool
+	DisableStatusReporting bool
 }
 
+// Run is the entry point of the metrics collector
+// It is in charge of running forwarders, collectrule agent and recording rule agents.
 func (o *Options) Run() error {
 	var g run.Group
 
@@ -301,16 +299,36 @@ func (o *Options) Run() error {
 	// Some packages still use default Register. Replace to have those metrics.
 	prometheus.DefaultRegisterer = metricsReg
 
-	err, cfg := initConfig(o)
+	cfgRR, err := initShardedConfigs(o, AgentRecordingRule)
+	if err != nil {
+		return err
+	}
+
+	shardCfgs, err := initShardedConfigs(o, AgentShardedForwarder)
+	if err != nil {
+		return err
+	}
+
+	evalCfg, err := initShardedConfigs(o, AgentCollectRule)
 	if err != nil {
 		return err
 	}
 
 	metrics := forwarder.NewWorkerMetrics(metricsReg)
-	cfg.Metrics = metrics
-	worker, err := forwarder.New(*cfg)
+	evalCfg[0].Metrics = metrics
+	cfgRR[0].Metrics = metrics
+	recordingRuleWorker, err := forwarder.New(*cfgRR[0])
 	if err != nil {
-		return fmt.Errorf("failed to configure metrics collector: %w", err)
+		return fmt.Errorf("failed to configure recording rule worker: %w", err)
+	}
+
+	shardWorkers := make([]*forwarder.Worker, len(shardCfgs))
+	for i, shardCfg := range shardCfgs {
+		shardCfg.Metrics = metrics
+		shardWorkers[i], err = forwarder.New(*shardCfg)
+		if err != nil {
+			return fmt.Errorf("failed to configure shard worker %d: %w", i, err)
+		}
 	}
 
 	logger.Log(
@@ -320,36 +338,31 @@ func (o *Options) Run() error {
 		"to", o.ToUpload,
 		"listen", o.Listen)
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	{
-		// Execute the worker's `Run` func.
-		ctx, cancel := context.WithCancel(context.Background())
+		// Execute the recording rule worker's `Run` func.
 		g.Add(func() error {
-			worker.Run(ctx)
+			recordingRuleWorker.Run(ctx)
 			return nil
 		}, func(error) {
 			cancel()
 		})
 	}
-
 	{
-		// Notify and reload on SIGHUP.
-		hup := make(chan os.Signal, 1)
-		signal.Notify(hup, syscall.SIGHUP)
-		cancel := make(chan struct{})
+		// Execute the shard workers' `Run` func.
 		g.Add(func() error {
-			for {
-				select {
-				case <-hup:
-					if err := worker.Reconfigure(*cfg); err != nil {
-						logger.Log(o.Logger, logger.Error, "msg", "failed to reload config", "err", err)
-						return err
-					}
-				case <-cancel:
-					return nil
-				}
+			for i, shardWorker := range shardWorkers {
+				go func(i int, shardWorker *forwarder.Worker) {
+					logger.Log(o.Logger, logger.Info, "msg", "Starting shard worker", "worker", i)
+					shardWorker.Run(ctx)
+				}(i, shardWorker)
 			}
+			<-ctx.Done()
+			return nil
 		}, func(error) {
-			close(cancel)
+			cancel()
 		})
 	}
 
@@ -358,10 +371,6 @@ func (o *Options) Run() error {
 		collectorhttp.DebugRoutes(handlers)
 		collectorhttp.HealthRoutes(handlers)
 		collectorhttp.MetricRoutes(handlers, metricsReg)
-		collectorhttp.ReloadRoutes(handlers, func() error {
-			return worker.Reconfigure(*cfg)
-		})
-		handlers.Handle("/federate", serveLastMetrics(o.Logger, worker))
 		s := http.Server{
 			Addr:              o.Listen,
 			Handler:           handlers,
@@ -379,7 +388,7 @@ func (o *Options) Run() error {
 				}
 				return nil
 			}, func(error) {
-				err := s.Shutdown(context.Background())
+				err := s.Shutdown(ctx)
 				if err != nil {
 					logger.Log(o.Logger, logger.Error, "msg", "failed to close listener", "err", err)
 				}
@@ -387,17 +396,18 @@ func (o *Options) Run() error {
 		}
 	}
 
-	err = runMultiWorkers(o, cfg)
+	// Run the simulation agent.
+	err = runMultiWorkers(o, evalCfg[0])
 	if err != nil {
 		return err
 	}
 
+	// Run the Collectrules agent.
 	if len(o.CollectRules) != 0 {
-		evaluator, err := collectrule.New(*cfg)
+		evaluator, err := collectrule.New(*evalCfg[0])
 		if err != nil {
 			return fmt.Errorf("failed to configure collect rule evaluator: %w", err)
 		}
-		ctx, cancel := context.WithCancel(context.Background())
 		g.Add(func() error {
 			evaluator.Run(ctx)
 			return nil
@@ -409,68 +419,40 @@ func (o *Options) Run() error {
 	return g.Run()
 }
 
-func runMultiWorkers(o *Options, cfg *forwarder.Config) error {
-	for i := 1; i < int(o.WorkerNum); i++ {
-		opt := &Options{
-			From:                    o.From,
-			FromQuery:               o.FromQuery,
-			ToUpload:                o.ToUpload,
-			FromCAFile:              o.FromCAFile,
-			FromTokenFile:           o.FromTokenFile,
-			ToUploadCA:              o.ToUploadCA,
-			ToUploadCert:            o.ToUploadCert,
-			ToUploadKey:             o.ToUploadKey,
-			Rules:                   o.Rules,
-			RenameFlag:              o.RenameFlag,
-			RecordingRules:          o.RecordingRules,
-			Interval:                o.Interval,
-			Labels:                  map[string]string{},
-			SimulatedTimeseriesFile: o.SimulatedTimeseriesFile,
-			Logger:                  o.Logger,
-		}
-		for _, flag := range o.LabelFlag {
-			values := strings.SplitN(flag, "=", 2)
-			if len(values) != 2 {
-				return fmt.Errorf("--label must be of the form key=value: %s", flag)
-			}
-			if values[0] == "cluster" {
-				values[1] += "-" + fmt.Sprint(i)
-			}
-			if values[0] == "clusterID" {
-				values[1] = string(uuid.NewUUID())
-			}
-			opt.Labels[values[0]] = values[1]
-		}
-		err, forwardCfg := initConfig(opt)
-		if err != nil {
-			return err
-		}
-
-		forwardCfg.Metrics = cfg.Metrics
-		forwardWorker, err := forwarder.New(*forwardCfg)
-		if err != nil {
-			return fmt.Errorf("failed to configure metrics collector: %w", err)
-		}
-
-		ctx, cancel := context.WithCancel(context.Background())
-		go func() {
-			forwardWorker.Run(ctx)
-			cancel()
-		}()
-
+// splitMatchersIntoShards divides the matchers into approximately equal shards
+func splitMatchersIntoShards(matchers []string, shardCount int) [][]string {
+	if shardCount <= 1 {
+		return [][]string{matchers}
 	}
-	return nil
+
+	shards := make([][]string, shardCount)
+	for i, matcher := range matchers {
+		shardIndex := i % shardCount
+		shards[shardIndex] = append(shards[shardIndex], matcher)
+	}
+
+	return shards
 }
 
-func initConfig(o *Options) (error, *forwarder.Config) {
+// Agent is the type of the worker agent that will be running.
+// They are classified according to what they collect.
+type Agent string
+
+const (
+	AgentCollectRule      Agent = "collectrule"
+	AgentRecordingRule    Agent = "recordingrule"
+	AgentShardedForwarder Agent = "forwarder"
+)
+
+func initShardedConfigs(o *Options, agent Agent) ([]*forwarder.Config, error) {
 	if len(o.From) == 0 {
-		return errors.New("you must specify a Prometheus server to federate from (e.g. http://localhost:9090)"), nil
+		return nil, errors.New("you must specify a Prometheus server to federate from (e.g. http://localhost:9090)")
 	}
 
 	for _, flag := range o.LabelFlag {
 		values := strings.SplitN(flag, "=", 2)
 		if len(values) != 2 {
-			return fmt.Errorf("--label must be of the form key=value: %s", flag), nil
+			return nil, fmt.Errorf("--label must be of the form key=value: %s", flag)
 		}
 		if o.Labels == nil {
 			o.Labels = make(map[string]string)
@@ -484,7 +466,7 @@ func initConfig(o *Options) (error, *forwarder.Config) {
 		}
 		values := strings.SplitN(flag, "=", 2)
 		if len(values) != 2 {
-			return fmt.Errorf("--rename must be of the form OLD_NAME=NEW_NAME: %s", flag), nil
+			return nil, fmt.Errorf("--rename must be of the form OLD_NAME=NEW_NAME: %s", flag)
 		}
 		if o.Renames == nil {
 			o.Renames = make(map[string]string)
@@ -494,7 +476,7 @@ func initConfig(o *Options) (error, *forwarder.Config) {
 
 	from, err := url.Parse(o.From)
 	if err != nil {
-		return fmt.Errorf("--from is not a valid URL: %w", err), nil
+		return nil, fmt.Errorf("--from is not a valid URL: %w", err)
 	}
 	from.Path = strings.TrimRight(from.Path, "/")
 	if len(from.Path) == 0 {
@@ -503,8 +485,9 @@ func initConfig(o *Options) (error, *forwarder.Config) {
 
 	fromQuery, err := url.Parse(o.FromQuery)
 	if err != nil {
-		return fmt.Errorf("--from-query is not a valid URL: %w", err), nil
+		return nil, fmt.Errorf("--from-query is not a valid URL: %w", err)
 	}
+
 	fromQuery.Path = strings.TrimRight(fromQuery.Path, "/")
 	if len(fromQuery.Path) == 0 {
 		fromQuery.Path = "/api/v1/query"
@@ -514,12 +497,12 @@ func initConfig(o *Options) (error, *forwarder.Config) {
 	if len(o.ToUpload) > 0 {
 		toUpload, err = url.Parse(o.ToUpload)
 		if err != nil {
-			return fmt.Errorf("--to-upload is not a valid URL: %w", err), nil
+			return nil, fmt.Errorf("--to-upload is not a valid URL: %w", err)
 		}
 	}
 
 	if toUpload == nil {
-		return errors.New("--to-upload must be specified"), nil
+		return nil, errors.New("--to-upload must be specified")
 	}
 
 	var transformer metricfamily.MultiTransformer
@@ -554,68 +537,241 @@ func initConfig(o *Options) (error, *forwarder.Config) {
 	transformer.With(metricfamily.TransformerFunc(metricfamily.PackMetrics))
 	transformer.With(metricfamily.TransformerFunc(metricfamily.SortMetrics))
 
-	isHypershift, err := metricfamily.CheckCRDExist(o.Logger)
-	if err != nil {
-		return err, nil
-	}
-	if isHypershift {
-		hyperTransformer, err := metricfamily.NewHypershiftTransformer(o.Logger, nil, o.Labels)
+	// TODO(saswatamcode): Kill this feature.
+	// This is too messy of an approach, to get hypershift specific labels into metrics we send.
+	// There is much better way to do this, with relabel configs.
+	// A collection agent shouldn't be calling out to Kube API server just to add labels.
+	if !o.DisableHyperShift {
+		isHypershift, err := metricfamily.CheckCRDExist(o.Logger)
 		if err != nil {
-			return err, nil
+			return nil, err
 		}
-		transformer.WithFunc(func() metricfamily.Transformer {
-			return hyperTransformer
-		})
+		if isHypershift {
+			config, err := clientcmd.BuildConfigFromFlags("", "")
+			if err != nil {
+				return nil, errors.New("failed to create the kube config for hypershiftv1")
+			}
+			s := scheme.Scheme
+			if err := hyperv1.AddToScheme(s); err != nil {
+				return nil, errors.New("failed to add observabilityaddon into scheme")
+			}
+			hClient, err := client.New(config, client.Options{Scheme: s})
+			if err != nil {
+				return nil, errors.New("failed to create the kube client")
+			}
+
+			hyperTransformer, err := metricfamily.NewHypershiftTransformer(hClient, o.Logger, o.Labels)
+			if err != nil {
+				return nil, err
+			}
+			transformer.WithFunc(func() metricfamily.Transformer {
+				return hyperTransformer
+			})
+		}
 	}
 
-	return nil, &forwarder.Config{
-		From:          from,
-		FromQuery:     fromQuery,
-		ToUpload:      toUpload,
-		FromToken:     o.FromToken,
-		FromTokenFile: o.FromTokenFile,
-		FromCAFile:    o.FromCAFile,
-		ToUploadCA:    o.ToUploadCA,
-		ToUploadCert:  o.ToUploadCert,
-		ToUploadKey:   o.ToUploadKey,
+	// Configure matchers.
+	matchers := o.Matchers
+	if len(o.MatcherFile) > 0 {
+		data, err := os.ReadFile(o.MatcherFile)
+		if err != nil {
+			return nil, fmt.Errorf("unable to read match-file: %w", err)
+		}
+		matchers = append(matchers, strings.Split(string(data), "\n")...)
+	}
+	for i := 0; i < len(matchers); {
+		s := strings.TrimSpace(matchers[i])
+		if len(s) == 0 {
+			matchers = append(matchers[:i], matchers[i+1:]...)
+			continue
+		}
+		matchers[i] = s
+		i++
+	}
 
-		AnonymizeLabels:   o.AnonymizeLabels,
-		AnonymizeSalt:     o.AnonymizeSalt,
-		AnonymizeSaltFile: o.AnonymizeSaltFile,
-		Debug:             o.Verbose,
-		Interval:          o.Interval,
-		EvaluateInterval:  o.EvaluateInterval,
-		LimitBytes:        o.LimitBytes,
-		Rules:             o.Rules,
-		RulesFile:         o.RulesFile,
-		RecordingRules:    o.RecordingRules,
-		CollectRules:      o.CollectRules,
-		Transformer:       transformer,
+	var statusClient client.Client
 
-		Logger:                  o.Logger,
-		SimulatedTimeseriesFile: o.SimulatedTimeseriesFile,
+	// TODO(saswatamcode): Evaluate better way for status reporting.
+	// Currently, it reports status for every 3 errors in forward request. This is too much of an overhead
+	// Every remote write request error does not need to be reported.
+	// Instead we can try to do this with metrics-collector meta-monitoring
+	if !o.DisableStatusReporting {
+		config, err := clientcmd.BuildConfigFromFlags("", "")
+		if err != nil {
+			return nil, errors.New("failed to create the kube config for status")
+		}
+		s := scheme.Scheme
+		if err := oav1beta1.AddToScheme(s); err != nil {
+			return nil, errors.New("failed to add observabilityaddon into scheme")
+		}
+
+		statusClient, err = client.New(config, client.Options{Scheme: s})
+		if err != nil {
+			return nil, errors.New("failed to create the kube client")
+		}
+	}
+
+	switch agent {
+	case AgentCollectRule:
+		f := forwarder.Config{
+			FromClientConfig: forwarder.FromClientConfig{
+				URL:       from,
+				QueryURL:  fromQuery,
+				Token:     o.FromToken,
+				TokenFile: o.FromTokenFile,
+				CAFile:    o.FromCAFile,
+			},
+			ToClientConfig: forwarder.ToClientConfig{
+				URL:      toUpload,
+				CAFile:   o.ToUploadCA,
+				CertFile: o.ToUploadCert,
+				KeyFile:  o.ToUploadKey,
+			},
+
+			StatusClient:      statusClient,
+			AnonymizeLabels:   o.AnonymizeLabels,
+			AnonymizeSalt:     o.AnonymizeSalt,
+			AnonymizeSaltFile: o.AnonymizeSaltFile,
+			Debug:             o.Verbose,
+			Interval:          o.Interval,
+			EvaluateInterval:  o.EvaluateInterval,
+			LimitBytes:        o.LimitBytes,
+			Matchers:          matchers,
+			RecordingRules:    o.RecordingRules,
+			CollectRules:      o.CollectRules,
+			Transformer:       transformer,
+
+			Logger:                  o.Logger,
+			SimulatedTimeseriesFile: o.SimulatedTimeseriesFile,
+		}
+		return []*forwarder.Config{&f}, nil
+
+	case AgentRecordingRule:
+		f := forwarder.Config{
+			FromClientConfig: forwarder.FromClientConfig{
+				URL:       from,
+				QueryURL:  fromQuery,
+				Token:     o.FromToken,
+				TokenFile: o.FromTokenFile,
+				CAFile:    o.FromCAFile,
+			},
+			ToClientConfig: forwarder.ToClientConfig{
+				URL:      toUpload,
+				CAFile:   o.ToUploadCA,
+				CertFile: o.ToUploadCert,
+				KeyFile:  o.ToUploadKey,
+			},
+
+			StatusClient:      statusClient,
+			AnonymizeLabels:   o.AnonymizeLabels,
+			AnonymizeSalt:     o.AnonymizeSalt,
+			AnonymizeSaltFile: o.AnonymizeSaltFile,
+			Debug:             o.Verbose,
+			Interval:          o.Interval,
+			EvaluateInterval:  o.EvaluateInterval,
+			LimitBytes:        o.LimitBytes,
+			RecordingRules:    o.RecordingRules,
+			Transformer:       transformer,
+
+			Logger:                  o.Logger,
+			SimulatedTimeseriesFile: o.SimulatedTimeseriesFile,
+		}
+		return []*forwarder.Config{&f}, nil
+
+	case AgentShardedForwarder:
+		if len(matchers) < int(o.WorkerNum) {
+			return nil, errors.New("number of shards is greater than the number of matchers")
+		}
+
+		shards := splitMatchersIntoShards(matchers, int(o.WorkerNum))
+
+		shardCfgs := make([]*forwarder.Config, len(shards))
+		for i, shard := range shards {
+			shardCfgs[i] = &forwarder.Config{
+				FromClientConfig: forwarder.FromClientConfig{
+					URL:       from,
+					QueryURL:  fromQuery,
+					Token:     o.FromToken,
+					TokenFile: o.FromTokenFile,
+					CAFile:    o.FromCAFile,
+				},
+				StatusClient: statusClient,
+				ToClientConfig: forwarder.ToClientConfig{
+					URL:      toUpload,
+					CAFile:   o.ToUploadCA,
+					CertFile: o.ToUploadCert,
+					KeyFile:  o.ToUploadKey,
+				},
+				AnonymizeLabels:         o.AnonymizeLabels,
+				AnonymizeSalt:           o.AnonymizeSalt,
+				AnonymizeSaltFile:       o.AnonymizeSaltFile,
+				Debug:                   o.Verbose,
+				Interval:                o.Interval,
+				EvaluateInterval:        o.EvaluateInterval,
+				LimitBytes:              o.LimitBytes,
+				Matchers:                shard,
+				Transformer:             transformer,
+				Logger:                  log.With(o.Logger, "shard", i),
+				SimulatedTimeseriesFile: o.SimulatedTimeseriesFile,
+			}
+		}
+		return shardCfgs, nil
+	default:
+		return nil, errors.New("invalid agent type")
 	}
 }
 
-// serveLastMetrics retrieves the last set of metrics served.
-func serveLastMetrics(l log.Logger, worker *forwarder.Worker) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		if req.Method != "GET" {
-			w.WriteHeader(http.StatusMethodNotAllowed)
-			return
+func runMultiWorkers(o *Options, cfg *forwarder.Config) error {
+	for i := 1; i < int(o.WorkerNum); i++ {
+		opt := &Options{
+			From:                    o.From,
+			FromQuery:               o.FromQuery,
+			ToUpload:                o.ToUpload,
+			FromCAFile:              o.FromCAFile,
+			FromTokenFile:           o.FromTokenFile,
+			ToUploadCA:              o.ToUploadCA,
+			ToUploadCert:            o.ToUploadCert,
+			ToUploadKey:             o.ToUploadKey,
+			Matchers:                o.Matchers,
+			RecordingRules:          o.RecordingRules,
+			Interval:                o.Interval,
+			Labels:                  map[string]string{},
+			SimulatedTimeseriesFile: o.SimulatedTimeseriesFile,
+			Logger:                  o.Logger,
+			DisableHyperShift:       o.DisableHyperShift,
+			DisableStatusReporting:  o.DisableStatusReporting,
 		}
-		families := worker.LastMetrics()
-		protoTextFormat := expfmt.NewFormat(expfmt.TypeProtoText)
-		w.Header().Set("Content-Type", string(protoTextFormat))
-		encoder := expfmt.NewEncoder(w, protoTextFormat)
-		for _, family := range families {
-			if family == nil {
-				continue
+		for _, flag := range o.LabelFlag {
+			values := strings.SplitN(flag, "=", 2)
+			if len(values) != 2 {
+				return fmt.Errorf("--label must be of the form key=value: %s", flag)
 			}
-			if err := encoder.Encode(family); err != nil {
-				logger.Log(l, logger.Error, "msg", "unable to write metrics for family", "err", err)
-				break
+			if values[0] == "cluster" {
+				values[1] += "-" + fmt.Sprint(i)
 			}
+			if values[0] == "clusterID" {
+				values[1] = string(uuid.NewUUID())
+			}
+			opt.Labels[values[0]] = values[1]
 		}
-	})
+
+		forwardCfg, err := initShardedConfigs(opt, AgentCollectRule)
+		if err != nil {
+			return err
+		}
+
+		forwardCfg[0].Metrics = cfg.Metrics
+		forwardWorker, err := forwarder.New(*forwardCfg[0])
+		if err != nil {
+			return fmt.Errorf("failed to configure metrics collector: %w", err)
+		}
+
+		ctx, cancel := context.WithCancel(context.Background())
+		go func() {
+			forwardWorker.Run(ctx)
+			cancel()
+		}()
+
+	}
+	return nil
 }

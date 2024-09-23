@@ -151,6 +151,16 @@ spec:
                       ScrapeSizeLimitBytes is the max size in bytes for a single metrics scrape from in-cluster Prometheus.
                       Default is 1 GiB.
                     type: integer
+                  workers:
+                    default: 1
+                    description: |-
+                      Workers is the number of workers in metrics-collector that work in parallel to
+                      push metrics to hub server. If set to > 1, metrics-collector will shard
+                      /federate calls to Prometheus, based on matcher rules provided by allowlist.
+                      Ensure that number of matchers exceeds number of workers.
+                    format: int32
+                    minimum: 1
+                    type: integer
                 type: object
               retentionResolution1h:
                 default: 30d
@@ -10181,6 +10191,16 @@ spec:
                     description: |-
                       ScrapeSizeLimitBytes is the max size in bytes for a single metrics scrape from in-cluster Prometheus.
                       Default is 1 GiB.
+                    type: integer
+                  workers:
+                    default: 1
+                    description: |-
+                      Workers is the number of workers in metrics-collector that work in parallel to
+                      push metrics to hub server. If set to > 1, metrics-collector will shard
+                      /federate calls to Prometheus, based on matcher rules provided by allowlist.
+                      Ensure that number of matchers exceeds number of workers.
+                    format: int32
+                    minimum: 1
                     type: integer
                 type: object
               storageConfig:

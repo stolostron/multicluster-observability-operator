@@ -792,6 +792,11 @@ func (m *MetricsCollector) getCommands(isUSW bool, deployParams *deploymentParam
 		interval = fmt.Sprintf("%ds", m.ObsAddon.Spec.Interval)
 	}
 
+	workers := 1
+	if m.ObsAddon.Spec.Workers != 0 {
+		workers = int(m.ObsAddon.Spec.Workers)
+	}
+
 	evaluateInterval := "30s"
 	if m.ObsAddon.Spec.Interval < 30 {
 		evaluateInterval = interval
@@ -819,6 +824,7 @@ func (m *MetricsCollector) getCommands(isUSW bool, deployParams *deploymentParam
 		"/usr/bin/metrics-collector",
 		"--listen=:8080",
 		"--from=$(FROM)",
+		"--worker-number=" + strconv.Itoa(workers),
 		"--from-query=$(FROM_QUERY)",
 		"--to-upload=$(TO)",
 		"--to-upload-ca=/tlscerts/ca/ca.crt",

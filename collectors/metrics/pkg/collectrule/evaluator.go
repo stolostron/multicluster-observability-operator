@@ -66,15 +66,8 @@ type Evaluator struct {
 
 func New(cfg forwarder.Config) (*Evaluator, error) {
 	config = forwarder.Config{
-		From:          cfg.From,
-		FromToken:     cfg.FromToken,
-		FromTokenFile: cfg.FromTokenFile,
-		FromCAFile:    cfg.FromCAFile,
-
-		ToUpload:     cfg.ToUpload,
-		ToUploadCA:   cfg.ToUploadCA,
-		ToUploadCert: cfg.ToUploadCert,
-		ToUploadKey:  cfg.ToUploadKey,
+		FromClientConfig: cfg.FromClientConfig,
+		ToClientConfig:   cfg.ToClientConfig,
 
 		AnonymizeLabels:   cfg.AnonymizeLabels,
 		AnonymizeSalt:     cfg.AnonymizeSalt,
@@ -88,8 +81,8 @@ func New(cfg forwarder.Config) (*Evaluator, error) {
 		Metrics: cfg.Metrics,
 	}
 	from := &url.URL{
-		Scheme: cfg.From.Scheme,
-		Host:   cfg.From.Host,
+		Scheme: cfg.FromClientConfig.URL.Scheme,
+		Host:   cfg.FromClientConfig.URL.Host,
 		Path:   "/api/v1/query",
 	}
 	evaluator := Evaluator{
@@ -108,7 +101,7 @@ func New(cfg forwarder.Config) (*Evaluator, error) {
 		evaluator.interval = 30 * time.Second
 	}
 
-	fromClient, err := forwarder.CreateFromClient(cfg, cfg.Metrics, evaluator.interval, "evaluate_query", cfg.Logger)
+	fromClient, err := cfg.CreateFromClient(cfg.Metrics, evaluator.interval, "evaluate_query", cfg.Logger)
 	if err != nil {
 		return nil, err
 	}
@@ -336,7 +329,7 @@ func (e *Evaluator) evaluate(ctx context.Context) {
 		from.RawQuery = v.Encode()
 
 		req := &http.Request{Method: "GET", URL: from}
-		result, err := e.fromClient.RetrievRecordingMetrics(ctx, req, r.Name)
+		result, err := e.fromClient.RetrieveRecordingMetrics(ctx, req, r.Name)
 		if err != nil {
 			rlogger.Log(e.logger, rlogger.Error, "msg", "failed to evaluate collect rule", "err", err, "rule", r.Expr)
 			continue
@@ -347,9 +340,9 @@ func (e *Evaluator) evaluate(ctx context.Context) {
 		}
 	}
 	if isUpdate {
-		config.Rules = getMatches()
+		config.Matchers = getMatches()
 
-		if len(config.Rules) == 0 {
+		if len(config.Matchers) == 0 {
 			if forwardWorker != nil && cancel != nil {
 				cancel()
 				forwardWorker = nil
