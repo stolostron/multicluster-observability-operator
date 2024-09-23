@@ -54,7 +54,7 @@ type Config struct {
 	ToClientConfig ToClientConfig
 	// Enable debug roundtrippers for from and to clients.
 	Debug bool
-	// LimitBytes limits the size of the response read from requests made to from and to clients.
+	// LimitBytes limits the size of the requests made to from and to clients.
 	LimitBytes int64
 
 	// Interval is the interval at which workers will federate Prometheus and send remote write requests.

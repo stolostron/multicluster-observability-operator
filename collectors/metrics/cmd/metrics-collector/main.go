@@ -61,7 +61,7 @@ func main() {
 		&opt.WorkerNum,
 		"worker-number",
 		opt.WorkerNum,
-		"The number of workers that will be used to send metrics.")
+		"The number of workers that will work in parallel to send metrics.")
 	cmd.Flags().StringVar(
 		&opt.Listen,
 		"listen",
@@ -355,7 +355,7 @@ func (o *Options) Run() error {
 		g.Add(func() error {
 			for i, shardWorker := range shardWorkers {
 				go func(i int, shardWorker *forwarder.Worker) {
-					fmt.Printf("Starting shard worker %d\n", i)
+					logger.Log(o.Logger, logger.Info, "msg", "Starting shard worker", "worker", i)
 					shardWorker.Run(ctx)
 				}(i, shardWorker)
 			}
@@ -435,7 +435,7 @@ func splitMatchersIntoShards(matchers []string, shardCount int) [][]string {
 }
 
 // Agent is the type of the worker agent that will be running.
-// They are classed according to what they collect.
+// They are classified according to what they collect.
 type Agent string
 
 const (

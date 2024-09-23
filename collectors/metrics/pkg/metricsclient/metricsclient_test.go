@@ -23,7 +23,7 @@ func TestDefaultTransport(t *testing.T) {
 		DisableKeepAlives:   true,
 	}
 	http := DefaultTransport(logger)
-	if http.Dial == nil || reflect.TypeOf(http) != reflect.TypeOf(want) {
+	if http.DialContext == nil || reflect.TypeOf(http) != reflect.TypeOf(want) {
 		t.Errorf("Default transport doesn't match expected format")
 	}
 

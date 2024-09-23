@@ -49,9 +49,10 @@ type ObservabilityAddonSpec struct {
 	// +kubebuilder:default:=1073741824
 	ScrapeSizeLimitBytes int `json:"scrapeSizeLimitBytes,omitempty"`
 
-	// Workers is the number of workers that work parallelly to push metrics to hub server.
-	// If set to > 1, metrics-collector will shard /federate calls to Prometheus, based on
-	// matcher rules provided by allowlist.
+	// Workers is the number of workers in metrics-collector that work in parallel to
+	// push metrics to hub server. If set to > 1, metrics-collector will shard
+	// /federate calls to Prometheus, based on matcher rules provided by allowlist.
+	// Ensure that number of matchers exceeds number of workers.
 	// +optional
 	// +kubebuilder:default:=1
 	// +kubebuilder:validation:Minimum=1
