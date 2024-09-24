@@ -6,6 +6,7 @@ package placementrule
 
 import (
 	"fmt"
+	clusterv1 "open-cluster-management.io/api/cluster/v1"
 	"reflect"
 	"strings"
 
@@ -60,6 +61,11 @@ func getClusterPreds() predicate.Funcs {
 				return false
 			}
 			updateManagedClusterList(e.ObjectNew)
+		}
+		//log the diff in managedccluster object
+		if !reflect.DeepEqual(e.ObjectNew.(*clusterv1.ManagedCluster), e.ObjectOld.(*clusterv1.ManagedCluster)) {
+			log.Info("managedcluster object New diff", "managedCluster", e.ObjectNew.GetName(), "diff", fmt.Sprintf("%+v", e.ObjectNew.(*clusterv1.ManagedCluster)))
+			log.Info("managedcluster object Old diff", "managedCluster", e.ObjectOld.GetName(), "diff", fmt.Sprintf("%+v", e.ObjectOld.(*clusterv1.ManagedCluster)))
 		}
 
 		return true
