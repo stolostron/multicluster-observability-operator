@@ -6,9 +6,10 @@ package placementrule
 
 import (
 	"fmt"
-	clusterv1 "open-cluster-management.io/api/cluster/v1"
 	"reflect"
 	"strings"
+
+	clusterv1 "open-cluster-management.io/api/cluster/v1"
 
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
@@ -32,7 +33,9 @@ func getClusterPreds() predicate.Funcs {
 		if !areManagedClusterLabelsReady(e.Object) {
 			return false
 		}
-		updateManagedClusterList(e.Object)
+		if e.Object.GetName() != localClusterName {
+			updateManagedClusterList(e.Object)
+		}
 
 		return true
 	}
@@ -49,9 +52,7 @@ func getClusterPreds() predicate.Funcs {
 
 		if e.ObjectNew.GetDeletionTimestamp() != nil {
 			log.Info("managedcluster is in terminating state", "managedCluster", e.ObjectNew.GetName())
-			managedClusterListMutex.Lock()
-			delete(managedClusterList, e.ObjectNew.GetName())
-			managedClusterListMutex.Unlock()
+			managedClusterList.Delete(e.ObjectNew.GetName())
 			managedClusterImageRegistryMutex.Lock()
 			delete(managedClusterImageRegistry, e.ObjectNew.GetName())
 			managedClusterImageRegistryMutex.Unlock()
@@ -60,7 +61,10 @@ func getClusterPreds() predicate.Funcs {
 			if !areManagedClusterLabelsReady(e.ObjectNew) {
 				return false
 			}
-			updateManagedClusterList(e.ObjectNew)
+			if e.ObjectNew.GetName() != localClusterName {
+				updateManagedClusterList(e.ObjectNew)
+			}
+
 		}
 		//log the diff in managedccluster object
 		if !reflect.DeepEqual(e.ObjectNew.(*clusterv1.ManagedCluster), e.ObjectOld.(*clusterv1.ManagedCluster)) {
@@ -78,9 +82,9 @@ func getClusterPreds() predicate.Funcs {
 			return false
 		}
 
-		managedClusterListMutex.Lock()
-		delete(managedClusterList, e.Object.GetName())
-		managedClusterListMutex.Unlock()
+		if e.Object.GetName() != localClusterName {
+			updateManagedClusterList(e.Object)
+		}
 		managedClusterImageRegistryMutex.Lock()
 		delete(managedClusterImageRegistry, e.Object.GetName())
 		managedClusterImageRegistryMutex.Unlock()

@@ -61,7 +61,7 @@ var (
 	clusterAddon                  = &addonv1alpha1.ClusterManagementAddOn{}
 	defaultAddonDeploymentConfig  = &addonv1alpha1.AddOnDeploymentConfig{}
 	isplacementControllerRunnning = false
-	managedClusterList            = map[string]string{}
+	managedClusterList            = sync.Map{}
 	managedClusterListMutex       = &sync.RWMutex{}
 	installMetricsWithoutAddon    = false
 )
@@ -110,7 +110,7 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
 			deleteAll = true
-			delete(managedClusterList, "local-cluster")
+			managedClusterList.Delete("local-cluster")
 		} else {
 			// Error reading the object - requeue the request.
 			return ctrl.Result{}, err
@@ -127,8 +127,8 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	// We want to ensure that the local-cluster is always in the managedClusterList
 	// In the case when hubSelfManagement is enabled, we will delete it from the list and modify the object
 	// to cater to the use case of deploying in open-cluster-management-observability namespace
-	delete(managedClusterList, "local-cluster")
-	if _, ok := managedClusterList["local-cluster"]; !ok {
+	managedClusterList.Delete("local-cluster")
+	if _, ok := managedClusterList.Load("local-cluster"); !ok {
 		obj := &clusterv1.ManagedCluster{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "local-cluster",
@@ -387,8 +387,9 @@ func createAllRelatedRes(
 	}
 
 	failedCreateManagedClusterRes := false
-	managedClusterListMutex.RLock()
-	for managedCluster, openshiftVersion := range managedClusterList {
+	managedClusterList.Range(func(key, value interface{}) bool {
+		managedCluster := key.(string)
+		openshiftVersion := value.(string)
 		if isReconcileRequired(request, managedCluster) {
 			log.Info(
 				"Monitoring operator should be installed in cluster",
@@ -429,21 +430,20 @@ func createAllRelatedRes(
 				log.Error(err, "Failed to create managedcluster resources", "namespace", managedCluster)
 			}
 			if request.Namespace == managedCluster {
-				break
+				return false
 			}
 		}
-	}
+		return true
+	})
 
 	// Look through the obsAddonList items and find clusters
 	// which are no longer to be managed and therefore needs deletion
 	clustersToCleanup := []string{}
 	for _, ep := range obsAddonList.Items {
-		if _, ok := managedClusterList[ep.Namespace]; !ok {
+		if _, ok := managedClusterList.Load(ep.Namespace); !ok {
 			clustersToCleanup = append(clustersToCleanup, ep.Namespace)
 		}
 	}
-
-	managedClusterListMutex.RUnlock()
 
 	failedDeleteOba := false
 	for _, cluster := range clustersToCleanup {
@@ -607,18 +607,12 @@ func areManagedClusterLabelsReady(obj client.Object) bool {
 }
 
 func updateManagedClusterList(obj client.Object) {
-	managedClusterListMutex.Lock()
-	defer managedClusterListMutex.Unlock()
 	//ACM 8509: Special case for local-cluster, we deploy endpoint and metrics collector in the hub
 	//whether hubSelfManagement is enabled or not
-	if obj.GetName() == localClusterName {
-		managedClusterList[obj.GetName()] = "mimical"
-		return
-	}
 	if version, ok := obj.GetLabels()["openshiftVersion"]; ok {
-		managedClusterList[obj.GetName()] = version
+		managedClusterList.Store(obj.GetName(), version)
 	} else {
-		managedClusterList[obj.GetName()] = nonOCP
+		managedClusterList.Store(obj.GetName(), nonOCP)
 	}
 }
 
