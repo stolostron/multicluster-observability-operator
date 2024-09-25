@@ -1,0 +1,425 @@
+apiVersion: v1
+data:
+  acm-virtual-machines-by-time-in-status.json: |-
+    {
+      "annotations": {
+        "list": [
+          {
+            "builtIn": 1,
+            "datasource": "-- Grafana --",
+            "enable": true,
+            "hide": true,
+            "iconColor": "rgba(0, 211, 255, 1)",
+            "name": "Annotations & Alerts",
+            "target": {
+              "limit": 100,
+              "matchAny": false,
+              "tags": [],
+              "type": "dashboard"
+            },
+            "type": "dashboard"
+          }
+        ]
+      },
+      "description": "This dashboard provides a quick overview of the health status of Virtual Machines (VMs) across clusters in the KubeVirt environment. It helps users identify VMs that are currently in unhealthy states and those that have been in such states for an extended period, potentially making them candidates for cleanup. Use the filters to customize the view based on cluster, namespace, VM name, and duration in an unhealthy state for efficient monitoring and management.",
+      "editable": true,
+      "gnetId": null,
+      "graphTooltip": 0,
+      "id": 41,
+      "iteration": 1726219957608,
+      "links": [],
+      "panels": [
+        {
+          "datasource": null,
+          "description": "",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "custom": {
+                "align": "auto",
+                "displayMode": "auto"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "cluster"
+                },
+                "properties": [
+                  {
+                    "id": "custom.filterable",
+                    "value": true
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "namespace"
+                },
+                "properties": [
+                  {
+                    "id": "custom.filterable",
+                    "value": true
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Value"
+                },
+                "properties": [
+                  {
+                    "id": "custom.filterable",
+                    "value": true
+                  },
+                  {
+                    "id": "unit",
+                    "value": "s"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "name"
+                },
+                "properties": [
+                  {
+                    "id": "custom.filterable",
+                    "value": true
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "status"
+                },
+                "properties": [
+                  {
+                    "id": "custom.filterable",
+                    "value": true
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 16,
+            "w": 24,
+            "x": 0,
+            "y": 0
+          },
+          "id": 5,
+          "options": {
+            "showHeader": true,
+            "sortBy": [
+              {
+                "desc": true,
+                "displayName": "Value"
+              }
+            ]
+          },
+          "pluginVersion": "8.5.20",
+          "targets": [
+            {
+              "exemplar": true,
+              "expr": "topk($top_results,\n(time() - (label_replace(kubevirt_vm_starting_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"}>0 ,\"status\",\"starting\",\"\",\"\"))> $days_in_status_gt*24*60*60) + on(cluster, name, namespace) group_left()(0*(sum by (cluster, namespace, name)($status>0))) or\n(time() - (label_replace(kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"}>0,\"status\",\"running\",\"\",\"\"))> $days_in_status_gt*24*60*60) + on(cluster, name, namespace) group_left()(0*(sum by (cluster, namespace, name)($status>0))) or\n(time() - (label_replace(kubevirt_vm_non_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"}>0,\"status\",\"stopped\",\"\",\"\"))> $days_in_status_gt*24*60*60) + on(cluster, name, namespace) group_left()(0*(sum by (cluster, namespace, name)($status>0))) or\n(time() - (label_replace(kubevirt_vm_error_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"}>0,\"status\",\"error\",\"\",\"\"))> $days_in_status_gt*24*60*60) + on(cluster, name, namespace) group_left()(0*(sum by (cluster, namespace, name)($status>0))) or\n(time() - (label_replace(kubevirt_vm_migrating_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"}>0,\"status\",\"migrating\",\"\",\"\"))> $days_in_status_gt*24*60*60) + on(cluster, name, namespace) group_left()(0*(sum by (cluster, namespace, name)($status>0)))\n)",
+              "format": "table",
+              "hide": true,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "A"
+            },
+            {
+              "exemplar": true,
+              "expr": "topk($top_results,\n  (\n    (\n      (time() - label_replace(kubevirt_vm_starting_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > 0, \"status\", \"starting\", \"\", \"\")) > $days_in_status_gt * 24 * 60 * 60\n    ) and (\n      (time() - label_replace(kubevirt_vm_starting_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > 0, \"status\", \"starting\", \"\", \"\")) < $days_in_status_lt * 24 * 60 * 60\n    )\n  ) + on(cluster, name, namespace) group_left() (0 * (sum by (cluster, namespace, name)($status > 0)))\n  or\n  (\n    (\n      (time() - label_replace(kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > 0, \"status\", \"running\", \"\", \"\")) > $days_in_status_gt * 24 * 60 * 60\n    ) and (\n      (time() - label_replace(kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > 0, \"status\", \"running\", \"\", \"\")) < $days_in_status_lt * 24 * 60 * 60\n    )\n  ) + on(cluster, name, namespace) group_left() (0 * (sum by (cluster, namespace, name)($status > 0)))\n  or\n  (\n    (\n      (time() - label_replace(kubevirt_vm_non_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > 0, \"status\", \"stopped\", \"\", \"\")) > $days_in_status_gt * 24 * 60 * 60\n    ) and (\n      (time() - label_replace(kubevirt_vm_non_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > 0, \"status\", \"stopped\", \"\", \"\")) < $days_in_status_lt * 24 * 60 * 60\n    )\n  ) + on(cluster, name, namespace) group_left() (0 * (sum by (cluster, namespace, name)($status > 0)))\n  or\n  (\n    (\n      (time() - label_replace(kubevirt_vm_error_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > 0, \"status\", \"error\", \"\", \"\")) > $days_in_status_gt * 24 * 60 * 60\n    ) and (\n      (time() - label_replace(kubevirt_vm_error_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > 0, \"status\", \"error\", \"\", \"\")) < $days_in_status_lt * 24 * 60 * 60\n    )\n  ) + on(cluster, name, namespace) group_left() (0 * (sum by (cluster, namespace, name)($status > 0)))\n  or\n  (\n    (\n      (time() - label_replace(kubevirt_vm_migrating_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > 0, \"status\", \"migrating\", \"\", \"\")) > $days_in_status_gt * 24 * 60 * 60\n    ) and (\n      (time() - label_replace(kubevirt_vm_migrating_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > 0, \"status\", \"migrating\", \"\", \"\")) < $days_in_status_lt * 24 * 60 * 60\n    )\n  ) + on(cluster, name, namespace) group_left() (0 * (sum by (cluster, namespace, name)($status > 0)))\n)\n",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "B"
+            }
+          ],
+          "title": "Virtual Machines List by Time In Status",
+          "transformations": [
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true,
+                  "clusterID": true,
+                  "container": true,
+                  "endpoint": true,
+                  "instance": true,
+                  "job": true,
+                  "pod": true,
+                  "receive": true,
+                  "service": true,
+                  "tenant_id": true
+                },
+                "indexByName": {},
+                "renameByName": {
+                  "Value": "Time in Status"
+                }
+              }
+            }
+          ],
+          "type": "table"
+        }
+      ],
+      "refresh": "",
+      "schemaVersion": 30,
+      "style": "dark",
+      "tags": [
+        "Virtualization",
+        "ACM",
+        "OpenShift",
+        "KubeVirt"
+      ],
+      "templating": {
+        "list": [
+          {
+            "allValue": ".*",
+            "current": {
+              "selected": true,
+              "text": [
+                "All"
+              ],
+              "value": [
+                "$__all"
+              ]
+            },
+            "datasource": null,
+            "definition": "label_values(kubevirt_vm_running_status_last_transition_timestamp_seconds, cluster)",
+            "description": null,
+            "error": null,
+            "hide": 0,
+            "includeAll": true,
+            "label": "Cluster",
+            "multi": true,
+            "name": "cluster",
+            "options": [],
+            "query": {
+              "query": "label_values(kubevirt_vm_running_status_last_transition_timestamp_seconds, cluster)",
+              "refId": "StandardVariableQuery"
+            },
+            "refresh": 2,
+            "regex": "",
+            "skipUrlSync": false,
+            "sort": 0,
+            "type": "query"
+          },
+          {
+            "allValue": ".*",
+            "current": {
+              "selected": true,
+              "text": [
+                "All"
+              ],
+              "value": [
+                "$__all"
+              ]
+            },
+            "datasource": null,
+            "definition": "label_values(kubevirt_vmi_info, name)",
+            "description": "Filter the Virtual Machine by its name",
+            "error": null,
+            "hide": 0,
+            "includeAll": true,
+            "label": "VM Name",
+            "multi": true,
+            "name": "name",
+            "options": [],
+            "query": {
+              "query": "label_values(kubevirt_vmi_info, name)",
+              "refId": "StandardVariableQuery"
+            },
+            "refresh": 2,
+            "regex": "",
+            "skipUrlSync": false,
+            "sort": 0,
+            "type": "query"
+          },
+          {
+            "allValue": ".*",
+            "current": {
+              "selected": true,
+              "text": [
+                "All"
+              ],
+              "value": [
+                "$__all"
+              ]
+            },
+            "datasource": null,
+            "definition": "label_values(kubevirt_vmi_info, namespace)",
+            "description": "Filter the Virtual Machine by its Namespace",
+            "error": null,
+            "hide": 0,
+            "includeAll": true,
+            "label": "Namespace",
+            "multi": true,
+            "name": "namespace",
+            "options": [],
+            "query": {
+              "query": "label_values(kubevirt_vmi_info, namespace)",
+              "refId": "StandardVariableQuery"
+            },
+            "refresh": 2,
+            "regex": "",
+            "skipUrlSync": false,
+            "sort": 0,
+            "type": "query"
+          },
+          {
+            "allValue": null,
+            "current": {
+              "selected": true,
+              "text": "stopped",
+              "value": "kubevirt_vm_non_running_status_last_transition_timestamp_seconds"
+            },
+            "description": null,
+            "error": null,
+            "hide": 0,
+            "includeAll": false,
+            "label": "Status",
+            "multi": false,
+            "name": "status",
+            "options": [
+              {
+                "selected": true,
+                "text": "stopped",
+                "value": "kubevirt_vm_non_running_status_last_transition_timestamp_seconds"
+              },
+              {
+                "selected": false,
+                "text": "starting",
+                "value": "kubevirt_vm_starting_status_last_transition_timestamp_seconds"
+              },
+              {
+                "selected": false,
+                "text": "migrating",
+                "value": "kubevirt_vm_migrating_status_last_transition_timestamp_seconds"
+              },
+              {
+                "selected": false,
+                "text": "error",
+                "value": "kubevirt_vm_error_status_last_transition_timestamp_seconds"
+              },
+              {
+                "selected": false,
+                "text": "running",
+                "value": "kubevirt_vm_running_status_last_transition_timestamp_seconds"
+              }
+            ],
+            "query": "stopped : kubevirt_vm_non_running_status_last_transition_timestamp_seconds, starting  : kubevirt_vm_starting_status_last_transition_timestamp_seconds, migrating : kubevirt_vm_migrating_status_last_transition_timestamp_seconds, error : kubevirt_vm_error_status_last_transition_timestamp_seconds, running : kubevirt_vm_running_status_last_transition_timestamp_seconds",
+            "queryValue": "",
+            "skipUrlSync": false,
+            "type": "custom"
+          },
+          {
+            "current": {
+              "selected": false,
+              "text": "90",
+              "value": "90"
+            },
+            "description": "Filter the Virtual Machines that are in the specific status for more then the selected number of days",
+            "error": null,
+            "hide": 0,
+            "label": "Days in Status >",
+            "name": "days_in_status_gt",
+            "options": [
+              {
+                "selected": true,
+                "text": "90",
+                "value": "90"
+              }
+            ],
+            "query": "90",
+            "skipUrlSync": false,
+            "type": "textbox"
+          },
+          {
+            "current": {
+              "selected": false,
+              "text": "1000",
+              "value": "1000"
+            },
+            "description": "Filter the Virtual Machines that are in the specific status for less then the selected number of days",
+            "error": null,
+            "hide": 0,
+            "label": "Days in Status <",
+            "name": "days_in_status_lt",
+            "options": [
+              {
+                "selected": true,
+                "text": "1000",
+                "value": "1000"
+              }
+            ],
+            "query": "1000",
+            "skipUrlSync": false,
+            "type": "textbox"
+          },
+          {
+            "current": {
+              "selected": true,
+              "text": "10",
+              "value": "10"
+            },
+            "description": null,
+            "error": null,
+            "hide": 0,
+            "label": "Number of Results",
+            "name": "top_results",
+            "options": [
+              {
+                "selected": true,
+                "text": "10",
+                "value": "10"
+              }
+            ],
+            "query": "10",
+            "skipUrlSync": false,
+            "type": "textbox"
+          }
+        ]
+      },
+      "time": {
+        "from": "now-6h",
+        "to": "now"
+      },
+      "timepicker": {},
+      "timezone": "",
+      "title": "Service Level dashboards / Virtual Machines by Time in Status",
+      "uid": "lMD6V93Sz",
+      "version": 1
+    }
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-acm-virtual-machines-by-time-in-status
+  namespace: open-cluster-management-observability
+  annotations:
+    observability.open-cluster-management.io/dashboard-folder: "ACM / OpenShift Virtualization"
