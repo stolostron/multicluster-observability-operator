@@ -83,7 +83,7 @@ func getClusterPreds() predicate.Funcs {
 		}
 
 		if e.Object.GetName() != localClusterName {
-			updateManagedClusterList(e.Object)
+			managedClusterList.Delete(e.Object.GetName())
 		}
 		managedClusterImageRegistryMutex.Lock()
 		delete(managedClusterImageRegistry, e.Object.GetName())
