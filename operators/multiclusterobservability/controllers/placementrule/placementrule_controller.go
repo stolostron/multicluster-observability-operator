@@ -62,7 +62,6 @@ var (
 	defaultAddonDeploymentConfig  = &addonv1alpha1.AddOnDeploymentConfig{}
 	isplacementControllerRunnning = false
 	managedClusterList            = sync.Map{}
-	managedClusterListMutex       = &sync.RWMutex{}
 	installMetricsWithoutAddon    = false
 )
 
