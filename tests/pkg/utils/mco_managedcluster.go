@@ -7,6 +7,7 @@ package utils
 import (
 	"context"
 	"errors"
+	"os"
 
 	goversion "github.com/hashicorp/go-version"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -51,15 +52,40 @@ func ListManagedClusters(opt TestOptions) ([]string, error) {
 	for _, obj := range objs.Items {
 		metadata := obj.Object["metadata"].(map[string]interface{})
 		name := metadata["name"].(string)
-		labels := metadata["labels"].(map[string]interface{})
-		if labels != nil {
-			obsControllerStr := ""
-			if obsController, ok := labels["feature.open-cluster-management.io/addon-observability-controller"]; ok {
-				obsControllerStr = obsController.(string)
+
+		if os.Getenv("IS_KIND_ENV") == "true" {
+			// We do not have the obs add on label added in kind cluster
+			clusterNames = append(clusterNames, name)
+			continue
+		}
+
+		status, ok := obj.Object["status"].(map[string]interface{})
+		if !ok {
+			// No status found, skip this cluster
+			continue
+		}
+
+		conditions, ok := status["conditions"].([]interface{})
+		if !ok {
+			// No conditions found, skip this cluster
+			continue
+		}
+
+		available := false
+		for _, condition := range conditions {
+			conditionMap, ok := condition.(map[string]interface{})
+			if !ok {
+				continue
 			}
-			if obsControllerStr != "unreachable" {
-				clusterNames = append(clusterNames, name)
+			if conditionMap["type"] == "ManagedClusterConditionAvailable" && conditionMap["status"] == "True" {
+				available = true
+				break
 			}
+		}
+
+		// Only add clusters with ManagedClusterConditionAvailable status == True
+		if available {
+			clusterNames = append(clusterNames, name)
 		}
 	}
 
