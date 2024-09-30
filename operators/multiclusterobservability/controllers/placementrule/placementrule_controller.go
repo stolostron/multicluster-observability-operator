@@ -379,7 +379,7 @@ func createAllRelatedRes(
 	}
 
 	failedCreateManagedClusterRes := false
-	managedClusterListMutex.Lock()
+	managedClusterListMutex.RLock()
 	managedClusterList.Range(func(key, value interface{}) bool {
 		managedCluster := key.(string)
 		openshiftVersion := value.(string)
