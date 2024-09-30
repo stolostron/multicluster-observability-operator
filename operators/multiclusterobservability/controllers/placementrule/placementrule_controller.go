@@ -62,6 +62,7 @@ var (
 	defaultAddonDeploymentConfig  = &addonv1alpha1.AddOnDeploymentConfig{}
 	isplacementControllerRunnning = false
 	managedClusterList            = sync.Map{}
+	managedClusterListMutex       = &sync.RWMutex{}
 	installMetricsWithoutAddon    = false
 )
 
@@ -386,6 +387,7 @@ func createAllRelatedRes(
 	}
 
 	failedCreateManagedClusterRes := false
+	managedClusterListMutex.RLock()
 	managedClusterList.Range(func(key, value interface{}) bool {
 		managedCluster := key.(string)
 		openshiftVersion := value.(string)
@@ -443,6 +445,8 @@ func createAllRelatedRes(
 			clustersToCleanup = append(clustersToCleanup, ep.Namespace)
 		}
 	}
+
+	managedClusterListMutex.RUnlock()
 
 	failedDeleteOba := false
 	for _, cluster := range clustersToCleanup {
@@ -606,8 +610,8 @@ func areManagedClusterLabelsReady(obj client.Object) bool {
 }
 
 func updateManagedClusterList(obj client.Object) {
-	//ACM 8509: Special case for local-cluster, we deploy endpoint and metrics collector in the hub
-	//whether hubSelfManagement is enabled or not
+	managedClusterListMutex.Lock()
+	defer managedClusterListMutex.Unlock()
 	if version, ok := obj.GetLabels()["openshiftVersion"]; ok {
 		managedClusterList.Store(obj.GetName(), version)
 	} else {
