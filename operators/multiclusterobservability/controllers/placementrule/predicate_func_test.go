@@ -8,9 +8,10 @@ import (
 	"testing"
 	"time"
 
+	clusterv1 "open-cluster-management.io/api/cluster/v1"
+
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 
-	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 )
@@ -66,15 +67,16 @@ func TestClusterPred(t *testing.T) {
 		t.Run(c.caseName, func(t *testing.T) {
 			pred := getClusterPreds()
 			create_event := event.CreateEvent{
-				Object: &appsv1.Deployment{
+				Object: &clusterv1.ManagedCluster{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:        name,
-						Namespace:   c.namespace,
-						Annotations: c.annotations,
-						Labels:      map[string]string{"vendor": "OpenShift", "openshiftVersion": "4.6.0"},
+						Name:            name,
+						Namespace:       c.namespace,
+						Annotations:     c.annotations,
+						Labels:          map[string]string{"vendor": "OpenShift", "openshiftVersion": "4.6.0"},
+						ResourceVersion: "1",
 					},
-					Spec: appsv1.DeploymentSpec{
-						Replicas: int32Ptr(2),
+					Spec: clusterv1.ManagedClusterSpec{
+						HubAcceptsClient: true,
 					},
 				},
 			}
@@ -90,7 +92,7 @@ func TestClusterPred(t *testing.T) {
 			}
 
 			update_event := event.UpdateEvent{
-				ObjectNew: &appsv1.Deployment{
+				ObjectNew: &clusterv1.ManagedCluster{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:              name,
 						Namespace:         c.namespace,
@@ -100,7 +102,7 @@ func TestClusterPred(t *testing.T) {
 						Labels:            map[string]string{"vendor": "OpenShift", "openshiftVersion": "4.6.0"},
 					},
 				},
-				ObjectOld: &appsv1.Deployment{
+				ObjectOld: &clusterv1.ManagedCluster{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:            name,
 						Namespace:       c.namespace,
@@ -125,14 +127,14 @@ func TestClusterPred(t *testing.T) {
 			}
 
 			delete_event := event.DeleteEvent{
-				Object: &appsv1.Deployment{
+				Object: &clusterv1.ManagedCluster{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:        name,
 						Namespace:   c.namespace,
 						Annotations: c.annotations,
 					},
-					Spec: appsv1.DeploymentSpec{
-						Replicas: int32Ptr(2),
+					Spec: clusterv1.ManagedClusterSpec{
+						HubAcceptsClient: true,
 					},
 				},
 			}
@@ -196,19 +198,18 @@ func TestManagedClusterLabelReady(t *testing.T) {
 		t.Run(c.caseName, func(t *testing.T) {
 			pred := getClusterPreds()
 			create_event := event.CreateEvent{
-				Object: &appsv1.Deployment{
+				Object: &clusterv1.ManagedCluster{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:        name,
 						Namespace:   c.namespace,
 						Annotations: c.annotations,
 						Labels:      c.labels,
 					},
-					Spec: appsv1.DeploymentSpec{
-						Replicas: int32Ptr(2),
+					Spec: clusterv1.ManagedClusterSpec{
+						HubAcceptsClient: true,
 					},
 				},
 			}
-
 			if c.expectedCreate {
 				if !pred.CreateFunc(create_event) {
 					t.Fatalf("pre func return false on applied createevent in case: (%v)", c.caseName)
@@ -218,8 +219,9 @@ func TestManagedClusterLabelReady(t *testing.T) {
 					t.Fatalf("pre func return true on non-applied createevent in case: (%v)", c.caseName)
 				}
 			}
+
 			update_event := event.UpdateEvent{
-				ObjectNew: &appsv1.Deployment{
+				ObjectNew: &clusterv1.ManagedCluster{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:              name,
 						Namespace:         c.namespace,
@@ -229,7 +231,8 @@ func TestManagedClusterLabelReady(t *testing.T) {
 						Labels:            c.labels,
 					},
 				},
-				ObjectOld: &appsv1.Deployment{
+
+				ObjectOld: &clusterv1.ManagedCluster{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:            name,
 						Namespace:       c.namespace,
@@ -237,7 +240,6 @@ func TestManagedClusterLabelReady(t *testing.T) {
 					},
 				},
 			}
-
 			if c.expectedUpdate {
 				if !pred.UpdateFunc(update_event) {
 					t.Fatalf("pre func return false on applied update event in case: (%v)", c.caseName)
