@@ -24,13 +24,6 @@ func getClusterPreds() predicate.Funcs {
 	createFunc := func(e event.CreateEvent) bool {
 		log.Info("CreateFunc", "managedCluster", e.Object.GetName())
 
-		//ACM 8509: Special case for local-cluster, we do not react changes to
-		//local-cluster as it is expected to be always present in the managed cluster list
-		//whether hubSelfManagement is enabled or not
-		if e.Object.GetName() == "local-cluster" {
-			return false
-		}
-
 		if isAutomaticAddonInstallationDisabled(e.Object) {
 			return false
 		}
@@ -38,17 +31,18 @@ func getClusterPreds() predicate.Funcs {
 		if !areManagedClusterLabelsReady(e.Object) {
 			return false
 		}
-		updateManagedClusterList(e.Object)
+		//ACM 8509: Special case for local-cluster, we do not react changes to
+		//local-cluster as it is expected to be always present in the managed cluster list
+		//whether hubSelfManagement is enabled or not
+		if e.Object.GetName() != localClusterName {
+			updateManagedClusterList(e.Object)
+		}
 
 		return true
 	}
 
 	updateFunc := func(e event.UpdateEvent) bool {
 		log.Info("UpdateFunc", "managedCluster", e.ObjectNew.GetName())
-
-		if e.ObjectNew.GetName() == "local-cluster" {
-			return false
-		}
 
 		if e.ObjectNew.GetResourceVersion() == e.ObjectOld.GetResourceVersion() {
 			return false
@@ -59,9 +53,7 @@ func getClusterPreds() predicate.Funcs {
 
 		if e.ObjectNew.GetDeletionTimestamp() != nil {
 			log.Info("managedcluster is in terminating state", "managedCluster", e.ObjectNew.GetName())
-			managedClusterListMutex.Lock()
-			delete(managedClusterList, e.ObjectNew.GetName())
-			managedClusterListMutex.Unlock()
+			managedClusterList.Delete(e.ObjectNew.GetName())
 			managedClusterImageRegistryMutex.Lock()
 			delete(managedClusterImageRegistry, e.ObjectNew.GetName())
 			managedClusterImageRegistryMutex.Unlock()
@@ -70,7 +62,13 @@ func getClusterPreds() predicate.Funcs {
 			if !areManagedClusterLabelsReady(e.ObjectNew) {
 				return false
 			}
-			updateManagedClusterList(e.ObjectNew)
+			//ACM 8509: Special case for local-cluster, we do not react changes to
+			//local-cluster as it is expected to be always present in the managed cluster list
+			//whether hubSelfManagement is enabled or not
+			if e.ObjectNew.GetName() != localClusterName {
+				updateManagedClusterList(e.ObjectNew)
+			}
+
 		}
 
 		return true
@@ -79,17 +77,16 @@ func getClusterPreds() predicate.Funcs {
 	deleteFunc := func(e event.DeleteEvent) bool {
 		log.Info("DeleteFunc", "managedCluster", e.Object.GetName())
 
-		if e.Object.GetName() == "local-cluster" {
-			return false
-		}
-
 		if isAutomaticAddonInstallationDisabled(e.Object) {
 			return false
 		}
 
-		managedClusterListMutex.Lock()
-		delete(managedClusterList, e.Object.GetName())
-		managedClusterListMutex.Unlock()
+		//ACM 8509: Special case for local-cluster, we do not react changes to
+		//local-cluster as it is expected to be always present in the managed cluster list
+		//whether hubSelfManagement is enabled or not
+		if e.Object.GetName() != localClusterName {
+			managedClusterList.Delete(e.Object.GetName())
+		}
 		managedClusterImageRegistryMutex.Lock()
 		delete(managedClusterImageRegistry, e.Object.GetName())
 		managedClusterImageRegistryMutex.Unlock()
