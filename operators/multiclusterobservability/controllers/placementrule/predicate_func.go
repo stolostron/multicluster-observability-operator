@@ -9,8 +9,6 @@ import (
 	"reflect"
 	"strings"
 
-	clusterv1 "open-cluster-management.io/api/cluster/v1"
-
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 
@@ -26,13 +24,6 @@ func getClusterPreds() predicate.Funcs {
 	createFunc := func(e event.CreateEvent) bool {
 		log.Info("CreateFunc", "managedCluster", e.Object.GetName())
 
-		//ACM 8509: Special case for local-cluster, we do not react changes to
-		//local-cluster as it is expected to be always present in the managed cluster list
-		//whether hubSelfManagement is enabled or not
-		if e.Object.GetName() == "local-cluster" {
-			return false
-		}
-
 		if isAutomaticAddonInstallationDisabled(e.Object) {
 			return false
 		}
@@ -40,6 +31,9 @@ func getClusterPreds() predicate.Funcs {
 		if !areManagedClusterLabelsReady(e.Object) {
 			return false
 		}
+		//ACM 8509: Special case for local-cluster, we do not react changes to
+		//local-cluster as it is expected to be always present in the managed cluster list
+		//whether hubSelfManagement is enabled or not
 		if e.Object.GetName() != localClusterName {
 			updateManagedClusterList(e.Object)
 		}
@@ -49,10 +43,6 @@ func getClusterPreds() predicate.Funcs {
 
 	updateFunc := func(e event.UpdateEvent) bool {
 		log.Info("UpdateFunc", "managedCluster", e.ObjectNew.GetName())
-
-		if e.ObjectNew.GetName() == "local-cluster" {
-			return false
-		}
 
 		if e.ObjectNew.GetResourceVersion() == e.ObjectOld.GetResourceVersion() {
 			return false
@@ -72,15 +62,13 @@ func getClusterPreds() predicate.Funcs {
 			if !areManagedClusterLabelsReady(e.ObjectNew) {
 				return false
 			}
+			//ACM 8509: Special case for local-cluster, we do not react changes to
+			//local-cluster as it is expected to be always present in the managed cluster list
+			//whether hubSelfManagement is enabled or not
 			if e.ObjectNew.GetName() != localClusterName {
 				updateManagedClusterList(e.ObjectNew)
 			}
 
-		}
-		//log the diff in managedccluster object
-		if !reflect.DeepEqual(e.ObjectNew.(*clusterv1.ManagedCluster), e.ObjectOld.(*clusterv1.ManagedCluster)) {
-			log.Info("managedcluster object New diff", "managedCluster", e.ObjectNew.GetName(), "diff", fmt.Sprintf("%+v", e.ObjectNew.(*clusterv1.ManagedCluster)))
-			log.Info("managedcluster object Old diff", "managedCluster", e.ObjectOld.GetName(), "diff", fmt.Sprintf("%+v", e.ObjectOld.(*clusterv1.ManagedCluster)))
 		}
 
 		return true
@@ -89,14 +77,13 @@ func getClusterPreds() predicate.Funcs {
 	deleteFunc := func(e event.DeleteEvent) bool {
 		log.Info("DeleteFunc", "managedCluster", e.Object.GetName())
 
-		if e.Object.GetName() == "local-cluster" {
-			return false
-		}
-
 		if isAutomaticAddonInstallationDisabled(e.Object) {
 			return false
 		}
 
+		//ACM 8509: Special case for local-cluster, we do not react changes to
+		//local-cluster as it is expected to be always present in the managed cluster list
+		//whether hubSelfManagement is enabled or not
 		if e.Object.GetName() != localClusterName {
 			managedClusterList.Delete(e.Object.GetName())
 		}

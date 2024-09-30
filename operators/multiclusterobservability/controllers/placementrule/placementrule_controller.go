@@ -196,9 +196,6 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 			return ctrl.Result{}, err
 		}
 	}
-	if operatorconfig.IsMCOTerminating {
-		delete(managedClusterList, "local-cluster")
-	}
 
 	if !deleteAll {
 		if err := createAllRelatedRes(
