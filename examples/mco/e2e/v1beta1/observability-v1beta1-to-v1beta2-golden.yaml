@@ -16,6 +16,8 @@ spec:
   observabilityAddonSpec:
     enableMetrics: true
     interval: 300
+    scrapeSizeLimitBytes: 1073741824
+    workers: 1
   storageConfig:
     alertmanagerStorageSize: 1Gi
     compactStorageSize: 1Gi

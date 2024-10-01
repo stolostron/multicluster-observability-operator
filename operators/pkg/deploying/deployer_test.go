@@ -9,10 +9,12 @@ import (
 	"testing"
 
 	prometheusv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -1080,4 +1082,75 @@ func TestDeploy(t *testing.T) {
 func toPtr(t *testing.T, s string) *string {
 	t.Helper()
 	return &s
+}
+
+func TestUndeploy(t *testing.T) {
+	tests := []struct {
+		name         string
+		obj          runtime.Object
+		existingObjs []runtime.Object
+	}{
+		{
+			name: "Secret Not Found",
+			obj: &corev1.Secret{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "v1",
+					Kind:       "Secret",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-secret",
+					Namespace: "default",
+				},
+			},
+			existingObjs: []runtime.Object{},
+		},
+		{
+			name: "Secret Found and Deleted",
+			obj: &corev1.Secret{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "v1",
+					Kind:       "Secret",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-secret",
+					Namespace: "default",
+				},
+			},
+			existingObjs: []runtime.Object{
+				&corev1.Secret{
+					TypeMeta: metav1.TypeMeta{
+						APIVersion: "v1",
+						Kind:       "Secret",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-secret",
+						Namespace: "default",
+					},
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			scheme := runtime.NewScheme()
+			corev1.AddToScheme(scheme)
+
+			client := fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(tt.existingObjs...).Build()
+			deployer := NewDeployer(client)
+
+			obj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(tt.obj)
+			assert.NoError(t, err)
+			unsObj := &unstructured.Unstructured{Object: obj}
+
+			err = deployer.Undeploy(context.TODO(), unsObj)
+			assert.NoError(t, err)
+
+			found := &unstructured.Unstructured{}
+			found.SetGroupVersionKind(unsObj.GroupVersionKind())
+			err = client.Get(context.TODO(), types.NamespacedName{Name: unsObj.GetName(), Namespace: unsObj.GetNamespace()}, found)
+			assert.True(t, errors.IsNotFound(err))
+
+		})
+	}
 }

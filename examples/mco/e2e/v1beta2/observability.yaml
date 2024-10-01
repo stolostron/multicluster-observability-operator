@@ -102,6 +102,8 @@ spec:
   nodeSelector:
     kubernetes.io/os: linux
   observabilityAddonSpec:
+    scrapeSizeLimitBytes: 1073741824
+    workers: 1
     enableMetrics: true
     interval: 30
     resources:

@@ -47,7 +47,6 @@ const (
 	mtlsCertName            = "observability-controller-open-cluster-management.io-observability-signer-client-cert"
 	mtlsCaName              = "observability-managed-cluster-certs"
 	mtlsServerCaName        = "observability-server-ca-certs"
-	limitBytes              = 1073741824
 	defaultInterval         = "30s"
 	uwlNamespace            = "openshift-user-workload-monitoring"
 	uwlSts                  = "prometheus-user-workload"
@@ -793,9 +792,19 @@ func (m *MetricsCollector) getCommands(isUSW bool, deployParams *deploymentParam
 		interval = fmt.Sprintf("%ds", m.ObsAddon.Spec.Interval)
 	}
 
+	workers := 1
+	if m.ObsAddon.Spec.Workers != 0 {
+		workers = int(m.ObsAddon.Spec.Workers)
+	}
+
 	evaluateInterval := "30s"
 	if m.ObsAddon.Spec.Interval < 30 {
 		evaluateInterval = interval
+	}
+
+	scrapeSizeLimitBytes := 1073741824
+	if m.ObsAddon.Spec.ScrapeSizeLimitBytes != 0 {
+		scrapeSizeLimitBytes = m.ObsAddon.Spec.ScrapeSizeLimitBytes
 	}
 
 	caFile := caMounthPath + "/service-ca.crt"
@@ -815,6 +824,7 @@ func (m *MetricsCollector) getCommands(isUSW bool, deployParams *deploymentParam
 		"/usr/bin/metrics-collector",
 		"--listen=:8080",
 		"--from=$(FROM)",
+		"--worker-number=" + strconv.Itoa(workers),
 		"--from-query=$(FROM_QUERY)",
 		"--to-upload=$(TO)",
 		"--to-upload-ca=/tlscerts/ca/ca.crt",
@@ -822,7 +832,7 @@ func (m *MetricsCollector) getCommands(isUSW bool, deployParams *deploymentParam
 		"--to-upload-key=/tlscerts/certs/tls.key",
 		"--interval=" + interval,
 		"--evaluate-interval=" + evaluateInterval,
-		"--limit-bytes=" + strconv.Itoa(limitBytes),
+		"--limit-bytes=" + strconv.Itoa(scrapeSizeLimitBytes),
 		fmt.Sprintf("--label=\"cluster=%s\"", m.HubInfo.ClusterName),
 		fmt.Sprintf("--label=\"clusterID=%s\"", clusterID),
 	}

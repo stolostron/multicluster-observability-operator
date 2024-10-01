@@ -176,3 +176,206 @@ func TestRenderAddonDeploymentConfig(t *testing.T) {
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1alpha1.CustomizedVariable{Name: nameUserWorkloadTracesCollection, Value: otelV1beta1})
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1alpha1.CustomizedVariable{Name: nameUserWorkloadInstrumentation, Value: instrV1alpha1})
 }
+
+func TestMCOAEnabled(t *testing.T) {
+	tests := []struct {
+		name     string
+		cr       *mcov1beta2.MultiClusterObservability
+		expected bool
+	}{
+		{
+			name: "Capabilities not set",
+			cr: &mcov1beta2.MultiClusterObservability{
+				Spec: mcov1beta2.MultiClusterObservabilitySpec{
+					Capabilities: nil,
+				},
+			},
+			expected: false,
+		},
+		{
+			name: "Platform logs collection enabled",
+			cr: &mcov1beta2.MultiClusterObservability{
+				Spec: mcov1beta2.MultiClusterObservabilitySpec{
+					Capabilities: &mcov1beta2.CapabilitiesSpec{
+						Platform: &mcov1beta2.PlatformCapabilitiesSpec{
+							Logs: mcov1beta2.PlatformLogsSpec{
+								Collection: mcov1beta2.PlatformLogsCollectionSpec{
+									Enabled: true,
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: true,
+		},
+		{
+			name: "User workloads logs collection enabled",
+			cr: &mcov1beta2.MultiClusterObservability{
+				Spec: mcov1beta2.MultiClusterObservabilitySpec{
+					Capabilities: &mcov1beta2.CapabilitiesSpec{
+						UserWorkloads: &mcov1beta2.UserWorkloadCapabilitiesSpec{
+							Logs: mcov1beta2.UserWorkloadLogsSpec{
+								Collection: mcov1beta2.UserWorkloadLogsCollectionSpec{
+									ClusterLogForwarder: mcov1beta2.ClusterLogForwarderSpec{
+										Enabled: true,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: true,
+		},
+		{
+			name: "User workloads traces collection enabled",
+			cr: &mcov1beta2.MultiClusterObservability{
+				Spec: mcov1beta2.MultiClusterObservabilitySpec{
+					Capabilities: &mcov1beta2.CapabilitiesSpec{
+						UserWorkloads: &mcov1beta2.UserWorkloadCapabilitiesSpec{
+							Traces: mcov1beta2.UserWorkloadTracesSpec{
+								Collection: mcov1beta2.OpenTelemetryCollectionSpec{
+									Collector: mcov1beta2.OpenTelemetryCollectorSpec{
+										Enabled: true,
+									},
+									Instrumentation: mcov1beta2.InstrumentationSpec{
+										Enabled: true,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: true,
+		},
+		{
+			name: "All capabilities disabled",
+			cr: &mcov1beta2.MultiClusterObservability{
+				Spec: mcov1beta2.MultiClusterObservabilitySpec{
+					Capabilities: &mcov1beta2.CapabilitiesSpec{
+						Platform: &mcov1beta2.PlatformCapabilitiesSpec{
+							Logs: mcov1beta2.PlatformLogsSpec{
+								Collection: mcov1beta2.PlatformLogsCollectionSpec{
+									Enabled: false,
+								},
+							},
+						},
+						UserWorkloads: &mcov1beta2.UserWorkloadCapabilitiesSpec{
+							Logs: mcov1beta2.UserWorkloadLogsSpec{
+								Collection: mcov1beta2.UserWorkloadLogsCollectionSpec{
+									ClusterLogForwarder: mcov1beta2.ClusterLogForwarderSpec{
+										Enabled: false,
+									},
+								},
+							},
+							Traces: mcov1beta2.UserWorkloadTracesSpec{
+								Collection: mcov1beta2.OpenTelemetryCollectionSpec{
+									Collector: mcov1beta2.OpenTelemetryCollectorSpec{
+										Enabled: false,
+									},
+									Instrumentation: mcov1beta2.InstrumentationSpec{
+										Enabled: false,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := MCOAEnabled(tt.cr)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestRenderMCOATemplates(t *testing.T) {
+	wd, err := os.Getwd()
+	assert.NoError(t, err)
+	templatesPath := filepath.Join(wd, "..", "..", "manifests")
+	t.Setenv(templatesutil.TemplatesPathEnvVar, templatesPath)
+
+	tmplRenderer := templatesutil.NewTemplateRenderer(templatesPath)
+	mcoaTemplates, err := templates.GetOrLoadMCOATemplates(tmplRenderer)
+	assert.NoError(t, err)
+
+	tests := []struct {
+		name                          string
+		capabilitiesEnabled           bool
+		renderOptionDisableCMAORender bool
+		expectClusterManagementAddOn  bool
+	}{
+		{
+			name:                         "Capabilites disabled, ClusterManagementAddOn should be rendered to allow deletion",
+			capabilitiesEnabled:          false,
+			expectClusterManagementAddOn: true,
+		},
+		{
+			name:                          "Capabilities enabled, ClusterManagementAddOn should be rendered by default",
+			capabilitiesEnabled:           true,
+			renderOptionDisableCMAORender: false,
+			expectClusterManagementAddOn:  true,
+		},
+		{
+			name:                          "Capabilities enabled, disableCMAORender ClusterManagementAddOn should not be rendered",
+			capabilitiesEnabled:           true,
+			renderOptionDisableCMAORender: true,
+			expectClusterManagementAddOn:  false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mco := &mcov1beta2.MultiClusterObservability{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						"cr-key": "cr-value",
+					},
+					Name: "multicluster-observability",
+				},
+				Spec: mcov1beta2.MultiClusterObservabilitySpec{
+					Capabilities: &mcov1beta2.CapabilitiesSpec{
+						Platform: &mcov1beta2.PlatformCapabilitiesSpec{
+							Logs: mcov1beta2.PlatformLogsSpec{
+								Collection: mcov1beta2.PlatformLogsCollectionSpec{
+									Enabled: tt.capabilitiesEnabled,
+								},
+							},
+						},
+					},
+				},
+			}
+			renderer := &MCORenderer{cr: mco}
+			renderer.rendererOptions = &RendererOptions{
+				MCOAOptions: MCOARendererOptions{
+					DisableCMAORender: tt.renderOptionDisableCMAORender,
+				},
+			}
+
+			uobjs, err := renderer.renderMCOATemplates(mcoaTemplates, "test", map[string]string{"key": "value"})
+			assert.NoError(t, err)
+			assert.NotNil(t, uobjs)
+
+			foundClusterManagementAddOn := false
+			for _, uobj := range uobjs {
+				if uobj.GetKind() == "ClusterManagementAddOn" {
+					foundClusterManagementAddOn = true
+					break
+				}
+			}
+
+			if tt.expectClusterManagementAddOn {
+				assert.True(t, foundClusterManagementAddOn, "Expected ClusterManagementAddOn to be rendered")
+			} else {
+				assert.False(t, foundClusterManagementAddOn, "Expected ClusterManagementAddOn to not be rendered")
+			}
+		})
+	}
+}

@@ -26,6 +26,9 @@ spec:
     # Describes the default OpenTelemetryCollector type applied to all managed clusters.
     - group: opentelemetry.io
       resource: opentelemetrycollectors
+    # Describes the default Instrumentation type applied to all managed clusters.
+    - group: opentelemetry.io
+      resource: instrumentations
   installStrategy:
     type: Placements
     placements:
@@ -38,5 +41,9 @@ spec:
             namespace: open-cluster-management-observability
           - group: opentelemetry.io
             resource: opentelemetrycollectors
+            name: instance
+            namespace: open-cluster-management-observability
+          - group: opentelemetry.io
+            resource: instrumentations
             name: instance
             namespace: open-cluster-management-observability

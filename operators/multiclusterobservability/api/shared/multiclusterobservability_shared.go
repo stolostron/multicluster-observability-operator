@@ -44,6 +44,20 @@ type ObservabilityAddonSpec struct {
 	// +kubebuilder:validation:Maximum=3600
 	Interval int32 `json:"interval,omitempty"`
 
+	// ScrapeSizeLimitBytes is the max size in bytes for a single metrics scrape from in-cluster Prometheus.
+	// Default is 1 GiB.
+	// +kubebuilder:default:=1073741824
+	ScrapeSizeLimitBytes int `json:"scrapeSizeLimitBytes,omitempty"`
+
+	// Workers is the number of workers in metrics-collector that work in parallel to
+	// push metrics to hub server. If set to > 1, metrics-collector will shard
+	// /federate calls to Prometheus, based on matcher rules provided by allowlist.
+	// Ensure that number of matchers exceeds number of workers.
+	// +optional
+	// +kubebuilder:default:=1
+	// +kubebuilder:validation:Minimum=1
+	Workers int32 `json:"workers,omitempty"`
+
 	// Resource requirement for metrics-collector
 	// +optional
 	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`

@@ -33,3 +33,9 @@ stringData:
     timeout = 300
     dial_timeout = 30
     keep_alive_seconds = 300
+    [feature_toggles]
+    correlations = false
+    [public_dashboards]
+    enabled = false
+    [unified_alerting]
+    enabled = false

@@ -11,6 +11,7 @@ import (
 	"reflect"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -382,20 +383,25 @@ func createOrUpdateClusterMonitoringConfig(
 		return fmt.Errorf("failed to unmarshal the cluster monitoring config: %w", err)
 	}
 
-	if foundClusterMonitoringConfiguration.PrometheusK8sConfig != nil {
+	newCMOCfg := &cmomanifests.ClusterMonitoringConfiguration{}
+	if err := yaml.Unmarshal([]byte(foundClusterMonitoringConfigurationYAMLString), newCMOCfg); err != nil {
+		return fmt.Errorf("failed to unmarshal the cluster monitoring config: %w", err)
+	}
+
+	if newCMOCfg.PrometheusK8sConfig != nil {
 
 		// check if externalLabels exists
-		if foundClusterMonitoringConfiguration.PrometheusK8sConfig.ExternalLabels != nil {
-			foundClusterMonitoringConfiguration.PrometheusK8sConfig.ExternalLabels[operatorconfig.ClusterLabelKeyForAlerts] = clusterID
+		if newCMOCfg.PrometheusK8sConfig.ExternalLabels != nil {
+			newCMOCfg.PrometheusK8sConfig.ExternalLabels[operatorconfig.ClusterLabelKeyForAlerts] = clusterID
 		} else {
-			foundClusterMonitoringConfiguration.PrometheusK8sConfig.ExternalLabels = newExternalLabels
+			newCMOCfg.PrometheusK8sConfig.ExternalLabels = newExternalLabels
 		}
 
 		// check if alertmanagerConfigs exists
-		if foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs != nil {
+		if newCMOCfg.PrometheusK8sConfig.AlertmanagerConfigs != nil {
 			additionalAlertmanagerConfigExists := false
 			var atIndex int
-			for i, v := range foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs {
+			for i, v := range newCMOCfg.PrometheusK8sConfig.AlertmanagerConfigs {
 				if isManaged(v) {
 					additionalAlertmanagerConfigExists = true
 					atIndex = i
@@ -403,21 +409,25 @@ func createOrUpdateClusterMonitoringConfig(
 				}
 			}
 			if !additionalAlertmanagerConfigExists {
-				foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs = append(
-					foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs,
+				newCMOCfg.PrometheusK8sConfig.AlertmanagerConfigs = append(
+					newCMOCfg.PrometheusK8sConfig.AlertmanagerConfigs,
 					newAdditionalAlertmanagerConfig(hubInfo))
 			} else {
-				foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs[atIndex] = newAdditionalAlertmanagerConfig(hubInfo)
+				newCMOCfg.PrometheusK8sConfig.AlertmanagerConfigs[atIndex] = newAdditionalAlertmanagerConfig(hubInfo)
 			}
 		} else {
-			foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs = newAlertmanagerConfigs
+			newCMOCfg.PrometheusK8sConfig.AlertmanagerConfigs = newAlertmanagerConfigs
 		}
 
 	} else {
-		foundClusterMonitoringConfiguration.PrometheusK8sConfig = newPmK8sConfig
+		newCMOCfg.PrometheusK8sConfig = newPmK8sConfig
 	}
 
-	updatedClusterMonitoringConfigurationYAMLBytes, err := yaml.Marshal(foundClusterMonitoringConfiguration)
+	if equality.Semantic.DeepEqual(*foundClusterMonitoringConfiguration, *newCMOCfg) {
+		return nil
+	}
+
+	updatedClusterMonitoringConfigurationYAMLBytes, err := yaml.Marshal(newCMOCfg)
 	if err != nil {
 		return fmt.Errorf("failed to marshal the cluster monitoring config to yaml: %w", err)
 	}

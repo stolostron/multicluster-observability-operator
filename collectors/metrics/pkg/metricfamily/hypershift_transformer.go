@@ -7,17 +7,11 @@ package metricfamily
 import (
 	"context"
 	"fmt"
-	"os"
-
-	"errors"
 
 	"github.com/go-kit/log"
 	hyperv1 "github.com/openshift/hypershift/api/hypershift/v1alpha1"
 	prom "github.com/prometheus/client_model/go"
-	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/logger"
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
@@ -39,41 +33,14 @@ type hypershiftTransformer struct {
 	managementClusterID string
 }
 
-func NewHypershiftTransformer(l log.Logger, c client.Client, labels map[string]string) (Transformer, error) {
-
-	//clusters := map[string]string{}
-	hClient := c
-	if hClient == nil {
-		if _, ok := os.LookupEnv("UNIT_TEST"); !ok {
-			config, err := clientcmd.BuildConfigFromFlags("", "")
-			if err != nil {
-				return nil, errors.New("failed to create the kube config")
-			}
-			s := scheme.Scheme
-			if err := hyperv1.AddToScheme(s); err != nil {
-				return nil, errors.New("failed to add observabilityaddon into scheme")
-			}
-			hClient, err = client.New(config, client.Options{Scheme: s})
-			if err != nil {
-				return nil, errors.New("failed to create the kube client")
-			}
-		} else {
-			s := scheme.Scheme
-			err := hyperv1.AddToScheme(s)
-			if err != nil {
-				return nil, err
-			}
-			hClient = fake.NewClientBuilder().Build()
-		}
-	}
-
-	clusters, err := getHostedClusters(hClient, l)
+func NewHypershiftTransformer(c client.Client, l log.Logger, labels map[string]string) (Transformer, error) {
+	clusters, err := getHostedClusters(c, l)
 	if err != nil {
 		return nil, err
 	}
 
 	return &hypershiftTransformer{
-		kubeClient:          hClient,
+		kubeClient:          c,
 		logger:              l,
 		hostedClusters:      clusters,
 		managementCluster:   labels[CLUSTER_LABEL],
@@ -141,9 +108,6 @@ func getClusterName(h *hypershiftTransformer, id string) (string, error) {
 }
 
 func CheckCRDExist(l log.Logger) (bool, error) {
-	if os.Getenv("UNIT_TEST") == "true" {
-		return true, nil
-	}
 	c, err := util.GetOrCreateCRDClient()
 	if err != nil {
 		return false, nil

@@ -15,19 +15,13 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/status"
 )
 
-func init() {
-	os.Setenv("UNIT_TEST", "true")
-	s := scheme.Scheme
-	_ = oav1beta1.AddToScheme(s)
-}
-
 func TestUpdateStatus(t *testing.T) {
-
 	testCases := map[string]struct {
 		reason            status.Reason
 		message           string
@@ -121,7 +115,16 @@ func TestUpdateStatus(t *testing.T) {
 				},
 			}
 
-			s, err := New(log.NewLogfmtLogger(os.Stdout), false, tc.isUwl)
+			sc := scheme.Scheme
+			if err := oav1beta1.AddToScheme(sc); err != nil {
+				t.Fatal("failed to add observabilityaddon into scheme")
+			}
+			kubeClient := fake.NewClientBuilder().
+				WithScheme(sc).
+				WithStatusSubresource(&oav1beta1.ObservabilityAddon{}).
+				Build()
+
+			s, err := New(kubeClient, log.NewLogfmtLogger(os.Stdout), false, tc.isUwl)
 			if err != nil {
 				t.Fatalf("Failed to create new Status struct: (%v)", err)
 			}

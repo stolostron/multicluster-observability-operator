@@ -49,13 +49,12 @@ var (
 	}
 )
 
-func init() {
-	os.Setenv("UNIT_TEST", "true")
-	s := scheme.Scheme
-	hyperv1.AddToScheme(s)
-}
-
 func TestTransform(t *testing.T) {
+	s := scheme.Scheme
+	if err := hyperv1.AddToScheme(s); err != nil {
+		t.Fatal("couldn't add hyperv1 to scheme")
+	}
+
 	c := fake.NewClientBuilder().WithRuntimeObjects(hCluster).Build()
 
 	l := log.NewLogfmtLogger(log.NewSyncWriter(os.Stderr))
@@ -63,10 +62,12 @@ func TestTransform(t *testing.T) {
 		"cluster":   "test-cluster",
 		"clusterID": "test-clusterID",
 	}
-	h, err := NewHypershiftTransformer(l, c, labels)
+
+	h, err := NewHypershiftTransformer(c, l, labels)
 	if err != nil {
 		t.Fatal("Failed to new HyperShiftTransformer", err)
 	}
+
 	family := &prom.MetricFamily{
 		Name: &metricsName,
 		Metric: []*prom.Metric{
