@@ -806,7 +806,7 @@ func TestGetOperandName(t *testing.T) {
 
 func TestGetMCOASupportedCRDNames(t *testing.T) {
 	expected := []string{
-		"clusterlogforwarders.logging.openshift.io",
+		"clusterlogforwarders.observability.openshift.io",
 		"opentelemetrycollectors.opentelemetry.io",
 		"instrumentations.opentelemetry.io",
 	}
@@ -823,8 +823,8 @@ func TestGetMCOASupportedCRDFQDN(t *testing.T) {
 	}{
 		{
 			name:     "Valid CRD name with version",
-			crdName:  "clusterlogforwarders.logging.openshift.io",
-			expected: "clusterlogforwarders.v1.logging.openshift.io",
+			crdName:  "clusterlogforwarders.observability.openshift.io",
+			expected: "clusterlogforwarders.v1.observability.openshift.io",
 		},
 		{
 			name:     "Valid CRD name with different version",

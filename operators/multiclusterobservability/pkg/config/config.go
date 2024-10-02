@@ -226,7 +226,7 @@ const (
 )
 
 const (
-	ClusterLogForwarderCRDName    = "clusterlogforwarders.logging.openshift.io"
+	ClusterLogForwarderCRDName    = "clusterlogforwarders.observability.openshift.io"
 	OpenTelemetryCollectorCRDName = "opentelemetrycollectors.opentelemetry.io"
 	InstrumentationCRDName        = "instrumentations.opentelemetry.io"
 )

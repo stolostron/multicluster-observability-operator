@@ -61,7 +61,7 @@
       resources: ["secrets"]
       verbs: ["get", "list", "watch"]
     # Roles for addon to perform logging specific actions
-    - apiGroups: ["logging.openshift.io"]
+    - apiGroups: ["observability.openshift.io"]
       resources: ["clusterlogforwarders"]
       verbs: ["get", "list", "watch"]
     # Role for addon to perform opentelemetry specific actions

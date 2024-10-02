@@ -1129,7 +1129,7 @@ func TestNewMCOACRDEventHandler(t *testing.T) {
 		},
 		{
 			name:    "CRD created is a dependency",
-			crdName: "clusterlogforwarders.logging.openshift.io",
+			crdName: "clusterlogforwarders.observability.openshift.io",
 			expectedReqs: []reconcile.Request{
 				{
 					NamespacedName: types.NamespacedName{

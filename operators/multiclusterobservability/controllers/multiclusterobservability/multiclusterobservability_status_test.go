@@ -328,7 +328,7 @@ func TestUpdateMCOAStatus(t *testing.T) {
 				Type:    reasonMCOADegraded,
 				Status:  metav1.ConditionTrue,
 				Reason:  reasonMCOADegraded,
-				Message: "MultiCluster-Observability-Addon degraded because the following CRDs are not installed on the hub: clusterlogforwarders.logging.openshift.io(v1), instrumentations.opentelemetry.io(v1alpha1), opentelemetrycollectors.opentelemetry.io(v1beta1)",
+				Message: "MultiCluster-Observability-Addon degraded because the following CRDs are not installed on the hub: clusterlogforwarders.observability.openshift.io(v1), instrumentations.opentelemetry.io(v1alpha1), opentelemetrycollectors.opentelemetry.io(v1beta1)",
 			},
 		},
 		{
@@ -349,7 +349,7 @@ func TestUpdateMCOAStatus(t *testing.T) {
 			existingObjs: []runtime.Object{
 				&apiextensionsv1.CustomResourceDefinition{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "clusterlogforwarders.logging.openshift.io",
+						Name: "clusterlogforwarders.observability.openshift.io",
 					},
 					Spec: apiextensionsv1.CustomResourceDefinitionSpec{
 						Versions: []apiextensionsv1.CustomResourceDefinitionVersion{
