@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -40,24 +41,25 @@ const (
 var (
 	grafanaURI = "http://127.0.0.1:3001"
 	// Retry on errors.
-	retry = 10
+	httpRetry      = 10
+	dashboardRetry = 25
 )
 
 // RunGrafanaDashboardController ...
 func RunGrafanaDashboardController(stop <-chan struct{}) {
 	config, err := clientcmd.BuildConfigFromFlags("", "")
 	if err != nil {
-		klog.Error("Failed to get cluster config", "error", err)
+		klog.Error("failed to get cluster config", "error", err)
 	}
 	// Build kubeclient client and informer for managed cluster
 	kubeClient, err := kubernetes.NewForConfig(config)
 	if err != nil {
-		klog.Fatal("Failed to build kubeclient", "error", err)
+		klog.Fatal("failed to build kubeclient", "error", err)
 	}
 
 	informer, err := newKubeInformer(kubeClient.CoreV1())
 	if err != nil {
-		klog.Fatal("Failed to get informer", "error", err)
+		klog.Fatal("failed to get informer", "error", err)
 	}
 
 	go informer.Run(stop)
@@ -109,7 +111,23 @@ func newKubeInformer(coreClient corev1client.CoreV1Interface) (cache.SharedIndex
 				return
 			}
 			klog.Infof("detect there is a new dashboard %v created", obj.(*corev1.ConfigMap).Name)
-			updateDashboard(nil, obj, false)
+			err := updateDashboard(nil, obj, false)
+
+			times := 0
+			for {
+				if err == nil {
+					break
+				} else if times == dashboardRetry {
+					klog.Errorf("dashboard: %s could not be created after retrying %v times", obj.(*corev1.ConfigMap).Name, dashboardRetry)
+					os.Exit(3)
+				}
+
+				klog.Warningf("creation of dashboard: %v failed. Retrying in 10s. Error: %v", obj.(*corev1.ConfigMap).Name, err)
+				time.Sleep(time.Second * 10)
+				err = updateDashboard(nil, obj, false)
+
+				times++
+			}
 		},
 		UpdateFunc: func(old, new interface{}) {
 			if old.(*corev1.ConfigMap).ObjectMeta.ResourceVersion == new.(*corev1.ConfigMap).ObjectMeta.ResourceVersion {
@@ -119,7 +137,24 @@ func newKubeInformer(coreClient corev1client.CoreV1Interface) (cache.SharedIndex
 				return
 			}
 			klog.Infof("detect there is a dashboard %v updated", new.(*corev1.ConfigMap).Name)
-			updateDashboard(old, new, false)
+			err := updateDashboard(old, new, false)
+
+			times := 0
+			for {
+				if err == nil {
+					break
+				} else if times == dashboardRetry {
+					klog.Errorf("dashboard: %s could not be created after retrying %v times", new.(*corev1.ConfigMap).Name, dashboardRetry)
+					os.Exit(3)
+				}
+
+				klog.Warningf("updating of dashboard: %v failed. Retrying in 10s. Error: %v", new.(*corev1.ConfigMap).Name, err)
+				time.Sleep(time.Second * 10)
+
+				err = updateDashboard(old, new, false)
+
+				times++
+			}
 		},
 		DeleteFunc: func(obj interface{}) {
 			if !isDesiredDashboardConfigmap(obj) {
@@ -138,7 +173,7 @@ func newKubeInformer(coreClient corev1client.CoreV1Interface) (cache.SharedIndex
 
 func hasCustomFolder(folderTitle string) float64 {
 	grafanaURL := grafanaURI + "/api/folders"
-	body, _ := util.SetRequest("GET", grafanaURL, nil, retry)
+	body, _ := util.SetRequest("GET", grafanaURL, nil, httpRetry)
 
 	folders := []map[string]interface{}{}
 	err := json.Unmarshal(body, &folders)
@@ -158,12 +193,26 @@ func hasCustomFolder(folderTitle string) float64 {
 func createCustomFolder(folderTitle string) float64 {
 	folderID := hasCustomFolder(folderTitle)
 	if folderID == 0 {
+		// Create the folder
 		grafanaURL := grafanaURI + "/api/folders"
-		body, _ := util.SetRequest("POST", grafanaURL, strings.NewReader("{\"title\":\""+folderTitle+"\"}"), retry)
+		body, _ := util.SetRequest("POST", grafanaURL, strings.NewReader("{\"title\":\""+folderTitle+"\"}"), httpRetry)
 		folder := map[string]interface{}{}
 		err := json.Unmarshal(body, &folder)
 		if err != nil {
 			klog.Error(unmarshallErrMsg, "error", err)
+			return 0
+		}
+
+		time.Sleep(time.Second * 1)
+		// check if permissions were set correctly as sometimes this silently fails in Grafana
+		grafanaURL = grafanaURI + "/api/folders/" + folder["uid"].(string) + "/permissions"
+		body, _ = util.SetRequest("GET", grafanaURL, nil, httpRetry)
+		if string(body) == "[]" {
+			// if this fails no permissions are set. In which case we want to delete the folder and try again...
+			klog.Warningf("failed to set permissions for folder: %v. Deleting folder and retrying later.", folderTitle)
+
+			time.Sleep(time.Second * 5)
+			deleteCustomFolder(folder["id"].(float64))
 			return 0
 		}
 		return folder["id"].(float64)
@@ -173,7 +222,7 @@ func createCustomFolder(folderTitle string) float64 {
 
 func getCustomFolderUID(folderID float64) string {
 	grafanaURL := grafanaURI + "/api/folders/id/" + fmt.Sprint(folderID)
-	body, _ := util.SetRequest("GET", grafanaURL, nil, retry)
+	body, _ := util.SetRequest("GET", grafanaURL, nil, httpRetry)
 	folder := map[string]interface{}{}
 	err := json.Unmarshal(body, &folder)
 	if err != nil {
@@ -194,7 +243,7 @@ func isEmptyFolder(folderID float64) bool {
 	}
 
 	grafanaURL := grafanaURI + "/api/search?folderIds=" + fmt.Sprint(folderID)
-	body, _ := util.SetRequest("GET", grafanaURL, nil, retry)
+	body, _ := util.SetRequest("GET", grafanaURL, nil, httpRetry)
 	dashboards := []map[string]interface{}{}
 	err := json.Unmarshal(body, &dashboards)
 	if err != nil {
@@ -217,12 +266,12 @@ func deleteCustomFolder(folderID float64) bool {
 
 	uid := getCustomFolderUID(folderID)
 	if uid == "" {
-		klog.Error("Failed to get custom folder UID")
+		klog.Error("failed to get custom folder UID")
 		return false
 	}
 
 	grafanaURL := grafanaURI + "/api/folders/" + uid
-	_, respStatusCode := util.SetRequest("DELETE", grafanaURL, nil, retry)
+	_, respStatusCode := util.SetRequest("DELETE", grafanaURL, nil, httpRetry)
 	if respStatusCode != http.StatusOK {
 		klog.Errorf("failed to delete custom folder %v with %v", folderID, respStatusCode)
 		return false
@@ -251,14 +300,13 @@ func getDashboardCustomFolderTitle(obj interface{}) string {
 }
 
 // updateDashboard is used to update the customized dashboards via calling grafana api.
-func updateDashboard(old, new interface{}, overwrite bool) {
+func updateDashboard(old, new interface{}, overwrite bool) error {
 	folderID := 0.0
 	folderTitle := getDashboardCustomFolderTitle(new)
 	if folderTitle != "" {
 		folderID = createCustomFolder(folderTitle)
 		if folderID == 0 {
-			klog.Error("Failed to get custom folder id")
-			return
+			return errors.New("failed to get folder id")
 		}
 	}
 
@@ -267,8 +315,7 @@ func updateDashboard(old, new interface{}, overwrite bool) {
 		dashboard := map[string]interface{}{}
 		err := json.Unmarshal([]byte(value), &dashboard)
 		if err != nil {
-			klog.Error("Failed to unmarshall data", "error", err)
-			return
+			return fmt.Errorf("failed to unmarshall data: %v", err)
 		}
 		if dashboard["uid"] == nil {
 			dashboard["uid"], _ = util.GenerateUID(new.(*corev1.ConfigMap).GetName(),
@@ -283,26 +330,24 @@ func updateDashboard(old, new interface{}, overwrite bool) {
 
 		b, err := json.Marshal(data)
 		if err != nil {
-			klog.Error("failed to marshal body", "error", err)
-			return
+			return fmt.Errorf("failed to marshal body: %v", err)
 		}
 
 		grafanaURL := grafanaURI + "/api/dashboards/db"
-		body, respStatusCode := util.SetRequest("POST", grafanaURL, bytes.NewBuffer(b), retry)
+		body, respStatusCode := util.SetRequest("POST", grafanaURL, bytes.NewBuffer(b), httpRetry)
 
 		if respStatusCode != http.StatusOK {
 			if respStatusCode == http.StatusPreconditionFailed {
 				if strings.Contains(string(body), "version-mismatch") {
-					updateDashboard(nil, new, true)
+					return updateDashboard(nil, new, true)
 				} else if strings.Contains(string(body), "name-exists") {
-					klog.Info("the dashboard name already existed")
+					return fmt.Errorf("the dashboard name already existed")
 				} else {
-					klog.Infof("failed to create/update: %v", respStatusCode)
+					return fmt.Errorf("failed to create/update dashboard: %v", respStatusCode)
 				}
 			} else {
-				klog.Infof("failed to create/update: %v", respStatusCode)
+				return fmt.Errorf("failed to create/update dashboard: %v", respStatusCode)
 			}
-			return
 		}
 
 		if dashboard["title"] == homeDashboardTitle {
@@ -314,23 +359,23 @@ func updateDashboard(old, new interface{}, overwrite bool) {
 			} else {
 				id, err := strconv.Atoi(strings.Trim(string(result[1]), " "))
 				if err != nil {
-					klog.Error(err, "failed to parse dashboard id")
+					return fmt.Errorf("failed to parse dashboard id: %v", err)
 				} else {
 					setHomeDashboard(id)
 				}
 			}
 		}
-		klog.Info("Dashboard created/updated")
+		klog.Infof("dashboard: %v created/updated successfully", new.(*corev1.ConfigMap).Name)
 	}
 
 	folderTitle = getDashboardCustomFolderTitle(old)
 	folderID = hasCustomFolder(folderTitle)
 	if isEmptyFolder(folderID) {
-		if deleteCustomFolder(folderID) {
-			klog.Errorf("Failed to delete custom folder")
-			return
+		if !deleteCustomFolder(folderID) {
+			return errors.New("failed to delete custom folder")
 		}
 	}
+	return nil
 }
 
 // DeleteDashboard ...
@@ -340,7 +385,7 @@ func deleteDashboard(obj interface{}) {
 		dashboard := map[string]interface{}{}
 		err := json.Unmarshal([]byte(value), &dashboard)
 		if err != nil {
-			klog.Error("Failed to unmarshall data", "error", err)
+			klog.Error("failed to unmarshall data", "error", err)
 			return
 		}
 
@@ -351,18 +396,18 @@ func deleteDashboard(obj interface{}) {
 
 		grafanaURL := grafanaURI + "/api/dashboards/uid/" + uid
 
-		_, respStatusCode := util.SetRequest("DELETE", grafanaURL, nil, retry)
+		_, respStatusCode := util.SetRequest("DELETE", grafanaURL, nil, httpRetry)
 		if respStatusCode != http.StatusOK {
 			klog.Errorf("failed to delete dashboard %v with %v", obj.(*corev1.ConfigMap).Name, respStatusCode)
 		} else {
-			klog.Info("Dashboard deleted")
+			klog.Info("dashboard deleted")
 		}
 
 		folderTitle := getDashboardCustomFolderTitle(obj)
 		folderID := hasCustomFolder(folderTitle)
 		if isEmptyFolder(folderID) {
-			if deleteCustomFolder(folderID) {
-				klog.Errorf("Failed to delete custom folder")
+			if !deleteCustomFolder(folderID) {
+				klog.Errorf("failed to delete custom folder")
 				return
 			}
 		}
@@ -380,11 +425,11 @@ func setHomeDashboard(id int) {
 		return
 	}
 	grafanaURL := grafanaURI + "/api/org/preferences"
-	_, respStatusCode := util.SetRequest("PUT", grafanaURL, bytes.NewBuffer(b), retry)
+	_, respStatusCode := util.SetRequest("PUT", grafanaURL, bytes.NewBuffer(b), httpRetry)
 
 	if respStatusCode != http.StatusOK {
 		klog.Infof("failed to set home dashboard: %v", respStatusCode)
 	} else {
-		klog.Info("Home dashboard is set")
+		klog.Info("home dashboard is set")
 	}
 }
