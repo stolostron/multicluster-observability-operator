@@ -119,7 +119,7 @@ func newKubeInformer(coreClient corev1client.CoreV1Interface) (cache.SharedIndex
 					break
 				} else if times == dashboardRetry {
 					klog.Errorf("dashboard: %s could not be created after retrying %v times", obj.(*corev1.ConfigMap).Name, dashboardRetry)
-					os.Exit(3)
+					os.Exit(1)
 				}
 
 				klog.Warningf("creation of dashboard: %v failed. Retrying in 10s. Error: %v", obj.(*corev1.ConfigMap).Name, err)
@@ -145,7 +145,7 @@ func newKubeInformer(coreClient corev1client.CoreV1Interface) (cache.SharedIndex
 					break
 				} else if times == dashboardRetry {
 					klog.Errorf("dashboard: %s could not be created after retrying %v times", new.(*corev1.ConfigMap).Name, dashboardRetry)
-					os.Exit(3)
+					os.Exit(1)
 				}
 
 				klog.Warningf("updating of dashboard: %v failed. Retrying in 10s. Error: %v", new.(*corev1.ConfigMap).Name, err)
