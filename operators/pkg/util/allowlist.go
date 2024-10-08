@@ -90,6 +90,7 @@ func MergeAllowlist(allowlist, customAllowlist, ocp3Allowlist, uwlAllowlist,
 	uwlAllowlist.NameList = mergeMetrics(uwlAllowlist.NameList, customUwlAllowlist.NameList)
 	uwlAllowlist.MatchList = mergeMetrics(uwlAllowlist.MatchList, customUwlAllowlist.MatchList)
 	uwlAllowlist.RuleList = append(uwlAllowlist.RuleList, customUwlAllowlist.RuleList...)
+	uwlAllowlist.RecordingRuleList = append(uwlAllowlist.RecordingRuleList, customUwlAllowlist.RecordingRuleList...)
 	if uwlAllowlist.RenameMap == nil {
 		uwlAllowlist.RenameMap = make(map[string]string)
 	}
