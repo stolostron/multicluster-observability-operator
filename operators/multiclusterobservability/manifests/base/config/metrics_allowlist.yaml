@@ -387,6 +387,11 @@ data:
   uwl_metrics_list.yaml: |
     names:
       - ALERTS
+      - apiserver_current_inflight_requests
+		  - apiserver_request_count
+		  - apiserver_request_duration_seconds_bucket
+		  - apiserver_request_total
+		  - apiserver_storage_objects
       - etcd_debugging_mvcc_db_total_size_in_bytes
       - etcd_mvcc_db_total_size_in_bytes
       - etcd_debugging_snap_save_total_duration_seconds_sum
@@ -409,7 +414,15 @@ data:
       - etcd_server_proposals_applied_total
       - etcd_server_quota_backend_bytes
       - up
-    matches: []
+    matches:
+      - __name__="process_resident_memory_bytes",job=~"apiserver|etcd"
+      - __name__="grpc_server_started_total",job="etcd"
+      - __name__="grpc_server_handled_total",job="etcd"
+      - __name__="go_goroutines",job="apiserver"
+      - __name__="process_cpu_seconds_total",job="apiserver"
+      - __name__="workqueue_adds_total",job="apiserver"
+      - __name__="workqueue_depth",job="apiserver"
+      - __name__="workqueue_queue_duration_seconds_bucket",job="apiserver"
     renames:
       etcd_mvcc_db_total_size_in_bytes: etcd_debugging_mvcc_db_total_size_in_bytes
     rules: []
@@ -418,4 +431,12 @@ data:
         expr: histogram_quantile(0.99,sum(rate(apiserver_request_duration_seconds_bucket{job=\"apiserver\", verb!=\"WATCH\", _id!=\"\"}[5m])) by (le, _id))
       - record: sum:apiserver_request_total:1h
         expr: sum(rate(apiserver_request_total{job=\"apiserver\", _id!=\"\"}[1h])) by(code, instance, _id)
+      - record: sum:apiserver_request_total:5m
+        expr: sum(rate(apiserver_request_total{job=\"apiserver\"}[5m])) by(code, instance)
+      - record: rpc_rate:grpc_server_handled_total:sum_rate
+        expr: sum(rate(grpc_server_handled_total{job=\"etcd\",grpc_type=\"unary\",grpc_code!=\"OK\"}[5m]))
+      - record: active_streams_watch:grpc_server_handled_total:sum
+        expr: sum(grpc_server_started_total{job=\"etcd\",grpc_service=\"etcdserverpb.Watch\",grpc_type=\"bidi_stream\"}) - sum(grpc_server_handled_total{job=\"etcd\",grpc_service=\"etcdserverpb.Watch\",grpc_type=\"bidi_stream\"})
+      - record: active_streams_lease:grpc_server_handled_total:sum
+        expr: sum(grpc_server_started_total{job=\"etcd\",grpc_service=\"etcdserverpb.Lease\",grpc_type=\"bidi_stream\"}) - sum(grpc_server_handled_total{job=\"etcd\",grpc_service=\"etcdserverpb.Lease\",grpc_type=\"bidi_stream\"})
     collect_rules: []
