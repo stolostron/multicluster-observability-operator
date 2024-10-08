@@ -388,10 +388,10 @@ data:
     names:
       - ALERTS
       - apiserver_current_inflight_requests
-		  - apiserver_request_count
-		  - apiserver_request_duration_seconds_bucket
-		  - apiserver_request_total
-		  - apiserver_storage_objects
+      - apiserver_request_count
+      - apiserver_request_duration_seconds_bucket
+      - apiserver_request_total
+      - apiserver_storage_objects
       - etcd_debugging_mvcc_db_total_size_in_bytes
       - etcd_mvcc_db_total_size_in_bytes
       - etcd_debugging_snap_save_total_duration_seconds_sum
