@@ -78,6 +78,3 @@ if [ $? -ne 0 ]; then
   echo "Failed run setup-grafana-dev.sh --clean"
   exit 1
 fi
-
-# clean test env
-kubectl delete -n "$obs_namespace" -f "$base_dir"/examples/dashboards/sample_custom_dashboard/custom-sample-dashboard.yaml
