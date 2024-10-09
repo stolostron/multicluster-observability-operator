@@ -41,8 +41,8 @@ const (
 var (
 	grafanaURI = "http://127.0.0.1:3001"
 	// Retry on errors.
-	httpRetry      = 10
-	dashboardRetry = 25
+	maxHttpRetry      = 10
+	maxDashboardRetry = 40
 )
 
 // RunGrafanaDashboardController ...
@@ -117,9 +117,9 @@ func newKubeInformer(coreClient corev1client.CoreV1Interface) (cache.SharedIndex
 			for {
 				if err == nil {
 					break
-				} else if times == dashboardRetry {
-					klog.Errorf("dashboard: %s could not be created after retrying %v times", obj.(*corev1.ConfigMap).Name, dashboardRetry)
-					os.Exit(1)
+				} else if times == maxDashboardRetry {
+					klog.Errorf("dashboard: %s could not be created after retrying %v times", obj.(*corev1.ConfigMap).Name, maxDashboardRetry)
+					break
 				}
 
 				klog.Warningf("creation of dashboard: %v failed. Retrying in 10s. Error: %v", obj.(*corev1.ConfigMap).Name, err)
@@ -143,9 +143,9 @@ func newKubeInformer(coreClient corev1client.CoreV1Interface) (cache.SharedIndex
 			for {
 				if err == nil {
 					break
-				} else if times == dashboardRetry {
-					klog.Errorf("dashboard: %s could not be created after retrying %v times", new.(*corev1.ConfigMap).Name, dashboardRetry)
-					os.Exit(1)
+				} else if times == maxDashboardRetry {
+					klog.Errorf("dashboard: %s could not be created after retrying %v times", new.(*corev1.ConfigMap).Name, maxDashboardRetry)
+					break
 				}
 
 				klog.Warningf("updating of dashboard: %v failed. Retrying in 10s. Error: %v", new.(*corev1.ConfigMap).Name, err)
@@ -173,7 +173,7 @@ func newKubeInformer(coreClient corev1client.CoreV1Interface) (cache.SharedIndex
 
 func hasCustomFolder(folderTitle string) float64 {
 	grafanaURL := grafanaURI + "/api/folders"
-	body, _ := util.SetRequest("GET", grafanaURL, nil, httpRetry)
+	body, _ := util.SetRequest("GET", grafanaURL, nil, maxHttpRetry)
 
 	folders := []map[string]interface{}{}
 	err := json.Unmarshal(body, &folders)
@@ -195,7 +195,7 @@ func createCustomFolder(folderTitle string) float64 {
 	if folderID == 0 {
 		// Create the folder
 		grafanaURL := grafanaURI + "/api/folders"
-		body, _ := util.SetRequest("POST", grafanaURL, strings.NewReader("{\"title\":\""+folderTitle+"\"}"), httpRetry)
+		body, _ := util.SetRequest("POST", grafanaURL, strings.NewReader("{\"title\":\""+folderTitle+"\"}"), maxHttpRetry)
 		folder := map[string]interface{}{}
 		err := json.Unmarshal(body, &folder)
 		if err != nil {
@@ -206,7 +206,7 @@ func createCustomFolder(folderTitle string) float64 {
 		time.Sleep(time.Second * 1)
 		// check if permissions were set correctly as sometimes this silently fails in Grafana
 		grafanaURL = grafanaURI + "/api/folders/" + folder["uid"].(string) + "/permissions"
-		body, _ = util.SetRequest("GET", grafanaURL, nil, httpRetry)
+		body, _ = util.SetRequest("GET", grafanaURL, nil, maxHttpRetry)
 		if string(body) == "[]" {
 			// if this fails no permissions are set. In which case we want to delete the folder and try again...
 			klog.Warningf("failed to set permissions for folder: %v. Deleting folder and retrying later.", folderTitle)
@@ -222,7 +222,7 @@ func createCustomFolder(folderTitle string) float64 {
 
 func getCustomFolderUID(folderID float64) string {
 	grafanaURL := grafanaURI + "/api/folders/id/" + fmt.Sprint(folderID)
-	body, _ := util.SetRequest("GET", grafanaURL, nil, httpRetry)
+	body, _ := util.SetRequest("GET", grafanaURL, nil, maxHttpRetry)
 	folder := map[string]interface{}{}
 	err := json.Unmarshal(body, &folder)
 	if err != nil {
@@ -243,7 +243,7 @@ func isEmptyFolder(folderID float64) bool {
 	}
 
 	grafanaURL := grafanaURI + "/api/search?folderIds=" + fmt.Sprint(folderID)
-	body, _ := util.SetRequest("GET", grafanaURL, nil, httpRetry)
+	body, _ := util.SetRequest("GET", grafanaURL, nil, maxHttpRetry)
 	dashboards := []map[string]interface{}{}
 	err := json.Unmarshal(body, &dashboards)
 	if err != nil {
@@ -271,7 +271,7 @@ func deleteCustomFolder(folderID float64) bool {
 	}
 
 	grafanaURL := grafanaURI + "/api/folders/" + uid
-	_, respStatusCode := util.SetRequest("DELETE", grafanaURL, nil, httpRetry)
+	_, respStatusCode := util.SetRequest("DELETE", grafanaURL, nil, maxHttpRetry)
 	if respStatusCode != http.StatusOK {
 		klog.Errorf("failed to delete custom folder %v with %v", folderID, respStatusCode)
 		return false
@@ -334,7 +334,7 @@ func updateDashboard(old, new interface{}, overwrite bool) error {
 		}
 
 		grafanaURL := grafanaURI + "/api/dashboards/db"
-		body, respStatusCode := util.SetRequest("POST", grafanaURL, bytes.NewBuffer(b), httpRetry)
+		body, respStatusCode := util.SetRequest("POST", grafanaURL, bytes.NewBuffer(b), maxHttpRetry)
 
 		if respStatusCode != http.StatusOK {
 			if respStatusCode == http.StatusPreconditionFailed {
@@ -396,7 +396,7 @@ func deleteDashboard(obj interface{}) {
 
 		grafanaURL := grafanaURI + "/api/dashboards/uid/" + uid
 
-		_, respStatusCode := util.SetRequest("DELETE", grafanaURL, nil, httpRetry)
+		_, respStatusCode := util.SetRequest("DELETE", grafanaURL, nil, maxHttpRetry)
 		if respStatusCode != http.StatusOK {
 			klog.Errorf("failed to delete dashboard %v with %v", obj.(*corev1.ConfigMap).Name, respStatusCode)
 		} else {
@@ -425,7 +425,7 @@ func setHomeDashboard(id int) {
 		return
 	}
 	grafanaURL := grafanaURI + "/api/org/preferences"
-	_, respStatusCode := util.SetRequest("PUT", grafanaURL, bytes.NewBuffer(b), httpRetry)
+	_, respStatusCode := util.SetRequest("PUT", grafanaURL, bytes.NewBuffer(b), maxHttpRetry)
 
 	if respStatusCode != http.StatusOK {
 		klog.Infof("failed to set home dashboard: %v", respStatusCode)

@@ -96,7 +96,7 @@ func TestGrafanaDashboardController(t *testing.T) {
 	stop := make(chan struct{})
 
 	go createFakeServer(t)
-	httpRetry = 1
+	maxHttpRetry = 1
 
 	os.Setenv("POD_NAMESPACE", "ns2")
 
@@ -237,7 +237,7 @@ func TestIsDesiredDashboardConfigmap(t *testing.T) {
 func TestGetCustomFolderUID(t *testing.T) {
 	if !hasFakeServer {
 		go createFakeServer(t)
-		httpRetry = 1
+		maxHttpRetry = 1
 	}
 
 	testCaseList := []struct {
@@ -273,7 +273,7 @@ func TestGetCustomFolderUID(t *testing.T) {
 func TestIsEmptyFolder(t *testing.T) {
 	if !hasFakeServer {
 		go createFakeServer(t)
-		httpRetry = 1
+		maxHttpRetry = 1
 	}
 
 	testCaseList := []struct {
@@ -351,7 +351,7 @@ func TestGetDashboardCustomFolderTitle(t *testing.T) {
 func TestDeleteCustomFolder(t *testing.T) {
 	if !hasFakeServer {
 		go createFakeServer(t)
-		httpRetry = 1
+		maxHttpRetry = 1
 	}
 
 	testCaseList := []struct {
