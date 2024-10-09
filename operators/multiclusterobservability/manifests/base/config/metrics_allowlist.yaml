@@ -150,12 +150,19 @@ data:
       - kubevirt_vm_starting_status_last_transition_timestamp_seconds
       - kubevirt_vm_migrating_status_last_transition_timestamp_seconds
       - kubevirt_vmi_memory_available_bytes
+      - kubevirt_vmi_memory_unused_bytes
+      - kubevirt_vmi_memory_cached_bytes
+      - kubevirt_vmi_memory_used_bytes
       - kubevirt_vmi_phase_count
       - kubevirt_vmi_cpu_usage_seconds_total
       - kubevirt_vmi_network_receive_bytes_total
       - kubevirt_vmi_network_transmit_bytes_total
+      - kubevirt_vmi_network_receive_packets_total
+      - kubevirt_vmi_network_transmit_packets_total
       - kubevirt_vmi_storage_iops_read_total
       - kubevirt_vmi_storage_iops_write_total
+      - kubevirt_vm_resource_requests
+
 
     matches:
       - __name__="workqueue_queue_duration_seconds_bucket",job="apiserver"
