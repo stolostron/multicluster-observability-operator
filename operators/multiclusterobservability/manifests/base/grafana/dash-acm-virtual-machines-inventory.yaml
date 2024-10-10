@@ -21,7 +21,7 @@ data:
           }
         ]
       },
-      "description": "This dashboard provides a comprehensive list of all virtual machines across clusters, offering detailed insights into each VM’s configuration. Users can easily search and filter VMs based on various attributes, enabling quick access to specific information for effective management and troubleshooting.",
+      "description": "This dashboard provides a comprehensive list of all virtual machines across clusters, offering detailed insights into each configuration of the virtual machines. You can easily search and filter virtual machines based on various attributes, enabling quick access to specific information for effective management and troubleshooting.",
       "editable": true,
       "gnetId": null,
       "graphTooltip": 0,
@@ -344,7 +344,7 @@ data:
             },
             "datasource": null,
             "definition": "label_values(kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\"}, namespace)",
-            "description": "Filter the Virtual Machine by its Namespace",
+            "description": "Filter the virtual machine by the namespace.",
             "error": null,
             "hide": 0,
             "includeAll": true,
@@ -375,7 +375,7 @@ data:
             },
             "datasource": null,
             "definition": "label_values(kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", namespace=~\"$namespace\"}, name)",
-            "description": "Filter the Virtual Machine by its name",
+            "description": "Filter the virtual machine by the name.",
             "error": null,
             "hide": 0,
             "includeAll": true,
