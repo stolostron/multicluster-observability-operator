@@ -97,3 +97,4 @@ coredns_forward_responses_total
 cnv:vmi_status_running:count
 kubevirt_hyperconverged_operator_health_status
 kubevirt_hco_system_health_status
+kubevirt_vmi_info
