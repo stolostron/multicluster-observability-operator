@@ -245,7 +245,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 
 	// handle storagesize changes
 	result, err := r.HandleStorageSizeChange(instance)
-	if result != nil {
+	if err != nil {
 		return *result, err
 	}
 
