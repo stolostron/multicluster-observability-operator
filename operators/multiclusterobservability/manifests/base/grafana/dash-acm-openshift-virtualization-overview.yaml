@@ -21,7 +21,7 @@ data:
           }
         ]
       },
-      "description": "This dashboard provides insights into the health of the OpenShift Virtualization operator and displays key metrics for virtual machines at the cluster level across multiple clusters. It helps monitor and assess the status of virtualization resources, ensuring smooth operation and quick identification of issues.",
+      "description": "This dashboard provides insights for the health of the OpenShift Virtualization operator and displays key metrics for virtual machines at the cluster level across multiple clusters. It helps monitor and assess the status of virtualization resources, ensuring ease of operation and quick identification of issues.",
       "editable": true,
       "gnetId": null,
       "graphTooltip": 0,
@@ -43,7 +43,7 @@ data:
         },
         {
           "datasource": null,
-          "description": "Total Clusters with OpenShift Virtualization",
+          "description": "Total clusters with OpenShift Virtualization.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -100,7 +100,7 @@ data:
         },
         {
           "datasource": null,
-          "description": "Total number of clusters that have alerts that are firing with the operator_health_impact level: critical.",
+          "description": "Total number of clusters with critical issues that impact the operator health, which are based on alerts and the operator conditions. This means there is a risk of core functionality loss for your clusters.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -158,7 +158,7 @@ data:
         },
         {
           "datasource": null,
-          "description": "Total number of nodes available to host virtual machines",
+          "description": "Total number of nodes that are available to host virtual machines.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -221,7 +221,7 @@ data:
         },
         {
           "datasource": null,
-          "description": "Total number of Virtual Machines",
+          "description": "Total number of virtual machines.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -501,7 +501,7 @@ data:
         },
         {
           "datasource": null,
-          "description": "Total number of clusters that have alerts that are firing with the operator_health_impact level: warning.",
+          "description": "Total number of clusters with warning level issues that impact the operator health, which are based on alerts and the operator conditions. This means there is a risk of core functionality loss for your clusters.",
           "fieldConfig": {
             "defaults": {
               "color": {
