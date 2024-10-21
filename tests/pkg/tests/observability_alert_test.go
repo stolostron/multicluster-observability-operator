@@ -109,6 +109,42 @@ var _ = Describe("", func() {
 		klog.V(3).Infof("Configmap %s does exist", configmap[0])
 	})
 
+	It("RHACM4K-52080: Observability: Verify Endpointmetrics reconcile CMO Config changes [P2][Sev2][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release (alert/g2)", func() {
+		By("Checking if CM: cluster-monitoring-config is existed")
+		namespace := "openshift-monitoring"
+		configMapName := "cluster-monitoring-config"
+		cm, err := hubClient.CoreV1().ConfigMaps(namespace).Get(context.TODO(), configMapName, metav1.GetOptions{})
+		Expect(err).NotTo(HaveOccurred())
+
+		Expect(cm.ResourceVersion).ShouldNot(BeEmpty())
+		klog.V(3).Infof("Configmap %s does exist", configmap[0])
+
+		By("Remove additionalAlertmanagerConfigs from the cm cluster-monitoring-config")
+		configContent := cm.Data["config.yaml"]
+		if strings.Contains(configContent, "additionalAlertmanagerConfigs:") {
+			// Find and remove the additionalAlertmanagerConfigs section
+			startIndex := strings.Index(configContent, "additionalAlertmanagerConfigs:")
+			endIndex := strings.Index(configContent[startIndex:], "externalLabels:")
+			if endIndex != -1 {
+				endIndex += startIndex
+				removedContent := configContent[startIndex:endIndex]
+
+				// Remove the section from the config.yaml
+				configContent = strings.Replace(configContent, removedContent, "", 1)
+				cm.Data["config.yaml"] = configContent
+
+				// Update the ConfigMap
+				_, err = hubClient.CoreV1().ConfigMaps(namespace).Update(context.TODO(), cm, metav1.UpdateOptions{})
+				Expect(err).NotTo(HaveOccurred(), "Failed to update ConfigMap")
+				fmt.Println("Removed additionalAlertmanagerConfigs and updated the ConfigMap.")
+			} else {
+				fmt.Println("Could not find the externalLabels section after additionalAlertmanagerConfigs.")
+			}
+		} else {
+			fmt.Println("No additionalAlertmanagerConfigs section found.")
+		}
+	})
+
 	It("RHACM4K-1404: Observability: Verify alert is created and received - Should not have the CM: thanos-ruler-custom-rules [P3][Sev3][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release (alert/g0)", func() {
 		By("Checking if CM: thanos-ruler-custom-rules not existed")
 		_, err := hubClient.CoreV1().ConfigMaps(MCO_NAMESPACE).Get(context.TODO(), configmap[1], metav1.GetOptions{})
