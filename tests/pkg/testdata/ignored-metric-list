@@ -98,3 +98,4 @@ cnv:vmi_status_running:count
 kubevirt_hyperconverged_operator_health_status
 kubevirt_hco_system_health_status
 kubevirt_vmi_info
+kubevirt_vm_running_status_last_transition_timestamp_seconds
