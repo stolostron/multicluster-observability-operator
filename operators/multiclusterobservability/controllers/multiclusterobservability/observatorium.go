@@ -162,6 +162,9 @@ func GenerateObservatoriumCR(
 	oldSpec := observatoriumCRFound.Spec
 	newSpec := observatoriumCR.Spec
 
+	log.Info("Coleen Old observatorium CR spec", "oldSpec", oldSpec)
+	log.Info("Coleen New observatorium CR spec", "newSpec", newSpec)
+
 	// keep the tenant id unchanged and ensure the new spec has the same tenant ID as the old spec to prevent Observatorium
 	// from updating
 	for i, newTenant := range newSpec.API.Tenants {
