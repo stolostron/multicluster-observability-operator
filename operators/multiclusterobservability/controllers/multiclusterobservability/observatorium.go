@@ -5,8 +5,8 @@
 package multiclusterobservability
 
 import (
-	"bytes"
 	"context"
+	"k8s.io/apimachinery/pkg/api/equality"
 
 	// The import of crypto/md5 below is not for cryptographic use. It is used to hash the contents of files to track
 	// changes and thus it's not a security issue.
@@ -173,16 +173,13 @@ func GenerateObservatoriumCR(
 		}
 	}
 
-	oldSpecBytes, _ := yaml.Marshal(oldSpec)
-	newSpecBytes, _ := yaml.Marshal(newSpec)
-
-	log.Info("Coleen bytes equal", "bytes equal", bytes.Equal(newSpecBytes, oldSpecBytes))
-	if bytes.Equal(newSpecBytes, oldSpecBytes) &&
+	if !equality.Semantic.DeepDerivative(oldSpec, newSpec) &&
 		labels[obsCRConfigHashLabelName] == observatoriumCRFound.Labels[obsCRConfigHashLabelName] {
 		log.Info("Coleen Observatorium CR spec and hash are the same, skipping update")
 		log.Info("Coleen found labels", "labels", observatoriumCRFound.Labels)
 		return nil, nil
 	}
+	log.Info("Coleen Observatorium CR spec and hash are different, updating")
 
 	log.Info("Updating observatorium CR",
 		"observatorium", observatoriumCR.Name,
