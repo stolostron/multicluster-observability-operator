@@ -39,3 +39,5 @@ stringData:
     enabled = false
     [unified_alerting]
     enabled = false
+    [database]
+    query_retries = 5
