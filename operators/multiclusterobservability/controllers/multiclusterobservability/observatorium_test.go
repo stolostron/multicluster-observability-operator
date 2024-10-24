@@ -11,6 +11,8 @@ import (
 	"reflect"
 	"testing"
 
+	"k8s.io/apimachinery/pkg/api/equality"
+
 	routev1 "github.com/openshift/api/route/v1"
 
 	mcoshared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
@@ -318,10 +320,24 @@ func TestUpdateObservatoriumCR(t *testing.T) {
 		t.Errorf("config-hash label contains unexpected hash. Want: '%s', got '%s'", expectedConfigHash, updatedHash)
 	}
 
-	createdSpecBytes, _ := yaml.Marshal(createdObservatoriumCR.Spec)
-	updatedSpecBytes, _ := yaml.Marshal(updatedObservatorium.Spec)
-	if res := bytes.Compare(updatedSpecBytes, createdSpecBytes); res != 0 {
-		t.Errorf("%v should be equal to %v", string(createdSpecBytes), string(updatedSpecBytes))
+	if !equality.Semantic.DeepDerivative(updatedObservatorium.Spec, createdObservatoriumCR.Spec) {
+		t.Errorf("updated observatorium CR spec is not equal to the created one")
+	}
+
+	// Test Observaotrium CR gets updated with new update from MCO
+	mco.Spec.StorageConfig.CompactStorageSize = "2Gi"
+	_, err = GenerateObservatoriumCR(cl, s, mco)
+	if err != nil {
+		t.Errorf("Failed to update observatorium due to %v", err)
+	}
+	updatedObservatorium = &observatoriumv1alpha1.Observatorium{}
+	cl.Get(context.TODO(), types.NamespacedName{
+		Name:      mcoconfig.GetDefaultCRName(),
+		Namespace: namespace,
+	}, updatedObservatorium)
+
+	if updatedObservatorium.Spec.Thanos.Compact.VolumeClaimTemplate.Spec.Resources.Requests.Storage().String() != "2Gi" {
+		t.Errorf("Failed to update observatorium CR with new compact storage size")
 	}
 
 }
