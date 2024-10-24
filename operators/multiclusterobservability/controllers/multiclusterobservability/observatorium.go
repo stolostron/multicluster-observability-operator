@@ -175,8 +175,12 @@ func GenerateObservatoriumCR(
 
 	oldSpecBytes, _ := yaml.Marshal(oldSpec)
 	newSpecBytes, _ := yaml.Marshal(newSpec)
+
+	log.Info("Coleen bytes equal", "bytes equal", bytes.Equal(newSpecBytes, oldSpecBytes))
 	if bytes.Equal(newSpecBytes, oldSpecBytes) &&
 		labels[obsCRConfigHashLabelName] == observatoriumCRFound.Labels[obsCRConfigHashLabelName] {
+		log.Info("Coleen Observatorium CR spec and hash are the same, skipping update")
+		log.Info("Coleen found labels", "labels", observatoriumCRFound.Labels)
 		return nil, nil
 	}
 
