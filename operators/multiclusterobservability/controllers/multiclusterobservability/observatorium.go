@@ -186,7 +186,7 @@ func GenerateObservatoriumCR(
 	newObj.Labels[obsCRConfigHashLabelName] = observatoriumCR.Labels[obsCRConfigHashLabelName]
 	err = cl.Update(context.TODO(), newObj)
 	if err != nil {
-		log.Error(err, "Failed to update observatorium CR %s", "name", observatoriumCR.Name)
+		log.Error(err, "Test Failed to update observatorium CR %s", "name", observatoriumCR.Name)
 		// add timeout for update failure avoid update conflict
 		return &ctrl.Result{RequeueAfter: time.Second * 3}, err
 	}
