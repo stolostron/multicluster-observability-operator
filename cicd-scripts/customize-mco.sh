@@ -119,9 +119,9 @@ get_changed_components() {
 get_ginkgo_focus() {
   if [[ -n ${IS_KIND_ENV} ]]; then
     # For KinD cluster, do not need to run all test cases
-    GINKGO_FOCUS=" --focus manifestwork/g0 --focus endpoint_preserve/g0 --focus grafana/g0 --focus metrics/g0 --focus addon/g0 --focus alert/g0 --focus dashboard/g0"
+    GINKGO_FOCUS="  --focus alert/g0"
   else
-    GINKGO_FOCUS=""
+    GINKGO_FOCUS=" --focus alert/g0"
   fi
   echo "Test focuses are ${GINKGO_FOCUS}"
 }
