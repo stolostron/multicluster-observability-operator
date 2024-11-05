@@ -6,8 +6,8 @@ package multiclusterobservability
 
 import (
 	"context"
-	corev1 "k8s.io/client-go/applyconfigurations/core/v1"
 
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 
 	// The import of crypto/md5 below is not for cryptographic use. It is used to hash the contents of files to track
@@ -837,7 +837,7 @@ func newMemCacheSpec(component string, mco *mcov1beta2.MultiClusterObservability
 	return memCacheSpec
 }
 
-func newThanosSpec(c client.Client, mco *mcov1beta2.MultiClusterObservability, scSelected string) obsv1alpha1.ThanosSpec {
+func newThanosSpec(cl client.Client, mco *mcov1beta2.MultiClusterObservability, scSelected string) obsv1alpha1.ThanosSpec {
 	thanosSpec := obsv1alpha1.ThanosSpec{}
 	thanosSpec.Image = mcoconfig.DefaultImgRepository + "/" + mcoconfig.ThanosImgName +
 		":" + mcoconfig.DefaultImgTagSuffix
