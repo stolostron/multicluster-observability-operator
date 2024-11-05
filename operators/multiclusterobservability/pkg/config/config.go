@@ -251,7 +251,6 @@ var (
 	tenantUID                  = ""
 	imageManifests             = map[string]string{}
 	imageManifestConfigMapName = ""
-	hasCustomRuleConfigMap     = false
 	certDuration               = time.Hour * 24 * 365
 	isAlertingDisabled         = false
 
