@@ -37,6 +37,7 @@ func GetConfigMapPredicateFunc() predicate.Funcs {
 		CreateFunc: func(e event.CreateEvent) bool {
 			if e.Object.GetNamespace() == config.GetDefaultNamespace() {
 				if e.Object.GetName() == config.AlertRuleCustomConfigMapName {
+					log.Info("Coleen AlertRule configmap created")
 					config.SetCustomRuleConfigMap(true)
 					return true
 				} else if _, ok := e.Object.GetLabels()[config.BackupLabelName]; ok {

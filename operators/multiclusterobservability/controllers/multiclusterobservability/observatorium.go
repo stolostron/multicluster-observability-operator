@@ -173,10 +173,11 @@ func GenerateObservatoriumCR(
 
 	if equality.Semantic.DeepDerivative(oldSpec, newSpec) &&
 		labels[obsCRConfigHashLabelName] == observatoriumCRFound.Labels[obsCRConfigHashLabelName] {
+		log.Info("Coleen observatorium CR is up to date")
 		return nil, nil
 	}
 
-	log.Info("Updating observatorium CR",
+	log.Info("Coleen Updating observatorium CR",
 		"observatorium", observatoriumCR.Name,
 	)
 
@@ -721,6 +722,7 @@ func newRuleSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string) o
 	}
 
 	if mcoconfig.HasCustomRuleConfigMap() {
+		log.Info("Coleen Using custom alert rule config")
 		customRuleConfig := []obsv1alpha1.RuleConfig{
 			{
 				Name: mcoconfig.AlertRuleCustomConfigMapName,
