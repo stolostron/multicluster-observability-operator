@@ -37,7 +37,6 @@ func GetConfigMapPredicateFunc() predicate.Funcs {
 		CreateFunc: func(e event.CreateEvent) bool {
 			if e.Object.GetNamespace() == config.GetDefaultNamespace() {
 				if e.Object.GetName() == config.AlertRuleCustomConfigMapName {
-					config.SetCustomRuleConfigMap(true)
 					return true
 				} else if _, ok := e.Object.GetLabels()[config.BackupLabelName]; ok {
 					// resource already has backup label
@@ -78,7 +77,6 @@ func GetConfigMapPredicateFunc() predicate.Funcs {
 		DeleteFunc: func(e event.DeleteEvent) bool {
 			if e.Object.GetName() == config.AlertRuleCustomConfigMapName &&
 				e.Object.GetNamespace() == config.GetDefaultNamespace() {
-				config.SetCustomRuleConfigMap(false)
 				return true
 			}
 			return false

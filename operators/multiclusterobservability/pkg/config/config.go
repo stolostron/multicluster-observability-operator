@@ -647,16 +647,6 @@ func GetObsAPISvc(instanceName string) string {
 	return instanceName + "-observatorium-api." + defaultNamespace + ".svc.cluster.local"
 }
 
-// SetCustomRuleConfigMap set true if there is custom rule configmap.
-func SetCustomRuleConfigMap(hasConfigMap bool) {
-	hasCustomRuleConfigMap = hasConfigMap
-}
-
-// HasCustomRuleConfigMap returns true if there is custom rule configmap.
-func HasCustomRuleConfigMap() bool {
-	return hasCustomRuleConfigMap
-}
-
 func GetCertDuration() time.Duration {
 	return certDuration
 }
