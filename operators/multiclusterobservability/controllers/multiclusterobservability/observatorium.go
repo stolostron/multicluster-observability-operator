@@ -174,9 +174,6 @@ func GenerateObservatoriumCR(
 
 	if equality.Semantic.DeepEqual(newSpec, oldSpec) &&
 		labels[obsCRConfigHashLabelName] == observatoriumCRFound.Labels[obsCRConfigHashLabelName] {
-		log.Info("Coleen no change in observatorium CR spec")
-		log.Info("Coleen labels", "labels", labels)
-		log.Info("Coleen observatoriumCRFound.Labels", "observatoriumCRFound.Labels", observatoriumCRFound.Labels)
 		return nil, nil
 	}
 
