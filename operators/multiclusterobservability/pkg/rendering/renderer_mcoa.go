@@ -5,6 +5,7 @@
 package rendering
 
 import (
+	"context"
 	"fmt"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -25,10 +26,13 @@ const (
 	cmaoKind = "ClusterManagementAddOn"
 
 	// AODC CustomizedVariable Names
-	namePlatformLogsCollection       = "platformLogsCollection"
-	nameUserWorkloadLogsCollection   = "userWorkloadLogsCollection"
-	nameUserWorkloadTracesCollection = "userWorkloadTracesCollection"
-	nameUserWorkloadInstrumentation  = "userWorkloadInstrumentation"
+	namePlatformLogsCollection        = "platformLogsCollection"
+	namePlatformMetricsCollection     = "platformMetricsCollection"
+	nameUserWorkloadLogsCollection    = "userWorkloadLogsCollection"
+	nameUserWorkloadTracesCollection  = "userWorkloadTracesCollection"
+	nameUserWorkloadInstrumentation   = "userWorkloadInstrumentation"
+	nameUserWorkloadMetricsCollection = "userWorkloadMetricsCollection"
+	nameSignalsHubEndpoint            = "signalsHubEndpoint"
 )
 
 type MCOARendererOptions struct {
@@ -195,12 +199,20 @@ func (r *MCORenderer) renderAddonDeploymentConfig(
 				fqdn := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.ClusterLogForwarderCRDName)
 				appendCustomVar(aodc, namePlatformLogsCollection, fqdn)
 			}
+			if cs.Platform.Metrics.Collection.Enabled {
+				fqdn := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.PrometheusAgentCRDName)
+				appendCustomVar(aodc, namePlatformMetricsCollection, fqdn)
+			}
 		}
 
 		if cs.UserWorkloads != nil {
 			if cs.UserWorkloads.Logs.Collection.ClusterLogForwarder.Enabled {
 				fqdn := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.ClusterLogForwarderCRDName)
 				appendCustomVar(aodc, nameUserWorkloadLogsCollection, fqdn)
+			}
+			if cs.UserWorkloads.Metrics.Collection.Enabled {
+				fqdn := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.PrometheusAgentCRDName)
+				appendCustomVar(aodc, nameUserWorkloadMetricsCollection, fqdn)
 			}
 			if cs.UserWorkloads.Traces.Collection.Collector.Enabled {
 				fqdn := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.OpenTelemetryCollectorCRDName)
@@ -210,6 +222,14 @@ func (r *MCORenderer) renderAddonDeploymentConfig(
 				fqdn := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.InstrumentationCRDName)
 				appendCustomVar(aodc, nameUserWorkloadInstrumentation, fqdn)
 			}
+		}
+
+		if (cs.Platform != nil && cs.Platform.Metrics.Collection.Enabled) || (cs.UserWorkloads != nil && cs.UserWorkloads.Metrics.Collection.Enabled) {
+			obsAPIURL, err := mcoconfig.GetObsAPIExternalURL(context.TODO(), r.kubeClient, namespace)
+			if err != nil {
+				return nil, fmt.Errorf("failed to get the Observatorium API URL: %w", err)
+			}
+			appendCustomVar(aodc, nameSignalsHubEndpoint, obsAPIURL.Host)
 		}
 
 		u.Object, err = runtime.DefaultUnstructuredConverter.ToUnstructured(aodc)
