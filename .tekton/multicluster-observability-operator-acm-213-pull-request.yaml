@@ -4,16 +4,17 @@ metadata:
   annotations:
     build.appstudio.openshift.io/repo: https://github.com/stolostron/multicluster-observability-operator?rev={{revision}}
     build.appstudio.redhat.com/commit_sha: '{{revision}}'
+    build.appstudio.redhat.com/pull_request_number: '{{pull_request_number}}'
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
     pipelinesascode.tekton.dev/max-keep-runs: "3"
-    pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch
-      == "release-2.12"
+    pipelinesascode.tekton.dev/on-cel-expression: event == "pull_request" && target_branch
+      == "main"
   creationTimestamp: null
   labels:
-    appstudio.openshift.io/application: release-acm-212
-    appstudio.openshift.io/component: endpoint-monitoring-operator-acm-212
+    appstudio.openshift.io/application: release-acm-213
+    appstudio.openshift.io/component: multicluster-observability-operator-acm-213
     pipelines.appstudio.openshift.io/type: build
-  name: endpoint-monitoring-operator-acm-212-on-push
+  name: multicluster-observability-operator-acm-213-on-pull-request
   namespace: crt-redhat-acm-tenant
 spec:
   params:
@@ -22,9 +23,11 @@ spec:
   - name: revision
     value: '{{revision}}'
   - name: output-image
-    value: quay.io/redhat-user-workloads/crt-redhat-acm-tenant/release-acm-212/endpoint-monitoring-operator-acm-212:{{revision}}
+    value: quay.io/redhat-user-workloads/crt-redhat-acm-tenant/release-acm-213/multicluster-observability-operator-acm-213:on-pr-{{revision}}
+  - name: image-expires-after
+    value: 5d
   - name: dockerfile
-    value: operators/endpointmetrics/Containerfile.operator
+    value: operators/multiclusterobservability/Containerfile.operator
   - name: path-context
     value: .
   pipelineSpec:
@@ -38,7 +41,7 @@ spec:
         - name: name
           value: show-sbom
         - name: bundle
-          value: quay.io/konflux-ci/tekton-catalog/task-show-sbom:0.1@sha256:9bfc6b99ef038800fe131d7b45ff3cd4da3a415dd536f7c657b3527b01c4a13b
+          value: quay.io/konflux-ci/tekton-catalog/task-show-sbom:0.1@sha256:7f8b5499a21de9aca718d0cf2e170949af6b30cacf882d64983471a2c673b1da
         - name: kind
           value: task
         resolver: bundles

@@ -7,13 +7,13 @@ metadata:
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
     pipelinesascode.tekton.dev/max-keep-runs: "3"
     pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch
-      == "release-2.12"
+      == "release-2.13"
   creationTimestamp: null
   labels:
-    appstudio.openshift.io/application: release-acm-212
-    appstudio.openshift.io/component: grafana-dashboard-loader-acm-212
+    appstudio.openshift.io/application: release-acm-213
+    appstudio.openshift.io/component: rbac-query-proxy-acm-213
     pipelines.appstudio.openshift.io/type: build
-  name: grafana-dashboard-loader-acm-212-on-push
+  name: rbac-query-proxy-acm-213-on-push
   namespace: crt-redhat-acm-tenant
 spec:
   params:
@@ -22,9 +22,9 @@ spec:
   - name: revision
     value: '{{revision}}'
   - name: output-image
-    value: quay.io/redhat-user-workloads/crt-redhat-acm-tenant/release-acm-212/grafana-dashboard-loader-acm-212:{{revision}}
+    value: quay.io/redhat-user-workloads/crt-redhat-acm-tenant/release-acm-213/rbac-query-proxy-acm-213:{{revision}}
   - name: dockerfile
-    value: loaders/dashboards/Containerfile.operator
+    value: proxy/Containerfile.operator
   - name: path-context
     value: .
   pipelineSpec:
@@ -441,7 +441,7 @@ spec:
         - name: name
           value: push-dockerfile
         - name: bundle
-          value: quay.io/konflux-ci/tekton-catalog/task-push-dockerfile:0.1@sha256:e4abc7c7671e4455465e48f96831cfafdb4de368cbcb9f27a8e5b9b0553ac35e
+          value: quay.io/konflux-ci/tekton-catalog/task-push-dockerfile:0.1@sha256:e2c8fa67da036cef81e407e28c14b6a2034c6564009e084c368005a4640c554c
         - name: kind
           value: task
         resolver: bundles

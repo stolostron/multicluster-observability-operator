@@ -4,17 +4,16 @@ metadata:
   annotations:
     build.appstudio.openshift.io/repo: https://github.com/stolostron/multicluster-observability-operator?rev={{revision}}
     build.appstudio.redhat.com/commit_sha: '{{revision}}'
-    build.appstudio.redhat.com/pull_request_number: '{{pull_request_number}}'
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
     pipelinesascode.tekton.dev/max-keep-runs: "3"
-    pipelinesascode.tekton.dev/on-cel-expression: event == "pull_request" && target_branch
-      == "main"
+    pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch
+      == "release-2.13"
   creationTimestamp: null
   labels:
-    appstudio.openshift.io/application: release-acm-212
-    appstudio.openshift.io/component: rbac-query-proxy-acm-212
+    appstudio.openshift.io/application: release-acm-213
+    appstudio.openshift.io/component: metrics-collector-acm-213
     pipelines.appstudio.openshift.io/type: build
-  name: rbac-query-proxy-acm-212-on-pull-request
+  name: metrics-collector-acm-213-on-push
   namespace: crt-redhat-acm-tenant
 spec:
   params:
@@ -23,11 +22,9 @@ spec:
   - name: revision
     value: '{{revision}}'
   - name: output-image
-    value: quay.io/redhat-user-workloads/crt-redhat-acm-tenant/release-acm-212/rbac-query-proxy-acm-212:on-pr-{{revision}}
-  - name: image-expires-after
-    value: 5d
+    value: quay.io/redhat-user-workloads/crt-redhat-acm-tenant/release-acm-213/metrics-collector-acm-213:{{revision}}
   - name: dockerfile
-    value: proxy/Containerfile.operator
+    value: collectors/metrics/Containerfile.operator
   - name: path-context
     value: .
   pipelineSpec:
