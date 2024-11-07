@@ -73,13 +73,15 @@ type ClusterInfo struct {
 }
 
 type MetricsCollector struct {
-	Client             client.Client
-	ClusterInfo        ClusterInfo
-	HubInfo            *operatorconfig.HubInfo
-	Log                logr.Logger
-	Namespace          string
-	ObsAddon           *oav1beta1.ObservabilityAddon
-	ServiceAccountName string
+	Client                          client.Client
+	ClusterInfo                     ClusterInfo
+	HubInfo                         *operatorconfig.HubInfo
+	Log                             logr.Logger
+	Namespace                       string
+	ObsAddon                        *oav1beta1.ObservabilityAddon
+	ServiceAccountName              string
+	platformCollectorWasUpdated     bool
+	userWorkloadCollectorWasUpdated bool
 }
 
 type proxyConfig struct {
@@ -110,7 +112,7 @@ func (m *MetricsCollector) Update(ctx context.Context, req ctrl.Request) error {
 		m.reportStatus(ctx, status.MetricsCollector, status.UpdateFailed, "Failed to update metrics collector")
 		return err
 	} else {
-		if m.ObsAddon.Spec.EnableMetrics {
+		if m.ObsAddon.Spec.EnableMetrics && m.platformCollectorWasUpdated {
 			m.reportStatus(ctx, status.MetricsCollector, status.UpdateSuccessful, "Metrics collector updated")
 		} else {
 			m.reportStatus(ctx, status.MetricsCollector, status.Disabled, "Metrics collector disabled")
@@ -129,7 +131,7 @@ func (m *MetricsCollector) Update(ctx context.Context, req ctrl.Request) error {
 			m.reportStatus(ctx, status.UwlMetricsCollector, status.UpdateFailed, "Failed to update UWL Metrics collector")
 			return err
 		} else {
-			if m.ObsAddon.Spec.EnableMetrics {
+			if m.ObsAddon.Spec.EnableMetrics && m.userWorkloadCollectorWasUpdated {
 				m.reportStatus(ctx, status.UwlMetricsCollector, status.UpdateSuccessful, "UWL Metrics collector updated")
 			} else {
 				m.reportStatus(ctx, status.UwlMetricsCollector, status.Disabled, "UWL Metrics collector disabled")
@@ -744,6 +746,14 @@ func (m *MetricsCollector) ensureDeployment(ctx context.Context, isUWL bool, dep
 		desiredMetricsCollectorDep.Spec.Template.Spec.Containers[0].Resources = *m.ObsAddon.Spec.Resources
 	}
 
+	wasUpdated := func() {
+		if isUWL {
+			m.userWorkloadCollectorWasUpdated = true
+		} else {
+			m.platformCollectorWasUpdated = true
+		}
+	}
+
 	retryErr := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 		foundMetricsCollectorDep := &appsv1.Deployment{}
 		err := m.Client.Get(ctx, types.NamespacedName{Name: name, Namespace: m.Namespace}, foundMetricsCollectorDep)
@@ -753,6 +763,7 @@ func (m *MetricsCollector) ensureDeployment(ctx context.Context, isUWL bool, dep
 				return fmt.Errorf("failed to create Deployment %s/%s: %w", m.Namespace, name, err)
 			}
 
+			wasUpdated()
 			return nil
 		}
 		if err != nil {
@@ -773,6 +784,7 @@ func (m *MetricsCollector) ensureDeployment(ctx context.Context, isUWL bool, dep
 				return fmt.Errorf("failed to update Deployment %s/%s: %w", m.Namespace, name, err)
 			}
 
+			wasUpdated()
 			return nil
 		}
 
