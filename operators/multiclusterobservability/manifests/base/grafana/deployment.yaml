@@ -101,7 +101,7 @@ spec:
               mountPath: /etc/tls/private
             - mountPath: /etc/proxy/secrets
               name: cookie-secret
-          image: quay.io/stolostron/origin-oauth-proxy:4.5
+          image: quay.io/stolostron/origin-oauth-proxy:4.16
           args:
             - '--provider=openshift'
             - '--upstream=http://localhost:3001'
