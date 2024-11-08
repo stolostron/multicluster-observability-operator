@@ -557,7 +557,7 @@ func (r *ObservabilityAddonReconciler) SetupWithManager(mgr ctrl.Manager) error 
 		Watches(
 			&corev1.ConfigMap{},
 			&handler.EnqueueRequestForObject{},
-			builder.WithPredicates(getPred(clusterMonitoringConfigName, promNamespace, true, true, true)),
+			builder.WithPredicates(configMapDataChangedPredicate(clusterMonitoringConfigName, promNamespace)),
 		).
 		Watches(
 			&appsv1.Deployment{},
