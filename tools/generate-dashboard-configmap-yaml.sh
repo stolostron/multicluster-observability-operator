@@ -98,9 +98,9 @@ start() {
   fi
 
   # delete dashboard uid avoid conflict with old dashboard
-  dashboardJson=$(echo $dashboardJson | $PYTHON_CMD -c "import sys, json; d=json.load(sys.stdin);del d['uid'];print(json.dumps(d))")
+  dashboardJson=$(echo "$dashboardJson" | $PYTHON_CMD -c "import sys, json; d=json.load(sys.stdin);del d['uid'];print(json.dumps(d))")
 
-  if [ $dashboardFolderId -ne 0 ]; then
+  if [ -n "$dashboardFolderId" ] && [ "$dashboardFolderId" -ne 0 ]; then
     cat >$savePath/$dashboard_name.yaml <<EOF
 kind: ConfigMap
 apiVersion: v1
