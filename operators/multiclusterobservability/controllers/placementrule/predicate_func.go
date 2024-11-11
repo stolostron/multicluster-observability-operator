@@ -81,7 +81,7 @@ func getClusterPreds() predicate.Funcs {
 
 		//ACM 8509: Special case for local-cluster, we deploy endpoint and metrics collector in the hub
 		//whether hubSelfManagement is enabled or not
-		if isLocalCluster(e.Object) {
+		if !isLocalCluster(e.Object) {
 			managedClusterList.Delete(e.Object.GetName())
 		}
 		managedClusterImageRegistryMutex.Lock()
