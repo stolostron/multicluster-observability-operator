@@ -33,7 +33,7 @@ func getClusterPreds() predicate.Funcs {
 		}
 		//ACM 8509: Special case for local-cluster, we deploy endpoint and metrics collector in the hub
 		//whether hubSelfManagement is enabled or not
-		if e.Object.GetName() != localClusterName {
+		if !isLocalCluster(e.Object) {
 			updateManagedClusterList(e.Object)
 		}
 
@@ -63,7 +63,7 @@ func getClusterPreds() predicate.Funcs {
 			}
 			//ACM 8509: Special case for local-cluster, we deploy endpoint and metrics collector in the hub
 			//whether hubSelfManagement is enabled or not
-			if e.ObjectNew.GetName() != localClusterName {
+			if !isLocalCluster(e.ObjectNew) {
 				updateManagedClusterList(e.ObjectNew)
 			}
 
@@ -81,7 +81,7 @@ func getClusterPreds() predicate.Funcs {
 
 		//ACM 8509: Special case for local-cluster, we deploy endpoint and metrics collector in the hub
 		//whether hubSelfManagement is enabled or not
-		if e.Object.GetName() != localClusterName {
+		if isLocalCluster(e.Object) {
 			managedClusterList.Delete(e.Object.GetName())
 		}
 		managedClusterImageRegistryMutex.Lock()

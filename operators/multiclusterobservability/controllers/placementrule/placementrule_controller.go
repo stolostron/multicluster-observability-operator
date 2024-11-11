@@ -613,7 +613,11 @@ func updateManagedClusterList(obj client.Object) {
 	managedClusterListMutex.Lock()
 	defer managedClusterListMutex.Unlock()
 	if version, ok := obj.GetLabels()["openshiftVersion"]; ok {
-		managedClusterList.Store(obj.GetName(), version)
+		if isLocalCluster(obj) {
+			managedClusterList.Store(localClusterName, "mimical")
+		} else {
+			managedClusterList.Store(obj.GetName(), version)
+		}
 	} else {
 		managedClusterList.Store(obj.GetName(), nonOCP)
 	}
@@ -1109,6 +1113,13 @@ func isReconcileRequired(request ctrl.Request, managedCluster string) bool {
 	if request.Namespace == config.GetDefaultNamespace() ||
 		(request.Namespace == "" && request.Name == managedCluster) ||
 		request.Namespace == managedCluster {
+		return true
+	}
+	return false
+}
+
+func isLocalCluster(obj client.Object) bool {
+	if val, ok := obj.GetLabels()["local-cluster"]; ok && val == "true" {
 		return true
 	}
 	return false
