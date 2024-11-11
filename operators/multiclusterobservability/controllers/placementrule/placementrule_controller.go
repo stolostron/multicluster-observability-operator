@@ -123,25 +123,6 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		return ctrl.Result{}, nil
 	}
 
-	// ACM 8509: Special case for hub/local cluster metrics collection
-	// We want to ensure that the local-cluster is always in the managedClusterList
-	// In the case when hubSelfManagement is enabled, we will delete it from the list and modify the object
-	// to cater to the use case of deploying in open-cluster-management-observability namespace
-	managedClusterList.Delete("local-cluster")
-	if _, ok := managedClusterList.Load("local-cluster"); !ok {
-		obj := &clusterv1.ManagedCluster{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "local-cluster",
-				Namespace: config.GetDefaultNamespace(),
-				Labels: map[string]string{
-					"openshiftVersion": "mimical",
-				},
-			},
-		}
-		installMetricsWithoutAddon = true
-		updateManagedClusterList(obj)
-	}
-
 	if !deleteAll && !mco.Spec.ObservabilityAddonSpec.EnableMetrics {
 		reqLogger.Info("EnableMetrics is set to false. Delete Observability addons")
 		deleteAll = true
@@ -181,7 +162,9 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		return ctrl.Result{}, err
 	}
 
-	if !deleteAll && installMetricsWithoutAddon {
+	if !installMetricsWithoutAddon {
+		// Delete only once
+		installMetricsWithoutAddon = true
 		err = deleteObsAddon(r.Client, localClusterName)
 		if err != nil {
 			log.Error(err, "Failed to delete observabilityaddon")
