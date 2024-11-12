@@ -88,6 +88,7 @@ approve_csr_joinrequest() {
       for clustername in ${clusternames}; do
         echo "approve joinrequest for ${clustername}"
         kubectl patch managedcluster ${clustername} --patch '{"spec":{"hubAcceptsClient":true}}' --type=merge
+        kubectl label managedcluster ${clustername} local-cluster=true
         if [[ -n ${IS_KIND_ENV} ]]; then
           # update vendor label for KinD env
           kubectl label managedcluster ${clustername} vendor-
