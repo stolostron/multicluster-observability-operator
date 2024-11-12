@@ -17,7 +17,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/ghodss/yaml"
 	cmomanifests "github.com/openshift/cluster-monitoring-operator/pkg/manifests"
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 )
@@ -423,7 +422,7 @@ func createOrUpdateClusterMonitoringConfig(
 		newCMOCfg.PrometheusK8sConfig = newPmK8sConfig
 	}
 
-	if equality.Semantic.DeepEqual(*foundClusterMonitoringConfiguration, *newCMOCfg) {
+	if equality.Semantic.Deep(*foundClusterMonitoringConfiguration, *newCMOCfg) {
 		return nil
 	}
 

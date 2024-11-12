@@ -13,9 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-logr/logr"
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
-	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -325,7 +323,7 @@ func (m *MetricsCollector) ensureService(ctx context.Context, isUWL bool) error 
 			return fmt.Errorf("failed to get service %s/%s: %w", m.Namespace, name, err)
 		}
 
-		if !equality.Semantic.DeepDerivative(desiredService.Spec, foundService.Spec) {
+		if !equality.Semantic.DeepEqual(desiredService.Spec, foundService.Spec) {
 			m.Log.Info("Updating Service", "name", name, "namespace", m.Namespace)
 
 			foundService.Spec = desiredService.Spec
@@ -407,7 +405,7 @@ func (m *MetricsCollector) ensureServiceMonitor(ctx context.Context, isUWL bool)
 			return fmt.Errorf("failed to get ServiceMonitor %s/%s: %w", m.Namespace, name, err)
 		}
 
-		if !equality.Semantic.DeepDerivative(desiredSm.Spec, foundSm.Spec) {
+		if !equality.Semantic.DeepEqual(desiredSm.Spec, foundSm.Spec) {
 			m.Log.Info("Updating ServiceMonitor", "name", name, "namespace", m.Namespace)
 
 			foundSm.Spec = desiredSm.Spec
@@ -493,7 +491,7 @@ func (m *MetricsCollector) ensureAlertingRule(ctx context.Context, isUWL bool) e
 			return fmt.Errorf("failed to get PrometheusRule %s/%s: %w", m.Namespace, name, err)
 		}
 
-		if !equality.Semantic.DeepDerivative(desiredPromRule.Spec, foundPromRule.Spec) {
+		if !equality.Semantic.DeepEqual(desiredPromRule.Spec, foundPromRule.Spec) {
 			m.Log.Info("Updating PrometheusRule", "name", name, "namespace", m.Namespace)
 
 			foundPromRule.Spec = desiredPromRule.Spec
@@ -759,7 +757,7 @@ func (m *MetricsCollector) ensureDeployment(ctx context.Context, isUWL bool, dep
 			return fmt.Errorf("failed to get Deployment %s/%s: %w", m.Namespace, name, err)
 		}
 
-		isDifferentSpec := !equality.Semantic.DeepDerivative(desiredMetricsCollectorDep.Spec.Template.Spec, foundMetricsCollectorDep.Spec.Template.Spec)
+		isDifferentSpec := !equality.Semantic.DeepEqual(desiredMetricsCollectorDep.Spec.Template.Spec, foundMetricsCollectorDep.Spec.Template.Spec)
 		isDifferentReplicas := !equality.Semantic.DeepEqual(desiredMetricsCollectorDep.Spec.Replicas, foundMetricsCollectorDep.Spec.Replicas)
 		if isDifferentSpec || isDifferentReplicas || deployParams.forceRestart {
 			m.Log.Info("Updating Deployment", "name", name, "namespace", m.Namespace, "isDifferentSpec", isDifferentSpec, "isDifferentReplicas", isDifferentReplicas, "forceRestart", deployParams.forceRestart)
