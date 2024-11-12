@@ -329,7 +329,7 @@ func (d *Deployer) updateServiceAccount(ctx context.Context, desiredObj, runtime
 		return err
 	}
 
-	if !apiequality.Semantic.DeepEquale(desiredServiceAccount.ImagePullSecrets, runtimeServiceAccount.ImagePullSecrets) ||
+	if !apiequality.Semantic.DeepEqual(desiredServiceAccount.ImagePullSecrets, runtimeServiceAccount.ImagePullSecrets) ||
 		!apiequality.Semantic.DeepEqual(desiredServiceAccount.Secrets, runtimeServiceAccount.Secrets) {
 		logUpdateInfo(runtimeObj)
 		return d.client.Update(ctx, desiredServiceAccount)

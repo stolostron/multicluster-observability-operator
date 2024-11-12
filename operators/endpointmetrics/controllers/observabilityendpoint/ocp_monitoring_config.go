@@ -422,7 +422,7 @@ func createOrUpdateClusterMonitoringConfig(
 		newCMOCfg.PrometheusK8sConfig = newPmK8sConfig
 	}
 
-	if equality.Semantic.Deep(*foundClusterMonitoringConfiguration, *newCMOCfg) {
+	if equality.Semantic.DeepEqual(*foundClusterMonitoringConfiguration, *newCMOCfg) {
 		return nil
 	}
 
