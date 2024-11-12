@@ -68,9 +68,9 @@ type PlatformLogsCollectionSpec struct {
 	Enabled bool `json:"enabled,omitempty"`
 }
 
-// MetricsCollectionSpec defines the spec for the addon to collect and forward metrics
+// PlatformMetricsCollectionSpec defines the spec for the addon to collect and forward metrics
 // from fleet managed clusters.
-type MetricsCollectionSpec struct {
+type PlatformMetricsCollectionSpec struct {
 	// Enabled defines a flag to enable/disable the platform metrics collection.
 	//
 	// +optional
@@ -97,7 +97,7 @@ type PlatformMetricsSpec struct {
 	//
 	// +optional
 	// +kubebuilder:validation:Optional
-	Collection MetricsCollectionSpec `json:"collection,omitempty"`
+	Collection PlatformMetricsCollectionSpec `json:"collection,omitempty"`
 }
 
 // PlatformCapabilitiesSpec defines the observability capabilities managed by the addon
