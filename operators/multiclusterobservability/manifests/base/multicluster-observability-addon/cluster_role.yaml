@@ -70,5 +70,5 @@
       verbs: ["get", "list", "watch"]
     # Role for addon to perform prometheus specific actions
     - apiGroups: ["monitoring.coreos.com"]
-      resources: ["prometheusagents", "scraperconfigs", "prometheusrules"]
+      resources: ["prometheusagents", "scrapeconfigs", "prometheusrules"]
       verbs: ["get", "list", "watch"]
