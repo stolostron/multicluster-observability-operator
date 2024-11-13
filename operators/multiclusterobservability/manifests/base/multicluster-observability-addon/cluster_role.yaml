@@ -68,3 +68,7 @@
     - apiGroups: ["opentelemetry.io"]
       resources: ["opentelemetrycollectors", "instrumentations"]
       verbs: ["get", "list", "watch"]
+    # Role for addon to perform prometheus specific actions
+    - apiGroups: ["monitoring.coreos.com"]
+      resources: ["prometheuses", "scraperconfigs", "prometheusrules"]
+      verbs: ["get", "list", "watch"]
