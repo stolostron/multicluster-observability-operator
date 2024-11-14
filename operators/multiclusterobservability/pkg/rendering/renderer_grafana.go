@@ -5,6 +5,8 @@
 package rendering
 
 import (
+	"fmt"
+
 	v1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -71,6 +73,8 @@ func (r *MCORenderer) renderGrafanaDeployments(res *resource.Resource,
 	found, image = config.GetOauthProxyImage(r.imageClient)
 	if found {
 		spec.Containers[2].Image = image
+	} else {
+		return nil, fmt.Errorf("failed to get OAuth image for Grafana")
 	}
 	spec.Containers[2].ImagePullPolicy = imagePullPolicy
 
