@@ -66,7 +66,30 @@ func TestRender(t *testing.T) {
 	}
 	kubeClient := fake.NewClientBuilder().WithObjects(clientCa).Build()
 
-	renderer := NewMCORenderer(mchcr, kubeClient, nil)
+	imageClient := &fakeimagev1client.FakeImageV1{Fake: &(fakeimageclient.NewSimpleClientset().Fake)}
+	_, err = imageClient.ImageStreams(config.OauthProxyImageStreamNamespace).Create(context.Background(),
+		&imagev1.ImageStream{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      config.OauthProxyImageStreamName,
+				Namespace: config.OauthProxyImageStreamNamespace,
+			},
+			Spec: imagev1.ImageStreamSpec{
+				Tags: []imagev1.TagReference{
+					{
+						Name: "v4.4",
+						From: &corev1.ObjectReference{
+							Kind: "DockerImage",
+							Name: "quay.io/openshift-release-dev/ocp-v4.0-art-dev",
+						},
+					},
+				},
+			},
+		}, metav1.CreateOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	renderer := NewMCORenderer(mchcr, kubeClient, imageClient)
 	_, err = renderer.Render()
 	if err != nil {
 		t.Fatalf("failed to render MultiClusterObservability: %v", err)

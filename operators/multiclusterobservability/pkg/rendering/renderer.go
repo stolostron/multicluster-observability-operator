@@ -29,7 +29,7 @@ type RendererOptions struct {
 
 type MCORenderer struct {
 	kubeClient            client.Client
-	imageClient           *imagev1client.ImageV1Client
+	imageClient           imagev1client.ImageV1Interface
 	renderer              *rendererutil.Renderer
 	cr                    *obv1beta2.MultiClusterObservability
 	rendererOptions       *RendererOptions
@@ -40,7 +40,7 @@ type MCORenderer struct {
 	renderMCOAFns         map[string]rendererutil.RenderFn
 }
 
-func NewMCORenderer(multipleClusterMonitoring *obv1beta2.MultiClusterObservability, kubeClient client.Client, imageClient *imagev1client.ImageV1Client) *MCORenderer {
+func NewMCORenderer(multipleClusterMonitoring *obv1beta2.MultiClusterObservability, kubeClient client.Client, imageClient imagev1client.ImageV1Interface) *MCORenderer {
 	mcoRenderer := &MCORenderer{
 		renderer:    rendererutil.NewRenderer(),
 		cr:          multipleClusterMonitoring,
