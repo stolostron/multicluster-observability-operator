@@ -112,8 +112,10 @@ func (m *MetricsCollector) Update(ctx context.Context, req ctrl.Request) error {
 		m.reportStatus(ctx, status.MetricsCollector, status.UpdateFailed, "Failed to update metrics collector")
 		return err
 	} else {
-		if m.ObsAddon.Spec.EnableMetrics && m.platformCollectorWasUpdated {
-			m.reportStatus(ctx, status.MetricsCollector, status.UpdateSuccessful, "Metrics collector updated")
+		if m.ObsAddon.Spec.EnableMetrics {
+			if m.platformCollectorWasUpdated {
+				m.reportStatus(ctx, status.MetricsCollector, status.UpdateSuccessful, "Metrics collector updated")
+			}
 		} else {
 			m.reportStatus(ctx, status.MetricsCollector, status.Disabled, "Metrics collector disabled")
 		}
@@ -131,8 +133,10 @@ func (m *MetricsCollector) Update(ctx context.Context, req ctrl.Request) error {
 			m.reportStatus(ctx, status.UwlMetricsCollector, status.UpdateFailed, "Failed to update UWL Metrics collector")
 			return err
 		} else {
-			if m.ObsAddon.Spec.EnableMetrics && m.userWorkloadCollectorWasUpdated {
-				m.reportStatus(ctx, status.UwlMetricsCollector, status.UpdateSuccessful, "UWL Metrics collector updated")
+			if m.ObsAddon.Spec.EnableMetrics {
+				if m.userWorkloadCollectorWasUpdated {
+					m.reportStatus(ctx, status.UwlMetricsCollector, status.UpdateSuccessful, "UWL Metrics collector updated")
+				}
 			} else {
 				m.reportStatus(ctx, status.UwlMetricsCollector, status.Disabled, "UWL Metrics collector disabled")
 			}
