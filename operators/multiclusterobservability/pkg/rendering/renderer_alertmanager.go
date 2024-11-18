@@ -126,6 +126,8 @@ func (r *MCORenderer) renderAlertManagerStatefulSet(res *resource.Resource, name
 	found, image = mcoconfig.GetOauthProxyImage(r.imageClient)
 	if found {
 		oauthProxyContainer.Image = image
+	} else {
+		return nil, fmt.Errorf("failed to get OAuth image for alertmanager")
 	}
 	oauthProxyContainer.ImagePullPolicy = imagePullPolicy
 

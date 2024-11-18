@@ -5,6 +5,7 @@
 package rendering
 
 import (
+	"fmt"
 	"strings"
 
 	v1 "k8s.io/api/apps/v1"
@@ -96,6 +97,8 @@ func (r *MCORenderer) renderProxyDeployment(res *resource.Resource,
 	found, image = mcoconfig.GetOauthProxyImage(r.imageClient)
 	if found {
 		spec.Containers[1].Image = image
+	} else {
+		return nil, fmt.Errorf("failed to get OAuth image for rbacqueryproxy")
 	}
 
 	for idx := range spec.Volumes {
