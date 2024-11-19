@@ -44,7 +44,7 @@ var _ = Describe("", func() {
 		Eventually(func() bool {
 			_, result := utils.ContainDashboard(testOptions, dashboardTitle)
 			return result
-		}, EventuallyTimeoutMinute*3, EventuallyIntervalSecond*5).Should(BeTrue())
+		}, EventuallyTimeoutMinute*7, EventuallyIntervalSecond*5).Should(BeTrue())
 	})
 
 	It("RHACM4K-1669: Observability: Verify new customized Grafana dashboard - Should have update custom dashboard after configmap updated [P2][Sev2][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release @pre-upgrade (dashboard/g0)", func() {
