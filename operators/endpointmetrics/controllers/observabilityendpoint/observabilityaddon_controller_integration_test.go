@@ -17,7 +17,7 @@ import (
 	yaml2 "github.com/ghodss/yaml"
 	ocinfrav1 "github.com/openshift/api/config/v1"
 	cmomanifests "github.com/openshift/cluster-monitoring-operator/pkg/manifests"
-	hyperv1 "github.com/openshift/hypershift/api/hypershift/v1alpha1"
+	hyperv1 "github.com/openshift/hypershift/api/hypershift/v1beta1"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/hypershift"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/util"
@@ -453,9 +453,6 @@ func newHostedCluster(name, ns string) *hyperv1.HostedCluster {
 			},
 			Etcd: hyperv1.EtcdSpec{
 				ManagementType: "Managed",
-			},
-			Networking: hyperv1.ClusterNetworking{
-				NetworkType: "OpenShiftSDN",
 			},
 			Services: []hyperv1.ServicePublishingStrategyMapping{},
 		},
