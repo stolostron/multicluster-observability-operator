@@ -52,7 +52,7 @@ func installMCO() {
 		Expect(string(pod.Status.Phase)).To(Equal("Running"))
 	}
 
-	By("Checking Required CRDs are created")
+	By("Checking Required CRDs are created test")
 	Eventually(func() error {
 		return utils.HaveCRDs(testOptions.HubCluster, testOptions.KubeConfig,
 			[]string{
