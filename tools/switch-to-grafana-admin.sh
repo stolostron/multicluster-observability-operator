@@ -69,6 +69,8 @@ start() {
   fi
 
   curlCMD="kubectl exec -it -n "$obs_namespace" $podName -c grafana-dashboard-loader -- /usr/bin/curl"
+  
+  # this is an internal user for internal configuration purposes not meant for external use. As ACM user you will never login into Grafana this way 
   XForwardedUser="WHAT_YOU_ARE_DOING_IS_VOIDING_SUPPORT_0000000000000000000000000000000000000000000000000000000000000000"
   userID=$($curlCMD -s -X GET -H "Content-Type: application/json" -H "X-Forwarded-User: $XForwardedUser" 127.0.0.1:3001/api/users/lookup?loginOrEmail=$username_no_num_sign | $PYTHON_CMD -c "import sys, json; print(json.load(sys.stdin)['id'])" 2>/dev/null)
   if [ $? -ne 0 ]; then
