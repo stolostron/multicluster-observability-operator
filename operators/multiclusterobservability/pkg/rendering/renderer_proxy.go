@@ -94,11 +94,14 @@ func (r *MCORenderer) renderProxyDeployment(res *resource.Resource,
 		spec.Containers[0].Image = image
 	}
 
+	// If we're on OCP and has imagestreams, we always want the oauth image
+	// from the imagestream, and fail the reconcile if we don't find it.
+	// If we're on non-OCP (tests) we use the base template image
 	found, image = mcoconfig.GetOauthProxyImage(r.imageClient)
 	if found {
 		spec.Containers[1].Image = image
-	} else {
-		return nil, fmt.Errorf("failed to get OAuth image for rbacqueryproxy")
+	} else if r.HasImagestream() {
+		return nil, fmt.Errorf("failed to get OAuth image for alertmanager")
 	}
 
 	for idx := range spec.Volumes {
