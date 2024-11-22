@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	v1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
@@ -72,5 +73,31 @@ func getPred(name string, namespace string,
 		CreateFunc: createFunc,
 		UpdateFunc: updateFunc,
 		DeleteFunc: deleteFunc,
+	}
+}
+
+func configMapDataChangedPredicate(name, namespace string) predicate.Funcs {
+	return predicate.Funcs{
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			oldCM, okOld := e.ObjectOld.(*corev1.ConfigMap)
+			newCM, okNew := e.ObjectNew.(*corev1.ConfigMap)
+			if !okOld || !okNew {
+				return false
+			}
+
+			if newCM.Name != name || newCM.Namespace != namespace {
+				return false
+			}
+
+			return !reflect.DeepEqual(oldCM.Data, newCM.Data)
+		},
+		CreateFunc: func(e event.CreateEvent) bool {
+			cm, ok := e.Object.(*corev1.ConfigMap)
+			return ok && cm.Name == name && cm.Namespace == namespace
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			cm, ok := e.Object.(*corev1.ConfigMap)
+			return ok && cm.Name == name && cm.Namespace == namespace
+		},
 	}
 }
