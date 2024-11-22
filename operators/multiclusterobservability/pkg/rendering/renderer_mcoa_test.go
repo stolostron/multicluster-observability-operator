@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering/templates"
 	templatesutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering/templates"
@@ -21,6 +22,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/ptr"
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	kustomizeres "sigs.k8s.io/kustomize/api/resource"
 )
 
@@ -164,9 +166,21 @@ func TestRenderAddonDeploymentConfig(t *testing.T) {
 					},
 				},
 			},
+			AdvancedConfig: &mcov1beta2.AdvancedConfig{
+				CustomObservabilityHubURL: "https://observability-hub",
+			},
 		},
 	}
-	renderer := &MCORenderer{cr: mco}
+
+	config.SetMonitoringCRName("multicluster-observability")
+	scheme := runtime.NewScheme()
+	assert.NoError(t, mcov1beta2.AddToScheme(scheme))
+	fakeClient := fake.NewClientBuilder().
+		WithScheme(scheme).
+		WithObjects(mco).
+		Build()
+
+	renderer := &MCORenderer{cr: mco, kubeClient: fakeClient}
 
 	uobj, err := renderer.renderAddonDeploymentConfig(aodc, "test", map[string]string{"key": "value"})
 	assert.NoError(t, err)
@@ -181,13 +195,14 @@ func TestRenderAddonDeploymentConfig(t *testing.T) {
 	instrV1alpha1 := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.InstrumentationCRDName)
 	promV1alpha1 := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.PrometheusAgentCRDName)
 
-	assert.Len(t, got.Spec.CustomizedVariables, 5)
+	assert.Len(t, got.Spec.CustomizedVariables, 8)
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1alpha1.CustomizedVariable{Name: namePlatformLogsCollection, Value: clfV1})
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1alpha1.CustomizedVariable{Name: nameUserWorkloadLogsCollection, Value: clfV1})
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1alpha1.CustomizedVariable{Name: nameUserWorkloadTracesCollection, Value: otelV1beta1})
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1alpha1.CustomizedVariable{Name: nameUserWorkloadInstrumentation, Value: instrV1alpha1})
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1alpha1.CustomizedVariable{Name: namePlatformMetricsCollection, Value: promV1alpha1})
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1alpha1.CustomizedVariable{Name: nameUserWorkloadMetricsCollection, Value: promV1alpha1})
+	assert.Contains(t, got.Spec.CustomizedVariables, addonv1alpha1.CustomizedVariable{Name: nameSignalsHubEndpoint, Value: "observability-hub"})
 }
 
 func TestMCOAEnabled(t *testing.T) {
