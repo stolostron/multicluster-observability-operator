@@ -123,10 +123,13 @@ func (r *MCORenderer) renderAlertManagerStatefulSet(res *resource.Resource, name
 		configReloaderContainer.Image = image
 	}
 
+	// If we're on OCP and has imagestreams, we always want the oauth image
+	// from the imagestream, and fail the reconcile if we don't find it.
+	// If we're on non-OCP (tests) we use the base template image
 	found, image = mcoconfig.GetOauthProxyImage(r.imageClient)
 	if found {
 		oauthProxyContainer.Image = image
-	} else {
+	} else if r.HasImagestream() {
 		return nil, fmt.Errorf("failed to get OAuth image for alertmanager")
 	}
 	oauthProxyContainer.ImagePullPolicy = imagePullPolicy
