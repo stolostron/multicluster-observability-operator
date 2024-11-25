@@ -10,7 +10,7 @@ import (
 
 	"github.com/go-logr/logr"
 	ocinfrav1 "github.com/openshift/api/config/v1"
-	hyperv1 "github.com/openshift/hypershift/api/hypershift/v1alpha1"
+	hyperv1 "github.com/openshift/hypershift/api/hypershift/v1beta1"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/openshift"
 	rbacv1 "k8s.io/api/rbac/v1"
