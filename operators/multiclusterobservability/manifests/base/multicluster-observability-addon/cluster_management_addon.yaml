@@ -25,5 +25,5 @@ spec:
     placements:
       - name: global
         namespace: open-cluster-management-global-set
-        configs: {}
+        configs: []
 
