@@ -8,6 +8,8 @@ import (
 	"context"
 	"fmt"
 
+	prometheusv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	prometheusalpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -168,6 +170,119 @@ func (r *MCORenderer) renderClusterManagementAddOn(
 	}
 	u.SetLabels(cLabels)
 
+	cma := &addonapiv1alpha1.ClusterManagementAddOn{}
+	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, cma); err != nil {
+		return nil, err
+	}
+
+	// Add default platform configs
+	if r.cr.Spec.Capabilities.Platform != nil {
+		if r.cr.Spec.Capabilities.Platform.Logs.Collection.Enabled {
+			cma.Spec.SupportedConfigs = append(cma.Spec.SupportedConfigs, addonapiv1alpha1.ConfigMeta{
+				ConfigGroupResource: addonapiv1alpha1.ConfigGroupResource{
+					Group:    "observability.openshift.io",
+					Resource: "clusterlogforwarders",
+				},
+				DefaultConfig: &addonapiv1alpha1.ConfigReferent{
+					Name:      "instance",
+					Namespace: mcoconfig.GetDefaultNamespace(),
+				},
+			})
+		}
+
+		if r.cr.Spec.Capabilities.Platform.Metrics.Collection.Enabled {
+			cma.Spec.SupportedConfigs = append(cma.Spec.SupportedConfigs, addonapiv1alpha1.ConfigMeta{
+				ConfigGroupResource: addonapiv1alpha1.ConfigGroupResource{
+					Group:    prometheusalpha1.SchemeGroupVersion.Group,
+					Resource: prometheusalpha1.PrometheusAgentName,
+				},
+				DefaultConfig: &addonapiv1alpha1.ConfigReferent{
+					Name:      "acm-platform-metrics-collector-default",
+					Namespace: mcoconfig.GetDefaultNamespace(),
+				},
+			})
+			cma.Spec.SupportedConfigs = append(cma.Spec.SupportedConfigs, addonapiv1alpha1.ConfigMeta{
+				ConfigGroupResource: addonapiv1alpha1.ConfigGroupResource{
+					Resource: "configmaps",
+				},
+				DefaultConfig: &addonapiv1alpha1.ConfigReferent{
+					Name:      "acm-platform-metrics-collector-default-envoy-config",
+					Namespace: mcoconfig.GetDefaultNamespace(),
+				},
+			})
+			cma.Spec.SupportedConfigs = append(cma.Spec.SupportedConfigs, addonapiv1alpha1.ConfigMeta{
+				ConfigGroupResource: addonapiv1alpha1.ConfigGroupResource{
+					Group:    prometheusalpha1.SchemeGroupVersion.Group,
+					Resource: prometheusalpha1.ScrapeConfigName,
+				},
+				DefaultConfig: &addonapiv1alpha1.ConfigReferent{
+					Name:      "platform-metrics-default",
+					Namespace: mcoconfig.GetDefaultNamespace(),
+				},
+			})
+			cma.Spec.SupportedConfigs = append(cma.Spec.SupportedConfigs, addonapiv1alpha1.ConfigMeta{
+				ConfigGroupResource: addonapiv1alpha1.ConfigGroupResource{
+					Group:    prometheusv1.SchemeGroupVersion.Group,
+					Resource: prometheusv1.PrometheusRuleName,
+				},
+				DefaultConfig: &addonapiv1alpha1.ConfigReferent{
+					Name:      "platform-rules-default",
+					Namespace: mcoconfig.GetDefaultNamespace(),
+				},
+			})
+		}
+
+	}
+
+	if r.cr.Spec.Capabilities.UserWorkloads != nil {
+		if r.cr.Spec.Capabilities.UserWorkloads.Metrics.Collection.Enabled {
+			cma.Spec.SupportedConfigs = append(cma.Spec.SupportedConfigs, addonapiv1alpha1.ConfigMeta{
+				ConfigGroupResource: addonapiv1alpha1.ConfigGroupResource{
+					Group:    prometheusalpha1.SchemeGroupVersion.Group,
+					Resource: prometheusalpha1.PrometheusAgentName,
+				},
+				DefaultConfig: &addonapiv1alpha1.ConfigReferent{
+					Name:      "acm-user-workload-metrics-collector-default",
+					Namespace: mcoconfig.GetDefaultNamespace(),
+				},
+			})
+			cma.Spec.SupportedConfigs = append(cma.Spec.SupportedConfigs, addonapiv1alpha1.ConfigMeta{
+				ConfigGroupResource: addonapiv1alpha1.ConfigGroupResource{
+					Resource: "configmaps",
+				},
+				DefaultConfig: &addonapiv1alpha1.ConfigReferent{
+					Name:      "acm-user-workload-metrics-collector-default-envoy-config",
+					Namespace: mcoconfig.GetDefaultNamespace(),
+				},
+			})
+		}
+
+		if r.cr.Spec.Capabilities.UserWorkloads.Traces.Collection.Collector.Enabled {
+			cma.Spec.SupportedConfigs = append(cma.Spec.SupportedConfigs, addonapiv1alpha1.ConfigMeta{
+				ConfigGroupResource: addonapiv1alpha1.ConfigGroupResource{
+					Group:    "opentelemetry.io",
+					Resource: "opentelemetrycollectors",
+				},
+				DefaultConfig: &addonapiv1alpha1.ConfigReferent{
+					Name:      "instance",
+					Namespace: mcoconfig.GetDefaultNamespace(),
+				},
+			})
+		}
+
+		if r.cr.Spec.Capabilities.UserWorkloads.Traces.Collection.Instrumentation.Enabled {
+			cma.Spec.SupportedConfigs = append(cma.Spec.SupportedConfigs, addonapiv1alpha1.ConfigMeta{
+				ConfigGroupResource: addonapiv1alpha1.ConfigGroupResource{
+					Group:    "opentelemetry.io",
+					Resource: "instrumentations",
+				},
+				DefaultConfig: &addonapiv1alpha1.ConfigReferent{
+					Name:      "instance",
+					Namespace: mcoconfig.GetDefaultNamespace(),
+				},
+			})
+		}
+	}
 	return u, nil
 }
 

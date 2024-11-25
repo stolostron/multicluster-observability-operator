@@ -20,24 +20,6 @@ spec:
       defaultConfig:
         name: multicluster-observability-addon
         namespace: open-cluster-management-observability
-    # Describes the default log forwarding outputs for each log type applied to all managed clusters.
-    - group: observability.openshift.io
-      resource: clusterlogforwarders
-    # Describes the default OpenTelemetryCollector type applied to all managed clusters.
-    - group: opentelemetry.io
-      resource: opentelemetrycollectors
-    # Describes the default Instrumentation type applied to all managed clusters.
-    - group: opentelemetry.io
-      resource: instrumentations
-    # Metrics forwarding configuration types.
-    - group: monitoring.coreos.com
-      resource: prometheusagents
-    - group: monitoring.coreos.com
-      resource: scrapeconfigs
-    - group: monitoring.coreos.com
-      resource: prometheusrules
-    - group: ""
-      resource: configmaps # For the proxy sidecar configuration of the prometheus agent
   installStrategy:
     type: Placements
     placements:
