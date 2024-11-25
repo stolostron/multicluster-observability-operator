@@ -283,6 +283,12 @@ func (r *MCORenderer) renderClusterManagementAddOn(
 			})
 		}
 	}
+
+	u.Object, err = runtime.DefaultUnstructuredConverter.ToUnstructured(cma)
+	if err != nil {
+		return nil, err
+	}
+
 	return u, nil
 }
 
