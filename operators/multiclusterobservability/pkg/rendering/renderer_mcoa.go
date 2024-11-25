@@ -176,7 +176,7 @@ func (r *MCORenderer) renderClusterManagementAddOn(
 	}
 
 	// Add default platform configs
-	if r.cr.Spec.Capabilities.Platform != nil {
+	if r.cr.Spec.Capabilities != nil && r.cr.Spec.Capabilities.Platform != nil {
 		if r.cr.Spec.Capabilities.Platform.Logs.Collection.Enabled {
 			cma.Spec.SupportedConfigs = append(cma.Spec.SupportedConfigs, addonapiv1alpha1.ConfigMeta{
 				ConfigGroupResource: addonapiv1alpha1.ConfigGroupResource{
@@ -234,7 +234,7 @@ func (r *MCORenderer) renderClusterManagementAddOn(
 
 	}
 
-	if r.cr.Spec.Capabilities.UserWorkloads != nil {
+	if r.cr.Spec.Capabilities != nil && r.cr.Spec.Capabilities.UserWorkloads != nil {
 		if r.cr.Spec.Capabilities.UserWorkloads.Metrics.Collection.Enabled {
 			cma.Spec.SupportedConfigs = append(cma.Spec.SupportedConfigs, addonapiv1alpha1.ConfigMeta{
 				ConfigGroupResource: addonapiv1alpha1.ConfigGroupResource{
