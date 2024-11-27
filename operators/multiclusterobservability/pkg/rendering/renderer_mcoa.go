@@ -7,11 +7,7 @@ package rendering
 import (
 	"context"
 	"fmt"
-	"sort"
-	"strings"
 
-	prometheusv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
-	prometheusalpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -171,91 +167,6 @@ func (r *MCORenderer) renderClusterManagementAddOn(
 		cLabels[k] = v
 	}
 	u.SetLabels(cLabels)
-
-	cma := &addonapiv1alpha1.ClusterManagementAddOn{}
-	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, cma); err != nil {
-		return nil, err
-	}
-
-	if r.cr.Spec.Capabilities != nil {
-		if (r.cr.Spec.Capabilities.Platform != nil && r.cr.Spec.Capabilities.Platform.Metrics.Collection.Enabled) ||
-			(r.cr.Spec.Capabilities.UserWorkloads != nil && r.cr.Spec.Capabilities.UserWorkloads.Metrics.Collection.Enabled) {
-			cma.Spec.SupportedConfigs = append(cma.Spec.SupportedConfigs, []addonapiv1alpha1.ConfigMeta{
-				{
-					ConfigGroupResource: addonapiv1alpha1.ConfigGroupResource{
-						Group:    prometheusalpha1.SchemeGroupVersion.Group,
-						Resource: prometheusalpha1.PrometheusAgentName,
-					},
-				},
-				{
-					ConfigGroupResource: addonapiv1alpha1.ConfigGroupResource{
-						Resource: "configmaps",
-					},
-				},
-				{
-					ConfigGroupResource: addonapiv1alpha1.ConfigGroupResource{
-						Group:    prometheusalpha1.SchemeGroupVersion.Group,
-						Resource: prometheusalpha1.ScrapeConfigName,
-					},
-				},
-				{
-					ConfigGroupResource: addonapiv1alpha1.ConfigGroupResource{
-						Group:    prometheusv1.SchemeGroupVersion.Group,
-						Resource: prometheusv1.PrometheusRuleName,
-					},
-				},
-			}...)
-		}
-
-		if (r.cr.Spec.Capabilities.Platform != nil && r.cr.Spec.Capabilities.Platform.Logs.Collection.Enabled) ||
-			(r.cr.Spec.Capabilities.UserWorkloads != nil && r.cr.Spec.Capabilities.UserWorkloads.Logs.Collection.ClusterLogForwarder.Enabled) {
-			cma.Spec.SupportedConfigs = append(cma.Spec.SupportedConfigs, []addonapiv1alpha1.ConfigMeta{
-				{
-					ConfigGroupResource: addonapiv1alpha1.ConfigGroupResource{
-						Group:    "observability.openshift.io",
-						Resource: "clusterlogforwarders",
-					},
-				},
-			}...)
-		}
-
-		if r.cr.Spec.Capabilities.UserWorkloads != nil {
-			if r.cr.Spec.Capabilities.UserWorkloads.Traces.Collection.Collector.Enabled {
-				cma.Spec.SupportedConfigs = append(cma.Spec.SupportedConfigs, []addonapiv1alpha1.ConfigMeta{
-					{
-						ConfigGroupResource: addonapiv1alpha1.ConfigGroupResource{
-							Group:    "opentelemetry.io",
-							Resource: "opentelemetrycollectors",
-						},
-					},
-				}...)
-			}
-
-			if r.cr.Spec.Capabilities.UserWorkloads.Traces.Collection.Instrumentation.Enabled {
-				cma.Spec.SupportedConfigs = append(cma.Spec.SupportedConfigs, []addonapiv1alpha1.ConfigMeta{
-					{
-						ConfigGroupResource: addonapiv1alpha1.ConfigGroupResource{
-							Group:    "opentelemetry.io",
-							Resource: "instrumentations",
-						},
-					},
-				}...)
-			}
-		}
-
-		makeKey := func(cfg addonapiv1alpha1.ConfigMeta) string {
-			return fmt.Sprintf("%s/%s", cfg.Group, cfg.Resource)
-		}
-		sort.Slice(cma.Spec.SupportedConfigs, func(i, j int) bool {
-			return strings.Compare(makeKey(cma.Spec.SupportedConfigs[i]), makeKey(cma.Spec.SupportedConfigs[j])) < 0
-		})
-
-	}
-
-	u.Object, err = runtime.DefaultUnstructuredConverter.ToUnstructured(cma)
-	if err != nil {
-		return nil, err
-	}
 
 	return u, nil
 }
