@@ -44,7 +44,6 @@ spec:
       - name: global
         namespace: open-cluster-management-global-set
         configs:
-          configs:
           - group: observability.openshift.io
             resource: clusterlogforwarders
             name: instance
