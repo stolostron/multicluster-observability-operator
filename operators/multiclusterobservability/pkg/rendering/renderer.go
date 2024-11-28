@@ -10,6 +10,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/discovery"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	obv1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
@@ -29,7 +30,7 @@ type RendererOptions struct {
 
 type MCORenderer struct {
 	kubeClient            client.Client
-	imageClient           *imagev1client.ImageV1Client
+	imageClient           imagev1client.ImageV1Interface
 	renderer              *rendererutil.Renderer
 	cr                    *obv1beta2.MultiClusterObservability
 	rendererOptions       *RendererOptions
@@ -40,7 +41,7 @@ type MCORenderer struct {
 	renderMCOAFns         map[string]rendererutil.RenderFn
 }
 
-func NewMCORenderer(multipleClusterMonitoring *obv1beta2.MultiClusterObservability, kubeClient client.Client, imageClient *imagev1client.ImageV1Client) *MCORenderer {
+func NewMCORenderer(multipleClusterMonitoring *obv1beta2.MultiClusterObservability, kubeClient client.Client, imageClient imagev1client.ImageV1Interface) *MCORenderer {
 	mcoRenderer := &MCORenderer{
 		renderer:    rendererutil.NewRenderer(),
 		cr:          multipleClusterMonitoring,
@@ -192,4 +193,23 @@ func (r *MCORenderer) MCOAResources(namespace string, labels map[string]string) 
 	}
 
 	return mcoaResources, nil
+}
+
+func (r *MCORenderer) HasImagestream() bool {
+	dcl := discovery.NewDiscoveryClient(r.imageClient.RESTClient())
+
+	apiList, err := dcl.ServerGroups()
+	if err != nil {
+		log.Error(err, "unable to get ServerGroups from imagestream detection")
+		return false
+	}
+
+	apiGroups := apiList.Groups
+	for i := 0; i < len(apiGroups); i++ {
+		if apiGroups[i].Name == "image.openshift.io" {
+			return true
+		}
+	}
+
+	return false
 }
