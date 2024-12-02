@@ -5,7 +5,6 @@
 package rendering
 
 import (
-	"context"
 	"fmt"
 
 	prometheusv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
@@ -34,11 +33,12 @@ const (
 	nameUserWorkloadTracesCollection  = "userWorkloadTracesCollection"
 	nameUserWorkloadInstrumentation   = "userWorkloadInstrumentation"
 	nameUserWorkloadMetricsCollection = "userWorkloadMetricsCollection"
-	nameSignalsHubEndpoint            = "signalsHubEndpoint"
+	nameMetricsHubHostname            = "metricsHubHostname"
 )
 
 type MCOARendererOptions struct {
-	DisableCMAORender bool
+	DisableCMAORender  bool
+	MetricsHubHostname string
 }
 
 func (r *MCORenderer) newMCOARenderer() {
@@ -341,12 +341,11 @@ func (r *MCORenderer) renderAddonDeploymentConfig(
 			}
 		}
 
-		if (cs.Platform != nil && cs.Platform.Metrics.Collection.Enabled) || (cs.UserWorkloads != nil && cs.UserWorkloads.Metrics.Collection.Enabled) {
-			obsAPIURL, err := mcoconfig.GetObsAPIExternalURL(context.TODO(), r.kubeClient, namespace)
-			if err != nil {
-				return nil, fmt.Errorf("failed to get the Observatorium API URL: %w", err)
+		if r.rendererOptions != nil {
+			metricsHubHostname := r.rendererOptions.MCOAOptions.MetricsHubHostname
+			if metricsHubHostname != "" {
+				appendCustomVar(aodc, nameMetricsHubHostname, metricsHubHostname)
 			}
-			appendCustomVar(aodc, nameSignalsHubEndpoint, obsAPIURL.Host)
 		}
 
 		u.Object, err = runtime.DefaultUnstructuredConverter.ToUnstructured(aodc)
