@@ -167,9 +167,6 @@ func TestRenderAddonDeploymentConfig(t *testing.T) {
 					},
 				},
 			},
-			AdvancedConfig: &mcov1beta2.AdvancedConfig{
-				CustomObservabilityHubURL: "https://observability-hub",
-			},
 		},
 	}
 
@@ -181,7 +178,11 @@ func TestRenderAddonDeploymentConfig(t *testing.T) {
 		WithObjects(mco).
 		Build()
 
-	renderer := &MCORenderer{cr: mco, kubeClient: fakeClient}
+	renderer := &MCORenderer{cr: mco, kubeClient: fakeClient, rendererOptions: &RendererOptions{
+		MCOAOptions: MCOARendererOptions{
+			MetricsHubHostname: "observability-hub",
+		},
+	}}
 
 	uobj, err := renderer.renderAddonDeploymentConfig(aodc, "test", map[string]string{"key": "value"})
 	assert.NoError(t, err)
@@ -203,7 +204,7 @@ func TestRenderAddonDeploymentConfig(t *testing.T) {
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1alpha1.CustomizedVariable{Name: nameUserWorkloadInstrumentation, Value: instrV1alpha1})
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1alpha1.CustomizedVariable{Name: namePlatformMetricsCollection, Value: promV1alpha1})
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1alpha1.CustomizedVariable{Name: nameUserWorkloadMetricsCollection, Value: promV1alpha1})
-	assert.Contains(t, got.Spec.CustomizedVariables, addonv1alpha1.CustomizedVariable{Name: nameSignalsHubEndpoint, Value: "observability-hub"})
+	assert.Contains(t, got.Spec.CustomizedVariables, addonv1alpha1.CustomizedVariable{Name: nameMetricsHubHostname, Value: "observability-hub"})
 }
 
 func TestMCORenderer_RenderClusterManagementAddOn(t *testing.T) {
