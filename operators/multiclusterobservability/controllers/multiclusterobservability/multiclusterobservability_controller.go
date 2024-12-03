@@ -8,7 +8,6 @@ import (
 	"context"
 	cerr "errors"
 	"fmt"
-	"net/url"
 	"os"
 	"reflect"
 	"strings"
@@ -268,12 +267,9 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	}
 	disableMCOACMAORender := !apierrors.IsNotFound(err)
 
-	obsAPIURL := &url.URL{}
-	if !disableMCOACMAORender {
-		obsAPIURL, err = mcoconfig.GetObsAPIExternalURL(ctx, r.Client, mcoconfig.GetDefaultNamespace())
-		if err != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to get the Observatorium API URL: %w", err)
-		}
+	obsAPIURL, err := mcoconfig.GetObsAPIExternalURL(ctx, r.Client, mcoconfig.GetDefaultNamespace())
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to get the Observatorium API URL: %w", err)
 	}
 
 	// Build render options
