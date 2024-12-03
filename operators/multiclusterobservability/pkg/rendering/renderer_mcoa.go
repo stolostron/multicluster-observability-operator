@@ -341,11 +341,12 @@ func (r *MCORenderer) renderAddonDeploymentConfig(
 			}
 		}
 
-		if r.rendererOptions != nil {
-			metricsHubHostname := r.rendererOptions.MCOAOptions.MetricsHubHostname
-			if metricsHubHostname != "" {
-				appendCustomVar(aodc, nameMetricsHubHostname, metricsHubHostname)
+		if (cs.Platform != nil && cs.Platform.Metrics.Collection.Enabled) ||
+			(cs.UserWorkloads != nil && cs.UserWorkloads.Metrics.Collection.Enabled) {
+			if r.rendererOptions == nil || r.rendererOptions.MCOAOptions.MetricsHubHostname == "" {
+				return nil, fmt.Errorf("MetricsHubHostname is required when metrics collection is enabled")
 			}
+			appendCustomVar(aodc, nameMetricsHubHostname, r.rendererOptions.MCOAOptions.MetricsHubHostname)
 		}
 
 		u.Object, err = runtime.DefaultUnstructuredConverter.ToUnstructured(aodc)
