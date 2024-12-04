@@ -405,6 +405,11 @@ func (w *Worker) LastMetrics() []*clientmodel.MetricFamily {
 }
 
 func (w *Worker) Run(ctx context.Context) {
+	// Forward metrics immediately on startup.
+	if err := w.forward(ctx); err != nil {
+		rlogger.Log(w.logger, rlogger.Error, "msg", "unable to forward results", "err", err)
+	}
+
 	ticker := time.NewTicker(w.interval)
 	defer ticker.Stop()
 
