@@ -7,9 +7,6 @@ base_dir="$(cd "$(dirname "$0")/.." ; pwd -P)"
 cd "$base_dir"
 obs_namespace=open-cluster-management-observability
 
-# create a dashboard for test export grafana dashboard
-kubectl apply -n "$obs_namespace" -f "$base_dir"/examples/dashboards/sample_custom_dashboard/custom-sample-dashboard.yaml
-
 # test deploy grafana-dev
 cd $base_dir/tools
 ./setup-grafana-dev.sh --deploy
@@ -63,7 +60,7 @@ n=0
 until [ "$n" -ge 10 ]
 do
     # test export grafana dashboard
-    ./generate-dashboard-configmap-yaml.sh "Sample Dashboard for E2E"
+    ./generate-dashboard-configmap-yaml.sh "ACM - Clusters Overview"
     if [ $? -eq 0 ]; then
         break
     fi
@@ -81,6 +78,3 @@ if [ $? -ne 0 ]; then
     echo "Failed run setup-grafana-dev.sh --clean"
     exit 1
 fi
-
-# clean test env
-kubectl delete -n "$obs_namespace" -f "$base_dir"/examples/dashboards/sample_custom_dashboard/custom-sample-dashboard.yaml
