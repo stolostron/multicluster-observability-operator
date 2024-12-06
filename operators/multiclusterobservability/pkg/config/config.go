@@ -229,6 +229,7 @@ const (
 	ClusterLogForwarderCRDName    = "clusterlogforwarders.observability.openshift.io"
 	OpenTelemetryCollectorCRDName = "opentelemetrycollectors.opentelemetry.io"
 	InstrumentationCRDName        = "instrumentations.opentelemetry.io"
+	PrometheusAgentCRDName        = "prometheusagents.monitoring.coreos.com"
 )
 
 var (
@@ -236,6 +237,7 @@ var (
 		ClusterLogForwarderCRDName:    "v1",
 		OpenTelemetryCollectorCRDName: "v1beta1",
 		InstrumentationCRDName:        "v1alpha1",
+		PrometheusAgentCRDName:        "v1alpha1",
 	}
 )
 
