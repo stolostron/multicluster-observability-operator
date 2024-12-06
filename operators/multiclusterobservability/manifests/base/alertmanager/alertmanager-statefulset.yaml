@@ -42,7 +42,6 @@ spec:
       containers:
       - args:
         - --config.file=/etc/alertmanager/config/alertmanager.yaml
-        - --cluster.listen-address=[$(POD_IP)]:9094
         - --storage.path=/alertmanager
         - --data.retention=120h
         - --web.listen-address=127.0.0.1:9093
