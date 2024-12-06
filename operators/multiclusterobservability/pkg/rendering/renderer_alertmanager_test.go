@@ -173,6 +173,26 @@ func TestAlertManagerRendererMCOConfig(t *testing.T) {
 				assert.Equal(t, 3, count)
 			},
 		},
+		"one replica": {
+			mco: func() *mcov1beta2.MultiClusterObservability {
+				ret := makeBaseMco()
+				replicas := int32(1)
+				ret.Spec.AdvancedConfig = &mcov1beta2.AdvancedConfig{
+					Alertmanager: &mcov1beta2.AlertmanagerSpec{
+						CommonSpec: mcov1beta2.CommonSpec{
+							Replicas: &replicas,
+						},
+					},
+				}
+				return ret
+			},
+			expect: func(t *testing.T, sts *appsv1.StatefulSet) {
+				assert.Equal(t, int32(1), *sts.Spec.Replicas)
+				args := sts.Spec.Template.Spec.Containers[0].Args
+				assert.NotContains(t, args, "--cluster.peer")
+				assert.Contains(t, args, "--cluster.listen-address=")
+			},
+		},
 		"resources": {
 			mco: func() *mcov1beta2.MultiClusterObservability {
 				ret := makeBaseMco()
