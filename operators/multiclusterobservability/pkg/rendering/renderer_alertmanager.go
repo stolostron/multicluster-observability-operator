@@ -78,12 +78,17 @@ func (r *MCORenderer) renderAlertManagerStatefulSet(res *resource.Resource, name
 
 	alertManagerContainer.ImagePullPolicy = imagePullPolicy
 	if *dep.Spec.Replicas > 1 {
+		alertManagerContainer.Args = append(alertManagerContainer.Args, "--cluster.listen-address=[$(POD_IP)]:9094")
 		for i := int32(0); i < *dep.Spec.Replicas; i++ {
 			alertManagerContainer.Args = append(alertManagerContainer.Args, "--cluster.peer="+
 				mcoconfig.GetOperandName(mcoconfig.Alertmanager)+"-"+
 				strconv.Itoa(int(i))+".alertmanager-operated."+
 				mcoconfig.GetDefaultNamespace()+".svc:9094")
 		}
+	}
+	// ACM-13481 Disable HA mode for single replica
+	if *dep.Spec.Replicas == 1 {
+		alertManagerContainer.Args = append(alertManagerContainer.Args, "--cluster.listen-address=")
 	}
 	alertManagerContainer.Resources = mcoconfig.GetResources(mcoconfig.Alertmanager, r.cr.Spec.InstanceSize, r.cr.Spec.AdvancedConfig)
 	alertManagerContainer.Image = mcoconfig.DefaultImgRepository + "/" + mcoconfig.AlertManagerImgName + ":" + mcoconfig.DefaultImgTagSuffix
