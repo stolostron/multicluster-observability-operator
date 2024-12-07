@@ -170,8 +170,8 @@ func TestAlertManagerRendererMCOConfig(t *testing.T) {
 				ret.Spec.AdvancedConfig = &mcov1beta2.AdvancedConfig{
 					Alertmanager: &mcov1beta2.CommonSpec{
 						Replicas: &replicas,
-						},
 					},
+				}
 				return ret
 			},
 			expect: func(t *testing.T, sts *appsv1.StatefulSet) {
