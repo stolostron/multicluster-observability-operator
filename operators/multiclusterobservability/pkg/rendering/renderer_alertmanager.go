@@ -67,11 +67,16 @@ func (r *MCORenderer) renderAlertManagerStatefulSet(res *resource.Resource,
 
 	if *dep.Spec.Replicas > 1 {
 		for i := int32(0); i < *dep.Spec.Replicas; i++ {
+			args = append(args, "--cluster.listen-address=[$(POD_IP)]:9094")
 			args = append(args, "--cluster.peer="+
 				mcoconfig.GetOperandName(mcoconfig.Alertmanager)+"-"+
 				strconv.Itoa(int(i))+".alertmanager-operated."+
 				mcoconfig.GetDefaultNamespace()+".svc:9094")
 		}
+	}
+	// ACM-13481 Disable HA mode for single replica
+	if *dep.Spec.Replicas == 1 {
+		args = append(args, "--cluster.listen-address=")
 	}
 
 	spec.Containers[0].Args = args
