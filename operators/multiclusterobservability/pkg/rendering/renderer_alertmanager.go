@@ -66,8 +66,8 @@ func (r *MCORenderer) renderAlertManagerStatefulSet(res *resource.Resource,
 	args := spec.Containers[0].Args
 
 	if *dep.Spec.Replicas > 1 {
+		args = append(args, "--cluster.listen-address=[$(POD_IP)]:9094")
 		for i := int32(0); i < *dep.Spec.Replicas; i++ {
-			args = append(args, "--cluster.listen-address=[$(POD_IP)]:9094")
 			args = append(args, "--cluster.peer="+
 				mcoconfig.GetOperandName(mcoconfig.Alertmanager)+"-"+
 				strconv.Itoa(int(i))+".alertmanager-operated."+
