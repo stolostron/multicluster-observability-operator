@@ -7,7 +7,7 @@ COPY ./operators/pkg ./operators/pkg
 COPY ./operators/multiclusterobservability/api ./operators/multiclusterobservability/api
 RUN go build -v -o metrics-collector ./collectors/metrics/cmd/metrics-collector/main.go
 
-FROM alpine:3.18 AS runner
+FROM alpine:3.21 AS runner
 
 USER 1001:1001
 
