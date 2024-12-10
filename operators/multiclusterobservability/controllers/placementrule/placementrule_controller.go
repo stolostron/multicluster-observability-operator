@@ -508,7 +508,7 @@ func createManagedClusterRes(
 	hubInfo *corev1.Secret,
 	installProm bool,
 ) error {
-	err := createObsAddon(c, namespace)
+	err := createObsAddon(mco, c, namespace)
 	if err != nil {
 		log.Error(err, "Failed to create observabilityaddon")
 		return err

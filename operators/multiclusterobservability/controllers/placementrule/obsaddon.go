@@ -17,6 +17,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	obsv1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
+	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 )
 
@@ -58,7 +59,7 @@ func deleteObsAddon(c client.Client, namespace string) error {
 	return nil
 }
 
-func createObsAddon(c client.Client, namespace string) error {
+func createObsAddon(mco *mcov1beta2.MultiClusterObservability, c client.Client, namespace string) error {
 	if namespace == config.GetDefaultNamespace() {
 		return nil
 	}
@@ -75,6 +76,14 @@ func createObsAddon(c client.Client, namespace string) error {
 			},
 		},
 	}
+
+	if mco.Spec.ObservabilityAddonSpec != nil {
+		ec.Spec.EnableMetrics = mco.Spec.ObservabilityAddonSpec.EnableMetrics
+		ec.Spec.Interval = mco.Spec.ObservabilityAddonSpec.Interval
+		ec.Spec.ScrapeSizeLimitBytes = mco.Spec.ObservabilityAddonSpec.ScrapeSizeLimitBytes
+		ec.Spec.Workers = mco.Spec.ObservabilityAddonSpec.Workers
+	}
+
 	found := &obsv1beta1.ObservabilityAddon{}
 	err := c.Get(context.TODO(), types.NamespacedName{Name: obsAddonName, Namespace: namespace}, found)
 	if err != nil && errors.IsNotFound(err) || err == nil && found.GetDeletionTimestamp() != nil {

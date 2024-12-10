@@ -961,7 +961,8 @@ func getObservabilityAddon(c client.Client, namespace string,
 	if found.ObjectMeta.DeletionTimestamp != nil {
 		return nil, nil
 	}
-	return &mcov1beta1.ObservabilityAddon{
+
+	addon := &mcov1beta1.ObservabilityAddon{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "observability.open-cluster-management.io/v1beta1",
 			Kind:       "ObservabilityAddon",
@@ -977,7 +978,29 @@ func getObservabilityAddon(c client.Client, namespace string,
 			Workers:              mco.Spec.ObservabilityAddonSpec.Workers,
 			Resources:            config.GetOBAResources(mco.Spec.ObservabilityAddonSpec, mco.Spec.InstanceSize),
 		},
-	}, nil
+	}
+
+	if !found.Spec.EnableMetrics {
+		addon.Spec.EnableMetrics = false
+	}
+
+	if found.Spec.Interval != 300 {
+		addon.Spec.Interval = found.Spec.Interval
+	}
+
+	if found.Spec.ScrapeSizeLimitBytes != 1073741824 {
+		addon.Spec.ScrapeSizeLimitBytes = found.Spec.ScrapeSizeLimitBytes
+	}
+
+	if found.Spec.Workers != 1 {
+		addon.Spec.Workers = found.Spec.Workers
+	}
+
+	if found.Spec.Resources != nil {
+		addon.Spec.Resources = found.Spec.Resources
+	}
+
+	return addon, nil
 }
 
 func removeObservabilityAddon(client client.Client, namespace string) error {
