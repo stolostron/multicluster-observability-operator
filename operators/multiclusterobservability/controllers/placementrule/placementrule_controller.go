@@ -653,7 +653,9 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				e.ObjectNew.GetLabels()[ownerLabelKey] == ownerLabelValue &&
 				e.ObjectNew.GetNamespace() != localClusterName &&
 				!reflect.DeepEqual(e.ObjectNew.(*mcov1beta1.ObservabilityAddon).Status.Conditions,
-					e.ObjectOld.(*mcov1beta1.ObservabilityAddon).Status.Conditions) {
+					e.ObjectOld.(*mcov1beta1.ObservabilityAddon).Status.Conditions) &&
+				!reflect.DeepEqual(e.ObjectNew.(*mcov1beta1.ObservabilityAddon).Spec,
+					e.ObjectOld.(*mcov1beta1.ObservabilityAddon).Spec) {
 				return true
 			}
 			return false
