@@ -971,9 +971,11 @@ func getObservabilityAddon(c client.Client, namespace string,
 			Namespace: spokeNameSpace,
 		},
 		Spec: mcoshared.ObservabilityAddonSpec{
-			EnableMetrics: mco.Spec.ObservabilityAddonSpec.EnableMetrics,
-			Interval:      mco.Spec.ObservabilityAddonSpec.Interval,
-			Resources:     config.GetOBAResources(mco.Spec.ObservabilityAddonSpec, mco.Spec.InstanceSize),
+			EnableMetrics:        mco.Spec.ObservabilityAddonSpec.EnableMetrics,
+			Interval:             mco.Spec.ObservabilityAddonSpec.Interval,
+			ScrapeSizeLimitBytes: mco.Spec.ObservabilityAddonSpec.ScrapeSizeLimitBytes,
+			Workers:              mco.Spec.ObservabilityAddonSpec.Workers,
+			Resources:            config.GetOBAResources(mco.Spec.ObservabilityAddonSpec, mco.Spec.InstanceSize),
 		},
 	}, nil
 }
