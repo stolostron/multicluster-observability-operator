@@ -214,6 +214,7 @@ func generateGlobalManifestResources(c client.Client, mco *mcov1beta2.MultiClust
 	works := []workv1.Manifest{}
 
 	// inject the namespace
+	spokeNameSpace = getSpokeNameSpace(c)
 	works = injectIntoWork(works, generateNamespace())
 
 	// inject the image pull secret
