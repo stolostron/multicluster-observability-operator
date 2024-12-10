@@ -940,6 +940,10 @@ func generateMetricsListCM(client client.Client) (*corev1.ConfigMap, *corev1.Con
 	return metricsAllowlistCM, ocp311AllowlistCM, nil
 }
 
+// getObservabilityAddon gets the ObservabilityAddon in the spoke namespace in the hub cluster.
+// This is then synced to the actual spoke, by injecting it into the manifestwork.
+// It will set the MCO spec by default, but if the existing spoke namespace ObservabilityAddon exists,
+// it will use that.
 func getObservabilityAddon(c client.Client, namespace string,
 	mco *mcov1beta2.MultiClusterObservability) (*mcov1beta1.ObservabilityAddon, error) {
 	if namespace == config.GetDefaultNamespace() {
@@ -952,11 +956,10 @@ func getObservabilityAddon(c client.Client, namespace string,
 	}
 	err := c.Get(context.TODO(), namespacedName, found)
 	if err != nil {
-		if k8serrors.IsNotFound(err) {
-			return nil, nil
+		if !k8serrors.IsNotFound(err) {
+			log.Error(err, "Failed to check observabilityAddon")
+			return nil, err
 		}
-		log.Error(err, "Failed to check observabilityAddon")
-		return nil, err
 	}
 	if found.ObjectMeta.DeletionTimestamp != nil {
 		return nil, nil

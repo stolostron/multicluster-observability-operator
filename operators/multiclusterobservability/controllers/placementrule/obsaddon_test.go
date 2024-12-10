@@ -31,7 +31,7 @@ func TestObsAddonCR(t *testing.T) {
 		).
 		Build()
 
-	err := createObsAddon(c, namespace)
+	err := createObsAddon(&mcov1beta2.MultiClusterObservability{}, c, namespace)
 	if err != nil {
 		t.Fatalf("Failed to create observabilityaddon: (%v)", err)
 	}
@@ -41,7 +41,7 @@ func TestObsAddonCR(t *testing.T) {
 		t.Fatalf("Failed to get observabilityaddon: (%v)", err)
 	}
 
-	err = createObsAddon(c, namespace)
+	err = createObsAddon(&mcov1beta2.MultiClusterObservability{}, c, namespace)
 	if err != nil {
 		t.Fatalf("Failed to create observabilityaddon: (%v)", err)
 	}
@@ -88,7 +88,7 @@ func TestStaleObsAddonCR(t *testing.T) {
 	objs := []runtime.Object{newTestObsApiRoute()}
 	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 
-	err := createObsAddon(c, namespace)
+	err := createObsAddon(&mcov1beta2.MultiClusterObservability{}, c, namespace)
 	if err != nil {
 		t.Fatalf("Failed to create observabilityaddon: (%v)", err)
 	}

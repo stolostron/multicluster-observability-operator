@@ -59,6 +59,9 @@ func deleteObsAddon(c client.Client, namespace string) error {
 	return nil
 }
 
+// createObsAddon creates the default ObservabilityAddon in the spoke namespace in the hub cluster.
+// It will initially mirror values from the MultiClusterObservability CR.
+// But if changed, it will use the new values, until you delete it.
 func createObsAddon(mco *mcov1beta2.MultiClusterObservability, c client.Client, namespace string) error {
 	if namespace == config.GetDefaultNamespace() {
 		return nil
