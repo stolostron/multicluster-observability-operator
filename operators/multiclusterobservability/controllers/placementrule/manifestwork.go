@@ -977,6 +977,11 @@ func getObservabilityAddon(c client.Client, namespace string,
 		},
 	}
 
+	// Handle cases where the addon doesn't have the annotation
+	if _, ok := found.Annotations["observability.open-cluster-management.io/addon-source"]; !ok {
+		found.Annotations["observability.open-cluster-management.io/addon-source"] = "mco"
+	}
+
 	if found.Annotations["observability.open-cluster-management.io/addon-source"] == "mco" {
 		addon.Spec.EnableMetrics = mco.Spec.ObservabilityAddonSpec.EnableMetrics
 		addon.Spec.Interval = mco.Spec.ObservabilityAddonSpec.Interval
