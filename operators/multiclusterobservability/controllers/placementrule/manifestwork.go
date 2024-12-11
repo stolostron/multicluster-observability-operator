@@ -35,7 +35,6 @@ import (
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	workv1 "open-cluster-management.io/api/work/v1"
 
-	mcoshared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
 	mcov1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	cert_controller "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/certificates"
@@ -944,6 +943,8 @@ func generateMetricsListCM(client client.Client) (*corev1.ConfigMap, *corev1.Con
 // This is then synced to the actual spoke, by injecting it into the manifestwork.
 // It will set the MCO spec by default, but if the existing spoke namespace ObservabilityAddon exists,
 // it will use that.
+// If the found ObservabilityAddon exists with the default values, it will always prefer the MCO spec.
+// However, if the found ObservabilityAddon exists with the non-default values, it will use the found values, even if the MCO spec is different.
 func getObservabilityAddon(c client.Client, namespace string,
 	mco *mcov1beta2.MultiClusterObservability) (*mcov1beta1.ObservabilityAddon, error) {
 	if namespace == config.GetDefaultNamespace() {
@@ -974,33 +975,26 @@ func getObservabilityAddon(c client.Client, namespace string,
 			Name:      obsAddonName,
 			Namespace: spokeNameSpace,
 		},
-		Spec: mcoshared.ObservabilityAddonSpec{
-			EnableMetrics:        mco.Spec.ObservabilityAddonSpec.EnableMetrics,
-			Interval:             mco.Spec.ObservabilityAddonSpec.Interval,
-			ScrapeSizeLimitBytes: mco.Spec.ObservabilityAddonSpec.ScrapeSizeLimitBytes,
-			Workers:              mco.Spec.ObservabilityAddonSpec.Workers,
-			Resources:            config.GetOBAResources(mco.Spec.ObservabilityAddonSpec, mco.Spec.InstanceSize),
-		},
 	}
 
-	if !found.Spec.EnableMetrics {
-		addon.Spec.EnableMetrics = false
+	if found.Annotations["observability.open-cluster-management.io/addon-source"] == "mco" {
+		addon.Spec.EnableMetrics = mco.Spec.ObservabilityAddonSpec.EnableMetrics
+		addon.Spec.Interval = mco.Spec.ObservabilityAddonSpec.Interval
+		addon.Spec.ScrapeSizeLimitBytes = mco.Spec.ObservabilityAddonSpec.ScrapeSizeLimitBytes
+		addon.Spec.Workers = mco.Spec.ObservabilityAddonSpec.Workers
+		addon.Spec.Resources = config.GetOBAResources(mco.Spec.ObservabilityAddonSpec, mco.Spec.InstanceSize)
+
+		addon.Annotations["observability.open-cluster-management.io/addon-source"] = "mco"
 	}
 
-	if found.Spec.Interval != 300 {
+	if found.Annotations["observability.open-cluster-management.io/addon-source"] == "override" {
+		addon.Spec.EnableMetrics = found.Spec.EnableMetrics
 		addon.Spec.Interval = found.Spec.Interval
-	}
-
-	if found.Spec.ScrapeSizeLimitBytes != 1073741824 {
 		addon.Spec.ScrapeSizeLimitBytes = found.Spec.ScrapeSizeLimitBytes
-	}
-
-	if found.Spec.Workers != 1 {
 		addon.Spec.Workers = found.Spec.Workers
-	}
-
-	if found.Spec.Resources != nil {
 		addon.Spec.Resources = found.Spec.Resources
+
+		addon.Annotations["observability.open-cluster-management.io/addon-source"] = "override"
 	}
 
 	return addon, nil

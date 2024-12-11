@@ -74,6 +74,9 @@ func createObsAddon(mco *mcov1beta2.MultiClusterObservability, c client.Client, 
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      obsAddonName,
 			Namespace: namespace,
+			Annotations: map[string]string{
+				"observability.open-cluster-management.io/addon-source": "mco",
+			},
 			Labels: map[string]string{
 				ownerLabelKey: ownerLabelValue,
 			},
