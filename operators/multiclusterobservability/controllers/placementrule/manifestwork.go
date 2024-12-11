@@ -972,12 +972,17 @@ func getObservabilityAddon(c client.Client, namespace string,
 			Kind:       "ObservabilityAddon",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      obsAddonName,
-			Namespace: spokeNameSpace,
+			Name:        obsAddonName,
+			Namespace:   spokeNameSpace,
+			Annotations: make(map[string]string),
 		},
 	}
 
 	// Handle cases where the addon doesn't have the annotation
+	if found.Annotations == nil {
+		found.Annotations = make(map[string]string)
+	}
+
 	if _, ok := found.Annotations["observability.open-cluster-management.io/addon-source"]; !ok {
 		found.Annotations["observability.open-cluster-management.io/addon-source"] = "mco"
 	}
