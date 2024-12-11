@@ -111,6 +111,21 @@ func createObsAddon(mco *mcov1beta2.MultiClusterObservability, c client.Client, 
 		return err
 	}
 
+	// Check if existing addon was created by MCO
+	if found.Annotations != nil && found.Annotations["observability.open-cluster-management.io/addon-source"] == "mco" {
+		// Only update if specs are different
+		if found.Spec != ec.Spec {
+			found.Spec = ec.Spec
+			err = c.Update(context.TODO(), found)
+			if err != nil {
+				log.Error(err, "Failed to update observabilityaddon cr")
+				return err
+			}
+			log.Info("observabilityaddon updated", "namespace", namespace)
+			return nil
+		}
+	}
+
 	log.Info("observabilityaddon already existed/unchanged", "namespace", namespace)
 	return nil
 }
