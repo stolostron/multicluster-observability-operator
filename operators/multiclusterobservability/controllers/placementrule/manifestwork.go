@@ -941,10 +941,10 @@ func generateMetricsListCM(client client.Client) (*corev1.ConfigMap, *corev1.Con
 
 // getObservabilityAddon gets the ObservabilityAddon in the spoke namespace in the hub cluster.
 // This is then synced to the actual spoke, by injecting it into the manifestwork.
-// It will set the MCO spec by default, but if the existing spoke namespace ObservabilityAddon exists,
-// it will use that.
-// If the found ObservabilityAddon exists with the default values, it will always prefer the MCO spec.
-// However, if the found ObservabilityAddon exists with the non-default values, it will use the found values, even if the MCO spec is different.
+// We assume that an existing addon will always be found here as we create it initially.
+// If the addon is found with the mco source annotation, it will update the existing addon with the new values from MCO
+// If the addon is found with the override source annotation, it will not update the existing addon but it will use the existing values.
+// If the addon is found without any source annotation, it will add the mco source annotation and use the MCO values (upgrade case from ACM 2.12.2).
 func getObservabilityAddon(c client.Client, namespace string,
 	mco *mcov1beta2.MultiClusterObservability) (*mcov1beta1.ObservabilityAddon, error) {
 	if namespace == config.GetDefaultNamespace() {
