@@ -22,8 +22,9 @@ import (
 )
 
 const (
-	obsAddonName      = "observability-addon"
-	obsAddonFinalizer = "observability.open-cluster-management.io/addon-cleanup"
+	obsAddonName          = "observability-addon"
+	obsAddonFinalizer     = "observability.open-cluster-management.io/addon-cleanup"
+	addonSourceAnnotation = "observability.open-cluster-management.io/addon-source"
 )
 
 func deleteObsAddon(c client.Client, namespace string) error {
@@ -75,7 +76,7 @@ func createObsAddon(mco *mcov1beta2.MultiClusterObservability, c client.Client, 
 			Name:      obsAddonName,
 			Namespace: namespace,
 			Annotations: map[string]string{
-				"observability.open-cluster-management.io/addon-source": "mco",
+				addonSourceAnnotation: "mco",
 			},
 			Labels: map[string]string{
 				ownerLabelKey: ownerLabelValue,
@@ -112,7 +113,7 @@ func createObsAddon(mco *mcov1beta2.MultiClusterObservability, c client.Client, 
 	}
 
 	// Check if existing addon was created by MCO
-	if found.Annotations != nil && found.Annotations["observability.open-cluster-management.io/addon-source"] == "mco" {
+	if found.Annotations != nil && found.Annotations[addonSourceAnnotation] == "mco" {
 		// Only update if specs are different
 		if found.Spec != ec.Spec {
 			found.Spec = ec.Spec

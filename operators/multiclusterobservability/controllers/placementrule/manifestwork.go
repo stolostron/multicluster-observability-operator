@@ -983,28 +983,28 @@ func getObservabilityAddon(c client.Client, namespace string,
 		found.Annotations = make(map[string]string)
 	}
 
-	if _, ok := found.Annotations["observability.open-cluster-management.io/addon-source"]; !ok {
-		found.Annotations["observability.open-cluster-management.io/addon-source"] = "mco"
+	if _, ok := found.Annotations[addonSourceAnnotation]; !ok {
+		found.Annotations[addonSourceAnnotation] = "mco"
 	}
 
-	if found.Annotations["observability.open-cluster-management.io/addon-source"] == "mco" {
+	if found.Annotations[addonSourceAnnotation] == "mco" {
 		addon.Spec.EnableMetrics = mco.Spec.ObservabilityAddonSpec.EnableMetrics
 		addon.Spec.Interval = mco.Spec.ObservabilityAddonSpec.Interval
 		addon.Spec.ScrapeSizeLimitBytes = mco.Spec.ObservabilityAddonSpec.ScrapeSizeLimitBytes
 		addon.Spec.Workers = mco.Spec.ObservabilityAddonSpec.Workers
 		addon.Spec.Resources = config.GetOBAResources(mco.Spec.ObservabilityAddonSpec, mco.Spec.InstanceSize)
 
-		addon.Annotations["observability.open-cluster-management.io/addon-source"] = "mco"
+		addon.Annotations[addonSourceAnnotation] = "mco"
 	}
 
-	if found.Annotations["observability.open-cluster-management.io/addon-source"] == "override" {
+	if found.Annotations[addonSourceAnnotation] == "override" {
 		addon.Spec.EnableMetrics = found.Spec.EnableMetrics
 		addon.Spec.Interval = found.Spec.Interval
 		addon.Spec.ScrapeSizeLimitBytes = found.Spec.ScrapeSizeLimitBytes
 		addon.Spec.Workers = found.Spec.Workers
 		addon.Spec.Resources = found.Spec.Resources
 
-		addon.Annotations["observability.open-cluster-management.io/addon-source"] = "override"
+		addon.Annotations[addonSourceAnnotation] = "override"
 	}
 
 	return addon, nil
