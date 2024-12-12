@@ -6,8 +6,8 @@ package servicemonitor
 
 import (
 	"context"
+	"k8s.io/apimachinery/pkg/api/equality"
 	"os"
-	"reflect"
 	"time"
 
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
@@ -79,7 +79,7 @@ func onUpdate(promClient promclientset.Interface) func(oldObj interface{}, newOb
 		newSm := newObj.(*promv1.ServiceMonitor)
 		oldSm := oldObj.(*promv1.ServiceMonitor)
 		if newSm.ObjectMeta.OwnerReferences != nil && newSm.ObjectMeta.OwnerReferences[0].Kind == "Observatorium" &&
-			!reflect.DeepEqual(newSm.Spec, oldSm.Spec) {
+			!equality.Semantic.DeepEqual(newSm.Spec, oldSm.Spec) {
 			updateServiceMonitor(promClient, newSm)
 		}
 	}
