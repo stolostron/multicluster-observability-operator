@@ -33,7 +33,7 @@ import (
 
 const (
 	pullSecretName = "test-pull-secret"
-	workSize       = 13
+	workSize       = 14
 )
 
 func init() {

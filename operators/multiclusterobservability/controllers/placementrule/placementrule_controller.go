@@ -508,7 +508,7 @@ func createManagedClusterRes(
 	hubInfo *corev1.Secret,
 	installProm bool,
 ) error {
-	err := createObsAddon(c, namespace)
+	err := createObsAddon(mco, c, namespace)
 	if err != nil {
 		log.Error(err, "Failed to create observabilityaddon")
 		return err
@@ -653,7 +653,11 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				e.ObjectNew.GetLabels()[ownerLabelKey] == ownerLabelValue &&
 				e.ObjectNew.GetNamespace() != localClusterName &&
 				!reflect.DeepEqual(e.ObjectNew.(*mcov1beta1.ObservabilityAddon).Status.Conditions,
-					e.ObjectOld.(*mcov1beta1.ObservabilityAddon).Status.Conditions) {
+					e.ObjectOld.(*mcov1beta1.ObservabilityAddon).Status.Conditions) &&
+				!reflect.DeepEqual(e.ObjectNew.(*mcov1beta1.ObservabilityAddon).Spec,
+					e.ObjectOld.(*mcov1beta1.ObservabilityAddon).Spec) &&
+				!reflect.DeepEqual(e.ObjectNew.(*mcov1beta1.ObservabilityAddon).Annotations,
+					e.ObjectOld.(*mcov1beta1.ObservabilityAddon).Annotations) {
 				return true
 			}
 			return false

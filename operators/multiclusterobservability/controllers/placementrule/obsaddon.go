@@ -17,12 +17,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	obsv1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
+	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 )
 
 const (
-	obsAddonName      = "observability-addon"
-	obsAddonFinalizer = "observability.open-cluster-management.io/addon-cleanup"
+	obsAddonName          = "observability-addon"
+	obsAddonFinalizer     = "observability.open-cluster-management.io/addon-cleanup"
+	addonSourceAnnotation = "observability.open-cluster-management.io/addon-source"
 )
 
 func deleteObsAddon(c client.Client, namespace string) error {
@@ -58,7 +60,11 @@ func deleteObsAddon(c client.Client, namespace string) error {
 	return nil
 }
 
-func createObsAddon(c client.Client, namespace string) error {
+// createObsAddon creates the default ObservabilityAddon in the spoke namespace in the hub cluster.
+// It will initially mirror values from the MultiClusterObservability CR with the mco source annotation.
+// If an existing addon is found with the mco source annotation it will update the existing addon with the new values.
+// If the existing addon is created by the user with the override source annotation, it will not update the existing addon.
+func createObsAddon(mco *mcov1beta2.MultiClusterObservability, c client.Client, namespace string) error {
 	if namespace == config.GetDefaultNamespace() {
 		return nil
 	}
@@ -70,11 +76,22 @@ func createObsAddon(c client.Client, namespace string) error {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      obsAddonName,
 			Namespace: namespace,
+			Annotations: map[string]string{
+				addonSourceAnnotation: "mco",
+			},
 			Labels: map[string]string{
 				ownerLabelKey: ownerLabelValue,
 			},
 		},
 	}
+
+	if mco.Spec.ObservabilityAddonSpec != nil {
+		ec.Spec.EnableMetrics = mco.Spec.ObservabilityAddonSpec.EnableMetrics
+		ec.Spec.Interval = mco.Spec.ObservabilityAddonSpec.Interval
+		ec.Spec.ScrapeSizeLimitBytes = mco.Spec.ObservabilityAddonSpec.ScrapeSizeLimitBytes
+		ec.Spec.Workers = mco.Spec.ObservabilityAddonSpec.Workers
+	}
+
 	found := &obsv1beta1.ObservabilityAddon{}
 	err := c.Get(context.TODO(), types.NamespacedName{Name: obsAddonName, Namespace: namespace}, found)
 	if err != nil && errors.IsNotFound(err) || err == nil && found.GetDeletionTimestamp() != nil {
@@ -94,6 +111,21 @@ func createObsAddon(c client.Client, namespace string) error {
 	} else if err != nil {
 		log.Error(err, "Failed to check observabilityaddon cr before create")
 		return err
+	}
+
+	// Check if existing addon was created by MCO
+	if found.Annotations != nil && found.Annotations[addonSourceAnnotation] == "mco" {
+		// Only update if specs are different
+		if found.Spec != ec.Spec {
+			found.Spec = ec.Spec
+			err = c.Update(context.TODO(), found)
+			if err != nil {
+				log.Error(err, "Failed to update observabilityaddon cr")
+				return err
+			}
+			log.Info("observabilityaddon updated", "namespace", namespace)
+			return nil
+		}
 	}
 
 	log.Info("observabilityaddon already existed/unchanged", "namespace", namespace)
