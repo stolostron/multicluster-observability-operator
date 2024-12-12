@@ -6,9 +6,10 @@ package servicemonitor
 
 import (
 	"context"
-	"k8s.io/apimachinery/pkg/api/equality"
 	"os"
 	"time"
+
+	"k8s.io/apimachinery/pkg/api/equality"
 
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	promclientset "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned"
