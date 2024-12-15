@@ -649,15 +649,17 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			return false
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
+			equalStatus := reflect.DeepEqual(e.ObjectNew.(*mcov1beta1.ObservabilityAddon).Status.Conditions,
+				e.ObjectOld.(*mcov1beta1.ObservabilityAddon).Status.Conditions)
+			equalSpec := reflect.DeepEqual(e.ObjectNew.(*mcov1beta1.ObservabilityAddon).Spec,
+				e.ObjectOld.(*mcov1beta1.ObservabilityAddon).Spec)
+			equalAnnotations := reflect.DeepEqual(e.ObjectNew.(*mcov1beta1.ObservabilityAddon).Annotations,
+				e.ObjectOld.(*mcov1beta1.ObservabilityAddon).Annotations)
+
 			if e.ObjectNew.GetName() == obsAddonName &&
 				e.ObjectNew.GetLabels()[ownerLabelKey] == ownerLabelValue &&
 				e.ObjectNew.GetNamespace() != localClusterName &&
-				!reflect.DeepEqual(e.ObjectNew.(*mcov1beta1.ObservabilityAddon).Status.Conditions,
-					e.ObjectOld.(*mcov1beta1.ObservabilityAddon).Status.Conditions) &&
-				!reflect.DeepEqual(e.ObjectNew.(*mcov1beta1.ObservabilityAddon).Spec,
-					e.ObjectOld.(*mcov1beta1.ObservabilityAddon).Spec) &&
-				!reflect.DeepEqual(e.ObjectNew.(*mcov1beta1.ObservabilityAddon).Annotations,
-					e.ObjectOld.(*mcov1beta1.ObservabilityAddon).Annotations) {
+				(!equalStatus || !equalSpec || !equalAnnotations) {
 				return true
 			}
 			return false

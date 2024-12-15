@@ -984,27 +984,17 @@ func getObservabilityAddon(c client.Client, namespace string,
 	}
 
 	if _, ok := found.Annotations[addonSourceAnnotation]; !ok {
-		found.Annotations[addonSourceAnnotation] = "mco"
+		found.Annotations[addonSourceAnnotation] = addonSourceMCO
 	}
 
-	if found.Annotations[addonSourceAnnotation] == "mco" {
-		addon.Spec.EnableMetrics = mco.Spec.ObservabilityAddonSpec.EnableMetrics
-		addon.Spec.Interval = mco.Spec.ObservabilityAddonSpec.Interval
-		addon.Spec.ScrapeSizeLimitBytes = mco.Spec.ObservabilityAddonSpec.ScrapeSizeLimitBytes
-		addon.Spec.Workers = mco.Spec.ObservabilityAddonSpec.Workers
-		addon.Spec.Resources = config.GetOBAResources(mco.Spec.ObservabilityAddonSpec, mco.Spec.InstanceSize)
+	addon.Annotations = found.Annotations
 
-		addon.Annotations[addonSourceAnnotation] = "mco"
+	if found.Annotations[addonSourceAnnotation] == addonSourceMCO {
+		setObservabilityAddonSpec(addon, mco.Spec.ObservabilityAddonSpec, config.GetOBAResources(mco.Spec.ObservabilityAddonSpec, mco.Spec.InstanceSize))
 	}
 
-	if found.Annotations[addonSourceAnnotation] == "override" {
-		addon.Spec.EnableMetrics = found.Spec.EnableMetrics
-		addon.Spec.Interval = found.Spec.Interval
-		addon.Spec.ScrapeSizeLimitBytes = found.Spec.ScrapeSizeLimitBytes
-		addon.Spec.Workers = found.Spec.Workers
-		addon.Spec.Resources = found.Spec.Resources
-
-		addon.Annotations[addonSourceAnnotation] = "override"
+	if found.Annotations[addonSourceAnnotation] == addonSourceOverride {
+		setObservabilityAddonSpec(addon, &found.Spec, found.Spec.Resources)
 	}
 
 	return addon, nil

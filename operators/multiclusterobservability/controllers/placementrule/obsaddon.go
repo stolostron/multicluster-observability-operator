@@ -6,16 +6,20 @@ package placementrule
 
 import (
 	"context"
+	"fmt"
+	"reflect"
 	"time"
 
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 
 	"golang.org/x/exp/slices"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	obshared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
 	obsv1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
@@ -25,6 +29,8 @@ const (
 	obsAddonName          = "observability-addon"
 	obsAddonFinalizer     = "observability.open-cluster-management.io/addon-cleanup"
 	addonSourceAnnotation = "observability.open-cluster-management.io/addon-source"
+	addonSourceMCO        = "mco"
+	addonSourceOverride   = "override"
 )
 
 func deleteObsAddon(c client.Client, namespace string) error {
@@ -77,7 +83,7 @@ func createObsAddon(mco *mcov1beta2.MultiClusterObservability, c client.Client, 
 			Name:      obsAddonName,
 			Namespace: namespace,
 			Annotations: map[string]string{
-				addonSourceAnnotation: "mco",
+				addonSourceAnnotation: addonSourceMCO,
 			},
 			Labels: map[string]string{
 				ownerLabelKey: ownerLabelValue,
@@ -86,10 +92,7 @@ func createObsAddon(mco *mcov1beta2.MultiClusterObservability, c client.Client, 
 	}
 
 	if mco.Spec.ObservabilityAddonSpec != nil {
-		ec.Spec.EnableMetrics = mco.Spec.ObservabilityAddonSpec.EnableMetrics
-		ec.Spec.Interval = mco.Spec.ObservabilityAddonSpec.Interval
-		ec.Spec.ScrapeSizeLimitBytes = mco.Spec.ObservabilityAddonSpec.ScrapeSizeLimitBytes
-		ec.Spec.Workers = mco.Spec.ObservabilityAddonSpec.Workers
+		setObservabilityAddonSpec(ec, mco.Spec.ObservabilityAddonSpec, config.GetOBAResources(mco.Spec.ObservabilityAddonSpec, mco.Spec.InstanceSize))
 	}
 
 	found := &obsv1beta1.ObservabilityAddon{}
@@ -114,14 +117,12 @@ func createObsAddon(mco *mcov1beta2.MultiClusterObservability, c client.Client, 
 	}
 
 	// Check if existing addon was created by MCO
-	if found.Annotations != nil && found.Annotations[addonSourceAnnotation] == "mco" {
+	if found.Annotations != nil && found.Annotations[addonSourceAnnotation] == addonSourceMCO {
 		// Only update if specs are different
-		if found.Spec != ec.Spec {
-			found.Spec = ec.Spec
+		if !reflect.DeepEqual(found.Spec, ec.Spec) {
 			err = c.Update(context.TODO(), found)
 			if err != nil {
-				log.Error(err, "Failed to update observabilityaddon cr")
-				return err
+				return fmt.Errorf("failed to update observabilityaddon cr: %w", err)
 			}
 			log.Info("observabilityaddon updated", "namespace", namespace)
 			return nil
@@ -176,4 +177,15 @@ func deleteFinalizer(c client.Client, obsaddon *obsv1beta1.ObservabilityAddon) e
 		log.Info("observabilityaddon's finalizer is deleted", "namespace", obsaddon.Namespace)
 	}
 	return nil
+}
+
+// setObservabilityAddonSpec sets the ObservabilityAddon spec fields from the given MCO spec
+func setObservabilityAddonSpec(addonSpec *obsv1beta1.ObservabilityAddon, desiredSpec *obshared.ObservabilityAddonSpec, resources *corev1.ResourceRequirements) {
+	if desiredSpec != nil {
+		addonSpec.Spec.EnableMetrics = desiredSpec.EnableMetrics
+		addonSpec.Spec.Interval = desiredSpec.Interval
+		addonSpec.Spec.ScrapeSizeLimitBytes = desiredSpec.ScrapeSizeLimitBytes
+		addonSpec.Spec.Workers = desiredSpec.Workers
+		addonSpec.Spec.Resources = resources
+	}
 }
