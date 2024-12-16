@@ -7,13 +7,13 @@ package placementrule
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"time"
 
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 
 	"golang.org/x/exp/slices"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -119,7 +119,8 @@ func createObsAddon(mco *mcov1beta2.MultiClusterObservability, c client.Client, 
 	// Check if existing addon was created by MCO
 	if found.Annotations != nil && found.Annotations[addonSourceAnnotation] == addonSourceMCO {
 		// Only update if specs are different
-		if !reflect.DeepEqual(found.Spec, ec.Spec) {
+		if !equality.Semantic.DeepEqual(found.Spec, ec.Spec) {
+			found.Spec = ec.Spec
 			err = c.Update(context.TODO(), found)
 			if err != nil {
 				return fmt.Errorf("failed to update observabilityaddon cr: %w", err)
