@@ -7,7 +7,6 @@ package placementrule
 import (
 	"context"
 	"errors"
-	"reflect"
 	"strings"
 	"sync"
 	"time"
@@ -18,6 +17,7 @@ import (
 	"golang.org/x/exp/slices"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -649,11 +649,11 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			return false
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			equalStatus := reflect.DeepEqual(e.ObjectNew.(*mcov1beta1.ObservabilityAddon).Status.Conditions,
+			equalStatus := equality.Semantic.DeepEqual(e.ObjectNew.(*mcov1beta1.ObservabilityAddon).Status.Conditions,
 				e.ObjectOld.(*mcov1beta1.ObservabilityAddon).Status.Conditions)
-			equalSpec := reflect.DeepEqual(e.ObjectNew.(*mcov1beta1.ObservabilityAddon).Spec,
+			equalSpec := equality.Semantic.DeepEqual(e.ObjectNew.(*mcov1beta1.ObservabilityAddon).Spec,
 				e.ObjectOld.(*mcov1beta1.ObservabilityAddon).Spec)
-			equalAnnotations := reflect.DeepEqual(e.ObjectNew.(*mcov1beta1.ObservabilityAddon).Annotations,
+			equalAnnotations := equality.Semantic.DeepEqual(e.ObjectNew.(*mcov1beta1.ObservabilityAddon).Annotations,
 				e.ObjectOld.(*mcov1beta1.ObservabilityAddon).Annotations)
 
 			if e.ObjectNew.GetName() == obsAddonName &&
