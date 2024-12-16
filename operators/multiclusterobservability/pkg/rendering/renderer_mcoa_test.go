@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
-	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering/templates"
 	templatesutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering/templates"
@@ -23,7 +22,6 @@ import (
 	"k8s.io/utils/ptr"
 	addonapiv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	kustomizeres "sigs.k8s.io/kustomize/api/resource"
 )
 
@@ -170,15 +168,7 @@ func TestRenderAddonDeploymentConfig(t *testing.T) {
 		},
 	}
 
-	config.SetMonitoringCRName("multicluster-observability")
-	scheme := runtime.NewScheme()
-	assert.NoError(t, mcov1beta2.AddToScheme(scheme))
-	fakeClient := fake.NewClientBuilder().
-		WithScheme(scheme).
-		WithObjects(mco).
-		Build()
-
-	renderer := &MCORenderer{cr: mco, kubeClient: fakeClient, rendererOptions: &RendererOptions{
+	renderer := &MCORenderer{cr: mco, rendererOptions: &RendererOptions{
 		MCOAOptions: MCOARendererOptions{
 			MetricsHubHostname: "observability-hub",
 		},
