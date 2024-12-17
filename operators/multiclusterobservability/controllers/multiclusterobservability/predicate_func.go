@@ -5,6 +5,8 @@
 package multiclusterobservability
 
 import (
+	"reflect"
+
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	mchv1 "github.com/stolostron/multiclusterhub-operator/api/v1"
@@ -137,7 +139,7 @@ func GetMCHPredicateFunc(c client.Client) predicate.Funcs {
 				e.Object.(*mchv1.MultiClusterHub).Status.DesiredVersion == e.Object.(*mchv1.MultiClusterHub).Status.CurrentVersion {
 				// only read the image manifests configmap and enqueue the request when the MCH is
 				// installed/upgraded successfully
-				ok, err := config.ReadImageManifestConfigMap(
+				_, ok, err := config.ReadImageManifestConfigMap(
 					c,
 					e.Object.(*mchv1.MultiClusterHub).Status.CurrentVersion,
 				)
@@ -149,20 +151,32 @@ func GetMCHPredicateFunc(c client.Client) predicate.Funcs {
 			return false
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
+			// Ensure the event pertains to the target namespace and object type
 			if e.ObjectNew.GetNamespace() == config.GetMCONamespace() &&
+				e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() &&
 				e.ObjectNew.(*mchv1.MultiClusterHub).Status.CurrentVersion != "" &&
 				e.ObjectNew.(*mchv1.MultiClusterHub).Status.DesiredVersion ==
 					e.ObjectNew.(*mchv1.MultiClusterHub).Status.CurrentVersion {
-				// only read the image manifests configmap and enqueue the request when the MCH is
-				// installed/upgraded successfully
-				ok, err := config.ReadImageManifestConfigMap(
+
+				currentData, _, err := config.ReadImageManifestConfigMap(
 					c,
 					e.ObjectNew.(*mchv1.MultiClusterHub).Status.CurrentVersion,
 				)
 				if err != nil {
+					log.Error(err, "Failed to read image manifest ConfigMap")
 					return false
 				}
-				return ok
+
+				previousData, exists := config.GetCachedImageManifestData()
+				if !exists {
+					config.SetCachedImageManifestData(currentData)
+					return true
+				}
+				if !reflect.DeepEqual(currentData, previousData) {
+					config.SetCachedImageManifestData(currentData)
+					return true
+				}
+				return false
 			}
 			return false
 		},
