@@ -722,6 +722,10 @@ func initShardedConfigs(o *Options, agent Agent) ([]*forwarder.Config, error) {
 }
 
 func runMultiWorkers(o *Options, cfg *forwarder.Config) error {
+	if o.WorkerNum > 1 {
+		return nil
+	}
+
 	for i := 1; i < int(o.WorkerNum); i++ {
 		opt := &Options{
 			From:                    o.From,
