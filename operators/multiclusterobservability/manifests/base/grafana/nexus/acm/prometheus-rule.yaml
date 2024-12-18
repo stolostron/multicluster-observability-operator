@@ -1,0 +1,187 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  creationTimestamp: null
+  labels:
+    app: acm-platform-metrics-collector
+    release: multicluster-observability-addon
+  name: platform-rules-default-nexus
+  namespace: open-cluster-management-observability
+spec:
+  groups:
+  - name: acm-platform-default-rules
+    rules:
+    - expr: sum(node_memory_MemAvailable_bytes{job="node-exporter"} or (node_memory_Buffers_bytes{job="node-exporter"}
+        + node_memory_Cached_bytes{job="node-exporter"} + node_memory_MemFree_bytes{job="node-exporter"}
+        + node_memory_Slab_bytes{job="node-exporter"}))
+      record: :node_memory_MemAvailable_bytes:sum
+    - expr: sum(grpc_server_started_total{job="etcd",grpc_service="etcdserverpb.Lease",grpc_type="bidi_stream"})
+        - sum(grpc_server_handled_total{job="etcd",grpc_service="etcdserverpb.Lease",grpc_type="bidi_stream"})
+      record: active_streams_lease:grpc_server_handled_total:sum
+    - expr: sum(grpc_server_started_total{job="etcd",grpc_service="etcdserverpb.Watch",grpc_type="bidi_stream"})
+        - sum(grpc_server_handled_total{job="etcd",grpc_service="etcdserverpb.Watch",grpc_type="bidi_stream"})
+      record: active_streams_watch:grpc_server_handled_total:sum
+    - expr: (histogram_quantile(0.99,sum(rate(apiserver_request_latencies_bucket{job="apiserver",
+        verb!="WATCH"}[5m])) by (le)))/1000000
+      record: apiserver_request_duration_seconds:histogram_quantile_99
+    - expr: (histogram_quantile(0.99,sum(rate(apiserver_request_latencies_bucket{job="apiserver",
+        verb!="WATCH"}[5m])) by (le, verb, instance)))/1000000
+      record: apiserver_request_duration_seconds:histogram_quantile_99:instance
+    - expr: sum(kube_node_status_allocatable{resource="cpu"})
+      record: cluster:cpu_allocatable:sum
+    - expr: sum(machine_cpu_cores)
+      record: cluster:cpu_cores:sum
+    - expr: sum(machine_memory_bytes)
+      record: cluster:machine_memory:sum
+    - expr: sum(kube_node_status_allocatable{resource="memory"})
+      record: cluster:memory_allocatable:sum
+    - expr: 1 - sum(:node_memory_MemAvailable_bytes:sum) / cluster:memory_allocatable:sum
+      record: cluster:memory_utilized:ratio
+    - expr: sum(sum(sum(kube_pod_container_resource_requests_cpu_cores) by (pod,namespace,container)
+        * on(pod,namespace) group_left(phase) max(kube_pod_status_phase{phase=~"Running|Pending|Unknown"}
+        >0) by (pod,namespace,phase)) by (pod,namespace,phase))
+      record: cluster:kube_pod_container_resource_requests:cpu:sum
+    - expr: sum(cluster:kube_pod_container_resource_requests:cpu:sum) by (cluster) / sum(kube_node_status_allocatable{resource="cpu"}) by (cluster)
+      record: cluster:cpu_requested:ratio
+    - expr: sum(sum(sum(kube_pod_container_resource_requests_memory_bytes) by (pod,namespace,container)
+        * on(pod,namespace) group_left(phase) max(kube_pod_status_phase{phase=~"Running|Pending|Unknown"}
+        >0) by (pod,namespace,phase)) by (pod,namespace,phase))
+      record: cluster:kube_pod_container_resource_requests:memory:sum
+    - expr: sum(cluster:kube_pod_container_resource_requests:memory:sum) by (cluster) / sum(kube_node_status_allocatable{resource="memory"}) by (cluster)
+      record: cluster:memory_requested:ratio  
+    - expr: sum(rate(node_cpu_seconds_total{mode!="idle",mode!="iowait",mode!="steal"}[5m]))
+      record: cluster:node_cpu:sum_rate5m
+    - expr: cluster:node_cpu:sum_rate5m / count(sum(node_cpu_seconds_total)
+        BY (instance, cpu))
+      record: cluster:node_cpu:ratio  
+    - record: container_memory_rss:sum
+      expr: sum(container_memory_rss) by (container, namespace)
+    - expr: |
+        1 - avg without (cpu, mode) (
+          rate(node_cpu_seconds_total{job="node-exporter", mode="idle"}[1m])
+        )
+      record: instance:node_cpu_utilisation:rate1m
+    - expr: |
+        (
+          node_load1{job="node-exporter"}
+        /
+          instance:node_num_cpu:sum{job="node-exporter"}
+        )
+      record: instance:node_load1_per_cpu:ratio
+    - expr: |
+        1 - (
+          node_memory_MemAvailable_bytes{job="node-exporter"}
+        /
+          node_memory_MemTotal_bytes{job="node-exporter"}
+        )
+      record: instance:node_memory_utilisation:ratio
+    - expr: |
+        sum without (device) (
+          rate(node_network_receive_bytes_total{job="node-exporter", device!="lo"}[1m])
+        )
+      record: instance:node_network_receive_bytes_excluding_lo:rate1m
+    - expr: |
+        sum without (device) (
+          rate(node_network_receive_drop_total{job="node-exporter", device!="lo"}[1m])
+        )
+      record: instance:node_network_receive_drop_excluding_lo:rate1m
+    - expr: |
+        sum without (device) (
+          rate(node_network_transmit_bytes_total{job="node-exporter", device!="lo"}[1m])
+        )
+      record: instance:node_network_transmit_bytes_excluding_lo:rate1m
+    - expr: |
+        sum without (device) (
+          rate(node_network_transmit_drop_total{job="node-exporter", device!="lo"}[1m])
+        )
+      record: instance:node_network_transmit_drop_excluding_lo:rate1m
+    - expr: |
+        count without (cpu) (
+          count without (mode) (
+            node_cpu_seconds_total{job="node-exporter"}
+          )
+        )
+      record: instance:node_num_cpu:sum
+    - expr: |
+        rate(node_vmstat_pgmajfault{job="node-exporter"}[1m])
+      record: instance:node_vmstat_pgmajfault:rate1m
+    - expr: |
+        rate(node_disk_io_time_seconds_total{job="node-exporter", device=~"mmcblk.p.+|nvme.+|rbd.+|sd.+|vd.+|xvd.+|dm-.+|dasd.+"}[1m])
+      record: instance_device:node_disk_io_time_seconds:rate1m
+    - expr: |
+        rate(node_disk_io_time_weighted_seconds_total{job="node-exporter", device=~"mmcblk.p.+|nvme.+|rbd.+|sd.+|vd.+|xvd.+|dm-.+|dasd.+"}[1m])
+      record: instance_device:node_disk_io_time_weighted_seconds:rate1m
+    - expr: |-
+        sum by (namespace, cluster) (
+            sum by (namespace, pod, cluster) (
+                max by (namespace, pod, container, cluster) (
+                  kube_pod_container_resource_limits{resource="memory",job="kube-state-metrics"}
+                ) * on(namespace, pod, cluster) group_left() max by (namespace, pod, cluster) (
+                  kube_pod_status_phase{phase=~"Pending|Running"} == 1
+                )
+            )
+        )
+      record: namespace_memory:kube_pod_container_resource_limits:sum
+    - expr: |-
+        sum by (namespace, cluster) (
+            sum by (namespace, pod, cluster) (
+                max by (namespace, pod, container, cluster) (
+                  kube_pod_container_resource_requests{resource="memory",job="kube-state-metrics"}
+                ) * on(namespace, pod, cluster) group_left() max by (namespace, pod, cluster) (
+                  kube_pod_status_phase{phase=~"Pending|Running"} == 1
+                )
+            )
+        )
+      record: namespace_memory:kube_pod_container_resource_requests:sum
+    - expr: |-
+        max by (cluster, namespace, workload, pod) (
+          label_replace(
+            label_replace(
+              kube_pod_owner{job="kube-state-metrics", owner_kind="ReplicaSet"},
+              "replicaset", "$1", "owner_name", "(.*)"
+            ) * on(replicaset, namespace) group_left(owner_name) topk by(replicaset, namespace) (
+              1, max by (replicaset, namespace, owner_name) (
+                kube_replicaset_owner{job="kube-state-metrics"}
+              )
+            ),
+            "workload", "$1", "owner_name", "(.*)"
+          )
+        )
+      labels:
+        workload_type: deployment
+      record: namespace_workload_pod:kube_pod_owner:relabel
+    - expr: |-
+        max by (cluster, namespace, workload, pod) (
+          label_replace(
+            kube_pod_owner{job="kube-state-metrics", owner_kind="DaemonSet"},
+            "workload", "$1", "owner_name", "(.*)"
+          )
+        )
+      labels:
+        workload_type: daemonset
+      record: namespace_workload_pod:kube_pod_owner:relabel
+    - expr: |-
+        max by (cluster, namespace, workload, pod) (
+          label_replace(
+            kube_pod_owner{job="kube-state-metrics", owner_kind="StatefulSet"},
+            "workload", "$1", "owner_name", "(.*)"
+          )
+        )
+      labels:
+        workload_type: statefulset
+      record: namespace_workload_pod:kube_pod_owner:relabel
+    - record: namespace_workload_pod:kube_pod_owner:relabel:avg
+      expr: count(avg(namespace_workload_pod:kube_pod_owner:relabel{pod!=""}) by (workload, namespace)) by (namespace)
+    - record: node_namespace_pod_container:container_cpu_usage_seconds_total:sum
+      expr: sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{container!=""}) by (namespace) or sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_rate{container!=""}) by (namespace)
+    - expr: sum(rate(grpc_server_handled_total{job="etcd",grpc_type="unary",grpc_code!="OK"}[5m]))
+      record: rpc_rate:grpc_server_handled_total:sum_rate
+    - expr: sum(increase(apiserver_request_latencies_bucket{job="apiserver",service="kubernetes",le="1",verb=~"POST|PUT|DELETE|PATCH"}[1m]))
+        / sum(increase(apiserver_request_latencies_count{job="apiserver",service="kubernetes",verb=~"POST|PUT|DELETE|PATCH"}[1m]))
+      record: sli:apiserver_request_duration_seconds:trend:1m
+    - expr: sli:apiserver_request_duration_seconds:trend:1m >= bool 0.9900
+      record: sli:apiserver_request_duration_seconds:bin:trend:1m # Really needed?
+    - expr: sum(rate(apiserver_request_count{job="apiserver"}[1h])) by (code, instance)
+      record: sum:apiserver_request_total:1h
+    - expr: sum(rate(apiserver_request_count{job="apiserver"}[5m])) by (code, instance)
+      record: sum:apiserver_request_total:5m
