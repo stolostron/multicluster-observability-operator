@@ -50,7 +50,37 @@ var _ = Describe("Observability:", func() {
 		}, EventuallyTimeoutMinute*6, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
-	It("[P2][Sev2][observability][Integration] Should have metrics which defined in custom metrics allowlist (metrics/g0)", func() {
+	It("RHACM4K-1449 - Observability - Verify metrics data consistency [P2][Sev2][Observability][Integration]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release @pre-upgrade (metrics/g1)", func() {
+		metricList := utils.GetDefaultMetricList(testOptions)
+		_, etcdPodList := utils.GetPodList(
+			testOptions,
+			true,
+			"openshift-etcd",
+			"app=etcd",
+		)
+		// ignore etcd network peer metrics for SNO cluster
+		if etcdPodList != nil && len(etcdPodList.Items) <= 0 {
+			ignoreMetricMap["etcd_network_peer_received_bytes_total"] = true
+			ignoreMetricMap["etcd_network_peer_sent_bytes_total"] = true
+		}
+		for _, name := range metricList {
+			if _, ok := ignoredMetrics[name]; ok {
+				continue
+			}
+
+			Eventually(func() error {
+				res, err := utils.QueryGrafana(testOptions, query)
+				if err != nil {
+					return err
+				}
+				if len(res.Data.Result) == 0 {
+					return fmt.Errorf("no data found for %s", query)
+				}
+			}, EventuallyTimeoutMinute*2, EventuallyIntervalSecond*3).Should(Succeed())
+		}
+	})
+
+	It("RHACM4K-1658: Observability: Customized metrics data are collected [P2][Sev2][Observability][Integration]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release @pre-upgrade (metrics/g0)", func() {
 		By("Adding custom metrics allowlist configmap")
 		yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: "../../../examples/metrics/allowlist"})
 		Expect(err).ToNot(HaveOccurred())
@@ -82,7 +112,7 @@ var _ = Describe("Observability:", func() {
 		}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
-	It("[P2][Sev2][observability][Integration] Should have no metrics which have been marked for deletion in names section (metrics/g0)", func() {
+	It("RHACM4K-3063: Observability: Metrics removal from default allowlist [P2][Sev2][Observability][Integration]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release @pre-upgrade (metrics/g0)", func() {
 		By("Waiting for deleted metrics disappear on grafana console")
 		Eventually(func() error {
 			for _, cluster := range clusters {
@@ -104,7 +134,7 @@ var _ = Describe("Observability:", func() {
 		}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
-	It("[P2][Sev2][observability][Integration] Should have no metrics which have been marked for deletion in matches section (metrics/g0)", func() {
+	It("RHACM4K-3063: Observability: Metrics removal from default allowlist [P2][Sev2][Observability][Integration]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release @pre-upgrade (metrics/g0)", func() {
 		By("Waiting for deleted metrics disappear on grafana console")
 		Eventually(func() error {
 			for _, cluster := range clusters {
@@ -125,7 +155,7 @@ var _ = Describe("Observability:", func() {
 		}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
-	It("[P2][Sev2][observability][Integration] Should have no metrics after custom metrics allowlist deleted (metrics/g0)", func() {
+	It("RHACM4K-3063: Observability: Metrics removal from default allowlist [P2][Sev2][Observability][Integration]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release @pre-upgrade (metrics/g0)", func() {
 		By("Deleting custom metrics allowlist configmap")
 		Eventually(func() error {
 			err := hubClient.CoreV1().
@@ -154,6 +184,7 @@ var _ = Describe("Observability:", func() {
 		}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
+	// TODO Jacob: RHACM4K number
 	// Ensures that the allowList is current by checking that the metrics are being collected
 	It("[P2][Sev2][observability][Integration] Should collect expected metrics from spokes (metrics/g0)", func() {
 		// Get the metrics from the deployed allowList configMap
@@ -218,6 +249,34 @@ var _ = Describe("Observability:", func() {
 
 				return nil
 			}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*5).Should(Succeed())
+
+	It("RHACM4K-3339: Observability: Verify recording rule - Should have metrics which used grafana dashboard [P2][Sev2][Observability][Integration]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release @pre-upgrade (ssli/g1)", func() {
+		metricList := utils.GetDefaultMetricList(testOptions)
+		_, etcdPodList := utils.GetPodList(
+			testOptions,
+			true,
+			"openshift-etcd",
+			"app=etcd",
+		)
+		// ignore etcd network peer metrics for SNO cluster
+		if etcdPodList != nil && len(etcdPodList.Items) <= 0 {
+			ignoreMetricMap["etcd_network_peer_received_bytes_total"] = true
+			ignoreMetricMap["etcd_network_peer_sent_bytes_total"] = true
+		}
+		for _, name := range metricList {
+
+			_, ok := ignoreMetricMap[name]
+			if !ok {
+				Eventually(func() error {
+					res, err := utils.QueryGrafana(testOptions, query)
+					if err != nil {
+						return err
+					}
+					if len(res.Data.Result) == 0 {
+						return fmt.Errorf("no data found for %s", query)
+					}
+				}, EventuallyTimeoutMinute*2, EventuallyIntervalSecond*3).Should(Succeed())
+			}
 		}
 	})
 

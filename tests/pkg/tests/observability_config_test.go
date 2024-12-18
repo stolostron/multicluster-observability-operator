@@ -8,6 +8,8 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -15,6 +17,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
 
+	"github.com/stolostron/multicluster-observability-operator/tests/pkg/kustomize"
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/utils"
 )
 
@@ -31,10 +34,85 @@ var _ = Describe("Observability:", func() {
 			testOptions.HubCluster.KubeContext)
 	})
 
-	It("@BVT - [P1][Sev1][observability][Stable] Checking metrics default values on managed cluster (config/g0)", func() {
-		if os.Getenv("SKIP_INSTALL_STEP") == trueStr {
-			Skip("Skip the case due to MCO CR was created customized")
-		}
+	It("RHACM4K-31474: Observability: Verify memcached setting max_item_size is populated on thanos-store - [P1][Sev1][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release(config/g1)", func() {
+
+		By("Updating mco cr to update values in storeMemcached")
+		yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: "../../../examples/maxitemsize/updatemcocr"})
+		Expect(err).ToNot(HaveOccurred())
+		Expect(
+			utils.Apply(
+				testOptions.HubCluster.ClusterServerURL,
+				testOptions.KubeConfig,
+				testOptions.HubCluster.KubeContext,
+				yamlB,
+			)).NotTo(HaveOccurred())
+
+		time.Sleep(60 * time.Second)
+
+		By("Check the value is effect in the sts observability-thanos-store-shard-0")
+		Eventually(func() bool {
+
+			thanosStoreMemSts, _ := utils.GetStatefulSet(testOptions, true, "observability-thanos-store-memcached", MCO_NAMESPACE)
+			//klog.V(3).Infof("STS thanosStoreSts is %s", thanosStoreMemSts)
+			containers := thanosStoreMemSts.Spec.Template.Spec.Containers
+
+			args := containers[0].Args
+			//klog.V(3).Infof("args is %s", args)
+
+			argsStr := strings.Join(args, " ")
+			//klog.V(3).Infof("argsStr is %s", argsStr)
+
+			if !strings.Contains(argsStr, "-I 10m") {
+				klog.V(3).Infof("maxItemSize is not effect in sts observability-thanos-store-memcached")
+				return false
+			}
+
+			klog.V(3).Infof("maxItemSize is effect in sts observability-thanos-store-memcached")
+			return true
+
+		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*10).Should(BeTrue())
+	})
+
+	It("RHACM4K-31475: Observability: Verify memcached setting max_item_size is populated on thanos-query-frontend - [P1][Sev1][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release(config/g1)", func() {
+
+		By("Updating mco cr to update values in storeMemcached")
+		yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: "../../../examples/maxitemsize/updatemcocr"})
+		Expect(err).ToNot(HaveOccurred())
+		Expect(
+			utils.Apply(
+				testOptions.HubCluster.ClusterServerURL,
+				testOptions.KubeConfig,
+				testOptions.HubCluster.KubeContext,
+				yamlB,
+			)).NotTo(HaveOccurred())
+
+		time.Sleep(60 * time.Second)
+
+		By("Check the value is effect in the sts observability-thanos-store-shard-0")
+		Eventually(func() bool {
+
+			thanosQueFronMemSts, _ := utils.GetStatefulSet(testOptions, true, "observability-thanos-query-frontend-memcached", MCO_NAMESPACE)
+			//klog.V(3).Infof("STS thanosStoreSts is %s", thanosQueFronMemSts)
+			containers := thanosQueFronMemSts.Spec.Template.Spec.Containers
+
+			args := containers[0].Args
+			//klog.V(3).Infof("args is %s", args)
+
+			argsStr := strings.Join(args, " ")
+			//klog.V(3).Infof("argsStr is %s", argsStr)
+
+			if !strings.Contains(argsStr, "-I 10m") {
+				klog.V(3).Infof("maxItemSize is not effect in sts observability-thanos-query-frontend-memcached")
+				return false
+			}
+
+			klog.V(3).Infof("maxItemSize is effect in sts observability-thanos-query-frontend-memcached")
+			return true
+
+		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*10).Should(BeTrue())
+	})
+
+	It("RHACM4K-1235: Observability: Verify metrics data global setting on the managed cluster @BVT - [P1][Sev1][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release(config/g0)", func() {
 		mcoRes, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).
 			Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
 		if err != nil {
@@ -42,13 +120,10 @@ var _ = Describe("Observability:", func() {
 		}
 		observabilityAddonSpec := mcoRes.Object["spec"].(map[string]interface{})["observabilityAddonSpec"].(map[string]interface{})
 		Expect(observabilityAddonSpec["enableMetrics"]).To(Equal(true))
-		Expect(observabilityAddonSpec["interval"]).To(Equal(int64(30)))
+		Expect(observabilityAddonSpec["interval"]).To(Equal(int64(300)))
 	})
 
-	It("@BVT - [P1][Sev1][observability][Stable] Checking default value of PVC and StorageClass (config/g0)", func() {
-		if os.Getenv("SKIP_INSTALL_STEP") == trueStr {
-			Skip("Skip the case due to MCO CR was created customized")
-		}
+	It("RHACM4K-1065: Observability: Verify MCO CR storage class and PVC @BVT - [P1][Sev1][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release (config/g0)", func() {
 		mcoSC, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).
 			Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
 		Expect(err).NotTo(HaveOccurred())
@@ -153,7 +228,7 @@ var _ = Describe("Observability:", func() {
 		},
 	}
 
-	It("@BVT - [P1][Sev1][observability][Integration] Checking replicas in advanced config for each component (config/g0)", func() {
+	It("RHACM4K-2822: Observability: Verify the replica in advanced config for Observability components @BVT - [P1][Sev1][Observability][Integration] @e2e (config/g0)", func() {
 
 		mcoRes, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).
 			Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
@@ -190,9 +265,10 @@ var _ = Describe("Observability:", func() {
 		}
 	})
 
-	It("[P2][Sev2][observability][Integration] Checking resources in advanced config (config/g0)", func() {
+	It("RHACM4K-3419: Observability: Persist advance values in MCO CR - Checking resources in advanced config [P2][Sev2][Observability][Integration] @e2e @post-release @pre-upgrade (config/g0)", func() {
 		mcoRes, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).
 			Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+
 		if err != nil {
 			panic(err.Error())
 		}
@@ -236,7 +312,7 @@ var _ = Describe("Observability:", func() {
 		}
 	})
 
-	It("[P2][Sev2][observability][Integration] Checking service account annotations is set for store/query/rule/compact/receive (config/g0)", func() {
+	It("RHACM4K-11169: Observability: Verify ACM Observability with Security Service Token credentials - [P2][Sev2][observability][Integration]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @pre-upgrade Checking service account annotations is set for store/query/rule/compact/receive @e2e (config/g0)", func() {
 
 		mcoRes, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).
 			Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})

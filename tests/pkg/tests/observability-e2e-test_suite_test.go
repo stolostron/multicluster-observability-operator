@@ -145,7 +145,6 @@ var _ = BeforeSuite(func() {
 var _ = AfterSuite(func() {
 	if !testFailed {
 		uninstallMCO()
-	}
 })
 
 func initVars() {
@@ -217,19 +216,37 @@ func initVars() {
 		testOptions.KubeConfig = kubeconfig
 	}
 
+	cloudProvider := strings.ToLower(os.Getenv("CLOUD_PROVIDER"))
+	substring1 := "rosa"
+	substring2 := "hcp"
 	if testOptions.HubCluster.BaseDomain != "" {
 		baseDomain = testOptions.HubCluster.BaseDomain
-
 		if testOptions.HubCluster.ClusterServerURL == "" {
-			testOptions.HubCluster.ClusterServerURL = fmt.Sprintf(
-				"https://api.%s:6443",
-				testOptions.HubCluster.BaseDomain,
-			)
+			// TODO: Simplify
+			if strings.Contains(cloudProvider, substring1) && strings.Contains(cloudProvider, substring2) {
+
+				testOptions.HubCluster.ClusterServerURL = fmt.Sprintf(
+					"https://api.%s:443",
+					testOptions.HubCluster.BaseDomain,
+				)
+			} else {
+				testOptions.HubCluster.ClusterServerURL = fmt.Sprintf(
+					"https://api.%s:6443",
+					testOptions.HubCluster.BaseDomain,
+				)
+			}
 		}
 	} else {
 		Expect(baseDomain).NotTo(BeEmpty(), "The `baseDomain` is required.")
 		testOptions.HubCluster.BaseDomain = baseDomain
 		testOptions.HubCluster.ClusterServerURL = fmt.Sprintf("https://api.%s:6443", baseDomain)
+		// TODO: Simplify
+		if strings.Contains(cloudProvider, substring1) && strings.Contains(cloudProvider, substring2) {
+
+			testOptions.HubCluster.ClusterServerURL = fmt.Sprintf("https://api.%s:443", baseDomain)
+		} else {
+			testOptions.HubCluster.ClusterServerURL = fmt.Sprintf("https://api.%s:6443", baseDomain)
+		}
 	}
 
 	if testOptions.HubCluster.User != "" {

@@ -1,0 +1,31 @@
+# Command to build this Dockerfile
+# docker build -f Dockerfile -t quay.io/vboulos/acmqe-automation/obs:obs-ginkgo_1_14_2-linux-go .
+
+FROM quay.io/vboulos/acmqe-automation/ginkgo_1_14_2-linux-go
+
+
+# Copy the Obs repo repo into /tmp/obs folder
+RUN mkdir /tmp/obs
+WORKDIR /tmp/obs
+COPY . .
+
+# good colors for most applications
+ENV TERM=xterm
+
+# Set required permissions for OpenShift usage
+RUN chgrp -R 0 /tmp && \
+    chmod -R g=u /tmp
+
+RUN mkdir -p /go
+RUN chgrp -R 0 /go && \
+    chmod -R g=u /go
+
+RUN mkdir -p ~/.kube
+RUN chgrp -R 0 ~/.kube && \
+    chmod -R g=u ~/.kube
+
+RUN mkdir -p /alabama/.kube
+RUN chgrp -R 0 /alabama/.kube && \
+    chmod -R g=u /alabama/.kube
+
+CMD ["/bin/bash"]

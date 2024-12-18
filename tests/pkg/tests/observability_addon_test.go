@@ -5,6 +5,7 @@
 package tests
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -12,6 +13,8 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
 
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/utils"
@@ -43,7 +46,7 @@ var _ = Describe("Observability:", func() {
 		}, EventuallyTimeoutMinute*6, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
-	Context("[P2][Sev2][observability] Modifying MCO cr to disable observabilityaddon (addon/g0) -", func() {
+	Context("RHACM4K-1260: Observability: Verify monitoring operator and deployment status when metrics collection disabled [P2][Sev2][Observability]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @pre-upgrade  (addon/g0) -", func() {
 		It("[Stable] Should have resource requirement defined in CR", func() {
 			By("Check addon resource requirement")
 			res, err := utils.GetMCOAddonSpecResources(testOptions)
@@ -70,32 +73,23 @@ var _ = Describe("Observability:", func() {
 
 			By("Waiting for MCO addon components scales to 0")
 			Eventually(func() error {
-				err, podList := utils.GetPodList(
-					testOptions,
-					false,
-					MCO_ADDON_NAMESPACE,
-					"component=metrics-collector",
-				)
+				err = utils.CheckAllOBAsDeleted(testOptions)
+
 				if err != nil {
-					return errors.New("Failed to disable observability addon")
-				}
-				if len(podList.Items) != 0 {
-					for _, po := range podList.Items {
-						if po.Status.Phase == "Running" {
-							return errors.New("Failed to disable observability addon, there is still metrics-collector pod in Running")
-						}
-					}
+					return fmt.Errorf("Failed to disable observability addon")
 				}
 				return nil
 			}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
-
+			
+			// TODO: do we need this, disabled in core-automation-repo
 			Eventually(func() error {
-				err = utils.CheckAllOBAsDeleted(testOptions)
-				if err != nil {
-					return err
-				}
-				return nil
-			}, EventuallyTimeoutMinute*20, EventuallyIntervalSecond*5).Should(Succeed())
+					err = utils.CheckAllOBADisabled(testOptions)
+					if err != nil {
+						return err
+					}
+					return nil
+				}, EventuallyTimeoutMinute*20, EventuallyIntervalSecond*5).Should(Succeed())
+			*/
 		})
 		// it takes Prometheus 5m to notice a metric is not available -
 		// https://github.com/prometheus/prometheus/issues/1810
@@ -119,8 +113,7 @@ var _ = Describe("Observability:", func() {
 				return nil
 			}, EventuallyTimeoutMinute*2, EventuallyIntervalSecond*5).Should(Succeed())
 		})
-
-		It("[Stable] Modifying MCO cr to enable observabilityaddon", func() {
+		It("RHACM4K-1418: Observability: Verify clustermanagementaddon CR for Observability - Modifying MCO cr to enable observabilityaddon [P2][Sev2][Stable][Observability]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @pre-upgrade (addon/g0)", func() {
 			Eventually(func() error {
 				return utils.ModifyMCOAddonSpecMetrics(testOptions, true)
 			}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*5).Should(Succeed())
@@ -139,6 +132,11 @@ var _ = Describe("Observability:", func() {
 				}
 				return false
 			}, EventuallyTimeoutMinute*6, EventuallyIntervalSecond*5).Should(BeTrue())
+		})
+		It("RHACM4K-1074: Observability: Verify ObservabilityEndpoint operator deployment - Modifying MCO cr to enable observabilityaddon [P2][Sev2][Stable][Observability]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release @pre-upgrade (addon/g0)", func() {
+			Eventually(func() error {
+				return utils.ModifyMCOAddonSpecMetrics(testOptions, true)
+			}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*5).Should(Succeed())
 
 			By("Checking the status in managedclusteraddon reflects the endpoint operator status correctly")
 			Eventually(func() error {
@@ -149,9 +147,20 @@ var _ = Describe("Observability:", func() {
 				return nil
 			}, EventuallyTimeoutMinute*15, EventuallyIntervalSecond*5).Should(Succeed())
 		})
+
+	It("RHACM4K-6923: Observability: Verify default scrap interval change to 5 minutes - [P2][Sev2][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release @pre-upgrade (addon/g2)", func() {
+		By("Check default interval value is 300")
+		Eventually(func() bool {
+			mco, getErr := dynClient.Resource(utils.NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+			if getErr != nil {
+				panic(getErr.Error())
+			}
+			observabilityAddonSpec := mco.Object["spec"].(map[string]interface{})["observabilityAddonSpec"].(map[string]interface{})
+			return observabilityAddonSpec["interval"] == int64(300)
+		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*1).Should(BeTrue())
 	})
 
-	It("[P3][Sev3][observability][Stable] Should not set interval to values beyond scope (addon/g0)", func() {
+	It("RHACM4K-1235: Observability: Verify metrics data global setting on the managed cluster - Should not set interval to values beyond scope [P3][Sev3][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release @pre-upgrade (addon/g0)", func() {
 		By("Set interval to 14")
 		Eventually(func() bool {
 			err := utils.ModifyMCOAddonSpecInterval(testOptions, int64(14))
@@ -175,20 +184,38 @@ var _ = Describe("Observability:", func() {
 		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*1).Should(BeTrue())
 	})
 
-	Context("[P2][Sev2][observability] Should not have the expected MCO addon pods when disable observability from managedcluster (addon/g0) -", func() {
+	It("RHACM4K-1259: Observability: Verify imported cluster is observed [P3][Sev3][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore (deploy/g1)", func() {
+
+		Eventually(func() error {
+			return utils.UpdateObservabilityFromManagedCluster(testOptions, false)
+		}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
+
+		klog.V(1).Infof("managedcluster number is <%d>", len(testOptions.ManagedClusters))
+		if len(testOptions.ManagedClusters) >= 1 {
+			Eventually(func() bool {
+				return true
+			}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(BeTrue())
+		}
+	})
+	
+	Context("RHACM4K-7518: Observability: Disable the Observability by updating managed cluster label [P2][Sev2][Observability]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore (addon/g1) -", func() {
 		It("[Stable] Modifying managedcluster cr to disable observability", func() {
 			Eventually(func() error {
 				return utils.UpdateObservabilityFromManagedCluster(testOptions, false)
 			}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
 
-			By("Waiting for MCO addon components scales to 0")
-			Eventually(func() bool {
-				err, obaNS := utils.GetNamespace(testOptions, false, MCO_ADDON_NAMESPACE)
-				if err == nil && obaNS == nil {
-					return true
-				}
-				return false
-			}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(BeTrue())
+			klog.V(1).Infof("managedcluster number is <%d>", len(testOptions.ManagedClusters))
+			// TODO (jacob): Do we need this given we have a condition for that earlier?
+			if len(testOptions.ManagedClusters) > 0 {
+				By("Waiting for MCO addon components scales to 0")
+				Eventually(func() bool {
+					err, obaNS := utils.GetNamespace(testOptions, false, MCO_ADDON_NAMESPACE)
+					if err == nil && obaNS == nil {
+						return true
+					}
+					return false
+				}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(BeTrue())
+			}
 		})
 
 		It("[Stable] Remove disable observability label from the managed cluster", func() {

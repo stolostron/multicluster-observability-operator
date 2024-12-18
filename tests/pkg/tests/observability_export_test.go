@@ -38,7 +38,7 @@ var _ = Describe("Observability:", func() {
 		}, EventuallyTimeoutMinute*6, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
-	It("[P2][Sev2][observability][Integration] Should have acm_remote_write_requests_total metrics with correct labels/value (export/g0)", func() {
+	It("RHACM4K-11170: Observability: Verify metrics would be exported to corp tools(2.5)(draft)[P2][Sev2][observability][Integration] Should have acm_remote_write_requests_total metrics with correct labels/value  @e2e (export/g0)", func() {
 		By("Adding victoriametrics deployment/service/secret")
 		yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: "../../../examples/export"})
 		Expect(err).ToNot(HaveOccurred())
