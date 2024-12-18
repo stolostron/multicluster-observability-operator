@@ -431,7 +431,7 @@ func TestReadImageManifestConfigMap(t *testing.T) {
 			}
 			client := fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(initObjs...).Build()
 
-			gotRet, err := ReadImageManifestConfigMap(client, c.version)
+			_, gotRet, err := ReadImageManifestConfigMap(client, c.version)
 			if err != nil {
 				t.Errorf("Failed read image manifest configmap due to %v", err)
 			}
