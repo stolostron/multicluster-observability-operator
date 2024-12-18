@@ -22,7 +22,8 @@ AGENT_NS="open-cluster-management-agent"
 HUB_NS="open-cluster-management-hub"
 OBSERVABILITY_NS="open-cluster-management-observability"
 IMAGE_REPO="quay.io/stolostron"
-export MANAGED_CLUSTER="local-cluster" # registration-operator needs this
+export LOCAL_CLUSTER="local-cluster" # registration-operator needs this
+export MANAGED_CLUSTER="managed-cluster" # registration-operator needs this
 
 SED_COMMAND=${SED}' -i-e -e'
 
@@ -45,7 +46,7 @@ deploy_hub_spoke_core() {
   if [[ ! -d "_repo_ocm" ]]; then
     git clone --depth 1 --branch $OCM_BRANCH https://github.com/stolostron/ocm.git ./_repo_ocm
   fi
-  ${SED_COMMAND} "s~clusterName: cluster1$~clusterName: ${MANAGED_CLUSTER}~g" ./_repo_ocm/deploy/klusterlet/config/samples/operator_open-cluster-management_klusterlets.cr.yaml
+  ${SED_COMMAND} "s~clusterName: cluster1$~clusterName: ${LOCAL_CLUSTER}~g" ./_repo_ocm/deploy/klusterlet/config/samples/operator_open-cluster-management_klusterlets.cr.yaml
 
   make deploy-hub cluster-ip deploy-spoke-operator apply-spoke-cr -C ./_repo_ocm
 
@@ -57,28 +58,53 @@ deploy_hub_spoke_core() {
   kubectl -n "${HUB_NS}" rollout status deploy cluster-manager-registration-controller --timeout=120s
   kubectl -n "${HUB_NS}" rollout status deploy cluster-manager-registration-webhook --timeout=120s
   kubectl -n "${HUB_NS}" rollout status deploy cluster-manager-work-webhook --timeout=120s
+
 }
+
+deploy_managed_cluster() {
+    cd ${ROOTDIR}
+
+    export OCM_BRANCH=main
+    export IMAGE_NAME=quay.io/stolostron/registration-operator:$LATEST_SNAPSHOT
+    export REGISTRATION_OPERATOR_IMAGE=quay.io/stolostron/registration-operator:$LATEST_SNAPSHOT
+    export REGISTRATION_IMAGE=quay.io/stolostron/registration:$LATEST_SNAPSHOT
+    export WORK_IMAGE=quay.io/stolostron/work:$LATEST_SNAPSHOT
+    export PLACEMENT_IMAGE=quay.io/stolostron/placement:$LATEST_SNAPSHOT
+    export ADDON_MANAGER_IMAGE=quay.io/stolostron/addon-manager:$LATEST_SNAPSHOT
+
+    if [[ ! -d "_repo_ocm_2" ]]; then
+      git clone --depth 1 --branch $OCM_BRANCH https://github.com/stolostron/ocm.git ./_repo_ocm_2
+    fi
+    ${SED_COMMAND} "s~clusterName: cluster1$~clusterName: ${MANAGED_CLUSTER}~g" ./_repo_ocm_2/deploy/klusterlet/config/samples/operator_open-cluster-management_klusterlets.cr.yaml
+
+    make cluster-ip deploy-spoke-operator apply-spoke-cr -C ./_repo_ocm_2
+}
+
 
 # approve the CSR for cluster join request
 approve_csr_joinrequest() {
   echo "wait for CSR for cluster join reqest is created..."
-  for i in {1..60}; do
-    # TODO(morvencao): remove the hard-coded cluster label
-    csrs=$(kubectl get csr -lopen-cluster-management.io/cluster-name=${MANAGED_CLUSTER})
-    if [[ -n ${csrs} ]]; then
-      csrnames=$(kubectl get csr -lopen-cluster-management.io/cluster-name=${MANAGED_CLUSTER} -o jsonpath={.items..metadata.name})
-      for csrname in ${csrnames}; do
-        echo "approve CSR: ${csrname}"
-        kubectl certificate approve ${csrname}
-      done
-      break
-    fi
-    if [[ ${i} -eq 60 ]]; then
-      echo "timeout wait for CSR is created."
-      exit 1
-    fi
-    echo "retrying in 10s..."
-    sleep 10
+  clusters=($LOCAL_CLUSTER $MANAGED_CLUSTER)
+  for cluster in "${clusters[@]}"; do
+    echo "Processing CSR for cluster: $cluster"
+    for i in {1..60}; do
+      # TODO(morvencao): remove the hard-coded cluster label
+      csrs=$(kubectl get csr -lopen-cluster-management.io/cluster-name=${cluster})
+      if [[ -n ${csrs} ]]; then
+        csrnames=$(kubectl get csr -lopen-cluster-management.io/cluster-name=${cluster} -o jsonpath={.items..metadata.name})
+        for csrname in ${csrnames}; do
+          echo "approve CSR: ${csrname}"
+          kubectl certificate approve ${csrname}
+        done
+        break
+      fi
+      if [[ ${i} -eq 60 ]]; then
+        echo "timeout wait for CSR is created."
+        exit 1
+      fi
+      echo "retrying in 10s..."
+      sleep 10
+    done
   done
 
   for i in {1..20}; do
@@ -234,6 +260,7 @@ wait_for_deployment_ready() {
 # function execute is the main routine to do the actual work
 execute() {
   deploy_hub_spoke_core
+  deploy_managed_cluster
   approve_csr_joinrequest
   deploy_mco_operator
   deploy_grafana_test
