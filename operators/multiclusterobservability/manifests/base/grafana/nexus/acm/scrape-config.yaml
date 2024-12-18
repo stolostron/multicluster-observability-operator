@@ -1,0 +1,98 @@
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: ScrapeConfig
+metadata:
+  creationTimestamp: null
+  labels:
+    app: acm-platform-metrics-collector
+    release: multicluster-observability-addon
+  name: platform-metrics-default-nexus
+  namespace: open-cluster-management-observability
+spec:
+  jobName: platform-metrics
+  metricsPath: /federate
+  params:
+    match[]:
+    - '{__name__=":node_memory_MemAvailable_bytes:sum"}'
+    - '{__name__="acm_label_names"}'
+    - '{__name__="acm_managed_cluster_labels"}'
+    - '{__name__="active_streams_lease:grpc_server_handled_total:sum"}'
+    - '{__name__="active_streams_watch:grpc_server_handled_total:sum"}'
+    - '{__name__="apiserver_request_duration_seconds:histogram_quantile_99"}'
+    - '{__name__="apiserver_request_duration_seconds:histogram_quantile_99:instance"}'
+    - '{__name__="cluster:cpu_allocatable:sum"}' 
+    - '{__name__="cluster:cpu_cores:sum"}'
+    - '{__name__="cluster:cpu_requested:ratio"}'
+    - '{__name__="cluster:kube_pod_container_resource_requests:cpu:sum"}'
+    - '{__name__="cluster:kube_pod_container_resource_requests:memory:sum"}'
+    - '{__name__="cluster:machine_memory:sum"}'
+    - '{__name__="cluster:memory_requested:ratio"}'
+    - '{__name__="cluster:memory_utilized:ratio"}'
+    - '{__name__="cluster:node_cpu:ratio"}'
+    - '{__name__="container_cpu_cfs_periods_total"}'
+    - '{__name__="container_cpu_cfs_throttled_periods_total"}'
+    - '{__name__="container_memory_cache",container!=""}'
+    - '{__name__="container_memory_rss",container!=""}'
+    - '{__name__="container_memory_rss:sum",container!=""}'
+    - '{__name__="container_memory_swap",container!=""}'
+    - '{__name__="container_memory_working_set_bytes",container!=""}'
+    - '{__name__="etcd_debugging_mvcc_db_total_size_in_bytes"}'
+    - '{__name__="etcd_disk_backend_commit_duration_seconds_bucket"}'
+    - '{__name__="etcd_disk_wal_fsync_duration_seconds_bucket"}'
+    - '{__name__="etcd_network_client_grpc_received_bytes_total"}'
+    - '{__name__="etcd_network_client_grpc_sent_bytes_total"}'
+    - '{__name__="etcd_network_peer_received_bytes_total"}'
+    - '{__name__="etcd_network_peer_sent_bytes_total"}'
+    - '{__name__="etcd_server_has_leader"}'
+    - '{__name__="etcd_server_leader_changes_seen_total"}'
+    - '{__name__="etcd_server_proposals_applied_total"}'
+    - '{__name__="etcd_server_proposals_committed_total"}'
+    - '{__name__="etcd_server_proposals_failed_total"}'
+    - '{__name__="etcd_server_proposals_pending"}'
+    - '{__name__="go_goroutines",job="apiserver"}'
+    - '{__name__="grpc_server_started_total"}'
+    - '{__name__="instance:node_cpu_utilisation:rate1m"}'
+    - '{__name__="instance:node_load1_per_cpu:ratio"}'
+    - '{__name__="instance:node_memory_utilisation:ratio"}'
+    - '{__name__="instance:node_network_receive_bytes_excluding_lo:rate1m"}'
+    - '{__name__="instance:node_network_receive_drop_excluding_lo:rate1m"}'
+    - '{__name__="instance:node_network_transmit_bytes_excluding_lo:rate1m"}'
+    - '{__name__="instance:node_network_transmit_drop_excluding_lo:rate1m"}'
+    - '{__name__="instance:node_num_cpu:sum"}'
+    - '{__name__="instance:node_vmstat_pgmajfault:rate1m"}'
+    - '{__name__="instance_device:node_disk_io_time_seconds:rate1m"}'
+    - '{__name__="instance_device:node_disk_io_time_weighted_seconds:rate1m"}'
+    - '{__name__="kube_node_status_allocatable"}' # Allows computing cluster:cpu_allocatable:sum on the hub
+    - '{__name__="kube_pod_container_resource_limits"}'
+    - '{__name__="kube_pod_container_resource_limits:sum"}'
+    - '{__name__="kube_pod_container_resource_requests"}'
+    - '{__name__="kube_pod_container_resource_requests:sum"}'
+    - '{__name__="kube_pod_info"}'
+    - '{__name__="kube_pod_owner"}'
+    - '{__name__="kube_resourcequota"}'
+    # - '{__name__="machine_cpu_cores"}' # Allows computing cluster:cpu_cores:sum on the hub
+    - '{__name__="namespace_workload_pod:kube_pod_owner:relabel"}'
+    - '{__name__="namespace_workload_pod:kube_pod_owner:relabel:avg"}'
+    - '{__name__="node_cpu_seconds_total"}'
+    - '{__name__="node_filesystem_avail_bytes"}'
+    - '{__name__="node_filesystem_size_bytes"}'
+    - '{__name__="node_namespace_pod_container:container_cpu_usage_seconds_total:sum"}'
+    - '{__name__="node_namespace_pod_container:container_cpu_usage_seconds_total:sum_rate"}' # result of renaming, check if really needed
+    - '{__name__="node_netstat_TcpExt_TCPSynRetrans"}'
+    - '{__name__="node_netstat_Tcp_OutSegs"}'
+    - '{__name__="node_netstat_Tcp_RetransSegs"}'
+    - '{__name__="process_cpu_seconds_total",job="apiserver"}'
+    - '{__name__="process_resident_memory_bytes",job=~"apiserver|etcd"}'
+    - '{__name__="rpc_rate:grpc_server_handled_total:sum_rate"}'
+    - '{__name__="sli:apiserver_request_duration_seconds:bin:trend:1m"}'
+    - '{__name__="sli:apiserver_request_duration_seconds:trend:1m"}'
+    - '{__name__="sum:apiserver_request_total:1h"}'
+    - '{__name__="sum:apiserver_request_total:5m"}'
+    - '{__name__="up"}'
+    - '{__name__="workqueue_adds_total",job="apiserver"}'
+    - '{__name__="workqueue_depth",job="apiserver"}'
+    - '{__name__="workqueue_queue_duration_seconds_bucket",job="apiserver"}'
+  staticConfigs:
+  - targets:
+    - localhost:8090
+
+
