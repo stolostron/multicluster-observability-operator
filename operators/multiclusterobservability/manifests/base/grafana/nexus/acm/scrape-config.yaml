@@ -30,10 +30,10 @@ spec:
     - '{__name__="cluster:node_cpu:ratio"}'
     - '{__name__="container_cpu_cfs_periods_total"}'
     - '{__name__="container_cpu_cfs_throttled_periods_total"}'
-    - '{__name__="container_pod_namespace_node:container_memory_cache:sum"}'
-    - '{__name__="container_pod_namespace_node:container_memory_rss:sum"}'
-    - '{__name__="container_memory_swap",container!=""}'
-    - '{__name__="container_memory_working_set_bytes",container!=""}'
+    - '{__name__="container_memory_cache,container!="POD",container!=""}'
+    - '{__name__="container_memory_rss,container!="POD",container!=""}'
+    - '{__name__="container_memory_swap,container!="POD",container!=""}'
+    - '{__name__="container_memory_working_set_bytes",container!="POD",container!=""}'
     - '{__name__="etcd_mvcc_db_total_size_in_bytes"}'
     - '{__name__="etcd_disk_backend_commit_duration_seconds_bucket"}'
     - '{__name__="etcd_disk_wal_fsync_duration_seconds_bucket"}'
@@ -89,6 +89,9 @@ spec:
     - '{__name__="workqueue_adds_total",job="apiserver"}'
     - '{__name__="workqueue_depth",job="apiserver"}'
     - '{__name__="workqueue_queue_duration_seconds_bucket:apiserver:histogram_quantile_99"}'
+  metricRelabelings:
+  - action: labeldrop
+    regex: prometheus_replica|managed_cluster|id
   staticConfigs:
   - targets:
     - localhost:8090
