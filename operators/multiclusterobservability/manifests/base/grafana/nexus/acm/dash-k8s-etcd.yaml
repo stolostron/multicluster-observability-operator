@@ -367,7 +367,7 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "etcd_debugging_mvcc_db_total_size_in_bytes{cluster=\"$cluster\",job=\"etcd\"}",
+              "expr": "etcd_mvcc_db_total_size_in_bytes{cluster=\"$cluster\",job=\"etcd\"}",
               "hide": false,
               "interval": "",
               "intervalFactor": 2,
