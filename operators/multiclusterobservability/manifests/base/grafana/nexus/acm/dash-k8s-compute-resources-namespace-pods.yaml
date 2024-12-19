@@ -1343,7 +1343,7 @@ data:
               "step": 10
             },
             {
-              "expr": "sum(container_memory_cache{cluster=\"$cluster\", namespace=\"$namespace\",container!=\"\"}) by (pod)",
+              "expr": "sum(container_pod_namespace_node:container_memory_cache:sum{cluster=\"$cluster\", namespace=\"$namespace\"}) by (pod)",
               "format": "table",
               "instant": true,
               "intervalFactor": 1,

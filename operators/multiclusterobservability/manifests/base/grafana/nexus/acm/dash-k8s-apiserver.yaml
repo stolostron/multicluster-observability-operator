@@ -398,7 +398,7 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "histogram_quantile(0.99, sum(rate(workqueue_queue_duration_seconds_bucket{job=\"apiserver\", instance=~\"$instance\", cluster=\"$cluster\"}[$__rate_interval])) by (instance, name, le))",
+              "expr": "workqueue_queue_duration_seconds_bucket:apiserver:histogram_quantile_99{instance=~\"$instance\", cluster=\"$cluster\"}",
               "format": "time_series",
               "hide": false,
               "interval": "",

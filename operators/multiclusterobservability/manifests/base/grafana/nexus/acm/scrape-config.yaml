@@ -30,7 +30,7 @@ spec:
     - '{__name__="cluster:node_cpu:ratio"}'
     - '{__name__="container_cpu_cfs_periods_total"}'
     - '{__name__="container_cpu_cfs_throttled_periods_total"}'
-    - '{__name__="container_memory_cache",container!=""}'
+    - '{__name__="container_pod_namespace_node:container_memory_cache:sum"}'
     - '{__name__="container_memory_rss",container!=""}'
     - '{__name__="container_memory_rss:sum",container!=""}'
     - '{__name__="container_memory_swap",container!=""}'
@@ -69,7 +69,6 @@ spec:
     - '{__name__="kube_pod_info"}'
     - '{__name__="kube_pod_owner"}'
     - '{__name__="kube_resourcequota"}'
-    # - '{__name__="machine_cpu_cores"}' # Allows computing cluster:cpu_cores:sum on the hub
     - '{__name__="namespace_workload_pod:kube_pod_owner:relabel"}'
     - '{__name__="namespace_workload_pod:kube_pod_owner:relabel:avg"}'
     - '{__name__="node_cpu_seconds_total"}'
@@ -90,7 +89,7 @@ spec:
     - '{__name__="up"}'
     - '{__name__="workqueue_adds_total",job="apiserver"}'
     - '{__name__="workqueue_depth",job="apiserver"}'
-    - '{__name__="workqueue_queue_duration_seconds_bucket",job="apiserver"}'
+    - '{__name__="workqueue_queue_duration_seconds_bucket:apiserver:histogram_quantile_99"}'
   staticConfigs:
   - targets:
     - localhost:8090
