@@ -115,7 +115,7 @@ data:
           "pluginVersion": "8.5.20",
           "targets": [
             {
-              "expr": "1 - avg(rate(node_cpu_seconds_total{mode=\"idle\", cluster=\"$cluster\"}[$__rate_interval]))",
+              "expr": "1 - node_cpu_seconds_total:mode_idle:avg_rate5m",
               "format": "time_series",
               "instant": true,
               "intervalFactor": 1,
