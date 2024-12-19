@@ -185,8 +185,6 @@ spec:
       record: sum:apiserver_request_total:5m
     - record: kube_pod_container_resource_limits:sum
       expr: sum(kube_pod_container_resource_limits) by (resource, namespace)
-    - record: kube_pod_container_resource_requests:sum
-      expr: sum(kube_pod_container_resource_requests{container!=""}) by (resource, namespace)
     - expr: |-
         sum by (cluster, namespace, pod, container) (
           rate(container_cpu_usage_seconds_total{job="kubelet", metrics_path="/metrics/cadvisor", image!=""}[5m])
