@@ -5,6 +5,7 @@
 package main
 
 import (
+	"fmt"
 	stdlog "log"
 	"os"
 	"testing"
@@ -64,4 +65,103 @@ func TestMultiWorkers(t *testing.T) {
 	}
 	time.Sleep(1 * time.Second)
 
+}
+
+func TestSplitMatchersIntoShards(t *testing.T) {
+	tests := []struct {
+		name       string
+		matchers   []string
+		shardCount int
+		want       [][]string
+	}{
+		{
+			name:       "single shard",
+			matchers:   []string{"match1", "match2", "match3"},
+			shardCount: 1,
+			want:       [][]string{{"match1", "match2", "match3"}},
+		},
+		{
+			name:       "two shards",
+			matchers:   []string{"match1", "match2", "match3", "match4"},
+			shardCount: 2,
+			want: [][]string{
+				{"match1", "match3"},
+				{"match2", "match4"},
+			},
+		},
+		// This case should not happen and is restricted by CLI option validation.
+		{
+			name:       "two shards",
+			matchers:   []string{"match1", "match2", "match3", "match4"},
+			shardCount: 6,
+			want: [][]string{
+				{"match1"},
+				{"match2"},
+				{"match3"},
+				{"match4"},
+				{},
+				{},
+			},
+		},
+		{
+			name:       "three shards",
+			matchers:   []string{"match1", "match2", "match3", "match4", "match5"},
+			shardCount: 3,
+			want: [][]string{
+				{"match1", "match4"},
+				{"match2", "match5"},
+				{"match3"},
+			},
+		},
+		{
+			name:       "more shards than matchers",
+			matchers:   []string{"match1", "match2"},
+			shardCount: 3,
+			want: [][]string{
+				{"match1"},
+				{"match2"},
+				{},
+			},
+		},
+		{
+			name:       "zero shards",
+			matchers:   []string{"match1", "match2", "match3"},
+			shardCount: 0,
+			want:       [][]string{{"match1", "match2", "match3"}},
+		},
+		{
+			name:       "negative shards",
+			matchers:   []string{"match1", "match2", "match3"},
+			shardCount: -1,
+			want:       [][]string{{"match1", "match2", "match3"}},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := splitMatchersIntoShards(tt.matchers, tt.shardCount)
+			fmt.Println(got)
+			// Check if number of shards matches
+			if len(got) != len(tt.want) {
+				t.Errorf("splitMatchersIntoShards() got %d shards, want %d shards",
+					len(got), len(tt.want))
+				return
+			}
+
+			// Check if each shard contains the expected matchers
+			for i := 0; i < len(got); i++ {
+				if len(got[i]) != len(tt.want[i]) {
+					t.Errorf("shard %d: got %d matchers, want %d matchers",
+						i, len(got[i]), len(tt.want[i]))
+					continue
+				}
+				for j := 0; j < len(got[i]); j++ {
+					if got[i][j] != tt.want[i][j] {
+						t.Errorf("shard %d matcher %d: got %s, want %s",
+							i, j, got[i][j], tt.want[i][j])
+					}
+				}
+			}
+		})
+	}
 }
