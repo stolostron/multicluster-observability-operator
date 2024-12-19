@@ -1072,7 +1072,7 @@ data:
               "step": 10
             },
             {
-              "expr": "sum(container_memory_working_set_bytes{cluster=\"$cluster\", namespace=\"$namespace\", pod=\"$pod\", container!=\"\"}) by (container) / sum(kube_pod_container_resource_limits{namespace=\"$namespace\", pod=\"$pod\", resource=\"memory\"}) by (container)",
+              "expr": "sum(container_memory_working_set_bytes{cluster=\"$cluster\", namespace=\"$namespace\", pod=\"$pod\",container!=\"\",container!=\"POD\"}) by (container) / sum(kube_pod_container_resource_limits{namespace=\"$namespace\", pod=\"$pod\", resource=\"memory\"}) by (container)",
               "format": "table",
               "instant": true,
               "interval": "",
@@ -1082,7 +1082,7 @@ data:
               "step": 10
             },
             {
-              "expr": "sum(container_pod_namespace_node:container_memory_rss:sum{cluster=\"$cluster\", namespace=\"$namespace\", pod=\"$pod\"}) by (container)",
+              "expr": "sum(container_memory_rss{cluster=\"$cluster\", namespace=\"$namespace\", pod=\"$pod\",container!=\"\",container!=\"POD\"}) by (container)",
               "format": "table",
               "instant": true,
               "intervalFactor": 2,
@@ -1091,7 +1091,7 @@ data:
               "step": 10
             },
             {
-              "expr": "sum(container_pod_namespace_node:container_memory_cache:sum{cluster=\"$cluster\", namespace=\"$namespace\", pod=\"$pod\"}) by (container)",
+              "expr": "sum(container_memory_cache{cluster=\"$cluster\", namespace=\"$namespace\", pod=\"$pod\",container!=\"\",container!=\"POD\"}) by (container)",
               "format": "table",
               "instant": true,
               "intervalFactor": 2,
