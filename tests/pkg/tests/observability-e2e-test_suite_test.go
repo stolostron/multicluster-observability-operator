@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -145,6 +146,7 @@ var _ = BeforeSuite(func() {
 var _ = AfterSuite(func() {
 	if !testFailed {
 		uninstallMCO()
+	}
 })
 
 func initVars() {

@@ -6,16 +6,9 @@ package utils
 
 import (
 	"context"
-<<<<<<< HEAD
 	"encoding/json"
 	"errors"
 	"fmt"
-=======
-	b64 "encoding/base64"
-	"encoding/json"
-	"fmt"
-	"io/ioutil"
->>>>>>> core-automation/main
 	"os"
 	"path/filepath"
 	"reflect"
@@ -27,10 +20,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer/yaml"
-<<<<<<< HEAD
 	"k8s.io/client-go/dynamic"
-=======
->>>>>>> core-automation/main
 	"k8s.io/klog"
 )
 
@@ -468,7 +458,7 @@ func RevertMCOCRModification(opt TestOptions) error {
 	return nil
 }
 
-unc CheckMCOAddonResources(opt TestOptions) error {
+func CheckMCOAddonResources(opt TestOptions) error {
 	client := NewKubeClient(
 		opt.HubCluster.ClusterServerURL,
 		opt.KubeConfig,

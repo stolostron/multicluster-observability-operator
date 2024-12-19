@@ -50,35 +50,32 @@ var _ = Describe("Observability:", func() {
 		}, EventuallyTimeoutMinute*6, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
-	It("RHACM4K-1449 - Observability - Verify metrics data consistency [P2][Sev2][Observability][Integration]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release @pre-upgrade (metrics/g1)", func() {
-		metricList := utils.GetDefaultMetricList(testOptions)
-		_, etcdPodList := utils.GetPodList(
-			testOptions,
-			true,
-			"openshift-etcd",
-			"app=etcd",
-		)
-		// ignore etcd network peer metrics for SNO cluster
-		if etcdPodList != nil && len(etcdPodList.Items) <= 0 {
-			ignoreMetricMap["etcd_network_peer_received_bytes_total"] = true
-			ignoreMetricMap["etcd_network_peer_sent_bytes_total"] = true
-		}
-		for _, name := range metricList {
-			if _, ok := ignoredMetrics[name]; ok {
-				continue
-			}
-
-			Eventually(func() error {
-				res, err := utils.QueryGrafana(testOptions, query)
-				if err != nil {
-					return err
-				}
-				if len(res.Data.Result) == 0 {
-					return fmt.Errorf("no data found for %s", query)
-				}
-			}, EventuallyTimeoutMinute*2, EventuallyIntervalSecond*3).Should(Succeed())
-		}
-	})
+	// TODO (jacob): exact same as RHACM4K-3339??
+	// It("RHACM4K-1449 - Observability - Verify metrics data consistency [P2][Sev2][Observability][Integration]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release @pre-upgrade (metrics/g1)", func() {
+	// 	metricList := utils.GetDefaultMetricList(testOptions)
+	// 	_, etcdPodList := utils.GetPodList(
+	// 		testOptions,
+	// 		true,
+	// 		"openshift-etcd",
+	// 		"app=etcd",
+	// 	)
+	//
+	// 	for _, name := range metricList {
+	// 		if _, ok := ignoredMetrics[name]; ok {
+	// 			continue
+	// 		}
+	//
+	// 		Eventually(func() error {
+	// 			res, err := utils.QueryGrafana(testOptions, query)
+	// 			if err != nil {
+	// 				return err
+	// 			}
+	// 			if len(res.Data.Result) == 0 {
+	// 				return fmt.Errorf("no data found for %s", query)
+	// 			}
+	// 		}, EventuallyTimeoutMinute*2, EventuallyIntervalSecond*3).Should(Succeed())
+	// 	}
+	// })
 
 	It("RHACM4K-1658: Observability: Customized metrics data are collected [P2][Sev2][Observability][Integration]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release @pre-upgrade (metrics/g0)", func() {
 		By("Adding custom metrics allowlist configmap")
@@ -249,34 +246,30 @@ var _ = Describe("Observability:", func() {
 
 				return nil
 			}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*5).Should(Succeed())
+		}
+	})
 
 	It("RHACM4K-3339: Observability: Verify recording rule - Should have metrics which used grafana dashboard [P2][Sev2][Observability][Integration]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release @pre-upgrade (ssli/g1)", func() {
-		metricList := utils.GetDefaultMetricList(testOptions)
-		_, etcdPodList := utils.GetPodList(
-			testOptions,
-			true,
-			"openshift-etcd",
-			"app=etcd",
-		)
-		// ignore etcd network peer metrics for SNO cluster
-		if etcdPodList != nil && len(etcdPodList.Items) <= 0 {
-			ignoreMetricMap["etcd_network_peer_received_bytes_total"] = true
-			ignoreMetricMap["etcd_network_peer_sent_bytes_total"] = true
-		}
+		metricList, _ := utils.GetDefaultMetricList(testOptions)
+
 		for _, name := range metricList {
 
-			_, ok := ignoreMetricMap[name]
-			if !ok {
-				Eventually(func() error {
-					res, err := utils.QueryGrafana(testOptions, query)
-					if err != nil {
-						return err
-					}
-					if len(res.Data.Result) == 0 {
-						return fmt.Errorf("no data found for %s", query)
-					}
-				}, EventuallyTimeoutMinute*2, EventuallyIntervalSecond*3).Should(Succeed())
+			if _, ok := ignoredMetrics[name]; ok {
+				continue
 			}
+
+			Eventually(func() error {
+				query := fmt.Sprintf("%s", name)
+				res, err := utils.QueryGrafana(testOptions, query)
+
+				if err != nil {
+					return err
+				}
+				if len(res.Data.Result) == 0 {
+					return fmt.Errorf("no data found for %s", query)
+				}
+				return nil
+			}, EventuallyTimeoutMinute*2, EventuallyIntervalSecond*3).Should(Succeed())
 		}
 	})
 

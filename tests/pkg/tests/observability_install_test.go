@@ -36,7 +36,7 @@ func installMCO() {
 		testOptions.HubCluster.ClusterServerURL,
 		testOptions.KubeConfig,
 		testOptions.HubCluster.KubeContext)
-	
+
 	// TODO (jacob): The test RHACM4K-30645 depends on the below. Should that test maybe be moved here?
 	By("Deploy CM cluster-monitoring-config")
 

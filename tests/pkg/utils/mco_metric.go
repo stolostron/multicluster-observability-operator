@@ -5,18 +5,10 @@
 package utils
 
 import (
-<<<<<<< HEAD
 	"context"
 	"crypto/tls"
 	"fmt"
 	"io"
-=======
-	"bufio"
-	"context"
-	"crypto/tls"
-	"fmt"
-	"io/ioutil"
->>>>>>> core-automation/main
 	"net/http"
 	"net/url"
 	"os"

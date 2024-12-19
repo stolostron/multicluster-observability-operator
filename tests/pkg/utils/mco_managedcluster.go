@@ -5,10 +5,8 @@
 package utils
 
 import (
-
 	"context"
 	"errors"
-	"fmt"
 	"os"
 
 	goversion "github.com/hashicorp/go-version"

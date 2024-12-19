@@ -9,8 +9,6 @@ import (
 	"fmt"
 	"strings"
 
-	"errors"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
@@ -80,16 +78,15 @@ var _ = Describe("Observability:", func() {
 				}
 				return nil
 			}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
-			
+
 			// TODO: do we need this, disabled in core-automation-repo
 			Eventually(func() error {
-					err = utils.CheckAllOBADisabled(testOptions)
-					if err != nil {
-						return err
-					}
-					return nil
-				}, EventuallyTimeoutMinute*20, EventuallyIntervalSecond*5).Should(Succeed())
-			*/
+				err = utils.CheckAllOBADisabled(testOptions)
+				if err != nil {
+					return err
+				}
+				return nil
+			}, EventuallyTimeoutMinute*20, EventuallyIntervalSecond*5).Should(Succeed())
 		})
 		// it takes Prometheus 5m to notice a metric is not available -
 		// https://github.com/prometheus/prometheus/issues/1810
@@ -147,6 +144,7 @@ var _ = Describe("Observability:", func() {
 				return nil
 			}, EventuallyTimeoutMinute*15, EventuallyIntervalSecond*5).Should(Succeed())
 		})
+	})
 
 	It("RHACM4K-6923: Observability: Verify default scrap interval change to 5 minutes - [P2][Sev2][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release @pre-upgrade (addon/g2)", func() {
 		By("Check default interval value is 300")
@@ -197,7 +195,7 @@ var _ = Describe("Observability:", func() {
 			}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(BeTrue())
 		}
 	})
-	
+
 	Context("RHACM4K-7518: Observability: Disable the Observability by updating managed cluster label [P2][Sev2][Observability]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore (addon/g1) -", func() {
 		It("[Stable] Modifying managedcluster cr to disable observability", func() {
 			Eventually(func() error {
