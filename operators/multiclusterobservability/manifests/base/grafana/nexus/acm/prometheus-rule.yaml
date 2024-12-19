@@ -196,3 +196,7 @@ spec:
           1, max by(cluster, namespace, pod, node) (kube_pod_info{node!=""})
         )
       record: node_namespace_pod_container:container_cpu_usage_seconds_total:sum_rate
+    - expr: histogram_quantile(0.99, sum(rate(workqueue_queue_duration_seconds_bucket{job="apiserver"}[5m])) by (instance, name, le))
+      record: workqueue_queue_duration_seconds_bucket:apiserver:histogram_quantile_99
+    - expr: sum(container_memory_cache{container!="POD", container!=""}) by (pod, container, namespace, node)
+      record: container_pod_namespace_node:container_memory_cache:sum
