@@ -17,6 +17,10 @@ import (
 	"k8s.io/klog"
 )
 
+const (
+	trueStr = "true"
+)
+
 func ContainDashboard(opt TestOptions, title string) (error, bool) {
 	grafanaConsoleURL := GetGrafanaURL(opt)
 	path := "/api/search?"
@@ -30,7 +34,7 @@ func ContainDashboard(opt TestOptions, title string) (error, bool) {
 	}
 
 	client := &http.Client{}
-	if os.Getenv("IS_KIND_ENV") != "true" {
+	if os.Getenv("IS_KIND_ENV") != trueStr {
 		tr := &http.Transport{
 			// #nosec G402 -- Used in test.
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},

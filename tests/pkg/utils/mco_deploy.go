@@ -115,6 +115,18 @@ func GetAllMCOPods(opt TestOptions) ([]corev1.Pod, error) {
 	// ignore non-mco pods
 	mcoPods := []corev1.Pod{}
 	for _, p := range podList.Items {
+		if strings.Contains(p.GetName(), "metrics-collector") {
+			continue
+		}
+
+		if strings.Contains(p.GetName(), "endpoint-observability-operator") {
+			continue
+		}
+
+		if strings.Contains(p.GetName(), "uwl-metrics-collector") {
+			continue
+		}
+
 		if strings.Contains(p.GetName(), "grafana-test") {
 			continue
 		}
@@ -385,7 +397,7 @@ func ModifyMCOCR(opt TestOptions) error {
 	}
 	spec := mco.Object["spec"].(map[string]interface{})
 	storageConfig := spec["storageConfig"].(map[string]interface{})
-	storageConfig["alertmanagerStorageSize"] = "2Gi"
+	storageConfig["alertmanagerStorageSize"] = "3Gi"
 
 	advRetentionCon, _ := CheckAdvRetentionConfig(opt)
 	if advRetentionCon {
@@ -610,6 +622,13 @@ func CreatePullSecret(opt TestOptions, mcoNs string) error {
 		return errGet
 	}
 
+	mcopSecret, errGet := clientKube.CoreV1().Secrets(MCO_NAMESPACE).Get(context.TODO(), name, metav1.GetOptions{})
+	if mcopSecret != nil {
+		errDelGet := clientKube.CoreV1().Secrets(MCO_NAMESPACE).Delete(context.TODO(), name, metav1.DeleteOptions{})
+		if errGet != nil {
+			klog.V(1).Infof("Delete existing pullSecret - %s", errDelGet)
+		}
+	}
 	pullSecret.ObjectMeta = metav1.ObjectMeta{
 		Name:      name,
 		Namespace: MCO_NAMESPACE,
