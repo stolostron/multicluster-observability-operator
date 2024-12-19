@@ -7,29 +7,19 @@ package utils
 import (
 	"os"
 	"strings"
-	"time"
 
 	"gopkg.in/yaml.v2"
 	"k8s.io/klog"
 )
 
 var (
-	testHeadless bool
 
 	BearerToken             string
-	baseDomain              string
-	kubeadminUser           string
-	kubeadminCredential     string
-	kubeconfig              string
-	reportFile              string
 	optionsFile             string
-	ownerPrefix, ocpRelease string
 
 	testOptions          TestOptions
 	testOptionsContainer TestOptionsContainer
-	testUITimeout        time.Duration
 
-	testFailed = false
 )
 
 func GetGrafanaURL(opt TestOptions) string {
@@ -52,18 +42,6 @@ func GetGrafanaURL(opt TestOptions) string {
 
 	testOptions = testOptionsContainer.Options
 
-	// default Headless is `true`
-	// to disable, set Headless: false
-	// in options file
-	if testOptions.Headless == "" {
-		testHeadless = true
-	} else {
-		if testOptions.Headless == "false" {
-			testHeadless = false
-		} else {
-			testHeadless = true
-		}
-	}
 	cloudProvider := strings.ToLower(os.Getenv("CLOUD_PROVIDER"))
 	substring1 := "rosa"
 	substring2 := "hcp"
