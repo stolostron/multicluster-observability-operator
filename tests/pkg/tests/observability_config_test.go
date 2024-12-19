@@ -7,7 +7,6 @@ package tests
 import (
 	"context"
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
