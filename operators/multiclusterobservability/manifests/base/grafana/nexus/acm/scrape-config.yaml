@@ -64,7 +64,6 @@ spec:
     - '{__name__="kube_pod_container_resource_limits"}'
     - '{__name__="kube_pod_container_resource_limits:sum"}'
     - '{__name__="kube_pod_container_resource_requests"}'
-    - '{__name__="kube_pod_container_resource_requests:sum"}'
     - '{__name__="kube_pod_info"}'
     - '{__name__="kube_resourcequota"}'
     - '{__name__="namespace_workload_pod:kube_pod_owner:relabel"}'
