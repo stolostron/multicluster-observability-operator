@@ -35,7 +35,7 @@ spec:
     - '{__name__="container_memory_rss:sum",container!=""}'
     - '{__name__="container_memory_swap",container!=""}'
     - '{__name__="container_memory_working_set_bytes",container!=""}'
-    - '{__name__="etcd_debugging_mvcc_db_total_size_in_bytes"}'
+    - '{__name__="etcd_mvcc_db_total_size_in_bytes"}'
     - '{__name__="etcd_disk_backend_commit_duration_seconds_bucket"}'
     - '{__name__="etcd_disk_wal_fsync_duration_seconds_bucket"}'
     - '{__name__="etcd_network_client_grpc_received_bytes_total"}'
