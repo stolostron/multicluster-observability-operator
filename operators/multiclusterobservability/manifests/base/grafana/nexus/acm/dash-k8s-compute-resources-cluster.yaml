@@ -955,7 +955,7 @@ data:
           "pluginVersion": "8.5.20",
           "targets": [
             {
-              "expr": "sum(kube_pod_owner{cluster=\"$cluster\"}) by (namespace)",
+              "expr": "sum(kube_pod_info{cluster=\"$cluster\"}) by (namespace)",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -1465,7 +1465,7 @@ data:
           "pluginVersion": "8.5.20",
           "targets": [
             {
-              "expr": "sum(kube_pod_owner{cluster=\"$cluster\"}) by (namespace)",
+              "expr": "sum(kube_pod_info{cluster=\"$cluster\"}) by (namespace)",
               "format": "table",
               "hide": false,
               "instant": true,
