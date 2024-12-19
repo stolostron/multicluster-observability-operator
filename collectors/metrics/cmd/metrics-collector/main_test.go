@@ -89,6 +89,7 @@ func TestSplitMatchersIntoShards(t *testing.T) {
 				{"match2", "match4"},
 			},
 		},
+		// This case should not happen and is restricted by CLI option validation.
 		{
 			name:       "two shards",
 			matchers:   []string{"match1", "match2", "match3", "match4"},
@@ -98,6 +99,8 @@ func TestSplitMatchersIntoShards(t *testing.T) {
 				{"match2"},
 				{"match3"},
 				{"match4"},
+				{},
+				{},
 			},
 		},
 		{
