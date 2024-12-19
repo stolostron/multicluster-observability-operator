@@ -880,7 +880,7 @@ data:
               "step": 10
             },
             {
-              "expr": "sum(container_memory_rss{cluster=\"$cluster\", node=\"$node\",container!=\"\",job=\"kubelet\", metrics_path=\"/metrics/cadvisor\", image!=\"\"}) by (pod)",
+              "expr": "sum(container_pod_namespace_node:container_memory_rss:sum{cluster=\"$cluster\", node=\"$node\"}) by (pod)",
               "format": "table",
               "instant": true,
               "intervalFactor": 2,
