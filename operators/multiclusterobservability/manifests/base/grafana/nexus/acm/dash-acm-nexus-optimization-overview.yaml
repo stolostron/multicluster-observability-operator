@@ -597,7 +597,7 @@ data:
           "targets": [
             {
               "exemplar": true,
-              "expr": "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum{cluster=\"$cluster\"}) by (namespace) / sum(kube_pod_container_resource_requests:sum{cluster=\"$cluster\", resource=\"cpu\"}) by (namespace)",
+              "expr": "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum{cluster=\"$cluster\"}) by (namespace) / sum(kube_pod_container_resource_requests{cluster=\"$cluster\", resource=\"cpu\"}) by (namespace)",
               "format": "table",
               "instant": true,
               "interval": "",
@@ -617,7 +617,7 @@ data:
             },
             {
               "exemplar": true,
-              "expr": "sum(kube_pod_container_resource_requests:sum{cluster=\"$cluster\", resource=\"cpu\"}) by (namespace)",
+              "expr": "sum(kube_pod_container_resource_requests{cluster=\"$cluster\", resource=\"cpu\"}) by (namespace)",
               "format": "table",
               "instant": true,
               "interval": "",
@@ -1240,7 +1240,7 @@ data:
           "targets": [
             {
               "exemplar": true,
-              "expr": "sum(container_memory_rss{cluster=\"$cluster\",container!=\"\",container!=\"POD\"}) by (namespace) / sum(kube_pod_container_resource_requests:sum{cluster=\"$cluster\", resource=\"memory\"}) by (namespace)",
+              "expr": "sum(container_memory_rss{cluster=\"$cluster\",container!=\"\",container!=\"POD\"}) by (namespace) / sum(kube_pod_container_resource_requests{cluster=\"$cluster\", resource=\"memory\"}) by (namespace)",
               "format": "table",
               "instant": true,
               "interval": "",
@@ -1262,7 +1262,7 @@ data:
             },
             {
               "exemplar": true,
-              "expr": "sum(kube_pod_container_resource_requests:sum{cluster=\"$cluster\", resource=\"memory\"}) by (namespace)",
+              "expr": "sum(kube_pod_container_resource_requests{cluster=\"$cluster\", resource=\"memory\"}) by (namespace)",
               "format": "table",
               "instant": true,
               "interval": "",
