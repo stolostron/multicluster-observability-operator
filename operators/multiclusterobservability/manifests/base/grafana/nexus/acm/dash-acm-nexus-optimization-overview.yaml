@@ -627,7 +627,7 @@ data:
               "step": 10
             },
             {
-              "expr": "sum(kube_pod_owner{cluster=\"$cluster\"}) by (namespace)",
+              "expr": "sum(kube_pod_info{cluster=\"$cluster\"}) by (namespace)",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -1272,7 +1272,7 @@ data:
               "step": 10
             },
             {
-              "expr": "sum(kube_pod_owner{cluster=\"$cluster\"}) by (namespace)",
+              "expr": "sum(kube_pod_info{cluster=\"$cluster\"}) by (namespace)",
               "format": "table",
               "hide": false,
               "instant": true,
