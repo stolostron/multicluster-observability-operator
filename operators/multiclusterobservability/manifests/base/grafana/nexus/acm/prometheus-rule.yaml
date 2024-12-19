@@ -54,8 +54,6 @@ spec:
     - expr: cluster:node_cpu:sum_rate5m / count(sum(node_cpu_seconds_total)
         BY (instance, cpu))
       record: cluster:node_cpu:ratio  
-    - record: container_memory_rss:sum
-      expr: sum(container_memory_rss) by (container, namespace)
     - expr: |
         1 - avg without (cpu, mode) (
           rate(node_cpu_seconds_total{job="node-exporter", mode="idle"}[1m])
@@ -200,3 +198,5 @@ spec:
       record: workqueue_queue_duration_seconds_bucket:apiserver:histogram_quantile_99
     - expr: sum(container_memory_cache{container!="POD", container!=""}) by (pod, container, namespace, node)
       record: container_pod_namespace_node:container_memory_cache:sum
+    - expr: sum(container_memory_rss{container!="POD", container!=""}) by (pod, container, namespace, node)
+      record: container_pod_namespace_node:container_memory_rss:sum
