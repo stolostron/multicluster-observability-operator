@@ -8,40 +8,15 @@ import (
 	"os"
 	"strings"
 
-	"gopkg.in/yaml.v2"
-	"k8s.io/klog"
 )
 
 var (
-
-	BearerToken             string
-	optionsFile             string
-
-	testOptions          TestOptions
-	testOptionsContainer TestOptionsContainer
+	BearerToken string
+	optionsFile string
 
 )
 
 func GetGrafanaURL(opt TestOptions) string {
-	if optionsFile == "" {
-		optionsFile = os.Getenv("OPTIONS")
-		if optionsFile == "" {
-			optionsFile = "resources/options.yaml"
-		}
-	}
-
-	data, err := os.ReadFile(optionsFile)
-	if err != nil {
-		klog.Errorf("--options error: %v", err)
-	}
-
-	err = yaml.Unmarshal([]byte(data), &testOptionsContainer)
-	if err != nil {
-		klog.Errorf("--options error: %v", err)
-	}
-
-	testOptions = testOptionsContainer.Options
-
 	cloudProvider := strings.ToLower(os.Getenv("CLOUD_PROVIDER"))
 	substring1 := "rosa"
 	substring2 := "hcp"
