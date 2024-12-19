@@ -113,7 +113,7 @@ data:
           "targets": [
             {
               "exemplar": true,
-              "expr": "(sum(cluster:kube_pod_container_resource_requests:cpu:sum{cluster=\"$cluster\"}) / sum(kube_node_status_allocatable{cluster=\"$cluster\", resource=\"cpu\"})) - (1 - avg(rate(node_cpu_seconds_total{mode=\"idle\",cluster=\"$cluster\"}[$__rate_interval])))",
+              "expr": "(sum(cluster:kube_pod_container_resource_requests:cpu:sum{cluster=\"$cluster\"}) / sum(kube_node_status_allocatable{cluster=\"$cluster\", resource=\"cpu\"})) - (1 - node_cpu_seconds_total:mode_idle:avg_rate5m)",
               "format": "time_series",
               "instant": true,
               "interval": "",
@@ -372,7 +372,7 @@ data:
           "pluginVersion": "8.5.20",
           "targets": [
             {
-              "expr": "1 - avg(rate(node_cpu_seconds_total{mode=\"idle\", cluster=\"$cluster\"}[$__rate_interval]))",
+              "expr": "1 - node_cpu_seconds_total:mode_idle:avg_rate5m",
               "format": "time_series",
               "instant": true,
               "intervalFactor": 1,

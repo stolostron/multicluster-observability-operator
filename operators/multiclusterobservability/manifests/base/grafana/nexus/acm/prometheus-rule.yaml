@@ -194,3 +194,7 @@ spec:
       record: node_namespace_pod_container:container_cpu_usage_seconds_total:sum_rate
     - expr: histogram_quantile(0.99, sum(rate(workqueue_queue_duration_seconds_bucket{job="apiserver"}[5m])) by (instance, name, le))
       record: workqueue_queue_duration_seconds_bucket:apiserver:histogram_quantile_99
+    - expr: sum(rate(grpc_server_started_total{job="etcd",grpc_type="unary"}[5m]))
+      record: grpc_server_started_total:etcd_unary:sum_rate
+    - expr: avg(rate(node_cpu_seconds_total{mode="idle"}[5m]))
+      record: node_cpu_seconds_total:mode_idle:avg_rate5m

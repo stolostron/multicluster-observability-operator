@@ -151,7 +151,7 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(rate(grpc_server_started_total{cluster=\"$cluster\",job=\"etcd\",grpc_type=\"unary\"}[$__rate_interval]))",
+              "expr": "grpc_server_started_total:etcd_unary:sum_rate",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 2,
