@@ -7,13 +7,11 @@ package utils
 import (
 	"os"
 	"strings"
-
 )
 
 var (
 	BearerToken string
 	optionsFile string
-
 )
 
 func GetGrafanaURL(opt TestOptions) string {
