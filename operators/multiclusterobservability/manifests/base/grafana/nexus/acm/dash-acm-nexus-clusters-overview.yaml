@@ -469,7 +469,7 @@ data:
           "targets": [
             {
               "exemplar": true,
-              "expr": "sum(changes(etcd_server_leader_changes_seen_total{cluster=~\"$cluster\",job=\"etcd\"}[$__range])) by (cluster)\n* on(cluster) group_left(db_size) count_values without() (\"db_size\", max(etcd_debugging_mvcc_db_total_size_in_bytes{cluster=~\"$cluster\",job=\"etcd\"}) by (cluster))\n* on(cluster) group_left(has_leader) count_values without() (\"has_leader\", max(etcd_server_has_leader{cluster=~\"$cluster\",job=\"etcd\"}) by (cluster))",
+              "expr": "sum(changes(etcd_server_leader_changes_seen_total{cluster=~\"$cluster\",job=\"etcd\"}[$__range])) by (cluster)\n* on(cluster) group_left(db_size) count_values without() (\"db_size\", max(etcd_mvcc_db_total_size_in_bytes{cluster=~\"$cluster\",job=\"etcd\"}) by (cluster))\n* on(cluster) group_left(has_leader) count_values without() (\"has_leader\", max(etcd_server_has_leader{cluster=~\"$cluster\",job=\"etcd\"}) by (cluster))",
               "format": "table",
               "instant": true,
               "interval": "",
