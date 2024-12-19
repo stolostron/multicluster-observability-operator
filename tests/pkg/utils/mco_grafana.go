@@ -5,7 +5,6 @@
 package utils
 
 import (
-	"io/ioutil"
 	"os"
 	"strings"
 	"time"
@@ -41,7 +40,7 @@ func GetGrafanaURL(opt TestOptions) string {
 		}
 	}
 
-	data, err := ioutil.ReadFile(optionsFile)
+	data, err := os.ReadFile(optionsFile)
 	if err != nil {
 		klog.Errorf("--options error: %v", err)
 	}
