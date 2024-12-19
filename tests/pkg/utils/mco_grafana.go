@@ -9,11 +9,6 @@ import (
 	"strings"
 )
 
-var (
-	BearerToken string
-	optionsFile string
-)
-
 func GetGrafanaURL(opt TestOptions) string {
 	cloudProvider := strings.ToLower(os.Getenv("CLOUD_PROVIDER"))
 	substring1 := "rosa"
