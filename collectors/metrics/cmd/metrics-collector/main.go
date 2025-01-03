@@ -38,15 +38,16 @@ import (
 
 func main() {
 	opt := &Options{
-		From:                   "http://localhost:9090",
-		Listen:                 "localhost:9002",
-		LimitBytes:             200 * 1024,
-		Matchers:               []string{`{__name__="up"}`},
-		Interval:               4*time.Minute + 30*time.Second,
-		EvaluateInterval:       30 * time.Second,
-		WorkerNum:              1,
-		DisableHyperShift:      false,
-		DisableStatusReporting: false,
+		From:                    "http://localhost:9090",
+		Listen:                  "localhost:9002",
+		LimitBytes:              200 * 1024,
+		Matchers:                []string{`{__name__="up"}`},
+		Interval:                4*time.Minute + 30*time.Second,
+		EvaluateInterval:        30 * time.Second,
+		WorkerNum:               1,
+		DisableHyperShift:       false,
+		DisableStatusReporting:  false,
+		SimulatedTimeseriesFile: "",
 	}
 	cmd := &cobra.Command{
 		Short:         "Remote write federated metrics from prometheus",
@@ -722,6 +723,10 @@ func initShardedConfigs(o *Options, agent Agent) ([]*forwarder.Config, error) {
 }
 
 func runMultiWorkers(o *Options, cfg *forwarder.Config) error {
+	if o.WorkerNum > 1 && o.SimulatedTimeseriesFile == "" {
+		return nil
+	}
+
 	for i := 1; i < int(o.WorkerNum); i++ {
 		opt := &Options{
 			From:                    o.From,
