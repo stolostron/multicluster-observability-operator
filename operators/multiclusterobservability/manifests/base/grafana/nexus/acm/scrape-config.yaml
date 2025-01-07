@@ -13,8 +13,6 @@ spec:
   params:
     match[]:
     - '{__name__=":node_memory_MemAvailable_bytes:sum"}'
-    - '{__name__="acm_label_names"}'
-    - '{__name__="acm_managed_cluster_labels"}'
     - '{__name__="active_streams_lease:grpc_server_handled_total:sum"}'
     - '{__name__="active_streams_watch:grpc_server_handled_total:sum"}'
     - '{__name__="apiserver_request_duration_seconds:histogram_quantile_99"}'
