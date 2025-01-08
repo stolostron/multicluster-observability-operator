@@ -522,7 +522,7 @@ func TestObservabilityAddonController(t *testing.T) {
 		},
 	}
 
-	_, ok, err := config.ReadImageManifestConfigMap(c, testMCHInstance.Status.CurrentVersion)
+	ok, err := config.ReadImageManifestConfigMap(c, testMCHInstance.Status.CurrentVersion)
 	if err != nil || !ok {
 		t.Fatalf("Failed to read image manifest configmap: (%T,%v)", ok, err)
 	}
