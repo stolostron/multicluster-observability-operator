@@ -4,7 +4,7 @@ go 1.21
 
 require (
 	github.com/IBM/controller-filtered-cache v0.3.6
-	github.com/cenkalti/backoff/v4 v4.3.0
+	github.com/cenkalti/backoff v2.2.1+incompatible
 	github.com/cloudflare/cfssl v1.6.4
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32
 	github.com/go-co-op/gocron v1.37.0
