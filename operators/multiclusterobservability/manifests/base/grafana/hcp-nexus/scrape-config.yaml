@@ -1,0 +1,26 @@
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: ScrapeConfig
+metadata:
+  creationTimestamp: null
+  labels:
+    app: acm-platform-metrics-collector
+    release: multicluster-observability-addon
+  name: platform-metrics-hcp
+  namespace: open-cluster-management-observability
+spec:
+  jobName: platform-metrics
+  metricsPath: /federate
+  params:
+    match[]:
+    - '{__name__="mce_hs_addon_worker_node_resource_capacities_gauge"}'
+    - '{__name__="mce_hs_addon_hosted_control_planes_status_gauge"}'
+    - '{__name__="mce_hs_addon_qps_based_hcp_capacity_gauge"}'
+    - '{__name__="mce_hs_addon_qps_gauge"}'
+    - '{__name__="mce_hs_addon_request_based_hcp_capacity_gauge"}'
+    - '{__name__="mce_hs_addon_total_hosted_control_planes_gauge"}'
+  metricRelabelings:
+  - action: labeldrop
+    regex: prometheus_replica|managed_cluster|id
+  staticConfigs:
+  - targets:
+    - localhost:8090
