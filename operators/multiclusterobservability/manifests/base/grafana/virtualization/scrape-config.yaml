@@ -1,0 +1,43 @@
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: ScrapeConfig
+metadata:
+  creationTimestamp: null
+  labels:
+    app: acm-platform-metrics-collector
+    release: multicluster-observability-addon
+  name: platform-metrics-virtualization
+  namespace: open-cluster-management-observability
+spec:
+  jobName: platform-metrics
+  metricsPath: /federate
+  params:
+    match[]:
+    - '{__name__="csv_abnormal"}'
+    - '{__name__="csv_succeeded"}'
+    - '{__name__="kubevirt_hco_system_health_status"}'
+    - '{__name__="kubevirt_hyperconverged_operator_health_status"}'
+    - '{__name__="kubevirt_vm_error_status_last_transition_timestamp_seconds"}'
+    - '{__name__="kubevirt_vm_migrating_status_last_transition_timestamp_seconds"}'
+    - '{__name__="kubevirt_vm_non_running_status_last_transition_timestamp_seconds"}'
+    - '{__name__="kubevirt_vm_resource_requests"}'
+    - '{__name__="kubevirt_vm_running_status_last_transition_timestamp_seconds"}'
+    - '{__name__="kubevirt_vm_starting_status_last_transition_timestamp_seconds"}'
+    - '{__name__="kubevirt_vmi_cpu_usage_seconds_total"}'
+    - '{__name__="kubevirt_vmi_info"}'
+    - '{__name__="kubevirt_vmi_memory_available_bytes"}'
+    - '{__name__="kubevirt_vmi_memory_cached_bytes"}'
+    - '{__name__="kubevirt_vmi_memory_unused_bytes"}'
+    - '{__name__="kubevirt_vmi_memory_used_bytes"}'
+    - '{__name__="kubevirt_vmi_network_receive_bytes_total"}'
+    - '{__name__="kubevirt_vmi_network_receive_packets_total"}'
+    - '{__name__="kubevirt_vmi_network_transmit_bytes_total"}'
+    - '{__name__="kubevirt_vmi_network_transmit_packets_total"}'
+    - '{__name__="kubevirt_vmi_phase_count"}'
+    - '{__name__="kubevirt_vmi_storage_iops_read_total"}'
+    - '{__name__="kubevirt_vmi_storage_iops_write_total"}'
+  metricRelabelings:
+  - action: labeldrop
+    regex: prometheus_replica|managed_cluster|id
+  staticConfigs:
+  - targets:
+    - localhost:8090

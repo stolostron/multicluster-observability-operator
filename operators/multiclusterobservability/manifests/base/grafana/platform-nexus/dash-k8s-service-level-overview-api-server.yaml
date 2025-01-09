@@ -677,11 +677,4 @@ metadata:
   name: grafana-dashboard-k8s-service-level-overview-nexus
   namespace: open-cluster-management-observability
   annotations:
-    observability.open-cluster-management.io/dashboard-folder: Nexus
-  ownerReferences:
-    - apiVersion: observability.open-cluster-management.io/v1beta2
-      kind: MultiClusterObservability
-      name: observability
-      uid: 577e70b7-fe3d-44a0-a8ef-427bd7c073e5
-      controller: true
-      blockOwnerDeletion: true
+    observability.open-cluster-management.io/dashboard-folder: Platform (Nexus)

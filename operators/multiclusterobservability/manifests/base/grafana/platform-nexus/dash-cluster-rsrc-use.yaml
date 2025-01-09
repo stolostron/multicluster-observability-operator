@@ -1,6 +1,6 @@
 apiVersion: v1
 data:
-  k8s-etcd.json: |-
+  cluster-rsrc-use.json: |-
     {
       "annotations": {
         "list": [
@@ -21,89 +21,32 @@ data:
           }
         ]
       },
-      "description": "etcd dashboard",
+      "description": "http://www.brendangregg.com/USEmethod/use-linux.html",
       "editable": true,
-      "gnetId": null,
+      "gnetId": 12135,
       "graphTooltip": 0,
-      "id": 17,
-      "iteration": 1682530945005,
+      "id": 6,
+      "iteration": 1682530948141,
       "links": [],
       "panels": [
         {
-          "cacheTimeout": null,
+          "collapsed": false,
           "datasource": "$datasource",
           "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
-              "mappings": [
-                {
-                  "options": {
-                    "match": "null",
-                    "result": {
-                      "text": "N/A"
-                    }
-                  },
-                  "type": "special"
-                }
-              ],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": null
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              },
-              "unit": "none"
-            },
+            "defaults": {},
             "overrides": []
           },
           "gridPos": {
-            "h": 7,
-            "w": 6,
+            "h": 1,
+            "w": 24,
             "x": 0,
             "y": 0
           },
-          "id": 28,
-          "interval": null,
-          "links": [],
-          "maxDataPoints": 100,
-          "options": {
-            "colorMode": "value",
-            "graphMode": "none",
-            "justifyMode": "auto",
-            "orientation": "horizontal",
-            "reduceOptions": {
-              "calcs": [
-                "mean"
-              ],
-              "fields": "",
-              "values": false
-            },
-            "text": {},
-            "textMode": "auto"
-          },
-          "pluginVersion": "8.5.20",
-          "targets": [
-            {
-              "expr": "sum(etcd_server_has_leader{cluster=\"$cluster\",job=\"etcd\"})",
-              "interval": "",
-              "intervalFactor": 2,
-              "legendFormat": "",
-              "metric": "etcd_server_has_leader",
-              "refId": "A",
-              "step": 20
-            }
-          ],
-          "title": "Up",
-          "type": "stat"
+          "id": 10,
+          "panels": [],
+          "repeat": null,
+          "title": "CPU",
+          "type": "row"
         },
         {
           "aliasColors": {},
@@ -111,232 +54,19 @@ data:
           "dashLength": 10,
           "dashes": false,
           "datasource": "$datasource",
-          "editable": true,
-          "error": false,
-          "fill": 0,
+          "fieldConfig": {
+            "defaults": {
+              "links": []
+            },
+            "overrides": []
+          },
+          "fill": 10,
           "fillGradient": 0,
           "gridPos": {
-            "h": 7,
-            "w": 10,
-            "x": 6,
-            "y": 0
-          },
-          "hiddenSeries": false,
-          "id": 23,
-          "isNew": true,
-          "legend": {
-            "avg": false,
-            "current": false,
-            "max": false,
-            "min": false,
-            "show": false,
-            "total": false,
-            "values": false
-          },
-          "lines": true,
-          "linewidth": 2,
-          "links": [],
-          "nullPointMode": "connected",
-          "options": {
-            "alertThreshold": true
-          },
-          "percentage": false,
-          "pluginVersion": "8.5.20",
-          "pointradius": 5,
-          "points": false,
-          "renderer": "flot",
-          "seriesOverrides": [],
-          "spaceLength": 10,
-          "stack": false,
-          "steppedLine": false,
-          "targets": [
-            {
-              "expr": "grpc_server_started_total:etcd_unary:sum_rate",
-              "format": "time_series",
-              "interval": "",
-              "intervalFactor": 2,
-              "legendFormat": "RPC Rate",
-              "metric": "grpc_server_started_total",
-              "refId": "A",
-              "step": 2
-            },
-            {
-              "expr": "rpc_rate:grpc_server_handled_total:sum_rate{cluster=\"$cluster\"}",
-              "format": "time_series",
-              "interval": "",
-              "intervalFactor": 2,
-              "legendFormat": "RPC Failed Rate",
-              "metric": "grpc_server_handled_total",
-              "refId": "B",
-              "step": 2
-            }
-          ],
-          "thresholds": [],
-          "timeFrom": null,
-          "timeRegions": [],
-          "timeShift": null,
-          "title": "RPC Rate",
-          "tooltip": {
-            "msResolution": false,
-            "shared": true,
-            "sort": 0,
-            "value_type": "individual"
-          },
-          "type": "graph",
-          "xaxis": {
-            "buckets": null,
-            "mode": "time",
-            "name": null,
-            "show": true,
-            "values": []
-          },
-          "yaxes": [
-            {
-              "format": "ops",
-              "label": null,
-              "logBase": 1,
-              "max": null,
-              "min": null,
-              "show": true
-            },
-            {
-              "format": "short",
-              "label": null,
-              "logBase": 1,
-              "max": null,
-              "min": null,
-              "show": true
-            }
-          ],
-          "yaxis": {
-            "align": false,
-            "alignLevel": null
-          }
-        },
-        {
-          "aliasColors": {},
-          "bars": false,
-          "dashLength": 10,
-          "dashes": false,
-          "datasource": "$datasource",
-          "editable": true,
-          "error": false,
-          "fill": 0,
-          "fillGradient": 0,
-          "gridPos": {
-            "h": 7,
-            "w": 8,
-            "x": 16,
-            "y": 0
-          },
-          "hiddenSeries": false,
-          "id": 41,
-          "isNew": true,
-          "legend": {
-            "avg": false,
-            "current": false,
-            "max": false,
-            "min": false,
-            "show": false,
-            "total": false,
-            "values": false
-          },
-          "lines": true,
-          "linewidth": 2,
-          "links": [],
-          "nullPointMode": "connected",
-          "options": {
-            "alertThreshold": true
-          },
-          "percentage": false,
-          "pluginVersion": "8.5.20",
-          "pointradius": 5,
-          "points": false,
-          "renderer": "flot",
-          "seriesOverrides": [],
-          "spaceLength": 10,
-          "stack": false,
-          "steppedLine": false,
-          "targets": [
-            {
-              "expr": "active_streams_watch:grpc_server_handled_total:sum{cluster=\"$cluster\"}",
-              "interval": "",
-              "intervalFactor": 2,
-              "legendFormat": "Watch Streams",
-              "metric": "grpc_server_handled_total",
-              "refId": "A",
-              "step": 4
-            },
-            {
-              "expr": "active_streams_lease:grpc_server_handled_total:sum{cluster=\"$cluster\"}",
-              "hide": false,
-              "interval": "",
-              "intervalFactor": 2,
-              "legendFormat": "Lease Streams",
-              "metric": "grpc_server_handled_total",
-              "refId": "B",
-              "step": 4
-            }
-          ],
-          "thresholds": [],
-          "timeFrom": null,
-          "timeRegions": [],
-          "timeShift": null,
-          "title": "Active Streams",
-          "tooltip": {
-            "msResolution": false,
-            "shared": true,
-            "sort": 0,
-            "value_type": "individual"
-          },
-          "type": "graph",
-          "xaxis": {
-            "buckets": null,
-            "mode": "time",
-            "name": null,
-            "show": true,
-            "values": []
-          },
-          "yaxes": [
-            {
-              "format": "short",
-              "label": "",
-              "logBase": 1,
-              "max": null,
-              "min": null,
-              "show": true
-            },
-            {
-              "format": "short",
-              "label": null,
-              "logBase": 1,
-              "max": null,
-              "min": null,
-              "show": true
-            }
-          ],
-          "yaxis": {
-            "align": false,
-            "alignLevel": null
-          }
-        },
-        {
-          "aliasColors": {},
-          "bars": false,
-          "dashLength": 10,
-          "dashes": false,
-          "datasource": "$datasource",
-          "decimals": null,
-          "editable": true,
-          "error": false,
-          "fill": 0,
-          "fillGradient": 0,
-          "grid": {},
-          "gridPos": {
-            "h": 7,
-            "w": 8,
+            "h": 8,
+            "w": 12,
             "x": 0,
-            "y": 7
+            "y": 1
           },
           "hiddenSeries": false,
           "id": 1,
@@ -345,14 +75,14 @@ data:
             "current": false,
             "max": false,
             "min": false,
-            "show": false,
+            "show": true,
             "total": false,
             "values": false
           },
           "lines": true,
-          "linewidth": 2,
+          "linewidth": 0,
           "links": [],
-          "nullPointMode": "connected",
+          "nullPointMode": "null as zero",
           "options": {
             "alertThreshold": true
           },
@@ -363,30 +93,28 @@ data:
           "renderer": "flot",
           "seriesOverrides": [],
           "spaceLength": 10,
-          "stack": false,
+          "stack": true,
           "steppedLine": false,
           "targets": [
             {
-              "expr": "etcd_mvcc_db_total_size_in_bytes{cluster=\"$cluster\",job=\"etcd\"}",
-              "hide": false,
-              "interval": "",
+              "expr": "(\n  instance:node_cpu_utilisation:rate1m{cluster=\"$cluster\",job=\"node-exporter\"}\n*\n  instance:node_num_cpu:sum{cluster=\"$cluster\",job=\"node-exporter\"}\n)\n/ scalar(sum(instance:node_num_cpu:sum{cluster=\"$cluster\",job=\"node-exporter\"}))\n",
+              "format": "time_series",
               "intervalFactor": 2,
-              "legendFormat": "{{instance}} DB Size",
-              "metric": "",
+              "legendFormat": "{{instance}}",
+              "legendLink": "/dashboard/file/node-rsrc-use.json",
               "refId": "A",
-              "step": 4
+              "step": 10
             }
           ],
           "thresholds": [],
           "timeFrom": null,
           "timeRegions": [],
           "timeShift": null,
-          "title": "DB Size",
+          "title": "CPU Utilisation",
           "tooltip": {
-            "msResolution": false,
-            "shared": true,
+            "shared": false,
             "sort": 0,
-            "value_type": "cumulative"
+            "value_type": "individual"
           },
           "type": "graph",
           "xaxis": {
@@ -398,14 +126,16 @@ data:
           },
           "yaxes": [
             {
-              "format": "bytes",
+              "format": "percentunit",
+              "label": null,
               "logBase": 1,
-              "max": null,
-              "min": null,
+              "max": 1,
+              "min": 0,
               "show": true
             },
             {
               "format": "short",
+              "label": null,
               "logBase": 1,
               "max": null,
               "min": null,
@@ -423,16 +153,137 @@ data:
           "dashLength": 10,
           "dashes": false,
           "datasource": "$datasource",
-          "editable": true,
-          "error": false,
-          "fill": 0,
+          "fieldConfig": {
+            "defaults": {
+              "links": []
+            },
+            "overrides": []
+          },
+          "fill": 10,
           "fillGradient": 0,
-          "grid": {},
           "gridPos": {
-            "h": 7,
-            "w": 8,
-            "x": 8,
-            "y": 7
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 1
+          },
+          "hiddenSeries": false,
+          "id": 2,
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": true,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 0,
+          "links": [],
+          "nullPointMode": "null as zero",
+          "options": {
+            "alertThreshold": true
+          },
+          "percentage": false,
+          "pluginVersion": "8.5.20",
+          "pointradius": 5,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [],
+          "spaceLength": 10,
+          "stack": true,
+          "steppedLine": false,
+          "targets": [
+            {
+              "expr": "instance:node_load1_per_cpu:ratio{cluster=\"$cluster\",job=\"node-exporter\"}\n/ scalar(count(instance:node_load1_per_cpu:ratio{cluster=\"$cluster\",job=\"node-exporter\"}))\n",
+              "format": "time_series",
+              "intervalFactor": 2,
+              "legendFormat": "{{instance}}",
+              "legendLink": "/dashboard/file/node-rsrc-use.json",
+              "refId": "A",
+              "step": 10
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeRegions": [],
+          "timeShift": null,
+          "title": "CPU Saturation (load1 per CPU)",
+          "tooltip": {
+            "shared": false,
+            "sort": 0,
+            "value_type": "individual"
+          },
+          "type": "graph",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "format": "percentunit",
+              "label": null,
+              "logBase": 1,
+              "max": 1,
+              "min": 0,
+              "show": true
+            },
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": false
+            }
+          ],
+          "yaxis": {
+            "align": false,
+            "alignLevel": null
+          }
+        },
+        {
+          "collapsed": false,
+          "datasource": "$datasource",
+          "fieldConfig": {
+            "defaults": {},
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 9
+          },
+          "id": 11,
+          "panels": [],
+          "repeat": null,
+          "title": "Memory",
+          "type": "row"
+        },
+        {
+          "aliasColors": {},
+          "bars": false,
+          "dashLength": 10,
+          "dashes": false,
+          "datasource": "$datasource",
+          "fieldConfig": {
+            "defaults": {
+              "links": []
+            },
+            "overrides": []
+          },
+          "fill": 10,
+          "fillGradient": 0,
+          "gridPos": {
+            "h": 9,
+            "w": 12,
+            "x": 0,
+            "y": 10
           },
           "hiddenSeries": false,
           "id": 3,
@@ -441,57 +292,46 @@ data:
             "current": false,
             "max": false,
             "min": false,
-            "show": false,
+            "show": true,
             "total": false,
             "values": false
           },
           "lines": true,
-          "linewidth": 2,
+          "linewidth": 0,
           "links": [],
-          "nullPointMode": "connected",
+          "nullPointMode": "null as zero",
           "options": {
             "alertThreshold": true
           },
           "percentage": false,
           "pluginVersion": "8.5.20",
-          "pointradius": 1,
+          "pointradius": 5,
           "points": false,
           "renderer": "flot",
           "seriesOverrides": [],
           "spaceLength": 10,
-          "stack": false,
-          "steppedLine": true,
+          "stack": true,
+          "steppedLine": false,
           "targets": [
             {
-              "expr": "histogram_quantile(0.99, sum(rate(etcd_disk_wal_fsync_duration_seconds_bucket{cluster=\"$cluster\",job=\"etcd\"}[$__rate_interval])) by (instance, le))",
-              "hide": false,
-              "interval": "",
+              "expr": "instance:node_memory_utilisation:ratio{cluster=\"$cluster\",job=\"node-exporter\"}\n/ scalar(count(instance:node_memory_utilisation:ratio{cluster=\"$cluster\",job=\"node-exporter\"}))\n",
+              "format": "time_series",
               "intervalFactor": 2,
-              "legendFormat": "{{instance}} WAL fsync",
-              "metric": "etcd_disk_wal_fsync_duration_seconds_bucket",
+              "legendFormat": "{{instance}}",
+              "legendLink": "/dashboard/file/node-rsrc-use.json",
               "refId": "A",
-              "step": 4
-            },
-            {
-              "expr": "histogram_quantile(0.99, sum(rate(etcd_disk_backend_commit_duration_seconds_bucket{cluster=\"$cluster\",job=\"etcd\"}[$__rate_interval])) by (instance, le))",
-              "interval": "",
-              "intervalFactor": 2,
-              "legendFormat": "{{instance}} DB fsync",
-              "metric": "etcd_disk_backend_commit_duration_seconds_bucket",
-              "refId": "B",
-              "step": 4
+              "step": 10
             }
           ],
           "thresholds": [],
           "timeFrom": null,
           "timeRegions": [],
           "timeShift": null,
-          "title": "Disk Sync Duration",
+          "title": "Memory Utilisation",
           "tooltip": {
-            "msResolution": false,
-            "shared": true,
+            "shared": false,
             "sort": 0,
-            "value_type": "cumulative"
+            "value_type": "individual"
           },
           "type": "graph",
           "xaxis": {
@@ -503,14 +343,16 @@ data:
           },
           "yaxes": [
             {
-              "format": "s",
+              "format": "percentunit",
+              "label": null,
               "logBase": 1,
-              "max": null,
-              "min": null,
+              "max": 1,
+              "min": 0,
               "show": true
             },
             {
               "format": "short",
+              "label": null,
               "logBase": 1,
               "max": null,
               "min": null,
@@ -528,323 +370,35 @@ data:
           "dashLength": 10,
           "dashes": false,
           "datasource": "$datasource",
-          "editable": true,
-          "error": false,
-          "fill": 0,
-          "fillGradient": 0,
-          "gridPos": {
-            "h": 7,
-            "w": 8,
-            "x": 16,
-            "y": 7
-          },
-          "hiddenSeries": false,
-          "id": 29,
-          "isNew": true,
-          "legend": {
-            "avg": false,
-            "current": false,
-            "max": false,
-            "min": false,
-            "show": false,
-            "total": false,
-            "values": false
-          },
-          "lines": true,
-          "linewidth": 2,
-          "links": [],
-          "nullPointMode": "connected",
-          "options": {
-            "alertThreshold": true
-          },
-          "percentage": false,
-          "pluginVersion": "8.5.20",
-          "pointradius": 5,
-          "points": false,
-          "renderer": "flot",
-          "seriesOverrides": [],
-          "spaceLength": 10,
-          "stack": false,
-          "steppedLine": false,
-          "targets": [
-            {
-              "expr": "process_resident_memory_bytes{cluster=\"$cluster\",job=\"etcd\"}",
-              "interval": "",
-              "intervalFactor": 2,
-              "legendFormat": "{{instance}} Resident Memory",
-              "metric": "process_resident_memory_bytes",
-              "refId": "A",
-              "step": 4
-            }
-          ],
-          "thresholds": [],
-          "timeFrom": null,
-          "timeRegions": [],
-          "timeShift": null,
-          "title": "Memory",
-          "tooltip": {
-            "msResolution": false,
-            "shared": true,
-            "sort": 0,
-            "value_type": "individual"
-          },
-          "type": "graph",
-          "xaxis": {
-            "buckets": null,
-            "mode": "time",
-            "name": null,
-            "show": true,
-            "values": []
-          },
-          "yaxes": [
-            {
-              "format": "bytes",
-              "label": null,
-              "logBase": 1,
-              "max": null,
-              "min": null,
-              "show": true
+          "fieldConfig": {
+            "defaults": {
+              "links": []
             },
-            {
-              "format": "short",
-              "label": null,
-              "logBase": 1,
-              "max": null,
-              "min": null,
-              "show": true
-            }
-          ],
-          "yaxis": {
-            "align": false,
-            "alignLevel": null
-          }
-        },
-        {
-          "aliasColors": {},
-          "bars": false,
-          "dashLength": 10,
-          "dashes": false,
-          "datasource": "$datasource",
-          "editable": true,
-          "error": false,
-          "fill": 5,
+            "overrides": []
+          },
+          "fill": 10,
           "fillGradient": 0,
           "gridPos": {
-            "h": 7,
-            "w": 6,
-            "x": 0,
-            "y": 14
-          },
-          "hiddenSeries": false,
-          "id": 22,
-          "isNew": true,
-          "legend": {
-            "avg": false,
-            "current": false,
-            "max": false,
-            "min": false,
-            "show": false,
-            "total": false,
-            "values": false
-          },
-          "lines": true,
-          "linewidth": 2,
-          "links": [],
-          "nullPointMode": "connected",
-          "options": {
-            "alertThreshold": true
-          },
-          "percentage": false,
-          "pluginVersion": "8.5.20",
-          "pointradius": 5,
-          "points": false,
-          "renderer": "flot",
-          "seriesOverrides": [],
-          "spaceLength": 10,
-          "stack": true,
-          "steppedLine": false,
-          "targets": [
-            {
-              "expr": "rate(etcd_network_client_grpc_received_bytes_total{cluster=\"$cluster\", job=\"etcd\"}[$__rate_interval])",
-              "interval": "",
-              "intervalFactor": 2,
-              "legendFormat": "{{instance}} Client Traffic In",
-              "metric": "etcd_network_client_grpc_received_bytes_total",
-              "refId": "A",
-              "step": 4
-            }
-          ],
-          "thresholds": [],
-          "timeFrom": null,
-          "timeRegions": [],
-          "timeShift": null,
-          "title": "Client Traffic In",
-          "tooltip": {
-            "msResolution": false,
-            "shared": true,
-            "sort": 0,
-            "value_type": "individual"
-          },
-          "type": "graph",
-          "xaxis": {
-            "buckets": null,
-            "mode": "time",
-            "name": null,
-            "show": true,
-            "values": []
-          },
-          "yaxes": [
-            {
-              "format": "Bps",
-              "label": null,
-              "logBase": 1,
-              "max": null,
-              "min": null,
-              "show": true
-            },
-            {
-              "format": "short",
-              "label": null,
-              "logBase": 1,
-              "max": null,
-              "min": null,
-              "show": true
-            }
-          ],
-          "yaxis": {
-            "align": false,
-            "alignLevel": null
-          }
-        },
-        {
-          "aliasColors": {},
-          "bars": false,
-          "dashLength": 10,
-          "dashes": false,
-          "datasource": "$datasource",
-          "editable": true,
-          "error": false,
-          "fill": 5,
-          "fillGradient": 0,
-          "gridPos": {
-            "h": 7,
-            "w": 6,
-            "x": 6,
-            "y": 14
-          },
-          "hiddenSeries": false,
-          "id": 21,
-          "isNew": true,
-          "legend": {
-            "avg": false,
-            "current": false,
-            "max": false,
-            "min": false,
-            "show": false,
-            "total": false,
-            "values": false
-          },
-          "lines": true,
-          "linewidth": 2,
-          "links": [],
-          "nullPointMode": "connected",
-          "options": {
-            "alertThreshold": true
-          },
-          "percentage": false,
-          "pluginVersion": "8.5.20",
-          "pointradius": 5,
-          "points": false,
-          "renderer": "flot",
-          "seriesOverrides": [],
-          "spaceLength": 10,
-          "stack": true,
-          "steppedLine": false,
-          "targets": [
-            {
-              "expr": "rate(etcd_network_client_grpc_sent_bytes_total{cluster=\"$cluster\", job=\"etcd\"}[$__rate_interval])",
-              "interval": "",
-              "intervalFactor": 2,
-              "legendFormat": "{{instance}} Client Traffic Out",
-              "metric": "etcd_network_client_grpc_sent_bytes_total",
-              "refId": "A",
-              "step": 4
-            }
-          ],
-          "thresholds": [],
-          "timeFrom": null,
-          "timeRegions": [],
-          "timeShift": null,
-          "title": "Client Traffic Out",
-          "tooltip": {
-            "msResolution": false,
-            "shared": true,
-            "sort": 0,
-            "value_type": "individual"
-          },
-          "type": "graph",
-          "xaxis": {
-            "buckets": null,
-            "mode": "time",
-            "name": null,
-            "show": true,
-            "values": []
-          },
-          "yaxes": [
-            {
-              "format": "Bps",
-              "label": null,
-              "logBase": 1,
-              "max": null,
-              "min": null,
-              "show": true
-            },
-            {
-              "format": "short",
-              "label": null,
-              "logBase": 1,
-              "max": null,
-              "min": null,
-              "show": true
-            }
-          ],
-          "yaxis": {
-            "align": false,
-            "alignLevel": null
-          }
-        },
-        {
-          "aliasColors": {},
-          "bars": false,
-          "dashLength": 10,
-          "dashes": false,
-          "datasource": "$datasource",
-          "editable": true,
-          "error": false,
-          "fill": 0,
-          "fillGradient": 0,
-          "gridPos": {
-            "h": 7,
-            "w": 6,
+            "h": 9,
+            "w": 12,
             "x": 12,
-            "y": 14
+            "y": 10
           },
           "hiddenSeries": false,
-          "id": 20,
-          "isNew": true,
+          "id": 4,
           "legend": {
             "avg": false,
             "current": false,
             "max": false,
             "min": false,
-            "show": false,
+            "show": true,
             "total": false,
             "values": false
           },
           "lines": true,
-          "linewidth": 2,
+          "linewidth": 0,
           "links": [],
-          "nullPointMode": "connected",
+          "nullPointMode": "null as zero",
           "options": {
             "alertThreshold": true
           },
@@ -855,27 +409,26 @@ data:
           "renderer": "flot",
           "seriesOverrides": [],
           "spaceLength": 10,
-          "stack": false,
+          "stack": true,
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(rate(etcd_network_peer_received_bytes_total{cluster=\"$cluster\", job=\"etcd\"}[$__rate_interval])) by (instance)",
-              "interval": "",
+              "expr": "instance:node_vmstat_pgmajfault:rate1m{cluster=\"$cluster\",job=\"node-exporter\"}",
+              "format": "time_series",
               "intervalFactor": 2,
-              "legendFormat": "{{instance}} Peer Traffic In",
-              "metric": "etcd_network_peer_received_bytes_total",
+              "legendFormat": "{{instance}}",
+              "legendLink": "/dashboard/file/node-rsrc-use.json",
               "refId": "A",
-              "step": 4
+              "step": 10
             }
           ],
           "thresholds": [],
           "timeFrom": null,
           "timeRegions": [],
           "timeShift": null,
-          "title": "Peer Traffic In",
+          "title": "Memory Saturation (Major Page Faults)",
           "tooltip": {
-            "msResolution": false,
-            "shared": true,
+            "shared": false,
             "sort": 0,
             "value_type": "individual"
           },
@@ -889,11 +442,11 @@ data:
           },
           "yaxes": [
             {
-              "format": "Bps",
+              "format": "rps",
               "label": null,
               "logBase": 1,
               "max": null,
-              "min": null,
+              "min": 0,
               "show": true
             },
             {
@@ -902,7 +455,7 @@ data:
               "logBase": 1,
               "max": null,
               "min": null,
-              "show": true
+              "show": false
             }
           ],
           "yaxis": {
@@ -911,134 +464,59 @@ data:
           }
         },
         {
+          "collapsed": false,
+          "datasource": "$datasource",
+          "fieldConfig": {
+            "defaults": {},
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 19
+          },
+          "id": 12,
+          "panels": [],
+          "repeat": null,
+          "title": "Network",
+          "type": "row"
+        },
+        {
           "aliasColors": {},
           "bars": false,
           "dashLength": 10,
           "dashes": false,
           "datasource": "$datasource",
-          "decimals": null,
-          "editable": true,
-          "error": false,
-          "fill": 0,
-          "fillGradient": 0,
-          "grid": {},
-          "gridPos": {
-            "h": 7,
-            "w": 6,
-            "x": 18,
-            "y": 14
-          },
-          "hiddenSeries": false,
-          "id": 16,
-          "legend": {
-            "avg": false,
-            "current": false,
-            "max": false,
-            "min": false,
-            "show": false,
-            "total": false,
-            "values": false
-          },
-          "lines": true,
-          "linewidth": 2,
-          "links": [],
-          "nullPointMode": "connected",
-          "options": {
-            "alertThreshold": true
-          },
-          "percentage": false,
-          "pluginVersion": "8.5.20",
-          "pointradius": 5,
-          "points": false,
-          "renderer": "flot",
-          "seriesOverrides": [],
-          "spaceLength": 10,
-          "stack": false,
-          "steppedLine": false,
-          "targets": [
-            {
-              "expr": "sum(rate(etcd_network_peer_sent_bytes_total{cluster=\"$cluster\", job=\"etcd\"}[$__rate_interval])) by (instance)",
-              "hide": false,
-              "interval": "",
-              "intervalFactor": 2,
-              "legendFormat": "{{instance}} Peer Traffic Out",
-              "metric": "etcd_network_peer_sent_bytes_total",
-              "refId": "A",
-              "step": 4
-            }
-          ],
-          "thresholds": [],
-          "timeFrom": null,
-          "timeRegions": [],
-          "timeShift": null,
-          "title": "Peer Traffic Out",
-          "tooltip": {
-            "msResolution": false,
-            "shared": true,
-            "sort": 0,
-            "value_type": "cumulative"
-          },
-          "type": "graph",
-          "xaxis": {
-            "buckets": null,
-            "mode": "time",
-            "name": null,
-            "show": true,
-            "values": []
-          },
-          "yaxes": [
-            {
-              "format": "Bps",
-              "logBase": 1,
-              "max": null,
-              "min": null,
-              "show": true
+          "fieldConfig": {
+            "defaults": {
+              "links": []
             },
-            {
-              "format": "short",
-              "logBase": 1,
-              "max": null,
-              "min": null,
-              "show": true
-            }
-          ],
-          "yaxis": {
-            "align": false,
-            "alignLevel": null
-          }
-        },
-        {
-          "aliasColors": {},
-          "bars": false,
-          "dashLength": 10,
-          "dashes": false,
-          "datasource": "$datasource",
-          "editable": true,
-          "error": false,
-          "fill": 0,
+            "overrides": []
+          },
+          "fill": 10,
           "fillGradient": 0,
           "gridPos": {
-            "h": 7,
+            "h": 9,
             "w": 12,
             "x": 0,
-            "y": 21
+            "y": 20
           },
           "hiddenSeries": false,
-          "id": 40,
-          "isNew": true,
+          "id": 5,
           "legend": {
             "avg": false,
             "current": false,
             "max": false,
             "min": false,
-            "show": false,
+            "show": true,
             "total": false,
             "values": false
           },
           "lines": true,
-          "linewidth": 2,
+          "linewidth": 0,
           "links": [],
-          "nullPointMode": "connected",
+          "nullPointMode": "null as zero",
           "options": {
             "alertThreshold": true
           },
@@ -1047,53 +525,47 @@ data:
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
-          "seriesOverrides": [],
+          "seriesOverrides": [
+            {
+              "alias": "/ Receive/",
+              "stack": "A"
+            },
+            {
+              "alias": "/ Transmit/",
+              "stack": "B",
+              "transform": "negative-Y"
+            }
+          ],
           "spaceLength": 10,
-          "stack": false,
+          "stack": true,
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(rate(etcd_server_proposals_failed_total{cluster=\"$cluster\", job=\"etcd\"}[$__rate_interval]))",
-              "interval": "",
+              "expr": "instance:node_network_receive_bytes_excluding_lo:rate1m{cluster=\"$cluster\",job=\"node-exporter\"}",
+              "format": "time_series",
               "intervalFactor": 2,
-              "legendFormat": "Proposal Failure Rate",
-              "metric": "etcd_server_proposals_failed_total",
+              "legendFormat": "{{instance}} Receive",
+              "legendLink": "/dashboard/file/node-rsrc-use.json",
               "refId": "A",
-              "step": 2
+              "step": 10
             },
             {
-              "expr": "sum(etcd_server_proposals_pending{cluster=\"$cluster\", job=\"etcd\"})",
-              "interval": "",
+              "expr": "instance:node_network_transmit_bytes_excluding_lo:rate1m{cluster=\"$cluster\",job=\"node-exporter\"}",
+              "format": "time_series",
               "intervalFactor": 2,
-              "legendFormat": "Proposal Pending Total",
-              "metric": "etcd_server_proposals_pending",
+              "legendFormat": "{{instance}} Transmit",
+              "legendLink": "/dashboard/file/node-rsrc-use.json",
               "refId": "B",
-              "step": 2
-            },
-            {
-              "expr": "sum(rate(etcd_server_proposals_committed_total{cluster=\"$cluster\", job=\"etcd\"}[$__rate_interval]))",
-              "intervalFactor": 2,
-              "legendFormat": "Proposal Commit Rate",
-              "metric": "etcd_server_proposals_committed_total",
-              "refId": "C",
-              "step": 2
-            },
-            {
-              "expr": "sum(rate(etcd_server_proposals_applied_total{cluster=\"$cluster\", job=\"etcd\"}[$__rate_interval]))",
-              "intervalFactor": 2,
-              "legendFormat": "Proposal Apply Rate",
-              "refId": "D",
-              "step": 2
+              "step": 10
             }
           ],
           "thresholds": [],
           "timeFrom": null,
           "timeRegions": [],
           "timeShift": null,
-          "title": "Raft Proposals",
+          "title": "Net Utilisation (Bytes Receive/Transmit)",
           "tooltip": {
-            "msResolution": false,
-            "shared": true,
+            "shared": false,
             "sort": 0,
             "value_type": "individual"
           },
@@ -1107,8 +579,8 @@ data:
           },
           "yaxes": [
             {
-              "format": "short",
-              "label": "",
+              "format": "Bps",
+              "label": null,
               "logBase": 1,
               "max": null,
               "min": null,
@@ -1120,7 +592,7 @@ data:
               "logBase": 1,
               "max": null,
               "min": null,
-              "show": true
+              "show": false
             }
           ],
           "yaxis": {
@@ -1134,35 +606,35 @@ data:
           "dashLength": 10,
           "dashes": false,
           "datasource": "$datasource",
-          "decimals": 0,
-          "editable": true,
-          "error": false,
-          "fill": 0,
+          "fieldConfig": {
+            "defaults": {
+              "links": []
+            },
+            "overrides": []
+          },
+          "fill": 10,
           "fillGradient": 0,
           "gridPos": {
-            "h": 7,
+            "h": 9,
             "w": 12,
             "x": 12,
-            "y": 21
+            "y": 20
           },
           "hiddenSeries": false,
-          "id": 19,
-          "isNew": true,
+          "id": 6,
           "legend": {
-            "alignAsTable": false,
             "avg": false,
             "current": false,
             "max": false,
             "min": false,
-            "rightSide": false,
-            "show": false,
+            "show": true,
             "total": false,
             "values": false
           },
           "lines": true,
-          "linewidth": 2,
+          "linewidth": 0,
           "links": [],
-          "nullPointMode": "connected",
+          "nullPointMode": "null as zero",
           "options": {
             "alertThreshold": true
           },
@@ -1171,29 +643,47 @@ data:
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
-          "seriesOverrides": [],
+          "seriesOverrides": [
+            {
+              "alias": "/ Receive/",
+              "stack": "A"
+            },
+            {
+              "alias": "/ Transmit/",
+              "stack": "B",
+              "transform": "negative-Y"
+            }
+          ],
           "spaceLength": 10,
-          "stack": false,
+          "stack": true,
           "steppedLine": false,
           "targets": [
             {
-              "expr": "changes(etcd_server_leader_changes_seen_total{cluster=\"$cluster\", job=\"etcd\"}[1d])",
-              "interval": "",
+              "expr": "instance:node_network_receive_drop_excluding_lo:rate1m{cluster=\"$cluster\",job=\"node-exporter\"}",
+              "format": "time_series",
               "intervalFactor": 2,
-              "legendFormat": "{{instance}} Total Leader Elections Per Day",
-              "metric": "etcd_server_leader_changes_seen_total",
+              "legendFormat": "{{instance}} Receive",
+              "legendLink": "/dashboard/file/node-rsrc-use.json",
               "refId": "A",
-              "step": 2
+              "step": 10
+            },
+            {
+              "expr": "instance:node_network_transmit_drop_excluding_lo:rate1m{cluster=\"$cluster\",job=\"node-exporter\"}",
+              "format": "time_series",
+              "intervalFactor": 2,
+              "legendFormat": "{{instance}} Transmit",
+              "legendLink": "/dashboard/file/node-rsrc-use.json",
+              "refId": "B",
+              "step": 10
             }
           ],
           "thresholds": [],
           "timeFrom": null,
           "timeRegions": [],
           "timeShift": null,
-          "title": "Total Leader Elections Per Day",
+          "title": "Net Saturation (Drops Receive/Transmit)",
           "tooltip": {
-            "msResolution": false,
-            "shared": true,
+            "shared": false,
             "sort": 0,
             "value_type": "individual"
           },
@@ -1207,7 +697,7 @@ data:
           },
           "yaxes": [
             {
-              "format": "short",
+              "format": "rps",
               "label": null,
               "logBase": 1,
               "max": null,
@@ -1220,7 +710,333 @@ data:
               "logBase": 1,
               "max": null,
               "min": null,
+              "show": false
+            }
+          ],
+          "yaxis": {
+            "align": false,
+            "alignLevel": null
+          }
+        },
+        {
+          "collapsed": false,
+          "datasource": "$datasource",
+          "fieldConfig": {
+            "defaults": {},
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 29
+          },
+          "id": 13,
+          "panels": [],
+          "repeat": null,
+          "title": "Disk IO",
+          "type": "row"
+        },
+        {
+          "aliasColors": {},
+          "bars": false,
+          "dashLength": 10,
+          "dashes": false,
+          "datasource": "$datasource",
+          "fieldConfig": {
+            "defaults": {
+              "links": []
+            },
+            "overrides": []
+          },
+          "fill": 10,
+          "fillGradient": 0,
+          "gridPos": {
+            "h": 10,
+            "w": 12,
+            "x": 0,
+            "y": 30
+          },
+          "hiddenSeries": false,
+          "id": 7,
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": true,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 0,
+          "links": [],
+          "nullPointMode": "null as zero",
+          "percentage": false,
+          "pluginVersion": "8.5.20",
+          "pointradius": 5,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [],
+          "spaceLength": 10,
+          "stack": true,
+          "steppedLine": false,
+          "targets": [
+            {
+              "expr": "instance_device:node_disk_io_time_seconds:rate1m{cluster=\"$cluster\",job=\"node-exporter\"}\n/ scalar(count(instance_device:node_disk_io_time_seconds:rate1m{cluster=\"$cluster\",job=\"node-exporter\"}))\n",
+              "format": "time_series",
+              "intervalFactor": 2,
+              "legendFormat": "{{instance}} {{device}}",
+              "legendLink": "/dashboard/file/node-rsrc-use.json",
+              "refId": "A",
+              "step": 10
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeRegions": [],
+          "timeShift": null,
+          "title": "Disk IO Utilisation",
+          "tooltip": {
+            "shared": false,
+            "sort": 0,
+            "value_type": "individual"
+          },
+          "type": "graph",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "format": "percentunit",
+              "label": null,
+              "logBase": 1,
+              "max": "1",
+              "min": 0,
               "show": true
+            },
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": false
+            }
+          ],
+          "yaxis": {
+            "align": false,
+            "alignLevel": null
+          }
+        },
+        {
+          "aliasColors": {},
+          "bars": false,
+          "dashLength": 10,
+          "dashes": false,
+          "datasource": "$datasource",
+          "fieldConfig": {
+            "defaults": {
+              "links": []
+            },
+            "overrides": []
+          },
+          "fill": 10,
+          "fillGradient": 0,
+          "gridPos": {
+            "h": 10,
+            "w": 12,
+            "x": 12,
+            "y": 30
+          },
+          "hiddenSeries": false,
+          "id": 8,
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": true,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 0,
+          "links": [],
+          "nullPointMode": "null as zero",
+          "percentage": false,
+          "pluginVersion": "8.5.20",
+          "pointradius": 5,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [],
+          "spaceLength": 10,
+          "stack": true,
+          "steppedLine": false,
+          "targets": [
+            {
+              "expr": "instance_device:node_disk_io_time_weighted_seconds:rate1m{cluster=\"$cluster\",job=\"node-exporter\"}\n/ scalar(count(instance_device:node_disk_io_time_weighted_seconds:rate1m{cluster=\"$cluster\",job=\"node-exporter\"}))\n",
+              "format": "time_series",
+              "intervalFactor": 2,
+              "legendFormat": "{{instance}} {{device}}",
+              "legendLink": "/dashboard/file/node-rsrc-use.json",
+              "refId": "A",
+              "step": 10
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeRegions": [],
+          "timeShift": null,
+          "title": "Disk IO Saturation",
+          "tooltip": {
+            "shared": false,
+            "sort": 0,
+            "value_type": "individual"
+          },
+          "type": "graph",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "format": "percentunit",
+              "label": null,
+              "logBase": 1,
+              "max": "1",
+              "min": 0,
+              "show": true
+            },
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": false
+            }
+          ],
+          "yaxis": {
+            "align": false,
+            "alignLevel": null
+          }
+        },
+        {
+          "collapsed": false,
+          "datasource": "$datasource",
+          "fieldConfig": {
+            "defaults": {},
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 40
+          },
+          "id": 14,
+          "panels": [],
+          "repeat": null,
+          "title": "Disk Space",
+          "type": "row"
+        },
+        {
+          "aliasColors": {},
+          "bars": false,
+          "dashLength": 10,
+          "dashes": false,
+          "datasource": "$datasource",
+          "fieldConfig": {
+            "defaults": {
+              "links": []
+            },
+            "overrides": []
+          },
+          "fill": 10,
+          "fillGradient": 0,
+          "gridPos": {
+            "h": 7,
+            "w": 24,
+            "x": 0,
+            "y": 41
+          },
+          "hiddenSeries": false,
+          "id": 9,
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": true,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 0,
+          "links": [],
+          "nullPointMode": "null as zero",
+          "percentage": false,
+          "pluginVersion": "8.5.20",
+          "pointradius": 5,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [],
+          "spaceLength": 10,
+          "stack": true,
+          "steppedLine": false,
+          "targets": [
+            {
+              "expr": "sum without (device) (\n  max without (fstype, mountpoint) (\n    node_filesystem_size_bytes{cluster=\"$cluster\",job=\"node-exporter\", fstype!=\"\"} - node_filesystem_avail_bytes{cluster=\"$cluster\",job=\"node-exporter\", fstype!=\"\"}\n  )\n) \n/ scalar(sum(max without (fstype, mountpoint) (node_filesystem_size_bytes{cluster=\"$cluster\",job=\"node-exporter\", fstype!=\"\"})))\n",
+              "format": "time_series",
+              "intervalFactor": 2,
+              "legendFormat": "{{instance}}",
+              "legendLink": "/dashboard/file/node-rsrc-use.json",
+              "refId": "A",
+              "step": 10
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeRegions": [],
+          "timeShift": null,
+          "title": "Disk Space Utilisation",
+          "tooltip": {
+            "shared": false,
+            "sort": 0,
+            "value_type": "individual"
+          },
+          "type": "graph",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "format": "percentunit",
+              "label": null,
+              "logBase": 1,
+              "max": "1",
+              "min": 0,
+              "show": true
+            },
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": false
             }
           ],
           "yaxis": {
@@ -1229,13 +1045,10 @@ data:
           }
         }
       ],
-      "refresh": "1m",
+      "refresh": "5m",
       "schemaVersion": 30,
       "style": "dark",
-      "tags": [
-        "OpenShift",
-        "kubernetes-mixin"
-      ],
+      "tags": [],
       "templating": {
         "list": [
           {
@@ -1266,23 +1079,23 @@ data:
               "value": ""
             },
             "datasource": "$datasource",
-            "definition": "label_values(etcd_server_has_leader,cluster)",
+            "definition": "label_values(acm_managed_cluster_labels{openshiftVersion_major!=\"3\"},name)",
             "description": null,
             "error": null,
             "hide": 0,
             "includeAll": false,
-            "label": "Cluster",
+            "label": null,
             "multi": false,
             "name": "cluster",
             "options": [],
             "query": {
-              "query": "label_values(etcd_server_has_leader,cluster)",
-              "refId": "StandardVariableQuery"
+              "query": "label_values(acm_managed_cluster_labels{openshiftVersion_major!=\"3\"},name)",
+              "refId": "Observatorium-cluster-Variable-Query"
             },
             "refresh": 2,
             "regex": "",
             "skipUrlSync": false,
-            "sort": 2,
+            "sort": 0,
             "tagValuesQuery": "",
             "tagsQuery": "",
             "type": "query",
@@ -1295,7 +1108,6 @@ data:
         "to": "now"
       },
       "timepicker": {
-        "now": true,
         "refresh_intervals": [
           "1m",
           "5m",
@@ -1318,20 +1130,13 @@ data:
         ]
       },
       "timezone": "browser",
-      "title": "Kubernetes / etcd Cluster",
-      "uid": "4374ac7478b04293bb0032cbbe04118d",
+      "title": "USE Method / Cluster",
+      "uid": "2fce3902d7ce438b8ad1a2e87163644e",
       "version": 1
     }
 kind: ConfigMap
 metadata:
-  name: grafana-dashboard-k8s-etcd-cluster-nexus
+  name: grafana-dashboard-cluster-rsrc-use-nexus
   namespace: open-cluster-management-observability
   annotations:
-    observability.open-cluster-management.io/dashboard-folder: Nexus
-  ownerReferences:
-    - apiVersion: observability.open-cluster-management.io/v1beta2
-      kind: MultiClusterObservability
-      name: observability
-      uid: 577e70b7-fe3d-44a0-a8ef-427bd7c073e5
-      controller: true
-      blockOwnerDeletion: true
+    observability.open-cluster-management.io/dashboard-folder: Platform (Nexus)

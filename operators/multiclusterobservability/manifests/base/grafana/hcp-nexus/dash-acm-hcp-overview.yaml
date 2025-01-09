@@ -799,7 +799,7 @@ data:
                 "value": ""
               },
               "datasource": "$datasource",
-              "definition": "mce_hs_addon_total_hosted_control_planes_gaug",
+              "definition": "mce_hs_addon_total_hosted_control_planes_gauge",
               "description": null,
               "error": null,
               "hide": 2,
@@ -809,7 +809,7 @@ data:
               "name": "num_hcps",
               "options": [],
               "query": {
-                "query": "mce_hs_addon_total_hosted_control_planes_gaug",
+                "query": "mce_hs_addon_total_hosted_control_planes_gauge",
                 "refId": "StandardVariableQuery"
               },
               "refresh": 1,
@@ -837,19 +837,12 @@ data:
         },
         "timezone": "browser",
         "title": "ACM - Hosted Control Planes Overview",
-        "uid": "0a749f7cde834f5685194bdb00e9548a",
+        "uid": "c39a500aa6164d87aa8be0247bbc5747",
         "version": 1
       }
 kind: ConfigMap
 metadata:
   annotations:
-    observability.open-cluster-management.io/dashboard-folder: Nexus
-  name: grafana-dashboard-acm-nexus-hcp-overview
+    observability.open-cluster-management.io/dashboard-folder: Hosted Control Planes (Nexus)
+  name: grafana-dashboard-acm-hcp-overview-nexus
   namespace: open-cluster-management-observability
-  ownerReferences:
-    - apiVersion: observability.open-cluster-management.io/v1beta2
-      kind: MultiClusterObservability
-      name: observability
-      uid: 577e70b7-fe3d-44a0-a8ef-427bd7c073e5
-      controller: true
-      blockOwnerDeletion: true
