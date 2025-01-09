@@ -6,6 +6,7 @@ package rendering
 
 import (
 	"fmt"
+	"strings"
 
 	v1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -16,6 +17,8 @@ import (
 	rendererutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering"
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 )
+
+const dashboardFolderAnnotationKey = "observability.open-cluster-management.io/dashboard-folder"
 
 func (r *MCORenderer) newGranfanaRenderer() {
 	r.renderGrafanaFns = map[string]rendererutil.RenderFn{
@@ -30,6 +33,8 @@ func (r *MCORenderer) newGranfanaRenderer() {
 		"RoleBinding":           r.renderer.RenderNamespace,
 		"Ingress":               r.renderer.RenderNamespace,
 		"PersistentVolumeClaim": r.renderer.RenderNamespace,
+		"ScrapeConfig":          r.renderer.RenderNamespace,
+		"PrometheusRule":        r.renderer.RenderNamespace,
 	}
 }
 
@@ -93,6 +98,13 @@ func (r *MCORenderer) renderGrafanaTemplates(templates []*resource.Resource,
 	namespace string, labels map[string]string) ([]*unstructured.Unstructured, error) {
 	uobjs := []*unstructured.Unstructured{}
 	for _, template := range templates {
+		// Avoid rendering resources that are specific to the MCOA and non MCOA setups
+		if !MCOAPlatformMetricsEnabled(r.cr) && isMCOASpecificResource(template) {
+			continue
+		} else if MCOAPlatformMetricsEnabled(r.cr) && isNonMCOASpecificResource(template) {
+			continue
+		}
+
 		render, ok := r.renderGrafanaFns[template.GetKind()]
 		if !ok {
 			m, err := template.Map()
@@ -114,4 +126,34 @@ func (r *MCORenderer) renderGrafanaTemplates(templates []*resource.Resource,
 	}
 
 	return uobjs, nil
+}
+
+func isMCOASpecificResource(res *resource.Resource) bool {
+	if res.GetKind() == "ScrapeConfig" {
+		return true
+	}
+
+	if res.GetKind() == "PrometheusRule" {
+		return true
+	}
+
+	if res.GetKind() == "ConfigMap" && strings.HasSuffix(res.GetName(), "nexus") {
+		return true
+	}
+
+	return false
+}
+
+func isNonMCOASpecificResource(res *resource.Resource) bool {
+	// Exclude all dashboards living in the default directory as they are all duplicated
+	// for MCOA with some expressions adaptations due to the different set of metrics
+	// being collected.
+	if res.GetKind() == "ConfigMap" {
+		annotations := res.GetAnnotations(dashboardFolderAnnotationKey)
+		if dir, ok := annotations[dashboardFolderAnnotationKey]; !ok || dir == "" {
+			return true
+		}
+	}
+
+	return false
 }

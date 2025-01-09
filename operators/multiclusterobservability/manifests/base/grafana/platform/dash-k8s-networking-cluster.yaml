@@ -1155,19 +1155,12 @@ data:
       },
       "timezone": "browser",
       "title": "Kubernetes / Networking / Cluster",
-      "uid": "efd9761bb5dd42a3800fdd6577a8430c",
+      "uid": "ff635a025bcfea7bc3dd4f508990a3e9",
       "version": 1
     }
 kind: ConfigMap
 metadata:
-  name: grafana-dashboard-k8s-networking-cluster-nexus
+  name: grafana-dashboard-k8s-networking-cluster
   namespace: open-cluster-management-observability
-  annotations:
-    observability.open-cluster-management.io/dashboard-folder: Nexus
-  ownerReferences:
-    - apiVersion: observability.open-cluster-management.io/v1beta2
-      kind: MultiClusterObservability
-      name: observability
-      uid: 577e70b7-fe3d-44a0-a8ef-427bd7c073e5
-      controller: true
-      blockOwnerDeletion: true
+  labels:
+    general-folder: 'true'

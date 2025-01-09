@@ -422,3 +422,15 @@ func MCOAEnabled(cr *obv1beta2.MultiClusterObservability) bool {
 	}
 	return mcoaEnabled
 }
+
+func MCOAPlatformMetricsEnabled(cr *obv1beta2.MultiClusterObservability) bool {
+	if cr.Spec.Capabilities == nil {
+		return false
+	}
+
+	if cr.Spec.Capabilities.Platform != nil && cr.Spec.Capabilities.Platform.Metrics.Collection.Enabled {
+		return true
+	}
+
+	return false
+}
