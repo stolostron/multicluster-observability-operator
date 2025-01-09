@@ -1,0 +1,17 @@
+resources:
+- dash-acm-clusters-overview-optimized.yaml
+- dash-acm-clusters-overview.yaml
+- dash-acm-optimization-overview.yaml
+- dash-cluster-rsrc-use.yaml
+- dash-k8s-apiserver.yaml
+- dash-k8s-compute-resources-cluster.yaml
+- dash-k8s-compute-resources-namespace-pods.yaml
+- dash-k8s-compute-resources-namespace-workloads.yaml
+- dash-k8s-compute-resources-node-pods.yaml
+- dash-k8s-compute-resources-pod.yaml
+- dash-k8s-compute-resources-workload.yaml
+- dash-k8s-etcd.yaml
+- dash-k8s-networking-cluster.yaml
+- dash-k8s-service-level-overview-api-server-cluster.yaml
+- dash-k8s-service-level-overview-api-server.yaml
+- dash-node-rsrc-use.yaml
