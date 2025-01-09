@@ -1,5 +1,7 @@
 package utils
 
+// Diff returns the list of added elements (elements from slice b that are not found in a)
+// and removed elements (elements from slice a that are not found in b)
 func Diff(a, b []string) (added, removed []string) {
 	mA := make(map[string]struct{}, len(a))
 	for _, x := range a {
@@ -28,6 +30,7 @@ func Diff(a, b []string) (added, removed []string) {
 	return added, removed
 }
 
+// Duplicates returns the list of duplicate elements found in the argument slice
 func Duplicates(elements []string) []string {
 	found := map[string]struct{}{}
 	dups := map[string]struct{}{}

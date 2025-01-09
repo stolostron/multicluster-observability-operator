@@ -19,8 +19,11 @@ import (
 func main() {
 	scrapeConfigsArg := flag.String("scrape-configs", "", "Path to the comma separated scrape_configs")
 	dashboardMetricsArg := flag.String("dashboard-metrics", "", "Comma separated dashboard metrics")
-	ignoredDashboardMetricsArg := flag.String("ignored-dashboard-metrics", "", "Comma separated ignored dashboard metrics")
+	ignoredDashboardMetricsArg := flag.String("ignored-dashboard-metrics", "", "Comma separated ignored dashboard metrics. For example, rules that are computed on the hub instead of being collected from the spokes.")
+	additionalScrapeConfigsArg := flag.String("additional-scrape-configs", "", "Path to the comma separated scrape_configs that are collected in addition of the main one. Over collected metrics from them are ignored.")
 	flag.Parse()
+
+	fmt.Println("Dashcheck — Verifying alignement of federated metrics from scrape configs for dashboard metrics.")
 
 	if *scrapeConfigsArg == "" {
 		fmt.Println("Please provide the scrape_configs paths")
@@ -41,36 +44,21 @@ func main() {
 		os.Exit(1)
 	}
 
-	scrapeConfigsList, err := scrapeconfig.ReadFiles(*scrapeConfigsArg)
+	collectedMetrics, err := scrapeconfig.ReadFederatedMetrics(*scrapeConfigsArg)
 	if err != nil {
-		fmt.Println("Error reading scrape configs: ", err)
+		fmt.Printf("Failed to read scrape configs: %v", err)
 		os.Exit(1)
 	}
 
-	if len(scrapeConfigsList) == 0 {
-		fmt.Println("No scrape configs found")
-		os.Exit(1)
-	}
-
-	collectedMetrics := []string{}
-	for _, scrapeConfig := range scrapeConfigsList {
-		if scrapeConfig == nil {
-			fmt.Println("Scrape config is nil")
-			os.Exit(1)
-		}
-
-		metrics, err := scrapeconfig.FederatedMetrics(scrapeConfig)
+	var additionalMetrics []string
+	if len(*additionalScrapeConfigsArg) > 0 {
+		additionalMetrics, err = scrapeconfig.ReadFederatedMetrics(*additionalScrapeConfigsArg)
 		if err != nil {
-			fmt.Println("Error extracting metrics: ", err)
+			fmt.Printf("Failed to read additional scrape configs: %v", err)
 			os.Exit(1)
 		}
 
-		if dups := utils.Duplicates(metrics); len(dups) > 0 {
-			fmt.Printf("Duplicate metrics found in %s: %v", scrapeConfig.Name, dups)
-			os.Exit(1)
-		}
-
-		collectedMetrics = append(collectedMetrics, metrics...)
+		collectedMetrics = append(collectedMetrics, additionalMetrics...)
 	}
 
 	if dups := utils.Duplicates(collectedMetrics); len(dups) > 0 {
@@ -79,6 +67,9 @@ func main() {
 	}
 
 	added, removed := utils.Diff(dashboardMetrics, collectedMetrics)
+	// Remove additional metrics from the added list
+	// They must be ignored
+	added = slices.DeleteFunc(added, func(s string) bool { return s == "" || slices.Contains(additionalMetrics, s) })
 	if len(added) > 0 {
 		fmt.Println("Metrics found in scrape configs but not in dashboards: ", added)
 		os.Exit(1)
@@ -92,96 +83,3 @@ func main() {
 	greenCheckMark := "\033[32m" + "✓" + "\033[0m"
 	fmt.Println(greenCheckMark, "Scrape configs are collecting all dashboards metrics, not more. Good job!")
 }
-
-// func readScrapeConfigs(scrapeConfigsPath string) ([]*prometheusalpha1.ScrapeConfig, error) {
-// 	paths := strings.Split(scrapeConfigsPath, ",")
-// 	ret := []*prometheusalpha1.ScrapeConfig{}
-// 	for _, path := range paths {
-// 		fmt.Println("Reading scrape config: ", path)
-// 		res, err := scrapeconfig.ReadFile(path)
-// 		if err != nil {
-// 			return nil, err
-// 		}
-// 		ret = append(ret, res)
-// 	}
-
-// 	return ret, nil
-// }
-
-// func readScrapeConfig(scrapeConfigsPath string) (*prometheusalpha1.ScrapeConfig, error) {
-// 	fileData, err := os.ReadFile(scrapeConfigsPath)
-// 	if err != nil {
-// 		return nil, fmt.Errorf("failed to read file %s: %w", scrapeConfigsPath, err)
-// 	}
-
-// 	scrapeConfig := &prometheusalpha1.ScrapeConfig{}
-// 	if err := yaml.Unmarshal(fileData, scrapeConfig); err != nil {
-// 		return nil, fmt.Errorf("failed to unmarshal file %s: %w", scrapeConfigsPath, err)
-// 	}
-
-// 	return scrapeConfig, nil
-// }
-
-// func extractCollectedMetrics(scrapeConfig *prometheusalpha1.ScrapeConfig) ([]string, error) {
-// 	ret := []string{}
-// 	for _, query := range scrapeConfig.Spec.Params["match[]"] {
-// 		expr, err := parser.ParseExpr(query)
-// 		if err != nil {
-// 			return nil, fmt.Errorf("failed to parse query %s: %w", query, err)
-// 		}
-
-// 		switch v := expr.(type) {
-// 		case *parser.VectorSelector:
-// 			for _, matcher := range v.LabelMatchers {
-// 				if matcher.Name == "__name__" {
-// 					ret = append(ret, matcher.Value)
-// 				}
-// 			}
-// 		default:
-// 			return nil, fmt.Errorf("unsupported expression type: %T", v)
-// 		}
-// 	}
-
-// 	return ret, nil
-// }
-
-// func getDuplicates(elements []string) []string {
-// 	found := map[string]struct{}{}
-// 	ret := []string{}
-// 	for _, element := range elements {
-// 		if _, ok := found[element]; ok {
-// 			ret = append(ret, element)
-// 		} else {
-// 			found[element] = struct{}{}
-// 		}
-// 	}
-// 	return ret
-// }
-
-// func diff(a, b []string) (added, removed []string) {
-// 	mA := make(map[string]struct{}, len(a))
-// 	for _, x := range a {
-// 		mA[x] = struct{}{}
-// 	}
-
-// 	mB := make(map[string]struct{}, len(b))
-// 	for _, x := range b {
-// 		mB[x] = struct{}{}
-// 	}
-
-// 	// Identify elements in b that are not in a
-// 	for x := range mB {
-// 		if _, ok := mA[x]; !ok {
-// 			added = append(added, x)
-// 		}
-// 	}
-
-// 	// Identify elements in a that are not in b
-// 	for x := range mA {
-// 		if _, ok := mB[x]; !ok {
-// 			removed = append(removed, x)
-// 		}
-// 	}
-
-// 	return added, removed
-// }

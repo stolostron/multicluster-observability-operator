@@ -10,7 +10,7 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-func ReadFile(scrapeConfigsPath string) (*prometheusalpha1.ScrapeConfig, error) {
+func readFile(scrapeConfigsPath string) (*prometheusalpha1.ScrapeConfig, error) {
 	fileData, err := os.ReadFile(scrapeConfigsPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read file %s: %w", scrapeConfigsPath, err)
@@ -24,12 +24,12 @@ func ReadFile(scrapeConfigsPath string) (*prometheusalpha1.ScrapeConfig, error) 
 	return scrapeConfig, nil
 }
 
-func ReadFiles(scrapeConfigsPath string) ([]*prometheusalpha1.ScrapeConfig, error) {
+func readFiles(scrapeConfigsPath string) ([]*prometheusalpha1.ScrapeConfig, error) {
 	paths := strings.Split(scrapeConfigsPath, ",")
 	ret := []*prometheusalpha1.ScrapeConfig{}
 	for _, path := range paths {
 		fmt.Println("Reading scrape config: ", path)
-		res, err := ReadFile(path)
+		res, err := readFile(path)
 		if err != nil {
 			return nil, err
 		}
@@ -39,9 +39,30 @@ func ReadFiles(scrapeConfigsPath string) ([]*prometheusalpha1.ScrapeConfig, erro
 	return ret, nil
 }
 
-// FederatedMetrics returns the list of collected metrics from a scrapeConfig, parsing the
+// ReadFederatedMetrics returns the list of federated metrics from the scrape configs
+// file paths given in input.
+func ReadFederatedMetrics(scrapeConfigsPath string) ([]string, error) {
+	scrapeCfgs, err := readFiles(scrapeConfigsPath)
+	if err != nil {
+		return nil, err
+	}
+
+	ret := []string{}
+	for _, scrapeCfg := range scrapeCfgs {
+		metrics, err := federatedMetrics(scrapeCfg)
+		if err != nil {
+			return ret, err
+		}
+
+		ret = append(ret, metrics...)
+	}
+
+	return ret, nil
+}
+
+// federatedMetrics returns the list of collected metrics from a scrapeConfig, parsing the
 // federated metrics list.
-func FederatedMetrics(scrapeConfig *prometheusalpha1.ScrapeConfig) ([]string, error) {
+func federatedMetrics(scrapeConfig *prometheusalpha1.ScrapeConfig) ([]string, error) {
 	ret := []string{}
 	for _, query := range scrapeConfig.Spec.Params["match[]"] {
 		expr, err := parser.ParseExpr(query)

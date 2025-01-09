@@ -21,11 +21,31 @@ func main() {
 	scrapeConfigsArg := flag.String("scrape-configs", "", "Path to the comma separated scrape_configs")
 	rulesArg := flag.String("rules", "", "Comma separated prometheus rules files")
 	ignoreDupRulesArg := flag.String("ignore-duplicated-rules", "", "Comma separated ignored duplicated rules")
+	greenCheckMark := "\033[32m" + "✓" + "\033[0m"
 	flag.Parse()
+
+	fmt.Println("Rulescheck — Verifying alignement of rules definition with the rules federated by the scrape configs.")
 
 	if *scrapeConfigsArg == "" {
 		fmt.Println("Please provide the scrape_configs paths")
 		return
+	}
+
+	collectedRules, err := scrapeconfig.ReadFederatedMetrics(*scrapeConfigsArg)
+	if err != nil {
+		fmt.Printf("Failed to read scrape configs: %v", err)
+		os.Exit(1)
+	}
+
+	collectedRules = slices.DeleteFunc(collectedRules, func(s string) bool { return !strings.Contains(s, ":") })
+	if len(collectedRules) == 0 {
+		fmt.Println(greenCheckMark, "No rule collected by the scrape configs.")
+		return
+	}
+
+	if dups := utils.Duplicates(collectedRules); len(dups) > 0 {
+		fmt.Println("Duplicate metrics found in scrape configs: ", dups)
+		os.Exit(1)
 	}
 
 	if *rulesArg == "" {
@@ -67,43 +87,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	scrapeConfigsList, err := scrapeconfig.ReadFiles(*scrapeConfigsArg)
-	if err != nil {
-		fmt.Println("Error reading scrape configs: ", err)
-		os.Exit(1)
-	}
-
-	if len(scrapeConfigsList) == 0 {
-		fmt.Println("No scrape configs found")
-		os.Exit(1)
-	}
-
-	collectedRules := []string{}
-	for _, scrapeConfig := range scrapeConfigsList {
-		if scrapeConfig == nil {
-			fmt.Println("Scrape config is nil")
-			os.Exit(1)
-		}
-
-		metrics, err := scrapeconfig.FederatedMetrics(scrapeConfig)
-		if err != nil {
-			fmt.Println("Error extracting metrics: ", err)
-			os.Exit(1)
-		}
-
-		if dups := utils.Duplicates(metrics); len(dups) > 0 {
-			fmt.Printf("Duplicate metrics found in %s: %v", scrapeConfig.Name, dups)
-			os.Exit(1)
-		}
-
-		collectedRules = append(collectedRules, filterMetricRules(metrics)...)
-	}
-
-	if dups := utils.Duplicates(collectedRules); len(dups) > 0 {
-		fmt.Println("Duplicate metrics found in scrape configs: ", dups)
-		os.Exit(1)
-	}
-
 	added, removed := utils.Diff(collectedRules, rulesDefined)
 	if len(added) > 0 {
 		fmt.Println("Metrics found in scrape configs but not in rules: ", added)
@@ -115,17 +98,5 @@ func main() {
 		os.Exit(1)
 	}
 
-	greenCheckMark := "\033[32m" + "✓" + "\033[0m"
 	fmt.Println(greenCheckMark, "The rules collected by the scrapeConfigs are all defined, not more. Good job!")
-}
-
-func filterMetricRules(metrics []string) []string {
-	ret := []string{}
-	for _, metric := range metrics {
-		if strings.Contains(metric, ":") {
-			ret = append(ret, metric)
-		}
-	}
-
-	return ret
 }
