@@ -28,7 +28,7 @@ Thanos Ecosystem | [kube-thanos](https://github.com/stolostron/kube-thanos) | Ku
 
 ### Prerequisites
 
-* Ensure [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl) and [kustomize](https://kubernetes-sigs.github.io/kustomize/installation) are installed.
+* Ensure [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl) and [kustomize](https://kubectl.docs.kubernetes.io/installation/kustomize/) are installed.
 * Prepare a OpenShift cluster to function as the hub cluster.
 * Ensure [docker 17.03+](https://docs.docker.com/get-started) is installed.
 * Ensure [golang 1.15+](https://golang.org/doc/install) is installed.
