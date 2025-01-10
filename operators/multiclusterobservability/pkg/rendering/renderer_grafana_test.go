@@ -1,17 +1,24 @@
 package rendering
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
 
+	imagev1 "github.com/openshift/api/image/v1"
+	fakeimageclient "github.com/openshift/client-go/image/clientset/versioned/fake"
+	fakeimagev1client "github.com/openshift/client-go/image/clientset/versioned/typed/image/v1/fake"
 	obv1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering/templates"
 	rendererutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering"
 	templatesutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering/templates"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
@@ -22,6 +29,29 @@ func TestRenderGrafana(t *testing.T) {
 	tmplRenderer := templatesutil.NewTemplateRenderer(templatesPath)
 	grafanaTemplates, err := templates.GetOrLoadGrafanaTemplates(tmplRenderer)
 	require.NoError(t, err)
+
+	imageClient := &fakeimagev1client.FakeImageV1{Fake: &(fakeimageclient.NewSimpleClientset().Fake)}
+	_, err = imageClient.ImageStreams(config.OauthProxyImageStreamNamespace).Create(context.Background(),
+		&imagev1.ImageStream{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      config.OauthProxyImageStreamName,
+				Namespace: config.OauthProxyImageStreamNamespace,
+			},
+			Spec: imagev1.ImageStreamSpec{
+				Tags: []imagev1.TagReference{
+					{
+						Name: "v4.4",
+						From: &corev1.ObjectReference{
+							Kind: "DockerImage",
+							Name: "quay.io/openshift-release-dev/ocp-v4.0-art-dev",
+						},
+					},
+				},
+			},
+		}, metav1.CreateOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	testCases := map[string]struct {
 		mco    obv1beta2.MultiClusterObservability
@@ -60,8 +90,9 @@ func TestRenderGrafana(t *testing.T) {
 
 		t.Run(tcName, func(t *testing.T) {
 			mcoRenderer := &MCORenderer{
-				renderer: rendererutil.NewRenderer(),
-				cr:       &tc.mco,
+				renderer:    rendererutil.NewRenderer(),
+				cr:          &tc.mco,
+				imageClient: imageClient,
 			}
 
 			mcoRenderer.newGranfanaRenderer()
