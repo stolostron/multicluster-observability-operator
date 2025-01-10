@@ -91,7 +91,7 @@ type MultiClusterObservabilityReconciler struct {
 	CRDMap      map[string]bool
 	APIReader   client.Reader
 	RESTMapper  meta.RESTMapper
-	ImageClient *imagev1client.ImageV1Client
+	ImageClient imagev1client.ImageV1Interface
 }
 
 // +kubebuilder:rbac:groups=observability.open-cluster-management.io,resources=multiclusterobservabilities,verbs=get;list;watch;create;update;patch;delete

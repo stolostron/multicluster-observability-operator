@@ -5,6 +5,8 @@
 package rendering
 
 import (
+	"fmt"
+
 	v1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -68,9 +70,14 @@ func (r *MCORenderer) renderGrafanaDeployments(res *resource.Resource,
 	}
 	spec.Containers[1].ImagePullPolicy = imagePullPolicy
 
+	// If we're on OCP and has imagestreams, we always want the oauth image
+	// from the imagestream, and fail the reconcile if we don't find it.
+	// If we're on non-OCP (tests) we use the base template image
 	found, image = config.GetOauthProxyImage(r.imageClient)
 	if found {
 		spec.Containers[2].Image = image
+	} else if r.HasImagestream() {
+		return nil, fmt.Errorf("failed to get OAuth image for alertmanager")
 	}
 	spec.Containers[2].ImagePullPolicy = imagePullPolicy
 

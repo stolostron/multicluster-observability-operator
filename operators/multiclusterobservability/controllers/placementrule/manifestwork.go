@@ -35,7 +35,6 @@ import (
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	workv1 "open-cluster-management.io/api/work/v1"
 
-	mcoshared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
 	mcov1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	cert_controller "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/certificates"
@@ -940,6 +939,12 @@ func generateMetricsListCM(client client.Client) (*corev1.ConfigMap, *corev1.Con
 	return metricsAllowlistCM, ocp311AllowlistCM, nil
 }
 
+// getObservabilityAddon gets the ObservabilityAddon in the spoke namespace in the hub cluster.
+// This is then synced to the actual spoke, by injecting it into the manifestwork.
+// We assume that an existing addon will always be found here as we create it initially.
+// If the addon is found with the mco source annotation, it will update the existing addon with the new values from MCO
+// If the addon is found with the override source annotation, it will not update the existing addon but it will use the existing values.
+// If the addon is found without any source annotation, it will add the mco source annotation and use the MCO values (upgrade case from ACM 2.12.2).
 func getObservabilityAddon(c client.Client, namespace string,
 	mco *mcov1beta2.MultiClusterObservability) (*mcov1beta1.ObservabilityAddon, error) {
 	if namespace == config.GetDefaultNamespace() {
@@ -952,30 +957,47 @@ func getObservabilityAddon(c client.Client, namespace string,
 	}
 	err := c.Get(context.TODO(), namespacedName, found)
 	if err != nil {
-		if k8serrors.IsNotFound(err) {
-			return nil, nil
+		if !k8serrors.IsNotFound(err) {
+			log.Error(err, "Failed to check observabilityAddon")
+			return nil, err
 		}
-		log.Error(err, "Failed to check observabilityAddon")
-		return nil, err
 	}
 	if found.ObjectMeta.DeletionTimestamp != nil {
 		return nil, nil
 	}
-	return &mcov1beta1.ObservabilityAddon{
+
+	addon := &mcov1beta1.ObservabilityAddon{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "observability.open-cluster-management.io/v1beta1",
 			Kind:       "ObservabilityAddon",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      obsAddonName,
-			Namespace: spokeNameSpace,
+			Name:        obsAddonName,
+			Namespace:   spokeNameSpace,
+			Annotations: make(map[string]string),
 		},
-		Spec: mcoshared.ObservabilityAddonSpec{
-			EnableMetrics: mco.Spec.ObservabilityAddonSpec.EnableMetrics,
-			Interval:      mco.Spec.ObservabilityAddonSpec.Interval,
-			Resources:     config.GetOBAResources(mco.Spec.ObservabilityAddonSpec, mco.Spec.InstanceSize),
-		},
-	}, nil
+	}
+
+	// Handle cases where the addon doesn't have the annotation
+	if found.Annotations == nil {
+		found.Annotations = make(map[string]string)
+	}
+
+	if _, ok := found.Annotations[addonSourceAnnotation]; !ok {
+		found.Annotations[addonSourceAnnotation] = addonSourceMCO
+	}
+
+	addon.Annotations = found.Annotations
+
+	if found.Annotations[addonSourceAnnotation] == addonSourceMCO {
+		setObservabilityAddonSpec(addon, mco.Spec.ObservabilityAddonSpec, config.GetOBAResources(mco.Spec.ObservabilityAddonSpec, mco.Spec.InstanceSize))
+	}
+
+	if found.Annotations[addonSourceAnnotation] == addonSourceOverride {
+		setObservabilityAddonSpec(addon, &found.Spec, found.Spec.Resources)
+	}
+
+	return addon, nil
 }
 
 func removeObservabilityAddon(client client.Client, namespace string) error {

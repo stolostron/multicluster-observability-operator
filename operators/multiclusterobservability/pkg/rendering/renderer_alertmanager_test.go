@@ -5,6 +5,7 @@
 package rendering
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -12,6 +13,9 @@ import (
 	"strings"
 	"testing"
 
+	imagev1 "github.com/openshift/api/image/v1"
+	fakeimageclient "github.com/openshift/client-go/image/clientset/versioned/fake"
+	fakeimagev1client "github.com/openshift/client-go/image/clientset/versioned/typed/image/v1/fake"
 	mcoshared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
@@ -169,6 +173,26 @@ func TestAlertManagerRendererMCOConfig(t *testing.T) {
 				assert.Equal(t, 3, count)
 			},
 		},
+		"one replica": {
+			mco: func() *mcov1beta2.MultiClusterObservability {
+				ret := makeBaseMco()
+				replicas := int32(1)
+				ret.Spec.AdvancedConfig = &mcov1beta2.AdvancedConfig{
+					Alertmanager: &mcov1beta2.AlertmanagerSpec{
+						CommonSpec: mcov1beta2.CommonSpec{
+							Replicas: &replicas,
+						},
+					},
+				}
+				return ret
+			},
+			expect: func(t *testing.T, sts *appsv1.StatefulSet) {
+				assert.Equal(t, int32(1), *sts.Spec.Replicas)
+				args := sts.Spec.Template.Spec.Containers[0].Args
+				assert.NotContains(t, args, "--cluster.peer")
+				assert.Contains(t, args, "--cluster.listen-address=")
+			},
+		},
 		"resources": {
 			mco: func() *mcov1beta2.MultiClusterObservability {
 				ret := makeBaseMco()
@@ -288,7 +312,31 @@ func renderTemplates(t *testing.T, kubeClient client.Client, mco *mcov1beta2.Mul
 	defer os.Unsetenv(templatesutil.TemplatesPathEnvVar)
 
 	config.ReadImageManifestConfigMap(kubeClient, "v1")
-	renderer := NewMCORenderer(mco, kubeClient, nil)
+
+	imageClient := &fakeimagev1client.FakeImageV1{Fake: &(fakeimageclient.NewSimpleClientset().Fake)}
+	_, err = imageClient.ImageStreams(config.OauthProxyImageStreamNamespace).Create(context.Background(),
+		&imagev1.ImageStream{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      config.OauthProxyImageStreamName,
+				Namespace: config.OauthProxyImageStreamNamespace,
+			},
+			Spec: imagev1.ImageStreamSpec{
+				Tags: []imagev1.TagReference{
+					{
+						Name: "v4.4",
+						From: &corev1.ObjectReference{
+							Kind: "DockerImage",
+							Name: "quay.io/openshift-release-dev/ocp-v4.0-art-dev",
+						},
+					},
+				},
+			},
+		}, metav1.CreateOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	renderer := NewMCORenderer(mco, kubeClient, imageClient)
 
 	//load and render alertmanager templates
 	alertTemplates, err := templates.GetOrLoadAlertManagerTemplates(templatesutil.GetTemplateRenderer())

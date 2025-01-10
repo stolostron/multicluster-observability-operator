@@ -9,7 +9,7 @@ import (
 	"fmt"
 
 	"github.com/go-kit/log"
-	hyperv1 "github.com/openshift/hypershift/api/hypershift/v1alpha1"
+	hyperv1 "github.com/openshift/hypershift/api/hypershift/v1beta1"
 	prom "github.com/prometheus/client_model/go"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
