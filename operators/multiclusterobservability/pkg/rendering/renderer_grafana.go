@@ -5,6 +5,7 @@
 package rendering
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -98,11 +99,16 @@ func (r *MCORenderer) renderGrafanaTemplates(templates []*resource.Resource,
 	namespace string, labels map[string]string) ([]*unstructured.Unstructured, error) {
 	uobjs := []*unstructured.Unstructured{}
 	for _, template := range templates {
-		// Avoid rendering resources that are specific to the MCOA and non MCOA setups
-		if !MCOAPlatformMetricsEnabled(r.cr) && isMCOASpecificResource(template) {
+		// Avoid rendering resource kinds that are specific to MCOA.
+		if !MCOAPlatformMetricsEnabled(r.cr) && isMCOASpecificResourceKind(template) {
 			continue
-		} else if MCOAPlatformMetricsEnabled(r.cr) && isNonMCOASpecificResource(template) {
-			continue
+		}
+
+		template = template.DeepCopy()
+
+		// Add deprecated suffix to the old dashboard names when MCOA is activated.
+		if MCOAPlatformMetricsEnabled(r.cr) && isNonMCOASpecificDashboard(template) {
+			addDeprecatedSuffixToDashboardName(template)
 		}
 
 		render, ok := r.renderGrafanaFns[template.GetKind()]
@@ -114,7 +120,7 @@ func (r *MCORenderer) renderGrafanaTemplates(templates []*resource.Resource,
 			uobjs = append(uobjs, &unstructured.Unstructured{Object: m})
 			continue
 		}
-		uobj, err := render(template.DeepCopy(), namespace, labels)
+		uobj, err := render(template, namespace, labels)
 		if err != nil {
 			return []*unstructured.Unstructured{}, err
 		}
@@ -128,32 +134,63 @@ func (r *MCORenderer) renderGrafanaTemplates(templates []*resource.Resource,
 	return uobjs, nil
 }
 
-func isMCOASpecificResource(res *resource.Resource) bool {
-	if res.GetKind() == "ScrapeConfig" {
-		return true
-	}
-
-	if res.GetKind() == "PrometheusRule" {
-		return true
-	}
-
-	if res.GetKind() == "ConfigMap" && strings.HasSuffix(res.GetName(), "nexus") {
+// isMCOASpecificResourceType returns true if the resource is a scrape config or a Prometheus rule
+func isMCOASpecificResourceKind(res *resource.Resource) bool {
+	kind := res.GetKind()
+	if kind == "ScrapeConfig" || kind == "PrometheusRule" {
 		return true
 	}
 
 	return false
 }
 
-func isNonMCOASpecificResource(res *resource.Resource) bool {
+func isNonMCOASpecificDashboard(res *resource.Resource) bool {
 	// Exclude all dashboards living in the default directory as they are all duplicated
 	// for MCOA with some expressions adaptations due to the different set of metrics
 	// being collected.
 	if res.GetKind() == "ConfigMap" {
-		annotations := res.GetAnnotations(dashboardFolderAnnotationKey)
-		if dir, ok := annotations[dashboardFolderAnnotationKey]; !ok || dir == "" {
+		dir, ok := res.GetAnnotations(dashboardFolderAnnotationKey)[dashboardFolderAnnotationKey]
+		if !ok || dir == "" {
+			return true
+		}
+
+		if strings.Contains(dir, "OCP 3.11") {
 			return true
 		}
 	}
 
 	return false
+}
+
+func addDeprecatedSuffixToDashboardName(template *resource.Resource) error {
+	dataMap := template.GetDataMap()
+	if len(dataMap) != 1 {
+		return fmt.Errorf("unexpected number of values in the dashboard configmap %s: %d", template.GetName(), len(dataMap))
+	}
+
+	var key, val string
+	for k, v := range dataMap {
+		key, val = k, v
+	}
+
+	dashboard := map[string]interface{}{}
+	if err := json.Unmarshal([]byte(val), &dashboard); err != nil {
+		return fmt.Errorf("failed to unmarshal dashboard from configmap %q: %w", template.GetName(), err)
+	}
+
+	title, ok := dashboard["title"].(string)
+	if !ok {
+		return fmt.Errorf("missing or invalid 'title' field in dashboard %q", key)
+	}
+	dashboard["title"] = title + " - DEPRECATED"
+
+	newVal, err := json.Marshal(dashboard)
+	if err != nil {
+		return fmt.Errorf("failed to marshal modified dashboard %q: %w", template.GetName(), err)
+	}
+
+	dataMap[key] = string(newVal)
+	template.SetDataMap(dataMap)
+
+	return nil
 }
