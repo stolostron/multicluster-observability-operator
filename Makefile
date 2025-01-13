@@ -198,6 +198,7 @@ install-check-metrics-deps:
 	@./scripts/install-binaries.sh install_jq $(BIN_DIR)
 	@./scripts/install-binaries.sh install_yq $(BIN_DIR)
 	@./scripts/install-binaries.sh install_mimirtool $(BIN_DIR)
+	@./scripts/install-binaries.sh install_promtool $(BIN_DIR)
 
 ##@ Multi-Cluster-Observability Operator
 
