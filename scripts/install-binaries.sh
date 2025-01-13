@@ -10,6 +10,8 @@
 
 KUBECTL_VERSION="${KUBECTL_VERSION:=v1.28.2}"
 JQ_VERSION="${JQ_VERSION:=1.7.1}"
+YQ_VERSION="${YQ_VERSION:=4.45.1}"
+MIMIRTOOL_VERSION="${MIMIRTOOL_VERSION:=2.14.3}"
 
 BIN_DIR="${BIN_DIR:=/usr/local/bin}"
 
@@ -38,6 +40,33 @@ install_jq() {
     chmod +x ./jq && mv ./jq ${bin_dir}/jq
   fi
 }
+
+install_yq() {
+  bin_dir=${1:-${BIN_DIR}}
+  if ! command -v yq &>/dev/null; then
+    echo "This script will install yq on your machine"
+    if [[ "$(uname)" == "Linux" ]]; then
+      curl -o yq -L "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64"
+    elif [[ "$(uname)" == "Darwin" ]]; then
+      curl -o yq -L "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_darwin_$(uname -m)"
+    fi
+    chmod +x ./yq && mv ./yq ${bin_dir}/yq
+  fi
+}
+
+install_mimirtool() {
+  bin_dir=${1:-${BIN_DIR}}
+  if ! command -v mimirtool &>/dev/null; then
+    echo "This script will install mimirtool on your machine"
+    if [[ "$(uname)" == "Linux" ]]; then
+      curl -o mimirtool -L "https://github.com/grafana/mimir/releases/download/mimir-${MIMIRTOOL_VERSION}/mimirtool-linux-amd64"
+    elif [[ "$(uname)" == "Darwin" ]]; then
+      curl -o mimirtool -L "https://github.com/grafana/mimir/releases/download/mimir-${MIMIRTOOL_VERSION}/mimirtool-darwin-$(uname -m)"
+    fi
+    chmod +x ./mimirtool && mv ./mimirtool ${bin_dir}/mimirtool
+  fi
+
+} 
 
 install_envtest_deps() {
   go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest

@@ -1,6 +1,6 @@
 DAHSBOARDS_DIR = ../../operators/multiclusterobservability/manifests/base/grafana
-PLATFORM_DASH_DIR = $(DAHSBOARDS_DIR)/platform-nexus
-HCP_DASH_DIR = $(DAHSBOARDS_DIR)/hcp-nexus
+PLATFORM_DASH_DIR = $(DAHSBOARDS_DIR)/platform-mcoa
+HCP_DASH_DIR = $(DAHSBOARDS_DIR)/hcp-mcoa
 ALERTS_DASH_DIR = $(DAHSBOARDS_DIR)/alerts
 VIRTUALIZATION_DASH_DIR = $(DAHSBOARDS_DIR)/virtualization
 HUB_RULES = cluster:memory_requested:ratio,cluster:memory_utilized:ratio,cluster:cpu_allocatable:sum,cluster:cpu_requested:ratio,cluster:cpu_cores:sum,acm_label_names,acm_managed_cluster_labels
