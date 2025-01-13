@@ -1,6 +1,6 @@
 apiVersion: v1
 data:
-  k8s-apiserver.json: |-
+  k8s-etcd.json: |-
     {
       "annotations": {
         "list": [
@@ -21,12 +21,12 @@ data:
           }
         ]
       },
-      "description": "kubernetes api dashbord",
+      "description": "etcd dashboard",
       "editable": true,
-      "gnetId": 12116,
+      "gnetId": null,
       "graphTooltip": 0,
-      "id": 7,
-      "iteration": 1682530940182,
+      "id": 17,
+      "iteration": 1682530945005,
       "links": [],
       "panels": [
         {
@@ -35,8 +35,7 @@ data:
           "fieldConfig": {
             "defaults": {
               "color": {
-                "fixedColor": "rgb(255, 255, 255)",
-                "mode": "fixed"
+                "mode": "thresholds"
               },
               "mappings": [
                 {
@@ -49,8 +48,6 @@ data:
                   "type": "special"
                 }
               ],
-              "max": 1,
-              "min": 0,
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
@@ -64,17 +61,17 @@ data:
                   }
                 ]
               },
-              "unit": "percentunit"
+              "unit": "none"
             },
             "overrides": []
           },
           "gridPos": {
             "h": 7,
-            "w": 4,
+            "w": 6,
             "x": 0,
             "y": 0
           },
-          "id": 2,
+          "id": 28,
           "interval": null,
           "links": [],
           "maxDataPoints": 100,
@@ -96,14 +93,16 @@ data:
           "pluginVersion": "8.5.20",
           "targets": [
             {
-              "expr": "(sum(up{job=\"apiserver\",cluster=\"$cluster\"} == 1) / count(up{job=\"apiserver\",cluster=\"$cluster\"}))",
-              "format": "time_series",
+              "expr": "sum(etcd_server_has_leader{cluster=\"$cluster\",job=\"etcd\"})",
+              "interval": "",
               "intervalFactor": 2,
               "legendFormat": "",
-              "refId": "A"
+              "metric": "etcd_server_has_leader",
+              "refId": "A",
+              "step": 20
             }
           ],
-          "title": "API Servers Up",
+          "title": "Up",
           "type": "stat"
         },
         {
@@ -112,38 +111,32 @@ data:
           "dashLength": 10,
           "dashes": false,
           "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {
-              "links": []
-            },
-            "overrides": []
-          },
+          "editable": true,
+          "error": false,
           "fill": 0,
           "fillGradient": 0,
           "gridPos": {
             "h": 7,
             "w": 10,
-            "x": 4,
+            "x": 6,
             "y": 0
           },
           "hiddenSeries": false,
-          "id": 4,
-          "interval": "4m",
+          "id": 23,
+          "isNew": true,
           "legend": {
-            "alignAsTable": false,
             "avg": false,
             "current": false,
             "max": false,
             "min": false,
-            "rightSide": false,
-            "show": true,
+            "show": false,
             "total": false,
             "values": false
           },
           "lines": true,
-          "linewidth": 1,
+          "linewidth": 2,
           "links": [],
-          "nullPointMode": "null",
+          "nullPointMode": "connected",
           "options": {
             "alertThreshold": true
           },
@@ -152,34 +145,39 @@ data:
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
-          "repeat": null,
-          "seriesOverrides": [
-            {}
-          ],
+          "seriesOverrides": [],
           "spaceLength": 10,
           "stack": false,
           "steppedLine": false,
           "targets": [
             {
-              "expr": "apiserver_request_duration_seconds:histogram_quantile_99:instance{instance=~\"$instance\", cluster=\"$cluster\"}",
+              "expr": "grpc_server_started_total:etcd_unary:sum_rate",
               "format": "time_series",
               "interval": "",
-              "intervalFactor": 1,
-              "legendFormat": "{{verb}}",
-              "refId": "A"
+              "intervalFactor": 2,
+              "legendFormat": "RPC Rate",
+              "metric": "grpc_server_started_total",
+              "refId": "A",
+              "step": 2
             },
             {
-              "expr": "1",
-              "legendFormat": "Latency Threshold",
-              "refId": "B"
+              "expr": "rpc_rate:grpc_server_handled_total:sum_rate{cluster=\"$cluster\"}",
+              "format": "time_series",
+              "interval": "",
+              "intervalFactor": 2,
+              "legendFormat": "RPC Failed Rate",
+              "metric": "grpc_server_handled_total",
+              "refId": "B",
+              "step": 2
             }
           ],
           "thresholds": [],
           "timeFrom": null,
           "timeRegions": [],
           "timeShift": null,
-          "title": "Request Latency (99th percentile)",
+          "title": "RPC Rate",
           "tooltip": {
+            "msResolution": false,
             "shared": true,
             "sort": 0,
             "value_type": "individual"
@@ -194,365 +192,11 @@ data:
           },
           "yaxes": [
             {
-              "format": "s",
-              "label": null,
-              "logBase": 1,
-              "max": null,
-              "min": null,
-              "show": true
-            },
-            {
-              "format": "s",
-              "label": null,
-              "logBase": 1,
-              "max": null,
-              "min": null,
-              "show": true
-            }
-          ],
-          "yaxis": {
-            "align": false,
-            "alignLevel": null
-          }
-        },
-        {
-          "aliasColors": {},
-          "bars": false,
-          "dashLength": 10,
-          "dashes": false,
-          "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {
-              "links": []
-            },
-            "overrides": []
-          },
-          "fill": 1,
-          "fillGradient": 0,
-          "gridPos": {
-            "h": 7,
-            "w": 10,
-            "x": 14,
-            "y": 0
-          },
-          "hiddenSeries": false,
-          "id": 3,
-          "interval": "4m",
-          "legend": {
-            "alignAsTable": false,
-            "avg": false,
-            "current": false,
-            "max": false,
-            "min": false,
-            "rightSide": false,
-            "show": true,
-            "total": false,
-            "values": false
-          },
-          "lines": true,
-          "linewidth": 1,
-          "links": [],
-          "nullPointMode": "null",
-          "options": {
-            "alertThreshold": true
-          },
-          "percentage": false,
-          "pluginVersion": "8.5.20",
-          "pointradius": 5,
-          "points": false,
-          "renderer": "flot",
-          "repeat": null,
-          "seriesOverrides": [],
-          "spaceLength": 10,
-          "stack": false,
-          "steppedLine": false,
-          "targets": [
-            {
-              "expr": "sum(sum:apiserver_request_total:5m{instance=~\"$instance\",code=~\"2..\", cluster=\"$cluster\"})",
-              "format": "time_series",
-              "interval": "",
-              "intervalFactor": 1,
-              "legendFormat": "2xx",
-              "refId": "A"
-            },
-            {
-              "expr": "sum(sum:apiserver_request_total:5m{instance=~\"$instance\",code=~\"3..\", cluster=\"$cluster\"})",
-              "format": "time_series",
-              "hide": false,
-              "interval": "",
-              "intervalFactor": 1,
-              "legendFormat": "3xx",
-              "refId": "B"
-            },
-            {
-              "expr": "sum(sum:apiserver_request_total:5m{instance=~\"$instance\",code=~\"4..\", cluster=\"$cluster\"})",
-              "format": "time_series",
-              "interval": "",
-              "intervalFactor": 1,
-              "legendFormat": "4xx",
-              "refId": "C"
-            },
-            {
-              "expr": "sum(sum:apiserver_request_total:5m{instance=~\"$instance\",code=~\"5..\", cluster=\"$cluster\"})",
-              "format": "time_series",
-              "interval": "",
-              "intervalFactor": 1,
-              "legendFormat": "5xx",
-              "refId": "D"
-            }
-          ],
-          "thresholds": [],
-          "timeFrom": null,
-          "timeRegions": [],
-          "timeShift": null,
-          "title": "Request Rate by  HTTP Return Code",
-          "tooltip": {
-            "shared": false,
-            "sort": 0,
-            "value_type": "individual"
-          },
-          "type": "graph",
-          "xaxis": {
-            "buckets": null,
-            "mode": "time",
-            "name": null,
-            "show": true,
-            "values": []
-          },
-          "yaxes": [
-            {
               "format": "ops",
               "label": null,
               "logBase": 1,
               "max": null,
               "min": null,
-              "show": true
-            },
-            {
-              "format": "ops",
-              "label": null,
-              "logBase": 1,
-              "max": null,
-              "min": null,
-              "show": true
-            }
-          ],
-          "yaxis": {
-            "align": false,
-            "alignLevel": null
-          }
-        },
-        {
-          "aliasColors": {},
-          "bars": false,
-          "dashLength": 10,
-          "dashes": false,
-          "datasource": "$datasource",
-          "description": "The time it takes to fulfill the different actions to keep the desired status of the cluster.",
-          "fieldConfig": {
-            "defaults": {
-              "links": []
-            },
-            "overrides": []
-          },
-          "fill": 1,
-          "fillGradient": 0,
-          "gridPos": {
-            "h": 9,
-            "w": 24,
-            "x": 0,
-            "y": 7
-          },
-          "hiddenSeries": false,
-          "id": 7,
-          "interval": "4m",
-          "legend": {
-            "alignAsTable": true,
-            "avg": false,
-            "current": true,
-            "max": false,
-            "min": false,
-            "rightSide": true,
-            "show": true,
-            "sort": "current",
-            "sortDesc": true,
-            "total": false,
-            "values": true
-          },
-          "lines": true,
-          "linewidth": 1,
-          "links": [],
-          "nullPointMode": "null",
-          "options": {
-            "alertThreshold": true
-          },
-          "percentage": false,
-          "pluginVersion": "8.5.20",
-          "pointradius": 5,
-          "points": false,
-          "renderer": "flot",
-          "repeat": null,
-          "seriesOverrides": [],
-          "spaceLength": 10,
-          "stack": false,
-          "steppedLine": false,
-          "targets": [
-            {
-              "expr": "workqueue_queue_duration_seconds_bucket:apiserver:histogram_quantile_99{instance=~\"$instance\", cluster=\"$cluster\"}",
-              "format": "time_series",
-              "hide": false,
-              "interval": "",
-              "intervalFactor": 1,
-              "legendFormat": "{{instance}} {{name}}",
-              "refId": "A"
-            }
-          ],
-          "thresholds": [],
-          "timeFrom": null,
-          "timeRegions": [],
-          "timeShift": null,
-          "title": "Work Queue Latency by Requestor",
-          "tooltip": {
-            "shared": false,
-            "sort": 0,
-            "value_type": "individual"
-          },
-          "type": "graph",
-          "xaxis": {
-            "buckets": null,
-            "mode": "time",
-            "name": null,
-            "show": true,
-            "values": []
-          },
-          "yaxes": [
-            {
-              "format": "s",
-              "label": null,
-              "logBase": 1,
-              "max": null,
-              "min": null,
-              "show": true
-            },
-            {
-              "format": "s",
-              "label": null,
-              "logBase": 1,
-              "max": null,
-              "min": null,
-              "show": true
-            }
-          ],
-          "yaxis": {
-            "align": false,
-            "alignLevel": null
-          }
-        },
-        {
-          "collapsed": false,
-          "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {},
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 1,
-            "w": 24,
-            "x": 0,
-            "y": 16
-          },
-          "id": 15,
-          "panels": [],
-          "title": "Saturation",
-          "type": "row"
-        },
-        {
-          "aliasColors": {},
-          "bars": false,
-          "dashLength": 10,
-          "dashes": false,
-          "datasource": "$datasource",
-          "description": "Number of actions waiting in the queue to be performed.",
-          "fieldConfig": {
-            "defaults": {
-              "links": []
-            },
-            "overrides": []
-          },
-          "fill": 1,
-          "fillGradient": 0,
-          "gridPos": {
-            "h": 7,
-            "w": 12,
-            "x": 0,
-            "y": 17
-          },
-          "hiddenSeries": false,
-          "id": 6,
-          "interval": "",
-          "legend": {
-            "alignAsTable": false,
-            "avg": false,
-            "current": false,
-            "max": false,
-            "min": false,
-            "rightSide": false,
-            "show": false,
-            "total": false,
-            "values": false
-          },
-          "lines": true,
-          "linewidth": 1,
-          "links": [],
-          "nullPointMode": "null",
-          "options": {
-            "alertThreshold": true
-          },
-          "percentage": false,
-          "pluginVersion": "8.5.20",
-          "pointradius": 5,
-          "points": false,
-          "renderer": "flot",
-          "repeat": null,
-          "seriesOverrides": [],
-          "spaceLength": 10,
-          "stack": false,
-          "steppedLine": false,
-          "targets": [
-            {
-              "expr": "sum(rate(workqueue_depth{job=\"apiserver\", instance=~\"$instance\", cluster=\"$cluster\"}[$__rate_interval])) by (instance, name)",
-              "format": "time_series",
-              "interval": "",
-              "intervalFactor": 1,
-              "legendFormat": "{{instance}} {{name}}",
-              "refId": "A"
-            }
-          ],
-          "thresholds": [],
-          "timeFrom": null,
-          "timeRegions": [],
-          "timeShift": null,
-          "title": "Queue Depth",
-          "tooltip": {
-            "shared": false,
-            "sort": 0,
-            "value_type": "individual"
-          },
-          "type": "graph",
-          "xaxis": {
-            "buckets": null,
-            "mode": "time",
-            "name": null,
-            "show": true,
-            "values": []
-          },
-          "yaxes": [
-            {
-              "format": "short",
-              "label": null,
-              "logBase": 1,
-              "max": null,
-              "min": 0,
               "show": true
             },
             {
@@ -560,7 +204,7 @@ data:
               "label": null,
               "logBase": 1,
               "max": null,
-              "min": 0,
+              "min": null,
               "show": true
             }
           ],
@@ -575,141 +219,32 @@ data:
           "dashLength": 10,
           "dashes": false,
           "datasource": "$datasource",
-          "description": "How fast we are scheduling new actions to be  performed by controller.",
-          "fieldConfig": {
-            "defaults": {
-              "links": []
-            },
-            "overrides": []
-          },
-          "fill": 1,
-          "fillGradient": 0,
-          "gridPos": {
-            "h": 7,
-            "w": 12,
-            "x": 12,
-            "y": 17
-          },
-          "hiddenSeries": false,
-          "id": 5,
-          "interval": "4m",
-          "legend": {
-            "alignAsTable": false,
-            "avg": false,
-            "current": false,
-            "max": false,
-            "min": false,
-            "rightSide": false,
-            "show": false,
-            "total": false,
-            "values": false
-          },
-          "lines": true,
-          "linewidth": 1,
-          "links": [],
-          "nullPointMode": "null",
-          "options": {
-            "alertThreshold": true
-          },
-          "percentage": false,
-          "pluginVersion": "8.5.20",
-          "pointradius": 5,
-          "points": false,
-          "renderer": "flot",
-          "repeat": null,
-          "seriesOverrides": [],
-          "spaceLength": 10,
-          "stack": false,
-          "steppedLine": false,
-          "targets": [
-            {
-              "expr": "sum(rate(workqueue_adds_total{job=\"apiserver\" ,instance=~\"$instance\", cluster=\"$cluster\"}[$__rate_interval])) by (instance, name)",
-              "format": "time_series",
-              "interval": "",
-              "intervalFactor": 1,
-              "legendFormat": "{{instance}} {{name}}",
-              "refId": "A"
-            }
-          ],
-          "thresholds": [],
-          "timeFrom": null,
-          "timeRegions": [],
-          "timeShift": null,
-          "title": "Queue Add Rate",
-          "tooltip": {
-            "shared": false,
-            "sort": 0,
-            "value_type": "individual"
-          },
-          "type": "graph",
-          "xaxis": {
-            "buckets": null,
-            "mode": "time",
-            "name": null,
-            "show": true,
-            "values": []
-          },
-          "yaxes": [
-            {
-              "format": "ops",
-              "label": null,
-              "logBase": 1,
-              "max": null,
-              "min": 0,
-              "show": true
-            },
-            {
-              "format": "ops",
-              "label": null,
-              "logBase": 1,
-              "max": null,
-              "min": 0,
-              "show": true
-            }
-          ],
-          "yaxis": {
-            "align": false,
-            "alignLevel": null
-          }
-        },
-        {
-          "aliasColors": {},
-          "bars": false,
-          "dashLength": 10,
-          "dashes": false,
-          "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {
-              "links": []
-            },
-            "overrides": []
-          },
-          "fill": 1,
+          "editable": true,
+          "error": false,
+          "fill": 0,
           "fillGradient": 0,
           "gridPos": {
             "h": 7,
             "w": 8,
-            "x": 0,
-            "y": 24
+            "x": 16,
+            "y": 0
           },
           "hiddenSeries": false,
-          "id": 11,
-          "interval": "",
+          "id": 41,
+          "isNew": true,
           "legend": {
-            "alignAsTable": false,
             "avg": false,
             "current": false,
             "max": false,
             "min": false,
-            "rightSide": false,
-            "show": true,
+            "show": false,
             "total": false,
             "values": false
           },
           "lines": true,
-          "linewidth": 1,
+          "linewidth": 2,
           "links": [],
-          "nullPointMode": "null",
+          "nullPointMode": "connected",
           "options": {
             "alertThreshold": true
           },
@@ -718,19 +253,328 @@ data:
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
-          "repeat": null,
           "seriesOverrides": [],
           "spaceLength": 10,
           "stack": false,
           "steppedLine": false,
           "targets": [
             {
-              "expr": "process_resident_memory_bytes{job=\"apiserver\",instance=~\"$instance\", cluster=\"$cluster\"}",
-              "format": "time_series",
+              "expr": "active_streams_watch:grpc_server_handled_total:sum{cluster=\"$cluster\"}",
               "interval": "",
-              "intervalFactor": 1,
-              "legendFormat": "{{instance}}",
-              "refId": "A"
+              "intervalFactor": 2,
+              "legendFormat": "Watch Streams",
+              "metric": "grpc_server_handled_total",
+              "refId": "A",
+              "step": 4
+            },
+            {
+              "expr": "active_streams_lease:grpc_server_handled_total:sum{cluster=\"$cluster\"}",
+              "hide": false,
+              "interval": "",
+              "intervalFactor": 2,
+              "legendFormat": "Lease Streams",
+              "metric": "grpc_server_handled_total",
+              "refId": "B",
+              "step": 4
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeRegions": [],
+          "timeShift": null,
+          "title": "Active Streams",
+          "tooltip": {
+            "msResolution": false,
+            "shared": true,
+            "sort": 0,
+            "value_type": "individual"
+          },
+          "type": "graph",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "format": "short",
+              "label": "",
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            },
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ],
+          "yaxis": {
+            "align": false,
+            "alignLevel": null
+          }
+        },
+        {
+          "aliasColors": {},
+          "bars": false,
+          "dashLength": 10,
+          "dashes": false,
+          "datasource": "$datasource",
+          "decimals": null,
+          "editable": true,
+          "error": false,
+          "fill": 0,
+          "fillGradient": 0,
+          "grid": {},
+          "gridPos": {
+            "h": 7,
+            "w": 8,
+            "x": 0,
+            "y": 7
+          },
+          "hiddenSeries": false,
+          "id": 1,
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": false,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 2,
+          "links": [],
+          "nullPointMode": "connected",
+          "options": {
+            "alertThreshold": true
+          },
+          "percentage": false,
+          "pluginVersion": "8.5.20",
+          "pointradius": 5,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [],
+          "spaceLength": 10,
+          "stack": false,
+          "steppedLine": false,
+          "targets": [
+            {
+              "expr": "etcd_mvcc_db_total_size_in_bytes{cluster=\"$cluster\",job=\"etcd\"}",
+              "hide": false,
+              "interval": "",
+              "intervalFactor": 2,
+              "legendFormat": "{{instance}} DB Size",
+              "metric": "",
+              "refId": "A",
+              "step": 4
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeRegions": [],
+          "timeShift": null,
+          "title": "DB Size",
+          "tooltip": {
+            "msResolution": false,
+            "shared": true,
+            "sort": 0,
+            "value_type": "cumulative"
+          },
+          "type": "graph",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "format": "bytes",
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            },
+            {
+              "format": "short",
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": false
+            }
+          ],
+          "yaxis": {
+            "align": false,
+            "alignLevel": null
+          }
+        },
+        {
+          "aliasColors": {},
+          "bars": false,
+          "dashLength": 10,
+          "dashes": false,
+          "datasource": "$datasource",
+          "editable": true,
+          "error": false,
+          "fill": 0,
+          "fillGradient": 0,
+          "grid": {},
+          "gridPos": {
+            "h": 7,
+            "w": 8,
+            "x": 8,
+            "y": 7
+          },
+          "hiddenSeries": false,
+          "id": 3,
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": false,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 2,
+          "links": [],
+          "nullPointMode": "connected",
+          "options": {
+            "alertThreshold": true
+          },
+          "percentage": false,
+          "pluginVersion": "8.5.20",
+          "pointradius": 1,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [],
+          "spaceLength": 10,
+          "stack": false,
+          "steppedLine": true,
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.99, sum(rate(etcd_disk_wal_fsync_duration_seconds_bucket{cluster=\"$cluster\",job=\"etcd\"}[$__rate_interval])) by (instance, le))",
+              "hide": false,
+              "interval": "",
+              "intervalFactor": 2,
+              "legendFormat": "{{instance}} WAL fsync",
+              "metric": "etcd_disk_wal_fsync_duration_seconds_bucket",
+              "refId": "A",
+              "step": 4
+            },
+            {
+              "expr": "histogram_quantile(0.99, sum(rate(etcd_disk_backend_commit_duration_seconds_bucket{cluster=\"$cluster\",job=\"etcd\"}[$__rate_interval])) by (instance, le))",
+              "interval": "",
+              "intervalFactor": 2,
+              "legendFormat": "{{instance}} DB fsync",
+              "metric": "etcd_disk_backend_commit_duration_seconds_bucket",
+              "refId": "B",
+              "step": 4
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeRegions": [],
+          "timeShift": null,
+          "title": "Disk Sync Duration",
+          "tooltip": {
+            "msResolution": false,
+            "shared": true,
+            "sort": 0,
+            "value_type": "cumulative"
+          },
+          "type": "graph",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "format": "s",
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            },
+            {
+              "format": "short",
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": false
+            }
+          ],
+          "yaxis": {
+            "align": false,
+            "alignLevel": null
+          }
+        },
+        {
+          "aliasColors": {},
+          "bars": false,
+          "dashLength": 10,
+          "dashes": false,
+          "datasource": "$datasource",
+          "editable": true,
+          "error": false,
+          "fill": 0,
+          "fillGradient": 0,
+          "gridPos": {
+            "h": 7,
+            "w": 8,
+            "x": 16,
+            "y": 7
+          },
+          "hiddenSeries": false,
+          "id": 29,
+          "isNew": true,
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": false,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 2,
+          "links": [],
+          "nullPointMode": "connected",
+          "options": {
+            "alertThreshold": true
+          },
+          "percentage": false,
+          "pluginVersion": "8.5.20",
+          "pointradius": 5,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [],
+          "spaceLength": 10,
+          "stack": false,
+          "steppedLine": false,
+          "targets": [
+            {
+              "expr": "process_resident_memory_bytes{cluster=\"$cluster\",job=\"etcd\"}",
+              "interval": "",
+              "intervalFactor": 2,
+              "legendFormat": "{{instance}} Resident Memory",
+              "metric": "process_resident_memory_bytes",
+              "refId": "A",
+              "step": 4
             }
           ],
           "thresholds": [],
@@ -739,7 +583,8 @@ data:
           "timeShift": null,
           "title": "Memory",
           "tooltip": {
-            "shared": false,
+            "msResolution": false,
+            "shared": true,
             "sort": 0,
             "value_type": "individual"
           },
@@ -761,7 +606,7 @@ data:
               "show": true
             },
             {
-              "format": "bytes",
+              "format": "short",
               "label": null,
               "logBase": 1,
               "max": null,
@@ -780,38 +625,32 @@ data:
           "dashLength": 10,
           "dashes": false,
           "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {
-              "links": []
-            },
-            "overrides": []
-          },
-          "fill": 1,
+          "editable": true,
+          "error": false,
+          "fill": 5,
           "fillGradient": 0,
           "gridPos": {
             "h": 7,
-            "w": 8,
-            "x": 8,
-            "y": 24
+            "w": 6,
+            "x": 0,
+            "y": 14
           },
           "hiddenSeries": false,
-          "id": 12,
-          "interval": "4m",
+          "id": 22,
+          "isNew": true,
           "legend": {
-            "alignAsTable": false,
             "avg": false,
             "current": false,
             "max": false,
             "min": false,
-            "rightSide": false,
-            "show": true,
+            "show": false,
             "total": false,
             "values": false
           },
           "lines": true,
-          "linewidth": 1,
+          "linewidth": 2,
           "links": [],
-          "nullPointMode": "null",
+          "nullPointMode": "connected",
           "options": {
             "alertThreshold": true
           },
@@ -820,28 +659,29 @@ data:
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
-          "repeat": null,
           "seriesOverrides": [],
           "spaceLength": 10,
-          "stack": false,
+          "stack": true,
           "steppedLine": false,
           "targets": [
             {
-              "expr": "rate(process_cpu_seconds_total{job=\"apiserver\",instance=~\"$instance\", cluster=\"$cluster\"}[$__rate_interval])",
-              "format": "time_series",
+              "expr": "rate(etcd_network_client_grpc_received_bytes_total{cluster=\"$cluster\", job=\"etcd\"}[$__rate_interval])",
               "interval": "",
-              "intervalFactor": 1,
-              "legendFormat": "{{instance}}",
-              "refId": "A"
+              "intervalFactor": 2,
+              "legendFormat": "{{instance}} Client Traffic In",
+              "metric": "etcd_network_client_grpc_received_bytes_total",
+              "refId": "A",
+              "step": 4
             }
           ],
           "thresholds": [],
           "timeFrom": null,
           "timeRegions": [],
           "timeShift": null,
-          "title": "CPU usage",
+          "title": "Client Traffic In",
           "tooltip": {
-            "shared": false,
+            "msResolution": false,
+            "shared": true,
             "sort": 0,
             "value_type": "individual"
           },
@@ -855,11 +695,11 @@ data:
           },
           "yaxes": [
             {
-              "format": "short",
+              "format": "Bps",
               "label": null,
               "logBase": 1,
               "max": null,
-              "min": 0,
+              "min": null,
               "show": true
             },
             {
@@ -867,7 +707,7 @@ data:
               "label": null,
               "logBase": 1,
               "max": null,
-              "min": 0,
+              "min": null,
               "show": true
             }
           ],
@@ -882,38 +722,32 @@ data:
           "dashLength": 10,
           "dashes": false,
           "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {
-              "links": []
-            },
-            "overrides": []
-          },
-          "fill": 1,
+          "editable": true,
+          "error": false,
+          "fill": 5,
           "fillGradient": 0,
           "gridPos": {
             "h": 7,
-            "w": 8,
-            "x": 16,
-            "y": 24
+            "w": 6,
+            "x": 6,
+            "y": 14
           },
           "hiddenSeries": false,
-          "id": 13,
-          "interval": "",
+          "id": 21,
+          "isNew": true,
           "legend": {
-            "alignAsTable": false,
             "avg": false,
             "current": false,
             "max": false,
             "min": false,
-            "rightSide": false,
-            "show": true,
+            "show": false,
             "total": false,
             "values": false
           },
           "lines": true,
-          "linewidth": 1,
+          "linewidth": 2,
           "links": [],
-          "nullPointMode": "null",
+          "nullPointMode": "connected",
           "options": {
             "alertThreshold": true
           },
@@ -922,28 +756,444 @@ data:
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
-          "repeat": null,
           "seriesOverrides": [],
           "spaceLength": 10,
-          "stack": false,
+          "stack": true,
           "steppedLine": false,
           "targets": [
             {
-              "expr": "go_goroutines{job=\"apiserver\",instance=~\"$instance\", cluster=\"$cluster\"}",
-              "format": "time_series",
+              "expr": "rate(etcd_network_client_grpc_sent_bytes_total{cluster=\"$cluster\", job=\"etcd\"}[$__rate_interval])",
               "interval": "",
-              "intervalFactor": 1,
-              "legendFormat": "{{instance}}",
-              "refId": "A"
+              "intervalFactor": 2,
+              "legendFormat": "{{instance}} Client Traffic Out",
+              "metric": "etcd_network_client_grpc_sent_bytes_total",
+              "refId": "A",
+              "step": 4
             }
           ],
           "thresholds": [],
           "timeFrom": null,
           "timeRegions": [],
           "timeShift": null,
-          "title": "Goroutines",
+          "title": "Client Traffic Out",
           "tooltip": {
-            "shared": false,
+            "msResolution": false,
+            "shared": true,
+            "sort": 0,
+            "value_type": "individual"
+          },
+          "type": "graph",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "format": "Bps",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            },
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ],
+          "yaxis": {
+            "align": false,
+            "alignLevel": null
+          }
+        },
+        {
+          "aliasColors": {},
+          "bars": false,
+          "dashLength": 10,
+          "dashes": false,
+          "datasource": "$datasource",
+          "editable": true,
+          "error": false,
+          "fill": 0,
+          "fillGradient": 0,
+          "gridPos": {
+            "h": 7,
+            "w": 6,
+            "x": 12,
+            "y": 14
+          },
+          "hiddenSeries": false,
+          "id": 20,
+          "isNew": true,
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": false,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 2,
+          "links": [],
+          "nullPointMode": "connected",
+          "options": {
+            "alertThreshold": true
+          },
+          "percentage": false,
+          "pluginVersion": "8.5.20",
+          "pointradius": 5,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [],
+          "spaceLength": 10,
+          "stack": false,
+          "steppedLine": false,
+          "targets": [
+            {
+              "expr": "sum(rate(etcd_network_peer_received_bytes_total{cluster=\"$cluster\", job=\"etcd\"}[$__rate_interval])) by (instance)",
+              "interval": "",
+              "intervalFactor": 2,
+              "legendFormat": "{{instance}} Peer Traffic In",
+              "metric": "etcd_network_peer_received_bytes_total",
+              "refId": "A",
+              "step": 4
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeRegions": [],
+          "timeShift": null,
+          "title": "Peer Traffic In",
+          "tooltip": {
+            "msResolution": false,
+            "shared": true,
+            "sort": 0,
+            "value_type": "individual"
+          },
+          "type": "graph",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "format": "Bps",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            },
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ],
+          "yaxis": {
+            "align": false,
+            "alignLevel": null
+          }
+        },
+        {
+          "aliasColors": {},
+          "bars": false,
+          "dashLength": 10,
+          "dashes": false,
+          "datasource": "$datasource",
+          "decimals": null,
+          "editable": true,
+          "error": false,
+          "fill": 0,
+          "fillGradient": 0,
+          "grid": {},
+          "gridPos": {
+            "h": 7,
+            "w": 6,
+            "x": 18,
+            "y": 14
+          },
+          "hiddenSeries": false,
+          "id": 16,
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": false,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 2,
+          "links": [],
+          "nullPointMode": "connected",
+          "options": {
+            "alertThreshold": true
+          },
+          "percentage": false,
+          "pluginVersion": "8.5.20",
+          "pointradius": 5,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [],
+          "spaceLength": 10,
+          "stack": false,
+          "steppedLine": false,
+          "targets": [
+            {
+              "expr": "sum(rate(etcd_network_peer_sent_bytes_total{cluster=\"$cluster\", job=\"etcd\"}[$__rate_interval])) by (instance)",
+              "hide": false,
+              "interval": "",
+              "intervalFactor": 2,
+              "legendFormat": "{{instance}} Peer Traffic Out",
+              "metric": "etcd_network_peer_sent_bytes_total",
+              "refId": "A",
+              "step": 4
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeRegions": [],
+          "timeShift": null,
+          "title": "Peer Traffic Out",
+          "tooltip": {
+            "msResolution": false,
+            "shared": true,
+            "sort": 0,
+            "value_type": "cumulative"
+          },
+          "type": "graph",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "format": "Bps",
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            },
+            {
+              "format": "short",
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ],
+          "yaxis": {
+            "align": false,
+            "alignLevel": null
+          }
+        },
+        {
+          "aliasColors": {},
+          "bars": false,
+          "dashLength": 10,
+          "dashes": false,
+          "datasource": "$datasource",
+          "editable": true,
+          "error": false,
+          "fill": 0,
+          "fillGradient": 0,
+          "gridPos": {
+            "h": 7,
+            "w": 12,
+            "x": 0,
+            "y": 21
+          },
+          "hiddenSeries": false,
+          "id": 40,
+          "isNew": true,
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": false,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 2,
+          "links": [],
+          "nullPointMode": "connected",
+          "options": {
+            "alertThreshold": true
+          },
+          "percentage": false,
+          "pluginVersion": "8.5.20",
+          "pointradius": 5,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [],
+          "spaceLength": 10,
+          "stack": false,
+          "steppedLine": false,
+          "targets": [
+            {
+              "expr": "sum(rate(etcd_server_proposals_failed_total{cluster=\"$cluster\", job=\"etcd\"}[$__rate_interval]))",
+              "interval": "",
+              "intervalFactor": 2,
+              "legendFormat": "Proposal Failure Rate",
+              "metric": "etcd_server_proposals_failed_total",
+              "refId": "A",
+              "step": 2
+            },
+            {
+              "expr": "sum(etcd_server_proposals_pending{cluster=\"$cluster\", job=\"etcd\"})",
+              "interval": "",
+              "intervalFactor": 2,
+              "legendFormat": "Proposal Pending Total",
+              "metric": "etcd_server_proposals_pending",
+              "refId": "B",
+              "step": 2
+            },
+            {
+              "expr": "sum(rate(etcd_server_proposals_committed_total{cluster=\"$cluster\", job=\"etcd\"}[$__rate_interval]))",
+              "intervalFactor": 2,
+              "legendFormat": "Proposal Commit Rate",
+              "metric": "etcd_server_proposals_committed_total",
+              "refId": "C",
+              "step": 2
+            },
+            {
+              "expr": "sum(rate(etcd_server_proposals_applied_total{cluster=\"$cluster\", job=\"etcd\"}[$__rate_interval]))",
+              "intervalFactor": 2,
+              "legendFormat": "Proposal Apply Rate",
+              "refId": "D",
+              "step": 2
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeRegions": [],
+          "timeShift": null,
+          "title": "Raft Proposals",
+          "tooltip": {
+            "msResolution": false,
+            "shared": true,
+            "sort": 0,
+            "value_type": "individual"
+          },
+          "type": "graph",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "format": "short",
+              "label": "",
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            },
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ],
+          "yaxis": {
+            "align": false,
+            "alignLevel": null
+          }
+        },
+        {
+          "aliasColors": {},
+          "bars": false,
+          "dashLength": 10,
+          "dashes": false,
+          "datasource": "$datasource",
+          "decimals": 0,
+          "editable": true,
+          "error": false,
+          "fill": 0,
+          "fillGradient": 0,
+          "gridPos": {
+            "h": 7,
+            "w": 12,
+            "x": 12,
+            "y": 21
+          },
+          "hiddenSeries": false,
+          "id": 19,
+          "isNew": true,
+          "legend": {
+            "alignAsTable": false,
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "rightSide": false,
+            "show": false,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 2,
+          "links": [],
+          "nullPointMode": "connected",
+          "options": {
+            "alertThreshold": true
+          },
+          "percentage": false,
+          "pluginVersion": "8.5.20",
+          "pointradius": 5,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [],
+          "spaceLength": 10,
+          "stack": false,
+          "steppedLine": false,
+          "targets": [
+            {
+              "expr": "changes(etcd_server_leader_changes_seen_total{cluster=\"$cluster\", job=\"etcd\"}[1d])",
+              "interval": "",
+              "intervalFactor": 2,
+              "legendFormat": "{{instance}} Total Leader Elections Per Day",
+              "metric": "etcd_server_leader_changes_seen_total",
+              "refId": "A",
+              "step": 2
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeRegions": [],
+          "timeShift": null,
+          "title": "Total Leader Elections Per Day",
+          "tooltip": {
+            "msResolution": false,
+            "shared": true,
             "sort": 0,
             "value_type": "individual"
           },
@@ -979,10 +1229,11 @@ data:
           }
         }
       ],
-      "refresh": "5m",
+      "refresh": "1m",
       "schemaVersion": 30,
       "style": "dark",
       "tags": [
+        "OpenShift",
         "kubernetes-mixin"
       ],
       "templating": {
@@ -1002,7 +1253,6 @@ data:
             "name": "datasource",
             "options": [],
             "query": "prometheus",
-            "queryValue": "",
             "refresh": 2,
             "regex": "",
             "skipUrlSync": false,
@@ -1016,7 +1266,7 @@ data:
               "value": ""
             },
             "datasource": "$datasource",
-            "definition": "",
+            "definition": "label_values(etcd_server_has_leader,cluster)",
             "description": null,
             "error": null,
             "hide": 0,
@@ -1026,43 +1276,13 @@ data:
             "name": "cluster",
             "options": [],
             "query": {
-              "query": "label_values(cluster)",
-              "refId": "Observatorium-cluster-Variable-Query"
+              "query": "label_values(etcd_server_has_leader,cluster)",
+              "refId": "StandardVariableQuery"
             },
             "refresh": 2,
             "regex": "",
             "skipUrlSync": false,
-            "sort": 1,
-            "tagValuesQuery": "",
-            "tagsQuery": "",
-            "type": "query",
-            "useTags": false
-          },
-          {
-            "allValue": null,
-            "current": {
-              "selected": false,
-              "text": "All",
-              "value": "$__all"
-            },
-            "datasource": "$datasource",
-            "definition": "",
-            "description": null,
-            "error": null,
-            "hide": 0,
-            "includeAll": true,
-            "label": "node",
-            "multi": false,
-            "name": "instance",
-            "options": [],
-            "query": {
-              "query": "label_values(process_resident_memory_bytes{cluster=\"$cluster\"}, instance)",
-              "refId": "Observatorium-instance-Variable-Query"
-            },
-            "refresh": 2,
-            "regex": "",
-            "skipUrlSync": false,
-            "sort": 1,
+            "sort": 2,
             "tagValuesQuery": "",
             "tagsQuery": "",
             "type": "query",
@@ -1075,6 +1295,7 @@ data:
         "to": "now"
       },
       "timepicker": {
+        "now": true,
         "refresh_intervals": [
           "1m",
           "5m",
@@ -1097,13 +1318,13 @@ data:
         ]
       },
       "timezone": "browser",
-      "title": "Kubernetes / API server",
-      "uid": "ef53cfadb93149efaf11b3976433c2ef",
+      "title": "Kubernetes / etcd Cluster",
+      "uid": "4374ac7478b04293bb0032cbbe04118d",
       "version": 1
     }
 kind: ConfigMap
 metadata:
-  name: grafana-dashboard-k8s-apiserver-nexus
+  name: grafana-dashboard-k8s-etcd-cluster-mcoa
   namespace: open-cluster-management-observability
   annotations:
-    observability.open-cluster-management.io/dashboard-folder: Platform (Nexus)
+    observability.open-cluster-management.io/dashboard-folder: Platform - MCOA

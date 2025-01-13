@@ -7,8 +7,8 @@ resources:
 - service.yaml
 - alerts
 - hcp
-- hcp-nexus
+- hcp-mcoa
 - platform
-- platform-nexus
+- platform-mcoa
 - ocp311
 - virtualization
