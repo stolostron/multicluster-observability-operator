@@ -1,4 +1,4 @@
-name: check collected metrics
+name: collected metrics (MCOA)
 
 on:
   push:

@@ -7,7 +7,6 @@
 # If the binaries are already executable on the ${PATH} of the host, the script will skip the installation.
 # Each function takes a path as the first argument, which is the directory where the binary will be installed.
 # If no path is provided, fallback to ${BIN_DIR} or default path to /usr/local/bin.
-set -x
 KUBECTL_VERSION="${KUBECTL_VERSION:=v1.28.2}"
 JQ_VERSION="${JQ_VERSION:=1.7.1}"
 YQ_VERSION="${YQ_VERSION:=4.45.1}"

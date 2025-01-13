@@ -13,22 +13,3 @@ More precisely, it helps verifying that:
 
 When adding a new list of dashboards in a new directory, make sure that you define the corresponding scrapeConfig and rules.
 Then add a target in the Makefile to run the metrics check for the new dashboards, following the existing examples.
-
-Generate metrics count stats:
-
-```bash
-./extract-dashboards-metrics.sh | tr '\n' ' ' | xargs ./count-metrics.sh > metrics-stats.txt
-```
-
-Sort extracted metrics to identify highest cardinality ones:
-
-```bash
-sort -k2,2nr metrics-stats.txt | grep -v " 0"
-```
-
-
-Check prom rules
-```bash
-cat grafana/nexus/acm/prometheus-rule.yaml | yq '.spec' | promtool check rules
-```
-
