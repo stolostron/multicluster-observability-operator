@@ -1,6 +1,6 @@
 apiVersion: v1
 data:
-  cluster-rsrc-use.json: |-
+  node-rsrc-use.json: |-
     {
       "annotations": {
         "list": [
@@ -23,19 +23,15 @@ data:
       },
       "description": "http://www.brendangregg.com/USEmethod/use-linux.html",
       "editable": true,
-      "gnetId": 12135,
+      "gnetId": 12136,
       "graphTooltip": 0,
-      "id": 6,
-      "iteration": 1682530948141,
+      "id": 24,
+      "iteration": 1682441679432,
       "links": [],
       "panels": [
         {
           "collapsed": false,
           "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {},
-            "overrides": []
-          },
           "gridPos": {
             "h": 1,
             "w": 24,
@@ -60,7 +56,7 @@ data:
             },
             "overrides": []
           },
-          "fill": 10,
+          "fill": 1,
           "fillGradient": 0,
           "gridPos": {
             "h": 8,
@@ -71,16 +67,18 @@ data:
           "hiddenSeries": false,
           "id": 1,
           "legend": {
+            "alignAsTable": false,
             "avg": false,
             "current": false,
             "max": false,
             "min": false,
+            "rightSide": false,
             "show": true,
             "total": false,
             "values": false
           },
           "lines": true,
-          "linewidth": 0,
+          "linewidth": 1,
           "links": [],
           "nullPointMode": "null as zero",
           "options": {
@@ -93,15 +91,17 @@ data:
           "renderer": "flot",
           "seriesOverrides": [],
           "spaceLength": 10,
-          "stack": true,
+          "stack": false,
           "steppedLine": false,
           "targets": [
             {
-              "expr": "(\n  instance:node_cpu_utilisation:rate1m{cluster=\"$cluster\",job=\"node-exporter\"}\n*\n  instance:node_num_cpu:sum{cluster=\"$cluster\",job=\"node-exporter\"}\n)\n/ scalar(sum(instance:node_num_cpu:sum{cluster=\"$cluster\",job=\"node-exporter\"}))\n",
+              "exemplar": true,
+              "expr": "instance:node_cpu_utilisation:rate1m{cluster=\"$cluster\", job=\"node-exporter\", instance=~\"$instance\"}",
               "format": "time_series",
-              "intervalFactor": 2,
-              "legendFormat": "{{instance}}",
-              "legendLink": "/dashboard/file/node-rsrc-use.json",
+              "interval": "",
+              "intervalFactor": 1,
+              "legendFormat": "{{ instance }}",
+              "legendLink": null,
               "refId": "A",
               "step": 10
             }
@@ -129,7 +129,7 @@ data:
               "format": "percentunit",
               "label": null,
               "logBase": 1,
-              "max": 1,
+              "max": null,
               "min": 0,
               "show": true
             },
@@ -159,7 +159,7 @@ data:
             },
             "overrides": []
           },
-          "fill": 10,
+          "fill": 1,
           "fillGradient": 0,
           "gridPos": {
             "h": 8,
@@ -169,6 +169,7 @@ data:
           },
           "hiddenSeries": false,
           "id": 2,
+          "interval": "",
           "legend": {
             "avg": false,
             "current": false,
@@ -179,7 +180,7 @@ data:
             "values": false
           },
           "lines": true,
-          "linewidth": 0,
+          "linewidth": 1,
           "links": [],
           "nullPointMode": "null as zero",
           "options": {
@@ -192,15 +193,17 @@ data:
           "renderer": "flot",
           "seriesOverrides": [],
           "spaceLength": 10,
-          "stack": true,
+          "stack": false,
           "steppedLine": false,
           "targets": [
             {
-              "expr": "instance:node_load1_per_cpu:ratio{cluster=\"$cluster\",job=\"node-exporter\"}\n/ scalar(count(instance:node_load1_per_cpu:ratio{cluster=\"$cluster\",job=\"node-exporter\"}))\n",
+              "exemplar": true,
+              "expr": "instance:node_load1_per_cpu:ratio{cluster=\"$cluster\", job=\"node-exporter\", instance=~\"$instance\"}",
               "format": "time_series",
-              "intervalFactor": 2,
-              "legendFormat": "{{instance}}",
-              "legendLink": "/dashboard/file/node-rsrc-use.json",
+              "interval": "",
+              "intervalFactor": 1,
+              "legendFormat": "{{ instance }}",
+              "legendLink": null,
               "refId": "A",
               "step": 10
             }
@@ -209,7 +212,7 @@ data:
           "timeFrom": null,
           "timeRegions": [],
           "timeShift": null,
-          "title": "CPU Saturation (load1 per CPU)",
+          "title": "CPU Saturation (Load1 per CPU)",
           "tooltip": {
             "shared": false,
             "sort": 0,
@@ -228,7 +231,7 @@ data:
               "format": "percentunit",
               "label": null,
               "logBase": 1,
-              "max": 1,
+              "max": null,
               "min": 0,
               "show": true
             },
@@ -249,10 +252,6 @@ data:
         {
           "collapsed": false,
           "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {},
-            "overrides": []
-          },
           "gridPos": {
             "h": 1,
             "w": 24,
@@ -277,16 +276,17 @@ data:
             },
             "overrides": []
           },
-          "fill": 10,
+          "fill": 1,
           "fillGradient": 0,
           "gridPos": {
-            "h": 9,
+            "h": 8,
             "w": 12,
             "x": 0,
             "y": 10
           },
           "hiddenSeries": false,
           "id": 3,
+          "interval": "",
           "legend": {
             "avg": false,
             "current": false,
@@ -297,7 +297,7 @@ data:
             "values": false
           },
           "lines": true,
-          "linewidth": 0,
+          "linewidth": 1,
           "links": [],
           "nullPointMode": "null as zero",
           "options": {
@@ -310,15 +310,17 @@ data:
           "renderer": "flot",
           "seriesOverrides": [],
           "spaceLength": 10,
-          "stack": true,
+          "stack": false,
           "steppedLine": false,
           "targets": [
             {
-              "expr": "instance:node_memory_utilisation:ratio{cluster=\"$cluster\",job=\"node-exporter\"}\n/ scalar(count(instance:node_memory_utilisation:ratio{cluster=\"$cluster\",job=\"node-exporter\"}))\n",
+              "exemplar": true,
+              "expr": "instance:node_memory_utilisation:ratio{cluster=\"$cluster\", job=\"node-exporter\", job=\"node-exporter\", instance=~\"$instance\"}",
               "format": "time_series",
-              "intervalFactor": 2,
-              "legendFormat": "{{instance}}",
-              "legendLink": "/dashboard/file/node-rsrc-use.json",
+              "interval": "",
+              "intervalFactor": 1,
+              "legendFormat": "{{ instance }}",
+              "legendLink": null,
               "refId": "A",
               "step": 10
             }
@@ -346,7 +348,7 @@ data:
               "format": "percentunit",
               "label": null,
               "logBase": 1,
-              "max": 1,
+              "max": null,
               "min": 0,
               "show": true
             },
@@ -365,121 +367,110 @@ data:
           }
         },
         {
-          "aliasColors": {},
-          "bars": false,
-          "dashLength": 10,
-          "dashes": false,
           "datasource": "$datasource",
           "fieldConfig": {
             "defaults": {
-              "links": []
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "never",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "links": [],
+              "mappings": [],
+              "min": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "short"
             },
             "overrides": []
           },
-          "fill": 10,
-          "fillGradient": 0,
           "gridPos": {
-            "h": 9,
+            "h": 8,
             "w": 12,
             "x": 12,
             "y": 10
           },
-          "hiddenSeries": false,
           "id": 4,
-          "legend": {
-            "avg": false,
-            "current": false,
-            "max": false,
-            "min": false,
-            "show": true,
-            "total": false,
-            "values": false
-          },
-          "lines": true,
-          "linewidth": 0,
           "links": [],
-          "nullPointMode": "null as zero",
           "options": {
-            "alertThreshold": true
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom"
+            },
+            "tooltip": {
+              "mode": "single"
+            }
           },
-          "percentage": false,
           "pluginVersion": "8.5.20",
-          "pointradius": 5,
-          "points": false,
-          "renderer": "flot",
-          "seriesOverrides": [],
-          "spaceLength": 10,
-          "stack": true,
-          "steppedLine": false,
           "targets": [
             {
-              "expr": "instance:node_vmstat_pgmajfault:rate1m{cluster=\"$cluster\",job=\"node-exporter\"}",
+              "exemplar": true,
+              "expr": "instance:node_vmstat_pgmajfault:rate1m{cluster=\"$cluster\", job=\"node-exporter\", instance=~\"$instance\"}",
               "format": "time_series",
-              "intervalFactor": 2,
-              "legendFormat": "{{instance}}",
-              "legendLink": "/dashboard/file/node-rsrc-use.json",
+              "interval": "",
+              "intervalFactor": 1,
+              "legendFormat": "{{ instance }}",
+              "legendLink": null,
               "refId": "A",
               "step": 10
             }
           ],
-          "thresholds": [],
           "timeFrom": null,
-          "timeRegions": [],
           "timeShift": null,
           "title": "Memory Saturation (Major Page Faults)",
-          "tooltip": {
-            "shared": false,
-            "sort": 0,
-            "value_type": "individual"
-          },
-          "type": "graph",
-          "xaxis": {
-            "buckets": null,
-            "mode": "time",
-            "name": null,
-            "show": true,
-            "values": []
-          },
-          "yaxes": [
-            {
-              "format": "rps",
-              "label": null,
-              "logBase": 1,
-              "max": null,
-              "min": 0,
-              "show": true
-            },
-            {
-              "format": "short",
-              "label": null,
-              "logBase": 1,
-              "max": null,
-              "min": null,
-              "show": false
-            }
-          ],
-          "yaxis": {
-            "align": false,
-            "alignLevel": null
-          }
+          "type": "timeseries"
         },
         {
           "collapsed": false,
           "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {},
-            "overrides": []
-          },
           "gridPos": {
             "h": 1,
             "w": 24,
             "x": 0,
-            "y": 19
+            "y": 18
           },
           "id": 12,
           "panels": [],
           "repeat": null,
-          "title": "Network",
+          "title": "Net",
           "type": "row"
         },
         {
@@ -494,13 +485,13 @@ data:
             },
             "overrides": []
           },
-          "fill": 10,
+          "fill": 1,
           "fillGradient": 0,
           "gridPos": {
-            "h": 9,
+            "h": 8,
             "w": 12,
             "x": 0,
-            "y": 20
+            "y": 19
           },
           "hiddenSeries": false,
           "id": 5,
@@ -514,7 +505,7 @@ data:
             "values": false
           },
           "lines": true,
-          "linewidth": 0,
+          "linewidth": 1,
           "links": [],
           "nullPointMode": "null as zero",
           "options": {
@@ -527,34 +518,39 @@ data:
           "renderer": "flot",
           "seriesOverrides": [
             {
-              "alias": "/ Receive/",
+              "alias": "/Receive/",
               "stack": "A"
             },
             {
-              "alias": "/ Transmit/",
+              "alias": "/Transmit/",
               "stack": "B",
               "transform": "negative-Y"
             }
           ],
           "spaceLength": 10,
-          "stack": true,
+          "stack": false,
           "steppedLine": false,
           "targets": [
             {
-              "expr": "instance:node_network_receive_bytes_excluding_lo:rate1m{cluster=\"$cluster\",job=\"node-exporter\"}",
+              "exemplar": true,
+              "expr": "instance:node_network_receive_bytes_excluding_lo:rate1m{cluster=\"$cluster\", job=\"node-exporter\", instance=~\"$instance\"}",
               "format": "time_series",
-              "intervalFactor": 2,
-              "legendFormat": "{{instance}} Receive",
-              "legendLink": "/dashboard/file/node-rsrc-use.json",
+              "hide": false,
+              "interval": "",
+              "intervalFactor": 1,
+              "legendFormat": "instance={{ instance }}, Receive",
+              "legendLink": null,
               "refId": "A",
               "step": 10
             },
             {
-              "expr": "instance:node_network_transmit_bytes_excluding_lo:rate1m{cluster=\"$cluster\",job=\"node-exporter\"}",
+              "exemplar": true,
+              "expr": "instance:node_network_transmit_bytes_excluding_lo:rate1m{cluster=\"$cluster\", job=\"node-exporter\", instance=~\"$instance\"}",
               "format": "time_series",
-              "intervalFactor": 2,
-              "legendFormat": "{{instance}} Transmit",
-              "legendLink": "/dashboard/file/node-rsrc-use.json",
+              "interval": "",
+              "intervalFactor": 1,
+              "legendFormat": "instance={{ instance }}, Transmit",
+              "legendLink": null,
               "refId": "B",
               "step": 10
             }
@@ -612,13 +608,13 @@ data:
             },
             "overrides": []
           },
-          "fill": 10,
+          "fill": 1,
           "fillGradient": 0,
           "gridPos": {
-            "h": 9,
+            "h": 8,
             "w": 12,
             "x": 12,
-            "y": 20
+            "y": 19
           },
           "hiddenSeries": false,
           "id": 6,
@@ -632,7 +628,7 @@ data:
             "values": false
           },
           "lines": true,
-          "linewidth": 0,
+          "linewidth": 1,
           "links": [],
           "nullPointMode": "null as zero",
           "options": {
@@ -645,34 +641,38 @@ data:
           "renderer": "flot",
           "seriesOverrides": [
             {
-              "alias": "/ Receive/",
+              "alias": "/Receive/",
               "stack": "A"
             },
             {
-              "alias": "/ Transmit/",
+              "alias": "/Transmit/",
               "stack": "B",
               "transform": "negative-Y"
             }
           ],
           "spaceLength": 10,
-          "stack": true,
+          "stack": false,
           "steppedLine": false,
           "targets": [
             {
-              "expr": "instance:node_network_receive_drop_excluding_lo:rate1m{cluster=\"$cluster\",job=\"node-exporter\"}",
+              "exemplar": true,
+              "expr": "instance:node_network_receive_drop_excluding_lo:rate1m{cluster=\"$cluster\", job=\"node-exporter\", instance=~\"$instance\"}",
               "format": "time_series",
-              "intervalFactor": 2,
-              "legendFormat": "{{instance}} Receive",
-              "legendLink": "/dashboard/file/node-rsrc-use.json",
+              "interval": "",
+              "intervalFactor": 1,
+              "legendFormat": "instance={{ instance }}, Receive drops",
+              "legendLink": null,
               "refId": "A",
               "step": 10
             },
             {
-              "expr": "instance:node_network_transmit_drop_excluding_lo:rate1m{cluster=\"$cluster\",job=\"node-exporter\"}",
+              "exemplar": true,
+              "expr": "instance:node_network_transmit_drop_excluding_lo:rate1m{cluster=\"$cluster\", job=\"node-exporter\", instance=~\"$instance\"}",
               "format": "time_series",
-              "intervalFactor": 2,
-              "legendFormat": "{{instance}} Transmit",
-              "legendLink": "/dashboard/file/node-rsrc-use.json",
+              "interval": "",
+              "intervalFactor": 1,
+              "legendFormat": "instance={{ instance }}, Transmit drops",
+              "legendLink": null,
               "refId": "B",
               "step": 10
             }
@@ -721,15 +721,11 @@ data:
         {
           "collapsed": false,
           "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {},
-            "overrides": []
-          },
           "gridPos": {
             "h": 1,
             "w": 24,
             "x": 0,
-            "y": 29
+            "y": 27
           },
           "id": 13,
           "panels": [],
@@ -749,13 +745,13 @@ data:
             },
             "overrides": []
           },
-          "fill": 10,
+          "fill": 1,
           "fillGradient": 0,
           "gridPos": {
-            "h": 10,
+            "h": 8,
             "w": 12,
             "x": 0,
-            "y": 30
+            "y": 28
           },
           "hiddenSeries": false,
           "id": 7,
@@ -769,9 +765,12 @@ data:
             "values": false
           },
           "lines": true,
-          "linewidth": 0,
+          "linewidth": 1,
           "links": [],
           "nullPointMode": "null as zero",
+          "options": {
+            "alertThreshold": true
+          },
           "percentage": false,
           "pluginVersion": "8.5.20",
           "pointradius": 5,
@@ -779,15 +778,17 @@ data:
           "renderer": "flot",
           "seriesOverrides": [],
           "spaceLength": 10,
-          "stack": true,
+          "stack": false,
           "steppedLine": false,
           "targets": [
             {
-              "expr": "instance_device:node_disk_io_time_seconds:rate1m{cluster=\"$cluster\",job=\"node-exporter\"}\n/ scalar(count(instance_device:node_disk_io_time_seconds:rate1m{cluster=\"$cluster\",job=\"node-exporter\"}))\n",
+              "exemplar": true,
+              "expr": "sum(instance_device:node_disk_io_time_seconds:rate1m{cluster=\"$cluster\", job=\"node-exporter\", instance=~\"$instance\"}) by (device, instance)",
               "format": "time_series",
-              "intervalFactor": 2,
-              "legendFormat": "{{instance}} {{device}}",
-              "legendLink": "/dashboard/file/node-rsrc-use.json",
+              "interval": "",
+              "intervalFactor": 1,
+              "legendFormat": "instance={{ instance }}, device={{ device }}",
+              "legendLink": null,
               "refId": "A",
               "step": 10
             }
@@ -815,7 +816,7 @@ data:
               "format": "percentunit",
               "label": null,
               "logBase": 1,
-              "max": "1",
+              "max": null,
               "min": 0,
               "show": true
             },
@@ -845,13 +846,13 @@ data:
             },
             "overrides": []
           },
-          "fill": 10,
+          "fill": 1,
           "fillGradient": 0,
           "gridPos": {
-            "h": 10,
+            "h": 8,
             "w": 12,
             "x": 12,
-            "y": 30
+            "y": 28
           },
           "hiddenSeries": false,
           "id": 8,
@@ -865,9 +866,12 @@ data:
             "values": false
           },
           "lines": true,
-          "linewidth": 0,
+          "linewidth": 1,
           "links": [],
           "nullPointMode": "null as zero",
+          "options": {
+            "alertThreshold": true
+          },
           "percentage": false,
           "pluginVersion": "8.5.20",
           "pointradius": 5,
@@ -875,15 +879,17 @@ data:
           "renderer": "flot",
           "seriesOverrides": [],
           "spaceLength": 10,
-          "stack": true,
+          "stack": false,
           "steppedLine": false,
           "targets": [
             {
-              "expr": "instance_device:node_disk_io_time_weighted_seconds:rate1m{cluster=\"$cluster\",job=\"node-exporter\"}\n/ scalar(count(instance_device:node_disk_io_time_weighted_seconds:rate1m{cluster=\"$cluster\",job=\"node-exporter\"}))\n",
+              "exemplar": true,
+              "expr": "sum(instance_device:node_disk_io_time_weighted_seconds:rate1m{cluster=\"$cluster\", job=\"node-exporter\", instance=~\"$instance\"}) by (instance, device)",
               "format": "time_series",
-              "intervalFactor": 2,
-              "legendFormat": "{{instance}} {{device}}",
-              "legendLink": "/dashboard/file/node-rsrc-use.json",
+              "interval": "",
+              "intervalFactor": 1,
+              "legendFormat": "instance={{ instance }}, device={{ device }}",
+              "legendLink": null,
               "refId": "A",
               "step": 10
             }
@@ -911,7 +917,7 @@ data:
               "format": "percentunit",
               "label": null,
               "logBase": 1,
-              "max": "1",
+              "max": null,
               "min": 0,
               "show": true
             },
@@ -932,15 +938,11 @@ data:
         {
           "collapsed": false,
           "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {},
-            "overrides": []
-          },
           "gridPos": {
             "h": 1,
             "w": 24,
             "x": 0,
-            "y": 40
+            "y": 36
           },
           "id": 14,
           "panels": [],
@@ -960,13 +962,13 @@ data:
             },
             "overrides": []
           },
-          "fill": 10,
+          "fill": 1,
           "fillGradient": 0,
           "gridPos": {
-            "h": 7,
+            "h": 8,
             "w": 24,
             "x": 0,
-            "y": 41
+            "y": 37
           },
           "hiddenSeries": false,
           "id": 9,
@@ -980,9 +982,12 @@ data:
             "values": false
           },
           "lines": true,
-          "linewidth": 0,
+          "linewidth": 1,
           "links": [],
           "nullPointMode": "null as zero",
+          "options": {
+            "alertThreshold": true
+          },
           "percentage": false,
           "pluginVersion": "8.5.20",
           "pointradius": 5,
@@ -990,15 +995,17 @@ data:
           "renderer": "flot",
           "seriesOverrides": [],
           "spaceLength": 10,
-          "stack": true,
+          "stack": false,
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum without (device) (\n  max without (fstype, mountpoint) (\n    node_filesystem_size_bytes{cluster=\"$cluster\",job=\"node-exporter\", fstype!=\"\"} - node_filesystem_avail_bytes{cluster=\"$cluster\",job=\"node-exporter\", fstype!=\"\"}\n  )\n) \n/ scalar(sum(max without (fstype, mountpoint) (node_filesystem_size_bytes{cluster=\"$cluster\",job=\"node-exporter\", fstype!=\"\"})))\n",
+              "exemplar": true,
+              "expr": "1 -\n(\n  max without (mountpoint, fstype) (node_filesystem_avail_bytes{cluster=\"$cluster\", job=\"node-exporter\", fstype!=\"\", instance=~\"$instance\"})\n/\n  max without (mountpoint, fstype) (node_filesystem_size_bytes{cluster=\"$cluster\", job=\"node-exporter\", fstype!=\"\", instance=~\"$instance\"})\n)\n",
               "format": "time_series",
-              "intervalFactor": 2,
-              "legendFormat": "{{instance}}",
-              "legendLink": "/dashboard/file/node-rsrc-use.json",
+              "interval": "",
+              "intervalFactor": 1,
+              "legendFormat": "instance={{ instance }}, {{ device }}",
+              "legendLink": null,
               "refId": "A",
               "step": 10
             }
@@ -1026,7 +1033,7 @@ data:
               "format": "percentunit",
               "label": null,
               "logBase": 1,
-              "max": "1",
+              "max": null,
               "min": 0,
               "show": true
             },
@@ -1054,8 +1061,8 @@ data:
           {
             "current": {
               "selected": false,
-              "text": "",
-              "value": ""
+              "text": "Observatorium",
+              "value": "Observatorium"
             },
             "description": null,
             "error": null,
@@ -1066,6 +1073,7 @@ data:
             "name": "datasource",
             "options": [],
             "query": "prometheus",
+            "queryValue": "",
             "refresh": 2,
             "regex": "",
             "skipUrlSync": false,
@@ -1074,9 +1082,9 @@ data:
           {
             "allValue": null,
             "current": {
-              "selected": false,
-              "text": "",
-              "value": ""
+              "selected": true,
+              "text": "local-cluster",
+              "value": "local-cluster"
             },
             "datasource": "$datasource",
             "definition": "label_values(acm_managed_cluster_labels{openshiftVersion_major!=\"3\"},name)",
@@ -1084,7 +1092,7 @@ data:
             "error": null,
             "hide": 0,
             "includeAll": false,
-            "label": null,
+            "label": "Cluster",
             "multi": false,
             "name": "cluster",
             "options": [],
@@ -1095,7 +1103,41 @@ data:
             "refresh": 2,
             "regex": "",
             "skipUrlSync": false,
-            "sort": 0,
+            "sort": 1,
+            "tagValuesQuery": "",
+            "tagsQuery": "",
+            "type": "query",
+            "useTags": false
+          },
+          {
+            "allValue": null,
+            "current": {
+              "selected": true,
+              "text": [
+                "All"
+              ],
+              "value": [
+                "$__all"
+              ]
+            },
+            "datasource": "$datasource",
+            "definition": "label_values(up{cluster=\"$cluster\", job=\"node-exporter\"}, instance)",
+            "description": null,
+            "error": null,
+            "hide": 0,
+            "includeAll": true,
+            "label": "Instance",
+            "multi": true,
+            "name": "instance",
+            "options": [],
+            "query": {
+              "query": "label_values(up{cluster=\"$cluster\", job=\"node-exporter\"}, instance)",
+              "refId": "Observatorium-instance-Variable-Query"
+            },
+            "refresh": 2,
+            "regex": "",
+            "skipUrlSync": false,
+            "sort": 5,
             "tagValuesQuery": "",
             "tagsQuery": "",
             "type": "query",
@@ -1130,13 +1172,13 @@ data:
         ]
       },
       "timezone": "browser",
-      "title": "USE Method / Cluster",
-      "uid": "2fce3902d7ce438b8ad1a2e87163644e",
+      "title": "USE Method / Node",
+      "uid": "ef6aefef914048f7abf06fc39cb18a42",
       "version": 1
     }
 kind: ConfigMap
 metadata:
-  name: grafana-dashboard-cluster-rsrc-use-nexus
+  name: grafana-dashboard-node-rsrc-use-mcoa
   namespace: open-cluster-management-observability
   annotations:
-    observability.open-cluster-management.io/dashboard-folder: Platform (Nexus)
+    observability.open-cluster-management.io/dashboard-folder: Platform - MCOA
