@@ -119,7 +119,7 @@ io/ioutil.{Discard,NopCloser,ReadAll,ReadDir,ReadFile,TempDir,TempFile,Writefile
 
 .PHONY: check-metrics
 check-metrics:
-	@$(MAKE) check-metrics
+	@$(MAKE) -C cicd-scripts/metrics check-metrics
 
 .PHONY: unit-tests ## Run all unit tests.
 unit-tests: unit-tests-operators unit-tests-loaders unit-tests-proxy unit-tests-collectors
