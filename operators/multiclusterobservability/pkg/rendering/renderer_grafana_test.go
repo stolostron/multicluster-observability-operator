@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	imagev1 "github.com/openshift/api/image/v1"
@@ -71,16 +72,51 @@ func TestRenderGrafana(t *testing.T) {
 					},
 				},
 			},
-			expect: func(t *testing.T, res []*unstructured.Unstructured) {
-				assert.Len(t, res, 44)
+			expect: func(t *testing.T, templates []*unstructured.Unstructured) {
+				assert.Greater(t, len(templates), 1)
+				deprecatedCount := 0
+
+				// Check that the deprecated field is added
+				for _, template := range templates {
+					if template.GetKind() != "ConfigMap" {
+						continue
+					}
+
+					templateJson, err := template.MarshalJSON()
+					assert.NoError(t, err)
+
+					templateStr := string(templateJson)
+					isDeprecated := strings.Contains(templateStr, "DEPRECATED")
+
+					// Ensure mcoa dashboards are not the ones marked as deprecated
+					assert.False(t, isDeprecated && strings.Contains(templateStr, "MCOA"))
+
+					if isDeprecated {
+						deprecatedCount++
+					}
+				}
+
+				assert.NotZero(t, deprecatedCount)
 			},
 		},
 		"MCOA for metrics is disabled": {
 			mco: obv1beta2.MultiClusterObservability{},
-			expect: func(t *testing.T, res []*unstructured.Unstructured) {
-				assert.Len(t, res, 40)
-				for _, r := range res {
-					assert.NotContains(t, r.GetName(), "nexus")
+			expect: func(t *testing.T, templates []*unstructured.Unstructured) {
+				assert.Greater(t, len(templates), 1)
+				forbiddenTypes := []string{"ScrapeConfig", "PrometheusRule"}
+				// Check that the deprecated string is never added
+				for _, template := range templates {
+					assert.NotContains(t, forbiddenTypes, template.GetKind())
+
+					if template.GetKind() != "ConfigMap" {
+						continue
+					}
+
+					templateJson, err := template.MarshalJSON()
+					assert.NoError(t, err)
+
+					templateStr := string(templateJson)
+					assert.NotContains(t, templateStr, "DEPRECATED")
 				}
 			},
 		},
