@@ -117,6 +117,10 @@ io/ioutil.{Discard,NopCloser,ReadAll,ReadDir,ReadFile,TempDir,TempFile,Writefile
 	@go run ./scripts/copyright
 	$(call require_clean_work_tree,'detected files without copyright, run make lint and commit changes')
 
+.PHONY: check-metrics
+check-metrics:
+	@$(MAKE) check-metrics
+
 .PHONY: unit-tests ## Run all unit tests.
 unit-tests: unit-tests-operators unit-tests-loaders unit-tests-proxy unit-tests-collectors
 
@@ -187,6 +191,13 @@ tools: $(KUSTOMIZE) $(KIND) $(GOJSONTOYAML) ## Install development and e2e tools
 install-envtest-deps: ## Install env-test.
 	@mkdir -p $(BIN_DIR)
 	@./scripts/install-binaries.sh install_envtest_deps $(BIN_DIR)
+
+.PHONY: install-check-metrics-deps
+install-check-metrics-deps:
+	@mkdir -p $(BIN_DIR)
+	@./scripts/install-binaries.sh install_jq $(BIN_DIR)
+	@./scripts/install-binaries.sh install_yq $(BIN_DIR)
+	@./scripts/install-binaries.sh install_mimirtool $(BIN_DIR)
 
 ##@ Multi-Cluster-Observability Operator
 
