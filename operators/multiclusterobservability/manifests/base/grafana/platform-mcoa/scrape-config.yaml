@@ -5,7 +5,7 @@ metadata:
   labels:
     app: acm-platform-metrics-collector
     release: multicluster-observability-addon
-  name: platform-metrics-default-nexus
+  name: platform-metrics-default-mcoa
   namespace: open-cluster-management-observability
 spec:
   jobName: platform-metrics

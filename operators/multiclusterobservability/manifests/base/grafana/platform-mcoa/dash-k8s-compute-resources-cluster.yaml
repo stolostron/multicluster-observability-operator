@@ -2158,7 +2158,7 @@ data:
     }
 kind: ConfigMap
 metadata:
-  name: grafana-dashboard-k8s-compute-resources-cluster-nexus
+  name: grafana-dashboard-k8s-compute-resources-cluster-mcoa
   namespace: open-cluster-management-observability
   annotations:
-    observability.open-cluster-management.io/dashboard-folder: Platform (Nexus)
+    observability.open-cluster-management.io/dashboard-folder: Platform - MCOA

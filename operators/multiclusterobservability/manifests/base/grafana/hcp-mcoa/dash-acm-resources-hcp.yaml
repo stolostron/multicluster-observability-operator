@@ -718,6 +718,6 @@ data:
 kind: ConfigMap
 metadata:
   annotations:
-    observability.open-cluster-management.io/dashboard-folder: Hosted Control Planes (Nexus)
-  name: grafana-dashboard-acm-resources-hcp-nexus
+    observability.open-cluster-management.io/dashboard-folder: Hosted Control Planes - MCOA
+  name: grafana-dashboard-acm-resources-hcp-mcoa
   namespace: open-cluster-management-observability
