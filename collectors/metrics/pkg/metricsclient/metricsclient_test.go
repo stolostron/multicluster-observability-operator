@@ -328,6 +328,10 @@ func TestClient_RemoteWrite(t *testing.T) {
 			expect: func(t *testing.T, err error, retryCount int) {
 				assert.Error(t, err)
 				assert.Equal(t, 1, retryCount)
+				// Ensure the http error is wrapped
+				var httpError *HTTPError
+				assert.ErrorAs(t, err, &httpError)
+				assert.Equal(t, http.StatusConflict, httpError.StatusCode)
 			},
 		},
 	}
