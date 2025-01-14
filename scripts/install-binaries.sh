@@ -79,6 +79,8 @@ install_promtool() {
     mkdir prometheus 
     tar -xzf prometheus.tar.gz -C prometheus --strip-components=1
     chmod +x ./prometheus/promtool && mv ./prometheus/promtool ${bin_dir}/promtool
+    rm -rf prometheus
+    rm prometheus.tar.gz
   fi
 }
 
