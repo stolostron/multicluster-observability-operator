@@ -7,6 +7,8 @@ package rendering
 import (
 	"fmt"
 
+	prometheusv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	prometheusalpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -25,14 +27,18 @@ const (
 	cmaoKind = "ClusterManagementAddOn"
 
 	// AODC CustomizedVariable Names
-	namePlatformLogsCollection       = "platformLogsCollection"
-	nameUserWorkloadLogsCollection   = "userWorkloadLogsCollection"
-	nameUserWorkloadTracesCollection = "userWorkloadTracesCollection"
-	nameUserWorkloadInstrumentation  = "userWorkloadInstrumentation"
+	namePlatformLogsCollection        = "platformLogsCollection"
+	namePlatformMetricsCollection     = "platformMetricsCollection"
+	nameUserWorkloadLogsCollection    = "userWorkloadLogsCollection"
+	nameUserWorkloadTracesCollection  = "userWorkloadTracesCollection"
+	nameUserWorkloadInstrumentation   = "userWorkloadInstrumentation"
+	nameUserWorkloadMetricsCollection = "userWorkloadMetricsCollection"
+	nameMetricsHubHostname            = "metricsHubHostname"
 )
 
 type MCOARendererOptions struct {
-	DisableCMAORender bool
+	DisableCMAORender  bool
+	MetricsHubHostname string
 }
 
 func (r *MCORenderer) newMCOARenderer() {
@@ -164,6 +170,121 @@ func (r *MCORenderer) renderClusterManagementAddOn(
 	}
 	u.SetLabels(cLabels)
 
+	cma := &addonapiv1alpha1.ClusterManagementAddOn{}
+	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, cma); err != nil {
+		return nil, err
+	}
+
+	if r.cr.Spec.Capabilities != nil {
+		if len(cma.Spec.InstallStrategy.Placements) != 1 {
+			return nil, fmt.Errorf("expected exactly one placement, got %d", len(cma.Spec.InstallStrategy.Placements))
+		}
+		globalConfigs := []addonapiv1alpha1.AddOnConfig{}
+		if r.cr.Spec.Capabilities.Platform != nil && r.cr.Spec.Capabilities.Platform.Metrics.Collection.Enabled {
+			globalConfigs = append(globalConfigs, []addonapiv1alpha1.AddOnConfig{
+				{
+					ConfigGroupResource: addonapiv1alpha1.ConfigGroupResource{
+						Group:    prometheusalpha1.SchemeGroupVersion.Group,
+						Resource: prometheusalpha1.PrometheusAgentName,
+					},
+					ConfigReferent: addonapiv1alpha1.ConfigReferent{
+						Name:      "acm-platform-metrics-collector-default",
+						Namespace: mcoconfig.GetDefaultNamespace(),
+					},
+				},
+				{
+					ConfigGroupResource: addonapiv1alpha1.ConfigGroupResource{
+						Group:    prometheusalpha1.SchemeGroupVersion.Group,
+						Resource: prometheusalpha1.ScrapeConfigName,
+					},
+					ConfigReferent: addonapiv1alpha1.ConfigReferent{
+						Name:      "platform-metrics-default",
+						Namespace: mcoconfig.GetDefaultNamespace(),
+					},
+				},
+				{
+					ConfigGroupResource: addonapiv1alpha1.ConfigGroupResource{
+						Group:    prometheusv1.SchemeGroupVersion.Group,
+						Resource: prometheusv1.PrometheusRuleName,
+					},
+					ConfigReferent: addonapiv1alpha1.ConfigReferent{
+						Name:      "platform-rules-default",
+						Namespace: mcoconfig.GetDefaultNamespace(),
+					},
+				},
+			}...)
+		}
+
+		if r.cr.Spec.Capabilities.UserWorkloads != nil && r.cr.Spec.Capabilities.UserWorkloads.Metrics.Collection.Enabled {
+			globalConfigs = append(globalConfigs, []addonapiv1alpha1.AddOnConfig{
+				{
+					ConfigGroupResource: addonapiv1alpha1.ConfigGroupResource{
+						Group:    prometheusalpha1.SchemeGroupVersion.Group,
+						Resource: prometheusalpha1.PrometheusAgentName,
+					},
+					ConfigReferent: addonapiv1alpha1.ConfigReferent{
+						Name:      "acm-user-workload-metrics-collector-default",
+						Namespace: mcoconfig.GetDefaultNamespace(),
+					},
+				},
+			}...)
+		}
+
+		if r.cr.Spec.Capabilities.Platform != nil && r.cr.Spec.Capabilities.Platform.Logs.Collection.Enabled {
+			globalConfigs = append(globalConfigs, []addonapiv1alpha1.AddOnConfig{
+				{
+					ConfigGroupResource: addonapiv1alpha1.ConfigGroupResource{
+						Group:    "observability.openshift.io",
+						Resource: "clusterlogforwarders",
+					},
+					ConfigReferent: addonapiv1alpha1.ConfigReferent{
+						Name:      "instance",
+						Namespace: mcoconfig.GetDefaultNamespace(),
+					},
+				},
+			}...)
+		}
+
+		if r.cr.Spec.Capabilities.UserWorkloads != nil {
+			if r.cr.Spec.Capabilities.UserWorkloads.Traces.Collection.Collector.Enabled {
+				globalConfigs = append(globalConfigs, []addonapiv1alpha1.AddOnConfig{
+					{
+						ConfigGroupResource: addonapiv1alpha1.ConfigGroupResource{
+							Group:    "opentelemetry.io",
+							Resource: "opentelemetrycollectors",
+						},
+						ConfigReferent: addonapiv1alpha1.ConfigReferent{
+							Name:      "instance",
+							Namespace: mcoconfig.GetDefaultNamespace(),
+						},
+					},
+				}...)
+			}
+
+			if r.cr.Spec.Capabilities.UserWorkloads.Traces.Collection.Instrumentation.Enabled {
+				globalConfigs = append(globalConfigs, []addonapiv1alpha1.AddOnConfig{
+					{
+						ConfigGroupResource: addonapiv1alpha1.ConfigGroupResource{
+							Group:    "opentelemetry.io",
+							Resource: "instrumentations",
+						},
+						ConfigReferent: addonapiv1alpha1.ConfigReferent{
+							Name:      "instance",
+							Namespace: mcoconfig.GetDefaultNamespace(),
+						},
+					},
+				}...)
+			}
+		}
+
+		cma.Spec.InstallStrategy.Placements[0].Configs = append(cma.Spec.InstallStrategy.Placements[0].Configs, globalConfigs...)
+	}
+
+	u.Object, err = runtime.DefaultUnstructuredConverter.ToUnstructured(cma)
+	if err != nil {
+		return nil, err
+	}
+
 	return u, nil
 }
 
@@ -195,12 +316,20 @@ func (r *MCORenderer) renderAddonDeploymentConfig(
 				fqdn := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.ClusterLogForwarderCRDName)
 				appendCustomVar(aodc, namePlatformLogsCollection, fqdn)
 			}
+			if cs.Platform.Metrics.Collection.Enabled {
+				fqdn := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.PrometheusAgentCRDName)
+				appendCustomVar(aodc, namePlatformMetricsCollection, fqdn)
+			}
 		}
 
 		if cs.UserWorkloads != nil {
 			if cs.UserWorkloads.Logs.Collection.ClusterLogForwarder.Enabled {
 				fqdn := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.ClusterLogForwarderCRDName)
 				appendCustomVar(aodc, nameUserWorkloadLogsCollection, fqdn)
+			}
+			if cs.UserWorkloads.Metrics.Collection.Enabled {
+				fqdn := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.PrometheusAgentCRDName)
+				appendCustomVar(aodc, nameUserWorkloadMetricsCollection, fqdn)
 			}
 			if cs.UserWorkloads.Traces.Collection.Collector.Enabled {
 				fqdn := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.OpenTelemetryCollectorCRDName)
@@ -210,6 +339,14 @@ func (r *MCORenderer) renderAddonDeploymentConfig(
 				fqdn := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.InstrumentationCRDName)
 				appendCustomVar(aodc, nameUserWorkloadInstrumentation, fqdn)
 			}
+		}
+
+		if (cs.Platform != nil && cs.Platform.Metrics.Collection.Enabled) ||
+			(cs.UserWorkloads != nil && cs.UserWorkloads.Metrics.Collection.Enabled) {
+			if r.rendererOptions == nil || r.rendererOptions.MCOAOptions.MetricsHubHostname == "" {
+				return nil, fmt.Errorf("MetricsHubHostname is required when metrics collection is enabled")
+			}
+			appendCustomVar(aodc, nameMetricsHubHostname, r.rendererOptions.MCOAOptions.MetricsHubHostname)
 		}
 
 		u.Object, err = runtime.DefaultUnstructuredConverter.ToUnstructured(aodc)
@@ -275,12 +412,13 @@ func MCOAEnabled(cr *obv1beta2.MultiClusterObservability) bool {
 	}
 	mcoaEnabled := false
 	if cr.Spec.Capabilities.Platform != nil {
-		mcoaEnabled = mcoaEnabled || cr.Spec.Capabilities.Platform.Logs.Collection.Enabled
+		mcoaEnabled = mcoaEnabled || cr.Spec.Capabilities.Platform.Logs.Collection.Enabled || cr.Spec.Capabilities.Platform.Metrics.Collection.Enabled
 	}
 	if cr.Spec.Capabilities.UserWorkloads != nil {
 		mcoaEnabled = mcoaEnabled || cr.Spec.Capabilities.UserWorkloads.Logs.Collection.ClusterLogForwarder.Enabled
 		mcoaEnabled = mcoaEnabled || cr.Spec.Capabilities.UserWorkloads.Traces.Collection.Collector.Enabled
 		mcoaEnabled = mcoaEnabled || cr.Spec.Capabilities.UserWorkloads.Traces.Collection.Instrumentation.Enabled
+		mcoaEnabled = mcoaEnabled || cr.Spec.Capabilities.UserWorkloads.Metrics.Collection.Enabled
 	}
 	return mcoaEnabled
 }

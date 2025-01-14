@@ -52,6 +52,7 @@ import (
 	placementctrl "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/placementrule"
 	certctrl "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/certificates"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering"
 	smctrl "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/servicemonitor"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
@@ -266,10 +267,16 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	}
 	disableMCOACMAORender := !apierrors.IsNotFound(err)
 
+	obsAPIURL, err := mcoconfig.GetObsAPIExternalURL(ctx, r.Client, mcoconfig.GetDefaultNamespace())
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to get the Observatorium API URL: %w", err)
+	}
+
 	// Build render options
 	rendererOptions := &rendering.RendererOptions{
 		MCOAOptions: rendering.MCOARendererOptions{
-			DisableCMAORender: disableMCOACMAORender,
+			DisableCMAORender:  disableMCOACMAORender,
+			MetricsHubHostname: obsAPIURL.Host,
 		},
 	}
 
