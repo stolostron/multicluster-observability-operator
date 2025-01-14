@@ -44,6 +44,15 @@ const (
 	maxSeriesLength = 10000
 )
 
+type HTTPError struct {
+	StatusCode int
+	Message    string
+}
+
+func (e *HTTPError) Error() string {
+	return fmt.Sprintf("HTTP %d: %s", e.StatusCode, e.Message)
+}
+
 type Client struct {
 	client      *http.Client
 	maxBytes    int64
@@ -555,7 +564,10 @@ func (c *Client) sendRequest(ctx context.Context, serverURL string, body []byte)
 			logger.Log(c.logger, logger.Warn, err)
 		}
 
-		retErr := fmt.Errorf("response status code is %s, response body is %s", resp.Status, string(bodyBytes))
+		retErr := &HTTPError{
+			StatusCode: resp.StatusCode,
+			Message:    string(bodyBytes),
+		}
 
 		if isTransientResponseError(resp) {
 			return retErr
