@@ -504,7 +504,13 @@ func (w *Worker) forward(ctx context.Context) error {
 
 	req := &http.Request{Method: "POST", URL: w.to}
 	if err := w.toClient.RemoteWrite(ctx, req, families, w.interval); err != nil {
-		updateStatus(statuslib.ForwardFailed, "Failed to send metrics")
+		var httpError *metricsclient.HTTPError
+		// Avoid degrading the status on 409
+		if errors.As(err, &httpError) && httpError.StatusCode == http.StatusConflict {
+			updateStatus(statuslib.ForwardSuccessful, "Cluster metrics sent successfully")
+		} else {
+			updateStatus(statuslib.ForwardFailed, "Failed to send metrics")
+		}
 		return err
 	}
 
