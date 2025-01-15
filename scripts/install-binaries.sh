@@ -76,7 +76,7 @@ install_promtool() {
     elif [[ "$(uname)" == "Darwin" ]]; then
       curl -o prometheus.tar.gz -L "https://github.com/prometheus/prometheus/releases/download/v${PROMTOOL_VERSION}/prometheus-${PROMTOOL_VERSION}.darwin-$(uname -m).tar.gz"
     fi
-    mkdir prometheus 
+    mkdir prometheus
     tar -xzf prometheus.tar.gz -C prometheus --strip-components=1
     chmod +x ./prometheus/promtool && mv ./prometheus/promtool ${bin_dir}/promtool
     rm -rf prometheus
