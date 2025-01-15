@@ -108,7 +108,9 @@ func (r *MCORenderer) renderGrafanaTemplates(templates []*resource.Resource,
 
 		// Add deprecated suffix to the old dashboard names when MCOA is activated.
 		if MCOAPlatformMetricsEnabled(r.cr) && isNonMCOASpecificDashboard(template) {
-			addDeprecatedSuffixToDashboardName(template)
+			if err := addDeprecatedSuffixToDashboardName(template); err != nil {
+				return []*unstructured.Unstructured{}, fmt.Errorf("failed to modify dashboard title with deprecated suffix: %w", err)
+			}
 		}
 
 		render, ok := r.renderGrafanaFns[template.GetKind()]
