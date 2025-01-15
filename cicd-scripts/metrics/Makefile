@@ -1,3 +1,6 @@
+# Copyright (c) 2021 Red Hat, Inc.
+# Copyright Contributors to the Open Cluster Management project
+
 DAHSBOARDS_DIR = ../../operators/multiclusterobservability/manifests/base/grafana
 PLATFORM_DASH_DIR = $(DAHSBOARDS_DIR)/platform-mcoa
 HCP_DASH_DIR = $(DAHSBOARDS_DIR)/hcp-mcoa

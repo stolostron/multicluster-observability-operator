@@ -1,3 +1,7 @@
+// Copyright (c) Red Hat, Inc.
+// Copyright Contributors to the Open Cluster Management project
+// Licensed under the Apache License 2.0
+
 /*
 CI tool that provides a simple CLI to ensure that a list of metrics used in dashboards is well federated by
 the referenced scrapeConfigs.
