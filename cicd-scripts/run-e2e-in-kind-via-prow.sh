@@ -18,7 +18,7 @@ OPT=(-q -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" -i "${KE
 SED_COMMAND='sed -i-e -e'
 
 source ./scripts/test-utils.sh
-${SED_COMMAND} "$ a\export LATEST_SNAPSHOT=$(get_latest_snapshot)" ./tests/run-in-kind/env.sh
+${SED_COMMAND} "$ a\export LATEST_SNAPSHOT=$(get_latest_acm_snapshot)" ./tests/run-in-kind/env.sh
 
 if [ "${OPENSHIFT_CI}" == "true" ]; then
   ${SED_COMMAND} "$ a\export OPENSHIFT_CI=${OPENSHIFT_CI}" ./tests/run-in-kind/env.sh
