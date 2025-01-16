@@ -350,29 +350,6 @@ func CheckStatefulSetPodReady(opt TestOptions, stsName string) error {
 	return nil
 }
 
-func CheckDeploymentPodReady(opt TestOptions, deployName string) error {
-	client := NewKubeClient(
-		opt.HubCluster.ClusterServerURL,
-		opt.KubeConfig,
-		opt.HubCluster.KubeContext)
-	deploys := client.AppsV1().Deployments(MCO_NAMESPACE)
-	deploy, err := deploys.Get(context.TODO(), deployName, metav1.GetOptions{})
-	if err != nil {
-		klog.V(1).Infof("Error while retrieving deployment %s: %s", deployName, err.Error())
-		return err
-	}
-
-	if deploy.Status.ReadyReplicas != *deploy.Spec.Replicas ||
-		deploy.Status.UpdatedReplicas != *deploy.Spec.Replicas ||
-		deploy.Status.AvailableReplicas != *deploy.Spec.Replicas {
-		err = fmt.Errorf("deployment %s should have %d but got %d ready replicas",
-			deployName, *deploy.Spec.Replicas,
-			deploy.Status.ReadyReplicas)
-		return err
-	}
-	return nil
-}
-
 // ModifyMCOCR modifies the MCO CR for reconciling. modify multiple parameter to save running time
 func ModifyMCOCR(opt TestOptions) error {
 	clientDynamic := NewKubeClientDynamic(
