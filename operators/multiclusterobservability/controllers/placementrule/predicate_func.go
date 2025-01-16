@@ -41,7 +41,7 @@ func getClusterPreds() predicate.Funcs {
 	}
 
 	updateFunc := func(e event.UpdateEvent) bool {
-		log.Info("UpdateFunc", "managedCluster", e.ObjectNew.GetName())
+		log.Info("Coleen UpdateFunc", "managedCluster", e.ObjectNew.GetName())
 
 		if e.ObjectNew.GetResourceVersion() == e.ObjectOld.GetResourceVersion() {
 			return false
