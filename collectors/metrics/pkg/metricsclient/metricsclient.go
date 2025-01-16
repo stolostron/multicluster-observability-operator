@@ -398,6 +398,7 @@ func convertToTimeseries(p *PartitionedMetrics, now time.Time) ([]prompb.TimeSer
 			}}
 
 			dedup := make(map[string]struct{})
+			dedup[nameLabelName] = struct{}{}
 			for _, l := range m.Label {
 				// Skip empty labels.
 				if *l.Name == "" || *l.Value == "" {
