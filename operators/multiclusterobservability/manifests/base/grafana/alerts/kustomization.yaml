@@ -1,0 +1,5 @@
+resources:
+- dash-acm-alert-analysis.yaml
+- dash-acm-alerts-by-clusters.yaml
+- dash-acm-cluster-by-alerts.yaml
+- scrape-config.yaml
