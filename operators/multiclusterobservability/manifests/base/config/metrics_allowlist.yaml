@@ -23,6 +23,7 @@ data:
       - cluster_infrastructure_provider
       - cluster_version
       - cluster_version_payload
+      - console_url
       - container_cpu_cfs_periods_total
       - container_cpu_cfs_throttled_periods_total
       - container_spec_cpu_quota
