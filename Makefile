@@ -197,7 +197,7 @@ deploy:  ## Deploy controller to the K8s cluster specified in ~/.kube/config.
 # UnDeploy controller from the configured Kubernetes cluster in ~/.kube/config
 .PHONY: undeploy
 undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
-	@$(MAKE) p-C operators/multiclusterobservability undeploy
+	@$(MAKE) -C operators/multiclusterobservability undeploy
 
 # Build the operator binary
 .PHONY: build
