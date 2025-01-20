@@ -8,6 +8,7 @@ resources:
 - dash-acm-alert-analysis.yaml
 - dash-acm-alerts-by-clusters.yaml
 - dash-acm-cluster-by-alerts.yaml
+- dash-acm-incidents-overview.yaml
 - dash-acm-optimization-overview.yaml
 - dash-acm-clusters-overview.yaml
 - dash-acm-clusters-overview-optimized.yaml
