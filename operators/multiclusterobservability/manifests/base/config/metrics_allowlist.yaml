@@ -15,6 +15,7 @@ data:
       - cluster:container_cpu_usage:ratio
       - cluster:container_spec_cpu_shares:ratio
       - cluster:cpu_usage_cores:sum
+      - cluster:health:components:map
       - cluster:memory_usage:ratio
       - cluster:memory_usage_bytes:sum
       - cluster:node_cpu:ratio
