@@ -779,7 +779,7 @@ func (m *MetricsCollector) ensureDeployment(ctx context.Context, isUWL bool, dep
 		if isDifferentSpec || isDifferentReplicas || deployParams.forceRestart {
 			m.Log.Info("Updating Deployment", "name", name, "namespace", m.Namespace, "isDifferentSpec", isDifferentSpec, "isDifferentReplicas", isDifferentReplicas, "forceRestart", deployParams.forceRestart)
 			if deployParams.forceRestart && foundMetricsCollectorDep.Status.ReadyReplicas != 0 {
-				desiredMetricsCollectorDep.Spec.Template.ObjectMeta.Labels[restartLabel] = time.Now().Format("2006-1-2.1504")
+				desiredMetricsCollectorDep.Spec.Template.ObjectMeta.Labels[restartLabel] = time.Now().Format("2006-1-2.150405")
 			}
 
 			desiredMetricsCollectorDep.ResourceVersion = foundMetricsCollectorDep.ResourceVersion
