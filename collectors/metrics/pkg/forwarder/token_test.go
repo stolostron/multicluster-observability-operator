@@ -1,3 +1,7 @@
+// Copyright (c) Red Hat, Inc.
+// Copyright Contributors to the Open Cluster Management project
+// Licensed under the Apache License 2.0
+
 package forwarder
 
 import (
@@ -16,7 +20,7 @@ import (
 )
 
 func TestTokenFile_Renewal(t *testing.T) {
-	// Test token with 10s expiration time
+	// Test token with close expiration time
 	_, privateKey, err := ed25519.GenerateKey(rand.Reader)
 	assert.NoError(t, err)
 	expiresAt := time.Now().Add(3 * time.Second)
