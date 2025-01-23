@@ -27,12 +27,15 @@ var (
 type TokenFile struct {
 	filePath    string
 	logger      log.Logger
+	readBackoff time.Duration
 	token       string
 	expiration  time.Time
 	tokenMu     sync.RWMutex
-	readBackoff time.Duration
 }
 
+// NewTokenFile initiates a new TokenFile.
+// It reads the token value from the provided filePath and the caller can access this value using the GetToken() method.
+// The token value is automatically updated by re-reading the file as the token approaches expiration.
 func NewTokenFile(ctx context.Context, logger log.Logger, filePath string, readBackoff time.Duration) (*TokenFile, error) {
 	if len(filePath) == 0 {
 		return nil, ErrEmptyTokenFilePath
@@ -44,6 +47,7 @@ func NewTokenFile(ctx context.Context, logger log.Logger, filePath string, readB
 		readBackoff: readBackoff,
 	}
 
+	// Initiate token value
 	if _, err := tf.renewTokenFromFile(); err != nil {
 		return nil, err
 	}
@@ -64,13 +68,13 @@ func (t *TokenFile) renewTokenFromFile() (bool, error) {
 		return false, ErrEmptyToken
 	}
 
-	t.tokenMu.Lock()
-	defer t.tokenMu.Unlock()
-
 	exp, err := parseTokenExpiration(token)
 	if err != nil {
 		return false, fmt.Errorf("failed to parse token expiration time: %w", err)
 	}
+
+	t.tokenMu.Lock()
+	defer t.tokenMu.Unlock()
 
 	if t.token == token {
 		return false, nil
@@ -91,7 +95,7 @@ func (t *TokenFile) GetToken() string {
 // autoRenew automatically re-read the token file to update its value when it approaches the expiration time.
 // The objective is to have a simple and robust strategy.
 // It assumes that kubernetes renews the token when it reaches 80% of its lifetime. Most lifetimes are 1y or 1h.
-// The strategy is to read the token file when we reach 85% of the remaining lifetime and every read backoff duration
+// The strategy is to read the token file when we reach 85% of the remaining lifetime, and then every backoff interval
 // when the remaining time is below 4 times the read backoff duration.
 func (t *TokenFile) autoRenew(ctx context.Context) {
 	for {
@@ -101,6 +105,7 @@ func (t *TokenFile) autoRenew(ctx context.Context) {
 
 		waitTime := computeWaitTime(exp, 85, t.readBackoff, 4*t.readBackoff)
 		timer := time.NewTimer(waitTime)
+		rlogger.Log(t.logger, rlogger.Info, "msg", "Token renewal triggered", "waitTime", waitTime)
 		select {
 		case <-ctx.Done():
 			return
@@ -117,7 +122,7 @@ func (t *TokenFile) autoRenew(ctx context.Context) {
 		}
 
 		if !ok && waitTime <= t.readBackoff {
-			rlogger.Log(t.logger, rlogger.Warn, "msg", "Failed to renew token, same file token approaching expiration", "expiration", t.expiration, "path", t.filePath)
+			rlogger.Log(t.logger, rlogger.Warn, "msg", "Failed to renew token while approaching expiration, same token read from file", "expiration", t.expiration, "path", t.filePath)
 		}
 
 		if ok {

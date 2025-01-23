@@ -20,9 +20,10 @@ import (
 )
 
 func TestTokenFile_Renewal(t *testing.T) {
-	// Test token with close expiration time
 	_, privateKey, err := ed25519.GenerateKey(rand.Reader)
 	assert.NoError(t, err)
+
+	// Create test token with close expiration time, and save it in a file
 	expiresAt := time.Now().Add(3 * time.Second)
 	claims := jwt.RegisteredClaims{
 		ExpiresAt: jwt.NewNumericDate(expiresAt),
@@ -34,27 +35,28 @@ func TestTokenFile_Renewal(t *testing.T) {
 	err = os.WriteFile(tmpFile, []byte(tokenStr), 0644)
 	assert.NoError(t, err)
 
-	// Short backoff
+	// Create token file with short backoff and wait to trigger failing and finally succesful reads
 	backoff := 1 * time.Second
 	tf, err := NewTokenFile(context.Background(), log.NewLogfmtLogger(os.Stderr), tmpFile, backoff)
 	assert.NoError(t, err)
 	assert.Equal(t, tokenStr, tf.GetToken())
+	time.Sleep(2 * backoff)
 
 	// Update token file
-	time.Sleep(2 * backoff)
 	expiresAt = time.Now().Add(1 * time.Hour)
 	claims = jwt.RegisteredClaims{
 		ExpiresAt: jwt.NewNumericDate(expiresAt),
 	}
-	token = jwt.NewWithClaims(jwt.SigningMethodEdDSA, claims)
-	tokenStr, err = token.SignedString(privateKey)
+	newToken := jwt.NewWithClaims(jwt.SigningMethodEdDSA, claims)
+	newTokenStr, err := newToken.SignedString(privateKey)
 	assert.NoError(t, err)
-	err = os.WriteFile(tmpFile, []byte(tokenStr), 0644)
+	assert.NotEqual(t, tokenStr, newTokenStr)
+	err = os.WriteFile(tmpFile, []byte(newTokenStr), 0644)
 	assert.NoError(t, err)
 
 	// Check that the token has been updated
 	time.Sleep(2 * backoff)
-	assert.Equal(t, tokenStr, tf.GetToken())
+	assert.Equal(t, newTokenStr, tf.GetToken())
 }
 
 func TestTokenFile_ComputeWaitTime(t *testing.T) {
@@ -73,14 +75,14 @@ func TestTokenFile_ComputeWaitTime(t *testing.T) {
 			expects:        85 * time.Minute,
 		},
 		"below min duration": {
-			expiration:     time.Now().Add(30 * time.Minute),
+			expiration:     time.Now().Add(30 * time.Minute), // 85% of 30 min is 25m30, remains 4m30s which is below 4*backoff
 			backoff:        2 * time.Minute,
 			minDuration:    10 * time.Minute,
 			waitPercentage: 85,
 			expects:        20 * time.Minute,
 		},
 		"below backoff duration": {
-			expiration:     time.Now().Add(10 * time.Minute),
+			expiration:     time.Now().Add(10 * time.Minute), // 85% of 10m is 8m30s, remains 1m30s, which is below backoff
 			backoff:        2 * time.Minute,
 			minDuration:    10 * time.Minute,
 			waitPercentage: 85,
@@ -130,7 +132,7 @@ func TestTokenFile_ParseExpiration(t *testing.T) {
 	tokenStr, err = token.SignedString(privateKey)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, tokenStr)
-	expirationB, err := parseTokenExpiration(tokenStr)
+	expiration, err := parseTokenExpiration(tokenStr)
 	assert.NoError(t, err)
-	assert.Equal(t, expiresAt.Unix(), expirationB.Unix())
+	assert.Equal(t, expiresAt.Unix(), expiration.Unix())
 }
