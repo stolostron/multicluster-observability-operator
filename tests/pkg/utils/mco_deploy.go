@@ -147,7 +147,15 @@ func PrintObject(ctx context.Context, client dynamic.Interface, gvr schema.Group
 		return
 	}
 
-	obj, err := client.Resource(gvr).Namespace(ns).Get(ctx, name, metav1.GetOptions{})
+	var obj *unstructured.Unstructured
+	var err error
+
+	if ns == "" {
+		obj, err = client.Resource(gvr).Get(ctx, name, metav1.GetOptions{})
+	} else {
+		obj, err = client.Resource(gvr).Namespace(ns).Get(ctx, name, metav1.GetOptions{})
+	}
+
 	if err != nil {
 		klog.V(1).Infof("Failed to get object %s in namespace %s: %v", name, ns, err)
 		return
