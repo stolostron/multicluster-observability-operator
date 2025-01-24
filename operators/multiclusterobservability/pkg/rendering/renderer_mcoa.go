@@ -204,6 +204,36 @@ func (r *MCORenderer) renderClusterManagementAddOn(
 				},
 				{
 					ConfigGroupResource: addonapiv1alpha1.ConfigGroupResource{
+						Group:    prometheusalpha1.SchemeGroupVersion.Group,
+						Resource: prometheusalpha1.ScrapeConfigName,
+					},
+					ConfigReferent: addonapiv1alpha1.ConfigReferent{
+						Name:      "platform-metrics-virtualization",
+						Namespace: mcoconfig.GetDefaultNamespace(),
+					},
+				},
+				{
+					ConfigGroupResource: addonapiv1alpha1.ConfigGroupResource{
+						Group:    prometheusalpha1.SchemeGroupVersion.Group,
+						Resource: prometheusalpha1.ScrapeConfigName,
+					},
+					ConfigReferent: addonapiv1alpha1.ConfigReferent{
+						Name:      "platform-metrics-hcp",
+						Namespace: mcoconfig.GetDefaultNamespace(),
+					},
+				},
+				{
+					ConfigGroupResource: addonapiv1alpha1.ConfigGroupResource{
+						Group:    prometheusalpha1.SchemeGroupVersion.Group,
+						Resource: prometheusalpha1.ScrapeConfigName,
+					},
+					ConfigReferent: addonapiv1alpha1.ConfigReferent{
+						Name:      "platform-metrics-alerts",
+						Namespace: mcoconfig.GetDefaultNamespace(),
+					},
+				},
+				{
+					ConfigGroupResource: addonapiv1alpha1.ConfigGroupResource{
 						Group:    prometheusv1.SchemeGroupVersion.Group,
 						Resource: prometheusv1.PrometheusRuleName,
 					},
