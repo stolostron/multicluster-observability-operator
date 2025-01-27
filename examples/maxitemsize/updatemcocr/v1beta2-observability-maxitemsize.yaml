@@ -102,7 +102,9 @@ spec:
   nodeSelector:
     kubernetes.io/os: linux
   observabilityAddonSpec:
+    scrapeSizeLimitBytes: 1073741824
     enableMetrics: true
+    workers: 1
     interval: 300
     resources:
       limits:
@@ -117,7 +119,9 @@ spec:
     metricObjectStorage:
       key: thanos.yaml
       name: thanos-object-storage
-    receiveStorageSize: 2Gi
-    ruleStorageSize: 2Gi
+      tlsSecretMountPath: /etc/minio/certs
+      tlsSecretName: minio-tls-secret
+    receiveStorageSize: 1Gi
+    ruleStorageSize: 1Gi
     storageClass: gp2
     storeStorageSize: 2Gi
