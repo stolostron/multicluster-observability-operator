@@ -185,7 +185,7 @@ var _ = Describe("Observability:", func() {
 
 			argList := (*compacts).Items[0].Spec.Template.Spec.Containers[0].Args
 			for _, arg := range argList {
-				if arg == "--retention.resolution-raw=5d" {
+				if arg == "--retention.resolution-raw=6d" {
 					return nil
 				}
 			}

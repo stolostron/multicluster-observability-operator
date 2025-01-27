@@ -142,8 +142,8 @@ func GetAllMCOPods(opt TestOptions) ([]corev1.Pod, error) {
 }
 
 func PrintObject(ctx context.Context, client dynamic.Interface, gvr schema.GroupVersionResource, ns, name string) {
-	if ns == "" || name == "" {
-		klog.V(1).Info("Namespace or name cannot be empty")
+	if name == "" {
+		klog.V(1).Info("Name cannot be empty")
 		return
 	}
 
@@ -457,7 +457,7 @@ func RevertMCOCRModification(opt TestOptions) error {
 	advRetentionCon, _ := CheckAdvRetentionConfig(opt)
 	if advRetentionCon {
 		retentionConfig := spec["advanced"].(map[string]interface{})["retentionConfig"].(map[string]interface{})
-		retentionConfig["retentionResolutionRaw"] = "5d"
+		retentionConfig["retentionResolutionRaw"] = "6d"
 	}
 	_, updateErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Update(context.TODO(), mco, metav1.UpdateOptions{})
 	if updateErr != nil {
