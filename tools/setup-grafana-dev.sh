@@ -5,9 +5,9 @@
 obs_namespace='open-cluster-management-observability'
 deploy_flag=0
 
-sed_command='sed -i-e -e'
+sed_command="sed -i -e"
 if [[ "$(uname)" == "Darwin" ]]; then
-  sed_command='sed -i '-e' -e'
+  sed_command="sed -i '' -e"
 fi
 
 usage() {

@@ -1,80 +1,78 @@
 #!/usr/bin/env bash
+set -euo pipefail
+IFS=$'\n\t'
 
-# avoid client-side throttling due to HOME=/
-export HOME=/tmp
+# Constants
+readonly OBS_NAMESPACE="open-cluster-management-observability"
+readonly GRAFANA_POD_LABEL="app=multicluster-observability-grafana-dev"
+readonly TEST_USER="test"
 
-base_dir="$(
-  cd "$(dirname "$0")/.."
-  pwd -P
-)"
-cd "$base_dir"
-obs_namespace=open-cluster-management-observability
+# Helper functions
+log() {
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] $*"
+}
 
-# test deploy grafana-dev
-cd $base_dir/tools
-./setup-grafana-dev.sh --deploy
-if [ $? -ne 0 ]; then
-  echo "Failed run setup-grafana-dev.sh --deploy"
-  exit 1
-fi
+fail() {
+    log "ERROR: $*"
+    exit 1
+}
 
-n=0
-until [ "$n" -ge 30 ]; do
-  kubectl get pods -n "$obs_namespace" -l app=multicluster-observability-grafana-dev | grep "3/3" | grep "Running" && break
-  n=$((n + 1))
-  echo "Retrying in 10s for waiting for grafana-dev pod ready ..."
-  sleep 10
-done
+wait_for_condition() {
+    local cmd="$1"
+    local desc="$2"
+    local max_attempts="$3"
+    local interval="${4:-5}"
+    
+    for ((i=1; i<=max_attempts; i++)); do
+        if eval "$cmd"; then
+            return 0
+        fi
+        log "Attempt $i/$max_attempts: Waiting for $desc... Retrying in ${interval}s"
+        sleep "$interval"
+    done
+    
+    fail "Timeout waiting for $desc after $max_attempts attempts"
+}
 
-if [ $n -eq 30 ]; then
-  echo "Failed waiting for grafana-dev pod ready in 300s"
-  exit 1
-fi
+# Ensure working directory
+BASE_DIR="$(cd "$(dirname "$0")/.." && pwd -P)"
+cd "$BASE_DIR/tools" || fail "Failed to change to tools directory"
 
-podName=$(kubectl get pods -n "$obs_namespace" -l app=multicluster-observability-grafana-dev --template '{{range .items}}{{.metadata.name}}{{"\n"}}{{end}}')
-if [ $? -ne 0 ] || [ -z "$podName" ]; then
-  echo "Failed to get grafana pod name, please check your grafana-dev deployment"
-  exit 1
-fi
+# Deploy Grafana
+log "Deploying Grafana dev environment"
+./setup-grafana-dev.sh --deploy || fail "Failed to deploy Grafana dev environment"
 
-sleep 10
-# create a new test user to test
-kubectl -n "$obs_namespace" exec -it "$podName" -c grafana-dashboard-loader -- /usr/bin/curl -XPOST -H "Content-Type: application/json" -H "X-Forwarded-User: WHAT_YOU_ARE_DOING_IS_VOIDING_SUPPORT_0000000000000000000000000000000000000000000000000000000000000000" -d '{ "name":"test", "email":"test", "login":"test", "password":"test" }' '127.0.0.1:3001/api/admin/users'
-sleep 30
+# Wait for Grafana pod
+kubectl wait --for=condition=Ready --timeout=120s pods -n "$OBS_NAMESPACE" -l "$GRAFANA_POD_LABEL"
 
-n=0
-until [ "$n" -ge 10 ]; do
-  # test swith user to grafana admin
-  ./switch-to-grafana-admin.sh test
-  if [ $? -eq 0 ]; then
-    break
-  fi
-  n=$((n + 1))
-  sleep 5
-done
-if [ $n -eq 10 ]; then
-  echo "Failed run switch-to-grafana-admin.sh test"
-  exit 1
-fi
+# Get pod name
+POD_NAME=$(kubectl get pods -n "$OBS_NAMESPACE" -l "$GRAFANA_POD_LABEL" \
+    --template '{{range .items}}{{.metadata.name}}{{"\n"}}{{end}}') || fail "Failed to get Grafana pod name"
+[[ -z "$POD_NAME" ]] && fail "Grafana pod name is empty"
 
-n=0
-until [ "$n" -ge 10 ]; do
-  # test export grafana dashboard
-  ./generate-dashboard-configmap-yaml.sh "ACM - Clusters Overview"
-  if [ $? -eq 0 ]; then
-    break
-  fi
-  n=$((n + 1))
-  sleep 5
-done
-if [ $n -eq 10 ]; then
-  echo "Failed run generate-dashboard-configmap-yaml.sh"
-  exit 1
-fi
+log "Creating test user"
+kubectl -n "$OBS_NAMESPACE" exec -i "$POD_NAME" -c grafana-dashboard-loader -- /usr/bin/curl \
+    -XPOST -s \
+    -H "Content-Type: application/json" \
+    -H "X-Forwarded-User: WHAT_YOU_ARE_DOING_IS_VOIDING_SUPPORT_0000000000000000000000000000000000000000000000000000000000000000" \
+    -d "{ \"name\":\"$TEST_USER\", \"email\":\"$TEST_USER\", \"login\":\"$TEST_USER\", \"password\":\"$TEST_USER\" }" \
+    '127.0.0.1:3001/api/admin/users' || fail "Failed to create test user"
 
-# test clean grafan-dev
-./setup-grafana-dev.sh --clean
-if [ $? -ne 0 ]; then
-  echo "Failed run setup-grafana-dev.sh --clean"
-  exit 1
-fi
+# Switch to admin and generate dashboard
+wait_for_condition \
+    "./switch-to-grafana-admin.sh \"$TEST_USER\"" \
+    "switching to Grafana admin" \
+    10 \
+    2
+
+wait_for_condition \
+    "./generate-dashboard-configmap-yaml.sh -f 'Alerts' 'Alert Analysis'" \
+    "generating dashboard configmap" \
+    10 \
+    2
+
+# Cleanup
+log "Cleaning up Grafana dev environment"
+./setup-grafana-dev.sh --clean || fail "Failed to clean up Grafana dev environment"
+
+log "Script completed successfully"
