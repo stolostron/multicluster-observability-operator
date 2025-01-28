@@ -225,7 +225,6 @@ func initVars() {
 	if testOptions.HubCluster.BaseDomain != "" {
 		baseDomain = testOptions.HubCluster.BaseDomain
 		if testOptions.HubCluster.ClusterServerURL == "" {
-			// TODO: Simplify
 			if strings.Contains(cloudProvider, substring1) && strings.Contains(cloudProvider, substring2) {
 
 				testOptions.HubCluster.ClusterServerURL = fmt.Sprintf(
@@ -248,7 +247,6 @@ func initVars() {
 		Expect(baseDomain).NotTo(BeEmpty(), "The `baseDomain` is required.")
 		testOptions.HubCluster.BaseDomain = baseDomain
 		testOptions.HubCluster.ClusterServerURL = fmt.Sprintf("https://api.%s:6443", baseDomain)
-		// TODO: Simplify
 		if strings.Contains(cloudProvider, substring1) && strings.Contains(cloudProvider, substring2) {
 
 			testOptions.HubCluster.ClusterServerURL = fmt.Sprintf("https://api.%s:443", baseDomain)
