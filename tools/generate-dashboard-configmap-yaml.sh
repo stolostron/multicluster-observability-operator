@@ -39,14 +39,14 @@ start() {
   # Parse all flags first
   while [[ $# -gt 0 ]]; do
     case "$1" in
-      -h|--help)
+      -h | --help)
         usage
         ;;
-      -n|--namespace)
+      -n | --namespace)
         obs_namespace="$2"
         shift 2
         ;;
-      -f|--folder)
+      -f | --folder)
         dashboard_folder_name="$2"
         shift 2
         ;;
@@ -106,11 +106,10 @@ for dash in data:
         sys.stdout.write(json.dumps(dash))
         sys.exit(0)
 ")
-  if [[ -z "$dashboard" ]]; then
+  if [[ -z $dashboard ]]; then
     echo "No matching dashboard found, please check your dashboard name <$org_dashboard_name> and folder name <$dashboard_folder_name>"
     exit 1
   fi
-
 
   dashboardUID=$(echo $dashboard | $PYTHON_CMD -c "import sys, json; print(json.load(sys.stdin)['uid'])" 2>/dev/null)
   dashboardFolderId=$(echo $dashboard | $PYTHON_CMD -c "import sys, json; print(json.load(sys.stdin)['folderId'])" 2>/dev/null)
