@@ -51,12 +51,20 @@ POD_NAME=$(kubectl get pods -n "$OBS_NAMESPACE" -l "$GRAFANA_POD_LABEL" \
 [[ -z $POD_NAME ]] && fail "Grafana pod name is empty"
 
 log "Creating test user"
-kubectl -n "$OBS_NAMESPACE" exec -i "$POD_NAME" -c grafana-dashboard-loader -- /usr/bin/curl \
-  -XPOST -s \
-  -H "Content-Type: application/json" \
-  -H "X-Forwarded-User: WHAT_YOU_ARE_DOING_IS_VOIDING_SUPPORT_0000000000000000000000000000000000000000000000000000000000000000" \
-  -d "{ \"name\":\"$TEST_USER\", \"email\":\"$TEST_USER\", \"login\":\"$TEST_USER\", \"password\":\"$TEST_USER\" }" \
-  '127.0.0.1:3001/api/admin/users' || fail "Failed to create test user"
+create_test_user_cmd="
+  kubectl -n \"$OBS_NAMESPACE\" exec \"$POD_NAME\" -c grafana-dashboard-loader -- /usr/bin/curl \
+    -XPOST -s \
+    -H \"Content-Type: application/json\" \
+    -H \"X-Forwarded-User: WHAT_YOU_ARE_DOING_IS_VOIDING_SUPPORT_0000000000000000000000000000000000000000000000000000000000000000\" \
+    -d '{ \"name\":\"$TEST_USER\", \"email\":\"$TEST_USER\", \"login\":\"$TEST_USER\", \"password\":\"$TEST_USER\" }' \
+    '127.0.0.1:3001/api/admin/users'
+"
+
+wait_for_condition \
+  "$create_test_user_cmd" \
+  "Creating test user" \
+  10 \
+  2
 
 # Switch to admin and generate dashboard
 wait_for_condition \
