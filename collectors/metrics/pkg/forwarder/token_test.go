@@ -61,45 +61,40 @@ func TestTokenFile_Renewal(t *testing.T) {
 
 func TestTokenFile_ComputeWaitTime(t *testing.T) {
 	testCases := map[string]struct {
-		backoff        time.Duration
-		expiration     time.Time
-		waitPercentage int
-		minDuration    time.Duration
-		expects        time.Duration
+		backoff     time.Duration
+		expiration  time.Time
+		minDuration time.Duration
+		expects     time.Duration
 	}{
 		"no backoff": {
-			expiration:     time.Now().Add(100 * time.Minute),
-			backoff:        2 * time.Minute,
-			minDuration:    10 * time.Minute,
-			waitPercentage: 85,
-			expects:        85 * time.Minute,
+			expiration:  time.Now().Add(30 * time.Minute),
+			backoff:     2 * time.Minute,
+			minDuration: 10 * time.Minute,
+			expects:     20 * time.Minute,
 		},
-		"below min duration": {
-			expiration:     time.Now().Add(30 * time.Minute), // 85% of 30 min is 25m30, remains 4m30s which is below 4*backoff
-			backoff:        2 * time.Minute,
-			minDuration:    10 * time.Minute,
-			waitPercentage: 85,
-			expects:        20 * time.Minute,
+		"approaching remaining duration before backoff": {
+			expiration:  time.Now().Add(12 * time.Minute),
+			backoff:     2 * time.Minute,
+			minDuration: 10 * time.Minute,
+			expects:     2 * time.Minute,
 		},
-		"below backoff duration": {
-			expiration:     time.Now().Add(10 * time.Minute), // 85% of 10m is 8m30s, remains 1m30s, which is below backoff
-			backoff:        2 * time.Minute,
-			minDuration:    10 * time.Minute,
-			waitPercentage: 85,
-			expects:        2 * time.Minute,
+		"below remaining duration before backoff": {
+			expiration:  time.Now().Add(5 * time.Minute),
+			backoff:     2 * time.Minute,
+			minDuration: 10 * time.Minute,
+			expects:     2 * time.Minute,
 		},
 		"expired": {
-			expiration:     time.Now().Add(-10 * time.Minute),
-			backoff:        2 * time.Minute,
-			minDuration:    10 * time.Minute,
-			waitPercentage: 85,
-			expects:        2 * time.Minute,
+			expiration:  time.Now().Add(-10 * time.Minute),
+			backoff:     2 * time.Minute,
+			minDuration: 10 * time.Minute,
+			expects:     2 * time.Minute,
 		},
 	}
 
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
-			res := computeWaitTime(tc.expiration, tc.waitPercentage, tc.backoff, tc.minDuration)
+			res := computeWaitTime(tc.expiration, tc.backoff, tc.minDuration)
 			assert.InEpsilon(t, tc.expects.Seconds(), res.Seconds(), 1, fmt.Sprintf("expected %.1f seconds, got %.1f seconds", tc.expects.Seconds(), res.Seconds()))
 		})
 	}

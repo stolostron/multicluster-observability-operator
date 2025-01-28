@@ -18,6 +18,8 @@ import (
 	rlogger "github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/logger"
 )
 
+const remainingDurationBeforeBackoff = 10 * time.Minute
+
 var (
 	ErrEmptyTokenFilePath     = errors.New("token file path is empty")
 	ErrEmptyToken             = errors.New("token is empty")
@@ -94,16 +96,15 @@ func (t *TokenFile) GetToken() string {
 
 // autoRenew automatically re-read the token file to update its value when it approaches the expiration time.
 // The objective is to have a simple and robust strategy.
-// It assumes that kubernetes renews the token when it reaches 80% of its lifetime. Most lifetimes are 1y or 1h.
-// The strategy is to read the token file when we reach 85% of the remaining lifetime, and then every backoff interval
-// when the remaining time is below 4 times the read backoff duration.
+// Most lifetimes are 1y or 1h. Assuming that kubernetes renews the token when it reaches 80% of its lifetime, it is renewed 12 min before exp with 1h lifetime.
+// The strategy is to read the token file every backoff duration until success, starting 10 minutes before expiration.
 func (t *TokenFile) autoRenew(ctx context.Context) {
 	for {
 		t.tokenMu.RLock()
 		exp := t.expiration
 		t.tokenMu.RUnlock()
 
-		waitTime := computeWaitTime(exp, 85, t.readBackoff, 4*t.readBackoff)
+		waitTime := computeWaitTime(exp, t.readBackoff, remainingDurationBeforeBackoff)
 		timer := time.NewTimer(waitTime)
 		rlogger.Log(t.logger, rlogger.Info, "msg", "Token renewal triggered", "waitTime", waitTime)
 		select {
@@ -149,14 +150,9 @@ func parseTokenExpiration(token string) (time.Time, error) {
 	return exp.Time, nil
 }
 
-func computeWaitTime(exiprationTime time.Time, waitPercentage int, backoff, minRemainingDuration time.Duration) time.Duration {
+func computeWaitTime(exiprationTime time.Time, backoff, remainingDurationBeforeBackoff time.Duration) time.Duration {
 	timeUntilExp := time.Until(exiprationTime)
-	timeToWait := timeUntilExp * time.Duration(waitPercentage) / 100
-	minRemainingDurationBeforeBackoff := minRemainingDuration + backoff
-
-	if minRemainingDurationBeforeBackoff > timeUntilExp-timeToWait {
-		timeToWait = timeUntilExp - minRemainingDuration
-	}
+	timeToWait := timeUntilExp - remainingDurationBeforeBackoff - backoff
 
 	if timeToWait < backoff {
 		timeToWait = backoff
