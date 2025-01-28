@@ -221,6 +221,7 @@ func initVars() {
 	cloudProvider := strings.ToLower(os.Getenv("CLOUD_PROVIDER"))
 	substring1 := "rosa"
 	substring2 := "hcp"
+	substring3 := "rhov" //Format of rhov api url is https://<baseDomain>:6443
 	if testOptions.HubCluster.BaseDomain != "" {
 		baseDomain = testOptions.HubCluster.BaseDomain
 		if testOptions.HubCluster.ClusterServerURL == "" {
@@ -229,6 +230,11 @@ func initVars() {
 
 				testOptions.HubCluster.ClusterServerURL = fmt.Sprintf(
 					"https://api.%s:443",
+					testOptions.HubCluster.BaseDomain,
+				)
+			} else if strings.Contains(cloudProvider, substring3) {
+				testOptions.HubCluster.ClusterServerURL = fmt.Sprintf(
+					"https://%s:6443",
 					testOptions.HubCluster.BaseDomain,
 				)
 			} else {

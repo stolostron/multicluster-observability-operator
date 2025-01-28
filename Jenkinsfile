@@ -44,7 +44,7 @@ pipeline {
                 export OC_HUB_CLUSTER_PASS="${params.OC_HUB_CLUSTER_PASS}"
                 set -x
                 export OC_HUB_CLUSTER_API_URL="${params.OC_HUB_CLUSTER_API_URL}"
-                BASE_DOMAIN=\$(echo \${OC_HUB_CLUSTER_API_URL} | awk -F'https://api\\.|:' '{print \$2}')
+                BASE_DOMAIN=\$(echo \${OC_HUB_CLUSTER_API_URL} | awk -F'https://|:' '{gsub(/^api\\./, "", \$2); print \$2}')
                 HUB_CLUSTER_NAME=\$(echo \$BASE_DOMAIN | cut -d'.' -f1)
                 echo "BASE_DOMAIN: \$BASE_DOMAIN"
                 echo "HUB_CLUSTER_NAME: \$HUB_CLUSTER_NAME"
