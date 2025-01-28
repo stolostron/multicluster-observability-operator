@@ -79,7 +79,6 @@ var _ = Describe("Observability:", func() {
 				return nil
 			}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
 
-			// TODO (Jacob) do we need this, disabled in core-automation-repo ?
 			Eventually(func() error {
 				err = utils.CheckAllOBADisabled(testOptions)
 				if err != nil {
