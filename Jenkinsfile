@@ -4,7 +4,7 @@ pipeline {
     }
     agent {
         docker {
-	    image 'quay.io/vboulos/acmqe-automation/ginkgo_1_14_2-linux-go'
+	    image 'quay.io/vboulos/acmqe-automation/go:go1.21-ginkgo2.17.1'
             args '--network host -u 0:0'
         }
     }
