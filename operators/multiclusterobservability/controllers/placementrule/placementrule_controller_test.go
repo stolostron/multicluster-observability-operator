@@ -8,6 +8,7 @@ import (
 	"context"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -132,38 +133,23 @@ func newConsoleRoute() *routev1.Route {
 	}
 }
 
-func setupTest(t *testing.T) func() {
+func setupTest(t *testing.T) {
+	t.Log("begin setupTest")
 	wd, err := os.Getwd()
 	if err != nil {
 		t.Fatalf("Failed to get work dir: (%v)", err)
 	}
-	t.Log("begin setupTest")
-	os.MkdirAll(path.Join(wd, "../../tests"), 0755)
-	testManifestsPath := path.Join(wd, "../../tests/manifests")
 	manifestsPath := path.Join(wd, "../../manifests")
-	os.Setenv("TEMPLATES_PATH", testManifestsPath)
+	testManifestsPath := filepath.Join(t.TempDir(), "manifests")
+
+	t.Setenv("TEMPLATES_PATH", testManifestsPath)
 	templates.ResetTemplates()
-	// clean up the manifest path if left over from previous test
-	if fi, err := os.Lstat(testManifestsPath); err == nil && fi.Mode()&os.ModeSymlink != 0 {
-		if err = os.Remove(testManifestsPath); err != nil {
-			t.Logf("Failed to delete symlink(%s) for the test manifests: (%v)", testManifestsPath, err)
-		}
-	}
-	err = os.Symlink(manifestsPath, testManifestsPath)
-	if err != nil {
+
+	if err := os.Symlink(manifestsPath, testManifestsPath); err != nil {
 		t.Fatalf("Failed to create symbollink(%s) to(%s) for the test manifests: (%v)", testManifestsPath, manifestsPath, err)
 	}
-	t.Log("setupTest done")
 
-	return func() {
-		t.Log("begin teardownTest")
-		if err = os.Remove(testManifestsPath); err != nil {
-			t.Logf("Failed to delete symbollink(%s) for the test manifests: (%v)", testManifestsPath, err)
-		}
-		os.Remove(path.Join(wd, "../../tests"))
-		os.Unsetenv("TEMPLATES_PATH")
-		t.Log("teardownTest done")
-	}
+	t.Log("setupTest done")
 }
 
 func TestObservabilityAddonController(t *testing.T) {
@@ -196,7 +182,7 @@ func TestObservabilityAddonController(t *testing.T) {
 		Build()
 	r := &PlacementRuleReconciler{Client: c, Scheme: s, CRDMap: map[string]bool{config.IngressControllerCRD: true}}
 
-	defer setupTest(t)()
+	setupTest(t)
 
 	req := ctrl.Request{
 		NamespacedName: types.NamespacedName{
