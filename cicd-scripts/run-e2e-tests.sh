@@ -93,7 +93,7 @@ else
 fi
 
 go mod vendor
-${GINKGO_CMD} -debug -trace ${GINKGO_FOCUS} -v ${ROOTDIR}/tests/pkg/tests -- -options=${OPTIONSFILE} -v=6 --junit-report=${ROOTDIR}/tests/pkg/tests/results.xml
+${GINKGO_CMD} --junit-report=${ROOTDIR}/tests/pkg/tests/results.xml -debug -trace ${GINKGO_FOCUS} -v ${ROOTDIR}/tests/pkg/tests -- -options=${OPTIONSFILE} -v=6
 
 cat ${ROOTDIR}/tests/pkg/tests/results.xml | grep failures=\"0\" | grep errors=\"0\"
 if [ $? -ne 0 ]; then
