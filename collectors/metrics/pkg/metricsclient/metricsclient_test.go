@@ -46,6 +46,7 @@ func Test_convertToTimeseries(t *testing.T) {
 	fooLabelName := "foo"
 	fooLabelValue1 := "bar"
 	fooLabelValue2 := "baz"
+	nameLabel := nameLabelName
 
 	emptyLabelName := ""
 
@@ -206,8 +207,12 @@ func Test_convertToTimeseries(t *testing.T) {
 					Counter:     &clientmodel.Counter{Value: &value42},
 					TimestampMs: &timestamp,
 				}, {
-					// With duplicate labels.
-					Label:       []*clientmodel.LabelPair{{Name: &fooLabelName, Value: &fooLabelValue2}, {Name: &fooLabelName, Value: &fooLabelValue2}},
+					// With duplicate labels, including the __name__ label.
+					Label: []*clientmodel.LabelPair{
+						{Name: &fooLabelName, Value: &fooLabelValue2},
+						{Name: &fooLabelName, Value: &fooLabelValue2},
+						{Name: &nameLabel, Value: &barMetricName},
+					},
 					Counter:     &clientmodel.Counter{Value: &value42},
 					TimestampMs: &timestamp,
 				}, {
@@ -328,6 +333,10 @@ func TestClient_RemoteWrite(t *testing.T) {
 			expect: func(t *testing.T, err error, retryCount int) {
 				assert.Error(t, err)
 				assert.Equal(t, 1, retryCount)
+				// Ensure the http error is wrapped
+				var httpError *HTTPError
+				assert.ErrorAs(t, err, &httpError)
+				assert.Equal(t, http.StatusConflict, httpError.StatusCode)
 			},
 		},
 	}
