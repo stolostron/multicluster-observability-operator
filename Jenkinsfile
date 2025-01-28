@@ -102,9 +102,9 @@ pipeline {
                     /usr/local/bin/yq e -i '.options.clusters.kubeconfig="'"\$MAKUBECONFIG"'"' resources/options.yaml
                     cat resources/options.yaml
                     if [[ -n "${params.TAGGING}" ]]; then
-                    ginkgo --focus="\$TAGGING" -v pkg/tests/ -- -options=../../resources/options.yaml -v=5
+                    ginkgo --focus="\$TAGGING" -v pkg/tests/ -- -options=../../resources/options.yaml -v=5 --junit-report=./tests/pkg/tests/results.xml
                     else
-                    ginkgo -v pkg/tests/ -- -options=../../resources/options.yaml -v=5
+                    ginkgo -v pkg/tests/ -- -options=../../resources/options.yaml -v=5 --junit-report=./tests/pkg/tests/results.xml
                     fi
                 fi
                 """

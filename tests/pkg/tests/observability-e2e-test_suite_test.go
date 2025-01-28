@@ -13,9 +13,7 @@ import (
 	"testing"
 	"time"
 
-	. "github.com/onsi/ginkgo"
-	"github.com/onsi/ginkgo/config"
-	"github.com/onsi/ginkgo/reporters"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"gopkg.in/yaml.v2"
 	"k8s.io/klog"
@@ -131,11 +129,7 @@ func init() {
 
 func TestObservabilityE2E(t *testing.T) {
 	RegisterFailHandler(Fail)
-	config.DefaultReporterConfig.NoColor = true
-	config.DefaultReporterConfig.Succinct = true
-	junitReporter := reporters.NewJUnitReporter(reportFile)
-	junitReporter.ReporterConfig.NoColor = true
-	RunSpecsWithDefaultAndCustomReporters(t, "Observability E2E Suite", []Reporter{junitReporter})
+	RunSpecs(t, "Observability E2E Suite")
 }
 
 var _ = BeforeSuite(func() {

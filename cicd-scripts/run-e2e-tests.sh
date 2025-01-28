@@ -88,12 +88,12 @@ else
   #     rm -fr /usr/local/go
   #     tar -C /usr/local -xzf go1.21.10.linux-amd64.tar.gz
   fi
-  go install github.com/onsi/ginkgo/ginkgo@latest
+  go install github.com/onsi/ginkgo/v2/ginkgo@2.22.2
   GINKGO_CMD="$(go env GOPATH)/bin/ginkgo"
 fi
 
 go mod vendor
-${GINKGO_CMD} -debug -trace ${GINKGO_FOCUS} -v ${ROOTDIR}/tests/pkg/tests -- -options=${OPTIONSFILE} -v=5
+${GINKGO_CMD} -debug -trace ${GINKGO_FOCUS} -v ${ROOTDIR}/tests/pkg/tests -- -options=${OPTIONSFILE} -v=6 --junit-report=${ROOTDIR}/tests/pkg/tests/results.xml
 
 cat ${ROOTDIR}/tests/pkg/tests/results.xml | grep failures=\"0\" | grep errors=\"0\"
 if [ $? -ne 0 ]; then
