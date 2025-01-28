@@ -50,33 +50,6 @@ var _ = Describe("Observability:", func() {
 		}, EventuallyTimeoutMinute*6, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
-	// TODO (jacob): exact same as RHACM4K-3339??
-	// It("RHACM4K-1449 - Observability - Verify metrics data consistency [P2][Sev2][Observability][Integration]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release @pre-upgrade (metrics/g1)", func() {
-	// 	metricList := utils.GetDefaultMetricList(testOptions)
-	// 	_, etcdPodList := utils.GetPodList(
-	// 		testOptions,
-	// 		true,
-	// 		"openshift-etcd",
-	// 		"app=etcd",
-	// 	)
-	//
-	// 	for _, name := range metricList {
-	// 		if _, ok := ignoredMetrics[name]; ok {
-	// 			continue
-	// 		}
-	//
-	// 		Eventually(func() error {
-	// 			res, err := utils.QueryGrafana(testOptions, query)
-	// 			if err != nil {
-	// 				return err
-	// 			}
-	// 			if len(res.Data.Result) == 0 {
-	// 				return fmt.Errorf("no data found for %s", query)
-	// 			}
-	// 		}, EventuallyTimeoutMinute*2, EventuallyIntervalSecond*3).Should(Succeed())
-	// 	}
-	// })
-
 	It("RHACM4K-1658: Observability: Customized metrics data are collected [P2][Sev2][Observability][Integration]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release @pre-upgrade (metrics/g0)", func() {
 		By("Adding custom metrics allowlist configmap")
 		yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: "../../../examples/metrics/allowlist"})
@@ -249,7 +222,6 @@ var _ = Describe("Observability:", func() {
 		}
 	})
 
-	// TODO (Jacob): currently fails due to no data found for kubevirt_hco_system_health_status
 	It("RHACM4K-3339: Observability: Verify recording rule - Should have metrics which used grafana dashboard [P2][Sev2][Observability][Integration]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release @pre-upgrade (ssli/g1)", func() {
 		metricList, _ := utils.GetDefaultMetricList(testOptions)
 

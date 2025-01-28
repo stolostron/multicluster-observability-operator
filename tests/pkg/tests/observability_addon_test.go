@@ -79,7 +79,7 @@ var _ = Describe("Observability:", func() {
 				return nil
 			}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
 
-			// TODO: do we need this, disabled in core-automation-repo
+			// TODO (Jacob) do we need this, disabled in core-automation-repo ?
 			Eventually(func() error {
 				err = utils.CheckAllOBADisabled(testOptions)
 				if err != nil {
@@ -203,7 +203,6 @@ var _ = Describe("Observability:", func() {
 			}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
 
 			klog.V(1).Infof("managedcluster number is <%d>", len(testOptions.ManagedClusters))
-			// TODO (jacob): Do we need this given we have a condition for that earlier?
 			if len(testOptions.ManagedClusters) > 0 {
 				By("Waiting for MCO addon components scales to 0")
 				Eventually(func() bool {
