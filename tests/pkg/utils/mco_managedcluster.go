@@ -9,7 +9,6 @@ import (
 	"errors"
 	"os"
 
-	goversion "github.com/hashicorp/go-version"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -96,48 +95,27 @@ func ListManagedClusters(opt TestOptions) ([]string, error) {
 	return clusterNames, nil
 }
 
-func ListOCPManagedClusterIDs(opt TestOptions, minVersionStr string) ([]string, error) {
-	minVersion, err := goversion.NewVersion(minVersionStr)
-	if err != nil {
-		return nil, err
-	}
+func ListOCPManagedClusterIDs(opt TestOptions) ([]string, error) {
 	clientDynamic := GetKubeClientDynamic(opt, true)
 	objs, err := clientDynamic.Resource(NewOCMManagedClustersGVR()).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
+
 	clusterIDs := []string{}
 	for _, obj := range objs.Items {
 		metadata := obj.Object["metadata"].(map[string]interface{})
 		labels := metadata["labels"].(map[string]interface{})
-		if labels != nil {
-			vendorStr := ""
-			if vendor, ok := labels["vendor"]; ok {
-				vendorStr = vendor.(string)
-			}
-			obsControllerStr := ""
-			if obsController, ok := labels["feature.open-cluster-management.io/addon-observability-controller"]; ok {
-				obsControllerStr = obsController.(string)
-			}
-			if vendorStr == "OpenShift" && obsControllerStr == "available" {
-				clusterVersionStr := ""
-				if clusterVersionVal, ok := labels["openshiftVersion"]; ok {
-					clusterVersionStr = clusterVersionVal.(string)
-				}
-				clusterVersion, err := goversion.NewVersion(clusterVersionStr)
-				if err != nil {
-					return nil, err
-				}
-				if clusterVersion.GreaterThanOrEqual(minVersion) {
-					clusterIDStr := ""
-					if clusterID, ok := labels["clusterID"]; ok {
-						clusterIDStr = clusterID.(string)
-					}
-					if len(clusterIDStr) > 0 {
-						clusterIDs = append(clusterIDs, clusterIDStr)
-					}
-				}
-			}
+		if labels == nil {
+			continue
+		}
+
+		if vendor, ok := labels["vendor"]; !ok || vendor != "OpenShift" {
+			continue
+		}
+
+		if clusterID, ok := labels["clusterID"]; ok {
+			clusterIDs = append(clusterIDs, clusterID.(string))
 		}
 	}
 
@@ -154,24 +132,16 @@ func ListKSManagedClusterNames(opt TestOptions) ([]string, error) {
 	for _, obj := range objs.Items {
 		metadata := obj.Object["metadata"].(map[string]interface{})
 		labels := metadata["labels"].(map[string]interface{})
-		if labels != nil {
-			vendorStr := ""
-			if vendor, ok := labels["vendor"]; ok {
-				vendorStr = vendor.(string)
-			}
-			obsControllerStr := ""
-			if obsController, ok := labels["feature.open-cluster-management.io/addon-observability-controller"]; ok {
-				obsControllerStr = obsController.(string)
-			}
-			if vendorStr != "OpenShift" && obsControllerStr == "available" {
-				clusterNameStr := ""
-				if clusterNameVal, ok := labels["name"]; ok {
-					clusterNameStr = clusterNameVal.(string)
-				}
-				if len(clusterNameStr) > 0 {
-					clusterNames = append(clusterNames, clusterNameStr)
-				}
-			}
+		if labels == nil {
+			continue
+		}
+
+		if vendor, ok := labels["vendor"]; ok && vendor == "OpenShift" {
+			continue
+		}
+
+		if clusterName, ok := labels["name"]; ok {
+			clusterNames = append(clusterNames, clusterName.(string))
 		}
 	}
 
