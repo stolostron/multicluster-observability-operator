@@ -101,8 +101,9 @@ start() {
   dashboard=$(echo $dashboards | $PYTHON_CMD -c "
 import sys, json
 data = json.load(sys.stdin)
+folder = '$dashboard_folder_name' if '$dashboard_folder_name' else None
 for dash in data:
-    if dash['title'] == '$org_dashboard_name' and (not folder or dash['folderTitle'] == '$dashboard_folder_name'):
+    if dash['title'] == '$org_dashboard_name' and (not folder or dash.get('folderTitle') == folder):
         sys.stdout.write(json.dumps(dash))
         sys.exit(0)
 ")
