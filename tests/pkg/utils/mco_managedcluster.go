@@ -110,7 +110,7 @@ func ListOCPManagedClusterIDs(opt TestOptions) ([]string, error) {
 			continue
 		}
 
-		if vendor, ok := labels["vendor"]; !ok || vendor != "OpenShift" {
+		if vendor, ok := labels["vendor"]; ok && vendor == "OpenShift" {
 			continue
 		}
 
@@ -136,7 +136,7 @@ func ListKSManagedClusterNames(opt TestOptions) ([]string, error) {
 			continue
 		}
 
-		if vendor, ok := labels["vendor"]; ok && vendor == "OpenShift" {
+		if vendor, ok := labels["vendor"]; !ok || vendor != "OpenShift" {
 			continue
 		}
 
