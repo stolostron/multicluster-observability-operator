@@ -11,7 +11,7 @@ import (
 	"os"
 	"time"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
@@ -37,6 +37,20 @@ func installMCO() {
 		testOptions.KubeConfig,
 		testOptions.HubCluster.KubeContext)
 
+	if os.Getenv("IS_KIND_ENV") != trueStr {
+		By("Deploy CM cluster-monitoring-config")
+
+		yamlBc, _ := kustomize.Render(
+			kustomize.Options{KustomizationPath: "../../../examples/configmapcmc/cluster-monitoring-config"},
+		)
+		Expect(
+			utils.Apply(
+				testOptions.HubCluster.ClusterServerURL,
+				testOptions.KubeConfig,
+				testOptions.HubCluster.KubeContext,
+				yamlBc)).NotTo(HaveOccurred())
+	}
+
 	By("Checking MCO operator is started up and running")
 	podList, err := hubClient.CoreV1().Pods("").List(context.TODO(), metav1.ListOptions{LabelSelector: MCO_LABEL})
 	Expect(len(podList.Items)).To(Equal(1))
@@ -51,6 +65,33 @@ func installMCO() {
 		Expect(string(mcoPod)).NotTo(Equal(""))
 		Expect(string(pod.Status.Phase)).To(Equal("Running"))
 	}
+
+	// print mco logs if MCO installation failed
+	// defer func(testOptions utils.TestOptions, isHub bool, namespace, podName, containerName string, previous bool, tailLines int64) {
+	// 	if testFailed {
+	// 		mcoLogs, err := utils.GetPodLogs(
+	// 			testOptions,
+	// 			isHub,
+	// 			namespace,
+	// 			podName,
+	// 			containerName,
+	// 			previous,
+	// 			tailLines,
+	// 		)
+	// 		Expect(err).NotTo(HaveOccurred())
+	// 		fmt.Fprintf(GinkgoWriter, "[DEBUG] MCO is installed failed, checking MCO operator logs:\n%s\n", mcoLogs)
+	// 	} else {
+	// 		fmt.Fprintf(GinkgoWriter, "[DEBUG] MCO is installed successfully!\n")
+	// 	}
+	// }(
+	// 	testOptions,
+	// 	false,
+	// 	mcoNs,
+	// 	mcoPod,
+	// 	"multicluster-observability-operator",
+	// 	false,
+	// 	1000,
+	// )
 
 	By("Checking Required CRDs are created")
 	Eventually(func() error {
