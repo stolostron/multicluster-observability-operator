@@ -341,6 +341,10 @@ var _ = Describe("Observability:", func() {
 		Expect(err).NotTo(HaveOccurred())
 		expectClusterIdentifiers := append(expectedOCPClusterIDs, expectedKSClusterNames...)
 		missingClusters := slices.Clone(expectClusterIdentifiers)
+		klog.Infof("List of cluster IDs expected to send the alert is: %s", expectClusterIdentifiers)
+
+		// Ensure we have all the managed clusters in the list
+		Expect(len(expectClusterIdentifiers)).To(Equal(len(testOptions.ManagedClusters) + 1))
 
 		// install watchdog PrometheusRule to *KS clusters
 		watchDogRuleKustomizationPath := "../../../examples/alerts/watchdog_rule"
@@ -404,6 +408,7 @@ var _ = Describe("Observability:", func() {
 			}
 
 			if len(missingClusters) != 0 {
+				klog.Infof("Watchdog alerts are still missing from these clusters %q. Retrying...", missingClusters)
 				return fmt.Errorf("Not all managedclusters forward Watchdog alert to hub cluster. Found following clusters in alerts %q. Following clusters are still missing: %q. Full list of expected clusters was: %q", clusterIDsInAlerts, missingClusters, expectClusterIdentifiers)
 			}
 
