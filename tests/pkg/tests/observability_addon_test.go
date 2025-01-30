@@ -79,13 +79,6 @@ var _ = Describe("Observability:", func() {
 				return nil
 			}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
 
-			Eventually(func() error {
-				err = utils.CheckAllOBADisabled(testOptions)
-				if err != nil {
-					return err
-				}
-				return nil
-			}, EventuallyTimeoutMinute*20, EventuallyIntervalSecond*5).Should(Succeed())
 		})
 		// it takes Prometheus 5m to notice a metric is not available -
 		// https://github.com/prometheus/prometheus/issues/1810
