@@ -85,7 +85,7 @@ var _ = Describe("Observability:", func() {
 			)
 			errcm, cm = utils.GetConfigMap(
 				testOptions,
-				false,
+				true,
 				"observability-managed-cluster-label-allowlist",
 				MCO_NAMESPACE,
 			)
