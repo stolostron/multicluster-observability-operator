@@ -401,7 +401,7 @@ var _ = Describe("Observability:", func() {
 			}
 
 			// Returned alerts by the alert manager is not consistent. It does not always contain all the alerts.
-			// To make the test more reliable, we romove clusters found in the response continuously on each retry
+			// To make the test more reliable, we remove clusters found in the response continuously on each retry
 			// until all have been identified in the alertmanager responses.
 			for _, foundID := range clusterIDsInAlerts {
 				missingClusters = slices.DeleteFunc(missingClusters, func(e string) bool { return e == foundID })
