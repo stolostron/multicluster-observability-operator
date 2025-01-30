@@ -18,17 +18,19 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/logger"
 )
 
+type tokenGetter func() string
+
 type bearerRoundTripper struct {
-	token   string
-	wrapper http.RoundTripper
+	getToken tokenGetter
+	wrapper  http.RoundTripper
 }
 
-func NewBearerRoundTripper(token string, rt http.RoundTripper) http.RoundTripper {
-	return &bearerRoundTripper{token: token, wrapper: rt}
+func NewBearerRoundTripper(token tokenGetter, rt http.RoundTripper) http.RoundTripper {
+	return &bearerRoundTripper{getToken: token, wrapper: rt}
 }
 
 func (rt *bearerRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", rt.token))
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", rt.getToken()))
 	return rt.wrapper.RoundTrip(req)
 }
 
