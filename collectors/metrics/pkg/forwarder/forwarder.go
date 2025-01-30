@@ -149,16 +149,19 @@ func (cfg Config) CreateFromClient(
 		fromClient.Transport = metricshttp.NewDebugRoundTripper(logger, fromClient.Transport)
 	}
 
-	if len(cfg.FromClientConfig.Token) == 0 && len(cfg.FromClientConfig.TokenFile) > 0 {
-		data, err := os.ReadFile(cfg.FromClientConfig.TokenFile)
-		if err != nil {
-			return nil, fmt.Errorf("unable to read from-token-file: %w", err)
-		}
-		cfg.FromClientConfig.Token = strings.TrimSpace(string(data))
+	if len(cfg.FromClientConfig.Token) > 0 && len(cfg.FromClientConfig.TokenFile) > 0 {
+		rlogger.Log(logger, rlogger.Info, "msg", "FromClient token is ignored as token file is specified")
 	}
 
-	if len(cfg.FromClientConfig.Token) > 0 {
-		fromClient.Transport = metricshttp.NewBearerRoundTripper(cfg.FromClientConfig.Token, fromClient.Transport)
+	if len(cfg.FromClientConfig.TokenFile) > 0 {
+		tf, err := NewTokenFile(context.Background(), logger, cfg.FromClientConfig.TokenFile, 2*time.Minute)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create tokenFile: %w", err)
+		}
+		fromClient.Transport = metricshttp.NewBearerRoundTripper(tf.GetToken, fromClient.Transport)
+	} else if len(cfg.FromClientConfig.Token) > 0 {
+		getToken := func() string { return cfg.FromClientConfig.Token }
+		fromClient.Transport = metricshttp.NewBearerRoundTripper(getToken, fromClient.Transport)
 	}
 
 	return metricsclient.New(logger, metrics.clientMetrics, fromClient, cfg.LimitBytes, interval, "federate_from"), nil
