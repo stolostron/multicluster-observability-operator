@@ -109,7 +109,7 @@ func (d *Deployer) updateDeployment(ctx context.Context, desiredObj, runtimeObj 
 		return err
 	}
 
-	if !apiequality.Semantic.DeepDerivative(desiredDeploy.Spec, runtimeDepoly.Spec) {
+	if !apiequality.Semantic.DeepEqual(desiredDeploy.Spec, runtimeDepoly.Spec) {
 		logUpdateInfo(runtimeObj)
 		return d.client.Update(ctx, desiredDeploy)
 	}
@@ -123,8 +123,8 @@ func (d *Deployer) updateStatefulSet(ctx context.Context, desiredObj, runtimeObj
 		return err
 	}
 
-	if !apiequality.Semantic.DeepDerivative(desiredDepoly.Spec.Template, runtimeDepoly.Spec.Template) ||
-		!apiequality.Semantic.DeepDerivative(desiredDepoly.Spec.Replicas, runtimeDepoly.Spec.Replicas) {
+	if !apiequality.Semantic.DeepEqual(desiredDepoly.Spec.Template, runtimeDepoly.Spec.Template) ||
+		!apiequality.Semantic.DeepEqual(desiredDepoly.Spec.Replicas, runtimeDepoly.Spec.Replicas) {
 		logUpdateInfo(runtimeObj)
 		runtimeDepoly.Spec.Replicas = desiredDepoly.Spec.Replicas
 		runtimeDepoly.Spec.Template = desiredDepoly.Spec.Template
@@ -140,7 +140,7 @@ func (d *Deployer) updateService(ctx context.Context, desiredObj, runtimeObj *un
 		return err
 	}
 
-	if !apiequality.Semantic.DeepDerivative(desiredService.Spec, runtimeService.Spec) {
+	if !apiequality.Semantic.DeepEqual(desiredService.Spec, runtimeService.Spec) {
 		desiredService.ObjectMeta.ResourceVersion = runtimeService.ObjectMeta.ResourceVersion
 		desiredService.Spec.ClusterIP = runtimeService.Spec.ClusterIP
 		logUpdateInfo(runtimeObj)
@@ -156,7 +156,7 @@ func (d *Deployer) updateConfigMap(ctx context.Context, desiredObj, runtimeObj *
 		return err
 	}
 
-	if !apiequality.Semantic.DeepDerivative(desiredConfigMap.Data, runtimeConfigMap.Data) {
+	if !apiequality.Semantic.DeepEqual(desiredConfigMap.Data, runtimeConfigMap.Data) {
 		logUpdateInfo(runtimeObj)
 		return d.client.Update(ctx, desiredConfigMap)
 	}
@@ -171,7 +171,7 @@ func (d *Deployer) updateSecret(ctx context.Context, desiredObj, runtimeObj *uns
 	}
 
 	if desiredSecret.Data == nil ||
-		!apiequality.Semantic.DeepDerivative(desiredSecret.Data, runtimeSecret.Data) {
+		!apiequality.Semantic.DeepEqual(desiredSecret.Data, runtimeSecret.Data) {
 		logUpdateInfo(desiredObj)
 		return d.client.Update(ctx, desiredSecret)
 	}
@@ -184,8 +184,8 @@ func (d *Deployer) updateClusterRole(ctx context.Context, desiredObj, runtimeObj
 		return err
 	}
 
-	if !apiequality.Semantic.DeepDerivative(desiredClusterRole.Rules, runtimeClusterRole.Rules) ||
-		!apiequality.Semantic.DeepDerivative(desiredClusterRole.AggregationRule, runtimeClusterRole.AggregationRule) {
+	if !apiequality.Semantic.DeepEqual(desiredClusterRole.Rules, runtimeClusterRole.Rules) ||
+		!apiequality.Semantic.DeepEqual(desiredClusterRole.AggregationRule, runtimeClusterRole.AggregationRule) {
 		logUpdateInfo(desiredObj)
 		return d.client.Update(ctx, desiredClusterRole)
 	}
@@ -198,8 +198,8 @@ func (d *Deployer) updateClusterRoleBinding(ctx context.Context, desiredObj, run
 		return err
 	}
 
-	if !apiequality.Semantic.DeepDerivative(desiredClusterRoleBinding.Subjects, runtimeClusterRoleBinding.Subjects) ||
-		!apiequality.Semantic.DeepDerivative(desiredClusterRoleBinding.RoleRef, runtimeClusterRoleBinding.RoleRef) {
+	if !apiequality.Semantic.DeepEqual(desiredClusterRoleBinding.Subjects, runtimeClusterRoleBinding.Subjects) ||
+		!apiequality.Semantic.DeepEqual(desiredClusterRoleBinding.RoleRef, runtimeClusterRoleBinding.RoleRef) {
 		logUpdateInfo(desiredObj)
 		return d.client.Update(ctx, desiredClusterRoleBinding)
 	}
@@ -214,7 +214,7 @@ func (d *Deployer) updateCRD(ctx context.Context, desiredObj, runtimeObj *unstru
 
 	desiredCRD.ObjectMeta.ResourceVersion = runtimeCRD.ObjectMeta.ResourceVersion
 
-	if !apiequality.Semantic.DeepDerivative(desiredCRD.Spec, runtimeCRD.Spec) {
+	if !apiequality.Semantic.DeepEqual(desiredCRD.Spec, runtimeCRD.Spec) {
 		logUpdateInfo(runtimeObj)
 		return d.client.Update(ctx, desiredCRD)
 	}
@@ -254,7 +254,7 @@ func (d *Deployer) updatePrometheus(ctx context.Context, desiredObj, runtimeObj 
 		log.Info("Desired Prometheus: AdditionalAlertManagerConfig is null")
 	}
 
-	if !apiequality.Semantic.DeepDerivative(desiredPrometheus.Spec, runtimePrometheus.Spec) {
+	if !apiequality.Semantic.DeepEqual(desiredPrometheus.Spec, runtimePrometheus.Spec) {
 		logUpdateInfo(runtimeObj)
 		return d.client.Update(ctx, desiredPrometheus)
 	} else {
@@ -269,7 +269,7 @@ func (d *Deployer) updatePrometheusRule(ctx context.Context, desiredObj, runtime
 		return err
 	}
 
-	if !apiequality.Semantic.DeepDerivative(desiredPrometheusRule.Spec, runtimePrometheusRule.Spec) {
+	if !apiequality.Semantic.DeepEqual(desiredPrometheusRule.Spec, runtimePrometheusRule.Spec) {
 		logUpdateInfo(runtimeObj)
 		if desiredPrometheusRule.ResourceVersion != runtimePrometheusRule.ResourceVersion {
 			desiredPrometheusRule.ResourceVersion = runtimePrometheusRule.ResourceVersion
@@ -286,7 +286,7 @@ func (d *Deployer) updateIngress(ctx context.Context, desiredObj, runtimeObj *un
 		return err
 	}
 
-	if !apiequality.Semantic.DeepDerivative(desiredIngress.Spec, runtimeIngress.Spec) {
+	if !apiequality.Semantic.DeepEqual(desiredIngress.Spec, runtimeIngress.Spec) {
 		logUpdateInfo(runtimeObj)
 		return d.client.Update(ctx, desiredIngress)
 	}
@@ -300,7 +300,7 @@ func (d *Deployer) updateRole(ctx context.Context, desiredObj, runtimeObj *unstr
 		return err
 	}
 
-	if !apiequality.Semantic.DeepDerivative(desiredRole.Rules, runtimeRole.Rules) {
+	if !apiequality.Semantic.DeepEqual(desiredRole.Rules, runtimeRole.Rules) {
 		logUpdateInfo(runtimeObj)
 		return d.client.Update(ctx, desiredRole)
 	}
@@ -314,8 +314,8 @@ func (d *Deployer) updateRoleBinding(ctx context.Context, desiredObj, runtimeObj
 		return err
 	}
 
-	if !apiequality.Semantic.DeepDerivative(desiredRoleBinding.Subjects, runtimeRoleBinding.Subjects) ||
-		!apiequality.Semantic.DeepDerivative(desiredRoleBinding.RoleRef, runtimeRoleBinding.RoleRef) {
+	if !apiequality.Semantic.DeepEqual(desiredRoleBinding.Subjects, runtimeRoleBinding.Subjects) ||
+		!apiequality.Semantic.DeepEqual(desiredRoleBinding.RoleRef, runtimeRoleBinding.RoleRef) {
 		logUpdateInfo(runtimeObj)
 		return d.client.Update(ctx, desiredRoleBinding)
 	}
@@ -329,8 +329,8 @@ func (d *Deployer) updateServiceAccount(ctx context.Context, desiredObj, runtime
 		return err
 	}
 
-	if !apiequality.Semantic.DeepDerivative(desiredServiceAccount.ImagePullSecrets, runtimeServiceAccount.ImagePullSecrets) ||
-		!apiequality.Semantic.DeepDerivative(desiredServiceAccount.Secrets, runtimeServiceAccount.Secrets) {
+	if !apiequality.Semantic.DeepEqual(desiredServiceAccount.ImagePullSecrets, runtimeServiceAccount.ImagePullSecrets) ||
+		!apiequality.Semantic.DeepEqual(desiredServiceAccount.Secrets, runtimeServiceAccount.Secrets) {
 		logUpdateInfo(runtimeObj)
 		return d.client.Update(ctx, desiredServiceAccount)
 	}
@@ -344,7 +344,7 @@ func (d *Deployer) updateDaemonSet(ctx context.Context, desiredObj, runtimeObj *
 		return err
 	}
 
-	if !apiequality.Semantic.DeepDerivative(desiredDaemonSet.Spec, runtimeDaemonSet.Spec) {
+	if !apiequality.Semantic.DeepEqual(desiredDaemonSet.Spec, runtimeDaemonSet.Spec) {
 		logUpdateInfo(runtimeObj)
 		return d.client.Update(ctx, desiredDaemonSet)
 	}
@@ -358,7 +358,7 @@ func (d *Deployer) updateServiceMonitor(ctx context.Context, desiredObj, runtime
 		return err
 	}
 
-	if !apiequality.Semantic.DeepDerivative(desiredServiceMonitor.Spec, runtimeServiceMonitor.Spec) {
+	if !apiequality.Semantic.DeepEqual(desiredServiceMonitor.Spec, runtimeServiceMonitor.Spec) {
 		logUpdateInfo(runtimeObj)
 		return d.client.Update(ctx, desiredServiceMonitor)
 	}
