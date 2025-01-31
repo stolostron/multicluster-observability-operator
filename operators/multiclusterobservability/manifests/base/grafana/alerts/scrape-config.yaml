@@ -1,0 +1,22 @@
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: ScrapeConfig
+metadata:
+  creationTimestamp: null
+  labels:
+    app.kubernetes.io/component: platform-metrics-collector
+    app.kubernetes.io/part-of: multicluster-observability-addon
+    app.kubernetes.io/managed-by: multicluster-observability-operator
+  name: platform-metrics-alerts
+  namespace: open-cluster-management-observability
+spec:
+  jobName: platform-metrics
+  metricsPath: /federate
+  params:
+    match[]:
+    - '{__name__="ALERTS"}'
+  metricRelabelings:
+  - action: labeldrop
+    regex: prometheus_replica|managed_cluster|id
+  staticConfigs:
+  - targets:
+    - localhost:8090

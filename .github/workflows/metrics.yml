@@ -1,0 +1,31 @@
+name: collected metrics (MCOA)
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "*"
+  pull_request:
+
+jobs:
+  metrics:
+    runs-on: ubuntu-latest
+    name: Check collected metrics for dashboards
+    env:
+      GOBIN: /tmp/.bin
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 1.22.x
+          cache-dependency-path: "**/*.sum"
+
+      - name: Install dependencies
+        run: make install-check-metrics-deps
+
+      - name: Check metrics for MCOA
+        run: make check-metrics
