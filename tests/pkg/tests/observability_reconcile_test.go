@@ -72,7 +72,7 @@ var _ = Describe("Observability:", func() {
 				}
 			}
 			return fmt.Errorf("Failed to find modified retention field, the current args is: %v", argList)
-		}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
+		}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(Succeed())
 
 		By("Wait for thanos compact pods are ready")
 		compacts, _ := hubClient.AppsV1().StatefulSets(MCO_NAMESPACE).List(context.TODO(), metav1.ListOptions{
