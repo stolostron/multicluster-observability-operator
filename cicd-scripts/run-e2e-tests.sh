@@ -88,7 +88,7 @@ else
   #     rm -fr /usr/local/go
   #     tar -C /usr/local -xzf go1.21.10.linux-amd64.tar.gz
   fi
-  go install github.com/onsi/ginkgo/v2/ginkgo@2.22.2
+  go install github.com/onsi/ginkgo/v2/ginkgo@2.17.1
   GINKGO_CMD="$(go env GOPATH)/bin/ginkgo"
 fi
 
