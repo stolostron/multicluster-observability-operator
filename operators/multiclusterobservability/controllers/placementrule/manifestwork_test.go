@@ -345,7 +345,7 @@ func TestManifestWork(t *testing.T) {
 		WithRuntimeObjects(objs...).
 		Build()
 
-	defer setupTest(t)()
+	setupTest(t)
 
 	works, crdWork, _, err := generateGlobalManifestResources(c, newTestMCO())
 	if err != nil {
