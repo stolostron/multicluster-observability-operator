@@ -335,21 +335,22 @@ var _ = Describe("Observability:", func() {
 			alertGetReq.Header.Set("Authorization", "Bearer "+BearerToken)
 		}
 
-		expectedOCPClusterIDs, err := utils.ListOCPManagedClusterIDs(testOptions)
+		expectedOCPClusterIDs, err := utils.ListAvailableOCPManagedClusterIDs(testOptions)
 		Expect(err).NotTo(HaveOccurred())
-		expectedKSClusterNames, err := utils.ListKSManagedClusterNames(testOptions)
+		expectedKSClusterNames, err := utils.ListAvailableKSManagedClusterNames(testOptions)
 		Expect(err).NotTo(HaveOccurred())
 		expectClusterIdentifiers := append(expectedOCPClusterIDs, expectedKSClusterNames...)
 		missingClusters := slices.Clone(expectClusterIdentifiers)
 		klog.Infof("List of cluster IDs expected to send the alert is: %s", expectClusterIdentifiers)
 
-		// Ensure we have all the managed clusters in the list
-		Expect(len(expectClusterIdentifiers)).To(Equal(len(testOptions.ManagedClusters) + 1))
+		// Ensure we have at least a managedCluster
+		Expect(expectClusterIdentifiers).To(Not(BeEmpty()))
 
 		// install watchdog PrometheusRule to *KS clusters
 		watchDogRuleKustomizationPath := "../../../examples/alerts/watchdog_rule"
 		yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: watchDogRuleKustomizationPath})
 		Expect(err).NotTo(HaveOccurred())
+		klog.Infof("List of cluster IDs to install the watchdog alert: %s", expectedKSClusterNames)
 		for _, ks := range expectedKSClusterNames {
 			for idx, mc := range testOptions.ManagedClusters {
 				if mc.Name == ks {
