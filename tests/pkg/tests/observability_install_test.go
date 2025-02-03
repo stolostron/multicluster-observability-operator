@@ -66,33 +66,6 @@ func installMCO() {
 		Expect(string(pod.Status.Phase)).To(Equal("Running"))
 	}
 
-	// print mco logs if MCO installation failed
-	// defer func(testOptions utils.TestOptions, isHub bool, namespace, podName, containerName string, previous bool, tailLines int64) {
-	// 	if testFailed {
-	// 		mcoLogs, err := utils.GetPodLogs(
-	// 			testOptions,
-	// 			isHub,
-	// 			namespace,
-	// 			podName,
-	// 			containerName,
-	// 			previous,
-	// 			tailLines,
-	// 		)
-	// 		Expect(err).NotTo(HaveOccurred())
-	// 		fmt.Fprintf(GinkgoWriter, "[DEBUG] MCO is installed failed, checking MCO operator logs:\n%s\n", mcoLogs)
-	// 	} else {
-	// 		fmt.Fprintf(GinkgoWriter, "[DEBUG] MCO is installed successfully!\n")
-	// 	}
-	// }(
-	// 	testOptions,
-	// 	false,
-	// 	mcoNs,
-	// 	mcoPod,
-	// 	"multicluster-observability-operator",
-	// 	false,
-	// 	1000,
-	// )
-
 	By("Checking Required CRDs are created")
 	Eventually(func() error {
 		return utils.HaveCRDs(testOptions.HubCluster, testOptions.KubeConfig,
