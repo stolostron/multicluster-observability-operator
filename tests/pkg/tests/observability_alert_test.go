@@ -344,7 +344,7 @@ var _ = Describe("Observability:", func() {
 		klog.Infof("List of cluster IDs expected to send the alert is: %s", expectClusterIdentifiers)
 
 		// Ensure we have at least a managedCluster
-		Expect(len(expectClusterIdentifiers)).To(Not(BeEmpty()))
+		Expect(expectClusterIdentifiers).To(Not(BeEmpty()))
 
 		// install watchdog PrometheusRule to *KS clusters
 		watchDogRuleKustomizationPath := "../../../examples/alerts/watchdog_rule"
