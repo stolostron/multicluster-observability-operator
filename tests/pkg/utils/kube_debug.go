@@ -16,6 +16,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog"
 )
@@ -48,6 +49,7 @@ func LogFailingTestStandardDebugInfo(opt TestOptions) {
 	CheckPodsInNamespace(hubClient, MCO_NAMESPACE, []string{}, map[string]string{})
 	printConfigMapsInNamespace(hubClient, MCO_NAMESPACE)
 	printSecretsInNamespace(hubClient, MCO_NAMESPACE)
+	LogManagedClusters(hubDynClient)
 
 	for _, mc := range opt.ManagedClusters {
 		if mc.Name == "local-cluster" {
@@ -300,6 +302,26 @@ func LogObjectEvents(client kubernetes.Interface, ns string, kind string, name s
 	}
 	formattedEvents := fmt.Sprintf(">>>>>>>>>> %s events >>>>>>>>>>\n%s\n<<<<<<<<<< %s events <<<<<<<<<<", kind, strings.Join(objectEvents, "\n"), kind)
 	klog.V(1).Infof("%s %q events: \n%s", kind, name, formattedEvents)
+}
+
+func LogManagedClusters(client dynamic.Interface) {
+	objs, err := client.Resource(NewOCMManagedClustersGVR()).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		klog.Errorf("failed to get ManagedClusters: %v", err)
+		return
+	}
+
+	var managedClustersData strings.Builder
+	managedClustersData.WriteString(">>>>>>>>>> Managed Clusters >>>>>>>>>>\n")
+	for _, obj := range objs.Items {
+		mc, err := json.MarshalIndent(obj, "", "  ")
+		if err != nil {
+			klog.Errorf("Failed to marshal ManagedCluster %q: %s", obj.GetName(), err.Error())
+		}
+		managedClustersData.WriteString(string(mc))
+	}
+	managedClustersData.WriteString("<<<<<<<<<< Managed Clusters <<<<<<<<<<")
+	klog.Info(managedClustersData.String())
 }
 
 func printPodsStatuses(pods []corev1.Pod) {
