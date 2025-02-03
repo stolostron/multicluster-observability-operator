@@ -538,7 +538,11 @@ func ModifyMCOAddonSpecInterval(opt TestOptions, interval int64) error {
 	}
 
 	observabilityAddonSpec := mco.Object["spec"].(map[string]interface{})["observabilityAddonSpec"].(map[string]interface{})
-	observabilityAddonSpec["interval"] = interval
+	if interval == 0 {
+		observabilityAddonSpec["interval"] = nil
+	} else {
+		observabilityAddonSpec["interval"] = interval
+	}
 	_, updateErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Update(context.TODO(), mco, metav1.UpdateOptions{})
 	if updateErr != nil {
 		return updateErr

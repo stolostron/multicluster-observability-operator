@@ -140,6 +140,20 @@ var _ = Describe("Observability:", func() {
 
 	It("RHACM4K-6923: Observability: Verify default scrap interval change to 5 minutes - [P2][Sev2][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release @pre-upgrade (addon/g2)", func() {
 		By("Check default interval value is 300")
+		// get the current interval, so we can revert to it after the test
+		mco, getErr := dynClient.Resource(utils.NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+		if getErr != nil {
+			panic(getErr.Error())
+		}
+		observabilityAddonSpec := mco.Object["spec"].(map[string]interface{})["observabilityAddonSpec"].(map[string]interface{})
+		oldInterval := observabilityAddonSpec["interval"]
+		// set the interval to 0 (null) to ensure the default interval is applied
+		err := utils.ModifyMCOAddonSpecInterval(testOptions, int64(0))
+		if err != nil {
+				panic(err.Error())
+		}
+
+		// Test the interval is now 300, which should be the default
 		Eventually(func() bool {
 			mco, getErr := dynClient.Resource(utils.NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
 			if getErr != nil {
@@ -148,6 +162,12 @@ var _ = Describe("Observability:", func() {
 			observabilityAddonSpec := mco.Object["spec"].(map[string]interface{})["observabilityAddonSpec"].(map[string]interface{})
 			return observabilityAddonSpec["interval"] == int64(300)
 		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*1).Should(BeTrue())
+
+		// revert to original interval
+		err = utils.ModifyMCOAddonSpecInterval(testOptions, oldInterval.(int64))
+		if err != nil {
+				panic(getErr.Error())
+		}
 	})
 
 	It("RHACM4K-1235: Observability: Verify metrics data global setting on the managed cluster - Should not set interval to values beyond scope [P3][Sev3][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release @pre-upgrade (addon/g0)", func() {
