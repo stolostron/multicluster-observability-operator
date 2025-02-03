@@ -7,10 +7,17 @@ package utils
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
+	"slices"
 
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	clusterv1 "open-cluster-management.io/api/cluster/v1"
 )
+
+const availableManagedClusterCondition = "ManagedClusterConditionAvailable"
 
 func UpdateObservabilityFromManagedCluster(opt TestOptions, enableObservability bool) error {
 	clusterName := GetManagedClusterName(opt)
@@ -95,55 +102,70 @@ func ListManagedClusters(opt TestOptions) ([]string, error) {
 	return clusterNames, nil
 }
 
-func ListOCPManagedClusterIDs(opt TestOptions) ([]string, error) {
-	clientDynamic := GetKubeClientDynamic(opt, true)
-	objs, err := clientDynamic.Resource(NewOCMManagedClustersGVR()).List(context.TODO(), metav1.ListOptions{})
+func ListAvailableOCPManagedClusterIDs(opt TestOptions) ([]string, error) {
+	managedClusters, err := getManagedClusters(opt)
 	if err != nil {
 		return nil, err
 	}
 
-	clusterIDs := []string{}
-	for _, obj := range objs.Items {
-		metadata := obj.Object["metadata"].(map[string]interface{})
-		labels := metadata["labels"].(map[string]interface{})
-		if labels == nil {
-			continue
-		}
+	// Filter out unavailable and non openshift clusters.
+	// This is necessary for some e2e testing environments where some managed clusters might not be available.
+	managedClusters = slices.DeleteFunc(managedClusters, func(e *clusterv1.ManagedCluster) bool {
+		return !meta.IsStatusConditionTrue(e.Status.Conditions, availableManagedClusterCondition) || !isOpenshiftVendor(e)
+	})
 
-		if vendor, ok := labels["vendor"]; !ok || vendor != "OpenShift" {
-			continue
-		}
-
-		if clusterID, ok := labels["clusterID"]; ok {
-			clusterIDs = append(clusterIDs, clusterID.(string))
+	ret := make([]string, 0, len(managedClusters))
+	for _, mc := range managedClusters {
+		if clusterID, ok := mc.ObjectMeta.Labels["clusterID"]; ok {
+			ret = append(ret, clusterID)
 		}
 	}
 
-	return clusterIDs, nil
+	return ret, nil
 }
 
-func ListKSManagedClusterNames(opt TestOptions) ([]string, error) {
-	clientDynamic := GetKubeClientDynamic(opt, true)
-	objs, err := clientDynamic.Resource(NewOCMManagedClustersGVR()).List(context.TODO(), metav1.ListOptions{})
+func ListAvailableKSManagedClusterNames(opt TestOptions) ([]string, error) {
+	managedClusters, err := getManagedClusters(opt)
 	if err != nil {
 		return nil, err
 	}
-	clusterNames := []string{}
-	for _, obj := range objs.Items {
-		metadata := obj.Object["metadata"].(map[string]interface{})
-		labels := metadata["labels"].(map[string]interface{})
-		if labels == nil {
-			continue
-		}
 
-		if vendor, ok := labels["vendor"]; ok && vendor == "OpenShift" {
-			continue
-		}
+	// Filter out unavailable and non openshift clusters.
+	// This is necessary for some e2e testing environments where some managed clusters might not be available.
+	managedClusters = slices.DeleteFunc(managedClusters, func(e *clusterv1.ManagedCluster) bool {
+		return !meta.IsStatusConditionTrue(e.Status.Conditions, availableManagedClusterCondition) || isOpenshiftVendor(e)
+	})
 
-		if clusterName, ok := labels["name"]; ok {
-			clusterNames = append(clusterNames, clusterName.(string))
+	ret := make([]string, 0, len(managedClusters))
+	for _, mc := range managedClusters {
+		if clusterID, ok := mc.ObjectMeta.Labels["name"]; ok {
+			ret = append(ret, clusterID)
 		}
 	}
 
-	return clusterNames, nil
+	return ret, nil
+}
+
+func isOpenshiftVendor(mc *clusterv1.ManagedCluster) bool {
+	vendor, ok := mc.ObjectMeta.Labels["vendor"]
+	return !ok || vendor != "OpenShift"
+}
+
+func getManagedClusters(opt TestOptions) ([]*clusterv1.ManagedCluster, error) {
+	clientDynamic := GetKubeClientDynamic(opt, true)
+	objs, err := clientDynamic.Resource(NewOCMManagedClustersGVR()).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get ManagedClusters: %w", err)
+	}
+
+	ret := make([]*clusterv1.ManagedCluster, 0, len(objs.Items))
+	for _, obj := range objs.Items {
+		mc := &clusterv1.ManagedCluster{}
+		if err := runtime.DefaultUnstructuredConverter.FromUnstructured(obj.Object, mc); err != nil {
+			return nil, fmt.Errorf("failed to convert Unstructured to ManagedCluster: %w", err)
+		}
+		ret = append(ret, mc)
+	}
+
+	return ret, nil
 }
