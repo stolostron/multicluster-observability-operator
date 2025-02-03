@@ -11,13 +11,22 @@ import (
 	"os"
 	"slices"
 
+	"github.com/onsi/ginkgo"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
 )
 
-const availableManagedClusterCondition = "ManagedClusterConditionAvailable"
+const (
+	availableManagedClusterCondition = "ManagedClusterConditionAvailable"
+	idClusterClaim                   = "id.k8s.io"
+)
+
+var openshiftLabelSelector = labels.SelectorFromValidatedSet(map[string]string{
+	"vendor": "OpenShift",
+})
 
 func UpdateObservabilityFromManagedCluster(opt TestOptions, enableObservability bool) error {
 	clusterName := GetManagedClusterName(opt)
@@ -103,7 +112,7 @@ func ListManagedClusters(opt TestOptions) ([]string, error) {
 }
 
 func ListAvailableOCPManagedClusterIDs(opt TestOptions) ([]string, error) {
-	managedClusters, err := getManagedClusters(opt)
+	managedClusters, err := GetManagedClusters(opt)
 	if err != nil {
 		return nil, err
 	}
@@ -116,16 +125,14 @@ func ListAvailableOCPManagedClusterIDs(opt TestOptions) ([]string, error) {
 
 	ret := make([]string, 0, len(managedClusters))
 	for _, mc := range managedClusters {
-		if clusterID, ok := mc.ObjectMeta.Labels["clusterID"]; ok {
-			ret = append(ret, clusterID)
-		}
+		ret = append(ret, getManagedClusterID(mc))
 	}
 
 	return ret, nil
 }
 
 func ListAvailableKSManagedClusterNames(opt TestOptions) ([]string, error) {
-	managedClusters, err := getManagedClusters(opt)
+	managedClusters, err := GetManagedClusters(opt)
 	if err != nil {
 		return nil, err
 	}
@@ -138,20 +145,29 @@ func ListAvailableKSManagedClusterNames(opt TestOptions) ([]string, error) {
 
 	ret := make([]string, 0, len(managedClusters))
 	for _, mc := range managedClusters {
-		if clusterID, ok := mc.ObjectMeta.Labels["name"]; ok {
-			ret = append(ret, clusterID)
-		}
+		ret = append(ret, getManagedClusterID(mc))
 	}
 
 	return ret, nil
 }
 
 func isOpenshiftVendor(mc *clusterv1.ManagedCluster) bool {
-	vendor, ok := mc.ObjectMeta.Labels["vendor"]
-	return !ok || vendor != "OpenShift"
+	return openshiftLabelSelector.Matches(labels.Set(mc.GetLabels()))
 }
 
-func getManagedClusters(opt TestOptions) ([]*clusterv1.ManagedCluster, error) {
+func getManagedClusterID(mc *clusterv1.ManagedCluster) string {
+	for _, cc := range mc.Status.ClusterClaims {
+		if cc.Name == idClusterClaim {
+			return cc.Value
+		}
+	}
+
+	ginkgo.Fail(fmt.Sprintf("failed to get the managedCluster %q ID", mc.Name))
+
+	return ""
+}
+
+func GetManagedClusters(opt TestOptions) ([]*clusterv1.ManagedCluster, error) {
 	clientDynamic := GetKubeClientDynamic(opt, true)
 	objs, err := clientDynamic.Resource(NewOCMManagedClustersGVR()).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {

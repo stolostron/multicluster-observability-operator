@@ -350,6 +350,7 @@ var _ = Describe("Observability:", func() {
 		watchDogRuleKustomizationPath := "../../../examples/alerts/watchdog_rule"
 		yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: watchDogRuleKustomizationPath})
 		Expect(err).NotTo(HaveOccurred())
+		klog.Infof("List of cluster IDs to install the watchdog alert: %s", expectedKSClusterNames)
 		for _, ks := range expectedKSClusterNames {
 			for idx, mc := range testOptions.ManagedClusters {
 				if mc.Name == ks {
