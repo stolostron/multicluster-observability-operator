@@ -15,8 +15,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
-	"reflect"
-	"sort"
+	"slices"
 	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -384,9 +383,9 @@ var _ = Describe("Observability:", func() {
 				Host:   "alertmanager-open-cluster-management-observability.apps." + testOptions.HubCluster.BaseDomain,
 				Path:   "/api/v2/alerts",
 			}
-
 		}
-
+		// Watchdog is an alert that is installed by default on OCP clusters by the in-cluster monitoring stack
+		// It thus exists by default on the hub and openshift spokes, and is always activated.
 		q := amURL.Query()
 		q.Set("filter", "alertname=Watchdog")
 		amURL.RawQuery = q.Encode()
@@ -413,22 +412,22 @@ var _ = Describe("Observability:", func() {
 			alertGetReq.Header.Set("Authorization", "Bearer "+BearerToken)
 		}
 
-		expectedOCPClusterIDs, err := utils.ListOCPManagedClusterIDs(testOptions, "4.8.0")
+		expectedOCPClusterIDs, err := utils.ListAvailableOCPManagedClusterIDs(testOptions)
 		Expect(err).NotTo(HaveOccurred())
-		expectedLocalClusterIDs, err := utils.ListLocalClusterIDs(testOptions)
-		expectedOCPClusterIDs = append(expectedOCPClusterIDs, expectedLocalClusterIDs...)
-		klog.V(3).Infof("expectedOCPClusterIDs is %s", expectedOCPClusterIDs)
-		Expect(err).NotTo(HaveOccurred())
-		expectedKSClusterNames, err := utils.ListKSManagedClusterNames(testOptions)
-		klog.V(3).Infof("expectedKSClusterNames is %s", expectedKSClusterNames)
+		expectedKSClusterNames, err := utils.ListAvailableKSManagedClusterNames(testOptions)
 		Expect(err).NotTo(HaveOccurred())
 		expectClusterIdentifiers := append(expectedOCPClusterIDs, expectedKSClusterNames...)
-		klog.V(3).Infof("expectClusterIdentifiers is %s", expectClusterIdentifiers)
+		missingClusters := slices.Clone(expectClusterIdentifiers)
+		klog.Infof("List of cluster IDs expected to send the alert is: %s", expectClusterIdentifiers)
+
+		// Ensure we have at least a managedCluster
+		Expect(expectClusterIdentifiers).To(Not(BeEmpty()))
 
 		// install watchdog PrometheusRule to *KS clusters
 		watchDogRuleKustomizationPath := "../../../examples/alerts/watchdog_rule"
 		yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: watchDogRuleKustomizationPath})
 		Expect(err).NotTo(HaveOccurred())
+		klog.Infof("List of cluster IDs to install the watchdog alert: %s", expectedKSClusterNames)
 		for _, ks := range expectedKSClusterNames {
 			for idx, mc := range testOptions.ManagedClusters {
 				if mc.Name == ks {
@@ -479,15 +478,16 @@ var _ = Describe("Observability:", func() {
 				}
 			}
 
-			sort.Strings(clusterIDsInAlerts)
-			klog.V(3).Infof("clusterIDsInAlerts is %s", clusterIDsInAlerts)
-			sort.Strings(expectClusterIdentifiers)
-			klog.V(3).Infof("sort.Strings.expectClusterIdentifiers is %s", expectClusterIdentifiers)
-			klog.V(3).Infof("no sort.Strings.expectedOCPClusterIDs is %s", expectedOCPClusterIDs)
-			sort.Strings(expectedOCPClusterIDs)
-			klog.V(3).Infof("sort.Strings.expectedOCPClusterIDs is %s", expectedOCPClusterIDs)
-			if !reflect.DeepEqual(clusterIDsInAlerts, expectedOCPClusterIDs) {
-				return fmt.Errorf("Not all openshift managedclusters >=4.8.0 forward Watchdog alert to hub cluster")
+			// Returned alerts by the alert manager is not consistent. It does not always contain all the alerts.
+			// To make the test more reliable, we remove clusters found in the response continuously on each retry
+			// until all have been identified in the alertmanager responses.
+			for _, foundID := range clusterIDsInAlerts {
+				missingClusters = slices.DeleteFunc(missingClusters, func(e string) bool { return e == foundID })
+			}
+
+			if len(missingClusters) != 0 {
+				klog.Infof("Watchdog alerts are still missing from these clusters %q. Retrying...", missingClusters)
+				return fmt.Errorf("Not all managedclusters forward Watchdog alert to hub cluster. Found following clusters in alerts %q. Following clusters are still missing: %q. Full list of expected clusters was: %q", clusterIDsInAlerts, missingClusters, expectClusterIdentifiers)
 			}
 
 			return nil
@@ -543,7 +543,7 @@ var _ = Describe("Observability:", func() {
 			alertGetReq.Header.Set("Authorization", "Bearer "+BearerToken)
 		}
 
-		expectedKSClusterNames, err := utils.ListKSManagedClusterNames(testOptions)
+		expectedKSClusterNames, err := utils.GetManagedClusters(testOptions)
 		Expect(err).NotTo(HaveOccurred())
 
 		watchDogRuleKustomizationPath := "../../../examples/alerts/watchdog_rule"
