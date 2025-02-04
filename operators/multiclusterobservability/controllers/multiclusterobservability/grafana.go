@@ -180,7 +180,7 @@ func GenerateGrafanaDataSource(
 	if (grafanaDSFound.Data[datasourceKey] != nil &&
 		!bytes.Equal(grafanaDSFound.Data[datasourceKey], dsSecret.Data[datasourceKey])) ||
 		grafanaDSFound.Data[datasourceKey] == nil {
-		log.Info("Updating grafana datasource secret")
+		log.Info("test Updating grafana datasource secret")
 		err = c.Update(context.TODO(), dsSecret)
 		if err != nil {
 			log.Error(err, "Failed to update grafana datasource secret")
