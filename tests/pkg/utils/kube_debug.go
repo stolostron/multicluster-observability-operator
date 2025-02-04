@@ -13,6 +13,7 @@ import (
 	"text/tabwriter"
 	"time"
 
+	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -52,6 +53,7 @@ func LogFailingTestStandardDebugInfo(opt TestOptions) {
 	printConfigMapsInNamespace(hubClient, MCO_NAMESPACE)
 	printSecretsInNamespace(hubClient, MCO_NAMESPACE)
 	LogManagedClusters(hubDynClient)
+	LogObservabilityAddon(hubDynClient)
 
 	for _, mc := range opt.ManagedClusters {
 		if mc.Name == "local-cluster" {
@@ -332,8 +334,37 @@ func LogManagedClusters(client dynamic.Interface) {
 			klog.Errorf("Failed to marshal ManagedCluster %q: %s", obj.GetName(), err.Error())
 		}
 		managedClustersData.WriteString(string(jsonData))
+		managedClustersData.WriteString("\n-------\n")
 	}
 	managedClustersData.WriteString("<<<<<<<<<< Managed Clusters <<<<<<<<<<")
+	klog.Info(managedClustersData.String())
+}
+
+func LogObservabilityAddon(client dynamic.Interface) {
+	objs, err := client.Resource(NewMCOAddonGVR()).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		klog.Errorf("failed to get observability addons: %v", err)
+		return
+	}
+
+	var managedClustersData strings.Builder
+	managedClustersData.WriteString(">>>>>>>>>> Observability addons >>>>>>>>>>\n")
+	for _, obj := range objs.Items {
+		oa := &oav1beta1.ObservabilityAddon{}
+		if err := runtime.DefaultUnstructuredConverter.FromUnstructured(obj.Object, oa); err != nil {
+			klog.Errorf("failed to convert Unstructured to ObservabilityAddon: %v", err)
+		}
+
+		// Clean fields for reducing output length
+		oa.ManagedFields = []metav1.ManagedFieldsEntry{}
+		jsonData, err := json.MarshalIndent(oa, "", "  ")
+		if err != nil {
+			klog.Errorf("Failed to marshal ObservabilityAddon %q: %s", obj.GetName(), err.Error())
+		}
+		managedClustersData.WriteString(string(jsonData))
+		managedClustersData.WriteString("\n-------\n")
+	}
+	managedClustersData.WriteString("<<<<<<<<<< Observability addons <<<<<<<<<<")
 	klog.Info(managedClustersData.String())
 }
 
