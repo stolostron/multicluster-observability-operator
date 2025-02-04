@@ -47,7 +47,6 @@ ENV OPERATOR=/usr/local/bin/mco-operator \
     USER_UID=1001 \
     USER_NAME=mco
 
-RUN microdnf update -y && microdnf clean all
 
 # install templates
 COPY ./operators/multiclusterobservability/manifests /usr/local/manifests
