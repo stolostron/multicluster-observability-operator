@@ -43,7 +43,7 @@ func GetDeploymentWithLabel(opt TestOptions, isHub bool, label string,
 		label,
 		namespace,
 		isHub,
-	  cluster)
+		cluster)
 	deps, err := clientKube.AppsV1().Deployments(namespace).List(context.TODO(), metav1.ListOptions{
 		LabelSelector: label,
 	})

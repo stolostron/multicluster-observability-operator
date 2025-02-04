@@ -150,7 +150,7 @@ var _ = Describe("Observability:", func() {
 		// set the interval to 0 (null) to ensure the default interval is applied
 		err := utils.ModifyMCOAddonSpecInterval(testOptions, int64(0))
 		if err != nil {
-				panic(err.Error())
+			panic(err.Error())
 		}
 
 		// Test the interval is now 300, which should be the default
@@ -166,7 +166,7 @@ var _ = Describe("Observability:", func() {
 		// revert to original interval
 		err = utils.ModifyMCOAddonSpecInterval(testOptions, oldInterval.(int64))
 		if err != nil {
-				panic(getErr.Error())
+			panic(getErr.Error())
 		}
 	})
 
