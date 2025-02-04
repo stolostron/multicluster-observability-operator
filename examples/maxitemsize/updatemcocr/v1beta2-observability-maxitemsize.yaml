@@ -114,8 +114,8 @@ spec:
         cpu: 10m
         memory: 100Mi
   storageConfig:
-    alertmanagerStorageSize: 2Gi
-    compactStorageSize: 2Gi
+    alertmanagerStorageSize: 1Gi
+    compactStorageSize: 1Gi
     metricObjectStorage:
       key: thanos.yaml
       name: thanos-object-storage
@@ -124,4 +124,4 @@ spec:
     receiveStorageSize: 1Gi
     ruleStorageSize: 1Gi
     storageClass: gp2
-    storeStorageSize: 2Gi
+    storeStorageSize: 1Gi

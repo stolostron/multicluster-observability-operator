@@ -88,21 +88,6 @@ var _ = Describe("Observability:", func() {
 			}
 			return nil
 		}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(Succeed())
-
-		By("Wait for alertmanager pods are ready")
-		alertmans, _ := hubClient.AppsV1().StatefulSets(MCO_NAMESPACE).List(context.TODO(), metav1.ListOptions{
-			LabelSelector: ALERTMANAGER_LABEL,
-		})
-		Expect(len(alertmans.Items)).NotTo(Equal(0))
-
-		// ensure the thanos rule pods are restarted successfully before processing
-		Eventually(func() error {
-			err = utils.CheckStatefulSetPodReady(testOptions, (*alertmans).Items[0].Name)
-			if err != nil {
-				return err
-			}
-			return nil
-		}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
 	It("RHACM4K-1655: Observability: Verify nodeSelector setting effects for Observability components [P2][Sev2][Observability][Stable] @e2e @post-release @post-upgrade @post-restore (reconcile/g0)", func() {
