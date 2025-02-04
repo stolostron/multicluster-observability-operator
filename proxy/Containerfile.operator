@@ -23,7 +23,8 @@ ARG IMAGE_RELEASE
 ARG IMAGE_SUMMARY
 ARG IMAGE_OPENSHIFT_TAGS
 
-LABEL org.label-schema.vendor="Red Hat" \
+LABEL org.label-schema.vendor="RedHat" \
+    com.redhat.component="rbac-query-proxy" \
     org.label-schema.name="$IMAGE_NAME_ARCH" \
     org.label-schema.description="$IMAGE_DESCRIPTION" \
     org.label-schema.vcs-ref=$VCS_REF \
