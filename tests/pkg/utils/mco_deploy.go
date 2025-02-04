@@ -404,6 +404,8 @@ func ModifyMCOCR(opt TestOptions) error {
 		return getErr
 	}
 	spec := mco.Object["spec"].(map[string]interface{})
+	storageConfig := spec["storageConfig"].(map[string]interface{})
+	storageConfig["alertmanagerStorageSize"] = "3Gi"
 
 	advRetentionCon, _ := CheckAdvRetentionConfig(opt)
 	if advRetentionCon {
@@ -461,6 +463,17 @@ func RevertMCOCRModification(opt TestOptions) error {
 	if updateErr != nil {
 		return updateErr
 	}
+
+	// we delete the statefulset so it comes up again with the correct size
+	kubeClient := NewKubeClient(
+		opt.HubCluster.ClusterServerURL,
+		opt.KubeConfig,
+		opt.HubCluster.KubeContext)
+	err := kubeClient.AppsV1().StatefulSets(MCO_NAMESPACE).Delete(context.TODO(), "observability-alertmanager", metav1.DeleteOptions{})
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 

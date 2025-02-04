@@ -79,15 +79,6 @@ var _ = Describe("", func() {
 				}
 			}
 			return nil
-			/*
-				err = utils.CheckAllOBAsEnabledLocal(testOptions)
-				if err != nil {
-					testFailed = true
-					return err
-				}
-				testFailed = false
-				return nil
-			*/
 		}, EventuallyTimeoutMinute*20, EventuallyIntervalSecond*10).Should(Succeed())
 
 	})
