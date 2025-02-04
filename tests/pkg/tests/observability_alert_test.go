@@ -551,7 +551,7 @@ var _ = Describe("Observability:", func() {
 		Expect(err).NotTo(HaveOccurred())
 		for _, ks := range expectedKSClusterNames {
 			for idx, mc := range testOptions.ManagedClusters {
-				if mc.Name == ks {
+				if mc.Name == ks.Name {
 					err = utils.Apply(
 						testOptions.ManagedClusters[idx].ClusterServerURL,
 						testOptions.ManagedClusters[idx].KubeConfig,
