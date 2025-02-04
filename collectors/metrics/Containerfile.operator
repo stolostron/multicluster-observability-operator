@@ -35,7 +35,6 @@ LABEL org.label-schema.vendor="Red Hat" \
     org.label-schema.schema-version="1.0" \
     name="$IMAGE_NAME" \
     maintainer="$IMAGE_MAINTAINER" \
-    vendor="$IMAGE_VENDOR" \
     version="$IMAGE_VERSION" \
     release="$IMAGE_RELEASE" \
     description="$IMAGE_DESCRIPTION" \
