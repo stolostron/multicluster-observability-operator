@@ -14,8 +14,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"reflect"
-	"sort"
+	"slices"
 	"strings"
 
 	. "github.com/onsi/ginkgo"
@@ -302,6 +301,8 @@ var _ = Describe("Observability:", func() {
 	})
 
 	It("[P2][Sev2][observability][Integration] Should have alert named Watchdog forwarded to alertmanager (alertforward/g0)", func() {
+		// Watchdog is an alert that is installed by default on OCP clusters by the in-cluster monitoring stack
+		// It thus exists by default on the hub and openshift spokes, and is always activated.
 
 		amURL := url.URL{
 			Scheme: "https",
@@ -334,16 +335,22 @@ var _ = Describe("Observability:", func() {
 			alertGetReq.Header.Set("Authorization", "Bearer "+BearerToken)
 		}
 
-		expectedOCPClusterIDs, err := utils.ListOCPManagedClusterIDs(testOptions, "4.8.0")
+		expectedOCPClusterIDs, err := utils.ListAvailableOCPManagedClusterIDs(testOptions)
 		Expect(err).NotTo(HaveOccurred())
-		expectedKSClusterNames, err := utils.ListKSManagedClusterNames(testOptions)
+		expectedKSClusterNames, err := utils.ListAvailableKSManagedClusterNames(testOptions)
 		Expect(err).NotTo(HaveOccurred())
 		expectClusterIdentifiers := append(expectedOCPClusterIDs, expectedKSClusterNames...)
+		missingClusters := slices.Clone(expectClusterIdentifiers)
+		klog.Infof("List of cluster IDs expected to send the alert is: %s", expectClusterIdentifiers)
+
+		// Ensure we have at least a managedCluster
+		Expect(expectClusterIdentifiers).To(Not(BeEmpty()))
 
 		// install watchdog PrometheusRule to *KS clusters
 		watchDogRuleKustomizationPath := "../../../examples/alerts/watchdog_rule"
 		yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: watchDogRuleKustomizationPath})
 		Expect(err).NotTo(HaveOccurred())
+		klog.Infof("List of cluster IDs to install the watchdog alert: %s", expectedKSClusterNames)
 		for _, ks := range expectedKSClusterNames {
 			for idx, mc := range testOptions.ManagedClusters {
 				if mc.Name == ks {
@@ -394,10 +401,16 @@ var _ = Describe("Observability:", func() {
 				}
 			}
 
-			sort.Strings(clusterIDsInAlerts)
-			sort.Strings(expectClusterIdentifiers)
-			if !reflect.DeepEqual(clusterIDsInAlerts, expectClusterIdentifiers) {
-				return fmt.Errorf("Not all openshift managedclusters >=4.8.0 forward Watchdog alert to hub cluster")
+			// Returned alerts by the alert manager is not consistent. It does not always contain all the alerts.
+			// To make the test more reliable, we remove clusters found in the response continuously on each retry
+			// until all have been identified in the alertmanager responses.
+			for _, foundID := range clusterIDsInAlerts {
+				missingClusters = slices.DeleteFunc(missingClusters, func(e string) bool { return e == foundID })
+			}
+
+			if len(missingClusters) != 0 {
+				klog.Infof("Watchdog alerts are still missing from these clusters %q. Retrying...", missingClusters)
+				return fmt.Errorf("Not all managedclusters forward Watchdog alert to hub cluster. Found following clusters in alerts %q. Following clusters are still missing: %q. Full list of expected clusters was: %q", clusterIDsInAlerts, missingClusters, expectClusterIdentifiers)
 			}
 
 			return nil

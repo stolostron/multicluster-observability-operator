@@ -15,7 +15,6 @@ require (
 	github.com/golang/protobuf v1.5.4
 	github.com/golang/snappy v0.0.4
 	github.com/google/go-cmp v0.6.0
-	github.com/hashicorp/go-version v1.6.0
 	github.com/imdario/mergo v0.3.16
 	github.com/oklog/run v1.1.0
 	github.com/onsi/ginkgo v1.16.5
