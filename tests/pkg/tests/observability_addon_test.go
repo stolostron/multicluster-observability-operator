@@ -111,8 +111,8 @@ var _ = Describe("Observability:", func() {
 			Eventually(func() bool {
 				err, podList := utils.GetPodList(
 					testOptions,
-					false,
-					MCO_ADDON_NAMESPACE,
+					true,
+					MCO_NAMESPACE,
 					"component=metrics-collector",
 				)
 				// starting with OCP 4.13, userWorkLoadMonitoring is enabled by default

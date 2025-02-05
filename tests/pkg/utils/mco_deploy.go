@@ -482,14 +482,8 @@ func CheckMCOAddonResources(opt TestOptions) error {
 		opt.HubCluster.ClusterServerURL,
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext)
-	if len(opt.ManagedClusters) > 0 {
-		client = NewKubeClient(
-			opt.ManagedClusters[0].ClusterServerURL,
-			opt.ManagedClusters[0].KubeConfig,
-			"")
-	}
 
-	deployList, err := client.AppsV1().Deployments(MCO_ADDON_NAMESPACE).List(context.TODO(), metav1.ListOptions{})
+	deployList, err := client.AppsV1().Deployments(MCO_NAMESPACE).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return err
 	}
