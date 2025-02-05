@@ -45,9 +45,9 @@ var _ = Describe("Observability:", func() {
 			Eventually(func() error {
 				dep, err = utils.GetDeployment(
 					testOptions,
-					isHub,
+					true,
 					"metrics-collector-deployment",
-					namespace,
+					MCO_NAMESPACE,
 				)
 				return err
 			}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*1).Should(Succeed())
@@ -55,9 +55,9 @@ var _ = Describe("Observability:", func() {
 			Eventually(func() error {
 				err = utils.DeleteDeployment(
 					testOptions,
-					isHub,
+					true,
 					"metrics-collector-deployment",
-					namespace,
+					MCO_NAMESPACE,
 				)
 				return err
 			}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*1).Should(Succeed())
@@ -65,9 +65,9 @@ var _ = Describe("Observability:", func() {
 			Eventually(func() bool {
 				newDep, err = utils.GetDeployment(
 					testOptions,
-					isHub,
+					true,
 					"metrics-collector-deployment",
-					namespace,
+					MCO_NAMESPACE,
 				)
 				if err == nil {
 					if dep.ObjectMeta.ResourceVersion != newDep.ObjectMeta.ResourceVersion {
@@ -82,9 +82,9 @@ var _ = Describe("Observability:", func() {
 			Eventually(func() error {
 				newDep, err = utils.GetDeployment(
 					testOptions,
-					isHub,
+					true,
 					"metrics-collector-deployment",
-					namespace,
+					MCO_NAMESPACE,
 				)
 				if err != nil {
 					return err
@@ -92,9 +92,9 @@ var _ = Describe("Observability:", func() {
 				newDep.Spec.Template.Spec.ServiceAccountName = updateSaName
 				newDep, err = utils.UpdateDeployment(
 					testOptions,
-					isHub,
+					true,
 					"metrics-collector-deployment",
-					namespace,
+					MCO_NAMESPACE,
 					newDep,
 				)
 				return err
@@ -103,9 +103,9 @@ var _ = Describe("Observability:", func() {
 			Eventually(func() bool {
 				revertDep, err := utils.GetDeployment(
 					testOptions,
-					isHub,
+					true,
 					"metrics-collector-deployment",
-					namespace,
+					MCO_NAMESPACE,
 				)
 				if err == nil {
 					if revertDep.ObjectMeta.ResourceVersion != newDep.ObjectMeta.ResourceVersion &&
@@ -169,18 +169,18 @@ var _ = Describe("Observability:", func() {
 		Eventually(func() error {
 			err, cm = utils.GetConfigMap(
 				testOptions,
-				isHub,
+				true,
 				"metrics-collector-serving-certs-ca-bundle",
-				namespace,
+				MCO_NAMESPACE,
 			)
 			return err
 		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*1).Should(Succeed())
 		Eventually(func() error {
 			err = utils.DeleteConfigMap(
 				testOptions,
-				isHub,
+				true,
 				"metrics-collector-serving-certs-ca-bundle",
-				namespace,
+				MCO_NAMESPACE,
 			)
 			return err
 		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*1).Should(Succeed())
@@ -188,9 +188,9 @@ var _ = Describe("Observability:", func() {
 		Eventually(func() bool {
 			err, newCm = utils.GetConfigMap(
 				testOptions,
-				isHub,
+				true,
 				"metrics-collector-serving-certs-ca-bundle",
-				namespace,
+				MCO_NAMESPACE,
 			)
 			if err == nil {
 				if cm.ObjectMeta.ResourceVersion != newCm.ObjectMeta.ResourceVersion {
