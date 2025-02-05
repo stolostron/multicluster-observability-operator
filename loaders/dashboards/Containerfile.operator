@@ -25,6 +25,7 @@ ARG IMAGE_SUMMARY
 ARG IMAGE_OPENSHIFT_TAGS
 
 LABEL org.label-schema.vendor="Red Hat" \
+    com.redhat.component="grafana-dashboard" \
     org.label-schema.name="$IMAGE_NAME_ARCH" \
     org.label-schema.description="$IMAGE_DESCRIPTION" \
     org.label-schema.vcs-ref=$VCS_REF \
@@ -33,7 +34,6 @@ LABEL org.label-schema.vendor="Red Hat" \
     org.label-schema.schema-version="1.0" \
     name="$IMAGE_NAME" \
     maintainer="$IMAGE_MAINTAINER" \
-    vendor="$IMAGE_VENDOR" \
     version="$IMAGE_VERSION" \
     release="$IMAGE_RELEASE" \
     description="$IMAGE_DESCRIPTION" \
@@ -43,8 +43,6 @@ LABEL org.label-schema.vendor="Red Hat" \
     io.openshift.tags="$IMAGE_OPENSHIFT_TAGS"
 
 WORKDIR /
-
-RUN microdnf update -y && microdnf clean all
 
 USER 1001:1001
 

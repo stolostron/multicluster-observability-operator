@@ -27,6 +27,7 @@ ARG IMAGE_SUMMARY
 ARG IMAGE_OPENSHIFT_TAGS
 
 LABEL org.label-schema.vendor="Red Hat" \
+    com.redhat.component="endpoint-monitoring-operator" \
     org.label-schema.name="$IMAGE_NAME_ARCH" \
     org.label-schema.description="$IMAGE_DESCRIPTION" \
     org.label-schema.vcs-ref=$VCS_REF \
@@ -35,7 +36,6 @@ LABEL org.label-schema.vendor="Red Hat" \
     org.label-schema.schema-version="1.0" \
     name="$IMAGE_NAME" \
     maintainer="$IMAGE_MAINTAINER" \
-    vendor="$IMAGE_VENDOR" \
     version="$IMAGE_VERSION" \
     release="$IMAGE_RELEASE" \
     description="$IMAGE_DESCRIPTION" \
@@ -47,8 +47,6 @@ LABEL org.label-schema.vendor="Red Hat" \
 ENV OPERATOR=/usr/local/bin/endpoint-monitoring-operator \
     USER_UID=1001 \
     USER_NAME=endpoint-monitoring-operator
-
-RUN microdnf update -y && microdnf clean all
 
 COPY ./operators/endpointmetrics/manifests /usr/local/manifests
 
