@@ -62,7 +62,7 @@ var _ = Describe("", func() {
 
 			err, podList := utils.GetPodList(
 				testOptions,
-				false,
+				true,
 				"open-cluster-management-observability",
 				"component=metrics-collector",
 			)
