@@ -36,8 +36,9 @@ var _ = Describe("Observability:", func() {
 		collectorPodNameHub := ""
 		hubPodsName := []string{}
 		Eventually(func() bool {
-			// check metrics-collector on spoke
-			if len(testOptions.ManagedClusters) > 0 {
+			// check metrics-collector on spoke, unless it's local-cluster
+			if len(testOptions.ManagedClusters) > 0 &&
+				utils.GetManagedClusterName(testOptions) != hubManagedClusterName {
 				if collectorPodNameSpoke == "" {
 					_, podList := utils.GetPodList(
 						testOptions,
@@ -158,7 +159,8 @@ var _ = Describe("Observability:", func() {
 		}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(BeTrue())
 
 		// check metric collector spoke
-		if len(testOptions.ManagedClusters) > 0 {
+		if len(testOptions.ManagedClusters) > 0 &&
+			utils.GetManagedClusterName(testOptions) != hubManagedClusterName {
 			By(fmt.Sprintf("Waiting for old pod <%s> removed and new pod created on spoke", collectorPodNameSpoke))
 			Eventually(func() bool {
 				err, podList := utils.GetPodList(
