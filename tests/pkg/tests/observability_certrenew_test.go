@@ -29,6 +29,12 @@ var _ = Describe("Observability:", func() {
 	})
 
 	It("RHACM4K-3073: Observability: Verify Observability Certificate rotation - Should have metrics collector pod restart if cert secret re-generated [P1][Sev1][Observability][Integration]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release (certrenew/g0)", func() {
+
+		if len(testOptions.ManagedClusters) > 0 &&
+			utils.GetManagedClusterName(testOptions) != hubManagedClusterName {
+			Skip("Skipping unreliable cert-test on multi-spoke systems")
+		}
+
 		By("Waiting for pods ready: observability-observatorium-api, observability-rbac-query-proxy, metrics-collector-deployment")
 		// sleep 30s to wait for installation is ready
 		time.Sleep(30 * time.Second)
@@ -169,13 +175,19 @@ var _ = Describe("Observability:", func() {
 					MCO_ADDON_NAMESPACE,
 					"component=metrics-collector",
 				)
+
+				if len(podList.Items) != 1 {
+					klog.Infof("Wrong number of pods: <%d> metrics-collector pods, 1 expected",
+						len(podList.Items))
+					return false
+				}
 				if err != nil {
-					klog.V(1).Infof("Failed to get pod list: %v", err)
+					klog.Infof("Failed to get pod list: %v", err)
 				}
 				for _, pod := range podList.Items {
 					if pod.Name != collectorPodNameSpoke {
 						if pod.Status.Phase != "Running" {
-							klog.V(1).Infof("<%s> not in Running status yet", pod.Name)
+							klog.Infof("<%s> not in Running status yet", pod.Name)
 							return false
 						}
 						return true
