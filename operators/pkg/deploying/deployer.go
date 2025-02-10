@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	prometheusv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	monitoringv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -59,6 +60,7 @@ func NewDeployer(client client.Client) *Deployer {
 		"ServiceMonitor":           deployer.updateServiceMonitor,
 		"AddOnDeploymentConfig":    deployer.updateAddOnDeploymentConfig,
 		"ClusterManagementAddOn":   deployer.updateClusterManagementAddOn,
+		"ScrapeConfig":             deployer.updateScrapeConfig,
 	}
 	return deployer
 }
@@ -401,6 +403,21 @@ func (d *Deployer) updateClusterManagementAddOn(
 			desiredCMAO.ResourceVersion = runtimeCMAO.ResourceVersion
 		}
 		return d.client.Update(ctx, desiredCMAO)
+	}
+
+	return nil
+}
+
+func (d *Deployer) updateScrapeConfig(ctx context.Context, desiredObj, runtimeObj *unstructured.Unstructured) error {
+	desiredSC, runtimeSC, err := unstructuredPairToTyped[monitoringv1alpha1.ScrapeConfig](desiredObj, runtimeObj)
+	if err != nil {
+		return err
+	}
+
+	if !apiequality.Semantic.DeepEqual(desiredSC.Spec, runtimeSC.Spec) {
+		logUpdateInfo(runtimeObj)
+		desiredSC.ResourceVersion = runtimeSC.ResourceVersion
+		return d.client.Update(ctx, desiredSC)
 	}
 
 	return nil

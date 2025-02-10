@@ -5,7 +5,9 @@
 package rendering
 
 import (
+	"encoding/json"
 	"fmt"
+	"strings"
 
 	v1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -16,6 +18,8 @@ import (
 	rendererutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering"
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 )
+
+const dashboardFolderAnnotationKey = "observability.open-cluster-management.io/dashboard-folder"
 
 func (r *MCORenderer) newGranfanaRenderer() {
 	r.renderGrafanaFns = map[string]rendererutil.RenderFn{
@@ -30,6 +34,8 @@ func (r *MCORenderer) newGranfanaRenderer() {
 		"RoleBinding":           r.renderer.RenderNamespace,
 		"Ingress":               r.renderer.RenderNamespace,
 		"PersistentVolumeClaim": r.renderer.RenderNamespace,
+		"ScrapeConfig":          r.renderer.RenderNamespace,
+		"PrometheusRule":        r.renderer.RenderNamespace,
 	}
 }
 
@@ -93,6 +99,20 @@ func (r *MCORenderer) renderGrafanaTemplates(templates []*resource.Resource,
 	namespace string, labels map[string]string) ([]*unstructured.Unstructured, error) {
 	uobjs := []*unstructured.Unstructured{}
 	for _, template := range templates {
+		// Avoid rendering resource kinds that are specific to MCOA.
+		if !MCOAPlatformMetricsEnabled(r.cr) && isMCOASpecificResourceKind(template) {
+			continue
+		}
+
+		template = template.DeepCopy()
+
+		// Add deprecated suffix to the old dashboard names when MCOA is activated.
+		if MCOAPlatformMetricsEnabled(r.cr) && isNonMCOASpecificDashboard(template) {
+			if err := addDeprecatedSuffixToDashboardName(template); err != nil {
+				return []*unstructured.Unstructured{}, fmt.Errorf("failed to modify dashboard title with deprecated suffix: %w", err)
+			}
+		}
+
 		render, ok := r.renderGrafanaFns[template.GetKind()]
 		if !ok {
 			m, err := template.Map()
@@ -102,7 +122,7 @@ func (r *MCORenderer) renderGrafanaTemplates(templates []*resource.Resource,
 			uobjs = append(uobjs, &unstructured.Unstructured{Object: m})
 			continue
 		}
-		uobj, err := render(template.DeepCopy(), namespace, labels)
+		uobj, err := render(template, namespace, labels)
 		if err != nil {
 			return []*unstructured.Unstructured{}, err
 		}
@@ -114,4 +134,65 @@ func (r *MCORenderer) renderGrafanaTemplates(templates []*resource.Resource,
 	}
 
 	return uobjs, nil
+}
+
+// isMCOASpecificResourceType returns true if the resource is a scrape config or a Prometheus rule
+func isMCOASpecificResourceKind(res *resource.Resource) bool {
+	kind := res.GetKind()
+	if kind == "ScrapeConfig" || kind == "PrometheusRule" {
+		return true
+	}
+
+	return false
+}
+
+func isNonMCOASpecificDashboard(res *resource.Resource) bool {
+	// Exclude all dashboards living in the default directory as they are all duplicated
+	// for MCOA with some expressions adaptations due to the different set of metrics
+	// being collected.
+	if res.GetKind() == "ConfigMap" {
+		dir, ok := res.GetAnnotations(dashboardFolderAnnotationKey)[dashboardFolderAnnotationKey]
+		if !ok || dir == "" {
+			return true
+		}
+
+		if strings.Contains(dir, "OCP 3.11") {
+			return true
+		}
+	}
+
+	return false
+}
+
+func addDeprecatedSuffixToDashboardName(template *resource.Resource) error {
+	dataMap := template.GetDataMap()
+	if len(dataMap) != 1 {
+		return fmt.Errorf("unexpected number of values in the dashboard configmap %s: %d", template.GetName(), len(dataMap))
+	}
+
+	var key, val string
+	for k, v := range dataMap {
+		key, val = k, v
+	}
+
+	dashboard := map[string]interface{}{}
+	if err := json.Unmarshal([]byte(val), &dashboard); err != nil {
+		return fmt.Errorf("failed to unmarshal dashboard from configmap %q: %w", template.GetName(), err)
+	}
+
+	title, ok := dashboard["title"].(string)
+	if !ok {
+		return fmt.Errorf("missing or invalid 'title' field in dashboard %q", key)
+	}
+	dashboard["title"] = title + " - DEPRECATED"
+
+	newVal, err := json.Marshal(dashboard)
+	if err != nil {
+		return fmt.Errorf("failed to marshal modified dashboard %q: %w", template.GetName(), err)
+	}
+
+	dataMap[key] = string(newVal)
+	template.SetDataMap(dataMap)
+
+	return nil
 }

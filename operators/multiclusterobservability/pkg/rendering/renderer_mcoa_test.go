@@ -216,7 +216,7 @@ func TestMCORenderer_RenderClusterManagementAddOn(t *testing.T) {
 				},
 			},
 			expectConfig: func(t *testing.T, cma *addonv1alpha1.ClusterManagementAddOn) {
-				assert.Len(t, cma.Spec.InstallStrategy.Placements[0].Configs, 3)
+				assert.Len(t, cma.Spec.InstallStrategy.Placements[0].Configs, 6)
 			},
 		},
 		{
@@ -253,7 +253,7 @@ func TestMCORenderer_RenderClusterManagementAddOn(t *testing.T) {
 				},
 			},
 			expectConfig: func(t *testing.T, cma *addonv1alpha1.ClusterManagementAddOn) {
-				assert.Len(t, cma.Spec.InstallStrategy.Placements[0].Configs, 4)
+				assert.Len(t, cma.Spec.InstallStrategy.Placements[0].Configs, 7)
 			},
 		},
 		{
