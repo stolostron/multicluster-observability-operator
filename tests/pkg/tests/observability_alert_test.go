@@ -112,7 +112,7 @@ var _ = Describe("Observability:", func() {
 		klog.V(3).Infof("Configmap %s does exist", configmap[0])
 	})
 
-	It("RHACM4K-52080: Observability: Verify Endpointmetrics reconcile CMO Config changes [P2][Sev2][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release (alert/g2)", func() {
+	It("RHACM4K-52080: Observability: Verify Endpointmetrics reconcile CMO Config changes [P2][Sev2][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release (alert/g2) (requires-ocp/g0)", func() {
 		By("Checking if CM: cluster-monitoring-config is existed")
 		namespace := "openshift-monitoring"
 		configMapName := "cluster-monitoring-config"
