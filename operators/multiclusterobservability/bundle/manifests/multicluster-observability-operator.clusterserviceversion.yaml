@@ -49,7 +49,11 @@ metadata:
         }
       ]
     capabilities: Basic Install
+<<<<<<< HEAD
     createdAt: "2025-02-05T13:04:23Z"
+=======
+    createdAt: "2025-01-15T13:57:37Z"
+>>>>>>> stolo/main
     operators.operatorframework.io/builder: operator-sdk-v1.34.2
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
   name: multicluster-observability-operator.v0.1.0
@@ -426,6 +430,7 @@ spec:
           - monitoring.coreos.com
           resources:
           - prometheusrules
+          - scrapeconfigs
           verbs:
           - create
           - delete

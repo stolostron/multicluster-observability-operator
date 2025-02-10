@@ -1,0 +1,723 @@
+apiVersion: v1
+data:
+  acm-hcp-resources.json: |-
+    {
+        "annotations": {
+          "list": [
+            {
+              "builtIn": 1,
+              "datasource": "-- Grafana --",
+              "enable": true,
+              "hide": true,
+              "iconColor": "rgba(0, 211, 255, 1)",
+              "name": "Annotations & Alerts",
+              "target": {
+                "limit": 100,
+                "matchAny": false,
+                "tags": [],
+                "type": "dashboard"
+              },
+              "type": "dashboard"
+            }
+          ]
+        },
+        "editable": true,
+        "gnetId": null,
+        "graphTooltip": 0,
+        "id": 35,
+        "iteration": 1707272011958,
+        "links": [],
+        "panels": [
+          {
+            "datasource": null,
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "thresholds"
+                },
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": 80
+                    }
+                  ]
+                }
+              },
+              "overrides": []
+            },
+            "gridPos": {
+              "h": 4,
+              "w": 3,
+              "x": 0,
+              "y": 0
+            },
+            "id": 12,
+            "options": {
+              "colorMode": "none",
+              "graphMode": "area",
+              "justifyMode": "auto",
+              "orientation": "auto",
+              "reduceOptions": {
+                "calcs": [
+                  "lastNotNull"
+                ],
+                "fields": "",
+                "values": false
+              },
+              "text": {},
+              "textMode": "auto"
+            },
+            "pluginVersion": "8.5.20",
+            "targets": [
+              {
+                "exemplar": true,
+                "expr": "sum(kube_pod_info{namespace=\"$hcp_ns\"})",
+                "instant": true,
+                "interval": "",
+                "legendFormat": "",
+                "refId": "A"
+              }
+            ],
+            "title": "Number of pods",
+            "type": "stat"
+          },
+          {
+            "aliasColors": {},
+            "bars": false,
+            "dashLength": 10,
+            "dashes": false,
+            "datasource": null,
+            "fill": 8,
+            "fillGradient": 0,
+            "gridPos": {
+              "h": 16,
+              "w": 21,
+              "x": 3,
+              "y": 0
+            },
+            "hiddenSeries": false,
+            "id": 2,
+            "legend": {
+              "avg": false,
+              "current": false,
+              "max": false,
+              "min": false,
+              "show": true,
+              "total": false,
+              "values": false
+            },
+            "lines": true,
+            "linewidth": 0,
+            "nullPointMode": "null",
+            "options": {
+              "alertThreshold": true
+            },
+            "percentage": false,
+            "pluginVersion": "8.5.20",
+            "pointradius": 2,
+            "points": false,
+            "renderer": "flot",
+            "seriesOverrides": [],
+            "spaceLength": 10,
+            "stack": true,
+            "steppedLine": false,
+            "targets": [
+              {
+                "exemplar": true,
+                "expr": "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_rate{namespace=\"$hcp_ns\"}) by (pod)",
+                "interval": "",
+                "legendFormat": "{{pod}}",
+                "refId": "A"
+              }
+            ],
+            "thresholds": [],
+            "timeFrom": null,
+            "timeRegions": [],
+            "timeShift": null,
+            "title": "CPU usage",
+            "tooltip": {
+              "shared": true,
+              "sort": 0,
+              "value_type": "individual"
+            },
+            "type": "graph",
+            "xaxis": {
+              "buckets": null,
+              "mode": "time",
+              "name": null,
+              "show": true,
+              "values": []
+            },
+            "yaxes": [
+              {
+                "format": "short",
+                "label": null,
+                "logBase": 1,
+                "max": null,
+                "min": null,
+                "show": true
+              },
+              {
+                "format": "short",
+                "label": null,
+                "logBase": 1,
+                "max": null,
+                "min": null,
+                "show": true
+              }
+            ],
+            "yaxis": {
+              "align": false,
+              "alignLevel": null
+            }
+          },
+          {
+            "datasource": null,
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "thresholds"
+                },
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": 80
+                    }
+                  ]
+                },
+                "unit": "percentunit"
+              },
+              "overrides": []
+            },
+            "gridPos": {
+              "h": 4,
+              "w": 3,
+              "x": 0,
+              "y": 4
+            },
+            "id": 6,
+            "options": {
+              "colorMode": "none",
+              "graphMode": "area",
+              "justifyMode": "auto",
+              "orientation": "auto",
+              "reduceOptions": {
+                "calcs": [
+                  "lastNotNull"
+                ],
+                "fields": "",
+                "values": false
+              },
+              "text": {},
+              "textMode": "auto"
+            },
+            "pluginVersion": "8.5.20",
+            "targets": [
+              {
+                "exemplar": true,
+                "expr": "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum{namespace=\"$hcp_ns\"}) by (namespace) / sum(kube_pod_container_resource_requests{resource=\"cpu\",namespace=\"$hcp_ns\"}) by (namespace)",
+                "instant": false,
+                "interval": "",
+                "legendFormat": "",
+                "refId": "A"
+              }
+            ],
+            "title": "CPU Requests %",
+            "type": "stat"
+          },
+          {
+            "datasource": null,
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "thresholds"
+                },
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": 80
+                    }
+                  ]
+                }
+              },
+              "overrides": []
+            },
+            "gridPos": {
+              "h": 4,
+              "w": 3,
+              "x": 0,
+              "y": 8
+            },
+            "id": 10,
+            "options": {
+              "colorMode": "none",
+              "graphMode": "area",
+              "justifyMode": "auto",
+              "orientation": "auto",
+              "reduceOptions": {
+                "calcs": [
+                  "lastNotNull"
+                ],
+                "fields": "",
+                "values": false
+              },
+              "text": {},
+              "textMode": "auto"
+            },
+            "pluginVersion": "8.5.20",
+            "targets": [
+              {
+                "exemplar": true,
+                "expr": "sum(kube_pod_container_resource_requests{namespace=\"$hcp_ns\", resource=\"cpu\"})",
+                "instant": false,
+                "interval": "",
+                "legendFormat": "",
+                "refId": "A"
+              }
+            ],
+            "title": "CPU Requests",
+            "type": "stat"
+          },
+          {
+            "datasource": null,
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "thresholds"
+                },
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": 80
+                    }
+                  ]
+                }
+              },
+              "overrides": []
+            },
+            "gridPos": {
+              "h": 4,
+              "w": 3,
+              "x": 0,
+              "y": 12
+            },
+            "id": 8,
+            "options": {
+              "colorMode": "none",
+              "graphMode": "area",
+              "justifyMode": "auto",
+              "orientation": "auto",
+              "reduceOptions": {
+                "calcs": [
+                  "lastNotNull"
+                ],
+                "fields": "",
+                "values": false
+              },
+              "text": {},
+              "textMode": "auto"
+            },
+            "pluginVersion": "8.5.20",
+            "targets": [
+              {
+                "exemplar": true,
+                "expr": "node_namespace_pod_container:container_cpu_usage_seconds_total:sum{namespace=\"$hcp_ns\"}",
+                "instant": false,
+                "interval": "",
+                "legendFormat": "",
+                "refId": "A"
+              }
+            ],
+            "title": "CPU Usage",
+            "type": "stat"
+          },
+          {
+            "datasource": null,
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "thresholds"
+                },
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": 80
+                    }
+                  ]
+                },
+                "unit": "percentunit"
+              },
+              "overrides": []
+            },
+            "gridPos": {
+              "h": 4,
+              "w": 3,
+              "x": 0,
+              "y": 16
+            },
+            "id": 14,
+            "options": {
+              "colorMode": "none",
+              "graphMode": "area",
+              "justifyMode": "auto",
+              "orientation": "auto",
+              "reduceOptions": {
+                "calcs": [
+                  "lastNotNull"
+                ],
+                "fields": "",
+                "values": false
+              },
+              "text": {},
+              "textMode": "auto"
+            },
+            "pluginVersion": "8.5.20",
+            "targets": [
+              {
+                "exemplar": true,
+                "expr": "sum(container_memory_rss{namespace=\"$hcp_ns\", container!=\"\"}) by (namespace) / sum(kube_pod_container_resource_requests{namespace=\"$hcp_ns\", resource=\"memory\"}) by (namespace)",
+                "instant": false,
+                "interval": "",
+                "legendFormat": "",
+                "refId": "A"
+              }
+            ],
+            "title": "Memory Requests %",
+            "type": "stat"
+          },
+          {
+            "aliasColors": {},
+            "bars": false,
+            "dashLength": 10,
+            "dashes": false,
+            "datasource": null,
+            "fieldConfig": {
+              "defaults": {
+                "unit": "bytes"
+              },
+              "overrides": []
+            },
+            "fill": 8,
+            "fillGradient": 0,
+            "gridPos": {
+              "h": 14,
+              "w": 21,
+              "x": 3,
+              "y": 16
+            },
+            "hiddenSeries": false,
+            "id": 4,
+            "legend": {
+              "avg": false,
+              "current": false,
+              "max": false,
+              "min": false,
+              "show": true,
+              "total": false,
+              "values": false
+            },
+            "lines": true,
+            "linewidth": 0,
+            "nullPointMode": "null",
+            "options": {
+              "alertThreshold": true
+            },
+            "percentage": false,
+            "pluginVersion": "8.5.20",
+            "pointradius": 2,
+            "points": false,
+            "renderer": "flot",
+            "seriesOverrides": [],
+            "spaceLength": 10,
+            "stack": true,
+            "steppedLine": false,
+            "targets": [
+              {
+                "exemplar": true,
+                "expr": "sum(container_memory_rss{job=\"kubelet\",namespace=~\"$hcp_ns\"}) by (pod)",
+                "interval": "",
+                "legendFormat": "{{pod}}",
+                "refId": "A"
+              }
+            ],
+            "thresholds": [],
+            "timeFrom": null,
+            "timeRegions": [],
+            "timeShift": null,
+            "title": "Memory Usage (w/o cache)",
+            "tooltip": {
+              "shared": true,
+              "sort": 0,
+              "value_type": "individual"
+            },
+            "type": "graph",
+            "xaxis": {
+              "buckets": null,
+              "mode": "time",
+              "name": null,
+              "show": true,
+              "values": []
+            },
+            "yaxes": [
+              {
+                "format": "bytes",
+                "label": null,
+                "logBase": 1,
+                "max": null,
+                "min": null,
+                "show": true
+              },
+              {
+                "format": "short",
+                "label": null,
+                "logBase": 1,
+                "max": null,
+                "min": null,
+                "show": true
+              }
+            ],
+            "yaxis": {
+              "align": false,
+              "alignLevel": null
+            }
+          },
+          {
+            "datasource": null,
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "thresholds"
+                },
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": 80
+                    }
+                  ]
+                },
+                "unit": "bytes"
+              },
+              "overrides": []
+            },
+            "gridPos": {
+              "h": 5,
+              "w": 3,
+              "x": 0,
+              "y": 20
+            },
+            "id": 18,
+            "options": {
+              "colorMode": "none",
+              "graphMode": "area",
+              "justifyMode": "auto",
+              "orientation": "auto",
+              "reduceOptions": {
+                "calcs": [
+                  "lastNotNull"
+                ],
+                "fields": "",
+                "values": false
+              },
+              "text": {},
+              "textMode": "auto"
+            },
+            "pluginVersion": "8.5.20",
+            "targets": [
+              {
+                "exemplar": true,
+                "expr": "sum(kube_pod_container_resource_requests{namespace=\"$hcp_ns\", resource=\"memory\"})",
+                "instant": false,
+                "interval": "",
+                "legendFormat": "",
+                "refId": "A"
+              }
+            ],
+            "title": "Memory Requests",
+            "type": "stat"
+          },
+          {
+            "datasource": null,
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "thresholds"
+                },
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": 80
+                    }
+                  ]
+                },
+                "unit": "decbytes"
+              },
+              "overrides": []
+            },
+            "gridPos": {
+              "h": 5,
+              "w": 3,
+              "x": 0,
+              "y": 25
+            },
+            "id": 16,
+            "options": {
+              "colorMode": "none",
+              "graphMode": "area",
+              "justifyMode": "auto",
+              "orientation": "auto",
+              "reduceOptions": {
+                "calcs": [
+                  "lastNotNull"
+                ],
+                "fields": "",
+                "values": false
+              },
+              "text": {},
+              "textMode": "auto"
+            },
+            "pluginVersion": "8.5.20",
+            "targets": [
+              {
+                "exemplar": true,
+                "expr": "sum(container_memory_rss{namespace=\"$hcp_ns\", container!=\"\"})",
+                "instant": false,
+                "interval": "",
+                "legendFormat": "",
+                "refId": "A"
+              }
+            ],
+            "title": "Memory Usage",
+            "type": "stat"
+          }
+        ],
+        "schemaVersion": 30,
+        "style": "dark",
+        "tags": [
+          "ACM"
+        ],
+        "templating": {
+          "list": [
+            {
+              "current": {
+                "selected": false,
+                "text": "Observatorium",
+                "value": "Observatorium"
+              },
+              "description": null,
+              "error": null,
+              "hide": 2,
+              "includeAll": false,
+              "label": null,
+              "multi": false,
+              "name": "datasource",
+              "options": [],
+              "query": "prometheus",
+              "refresh": 2,
+              "regex": "",
+              "skipUrlSync": false,
+              "type": "datasource"
+            },
+            {
+              "allValue": null,
+              "current": {
+                "selected": true,
+                "text": "test-hcps-rj-0202a",
+                "value": "test-hcps-rj-0202a"
+              },
+              "datasource": "$datasource",
+              "definition": "label_values(mce_hs_addon_hosted_control_planes_status_gauge, hcp_namespace)",
+              "description": null,
+              "error": null,
+              "hide": 0,
+              "includeAll": false,
+              "label": "HCP Namespace",
+              "multi": false,
+              "name": "hcp_ns",
+              "options": [],
+              "query": {
+                "query": "label_values(mce_hs_addon_hosted_control_planes_status_gauge, hcp_namespace)",
+                "refId": "StandardVariableQuery"
+              },
+              "refresh": 1,
+              "regex": "",
+              "skipUrlSync": false,
+              "sort": 0,
+              "type": "query"
+            }
+          ]
+        },
+        "time": {
+          "from": "now-3h",
+          "to": "now"
+        },
+        "timepicker": {
+          "refresh_intervals": [
+            "1m",
+            "5m",
+            "15m",
+            "30m",
+            "1h",
+            "2h",
+            "1d"
+          ]
+        },
+        "timezone": "browser",
+        "title": "ACM - Resources - Hosted Control Plane",
+        "uid": "76c2ca043e524c63ac841152dad7a5ca",
+        "version": 1
+      }
+kind: ConfigMap
+metadata:
+  annotations:
+    observability.open-cluster-management.io/dashboard-folder: Hosted Control Planes - MCOA
+  name: grafana-dashboard-acm-resources-hcp-mcoa
+  namespace: open-cluster-management-observability
