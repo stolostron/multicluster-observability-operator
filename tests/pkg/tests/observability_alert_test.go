@@ -495,6 +495,12 @@ var _ = Describe("Observability:", func() {
 	})
 
 	It("RHACM4K-22427: Observability: Disable the managedcluster's alerts forward to the Hub [P2][Sev2][Observability][Integration] @e2e (alertforward/g1)", func() {
+
+		if len(testOptions.ManagedClusters) == 0 ||
+			utils.GetManagedClusterName(testOptions) == hubManagedClusterName {
+			Skip("Skipping test when there are no spokes")
+		}
+
 		cloudProvider := strings.ToLower(os.Getenv("CLOUD_PROVIDER"))
 		substring1 := "rosa"
 		substring2 := "hcp"
