@@ -50,6 +50,7 @@ var _ = Describe("Observability:", func() {
 				oldCompactResourceVersion = (*sts).Items[0].ResourceVersion
 
 				cr.Object["spec"].(map[string]interface{})["thanos"].(map[string]interface{})["compact"].(map[string]interface{})["retentionResolution1h"] = updateRetention
+
 				_, err = dynClient.Resource(utils.NewMCOMObservatoriumGVR()).
 					Namespace(MCO_NAMESPACE).
 					Update(context.TODO(), cr, metav1.UpdateOptions{})
@@ -77,15 +78,14 @@ var _ = Describe("Observability:", func() {
 				if err != nil {
 					return err
 				}
-				if sts.Items[0].ResourceVersion != oldCompactResourceVersion {
+				if sts.Items[0].ResourceVersion == oldCompactResourceVersion {
 					return errors.New("The thanos compact pod is not restarted. ResourceVersion has not changed.")
 				}
-
 				argList := sts.Items[0].Spec.Template.Spec.Containers[0].Args
 				for _, arg := range argList {
 					// check if the retention resolution is reverted to the original value
-					if arg == "--retention.resolution-raw="+updateRetention {
-						return fmt.Errorf("The thanos compact pod is not restarted with the new retention resolution. Args: %v", argList)
+					if arg == "--retention.resolution-1h="+updateRetention {
+						return fmt.Errorf("The thanos compact pod has not restored the retention to the original value in the MCO spec. Args: %v", argList)
 					}
 				}
 
