@@ -142,8 +142,15 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		updateManagedClusterList(obj)
 	}
 
-	if !deleteAll && !mco.Spec.ObservabilityAddonSpec.EnableMetrics {
-		reqLogger.Info("EnableMetrics is set to false. Delete Observability addons")
+	if !deleteAll {
+		if !mco.Spec.ObservabilityAddonSpec.EnableMetrics {
+			reqLogger.Info("EnableMetrics is set to false. Delete Observability addons")
+		}
+
+		if mcoaForMetricsIsEnabled(mco) {
+			reqLogger.Info("MCOA for metrics is enabled. Deleting standard Observability addon")
+		}
+
 		deleteAll = true
 	}
 
@@ -1118,4 +1125,21 @@ func isReconcileRequired(request ctrl.Request, managedCluster string) bool {
 		return true
 	}
 	return false
+}
+
+func mcoaForMetricsIsEnabled(mco *mcov1beta2.MultiClusterObservability) bool {
+	if mco.Spec.Capabilities == nil {
+		return false
+	}
+
+	if mco.Spec.Capabilities.Platform != nil && mco.Spec.Capabilities.Platform.Metrics.Collection.Enabled {
+		return true
+	}
+
+	if mco.Spec.Capabilities.UserWorkloads != nil && mco.Spec.Capabilities.UserWorkloads.Metrics.Collection.Enabled {
+		return true
+	}
+
+	return false
+
 }
