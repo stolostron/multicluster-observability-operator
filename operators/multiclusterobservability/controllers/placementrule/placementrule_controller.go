@@ -145,13 +145,14 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	if !deleteAll {
 		if !mco.Spec.ObservabilityAddonSpec.EnableMetrics {
 			reqLogger.Info("EnableMetrics is set to false. Delete Observability addons")
+			deleteAll = true
 		}
 
 		if mcoaForMetricsIsEnabled(mco) {
 			reqLogger.Info("MCOA for metrics is enabled. Deleting standard Observability addon")
+			deleteAll = true
 		}
 
-		deleteAll = true
 	}
 
 	// check if the MCH CRD exists
