@@ -81,7 +81,7 @@ var _ = Describe("Observability:", func() {
 		}, EventuallyTimeoutMinute*3, EventuallyIntervalSecond*5).Should(BeFalse())
 	})
 
-	// TODO (jacob): Need RHACM4K no
+	// TODO: Need RHACM4K no
 	It("[P2][Sev2][observability][Stable] Should have default overview dashboards (dashboard/g0)", func() {
 		// Check Original dash exists
 		Eventually(func() bool {

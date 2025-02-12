@@ -154,7 +154,7 @@ var _ = Describe("Observability:", func() {
 		}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
-	// TODO Jacob: RHACM4K number
+	// TODO: Needs RHACM4K number
 	// Ensures that the allowList is current by checking that the metrics are being collected
 	It("[P2][Sev2][observability][Integration] Should collect expected metrics from spokes (metrics/g0)", func() {
 		// Get the metrics from the deployed allowList configMap
