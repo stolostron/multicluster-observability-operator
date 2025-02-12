@@ -1,0 +1,4 @@
+resources:
+- dash-acm-hcp-overview.yaml
+- dash-acm-resources-hcp.yaml
+- scrape-config.yaml

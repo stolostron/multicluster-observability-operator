@@ -107,8 +107,8 @@ NewHistorgram,NewHistogramVec,NewSummary,NewSummaryVec}=github.com/prometheus/cl
 NewCounterVec,NewCounterVec,NewGauge,NewGaugeVec,NewGaugeFunc,NewHistorgram,NewHistogramVec,NewSummary,NewSummaryVec},\
 github.com/NYTimes/gziphandler.{GzipHandler}=github.com/klauspost/compress/gzhttp.{GzipHandler},\
 sync/atomic=go.uber.org/atomic,\
-io/ioutil.{Discard,NopCloser,ReadAll,ReadDir,ReadFile,TempDir,TempFile,Writefile}" ./...
-	@$(FAILLINT) -paths "fmt.{Print,Println}" -ignore-tests ./...
+io/ioutil.{Discard,NopCloser,ReadAll,ReadDir,ReadFile,TempDir,TempFile,Writefile}" ./operators/... ./collectors/... ./loaders/... ./proxy/...
+	@$(FAILLINT) -paths "fmt.{Print,Println}" -ignore-tests ./operators/... ./collectors/... ./loaders/... ./proxy/...
 	@echo ">> examining all of the Go files"
 	@go vet -stdmethods=false ./...
 	@echo ">> linting all of the Go files GOGC=${GOGC}"
@@ -116,6 +116,10 @@ io/ioutil.{Discard,NopCloser,ReadAll,ReadDir,ReadFile,TempDir,TempFile,Writefile
 	@echo ">> ensuring Copyright headers"
 	@go run ./scripts/copyright
 	$(call require_clean_work_tree,'detected files without copyright, run make lint and commit changes')
+
+.PHONY: check-metrics
+check-metrics:
+	@$(MAKE) -C cicd-scripts/metrics check-metrics
 
 .PHONY: unit-tests ## Run all unit tests.
 unit-tests: unit-tests-operators unit-tests-loaders unit-tests-proxy unit-tests-collectors
@@ -187,6 +191,14 @@ tools: $(KUSTOMIZE) $(KIND) $(GOJSONTOYAML) ## Install development and e2e tools
 install-envtest-deps: ## Install env-test.
 	@mkdir -p $(BIN_DIR)
 	@./scripts/install-binaries.sh install_envtest_deps $(BIN_DIR)
+
+.PHONY: install-check-metrics-deps
+install-check-metrics-deps:
+	@mkdir -p $(BIN_DIR)
+	@./scripts/install-binaries.sh install_jq $(BIN_DIR)
+	@./scripts/install-binaries.sh install_yq $(BIN_DIR)
+	@./scripts/install-binaries.sh install_mimirtool $(BIN_DIR)
+	@./scripts/install-binaries.sh install_promtool $(BIN_DIR)
 
 ##@ Multi-Cluster-Observability Operator
 

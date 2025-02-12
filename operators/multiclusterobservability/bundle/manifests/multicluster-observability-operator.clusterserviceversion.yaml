@@ -49,7 +49,7 @@ metadata:
         }
       ]
     capabilities: Basic Install
-    createdAt: "2024-11-06T16:52:14Z"
+    createdAt: "2025-01-15T13:57:37Z"
     operators.operatorframework.io/builder: operator-sdk-v1.34.2
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
   name: multicluster-observability-operator.v0.1.0
@@ -426,6 +426,7 @@ spec:
           - monitoring.coreos.com
           resources:
           - prometheusrules
+          - scrapeconfigs
           verbs:
           - create
           - delete
@@ -538,9 +539,6 @@ spec:
                   initialDelaySeconds: 5
                   periodSeconds: 10
                 resources:
-                  limits:
-                    cpu: 600m
-                    memory: 3Gi
                   requests:
                     cpu: 100m
                     memory: 128Mi
