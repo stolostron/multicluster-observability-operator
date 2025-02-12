@@ -226,7 +226,7 @@ func generateGlobalManifestResources(c client.Client, mco *mcov1beta2.MultiClust
 	// inject the certificates
 	if managedClusterObsCert == nil {
 		var err error
-		if managedClusterObsCert, err = generateObservabilityServerCACerts(c); err != nil {
+		if managedClusterObsCert, err = generateObservabilityServerCACerts(context.Background(), c); err != nil {
 			return nil, nil, nil, err
 		}
 	}
@@ -861,11 +861,11 @@ func generatePullSecret(c client.Client, name string) (*corev1.Secret, error) {
 	}, nil
 }
 
-// generateObservabilityServerCACerts generates the certificate for managed cluster
-func generateObservabilityServerCACerts(client client.Client) (*corev1.Secret, error) {
+// generateObservabilityServerCACerts extracts the CA cert from the secret holding the observability TLS certs
+// and returns a secret to be deployed on spokes containing it.
+func generateObservabilityServerCACerts(ctx context.Context, client client.Client) (*corev1.Secret, error) {
 	ca := &corev1.Secret{}
-	err := client.Get(context.TODO(), types.NamespacedName{Name: config.ServerCACerts,
-		Namespace: config.GetDefaultNamespace()}, ca)
+	err := client.Get(ctx, types.NamespacedName{Name: config.ServerCACerts, Namespace: config.GetDefaultNamespace()}, ca)
 	if err != nil {
 		return nil, err
 	}
