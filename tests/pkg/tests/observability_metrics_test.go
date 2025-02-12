@@ -264,6 +264,7 @@ var _ = Describe("Observability:", func() {
 var ignoredMetrics = map[string]struct{}{
 	"cluster:policy_governance_info:propagated_count":                          {},
 	"cluster:policy_governance_info:propagated_noncompliant_count":             {},
+	"cluster_policy_governance_info":                                           {},
 	"cnv:vmi_status_running:count":                                             {},
 	"container_cpu_cfs_periods_total":                                          {},
 	"container_cpu_cfs_throttled_periods_total":                                {},
