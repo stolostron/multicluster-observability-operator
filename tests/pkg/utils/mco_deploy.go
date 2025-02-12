@@ -115,6 +115,18 @@ func GetAllMCOPods(opt TestOptions) ([]corev1.Pod, error) {
 	// ignore non-mco pods
 	mcoPods := []corev1.Pod{}
 	for _, p := range podList.Items {
+		if strings.Contains(p.GetName(), "metrics-collector") {
+			continue
+		}
+
+		if strings.Contains(p.GetName(), "endpoint-observability-operator") {
+			continue
+		}
+
+		if strings.Contains(p.GetName(), "uwl-metrics-collector") {
+			continue
+		}
+
 		if strings.Contains(p.GetName(), "grafana-test") {
 			continue
 		}
@@ -130,12 +142,20 @@ func GetAllMCOPods(opt TestOptions) ([]corev1.Pod, error) {
 }
 
 func PrintObject(ctx context.Context, client dynamic.Interface, gvr schema.GroupVersionResource, ns, name string) {
-	if ns == "" || name == "" {
-		klog.V(1).Info("Namespace or name cannot be empty")
+	if name == "" {
+		klog.V(1).Info("Name cannot be empty")
 		return
 	}
 
-	obj, err := client.Resource(gvr).Namespace(ns).Get(ctx, name, metav1.GetOptions{})
+	var obj *unstructured.Unstructured
+	var err error
+
+	if ns == "" {
+		obj, err = client.Resource(gvr).Get(ctx, name, metav1.GetOptions{})
+	} else {
+		obj, err = client.Resource(gvr).Namespace(ns).Get(ctx, name, metav1.GetOptions{})
+	}
+
 	if err != nil {
 		klog.V(1).Infof("Failed to get object %s in namespace %s: %v", name, ns, err)
 		return
@@ -385,7 +405,7 @@ func ModifyMCOCR(opt TestOptions) error {
 	}
 	spec := mco.Object["spec"].(map[string]interface{})
 	storageConfig := spec["storageConfig"].(map[string]interface{})
-	storageConfig["alertmanagerStorageSize"] = "2Gi"
+	storageConfig["alertmanagerStorageSize"] = "3Gi"
 
 	advRetentionCon, _ := CheckAdvRetentionConfig(opt)
 	if advRetentionCon {
@@ -437,12 +457,23 @@ func RevertMCOCRModification(opt TestOptions) error {
 	advRetentionCon, _ := CheckAdvRetentionConfig(opt)
 	if advRetentionCon {
 		retentionConfig := spec["advanced"].(map[string]interface{})["retentionConfig"].(map[string]interface{})
-		retentionConfig["retentionResolutionRaw"] = "5d"
+		retentionConfig["retentionResolutionRaw"] = "6d"
 	}
 	_, updateErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Update(context.TODO(), mco, metav1.UpdateOptions{})
 	if updateErr != nil {
 		return updateErr
 	}
+
+	// we delete the statefulset so it comes up again with the correct size
+	kubeClient := NewKubeClient(
+		opt.HubCluster.ClusterServerURL,
+		opt.KubeConfig,
+		opt.HubCluster.KubeContext)
+	err := kubeClient.AppsV1().StatefulSets(MCO_NAMESPACE).Delete(context.TODO(), "observability-alertmanager", metav1.DeleteOptions{})
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -451,14 +482,8 @@ func CheckMCOAddonResources(opt TestOptions) error {
 		opt.HubCluster.ClusterServerURL,
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext)
-	if len(opt.ManagedClusters) > 0 {
-		client = NewKubeClient(
-			opt.ManagedClusters[0].ClusterServerURL,
-			opt.ManagedClusters[0].KubeConfig,
-			"")
-	}
 
-	deployList, err := client.AppsV1().Deployments(MCO_ADDON_NAMESPACE).List(context.TODO(), metav1.ListOptions{})
+	deployList, err := client.AppsV1().Deployments(MCO_NAMESPACE).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return err
 	}
@@ -518,7 +543,11 @@ func ModifyMCOAddonSpecInterval(opt TestOptions, interval int64) error {
 	}
 
 	observabilityAddonSpec := mco.Object["spec"].(map[string]interface{})["observabilityAddonSpec"].(map[string]interface{})
-	observabilityAddonSpec["interval"] = interval
+	if interval == 0 {
+		observabilityAddonSpec["interval"] = nil
+	} else {
+		observabilityAddonSpec["interval"] = interval
+	}
 	_, updateErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Update(context.TODO(), mco, metav1.UpdateOptions{})
 	if updateErr != nil {
 		return updateErr
@@ -610,6 +639,13 @@ func CreatePullSecret(opt TestOptions, mcoNs string) error {
 		return errGet
 	}
 
+	mcopSecret, errGet := clientKube.CoreV1().Secrets(MCO_NAMESPACE).Get(context.TODO(), name, metav1.GetOptions{})
+	if mcopSecret != nil {
+		errDelGet := clientKube.CoreV1().Secrets(MCO_NAMESPACE).Delete(context.TODO(), name, metav1.DeleteOptions{})
+		if errGet != nil {
+			klog.V(1).Infof("Delete existing pullSecret - %s", errDelGet)
+		}
+	}
 	pullSecret.ObjectMeta = metav1.ObjectMeta{
 		Name:      name,
 		Namespace: MCO_NAMESPACE,

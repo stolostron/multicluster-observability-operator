@@ -7,7 +7,7 @@ package tests
 import (
 	"os"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
 	appv1 "k8s.io/api/apps/v1"
@@ -35,7 +35,7 @@ var _ = Describe("Observability:", func() {
 		}
 	})
 
-	Context("[P2][Sev2][observability] Should revert any manual changes on metrics-collector deployment (endpoint_preserve/g0) -", func() {
+	Context("RHACM4K-1659: Observability: Verify metrics collector is prevent to be configured manually [P2][Sev2][Observability]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release (endpoint_preserve/g0) -", func() {
 		newDep := &appv1.Deployment{}
 		It("[Stable] Deleting metrics-collector deployment for cluster", func() {
 			var (
@@ -45,9 +45,9 @@ var _ = Describe("Observability:", func() {
 			Eventually(func() error {
 				dep, err = utils.GetDeployment(
 					testOptions,
-					isHub,
+					true,
 					"metrics-collector-deployment",
-					namespace,
+					MCO_NAMESPACE,
 				)
 				return err
 			}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*1).Should(Succeed())
@@ -55,9 +55,9 @@ var _ = Describe("Observability:", func() {
 			Eventually(func() error {
 				err = utils.DeleteDeployment(
 					testOptions,
-					isHub,
+					true,
 					"metrics-collector-deployment",
-					namespace,
+					MCO_NAMESPACE,
 				)
 				return err
 			}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*1).Should(Succeed())
@@ -65,9 +65,9 @@ var _ = Describe("Observability:", func() {
 			Eventually(func() bool {
 				newDep, err = utils.GetDeployment(
 					testOptions,
-					isHub,
+					true,
 					"metrics-collector-deployment",
-					namespace,
+					MCO_NAMESPACE,
 				)
 				if err == nil {
 					if dep.ObjectMeta.ResourceVersion != newDep.ObjectMeta.ResourceVersion {
@@ -82,9 +82,9 @@ var _ = Describe("Observability:", func() {
 			Eventually(func() error {
 				newDep, err = utils.GetDeployment(
 					testOptions,
-					isHub,
+					true,
 					"metrics-collector-deployment",
-					namespace,
+					MCO_NAMESPACE,
 				)
 				if err != nil {
 					return err
@@ -92,9 +92,9 @@ var _ = Describe("Observability:", func() {
 				newDep.Spec.Template.Spec.ServiceAccountName = updateSaName
 				newDep, err = utils.UpdateDeployment(
 					testOptions,
-					isHub,
+					true,
 					"metrics-collector-deployment",
-					namespace,
+					MCO_NAMESPACE,
 					newDep,
 				)
 				return err
@@ -103,9 +103,9 @@ var _ = Describe("Observability:", func() {
 			Eventually(func() bool {
 				revertDep, err := utils.GetDeployment(
 					testOptions,
-					isHub,
+					true,
 					"metrics-collector-deployment",
-					namespace,
+					MCO_NAMESPACE,
 				)
 				if err == nil {
 					if revertDep.ObjectMeta.ResourceVersion != newDep.ObjectMeta.ResourceVersion &&
@@ -118,10 +118,11 @@ var _ = Describe("Observability:", func() {
 		})
 	})
 
-	It("[P2][Sev2][observability][Stable] Should revert any manual changes on metrics-collector-view clusterolebinding (endpoint_preserve/g0)", func() {
-		if os.Getenv("IS_KIND_ENV") == trueStr {
+	It("RHACM4K-1659: Observability: Verify metrics collector is prevent to be configured manually - Should revert any manual changes on metrics-collector-view clusterolebinding [P2][Sev2][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release (endpoint_preserve/g0)", func() {
+		if os.Getenv("IS_KIND_ENV") == "true" {
 			Skip("Skip the case due to run in KinD")
 		}
+
 		By("Deleting metrics-collector-view clusterolebinding")
 		err, crb := utils.GetCRB(testOptions, false, "metrics-collector-view")
 		Expect(err).ToNot(HaveOccurred())
@@ -155,8 +156,8 @@ var _ = Describe("Observability:", func() {
 		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*1).Should(BeTrue())
 	})
 
-	It("[P2][Sev2][observability][Stable] Should recreate on metrics-collector-serving-certs-ca-bundle configmap if deleted (endpoint_preserve/g0)", func() {
-		if os.Getenv("IS_KIND_ENV") == trueStr {
+	It("RHACM4K-1659: Observability: Verify metrics collector is prevent to be configured manually - Should recreate on metrics-collector-serving-certs-ca-bundle configmap if deleted [P2][Sev2][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release (endpoint_preserve/g0)", func() {
+		if os.Getenv("IS_KIND_ENV") == "true" {
 			Skip("Skip the case due to run in KinD")
 		}
 
@@ -168,18 +169,18 @@ var _ = Describe("Observability:", func() {
 		Eventually(func() error {
 			err, cm = utils.GetConfigMap(
 				testOptions,
-				isHub,
+				true,
 				"metrics-collector-serving-certs-ca-bundle",
-				namespace,
+				MCO_NAMESPACE,
 			)
 			return err
 		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*1).Should(Succeed())
 		Eventually(func() error {
 			err = utils.DeleteConfigMap(
 				testOptions,
-				isHub,
+				true,
 				"metrics-collector-serving-certs-ca-bundle",
-				namespace,
+				MCO_NAMESPACE,
 			)
 			return err
 		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*1).Should(Succeed())
@@ -187,9 +188,9 @@ var _ = Describe("Observability:", func() {
 		Eventually(func() bool {
 			err, newCm = utils.GetConfigMap(
 				testOptions,
-				isHub,
+				true,
 				"metrics-collector-serving-certs-ca-bundle",
-				namespace,
+				MCO_NAMESPACE,
 			)
 			if err == nil {
 				if cm.ObjectMeta.ResourceVersion != newCm.ObjectMeta.ResourceVersion {
@@ -211,6 +212,5 @@ var _ = Describe("Observability:", func() {
 		namespace = MCO_ADDON_NAMESPACE
 		testFailed = testFailed || CurrentGinkgoTestDescription().Failed
 		isHub = false
-
 	})
 })

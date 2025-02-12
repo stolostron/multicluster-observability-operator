@@ -25,22 +25,26 @@ func DeleteCertSecret(opt TestOptions) error {
 		opt.HubCluster.KubeContext)
 
 	klog.V(1).Infof("Delete certificate secret")
-	err := clientKube.CoreV1().Secrets(MCO_NAMESPACE).Delete(context.TODO(), ServerCACerts, metav1.DeleteOptions{})
+	propagationPolicy := metav1.DeletePropagationForeground
+	err := clientKube.CoreV1().Secrets(MCO_NAMESPACE).Delete(context.TODO(), ServerCACerts, metav1.DeleteOptions{PropagationPolicy: &propagationPolicy})
 	if err != nil {
 		klog.Errorf("Failed to delete certificate secret %s due to %v", ServerCACerts, err)
 		return err
 	}
-	err = clientKube.CoreV1().Secrets(MCO_NAMESPACE).Delete(context.TODO(), ClientCACerts, metav1.DeleteOptions{})
+
+	err = clientKube.CoreV1().Secrets(MCO_NAMESPACE).Delete(context.TODO(), ClientCACerts, metav1.DeleteOptions{PropagationPolicy: &propagationPolicy})
 	if err != nil {
 		klog.Errorf("Failed to delete certificate secret %s due to %v", ClientCACerts, err)
 		return err
 	}
-	err = clientKube.CoreV1().Secrets(MCO_NAMESPACE).Delete(context.TODO(), ServerCerts, metav1.DeleteOptions{})
+
+	err = clientKube.CoreV1().Secrets(MCO_NAMESPACE).Delete(context.TODO(), ServerCerts, metav1.DeleteOptions{PropagationPolicy: &propagationPolicy})
 	if err != nil {
 		klog.Errorf("Failed to delete certificate secret %s due to %v", ServerCerts, err)
 		return err
 	}
-	err = clientKube.CoreV1().Secrets(MCO_NAMESPACE).Delete(context.TODO(), GrafanaCerts, metav1.DeleteOptions{})
+
+	err = clientKube.CoreV1().Secrets(MCO_NAMESPACE).Delete(context.TODO(), GrafanaCerts, metav1.DeleteOptions{PropagationPolicy: &propagationPolicy})
 	if err != nil {
 		klog.Errorf("Failed to delete certificate secret %s due to %v", GrafanaCerts, err)
 		return err

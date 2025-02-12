@@ -17,7 +17,12 @@ import (
 func GetPodList(opt TestOptions, isHub bool, namespace string, labelSelector string) (error, *v1.PodList) {
 	clientKube := getKubeClient(opt, isHub)
 	listOption := metav1.ListOptions{}
-	klog.Info("Get pod list in namespace ", namespace, " using labelselector ", labelSelector)
+	cluster := opt.HubCluster.BaseDomain
+	if !isHub {
+		cluster = opt.ManagedClusters[0].BaseDomain
+	}
+
+	klog.Info("Get pod list in namespace ", namespace, " using labelselector ", labelSelector, " on cluster: ", cluster)
 	if labelSelector != "" {
 		listOption.LabelSelector = labelSelector
 	}
