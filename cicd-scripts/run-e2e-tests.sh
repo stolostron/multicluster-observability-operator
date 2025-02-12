@@ -3,9 +3,7 @@
 # Copyright (c) 2021 Red Hat, Inc.
 # Copyright Contributors to the Open Cluster Management project
 
-#set -exo pipefail
-
-set -x
+set -exo pipefail
 
 ROOTDIR="$(
   cd "$(dirname "$0")/.."
@@ -88,7 +86,7 @@ else
   #     rm -fr /usr/local/go
   #     tar -C /usr/local -xzf go1.21.10.linux-amd64.tar.gz
   fi
-  go install github.com/onsi/ginkgo/ginkgo@latest
+  go install github.com/onsi/ginkgo/v2/ginkgo@2.17.1
   GINKGO_CMD="$(go env GOPATH)/bin/ginkgo"
 fi
 
