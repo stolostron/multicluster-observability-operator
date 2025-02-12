@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	ocinfrav1 "github.com/openshift/api/config/v1"
@@ -250,6 +251,7 @@ var (
 	}
 
 	multicloudConsoleRouteHost = ""
+	imageManifestCache         sync.Map
 )
 
 // GetCrLabelKey returns the key for the CR label injected into the resources created by the operator.
@@ -267,7 +269,7 @@ func GetImageManifestConfigMapName() string {
 }
 
 // ReadImageManifestConfigMap reads configmap with the label ocm-configmap-type=image-manifest.
-func ReadImageManifestConfigMap(c client.Client, version string) (bool, error) {
+func ReadImageManifestConfigMap(c client.Client, version string) (map[string]string, bool, error) {
 	mcoNamespace := GetMCONamespace()
 	// List image manifest configmap with label ocm-configmap-type=image-manifest and ocm-release-version
 	matchLabels := map[string]string{
@@ -282,17 +284,16 @@ func ReadImageManifestConfigMap(c client.Client, version string) (bool, error) {
 	imageCMList := &corev1.ConfigMapList{}
 	err := c.List(context.TODO(), imageCMList, listOpts...)
 	if err != nil {
-		return false, fmt.Errorf("failed to list mch-image-manifest configmaps: %w", err)
+		return nil, false, fmt.Errorf("failed to list mch-image-manifest configmaps: %w", err)
 	}
 
 	if len(imageCMList.Items) != 1 {
 		// there should be only one matched image manifest configmap found
-		return false, nil
+		return nil, false, nil
 	}
 
 	imageManifests = imageCMList.Items[0].Data
-	log.V(1).Info("the length of mch-image-manifest configmap", "imageManifests", len(imageManifests))
-	return true, nil
+	return imageManifests, true, nil
 }
 
 // GetImageManifests...
@@ -818,4 +819,17 @@ func IsAlertingDisabledInSpec(mco *observabilityv1beta2.MultiClusterObservabilit
 
 	annotations := mco.GetAnnotations()
 	return annotations != nil && annotations[AnnotationDisableMCOAlerting] == "true"
+}
+
+func SetCachedImageManifestData(data map[string]string) {
+	imageManifestCache.Store("mch-image-manifest", data)
+}
+
+func GetCachedImageManifestData() (map[string]string, bool) {
+	if value, ok := imageManifestCache.Load("mch-image-manifest"); ok {
+		if cachedData, valid := value.(map[string]string); valid {
+			return cachedData, true
+		}
+	}
+	return nil, false
 }
