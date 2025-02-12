@@ -226,7 +226,7 @@ func generateGlobalManifestResources(c client.Client, mco *mcov1beta2.MultiClust
 	// inject the certificates
 	if managedClusterObsCert == nil {
 		var err error
-		if managedClusterObsCert, err = generateObservabilityServerCACerts(c); err != nil {
+		if managedClusterObsCert, err = generateObservabilityServerCACerts(context.Background(), c); err != nil {
 			return nil, nil, nil, err
 		}
 	}
@@ -861,11 +861,11 @@ func generatePullSecret(c client.Client, name string) (*corev1.Secret, error) {
 	}, nil
 }
 
-// generateObservabilityServerCACerts generates the certificate for managed cluster
-func generateObservabilityServerCACerts(client client.Client) (*corev1.Secret, error) {
+// generateObservabilityServerCACerts extracts the CA cert from the secret holding the observability TLS certs
+// and returns a secret to be deployed on spokes containing it.
+func generateObservabilityServerCACerts(ctx context.Context, client client.Client) (*corev1.Secret, error) {
 	ca := &corev1.Secret{}
-	err := client.Get(context.TODO(), types.NamespacedName{Name: config.ServerCACerts,
-		Namespace: config.GetDefaultNamespace()}, ca)
+	err := client.Get(ctx, types.NamespacedName{Name: config.ServerCACerts, Namespace: config.GetDefaultNamespace()}, ca)
 	if err != nil {
 		return nil, err
 	}
@@ -1000,30 +1000,27 @@ func getObservabilityAddon(c client.Client, namespace string,
 	return addon, nil
 }
 
-func removeObservabilityAddon(client client.Client, namespace string) error {
+func removeObservabilityAddonInManifestWork(ctx context.Context, client client.Client, namespace string) error {
 	name := namespace + workNameSuffix
 	found := &workv1.ManifestWork{}
-	err := client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, found)
+	err := client.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, found)
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
 			return nil
 		}
-		log.Error(err, "Failed to check manifestwork", "namespace", namespace, "name", name)
-		return err
+
+		return fmt.Errorf("failed to get manifestwork %s/%s: %w", namespace, name, err)
 	}
 
-	obj, err := util.GetObject(found.Spec.Workload.Manifests[0].RawExtension)
-	if err != nil {
-		return err
-	}
-	if obj.GetObjectKind().GroupVersionKind().Kind == "ObservabilityAddon" {
-		updateManifests := found.Spec.Workload.Manifests[1:]
+	updateManifests := slices.DeleteFunc(slices.Clone(found.Spec.Workload.Manifests), func(e workv1.Manifest) bool {
+		return e.Object.GetObjectKind().GroupVersionKind().Kind == "ObservabilityAddon"
+	})
+
+	if len(updateManifests) != len(found.Spec.Workload.Manifests) {
 		found.Spec.Workload.Manifests = updateManifests
-
-		err = client.Update(context.TODO(), found)
-		if err != nil {
-			log.Error(err, "Failed to update manifestwork", "namespace", namespace, "name", name)
-			return err
+		log.Info("Removing ObservabilityAddon from ManifestWork", "name", name, "namespace", namespace, "removed_objects", len(found.Spec.Workload.Manifests)-len(updateManifests), "objects_count", len(updateManifests))
+		if err := client.Update(ctx, found); err != nil {
+			return fmt.Errorf("failed to update manifestwork %s/%s: %w", namespace, name, err)
 		}
 	}
 	return nil

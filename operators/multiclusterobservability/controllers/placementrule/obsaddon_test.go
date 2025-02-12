@@ -67,7 +67,7 @@ func TestObsAddonCR(t *testing.T) {
 		t.Fatalf("Failed to create manifestwork: (%v)", err)
 	}
 
-	err = deleteObsAddon(c, namespace)
+	err = deleteObsAddon(context.Background(), c, namespace)
 	if err != nil {
 		t.Fatalf("Failed to delete observabilityaddon: (%v)", err)
 	}
@@ -76,7 +76,7 @@ func TestObsAddonCR(t *testing.T) {
 		t.Fatalf("Failed to delete observabilityaddon: (%v)", err)
 	}
 
-	err = deleteObsAddon(c, namespace)
+	err = deleteObsAddon(context.Background(), c, namespace)
 	if err != nil {
 		t.Fatalf("Failed to delete observabilityaddon: (%v)", err)
 	}
