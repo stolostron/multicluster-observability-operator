@@ -168,14 +168,14 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	// check if the server certificate for managedcluster
 	if managedClusterObsCert == nil {
 		var err error
-		managedClusterObsCert, err = generateObservabilityServerCACerts(r.Client)
+		managedClusterObsCert, err = generateObservabilityServerCACerts(ctx, r.Client)
 		if err != nil {
 			if k8serrors.IsNotFound(err) {
 				// if the servser certificate for managedcluster is not ready, then
 				// requeue the request after 10s to avoid useless reconcile loop.
 				return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
 			}
-			return ctrl.Result{}, err
+			return ctrl.Result{}, fmt.Errorf("failed to generate observability server ca certs: %w", err)
 		}
 	}
 
@@ -205,11 +205,11 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 			obsAddonList,
 			r.CRDMap,
 		); err != nil {
-			return ctrl.Result{}, err
+			return ctrl.Result{}, fmt.Errorf("failed to create all related resources: %w", err)
 		}
 	} else {
 		if err := deleteAllObsAddons(r.Client, obsAddonList); err != nil {
-			return ctrl.Result{}, err
+			return ctrl.Result{}, fmt.Errorf("failed to delete all observability addons: %w", err)
 		}
 	}
 
@@ -733,7 +733,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				e.Object.GetNamespace() == config.GetDefaultNamespace() {
 				// generate the certificate for managed cluster
 				log.Info("generate managedcluster observability certificate for server certificate CREATE")
-				managedClusterObsCert, _ = generateObservabilityServerCACerts(c)
+				managedClusterObsCert, _ = generateObservabilityServerCACerts(context.Background(), c)
 				return true
 			}
 			return false
@@ -744,7 +744,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() {
 				// regenerate the certificate for managed cluster
 				log.Info("generate managedcluster observability certificate for server certificate UPDATE")
-				managedClusterObsCert, _ = generateObservabilityServerCACerts(c)
+				managedClusterObsCert, _ = generateObservabilityServerCACerts(context.Background(), c)
 				return true
 			}
 			return false
