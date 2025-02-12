@@ -103,14 +103,10 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	deleteAll := false
 	// Fetch the MultiClusterObservability instance
 	mco := &mcov1beta2.MultiClusterObservability{}
-	err := r.Client.Get(ctx,
-		types.NamespacedName{
-			Name: config.GetMonitoringCRName(),
-		}, mco)
+	err := r.Client.Get(ctx, types.NamespacedName{Name: config.GetMonitoringCRName()}, mco)
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
 			deleteAll = true
-			managedClusterList.Delete("local-cluster")
 		} else {
 			// Error reading the object - requeue the request.
 			return ctrl.Result{}, fmt.Errorf("failed to get MCO CR: %w", err)
@@ -123,25 +119,7 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		return ctrl.Result{}, nil
 	}
 
-	// ACM 8509: Special case for hub/local cluster metrics collection
-	// We want to ensure that the local-cluster is always in the managedClusterList
-	// In the case when hubSelfManagement is enabled, we will delete it from the list and modify the object
-	// to cater to the use case of deploying in open-cluster-management-observability namespace
-	managedClusterList.Delete("local-cluster")
-	if _, ok := managedClusterList.Load("local-cluster"); !ok {
-		obj := &clusterv1.ManagedCluster{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "local-cluster",
-				Namespace: config.GetDefaultNamespace(),
-				Labels: map[string]string{
-					"openshiftVersion": "mimical",
-				},
-			},
-		}
-		reqLogger.Info("Install without addon on local-cluster")
-		installMetricsWithoutAddon = true
-		updateManagedClusterList(obj)
-	}
+	installMetricsWithoutAddon = true
 
 	if !deleteAll {
 		if !mco.Spec.ObservabilityAddonSpec.EnableMetrics {
@@ -192,13 +170,14 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	}
 
 	if !deleteAll && installMetricsWithoutAddon {
-		if err := deleteObsAddon(r.Client, localClusterName); err != nil {
+		if err := deleteObsAddon(ctx, r.Client, localClusterName); err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to delete observabilityaddon: %w", err)
 		}
 	}
 
 	if !deleteAll {
 		if err := createAllRelatedRes(
+			ctx,
 			r.Client,
 			req,
 			mco,
@@ -208,7 +187,7 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 			return ctrl.Result{}, fmt.Errorf("failed to create all related resources: %w", err)
 		}
 	} else {
-		if err := deleteAllObsAddons(r.Client, obsAddonList); err != nil {
+		if err := deleteAllObsAddons(ctx, r.Client, obsAddonList); err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to delete all observability addons: %w", err)
 		}
 	}
@@ -314,6 +293,7 @@ func (r *PlacementRuleReconciler) updateStatusOnce(ctx context.Context, req ctrl
 }
 
 func createAllRelatedRes(
+	ctx context.Context,
 	c client.Client,
 	request ctrl.Request,
 	mco *mcov1beta2.MultiClusterObservability,
@@ -354,7 +334,7 @@ func createAllRelatedRes(
 			config.ConfigGroupResource.Resource == util.AddonDeploymentConfigResource {
 			if config.DefaultConfig != nil {
 				addonConfig := &addonv1alpha1.AddOnDeploymentConfig{}
-				err = c.Get(context.TODO(),
+				err = c.Get(ctx,
 					types.NamespacedName{
 						Name:      config.DefaultConfig.Name,
 						Namespace: config.DefaultConfig.Namespace,
@@ -454,7 +434,7 @@ func createAllRelatedRes(
 
 	failedDeleteOba := false
 	for _, cluster := range clustersToCleanup {
-		err = deleteObsAddon(c, cluster)
+		err = deleteObsAddon(ctx, c, cluster)
 		if err != nil {
 			failedDeleteOba = true
 			log.Error(err, "Failed to delete observabilityaddon", "namespace", cluster)
@@ -469,11 +449,12 @@ func createAllRelatedRes(
 }
 
 func deleteAllObsAddons(
+	ctx context.Context,
 	client client.Client,
 	obsAddonList *mcov1beta1.ObservabilityAddonList,
 ) error {
 	for _, ep := range obsAddonList.Items {
-		err := deleteObsAddon(client, ep.Namespace)
+		err := deleteObsAddon(ctx, client, ep.Namespace)
 		if err != nil {
 			log.Error(err, "Failed to delete observabilityaddon", "namespace", ep.Namespace)
 			return err
@@ -617,6 +598,22 @@ func areManagedClusterLabelsReady(obj client.Object) bool {
 func updateManagedClusterList(obj client.Object) {
 	managedClusterListMutex.Lock()
 	defer managedClusterListMutex.Unlock()
+
+	// ACM 8509: Special case for hub/local cluster metrics collection
+	// Special case for hubSelfManagement. We always need to have the local-cluster observability stack
+	// So we are replacing the real one with a "mimical" version label so that it is processed differently, somewhere
+	if obj.GetName() == "local-cluster" {
+		obj = &clusterv1.ManagedCluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "local-cluster",
+				Namespace: config.GetDefaultNamespace(),
+				Labels: map[string]string{
+					"openshiftVersion": "mimical",
+				},
+			},
+		}
+	}
+
 	if version, ok := obj.GetLabels()["openshiftVersion"]; ok {
 		managedClusterList.Store(obj.GetName(), version)
 	} else {
