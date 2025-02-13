@@ -148,30 +148,21 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		}
 		// Don't return right away from here because the above cleanup is not complete and it requires
 		// call to cleanOrphanResources for manifest works
-		if err := r.cleanOrphanResources(ctx, req); err != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to clean orphaned resources: %w", err)
+	} else {
+		if err := createAllRelatedRes(
+			ctx,
+			r.Client,
+			req,
+			mco,
+			obsAddonList,
+			r.CRDMap,
+		); err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to create all related resources: %w", err)
 		}
-
-		return ctrl.Result{}, nil
-	}
-
-	if err := deleteObsAddon(ctx, r.Client, localClusterName); err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to delete observabilityaddon: %w", err)
-	}
-
-	if err := createAllRelatedRes(
-		ctx,
-		r.Client,
-		req,
-		mco,
-		obsAddonList,
-		r.CRDMap,
-	); err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to create all related resources: %w", err)
 	}
 
 	// This cleanup must be kept at the end of the reconcile as createAllRelatedRes can remove some observabilityAddon
-	// resources that trigger then some cleanup here.
+	// resources that trigger then some cleanup here. Same for cleanResources that leaves resources behind.
 	if err := r.cleanOrphanResources(ctx, req); err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to clean orphaned resources: %w", err)
 	}
