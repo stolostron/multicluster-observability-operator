@@ -134,6 +134,14 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		}
 	}
 
+	if err := r.cleanOrphanResources(ctx, req); err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to clean orphaned resources: %w", err)
+	}
+
+	// only update managedclusteraddon status when obs addon's status updated
+	// ensure the status is updated once in the reconcile loop when the controller starts
+	r.updateStatus(ctx, req)
+
 	opts := &client.ListOptions{
 		LabelSelector: labels.SelectorFromSet(map[string]string{ownerLabelKey: ownerLabelValue}),
 	}
@@ -145,10 +153,6 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	if err := r.Client.List(ctx, obsAddonList, opts); err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to list observabilityaddon resource: %w", err)
 	}
-
-	// only update managedclusteraddon status when obs addon's status updated
-	// ensure the status is updated once in the reconcile loop when the controller starts
-	r.updateStatusOnce(ctx, req)
 
 	if !deleteAll {
 		if err := deleteObsAddon(ctx, r.Client, localClusterName); err != nil {
@@ -188,14 +192,12 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		}
 	}
 
-	if err := r.cleanOrphanResources(ctx, req); err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to clean orphaned resources: %w", err)
-	}
-
 	return ctrl.Result{}, nil
 }
 
-func (r *PlacementRuleReconciler) updateStatusOnce(ctx context.Context, req ctrl.Request) error {
+// updateStatus ensures that the addonStatuses are updated at least once on the first reconcile
+// to avoid stalled statuses, and then whenever the reconcile trigger is an observabilityAddon.
+func (r *PlacementRuleReconciler) updateStatus(ctx context.Context, req ctrl.Request) error {
 	r.statusMu.Lock()
 	defer r.statusMu.Unlock()
 
@@ -204,6 +206,9 @@ func (r *PlacementRuleReconciler) updateStatusOnce(ctx context.Context, req ctrl
 	}
 
 	opts := &client.ListOptions{LabelSelector: labels.SelectorFromSet(map[string]string{ownerLabelKey: ownerLabelValue})}
+	if r.statusIsInitialized && req.Namespace != "" {
+		opts.Namespace = req.Namespace
+	}
 	obsAddonList := &mcov1beta1.ObservabilityAddonList{}
 	if err := r.Client.List(ctx, obsAddonList, opts); err != nil {
 		return fmt.Errorf("failed to list observabilityaddon resource: %w", err)
@@ -214,7 +219,6 @@ func (r *PlacementRuleReconciler) updateStatusOnce(ctx context.Context, req ctrl
 	}
 
 	r.statusIsInitialized = true
-
 	return nil
 }
 
