@@ -347,7 +347,7 @@ func TestManifestWork(t *testing.T) {
 
 	setupTest(t)
 
-	works, crdWork, _, err := generateGlobalManifestResources(c, newTestMCO())
+	works, crdWork, _, err := generateGlobalManifestResources(context.Background(), c, newTestMCO())
 	if err != nil {
 		t.Fatalf("Failed to get global manifestwork resource: (%v)", err)
 	}
@@ -426,7 +426,7 @@ func TestManifestWork(t *testing.T) {
 	}
 	// reset image pull secret
 	pullSecret = nil
-	works, crdWork, _, err = generateGlobalManifestResources(c, newTestMCO())
+	works, crdWork, _, err = generateGlobalManifestResources(context.Background(), c, newTestMCO())
 	if err != nil {
 		t.Fatalf("Failed to get global manifestwork resource: (%v)", err)
 	}
@@ -464,7 +464,7 @@ func TestManifestWork(t *testing.T) {
 	managedClusterImageRegistry[clusterName] = "open-cluster-management.io/image-registry=" + namespace + ".image_registry"
 	managedClusterImageRegistryMutex.Unlock()
 
-	works, crdWork, _, err = generateGlobalManifestResources(c, newTestMCO())
+	works, crdWork, _, err = generateGlobalManifestResources(context.Background(), c, newTestMCO())
 	if err != nil {
 		t.Fatalf("Failed to get global manifestwork resource: (%v)", err)
 	}

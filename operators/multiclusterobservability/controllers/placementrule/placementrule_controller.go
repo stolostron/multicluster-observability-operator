@@ -122,10 +122,6 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
 	}
 
-	if err := r.cleanOrphanResources(ctx, req); err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to clean orphaned resources: %w", err)
-	}
-
 	// only update managedclusteraddon status when obs addon's status updated
 	// ensure the status is updated once in the reconcile loop when the controller starts
 	r.updateStatus(ctx, req)
@@ -143,11 +139,17 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	}
 
 	// Clean resources and stop reconciliation if metrics are disabled.
-	if mcoIsNotFound || !mco.Spec.ObservabilityAddonSpec.EnableMetrics || mcoaForMetricsIsEnabled(mco) {
-		reqLogger.Info("Cleaning all resources", "mcoIsNotFound", mcoIsNotFound, "enableMetrics",
-			mco.Spec.ObservabilityAddonSpec.EnableMetrics, "mcoaIsEnabled", mcoaForMetricsIsEnabled(mco))
+	metricsAreDisabled := mco.Spec.ObservabilityAddonSpec != nil && !mco.Spec.ObservabilityAddonSpec.EnableMetrics
+	if mcoIsNotFound || metricsAreDisabled || mcoaForMetricsIsEnabled(mco) {
+		reqLogger.Info("Cleaning all resources", "mcoIsNotFound", mcoIsNotFound, "metricsAreDisabled",
+			metricsAreDisabled, "mcoaIsEnabled", mcoaForMetricsIsEnabled(mco))
 		if err := r.cleanResources(ctx); err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to clean all resources: %w", err)
+		}
+		// Don't return right away from here because the above cleanup is not complete and it requires
+		// call to cleanOrphanResources for manifest works
+		if err := r.cleanOrphanResources(ctx, req); err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to clean orphaned resources: %w", err)
 		}
 
 		return ctrl.Result{}, nil
@@ -166,6 +168,12 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		r.CRDMap,
 	); err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to create all related resources: %w", err)
+	}
+
+	// This cleanup must be kept at the end of the reconcile as createAllRelatedRes can remove some observabilityAddon
+	// resources that trigger then some cleanup here.
+	if err := r.cleanOrphanResources(ctx, req); err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to clean orphaned resources: %w", err)
 	}
 
 	return ctrl.Result{}, nil
@@ -335,61 +343,34 @@ func createAllRelatedRes(
 	var err error
 	// create the clusterrole if not there
 	if !isCRoleCreated {
-		err = createClusterRole(c)
-		if err != nil {
-			return err
+		if err := createClusterRole(ctx, c); err != nil {
+			return fmt.Errorf("failed to ensure cluster rule: %w", err)
 		}
-		err = createResourceRole(c)
-		if err != nil {
-			return err
+		if err := createResourceRole(ctx, c); err != nil {
+			return fmt.Errorf("failed to ensure resource role: %w", err)
 		}
 		isCRoleCreated = true
 	}
 
 	// Get or create ClusterManagementAddon
-	clusterAddon, err = util.CreateClusterManagementAddon(c)
+	clusterAddon, err = util.CreateClusterManagementAddon(ctx, c)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to ensure ClusterManagementAddon: %w", err)
 	}
 
-	// Always start this loop with an empty addon deployment config.
-	// This simplifies the logic for the cases where:
-	// - There is nothing in `Spec.SupportedConfigs`.
-	// - There's something in `Spec.SupportedConfigs`, but none of them are for
-	//   the group and resource that we care about.
-	// - There is something in `Spec.SupportedConfigs`, the group and resource are correct,
-	//   but the default config is not present in the manifest or it is not found
-	//   (i.e. was deleted or there's a typo).
-	defaultAddonDeploymentConfig = &addonv1alpha1.AddOnDeploymentConfig{}
-	for _, config := range clusterAddon.Spec.SupportedConfigs {
-		if config.ConfigGroupResource.Group == util.AddonGroup &&
-			config.ConfigGroupResource.Resource == util.AddonDeploymentConfigResource {
-			if config.DefaultConfig != nil {
-				addonConfig := &addonv1alpha1.AddOnDeploymentConfig{}
-				err = c.Get(ctx,
-					types.NamespacedName{
-						Name:      config.DefaultConfig.Name,
-						Namespace: config.DefaultConfig.Namespace,
-					},
-					addonConfig,
-				)
-				if err != nil {
-					return err
-				}
-				log.Info("There is default AddonDeploymentConfig for current addon")
-				defaultAddonDeploymentConfig = addonConfig
-				break
-			}
-		}
+	if err := setDefaultDeploymentConfigVar(ctx, c); err != nil {
+		return fmt.Errorf("failed to set default deployment config: %w", err)
 	}
 
 	// need to reload the template and update the the corresponding resources
 	// the loadTemplates method is now lightweight operations as we have cache the templates in memory.
-	log.Info("load and update templates for managedcluster resources")
 	rawExtensionList, obsAddonCRDv1, obsAddonCRDv1beta1,
-		endpointMetricsOperatorDeploy, imageListConfigMap, _ = loadTemplates(mco)
+		endpointMetricsOperatorDeploy, imageListConfigMap, err = loadTemplates(mco)
+	if err != nil {
+		return fmt.Errorf("failed to load templates: %w", err)
+	}
 
-	works, crdv1Work, crdv1beta1Work, err := generateGlobalManifestResources(c, mco)
+	works, crdv1Work, crdv1beta1Work, err := generateGlobalManifestResources(ctx, c, mco)
 	if err != nil {
 		return err
 	}
@@ -398,7 +379,7 @@ func createAllRelatedRes(
 	if hubInfoSecret == nil {
 		var err error
 		if hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, CRDMap[config.IngressControllerCRD]); err != nil {
-			return err
+			return fmt.Errorf("failed to generate hub info secret: %w", err)
 		}
 	}
 
@@ -475,6 +456,41 @@ func createAllRelatedRes(
 
 	if failedCreateManagedClusterRes || failedDeleteOba {
 		return errors.New("failed to create managedcluster resources or failed to delete observabilityaddon, skip and reconcile later")
+	}
+
+	return nil
+}
+
+func setDefaultDeploymentConfigVar(ctx context.Context, c client.Client) error {
+	// Always start this loop with an empty addon deployment config.
+	// This simplifies the logic for the cases where:
+	// - There is nothing in `Spec.SupportedConfigs`.
+	// - There's something in `Spec.SupportedConfigs`, but none of them are for
+	//   the group and resource that we care about.
+	// - There is something in `Spec.SupportedConfigs`, the group and resource are correct,
+	//   but the default config is not present in the manifest or it is not found
+	//   (i.e. was deleted or there's a typo).
+	defaultAddonDeploymentConfig = &addonv1alpha1.AddOnDeploymentConfig{}
+	for _, config := range clusterAddon.Spec.SupportedConfigs {
+		if config.ConfigGroupResource.Group == util.AddonGroup &&
+			config.ConfigGroupResource.Resource == util.AddonDeploymentConfigResource {
+			if config.DefaultConfig != nil {
+				addonConfig := &addonv1alpha1.AddOnDeploymentConfig{}
+				err := c.Get(ctx,
+					types.NamespacedName{
+						Name:      config.DefaultConfig.Name,
+						Namespace: config.DefaultConfig.Namespace,
+					},
+					addonConfig,
+				)
+				if err != nil {
+					return fmt.Errorf("failed to get default config: %w", err)
+				}
+				log.Info("Setting the default AddonDeploymentConfig variable for current addon")
+				defaultAddonDeploymentConfig = addonConfig
+				break
+			}
+		}
 	}
 
 	return nil

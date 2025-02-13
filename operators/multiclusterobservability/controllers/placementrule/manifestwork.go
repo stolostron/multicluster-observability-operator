@@ -207,7 +207,7 @@ func shouldUpdateManifestWork(desiredManifests []workv1.Manifest, foundManifests
 // generateGlobalManifestResources generates global resources, eg. manifestwork,
 // endpoint-metrics-operator deploy and hubInfo Secret...
 // this function is expensive and should not be called for each reconcile loop.
-func generateGlobalManifestResources(c client.Client, mco *mcov1beta2.MultiClusterObservability) (
+func generateGlobalManifestResources(ctx context.Context, c client.Client, mco *mcov1beta2.MultiClusterObservability) (
 	[]workv1.Manifest, *workv1.Manifest, *workv1.Manifest, error) {
 
 	works := []workv1.Manifest{}
@@ -226,8 +226,8 @@ func generateGlobalManifestResources(c client.Client, mco *mcov1beta2.MultiClust
 	// inject the certificates
 	if managedClusterObsCert == nil {
 		var err error
-		if managedClusterObsCert, err = generateObservabilityServerCACerts(context.Background(), c); err != nil {
-			return nil, nil, nil, err
+		if managedClusterObsCert, err = generateObservabilityServerCACerts(ctx, c); err != nil {
+			return nil, nil, nil, fmt.Errorf("failed to generate observability server ca certs: %w", err)
 		}
 	}
 	works = injectIntoWork(works, managedClusterObsCert)
@@ -236,7 +236,7 @@ func generateGlobalManifestResources(c client.Client, mco *mcov1beta2.MultiClust
 	if metricsAllowlistConfigMap == nil || ocp311metricsAllowlistConfigMap == nil {
 		var err error
 		if metricsAllowlistConfigMap, ocp311metricsAllowlistConfigMap, err = generateMetricsListCM(c); err != nil {
-			return nil, nil, nil, err
+			return nil, nil, nil, fmt.Errorf("failed to generate metrics list configmap: %w", err)
 		}
 	}
 
@@ -255,7 +255,7 @@ func generateGlobalManifestResources(c client.Client, mco *mcov1beta2.MultiClust
 		rawExtensionList, obsAddonCRDv1, obsAddonCRDv1beta1,
 			endpointMetricsOperatorDeploy, imageListConfigMap, err = loadTemplates(mco)
 		if err != nil {
-			return nil, nil, nil, err
+			return nil, nil, nil, fmt.Errorf("failed to load templates: %w", err)
 		}
 	}
 	// inject resouces in templates

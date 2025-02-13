@@ -12,7 +12,6 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -30,8 +29,7 @@ const (
 	epStatusRsName     = "observabilityaddons/status"
 )
 
-func createClusterRole(c client.Client) error {
-
+func createClusterRole(ctx context.Context, c client.Client) error {
 	role := &rbacv1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: mcoRoleName,
@@ -57,32 +55,28 @@ func createClusterRole(c client.Client) error {
 	}
 
 	found := &rbacv1.ClusterRole{}
-	err := c.Get(context.TODO(), types.NamespacedName{Name: mcoRoleName}, found)
+	err := c.Get(ctx, types.NamespacedName{Name: mcoRoleName}, found)
 	if err != nil && errors.IsNotFound(err) {
 		log.Info("Creating mco clusterRole")
-		err = c.Create(context.TODO(), role)
+		err = c.Create(ctx, role)
 		if err != nil {
-			log.Error(err, "Failed to create endpoint-observability-mco-role clusterRole")
-			return err
+			return fmt.Errorf("failed to create endpoint-observability-mco-role clusterRole: %w", err)
 		}
 		return nil
 	} else if err != nil {
-		log.Error(err, "Failed to check endpoint-observability-mco-role clusterRole")
-		return err
+		return fmt.Errorf("failed to check endpoint-observability-mco-role clusterRole: %w", err)
 	}
 
 	if !reflect.DeepEqual(found.Rules, role.Rules) {
 		log.Info("Updating endpoint-observability-mco-role clusterRole")
 		role.ObjectMeta.ResourceVersion = found.ObjectMeta.ResourceVersion
-		err = c.Update(context.TODO(), role)
+		err = c.Update(ctx, role)
 		if err != nil {
-			log.Error(err, "Failed to update endpoint-observability-mco-role clusterRole")
-			return err
+			return fmt.Errorf("failed to update endpoint-observability-mco-role clusterRole: %w", err)
 		}
 		return nil
 	}
 
-	log.Info("clusterrole endpoint-observability-mco-role already existed/unchanged")
 	return nil
 }
 
@@ -142,9 +136,7 @@ func createClusterRoleBinding(c client.Client, namespace string, name string) er
 	return nil
 }
 
-func createResourceRole(c client.Client) error {
-
-	deleteDeprecatedRoles(c)
+func createResourceRole(ctx context.Context, c client.Client) error {
 	role := &rbacv1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: resRoleName,
@@ -220,32 +212,27 @@ func createResourceRole(c client.Client) error {
 	}
 
 	found := &rbacv1.ClusterRole{}
-	err := c.Get(context.TODO(), types.NamespacedName{Name: resRoleName}, found)
+	err := c.Get(ctx, types.NamespacedName{Name: resRoleName}, found)
 	if err != nil && errors.IsNotFound(err) {
 		log.Info("Creating endpoint-observability-res-role clusterrole")
-		err = c.Create(context.TODO(), role)
-		if err != nil {
-			log.Error(err, "Failed to create endpoint-observability-res-role clusterrole")
-			return err
+		if err := c.Create(ctx, role); err != nil {
+			return fmt.Errorf("failed to create endpoint-observability-res-role clusterrole: %w", err)
 		}
 		return nil
 	} else if err != nil {
-		log.Error(err, "Failed to check endpoint-observability-res-role clusterrole")
-		return err
+		return fmt.Errorf("failed to check endpoint-observability-res-role clusterrole: %w", err)
 	}
 
 	if !reflect.DeepEqual(found.Rules, role.Rules) {
 		log.Info("Updating endpoint-observability-res-role clusterrole")
 		role.ObjectMeta.ResourceVersion = found.ObjectMeta.ResourceVersion
-		err = c.Update(context.TODO(), role)
-		if err != nil {
+		if err := c.Update(ctx, role); err != nil {
 			log.Error(err, "Failed to update endpoint-observability-res-role clusterrole")
 			return err
 		}
 		return nil
 	}
 
-	log.Info("clusterrole endpoint-observability-res-role already existed/unchanged")
 	return nil
 }
 
@@ -368,30 +355,6 @@ func deleteRolebindings(c client.Client, namespace string) error {
 	log.Info("Rolebinding deleted", "name", resRoleBindingName, "namespace", namespace)
 
 	return nil
-}
-
-// function to remove the deprecated roles
-func deleteDeprecatedRoles(c client.Client) {
-	opts := &client.ListOptions{
-		LabelSelector: labels.SelectorFromSet(map[string]string{ownerLabelKey: ownerLabelValue}),
-	}
-	roleList := &rbacv1.RoleList{}
-	err := c.List(context.TODO(), roleList, opts)
-	if err != nil {
-		log.Error(err, "Failed to list deprecated roles")
-		return
-	}
-	for idx := range roleList.Items {
-		role := roleList.Items[idx]
-		if role.Name == "endpoint-observability-role" {
-			err = c.Delete(context.TODO(), &role)
-			if err != nil && !errors.IsNotFound(err) {
-				log.Error(err, "Failed to delete deprecated roles", "name", role.Name, "namespace", role.Namespace)
-			} else {
-				log.Info("Deprecated role deleted", "name", role.Name, "namespace", role.Namespace)
-			}
-		}
-	}
 }
 
 func createRolebindings(c client.Client, namespace string, name string) error {
