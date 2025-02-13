@@ -19,7 +19,6 @@ import (
 	routev1 "github.com/openshift/api/route/v1"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
-	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -159,17 +158,8 @@ func TestObservabilityAddonController(t *testing.T) {
 	config.SetMonitoringCRName(mcoName)
 	mco := newTestMCO()
 	pull := newTestPullSecret()
-	deprecatedRole := &rbacv1.Role{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "endpoint-observability-role",
-			Namespace: namespace,
-			Labels: map[string]string{
-				ownerLabelKey: ownerLabelValue,
-			},
-		},
-	}
 	objs := []runtime.Object{mco, pull, newConsoleRoute(), newTestObsApiRoute(), newTestAlertmanagerRoute(), newTestIngressController(), newTestRouteCASecret(), newCASecret(), newCertSecret(mcoNamespace), NewMetricsAllowListCM(),
-		NewAmAccessorSA(), NewAmAccessorTokenSecret(), deprecatedRole, newClusterMgmtAddon(),
+		NewAmAccessorSA(), NewAmAccessorTokenSecret(), newClusterMgmtAddon(),
 		newAddonDeploymentConfig(defaultAddonConfigName, namespace), newAddonDeploymentConfig(addonConfigName, namespace)}
 	c := fake.
 		NewClientBuilder().
@@ -206,11 +196,6 @@ func TestObservabilityAddonController(t *testing.T) {
 	err = c.Get(context.TODO(), types.NamespacedName{Name: namespace2 + workNameSuffix, Namespace: namespace2}, found)
 	if err != nil {
 		t.Fatalf("Failed to get manifestwork for %s: (%v)", namespace2, err)
-	}
-	foundRole := &rbacv1.Role{}
-	err = c.Get(context.TODO(), types.NamespacedName{Name: "endpoint-observability-role", Namespace: namespace}, foundRole)
-	if err == nil || !errors.IsNotFound(err) {
-		t.Fatalf("Deprecated role not removed")
 	}
 
 	managedClusterList.Range(func(key, value interface{}) bool {
