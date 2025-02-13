@@ -124,7 +124,9 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 
 	// only update managedclusteraddon status when obs addon's status updated
 	// ensure the status is updated once in the reconcile loop when the controller starts
-	r.updateStatus(ctx, req)
+	if err := r.updateStatus(ctx, req); err != nil {
+		reqLogger.Info("Failed to update status: %s", err.Error())
+	}
 
 	opts := &client.ListOptions{
 		LabelSelector: labels.SelectorFromSet(map[string]string{ownerLabelKey: ownerLabelValue}),
@@ -256,11 +258,12 @@ func (r *PlacementRuleReconciler) cleanOrphanResources(ctx context.Context, req 
 	}
 
 	// Delete observability addon in namespaces with no resources that may be stalled
-	for ns, addon := range currentAddonNamespaces {
+	for ns := range currentAddonNamespaces {
 		if _, ok := namespacesWithResources[ns]; ok {
 			continue
 		}
 
+		addon := currentAddonNamespaces[ns]
 		if !deletionStalled(&addon) {
 			continue
 		}
