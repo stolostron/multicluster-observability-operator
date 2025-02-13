@@ -1013,7 +1013,7 @@ func removeObservabilityAddonInManifestWork(ctx context.Context, client client.C
 	}
 
 	updateManifests := slices.DeleteFunc(slices.Clone(found.Spec.Workload.Manifests), func(e workv1.Manifest) bool {
-		return e.Object.GetObjectKind().GroupVersionKind().Kind == "ObservabilityAddon"
+		return e.Object != nil && e.Object.GetObjectKind().GroupVersionKind().Kind == "ObservabilityAddon"
 	})
 
 	if len(updateManifests) != len(found.Spec.Workload.Manifests) {

@@ -243,6 +243,12 @@ func (r *PlacementRuleReconciler) cleanOrphanResources(ctx context.Context, req 
 
 	namespacesWithResources := map[string]struct{}{}
 	for _, work := range workList.Items {
+		if work.Name != work.Namespace+workNameSuffix {
+			log.Info("Deleting ManifestWork with invalid name", "namespace", work.Namespace, "name", work.Name)
+			if err := deleteManifestWork(r.Client, work.Name, work.Namespace); err != nil {
+				return fmt.Errorf("failed to delete invalid ManifestWork: %w", err)
+			}
+		}
 		namespacesWithResources[work.GetNamespace()] = struct{}{}
 	}
 
