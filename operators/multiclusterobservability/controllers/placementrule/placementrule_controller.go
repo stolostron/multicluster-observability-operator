@@ -268,12 +268,10 @@ func (r *PlacementRuleReconciler) cleanOrphanResources(ctx context.Context, req 
 			continue
 		}
 
-		log.Info("Deleting observabilityaddon finalizer", "namespace", ns)
 		if err := deleteFinalizer(r.Client, &addon); err != nil {
 			return fmt.Errorf("failed to delete observabilityaddon %s/%s finalizer: %w", ns, addon.GetName(), err)
 		}
 
-		log.Info("Deleting observabilityaddon", "namespace", ns)
 		if err := deleteObsAddonObject(ctx, r.Client, ns); err != nil {
 			return fmt.Errorf("failed to delete stalled observability addon in namespace %q: %w", ns, err)
 		}
@@ -584,7 +582,6 @@ func createManagedClusterRes(
 }
 
 func deleteManagedClusterRes(c client.Client, namespace string) error {
-	log.Info("Deleting managed cluster resources", "namespace", namespace)
 	managedclusteraddon := &addonv1alpha1.ManagedClusterAddOn{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      util.ManagedClusterAddonName,
@@ -592,9 +589,12 @@ func deleteManagedClusterRes(c client.Client, namespace string) error {
 		},
 	}
 	err := c.Delete(context.TODO(), managedclusteraddon)
-	if err != nil && !k8serrors.IsNotFound(err) {
-		log.Error(err, "Failed to delete managedclusteraddon")
-		return err
+	if err != nil {
+		if !k8serrors.IsNotFound(err) {
+			log.Error(err, "Failed to delete managedclusteraddon")
+			return err
+		}
+		log.Info("Deleted managed cluster addon", "namespace", namespace, "name", managedclusteraddon.Name)
 	}
 
 	err = deleteRolebindings(c, namespace)

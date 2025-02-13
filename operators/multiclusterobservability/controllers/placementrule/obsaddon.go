@@ -184,13 +184,12 @@ func deleteStaleObsAddon(c client.Client, namespace string, isForce bool) error 
 
 func deleteFinalizer(c client.Client, obsaddon *obsv1beta1.ObservabilityAddon) error {
 	if slices.Contains(obsaddon.GetFinalizers(), obsAddonFinalizer) {
+		log.Info("Deleting observabilityaddon's finalizer", "namespace", obsaddon.Namespace)
 		obsaddon.SetFinalizers(util.Remove(obsaddon.GetFinalizers(), obsAddonFinalizer))
 		err := c.Update(context.TODO(), obsaddon)
 		if err != nil {
-			log.Error(err, "Failed to delete finalizer in observabilityaddon", "namespace", obsaddon.Namespace)
-			return err
+			return fmt.Errorf("failed to delete finalizer in observabilityaddon: %w", err)
 		}
-		log.Info("observabilityaddon's finalizer is deleted", "namespace", obsaddon.Namespace)
 	}
 	return nil
 }

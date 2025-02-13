@@ -335,11 +335,14 @@ func deleteRolebindings(c client.Client, namespace string) error {
 		},
 	}
 	err := c.Delete(context.TODO(), crb)
-	if err != nil && !errors.IsNotFound(err) {
-		log.Error(err, "Failed to delete clusterrolebinding", "name", namespace+"-"+resRoleBindingName)
-		return err
+	if err != nil {
+		if !errors.IsNotFound(err) {
+			log.Error(err, "Failed to delete clusterrolebinding", "name", namespace+"-"+resRoleBindingName)
+			return err
+		}
+
+		log.Info("Clusterrolebinding deleted", "name", namespace+"-"+resRoleBindingName)
 	}
-	log.Info("Clusterrolebinding deleted", "name", namespace+"-"+resRoleBindingName)
 
 	rb := &rbacv1.RoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
@@ -348,11 +351,13 @@ func deleteRolebindings(c client.Client, namespace string) error {
 		},
 	}
 	err = c.Delete(context.TODO(), rb)
-	if err != nil && !errors.IsNotFound(err) {
-		log.Error(err, "Failed to delete rolebinding", "name", resRoleBindingName, "namespace", namespace)
-		return err
+	if err != nil {
+		if !errors.IsNotFound(err) {
+			log.Error(err, "Failed to delete rolebinding", "name", resRoleBindingName, "namespace", namespace)
+			return err
+		}
+		log.Info("Rolebinding deleted", "name", resRoleBindingName, "namespace", namespace)
 	}
-	log.Info("Rolebinding deleted", "name", resRoleBindingName, "namespace", namespace)
 
 	return nil
 }
