@@ -260,7 +260,7 @@ func (r *PlacementRuleReconciler) cleanOrphanResources(ctx context.Context, req 
 	}
 
 	// Delete orphen resources in namespaces with no observability addon
-	for ns, _ := range namespacesWithResources {
+	for ns := range namespacesWithResources {
 		if _, ok := currentAddonNamespaces[ns]; ok {
 			continue
 		}
