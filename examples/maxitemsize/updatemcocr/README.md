@@ -1,3 +1,0 @@
-# ConfigMap cluster-monitoring-config
-
-
