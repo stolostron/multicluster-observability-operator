@@ -16,6 +16,7 @@ import (
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -132,6 +133,23 @@ func RevertHubClusterMonitoringConfig(ctx context.Context, client client.Client)
 	found.Data[clusterMonitoringConfigDataKey] = string(updatedClusterMonitoringConfigurationYAMLBytes)
 	if err := client.Update(ctx, found); err != nil {
 		return fmt.Errorf("failed to update configmap %s: %w", clusterMonitoringConfigName, err)
+	}
+
+	return nil
+}
+
+func DeleteHubMonitoringClusterRoleBinding(ctx context.Context, client client.Client) error {
+	rb := &rbacv1.ClusterRoleBinding{}
+	if err := client.Get(ctx, types.NamespacedName{Name: clusterRoleBindingName}, rb); err != nil {
+		if errors.IsNotFound(err) {
+			return nil
+		}
+		return fmt.Errorf("failed to get clusterrolebinding %s: %w", clusterRoleBindingName, err)
+	}
+
+	log.Info("deleting clusterrolebinding", "name", clusterRoleBindingName)
+	if err := client.Delete(ctx, rb); err != nil {
+		return fmt.Errorf("failed to delete clusterrolebinding %s: %w", clusterRoleBindingName, err)
 	}
 
 	return nil
