@@ -141,7 +141,7 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	// When MCOA is enabled, additionnally clean the hub resources as they are deployed wihtout the addon resource,
 	// and thus are not removed by the cleanResources function.
 	if mcoaForMetricsIsEnabled(mco) {
-		if err := DeleteHubMetricsCollectionDeployments(r.Client); err != nil {
+		if err := DeleteHubMetricsCollectorResourcesForMCOA(ctx, r.Client); err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to delete hub metrics collection resources: %w", err)
 		}
 	}

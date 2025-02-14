@@ -155,24 +155,6 @@ func DeleteHubMonitoringClusterRoleBinding(ctx context.Context, client client.Cl
 	return nil
 }
 
-func DeleteHubCAConfigmap(ctx context.Context, client client.Client) error {
-	cm := &corev1.ConfigMap{}
-	err := client.Get(ctx, types.NamespacedName{Name: caConfigmapName,
-		Namespace: hubMetricsCollectionNamespace}, cm)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			return nil
-		}
-		return fmt.Errorf("failed to check the configmap: %w", err)
-	}
-	log.Info("Deleting configmap")
-	err = client.Delete(ctx, cm)
-	if err != nil {
-		return fmt.Errorf("failed to delete configmap: %w", err)
-	}
-	return nil
-}
-
 func DeleteServiceMonitors(ctx context.Context, c client.Client) error {
 	hList := &hyperv1.HostedClusterList{}
 	err := c.List(context.TODO(), hList, &client.ListOptions{})

@@ -629,10 +629,36 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 }
 
 // Delete resources created for hub metrics collection
-func DeleteHubMetricsCollectionDeployments(c client.Client) error {
+func DeleteHubMetricsCollectionDeployments(ctx context.Context, c client.Client) error {
+	if err := DeleteHubMetricsCollectorResourcesForMCOA(ctx, c); err != nil {
+		return fmt.Errorf("failed to delete MCOA resources: %w", err)
+	}
+
+	// Delete secrets
+	secrets := []string{
+		operatorconfig.HubMetricsCollectorMtlsCert,
+		managedClusterObsCertName,
+		config.AlertmanagerAccessorSecretName,
+	}
+	if err := deleteSecrets(ctx, c, secrets); err != nil {
+		return err
+	}
+
+	// Delete configmaps
+	configmaps := []string{operatorconfig.ImageConfigMap}
+	if err := deleteConfigMaps(ctx, c, configmaps); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// DeleteHubMetricsCollectorResourcesForMCOA deletes hub resources for the metrics collector but keeps the ones
+// common to MCOA and the metrics collector.
+func DeleteHubMetricsCollectorResourcesForMCOA(ctx context.Context, c client.Client) error {
 	// Delete hub endpoint operator
 	log.Info("Deleting resources for hub metrics collection")
-	err := c.Delete(context.TODO(), &appsv1.Deployment{
+	err := c.Delete(ctx, &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      config.HubEndpointOperatorName,
 			Namespace: config.GetDefaultNamespace(),
@@ -642,8 +668,9 @@ func DeleteHubMetricsCollectionDeployments(c client.Client) error {
 		log.Error(err, "Failed to delete hub endpoint operator")
 		return err
 	}
+
 	for _, name := range []string{config.HubUwlMetricsCollectorName, config.HubMetricsCollectorName} {
-		err := c.Delete(context.TODO(), &appsv1.Deployment{
+		err := c.Delete(ctx, &appsv1.Deployment{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      name,
 				Namespace: config.GetDefaultNamespace(),
@@ -655,69 +682,71 @@ func DeleteHubMetricsCollectionDeployments(c client.Client) error {
 
 		}
 	}
-	hubMetricCollectorSecrets := []string{operatorconfig.HubMetricsCollectorMtlsCert, managedClusterObsCertName, operatorconfig.HubInfoSecretName, config.AlertmanagerAccessorSecretName}
-	for _, name := range hubMetricCollectorSecrets {
-		err := c.Delete(context.TODO(), &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      name,
-				Namespace: config.GetDefaultNamespace(),
-			},
-		})
-		if err != nil && !k8serrors.IsNotFound(err) {
-			log.Error(err, "Failed to delete hub metrics-collector secret")
-			return err
-		}
-	}
-	hubMetricsCollectorConfigMaps := []string{operatorconfig.ImageConfigMap, operatorconfig.CaConfigmapName}
-	for _, name := range hubMetricsCollectorConfigMaps {
-		err := c.Delete(context.TODO(), &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      name,
-				Namespace: config.GetDefaultNamespace(),
-			},
-		})
-		if err != nil && !k8serrors.IsNotFound(err) {
-			log.Error(err, "Failed to delete hub metrics-collector configmap")
-			return err
-		}
 
+	// Delete configmaps
+	configmaps := []string{operatorconfig.CaConfigmapName}
+	if err := deleteConfigMaps(ctx, c, configmaps); err != nil {
+		return err
 	}
+
+	// Delete secrets
+	secrets := []string{operatorconfig.HubInfoSecretName}
+	if err := deleteSecrets(ctx, c, secrets); err != nil {
+		return err
+	}
+
 	err = DeleteHubMonitoringClusterRoleBinding(context.TODO(), c)
 	if err != nil {
 		log.Error(err, "Failed to delete monitoring cluster role binding for hub metrics collection")
 		return err
 	}
-	err = DeleteHubCAConfigmap(context.TODO(), c)
-	if err != nil {
-		log.Error(err, "Failed to delete CA configmap for hub metrics collection")
-		return err
-	}
+
 	err = RevertHubClusterMonitoringConfig(context.TODO(), c)
 	if err != nil {
 		log.Error(err, "Failed to revert cluster monitoring config")
 		return err
 	}
 
-	// isHypershift := true
-	// if os.Getenv("UNIT_TEST") != "true" {
-	//	crdClient, err := util.GetOrCreateCRDClient()
-	//	if err != nil {
-	//		log.Error(err, "Failed to create CRD client")
-	//		return err
-	//	}
-	//	isHypershift, err = util.CheckCRDExist(crdClient, "hostedclusters.hypershift.openshift.io")
-	//	if err != nil {
-	//		log.Error(err, "Failed to check if the CRD hostedclusters.hypershift.openshift.io exists")
-	//		return err
-	//	}
-	// }
-	// if isHypershift {
-	//	err = DeleteServiceMonitors(context.TODO(), c)
-	//	if err != nil {
-	//		log.Error(err, "Failed to delete service monitors for hub metrics collection")
-	//		return err
-	//	}
-	// }
+	return nil
+}
+
+func deleteSecrets(ctx context.Context, c client.Client, names []string) error {
+	namespace := config.GetDefaultNamespace()
+
+	for _, name := range names {
+		secret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+			},
+		}
+
+		if err := c.Delete(ctx, secret); err != nil {
+			if !k8serrors.IsNotFound(err) {
+				return fmt.Errorf("failed to delete secret %s/%s: %w", namespace, name, err)
+			}
+		}
+	}
+	return nil
+}
+
+func deleteConfigMaps(ctx context.Context, c client.Client, names []string) error {
+	namespace := config.GetDefaultNamespace()
+
+	for _, name := range names {
+		cm := &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+			},
+		}
+
+		if err := c.Delete(ctx, cm); err != nil {
+			if !k8serrors.IsNotFound(err) {
+				return fmt.Errorf("failed to delete configmap %s/%s: %w", namespace, name, err)
+			}
+		}
+	}
 	return nil
 }
 
