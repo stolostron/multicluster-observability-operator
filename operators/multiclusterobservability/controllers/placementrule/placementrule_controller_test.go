@@ -17,6 +17,7 @@ import (
 	ocinfrav1 "github.com/openshift/api/config/v1"
 	operatorv1 "github.com/openshift/api/operator/v1"
 	routev1 "github.com/openshift/api/route/v1"
+	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -172,6 +173,29 @@ func TestObservabilityAddonController(t *testing.T) {
 		Build()
 	r := &PlacementRuleReconciler{Client: c, Scheme: s, CRDMap: map[string]bool{config.IngressControllerCRD: true}}
 
+	createManagedCluster := func(ns, version string) {
+		mc := &clusterv1.ManagedCluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: ns,
+				Labels: map[string]string{
+					"openshiftVersion": version,
+				},
+			},
+		}
+		err := c.Create(context.Background(), mc)
+		assert.NoError(t, err)
+	}
+
+	deleteManagedCluster := func(ns string) {
+		mc := &clusterv1.ManagedCluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: ns,
+			},
+		}
+		err := c.Delete(context.Background(), mc)
+		assert.NoError(t, err)
+	}
+
 	setupTest(t)
 
 	req := ctrl.Request{
@@ -181,8 +205,8 @@ func TestObservabilityAddonController(t *testing.T) {
 		},
 	}
 
-	managedClusterList.Store(namespace, "4")
-	managedClusterList.Store(namespace2, "4")
+	createManagedCluster(namespace, "4")
+	createManagedCluster(namespace2, "4")
 
 	_, err := r.Reconcile(context.TODO(), req)
 	if err != nil {
@@ -198,11 +222,9 @@ func TestObservabilityAddonController(t *testing.T) {
 		t.Fatalf("Failed to get manifestwork for %s: (%v)", namespace2, err)
 	}
 
-	managedClusterList.Range(func(key, value interface{}) bool {
-		managedClusterList.Delete(key)
-		return true
-	})
-	managedClusterList.Store(namespace, "4")
+	deleteManagedCluster(namespace)
+	deleteManagedCluster(namespace2)
+	createManagedCluster(namespace, "4")
 	_, err = r.Reconcile(context.TODO(), req)
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)

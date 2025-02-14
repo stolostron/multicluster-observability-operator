@@ -31,11 +31,6 @@ func getClusterPreds() predicate.Funcs {
 		if !areManagedClusterLabelsReady(e.Object) {
 			return false
 		}
-		//ACM 8509: Special case for local-cluster, we deploy endpoint and metrics collector in the hub
-		//whether hubSelfManagement is enabled or not
-		if e.Object.GetName() != localClusterName {
-			updateManagedClusterList(e.Object)
-		}
 
 		return true
 	}
@@ -52,7 +47,6 @@ func getClusterPreds() predicate.Funcs {
 
 		if e.ObjectNew.GetDeletionTimestamp() != nil {
 			log.Info("managedcluster is in terminating state", "managedCluster", e.ObjectNew.GetName())
-			managedClusterList.Delete(e.ObjectNew.GetName())
 			managedClusterImageRegistryMutex.Lock()
 			delete(managedClusterImageRegistry, e.ObjectNew.GetName())
 			managedClusterImageRegistryMutex.Unlock()
@@ -61,12 +55,6 @@ func getClusterPreds() predicate.Funcs {
 			if !areManagedClusterLabelsReady(e.ObjectNew) {
 				return false
 			}
-			//ACM 8509: Special case for local-cluster, we deploy endpoint and metrics collector in the hub
-			//whether hubSelfManagement is enabled or not
-			if e.ObjectNew.GetName() != localClusterName {
-				updateManagedClusterList(e.ObjectNew)
-			}
-
 		}
 
 		return true
@@ -79,11 +67,6 @@ func getClusterPreds() predicate.Funcs {
 			return false
 		}
 
-		//ACM 8509: Special case for local-cluster, we deploy endpoint and metrics collector in the hub
-		//whether hubSelfManagement is enabled or not
-		if e.Object.GetName() != localClusterName {
-			managedClusterList.Delete(e.Object.GetName())
-		}
 		managedClusterImageRegistryMutex.Lock()
 		delete(managedClusterImageRegistry, e.Object.GetName())
 		managedClusterImageRegistryMutex.Unlock()
