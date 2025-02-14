@@ -28,7 +28,7 @@ func getClusterPreds() predicate.Funcs {
 			return false
 		}
 		updateManagedClusterImageRegistry(e.Object)
-		return !areManagedClusterLabelsReady(e.Object)
+		return areManagedClusterLabelsReady(e.Object)
 	}
 
 	updateFunc := func(e event.UpdateEvent) bool {
