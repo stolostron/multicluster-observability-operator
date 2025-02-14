@@ -140,16 +140,25 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		return ctrl.Result{}, fmt.Errorf("failed to list observabilityaddon resource: %w", err)
 	}
 
-	// Clean resources and stop reconciliation if metrics are disabled.
+	// When MCOA is enabled, additionnally clean the hub resources as they are deployed wihtout the addon resource,
+	// and thus are not removed by the cleanResources function.
+	if mcoaForMetricsIsEnabled(mco) {
+		if err := DeleteHubMetricsCollectionDeployments(r.Client); err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to delete hub metrics collection resources: %w", err)
+		}
+	}
+
+	// Clean spokes addon resources (except the hub collector) if metrics are disabled.
 	metricsAreDisabled := mco.Spec.ObservabilityAddonSpec != nil && !mco.Spec.ObservabilityAddonSpec.EnableMetrics
 	if mcoIsNotFound || metricsAreDisabled || mcoaForMetricsIsEnabled(mco) {
 		reqLogger.Info("Cleaning all resources", "mcoIsNotFound", mcoIsNotFound, "metricsAreDisabled",
 			metricsAreDisabled, "mcoaIsEnabled", mcoaForMetricsIsEnabled(mco))
-		if err := r.cleanResources(ctx); err != nil {
+		if err := r.cleanSpokesAddonResources(ctx); err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to clean all resources: %w", err)
 		}
+
 		// Don't return right away from here because the above cleanup is not complete and it requires
-		// call to cleanOrphanResources for manifest works
+		// call to cleanOrphanResources for manifest works.
 	} else {
 		if err := createAllRelatedRes(
 			ctx,
@@ -293,7 +302,7 @@ func (r *PlacementRuleReconciler) waitForImageList(reqLogger logr.Logger) bool {
 	return false
 }
 
-func (r *PlacementRuleReconciler) cleanResources(ctx context.Context) error {
+func (r *PlacementRuleReconciler) cleanSpokesAddonResources(ctx context.Context) error {
 	opts := &client.ListOptions{LabelSelector: labels.SelectorFromSet(map[string]string{ownerLabelKey: ownerLabelValue})}
 	obsAddonList := &mcov1beta1.ObservabilityAddonList{}
 	if err := r.Client.List(ctx, obsAddonList, opts); err != nil {
@@ -302,11 +311,6 @@ func (r *PlacementRuleReconciler) cleanResources(ctx context.Context) error {
 
 	if err := deleteAllObsAddons(ctx, r.Client, obsAddonList); err != nil {
 		return fmt.Errorf("failed to delete all observability addons: %w", err)
-	}
-
-	// delete managedclusteraddon for local-cluster
-	if err := deleteManagedClusterRes(r.Client, config.GetDefaultNamespace()); err != nil {
-		return fmt.Errorf("failed to delete managed cluster resources: %w", err)
 	}
 
 	opts.Namespace = ""
@@ -594,6 +598,7 @@ func deleteManagedClusterRes(c client.Client, namespace string) error {
 			log.Error(err, "Failed to delete managedclusteraddon")
 			return err
 		}
+	} else {
 		log.Info("Deleted managed cluster addon", "namespace", namespace, "name", managedclusteraddon.Name)
 	}
 
