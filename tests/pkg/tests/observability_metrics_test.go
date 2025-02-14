@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"os"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
@@ -50,7 +50,7 @@ var _ = Describe("Observability:", func() {
 		}, EventuallyTimeoutMinute*6, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
-	It("[P2][Sev2][observability][Integration] Should have metrics which defined in custom metrics allowlist (metrics/g0)", func() {
+	It("RHACM4K-1658: Observability: Customized metrics data are collected [P2][Sev2][Observability][Integration]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release @pre-upgrade (metrics/g0)", func() {
 		By("Adding custom metrics allowlist configmap")
 		yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: "../../../examples/metrics/allowlist"})
 		Expect(err).ToNot(HaveOccurred())
@@ -82,7 +82,7 @@ var _ = Describe("Observability:", func() {
 		}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
-	It("[P2][Sev2][observability][Integration] Should have no metrics which have been marked for deletion in names section (metrics/g0)", func() {
+	It("RHACM4K-3063: Observability: Metrics removal from default allowlist [P2][Sev2][Observability][Integration]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release @pre-upgrade (metrics/g0)", func() {
 		By("Waiting for deleted metrics disappear on grafana console")
 		Eventually(func() error {
 			for _, cluster := range clusters {
@@ -104,7 +104,7 @@ var _ = Describe("Observability:", func() {
 		}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
-	It("[P2][Sev2][observability][Integration] Should have no metrics which have been marked for deletion in matches section (metrics/g0)", func() {
+	It("RHACM4K-3063: Observability: Metrics removal from default allowlist [P2][Sev2][Observability][Integration]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release @pre-upgrade (metrics/g0)", func() {
 		By("Waiting for deleted metrics disappear on grafana console")
 		Eventually(func() error {
 			for _, cluster := range clusters {
@@ -125,7 +125,7 @@ var _ = Describe("Observability:", func() {
 		}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
-	It("[P2][Sev2][observability][Integration] Should have no metrics after custom metrics allowlist deleted (metrics/g0)", func() {
+	It("RHACM4K-3063: Observability: Metrics removal from default allowlist [P2][Sev2][Observability][Integration]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release @pre-upgrade (metrics/g0)", func() {
 		By("Deleting custom metrics allowlist configmap")
 		Eventually(func() error {
 			err := hubClient.CoreV1().
@@ -154,6 +154,7 @@ var _ = Describe("Observability:", func() {
 		}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
+	// TODO: Needs RHACM4K number
 	// Ensures that the allowList is current by checking that the metrics are being collected
 	It("[P2][Sev2][observability][Integration] Should collect expected metrics from spokes (metrics/g0)", func() {
 		// Get the metrics from the deployed allowList configMap
@@ -221,6 +222,30 @@ var _ = Describe("Observability:", func() {
 		}
 	})
 
+	It("RHACM4K-3339: Observability: Verify recording rule - Should have metrics which used grafana dashboard [P2][Sev2][Observability][Integration]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release @pre-upgrade (ssli/g1)", func() {
+		metricList, _ := utils.GetDefaultMetricList(testOptions)
+
+		for _, name := range metricList {
+
+			if _, ok := ignoredMetrics[name]; ok {
+				continue
+			}
+
+			Eventually(func() error {
+				query := fmt.Sprintf("%s", name)
+				res, err := utils.QueryGrafana(testOptions, query)
+
+				if err != nil {
+					return err
+				}
+				if len(res.Data.Result) == 0 {
+					return fmt.Errorf("no data found for %s", query)
+				}
+				return nil
+			}, EventuallyTimeoutMinute*2, EventuallyIntervalSecond*3).Should(Succeed())
+		}
+	})
+
 	JustAfterEach(func() {
 		Expect(utils.IntegrityChecking(testOptions)).NotTo(HaveOccurred())
 	})
@@ -266,6 +291,26 @@ var ignoredMetrics = map[string]struct{}{
 	"kubelet_running_container_count":                                          {},
 	"kubelet_runtime_operations":                                               {},
 	"kubevirt_hyperconverged_operator_health_status":                           {},
+	"kubevirt_hco_system_health_status":                                        {},
+	"kubevirt_vmi_info":                                                        {},
+	"kubevirt_vm_running_status_last_transition_timestamp_seconds":             {},
+	"kubevirt_vm_non_running_status_last_transition_timestamp_seconds":         {},
+	"kubevirt_vm_error_status_last_transition_timestamp_seconds":               {},
+	"kubevirt_vm_starting_status_last_transition_timestamp_seconds":            {},
+	"kubevirt_vm_migrating_status_last_transition_timestamp_seconds":           {},
+	"kubevirt_vmi_memory_available_bytes":                                      {},
+	"kubevirt_vmi_memory_unused_bytes":                                         {},
+	"kubevirt_vmi_memory_cached_bytes":                                         {},
+	"kubevirt_vmi_memory_used_bytes":                                           {},
+	"kubevirt_vmi_phase_count":                                                 {},
+	"kubevirt_vmi_cpu_usage_seconds_total":                                     {},
+	"kubevirt_vmi_network_receive_bytes_total":                                 {},
+	"kubevirt_vmi_network_transmit_bytes_total":                                {},
+	"kubevirt_vmi_network_receive_packets_total":                               {},
+	"kubevirt_vmi_network_transmit_packets_total":                              {},
+	"kubevirt_vmi_storage_iops_read_total":                                     {},
+	"kubevirt_vmi_storage_iops_write_total":                                    {},
+	"kubevirt_vm_resource_requests":                                            {},
 	"mce_hs_addon_hosted_control_planes_status_gauge":                          {},
 	"mce_hs_addon_request_based_hcp_capacity_current_gauge":                    {},
 	"mixin_pod_workload":                                                       {},

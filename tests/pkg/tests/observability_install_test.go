@@ -11,7 +11,7 @@ import (
 	"os"
 	"time"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
@@ -36,6 +36,20 @@ func installMCO() {
 		testOptions.HubCluster.ClusterServerURL,
 		testOptions.KubeConfig,
 		testOptions.HubCluster.KubeContext)
+
+	if os.Getenv("IS_KIND_ENV") != trueStr {
+		By("Deploy CM cluster-monitoring-config")
+
+		yamlBc, _ := kustomize.Render(
+			kustomize.Options{KustomizationPath: "../../../examples/configmapcmc/cluster-monitoring-config"},
+		)
+		Expect(
+			utils.Apply(
+				testOptions.HubCluster.ClusterServerURL,
+				testOptions.KubeConfig,
+				testOptions.HubCluster.KubeContext,
+				yamlBc)).NotTo(HaveOccurred())
+	}
 
 	By("Checking MCO operator is started up and running")
 	podList, err := hubClient.CoreV1().Pods("").List(context.TODO(), metav1.ListOptions{LabelSelector: MCO_LABEL})

@@ -9,12 +9,11 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
-	. "github.com/onsi/ginkgo"
-	"github.com/onsi/ginkgo/config"
-	"github.com/onsi/ginkgo/reporters"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"gopkg.in/yaml.v2"
 	"k8s.io/klog"
@@ -130,11 +129,7 @@ func init() {
 
 func TestObservabilityE2E(t *testing.T) {
 	RegisterFailHandler(Fail)
-	config.DefaultReporterConfig.NoColor = true
-	config.DefaultReporterConfig.Succinct = true
-	junitReporter := reporters.NewJUnitReporter(reportFile)
-	junitReporter.ReporterConfig.NoColor = true
-	RunSpecsWithDefaultAndCustomReporters(t, "Observability E2E Suite", []Reporter{junitReporter})
+	RunSpecs(t, "Observability E2E Suite")
 }
 
 var _ = BeforeSuite(func() {
@@ -217,19 +212,41 @@ func initVars() {
 		testOptions.KubeConfig = kubeconfig
 	}
 
+	cloudProvider := strings.ToLower(os.Getenv("CLOUD_PROVIDER"))
+	substring1 := "rosa"
+	substring2 := "hcp"
+	substring3 := "rhov" //Format of rhov api url is https://<baseDomain>:6443
 	if testOptions.HubCluster.BaseDomain != "" {
 		baseDomain = testOptions.HubCluster.BaseDomain
-
 		if testOptions.HubCluster.ClusterServerURL == "" {
-			testOptions.HubCluster.ClusterServerURL = fmt.Sprintf(
-				"https://api.%s:6443",
-				testOptions.HubCluster.BaseDomain,
-			)
+			if strings.Contains(cloudProvider, substring1) && strings.Contains(cloudProvider, substring2) {
+
+				testOptions.HubCluster.ClusterServerURL = fmt.Sprintf(
+					"https://api.%s:443",
+					testOptions.HubCluster.BaseDomain,
+				)
+			} else if strings.Contains(cloudProvider, substring3) {
+				testOptions.HubCluster.ClusterServerURL = fmt.Sprintf(
+					"https://%s:6443",
+					testOptions.HubCluster.BaseDomain,
+				)
+			} else {
+				testOptions.HubCluster.ClusterServerURL = fmt.Sprintf(
+					"https://api.%s:6443",
+					testOptions.HubCluster.BaseDomain,
+				)
+			}
 		}
 	} else {
 		Expect(baseDomain).NotTo(BeEmpty(), "The `baseDomain` is required.")
 		testOptions.HubCluster.BaseDomain = baseDomain
 		testOptions.HubCluster.ClusterServerURL = fmt.Sprintf("https://api.%s:6443", baseDomain)
+		if strings.Contains(cloudProvider, substring1) && strings.Contains(cloudProvider, substring2) {
+
+			testOptions.HubCluster.ClusterServerURL = fmt.Sprintf("https://api.%s:443", baseDomain)
+		} else {
+			testOptions.HubCluster.ClusterServerURL = fmt.Sprintf("https://api.%s:6443", baseDomain)
+		}
 	}
 
 	if testOptions.HubCluster.User != "" {

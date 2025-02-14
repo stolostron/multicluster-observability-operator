@@ -33,7 +33,7 @@ func LogFailingTestStandardDebugInfo(opt TestOptions) {
 		opt.HubCluster.ClusterServerURL,
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext)
-	PrintObject(context.TODO(), hubDynClient, NewMCOGVRV1BETA2(), MCO_NAMESPACE, MCO_CR_NAME)
+	PrintObject(context.TODO(), hubDynClient, NewMCOGVRV1BETA2(), "", MCO_CR_NAME)
 
 	// Check pods in hub
 	hubClient := NewKubeClient(

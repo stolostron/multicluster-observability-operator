@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"time"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"k8s.io/klog"
 
@@ -26,37 +26,59 @@ var _ = Describe("Observability:", func() {
 			testOptions.HubCluster.ClusterServerURL,
 			testOptions.KubeConfig,
 			testOptions.HubCluster.KubeContext)
-		clusterName := utils.GetManagedClusterName(testOptions)
-		if clusterName == hubManagedClusterName {
-			namespace = hubMetricsCollectorNamespace
-			isHub = false
-		}
 	})
 
-	It("[P1][Sev1][observability][Integration] Should have metrics collector pod restart if cert secret re-generated (certrenew/g0)", func() {
+	It("RHACM4K-3073: Observability: Verify Observability Certificate rotation - Should have metrics collector pod restart if cert secret re-generated [P1][Sev1][Observability][Integration]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release (certrenew/g0)", func() {
+
+		if len(testOptions.ManagedClusters) > 0 &&
+			utils.GetManagedClusterName(testOptions) != hubManagedClusterName {
+			Skip("Skipping unreliable cert-test on multi-spoke systems")
+		}
+
 		By("Waiting for pods ready: observability-observatorium-api, observability-rbac-query-proxy, metrics-collector-deployment")
 		// sleep 30s to wait for installation is ready
 		time.Sleep(30 * time.Second)
-		collectorPodName := ""
+		collectorPodNameSpoke := ""
+		collectorPodNameHub := ""
 		hubPodsName := []string{}
 		Eventually(func() bool {
-			if collectorPodName == "" {
+			// check metrics-collector on spoke, unless it's local-cluster
+			if len(testOptions.ManagedClusters) > 0 &&
+				utils.GetManagedClusterName(testOptions) != hubManagedClusterName {
+				if collectorPodNameSpoke == "" {
+					_, podList := utils.GetPodList(
+						testOptions,
+						false,
+						MCO_ADDON_NAMESPACE,
+						"component=metrics-collector",
+					)
+					if podList != nil && len(podList.Items) > 0 {
+						collectorPodNameSpoke = podList.Items[0].Name
+					}
+				}
+				if collectorPodNameSpoke == "" {
+					return false
+				}
+			}
+
+			// Check obs/api, rbac-query-proxy, metrics collector on hub
+			if collectorPodNameHub == "" {
 				_, podList := utils.GetPodList(
 					testOptions,
-					isHub,
-					namespace,
+					true,
+					MCO_NAMESPACE,
 					"component=metrics-collector",
 				)
 				if podList != nil && len(podList.Items) > 0 {
-					collectorPodName = podList.Items[0].Name
+					collectorPodNameHub = podList.Items[0].Name
 				}
 			}
-			if collectorPodName == "" {
+			if collectorPodNameHub == "" {
 				return false
 			}
 			_, apiPodList := utils.GetPodList(
 				testOptions,
-				isHub,
+				true,
 				MCO_NAMESPACE,
 				"app.kubernetes.io/name=observatorium-api",
 			)
@@ -87,7 +109,7 @@ var _ = Describe("Observability:", func() {
 		Eventually(func() bool {
 			err1, appPodList := utils.GetPodList(
 				testOptions,
-				isHub,
+				true,
 				MCO_NAMESPACE,
 				"app.kubernetes.io/name=observatorium-api",
 			)
@@ -142,19 +164,63 @@ var _ = Describe("Observability:", func() {
 			return false
 		}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(BeTrue())
 
-		By(fmt.Sprintf("Waiting for old pod <%s> removed and new pod created", collectorPodName))
+		// check metric collector spoke
+		if len(testOptions.ManagedClusters) > 0 &&
+			utils.GetManagedClusterName(testOptions) != hubManagedClusterName {
+			By(fmt.Sprintf("Waiting for old pod <%s> removed and new pod created on spoke", collectorPodNameSpoke))
+			Eventually(func() bool {
+				err, podList := utils.GetPodList(
+					testOptions,
+					false,
+					MCO_ADDON_NAMESPACE,
+					"component=metrics-collector",
+				)
+
+				if len(podList.Items) != 1 {
+					klog.Infof("Wrong number of pods: <%d> metrics-collector pods, 1 expected",
+						len(podList.Items))
+					return false
+				}
+				if err != nil {
+					klog.Infof("Failed to get pod list: %v", err)
+				}
+				for _, pod := range podList.Items {
+					if pod.Name != collectorPodNameSpoke {
+						if pod.Status.Phase != "Running" {
+							klog.Infof("<%s> not in Running status yet", pod.Name)
+							return false
+						}
+						return true
+					}
+				}
+
+				// debug code to check label "cert/time-restarted"
+				deployment, err := utils.GetDeployment(
+					testOptions,
+					false,
+					"metrics-collector-deployment",
+					MCO_ADDON_NAMESPACE,
+				)
+				if err == nil {
+					klog.V(1).Infof("labels: <%v>", deployment.Spec.Template.ObjectMeta.Labels)
+				}
+				return false
+			}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(BeTrue())
+		}
+
+		By(fmt.Sprintf("Waiting for old pod <%s> removed and new pod created on Hub", collectorPodNameSpoke))
 		Eventually(func() bool {
 			err, podList := utils.GetPodList(
 				testOptions,
-				isHub,
-				namespace,
+				true,
+				MCO_NAMESPACE,
 				"component=metrics-collector",
 			)
 			if err != nil {
 				klog.V(1).Infof("Failed to get pod list: %v", err)
 			}
 			for _, pod := range podList.Items {
-				if pod.Name != collectorPodName {
+				if pod.Name != collectorPodNameSpoke {
 					if pod.Status.Phase != "Running" {
 						klog.V(1).Infof("<%s> not in Running status yet", pod.Name)
 						return false
@@ -166,9 +232,9 @@ var _ = Describe("Observability:", func() {
 			// debug code to check label "cert/time-restarted"
 			deployment, err := utils.GetDeployment(
 				testOptions,
-				isHub,
+				true,
 				"metrics-collector-deployment",
-				namespace,
+				MCO_NAMESPACE,
 			)
 			if err == nil {
 				klog.V(1).Infof("labels: <%v>", deployment.Spec.Template.ObjectMeta.Labels)
@@ -186,7 +252,5 @@ var _ = Describe("Observability:", func() {
 			utils.LogFailingTestStandardDebugInfo(testOptions)
 		}
 		testFailed = testFailed || CurrentGinkgoTestDescription().Failed
-		namespace = MCO_ADDON_NAMESPACE
-		isHub = false
 	})
 })
