@@ -60,8 +60,6 @@ var (
 	clusterAddon                  = &addonv1alpha1.ClusterManagementAddOn{}
 	defaultAddonDeploymentConfig  = &addonv1alpha1.AddOnDeploymentConfig{}
 	isplacementControllerRunnning = false
-	managedClusterList            = sync.Map{}
-	managedClusterListMutex       = &sync.RWMutex{}
 )
 
 // PlacementRuleReconciler reconciles a PlacementRule object
@@ -380,10 +378,15 @@ func createAllRelatedRes(
 	}
 
 	failedCreateManagedClusterRes := false
-	managedClusterListMutex.RLock()
-	managedClusterList.Range(func(key, value interface{}) bool {
-		managedCluster := key.(string)
-		openshiftVersion := value.(string)
+	managedClusterList, err := getManagedClustersList(ctx, c)
+	if err != nil {
+		return fmt.Errorf("failed to get managed clusters list: %w", err)
+	}
+
+	for _, mci := range managedClusterList {
+		managedCluster := mci.Name
+		openshiftVersion := mci.OpenshiftVersion
+
 		if isReconcileRequired(request, managedCluster) {
 			log.Info(
 				"Monitoring operator should be installed in cluster",
@@ -424,22 +427,24 @@ func createAllRelatedRes(
 				log.Error(err, "Failed to create managedcluster resources", "namespace", managedCluster)
 			}
 			if request.Namespace == managedCluster {
-				return false
+				// Kept to avoid modifying processing, but why breaking??
+				break
 			}
-		}
-		return true
-	})
-
-	// Look through the obsAddonList items and find clusters
-	// which are no longer to be managed and therefore needs deletion
-	clustersToCleanup := []string{}
-	for _, ep := range obsAddonList.Items {
-		if _, ok := managedClusterList.Load(ep.Namespace); !ok {
-			clustersToCleanup = append(clustersToCleanup, ep.Namespace)
 		}
 	}
 
-	managedClusterListMutex.RUnlock()
+	// Look through the obsAddonList items and find clusters
+	// which are no longer to be managed and therefore needs deletion
+	managedClustersNamespaces := make(map[string]struct{}, len(managedClusterList))
+	for _, mc := range managedClusterList {
+		managedClustersNamespaces[mc.Name] = struct{}{}
+	}
+	clustersToCleanup := []string{}
+	for _, ep := range obsAddonList.Items {
+		if _, ok := managedClustersNamespaces[ep.Namespace]; !ok {
+			clustersToCleanup = append(clustersToCleanup, ep.Namespace)
+		}
+	}
 
 	failedDeleteOba := false
 	for _, cluster := range clustersToCleanup {
@@ -642,30 +647,43 @@ func areManagedClusterLabelsReady(obj client.Object) bool {
 	return true
 }
 
-func updateManagedClusterList(obj client.Object) {
-	managedClusterListMutex.Lock()
-	defer managedClusterListMutex.Unlock()
+type managedClusterInfo struct {
+	Name             string
+	OpenshiftVersion string
+}
 
-	// ACM 8509: Special case for hub/local cluster metrics collection
-	// Special case for hubSelfManagement. We always need to have the local-cluster observability stack
-	// So we are replacing the real one with a "mimical" version label so that it is processed differently, somewhere
-	if obj.GetName() == "local-cluster" {
-		obj = &clusterv1.ManagedCluster{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "local-cluster",
-				Namespace: config.GetDefaultNamespace(),
-				Labels: map[string]string{
-					"openshiftVersion": "mimical",
-				},
-			},
+// getManagedClustersList returns the list of managed clusters info,
+// including the local cluster with a specific OpenshiftVersion for trigerring specific processings
+func getManagedClustersList(ctx context.Context, c client.Client) ([]managedClusterInfo, error) {
+	managedClustersList := &clusterv1.ManagedClusterList{}
+	if err := c.List(ctx, managedClustersList); err != nil {
+		return nil, fmt.Errorf("failed to list managed clusters: %w", err)
+	}
+
+	ret := make([]managedClusterInfo, 0, len(managedClustersList.Items))
+	ret = append(ret, managedClusterInfo{
+		Name:             "local-cluster",
+		OpenshiftVersion: "mimical",
+	})
+
+	for _, mc := range managedClustersList.Items {
+		if mc.Name == "local-cluster" {
+			// ignore as handled in a specific way
+			continue
 		}
+
+		openshiftVersion := nonOCP
+		if version, ok := mc.GetLabels()["openshiftVersion"]; ok {
+			openshiftVersion = version
+		}
+
+		ret = append(ret, managedClusterInfo{
+			Name:             mc.GetName(),
+			OpenshiftVersion: openshiftVersion,
+		})
 	}
 
-	if version, ok := obj.GetLabels()["openshiftVersion"]; ok {
-		managedClusterList.Store(obj.GetName(), version)
-	} else {
-		managedClusterList.Store(obj.GetName(), nonOCP)
-	}
+	return ret, nil
 }
 
 // Do not reconcile objects if this instance of mch has the
