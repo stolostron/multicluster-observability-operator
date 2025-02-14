@@ -57,15 +57,16 @@ func deleteObsAddonObject(ctx context.Context, c client.Client, namespace string
 
 	// is staled, delete finalizer
 	if deletionStalled(found) {
-		log.Info("Deleting observabilityaddon finalizer", "namespace", namespace)
+		log.Info("Deleting stalled observabilityaddon finalizer", "namespace", namespace)
 		if err := deleteFinalizer(c, found); err != nil {
 			return fmt.Errorf("failed to delete observabilityaddon %s/%s finalizer: %w", namespace, obsAddonName, err)
 		}
+		return nil
 	}
 
 	log.Info("Deleting observabilityaddon", "namespace", namespace)
 	if err := c.Delete(ctx, found); err != nil {
-		log.Error(err, "Failed to delete observabilityaddon", "namespace", namespace)
+		return fmt.Errorf("failed to delete observabilityaddon %s/%s: %w", namespace, obsAddonName, err)
 	}
 
 	return nil
