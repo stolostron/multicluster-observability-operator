@@ -340,7 +340,7 @@ func deleteRolebindings(c client.Client, namespace string) error {
 			log.Error(err, "Failed to delete clusterrolebinding", "name", namespace+"-"+resRoleBindingName)
 			return err
 		}
-
+	} else {
 		log.Info("Clusterrolebinding deleted", "name", namespace+"-"+resRoleBindingName)
 	}
 
@@ -356,6 +356,7 @@ func deleteRolebindings(c client.Client, namespace string) error {
 			log.Error(err, "Failed to delete rolebinding", "name", resRoleBindingName, "namespace", namespace)
 			return err
 		}
+	} else {
 		log.Info("Rolebinding deleted", "name", resRoleBindingName, "namespace", namespace)
 	}
 
