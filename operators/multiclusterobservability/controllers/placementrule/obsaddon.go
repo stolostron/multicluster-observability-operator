@@ -149,39 +149,6 @@ func deletionStalled(obj client.Object) bool {
 	return time.Since(delTs.Time) > 5*time.Minute
 }
 
-func deleteStaleObsAddon(c client.Client, namespace string, isForce bool) error {
-	found := &obsv1beta1.ObservabilityAddon{}
-	err := c.Get(context.TODO(), types.NamespacedName{Name: obsAddonName, Namespace: namespace}, found)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			return nil
-		}
-		log.Error(err, "Failed to check observabilityaddon cr before delete stale ones", "namespace", namespace)
-		return err
-	}
-	if found.GetDeletionTimestamp() == nil && !isForce {
-		log.Info("observabilityaddon is not in Terminating status, skip", "namespace", namespace)
-		return nil
-	}
-	err = deleteFinalizer(c, found)
-	if err != nil {
-		return err
-	}
-	obsaddon := &obsv1beta1.ObservabilityAddon{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      obsAddonName,
-			Namespace: namespace,
-		},
-	}
-	err = c.Delete(context.TODO(), obsaddon)
-	if err != nil && !errors.IsNotFound(err) {
-		log.Error(err, "Failed to delete observabilityaddon", "namespace", namespace)
-		return err
-	}
-	log.Info("observabilityaddon is deleted thoroughly", "namespace", namespace)
-	return nil
-}
-
 func deleteFinalizer(c client.Client, obsaddon *obsv1beta1.ObservabilityAddon) error {
 	if slices.Contains(obsaddon.GetFinalizers(), obsAddonFinalizer) {
 		log.Info("Deleting observabilityaddon's finalizer", "namespace", obsaddon.Namespace)
