@@ -426,10 +426,6 @@ func createAllRelatedRes(
 				failedCreateManagedClusterRes = true
 				log.Error(err, "Failed to create managedcluster resources", "namespace", managedCluster)
 			}
-			if request.Namespace == managedCluster {
-				// Kept to avoid modifying processing, but why breaking??
-				break
-			}
 		}
 	}
 
