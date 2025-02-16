@@ -6,7 +6,7 @@ require (
 	github.com/IBM/controller-filtered-cache v0.3.6
 	github.com/cenkalti/backoff/v4 v4.3.0
 	github.com/cloudflare/cfssl v1.6.3
-	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32
+	github.com/ghodss/yaml v1.0.1-0.20220118164431-d8423dcdf344
 	github.com/go-co-op/gocron v1.37.0
 	github.com/go-kit/log v0.2.1
 	github.com/go-logr/logr v1.4.2
