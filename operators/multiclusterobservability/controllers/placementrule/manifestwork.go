@@ -29,6 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 
 	gocmp "github.com/google/go-cmp/cmp"
 	gocmpopts "github.com/google/go-cmp/cmp/cmpopts"
@@ -630,123 +631,96 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 
 // Delete resources created for hub metrics collection
 func DeleteHubMetricsCollectionDeployments(ctx context.Context, c client.Client) error {
-	if err := DeleteHubMetricsCollectorResourcesForMCOA(ctx, c); err != nil {
+	if err := DeleteHubMetricsCollectorResourcesNotNeededForMCOA(ctx, c); err != nil {
 		return fmt.Errorf("failed to delete MCOA resources: %w", err)
 	}
 
-	// Delete secrets
-	secrets := []string{
-		operatorconfig.HubMetricsCollectorMtlsCert,
-		managedClusterObsCertName,
-		config.AlertmanagerAccessorSecretName,
-	}
-	if err := deleteSecrets(ctx, c, secrets); err != nil {
-		return err
+	toDelete := []client.Object{
+		&corev1.Secret{ObjectMeta: metav1.ObjectMeta{ // cert and key for mTLS connection with hub observability api
+			Name:      operatorconfig.HubMetricsCollectorMtlsCert,
+			Namespace: config.GetDefaultNamespace(),
+		}},
+		&corev1.Secret{ObjectMeta: metav1.ObjectMeta{ // hub observability api CA cert
+			Name:      managedClusterObsCertName,
+			Namespace: config.GetDefaultNamespace(),
+		}},
+		&corev1.Secret{ObjectMeta: metav1.ObjectMeta{ // token for sending alerts to hub alertmanager from in-cluster prometheus
+			Name:      config.AlertmanagerAccessorSecretName,
+			Namespace: config.GetDefaultNamespace(),
+		}},
+		&corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{ // images list configmap
+			Name:      operatorconfig.ImageConfigMap,
+			Namespace: config.GetDefaultNamespace(),
+		}},
 	}
 
-	// Delete configmaps
-	configmaps := []string{operatorconfig.ImageConfigMap}
-	if err := deleteConfigMaps(ctx, c, configmaps); err != nil {
-		return err
+	for _, obj := range toDelete {
+		if err := deleteObject(ctx, c, obj); err != nil {
+			return err
+		}
 	}
 
 	return nil
 }
 
-// DeleteHubMetricsCollectorResourcesForMCOA deletes hub resources for the metrics collector but keeps the ones
+// DeleteHubMetricsCollectorResourcesNotNeededForMCOA deletes hub resources for the metrics collector but keeps the ones
 // common to MCOA and the metrics collector.
-func DeleteHubMetricsCollectorResourcesForMCOA(ctx context.Context, c client.Client) error {
-	// Delete hub endpoint operator
-	log.Info("Deleting resources for hub metrics collection")
-	err := c.Delete(ctx, &appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
+func DeleteHubMetricsCollectorResourcesNotNeededForMCOA(ctx context.Context, c client.Client) error {
+	toDelete := []client.Object{
+		&appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{ // hub endpoint operator
 			Name:      config.HubEndpointOperatorName,
 			Namespace: config.GetDefaultNamespace(),
-		},
-	})
-	if err != nil && !k8serrors.IsNotFound(err) {
-		log.Error(err, "Failed to delete hub endpoint operator")
-		return err
+		}},
+		&appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{ // uwl metrics collector
+			Name:      config.HubUwlMetricsCollectorName,
+			Namespace: config.GetDefaultNamespace(),
+		}},
+		&appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{ // platform metrics collector
+			Name:      config.HubMetricsCollectorName,
+			Namespace: config.GetDefaultNamespace(),
+		}},
+		&corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{ // CA cert for service-serving certificates
+			Name:      operatorconfig.CaConfigmapName,
+			Namespace: config.GetDefaultNamespace(),
+		}},
+		&corev1.Secret{ObjectMeta: metav1.ObjectMeta{ // hub info secret
+			Name:      operatorconfig.HubInfoSecretName,
+			Namespace: config.GetDefaultNamespace(),
+		}},
+		&rbacv1.ClusterRoleBinding{ObjectMeta: metav1.ObjectMeta{ // metrics-collector-view role
+			Name: clusterRoleBindingName,
+		}},
 	}
 
-	for _, name := range []string{config.HubUwlMetricsCollectorName, config.HubMetricsCollectorName} {
-		err := c.Delete(ctx, &appsv1.Deployment{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      name,
-				Namespace: config.GetDefaultNamespace(),
-			},
-		})
-		if err != nil && !k8serrors.IsNotFound(err) {
-			log.Error(err, "Failed to delete hub metrics-collector deployment")
+	for _, obj := range toDelete {
+		if err := deleteObject(ctx, c, obj); err != nil {
 			return err
-
 		}
 	}
 
-	// Delete configmaps
-	configmaps := []string{operatorconfig.CaConfigmapName}
-	if err := deleteConfigMaps(ctx, c, configmaps); err != nil {
-		return err
-	}
-
-	// Delete secrets
-	secrets := []string{operatorconfig.HubInfoSecretName}
-	if err := deleteSecrets(ctx, c, secrets); err != nil {
-		return err
-	}
-
-	err = DeleteHubMonitoringClusterRoleBinding(context.TODO(), c)
+	err := RevertHubClusterMonitoringConfig(ctx, c)
 	if err != nil {
-		log.Error(err, "Failed to delete monitoring cluster role binding for hub metrics collection")
-		return err
-	}
-
-	err = RevertHubClusterMonitoringConfig(context.TODO(), c)
-	if err != nil {
-		log.Error(err, "Failed to revert cluster monitoring config")
-		return err
+		return fmt.Errorf("failed to revert cluster monitoring config: %w", err)
 	}
 
 	return nil
 }
 
-func deleteSecrets(ctx context.Context, c client.Client, names []string) error {
-	namespace := config.GetDefaultNamespace()
-
-	for _, name := range names {
-		secret := &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      name,
-				Namespace: namespace,
-			},
-		}
-
-		if err := c.Delete(ctx, secret); err != nil {
-			if !k8serrors.IsNotFound(err) {
-				return fmt.Errorf("failed to delete secret %s/%s: %w", namespace, name, err)
-			}
-		}
+func deleteObject[T client.Object](ctx context.Context, c client.Client, obj T) error {
+	gvk, err := apiutil.GVKForObject(obj, c.Scheme())
+	if err != nil {
+		return fmt.Errorf("could not determine GVK for object: %w", err)
 	}
-	return nil
-}
 
-func deleteConfigMaps(ctx context.Context, c client.Client, names []string) error {
-	namespace := config.GetDefaultNamespace()
-
-	for _, name := range names {
-		cm := &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      name,
-				Namespace: namespace,
-			},
+	if err := c.Delete(ctx, obj); err != nil {
+		if k8serrors.IsNotFound(err) {
+			return nil
 		}
 
-		if err := c.Delete(ctx, cm); err != nil {
-			if !k8serrors.IsNotFound(err) {
-				return fmt.Errorf("failed to delete configmap %s/%s: %w", namespace, name, err)
-			}
-		}
+		return fmt.Errorf("failed to delete object %s %s/%s: %w", gvk.Kind, obj.GetNamespace(), obj.GetName(), err)
 	}
+
+	log.Info("Deleted object", "gvk", gvk.String(), "namespace", obj.GetNamespace(), "name", obj.GetName())
 	return nil
 }
 
