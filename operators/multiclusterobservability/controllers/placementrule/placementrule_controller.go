@@ -104,7 +104,6 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		if k8serrors.IsNotFound(err) {
 			mcoIsNotFound = true
 		} else {
-			// Error reading the object - requeue the request.
 			return ctrl.Result{}, fmt.Errorf("failed to get MCO CR: %w", err)
 		}
 	}
@@ -126,22 +125,11 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		reqLogger.Info("Failed to update status: %s", err.Error())
 	}
 
-	opts := &client.ListOptions{
-		LabelSelector: labels.SelectorFromSet(map[string]string{ownerLabelKey: ownerLabelValue}),
-	}
-	if req.Namespace != "" && req.Namespace != config.GetDefaultNamespace() {
-		opts.Namespace = req.Namespace
-	}
-
-	obsAddonList := &mcov1beta1.ObservabilityAddonList{}
-	if err := r.Client.List(ctx, obsAddonList, opts); err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to list observabilityaddon resource: %w", err)
-	}
-
 	// When MCOA is enabled, additionnally clean the hub resources as they are deployed wihtout the addon resource,
 	// and thus are not removed by the cleanResources function.
 	if mcoaForMetricsIsEnabled(mco) {
-		if err := DeleteHubMetricsCollectorResourcesForMCOA(ctx, r.Client); err != nil {
+		reqLogger.Info("Deleting hub resources not needed for MCOA")
+		if err := DeleteHubMetricsCollectorResourcesNotNeededForMCOA(ctx, r.Client); err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to delete hub metrics collection resources: %w", err)
 		}
 	}
@@ -149,7 +137,7 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	// Clean spokes addon resources (except the hub collector) if metrics are disabled.
 	metricsAreDisabled := mco.Spec.ObservabilityAddonSpec != nil && !mco.Spec.ObservabilityAddonSpec.EnableMetrics
 	if mcoIsNotFound || metricsAreDisabled || mcoaForMetricsIsEnabled(mco) {
-		reqLogger.Info("Cleaning all resources", "mcoIsNotFound", mcoIsNotFound, "metricsAreDisabled",
+		reqLogger.Info("Cleaning all spokes resources", "mcoIsNotFound", mcoIsNotFound, "metricsAreDisabled",
 			metricsAreDisabled, "mcoaIsEnabled", mcoaForMetricsIsEnabled(mco))
 		if err := r.cleanSpokesAddonResources(ctx); err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to clean all resources: %w", err)
@@ -158,6 +146,18 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		// Don't return right away from here because the above cleanup is not complete and it requires
 		// call to cleanOrphanResources for manifest works.
 	} else {
+		reqLogger.Info("Creating all addon resources")
+		opts := &client.ListOptions{
+			LabelSelector: labels.SelectorFromSet(map[string]string{ownerLabelKey: ownerLabelValue}),
+		}
+		if req.Namespace != "" && req.Namespace != config.GetDefaultNamespace() {
+			opts.Namespace = req.Namespace
+		}
+		obsAddonList := &mcov1beta1.ObservabilityAddonList{}
+		if err := r.Client.List(ctx, obsAddonList, opts); err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to list observabilityaddon resource: %w", err)
+		}
+
 		if err := createAllRelatedRes(
 			ctx,
 			r.Client,
