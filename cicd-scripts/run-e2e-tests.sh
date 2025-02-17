@@ -3,9 +3,7 @@
 # Copyright (c) 2021 Red Hat, Inc.
 # Copyright Contributors to the Open Cluster Management project
 
-#set -exo pipefail
-
-set -x
+set -exo pipefail
 
 ROOTDIR="$(
   cd "$(dirname "$0")/.."
