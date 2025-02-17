@@ -11,7 +11,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"reflect"
 	"strconv"
 	"strings"
 
@@ -28,8 +27,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	gocmp "github.com/google/go-cmp/cmp"
 	gocmpopts "github.com/google/go-cmp/cmp/cmpopts"
@@ -455,7 +456,7 @@ func createManifestWorks(
 		// ACM 8509: Special case for hub/local cluster metrics collection
 		// install the endpoint operator into open-cluster-management-observability namespace for the hub cluster
 		log.Info("Creating resource for hub metrics collection", "cluster", clusterName)
-		err = createUpdateResourcesForHubMetricsCollection(c, manifests)
+		err = ensureResourcesForHubMetricsCollection(c, manifests)
 	} else {
 		retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 			return createManifestwork(c, work)
@@ -468,165 +469,122 @@ func createManifestWorks(
 	return err
 }
 
-func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []workv1.Manifest) error {
-	// Make a deep copy of all the manifests since there are some global resources that can be updated due to this function
-	log.Info("Check Ismcoterminating", "IsMCOTerminating", operatorconfig.IsMCOTerminating)
+func ensureResourcesForHubMetricsCollection(c client.Client, manifests []workv1.Manifest) error {
 	if operatorconfig.IsMCOTerminating {
 		log.Info("MCO Operator is terminating, skip creating resources for hub metrics collection")
 		return nil
 	}
-	updateMtlsCert := false
-	hubManifestCopy = make([]workv1.Manifest, len(manifests))
-	for i, manifest := range manifests {
-		obj := manifest.RawExtension.Object.DeepCopyObject()
-		hubManifestCopy[i] = workv1.Manifest{RawExtension: runtime.RawExtension{Object: obj}}
-	}
 
-	for _, manifest := range hubManifestCopy {
-		obj := manifest.RawExtension.Object.(client.Object)
-
-		gvk := obj.GetObjectKind().GroupVersionKind()
-		switch gvk.Kind {
-		case "Namespace", "ObservabilityAddon":
-			// ACM 8509: Special case for hub/local cluster metrics collection
-			// We don't need to create these resources for hub metrics collection
-			continue
-		case "ClusterRole", "ClusterRoleBinding", "CustomResourceDefinition":
-			// No namespace needed for these kinds
-		default:
-			// ACM 8509: Special case for hub/local cluster metrics collection
-			// Set the default namespace for all the resources to open-cluster-management-observability
-			obj.SetNamespace(config.GetDefaultNamespace())
-		}
-
-		if gvk.Kind == "ClusterRoleBinding" {
-			role := obj.(*rbacv1.ClusterRoleBinding)
-			if len(role.Subjects) > 0 {
-				role.Subjects[0].Namespace = config.GetDefaultNamespace()
-			}
-		}
-	}
-
-	for _, manifest := range hubManifestCopy {
-		var currentObj client.Object
-		obj := manifest.RawExtension.Object.(client.Object)
-
-		switch obj.GetObjectKind().GroupVersionKind().Kind {
-		case "Deployment":
-			currentObj = &appsv1.Deployment{}
-		case "Secret":
-			currentObj = &corev1.Secret{}
-		case "ConfigMap":
-			currentObj = &corev1.ConfigMap{}
-		case "ServiceAccount":
-			currentObj = &corev1.ServiceAccount{}
-		case "ClusterRole":
-			currentObj = &rbacv1.ClusterRole{}
-		case "ClusterRoleBinding":
-			currentObj = &rbacv1.ClusterRoleBinding{}
-		default:
+	// Make a deep copy of all the manifests since there are some global resources that can be updated due to this function
+	objectToDeploy := make([]client.Object, 0, len(manifests))
+	keepListKind := []string{"Deployment", "Secret", "ConfigMap", "ServiceAccount", "ClusterRole", "ClusterRoleBinding"}
+	for _, manifest := range manifests {
+		obj, ok := manifest.RawExtension.Object.DeepCopyObject().(client.Object)
+		if !ok {
+			log.Info("failed casting manaifest object as client.Object", "kind", manifest.Object.GetObjectKind())
 			continue
 		}
-		err := c.Get(context.TODO(), client.ObjectKey{
-			Namespace: obj.GetNamespace(),
-			Name:      obj.GetName(),
-		}, currentObj)
 
-		if err != nil && !k8serrors.IsNotFound(err) {
-			log.Error(err, "Failed to fetch resource", "kind", obj.GetObjectKind().GroupVersionKind().Kind)
-			return err
+		kind := obj.GetObjectKind().GroupVersionKind().Kind
+		if !slices.Contains(keepListKind, kind) {
+			continue
 		}
 
-		if k8serrors.IsNotFound(err) {
-			if obj.GetName() == operatorconfig.ClientCACertificateCN {
-				updateMtlsCert = true
-			}
-			err = c.Create(context.TODO(), obj)
-			if err != nil {
-				log.Error(err, "Failed to create resource", "kind", obj.GetObjectKind().GroupVersionKind().Kind)
-				return err
-			}
-		} else {
-			needsUpdate := false
-			switch obj := obj.(type) {
-			case *appsv1.Deployment:
-				currentDeployment := currentObj.(*appsv1.Deployment)
-				if !reflect.DeepEqual(obj.Spec, currentDeployment.Spec) {
-					needsUpdate = true
-				}
-			case *corev1.Secret:
-				currentSecret := currentObj.(*corev1.Secret)
-				if !reflect.DeepEqual(obj.Data, currentSecret.Data) {
-					needsUpdate = true
-				}
-			case *corev1.ConfigMap:
-				if obj.Name == operatorconfig.AllowlistConfigMapName || obj.Name == operatorconfig.AllowlistCustomConfigMapName {
-					// Skip the allowlist configmap as it is being watched by placementrule
-					continue
-				}
-				currentConfigMap := currentObj.(*corev1.ConfigMap)
-				if !reflect.DeepEqual(obj.Data, currentConfigMap.Data) {
-					needsUpdate = true
-				}
-			case *rbacv1.ClusterRole:
-				currentClusterRole := currentObj.(*rbacv1.ClusterRole)
-				if !reflect.DeepEqual(obj.Rules, currentClusterRole.Rules) {
-					needsUpdate = true
-				}
-			case *rbacv1.ClusterRoleBinding:
-				currentClusterRoleBinding := currentObj.(*rbacv1.ClusterRoleBinding)
-				if !reflect.DeepEqual(obj.Subjects, currentClusterRoleBinding.Subjects) {
-					needsUpdate = true
-				}
-			case *corev1.ServiceAccount:
-				// https://issues.redhat.com/browse/ACM-10967
-				// Some of these ServiceAccounts will be read from static files so they will never contain
-				// the generated Secrets as part of their corev1.ServiceAccount.ImagePullSecrets field.
-				// This checks by way of slice length if this particular ServiceAccount can be one of those.
-				if len(obj.ImagePullSecrets) < len(currentObj.(*corev1.ServiceAccount).ImagePullSecrets) {
-					for _, imagePullSecret := range obj.ImagePullSecrets {
-						if !slices.Contains(currentObj.(*corev1.ServiceAccount).ImagePullSecrets, imagePullSecret) {
-							needsUpdate = true
-							break
-						}
-					}
-				} else {
-					sortObjRef := func(a, b corev1.ObjectReference) bool {
-						return a.Name < b.Name
-					}
+		// Ignore allow list configmaps as the hub ones are not reconciled by the placement controller
+		if kind == "ConfigMap" && (obj.GetName() == operatorconfig.AllowlistConfigMapName || obj.GetName() == operatorconfig.AllowlistCustomConfigMapName) {
+			continue
+		}
 
-					sortLocalObjRef := func(a, b corev1.LocalObjectReference) bool {
-						return a.Name < b.Name
-					}
+		setHubNamespace(obj)
+		objectToDeploy = append(objectToDeploy, obj)
+	}
 
-					cmpOptions := []gocmp.Option{gocmpopts.EquateEmpty(), gocmpopts.SortSlices(sortObjRef), gocmpopts.SortSlices(sortLocalObjRef)}
-
-					currentServiceAccount := currentObj.(*corev1.ServiceAccount)
-					if !gocmp.Equal(obj.ImagePullSecrets, currentServiceAccount.ImagePullSecrets, cmpOptions...) {
-						needsUpdate = true
-					}
-				}
+	var clientCAWasUpdated bool
+	for _, obj := range objectToDeploy {
+		res, err := ctrl.CreateOrUpdate(context.TODO(), c, obj, mutateHubResourceFn(obj.DeepCopyObject().(client.Object), obj))
+		if err != nil {
+			return fmt.Errorf("failed to create or update resource %s: %w", obj.GetName(), err)
+		}
+		if res != controllerutil.OperationResultNone {
+			log.Info("resource created or updated", "kind", obj.GetObjectKind().GroupVersionKind().Kind, "name", obj.GetName(), "action", res)
+			if obj.GetObjectKind().GroupVersionKind().Kind == "Secret" && obj.GetName() == operatorconfig.ClientCACertificateCN {
+				clientCAWasUpdated = true
 			}
 
-			if needsUpdate {
-				if obj.GetName() == operatorconfig.ClientCACertificateCN {
-					updateMtlsCert = true
-				}
-				err = c.Update(context.TODO(), obj)
-				if err != nil {
-					log.Error(err, "Failed to update resource", "kind", obj.GetObjectKind().GroupVersionKind().Kind)
-					return err
-				}
-			}
 		}
 	}
 
-	err := cert_controller.CreateUpdateMtlsCertSecretForHubCollector(c, updateMtlsCert)
+	err := cert_controller.CreateUpdateMtlsCertSecretForHubCollector(c, clientCAWasUpdated)
 	if err != nil {
 		log.Error(err, "Failed to create client cert secret for hub metrics collection")
 		return err
 	}
+
 	return nil
+}
+
+func setHubNamespace(obj client.Object) {
+	kind := obj.GetObjectKind().GroupVersionKind().Kind
+	if kind == "Namespace" || kind == "ObservabilityAddon" || kind == "ClusterRole" || kind == "CustomResourceDefinition" {
+		return
+	}
+
+	if role, ok := obj.(*rbacv1.ClusterRoleBinding); ok {
+		if len(role.Subjects) > 0 {
+			role.Subjects[0].Namespace = config.GetDefaultNamespace()
+		}
+		return
+	}
+
+	obj.SetNamespace(config.GetDefaultNamespace())
+}
+
+func mutateHubResourceFn(want, existing client.Object) controllerutil.MutateFn {
+	return func() error {
+		switch existingTyped := existing.(type) {
+		case *appsv1.Deployment:
+			existingTyped.Spec = want.(*appsv1.Deployment).Spec
+		case *corev1.Secret:
+			existingTyped.Data = want.(*corev1.Secret).Data
+		case *corev1.ConfigMap:
+			existingTyped.Data = want.(*corev1.ConfigMap).Data
+		case *rbacv1.ClusterRole:
+			existingTyped.Rules = want.(*rbacv1.ClusterRole).Rules
+		case *rbacv1.ClusterRoleBinding:
+			existingTyped.Subjects = want.(*rbacv1.ClusterRoleBinding).Subjects
+		case *corev1.ServiceAccount:
+			mutateServiceAccount(want.(*corev1.ServiceAccount), existingTyped)
+		}
+		return nil
+	}
+}
+
+func mutateServiceAccount(want, existing *corev1.ServiceAccount) {
+	// https://issues.redhat.com/browse/ACM-10967
+	// Some of these ServiceAccounts will be read from static files so they will never contain
+	// the generated Secrets as part of their corev1.ServiceAccount.ImagePullSecrets field.
+	// This checks by way of slice length if this particular ServiceAccount can be one of those.
+	if len(want.ImagePullSecrets) < len(existing.ImagePullSecrets) {
+		for _, imagePullSecret := range want.ImagePullSecrets {
+			if !slices.Contains(existing.ImagePullSecrets, imagePullSecret) {
+				existing.ImagePullSecrets = want.ImagePullSecrets
+				break
+			}
+		}
+	} else {
+		sortObjRef := func(a, b corev1.ObjectReference) bool {
+			return a.Name < b.Name
+		}
+
+		sortLocalObjRef := func(a, b corev1.LocalObjectReference) bool {
+			return a.Name < b.Name
+		}
+
+		cmpOptions := []gocmp.Option{gocmpopts.EquateEmpty(), gocmpopts.SortSlices(sortObjRef), gocmpopts.SortSlices(sortLocalObjRef)}
+		if !gocmp.Equal(want.ImagePullSecrets, existing.ImagePullSecrets, cmpOptions...) {
+			existing.ImagePullSecrets = want.ImagePullSecrets
+		}
+	}
 }
 
 // Delete resources created for hub metrics collection
