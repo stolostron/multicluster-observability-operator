@@ -6,8 +6,8 @@ package placementrule
 
 import (
 	"context"
-	"errors"
 	"fmt"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -26,6 +26,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/util/retry"
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
 	workv1 "open-cluster-management.io/api/work/v1"
@@ -56,7 +57,6 @@ const (
 
 var (
 	log                           = logf.Log.WithName("controller_placementrule")
-	isCRoleCreated                = false
 	clusterAddon                  = &addonv1alpha1.ClusterManagementAddOn{}
 	defaultAddonDeploymentConfig  = &addonv1alpha1.AddOnDeploymentConfig{}
 	isplacementControllerRunnning = false
@@ -336,14 +336,11 @@ func createAllRelatedRes(
 ) error {
 	var err error
 	// create the clusterrole if not there
-	if !isCRoleCreated {
-		if err := createClusterRole(ctx, c); err != nil {
-			return fmt.Errorf("failed to ensure cluster rule: %w", err)
-		}
-		if err := createResourceRole(ctx, c); err != nil {
-			return fmt.Errorf("failed to ensure resource role: %w", err)
-		}
-		isCRoleCreated = true
+	if err := createReadMCOClusterRole(ctx, c); err != nil {
+		return fmt.Errorf("failed to ensure cluster rule: %w", err)
+	}
+	if err := createResourceRole(ctx, c); err != nil {
+		return fmt.Errorf("failed to ensure resource role: %w", err)
 	}
 
 	// Get or create ClusterManagementAddon
@@ -364,7 +361,7 @@ func createAllRelatedRes(
 		return fmt.Errorf("failed to load templates: %w", err)
 	}
 
-	works, crdv1Work, crdv1beta1Work, err := generateGlobalManifestResources(ctx, c, mco)
+	works, crdv1Work, _, err := generateGlobalManifestResources(ctx, c, mco)
 	if err != nil {
 		return err
 	}
@@ -387,44 +384,51 @@ func createAllRelatedRes(
 		managedCluster := mci.Name
 		openshiftVersion := mci.OpenshiftVersion
 
-		if isReconcileRequired(request, managedCluster) {
-			log.Info(
-				"Monitoring operator should be installed in cluster",
-				"cluster_name",
-				managedCluster,
-				"request.name",
-				request.Name,
-				"request.namespace",
-				request.Namespace,
-				"openshiftVersion",
-				openshiftVersion,
-			)
-			if openshiftVersion == "3" {
-				err = createManagedClusterRes(c, mco,
-					managedCluster, managedCluster,
-					works, ocp311metricsAllowlistConfigMap, crdv1beta1Work, endpointMetricsOperatorDeploy, hubInfoSecret, false)
-			} else if openshiftVersion == nonOCP {
-				err = createManagedClusterRes(c, mco,
-					managedCluster, managedCluster,
-					works, metricsAllowlistConfigMap, crdv1Work, endpointMetricsOperatorDeploy, hubInfoSecret, true)
-			} else if openshiftVersion == "mimical" {
-				installProm := false
-				if mco.Annotations["test-env"] == "kind-test" {
-					installProm = true
-				}
-				// Create copy of hub-info-secret for local-cluster since hubInfo is global variable
-				hubInfoSecretCopy := hubInfoSecret.DeepCopy()
-				err = createManagedClusterRes(c, mco,
-					managedCluster, config.GetDefaultNamespace(),
-					works, metricsAllowlistConfigMap, crdv1Work, endpointMetricsOperatorDeploy, hubInfoSecretCopy, installProm)
-			} else {
-				err = createManagedClusterRes(c, mco,
-					managedCluster, managedCluster,
-					works, metricsAllowlistConfigMap, crdv1Work, endpointMetricsOperatorDeploy, hubInfoSecret, false)
+		if !isReconcileRequired(request, managedCluster) {
+			continue
+		}
+
+		log.Info("Reconciling managed cluster resources", "cluster_name", managedCluster, "request.name", request.Name,
+			"request.namespace", request.Namespace, "openshiftVersion", openshiftVersion)
+		var installProm bool
+		namespace := managedCluster
+		switch openshiftVersion {
+		case nonOCP:
+			installProm = true
+		case "mimical":
+			if mco.Annotations["test-env"] == "kind-test" {
+				installProm = true
 			}
-			if err != nil {
-				failedCreateManagedClusterRes = true
-				log.Error(err, "Failed to create managedcluster resources", "namespace", managedCluster)
+			namespace = config.GetDefaultNamespace()
+		}
+
+		addonDeployCfg, err := createManagedClusterRes(c, mco, managedCluster, namespace)
+		if err != nil {
+			failedCreateManagedClusterRes = true
+			log.Error(err, "Failed to create managedcluster resources", "namespace", managedCluster)
+			continue
+		}
+		manifestWork, err := createManifestWorks(c, namespace, managedCluster, mco, works, metricsAllowlistConfigMap, crdv1Work, endpointMetricsOperatorDeploy, hubInfoSecret.DeepCopy(), addonDeployCfg, installProm)
+		if err != nil {
+			log.Error(err, "Failed to create manifestworks: %w", err)
+			continue
+		}
+
+		if managedCluster != namespace && os.Getenv("UNIT_TEST") != "true" {
+			// ACM 8509: Special case for hub/local cluster metrics collection
+			// install the endpoint operator into open-cluster-management-observability namespace for the hub cluster
+			log.Info("Creating resource for hub metrics collection", "cluster", managedCluster)
+			if err := ensureResourcesForHubMetricsCollection(c, manifestWork.Spec.Workload.Manifests); err != nil {
+				log.Error(err, "Failed to ensure resources for hub metrics collection")
+				continue
+			}
+		} else {
+			retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+				return createManifestwork(c, manifestWork)
+			})
+			if retryErr != nil {
+				log.Error(retryErr, "Failed to create manifestwork")
+				continue
 			}
 		}
 	}
@@ -435,24 +439,21 @@ func createAllRelatedRes(
 	for _, mc := range managedClusterList {
 		managedClustersNamespaces[mc.Name] = struct{}{}
 	}
-	clustersToCleanup := []string{}
-	for _, ep := range obsAddonList.Items {
-		if _, ok := managedClustersNamespaces[ep.Namespace]; !ok {
-			clustersToCleanup = append(clustersToCleanup, ep.Namespace)
-		}
-	}
 
 	failedDeleteOba := false
-	for _, cluster := range clustersToCleanup {
-		err = deleteObsAddon(ctx, c, cluster)
-		if err != nil {
+	for _, ep := range obsAddonList.Items {
+		if _, ok := managedClustersNamespaces[ep.Namespace]; ok {
+			continue
+		}
+
+		if err := deleteObsAddon(ctx, c, ep.Namespace); err != nil {
 			failedDeleteOba = true
-			log.Error(err, "Failed to delete observabilityaddon", "namespace", cluster)
+			log.Error(err, "Failed to delete observabilityaddon", "namespace", ep.Namespace)
 		}
 	}
 
 	if failedCreateManagedClusterRes || failedDeleteOba {
-		return errors.New("failed to create managedcluster resources or failed to delete observabilityaddon, skip and reconcile later")
+		return fmt.Errorf("failed to create managedcluster resources or failed to delete observabilityaddon: failedCreateManagedClusterRes=%t, failedDeleteOba=%t", failedCreateManagedClusterRes, failedDeleteOba)
 	}
 
 	return nil
@@ -517,7 +518,6 @@ func deleteGlobalResource(c client.Client) error {
 	if err != nil {
 		return err
 	}
-	isCRoleCreated = false
 	// delete ClusterManagementAddon
 	err = util.DeleteClusterManagementAddon(c)
 	if err != nil {
@@ -526,34 +526,20 @@ func deleteGlobalResource(c client.Client) error {
 	return nil
 }
 
-func createManagedClusterRes(
-	c client.Client,
-	mco *mcov1beta2.MultiClusterObservability,
-	name string,
-	namespace string,
-	works []workv1.Manifest,
-	allowlist *corev1.ConfigMap,
-	crdWork *workv1.Manifest,
-	dep *appsv1.Deployment,
-	hubInfo *corev1.Secret,
-	installProm bool,
-) error {
-	err := createObsAddon(mco, c, namespace)
-	if err != nil {
-		log.Error(err, "Failed to create observabilityaddon")
-		return err
+func createManagedClusterRes(c client.Client, mco *mcov1beta2.MultiClusterObservability, name string, namespace string) (*addonv1alpha1.AddOnDeploymentConfig, error) {
+	if err := createObsAddon(mco, c, namespace); err != nil {
+		return nil, fmt.Errorf("failed to create observabilityaddon: %w", err)
 	}
 
-	err = createRolebindings(c, namespace, name)
-	if err != nil {
-		return err
+	if err := createRolebindings(c, namespace, name); err != nil {
+		return nil, fmt.Errorf("failed to create role bindings: %w", err)
 	}
 
 	addon, err := util.CreateManagedClusterAddonCR(c, namespace, ownerLabelKey, ownerLabelValue)
 	if err != nil {
-		log.Error(err, "Failed to create ManagedClusterAddon")
-		return err
+		return nil, fmt.Errorf("failed to create ManagedClusterAddon: %w", err)
 	}
+
 	addonConfig := &addonv1alpha1.AddOnDeploymentConfig{}
 	isCustomConfig := false
 	for _, config := range addon.Spec.Configs {
@@ -567,7 +553,7 @@ func createManagedClusterRes(
 				addonConfig,
 			)
 			if err != nil {
-				return err
+				return nil, err
 			}
 			isCustomConfig = true
 			log.Info("There is AddonDeploymentConfig for current addon", "namespace", namespace)
@@ -578,12 +564,7 @@ func createManagedClusterRes(
 		addonConfig = defaultAddonDeploymentConfig
 	}
 
-	if err = createManifestWorks(c, namespace, name, mco, works, allowlist, crdWork, dep, hubInfo, addonConfig, installProm); err != nil {
-		log.Error(err, "Failed to create manifestwork")
-		return err
-	}
-
-	return nil
+	return addonConfig, nil
 }
 
 func deleteManagedClusterRes(c client.Client, namespace string) error {

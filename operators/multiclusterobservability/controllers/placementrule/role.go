@@ -29,7 +29,8 @@ const (
 	epStatusRsName     = "observabilityaddons/status"
 )
 
-func createClusterRole(ctx context.Context, c client.Client) error {
+// createReadMCOClusterRole creates a role with read permissions on the MCO resource
+func createReadMCOClusterRole(ctx context.Context, c client.Client) error {
 	role := &rbacv1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: mcoRoleName,
@@ -80,7 +81,7 @@ func createClusterRole(ctx context.Context, c client.Client) error {
 	return nil
 }
 
-func createClusterRoleBinding(c client.Client, namespace string, name string) error {
+func createReadMCOClusterRoleBinding(c client.Client, namespace string, name string) error {
 	rb := &rbacv1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: namespace + "-" + mcoRoleBindingName,
@@ -128,11 +129,6 @@ func createClusterRoleBinding(c client.Client, namespace string, name string) er
 		return nil
 	}
 
-	log.Info(
-		"clusterrolebinding endpoint-observability-mco-rolebinding already existed/unchanged",
-		"namespace",
-		namespace,
-	)
 	return nil
 }
 
@@ -364,7 +360,7 @@ func deleteRolebindings(c client.Client, namespace string) error {
 }
 
 func createRolebindings(c client.Client, namespace string, name string) error {
-	err := createClusterRoleBinding(c, namespace, name)
+	err := createReadMCOClusterRoleBinding(c, namespace, name)
 	if err != nil {
 		return err
 	}
