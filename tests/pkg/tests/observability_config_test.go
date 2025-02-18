@@ -348,6 +348,56 @@ var _ = Describe("Observability:", func() {
 		}
 	})
 
+	It("RHACM4K-43019 - Observability - Verify overwrite Thanos components CLI args in MCO CR - [P2][Sev2][Observability][Integration]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release (config/g0)", func() {
+		mcoRes, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).
+			Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+		if err != nil {
+			panic(err.Error())
+		}
+
+		spec := mcoRes.Object["spec"].(map[string]interface{})
+		if _, adv := spec["advanced"]; !adv {
+			Skip("Skip the case since the MCO CR did not have advanced spec configured")
+		}
+
+		advancedSpec := mcoRes.Object["spec"].(map[string]interface{})["advanced"].(map[string]interface{})
+		// chnage log level in receive to info
+		advancedSpec["receive"].(map[string]interface{})["args"] = []string{"--log.level=info"}
+		// apply it
+		_, err = dynClient.Resource(utils.NewMCOGVRV1BETA2()).
+			Update(context.TODO(), mcoRes, metav1.UpdateOptions{})
+		Expect(err).NotTo(HaveOccurred())
+
+		// check the args in receive and query frontend
+		Eventually(func() bool {
+			sts, err := utils.GetStatefulSetWithLabel(testOptions, true, THANOS_RECEIVE_LABEL, MCO_NAMESPACE)
+			Expect(err).NotTo(HaveOccurred())
+			for _, stsInfo := range (*sts).Items {
+				args := stsInfo.Spec.Template.Spec.Containers[0].Args
+				for _, arg := range args {
+					if arg == "--log.level=info" {
+						return true
+					}
+				}
+			}
+			return false
+		}).Should(BeTrue())
+
+		Eventually(func() bool {
+			deploys, err := utils.GetDeploymentWithLabel(testOptions, true, THANOS_QUERY_FRONTEND_LABEL, MCO_NAMESPACE)
+			Expect(err).NotTo(HaveOccurred())
+			for _, deployInfo := range (*deploys).Items {
+				args := deployInfo.Spec.Template.Spec.Containers[0].Args
+				for _, arg := range args {
+					if arg == "--log.level=debug" {
+						return true
+					}
+				}
+			}
+			return false
+		}).Should(BeTrue())
+	})
+
 	JustAfterEach(func() {
 		Expect(utils.IntegrityChecking(testOptions)).NotTo(HaveOccurred())
 	})
