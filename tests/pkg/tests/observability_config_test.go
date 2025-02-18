@@ -384,7 +384,7 @@ var _ = Describe("Observability:", func() {
 		}).Should(BeTrue())
 
 		Eventually(func() bool {
-			deploys, err := utils.GetDeploymentWithLabel(testOptions, true, THANOS_QUERY_FRONTEND_LABEL, MCO_NAMESPACE)
+			deploys, err := utils.GetDeploymentWithLabel(testOptions, true, THANOS_RULE_LABEL, MCO_NAMESPACE)
 			Expect(err).NotTo(HaveOccurred())
 			for _, deployInfo := range (*deploys).Items {
 				args := deployInfo.Spec.Template.Spec.Containers[0].Args
