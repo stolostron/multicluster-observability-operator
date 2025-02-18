@@ -10,13 +10,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
 
 	"golang.org/x/exp/slices"
 	rbacv1 "k8s.io/api/rbac/v1"
-	"k8s.io/client-go/util/retry"
 
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
@@ -286,14 +284,14 @@ func createManifestWorks(
 	hubInfo *corev1.Secret,
 	addonConfig *addonv1alpha1.AddOnDeploymentConfig,
 	installProm bool,
-) error {
+) (*workv1.ManifestWork, error) {
 	work := newManifestwork(clusterNamespace+workNameSuffix, clusterNamespace)
 
 	manifests := work.Spec.Workload.Manifests
 	// inject observabilityAddon
 	obaddon, err := getObservabilityAddon(c, clusterNamespace, mco)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if obaddon != nil {
 		manifests = injectIntoWork(manifests, obaddon)
@@ -452,21 +450,7 @@ func createManifestWorks(
 
 	work.Spec.Workload.Manifests = manifests
 
-	if clusterName != clusterNamespace && os.Getenv("UNIT_TEST") != "true" {
-		// ACM 8509: Special case for hub/local cluster metrics collection
-		// install the endpoint operator into open-cluster-management-observability namespace for the hub cluster
-		log.Info("Creating resource for hub metrics collection", "cluster", clusterName)
-		err = ensureResourcesForHubMetricsCollection(c, manifests)
-	} else {
-		retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-			return createManifestwork(c, work)
-		})
-		if retryErr != nil {
-			return fmt.Errorf("failed to create manifestwork: %w", retryErr)
-		}
-	}
-
-	return err
+	return work, nil
 }
 
 func ensureResourcesForHubMetricsCollection(c client.Client, manifests []workv1.Manifest) error {
