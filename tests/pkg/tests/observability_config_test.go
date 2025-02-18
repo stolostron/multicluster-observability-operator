@@ -356,13 +356,21 @@ var _ = Describe("Observability:", func() {
 		}
 
 		spec := mcoRes.Object["spec"].(map[string]interface{})
-		if _, adv := spec["advanced"]; !adv {
+		advancedSpec, ok := spec["advanced"].(map[string]interface{})
+		if !ok {
 			Skip("Skip the case since the MCO CR did not have advanced spec configured")
 		}
 
-		advancedSpec := mcoRes.Object["spec"].(map[string]interface{})["advanced"].(map[string]interface{})
-		// chnage log level in receive to info
-		advancedSpec["receive"].(map[string]interface{})["args"] = []string{"--log.level=info"}
+		if containers, ok := advancedSpec["receive"].(map[string]interface{})["containers"].([]interface{}); ok {
+			if args, ok := containers[0].(map[string]interface{})["args"].([]interface{}); ok {
+				for _, arg := range args {
+					if strings.HasPrefix(arg.(string), "--log.level=") {
+						arg = "--log.level=info"
+						break
+					}
+				}
+			}
+		}
 		// apply it
 		_, err = dynClient.Resource(utils.NewMCOGVRV1BETA2()).
 			Update(context.TODO(), mcoRes, metav1.UpdateOptions{})
