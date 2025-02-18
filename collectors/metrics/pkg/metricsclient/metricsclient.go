@@ -16,6 +16,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"sort"
@@ -23,7 +24,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cenkalti/backoff"
+	"github.com/cenkalti/backoff/v4"
 	"github.com/go-kit/log"
 	"github.com/gogo/protobuf/proto"
 	"github.com/golang/snappy"
@@ -510,12 +511,13 @@ func (c *Client) RemoteWrite(ctx context.Context, req *http.Request,
 		}
 		b.MaxElapsedTime = interval / time.Duration(halfInterval)
 		retryable := func() error {
-			return c.sendRequest(req.URL.String(), compressed)
+			return c.sendRequest(ctx, req.URL.String(), compressed)
 		}
 		notify := func(err error, t time.Duration) {
 			msg := fmt.Sprintf("error: %v happened at time: %v", err, t)
 			logger.Log(c.logger, logger.Warn, "msg", msg)
 		}
+
 		err = backoff.RetryNotify(retryable, b, notify)
 		if err != nil {
 			return err
@@ -525,43 +527,69 @@ func (c *Client) RemoteWrite(ctx context.Context, req *http.Request,
 	return nil
 }
 
-func (c *Client) sendRequest(serverURL string, body []byte) error {
+func (c *Client) sendRequest(ctx context.Context, serverURL string, body []byte) error {
 	req1, err := http.NewRequest(http.MethodPost, serverURL, bytes.NewBuffer(body))
 	if err != nil {
-		msg := "failed to create forwarding request"
-		logger.Log(c.logger, logger.Warn, "msg", msg, "err", err)
+		wrappedErr := fmt.Errorf("failed to create forwarding request: %w", err)
 		c.metrics.ForwardRemoteWriteRequests.WithLabelValues("0").Inc()
-		return errors.New(msg)
+		return backoff.Permanent(wrappedErr)
 	}
 
-	// req.Header.Add("THANOS-TENANT", tenantID)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
 	req1 = req1.WithContext(ctx)
 
 	resp, err := c.client.Do(req1)
 	if err != nil {
-		msg := "failed to forward request"
-		logger.Log(c.logger, logger.Warn, "msg", msg, "err", err)
 		c.metrics.ForwardRemoteWriteRequests.WithLabelValues("0").Inc()
-		return errors.New(msg)
+
+		wrappedErr := fmt.Errorf("failed to forward request: %w", err)
+		if isTransientError(err) {
+			return wrappedErr
+		}
+
+		return backoff.Permanent(wrappedErr)
 	}
 
 	c.metrics.ForwardRemoteWriteRequests.WithLabelValues(strconv.Itoa(resp.StatusCode)).Inc()
 
-	if resp.StatusCode/100 != 2 {
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		// surfacing upstreams error to our users too
+		defer resp.Body.Close()
 		bodyBytes, err := io.ReadAll(resp.Body)
 		if err != nil {
 			logger.Log(c.logger, logger.Warn, err)
 		}
-		bodyString := string(bodyBytes)
-		msg := fmt.Sprintf("response status code is %s, response body is %s", resp.Status, bodyString)
-		logger.Log(c.logger, logger.Warn, msg)
-		return errors.New(msg)
 
+		retErr := fmt.Errorf("response status code is %s, response body is %s", resp.Status, string(bodyBytes))
+
+		if isTransientResponseError(resp) {
+			return retErr
+		}
+
+		return backoff.Permanent(retErr)
 	}
+
 	return nil
+}
+
+func isTransientError(err error) bool {
+	if urlErr, ok := err.(*url.Error); ok {
+		return urlErr.Timeout()
+	}
+
+	return false
+}
+
+func isTransientResponseError(resp *http.Response) bool {
+	if resp.StatusCode >= 500 && resp.StatusCode != http.StatusNotImplemented {
+		return true
+	}
+
+	if resp.StatusCode == http.StatusTooManyRequests {
+		return true
+	}
+
+	return false
 }
