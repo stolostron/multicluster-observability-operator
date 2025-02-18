@@ -64,7 +64,6 @@ var (
 	imageListConfigMap            *corev1.ConfigMap
 
 	rawExtensionList []runtime.RawExtension
-	hubManifestCopy  []workv1.Manifest
 )
 
 func deleteManifestWork(c client.Client, name string, namespace string) error {
