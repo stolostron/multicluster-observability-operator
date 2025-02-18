@@ -207,7 +207,7 @@ func shouldUpdateManifestWork(desiredManifests []workv1.Manifest, foundManifests
 // endpoint-metrics-operator deploy and hubInfo Secret...
 // this function is expensive and should not be called for each reconcile loop.
 func generateGlobalManifestResources(ctx context.Context, c client.Client, mco *mcov1beta2.MultiClusterObservability) (
-	[]workv1.Manifest, *workv1.Manifest, *workv1.Manifest, error) {
+	[]workv1.Manifest, *workv1.Manifest, error) {
 
 	works := []workv1.Manifest{}
 
@@ -218,7 +218,7 @@ func generateGlobalManifestResources(ctx context.Context, c client.Client, mco *
 	if pullSecret == nil {
 		var err error
 		if pullSecret, err = generatePullSecret(c, config.GetImagePullSecret(mco.Spec)); err != nil {
-			return nil, nil, nil, err
+			return nil, nil, err
 		}
 	}
 
@@ -226,7 +226,7 @@ func generateGlobalManifestResources(ctx context.Context, c client.Client, mco *
 	if managedClusterObsCert == nil {
 		var err error
 		if managedClusterObsCert, err = generateObservabilityServerCACerts(ctx, c); err != nil {
-			return nil, nil, nil, fmt.Errorf("failed to generate observability server ca certs: %w", err)
+			return nil, nil, fmt.Errorf("failed to generate observability server ca certs: %w", err)
 		}
 	}
 	works = injectIntoWork(works, managedClusterObsCert)
@@ -235,7 +235,7 @@ func generateGlobalManifestResources(ctx context.Context, c client.Client, mco *
 	if metricsAllowlistConfigMap == nil || ocp311metricsAllowlistConfigMap == nil {
 		var err error
 		if metricsAllowlistConfigMap, ocp311metricsAllowlistConfigMap, err = generateMetricsListCM(c); err != nil {
-			return nil, nil, nil, fmt.Errorf("failed to generate metrics list configmap: %w", err)
+			return nil, nil, fmt.Errorf("failed to generate metrics list configmap: %w", err)
 		}
 	}
 
@@ -243,7 +243,7 @@ func generateGlobalManifestResources(ctx context.Context, c client.Client, mco *
 	if amAccessorTokenSecret == nil {
 		var err error
 		if amAccessorTokenSecret, err = generateAmAccessorTokenSecret(c); err != nil {
-			return nil, nil, nil, err
+			return nil, nil, err
 		}
 	}
 	works = injectIntoWork(works, amAccessorTokenSecret)
@@ -254,21 +254,18 @@ func generateGlobalManifestResources(ctx context.Context, c client.Client, mco *
 		rawExtensionList, obsAddonCRDv1, obsAddonCRDv1beta1,
 			endpointMetricsOperatorDeploy, imageListConfigMap, err = loadTemplates(mco)
 		if err != nil {
-			return nil, nil, nil, fmt.Errorf("failed to load templates: %w", err)
+			return nil, nil, fmt.Errorf("failed to load templates: %w", err)
 		}
 	}
 	// inject resouces in templates
 	crdv1Work := &workv1.Manifest{RawExtension: runtime.RawExtension{
 		Object: obsAddonCRDv1,
 	}}
-	crdv1beta1Work := &workv1.Manifest{RawExtension: runtime.RawExtension{
-		Object: obsAddonCRDv1beta1,
-	}}
 	for _, raw := range rawExtensionList {
 		works = append(works, workv1.Manifest{RawExtension: raw})
 	}
 
-	return works, crdv1Work, crdv1beta1Work, nil
+	return works, crdv1Work, nil
 }
 
 func createManifestWorks(

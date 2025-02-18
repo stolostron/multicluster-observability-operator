@@ -361,7 +361,7 @@ func createAllRelatedRes(
 		return fmt.Errorf("failed to load templates: %w", err)
 	}
 
-	works, crdv1Work, _, err := generateGlobalManifestResources(ctx, c, mco)
+	works, crdv1Work, err := generateGlobalManifestResources(ctx, c, mco)
 	if err != nil {
 		return err
 	}
