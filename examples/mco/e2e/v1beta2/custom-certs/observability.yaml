@@ -47,6 +47,9 @@ spec:
       replicas: 3
       serviceAccountAnnotations:
         test.com/role-arn: 's3_role'
+      containers:
+        args:
+          - "--log.level=debug"
     rule:
       resources:
         limits:
@@ -55,6 +58,9 @@ spec:
       replicas: 1
       serviceAccountAnnotations:
         test.com/role-arn: 's3_role'
+      containers:
+        args:
+          - "--log.level=debug"
     store:
       resources:
         limits:
