@@ -10004,6 +10004,22 @@ spec:
                         - open-cluster-management-
                         - default
                     properties:
+                      analytics:
+                        description: Analytics provides the configuration for the
+                          analytics features
+                        properties:
+                          incidentDetection:
+                            description: |-
+                              Incident detecion defines the configuration spec for the incident detection
+                              feature delivered via the cluster observability operator.
+                              If enabled, adds incidents UI to `Observe` section of OpenShift Console Platform
+                            properties:
+                              enabled:
+                                description: Enabled defines a flag to enable/disable
+                                  the incident detection.
+                                type: boolean
+                            type: object
+                        type: object
                       logs:
                         description: |-
                           Logs defines the configuration spec for collecting and storing logs from
