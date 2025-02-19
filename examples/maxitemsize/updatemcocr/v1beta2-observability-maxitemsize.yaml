@@ -39,6 +39,23 @@ spec:
           memory: 2Gi
       serviceAccountAnnotations:
         test.com/role-arn: 's3_role'
+      containers:
+        - name: thanos-compact
+          args:
+            - compact
+            - --wait
+            - --log.level=debug
+            - --log.format=logfmt
+            - --objstore.config=$(OBJSTORE_CONFIG)
+            - --data-dir=/var/thanos/compact
+            - --debug.accept-malformed-index
+            - --retention.resolution-raw=30d
+            - --retention.resolution-5m=180d
+            - --retention.resolution-1h=0d
+            - --delete-delay=48h
+            - --compact.concurrency=1
+            - --downsample.concurrency=1
+            - --deduplication.replica-label=replica
     receive:
       resources:
         limits:
@@ -55,6 +72,23 @@ spec:
       replicas: 3
       serviceAccountAnnotations:
         test.com/role-arn: 's3_role'
+      containers:
+        - name: thanos-rule
+          args:
+            - rule
+            - --log.level=debug
+            - --log.format=logfmt
+            - --grpc-address=0.0.0.0:10901
+            - --http-address=0.0.0.0:10902
+            - --objstore.config=$(OBJSTORE_CONFIG)
+            - --data-dir=/var/thanos/rule
+            - --label=rule_replica="$(NAME)"
+            - --alert.label-drop=rule_replica
+            - --tsdb.retention=24h
+            - --tsdb.block-duration=2h
+            - --query=dnssrv+_http._tcp.observability-thanos-query.open-cluster-management-observability.svc.cluster.local
+            - --alertmanagers.config-file=/etc/thanos/config/thanos-ruler-config/config.yaml
+            - --rule-file=/etc/thanos/rules/thanos-ruler-default-rules/default_rules.yaml
     store:
       resources:
         limits:
