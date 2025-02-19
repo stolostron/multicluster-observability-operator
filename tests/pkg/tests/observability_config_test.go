@@ -349,50 +349,37 @@ var _ = Describe("Observability:", func() {
 	})
 
 	It("RHACM4K-43019 - Observability - Verify overwrite Thanos components CLI args in MCO CR - [P2][Sev2][Observability][Integration]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release (config/g0)", func() {
-		By("Check the value is effect in the sts observability-thanos-rule")
+		By("Check the value is effect in the observability-thanos-compact and rule")
 		Eventually(func() bool {
-			deploys, err := utils.GetDeploymentWithLabel(testOptions, true, THANOS_RULE_LABEL, MCO_NAMESPACE)
-			Expect(err).NotTo(HaveOccurred())
-			for _, deployInfo := range (*deploys).Items {
-				args := deployInfo.Spec.Template.Spec.Containers[0].Args
-				for _, arg := range args {
-					if arg == "--log.level=debug" {
-						return true
+			for _, component := range []string{THANOS_COMPACT_LABEL, THANOS_RULE_LABEL} {
+				sts, err := utils.GetStatefulSetWithLabel(testOptions, true, component, MCO_NAMESPACE)
+				Expect(err).NotTo(HaveOccurred())
+				for _, stsInfo := range (*sts).Items {
+					args := stsInfo.Spec.Template.Spec.Containers[0].Args
+					for _, arg := range args {
+						if arg == "--log.level=debug" {
+							return true
+						}
 					}
 				}
 			}
 			return false
 		}).Should(BeTrue())
 
-		By("Check the value is effect in the observability-thanos-compact")
-		Eventually(func() bool {
-			sts, err := utils.GetStatefulSetWithLabel(testOptions, true, THANOS_COMPACT_LABEL, MCO_NAMESPACE)
-			Expect(err).NotTo(HaveOccurred())
-			for _, stsInfo := range (*sts).Items {
-				args := stsInfo.Spec.Template.Spec.Containers[0].Args
-				for _, arg := range args {
-					if arg == "--log.level=debug" {
-						return true
-					}
-				}
-			}
-			return false
-		}).Should(BeTrue())
-
-		// Modify the log level for compact in MCO CR
 		mcoRes, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).
 			Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
 		if err != nil {
 			panic(err.Error())
 		}
 
+		// Update the MCO CR to change the log level for thanos-compact
 		spec := mcoRes.Object["spec"].(map[string]interface{})
 		advancedSpec, _ := spec["advanced"].(map[string]interface{})
 		if containers, ok := advancedSpec["compact"].(map[string]interface{})["containers"].([]interface{}); ok {
 			if args, ok := containers[0].(map[string]interface{})["args"].([]interface{}); ok {
-				for _, arg := range args {
+				for i, arg := range args {
 					if strings.HasPrefix(arg.(string), "--log.level=") {
-						arg = "--log.level=info"
+						args[i] = "--log.level=info"
 						break
 					}
 				}
@@ -418,9 +405,9 @@ var _ = Describe("Observability:", func() {
 			return false
 		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*10).Should(BeTrue())
 
-		By("Check the value is effect in the observability-thanos-rule")
+		By("Check the value in observability-thanos-rule is not changed")
 		Eventually(func() bool {
-			deploys, err := utils.GetDeploymentWithLabel(testOptions, true, THANOS_RULE_LABEL, MCO_NAMESPACE)
+			deploys, err := utils.GetStatefulSetWithLabel(testOptions, true, THANOS_RULE_LABEL, MCO_NAMESPACE)
 			Expect(err).NotTo(HaveOccurred())
 			for _, deployInfo := range (*deploys).Items {
 				args := deployInfo.Spec.Template.Spec.Containers[0].Args
