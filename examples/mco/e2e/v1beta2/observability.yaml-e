@@ -3,6 +3,9 @@ kind: MultiClusterObservability
 metadata:
   name: observability
   annotations:
+    mco-imageTagSuffix: 2.13.0-SNAPSHOT-2025-02-19-04-22-08
+    mco-thanos-without-resources-requests: true
+    mco-imageTagSuffix: 2.13.0-SNAPSHOT-2025-02-19-04-22-08
 spec:
   advanced:
     retentionConfig:
@@ -103,8 +106,8 @@ spec:
     kubernetes.io/os: linux
   observabilityAddonSpec:
     scrapeSizeLimitBytes: 1073741824
-    enableMetrics: true
     workers: 1
+    enableMetrics: true
     interval: 30
     resources:
       limits:
@@ -119,8 +122,6 @@ spec:
     metricObjectStorage:
       key: thanos.yaml
       name: thanos-object-storage
-      tlsSecretMountPath: /etc/minio/certs
-      tlsSecretName: minio-tls-secret
     receiveStorageSize: 1Gi
     ruleStorageSize: 1Gi
     storageClass: gp2

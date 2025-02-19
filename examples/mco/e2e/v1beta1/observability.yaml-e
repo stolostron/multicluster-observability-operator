@@ -1,0 +1,23 @@
+apiVersion: observability.open-cluster-management.io/v1beta1
+kind: MultiClusterObservability
+metadata:
+  name: observability
+  annotations:
+    mco-thanos-without-resources-requests: true
+    mco-imageTagSuffix: 2.13.0-SNAPSHOT-2025-02-19-04-22-08
+    test-env: kind-test
+    mco-thanos-without-resources-requests: true
+    mco-imageTagSuffix: 2.13.0-SNAPSHOT-2025-02-19-04-22-08
+spec:
+  nodeSelector:
+    kubernetes.io/os: linux
+  observabilityAddonSpec: {}
+  retentionResolutionRaw: 5d
+  retentionResolution5m: 14d
+  retentionResolution1h: 30d
+  storageConfigObject:
+    metricObjectStorage:
+      key: thanos.yaml
+      name: thanos-object-storage
+    statefulSetSize: 1Gi
+    statefulSetStorageClass: gp2
