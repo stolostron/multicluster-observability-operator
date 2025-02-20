@@ -120,7 +120,7 @@ get_ginkgo_focus() {
   if [[ -n ${IS_KIND_ENV} ]]; then
     # For KinD cluster, do not need to run all test cases
     # and we skip those that explictly requires OCP
-    GINKGO_FOCUS=" --focus config/g0 --focus config/g1"
+    GINKGO_FOCUS=" --focus manifestwork/g --focus endpoint_preserve/g --focus grafana/g --focus metrics/g --focus addon/g --focus alert/g --focus dashboard/g --skip requires-ocp/g0"
   else
     GINKGO_FOCUS=""
   fi
