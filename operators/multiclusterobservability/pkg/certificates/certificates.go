@@ -12,6 +12,8 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"errors"
+	"fmt"
 	"math/big"
 	"net"
 	"time"
@@ -22,7 +24,7 @@ import (
 
 	"golang.org/x/exp/slices"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -95,7 +97,7 @@ func createCASecret(c client.Client,
 	caSecret := &corev1.Secret{}
 	err := c.Get(context.TODO(), types.NamespacedName{Namespace: config.GetDefaultNamespace(), Name: name}, caSecret)
 	if err != nil {
-		if !errors.IsNotFound(err) {
+		if !apierrors.IsNotFound(err) {
 			log.Error(err, "Failed to check ca secret", "name", name)
 			return err, false
 		} else {
@@ -213,7 +215,7 @@ func createCertSecret(c client.Client,
 	crtSecret := &corev1.Secret{}
 	err := c.Get(context.TODO(), types.NamespacedName{Namespace: config.GetDefaultNamespace(), Name: name}, crtSecret)
 	if err != nil {
-		if !errors.IsNotFound(err) {
+		if !apierrors.IsNotFound(err) {
 			log.Error(err, "Failed to check certificate secret", "name", name)
 			return err
 		} else {
@@ -486,8 +488,11 @@ func getHosts(c client.Client, ingressCtlCrdExists bool) ([]string, error) {
 	return hosts, nil
 }
 
-func CreateCSR() ([]byte, []byte) {
-	keys, _ := rsa.GenerateKey(rand.Reader, 2048)
+func GenerateKeyAndCSR() ([]byte, []byte, error) {
+	keys, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed generate private key: %w", err)
+	}
 
 	oidOrganization := []int{2, 5, 4, 11} // Object Identifier (OID) for Organization Unit
 	oidUser := []int{2, 5, 4, 3}          // Object Identifier (OID) for User
@@ -505,7 +510,10 @@ func CreateCSR() ([]byte, []byte) {
 		DNSNames:           []string{"observability-controller.addon.open-cluster-management.io"},
 		SignatureAlgorithm: x509.SHA512WithRSA,
 	}
-	csrCertificate, _ := x509.CreateCertificateRequest(rand.Reader, &csrTemplate, keys)
+	csrCertificate, err := x509.CreateCertificateRequest(rand.Reader, &csrTemplate, keys)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to create CSR: %w", err)
+	}
 	csr := pem.EncodeToMemory(&pem.Block{
 		Type: "CERTIFICATE REQUEST", Bytes: csrCertificate,
 	})
@@ -514,56 +522,200 @@ func CreateCSR() ([]byte, []byte) {
 		Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(keys),
 	})
 
-	return csr, privateKey
+	return csr, privateKey, nil
 }
 
-func CreateUpdateMtlsCertSecretForHubCollector(c client.Client, updateMtlsCert bool) error {
-	csrBytes, privateKeyBytes := CreateCSR()
+func CreateUpdateMtlsCertSecretForHubCollector(ctx context.Context, c client.Client) error {
+	hubMtlsSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      operatorconfig.HubMetricsCollectorMtlsCert,
+			Namespace: config.GetDefaultNamespace(),
+		},
+	}
+	updateReason := "None"
+	res, err := controllerutil.CreateOrUpdate(ctx, c, hubMtlsSecret, func() error {
+		renew := func() error {
+			if err := newMtlsCertSecretForHubCollector(hubMtlsSecret); err != nil {
+				return fmt.Errorf("failed to create hub mtls secret: %w", err)
+			}
+			return nil
+		}
+
+		// renew if the mTLS secret is empty
+		hubMtlsCert := hubMtlsSecret.Data["tls.crt"]
+		if len(hubMtlsCert) == 0 {
+			updateReason = "Empty hub mTLS cert"
+			return renew()
+		}
+
+		// renew if mTLS cert is not signed by current CA certificate
+		caRef := types.NamespacedName{Namespace: config.GetDefaultNamespace(), Name: config.ClientCACerts}
+		caSecret := &corev1.Secret{}
+		if err := c.Get(ctx, caRef, caSecret); err != nil {
+			return fmt.Errorf("failed to get CA secret: %w", err)
+		}
+
+		isSignedByCA, err := childCertIsSignedByCA(caSecret.Data["tls.crt"], hubMtlsCert)
+		if err != nil {
+			return fmt.Errorf("failed to check if the mtls cert is signed by the current CA: %w", err)
+		}
+		if !isSignedByCA {
+			updateReason = "mTLS cert is not signed by current CA"
+			return renew()
+		}
+
+		// renew if the mTLS certificate is approaching end of life
+		if mtlsCertShouldBeRenewed(hubMtlsSecret) {
+			updateReason = "mTLS cert should be renewed"
+			return renew()
+		}
+
+		// No change
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create or update HubMtlsSecret: %w", err)
+	}
+	if res != controllerutil.OperationResultNone {
+		log.Info("updated succesfully HubMtlsSecret", "name", hubMtlsSecret.Name, "updateReason", updateReason)
+	}
+
+	return nil
+}
+
+func newMtlsCertSecretForHubCollector(mtlsSecret *corev1.Secret) error {
+	csrBytes, privateKeyBytes, err := GenerateKeyAndCSR()
+	if err != nil {
+		return fmt.Errorf("failed to generate private key and CSR: %w", err)
+	}
+
 	csr := &certificatesv1.CertificateSigningRequest{
 		Spec: certificatesv1.CertificateSigningRequestSpec{
 			Request: csrBytes,
 			Usages:  []certificatesv1.KeyUsage{certificatesv1.UsageDigitalSignature, certificatesv1.UsageClientAuth},
 		},
 	}
-	signedClientCert := Sign(csr)
-	if signedClientCert == nil {
-		log.Error(nil, "failed to sign CSR")
-		return errors.NewBadRequest("failed to sign CSR")
+	signedClientCert, err := Sign(csr)
+	if err != nil {
+		return fmt.Errorf("failed to sign CSR: %w", err)
 	}
-	// Create a secret
-	HubMtlsSecret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      operatorconfig.HubMetricsCollectorMtlsCert,
-			Namespace: config.GetDefaultNamespace(),
-		},
-		Data: map[string][]byte{
-			"tls.crt": signedClientCert,
-			"tls.key": privateKeyBytes,
-		},
-	}
-	err := c.Create(context.TODO(), HubMtlsSecret)
-	if err != nil && !errors.IsAlreadyExists(err) {
-		log.Error(err, "Failed to create secret", "name", operatorconfig.HubMetricsCollectorMtlsCert)
-		return err
-	}
-	if errors.IsAlreadyExists(err) && updateMtlsCert {
-		err := c.Get(context.TODO(), types.NamespacedName{
-			Name:      operatorconfig.HubMetricsCollectorMtlsCert,
-			Namespace: config.GetDefaultNamespace(),
-		}, HubMtlsSecret)
-		if err != nil {
-			log.Error(err, "Failed to get secret", "name", operatorconfig.HubMetricsCollectorMtlsCert)
-			return err
-		}
-		HubMtlsSecret.Data["tls.crt"] = signedClientCert
-		HubMtlsSecret.Data["tls.key"] = privateKeyBytes
-		err = c.Update(context.TODO(), HubMtlsSecret)
-		if err != nil {
-			log.Error(err, "Failed to update secret", "name", operatorconfig.HubMetricsCollectorMtlsCert)
-			return err
-		}
 
+	mtlsSecret.Data = map[string][]byte{
+		"tls.crt": signedClientCert,
+		"tls.key": privateKeyBytes,
 	}
 
 	return nil
+}
+
+// childCertIsSignedByCA verifies that the child PEM cert is signed by the CA PEM cert.
+// It expects a single certificate in each PEM.
+func childCertIsSignedByCA(caPemCert, childPemCert []byte) (bool, error) {
+	// Validate inputs
+	if len(caPemCert) == 0 {
+		return false, errors.New("CA certificate is empty")
+	}
+	if len(childPemCert) == 0 {
+		return false, errors.New("child certificate is empty")
+	}
+
+	// Create CA cert pool
+	caCertPool := x509.NewCertPool()
+	caCerts, err := parsePEM(caPemCert, "CA certificate")
+	if err != nil {
+		return false, fmt.Errorf("failed to parse CA PEM certificate: %w", err)
+	}
+
+	if len(caCerts) != 1 {
+		return false, fmt.Errorf("expecting a single certificate for CA, found %d", len(caCerts))
+	}
+	caCertPool.AddCert(caCerts[0])
+
+	// Extract leaf
+	childCerts, err := parsePEM(childPemCert, "child certificate")
+	if err != nil {
+		return false, fmt.Errorf("failed to parse child PEM certificate: %w", err)
+	}
+
+	if len(childCerts) != 1 {
+		return false, fmt.Errorf("expecting a single certificate for child, found %d", len(childCerts))
+	}
+
+	// Check child is signed by CA
+	_, err = childCerts[0].Verify(x509.VerifyOptions{
+		Roots: caCertPool,
+	})
+	if err != nil {
+		return false, fmt.Errorf("child certificate verification against the CA certificate failed: %w", err)
+	}
+
+	return true, nil
+}
+
+// parsePEM extracts certificates from PEM.
+func parsePEM(pemData []byte, certName string) ([]*x509.Certificate, error) {
+	if len(pemData) == 0 {
+		return nil, fmt.Errorf("empty PEM data for %s", certName)
+	}
+
+	var allCerts []*x509.Certificate
+
+	rest := pemData
+	for {
+		var block *pem.Block
+		block, rest = pem.Decode(rest)
+		if block == nil {
+			break
+		}
+
+		if block.Type != "CERTIFICATE" {
+			log.Info("Ingoring non certificate block in pem", "blockType", block.Type, "certName", certName)
+			continue
+		}
+
+		parsed, err := x509.ParseCertificates(block.Bytes)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse certificate block: %w", err)
+		}
+		allCerts = append(allCerts, parsed...)
+	}
+
+	if len(allCerts) == 0 {
+		return nil, errors.New("no certificates found in PEM")
+	}
+
+	return allCerts, nil
+}
+
+func mtlsCertShouldBeRenewed(mtlsSecret *corev1.Secret) bool {
+	data, ok := mtlsSecret.Data["tls.crt"]
+	if !ok || len(data) == 0 {
+		log.Info("The certificate is missing, it should be renewed", "secretName", mtlsSecret.Name)
+		return true
+	}
+
+	block, _ := pem.Decode(data)
+	if block == nil {
+		log.Error(nil, "Failed to decode the certificate; it should be renewed", "secretName", mtlsSecret.Name)
+		return true
+	}
+
+	certs, err := x509.ParseCertificates(block.Bytes)
+	if err != nil || len(certs) == 0 {
+		log.Error(err, "Failed to parse the certificate, it should be renewed", "secretName", mtlsSecret.Name)
+		return true
+	}
+
+	leafCert := certs[0]
+
+	lifetime := leafCert.NotAfter.Sub(leafCert.NotBefore)
+	renewThreshold := lifetime / 5
+	renewTime := leafCert.NotAfter.Add(-renewThreshold)
+
+	if time.Now().After(renewTime) {
+		log.Info("The certificate expires soon, it should be renewed", "notAfter", leafCert.NotAfter, "secretName", mtlsSecret.Name)
+		return true
+	}
+
+	return false
 }
