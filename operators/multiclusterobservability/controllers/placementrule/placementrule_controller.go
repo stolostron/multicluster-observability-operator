@@ -44,6 +44,7 @@ import (
 
 	mcov1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
+	cert_controller "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/certificates"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering/templates"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
@@ -338,25 +339,28 @@ func (r *PlacementRuleReconciler) cleanSpokesAddonResources(ctx context.Context)
 // - The hub server CA cert to trust when sending metrics
 // - The Hub AlertManager Token to forward alerts from the spoke cluster's Prometheus
 // - The image list configMap
-// It also needs the mTLS key and cert for sending metrics to the hub, but it is fowrded by the registration-operator.
+// - the mTLS key and cert for sending metrics to the hub
 func (r *PlacementRuleReconciler) ensureMCAOResources(ctx context.Context, mco *mcov1beta2.MultiClusterObservability) error {
 	resourcesToCreate := []client.Object{}
 	hubServerCaCertSecret, err := generateObservabilityServerCACerts(ctx, r.Client)
 	if err != nil {
 		return fmt.Errorf("failed to generate observability server ca certs: %w", err)
 	}
+	hubServerCaCertSecret.SetNamespace(config.GetDefaultNamespace())
 	resourcesToCreate = append(resourcesToCreate, hubServerCaCertSecret)
 
 	amAccessorTokenSecret, err := generateAmAccessorTokenSecret(r.Client)
 	if err != nil {
 		return fmt.Errorf("failed to generate alertManager token secret: %w", err)
 	}
+	amAccessorTokenSecret.SetNamespace(config.GetDefaultNamespace())
 	resourcesToCreate = append(resourcesToCreate, amAccessorTokenSecret)
 
 	imageListCm, err := generateImageListConfigMap(mco)
 	if err != nil {
 		return fmt.Errorf("failed to generate image list configmap: %w", err)
 	}
+	imageListCm.SetNamespace(config.GetDefaultNamespace())
 	resourcesToCreate = append(resourcesToCreate, imageListCm)
 
 	for _, obj := range resourcesToCreate {
@@ -367,6 +371,11 @@ func (r *PlacementRuleReconciler) ensureMCAOResources(ctx context.Context, mco *
 		if res != controllerutil.OperationResultNone {
 			log.Info("resource created or updated", "kind", obj.GetObjectKind().GroupVersionKind().Kind, "name", obj.GetName(), "action", res)
 		}
+	}
+
+	if err := cert_controller.CreateUpdateMtlsCertSecretForHubCollector(ctx, r.Client); err != nil {
+		log.Error(err, "Failed to create client cert secret for hub metrics collection")
+		return err
 	}
 
 	return nil
