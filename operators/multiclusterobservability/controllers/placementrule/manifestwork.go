@@ -580,6 +580,10 @@ func DeleteHubMetricsCollectionDeployments(ctx context.Context, c client.Client)
 			Name:      config.AlertmanagerAccessorSecretName,
 			Namespace: config.GetDefaultNamespace(),
 		}},
+		&corev1.Secret{ObjectMeta: metav1.ObjectMeta{ // cert and key for mTLS connection with hub observability api
+			Name:      operatorconfig.HubMetricsCollectorMtlsCert,
+			Namespace: config.GetDefaultNamespace(),
+		}},
 		&corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{ // images list configmap
 			Name:      operatorconfig.ImageConfigMap,
 			Namespace: config.GetDefaultNamespace(),
@@ -613,10 +617,6 @@ func DeleteHubMetricsCollectorResourcesNotNeededForMCOA(ctx context.Context, c c
 		}},
 		&corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{ // CA cert for service-serving certificates
 			Name:      operatorconfig.CaConfigmapName,
-			Namespace: config.GetDefaultNamespace(),
-		}},
-		&corev1.Secret{ObjectMeta: metav1.ObjectMeta{ // cert and key for mTLS connection with hub observability api (handled by the registration-operator)
-			Name:      operatorconfig.HubMetricsCollectorMtlsCert,
 			Namespace: config.GetDefaultNamespace(),
 		}},
 		&corev1.Secret{ObjectMeta: metav1.ObjectMeta{ // hub info secret

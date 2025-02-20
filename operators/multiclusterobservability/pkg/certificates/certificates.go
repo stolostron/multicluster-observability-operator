@@ -577,7 +577,7 @@ func CreateUpdateMtlsCertSecretForHubCollector(ctx context.Context, c client.Cli
 		return fmt.Errorf("failed to create or update HubMtlsSecret: %w", err)
 	}
 	if res != controllerutil.OperationResultNone {
-		log.Info("updated succesfully HubMtlsSecret", "name", hubMtlsSecret.Name, "updateReason", updateReason)
+		log.Info("updated successfully HubMtlsSecret", "name", hubMtlsSecret.Name, "updateReason", updateReason)
 	}
 
 	return nil
