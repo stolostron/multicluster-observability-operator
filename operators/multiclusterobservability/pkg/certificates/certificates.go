@@ -557,7 +557,7 @@ func CreateUpdateMtlsCertSecretForHubCollector(ctx context.Context, c client.Cli
 
 		isSignedByCA, err := childCertIsSignedByCA(caSecret.Data["tls.crt"], hubMtlsCert)
 		if err != nil {
-			return fmt.Errorf("failed to check if the mtls cert is signed by the current CA: %w", err)
+			return fmt.Errorf("failed to check if the mtls cert %q is signed by the current CA %q: %w", hubMtlsSecret.Name, caSecret.Name, err)
 		}
 		if !isSignedByCA {
 			updateReason = "mTLS cert is not signed by current CA"
@@ -643,7 +643,8 @@ func childCertIsSignedByCA(caPemCert, childPemCert []byte) (bool, error) {
 
 	// Check child is signed by CA
 	_, err = childCerts[0].Verify(x509.VerifyOptions{
-		Roots: caCertPool,
+		Roots:     caCertPool,
+		KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
 	})
 	if err != nil {
 		return false, fmt.Errorf("child certificate verification against the CA certificate failed: %w", err)
