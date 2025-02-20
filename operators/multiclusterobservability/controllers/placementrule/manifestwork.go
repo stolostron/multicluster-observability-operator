@@ -53,7 +53,6 @@ const (
 var (
 	hubInfoSecret                   *corev1.Secret
 	pullSecret                      *corev1.Secret
-	managedClusterObsCert           *corev1.Secret
 	metricsAllowlistConfigMap       *corev1.ConfigMap
 	ocp311metricsAllowlistConfigMap *corev1.ConfigMap
 	amAccessorTokenSecret           *corev1.Secret
@@ -223,11 +222,9 @@ func generateGlobalManifestResources(ctx context.Context, c client.Client, mco *
 	}
 
 	// inject the certificates
-	if managedClusterObsCert == nil {
-		var err error
-		if managedClusterObsCert, err = generateObservabilityServerCACerts(ctx, c); err != nil {
-			return nil, nil, fmt.Errorf("failed to generate observability server ca certs: %w", err)
-		}
+	managedClusterObsCert, err := generateObservabilityServerCACerts(ctx, c)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to generate observability server ca certs: %w", err)
 	}
 	works = injectIntoWork(works, managedClusterObsCert)
 
@@ -268,6 +265,12 @@ func generateGlobalManifestResources(ctx context.Context, c client.Client, mco *
 	return works, crdv1Work, nil
 }
 
+// createManifestWorks creates a manifest work containing:
+// - the spoke observability addon
+// - the endpoint metrics operator
+// - imageList configMap
+// - pull secret
+// - from the arg: the allowList, works, crdWork, hubInfo
 func createManifestWorks(
 	c client.Client,
 	clusterNamespace string,
@@ -449,7 +452,7 @@ func createManifestWorks(
 	return work, nil
 }
 
-func ensureResourcesForHubMetricsCollection(c client.Client, manifests []workv1.Manifest) error {
+func ensureResourcesForHubMetricsCollection(ctx context.Context, c client.Client, manifests []workv1.Manifest) error {
 	if operatorconfig.IsMCOTerminating {
 		log.Info("MCO Operator is terminating, skip creating resources for hub metrics collection")
 		return nil
@@ -479,22 +482,17 @@ func ensureResourcesForHubMetricsCollection(c client.Client, manifests []workv1.
 		objectToDeploy = append(objectToDeploy, obj)
 	}
 
-	var clientCAWasUpdated bool
 	for _, obj := range objectToDeploy {
-		res, err := ctrl.CreateOrUpdate(context.TODO(), c, obj, mutateHubResourceFn(obj.DeepCopyObject().(client.Object), obj))
+		res, err := ctrl.CreateOrUpdate(ctx, c, obj, mutateHubResourceFn(obj.DeepCopyObject().(client.Object), obj))
 		if err != nil {
 			return fmt.Errorf("failed to create or update resource %s: %w", obj.GetName(), err)
 		}
 		if res != controllerutil.OperationResultNone {
 			log.Info("resource created or updated", "kind", obj.GetObjectKind().GroupVersionKind().Kind, "name", obj.GetName(), "action", res)
-			if obj.GetObjectKind().GroupVersionKind().Kind == "Secret" && obj.GetName() == operatorconfig.ClientCACertificateCN {
-				clientCAWasUpdated = true
-			}
-
 		}
 	}
 
-	err := cert_controller.CreateUpdateMtlsCertSecretForHubCollector(c, clientCAWasUpdated)
+	err := cert_controller.CreateUpdateMtlsCertSecretForHubCollector(ctx, c)
 	if err != nil {
 		log.Error(err, "Failed to create client cert secret for hub metrics collection")
 		return err
@@ -574,10 +572,6 @@ func DeleteHubMetricsCollectionDeployments(ctx context.Context, c client.Client)
 	}
 
 	toDelete := []client.Object{
-		&corev1.Secret{ObjectMeta: metav1.ObjectMeta{ // cert and key for mTLS connection with hub observability api
-			Name:      operatorconfig.HubMetricsCollectorMtlsCert,
-			Namespace: config.GetDefaultNamespace(),
-		}},
 		&corev1.Secret{ObjectMeta: metav1.ObjectMeta{ // hub observability api CA cert
 			Name:      managedClusterObsCertName,
 			Namespace: config.GetDefaultNamespace(),
@@ -619,6 +613,10 @@ func DeleteHubMetricsCollectorResourcesNotNeededForMCOA(ctx context.Context, c c
 		}},
 		&corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{ // CA cert for service-serving certificates
 			Name:      operatorconfig.CaConfigmapName,
+			Namespace: config.GetDefaultNamespace(),
+		}},
+		&corev1.Secret{ObjectMeta: metav1.ObjectMeta{ // cert and key for mTLS connection with hub observability api (handled by the registration-operator)
+			Name:      operatorconfig.HubMetricsCollectorMtlsCert,
 			Namespace: config.GetDefaultNamespace(),
 		}},
 		&corev1.Secret{ObjectMeta: metav1.ObjectMeta{ // hub info secret

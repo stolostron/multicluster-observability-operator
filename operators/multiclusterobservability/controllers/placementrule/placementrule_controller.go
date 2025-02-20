@@ -6,6 +6,7 @@ package placementrule
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -33,6 +34,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -43,8 +45,10 @@ import (
 	mcov1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering/templates"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
+	templatesutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering/templates"
 )
 
 const (
@@ -129,6 +133,9 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	// and thus are not removed by the cleanResources function.
 	if mcoaForMetricsIsEnabled(mco) {
 		reqLogger.Info("Deleting hub resources not needed for MCOA")
+		if err := r.ensureMCAOResources(ctx, mco); err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to ensure MCOA resources: %w", err)
+		}
 		if err := DeleteHubMetricsCollectorResourcesNotNeededForMCOA(ctx, r.Client); err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to delete hub metrics collection resources: %w", err)
 		}
@@ -326,6 +333,79 @@ func (r *PlacementRuleReconciler) cleanSpokesAddonResources(ctx context.Context)
 	return nil
 }
 
+// ensureMCAOResources reconciliates resources needed for MCOA (both hub and spoke).
+// This includes:
+// - The hub server CA cert to trust when sending metrics
+// - The Hub AlertManager Token to forward alerts from the spoke cluster's Prometheus
+// - The image list configMap
+// It also needs the mTLS key and cert for sending metrics to the hub, but it is fowrded by the registration-operator.
+func (r *PlacementRuleReconciler) ensureMCAOResources(ctx context.Context, mco *mcov1beta2.MultiClusterObservability) error {
+	resourcesToCreate := []client.Object{}
+	hubServerCaCertSecret, err := generateObservabilityServerCACerts(ctx, r.Client)
+	if err != nil {
+		return fmt.Errorf("failed to generate observability server ca certs: %w", err)
+	}
+	resourcesToCreate = append(resourcesToCreate, hubServerCaCertSecret)
+
+	amAccessorTokenSecret, err := generateAmAccessorTokenSecret(r.Client)
+	if err != nil {
+		return fmt.Errorf("failed to generate alertManager token secret: %w", err)
+	}
+	resourcesToCreate = append(resourcesToCreate, amAccessorTokenSecret)
+
+	imageListCm, err := generateImageListConfigMap(mco)
+	if err != nil {
+		return fmt.Errorf("failed to generate image list configmap: %w", err)
+	}
+	resourcesToCreate = append(resourcesToCreate, imageListCm)
+
+	for _, obj := range resourcesToCreate {
+		res, err := ctrl.CreateOrUpdate(ctx, r.Client, obj, mutateHubResourceFn(obj.DeepCopyObject().(client.Object), obj))
+		if err != nil {
+			return fmt.Errorf("failed to create or update resource %s: %w", obj.GetName(), err)
+		}
+		if res != controllerutil.OperationResultNone {
+			log.Info("resource created or updated", "kind", obj.GetObjectKind().GroupVersionKind().Kind, "name", obj.GetName(), "action", res)
+		}
+	}
+
+	return nil
+}
+
+func generateImageListConfigMap(mco *mcov1beta2.MultiClusterObservability) (*corev1.ConfigMap, error) {
+	endpointObsTemplates, err := templates.GetOrLoadEndpointObservabilityTemplates(templatesutil.GetTemplateRenderer())
+	if err != nil {
+		return nil, fmt.Errorf("failed to load observability templates: %w", err)
+	}
+
+	var imageListCm *corev1.ConfigMap
+	for _, tplt := range endpointObsTemplates {
+		if tplt.GetKind() != "ConfigMap" || tplt.GetName() != operatorconfig.ImageConfigMap {
+			continue
+		}
+
+		obj, err := updateRes(tplt, mco)
+		if err != nil {
+			return nil, fmt.Errorf("failed to generate image list resource")
+		}
+		// TODO: Apply special image changes when using custom registry
+
+		var ok bool
+		imageListCm, ok = obj.(*corev1.ConfigMap)
+		if !ok {
+			return nil, fmt.Errorf("failed to type assert image list configmap")
+		}
+
+		break
+	}
+
+	if imageListCm == nil {
+		return nil, errors.New("image list not found in templates")
+	}
+
+	return imageListCm, nil
+}
+
 func createAllRelatedRes(
 	ctx context.Context,
 	c client.Client,
@@ -402,7 +482,7 @@ func createAllRelatedRes(
 			namespace = config.GetDefaultNamespace()
 		}
 
-		addonDeployCfg, err := createManagedClusterRes(c, mco, managedCluster, namespace)
+		addonDeployCfg, err := createManagedClusterRes(ctx, c, mco, managedCluster, namespace)
 		if err != nil {
 			failedCreateManagedClusterRes = true
 			log.Error(err, "Failed to create managedcluster resources", "namespace", managedCluster)
@@ -418,7 +498,7 @@ func createAllRelatedRes(
 			// ACM 8509: Special case for hub/local cluster metrics collection
 			// install the endpoint operator into open-cluster-management-observability namespace for the hub cluster
 			log.Info("Creating resource for hub metrics collection", "cluster", managedCluster)
-			if err := ensureResourcesForHubMetricsCollection(c, manifestWork.Spec.Workload.Manifests); err != nil {
+			if err := ensureResourcesForHubMetricsCollection(ctx, c, manifestWork.Spec.Workload.Manifests); err != nil {
 				log.Error(err, "Failed to ensure resources for hub metrics collection")
 				continue
 			}
@@ -526,7 +606,11 @@ func deleteGlobalResource(c client.Client) error {
 	return nil
 }
 
-func createManagedClusterRes(c client.Client, mco *mcov1beta2.MultiClusterObservability, name string, namespace string) (*addonv1alpha1.AddOnDeploymentConfig, error) {
+// createManagedClusterRes creates:
+// - the observability addon in the namespace
+// - the role bindings for system groups
+// - the managedClusterAddon named "observability-controller"
+func createManagedClusterRes(ctx context.Context, c client.Client, mco *mcov1beta2.MultiClusterObservability, name string, namespace string) (*addonv1alpha1.AddOnDeploymentConfig, error) {
 	if err := createObsAddon(mco, c, namespace); err != nil {
 		return nil, fmt.Errorf("failed to create observabilityaddon: %w", err)
 	}
@@ -545,7 +629,7 @@ func createManagedClusterRes(c client.Client, mco *mcov1beta2.MultiClusterObserv
 	for _, config := range addon.Spec.Configs {
 		if config.ConfigGroupResource.Group == util.AddonGroup &&
 			config.ConfigGroupResource.Resource == util.AddonDeploymentConfigResource {
-			err = c.Get(context.TODO(),
+			err = c.Get(ctx,
 				types.NamespacedName{
 					Name:      config.ConfigReferent.Name,
 					Namespace: config.ConfigReferent.Namespace,
@@ -770,9 +854,6 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		CreateFunc: func(e event.CreateEvent) bool {
 			if e.Object.GetName() == config.ServerCACerts &&
 				e.Object.GetNamespace() == config.GetDefaultNamespace() {
-				// generate the certificate for managed cluster
-				log.Info("generate managedcluster observability certificate for server certificate CREATE")
-				managedClusterObsCert, _ = generateObservabilityServerCACerts(context.Background(), c)
 				return true
 			}
 			return false
@@ -781,9 +862,6 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			if (e.ObjectNew.GetName() == config.ServerCACerts &&
 				e.ObjectNew.GetNamespace() == config.GetDefaultNamespace()) &&
 				e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() {
-				// regenerate the certificate for managed cluster
-				log.Info("generate managedcluster observability certificate for server certificate UPDATE")
-				managedClusterObsCert, _ = generateObservabilityServerCACerts(context.Background(), c)
 				return true
 			}
 			return false
