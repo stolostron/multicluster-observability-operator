@@ -11,9 +11,9 @@ spec:
       rules:
         - alert: ACMRemoteWriteError
           annotations:
-            summary: "Error in remote write."
-            description: "There are errors when sending requests to remote write endpoint: {{ $labels.name }}"
-          expr: sum by (code)(rate(acm_remote_write_requests_total{code!~"2.*"}[5m])) > 10
+            summary: "Observatorium API remote-write forwards failed"
+            description: "More than 20% of remote-write requests from observatorium-api to endpoint: \'{{ $labels.name }}\' failed"
+          expr: sum by (name) (rate(acm_remote_write_requests_total{code!~"2.*"}[10m])) / sum by (name) (rate(acm_remote_write_requests_total[10m])) > 0.2
           for: 10m
           labels:
             severity: critical
