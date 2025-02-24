@@ -25,8 +25,8 @@ data:
       "editable": true,
       "gnetId": null,
       "graphTooltip": 0,
-      "id": 39,
-      "iteration": 1727182897906,
+      "id": 127,
+      "iteration": 1740420060398,
       "links": [],
       "panels": [
         {
@@ -77,7 +77,7 @@ data:
                 "properties": [
                   {
                     "id": "unit",
-                    "value": "decbytes"
+                    "value": "bytes"
                   }
                 ]
               },
@@ -124,11 +124,23 @@ data:
                     "value": true
                   }
                 ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Create Date"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "dateTimeAsIso"
+                  }
+                ]
               }
             ]
           },
           "gridPos": {
-            "h": 26,
+            "h": 20,
             "w": 24,
             "x": 0,
             "y": 0
@@ -136,12 +148,7 @@ data:
           "id": 2,
           "options": {
             "showHeader": true,
-            "sortBy": [
-              {
-                "desc": false,
-                "displayName": "Allocated memory"
-              }
-            ]
+            "sortBy": []
           },
           "pluginVersion": "8.5.20",
           "targets": [
@@ -157,7 +164,7 @@ data:
             },
             {
               "exemplar": true,
-              "expr": "kubevirt_vmi_info{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"}",
+              "expr": "label_replace(\n  label_replace(\n    label_replace(\n      label_replace(\n        kubevirt_vmi_info{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"},\n        \"workload\", \"\", \"workload\", \"<none>\"\n      ),\n      \"flavor\", \"\", \"flavor\", \"<none>\"\n    ),\n    \"instance_type\", \"\", \"instance_type\", \"<none>\"\n  ),\n  \"preference\", \"\", \"preference\", \"<none>\"\n)",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -177,7 +184,7 @@ data:
             },
             {
               "exemplar": true,
-              "expr": "sum by (cluster, namespace, name) (\n  (\n    last_over_time(kubevirt_vm_resource_requests{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\", resource=\"cpu\", unit=\"cores\"}[1h])\n  ) \n  * (\n    last_over_time(kubevirt_vm_resource_requests{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\", resource=\"cpu\", unit=\"sockets\"}[1h])\n  ) \n  * (\n    last_over_time(kubevirt_vm_resource_requests{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\", resource=\"cpu\", unit=\"threads\"}[1h])\n  )\n)",
+              "expr": "sum by (cluster, namespace, name) ((last_over_time(kubevirt_vm_resource_requests{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\",resource=\"cpu\", unit=\"cores\"}[1h])) \n* ignoring(unit) (last_over_time(kubevirt_vm_resource_requests{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\", resource=\"cpu\", unit=\"sockets\"}[1h])) \n* ignoring(unit) (last_over_time(kubevirt_vm_resource_requests{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\", resource=\"cpu\", unit=\"threads\"}[1h])))",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -204,6 +211,16 @@ data:
               "interval": "",
               "legendFormat": "",
               "refId": "F"
+            },
+            {
+              "exemplar": true,
+              "expr": "sum by (cluster, namespace, name)(kubevirt_vm_create_date_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"}*1000)",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "G"
             }
           ],
           "title": "Virtual Machines Inventory",
@@ -237,48 +254,55 @@ data:
                 },
                 "indexByName": {
                   "Time": 0,
-                  "Value #A": 17,
-                  "Value #B": 32,
-                  "Value #C": 33,
-                  "Value #D": 6,
-                  "Value #E": 7,
-                  "Value #F": 8,
-                  "Value #G": 9,
-                  "__name__": 18,
+                  "Value #A": 18,
+                  "Value #B": 33,
+                  "Value #C": 34,
+                  "Value #D": 7,
+                  "Value #E": 8,
+                  "Value #F": 9,
+                  "Value #G": 6,
+                  "__name__": 19,
                   "cluster": 1,
-                  "clusterID": 19,
-                  "container": 20,
-                  "endpoint": 21,
-                  "evictable": 22,
-                  "flavor": 16,
-                  "guest_os_kernel_release": 23,
-                  "guest_os_machine": 24,
+                  "clusterID": 20,
+                  "container": 21,
+                  "endpoint": 22,
+                  "evictable": 23,
+                  "flavor": 17,
+                  "guest_os_arch": 12,
+                  "guest_os_kernel_release": 24,
+                  "guest_os_machine": 25,
                   "guest_os_name": 10,
                   "guest_os_version_id": 11,
-                  "instance": 25,
-                  "instance_type": 12,
-                  "job": 26,
+                  "instance": 26,
+                  "instance_type": 13,
+                  "job": 27,
                   "name": 3,
                   "namespace": 2,
                   "node": 5,
-                  "os": 27,
-                  "phase": 13,
-                  "pod": 28,
-                  "preference": 14,
-                  "receive": 29,
-                  "service": 30,
+                  "os": 28,
+                  "outdated": 35,
+                  "phase": 14,
+                  "pod": 29,
+                  "preference": 15,
+                  "receive": 30,
+                  "service": 31,
                   "status": 4,
-                  "tenant_id": 31,
-                  "workload": 15
+                  "tenant_id": 32,
+                  "vmi_pod": 36,
+                  "workload": 16
                 },
                 "renameByName": {
                   "Value #A": "",
-                  "Value #D": "Total Allocated vCPUs",
-                  "Value #E": "Allocated memory",
+                  "Value #C": "",
+                  "Value #D": "Allocated vCPUs",
+                  "Value #E": "Allocated Memory",
                   "Value #F": "Guest Agent",
-                  "Value #G": "",
+                  "Value #G": "Create Date",
                   "cluster": "Cluster",
+                  "endpoint": "",
+                  "evictable": "Evictable?",
                   "flavor": "Flavor",
+                  "guest_os_arch": "OS Arch",
                   "guest_os_name": "OS Name",
                   "guest_os_version_id": "OS Version",
                   "instance_type": "Instance Type",
@@ -286,10 +310,12 @@ data:
                   "namespace": "Namespace",
                   "node": "Node",
                   "os": "",
+                  "outdated": "Outdated VM",
                   "phase": "Phase",
                   "preference": "Preference",
                   "status": "Status",
                   "vmi": "VM Name",
+                  "vmi_pod": "VM Pod",
                   "workload": "Workload"
                 }
               }
@@ -311,7 +337,7 @@ data:
         "list": [
           {
             "allValue": "",
-            "datasource": null,
+            "datasource": "Observatorium",
             "definition": "label_values(kubevirt_vm_running_status_last_transition_timestamp_seconds, cluster)",
             "description": null,
             "error": null,
@@ -334,15 +360,11 @@ data:
           {
             "allValue": ".*",
             "current": {
-              "selected": true,
-              "text": [
-                "All"
-              ],
-              "value": [
-                "$__all"
-              ]
+              "selected": false,
+              "text": "All",
+              "value": "$__all"
             },
-            "datasource": null,
+            "datasource": "Observatorium",
             "definition": "label_values(kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\"}, namespace)",
             "description": "Filter the virtual machine by the namespace.",
             "error": null,
@@ -365,15 +387,11 @@ data:
           {
             "allValue": ".*",
             "current": {
-              "selected": true,
-              "text": [
-                "All"
-              ],
-              "value": [
-                "$__all"
-              ]
+              "selected": false,
+              "text": "All",
+              "value": "$__all"
             },
-            "datasource": null,
+            "datasource": "Observatorium",
             "definition": "label_values(kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", namespace=~\"$namespace\"}, name)",
             "description": "Filter the virtual machine by the name.",
             "error": null,
