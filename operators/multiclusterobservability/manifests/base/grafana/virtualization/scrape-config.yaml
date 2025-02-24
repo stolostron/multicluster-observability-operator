@@ -24,6 +24,7 @@ spec:
     - '{__name__="kubevirt_vm_starting_status_last_transition_timestamp_seconds"}'
     - '{__name__="kubevirt_vmi_cpu_usage_seconds_total"}'
     - '{__name__="kubevirt_vmi_info"}'
+    - '{__name__="kubevirt_vm_info"}'
     - '{__name__="kubevirt_vmi_memory_available_bytes"}'
     - '{__name__="kubevirt_vmi_memory_cached_bytes"}'
     - '{__name__="kubevirt_vmi_memory_unused_bytes"}'
@@ -35,6 +36,8 @@ spec:
     - '{__name__="kubevirt_vmi_phase_count"}'
     - '{__name__="kubevirt_vmi_storage_iops_read_total"}'
     - '{__name__="kubevirt_vmi_storage_iops_write_total"}'
+    - '{__name__="kubevirt_vm_create_date_timestamp_seconds"}'
+    - '{__name__="kubevirt_vm_disk_allocated_size_bytes"}'
   metricRelabelings:
   - action: labeldrop
     regex: prometheus_replica|managed_cluster|id
