@@ -162,6 +162,10 @@ data:
       - kubevirt_vmi_storage_iops_read_total
       - kubevirt_vmi_storage_iops_write_total
       - kubevirt_vm_resource_requests
+      - kubevirt_vm_info
+      - kubevirt_vm_disk_allocated_size_bytes
+      - kubevirt_vmsnapshot_succeeded_timestamp_seconds
+      - kubevirt_vmi_status_addresses
 
 
     matches:
