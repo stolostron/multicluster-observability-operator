@@ -349,6 +349,19 @@ var _ = Describe("Observability:", func() {
 	})
 
 	It("RHACM4K-43019 - Observability - Verify overwrite Thanos components CLI args in MCO CR - [P2][Sev2][Observability][Integration]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release (config/g0)", func() {
+		By("Updating mco cr to update cli args")
+		yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: "../../../examples/updatemcocr/advancedmcoconfig"})
+		Expect(err).ToNot(HaveOccurred())
+		Expect(
+			utils.Apply(
+				testOptions.HubCluster.ClusterServerURL,
+				testOptions.KubeConfig,
+				testOptions.HubCluster.KubeContext,
+				yamlB,
+			)).NotTo(HaveOccurred())
+
+		time.Sleep(60 * time.Second)
+
 		By("Check the value is effect in the observability-thanos-compact and rule")
 		Eventually(func() bool {
 			for _, component := range []string{THANOS_COMPACT_LABEL, THANOS_RULE_LABEL} {
