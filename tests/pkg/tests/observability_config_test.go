@@ -36,7 +36,7 @@ var _ = Describe("Observability:", func() {
 	It("RHACM4K-31474: Observability: Verify memcached setting max_item_size is populated on thanos-store - [P1][Sev1][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release(config/g1)", func() {
 
 		By("Updating mco cr to update values in storeMemcached")
-		yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: "../../../examples/maxitemsize/updatemcocr"})
+		yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: "../../../examples/updatemcocr/initialmcoconfig"})
 		Expect(err).ToNot(HaveOccurred())
 		Expect(
 			utils.Apply(
@@ -75,7 +75,7 @@ var _ = Describe("Observability:", func() {
 	It("RHACM4K-31475: Observability: Verify memcached setting max_item_size is populated on thanos-query-frontend - [P1][Sev1][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release(config/g1)", func() {
 
 		By("Updating mco cr to update values in storeMemcached")
-		yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: "../../../examples/maxitemsize/updatemcocr"})
+		yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: "../../../examples/updatemcocr/initialmcoconfig"})
 		Expect(err).ToNot(HaveOccurred())
 		Expect(
 			utils.Apply(
@@ -346,6 +346,105 @@ var _ = Describe("Observability:", func() {
 			}
 
 		}
+	})
+
+	It("RHACM4K-43019 - Observability - Verify overwrite Thanos components CLI args in MCO CR - [P2][Sev2][Observability][Integration]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release (config/g0)", func() {
+		By("Updating mco cr to update cli args")
+		yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: "../../../examples/updatemcocr/advancedmcoconfig"})
+		Expect(err).ToNot(HaveOccurred())
+		Expect(
+			utils.Apply(
+				testOptions.HubCluster.ClusterServerURL,
+				testOptions.KubeConfig,
+				testOptions.HubCluster.KubeContext,
+				yamlB,
+			)).NotTo(HaveOccurred())
+
+		time.Sleep(60 * time.Second)
+
+		By("Check the value is effect in the observability-thanos-compact and rule")
+		Eventually(func() bool {
+			for _, component := range []string{THANOS_COMPACT_LABEL, THANOS_RULE_LABEL} {
+				sts, err := utils.GetStatefulSetWithLabel(testOptions, true, component, MCO_NAMESPACE)
+				Expect(err).NotTo(HaveOccurred())
+				for _, stsInfo := range (*sts).Items {
+					args := stsInfo.Spec.Template.Spec.Containers[0].Args
+					for _, arg := range args {
+						if arg == "--log.level=debug" {
+							return true
+						}
+					}
+				}
+			}
+			return false
+		}).Should(BeTrue())
+
+		mcoRes, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).
+			Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+		if err != nil {
+			panic(err.Error())
+		}
+
+		// Update the MCO CR to change the log level for thanos-compact
+		spec := mcoRes.Object["spec"].(map[string]interface{})
+		advancedSpec, _ := spec["advanced"].(map[string]interface{})
+		if containers, ok := advancedSpec["compact"].(map[string]interface{})["containers"].([]interface{}); ok {
+			if args, ok := containers[0].(map[string]interface{})["args"].([]interface{}); ok {
+				for i, arg := range args {
+					if strings.HasPrefix(arg.(string), "--log.level=") {
+						args[i] = "--log.level=info"
+						break
+					}
+				}
+			}
+		}
+
+		_, err = dynClient.Resource(utils.NewMCOGVRV1BETA2()).
+			Update(context.TODO(), mcoRes, metav1.UpdateOptions{})
+		Expect(err).NotTo(HaveOccurred())
+
+		By("Check the value is effect in the sts observability-thanos-compact")
+		Eventually(func() bool {
+			sts, err := utils.GetStatefulSetWithLabel(testOptions, true, THANOS_COMPACT_LABEL, MCO_NAMESPACE)
+			Expect(err).NotTo(HaveOccurred())
+			for _, stsInfo := range (*sts).Items {
+				args := stsInfo.Spec.Template.Spec.Containers[0].Args
+				for _, arg := range args {
+					if arg == "--log.level=info" {
+						return true
+					}
+				}
+			}
+			return false
+		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*10).Should(BeTrue())
+
+		By("Check the value in observability-thanos-rule is not changed")
+		Eventually(func() bool {
+			deploys, err := utils.GetStatefulSetWithLabel(testOptions, true, THANOS_RULE_LABEL, MCO_NAMESPACE)
+			Expect(err).NotTo(HaveOccurred())
+			for _, deployInfo := range (*deploys).Items {
+				args := deployInfo.Spec.Template.Spec.Containers[0].Args
+				for _, arg := range args {
+					if arg == "--log.level=debug" {
+						return true
+					}
+				}
+			}
+			return false
+		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*10).Should(BeTrue())
+
+		By("Revert MCO back to initial config")
+		yamlB, err = kustomize.Render(kustomize.Options{KustomizationPath: "../../../examples/updatemcocr/initialmcoconfig"})
+		Expect(err).ToNot(HaveOccurred())
+		Expect(
+			utils.Apply(
+				testOptions.HubCluster.ClusterServerURL,
+				testOptions.KubeConfig,
+				testOptions.HubCluster.KubeContext,
+				yamlB,
+			)).NotTo(HaveOccurred())
+
+		time.Sleep(60 * time.Second)
 	})
 
 	JustAfterEach(func() {
