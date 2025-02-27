@@ -36,7 +36,7 @@ var _ = Describe("Observability:", func() {
 	It("RHACM4K-31474: Observability: Verify memcached setting max_item_size is populated on thanos-store - [P1][Sev1][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release(config/g1)", func() {
 
 		By("Updating mco cr to update values in storeMemcached")
-		yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: "../../../examples/updatemcocr/advancedmcoconfig"})
+		yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: "../../../examples/updatemcocr/initialmcoconfig"})
 		Expect(err).ToNot(HaveOccurred())
 		Expect(
 			utils.Apply(
@@ -75,7 +75,7 @@ var _ = Describe("Observability:", func() {
 	It("RHACM4K-31475: Observability: Verify memcached setting max_item_size is populated on thanos-query-frontend - [P1][Sev1][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release(config/g1)", func() {
 
 		By("Updating mco cr to update values in storeMemcached")
-		yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: "../../../examples/updatemcocr/advancedmcoconfig"})
+		yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: "../../../examples/updatemcocr/initialmcoconfig"})
 		Expect(err).ToNot(HaveOccurred())
 		Expect(
 			utils.Apply(
@@ -432,6 +432,19 @@ var _ = Describe("Observability:", func() {
 			}
 			return false
 		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*10).Should(BeTrue())
+
+		By("Revert MCO back to initial config")
+		yamlB, err = kustomize.Render(kustomize.Options{KustomizationPath: "../../../examples/updatemcocr/initialmcoconfig"})
+		Expect(err).ToNot(HaveOccurred())
+		Expect(
+			utils.Apply(
+				testOptions.HubCluster.ClusterServerURL,
+				testOptions.KubeConfig,
+				testOptions.HubCluster.KubeContext,
+				yamlB,
+			)).NotTo(HaveOccurred())
+
+		time.Sleep(60 * time.Second)
 	})
 
 	JustAfterEach(func() {
