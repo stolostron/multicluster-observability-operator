@@ -48,7 +48,6 @@ ssh "${OPT[@]}" "$HOST" sudo yum install gcc git -y
 ssh "${OPT[@]}" "$HOST" sudo mkdir -p /home/ec2-user/bin
 ssh "${OPT[@]}" "$HOST" sudo chmod 777 /home/ec2-user/bin
 scp "${OPT[@]}" -r ../multicluster-observability-operator "$HOST:/tmp/multicluster-observability-operator"
-scp "${OPT[@]}" $(which kubectl) "$HOST:/home/ec2-user/bin"
 scp "${OPT[@]}" $KUSTOMIZE "$HOST:/home/ec2-user/bin/kustomize"
 scp "${OPT[@]}" $(which jq) "$HOST:/home/ec2-user/bin"
 ssh "${OPT[@]}" "$HOST" "cd /tmp/multicluster-observability-operator && make mco-kind-env"
