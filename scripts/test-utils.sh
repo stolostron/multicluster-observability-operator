@@ -30,7 +30,7 @@ get_latest_acm_snapshot() {
   # try previous version if none were found.
   # this makes builds work during branching times.
   # we only go back once
-  if [[ -z $LATEST_SNAPSHOT ]] && [[ -z "${PREVIOUS_VERSION:-}" ]]; then
+  if [[ -z $LATEST_SNAPSHOT ]] && [[ -z ${PREVIOUS_VERSION:-} ]]; then
     PREVIOUS_VERSION=$(bc -l <<<"$SNAPSHOT_RELEASE-0.01")
     echo >&2 "****WARNING**** Attempting to use previous ACM version $PREVIOUS_VERSION as no snapshots found for $SNAPSHOT_RELEASE"
     LATEST_SNAPSHOT=$(SNAPSHOT_RELEASE=$PREVIOUS_VERSION get_latest_acm_snapshot)
@@ -59,7 +59,7 @@ get_latest_mce_snapshot() {
   # try previous version if none were found.
   # this makes builds work during branching times.
   # we only go back once
-  if [[ -z $LATEST_SNAPSHOT ]] && [[ -z "${PREVIOUS_VERSION:-}" ]]; then
+  if [[ -z $LATEST_SNAPSHOT ]] && [[ -z ${PREVIOUS_VERSION:-} ]]; then
     PREVIOUS_VERSION=$(bc -l <<<"$SNAPSHOT_RELEASE-0.01")
     echo >&2 "****WARNING**** Attempting to use previous MCE version $PREVIOUS_VERSION as no snapshots found for $SNAPSHOT_RELEASE"
     LATEST_SNAPSHOT=$(SNAPSHOT_RELEASE=$PREVIOUS_VERSION get_latest_mce_snapshot)
