@@ -22,7 +22,7 @@ AGENT_NS="open-cluster-management-agent"
 HUB_NS="open-cluster-management-hub"
 OBSERVABILITY_NS="open-cluster-management-observability"
 IMAGE_REPO="quay.io/stolostron"
-export MANAGED_CLUSTER="local-cluster" # registration-operator needs this
+export MANAGED_CLUSTER="hub-cluster" # registration-operator needs this
 
 SED_COMMAND=${SED}' -i-e -e'
 
@@ -89,6 +89,7 @@ approve_csr_joinrequest() {
       for clustername in ${clusternames}; do
         echo "approve joinrequest for ${clustername}"
         kubectl patch managedcluster ${clustername} --patch '{"spec":{"hubAcceptsClient":true}}' --type=merge
+        kubectl label managedcluster ${clustername} local-cluster=true
         if [[ -n ${IS_KIND_ENV} ]]; then
           # update vendor label for KinD env
           kubectl label managedcluster ${clustername} vendor-
