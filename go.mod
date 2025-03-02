@@ -50,8 +50,8 @@ require (
 	k8s.io/kubectl v0.29.3
 	k8s.io/utils v0.0.0-20240502163921-fe8a2dddb1d0
 	open-cluster-management.io/addon-framework v0.9.2
-	open-cluster-management.io/api v0.13.0
-	sigs.k8s.io/controller-runtime v0.18.1-0.20240626171621-700befecdffa
+	open-cluster-management.io/api v0.15.0
+	sigs.k8s.io/controller-runtime v0.18.4
 	sigs.k8s.io/kube-storage-version-migrator v0.0.6-0.20230721195810-5c8923c5ff96
 	sigs.k8s.io/kustomize/api v0.17.1
 	sigs.k8s.io/kustomize/kyaml v0.17.0
