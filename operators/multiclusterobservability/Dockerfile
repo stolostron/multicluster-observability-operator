@@ -1,62 +1,62 @@
-# Copyright Contributors to the Open Cluster Management project
+# copyright contributors to the open cluster management project
 
-FROM registry.ci.openshift.org/stolostron/builder:go1.22-linux AS builder
+from registry.ci.openshift.org/stolostron/builder:go1.23-linux as builder
 
 
-WORKDIR /workspace
-COPY go.sum go.mod ./
-COPY ./operators/multiclusterobservability ./operators/multiclusterobservability
-COPY ./operators/pkg ./operators/pkg
+workdir /workspace
+copy go.sum go.mod ./
+copy ./operators/multiclusterobservability ./operators/multiclusterobservability
+copy ./operators/pkg ./operators/pkg
 
-RUN CGO_ENABLED=1 go build -a -installsuffix cgo -o bin/manager operators/multiclusterobservability/main.go
+run cgo_enabled=1 go build -a -installsuffix cgo -o bin/manager operators/multiclusterobservability/main.go
 
-FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
+from registry.access.redhat.com/ubi9/ubi-minimal:latest
 
-ARG VCS_REF
-ARG VCS_URL
-ARG IMAGE_NAME
-ARG IMAGE_DESCRIPTION
-ARG IMAGE_DISPLAY_NAME
-ARG IMAGE_NAME_ARCH
-ARG IMAGE_MAINTAINER
-ARG IMAGE_VENDOR
-ARG IMAGE_VERSION
-ARG IMAGE_RELEASE
-ARG IMAGE_SUMMARY
-ARG IMAGE_OPENSHIFT_TAGS
+arg vcs_ref
+arg vcs_url
+arg image_name
+arg image_description
+arg image_display_name
+arg image_name_arch
+arg image_maintainer
+arg image_vendor
+arg image_version
+arg image_release
+arg image_summary
+arg image_openshift_tags
 
-LABEL org.label-schema.vendor="Red Hat" \
-    org.label-schema.name="$IMAGE_NAME_ARCH" \
-    org.label-schema.description="$IMAGE_DESCRIPTION" \
-    org.label-schema.vcs-ref=$VCS_REF \
-    org.label-schema.vcs-url=$VCS_URL \
-    org.label-schema.license="Red Hat Advanced Cluster Management for Kubernetes EULA" \
+label org.label-schema.vendor="red hat" \
+    org.label-schema.name="$image_name_arch" \
+    org.label-schema.description="$image_description" \
+    org.label-schema.vcs-ref=$vcs_ref \
+    org.label-schema.vcs-url=$vcs_url \
+    org.label-schema.license="red hat advanced cluster management for kubernetes eula" \
     org.label-schema.schema-version="1.0" \
-    name="$IMAGE_NAME" \
-    maintainer="$IMAGE_MAINTAINER" \
-    vendor="$IMAGE_VENDOR" \
-    version="$IMAGE_VERSION" \
-    release="$IMAGE_RELEASE" \
-    description="$IMAGE_DESCRIPTION" \
-    summary="$IMAGE_SUMMARY" \
-    io.k8s.display-name="$IMAGE_DISPLAY_NAME" \
-    io.k8s.description="$IMAGE_DESCRIPTION" \
-    io.openshift.tags="$IMAGE_OPENSHIFT_TAGS"
+    name="$image_name" \
+    maintainer="$image_maintainer" \
+    vendor="$image_vendor" \
+    version="$image_version" \
+    release="$image_release" \
+    description="$image_description" \
+    summary="$image_summary" \
+    io.k8s.display-name="$image_display_name" \
+    io.k8s.description="$image_description" \
+    io.openshift.tags="$image_openshift_tags"
 
-ENV OPERATOR=/usr/local/bin/mco-operator \
-    USER_UID=1001 \
-    USER_NAME=mco
+env operator=/usr/local/bin/mco-operator \
+    user_uid=1001 \
+    user_name=mco
 
-RUN microdnf update -y && microdnf clean all
+run microdnf update -y && microdnf clean all
 
 # install templates
-COPY ./operators/multiclusterobservability/manifests /usr/local/manifests
+copy ./operators/multiclusterobservability/manifests /usr/local/manifests
 
 # install the prestop script
-COPY ./operators/multiclusterobservability/prestop.sh /usr/local/bin/prestop.sh
+copy ./operators/multiclusterobservability/prestop.sh /usr/local/bin/prestop.sh
 
 # install operator binary
-COPY --from=builder /workspace/bin/manager ${OPERATOR}
-USER ${USER_UID}
+copy --from=builder /workspace/bin/manager ${operator}
+user ${user_uid}
 
-ENTRYPOINT ["/usr/local/bin/mco-operator"]
+entrypoint ["/usr/local/bin/mco-operator"]
