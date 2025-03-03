@@ -1,7 +1,7 @@
 # Copyright Contributors to the Open Cluster Management project
 # Licensed under the Apache License 2.0
 
-FROM brew.registry.redhat.io/rh-osbs/openshift-golang-builder:rhel_9_1.22 AS builder
+FROM brew.registry.redhat.io/rh-osbs/openshift-golang-builder:rhel_9_1.23 AS builder
 
 WORKDIR /workspace
 COPY go.sum go.mod ./
@@ -12,7 +12,7 @@ RUN CGO_ENABLED=1 GOFLAGS="" go build -a -installsuffix cgo -v -o metrics-collec
 
 FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
 
-ARG VCS_REF
+ARG vcs_ref
 ARG VCS_URL
 ARG IMAGE_NAME
 ARG IMAGE_DESCRIPTION
