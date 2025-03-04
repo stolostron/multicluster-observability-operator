@@ -23,6 +23,7 @@ import (
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -952,7 +953,12 @@ func removeObservabilityAddonInManifestWork(ctx context.Context, client client.C
 	}
 
 	updateManifests := slices.DeleteFunc(slices.Clone(found.Spec.Workload.Manifests), func(e workv1.Manifest) bool {
-		return e.RawExtension.Object != nil && e.RawExtension.Object.GetObjectKind().GroupVersionKind().Kind == "ObservabilityAddon"
+		obj, err := runtime.Decode(unstructured.UnstructuredJSONScheme, e.Raw)
+		if err != nil {
+			log.Error(err, "Failed to decode manifest item")
+			return false
+		}
+		return obj.GetObjectKind().GroupVersionKind().Kind == "ObservabilityAddon"
 	})
 
 	if len(updateManifests) != len(found.Spec.Workload.Manifests) {
