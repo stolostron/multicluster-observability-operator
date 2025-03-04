@@ -598,17 +598,17 @@ func deleteAllObsAddons(
 	return nil
 }
 
-func deleteGlobalResource(c client.Client) error {
-	err := deleteClusterRole(c)
+func deleteGlobalResource(ctx context.Context, c client.Client) error {
+	err := deleteClusterRole(ctx, c)
 	if err != nil {
 		return err
 	}
-	err = deleteResourceRole(c)
+	err = deleteResourceRole(ctx, c)
 	if err != nil {
 		return err
 	}
 	// delete ClusterManagementAddon
-	err = util.DeleteClusterManagementAddon(c)
+	err = util.DeleteClusterManagementAddon(ctx, c)
 	if err != nil {
 		return err
 	}
