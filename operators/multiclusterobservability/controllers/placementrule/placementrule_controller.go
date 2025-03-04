@@ -133,7 +133,7 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	// When MCOA is enabled, additionnally clean the hub resources as they are deployed wihtout the addon resource,
 	// and thus are not removed by the cleanResources function.
 	if mcoaForMetricsIsEnabled(mco) {
-		reqLogger.Info("Deleting hub resources not needed for MCOA")
+		reqLogger.Info("Ensuring MCOA resources on the hub")
 		if err := r.ensureMCAOResources(ctx, mco); err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to ensure MCOA resources: %w", err)
 		}
