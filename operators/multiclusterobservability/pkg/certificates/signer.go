@@ -6,6 +6,7 @@ package certificates
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"time"
 
@@ -39,21 +40,22 @@ func getClient(s *runtime.Scheme) (client.Client, error) {
 	return c, nil
 }
 
-func Sign(csr *certificatesv1.CertificateSigningRequest) []byte {
+func Sign(csr *certificatesv1.CertificateSigningRequest) ([]byte, error) {
 	c, err := getClient(nil)
 	if err != nil {
-		log.Error(err, err.Error())
-		return nil
+		return nil, fmt.Errorf("failed to get client: %w", err)
 	}
 	if os.Getenv("TEST") != "" {
-		err, _ := createCASecret(c, nil, nil, false, clientCACerts, clientCACertificateCN)
+		// Create the CA secret
+		err, _ := createCASecret(c, nil, nil, false, clientCACerts, clientCACertificateCN) // creates the
 		if err != nil {
-			log.Error(err, "Failed to create CA")
+			return nil, fmt.Errorf("failed to create CA secret: %w", err)
 		}
 	}
-	caCert, caKey, _, err := getCA(c, false)
+
+	caCert, caKey, _, err := getCA(c, false) // gets client CA
 	if err != nil {
-		return nil
+		return nil, fmt.Errorf("failed to get client CA: %w", err)
 	}
 
 	var usages []string
@@ -64,8 +66,7 @@ func Sign(csr *certificatesv1.CertificateSigningRequest) []byte {
 	certExpiryDuration := 365 * 24 * time.Hour
 	durationUntilExpiry := time.Until(caCert.NotAfter)
 	if durationUntilExpiry <= 0 {
-		log.Error(errors.New("signer has expired"), "the signer has expired", "expired time", caCert.NotAfter)
-		return nil
+		return nil, fmt.Errorf("signer has expired: %s", caCert.NotAfter)
 	}
 	if durationUntilExpiry < certExpiryDuration {
 		certExpiryDuration = durationUntilExpiry
@@ -80,16 +81,14 @@ func Sign(csr *certificatesv1.CertificateSigningRequest) []byte {
 	}
 	cfs, err := local.NewSigner(caKey, caCert, signer.DefaultSigAlgo(caKey), policy)
 	if err != nil {
-		log.Error(err, "Failed to create new local signer")
-		return nil
+		return nil, fmt.Errorf("failed to create new local signer: %w", err)
 	}
 
 	signedCert, err := cfs.Sign(signer.SignRequest{
 		Request: string(csr.Spec.Request),
 	})
 	if err != nil {
-		log.Error(err, "Failed to sign the CSR")
-		return nil
+		return nil, fmt.Errorf("failed to sign the CSR: %w", err)
 	}
-	return signedCert
+	return signedCert, nil
 }
