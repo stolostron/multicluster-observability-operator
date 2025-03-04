@@ -72,7 +72,7 @@ func TestClusterManagmentAddon(t *testing.T) {
 		}
 	}
 
-	err = DeleteClusterManagementAddon(c)
+	err = DeleteClusterManagementAddon(context.Background(), c)
 	if err != nil {
 		t.Fatalf("Failed to delete clustermanagementaddon: (%v)", err)
 	}
@@ -123,7 +123,7 @@ func TestClusterManagmentAddon(t *testing.T) {
 	}
 
 	// delete it again for good measure
-	err = DeleteClusterManagementAddon(c)
+	err = DeleteClusterManagementAddon(context.Background(), c)
 	if err != nil {
 		t.Fatalf("Failed to delete clustermanagementaddon: (%v)", err)
 	}

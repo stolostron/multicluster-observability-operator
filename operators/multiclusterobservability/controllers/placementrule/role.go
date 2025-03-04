@@ -294,32 +294,38 @@ func createResourceRoleBinding(c client.Client, namespace string, name string) e
 	return nil
 }
 
-func deleteClusterRole(c client.Client) error {
+func deleteClusterRole(ctx context.Context, c client.Client) error {
 	clusterrole := &rbacv1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: mcoRoleName,
 		},
 	}
-	err := c.Delete(context.TODO(), clusterrole)
-	if err != nil && !errors.IsNotFound(err) {
-		log.Error(err, "Failed to delete clusterrole", "name", mcoRoleName)
-		return err
+	err := c.Delete(ctx, clusterrole)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return nil
+		}
+		return fmt.Errorf("failed to delete clusterrole %s: %w", clusterrole.Name, err)
 	}
+
 	log.Info("Clusterrole deleted", "name", mcoRoleName)
 	return nil
 }
 
-func deleteResourceRole(c client.Client) error {
+func deleteResourceRole(ctx context.Context, c client.Client) error {
 	role := &rbacv1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: resRoleName,
 		},
 	}
-	err := c.Delete(context.TODO(), role)
-	if err != nil && !errors.IsNotFound(err) {
-		log.Error(err, "Failed to delete clusterrole", "name", resRoleName)
-		return err
+	err := c.Delete(ctx, role)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return nil
+		}
+		return fmt.Errorf("failed to delete clusterrole %s: %w", role.Name, err)
 	}
+
 	log.Info("Role deleted", "name", resRoleName)
 	return nil
 }

@@ -73,17 +73,20 @@ func CreateClusterManagementAddon(ctx context.Context, c client.Client) (
 	return found, nil
 }
 
-func DeleteClusterManagementAddon(client client.Client) error {
+func DeleteClusterManagementAddon(ctx context.Context, client client.Client) error {
 	clustermanagementaddon := &addonv1alpha1.ClusterManagementAddOn{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: ObservabilityController,
 		},
 	}
-	err := client.Delete(context.TODO(), clustermanagementaddon)
-	if err != nil && !errors.IsNotFound(err) {
-		log.Error(err, "Failed to delete clustermanagementaddon", "name", ObservabilityController)
-		return err
+	err := client.Delete(ctx, clustermanagementaddon)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return nil
+		}
+		return fmt.Errorf("failed to delete clustermanagementaddon %s: %w", clustermanagementaddon.Name, err)
 	}
+
 	log.Info("ClusterManagementAddon deleted", "name", ObservabilityController)
 	return nil
 }
