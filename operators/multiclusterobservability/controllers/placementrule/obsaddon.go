@@ -143,7 +143,6 @@ func createObsAddon(mco *mcov1beta2.MultiClusterObservability, c client.Client, 
 func deletionStalled(obj client.Object) bool {
 	delTs := obj.GetDeletionTimestamp()
 	if delTs == nil {
-		// Not in Terminating state at all
 		return false
 	}
 
