@@ -39,6 +39,7 @@ import (
 	oashared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering"
 	mcoutil "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 )
@@ -714,13 +715,6 @@ func newRuleSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string) o
 		},
 	}
 
-	ruleSpec.RulesConfig = []obsv1alpha1.RuleConfig{
-		{
-			Name: mcoconfig.AlertRuleDefaultConfigMapName,
-			Key:  mcoconfig.AlertRuleDefaultFileKey,
-		},
-	}
-
 	if mcoconfig.HasCustomRuleConfigMap() {
 		customRuleConfig := []obsv1alpha1.RuleConfig{
 			{
@@ -729,13 +723,14 @@ func newRuleSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string) o
 			},
 		}
 		ruleSpec.RulesConfig = append(ruleSpec.RulesConfig, customRuleConfig...)
-	} else {
-		ruleSpec.RulesConfig = []obsv1alpha1.RuleConfig{
-			{
-				Name: mcoconfig.AlertRuleDefaultConfigMapName,
-				Key:  mcoconfig.AlertRuleDefaultFileKey,
-			},
-		}
+	}
+
+	if !rendering.MCOAPlatformMetricsEnabled(mco) {
+		// MCOA doesn't rely on those Thanos rules. They are computed on spokes directly.
+		ruleSpec.RulesConfig = append(ruleSpec.RulesConfig, obsv1alpha1.RuleConfig{
+			Name: mcoconfig.AlertRuleDefaultConfigMapName,
+			Key:  mcoconfig.AlertRuleDefaultFileKey,
+		})
 	}
 
 	if mco.Spec.AdvancedConfig != nil && mco.Spec.AdvancedConfig.Rule != nil &&

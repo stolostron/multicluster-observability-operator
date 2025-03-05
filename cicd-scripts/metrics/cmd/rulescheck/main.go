@@ -4,7 +4,7 @@
 
 /*
 CI tool that provides a simple CLI to ensure that metrics resulting from rules evaluation defined in scrape configs
-are defined in the listed rule files.
+are defined in the listed rule files. This check applies to rules being evaluated by each spoke's in-cluster Prometheus.
 It ensures that rules are not duplicated and that no unneeded rule is defined.
 */
 package main

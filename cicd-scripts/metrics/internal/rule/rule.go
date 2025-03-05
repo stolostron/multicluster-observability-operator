@@ -5,6 +5,7 @@
 package rule
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -21,6 +22,9 @@ func ReadFiles(rulesPath string) ([]*prometheusv1.PrometheusRule, error) {
 		res, err := ReadFile(path)
 		if err != nil {
 			return nil, err
+		}
+		if len(res.Spec.Groups) == 0 {
+			return nil, errors.New("no rule found in file")
 		}
 		ret = append(ret, res)
 	}
@@ -46,6 +50,10 @@ func RuleNames(rules *prometheusv1.PrometheusRule) ([]string, error) {
 	ret := []string{}
 	for _, rule := range rules.Spec.Groups {
 		for _, rule := range rule.Rules {
+			if len(rule.Alert) > 0 {
+				// Is alert, skip
+				continue
+			}
 			ret = append(ret, rule.Record)
 		}
 	}
