@@ -17,6 +17,7 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	rendererutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering"
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
+	"k8s.io/klog"
 )
 
 const dashboardFolderAnnotationKey = "observability.open-cluster-management.io/dashboard-folder"
@@ -107,10 +108,16 @@ func (r *MCORenderer) renderGrafanaTemplates(templates []*resource.Resource,
 		template = template.DeepCopy()
 
 		// Add deprecated suffix to the old dashboard names when MCOA is activated.
+		// Also remove the old main dashboard as the home one
 		if MCOAPlatformMetricsEnabled(r.cr) && isNonMCOASpecificDashboard(template) {
 			if err := addDeprecatedSuffixToDashboardName(template); err != nil {
 				return []*unstructured.Unstructured{}, fmt.Errorf("failed to modify dashboard title with deprecated suffix: %w", err)
 			}
+			removeHomeDashboard(template)
+		}
+		// Add MCOA specific dashboard as the home dashboard
+		if MCOAPlatformMetricsEnabled(r.cr) && isMCOASpecificDashboard(template) {
+			addHomeDashboard(template)
 		}
 
 		render, ok := r.renderGrafanaFns[template.GetKind()]
@@ -129,6 +136,7 @@ func (r *MCORenderer) renderGrafanaTemplates(templates []*resource.Resource,
 		if uobj == nil {
 			continue
 		}
+		klog.Info("Rendering object: %s", template.GetName())
 		uobjs = append(uobjs, uobj)
 
 	}
@@ -141,6 +149,19 @@ func isMCOASpecificResourceKind(res *resource.Resource) bool {
 	kind := res.GetKind()
 	if kind == "ScrapeConfig" || kind == "PrometheusRule" {
 		return true
+	}
+
+	return false
+}
+
+
+func isMCOASpecificDashboard(res *resource.Resource) bool {
+	if res.GetKind() == "ConfigMap" {
+		dir := res.GetAnnotations(dashboardFolderAnnotationKey)[dashboardFolderAnnotationKey]
+		klog.Infof("isMCOASpecificDashboard: %s?", dir)	
+		if strings.Contains(dir, "MCOA") {
+			return true
+		}
 	}
 
 	return false
@@ -162,6 +183,31 @@ func isNonMCOASpecificDashboard(res *resource.Resource) bool {
 	}
 
 	return false
+}
+
+func removeHomeDashboard(template *resource.Resource) error {
+	labels := template.GetLabels()
+	if _, ok := labels["set-home-dashboard"]; ok {
+		delete(labels, "set-home-dashboard");
+		klog.Info("Deleting home dashboard for: %v", template.GetName())
+	}
+
+	template.SetLabels(labels)
+
+
+	return nil
+}
+
+func addHomeDashboard(template *resource.Resource) error {
+	klog.Infof("Checking if we need to add homedashboard to: ", template.GetName())
+	labels := template.GetLabels()
+	if _, ok := labels["home-dashboard-uid"]; ok {
+		klog.Infof("Adding home dashboard to: %v", template.GetName())
+		labels["set-home-dashboard"] = 	"true"
+		template.SetLabels(labels)
+	}
+
+	return nil
 }
 
 func addDeprecatedSuffixToDashboardName(template *resource.Resource) error {
