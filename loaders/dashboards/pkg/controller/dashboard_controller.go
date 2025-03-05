@@ -36,6 +36,9 @@ const (
 	generalFolderKey    = "general-folder"
 	defaultCustomFolder = "Custom"
 	homeDashboardUID    = "2b679d600f3b9e7676a7c5ac3643d448"
+	homeDashboardTitle  = "ACM - Clusters Overview"
+	homeDashboardUIDKey = "home-dashboard-uid"
+	setHomeDashboardKey = "set-home-dashboard"
 )
 
 var (
@@ -310,6 +313,17 @@ func updateDashboard(old, new interface{}, overwrite bool) error {
 		}
 	}
 
+	cm, ok := new.(*corev1.ConfigMap)
+	if !ok || cm == nil {
+		return fmt.Errorf("failed to get dashboard configmap")
+	}
+
+	homeDashboardUID := ""
+	labels := cm.ObjectMeta.Labels
+	if strings.ToLower(labels[setHomeDashboardKey]) == "true" && labels[homeDashboardUIDKey] != "" {
+		homeDashboardUID = labels[homeDashboardUIDKey]
+	}
+
 	for _, value := range new.(*corev1.ConfigMap).Data {
 
 		dashboard := map[string]interface{}{}
@@ -361,11 +375,12 @@ func updateDashboard(old, new interface{}, overwrite bool) error {
 				if err != nil {
 					return fmt.Errorf("failed to parse dashboard id: %v", err)
 				} else {
+					klog.Infof("Setting dashboard: %v as home dashboard", dashboard["title"])
 					setHomeDashboard(id)
 				}
 			}
 		}
-		klog.Infof("dashboard: %v created/updated successfully", new.(*corev1.ConfigMap).Name)
+		klog.Infof("dashboard: %v created/updated successfully", cm.Name)
 	}
 
 	folderTitle = getDashboardCustomFolderTitle(old)
