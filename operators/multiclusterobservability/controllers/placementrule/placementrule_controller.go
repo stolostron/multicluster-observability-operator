@@ -326,7 +326,7 @@ func (r *PlacementRuleReconciler) cleanSpokesAddonResources(ctx context.Context)
 	}
 
 	if len(workList.Items) == 0 {
-		if err := deleteGlobalResource(r.Client); err != nil {
+		if err := deleteGlobalResource(ctx, r.Client); err != nil {
 			return fmt.Errorf("failed to delete global resources: %w", err)
 		}
 	}
