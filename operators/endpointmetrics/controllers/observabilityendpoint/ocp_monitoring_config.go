@@ -15,6 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/ghodss/yaml"
@@ -34,6 +35,7 @@ const (
 )
 
 var (
+	log                             = ctrl.Log.WithName("controllers").WithName("ObservabilityAddon")
 	clusterMonitoringConfigReverted = false
 	persistedRevertStateRead        = false
 )
@@ -280,6 +282,7 @@ func newAdditionalAlertmanagerConfig(hubInfo *operatorconfig.HubInfo) cmomanifes
 // createOrUpdateClusterMonitoringConfig creates or updates the configmap
 // cluster-monitoring-config and relevant resources (observability-alertmanager-accessor
 // and hub-alertmanager-router-ca) for the openshift cluster monitoring stack.
+// Returns a boolean indicating wether the configmap was effectively updated.
 func createOrUpdateClusterMonitoringConfig(
 	ctx context.Context,
 	hubInfo *operatorconfig.HubInfo,
@@ -287,7 +290,7 @@ func createOrUpdateClusterMonitoringConfig(
 	client client.Client,
 	installProm bool,
 	namespace string,
-) error {
+) (bool, error) {
 	targetNamespace := promNamespace
 	if installProm {
 		// for *KS, the hub CA and alertmanager access token should be created
@@ -297,12 +300,12 @@ func createOrUpdateClusterMonitoringConfig(
 
 	// create the hub-alertmanager-router-ca secret if it doesn't exist or update it if needed
 	if err := createHubAmRouterCASecret(ctx, hubInfo, client, targetNamespace); err != nil {
-		return fmt.Errorf("failed to create or update the hub-alertmanager-router-ca secret: %w", err)
+		return false, fmt.Errorf("failed to create or update the hub-alertmanager-router-ca secret: %w", err)
 	}
 
 	// create the observability-alertmanager-accessor secret if it doesn't exist or update it if needed
 	if err := createHubAmAccessorTokenSecret(ctx, client, namespace, targetNamespace); err != nil {
-		return fmt.Errorf("failed to create or update the alertmanager accessor token secret: %w", err)
+		return false, fmt.Errorf("failed to create or update the alertmanager accessor token secret: %w", err)
 	}
 
 	// create or update the cluster-monitoring-config configmap and relevant resources
@@ -311,24 +314,24 @@ func createOrUpdateClusterMonitoringConfig(
 		// only revert (once) if not done already and remember state
 		revertedAlready, err := isRevertedAlready(ctx, client, namespace)
 		if err != nil {
-			return err
+			return false, err
 		}
 		if !revertedAlready {
 			if err = RevertClusterMonitoringConfig(ctx, client); err != nil {
-				return err
+				return false, err
 			}
 			if err = setConfigReverted(ctx, client, namespace); err != nil {
-				return err
+				return false, err
 			}
 		} else {
 			log.Info("configuration reverted, nothing to do")
 		}
-		return nil
+		return false, nil
 	}
 
 	if installProm {
 		// no need to create configmap cluster-monitoring-config for *KS
-		return unset(ctx, client, namespace)
+		return false, unset(ctx, client, namespace)
 	}
 
 	// init the prometheus k8s config
@@ -348,7 +351,7 @@ func createOrUpdateClusterMonitoringConfig(
 
 	newClusterMonitoringConfigurationYAMLBytes, err := yaml.Marshal(newClusterMonitoringConfiguration)
 	if err != nil {
-		return fmt.Errorf("failed to marshal cluster monitoring config to YAML: %w", err)
+		return false, fmt.Errorf("failed to marshal cluster monitoring config to YAML: %w", err)
 	}
 
 	newCusterMonitoringConfigMap := &corev1.ConfigMap{
@@ -365,9 +368,9 @@ func createOrUpdateClusterMonitoringConfig(
 	if err != nil {
 		if errors.IsNotFound(err) {
 			log.Info("cluster monitoring configmap not found, trying to create it", "name", clusterMonitoringConfigName)
-			return createCMOConfigMapAndUnset(ctx, client, newCusterMonitoringConfigMap, namespace)
+			return true, createCMOConfigMapAndUnset(ctx, client, newCusterMonitoringConfigMap, namespace)
 		}
-		return fmt.Errorf("failed to check configmap %s: %w", clusterMonitoringConfigName, err)
+		return false, fmt.Errorf("failed to check configmap %s: %w", clusterMonitoringConfigName, err)
 	}
 
 	log.Info("cluster monitoring configmap exists", "name", clusterMonitoringConfigName)
@@ -375,17 +378,17 @@ func createOrUpdateClusterMonitoringConfig(
 	if !ok {
 		// replace config.yaml in configmap
 		found.Data[clusterMonitoringConfigDataKey] = string(newClusterMonitoringConfigurationYAMLBytes)
-		return updateClusterMonitoringConfigAndUnset(ctx, client, found, namespace)
+		return true, updateClusterMonitoringConfigAndUnset(ctx, client, found, namespace)
 	}
 
 	foundClusterMonitoringConfiguration := &cmomanifests.ClusterMonitoringConfiguration{}
 	if err := yaml.Unmarshal([]byte(foundClusterMonitoringConfigurationYAMLString), foundClusterMonitoringConfiguration); err != nil {
-		return fmt.Errorf("failed to unmarshal the cluster monitoring config: %w", err)
+		return false, fmt.Errorf("failed to unmarshal the cluster monitoring config: %w", err)
 	}
 
 	newCMOCfg := &cmomanifests.ClusterMonitoringConfiguration{}
 	if err := yaml.Unmarshal([]byte(foundClusterMonitoringConfigurationYAMLString), newCMOCfg); err != nil {
-		return fmt.Errorf("failed to unmarshal the cluster monitoring config: %w", err)
+		return false, fmt.Errorf("failed to unmarshal the cluster monitoring config: %w", err)
 	}
 
 	if newCMOCfg.PrometheusK8sConfig != nil {
@@ -424,16 +427,16 @@ func createOrUpdateClusterMonitoringConfig(
 	}
 
 	if equality.Semantic.DeepEqual(*foundClusterMonitoringConfiguration, *newCMOCfg) {
-		return nil
+		return false, nil
 	}
 
 	updatedClusterMonitoringConfigurationYAMLBytes, err := yaml.Marshal(newCMOCfg)
 	if err != nil {
-		return fmt.Errorf("failed to marshal the cluster monitoring config to yaml: %w", err)
+		return false, fmt.Errorf("failed to marshal the cluster monitoring config to yaml: %w", err)
 	}
 
 	found.Data[clusterMonitoringConfigDataKey] = string(updatedClusterMonitoringConfigurationYAMLBytes)
-	return updateClusterMonitoringConfigAndUnset(ctx, client, found, namespace)
+	return true, updateClusterMonitoringConfigAndUnset(ctx, client, found, namespace)
 }
 
 // RevertClusterMonitoringConfig reverts the configmap cluster-monitoring-config and relevant resources

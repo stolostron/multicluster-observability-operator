@@ -160,7 +160,7 @@ func TestReportStatus(t *testing.T) {
 			expects: func(t *testing.T, wasUpdated bool, resultErr error, conditions []oav1beta1.StatusCondition) {
 				assert.Len(t, conditions, 1)
 				assert.Error(t, resultErr)
-				assert.Contains(t, resultErr.Error(), "invalid transition")
+				assert.ErrorIs(t, resultErr, ErrInvalidTransition)
 			},
 		},
 	}

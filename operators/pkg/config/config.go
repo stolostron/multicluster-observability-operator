@@ -10,6 +10,7 @@ const (
 	HubInfoSecretKey                = "hub-info.yaml" // #nosec G101 -- Not a hardcoded credential.
 	ObservatoriumAPIRemoteWritePath = "/api/metrics/v1/default/api/v1/receive"
 	AnnotationSkipCreation          = "skip-creation-if-exist"
+	ObservabilityAddonName          = "observability-addon"
 
 	ClusterLabelKeyForAlerts = "managed_cluster"
 

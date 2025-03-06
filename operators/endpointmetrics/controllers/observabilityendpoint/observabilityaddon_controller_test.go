@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/go-logr/logr"
 	ocinfrav1 "github.com/openshift/api/config/v1"
 	hyperv1 "github.com/openshift/hypershift/api/hypershift/v1beta1"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
@@ -209,6 +210,7 @@ alertmanager-router-ca: |
 		Namespace:             testNamespace,
 		HubNamespace:          testHubNamespace,
 		ServiceAccountName:    "test-sa",
+		Logger:                logr.Logger{},
 	}
 
 	// test error in reconcile if missing obervabilityaddon
