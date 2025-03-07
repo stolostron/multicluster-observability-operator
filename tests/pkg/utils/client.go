@@ -5,8 +5,10 @@
 package utils
 
 import (
+	ocpClientSet "github.com/openshift/client-go/config/clientset/versioned"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/klog"
 )
 
@@ -53,4 +55,21 @@ func GetManagedClusterName(opt TestOptions) string {
 		return opt.ManagedClusters[0].Name
 	}
 	return ""
+}
+
+func GetOCPClient(opt TestOptions) ocpClientSet.Interface {
+	config, err := clientcmd.BuildConfigFromFlags("", "")
+	if err != nil {
+		klog.Errorf("Failed to create the config: %v", err)
+		panic(err)
+	}
+
+	// generate the client based off of the config
+	ocpClient, err := ocpClientSet.NewForConfig(config)
+	if err != nil {
+		klog.Errorf("Failed to create the ocp client: %v", err)
+		panic(err)
+	}
+
+	return ocpClient
 }
