@@ -60,14 +60,18 @@ func newReason(s string) reason {
 		return reason{string(status.Disabled), 1, Degraded}
 	case string(status.ForwardSuccessful):
 		return reason{string(status.ForwardSuccessful), 2, Available}
+	case string(status.CmoReconcileLoopStopped):
+		return reason{string(status.CmoReconcileLoopStopped), 3, Progressing}
 	case string(status.UpdateSuccessful):
-		return reason{string(status.UpdateSuccessful), 3, Progressing}
+		return reason{string(status.UpdateSuccessful), 4, Progressing}
 	case string(status.ForwardFailed):
-		return reason{string(status.ForwardFailed), 4, Degraded}
+		return reason{string(status.ForwardFailed), 5, Degraded}
+	case string(status.CmoReconcileLoopDetected):
+		return reason{string(status.CmoReconcileLoopDetected), 6, Degraded}
 	case string(status.UpdateFailed):
-		return reason{string(status.UpdateFailed), 5, Degraded}
+		return reason{string(status.UpdateFailed), 7, Degraded}
 	case string(status.NotSupported):
-		return reason{string(status.NotSupported), 6, Degraded}
+		return reason{string(status.NotSupported), 8, Degraded}
 	default:
 		return reason{s, -1, Degraded}
 	}

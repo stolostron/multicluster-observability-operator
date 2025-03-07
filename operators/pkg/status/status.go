@@ -6,6 +6,7 @@ package status
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -26,29 +27,34 @@ const (
 	UwlMetricsCollector Component = "UwlMetricsCollector"
 )
 
+var ErrInvalidTransition = errors.New("invalid status transition")
+
 // Reason defines the Reason for the status condition
 type Reason string
 
 var (
 	// When adding a new Reason, make sure to update the status controller package
 	// to aggreagate correctly the status of the ObservabilityAddon
-	UpdateSuccessful  Reason = "UpdateSuccessful"
-	UpdateFailed      Reason = "UpdateFailed"
-	ForwardSuccessful Reason = "ForwardSuccessful"
-	ForwardFailed     Reason = "ForwardFailed"
-	Disabled          Reason = "Disabled"
-	NotSupported      Reason = "NotSupported"
+	UpdateSuccessful         Reason = "UpdateSuccessful"
+	UpdateFailed             Reason = "UpdateFailed"
+	ForwardSuccessful        Reason = "ForwardSuccessful"
+	ForwardFailed            Reason = "ForwardFailed"
+	CmoReconcileLoopDetected Reason = "CMOReconcileLoopDetected"
+	CmoReconcileLoopStopped  Reason = "CMOReconcileLoopStopped"
+	Disabled                 Reason = "Disabled"
+	NotSupported             Reason = "NotSupported"
 )
 
 var (
 	// componentTransitions defines the valid transitions between component conditions
 	componentTransitions = map[Reason]map[Reason]struct{}{
 		UpdateSuccessful: {
-			UpdateFailed:      {},
-			ForwardSuccessful: {},
-			ForwardFailed:     {},
-			Disabled:          {},
-			NotSupported:      {},
+			UpdateFailed:             {},
+			CmoReconcileLoopDetected: {},
+			ForwardSuccessful:        {},
+			ForwardFailed:            {},
+			Disabled:                 {},
+			NotSupported:             {},
 		},
 		UpdateFailed: {
 			UpdateSuccessful: {},
@@ -56,18 +62,34 @@ var (
 			NotSupported:     {},
 		},
 		ForwardSuccessful: {
-			ForwardFailed:    {},
-			UpdateSuccessful: {},
-			UpdateFailed:     {},
-			Disabled:         {},
-			NotSupported:     {},
+			ForwardFailed:            {},
+			UpdateSuccessful:         {},
+			CmoReconcileLoopDetected: {},
+			UpdateFailed:             {},
+			Disabled:                 {},
+			NotSupported:             {},
 		},
 		ForwardFailed: {
-			ForwardSuccessful: {},
-			UpdateSuccessful:  {},
-			UpdateFailed:      {},
-			Disabled:          {},
-			NotSupported:      {},
+			ForwardSuccessful:        {},
+			UpdateSuccessful:         {},
+			CmoReconcileLoopDetected: {},
+			UpdateFailed:             {},
+			Disabled:                 {},
+			NotSupported:             {},
+		},
+		CmoReconcileLoopDetected: { // Getting out of this state is restricted to the resolution of it, plus exceptions
+			CmoReconcileLoopStopped: {},
+			Disabled:                {},
+			NotSupported:            {},
+		},
+		CmoReconcileLoopStopped: { // All transitions are enabled from this state
+			UpdateSuccessful:         {},
+			UpdateFailed:             {},
+			ForwardSuccessful:        {},
+			ForwardFailed:            {},
+			CmoReconcileLoopDetected: {},
+			Disabled:                 {},
+			NotSupported:             {},
 		},
 		Disabled: {
 			UpdateSuccessful: {},
@@ -133,7 +155,7 @@ func (s Status) UpdateComponentCondition(ctx context.Context, componentName Comp
 		// this is to avoid flapping between conditions
 		if currentCondition != nil {
 			if _, ok := componentTransitions[Reason(currentCondition.Reason)][newReason]; !ok {
-				return fmt.Errorf("invalid transition from %s to %s for component %s", currentCondition.Reason, newReason, componentName)
+				return fmt.Errorf("%w: from %s to %s for component %s", ErrInvalidTransition, currentCondition.Reason, newReason, componentName)
 			}
 		}
 
@@ -147,6 +169,21 @@ func (s Status) UpdateComponentCondition(ctx context.Context, componentName Comp
 	}
 
 	return wasUpdated, nil
+}
+
+// GetConditionReason returns the current addon condition reason for the component
+func (s Status) GetConditionReason(ctx context.Context, componentName Component) (Reason, error) {
+	addon, err := s.fetchAddon(ctx)
+	if err != nil {
+		return Reason(""), err
+	}
+
+	currentCondition := getConditionByType(addon.Status.Conditions, string(componentName))
+	if currentCondition == nil {
+		return Reason(""), nil
+	}
+
+	return Reason(currentCondition.Reason), nil
 }
 
 func (s Status) fetchAddon(ctx context.Context) (*oav1beta1.ObservabilityAddon, error) {

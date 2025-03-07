@@ -20,6 +20,7 @@ import (
 
 	yamltool "github.com/ghodss/yaml"
 	cmomanifests "github.com/openshift/cluster-monitoring-operator/pkg/manifests"
+	"github.com/stretchr/testify/assert"
 
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	"gopkg.in/yaml.v2"
@@ -163,10 +164,11 @@ func TestClusterMonitoringConfigUnchanged(t *testing.T) {
 	}
 	cmoCfg := newClusterMonitoringConfigCM(clusterMonitoringConfigDataYaml, endpointMonitoringOperatorMgr)
 	client := fake.NewClientBuilder().WithRuntimeObjects(newHubInfoSecret([]byte(hubInfoYAML), testNamespace), cmoCfg, amAccessSrt).Build()
-	err := createOrUpdateClusterMonitoringConfig(context.Background(), hubInfo, testClusterID, client, false, testNamespace)
+	wasUpdated, err := createOrUpdateClusterMonitoringConfig(context.Background(), hubInfo, testClusterID, client, false, testNamespace)
 	if err != nil {
 		t.Fatalf("Failed to create or update the cluster-monitoring-config configmap: (%v)", err)
 	}
+	assert.True(t, wasUpdated)
 
 	cmoCfgBeforeUpdate := &corev1.ConfigMap{}
 	err = client.Get(context.Background(), types.NamespacedName{Name: clusterMonitoringConfigName, Namespace: promNamespace}, cmoCfgBeforeUpdate)
@@ -174,10 +176,11 @@ func TestClusterMonitoringConfigUnchanged(t *testing.T) {
 		t.Fatalf("failed to check configmap %s: %v", clusterMonitoringConfigName, err)
 	}
 
-	err = createOrUpdateClusterMonitoringConfig(context.Background(), hubInfo, testClusterID, client, false, testNamespace)
+	wasUpdated, err = createOrUpdateClusterMonitoringConfig(context.Background(), hubInfo, testClusterID, client, false, testNamespace)
 	if err != nil {
 		t.Fatalf("Failed to create or update the cluster-monitoring-config configmap: (%v)", err)
 	}
+	assert.False(t, wasUpdated)
 
 	cmoCfgAfterUpdate := &corev1.ConfigMap{}
 	err = client.Get(context.Background(), types.NamespacedName{Name: clusterMonitoringConfigName, Namespace: promNamespace}, cmoCfgAfterUpdate)
@@ -339,10 +342,11 @@ func TestClusterMonitoringConfigAlertsDisabled(t *testing.T) {
 		t.Fatalf("could not recreate hubInfoObject to enable alerts again")
 	}
 	t.Run("Reenable alert forwarding", func(t *testing.T) {
-		err = createOrUpdateClusterMonitoringConfig(ctx, hubInfo, testClusterID, c, false, testNamespace)
+		wasUpdated, err := createOrUpdateClusterMonitoringConfig(ctx, hubInfo, testClusterID, c, false, testNamespace)
 		if err != nil {
 			t.Fatalf("Failed to create or update the cluster-monitoring-config configmap: (%v)", err)
 		}
+		assert.True(t, wasUpdated)
 
 		foundclusterMonitoringRevertedCM := &corev1.ConfigMap{}
 		err = c.Get(ctx, types.NamespacedName{Name: clusterMonitoringRevertedName,
@@ -389,10 +393,11 @@ func TestClusterMonitoringConfigAlertsDisabled(t *testing.T) {
 
 func testCreateOrUpdateClusterMonitoringConfig(t *testing.T, hubInfo *operatorconfig.HubInfo, c client.Client, expectedCMDelete bool, tokenValue, ns string) {
 	ctx := context.TODO()
-	err := createOrUpdateClusterMonitoringConfig(ctx, hubInfo, testClusterID, c, false, ns)
+	wasUpdated, err := createOrUpdateClusterMonitoringConfig(ctx, hubInfo, testClusterID, c, false, ns)
 	if err != nil {
 		t.Fatalf("Failed to create or update the cluster-monitoring-config configmap: (%v)", err)
 	}
+	assert.True(t, wasUpdated)
 
 	foundCusterMonitoringConfigMap := &corev1.ConfigMap{}
 	err = c.Get(ctx, types.NamespacedName{Name: clusterMonitoringConfigName,
