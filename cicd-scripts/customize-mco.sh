@@ -122,7 +122,7 @@ get_ginkgo_focus() {
     # and we skip those that explictly requires OCP
     GINKGO_FOCUS=" --focus manifestwork/g --focus endpoint_preserve/g --focus grafana/g --focus metrics/g --focus addon/g --focus alert/g --focus dashboard/g --skip requires-ocp/g0"
   else
-    GINKGO_FOCUS=""
+    GINKGO_FOCUS="--focus obs_rbac/g"
   fi
   echo "Test focuses are ${GINKGO_FOCUS}"
 }
