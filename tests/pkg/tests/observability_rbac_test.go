@@ -22,9 +22,9 @@ import (
 )
 
 var _ = Describe("Observability:", func() {
-	It("RHACM4K-1406 - Observability - RBAC - only authorized user could query managed cluster metrics data [Observability][Integration]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release (obs_rbac/g0)", func() {
+	It("RHACM4K-1406 - Observability - RBAC - only authorized user could query managed cluster metrics data [Observability][Integration]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release (obs_rbac/g0) (requires-ocp/g0)", func() {
 		By("Setting up users creation and rolebindings for RBAC", func() {
-			cmd := exec.Command("../../../tools/setup_rbac-test.sh")
+			cmd := exec.Command("../../setup_rbac_test.sh")
 			var out bytes.Buffer
 			cmd.Stdout = &out
 			err := cmd.Run()
@@ -58,6 +58,8 @@ var _ = Describe("Observability:", func() {
 			err = yaml.Unmarshal(respBody, &metricResult)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(metricResult.Status).To(Equal("success"))
+			// print out the result for debugging
+			klog.V(1).Infof("the result of query: %v", metricResult)
 
 		})
 		By("Logging in as user1 and querying managed cluster metrics data", func() {
