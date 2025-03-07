@@ -51,12 +51,13 @@ update_mco_cr() {
   ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-imageTagSuffix: ${LATEST_SNAPSHOT}" ${ROOTDIR}/examples/mco/e2e/v1beta2/custom-certs/observability.yaml
   ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-imageTagSuffix: ${LATEST_SNAPSHOT}" ${ROOTDIR}/examples/mco/e2e/v1beta2/custom-certs-kind/observability.yaml
 
-
   # need to add this annotation due to KinD cluster resources are insufficient
   if [[ -n ${IS_KIND_ENV} ]]; then
     ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-thanos-without-resources-requests: true" ${ROOTDIR}/examples/mco/e2e/v1beta2/observability.yaml
     # annotate MCO in kind env to be able to install prometheus
     ${SED_COMMAND} "/annotations.*/a \ \ \ \ test-env: kind-test" ${ROOTDIR}/examples/mco/e2e/v1beta2/observability.yaml
+    ${SED_COMMAND} "/annotations.*/a \ \ \ \ test-env: kind-test" ${ROOTDIR}/examples/mco/e2e/v1beta2/custom-certs-kind/observability.yaml
+
   fi
 }
 
