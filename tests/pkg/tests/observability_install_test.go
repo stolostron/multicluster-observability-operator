@@ -164,7 +164,12 @@ func installMCO() {
 		Expect(utils.Apply(testOptions.HubCluster.ClusterServerURL, testOptions.KubeConfig, testOptions.HubCluster.KubeContext, yamlB)).NotTo(HaveOccurred())
 
 		By("Apply MCO instance of v1beta2")
-		v1beta2KustomizationPath := "../../../examples/mco/e2e/v1beta2/custom-certs"
+		v1beta2KustomizationPath := ""
+		if os.Getenv("IS_KIND_ENV") == trueStr {
+			v1beta2KustomizationPath = "../../../examples/mco/e2e/v1beta2/custom-certs-kind"
+		} else {
+			v1beta2KustomizationPath = "../../../examples/mco/e2e/v1beta2/custom-certs"
+		}
 		yamlB, err = kustomize.Render(kustomize.Options{KustomizationPath: v1beta2KustomizationPath})
 		Expect(err).NotTo(HaveOccurred())
 		// add retry for update mco object failure
