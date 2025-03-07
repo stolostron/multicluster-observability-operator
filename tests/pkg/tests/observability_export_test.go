@@ -104,7 +104,7 @@ var _ = Describe("Observability:", func() {
 	})
 
 	JustAfterEach(func() {
-		if CurrentGinkgoTestDescription().Failed {
+		if CurrentSpecReport().Failed() {
 			utils.LogFailingTestStandardDebugInfo(testOptions)
 		}
 		testFailed = testFailed || CurrentGinkgoTestDescription().Failed
