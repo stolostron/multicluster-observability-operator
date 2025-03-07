@@ -57,6 +57,8 @@ update_mco_cr() {
     ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-thanos-without-resources-requests: true" ${ROOTDIR}/examples/mco/e2e/v1beta2/observability.yaml
     # annotate MCO in kind env to be able to install prometheus
     ${SED_COMMAND} "/annotations.*/a \ \ \ \ test-env: kind-test" ${ROOTDIR}/examples/mco/e2e/v1beta2/observability.yaml
+    ${SED_COMMAND} "/annotations.*/a \ \ \ \ test-env: kind-test" ${ROOTDIR}/examples/mco/e2e/v1beta2/custom-certs-kind/observability.yaml
+
   fi
 }
 
