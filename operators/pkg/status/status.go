@@ -40,7 +40,7 @@ var (
 	ForwardSuccessful        Reason = "ForwardSuccessful"
 	ForwardFailed            Reason = "ForwardFailed"
 	CmoReconcileLoopDetected Reason = "CMOReconcileLoopDetected"
-	CmoReconcileLoopStopped  Reason = "CMOReconcileLoopStoped"
+	CmoReconcileLoopStopped  Reason = "CMOReconcileLoopStopped"
 	Disabled                 Reason = "Disabled"
 	NotSupported             Reason = "NotSupported"
 )
