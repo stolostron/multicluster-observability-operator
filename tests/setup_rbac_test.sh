@@ -8,14 +8,14 @@ create_test_users() {
   htpasswd -B -b users.htpasswd user1 user1
   htpasswd -B -b users.htpasswd user2 user2
   oc create ns openshift-config
-  oc delete secret htpass-user-test -n openshift-config &> /dev/null
+  oc delete secret htpass-user-test -n openshift-config &>/dev/null
   oc create secret generic htpass-user-test --from-file=htpasswd=users.htpasswd -n openshift-config
   rm -f users.htpasswd
 }
 
 create_auth_provider() {
   echo CREATING AUTH PROVIDER
-  cat >oauth.yaml << EOL
+  cat >oauth.yaml <<EOL
 apiVersion: config.openshift.io/v1
 kind: OAuth
 metadata:
