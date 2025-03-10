@@ -5,10 +5,12 @@
 package utils
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"os/user"
 	"path/filepath"
 	"strings"
@@ -253,13 +255,6 @@ func Apply(url string, kubeconfig string, ctx string, yamlB []byte) error {
 			kind = v.(string)
 		}
 
-		var apiVersion string
-		if v, ok := obj.Object["apiVersion"]; !ok {
-			return fmt.Errorf("apiVersion attribute not found in %s", f)
-		} else {
-			apiVersion = v.(string)
-		}
-
 		klog.V(5).Infof("Applying kind %q with name %q in namespace %q", kind, obj.GetName(), obj.GetNamespace())
 
 		clientKube := NewKubeClient(url, kubeconfig, ctx)
@@ -482,9 +477,6 @@ func Apply(url string, kubeconfig string, ctx string, yamlB []byte) error {
 			switch kind {
 			case "MultiClusterObservability":
 				gvr = NewMCOGVRV1BETA2()
-				if apiVersion == "observability.open-cluster-management.io/v1beta1" {
-					gvr = NewMCOGVRV1BETA1()
-				}
 			case "PrometheusRule":
 				gvr = schema.GroupVersionResource{
 					Group:    "monitoring.coreos.com",
@@ -539,27 +531,6 @@ func Apply(url string, kubeconfig string, ctx string, yamlB []byte) error {
 		}
 	}
 	return nil
-}
-
-// StatusContainsTypeEqualTo check if u contains a condition type with value typeString
-func StatusContainsTypeEqualTo(u *unstructured.Unstructured, typeString string) bool {
-	if u != nil {
-		if v, ok := u.Object["status"]; ok {
-			status := v.(map[string]interface{})
-			if v, ok := status["conditions"]; ok {
-				conditions := v.([]interface{})
-				for _, v := range conditions {
-					condition := v.(map[string]interface{})
-					if v, ok := condition["type"]; ok {
-						if v.(string) == typeString {
-							return true
-						}
-					}
-				}
-			}
-		}
-	}
-	return false
 }
 
 func HaveCRDs(c Cluster, kubeconfig string, expectedCRDs []string) error {
@@ -623,4 +594,22 @@ func GetPullSecret(opt TestOptions) (string, error) {
 
 	ips := spec["imagePullSecret"].(string)
 	return ips, nil
+}
+
+func LoginOCUser(opt TestOptions, user string, password string) error {
+	cm := exec.Command("oc", "login", "-u", user, "-p", password, "--server", opt.HubCluster.ClusterServerURL)
+	err := cm.Run()
+	if err != nil {
+		return err
+	}
+	cmd := exec.Command("oc", "whoami", "-t")
+	var token bytes.Buffer
+	cmd.Stdout = &token
+	err = cmd.Run()
+	if err != nil {
+		return err
+	}
+	tokenBytes := token.Bytes()
+	os.Setenv("USER_TOKEN", strings.TrimSpace(string(tokenBytes)))
+	return nil
 }

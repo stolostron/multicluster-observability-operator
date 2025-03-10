@@ -38,13 +38,6 @@ const (
 	OCM_ADDON_GROUP               = "addon.open-cluster-management.io"
 )
 
-func NewMCOGVRV1BETA1() schema.GroupVersionResource {
-	return schema.GroupVersionResource{
-		Group:    MCO_GROUP,
-		Version:  "v1beta1",
-		Resource: "multiclusterobservabilities"}
-}
-
 func NewMCOGVRV1BETA2() schema.GroupVersionResource {
 	return schema.GroupVersionResource{
 		Group:    MCO_GROUP,
