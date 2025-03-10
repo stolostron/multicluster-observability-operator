@@ -9,7 +9,6 @@ ROOTDIR="$(
 WORKDIR=${ROOTDIR}/tests/run-in-kind
 
 export IS_KIND_ENV=true
-export INSTALL_PROM="true"
 
 # shellcheck disable=SC1091
 source ${WORKDIR}/env.sh

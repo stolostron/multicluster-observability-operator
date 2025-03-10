@@ -29,24 +29,14 @@ spec:
               fileData:
                   name: htpass-secret
 EOL
-  echo oc apply -f oauth.yaml
+  oc apply -f oauth.yaml
 }
 
 create_role_bindings() {
   echo CREATING ROLE BINDINGS
   oc create clusterrolebinding cluster-manager-admin-binding --clusterrole=open-cluster-management:cluster-manager-admin --user=admin
-  oc create clusterrolebinding edit-binding --clusterrole=edit --user=user1
-  oc create clusterrolebinding view-binding --clusterrole=view --user=user2
-}
-
-collect_users_oc_token() {
-  echo COLLECTING USER OC TOKENS
-  oc login -u admin -p admin
-  ADMIN_TOKEN=$(oc whoami -t)
-  oc login -u user1 -p user1
-  USER1_TOKEN=$(oc whoami -t)
-  oc login -u user2 -p user2
-  USER2_TOKEN=$(oc whoami -t)
+  oc create clusterrolebinding edit-binding-user1 --clusterrole=edit --user=user1
+  oc create clusterrolebinding view-binding-user2 --clusterrole=view --user=user2
 }
 
 if ! which htpasswd &>/dev/null; then
@@ -62,4 +52,3 @@ fi
 create_test_users
 create_auth_provider
 create_role_bindings
-collect_users_oc_token

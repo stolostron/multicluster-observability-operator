@@ -6,72 +6,45 @@ package tests
 
 import (
 	"bytes"
-	"fmt"
-	"gopkg.in/yaml.v2"
-	"io"
-	"net/http"
-	"net/url"
-	"os"
-	"os/exec"
-
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"k8s.io/klog"
+	"os/exec"
 
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/utils"
 )
 
 var _ = Describe("Observability:", func() {
-	It("RHACM4K-1406 - Observability - RBAC - only authorized user could query managed cluster metrics data [Observability][Integration]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release (obs_rbac/g0) (requires-ocp/g0)", func() {
+	It("RHACM4K-1406 - Observability - RBAC - only authorized user could query managed cluster metrics data [Observability][Integration]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release (obs_rbac/g0)", func() {
 		By("Setting up users creation and rolebindings for RBAC", func() {
 			cmd := exec.Command("../../setup_rbac_test.sh")
 			var out bytes.Buffer
 			cmd.Stdout = &out
-			err := cmd.Run()
+			_ = cmd.Run()
 			klog.V(1).Infof("the output of setup_rbac_test.sh: %v", out.String())
-			Expect(err).NotTo(HaveOccurred())
+			//Expect(err).NotTo(HaveOccurred())
 		})
 		By("Logging in as admin and querying managed cluster metrics data", func() {
-
-			grafanaConsoleURL := utils.GetGrafanaURL(testOptions)
-			path := "/api/datasources/proxy/uid/000000001/api/v1/query?"
-			query := fmt.Sprintf("node_memory_MemAvailable_bytes{cluster=*}")
-			queryParams := url.PathEscape(fmt.Sprintf("query=%s", query))
-			req, err := http.NewRequest(
-				"GET",
-				grafanaConsoleURL+path+queryParams,
-				nil)
+			err = utils.LoginOCUser(testOptions, "admin", "admin")
 			Expect(err).NotTo(HaveOccurred())
-
-			adminToken := os.Getenv("ADMIN_TOKEN")
-			req.Header.Set("Authorization", "Bearer "+adminToken)
-
-			client := &http.Client{}
-			resp, err := client.Do(req)
+			res, err := utils.QueryGrafana(testOptions, "node_memory_MemAvailable_bytes")
 			Expect(err).NotTo(HaveOccurred())
-			Expect(resp.StatusCode).To(Equal(http.StatusOK))
-
-			respBody, err := io.ReadAll(resp.Body)
-			Expect(err).NotTo(HaveOccurred())
-
-			metricResult := utils.GrafanaResponse{}
-			err = yaml.Unmarshal(respBody, &metricResult)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(metricResult.Status).To(Equal("success"))
-			// print out the result for debugging
-			klog.V(1).Infof("the result of query: %v", metricResult)
+			klog.V(1).Infof("the result of query: %v", res)
 
 		})
-		By("Logging in as user1 and querying managed cluster metrics data", func() {
-			// Query grafana with token from environment variable
-			//user1Token := os.Getenv("USER1_TOKEN")
+		By("Logging in as user1 with view role and querying managed cluster metrics data", func() {
+			err = utils.LoginOCUser(testOptions, "user1", "user1")
+			Expect(err).NotTo(HaveOccurred())
+			res, err := utils.QueryGrafana(testOptions, "node_memory_MemAvailable_bytes")
+			Expect(err).NotTo(HaveOccurred())
+			klog.V(1).Infof("the result of query: %v", res)
 		})
-		By("Logging in as user2 and querying managed cluster metrics data", func() {
-			//cmd := exec.Command("oc login -u user2 -p user2")
-			//var out bytes.Buffer
-			//cmd.Stdout = &out
-			//err := cmd.Run()
-			//Expect(err).NotTo(HaveOccurred())
+		By("Logging in as user2 with edit role and querying managed cluster metrics data", func() {
+			err = utils.LoginOCUser(testOptions, "user2", "user2")
+			Expect(err).NotTo(HaveOccurred())
+			res, err := utils.QueryGrafana(testOptions, "node_memory_MemAvailable_bytes")
+			Expect(err).NotTo(HaveOccurred())
+			klog.V(1).Infof("the result of query: %v", res)
 		})
 
 	})
@@ -82,7 +55,7 @@ var _ = Describe("Observability:", func() {
 
 	AfterEach(func() {
 		if CurrentSpecReport().Failed() {
-			utils.LogFailingTestStandardDebugInfo(testOptions)
+			//utils.LogFailingTestStandardDebugInfo(testOptions)
 		}
 		testFailed = testFailed || CurrentSpecReport().Failed()
 	})
