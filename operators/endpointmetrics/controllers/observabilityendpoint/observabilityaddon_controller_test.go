@@ -9,7 +9,9 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/go-logr/logr"
 	ocinfrav1 "github.com/openshift/api/config/v1"
 	hyperv1 "github.com/openshift/hypershift/api/hypershift/v1beta1"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
@@ -36,6 +38,7 @@ import (
 	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
+	"github.com/stolostron/multicluster-observability-operator/operators/pkg/status"
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 )
 
@@ -209,6 +212,8 @@ alertmanager-router-ca: |
 		Namespace:             testNamespace,
 		HubNamespace:          testHubNamespace,
 		ServiceAccountName:    "test-sa",
+		Logger:                logr.Logger{},
+		CmoReconcilesDetector: openshift.NewCmoConfigChangesWatcher(c, logr.Logger{}, &statusReporterMock{}, 3, time.Minute, 0.5),
 	}
 
 	// test error in reconcile if missing obervabilityaddon
@@ -488,6 +493,7 @@ alertmanager-router-ca: |
 		Namespace:             testNamespace,
 		HubNamespace:          testHubNamespace,
 		ServiceAccountName:    "test-sa",
+		CmoReconcilesDetector: openshift.NewCmoConfigChangesWatcher(c, logr.Logger{}, &statusReporterMock{}, 3, time.Minute, 0.5),
 	}
 
 	checkMetricsCollector := func() {
@@ -572,4 +578,17 @@ names:
   - uwl_b
 `},
 	}
+}
+
+type statusReporterMock struct {
+	Reason status.Reason
+}
+
+func (s *statusReporterMock) UpdateComponentCondition(ctx context.Context, componentName status.Component, newReason status.Reason, newMessage string) (bool, error) {
+	s.Reason = newReason
+	return true, nil
+}
+
+func (s *statusReporterMock) GetConditionReason(ctx context.Context, componentName status.Component) (status.Reason, error) {
+	return s.Reason, nil
 }
