@@ -25,10 +25,11 @@ type statusUpdaterI interface {
 }
 
 type CmoConfigChangesWatcher struct {
-	statusReporter     statusUpdaterI
-	leakyBucket        *leakyBucket
-	logger             logr.Logger
-	checkedAtLeastOnce bool // Ensures the status is processed and reset on restarts to avoid locked state
+	statusReporter       statusUpdaterI
+	leakyBucket          *leakyBucket
+	logger               logr.Logger
+	checkedAtLeastOnce   bool // Ensures the status is processed and reset on restarts to avoid locked state
+	statusResetFillRatio float64
 }
 
 // NewCmoConfigChangesWatcher creates a monitoring component that detects excessive CMO configMap driven reconciliations
@@ -42,12 +43,13 @@ type CmoConfigChangesWatcher struct {
 //   - Drains one item every bucketLeakPeriod
 //
 // 2. Degrades system status when the bucket reaches capacity
-// 3. Restores normal status when the bucket fill ratio drops below 50%
-func NewCmoConfigChangesWatcher(c client.Client, logger logr.Logger, statusReporter statusUpdaterI, bucketCapacity int, bucketLeakPeriod time.Duration) *CmoConfigChangesWatcher {
+// 3. Restores normal status when the bucket fill ratio drops below statusResetFillRatio
+func NewCmoConfigChangesWatcher(c client.Client, logger logr.Logger, statusReporter statusUpdaterI, bucketCapacity int, bucketLeakPeriod time.Duration, statusResetFillRatio float64) *CmoConfigChangesWatcher {
 	return &CmoConfigChangesWatcher{
-		leakyBucket:    newLeakyBucket(bucketCapacity, bucketLeakPeriod),
-		statusReporter: statusReporter,
-		logger:         logger,
+		leakyBucket:          newLeakyBucket(bucketCapacity, bucketLeakPeriod),
+		statusReporter:       statusReporter,
+		logger:               logger,
+		statusResetFillRatio: statusResetFillRatio,
 	}
 }
 
@@ -78,7 +80,7 @@ func (c *CmoConfigChangesWatcher) CheckRequest(ctx context.Context, req ctrl.Req
 			}
 
 			// Requeue when bucket is half empty
-			requeueAfter := c.leakyBucket.LeakPeriod * time.Duration(math.Ceil(float64(c.leakyBucket.Capacity)/2))
+			requeueAfter := c.leakyBucket.LeakPeriod * time.Duration(math.Ceil(float64(c.leakyBucket.Capacity)*(1-c.statusResetFillRatio)))
 			c.logger.Info("Requeueing with delay to ensure status update", "requeueAfter", requeueAfter)
 			return ctrl.Result{RequeueAfter: requeueAfter}, nil
 		}
@@ -95,7 +97,7 @@ func (c *CmoConfigChangesWatcher) CheckRequest(ctx context.Context, req ctrl.Req
 	}
 
 	// Only restore the addon state once the bucket has emptied anough to avoid flapping status
-	if c.leakyBucket.FillRatio() <= 0.5 {
+	if c.leakyBucket.FillRatio() <= c.statusResetFillRatio {
 		// Bucket is emptying, reset the status
 		c.logger.Info("Excessive reconciliations triggered by CMO configurations is over. Resetting the addon status into Progressing state.")
 		if wasReported, err := c.statusReporter.UpdateComponentCondition(ctx, status.MetricsCollector, status.CmoReconcileLoopStopped, "CMO configuration updates have stopped."); err != nil {
@@ -106,8 +108,8 @@ func (c *CmoConfigChangesWatcher) CheckRequest(ctx context.Context, req ctrl.Req
 	} else {
 		// Ensure this is requeued to avoid locked state.
 		// Computed approximate remaining time to half capacity for better system responsiveness.
-		halfCapacity := c.leakyBucket.Capacity / 2 // Floor of the division
-		remainingLen := max(c.leakyBucket.Len()-halfCapacity, 1)
+		targetCapacity := int(float64(c.leakyBucket.Capacity) * c.statusResetFillRatio)
+		remainingLen := max(c.leakyBucket.Len()-targetCapacity, 1)
 		requeueAfter := c.leakyBucket.LeakPeriod * time.Duration(remainingLen)
 		c.logger.Info("Requeueing with delay to ensure status update, bucket fill ratio is too high to restore the addon status", "requeueAfter", requeueAfter, "bucketFillRatio", c.leakyBucket.FillRatio())
 		return ctrl.Result{RequeueAfter: requeueAfter}, nil

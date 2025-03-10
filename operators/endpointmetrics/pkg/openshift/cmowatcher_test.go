@@ -6,6 +6,7 @@ package openshift
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -30,7 +31,7 @@ func TestCmoConfigWatcher(t *testing.T) {
 	statusReporter := &statusReporterMock{}
 	capacity := 5
 	leakPeriod := 100 * time.Millisecond
-	cmoWatcher := NewCmoConfigChangesWatcher(c, logr.Logger{}, statusReporter, capacity, leakPeriod)
+	cmoWatcher := NewCmoConfigChangesWatcher(c, logr.Logger{}, statusReporter, capacity, leakPeriod, 0.5)
 	req := ctrl.Request{NamespacedName: types.NamespacedName{
 		Namespace: config.OCPClusterMonitoringNamespace,
 		Name:      config.OCPClusterMonitoringConfigMapName,
@@ -45,7 +46,8 @@ func TestCmoConfigWatcher(t *testing.T) {
 
 	// Reset status and cmo watcher
 	statusReporter = &statusReporterMock{}
-	cmoWatcher = NewCmoConfigChangesWatcher(c, logr.Logger{}, statusReporter, capacity, leakPeriod)
+	statusResetFillRatio := 0.6
+	cmoWatcher = NewCmoConfigChangesWatcher(c, logr.Logger{}, statusReporter, capacity, leakPeriod, statusResetFillRatio)
 
 	// Reconciles trigerred by other sources are ignored
 	for range capacity {
@@ -61,7 +63,7 @@ func TestCmoConfigWatcher(t *testing.T) {
 		assert.True(t, res.IsZero())
 	}
 
-	// Fill the bucket. Unchanched status.
+	// Fill the bucket. Unchanged status.
 	for range capacity - 1 {
 		res, err := cmoWatcher.CheckRequest(context.Background(), req, true)
 		assert.NoError(t, err)
@@ -73,17 +75,17 @@ func TestCmoConfigWatcher(t *testing.T) {
 	res, err = cmoWatcher.CheckRequest(context.Background(), req, true)
 	assert.NoError(t, err)
 	assert.False(t, res.IsZero())
-	assert.InEpsilon(t, 3*leakPeriod, res.RequeueAfter, 0.1)
+	assert.InEpsilon(t, 200*time.Millisecond, res.RequeueAfter, 0.1, fmt.Sprintf("requeue after is: %v", res.RequeueAfter))
 	assert.Equal(t, status.CmoReconcileLoopDetected, statusReporter.Reason)
 
 	// Additional checks without updates of the configMap return same requeueAfter
 	res, err = cmoWatcher.CheckRequest(context.Background(), req, false)
 	assert.NoError(t, err)
 	assert.False(t, res.IsZero())
-	assert.InEpsilon(t, 3*leakPeriod, res.RequeueAfter, 0.1)
+	assert.InEpsilon(t, 200*time.Millisecond, res.RequeueAfter, 0.1, fmt.Sprintf("requeue after is: %v", res.RequeueAfter))
 
 	// Wait for returned requeue after (ensure it is not zero)
-	time.Sleep(res.RequeueAfter)
+	time.Sleep(res.RequeueAfter + 10*time.Millisecond) // Add some time to avoid flacky tests
 
 	// Trigger one reconcile => status should be resolved
 	res, err = cmoWatcher.CheckRequest(context.Background(), req, false)

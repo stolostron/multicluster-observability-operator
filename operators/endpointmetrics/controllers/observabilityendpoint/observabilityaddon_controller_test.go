@@ -213,7 +213,7 @@ alertmanager-router-ca: |
 		HubNamespace:          testHubNamespace,
 		ServiceAccountName:    "test-sa",
 		Logger:                logr.Logger{},
-		CmoReconcilesDetector: openshift.NewCmoConfigChangesWatcher(c, logr.Logger{}, &statusReporterMock{}, 3, time.Minute),
+		CmoReconcilesDetector: openshift.NewCmoConfigChangesWatcher(c, logr.Logger{}, &statusReporterMock{}, 3, time.Minute, 0.5),
 	}
 
 	// test error in reconcile if missing obervabilityaddon
@@ -493,7 +493,7 @@ alertmanager-router-ca: |
 		Namespace:             testNamespace,
 		HubNamespace:          testHubNamespace,
 		ServiceAccountName:    "test-sa",
-		CmoReconcilesDetector: openshift.NewCmoConfigChangesWatcher(c, logr.Logger{}, &statusReporterMock{}, 3, time.Minute),
+		CmoReconcilesDetector: openshift.NewCmoConfigChangesWatcher(c, logr.Logger{}, &statusReporterMock{}, 3, time.Minute, 0.5),
 	}
 
 	checkMetricsCollector := func() {

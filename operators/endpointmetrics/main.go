@@ -160,7 +160,7 @@ func main() {
 		ServiceAccountName:    os.Getenv("SERVICE_ACCOUNT"),
 		IsHubMetricsCollector: os.Getenv("HUB_ENDPOINT_OPERATOR") == "true",
 		InstallPrometheus:     installPrometheus,
-		CmoReconcilesDetector: openshift.NewCmoConfigChangesWatcher(mgr.GetClient(), obsAddonCtrlLogger.WithName("cmoWatcher"), statusReporter, 5, 5*time.Minute),
+		CmoReconcilesDetector: openshift.NewCmoConfigChangesWatcher(mgr.GetClient(), obsAddonCtrlLogger.WithName("cmoWatcher"), statusReporter, 5, 5*time.Minute, 0.6),
 		Logger:                obsAddonCtrlLogger,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ObservabilityAddon")
