@@ -1,0 +1,14 @@
+options:
+  kubeconfig: /Users/coquadro/work/multicluster-observability-operator/coleen-hub.yaml
+  hub:
+    clusterServerURL: https://api.sno-4xlarge-417-8r98b.dev07.red-chesterfield.com:6443
+    kubeconfig: /Users/coquadro/work/multicluster-observability-operator/coleen-hub.yaml
+    kubecontext: default/api-sno-4xlarge-417-8r98b-dev07-red-chesterfield-com:6443/kube:admin
+    baseDomain: sno-4xlarge-417-8r98b.dev07.red-chesterfield.com
+    grafanaHost: grafana
+  clusters:
+    - name: local-cluster
+      clusterServerURL: https://api.sno-4xlarge-417-8r98b.dev07.red-chesterfield.com:6443
+      baseDomain: sno-4xlarge-417-8r98b.dev07.red-chesterfield.com
+      kubeconfig: /Users/coquadro/work/multicluster-observability-operator/coleen-hub.yaml
+      kubecontext: defau:lt/api-sno-4xlarge-417-8r98b-dev07-red-chesterfield-com:6443/kube:admin

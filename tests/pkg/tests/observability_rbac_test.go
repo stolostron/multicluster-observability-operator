@@ -6,10 +6,11 @@ package tests
 
 import (
 	"bytes"
+	"os/exec"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"k8s.io/klog"
-	"os/exec"
 
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/utils"
 )
