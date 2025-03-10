@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Copyright (c) 2021 Red Hat, Inc.
 # Copyright Contributors to the Open Cluster Management project
-2
+
 create_test_users() {
   echo CREATING USER PASSWORDS SECRET
   htpasswd -c -B -b users.htpasswd admin admin
