@@ -597,7 +597,7 @@ func GetPullSecret(opt TestOptions) (string, error) {
 }
 
 func LoginOCUser(opt TestOptions, user string, password string) error {
-	cm := exec.Command("oc", "login", "-u", "admin", "-p", "admin", "--server", opt.HubCluster.ClusterServerURL)
+	cm := exec.Command("oc", "login", "-u", user, "-p", password, "--server", opt.HubCluster.ClusterServerURL)
 	err := cm.Run()
 	if err != nil {
 		return err
