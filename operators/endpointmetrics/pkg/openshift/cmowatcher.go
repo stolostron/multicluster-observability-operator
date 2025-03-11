@@ -79,7 +79,7 @@ func (c *CmoConfigChangesWatcher) CheckRequest(ctx context.Context, req ctrl.Req
 				c.logger.Info("Status updated", "component", status.MetricsCollector, "reason", status.CmoReconcileLoopDetected)
 			}
 
-			// Requeue when bucket is half empty
+			// Requeue after the bucket has reached statusResetFillRatio
 			requeueAfter := c.leakyBucket.LeakPeriod * time.Duration(math.Ceil(float64(c.leakyBucket.Capacity)*(1-c.statusResetFillRatio)))
 			c.logger.Info("Requeueing with delay to ensure status update", "requeueAfter", requeueAfter)
 			return ctrl.Result{RequeueAfter: requeueAfter}, nil
@@ -107,7 +107,7 @@ func (c *CmoConfigChangesWatcher) CheckRequest(ctx context.Context, req ctrl.Req
 		}
 	} else {
 		// Ensure this is requeued to avoid locked state.
-		// Computed approximate remaining time to half capacity for better system responsiveness.
+		// Computed approximate remaining time to statusResetFillRatio for better system responsiveness.
 		targetCapacity := int(float64(c.leakyBucket.Capacity) * c.statusResetFillRatio)
 		remainingLen := max(c.leakyBucket.Len()-targetCapacity, 1)
 		requeueAfter := c.leakyBucket.LeakPeriod * time.Duration(remainingLen)
