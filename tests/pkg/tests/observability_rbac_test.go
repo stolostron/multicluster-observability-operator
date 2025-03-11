@@ -17,7 +17,7 @@ import (
 )
 
 var _ = Describe("Observability:", func() {
-	It("RHACM4K-1406 - Observability - RBAC - only authorized user could query managed cluster metrics data [Observability][Integration]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release (obs_rbac/g0)", func() {
+	It("RHACM4K-1406 - Observability - RBAC - only authorized user could query managed cluster metrics data [Observability][Integration]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release (requires-ocp/g0) (obs_rbac/g0)", func() {
 		By("Setting up users creation and rolebindings for RBAC", func() {
 			cmd := exec.Command("../../setup_rbac_test.sh")
 			var out bytes.Buffer
@@ -27,6 +27,9 @@ var _ = Describe("Observability:", func() {
 		})
 		By("Logging in as admin and querying managed cluster metrics data", func() {
 			err = utils.LoginOCUser(testOptions, "admin", "admin")
+			if err != nil {
+				klog.Errorf("Failed to login as admin: %v", err)
+			}
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(func() error {
 				res, err := utils.QueryGrafana(testOptions, "node_memory_MemAvailable_bytes")
@@ -75,7 +78,7 @@ var _ = Describe("Observability:", func() {
 
 	AfterEach(func() {
 		if CurrentSpecReport().Failed() {
-			utils.LogFailingTestStandardDebugInfo(testOptions)
+			//utils.LogFailingTestStandardDebugInfo(testOptions)
 		}
 		testFailed = testFailed || CurrentSpecReport().Failed()
 	})
