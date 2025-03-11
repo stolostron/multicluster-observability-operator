@@ -202,7 +202,6 @@ func LoadConfig(url, kubeconfig, ctx string) (*rest.Config, error) {
 	// If we have an explicit indication of where the kubernetes config lives, read that.
 	if kubeconfig != "" {
 		if ctx == "" {
-			// klog.V(5).Infof("clientcmd.BuildConfigFromFlags with %s and %s", url, kubeconfig)
 			return clientcmd.BuildConfigFromFlags(url, kubeconfig)
 		} else {
 			return clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
@@ -597,14 +596,16 @@ func GetPullSecret(opt TestOptions) (string, error) {
 }
 
 func LoginOCUser(opt TestOptions, user string, password string) error {
-	_, err := exec.Command("oc", "login", "-u", user, "-p", password, "--server", opt.HubCluster.ClusterServerURL).CombinedOutput()
+	klog.Errorf("Login as %s with server url %s", user, opt.HubCluster.ClusterServerURL)
+	cmd, err := exec.Command("oc", "login", "-u", user, "-p", password, "--server", opt.HubCluster.ClusterServerURL, "--insecure-skip-tls-verify").CombinedOutput()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to login as %s: %s", user, string(cmd))
 	}
-	cmd := exec.Command("oc", "whoami", "-t")
+
+	tokenCmd := exec.Command("oc", "whoami", "-t")
 	var token bytes.Buffer
-	cmd.Stdout = &token
-	err = cmd.Run()
+	tokenCmd.Stdout = &token
+	err = tokenCmd.Run()
 	if err != nil {
 		return err
 	}

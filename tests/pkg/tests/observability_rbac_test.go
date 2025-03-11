@@ -7,13 +7,11 @@ package tests
 import (
 	"bytes"
 	"fmt"
-	"os/exec"
-
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"k8s.io/klog"
-
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/utils"
+	"k8s.io/klog"
+	"os/exec"
 )
 
 var _ = Describe("Observability:", func() {
@@ -24,14 +22,16 @@ var _ = Describe("Observability:", func() {
 			cmd.Stdout = &out
 			_ = cmd.Run()
 			klog.V(1).Infof("the output of setup_rbac_test.sh: %v", out.String())
+
 		})
 		By("Logging in as admin and querying managed cluster metrics data", func() {
-			err = utils.LoginOCUser(testOptions, "admin", "admin")
-			if err != nil {
-				klog.Errorf("Failed to login as admin: %v", err)
-			}
-			Expect(err).NotTo(HaveOccurred())
 			Eventually(func() error {
+				err = utils.LoginOCUser(testOptions, "admin", "admin")
+				if err != nil {
+					klog.Errorf("Failed to login as admin: %v", err)
+					return err
+				}
+
 				res, err := utils.QueryGrafana(testOptions, "node_memory_MemAvailable_bytes")
 				if err != nil {
 					return err
@@ -43,9 +43,13 @@ var _ = Describe("Observability:", func() {
 			}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
 		})
 		By("Logging in as user1 with view role in local-cluster ns and querying metrics data", func() {
-			err = utils.LoginOCUser(testOptions, "user1", "user1")
-			Expect(err).NotTo(HaveOccurred())
 			Eventually(func() error {
+				err = utils.LoginOCUser(testOptions, "user1", "user1")
+				if err != nil {
+					klog.Errorf("Failed to login as user1: %v", err)
+					return err
+				}
+
 				res, err := utils.QueryGrafana(testOptions, "node_memory_MemAvailable_bytes{cluster=\"local-cluster\"}")
 				if err != nil {
 					return err
@@ -57,9 +61,12 @@ var _ = Describe("Observability:", func() {
 			}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
 		})
 		By("Logging in as user2 with no role binding to access managed cluster metrics data", func() {
-			err = utils.LoginOCUser(testOptions, "user2", "user2")
-			Expect(err).NotTo(HaveOccurred())
 			Eventually(func() error {
+				err = utils.LoginOCUser(testOptions, "user2", "user2")
+				if err != nil {
+					klog.Errorf("Failed to login as user2: %v", err)
+					return err
+				}
 				res, err := utils.QueryGrafana(testOptions, "node_memory_MemAvailable_bytes{cluster=\"local-cluster\"}")
 				if err != nil {
 					return err
@@ -78,8 +85,9 @@ var _ = Describe("Observability:", func() {
 
 	AfterEach(func() {
 		if CurrentSpecReport().Failed() {
-			//utils.LogFailingTestStandardDebugInfo(testOptions)
+			utils.LogFailingTestStandardDebugInfo(testOptions)
 		}
 		testFailed = testFailed || CurrentSpecReport().Failed()
 	})
+
 })
