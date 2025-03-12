@@ -248,6 +248,16 @@ func TestObservabilityAddonController(t *testing.T) {
 		HTTPSProxy: "https://test1.com",
 		NoProxy:    "test.com",
 	}
+	foundAddonDeploymentConfig.Spec.NodePlacement = &addonv1alpha1.NodePlacement{
+		NodeSelector: map[string]string{
+			"test": "test",
+		},
+		Tolerations: []corev1.Toleration{
+			{
+				Key: "test",
+			},
+		},
+	}
 
 	err = c.Update(context.TODO(), foundAddonDeploymentConfig)
 	if err != nil {
@@ -275,6 +285,9 @@ func TestObservabilityAddonController(t *testing.T) {
 		if obj.GetObjectKind().GroupVersionKind().Kind == "Deployment" {
 			// Check the proxy env variables
 			deployment := obj.(*appsv1.Deployment)
+			if deployment.ObjectMeta.Name != "endpoint-observability-operator" {
+				continue
+			}
 			spec := deployment.Spec.Template.Spec
 			for _, c := range spec.Containers {
 				if c.Name == "endpoint-observability-operator" {
@@ -295,6 +308,15 @@ func TestObservabilityAddonController(t *testing.T) {
 						}
 					}
 				}
+			}
+			if len(spec.NodeSelector) == 0 && len(spec.Tolerations) == 0 {
+				t.Fatalf("Node selector is not set")
+			}
+			if spec.NodeSelector["test"] != "test" {
+				t.Fatalf("Node selector is not set correctly")
+			}
+			if spec.Tolerations[0].Key != "test" {
+				t.Fatalf("Tolerations is not set correctly")
 			}
 		}
 	}
