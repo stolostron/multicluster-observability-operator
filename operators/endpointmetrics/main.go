@@ -150,8 +150,7 @@ func main() {
 	}
 
 	obsAddonCtrlLogger := ctrl.Log.WithName("controllers").WithName("ObservabilityAddon")
-	statusReporter := status.NewStatus(mgr.GetClient(), operatorconfig.ObservabilityAddonName, namespace, obsAddonCtrlLogger)
-	if err = (&obsepctl.ObservabilityAddonReconciler{
+	obsaddonreconciler := &obsepctl.ObservabilityAddonReconciler{
 		Client:                mgr.GetClient(),
 		Scheme:                mgr.GetScheme(),
 		HubClient:             hubClientWithReload,
@@ -160,9 +159,14 @@ func main() {
 		ServiceAccountName:    os.Getenv("SERVICE_ACCOUNT"),
 		IsHubMetricsCollector: os.Getenv("HUB_ENDPOINT_OPERATOR") == "true",
 		InstallPrometheus:     installPrometheus,
-		CmoReconcilesDetector: openshift.NewCmoConfigChangesWatcher(mgr.GetClient(), obsAddonCtrlLogger.WithName("cmoWatcher"), statusReporter, 5, 5*time.Minute, 0.6),
 		Logger:                obsAddonCtrlLogger,
-	}).SetupWithManager(mgr); err != nil {
+	}
+	if !obsaddonreconciler.IsHubMetricsCollector {
+		// Only add on spokes as there is no addon on the hub and status update would fail
+		statusReporter := status.NewStatus(mgr.GetClient(), operatorconfig.ObservabilityAddonName, namespace, obsAddonCtrlLogger)
+		obsaddonreconciler.CmoReconcilesDetector = openshift.NewCmoConfigChangesWatcher(mgr.GetClient(), obsAddonCtrlLogger.WithName("cmoWatcher"), statusReporter, 5, 5*time.Minute, 0.6)
+	}
+	if err = (obsaddonreconciler).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ObservabilityAddon")
 		os.Exit(1)
 	}
