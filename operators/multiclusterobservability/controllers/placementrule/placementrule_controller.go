@@ -356,8 +356,8 @@ func (r *PlacementRuleReconciler) ensureMCAOResources(ctx context.Context, mco *
 	if err != nil {
 		return fmt.Errorf("failed to generate alertManager token secret: %w", err)
 	}
-	hubServerCaCertSecret.SetNamespace(config.GetDefaultNamespace())
-	if err := controllerutil.SetControllerReference(mco, hubServerCaCertSecret, r.Client.Scheme()); err != nil {
+	amAccessorTokenSecret.SetNamespace(config.GetDefaultNamespace())
+	if err := controllerutil.SetControllerReference(mco, amAccessorTokenSecret, r.Client.Scheme()); err != nil {
 		return fmt.Errorf("failed to set controller reference: %w", err)
 	}
 	resourcesToCreate = append(resourcesToCreate, amAccessorTokenSecret)
