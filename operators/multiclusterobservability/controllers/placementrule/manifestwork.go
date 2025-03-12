@@ -453,7 +453,7 @@ func createManifestWorks(
 	return work, nil
 }
 
-func ensureResourcesForHubMetricsCollection(ctx context.Context, c client.Client, manifests []workv1.Manifest) error {
+func ensureResourcesForHubMetricsCollection(ctx context.Context, c client.Client, owner client.Object, manifests []workv1.Manifest) error {
 	if operatorconfig.IsMCOTerminating {
 		log.Info("MCO Operator is terminating, skip creating resources for hub metrics collection")
 		return nil
@@ -477,6 +477,10 @@ func ensureResourcesForHubMetricsCollection(ctx context.Context, c client.Client
 		// Ignore allow list configmaps as the hub ones are not reconciled by the placement controller
 		if kind == "ConfigMap" && (obj.GetName() == operatorconfig.AllowlistConfigMapName || obj.GetName() == operatorconfig.AllowlistCustomConfigMapName) {
 			continue
+		}
+
+		if err := controllerutil.SetControllerReference(owner, obj, c.Scheme()); err != nil {
+			return fmt.Errorf("failed to set controller reference on object: %w", err)
 		}
 
 		setHubNamespace(obj)
@@ -520,6 +524,7 @@ func setHubNamespace(obj client.Object) {
 
 func mutateHubResourceFn(want, existing client.Object) controllerutil.MutateFn {
 	return func() error {
+		existing.SetOwnerReferences(want.GetOwnerReferences())
 		switch existingTyped := existing.(type) {
 		case *appsv1.Deployment:
 			existingTyped.Spec = want.(*appsv1.Deployment).Spec
