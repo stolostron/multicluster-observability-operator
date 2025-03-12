@@ -6,6 +6,7 @@ package observabilityendpoint
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 
@@ -14,7 +15,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	meta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -124,7 +125,7 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 		// Fetch the ObservabilityAddon instance in local cluster
 		err := r.Client.Get(ctx, types.NamespacedName{Name: obAddonName, Namespace: r.Namespace}, obsAddon)
 		if err != nil {
-			if !errors.IsNotFound(err) {
+			if !apierrors.IsNotFound(err) {
 				return ctrl.Result{}, fmt.Errorf("failed to get observabilityaddon: %w", err)
 			}
 			obsAddon = nil
@@ -191,7 +192,7 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 			Namespace: promNamespace,
 		}, promSvc)
 		if err != nil {
-			if errors.IsNotFound(err) {
+			if apierrors.IsNotFound(err) {
 				r.Logger.Error(err, "OCP prometheus service does not exist")
 				// ACM 8509: Special case for hub/local cluster metrics collection
 				// We do not report status for hub endpoint operator
@@ -214,7 +215,7 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 			if meta.IsNoMatchError(err) {
 				// ClusterVersion kind does not exist in OCP 3.x
 				r.Logger.Info("ClusterVersion kind does not exist, treat spoke as OCP 3.x", "error", err)
-			} else if errors.IsNotFound(err) {
+			} else if apierrors.IsNotFound(err) {
 				// If no ClusterVersion found, treat it as OCP 3.x (should not happen)
 				r.Logger.Info("Cluster id not found, treat spoke as OCP 3.x", "error", err)
 			} else {
@@ -287,11 +288,16 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 		return ctrl.Result{}, fmt.Errorf("failed to create or update cluster monitoring config: %w", err)
 	}
 
-	// Track reconciles triggered by CMO configmap changes to detected conflicting updates by other operators.
-	// Keep it after our own reconcile of the configMap so that it is left in a good state.
-	// This way we also maintain the detection of these updates by triggering the conflicting update.
-	if res, err := r.CmoReconcilesDetector.CheckRequest(ctx, req, cmoWasUpdated); err != nil || !res.IsZero() {
-		return res, err
+	if !r.IsHubMetricsCollector {
+		if r.CmoReconcilesDetector == nil {
+			return ctrl.Result{}, errors.New("missing CmoReconcilesDetector")
+		}
+		// Track reconciles triggered by CMO configmap changes to detected conflicting updates by other operators.
+		// Keep it after our own reconcile of the configMap so that it is left in a good state.
+		// This way we also maintain the detection of these updates by triggering the conflicting update.
+		if res, err := r.CmoReconcilesDetector.CheckRequest(ctx, req, cmoWasUpdated); err != nil || !res.IsZero() {
+			return res, err
+		}
 	}
 
 	if r.IsHubMetricsCollector {
@@ -324,7 +330,7 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 
 	if err := metricsCollector.Update(ctx, req); err != nil {
 		wrappedErr := fmt.Errorf("failed to update metrics collector: %w", err)
-		if errors.IsConflict(err) || util.IsTransientClientErr(err) {
+		if apierrors.IsConflict(err) || util.IsTransientClientErr(err) {
 			r.Logger.Info("Retrying due to conflict or transient client error")
 			return ctrl.Result{Requeue: true}, wrappedErr
 		}
@@ -384,7 +390,7 @@ func (r *ObservabilityAddonReconciler) initFinalization(
 			// delete resources which is not namespace scoped or located in other namespaces
 			for _, res := range globalRes {
 				err = r.Client.Delete(context.TODO(), res)
-				if err != nil && !errors.IsNotFound(err) {
+				if err != nil && !apierrors.IsNotFound(err) {
 					return false, err
 				}
 			}
@@ -448,7 +454,7 @@ func (r *ObservabilityAddonReconciler) ensureOpenShiftMonitoringLabelAndRole(ctx
 	}
 
 	err := r.Client.Get(ctx, types.NamespacedName{Name: resNS}, existingNs)
-	if err != nil || errors.IsNotFound(err) {
+	if err != nil || apierrors.IsNotFound(err) {
 		r.Logger.Error(err, fmt.Sprintf("Failed to find namespace for Endpoint Operator: %s", resNS))
 		return err
 	}
@@ -472,7 +478,7 @@ func (r *ObservabilityAddonReconciler) ensureOpenShiftMonitoringLabelAndRole(ctx
 	foundRole := &rbacv1.Role{}
 	err = r.Client.Get(ctx, types.NamespacedName{Name: role.Name, Namespace: resNS}, foundRole)
 	if err != nil {
-		if errors.IsNotFound(err) {
+		if apierrors.IsNotFound(err) {
 			r.Logger.Info(fmt.Sprintf("Creating role: %s in namespace: %s", role.Name, resNS))
 			err = r.Client.Create(ctx, &role)
 			if err != nil {
@@ -488,7 +494,7 @@ func (r *ObservabilityAddonReconciler) ensureOpenShiftMonitoringLabelAndRole(ctx
 	foundRoleBinding := &rbacv1.RoleBinding{}
 	err = r.Client.Get(ctx, types.NamespacedName{Name: roleBinding.Name, Namespace: resNS}, foundRoleBinding)
 	if err != nil {
-		if errors.IsNotFound(err) {
+		if apierrors.IsNotFound(err) {
 			r.Logger.Info(fmt.Sprintf("Creating role binding: %s in namespace: %s", roleBinding.Name, resNS))
 			err = r.Client.Create(ctx, &roleBinding)
 			if err != nil {
