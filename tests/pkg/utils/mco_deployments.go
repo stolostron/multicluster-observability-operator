@@ -6,7 +6,6 @@ package utils
 
 import (
 	"context"
-	"errors"
 
 	appv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -75,35 +74,4 @@ func UpdateDeployment(
 		klog.Errorf("Failed to update deployment %s in namespace %s due to %v", name, namespace, err)
 	}
 	return updateDep, err
-}
-
-func UpdateDeploymentReplicas(
-	opt TestOptions,
-	deployName, crProperty string,
-	desiredReplicas, expectedReplicas int32,
-) error {
-	clientDynamic := GetKubeClientDynamic(opt, true)
-	deploy, err := GetDeployment(opt, true, deployName, MCO_NAMESPACE)
-	if err != nil {
-		return err
-	}
-	deploy.Spec.Replicas = &desiredReplicas
-	_, err = UpdateDeployment(opt, true, deployName, MCO_NAMESPACE, deploy)
-	if err != nil {
-		return err
-	}
-
-	obs, err := clientDynamic.Resource(NewMCOMObservatoriumGVR()).
-		Namespace(MCO_NAMESPACE).
-		Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
-	if err != nil {
-		return err
-	}
-	thanos := obs.Object["spec"].(map[string]interface{})["thanos"]
-	currentReplicas := thanos.(map[string]interface{})[crProperty].(map[string]interface{})["replicas"].(int64)
-	if int(currentReplicas) != int(expectedReplicas) {
-		klog.Errorf("Failed to update deployment %s replicas to %v", deployName, expectedReplicas)
-		return errors.New("the replicas was not updated successfully")
-	}
-	return nil
 }

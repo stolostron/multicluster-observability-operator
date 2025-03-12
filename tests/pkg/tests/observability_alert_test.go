@@ -14,7 +14,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"os/exec"
 	"slices"
 	"strings"
 
@@ -57,27 +56,18 @@ var _ = Describe("Observability:", func() {
 
 	It("RHACM4K-39481: Observability: Verify PrometheusRule resource(2.9) [P2][Sev2][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release (alert/g1)", func() {
 		By("Checking if PrometheusRule: acm-observability-alert-rules is existed")
-
-		command := "oc"
-		args := []string{"get", "prometheusrules.monitoring.coreos.com", "acm-observability-alert-rules", "-n", "open-cluster-management-observability"}
-
-		output, err := exec.Command(command, args...).CombinedOutput()
-		if err != nil {
-			fmt.Printf("Error executing command: %v\n", err)
-			fmt.Printf("Command output:\n%s\n", output)
-			return
-		}
-
-		prometheusRule := "acm-observability-alert-rules"
-		if strings.Contains(string(output), prometheusRule) {
-			fmt.Println("Expected result found.")
-		} else {
-			fmt.Println("Expected result not found.")
-		}
-
-		fmt.Printf("Command output:\n%s\n", output)
-
+		Eventually(func() error {
+			_, err := dynClient.Resource(utils.NewPrometheusRuleGVR()).Namespace(MCO_NAMESPACE).
+				Get(context.TODO(), "acm-observability-alert-rules", metav1.GetOptions{})
+			if err != nil {
+				testFailed = true
+				return err
+			}
+			testFailed = false
+			return nil
+		}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*10).Should(Succeed())
 	})
+
 	It("RHACM4K-1404: Observability: Verify alert is created and received - Should have the expected statefulsets @BVT - [P1][Sev1][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release (alert/g0)", func() {
 		By("Checking if STS: Alertmanager and observability-thanos-rule exist")
 		for _, label := range statefulsetLabels {

@@ -7,11 +7,13 @@ package tests
 import (
 	"bytes"
 	"fmt"
+	"os"
+	"os/exec"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/utils"
 	"k8s.io/klog"
-	"os/exec"
 )
 
 var _ = Describe("Observability:", func() {
@@ -20,7 +22,8 @@ var _ = Describe("Observability:", func() {
 			cmd := exec.Command("../../setup_rbac_test.sh")
 			var out bytes.Buffer
 			cmd.Stdout = &out
-			_ = cmd.Run()
+			err = cmd.Run()
+			Expect(err).To(BeNil())
 			klog.V(1).Infof("the output of setup_rbac_test.sh: %v", out.String())
 
 		})
@@ -84,10 +87,10 @@ var _ = Describe("Observability:", func() {
 	})
 
 	AfterEach(func() {
+		os.Unsetenv("USER_TOKEN")
 		if CurrentSpecReport().Failed() {
 			utils.LogFailingTestStandardDebugInfo(testOptions)
 		}
 		testFailed = testFailed || CurrentSpecReport().Failed()
 	})
-
 })

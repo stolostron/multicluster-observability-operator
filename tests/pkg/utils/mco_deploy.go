@@ -94,6 +94,13 @@ func NewOCMMultiClusterHubGVR() schema.GroupVersionResource {
 		Resource: "multiclusterhubs"}
 }
 
+func NewPrometheusRuleGVR() schema.GroupVersionResource {
+	return schema.GroupVersionResource{
+		Group:    "monitoring.coreos.com",
+		Version:  "v1",
+		Resource: "prometheusrules"}
+}
+
 func GetAllMCOPods(opt TestOptions) ([]corev1.Pod, error) {
 	hubClient := NewKubeClient(
 		opt.HubCluster.ClusterServerURL,

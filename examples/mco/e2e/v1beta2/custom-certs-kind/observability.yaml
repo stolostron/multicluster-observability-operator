@@ -16,19 +16,19 @@ spec:
       resources:
         limits:
           cpu: 1
-          memory: 1Gi
+          memory: 500Mi
       replicas: 2
     queryFrontend:
       resources:
         limits:
           cpu: 1
-          memory: 1Gi
+          memory: 500Mi
       replicas: 2
     query:
       resources:
         limits:
           cpu: 1
-          memory: 1Gi
+          memory: 500Mi
       replicas: 2
       serviceAccountAnnotations:
         test.com/role-arn: 's3_role'
@@ -36,22 +36,22 @@ spec:
       resources:
         limits:
           cpu: 1
-          memory: 2Gi
+          memory: 1Gi
       serviceAccountAnnotations:
         test.com/role-arn: 's3_role'
     receive:
       resources:
         limits:
           cpu: 1
-          memory: 4Gi
-      replicas: 2
+          memory: 1Gi
+      replicas: 3
       serviceAccountAnnotations:
         test.com/role-arn: 's3_role'
     rule:
       resources:
         limits:
           cpu: 1
-          memory: 1Gi
+          memory: 500Mi
       replicas: 1
       serviceAccountAnnotations:
         test.com/role-arn: 's3_role'
@@ -59,7 +59,7 @@ spec:
       resources:
         limits:
           cpu: 1
-          memory: 2Gi
+          memory: 1Gi
       replicas: 2
       serviceAccountAnnotations:
         test.com/role-arn: 's3_role'
@@ -67,7 +67,7 @@ spec:
       resources:
         limits:
           cpu: 1
-          memory: 2Gi
+          memory: 1Gi
       replicas: 2
       memoryLimitMb: 2048
       maxItemSize: 2m
@@ -76,8 +76,8 @@ spec:
       resources:
         limits:
           cpu: 1
-          memory: 2Gi
-      replicas: 2
+          memory: 1Gi
+      replicas: 3
       memoryLimitMb: 2048
       maxItemSize: 2m
       connectionLimit: 2048
@@ -88,13 +88,13 @@ spec:
           cpu: 1
           memory: 1Gi
     alertmanager:
-      replicas: 2
+      replicas: 1
       resources:
         limits:
-          cpu: 100m
-          memory: 400Mi
+          cpu: 50m
+          memory: 200Mi
     rbacQueryProxy:
-      replicas: 2
+      replicas: 3
       resources:
         limits:
           cpu: 50m
