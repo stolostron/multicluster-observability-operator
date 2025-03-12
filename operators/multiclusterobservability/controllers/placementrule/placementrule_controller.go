@@ -347,7 +347,9 @@ func (r *PlacementRuleReconciler) ensureMCAOResources(ctx context.Context, mco *
 		return fmt.Errorf("failed to generate observability server ca certs: %w", err)
 	}
 	hubServerCaCertSecret.SetNamespace(config.GetDefaultNamespace())
-	controllerutil.SetControllerReference(mco, hubServerCaCertSecret, r.Client.Scheme())
+	if err := controllerutil.SetControllerReference(mco, hubServerCaCertSecret, r.Client.Scheme()); err != nil {
+		return fmt.Errorf("failed to set controller reference: %w", err)
+	}
 	resourcesToCreate = append(resourcesToCreate, hubServerCaCertSecret)
 
 	amAccessorTokenSecret, err := generateAmAccessorTokenSecret(r.Client)
@@ -355,7 +357,9 @@ func (r *PlacementRuleReconciler) ensureMCAOResources(ctx context.Context, mco *
 		return fmt.Errorf("failed to generate alertManager token secret: %w", err)
 	}
 	hubServerCaCertSecret.SetNamespace(config.GetDefaultNamespace())
-	controllerutil.SetControllerReference(mco, hubServerCaCertSecret, r.Client.Scheme())
+	if err := controllerutil.SetControllerReference(mco, hubServerCaCertSecret, r.Client.Scheme()); err != nil {
+		return fmt.Errorf("failed to set controller reference: %w", err)
+	}
 	resourcesToCreate = append(resourcesToCreate, amAccessorTokenSecret)
 
 	imageListCm, err := generateImageListConfigMap(mco)
@@ -363,7 +367,9 @@ func (r *PlacementRuleReconciler) ensureMCAOResources(ctx context.Context, mco *
 		return fmt.Errorf("failed to generate image list configmap: %w", err)
 	}
 	imageListCm.SetNamespace(config.GetDefaultNamespace())
-	controllerutil.SetControllerReference(mco, imageListCm, r.Client.Scheme())
+	if err := controllerutil.SetControllerReference(mco, imageListCm, r.Client.Scheme()); err != nil {
+		return fmt.Errorf("failed to set controller reference: %w", err)
+	}
 	resourcesToCreate = append(resourcesToCreate, imageListCm)
 
 	for _, obj := range resourcesToCreate {
