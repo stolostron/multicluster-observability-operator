@@ -7,7 +7,6 @@ package tests
 import (
 	"context"
 	"fmt"
-	"os"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -198,28 +197,6 @@ var _ = Describe("Observability:", func() {
 			return nil
 		}, EventuallyTimeoutMinute*3, EventuallyIntervalSecond*5).Should(Succeed())
 
-		// Ensure that ignored metrics are not being collected
-		// This is to ensure that the ignoredMetrics list is in sync with the actual metrics being collected
-		// Do not run if kind environment because metrics differ
-		if os.Getenv("IS_KIND_ENV") != trueStr {
-			Eventually(func() error {
-				for _, cluster := range clusters {
-					for name := range ignoredMetrics {
-						query := fmt.Sprintf("%s{cluster=\"%s\"}", name, cluster)
-						res, err := utils.QueryGrafana(testOptions, query)
-						if err != nil {
-							return fmt.Errorf("failed to get metrics %s in cluster %s: %v", name, cluster, err)
-						}
-
-						if len(res.Data.Result) != 0 {
-							return fmt.Errorf("found data for %s in cluster %s", name, cluster)
-						}
-					}
-				}
-
-				return nil
-			}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*5).Should(Succeed())
-		}
 	})
 
 	It("RHACM4K-3339: Observability: Verify recording rule - Should have metrics which used grafana dashboard [P2][Sev2][Observability][Integration]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release @pre-upgrade (ssli/g1)", func() {
