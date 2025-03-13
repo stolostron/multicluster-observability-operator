@@ -8,9 +8,10 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"k8s.io/apimachinery/pkg/api/equality"
 	"reflect"
 	"testing"
+
+	"k8s.io/apimachinery/pkg/api/equality"
 
 	routev1 "github.com/openshift/api/route/v1"
 
