@@ -5,8 +5,9 @@
 package multiclusterobservability
 
 import (
-	"bytes"
 	"context"
+
+	"k8s.io/apimachinery/pkg/api/equality"
 
 	// The import of crypto/md5 below is not for cryptographic use. It is used to hash the contents of files to track
 	// changes and thus it's not a security issue.
@@ -25,6 +26,7 @@ import (
 	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -168,9 +170,7 @@ func GenerateObservatoriumCR(
 		}
 	}
 
-	oldSpecBytes, _ := yaml.Marshal(oldSpec)
-	newSpecBytes, _ := yaml.Marshal(newSpec)
-	if bytes.Equal(newSpecBytes, oldSpecBytes) &&
+	if equality.Semantic.DeepEqual(newSpec, oldSpec) &&
 		labels[obsCRConfigHashLabelName] == observatoriumCRFound.Labels[obsCRConfigHashLabelName] {
 		return nil, nil
 	}
@@ -311,7 +311,7 @@ func newDefaultObservatoriumSpec(cl client.Client, mco *mcov1beta2.MultiClusterO
 		return obs, err
 	}
 	obs.API = obsApi
-	obs.Thanos = newThanosSpec(mco, scSelected)
+	obs.Thanos = newThanosSpec(cl, mco, scSelected)
 	if util.ProxyEnvVarsAreSet() {
 		obs.EnvVars = newEnvVars()
 	}
@@ -601,7 +601,7 @@ func newReceiversSpec(
 	return receSpec
 }
 
-func newRuleSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string) obsv1alpha1.RuleSpec {
+func newRuleSpec(cl client.Client, mco *mcov1beta2.MultiClusterObservability, scSelected string) obsv1alpha1.RuleSpec {
 	ruleSpec := obsv1alpha1.RuleSpec{}
 	if mco.Spec.AdvancedConfig != nil && mco.Spec.AdvancedConfig.RetentionConfig != nil &&
 		mco.Spec.AdvancedConfig.RetentionConfig.BlockDuration != "" {
@@ -672,7 +672,16 @@ func newRuleSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string) o
 		},
 	}
 
-	if mcoconfig.HasCustomRuleConfigMap() {
+	if err := cl.Get(context.TODO(), types.NamespacedName{Name: mcoconfig.AlertRuleCustomConfigMapName, Namespace: mcoconfig.GetDefaultNamespace()}, &corev1.ConfigMap{}); err != nil {
+		if k8serrors.IsNotFound(err) {
+			ruleSpec.RulesConfig = []obsv1alpha1.RuleConfig{
+				{
+					Name: mcoconfig.AlertRuleDefaultConfigMapName,
+					Key:  mcoconfig.AlertRuleDefaultFileKey,
+				},
+			}
+		}
+	} else {
 		customRuleConfig := []obsv1alpha1.RuleConfig{
 			{
 				Name: mcoconfig.AlertRuleCustomConfigMapName,
@@ -680,13 +689,6 @@ func newRuleSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string) o
 			},
 		}
 		ruleSpec.RulesConfig = append(ruleSpec.RulesConfig, customRuleConfig...)
-	} else {
-		ruleSpec.RulesConfig = []obsv1alpha1.RuleConfig{
-			{
-				Name: mcoconfig.AlertRuleDefaultConfigMapName,
-				Key:  mcoconfig.AlertRuleDefaultFileKey,
-			},
-		}
 	}
 
 	if mco.Spec.AdvancedConfig != nil && mco.Spec.AdvancedConfig.Rule != nil &&
@@ -783,14 +785,14 @@ func newMemCacheSpec(component string, mco *mcov1beta2.MultiClusterObservability
 	return memCacheSpec
 }
 
-func newThanosSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string) obsv1alpha1.ThanosSpec {
+func newThanosSpec(cl client.Client, mco *mcov1beta2.MultiClusterObservability, scSelected string) obsv1alpha1.ThanosSpec {
 	thanosSpec := obsv1alpha1.ThanosSpec{}
 	thanosSpec.Image = mcoconfig.DefaultImgRepository + "/" + mcoconfig.ThanosImgName +
 		":" + mcoconfig.DefaultImgTagSuffix
 
 	thanosSpec.Compact = newCompactSpec(mco, scSelected)
 	thanosSpec.Receivers = newReceiversSpec(mco, scSelected)
-	thanosSpec.Rule = newRuleSpec(mco, scSelected)
+	thanosSpec.Rule = newRuleSpec(cl, mco, scSelected)
 	thanosSpec.Store = newStoreSpec(mco, scSelected)
 	thanosSpec.ReceiveController = newReceiverControllerSpec(mco)
 	thanosSpec.Query = newQuerySpec(mco)
