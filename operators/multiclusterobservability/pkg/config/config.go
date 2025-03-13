@@ -226,7 +226,6 @@ var (
 	tenantUID                  = ""
 	imageManifests             = map[string]string{}
 	imageManifestConfigMapName = ""
-	hasCustomRuleConfigMap     = false
 	certDuration               = time.Hour * 24 * 365
 	isAlertingDisabled         = false
 
@@ -620,16 +619,6 @@ func GetTenantUID() string {
 // GetObsAPISvc returns observatorium api service.
 func GetObsAPISvc(instanceName string) string {
 	return instanceName + "-observatorium-api." + defaultNamespace + ".svc.cluster.local"
-}
-
-// SetCustomRuleConfigMap set true if there is custom rule configmap.
-func SetCustomRuleConfigMap(hasConfigMap bool) {
-	hasCustomRuleConfigMap = hasConfigMap
-}
-
-// HasCustomRuleConfigMap returns true if there is custom rule configmap.
-func HasCustomRuleConfigMap() bool {
-	return hasCustomRuleConfigMap
 }
 
 func GetCertDuration() time.Duration {
