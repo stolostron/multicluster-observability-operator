@@ -28,7 +28,7 @@ spec:
       resources:
         limits:
           cpu: 1
-          memory: 500Mi
+          memory: 1Gi
       replicas: 2
       serviceAccountAnnotations:
         test.com/role-arn: 's3_role'
@@ -51,7 +51,7 @@ spec:
       resources:
         limits:
           cpu: 1
-          memory: 500Mi
+          memory: 1Gi
       replicas: 1
       serviceAccountAnnotations:
         test.com/role-arn: 's3_role'
