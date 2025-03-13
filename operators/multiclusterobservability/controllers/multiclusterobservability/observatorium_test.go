@@ -337,6 +337,7 @@ func TestUpdateObservatoriumCR(t *testing.T) {
 
 	if updatedObservatorium.Spec.Thanos.Compact.VolumeClaimTemplate.Spec.Resources.Requests.Storage().String() != "2Gi" {
 		t.Errorf("Failed to update observatorium CR with new compact storage size")
+	}
 }
 
 func TestTShirtSizeUpdateObservatoriumCR(t *testing.T) {
