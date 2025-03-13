@@ -71,6 +71,12 @@ rules:
   - observabilityaddons/finalizers
   verbs:
   - update
+- apiGroups: # Required to set MCO as the owner on the hub as there is no addon. 
+  - observability.open-cluster-management.io
+  resources:
+  - multiclusterobservabilities/finalizers
+  verbs:
+  - update
 - apiGroups:
   - config.openshift.io
   resources:

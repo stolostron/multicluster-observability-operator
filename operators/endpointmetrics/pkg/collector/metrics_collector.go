@@ -26,6 +26,7 @@ import (
 	"k8s.io/client-go/util/retry"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/openshift"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/rendering"
@@ -79,6 +80,7 @@ type MetricsCollector struct {
 	Log                             logr.Logger
 	Namespace                       string
 	ObsAddon                        *oav1beta1.ObservabilityAddon
+	Owner                           client.Object
 	ServiceAccountName              string
 	platformCollectorWasUpdated     bool
 	userWorkloadCollectorWasUpdated bool
@@ -316,6 +318,10 @@ func (m *MetricsCollector) ensureService(ctx context.Context, isUWL bool) error 
 		},
 	}
 
+	err := controllerutil.SetControllerReference(m.Owner, desiredService, m.Client.Scheme())
+	if err != nil {
+		return fmt.Errorf("failed to set controller reference: %w", err)
+	}
 	retryErr := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 		foundService := &corev1.Service{}
 		err := m.Client.Get(ctx, types.NamespacedName{Name: name, Namespace: m.Namespace}, foundService)
@@ -331,10 +337,11 @@ func (m *MetricsCollector) ensureService(ctx context.Context, isUWL bool) error 
 			return fmt.Errorf("failed to get service %s/%s: %w", m.Namespace, name, err)
 		}
 
-		if !equality.Semantic.DeepDerivative(desiredService.Spec, foundService.Spec) {
+		if !equality.Semantic.DeepDerivative(desiredService.Spec, foundService.Spec) || !metav1.IsControlledBy(foundService, m.Owner) {
 			m.Log.Info("Updating Service", "name", name, "namespace", m.Namespace)
 
 			foundService.Spec = desiredService.Spec
+			foundService.OwnerReferences = desiredService.OwnerReferences
 			if err := m.Client.Update(ctx, foundService); err != nil {
 				return fmt.Errorf("failed to update service %s/%s: %w", m.Namespace, name, err)
 			}
@@ -398,6 +405,10 @@ func (m *MetricsCollector) ensureServiceMonitor(ctx context.Context, isUWL bool)
 		},
 	}
 
+	err := controllerutil.SetControllerReference(m.Owner, desiredSm, m.Client.Scheme())
+	if err != nil {
+		return fmt.Errorf("failed to set controller reference: %w", err)
+	}
 	retryErr := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 		foundSm := &monitoringv1.ServiceMonitor{}
 		err := m.Client.Get(ctx, types.NamespacedName{Name: name, Namespace: m.Namespace}, foundSm)
@@ -413,10 +424,11 @@ func (m *MetricsCollector) ensureServiceMonitor(ctx context.Context, isUWL bool)
 			return fmt.Errorf("failed to get ServiceMonitor %s/%s: %w", m.Namespace, name, err)
 		}
 
-		if !equality.Semantic.DeepDerivative(desiredSm.Spec, foundSm.Spec) {
+		if !equality.Semantic.DeepDerivative(desiredSm.Spec, foundSm.Spec) || !metav1.IsControlledBy(foundSm, m.Owner) {
 			m.Log.Info("Updating ServiceMonitor", "name", name, "namespace", m.Namespace)
 
 			foundSm.Spec = desiredSm.Spec
+			foundSm.OwnerReferences = desiredSm.OwnerReferences
 			if err := m.Client.Update(ctx, foundSm); err != nil {
 				return fmt.Errorf("failed to update ServiceMonitor %s/%s: %w", m.Namespace, name, err)
 			}
@@ -484,6 +496,10 @@ func (m *MetricsCollector) ensureAlertingRule(ctx context.Context, isUWL bool) e
 		},
 	}
 
+	err := controllerutil.SetControllerReference(m.Owner, desiredPromRule, m.Client.Scheme())
+	if err != nil {
+		return fmt.Errorf("failed to set controller reference: %w", err)
+	}
 	retryErr := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 		foundPromRule := &monitoringv1.PrometheusRule{}
 		err := m.Client.Get(ctx, types.NamespacedName{Name: name, Namespace: m.Namespace}, foundPromRule)
@@ -499,10 +515,11 @@ func (m *MetricsCollector) ensureAlertingRule(ctx context.Context, isUWL bool) e
 			return fmt.Errorf("failed to get PrometheusRule %s/%s: %w", m.Namespace, name, err)
 		}
 
-		if !equality.Semantic.DeepDerivative(desiredPromRule.Spec, foundPromRule.Spec) {
+		if !equality.Semantic.DeepDerivative(desiredPromRule.Spec, foundPromRule.Spec) || !metav1.IsControlledBy(foundPromRule, m.Owner) {
 			m.Log.Info("Updating PrometheusRule", "name", name, "namespace", m.Namespace)
 
 			foundPromRule.Spec = desiredPromRule.Spec
+			foundPromRule.OwnerReferences = desiredPromRule.OwnerReferences
 			if err := m.Client.Update(ctx, foundPromRule); err != nil {
 				return fmt.Errorf("failed to update PrometheusRule %s/%s: %w", m.Namespace, name, err)
 			}
@@ -758,6 +775,10 @@ func (m *MetricsCollector) ensureDeployment(ctx context.Context, isUWL bool, dep
 		}
 	}
 
+	err := controllerutil.SetControllerReference(m.Owner, desiredMetricsCollectorDep, m.Client.Scheme())
+	if err != nil {
+		return fmt.Errorf("failed to set controller reference: %w", err)
+	}
 	retryErr := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 		foundMetricsCollectorDep := &appsv1.Deployment{}
 		err := m.Client.Get(ctx, types.NamespacedName{Name: name, Namespace: m.Namespace}, foundMetricsCollectorDep)
@@ -776,14 +797,14 @@ func (m *MetricsCollector) ensureDeployment(ctx context.Context, isUWL bool, dep
 
 		isDifferentSpec := !equality.Semantic.DeepDerivative(desiredMetricsCollectorDep.Spec.Template.Spec, foundMetricsCollectorDep.Spec.Template.Spec)
 		isDifferentReplicas := !equality.Semantic.DeepEqual(desiredMetricsCollectorDep.Spec.Replicas, foundMetricsCollectorDep.Spec.Replicas)
-		if isDifferentSpec || isDifferentReplicas || deployParams.forceRestart {
-			m.Log.Info("Updating Deployment", "name", name, "namespace", m.Namespace, "isDifferentSpec", isDifferentSpec, "isDifferentReplicas", isDifferentReplicas, "forceRestart", deployParams.forceRestart)
+		isDifferentOwner := !metav1.IsControlledBy(foundMetricsCollectorDep, m.Owner)
+		if isDifferentSpec || isDifferentReplicas || isDifferentOwner || deployParams.forceRestart {
+			m.Log.Info("Updating Deployment", "name", name, "namespace", m.Namespace, "isDifferentSpec", isDifferentSpec, "isDifferentReplicas", isDifferentReplicas, "forceRestart", deployParams.forceRestart, "isDifferentOwner", isDifferentOwner)
 			if deployParams.forceRestart && foundMetricsCollectorDep.Status.ReadyReplicas != 0 {
 				desiredMetricsCollectorDep.Spec.Template.ObjectMeta.Labels[restartLabel] = time.Now().Format("2006-1-2.150405")
 			}
 
 			desiredMetricsCollectorDep.ResourceVersion = foundMetricsCollectorDep.ResourceVersion
-
 			if err := m.Client.Update(ctx, desiredMetricsCollectorDep); err != nil {
 				return fmt.Errorf("failed to update Deployment %s/%s: %w", m.Namespace, name, err)
 			}

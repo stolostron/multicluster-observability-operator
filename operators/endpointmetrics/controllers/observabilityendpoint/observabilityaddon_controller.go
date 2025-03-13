@@ -300,6 +300,7 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 		}
 	}
 
+	var resourcesOwner client.Object = obsAddon
 	if r.IsHubMetricsCollector {
 		mcoList := &oav1beta2.MultiClusterObservabilityList{}
 		err := r.HubClient.List(ctx, mcoList, client.InNamespace(corev1.NamespaceAll))
@@ -311,6 +312,8 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 			return ctrl.Result{}, nil
 		}
 		obsAddon.Spec = *mcoList.Items[0].Spec.ObservabilityAddonSpec
+		// There is no addon on the hub, owner is set to MCO
+		resourcesOwner = &mcoList.Items[0]
 	}
 
 	metricsCollector := collector.MetricsCollector{
@@ -326,6 +329,7 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 		Namespace:          r.Namespace,
 		ObsAddon:           obsAddon,
 		ServiceAccountName: r.ServiceAccountName,
+		Owner:              resourcesOwner,
 	}
 
 	if err := metricsCollector.Update(ctx, req); err != nil {

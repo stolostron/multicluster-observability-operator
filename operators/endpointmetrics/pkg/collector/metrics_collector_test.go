@@ -30,6 +30,7 @@ import (
 	oashared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
 	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
+	"github.com/stretchr/testify/assert"
 )
 
 const (
@@ -261,9 +262,11 @@ func TestMetricsCollectorResourcesUpdate(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			s := scheme.Scheme
 			promv1.AddToScheme(s)
+			oav1beta1.AddToScheme(s)
 			c := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(tc.clientObjects()...).Build()
 
 			metricsCollector := tc.newMetricsCollector()
+			metricsCollector.Owner = metricsCollector.ObsAddon
 			metricsCollector.Client = c
 			if err := metricsCollector.Update(context.Background(), tc.request); err != nil {
 				t.Fatalf("Failed to update metrics collector: %v", err)
@@ -275,6 +278,85 @@ func TestMetricsCollectorResourcesUpdate(t *testing.T) {
 		})
 	}
 
+}
+
+// TestMetricsCollectorResourcesUpdate_Owner verifies that all generated resources are owned by the addon
+func TestMetricsCollectorResourcesUpdate_Owner(t *testing.T) {
+	obsAddon := &oav1beta1.ObservabilityAddon{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-addon",
+			Namespace: namespace,
+		},
+		Spec: oashared.ObservabilityAddonSpec{
+			EnableMetrics: true,
+			Interval:      60,
+		},
+	}
+	allowList := newAllowListCm(operatorconfig.AllowlistCustomConfigMapName, "default", map[string]operatorconfig.MetricsAllowlist{
+		operatorconfig.UwlMetricsConfigMapKey: {
+			NameList: []string{"custom_c"},
+		},
+	})
+	s := scheme.Scheme
+	promv1.AddToScheme(s)
+	oav1beta1.AddToScheme(s)
+	c := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(getEndpointOperatorDeployment(), obsAddon, newUwlPrometheus(), allowList).Build()
+
+	mc := &collector.MetricsCollector{
+		Client: c,
+		ClusterInfo: collector.ClusterInfo{
+			ClusterID: "test-cluster",
+		},
+		HubInfo: &operatorconfig.HubInfo{
+			ClusterName:              "test-cluster",
+			ObservatoriumAPIEndpoint: "http://test-endpoint",
+		},
+		Log:                logr.Logger{},
+		Namespace:          namespace,
+		ObsAddon:           obsAddon,
+		Owner:              obsAddon,
+		ServiceAccountName: "test-sa",
+	}
+	if err := mc.Update(context.Background(), ctrl.Request{}); err != nil {
+		t.Fatalf("Failed to update metrics collector: %v", err)
+	}
+
+	checkedObjects := []client.Object{
+		&corev1.Service{
+			ObjectMeta: metav1.ObjectMeta{Name: "metrics-collector", Namespace: namespace},
+		},
+		&corev1.Service{
+			ObjectMeta: metav1.ObjectMeta{Name: "uwl-metrics-collector", Namespace: namespace},
+		},
+		&promv1.ServiceMonitor{
+			ObjectMeta: metav1.ObjectMeta{Name: "metrics-collector", Namespace: namespace},
+		},
+		&promv1.ServiceMonitor{
+			ObjectMeta: metav1.ObjectMeta{Name: "uwl-metrics-collector", Namespace: namespace},
+		},
+		&promv1.PrometheusRule{
+			ObjectMeta: metav1.ObjectMeta{Name: "acm-metrics-collector-alerting-rules", Namespace: namespace},
+		},
+		&promv1.PrometheusRule{
+			ObjectMeta: metav1.ObjectMeta{Name: "acm-uwl-metrics-collector-alerting-rules", Namespace: namespace},
+		},
+		&appsv1.Deployment{
+			ObjectMeta: metav1.ObjectMeta{Name: "metrics-collector-deployment", Namespace: namespace},
+		},
+		&appsv1.Deployment{
+			ObjectMeta: metav1.ObjectMeta{Name: "uwl-metrics-collector-deployment", Namespace: namespace},
+		},
+	}
+
+	// Update obsAddon to get uuid
+	err := c.Get(context.Background(), types.NamespacedName{Namespace: obsAddon.Namespace, Name: obsAddon.Name}, obsAddon)
+	assert.NoError(t, err)
+
+	for _, obj := range checkedObjects {
+		err := c.Get(context.Background(), types.NamespacedName{Namespace: obj.GetNamespace(), Name: obj.GetName()}, obj)
+		assert.NoError(t, err)
+		assert.True(t, metav1.IsControlledBy(obj, mc.Owner))
+	}
 }
 
 func getEndpointOperatorDeployment() *appsv1.Deployment {
