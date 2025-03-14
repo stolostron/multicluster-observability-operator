@@ -231,7 +231,8 @@ func TestMCORenderer_RenderClusterManagementAddOn(t *testing.T) {
 				},
 			},
 			expectConfig: func(t *testing.T, cma *addonv1alpha1.ClusterManagementAddOn) {
-				assert.Len(t, cma.Spec.InstallStrategy.Placements[0].Configs, 1)
+				// PrometheusAgent and 4 HCPs scrapeConfigs and rules
+				assert.Len(t, cma.Spec.InstallStrategy.Placements[0].Configs, 5)
 			},
 		},
 		{
@@ -253,7 +254,7 @@ func TestMCORenderer_RenderClusterManagementAddOn(t *testing.T) {
 				},
 			},
 			expectConfig: func(t *testing.T, cma *addonv1alpha1.ClusterManagementAddOn) {
-				assert.Len(t, cma.Spec.InstallStrategy.Placements[0].Configs, 7)
+				assert.Len(t, cma.Spec.InstallStrategy.Placements[0].Configs, 11)
 			},
 		},
 		{
