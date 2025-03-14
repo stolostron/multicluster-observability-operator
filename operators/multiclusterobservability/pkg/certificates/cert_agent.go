@@ -8,6 +8,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 
+	certificatesv1 "k8s.io/api/certificates/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -33,6 +34,13 @@ func (o *ObservabilityAgent) Manifests(
 }
 
 func (o *ObservabilityAgent) GetAgentAddonOptions() agent.AgentAddonOptions {
+	signAdaptor := func(csr *certificatesv1.CertificateSigningRequest) []byte {
+		res, err := Sign(csr)
+		if err != nil {
+			log.Error(err, "failed to sign")
+		}
+		return res
+	}
 	return agent.AgentAddonOptions{
 		AddonName: addonName,
 		Registration: &agent.RegistrationOption{
@@ -41,7 +49,7 @@ func (o *ObservabilityAgent) GetAgentAddonOptions() agent.AgentAddonOptions {
 			PermissionConfig: func(cluster *clusterv1.ManagedCluster, addon *addonapiv1alpha1.ManagedClusterAddOn) error {
 				return nil
 			},
-			CSRSign: Sign,
+			CSRSign: signAdaptor,
 		},
 	}
 }
