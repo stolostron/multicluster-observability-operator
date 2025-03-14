@@ -1,0 +1,32 @@
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: ScrapeConfig
+metadata:
+  creationTimestamp: null
+  labels:
+    app.kubernetes.io/component: platform-metrics-collector
+    app.kubernetes.io/part-of: multicluster-observability-addon
+    app.kubernetes.io/managed-by: multicluster-observability-operator
+  name: acm-hcp-metrics-default
+  namespace: open-cluster-management-observability
+spec:
+  jobName: platform-metrics
+  metricsPath: /federate
+  params:
+    match[]:
+    - '{__name__="apiserver_request_duration_seconds:histogram_quantile_99"}' # needed for the cluster overview dashboard and its apiserver widget
+    - '{__name__="apiserver_request_duration_seconds:histogram_quantile_99:instance"}'
+    - '{__name__="go_goroutines",job="apiserver"}'
+    - '{__name__="process_cpu_seconds_total",job="apiserver"}'
+    - '{__name__="process_resident_memory_bytes",job=~"apiserver|etcd"}'
+    - '{__name__="sum:apiserver_request_total:5m"}'
+    - '{__name__="up"}'
+    - '{__name__="workqueue_adds_total",job="apiserver"}'
+    - '{__name__="workqueue_depth",job="apiserver"}'
+    - '{__name__="workqueue_queue_duration_seconds_bucket:apiserver:histogram_quantile_99"}'
+  metricRelabelings:
+  # TODO: Keep only metrics with clusterID label not empty to avoid collecting metrics from original serviceMonitor
+  - action: labeldrop
+    regex: prometheus_replica|managed_cluster|id
+  staticConfigs:
+  - targets:
+    - localhost:8090
