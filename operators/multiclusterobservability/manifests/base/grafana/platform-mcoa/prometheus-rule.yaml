@@ -143,7 +143,7 @@ spec:
         / sum(increase(apiserver_request_duration_seconds_bucket{job="apiserver",service="kubernetes",verb=~"POST|PUT|DELETE|PATCH"}[1m]))
       record: sli:apiserver_request_duration_seconds:trend:1m
     - expr: sli:apiserver_request_duration_seconds:trend:1m >= bool 0.9900
-      record: sli:apiserver_request_duration_seconds:bin:trend:1m # Really needed?
+      record: sli:apiserver_request_duration_seconds:bin:trend:1m
     - expr: sum(rate(apiserver_request_total{job="apiserver"}[1h])) by (code, instance)
       record: sum:apiserver_request_total:1h
     - expr: sum(rate(apiserver_request_total{job="apiserver"}[5m])) by (code, instance)
@@ -163,3 +163,49 @@ spec:
       record: grpc_server_started_total:etcd_unary:sum_rate
     - expr: avg(rate(node_cpu_seconds_total{mode="idle"}[5m]))
       record: node_cpu_seconds_total:mode_idle:avg_rate5m
+    - expr: sum(cluster:kube_pod_container_resource_requests:memory:sum) by (cluster) / sum(kube_node_status_allocatable{resource="memory"}) by (cluster)
+      record: cluster:memory_requested:ratio
+    - expr: 1 - sum(:node_memory_MemAvailable_bytes:sum) by (cluster) / sum(kube_node_status_allocatable{resource="memory"}) by (cluster)
+      record: cluster:memory_utilized:ratio
+    - expr: sum(kube_node_status_allocatable{resource="cpu"}) by (cluster)
+      record: cluster:cpu_allocatable:sum
+    - expr: sum(cluster:kube_pod_container_resource_requests:cpu:sum) by (cluster) / sum(kube_node_status_allocatable{resource="cpu"}) by (cluster)
+      record: cluster:cpu_requested:ratio
+    - expr: sum(machine_cpu_cores) by (cluster)
+      record: cluster:cpu_cores:sum
+  - name: kubernetes-storage
+    rules:
+      - alert: KubePersistentVolumeFillingUp1Min
+        annotations:
+          summary: PersistentVolume is filling up.
+          description: "The PersistentVolume claimed by {{ $labels.persistentvolumeclaim }} in Namespace {{ $labels.namespace }} is only {{ $value | humanizePercentage }} free."
+        expr: kubelet_volume_stats_available_bytes{namespace="open-cluster-management-observability"}/kubelet_volume_stats_capacity_bytes{namespace="open-cluster-management-observability"} < 0.03
+        for: 1m
+        labels:
+          instance: "{{ $labels.instance }}"
+          cluster: "{{ $labels.cluster }}"
+          clusterID: "{{ $labels.clusterID }}"
+          PersistentVolumeClaim: "{{ $labels.persistentvolumeclaim }}"
+          severity: info
+      - alert: KubePersistentVolumeFillingUp1Hour
+        annotations:
+          summary: PersistentVolume is filling up and is predicted to run out of space in 6h.
+          description: "The PersistentVolume claimed by {{ $labels.persistentvolumeclaim }} in Namespace {{ $labels.namespace }} is only {{ $value | humanizePercentage }} free."
+        expr: (kubelet_volume_stats_available_bytes{namespace="open-cluster-management-observability"}/kubelet_volume_stats_capacity_bytes{namespace="open-cluster-management-observability"}) < 0.15 and (predict_linear(kubelet_volume_stats_available_bytes{namespace="open-cluster-management-observability"}[6h], 4 * 24 * 3600)) <0
+        for: 1h
+        labels:
+          instance: "{{ $labels.instance }}"
+          cluster: "{{ $labels.cluster }}"
+          clusterID: "{{ $labels.clusterID }}"
+          PersistentVolumeClaim: "{{ $labels.persistentvolumeclaim }}"
+          severity: info
+  - name: policy-reports
+    rules:
+      - alert: ViolatedPolicyReport
+        annotations:
+          summary: "There is a policy report violation with a {{ $labels.severity }} severity level detected."
+          description: "The policy: {{ $labels.policy }} has a severity of {{ $labels.severity }} on cluster: {{ $labels.cluster }}"
+        expr: sum without (managed_cluster_id) (label_replace((sum without (clusterID) (label_replace((sum(policyreport_info * on (managed_cluster_id) group_left (cluster) label_replace(acm_managed_cluster_labels, "cluster", "$1", "name", "(.*)")) by (cluster, category, clusterID, managed_cluster_id, policy, severity) > 0),"hub_cluster_id", "$1", "clusterID", "(.*)"))),"clusterID", "$1", "managed_cluster_id", "(.*)"))
+        for: 1m
+        labels:
+          severity: "{{ $labels.severity }}"
