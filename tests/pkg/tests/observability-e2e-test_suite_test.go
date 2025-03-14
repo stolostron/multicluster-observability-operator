@@ -207,9 +207,10 @@ func initVars() {
 
 	if testOptions.KubeConfig == "" {
 		if kubeconfig == "" {
-			kubeconfig = os.Getenv("KUBECONFIG")
+			testOptions.KubeConfig = os.Getenv("KUBECONFIG")
+		} else {
+			testOptions.KubeConfig = kubeconfig
 		}
-		testOptions.KubeConfig = kubeconfig
 	}
 
 	cloudProvider := strings.ToLower(os.Getenv("CLOUD_PROVIDER"))
