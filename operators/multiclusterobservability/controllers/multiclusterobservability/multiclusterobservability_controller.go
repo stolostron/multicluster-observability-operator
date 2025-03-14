@@ -951,7 +951,7 @@ func (r *MultiClusterObservabilityReconciler) ensureOpenShiftNamespaceLabel(ctx 
 		return reconcile.Result{Requeue: true}, err
 	}
 
-	if existingNs.ObjectMeta.Labels == nil || len(existingNs.ObjectMeta.Labels) == 0 {
+	if len(existingNs.ObjectMeta.Labels) == 0 {
 		existingNs.ObjectMeta.Labels = make(map[string]string)
 	}
 
