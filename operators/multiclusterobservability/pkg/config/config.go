@@ -118,7 +118,7 @@ const (
 
 const (
 	DefaultImgRepository = "quay.io/stolostron"
-	DefaultImgTagSuffix  = "2.4.0-SNAPSHOT-2021-09-23-07-02-14"
+	DefaultImgTagSuffix  = "2.13.0-SNAPSHOT-2025-03-07-03-19-34"
 
 	ObservatoriumImgRepo           = "quay.io/observatorium"
 	ObservatoriumAPIImgName        = "observatorium"

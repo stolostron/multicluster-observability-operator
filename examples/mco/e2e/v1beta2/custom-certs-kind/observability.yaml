@@ -1,0 +1,127 @@
+apiVersion: observability.open-cluster-management.io/v1beta2
+kind: MultiClusterObservability
+metadata:
+  name: observability
+  annotations:
+spec:
+  advanced:
+    retentionConfig:
+      blockDuration: 3h
+      deleteDelay: 50h
+      retentionInLocal: 5d
+      retentionResolution1h: 31d
+      retentionResolution5m: 15d
+      retentionResolutionRaw: 6d
+    observatoriumAPI:
+      resources:
+        limits:
+          cpu: 1
+          memory: 500Mi
+      replicas: 2
+    queryFrontend:
+      resources:
+        limits:
+          cpu: 1
+          memory: 500Mi
+      replicas: 2
+    query:
+      resources:
+        limits:
+          cpu: 1
+          memory: 1Gi
+      replicas: 2
+      serviceAccountAnnotations:
+        test.com/role-arn: 's3_role'
+    compact:
+      resources:
+        limits:
+          cpu: 1
+          memory: 1Gi
+      serviceAccountAnnotations:
+        test.com/role-arn: 's3_role'
+    receive:
+      resources:
+        limits:
+          cpu: 1
+          memory: 1Gi
+      replicas: 2
+      serviceAccountAnnotations:
+        test.com/role-arn: 's3_role'
+    rule:
+      resources:
+        limits:
+          cpu: 1
+          memory: 1Gi
+      replicas: 1
+      serviceAccountAnnotations:
+        test.com/role-arn: 's3_role'
+    store:
+      resources:
+        limits:
+          cpu: 1
+          memory: 1Gi
+      replicas: 2
+      serviceAccountAnnotations:
+        test.com/role-arn: 's3_role'
+    storeMemcached:
+      resources:
+        limits:
+          cpu: 1
+          memory: 1Gi
+      replicas: 2
+      memoryLimitMb: 2048
+      maxItemSize: 2m
+      connectionLimit: 2048
+    queryFrontendMemcached:
+      resources:
+        limits:
+          cpu: 1
+          memory: 1Gi
+      replicas: 2
+      memoryLimitMb: 2048
+      maxItemSize: 2m
+      connectionLimit: 2048
+    grafana:
+      replicas: 2
+      resources:
+        limits:
+          cpu: 1
+          memory: 1Gi
+    alertmanager:
+      replicas: 1
+      resources:
+        limits:
+          cpu: 50m
+          memory: 200Mi
+    rbacQueryProxy:
+      replicas: 3
+      resources:
+        limits:
+          cpu: 50m
+          memory: 200Mi
+  nodeSelector:
+    kubernetes.io/os: linux
+  observabilityAddonSpec:
+    scrapeSizeLimitBytes: 1073741824
+    enableMetrics: true
+    workers: 1
+    interval: 30
+    resources:
+      limits:
+        cpu: 200m
+        memory: 700Mi
+      requests:
+        cpu: 10m
+        memory: 100Mi
+  storageConfig:
+    alertmanagerStorageSize: 1Gi
+    compactStorageSize: 1Gi
+    metricObjectStorage:
+      key: thanos.yaml
+      name: thanos-object-storage
+      tlsSecretMountPath: /etc/minio/certs
+      tlsSecretName: minio-tls-secret
+    receiveStorageSize: 1Gi
+    ruleStorageSize: 1Gi
+    storageClass: gp2
+    storeStorageSize: 1Gi

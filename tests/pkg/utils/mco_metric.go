@@ -78,12 +78,17 @@ func QueryGrafana(opt TestOptions, query string) (*GrafanaResponse, error) {
 		}
 
 		client = &http.Client{Transport: tr}
-		token, err := FetchBearerToken(opt)
-		if err != nil {
-			return nil, err
-		}
-		if token != "" {
-			req.Header.Set("Authorization", "Bearer "+token)
+		if os.Getenv("USER_TOKEN") != "" {
+			req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", strings.TrimSpace(os.Getenv("USER_TOKEN"))))
+		} else {
+			token, err := FetchBearerToken(opt)
+			if err != nil {
+				return nil, err
+			}
+
+			if token != "" {
+				req.Header.Set("Authorization", "Bearer "+token)
+			}
 		}
 		req.Host = opt.HubCluster.GrafanaHost
 	}

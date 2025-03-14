@@ -38,13 +38,6 @@ const (
 	OCM_ADDON_GROUP               = "addon.open-cluster-management.io"
 )
 
-func NewMCOGVRV1BETA1() schema.GroupVersionResource {
-	return schema.GroupVersionResource{
-		Group:    MCO_GROUP,
-		Version:  "v1beta1",
-		Resource: "multiclusterobservabilities"}
-}
-
 func NewMCOGVRV1BETA2() schema.GroupVersionResource {
 	return schema.GroupVersionResource{
 		Group:    MCO_GROUP,
@@ -99,6 +92,13 @@ func NewOCMMultiClusterHubGVR() schema.GroupVersionResource {
 		Group:    "operator.open-cluster-management.io",
 		Version:  "v1",
 		Resource: "multiclusterhubs"}
+}
+
+func NewPrometheusRuleGVR() schema.GroupVersionResource {
+	return schema.GroupVersionResource{
+		Group:    "monitoring.coreos.com",
+		Version:  "v1",
+		Resource: "prometheusrules"}
 }
 
 func GetAllMCOPods(opt TestOptions) ([]corev1.Pod, error) {

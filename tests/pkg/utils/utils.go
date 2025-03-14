@@ -5,10 +5,12 @@
 package utils
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"os/user"
 	"path/filepath"
 	"strings"
@@ -200,7 +202,6 @@ func LoadConfig(url, kubeconfig, ctx string) (*rest.Config, error) {
 	// If we have an explicit indication of where the kubernetes config lives, read that.
 	if kubeconfig != "" {
 		if ctx == "" {
-			// klog.V(5).Infof("clientcmd.BuildConfigFromFlags with %s and %s", url, kubeconfig)
 			return clientcmd.BuildConfigFromFlags(url, kubeconfig)
 		} else {
 			return clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
@@ -251,13 +252,6 @@ func Apply(url string, kubeconfig string, ctx string, yamlB []byte) error {
 			return fmt.Errorf("kind attribute not found in %s", f)
 		} else {
 			kind = v.(string)
-		}
-
-		var apiVersion string
-		if v, ok := obj.Object["apiVersion"]; !ok {
-			return fmt.Errorf("apiVersion attribute not found in %s", f)
-		} else {
-			apiVersion = v.(string)
 		}
 
 		klog.V(5).Infof("Applying kind %q with name %q in namespace %q", kind, obj.GetName(), obj.GetNamespace())
@@ -482,9 +476,6 @@ func Apply(url string, kubeconfig string, ctx string, yamlB []byte) error {
 			switch kind {
 			case "MultiClusterObservability":
 				gvr = NewMCOGVRV1BETA2()
-				if apiVersion == "observability.open-cluster-management.io/v1beta1" {
-					gvr = NewMCOGVRV1BETA1()
-				}
 			case "PrometheusRule":
 				gvr = schema.GroupVersionResource{
 					Group:    "monitoring.coreos.com",
@@ -539,27 +530,6 @@ func Apply(url string, kubeconfig string, ctx string, yamlB []byte) error {
 		}
 	}
 	return nil
-}
-
-// StatusContainsTypeEqualTo check if u contains a condition type with value typeString
-func StatusContainsTypeEqualTo(u *unstructured.Unstructured, typeString string) bool {
-	if u != nil {
-		if v, ok := u.Object["status"]; ok {
-			status := v.(map[string]interface{})
-			if v, ok := status["conditions"]; ok {
-				conditions := v.([]interface{})
-				for _, v := range conditions {
-					condition := v.(map[string]interface{})
-					if v, ok := condition["type"]; ok {
-						if v.(string) == typeString {
-							return true
-						}
-					}
-				}
-			}
-		}
-	}
-	return false
 }
 
 func HaveCRDs(c Cluster, kubeconfig string, expectedCRDs []string) error {
@@ -623,4 +593,23 @@ func GetPullSecret(opt TestOptions) (string, error) {
 
 	ips := spec["imagePullSecret"].(string)
 	return ips, nil
+}
+
+func LoginOCUser(opt TestOptions, user string, password string) error {
+	klog.Errorf("Login as %s with server url %s", user, opt.HubCluster.ClusterServerURL)
+	cmd, err := exec.Command("oc", "login", "-u", user, "-p", password, "--server", opt.HubCluster.ClusterServerURL, "--insecure-skip-tls-verify").CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to login as %s: %s", user, string(cmd))
+	}
+
+	tokenCmd := exec.Command("oc", "whoami", "-t")
+	var token bytes.Buffer
+	tokenCmd.Stdout = &token
+	err = tokenCmd.Run()
+	if err != nil {
+		return err
+	}
+	tokenBytes := token.Bytes()
+	os.Setenv("USER_TOKEN", strings.TrimSpace(string(tokenBytes)))
+	return nil
 }

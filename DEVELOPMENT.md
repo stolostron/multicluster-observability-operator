@@ -80,7 +80,6 @@ After running the tests, there will be some changes made to your environment.
 We can clean up the environment by running:
 
 ```shell
-rm "examples/mco/e2e/v1beta1/observability.yaml-e" || true
 rm "examples/mco/e2e/v1beta2/observability.yaml-e" || true
 rm "operators/multiclusterobservability/manifests/base/grafana/deployment.yaml-e" || true
 git stash
