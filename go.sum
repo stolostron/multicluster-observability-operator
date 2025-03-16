@@ -1051,8 +1051,8 @@ github.com/spf13/viper v1.7.0/go.mod h1:8WkrPz2fc9jxqZNCJI/76HCieCp4Q8HaLFoCha5q
 github.com/src-d/gcfg v1.4.0/go.mod h1:p/UMsR43ujA89BJY9duynAwIpvqEujIH/jFlfL7jWoI=
 github.com/stoewer/go-strcase v1.3.0 h1:g0eASXYtp+yvN9fK8sH94oCIk0fau9uV1/ZdJ0AVEzs=
 github.com/stoewer/go-strcase v1.3.0/go.mod h1:fAH5hQ5pehh+j3nZfvwdk2RgEgQjAoM8wodgtPmh1xo=
-github.com/stolostron/controller-filtered-cache v0.0.0-20240605101128-e033f9b9a990 h1:eZGHAuC500dgn2U+U1DHgcx+9Bs3enawe2x2E9qwQaE=
-github.com/stolostron/controller-filtered-cache v0.0.0-20240605101128-e033f9b9a990/go.mod h1:fb84VRSuQLOvGbf5yzau1/RxR9rmBV7ZTnjpypN5s5k=
+github.com/stolostron/controller-filtered-cache v0.0.0-20230511042933-93982dba9e1e h1:r75y4Qi2wvWqnQEhe10VxLPzosvGATY6Xw2Dfa4Nbhs=
+github.com/stolostron/controller-filtered-cache v0.0.0-20230511042933-93982dba9e1e/go.mod h1:mlxnsjbBam62wAdh3w5vu+mewZbOszFAQs8KMo9oGC0=
 github.com/stolostron/multiclusterhub-operator v0.0.0-20240626140553-4f1ed6be3b84 h1:kjoi1qzaohRJSzdtZVmLhxJsi9nQmpitjwwp83QcTF8=
 github.com/stolostron/multiclusterhub-operator v0.0.0-20240626140553-4f1ed6be3b84/go.mod h1:fVXNVgAb4lcyAurs9qi3UG5bkpRCO2hYmEkj9s9++MY=
 github.com/stolostron/observatorium-operator v0.0.0-20240521155951-b4302d25bd18 h1:E/PNsOae69+k4zpbKfXQYrI14fEQSKPjv+yP8eSHOV4=
