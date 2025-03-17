@@ -4,9 +4,8 @@
 
 create_test_users() {
   echo CREATING USER PASSWORDS SECRET
-  htpasswd -c -B -b users.htpasswd admin admin
+  htpasswd -c -B -b users.htpasswd e2eadmin e2eadmin
   htpasswd -B -b users.htpasswd user1 user1
-  htpasswd -B -b users.htpasswd user2 user2
   oc create ns openshift-config
   oc delete secret htpass-user-test -n openshift-config &>/dev/null
   oc create secret generic htpass-user-test --from-file=htpasswd=users.htpasswd -n openshift-config
@@ -35,7 +34,7 @@ EOL
 
 create_role_bindings() {
   echo CREATING ROLE BINDINGS
-  oc create clusterrolebinding cluster-manager-admin-binding --clusterrole=open-cluster-management:cluster-manager-admin --user=admin
+  oc create clusterrolebinding cluster-manager-admin-binding --clusterrole=open-cluster-management:cluster-manager-admin --user=e2eadmin
   oc create rolebinding view-binding-user1 --clusterrole=view --user=user1 -n local-cluster
 }
 
