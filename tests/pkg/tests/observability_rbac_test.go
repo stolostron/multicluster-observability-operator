@@ -28,7 +28,7 @@ var _ = Describe("Observability:", Ordered, func() {
 	It("RHACM4K-1406 - Observability - RBAC - only authorized user could query managed cluster metrics data [Observability][Integration]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release (requires-ocp/g0) (obs_rbac/g0)", func() {
 		By("Logging in as admin and querying managed cluster metrics data", func() {
 			Eventually(func() error {
-				err = utils.LoginOCUser(testOptions, "admin", "admin")
+				err = utils.LoginOCUser(testOptions, "e2eadmin", "e2eadmin")
 				if err != nil {
 					klog.Errorf("Failed to login as admin: %v", err)
 					return err
@@ -98,10 +98,10 @@ var _ = Describe("Observability:", Ordered, func() {
 					return err
 				}
 				if bytes.Contains(out.Bytes(), []byte("user1")) {
-					return fmt.Errorf("user1 can delete multiclusterobservabilities.multiclusterobservability.io")
+					return fmt.Errorf("user1 can delete multiclusterobservabilities.observability.open-cluster-management.io CR")
 				}
 				if !bytes.Contains(out.Bytes(), []byte("e2eadmin")) {
-					return fmt.Errorf("e2eadmin can't delete multiclusterobservabilities.multiclusterobservability.io")
+					return fmt.Errorf("e2eadmin can't delete multiclusterobservabilities.observability.open-cluster-management.io CR")
 				}
 				return nil
 			}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*5).Should(Succeed())
