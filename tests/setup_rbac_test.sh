@@ -6,6 +6,11 @@ create_test_users() {
   echo CREATING USER PASSWORDS SECRET
   htpasswd -c -B -b users.htpasswd admin admin
   htpasswd -B -b users.htpasswd user1 user1
+
+  oc delete identity htpasswd_provider:admin &>/dev/null
+  oc delete identity htpasswd_provider:user1 &>/dev/null
+  oc delete user admin &>/dev/null
+  oc delete user user1 &>/dev/null
   oc create ns openshift-config
   oc delete secret htpass-user-test -n openshift-config &>/dev/null
   oc create secret generic htpass-user-test --from-file=htpasswd=users.htpasswd -n openshift-config
