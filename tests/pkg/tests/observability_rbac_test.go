@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -24,6 +25,7 @@ var _ = Describe("Observability:", Ordered, func() {
 		err = cmd.Run()
 		Expect(err).To(BeNil())
 		klog.V(1).Infof("the output of setup_rbac_test.sh: %v", out.String())
+		time.Sleep(2 * time.Minute)
 	})
 	It("RHACM4K-1406 - Observability - RBAC - only authorized user could query managed cluster metrics data [Observability][Integration]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release (requires-ocp/g0) (obs_rbac/g0)", func() {
 		By("Logging in as admin and querying managed cluster metrics data", func() {
@@ -79,7 +81,6 @@ var _ = Describe("Observability:", Ordered, func() {
 				return nil
 			}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
 		})
-
 	})
 
 	It("RHACM4K-1439 - Observability - RBAC - Verify only cluster-manager-admin role can deploy MCO CR [Observability][Integration]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release (requires-ocp/g0) (obs_rbac/g0)", func() {

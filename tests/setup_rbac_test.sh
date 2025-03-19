@@ -6,6 +6,7 @@ create_test_users() {
   echo CREATING USER PASSWORDS SECRET
   htpasswd -c -B -b users.htpasswd admin admin
   htpasswd -B -b users.htpasswd user1 user1
+  htpasswd -B -b users.htpasswd user2 user2
 
   oc delete identity htpasswd_provider:admin &>/dev/null
   oc delete identity htpasswd_provider:user1 &>/dev/null

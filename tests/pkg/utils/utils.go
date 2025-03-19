@@ -597,9 +597,12 @@ func GetPullSecret(opt TestOptions) (string, error) {
 
 func LoginOCUser(opt TestOptions, user string, password string) error {
 	//nolint:gosec
-	cmd, err := exec.Command("oc", "login", "-u", user, "-p", password, "--server", opt.HubCluster.ClusterServerURL, "--insecure-skip-tls-verify").CombinedOutput()
+	cmd := exec.Command("oc", "login", "-u", user, "-p", password, "--server", opt.HubCluster.ClusterServerURL, "--insecure-skip-tls-verify")
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	err := cmd.Run()
 	if err != nil {
-		return fmt.Errorf("failed to login as %s: %s", user, string(cmd))
+		return fmt.Errorf("failed to login as %s: %s err %s", user, cmd, err)
 	}
 
 	tokenCmd := exec.Command("oc", "whoami", "-t")
