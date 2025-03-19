@@ -9,6 +9,7 @@ create_test_users() {
 
   oc delete identity htpasswd_provider:admin &>/dev/null
   oc delete identity htpasswd_provider:user1 &>/dev/null
+  oc delete identity users:admin &>/dev/null
   oc delete user admin &>/dev/null
   oc delete user user1 &>/dev/null
   oc create ns openshift-config
