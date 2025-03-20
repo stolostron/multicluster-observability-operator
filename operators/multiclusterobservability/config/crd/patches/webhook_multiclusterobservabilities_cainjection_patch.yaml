@@ -16,4 +16,4 @@ spec:
           namespace: open-cluster-management
           port: 443
           path: /convert
-        caBundle: XG4=
+
