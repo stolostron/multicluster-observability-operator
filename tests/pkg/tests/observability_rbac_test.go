@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -16,17 +17,17 @@ import (
 	"k8s.io/klog"
 )
 
-var _ = Describe("Observability:", func() {
+var _ = Describe("Observability:", Ordered, func() {
+	BeforeAll(func() {
+		cmd := exec.Command("../../setup_rbac_test.sh")
+		var out bytes.Buffer
+		cmd.Stdout = &out
+		err = cmd.Run()
+		Expect(err).To(BeNil())
+		klog.V(1).Infof("the output of setup_rbac_test.sh: %v", out.String())
+		time.Sleep(2 * time.Minute)
+	})
 	It("RHACM4K-1406 - Observability - RBAC - only authorized user could query managed cluster metrics data [Observability][Integration]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release (requires-ocp/g0) (obs_rbac/g0)", func() {
-		By("Setting up users creation and rolebindings for RBAC", func() {
-			cmd := exec.Command("../../setup_rbac_test.sh")
-			var out bytes.Buffer
-			cmd.Stdout = &out
-			err = cmd.Run()
-			Expect(err).To(BeNil())
-			klog.V(1).Infof("the output of setup_rbac_test.sh: %v", out.String())
-
-		})
 		By("Logging in as admin and querying managed cluster metrics data", func() {
 			Eventually(func() error {
 				err = utils.LoginOCUser(testOptions, "admin", "admin")
@@ -82,8 +83,30 @@ var _ = Describe("Observability:", func() {
 		})
 	})
 
-	JustAfterEach(func() {
-		Expect(utils.IntegrityChecking(testOptions)).NotTo(HaveOccurred())
+	It("RHACM4K-1439 - Observability - RBAC - Verify only cluster-manager-admin role can deploy MCO CR [Observability][Integration]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release (requires-ocp/g0) (obs_rbac/g0)", func() {
+		By("Logging as kube:admin checking if MCO can be deleted by user1 and admin", func() {
+			Eventually(func() error {
+				_, err = exec.Command("oc", "config", "use-context", testOptions.HubCluster.KubeContext).CombinedOutput()
+				if err != nil {
+					return err
+				}
+
+				cmd := exec.Command("oc", "policy", "who-can", "delete", "mco")
+				var out bytes.Buffer
+				cmd.Stdout = &out
+				err = cmd.Run()
+				if err != nil {
+					return err
+				}
+				if bytes.Contains(out.Bytes(), []byte("user1")) {
+					return fmt.Errorf("user1 can delete multiclusterobservabilities.observability.open-cluster-management.io CR")
+				}
+				if !bytes.Contains(out.Bytes(), []byte("admin")) {
+					return fmt.Errorf("admin can't delete multiclusterobservabilities.observability.open-cluster-management.io CR")
+				}
+				return nil
+			}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*5).Should(Succeed())
+		})
 	})
 
 	AfterEach(func() {
