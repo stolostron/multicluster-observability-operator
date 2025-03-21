@@ -597,7 +597,7 @@ func GetPullSecret(opt TestOptions) (string, error) {
 
 func LoginOCUser(opt TestOptions, user string, password string) error {
 	klog.Errorf("Login as %s with server url %s", user, opt.HubCluster.ClusterServerURL)
-	cmd, err := exec.Command("oc", "login", "-u", user, "-p", password, "--server", opt.HubCluster.ClusterServerURL, "--insecure-skip-tls-verify").CombinedOutput()
+	cmd, err := exec.Command("oc", "login", "-u", user, "-p", password, "--server", opt.HubCluster.ClusterServerURL, "--insecure-skip-tls-verify").CombinedOutput() //nolint:gosec
 	if err != nil {
 		return fmt.Errorf("failed to login as %s: %s", user, string(cmd))
 	}
