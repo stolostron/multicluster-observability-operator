@@ -5,6 +5,8 @@
 package placementrule
 
 import (
+	"fmt"
+
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -38,9 +40,9 @@ func loadTemplates(mco *mcov1beta2.MultiClusterObservability) (
 	// render endpoint-observability templates
 	endpointObsTemplates, err := templates.GetOrLoadEndpointObservabilityTemplates(templatesutil.GetTemplateRenderer())
 	if err != nil {
-		log.Error(err, "Failed to load templates")
-		return nil, nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, fmt.Errorf("failed to load load endpoint observability templates: %w", err)
 	}
+
 	crdv1 := &apiextensionsv1.CustomResourceDefinition{}
 	crdv1beta1 := &apiextensionsv1beta1.CustomResourceDefinition{}
 	dep := &appsv1.Deployment{}
@@ -49,7 +51,7 @@ func loadTemplates(mco *mcov1beta2.MultiClusterObservability) (
 	for _, r := range endpointObsTemplates {
 		obj, err := updateRes(r, mco)
 		if err != nil {
-			return nil, nil, nil, nil, nil, err
+			return nil, nil, nil, nil, nil, fmt.Errorf("failed to edit templates: %w", err)
 		}
 		if r.GetKind() == "Deployment" {
 			dep = obj.(*appsv1.Deployment)
