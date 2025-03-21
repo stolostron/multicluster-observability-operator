@@ -13,7 +13,7 @@ require (
 	github.com/go-kit/log v0.2.1
 	github.com/go-logr/logr v1.4.2
 	github.com/gogo/protobuf v1.3.2
-	github.com/golang-jwt/jwt/v5 v5.2.1
+	github.com/golang-jwt/jwt/v5 v5.2.2
 	github.com/golang/protobuf v1.5.4
 	github.com/golang/snappy v0.0.4
 	github.com/google/go-cmp v0.6.0
