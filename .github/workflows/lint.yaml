@@ -33,9 +33,4 @@ jobs:
       # We exclude the dockerfile as we have manually modified that to use a different user.
       # In addition we exclude createdAt changes in the CSV file that happen on each make bundle.
       - name: check diff
-        run: | 
-          git diff -I '^    createdAt: ' --exit-code -- . \
-          ':(exclude)operators/multiclusterobservability/bundle.Dockerfile' \
-          ':(exclude)operators/multiclusterobservability/bundle/manifests/multicluster-observability-operator.clusterserviceversion.yaml' \
-          ':(exclude)operators/multiclusterobservability/manifests/base/grafana/deployment.yaml' \
-          ':(exclude)operators/multiclusterobservability/manifests/base/observatorium/operator.yaml'
+        run: "git diff -I '^    createdAt: ' --exit-code -- . ':(exclude)operators/multiclusterobservability/bundle.Dockerfile'"
