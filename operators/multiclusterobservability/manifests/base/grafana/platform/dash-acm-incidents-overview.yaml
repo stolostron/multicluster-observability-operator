@@ -180,7 +180,7 @@ data:
             },
             "editorMode": "code",
             "exemplar": false,
-            "expr": "max(cluster:health:components:map{}) by (group_id,cluster,component,src_alertname) * on (cluster) group_left(url) console_url",
+            "expr": "max(cluster:health:components:map{cluster=\"$cluster\"}) by (group_id,cluster,component,src_alertname) * on (cluster) group_left(url) console_url",
             "format": "table",
             "instant": true,
             "legendFormat": "__auto",
@@ -343,7 +343,32 @@ data:
     "refresh": "15m",
     "tags": [],
     "templating": {
-      "list": []
+      "list": [
+        {
+          "current": {
+            "selected": false,
+            "text": "",
+            "value": ""
+          },
+          "definition": "label_values(acm_managed_cluster_labels,name)",
+          "hide": 0,
+          "includeAll": false,
+          "label": "Cluster",
+          "multi": false,
+          "name": "cluster",
+          "options": [],
+          "query": {
+            "qryType": 1,
+            "query": "label_values(acm_managed_cluster_labels,name)",
+            "refId": "StandardVariableQuery"
+          },
+          "refresh": 1,
+          "regex": "",
+          "skipUrlSync": false,
+          "sort": 0,
+          "type": "query"
+        }
+      ]
     },
     "time": {
       "from": "now-12h",
