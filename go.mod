@@ -19,10 +19,10 @@ require (
 	github.com/google/go-cmp v0.6.0
 	github.com/imdario/mergo v0.3.16
 	github.com/oklog/run v1.1.0
-	github.com/onsi/ginkgo/v2 v2.19.0
-	github.com/onsi/gomega v1.33.1
-	github.com/openshift/api v0.0.0-20240625084701-0689f006bcde
-	github.com/openshift/client-go v0.0.0-20240528061634-b054aa794d87
+	github.com/onsi/ginkgo/v2 v2.21.0
+	github.com/onsi/gomega v1.35.1
+	github.com/openshift/api v0.0.0-20250327202946-4521905c611e
+	github.com/openshift/client-go v0.0.0-20250330132942-bc2e3c2af6e1
 	github.com/openshift/cluster-monitoring-operator v0.1.1-0.20240628115213-cd0d275afa06
 	github.com/openshift/hypershift/api v0.0.0-20241119231618-9aca80837541
 	github.com/openshift/library-go v0.0.0-20240621150525-4bb4238aef81
@@ -44,13 +44,13 @@ require (
 	go.uber.org/zap v1.27.0
 	golang.org/x/exp v0.0.0-20240325151524-a685a6edb6d8
 	gopkg.in/yaml.v2 v2.4.0
-	k8s.io/api v0.31.0-alpha.2
+	k8s.io/api v0.32.3
 	k8s.io/apiextensions-apiserver v0.31.0-alpha.1
-	k8s.io/apimachinery v0.31.0-alpha.2
-	k8s.io/client-go v0.31.0-alpha.2
+	k8s.io/apimachinery v0.32.3
+	k8s.io/client-go v0.32.1
 	k8s.io/klog v1.0.0
 	k8s.io/kubectl v0.29.3
-	k8s.io/utils v0.0.0-20240502163921-fe8a2dddb1d0
+	k8s.io/utils v0.0.0-20241210054802-24370beab758
 	open-cluster-management.io/addon-framework v0.9.2
 	open-cluster-management.io/api v0.13.0
 	sigs.k8s.io/controller-runtime v0.18.1-0.20240626171621-700befecdffa
@@ -100,7 +100,7 @@ require (
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/fullstorydev/grpcurl v1.8.2 // indirect
-	github.com/fxamacker/cbor/v2 v2.7.0-beta // indirect
+	github.com/fxamacker/cbor/v2 v2.7.0 // indirect
 	github.com/go-errors/errors v1.4.2 // indirect
 	github.com/go-kit/kit v0.12.0 // indirect
 	github.com/go-logfmt/logfmt v0.6.0 // indirect
@@ -216,15 +216,15 @@ require (
 	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/goleak v1.3.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/crypto v0.35.0 // indirect
+	golang.org/x/crypto v0.36.0 // indirect
 	golang.org/x/mod v0.22.0 // indirect
-	golang.org/x/net v0.36.0 // indirect
-	golang.org/x/oauth2 v0.21.0 // indirect
-	golang.org/x/sync v0.11.0 // indirect
-	golang.org/x/sys v0.30.0 // indirect
-	golang.org/x/term v0.29.0 // indirect
-	golang.org/x/text v0.22.0 // indirect
-	golang.org/x/time v0.5.0 // indirect
+	golang.org/x/net v0.37.0 // indirect
+	golang.org/x/oauth2 v0.23.0 // indirect
+	golang.org/x/sync v0.12.0 // indirect
+	golang.org/x/sys v0.31.0 // indirect
+	golang.org/x/term v0.30.0 // indirect
+	golang.org/x/text v0.23.0 // indirect
+	golang.org/x/time v0.7.0 // indirect
 	golang.org/x/tools v0.28.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.4.0 // indirect
 	google.golang.org/genproto v0.0.0-20240227224415-6ceb2ff114de // indirect
@@ -242,11 +242,11 @@ require (
 	k8s.io/klog/v2 v2.130.1 // indirect
 	k8s.io/kms v0.31.0-alpha.1 // indirect
 	k8s.io/kube-aggregator v0.30.1 // indirect
-	k8s.io/kube-openapi v0.0.0-20240403164606-bc84c2ddaf99 // indirect
+	k8s.io/kube-openapi v0.0.0-20241105132330-32ad38e42d3f // indirect
 	open-cluster-management.io/sdk-go v0.13.1-0.20240416030555-aa744f426379 // indirect
 	sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.29.0 // indirect
-	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
-	sigs.k8s.io/structured-merge-diff/v4 v4.4.1 // indirect
+	sigs.k8s.io/json v0.0.0-20241014173422-cfa47c3a1cc8 // indirect
+	sigs.k8s.io/structured-merge-diff/v4 v4.6.0 // indirect
 )
 
 // Stolostron fork of the controller-filtered-cache upgraded to k8s libs up to 0.29.x and Go up to 1.21.
