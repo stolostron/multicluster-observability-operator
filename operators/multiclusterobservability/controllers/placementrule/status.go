@@ -21,7 +21,7 @@ import (
 
 func updateAddonStatus(ctx context.Context, c client.Client, addonList mcov1beta1.ObservabilityAddonList) error {
 	for _, addon := range addonList.Items {
-		if addon.Status.Conditions == nil || len(addon.Status.Conditions) == 0 {
+		if addon.Status.Conditions == nil || len(addon.Status.Conditions) == 0 { //nolint:gosimple
 			continue
 		}
 		obsAddonConditions := convertConditionsToMeta(addon.Status.Conditions)
