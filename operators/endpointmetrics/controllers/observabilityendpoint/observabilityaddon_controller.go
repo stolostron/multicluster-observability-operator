@@ -443,7 +443,7 @@ func (r *ObservabilityAddonReconciler) ensureOpenShiftMonitoringLabelAndRole(ctx
 		return err
 	}
 
-	if existingNs.ObjectMeta.Labels == nil || len(existingNs.ObjectMeta.Labels) == 0 {
+	if existingNs.ObjectMeta.Labels == nil || len(existingNs.ObjectMeta.Labels) == 0 { //nolint:gosimple
 		existingNs.ObjectMeta.Labels = make(map[string]string)
 	}
 
