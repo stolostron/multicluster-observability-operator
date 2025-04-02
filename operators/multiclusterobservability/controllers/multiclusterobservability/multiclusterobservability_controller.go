@@ -188,7 +188,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	}
 
 	// Init finalizers
-	operatorconfig.IsMCOTerminating, err = r.initFinalization(instance)
+	operatorconfig.IsMCOTerminating, err = r.initFinalization(ctx, instance)
 	if err != nil {
 		return ctrl.Result{}, err
 	} else if operatorconfig.IsMCOTerminating {
@@ -418,9 +418,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	return ctrl.Result{}, nil
 }
 
-func (r *MultiClusterObservabilityReconciler) initFinalization(
-	mco *mcov1beta2.MultiClusterObservability,
-) (bool, error) {
+func (r *MultiClusterObservabilityReconciler) initFinalization(ctx context.Context, mco *mcov1beta2.MultiClusterObservability) (bool, error) {
 	if mco.GetDeletionTimestamp() != nil && slices.Contains(mco.GetFinalizers(), resFinalizer) {
 		log.Info("To delete resources across namespaces")
 		// clean up the cluster resources, eg. clusterrole, clusterrolebinding, etc
@@ -429,7 +427,7 @@ func (r *MultiClusterObservabilityReconciler) initFinalization(
 			log.Error(err, "Failed to remove cluster scoped resources")
 			return false, err
 		}
-		if err := placementctrl.DeleteHubMetricsCollectionDeployments(r.Client); err != nil {
+		if err := placementctrl.DeleteHubMetricsCollectionDeployments(ctx, r.Client); err != nil {
 			log.Error(err, "Failed to delete hub metrics collection deployments and resources")
 			return false, err
 		}
@@ -437,7 +435,7 @@ func (r *MultiClusterObservabilityReconciler) initFinalization(
 		config.CleanUpOperandNames()
 
 		mco.SetFinalizers(commonutil.Remove(mco.GetFinalizers(), resFinalizer))
-		err := r.Client.Update(context.TODO(), mco)
+		err := r.Client.Update(ctx, mco)
 		if err != nil {
 			log.Error(err, "Failed to remove finalizer from mco resource")
 			return false, err
@@ -452,7 +450,7 @@ func (r *MultiClusterObservabilityReconciler) initFinalization(
 	if !slices.Contains(mco.GetFinalizers(), resFinalizer) {
 		mco.SetFinalizers(commonutil.Remove(mco.GetFinalizers(), certFinalizer))
 		mco.SetFinalizers(append(mco.GetFinalizers(), resFinalizer))
-		err := r.Client.Update(context.TODO(), mco)
+		err := r.Client.Update(ctx, mco)
 		if err != nil {
 			log.Error(err, "Failed to add finalizer to mco resource")
 			return false, err
