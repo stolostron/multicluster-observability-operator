@@ -134,7 +134,7 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	// and thus are not removed by the cleanResources function.
 	if mcoaForMetricsIsEnabled(mco) {
 		reqLogger.Info("Ensuring MCOA resources on the hub")
-		if err := r.ensureMCAOResources(ctx, mco); err != nil {
+		if err := r.ensureMCOAResources(ctx, mco); err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to ensure MCOA resources: %w", err)
 		}
 		if err := DeleteHubMetricsCollectorResourcesNotNeededForMCOA(ctx, r.Client); err != nil {
@@ -334,13 +334,13 @@ func (r *PlacementRuleReconciler) cleanSpokesAddonResources(ctx context.Context)
 	return nil
 }
 
-// ensureMCAOResources reconciliates resources needed for MCOA (both hub and spoke).
+// ensureMCOAResources reconciliates resources needed for MCOA (both hub and spoke).
 // This includes:
 // - The hub server CA cert to trust when sending metrics
 // - The Hub AlertManager Token to forward alerts from the spoke cluster's Prometheus
 // - The image list configMap
 // - the mTLS key and cert for sending metrics to the hub
-func (r *PlacementRuleReconciler) ensureMCAOResources(ctx context.Context, mco *mcov1beta2.MultiClusterObservability) error {
+func (r *PlacementRuleReconciler) ensureMCOAResources(ctx context.Context, mco *mcov1beta2.MultiClusterObservability) error {
 	resourcesToCreate := []client.Object{}
 	hubServerCaCertSecret, err := generateObservabilityServerCACerts(ctx, r.Client)
 	if err != nil {
