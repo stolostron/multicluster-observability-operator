@@ -163,6 +163,11 @@ data:
       - kubevirt_vmi_storage_iops_read_total
       - kubevirt_vmi_storage_iops_write_total
       - kubevirt_vm_resource_requests
+      - kubevirt_vmi_storage_read_traffic_bytes_total
+      - kubevirt_vmi_storage_write_traffic_bytes_total
+      - kubevirt_vmi_vcpu_delay_seconds_total
+      - node_cpu_seconds_total
+      - node_memory_MemTotal_bytes
 
 
     matches:
