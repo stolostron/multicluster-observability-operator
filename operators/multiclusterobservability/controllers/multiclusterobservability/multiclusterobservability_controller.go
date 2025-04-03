@@ -398,6 +398,12 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		}
 	}
 
+	// create analytics component
+	result, err = CreateAnalyticsComponent(r.Client, r.Scheme, instance, r.Manager)
+	if result != nil {
+		return *result, err
+	}
+
 	if _, ok := os.LookupEnv("UNIT_TEST"); !ok && !isLegacyResourceRemoved {
 		// Delete PrometheusRule from openshift-monitoring namespace
 		if err := r.deleteSpecificPrometheusRule(ctx); err != nil {
