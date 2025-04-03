@@ -54,6 +54,30 @@ type MultiClusterObservabilitySpec struct {
 	ObservabilityAddonSpec *observabilityshared.ObservabilityAddonSpec `json:"observabilityAddonSpec"`
 }
 
+// AnalyticCapabilitiesSpec defines the spec for analytics capabilities.
+type AnalyticCapabilitiesSpec struct {
+	// Feature to enable namespace right-sizing recommendation capabilities for the Analytics.
+	//
+	// +optional
+	// +kubebuilder:validation:Optional
+	NamespaceRightSizingRecommendation *NamespaceRightSizingRecommendationSpec `json:"namespaceRightSizingRecommendation,omitempty"`
+}
+
+// NamespaceRightSizingSpec defines the namespace right sizing capabilities.
+type NamespaceRightSizingRecommendationSpec struct {
+	// Enabled defines a flag to enable/disable the namespace right-sizing feature for the Analytics.
+	//
+	// +optional
+	// +kubebuilder:validation:Optional
+	Enabled bool `json:"enabled,omitempty"`
+
+	// NamespaceBinding defines where we want to create all resources under specific namespace as well as used in PolicyBinding. If not supplied then we will use open-cluster-management-global-set
+	//
+	// +optional
+	// +kubebuilder:validation:Optional
+	NamespaceBinding string `json:"namespaceBinding,omitempty"`
+}
+
 // T Shirt size class for a particular o11y resource.
 // +kubebuilder:validation:Enum:={"default","minimal","small","medium","large","xlarge","2xlarge","4xlarge"}
 type TShirtSize string
