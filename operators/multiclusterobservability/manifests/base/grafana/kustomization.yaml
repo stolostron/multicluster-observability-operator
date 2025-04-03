@@ -6,6 +6,7 @@ resources:
 - deployment.yaml
 - service.yaml
 - alerts
+- analytics
 - hcp
 - hcp-mcoa
 - platform
