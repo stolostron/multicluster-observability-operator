@@ -62,7 +62,7 @@ func TestCreateClusterRole(t *testing.T) {
 	}
 	objs := []runtime.Object{role}
 	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
-	err := createClusterRole(c)
+	err := createReadMCOClusterRole(context.Background(), c)
 	if err != nil {
 		t.Fatalf("createRole: (%v)", err)
 	}
@@ -99,7 +99,7 @@ func TestCreateClusterRoleBinding(t *testing.T) {
 	}
 	objs := []runtime.Object{rb}
 	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
-	err := createClusterRoleBinding(c, namespace, namespace)
+	err := createReadMCOClusterRoleBinding(c, namespace, namespace)
 	if err != nil {
 		t.Fatalf("createRoleBinding: (%v)", err)
 	}
@@ -116,7 +116,7 @@ func TestCreateClusterRoleBinding(t *testing.T) {
 
 func TestCreateRole(t *testing.T) {
 	c := fake.NewClientBuilder().Build()
-	err := createResourceRole(c)
+	err := createResourceRole(context.Background(), c)
 	if err != nil {
 		t.Fatalf("createRole: (%v)", err)
 	}
@@ -156,7 +156,7 @@ func TestCreateRole(t *testing.T) {
 	}
 	objs := []runtime.Object{role}
 	c = fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
-	err = createResourceRole(c)
+	err = createResourceRole(context.Background(), c)
 	if err != nil {
 		t.Fatalf("createRole: (%v)", err)
 	}
