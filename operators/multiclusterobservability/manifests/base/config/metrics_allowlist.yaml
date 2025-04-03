@@ -163,6 +163,22 @@ data:
       - kubevirt_vmi_storage_iops_read_total
       - kubevirt_vmi_storage_iops_write_total
       - kubevirt_vm_resource_requests
+      - acm_rs:namespace:cpu_request_hard
+      - acm_rs:namespace:cpu_request
+      - acm_rs:namespace:cpu_usage
+      - acm_rs:namespace:cpu_recommendation
+      - acm_rs:namespace:memory_request_hard
+      - acm_rs:namespace:memory_request
+      - acm_rs:namespace:memory_usage
+      - acm_rs:namespace:memory_recommendation
+      - acm_rs:cluster:cpu_request_hard
+      - acm_rs:cluster:cpu_request
+      - acm_rs:cluster:cpu_usage
+      - acm_rs:cluster:cpu_recommendation
+      - acm_rs:cluster:memory_request_hard
+      - acm_rs:cluster:memory_request
+      - acm_rs:cluster:memory_usage
+      - acm_rs:cluster:memory_recommendation
 
 
     matches:
