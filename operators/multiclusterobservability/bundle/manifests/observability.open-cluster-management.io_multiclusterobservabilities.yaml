@@ -10023,6 +10023,20 @@ spec:
                         description: Analytics provides the configuration for the
                           analytics features
                         properties:
+                          namespaceRightSizingRecommendation:
+                            description: Feature to enable namespace right-sizing
+                              recommendation capabilities for the Analytics.
+                            properties:
+                              enabled:
+                                description: Enabled defines a flag to enable/disable
+                                  the namespace right-sizing feature for the Analytics.
+                                type: boolean
+                              namespaceBinding:
+                                description: NamespaceBinding defines where we want
+                                  to create all resources under specific namespace
+                                  as well as used in PolicyBinding. If not supplied
+                                  then we will use open-cluster-management-global-set
+                                type: string
                           incidentDetection:
                             description: |-
                               Incident detecion defines the configuration spec for the incident detection
