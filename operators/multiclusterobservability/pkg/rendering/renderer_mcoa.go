@@ -257,6 +257,48 @@ func (r *MCORenderer) renderClusterManagementAddOn(
 						Namespace: mcoconfig.GetDefaultNamespace(),
 					},
 				},
+				// HCPs configurations for etcd
+				{
+					ConfigGroupResource: addonapiv1alpha1.ConfigGroupResource{
+						Group:    prometheusalpha1.SchemeGroupVersion.Group,
+						Resource: prometheusalpha1.ScrapeConfigName,
+					},
+					ConfigReferent: addonapiv1alpha1.ConfigReferent{
+						Name:      "etcd-hcp-uwl-metrics-default",
+						Namespace: mcoconfig.GetDefaultNamespace(),
+					},
+				},
+				{
+					ConfigGroupResource: addonapiv1alpha1.ConfigGroupResource{
+						Group:    prometheusv1.SchemeGroupVersion.Group,
+						Resource: prometheusv1.PrometheusRuleName,
+					},
+					ConfigReferent: addonapiv1alpha1.ConfigReferent{
+						Name:      "etcd-hcp-uwl-rules-default",
+						Namespace: mcoconfig.GetDefaultNamespace(),
+					},
+				},
+				// HCPs configurations for apiserver
+				{
+					ConfigGroupResource: addonapiv1alpha1.ConfigGroupResource{
+						Group:    prometheusalpha1.SchemeGroupVersion.Group,
+						Resource: prometheusalpha1.ScrapeConfigName,
+					},
+					ConfigReferent: addonapiv1alpha1.ConfigReferent{
+						Name:      "apiserver-hcp-uwl-metrics-default",
+						Namespace: mcoconfig.GetDefaultNamespace(),
+					},
+				},
+				{
+					ConfigGroupResource: addonapiv1alpha1.ConfigGroupResource{
+						Group:    prometheusv1.SchemeGroupVersion.Group,
+						Resource: prometheusv1.PrometheusRuleName,
+					},
+					ConfigReferent: addonapiv1alpha1.ConfigReferent{
+						Name:      "apiserver-hcp-uwl-rules-default",
+						Namespace: mcoconfig.GetDefaultNamespace(),
+					},
+				},
 			}...)
 		}
 
