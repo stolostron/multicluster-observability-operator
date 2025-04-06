@@ -2,7 +2,7 @@ module github.com/stolostron/multicluster-observability-operator
 
 go 1.23.0
 
-toolchain go1.23.7
+toolchain go1.24.2
 
 require (
 	github.com/IBM/controller-filtered-cache v0.3.6
