@@ -321,6 +321,7 @@ func ReadImageManifestConfigMap(c client.Client, version string) (map[string]str
 	}
 
 	imageManifests = imageCMList.Items[0].Data
+	log.V(1).Info("Coleen test the length of mch-image-manifest configmap", "imageManifests", len(imageManifests))
 	return imageManifests, true, nil
 }
 
