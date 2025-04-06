@@ -300,6 +300,17 @@ func applyRSNamespaceConfigMapChanges(c client.Client, configData RightSizingCon
 		return err
 	}
 
+	err = createUpdatePlacement(c)
+	if err != nil {
+		log.Error(err, "Error while calling createUpdatePlacement")
+		return err
+	}
+
+	err = createPlacementBinding(c)
+	if err != nil {
+		log.Error(err, "Error while calling createPlacementBinding")
+		return err
+	}
 	log.Info("applyRSNamespaceConfigMapChanges completed")
 
 	return nil
@@ -460,6 +471,117 @@ func createOrUpdatePrometheusRulePolicy(c client.Client, prometheusRule monitori
 
 	}
 
+	return nil
+}
+
+// createUpdatePlacement creates the Placement resource
+func createUpdatePlacement(c client.Client) error {
+	log.Info("RS - Placement creation started")
+	placement := &clusterv1beta1.Placement{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      rsPlacementName,
+			Namespace: rsNamespace,
+		},
+	}
+
+	err := c.Get(context.TODO(), types.NamespacedName{
+		Namespace: rsNamespace,
+		Name:      rsPlacementName,
+	}, placement)
+	log.Info("RS - fetch Placement completed2")
+
+	placement.Spec = clusterv1beta1.PlacementSpec{
+		Predicates: []clusterv1beta1.ClusterPredicate{},
+		Tolerations: []clusterv1beta1.Toleration{
+			{
+				Key:      "cluster.open-cluster-management.io/unreachable",
+				Operator: clusterv1beta1.TolerationOpExists,
+			},
+			{
+				Key:      "cluster.open-cluster-management.io/unavailable",
+				Operator: clusterv1beta1.TolerationOpExists,
+			},
+		},
+	}
+
+	if err != nil && errors.IsNotFound(err) {
+
+		log.Info("RS - Placement not found, creating a new one",
+			"Namespace", placement.Namespace,
+			"Name", placement.Name,
+		)
+		if client.IgnoreNotFound(err) != nil {
+			log.Error(err, "RS - Unable to fetch Placement")
+			return err
+		}
+
+		if err = c.Create(context.TODO(), placement); err != nil {
+			log.Error(err, "Failed to create Placement")
+			return err
+		}
+		log.Info("RS - Create Placement completed", "Placement", rsPlacementName)
+	} else {
+		log.Info("RS - Placement already exists, updating data",
+			"Namespace", placement.Namespace,
+			"Name", placement.Name,
+		)
+		if err = c.Update(context.TODO(), placement); err != nil {
+			log.Error(err, "Failed to update Placement")
+			return err
+		}
+		log.Info("RS - Placement updated successfully", "Placement", rsPlacementName)
+	}
+
+	log.Info("RS - Placement creation completed")
+	return nil
+}
+
+// createPlacementBinding creates the PlacementBinding resource
+func createPlacementBinding(c client.Client) error {
+	log.Info("RS - PlacementBinding creation started")
+	placementBinding := &policyv1.PlacementBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      rsPlacementBindingName,
+			Namespace: rsNamespace,
+		},
+	}
+	err := c.Get(context.TODO(), types.NamespacedName{
+		Namespace: placementBinding.Namespace,
+		Name:      placementBinding.Name,
+	}, placementBinding)
+	log.Info("RS - fetch PlacementBinding completed2")
+
+	if err != nil && errors.IsNotFound(err) {
+
+		log.Info("RS - PlacementBinding not found, creating a new one",
+			"Namespace", placementBinding.Namespace,
+			"Name", placementBinding.Name,
+		)
+		if client.IgnoreNotFound(err) != nil {
+			log.Error(err, "RS - Unable to fetch PlacementBinding")
+			return err
+		}
+
+		placementBinding.PlacementRef = policyv1.PlacementSubject{
+			Name:     rsPlacementName,
+			APIGroup: "cluster.open-cluster-management.io",
+			Kind:     "Placement",
+		}
+		placementBinding.Subjects = []policyv1.Subject{
+			{
+				Name:     rsPrometheusRulePolicyName,
+				APIGroup: "policy.open-cluster-management.io",
+				Kind:     "Policy",
+			},
+		}
+
+		if err = c.Create(context.TODO(), placementBinding); err != nil {
+			log.Error(err, "Failed to create Placement")
+			return err
+		}
+		log.Info("RS - Create PlacementBinding completed", "PlacementBinding", rsPlacementBindingName)
+	}
+	log.Info("RS - PlacementBinding creation completed")
 	return nil
 }
 
