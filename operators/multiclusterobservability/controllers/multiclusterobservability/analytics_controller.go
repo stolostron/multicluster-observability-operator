@@ -88,6 +88,7 @@ func CreateAnalyticsComponent(
 				Namespace: config.GetDefaultNamespace(), // Specify the namespace for the ConfigMap
 			},
 		}
+		//  TODO - check if we can get actual instance rather than context.TODO()
 		err := c.Get(context.TODO(), types.NamespacedName{
 			Name:      rsConfigMapName,
 			Namespace: config.GetDefaultNamespace(),
@@ -134,10 +135,42 @@ func CreateAnalyticsComponent(
 		}
 
 		log.Info("RS - Analytics.NamespaceRightSizing resource creation completed")
+	} else {
+		// Cleanup created resources if available
+		cleanupRSNamespaceResources(c, rsNamespace)
 	}
 
 	log.Info("RS - CreateAnalyticsComponent task completed6")
 	return nil, nil
+}
+
+func cleanupRSNamespaceResources(c client.Client, namespace string) {
+	log.Info("RS - Cleaning up NamespaceRightSizing resources")
+
+	// Define all objects to delete
+	resourcesToDelete := []client.Object{
+		&policyv1.PlacementBinding{ObjectMeta: metav1.ObjectMeta{Name: rsPlacementBindingName, Namespace: namespace}},
+		&clusterv1beta1.Placement{ObjectMeta: metav1.ObjectMeta{Name: rsPlacementName, Namespace: namespace}},
+		&policyv1.Policy{ObjectMeta: metav1.ObjectMeta{Name: rsPrometheusRulePolicyName, Namespace: namespace}},
+		&corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: rsConfigMapName, Namespace: config.GetDefaultNamespace()}},
+	}
+
+	// Iterate and delete each resource if it exists
+	for _, resource := range resourcesToDelete {
+		err := c.Delete(context.TODO(), resource)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				// Do nothing if resource is not found
+				continue
+			}
+			log.Error(err, "Failed to delete resource", "Resource", resource.GetObjectKind().GroupVersionKind().Kind, "Name", resource.GetName())
+		} else {
+			log.Info("Deleted resource successfully", "Resource", resource.GetObjectKind().GroupVersionKind().Kind, "Name", resource.GetName())
+		}
+	}
+
+	// Set default namespace again
+	rsNamespace = rsDefaultNamespace
 }
 
 // isRightSizingNamespaceEnabled checks if the right-sizing namespace analytics feature is enabled in the provided MCO configuration.
@@ -216,7 +249,6 @@ func getRightSizingConfigData(cm *corev1.ConfigMap) (RightSizingConfigMapData, e
 	// Print the ConfigMap in JSON format
 	fmt.Println("RS - ConfigMap content in JSON format:")
 	fmt.Println(string(configMapJson))
-
 	// Unmarshal namespaceFilterCriteria
 	if err := yaml.Unmarshal([]byte(cm.Data["namespaceFilterCriteria"]), &configData.NamespaceFilterCriteria); err != nil {
 		log.Error(err, "failed to unmarshal namespaceFilterCriteria")
