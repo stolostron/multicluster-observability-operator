@@ -29,10 +29,9 @@ import (
 )
 
 const (
-	rsPolicySetName        = "rs-policyset"
-	rsPlacementName        = "rs-placement"
-	rsPlacementBindingName = "rs-policyset-binding"
-	// TODO - need to add validation for  Policy name +namespace should not exceed 62 char
+	rsPolicySetName                  = "rs-policyset"
+	rsPlacementName                  = "rs-placement"
+	rsPlacementBindingName           = "rs-policyset-binding"
 	rsPrometheusRulePolicyName       = "rs-prom-rules-policy"
 	rsPrometheusRulePolicyConfigName = "rs-prometheus-rules-policy-config"
 	rsPrometheusRuleName             = "rs-namespace-prometheus-rules"
@@ -61,15 +60,6 @@ type RSPrometheusRuleConfig struct {
 }
 
 type RSNamespaceConfigMapData struct {
-	// NamespaceFilterCriteria struct {
-	// 	InclusionCriteria []string `yaml:"inclusionCriteria"`
-	// 	ExclusionCriteria []string `yaml:"exclusionCriteria"`
-	// } `yaml:"namespaceFilterCriteria"`
-	// LabelFilterCriteria []struct {
-	// 	LabelName         string   `yaml:"labelName"`
-	// 	InclusionCriteria []string `yaml:"inclusionCriteria,omitempty"`
-	// 	ExclusionCriteria []string `yaml:"exclusionCriteria,omitempty"`
-	// } `json:"labelFilterCriteria"`
 	PrometheusRuleConfig   RSPrometheusRuleConfig   `yaml:"prometheusRuleConfig"`
 	PlacementConfiguration clusterv1beta1.Placement `yaml:"placementConfiguration"`
 }
@@ -130,19 +120,6 @@ func CreateAnalyticsComponent(
 			log.Info("RS - Created configMap completed", "ConfigMap", rsConfigMapName)
 		} else {
 			log.Info("RS - ConfigMap already exists, skipping creation", "ConfigMap", rsConfigMapName, "namespace", rsNamespace)
-			// log.Info("Existing ConfigMap", "ConfigMap", fmt.Sprintf("%+v", existingCM))
-			log.Info("existingCM Values:")
-			for key, value := range existingCM.Data {
-				log.Info("Key: %s, Value: %s", key, value)
-			}
-
-			// existingCMYaml, err := yaml.Marshal(existingCM)
-			// if err != nil {
-			// 	log.Error(err, "RS - Unable to marshal existingCMYaml to YAML2")
-			// 	return &ctrl.Result{}, err
-			// }
-			// fmt.Println("RS - existingCMYaml YAML content:")
-			// fmt.Println(string(existingCMYaml))
 		}
 
 		log.Info("RS - Analytics.NamespaceRightSizing resource creation completed")
@@ -260,8 +237,8 @@ func isRightSizingNamespaceEnabled(mco *mcov1beta2.MultiClusterObservability) bo
 }
 
 func getDefaultRSNamespaceConfig() map[string]string {
+	// get deafult config data - namespaceFilterCriteria, labelFilterCriteria, placement definition
 
-	// Define deafult namespaceFilterCriteria, labelFilterCriteria, placement definition
 	var ruleConfig RSPrometheusRuleConfig
 	ruleConfig.NamespaceFilterCriteria.InclusionCriteria = []string{"prod.*"}
 	ruleConfig.NamespaceFilterCriteria.ExclusionCriteria = []string{"openshift.*"}
@@ -308,33 +285,12 @@ func formatYAML(data interface{}) string {
 func getRightSizingConfigData(cm *corev1.ConfigMap) (RSNamespaceConfigMapData, error) {
 	log.Info("RS - inside getRightSizingConfigData")
 	var configData RSNamespaceConfigMapData
-	// Print the configMap object for debugging
-	configMapJson, err := json.Marshal(cm)
-	if err != nil {
-		log.Error(err, "Failed to marshal ConfigMap to JSON")
-		return configData, err
-	}
-	// Print the ConfigMap in JSON format
-	fmt.Println("RS - ConfigMap content in JSON format:")
-	fmt.Println(string(configMapJson))
 
 	// Unmarshal namespaceFilterCriteria
 	if err := yaml.Unmarshal([]byte(cm.Data["prometheusRuleConfig"]), &configData.PrometheusRuleConfig); err != nil {
 		log.Error(err, "failed to unmarshal prometheusRuleConfig")
 		return configData, fmt.Errorf("failed to unmarshal prometheusRuleConfig: %v", err)
 	}
-
-	// // Unmarshal labelFilterCriteria
-	// if err := json.Unmarshal([]byte(cm.Data["labelFilterCriteria"]), &configData.LabelFilterCriteria); err != nil {
-	// 	log.Error(err, "failed to unmarshal labelFilterCriteria")
-	// 	return configData, fmt.Errorf("failed to unmarshal labelFilterCriteria: %v", err)
-	// }
-
-	// // Unmarshal recommendationPercentage
-	// if err := json.Unmarshal([]byte(cm.Data["recommendationPercentage"]), &configData.RecommendationPercentage); err != nil {
-	// 	log.Error(err, "failed to unmarshal recommendationPercentage")
-	// 	return configData, fmt.Errorf("failed to unmarshal recommendationPercentage: %v", err)
-	// }
 
 	// Unmarshal placementConfiguration
 	if cm.Data["placementConfiguration"] != "" {
@@ -346,15 +302,7 @@ func getRightSizingConfigData(cm *corev1.ConfigMap) (RSNamespaceConfigMapData, e
 	}
 
 	// Log or process the `configData` as needed
-	log.Info("ConfigMap Data successfully unmarshalled", "ConfigData", configData)
-
-	configDataYaml, err := yaml.Marshal(configData)
-	if err != nil {
-		log.Error(err, "RS - Unable to marshal configDataYaml to YAML2")
-		return configData, err
-	}
-	fmt.Println("RS - configDataYaml YAML content:")
-	fmt.Println(string(configDataYaml))
+	log.Info("ConfigMap Data successfully unmarshalled")
 
 	return configData, nil
 }
@@ -576,15 +524,6 @@ func createOrUpdatePrometheusRulePolicy(c client.Client, prometheusRule monitori
 			return errPolicy
 		}
 
-		// // Convert the Policy object to YAML
-		// policyYaml, err := yaml.Marshal(policy)
-		// if err != nil {
-		// 	log.Error(err, "RS - Unable to marshal policy to YAML")
-		// 	return err
-		// }
-		// fmt.Println("RS - Policy YAML content before creation:")
-		// fmt.Println(string(policyYaml))
-
 		if err = c.Create(context.TODO(), policy); err != nil {
 			log.Error(err, "Failed to create PrometheusRulePolicy")
 			return err
@@ -595,14 +534,6 @@ func createOrUpdatePrometheusRulePolicy(c client.Client, prometheusRule monitori
 			"Namespace", rsNamespace,
 			"Name", rsPrometheusRulePolicyName,
 		)
-		// // Convert the Policy object to YAML
-		// policyYaml, err := yaml.Marshal(policy)
-		// if err != nil {
-		// 	log.Error(err, "RS - Unable to marshal policy to YAML")
-		// 	return err
-		// }
-		// fmt.Println("RS - Policy YAML content before updating:")
-		// fmt.Println(string(policyYaml))
 
 		if err = c.Update(context.TODO(), policy); err != nil {
 			log.Error(err, "Failed to update PrometheusRulePolicy")
@@ -611,21 +542,6 @@ func createOrUpdatePrometheusRulePolicy(c client.Client, prometheusRule monitori
 		log.Info("RS - PrometheusRulePolicy updated successfully", "Policy", rsPrometheusRulePolicyName)
 
 	}
-
-	return nil
-}
-
-func updatePlacementSpec(placement *clusterv1beta1.Placement, placementConfig clusterv1beta1.Placement) error {
-	placement.Spec = placementConfig.Spec
-	log.Info("RS - Updated Placement Spec")
-
-	placementYAML, err := yaml.Marshal(placement)
-	if err != nil {
-		log.Error(err, "RS - Unable to marshal placement to YAML")
-		return err
-	}
-	fmt.Println("RS - Placement YAML content:")
-	fmt.Println(string(placementYAML))
 
 	return nil
 }
@@ -657,9 +573,8 @@ func createUpdatePlacement(c client.Client, placementConfig clusterv1beta1.Place
 	if err := c.Get(context.TODO(), key, placement); errors.IsNotFound(err) {
 		log.Info("RS - Placement not found, creating a new one", "Namespace", placement.Namespace, "Name", placement.Name)
 
-		if err := updatePlacementSpec(placement, placementConfig); err != nil {
-			return err
-		}
+		placement.Spec = placementConfig.Spec
+		log.Info("RS - Updated Placement Spec")
 
 		if err := c.Create(context.TODO(), placement); err != nil {
 			log.Error(err, "Failed to create Placement")
@@ -677,9 +592,8 @@ func createUpdatePlacement(c client.Client, placementConfig clusterv1beta1.Place
 
 	log.Info("RS - Placement exists, updating", "Namespace", placement.Namespace, "Name", placement.Name)
 
-	if err := updatePlacementSpec(placement, placementConfig); err != nil {
-		return err
-	}
+	placement.Spec = placementConfig.Spec
+	log.Info("RS - Updated Placement Spec")
 
 	if err := c.Update(context.TODO(), placement); err != nil {
 		log.Error(err, "Failed to update Placement")
