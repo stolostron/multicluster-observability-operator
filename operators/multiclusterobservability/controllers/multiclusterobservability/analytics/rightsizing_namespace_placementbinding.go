@@ -1,3 +1,7 @@
+// Copyright (c) Red Hat, Inc.
+// Copyright Contributors to the Open Cluster Management project
+// Licensed under the Apache License 2.0
+
 package analytics
 
 import (
@@ -12,25 +16,23 @@ import (
 )
 
 // createPlacementBinding creates the PlacementBinding resource
-func createPlacementBinding(c client.Client) error {
-	log.Info("RS - PlacementBinding creation started")
+func createPlacementBinding(ctx context.Context, c client.Client) error {
 	placementBinding := &policyv1.PlacementBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      rsPlacementBindingName,
 			Namespace: rsNamespace,
 		},
 	}
-	err := c.Get(context.TODO(), types.NamespacedName{
+	err := c.Get(ctx, types.NamespacedName{
 		Namespace: placementBinding.Namespace,
 		Name:      placementBinding.Name,
 	}, placementBinding)
-	log.Info("RS - fetch PlacementBinding completed2")
 
 	if err != nil && errors.IsNotFound(err) {
 
 		log.Info("RS - PlacementBinding not found, creating a new one",
-			"Namespace", placementBinding.Namespace,
-			"Name", placementBinding.Name,
+			" Name:", placementBinding.Name,
+			" Namespace:", placementBinding.Namespace,
 		)
 		if client.IgnoreNotFound(err) != nil {
 			log.Error(err, "RS - Unable to fetch PlacementBinding")
@@ -50,12 +52,12 @@ func createPlacementBinding(c client.Client) error {
 			},
 		}
 
-		if err = c.Create(context.TODO(), placementBinding); err != nil {
+		if err = c.Create(ctx, placementBinding); err != nil {
 			log.Error(err, "Failed to create Placement")
 			return err
 		}
-		log.Info("RS - Create PlacementBinding completed", "PlacementBinding", rsPlacementBindingName)
+		log.Info("RS - PlacementBinding created", "PlacementBinding", rsPlacementBindingName)
 	}
-	log.Info("RS - PlacementBinding creation completed")
+	log.Info("RS - PlacementBindingCreation completed")
 	return nil
 }
