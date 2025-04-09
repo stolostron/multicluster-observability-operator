@@ -242,15 +242,15 @@ func getDefaultRSNamespaceConfig() map[string]string {
 	// get deafult config data - namespaceFilterCriteria, labelFilterCriteria, placement definition
 
 	var ruleConfig RSPrometheusRuleConfig
-	ruleConfig.NamespaceFilterCriteria.InclusionCriteria = []string{"prod.*"}
+	// ruleConfig.NamespaceFilterCriteria.InclusionCriteria = []string{"prod.*"}
 	ruleConfig.NamespaceFilterCriteria.ExclusionCriteria = []string{"openshift.*"}
-	ruleConfig.LabelFilterCriteria = []RSLabelFilter{
-		{
-			LabelName:         "label_kubernetes_io_metadata_name",
-			InclusionCriteria: []string{"prod", "staging"},
-			ExclusionCriteria: []string{"kube.*"},
-		},
-	}
+	// ruleConfig.LabelFilterCriteria = []RSLabelFilter{
+	// 	{
+	// 		LabelName:         "label_kubernetes_io_metadata_name",
+	// 		InclusionCriteria: []string{"prod", "staging"},
+	// 		ExclusionCriteria: []string{"kube.*"},
+	// 	},
+	// }
 	ruleConfig.RecommendationPercentage = rsDefaultRecommendationPercentage
 
 	placement := &clusterv1beta1.Placement{
