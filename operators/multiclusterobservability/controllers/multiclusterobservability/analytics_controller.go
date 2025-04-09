@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"time"
 
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
@@ -37,30 +38,40 @@ const (
 	rsPrometheusRuleName             = "rs-namespace-prometheus-rules"
 	rsConfigMapName                  = "rs-namespace-config"
 	rsDefaultNamespace               = "open-cluster-management-global-set"
+	rsMonitoringNamespace            = "openshift-monitoring"
 )
 
 var (
 	rsNamespace = rsDefaultNamespace
 )
 
-// PrometheusRuleSpec structure with intstr.IntOrString handling for expr
-
-type PrometheusRuleSpecWithExpr struct {
-	Groups []monitoringv1.RuleGroup `json:"groups"`
+type RSLabelFilter struct {
+	LabelName         string   `yaml:"labelName"`
+	InclusionCriteria []string `yaml:"inclusionCriteria,omitempty"`
+	ExclusionCriteria []string `yaml:"exclusionCriteria,omitempty"`
 }
 
-type RightSizingConfigMapData struct {
+type RSPrometheusRuleConfig struct {
 	NamespaceFilterCriteria struct {
 		InclusionCriteria []string `yaml:"inclusionCriteria"`
 		ExclusionCriteria []string `yaml:"exclusionCriteria"`
 	} `yaml:"namespaceFilterCriteria"`
-	LabelFilterCriteria []struct {
-		LabelName         string   `yaml:"labelName"`
-		InclusionCriteria []string `yaml:"inclusionCriteria,omitempty"`
-		ExclusionCriteria []string `yaml:"exclusionCriteria,omitempty"`
-	} `yaml:"labelFilterCriteria"`
-	RecommendationPercentage int                `yaml:"recommendationPercentage"`
-	PlacementConfiguration   policyv1.Placement `yaml:"placementConfiguration"`
+	LabelFilterCriteria      []RSLabelFilter `yaml:"labelFilterCriteria"`
+	RecommendationPercentage int             `yaml:"recommendationPercentage"`
+}
+
+type RSNamespaceConfigMapData struct {
+	// NamespaceFilterCriteria struct {
+	// 	InclusionCriteria []string `yaml:"inclusionCriteria"`
+	// 	ExclusionCriteria []string `yaml:"exclusionCriteria"`
+	// } `yaml:"namespaceFilterCriteria"`
+	// LabelFilterCriteria []struct {
+	// 	LabelName         string   `yaml:"labelName"`
+	// 	InclusionCriteria []string `yaml:"inclusionCriteria,omitempty"`
+	// 	ExclusionCriteria []string `yaml:"exclusionCriteria,omitempty"`
+	// } `json:"labelFilterCriteria"`
+	PrometheusRuleConfig   RSPrometheusRuleConfig   `yaml:"prometheusRuleConfig"`
+	PlacementConfiguration clusterv1beta1.Placement `yaml:"placementConfiguration"`
 }
 
 // CreateAnalyticsComponent is used to enable the analytics component like right-sizing
@@ -136,12 +147,78 @@ func CreateAnalyticsComponent(
 
 		log.Info("RS - Analytics.NamespaceRightSizing resource creation completed")
 	} else {
+
+		// Change ComplianceType to "MustNotHave" for PrometheusRule deletion
+		// As deleting Policy doesn't explicitly delete related PrometheusRule
+		modifyComplianceTypeIfPolicyExists(c)
+
 		// Cleanup created resources if available
 		cleanupRSNamespaceResources(c, rsNamespace)
 	}
 
 	log.Info("RS - CreateAnalyticsComponent task completed6")
 	return nil, nil
+}
+
+func modifyComplianceTypeIfPolicyExists(c client.Client) error {
+	policy := &policyv1.Policy{}
+	err := c.Get(context.TODO(), types.NamespacedName{
+		Name:      rsPrometheusRulePolicyName,
+		Namespace: rsNamespace,
+	}, policy)
+
+	if err != nil {
+		if errors.IsNotFound(err) {
+			log.Info("Policy does not exist. Skipping update.")
+			return nil
+		}
+		log.Error(err, "Error retrieving the policy")
+		return err
+	}
+
+	// Unmarshal the inner ConfigurationPolicy
+	for _, pt := range policy.Spec.PolicyTemplates {
+		var configPolicy configpolicyv1.ConfigurationPolicy
+		err := json.Unmarshal(pt.ObjectDefinition.Raw, &configPolicy)
+		if err != nil {
+			log.Error(err, "Failed to unmarshal ConfigurationPolicy from PolicyTemplate")
+			return err
+		}
+
+		// Change ComplianceType if it's "MustOnlyHave"
+		changed := false
+		for _, objTemplate := range configPolicy.Spec.ObjectTemplates {
+			if objTemplate.ComplianceType == "MustOnlyHave" {
+				objTemplate.ComplianceType = "MustNotHave"
+				changed = true
+			}
+		}
+
+		if changed {
+			// Marshal the modified ConfigurationPolicy back into JSON
+			modifiedRaw, err := json.Marshal(configPolicy)
+			if err != nil {
+				log.Error(err, "Failed to marshal modified ConfigurationPolicy")
+				return err
+			}
+
+			pt.ObjectDefinition = runtime.RawExtension{Raw: modifiedRaw}
+		}
+	}
+
+	// Update the modified policy
+	err = c.Update(context.TODO(), policy)
+	if err != nil {
+		log.Error(err, "Failed to update the modified policy")
+		return err
+	}
+
+	log.Info("Successfully updated ComplianceType in policy")
+
+	// Wait for 5 seconds
+	time.Sleep(5 * time.Second)
+
+	return nil
 }
 
 func cleanupRSNamespaceResources(c client.Client, namespace string) {
@@ -185,15 +262,17 @@ func isRightSizingNamespaceEnabled(mco *mcov1beta2.MultiClusterObservability) bo
 func getDefaultRSNamespaceConfig() map[string]string {
 
 	// Define deafult namespaceFilterCriteria, labelFilterCriteria, placement definition
-	namespaceFilterCriteria := map[string]interface{}{
-		"exclusionCriteria": []string{"openshift.*"},
-	}
-	labelFilterCriteria := []map[string]interface{}{
+	var ruleConfig RSPrometheusRuleConfig
+	ruleConfig.NamespaceFilterCriteria.InclusionCriteria = []string{"prod.*"}
+	ruleConfig.NamespaceFilterCriteria.ExclusionCriteria = []string{"openshift.*"}
+	ruleConfig.LabelFilterCriteria = []RSLabelFilter{
 		{
-			"labelName":         "label_kubernetes_io_metadata_name",
-			"exclusionCriteria": []string{"kube.*"},
+			LabelName:         "label_kubernetes_io_metadata_name",
+			InclusionCriteria: []string{"prod", "staging"},
+			ExclusionCriteria: []string{"kube.*"},
 		},
 	}
+
 	placement := &clusterv1beta1.Placement{
 		Spec: clusterv1beta1.PlacementSpec{
 			Predicates: []clusterv1beta1.ClusterPredicate{},
@@ -211,10 +290,8 @@ func getDefaultRSNamespaceConfig() map[string]string {
 	}
 
 	return map[string]string{
-		"namespaceFilterCriteria":  formatYAML(namespaceFilterCriteria),
-		"labelFilterCriteria":      formatYAML(labelFilterCriteria),
-		"recommendationPercentage": "110",
-		"placementConfiguration":   formatYAML(placement), // Embed the serialized Placement YAML here
+		"prometheusRuleConfig":   formatYAML(ruleConfig),
+		"placementConfiguration": formatYAML(placement),
 	}
 }
 
@@ -227,51 +304,44 @@ func formatYAML(data interface{}) string {
 	return string(yamlData)
 }
 
-// unmarshalYAML unmarshals a YAML string into a Go data structure.
-func unmarshalYAML(data string, target interface{}) error {
-	if len(data) > 0 {
-		return yaml.Unmarshal([]byte(data), target)
-	}
-	return fmt.Errorf("empty data string")
-}
-
 // getRightSizingConfigData extracts and unmarshals the data from the ConfigMap into RightSizingConfigData
-func getRightSizingConfigData(cm *corev1.ConfigMap) (RightSizingConfigMapData, error) {
+func getRightSizingConfigData(cm *corev1.ConfigMap) (RSNamespaceConfigMapData, error) {
 	log.Info("RS - inside getRightSizingConfigData")
-	var configData RightSizingConfigMapData
+	var configData RSNamespaceConfigMapData
 	// Print the configMap object for debugging
 	configMapJson, err := json.Marshal(cm)
 	if err != nil {
 		log.Error(err, "Failed to marshal ConfigMap to JSON")
 		return configData, err
 	}
-
 	// Print the ConfigMap in JSON format
 	fmt.Println("RS - ConfigMap content in JSON format:")
 	fmt.Println(string(configMapJson))
+
 	// Unmarshal namespaceFilterCriteria
-	if err := yaml.Unmarshal([]byte(cm.Data["namespaceFilterCriteria"]), &configData.NamespaceFilterCriteria); err != nil {
-		log.Error(err, "failed to unmarshal namespaceFilterCriteria")
-		return configData, fmt.Errorf("failed to unmarshal namespaceFilterCriteria: %v", err)
+	if err := yaml.Unmarshal([]byte(cm.Data["prometheusRuleConfig"]), &configData.PrometheusRuleConfig); err != nil {
+		log.Error(err, "failed to unmarshal prometheusRuleConfig")
+		return configData, fmt.Errorf("failed to unmarshal prometheusRuleConfig: %v", err)
 	}
 
-	// Unmarshal labelFilterCriteria
-	if err := yaml.Unmarshal([]byte(cm.Data["labelFilterCriteria"]), &configData.LabelFilterCriteria); err != nil {
-		log.Error(err, "failed to unmarshal labelFilterCriteria")
-		return configData, fmt.Errorf("failed to unmarshal labelFilterCriteria: %v", err)
-	}
+	// // Unmarshal labelFilterCriteria
+	// if err := json.Unmarshal([]byte(cm.Data["labelFilterCriteria"]), &configData.LabelFilterCriteria); err != nil {
+	// 	log.Error(err, "failed to unmarshal labelFilterCriteria")
+	// 	return configData, fmt.Errorf("failed to unmarshal labelFilterCriteria: %v", err)
+	// }
 
-	// Unmarshal recommendationPercentage
-	if err := yaml.Unmarshal([]byte(cm.Data["recommendationPercentage"]), &configData.RecommendationPercentage); err != nil {
-		log.Error(err, "failed to unmarshal recommendationPercentage")
-		return configData, fmt.Errorf("failed to unmarshal recommendationPercentage: %v", err)
-	}
+	// // Unmarshal recommendationPercentage
+	// if err := json.Unmarshal([]byte(cm.Data["recommendationPercentage"]), &configData.RecommendationPercentage); err != nil {
+	// 	log.Error(err, "failed to unmarshal recommendationPercentage")
+	// 	return configData, fmt.Errorf("failed to unmarshal recommendationPercentage: %v", err)
+	// }
 
 	// Unmarshal placementConfiguration
 	if cm.Data["placementConfiguration"] != "" {
 		if err := yaml.Unmarshal([]byte(cm.Data["placementConfiguration"]), &configData.PlacementConfiguration); err != nil {
 			log.Error(err, "failed to unmarshal placementConfiguration")
 			return configData, fmt.Errorf("failed to unmarshal placementConfiguration: %v", err)
+
 		}
 	}
 
@@ -289,14 +359,15 @@ func getRightSizingConfigData(cm *corev1.ConfigMap) (RightSizingConfigMapData, e
 	return configData, nil
 }
 
-func generatePrometheusRule(configData RightSizingConfigMapData) (monitoringv1.PrometheusRule, error) {
+func generatePrometheusRule(configData RSNamespaceConfigMapData) (monitoringv1.PrometheusRule, error) {
 
-	// TODO - write logic to get PrometheusRule based on RightSizingConfigMapData
+	// TODO - write logic to get PrometheusRule based on RSNamespaceConfigMapData
 	duration := monitoringv1.Duration("5m")
+	duration1 := monitoringv1.Duration("15m")
 	pr := &monitoringv1.PrometheusRule{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      rsPrometheusRuleName,
-			Namespace: rsNamespace,
+			Namespace: rsMonitoringNamespace,
 		},
 		Spec: monitoringv1.PrometheusRuleSpec{
 			Groups: []monitoringv1.RuleGroup{
@@ -306,7 +377,45 @@ func generatePrometheusRule(configData RightSizingConfigMapData) (monitoringv1.P
 					Rules: []monitoringv1.Rule{
 						{
 							Record: "acm_rs:namespace:cpu_request:5m",
-							Expr:   intstr.FromString("max_over_time( sum( kube_pod_container_resource_requests{ namespace!~'openshift.*|xyz.*', container!='', resource='cpu'}) by (namespace)[5m:])"),
+							Expr:   intstr.FromString("max_over_time(sum(kube_pod_container_resource_requests{namespace!~'openshift.*|xyz.*', container!='', resource='cpu'}) by (namespace)[5m:])"),
+						},
+					},
+				},
+				{
+					Name:     "acm-right-sizing-namespace-1d.rule",
+					Interval: &duration1,
+					Rules: []monitoringv1.Rule{
+						{
+							Record: "acm_rs:namespace:cpu_request",
+							Expr:   intstr.FromString("max_over_time(acm_rs:namespace:cpu_request:5m[1d])"),
+							Labels: map[string]string{
+								"aggregation": "1d",
+								"profile":     "Max OverAll",
+							},
+						},
+					},
+				},
+				{
+					Name:     "acm-right-sizing-cluster-5m.rule",
+					Interval: &duration,
+					Rules: []monitoringv1.Rule{
+						{
+							Record: "acm_rs:cluster:cpu_request:5m",
+							Expr:   intstr.FromString("max_over_time(sum(kube_pod_container_resource_requests{namespace!~'openshift.*|xyz.*', container!='', resource='cpu'}) by (cluster)[5m:])"),
+						},
+					},
+				},
+				{
+					Name:     "acm-right-sizing-cluster-1d.rule",
+					Interval: &duration1,
+					Rules: []monitoringv1.Rule{
+						{
+							Record: "acm_rs:cluster:cpu_request",
+							Expr:   intstr.FromString("max_over_time(acm_rs:cluster:cpu_request:5m[1d])"),
+							Labels: map[string]string{
+								"aggregation": "1d",
+								"profile":     "Max OverAll",
+							},
 						},
 					},
 				},
@@ -316,7 +425,7 @@ func generatePrometheusRule(configData RightSizingConfigMapData) (monitoringv1.P
 	return *pr, nil
 }
 
-func applyRSNamespaceConfigMapChanges(c client.Client, configData RightSizingConfigMapData) error {
+func applyRSNamespaceConfigMapChanges(c client.Client, configData RSNamespaceConfigMapData) error {
 
 	log.Info("inside applyRSNamespaceConfigMapChanges")
 
@@ -332,7 +441,7 @@ func applyRSNamespaceConfigMapChanges(c client.Client, configData RightSizingCon
 		return err
 	}
 
-	err = createUpdatePlacement(c)
+	err = createUpdatePlacement(c, configData.PlacementConfiguration)
 	if err != nil {
 		log.Error(err, "Error while calling createUpdatePlacement")
 		return err
@@ -420,7 +529,7 @@ func createOrUpdatePrometheusRulePolicy(c client.Client, prometheusRule monitori
 			Severity:          "low",
 			NamespaceSelector: configpolicyv1.Target{
 				Include: []configpolicyv1.NonEmptyString{
-					configpolicyv1.NonEmptyString(rsNamespace), // Convert string to NonEmptyString
+					configpolicyv1.NonEmptyString(rsMonitoringNamespace),
 				},
 			},
 			ObjectTemplates: []*configpolicyv1.ObjectTemplate{
@@ -467,14 +576,14 @@ func createOrUpdatePrometheusRulePolicy(c client.Client, prometheusRule monitori
 			return errPolicy
 		}
 
-		// Convert the Policy object to YAML
-		policyYaml, err := yaml.Marshal(policy)
-		if err != nil {
-			log.Error(err, "RS - Unable to marshal policy to YAML")
-			return err
-		}
-		fmt.Println("RS - Policy YAML content before creation:")
-		fmt.Println(string(policyYaml))
+		// // Convert the Policy object to YAML
+		// policyYaml, err := yaml.Marshal(policy)
+		// if err != nil {
+		// 	log.Error(err, "RS - Unable to marshal policy to YAML")
+		// 	return err
+		// }
+		// fmt.Println("RS - Policy YAML content before creation:")
+		// fmt.Println(string(policyYaml))
 
 		if err = c.Create(context.TODO(), policy); err != nil {
 			log.Error(err, "Failed to create PrometheusRulePolicy")
@@ -486,14 +595,14 @@ func createOrUpdatePrometheusRulePolicy(c client.Client, prometheusRule monitori
 			"Namespace", rsNamespace,
 			"Name", rsPrometheusRulePolicyName,
 		)
-		// Convert the Policy object to YAML
-		policyYaml, err := yaml.Marshal(policy)
-		if err != nil {
-			log.Error(err, "RS - Unable to marshal policy to YAML")
-			return err
-		}
-		fmt.Println("RS - Policy YAML content before updating:")
-		fmt.Println(string(policyYaml))
+		// // Convert the Policy object to YAML
+		// policyYaml, err := yaml.Marshal(policy)
+		// if err != nil {
+		// 	log.Error(err, "RS - Unable to marshal policy to YAML")
+		// 	return err
+		// }
+		// fmt.Println("RS - Policy YAML content before updating:")
+		// fmt.Println(string(policyYaml))
 
 		if err = c.Update(context.TODO(), policy); err != nil {
 			log.Error(err, "Failed to update PrometheusRulePolicy")
@@ -506,65 +615,78 @@ func createOrUpdatePrometheusRulePolicy(c client.Client, prometheusRule monitori
 	return nil
 }
 
+func updatePlacementSpec(placement *clusterv1beta1.Placement, placementConfig clusterv1beta1.Placement) error {
+	placement.Spec = placementConfig.Spec
+	log.Info("RS - Updated Placement Spec")
+
+	placementYAML, err := yaml.Marshal(placement)
+	if err != nil {
+		log.Error(err, "RS - Unable to marshal placement to YAML")
+		return err
+	}
+	fmt.Println("RS - Placement YAML content:")
+	fmt.Println(string(placementYAML))
+
+	return nil
+}
+
 // createUpdatePlacement creates the Placement resource
-func createUpdatePlacement(c client.Client) error {
-	log.Info("RS - Placement creation started")
+func createUpdatePlacement(c client.Client, placementConfig clusterv1beta1.Placement) error {
+	log.Info("RS - inside createUpdatePlacement")
+
+	// Convert the Policy object to YAML
+	placementYAML, err := yaml.Marshal(placementConfig)
+	if err != nil {
+		log.Error(err, "RS - Unable to marshal placement to YAML")
+		return err
+	}
+	fmt.Println("RS - palcementYaml content before updating(from configmap):")
+	fmt.Println(string(placementYAML))
+
 	placement := &clusterv1beta1.Placement{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      rsPlacementName,
 			Namespace: rsNamespace,
 		},
 	}
-
-	err := c.Get(context.TODO(), types.NamespacedName{
+	key := types.NamespacedName{
 		Namespace: rsNamespace,
 		Name:      rsPlacementName,
-	}, placement)
-	log.Info("RS - fetch Placement completed2")
-
-	placement.Spec = clusterv1beta1.PlacementSpec{
-		Predicates: []clusterv1beta1.ClusterPredicate{},
-		Tolerations: []clusterv1beta1.Toleration{
-			{
-				Key:      "cluster.open-cluster-management.io/unreachable",
-				Operator: clusterv1beta1.TolerationOpExists,
-			},
-			{
-				Key:      "cluster.open-cluster-management.io/unavailable",
-				Operator: clusterv1beta1.TolerationOpExists,
-			},
-		},
 	}
 
-	if err != nil && errors.IsNotFound(err) {
+	if err := c.Get(context.TODO(), key, placement); errors.IsNotFound(err) {
+		log.Info("RS - Placement not found, creating a new one", "Namespace", placement.Namespace, "Name", placement.Name)
 
-		log.Info("RS - Placement not found, creating a new one",
-			"Namespace", placement.Namespace,
-			"Name", placement.Name,
-		)
-		if client.IgnoreNotFound(err) != nil {
-			log.Error(err, "RS - Unable to fetch Placement")
+		if err := updatePlacementSpec(placement, placementConfig); err != nil {
 			return err
 		}
 
-		if err = c.Create(context.TODO(), placement); err != nil {
+		if err := c.Create(context.TODO(), placement); err != nil {
 			log.Error(err, "Failed to create Placement")
 			return err
 		}
-		log.Info("RS - Create Placement completed", "Placement", rsPlacementName)
-	} else {
-		log.Info("RS - Placement already exists, updating data",
-			"Namespace", placement.Namespace,
-			"Name", placement.Name,
-		)
-		if err = c.Update(context.TODO(), placement); err != nil {
-			log.Error(err, "Failed to update Placement")
-			return err
-		}
-		log.Info("RS - Placement updated successfully", "Placement", rsPlacementName)
+
+		log.Info("RS - Placement created", "Placement", placement.Name)
+		return nil
 	}
 
-	log.Info("RS - Placement creation completed")
+	if err != nil {
+		log.Error(err, "RS - Unable to fetch Placement")
+		return err
+	}
+
+	log.Info("RS - Placement exists, updating", "Namespace", placement.Namespace, "Name", placement.Name)
+
+	if err := updatePlacementSpec(placement, placementConfig); err != nil {
+		return err
+	}
+
+	if err := c.Update(context.TODO(), placement); err != nil {
+		log.Error(err, "Failed to update Placement")
+		return err
+	}
+
+	log.Info("RS - Placement updated", "Placement", placement.Name)
 	return nil
 }
 
