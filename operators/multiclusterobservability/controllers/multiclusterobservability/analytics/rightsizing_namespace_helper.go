@@ -1,3 +1,7 @@
+// Copyright (c) Red Hat, Inc.
+// Copyright Contributors to the Open Cluster Management project
+// Licensed under the Apache License 2.0
+
 package analytics
 
 import (
@@ -14,7 +18,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// isRightSizingNamespaceEnabled checks if the right-sizing namespace analytics feature is enabled in the provided MCO configuration.
+// isRightSizingNamespaceEnabled checks if the right-sizing namespace analytics feature is enabled
+// in the provided MCO configuration.
 func isRightSizingNamespaceEnabled(mco *mcov1beta2.MultiClusterObservability) bool {
 	return mco.Spec.Capabilities != nil &&
 		mco.Spec.Capabilities.Platform != nil &&
@@ -23,7 +28,8 @@ func isRightSizingNamespaceEnabled(mco *mcov1beta2.MultiClusterObservability) bo
 		mco.Spec.Capabilities.Platform.Analytics.NamespaceRightSizingRecommendation.Enabled
 }
 
-func cleanupRSNamespaceResources(c client.Client, namespace string) {
+// cleanupRSNamespaceResources helps in cleaning up created resource for the namesapce right-sizing feature
+func cleanupRSNamespaceResources(ctx context.Context, c client.Client, namespace string) {
 	log.Info("RS - Cleaning up NamespaceRightSizing resources")
 
 	// Define all objects to delete
@@ -36,15 +42,17 @@ func cleanupRSNamespaceResources(c client.Client, namespace string) {
 
 	// Iterate and delete each resource if it exists
 	for _, resource := range resourcesToDelete {
-		err := c.Delete(context.TODO(), resource)
+		err := c.Delete(ctx, resource)
 		if err != nil {
 			if errors.IsNotFound(err) {
 				// Do nothing if resource is not found
 				continue
 			}
-			log.Error(err, "Failed to delete resource", "Resource", resource.GetObjectKind().GroupVersionKind().Kind, "Name", resource.GetName())
+			log.Error(err,
+				"Failed to delete resource ", resource.GetName())
 		} else {
-			log.Info("Deleted resource successfully", "Resource", resource.GetObjectKind().GroupVersionKind().Kind, "Name", resource.GetName())
+			log.Info(
+				"Deleted resource successfully ", resource.GetName())
 		}
 	}
 

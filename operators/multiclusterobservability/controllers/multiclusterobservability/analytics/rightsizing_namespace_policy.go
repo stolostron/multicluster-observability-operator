@@ -1,9 +1,12 @@
+// Copyright (c) Red Hat, Inc.
+// Copyright Contributors to the Open Cluster Management project
+// Licensed under the Apache License 2.0
+
 package analytics
 
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"time"
 
 	"github.com/cloudflare/cfssl/log"
@@ -17,9 +20,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func modifyComplianceTypeIfPolicyExists(c client.Client) error {
+func modifyComplianceTypeIfPolicyExists(ctx context.Context, c client.Client) error {
 	policy := &policyv1.Policy{}
-	err := c.Get(context.TODO(), types.NamespacedName{
+	err := c.Get(ctx, types.NamespacedName{
 		Name:      rsPrometheusRulePolicyName,
 		Namespace: rsNamespace,
 	}, policy)
@@ -45,8 +48,8 @@ func modifyComplianceTypeIfPolicyExists(c client.Client) error {
 		// Change ComplianceType if it's "MustOnlyHave"
 		changed := false
 		for _, objTemplate := range configPolicy.Spec.ObjectTemplates {
-			if objTemplate.ComplianceType == "MustOnlyHave" {
-				objTemplate.ComplianceType = "MustNotHave"
+			if objTemplate.ComplianceType == configpolicyv1.MustOnlyHave {
+				objTemplate.ComplianceType = configpolicyv1.MustNotHave
 				changed = true
 			}
 		}
@@ -64,7 +67,7 @@ func modifyComplianceTypeIfPolicyExists(c client.Client) error {
 	}
 
 	// Update the modified policy
-	err = c.Update(context.TODO(), policy)
+	err = c.Update(ctx, policy)
 	if err != nil {
 		log.Error(err, "Failed to update the modified policy")
 		return err
@@ -72,13 +75,17 @@ func modifyComplianceTypeIfPolicyExists(c client.Client) error {
 
 	log.Info("Successfully updated ComplianceType in policy")
 
-	// Wait for 1 seconds
-	time.Sleep(1 * time.Second)
+	// Wait for 5 seconds
+	time.Sleep(5 * time.Second)
 
 	return nil
 }
 
-func createOrUpdatePrometheusRulePolicy(c client.Client, prometheusRule monitoringv1.PrometheusRule) error {
+// Helps in creating or updating existing Policy for the PrometheusRule
+func createOrUpdatePrometheusRulePolicy(
+	ctx context.Context,
+	c client.Client,
+	prometheusRule monitoringv1.PrometheusRule) error {
 
 	policy := &policyv1.Policy{
 		TypeMeta: metav1.TypeMeta{
@@ -92,20 +99,20 @@ func createOrUpdatePrometheusRulePolicy(c client.Client, prometheusRule monitori
 	}
 	log.Info("RS - Policy object created")
 
-	errPolicy := c.Get(context.TODO(), types.NamespacedName{
+	errPolicy := c.Get(ctx, types.NamespacedName{
 		Name:      policy.Name,
 		Namespace: policy.Namespace,
 	}, policy)
 
 	if errPolicy != nil && !errors.IsNotFound(errPolicy) {
-		fmt.Println("Error retriving Policy:", errPolicy)
+		log.Error(errPolicy, "RS - Error retrieving Policy")
 		return errPolicy
 	}
 
 	// Marshal the PrometheusRule object into JSON
-	promRuleJSON, err := addAPIVersionAndKind(prometheusRule, "monitoring.coreos.com/v1", "PrometheusRule")
+	promRuleJSON, err := AddAPIVersionAndKind(prometheusRule, "monitoring.coreos.com/v1", "PrometheusRule")
 	if err != nil {
-		fmt.Println("Error marshaling ConfigurationPolicy:", err)
+		log.Error(err, "RS - Error marshaling ConfigurationPolicy")
 	}
 
 	// Define the ConfigurationPolicy object
@@ -118,7 +125,7 @@ func createOrUpdatePrometheusRulePolicy(c client.Client, prometheusRule monitori
 			Name: rsPrometheusRulePolicyConfigName,
 		},
 		Spec: &configpolicyv1.ConfigurationPolicySpec{
-			RemediationAction: "inform",
+			RemediationAction: configpolicyv1.Inform,
 			Severity:          "low",
 			NamespaceSelector: configpolicyv1.Target{
 				Include: []configpolicyv1.NonEmptyString{
@@ -127,7 +134,7 @@ func createOrUpdatePrometheusRulePolicy(c client.Client, prometheusRule monitori
 			},
 			ObjectTemplates: []*configpolicyv1.ObjectTemplate{
 				{
-					ComplianceType: "MustOnlyHave",
+					ComplianceType: configpolicyv1.MustOnlyHave,
 					ObjectDefinition: runtime.RawExtension{
 						Raw: promRuleJSON,
 					},
@@ -139,21 +146,18 @@ func createOrUpdatePrometheusRulePolicy(c client.Client, prometheusRule monitori
 	// Marshal the ConfigurationPolicy object into JSON
 	configPolicyJSON, err := json.Marshal(configPolicy)
 	if err != nil {
-		fmt.Println("Error marshaling ConfigurationPolicy:", err)
+		log.Error(err, "RS - Error marshaling ConfigurationPolicy")
 		return err
 	}
 
 	policy.Spec = policyv1.PolicySpec{
-		RemediationAction: "enforce",
+		RemediationAction: policyv1.Enforce,
 		Disabled:          false,
 		PolicyTemplates: []*policyv1.PolicyTemplate{
 			{
 				ObjectDefinition: runtime.RawExtension{
 					Raw: configPolicyJSON,
 				},
-				// ObjectDefinition: runtime.RawExtension{
-				// 	Object: &prometheusRule, // Use marshaled YAML of PrometheusRule
-				// },
 			},
 		},
 	}
@@ -161,26 +165,26 @@ func createOrUpdatePrometheusRulePolicy(c client.Client, prometheusRule monitori
 	if errors.IsNotFound(errPolicy) {
 
 		log.Info("RS - PrometheusRulePolicy not found, creating a new one",
-			"Namespace", rsNamespace,
-			"Name", rsPrometheusRulePolicyName,
+			" Namespace:", rsNamespace,
+			" Name:", rsPrometheusRulePolicyName,
 		)
 		if client.IgnoreNotFound(errPolicy) != nil {
 			log.Error(errPolicy, "RS - Unable to fetch PrometheusRulePolicy")
 			return errPolicy
 		}
 
-		if err = c.Create(context.TODO(), policy); err != nil {
+		if err = c.Create(ctx, policy); err != nil {
 			log.Error(err, "Failed to create PrometheusRulePolicy")
 			return err
 		}
-		log.Info("RS - Created PrometheusRulePolicy completed", "Policy", rsPrometheusRulePolicyName)
+		log.Info("RS - Created PrometheusRulePolicy completed", " Name:", rsPrometheusRulePolicyName)
 	} else {
 		log.Info("RS - PrometheusRulePolicy already exists, updating data",
-			"Namespace", rsNamespace,
-			"Name", rsPrometheusRulePolicyName,
+			" Name:", rsPrometheusRulePolicyName,
+			" Namespace:", rsNamespace,
 		)
 
-		if err = c.Update(context.TODO(), policy); err != nil {
+		if err = c.Update(ctx, policy); err != nil {
 			log.Error(err, "Failed to update PrometheusRulePolicy")
 			return err
 		}

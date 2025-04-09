@@ -1,3 +1,7 @@
+// Copyright (c) Red Hat, Inc.
+// Copyright Contributors to the Open Cluster Management project
+// Licensed under the Apache License 2.0
+
 package analytics
 
 import (
@@ -19,7 +23,7 @@ import (
 )
 
 // ensureRSNamespaceConfigMapExists ensures that the ConfigMap exists, creating it if necessary
-func ensureRSNamespaceConfigMapExists(c client.Client) error {
+func EnsureRSNamespaceConfigMapExists(ctx context.Context, c client.Client) error {
 	// Check if the ConfigMap already exists
 	existingCM := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
@@ -29,39 +33,38 @@ func ensureRSNamespaceConfigMapExists(c client.Client) error {
 	}
 
 	// Fetch the ConfigMap
-	err := c.Get(context.TODO(), types.NamespacedName{
+	err := c.Get(ctx, types.NamespacedName{
 		Name:      rsConfigMapName,
 		Namespace: config.GetDefaultNamespace(),
 	}, existingCM)
-	log.Info("RS - fetch configmap completed2")
 
 	// If the ConfigMap doesn't exist, create it
 	if err != nil && errors.IsNotFound(err) {
-		log.Info("RS - Creating a new test config", "Namespace", config.GetDefaultNamespace(), "Name", rsConfigMapName)
+		log.Info("RS - Creating a new test config", " Name:", rsConfigMapName, " Namespace:", config.GetDefaultNamespace())
 		if client.IgnoreNotFound(err) != nil {
 			log.Error(err, "RS - Unable to fetch ConfigMap")
 			return err
 		}
 
 		// Get configmap data
-		existingCM.Data = getDefaultRSNamespaceConfig()
+		existingCM.Data = GetDefaultRSNamespaceConfig()
 
 		// Create the ConfigMap
-		err := c.Create(context.TODO(), existingCM)
+		err := c.Create(ctx, existingCM)
 		if err != nil {
 			log.Error(err, "RS - Failed to create ConfigMap", "ConfigMap", rsConfigMapName)
 			return err
 		}
-		log.Info("RS - Created configMap completed", "ConfigMap", rsConfigMapName)
+		log.Info("RS - Created configMap completed")
 	} else {
-		log.Info("RS - ConfigMap already exists, skipping creation", "ConfigMap", rsConfigMapName, "namespace", rsNamespace)
+		log.Info("RS - ConfigMap already exists, skipping creation", " Name:", rsConfigMapName, " Namespace:", rsNamespace)
 	}
 
 	return nil
 }
 
-func getDefaultRSNamespaceConfig() map[string]string {
-	// get deafult config data with PrometheusRule config and placement config
+func GetDefaultRSNamespaceConfig() map[string]string {
+	// get default config data with PrometheusRule config and placement config
 
 	var ruleConfig RSPrometheusRuleConfig
 	ruleConfig.NamespaceFilterCriteria.ExclusionCriteria = []string{"openshift.*"}
@@ -84,50 +87,47 @@ func getDefaultRSNamespaceConfig() map[string]string {
 	}
 
 	return map[string]string{
-		"prometheusRuleConfig":   formatYAML(ruleConfig),
-		"placementConfiguration": formatYAML(placement),
+		"prometheusRuleConfig":   FormatYAML(ruleConfig),
+		"placementConfiguration": FormatYAML(placement),
 	}
 }
 
-// getRightSizingConfigData extracts and unmarshals the data from the ConfigMap into RightSizingConfigData
-func getRightSizingConfigData(cm *corev1.ConfigMap) (RSNamespaceConfigMapData, error) {
-	log.Info("RS - inside getRightSizingConfigData")
+// GetRightSizingConfigData extracts and unmarshals the data from the ConfigMap into RightSizingConfigData
+func GetRightSizingConfigData(cm *corev1.ConfigMap) (RSNamespaceConfigMapData, error) {
 	var configData RSNamespaceConfigMapData
 
 	// Unmarshal namespaceFilterCriteria
 	if err := yaml.Unmarshal([]byte(cm.Data["prometheusRuleConfig"]), &configData.PrometheusRuleConfig); err != nil {
-		log.Error(err, "failed to unmarshal prometheusRuleConfig")
-		return configData, fmt.Errorf("failed to unmarshal prometheusRuleConfig: %v", err)
+		log.Error(err, "Failed to unmarshal prometheusRuleConfig")
+		return configData, fmt.Errorf("Failed to unmarshal prometheusRuleConfig: %v", err)
 	}
 
 	// Unmarshal placementConfiguration
 	if cm.Data["placementConfiguration"] != "" {
 		if err := yaml.Unmarshal([]byte(cm.Data["placementConfiguration"]), &configData.PlacementConfiguration); err != nil {
-			log.Error(err, "failed to unmarshal placementConfiguration")
-			return configData, fmt.Errorf("failed to unmarshal placementConfiguration: %v", err)
-
+			log.Error(err, "Failed to unmarshal placementConfiguration")
+			return configData, fmt.Errorf("Failed to unmarshal placementConfiguration: %v", err)
 		}
 	}
 
 	// Log or process the `configData` as needed
-	log.Info("ConfigMap Data successfully unmarshalled")
+	log.Info("RS - ConfigMap Data successfully unmarshalled")
 
 	return configData, nil
 }
 
 func GetNamespaceRSConfigMapPredicateFunc(c client.Client) predicate.Funcs {
-	log.Info("RS - Watch for ConfigMap events set up started8")
+	log.Info("RS - Watch for ConfigMap events set up started")
 
 	processConfigMap := func(cm *corev1.ConfigMap) bool {
-		configData, err := getRightSizingConfigData(cm)
+		configData, err := GetRightSizingConfigData(cm)
 		if err != nil {
 			log.Error(err, "Failed to extract RightSizingConfigData")
 			return false
 		}
-		log.Info("Successfully unmarshalled ConfigMap data", "configData", configData)
 
 		// Apply changes based on the config map
-		if err := applyRSNamespaceConfigMapChanges(c, configData); err != nil {
+		if err := applyRSNamespaceConfigMapChanges(context.Background(), c, configData); err != nil {
 			log.Error(err, "Failed to apply RS Namespace ConfigMap Changes")
 			return false
 		}
@@ -136,9 +136,7 @@ func GetNamespaceRSConfigMapPredicateFunc(c client.Client) predicate.Funcs {
 
 	return predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
-			log.Info("inside create configmap - rs8", "name", e.Object.GetName(), "Namespace", e.Object.GetNamespace())
 			if e.Object.GetName() == rsConfigMapName && e.Object.GetNamespace() == config.GetDefaultNamespace() {
-				log.Info("Found matching configmap name - rs8")
 				if cm, ok := e.Object.(*corev1.ConfigMap); ok {
 					return processConfigMap(cm)
 				}
@@ -146,7 +144,6 @@ func GetNamespaceRSConfigMapPredicateFunc(c client.Client) predicate.Funcs {
 			return true
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			log.Info("inside update configmap - rs8", "name", e.ObjectNew.GetName(), "Namespace", e.ObjectNew.GetNamespace())
 			if e.ObjectNew.GetName() != rsConfigMapName || e.ObjectNew.GetNamespace() != config.GetDefaultNamespace() {
 				return true
 			}
@@ -163,21 +160,10 @@ func GetNamespaceRSConfigMapPredicateFunc(c client.Client) predicate.Funcs {
 			log.Info("ConfigMap data has changed, processing update")
 			return processConfigMap(newCM)
 		},
-		DeleteFunc: func(e event.DeleteEvent) bool {
-			log.Info("inside delete configmap - rs8", "name", e.Object.GetName(), "Namespace", e.Object.GetNamespace())
-			if e.Object.GetName() == rsConfigMapName && e.Object.GetNamespace() == config.GetDefaultNamespace() {
-				log.Info("found matching configmap name")
-			}
-
-			// TODO - Question - if user deletes configmap what to do ? I belive reconsiler logic will create configmap is not exist and then again configmap predicate functiona will be called to craete PrometheusRulePolicy etc
-			return true
-		},
 	}
 }
 
-func applyRSNamespaceConfigMapChanges(c client.Client, configData RSNamespaceConfigMapData) error {
-
-	log.Info("inside applyRSNamespaceConfigMapChanges")
+func applyRSNamespaceConfigMapChanges(ctx context.Context, c client.Client, configData RSNamespaceConfigMapData) error {
 
 	prometheusRule, err := generatePrometheusRule(configData)
 	if err != nil {
@@ -185,24 +171,24 @@ func applyRSNamespaceConfigMapChanges(c client.Client, configData RSNamespaceCon
 		return err
 	}
 
-	err = createOrUpdatePrometheusRulePolicy(c, prometheusRule)
+	err = createOrUpdatePrometheusRulePolicy(ctx, c, prometheusRule)
 	if err != nil {
 		log.Error(err, "Error while calling createOrUpdatePrometheusRulePolicy")
 		return err
 	}
 
-	err = createUpdatePlacement(c, configData.PlacementConfiguration)
+	err = createUpdatePlacement(ctx, c, configData.PlacementConfiguration)
 	if err != nil {
 		log.Error(err, "Error while calling createUpdatePlacement")
 		return err
 	}
 
-	err = createPlacementBinding(c)
+	err = createPlacementBinding(ctx, c)
 	if err != nil {
 		log.Error(err, "Error while calling createPlacementBinding")
 		return err
 	}
-	log.Info("applyRSNamespaceConfigMapChanges completed")
+	log.Info("RS - RSNamespaceConfigMap Changes Applied")
 
 	return nil
 }

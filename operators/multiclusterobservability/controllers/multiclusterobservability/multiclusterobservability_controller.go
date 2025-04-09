@@ -400,7 +400,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	}
 
 	// create rightsizing component
-	result, err = analyticsctrl.CreateRightSizingComponent(r.Client, r.Scheme, instance, r.Manager)
+	result, err = analyticsctrl.CreateRightSizingComponent(ctx, r.Client, r.Scheme, instance, r.Manager)
 	if result != nil {
 		return *result, err
 	}

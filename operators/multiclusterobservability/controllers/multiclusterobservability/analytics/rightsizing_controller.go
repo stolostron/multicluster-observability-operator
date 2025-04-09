@@ -1,6 +1,12 @@
+// Copyright (c) Red Hat, Inc.
+// Copyright Contributors to the Open Cluster Management project
+// Licensed under the Apache License 2.0
+
 package analytics
 
 import (
+	"context"
+
 	"github.com/cloudflare/cfssl/log"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -49,12 +55,13 @@ type RSNamespaceConfigMapData struct {
 
 // CreateRightSizingComponent is used to enable the right sizing recommendation
 func CreateRightSizingComponent(
+	ctx context.Context,
 	c client.Client,
 	scheme *runtime.Scheme,
 	mco *mcov1beta2.MultiClusterObservability,
 	mgr ctrl.Manager) (*ctrl.Result, error) {
 
-	log.Info("inside CreateRightSizingComponent")
+	log.Info("RS - Inside CreateRightSizingComponent")
 
 	// Check if the analytics right-sizing namespace recommendation configuration is enabled
 	if isRightSizingNamespaceEnabled(mco) {
@@ -64,7 +71,7 @@ func CreateRightSizingComponent(
 		}
 
 		// Call the function to ensure the ConfigMap exists
-		err := ensureRSNamespaceConfigMapExists(c)
+		err := EnsureRSNamespaceConfigMapExists(ctx, c)
 		if err != nil {
 			return &ctrl.Result{}, err
 		}
@@ -74,12 +81,15 @@ func CreateRightSizingComponent(
 
 		// Change ComplianceType to "MustNotHave" for PrometheusRule deletion
 		// As deleting Policy doesn't explicitly delete related PrometheusRule
-		modifyComplianceTypeIfPolicyExists(c)
+		err := modifyComplianceTypeIfPolicyExists(ctx, c)
+		if err != nil {
+			return &ctrl.Result{}, err
+		}
 
 		// Cleanup created resources if available
-		cleanupRSNamespaceResources(c, rsNamespace)
+		cleanupRSNamespaceResources(ctx, c, rsNamespace)
 	}
 
-	log.Info("RS - CreateRightSizingComponent task completed6")
+	log.Info("RS - CreateRightSizingComponent task completed")
 	return nil, nil
 }

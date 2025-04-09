@@ -1,3 +1,7 @@
+// Copyright (c) Red Hat, Inc.
+// Copyright Contributors to the Open Cluster Management project
+// Licensed under the Apache License 2.0
+
 package analytics
 
 import (
@@ -12,8 +16,7 @@ import (
 )
 
 // createUpdatePlacement creates the Placement resource
-func createUpdatePlacement(c client.Client, placementConfig clusterv1beta1.Placement) error {
-	log.Info("RS - inside createUpdatePlacement")
+func createUpdatePlacement(ctx context.Context, c client.Client, placementConfig clusterv1beta1.Placement) error {
 
 	placement := &clusterv1beta1.Placement{
 		ObjectMeta: metav1.ObjectMeta{
@@ -26,14 +29,16 @@ func createUpdatePlacement(c client.Client, placementConfig clusterv1beta1.Place
 		Name:      rsPlacementName,
 	}
 
-	err := c.Get(context.TODO(), key, placement)
+	err := c.Get(ctx, key, placement)
 	if errors.IsNotFound(err) {
-		log.Info("RS - Placement not found, creating a new one", "Namespace", placement.Namespace, "Name", placement.Name)
+		log.Info("RS - Placement not found, creating a new one",
+			" Name:", placement.Name,
+			" Namespace:", placement.Namespace,
+		)
 
 		placement.Spec = placementConfig.Spec
-		log.Info("RS - Updated Placement Spec")
 
-		if err := c.Create(context.TODO(), placement); err != nil {
+		if err := c.Create(ctx, placement); err != nil {
 			log.Error(err, "Failed to create Placement")
 			return err
 		}
@@ -50,9 +55,8 @@ func createUpdatePlacement(c client.Client, placementConfig clusterv1beta1.Place
 	log.Info("RS - Placement exists, updating", "Namespace", placement.Namespace, "Name", placement.Name)
 
 	placement.Spec = placementConfig.Spec
-	log.Info("RS - Updated Placement Spec")
 
-	if err := c.Update(context.TODO(), placement); err != nil {
+	if err := c.Update(ctx, placement); err != nil {
 		log.Error(err, "Failed to update Placement")
 		return err
 	}
