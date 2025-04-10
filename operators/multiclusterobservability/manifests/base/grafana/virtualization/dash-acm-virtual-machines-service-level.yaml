@@ -1,0 +1,925 @@
+apiVersion: v1
+data:
+  acm-openshift-virtual-machines-service-level.json: |-
+    {
+      "annotations": {
+        "list": [
+          {
+            "builtIn": 1,
+            "datasource": "-- Grafana --",
+            "enable": true,
+            "hide": true,
+            "iconColor": "rgba(0, 211, 255, 1)",
+            "name": "Annotations & Alerts",
+            "target": {
+              "limit": 100,
+              "matchAny": false,
+              "tags": [],
+              "type": "dashboard"
+            },
+            "type": "dashboard"
+          }
+        ]
+      },
+      "description": "This dashboard provides an overview of the Virtual Machines uptime, planned and unplanned downtime.",
+      "editable": true,
+      "gnetId": null,
+      "graphTooltip": 0,
+      "id": 136,
+      "iteration": 1743692708989,
+      "links": [],
+      "panels": [
+        {
+          "datasource": null,
+          "description": "The total uptime % of the VMs that are listed in the dashboard",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "fixedColor": "text",
+                "mode": "fixed"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "percentunit"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 8,
+            "x": 0,
+            "y": 0
+          },
+          "id": 12,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "text": {},
+            "textMode": "auto"
+          },
+          "pluginVersion": "8.5.20",
+          "targets": [
+            {
+              "exemplar": true,
+              "expr": "(sum (sum_over_time((kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > bool 0)[$__range:1m])) / \n(sum (sum_over_time(((kubevirt_vm_error_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > bool 0) + (kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > bool 0) + (kubevirt_vm_non_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > bool 0) + (kubevirt_vm_starting_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > bool 0) +(kubevirt_vm_migrating_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > bool 0))[$__range:1m]))))+${status:raw}",
+              "format": "table",
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": "Total Uptime %",
+          "type": "stat"
+        },
+        {
+          "datasource": null,
+          "description": "The total planned downtime % of the VMs that are listed in the dashboard",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "fixedColor": "text",
+                "mode": "fixed"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "percentunit"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 8,
+            "x": 8,
+            "y": 0
+          },
+          "id": 13,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "text": {},
+            "textMode": "auto"
+          },
+          "pluginVersion": "8.5.20",
+          "targets": [
+            {
+              "exemplar": true,
+              "expr": "(sum (sum_over_time(((kubevirt_vm_starting_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > bool 0) + (kubevirt_vm_migrating_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > bool 0) + (kubevirt_vm_non_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > bool 0))[$__range:1m]))/ \n(sum (sum_over_time(((kubevirt_vm_error_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > bool 0) + (kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > bool 0) + (kubevirt_vm_non_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > bool 0) + (kubevirt_vm_starting_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > bool 0) +(kubevirt_vm_migrating_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > bool 0))[$__range:1m]))))+${status:raw}",
+              "format": "table",
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": "Total Planned Downtime %",
+          "type": "stat"
+        },
+        {
+          "datasource": null,
+          "description": "The total unplanned downtime of the VMs that are listed in the dashboard",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "fixedColor": "text",
+                "mode": "fixed"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "percentunit"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 8,
+            "x": 16,
+            "y": 0
+          },
+          "id": 14,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "text": {},
+            "textMode": "auto"
+          },
+          "pluginVersion": "8.5.20",
+          "targets": [
+            {
+              "exemplar": true,
+              "expr": "(sum (sum_over_time((kubevirt_vm_error_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > bool 0)[$__range:1m])) / \n(sum (sum_over_time(((kubevirt_vm_error_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > bool 0) + (kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > bool 0) + (kubevirt_vm_non_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > bool 0) + (kubevirt_vm_starting_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > bool 0) +(kubevirt_vm_migrating_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > bool 0))[$__range:1m]))))+${status:raw}",
+              "format": "table",
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": "Total Unplanned Downtime %",
+          "type": "stat"
+        },
+        {
+          "datasource": null,
+          "description": "The total uptime of the VMs that are listed in the dashboard",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "fixedColor": "text",
+                "mode": "fixed"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 8,
+            "x": 0,
+            "y": 3
+          },
+          "id": 8,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "text": {},
+            "textMode": "auto"
+          },
+          "pluginVersion": "8.5.20",
+          "targets": [
+            {
+              "exemplar": true,
+              "expr": "(sum (sum_over_time((kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > bool 0)[$__range:1m]))+${status:raw})/60/60",
+              "format": "table",
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": "Total Uptime (Hours)",
+          "type": "stat"
+        },
+        {
+          "datasource": null,
+          "description": "The total planned downtime of the VMs that are listed in the dashboard",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "fixedColor": "text",
+                "mode": "fixed"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "none"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 8,
+            "x": 8,
+            "y": 3
+          },
+          "id": 10,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "text": {},
+            "textMode": "auto"
+          },
+          "pluginVersion": "8.5.20",
+          "targets": [
+            {
+              "exemplar": true,
+              "expr": "(sum\n(sum_over_time(((kubevirt_vm_starting_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > bool 0) + (kubevirt_vm_migrating_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > bool 0) + (kubevirt_vm_non_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > bool 0))[$__range:1m]))+${status:raw})/60/60",
+              "format": "table",
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": "Total Planned Downtime (Hours)",
+          "type": "stat"
+        },
+        {
+          "datasource": null,
+          "description": "The total unplanned downtime of the VMs that are listed in the dashboard",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "fixedColor": "text",
+                "mode": "fixed"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "none"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 8,
+            "x": 16,
+            "y": 3
+          },
+          "id": 11,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "text": {},
+            "textMode": "auto"
+          },
+          "pluginVersion": "8.5.20",
+          "targets": [
+            {
+              "exemplar": true,
+              "expr": "(sum(sum_over_time((kubevirt_vm_error_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > bool 0)[$__range:1m]))+${status:raw})/60/60",
+              "format": "table",
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": "Total Unplanned Downtime (Hours)",
+          "type": "stat"
+        },
+        {
+          "datasource": null,
+          "description": "",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "custom": {
+                "align": "auto",
+                "displayMode": "auto"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "cluster"
+                },
+                "properties": [
+                  {
+                    "id": "custom.filterable",
+                    "value": false
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "namespace"
+                },
+                "properties": [
+                  {
+                    "id": "custom.filterable",
+                    "value": false
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "name"
+                },
+                "properties": [
+                  {
+                    "id": "custom.filterable",
+                    "value": false
+                  },
+                  {
+                    "id": "custom.width",
+                    "value": 321
+                  },
+                  {
+                    "id": "links",
+                    "value": [
+                      {
+                        "targetBlank": true,
+                        "title": "",
+                        "url": "/d/RnxEyj6Sz/executive-dashboards-single-virtual-machine-view?orgId=1&var-cluster=${__data.fields.Cluster}&var-name=${__data.fields[\"VM Name\"]}&var-namespace=${__data.fields.Namespace}"
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "status"
+                },
+                "properties": [
+                  {
+                    "id": "custom.filterable",
+                    "value": false
+                  },
+                  {
+                    "id": "custom.width",
+                    "value": 129
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Uptime %"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "percentunit"
+                  },
+                  {
+                    "id": "custom.width",
+                    "value": 169
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Planned Downtime %"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "percentunit"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Unplanned Downtime %"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "percentunit"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "VM Create Date"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "dateTimeAsIso"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Unplanned Downtime (Hours)"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 227
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Uptime (Hours)"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 168
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 16,
+            "w": 24,
+            "x": 0,
+            "y": 6
+          },
+          "id": 5,
+          "options": {
+            "showHeader": true,
+            "sortBy": [
+              {
+                "desc": true,
+                "displayName": "Unplanned Downtime %"
+              }
+            ]
+          },
+          "pluginVersion": "8.5.20",
+          "targets": [
+            {
+              "exemplar": true,
+              "expr": "sum by (cluster, namespace, name, status) (\n  label_replace(kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > 0, \"status\", \"running\", \"__name__\", \".*\") \n  or label_replace(kubevirt_vm_non_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > 0, \"status\", \"stopped\", \"__name__\", \".*\")\n  or label_replace(kubevirt_vm_error_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > 0, \"status\", \"error\", \"__name__\", \".*\") \n  or label_replace(kubevirt_vm_starting_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > 0, \"status\", \"starting\", \"__name__\", \".*\") \n  or label_replace(kubevirt_vm_migrating_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > 0, \"status\", \"migrating\", \"__name__\", \".*\")\n)+${status:raw}",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "A"
+            },
+            {
+              "exemplar": true,
+              "expr": "(sum by (cluster, name , namespace)\n(sum_over_time(((kubevirt_vm_starting_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > bool 0) + (kubevirt_vm_migrating_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > bool 0) + (kubevirt_vm_non_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > bool 0))[$__range:1m]))+${status:raw})/60/60",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "B"
+            },
+            {
+              "exemplar": true,
+              "expr": "(sum by (cluster, name , namespace)\n(sum_over_time(((kubevirt_vm_starting_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > bool 0) + (kubevirt_vm_migrating_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > bool 0) + (kubevirt_vm_non_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > bool 0))[$__range:1m]))/ \n(sum by (cluster, name, namespace)\n(sum_over_time(((kubevirt_vm_error_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > bool 0) + (kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > bool 0) + (kubevirt_vm_non_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > bool 0) + (kubevirt_vm_starting_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > bool 0) +(kubevirt_vm_migrating_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > bool 0))[$__range:1m]))))+${status:raw}",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "C"
+            },
+            {
+              "exemplar": true,
+              "expr": "(sum by (cluster, name , namespace)\n(sum_over_time((kubevirt_vm_error_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > bool 0)[$__range:1m]))+${status:raw})/60/60",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "D"
+            },
+            {
+              "exemplar": true,
+              "expr": "(sum by (cluster, name , namespace)\n(sum_over_time((kubevirt_vm_error_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > bool 0)[$__range:1m])) / \n(sum by (cluster, name, namespace)\n(sum_over_time(((kubevirt_vm_error_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > bool 0) + (kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > bool 0) + (kubevirt_vm_non_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > bool 0) + (kubevirt_vm_starting_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > bool 0) +(kubevirt_vm_migrating_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > bool 0))[$__range:1m]))))+${status:raw}",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "E"
+            },
+            {
+              "exemplar": true,
+              "expr": "((kubevirt_vm_create_date_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"}>0) *1000 )+${status:raw}",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "F"
+            },
+            {
+              "exemplar": true,
+              "expr": "(sum by (cluster, name , namespace)\n(sum_over_time((kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > bool 0)[$__range:1m]))+${status:raw})/60/60",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "G"
+            },
+            {
+              "exemplar": true,
+              "expr": "(sum by (cluster, name , namespace)\n(sum_over_time((kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > bool 0)[$__range:1m])) / \n(sum by (cluster, name, namespace)\n(sum_over_time(((kubevirt_vm_error_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > bool 0) + (kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > bool 0) + (kubevirt_vm_non_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > bool 0) + (kubevirt_vm_starting_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > bool 0) +(kubevirt_vm_migrating_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > bool 0))[$__range:1m]))))+${status:raw}",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "H"
+            }
+          ],
+          "title": "Virtual Machines List by Time In Status",
+          "transformations": [
+            {
+              "id": "merge",
+              "options": {}
+            },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true,
+                  "Value #A": true,
+                  "Value #B": false,
+                  "Value #D": false,
+                  "Value #F": true,
+                  "__name__": true,
+                  "clusterID": true,
+                  "clusterType": true,
+                  "container": true,
+                  "endpoint": true,
+                  "instance": true,
+                  "job": true,
+                  "pod": true,
+                  "receive": true,
+                  "service": true,
+                  "tenant_id": true
+                },
+                "indexByName": {
+                  "Time": 0,
+                  "Value #A": 6,
+                  "Value #B": 9,
+                  "Value #C": 10,
+                  "Value #D": 11,
+                  "Value #E": 12,
+                  "Value #F": 5,
+                  "Value #G": 7,
+                  "Value #H": 8,
+                  "cluster": 1,
+                  "clusterID": 13,
+                  "container": 14,
+                  "endpoint": 15,
+                  "instance": 16,
+                  "job": 17,
+                  "name": 3,
+                  "namespace": 2,
+                  "pod": 18,
+                  "receive": 19,
+                  "service": 20,
+                  "status": 4,
+                  "tenant_id": 21
+                },
+                "renameByName": {
+                  "Value": "Time in Status",
+                  "Value #A": "",
+                  "Value #B": "Planned Downtime (Hours)",
+                  "Value #C": "Planned Downtime %",
+                  "Value #D": "Unplanned Downtime (Hours)",
+                  "Value #E": "Unplanned Downtime %",
+                  "Value #F": "VM Create Date",
+                  "Value #G": "Uptime (Hours)",
+                  "Value #H": "Uptime %",
+                  "clusterType": ""
+                }
+              }
+            }
+          ],
+          "type": "table"
+        }
+      ],
+      "refresh": "",
+      "schemaVersion": 30,
+      "style": "dark",
+      "tags": [],
+      "templating": {
+        "list": [
+          {
+            "allValue": ".*",
+            "current": {
+              "selected": true,
+              "text": [
+                "All"
+              ],
+              "value": [
+                "$__all"
+              ]
+            },
+            "datasource": null,
+            "definition": "label_values(kubevirt_vm_running_status_last_transition_timestamp_seconds, cluster)",
+            "description": null,
+            "error": null,
+            "hide": 0,
+            "includeAll": true,
+            "label": "Cluster",
+            "multi": true,
+            "name": "cluster",
+            "options": [],
+            "query": {
+              "query": "label_values(kubevirt_vm_running_status_last_transition_timestamp_seconds, cluster)",
+              "refId": "StandardVariableQuery"
+            },
+            "refresh": 2,
+            "regex": "",
+            "skipUrlSync": false,
+            "sort": 0,
+            "type": "query"
+          },
+          {
+            "allValue": ".*",
+            "current": {
+              "selected": true,
+              "text": [
+                "All"
+              ],
+              "value": [
+                "$__all"
+              ]
+            },
+            "datasource": null,
+            "definition": "label_values(kubevirt_vmi_info, namespace)",
+            "description": "Filter the Virtual Machine by its Namespace",
+            "error": null,
+            "hide": 0,
+            "includeAll": true,
+            "label": "Namespace",
+            "multi": true,
+            "name": "namespace",
+            "options": [],
+            "query": {
+              "query": "label_values(kubevirt_vmi_info, namespace)",
+              "refId": "StandardVariableQuery"
+            },
+            "refresh": 2,
+            "regex": "",
+            "skipUrlSync": false,
+            "sort": 0,
+            "type": "query"
+          },
+          {
+            "allValue": ".*",
+            "current": {
+              "selected": true,
+              "text": [
+                "All"
+              ],
+              "value": [
+                "$__all"
+              ]
+            },
+            "datasource": null,
+            "definition": "label_values(kubevirt_vmi_info, name)",
+            "description": "Filter the Virtual Machine by its name",
+            "error": null,
+            "hide": 0,
+            "includeAll": true,
+            "label": "VM Name",
+            "multi": true,
+            "name": "name",
+            "options": [],
+            "query": {
+              "query": "label_values(kubevirt_vmi_info, name)",
+              "refId": "StandardVariableQuery"
+            },
+            "refresh": 2,
+            "regex": "",
+            "skipUrlSync": false,
+            "sort": 0,
+            "type": "query"
+          },
+          {
+            "allValue": null,
+            "current": {
+              "selected": false,
+              "text": "All",
+              "value": "0"
+            },
+            "description": null,
+            "error": null,
+            "hide": 0,
+            "includeAll": true,
+            "label": "Status",
+            "multi": false,
+            "name": "status",
+            "options": [
+              {
+                "selected": true,
+                "text": "All",
+                "value": "0"
+              },
+              {
+                "selected": false,
+                "text": "stopped",
+                "value": "on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_non_running_status_last_transition_timestamp_seconds>0)))"
+              },
+              {
+                "selected": false,
+                "text": "starting",
+                "value": "on(cluster,name,namespace) group_left()(0*(sum by(cluster, namespace,name)(kubevirt_vm_starting_status_last_transition_timestamp_seconds>0)))"
+              },
+              {
+                "selected": false,
+                "text": "migrating",
+                "value": "on(cluster,name,namespace) group_left()(0*(sum by(cluster, namespace,name)(kubevirt_vm_migrating_status_last_transition_timestamp_seconds>0)))"
+              },
+              {
+                "selected": false,
+                "text": "error",
+                "value": "on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_error_status_last_transition_timestamp_seconds>0)))"
+              },
+              {
+                "selected": false,
+                "text": "running",
+                "value": "on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_running_status_last_transition_timestamp_seconds>0)))"
+              }
+            ],
+            "query": "All=0, stopped:on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_non_running_status_last_transition_timestamp_seconds>0))), starting:on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_starting_status_last_transition_timestamp_seconds > 0))), migrating:on(cluster, name, namespace) group_left() (0*(sum by (cluster, namespace, name)(kubevirt_vm_migrating_status_last_transition_timestamp_seconds>0))), error:on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_error_status_last_transition_timestamp_seconds>0))), running:on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_running_status_last_transition_timestamp_seconds>0)))",
+            "queryValue": "",
+            "skipUrlSync": false,
+            "type": "custom"
+          }
+        ]
+      },
+      "time": {
+        "from": "now-7d",
+        "to": "now"
+      },
+      "timepicker": {
+        "hidden": false
+      },
+      "timezone": "",
+      "title": "Service Level dashboards / Virtual Machines Service Level",
+      "uid": "cdkL64TNz",
+      "version": 1
+    }
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-acm-virtual-machines-service-level
+  namespace: open-cluster-management-observability
+  annotations:
+    observability.open-cluster-management.io/dashboard-folder: "ACM / OpenShift Virtualization"
