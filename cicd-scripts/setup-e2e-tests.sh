@@ -93,6 +93,7 @@ approve_csr_joinrequest() {
           # update vendor label for KinD env
           kubectl label managedcluster ${clustername} vendor-
           kubectl label managedcluster ${clustername} vendor=GKE
+          kubectl label managedcluster ${clustername} local-cluster=true
         fi
       done
       break
