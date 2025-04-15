@@ -729,7 +729,6 @@ func areManagedClusterLabelsReady(obj client.Object) bool {
 type managedClusterInfo struct {
 	Name             string
 	OpenshiftVersion string
-	IsLocalCluster   bool
 }
 
 // getManagedClustersList returns the list of managed clusters info,
