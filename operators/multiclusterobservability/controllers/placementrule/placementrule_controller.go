@@ -751,6 +751,11 @@ func getManagedClustersList(ctx context.Context, c client.Client) ([]managedClus
 			continue
 		}
 
+		if mc.GetDeletionTimestamp() != nil {
+			// ignore deleted clusters
+			continue
+		}
+
 		openshiftVersion := nonOCP
 		if version, ok := mc.GetLabels()["openshiftVersion"]; ok {
 			openshiftVersion = version
