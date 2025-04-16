@@ -7,16 +7,22 @@ GO     ?= $(shell which go)
 
 # Below generated variables ensure that every time a tool under each variable is invoked, the correct version
 # will be used; reinstalling only if needed.
-# For example for faillint variable:
+# For example for controller-gen variable:
 #
 # In your main Makefile (for non array binaries):
 #
 #include .bingo/Variables.mk # Assuming -dir was set to .bingo .
 #
-#command: $(FAILLINT)
-#	@echo "Running faillint"
-#	@$(FAILLINT) <flags/args..>
+#command: $(CONTROLLER_GEN)
+#	@echo "Running controller-gen"
+#	@$(CONTROLLER_GEN) <flags/args..>
 #
+CONTROLLER_GEN := $(GOBIN)/controller-gen-v0.14.0
+$(CONTROLLER_GEN): $(BINGO_DIR)/controller-gen.mod
+	@# Install binary/ries using Go 1.14+ build command. This is using bwplotka/bingo-controlled, separate go module with pinned dependencies.
+	@echo "(re)installing $(GOBIN)/controller-gen-v0.14.0"
+	@cd $(BINGO_DIR) && GOWORK=off $(GO) build -mod=mod -modfile=controller-gen.mod -o=$(GOBIN)/controller-gen-v0.14.0 "sigs.k8s.io/controller-tools/cmd/controller-gen"
+
 FAILLINT := $(GOBIN)/faillint-v1.15.0
 $(FAILLINT): $(BINGO_DIR)/faillint.mod
 	@# Install binary/ries using Go 1.14+ build command. This is using bwplotka/bingo-controlled, separate go module with pinned dependencies.
@@ -35,11 +41,23 @@ $(GOLANGCI_LINT): $(BINGO_DIR)/golangci-lint.mod
 	@echo "(re)installing $(GOBIN)/golangci-lint-v1.64.8"
 	@cd $(BINGO_DIR) && GOWORK=off $(GO) build -mod=mod -modfile=golangci-lint.mod -o=$(GOBIN)/golangci-lint-v1.64.8 "github.com/golangci/golangci-lint/cmd/golangci-lint"
 
+KUSTOMIZE := $(GOBIN)/kustomize-v5.3.0
+$(KUSTOMIZE): $(BINGO_DIR)/kustomize.mod
+	@# Install binary/ries using Go 1.14+ build command. This is using bwplotka/bingo-controlled, separate go module with pinned dependencies.
+	@echo "(re)installing $(GOBIN)/kustomize-v5.3.0"
+	@cd $(BINGO_DIR) && GOWORK=off $(GO) build -mod=mod -modfile=kustomize.mod -o=$(GOBIN)/kustomize-v5.3.0 "sigs.k8s.io/kustomize/kustomize/v5"
+
 MISSPELL := $(GOBIN)/misspell-v0.3.4
 $(MISSPELL): $(BINGO_DIR)/misspell.mod
 	@# Install binary/ries using Go 1.14+ build command. This is using bwplotka/bingo-controlled, separate go module with pinned dependencies.
 	@echo "(re)installing $(GOBIN)/misspell-v0.3.4"
 	@cd $(BINGO_DIR) && GOWORK=off $(GO) build -mod=mod -modfile=misspell.mod -o=$(GOBIN)/misspell-v0.3.4 "github.com/client9/misspell/cmd/misspell"
+
+OPERATOR_SDK := $(GOBIN)/operator-sdk-v1.34.2
+$(OPERATOR_SDK): $(BINGO_DIR)/operator-sdk.mod
+	@# Install binary/ries using Go 1.14+ build command. This is using bwplotka/bingo-controlled, separate go module with pinned dependencies.
+	@echo "(re)installing $(GOBIN)/operator-sdk-v1.34.2"
+	@cd $(BINGO_DIR) && GOWORK=off $(GO) build -mod=mod -modfile=operator-sdk.mod -o=$(GOBIN)/operator-sdk-v1.34.2 "github.com/operator-framework/operator-sdk/cmd/operator-sdk"
 
 SHFMT := $(GOBIN)/shfmt-v3.7.0
 $(SHFMT): $(BINGO_DIR)/shfmt.mod
