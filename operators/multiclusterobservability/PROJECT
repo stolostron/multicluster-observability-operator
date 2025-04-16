@@ -3,16 +3,28 @@ layout: go.kubebuilder.io/v3
 projectName: multicluster-observability-operator
 repo: github.com/stolostron/multicluster-observability-operator
 resources:
-- crdVersion: v1
+- api:
+    crdVersion: v1
+  controller: true
+  domain: open-cluster-management.io
   group: observability
   kind: MultiClusterObservability
+  path: github.com/stolostron/multicluster-observability-operator/api/v1beta2
   version: v1beta2
-  webhookVersion: v1
-- crdVersion: v1
+  webhooks:
+    conversion: true
+    validation: true
+    webhookVersion: v1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: open-cluster-management.io
   group: observability
   kind: ObservabilityAddon
+  path: github.com/stolostron/multicluster-observability-operatorg/api/v1beta1
   version: v1beta1
-version: 3-alpha
+version: "3"
 plugins:
   manifests.sdk.operatorframework.io/v2: {}
   scorecard.sdk.operatorframework.io/v2: {}
