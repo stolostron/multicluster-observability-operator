@@ -6,6 +6,7 @@ package placementrule
 
 import (
 	"context"
+	"slices"
 
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -19,12 +20,14 @@ import (
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 )
 
+var standardConditionTypes = []string{"Available", "Progressing", "Degraded"}
+
 func updateAddonStatus(ctx context.Context, c client.Client, addonList mcov1beta1.ObservabilityAddonList) error {
 	for _, addon := range addonList.Items {
 		if addon.Status.Conditions == nil || len(addon.Status.Conditions) == 0 { //nolint:gosimple
 			continue
 		}
-		obsAddonConditions := convertConditionsToMeta(addon.Status.Conditions)
+		obsAddonConditions := filterStandardConditions(convertConditionsToMeta(addon.Status.Conditions))
 		isUpdated := false
 		retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 			managedclusteraddon := &addonv1alpha1.ManagedClusterAddOn{}
@@ -76,4 +79,15 @@ func convertConditionsToMeta(conditions []mcov1beta1.StatusCondition) []metav1.C
 		metaConditions = append(metaConditions, metaCondition)
 	}
 	return metaConditions
+}
+
+func filterStandardConditions(conditions []metav1.Condition) []metav1.Condition {
+	ret := make([]metav1.Condition, 0, len(conditions))
+	for _, c := range conditions {
+		if slices.Contains(standardConditionTypes, c.Type) {
+			ret = append(ret, c)
+		}
+	}
+
+	return ret
 }
