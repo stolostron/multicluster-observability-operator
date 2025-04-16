@@ -8,7 +8,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"slices"
 
 	"github.com/onsi/ginkgo/v2"
@@ -69,11 +68,7 @@ func ListManagedClusters(opt TestOptions) ([]string, error) {
 		metadata := obj.Object["metadata"].(map[string]interface{})
 		name := metadata["name"].(string)
 
-		if os.Getenv("IS_KIND_ENV") == "true" {
-			// We do not have the obs add on label added in kind cluster
-			clusterNames = append(clusterNames, name)
-			continue
-		}
+		isLocalcluster := metadata["labels"].(map[string]interface{})["local-cluster"] == "true"
 
 		status, ok := obj.Object["status"].(map[string]interface{})
 		if !ok {
@@ -101,7 +96,11 @@ func ListManagedClusters(opt TestOptions) ([]string, error) {
 
 		// Only add clusters with ManagedClusterConditionAvailable status == True
 		if available {
-			clusterNames = append(clusterNames, name)
+			if isLocalcluster {
+				clusterNames = append(clusterNames, "local-cluster")
+			} else {
+				clusterNames = append(clusterNames, name)
+			}
 		}
 	}
 
