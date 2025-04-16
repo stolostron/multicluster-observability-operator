@@ -31,7 +31,7 @@ var (
 
 func updateAddonStatus(c client.Client, addonList mcov1beta1.ObservabilityAddonList) error {
 	for _, addon := range addonList.Items {
-		if addon.Status.Conditions == nil || len(addon.Status.Conditions) == 0 {
+		if len(addon.Status.Conditions) == 0 {
 			continue
 		}
 		conditions := []metav1.Condition{}

@@ -17,100 +17,29 @@ export SED ?= $(shell which gsed 2>/dev/null || which sed)
 XARGS ?= $(shell which gxargs 2>/dev/null || which xargs)
 GREP ?= $(shell which ggrep 2>/dev/null || which grep)
 
-# Image URL to use all building/pushing image targets
-IMG ?= quay.io/stolostron/multicluster-observability-operator:latest
-# KUSTOMIZE_VERSION is set here to allow it to be overridden by the caller
-# as it gets passed to the registration-operator Makefile and will fail on macOS if not set.
-# See https://github.com/stolostron/registration-operator/blob/release-2.4/Makefile#L184-L193
-KUSTOMIZE_VERSION ?= v5.3.0
+# Setting SHELL to bash allows bash commands to be executed by recipes.
+# This is a requirement for 'setup-envtest.sh' in the test target.
+# Options are set to exit when a recipe line exits non-zero or a piped command fails.
+SHELL = /usr/bin/env bash -o pipefail
+.SHELLFLAGS = -ec
 
-# Deploy controller in the configured Kubernetes cluster in ~/.kube/config
-deploy: 
-	cd operators/multiclusterobservability && make deploy
+##@ General
 
-# UnDeploy controller from the configured Kubernetes cluster in ~/.kube/config
-undeploy:
-	cd operators/multiclusterobservability && make undeploy
+# The help target prints out all targtoolsets with their descriptions organized
+# beneath their categories. The categories are represented by '##@' and the
+# target descriptions by '##'. The awk commands is responsible for reading the
+# entire set of makefiles included in this invocation, looking for lines of the
+# file as xyz: ## something, and then pretty-format the target and help. Then,
+# if there's a line with ##@ something, that gets pretty-printed as a category.
+# More info on the usage of ANSI control characters for terminal formatting:
+# https://en.wikipedia.org/wiki/ANSI_escape_code#SGR_parameters
+# More info on the awk command:
+# http://linuxcommand.org/lc3_adv_awk.php
+.PHONY: help
+help: ## Display this help.
+	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
 
-
-# Build the operator binary
-.PHONY: build
-build:
-	cd operators/multiclusterobservability && make manager
-
-# Build the docker image
-docker-build:
-	cd operators/multiclusterobservability && make manager
-	docker build -t ${IMG} . -f operators/multiclusterobservability/Dockerfile
-
-
-LOCAL_IMAGE ?= hack.io/stolostron/mco:local
-IMAGE_BUILD_CMD ?= docker buildx build . -t ${LOCAL_IMAGE} -f operators/multiclusterobservability/Dockerfile.dev --load
-
-# Build the docker image using a public image registry
-.PHONY: docker-build-local
-docker-build-local:
-	cd operators/multiclusterobservability && make manager
-	$(IMAGE_BUILD_CMD)
-
-# Push the docker image
-docker-push:
-	docker push ${IMG}
-
-.PHONY: unit-tests
-unit-tests: unit-tests-operators unit-tests-loaders unit-tests-proxy unit-tests-collectors
-
-unit-tests-operators:
-	go test -v ${VERBOSE} `go list ./operators/... | $(GREP) -v test`
-
-unit-tests-loaders:
-	go test -v ${VERBOSE} `go list ./loaders/... | $(GREP) -v test`
-
-unit-tests-proxy:
-	go test -v ${VERBOSE} `go list ./proxy/... | $(GREP) -v test`
-
-unit-tests-collectors:
-	go test ${VERBOSE} `go list ./collectors/... | $(GREP) -v test`
-
-.PHONY: e2e-tests
-e2e-tests: install-e2e-test-deps
-	@echo "Running e2e tests ..."
-	@./cicd-scripts/run-e2e-tests.sh
-
-.PHONY: e2e-tests-in-kind
-e2e-tests-in-kind: install-e2e-test-deps
-	@echo "Running e2e tests in KinD cluster..."
-ifeq ($(OPENSHIFT_CI),true)
-    # Set up environment specific to OpenShift CI
-	@IS_KIND_ENV=true SED=$(SED) ./cicd-scripts/run-e2e-in-kind-via-prow.sh
-else
-	@kind get kubeconfig --name hub > /tmp/hub.yaml
-	@IS_KIND_ENV=true KUBECONFIG=/tmp/hub.yaml SED=$(SED) ./cicd-scripts/run-e2e-tests.sh
-endif
-
-# Creates a KinD cluster and sets the kubeconfig context to the cluster
-.PHONY: kind-env
-kind-env:
-	@echo "Setting up KinD cluster"
-	@./scripts/bootstrap-kind-env.sh
-	@echo "Cluster has been created"
-	kind export kubeconfig --name=hub
-	kubectl label node hub-control-plane node-role.kubernetes.io/master=''
-
-# Creates a KinD cluster with MCO deployed and sets the kubeconfig context to the cluster
-# This fully prepares the environment for running e2e tests.
-.PHONY: mco-kind-env
-mco-kind-env: kind-env
-	@echo "Local environment has been set up"
-	@echo "Installing MCO"
-	@kind get kubeconfig --name hub > /tmp/hub.yaml
-	KUBECONFIG=/tmp/hub.yaml IS_KIND_ENV=true KUSTOMIZE_VERSION=${KUSTOMIZE_VERSION} ./cicd-scripts/setup-e2e-tests.sh
-
-
-# Generate bundle manifests and metadata, then validate generated files.
-.PHONY: bundle
-bundle: deps install-build-deps
-	cd operators/multiclusterobservability && make bundle
+##@ Development
 
 .PHONY: check-git
 check-git:
@@ -134,7 +63,7 @@ go-format: $(GOIMPORTS)
 	@$(GOIMPORTS) -w $(FILES_TO_FMT)
 
 .PHONY: shell-format
-shell-format: $(SHFMT)
+shell-format: $(SHFMT) ## Formats shell code.
 	@echo ">> formatting shell scripts"
 	@$(SHFMT) -i 2 -ci -w -s $(shell find . -type f -name "*.sh" -not -path "*vendor*" -not -path "tmp/*")
 
@@ -178,8 +107,8 @@ NewHistorgram,NewHistogramVec,NewSummary,NewSummaryVec}=github.com/prometheus/cl
 NewCounterVec,NewCounterVec,NewGauge,NewGaugeVec,NewGaugeFunc,NewHistorgram,NewHistogramVec,NewSummary,NewSummaryVec},\
 github.com/NYTimes/gziphandler.{GzipHandler}=github.com/klauspost/compress/gzhttp.{GzipHandler},\
 sync/atomic=go.uber.org/atomic,\
-io/ioutil.{Discard,NopCloser,ReadAll,ReadDir,ReadFile,TempDir,TempFile,Writefile}" ./...
-	@$(FAILLINT) -paths "fmt.{Print,Println}" -ignore-tests ./...
+io/ioutil.{Discard,NopCloser,ReadAll,ReadDir,ReadFile,TempDir,TempFile,Writefile}" ./operators/... ./collectors/... ./loaders/... ./proxy/...
+	@$(FAILLINT) -paths "fmt.{Print,Println}" -ignore-tests ./operators/... ./collectors/... ./loaders/... ./proxy/...
 	@echo ">> examining all of the Go files"
 	@go vet -stdmethods=false ./...
 	@echo ">> linting all of the Go files GOGC=${GOGC}"
@@ -188,16 +117,120 @@ io/ioutil.{Discard,NopCloser,ReadAll,ReadDir,ReadFile,TempDir,TempFile,Writefile
 	@go run ./scripts/copyright
 	$(call require_clean_work_tree,'detected files without copyright, run make lint and commit changes')
 
-.PHONY: install-build-deps
-install-build-deps:
-	@./scripts/install-binaries.sh install_build_deps
+.PHONY: check-metrics
+check-metrics:
+	@$(MAKE) -C cicd-scripts/metrics check-metrics
 
-.PHONY: install-integration-test-deps
-install-integration-test-deps:
-	@mkdir -p $(BIN_DIR)
-	@./scripts/install-binaries.sh install_integration_tests_deps $(BIN_DIR)
+.PHONY: unit-tests ## Run all unit tests.
+unit-tests: unit-tests-operators unit-tests-loaders unit-tests-proxy unit-tests-collectors
 
-.PHONY: install-e2e-test-deps
-install-e2e-test-deps:
+.PHONY: unit-tests-operators
+unit-tests-operators:  ## Run operators unit tests only.
+	go test ${VERBOSE} `go list ./operators/... | $(GREP) -v test`
+
+.PHONY: unit-tests-loaders
+unit-tests-loaders: ## Run loaders unit tests only.
+	go test ${VERBOSE} `go list ./loaders/... | $(GREP) -v test`
+
+.PHONY: unit-tests-proxy
+unit-tests-proxy: ## Run proxy uni tests only.
+	go test ${VERBOSE} `go list ./proxy/... | $(GREP) -v test`
+
+.PHONY: unit-tests-collectors
+unit-tests-collectors: ## Run collectors unit tests only. 
+	go test ${VERBOSE} `go list ./collectors/... | $(GREP) -v test`
+
+.PHONY: integration-test-operators
+integration-test-operators: ## Run operators integration tests.
+	go test -tags integration -run=Integration ./operators/...
+
+.PHONY: e2e-tests
+e2e-tests: tools ## Run E2E tests.
+	@echo "Running e2e tests ..."
+	@./cicd-scripts/run-e2e-tests.sh
+
+.PHONY: e2e-tests-in-kind
+ifeq ($(OPENSHIFT_CI),true)
+e2e-tests-in-kind: $(KUSTOMIZE) ## Run E2E tests in a local kind cluster.
+	@echo "Running e2e tests in KinD cluster..."
+    # Set up environment specific to OpenShift CI
+	@IS_KIND_ENV=true SED=$(SED) ./cicd-scripts/run-e2e-in-kind-via-prow.sh
+else
+e2e-tests-in-kind:
+	@echo "Running e2e tests in KinD cluster..."
+	@kind get kubeconfig --name hub > /tmp/hub.yaml
+	@IS_KIND_ENV=true KUBECONFIG=/tmp/hub.yaml SED=$(SED) ./cicd-scripts/run-e2e-tests.sh
+endif
+
+##@ Build dependencies
+
+# Creates a KinD cluster and sets the kubeconfig context to the cluster
+.PHONY: kind-env
+kind-env: $(KIND) ## Bootstrap Kind envinronment.
+	@echo "Setting up KinD cluster"
+	@./scripts/bootstrap-kind-env.sh
+	@echo "Cluster has been created"
+	$(KIND) export kubeconfig --name=hub
+	kubectl label node hub-control-plane node-role.kubernetes.io/master=''
+
+# Creates a KinD cluster with MCO deployed and sets the kubeconfig context to the cluster
+# This fully prepares the environment for running e2e tests.
+.PHONY: mco-kind-env
+mco-kind-env: kind-env ## Prepare Kind environment for E2E tests.
+	@echo "Local environment has been set up"
+	@echo "Installing MCO"
+	@$(KIND) get kubeconfig --name hub > /tmp/hub.yaml
+	KUBECONFIG=/tmp/hub.yaml IS_KIND_ENV=true ./cicd-scripts/setup-e2e-tests.sh
+
+.PHONY: tools
+tools: $(KUSTOMIZE) $(KIND) $(GOJSONTOYAML) ## Install development and e2e tools.
+	mkdir -p $(BIN_DIR)
+	./scripts/install-binaries.sh install_binaries $(BIN_DIR)
+
+.PHONY: install-envtest-deps
+install-envtest-deps: ## Install env-test.
 	@mkdir -p $(BIN_DIR)
-	@./scripts/install-binaries.sh install_e2e_tests_deps $(BIN_DIR)
+	@./scripts/install-binaries.sh install_envtest_deps $(BIN_DIR)
+
+.PHONY: install-check-metrics-deps
+install-check-metrics-deps:
+	@mkdir -p $(BIN_DIR)
+	@./scripts/install-binaries.sh install_jq $(BIN_DIR)
+	@./scripts/install-binaries.sh install_yq $(BIN_DIR)
+	@./scripts/install-binaries.sh install_mimirtool $(BIN_DIR)
+	@./scripts/install-binaries.sh install_promtool $(BIN_DIR)
+
+##@ Multi-Cluster-Observability Operator
+
+.PHONY: deploy
+deploy:  ## Deploy controller to the K8s cluster specified in ~/.kube/config.
+	@$(MAKE) -C operators/multiclusterobservability deploy
+
+# UnDeploy controller from the configured Kubernetes cluster in ~/.kube/config
+.PHONY: undeploy
+undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
+	@$(MAKE) -C operators/multiclusterobservability undeploy
+
+# Build the operator binary
+.PHONY: build
+build: ## Build manager binary.
+	@$(MAKE) -C operators/multiclusterobservability build
+
+# Build the docker image
+.PHONY: docker-build
+docker-build: ## Build docker image with the manager using private RHEL base images.
+	@$(MAKE) -C operators/multiclusterobservability docker-build
+
+# Build the docker image using a public image registry
+.PHONY: docker-build-local
+docker-build-local:  ## Build docker image with the manager using public UBI base images.
+	@$(MAKE) -C operators/multiclusterobservability docker-build-local
+
+# Push the docker image
+.PHONY: docker-push
+docker-push: ## Push docker image with the manager.
+	@$(MAKE) -C operators/multiclusterobservability docker-push
+
+.PHONY: bundle
+bundle: deps ## Generate bundle manifests and metadata, then validate generated files.
+	$(MAKE) -C operators/multiclusterobservability bundle

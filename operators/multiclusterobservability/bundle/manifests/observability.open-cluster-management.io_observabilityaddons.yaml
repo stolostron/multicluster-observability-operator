@@ -2,7 +2,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.4.1
+    controller-gen.kubebuilder.io/version: v0.14.0
   creationTimestamp: null
   name: observabilityaddons.observability.open-cluster-management.io
 spec:
@@ -22,10 +22,19 @@ spec:
         description: ObservabilityAddon is the Schema for the observabilityaddon API
         properties:
           apiVersion:
-            description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
             type: string
           kind:
-            description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
             type: string
           metadata:
             type: object
@@ -34,11 +43,13 @@ spec:
             properties:
               enableMetrics:
                 default: true
-                description: EnableMetrics indicates the observability addon push metrics to hub server.
+                description: EnableMetrics indicates the observability addon push
+                  metrics to hub server.
                 type: boolean
               interval:
                 default: 300
-                description: Interval for the observability addon push metrics to hub server.
+                description: Interval for the observability addon push metrics to
+                  hub server.
                 format: int32
                 maximum: 3600
                 minimum: 15
@@ -47,12 +58,24 @@ spec:
                 description: Resource requirement for metrics-collector
                 properties:
                   claims:
-                    description: "Claims lists the names of resources, defined in spec.resourceClaims, that are used by this container. \n This is an alpha field and requires enabling the DynamicResourceAllocation feature gate. \n This field is immutable. It can only be set for containers."
+                    description: |-
+                      Claims lists the names of resources, defined in spec.resourceClaims,
+                      that are used by this container.
+
+
+                      This is an alpha field and requires enabling the
+                      DynamicResourceAllocation feature gate.
+
+
+                      This field is immutable. It can only be set for containers.
                     items:
                       description: ResourceClaim references one entry in PodSpec.ResourceClaims.
                       properties:
                         name:
-                          description: Name must match the name of one entry in pod.spec.resourceClaims of the Pod where this field is used. It makes that resource available inside a container.
+                          description: |-
+                            Name must match the name of one entry in pod.spec.resourceClaims of
+                            the Pod where this field is used. It makes that resource available
+                            inside a container.
                           type: string
                       required:
                       - name
@@ -68,7 +91,9 @@ spec:
                       - type: string
                       pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                       x-kubernetes-int-or-string: true
-                    description: 'Limits describes the maximum amount of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
+                    description: |-
+                      Limits describes the maximum amount of compute resources allowed.
+                      More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
                     type: object
                   requests:
                     additionalProperties:
@@ -77,7 +102,11 @@ spec:
                       - type: string
                       pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                       x-kubernetes-int-or-string: true
-                    description: 'Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
+                    description: |-
+                      Requests describes the minimum amount of compute resources required.
+                      If Requests is omitted for a container, it defaults to Limits if that is explicitly specified,
+                      otherwise to an implementation-defined value.
+                      More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
                     type: object
                 type: object
             type: object
@@ -86,7 +115,8 @@ spec:
             properties:
               conditions:
                 items:
-                  description: StatusCondition contains condition information for an observability addon
+                  description: StatusCondition contains condition information for
+                    an observability addon
                   properties:
                     lastTransitionTime:
                       format: date-time
@@ -119,5 +149,5 @@ status:
   acceptedNames:
     kind: ""
     plural: ""
-  conditions: []
-  storedVersions: []
+  conditions: null
+  storedVersions: null
