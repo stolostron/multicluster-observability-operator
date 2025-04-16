@@ -22,7 +22,7 @@ AGENT_NS="open-cluster-management-agent"
 HUB_NS="open-cluster-management-hub"
 OBSERVABILITY_NS="open-cluster-management-observability"
 IMAGE_REPO="quay.io/stolostron"
-export MANAGED_CLUSTER="hub-cluster" # registration-operator needs this
+export MANAGED_CLUSTER="local-cluster" # registration-operator needs this
 
 SED_COMMAND=${SED}' -i-e -e'
 
