@@ -15,7 +15,7 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/utils"
 )
 
-var _ = Describe("Observability:", func() {
+var _ = Describe("", func() {
 
 	// Do not need to run this case in canary environment
 	// If we really need it in canary, ensure the grafana-dev-test.sh is available

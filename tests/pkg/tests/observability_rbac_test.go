@@ -17,7 +17,7 @@ import (
 	"k8s.io/klog"
 )
 
-var _ = Describe("Observability:", Ordered, func() {
+var _ = Describe("", Ordered, func() {
 	BeforeAll(func() {
 		cmd := exec.Command("../../setup_rbac_test.sh")
 		var out bytes.Buffer
