@@ -93,12 +93,12 @@ func main() {
 
 	added, removed := utils.Diff(collectedRules, rulesDefined)
 	if len(added) > 0 {
-		fmt.Println("Metrics found in scrape configs but not in rules: ", added)
+		fmt.Println("Metrics found in rules but missing in scrape configs: ", added)
 		os.Exit(1)
 	}
 
 	if len(removed) > 0 {
-		fmt.Println("Metrics found in rules but not in scrape configs: ", removed)
+		fmt.Println("Metrics found in scrape configs but missing in rules: ", removed)
 		os.Exit(1)
 	}
 
