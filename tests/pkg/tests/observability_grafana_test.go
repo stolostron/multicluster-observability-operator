@@ -66,8 +66,8 @@ var _ = Describe("", func() {
 
 			for _, obj := range objs.Items {
 				metadata := obj.Object["metadata"].(map[string]interface{})
-				name := metadata["name"].(string)
-				if name == "local-cluster" {
+				labels := metadata["labels"].(map[string]interface{})
+				if labels["local-cluster"] == "true" {
 					labels := metadata["labels"].(map[string]interface{})
 					labels["autolabel"] = "grafanacm"
 					klog.V(1).Infof("The cluster with new label: %s\n", labels)
