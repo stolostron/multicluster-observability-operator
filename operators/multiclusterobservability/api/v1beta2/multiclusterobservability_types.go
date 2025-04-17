@@ -116,6 +116,30 @@ type PlatformCapabilitiesSpec struct {
 	// +optional
 	// +kubebuilder:validation:Optional
 	Metrics PlatformMetricsSpec `json:"metrics,omitempty"`
+
+	// Analytics provides the configuration for the analytics features
+	//
+	// +optional
+	// +kubebuilder:validation:Optional
+	Analytics PlatformAnalyticsSpec `json:"analytics,omitempty"`
+}
+
+type PlatformAnalyticsSpec struct {
+	// Incident detecion defines the configuration spec for the incident detection
+	// feature delivered via the cluster observability operator.
+	// If enabled, adds incidents UI to `Observe` section of OpenShift Console Platform
+	//
+	// +optional
+	// +kubebuilder:validation:Optional
+	IncidentDetection PlatformIncidentDetectionSpec `json:"incidentDetection,omitempty"`
+}
+
+type PlatformIncidentDetectionSpec struct {
+	// Enabled defines a flag to enable/disable the incident detection.
+	//
+	// +optional
+	// +kubebuilder:validation:Optional
+	Enabled bool `json:"enabled,omitempty"`
 }
 
 // ClusterLogForwarderSpec defines the spec for the addon to collect and forward logs

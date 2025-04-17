@@ -28,6 +28,7 @@ const (
 
 	// AODC CustomizedVariable Names
 	namePlatformLogsCollection        = "platformLogsCollection"
+	nameIncidentDetection             = "incidentDetection"
 	namePlatformMetricsCollection     = "platformMetricsCollection"
 	nameUserWorkloadLogsCollection    = "userWorkloadLogsCollection"
 	nameUserWorkloadTracesCollection  = "userWorkloadTracesCollection"
@@ -350,6 +351,9 @@ func (r *MCORenderer) renderAddonDeploymentConfig(
 				fqdn := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.PrometheusAgentCRDName)
 				appendCustomVar(aodc, namePlatformMetricsCollection, fqdn)
 			}
+			if cs.Platform.Analytics.IncidentDetection.Enabled {
+				appendCustomVar(aodc, nameIncidentDetection, "monitoring.rhobs")
+			}
 		}
 
 		if cs.UserWorkloads != nil {
@@ -442,7 +446,10 @@ func MCOAEnabled(cr *obv1beta2.MultiClusterObservability) bool {
 	}
 	mcoaEnabled := false
 	if cr.Spec.Capabilities.Platform != nil {
-		mcoaEnabled = mcoaEnabled || cr.Spec.Capabilities.Platform.Logs.Collection.Enabled || cr.Spec.Capabilities.Platform.Metrics.Collection.Enabled
+		mcoaEnabled = mcoaEnabled ||
+			cr.Spec.Capabilities.Platform.Logs.Collection.Enabled ||
+			cr.Spec.Capabilities.Platform.Metrics.Collection.Enabled ||
+			cr.Spec.Capabilities.Platform.Analytics.IncidentDetection.Enabled
 	}
 	if cr.Spec.Capabilities.UserWorkloads != nil {
 		mcoaEnabled = mcoaEnabled || cr.Spec.Capabilities.UserWorkloads.Logs.Collection.ClusterLogForwarder.Enabled
