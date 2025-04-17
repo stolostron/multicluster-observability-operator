@@ -104,9 +104,9 @@ pipeline {
                     fi
                     cat resources/options.yaml
                     if [[ -n "${params.TAGGING}" ]]; then
-                    ginkgo --junit-report=./pkg/tests/results.xml --focus="\$TAGGING" -v pkg/tests/ -- -options=../../resources/options.yaml -v=5
+                    ginkgo --focus="\$TAGGING" -v pkg/tests/ -- -options=../../resources/options.yaml -v=5
                     else
-                    ginkgo --junit-report=./pkg/tests/results.xml -v pkg/tests/ -- -options=../../resources/options.yaml -v=5
+                    ginkgo -v pkg/tests/ -- -options=../../resources/options.yaml -v=5
                     fi
                 fi
                 """
