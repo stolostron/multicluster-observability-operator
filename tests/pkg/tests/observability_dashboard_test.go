@@ -20,7 +20,7 @@ const (
 	clusterOverviewOptimizedTitle = "ACM - Clusters Overview (Optimized)"
 )
 
-var _ = Describe("Observability:", func() {
+var _ = Describe("", func() {
 	BeforeEach(func() {
 		hubClient = utils.NewKubeClient(
 			testOptions.HubCluster.ClusterServerURL,
