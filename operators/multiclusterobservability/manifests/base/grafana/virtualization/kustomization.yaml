@@ -4,5 +4,6 @@ resources:
 - dash-acm-openshift-virtualization-single-vm-view.yaml
 - dash-acm-virtual-machines-by-time-in-status.yaml
 - dash-acm-virtual-machines-inventory.yaml
+- dash-acm-virtual-machines-service-level.yaml
 - scrape-config.yaml
 
