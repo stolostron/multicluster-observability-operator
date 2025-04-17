@@ -38,6 +38,13 @@ func TestUpdateAddonStatus(t *testing.T) {
 					Reason:             "Deployed",
 					Message:            "It is deployed",
 				},
+				{
+					Type:               "RandomType", // non standard type is ignored
+					Status:             metav1.ConditionTrue,
+					LastTransitionTime: metav1.NewTime(time.Unix(1e9, 0)),
+					Reason:             "Deployed",
+					Message:            "It is deployed",
+				},
 			},
 			currentClusterAddonConditions: []metav1.Condition{},
 			expectedClusterAddonConditions: []metav1.Condition{
@@ -55,6 +62,13 @@ func TestUpdateAddonStatus(t *testing.T) {
 			currentObsAddonConditions: []mcov1beta1.StatusCondition{
 				{
 					Type:               "Available",
+					Status:             metav1.ConditionTrue,
+					LastTransitionTime: metav1.NewTime(time.Unix(1e9, 0)),
+					Reason:             "Deployed",
+					Message:            "It is deployed",
+				},
+				{
+					Type:               "RandomType", // non standard type is ignored
 					Status:             metav1.ConditionTrue,
 					LastTransitionTime: metav1.NewTime(time.Unix(1e9, 0)),
 					Reason:             "Deployed",
