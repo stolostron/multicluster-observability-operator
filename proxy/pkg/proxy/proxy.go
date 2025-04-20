@@ -143,7 +143,7 @@ func preCheckRequest(req *http.Request) error {
 	if userName == "" {
 		userName = util.GetUserName(token, config.GetConfigOrDie().Host+userAPIPath)
 		if userName == "" {
-			return errors.New("failed to found user name")
+			return errors.New("failed to find user name")
 		} else {
 			req.Header.Set("X-Forwarded-User", userName)
 		}
