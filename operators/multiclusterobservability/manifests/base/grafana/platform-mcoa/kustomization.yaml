@@ -16,4 +16,8 @@ resources:
 - dash-node-rsrc-use.yaml
 - prometheus-rule.yaml
 - scrape-config.yaml
+- scrape-config-uwl-hcp-etcd.yaml
+- scrape-config-uwl-hcp-apiserver.yaml
+- prometheus-rule-uwl-hcp-etcd.yaml
+- prometheus-rule-uwl-hcp-apiserver.yaml
 
