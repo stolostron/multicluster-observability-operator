@@ -28,7 +28,7 @@ const (
 
 	// AODC CustomizedVariable Names
 	namePlatformLogsCollection        = "platformLogsCollection"
-	nameIncidentDetection             = "incidentDetection"
+	namePlatformIncidentDetection     = "platformIncidentDetection"
 	namePlatformMetricsCollection     = "platformMetricsCollection"
 	nameUserWorkloadLogsCollection    = "userWorkloadLogsCollection"
 	nameUserWorkloadTracesCollection  = "userWorkloadTracesCollection"
@@ -394,7 +394,8 @@ func (r *MCORenderer) renderAddonDeploymentConfig(
 				appendCustomVar(aodc, namePlatformMetricsCollection, fqdn)
 			}
 			if cs.Platform.Analytics.IncidentDetection.Enabled {
-				appendCustomVar(aodc, nameIncidentDetection, "monitoring.rhobs")
+				fqdn := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.UIPluginsCRDName)
+				appendCustomVar(aodc, namePlatformIncidentDetection, fqdn)
 			}
 		}
 

@@ -36,6 +36,9 @@ spec:
       resource: scrapeconfigs
     - group: monitoring.coreos.com
       resource: prometheusrules
+    # Cluster Observability Operator and Incident detection types.
+    - group: observability.openshift.io
+      resource: uiplugins
   installStrategy:
     type: Placements
     placements:
