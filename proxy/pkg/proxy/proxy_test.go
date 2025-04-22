@@ -73,15 +73,19 @@ func TestPreCheckRequest(t *testing.T) {
 	}
 
 	resp.Request.Header.Del("X-Forwarded-Access-Token")
-	resp.Request.Header.Add("Authorization", "test")
+	resp.Request.Header.Add("Authorization", "Bearer test")
 	err = preCheckRequest(req)
 	if err != nil {
-		t.Errorf("failed to test preCheckRequest with bear token: %v", err)
+		t.Errorf("failed to test preCheckRequest with bearer token: %v", err)
+	}
+	// Check if the token is set correctly
+	if resp.Request.Header.Get("X-Forwarded-Access-Token") != "test" {
+		t.Errorf("expected X-Forwarded-Access-Token to be set to 'test', got: %s", resp.Request.Header.Get("X-Forwarded-Access-Token"))
 	}
 
 	resp.Request.Header.Del("X-Forwarded-User")
 	err = preCheckRequest(req)
-	if !strings.Contains(err.Error(), "failed to found user name") {
+	if !strings.Contains(err.Error(), "failed to find user name") {
 		t.Errorf("failed to test preCheckRequest: %v", err)
 	}
 
