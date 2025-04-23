@@ -744,7 +744,6 @@ func getManagedClustersList(ctx context.Context, c client.Client) ([]managedClus
 
 	for _, mc := range managedClustersList.Items {
 		if mc.Labels["local-cluster"] == "true" && !appended {
-			// ignore as handled in a specific way
 			ret = append(ret, managedClusterInfo{
 				Name:             localClusterName,
 				OpenshiftVersion: "mimical",
