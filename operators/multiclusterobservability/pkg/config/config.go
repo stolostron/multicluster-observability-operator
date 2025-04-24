@@ -231,6 +231,7 @@ const (
 	OpenTelemetryCollectorCRDName = "opentelemetrycollectors.opentelemetry.io"
 	InstrumentationCRDName        = "instrumentations.opentelemetry.io"
 	PrometheusAgentCRDName        = "prometheusagents.monitoring.coreos.com"
+	UIPluginsCRDName              = "uiplugins.observability.openshift.io"
 )
 
 var (
@@ -239,6 +240,7 @@ var (
 		OpenTelemetryCollectorCRDName: "v1beta1",
 		InstrumentationCRDName:        "v1alpha1",
 		PrometheusAgentCRDName:        "v1alpha1",
+		UIPluginsCRDName:              "v1alpha1",
 	}
 )
 
