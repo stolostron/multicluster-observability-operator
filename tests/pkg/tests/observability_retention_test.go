@@ -18,7 +18,7 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/utils"
 )
 
-var _ = Describe("Observability:", func() {
+var _ = Describe("", func() {
 
 	var (
 		deleteDelay              = "48h"

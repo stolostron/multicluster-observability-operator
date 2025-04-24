@@ -14,6 +14,7 @@ import (
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
+	"github.com/onsi/ginkgo/v2/reporters"
 	. "github.com/onsi/gomega"
 	"gopkg.in/yaml.v2"
 	"k8s.io/klog"
@@ -129,6 +130,19 @@ func init() {
 
 func TestObservabilityE2E(t *testing.T) {
 	RegisterFailHandler(Fail)
+
+	// Generate JUnit report once all tests have finished with customized settings
+	_ = ReportAfterSuite("", func(report Report) {
+		err := reporters.GenerateJUnitReportWithConfig(
+			report,
+			"results.xml",
+			reporters.JunitReportConfig{OmitSpecLabels: true, OmitLeafNodeType: true},
+		)
+		if err != nil {
+			fmt.Printf("error creating junit report file %s", err.Error())
+		}
+	})
+
 	RunSpecs(t, "Observability E2E Suite")
 }
 
