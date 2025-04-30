@@ -22,6 +22,8 @@ spec:
   metricRelabelings:
   - action: labeldrop
     regex: prometheus_replica|managed_cluster|id
+  scrapeClass: ocp-monitoring
+  scheme: HTTPS
   staticConfigs:
   - targets:
-    - localhost:8090
+    - prometheus-k8s.openshift-monitoring.svc:9091
