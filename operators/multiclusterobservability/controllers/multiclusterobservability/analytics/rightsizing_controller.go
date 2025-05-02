@@ -22,7 +22,7 @@ const (
 	rsPlacementBindingName            = "rs-policyset-binding"
 	rsPrometheusRulePolicyName        = "rs-prom-rules-policy"
 	rsPrometheusRulePolicyConfigName  = "rs-prometheus-rules-policy-config"
-	rsPrometheusRuleName              = "rs-namespace-prometheus-rules"
+	rsPrometheusRuleName              = "acm-rs-namespace-prometheus-rules"
 	rsConfigMapName                   = "rs-namespace-config"
 	rsDefaultNamespace                = "open-cluster-management-global-set"
 	rsMonitoringNamespace             = "openshift-monitoring"

@@ -5,7 +5,6 @@
 package analytics_test
 
 import (
-	"encoding/json"
 	"testing"
 
 	analyticsctrl "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/multiclusterobservability/analytics"
@@ -25,33 +24,4 @@ func TestFormatYAML_InvalidData(t *testing.T) {
 	input := make(chan int)
 	output := analyticsctrl.FormatYAML(input)
 	assert.Equal(t, "", output) // Should return empty string if marshal fails
-}
-
-func TestAddAPIVersionAndKind_Success(t *testing.T) {
-	obj := map[string]interface{}{
-		"name": "test",
-	}
-	version := "v1"
-	kind := "TestKind"
-
-	result, err := analyticsctrl.AddAPIVersionAndKind(obj, version, kind)
-	assert.NoError(t, err)
-
-	var out map[string]interface{}
-	err = json.Unmarshal(result, &out)
-	assert.NoError(t, err)
-	assert.Equal(t, version, out["apiVersion"])
-	assert.Equal(t, kind, out["kind"])
-	assert.Equal(t, "test", out["name"])
-}
-
-func TestAddAPIVersionAndKind_InvalidInput(t *testing.T) {
-	// Non-marshallable struct (e.g., with a channel field)
-	type badType struct {
-		Ch chan int
-	}
-	obj := badType{Ch: make(chan int)}
-
-	_, err := analyticsctrl.AddAPIVersionAndKind(obj, "v1", "BadKind")
-	assert.Error(t, err)
 }

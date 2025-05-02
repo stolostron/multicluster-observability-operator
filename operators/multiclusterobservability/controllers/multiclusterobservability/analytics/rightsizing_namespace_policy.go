@@ -108,11 +108,18 @@ func createOrUpdatePrometheusRulePolicy(
 		log.Error(errPolicy, "RS - Error retrieving Policy")
 		return errPolicy
 	}
-
 	// Marshal the PrometheusRule object into JSON
-	promRuleJSON, err := AddAPIVersionAndKind(prometheusRule, "monitoring.coreos.com/v1", "PrometheusRule")
+	objMap, err := runtime.DefaultUnstructuredConverter.ToUnstructured(&prometheusRule)
+	if err != nil {
+		log.Error(err, "error converting runtime.Object to unstructured")
+		return err
+	}
+
+	// Marshal the map back to JSON
+	promRuleJSON, err := json.Marshal(objMap)
 	if err != nil {
 		log.Error(err, "RS - Error marshaling ConfigurationPolicy")
+		return err
 	}
 
 	// Define the ConfigurationPolicy object
@@ -162,12 +169,10 @@ func createOrUpdatePrometheusRulePolicy(
 		},
 	}
 
+	logSuffixNameAndNamespace := "Namespace: " + rsNamespace + ", Name: " + rsPrometheusRulePolicyName
 	if errors.IsNotFound(errPolicy) {
 
-		log.Info("RS - PrometheusRulePolicy not found, creating a new one",
-			" Namespace:", rsNamespace,
-			" Name:", rsPrometheusRulePolicyName,
-		)
+		log.Info("RS - PrometheusRulePolicy not found, creating a new one ", logSuffixNameAndNamespace)
 		if client.IgnoreNotFound(errPolicy) != nil {
 			log.Error(errPolicy, "RS - Unable to fetch PrometheusRulePolicy")
 			return errPolicy
@@ -177,18 +182,15 @@ func createOrUpdatePrometheusRulePolicy(
 			log.Error(err, "Failed to create PrometheusRulePolicy")
 			return err
 		}
-		log.Info("RS - Created PrometheusRulePolicy completed", " Name:", rsPrometheusRulePolicyName)
+		log.Info("RS - Created PrometheusRulePolicy completed ", logSuffixNameAndNamespace)
 	} else {
-		log.Info("RS - PrometheusRulePolicy already exists, updating data",
-			" Name:", rsPrometheusRulePolicyName,
-			" Namespace:", rsNamespace,
-		)
+		log.Info("RS - PrometheusRulePolicy already exists, updating data ", logSuffixNameAndNamespace)
 
 		if err = c.Update(ctx, policy); err != nil {
 			log.Error(err, "Failed to update PrometheusRulePolicy")
 			return err
 		}
-		log.Info("RS - PrometheusRulePolicy updated successfully", "Policy", rsPrometheusRulePolicyName)
+		log.Info("RS - PrometheusRulePolicy updated successfully", logSuffixNameAndNamespace)
 
 	}
 

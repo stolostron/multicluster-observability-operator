@@ -121,7 +121,7 @@ type PlatformCapabilitiesSpec struct {
 	//
 	// +optional
 	// +kubebuilder:validation:Optional
-	Analytics *PlatformAnalyticsSpec `json:"analytics,omitempty"`
+	Analytics PlatformAnalyticsSpec `json:"analytics,omitempty"`
 }
 
 type PlatformAnalyticsSpec struct {
@@ -137,7 +137,7 @@ type PlatformAnalyticsSpec struct {
 	//
 	// +optional
 	// +kubebuilder:validation:Optional
-	NamespaceRightSizingRecommendation *NamespaceRightSizingRecommendationSpec `json:"namespaceRightSizingRecommendation,omitempty"`
+	NamespaceRightSizingRecommendation NamespaceRightSizingRecommendationSpec `json:"namespaceRightSizingRecommendation,omitempty"`
 }
 
 type PlatformIncidentDetectionSpec struct {

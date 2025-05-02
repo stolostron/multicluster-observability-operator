@@ -34,8 +34,8 @@ func TestCreateRightSizingComponent_WhenEnabled(t *testing.T) {
 		Spec: mcov1beta2.MultiClusterObservabilitySpec{
 			Capabilities: &mcov1beta2.CapabilitiesSpec{
 				Platform: &mcov1beta2.PlatformCapabilitiesSpec{
-					Analytics: &mcov1beta2.PlatformAnalyticsSpec{
-						NamespaceRightSizingRecommendation: &mcov1beta2.NamespaceRightSizingRecommendationSpec{
+					Analytics: mcov1beta2.PlatformAnalyticsSpec{
+						NamespaceRightSizingRecommendation: mcov1beta2.NamespaceRightSizingRecommendationSpec{
 							Enabled:          true,
 							NamespaceBinding: "custom-ns",
 						},
@@ -69,8 +69,8 @@ func TestCreateRightSizingComponent_WhenDisabled(t *testing.T) {
 		Spec: mcov1beta2.MultiClusterObservabilitySpec{
 			Capabilities: &mcov1beta2.CapabilitiesSpec{
 				Platform: &mcov1beta2.PlatformCapabilitiesSpec{
-					Analytics: &mcov1beta2.PlatformAnalyticsSpec{
-						NamespaceRightSizingRecommendation: &mcov1beta2.NamespaceRightSizingRecommendationSpec{
+					Analytics: mcov1beta2.PlatformAnalyticsSpec{
+						NamespaceRightSizingRecommendation: mcov1beta2.NamespaceRightSizingRecommendationSpec{
 							Enabled: false,
 						},
 					},

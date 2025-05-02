@@ -23,8 +23,6 @@ import (
 func isRightSizingNamespaceEnabled(mco *mcov1beta2.MultiClusterObservability) bool {
 	return mco.Spec.Capabilities != nil &&
 		mco.Spec.Capabilities.Platform != nil &&
-		mco.Spec.Capabilities.Platform.Analytics != nil &&
-		mco.Spec.Capabilities.Platform.Analytics.NamespaceRightSizingRecommendation != nil &&
 		mco.Spec.Capabilities.Platform.Analytics.NamespaceRightSizingRecommendation.Enabled
 }
 
