@@ -74,7 +74,7 @@ func CreateRightSizingComponent(
 	// If disabled then cleanup related resources
 	if !isRightSizingNamespaceEnabled {
 		log.Info("RS - NamespaceRightSizing feature not enabled")
-		// cleanupRSNamespaceResources(ctx, c, rsNamespace, false)
+		cleanupRSNamespaceResources(ctx, c, rsNamespace, false)
 		rsNamespace = newBinding
 		isEnabled = false
 		return nil, nil

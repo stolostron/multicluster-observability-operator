@@ -12,7 +12,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
@@ -29,11 +28,6 @@ const (
 )
 
 func TestCleanupRSNamespaceResources_WithBindingUpdated(t *testing.T) {
-	// Override the CRD check to always return true
-	original := isCRDRegistered
-	isCRDRegistered = func(_ schema.GroupVersionKind) bool { return true }
-	defer func() { isCRDRegistered = original }()
-
 	scheme := runtime.NewScheme()
 	_ = policyv1.AddToScheme(scheme)
 	_ = clusterv1beta1.AddToScheme(scheme)
@@ -53,15 +47,11 @@ func TestCleanupRSNamespaceResources_WithBindingUpdated(t *testing.T) {
 		&policyv1.Policy{ObjectMeta: metav1.ObjectMeta{Name: rsPrometheusRulePolicyName, Namespace: mockRsNamespace}},
 	} {
 		err := k8sClient.Get(context.TODO(), client.ObjectKeyFromObject(obj), obj)
-		assert.Error(t, err, "Expected resource to be deleted")
+		assert.Error(t, err)
 	}
 }
 
 func TestCleanupRSNamespaceResources_WithBindingNotUpdated(t *testing.T) {
-	original := isCRDRegistered
-	isCRDRegistered = func(_ schema.GroupVersionKind) bool { return true }
-	defer func() { isCRDRegistered = original }()
-
 	scheme := runtime.NewScheme()
 	_ = policyv1.AddToScheme(scheme)
 	_ = clusterv1beta1.AddToScheme(scheme)
@@ -85,6 +75,6 @@ func TestCleanupRSNamespaceResources_WithBindingNotUpdated(t *testing.T) {
 		&corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: rsConfigMapName, Namespace: configMapNS}},
 	} {
 		err := k8sClient.Get(context.TODO(), client.ObjectKeyFromObject(obj), obj)
-		assert.Error(t, err, "Expected resource to be deleted")
+		assert.Error(t, err)
 	}
 }

@@ -12,15 +12,12 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/client-go/discovery"
-	"k8s.io/client-go/rest"
 	clusterv1beta1 "open-cluster-management.io/api/cluster/v1beta1"
 	policyv1 "open-cluster-management.io/governance-policy-propagator/api/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// isPlatformFeatureConfigured checks if the Platform feature is enabled
+// isPlatformFeatureConfigured checks if the Platform  feature is enabled
 func isPlatformFeatureConfigured(mco *mcov1beta2.MultiClusterObservability) bool {
 	return mco.Spec.Capabilities != nil &&
 		mco.Spec.Capabilities.Platform != nil
@@ -28,6 +25,7 @@ func isPlatformFeatureConfigured(mco *mcov1beta2.MultiClusterObservability) bool
 
 // Get rightsizing namespace configuration
 func getRightSizingNamespaceConfig(mco *mcov1beta2.MultiClusterObservability) (bool, string) {
+
 	isRightSizingEnabled := false
 	namespaceBinding := ""
 	if isPlatformFeatureConfigured(mco) {
@@ -35,28 +33,6 @@ func getRightSizingNamespaceConfig(mco *mcov1beta2.MultiClusterObservability) (b
 		namespaceBinding = mco.Spec.Capabilities.Platform.Analytics.NamespaceRightSizingRecommendation.NamespaceBinding
 	}
 	return isRightSizingEnabled, namespaceBinding
-}
-
-// isCRDRegistered is injectable for testing
-var isCRDRegistered = func(gvk schema.GroupVersionKind) bool {
-	config, err := rest.InClusterConfig()
-	if err != nil {
-		return true // assume true in dev/test
-	}
-	discoveryClient, err := discovery.NewDiscoveryClientForConfig(config)
-	if err != nil {
-		return true
-	}
-	apiResourceLists, err := discoveryClient.ServerResourcesForGroupVersion(gvk.GroupVersion().String())
-	if err != nil {
-		return false
-	}
-	for _, resource := range apiResourceLists.APIResources {
-		if resource.Kind == gvk.Kind {
-			return true
-		}
-	}
-	return false
 }
 
 // cleanupRSNamespaceResources cleans up the resources created for namespace right-sizing
@@ -71,6 +47,7 @@ func cleanupRSNamespaceResources(ctx context.Context, c client.Client, namespace
 	}
 
 	if bindingUpdated {
+		// If NamespaceBinding has been updated apply the Policy Placement Placementbinding again
 		resourcesToDelete = commonResources
 	} else {
 		resourcesToDelete = append(commonResources,
@@ -79,26 +56,10 @@ func cleanupRSNamespaceResources(ctx context.Context, c client.Client, namespace
 	}
 
 	for _, resource := range resourcesToDelete {
-		gvk := resource.GetObjectKind().GroupVersionKind()
-		if gvk.Empty() {
-			switch resource.(type) {
-			case *policyv1.PlacementBinding:
-				gvk = schema.GroupVersionKind{Group: "policy.open-cluster-management.io", Version: "v1", Kind: "PlacementBinding"}
-			case *policyv1.Policy:
-				gvk = schema.GroupVersionKind{Group: "policy.open-cluster-management.io", Version: "v1", Kind: "Policy"}
-			}
-		}
-
-		if !isCRDRegistered(gvk) {
-			log.Info("CRD not registered for resource, skipping deletion", "name", resource.GetName(), "gvk", gvk.String())
-			continue
-		}
-
 		err := c.Delete(ctx, resource)
 		if err != nil && !errors.IsNotFound(err) {
 			log.Error(err, "Failed to delete resource", "name", resource.GetName())
 		}
 	}
-
 	log.Info("RS - Cleanup success.")
 }
