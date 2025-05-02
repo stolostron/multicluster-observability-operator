@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/cloudflare/cfssl/log"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
@@ -57,7 +56,7 @@ func EnsureRSNamespaceConfigMapExists(ctx context.Context, c client.Client) erro
 		}
 		log.Info("RS - Created configMap completed")
 	} else {
-		log.Info("RS - ConfigMap already exists, skipping creation", " Name:", rsConfigMapName, " Namespace:", rsNamespace)
+		log.Info("RS - ConfigMap already exists, skipping creation", " Name:", rsConfigMapName)
 	}
 
 	return nil
@@ -70,7 +69,7 @@ func GetDefaultRSNamespaceConfig() map[string]string {
 	ruleConfig.NamespaceFilterCriteria.ExclusionCriteria = []string{"openshift.*"}
 	ruleConfig.RecommendationPercentage = rsDefaultRecommendationPercentage
 
-	placement := &clusterv1beta1.Placement{
+	placement := clusterv1beta1.Placement{
 		Spec: clusterv1beta1.PlacementSpec{
 			Predicates: []clusterv1beta1.ClusterPredicate{},
 			Tolerations: []clusterv1beta1.Toleration{
@@ -116,7 +115,7 @@ func GetRightSizingConfigData(cm *corev1.ConfigMap) (RSNamespaceConfigMapData, e
 	return configData, nil
 }
 
-func GetNamespaceRSConfigMapPredicateFunc(c client.Client) predicate.Funcs {
+func GetNamespaceRSConfigMapPredicateFunc(ctx context.Context, c client.Client) predicate.Funcs {
 	log.Info("RS - Watch for ConfigMap events set up started")
 
 	processConfigMap := func(cm *corev1.ConfigMap) bool {
@@ -127,7 +126,7 @@ func GetNamespaceRSConfigMapPredicateFunc(c client.Client) predicate.Funcs {
 		}
 
 		// Apply changes based on the config map
-		if err := applyRSNamespaceConfigMapChanges(context.Background(), c, configData); err != nil {
+		if err := applyRSNamespaceConfigMapChanges(ctx, c, configData); err != nil {
 			log.Error(err, "Failed to apply RS Namespace ConfigMap Changes")
 			return false
 		}
@@ -141,11 +140,11 @@ func GetNamespaceRSConfigMapPredicateFunc(c client.Client) predicate.Funcs {
 					return processConfigMap(cm)
 				}
 			}
-			return true
+			return false
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			if e.ObjectNew.GetName() != rsConfigMapName || e.ObjectNew.GetNamespace() != config.GetDefaultNamespace() {
-				return true
+				return false
 			}
 
 			// Check if the ConfigMap `Data` has changed before proceeding
@@ -154,7 +153,7 @@ func GetNamespaceRSConfigMapPredicateFunc(c client.Client) predicate.Funcs {
 
 			if oldOK && newOK && reflect.DeepEqual(oldCM.Data, newCM.Data) {
 				log.Info("No changes detected in ConfigMap data, skipping update")
-				return true
+				return false
 			}
 
 			log.Info("ConfigMap data has changed, processing update")

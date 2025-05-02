@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types" // ✅ important
+	"k8s.io/apimachinery/pkg/types" //
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	policyv1 "open-cluster-management.io/governance-policy-propagator/api/v1"
@@ -22,13 +22,14 @@ func TestCreatePlacementBinding_CreatesWhenNotFound(t *testing.T) {
 	_ = policyv1.AddToScheme(scheme)
 
 	client := fake.NewClientBuilder().WithScheme(scheme).Build()
+	ctx := context.Background()
 
-	err := createPlacementBinding(context.TODO(), client)
+	err := createPlacementBinding(ctx, client)
 	assert.NoError(t, err)
 
 	// Validate that it was created
 	pb := &policyv1.PlacementBinding{}
-	err = client.Get(context.TODO(), types.NamespacedName{
+	err = client.Get(ctx, types.NamespacedName{
 		Name:      rsPlacementBindingName,
 		Namespace: rsNamespace,
 	}, pb)
@@ -42,6 +43,7 @@ func TestCreatePlacementBinding_CreatesWhenNotFound(t *testing.T) {
 func TestCreatePlacementBinding_SkipsIfAlreadyExists(t *testing.T) {
 	scheme := runtime.NewScheme()
 	_ = policyv1.AddToScheme(scheme)
+	ctx := context.Background()
 
 	existing := &policyv1.PlacementBinding{
 		ObjectMeta: metav1.ObjectMeta{
@@ -64,12 +66,12 @@ func TestCreatePlacementBinding_SkipsIfAlreadyExists(t *testing.T) {
 
 	client := fake.NewClientBuilder().WithScheme(scheme).WithObjects(existing).Build()
 
-	err := createPlacementBinding(context.TODO(), client)
+	err := createPlacementBinding(ctx, client)
 	assert.NoError(t, err)
 
 	// Ensure it hasn't changed
 	pb := &policyv1.PlacementBinding{}
-	err = client.Get(context.TODO(), types.NamespacedName{
+	err = client.Get(ctx, types.NamespacedName{
 		Name:      rsPlacementBindingName,
 		Namespace: rsNamespace,
 	}, pb)

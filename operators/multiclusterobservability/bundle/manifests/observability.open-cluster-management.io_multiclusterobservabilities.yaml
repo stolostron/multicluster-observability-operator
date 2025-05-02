@@ -10044,8 +10044,8 @@ spec:
                                 type: boolean
                               namespaceBinding:
                                 description: |-
-                                  NamespaceBinding defines where we want to create all resources under specific namespace as well as used in
-                                  PolicyBinding. If not supplied then we will use open-cluster-management-global-set.
+                                  NamespaceBinding defines the namespace where all the required resources are created.
+                                  The default namespace is `open-cluster-management-global-set
                                 type: string
                             type: object
                         type: object
