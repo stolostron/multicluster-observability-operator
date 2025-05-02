@@ -7,7 +7,6 @@ package analytics
 import (
 	"context"
 
-	"github.com/cloudflare/cfssl/log"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -52,8 +51,6 @@ func createUpdatePlacement(ctx context.Context, c client.Client, placementConfig
 		return err
 	}
 
-	log.Info("RS - Placement exists, updating", "Namespace", placement.Namespace, "Name", placement.Name)
-
 	placement.Spec = placementConfig.Spec
 
 	if err := c.Update(ctx, placement); err != nil {
@@ -61,6 +58,6 @@ func createUpdatePlacement(ctx context.Context, c client.Client, placementConfig
 		return err
 	}
 
-	log.Info("RS - Placement updated", "Placement", placement.Name)
+	log.Info("RS - Placement updated ", "Name:", placement.Name)
 	return nil
 }

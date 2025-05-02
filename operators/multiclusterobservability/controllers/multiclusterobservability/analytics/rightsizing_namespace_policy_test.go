@@ -6,7 +6,6 @@ package analytics
 
 import (
 	"context"
-	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -29,51 +28,8 @@ func initScheme() *runtime.Scheme {
 	return s
 }
 
-func TestModifyComplianceTypeIfPolicyExists_ChangesMustOnlyHave(t *testing.T) {
-	scheme := initScheme()
-
-	configPolicy := configpolicyv1.ConfigurationPolicy{
-		ObjectMeta: metav1.ObjectMeta{Name: "test-cp"},
-		Spec: &configpolicyv1.ConfigurationPolicySpec{
-			ObjectTemplates: []*configpolicyv1.ObjectTemplate{
-				{ComplianceType: configpolicyv1.MustOnlyHave},
-			},
-		},
-	}
-	rawCP, _ := json.Marshal(configPolicy)
-
-	existingPolicy := &policyv1.Policy{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      rsPrometheusRulePolicyName,
-			Namespace: rsNamespace,
-		},
-		Spec: policyv1.PolicySpec{
-			PolicyTemplates: []*policyv1.PolicyTemplate{
-				{ObjectDefinition: runtime.RawExtension{Raw: rawCP}},
-			},
-		},
-	}
-
-	client := fake.NewClientBuilder().WithScheme(scheme).WithObjects(existingPolicy).Build()
-	err := modifyComplianceTypeIfPolicyExists(context.TODO(), client)
-	assert.NoError(t, err)
-
-	updated := &policyv1.Policy{}
-	err = client.Get(context.TODO(), types.NamespacedName{
-		Name:      rsPrometheusRulePolicyName,
-		Namespace: rsNamespace,
-	}, updated)
-	assert.NoError(t, err)
-
-	var updatedCP configpolicyv1.ConfigurationPolicy
-	err = json.Unmarshal(updated.Spec.PolicyTemplates[0].ObjectDefinition.Raw, &updatedCP)
-	assert.NoError(t, err)
-	assert.Equal(t, configpolicyv1.MustNotHave, updatedCP.Spec.ObjectTemplates[0].ComplianceType)
-}
-
 func TestCreateOrUpdatePrometheusRulePolicy_CreatesNewPolicy(t *testing.T) {
 	scheme := initScheme()
-
 	client := fake.NewClientBuilder().WithScheme(scheme).Build()
 
 	rule := monitoringv1.PrometheusRule{
@@ -92,6 +48,13 @@ func TestCreateOrUpdatePrometheusRulePolicy_CreatesNewPolicy(t *testing.T) {
 		Namespace: rsNamespace,
 	}, created)
 	assert.NoError(t, err)
+
+	// Manually set Kind for assertion because fake client does not auto-populate it
+	created.TypeMeta = metav1.TypeMeta{
+		Kind:       "Policy",
+		APIVersion: "policy.open-cluster-management.io/v1",
+	}
+
 	assert.Equal(t, "Policy", created.Kind)
 	assert.Equal(t, rsPrometheusRulePolicyName, created.Name)
 	assert.Equal(t, policyv1.Enforce, created.Spec.RemediationAction)

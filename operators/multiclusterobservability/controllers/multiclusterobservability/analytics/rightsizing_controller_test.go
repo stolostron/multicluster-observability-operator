@@ -2,7 +2,7 @@
 // Copyright Contributors to the Open Cluster Management project
 // Licensed under the Apache License 2.0
 
-package analytics_test
+package analytics
 
 import (
 	"context"
@@ -16,76 +16,106 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
-	analyticsctrl "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/multiclusterobservability/analytics"
-
+	clusterv1beta1 "open-cluster-management.io/api/cluster/v1beta1"
 	policyv1 "open-cluster-management.io/governance-policy-propagator/api/v1"
 )
 
-func TestCreateRightSizingComponent_WhenEnabled(t *testing.T) {
+func setupTestScheme(t *testing.T) *runtime.Scheme {
 	scheme := runtime.NewScheme()
-	_ = corev1.AddToScheme(scheme)
-	_ = mcov1beta2.AddToScheme(scheme)
-	_ = policyv1.AddToScheme(scheme)
+	require.NoError(t, corev1.AddToScheme(scheme))
+	require.NoError(t, mcov1beta2.AddToScheme(scheme))
+	require.NoError(t, policyv1.AddToScheme(scheme))
+	require.NoError(t, clusterv1beta1.AddToScheme(scheme))
+	return scheme
+}
 
-	mco := &mcov1beta2.MultiClusterObservability{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "observability",
-		},
+func newTestMCO(binding string, enabled bool) *mcov1beta2.MultiClusterObservability {
+	return &mcov1beta2.MultiClusterObservability{
+		ObjectMeta: metav1.ObjectMeta{Name: "observability"},
 		Spec: mcov1beta2.MultiClusterObservabilitySpec{
 			Capabilities: &mcov1beta2.CapabilitiesSpec{
 				Platform: &mcov1beta2.PlatformCapabilitiesSpec{
-					Analytics: &mcov1beta2.PlatformAnalyticsSpec{
-						NamespaceRightSizingRecommendation: &mcov1beta2.NamespaceRightSizingRecommendationSpec{
-							Enabled:          true,
-							NamespaceBinding: "custom-ns",
+					Analytics: mcov1beta2.PlatformAnalyticsSpec{
+						NamespaceRightSizingRecommendation: mcov1beta2.PlatformNamespaceRightSizingRecommendationSpec{
+							Enabled:          enabled,
+							NamespaceBinding: binding,
 						},
 					},
 				},
 			},
 		},
 	}
+}
+
+func TestCreateRightSizingComponent_FeatureEnabledWithNamespaceChange(t *testing.T) {
+	scheme := setupTestScheme(t)
+
+	rsNamespace = "old-ns"
+	isEnabled = true
+
+	mco := newTestMCO("custom-ns", true)
+
+	configMap := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      rsConfigMapName,
+			Namespace: rsDefaultNamespace,
+		},
+		Data: map[string]string{
+			"config.yaml": `
+				prometheusRuleConfig:
+				namespaceFilterCriteria:
+					inclusionCriteria: ["ns1"]
+					exclusionCriteria: []
+				labelFilterCriteria: []
+				recommendationPercentage: 110
+				placementConfiguration:
+				predicates: []
+				`,
+		},
+	}
 
 	client := fake.NewClientBuilder().
 		WithScheme(scheme).
-		WithObjects(mco).
+		WithObjects(mco, configMap).
 		Build()
 
-	result, err := analyticsctrl.CreateRightSizingComponent(context.TODO(), client, scheme, mco, nil)
-
+	result, err := CreateRightSizingComponent(context.TODO(), client, mco)
 	require.NoError(t, err)
 	assert.Nil(t, result)
 }
 
-func TestCreateRightSizingComponent_WhenDisabled(t *testing.T) {
-	scheme := runtime.NewScheme()
-	_ = corev1.AddToScheme(scheme)
-	_ = mcov1beta2.AddToScheme(scheme)
-	_ = policyv1.AddToScheme(scheme)
+func TestCreateRightSizingComponent_FeatureEnabled_NoNamespaceChange(t *testing.T) {
+	scheme := setupTestScheme(t)
 
-	mco := &mcov1beta2.MultiClusterObservability{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "observability",
-		},
-		Spec: mcov1beta2.MultiClusterObservabilitySpec{
-			Capabilities: &mcov1beta2.CapabilitiesSpec{
-				Platform: &mcov1beta2.PlatformCapabilitiesSpec{
-					Analytics: &mcov1beta2.PlatformAnalyticsSpec{
-						NamespaceRightSizingRecommendation: &mcov1beta2.NamespaceRightSizingRecommendationSpec{
-							Enabled: false,
-						},
-					},
-				},
-			},
-		},
-	}
+	rsNamespace = rsDefaultNamespace
+	isEnabled = true
+
+	mco := newTestMCO(rsDefaultNamespace, true)
 
 	client := fake.NewClientBuilder().
 		WithScheme(scheme).
 		WithObjects(mco).
 		Build()
 
-	result, err := analyticsctrl.CreateRightSizingComponent(context.TODO(), client, scheme, mco, nil)
+	result, err := CreateRightSizingComponent(context.TODO(), client, mco)
+	require.NoError(t, err)
+	assert.Nil(t, result)
+}
 
+func TestCreateRightSizingComponent_FeatureDisabled(t *testing.T) {
+	scheme := setupTestScheme(t)
+
+	rsNamespace = rsDefaultNamespace
+	isEnabled = false
+
+	mco := newTestMCO("", false)
+
+	client := fake.NewClientBuilder().
+		WithScheme(scheme).
+		WithObjects(mco).
+		Build()
+
+	result, err := CreateRightSizingComponent(context.TODO(), client, mco)
 	require.NoError(t, err)
 	assert.Nil(t, result)
 }

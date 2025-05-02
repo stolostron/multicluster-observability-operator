@@ -2,56 +2,57 @@
 // Copyright Contributors to the Open Cluster Management project
 // Licensed under the Apache License 2.0
 
-package analytics_test
+package analytics
 
 import (
-	"encoding/json"
 	"testing"
 
-	analyticsctrl "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/multiclusterobservability/analytics"
 	"github.com/stretchr/testify/assert"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	clusterv1beta1 "open-cluster-management.io/api/cluster/v1beta1"
 )
 
 func TestFormatYAML_ValidData(t *testing.T) {
-	input := map[string]string{
-		"key": "value",
+	input := RSPrometheusRuleConfig{
+		NamespaceFilterCriteria: struct {
+			InclusionCriteria []string `yaml:"inclusionCriteria"`
+			ExclusionCriteria []string `yaml:"exclusionCriteria"`
+		}{
+			InclusionCriteria: []string{"ns1", "ns2"},
+			ExclusionCriteria: []string{"ns3"},
+		},
+		LabelFilterCriteria:      []RSLabelFilter{},
+		RecommendationPercentage: 80,
 	}
-	output := analyticsctrl.FormatYAML(input)
-	assert.Contains(t, output, "key: value")
+
+	output := FormatYAML(input)
+	assert.Contains(t, output, "inclusionCriteria:")
+	assert.Contains(t, output, "recommendationPercentage: 80")
 }
 
-func TestFormatYAML_InvalidData(t *testing.T) {
-	// YAML marshaling will fail on channels or functions
-	input := make(chan int)
-	output := analyticsctrl.FormatYAML(input)
-	assert.Equal(t, "", output) // Should return empty string if marshal fails
-}
+func TestFormatYAML_WithPlacement(t *testing.T) {
 
-func TestAddAPIVersionAndKind_Success(t *testing.T) {
-	obj := map[string]interface{}{
-		"name": "test",
+	labelSelector := metav1.LabelSelector{
+		MatchLabels: map[string]string{
+			"environment": "prod",
+		},
 	}
-	version := "v1"
-	kind := "TestKind"
 
-	result, err := analyticsctrl.AddAPIVersionAndKind(obj, version, kind)
-	assert.NoError(t, err)
-
-	var out map[string]interface{}
-	err = json.Unmarshal(result, &out)
-	assert.NoError(t, err)
-	assert.Equal(t, version, out["apiVersion"])
-	assert.Equal(t, kind, out["kind"])
-	assert.Equal(t, "test", out["name"])
-}
-
-func TestAddAPIVersionAndKind_InvalidInput(t *testing.T) {
-	// Non-marshallable struct (e.g., with a channel field)
-	type badType struct {
-		Ch chan int
+	placement := clusterv1beta1.Placement{
+		Spec: clusterv1beta1.PlacementSpec{
+			Predicates: []clusterv1beta1.ClusterPredicate{
+				{
+					RequiredClusterSelector: clusterv1beta1.ClusterSelector{
+						LabelSelector: labelSelector,
+					},
+				},
+			},
+		},
 	}
-	obj := badType{Ch: make(chan int)}
 
-	_, err := analyticsctrl.AddAPIVersionAndKind(obj, "v1", "BadKind")
-	assert.Error(t, err)
+	output := FormatYAML(placement)
+	assert.Contains(t, output, "predicates:")
+	assert.Contains(t, output, "labelselector:")
+	assert.Contains(t, output, "matchlabels:")
+	assert.Contains(t, output, "environment: prod")
 }
