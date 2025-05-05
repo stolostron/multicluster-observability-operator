@@ -94,6 +94,10 @@ func ListManagedClusters(opt TestOptions) ([]string, error) {
 
 		// Only add clusters with ManagedClusterConditionAvailable status == True
 		if available {
+			labels, _ := metadata["labels"].(map[string]interface{})
+			if labels["local-cluster"] == "true" {
+				name = "local-cluster"
+			}
 			clusterNames = append(clusterNames, name)
 		}
 	}

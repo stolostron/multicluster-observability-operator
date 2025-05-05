@@ -37,7 +37,7 @@ else
 fi
 
 kubecontext=$(kubectl config current-context)
-cluster_name="local-cluster"
+cluster_name="hub-cluster"
 
 if [[ -n ${IS_KIND_ENV} ]]; then
   clusterServerURL="https://127.0.0.1:32806"
