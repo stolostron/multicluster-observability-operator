@@ -30,7 +30,7 @@
       verbs: ["update", "patch"]
     - apiGroups: ["addon.open-cluster-management.io"]
       resources: ["clustermanagementaddons"]
-      verbs: ["get", "list", "watch"]
+      verbs: ["get", "list", "watch", "update", "patch"]
     - apiGroups: ["addon.open-cluster-management.io"]
       resources: ["managedclusteraddons"]
       verbs: ["get", "list", "watch", "create", "update", "delete"]
