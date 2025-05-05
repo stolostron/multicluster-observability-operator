@@ -40,7 +40,7 @@ var (
 
 	testFailed                   = false
 	hubMetricsCollectorNamespace = "open-cluster-management-observability"
-	hubManagedClusterName        = "local-cluster"
+	hubManagedClusterName        = "hub-cluster"
 	namespace                    = MCO_ADDON_NAMESPACE
 	isHub                        = false
 )
