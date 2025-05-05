@@ -52,7 +52,7 @@ func LogFailingTestStandardDebugInfo(opt TestOptions) {
 	LogManagedClusters(hubDynClient)
 
 	for _, mc := range opt.ManagedClusters {
-		if mc.Name == "local-cluster" {
+		if mc.Name == HubManagedClusterName {
 			// Skip local-cluster as same namespace as hub, and already checked
 			continue
 		}
