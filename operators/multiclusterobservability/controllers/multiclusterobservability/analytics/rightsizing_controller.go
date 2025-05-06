@@ -9,9 +9,10 @@ import (
 
 	"github.com/cloudflare/cfssl/log"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clusterv1beta1 "open-cluster-management.io/api/cluster/v1beta1"
-
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -29,9 +30,7 @@ const (
 	rsDefaultRecommendationPercentage = 110
 )
 
-var (
-	rsNamespace = rsDefaultNamespace
-)
+var rsNamespace = rsDefaultNamespace
 
 type RSLabelFilter struct {
 	LabelName         string   `yaml:"labelName"`
@@ -53,43 +52,60 @@ type RSNamespaceConfigMapData struct {
 	PlacementConfiguration clusterv1beta1.Placement `yaml:"placementConfiguration"`
 }
 
-// CreateRightSizingComponent is used to enable the right sizing recommendation
 func CreateRightSizingComponent(
 	ctx context.Context,
 	c client.Client,
 	scheme *runtime.Scheme,
 	mco *mcov1beta2.MultiClusterObservability,
-	mgr ctrl.Manager) (*ctrl.Result, error) {
-
+	mgr ctrl.Manager,
+) (*ctrl.Result, error) {
 	log.Info("RS - Inside CreateRightSizingComponent")
 
-	// Check if the analytics right-sizing namespace recommendation configuration is enabled
-	if isRightSizingNamespaceEnabled(mco) {
-
-		if mco.Spec.Capabilities.Platform.Analytics.NamespaceRightSizingRecommendation.NamespaceBinding != "" {
-			rsNamespace = mco.Spec.Capabilities.Platform.Analytics.NamespaceRightSizingRecommendation.NamespaceBinding
+	if !isRightSizingNamespaceEnabled(mco) {
+		if err := modifyComplianceTypeIfPolicyExists(ctx, c); err != nil {
+			return nil, err
 		}
-
-		// Call the function to ensure the ConfigMap exists
-		err := EnsureRSNamespaceConfigMapExists(ctx, c)
-		if err != nil {
-			return &ctrl.Result{}, err
-		}
-
-		log.Info("RS - Analytics.NamespaceRightSizing resource creation completed")
-	} else {
-
-		// Change ComplianceType to "MustNotHave" for PrometheusRule deletion
-		// As deleting Policy doesn't explicitly delete related PrometheusRule
-		err := modifyComplianceTypeIfPolicyExists(ctx, c)
-		if err != nil {
-			return &ctrl.Result{}, err
-		}
-
-		// Cleanup created resources if available
-		cleanupRSNamespaceResources(ctx, c, rsNamespace)
+		cleanupRSNamespaceResources(ctx, c, rsNamespace, false)
+		log.Info("RS - CreateRightSizingComponent task completed")
+		return nil, nil
 	}
 
+	// Check if NamespaceBinding has been updated or not
+	newBinding := mco.Spec.Capabilities.Platform.Analytics.NamespaceRightSizingRecommendation.NamespaceBinding
+	namespaceBindingUpdated := newBinding != "" && rsNamespace != newBinding
+
+	// Clean up resources except config map to update NamespaceBinding
+	if namespaceBindingUpdated {
+		cleanupRSNamespaceResources(ctx, c, rsNamespace, true)
+		rsNamespace = newBinding
+	}
+
+	log.Info("RS - Ensuring ConfigMap", "Name", rsConfigMapName, "Namespace", rsNamespace)
+	if err := EnsureRSNamespaceConfigMapExists(ctx, c); err != nil {
+		return nil, err
+	}
+
+	if namespaceBindingUpdated {
+		// If NamespaceBinding has been updated apply the Policy Placement Placementbinding again
+		cm := &corev1.ConfigMap{}
+		if err := c.Get(ctx, client.ObjectKey{Name: rsConfigMapName, Namespace: config.GetDefaultNamespace()}, cm); err != nil {
+			log.Error(err, "Failed to get RS ConfigMap")
+			return nil, err
+		}
+
+		configData, err := GetRightSizingConfigData(cm)
+		if err != nil {
+			log.Error(err, "Failed to extract RightSizingConfigData")
+			return nil, err
+		}
+
+		if err := applyRSNamespaceConfigMapChanges(ctx, c, configData); err != nil {
+			log.Error(err, "Failed to apply RS Namespace ConfigMap Changes")
+			return nil, err
+		}
+	}
+
+	log.Info("RS - Analytics.NamespaceRightSizing resource creation completed")
 	log.Info("RS - CreateRightSizingComponent task completed")
 	return nil, nil
 }
