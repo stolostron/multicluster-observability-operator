@@ -180,6 +180,18 @@ func installMCO() {
 		fmt.Fprintf(GinkgoWriter, "[DEBUG] Addon failed, checking pods:\n")
 		utils.LogFailingTestStandardDebugInfo(testOptions)
 	}()
+	By("Rename local cluster to a new name")
+	Eventually(func() error {
+		err = utils.RenameLocalCluster(testOptions)
+		if err != nil {
+			testFailed = true
+			obaTestFailed = true
+			return err
+		}
+		testFailed = false
+		obaTestFailed = false
+		return nil
+	}())
 	By("Check endpoint-operator and metrics-collector pods are ready")
 	Eventually(func() error {
 		err = utils.CheckAllOBAsEnabled(testOptions)

@@ -94,10 +94,6 @@ func ListManagedClusters(opt TestOptions) ([]string, error) {
 
 		// Only add clusters with ManagedClusterConditionAvailable status == True
 		if available {
-			labels, _ := metadata["labels"].(map[string]interface{})
-			if labels["local-cluster"] == "true" {
-				name = "local-cluster"
-			}
 			clusterNames = append(clusterNames, name)
 		}
 	}
@@ -182,4 +178,25 @@ func GetManagedClusters(opt TestOptions) ([]*clusterv1.ManagedCluster, error) {
 	}
 
 	return ret, nil
+}
+
+func RenameLocalCluster(opt TestOptions) error {
+	dynClient := NewKubeClientDynamic(
+		opt.HubCluster.ClusterServerURL,
+		opt.KubeConfig,
+		opt.HubCluster.KubeContext)
+
+	cluster, err := dynClient.Resource(NewOCMManagedClustersGVR()).
+		Get(context.TODO(), "local-cluster", metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+
+	cluster.Object["metadata"].(map[string]interface{})["name"] = HubManagedClusterName
+	_, err = dynClient.Resource(NewOCMManagedClustersGVR()).
+		Update(context.TODO(), cluster, metav1.UpdateOptions{})
+	if err != nil {
+		return err
+	}
+	return nil
 }

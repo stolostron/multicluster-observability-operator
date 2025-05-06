@@ -46,7 +46,6 @@ import (
 
 const (
 	workNameSuffix            = "-observability"
-	localClusterName          = "local-cluster"
 	workPostponeDeleteAnnoKey = "open-cluster-management/postpone-delete"
 )
 
@@ -275,7 +274,7 @@ func generateGlobalManifestResources(ctx context.Context, c client.Client, mco *
 func createManifestWorks(
 	c client.Client,
 	clusterNamespace string,
-	clusterName string,
+	cluster managedClusterInfo,
 	mco *mcov1beta2.MultiClusterObservability,
 	works []workv1.Manifest,
 	allowlist *corev1.ConfigMap,
@@ -300,13 +299,13 @@ func createManifestWorks(
 	manifests = append(manifests, works...)
 	manifests = injectIntoWork(manifests, allowlist)
 
-	if clusterName != localClusterName {
+	if !cluster.isLocalCluster {
 		manifests = append(manifests, *crdWork)
 	}
 
 	// replace the managedcluster image with the custom registry
 	managedClusterImageRegistryMutex.RLock()
-	_, hasCustomRegistry := managedClusterImageRegistry[clusterName]
+	_, hasCustomRegistry := managedClusterImageRegistry[cluster.Name]
 	managedClusterImageRegistryMutex.RUnlock()
 	imageRegistryClient := NewImageRegistryClient(c)
 
@@ -316,7 +315,7 @@ func createManifestWorks(
 	if addonConfig.Spec.NodePlacement != nil {
 		spec.NodeSelector = addonConfig.Spec.NodePlacement.NodeSelector
 		spec.Tolerations = addonConfig.Spec.NodePlacement.Tolerations
-	} else if clusterName == localClusterName {
+	} else if cluster.isLocalCluster {
 		spec.NodeSelector = mco.Spec.NodeSelector
 		spec.Tolerations = mco.Spec.Tolerations
 	} else {
@@ -336,7 +335,7 @@ func createManifestWorks(
 				}
 			}
 			// If ProxyConfig is specified as part of addonConfig, set the proxy envs
-			if clusterName != localClusterName {
+			if !cluster.isLocalCluster {
 				for i := range spec.Containers {
 					container := &spec.Containers[i]
 					if addonConfig.Spec.ProxyConfig.HTTPProxy != "" {
@@ -370,8 +369,8 @@ func createManifestWorks(
 
 			if hasCustomRegistry {
 				oldImage := container.Image
-				newImage, err := imageRegistryClient.Cluster(clusterName).ImageOverride(oldImage)
-				log.Info("Replace the endpoint operator image", "cluster", clusterName, "newImage", newImage)
+				newImage, err := imageRegistryClient.Cluster(cluster.Name).ImageOverride(oldImage)
+				log.Info("Replace the endpoint operator image", "cluster", cluster.Name, "newImage", newImage)
 				if err == nil {
 					spec.Containers[i].Image = newImage
 				}
@@ -391,10 +390,10 @@ func createManifestWorks(
 		}
 	}
 
-	log.Info(fmt.Sprintf("Cluster: %+v, Spec.NodeSelector (after): %+v", clusterName, spec.NodeSelector))
-	log.Info(fmt.Sprintf("Cluster: %+v, Spec.Tolerations (after): %+v", clusterName, spec.Tolerations))
+	log.Info(fmt.Sprintf("Cluster: %+v, Spec.NodeSelector (after): %+v", cluster.Name, spec.NodeSelector))
+	log.Info(fmt.Sprintf("Cluster: %+v, Spec.Tolerations (after): %+v", cluster.Name, spec.Tolerations))
 
-	if clusterName == localClusterName {
+	if cluster.isLocalCluster {
 		spec.Volumes = []corev1.Volume{}
 		spec.Containers[0].VolumeMounts = []corev1.VolumeMount{}
 		for i, env := range spec.Containers[0].Env {
@@ -415,8 +414,8 @@ func createManifestWorks(
 	manifests = injectIntoWork(manifests, endpointMetricsOperatorDeployCopy)
 	// replace the pull secret and addon components image
 	if hasCustomRegistry {
-		log.Info("Replace the default pull secret to custom pull secret", "cluster", clusterName)
-		customPullSecret, err := imageRegistryClient.Cluster(clusterName).PullSecret()
+		log.Info("Replace the default pull secret to custom pull secret", "cluster", cluster.Name)
+		customPullSecret, err := imageRegistryClient.Cluster(cluster.Name).PullSecret()
 		if err == nil && customPullSecret != nil {
 			customPullSecret.ResourceVersion = ""
 			customPullSecret.Name = config.GetImagePullSecret(mco.Spec)
@@ -424,11 +423,11 @@ func createManifestWorks(
 			manifests = injectIntoWork(manifests, customPullSecret)
 		}
 
-		log.Info("Replace the image list configmap with custom image", "cluster", clusterName)
+		log.Info("Replace the image list configmap with custom image", "cluster", cluster.Name)
 		newImageListCM := imageListConfigMap.DeepCopy()
 		images := newImageListCM.Data
 		for key, oldImage := range images {
-			newImage, err := imageRegistryClient.Cluster(clusterName).ImageOverride(oldImage)
+			newImage, err := imageRegistryClient.Cluster(cluster.Name).ImageOverride(oldImage)
 			if err == nil {
 				newImageListCM.Data[key] = newImage
 			}
@@ -445,7 +444,7 @@ func createManifestWorks(
 	}
 
 	// inject the hub info secret
-	hubInfo.Data[operatorconfig.ClusterNameKey] = []byte(clusterName)
+	hubInfo.Data[operatorconfig.ClusterNameKey] = []byte(cluster.Name)
 	manifests = injectIntoWork(manifests, hubInfo)
 
 	work.Spec.Workload.Manifests = manifests

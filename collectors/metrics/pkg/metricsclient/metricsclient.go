@@ -244,43 +244,6 @@ func (c *Client) Retrieve(ctx context.Context, req *http.Request) ([]*clientmode
 	return families, nil
 }
 
-// // TODO(saswatamcode): This is no longer used, remove it in the future.
-func Read(r io.Reader) ([]*clientmodel.MetricFamily, error) {
-	decompress := snappy.NewReader(r)
-	decoder := expfmt.NewDecoder(decompress, expfmt.NewFormat(expfmt.TypeProtoDelim))
-	families := make([]*clientmodel.MetricFamily, 0, 100)
-	for {
-		family := &clientmodel.MetricFamily{}
-		if err := decoder.Decode(family); err != nil {
-			if err == io.EOF {
-				break
-			}
-			return nil, err
-		}
-		families = append(families, family)
-	}
-	return families, nil
-}
-
-// TODO(saswatamcode): This is no longer used, remove it in the future.
-func Write(w io.Writer, families []*clientmodel.MetricFamily) error {
-	// output the filtered set
-	compress := snappy.NewBufferedWriter(w)
-	encoder := expfmt.NewEncoder(compress, expfmt.NewFormat(expfmt.TypeProtoDelim))
-	for _, family := range families {
-		if family == nil {
-			continue
-		}
-		if err := encoder.Encode(family); err != nil {
-			return err
-		}
-	}
-	if err := compress.Flush(); err != nil {
-		return err
-	}
-	return nil
-}
-
 func withCancel(ctx context.Context, client *http.Client, req *http.Request, fn func(*http.Response) error) error {
 	resp, err := client.Do(req)
 	// TODO(saswatamcode): Check error.
