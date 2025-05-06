@@ -186,16 +186,6 @@ func (r *MCORenderer) renderClusterManagementAddOn(
 				{
 					ConfigGroupResource: addonapiv1alpha1.ConfigGroupResource{
 						Group:    prometheusalpha1.SchemeGroupVersion.Group,
-						Resource: prometheusalpha1.PrometheusAgentName,
-					},
-					ConfigReferent: addonapiv1alpha1.ConfigReferent{
-						Name:      "acm-platform-metrics-collector-default",
-						Namespace: mcoconfig.GetDefaultNamespace(),
-					},
-				},
-				{
-					ConfigGroupResource: addonapiv1alpha1.ConfigGroupResource{
-						Group:    prometheusalpha1.SchemeGroupVersion.Group,
 						Resource: prometheusalpha1.ScrapeConfigName,
 					},
 					ConfigReferent: addonapiv1alpha1.ConfigReferent{
@@ -248,16 +238,6 @@ func (r *MCORenderer) renderClusterManagementAddOn(
 
 		if r.cr.Spec.Capabilities.UserWorkloads != nil && r.cr.Spec.Capabilities.UserWorkloads.Metrics.Collection.Enabled {
 			globalConfigs = append(globalConfigs, []addonapiv1alpha1.AddOnConfig{
-				{
-					ConfigGroupResource: addonapiv1alpha1.ConfigGroupResource{
-						Group:    prometheusalpha1.SchemeGroupVersion.Group,
-						Resource: prometheusalpha1.PrometheusAgentName,
-					},
-					ConfigReferent: addonapiv1alpha1.ConfigReferent{
-						Name:      "acm-user-workload-metrics-collector-default",
-						Namespace: mcoconfig.GetDefaultNamespace(),
-					},
-				},
 				// HCPs configurations for etcd
 				{
 					ConfigGroupResource: addonapiv1alpha1.ConfigGroupResource{
