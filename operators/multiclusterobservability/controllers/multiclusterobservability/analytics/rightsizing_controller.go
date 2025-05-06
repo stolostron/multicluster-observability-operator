@@ -70,23 +70,24 @@ func CreateRightSizingComponent(
 		return nil, nil
 	}
 
-	// Check if NamespaceBinding has been updated or not
+	// Check if NamespaceBinding has been updated or not if not available set to default
 	newBinding := mco.Spec.Capabilities.Platform.Analytics.NamespaceRightSizingRecommendation.NamespaceBinding
-	namespaceBindingUpdated := newBinding != "" && rsNamespace != newBinding
-
-	// Clean up resources except config map to update NamespaceBinding
-	if namespaceBindingUpdated {
-		cleanupRSNamespaceResources(ctx, c, rsNamespace, true)
-		rsNamespace = newBinding
+	if newBinding == "" {
+		newBinding = rsDefaultNamespace
 	}
+	namespaceBindingUpdated := rsNamespace != newBinding
 
-	log.Info("RS - Ensuring ConfigMap", "Name", rsConfigMapName, "Namespace", rsNamespace)
 	if err := EnsureRSNamespaceConfigMapExists(ctx, c); err != nil {
 		return nil, err
 	}
 
 	if namespaceBindingUpdated {
-		// If NamespaceBinding has been updated apply the Policy Placement Placementbinding again
+		// Clean up resources except config map to update NamespaceBinding
+		cleanupRSNamespaceResources(ctx, c, rsNamespace, true)
+
+		// update with new NamespaceBinding
+		rsNamespace = newBinding
+
 		cm := &corev1.ConfigMap{}
 		if err := c.Get(ctx, client.ObjectKey{Name: rsConfigMapName, Namespace: config.GetDefaultNamespace()}, cm); err != nil {
 			log.Error(err, "Failed to get RS ConfigMap")
@@ -99,6 +100,7 @@ func CreateRightSizingComponent(
 			return nil, err
 		}
 
+		// If NamespaceBinding has been updated apply the Policy Placement Placementbinding again
 		if err := applyRSNamespaceConfigMapChanges(ctx, c, configData); err != nil {
 			log.Error(err, "Failed to apply RS Namespace ConfigMap Changes")
 			return nil, err
