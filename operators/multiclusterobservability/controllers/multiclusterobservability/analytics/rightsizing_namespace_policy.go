@@ -7,7 +7,6 @@ package analytics
 import (
 	"context"
 	"encoding/json"
-	"time"
 
 	"github.com/cloudflare/cfssl/log"
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
@@ -19,67 +18,6 @@ import (
 	policyv1 "open-cluster-management.io/governance-policy-propagator/api/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
-
-func modifyComplianceTypeIfPolicyExists(ctx context.Context, c client.Client) error {
-	policy := &policyv1.Policy{}
-	err := c.Get(ctx, types.NamespacedName{
-		Name:      rsPrometheusRulePolicyName,
-		Namespace: rsNamespace,
-	}, policy)
-
-	if err != nil {
-		if errors.IsNotFound(err) {
-			log.Info("Policy does not exist. Skipping update.")
-			return nil
-		}
-		log.Error(err, "Error retrieving the policy")
-		return err
-	}
-
-	// Unmarshal the inner ConfigurationPolicy
-	for _, pt := range policy.Spec.PolicyTemplates {
-		var configPolicy configpolicyv1.ConfigurationPolicy
-		err := json.Unmarshal(pt.ObjectDefinition.Raw, &configPolicy)
-		if err != nil {
-			log.Error(err, "Failed to unmarshal ConfigurationPolicy from PolicyTemplate")
-			return err
-		}
-
-		// Change ComplianceType if it's "MustOnlyHave"
-		changed := false
-		for _, objTemplate := range configPolicy.Spec.ObjectTemplates {
-			if objTemplate.ComplianceType == configpolicyv1.MustOnlyHave {
-				objTemplate.ComplianceType = configpolicyv1.MustNotHave
-				changed = true
-			}
-		}
-
-		if changed {
-			// Marshal the modified ConfigurationPolicy back into JSON
-			modifiedRaw, err := json.Marshal(configPolicy)
-			if err != nil {
-				log.Error(err, "Failed to marshal modified ConfigurationPolicy")
-				return err
-			}
-
-			pt.ObjectDefinition = runtime.RawExtension{Raw: modifiedRaw}
-		}
-	}
-
-	// Update the modified policy
-	err = c.Update(ctx, policy)
-	if err != nil {
-		log.Error(err, "Failed to update the modified policy")
-		return err
-	}
-
-	log.Info("Successfully updated ComplianceType in policy")
-
-	// Wait for 5 seconds
-	time.Sleep(5 * time.Second)
-
-	return nil
-}
 
 // Helps in creating or updating existing Policy for the PrometheusRule
 func createOrUpdatePrometheusRulePolicy(
@@ -132,8 +70,9 @@ func createOrUpdatePrometheusRulePolicy(
 			Name: rsPrometheusRulePolicyConfigName,
 		},
 		Spec: &configpolicyv1.ConfigurationPolicySpec{
-			RemediationAction: configpolicyv1.Inform,
-			Severity:          "low",
+			RemediationAction:   configpolicyv1.Inform,
+			Severity:            "low",
+			PruneObjectBehavior: configpolicyv1.PruneObjectBehavior("DeleteAll"),
 			NamespaceSelector: configpolicyv1.Target{
 				Include: []configpolicyv1.NonEmptyString{
 					configpolicyv1.NonEmptyString(rsMonitoringNamespace),
@@ -190,7 +129,7 @@ func createOrUpdatePrometheusRulePolicy(
 			log.Error(err, "Failed to update PrometheusRulePolicy")
 			return err
 		}
-		log.Info("RS - PrometheusRulePolicy updated successfully", logSuffixNameAndNamespace)
+		log.Info("RS - PrometheusRulePolicy updated successfully ", logSuffixNameAndNamespace)
 
 	}
 

@@ -62,11 +62,8 @@ func CreateRightSizingComponent(
 	log.Info("RS - Inside CreateRightSizingComponent")
 
 	if !isRightSizingNamespaceEnabled(mco) {
-		if err := modifyComplianceTypeIfPolicyExists(ctx, c); err != nil {
-			return nil, err
-		}
+		log.Info("RS - NamespaceRightSizing feature not enabled")
 		cleanupRSNamespaceResources(ctx, c, rsNamespace, false)
-		log.Info("RS - CreateRightSizingComponent task completed")
 		return nil, nil
 	}
 
@@ -75,25 +72,31 @@ func CreateRightSizingComponent(
 	if newBinding == "" {
 		newBinding = rsDefaultNamespace
 	}
+
+	// Set the flag if namespaceBindingUpdated
 	namespaceBindingUpdated := rsNamespace != newBinding
 
+	// Retrieve the existing namespace as existingNamespace and update the new namespace in rsNamespace
+	existingNamespace := rsNamespace
+	rsNamespace = newBinding
+
+	// Creating configmap with default values
 	if err := EnsureRSNamespaceConfigMapExists(ctx, c); err != nil {
 		return nil, err
 	}
 
 	if namespaceBindingUpdated {
 		// Clean up resources except config map to update NamespaceBinding
-		cleanupRSNamespaceResources(ctx, c, rsNamespace, true)
+		cleanupRSNamespaceResources(ctx, c, existingNamespace, true)
 
-		// update with new NamespaceBinding
-		rsNamespace = newBinding
-
+		// Get configmap
 		cm := &corev1.ConfigMap{}
 		if err := c.Get(ctx, client.ObjectKey{Name: rsConfigMapName, Namespace: config.GetDefaultNamespace()}, cm); err != nil {
 			log.Error(err, "Failed to get RS ConfigMap")
 			return nil, err
 		}
 
+		// Get configmap data into specified structure
 		configData, err := GetRightSizingConfigData(cm)
 		if err != nil {
 			log.Error(err, "Failed to extract RightSizingConfigData")
@@ -107,7 +110,6 @@ func CreateRightSizingComponent(
 		}
 	}
 
-	log.Info("RS - Analytics.NamespaceRightSizing resource creation completed")
 	log.Info("RS - CreateRightSizingComponent task completed")
 	return nil, nil
 }
