@@ -49,6 +49,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
+	analyticsctrl "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/multiclusterobservability/analytics"
 	placementctrl "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/placementrule"
 	certctrl "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/certificates"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
@@ -398,6 +399,12 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		}
 	}
 
+	// create rightsizing component
+	result, err = analyticsctrl.CreateRightSizingComponent(ctx, r.Client, r.Scheme, instance, r.Manager)
+	if result != nil {
+		return *result, err
+	}
+
 	if _, ok := os.LookupEnv("UNIT_TEST"); !ok && !isLegacyResourceRemoved {
 		// Delete PrometheusRule from openshift-monitoring namespace
 		if err := r.deleteSpecificPrometheusRule(ctx); err != nil {
@@ -490,6 +497,7 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 
 	mcoPred := GetMCOPredicateFunc()
 	cmPred := GetConfigMapPredicateFunc()
+	cmNamespaceRSPred := analyticsctrl.GetNamespaceRSConfigMapPredicateFunc(c)
 	secretPred := GetAlertManagerSecretPredicateFunc()
 	namespacePred := GetNamespacePredicateFunc()
 	mcoaCRDPred := GetMCOACRDPredicateFunc()
@@ -513,8 +521,8 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 		Owns(&addonv1alpha1.AddOnDeploymentConfig{}).
 		// Watch for changes to secondary ClusterManagementAddOn CR and requeue the owner MultiClusterObservability
 		Owns(&addonv1alpha1.ClusterManagementAddOn{}).
-		// Watch the configmap for thanos-ruler-custom-rules update
-		Watches(&corev1.ConfigMap{}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(cmPred)).
+		// Watch the configmap for thanos-ruler-custom-rules and rightsizing recommendation update
+		Watches(&corev1.ConfigMap{}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(cmNamespaceRSPred, cmPred)).
 		// Watch the secret for deleting event of alertmanager-config
 		Watches(&corev1.Secret{}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(secretPred)).
 		// Watch the namespace for changes

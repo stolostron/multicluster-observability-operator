@@ -132,6 +132,12 @@ type PlatformAnalyticsSpec struct {
 	// +optional
 	// +kubebuilder:validation:Optional
 	IncidentDetection PlatformIncidentDetectionSpec `json:"incidentDetection,omitempty"`
+
+	// Feature to enable namespace right-sizing recommendation capabilities for the Analytics.
+	//
+	// +optional
+	// +kubebuilder:validation:Optional
+	NamespaceRightSizingRecommendation NamespaceRightSizingRecommendationSpec `json:"namespaceRightSizingRecommendation,omitempty"`
 }
 
 type PlatformIncidentDetectionSpec struct {
@@ -140,6 +146,24 @@ type PlatformIncidentDetectionSpec struct {
 	// +optional
 	// +kubebuilder:validation:Optional
 	Enabled bool `json:"enabled,omitempty"`
+}
+
+// NamespaceRightSizingSpec defines the namespace right sizing capabilities.
+// +kubebuilder:object:generate=true
+// +kubebuilder:validation:Type=object
+type NamespaceRightSizingRecommendationSpec struct {
+	// Enabled defines a flag to enable/disable the namespace right-sizing feature for the Analytics.
+	//
+	// +optional
+	// +kubebuilder:validation:Optional
+	Enabled bool `json:"enabled,omitempty"`
+
+	// NamespaceBinding defines where we want to create all resources under specific namespace as well as used in
+	// PolicyBinding. If not supplied then we will use open-cluster-management-global-set.
+	//
+	// +optional
+	// +kubebuilder:validation:Optional
+	NamespaceBinding string `json:"namespaceBinding,omitempty"`
 }
 
 // ClusterLogForwarderSpec defines the spec for the addon to collect and forward logs
