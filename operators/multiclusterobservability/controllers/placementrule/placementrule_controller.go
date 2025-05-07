@@ -506,7 +506,7 @@ func createAllRelatedRes(
 			log.Error(err, "Failed to create managedcluster resources", "namespace", managedCluster)
 			continue
 		}
-		manifestWork, err := createManifestWorks(c, namespace, managedCluster, mco, works, metricsAllowlistConfigMap, crdv1Work, endpointMetricsOperatorDeploy, hubInfoSecret.DeepCopy(), addonDeployCfg, installProm)
+		manifestWork, err := createManifestWorks(c, namespace, mci, mco, works, metricsAllowlistConfigMap, crdv1Work, endpointMetricsOperatorDeploy, hubInfoSecret.DeepCopy(), addonDeployCfg, installProm)
 		if err != nil {
 			log.Error(err, "Failed to create manifestworks: %w", err)
 			continue
@@ -729,6 +729,7 @@ func areManagedClusterLabelsReady(obj client.Object) bool {
 type managedClusterInfo struct {
 	Name             string
 	OpenshiftVersion string
+	isLocalCluster   bool
 }
 
 // getManagedClustersList returns the list of managed clusters info,
@@ -745,8 +746,9 @@ func getManagedClustersList(ctx context.Context, c client.Client) ([]managedClus
 	for _, mc := range managedClustersList.Items {
 		if mc.Labels["local-cluster"] == "true" && !appended {
 			ret = append(ret, managedClusterInfo{
-				Name:             localClusterName,
+				Name:             mc.GetName(),
 				OpenshiftVersion: "mimical",
+				isLocalCluster:   true,
 			})
 			appended = true
 			continue
@@ -765,6 +767,7 @@ func getManagedClustersList(ctx context.Context, c client.Client) ([]managedClus
 		ret = append(ret, managedClusterInfo{
 			Name:             mc.GetName(),
 			OpenshiftVersion: openshiftVersion,
+			isLocalCluster:   false,
 		})
 	}
 
@@ -810,7 +813,6 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 			if e.ObjectNew.GetName() == obsAddonName &&
 				e.ObjectNew.GetLabels()[ownerLabelKey] == ownerLabelValue &&
-				e.ObjectNew.GetNamespace() != localClusterName &&
 				(!equalStatus || !equalSpec || !equalAnnotations) {
 				return true
 			}
@@ -818,8 +820,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
 			if e.Object.GetName() == obsAddonName &&
-				e.Object.GetLabels()[ownerLabelKey] == ownerLabelValue &&
-				e.Object.GetNamespace() != localClusterName {
+				e.Object.GetLabels()[ownerLabelKey] == ownerLabelValue {
 				log.Info(
 					"DeleteFunc",
 					"obsAddonNamespace",

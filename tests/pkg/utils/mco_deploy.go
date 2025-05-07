@@ -25,17 +25,15 @@ import (
 )
 
 const (
-	MCO_CR_NAME                   = "observability"
-	MCO_COMPONENT_LABEL           = "observability.open-cluster-management.io/name=" + MCO_CR_NAME
-	OBSERVATORIUM_COMPONENT_LABEL = "app.kubernetes.io/part-of=observatorium"
-	MCO_NAMESPACE                 = "open-cluster-management-observability"
-	MCO_ADDON_NAMESPACE           = "open-cluster-management-addon-observability"
-	MCO_PULL_SECRET_NAME          = "multiclusterhub-operator-pull-secret"
-	OBJ_SECRET_NAME               = "thanos-object-storage" // #nosec G101 -- Not a hardcoded credential.
-	MCO_GROUP                     = "observability.open-cluster-management.io"
-	OCM_WORK_GROUP                = "work.open-cluster-management.io"
-	OCM_CLUSTER_GROUP             = "cluster.open-cluster-management.io"
-	OCM_ADDON_GROUP               = "addon.open-cluster-management.io"
+	MCO_CR_NAME           = "observability"
+	MCO_NAMESPACE         = "open-cluster-management-observability"
+	MCO_ADDON_NAMESPACE   = "open-cluster-management-addon-observability"
+	OBJ_SECRET_NAME       = "thanos-object-storage" // #nosec G101 -- Not a hardcoded credential.
+	MCO_GROUP             = "observability.open-cluster-management.io"
+	OCM_WORK_GROUP        = "work.open-cluster-management.io"
+	OCM_CLUSTER_GROUP     = "cluster.open-cluster-management.io"
+	OCM_ADDON_GROUP       = "addon.open-cluster-management.io"
+	HubManagedClusterName = "hub-cluster"
 )
 
 func NewMCOGVRV1BETA2() schema.GroupVersionResource {
