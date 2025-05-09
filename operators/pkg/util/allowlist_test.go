@@ -104,22 +104,19 @@ names:
 
 func TestMergeAllowList(t *testing.T) {
 	c := fake.NewClientBuilder().WithRuntimeObjects(getAllowlistCM(), geCustomAllowlistCM()).Build()
-	allowlist, ocp3Allowlist, uwlAllowlist, err := GetAllowList(c, operatorconfig.AllowlistConfigMapName,
+	allowlist, uwlAllowlist, err := GetAllowList(c, operatorconfig.AllowlistConfigMapName,
 		config.GetDefaultNamespace())
 	if err != nil {
 		t.Errorf("Failed to get allowlist: (%v)", err)
 	}
-	customAllowlist, _, customUwlAllowlist, err := GetAllowList(c, operatorconfig.AllowlistCustomConfigMapName,
+	customAllowlist, customUwlAllowlist, err := GetAllowList(c, operatorconfig.AllowlistCustomConfigMapName,
 		config.GetDefaultNamespace())
 	if err != nil {
 		t.Errorf("Failed to get allowlist: (%v)", err)
 	}
-	list, ocp3List, uwlList := MergeAllowlist(allowlist, customAllowlist, ocp3Allowlist,
+	list, uwlList := MergeAllowlist(allowlist, customAllowlist,
 		uwlAllowlist, customUwlAllowlist)
 	if !slices.Contains(list.NameList, "custom_a") {
-		t.Error("metrics custom_a not merged into allowlist")
-	}
-	if !slices.Contains(ocp3List.NameList, "custom_a") {
 		t.Error("metrics custom_a not merged into allowlist")
 	}
 	if !slices.Contains(uwlList.NameList, "custom_uwl_a") {

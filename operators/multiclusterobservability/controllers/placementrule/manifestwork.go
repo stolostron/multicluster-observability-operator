@@ -52,11 +52,10 @@ const (
 
 // intermediate resources for the manifest work.
 var (
-	hubInfoSecret                   *corev1.Secret
-	pullSecret                      *corev1.Secret
-	metricsAllowlistConfigMap       *corev1.ConfigMap
-	ocp311metricsAllowlistConfigMap *corev1.ConfigMap
-	amAccessorTokenSecret           *corev1.Secret
+	hubInfoSecret             *corev1.Secret
+	pullSecret                *corev1.Secret
+	metricsAllowlistConfigMap *corev1.ConfigMap
+	amAccessorTokenSecret     *corev1.Secret
 
 	obsAddonCRDv1                 *apiextensionsv1.CustomResourceDefinition
 	obsAddonCRDv1beta1            *apiextensionsv1beta1.CustomResourceDefinition
@@ -230,9 +229,9 @@ func generateGlobalManifestResources(ctx context.Context, c client.Client, mco *
 	works = injectIntoWork(works, managedClusterObsCert)
 
 	// generate the metrics allowlist configmap
-	if metricsAllowlistConfigMap == nil || ocp311metricsAllowlistConfigMap == nil {
+	if metricsAllowlistConfigMap == nil {
 		var err error
-		if metricsAllowlistConfigMap, ocp311metricsAllowlistConfigMap, err = generateMetricsListCM(c); err != nil {
+		if metricsAllowlistConfigMap, err = generateMetricsListCM(c); err != nil {
 			return nil, nil, fmt.Errorf("failed to generate metrics list configmap: %w", err)
 		}
 	}
@@ -831,7 +830,7 @@ func generateObservabilityServerCACerts(ctx context.Context, client client.Clien
 }
 
 // generateMetricsListCM generates the configmap that contains the metrics allowlist
-func generateMetricsListCM(client client.Client) (*corev1.ConfigMap, *corev1.ConfigMap, error) {
+func generateMetricsListCM(client client.Client) (*corev1.ConfigMap, error) {
 	metricsAllowlistCM := &corev1.ConfigMap{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: corev1.SchemeGroupVersion.String(),
@@ -844,20 +843,18 @@ func generateMetricsListCM(client client.Client) (*corev1.ConfigMap, *corev1.Con
 		Data: map[string]string{},
 	}
 
-	ocp311AllowlistCM := metricsAllowlistCM.DeepCopy()
-
-	allowlist, ocp3Allowlist, uwlAllowlist, err := util.GetAllowList(client,
+	allowlist, uwlAllowlist, err := util.GetAllowList(client,
 		operatorconfig.AllowlistConfigMapName, config.GetDefaultNamespace())
 	if err != nil {
 		log.Error(err, "Failed to get metrics allowlist configmap "+operatorconfig.AllowlistConfigMapName)
-		return nil, nil, err
+		return nil, err
 	}
 
-	customAllowlist, _, customUwlAllowlist, err := util.GetAllowList(client,
+	customAllowlist, customUwlAllowlist, err := util.GetAllowList(client,
 		config.AllowlistCustomConfigMapName, config.GetDefaultNamespace())
 	if err == nil {
-		allowlist, ocp3Allowlist, uwlAllowlist = util.MergeAllowlist(allowlist,
-			customAllowlist, ocp3Allowlist, uwlAllowlist, customUwlAllowlist)
+		allowlist, uwlAllowlist = util.MergeAllowlist(allowlist,
+			customAllowlist, uwlAllowlist, customUwlAllowlist)
 	} else {
 		log.Info("There is no custom metrics allowlist configmap in the cluster")
 	}
@@ -865,23 +862,17 @@ func generateMetricsListCM(client client.Client) (*corev1.ConfigMap, *corev1.Con
 	data, err := yaml.Marshal(allowlist)
 	if err != nil {
 		log.Error(err, "Failed to marshal allowlist data")
-		return nil, nil, err
+		return nil, err
 	}
 	uwlData, err := yaml.Marshal(uwlAllowlist)
 	if err != nil {
 		log.Error(err, "Failed to marshal allowlist uwlAllowlist")
-		return nil, nil, err
+		return nil, err
 	}
 	metricsAllowlistCM.Data[operatorconfig.MetricsConfigMapKey] = string(data)
 	metricsAllowlistCM.Data[operatorconfig.UwlMetricsConfigMapKey] = string(uwlData)
 
-	data, err = yaml.Marshal(ocp3Allowlist)
-	if err != nil {
-		log.Error(err, "Failed to marshal allowlist data")
-		return nil, nil, err
-	}
-	ocp311AllowlistCM.Data[operatorconfig.MetricsOcp311ConfigMapKey] = string(data)
-	return metricsAllowlistCM, ocp311AllowlistCM, nil
+	return metricsAllowlistCM, nil
 }
 
 // getObservabilityAddon gets the ObservabilityAddon in the spoke namespace in the hub cluster.

@@ -844,7 +844,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				e.Object.GetNamespace() == config.GetDefaultNamespace() {
 				// generate the metrics allowlist configmap
 				log.Info("generate metric allow list configmap for allowlist configmap CREATE")
-				metricsAllowlistConfigMap, ocp311metricsAllowlistConfigMap, _ = generateMetricsListCM(c)
+				metricsAllowlistConfigMap, _ = generateMetricsListCM(c)
 				return true
 			}
 			return false
@@ -856,7 +856,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() {
 				// regenerate the metrics allowlist configmap
 				log.Info("generate metric allow list configmap for allowlist configmap UPDATE")
-				metricsAllowlistConfigMap, ocp311metricsAllowlistConfigMap, _ = generateMetricsListCM(c)
+				metricsAllowlistConfigMap, _ = generateMetricsListCM(c)
 				return true
 			}
 			return false
@@ -867,7 +867,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				e.Object.GetNamespace() == config.GetDefaultNamespace() {
 				// regenerate the metrics allowlist configmap
 				log.Info("generate metric allow list configmap for allowlist configmap UPDATE")
-				metricsAllowlistConfigMap, ocp311metricsAllowlistConfigMap, _ = generateMetricsListCM(c)
+				metricsAllowlistConfigMap, _ = generateMetricsListCM(c)
 				return true
 			}
 			return false
