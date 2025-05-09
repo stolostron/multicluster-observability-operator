@@ -306,7 +306,7 @@ func TestGetAllowList(t *testing.T) {
 		NewCorruptMetricsCustomAllowListCM(),
 	}
 	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
-	_, _, cc, err := util.GetAllowList(c, config.AllowlistCustomConfigMapName, config.GetDefaultNamespace())
+	_, cc, err := util.GetAllowList(c, config.AllowlistCustomConfigMapName, config.GetDefaultNamespace())
 	if err == nil {
 		t.Fatalf("the cm is %v, The yaml marshall error is ignored", cc)
 	}
