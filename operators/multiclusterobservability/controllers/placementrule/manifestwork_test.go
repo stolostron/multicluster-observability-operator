@@ -179,16 +179,6 @@ func NewMetricsAllowListCM() *corev1.ConfigMap {
             names:
               - foobar_metric
 `,
-			"ocp311_metrics_list.yaml": `
-  names:
-    - a
-    - b
-  renames:
-    a: c
-  recording_rules:
-    - record: f
-      expr: g
-`,
 			"uwl_metrics_list.yaml": `
   names:
     - a
