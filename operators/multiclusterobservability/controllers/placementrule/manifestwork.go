@@ -52,10 +52,10 @@ const (
 
 // intermediate resources for the manifest work.
 var (
-	hubInfoSecret                   *corev1.Secret
-	pullSecret                      *corev1.Secret
-	metricsAllowlistConfigMap       *corev1.ConfigMap
-	amAccessorTokenSecret           *corev1.Secret
+	hubInfoSecret             *corev1.Secret
+	pullSecret                *corev1.Secret
+	metricsAllowlistConfigMap *corev1.ConfigMap
+	amAccessorTokenSecret     *corev1.Secret
 
 	obsAddonCRDv1                 *apiextensionsv1.CustomResourceDefinition
 	obsAddonCRDv1beta1            *apiextensionsv1beta1.CustomResourceDefinition
