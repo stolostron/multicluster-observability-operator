@@ -67,7 +67,7 @@ func CheckAllOBAsEnabled(opt TestOptions) error {
 		}
 		err = CheckOBAStatus(opt, cluster, OBMAddonEnabledMessage)
 		if err != nil {
-			klog.V(1).Infof("Error checking OBA status for cluster %q: %v", cluster, err)
+			klog.V(1).Infof("Error checking OBA status for cluster %q: %v", cluster.Name, err)
 			return err
 		}
 	}
