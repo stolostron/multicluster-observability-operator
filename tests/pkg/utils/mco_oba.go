@@ -15,19 +15,17 @@ import (
 )
 
 const (
-	ManagedClusterAddOnDisabledMessage = "enableMetrics is set to False"
-	OBMAddonEnabledMessage             = "Cluster metrics sent successfully"
-	ManagedClusterAddOnEnabledMessage  = "observability-controller add-on is available"
+	OBMAddonEnabledMessage = "Cluster metrics sent successfully"
 )
 
-func CheckOBAStatus(opt TestOptions, namespace, status string) error {
+func CheckOBAStatus(opt TestOptions, clusterInfo clustersInfo, status string) error {
 	dynClient := NewKubeClientDynamic(
 		opt.HubCluster.ClusterServerURL,
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext)
 
 	oba, err := dynClient.Resource(NewMCOAddonGVR()).
-		Namespace(namespace).
+		Namespace(clusterInfo.Name).
 		Get(context.TODO(), "observability-addon", metav1.GetOptions{})
 	if err != nil {
 		return err
@@ -37,7 +35,7 @@ func CheckOBAStatus(opt TestOptions, namespace, status string) error {
 	if strings.Contains(obaStatus, status) {
 		return nil
 	} else {
-		return fmt.Errorf("observability-addon is not ready for managed cluster %q with status %q: %v", namespace, obaStatus, oba.Object)
+		return fmt.Errorf("observability-addon is not ready for managed cluster %q with status %q: %v", clusterInfo.Name, obaStatus, oba.Object)
 	}
 }
 
@@ -63,7 +61,7 @@ func CheckAllOBAsEnabled(opt TestOptions) error {
 
 	for _, cluster := range clusters {
 		// skip the check for local-cluster
-		if cluster == HubManagedClusterName {
+		if cluster.isLocalCluster {
 			klog.V(1).Infof("Skip OBA status for managedcluster: %v", cluster)
 			continue
 		}
@@ -83,11 +81,11 @@ func CheckAllOBAsDeleted(opt TestOptions) error {
 	}
 	for _, cluster := range clusters {
 		// skip the check for local-cluster
-		if cluster == HubManagedClusterName {
+		if cluster.isLocalCluster {
 			klog.V(1).Infof("Skip OBA status for managedcluster: %v", cluster)
 			continue
 		}
-		err = CheckOBADeleted(opt, cluster)
+		err = CheckOBADeleted(opt, cluster.Name)
 		if err != nil {
 			return err
 		}
