@@ -460,15 +460,6 @@ func TestIsPaused(t *testing.T) {
 	}
 }
 
-func NewFakeClient(mco *mcov1beta2.MultiClusterObservability,
-	obs *observatoriumv1alpha1.Observatorium) client.Client {
-	s := runtime.NewScheme()
-	s.AddKnownTypes(mcov1beta2.GroupVersion, mco)
-	s.AddKnownTypes(observatoriumv1alpha1.GroupVersion, obs)
-	objs := []runtime.Object{mco, obs}
-	return fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
-}
-
 func TestReadImageManifestConfigMap(t *testing.T) {
 	buildTestImageManifestCM := func(ns, version string) *corev1.ConfigMap {
 		return &corev1.ConfigMap{

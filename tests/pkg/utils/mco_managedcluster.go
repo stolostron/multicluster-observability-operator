@@ -194,15 +194,30 @@ func RenameLocalCluster(opt TestOptions) error {
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext)
 
-	cluster, err := dynClient.Resource(NewOCMManagedClustersGVR()).
-		Get(context.TODO(), "local-cluster", metav1.GetOptions{})
+	mchList, err := dynClient.Resource(NewOCMMultiClusterHubGVR()).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return err
 	}
 
-	cluster.Object["metadata"].(map[string]interface{})["name"] = HubManagedClusterName
-	_, err = dynClient.Resource(NewOCMManagedClustersGVR()).
-		Update(context.TODO(), cluster, metav1.UpdateOptions{})
+	if len(mchList.Items) == 0 {
+		return errors.New("can not find the MCH operator CR in the cluster")
+	}
+
+	mchName := mchList.Items[0].GetName()
+	mchNs := mchList.Items[0].GetNamespace()
+
+	getMCH, err := dynClient.Resource(NewOCMMultiClusterHubGVR()).
+		Namespace(mchNs).
+		Get(context.TODO(), mchName, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+
+	mchSpec := getMCH.Object["spec"].(map[string]interface{})
+	mchSpec["localClusterName"] = "hub-cluster"
+	_, err = dynClient.Resource(NewOCMMultiClusterHubGVR()).
+		Namespace(mchNs).
+		Update(context.TODO(), getMCH, metav1.UpdateOptions{})
 	if err != nil {
 		return err
 	}
