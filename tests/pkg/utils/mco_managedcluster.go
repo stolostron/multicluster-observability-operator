@@ -28,7 +28,7 @@ var openshiftLabelSelector = labels.SelectorFromValidatedSet(map[string]string{
 	"vendor": "OpenShift",
 })
 
-type clustersInfo struct {
+type ClustersInfo struct {
 	Name           string
 	isLocalCluster bool
 }
@@ -62,13 +62,13 @@ func UpdateObservabilityFromManagedCluster(opt TestOptions, enableObservability 
 	return nil
 }
 
-func ListManagedClusters(opt TestOptions) ([]clustersInfo, error) {
+func ListManagedClusters(opt TestOptions) ([]ClustersInfo, error) {
 	clientDynamic := GetKubeClientDynamic(opt, true)
 	objs, err := clientDynamic.Resource(NewOCMManagedClustersGVR()).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
-	clusters := make([]clustersInfo, 0, len(objs.Items))
+	clusters := make([]ClustersInfo, 0, len(objs.Items))
 	for _, obj := range objs.Items {
 		metadata := obj.Object["metadata"].(map[string]interface{})
 		name := metadata["name"].(string)
@@ -99,7 +99,7 @@ func ListManagedClusters(opt TestOptions) ([]clustersInfo, error) {
 
 		// Only add clusters with ManagedClusterConditionAvailable status == True
 		if available {
-			clusters = append(clusters, clustersInfo{
+			clusters = append(clusters, ClustersInfo{
 				Name:           name,
 				isLocalCluster: metadata["labels"].(map[string]interface{})["local-cluster"] == "true",
 			})

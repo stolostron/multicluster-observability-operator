@@ -36,7 +36,7 @@ var _ = Describe("", func() {
 
 	JustBeforeEach(func() {
 		Eventually(func() error {
-			clusters, clusterError = utils.ListManagedClusters(testOptions)
+			clusters, clusterError := utils.ListManagedClusters(testOptions)
 			if clusterError != nil {
 				return clusterError
 			}
@@ -90,7 +90,7 @@ var _ = Describe("", func() {
 				for _, cluster := range clusters {
 					res, err := utils.QueryGrafana(
 						testOptions,
-						`timestamp(node_memory_MemAvailable_bytes{cluster="`+cluster+`}) - timestamp(node_memory_MemAvailable_bytes{cluster=`+cluster+`"} offset 1m) > 59`,
+						`timestamp(node_memory_MemAvailable_bytes{cluster="`+cluster.Name+`}) - timestamp(node_memory_MemAvailable_bytes{cluster=`+cluster.Name+`"} offset 1m) > 59`,
 					)
 					if err != nil {
 						return err

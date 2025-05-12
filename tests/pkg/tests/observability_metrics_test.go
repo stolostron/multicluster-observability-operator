@@ -22,7 +22,7 @@ const (
 )
 
 var (
-	clusters     []string
+	clusters     []utils.ClustersInfo
 	clusterError error
 )
 

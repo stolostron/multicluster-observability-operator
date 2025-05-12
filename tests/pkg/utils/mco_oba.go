@@ -18,7 +18,7 @@ const (
 	OBMAddonEnabledMessage = "Cluster metrics sent successfully"
 )
 
-func CheckOBAStatus(opt TestOptions, clusterInfo clustersInfo, status string) error {
+func CheckOBAStatus(opt TestOptions, clusterInfo ClustersInfo, status string) error {
 	dynClient := NewKubeClientDynamic(
 		opt.HubCluster.ClusterServerURL,
 		opt.KubeConfig,
