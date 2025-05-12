@@ -33,7 +33,7 @@ const (
 	OCM_WORK_GROUP        = "work.open-cluster-management.io"
 	OCM_CLUSTER_GROUP     = "cluster.open-cluster-management.io"
 	OCM_ADDON_GROUP       = "addon.open-cluster-management.io"
-	HubManagedClusterName = "hub-cluster"
+	HubManagedClusterName = "local-cluster"
 )
 
 func NewMCOGVRV1BETA2() schema.GroupVersionResource {
