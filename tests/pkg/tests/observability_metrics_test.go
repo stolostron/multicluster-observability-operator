@@ -22,7 +22,7 @@ const (
 )
 
 var (
-	clusters     []string
+	clusters     []utils.ClusterInfo
 	clusterError error
 )
 
@@ -64,7 +64,7 @@ var _ = Describe("", func() {
 		By("Waiting for new added metrics on grafana console")
 		Eventually(func() error {
 			for _, cluster := range clusters {
-				query := fmt.Sprintf("node_memory_Active_bytes{cluster=\"%s\"} offset 1m", cluster)
+				query := fmt.Sprintf("node_memory_Active_bytes{cluster=\"%s\"} offset 1m", cluster.Name)
 				res, err := utils.QueryGrafana(
 					testOptions,
 					query,
@@ -87,8 +87,8 @@ var _ = Describe("", func() {
 			for _, cluster := range clusters {
 				query := fmt.Sprintf(
 					"timestamp(instance:node_num_cpu:sum{cluster=\"%s\"}) - timestamp(instance:node_num_cpu:sum{cluster=\"%s\"} offset 1m) > 59",
-					cluster,
-					cluster,
+					cluster.Name,
+					cluster.Name,
 				)
 				res, err := utils.QueryGrafana(testOptions, query)
 				if err != nil {
@@ -109,8 +109,8 @@ var _ = Describe("", func() {
 			for _, cluster := range clusters {
 				query := fmt.Sprintf(
 					"timestamp(go_goroutines{cluster=\"%s\"}) - timestamp(go_goroutines{cluster=\"%s\"} offset 1m) > 59",
-					cluster,
-					cluster,
+					cluster.Name,
+					cluster.Name,
 				)
 				res, err := utils.QueryGrafana(testOptions, query)
 				if err != nil {
@@ -138,8 +138,8 @@ var _ = Describe("", func() {
 			for _, cluster := range clusters {
 				query := fmt.Sprintf(
 					"timestamp(node_memory_Active_bytes{cluster=\"%s\"}) - timestamp(node_memory_Active_bytes{cluster=\"%s\"} offset 1m) > 59",
-					cluster,
-					cluster,
+					cluster.Name,
+					cluster.Name,
 				)
 				res, err := utils.QueryGrafana(testOptions, query)
 				if err != nil {
@@ -184,11 +184,11 @@ var _ = Describe("", func() {
 					query := fmt.Sprintf("%s{cluster=\"%s\"}", name, cluster)
 					res, err := utils.QueryGrafana(testOptions, query)
 					if err != nil {
-						return fmt.Errorf("failed to get metrics %s in cluster %s: %v", name, cluster, err)
+						return fmt.Errorf("failed to get metrics %s in cluster %s: %v", name, cluster.Name, err)
 					}
 
 					if len(res.Data.Result) == 0 {
-						return fmt.Errorf("no data found for %s in cluster %s", name, cluster)
+						return fmt.Errorf("no data found for %s in cluster %s", name, cluster.Name)
 					}
 
 					return nil
