@@ -22,7 +22,7 @@ const (
 )
 
 var (
-	clusters     []utils.ClusterInfo
+	clusters     []utils.ClustersInfo
 	clusterError error
 )
 
@@ -181,7 +181,7 @@ var _ = Describe("", func() {
 						continue
 					}
 
-					query := fmt.Sprintf("%s{cluster=\"%s\"}", name, cluster)
+					query := fmt.Sprintf("%s{cluster=\"%s\"}", name, cluster.Name)
 					res, err := utils.QueryGrafana(testOptions, query)
 					if err != nil {
 						return fmt.Errorf("failed to get metrics %s in cluster %s: %v", name, cluster.Name, err)

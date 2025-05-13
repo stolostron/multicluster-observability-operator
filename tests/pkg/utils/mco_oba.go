@@ -61,13 +61,13 @@ func CheckAllOBAsEnabled(opt TestOptions) error {
 
 	for _, cluster := range clusters {
 		// skip the check for local-cluster
-		if cluster.Name == "local-cluster" {
-			klog.V(1).Infof("Skip OBA status for managedcluster: %v", cluster)
+		if cluster.isLocalCluster {
+			klog.V(1).Infof("Skip OBA status for managedcluster: %v", cluster.Name)
 			continue
 		}
 		err = CheckOBAStatus(opt, cluster.Name, OBMAddonEnabledMessage)
 		if err != nil {
-			klog.V(1).Infof("Error checking OBA status for cluster %q: %v", cluster, err)
+			klog.V(1).Infof("Error checking OBA status for cluster %q: %v", cluster.Name, err)
 			return err
 		}
 	}
