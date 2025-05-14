@@ -18,6 +18,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// Utility to create pointer for bools
+func pointerTo[T any](v T) *T {
+	return &v
+}
+
 // Helps in creating or updating existing Policy for the PrometheusRule
 func createOrUpdatePrometheusRulePolicy(
 	ctx context.Context,
@@ -41,21 +46,33 @@ func createOrUpdatePrometheusRulePolicy(
 		log.Error(errPolicy, "RS - Error retrieving Policy")
 		return errPolicy
 	}
-	// Marshal the PrometheusRule object into JSON
+
+	// Add OwnerReference to PrometheusRule pointing to the Policy
+	if policy.UID != "" {
+		prometheusRule.ObjectMeta.OwnerReferences = []metav1.OwnerReference{
+			{
+				APIVersion: policy.APIVersion,
+				Kind:       policy.Kind,
+				Name:       policy.Name,
+				UID:        policy.UID,
+				Controller: pointerTo(true),
+			},
+		}
+	}
+
+	// Convert PrometheusRule to unstructured JSON
 	objMap, err := runtime.DefaultUnstructuredConverter.ToUnstructured(&prometheusRule)
 	if err != nil {
 		log.Error(err, "error converting runtime.Object to unstructured")
 		return err
 	}
-
-	// Marshal the map back to JSON
 	promRuleJSON, err := json.Marshal(objMap)
 	if err != nil {
-		log.Error(err, "RS - Error marshaling ConfigurationPolicy")
+		log.Error(err, "RS - Error marshaling PrometheusRule to JSON")
 		return err
 	}
 
-	// Define the ConfigurationPolicy object
+	// Construct the ConfigurationPolicy
 	configPolicy := configpolicyv1.ConfigurationPolicy{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "policy.open-cluster-management.io/v1",
@@ -67,7 +84,7 @@ func createOrUpdatePrometheusRulePolicy(
 		Spec: &configpolicyv1.ConfigurationPolicySpec{
 			RemediationAction:   configpolicyv1.Inform,
 			Severity:            "low",
-			PruneObjectBehavior: configpolicyv1.PruneObjectBehavior("DeleteAll"),
+			PruneObjectBehavior: configpolicyv1.PruneObjectBehavior("None"), // ensures existing rules are not removed
 			NamespaceSelector: configpolicyv1.Target{
 				Include: []configpolicyv1.NonEmptyString{
 					configpolicyv1.NonEmptyString(rsMonitoringNamespace),
@@ -84,7 +101,7 @@ func createOrUpdatePrometheusRulePolicy(
 		},
 	}
 
-	// Marshal the ConfigurationPolicy object into JSON
+	// Marshal ConfigurationPolicy into JSON and wrap it in a Policy
 	configPolicyJSON, err := json.Marshal(configPolicy)
 	if err != nil {
 		log.Error(err, "RS - Error marshaling ConfigurationPolicy")
@@ -103,33 +120,22 @@ func createOrUpdatePrometheusRulePolicy(
 		},
 	}
 
+	// Create or update the Policy
 	if errors.IsNotFound(errPolicy) {
-		log.Info("RS - PrometheusRulePolicy not found, creating a new one",
+		log.Info("RS - PrometheusRulePolicy not found, creating new one",
 			"namespace", rsNamespace, "name", rsPrometheusRulePolicyName)
-
-		if client.IgnoreNotFound(errPolicy) != nil {
-			log.Error(errPolicy, "RS - Unable to fetch PrometheusRulePolicy")
-			return errPolicy
-		}
-
-		if err = c.Create(ctx, policy); err != nil {
+		if err := c.Create(ctx, policy); err != nil {
 			log.Error(err, "Failed to create PrometheusRulePolicy")
 			return err
 		}
-
-		log.Info("RS - Created PrometheusRulePolicy",
-			"namespace", rsNamespace, "name", rsPrometheusRulePolicyName)
+		log.Info("RS - Created PrometheusRulePolicy")
 	} else {
-		log.Info("RS - PrometheusRulePolicy already exists, updating data",
-			"namespace", rsNamespace, "name", rsPrometheusRulePolicyName)
-
-		if err = c.Update(ctx, policy); err != nil {
+		log.Info("RS - PrometheusRulePolicy already exists, updating")
+		if err := c.Update(ctx, policy); err != nil {
 			log.Error(err, "Failed to update PrometheusRulePolicy")
 			return err
 		}
-
-		log.Info("RS - PrometheusRulePolicy updated successfully",
-			"namespace", rsNamespace, "name", rsPrometheusRulePolicyName)
+		log.Info("RS - PrometheusRulePolicy updated successfully")
 	}
 
 	return nil
