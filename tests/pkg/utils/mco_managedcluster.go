@@ -187,3 +187,67 @@ func GetManagedClusters(opt TestOptions) ([]*clusterv1.ManagedCluster, error) {
 
 	return ret, nil
 }
+
+func RenameLocalCluster(opt TestOptions) error {
+	clientDynamic := GetKubeClientDynamic(opt, true)
+	mchList, err := clientDynamic.Resource(NewOCMMultiClusterHubGVR()).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		return err
+	}
+
+	if len(mchList.Items) == 0 {
+		return fmt.Errorf("no MultiClusterHub found")
+	}
+
+	mchName := mchList.Items[0].GetName()
+	mchNs := mchList.Items[0].GetNamespace()
+
+	getMCH, err := clientDynamic.Resource(NewOCMMultiClusterHubGVR()).
+		Namespace(mchNs).
+		Get(context.TODO(), mchName, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+
+	spec := getMCH.Object["spec"].(map[string]interface{})
+	spec["disableHubSelfManagement"] = false
+	spec["localClusterName"] = "hub-cluster"
+
+	_, err = clientDynamic.Resource(NewOCMMultiClusterHubGVR()).Update(context.TODO(), getMCH, metav1.UpdateOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to update MultiClusterHub: %w", err)
+	}
+
+	return nil
+}
+
+func DisableHubSelfManagement(opt TestOptions) error {
+	clientDynamic := GetKubeClientDynamic(opt, true)
+	mchList, err := clientDynamic.Resource(NewOCMMultiClusterHubGVR()).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		return err
+	}
+
+	if len(mchList.Items) == 0 {
+		return fmt.Errorf("no MultiClusterHub found")
+	}
+
+	mchName := mchList.Items[0].GetName()
+	mchNs := mchList.Items[0].GetNamespace()
+
+	getMCH, err := clientDynamic.Resource(NewOCMMultiClusterHubGVR()).
+		Namespace(mchNs).
+		Get(context.TODO(), mchName, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+
+	spec := getMCH.Object["spec"].(map[string]interface{})
+	spec["disableHubSelfManagement"] = true
+
+	_, err = clientDynamic.Resource(NewOCMMultiClusterHubGVR()).Update(context.TODO(), getMCH, metav1.UpdateOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to update MultiClusterHub: %w", err)
+	}
+	return nil
+}

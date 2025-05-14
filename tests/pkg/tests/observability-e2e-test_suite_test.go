@@ -40,15 +40,13 @@ var (
 
 	testFailed                   = false
 	hubMetricsCollectorNamespace = "open-cluster-management-observability"
-	hubManagedClusterName        = "local-cluster"
+	hubManagedClusterName        = "hub-cluster"
 	namespace                    = MCO_ADDON_NAMESPACE
 	isHub                        = false
 )
 
 const (
 	OCP_RELEASE_DEFAULT = "4.4.4"
-	charset             = "abcdefghijklmnopqrstuvwxyz" +
-		"0123456789"
 
 	MCO_CR_NAME         = "observability"
 	MCO_NAMESPACE       = "open-cluster-management-observability"
@@ -73,14 +71,6 @@ const (
 
 var seededRand *rand.Rand = rand.New(
 	rand.NewSource(time.Now().UnixNano()))
-
-func StringWithCharset(length int, charset string) string {
-	b := make([]byte, length)
-	for i := range b {
-		b[i] = charset[seededRand.Intn(len(charset))]
-	}
-	return string(b)
-}
 
 // func randString(length int) string {
 // 	return StringWithCharset(length, charset)
