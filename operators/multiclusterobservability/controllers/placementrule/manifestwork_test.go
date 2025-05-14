@@ -179,16 +179,6 @@ func NewMetricsAllowListCM() *corev1.ConfigMap {
             names:
               - foobar_metric
 `,
-			"ocp311_metrics_list.yaml": `
-  names:
-    - a
-    - b
-  renames:
-    a: c
-  recording_rules:
-    - record: f
-      expr: g
-`,
 			"uwl_metrics_list.yaml": `
   names:
     - a
@@ -316,7 +306,7 @@ func TestGetAllowList(t *testing.T) {
 		NewCorruptMetricsCustomAllowListCM(),
 	}
 	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
-	_, _, cc, err := util.GetAllowList(c, config.AllowlistCustomConfigMapName, config.GetDefaultNamespace())
+	_, cc, err := util.GetAllowList(c, config.AllowlistCustomConfigMapName, config.GetDefaultNamespace())
 	if err == nil {
 		t.Fatalf("the cm is %v, The yaml marshall error is ignored", cc)
 	}
