@@ -210,6 +210,7 @@ func generateGlobalManifestResources(ctx context.Context, c client.Client, mco *
 	works := []workv1.Manifest{}
 
 	// inject the namespace
+	spokeNameSpace = getSpokeNameSpace(c)
 	works = injectIntoWork(works, generateNamespace())
 
 	// inject the image pull secret
