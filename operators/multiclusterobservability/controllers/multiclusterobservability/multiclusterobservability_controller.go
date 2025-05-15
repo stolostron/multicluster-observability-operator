@@ -246,7 +246,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 
 	// handle storagesize changes
 	result, err := r.HandleStorageSizeChange(instance)
-	if result != nil {
+	if err != nil {
 		return *result, err
 	}
 
@@ -379,13 +379,13 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 
 	// create an Observatorium CR
 	result, err = GenerateObservatoriumCR(r.Client, r.Scheme, instance)
-	if result != nil {
+	if err != nil {
 		return *result, err
 	}
 
 	// generate grafana datasource to point to observatorium api gateway
 	result, err = GenerateGrafanaDataSource(r.Client, r.Scheme, instance)
-	if result != nil {
+	if err != nil {
 		return *result, err
 	}
 
