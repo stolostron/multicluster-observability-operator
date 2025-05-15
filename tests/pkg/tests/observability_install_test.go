@@ -218,7 +218,7 @@ func installMCO() {
 
 	}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*10).Should(Succeed())
 
-	if if os.Getenv("IS_KIND_ENV") != trueStr {
+	if os.Getenv("IS_KIND_ENV") != trueStr {
 		By("Disable Hub Self Management in MCH CR")
 		Eventually(func() error {
 			err = utils.DisableHubSelfManagement(testOptions)
