@@ -218,23 +218,24 @@ func installMCO() {
 
 	}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*10).Should(Succeed())
 
-	By("Disable Hub Self Management in MCH CR")
-	Eventually(func() error {
-		err = utils.DisableHubSelfManagement(testOptions)
-		if err != nil {
-			return err
-		}
-		// Wait for the MCH CR to be updated and remove local-cluster
-		time.Sleep(60 * time.Second)
-		return nil
-	}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*10).Should(Succeed())
-	By("Rename local-cluster to hub-cluster in MCH CR")
-	Eventually(func() error {
-		err = utils.RenameLocalCluster(testOptions)
-		if err != nil {
-			return err
-		}
-		return nil
-	}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*10).Should(Succeed())
-
+	if if os.Getenv("IS_KIND_ENV") != trueStr {
+		By("Disable Hub Self Management in MCH CR")
+		Eventually(func() error {
+			err = utils.DisableHubSelfManagement(testOptions)
+			if err != nil {
+				return err
+			}
+			// Wait for the MCH CR to be updated and remove local-cluster
+			time.Sleep(60 * time.Second)
+			return nil
+		}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*10).Should(Succeed())
+		By("Rename local-cluster to hub-cluster in MCH CR")
+		Eventually(func() error {
+			err = utils.RenameLocalCluster(testOptions)
+			if err != nil {
+				return err
+			}
+			return nil
+		}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*10).Should(Succeed())
+	}
 }
