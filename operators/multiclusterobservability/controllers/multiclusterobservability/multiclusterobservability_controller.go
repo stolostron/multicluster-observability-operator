@@ -494,11 +494,10 @@ func getStorageClass(mco *mcov1beta2.MultiClusterObservability, cl client.Client
 // SetupWithManager sets up the controller with the Manager.
 func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	c := mgr.GetClient()
-	ctx := context.Background()
 
 	mcoPred := GetMCOPredicateFunc()
 	cmPred := GetConfigMapPredicateFunc()
-	cmNamespaceRSPred := analyticsctrl.GetNamespaceRSConfigMapPredicateFunc(ctx, c)
+	cmNamespaceRSPred := analyticsctrl.GetNamespaceRSConfigMapPredicateFunc(c)
 	secretPred := GetAlertManagerSecretPredicateFunc()
 	namespacePred := GetNamespacePredicateFunc()
 	mcoaCRDPred := GetMCOACRDPredicateFunc()
