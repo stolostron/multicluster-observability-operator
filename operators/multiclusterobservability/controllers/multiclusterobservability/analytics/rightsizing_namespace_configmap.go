@@ -140,11 +140,11 @@ func GetNamespaceRSConfigMapPredicateFunc(ctx context.Context, c client.Client) 
 					return processConfigMap(cm)
 				}
 			}
-			return false
+			return true
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			if e.ObjectNew.GetName() != rsConfigMapName || e.ObjectNew.GetNamespace() != config.GetDefaultNamespace() {
-				return false
+				return true
 			}
 
 			// Check if the ConfigMap `Data` has changed before proceeding
@@ -153,7 +153,7 @@ func GetNamespaceRSConfigMapPredicateFunc(ctx context.Context, c client.Client) 
 
 			if oldOK && newOK && reflect.DeepEqual(oldCM.Data, newCM.Data) {
 				log.Info("No changes detected in ConfigMap data, skipping update")
-				return false
+				return true
 			}
 
 			log.Info("ConfigMap data has changed, processing update")
