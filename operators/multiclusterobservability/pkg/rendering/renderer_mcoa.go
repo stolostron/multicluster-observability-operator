@@ -34,6 +34,7 @@ const (
 	nameUserWorkloadInstrumentation   = "userWorkloadInstrumentation"
 	nameUserWorkloadMetricsCollection = "userWorkloadMetricsCollection"
 	nameMetricsHubHostname            = "metricsHubHostname"
+	namePLatformMetricsUI             = "platformMetricsUI"
 )
 
 type MCOARendererOptions struct {
@@ -234,6 +235,10 @@ func (r *MCORenderer) renderAddonDeploymentConfig(
 				return nil, fmt.Errorf("MetricsHubHostname is required when metrics collection is enabled")
 			}
 			appendCustomVar(aodc, nameMetricsHubHostname, r.rendererOptions.MCOAOptions.MetricsHubHostname)
+			if cs.Platform.Metrics.Collection.Enabled && cs.Platform.Metrics.UI.Enabled {
+				fqdn := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.UIPluginsCRDName)
+				appendCustomVar(aodc, namePLatformMetricsUI, fqdn)
+			}
 		}
 
 		u.Object, err = runtime.DefaultUnstructuredConverter.ToUnstructured(aodc)
