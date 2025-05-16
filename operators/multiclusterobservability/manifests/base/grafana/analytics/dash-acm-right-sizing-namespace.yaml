@@ -27,7 +27,7 @@ data:
       "editable": true,
       "fiscalYearStartMonth": 0,
       "graphTooltip": 0,
-      "id": 58,
+      "id": 24,
       "links": [],
       "panels": [
         {
@@ -810,7 +810,7 @@ data:
             "showHeader": true,
             "sortBy": [
               {
-                "desc": false,
+                "desc": true,
                 "displayName": "CPU Utilization %"
               }
             ]
@@ -1920,7 +1920,6 @@ data:
           "type": "table"
         }
       ],
-      "refresh": false,
       "schemaVersion": 39,
       "tags": [],
       "templating": {
