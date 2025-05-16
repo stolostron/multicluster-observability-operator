@@ -8,6 +8,8 @@ import (
 	"context"
 
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	corev1 "k8s.io/api/core/v1"
 	clusterv1beta1 "open-cluster-management.io/api/cluster/v1beta1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -72,7 +74,7 @@ func CreateRightSizingComponent(
 	// If disabled then cleanup related resources
 	if !isRightSizingNamespaceEnabled {
 		log.Info("RS - NamespaceRightSizing feature not enabled")
-		// cleanupRSNamespaceResources(ctx, c, rsNamespace, false)
+		cleanupRSNamespaceResources(ctx, c, rsNamespace, false)
 		rsNamespace = newBinding
 		isEnabled = false
 		return nil, nil
@@ -85,7 +87,7 @@ func CreateRightSizingComponent(
 	isEnabled = true
 
 	// Retrieve the existing namespace as existingNamespace and update the new namespace in rsNamespace
-	// existingNamespace := rsNamespace
+	existingNamespace := rsNamespace
 	rsNamespace = newBinding
 
 	// Creating configmap with default values
@@ -95,28 +97,28 @@ func CreateRightSizingComponent(
 
 	if namespaceBindingUpdated {
 		log.Info("RS - namespaceBindingUpdated")
-		// // Clean up resources except config map to update NamespaceBinding
-		// cleanupRSNamespaceResources(ctx, c, existingNamespace, true)
+		// Clean up resources except config map to update NamespaceBinding
+		cleanupRSNamespaceResources(ctx, c, existingNamespace, true)
 
-		// // Get configmap
-		// cm := &corev1.ConfigMap{}
-		// if err := c.Get(ctx, client.ObjectKey{Name: rsConfigMapName, Namespace: config.GetDefaultNamespace()}, cm); err != nil {
-		// 	log.Error(err, "Failed to get RS ConfigMap")
-		// 	return nil, err
-		// }
+		// Get configmap
+		cm := &corev1.ConfigMap{}
+		if err := c.Get(ctx, client.ObjectKey{Name: rsConfigMapName, Namespace: config.GetDefaultNamespace()}, cm); err != nil {
+			log.Error(err, "Failed to get RS ConfigMap")
+			return nil, err
+		}
 
-		// // Get configmap data into specified structure
-		// configData, err := GetRightSizingConfigData(cm)
-		// if err != nil {
-		// 	log.Error(err, "Failed to extract RightSizingConfigData")
-		// 	return nil, err
-		// }
+		// Get configmap data into specified structure
+		configData, err := GetRightSizingConfigData(cm)
+		if err != nil {
+			log.Error(err, "Failed to extract RightSizingConfigData")
+			return nil, err
+		}
 
-		// // If NamespaceBinding has been updated apply the Policy Placement Placementbinding again
-		// if err := applyRSNamespaceConfigMapChanges(ctx, c, configData); err != nil {
-		// 	log.Error(err, "Failed to apply RS Namespace ConfigMap Changes")
-		// 	return nil, err
-		// }
+		// If NamespaceBinding has been updated apply the Policy Placement Placementbinding again
+		if err := applyRSNamespaceConfigMapChanges(ctx, c, configData); err != nil {
+			log.Error(err, "Failed to apply RS Namespace ConfigMap Changes")
+			return nil, err
+		}
 	}
 
 	log.Info("RS - CreateRightSizingComponent task completed")
