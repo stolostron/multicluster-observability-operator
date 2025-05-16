@@ -171,12 +171,8 @@ data:
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
+                    "color": "text",
                     "value": null
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
                   }
                 ]
               },
@@ -211,6 +207,8 @@ data:
             {
               "exemplar": true,
               "expr": "sum(count by (cluster) (count(kube_node_status_allocatable{resource=~\".*kubevirt.*\", cluster!~\"local-cluster\"}) by (cluster,node)))",
+              "format": "table",
+              "instant": true,
               "interval": "",
               "legendFormat": "",
               "refId": "A"
@@ -234,7 +232,7 @@ data:
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
+                    "color": "text",
                     "value": null
                   }
                 ]
@@ -268,8 +266,9 @@ data:
           "targets": [
             {
               "exemplar": true,
-              "expr": "sum(count(kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\"}) by (name))",
-              "instant": false,
+              "expr": "sum(count(kubevirt_vm_info{cluster=~\"$cluster\"}) by (name))",
+              "format": "table",
+              "instant": true,
               "interval": "",
               "legendFormat": "",
               "refId": "A"
@@ -306,7 +305,7 @@ data:
                   {
                     "id": "color",
                     "value": {
-                      "fixedColor": "#0e5bd0",
+                      "fixedColor": "text",
                       "mode": "fixed"
                     }
                   },
@@ -331,7 +330,7 @@ data:
                   {
                     "id": "color",
                     "value": {
-                      "fixedColor": "#7ea9ea",
+                      "fixedColor": "text",
                       "mode": "fixed"
                     }
                   },
@@ -356,7 +355,7 @@ data:
                   {
                     "id": "color",
                     "value": {
-                      "fixedColor": "semi-dark-blue",
+                      "fixedColor": "text",
                       "mode": "fixed"
                     }
                   },
@@ -379,13 +378,6 @@ data:
                 },
                 "properties": [
                   {
-                    "id": "color",
-                    "value": {
-                      "fixedColor": "red",
-                      "mode": "fixed"
-                    }
-                  },
-                  {
                     "id": "links",
                     "value": [
                       {
@@ -394,6 +386,25 @@ data:
                         "url": "/d/lMD6V93Sz/service-level-dashboards-virtual-machines-by-time-in-status?orgId=1&var-cluster=All&var-name=All&var-namespace=All&var-status=kubevirt_vm_error_status_last_transition_timestamp_seconds&var-days_in_status_gt=0&var-days_in_status_lt=1000&var-top_results=25"
                       }
                     ]
+                  },
+                  {
+                    "id": "color"
+                  },
+                  {
+                    "id": "thresholds",
+                    "value": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "text",
+                          "value": null
+                        },
+                        {
+                          "color": "red",
+                          "value": 1
+                        }
+                      ]
+                    }
                   }
                 ]
               },
@@ -406,7 +417,7 @@ data:
                   {
                     "id": "color",
                     "value": {
-                      "fixedColor": "green",
+                      "fixedColor": "text",
                       "mode": "fixed"
                     }
                   },
@@ -432,7 +443,9 @@ data:
           },
           "id": 66,
           "options": {
-            "displayMode": "gradient",
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "center",
             "orientation": "auto",
             "reduceOptions": {
               "calcs": [
@@ -441,14 +454,14 @@ data:
               "fields": "",
               "values": false
             },
-            "showUnfilled": true,
-            "text": {}
+            "text": {},
+            "textMode": "auto"
           },
           "pluginVersion": "8.5.20",
           "targets": [
             {
               "exemplar": true,
-              "expr": "sum(count(kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\"}>0) by (name)) or vector(0)",
+              "expr": "sum(sum(kubevirt_vm_info{cluster=~\"$cluster\", status_group=\"running\"}>0) by (status_group) or vector(0))",
               "format": "time_series",
               "instant": true,
               "interval": "",
@@ -457,7 +470,7 @@ data:
             },
             {
               "exemplar": true,
-              "expr": "sum(count(kubevirt_vm_non_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\"}>0) by (name)) or vector(0)",
+              "expr": "sum(sum(kubevirt_vm_info{cluster=~\"$cluster\", status_group=\"non_running\"}>0) by (status_group) or vector(0))",
               "format": "time_series",
               "hide": false,
               "instant": true,
@@ -467,7 +480,7 @@ data:
             },
             {
               "exemplar": true,
-              "expr": "sum(count(kubevirt_vm_error_status_last_transition_timestamp_seconds{cluster=~\"$cluster\"}>0) by (name)) or vector(0)",
+              "expr": "sum(sum(kubevirt_vm_info{cluster=~\"$cluster\", status_group=\"error\"}>0) by (status_group) or vector(0))",
               "format": "time_series",
               "hide": false,
               "instant": true,
@@ -477,7 +490,7 @@ data:
             },
             {
               "exemplar": true,
-              "expr": "sum(count(kubevirt_vm_starting_status_last_transition_timestamp_seconds{cluster=~\"$cluster\"}>0) by (name)) or vector(0)",
+              "expr": "sum(sum(kubevirt_vm_info{cluster=~\"$cluster\", status_group=\"starting\"}>0) by (status_group) or vector(0))",
               "format": "time_series",
               "hide": false,
               "instant": true,
@@ -487,7 +500,7 @@ data:
             },
             {
               "exemplar": true,
-              "expr": "sum(count(kubevirt_vm_migrating_status_last_transition_timestamp_seconds{cluster=~\"$cluster\"}>0) by (name)) or vector(0)",
+              "expr": "sum(sum(kubevirt_vm_info{cluster=~\"$cluster\", status_group=\"migrating\"}>0) by (status_group) or vector(0))",
               "format": "time_series",
               "hide": false,
               "instant": true,
@@ -497,7 +510,25 @@ data:
             }
           ],
           "title": "Virtual Machines by Status",
-          "type": "bargauge"
+          "transformations": [
+            {
+              "id": "seriesToColumns",
+              "options": {
+                "byField": "Time"
+              }
+            },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true
+                },
+                "indexByName": {},
+                "renameByName": {}
+              }
+            }
+          ],
+          "type": "stat"
         },
         {
           "datasource": null,
@@ -638,7 +669,7 @@ data:
               "refId": "A"
             }
           ],
-          "title": "Number of VMs started in the last 7 days",
+          "title": "Number of VMs Started in the last 7 days",
           "transformations": [
             {
               "id": "organize",
@@ -648,7 +679,7 @@ data:
                 },
                 "indexByName": {},
                 "renameByName": {
-                  "Value": "Total VMs Created"
+                  "Value": "Total VMs Started"
                 }
               }
             }
@@ -919,7 +950,7 @@ data:
           "type": "table"
         },
         {
-          "collapsed": false,
+          "collapsed": true,
           "datasource": null,
           "gridPos": {
             "h": 1,
@@ -928,276 +959,267 @@ data:
             "y": 14
           },
           "id": 29,
-          "panels": [],
+          "panels": [
+            {
+              "datasource": null,
+              "description": "",
+              "fieldConfig": {
+                "defaults": {
+                  "color": {
+                    "mode": "thresholds"
+                  },
+                  "custom": {
+                    "align": "auto",
+                    "displayMode": "auto"
+                  },
+                  "links": [],
+                  "mappings": [],
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "transparent",
+                        "value": null
+                      }
+                    ]
+                  }
+                },
+                "overrides": [
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Operator Health"
+                    },
+                    "properties": [
+                      {
+                        "id": "mappings",
+                        "value": [
+                          {
+                            "options": {
+                              "0": {
+                                "color": "green",
+                                "index": 0,
+                                "text": "Healthy"
+                              },
+                              "1": {
+                                "color": "orange",
+                                "index": 1,
+                                "text": "Warning"
+                              },
+                              "2": {
+                                "color": "red",
+                                "index": 2,
+                                "text": "Critical"
+                              }
+                            },
+                            "type": "value"
+                          }
+                        ]
+                      },
+                      {
+                        "id": "custom.displayMode",
+                        "value": "color-background-solid"
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Operator Conditions Health"
+                    },
+                    "properties": [
+                      {
+                        "id": "mappings",
+                        "value": [
+                          {
+                            "options": {
+                              "0": {
+                                "color": "green",
+                                "index": 0,
+                                "text": "Healthy"
+                              },
+                              "1": {
+                                "color": "orange",
+                                "index": 1,
+                                "text": "Warning"
+                              },
+                              "2": {
+                                "color": "red",
+                                "index": 2,
+                                "text": "Error"
+                              }
+                            },
+                            "type": "value"
+                          }
+                        ]
+                      },
+                      {
+                        "id": "custom.displayMode",
+                        "value": "color-text"
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Cluster"
+                    },
+                    "properties": [
+                      {
+                        "id": "links",
+                        "value": [
+                          {
+                            "targetBlank": true,
+                            "title": "Single Cluster View",
+                            "url": "/d/WfJLo3rSz/executive-dashboards-single-cluster-view?var-cluster=${__value.raw}"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              "gridPos": {
+                "h": 8,
+                "w": 24,
+                "x": 0,
+                "y": 15
+              },
+              "id": 6,
+              "options": {
+                "frameIndex": 0,
+                "showHeader": true,
+                "sortBy": [
+                  {
+                    "desc": true,
+                    "displayName": "Value"
+                  }
+                ]
+              },
+              "pluginVersion": "8.5.20",
+              "targets": [
+                {
+                  "exemplar": true,
+                  "expr": "(sum(kubevirt_hyperconverged_operator_health_status{cluster=~\"$cluster\"}$operator_health) by (cluster))",
+                  "format": "table",
+                  "hide": false,
+                  "instant": true,
+                  "interval": "",
+                  "legendFormat": "",
+                  "refId": "A"
+                },
+                {
+                  "exemplar": true,
+                  "expr": "(sum(kubevirt_hyperconverged_operator_health_status{cluster=~\"$cluster\"}$operator_health) by (cluster))*0 + on (cluster) group_left() (sum by (cluster)(ALERTS{kubernetes_operator_part_of=\"kubevirt\", alertstate=\"firing\",cluster=~\"$cluster\",operator_health_impact=\"critical\"}) or \n (sum by (cluster)(kubevirt_hyperconverged_operator_health_status{cluster=~\"$cluster\"}*0)))",
+                  "format": "table",
+                  "hide": false,
+                  "instant": true,
+                  "interval": "",
+                  "legendFormat": "",
+                  "refId": "B"
+                },
+                {
+                  "exemplar": true,
+                  "expr": "(sum(kubevirt_hyperconverged_operator_health_status{cluster=~\"$cluster\"}$operator_health) by (cluster))*0 + on (cluster) group_left() (sum by (cluster)(ALERTS{kubernetes_operator_part_of=\"kubevirt\", alertstate=\"firing\",cluster=~\"$cluster\",operator_health_impact=\"warning\"}) or (sum by (cluster)(kubevirt_hyperconverged_operator_health_status{cluster=~\"$cluster\"}*0)))",
+                  "format": "table",
+                  "hide": false,
+                  "instant": true,
+                  "interval": "",
+                  "legendFormat": "",
+                  "refId": "C"
+                },
+                {
+                  "exemplar": true,
+                  "expr": "(sum(kubevirt_hyperconverged_operator_health_status{cluster=~\"$cluster\"}$operator_health) by (cluster))*0 + on (cluster) group_left() (sum by (cluster)(cnv:vmi_status_running:count{cluster=~\"$cluster\"})) or ((sum(kubevirt_hyperconverged_operator_health_status{cluster=~\"$cluster\"}$operator_health) by (cluster))*0)",
+                  "format": "table",
+                  "hide": false,
+                  "instant": true,
+                  "interval": "",
+                  "legendFormat": "",
+                  "refId": "D"
+                },
+                {
+                  "exemplar": true,
+                  "expr": "sum by (cluster)(kubevirt_hyperconverged_operator_health_status{cluster=~\"$cluster\"} $operator_health) * 0 \n+ on(cluster) (sum by (cluster)(kubevirt_hco_system_health_status{cluster=~\"$cluster\"}))",
+                  "format": "table",
+                  "hide": false,
+                  "instant": true,
+                  "interval": "",
+                  "legendFormat": "",
+                  "refId": "F"
+                }
+              ],
+              "title": "Operator Health by Cluster",
+              "transformations": [
+                {
+                  "id": "seriesToColumns",
+                  "options": {
+                    "byField": "cluster"
+                  }
+                },
+                {
+                  "id": "organize",
+                  "options": {
+                    "excludeByName": {
+                      "Time": true,
+                      "Time 1": true,
+                      "Time 2": true,
+                      "Time 3": true,
+                      "Time 4": true,
+                      "Time 5": true,
+                      "Time 6": true,
+                      "Value #E": true,
+                      "Value #F": false,
+                      "__name__": true,
+                      "clusterID": true,
+                      "clusterType": true,
+                      "endpoint": true,
+                      "instance": true,
+                      "job": true,
+                      "namespace": true,
+                      "openshiftVersion": false,
+                      "pod": true,
+                      "receive": true,
+                      "service": true,
+                      "tenant_id": true
+                    },
+                    "indexByName": {
+                      "Time 1": 8,
+                      "Time 2": 9,
+                      "Time 3": 10,
+                      "Time 4": 11,
+                      "Time 5": 12,
+                      "Time 6": 13,
+                      "Value #A": 0,
+                      "Value #B": 4,
+                      "Value #C": 5,
+                      "Value #D": 6,
+                      "Value #E": 7,
+                      "Value #F": 3,
+                      "cluster": 1,
+                      "openshiftVersion": 2
+                    },
+                    "renameByName": {
+                      "Time 2": "",
+                      "Value": "",
+                      "Value #A": "Operator Health",
+                      "Value #B": "Alerts with Critical Impact",
+                      "Value #C": "Alerts with Warning Impact",
+                      "Value #D": "Number of Running VMs",
+                      "Value #E": "",
+                      "Value #F": "Operator Conditions Health",
+                      "cluster": "Cluster",
+                      "openshiftVersion": "OpenShift Version",
+                      "version": "Version"
+                    }
+                  }
+                }
+              ],
+              "type": "table"
+            }
+          ],
           "title": "Operator Health",
           "type": "row"
-        },
-        {
-          "datasource": null,
-          "description": "",
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
-              "custom": {
-                "align": "auto",
-                "displayMode": "auto"
-              },
-              "links": [],
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "transparent",
-                    "value": null
-                  }
-                ]
-              }
-            },
-            "overrides": [
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Operator Health"
-                },
-                "properties": [
-                  {
-                    "id": "mappings",
-                    "value": [
-                      {
-                        "options": {
-                          "0": {
-                            "color": "green",
-                            "index": 0,
-                            "text": "Healthy"
-                          },
-                          "1": {
-                            "color": "orange",
-                            "index": 1,
-                            "text": "Warning"
-                          },
-                          "2": {
-                            "color": "red",
-                            "index": 2,
-                            "text": "Critical"
-                          }
-                        },
-                        "type": "value"
-                      }
-                    ]
-                  },
-                  {
-                    "id": "custom.displayMode",
-                    "value": "color-background-solid"
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Operator Conditions Health"
-                },
-                "properties": [
-                  {
-                    "id": "mappings",
-                    "value": [
-                      {
-                        "options": {
-                          "0": {
-                            "color": "green",
-                            "index": 0,
-                            "text": "Healthy"
-                          },
-                          "1": {
-                            "color": "orange",
-                            "index": 1,
-                            "text": "Warning"
-                          },
-                          "2": {
-                            "color": "red",
-                            "index": 2,
-                            "text": "Error"
-                          }
-                        },
-                        "type": "value"
-                      }
-                    ]
-                  },
-                  {
-                    "id": "custom.displayMode",
-                    "value": "color-text"
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Cluster"
-                },
-                "properties": [
-                  {
-                    "id": "links",
-                    "value": [
-                      {
-                        "targetBlank": true,
-                        "title": "Single Cluster View",
-                        "url": "/d/WfJLo3rSz/executive-dashboards-single-cluster-view?var-cluster=${__value.raw}"
-                      }
-                    ]
-                  }
-                ]
-              }
-            ]
-          },
-          "gridPos": {
-            "h": 8,
-            "w": 24,
-            "x": 0,
-            "y": 15
-          },
-          "id": 6,
-          "options": {
-            "frameIndex": 0,
-            "showHeader": true,
-            "sortBy": [
-              {
-                "desc": true,
-                "displayName": "Value"
-              }
-            ]
-          },
-          "pluginVersion": "8.5.20",
-          "targets": [
-            {
-              "exemplar": true,
-              "expr": "(sum(kubevirt_hyperconverged_operator_health_status{cluster=~\"$cluster\"}$operator_health) by (cluster))",
-              "format": "table",
-              "hide": false,
-              "instant": true,
-              "interval": "",
-              "legendFormat": "",
-              "refId": "A"
-            },
-            {
-              "exemplar": true,
-              "expr": "(sum(kubevirt_hyperconverged_operator_health_status{cluster=~\"$cluster\"}$operator_health) by (cluster))*0 + on (cluster) group_left() (sum by (cluster)(ALERTS{kubernetes_operator_part_of=\"kubevirt\", alertstate=\"firing\",cluster=~\"$cluster\",operator_health_impact=\"critical\"}) or \n (sum by (cluster)(kubevirt_hyperconverged_operator_health_status{cluster=~\"$cluster\"}*0)))",
-              "format": "table",
-              "hide": false,
-              "instant": true,
-              "interval": "",
-              "legendFormat": "",
-              "refId": "B"
-            },
-            {
-              "exemplar": true,
-              "expr": "(sum(kubevirt_hyperconverged_operator_health_status{cluster=~\"$cluster\"}$operator_health) by (cluster))*0 + on (cluster) group_left() (sum by (cluster)(ALERTS{kubernetes_operator_part_of=\"kubevirt\", alertstate=\"firing\",cluster=~\"$cluster\",operator_health_impact=\"warning\"}) or (sum by (cluster)(kubevirt_hyperconverged_operator_health_status{cluster=~\"$cluster\"}*0)))",
-              "format": "table",
-              "hide": false,
-              "instant": true,
-              "interval": "",
-              "legendFormat": "",
-              "refId": "C"
-            },
-            {
-              "exemplar": true,
-              "expr": "(sum(kubevirt_hyperconverged_operator_health_status{cluster=~\"$cluster\"}$operator_health) by (cluster))*0 + on (cluster) group_left() (sum by (cluster)(cnv:vmi_status_running:count{cluster=~\"$cluster\"})) or ((sum(kubevirt_hyperconverged_operator_health_status{cluster=~\"$cluster\"}$operator_health) by (cluster))*0)",
-              "format": "table",
-              "hide": false,
-              "instant": true,
-              "interval": "",
-              "legendFormat": "",
-              "refId": "D"
-            },
-            {
-              "exemplar": true,
-              "expr": "sum(kubevirt_hyperconverged_operator_health_status{cluster=~\"$cluster\"}$operator_health) by (cluster) * 0 \n+ on (cluster) group_left(openshiftVersion) (\n  label_replace(sum by (name, openshiftVersion) (acm_managed_cluster_labels), \"cluster\", \"$1\", \"name\", \"(.*)\")\n )",
-              "format": "table",
-              "hide": false,
-              "instant": true,
-              "interval": "",
-              "legendFormat": "",
-              "refId": "E"
-            },
-            {
-              "exemplar": true,
-              "expr": "sum by (cluster)(kubevirt_hyperconverged_operator_health_status{cluster=~\"$cluster\"} $operator_health)*0 \n+ on(cluster) (kubevirt_hco_system_health_status{cluster=~\"$cluster\"} )",
-              "format": "table",
-              "hide": false,
-              "instant": true,
-              "interval": "",
-              "legendFormat": "",
-              "refId": "F"
-            }
-          ],
-          "title": "Operator Health by Cluster",
-          "transformations": [
-            {
-              "id": "seriesToColumns",
-              "options": {
-                "byField": "cluster"
-              }
-            },
-            {
-              "id": "organize",
-              "options": {
-                "excludeByName": {
-                  "Time": true,
-                  "Time 1": true,
-                  "Time 2": true,
-                  "Time 3": true,
-                  "Time 4": true,
-                  "Time 5": true,
-                  "Time 6": true,
-                  "Value #E": true,
-                  "Value #F": false,
-                  "__name__": true,
-                  "clusterID": true,
-                  "clusterType": true,
-                  "endpoint": true,
-                  "instance": true,
-                  "job": true,
-                  "namespace": true,
-                  "openshiftVersion": true,
-                  "pod": true,
-                  "receive": true,
-                  "service": true,
-                  "tenant_id": true
-                },
-                "indexByName": {
-                  "Time 1": 8,
-                  "Time 2": 9,
-                  "Time 3": 10,
-                  "Time 4": 11,
-                  "Time 5": 12,
-                  "Time 6": 13,
-                  "Value #A": 0,
-                  "Value #B": 4,
-                  "Value #C": 5,
-                  "Value #D": 6,
-                  "Value #E": 7,
-                  "Value #F": 2,
-                  "cluster": 1,
-                  "openshiftVersion": 3
-                },
-                "renameByName": {
-                  "Time 2": "",
-                  "Value": "",
-                  "Value #A": "Operator Health",
-                  "Value #B": "Alerts with Critical Impact",
-                  "Value #C": "Alerts with Warning Impact",
-                  "Value #D": "Number of Running VMs",
-                  "Value #E": "",
-                  "Value #F": "Operator Conditions Health",
-                  "cluster": "Cluster",
-                  "openshiftVersion": "Version",
-                  "version": "Version"
-                }
-              }
-            }
-          ],
-          "type": "table"
         },
         {
           "collapsed": true,
@@ -1206,7 +1228,7 @@ data:
             "h": 1,
             "w": 24,
             "x": 0,
-            "y": 23
+            "y": 15
           },
           "id": 70,
           "panels": [
@@ -1262,7 +1284,7 @@ data:
                 "h": 7,
                 "w": 12,
                 "x": 0,
-                "y": 25
+                "y": 16
               },
               "id": 50,
               "options": {
@@ -1290,7 +1312,7 @@ data:
               "targets": [
                 {
                   "exemplar": true,
-                  "expr": "sum by (os)(sum by (cluster, os)(label_replace(kubevirt_vmi_info{cluster=~\"$cluster\", guest_os_name!=\"\", phase=\"running\"}, \"os\", \"$1\", \"guest_os_name\", \"(.*)\")) or\non(cluster) sum(kubevirt_vmi_phase_count{cluster=~\"$cluster\", phase=~\"running\", os!=\"<none>\"}) by (cluster, os))",
+                  "expr": "sum by (os)(sum by (cluster, os)(label_replace(kubevirt_vmi_info{cluster=~\"$cluster\", guest_os_name!=\"\", phase=\"running\"}, \"os\", \"$1\", \"guest_os_name\", \"(.*)\")\n+ on (cluster, namespace, name) group_left()(0*(kubevirt_vm_info{cluster=~\"$cluster\", status_group=\"running\"}>0))))",
                   "format": "table",
                   "hide": false,
                   "instant": true,
@@ -1300,7 +1322,7 @@ data:
                 },
                 {
                   "exemplar": true,
-                  "expr": "sum by (os)(sum by (cluster, os)(label_replace(kubevirt_vmi_info{cluster=~\"$cluster\", guest_os_name=\"\", phase=\"running\", os=\"<none>\"}, \"os\", \"unknown\", \"guest_os_name\", \"\")) or\non(cluster) sum(label_replace(kubevirt_vmi_phase_count{cluster=~\"$cluster\", phase=~\"running\", os=\"<none>\"}, \"os\", \"unknown\", \"os\", \"<none>\")) by (cluster, os))",
+                  "expr": "sum by (os)(sum by (cluster, os)(label_replace(kubevirt_vmi_info{cluster=~\"$cluster\", guest_os_name=\"\", phase=\"running\"}, \"os\", \"unknown\", \"guest_os_name\", \"\")\n+ on (cluster, namespace, name) group_left()(0*(kubevirt_vm_info{cluster=~\"$cluster\", status_group=\"running\"}>0))))",
                   "format": "table",
                   "hide": false,
                   "instant": true,
@@ -1363,7 +1385,7 @@ data:
             },
             {
               "datasource": null,
-              "description": "Top 20 Clusters",
+              "description": "",
               "fieldConfig": {
                 "defaults": {
                   "color": {
@@ -1420,7 +1442,7 @@ data:
                 "h": 7,
                 "w": 12,
                 "x": 12,
-                "y": 25
+                "y": 16
               },
               "id": 44,
               "options": {
@@ -1438,7 +1460,7 @@ data:
               "targets": [
                 {
                   "exemplar": true,
-                  "expr": "topk(20, count by (cluster) (kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\"} > 0))",
+                  "expr": "topk(20, sum by (cluster) (kubevirt_vm_info{cluster=~\"$cluster\", status_group=\"running\"} > 0))",
                   "instant": false,
                   "interval": "",
                   "legendFormat": "{{cluster}} ",
@@ -1502,72 +1524,13 @@ data:
                   {
                     "matcher": {
                       "id": "byName",
-                      "options": "starting"
-                    },
-                    "properties": [
-                      {
-                        "id": "color",
-                        "value": {
-                          "fixedColor": "blue",
-                          "mode": "fixed"
-                        }
-                      }
-                    ]
-                  },
-                  {
-                    "matcher": {
-                      "id": "byName",
-                      "options": "running"
-                    },
-                    "properties": [
-                      {
-                        "id": "color",
-                        "value": {
-                          "fixedColor": "semi-dark-green",
-                          "mode": "fixed"
-                        }
-                      }
-                    ]
-                  },
-                  {
-                    "matcher": {
-                      "id": "byName",
-                      "options": "non-running"
-                    },
-                    "properties": [
-                      {
-                        "id": "color",
-                        "value": {
-                          "fixedColor": "semi-dark-red",
-                          "mode": "fixed"
-                        }
-                      }
-                    ]
-                  },
-                  {
-                    "matcher": {
-                      "id": "byName",
-                      "options": "migrating"
-                    },
-                    "properties": [
-                      {
-                        "id": "color",
-                        "value": {
-                          "mode": "fixed"
-                        }
-                      }
-                    ]
-                  },
-                  {
-                    "matcher": {
-                      "id": "byName",
                       "options": "error"
                     },
                     "properties": [
                       {
                         "id": "color",
                         "value": {
-                          "fixedColor": "yellow",
+                          "fixedColor": "red",
                           "mode": "fixed"
                         }
                       }
@@ -1582,7 +1545,7 @@ data:
                       {
                         "id": "color",
                         "value": {
-                          "fixedColor": "semi-dark-red",
+                          "fixedColor": "dark-blue",
                           "mode": "fixed"
                         }
                       }
@@ -1594,7 +1557,7 @@ data:
                 "h": 7,
                 "w": 12,
                 "x": 0,
-                "y": 32
+                "y": 23
               },
               "id": 46,
               "options": {
@@ -1613,28 +1576,28 @@ data:
               "targets": [
                 {
                   "exemplar": true,
-                  "expr": "sum(count(kubevirt_vm_starting_status_last_transition_timestamp_seconds{cluster=~\"$cluster\"} > 0)) or vector(0)",
+                  "expr": "sum(sum(kubevirt_vm_info{cluster=~\"$cluster\", status_group=\"running\"}>0) by (status_group) or vector(0))",
                   "format": "time_series",
                   "hide": false,
                   "instant": false,
                   "interval": "",
                   "intervalFactor": 1,
-                  "legendFormat": "starting",
+                  "legendFormat": "running",
                   "refId": "B"
                 },
                 {
                   "exemplar": true,
-                  "expr": "sum(count(kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\"} > 0)) or vector(0)",
+                  "expr": "sum(sum(kubevirt_vm_info{cluster=~\"$cluster\", status_group=\"starting\"}>0) by (status_group) or vector(0))",
                   "format": "time_series",
                   "hide": false,
                   "instant": false,
                   "interval": "",
-                  "legendFormat": "running",
+                  "legendFormat": "starting",
                   "refId": "D"
                 },
                 {
                   "exemplar": true,
-                  "expr": "sum(count(kubevirt_vm_migrating_status_last_transition_timestamp_seconds{cluster=~\"$cluster\"} > 0)) or vector(0)",
+                  "expr": "sum(sum(kubevirt_vm_info{cluster=~\"$cluster\", status_group=\"migrating\"}>0) by (status_group) or vector(0))",
                   "format": "time_series",
                   "hide": false,
                   "instant": false,
@@ -1644,7 +1607,7 @@ data:
                 },
                 {
                   "exemplar": true,
-                  "expr": "sum(count(kubevirt_vm_error_status_last_transition_timestamp_seconds{cluster=~\"$cluster\"} > 0)) or vector(0)",
+                  "expr": "sum(sum(kubevirt_vm_info{cluster=~\"$cluster\", status_group=\"error\"}>0) by (status_group) or vector(0))",
                   "format": "time_series",
                   "hide": false,
                   "instant": false,
@@ -1654,7 +1617,7 @@ data:
                 },
                 {
                   "exemplar": true,
-                  "expr": "sum(count(kubevirt_vm_non_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\"} > 0)) or vector(0)",
+                  "expr": "sum(sum(kubevirt_vm_info{cluster=~\"$cluster\", status_group=\"non_running\"}>0) by (status_group) or vector(0))",
                   "format": "time_series",
                   "hide": false,
                   "instant": false,
@@ -1687,7 +1650,7 @@ data:
             },
             {
               "datasource": null,
-              "description": "Top 20 Nodes",
+              "description": "",
               "fieldConfig": {
                 "defaults": {
                   "color": {
@@ -1742,7 +1705,7 @@ data:
                 "h": 7,
                 "w": 12,
                 "x": 12,
-                "y": 32
+                "y": 23
               },
               "id": 48,
               "options": {
@@ -1784,13 +1747,13 @@ data:
             "h": 1,
             "w": 24,
             "x": 0,
-            "y": 24
+            "y": 16
           },
           "id": 60,
           "panels": [
             {
               "datasource": "Observatorium-Dynamic",
-              "description": "Top 20 Clusters",
+              "description": "This panel displays the top 20 clusters based on their VMs CPU usage over the past 10 minutes. CPU usage is calculated as the total CPU time consumed by VMs. This provides insight into clusters with the highest CPU demand and helps identify potential resource bottlenecks.",
               "fieldConfig": {
                 "defaults": {
                   "color": {
@@ -1818,7 +1781,7 @@ data:
                     "spanNulls": false,
                     "stacking": {
                       "group": "A",
-                      "mode": "normal"
+                      "mode": "none"
                     },
                     "thresholdsStyle": {
                       "mode": "off"
@@ -1844,7 +1807,7 @@ data:
                 "h": 7,
                 "w": 12,
                 "x": 0,
-                "y": 26
+                "y": 17
               },
               "id": 52,
               "options": {
@@ -1863,7 +1826,7 @@ data:
               "targets": [
                 {
                   "exemplar": true,
-                  "expr": "topk(20, sum(rate(kubevirt_vmi_cpu_usage_seconds_total{cluster=~\"$cluster\",namespace=~\".*\"}[1h])) by (cluster))",
+                  "expr": "topk(20, sum(rate(kubevirt_vmi_cpu_usage_seconds_total{cluster=~\"$cluster\",namespace=~\".*\"}[10m])) by (cluster))",
                   "hide": false,
                   "instant": false,
                   "interval": "",
@@ -1875,8 +1838,108 @@ data:
               "type": "timeseries"
             },
             {
+              "datasource": "Observatorium-Dynamic",
+              "description": "This panel displays the top 20 clusters based on their CPU usage percentage for clusters running virtual machines (VMs) over the past 10 minutes. CPU usage is calculated as the total CPU time consumed by VMs divided by the total CPU capacity of nodes actively hosting VMs. This provides insight into clusters with the highest CPU demand and helps identify potential resource bottlenecks.",
+              "fieldConfig": {
+                "defaults": {
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
+                    "barAlignment": 0,
+                    "drawStyle": "line",
+                    "fillOpacity": 10,
+                    "gradientMode": "opacity",
+                    "hideFrom": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": false
+                    },
+                    "lineInterpolation": "linear",
+                    "lineWidth": 1,
+                    "pointSize": 5,
+                    "scaleDistribution": {
+                      "type": "linear"
+                    },
+                    "showPoints": "never",
+                    "spanNulls": false,
+                    "stacking": {
+                      "group": "A",
+                      "mode": "none"
+                    },
+                    "thresholdsStyle": {
+                      "mode": "off"
+                    }
+                  },
+                  "mappings": [],
+                  "noValue": "0",
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "green",
+                        "value": null
+                      }
+                    ]
+                  },
+                  "unit": "percentunit"
+                },
+                "overrides": []
+              },
+              "gridPos": {
+                "h": 7,
+                "w": 12,
+                "x": 12,
+                "y": 17
+              },
+              "id": 78,
+              "options": {
+                "legend": {
+                  "calcs": [
+                    "lastNotNull",
+                    "max"
+                  ],
+                  "displayMode": "table",
+                  "placement": "right"
+                },
+                "tooltip": {
+                  "mode": "multi"
+                }
+              },
+              "targets": [
+                {
+                  "exemplar": true,
+                  "expr": "topk(20,sum by(cluster)(rate(kubevirt_vmi_cpu_usage_seconds_total{cluster=~\"$cluster\"}[10m]))/\n(sum by(cluster)(rate(node_cpu_seconds_total{cluster=~\"$cluster\"}[10m]))))",
+                  "hide": false,
+                  "instant": false,
+                  "interval": "",
+                  "legendFormat": "{{cluster}}",
+                  "refId": "C"
+                }
+              ],
+              "title": "Clusters by CPU Usage (%)",
+              "type": "timeseries"
+            }
+          ],
+          "title": "CPU Utilization - Top 20",
+          "type": "row"
+        },
+        {
+          "collapsed": true,
+          "datasource": null,
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 17
+          },
+          "id": 77,
+          "panels": [
+            {
               "datasource": null,
-              "description": "Top 20 Clusters",
+              "description": "Top 20 Clusters based on the VMs memory usage in the clusters",
               "fieldConfig": {
                 "defaults": {
                   "color": {
@@ -1904,7 +1967,7 @@ data:
                     "spanNulls": false,
                     "stacking": {
                       "group": "A",
-                      "mode": "normal"
+                      "mode": "none"
                     },
                     "thresholdsStyle": {
                       "mode": "off"
@@ -1929,8 +1992,8 @@ data:
               "gridPos": {
                 "h": 7,
                 "w": 12,
-                "x": 12,
-                "y": 26
+                "x": 0,
+                "y": 18
               },
               "id": 54,
               "options": {
@@ -1949,7 +2012,7 @@ data:
               "targets": [
                 {
                   "exemplar": true,
-                  "expr": "topk(20, sum by (cluster)(kubevirt_vmi_memory_available_bytes{cluster=~\"$cluster\"} - kubevirt_vmi_memory_unused_bytes{cluster=~\"$cluster\"} -kubevirt_vmi_memory_cached_bytes{cluster=~\"$cluster\"}))",
+                  "expr": "topk(20, sum by (cluster)(\n  kubevirt_vmi_memory_available_bytes{cluster=~\"$cluster\"} -\n  kubevirt_vmi_memory_unused_bytes{cluster=~\"$cluster\"} -\n  kubevirt_vmi_memory_cached_bytes{cluster=~\"$cluster\"}\n  )\n)",
                   "hide": false,
                   "interval": "",
                   "legendFormat": "{{cluster}}",
@@ -1960,8 +2023,107 @@ data:
               "type": "timeseries"
             },
             {
+              "datasource": null,
+              "description": "Top 20 Clusters based on the VMs memory usage percentage out of the total memory available in the cluster.",
+              "fieldConfig": {
+                "defaults": {
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
+                    "barAlignment": 0,
+                    "drawStyle": "line",
+                    "fillOpacity": 30,
+                    "gradientMode": "opacity",
+                    "hideFrom": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": false
+                    },
+                    "lineInterpolation": "linear",
+                    "lineWidth": 1,
+                    "pointSize": 5,
+                    "scaleDistribution": {
+                      "type": "linear"
+                    },
+                    "showPoints": "never",
+                    "spanNulls": false,
+                    "stacking": {
+                      "group": "A",
+                      "mode": "none"
+                    },
+                    "thresholdsStyle": {
+                      "mode": "off"
+                    }
+                  },
+                  "mappings": [],
+                  "noValue": "0",
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "green",
+                        "value": null
+                      }
+                    ]
+                  },
+                  "unit": "percentunit"
+                },
+                "overrides": []
+              },
+              "gridPos": {
+                "h": 7,
+                "w": 12,
+                "x": 12,
+                "y": 18
+              },
+              "id": 79,
+              "options": {
+                "legend": {
+                  "calcs": [
+                    "lastNotNull",
+                    "max"
+                  ],
+                  "displayMode": "table",
+                  "placement": "right"
+                },
+                "tooltip": {
+                  "mode": "multi"
+                }
+              },
+              "targets": [
+                {
+                  "exemplar": true,
+                  "expr": "topk(20,(\n  sum by (cluster) (\n    kubevirt_vmi_memory_available_bytes{cluster=~\"$cluster\"} -        \n    kubevirt_vmi_memory_unused_bytes{cluster=~\"$cluster\"} - \n    kubevirt_vmi_memory_cached_bytes{cluster=~\"$cluster\"}\n  )\n  /\n  (sum by (cluster)(label_replace(node_memory_MemTotal_bytes{cluster=~\"$cluster\"}, \"node\", \"$1\", \"instance\", \"(.*)\")))\n )\n)",
+                  "hide": false,
+                  "interval": "",
+                  "legendFormat": "{{cluster}}",
+                  "refId": "C"
+                }
+              ],
+              "title": "Memory Usage by Cluster (%)",
+              "type": "timeseries"
+            }
+          ],
+          "title": "Memory Utilization - Top 20",
+          "type": "row"
+        },
+        {
+          "collapsed": true,
+          "datasource": null,
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 18
+          },
+          "id": 75,
+          "panels": [
+            {
               "datasource": "Observatorium-Dynamic",
-              "description": "Top 20 Clusters",
+              "description": "This panel displays the top 20 clusters by network received bytes per second over the past 10 minutes. The query measures the rate of incoming network traffic, helping identify VMs with the highest network activity. Use this information to monitor and optimize resource usage for workloads with significant data reception.",
               "fieldConfig": {
                 "defaults": {
                   "color": {
@@ -2017,7 +2179,7 @@ data:
                 "h": 7,
                 "w": 12,
                 "x": 0,
-                "y": 33
+                "y": 19
               },
               "id": 56,
               "options": {
@@ -2037,7 +2199,7 @@ data:
               "targets": [
                 {
                   "exemplar": false,
-                  "expr": "topk(20,sum(rate(kubevirt_vmi_network_receive_bytes_total{cluster=~\"$cluster\"}[1h])) by (cluster))",
+                  "expr": "topk(20,sum(rate(kubevirt_vmi_network_receive_bytes_total{cluster=~\"$cluster\"}[10m])) by (cluster))",
                   "hide": false,
                   "instant": false,
                   "interval": "",
@@ -2047,13 +2209,13 @@ data:
               ],
               "timeFrom": null,
               "timeShift": null,
-              "title": "Network Usage by Cluster - Recieve",
+              "title": "Clusters by Network Received Bytes",
               "transformations": [],
               "type": "timeseries"
             },
             {
               "datasource": "Observatorium-Dynamic",
-              "description": "Top 20 Clusters",
+              "description": "This panel displays the top 20 clusters by network transmitted bytes per second over the past 10 minutes. The query measures the rate of incoming network traffic, helping identify VMs with the highest network activity. Use this information to monitor and optimize resource usage for workloads with significant data reception.",
               "fieldConfig": {
                 "defaults": {
                   "color": {
@@ -2109,7 +2271,7 @@ data:
                 "h": 7,
                 "w": 12,
                 "x": 12,
-                "y": 33
+                "y": 19
               },
               "id": 71,
               "options": {
@@ -2129,7 +2291,7 @@ data:
               "targets": [
                 {
                   "exemplar": true,
-                  "expr": "topk(20,sum(rate(kubevirt_vmi_network_transmit_bytes_total{cluster=~\"$cluster\"}[1h])) by (cluster))",
+                  "expr": "topk(20,sum(rate(kubevirt_vmi_network_transmit_bytes_total{cluster=~\"$cluster\"}[10m])) by (cluster))",
                   "hide": false,
                   "instant": false,
                   "interval": "",
@@ -2139,13 +2301,28 @@ data:
               ],
               "timeFrom": null,
               "timeShift": null,
-              "title": "Network Usage by Cluster - Transmit",
+              "title": "Clusters by Network Transmitted Bytes",
               "transformations": [],
               "type": "timeseries"
-            },
+            }
+          ],
+          "title": "Network Utilization - Top 20",
+          "type": "row"
+        },
+        {
+          "collapsed": true,
+          "datasource": null,
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 19
+          },
+          "id": 73,
+          "panels": [
             {
               "datasource": "Observatorium-Dynamic",
-              "description": "Top 20 Clusters",
+              "description": "",
               "fieldConfig": {
                 "defaults": {
                   "color": {
@@ -2156,7 +2333,99 @@ data:
                     "axisPlacement": "auto",
                     "barAlignment": 0,
                     "drawStyle": "line",
-                    "fillOpacity": 0,
+                    "fillOpacity": 10,
+                    "gradientMode": "none",
+                    "hideFrom": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": false
+                    },
+                    "lineInterpolation": "linear",
+                    "lineStyle": {
+                      "fill": "solid"
+                    },
+                    "lineWidth": 1,
+                    "pointSize": 5,
+                    "scaleDistribution": {
+                      "type": "linear"
+                    },
+                    "showPoints": "auto",
+                    "spanNulls": false,
+                    "stacking": {
+                      "group": "A",
+                      "mode": "none"
+                    },
+                    "thresholdsStyle": {
+                      "mode": "off"
+                    }
+                  },
+                  "mappings": [],
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "green",
+                        "value": null
+                      },
+                      {
+                        "color": "red",
+                        "value": 80
+                      }
+                    ]
+                  },
+                  "unit": "bytes"
+                },
+                "overrides": []
+              },
+              "gridPos": {
+                "h": 7,
+                "w": 12,
+                "x": 0,
+                "y": 20
+              },
+              "id": 58,
+              "options": {
+                "legend": {
+                  "calcs": [
+                    "lastNotNull",
+                    "max"
+                  ],
+                  "displayMode": "table",
+                  "placement": "right"
+                },
+                "tooltip": {
+                  "mode": "multi"
+                }
+              },
+              "targets": [
+                {
+                  "exemplar": true,
+                  "expr": "topk(20, sum by (cluster)(rate(kubevirt_vmi_storage_read_traffic_bytes_total{cluster=~\"$cluster\"}[10m]) + rate(kubevirt_vmi_storage_write_traffic_bytes_total{cluster=~\"$cluster\"}[10m])))",
+                  "format": "time_series",
+                  "hide": false,
+                  "instant": false,
+                  "interval": "",
+                  "legendFormat": "{{cluster}}",
+                  "refId": "B"
+                }
+              ],
+              "title": "Storage Traffic by Cluster",
+              "type": "timeseries"
+            },
+            {
+              "datasource": "Observatorium-Dynamic",
+              "description": "",
+              "fieldConfig": {
+                "defaults": {
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
+                    "barAlignment": 0,
+                    "drawStyle": "line",
+                    "fillOpacity": 10,
                     "gradientMode": "none",
                     "hideFrom": {
                       "legend": false,
@@ -2203,10 +2472,10 @@ data:
               "gridPos": {
                 "h": 7,
                 "w": 12,
-                "x": 0,
-                "y": 40
+                "x": 12,
+                "y": 20
               },
-              "id": 58,
+              "id": 80,
               "options": {
                 "legend": {
                   "calcs": [
@@ -2223,7 +2492,7 @@ data:
               "targets": [
                 {
                   "exemplar": true,
-                  "expr": "topk(20, sum by (cluster) (rate(kubevirt_vmi_storage_iops_read_total{cluster=~\"$cluster\"}[1h]) + rate(kubevirt_vmi_storage_iops_write_total{cluster=~\"$cluster\"}[1h])))",
+                  "expr": "topk(20, sum by (cluster) (rate(kubevirt_vmi_storage_iops_read_total{cluster=~\"$cluster\"}[10m]) + rate(kubevirt_vmi_storage_iops_write_total{cluster=~\"$cluster\"}[10m])))",
                   "format": "time_series",
                   "hide": false,
                   "instant": false,
@@ -2236,11 +2505,11 @@ data:
               "type": "timeseries"
             }
           ],
-          "title": "Resources Utilization - Top 20",
+          "title": "Storage Utilization - Top 20",
           "type": "row"
         }
       ],
-      "refresh": "",
+      "refresh": false,
       "schemaVersion": 30,
       "style": "dark",
       "tags": [
@@ -2279,7 +2548,7 @@ data:
             "refresh": 2,
             "regex": "",
             "skipUrlSync": false,
-            "sort": 0,
+            "sort": 1,
             "type": "query"
           },
           {

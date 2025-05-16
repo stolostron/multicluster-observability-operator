@@ -145,6 +145,7 @@ data:
       - kubevirt_hyperconverged_operator_health_status
       - kubevirt_hco_system_health_status
       - kubevirt_vmi_info
+      - kubevirt_vm_info
       - kubevirt_vm_running_status_last_transition_timestamp_seconds
       - kubevirt_vm_non_running_status_last_transition_timestamp_seconds
       - kubevirt_vm_error_status_last_transition_timestamp_seconds
@@ -163,6 +164,10 @@ data:
       - kubevirt_vmi_storage_iops_read_total
       - kubevirt_vmi_storage_iops_write_total
       - kubevirt_vm_resource_requests
+      - kubevirt_vmi_storage_write_traffic_bytes_total
+      - kubevirt_vmi_storage_read_traffic_bytes_total
+      - node_memory_MemTotal_bytes
+      - node_cpu_seconds_total
 
 
     matches:
