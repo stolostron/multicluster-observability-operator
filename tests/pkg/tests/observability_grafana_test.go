@@ -39,7 +39,7 @@ var _ = Describe("", func() {
 				return err
 			}
 			for _, cluster := range clusters {
-				query := fmt.Sprintf("node_memory_MemAvailable_bytes{cluster=\"%s\"}", cluster)
+				query := fmt.Sprintf("node_memory_MemAvailable_bytes{cluster=\"%s\"}", cluster.Name)
 				res, err := utils.QueryGrafana(
 					testOptions,
 					query,

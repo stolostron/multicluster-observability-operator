@@ -991,7 +991,7 @@ func (m *MetricsCollector) getMetricsAllowlist(ctx context.Context) (*operatorco
 
 		cmNamespaces = append(cmNamespaces, allowlistCM.ObjectMeta.Namespace)
 
-		customAllowlist, _, customUwlAllowlist, err := util.ParseAllowlistConfigMap(allowlistCM)
+		customAllowlist, customUwlAllowlist, err := util.ParseAllowlistConfigMap(allowlistCM)
 		if err != nil {
 			m.Log.Error(err, "Failed to parse data in configmap", "namespace", allowlistCM.ObjectMeta.Namespace, "name", allowlistCM.ObjectMeta.Name)
 			continue
@@ -1001,7 +1001,7 @@ func (m *MetricsCollector) getMetricsAllowlist(ctx context.Context) (*operatorco
 			customUwlAllowlist = injectNamespaceLabel(customUwlAllowlist, allowlistCM.ObjectMeta.Namespace)
 		}
 
-		allowList, _, userAllowList = util.MergeAllowlist(allowList, customAllowlist, nil, userAllowList, customUwlAllowlist)
+		allowList, userAllowList = util.MergeAllowlist(allowList, customAllowlist, userAllowList, customUwlAllowlist)
 	}
 
 	if len(cmNamespaces) > 0 {
