@@ -38,7 +38,7 @@ data:
                 "mode": "thresholds"
               },
               "custom": {
-                "align": "auto",
+                "align": "left",
                 "displayMode": "auto"
               },
               "mappings": [],
@@ -59,25 +59,21 @@ data:
             "overrides": [
               {
                 "matcher": {
-                  "id": "byType",
-                  "options": "string"
-                },
-                "properties": [
-                  {
-                    "id": "custom.filterable",
-                    "value": true
-                  }
-                ]
-              },
-              {
-                "matcher": {
                   "id": "byName",
-                  "options": "Value #E"
+                  "options": "Memory"
                 },
                 "properties": [
                   {
                     "id": "unit",
-                    "value": "decbytes"
+                    "value": "bytes"
+                  },
+                  {
+                    "id": "custom.width",
+                    "value": 107
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 0
                   }
                 ]
               },
@@ -93,6 +89,7 @@ data:
                       {
                         "options": {
                           "1": {
+                            "color": "text",
                             "index": 1,
                             "text": "Reporting"
                           }
@@ -103,6 +100,7 @@ data:
                         "options": {
                           "match": "null",
                           "result": {
+                            "color": "red",
                             "index": 0,
                             "text": "Not Reporting"
                           }
@@ -110,25 +108,205 @@ data:
                         "type": "special"
                       }
                     ]
+                  },
+                  {
+                    "id": "custom.displayMode",
+                    "value": "color-text"
+                  },
+                  {
+                    "id": "custom.width",
+                    "value": 107
                   }
                 ]
               },
               {
                 "matcher": {
-                  "id": "byType",
-                  "options": "number"
+                  "id": "byName",
+                  "options": "Create Date"
                 },
                 "properties": [
                   {
-                    "id": "custom.filterable",
-                    "value": true
+                    "id": "unit",
+                    "value": "dateTimeAsIso"
+                  },
+                  {
+                    "id": "custom.width",
+                    "value": 169
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "VM Name"
+                },
+                "properties": [
+                  {
+                    "id": "links",
+                    "value": [
+                      {
+                        "targetBlank": true,
+                        "title": "",
+                        "url": "/d/RnxEyj6Sz/executive-dashboards-single-virtual-machine-view?orgId=1&var-cluster=${__data.fields.Cluster}&var-name=${__data.fields[\"VM Name\"]}&var-namespace=${__data.fields.Namespace}"
+                      }
+                    ]
+                  },
+                  {
+                    "id": "custom.width",
+                    "value": 207
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Disk"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "bytes"
+                  },
+                  {
+                    "id": "custom.width",
+                    "value": 100
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Outdated"
+                },
+                "properties": [
+                  {
+                    "id": "mappings",
+                    "value": [
+                      {
+                        "options": {
+                          "false": {
+                            "color": "text",
+                            "index": 1
+                          },
+                          "true": {
+                            "color": "red",
+                            "index": 0
+                          }
+                        },
+                        "type": "value"
+                      }
+                    ]
+                  },
+                  {
+                    "id": "custom.displayMode",
+                    "value": "color-text"
+                  },
+                  {
+                    "id": "custom.width",
+                    "value": 87
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Evictable"
+                },
+                "properties": [
+                  {
+                    "id": "mappings",
+                    "value": [
+                      {
+                        "options": {
+                          "false": {
+                            "color": "red",
+                            "index": 0
+                          },
+                          "true": {
+                            "color": "text",
+                            "index": 1
+                          }
+                        },
+                        "type": "value"
+                      }
+                    ]
+                  },
+                  {
+                    "id": "custom.displayMode",
+                    "value": "color-text"
+                  },
+                  {
+                    "id": "custom.width",
+                    "value": 85
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Status"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 97
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Preference"
+                },
+                "properties": [
+                  {
+                    "id": "mappings",
+                    "value": [
+                      {
+                        "options": {
+                          "<other>": {
+                            "index": 0,
+                            "text": "Other"
+                          }
+                        },
+                        "type": "value"
+                      }
+                    ]
+                  },
+                  {
+                    "id": "custom.width",
+                    "value": 151
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "OS Arch"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 89
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Flavor"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 88
                   }
                 ]
               }
             ]
           },
           "gridPos": {
-            "h": 26,
+            "h": 20,
             "w": 24,
             "x": 0,
             "y": 0
@@ -136,18 +314,13 @@ data:
           "id": 2,
           "options": {
             "showHeader": true,
-            "sortBy": [
-              {
-                "desc": false,
-                "displayName": "Allocated memory"
-              }
-            ]
+            "sortBy": []
           },
           "pluginVersion": "8.5.20",
           "targets": [
             {
               "exemplar": true,
-              "expr": "sum by (cluster, namespace, name, status) (\n  label_replace(kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > 0, \"status\", \"running\", \"__name__\", \".*\") \n  or label_replace(kubevirt_vm_non_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > 0, \"status\", \"stopped\", \"__name__\", \".*\")\n  or label_replace(kubevirt_vm_error_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > 0, \"status\", \"error\", \"__name__\", \".*\") \n  or label_replace(kubevirt_vm_starting_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > 0, \"status\", \"starting\", \"__name__\", \".*\") \n  or label_replace(kubevirt_vm_migrating_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > 0, \"status\", \"migrating\", \"__name__\", \".*\")\n)",
+              "expr": "sum by (cluster, namespace, name, status) (\n  label_replace(kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > 0, \"status\", \"running\", \"__name__\", \".*\") \n  or label_replace(kubevirt_vm_non_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > 0, \"status\", \"stopped\", \"__name__\", \".*\")\n  or label_replace(kubevirt_vm_error_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > 0, \"status\", \"error\", \"__name__\", \".*\") \n  or label_replace(kubevirt_vm_starting_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > 0, \"status\", \"starting\", \"__name__\", \".*\") \n  or label_replace(kubevirt_vm_migrating_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > 0, \"status\", \"migrating\", \"__name__\", \".*\")\n)+${status:raw}\n+on(cluster, namespace, name) group_left(_blah)(0*sum by (cluster, namespace, name)(kubevirt_vm_info{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\",flavor=~\"$flavor\",workload=~\"$workload\", instance_type=~\"$instance_type\", preference=~\"$preference\",guest_os_name=~\"$guest_os_name\" ,guest_os_version_id=~\"$guest_os_version_id\"} or kubevirt_vmi_info{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\",flavor=~\"$flavor\",workload=~\"$workload\", instance_type=~\"$instance_type\", preference=~\"$preference\",guest_os_name=~\"$guest_os_name\" ,guest_os_version_id=~\"$guest_os_version_id\"}))",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -157,27 +330,7 @@ data:
             },
             {
               "exemplar": true,
-              "expr": "kubevirt_vmi_info{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"}",
-              "format": "table",
-              "hide": false,
-              "instant": true,
-              "interval": "",
-              "legendFormat": "",
-              "refId": "B"
-            },
-            {
-              "exemplar": true,
-              "expr": "sum by (cluster, namespace, name, node)(kubevirt_vmi_network_receive_bytes_total{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"})",
-              "format": "table",
-              "hide": false,
-              "instant": true,
-              "interval": "",
-              "legendFormat": "",
-              "refId": "C"
-            },
-            {
-              "exemplar": true,
-              "expr": "sum by (cluster, namespace, name) (\n  (\n    last_over_time(kubevirt_vm_resource_requests{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\", resource=\"cpu\", unit=\"cores\"}[1h])\n  ) \n  * (\n    last_over_time(kubevirt_vm_resource_requests{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\", resource=\"cpu\", unit=\"sockets\"}[1h])\n  ) \n  * (\n    last_over_time(kubevirt_vm_resource_requests{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\", resource=\"cpu\", unit=\"threads\"}[1h])\n  )\n)",
+              "expr": "(sum by (cluster, namespace, name) (\n(kubevirt_vm_resource_requests{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\", resource=\"cpu\", unit=\"cores\", source=~\"default|domain\"})\n* ignoring (unit)(kubevirt_vm_resource_requests{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\", resource=\"cpu\", unit=\"sockets\", source=~\"default|domain\"})\n* ignoring (unit)(kubevirt_vm_resource_requests{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\", resource=\"cpu\", unit=\"threads\", source=~\"default|domain\"})\n) or\nsum by (cluster, namespace, name) (\n(kubevirt_vm_resource_requests{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\", resource=\"cpu\", unit=\"cores\", source=~\"default|domain\"})\n* ignoring (unit)(kubevirt_vm_resource_requests{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\", resource=\"cpu\", unit=\"sockets\", source=~\"default|domain\"})\n)\n or\nsum by (cluster, namespace, name) (\n(kubevirt_vm_resource_requests{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\", resource=\"cpu\", unit=\"cores\", source=~\"default|domain\"})\n))\n+ ${status:raw}\n+ on(cluster, namespace, name) group_left(_blah)(0*sum by (cluster, namespace, name)(kubevirt_vm_info{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\",flavor=~\"$flavor\",workload=~\"$workload\", instance_type=~\"$instance_type\", preference=~\"$preference\",guest_os_name=~\"$guest_os_name\" ,guest_os_version_id=~\"$guest_os_version_id\"} or kubevirt_vmi_info{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\",flavor=~\"$flavor\",workload=~\"$workload\", instance_type=~\"$instance_type\", preference=~\"$preference\",guest_os_name=~\"$guest_os_name\" ,guest_os_version_id=~\"$guest_os_version_id\"}))",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -187,7 +340,7 @@ data:
             },
             {
               "exemplar": true,
-              "expr": "sum by (cluster, namespace, name)(kubevirt_vm_resource_requests{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\", resource=\"memory\"})",
+              "expr": "max by (cluster, namespace, name)(kubevirt_vm_resource_requests{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\",resource=\"memory\"})\n+${status:raw}\n+ on(cluster, namespace, name) group_left(_blah)(0*sum by (cluster, namespace, name)(kubevirt_vm_info{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\",flavor=~\"$flavor\",workload=~\"$workload\", instance_type=~\"$instance_type\", preference=~\"$preference\",guest_os_name=~\"$guest_os_name\" ,guest_os_version_id=~\"$guest_os_version_id\"} or kubevirt_vmi_info{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\",flavor=~\"$flavor\",workload=~\"$workload\", instance_type=~\"$instance_type\", preference=~\"$preference\",guest_os_name=~\"$guest_os_name\" ,guest_os_version_id=~\"$guest_os_version_id\"}))",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -197,13 +350,93 @@ data:
             },
             {
               "exemplar": true,
-              "expr": "sum by (cluster, namespace, name)(kubevirt_vmi_memory_available_bytes{cluster=~\"$cluster\", namespace=~\"$namespace\", name=~\"$name\"}*0+1)",
+              "expr": "sum by (cluster, namespace, name)(kubevirt_vmi_memory_available_bytes{cluster=~\"$cluster\", namespace=~\"$namespace\", name=~\"$name\"}*0+1)+${status:raw}\n+ on(cluster, namespace, name) group_left(_blah)(0*sum by (cluster, namespace, name)(kubevirt_vm_info{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\",flavor=~\"$flavor\",workload=~\"$workload\", instance_type=~\"$instance_type\", preference=~\"$preference\",guest_os_name=~\"$guest_os_name\" ,guest_os_version_id=~\"$guest_os_version_id\"} or kubevirt_vmi_info{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\",flavor=~\"$flavor\",workload=~\"$workload\", instance_type=~\"$instance_type\", preference=~\"$preference\",guest_os_name=~\"$guest_os_name\" ,guest_os_version_id=~\"$guest_os_version_id\"}))",
               "format": "table",
               "hide": false,
               "instant": true,
               "interval": "",
               "legendFormat": "",
               "refId": "F"
+            },
+            {
+              "exemplar": true,
+              "expr": "sum by (cluster, namespace, name)(kubevirt_vm_create_date_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"}*1000)\n+${status:raw}\n+ on(cluster, namespace, name) group_left(_blah)(0*sum by (cluster, namespace, name)(kubevirt_vm_info{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\",flavor=~\"$flavor\",workload=~\"$workload\", instance_type=~\"$instance_type\", preference=~\"$preference\",guest_os_name=~\"$guest_os_name\" ,guest_os_version_id=~\"$guest_os_version_id\"} or kubevirt_vmi_info{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\",flavor=~\"$flavor\",workload=~\"$workload\", instance_type=~\"$instance_type\", preference=~\"$preference\",guest_os_name=~\"$guest_os_name\" ,guest_os_version_id=~\"$guest_os_version_id\"}))",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "G"
+            },
+            {
+              "exemplar": true,
+              "expr": "sum by (cluster, namespace, name)(kubevirt_vm_disk_allocated_size_bytes{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"})+${status:raw}\n+ on(cluster, namespace, name) group_left(_blah)(0*sum by (cluster, namespace, name)(kubevirt_vm_info{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\",flavor=~\"$flavor\",workload=~\"$workload\", instance_type=~\"$instance_type\", preference=~\"$preference\",guest_os_name=~\"$guest_os_name\" ,guest_os_version_id=~\"$guest_os_version_id\"} or kubevirt_vmi_info{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\",flavor=~\"$flavor\",workload=~\"$workload\", instance_type=~\"$instance_type\", preference=~\"$preference\",guest_os_name=~\"$guest_os_name\" ,guest_os_version_id=~\"$guest_os_version_id\"}))",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "H"
+            },
+            {
+              "exemplar": true,
+              "expr": "sum by (cluster,namespace,name,flavor) (kubevirt_vmi_info{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\", flavor!=\"<none>\",flavor=~\"$flavor\",workload=~\"$workload\", instance_type=~\"$instance_type\", preference=~\"$preference\",guest_os_name=~\"$guest_os_name\" ,guest_os_version_id=~\"$guest_os_version_id\"})\n+${status:raw}\nor\nsum by (cluster,namespace,name,flavor) (kubevirt_vm_info{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\", flavor!=\"<none>\",flavor=~\"$flavor\",workload=~\"$workload\", instance_type=~\"$instance_type\", preference=~\"$preference\",guest_os_name=~\"$guest_os_name\" ,guest_os_version_id=~\"$guest_os_version_id\"})\n+${status:raw}",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "J"
+            },
+            {
+              "exemplar": true,
+              "expr": "sum by (cluster,namespace,name,workload) (kubevirt_vmi_info{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\", workload!=\"<none>\",flavor=~\"$flavor\",workload=~\"$workload\", instance_type=~\"$instance_type\", preference=~\"$preference\",guest_os_name=~\"$guest_os_name\" ,guest_os_version_id=~\"$guest_os_version_id\"})\n+${status:raw}\nor\nsum by (cluster,namespace,name,workload) (kubevirt_vm_info{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\", workload!=\"<none>\",flavor=~\"$flavor\",workload=~\"$workload\", instance_type=~\"$instance_type\", preference=~\"$preference\",guest_os_name=~\"$guest_os_name\" ,guest_os_version_id=~\"$guest_os_version_id\"})\n+${status:raw}",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "B"
+            },
+            {
+              "exemplar": true,
+              "expr": "sum by (cluster,namespace,name,instance_type) (kubevirt_vmi_info{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\", instance_type!=\"<none>\",flavor=~\"$flavor\",workload=~\"$workload\", instance_type=~\"$instance_type\", preference=~\"$preference\",guest_os_name=~\"$guest_os_name\" ,guest_os_version_id=~\"$guest_os_version_id\"})\n+${status:raw}\nor\nsum by (cluster,namespace,name,instance_type) (kubevirt_vm_info{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\", instance_type!=\"<none>\",flavor=~\"$flavor\",workload=~\"$workload\", instance_type=~\"$instance_type\", preference=~\"$preference\",guest_os_name=~\"$guest_os_name\" ,guest_os_version_id=~\"$guest_os_version_id\"})\n+${status:raw}",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "K"
+            },
+            {
+              "exemplar": true,
+              "expr": "sum by (cluster,namespace,name,preference) (kubevirt_vmi_info{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\", preference!=\"<none>\",flavor=~\"$flavor\",workload=~\"$workload\", instance_type=~\"$instance_type\", preference=~\"$preference\",guest_os_name=~\"$guest_os_name\" ,guest_os_version_id=~\"$guest_os_version_id\"})\n+${status:raw}\nor\nsum by (cluster,namespace,name,preference) (kubevirt_vm_info{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\", preference!=\"<none>\",flavor=~\"$flavor\",workload=~\"$workload\", instance_type=~\"$instance_type\", preference=~\"$preference\",guest_os_name=~\"$guest_os_name\" ,guest_os_version_id=~\"$guest_os_version_id\"})\n+${status:raw}",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "L"
+            },
+            {
+              "exemplar": true,
+              "expr": "sum by (cluster,namespace,name,guest_os_name ,guest_os_version_id, guest_os_arch) (kubevirt_vmi_info{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\",guest_os_name!=\"\" ,guest_os_version_id!=\"\",flavor=~\"$flavor\",workload=~\"$workload\", instance_type=~\"$instance_type\", preference=~\"$preference\",guest_os_name=~\"$guest_os_name\" ,guest_os_version_id=~\"$guest_os_version_id\"})\n+${status:raw}\nor\nsum by (cluster,namespace,name,guest_os_name ,guest_os_version_id, guest_os_arch) (kubevirt_vm_info{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\",guest_os_name!=\"\" ,guest_os_version_id!=\"\",flavor=~\"$flavor\",workload=~\"$workload\", instance_type=~\"$instance_type\", preference=~\"$preference\",guest_os_name=~\"$guest_os_name\" ,guest_os_version_id=~\"$guest_os_version_id\"})\n+${status:raw}",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "M"
+            },
+            {
+              "exemplar": true,
+              "expr": "sum by (cluster,namespace,name,outdated ,evictable) (kubevirt_vmi_info{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\",flavor=~\"$flavor\",workload=~\"$workload\", instance_type=~\"$instance_type\", preference=~\"$preference\",guest_os_name=~\"$guest_os_name\" ,guest_os_version_id=~\"$guest_os_version_id\"})\n+${status:raw}\nor\nsum by (cluster,namespace,name,outdated ,evictable) (kubevirt_vm_info{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\",guest_os_name!=\"\" ,guest_os_version_id!=\"\",flavor=~\"$flavor\",workload=~\"$workload\", instance_type=~\"$instance_type\", preference=~\"$preference\",guest_os_name=~\"$guest_os_name\" ,guest_os_version_id=~\"$guest_os_version_id\"})\n+${status:raw}",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "C"
             }
           ],
           "title": "Virtual Machines Inventory",
@@ -220,6 +453,10 @@ data:
                   "Value #A": true,
                   "Value #B": true,
                   "Value #C": true,
+                  "Value #J": true,
+                  "Value #K": true,
+                  "Value #L": true,
+                  "Value #M": true,
                   "__name__": true,
                   "clusterID": true,
                   "container": true,
@@ -233,52 +470,50 @@ data:
                   "pod": true,
                   "receive": true,
                   "service": true,
-                  "tenant_id": true
+                  "tenant_id": true,
+                  "vmi_pod": true
                 },
                 "indexByName": {
                   "Time": 0,
-                  "Value #A": 17,
-                  "Value #B": 32,
-                  "Value #C": 33,
-                  "Value #D": 6,
-                  "Value #E": 7,
-                  "Value #F": 8,
-                  "Value #G": 9,
-                  "__name__": 18,
+                  "Value #A": 19,
+                  "Value #B": 20,
+                  "Value #C": 25,
+                  "Value #D": 7,
+                  "Value #E": 8,
+                  "Value #F": 6,
+                  "Value #G": 5,
+                  "Value #H": 9,
+                  "Value #J": 21,
+                  "Value #K": 22,
+                  "Value #L": 23,
+                  "Value #M": 24,
                   "cluster": 1,
-                  "clusterID": 19,
-                  "container": 20,
-                  "endpoint": 21,
-                  "evictable": 22,
-                  "flavor": 16,
-                  "guest_os_kernel_release": 23,
-                  "guest_os_machine": 24,
-                  "guest_os_name": 10,
-                  "guest_os_version_id": 11,
-                  "instance": 25,
-                  "instance_type": 12,
-                  "job": 26,
+                  "evictable": 14,
+                  "flavor": 13,
+                  "guest_os_arch": 18,
+                  "guest_os_name": 16,
+                  "guest_os_version_id": 17,
+                  "instance_type": 10,
                   "name": 3,
                   "namespace": 2,
-                  "node": 5,
-                  "os": 27,
-                  "phase": 13,
-                  "pod": 28,
-                  "preference": 14,
-                  "receive": 29,
-                  "service": 30,
+                  "outdated": 15,
+                  "preference": 11,
                   "status": 4,
-                  "tenant_id": 31,
-                  "workload": 15
+                  "workload": 12
                 },
                 "renameByName": {
                   "Value #A": "",
-                  "Value #D": "Total Allocated vCPUs",
-                  "Value #E": "Allocated memory",
+                  "Value #C": "",
+                  "Value #D": "CPU",
+                  "Value #E": "Memory",
                   "Value #F": "Guest Agent",
-                  "Value #G": "",
+                  "Value #G": "Create Date",
+                  "Value #H": "Disk",
                   "cluster": "Cluster",
+                  "endpoint": "",
+                  "evictable": "Evictable",
                   "flavor": "Flavor",
+                  "guest_os_arch": "OS Arch",
                   "guest_os_name": "OS Name",
                   "guest_os_version_id": "OS Version",
                   "instance_type": "Instance Type",
@@ -286,10 +521,12 @@ data:
                   "namespace": "Namespace",
                   "node": "Node",
                   "os": "",
+                  "outdated": "Outdated",
                   "phase": "Phase",
                   "preference": "Preference",
                   "status": "Status",
                   "vmi": "VM Name",
+                  "vmi_pod": "VM Pod",
                   "workload": "Workload"
                 }
               }
@@ -311,7 +548,12 @@ data:
         "list": [
           {
             "allValue": "",
-            "datasource": null,
+            "current": {
+              "selected": true,
+              "text": "local-cluster",
+              "value": "local-cluster"
+            },
+            "datasource": "Observatorium",
             "definition": "label_values(kubevirt_vm_running_status_last_transition_timestamp_seconds, cluster)",
             "description": null,
             "error": null,
@@ -328,7 +570,7 @@ data:
             "refresh": 2,
             "regex": "",
             "skipUrlSync": false,
-            "sort": 0,
+            "sort": 1,
             "type": "query"
           },
           {
@@ -342,7 +584,7 @@ data:
                 "$__all"
               ]
             },
-            "datasource": null,
+            "datasource": "Observatorium",
             "definition": "label_values(kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\"}, namespace)",
             "description": "Filter the virtual machine by the namespace.",
             "error": null,
@@ -373,7 +615,7 @@ data:
                 "$__all"
               ]
             },
-            "datasource": null,
+            "datasource": "Observatorium",
             "definition": "label_values(kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", namespace=~\"$namespace\"}, name)",
             "description": "Filter the virtual machine by the name.",
             "error": null,
@@ -389,6 +631,243 @@ data:
             },
             "refresh": 2,
             "regex": "",
+            "skipUrlSync": false,
+            "sort": 0,
+            "type": "query"
+          },
+          {
+            "allValue": null,
+            "current": {
+              "selected": true,
+              "text": "All",
+              "value": "on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_running_status_last_transition_timestamp_seconds)))"
+            },
+            "description": null,
+            "error": null,
+            "hide": 0,
+            "includeAll": true,
+            "label": "Status",
+            "multi": false,
+            "name": "status",
+            "options": [
+              {
+                "selected": true,
+                "text": "All",
+                "value": "on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_running_status_last_transition_timestamp_seconds)))"
+              },
+              {
+                "selected": false,
+                "text": "stopped",
+                "value": "on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_non_running_status_last_transition_timestamp_seconds>0)))"
+              },
+              {
+                "selected": false,
+                "text": "starting",
+                "value": "on(cluster,name,namespace) group_left()(0*(sum by(cluster, namespace,name)(kubevirt_vm_starting_status_last_transition_timestamp_seconds>0)))"
+              },
+              {
+                "selected": false,
+                "text": "migrating",
+                "value": "on(cluster,name,namespace) group_left()(0*(sum by(cluster, namespace,name)(kubevirt_vm_migrating_status_last_transition_timestamp_seconds>0)))"
+              },
+              {
+                "selected": false,
+                "text": "error",
+                "value": "on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_error_status_last_transition_timestamp_seconds>0)))"
+              },
+              {
+                "selected": false,
+                "text": "running",
+                "value": "on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_running_status_last_transition_timestamp_seconds>0)))"
+              }
+            ],
+            "query": "All:on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_running_status_last_transition_timestamp_seconds))), stopped:on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_non_running_status_last_transition_timestamp_seconds>0))), starting:on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_starting_status_last_transition_timestamp_seconds > 0))), migrating:on(cluster, name, namespace) group_left() (0*(sum by (cluster, namespace, name)(kubevirt_vm_migrating_status_last_transition_timestamp_seconds>0))), error:on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_error_status_last_transition_timestamp_seconds>0))), running:on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_running_status_last_transition_timestamp_seconds>0)))",
+            "queryValue": "",
+            "skipUrlSync": false,
+            "type": "custom"
+          },
+          {
+            "allValue": ".*",
+            "current": {
+              "selected": true,
+              "text": [
+                "All"
+              ],
+              "value": [
+                "$__all"
+              ]
+            },
+            "datasource": null,
+            "definition": "query_result(sum by (flavor)(kubevirt_vmi_info{cluster=~\"$cluster\", namespace=~\"$namespace\",flavor!=\"<none>\"} ))",
+            "description": null,
+            "error": null,
+            "hide": 0,
+            "includeAll": true,
+            "label": "Flavor",
+            "multi": true,
+            "name": "flavor",
+            "options": [],
+            "query": {
+              "query": "query_result(sum by (flavor)(kubevirt_vmi_info{cluster=~\"$cluster\", namespace=~\"$namespace\",flavor!=\"<none>\"} ))",
+              "refId": "StandardVariableQuery"
+            },
+            "refresh": 1,
+            "regex": "/flavor=\"([^\"]+)\"/",
+            "skipUrlSync": false,
+            "sort": 0,
+            "type": "query"
+          },
+          {
+            "allValue": ".*",
+            "current": {
+              "selected": true,
+              "text": [
+                "All"
+              ],
+              "value": [
+                "$__all"
+              ]
+            },
+            "datasource": null,
+            "definition": "query_result(sum by (workload)(kubevirt_vmi_info{cluster=~\"$cluster\", namespace=~\"$namespace\",workload!=\"<none>\"}))",
+            "description": null,
+            "error": null,
+            "hide": 0,
+            "includeAll": true,
+            "label": "Workload",
+            "multi": true,
+            "name": "workload",
+            "options": [],
+            "query": {
+              "query": "query_result(sum by (workload)(kubevirt_vmi_info{cluster=~\"$cluster\", namespace=~\"$namespace\",workload!=\"<none>\"}))",
+              "refId": "StandardVariableQuery"
+            },
+            "refresh": 1,
+            "regex": "/workload=\"([^\"]+)\"/",
+            "skipUrlSync": false,
+            "sort": 0,
+            "type": "query"
+          },
+          {
+            "allValue": ".*",
+            "current": {
+              "selected": true,
+              "text": [
+                "All"
+              ],
+              "value": [
+                "$__all"
+              ]
+            },
+            "datasource": null,
+            "definition": "query_result(sum by (instance_type)(kubevirt_vmi_info{cluster=~\"$cluster\", namespace=~\"$namespace\",instance_type!=\"<none>\"}))",
+            "description": null,
+            "error": null,
+            "hide": 0,
+            "includeAll": true,
+            "label": "Instance Type",
+            "multi": true,
+            "name": "instance_type",
+            "options": [],
+            "query": {
+              "query": "query_result(sum by (instance_type)(kubevirt_vmi_info{cluster=~\"$cluster\", namespace=~\"$namespace\",instance_type!=\"<none>\"}))",
+              "refId": "StandardVariableQuery"
+            },
+            "refresh": 1,
+            "regex": "/instance_type=\"([^\"]+)\"/",
+            "skipUrlSync": false,
+            "sort": 0,
+            "type": "query"
+          },
+          {
+            "allValue": ".*",
+            "current": {
+              "selected": true,
+              "text": [
+                "All"
+              ],
+              "value": [
+                "$__all"
+              ]
+            },
+            "datasource": null,
+            "definition": "query_result(sum by (preference)(kubevirt_vmi_info{cluster=~\"$cluster\", namespace=~\"$namespace\",preference!=\"<none>\"}))",
+            "description": null,
+            "error": null,
+            "hide": 0,
+            "includeAll": true,
+            "label": "Preference",
+            "multi": true,
+            "name": "preference",
+            "options": [],
+            "query": {
+              "query": "query_result(sum by (preference)(kubevirt_vmi_info{cluster=~\"$cluster\", namespace=~\"$namespace\",preference!=\"<none>\"}))",
+              "refId": "StandardVariableQuery"
+            },
+            "refresh": 1,
+            "regex": "/preference=\"([^\"]+)\"/",
+            "skipUrlSync": false,
+            "sort": 0,
+            "type": "query"
+          },
+          {
+            "allValue": ".*",
+            "current": {
+              "selected": true,
+              "text": [
+                "All"
+              ],
+              "value": [
+                "$__all"
+              ]
+            },
+            "datasource": null,
+            "definition": "query_result(sum by (guest_os_name)(kubevirt_vm_info{cluster=~\"$cluster\", namespace=~\"$namespace\",guest_os_name!=\"<none>\"} or kubevirt_vmi_info{cluster=~\"$cluster\", namespace=~\"$namespace\",guest_os_name!=\"<none>\"}))",
+            "description": null,
+            "error": null,
+            "hide": 0,
+            "includeAll": true,
+            "label": "OS Name",
+            "multi": true,
+            "name": "guest_os_name",
+            "options": [],
+            "query": {
+              "query": "query_result(sum by (guest_os_name)(kubevirt_vm_info{cluster=~\"$cluster\", namespace=~\"$namespace\",guest_os_name!=\"<none>\"} or kubevirt_vmi_info{cluster=~\"$cluster\", namespace=~\"$namespace\",guest_os_name!=\"<none>\"}))",
+              "refId": "StandardVariableQuery"
+            },
+            "refresh": 1,
+            "regex": "/guest_os_name=\"([^\"]+)\"/",
+            "skipUrlSync": false,
+            "sort": 0,
+            "type": "query"
+          },
+          {
+            "allValue": ".*",
+            "current": {
+              "selected": true,
+              "text": [
+                "All"
+              ],
+              "value": [
+                "$__all"
+              ]
+            },
+            "datasource": null,
+            "definition": "query_result(sum by (guest_os_version_id)(kubevirt_vm_info{cluster=~\"$cluster\", namespace=~\"$namespace\",guest_os_version_id!=\"<none>\"} or kubevirt_vmi_info{cluster=~\"$cluster\", namespace=~\"$namespace\",guest_os_version_id!=\"<none>\"}))",
+            "description": null,
+            "error": null,
+            "hide": 0,
+            "includeAll": true,
+            "label": "OS Version",
+            "multi": true,
+            "name": "guest_os_version_id",
+            "options": [],
+            "query": {
+              "query": "query_result(sum by (guest_os_version_id)(kubevirt_vm_info{cluster=~\"$cluster\", namespace=~\"$namespace\",guest_os_version_id!=\"<none>\"} or kubevirt_vmi_info{cluster=~\"$cluster\", namespace=~\"$namespace\",guest_os_version_id!=\"<none>\"}))",
+              "refId": "StandardVariableQuery"
+            },
+            "refresh": 1,
+            "regex": "/guest_os_version_id=\"([^\"]+)\"/",
             "skipUrlSync": false,
             "sort": 0,
             "type": "query"
