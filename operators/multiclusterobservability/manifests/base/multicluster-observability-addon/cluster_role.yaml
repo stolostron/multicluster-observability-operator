@@ -30,7 +30,7 @@
       verbs: ["update", "patch"]
     - apiGroups: ["addon.open-cluster-management.io"]
       resources: ["clustermanagementaddons"]
-      verbs: ["get", "list", "watch"]
+      verbs: ["get", "list", "watch", "update", "patch"]
     - apiGroups: ["addon.open-cluster-management.io"]
       resources: ["managedclusteraddons"]
       verbs: ["get", "list", "watch", "create", "update", "delete"]
@@ -77,7 +77,7 @@
     # servicemonitors resource is needed for the HCPs case
     - apiGroups: ["monitoring.coreos.com"]
       resources: ["prometheusagents", "scrapeconfigs", "prometheusrules", "servicemonitors"]
-      verbs: ["get", "list", "watch", "create", "update", "delete"]
+      verbs: ["get", "list", "watch", "create", "update", "delete", "patch"]
     # Role for watching and listing hosted clusters for setting HCPs monitoring
     - apiGroups: ["hypershift.openshift.io"]
       resources: ["hostedclusters"]
