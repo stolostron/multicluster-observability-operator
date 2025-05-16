@@ -46,17 +46,15 @@ import (
 
 const (
 	workNameSuffix            = "-observability"
-	localClusterName          = "local-cluster"
 	workPostponeDeleteAnnoKey = "open-cluster-management/postpone-delete"
 )
 
 // intermediate resources for the manifest work.
 var (
-	hubInfoSecret                   *corev1.Secret
-	pullSecret                      *corev1.Secret
-	metricsAllowlistConfigMap       *corev1.ConfigMap
-	ocp311metricsAllowlistConfigMap *corev1.ConfigMap
-	amAccessorTokenSecret           *corev1.Secret
+	hubInfoSecret             *corev1.Secret
+	pullSecret                *corev1.Secret
+	metricsAllowlistConfigMap *corev1.ConfigMap
+	amAccessorTokenSecret     *corev1.Secret
 
 	obsAddonCRDv1                 *apiextensionsv1.CustomResourceDefinition
 	obsAddonCRDv1beta1            *apiextensionsv1beta1.CustomResourceDefinition
@@ -230,9 +228,9 @@ func generateGlobalManifestResources(ctx context.Context, c client.Client, mco *
 	works = injectIntoWork(works, managedClusterObsCert)
 
 	// generate the metrics allowlist configmap
-	if metricsAllowlistConfigMap == nil || ocp311metricsAllowlistConfigMap == nil {
+	if metricsAllowlistConfigMap == nil {
 		var err error
-		if metricsAllowlistConfigMap, ocp311metricsAllowlistConfigMap, err = generateMetricsListCM(c); err != nil {
+		if metricsAllowlistConfigMap, err = generateMetricsListCM(c); err != nil {
 			return nil, nil, fmt.Errorf("failed to generate metrics list configmap: %w", err)
 		}
 	}
@@ -275,7 +273,7 @@ func generateGlobalManifestResources(ctx context.Context, c client.Client, mco *
 func createManifestWorks(
 	c client.Client,
 	clusterNamespace string,
-	clusterName string,
+	cluster managedClusterInfo,
 	mco *mcov1beta2.MultiClusterObservability,
 	works []workv1.Manifest,
 	allowlist *corev1.ConfigMap,
@@ -300,13 +298,13 @@ func createManifestWorks(
 	manifests = append(manifests, works...)
 	manifests = injectIntoWork(manifests, allowlist)
 
-	if clusterName != localClusterName {
+	if !cluster.IsLocalCluster {
 		manifests = append(manifests, *crdWork)
 	}
 
 	// replace the managedcluster image with the custom registry
 	managedClusterImageRegistryMutex.RLock()
-	_, hasCustomRegistry := managedClusterImageRegistry[clusterName]
+	_, hasCustomRegistry := managedClusterImageRegistry[cluster.Name]
 	managedClusterImageRegistryMutex.RUnlock()
 	imageRegistryClient := NewImageRegistryClient(c)
 
@@ -316,7 +314,7 @@ func createManifestWorks(
 	if addonConfig.Spec.NodePlacement != nil {
 		spec.NodeSelector = addonConfig.Spec.NodePlacement.NodeSelector
 		spec.Tolerations = addonConfig.Spec.NodePlacement.Tolerations
-	} else if clusterName == localClusterName {
+	} else if cluster.IsLocalCluster {
 		spec.NodeSelector = mco.Spec.NodeSelector
 		spec.Tolerations = mco.Spec.Tolerations
 	} else {
@@ -336,7 +334,7 @@ func createManifestWorks(
 				}
 			}
 			// If ProxyConfig is specified as part of addonConfig, set the proxy envs
-			if clusterName != localClusterName {
+			if !cluster.IsLocalCluster {
 				for i := range spec.Containers {
 					container := &spec.Containers[i]
 					if addonConfig.Spec.ProxyConfig.HTTPProxy != "" {
@@ -370,8 +368,8 @@ func createManifestWorks(
 
 			if hasCustomRegistry {
 				oldImage := container.Image
-				newImage, err := imageRegistryClient.Cluster(clusterName).ImageOverride(oldImage)
-				log.Info("Replace the endpoint operator image", "cluster", clusterName, "newImage", newImage)
+				newImage, err := imageRegistryClient.Cluster(cluster.Name).ImageOverride(oldImage)
+				log.Info("Replace the endpoint operator image", "cluster", cluster.Name, "newImage", newImage)
 				if err == nil {
 					spec.Containers[i].Image = newImage
 				}
@@ -391,10 +389,10 @@ func createManifestWorks(
 		}
 	}
 
-	log.Info(fmt.Sprintf("Cluster: %+v, Spec.NodeSelector (after): %+v", clusterName, spec.NodeSelector))
-	log.Info(fmt.Sprintf("Cluster: %+v, Spec.Tolerations (after): %+v", clusterName, spec.Tolerations))
+	log.Info(fmt.Sprintf("Cluster: %+v, Spec.NodeSelector (after): %+v", cluster.Name, spec.NodeSelector))
+	log.Info(fmt.Sprintf("Cluster: %+v, Spec.Tolerations (after): %+v", cluster.Name, spec.Tolerations))
 
-	if clusterName == localClusterName {
+	if cluster.IsLocalCluster {
 		spec.Volumes = []corev1.Volume{}
 		spec.Containers[0].VolumeMounts = []corev1.VolumeMount{}
 		for i, env := range spec.Containers[0].Env {
@@ -415,8 +413,8 @@ func createManifestWorks(
 	manifests = injectIntoWork(manifests, endpointMetricsOperatorDeployCopy)
 	// replace the pull secret and addon components image
 	if hasCustomRegistry {
-		log.Info("Replace the default pull secret to custom pull secret", "cluster", clusterName)
-		customPullSecret, err := imageRegistryClient.Cluster(clusterName).PullSecret()
+		log.Info("Replace the default pull secret to custom pull secret", "cluster", cluster.Name)
+		customPullSecret, err := imageRegistryClient.Cluster(cluster.Name).PullSecret()
 		if err == nil && customPullSecret != nil {
 			customPullSecret.ResourceVersion = ""
 			customPullSecret.Name = config.GetImagePullSecret(mco.Spec)
@@ -424,11 +422,11 @@ func createManifestWorks(
 			manifests = injectIntoWork(manifests, customPullSecret)
 		}
 
-		log.Info("Replace the image list configmap with custom image", "cluster", clusterName)
+		log.Info("Replace the image list configmap with custom image", "cluster", cluster.Name)
 		newImageListCM := imageListConfigMap.DeepCopy()
 		images := newImageListCM.Data
 		for key, oldImage := range images {
-			newImage, err := imageRegistryClient.Cluster(clusterName).ImageOverride(oldImage)
+			newImage, err := imageRegistryClient.Cluster(cluster.Name).ImageOverride(oldImage)
 			if err == nil {
 				newImageListCM.Data[key] = newImage
 			}
@@ -445,7 +443,7 @@ func createManifestWorks(
 	}
 
 	// inject the hub info secret
-	hubInfo.Data[operatorconfig.ClusterNameKey] = []byte(clusterName)
+	hubInfo.Data[operatorconfig.ClusterNameKey] = []byte(cluster.Name)
 	manifests = injectIntoWork(manifests, hubInfo)
 
 	work.Spec.Workload.Manifests = manifests
@@ -831,7 +829,7 @@ func generateObservabilityServerCACerts(ctx context.Context, client client.Clien
 }
 
 // generateMetricsListCM generates the configmap that contains the metrics allowlist
-func generateMetricsListCM(client client.Client) (*corev1.ConfigMap, *corev1.ConfigMap, error) {
+func generateMetricsListCM(client client.Client) (*corev1.ConfigMap, error) {
 	metricsAllowlistCM := &corev1.ConfigMap{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: corev1.SchemeGroupVersion.String(),
@@ -844,20 +842,18 @@ func generateMetricsListCM(client client.Client) (*corev1.ConfigMap, *corev1.Con
 		Data: map[string]string{},
 	}
 
-	ocp311AllowlistCM := metricsAllowlistCM.DeepCopy()
-
-	allowlist, ocp3Allowlist, uwlAllowlist, err := util.GetAllowList(client,
+	allowlist, uwlAllowlist, err := util.GetAllowList(client,
 		operatorconfig.AllowlistConfigMapName, config.GetDefaultNamespace())
 	if err != nil {
 		log.Error(err, "Failed to get metrics allowlist configmap "+operatorconfig.AllowlistConfigMapName)
-		return nil, nil, err
+		return nil, err
 	}
 
-	customAllowlist, _, customUwlAllowlist, err := util.GetAllowList(client,
+	customAllowlist, customUwlAllowlist, err := util.GetAllowList(client,
 		config.AllowlistCustomConfigMapName, config.GetDefaultNamespace())
 	if err == nil {
-		allowlist, ocp3Allowlist, uwlAllowlist = util.MergeAllowlist(allowlist,
-			customAllowlist, ocp3Allowlist, uwlAllowlist, customUwlAllowlist)
+		allowlist, uwlAllowlist = util.MergeAllowlist(allowlist,
+			customAllowlist, uwlAllowlist, customUwlAllowlist)
 	} else {
 		log.Info("There is no custom metrics allowlist configmap in the cluster")
 	}
@@ -865,23 +861,17 @@ func generateMetricsListCM(client client.Client) (*corev1.ConfigMap, *corev1.Con
 	data, err := yaml.Marshal(allowlist)
 	if err != nil {
 		log.Error(err, "Failed to marshal allowlist data")
-		return nil, nil, err
+		return nil, err
 	}
 	uwlData, err := yaml.Marshal(uwlAllowlist)
 	if err != nil {
 		log.Error(err, "Failed to marshal allowlist uwlAllowlist")
-		return nil, nil, err
+		return nil, err
 	}
 	metricsAllowlistCM.Data[operatorconfig.MetricsConfigMapKey] = string(data)
 	metricsAllowlistCM.Data[operatorconfig.UwlMetricsConfigMapKey] = string(uwlData)
 
-	data, err = yaml.Marshal(ocp3Allowlist)
-	if err != nil {
-		log.Error(err, "Failed to marshal allowlist data")
-		return nil, nil, err
-	}
-	ocp311AllowlistCM.Data[operatorconfig.MetricsOcp311ConfigMapKey] = string(data)
-	return metricsAllowlistCM, ocp311AllowlistCM, nil
+	return metricsAllowlistCM, nil
 }
 
 // getObservabilityAddon gets the ObservabilityAddon in the spoke namespace in the hub cluster.
