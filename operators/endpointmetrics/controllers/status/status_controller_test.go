@@ -445,6 +445,7 @@ func newClient(objs ...runtime.Object) client.Client {
 	s := scheme.Scheme
 	addonv1alpha1.AddToScheme(s)
 	oav1beta1.AddToScheme(s)
+	mcov1beta2.AddToScheme(s)
 
 	return fake.NewClientBuilder().
 		WithScheme(s).
