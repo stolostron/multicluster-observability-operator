@@ -163,6 +163,7 @@ data:
       - kubevirt_vmi_storage_iops_read_total
       - kubevirt_vmi_storage_iops_write_total
       - kubevirt_vm_resource_requests
+      - kubevirt_vm_disk_allocated_size_bytes
 
 
     matches:
