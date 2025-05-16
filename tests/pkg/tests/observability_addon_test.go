@@ -34,16 +34,6 @@ var _ = Describe("", func() {
 		}
 	})
 
-	JustBeforeEach(func() {
-		Eventually(func() error {
-			clusters, clusterError = utils.ListManagedClusters(testOptions)
-			if clusterError != nil {
-				return clusterError
-			}
-			return nil
-		}, EventuallyTimeoutMinute*6, EventuallyIntervalSecond*5).Should(Succeed())
-	})
-
 	Context("RHACM4K-1260: Observability: Verify monitoring operator and deployment status when metrics collection disabled [P2][Sev2][Observability]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @pre-upgrade  (addon/g0) -", func() {
 		It("[Stable] Should have resource requirement defined in CR", func() {
 			By("Check addon resource requirement")
@@ -87,10 +77,14 @@ var _ = Describe("", func() {
 		// timestamp(node_memory_MemAvailable_bytes{cluster="local-cluster"} offset 1m) > 59
 		It("[Stable] Waiting for check no metric data in grafana console", func() {
 			Eventually(func() error {
+				clusters, clusterError = utils.ListManagedClusters(testOptions)
+				if clusterError != nil {
+					return clusterError
+				}
 				for _, cluster := range clusters {
 					res, err := utils.QueryGrafana(
 						testOptions,
-						`timestamp(node_memory_MemAvailable_bytes{cluster="`+cluster+`}) - timestamp(node_memory_MemAvailable_bytes{cluster=`+cluster+`"} offset 1m) > 59`,
+						`timestamp(node_memory_MemAvailable_bytes{cluster="`+cluster.Name+`}) - timestamp(node_memory_MemAvailable_bytes{cluster=`+cluster.Name+`"} offset 1m) > 59`,
 					)
 					if err != nil {
 						return err
