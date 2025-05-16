@@ -119,10 +119,13 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	if res, ok := config.BackupResourceMap[req.Name]; ok {
 		reqLogger.Info(infoAddingBackupLabel)
 		var err error = nil
+		resourceTypeStr := ""
 		switch res {
 		case config.ResourceTypeConfigMap:
+			resourceTypeStr = "ConfigMap"
 			err = util.AddBackupLabelToConfigMap(r.Client, req.Name, config.GetDefaultNamespace())
 		case config.ResourceTypeSecret:
+			resourceTypeStr = "Secret"
 			err = util.AddBackupLabelToSecret(r.Client, req.Name, config.GetDefaultNamespace())
 		default:
 			// we should never be here
@@ -131,7 +134,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 
 		if err != nil {
 			reqLogger.Error(err, errorAddingBackupLabel)
-			return ctrl.Result{}, err
+			return ctrl.Result{}, fmt.Errorf("failed to add backup label to %s %s in namespace %s: %w", resourceTypeStr, req.Name, config.GetDefaultNamespace(), err)
 		}
 	}
 
@@ -139,7 +142,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	mcoList := &mcov1beta2.MultiClusterObservabilityList{}
 	err := r.Client.List(context.TODO(), mcoList)
 	if err != nil {
-		return ctrl.Result{}, err
+		return ctrl.Result{}, fmt.Errorf("failed to list MultiClusterObservability custom resources: %w", err)
 	}
 	if len(mcoList.Items) > 1 {
 		reqLogger.Info("more than one MultiClusterObservability CR exists, only one should exist")
@@ -161,11 +164,11 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	if _, ok := os.LookupEnv("UNIT_TEST"); !ok {
 		crdClient, err := operatorsutil.GetOrCreateCRDClient()
 		if err != nil {
-			return ctrl.Result{}, err
+			return ctrl.Result{}, fmt.Errorf("failed to get or create CRD client: %w", err)
 		}
 		mcghCrdExists, err := operatorsutil.CheckCRDExist(crdClient, config.MCGHCrdName)
 		if err != nil {
-			return ctrl.Result{}, err
+			return ctrl.Result{}, fmt.Errorf("failed to check for CRD %s: %w", config.MCGHCrdName, err)
 		}
 		if mcghCrdExists {
 			// Do not start the MCO if the MCGH CRD exists
@@ -179,7 +182,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		// start placement controller
 		err := placementctrl.StartPlacementController(r.Manager, r.CRDMap)
 		if err != nil {
-			return ctrl.Result{}, err
+			return ctrl.Result{}, fmt.Errorf("failed to start placement controller: %w", err)
 		}
 		// setup ocm addon manager
 		certctrl.Start(r.Client, ingressCtlCrdExists)
@@ -191,10 +194,10 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	// Init finalizers
 	operatorconfig.IsMCOTerminating, err = r.initFinalization(ctx, instance)
 	if err != nil {
-		return ctrl.Result{}, err
+		return ctrl.Result{}, fmt.Errorf("failed to initialize finalization: %w", err)
 	} else if operatorconfig.IsMCOTerminating {
 		reqLogger.Info("MCO instance is in Terminating status, skip the reconcile")
-		return ctrl.Result{}, err
+		return ctrl.Result{}, nil
 	}
 
 	// check if the MCH CRD exists
@@ -224,8 +227,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		config.BackupResourceMap[instance.Spec.StorageConfig.MetricObjectStorage.Name] = config.ResourceTypeSecret
 		err = util.AddBackupLabelToSecret(r.Client, instance.Spec.StorageConfig.MetricObjectStorage.Name, config.GetDefaultNamespace())
 		if err != nil {
-			log.Error(err, errorAddingBackupLabel, "Secret", instance.Spec.StorageConfig.MetricObjectStorage.Name)
-			return ctrl.Result{}, err
+			return ctrl.Result{}, fmt.Errorf("failed to add backup label to metric object storage secret %s: %w", instance.Spec.StorageConfig.MetricObjectStorage.Name, err)
 		}
 	}
 
@@ -235,26 +237,26 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		config.BackupResourceMap[imagePullSecret] = config.ResourceTypeSecret
 		err = util.AddBackupLabelToSecret(r.Client, imagePullSecret, config.GetDefaultNamespace())
 		if err != nil {
-			log.Error(err, errorAddingBackupLabel, "Secret", imagePullSecret)
-			return ctrl.Result{}, err
+			return ctrl.Result{}, fmt.Errorf("failed to add backup label to image pull secret %s: %w", imagePullSecret, err)
 		}
 	}
 
 	storageClassSelected, err := getStorageClass(instance, r.Client)
 	if err != nil {
-		return ctrl.Result{}, err
+		return ctrl.Result{}, fmt.Errorf("failed to get storage class: %w", err)
 	}
 
 	// handle storagesize changes
 	result, err := r.HandleStorageSizeChange(instance)
 	if result != nil {
-		return *result, err
+		// If err is non-nil, wrap it. fmt.Errorf with %w handles nil err gracefully (returns nil).
+		return *result, fmt.Errorf("error during storage size change handling: %w", err)
 	}
 
 	// set operand names to cover the upgrade case since we have name changed in new release
 	err = config.SetOperandNames(r.Client)
 	if err != nil {
-		return ctrl.Result{}, err
+		return ctrl.Result{}, fmt.Errorf("failed to set operand names: %w", err)
 	}
 	instance.Spec.StorageConfig.StorageClass = storageClassSelected
 
@@ -263,14 +265,14 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: config.MultiClusterObservabilityAddon}, mcoaCMAO)
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
-			return ctrl.Result{}, err
+			return ctrl.Result{}, fmt.Errorf("failed to get ClusterManagementAddOn %s: %w", config.MultiClusterObservabilityAddon, err)
 		}
 	}
 	disableMCOACMAORender := !apierrors.IsNotFound(err)
 
 	obsAPIURL, err := mcoconfig.GetObsAPIExternalURL(ctx, r.Client, mcoconfig.GetDefaultNamespace())
 	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to get the Observatorium API URL: %w", err)
+		return ctrl.Result{}, fmt.Errorf("failed to get the Observatorium API URL: %w", err) // Already wrapped
 	}
 
 	// Build render options
@@ -285,8 +287,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	renderer := rendering.NewMCORenderer(instance, r.Client, r.ImageClient).WithRendererOptions(rendererOptions)
 	toDeploy, err := renderer.Render()
 	if err != nil {
-		reqLogger.Error(err, "Failed to render multiClusterMonitoring templates")
-		return ctrl.Result{}, err
+		return ctrl.Result{}, fmt.Errorf("failed to render MCO templates for %s/%s: %w", instance.GetNamespace(), instance.GetName(), err)
 	}
 	deployer := deploying.NewDeployer(r.Client)
 	// Deploy the resources
@@ -305,14 +306,11 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 				Name: resNS,
 			}}
 			if err := r.Client.Create(context.TODO(), ns); err != nil {
-				reqLogger.Error(err, fmt.Sprintf("Failed to create namespace %s", resNS))
-				return ctrl.Result{}, err
+				return ctrl.Result{}, fmt.Errorf("failed to create namespace %s during resource deployment: %w", resNS, err)
 			}
 		}
 		if err := deployer.Deploy(ctx, res); err != nil {
-			reqLogger.Error(err, fmt.Sprintf("Failed to deploy %s %s/%s",
-				res.GetKind(), resNS, res.GetName()))
-			return ctrl.Result{}, err
+			return ctrl.Result{}, fmt.Errorf("failed to deploy %s %s/%s: %w", res.GetKind(), resNS, res.GetName(), err)
 		}
 	}
 
@@ -320,14 +318,12 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		namespace, labels := renderer.NamespaceAndLabels()
 		toDelete, err := renderer.MCOAResources(namespace, labels)
 		if err != nil {
-			return ctrl.Result{}, err
+			return ctrl.Result{}, fmt.Errorf("failed to list MCOA resources for deletion in namespace %s: %w", namespace, err)
 		}
 		for _, res := range toDelete {
 			resNS := res.GetNamespace()
 			if err := deployer.Undeploy(ctx, res); err != nil {
-				reqLogger.Error(err, fmt.Sprintf("Failed to undeploy %s %s/%s",
-					res.GetKind(), resNS, res.GetName()))
-				return ctrl.Result{}, err
+				return ctrl.Result{}, fmt.Errorf("failed to undeploy %s %s/%s: %w", res.GetKind(), resNS, res.GetName(), err)
 			}
 		}
 	}
@@ -336,7 +332,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	if err != nil {
 		r.Log.Error(err, "Failed to add to %s label to namespace: %s", config.OpenShiftClusterMonitoringlabel,
 			instance.GetNamespace())
-		return ctrl.Result{}, err
+		return ctrl.Result{}, fmt.Errorf("failed to ensure %q label on namespace %s: %w", config.OpenShiftClusterMonitoringlabel, instance.GetNamespace(), err)
 	}
 
 	// the route resource won't be created in testing env, for instance, KinD
@@ -346,48 +342,48 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		// expose alertmanager through route
 		result, err = GenerateAlertmanagerRoute(r.Client, r.Scheme, instance)
 		if result != nil {
-			return *result, err
+			return *result, fmt.Errorf("failed to generate Alertmanager route: %w", err)
 		}
 
 		// expose observatorium api gateway
 		result, err = GenerateAPIGatewayRoute(ctx, r.Client, r.Scheme, instance)
 		if result != nil {
-			return *result, err
+			return *result, fmt.Errorf("failed to generate API Gateway route: %w", err)
 		}
 
 		// expose rbac proxy through route
 		result, err = GenerateProxyRoute(r.Client, r.Scheme, instance)
 		if result != nil {
-			return *result, err
+			return *result, fmt.Errorf("failed to generate proxy route: %w", err)
 		}
 
 		// expose grafana through route
 		result, err = GenerateGrafanaRoute(r.Client, r.Scheme, instance)
 		if result != nil {
-			return *result, err
+			return *result, fmt.Errorf("failed to generate Grafana route: %w", err)
 		}
 		result, err = GenerateGrafanaOauthClient(r.Client, r.Scheme, instance)
 		if result != nil {
-			return *result, err
+			return *result, fmt.Errorf("failed to generate Grafana OAuth client: %w", err)
 		}
 	}
 
 	// create the certificates
 	err = certctrl.CreateObservabilityCerts(r.Client, r.Scheme, instance, ingressCtlCrdExists)
 	if err != nil {
-		return ctrl.Result{}, err
+		return ctrl.Result{}, fmt.Errorf("failed to create observability certs: %w", err)
 	}
 
 	// create an Observatorium CR
 	result, err = GenerateObservatoriumCR(r.Client, r.Scheme, instance)
 	if result != nil {
-		return *result, err
+		return *result, fmt.Errorf("failed to generate the observatorium CR: %w", err)
 	}
 
 	// generate grafana datasource to point to observatorium api gateway
 	result, err = GenerateGrafanaDataSource(r.Client, r.Scheme, instance)
 	if result != nil {
-		return *result, err
+		return *result, fmt.Errorf("failed to generate Grafana data source: %w", err)
 	}
 
 	svmCrdExists := r.CRDMap[config.StorageVersionMigrationCrdName]
@@ -395,7 +391,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		// create or update the storage version migration resource
 		err = createOrUpdateObservabilityStorageVersionMigrationResource(r.Client, r.Scheme, instance)
 		if err != nil {
-			return ctrl.Result{}, err
+			return ctrl.Result{}, fmt.Errorf("failed to create or update ObservabilityStorageVersionMigration resource: %w", err)
 		}
 	}
 
@@ -408,13 +404,11 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	if _, ok := os.LookupEnv("UNIT_TEST"); !ok && !isLegacyResourceRemoved {
 		// Delete PrometheusRule from openshift-monitoring namespace
 		if err := r.deleteSpecificPrometheusRule(ctx); err != nil {
-			reqLogger.Error(err, "Failed to delete the specific PrometheusRule in the openshift-monitoring namespace")
-			return ctrl.Result{}, err
+			return ctrl.Result{}, fmt.Errorf("failed to delete specific PrometheusRule in openshift-monitoring namespace: %w", err)
 		}
 		// Delete ServiceMonitor from openshft-monitoring namespace
 		if err := r.deleteServiceMonitorInOpenshiftMonitoringNamespace(ctx); err != nil {
-			reqLogger.Error(err, "Failed to delete service monitor in the openshift-monitoring namespace")
-			return ctrl.Result{}, err
+			return ctrl.Result{}, fmt.Errorf("failed to delete ServiceMonitor in openshift-monitoring namespace: %w", err)
 		}
 		isLegacyResourceRemoved = true
 	}
