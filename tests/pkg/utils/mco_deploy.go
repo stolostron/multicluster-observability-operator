@@ -10,7 +10,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"reflect"
 	"regexp"
 	"strings"
@@ -21,7 +20,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/runtime/serializer/yaml"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/klog"
 )
@@ -563,43 +561,6 @@ func DeleteMCOInstance(opt TestOptions, name string) error {
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext)
 	return clientDynamic.Resource(NewMCOGVRV1BETA2()).Delete(context.TODO(), name, metav1.DeleteOptions{})
-}
-
-func CheckMCOConversion(opt TestOptions, v1beta1tov1beta2GoldenPath string) error {
-	clientDynamic := NewKubeClientDynamic(
-		opt.HubCluster.ClusterServerURL,
-		opt.KubeConfig,
-		opt.HubCluster.KubeContext)
-	getMCO, err := clientDynamic.Resource(NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
-	if err != nil {
-		return err
-	}
-
-	decUnstructured := yaml.NewDecodingSerializer(unstructured.UnstructuredJSONScheme)
-	yamlB, err := os.ReadFile(filepath.Clean(v1beta1tov1beta2GoldenPath))
-	if err != nil {
-		return err
-	}
-
-	expectedMCO := &unstructured.Unstructured{}
-	_, _, err = decUnstructured.Decode(yamlB, nil, expectedMCO)
-	if err != nil {
-		return err
-	}
-
-	getMCOSpec := getMCO.Object["spec"].(map[string]interface{})
-	expectedMCOSpec := expectedMCO.Object["spec"].(map[string]interface{})
-
-	for k, v := range expectedMCOSpec {
-		val, ok := getMCOSpec[k]
-		if !ok {
-			return fmt.Errorf("%s not found in ", k)
-		}
-		if !reflect.DeepEqual(val, v) {
-			return fmt.Errorf("%+v and %+v are not equal", val, v)
-		}
-	}
-	return nil
 }
 
 func CreatePullSecret(opt TestOptions, mcoNs string) error {
