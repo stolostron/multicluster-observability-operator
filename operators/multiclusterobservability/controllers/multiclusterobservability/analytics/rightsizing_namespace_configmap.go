@@ -115,7 +115,7 @@ func GetRightSizingConfigData(cm *corev1.ConfigMap) (RSNamespaceConfigMapData, e
 	return configData, nil
 }
 
-func GetNamespaceRSConfigMapPredicateFunc(c client.Client) predicate.Funcs {
+func GetNamespaceRSConfigMapPredicateFunc(ctx context.Context, c client.Client) predicate.Funcs {
 	log.Info("RS - Watch for ConfigMap events set up started")
 
 	processConfigMap := func(cm *corev1.ConfigMap) bool {
@@ -126,7 +126,7 @@ func GetNamespaceRSConfigMapPredicateFunc(c client.Client) predicate.Funcs {
 		}
 
 		// Apply changes based on the config map
-		if err := applyRSNamespaceConfigMapChanges(context.Background(), c, configData); err != nil {
+		if err := applyRSNamespaceConfigMapChanges(ctx, c, configData); err != nil {
 			log.Error(err, "Failed to apply RS Namespace ConfigMap Changes")
 			return false
 		}
