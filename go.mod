@@ -24,7 +24,7 @@ require (
 	github.com/openshift/api v0.0.0-20240625084701-0689f006bcde
 	github.com/openshift/client-go v0.0.0-20240528061634-b054aa794d87
 	github.com/openshift/cluster-monitoring-operator v0.1.1-0.20240628115213-cd0d275afa06
-	github.com/openshift/hypershift/api v0.0.0-20241119231618-9aca80837541
+	github.com/openshift/hypershift/api 444d6588e837
 	github.com/openshift/library-go v0.0.0-20240621150525-4bb4238aef81
 	github.com/prometheus-community/prom-label-proxy v0.8.1-0.20240127162815-c1195f9aabc0
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.74.0
