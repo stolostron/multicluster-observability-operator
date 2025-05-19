@@ -37,6 +37,10 @@ spec:
     - '{__name__="kubevirt_vmi_phase_count"}'
     - '{__name__="kubevirt_vmi_storage_iops_read_total"}'
     - '{__name__="kubevirt_vmi_storage_iops_write_total"}'
+    - '{__name__="kubevirt_vm_cpu_usage_seconds_total"}'
+    - '{__name__="kubevirt_vm_disk_allocated_size_bytes"}'
+    - '{__name__="kubevirt_vmi_network_transmit_packets_dropped_total"}'
+    - '{__name__="kubevirt_vmi_network_receive_packets_dropped_total"}'
     - '{__name__="kubevirt_vmi_filesystem_used_bytes"}'
     - '{__name__="kubevirt_vmi_filesystem_capacity_bytes"}'
     - '{__name__="kubevirt_vmi_memory_swap_out_traffic_bytes"}'
@@ -47,7 +51,6 @@ spec:
     - '{__name__="kubevirt_vm_create_date_timestamp_seconds"}'
     - '{__name__="node_cpu_seconds_total"}'
     - '{__name__="node_memory_MemTotal_bytes"}'
-    - '{__name__="kubevirt_vm_disk_allocated_size_bytes"}'
   metricRelabelings:
   - action: labeldrop
     regex: prometheus_replica|managed_cluster|id
