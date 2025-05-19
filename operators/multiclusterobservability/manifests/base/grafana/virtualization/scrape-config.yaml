@@ -23,6 +23,7 @@ spec:
     - '{__name__="kubevirt_vm_running_status_last_transition_timestamp_seconds"}'
     - '{__name__="kubevirt_vm_starting_status_last_transition_timestamp_seconds"}'
     - '{__name__="kubevirt_vmi_cpu_usage_seconds_total"}'
+    - '{__name__="kubevirt_vmi_vcpu_delay_seconds_total"}'
     - '{__name__="kubevirt_vmi_info"}'
     - '{__name__="kubevirt_vm_info"}'
     - '{__name__="kubevirt_vmi_memory_available_bytes"}'
@@ -36,7 +37,11 @@ spec:
     - '{__name__="kubevirt_vmi_phase_count"}'
     - '{__name__="kubevirt_vmi_storage_iops_read_total"}'
     - '{__name__="kubevirt_vmi_storage_iops_write_total"}'
+    - '{__name__="kubevirt_vmi_storage_read_traffic_bytes_total"}'
+    - '{__name__="kubevirt_vmi_storage_write_traffic_bytes_total"}'
     - '{__name__="kubevirt_vm_create_date_timestamp_seconds"}'
+    - '{__name__="node_cpu_seconds_total"}'
+    - '{__name__="node_memory_MemTotal_bytes"}'
     - '{__name__="kubevirt_vm_disk_allocated_size_bytes"}'
   metricRelabelings:
   - action: labeldrop
