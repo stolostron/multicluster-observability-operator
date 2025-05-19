@@ -203,6 +203,11 @@ func (r *MCORenderer) renderAddonDeploymentConfig(
 			if cs.Platform.Metrics.Collection.Enabled {
 				fqdn := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.PrometheusAgentCRDName)
 				appendCustomVar(aodc, namePlatformMetricsCollection, fqdn)
+
+				if cs.Platform.Metrics.UI.Enabled {
+					fqdn := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.UIPluginsCRDName)
+					appendCustomVar(aodc, namePLatformMetricsUI, fqdn)
+				}
 			}
 			if cs.Platform.Analytics.IncidentDetection.Enabled {
 				fqdn := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.UIPluginsCRDName)
@@ -235,10 +240,6 @@ func (r *MCORenderer) renderAddonDeploymentConfig(
 				return nil, fmt.Errorf("MetricsHubHostname is required when metrics collection is enabled")
 			}
 			appendCustomVar(aodc, nameMetricsHubHostname, r.rendererOptions.MCOAOptions.MetricsHubHostname)
-			if cs.Platform.Metrics.Collection.Enabled && cs.Platform.Metrics.UI.Enabled {
-				fqdn := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.UIPluginsCRDName)
-				appendCustomVar(aodc, namePLatformMetricsUI, fqdn)
-			}
 		}
 
 		u.Object, err = runtime.DefaultUnstructuredConverter.ToUnstructured(aodc)
