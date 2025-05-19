@@ -172,6 +172,11 @@ data:
       - kubevirt_vmi_network_transmit_packets_dropped_total
       - kubevirt_vmi_network_receive_packets_dropped_total
       - kubevirt_vm_create_date_timestamp_seconds
+      - kubevirt_vmi_filesystem_used_bytes
+      - kubevirt_vmi_filesystem_capacity_bytes
+      - kubevirt_vmi_memory_swap_out_traffic_bytes
+      - kubevirt_vmi_memory_swap_in_traffic_bytes
+      - kubevirt_vmi_vcpu_wait_seconds_total
       - node_memory_MemTotal_bytes
 
     matches:
