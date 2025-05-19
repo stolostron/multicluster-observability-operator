@@ -166,6 +166,8 @@ data:
       - kubevirt_vmi_storage_read_traffic_bytes_total
       - kubevirt_vmi_storage_write_traffic_bytes_total
       - kubevirt_vm_resource_requests
+      - node_memory_MemTotal_bytes
+      - node_cpu_seconds_total
       - kubevirt_vm_cpu_usage_seconds_total
       - kubevirt_vm_disk_allocated_size_bytes
       - kubevirt_vmi_vcpu_delay_seconds_total
