@@ -51,104 +51,103 @@ data:
               "color": {
                 "mode": "thresholds"
               },
-              "mappings": [],
+              "links": [],
+              "mappings": [
+                {
+                  "options": {
+                    "Error": {
+                      "color": "red",
+                      "index": 1
+                    },
+                    "Running": {
+                      "color": "green",
+                      "index": 0
+                    }
+                  },
+                  "type": "value"
+                }
+              ],
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "semi-dark-blue",
+                    "color": "text",
                     "value": null
                   }
                 ]
               }
             },
-            "overrides": [
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Running"
-                },
-                "properties": [
-                  {
-                    "id": "color",
-                    "value": {
-                      "fixedColor": "green",
-                      "mode": "fixed"
-                    }
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Stopped"
-                },
-                "properties": [
-                  {
-                    "id": "color",
-                    "value": {
-                      "mode": "fixed"
-                    }
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Error"
-                },
-                "properties": [
-                  {
-                    "id": "color",
-                    "value": {
-                      "fixedColor": "red",
-                      "mode": "fixed"
-                    }
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Migrating"
-                },
-                "properties": [
-                  {
-                    "id": "color",
-                    "value": {
-                      "fixedColor": "yellow",
-                      "mode": "fixed"
-                    }
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Starting"
-                },
-                "properties": [
-                  {
-                    "id": "color",
-                    "value": {
-                      "fixedColor": "yellow",
-                      "mode": "fixed"
-                    }
-                  }
-                ]
-              }
-            ]
+            "overrides": []
           },
           "gridPos": {
-            "h": 3,
-            "w": 3,
+            "h": 4,
+            "w": 4,
             "x": 0,
             "y": 1
           },
-          "id": 87,
+          "id": 158,
           "options": {
             "colorMode": "background",
-            "graphMode": "none",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "/^status$/",
+              "values": false
+            },
+            "text": {},
+            "textMode": "auto"
+          },
+          "pluginVersion": "8.5.20",
+          "targets": [
+            {
+              "exemplar": true,
+              "expr": "label_replace(sum by (status)(label_replace(kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=\"$cluster\",namespace=\"$namespace\",name=\"$name\"}>0,\"status\", \"Running\", \"\", \"\") or label_replace(kubevirt_vm_non_running_status_last_transition_timestamp_seconds{cluster=\"$cluster\",namespace=\"$namespace\",name=\"$name\"}>0,\"status\", \"Stopped\", \"\", \"\") or label_replace(kubevirt_vm_error_status_last_transition_timestamp_seconds{cluster=\"$cluster\",namespace=\"$namespace\",name=\"$name\"}>0,\"status\", \"Error\", \"\", \"\") or label_replace(kubevirt_vm_starting_status_last_transition_timestamp_seconds{cluster=\"$cluster\",namespace=\"$namespace\",name=\"$name\"}>0,\"status\", \"Starting\", \"\", \"\") or label_replace(kubevirt_vm_migrating_status_last_transition_timestamp_seconds{cluster=\"$cluster\",namespace=\"$namespace\",name=\"$name\"}>0,\"status\", \"Migrating\", \"\", \"\") ), \"Field\", \"Status\", \"name\", \".*\")",
+              "format": "table",
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": "Status",
+          "type": "stat"
+        },
+        {
+          "datasource": null,
+          "description": "Total number of alerts that are firing with the severity level: critical.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "links": [],
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 4,
+            "x": 4,
+            "y": 1
+          },
+          "id": 50,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "area",
             "justifyMode": "auto",
             "orientation": "auto",
             "reduceOptions": {
@@ -159,76 +158,338 @@ data:
               "values": false
             },
             "text": {},
-            "textMode": "name"
+            "textMode": "auto"
           },
           "pluginVersion": "8.5.20",
           "targets": [
             {
               "exemplar": true,
-              "expr": "sum(count(kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=\"$cluster\",namespace=\"$namespace\",name=\"$name\"}>0) by (name))",
-              "format": "time_series",
+              "expr": "sum(sum by (cluster,alertname,alertstate,severity,namespace,name,operator_health_impact )(ALERTS{cluster=~\"$cluster\",kubernetes_operator_part_of=\"kubevirt\", alertstate=\"firing\", pod=~\"virt-launcher-$name.*\", severity=\"critical\"})) or vector(0)",
+              "format": "table",
               "instant": true,
               "interval": "",
-              "legendFormat": "Running",
+              "legendFormat": "",
               "refId": "A"
-            },
-            {
-              "exemplar": true,
-              "expr": "sum(count(kubevirt_vm_non_running_status_last_transition_timestamp_seconds{cluster=\"$cluster\",namespace=\"$namespace\",name=\"$name\"}>0) by (name))",
-              "format": "time_series",
-              "hide": false,
-              "instant": true,
-              "interval": "",
-              "legendFormat": "Stopped",
-              "refId": "B"
-            },
-            {
-              "exemplar": true,
-              "expr": "sum(count(kubevirt_vm_error_status_last_transition_timestamp_seconds{cluster=\"$cluster\",namespace=\"$namespace\",name=\"$name\"}>0) by (name))",
-              "format": "time_series",
-              "hide": false,
-              "instant": true,
-              "interval": "",
-              "legendFormat": "Error",
-              "refId": "C"
-            },
-            {
-              "exemplar": true,
-              "expr": "sum(count(kubevirt_vm_starting_status_last_transition_timestamp_seconds{cluster=\"$cluster\",namespace=\"$namespace\",name=\"$name\"}>0) by (name))",
-              "format": "time_series",
-              "hide": false,
-              "instant": true,
-              "interval": "",
-              "legendFormat": "Starting",
-              "refId": "D"
-            },
-            {
-              "exemplar": true,
-              "expr": "sum(count(kubevirt_vm_migrating_status_last_transition_timestamp_seconds{cluster=\"$cluster\",namespace=\"$namespace\",name=\"$name\"}>0) by (name))",
-              "format": "time_series",
-              "hide": false,
-              "instant": true,
-              "interval": "",
-              "legendFormat": "Migrating",
-              "refId": "E"
             }
           ],
-          "title": "Status",
-          "transparent": true,
+          "title": "Critical Severity Alerts",
           "type": "stat"
         },
         {
           "datasource": null,
+          "description": "Total number of alerts that are firing with the severity level: warning.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "links": [],
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "orange",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 4,
+            "x": 8,
+            "y": 1
+          },
+          "id": 52,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "text": {},
+            "textMode": "auto"
+          },
+          "pluginVersion": "8.5.20",
+          "targets": [
+            {
+              "exemplar": true,
+              "expr": "sum(sum by (cluster,alertname,alertstate,severity,namespace,name,operator_health_impact )(ALERTS{cluster=~\"$cluster\",kubernetes_operator_part_of=\"kubevirt\", alertstate=\"firing\", pod=~\"virt-launcher-$name.*\", severity=\"warning\"}))  or vector(0)",
+              "format": "table",
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": "Warning Severity Alerts",
+          "type": "stat"
+        },
+        {
+          "datasource": null,
+          "description": "Total number of alerts that are firing with the severity level: warning.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "links": [],
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "blue",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 4,
+            "x": 12,
+            "y": 1
+          },
+          "id": 54,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "text": {},
+            "textMode": "auto"
+          },
+          "pluginVersion": "8.5.20",
+          "targets": [
+            {
+              "exemplar": true,
+              "expr": "sum(sum by (cluster,alertname,alertstate,severity,namespace,name,operator_health_impact )(ALERTS{cluster=~\"$cluster\",kubernetes_operator_part_of=\"kubevirt\", alertstate=\"firing\", pod=~\"virt-launcher-$name.*\", severity=\"info\"})) or vector(0)",
+              "format": "table",
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": "Info Severity Alerts",
+          "type": "stat"
+        },
+        {
+          "datasource": null,
+          "description": "This panel displays the VM memory usage Percentage. The memory usage is calculated as the allocated memory minus unused and cached memory. The data is based on the most recent metrics collected.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "fixedColor": "text",
+                "mode": "thresholds"
+              },
+              "decimals": 2,
+              "mappings": [],
+              "thresholds": {
+                "mode": "percentage",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "#EAB839",
+                    "value": 80
+                  },
+                  {
+                    "color": "red",
+                    "value": 90
+                  }
+                ]
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byType",
+                  "options": "number"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "percentunit"
+                  },
+                  {
+                    "id": "min",
+                    "value": 0
+                  },
+                  {
+                    "id": "max",
+                    "value": 1
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 5,
+            "w": 4,
+            "x": 16,
+            "y": 1
+          },
+          "id": 126,
+          "options": {
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showThresholdLabels": false,
+            "showThresholdMarkers": true,
+            "text": {}
+          },
+          "pluginVersion": "8.5.20",
+          "targets": [
+            {
+              "exemplar": true,
+              "expr": "(sum by (name) (\nkubevirt_vmi_memory_available_bytes{cluster=~\"$cluster\",namespace=\"$namespace\", name=\"$name\"} - kubevirt_vmi_memory_unused_bytes{cluster=~\"$cluster\",namespace=\"$namespace\", name=\"$name\"} -kubevirt_vmi_memory_cached_bytes{cluster=~\"$cluster\",namespace=\"$namespace\", name=\"$name\"}))\n/\n(sum by (name)(kubevirt_vm_resource_requests{cluster=\"$cluster\", namespace=\"$namespace\", name=\"$name\", resource=\"memory\"}))",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": "Memory Usage %",
+          "transformations": [
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true,
+                  "Value": false,
+                  "name": true,
+                  "type": true
+                },
+                "indexByName": {},
+                "renameByName": {}
+              }
+            }
+          ],
+          "type": "gauge"
+        },
+        {
+          "datasource": null,
+          "description": "This panel displays the VM CPU Usage Percentage. CPU Usage Percentage measures how much of the allocated CPU resources (cores, sockets, and threads) each VM is actively utilizing. It helps identify VMs with high or low CPU utilization relative to their allocated capacity.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "fixedColor": "text",
+                "mode": "thresholds"
+              },
+              "decimals": 2,
+              "mappings": [],
+              "thresholds": {
+                "mode": "percentage",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "#EAB839",
+                    "value": 80
+                  },
+                  {
+                    "color": "red",
+                    "value": 90
+                  }
+                ]
+              },
+              "unit": "percentunit"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 5,
+            "w": 4,
+            "x": 20,
+            "y": 1
+          },
+          "id": 128,
+          "options": {
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showThresholdLabels": false,
+            "showThresholdMarkers": true,
+            "text": {}
+          },
+          "pluginVersion": "8.5.20",
+          "targets": [
+            {
+              "exemplar": true,
+              "expr": "(sum by (name)(rate(kubevirt_vmi_cpu_usage_seconds_total{cluster=\"$cluster\", name=\"$name\", namespace=\"$namespace\"}[$__range]))>0)\n/\n(sum by (name) (\n(kubevirt_vm_resource_requests{cluster=\"$cluster\", name=\"$name\", namespace=\"$namespace\", resource=\"cpu\", unit=\"cores\", source=~\"default|domain\"})\n* ignoring (unit)(kubevirt_vm_resource_requests{cluster=\"$cluster\", name=\"$name\", namespace=\"$namespace\", resource=\"cpu\", unit=\"sockets\", source=~\"default|domain\"})\n* ignoring (unit)(kubevirt_vm_resource_requests{cluster=\"$cluster\", name=\"$name\", namespace=\"$namespace\", resource=\"cpu\", unit=\"threads\", source=~\"default|domain\"})\n) or\nsum by (name) (\n(kubevirt_vm_resource_requests{cluster=\"$cluster\", name=\"$name\", namespace=\"$namespace\", resource=\"cpu\", unit=\"cores\", source=~\"default|domain\"})\n* ignoring (unit)(kubevirt_vm_resource_requests{cluster=\"$cluster\", name=\"$name\", namespace=\"$namespace\", resource=\"cpu\", unit=\"sockets\", source=~\"default|domain\"})\n)\n or\nsum by (name) (\n(kubevirt_vm_resource_requests{cluster=\"$cluster\", name=\"$name\", namespace=\"$namespace\", resource=\"cpu\", unit=\"cores\", source=~\"default|domain\"})\n))",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "B"
+            }
+          ],
+          "title": "CPU Usage (%)",
+          "transformations": [
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true,
+                  "name": true
+                },
+                "indexByName": {},
+                "renameByName": {
+                  "type": "Type"
+                }
+              }
+            }
+          ],
+          "type": "gauge"
+        },
+        {
+          "datasource": null,
           "description": "",
           "fieldConfig": {
             "defaults": {
               "color": {
-                "fixedColor": "blue",
-                "mode": "fixed"
+                "mode": "thresholds"
               },
               "custom": {
-                "align": "center",
-                "displayMode": "color-background-solid"
+                "align": "auto",
+                "displayMode": "auto"
               },
               "mappings": [],
               "thresholds": {
@@ -249,44 +510,63 @@ data:
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "Allocated Memory"
+                  "options": "Value"
                 },
                 "properties": [
                   {
-                    "id": "unit",
-                    "value": "decbytes"
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Time in Status"
-                },
-                "properties": [
-                  {
-                    "id": "unit",
-                    "value": "dateTimeAsIso"
+                    "id": "custom.align",
+                    "value": "left"
                   }
                 ]
               }
             ]
           },
           "gridPos": {
-            "h": 3,
-            "w": 21,
-            "x": 3,
-            "y": 1
+            "h": 10,
+            "w": 8,
+            "x": 0,
+            "y": 5
           },
-          "id": 119,
+          "id": 150,
           "options": {
-            "showHeader": true
+            "showHeader": true,
+            "sortBy": []
           },
           "pluginVersion": "8.5.20",
           "targets": [
             {
               "exemplar": true,
-              "expr": "sum by (cluster, namespace, name)(kubevirt_vmi_network_receive_bytes_total{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"})",
+              "expr": "label_replace(sum by (name)(kubevirt_vm_cpu_usage_seconds_total or kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=\"$cluster\", namespace=\"$namespace\",name=\"$name\"}), \"Field\", \"Name\", \"name\", \".*\")",
+              "format": "table",
+              "hide": true,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "A"
+            },
+            {
+              "exemplar": true,
+              "expr": "label_replace(sum by (status)(label_replace(kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=\"$cluster\",namespace=\"$namespace\",name=\"$name\"}>0,\"status\", \"Running\", \"\", \"\") or label_replace(kubevirt_vm_non_running_status_last_transition_timestamp_seconds{cluster=\"$cluster\",namespace=\"$namespace\",name=\"$name\"}>0,\"status\", \"Stopped\", \"\", \"\") or label_replace(kubevirt_vm_error_status_last_transition_timestamp_seconds{cluster=\"$cluster\",namespace=\"$namespace\",name=\"$name\"}>0,\"status\", \"Error\", \"\", \"\") or label_replace(kubevirt_vm_starting_status_last_transition_timestamp_seconds{cluster=\"$cluster\",namespace=\"$namespace\",name=\"$name\"}>0,\"status\", \"Starting\", \"\", \"\") or label_replace(kubevirt_vm_migrating_status_last_transition_timestamp_seconds{cluster=\"$cluster\",namespace=\"$namespace\",name=\"$name\"}>0,\"status\", \"Migrating\", \"\", \"\") ), \"Field\", \"Status\", \"name\", \".*\")",
+              "format": "table",
+              "hide": true,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "B"
+            },
+            {
+              "exemplar": true,
+              "expr": "label_replace(sum by (guest_os_name)(kubevirt_vm_info{cluster=\"$cluster\", namespace=\"$namespace\", name=\"$name\", guest_os_name!=\"\"} or kubevirt_vmi_info{cluster=\"$cluster\", namespace=\"$namespace\", name=\"$name\", guest_os_name!=\"\"}), \"Field\", \"Operating System\", \"name\", \".*\")",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "C"
+            },
+            {
+              "exemplar": true,
+              "expr": "label_replace(sum by (guest_os_version_id)(kubevirt_vm_info{cluster=\"$cluster\", namespace=\"$namespace\", name=\"$name\", guest_os_version_id!=\"\"} or kubevirt_vmi_info{cluster=\"$cluster\", namespace=\"$namespace\", name=\"$name\", guest_os_version_id!=\"\"}), \"Field\", \"Operating System Version\", \"name\", \".*\")",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -296,78 +576,152 @@ data:
             },
             {
               "exemplar": true,
-              "expr": "(sum by (cluster, namespace, name)(kubevirt_vm_starting_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"}>0) or\nsum by (cluster, namespace, name)(kubevirt_vm_non_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"}>0 or \nsum by (cluster, namespace, name)(kubevirt_vm_error_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"}>0) or \nsum by (cluster, namespace, name)(kubevirt_vm_migrating_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"}>0) or \nsum by (cluster, namespace, name)(kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"}>0)))*1000",
+              "expr": "label_replace(\n(sum by (name) (\n(kubevirt_vm_resource_requests{cluster=\"$cluster\", name=\"$name\", namespace=\"$namespace\", resource=\"cpu\", unit=\"cores\", source=~\"default|domain\"})\n* ignoring (unit)(kubevirt_vm_resource_requests{cluster=\"$cluster\", name=\"$name\", namespace=\"$namespace\", resource=\"cpu\", unit=\"sockets\", source=~\"default|domain\"})\n* ignoring (unit)(kubevirt_vm_resource_requests{cluster=\"$cluster\", name=\"$name\", namespace=\"$namespace\", resource=\"cpu\", unit=\"threads\", source=~\"default|domain\"})\n) or\nsum by (name) (\n(kubevirt_vm_resource_requests{cluster=\"$cluster\", name=\"$name\", namespace=\"$namespace\", resource=\"cpu\", unit=\"cores\", source=~\"default|domain\"})\n* ignoring (unit)(kubevirt_vm_resource_requests{cluster=\"$cluster\", name=\"$name\", namespace=\"$namespace\", resource=\"cpu\", unit=\"sockets\", source=~\"default|domain\"})\n)\n or\nsum by (name) (\n(kubevirt_vm_resource_requests{cluster=\"$cluster\", name=\"$name\", namespace=\"$namespace\", resource=\"cpu\", unit=\"cores\", source=~\"default|domain\"})\n))\n, \"Field\", \"Allocated CPU\", \"name\", \".*\")",
               "format": "table",
               "hide": false,
               "instant": true,
               "interval": "",
               "legendFormat": "",
               "refId": "E"
+            },
+            {
+              "exemplar": true,
+              "expr": "label_replace(sum by (name)(kubevirt_vm_resource_requests{cluster=\"$cluster\", namespace=\"$namespace\", name=\"$name\", resource=\"memory\"}) / (1024^3), \"Field\", \"Allocated Memory (GB)\", \"name\", \".*\")",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "F"
+            },
+            {
+              "exemplar": true,
+              "expr": "label_replace(sum by (name)(kubevirt_vm_disk_allocated_size_bytes{cluster=\"$cluster\", namespace=\"$namespace\", name=\"$name\"})/ (1024^3), \"Field\", \"Allocated Disk (GB)\", \"name\", \".*\")",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "J"
+            },
+            {
+              "exemplar": true,
+              "expr": "label_replace(sum by (instance_type)(kubevirt_vm_info{cluster=\"$cluster\", namespace=\"$namespace\", name=\"$name\", instance_type!=\"<none>\"} or kubevirt_vmi_info{cluster=\"$cluster\", namespace=\"$namespace\", name=\"$name\", instance_type!=\"<none>\"}), \"Field\", \"Instance Type\", \"name\", \".*\")",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "G"
+            },
+            {
+              "exemplar": true,
+              "expr": "label_replace(sum by (workload)(kubevirt_vm_info{cluster=\"$cluster\", namespace=\"$namespace\", name=\"$name\", workload!=\"<none>\"}) or sum by (workload)(kubevirt_vmi_info{cluster=\"$cluster\", namespace=\"$namespace\", name=\"$name\", workload!=\"<none>\"}), \"Field\", \"Template Workload\", \"name\", \".*\")",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "H"
+            },
+            {
+              "exemplar": true,
+              "expr": "label_replace(sum by (flavor)(kubevirt_vm_info{cluster=\"$cluster\", namespace=\"$namespace\", name=\"$name\", flavor!=\"<none>\"}) or sum by (flavor)(kubevirt_vm_info{cluster=\"$cluster\", namespace=\"$namespace\", name=\"$name\", flavor!=\"<none>\"}), \"Field\", \"Template Flavor\", \"name\", \".*\")",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "I"
             }
           ],
-          "title": "VM Details",
+          "title": "VM Information",
           "transformations": [
             {
-              "id": "seriesToColumns",
-              "options": {
-                "byField": "name"
-              }
+              "id": "merge",
+              "options": {}
             },
             {
               "id": "organize",
               "options": {
                 "excludeByName": {
                   "Time": true,
-                  "Time 1": true,
-                  "Time 2": true,
-                  "Time 3": true,
+                  "Value #A": true,
                   "Value #B": true,
                   "Value #C": true,
                   "Value #D": true,
                   "Value #E": false,
-                  "cluster 2": true,
+                  "Value #H": true,
+                  "Value #I": true,
+                  "flavor": false,
+                  "name": false
+                },
+                "indexByName": {
+                  "Field": 1,
+                  "Time": 0,
+                  "Value #A": 3,
+                  "Value #B": 5,
+                  "Value #C": 7,
+                  "Value #D": 9,
+                  "Value #E": 10,
+                  "Value #F": 11,
+                  "Value #G": 14,
+                  "Value #J": 12,
+                  "guest_os_name": 6,
+                  "guest_os_version_id": 8,
+                  "instance_type": 13,
+                  "name": 2,
+                  "status": 4
+                },
+                "renameByName": {
+                  "Value #J": ""
+                }
+              }
+            },
+            {
+              "id": "calculateField",
+              "options": {
+                "mode": "reduceRow",
+                "reduce": {
+                  "include": [
+                    "Field",
+                    "name",
+                    "status",
+                    "guest_os_name",
+                    "guest_os_version_id",
+                    "Value #E",
+                    "Value #F",
+                    "workload",
+                    "flavor",
+                    "Value #J"
+                  ],
+                  "reducer": "lastNotNull"
+                }
+              }
+            },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Value #E": true,
+                  "Value #F": true,
+                  "Value #G": true,
+                  "Value #J": true,
                   "flavor": true,
                   "guest_os_name": true,
                   "guest_os_version_id": true,
                   "instance_type": true,
-                  "name": false,
-                  "namespace 2": true,
-                  "preference": true,
+                  "name": true,
+                  "status": true,
                   "workload": true
                 },
-                "indexByName": {
-                  "Time 1": 2,
-                  "Time 2": 3,
-                  "Value #B": 4,
-                  "Value #E": 0,
-                  "cluster 1": 6,
-                  "cluster 2": 7,
-                  "name": 1,
-                  "namespace 1": 5,
-                  "namespace 2": 8
-                },
+                "indexByName": {},
                 "renameByName": {
-                  "Time 1": "",
-                  "Time 2": "",
-                  "Value #A": "Allocated Memory",
-                  "Value #B": "Total Allocated vCPU",
-                  "Value #E": "Time in Status",
-                  "cluster": "Cluster",
-                  "cluster 1": "Cluster",
-                  "cluster 2": "",
-                  "flavor": "Template - Flavor",
-                  "instance_type": "Instance Type",
-                  "name": "Name",
-                  "namespace": "Namespace",
-                  "namespace 1": "Namespace",
-                  "namespace 2": "",
-                  "preference": "Preference",
-                  "workload": "Template - Workload"
+                  "Last *": "Value"
                 }
               }
             }
           ],
-          "transparent": true,
           "type": "table"
         },
         {
@@ -376,12 +730,11 @@ data:
           "fieldConfig": {
             "defaults": {
               "color": {
-                "fixedColor": "blue",
-                "mode": "fixed"
+                "mode": "thresholds"
               },
               "custom": {
-                "align": "center",
-                "displayMode": "color-background-solid"
+                "align": "auto",
+                "displayMode": "auto"
               },
               "mappings": [],
               "thresholds": {
@@ -402,34 +755,47 @@ data:
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "Allocated Memory"
+                  "options": "Value"
                 },
                 "properties": [
                   {
-                    "id": "unit",
-                    "value": "decbytes"
+                    "id": "custom.align",
+                    "value": "left"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Field"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": null
                   }
                 ]
               }
             ]
           },
           "gridPos": {
-            "h": 3,
-            "w": 6,
-            "x": 0,
-            "y": 4
+            "h": 10,
+            "w": 8,
+            "x": 8,
+            "y": 5
           },
-          "id": 115,
+          "id": 151,
           "options": {
-            "showHeader": true
+            "showHeader": true,
+            "sortBy": []
           },
           "pluginVersion": "8.5.20",
           "targets": [
             {
               "exemplar": true,
-              "expr": "sum by (name)(kubevirt_vm_resource_requests{cluster=\"$cluster\",namespace=\"$namespace\", name=\"$name\",resource=\"memory\"})",
+              "expr": "label_replace(sum by (namespace)(kubevirt_vm_cpu_usage_seconds_total or kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=\"$cluster\", namespace=\"$namespace\",name=\"$name\"}), \"Field\", \"Namespace\", \"name\", \".*\")",
               "format": "table",
-              "hide": false,
+              "hide": true,
               "instant": true,
               "interval": "",
               "legendFormat": "",
@@ -437,7 +803,279 @@ data:
             },
             {
               "exemplar": true,
-              "expr": "sum by (name)((kubevirt_vm_resource_requests{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\", resource=\"cpu\", unit=\"cores\"} *\non (cluster, namespace, vmi) group_left() kubevirt_vm_resource_requests{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\", resource=\"cpu\", unit=\"sockets\"}*\n on (cluster, namespace, vmi) group_left() kubevirt_vm_resource_requests{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\", resource=\"cpu\", unit=\"threads\"}))",
+              "expr": "label_replace(sum by (node)(kubevirt_vmi_info{cluster=\"$cluster\", namespace=\"$namespace\", name=\"$name\"}), \"Field\", \"Node\", \"name\", \".*\")",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "B"
+            },
+            {
+              "exemplar": true,
+              "expr": "label_replace(sum by(pod)(kubevirt_vmi_info{cluster=\"$cluster\", namespace=\"$namespace\", name=\"$name\"}), \"Field\", \"Pod\", \"name\", \".*\")",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "C"
+            },
+            {
+              "exemplar": true,
+              "expr": "label_replace(sum by (evictable)(kubevirt_vmi_info{cluster=\"$cluster\", namespace=\"$namespace\", name=\"$name\"}), \"Field\", \"Evictable\", \"name\", \".*\")",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "D"
+            },
+            {
+              "exemplar": true,
+              "expr": "label_replace(sum by (machine_type)(kubevirt_vm_info{cluster=\"$cluster\", namespace=\"$namespace\", name=\"$name\", machine_type!=\"\"}) or sum by (workload)(kubevirt_vmi_info{cluster=\"$cluster\", namespace=\"$namespace\", name=\"$name\", machine_type!=\"\"}), \"Field\", \"Machine Type\", \"name\", \".*\")",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "E"
+            },
+            {
+              "exemplar": true,
+              "expr": "label_replace(sum by (outdated)(kubevirt_vmi_info{cluster=\"$cluster\", namespace=\"$namespace\", name=\"$name\"}), \"Field\", \"Outdated\", \"name\", \".*\")",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "F"
+            }
+          ],
+          "title": "General Information",
+          "transformations": [
+            {
+              "id": "merge",
+              "options": {}
+            },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true,
+                  "Value #A": true,
+                  "Value #B": true,
+                  "Value #C": true,
+                  "Value #D": true,
+                  "Value #E": true,
+                  "Value #F": true,
+                  "Value #H": true,
+                  "Value #I": true,
+                  "machine_type": false,
+                  "name": false
+                },
+                "indexByName": {},
+                "renameByName": {}
+              }
+            },
+            {
+              "id": "calculateField",
+              "options": {
+                "mode": "reduceRow",
+                "reduce": {
+                  "include": [
+                    "Field",
+                    "namespace",
+                    "node",
+                    "pod",
+                    "evictable",
+                    "machine_type",
+                    "outdated"
+                  ],
+                  "reducer": "lastNotNull"
+                }
+              }
+            },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "evictable": true,
+                  "machine_type": true,
+                  "namespace": true,
+                  "node": true,
+                  "outdated": true,
+                  "pod": true
+                },
+                "indexByName": {},
+                "renameByName": {
+                  "Last *": "Value"
+                }
+              }
+            }
+          ],
+          "type": "table"
+        },
+        {
+          "datasource": null,
+          "description": "This panel displays the VM File System usage percentage for the disk that has the highest usage percentage.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "fixedColor": "text",
+                "mode": "thresholds"
+              },
+              "decimals": 2,
+              "mappings": [],
+              "thresholds": {
+                "mode": "percentage",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "#EAB839",
+                    "value": 80
+                  },
+                  {
+                    "color": "red",
+                    "value": 90
+                  }
+                ]
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byType",
+                  "options": "number"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "percentunit"
+                  },
+                  {
+                    "id": "min",
+                    "value": 0
+                  },
+                  {
+                    "id": "max",
+                    "value": 1
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 5,
+            "w": 4,
+            "x": 16,
+            "y": 6
+          },
+          "id": 159,
+          "options": {
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showThresholdLabels": false,
+            "showThresholdMarkers": true,
+            "text": {}
+          },
+          "pluginVersion": "8.5.20",
+          "targets": [
+            {
+              "exemplar": true,
+              "expr": "(max by (disk_name) (\n  avg_over_time(kubevirt_vmi_filesystem_used_bytes{\n    cluster=\"$cluster\", \n    namespace=\"$namespace\", \n    name=\"$name\"\n  }[$__range])\n))\n/\n(max by (disk_name) (\n  avg_over_time(kubevirt_vmi_filesystem_capacity_bytes{\n    cluster=\"$cluster\", \n    namespace=\"$namespace\", \n    name=\"$name\"\n  }[$__range])\n))",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": "File System Usage %",
+          "transformations": [
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true,
+                  "Value": false,
+                  "name": true,
+                  "type": true
+                },
+                "indexByName": {},
+                "renameByName": {}
+              }
+            }
+          ],
+          "type": "gauge"
+        },
+        {
+          "datasource": null,
+          "description": "This panel shows the VM CPU Delay Percentage. CPU Delay indicates the proportion of time a VM's virtual CPUs were ready to execute but had to wait for physical CPU resources due to contention.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "fixedColor": "text",
+                "mode": "thresholds"
+              },
+              "decimals": 2,
+              "mappings": [],
+              "thresholds": {
+                "mode": "percentage",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "#EAB839",
+                    "value": 5
+                  },
+                  {
+                    "color": "red",
+                    "value": 10
+                  }
+                ]
+              },
+              "unit": "percentunit"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 5,
+            "w": 4,
+            "x": 20,
+            "y": 6
+          },
+          "id": 131,
+          "options": {
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showThresholdLabels": false,
+            "showThresholdMarkers": true,
+            "text": {}
+          },
+          "pluginVersion": "8.5.20",
+          "targets": [
+            {
+              "exemplar": true,
+              "expr": "(sum by (name)(rate(kubevirt_vmi_vcpu_delay_seconds_total{cluster=\"$cluster\", name=\"$name\", namespace=\"$namespace\"}[$__range]))>0)\n/\n(sum by (name) (\n(kubevirt_vm_resource_requests{cluster=\"$cluster\", name=\"$name\", namespace=\"$namespace\", resource=\"cpu\", unit=\"cores\", source=~\"default|domain\"})\n* ignoring (unit)(kubevirt_vm_resource_requests{cluster=\"$cluster\", name=\"$name\", namespace=\"$namespace\", resource=\"cpu\", unit=\"sockets\", source=~\"default|domain\"})\n* ignoring (unit)(kubevirt_vm_resource_requests{cluster=\"$cluster\", name=\"$name\", namespace=\"$namespace\", resource=\"cpu\", unit=\"threads\", source=~\"default|domain\"})\n) or\nsum by (name) (\n(kubevirt_vm_resource_requests{cluster=\"$cluster\", name=\"$name\", namespace=\"$namespace\", resource=\"cpu\", unit=\"cores\", source=~\"default|domain\"})\n* ignoring (unit)(kubevirt_vm_resource_requests{cluster=\"$cluster\", name=\"$name\", namespace=\"$namespace\", resource=\"cpu\", unit=\"sockets\", source=~\"default|domain\"})\n)\n or\nsum by (name) (\n(kubevirt_vm_resource_requests{cluster=\"$cluster\", name=\"$name\", namespace=\"$namespace\", resource=\"cpu\", unit=\"cores\", source=~\"default|domain\"})\n))",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -446,301 +1084,23 @@ data:
               "refId": "B"
             }
           ],
-          "title": "Allocated Resources",
-          "transformations": [
-            {
-              "id": "seriesToColumns",
-              "options": {
-                "byField": "name"
-              }
-            },
-            {
-              "id": "organize",
-              "options": {
-                "excludeByName": {
-                  "Time": true,
-                  "Time 1": true,
-                  "Time 2": true,
-                  "Time 3": true,
-                  "Value #B": false,
-                  "Value #C": true,
-                  "Value #D": false,
-                  "cluster": false,
-                  "flavor": true,
-                  "guest_os_name": true,
-                  "guest_os_version_id": true,
-                  "instance_type": true,
-                  "name": true,
-                  "namespace": false,
-                  "node": false,
-                  "preference": true,
-                  "workload": true
-                },
-                "indexByName": {
-                  "Time 1": 1,
-                  "Time 2": 3,
-                  "Time 3": 5,
-                  "Value #A": 2,
-                  "Value #B": 4,
-                  "Value #C": 10,
-                  "flavor": 8,
-                  "instance_type": 6,
-                  "name": 0,
-                  "preference": 7,
-                  "workload": 9
-                },
-                "renameByName": {
-                  "Time 2": "",
-                  "Value #A": "Allocated Memory",
-                  "Value #B": "Total Allocated vCPU",
-                  "flavor": "Template - Flavor",
-                  "instance_type": "Instance Type",
-                  "preference": "Preference",
-                  "workload": "Template - Workload"
-                }
-              }
-            }
-          ],
-          "transparent": true,
-          "type": "table"
-        },
-        {
-          "datasource": null,
-          "description": "",
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "fixedColor": "blue",
-                "mode": "fixed"
-              },
-              "custom": {
-                "align": "center",
-                "displayMode": "color-background-solid"
-              },
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": null
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              }
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 3,
-            "w": 6,
-            "x": 6,
-            "y": 4
-          },
-          "id": 120,
-          "options": {
-            "showHeader": true
-          },
-          "pluginVersion": "8.5.20",
-          "targets": [
-            {
-              "exemplar": true,
-              "expr": "sum by(name, preference, workload, flavor, instance_type, guest_os_name, guest_os_version_id )(kubevirt_vmi_info{cluster=\"$cluster\", namespace=\"$namespace\", name=\"$name\"})",
-              "format": "table",
-              "hide": false,
-              "instant": true,
-              "interval": "",
-              "legendFormat": "",
-              "refId": "A"
-            }
-          ],
-          "title": "Template Details",
+          "title": "CPU Delay (%)",
           "transformations": [
             {
               "id": "organize",
               "options": {
                 "excludeByName": {
                   "Time": true,
-                  "Value": true,
-                  "guest_os_name": true,
-                  "guest_os_version_id": true,
-                  "instance_type": true,
-                  "name": true,
-                  "preference": true
+                  "name": true
                 },
                 "indexByName": {},
                 "renameByName": {
-                  "flavor": "Flavor",
-                  "workload": "Workload"
+                  "type": "Type"
                 }
               }
             }
           ],
-          "transparent": true,
-          "type": "table"
-        },
-        {
-          "datasource": null,
-          "description": "",
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "fixedColor": "blue",
-                "mode": "fixed"
-              },
-              "custom": {
-                "align": "center",
-                "displayMode": "color-background-solid"
-              },
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": null
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              }
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 3,
-            "w": 6,
-            "x": 12,
-            "y": 4
-          },
-          "id": 121,
-          "options": {
-            "showHeader": true
-          },
-          "pluginVersion": "8.5.20",
-          "targets": [
-            {
-              "exemplar": true,
-              "expr": "sum by(name, preference, workload, flavor, instance_type, guest_os_name, guest_os_version_id )(kubevirt_vmi_info{cluster=\"$cluster\", namespace=\"$namespace\", name=\"$name\"})",
-              "format": "table",
-              "hide": false,
-              "instant": true,
-              "interval": "",
-              "legendFormat": "",
-              "refId": "A"
-            }
-          ],
-          "title": "Instance Type Details",
-          "transformations": [
-            {
-              "id": "organize",
-              "options": {
-                "excludeByName": {
-                  "Time": true,
-                  "Value": true,
-                  "flavor": true,
-                  "guest_os_name": true,
-                  "guest_os_version_id": true,
-                  "instance_type": false,
-                  "name": true,
-                  "preference": false,
-                  "workload": true
-                },
-                "indexByName": {},
-                "renameByName": {
-                  "flavor": "",
-                  "instance_type": "Instance Type",
-                  "preference": "Preference",
-                  "workload": ""
-                }
-              }
-            }
-          ],
-          "transparent": true,
-          "type": "table"
-        },
-        {
-          "datasource": null,
-          "description": "",
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "fixedColor": "blue",
-                "mode": "fixed"
-              },
-              "custom": {
-                "align": "center",
-                "displayMode": "color-background-solid"
-              },
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": null
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              }
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 3,
-            "w": 6,
-            "x": 18,
-            "y": 4
-          },
-          "id": 118,
-          "options": {
-            "showHeader": true
-          },
-          "pluginVersion": "8.5.20",
-          "targets": [
-            {
-              "exemplar": true,
-              "expr": "sum by(name, preference, workload, flavor, instance_type, guest_os_name, guest_os_version_id )(kubevirt_vmi_info{cluster=\"$cluster\", namespace=\"$namespace\", name=\"$name\"})",
-              "format": "table",
-              "hide": false,
-              "instant": true,
-              "interval": "",
-              "legendFormat": "",
-              "refId": "A"
-            }
-          ],
-          "title": "Operating System Details",
-          "transformations": [
-            {
-              "id": "organize",
-              "options": {
-                "excludeByName": {
-                  "Time": true,
-                  "Value": true,
-                  "flavor": true,
-                  "instance_type": true,
-                  "name": true,
-                  "preference": true,
-                  "workload": true
-                },
-                "indexByName": {},
-                "renameByName": {
-                  "guest_os_name": "OS Name",
-                  "guest_os_version_id": "OS Version"
-                }
-              }
-            }
-          ],
-          "transparent": true,
-          "type": "table"
+          "type": "gauge"
         },
         {
           "collapsed": true,
@@ -749,13 +1109,246 @@ data:
             "h": 1,
             "w": 24,
             "x": 0,
-            "y": 7
+            "y": 15
+          },
+          "id": 144,
+          "panels": [
+            {
+              "datasource": null,
+              "description": "",
+              "fieldConfig": {
+                "defaults": {
+                  "color": {
+                    "mode": "thresholds"
+                  },
+                  "custom": {
+                    "align": "auto",
+                    "displayMode": "auto"
+                  },
+                  "mappings": [],
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "green",
+                        "value": null
+                      },
+                      {
+                        "color": "red",
+                        "value": 80
+                      }
+                    ]
+                  }
+                },
+                "overrides": []
+              },
+              "gridPos": {
+                "h": 5,
+                "w": 12,
+                "x": 0,
+                "y": 14
+              },
+              "id": 146,
+              "options": {
+                "showHeader": true
+              },
+              "pluginVersion": "8.5.20",
+              "targets": [
+                {
+                  "exemplar": true,
+                  "expr": "sum by(cluster,name,namespace,address,network_name, type)(kubevirt_vmi_status_addresses{cluster=\"$cluster\",namespace=\"$namespace\",name=\"$name\"})",
+                  "format": "table",
+                  "instant": true,
+                  "interval": "",
+                  "legendFormat": "",
+                  "refId": "A"
+                }
+              ],
+              "title": "Network",
+              "transformations": [
+                {
+                  "id": "organize",
+                  "options": {
+                    "excludeByName": {
+                      "Time": true,
+                      "Value": true,
+                      "cluster": true,
+                      "name": true,
+                      "namespace": true
+                    },
+                    "indexByName": {
+                      "Time": 3,
+                      "Value": 7,
+                      "address": 2,
+                      "cluster": 4,
+                      "name": 5,
+                      "namespace": 6,
+                      "network_name": 1,
+                      "type": 0
+                    },
+                    "renameByName": {
+                      "address": "IP Address",
+                      "network_name": "Network Name",
+                      "type": "Network Type"
+                    }
+                  }
+                }
+              ],
+              "type": "table"
+            },
+            {
+              "datasource": null,
+              "fieldConfig": {
+                "defaults": {
+                  "color": {
+                    "mode": "thresholds"
+                  },
+                  "custom": {
+                    "align": "center",
+                    "displayMode": "auto"
+                  },
+                  "mappings": [],
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "green",
+                        "value": null
+                      },
+                      {
+                        "color": "red",
+                        "value": 80
+                      }
+                    ]
+                  }
+                },
+                "overrides": [
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Value"
+                    },
+                    "properties": [
+                      {
+                        "id": "unit",
+                        "value": "dateTimeAsIso"
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Snapshot Name"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.width",
+                        "value": 436
+                      }
+                    ]
+                  }
+                ]
+              },
+              "gridPos": {
+                "h": 5,
+                "w": 12,
+                "x": 12,
+                "y": 14
+              },
+              "id": 130,
+              "options": {
+                "showHeader": true,
+                "sortBy": []
+              },
+              "pluginVersion": "8.5.20",
+              "targets": [
+                {
+                  "exemplar": true,
+                  "expr": "kubevirt_vmsnapshot_succeeded_timestamp_seconds{cluster=~\"$cluster\",namespace=\"$namespace\", name=\"$name\"}*1000",
+                  "format": "table",
+                  "instant": true,
+                  "interval": "",
+                  "legendFormat": "",
+                  "refId": "A"
+                }
+              ],
+              "title": "VM Snapshots",
+              "transformations": [
+                {
+                  "id": "organize",
+                  "options": {
+                    "excludeByName": {
+                      "Time": true,
+                      "__name__": true,
+                      "cluster": true,
+                      "clusterID": true,
+                      "container": true,
+                      "endpoint": true,
+                      "instance": true,
+                      "job": true,
+                      "name": true,
+                      "namespace": true,
+                      "pod": true,
+                      "receive": true,
+                      "service": true,
+                      "tenant_id": true
+                    },
+                    "indexByName": {
+                      "Time": 0,
+                      "Value": 12,
+                      "cluster": 1,
+                      "clusterID": 2,
+                      "container": 3,
+                      "endpoint": 4,
+                      "instance": 5,
+                      "job": 6,
+                      "name": 7,
+                      "namespace": 8,
+                      "pod": 9,
+                      "receive": 10,
+                      "service": 11,
+                      "snapshot_name": 13,
+                      "tenant_id": 14
+                    },
+                    "renameByName": {
+                      "Value": "Snapshot Create Date",
+                      "snapshot_name": "Snapshot Name"
+                    }
+                  }
+                },
+                {
+                  "id": "sortBy",
+                  "options": {
+                    "fields": {},
+                    "sort": [
+                      {
+                        "desc": true,
+                        "field": "Snapshot Create Date"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "type": "table"
+            }
+          ],
+          "title": "Additional Virtual Machines Details",
+          "type": "row"
+        },
+        {
+          "collapsed": true,
+          "datasource": null,
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 16
           },
           "id": 36,
           "panels": [
             {
               "datasource": "Observatorium-Dynamic",
-              "description": "",
+              "description": "This panel displays the total VM CPU Usage. CPU Usage represents the rate of CPU time consumed by each VM, providing insight into the most resource-intensive workloads in the cluster during the recent period.",
               "fieldConfig": {
                 "defaults": {
                   "color": {
@@ -766,7 +1359,7 @@ data:
                     "axisPlacement": "auto",
                     "barAlignment": 0,
                     "drawStyle": "line",
-                    "fillOpacity": 0,
+                    "fillOpacity": 10,
                     "gradientMode": "none",
                     "hideFrom": {
                       "legend": false,
@@ -811,10 +1404,10 @@ data:
                 "overrides": []
               },
               "gridPos": {
-                "h": 7,
+                "h": 6,
                 "w": 12,
                 "x": 0,
-                "y": 8
+                "y": 17
               },
               "id": 42,
               "options": {
@@ -833,7 +1426,7 @@ data:
               "targets": [
                 {
                   "exemplar": true,
-                  "expr": "sum by (name) (rate(kubevirt_vmi_cpu_usage_seconds_total{cluster=~\"$cluster\",namespace=\"$namespace\", name=\"$name\"}[1h]))",
+                  "expr": "sum by (name) (rate(kubevirt_vmi_cpu_usage_seconds_total{cluster=~\"$cluster\",namespace=\"$namespace\", name=\"$name\"}[10m]))",
                   "hide": false,
                   "instant": false,
                   "interval": "",
@@ -841,12 +1434,12 @@ data:
                   "refId": "B"
                 }
               ],
-              "title": "CPU Usage",
+              "title": "Total CPU Usage",
               "type": "timeseries"
             },
             {
               "datasource": "Observatorium-Dynamic",
-              "description": "",
+              "description": "This panel displays the VM CPU Usage Percentage. CPU Usage Percentage measures how much of the allocated CPU resources (cores, sockets, and threads) each VM is actively utilizing. It helps identify VMs with high or low CPU utilization relative to their allocated capacity.",
               "fieldConfig": {
                 "defaults": {
                   "color": {
@@ -857,7 +1450,298 @@ data:
                     "axisPlacement": "auto",
                     "barAlignment": 0,
                     "drawStyle": "line",
-                    "fillOpacity": 0,
+                    "fillOpacity": 10,
+                    "gradientMode": "none",
+                    "hideFrom": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": false
+                    },
+                    "lineInterpolation": "linear",
+                    "lineStyle": {
+                      "fill": "solid"
+                    },
+                    "lineWidth": 1,
+                    "pointSize": 5,
+                    "scaleDistribution": {
+                      "type": "linear"
+                    },
+                    "showPoints": "auto",
+                    "spanNulls": false,
+                    "stacking": {
+                      "group": "A",
+                      "mode": "none"
+                    },
+                    "thresholdsStyle": {
+                      "mode": "off"
+                    }
+                  },
+                  "mappings": [],
+                  "thresholds": {
+                    "mode": "percentage",
+                    "steps": [
+                      {
+                        "color": "green",
+                        "value": null
+                      },
+                      {
+                        "color": "red",
+                        "value": 80
+                      }
+                    ]
+                  },
+                  "unit": "percentunit"
+                },
+                "overrides": []
+              },
+              "gridPos": {
+                "h": 6,
+                "w": 12,
+                "x": 12,
+                "y": 17
+              },
+              "id": 134,
+              "options": {
+                "legend": {
+                  "calcs": [
+                    "lastNotNull",
+                    "max"
+                  ],
+                  "displayMode": "table",
+                  "placement": "right"
+                },
+                "tooltip": {
+                  "mode": "multi"
+                }
+              },
+              "targets": [
+                {
+                  "exemplar": true,
+                  "expr": "(sum by (name)(rate(kubevirt_vmi_cpu_usage_seconds_total{cluster=\"$cluster\", name=\"$name\", namespace=\"$namespace\"}[$__range]))>0)\n/\n(sum by (name) (\n(kubevirt_vm_resource_requests{cluster=\"$cluster\", name=\"$name\", namespace=\"$namespace\", resource=\"cpu\", unit=\"cores\", source=~\"default|domain\"})\n* ignoring (unit)(kubevirt_vm_resource_requests{cluster=\"$cluster\", name=\"$name\", namespace=\"$namespace\", resource=\"cpu\", unit=\"sockets\", source=~\"default|domain\"})\n* ignoring (unit)(kubevirt_vm_resource_requests{cluster=\"$cluster\", name=\"$name\", namespace=\"$namespace\", resource=\"cpu\", unit=\"threads\", source=~\"default|domain\"})\n) or\nsum by (name) (\n(kubevirt_vm_resource_requests{cluster=\"$cluster\", name=\"$name\", namespace=\"$namespace\", resource=\"cpu\", unit=\"cores\", source=~\"default|domain\"})\n* ignoring (unit)(kubevirt_vm_resource_requests{cluster=\"$cluster\", name=\"$name\", namespace=\"$namespace\", resource=\"cpu\", unit=\"sockets\", source=~\"default|domain\"})\n)\n or\nsum by (name) (\n(kubevirt_vm_resource_requests{cluster=\"$cluster\", name=\"$name\", namespace=\"$namespace\", resource=\"cpu\", unit=\"cores\", source=~\"default|domain\"})\n))",
+                  "format": "time_series",
+                  "hide": false,
+                  "instant": false,
+                  "interval": "",
+                  "legendFormat": "{{name}} ",
+                  "refId": "B"
+                }
+              ],
+              "title": "CPU Usage (%)",
+              "transformations": [],
+              "type": "timeseries"
+            },
+            {
+              "datasource": "Observatorium-Dynamic",
+              "description": "This panel shows the VM CPU Ready Time. CPU Ready indicates the proportion of time a VM's virtual CPUs were ready to execute but had to wait for physical CPU resources due to contention.",
+              "fieldConfig": {
+                "defaults": {
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
+                    "barAlignment": 0,
+                    "drawStyle": "line",
+                    "fillOpacity": 10,
+                    "gradientMode": "none",
+                    "hideFrom": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": false
+                    },
+                    "lineInterpolation": "linear",
+                    "lineStyle": {
+                      "fill": "solid"
+                    },
+                    "lineWidth": 1,
+                    "pointSize": 5,
+                    "scaleDistribution": {
+                      "type": "linear"
+                    },
+                    "showPoints": "auto",
+                    "spanNulls": false,
+                    "stacking": {
+                      "group": "A",
+                      "mode": "none"
+                    },
+                    "thresholdsStyle": {
+                      "mode": "line"
+                    }
+                  },
+                  "mappings": [],
+                  "thresholds": {
+                    "mode": "percentage",
+                    "steps": [
+                      {
+                        "color": "green",
+                        "value": null
+                      }
+                    ]
+                  },
+                  "unit": "s"
+                },
+                "overrides": []
+              },
+              "gridPos": {
+                "h": 6,
+                "w": 12,
+                "x": 0,
+                "y": 23
+              },
+              "id": 147,
+              "options": {
+                "legend": {
+                  "calcs": [
+                    "lastNotNull",
+                    "max"
+                  ],
+                  "displayMode": "table",
+                  "placement": "right"
+                },
+                "tooltip": {
+                  "mode": "multi"
+                }
+              },
+              "targets": [
+                {
+                  "exemplar": true,
+                  "expr": "100 * sum by (name, namespace, cluster)(rate(kubevirt_vmi_vcpu_delay_seconds_total{cluster=~\"$cluster\", namespace=\"$namespace\", name=\"$name\"}[10m]))",
+                  "hide": false,
+                  "instant": false,
+                  "interval": "",
+                  "legendFormat": "{{name}}",
+                  "refId": "B"
+                }
+              ],
+              "title": "CPU Ready Time",
+              "type": "timeseries"
+            },
+            {
+              "datasource": "Observatorium-Dynamic",
+              "description": "This panel shows the VM CPU Delay Percentage. CPU Delay indicates the proportion of time a VM's virtual CPUs were ready to execute but had to wait for physical CPU resources due to contention.",
+              "fieldConfig": {
+                "defaults": {
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
+                    "barAlignment": 0,
+                    "drawStyle": "line",
+                    "fillOpacity": 10,
+                    "gradientMode": "none",
+                    "hideFrom": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": false
+                    },
+                    "lineInterpolation": "linear",
+                    "lineStyle": {
+                      "fill": "solid"
+                    },
+                    "lineWidth": 1,
+                    "pointSize": 5,
+                    "scaleDistribution": {
+                      "type": "linear"
+                    },
+                    "showPoints": "auto",
+                    "spanNulls": false,
+                    "stacking": {
+                      "group": "A",
+                      "mode": "none"
+                    },
+                    "thresholdsStyle": {
+                      "mode": "off"
+                    }
+                  },
+                  "mappings": [],
+                  "min": 0,
+                  "thresholds": {
+                    "mode": "percentage",
+                    "steps": [
+                      {
+                        "color": "green",
+                        "value": null
+                      },
+                      {
+                        "color": "#EAB839",
+                        "value": 0.05
+                      },
+                      {
+                        "color": "red",
+                        "value": 0.1
+                      }
+                    ]
+                  },
+                  "unit": "percentunit"
+                },
+                "overrides": []
+              },
+              "gridPos": {
+                "h": 6,
+                "w": 12,
+                "x": 12,
+                "y": 23
+              },
+              "id": 132,
+              "options": {
+                "legend": {
+                  "calcs": [
+                    "lastNotNull",
+                    "max"
+                  ],
+                  "displayMode": "table",
+                  "placement": "right"
+                },
+                "tooltip": {
+                  "mode": "multi"
+                }
+              },
+              "targets": [
+                {
+                  "exemplar": true,
+                  "expr": "(sum by (name)(rate(kubevirt_vmi_vcpu_delay_seconds_total{cluster=\"$cluster\", name=\"$name\", namespace=\"$namespace\"}[$__range]))>0)\n/\n(sum by (name) (\n(kubevirt_vm_resource_requests{cluster=\"$cluster\", name=\"$name\", namespace=\"$namespace\", resource=\"cpu\", unit=\"cores\", source=~\"default|domain\"})\n* ignoring (unit)(kubevirt_vm_resource_requests{cluster=\"$cluster\", name=\"$name\", namespace=\"$namespace\", resource=\"cpu\", unit=\"sockets\", source=~\"default|domain\"})\n* ignoring (unit)(kubevirt_vm_resource_requests{cluster=\"$cluster\", name=\"$name\", namespace=\"$namespace\", resource=\"cpu\", unit=\"threads\", source=~\"default|domain\"})\n) or\nsum by (name) (\n(kubevirt_vm_resource_requests{cluster=\"$cluster\", name=\"$name\", namespace=\"$namespace\", resource=\"cpu\", unit=\"cores\", source=~\"default|domain\"})\n* ignoring (unit)(kubevirt_vm_resource_requests{cluster=\"$cluster\", name=\"$name\", namespace=\"$namespace\", resource=\"cpu\", unit=\"sockets\", source=~\"default|domain\"})\n)\n or\nsum by (name) (\n(kubevirt_vm_resource_requests{cluster=\"$cluster\", name=\"$name\", namespace=\"$namespace\", resource=\"cpu\", unit=\"cores\", source=~\"default|domain\"})\n))",
+                  "hide": false,
+                  "instant": false,
+                  "interval": "",
+                  "legendFormat": "{{name}}",
+                  "refId": "B"
+                }
+              ],
+              "title": "CPU Delay (%)",
+              "type": "timeseries"
+            }
+          ],
+          "title": "CPU Utilization",
+          "type": "row"
+        },
+        {
+          "collapsed": true,
+          "datasource": null,
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 17
+          },
+          "id": 142,
+          "panels": [
+            {
+              "datasource": "Observatorium-Dynamic",
+              "description": "This panel displays the VM memory usage. The memory usage is calculated as the allocated memory minus unused and cached memory. The data is based on the most recent metrics collected.",
+              "fieldConfig": {
+                "defaults": {
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
+                    "barAlignment": 0,
+                    "drawStyle": "line",
+                    "fillOpacity": 10,
                     "gradientMode": "none",
                     "hideFrom": {
                       "legend": false,
@@ -898,10 +1782,10 @@ data:
                 "overrides": []
               },
               "gridPos": {
-                "h": 7,
+                "h": 6,
                 "w": 12,
-                "x": 12,
-                "y": 8
+                "x": 0,
+                "y": 18
               },
               "id": 44,
               "options": {
@@ -931,6 +1815,108 @@ data:
               "title": "Memory Usage",
               "type": "timeseries"
             },
+            {
+              "datasource": "Observatorium-Dynamic",
+              "description": "This panel displays the VM memory usage Percentage. The memory usage is calculated as the allocated memory minus unused and cached memory. The data is based on the most recent metrics collected.",
+              "fieldConfig": {
+                "defaults": {
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
+                    "barAlignment": 0,
+                    "drawStyle": "line",
+                    "fillOpacity": 10,
+                    "gradientMode": "none",
+                    "hideFrom": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": false
+                    },
+                    "lineInterpolation": "linear",
+                    "lineStyle": {
+                      "fill": "solid"
+                    },
+                    "lineWidth": 1,
+                    "pointSize": 5,
+                    "scaleDistribution": {
+                      "type": "linear"
+                    },
+                    "showPoints": "auto",
+                    "spanNulls": false,
+                    "stacking": {
+                      "group": "A",
+                      "mode": "none"
+                    },
+                    "thresholdsStyle": {
+                      "mode": "line"
+                    }
+                  },
+                  "mappings": [],
+                  "thresholds": {
+                    "mode": "percentage",
+                    "steps": [
+                      {
+                        "color": "green",
+                        "value": null
+                      }
+                    ]
+                  },
+                  "unit": "percentunit"
+                },
+                "overrides": []
+              },
+              "gridPos": {
+                "h": 6,
+                "w": 12,
+                "x": 12,
+                "y": 18
+              },
+              "id": 148,
+              "options": {
+                "legend": {
+                  "calcs": [
+                    "lastNotNull",
+                    "max"
+                  ],
+                  "displayMode": "table",
+                  "placement": "right"
+                },
+                "tooltip": {
+                  "mode": "multi"
+                }
+              },
+              "targets": [
+                {
+                  "exemplar": true,
+                  "expr": "(sum by (name) (\nkubevirt_vmi_memory_available_bytes{cluster=~\"$cluster\",namespace=\"$namespace\", name=\"$name\"} - kubevirt_vmi_memory_unused_bytes{cluster=~\"$cluster\",namespace=\"$namespace\", name=\"$name\"} -kubevirt_vmi_memory_cached_bytes{cluster=~\"$cluster\",namespace=\"$namespace\", name=\"$name\"}))/\n(sum by (name)(kubevirt_vm_resource_requests{cluster=~\"$cluster\",namespace=\"$namespace\", name=\"$name\",resource=\"memory\"}))",
+                  "hide": false,
+                  "instant": false,
+                  "interval": "",
+                  "legendFormat": "{{name}}",
+                  "refId": "A"
+                }
+              ],
+              "title": "Memory Usage (%)",
+              "type": "timeseries"
+            }
+          ],
+          "title": "Memory Utilization",
+          "type": "row"
+        },
+        {
+          "collapsed": true,
+          "datasource": null,
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 18
+          },
+          "id": 140,
+          "panels": [
             {
               "datasource": "Observatorium-Dynamic",
               "description": "",
@@ -989,7 +1975,7 @@ data:
                 "h": 6,
                 "w": 12,
                 "x": 0,
-                "y": 15
+                "y": 17
               },
               "id": 88,
               "options": {
@@ -1081,7 +2067,7 @@ data:
                 "h": 6,
                 "w": 12,
                 "x": 12,
-                "y": 15
+                "y": 17
               },
               "id": 76,
               "options": {
@@ -1128,7 +2114,298 @@ data:
                     "axisPlacement": "auto",
                     "barAlignment": 0,
                     "drawStyle": "line",
-                    "fillOpacity": 0,
+                    "fillOpacity": 10,
+                    "gradientMode": "hue",
+                    "hideFrom": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": false
+                    },
+                    "lineInterpolation": "linear",
+                    "lineWidth": 1,
+                    "pointSize": 5,
+                    "scaleDistribution": {
+                      "type": "linear"
+                    },
+                    "showPoints": "never",
+                    "spanNulls": true,
+                    "stacking": {
+                      "group": "A",
+                      "mode": "none"
+                    },
+                    "thresholdsStyle": {
+                      "mode": "off"
+                    }
+                  },
+                  "mappings": [],
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "green",
+                        "value": null
+                      },
+                      {
+                        "color": "red",
+                        "value": 80
+                      }
+                    ]
+                  },
+                  "unit": "none"
+                },
+                "overrides": []
+              },
+              "gridPos": {
+                "h": 6,
+                "w": 12,
+                "x": 0,
+                "y": 23
+              },
+              "id": 135,
+              "options": {
+                "legend": {
+                  "calcs": [
+                    "lastNotNull",
+                    "max"
+                  ],
+                  "displayMode": "table",
+                  "placement": "right"
+                },
+                "tooltip": {
+                  "mode": "multi"
+                }
+              },
+              "pluginVersion": "8.1.3",
+              "targets": [
+                {
+                  "exemplar": true,
+                  "expr": "sum(rate(kubevirt_vmi_network_transmit_packets_dropped_total{cluster=\"$cluster\",namespace=\"$namespace\", name=\"$name\"}[1h])) by (name)",
+                  "hide": false,
+                  "instant": false,
+                  "interval": "",
+                  "legendFormat": "{{name}}",
+                  "refId": "B"
+                }
+              ],
+              "timeFrom": null,
+              "timeShift": null,
+              "title": "Network Usage  - Transmit Packets Dropped",
+              "transformations": [],
+              "type": "timeseries"
+            },
+            {
+              "datasource": "Observatorium-Dynamic",
+              "description": "",
+              "fieldConfig": {
+                "defaults": {
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
+                    "barAlignment": 0,
+                    "drawStyle": "line",
+                    "fillOpacity": 10,
+                    "gradientMode": "hue",
+                    "hideFrom": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": false
+                    },
+                    "lineInterpolation": "linear",
+                    "lineWidth": 1,
+                    "pointSize": 5,
+                    "scaleDistribution": {
+                      "type": "linear"
+                    },
+                    "showPoints": "never",
+                    "spanNulls": true,
+                    "stacking": {
+                      "group": "A",
+                      "mode": "none"
+                    },
+                    "thresholdsStyle": {
+                      "mode": "off"
+                    }
+                  },
+                  "mappings": [],
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "green",
+                        "value": null
+                      },
+                      {
+                        "color": "red",
+                        "value": 80
+                      }
+                    ]
+                  },
+                  "unit": "none"
+                },
+                "overrides": []
+              },
+              "gridPos": {
+                "h": 6,
+                "w": 12,
+                "x": 12,
+                "y": 23
+              },
+              "id": 136,
+              "options": {
+                "legend": {
+                  "calcs": [
+                    "lastNotNull",
+                    "max"
+                  ],
+                  "displayMode": "table",
+                  "placement": "right"
+                },
+                "tooltip": {
+                  "mode": "multi"
+                }
+              },
+              "pluginVersion": "8.1.3",
+              "targets": [
+                {
+                  "exemplar": true,
+                  "expr": "sum(rate(kubevirt_vmi_network_receive_packets_dropped_total{cluster=\"$cluster\",namespace=\"$namespace\", name=\"$name\"}[1h])) by (name)",
+                  "hide": false,
+                  "instant": false,
+                  "interval": "",
+                  "legendFormat": "{{name}}",
+                  "refId": "B"
+                }
+              ],
+              "timeFrom": null,
+              "timeShift": null,
+              "title": "Network Usage  - Receive Packets Dropped",
+              "transformations": [],
+              "type": "timeseries"
+            }
+          ],
+          "title": "Network Utilization",
+          "type": "row"
+        },
+        {
+          "collapsed": true,
+          "datasource": null,
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 19
+          },
+          "id": 138,
+          "panels": [
+            {
+              "datasource": "Observatorium-Dynamic",
+              "description": "This panel displays the VM storage traffic (read + write) over the past 10 minutes. The metric aggregates the total input/output operations, helping identify workloads with the highest storage activity and potential hotspots for performance optimization.",
+              "fieldConfig": {
+                "defaults": {
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
+                    "barAlignment": 0,
+                    "drawStyle": "line",
+                    "fillOpacity": 10,
+                    "gradientMode": "none",
+                    "hideFrom": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": false
+                    },
+                    "lineInterpolation": "linear",
+                    "lineStyle": {
+                      "fill": "solid"
+                    },
+                    "lineWidth": 1,
+                    "pointSize": 5,
+                    "scaleDistribution": {
+                      "type": "linear"
+                    },
+                    "showPoints": "auto",
+                    "spanNulls": false,
+                    "stacking": {
+                      "group": "A",
+                      "mode": "none"
+                    },
+                    "thresholdsStyle": {
+                      "mode": "off"
+                    }
+                  },
+                  "mappings": [],
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "green",
+                        "value": null
+                      },
+                      {
+                        "color": "red",
+                        "value": 80
+                      }
+                    ]
+                  },
+                  "unit": "bytes"
+                },
+                "overrides": []
+              },
+              "gridPos": {
+                "h": 6,
+                "w": 12,
+                "x": 0,
+                "y": 20
+              },
+              "id": 79,
+              "options": {
+                "legend": {
+                  "calcs": [
+                    "lastNotNull",
+                    "max"
+                  ],
+                  "displayMode": "table",
+                  "placement": "right"
+                },
+                "tooltip": {
+                  "mode": "multi"
+                }
+              },
+              "targets": [
+                {
+                  "exemplar": true,
+                  "expr": "sum by (name)(rate(kubevirt_vmi_storage_read_traffic_bytes_total{cluster=\"$cluster\",namespace=\"$namespace\", name=\"$name\"}[10m]) + rate(kubevirt_vmi_storage_write_traffic_bytes_total{cluster=\"$cluster\",namespace=\"$namespace\", name=\"$name\"}[10m]))",
+                  "format": "time_series",
+                  "hide": false,
+                  "instant": false,
+                  "interval": "",
+                  "legendFormat": "{{name}}",
+                  "refId": "B"
+                }
+              ],
+              "title": "Storage Traffic",
+              "type": "timeseries"
+            },
+            {
+              "datasource": "Observatorium-Dynamic",
+              "description": "This panel displays the VM storage IOPS (read + write) over the past 10 minutes. The metric aggregates the total input/output operations per second, helping identify workloads with the highest storage activity and potential hotspots for performance optimization.",
+              "fieldConfig": {
+                "defaults": {
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
+                    "barAlignment": 0,
+                    "drawStyle": "line",
+                    "fillOpacity": 10,
                     "gradientMode": "none",
                     "hideFrom": {
                       "legend": false,
@@ -1173,12 +2450,12 @@ data:
                 "overrides": []
               },
               "gridPos": {
-                "h": 7,
+                "h": 6,
                 "w": 12,
-                "x": 0,
-                "y": 21
+                "x": 12,
+                "y": 20
               },
-              "id": 79,
+              "id": 152,
               "options": {
                 "legend": {
                   "calcs": [
@@ -1195,7 +2472,7 @@ data:
               "targets": [
                 {
                   "exemplar": true,
-                  "expr": "sum by (name) (rate(kubevirt_vmi_storage_iops_read_total{cluster=~\"$cluster\",namespace=\"$namespace\", name=\"$name\"}[1h]) + rate(kubevirt_vmi_storage_iops_write_total{cluster=~\"$cluster\",namespace=\"$namespace\", name=\"$name\"}[1h]))",
+                  "expr": "sum by (name) (rate(kubevirt_vmi_storage_iops_read_total{cluster=~\"$cluster\",namespace=\"$namespace\", name=\"$name\"}[10m]) + rate(kubevirt_vmi_storage_iops_write_total{cluster=~\"$cluster\",namespace=\"$namespace\", name=\"$name\"}[10m]))",
                   "format": "time_series",
                   "hide": false,
                   "instant": false,
@@ -1208,7 +2485,7 @@ data:
               "type": "timeseries"
             }
           ],
-          "title": "Resources",
+          "title": "Storage Utilization",
           "type": "row"
         },
         {
@@ -1218,187 +2495,199 @@ data:
             "h": 1,
             "w": 24,
             "x": 0,
-            "y": 8
+            "y": 20
           },
-          "id": 46,
+          "id": 156,
           "panels": [
             {
               "datasource": null,
-              "description": "Total number of alerts that are firing with the severity level: critical.",
+              "description": "This panel displays the VM file system usage. The data is based on the most recent metrics collected.",
               "fieldConfig": {
                 "defaults": {
                   "color": {
-                    "mode": "thresholds"
+                    "mode": "palette-classic"
                   },
-                  "links": [],
+                  "custom": {
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
+                    "barAlignment": 0,
+                    "drawStyle": "line",
+                    "fillOpacity": 0,
+                    "gradientMode": "none",
+                    "hideFrom": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": false
+                    },
+                    "lineInterpolation": "linear",
+                    "lineWidth": 1,
+                    "pointSize": 5,
+                    "scaleDistribution": {
+                      "type": "linear"
+                    },
+                    "showPoints": "auto",
+                    "spanNulls": false,
+                    "stacking": {
+                      "group": "A",
+                      "mode": "none"
+                    },
+                    "thresholdsStyle": {
+                      "mode": "off"
+                    }
+                  },
                   "mappings": [],
                   "thresholds": {
                     "mode": "absolute",
                     "steps": [
+                      {
+                        "color": "green",
+                        "value": null
+                      },
                       {
                         "color": "red",
-                        "value": null
+                        "value": 80
                       }
                     ]
-                  }
+                  },
+                  "unit": "bytes"
                 },
                 "overrides": []
               },
               "gridPos": {
-                "h": 3,
-                "w": 8,
+                "h": 6,
+                "w": 12,
                 "x": 0,
-                "y": 9
+                "y": 21
               },
-              "id": 50,
+              "id": 154,
               "options": {
-                "colorMode": "background",
-                "graphMode": "area",
-                "justifyMode": "auto",
-                "orientation": "auto",
-                "reduceOptions": {
+                "legend": {
                   "calcs": [
-                    "lastNotNull"
+                    "lastNotNull",
+                    "max"
                   ],
-                  "fields": "",
-                  "values": false
+                  "displayMode": "table",
+                  "placement": "right"
                 },
-                "text": {},
-                "textMode": "auto"
+                "tooltip": {
+                  "mode": "multi"
+                }
               },
-              "pluginVersion": "8.5.20",
               "targets": [
                 {
                   "exemplar": true,
-                  "expr": "sum(sum by (cluster,alertname,alertstate,severity,namespace,name,operator_health_impact )(ALERTS{cluster=~\"$cluster\",kubernetes_operator_part_of=\"kubevirt\", alertstate=\"firing\", pod=~\"virt-launcher-$name.*\", severity=\"critical\"})) or vector(0)",
-                  "format": "table",
-                  "instant": true,
+                  "expr": "max by (disk_name) (\n  avg_over_time(kubevirt_vmi_filesystem_used_bytes{\n    cluster=\"$cluster\", \n    namespace=\"$namespace\", \n    name=\"$name\"\n  }[$__range])\n)",
+                  "format": "time_series",
                   "interval": "",
-                  "legendFormat": "",
+                  "legendFormat": "{{disk_name}}",
                   "refId": "A"
                 }
               ],
-              "title": "Critical Severity Alerts",
-              "type": "stat"
+              "title": "File System Usage",
+              "type": "timeseries"
             },
             {
               "datasource": null,
-              "description": "Total number of alerts that are firing with the severity level: warning.",
+              "description": "This panel displays the VM file system usage Percentage. The data is based on the most recent metrics collected.",
               "fieldConfig": {
                 "defaults": {
                   "color": {
-                    "mode": "thresholds"
+                    "mode": "palette-classic"
                   },
-                  "links": [],
+                  "custom": {
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
+                    "barAlignment": 0,
+                    "drawStyle": "line",
+                    "fillOpacity": 0,
+                    "gradientMode": "none",
+                    "hideFrom": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": false
+                    },
+                    "lineInterpolation": "linear",
+                    "lineWidth": 1,
+                    "pointSize": 5,
+                    "scaleDistribution": {
+                      "type": "linear"
+                    },
+                    "showPoints": "auto",
+                    "spanNulls": false,
+                    "stacking": {
+                      "group": "A",
+                      "mode": "none"
+                    },
+                    "thresholdsStyle": {
+                      "mode": "off"
+                    }
+                  },
                   "mappings": [],
                   "thresholds": {
                     "mode": "absolute",
                     "steps": [
                       {
-                        "color": "orange",
+                        "color": "green",
                         "value": null
-                      }
-                    ]
-                  }
-                },
-                "overrides": []
-              },
-              "gridPos": {
-                "h": 3,
-                "w": 8,
-                "x": 8,
-                "y": 9
-              },
-              "id": 52,
-              "options": {
-                "colorMode": "background",
-                "graphMode": "area",
-                "justifyMode": "auto",
-                "orientation": "auto",
-                "reduceOptions": {
-                  "calcs": [
-                    "lastNotNull"
-                  ],
-                  "fields": "",
-                  "values": false
-                },
-                "text": {},
-                "textMode": "auto"
-              },
-              "pluginVersion": "8.5.20",
-              "targets": [
-                {
-                  "exemplar": true,
-                  "expr": "sum(sum by (cluster,alertname,alertstate,severity,namespace,name,operator_health_impact )(ALERTS{cluster=~\"$cluster\",kubernetes_operator_part_of=\"kubevirt\", alertstate=\"firing\", pod=~\"virt-launcher-$name.*\", severity=\"warning\"}))  or vector(0)",
-                  "format": "table",
-                  "instant": true,
-                  "interval": "",
-                  "legendFormat": "",
-                  "refId": "A"
-                }
-              ],
-              "title": "Warning Severity Alerts",
-              "type": "stat"
-            },
-            {
-              "datasource": null,
-              "description": "Total number of alerts that are firing with the severity level: warning.",
-              "fieldConfig": {
-                "defaults": {
-                  "color": {
-                    "mode": "thresholds"
-                  },
-                  "links": [],
-                  "mappings": [],
-                  "thresholds": {
-                    "mode": "absolute",
-                    "steps": [
+                      },
                       {
-                        "color": "blue",
-                        "value": null
+                        "color": "red",
+                        "value": 80
                       }
                     ]
-                  }
+                  },
+                  "unit": "percentunit"
                 },
                 "overrides": []
               },
               "gridPos": {
-                "h": 3,
-                "w": 8,
-                "x": 16,
-                "y": 9
+                "h": 6,
+                "w": 12,
+                "x": 12,
+                "y": 21
               },
-              "id": 54,
+              "id": 157,
               "options": {
-                "colorMode": "background",
-                "graphMode": "area",
-                "justifyMode": "auto",
-                "orientation": "auto",
-                "reduceOptions": {
+                "legend": {
                   "calcs": [
-                    "lastNotNull"
+                    "lastNotNull",
+                    "max"
                   ],
-                  "fields": "",
-                  "values": false
+                  "displayMode": "table",
+                  "placement": "right"
                 },
-                "text": {},
-                "textMode": "auto"
+                "tooltip": {
+                  "mode": "multi"
+                }
               },
-              "pluginVersion": "8.5.20",
               "targets": [
                 {
                   "exemplar": true,
-                  "expr": "sum(sum by (cluster,alertname,alertstate,severity,namespace,name,operator_health_impact )(ALERTS{cluster=~\"$cluster\",kubernetes_operator_part_of=\"kubevirt\", alertstate=\"firing\", pod=~\"virt-launcher-$name.*\", severity=\"info\"})) or vector(0)",
-                  "format": "table",
-                  "instant": true,
+                  "expr": "(max by (disk_name) (\n  avg_over_time(kubevirt_vmi_filesystem_used_bytes{\n    cluster=\"$cluster\", \n    namespace=\"$namespace\", \n    name=\"$name\"\n  }[$__range])\n))\n/\n(max by (disk_name) (\n  avg_over_time(kubevirt_vmi_filesystem_capacity_bytes{\n    cluster=\"$cluster\", \n    namespace=\"$namespace\", \n    name=\"$name\"\n  }[$__range])\n))",
+                  "format": "time_series",
                   "interval": "",
-                  "legendFormat": "",
+                  "legendFormat": "{{disk_name}}",
                   "refId": "A"
                 }
               ],
-              "title": "Info Severity Alerts",
-              "type": "stat"
-            },
+              "title": "File System Usage (%)",
+              "type": "timeseries"
+            }
+          ],
+          "title": "File System Utilization",
+          "type": "row"
+        },
+        {
+          "collapsed": true,
+          "datasource": null,
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 21
+          },
+          "id": 46,
+          "panels": [
             {
               "datasource": null,
               "description": "",
@@ -1486,10 +2775,10 @@ data:
                 ]
               },
               "gridPos": {
-                "h": 11,
+                "h": 6,
                 "w": 24,
                 "x": 0,
-                "y": 12
+                "y": 19
               },
               "id": 58,
               "options": {
@@ -1509,7 +2798,7 @@ data:
                   "refId": "A"
                 }
               ],
-              "title": "Operator Alerts",
+              "title": "VM Alerts",
               "transformations": [
                 {
                   "id": "organize",
@@ -1554,51 +2843,7 @@ data:
           {
             "allValue": null,
             "datasource": null,
-            "definition": "label_values(kubevirt_vm_running_status_last_transition_timestamp_seconds, name)",
-            "description": "Filter the Virtual Machine by its name",
-            "error": null,
-            "hide": 0,
-            "includeAll": false,
-            "label": "VM Name",
-            "multi": false,
-            "name": "name",
-            "options": [],
-            "query": {
-              "query": "label_values(kubevirt_vm_running_status_last_transition_timestamp_seconds, name)",
-              "refId": "StandardVariableQuery"
-            },
-            "refresh": 1,
-            "regex": "",
-            "skipUrlSync": false,
-            "sort": 0,
-            "type": "query"
-          },
-          {
-            "allValue": null,
-            "datasource": null,
-            "definition": "label_values(kubevirt_vm_running_status_last_transition_timestamp_seconds{name=\"$name\"}, namespace)",
-            "description": "Filter the Virtual Machine by its Namespace",
-            "error": null,
-            "hide": 0,
-            "includeAll": false,
-            "label": "Namespace",
-            "multi": false,
-            "name": "namespace",
-            "options": [],
-            "query": {
-              "query": "label_values(kubevirt_vm_running_status_last_transition_timestamp_seconds{name=\"$name\"}, namespace)",
-              "refId": "StandardVariableQuery"
-            },
-            "refresh": 1,
-            "regex": "",
-            "skipUrlSync": false,
-            "sort": 0,
-            "type": "query"
-          },
-          {
-            "allValue": null,
-            "datasource": null,
-            "definition": "label_values(kubevirt_vm_running_status_last_transition_timestamp_seconds{name=\"$name\", namespace=\"$namespace\"}, cluster)",
+            "definition": "label_values(kubevirt_vm_info, cluster)",
             "description": null,
             "error": null,
             "hide": 0,
@@ -1608,13 +2853,62 @@ data:
             "name": "cluster",
             "options": [],
             "query": {
-              "query": "label_values(kubevirt_vm_running_status_last_transition_timestamp_seconds{name=\"$name\", namespace=\"$namespace\"}, cluster)",
+              "query": "label_values(kubevirt_vm_info, cluster)",
               "refId": "StandardVariableQuery"
             },
             "refresh": 1,
             "regex": "",
             "skipUrlSync": false,
-            "sort": 0,
+            "sort": 1,
+            "type": "query"
+          },
+          {
+            "allValue": null,
+            "datasource": null,
+            "definition": "label_values(kubevirt_vm_info{cluster=\"$cluster\"}, namespace)",
+            "description": "Filter the Virtual Machine by its Namespace",
+            "error": null,
+            "hide": 0,
+            "includeAll": false,
+            "label": "Namespace",
+            "multi": false,
+            "name": "namespace",
+            "options": [],
+            "query": {
+              "query": "label_values(kubevirt_vm_info{cluster=\"$cluster\"}, namespace)",
+              "refId": "StandardVariableQuery"
+            },
+            "refresh": 1,
+            "regex": "",
+            "skipUrlSync": false,
+            "sort": 1,
+            "type": "query"
+          },
+          {
+            "allValue": null,
+            "current": {
+              "selected": false,
+              "text": "example",
+              "value": "example"
+            },
+            "datasource": null,
+            "definition": "label_values(kubevirt_vm_info{cluster=\"$cluster\", namespace=\"$namespace\"}, name)",
+            "description": "Filter the Virtual Machine by its name",
+            "error": null,
+            "hide": 0,
+            "includeAll": false,
+            "label": "VM Name",
+            "multi": false,
+            "name": "name",
+            "options": [],
+            "query": {
+              "query": "label_values(kubevirt_vm_info{cluster=\"$cluster\", namespace=\"$namespace\"}, name)",
+              "refId": "StandardVariableQuery"
+            },
+            "refresh": 1,
+            "regex": "",
+            "skipUrlSync": false,
+            "sort": 1,
             "type": "query"
           }
         ]

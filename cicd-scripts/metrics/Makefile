@@ -69,7 +69,7 @@ check-virtualization-metrics:
 	@go run cmd/dashcheck/main.go --scrape-configs=$(VIRTUALIZATION_DASH_DIR)/scrape-config.yaml \
 		--dashboard-metrics=$$(cat $(TMPDIR)/dash-metrics) \
 		--ignored-dashboard-metrics=$(HUB_RULES) \
-		--ignored-scrapeconfig-metrics=kubevirt_vm_disk_allocated_size_bytes,kubevirt_vm_create_date_timestamp_seconds \
+		--ignored-scrapeconfig-metrics=kubevirt_vm_create_date_timestamp_seconds,kubevirt_vmi_memory_swap_in_traffic_bytes,kubevirt_vmi_vcpu_wait_seconds_total,kubevirt_vmi_memory_swap_out_traffic_bytes \
 		--additional-scrape-configs=$(PLATFORM_DASH_DIR)/scrape-config.yaml,$(ALERTS_DASH_DIR)/scrape-config.yaml
 	@rm -d $(TMPDIR)/dash-metrics
 
