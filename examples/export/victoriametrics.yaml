@@ -16,7 +16,7 @@ spec:
       containers:
         - name: victoriametrics
           image: >-
-            victoriametrics/victoria-metrics
+            victoriametrics/victoria-metrics:v1.117.1
           ports:
             - name: http
               containerPort: 8428
