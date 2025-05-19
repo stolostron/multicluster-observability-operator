@@ -174,12 +174,8 @@ data:
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
+                    "color": "text",
                     "value": null
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
                   }
                 ]
               },
@@ -214,7 +210,9 @@ data:
             {
               "exemplar": true,
               "expr": "sum(count by (cluster) (count(kube_node_status_allocatable{resource=~\".*kubevirt.*\", cluster=~\"$cluster\"}) by (cluster,node)))",
+              "format": "time_series",
               "hide": false,
+              "instant": true,
               "interval": "",
               "legendFormat": "",
               "refId": "A"
@@ -237,7 +235,7 @@ data:
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
+                    "color": "text",
                     "value": null
                   }
                 ]
@@ -273,6 +271,8 @@ data:
             {
               "exemplar": true,
               "expr": "sum(count(kubevirt_vm_error_status_last_transition_timestamp_seconds{cluster=~\"$cluster\"}) by (name))",
+              "format": "table",
+              "instant": true,
               "interval": "",
               "legendFormat": "",
               "refId": "A"
@@ -309,7 +309,7 @@ data:
                   {
                     "id": "color",
                     "value": {
-                      "fixedColor": "#0e5bd0",
+                      "fixedColor": "text",
                       "mode": "fixed"
                     }
                   },
@@ -334,7 +334,7 @@ data:
                   {
                     "id": "color",
                     "value": {
-                      "fixedColor": "#7ea9ea",
+                      "fixedColor": "text",
                       "mode": "fixed"
                     }
                   },
@@ -359,7 +359,7 @@ data:
                   {
                     "id": "color",
                     "value": {
-                      "fixedColor": "semi-dark-blue",
+                      "fixedColor": "text",
                       "mode": "fixed"
                     }
                   },
@@ -382,13 +382,6 @@ data:
                 },
                 "properties": [
                   {
-                    "id": "color",
-                    "value": {
-                      "fixedColor": "red",
-                      "mode": "fixed"
-                    }
-                  },
-                  {
                     "id": "links",
                     "value": [
                       {
@@ -397,6 +390,22 @@ data:
                         "url": "/d/lMD6V93Sz/service-level-dashboards-virtual-machines-by-time-in-status?orgId=1&var-cluster=$cluster&var-name=All&var-namespace=All&var-status=kubevirt_vm_error_status_last_transition_timestamp_seconds&var-days_in_status_gt=0&var-days_in_status_lt=1000&var-top_results=25"
                       }
                     ]
+                  },
+                  {
+                    "id": "thresholds",
+                    "value": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "text",
+                          "value": null
+                        },
+                        {
+                          "color": "red",
+                          "value": 1
+                        }
+                      ]
+                    }
                   }
                 ]
               },
@@ -409,7 +418,7 @@ data:
                   {
                     "id": "color",
                     "value": {
-                      "fixedColor": "green",
+                      "fixedColor": "text",
                       "mode": "fixed"
                     }
                   },
@@ -435,7 +444,9 @@ data:
           },
           "id": 94,
           "options": {
-            "displayMode": "gradient",
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "center",
             "orientation": "auto",
             "reduceOptions": {
               "calcs": [
@@ -444,8 +455,8 @@ data:
               "fields": "",
               "values": false
             },
-            "showUnfilled": true,
-            "text": {}
+            "text": {},
+            "textMode": "auto"
           },
           "pluginVersion": "8.5.20",
           "targets": [
@@ -500,7 +511,25 @@ data:
             }
           ],
           "title": "Virtual Machines by Status",
-          "type": "bargauge"
+          "transformations": [
+            {
+              "id": "seriesToColumns",
+              "options": {
+                "byField": "Time"
+              }
+            },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true
+                },
+                "indexByName": {},
+                "renameByName": {}
+              }
+            }
+          ],
+          "type": "stat"
         },
         {
           "datasource": null,
@@ -595,7 +624,7 @@ data:
               "calcs": [
                 "lastNotNull"
               ],
-              "fields": "/^openshiftVersion$/",
+              "fields": "/^version$/",
               "values": false
             },
             "text": {},
@@ -605,7 +634,7 @@ data:
           "targets": [
             {
               "exemplar": true,
-              "expr": "count(acm_managed_cluster_labels{name=~\"$cluster\"}) by (openshiftVersion)",
+              "expr": "count by (version)(count by (cluster, version) (csv_succeeded{name=~\".*hyperconverged.*\",cluster=\"$cluster\"}>0))\nor(count by (version)(count by (cluster, version) (csv_abnormal{name=~\".*hyperconverged.*\",cluster=\"$cluster\"}>0)))",
               "format": "table",
               "instant": true,
               "interval": "",
@@ -828,7 +857,7 @@ data:
           "targets": [
             {
               "exemplar": true,
-              "expr": "sum by (os)(sum by (cluster, os)(label_replace(kubevirt_vmi_info{cluster=~\"$cluster\", guest_os_name!=\"\", phase=\"running\"}, \"os\", \"$1\", \"guest_os_name\", \"(.*)\")) or\non(cluster) sum(kubevirt_vmi_phase_count{cluster=~\"$cluster\", phase=~\"running\", os!=\"<none>\"}) by (cluster, os))",
+              "expr": "sum by (os)(sum by (cluster, os)(label_replace(kubevirt_vmi_info{cluster=~\"$cluster\", guest_os_name!=\"\", phase=\"running\"}, \"os\", \"$1\", \"guest_os_name\", \"(.*)\")\n+ on (cluster, namespace, name) group_left()(0*(kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\"}>0))))",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -838,7 +867,7 @@ data:
             },
             {
               "exemplar": true,
-              "expr": "sum by (os)(sum by (cluster, os)(label_replace(kubevirt_vmi_info{cluster=~\"$cluster\", guest_os_name=\"\", phase=\"running\", os=\"<none>\"}, \"os\", \"unknown\", \"guest_os_name\", \"\")) or\non(cluster) sum(label_replace(kubevirt_vmi_phase_count{cluster=~\"$cluster\", phase=~\"running\", os=\"<none>\"}, \"os\", \"unknown\", \"os\", \"<none>\")) by (cluster, os))",
+              "expr": "sum by (os)(sum by (cluster, os)(label_replace(kubevirt_vmi_info{cluster=~\"$cluster\", guest_os_name=\"\", phase=\"running\"}, \"os\", \"unknown\", \"guest_os_name\", \"\")\n+ on (cluster, namespace, name) group_left()(0*(kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\"}>0))))",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -901,6 +930,7 @@ data:
         },
         {
           "datasource": null,
+          "description": "",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -924,7 +954,25 @@ data:
               },
               "unit": "s"
             },
-            "overrides": []
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "VM Name"
+                },
+                "properties": [
+                  {
+                    "id": "links",
+                    "value": [
+                      {
+                        "title": "",
+                        "url": "/d/RnxEyj6Sz/executive-dashboards-single-virtual-machine-view?orgId=1&var-cluster=$cluster&var-name=${__data.fields[\"VM Name\"]}&var-namespace=${__data.fields.Namespace}"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
           },
           "gridPos": {
             "h": 7,
@@ -940,7 +988,7 @@ data:
           "targets": [
             {
               "exemplar": true,
-              "expr": "bottomk(5, sum by (name, namespace) (sort(time() - kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\"}) / 1 ))",
+              "expr": "bottomk(5, sum by (name, namespace) (sort(time() - (kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\"}>0)) / 1 ))",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -949,7 +997,7 @@ data:
               "refId": "A"
             }
           ],
-          "title": "Recent VMs started",
+          "title": "Recent VMs Started",
           "transformations": [
             {
               "id": "sortBy",
@@ -1109,7 +1157,7 @@ data:
                     "axisPlacement": "auto",
                     "barAlignment": 0,
                     "drawStyle": "line",
-                    "fillOpacity": 0,
+                    "fillOpacity": 10,
                     "gradientMode": "none",
                     "hideFrom": {
                       "legend": false,
@@ -1180,13 +1228,13 @@ data:
                   {
                     "matcher": {
                       "id": "byName",
-                      "options": "non-running"
+                      "options": "stopped"
                     },
                     "properties": [
                       {
                         "id": "color",
                         "value": {
-                          "fixedColor": "semi-dark-red",
+                          "fixedColor": "dark-blue",
                           "mode": "fixed"
                         }
                       }
@@ -1201,6 +1249,7 @@ data:
                       {
                         "id": "color",
                         "value": {
+                          "fixedColor": "dark-yellow",
                           "mode": "fixed"
                         }
                       }
@@ -1215,22 +1264,7 @@ data:
                       {
                         "id": "color",
                         "value": {
-                          "fixedColor": "yellow",
-                          "mode": "fixed"
-                        }
-                      }
-                    ]
-                  },
-                  {
-                    "matcher": {
-                      "id": "byName",
-                      "options": "stopped"
-                    },
-                    "properties": [
-                      {
-                        "id": "color",
-                        "value": {
-                          "fixedColor": "semi-dark-red",
+                          "fixedColor": "red",
                           "mode": "fixed"
                         }
                       }
@@ -1346,11 +1380,11 @@ data:
             "x": 0,
             "y": 15
           },
-          "id": 36,
+          "id": 105,
           "panels": [
             {
               "datasource": null,
-              "description": "Top 20 nodes",
+              "description": "This panel displays the CPU Utilization Percentage for the top 20 nodes in the cluster, that are running virtual machines, over the past 1 minute. Node CPU Utilization reflects the rate of CPU usage relative to the node's total capacity, providing insight into the most resource-intensive nodes.",
               "fieldConfig": {
                 "defaults": {
                   "color": {
@@ -1378,7 +1412,7 @@ data:
                     "spanNulls": false,
                     "stacking": {
                       "group": "A",
-                      "mode": "normal"
+                      "mode": "none"
                     },
                     "thresholdsStyle": {
                       "mode": "off"
@@ -1404,7 +1438,7 @@ data:
                 "h": 7,
                 "w": 12,
                 "x": 0,
-                "y": 14
+                "y": 16
               },
               "id": 73,
               "options": {
@@ -1430,13 +1464,13 @@ data:
                   "refId": "B"
                 }
               ],
-              "title": "CPU Usage by Nodes",
+              "title": "Nodes by CPU Utilization",
               "transformations": [],
               "type": "timeseries"
             },
             {
               "datasource": "Observatorium-Dynamic",
-              "description": "Top 20 VMs",
+              "description": "This panel displays the total CPU Usage for the top 20 VMs over the past 10 minutes. CPU Usage represents the rate of CPU time consumed by each VM, providing insight into the most resource-intensive workloads in the cluster during the recent period.",
               "fieldConfig": {
                 "defaults": {
                   "color": {
@@ -1447,7 +1481,7 @@ data:
                     "axisPlacement": "auto",
                     "barAlignment": 0,
                     "drawStyle": "line",
-                    "fillOpacity": 0,
+                    "fillOpacity": 10,
                     "gradientMode": "none",
                     "hideFrom": {
                       "legend": false,
@@ -1495,7 +1529,7 @@ data:
                 "h": 7,
                 "w": 12,
                 "x": 12,
-                "y": 14
+                "y": 16
               },
               "id": 42,
               "options": {
@@ -1514,20 +1548,20 @@ data:
               "targets": [
                 {
                   "exemplar": true,
-                  "expr": "topk(20,sum by (name) (rate(kubevirt_vmi_cpu_usage_seconds_total{cluster=~\"$cluster\",namespace=~\".*\"}[1h])))",
+                  "expr": "topk(20,sum by (namespace, name) (rate(kubevirt_vmi_cpu_usage_seconds_total{cluster=~\"$cluster\",namespace=~\".*\"}[10m])))",
                   "hide": false,
                   "instant": false,
                   "interval": "",
-                  "legendFormat": "{{name}}",
+                  "legendFormat": "{{namespace}} | {{name}}",
                   "refId": "B"
                 }
               ],
-              "title": "CPU Usage by VM",
+              "title": "VMs by Total CPU Usage",
               "type": "timeseries"
             },
             {
-              "datasource": null,
-              "description": "Top 20 nodes with virtualization workloads",
+              "datasource": "Observatorium-Dynamic",
+              "description": "This panel shows the CPU Usage Percentage for the top 20 nodes in the cluster, that are running virtual machines, over the past 10 minutes. CPU Usage Percentage is calculated as the proportion of active CPU time (user, system, I/O wait) relative to the total available CPU time. It helps identify nodes with the highest workload demand and potential resource contention.",
               "fieldConfig": {
                 "defaults": {
                   "color": {
@@ -1538,7 +1572,393 @@ data:
                     "axisPlacement": "auto",
                     "barAlignment": 0,
                     "drawStyle": "line",
-                    "fillOpacity": 0,
+                    "fillOpacity": 10,
+                    "gradientMode": "none",
+                    "hideFrom": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": false
+                    },
+                    "lineInterpolation": "linear",
+                    "lineStyle": {
+                      "fill": "solid"
+                    },
+                    "lineWidth": 1,
+                    "pointSize": 5,
+                    "scaleDistribution": {
+                      "type": "linear"
+                    },
+                    "showPoints": "auto",
+                    "spanNulls": false,
+                    "stacking": {
+                      "group": "A",
+                      "mode": "none"
+                    },
+                    "thresholdsStyle": {
+                      "mode": "off"
+                    }
+                  },
+                  "mappings": [],
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "green",
+                        "value": null
+                      },
+                      {
+                        "color": "red",
+                        "value": 80
+                      }
+                    ]
+                  },
+                  "unit": "percentunit"
+                },
+                "overrides": []
+              },
+              "gridPos": {
+                "h": 7,
+                "w": 12,
+                "x": 0,
+                "y": 23
+              },
+              "id": 103,
+              "options": {
+                "legend": {
+                  "calcs": [
+                    "lastNotNull",
+                    "max"
+                  ],
+                  "displayMode": "table",
+                  "placement": "right"
+                },
+                "tooltip": {
+                  "mode": "multi"
+                }
+              },
+              "targets": [
+                {
+                  "exemplar": true,
+                  "expr": "topk(20, (sum by (node, cluster)(label_replace(rate(node_cpu_seconds_total{cluster=\"$cluster\", mode!=\"idle\"}[10m]), \"node\", \"$1\", \"instance\", \"(.*)\")) \n  / \n  sum by (node, cluster)(label_replace(rate(node_cpu_seconds_total{cluster=\"$cluster\"}[10m]), \"node\", \"$1\", \"instance\", \"(.*)\"))\n+ on(node, cluster) group_left()\n0*sum by (node, cluster)(kubevirt_vmi_cpu_usage_seconds_total{cluster=~\"$cluster\"}))\n)",
+                  "format": "time_series",
+                  "hide": false,
+                  "instant": false,
+                  "interval": "",
+                  "legendFormat": "{{node}}",
+                  "refId": "A"
+                }
+              ],
+              "title": "Nodes by CPU Usage (%)",
+              "transformations": [],
+              "type": "timeseries"
+            },
+            {
+              "datasource": "Observatorium-Dynamic",
+              "description": "This panel displays the CPU Usage Percentage for the top 20 VMs over the past 10 minutes. CPU Usage Percentage measures how much of the allocated CPU resources (cores, sockets, and threads) each VM is actively utilizing. It helps identify VMs with high or low CPU utilization relative to their allocated capacity.",
+              "fieldConfig": {
+                "defaults": {
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
+                    "barAlignment": 0,
+                    "drawStyle": "line",
+                    "fillOpacity": 10,
+                    "gradientMode": "none",
+                    "hideFrom": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": false
+                    },
+                    "lineInterpolation": "linear",
+                    "lineStyle": {
+                      "fill": "solid"
+                    },
+                    "lineWidth": 1,
+                    "pointSize": 5,
+                    "scaleDistribution": {
+                      "type": "linear"
+                    },
+                    "showPoints": "auto",
+                    "spanNulls": false,
+                    "stacking": {
+                      "group": "A",
+                      "mode": "none"
+                    },
+                    "thresholdsStyle": {
+                      "mode": "off"
+                    }
+                  },
+                  "mappings": [],
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "green",
+                        "value": null
+                      },
+                      {
+                        "color": "red",
+                        "value": 80
+                      }
+                    ]
+                  },
+                  "unit": "percentunit"
+                },
+                "overrides": []
+              },
+              "gridPos": {
+                "h": 7,
+                "w": 12,
+                "x": 12,
+                "y": 23
+              },
+              "id": 110,
+              "options": {
+                "legend": {
+                  "calcs": [
+                    "lastNotNull",
+                    "max"
+                  ],
+                  "displayMode": "table",
+                  "placement": "right"
+                },
+                "tooltip": {
+                  "mode": "multi"
+                }
+              },
+              "targets": [
+                {
+                  "exemplar": true,
+                  "expr": "topk(20, \n  sum by (cluster, name, namespace) (rate(kubevirt_vmi_cpu_usage_seconds_total{cluster=\"$cluster\"}[10m]))\n  / \n  (sum by (cluster, namespace, name) (\n  kubevirt_vm_resource_requests{cluster=~\"$cluster\", resource=\"cpu\", unit=\"cores\", source=~\"default|domain\"}\n  * ignoring (unit)(kubevirt_vm_resource_requests{cluster=~\"$cluster\", resource=\"cpu\", unit=\"sockets\", source=~\"default|domain\"})\n  * ignoring (unit)(kubevirt_vm_resource_requests{cluster=~\"$cluster\", resource=\"cpu\", unit=\"threads\", source=~\"default|domain\"})\n  ) or\n  sum by (cluster, namespace, name) (\n  kubevirt_vm_resource_requests{cluster=~\"$cluster\", resource=\"cpu\", unit=\"cores\", source=~\"default|domain\"}\n  * ignoring (unit)(kubevirt_vm_resource_requests{cluster=~\"$cluster\", resource=\"cpu\", unit=\"sockets\", source=~\"default|domain\"})\n  )\n   or\n  sum by (cluster, namespace, name) (\n  kubevirt_vm_resource_requests{cluster=~\"$cluster\", resource=\"cpu\", unit=\"cores\", source=~\"default|domain\"}\n  ))\n)",
+                  "format": "time_series",
+                  "hide": false,
+                  "instant": false,
+                  "interval": "",
+                  "legendFormat": "{{namespace}} | {{name}}",
+                  "refId": "B"
+                }
+              ],
+              "title": "VMs by CPU Usage (%)",
+              "transformations": [],
+              "type": "timeseries"
+            },
+            {
+              "datasource": "Observatorium-Dynamic",
+              "description": "This panel shows the CPU steal time percentage over time for the top 20 nodes in the cluster, that are running virtual machines, over the past 10 minutes.\nIt can indicate resource contention on virtualized nodes. High values suggest VMs are competing for CPU resources, potentially impacting performance.",
+              "fieldConfig": {
+                "defaults": {
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
+                    "barAlignment": 0,
+                    "drawStyle": "line",
+                    "fillOpacity": 10,
+                    "gradientMode": "none",
+                    "hideFrom": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": false
+                    },
+                    "lineInterpolation": "linear",
+                    "lineStyle": {
+                      "fill": "solid"
+                    },
+                    "lineWidth": 1,
+                    "pointSize": 5,
+                    "scaleDistribution": {
+                      "type": "linear"
+                    },
+                    "showPoints": "auto",
+                    "spanNulls": false,
+                    "stacking": {
+                      "group": "A",
+                      "mode": "none"
+                    },
+                    "thresholdsStyle": {
+                      "mode": "off"
+                    }
+                  },
+                  "mappings": [],
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "green",
+                        "value": null
+                      },
+                      {
+                        "color": "red",
+                        "value": 80
+                      }
+                    ]
+                  },
+                  "unit": "percentunit"
+                },
+                "overrides": []
+              },
+              "gridPos": {
+                "h": 7,
+                "w": 12,
+                "x": 0,
+                "y": 30
+              },
+              "id": 115,
+              "options": {
+                "legend": {
+                  "calcs": [
+                    "lastNotNull",
+                    "max"
+                  ],
+                  "displayMode": "table",
+                  "placement": "right"
+                },
+                "tooltip": {
+                  "mode": "multi"
+                }
+              },
+              "targets": [
+                {
+                  "exemplar": true,
+                  "expr": "topk(20, (sum by (node, cluster)(label_replace(rate(node_cpu_seconds_total{cluster=\"$cluster\", mode=\"steal\"}[10m]), \"node\", \"$1\", \"instance\", \"(.*)\")) \n  / \n  sum by (node, cluster)(label_replace(rate(node_cpu_seconds_total{cluster=\"$cluster\"}[10m]), \"node\", \"$1\", \"instance\", \"(.*)\"))\n+ on(node, cluster) group_left()\n0*sum by (node, cluster)(kubevirt_vmi_cpu_usage_seconds_total{cluster=~\"$cluster\"}))\n)",
+                  "format": "time_series",
+                  "hide": false,
+                  "instant": false,
+                  "interval": "",
+                  "legendFormat": "{{node}}",
+                  "refId": "A"
+                }
+              ],
+              "title": "Nodes by CPU Steal time (%)",
+              "transformations": [],
+              "type": "timeseries"
+            },
+            {
+              "datasource": "Observatorium-Dynamic",
+              "description": "This panel shows the CPU Ready Percentage for the top 20 VMs over the past 10 minutes. CPU Ready indicates the proportion of time a VM's virtual CPUs were ready to execute but had to wait for physical CPU resources due to contention.",
+              "fieldConfig": {
+                "defaults": {
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
+                    "barAlignment": 0,
+                    "drawStyle": "line",
+                    "fillOpacity": 10,
+                    "gradientMode": "none",
+                    "hideFrom": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": false
+                    },
+                    "lineInterpolation": "linear",
+                    "lineStyle": {
+                      "fill": "solid"
+                    },
+                    "lineWidth": 1,
+                    "pointSize": 5,
+                    "scaleDistribution": {
+                      "type": "linear"
+                    },
+                    "showPoints": "auto",
+                    "spanNulls": false,
+                    "stacking": {
+                      "group": "A",
+                      "mode": "none"
+                    },
+                    "thresholdsStyle": {
+                      "mode": "off"
+                    }
+                  },
+                  "mappings": [],
+                  "min": 0,
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "green",
+                        "value": null
+                      },
+                      {
+                        "color": "red",
+                        "value": 80
+                      }
+                    ]
+                  },
+                  "unit": "percentunit"
+                },
+                "overrides": []
+              },
+              "gridPos": {
+                "h": 7,
+                "w": 12,
+                "x": 12,
+                "y": 30
+              },
+              "id": 101,
+              "options": {
+                "legend": {
+                  "calcs": [
+                    "lastNotNull",
+                    "max"
+                  ],
+                  "displayMode": "table",
+                  "placement": "right"
+                },
+                "tooltip": {
+                  "mode": "multi"
+                }
+              },
+              "targets": [
+                {
+                  "exemplar": true,
+                  "expr": "topk(20, sum by (name, namespace, cluster) (\n  sum by (name, namespace, cluster)(rate(kubevirt_vmi_vcpu_delay_seconds_total{cluster=\"$cluster\", namespace=~\".*\"}[10m]))\n  /\n  (\n    avg by (cluster, namespace, name)(kubevirt_vm_resource_requests{cluster=\"$cluster\", namespace=~\".*\", resource=\"cpu\", unit=\"cores\"})\n    * on (cluster, namespace, name) group_left()\n    avg by (cluster, namespace, name)(kubevirt_vm_resource_requests{cluster=\"$cluster\", namespace=~\".*\", resource=\"cpu\", unit=\"sockets\"})\n    * on (cluster, namespace, name) group_left()\n    avg by (cluster, namespace, name)(kubevirt_vm_resource_requests{cluster=\"$cluster\", namespace=~\".*\", resource=\"cpu\", unit=\"threads\"}))\n  )\n)",
+                  "hide": false,
+                  "instant": false,
+                  "interval": "",
+                  "legendFormat": "{{name}}",
+                  "refId": "B"
+                }
+              ],
+              "title": "VMs by CPU Ready (%)",
+              "type": "timeseries"
+            }
+          ],
+          "title": "CPU Utilization - Top 20",
+          "type": "row"
+        },
+        {
+          "collapsed": true,
+          "datasource": null,
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 16
+          },
+          "id": 107,
+          "panels": [
+            {
+              "datasource": null,
+              "description": "This panel shows the Memory Usage for the top 20 nodes in the cluster that are running virtual machines. Memory usage is calculated as the proportion of memory utilized relative to the total available memory on each node. This helps identify resource-intensive nodes hosting virtual machines, enabling proactive resource management.",
+              "fieldConfig": {
+                "defaults": {
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
+                    "barAlignment": 0,
+                    "drawStyle": "line",
+                    "fillOpacity": 10,
                     "gradientMode": "opacity",
                     "hideFrom": {
                       "legend": false,
@@ -1555,12 +1975,13 @@ data:
                     "spanNulls": false,
                     "stacking": {
                       "group": "A",
-                      "mode": "normal"
+                      "mode": "none"
                     },
                     "thresholdsStyle": {
                       "mode": "off"
                     }
                   },
+                  "decimals": 1,
                   "mappings": [],
                   "min": 0,
                   "noValue": "0",
@@ -1581,7 +2002,7 @@ data:
                 "h": 7,
                 "w": 12,
                 "x": 0,
-                "y": 21
+                "y": 17
               },
               "id": 40,
               "options": {
@@ -1599,20 +2020,20 @@ data:
               "targets": [
                 {
                   "exemplar": true,
-                  "expr": "topk(20,sum(label_replace(instance:node_memory_utilisation:ratio{cluster=~\"$cluster\"}, \"node\", \"$1\", \"instance\", \"(.*)\")) by (node, cluster)\n+ on(node, cluster) group_left()\n0*sum(kubevirt_vmi_memory_used_bytes{cluster=~\"$cluster\"}) by (node, cluster))",
+                  "expr": "topk(20,sum(label_replace(instance:node_memory_utilisation:ratio{cluster=~\"$cluster\"}, \"node\", \"$1\", \"instance\", \"(.*)\")) by (node, cluster)\n* sum by (node, cluster)(label_replace(node_memory_MemTotal_bytes{cluster=~\"$cluster\"}, \"node\", \"$1\", \"instance\", \"(.*)\"))\n+ on(node, cluster) group_left()\n0*sum(kubevirt_vmi_memory_used_bytes{cluster=~\"$cluster\"}) by (node, cluster)\n)",
                   "hide": false,
                   "interval": "",
                   "legendFormat": "{{node}}",
                   "refId": "B"
                 }
               ],
-              "title": "Memory Usage by Nodes",
+              "title": "Nodes by Memory Usage",
               "transformations": [],
               "type": "timeseries"
             },
             {
               "datasource": "Observatorium-Dynamic",
-              "description": "Top 20 VMs ",
+              "description": "This panel displays the memory usage for the top 20 virtual machines (VMs) in the cluster. Memory usage is calculated as the allocated memory minus unused and cached memory. This provides insight into the most memory-intensive VMs, helping identify resource-heavy workloads and potential optimizations. The data is based on the most recent metrics collected.",
               "fieldConfig": {
                 "defaults": {
                   "color": {
@@ -1623,7 +2044,7 @@ data:
                     "axisPlacement": "auto",
                     "barAlignment": 0,
                     "drawStyle": "line",
-                    "fillOpacity": 0,
+                    "fillOpacity": 10,
                     "gradientMode": "none",
                     "hideFrom": {
                       "legend": false,
@@ -1667,7 +2088,7 @@ data:
                 "h": 7,
                 "w": 12,
                 "x": 12,
-                "y": 21
+                "y": 17
               },
               "id": 44,
               "options": {
@@ -1686,20 +2107,207 @@ data:
               "targets": [
                 {
                   "exemplar": true,
-                  "expr": "topk(20,sum by (name) (\nkubevirt_vmi_memory_available_bytes{cluster=~\"$cluster\",namespace=~\".*\"} - kubevirt_vmi_memory_unused_bytes{cluster=~\"$cluster\",namespace=~\".*\"} -kubevirt_vmi_memory_cached_bytes{cluster=~\"$cluster\",namespace=~\".*\"}))",
+                  "expr": "topk(20,(sum by (namespace, name) (\nkubevirt_vmi_memory_available_bytes{cluster=~\"$cluster\",namespace=~\".*\"} - kubevirt_vmi_memory_unused_bytes{cluster=~\"$cluster\",namespace=~\".*\"} -kubevirt_vmi_memory_cached_bytes{cluster=~\"$cluster\",namespace=~\".*\"})))",
                   "hide": false,
                   "instant": false,
                   "interval": "",
-                  "legendFormat": "{{name}}",
+                  "legendFormat": "{{namespace}} | {{name}}",
                   "refId": "A"
                 }
               ],
-              "title": "Memory Usage by VM",
+              "title": "VMs by Memory Usage",
+              "type": "timeseries"
+            },
+            {
+              "datasource": null,
+              "description": "This panel shows the Memory Usage Percentage for the top 20 nodes in the cluster that are running virtual machines. Memory usage is calculated as the proportion of memory utilized relative to the total available memory on each node. This helps identify resource-intensive nodes hosting virtual machines, enabling proactive resource management.",
+              "fieldConfig": {
+                "defaults": {
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
+                    "barAlignment": 0,
+                    "drawStyle": "line",
+                    "fillOpacity": 10,
+                    "gradientMode": "opacity",
+                    "hideFrom": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": false
+                    },
+                    "lineInterpolation": "linear",
+                    "lineWidth": 1,
+                    "pointSize": 1,
+                    "scaleDistribution": {
+                      "type": "linear"
+                    },
+                    "showPoints": "auto",
+                    "spanNulls": false,
+                    "stacking": {
+                      "group": "A",
+                      "mode": "none"
+                    },
+                    "thresholdsStyle": {
+                      "mode": "off"
+                    }
+                  },
+                  "mappings": [],
+                  "min": 0,
+                  "noValue": "0",
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "green",
+                        "value": null
+                      }
+                    ]
+                  },
+                  "unit": "percentunit"
+                },
+                "overrides": []
+              },
+              "gridPos": {
+                "h": 7,
+                "w": 12,
+                "x": 0,
+                "y": 24
+              },
+              "id": 112,
+              "options": {
+                "legend": {
+                  "calcs": [
+                    "lastNotNull"
+                  ],
+                  "displayMode": "table",
+                  "placement": "right"
+                },
+                "tooltip": {
+                  "mode": "multi"
+                }
+              },
+              "targets": [
+                {
+                  "exemplar": true,
+                  "expr": "topk(20,(\n  sum(label_replace(instance:node_memory_utilisation:ratio{cluster=~\"$cluster\"}, \"node\", \"$1\", \"instance\", \"(.*)\")) by (node, cluster)\n+ on(node, cluster) group_left()\n0*sum(kubevirt_vmi_memory_used_bytes{cluster=~\"$cluster\"}) by (node, cluster)\n )\n)",
+                  "hide": false,
+                  "interval": "",
+                  "legendFormat": "{{node}}",
+                  "refId": "B"
+                }
+              ],
+              "title": "Nodes by Memory Usage (%)",
+              "transformations": [],
               "type": "timeseries"
             },
             {
               "datasource": "Observatorium-Dynamic",
-              "description": "Top 20 nodes",
+              "description": "This panel displays the memory usage for the top 20 virtual machines (VMs) in the cluster. Memory usage is calculated as the allocated memory minus unused and cached memory. This provides insight into the most memory-intensive VMs, helping identify resource-heavy workloads and potential optimizations. The data is based on the most recent metrics collected.",
+              "fieldConfig": {
+                "defaults": {
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
+                    "barAlignment": 0,
+                    "drawStyle": "line",
+                    "fillOpacity": 10,
+                    "gradientMode": "none",
+                    "hideFrom": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": false
+                    },
+                    "lineInterpolation": "linear",
+                    "lineStyle": {
+                      "fill": "solid"
+                    },
+                    "lineWidth": 1,
+                    "pointSize": 5,
+                    "scaleDistribution": {
+                      "type": "linear"
+                    },
+                    "showPoints": "auto",
+                    "spanNulls": false,
+                    "stacking": {
+                      "group": "A",
+                      "mode": "none"
+                    },
+                    "thresholdsStyle": {
+                      "mode": "off"
+                    }
+                  },
+                  "mappings": [],
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "green",
+                        "value": null
+                      }
+                    ]
+                  },
+                  "unit": "percentunit"
+                },
+                "overrides": []
+              },
+              "gridPos": {
+                "h": 7,
+                "w": 12,
+                "x": 12,
+                "y": 24
+              },
+              "id": 111,
+              "options": {
+                "legend": {
+                  "calcs": [
+                    "lastNotNull",
+                    "max"
+                  ],
+                  "displayMode": "table",
+                  "placement": "right"
+                },
+                "tooltip": {
+                  "mode": "multi"
+                }
+              },
+              "targets": [
+                {
+                  "exemplar": true,
+                  "expr": "topk(20,(\n  sum by (namespace, name) (\n    kubevirt_vmi_memory_available_bytes{cluster=~\"$cluster\",namespace=~\".*\"} -        \n    kubevirt_vmi_memory_unused_bytes{cluster=~\"$cluster\",namespace=~\".*\"} - \n    kubevirt_vmi_memory_cached_bytes{cluster=~\"$cluster\",namespace=~\".*\"}\n  )\n  /\n  (sum by (namespace, name)(\n      max by (cluster, namespace, name)(kubevirt_vm_resource_requests{cluster=~\"$cluster\",namespace=~\".*\",resource=\"memory\"}))\n      )\n )\n)",
+                  "hide": false,
+                  "instant": false,
+                  "interval": "",
+                  "legendFormat": "{{namespace}} | {{name}}",
+                  "refId": "A"
+                }
+              ],
+              "title": "VMs by Memory Usage (%)",
+              "type": "timeseries"
+            }
+          ],
+          "title": "Memory Utilization - Top 20",
+          "type": "row"
+        },
+        {
+          "collapsed": true,
+          "datasource": null,
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 17
+          },
+          "id": 109,
+          "panels": [
+            {
+              "datasource": "Observatorium-Dynamic",
+              "description": "This panel displays the top 20 nodes running virtual machines (VMs) based on their total network received bytes over the past hour. It includes only nodes hosting VMs and excludes traffic from the loopback interface. This provides insight into the nodes with the highest incoming network traffic, helping identify workloads with significant data reception requirements.",
               "fieldConfig": {
                 "defaults": {
                   "color": {
@@ -1755,7 +2363,7 @@ data:
                 "h": 6,
                 "w": 12,
                 "x": 0,
-                "y": 28
+                "y": 18
               },
               "id": 89,
               "options": {
@@ -1775,7 +2383,7 @@ data:
               "targets": [
                 {
                   "exemplar": false,
-                  "expr": "topk(20,sum(label_replace(rate(instance:node_network_receive_bytes_excluding_lo:rate1m{cluster=\"$cluster\"}[1h]), \"node\", \"$1\", \"instance\", \"(.*)\")) by (node, cluster)\n+ on(node, cluster) group_left()\n0*sum(kubevirt_vmi_network_receive_packets_total{cluster=\"$cluster\"}) by (node, cluster))",
+                  "expr": "topk(20,sum(label_replace(instance:node_network_receive_bytes_excluding_lo:rate1m{cluster=\"$cluster\"}, \"node\", \"$1\", \"instance\", \"(.*)\")) by (node, cluster)\n+ on(node, cluster) group_left()\n0*sum(kubevirt_vmi_network_receive_packets_total{cluster=\"$cluster\"}) by (node, cluster))",
                   "hide": false,
                   "instant": false,
                   "interval": "",
@@ -1785,13 +2393,13 @@ data:
               ],
               "timeFrom": null,
               "timeShift": null,
-              "title": "Network Usage by Nodes - Receive",
+              "title": "Nodes by Network Received Bytes",
               "transformations": [],
               "type": "timeseries"
             },
             {
               "datasource": "Observatorium-Dynamic",
-              "description": "Top 20 VMs",
+              "description": "This panel displays the top 20 virtual machines (VMs) in the cluster by network received bytes per second over the past 10 minutes. The query measures the rate of incoming network traffic, helping identify VMs with the highest network activity. Use this information to monitor and optimize resource usage for workloads with significant data reception.",
               "fieldConfig": {
                 "defaults": {
                   "color": {
@@ -1847,7 +2455,7 @@ data:
                 "h": 6,
                 "w": 12,
                 "x": 12,
-                "y": 28
+                "y": 18
               },
               "id": 76,
               "options": {
@@ -1867,23 +2475,23 @@ data:
               "targets": [
                 {
                   "exemplar": false,
-                  "expr": "topk(20,sum(rate(kubevirt_vmi_network_receive_bytes_total{cluster=~\"$cluster\"}[1h])) by (name))",
+                  "expr": "topk(20,sum(rate(kubevirt_vmi_network_receive_bytes_total{cluster=~\"$cluster\"}[10m])) by (namespace, name))",
                   "hide": false,
                   "instant": false,
                   "interval": "",
-                  "legendFormat": "{{name}}",
+                  "legendFormat": "{{namespace}} | {{name}}",
                   "refId": "A"
                 }
               ],
               "timeFrom": null,
               "timeShift": null,
-              "title": "Network Usage by VM - Receive",
+              "title": "VMs by Network Received Bytes",
               "transformations": [],
               "type": "timeseries"
             },
             {
               "datasource": "Observatorium-Dynamic",
-              "description": "Top 20 nodes",
+              "description": "This panel displays the top 20 nodes running virtual machines (VMs) based on their total network transmitted bytes over the past hour. It includes only nodes hosting VMs and excludes traffic from the loopback interface. This provides insight into the nodes with the highest incoming network traffic, helping identify workloads with significant data reception requirements.",
               "fieldConfig": {
                 "defaults": {
                   "color": {
@@ -1939,7 +2547,7 @@ data:
                 "h": 6,
                 "w": 12,
                 "x": 0,
-                "y": 34
+                "y": 24
               },
               "id": 75,
               "options": {
@@ -1968,13 +2576,13 @@ data:
               ],
               "timeFrom": null,
               "timeShift": null,
-              "title": "Network Usage by Nodes - Transmit",
+              "title": "Nodes by Network Transmitted Bytes",
               "transformations": [],
               "type": "timeseries"
             },
             {
               "datasource": "Observatorium-Dynamic",
-              "description": "Top 20 VMs",
+              "description": "This panel displays the top 20 virtual machines (VMs) in the cluster by network transmitted bytes per second over the past 10 minutes. The query measures the rate of incoming network traffic, helping identify VMs with the highest network activity. Use this information to monitor and optimize resource usage for workloads with significant data reception.",
               "fieldConfig": {
                 "defaults": {
                   "color": {
@@ -2030,7 +2638,7 @@ data:
                 "h": 6,
                 "w": 12,
                 "x": 12,
-                "y": 34
+                "y": 24
               },
               "id": 88,
               "options": {
@@ -2050,23 +2658,38 @@ data:
               "targets": [
                 {
                   "exemplar": true,
-                  "expr": "topk(20,sum(rate(kubevirt_vmi_network_transmit_bytes_total{cluster=~\"$cluster\"}[1h])) by (name))",
+                  "expr": "topk(20,sum(rate(kubevirt_vmi_network_transmit_bytes_total{cluster=~\"$cluster\"}[1h])) by (namespace, name))",
                   "hide": false,
                   "instant": false,
                   "interval": "",
-                  "legendFormat": "{{name}}",
+                  "legendFormat": "{{namespace}} | {{name}}",
                   "refId": "B"
                 }
               ],
               "timeFrom": null,
               "timeShift": null,
-              "title": "Network Usage by VM  - Transmit",
+              "title": "VMs by Network Transmitted Bytes",
               "transformations": [],
               "type": "timeseries"
-            },
+            }
+          ],
+          "title": "Network Utilization - Top 20",
+          "type": "row"
+        },
+        {
+          "collapsed": true,
+          "datasource": null,
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 18
+          },
+          "id": 36,
+          "panels": [
             {
               "datasource": "Observatorium-Dynamic",
-              "description": "Top 20 nodes",
+              "description": "This panel displays the top 20 nodes running virtual machines (VMs) based on their combined storage IOPS (read + write) over the past 10 minutes. The metric aggregates the total input/output operations per second for all VMs on each node, helping identify nodes with the highest storage activity and potential bottlenecks.",
               "fieldConfig": {
                 "defaults": {
                   "color": {
@@ -2077,7 +2700,7 @@ data:
                     "axisPlacement": "auto",
                     "barAlignment": 0,
                     "drawStyle": "line",
-                    "fillOpacity": 0,
+                    "fillOpacity": 10,
                     "gradientMode": "none",
                     "hideFrom": {
                       "legend": false,
@@ -2125,7 +2748,7 @@ data:
                 "h": 7,
                 "w": 12,
                 "x": 0,
-                "y": 40
+                "y": 19
               },
               "id": 78,
               "options": {
@@ -2144,7 +2767,7 @@ data:
               "targets": [
                 {
                   "exemplar": true,
-                  "expr": "topk(20,sum by (node) (rate(kubevirt_vmi_storage_iops_read_total{cluster=~\"$cluster\"}[1h]) + rate(kubevirt_vmi_storage_iops_write_total{cluster=~\"$cluster\"}[1h])))",
+                  "expr": "topk(20,sum by (node) (rate(kubevirt_vmi_storage_iops_read_total{cluster=~\"$cluster\"}[10m]) + rate(kubevirt_vmi_storage_iops_write_total{cluster=~\"$cluster\"}[10m])))",
                   "format": "time_series",
                   "hide": false,
                   "instant": false,
@@ -2153,12 +2776,12 @@ data:
                   "refId": "B"
                 }
               ],
-              "title": "Storage IOPs by Node",
+              "title": "Nodes by VM Storage IOPS",
               "type": "timeseries"
             },
             {
               "datasource": "Observatorium-Dynamic",
-              "description": "Top 20 VMs",
+              "description": "This panel displays the top 20 virtual machines (VMs) based on their combined storage IOPS (read + write) over the past 10 minutes. The metric aggregates the total input/output operations per second for each VM, helping identify workloads with the highest storage activity and potential hotspots for performance optimization.",
               "fieldConfig": {
                 "defaults": {
                   "color": {
@@ -2169,7 +2792,7 @@ data:
                     "axisPlacement": "auto",
                     "barAlignment": 0,
                     "drawStyle": "line",
-                    "fillOpacity": 0,
+                    "fillOpacity": 10,
                     "gradientMode": "none",
                     "hideFrom": {
                       "legend": false,
@@ -2217,7 +2840,7 @@ data:
                 "h": 7,
                 "w": 12,
                 "x": 12,
-                "y": 40
+                "y": 19
               },
               "id": 79,
               "options": {
@@ -2236,20 +2859,204 @@ data:
               "targets": [
                 {
                   "exemplar": true,
-                  "expr": "topk(20,sum by (name) (rate(kubevirt_vmi_storage_iops_read_total{cluster=~\"$cluster\"}[1h]) + rate(kubevirt_vmi_storage_iops_write_total{cluster=~\"$cluster\"}[1h])))",
+                  "expr": "topk(20,sum by (namespace, name) (rate(kubevirt_vmi_storage_iops_read_total{cluster=~\"$cluster\"}[10m]) + rate(kubevirt_vmi_storage_iops_write_total{cluster=~\"$cluster\"}[10m])))",
                   "format": "time_series",
                   "hide": false,
                   "instant": false,
                   "interval": "",
-                  "legendFormat": "{{name}}",
+                  "legendFormat": "{{namespace}} | {{name}}",
                   "refId": "B"
                 }
               ],
-              "title": "Storage IOPs by VM",
+              "title": "VMs by Storage IOPS",
+              "type": "timeseries"
+            },
+            {
+              "datasource": "Observatorium-Dynamic",
+              "description": "This panel displays the top 20 nodes running virtual machines (VMs) based on their combined storage traffic (read + write) over the past 10 minutes. The metric aggregates the total input/output operations for all VMs on each node, helping identify nodes with the highest storage activity and potential bottlenecks.",
+              "fieldConfig": {
+                "defaults": {
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
+                    "barAlignment": 0,
+                    "drawStyle": "line",
+                    "fillOpacity": 10,
+                    "gradientMode": "none",
+                    "hideFrom": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": false
+                    },
+                    "lineInterpolation": "linear",
+                    "lineStyle": {
+                      "fill": "solid"
+                    },
+                    "lineWidth": 1,
+                    "pointSize": 5,
+                    "scaleDistribution": {
+                      "type": "linear"
+                    },
+                    "showPoints": "auto",
+                    "spanNulls": false,
+                    "stacking": {
+                      "group": "A",
+                      "mode": "none"
+                    },
+                    "thresholdsStyle": {
+                      "mode": "off"
+                    }
+                  },
+                  "mappings": [],
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "green",
+                        "value": null
+                      },
+                      {
+                        "color": "red",
+                        "value": 80
+                      }
+                    ]
+                  },
+                  "unit": "bytes"
+                },
+                "overrides": []
+              },
+              "gridPos": {
+                "h": 7,
+                "w": 12,
+                "x": 0,
+                "y": 26
+              },
+              "id": 114,
+              "options": {
+                "legend": {
+                  "calcs": [
+                    "lastNotNull",
+                    "max"
+                  ],
+                  "displayMode": "table",
+                  "placement": "right"
+                },
+                "tooltip": {
+                  "mode": "multi"
+                }
+              },
+              "targets": [
+                {
+                  "exemplar": true,
+                  "expr": "topk(20,sum by (node) (rate(kubevirt_vmi_storage_read_traffic_bytes_total{cluster=~\"$cluster\"}[10m]) + rate(kubevirt_vmi_storage_write_traffic_bytes_total{cluster=~\"$cluster\"}[10m])))",
+                  "format": "time_series",
+                  "hide": false,
+                  "instant": false,
+                  "interval": "",
+                  "legendFormat": "{{node}}",
+                  "refId": "B"
+                }
+              ],
+              "title": "Nodes by VM Storage Traffic",
+              "type": "timeseries"
+            },
+            {
+              "datasource": "Observatorium-Dynamic",
+              "description": "This panel displays the top 20 virtual machines (VMs) based on their combined storage traffic (read + write) over the past 10 minutes. The metric aggregates the total input/output operations for the last 10 minutes for each VM, helping identify workloads with the highest storage activity and potential hotspots for performance optimization.",
+              "fieldConfig": {
+                "defaults": {
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
+                    "barAlignment": 0,
+                    "drawStyle": "line",
+                    "fillOpacity": 10,
+                    "gradientMode": "none",
+                    "hideFrom": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": false
+                    },
+                    "lineInterpolation": "linear",
+                    "lineStyle": {
+                      "fill": "solid"
+                    },
+                    "lineWidth": 1,
+                    "pointSize": 5,
+                    "scaleDistribution": {
+                      "type": "linear"
+                    },
+                    "showPoints": "auto",
+                    "spanNulls": false,
+                    "stacking": {
+                      "group": "A",
+                      "mode": "none"
+                    },
+                    "thresholdsStyle": {
+                      "mode": "off"
+                    }
+                  },
+                  "mappings": [],
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "green",
+                        "value": null
+                      },
+                      {
+                        "color": "red",
+                        "value": 80
+                      }
+                    ]
+                  },
+                  "unit": "bytes"
+                },
+                "overrides": []
+              },
+              "gridPos": {
+                "h": 7,
+                "w": 12,
+                "x": 12,
+                "y": 26
+              },
+              "id": 113,
+              "options": {
+                "legend": {
+                  "calcs": [
+                    "lastNotNull",
+                    "max"
+                  ],
+                  "displayMode": "table",
+                  "placement": "right"
+                },
+                "tooltip": {
+                  "mode": "multi"
+                }
+              },
+              "targets": [
+                {
+                  "exemplar": true,
+                  "expr": "topk(20,sum by (namespace, name) (rate(kubevirt_vmi_storage_read_traffic_bytes_total{cluster=~\"$cluster\"}[10m]) + rate(kubevirt_vmi_storage_write_traffic_bytes_total{cluster=~\"$cluster\"}[10m])))",
+                  "format": "time_series",
+                  "hide": false,
+                  "instant": false,
+                  "interval": "",
+                  "legendFormat": "{{namespace}} | {{name}}",
+                  "refId": "B"
+                }
+              ],
+              "title": "VMs by Storage Traffic",
               "type": "timeseries"
             }
           ],
-          "title": "Resources Utilization - Top 20",
+          "title": "Storage Utilization - Top 20",
           "type": "row"
         },
         {
@@ -2259,7 +3066,7 @@ data:
             "h": 1,
             "w": 24,
             "x": 0,
-            "y": 16
+            "y": 19
           },
           "id": 46,
           "panels": [
@@ -2289,7 +3096,7 @@ data:
                 "h": 3,
                 "w": 8,
                 "x": 0,
-                "y": 17
+                "y": 20
               },
               "id": 50,
               "options": {
@@ -2346,7 +3153,7 @@ data:
                 "h": 3,
                 "w": 8,
                 "x": 8,
-                "y": 17
+                "y": 20
               },
               "id": 52,
               "options": {
@@ -2403,7 +3210,7 @@ data:
                 "h": 3,
                 "w": 8,
                 "x": 16,
-                "y": 17
+                "y": 20
               },
               "id": 54,
               "options": {
@@ -2512,7 +3319,7 @@ data:
                 "h": 5,
                 "w": 16,
                 "x": 0,
-                "y": 20
+                "y": 23
               },
               "id": 58,
               "options": {
@@ -2522,7 +3329,7 @@ data:
               "targets": [
                 {
                   "exemplar": true,
-                  "expr": "sum(ALERTS{cluster=~\"$cluster\",alertstate=\"firing\",kubernetes_operator_part_of=\"kubevirt\",operator_health_impact=~\"$health_impact\",operator_health_impact!=\"none\", severity=~\"$severity\"}) by (cluster,alertname,alertstate,severity,namespace,name,operator_health_impact)",
+                  "expr": "sum(ALERTS{cluster=~\"$cluster\",alertstate=\"firing\",kubernetes_operator_part_of=\"kubevirt\",operator_health_impact=~\"$health_impact\",operator_health_impact!=\"none\", severity=~\"$severity\", severity!=\"info\"}) by (cluster,alertname,alertstate,severity,namespace,name,operator_health_impact)",
                   "format": "table",
                   "hide": false,
                   "instant": true,
@@ -2631,7 +3438,7 @@ data:
                 "h": 5,
                 "w": 8,
                 "x": 16,
-                "y": 20
+                "y": 23
               },
               "id": 92,
               "options": {
@@ -2757,7 +3564,7 @@ data:
                 "h": 11,
                 "w": 24,
                 "x": 0,
-                "y": 25
+                "y": 28
               },
               "id": 97,
               "options": {
@@ -2812,10 +3619,10 @@ data:
       "schemaVersion": 30,
       "style": "dark",
       "tags": [
-        "Openshift",
         "Virtualization",
         "KubeVirt",
-        "ACM"
+        "ACM",
+        "OpenShift"
       ],
       "templating": {
         "list": [
@@ -2838,13 +3645,13 @@ data:
             "refresh": 1,
             "regex": "/^(?!developer).*/",
             "skipUrlSync": false,
-            "sort": 0,
+            "sort": 1,
             "type": "query"
           },
           {
             "allValue": null,
             "current": {
-              "selected": false,
+              "selected": true,
               "text": [
                 "All"
               ],
@@ -2875,7 +3682,7 @@ data:
           {
             "allValue": null,
             "current": {
-              "selected": false,
+              "selected": true,
               "text": [
                 "All"
               ],
