@@ -180,6 +180,8 @@ data:
       - kubevirt_vmi_memory_swap_in_traffic_bytes
       - kubevirt_vmi_vcpu_wait_seconds_total
       - node_memory_MemTotal_bytes
+      - kubevirt_vmi_status_addresses
+      - kubevirt_vmsnapshot_succeeded_timestamp_seconds
 
     matches:
       - __name__="workqueue_queue_duration_seconds_bucket",job="apiserver"

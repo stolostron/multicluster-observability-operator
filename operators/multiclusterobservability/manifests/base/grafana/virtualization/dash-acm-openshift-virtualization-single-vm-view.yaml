@@ -2842,7 +2842,6 @@ data:
         "list": [
           {
             "allValue": null,
-            },
             "datasource": null,
             "definition": "label_values(kubevirt_vm_info, cluster)",
             "description": null,

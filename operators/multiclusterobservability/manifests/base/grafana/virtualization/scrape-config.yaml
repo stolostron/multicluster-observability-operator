@@ -51,6 +51,8 @@ spec:
     - '{__name__="kubevirt_vm_create_date_timestamp_seconds"}'
     - '{__name__="node_cpu_seconds_total"}'
     - '{__name__="node_memory_MemTotal_bytes"}'
+    - '{__name__="kubevirt_vmi_status_addresses"}'
+    - '{__name__="kubevirt_vmsnapshot_succeeded_timestamp_seconds"}'
   metricRelabelings:
   - action: labeldrop
     regex: prometheus_replica|managed_cluster|id
