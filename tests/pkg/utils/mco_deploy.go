@@ -12,9 +12,11 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -692,6 +694,10 @@ func CreateObjSecret(opt TestOptions) error {
 	if secretKey == "" {
 		return errors.New("failed to get aws AWS_SECRET_ACCESS_KEY env")
 	}
+	re := regexp.MustCompile(`^\*+$`)
+	if re.MatchString(accessKey) || re.MatchString(secretKey) {
+		return fmt.Errorf("store key/secret are invalid, replaced by stars: key %q", secretKey)
+	}
 
 	objSecret := fmt.Sprintf(`apiVersion: v1
 kind: Secret
@@ -725,7 +731,7 @@ type: Opaque`,
 func UninstallMCO(opt TestOptions) error {
 	klog.V(1).Infof("Delete MCO instance")
 	deleteMCOErr := DeleteMCOInstance(opt, MCO_CR_NAME)
-	if deleteMCOErr != nil {
+	if deleteMCOErr != nil && !k8serrors.IsNotFound(deleteMCOErr) {
 		return deleteMCOErr
 	}
 
@@ -738,7 +744,7 @@ func UninstallMCO(opt TestOptions) error {
 	deleteObjSecretErr := clientKube.CoreV1().
 		Secrets(MCO_NAMESPACE).
 		Delete(context.TODO(), OBJ_SECRET_NAME, metav1.DeleteOptions{})
-	if deleteObjSecretErr != nil {
+	if deleteObjSecretErr != nil && !k8serrors.IsNotFound(deleteObjSecretErr) {
 		return deleteObjSecretErr
 	}
 
