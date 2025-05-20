@@ -114,12 +114,20 @@ func init() {
 		"results.xml",
 		"Provide the path to where the junit results will be printed.",
 	)
-	flag.StringVar(
-		&kubeconfig,
-		"kubeconfig",
-		"",
-		"Location of the kubeconfig to use; defaults to KUBECONFIG if not set",
-	)
+	// flag.StringVar(
+	// 	&kubeconfig,
+	// 	"kubeconfig",
+	// 	"",
+	// 	"Location of the kubeconfig to use; defaults to KUBECONFIG if not set",
+	// )
+	if flag.Lookup("kubeconfig") == nil {
+		flag.StringVar(
+			&kubeconfig,
+			"kubeconfig",
+			"",
+			"Location of the kubeconfig to use; defaults to KUBECONFIG if not set",
+		)
+	}
 	flag.StringVar(
 		&optionsFile,
 		"options",
