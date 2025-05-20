@@ -28,6 +28,7 @@ var kubeClient kubernetes.Interface
 
 func (mco *MultiClusterObservability) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
+		WithValidator(&MultiClusterObservability{}).
 		For(mco).
 		Complete()
 }
