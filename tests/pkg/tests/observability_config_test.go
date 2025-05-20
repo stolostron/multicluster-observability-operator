@@ -460,9 +460,9 @@ var _ = Describe("", func() {
 
 		By("Revert MCO back to initial config")
 		if os.Getenv("IS_CANARY_ENV") != trueStr {
-			mcoPath = "../../../examples/updatemcocr/initial/custom-certs"
+			mcoPath = "../../../examples/updatemcocr/initialmcoconfig/custom-certs"
 		} else {
-			mcoPath = "../../../examples/updatemcocr/initial"
+			mcoPath = "../../../examples/updatemcocr/initialmcoconfig"
 		}
 		yamlB, err = kustomize.Render(kustomize.Options{KustomizationPath: mcoPath})
 		Expect(err).ToNot(HaveOccurred())
