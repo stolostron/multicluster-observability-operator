@@ -7,6 +7,7 @@ package tests
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -36,7 +37,15 @@ var _ = Describe("", func() {
 	It("RHACM4K-31474: Observability: Verify memcached setting max_item_size is populated on thanos-store - [P1][Sev1][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release(config/g1)", func() {
 
 		By("Updating mco cr to update values in storeMemcached")
-		yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: "../../../examples/updatemcocr/initialmcoconfig"})
+
+		mcoPath := ""
+		if os.Getenv("IS_CANARY_ENV") != trueStr {
+			mcoPath = "../../../examples/updatemcocr/initialmcoconfig/custom-certs"
+		} else {
+			mcoPath = "../../../examples/updatemcocr/initialmcoconfig"
+		}
+
+		yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: mcoPath})
 		Expect(err).ToNot(HaveOccurred())
 		Expect(
 			utils.Apply(
@@ -75,7 +84,15 @@ var _ = Describe("", func() {
 	It("RHACM4K-31475: Observability: Verify memcached setting max_item_size is populated on thanos-query-frontend - [P1][Sev1][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release(config/g1)", func() {
 
 		By("Updating mco cr to update values in storeMemcached")
-		yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: "../../../examples/updatemcocr/initialmcoconfig"})
+
+		mcoPath := ""
+		if os.Getenv("IS_CANARY_ENV") != trueStr {
+			mcoPath = "../../../examples/updatemcocr/initialmcoconfig/custom-certs"
+		} else {
+			mcoPath = "../../../examples/updatemcocr/initialmcoconfig"
+		}
+
+		yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: mcoPath})
 		Expect(err).ToNot(HaveOccurred())
 		Expect(
 			utils.Apply(
@@ -350,7 +367,15 @@ var _ = Describe("", func() {
 
 	It("RHACM4K-43019 - Observability - Verify overwrite Thanos components CLI args in MCO CR - [P2][Sev2][Observability][Integration]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release (config/g0)", func() {
 		By("Updating mco cr to update cli args")
-		yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: "../../../examples/updatemcocr/advancedmcoconfig"})
+
+		mcoPath := ""
+		if os.Getenv("IS_CANARY_ENV") != trueStr {
+			mcoPath = "../../../examples/updatemcocr/advancedmcoconfig/custom-certs"
+		} else {
+			mcoPath = "../../../examples/updatemcocr/advancedmcoconfig"
+		}
+
+		yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: mcoPath})
 		Expect(err).ToNot(HaveOccurred())
 		Expect(
 			utils.Apply(
@@ -434,7 +459,12 @@ var _ = Describe("", func() {
 		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*10).Should(BeTrue())
 
 		By("Revert MCO back to initial config")
-		yamlB, err = kustomize.Render(kustomize.Options{KustomizationPath: "../../../examples/updatemcocr/initialmcoconfig"})
+		if os.Getenv("IS_CANARY_ENV") != trueStr {
+			mcoPath = "../../../examples/updatemcocr/initialmcoconfig/custom-certs"
+		} else {
+			mcoPath = "../../../examples/updatemcocr/initialmcoconfig"
+		}
+		yamlB, err = kustomize.Render(kustomize.Options{KustomizationPath: mcoPath})
 		Expect(err).ToNot(HaveOccurred())
 		Expect(
 			utils.Apply(
