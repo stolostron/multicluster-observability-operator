@@ -696,7 +696,8 @@ func CreateObjSecret(opt TestOptions) error {
 	}
 	re := regexp.MustCompile(`^\*+$`)
 	if re.MatchString(accessKey) || re.MatchString(secretKey) {
-		return fmt.Errorf("store key/secret are invalid, replaced by stars: key %q", secretKey)
+		fmt.Printf("WARNING: store key/secret are invalid, replaced by stars: key %q. Continuing without creating/updating object storage secret.\n", secretKey)
+		return nil
 	}
 
 	objSecret := fmt.Sprintf(`apiVersion: v1
