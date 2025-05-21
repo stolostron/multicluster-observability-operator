@@ -11,6 +11,7 @@ resources:
 - dash-k8s-compute-resources-pod.yaml
 - dash-k8s-compute-resources-workload.yaml
 - dash-k8s-etcd.yaml
+- dash-acm-incidents-overview.yaml
 - dash-k8s-networking-cluster.yaml
 - dash-k8s-service-level-overview-api-server-cluster.yaml
 - dash-k8s-service-level-overview-api-server.yaml
