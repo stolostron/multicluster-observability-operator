@@ -35,10 +35,18 @@ spec:
               fileData:
                   name: htpass-user-test
 EOL
+  cat >oauth_del.yaml <<EOL
+apiVersion: config.openshift.io/v1
+kind: OAuth
+metadata:
+    name: cluster
+spec: {}
+EOL
   # first clean
-  oc delete -f oauth.yaml | true
+  oc apply -f .oauth_del.yaml
   oc apply -f oauth.yaml
   rm -f oauth.yaml
+  rm -f .oauth_del.yaml
 }
 
 create_role_bindings() {
