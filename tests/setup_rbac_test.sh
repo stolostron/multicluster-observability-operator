@@ -45,6 +45,11 @@ create_role_bindings() {
   oc create rolebinding view-binding-user1 --clusterrole=view --user=user1 -n local-cluster
 }
 
+clean() {
+  oc delete clusterrolebinding cluster-manager-admin-binding
+  oc delete rolebinding view-binding-user1
+}
+
 if ! which htpasswd &>/dev/null; then
   if which yum &>/dev/null; then
     sudo yum update
@@ -55,6 +60,7 @@ if ! which htpasswd &>/dev/null; then
   fi
 fi
 
+clean
 create_test_users
 create_auth_provider
 create_role_bindings
