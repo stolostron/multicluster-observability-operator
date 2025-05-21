@@ -56,7 +56,6 @@ if ! which htpasswd &>/dev/null; then
   fi
 fi
 
-clean
 create_test_users
 create_auth_provider
 create_role_bindings
