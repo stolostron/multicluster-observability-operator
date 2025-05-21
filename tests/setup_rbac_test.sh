@@ -43,7 +43,7 @@ metadata:
 spec: {}
 EOL
   # first clean
-  oc apply -f .oauth_del.yaml
+  oc apply -f oauth_del.yaml
   oc apply -f oauth.yaml
   rm -f oauth.yaml
   rm -f .oauth_del.yaml
