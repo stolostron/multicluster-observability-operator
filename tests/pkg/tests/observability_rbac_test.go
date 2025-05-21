@@ -87,11 +87,20 @@ var _ = Describe("", Ordered, func() {
 		By("Logging as kube:admin checking if MCO can be deleted by user1 and admin", func() {
 			Eventually(func() error {
 
-				kubeContext := "~/.kube/config" //default
 				if (len(testOptions.HubCluster.KubeContext) > 0) {
-					kubeContext = testOptions.HubCluster.KubeContext
+					_, err = exec.Command("oc", "config", "use-context", testOptions.HubCluster.KubeContext).CombinedOutput()
+					if err != nil {
+						return fmt.Errorf("Unable to log in as kube:admin after rbac test using kube-context: %v", err)
+					}
+				} else {
+						user := os.Getenv("OC_CLUSTER_USER")
+						password := os.Getenv("OC_HUB_CLUSTER_PASS")
+						err = utils.LoginOCUser(testOptions, user, password)
+						if err != nil {
+							return fmt.Errorf("Unable to log in as kube:admin after rbac test using username/pw: %v", err)
+						}
 				}
-				_, err = exec.Command("oc", "config", "use-context", kubeContext).CombinedOutput()
+
 
 				cmd := exec.Command("oc", "policy", "who-can", "delete", "mco")
 				var out bytes.Buffer
@@ -113,14 +122,18 @@ var _ = Describe("", Ordered, func() {
 
 	AfterEach(func() {
 		// make sure we login as kube admin again
-		kubeContext := "~/.kube/config" //default
 		if (len(testOptions.HubCluster.KubeContext) > 0) {
-			kubeContext = testOptions.HubCluster.KubeContext
-		}
-		_, err = exec.Command("oc", "config", "use-context", kubeContext).CombinedOutput()
-		if err != nil {
-			klog.Infof("Using kube-context: %s\n", kubeContext)
-			klog.Error("Unable to log in as kube:admin after rbac test", err)
+			_, err = exec.Command("oc", "config", "use-context", testOptions.HubCluster.KubeContext).CombinedOutput()
+			if err != nil {
+				klog.Error("Unable to log in as kube:admin after rbac test using kube-context", err)
+			}
+		} else {
+				user := os.Getenv("OC_CLUSTER_USER")
+				password := os.Getenv("OC_HUB_CLUSTER_PASS")
+				err = utils.LoginOCUser(testOptions, user, password)
+				if err != nil {
+					klog.Error("Unable to log in as kube:admin after rbac test using username/pw", err)
+				}
 		}
 
 		os.Unsetenv("USER_TOKEN")
