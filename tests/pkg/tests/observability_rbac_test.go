@@ -88,7 +88,7 @@ var _ = Describe("", Ordered, func() {
 			Eventually(func() error {
 				_, err = exec.Command("oc", "config", "use-context", testOptions.HubCluster.KubeContext).CombinedOutput()
 				if err != nil {
-					return err
+					return fmt.Errorf("Cannot switch to admin user: %v", err)
 				}
 
 				cmd := exec.Command("oc", "policy", "who-can", "delete", "mco")
@@ -110,6 +110,12 @@ var _ = Describe("", Ordered, func() {
 	})
 
 	AfterEach(func() {
+		// make sure we login as kube admin again
+		_, err = exec.Command("oc", "config", "use-context", testOptions.HubCluster.KubeContext).CombinedOutput()
+		if err != nil {
+			klog.Error("Unable to log in as kube:admin after rbac test", err)
+		}
+
 		os.Unsetenv("USER_TOKEN")
 		if CurrentSpecReport().Failed() {
 			utils.LogFailingTestStandardDebugInfo(testOptions)
