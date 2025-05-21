@@ -86,10 +86,12 @@ var _ = Describe("", Ordered, func() {
 	It("RHACM4K-1439 - Observability - RBAC - Verify only cluster-manager-admin role can deploy MCO CR [Observability][Integration]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release (requires-ocp/g0) (obs_rbac/g0)", func() {
 		By("Logging as kube:admin checking if MCO can be deleted by user1 and admin", func() {
 			Eventually(func() error {
-				_, err = exec.Command("oc", "config", "use-context", testOptions.HubCluster.KubeContext).CombinedOutput()
-				if err != nil {
-					return fmt.Errorf("Cannot switch to admin user: %v", err)
+
+				kubeContext := "~/.kube/config" //default
+				if (len(testOptions.HubCluster.KubeContext) > 0) {
+					kubeContext = testOptions.HubCluster.KubeContext
 				}
+				_, err = exec.Command("oc", "config", "use-context", kubeContext).CombinedOutput()
 
 				cmd := exec.Command("oc", "policy", "who-can", "delete", "mco")
 				var out bytes.Buffer
@@ -111,7 +113,11 @@ var _ = Describe("", Ordered, func() {
 
 	AfterEach(func() {
 		// make sure we login as kube admin again
-		_, err = exec.Command("oc", "config", "use-context", testOptions.HubCluster.KubeContext).CombinedOutput()
+		kubeContext := "~/.kube/config" //default
+		if (len(testOptions.HubCluster.KubeContext) > 0) {
+			kubeContext = testOptions.HubCluster.KubeContext
+		}
+		_, err = exec.Command("oc", "config", "use-context", kubeContext).CombinedOutput()
 		if err != nil {
 			klog.Error("Unable to log in as kube:admin after rbac test", err)
 		}

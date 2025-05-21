@@ -41,13 +41,9 @@ EOL
 
 create_role_bindings() {
   echo CREATING ROLE BINDINGS
-  oc create clusterrolebinding cluster-manager-admin-binding --clusterrole=open-cluster-management:cluster-manager-admin --user=admin
-  oc create rolebinding view-binding-user1 --clusterrole=view --user=user1 -n local-cluster
-}
-
-clean() {
-  oc delete clusterrolebinding cluster-manager-admin-binding
-  oc delete rolebinding view-binding-user1
+  # always return true, in case they already exists
+  oc create clusterrolebinding cluster-manager-admin-binding --clusterrole=open-cluster-management:cluster-manager-admin --user=admin | true
+  oc create rolebinding view-binding-user1 --clusterrole=view --user=user1 -n local-cluster | true
 }
 
 if ! which htpasswd &>/dev/null; then
