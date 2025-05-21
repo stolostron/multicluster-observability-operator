@@ -35,6 +35,8 @@ spec:
               fileData:
                   name: htpass-user-test
 EOL
+  # first clean
+  oc delete -f oauth.yaml | true
   oc apply -f oauth.yaml
   rm -f oauth.yaml
 }
