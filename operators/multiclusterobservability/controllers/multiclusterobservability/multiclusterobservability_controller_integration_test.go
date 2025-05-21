@@ -18,6 +18,7 @@ import (
 	routev1 "github.com/openshift/api/route/v1"
 	imagev1client "github.com/openshift/client-go/image/clientset/versioned/typed/image/v1"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	promv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	observabilityshared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
 	mcov1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
@@ -154,6 +155,7 @@ func createBaseScheme(t *testing.T) *runtime.Scheme {
 	require.NoError(t, mcov1beta2.AddToScheme(scheme))
 	require.NoError(t, observatoriumAPIs.AddToScheme(scheme))
 	require.NoError(t, promv1.AddToScheme(scheme))
+	require.NoError(t, promv1alpha1.AddToScheme(scheme))
 	require.NoError(t, routev1.AddToScheme(scheme))
 	require.NoError(t, addonapiv1alpha1.AddToScheme(scheme))
 	return scheme

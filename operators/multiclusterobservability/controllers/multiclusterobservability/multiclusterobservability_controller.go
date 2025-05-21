@@ -22,6 +22,7 @@ import (
 	"github.com/go-logr/logr"
 	routev1 "github.com/openshift/api/route/v1"
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	monitoringv1aplha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	mchv1 "github.com/stolostron/multiclusterhub-operator/api/v1"
 	observatoriumv1alpha1 "github.com/stolostron/observatorium-operator/api/v1alpha1"
 	"golang.org/x/exp/slices"
@@ -516,6 +517,10 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 		Owns(&addonv1alpha1.AddOnDeploymentConfig{}).
 		// Watch for changes to secondary ClusterManagementAddOn CR and requeue the owner MultiClusterObservability
 		Owns(&addonv1alpha1.ClusterManagementAddOn{}).
+		// Watch for changes to secondary PrometheusRule CR and requeue the owner MultiClusterObservability
+		Owns(&monitoringv1.PrometheusRule{}).
+		// Watch for changes to secondary ScrapeConfig CR and requeue the owner MultiClusterObservability
+		Owns(&monitoringv1aplha1.ScrapeConfig{}).
 		// Watch the configmap for rightsizing recommendation update (keep in its own watcher as it applies some processing)
 		Watches(&corev1.ConfigMap{}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(cmNamespaceRSPred)).
 		// Watch the configmap for thanos-ruler-custom-rules update

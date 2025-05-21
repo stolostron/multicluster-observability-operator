@@ -57,9 +57,4 @@ spec:
     - '{__name__="node_memory_MemTotal_bytes"}'
   metricRelabelings:
   - action: labeldrop
-    regex: prometheus_replica|managed_cluster|id
-  scrapeClass: ocp-monitoring
-  scheme: HTTPS
-  staticConfigs:
-  - targets:
-    - prometheus-k8s.openshift-monitoring.svc:9091
+    regex: managed_cluster|id

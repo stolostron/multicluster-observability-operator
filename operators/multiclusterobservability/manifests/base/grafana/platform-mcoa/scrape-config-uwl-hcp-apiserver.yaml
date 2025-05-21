@@ -25,9 +25,5 @@ spec:
     - '{__name__="workqueue_queue_duration_seconds_bucket:apiserver:histogram_quantile_99"}'
   metricRelabelings:
   - action: labeldrop
-    regex: prometheus_replica|managed_cluster|id
-  scrapeClass: ocp-monitoring
-  scheme: HTTPS
-  staticConfigs:
-  - targets:
-    - prometheus-user-workload.openshift-user-workload-monitoring.svc:9092
+    regex: managed_cluster|id
+ 
