@@ -33,11 +33,4 @@ spec:
     - '{__name__="rpc_rate:grpc_server_handled_total:sum_rate"}'
   metricRelabelings:
   - action: labeldrop
-    regex: prometheus_replica|managed_cluster|id
-  scrapeClass: ocp-monitoring
-  scheme: HTTPS
-  staticConfigs:
-  - targets:
-    - prometheus-user-workload.openshift-user-workload-monitoring.svc:9092
-
-
+    regex: managed_cluster|id
