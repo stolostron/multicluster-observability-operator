@@ -119,6 +119,7 @@ var _ = Describe("", Ordered, func() {
 		}
 		_, err = exec.Command("oc", "config", "use-context", kubeContext).CombinedOutput()
 		if err != nil {
+			klog.Infof("Using kube-context: %s\n", kubeContext)
 			klog.Error("Unable to log in as kube:admin after rbac test", err)
 		}
 
