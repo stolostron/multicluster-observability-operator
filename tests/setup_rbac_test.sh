@@ -8,13 +8,7 @@ create_test_users() {
   htpasswd -B -b users.htpasswd user1 user1
   htpasswd -B -b users.htpasswd user2 user2
 
-  oc delete identity htpasswd_provider:admin &>/dev/null
-  oc delete identity htpasswd_provider:user1 &>/dev/null
-  oc delete identity users:admin &>/dev/null
-  oc delete user admin &>/dev/null
-  oc delete user user1 &>/dev/null
   oc create ns openshift-config
-  oc delete secret htpass-user-test -n openshift-config &>/dev/null
   oc create secret generic htpass-user-test --from-file=htpasswd=users.htpasswd -n openshift-config
   rm -f users.htpasswd
 }
@@ -35,25 +29,15 @@ spec:
               fileData:
                   name: htpass-user-test
 EOL
-  cat >oauth_del.yaml <<EOL
-apiVersion: config.openshift.io/v1
-kind: OAuth
-metadata:
-    name: cluster
-spec: {}
-EOL
-  # first clean
-  oc apply -f oauth_del.yaml
   oc apply -f oauth.yaml
   rm -f oauth.yaml
-  rm -f .oauth_del.yaml
 }
 
 create_role_bindings() {
   echo CREATING ROLE BINDINGS
-  # always return true, in case they already exists
-  oc create clusterrolebinding cluster-manager-admin-binding --clusterrole=open-cluster-management:cluster-manager-admin --user=admin | true
-  oc create rolebinding view-binding-user1 --clusterrole=view --user=user1 -n local-cluster | true
+  # delete bindings first
+  oc create clusterrolebinding cluster-manager-admin-binding --clusterrole=open-cluster-management:cluster-manager-admin --user=admin
+  oc create rolebinding view-binding-user1 --clusterrole=view --user=user1 -n local-cluster
 }
 
 if ! which htpasswd &>/dev/null; then
@@ -66,6 +50,32 @@ if ! which htpasswd &>/dev/null; then
   fi
 fi
 
+clean() {
+  echo "CLEANING OLD RBAC SETTINGS"
+  oc delete clusterrolebinding cluster-manager-admin-binding | true
+  oc delete rolebinding view-binding-user1 -n local-cluster | true
+
+  oc delete identity users:user1 &>/dev/null
+  oc delete identity users:user2 &>/dev/null
+  oc delete identity users:admin &>/dev/null
+  oc delete user admin &>/dev/null
+  oc delete user user1 &>/dev/null
+  oc delete user user2 &>/dev/null
+  oc delete secret htpass-user-test -n openshift-config &>/dev/null
+
+  cat >oauth_del.yaml <<EOL
+apiVersion: config.openshift.io/v1
+kind: OAuth
+metadata:
+    name: cluster
+spec: {}
+EOL
+  oc apply -f oauth_del.yaml
+  rm -rf oauth_del.yaml
+
+}
+
+clean
 create_test_users
 create_auth_provider
 create_role_bindings
