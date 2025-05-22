@@ -37,6 +37,7 @@ data:
       - cluster:container_cpu_usage:ratio
       - cluster:container_spec_cpu_shares:ratio
       - cluster:cpu_usage_cores:sum
+      - cluster:health:components:map
       - cluster:memory_usage_bytes:sum
       - cluster:memory_usage:ratio
       - cluster:node_cpu:ratio
@@ -44,6 +45,7 @@ data:
       - cluster:policy_governance_info:propagated_noncompliant_count
       - cluster:usage:resources:sum
       - cnv:vmi_status_running:count
+      - console_url
       - container_cpu_cfs_periods_total
       - container_cpu_cfs_throttled_periods_total
       - container_spec_cpu_quota
