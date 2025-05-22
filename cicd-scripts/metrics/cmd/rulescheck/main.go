@@ -25,6 +25,7 @@ func main() {
 	scrapeConfigsArg := flag.String("scrape-configs", "", "Path to the comma separated scrape_configs")
 	rulesArg := flag.String("rules", "", "Comma separated prometheus rules files")
 	ignoreDupRulesArg := flag.String("ignore-duplicated-rules", "", "Comma separated ignored duplicated rules")
+	ignoredRulesMissingDefArg := flag.String("ignored-rules-missing-definition", "", "Comma separated ignored rules whose definition is missing")
 	greenCheckMark := "\033[32m" + "✓" + "\033[0m"
 	flag.Parse()
 
@@ -97,8 +98,10 @@ func main() {
 		os.Exit(1)
 	}
 
-	if len(removed) > 0 {
-		fmt.Println("Metrics found in scrape configs but missing in rules: ", removed)
+	ignoredRulesMissingDef := strings.Split(*ignoredRulesMissingDefArg, ",")
+	rulesWithoutIgnoredMissingDef := slices.DeleteFunc(slices.Clone(removed), func(s string) bool { return s == "" || slices.Contains(ignoredRulesMissingDef, s) })
+	if len(rulesWithoutIgnoredMissingDef) > 0 {
+		fmt.Println("Metrics found in scrape configs but missing in rules: ", rulesWithoutIgnoredMissingDef)
 		os.Exit(1)
 	}
 
