@@ -35,6 +35,7 @@ const (
 	nameUserWorkloadInstrumentation   = "userWorkloadInstrumentation"
 	nameUserWorkloadMetricsCollection = "userWorkloadMetricsCollection"
 	nameMetricsHubHostname            = "metricsHubHostname"
+	namePLatformMetricsUI             = "observabilityUIMetrics"
 )
 
 type MCOARendererOptions struct {
@@ -372,6 +373,11 @@ func (r *MCORenderer) renderAddonDeploymentConfig(
 			if cs.Platform.Metrics.Collection.Enabled {
 				fqdn := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.PrometheusAgentCRDName)
 				appendCustomVar(aodc, namePlatformMetricsCollection, fqdn)
+
+				if cs.Platform.Metrics.UI.Enabled {
+					fqdn := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.UIPluginsCRDName)
+					appendCustomVar(aodc, namePLatformMetricsUI, fqdn)
+				}
 			}
 			if cs.Platform.Analytics.IncidentDetection.Enabled {
 				fqdn := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.UIPluginsCRDName)
