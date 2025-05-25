@@ -51,11 +51,11 @@ require (
 	k8s.io/klog v1.0.0
 	k8s.io/kubectl v0.29.3
 	k8s.io/utils v0.0.0-20240502163921-fe8a2dddb1d0
-	open-cluster-management.io/addon-framework v0.9.3
-	open-cluster-management.io/api v0.13.0
+	open-cluster-management.io/addon-framework v0.12.0
+	open-cluster-management.io/api v0.16.0
 	open-cluster-management.io/config-policy-controller v0.14.0
 	open-cluster-management.io/governance-policy-propagator v0.12.0
-	sigs.k8s.io/controller-runtime v0.18.1-0.20240626171621-700befecdffa
+	sigs.k8s.io/controller-runtime v0.18.4
 	sigs.k8s.io/kube-storage-version-migrator v0.0.6-0.20230721195810-5c8923c5ff96
 	sigs.k8s.io/kustomize/api v0.17.2
 	sigs.k8s.io/kustomize/kyaml v0.17.1
@@ -208,14 +208,15 @@ require (
 	k8s.io/kube-aggregator v0.30.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20240521193020-835d969ad83a // indirect
 	open-cluster-management.io/multicloud-operators-subscription v0.11.0 // indirect
-	open-cluster-management.io/sdk-go v0.13.1-0.20240416030555-aa744f426379 // indirect
+	open-cluster-management.io/sdk-go v0.16.0 // indirect
 	sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.29.0 // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.4.1 // indirect
 )
 
 // Stolostron fork of the controller-filtered-cache upgraded to k8s libs up to 0.29.x and Go up to 1.21.
-replace github.com/IBM/controller-filtered-cache => github.com/stolostron/controller-filtered-cache v0.0.0-20240605101128-e033f9b9a990
-
-// fix for adding config-policy-controller
-replace github.com/imdario/mergo => dario.cat/mergo v0.3.16
+replace (
+	github.com/IBM/controller-filtered-cache => github.com/stolostron/controller-filtered-cache v0.0.0-20240605101128-e033f9b9a990
+	github.com/imdario/mergo => dario.cat/mergo v0.3.16
+	sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.18.1-0.20240626171621-700befecdffa
+)

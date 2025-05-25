@@ -1,5 +1,6 @@
 resources:
 - dash-acm-clusters-overview.yaml
+- dash-acm-incidents-overview.yaml
 - dash-acm-optimization-overview.yaml
 - dash-cluster-rsrc-use.yaml
 - dash-k8s-apiserver.yaml
