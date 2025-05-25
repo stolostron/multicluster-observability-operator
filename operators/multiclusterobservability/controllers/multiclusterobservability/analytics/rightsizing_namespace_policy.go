@@ -30,32 +30,35 @@ func createOrUpdatePrometheusRulePolicy(
 			Namespace: rsNamespace,
 		},
 	}
-	log.Info("RS - Policy object created")
 
+	// Declare name, namespace in common log context and use it later everywhere
+	logCtx := []any{"Namespace:", policy.Namespace, ", Name:", policy.Name}
+
+	// Check if the policy exists
 	errPolicy := c.Get(ctx, types.NamespacedName{
 		Name:      policy.Name,
 		Namespace: policy.Namespace,
 	}, policy)
-
 	if errPolicy != nil && !errors.IsNotFound(errPolicy) {
-		log.Error(errPolicy, "RS - Error retrieving Policy")
+		log.Error(errPolicy, "RS - Error retrieving PrometheusRulePolicy", logCtx...)
 		return errPolicy
 	}
-	// Marshal the PrometheusRule object into JSON
+
+	// Convert PrometheusRule to unstructured JSON
 	objMap, err := runtime.DefaultUnstructuredConverter.ToUnstructured(&prometheusRule)
 	if err != nil {
-		log.Error(err, "error converting runtime.Object to unstructured")
+		log.Error(err, "RS - Error converting PrometheusRule to unstructured")
 		return err
 	}
 
 	// Marshal the map back to JSON
 	promRuleJSON, err := json.Marshal(objMap)
 	if err != nil {
-		log.Error(err, "RS - Error marshaling ConfigurationPolicy")
+		log.Error(err, "RS - Error marshaling PrometheusRule")
 		return err
 	}
 
-	// Define the ConfigurationPolicy object
+	// Define the ConfigurationPolicy
 	configPolicy := configpolicyv1.ConfigurationPolicy{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "policy.open-cluster-management.io/v1",
@@ -84,13 +87,14 @@ func createOrUpdatePrometheusRulePolicy(
 		},
 	}
 
-	// Marshal the ConfigurationPolicy object into JSON
+	// Marshal the ConfigurationPolicy to JSON
 	configPolicyJSON, err := json.Marshal(configPolicy)
 	if err != nil {
 		log.Error(err, "RS - Error marshaling ConfigurationPolicy")
 		return err
 	}
 
+	// Set Policy spec
 	policy.Spec = policyv1.PolicySpec{
 		RemediationAction: policyv1.Enforce,
 		Disabled:          false,
@@ -104,32 +108,17 @@ func createOrUpdatePrometheusRulePolicy(
 	}
 
 	if errors.IsNotFound(errPolicy) {
-		log.Info("RS - PrometheusRulePolicy not found, creating a new one",
-			"namespace", rsNamespace, "name", rsPrometheusRulePolicyName)
-
-		if client.IgnoreNotFound(errPolicy) != nil {
-			log.Error(errPolicy, "RS - Unable to fetch PrometheusRulePolicy")
-			return errPolicy
-		}
-
 		if err = c.Create(ctx, policy); err != nil {
-			log.Error(err, "Failed to create PrometheusRulePolicy")
+			log.Error(err, "RS - Failed to create PrometheusRulePolicy", logCtx...)
 			return err
 		}
-
-		log.Info("RS - Created PrometheusRulePolicy",
-			"namespace", rsNamespace, "name", rsPrometheusRulePolicyName)
+		log.Info("RS - Created PrometheusRulePolicy successfully", logCtx...)
 	} else {
-		log.Info("RS - PrometheusRulePolicy already exists, updating data",
-			"namespace", rsNamespace, "name", rsPrometheusRulePolicyName)
-
-		if err = c.Update(ctx, policy); err != nil {
-			log.Error(err, "Failed to update PrometheusRulePolicy")
+		if err := c.Update(ctx, policy); err != nil {
+			log.Error(err, "RS - Failed to update PrometheusRulePolicy", logCtx...)
 			return err
 		}
-
-		log.Info("RS - PrometheusRulePolicy updated successfully",
-			"namespace", rsNamespace, "name", rsPrometheusRulePolicyName)
+		log.Info("RS - Updated PrometheusRulePolicy successfully", logCtx...)
 	}
 
 	return nil

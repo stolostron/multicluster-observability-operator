@@ -22,41 +22,43 @@ func createPlacementBinding(ctx context.Context, c client.Client) error {
 			Namespace: rsNamespace,
 		},
 	}
+
+	// Declare name, namespace in common log context and use it later everywhere
+	logCtx := []any{"Namespace:", placementBinding.Namespace, ", Name:", placementBinding.Name}
+
+	// Fetch the PlacementBinding
 	err := c.Get(ctx, types.NamespacedName{
 		Namespace: placementBinding.Namespace,
 		Name:      placementBinding.Name,
 	}, placementBinding)
 
-	if err != nil && errors.IsNotFound(err) {
+	if err != nil {
+		if errors.IsNotFound(err) {
+			placementBinding.PlacementRef = policyv1.PlacementSubject{
+				Name:     rsPlacementName,
+				APIGroup: "cluster.open-cluster-management.io",
+				Kind:     "Placement",
+			}
+			placementBinding.Subjects = []policyv1.Subject{
+				{
+					Name:     rsPrometheusRulePolicyName,
+					APIGroup: "policy.open-cluster-management.io",
+					Kind:     "Policy",
+				},
+			}
 
-		log.Info("RS - PlacementBinding not found, creating a new one",
-			" Name:", placementBinding.Name,
-			" Namespace:", placementBinding.Namespace,
-		)
-		if client.IgnoreNotFound(err) != nil {
-			log.Error(err, "RS - Unable to fetch PlacementBinding")
+			if err := c.Create(ctx, placementBinding); err != nil {
+				log.Error(err, "RS - Failed to create PlacementBinding", logCtx...)
+				return err
+			}
+			log.Info("RS - PlacementBinding created successfully", logCtx...)
+		} else {
+			log.Error(err, "RS - Failed to fetch PlacementBinding", logCtx...)
 			return err
 		}
-
-		placementBinding.PlacementRef = policyv1.PlacementSubject{
-			Name:     rsPlacementName,
-			APIGroup: "cluster.open-cluster-management.io",
-			Kind:     "Placement",
-		}
-		placementBinding.Subjects = []policyv1.Subject{
-			{
-				Name:     rsPrometheusRulePolicyName,
-				APIGroup: "policy.open-cluster-management.io",
-				Kind:     "Policy",
-			},
-		}
-
-		if err = c.Create(ctx, placementBinding); err != nil {
-			log.Error(err, "Failed to create Placement")
-			return err
-		}
-		log.Info("RS - PlacementBinding created", "PlacementBinding", rsPlacementBindingName)
+	} else {
+		log.Info("RS - PlacementBinding already exists, skipping creation", logCtx...)
 	}
-	log.Info("RS - PlacementBindingCreation completed")
+
 	return nil
 }

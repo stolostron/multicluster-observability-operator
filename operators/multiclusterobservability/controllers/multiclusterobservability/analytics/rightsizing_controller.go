@@ -102,20 +102,20 @@ func CreateRightSizingComponent(
 		// Get configmap
 		cm := &corev1.ConfigMap{}
 		if err := c.Get(ctx, client.ObjectKey{Name: rsConfigMapName, Namespace: config.GetDefaultNamespace()}, cm); err != nil {
-			log.Error(err, "Failed to get RS ConfigMap")
+			log.Error(err, "RS - Failed to get existing ConfigMap")
 			return nil, err
 		}
 
 		// Get configmap data into specified structure
 		configData, err := GetRightSizingConfigData(cm)
 		if err != nil {
-			log.Error(err, "Failed to extract RightSizingConfigData")
+			log.Error(err, "RS - Failed to extract RightSizingConfigData")
 			return nil, err
 		}
 
 		// If NamespaceBinding has been updated apply the Policy Placement Placementbinding again
 		if err := applyRSNamespaceConfigMapChanges(ctx, c, configData); err != nil {
-			log.Error(err, "Failed to apply RS Namespace ConfigMap Changes")
+			log.Error(err, "RS - Failed to apply RS Namespace ConfigMap Changes")
 			return nil, err
 		}
 	}

@@ -28,36 +28,35 @@ func createUpdatePlacement(ctx context.Context, c client.Client, placementConfig
 		Name:      rsPlacementName,
 	}
 
+	// Declare name, namespace in common log context and use it later everywhere
+	logCtx := []any{"Namespace:", placement.Namespace, ", Name:", placement.Name}
+
 	err := c.Get(ctx, key, placement)
-	if errors.IsNotFound(err) {
-		log.Info("RS - Placement not found, creating a new one",
-			" Name:", placement.Name,
-			" Namespace:", placement.Namespace,
-		)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			placement.Spec = placementConfig.Spec
 
-		placement.Spec = placementConfig.Spec
+			// Create placement
+			if err := c.Create(ctx, placement); err != nil {
+				log.Error(err, "RS - Failed to create Placement", logCtx...)
+				return err
+			}
 
-		if err := c.Create(ctx, placement); err != nil {
-			log.Error(err, "Failed to create Placement")
+			log.Info("RS - Placement created successfully", logCtx...)
+			return nil
+		} else {
+			log.Error(err, "RS - Unable to fetch Placement", logCtx...)
 			return err
 		}
-
-		log.Info("RS - Placement created", "Placement", placement.Name)
-		return nil
 	}
 
-	if err != nil {
-		log.Error(err, "RS - Unable to fetch Placement")
-		return err
-	}
-
+	// Update existing placement
 	placement.Spec = placementConfig.Spec
-
 	if err := c.Update(ctx, placement); err != nil {
-		log.Error(err, "Failed to update Placement")
+		log.Error(err, "RS - Failed to update Placement", logCtx...)
 		return err
 	}
 
-	log.Info("RS - Placement updated ", "Name:", placement.Name)
+	log.Info("RS - Placement updated successfully", logCtx...)
 	return nil
 }

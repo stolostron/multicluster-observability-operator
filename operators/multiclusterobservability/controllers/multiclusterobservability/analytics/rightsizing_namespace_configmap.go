@@ -31,34 +31,35 @@ func EnsureRSNamespaceConfigMapExists(ctx context.Context, c client.Client) erro
 		},
 	}
 
-	// Fetch the ConfigMap
+	// Declare name, namespace in common log context and use it later everywhere
+	logCtx := []any{"Namespace: ", existingCM.Namespace, ", Name:", existingCM.Name}
+
+	// Get the configmap
 	err := c.Get(ctx, types.NamespacedName{
-		Name:      rsConfigMapName,
-		Namespace: config.GetDefaultNamespace(),
+		Name:      existingCM.Name,
+		Namespace: existingCM.Namespace,
 	}, existingCM)
 
-	// If the ConfigMap doesn't exist, create it
-	if err != nil && errors.IsNotFound(err) {
-		log.Info("RS - Creating a new test config", " Name:", rsConfigMapName, " Namespace:", config.GetDefaultNamespace())
-		if client.IgnoreNotFound(err) != nil {
-			log.Error(err, "RS - Unable to fetch ConfigMap")
-			return err
+	if err != nil {
+		if errors.IsNotFound(err) {
+
+			existingCM.Data = GetDefaultRSNamespaceConfig()
+
+			// Create the Configmap
+			if err := c.Create(ctx, existingCM); err != nil {
+				log.Error(err, "RS - Failed to create ConfigMap", logCtx...)
+				return err
+			}
+
+			log.Info("RS - ConfigMap created successfully", logCtx...)
+			return nil
 		}
 
-		// Get configmap data
-		existingCM.Data = GetDefaultRSNamespaceConfig()
-
-		// Create the ConfigMap
-		err := c.Create(ctx, existingCM)
-		if err != nil {
-			log.Error(err, "RS - Failed to create ConfigMap", "ConfigMap", rsConfigMapName)
-			return err
-		}
-		log.Info("RS - Created configMap completed")
-	} else {
-		log.Info("RS - ConfigMap already exists, skipping creation", " Name:", rsConfigMapName)
+		log.Error(err, "RS - Failed to fetch ConfigMap", logCtx...)
+		return err
 	}
 
+	log.Info("RS - ConfigMap already exists, skipping creation", logCtx...)
 	return nil
 }
 
@@ -97,15 +98,15 @@ func GetRightSizingConfigData(cm *corev1.ConfigMap) (RSNamespaceConfigMapData, e
 
 	// Unmarshal namespaceFilterCriteria
 	if err := yaml.Unmarshal([]byte(cm.Data["prometheusRuleConfig"]), &configData.PrometheusRuleConfig); err != nil {
-		log.Error(err, "Failed to unmarshal prometheusRuleConfig")
-		return configData, fmt.Errorf("Failed to unmarshal prometheusRuleConfig: %v", err)
+		log.Error(err, "RS - Failed to unmarshal prometheusRuleConfig")
+		return configData, fmt.Errorf("failed to unmarshal prometheusRuleConfig: %v", err)
 	}
 
 	// Unmarshal placementConfiguration
 	if cm.Data["placementConfiguration"] != "" {
 		if err := yaml.Unmarshal([]byte(cm.Data["placementConfiguration"]), &configData.PlacementConfiguration); err != nil {
-			log.Error(err, "Failed to unmarshal placementConfiguration")
-			return configData, fmt.Errorf("Failed to unmarshal placementConfiguration: %v", err)
+			log.Error(err, "RS - Failed to unmarshal placementConfiguration")
+			return configData, fmt.Errorf("failed to unmarshal placementConfiguration: %v", err)
 		}
 	}
 
@@ -121,13 +122,13 @@ func GetNamespaceRSConfigMapPredicateFunc(ctx context.Context, c client.Client) 
 	processConfigMap := func(cm *corev1.ConfigMap) bool {
 		configData, err := GetRightSizingConfigData(cm)
 		if err != nil {
-			log.Error(err, "Failed to extract RightSizingConfigData")
+			log.Error(err, "RS - Failed to extract RightSizingConfigData")
 			return false
 		}
 
 		// Apply changes based on the config map
 		if err := applyRSNamespaceConfigMapChanges(ctx, c, configData); err != nil {
-			log.Error(err, "Failed to apply RS Namespace ConfigMap Changes")
+			log.Error(err, "RS - Failed to apply RS Namespace ConfigMap Changes")
 			return false
 		}
 		return true
@@ -152,11 +153,11 @@ func GetNamespaceRSConfigMapPredicateFunc(ctx context.Context, c client.Client) 
 			newCM, newOK := e.ObjectNew.(*corev1.ConfigMap)
 
 			if oldOK && newOK && reflect.DeepEqual(oldCM.Data, newCM.Data) {
-				log.Info("No changes detected in ConfigMap data, skipping update")
+				log.Info("RS - No changes detected in ConfigMap data, skipping update")
 				return true
 			}
 
-			log.Info("ConfigMap data has changed, processing update")
+			log.Info("RS - ConfigMap data has changed, processing update")
 			return processConfigMap(newCM)
 		},
 	}
@@ -166,25 +167,22 @@ func applyRSNamespaceConfigMapChanges(ctx context.Context, c client.Client, conf
 
 	prometheusRule, err := generatePrometheusRule(configData)
 	if err != nil {
-		log.Error(err, "Error while calling generatePrometheusRule")
+		log.Error(err, "RS - Error while calling generatePrometheusRule")
 		return err
 	}
 
 	err = createOrUpdatePrometheusRulePolicy(ctx, c, prometheusRule)
 	if err != nil {
-		log.Error(err, "Error while calling createOrUpdatePrometheusRulePolicy")
 		return err
 	}
 
 	err = createUpdatePlacement(ctx, c, configData.PlacementConfiguration)
 	if err != nil {
-		log.Error(err, "Error while calling createUpdatePlacement")
 		return err
 	}
 
 	err = createPlacementBinding(ctx, c)
 	if err != nil {
-		log.Error(err, "Error while calling createPlacementBinding")
 		return err
 	}
 	log.Info("RS - RSNamespaceConfigMap Changes Applied")

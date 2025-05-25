@@ -55,10 +55,11 @@ func cleanupRSNamespaceResources(ctx context.Context, c client.Client, namespace
 		)
 	}
 
+	// Delete related resources
 	for _, resource := range resourcesToDelete {
 		err := c.Delete(ctx, resource)
 		if err != nil && !errors.IsNotFound(err) {
-			log.Error(err, "Failed to delete resource", "name", resource.GetName())
+			log.Error(err, "RS - Failed to delete resource", "name", resource.GetName())
 		}
 	}
 	log.Info("RS - Cleanup success.")
