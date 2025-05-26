@@ -13,7 +13,7 @@ import (
 func FormatYAML[T RSPrometheusRuleConfig | clusterv1beta1.Placement](data T) string {
 	yamlData, err := yaml.Marshal(data)
 	if err != nil {
-		log.Error(err, "RS - Error marshaling data to YAML: %v")
+		log.Error(err, "rs - error marshaling data to yaml: %v")
 		return ""
 	}
 	return string(yamlData)

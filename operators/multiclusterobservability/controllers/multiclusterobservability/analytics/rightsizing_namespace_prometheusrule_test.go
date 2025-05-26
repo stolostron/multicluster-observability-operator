@@ -70,7 +70,7 @@ func TestGeneratePrometheusRule_BothNamespaceInclusionAndExclusion(t *testing.T)
 
 	_, err := generatePrometheusRule(config)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "only one of inclusion or exclusion criteria allowed for namespaceFilterCriteria")
+	assert.Contains(t, err.Error(), "only one of inclusion or exclusion criteria allowed for namespacefiltercriteria")
 }
 
 func TestGeneratePrometheusRule_LabelEnvInclusionAndExclusion(t *testing.T) {

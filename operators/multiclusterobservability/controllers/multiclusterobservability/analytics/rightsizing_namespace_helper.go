@@ -37,7 +37,7 @@ func getRightSizingNamespaceConfig(mco *mcov1beta2.MultiClusterObservability) (b
 
 // cleanupRSNamespaceResources cleans up the resources created for namespace right-sizing
 func cleanupRSNamespaceResources(ctx context.Context, c client.Client, namespace string, bindingUpdated bool) {
-	log.Info("RS - Cleaning up NamespaceRightSizing resources if exist")
+	log.V(1).Info("rs - cleaning up namespace resources if exist")
 
 	var resourcesToDelete []client.Object
 	commonResources := []client.Object{
@@ -59,8 +59,8 @@ func cleanupRSNamespaceResources(ctx context.Context, c client.Client, namespace
 	for _, resource := range resourcesToDelete {
 		err := c.Delete(ctx, resource)
 		if err != nil && !errors.IsNotFound(err) {
-			log.Error(err, "RS - Failed to delete resource", "name", resource.GetName())
+			log.Error(err, "rs - failed to delete resource", "name", resource.GetName())
 		}
 	}
-	log.Info("RS - Cleanup success.")
+	log.Info("rs - cleanup success")
 }

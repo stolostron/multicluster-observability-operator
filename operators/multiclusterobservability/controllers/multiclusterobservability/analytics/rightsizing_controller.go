@@ -6,6 +6,7 @@ package analytics
 
 import (
 	"context"
+	"fmt"
 
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
@@ -60,7 +61,7 @@ func CreateRightSizingComponent(
 	c client.Client,
 	mco *mcov1beta2.MultiClusterObservability,
 ) (*ctrl.Result, error) {
-	log.Info("RS - Inside CreateRightSizingComponent")
+	log.V(1).Info("rs - inside create rs component")
 
 	//  Get right-sizing namespace configuration
 	isRightSizingNamespaceEnabled, newBinding := getRightSizingNamespaceConfig(mco)
@@ -73,7 +74,7 @@ func CreateRightSizingComponent(
 	// Check if right-sizing namespace feature enabled or not
 	// If disabled then cleanup related resources
 	if !isRightSizingNamespaceEnabled {
-		log.Info("RS - NamespaceRightSizing feature not enabled")
+		log.V(1).Info("rs - namespace rs feature not enabled")
 		cleanupRSNamespaceResources(ctx, c, rsNamespace, false)
 		rsNamespace = newBinding
 		isEnabled = false
@@ -102,24 +103,21 @@ func CreateRightSizingComponent(
 		// Get configmap
 		cm := &corev1.ConfigMap{}
 		if err := c.Get(ctx, client.ObjectKey{Name: rsConfigMapName, Namespace: config.GetDefaultNamespace()}, cm); err != nil {
-			log.Error(err, "RS - Failed to get existing ConfigMap")
-			return nil, err
+			return nil, fmt.Errorf("rs - failed to get existing configmap: %w", err)
 		}
 
 		// Get configmap data into specified structure
 		configData, err := GetRightSizingConfigData(cm)
 		if err != nil {
-			log.Error(err, "RS - Failed to extract RightSizingConfigData")
-			return nil, err
+			return nil, fmt.Errorf("rs - failed to extract config data: %w", err)
 		}
 
 		// If NamespaceBinding has been updated apply the Policy Placement Placementbinding again
 		if err := applyRSNamespaceConfigMapChanges(ctx, c, configData); err != nil {
-			log.Error(err, "RS - Failed to apply RS Namespace ConfigMap Changes")
-			return nil, err
+			return nil, fmt.Errorf("rs - failed to apply configmap changes: %w", err)
 		}
 	}
 
-	log.Info("RS - CreateRightSizingComponent task completed")
+	log.Info("rs - create component task completed")
 	return nil, nil
 }

@@ -7,6 +7,7 @@ package analytics
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -32,7 +33,7 @@ func createOrUpdatePrometheusRulePolicy(
 	}
 
 	// Declare name, namespace in common log context and use it later everywhere
-	logCtx := []any{"Namespace:", policy.Namespace, ", Name:", policy.Name}
+	logCtx := []any{"namespace:", policy.Namespace, ", name:", policy.Name}
 
 	// Check if the policy exists
 	errPolicy := c.Get(ctx, types.NamespacedName{
@@ -40,22 +41,19 @@ func createOrUpdatePrometheusRulePolicy(
 		Namespace: policy.Namespace,
 	}, policy)
 	if errPolicy != nil && !errors.IsNotFound(errPolicy) {
-		log.Error(errPolicy, "RS - Error retrieving PrometheusRulePolicy", logCtx...)
-		return errPolicy
+		return fmt.Errorf("rs - error retrieving prometheusrulepolicy: %w", errPolicy)
 	}
 
 	// Convert PrometheusRule to unstructured JSON
 	objMap, err := runtime.DefaultUnstructuredConverter.ToUnstructured(&prometheusRule)
 	if err != nil {
-		log.Error(err, "RS - Error converting PrometheusRule to unstructured")
-		return err
+		return fmt.Errorf("rs - error converting prometheusrule to unstructured: %w", err)
 	}
 
 	// Marshal the map back to JSON
 	promRuleJSON, err := json.Marshal(objMap)
 	if err != nil {
-		log.Error(err, "RS - Error marshaling PrometheusRule")
-		return err
+		return fmt.Errorf("rs - error marshaling prometheusrule: %w", err)
 	}
 
 	// Define the ConfigurationPolicy
@@ -90,7 +88,6 @@ func createOrUpdatePrometheusRulePolicy(
 	// Marshal the ConfigurationPolicy to JSON
 	configPolicyJSON, err := json.Marshal(configPolicy)
 	if err != nil {
-		log.Error(err, "RS - Error marshaling ConfigurationPolicy")
 		return err
 	}
 
@@ -109,16 +106,14 @@ func createOrUpdatePrometheusRulePolicy(
 
 	if errors.IsNotFound(errPolicy) {
 		if err = c.Create(ctx, policy); err != nil {
-			log.Error(err, "RS - Failed to create PrometheusRulePolicy", logCtx...)
-			return err
+			return fmt.Errorf("rs - failed to create prometheusrulepolicy: %w", err)
 		}
-		log.Info("RS - Created PrometheusRulePolicy successfully", logCtx...)
+		log.Info("rs - created prometheusrulepolicy successfully", logCtx...)
 	} else {
 		if err := c.Update(ctx, policy); err != nil {
-			log.Error(err, "RS - Failed to update PrometheusRulePolicy", logCtx...)
-			return err
+			return fmt.Errorf("rs - failed to update prometheusrulepolicy: %w", err)
 		}
-		log.Info("RS - Updated PrometheusRulePolicy successfully", logCtx...)
+		log.Info("rs - updated prometheusrulepolicy successfully", logCtx...)
 	}
 
 	return nil

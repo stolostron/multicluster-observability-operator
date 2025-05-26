@@ -6,6 +6,7 @@ package analytics
 
 import (
 	"context"
+	"fmt"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -48,16 +49,14 @@ func createPlacementBinding(ctx context.Context, c client.Client) error {
 			}
 
 			if err := c.Create(ctx, placementBinding); err != nil {
-				log.Error(err, "RS - Failed to create PlacementBinding", logCtx...)
-				return err
+				return fmt.Errorf("rs - failed to create placementbinding: %w", err)
 			}
-			log.Info("RS - PlacementBinding created successfully", logCtx...)
+			log.Info("rs - placementbinding created successfully", logCtx...)
 		} else {
-			log.Error(err, "RS - Failed to fetch PlacementBinding", logCtx...)
-			return err
+			return fmt.Errorf("rs - failed to fetch placementbinding: %w", err)
 		}
 	} else {
-		log.Info("RS - PlacementBinding already exists, skipping creation", logCtx...)
+		log.V(1).Info("rs - placementbinding already exists, skipping creation", logCtx...)
 	}
 
 	return nil

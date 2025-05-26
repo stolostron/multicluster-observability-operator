@@ -6,6 +6,7 @@ package analytics
 
 import (
 	"context"
+	"fmt"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -38,25 +39,22 @@ func createUpdatePlacement(ctx context.Context, c client.Client, placementConfig
 
 			// Create placement
 			if err := c.Create(ctx, placement); err != nil {
-				log.Error(err, "RS - Failed to create Placement", logCtx...)
-				return err
+				return fmt.Errorf("rs - failed to create placement: %w", err)
 			}
 
-			log.Info("RS - Placement created successfully", logCtx...)
+			log.Info("rs - placement created successfully", logCtx...)
 			return nil
 		} else {
-			log.Error(err, "RS - Unable to fetch Placement", logCtx...)
-			return err
+			return fmt.Errorf("rs - unable to fetch placement: %w", err)
 		}
 	}
 
 	// Update existing placement
 	placement.Spec = placementConfig.Spec
 	if err := c.Update(ctx, placement); err != nil {
-		log.Error(err, "RS - Failed to update Placement", logCtx...)
-		return err
+		return fmt.Errorf("rs - failed to update placement: %w", err)
 	}
 
-	log.Info("RS - Placement updated successfully", logCtx...)
+	log.Info("rs - placement updated successfully", logCtx...)
 	return nil
 }

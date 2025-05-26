@@ -398,7 +398,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	// create rightsizing component
 	result, err = analyticsctrl.CreateRightSizingComponent(ctx, r.Client, instance)
 	if result != nil {
-		return *result, err
+		return *result, fmt.Errorf("failed to create rightsizing component: %w", err)
 	}
 
 	if _, ok := os.LookupEnv("UNIT_TEST"); !ok && !isLegacyResourceRemoved {

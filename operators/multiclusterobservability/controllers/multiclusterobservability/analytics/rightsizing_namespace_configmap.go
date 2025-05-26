@@ -32,7 +32,7 @@ func EnsureRSNamespaceConfigMapExists(ctx context.Context, c client.Client) erro
 	}
 
 	// Declare name, namespace in common log context and use it later everywhere
-	logCtx := []any{"Namespace: ", existingCM.Namespace, ", Name:", existingCM.Name}
+	logCtx := []any{"namespace: ", existingCM.Namespace, ", name:", existingCM.Name}
 
 	// Get the configmap
 	err := c.Get(ctx, types.NamespacedName{
@@ -47,19 +47,16 @@ func EnsureRSNamespaceConfigMapExists(ctx context.Context, c client.Client) erro
 
 			// Create the Configmap
 			if err := c.Create(ctx, existingCM); err != nil {
-				log.Error(err, "RS - Failed to create ConfigMap", logCtx...)
-				return err
+				return fmt.Errorf("rs - failed to create configmap: %w", err)
 			}
 
-			log.Info("RS - ConfigMap created successfully", logCtx...)
+			log.Info("rs - configmap created successfully", logCtx...)
 			return nil
 		}
-
-		log.Error(err, "RS - Failed to fetch ConfigMap", logCtx...)
-		return err
+		return fmt.Errorf("rs - failed to fetch configmap: %w", err)
 	}
 
-	log.Info("RS - ConfigMap already exists, skipping creation", logCtx...)
+	log.V(1).Info("rs - configmap already exists, skipping creation", logCtx...)
 	return nil
 }
 
@@ -98,37 +95,34 @@ func GetRightSizingConfigData(cm *corev1.ConfigMap) (RSNamespaceConfigMapData, e
 
 	// Unmarshal namespaceFilterCriteria
 	if err := yaml.Unmarshal([]byte(cm.Data["prometheusRuleConfig"]), &configData.PrometheusRuleConfig); err != nil {
-		log.Error(err, "RS - Failed to unmarshal prometheusRuleConfig")
 		return configData, fmt.Errorf("failed to unmarshal prometheusRuleConfig: %v", err)
 	}
 
 	// Unmarshal placementConfiguration
 	if cm.Data["placementConfiguration"] != "" {
 		if err := yaml.Unmarshal([]byte(cm.Data["placementConfiguration"]), &configData.PlacementConfiguration); err != nil {
-			log.Error(err, "RS - Failed to unmarshal placementConfiguration")
 			return configData, fmt.Errorf("failed to unmarshal placementConfiguration: %v", err)
 		}
 	}
 
-	// Log or process the `configData` as needed
-	log.Info("RS - ConfigMap Data successfully unmarshalled")
+	log.V(1).Info("rs - configmap data successfully unmarshalled")
 
 	return configData, nil
 }
 
 func GetNamespaceRSConfigMapPredicateFunc(ctx context.Context, c client.Client) predicate.Funcs {
-	log.Info("RS - Watch for ConfigMap events set up started")
+	log.Info("rs - watch for ConfigMap events set up started")
 
 	processConfigMap := func(cm *corev1.ConfigMap) bool {
 		configData, err := GetRightSizingConfigData(cm)
 		if err != nil {
-			log.Error(err, "RS - Failed to extract RightSizingConfigData")
+			log.Error(err, "rs - failed to extract config data")
 			return false
 		}
 
 		// Apply changes based on the config map
 		if err := applyRSNamespaceConfigMapChanges(ctx, c, configData); err != nil {
-			log.Error(err, "RS - Failed to apply RS Namespace ConfigMap Changes")
+			log.Error(err, "rs - failed to apply configmap changes")
 			return false
 		}
 		return true
@@ -153,11 +147,11 @@ func GetNamespaceRSConfigMapPredicateFunc(ctx context.Context, c client.Client) 
 			newCM, newOK := e.ObjectNew.(*corev1.ConfigMap)
 
 			if oldOK && newOK && reflect.DeepEqual(oldCM.Data, newCM.Data) {
-				log.Info("RS - No changes detected in ConfigMap data, skipping update")
+				log.V(1).Info("rs - no changes detected in configmap data, skipping update")
 				return true
 			}
 
-			log.Info("RS - ConfigMap data has changed, processing update")
+			log.V(1).Info("rs - configmap data has changed, processing update")
 			return processConfigMap(newCM)
 		},
 	}
@@ -167,7 +161,6 @@ func applyRSNamespaceConfigMapChanges(ctx context.Context, c client.Client, conf
 
 	prometheusRule, err := generatePrometheusRule(configData)
 	if err != nil {
-		log.Error(err, "RS - Error while calling generatePrometheusRule")
 		return err
 	}
 
@@ -185,7 +178,7 @@ func applyRSNamespaceConfigMapChanges(ctx context.Context, c client.Client, conf
 	if err != nil {
 		return err
 	}
-	log.Info("RS - RSNamespaceConfigMap Changes Applied")
+	log.Info("rs - namespace configmap changes applied")
 
 	return nil
 }

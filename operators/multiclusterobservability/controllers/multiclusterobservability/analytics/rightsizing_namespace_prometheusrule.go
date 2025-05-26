@@ -91,7 +91,7 @@ func generatePrometheusRule(configData RSNamespaceConfigMapData) (monitoringv1.P
 func buildNamespaceFilter(nsConfig RSPrometheusRuleConfig) (string, error) {
 	ns := nsConfig.NamespaceFilterCriteria
 	if len(ns.InclusionCriteria) > 0 && len(ns.ExclusionCriteria) > 0 {
-		return "", fmt.Errorf("only one of inclusion or exclusion criteria allowed for namespaceFilterCriteria")
+		return "", fmt.Errorf("only one of inclusion or exclusion criteria allowed for namespacefiltercriteria")
 	}
 	if len(ns.InclusionCriteria) > 0 {
 		return fmt.Sprintf(`namespace=~"%s"`, strings.Join(ns.InclusionCriteria, "|")), nil
