@@ -406,12 +406,8 @@ var _ = Describe("", func() {
 		Expect(err).NotTo(HaveOccurred())
 		expectedKSClusterNames, err := utils.ListAvailableKSManagedClusterNames(testOptions)
 		Expect(err).NotTo(HaveOccurred())
-		expectClusterIdentifiers := append(expectedOCPClusterIDs, expectedKSClusterNames...)
-		missingClusters := slices.Clone(expectClusterIdentifiers)
-		klog.Infof("List of cluster IDs expected to send the alert is: %s", expectClusterIdentifiers)
-
-		// Ensure we have at least a managedCluster
-		Expect(expectClusterIdentifiers).To(Not(BeEmpty()))
+		var expectClusterIdentifiers []string
+		expectClusterIdentifiers = append(expectClusterIdentifiers, expectedOCPClusterIDs...)
 
 		// install watchdog PrometheusRule to *KS clusters
 		watchDogRuleKustomizationPath := "../../../examples/alerts/watchdog_rule"
@@ -419,6 +415,7 @@ var _ = Describe("", func() {
 		Expect(err).NotTo(HaveOccurred())
 		klog.Infof("List of cluster IDs to install the watchdog alert: %s", expectedKSClusterNames)
 		for _, ks := range expectedKSClusterNames {
+			promRuleAdded := false
 			for idx, mc := range testOptions.ManagedClusters {
 				if mc.Name == ks {
 					err = utils.Apply(
@@ -427,10 +424,22 @@ var _ = Describe("", func() {
 						testOptions.ManagedClusters[idx].KubeContext,
 						yamlB,
 					)
+					promRuleAdded = true
+					expectClusterIdentifiers = append(expectClusterIdentifiers, ks)
 					Expect(err).NotTo(HaveOccurred())
 				}
 			}
+			// If we couldn't find the credentials for the cluster and therefore
+			// unable to add the Prometheus rule, we skip the checking the cluster
+			if !promRuleAdded {
+				klog.Infof("WARNING: Credentials for cluster %s not found, not adding to the list of expected clusters", ks)
+			}
 		}
+
+		klog.Infof("List of cluster IDs expected to send the alert is: %s", expectClusterIdentifiers)
+		missingClusters := slices.Clone(expectClusterIdentifiers)
+		// Ensure we have at least a managedCluster
+		Expect(expectClusterIdentifiers).To(Not(BeEmpty()))
 
 		By("Checking Watchdog alerts are forwarded to the hub")
 		Eventually(func() error {
