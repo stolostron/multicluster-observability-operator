@@ -406,35 +406,36 @@ var _ = Describe("", func() {
 		Expect(err).NotTo(HaveOccurred())
 		expectedKSClusterNames, err := utils.ListAvailableKSManagedClusterNames(testOptions)
 		Expect(err).NotTo(HaveOccurred())
+		var expectClusterIdentifiers []string
+		expectClusterIdentifiers = append(expectClusterIdentifiers, expectedOCPClusterIDs...)
 
 		// install watchdog PrometheusRule to *KS clusters
 		watchDogRuleKustomizationPath := "../../../examples/alerts/watchdog_rule"
 		yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: watchDogRuleKustomizationPath})
 		Expect(err).NotTo(HaveOccurred())
 		klog.Infof("List of cluster IDs to install the watchdog alert: %s", expectedKSClusterNames)
-		for idx, ks := range expectedKSClusterNames {
+		for _, ks := range expectedKSClusterNames {
 			promRuleAdded := false
-			for ydx, mc := range testOptions.ManagedClusters {
+			for idx, mc := range testOptions.ManagedClusters {
 				if mc.Name == ks {
 					err = utils.Apply(
-						testOptions.ManagedClusters[ydx].ClusterServerURL,
-						testOptions.ManagedClusters[ydx].KubeConfig,
-						testOptions.ManagedClusters[ydx].KubeContext,
+						testOptions.ManagedClusters[idx].ClusterServerURL,
+						testOptions.ManagedClusters[idx].KubeConfig,
+						testOptions.ManagedClusters[idx].KubeContext,
 						yamlB,
 					)
 					promRuleAdded = true
+					expectClusterIdentifiers = append(expectClusterIdentifiers, ks)
 					Expect(err).NotTo(HaveOccurred())
 				}
 			}
 			// If we couldn't find the credentials for the cluster and therefore
 			// unable to add the Prometheus rule, we skip the checking the cluster
 			if !promRuleAdded {
-				klog.Infof("WARNING: Credentials for cluster %s not found, removing from list of expected clusters", ks)
-				expectedKSClusterNames = slices.Delete(expectedKSClusterNames, idx, idx+1)
+				klog.Infof("WARNING: Credentials for cluster %s not found, not adding to the list of expected clusters", ks)
 			}
 		}
 
-		expectClusterIdentifiers := append(expectedOCPClusterIDs, expectedKSClusterNames...)
 		klog.Infof("List of cluster IDs expected to send the alert is: %s", expectClusterIdentifiers)
 		missingClusters := slices.Clone(expectClusterIdentifiers)
 		// Ensure we have at least a managedCluster
