@@ -1,0 +1,3 @@
+resources:
+- dash-acm-right-sizing-namespace.yaml
+- scrape-config.yaml

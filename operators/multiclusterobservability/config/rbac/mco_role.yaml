@@ -384,3 +384,26 @@ rules:
   - get
   - list
   - watch
+- apiGroups:
+  - policy.open-cluster-management.io
+  resources:
+  - policies
+  - placementbindings
+  verbs:
+  - get
+  - list
+  - create
+  - update
+  - watch
+  - delete
+- apiGroups:
+  - cluster.open-cluster-management.io
+  resources:
+  - placements
+  verbs:
+  - get
+  - list
+  - create
+  - update
+  - watch
+  - delete
