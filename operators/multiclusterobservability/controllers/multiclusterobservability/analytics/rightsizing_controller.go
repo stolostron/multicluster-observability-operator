@@ -12,7 +12,6 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	corev1 "k8s.io/api/core/v1"
 	clusterv1beta1 "open-cluster-management.io/api/cluster/v1beta1"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
@@ -60,7 +59,7 @@ func CreateRightSizingComponent(
 	ctx context.Context,
 	c client.Client,
 	mco *mcov1beta2.MultiClusterObservability,
-) (*ctrl.Result, error) {
+) error {
 	log.V(1).Info("rs - inside create rs component")
 
 	//  Get right-sizing namespace configuration
@@ -78,7 +77,7 @@ func CreateRightSizingComponent(
 		cleanupRSNamespaceResources(ctx, c, rsNamespace, false)
 		rsNamespace = newBinding
 		isEnabled = false
-		return nil, nil
+		return nil
 	}
 
 	// Set the flag if namespaceBindingUpdated
@@ -93,7 +92,7 @@ func CreateRightSizingComponent(
 
 	// Creating configmap with default values
 	if err := EnsureRSNamespaceConfigMapExists(ctx, c); err != nil {
-		return nil, err
+		return err
 	}
 
 	if namespaceBindingUpdated {
@@ -103,21 +102,21 @@ func CreateRightSizingComponent(
 		// Get configmap
 		cm := &corev1.ConfigMap{}
 		if err := c.Get(ctx, client.ObjectKey{Name: rsConfigMapName, Namespace: config.GetDefaultNamespace()}, cm); err != nil {
-			return nil, fmt.Errorf("rs - failed to get existing configmap: %w", err)
+			return fmt.Errorf("rs - failed to get existing configmap: %w", err)
 		}
 
 		// Get configmap data into specified structure
 		configData, err := GetRightSizingConfigData(cm)
 		if err != nil {
-			return nil, fmt.Errorf("rs - failed to extract config data: %w", err)
+			return fmt.Errorf("rs - failed to extract config data: %w", err)
 		}
 
 		// If NamespaceBinding has been updated apply the Policy Placement Placementbinding again
 		if err := applyRSNamespaceConfigMapChanges(ctx, c, configData); err != nil {
-			return nil, fmt.Errorf("rs - failed to apply configmap changes: %w", err)
+			return fmt.Errorf("rs - failed to apply configmap changes: %w", err)
 		}
 	}
 
 	log.Info("rs - create component task completed")
-	return nil, nil
+	return nil
 }

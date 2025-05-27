@@ -8,7 +8,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -79,9 +78,8 @@ func TestCreateRightSizingComponent_FeatureEnabledWithNamespaceChange(t *testing
 		WithObjects(mco, configMap).
 		Build()
 
-	result, err := CreateRightSizingComponent(context.TODO(), client, mco)
+	err := CreateRightSizingComponent(context.TODO(), client, mco)
 	require.NoError(t, err)
-	assert.Nil(t, result)
 }
 
 func TestCreateRightSizingComponent_FeatureEnabled_NoNamespaceChange(t *testing.T) {
@@ -97,9 +95,8 @@ func TestCreateRightSizingComponent_FeatureEnabled_NoNamespaceChange(t *testing.
 		WithObjects(mco).
 		Build()
 
-	result, err := CreateRightSizingComponent(context.TODO(), client, mco)
+	err := CreateRightSizingComponent(context.TODO(), client, mco)
 	require.NoError(t, err)
-	assert.Nil(t, result)
 }
 
 func TestCreateRightSizingComponent_FeatureDisabled(t *testing.T) {
@@ -115,7 +112,6 @@ func TestCreateRightSizingComponent_FeatureDisabled(t *testing.T) {
 		WithObjects(mco).
 		Build()
 
-	result, err := CreateRightSizingComponent(context.TODO(), client, mco)
+	err := CreateRightSizingComponent(context.TODO(), client, mco)
 	require.NoError(t, err)
-	assert.Nil(t, result)
 }
