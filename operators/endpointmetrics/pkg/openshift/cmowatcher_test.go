@@ -160,7 +160,7 @@ func TestLeakyBucket_Leaking(t *testing.T) {
 	}
 
 	// Wait for at least one leak to occur
-	time.Sleep(leakPeriod + 10*time.Millisecond)
+	time.Sleep(leakPeriod + 100*time.Millisecond)
 
 	// Should be able to add one more
 	success := bucket.Add()
