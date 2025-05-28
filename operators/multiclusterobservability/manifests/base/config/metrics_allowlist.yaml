@@ -143,6 +143,7 @@ data:
       - kubevirt_vmi_memory_swap_out_traffic_bytes
       - kubevirt_vmi_memory_unused_bytes
       - kubevirt_vmi_memory_used_bytes
+      - kubevirt_vmi_migration_end_time_seconds
       - kubevirt_vmi_network_receive_bytes_total
       - kubevirt_vmi_network_receive_packets_dropped_total
       - kubevirt_vmi_network_receive_packets_total
