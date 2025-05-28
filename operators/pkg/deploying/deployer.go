@@ -435,7 +435,6 @@ func (d *Deployer) updateScrapeConfig(ctx context.Context, desiredObj, runtimeOb
 	maps.Copy(desiredLabels, desiredSC.Labels)
 	desiredSC.Labels = desiredLabels
 
-	// TODO: Merge metricRelabelings
 	if !equality.Semantic.DeepDerivative(desiredSC.Spec, runtimeSC.Spec) || !maps.Equal(desiredSC.Labels, runtimeSC.Labels) {
 		logUpdateInfo(runtimeObj)
 		return d.client.Patch(ctx, desiredSC, client.Apply, client.ForceOwnership, client.FieldOwner(mcoconfig.GetMonitoringCRName()))
