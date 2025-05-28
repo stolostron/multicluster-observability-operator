@@ -94,8 +94,8 @@ process_file() {
   local file="$1"
   local output_basename
   output_basename=$(basename "$file")
-  
-  if [[ -n "$DASH_PREPROCESSING" ]]; then
+
+  if [[ -n $DASH_PREPROCESSING ]]; then
     # If a preprocessing command is provided, pipe the output through it
     yq '.data | to_entries | .[0].value' "$file" | eval "$DASH_PREPROCESSING" >"$OUTPUT_DIR/$output_basename"
   else
