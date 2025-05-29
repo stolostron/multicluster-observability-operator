@@ -785,6 +785,32 @@ data:
                   {
                     "id": "decimals",
                     "value": 2
+                  },
+                  {
+                    "id": "mappings",
+                    "value": [
+                      {
+                        "options": {
+                          "from": 1e-8,
+                          "result": {
+                            "index": 0,
+                            "text": "0.01"
+                          },
+                          "to": 0.00999999
+                        },
+                        "type": "range"
+                      },
+                      {
+                        "options": {
+                          "match": "null",
+                          "result": {
+                            "index": 1,
+                            "text": "N/A"
+                          }
+                        },
+                        "type": "special"
+                      }
+                    ]
                   }
                 ]
               }
@@ -880,7 +906,7 @@ data:
               },
               "editorMode": "code",
               "exemplar": false,
-              "expr": "max_over_time(sum by (namespace) (acm_rs:namespace:cpu_request_hard{profile=\"$profile\"})[$days:])",
+              "expr": "max_over_time(sum by (namespace) (acm_rs:namespace:cpu_request_hard{cluster=\"$cluster\", profile=\"$profile\"})[$days:])",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -911,60 +937,6 @@ data:
               "id": "seriesToColumns",
               "options": {
                 "byField": "namespace"
-              }
-            },
-            {
-              "id": "filterByValue",
-              "options": {
-                "filters": [
-                  {
-                    "config": {
-                      "id": "equal",
-                      "options": {
-                        "value": "test-mem-usage"
-                      }
-                    },
-                    "fieldName": "namespace"
-                  },
-                  {
-                    "config": {
-                      "id": "equal",
-                      "options": {
-                        "value": "test-mem-usage-1"
-                      }
-                    },
-                    "fieldName": "namespace"
-                  },
-                  {
-                    "config": {
-                      "id": "equal",
-                      "options": {
-                        "value": "test-mem-usage-2"
-                      }
-                    },
-                    "fieldName": "namespace"
-                  },
-                  {
-                    "config": {
-                      "id": "equal",
-                      "options": {
-                        "value": "test-cpu-usage-1"
-                      }
-                    },
-                    "fieldName": "namespace"
-                  },
-                  {
-                    "config": {
-                      "id": "equal",
-                      "options": {
-                        "value": "test-cpu-usage-2"
-                      }
-                    },
-                    "fieldName": "namespace"
-                  }
-                ],
-                "match": "any",
-                "type": "exclude"
               }
             },
             {
@@ -1722,6 +1694,36 @@ data:
                   {
                     "id": "decimals",
                     "value": 2
+                  },
+                  {
+                    "id": "custom.align",
+                    "value": "left"
+                  },
+                  {
+                    "id": "mappings",
+                    "value": [
+                      {
+                        "options": {
+                          "from": 1e-8,
+                          "result": {
+                            "index": 1,
+                            "text": "0.01"
+                          },
+                          "to": 0.00999999
+                        },
+                        "type": "range"
+                      },
+                      {
+                        "options": {
+                          "match": "null",
+                          "result": {
+                            "index": 2,
+                            "text": "N/A"
+                          }
+                        },
+                        "type": "special"
+                      }
+                    ]
                   }
                 ]
               }
@@ -1848,60 +1850,6 @@ data:
               "id": "seriesToColumns",
               "options": {
                 "byField": "namespace"
-              }
-            },
-            {
-              "id": "filterByValue",
-              "options": {
-                "filters": [
-                  {
-                    "config": {
-                      "id": "equal",
-                      "options": {
-                        "value": "test-cpu-usage-2"
-                      }
-                    },
-                    "fieldName": "namespace"
-                  },
-                  {
-                    "config": {
-                      "id": "equal",
-                      "options": {
-                        "value": "test-cpu-usage-1"
-                      }
-                    },
-                    "fieldName": "namespace"
-                  },
-                  {
-                    "config": {
-                      "id": "equal",
-                      "options": {
-                        "value": "test-mem-usage-2"
-                      }
-                    },
-                    "fieldName": "namespace"
-                  },
-                  {
-                    "config": {
-                      "id": "equal",
-                      "options": {
-                        "value": "test-mem-usage-1"
-                      }
-                    },
-                    "fieldName": "namespace"
-                  },
-                  {
-                    "config": {
-                      "id": "equal",
-                      "options": {
-                        "value": "test-mem-usage"
-                      }
-                    },
-                    "fieldName": "namespace"
-                  }
-                ],
-                "match": "any",
-                "type": "exclude"
               }
             },
             {
