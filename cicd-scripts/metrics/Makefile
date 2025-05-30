@@ -6,11 +6,12 @@ PLATFORM_DASH_DIR = $(DAHSBOARDS_DIR)/platform-mcoa
 HCP_DASH_DIR = $(DAHSBOARDS_DIR)/hcp-mcoa
 ALERTS_DASH_DIR = $(DAHSBOARDS_DIR)/alerts
 VIRTUALIZATION_DASH_DIR = $(DAHSBOARDS_DIR)/virtualization
+ANALYTICS_DASH_DIR = $(DAHSBOARDS_DIR)/analytics
 
 TMPDIR := $(shell mktemp -d)
 
-.PHONY: check-metrics check-platform-metrics check-hcp-metrics check-uwl-hcp-etcd-metrics check-uwl-hcp-apiserver-metrics check-alerts-metrics check-virtualization-metrics clean-tmpdir
-check-metrics: check-platform-metrics check-hcp-metrics check-uwl-hcp-etcd-metrics check-uwl-hcp-apiserver-metrics check-alerts-metrics check-virtualization-metrics clean-tmpdir
+.PHONY: check-metrics check-platform-metrics check-hcp-metrics check-uwl-hcp-etcd-metrics check-uwl-hcp-apiserver-metrics check-alerts-metrics check-virtualization-metrics check-analytics-metrics clean-tmpdir
+check-metrics: check-platform-metrics check-hcp-metrics check-uwl-hcp-etcd-metrics check-uwl-hcp-apiserver-metrics check-alerts-metrics check-virtualization-metrics check-analytics-metrics clean-tmpdir
 
 check-platform-metrics: 
 	@echo "--> Checking platform metrics:"
@@ -66,14 +67,19 @@ check-alerts-metrics:
 
 check-virtualization-metrics: 
 	@echo "--> Checking virtualization metrics:"
-	@$(CURDIR)/scripts/extract-dashboards-metrics.sh -d $(VIRTUALIZATION_DASH_DIR) | tr '\n' ',' > $(TMPDIR)/dash-metrics
+	@$(CURDIR)/scripts/extract-dashboards-metrics.sh -d $(VIRTUALIZATION_DASH_DIR) --preprocess "sed 's/\$${status:raw}/1/g; s/\$$operator_health/==1/g; s/\$$days_in_status_gt/0/g; s/\$$days_in_status_lt/0/g'" | tr '\n' ',' > $(TMPDIR)/dash-metrics
 	@go run cmd/dashcheck/main.go --scrape-configs=$(VIRTUALIZATION_DASH_DIR)/scrape-config.yaml \
 		--dashboard-metrics=$$(cat $(TMPDIR)/dash-metrics) \
-		--ignored-dashboard-metrics=$(HUB_RULES) \
-		--ignored-scrapeconfig-metrics=kubevirt_vm_create_date_timestamp_seconds,kubevirt_vmi_memory_swap_in_traffic_bytes,kubevirt_vmi_vcpu_wait_seconds_total,kubevirt_vmi_memory_swap_out_traffic_bytes \
 		--additional-scrape-configs=$(PLATFORM_DASH_DIR)/scrape-config.yaml,$(ALERTS_DASH_DIR)/scrape-config.yaml
 	@rm -d $(TMPDIR)/dash-metrics
 
+check-analytics-metrics: 
+	@echo "--> Checking analytics metrics:"
+	@$(CURDIR)/scripts/extract-dashboards-metrics.sh -d $(ANALYTICS_DASH_DIR) --preprocess "sed 's/\$$days/5m/g'"  | tr '\n' ',' > $(TMPDIR)/dash-metrics
+	@go run cmd/dashcheck/main.go --scrape-configs=$(ANALYTICS_DASH_DIR)/scrape-config.yaml \
+		--dashboard-metrics=$$(cat $(TMPDIR)/dash-metrics) \
+		--additional-scrape-configs=$(PLATFORM_DASH_DIR)/scrape-config.yaml
+	@rm -d $(TMPDIR)/dash-metrics
 clean-tmpdir:
 	@if [ -n "$(TMPDIR)" ] && [ -d "$(TMPDIR)" ]; then \
 		rm -r "$(TMPDIR)"; \

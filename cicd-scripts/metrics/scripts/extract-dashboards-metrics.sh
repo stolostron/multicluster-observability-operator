@@ -7,6 +7,7 @@ set -e -o pipefail
 
 SEARCH_DIR=""
 SEARCH_FILES=()
+DASH_PREPROCESSING=""
 
 if [[ "$(uname)" == "Darwin" ]]; then
   TMP_DIR="${TMPDIR:-/tmp}"
@@ -17,13 +18,14 @@ OUTPUT_DIR="$TMP_DIR/grafana-dashboards"
 
 # Function to display usage information
 usage() {
-  echo "Usage: $0 [--directory DIR] [--files FILE1 [FILE2 ...]]"
+  echo "Usage: $0 [--directory DIR] [--files FILE1 [FILE2 ...]] [--preprocess 'COMMAND']"
   echo "Either a directory or at least one file must be specified."
   echo
   echo "Options:"
-  echo "  --directory, -d   Specify a directory containing dashboard YAML files"
-  echo "  --files, -f       Specify individual dashboard YAML files"
-  echo "  --help, -h        Display this help message"
+  echo "  --directory, -d    Specify a directory containing dashboard YAML files"
+  echo "  --files, -f        Specify individual dashboard YAML files"
+  echo "  --preprocess, -p   Specify a shell command to preprocess dashboard JSON (e.g., 'sed \"s/\\\$days/5m/g\"')"
+  echo "  --help, -h         Display this help message"
   exit 1
 }
 
@@ -59,6 +61,15 @@ while [[ $# -gt 0 ]]; do
         shift
       done
       ;;
+    --preprocess | -p)
+      shift
+      if [[ $# -eq 0 || $1 =~ ^-- ]]; then
+        echo "Error: No command specified after --preprocess/-p flag."
+        usage
+      fi
+      DASH_PREPROCESSING="$1"
+      shift
+      ;;
     --help | -h)
       usage
       ;;
@@ -78,17 +89,33 @@ fi
 # Create output directory
 mkdir -p "$OUTPUT_DIR"
 
+# Function to process a single dashboard file
+process_file() {
+  local file="$1"
+  local output_basename
+  output_basename=$(basename "$file")
+
+  if [[ -n $DASH_PREPROCESSING ]]; then
+    # If a preprocessing command is provided, pipe the output through it
+    yq '.data | to_entries | .[0].value' "$file" | eval "$DASH_PREPROCESSING" >"$OUTPUT_DIR/$output_basename"
+  else
+    # Otherwise, perform the standard extraction
+    yq '.data | to_entries | .[0].value' "$file" >"$OUTPUT_DIR/$output_basename"
+  fi
+}
+export -f process_file
+
 # Process directory if specified
 if [ -n "$SEARCH_DIR" ]; then
   find "$SEARCH_DIR" -name 'dash*.yaml' ! -name '*ocp311.yaml' -print0 | while IFS= read -r -d '' file; do
-    yq '.data | to_entries | .[0].value' "$file" >"$OUTPUT_DIR/$(basename "$file")"
+    process_file "$file"
   done
 fi
 
 # Process individual files
 for file in "${SEARCH_FILES[@]}"; do
   if [[ "$(basename "$file")" == dash*.yaml && "$(basename "$file")" != *ocp311.yaml ]]; then
-    yq '.data | to_entries | .[0].value' "$file" >"$OUTPUT_DIR/$(basename "$file")"
+    process_file "$file"
   else
     echo "Skipping $file (doesn't match filename pattern)"
   fi
