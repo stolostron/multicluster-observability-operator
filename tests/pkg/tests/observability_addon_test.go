@@ -226,20 +226,22 @@ var _ = Describe("", func() {
 				return utils.UpdateObservabilityFromManagedCluster(testOptions, true)
 			}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
 
-			By("Waiting for MCO addon components ready")
-			Eventually(func() bool {
-				err, podList := utils.GetPodList(
-					testOptions,
-					false,
-					MCO_ADDON_NAMESPACE,
-					"component=metrics-collector",
-				)
-				// starting with OCP 4.13, userWorkLoadMonitoring is enabled by default
-				if len(podList.Items) >= 1 && err == nil {
-					return true
-				}
-				return false
-			}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(BeTrue())
+			if len(testOptions.ManagedClusters) > 0 {
+				By("Waiting for MCO addon components ready")
+				Eventually(func() bool {
+					err, podList := utils.GetPodList(
+						testOptions,
+						false,
+						MCO_ADDON_NAMESPACE,
+						"component=metrics-collector",
+					)
+					// starting with OCP 4.13, userWorkLoadMonitoring is enabled by default
+					if len(podList.Items) >= 1 && err == nil {
+						return true
+					}
+					return false
+				}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(BeTrue())
+			}
 		})
 	},
 	)
