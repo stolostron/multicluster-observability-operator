@@ -271,6 +271,7 @@ func newAdditionalAlertmanagerConfig(hubInfo *operatorconfig.HubInfo) cmomanifes
 	}
 	amURL, err := url.Parse(hubInfo.AlertmanagerEndpoint)
 	if err != nil {
+		log.Error(err, "failed to parse alertmanager endpoint. ignoring it", "endpoint", hubInfo.AlertmanagerEndpoint)
 		return config
 	}
 
@@ -279,8 +280,46 @@ func newAdditionalAlertmanagerConfig(hubInfo *operatorconfig.HubInfo) cmomanifes
 	return config
 }
 
-// createOrUpdateClusterMonitoringConfig creates or updates the configmap
-// cluster-monitoring-config and relevant resources (observability-alertmanager-accessor
+// namespaceExists checks whether the given namespace exists in the cluster
+func namespaceExists(ctx context.Context, client client.Client, ns string) bool {
+	namespace := &corev1.Namespace{}
+	if err := client.Get(ctx, types.NamespacedName{Name: ns}, namespace); err != nil {
+		return false
+	}
+	return true
+}
+
+// isUserWorkloadMonitoringEnabled checks if user workload monitoring is enabled in cluster-monitoring-config
+func isUserWorkloadMonitoringEnabled(ctx context.Context, client client.Client) (bool, error) {
+	cm := &corev1.ConfigMap{}
+	err := client.Get(ctx, types.NamespacedName{
+		Name:      clusterMonitoringConfigName,
+		Namespace: promNamespace,
+	}, cm)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			// If configmap doesn't exist, assume UWM is not enabled
+			return false, nil
+		}
+		return false, err
+	}
+
+	configYAML, ok := cm.Data["config.yaml"]
+	if !ok {
+		return false, nil
+	}
+
+	parsed := &cmomanifests.ClusterMonitoringConfiguration{}
+	if err := yaml.Unmarshal([]byte(configYAML), parsed); err != nil {
+		return false, err
+	}
+
+	return parsed.UserWorkloadEnabled != nil && *parsed.UserWorkloadEnabled, nil
+}
+
+// createOrUpdateClusterMonitoringConfig creates or updates the configmaps
+// cluster-monitoring-config and user-workload-monitoring-config (when needed),
+// and relevant resources (observability-alertmanager-accessor
 // and hub-alertmanager-router-ca) for the openshift cluster monitoring stack.
 // Returns a boolean indicating wether the configmap was effectively updated.
 func createOrUpdateClusterMonitoringConfig(
@@ -308,7 +347,35 @@ func createOrUpdateClusterMonitoringConfig(
 		return false, fmt.Errorf("failed to create or update the alertmanager accessor token secret: %w", err)
 	}
 
-	// create or update the cluster-monitoring-config configmap and relevant resources
+	uwmEnabled := false
+	if !installProm {
+		var err error
+		uwmEnabled, err = isUserWorkloadMonitoringEnabled(ctx, client)
+		if err != nil {
+			return false, fmt.Errorf("failed to determine if UWM is enabled: %w", err)
+		}
+	}
+
+	// Determine if user-workload-monitoring namespace exists
+	nsExists := false
+	if !installProm && uwmEnabled {
+		// nsExists is true only if 1. not *KS 2. user workload monitoring is enabled 3. namespace exists
+		nsExists = namespaceExists(ctx, client, operatorconfig.OCPUserWorkloadMonitoringNamespace)
+	}
+
+	// Create secrets for user workload monitoring if namespace exists
+	// Create Router CA and Accessor Token secrets in the UWM namespace even when alert forwarding is disabled,
+	// so an external policy can configure UWM alert forwarding later if needed.
+	if nsExists {
+		if err := createHubAmRouterCASecret(ctx, hubInfo, client, operatorconfig.OCPUserWorkloadMonitoringNamespace); err != nil {
+			return false, fmt.Errorf("failed to create or update hub-alertmanager-router-ca in UWM namespace: %w", err)
+		}
+		if err := createHubAmAccessorTokenSecret(ctx, client, namespace, operatorconfig.OCPUserWorkloadMonitoringNamespace); err != nil {
+			return false, fmt.Errorf("failed to create or update alertmanager accessor token in UWM namespace: %w", err)
+		}
+	}
+
+	// handle the case when alert forwarding is disabled
 	if hubInfo.AlertmanagerEndpoint == "" {
 		log.Info("request to disable alert forwarding")
 		// only revert (once) if not done already and remember state
@@ -320,6 +387,11 @@ func createOrUpdateClusterMonitoringConfig(
 			if err = RevertClusterMonitoringConfig(ctx, client); err != nil {
 				return false, err
 			}
+			if nsExists {
+				if err = RevertUserWorkloadMonitoringConfig(ctx, client); err != nil {
+					return false, err
+				}
+			}
 			if err = setConfigReverted(ctx, client, namespace); err != nil {
 				return false, err
 			}
@@ -330,113 +402,22 @@ func createOrUpdateClusterMonitoringConfig(
 	}
 
 	if installProm {
-		// no need to create configmap cluster-monitoring-config for *KS
+		// *KS scenario. No need to create configmaps
 		return false, unset(ctx, client, namespace)
 	}
 
-	// init the prometheus k8s config
-	newExternalLabels := map[string]string{operatorconfig.ClusterLabelKeyForAlerts: clusterID}
-	newAlertmanagerConfigs := []cmomanifests.AdditionalAlertmanagerConfig{newAdditionalAlertmanagerConfig(hubInfo)}
-	newPmK8sConfig := &cmomanifests.PrometheusK8sConfig{
-		// add cluster label for alerts from managed cluster
-		ExternalLabels: newExternalLabels,
-		// add alertmanager configs
-		AlertmanagerConfigs: newAlertmanagerConfigs,
-	}
-
-	// root for CMO configuration
-	newClusterMonitoringConfiguration := cmomanifests.ClusterMonitoringConfiguration{
-		PrometheusK8sConfig: newPmK8sConfig,
-	}
-
-	newClusterMonitoringConfigurationYAMLBytes, err := yaml.Marshal(newClusterMonitoringConfiguration)
+	updated, err := createOrUpdateCMOConfig(ctx, client, clusterID, hubInfo, namespace)
 	if err != nil {
-		return false, fmt.Errorf("failed to marshal cluster monitoring config to YAML: %w", err)
+		return false, err
 	}
 
-	newCusterMonitoringConfigMap := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      clusterMonitoringConfigName,
-			Namespace: promNamespace,
-		},
-		Data: map[string]string{clusterMonitoringConfigDataKey: string(newClusterMonitoringConfigurationYAMLBytes)},
-	}
-
-	// try to retrieve the current configmap in the cluster
-	found := &corev1.ConfigMap{}
-	err = client.Get(ctx, types.NamespacedName{Name: clusterMonitoringConfigName, Namespace: promNamespace}, found)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			log.Info("cluster monitoring configmap not found, trying to create it", "name", clusterMonitoringConfigName)
-			return true, createCMOConfigMapAndUnset(ctx, client, newCusterMonitoringConfigMap, namespace)
+	if nsExists {
+		if err := createOrUpdateUserWorkloadMonitoringConfig(ctx, client, hubInfo); err != nil {
+			return updated, fmt.Errorf("failed to create or update user workload monitoring config: %w", err)
 		}
-		return false, fmt.Errorf("failed to check configmap %s: %w", clusterMonitoringConfigName, err)
 	}
 
-	log.Info("cluster monitoring configmap exists", "name", clusterMonitoringConfigName)
-	foundClusterMonitoringConfigurationYAMLString, ok := hasClusterMonitoringConfigData(found)
-	if !ok {
-		// replace config.yaml in configmap
-		found.Data[clusterMonitoringConfigDataKey] = string(newClusterMonitoringConfigurationYAMLBytes)
-		return true, updateClusterMonitoringConfigAndUnset(ctx, client, found, namespace)
-	}
-
-	foundClusterMonitoringConfiguration := &cmomanifests.ClusterMonitoringConfiguration{}
-	if err := yaml.Unmarshal([]byte(foundClusterMonitoringConfigurationYAMLString), foundClusterMonitoringConfiguration); err != nil {
-		return false, fmt.Errorf("failed to unmarshal the cluster monitoring config: %w", err)
-	}
-
-	newCMOCfg := &cmomanifests.ClusterMonitoringConfiguration{}
-	if err := yaml.Unmarshal([]byte(foundClusterMonitoringConfigurationYAMLString), newCMOCfg); err != nil {
-		return false, fmt.Errorf("failed to unmarshal the cluster monitoring config: %w", err)
-	}
-
-	if newCMOCfg.PrometheusK8sConfig != nil {
-
-		// check if externalLabels exists
-		if newCMOCfg.PrometheusK8sConfig.ExternalLabels != nil {
-			newCMOCfg.PrometheusK8sConfig.ExternalLabels[operatorconfig.ClusterLabelKeyForAlerts] = clusterID
-		} else {
-			newCMOCfg.PrometheusK8sConfig.ExternalLabels = newExternalLabels
-		}
-
-		// check if alertmanagerConfigs exists
-		if newCMOCfg.PrometheusK8sConfig.AlertmanagerConfigs != nil {
-			additionalAlertmanagerConfigExists := false
-			var atIndex int
-			for i, v := range newCMOCfg.PrometheusK8sConfig.AlertmanagerConfigs {
-				if isManaged(v) {
-					additionalAlertmanagerConfigExists = true
-					atIndex = i
-					break
-				}
-			}
-			if !additionalAlertmanagerConfigExists {
-				newCMOCfg.PrometheusK8sConfig.AlertmanagerConfigs = append(
-					newCMOCfg.PrometheusK8sConfig.AlertmanagerConfigs,
-					newAdditionalAlertmanagerConfig(hubInfo))
-			} else {
-				newCMOCfg.PrometheusK8sConfig.AlertmanagerConfigs[atIndex] = newAdditionalAlertmanagerConfig(hubInfo)
-			}
-		} else {
-			newCMOCfg.PrometheusK8sConfig.AlertmanagerConfigs = newAlertmanagerConfigs
-		}
-
-	} else {
-		newCMOCfg.PrometheusK8sConfig = newPmK8sConfig
-	}
-
-	if equality.Semantic.DeepEqual(*foundClusterMonitoringConfiguration, *newCMOCfg) {
-		return false, nil
-	}
-
-	updatedClusterMonitoringConfigurationYAMLBytes, err := yaml.Marshal(newCMOCfg)
-	if err != nil {
-		return false, fmt.Errorf("failed to marshal the cluster monitoring config to yaml: %w", err)
-	}
-
-	found.Data[clusterMonitoringConfigDataKey] = string(updatedClusterMonitoringConfigurationYAMLBytes)
-	return true, updateClusterMonitoringConfigAndUnset(ctx, client, found, namespace)
+	return updated, nil
 }
 
 // RevertClusterMonitoringConfig reverts the configmap cluster-monitoring-config and relevant resources
@@ -521,6 +502,188 @@ func RevertClusterMonitoringConfig(ctx context.Context, client client.Client) er
 	return updateClusterMonitoringConfig(ctx, client, found)
 }
 
+// createOrUpdateCMOConfig encapsulates logic to create or update the cluster-monitoring-config configmap.
+func createOrUpdateCMOConfig(
+	ctx context.Context,
+	client client.Client,
+	clusterID string,
+	hubInfo *operatorconfig.HubInfo,
+	namespace string,
+) (bool, error) {
+	newExternalLabels := map[string]string{operatorconfig.ClusterLabelKeyForAlerts: clusterID}
+	newAlertmanagerConfigs := []cmomanifests.AdditionalAlertmanagerConfig{newAdditionalAlertmanagerConfig(hubInfo)}
+	newPmK8sConfig := &cmomanifests.PrometheusK8sConfig{
+		ExternalLabels:      newExternalLabels,
+		AlertmanagerConfigs: newAlertmanagerConfigs,
+	}
+
+	newClusterMonitoringConfiguration := cmomanifests.ClusterMonitoringConfiguration{
+		PrometheusK8sConfig: newPmK8sConfig,
+	}
+
+	yamlBytes, err := yaml.Marshal(newClusterMonitoringConfiguration)
+	if err != nil {
+		return false, fmt.Errorf("failed to marshal cluster monitoring config to YAML: %w", err)
+	}
+
+	found := &corev1.ConfigMap{}
+	err = client.Get(ctx, types.NamespacedName{
+		Name:      clusterMonitoringConfigName,
+		Namespace: promNamespace,
+	}, found)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			newCM := &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      clusterMonitoringConfigName,
+					Namespace: promNamespace,
+				},
+				Data: map[string]string{clusterMonitoringConfigDataKey: string(yamlBytes)},
+			}
+			log.Info("cluster monitoring configmap not found, trying to create it", "name", clusterMonitoringConfigName)
+			return true, createCMOConfigMapAndUnset(ctx, client, newCM, namespace)
+		}
+		return false, fmt.Errorf("failed to check configmap %s: %w", clusterMonitoringConfigName, err)
+	}
+
+	currentYAML, ok := hasClusterMonitoringConfigData(found)
+	if !ok {
+		found.Data[clusterMonitoringConfigDataKey] = string(yamlBytes)
+		return true, updateClusterMonitoringConfigAndUnset(ctx, client, found, namespace)
+	}
+
+	existingCfg := &cmomanifests.ClusterMonitoringConfiguration{}
+	if err := yaml.Unmarshal([]byte(currentYAML), existingCfg); err != nil {
+		return false, fmt.Errorf("failed to unmarshal existing CMO config: %w", err)
+	}
+
+	updatedCMOCfg := &cmomanifests.ClusterMonitoringConfiguration{}
+	if err := yaml.Unmarshal([]byte(currentYAML), updatedCMOCfg); err != nil {
+		return false, fmt.Errorf("failed to unmarshal updated CMO config: %w", err)
+	}
+
+	if updatedCMOCfg.PrometheusK8sConfig != nil {
+		// check and set externalLabels
+		if updatedCMOCfg.PrometheusK8sConfig.ExternalLabels != nil {
+			updatedCMOCfg.PrometheusK8sConfig.ExternalLabels[operatorconfig.ClusterLabelKeyForAlerts] = clusterID
+		} else {
+			updatedCMOCfg.PrometheusK8sConfig.ExternalLabels = newExternalLabels
+		}
+
+		existing := false
+		var index int
+		for i, cfg := range updatedCMOCfg.PrometheusK8sConfig.AlertmanagerConfigs {
+			if isManaged(cfg) {
+				existing = true
+				index = i
+				break
+			}
+		}
+		if existing {
+			updatedCMOCfg.PrometheusK8sConfig.AlertmanagerConfigs[index] = newAdditionalAlertmanagerConfig(hubInfo)
+		} else {
+			updatedCMOCfg.PrometheusK8sConfig.AlertmanagerConfigs = append(existingCfg.PrometheusK8sConfig.AlertmanagerConfigs, newAdditionalAlertmanagerConfig(hubInfo))
+		}
+	} else {
+		updatedCMOCfg.PrometheusK8sConfig = newPmK8sConfig
+	}
+
+	updatedYAML, err := yaml.Marshal(updatedCMOCfg)
+	if err != nil {
+		return false, err
+	}
+
+	if equality.Semantic.DeepEqual(*existingCfg, *updatedCMOCfg) {
+		return false, nil
+	}
+
+	found.Data[clusterMonitoringConfigDataKey] = string(updatedYAML)
+	return true, updateClusterMonitoringConfigAndUnset(ctx, client, found, namespace)
+}
+
+// createOrUpdateUserWorkloadMonitoringConfig creates/updates the user-workload-monitoring-config configmap
+func createOrUpdateUserWorkloadMonitoringConfig(
+	ctx context.Context,
+	client client.Client,
+	hubInfo *operatorconfig.HubInfo,
+) error {
+	// Create Router CA and Accessor Token secrets in the UWM namespace even when alert forwarding is disabled,
+	// so an external policy can configure UWM alert forwarding later if needed.
+	if err := createHubAmRouterCASecret(ctx, hubInfo, client, operatorconfig.OCPUserWorkloadMonitoringNamespace); err != nil {
+		return fmt.Errorf("failed to create or update hub-alertmanager-router-ca in UWM namespace: %w", err)
+	}
+	if err := createHubAmAccessorTokenSecret(ctx, client, operatorconfig.OCPUserWorkloadMonitoringNamespace, operatorconfig.OCPUserWorkloadMonitoringNamespace); err != nil {
+		return fmt.Errorf("failed to create or update alertmanager accessor token in UWM namespace: %w", err)
+	}
+
+	// handle the case when alert forwarding is disabled
+	if hubInfo.AlertmanagerEndpoint == "" {
+		log.Info("request to disable alert forwarding")
+		return RevertUserWorkloadMonitoringConfig(ctx, client)
+	}
+
+	alertCfg := cmomanifests.PrometheusRestrictedConfig{
+		AlertmanagerConfigs: []cmomanifests.AdditionalAlertmanagerConfig{newAdditionalAlertmanagerConfig(hubInfo)},
+	}
+	newCfg := cmomanifests.UserWorkloadConfiguration{
+		Prometheus: &alertCfg,
+	}
+	yamlBytes, err := yaml.Marshal(newCfg)
+	if err != nil {
+		return fmt.Errorf("failed to marshal user workload monitoring config: %w", err)
+	}
+
+	existing := &corev1.ConfigMap{}
+	err = client.Get(ctx, types.NamespacedName{
+		Name:      operatorconfig.OCPUserWorkloadMonitoringConfigMap,
+		Namespace: operatorconfig.OCPUserWorkloadMonitoringNamespace,
+	}, existing)
+	if err != nil && errors.IsNotFound(err) {
+		newCM := &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      operatorconfig.OCPUserWorkloadMonitoringConfigMap,
+				Namespace: operatorconfig.OCPUserWorkloadMonitoringNamespace,
+			},
+			Data: map[string]string{"config.yaml": string(yamlBytes)},
+		}
+		log.Info("user workload monitoring configmap not found, creating it", "name", operatorconfig.OCPUserWorkloadMonitoringConfigMap)
+		return client.Create(ctx, newCM)
+	} else if err != nil {
+		return fmt.Errorf("failed to retrieve user workload monitoring configmap: %w", err)
+	}
+
+	existingYAML, ok := existing.Data["config.yaml"]
+	if !ok {
+		existing.Data["config.yaml"] = string(yamlBytes)
+		log.Info("user workload monitoring configmap missing config.yaml, updating")
+		return client.Update(ctx, existing)
+	}
+
+	parsed := &cmomanifests.UserWorkloadConfiguration{}
+	if err := yaml.Unmarshal([]byte(existingYAML), parsed); err != nil {
+		return fmt.Errorf("failed to unmarshal existing user workload monitoring config: %w", err)
+	}
+
+	if parsed.Prometheus == nil {
+		parsed.Prometheus = &alertCfg
+	} else {
+		parsed.Prometheus.AlertmanagerConfigs = alertCfg.AlertmanagerConfigs
+	}
+
+	updatedYAMLBytes, err := yaml.Marshal(parsed)
+	if err != nil {
+		return fmt.Errorf("failed to marshal updated user workload monitoring config: %w", err)
+	}
+
+	if string(updatedYAMLBytes) == existingYAML {
+		return nil
+	}
+
+	existing.Data["config.yaml"] = string(updatedYAMLBytes)
+	log.Info("user workload monitoring configmap changed, updating")
+	return client.Update(ctx, existing)
+}
+
 // createCMOConfigMapAndUnset creates the configmap cluster-monitoring-config in the openshift-monitoring namespace.
 // the namespace parameter is used to call unset function.
 func createCMOConfigMapAndUnset(ctx context.Context, client client.Client, obj client.Object, namespace string) error {
@@ -598,4 +761,80 @@ func hasClusterMonitoringConfigData(cm *corev1.ConfigMap) (string, bool) {
 		)
 	}
 	return data, ok
+}
+
+// RevertUserWorkloadMonitoringConfig reverts the configmap user-workload-monitoring-config
+// in the openshift-user-workload-monitoring namespace.
+func RevertUserWorkloadMonitoringConfig(ctx context.Context, client client.Client) error {
+	log.Info("RevertUserWorkloadMonitoringConfig called")
+
+	found := &corev1.ConfigMap{}
+	err := client.Get(ctx, types.NamespacedName{
+		Name:      operatorconfig.OCPUserWorkloadMonitoringConfigMap,
+		Namespace: operatorconfig.OCPUserWorkloadMonitoringNamespace,
+	}, found)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			log.Info("configmap not found, no need action", "name", operatorconfig.OCPUserWorkloadMonitoringConfigMap)
+			return nil
+		}
+		return fmt.Errorf("failed to check configmap %s: %w", operatorconfig.OCPUserWorkloadMonitoringConfigMap, err)
+	}
+
+	log.Info("checking if user workload monitoring config needs revert", "name", operatorconfig.OCPUserWorkloadMonitoringConfigMap)
+	found = found.DeepCopy()
+	if !inManagedFields(found) {
+		return nil
+	}
+
+	existingYAML, ok := found.Data["config.yaml"]
+	if !ok {
+		return nil
+	}
+
+	parsed := &cmomanifests.UserWorkloadConfiguration{}
+	if err := yaml.Unmarshal([]byte(existingYAML), parsed); err != nil {
+		return fmt.Errorf("failed to unmarshal existing user workload monitoring config: %w", err)
+	}
+
+	if parsed.Prometheus == nil {
+		log.Info("configmap data doesn't contain 'prometheus', no need action", "name", operatorconfig.OCPUserWorkloadMonitoringConfigMap)
+		return nil
+	}
+
+	// check if alertmanagerConfigs exists
+	if parsed.Prometheus.AlertmanagerConfigs != nil {
+		copiedAlertmanagerConfigs := make([]cmomanifests.AdditionalAlertmanagerConfig, 0)
+		for _, v := range parsed.Prometheus.AlertmanagerConfigs {
+			if !isManaged(v) {
+				copiedAlertmanagerConfigs = append(copiedAlertmanagerConfigs, v)
+			}
+		}
+
+		parsed.Prometheus.AlertmanagerConfigs = copiedAlertmanagerConfigs
+		if len(copiedAlertmanagerConfigs) == 0 {
+			parsed.Prometheus.AlertmanagerConfigs = nil
+			if reflect.DeepEqual(*parsed.Prometheus, cmomanifests.PrometheusRestrictedConfig{}) {
+				parsed.Prometheus = nil
+			}
+		}
+	}
+
+	// check if the parsed is empty UserWorkloadConfiguration
+	if reflect.DeepEqual(*parsed, cmomanifests.UserWorkloadConfiguration{}) {
+		log.Info("empty UserWorkloadConfiguration, deleting configmap if it still exists", "name", operatorconfig.OCPUserWorkloadMonitoringConfigMap)
+		err = client.Delete(ctx, found)
+		if err != nil && !errors.IsNotFound(err) {
+			return fmt.Errorf("failed to delete configmap %s: %w", operatorconfig.OCPUserWorkloadMonitoringConfigMap, err)
+		}
+		return nil
+	}
+
+	updatedYAMLBytes, err := yaml.Marshal(parsed)
+	if err != nil {
+		return fmt.Errorf("failed to marshal the user workload monitoring config: %w", err)
+	}
+
+	found.Data["config.yaml"] = string(updatedYAMLBytes)
+	return client.Update(ctx, found)
 }
