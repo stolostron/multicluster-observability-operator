@@ -9,7 +9,7 @@ metadata:
   name: platform-metrics-hcp
   namespace: open-cluster-management-observability
 spec:
-  jobName: platform-metrics
+  jobName: hcp
   metricsPath: /federate
   params:
     match[]:
