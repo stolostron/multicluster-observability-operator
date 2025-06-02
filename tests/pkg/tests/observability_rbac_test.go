@@ -9,9 +9,11 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
+	"github.com/onsi/ginkgo/v2/types"
 	. "github.com/onsi/gomega"
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/utils"
 	"k8s.io/klog"
@@ -19,6 +21,17 @@ import (
 
 var _ = Describe("", Ordered, func() {
 	BeforeAll(func() {
+
+		// This test is currently not working well on shared enviroments
+		// as the test setup script does not take into account that
+		// others might add similar htaccess identity providers.
+		// Therefore we skip it for now on the QE test envs which
+		// are shared with other teams.
+		cloudProvider := strings.ToLower(os.Getenv("CLOUD_PROVIDER"))
+		if len(cloudProvider) > 0 {
+			Skip("Skipping RBAC test on QE Jenkins test-run")
+		}
+
 		cmd := exec.Command("../../setup_rbac_test.sh")
 		var out bytes.Buffer
 		cmd.Stdout = &out
@@ -120,6 +133,9 @@ var _ = Describe("", Ordered, func() {
 	})
 
 	AfterEach(func() {
+		if CurrentSpecReport().State.Is(types.SpecStateSkipped) {
+			return
+		}
 		// make sure we login as kube admin again
 		if len(testOptions.HubCluster.KubeContext) > 0 {
 			_, err = exec.Command("oc", "config", "use-context", testOptions.HubCluster.KubeContext).CombinedOutput()
