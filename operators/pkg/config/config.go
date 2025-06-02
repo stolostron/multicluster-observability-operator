@@ -30,10 +30,13 @@ const (
 )
 
 const (
-	OCPClusterMonitoringNamespace         = "openshift-monitoring"
-	OCPClusterMonitoringConfigMapName     = "cluster-monitoring-config"
-	OCPClusterMonitoringConfigMapKey      = "config.yaml"
-	OCPClusterMonitoringPrometheusService = "prometheus-k8s"
+	OCPClusterMonitoringNamespace              = "openshift-monitoring"
+	OCPClusterMonitoringConfigMapName          = "cluster-monitoring-config"
+	OCPClusterMonitoringConfigMapKey           = "config.yaml"
+	OCPClusterMonitoringPrometheusService      = "prometheus-k8s"
+	OCPUserWorkloadMonitoringNamespace         = "openshift-user-workload-monitoring"
+	OCPUserWorkloadMonitoringConfigMap         = "user-workload-monitoring-config"
+	OCPUserWorkloadMonitoringPrometheusService = "prometheus"
 )
 
 const (
