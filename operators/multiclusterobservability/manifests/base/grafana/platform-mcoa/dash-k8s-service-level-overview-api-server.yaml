@@ -36,7 +36,7 @@ data:
           "targetBlank": true,
           "title": "Kubernetes / Service-Level Overview /  API Server / Cluster",
           "type": "link",
-          "url": "./d/3TwB9bRnnz/kubernetes-service-level-overview-api-server-cluster?${__url_time_range}&orgId=1&refresh=5m"
+          "url": "./d/8379f5455b094a2abafe02f522a22f59/kubernetes-service-level-overview-api-server-cluster?${__url_time_range}&orgId=1&refresh=5m"
         }
       ],
       "panels": [
@@ -277,7 +277,7 @@ data:
                       {
                         "targetBlank": true,
                         "title": "Kubernetes / Service-Level Overview  / API Server / Cluster",
-                        "url": "./d/3TwB9bRnnz/kubernetes-service-level-overview-api-server-cluster?${__url_time_range}&orgId=1&var-cluster=﻿${__data.fields.cluster}﻿﻿﻿﻿&${__url_time_range}"
+                        "url": "./d/8379f5455b094a2abafe02f522a22f59/kubernetes-service-level-overview-api-server-cluster?${__url_time_range}&orgId=1&var-cluster=﻿${__data.fields.cluster}﻿﻿﻿﻿&${__url_time_range}"
                       }
                     ]
                   }

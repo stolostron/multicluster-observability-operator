@@ -202,7 +202,7 @@ data:
                       {
                         "targetBlank": true,
                         "title": "Drill down to pod",
-                        "url": "/d/6581e46e4e5c7ba40a07646395ef7b23/k8s-resources-pod?${__url_time_range}&var-datasource=$datasource&var-cluster=$cluster&var-namespace=$namespace&var-pod=${__data.fields[pod]}"
+                        "url": "/d/6c54d554d6e6475aa3a40660bc23d6c8/k8s-resources-pod?${__url_time_range}&var-datasource=$datasource&var-cluster=$cluster&var-namespace=$namespace&var-pod=${__data.fields[pod]}"
                       }
                     ]
                   }
@@ -527,7 +527,7 @@ data:
                       {
                         "targetBlank": true,
                         "title": "Drill down to pod",
-                        "url": "/d/6581e46e4e5c7ba40a07646395ef7b23/k8s-resources-pod?${__url_time_range}&var-datasource=$datasource&var-cluster=$cluster&var-namespace=$namespace&var-pod=${__data.fields[pod]}"
+                        "url": "/d/6c54d554d6e6475aa3a40660bc23d6c8/k8s-resources-pod?${__url_time_range}&var-datasource=$datasource&var-cluster=$cluster&var-namespace=$namespace&var-pod=${__data.fields[pod]}"
                       }
                     ]
                   }

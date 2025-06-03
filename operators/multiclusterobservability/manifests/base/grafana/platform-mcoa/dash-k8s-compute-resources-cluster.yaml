@@ -861,7 +861,7 @@ data:
                       {
                         "targetBlank": false,
                         "title": "Drill down to pods",
-                        "url": "/d/85a562078cdf77779eaa1add43ccec1e/k8s-resources-namespace?${__url_time_range}&var-datasource=$datasource&var-cluster=$cluster&var-namespace=${__data.fields.namespace}"
+                        "url": "/d/8c91f50e615044e589c9d89a1b1b42f9/k8s-resources-namespace?${__url_time_range}&var-datasource=$datasource&var-cluster=$cluster&var-namespace=${__data.fields.namespace}"
                       }
                     ]
                   },
@@ -890,7 +890,7 @@ data:
                     "value": [
                       {
                         "title": "Drill down to pods",
-                        "url": "/d/85a562078cdf77779eaa1add43ccec1e/k8s-resources-namespace?${__url_time_range}&var-datasource=$datasource&var-cluster=$cluster&var-namespace=${__data.fields.namespace}"
+                        "url": "/d/8c91f50e615044e589c9d89a1b1b42f9/k8s-resources-namespace?${__url_time_range}&var-datasource=$datasource&var-cluster=$cluster&var-namespace=${__data.fields.namespace}"
                       }
                     ]
                   },
@@ -933,7 +933,7 @@ data:
                     "value": [
                       {
                         "title": "Drill down to workloads",
-                        "url": "/d/a87fb0d919ec0ea5f6543124e16c42a5/k8s-resources-workloads-namespace?${__url_time_range}&var-datasource=$datasource&var-cluster=$cluster&var-namespace=${__data.fields.namespace}"
+                        "url": "/d/54fc355ed0dc4efca94303570bd20eb6/k8s-resources-workloads-namespace?${__url_time_range}&var-datasource=$datasource&var-cluster=$cluster&var-namespace=${__data.fields.namespace}"
                       }
                     ]
                   }
@@ -1367,7 +1367,7 @@ data:
                       {
                         "targetBlank": false,
                         "title": "Drill down to pods",
-                        "url": "/d/85a562078cdf77779eaa1add43ccec1e/k8s-resources-namespace?${__url_time_range}&var-datasource=$datasource&var-cluster=$cluster&var-namespace=${__data.fields.namespace}"
+                        "url": "/d/8c91f50e615044e589c9d89a1b1b42f9/k8s-resources-namespace?${__url_time_range}&var-datasource=$datasource&var-cluster=$cluster&var-namespace=${__data.fields.namespace}"
                       }
                     ]
                   },
@@ -1407,7 +1407,7 @@ data:
                     "value": [
                       {
                         "title": "Drill down to pods",
-                        "url": "/d/85a562078cdf77779eaa1add43ccec1e/k8s-resources-namespace?${__url_time_range}&var-datasource=$datasource&var-cluster=$cluster&var-namespace=${__data.fields.namespace}"
+                        "url": "/d/8c91f50e615044e589c9d89a1b1b42f9/k8s-resources-namespace?${__url_time_range}&var-datasource=$datasource&var-cluster=$cluster&var-namespace=${__data.fields.namespace}"
                       }
                     ]
                   },
@@ -1439,7 +1439,7 @@ data:
                     "value": [
                       {
                         "title": "Drill down to Workloads",
-                        "url": "/d/a87fb0d919ec0ea5f6543124e16c42a5/k8s-resources-workloads-namespace?${__url_time_range}&var-datasource=$datasource&var-cluster=$cluster&var-namespace=${__data.fields.namespace}"
+                        "url": "/d/54fc355ed0dc4efca94303570bd20eb6/k8s-resources-workloads-namespace?${__url_time_range}&var-datasource=$datasource&var-cluster=$cluster&var-namespace=${__data.fields.namespace}"
                       }
                     ]
                   },
