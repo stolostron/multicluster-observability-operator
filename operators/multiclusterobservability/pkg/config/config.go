@@ -156,10 +156,11 @@ const (
 	EndpointControllerImgName = "endpoint-monitoring-operator"
 	EndpointControllerKey     = "endpoint_monitoring_operator"
 
-	MultiClusterObservabilityAddonImgRepo      = "quay.io/rhobs"
-	MultiClusterObservabilityAddonImgName      = "multicluster-observability-addon"
-	MultiClusterObservabilityAddonImgTagSuffix = "v0.0.1"
-	MultiClusterObservabilityAddonImgKey       = "multicluster_observability_addon"
+	MultiClusterObservabilityAddonImgRepo                   = "quay.io/rhobs"
+	MultiClusterObservabilityAddonImgName                   = "multicluster-observability-addon"
+	MultiClusterObservabilityAddonImgTagSuffix              = "v0.0.1"
+	MultiClusterObservabilityAddonImgKey                    = "multicluster_observability_addon"
+	MultiClusterObservabilityAddonLogVerbosityAnnotationKey = "mcoa-logVerbosity"
 
 	RBACQueryProxyImgName = "rbac-query-proxy"
 	RBACQueryProxyKey     = "rbac_query_proxy"
