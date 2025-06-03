@@ -6,6 +6,7 @@ package rendering
 
 import (
 	"fmt"
+	"slices"
 
 	prometheusv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	prometheusalpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
@@ -137,6 +138,10 @@ func (r *MCORenderer) renderMCOADeployment(
 		Image:           img,
 		ImagePullPolicy: mcoconfig.GetImagePullPolicy(r.cr.Spec),
 		Resources:       mcoaResources,
+	}
+
+	if logVerbosity, ok := r.cr.Annotations[mcoconfig.MultiClusterObservabilityAddonLogVerbosityAnnotationKey]; ok {
+		patchContainer.Args = append(slices.Clone(obj.Spec.Template.Spec.Containers[0].Args), fmt.Sprintf("--log-verbosity=%s", logVerbosity))
 	}
 
 	if err := mergo.Merge(&obj.Spec.Template.Spec.Containers[0], patchContainer, mergo.WithOverride); err != nil {
