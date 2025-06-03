@@ -31,6 +31,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
+	"github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring"
+	prometheusv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	observabilityv1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 )
 
@@ -204,6 +206,10 @@ const (
 	MCOCrdName                     = "multiclusterobservabilities.observability.open-cluster-management.io"
 	StorageVersionMigrationCrdName = "storageversionmigrations.migration.k8s.io"
 	MCGHCrdName                    = "multiclusterglobalhubs.operator.open-cluster-management.io"
+)
+
+var (
+	PrometheusScrapeConfigsCrdName = fmt.Sprintf("%s.%s", monitoring.GroupName, prometheusv1alpha1.ScrapeConfigName)
 )
 
 const (

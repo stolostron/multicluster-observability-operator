@@ -519,8 +519,7 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 		Owns(&addonv1alpha1.ClusterManagementAddOn{}).
 		// Watch for changes to secondary PrometheusRule CR and requeue the owner MultiClusterObservability
 		Owns(&monitoringv1.PrometheusRule{}).
-		// Watch for changes to secondary ScrapeConfig CR and requeue the owner MultiClusterObservability
-		Owns(&monitoringv1aplha1.ScrapeConfig{}).
+
 		// Watch the configmap for rightsizing recommendation update (keep in its own watcher as it applies some processing)
 		Watches(&corev1.ConfigMap{}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(cmNamespaceRSPred)).
 		// Watch the configmap for thanos-ruler-custom-rules update
@@ -581,6 +580,13 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 				builder.WithPredicates(mchPred),
 			)
 		}
+	}
+
+	// Only watch owned ScrapeConfigs CR when the CRD exists (used by MCOA)
+	if exists, ok := r.CRDMap[config.PrometheusScrapeConfigsCrdName]; ok && exists {
+		ctrBuilder = ctrBuilder.Owns(&monitoringv1aplha1.ScrapeConfig{})
+	} else {
+		log.Info("ScrapeConfig CRD will not be watched", "exists", exists, "ok", ok)
 	}
 
 	// create and return a new controller
