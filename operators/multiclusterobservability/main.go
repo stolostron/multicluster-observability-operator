@@ -296,11 +296,18 @@ func main() {
 		os.Exit(1)
 	}
 
+	scrapeConfigCrdExists, err := operatorsutil.CheckCRDExist(crdClient, config.PrometheusScrapeConfigsCrdName)
+	if err != nil {
+		setupLog.Error(err, "")
+		os.Exit(1)
+	}
+
 	crdMaps := map[string]bool{
 		config.MCHCrdName:                     mchCrdExists,
 		config.StorageVersionMigrationCrdName: svmCrdExists,
 		config.IngressControllerCRD:           ingressCtlCrdExists,
 		config.MCGHCrdName:                    mcghCrdExists,
+		config.PrometheusScrapeConfigsCrdName: scrapeConfigCrdExists,
 	}
 
 	imageClient, err := imagev1client.NewForConfig(ctrl.GetConfigOrDie())

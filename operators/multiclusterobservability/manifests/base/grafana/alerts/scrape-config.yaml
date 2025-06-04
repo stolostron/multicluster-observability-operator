@@ -9,16 +9,11 @@ metadata:
   name: platform-metrics-alerts
   namespace: open-cluster-management-observability
 spec:
-  jobName: platform-metrics
+  jobName: alerts
   metricsPath: /federate
   params:
     match[]:
     - '{__name__="ALERTS"}'
   metricRelabelings:
   - action: labeldrop
-    regex: prometheus_replica|managed_cluster|id
-  scrapeClass: ocp-monitoring
-  scheme: HTTPS
-  staticConfigs:
-  - targets:
-    - prometheus-k8s.openshift-monitoring.svc:9091
+    regex: managed_cluster|id

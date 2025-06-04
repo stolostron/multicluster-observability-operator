@@ -9,7 +9,7 @@ metadata:
   name: platform-metrics-hcp
   namespace: open-cluster-management-observability
 spec:
-  jobName: platform-metrics
+  jobName: hcp
   metricsPath: /federate
   params:
     match[]:
@@ -21,9 +21,4 @@ spec:
     - '{__name__="mce_hs_addon_total_hosted_control_planes_gauge"}'
   metricRelabelings:
   - action: labeldrop
-    regex: prometheus_replica|managed_cluster|id
-  scrapeClass: ocp-monitoring
-  scheme: HTTPS
-  staticConfigs:
-  - targets:
-    - prometheus-k8s.openshift-monitoring.svc:9091
+    regex: managed_cluster|id
