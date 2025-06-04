@@ -331,9 +331,10 @@ func updateDashboard(old, new interface{}, overwrite bool) error {
 		if err != nil {
 			return fmt.Errorf("failed to unmarshall data: %v", err)
 		}
-		if dashboard["uid"] == nil {
+		if dashboard["uid"] == nil || dashboard["uid"] == "" {
 			dashboard["uid"], _ = util.GenerateUID(new.(*corev1.ConfigMap).GetName(),
 				new.(*corev1.ConfigMap).GetNamespace())
+			klog.Infof("dashboard uid is not set, generating a default: %s", dashboard["uid"])
 		}
 		dashboard["id"] = nil
 		data := map[string]interface{}{
@@ -364,7 +365,7 @@ func updateDashboard(old, new interface{}, overwrite bool) error {
 			}
 		}
 
-		if dashboard["uid"] == homeDashboardUID {
+		if homeDashboardUID != "" && dashboard["uid"] == homeDashboardUID {
 			// get "id" value from response
 			re := regexp.MustCompile("\"id\":(\\d+),")
 			result := re.FindSubmatch(body)
