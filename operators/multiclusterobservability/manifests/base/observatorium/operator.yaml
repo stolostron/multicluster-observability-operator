@@ -48,9 +48,6 @@ spec:
           imagePullPolicy: "{{MULTICLUSTEROBSERVABILITY_IMAGE_PULL_POLICY}}"
           name: observatorium-operator
           resources:
-            limits:
-              cpu: 100m
-              memory: 600Mi
             requests:
               cpu: 10m
               memory: 50Mi

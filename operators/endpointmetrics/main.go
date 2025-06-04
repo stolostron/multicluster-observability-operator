@@ -10,12 +10,13 @@ import (
 	"os"
 	"runtime"
 	"strconv"
+	"time"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
 	"github.com/IBM/controller-filtered-cache/filteredcache"
 	ocinfrav1 "github.com/openshift/api/config/v1"
-	hyperv1 "github.com/openshift/hypershift/api/hypershift/v1alpha1"
+	hyperv1 "github.com/openshift/hypershift/api/hypershift/v1beta1"
 	prometheusv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"go.uber.org/zap/zapcore"
 	appsv1 "k8s.io/api/apps/v1"
@@ -34,11 +35,13 @@ import (
 
 	obsepctl "github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/controllers/observabilityendpoint"
 	statusctl "github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/controllers/status"
+	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/openshift"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/util"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/version"
 	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	oav1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
+	"github.com/stolostron/multicluster-observability-operator/operators/pkg/status"
 	operatorsutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 	// +kubebuilder:scaffold:imports
 )
@@ -146,7 +149,8 @@ func main() {
 		}
 	}
 
-	if err = (&obsepctl.ObservabilityAddonReconciler{
+	obsAddonCtrlLogger := ctrl.Log.WithName("controllers").WithName("ObservabilityAddon")
+	obsaddonreconciler := &obsepctl.ObservabilityAddonReconciler{
 		Client:                mgr.GetClient(),
 		Scheme:                mgr.GetScheme(),
 		HubClient:             hubClientWithReload,
@@ -155,7 +159,14 @@ func main() {
 		ServiceAccountName:    os.Getenv("SERVICE_ACCOUNT"),
 		IsHubMetricsCollector: os.Getenv("HUB_ENDPOINT_OPERATOR") == "true",
 		InstallPrometheus:     installPrometheus,
-	}).SetupWithManager(mgr); err != nil {
+		Logger:                obsAddonCtrlLogger,
+	}
+	if !obsaddonreconciler.IsHubMetricsCollector {
+		// Only add on spokes as there is no addon on the hub and status update would fail
+		statusReporter := status.NewStatus(mgr.GetClient(), operatorconfig.ObservabilityAddonName, namespace, obsAddonCtrlLogger)
+		obsaddonreconciler.CmoReconcilesDetector = openshift.NewCmoConfigChangesWatcher(mgr.GetClient(), obsAddonCtrlLogger.WithName("cmoWatcher"), statusReporter, 5, 5*time.Minute, 0.6)
+	}
+	if err = (obsaddonreconciler).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ObservabilityAddon")
 		os.Exit(1)
 	}

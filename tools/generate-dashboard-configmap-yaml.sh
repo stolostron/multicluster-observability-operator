@@ -2,8 +2,6 @@
 # Copyright (c) 2021 Red Hat, Inc.
 # Copyright Contributors to the Open Cluster Management project
 
-obs_namespace='open-cluster-management-observability'
-
 if command -v python &>/dev/null; then
   PYTHON_CMD="python"
 elif command -v python2 &>/dev/null; then
@@ -17,51 +15,66 @@ fi
 
 usage() {
   cat <<EOF
-Usage: $(basename "${BASH_SOURCE[0]}") [-h] dashboard_name [configmap_path]
-       [-n namespace]
+Usage: $(basename "$0") [flags] dashboard_name [configmap_path]
 
-Fetch grafana dashboard and save with a configmap.
+Options:
+  -h, --help           Print this help and exit
+  -n, --namespace      Specify the observability namespace
+  -f, --folder         Grafana folder of the dashboard
 
-Available options:
-
--h, --help           Print this help and exit
-dashboard_name       Specified the dashboard to be fetch
-configmap_path       Specified the path to save the configmap
--n, --namespace      Specify the observability components namespace
+Positional arguments:
+  dashboard_name       The dashboard name to fetch (required)
+  configmap_path       Path to save the configmap (optional)
 EOF
-  exit
+  exit 1
 }
 
 start() {
-  if [ $# -eq 0 -o $# -gt 4 ]; then
-    usage
-  fi
-
+  # Defaults
+  obs_namespace="open-cluster-management-observability"
+  dashboard_folder_name=""
   savePath="."
-  if [ $# -ge 2 ]; then
-    savePath=$2
-  fi
-  org_dashboard_name=$1
-  dashboard_name=$(echo ${1//[!(a-z\A-Z\0-9\-\.)]/-} | tr '[:upper:]' '[:lower:]')
+  org_dashboard_name=""
 
+  # Parse all flags first
   while [[ $# -gt 0 ]]; do
-    key="$1"
-    case $key in
+    case "$1" in
       -h | --help)
         usage
         ;;
-
       -n | --namespace)
         obs_namespace="$2"
-        shift
-        shift
+        shift 2
         ;;
-
+      -f | --folder)
+        dashboard_folder_name="$2"
+        shift 2
+        ;;
+      # Anything not recognized as a flag => break and treat as positional
       *)
-        shift
+        break
         ;;
     esac
   done
+
+  # Parse positional arguments
+  if [[ $# -lt 1 ]]; then
+    echo "ERROR: Missing required dashboard_name"
+    usage
+  fi
+  org_dashboard_name="$1"
+  dashboard_name=$(echo "${1//[!(a-zA-Z0-9\-\.)]/-}" | tr '[:upper:]' '[:lower:]')
+  shift 1
+
+  if [[ $# -ge 1 ]]; then
+    savePath="$1"
+    shift 1
+  fi
+
+  if [[ $# -gt 0 ]]; then
+    echo "ERROR: Unexpected extra arguments: $*"
+    usage
+  fi
 
   if [ ! -d $savePath ]; then
     mkdir -p $savePath
@@ -77,7 +90,7 @@ start() {
     exit 1
   fi
 
-  curlCMD="kubectl exec -it -n "$obs_namespace" $podName -c grafana-dashboard-loader -- /usr/bin/curl"
+  curlCMD="kubectl exec -n "$obs_namespace" $podName -c grafana-dashboard-loader -- /usr/bin/curl"
   XForwardedUser="WHAT_YOU_ARE_DOING_IS_VOIDING_SUPPORT_0000000000000000000000000000000000000000000000000000000000000000"
   dashboards=$($curlCMD -s -X GET -H "Content-Type: application/json" -H "X-Forwarded-User: $XForwardedUser" 127.0.0.1:3001/api/search)
   if [ $? -ne 0 ]; then
@@ -85,7 +98,19 @@ start() {
     exit 1
   fi
 
-  dashboard=$(echo $dashboards | $PYTHON_CMD -c "import sys, json;[sys.stdout.write(json.dumps(dash)) for dash in json.load(sys.stdin) if dash['title'] == '$org_dashboard_name']")
+  dashboard=$(echo $dashboards | $PYTHON_CMD -c "
+import sys, json
+data = json.load(sys.stdin)
+folder = '$dashboard_folder_name' if '$dashboard_folder_name' else None
+for dash in data:
+    if dash['title'] == '$org_dashboard_name' and (not folder or dash.get('folderTitle') == folder):
+        sys.stdout.write(json.dumps(dash))
+        sys.exit(0)
+")
+  if [[ -z $dashboard ]]; then
+    echo "No matching dashboard found, please check your dashboard name <$org_dashboard_name> and folder name <$dashboard_folder_name>"
+    exit 1
+  fi
 
   dashboardUID=$(echo $dashboard | $PYTHON_CMD -c "import sys, json; print(json.load(sys.stdin)['uid'])" 2>/dev/null)
   dashboardFolderId=$(echo $dashboard | $PYTHON_CMD -c "import sys, json; print(json.load(sys.stdin)['folderId'])" 2>/dev/null)
@@ -93,7 +118,7 @@ start() {
 
   dashboardJson=$($curlCMD -s -X GET -H "Content-Type: application/json" -H "X-Forwarded-User:$XForwardedUser" 127.0.0.1:3001/api/dashboards/uid/$dashboardUID | $PYTHON_CMD -c "import sys, json; print(json.dumps(json.load(sys.stdin)['dashboard']))" 2>/dev/null)
   if [ $? -ne 0 ]; then
-    echo "Failed to fetch dashboard json data, please check your dashboard name <$org_dashboard_name>"
+    echo "Failed to fetch dashboard json data with dashboard id <$dashboardUID>, please check your dashboard name <$org_dashboard_name>."
     exit 1
   fi
 

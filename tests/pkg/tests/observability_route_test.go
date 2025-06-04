@@ -16,7 +16,7 @@ import (
 
 	"errors"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"k8s.io/klog"
 
@@ -27,7 +27,7 @@ var (
 	alertCreated bool = false
 )
 
-var _ = Describe("Observability:", func() {
+var _ = Describe("", func() {
 	BeforeEach(func() {
 		hubClient = utils.NewKubeClient(
 			testOptions.HubCluster.ClusterServerURL,
@@ -40,10 +40,25 @@ var _ = Describe("Observability:", func() {
 			testOptions.HubCluster.KubeContext)
 	})
 
-	It("@BVT - [P1][Sev1][observability][Integration] Should access metrics via rbac-query-proxy route (route/g0)", func() {
+	It("RHACM4K-1693: Observability: Verify Observability working with new OCP API Server certs - @BVT - [P1][Sev1][observability][Integration]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore Should access metrics via rbac-query-proxy route @e2e (route/g0)", func() {
 		Eventually(func() error {
 			query := "/api/v1/query?query=cluster_version"
-			url := "https://rbac-query-proxy-open-cluster-management-observability.apps." + testOptions.HubCluster.BaseDomain + query
+
+			cloudProvider := strings.ToLower(os.Getenv("CLOUD_PROVIDER"))
+			substring1 := "rosa"
+			substring2 := "hcp"
+
+			var url string
+
+			if strings.Contains(cloudProvider, substring1) && strings.Contains(cloudProvider, substring2) {
+				Skip("skip on rosa-hcp")
+				url = "https://rbac-query-proxy-open-cluster-management-observability.apps.rosa." + testOptions.HubCluster.BaseDomain + query
+
+			} else {
+				url = "https://rbac-query-proxy-open-cluster-management-observability.apps." + testOptions.HubCluster.BaseDomain + query
+
+			}
+
 			req, err := http.NewRequest(
 				"GET",
 				url,
@@ -63,6 +78,8 @@ var _ = Describe("Observability:", func() {
 			client := &http.Client{}
 			if os.Getenv("IS_KIND_ENV") != trueStr {
 				client.Transport = tr
+				client.Transport = tr
+				BearerToken, err = utils.FetchBearerToken(testOptions)
 				req.Header.Set("Authorization", "Bearer "+BearerToken)
 			}
 
@@ -93,6 +110,14 @@ var _ = Describe("Observability:", func() {
 
 	It("@BVT - [P1][Sev1][observability][Integration] Should access alert via alertmanager route (route/g0)", func() {
 		Eventually(func() error {
+			cloudProvider := strings.ToLower(os.Getenv("CLOUD_PROVIDER"))
+			substring1 := "rosa"
+			substring2 := "hcp"
+
+			if strings.Contains(cloudProvider, substring1) && strings.Contains(cloudProvider, substring2) {
+				Skip("skip on rosa-hcp")
+			}
+
 			query := "/api/v2/alerts"
 			url := "https://alertmanager-open-cluster-management-observability.apps." + testOptions.HubCluster.BaseDomain + query
 			alertJson := `
@@ -136,6 +161,7 @@ var _ = Describe("Observability:", func() {
 			client := &http.Client{}
 			if os.Getenv("IS_KIND_ENV") != trueStr {
 				client.Transport = tr
+				BearerToken, err = utils.FetchBearerToken(testOptions)
 				alertPostReq.Header.Set("Authorization", "Bearer "+BearerToken)
 			}
 			if !alertCreated {
@@ -164,6 +190,7 @@ var _ = Describe("Observability:", func() {
 			}
 
 			if os.Getenv("IS_KIND_ENV") != trueStr {
+				BearerToken, err = utils.FetchBearerToken(testOptions)
 				alertGetReq.Header.Set("Authorization", "Bearer "+BearerToken)
 			}
 
@@ -194,9 +221,9 @@ var _ = Describe("Observability:", func() {
 	})
 
 	AfterEach(func() {
-		if CurrentGinkgoTestDescription().Failed {
+		if CurrentSpecReport().Failed() {
 			utils.LogFailingTestStandardDebugInfo(testOptions)
 		}
-		testFailed = testFailed || CurrentGinkgoTestDescription().Failed
+		testFailed = testFailed || CurrentSpecReport().Failed()
 	})
 })

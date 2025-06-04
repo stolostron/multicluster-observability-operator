@@ -26,6 +26,7 @@ import (
 	operatorv1 "github.com/openshift/api/operator/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	prometheusv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	monitoringv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -45,7 +46,9 @@ import (
 	observatoriumAPIs "github.com/stolostron/observatorium-operator/api/v1alpha1"
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
+	clusterv1beta1 "open-cluster-management.io/api/cluster/v1beta1"
 	workv1 "open-cluster-management.io/api/work/v1"
+	policyv1 "open-cluster-management.io/governance-policy-propagator/api/v1"
 
 	observabilityv1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	observabilityv1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
@@ -75,6 +78,7 @@ func init() {
 	utilruntime.Must(addonv1alpha1.AddToScheme(scheme))
 	utilruntime.Must(imagev1.AddToScheme(scheme))
 	utilruntime.Must(apiextensionsv1.AddToScheme(scheme))
+	utilruntime.Must(monitoringv1alpha1.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
 }
 
@@ -133,6 +137,16 @@ func main() {
 	}
 
 	if err := clusterv1.AddToScheme(scheme); err != nil {
+		setupLog.Error(err, "")
+		os.Exit(1)
+	}
+
+	if err := clusterv1beta1.AddToScheme(scheme); err != nil {
+		setupLog.Error(err, "")
+		os.Exit(1)
+	}
+
+	if err := policyv1.AddToScheme(scheme); err != nil {
 		setupLog.Error(err, "")
 		os.Exit(1)
 	}
@@ -282,11 +296,18 @@ func main() {
 		os.Exit(1)
 	}
 
+	scrapeConfigCrdExists, err := operatorsutil.CheckCRDExist(crdClient, config.PrometheusScrapeConfigsCrdName)
+	if err != nil {
+		setupLog.Error(err, "")
+		os.Exit(1)
+	}
+
 	crdMaps := map[string]bool{
 		config.MCHCrdName:                     mchCrdExists,
 		config.StorageVersionMigrationCrdName: svmCrdExists,
 		config.IngressControllerCRD:           ingressCtlCrdExists,
 		config.MCGHCrdName:                    mcghCrdExists,
+		config.PrometheusScrapeConfigsCrdName: scrapeConfigCrdExists,
 	}
 
 	imageClient, err := imagev1client.NewForConfig(ctrl.GetConfigOrDie())

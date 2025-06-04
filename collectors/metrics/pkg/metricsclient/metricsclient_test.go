@@ -5,15 +5,22 @@
 package metricsclient
 
 import (
+	"bytes"
+	"context"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"reflect"
 	"testing"
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/gogo/protobuf/proto"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	clientmodel "github.com/prometheus/client_model/go"
 	"github.com/prometheus/prometheus/prompb"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestDefaultTransport(t *testing.T) {
@@ -39,6 +46,7 @@ func Test_convertToTimeseries(t *testing.T) {
 	fooLabelName := "foo"
 	fooLabelValue1 := "bar"
 	fooLabelValue2 := "baz"
+	nameLabel := nameLabelName
 
 	emptyLabelName := ""
 
@@ -199,8 +207,12 @@ func Test_convertToTimeseries(t *testing.T) {
 					Counter:     &clientmodel.Counter{Value: &value42},
 					TimestampMs: &timestamp,
 				}, {
-					// With duplicate labels.
-					Label:       []*clientmodel.LabelPair{{Name: &fooLabelName, Value: &fooLabelValue2}, {Name: &fooLabelName, Value: &fooLabelValue2}},
+					// With duplicate labels, including the __name__ label.
+					Label: []*clientmodel.LabelPair{
+						{Name: &fooLabelName, Value: &fooLabelValue2},
+						{Name: &fooLabelName, Value: &fooLabelValue2},
+						{Name: &nameLabel, Value: &barMetricName},
+					},
 					Counter:     &clientmodel.Counter{Value: &value42},
 					TimestampMs: &timestamp,
 				}, {
@@ -270,4 +282,104 @@ func timeseriesEqual(t1 []prompb.TimeSeries, t2 []prompb.TimeSeries) (bool, erro
 	}
 
 	return true, nil
+}
+
+func TestClient_RemoteWrite(t *testing.T) {
+	tests := []struct {
+		name          string
+		families      []*clientmodel.MetricFamily
+		serverHandler http.HandlerFunc
+		expect        func(t *testing.T, err error, retryCount int)
+	}{
+		{
+			name:     "successful write with metrics",
+			families: []*clientmodel.MetricFamily{mockMetricFamily()},
+			serverHandler: func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusOK)
+			},
+			expect: func(t *testing.T, err error, retryCount int) {
+				assert.NoError(t, err)
+				assert.Equal(t, 1, retryCount)
+			},
+		},
+		{
+			name:     "no metrics to write",
+			families: []*clientmodel.MetricFamily{},
+			serverHandler: func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusOK)
+			},
+			expect: func(t *testing.T, err error, retryCount int) {
+				assert.NoError(t, err)
+				assert.Equal(t, 0, retryCount)
+			},
+		},
+		{
+			name:     "retryable error",
+			families: []*clientmodel.MetricFamily{mockMetricFamily()},
+			serverHandler: func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusServiceUnavailable)
+			},
+			expect: func(t *testing.T, err error, retryCount int) {
+				assert.Error(t, err)
+				assert.Greater(t, retryCount, 1)
+			},
+		},
+		{
+			name:     "non-retryable error",
+			families: []*clientmodel.MetricFamily{mockMetricFamily()},
+			serverHandler: func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusConflict)
+			},
+			expect: func(t *testing.T, err error, retryCount int) {
+				assert.Error(t, err)
+				assert.Equal(t, 1, retryCount)
+				// Ensure the http error is wrapped
+				var httpError *HTTPError
+				assert.ErrorAs(t, err, &httpError)
+				assert.Equal(t, http.StatusConflict, httpError.StatusCode)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			requestCount := 0
+
+			handler := func(w http.ResponseWriter, r *http.Request) {
+				requestCount++
+				tt.serverHandler(w, r)
+			}
+			ts := httptest.NewServer(http.HandlerFunc(handler))
+			defer ts.Close()
+
+			reg := prometheus.NewRegistry()
+			clientMetrics := &ClientMetrics{
+				ForwardRemoteWriteRequests: promauto.With(reg).NewCounterVec(prometheus.CounterOpts{
+					Name: "forward_write_requests_total",
+					Help: "Counter of forward remote write requests.",
+				}, []string{"status_code"}),
+			}
+			client := &Client{logger: log.NewNopLogger(), client: ts.Client(), metrics: clientMetrics}
+
+			req, err := http.NewRequest("POST", ts.URL, bytes.NewBuffer([]byte{}))
+			assert.NoError(t, err)
+
+			err = client.RemoteWrite(context.Background(), req, tt.families, 30*time.Second)
+
+			tt.expect(t, err, requestCount)
+		})
+	}
+}
+
+func mockMetricFamily() *clientmodel.MetricFamily {
+	return &clientmodel.MetricFamily{
+		Name: proto.String("test_metric"),
+		Type: clientmodel.MetricType_COUNTER.Enum(),
+		Metric: []*clientmodel.Metric{
+			{
+				Counter:     &clientmodel.Counter{Value: proto.Float64(1)},
+				TimestampMs: proto.Int64(time.Now().UnixNano() / int64(time.Millisecond)),
+			},
+		},
+	}
 }

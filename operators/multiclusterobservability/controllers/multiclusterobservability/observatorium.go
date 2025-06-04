@@ -13,7 +13,6 @@ import (
 	// nolint:gosec
 	"crypto/md5" // #nosec G401 G501
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"os"
 	"path"
@@ -39,6 +38,7 @@ import (
 	oashared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering"
 	mcoutil "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 )
@@ -95,7 +95,7 @@ func GenerateObservatoriumCR(
 
 	hash, err := hashObservatoriumCRConfig(cl)
 	if err != nil {
-		return &ctrl.Result{}, err
+		return &ctrl.Result{}, fmt.Errorf("failed to hash the observatorium CR config: %w", err)
 	}
 
 	labels := map[string]string{
@@ -105,20 +105,20 @@ func GenerateObservatoriumCR(
 
 	storageClassSelected, err := getStorageClass(mco, cl)
 	if err != nil {
-		return &ctrl.Result{}, err
+		return &ctrl.Result{}, fmt.Errorf("failed to get the storage class: %w", err)
 	}
 
 	// fetch TLS secret mount path from the object store secret
 	tlsSecretMountPath, err := getTLSSecretMountPath(cl, mco.Spec.StorageConfig.MetricObjectStorage)
 	if err != nil {
-		return &ctrl.Result{}, err
+		return &ctrl.Result{}, fmt.Errorf("failed to get the tls secret mount path: %w", err)
 	}
 
 	log.Info("storageClassSelected", "storageClassSelected", storageClassSelected)
 
 	obsSpec, err := newDefaultObservatoriumSpec(cl, mco, storageClassSelected, tlsSecretMountPath)
 	if err != nil {
-		return &ctrl.Result{}, err
+		return &ctrl.Result{}, fmt.Errorf("failed to generate the observatorium spec: %w", err)
 	}
 
 	observatoriumCR := &obsv1alpha1.Observatorium{
@@ -215,17 +215,17 @@ func getTLSSecretMountPath(client client.Client,
 		if k8serrors.IsNotFound(err) {
 			return "", nil
 		}
-		return "", err
+		return "", fmt.Errorf("failed to get the object store secret %s/%s: %w", found.Namespace, found.Name, err)
 	}
 	data, ok := found.Data[objectStorage.Key]
 	if !ok {
-		return "", errors.New("failed to found the object storage configuration key from secret")
+		return "", fmt.Errorf("failed to get the %q file from the object storage secret %s/%s", objectStorage.Key, found.Namespace, found.Name)
 	}
 
 	var objectConfg mcoconfig.ObjectStorgeConf
 	err = yaml.Unmarshal(data, &objectConfg)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed tu umarshal the object store config %s/%s: %w", found.Namespace, found.Name, err)
 	}
 
 	caFile := objectConfg.Config.HTTPConfig.TLSConfig.CAFile
@@ -714,13 +714,6 @@ func newRuleSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string) o
 		},
 	}
 
-	ruleSpec.RulesConfig = []obsv1alpha1.RuleConfig{
-		{
-			Name: mcoconfig.AlertRuleDefaultConfigMapName,
-			Key:  mcoconfig.AlertRuleDefaultFileKey,
-		},
-	}
-
 	if mcoconfig.HasCustomRuleConfigMap() {
 		customRuleConfig := []obsv1alpha1.RuleConfig{
 			{
@@ -729,13 +722,14 @@ func newRuleSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string) o
 			},
 		}
 		ruleSpec.RulesConfig = append(ruleSpec.RulesConfig, customRuleConfig...)
-	} else {
-		ruleSpec.RulesConfig = []obsv1alpha1.RuleConfig{
-			{
-				Name: mcoconfig.AlertRuleDefaultConfigMapName,
-				Key:  mcoconfig.AlertRuleDefaultFileKey,
-			},
-		}
+	}
+
+	if !rendering.MCOAPlatformMetricsEnabled(mco) {
+		// MCOA doesn't rely on those Thanos rules. They are computed on spokes directly.
+		ruleSpec.RulesConfig = append(ruleSpec.RulesConfig, obsv1alpha1.RuleConfig{
+			Name: mcoconfig.AlertRuleDefaultConfigMapName,
+			Key:  mcoconfig.AlertRuleDefaultFileKey,
+		})
 	}
 
 	if mco.Spec.AdvancedConfig != nil && mco.Spec.AdvancedConfig.Rule != nil &&

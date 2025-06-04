@@ -1,0 +1,848 @@
+apiVersion: v1
+data:
+  acm-hcp-overview.json: |-
+    {
+        "annotations": {
+          "list": [
+            {
+              "builtIn": 1,
+              "datasource": "-- Grafana --",
+              "enable": true,
+              "hide": true,
+              "iconColor": "rgba(0, 211, 255, 1)",
+              "name": "Annotations & Alerts",
+              "target": {
+                "limit": 100,
+                "matchAny": false,
+                "tags": [],
+                "type": "dashboard"
+              },
+              "type": "dashboard"
+            }
+          ]
+        },
+        "editable": true,
+        "gnetId": null,
+        "graphTooltip": 0,
+        "id": 33,
+        "iteration": 1707320583517,
+        "links": [],
+        "panels": [
+          {
+            "datasource": "$datasource",
+            "gridPos": {
+              "h": 1,
+              "w": 24,
+              "x": 0,
+              "y": 0
+            },
+            "id": 20,
+            "title": "Estimated capacity based on HCP resource requests",
+            "type": "row"
+          },
+          {
+            "datasource": "$datasource",
+            "description": "",
+            "gridPos": {
+              "h": 12,
+              "w": 12,
+              "x": 0,
+              "y": 1
+            },
+            "id": 18,
+            "options": {
+              "content": "## Request-based resource limit\n\nThe maximum number of hosted control planes that the cluster can host is calculated based on the hosted control plane CPU and memory requests from the pods.\n\nA highly available hosted control plane consists of 78 pods that request 5 vCPUs and 18 GB memory. These baseline numbers are compared to the cluster worker node resource capacities to estimate the maximum number of hosted control planes.",
+              "mode": "markdown"
+            },
+            "pluginVersion": "8.5.20",
+            "title": " Resource Request-base Limit Estimation",
+            "type": "text"
+          },
+          {
+            "datasource": "$datasource",
+            "description": "These are the worker nodes that can run hosted control planes.",
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "thresholds"
+                },
+                "custom": {
+                  "align": "auto",
+                  "displayMode": "auto"
+                },
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": 80
+                    }
+                  ]
+                }
+              },
+              "overrides": []
+            },
+            "gridPos": {
+              "h": 7,
+              "w": 12,
+              "x": 12,
+              "y": 1
+            },
+            "id": 26,
+            "options": {
+              "showHeader": true
+            },
+            "pluginVersion": "8.5.20",
+            "targets": [
+              {
+                "exemplar": true,
+                "expr": "mce_hs_addon_worker_node_resource_capacities_gauge",
+                "format": "table",
+                "instant": true,
+                "interval": "",
+                "legendFormat": "",
+                "refId": "A"
+              }
+            ],
+            "title": "Worker Nodes Capacities",
+            "transformations": [
+              {
+                "id": "organize",
+                "options": {
+                  "excludeByName": {
+                    "Time": true,
+                    "Value": true,
+                    "__name__": true,
+                    "cluster": true,
+                    "clusterID": true,
+                    "container": true,
+                    "endpoint": true,
+                    "instance": true,
+                    "job": true,
+                    "namespace": true,
+                    "pod": true,
+                    "receive": true,
+                    "service": true,
+                    "tenant_id": true
+                  },
+                  "indexByName": {
+                    "Time": 0,
+                    "Value": 17,
+                    "__name__": 1,
+                    "cluster": 2,
+                    "clusterID": 3,
+                    "container": 4,
+                    "cpu": 6,
+                    "endpoint": 8,
+                    "instance": 9,
+                    "job": 10,
+                    "maxPods": 11,
+                    "memory": 7,
+                    "namespace": 12,
+                    "node": 5,
+                    "pod": 13,
+                    "receive": 14,
+                    "service": 15,
+                    "tenant_id": 16
+                  },
+                  "renameByName": {
+                    "cpu": "CPU",
+                    "maxPods": "Pod Limit",
+                    "memory": "Memory (GiB)",
+                    "node": "Worker Node"
+                  }
+                }
+              }
+            ],
+            "type": "table"
+          },
+          {
+            "datasource": "$datasource",
+            "description": "This panel displays the current number of unavailable/failing and available hosted control planes. Based on the hosted control plane resource requirements, it also displays the estimated maximum number of hosted control planes that can be hosted in this cluster.",
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "thresholds"
+                },
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": 80
+                    }
+                  ]
+                }
+              },
+              "overrides": [
+                {
+                  "matcher": {
+                    "id": "byName",
+                    "options": "Currently Unavailable"
+                  },
+                  "properties": [
+                    {
+                      "id": "color",
+                      "value": {
+                        "fixedColor": "orange",
+                        "mode": "fixed"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "matcher": {
+                    "id": "byName",
+                    "options": "est. Max"
+                  },
+                  "properties": [
+                    {
+                      "id": "color",
+                      "value": {
+                        "mode": "fixed"
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            "gridPos": {
+              "h": 5,
+              "w": 12,
+              "x": 12,
+              "y": 8
+            },
+            "id": 12,
+            "options": {
+              "displayMode": "gradient",
+              "orientation": "horizontal",
+              "reduceOptions": {
+                "calcs": [
+                  "lastNotNull"
+                ],
+                "fields": "",
+                "values": false
+              },
+              "showUnfilled": true,
+              "text": {}
+            },
+            "pluginVersion": "8.5.20",
+            "targets": [
+              {
+                "exemplar": true,
+                "expr": "sum(mce_hs_addon_hosted_control_planes_status_gauge{ready=\"false\"})",
+                "format": "time_series",
+                "hide": false,
+                "instant": true,
+                "interval": "",
+                "legendFormat": "Currently Unavailable",
+                "refId": "B"
+              },
+              {
+                "exemplar": true,
+                "expr": "sum(mce_hs_addon_hosted_control_planes_status_gauge{ready=\"true\"})",
+                "format": "time_series",
+                "hide": false,
+                "instant": true,
+                "interval": "",
+                "legendFormat": "Currently Available",
+                "refId": "A"
+              },
+              {
+                "exemplar": true,
+                "expr": "mce_hs_addon_request_based_hcp_capacity_gauge",
+                "hide": false,
+                "instant": true,
+                "interval": "",
+                "legendFormat": "est. Max",
+                "refId": "C"
+              }
+            ],
+            "title": "Number of HCPs",
+            "transformations": [],
+            "type": "bargauge"
+          },
+          {
+            "collapsed": false,
+            "datasource": "$datasource",
+            "gridPos": {
+              "h": 1,
+              "w": 24,
+              "x": 0,
+              "y": 13
+            },
+            "id": 11,
+            "panels": [],
+            "title": "Estimated capacity based on API server query (QPS)",
+            "type": "row"
+          },
+          {
+            "datasource": "$datasource",
+            "gridPos": {
+              "h": 14,
+              "w": 12,
+              "x": 0,
+              "y": 14
+            },
+            "id": 24,
+            "options": {
+              "content": "## Load-based limit\n\nThe maximum number of hosted control planes that the cluster can host is calculated based on the hosted control plane pods CPU and memory utilizations when some workload is put on the hosted control plane Kubernetes API server.\n\nThe following method is used to measure the hosted control plane resource utilizations as the workload increases:\n\n* A hosted cluster with 9 workers that use 8 vCPU and 32 GiB each, while using the KubeVirt platform\n\n* The workload test profile that is configured to focus on API control-plane stress, based on the following definition:\n\n\t* Created objects for each namespace, scaling up to 100 namespaces total\n\n\t* Additional API stress with continuous object deletion and creation\n\n\t* Workload queries-per-second (QPS) and Burst settings set high to remove any client-side throttling\n\nAs the load increases by 1000 QPS, the hosted control plane resource utilization increases by 9 vCPUs and 2.5 GB memory.\n\nFor general sizing purposes, consider the 1000 QPS API rate that is a medium hosted cluster load, and a 2000 QPS API that is a heavy hosted cluster load.\n\nThe following example shows hosted control plane resource scaling for the workload and API rate definitions:\n\n| **QPS (API rate)** | **vCPU usage** | **Memory usage (GiB)** |\n| --- | --- | --- |\n| Low load (Less than 50 QPS) | 2.9 | 11.1 |\n| Medium load (1000 QPS) | 11.9 | 13.6 |\n| High load (2000 QPS) | 20.9 | 16.1 |\n\nThe hosted control plane sizing is about control-plane load and workloads that cause heavy API activity, etcd activity, or both. Hosted pod workloads that focus on data-plane loads, such as running a database, might not result in high API rates.",
+              "mode": "markdown"
+            },
+            "pluginVersion": "8.5.20",
+            "title": "Load-based Limit Estimation",
+            "type": "text"
+          },
+          {
+            "datasource": "$datasource",
+            "description": "These API server loads are used for estimating the maximum number of hosted control planes that can be hosted. For example, the est. Max. (low QPS) in the panel below is the estimate maximum number of hosted control planes that can be hosted when all hosted control planes put low load on the API server.",
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "thresholds"
+                },
+                "custom": {
+                  "align": "center",
+                  "displayMode": "auto"
+                },
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": 80
+                    }
+                  ]
+                }
+              },
+              "overrides": []
+            },
+            "gridPos": {
+              "h": 6,
+              "w": 12,
+              "x": 12,
+              "y": 14
+            },
+            "id": 28,
+            "options": {
+              "showHeader": true
+            },
+            "pluginVersion": "8.5.20",
+            "targets": [
+              {
+                "exemplar": true,
+                "expr": "mce_hs_addon_qps_gauge",
+                "format": "table",
+                "instant": true,
+                "interval": "",
+                "legendFormat": "",
+                "refId": "A"
+              }
+            ],
+            "title": "QPS Settings",
+            "transformations": [
+              {
+                "id": "organize",
+                "options": {
+                  "excludeByName": {
+                    "Time": true,
+                    "__name__": true,
+                    "cluster": true,
+                    "clusterID": true,
+                    "container": true,
+                    "endpoint": true,
+                    "instance": true,
+                    "job": true,
+                    "namespace": true,
+                    "pod": true,
+                    "receive": true,
+                    "service": true,
+                    "tenant_id": true
+                  },
+                  "indexByName": {},
+                  "renameByName": {
+                    "Value": "Query Rate (QPS)",
+                    "rate": "Load on API Server"
+                  }
+                }
+              },
+              {
+                "id": "sortBy",
+                "options": {
+                  "fields": {},
+                  "sort": [
+                    {
+                      "desc": false,
+                      "field": "Query Rate (QPS)"
+                    }
+                  ]
+                }
+              }
+            ],
+            "type": "table"
+          },
+          {
+            "datasource": "$datasource",
+            "description": "This panel displays the current number of unavailable/failing and available hosted control planes. Based on various loads, it also displays the estimated maximum number of hosted control planes that can be hosted in this cluster.",
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "thresholds"
+                },
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": 80
+                    }
+                  ]
+                }
+              },
+              "overrides": [
+                {
+                  "matcher": {
+                    "id": "byName",
+                    "options": "Currently Unavailable"
+                  },
+                  "properties": [
+                    {
+                      "id": "color",
+                      "value": {
+                        "fixedColor": "orange",
+                        "mode": "fixed"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "matcher": {
+                    "id": "byName",
+                    "options": "est. Max. (low QPS)"
+                  },
+                  "properties": [
+                    {
+                      "id": "color",
+                      "value": {
+                        "mode": "fixed"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "matcher": {
+                    "id": "byName",
+                    "options": "est. Max. (medium QPS)"
+                  },
+                  "properties": [
+                    {
+                      "id": "color",
+                      "value": {
+                        "mode": "fixed"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "matcher": {
+                    "id": "byName",
+                    "options": "est. Max. (high QPS)"
+                  },
+                  "properties": [
+                    {
+                      "id": "color",
+                      "value": {
+                        "mode": "fixed"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "matcher": {
+                    "id": "byName",
+                    "options": "est. Max. (avg QPS)"
+                  },
+                  "properties": [
+                    {
+                      "id": "color",
+                      "value": {
+                        "mode": "fixed"
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            "gridPos": {
+              "h": 8,
+              "w": 12,
+              "x": 12,
+              "y": 20
+            },
+            "id": 6,
+            "options": {
+              "displayMode": "gradient",
+              "orientation": "horizontal",
+              "reduceOptions": {
+                "calcs": [
+                  "lastNotNull"
+                ],
+                "fields": "",
+                "values": false
+              },
+              "showUnfilled": true,
+              "text": {}
+            },
+            "pluginVersion": "8.5.20",
+            "targets": [
+              {
+                "exemplar": true,
+                "expr": "sum(mce_hs_addon_hosted_control_planes_status_gauge{ready=\"false\"})",
+                "format": "time_series",
+                "instant": true,
+                "interval": "",
+                "legendFormat": "Currently Unavailable",
+                "refId": "A"
+              },
+              {
+                "exemplar": true,
+                "expr": "sum(mce_hs_addon_hosted_control_planes_status_gauge{ready=\"true\"})",
+                "hide": false,
+                "instant": true,
+                "interval": "",
+                "legendFormat": "Currently Available",
+                "refId": "B"
+              },
+              {
+                "exemplar": true,
+                "expr": "mce_hs_addon_qps_based_hcp_capacity_gauge{qps_rate=\"low\"}",
+                "hide": false,
+                "instant": true,
+                "interval": "",
+                "legendFormat": "est. Max. (low QPS)",
+                "refId": "C"
+              },
+              {
+                "exemplar": true,
+                "expr": "mce_hs_addon_qps_based_hcp_capacity_gauge{qps_rate=\"medium\"}",
+                "hide": false,
+                "instant": true,
+                "interval": "",
+                "legendFormat": "est. Max. (medium QPS)",
+                "refId": "D"
+              },
+              {
+                "exemplar": true,
+                "expr": "mce_hs_addon_qps_based_hcp_capacity_gauge{qps_rate=\"high\"}",
+                "hide": false,
+                "instant": true,
+                "interval": "",
+                "legendFormat": "est. Max. (high QPS)",
+                "refId": "E"
+              },
+              {
+                "exemplar": true,
+                "expr": "mce_hs_addon_qps_based_hcp_capacity_gauge{qps_rate=\"average\"}",
+                "hide": false,
+                "interval": "",
+                "instant": true,
+                "legendFormat": "est. Max. (avg QPS)",
+                "refId": "F"
+              }
+            ],
+            "title": "Number of HCPs ",
+            "type": "bargauge"
+          },
+          {
+            "collapsed": false,
+            "datasource": "$datasource",
+            "gridPos": {
+              "h": 1,
+              "w": 24,
+              "x": 0,
+              "y": 28
+            },
+            "id": 22,
+            "panels": [],
+            "title": "Hosted Control Planes List",
+            "type": "row"
+          },
+          {
+            "datasource": "$datasource",
+            "description": "This is the list of all hosted control planes in this cluster. Click on the hosted control plane name to see its resource utilization.",
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "thresholds"
+                },
+                "custom": {
+                  "align": "auto",
+                  "displayMode": "auto"
+                },
+                "mappings": [
+                  {
+                    "options": {
+                      "false": {
+                        "color": "orange",
+                        "index": 1,
+                        "text": "Not ready"
+                      },
+                      "true": {
+                        "index": 0,
+                        "text": "Ready"
+                      }
+                    },
+                    "type": "value"
+                  }
+                ],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "#EAB839",
+                      "value": ""
+                    }
+                  ]
+                }
+              },
+              "overrides": [
+                {
+                  "matcher": {
+                    "id": "byName",
+                    "options": "hcp_name"
+                  },
+                  "properties": [
+                    {
+                      "id": "links",
+                      "value": [
+                        {
+                          "title": "",
+                          "url": "d/ZGfrZUtIz/acm-resources-hosted-control-plane?${__url_time_range}&var-hcp_ns=${__data.fields.hcp_namespace}"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "matcher": {
+                    "id": "byName",
+                    "options": "ready"
+                  },
+                  "properties": [
+                    {
+                      "id": "color",
+                      "value": {
+                        "mode": "continuous-GrYlRd"
+                      }
+                    },
+                    {
+                      "id": "custom.displayMode",
+                      "value": "color-text"
+                    }
+                  ]
+                },
+                {
+                  "matcher": {
+                    "id": "byName",
+                    "options": "HCP name"
+                  },
+                  "properties": [
+                    {
+                      "id": "custom.width",
+                      "value": null
+                    }
+                  ]
+                }
+              ]
+            },
+            "gridPos": {
+              "h": 7,
+              "w": 24,
+              "x": 0,
+              "y": 29
+            },
+            "id": 16,
+            "options": {
+              "showHeader": true,
+              "sortBy": []
+            },
+            "pluginVersion": "8.5.20",
+            "targets": [
+              {
+                "exemplar": true,
+                "expr": "mce_hs_addon_hosted_control_planes_status_gauge",
+                "format": "table",
+                "instant": true,
+                "interval": "",
+                "legendFormat": "",
+                "refId": "A"
+              }
+            ],
+            "title": "Hosted Control Plane List",
+            "transformations": [
+              {
+                "id": "organize",
+                "options": {
+                  "excludeByName": {
+                    "Time": true,
+                    "Value": true,
+                    "Value #A": true,
+                    "__name__": true,
+                    "cluster": true,
+                    "clusterID": true,
+                    "container": true,
+                    "endpoint": true,
+                    "instance": true,
+                    "job": true,
+                    "namespace": true,
+                    "pod": true,
+                    "receive": true,
+                    "service": true,
+                    "tenant_id": true
+                  },
+                  "indexByName": {},
+                  "renameByName": {
+                    "hcp_name": "HCP name",
+                    "hcp_namespace": "HCP namespace",
+                    "ready": "Status",
+                    "version": "Version"
+                  }
+                }
+              },
+              {
+                "id": "filterByValue",
+                "options": {
+                  "filters": [
+                    {
+                      "config": {
+                        "id": "greater",
+                        "options": {
+                          "value": 0
+                        }
+                      },
+                      "fieldName": "HCP name"
+                    },
+                    {
+                      "config": {
+                        "id": "equal",
+                        "options": {
+                          "value": ""
+                        }
+                      },
+                      "fieldName": "HCP name"
+                    }
+                  ],
+                  "match": "any",
+                  "type": "exclude"
+                }
+              }
+            ],
+            "type": "table"
+          }
+        ],
+        "refresh": "1m",
+        "schemaVersion": 30,
+        "style": "dark",
+        "tags": ["ACM"],
+        "templating": {
+          "list": [
+            {
+              "current": {
+                "selected": false,
+                "text": "Observatorium",
+                "value": "Observatorium"
+              },
+              "description": null,
+              "error": null,
+              "hide": 2,
+              "includeAll": false,
+              "label": null,
+              "multi": false,
+              "name": "datasource",
+              "options": [],
+              "query": "prometheus",
+              "refresh": 2,
+              "regex": "",
+              "skipUrlSync": false,
+              "type": "datasource"
+            },
+            {
+              "allValue": null,
+              "current": {
+                "isNone": true,
+                "selected": false,
+                "text": "None",
+                "value": ""
+              },
+              "datasource": "$datasource",
+              "definition": "mce_hs_addon_total_hosted_control_planes_gaug",
+              "description": null,
+              "error": null,
+              "hide": 2,
+              "includeAll": false,
+              "label": null,
+              "multi": false,
+              "name": "num_hcps",
+              "options": [],
+              "query": {
+                "query": "mce_hs_addon_total_hosted_control_planes_gaug",
+                "refId": "StandardVariableQuery"
+              },
+              "refresh": 1,
+              "regex": "",
+              "skipUrlSync": false,
+              "sort": 0,
+              "type": "query"
+            }
+          ]
+        },
+        "time": {
+          "from": "now-3h",
+          "to": "now"
+        },
+        "timepicker": {
+          "refresh_intervals": [
+            "1m",
+            "5m",
+            "15m",
+            "30m",
+            "1h",
+            "2h",
+            "1d"
+          ]
+        },
+        "timezone": "browser",
+        "title": "ACM - Hosted Control Planes Overview",
+        "uid": "W8U46xpIk",
+        "version": 1
+      }
+kind: ConfigMap
+metadata:
+  labels:
+    general-folder: "true"
+  name: grafana-dashboard-acm-hcp-overview
+  namespace: open-cluster-management-observability

@@ -29,21 +29,19 @@ spec:
     # Describes the default Instrumentation type applied to all managed clusters.
     - group: opentelemetry.io
       resource: instrumentations
+    # Metrics forwarding configuration types.
+    - group: monitoring.coreos.com
+      resource: prometheusagents
+    - group: monitoring.coreos.com
+      resource: scrapeconfigs
+    - group: monitoring.coreos.com
+      resource: prometheusrules
+    # Cluster Observability Operator and Incident detection types.
+    - group: observability.openshift.io
+      resource: uiplugins
   installStrategy:
     type: Placements
     placements:
       - name: global
         namespace: open-cluster-management-global-set
-        configs:
-          - group: observability.openshift.io
-            resource: clusterlogforwarders
-            name: instance
-            namespace: open-cluster-management-observability
-          - group: opentelemetry.io
-            resource: opentelemetrycollectors
-            name: instance
-            namespace: open-cluster-management-observability
-          - group: opentelemetry.io
-            resource: instrumentations
-            name: instance
-            namespace: open-cluster-management-observability
+        configs: []

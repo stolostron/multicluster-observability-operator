@@ -26,6 +26,7 @@ import (
 	"k8s.io/client-go/util/retry"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/openshift"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/rendering"
@@ -73,13 +74,16 @@ type ClusterInfo struct {
 }
 
 type MetricsCollector struct {
-	Client             client.Client
-	ClusterInfo        ClusterInfo
-	HubInfo            *operatorconfig.HubInfo
-	Log                logr.Logger
-	Namespace          string
-	ObsAddon           *oav1beta1.ObservabilityAddon
-	ServiceAccountName string
+	Client                          client.Client
+	ClusterInfo                     ClusterInfo
+	HubInfo                         *operatorconfig.HubInfo
+	Log                             logr.Logger
+	Namespace                       string
+	ObsAddon                        *oav1beta1.ObservabilityAddon
+	Owner                           client.Object
+	ServiceAccountName              string
+	platformCollectorWasUpdated     bool
+	userWorkloadCollectorWasUpdated bool
 }
 
 type proxyConfig struct {
@@ -111,7 +115,9 @@ func (m *MetricsCollector) Update(ctx context.Context, req ctrl.Request) error {
 		return err
 	} else {
 		if m.ObsAddon.Spec.EnableMetrics {
-			m.reportStatus(ctx, status.MetricsCollector, status.UpdateSuccessful, "Metrics collector updated")
+			if m.platformCollectorWasUpdated {
+				m.reportStatus(ctx, status.MetricsCollector, status.UpdateSuccessful, "Metrics collector updated")
+			}
 		} else {
 			m.reportStatus(ctx, status.MetricsCollector, status.Disabled, "Metrics collector disabled")
 		}
@@ -130,7 +136,9 @@ func (m *MetricsCollector) Update(ctx context.Context, req ctrl.Request) error {
 			return err
 		} else {
 			if m.ObsAddon.Spec.EnableMetrics {
-				m.reportStatus(ctx, status.UwlMetricsCollector, status.UpdateSuccessful, "UWL Metrics collector updated")
+				if m.userWorkloadCollectorWasUpdated {
+					m.reportStatus(ctx, status.UwlMetricsCollector, status.UpdateSuccessful, "UWL Metrics collector updated")
+				}
 			} else {
 				m.reportStatus(ctx, status.UwlMetricsCollector, status.Disabled, "UWL Metrics collector disabled")
 			}
@@ -310,6 +318,10 @@ func (m *MetricsCollector) ensureService(ctx context.Context, isUWL bool) error 
 		},
 	}
 
+	err := controllerutil.SetControllerReference(m.Owner, desiredService, m.Client.Scheme())
+	if err != nil {
+		return fmt.Errorf("failed to set controller reference: %w", err)
+	}
 	retryErr := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 		foundService := &corev1.Service{}
 		err := m.Client.Get(ctx, types.NamespacedName{Name: name, Namespace: m.Namespace}, foundService)
@@ -325,10 +337,11 @@ func (m *MetricsCollector) ensureService(ctx context.Context, isUWL bool) error 
 			return fmt.Errorf("failed to get service %s/%s: %w", m.Namespace, name, err)
 		}
 
-		if !equality.Semantic.DeepEqual(desiredService.Spec, foundService.Spec) {
+		if !equality.Semantic.DeepDerivative(desiredService.Spec, foundService.Spec) || !metav1.IsControlledBy(foundService, m.Owner) {
 			m.Log.Info("Updating Service", "name", name, "namespace", m.Namespace)
 
 			foundService.Spec = desiredService.Spec
+			foundService.OwnerReferences = desiredService.OwnerReferences
 			if err := m.Client.Update(ctx, foundService); err != nil {
 				return fmt.Errorf("failed to update service %s/%s: %w", m.Namespace, name, err)
 			}
@@ -392,6 +405,10 @@ func (m *MetricsCollector) ensureServiceMonitor(ctx context.Context, isUWL bool)
 		},
 	}
 
+	err := controllerutil.SetControllerReference(m.Owner, desiredSm, m.Client.Scheme())
+	if err != nil {
+		return fmt.Errorf("failed to set controller reference: %w", err)
+	}
 	retryErr := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 		foundSm := &monitoringv1.ServiceMonitor{}
 		err := m.Client.Get(ctx, types.NamespacedName{Name: name, Namespace: m.Namespace}, foundSm)
@@ -407,10 +424,11 @@ func (m *MetricsCollector) ensureServiceMonitor(ctx context.Context, isUWL bool)
 			return fmt.Errorf("failed to get ServiceMonitor %s/%s: %w", m.Namespace, name, err)
 		}
 
-		if !equality.Semantic.DeepEqual(desiredSm.Spec, foundSm.Spec) {
+		if !equality.Semantic.DeepDerivative(desiredSm.Spec, foundSm.Spec) || !metav1.IsControlledBy(foundSm, m.Owner) {
 			m.Log.Info("Updating ServiceMonitor", "name", name, "namespace", m.Namespace)
 
 			foundSm.Spec = desiredSm.Spec
+			foundSm.OwnerReferences = desiredSm.OwnerReferences
 			if err := m.Client.Update(ctx, foundSm); err != nil {
 				return fmt.Errorf("failed to update ServiceMonitor %s/%s: %w", m.Namespace, name, err)
 			}
@@ -478,6 +496,10 @@ func (m *MetricsCollector) ensureAlertingRule(ctx context.Context, isUWL bool) e
 		},
 	}
 
+	err := controllerutil.SetControllerReference(m.Owner, desiredPromRule, m.Client.Scheme())
+	if err != nil {
+		return fmt.Errorf("failed to set controller reference: %w", err)
+	}
 	retryErr := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 		foundPromRule := &monitoringv1.PrometheusRule{}
 		err := m.Client.Get(ctx, types.NamespacedName{Name: name, Namespace: m.Namespace}, foundPromRule)
@@ -493,10 +515,11 @@ func (m *MetricsCollector) ensureAlertingRule(ctx context.Context, isUWL bool) e
 			return fmt.Errorf("failed to get PrometheusRule %s/%s: %w", m.Namespace, name, err)
 		}
 
-		if !equality.Semantic.DeepEqual(desiredPromRule.Spec, foundPromRule.Spec) {
+		if !equality.Semantic.DeepDerivative(desiredPromRule.Spec, foundPromRule.Spec) || !metav1.IsControlledBy(foundPromRule, m.Owner) {
 			m.Log.Info("Updating PrometheusRule", "name", name, "namespace", m.Namespace)
 
 			foundPromRule.Spec = desiredPromRule.Spec
+			foundPromRule.OwnerReferences = desiredPromRule.OwnerReferences
 			if err := m.Client.Update(ctx, foundPromRule); err != nil {
 				return fmt.Errorf("failed to update PrometheusRule %s/%s: %w", m.Namespace, name, err)
 			}
@@ -744,6 +767,18 @@ func (m *MetricsCollector) ensureDeployment(ctx context.Context, isUWL bool, dep
 		desiredMetricsCollectorDep.Spec.Template.Spec.Containers[0].Resources = *m.ObsAddon.Spec.Resources
 	}
 
+	wasUpdated := func() {
+		if isUWL {
+			m.userWorkloadCollectorWasUpdated = true
+		} else {
+			m.platformCollectorWasUpdated = true
+		}
+	}
+
+	err := controllerutil.SetControllerReference(m.Owner, desiredMetricsCollectorDep, m.Client.Scheme())
+	if err != nil {
+		return fmt.Errorf("failed to set controller reference: %w", err)
+	}
 	retryErr := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 		foundMetricsCollectorDep := &appsv1.Deployment{}
 		err := m.Client.Get(ctx, types.NamespacedName{Name: name, Namespace: m.Namespace}, foundMetricsCollectorDep)
@@ -753,6 +788,7 @@ func (m *MetricsCollector) ensureDeployment(ctx context.Context, isUWL bool, dep
 				return fmt.Errorf("failed to create Deployment %s/%s: %w", m.Namespace, name, err)
 			}
 
+			wasUpdated()
 			return nil
 		}
 		if err != nil {
@@ -761,18 +797,19 @@ func (m *MetricsCollector) ensureDeployment(ctx context.Context, isUWL bool, dep
 
 		isDifferentSpec := !equality.Semantic.DeepEqual(desiredMetricsCollectorDep.Spec.Template.Spec, foundMetricsCollectorDep.Spec.Template.Spec)
 		isDifferentReplicas := !equality.Semantic.DeepEqual(desiredMetricsCollectorDep.Spec.Replicas, foundMetricsCollectorDep.Spec.Replicas)
-		if isDifferentSpec || isDifferentReplicas || deployParams.forceRestart {
-			m.Log.Info("Updating Deployment", "name", name, "namespace", m.Namespace, "isDifferentSpec", isDifferentSpec, "isDifferentReplicas", isDifferentReplicas, "forceRestart", deployParams.forceRestart)
+		isDifferentOwner := !metav1.IsControlledBy(foundMetricsCollectorDep, m.Owner)
+		if isDifferentSpec || isDifferentReplicas || isDifferentOwner || deployParams.forceRestart {
+			m.Log.Info("Updating Deployment", "name", name, "namespace", m.Namespace, "isDifferentSpec", isDifferentSpec, "isDifferentReplicas", isDifferentReplicas, "forceRestart", deployParams.forceRestart, "isDifferentOwner", isDifferentOwner)
 			if deployParams.forceRestart && foundMetricsCollectorDep.Status.ReadyReplicas != 0 {
-				desiredMetricsCollectorDep.Spec.Template.ObjectMeta.Labels[restartLabel] = time.Now().Format("2006-1-2.1504")
+				desiredMetricsCollectorDep.Spec.Template.ObjectMeta.Labels[restartLabel] = time.Now().Format("2006-1-2.150405")
 			}
 
 			desiredMetricsCollectorDep.ResourceVersion = foundMetricsCollectorDep.ResourceVersion
-
 			if err := m.Client.Update(ctx, desiredMetricsCollectorDep); err != nil {
 				return fmt.Errorf("failed to update Deployment %s/%s: %w", m.Namespace, name, err)
 			}
 
+			wasUpdated()
 			return nil
 		}
 
@@ -954,7 +991,7 @@ func (m *MetricsCollector) getMetricsAllowlist(ctx context.Context) (*operatorco
 
 		cmNamespaces = append(cmNamespaces, allowlistCM.ObjectMeta.Namespace)
 
-		customAllowlist, _, customUwlAllowlist, err := util.ParseAllowlistConfigMap(allowlistCM)
+		customAllowlist, customUwlAllowlist, err := util.ParseAllowlistConfigMap(allowlistCM)
 		if err != nil {
 			m.Log.Error(err, "Failed to parse data in configmap", "namespace", allowlistCM.ObjectMeta.Namespace, "name", allowlistCM.ObjectMeta.Name)
 			continue
@@ -964,7 +1001,7 @@ func (m *MetricsCollector) getMetricsAllowlist(ctx context.Context) (*operatorco
 			customUwlAllowlist = injectNamespaceLabel(customUwlAllowlist, allowlistCM.ObjectMeta.Namespace)
 		}
 
-		allowList, _, userAllowList = util.MergeAllowlist(allowList, customAllowlist, nil, userAllowList, customUwlAllowlist)
+		allowList, userAllowList = util.MergeAllowlist(allowList, customAllowlist, userAllowList, customUwlAllowlist)
 	}
 
 	if len(cmNamespaces) > 0 {

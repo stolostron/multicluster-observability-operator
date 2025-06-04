@@ -9,14 +9,14 @@ import (
 	"errors"
 	"fmt"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/utils"
 )
 
-var _ = Describe("Observability:", func() {
+var _ = Describe("", func() {
 	BeforeEach(func() {
 		hubClient = utils.NewKubeClient(
 			testOptions.HubCluster.ClusterServerURL,
@@ -32,7 +32,7 @@ var _ = Describe("Observability:", func() {
 		}
 	})
 
-	Context("[P2][Sev2][observability][Stable] Should be automatically created within 1 minute when delete manifestwork (manifestwork/g0) -", func() {
+	Context("[P2][Sev2][observability][Stable] Should be automatically created within 1 minute when delete manifestwork @ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release (manifestwork/g0) -", func() {
 		manifestWorkName := "endpoint-observability-work"
 		clientDynamic := utils.GetKubeClientDynamic(testOptions, true)
 		clusterName := utils.GetManagedClusterName(testOptions)
@@ -131,9 +131,9 @@ var _ = Describe("Observability:", func() {
 	})
 
 	AfterEach(func() {
-		if CurrentGinkgoTestDescription().Failed {
+		if CurrentSpecReport().Failed() {
 			utils.LogFailingTestStandardDebugInfo(testOptions)
 		}
-		testFailed = testFailed || CurrentGinkgoTestDescription().Failed
+		testFailed = testFailed || CurrentSpecReport().Failed()
 	})
 })

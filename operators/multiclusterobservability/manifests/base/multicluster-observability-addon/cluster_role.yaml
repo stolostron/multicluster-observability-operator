@@ -30,7 +30,7 @@
       verbs: ["update", "patch"]
     - apiGroups: ["addon.open-cluster-management.io"]
       resources: ["clustermanagementaddons"]
-      verbs: ["get", "list", "watch"]
+      verbs: ["get", "list", "watch", "update", "patch"]
     - apiGroups: ["addon.open-cluster-management.io"]
       resources: ["managedclusteraddons"]
       verbs: ["get", "list", "watch", "create", "update", "delete"]
@@ -60,6 +60,11 @@
     - apiGroups: [""]
       resources: ["secrets"]
       verbs: ["get", "list", "watch"]
+    # The addon will need to pull subscriptions to know if certain operators
+    # are installed in the hub cluster
+    - apiGroups: ["operators.coreos.com"]
+      resources: ["subscriptions"]
+      verbs: ["get", "list", "watch"]
     # Roles for addon to perform logging specific actions
     - apiGroups: ["observability.openshift.io"]
       resources: ["clusterlogforwarders"]
@@ -67,4 +72,13 @@
     # Role for addon to perform opentelemetry specific actions
     - apiGroups: ["opentelemetry.io"]
       resources: ["opentelemetrycollectors", "instrumentations"]
+      verbs: ["get", "list", "watch"]
+    # Role for addon to perform prometheus specific actions
+    # servicemonitors resource is needed for the HCPs case
+    - apiGroups: ["monitoring.coreos.com"]
+      resources: ["prometheusagents", "scrapeconfigs", "prometheusrules", "servicemonitors"]
+      verbs: ["get", "list", "watch", "create", "update", "delete", "patch"]
+    # Role for watching and listing hosted clusters for setting HCPs monitoring
+    - apiGroups: ["hypershift.openshift.io"]
+      resources: ["hostedclusters"]
       verbs: ["get", "list", "watch"]

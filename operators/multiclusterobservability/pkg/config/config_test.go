@@ -568,7 +568,7 @@ func TestReadImageManifestConfigMap(t *testing.T) {
 			}
 			client := fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(initObjs...).Build()
 
-			gotRet, err := ReadImageManifestConfigMap(client, c.version)
+			_, gotRet, err := ReadImageManifestConfigMap(client, c.version)
 			if err != nil {
 				t.Errorf("Failed read image manifest configmap due to %v", err)
 			}
@@ -809,6 +809,8 @@ func TestGetMCOASupportedCRDNames(t *testing.T) {
 		"clusterlogforwarders.observability.openshift.io",
 		"opentelemetrycollectors.opentelemetry.io",
 		"instrumentations.opentelemetry.io",
+		"prometheusagents.monitoring.coreos.com",
+		"uiplugins.observability.openshift.io",
 	}
 
 	result := GetMCOASupportedCRDNames()

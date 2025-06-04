@@ -40,6 +40,7 @@ import (
 	"k8s.io/client-go/util/workqueue"
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
+	policyv1 "open-cluster-management.io/governance-policy-propagator/api/v1"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -47,6 +48,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	migrationv1alpha1 "sigs.k8s.io/kube-storage-version-migrator/pkg/apis/migration/v1alpha1"
+
+	imagev1 "github.com/openshift/api/image/v1"
+	fakeimageclient "github.com/openshift/client-go/image/clientset/versioned/fake"
+	fakeimagev1client "github.com/openshift/client-go/image/clientset/versioned/typed/image/v1/fake"
 )
 
 func init() {
@@ -311,6 +316,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	routev1.AddToScheme(s)
 	oauthv1.AddToScheme(s)
 	clusterv1.AddToScheme(s)
+	policyv1.AddToScheme(s)
 	addonv1alpha1.AddToScheme(s)
 	migrationv1alpha1.SchemeBuilder.AddToScheme(s)
 
@@ -350,8 +356,32 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 		).
 		Build()
 
+		// Create fake imagestream client
+	imageClient := &fakeimagev1client.FakeImageV1{Fake: &(fakeimageclient.NewSimpleClientset().Fake)}
+	_, err := imageClient.ImageStreams(config.OauthProxyImageStreamNamespace).Create(context.Background(),
+		&imagev1.ImageStream{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      config.OauthProxyImageStreamName,
+				Namespace: config.OauthProxyImageStreamNamespace,
+			},
+			Spec: imagev1.ImageStreamSpec{
+				Tags: []imagev1.TagReference{
+					{
+						Name: "v4.4",
+						From: &corev1.ObjectReference{
+							Kind: "DockerImage",
+							Name: "quay.io/openshift-release-dev/ocp-v4.0-art-dev",
+						},
+					},
+				},
+			},
+		}, metav1.CreateOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	// Create a ReconcileMemcached object with the scheme and fake client.
-	r := &MultiClusterObservabilityReconciler{Client: cl, Scheme: s, CRDMap: map[string]bool{config.IngressControllerCRD: true}}
+	r := &MultiClusterObservabilityReconciler{Client: cl, Scheme: s, CRDMap: map[string]bool{config.IngressControllerCRD: true}, ImageClient: imageClient}
 	config.SetMonitoringCRName(name)
 	// Mock request to simulate Reconcile() being called on an event for a
 	// watched resource .
@@ -363,7 +393,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 
 	// Create empty client. The test secret specified in MCO is not yet created.
 	t.Log("Reconcile empty client")
-	_, err := r.Reconcile(context.TODO(), req)
+	_, err = r.Reconcile(context.TODO(), req)
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)
 	}
@@ -726,6 +756,7 @@ func TestImageReplaceForMCO(t *testing.T) {
 	routev1.AddToScheme(s)
 	oauthv1.AddToScheme(s)
 	clusterv1.AddToScheme(s)
+	policyv1.AddToScheme(s)
 	addonv1alpha1.AddToScheme(s)
 	mchv1.SchemeBuilder.AddToScheme(s)
 	migrationv1alpha1.SchemeBuilder.AddToScheme(s)
@@ -759,8 +790,32 @@ func TestImageReplaceForMCO(t *testing.T) {
 	// Create a fake client to mock API calls.
 	cl := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 
+	// Create fake imagestream client
+	imageClient := &fakeimagev1client.FakeImageV1{Fake: &(fakeimageclient.NewSimpleClientset().Fake)}
+	_, err := imageClient.ImageStreams(config.OauthProxyImageStreamNamespace).Create(context.Background(),
+		&imagev1.ImageStream{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      config.OauthProxyImageStreamName,
+				Namespace: config.OauthProxyImageStreamNamespace,
+			},
+			Spec: imagev1.ImageStreamSpec{
+				Tags: []imagev1.TagReference{
+					{
+						Name: "v4.4",
+						From: &corev1.ObjectReference{
+							Kind: "DockerImage",
+							Name: "quay.io/openshift-release-dev/ocp-v4.0-art-dev",
+						},
+					},
+				},
+			},
+		}, metav1.CreateOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	// Create a ReconcileMemcached object with the scheme and fake client.
-	r := &MultiClusterObservabilityReconciler{Client: cl, Scheme: s, CRDMap: map[string]bool{config.MCHCrdName: true, config.IngressControllerCRD: true}}
+	r := &MultiClusterObservabilityReconciler{Client: cl, Scheme: s, CRDMap: map[string]bool{config.MCHCrdName: true, config.IngressControllerCRD: true}, ImageClient: imageClient}
 	config.SetMonitoringCRName(name)
 
 	// Mock request to simulate Reconcile() being called on an event for a watched resource .
@@ -775,7 +830,7 @@ func TestImageReplaceForMCO(t *testing.T) {
 	config.SetImageManifests(testImagemanifestsMap)
 
 	// trigger another reconcile for MCH update event
-	_, err := r.Reconcile(context.TODO(), req)
+	_, err = r.Reconcile(context.TODO(), req)
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)
 	}

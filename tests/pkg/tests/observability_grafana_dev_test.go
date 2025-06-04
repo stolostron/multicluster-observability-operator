@@ -8,19 +8,19 @@ import (
 	"bytes"
 	"os/exec"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"k8s.io/klog"
 
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/utils"
 )
 
-var _ = Describe("Observability:", func() {
+var _ = Describe("", func() {
 
 	// Do not need to run this case in canary environment
 	// If we really need it in canary, ensure the grafana-dev-test.sh is available
 	// in observability-e2e-test image and all required commands exist
-	It("[P1][Sev1][observability][Integration] Should run grafana-dev test successfully (grafana_dev/g0)", func() {
+	It("RHACM4K-1705: Observability: Setup a Grafana develop instance [P1][Sev1][Observability][Integration]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release (grafana_dev/g0)", func() {
 		cmd := exec.Command("../../grafana-dev-test.sh")
 		var out bytes.Buffer
 		cmd.Stdout = &out
@@ -34,9 +34,9 @@ var _ = Describe("Observability:", func() {
 	})
 
 	AfterEach(func() {
-		if CurrentGinkgoTestDescription().Failed {
+		if CurrentSpecReport().Failed() {
 			utils.LogFailingTestStandardDebugInfo(testOptions)
 		}
-		testFailed = testFailed || CurrentGinkgoTestDescription().Failed
+		testFailed = testFailed || CurrentSpecReport().Failed()
 	})
 })

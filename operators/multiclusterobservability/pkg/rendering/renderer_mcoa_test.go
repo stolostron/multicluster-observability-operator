@@ -133,6 +133,11 @@ func TestRenderAddonDeploymentConfig(t *testing.T) {
 							Enabled: true,
 						},
 					},
+					Metrics: mcov1beta2.PlatformMetricsSpec{
+						Collection: mcov1beta2.PlatformMetricsCollectionSpec{
+							Enabled: true,
+						},
+					},
 				},
 				UserWorkloads: &mcov1beta2.UserWorkloadCapabilitiesSpec{
 					Logs: mcov1beta2.UserWorkloadLogsSpec{
@@ -140,6 +145,11 @@ func TestRenderAddonDeploymentConfig(t *testing.T) {
 							ClusterLogForwarder: mcov1beta2.ClusterLogForwarderSpec{
 								Enabled: true,
 							},
+						},
+					},
+					Metrics: mcov1beta2.UserWorkloadMetricsSpec{
+						Collection: mcov1beta2.UserWorkloadMetricsCollectionSpec{
+							Enabled: true,
 						},
 					},
 					Traces: mcov1beta2.UserWorkloadTracesSpec{
@@ -156,7 +166,12 @@ func TestRenderAddonDeploymentConfig(t *testing.T) {
 			},
 		},
 	}
-	renderer := &MCORenderer{cr: mco}
+
+	renderer := &MCORenderer{cr: mco, rendererOptions: &RendererOptions{
+		MCOAOptions: MCOARendererOptions{
+			MetricsHubHostname: "observability-hub",
+		},
+	}}
 
 	uobj, err := renderer.renderAddonDeploymentConfig(aodc, "test", map[string]string{"key": "value"})
 	assert.NoError(t, err)
@@ -169,12 +184,16 @@ func TestRenderAddonDeploymentConfig(t *testing.T) {
 	clfV1 := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.ClusterLogForwarderCRDName)
 	otelV1beta1 := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.OpenTelemetryCollectorCRDName)
 	instrV1alpha1 := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.InstrumentationCRDName)
+	promV1alpha1 := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.PrometheusAgentCRDName)
 
-	assert.Len(t, got.Spec.CustomizedVariables, 5)
+	assert.Len(t, got.Spec.CustomizedVariables, 8)
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1alpha1.CustomizedVariable{Name: namePlatformLogsCollection, Value: clfV1})
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1alpha1.CustomizedVariable{Name: nameUserWorkloadLogsCollection, Value: clfV1})
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1alpha1.CustomizedVariable{Name: nameUserWorkloadTracesCollection, Value: otelV1beta1})
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1alpha1.CustomizedVariable{Name: nameUserWorkloadInstrumentation, Value: instrV1alpha1})
+	assert.Contains(t, got.Spec.CustomizedVariables, addonv1alpha1.CustomizedVariable{Name: namePlatformMetricsCollection, Value: promV1alpha1})
+	assert.Contains(t, got.Spec.CustomizedVariables, addonv1alpha1.CustomizedVariable{Name: nameUserWorkloadMetricsCollection, Value: promV1alpha1})
+	assert.Contains(t, got.Spec.CustomizedVariables, addonv1alpha1.CustomizedVariable{Name: nameMetricsHubHostname, Value: "observability-hub"})
 }
 
 func TestMCOAEnabled(t *testing.T) {
@@ -229,6 +248,40 @@ func TestMCOAEnabled(t *testing.T) {
 			expected: true,
 		},
 		{
+			name: "Platform metrics collection enabled",
+			cr: &mcov1beta2.MultiClusterObservability{
+				Spec: mcov1beta2.MultiClusterObservabilitySpec{
+					Capabilities: &mcov1beta2.CapabilitiesSpec{
+						Platform: &mcov1beta2.PlatformCapabilitiesSpec{
+							Metrics: mcov1beta2.PlatformMetricsSpec{
+								Collection: mcov1beta2.PlatformMetricsCollectionSpec{
+									Enabled: true,
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: true,
+		},
+		{
+			name: "User workloads metrics collection enabled",
+			cr: &mcov1beta2.MultiClusterObservability{
+				Spec: mcov1beta2.MultiClusterObservabilitySpec{
+					Capabilities: &mcov1beta2.CapabilitiesSpec{
+						UserWorkloads: &mcov1beta2.UserWorkloadCapabilitiesSpec{
+							Metrics: mcov1beta2.UserWorkloadMetricsSpec{
+								Collection: mcov1beta2.UserWorkloadMetricsCollectionSpec{
+									Enabled: true,
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: true,
+		},
+		{
 			name: "User workloads traces collection enabled",
 			cr: &mcov1beta2.MultiClusterObservability{
 				Spec: mcov1beta2.MultiClusterObservabilitySpec{
@@ -261,6 +314,11 @@ func TestMCOAEnabled(t *testing.T) {
 									Enabled: false,
 								},
 							},
+							Metrics: mcov1beta2.PlatformMetricsSpec{
+								Collection: mcov1beta2.PlatformMetricsCollectionSpec{
+									Enabled: false,
+								},
+							},
 						},
 						UserWorkloads: &mcov1beta2.UserWorkloadCapabilitiesSpec{
 							Logs: mcov1beta2.UserWorkloadLogsSpec{
@@ -268,6 +326,11 @@ func TestMCOAEnabled(t *testing.T) {
 									ClusterLogForwarder: mcov1beta2.ClusterLogForwarderSpec{
 										Enabled: false,
 									},
+								},
+							},
+							Metrics: mcov1beta2.UserWorkloadMetricsSpec{
+								Collection: mcov1beta2.UserWorkloadMetricsCollectionSpec{
+									Enabled: false,
 								},
 							},
 							Traces: mcov1beta2.UserWorkloadTracesSpec{

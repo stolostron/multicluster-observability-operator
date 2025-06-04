@@ -6,6 +6,8 @@ package rendering
 
 import (
 	"fmt"
+	"maps"
+	"net/url"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -25,14 +27,21 @@ const (
 	cmaoKind = "ClusterManagementAddOn"
 
 	// AODC CustomizedVariable Names
-	namePlatformLogsCollection       = "platformLogsCollection"
-	nameUserWorkloadLogsCollection   = "userWorkloadLogsCollection"
-	nameUserWorkloadTracesCollection = "userWorkloadTracesCollection"
-	nameUserWorkloadInstrumentation  = "userWorkloadInstrumentation"
+	namePlatformLogsCollection        = "platformLogsCollection"
+	namePlatformIncidentDetection     = "platformIncidentDetection"
+	namePlatformMetricsCollection     = "platformMetricsCollection"
+	nameUserWorkloadLogsCollection    = "userWorkloadLogsCollection"
+	nameUserWorkloadTracesCollection  = "userWorkloadTracesCollection"
+	nameUserWorkloadInstrumentation   = "userWorkloadInstrumentation"
+	nameUserWorkloadMetricsCollection = "userWorkloadMetricsCollection"
+	nameMetricsHubHostname            = "metricsHubHostname"
+
+	grafanaLink = "/d/89eaec849a6e4837a619fb0540c22b13/acm-clusters-overview"
 )
 
 type MCOARendererOptions struct {
-	DisableCMAORender bool
+	DisableCMAORender  bool
+	MetricsHubHostname string
 }
 
 func (r *MCORenderer) newMCOARenderer() {
@@ -155,13 +164,29 @@ func (r *MCORenderer) renderClusterManagementAddOn(
 	}
 	u := &unstructured.Unstructured{Object: m}
 
+	// Add grafana link annotation
+	host, err := mcoconfig.GetRouteHost(r.kubeClient, mcoconfig.GrafanaRouteName, mcoconfig.GetDefaultNamespace())
+	if err != nil {
+		return nil, fmt.Errorf("failed to get host route: %w", err)
+	}
+	grafanaUrl := url.URL{
+		Scheme: "https",
+		Host:   host,
+		Path:   grafanaLink,
+	}
+	annotations := maps.Clone(u.GetAnnotations())
+	if annotations == nil {
+		annotations = make(map[string]string)
+	}
+	annotations["console.open-cluster-management.io/launch-link"] = grafanaUrl.String()
+	annotations["console.open-cluster-management.io/launch-link-text"] = "Grafana"
+	u.SetAnnotations(annotations)
+
 	cLabels := u.GetLabels()
 	if cLabels == nil {
 		cLabels = make(map[string]string)
 	}
-	for k, v := range labels {
-		cLabels[k] = v
-	}
+	maps.Copy(cLabels, labels)
 	u.SetLabels(cLabels)
 
 	return u, nil
@@ -195,12 +220,24 @@ func (r *MCORenderer) renderAddonDeploymentConfig(
 				fqdn := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.ClusterLogForwarderCRDName)
 				appendCustomVar(aodc, namePlatformLogsCollection, fqdn)
 			}
+			if cs.Platform.Metrics.Collection.Enabled {
+				fqdn := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.PrometheusAgentCRDName)
+				appendCustomVar(aodc, namePlatformMetricsCollection, fqdn)
+			}
+			if cs.Platform.Analytics.IncidentDetection.Enabled {
+				fqdn := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.UIPluginsCRDName)
+				appendCustomVar(aodc, namePlatformIncidentDetection, fqdn)
+			}
 		}
 
 		if cs.UserWorkloads != nil {
 			if cs.UserWorkloads.Logs.Collection.ClusterLogForwarder.Enabled {
 				fqdn := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.ClusterLogForwarderCRDName)
 				appendCustomVar(aodc, nameUserWorkloadLogsCollection, fqdn)
+			}
+			if cs.UserWorkloads.Metrics.Collection.Enabled {
+				fqdn := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.PrometheusAgentCRDName)
+				appendCustomVar(aodc, nameUserWorkloadMetricsCollection, fqdn)
 			}
 			if cs.UserWorkloads.Traces.Collection.Collector.Enabled {
 				fqdn := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.OpenTelemetryCollectorCRDName)
@@ -210,6 +247,14 @@ func (r *MCORenderer) renderAddonDeploymentConfig(
 				fqdn := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.InstrumentationCRDName)
 				appendCustomVar(aodc, nameUserWorkloadInstrumentation, fqdn)
 			}
+		}
+
+		if (cs.Platform != nil && cs.Platform.Metrics.Collection.Enabled) ||
+			(cs.UserWorkloads != nil && cs.UserWorkloads.Metrics.Collection.Enabled) {
+			if r.rendererOptions == nil || r.rendererOptions.MCOAOptions.MetricsHubHostname == "" {
+				return nil, fmt.Errorf("MetricsHubHostname is required when metrics collection is enabled")
+			}
+			appendCustomVar(aodc, nameMetricsHubHostname, r.rendererOptions.MCOAOptions.MetricsHubHostname)
 		}
 
 		u.Object, err = runtime.DefaultUnstructuredConverter.ToUnstructured(aodc)
@@ -275,12 +320,28 @@ func MCOAEnabled(cr *obv1beta2.MultiClusterObservability) bool {
 	}
 	mcoaEnabled := false
 	if cr.Spec.Capabilities.Platform != nil {
-		mcoaEnabled = mcoaEnabled || cr.Spec.Capabilities.Platform.Logs.Collection.Enabled
+		mcoaEnabled = mcoaEnabled ||
+			cr.Spec.Capabilities.Platform.Logs.Collection.Enabled ||
+			cr.Spec.Capabilities.Platform.Metrics.Collection.Enabled ||
+			cr.Spec.Capabilities.Platform.Analytics.IncidentDetection.Enabled
 	}
 	if cr.Spec.Capabilities.UserWorkloads != nil {
 		mcoaEnabled = mcoaEnabled || cr.Spec.Capabilities.UserWorkloads.Logs.Collection.ClusterLogForwarder.Enabled
 		mcoaEnabled = mcoaEnabled || cr.Spec.Capabilities.UserWorkloads.Traces.Collection.Collector.Enabled
 		mcoaEnabled = mcoaEnabled || cr.Spec.Capabilities.UserWorkloads.Traces.Collection.Instrumentation.Enabled
+		mcoaEnabled = mcoaEnabled || cr.Spec.Capabilities.UserWorkloads.Metrics.Collection.Enabled
 	}
 	return mcoaEnabled
+}
+
+func MCOAPlatformMetricsEnabled(cr *obv1beta2.MultiClusterObservability) bool {
+	if cr.Spec.Capabilities == nil {
+		return false
+	}
+
+	if cr.Spec.Capabilities.Platform != nil && cr.Spec.Capabilities.Platform.Metrics.Collection.Enabled {
+		return true
+	}
+
+	return false
 }

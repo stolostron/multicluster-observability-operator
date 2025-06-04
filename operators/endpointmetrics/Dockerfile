@@ -1,11 +1,12 @@
 # Copyright (c) 2021 Red Hat, Inc.
 # Copyright Contributors to the Open Cluster Management project.
-FROM registry.ci.openshift.org/stolostron/builder:go1.22-linux AS builder
+FROM registry.ci.openshift.org/stolostron/builder:go1.23-linux AS builder
 
 WORKDIR /workspace
 COPY go.sum go.mod ./
 COPY ./operators/endpointmetrics ./operators/endpointmetrics
 COPY ./operators/multiclusterobservability/api ./operators/multiclusterobservability/api
+COPY ./operators/multiclusterobservability/pkg/config ./operators/multiclusterobservability/pkg/config
 COPY ./operators/pkg ./operators/pkg
 
 RUN CGO_ENABLED=1 GOFLAGS="" go build -a -installsuffix cgo -o build/_output/bin/endpoint-monitoring-operator operators/endpointmetrics/main.go

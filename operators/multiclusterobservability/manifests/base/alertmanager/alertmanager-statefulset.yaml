@@ -42,7 +42,6 @@ spec:
       containers:
       - args:
         - --config.file=/etc/alertmanager/config/alertmanager.yaml
-        - --cluster.listen-address=[$(POD_IP)]:9094
         - --storage.path=/alertmanager
         - --data.retention=120h
         - --web.listen-address=127.0.0.1:9093
@@ -125,7 +124,7 @@ spec:
         - --skip-provider-button=true
         - --openshift-ca=/etc/pki/tls/cert.pem
         - --openshift-ca=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
-        image: quay.io/stolostron/origin-oauth-proxy:4.5
+        image: quay.io/stolostron/origin-oauth-proxy:4.16
         imagePullPolicy: IfNotPresent
         name: alertmanager-proxy
         ports:

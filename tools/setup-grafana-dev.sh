@@ -5,9 +5,10 @@
 obs_namespace='open-cluster-management-observability'
 deploy_flag=0
 
-sed_command='sed -i-e -e'
-if [[ "$(uname)" == "Darwin" ]]; then
-  sed_command='sed -i '-e' -e'
+if sed --version 2>/dev/null | grep -q "GNU sed"; then
+  sed_command="sed -i -e"
+else
+  sed_command="sed -i '' -e" # BSD sed
 fi
 
 usage() {

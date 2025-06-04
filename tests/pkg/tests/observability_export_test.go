@@ -7,16 +7,23 @@ package tests
 import (
 	"fmt"
 	"os"
+	"strings"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/kustomize"
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/utils"
 )
 
-var _ = Describe("Observability:", func() {
+var _ = Describe("", func() {
 	BeforeEach(func() {
+
+		cloudProvider := strings.ToLower(os.Getenv("CLOUD_PROVIDER"))
+		if strings.Contains(cloudProvider, "ibmz") {
+			Skip("skip on IMB-z as victoria-metrics image not available")
+		}
+
 		hubClient = utils.NewKubeClient(
 			testOptions.HubCluster.ClusterServerURL,
 			testOptions.KubeConfig,
@@ -38,7 +45,7 @@ var _ = Describe("Observability:", func() {
 		}, EventuallyTimeoutMinute*6, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
-	It("[P2][Sev2][observability][Integration] Should have acm_remote_write_requests_total metrics with correct labels/value (export/g0)", func() {
+	It("RHACM4K-11170: Observability: Verify metrics would be exported to corp tools(2.5)(draft)[P2][Sev2][observability][Integration] Should have acm_remote_write_requests_total metrics with correct labels/value  @e2e (export/g0)", func() {
 		By("Adding victoriametrics deployment/service/secret")
 		yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: "../../../examples/export"})
 		Expect(err).ToNot(HaveOccurred())
@@ -104,14 +111,18 @@ var _ = Describe("Observability:", func() {
 	})
 
 	JustAfterEach(func() {
-		if CurrentGinkgoTestDescription().Failed {
+		if CurrentSpecReport().Failed() {
 			utils.LogFailingTestStandardDebugInfo(testOptions)
 		}
 		testFailed = testFailed || CurrentGinkgoTestDescription().Failed
 	})
 
 	AfterEach(func() {
-		Expect(utils.CleanExportResources(testOptions)).NotTo(HaveOccurred())
-		Expect(utils.IntegrityChecking(testOptions)).NotTo(HaveOccurred())
+
+		cloudProvider := strings.ToLower(os.Getenv("CLOUD_PROVIDER"))
+		if !strings.Contains(cloudProvider, "ibmz") {
+			Expect(utils.CleanExportResources(testOptions)).NotTo(HaveOccurred())
+			Expect(utils.IntegrityChecking(testOptions)).NotTo(HaveOccurred())
+		}
 	})
 })

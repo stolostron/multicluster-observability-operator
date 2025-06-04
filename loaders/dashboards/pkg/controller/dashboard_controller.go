@@ -35,7 +35,7 @@ const (
 	customFolderKey     = "observability.open-cluster-management.io/dashboard-folder"
 	generalFolderKey    = "general-folder"
 	defaultCustomFolder = "Custom"
-	homeDashboardTitle  = "ACM - Clusters Overview"
+	homeDashboardUID    = "2b679d600f3b9e7676a7c5ac3643d448"
 )
 
 var (
@@ -350,7 +350,7 @@ func updateDashboard(old, new interface{}, overwrite bool) error {
 			}
 		}
 
-		if dashboard["title"] == homeDashboardTitle {
+		if dashboard["uid"] == homeDashboardUID {
 			// get "id" value from response
 			re := regexp.MustCompile("\"id\":(\\d+),")
 			result := re.FindSubmatch(body)

@@ -3,9 +3,7 @@
 # Copyright (c) 2021 Red Hat, Inc.
 # Copyright Contributors to the Open Cluster Management project
 
-#set -exo pipefail
-
-set -x
+set -exo pipefail
 
 ROOTDIR="$(
   cd "$(dirname "$0")/.."
@@ -88,12 +86,12 @@ else
   #     rm -fr /usr/local/go
   #     tar -C /usr/local -xzf go1.21.10.linux-amd64.tar.gz
   fi
-  go install github.com/onsi/ginkgo/ginkgo@latest
+  go install github.com/onsi/ginkgo/v2/ginkgo@v2.19.0
   GINKGO_CMD="$(go env GOPATH)/bin/ginkgo"
 fi
 
 go mod vendor
-${GINKGO_CMD} -debug -trace ${GINKGO_FOCUS} -v ${ROOTDIR}/tests/pkg/tests -- -options=${OPTIONSFILE} -v=5
+${GINKGO_CMD} --no-color --junit-report=${ROOTDIR}/tests/pkg/tests/results.xml -debug -trace ${GINKGO_FOCUS} -v ${ROOTDIR}/tests/pkg/tests -- -options=${OPTIONSFILE} -v=6
 
 cat ${ROOTDIR}/tests/pkg/tests/results.xml | grep failures=\"0\" | grep errors=\"0\"
 if [ $? -ne 0 ]; then

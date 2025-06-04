@@ -149,16 +149,19 @@ func (cfg Config) CreateFromClient(
 		fromClient.Transport = metricshttp.NewDebugRoundTripper(logger, fromClient.Transport)
 	}
 
-	if len(cfg.FromClientConfig.Token) == 0 && len(cfg.FromClientConfig.TokenFile) > 0 {
-		data, err := os.ReadFile(cfg.FromClientConfig.TokenFile)
-		if err != nil {
-			return nil, fmt.Errorf("unable to read from-token-file: %w", err)
-		}
-		cfg.FromClientConfig.Token = strings.TrimSpace(string(data))
+	if len(cfg.FromClientConfig.Token) > 0 && len(cfg.FromClientConfig.TokenFile) > 0 {
+		rlogger.Log(logger, rlogger.Info, "msg", "FromClient token is ignored as token file is specified")
 	}
 
-	if len(cfg.FromClientConfig.Token) > 0 {
-		fromClient.Transport = metricshttp.NewBearerRoundTripper(cfg.FromClientConfig.Token, fromClient.Transport)
+	if len(cfg.FromClientConfig.TokenFile) > 0 {
+		tf, err := NewTokenFile(context.Background(), logger, cfg.FromClientConfig.TokenFile, 2*time.Minute)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create tokenFile: %w", err)
+		}
+		fromClient.Transport = metricshttp.NewBearerRoundTripper(tf.GetToken, fromClient.Transport)
+	} else if len(cfg.FromClientConfig.Token) > 0 {
+		getToken := func() string { return cfg.FromClientConfig.Token }
+		fromClient.Transport = metricshttp.NewBearerRoundTripper(getToken, fromClient.Transport)
 	}
 
 	return metricsclient.New(logger, metrics.clientMetrics, fromClient, cfg.LimitBytes, interval, "federate_from"), nil
@@ -405,6 +408,11 @@ func (w *Worker) LastMetrics() []*clientmodel.MetricFamily {
 }
 
 func (w *Worker) Run(ctx context.Context) {
+	// Forward metrics immediately on startup.
+	if err := w.forward(ctx); err != nil {
+		rlogger.Log(w.logger, rlogger.Error, "msg", "unable to forward results", "err", err)
+	}
+
 	ticker := time.NewTicker(w.interval)
 	defer ticker.Stop()
 
@@ -499,7 +507,13 @@ func (w *Worker) forward(ctx context.Context) error {
 
 	req := &http.Request{Method: "POST", URL: w.to}
 	if err := w.toClient.RemoteWrite(ctx, req, families, w.interval); err != nil {
-		updateStatus(statuslib.ForwardFailed, "Failed to send metrics")
+		var httpError *metricsclient.HTTPError
+		// Avoid degrading the status on 409
+		if errors.As(err, &httpError) && httpError.StatusCode == http.StatusConflict {
+			updateStatus(statuslib.ForwardSuccessful, "Cluster metrics sent successfully")
+		} else {
+			updateStatus(statuslib.ForwardFailed, "Failed to send metrics")
+		}
 		return err
 	}
 

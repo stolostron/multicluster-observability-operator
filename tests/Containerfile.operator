@@ -1,7 +1,7 @@
 # Copyright Contributors to the Open Cluster Management project
 # Licensed under the Apache License 2.0
 
-FROM brew.registry.redhat.io/rh-osbs/openshift-golang-builder:rhel_9_1.21 AS builder
+FROM brew.registry.redhat.io/rh-osbs/openshift-golang-builder:rhel_9_1.23 AS builder
 
 WORKDIR /workspace
 # copy go tests into build image
@@ -9,7 +9,7 @@ COPY go.sum go.mod ./
 COPY ./tests ./tests
 
 # compile go tests in build image
-RUN go install github.com/onsi/ginkgo/ginkgo@v1.14.2 && go mod vendor && ginkgo build ./tests/pkg/tests/
+RUN go install github.com/onsi/ginkgo/v2/ginkgo@v2.22.2 && go mod vendor && ginkgo build ./tests/pkg/tests/
 
 # create new docker image to hold built artifacts
 FROM registry.access.redhat.com/ubi9/ubi-minimal:latest

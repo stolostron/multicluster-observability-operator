@@ -1,4 +1,4 @@
-FROM registry.ci.openshift.org/stolostron/builder:go1.21-linux AS builder
+FROM registry.ci.openshift.org/stolostron/builder:go1.23-linux AS builder
 
 WORKDIR /workspace
 # copy go tests into build image
@@ -6,7 +6,7 @@ COPY go.sum go.mod ./
 COPY ./tests ./tests
 
 # compile go tests in build image
-RUN go install github.com/onsi/ginkgo/ginkgo@v1.14.2 && go mod vendor && ginkgo build ./tests/pkg/tests/
+RUN go install github.com/onsi/ginkgo/v2/ginkgo@v2.22.2 && go mod vendor && ginkgo build ./tests/pkg/tests/
 
 # create new docker image to hold built artifacts
 FROM registry.access.redhat.com/ubi9/ubi-minimal:latest

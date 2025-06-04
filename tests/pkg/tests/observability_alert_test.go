@@ -14,11 +14,10 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"reflect"
-	"sort"
+	"slices"
 	"strings"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
 	"github.com/prometheus/alertmanager/api/v2/models"
@@ -33,7 +32,7 @@ const (
 	trueStr = "true"
 )
 
-var _ = Describe("Observability:", func() {
+var _ = Describe("", func() {
 	BeforeEach(func() {
 		hubClient = utils.NewKubeClient(
 			testOptions.HubCluster.ClusterServerURL,
@@ -55,7 +54,21 @@ var _ = Describe("Observability:", func() {
 	}
 	secret := "alertmanager-config"
 
-	It("@BVT - [P1][Sev1][observability][Stable] Should have the expected statefulsets (alert/g0)", func() {
+	It("RHACM4K-39481: Observability: Verify PrometheusRule resource(2.9) [P2][Sev2][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release (alert/g1)", func() {
+		By("Checking if PrometheusRule: acm-observability-alert-rules is existed")
+		Eventually(func() error {
+			_, err := dynClient.Resource(utils.NewPrometheusRuleGVR()).Namespace(MCO_NAMESPACE).
+				Get(context.TODO(), "acm-observability-alert-rules", metav1.GetOptions{})
+			if err != nil {
+				testFailed = true
+				return err
+			}
+			testFailed = false
+			return nil
+		}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*10).Should(Succeed())
+	})
+
+	It("RHACM4K-1404: Observability: Verify alert is created and received - Should have the expected statefulsets @BVT - [P1][Sev1][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release (alert/g0)", func() {
 		By("Checking if STS: Alertmanager and observability-thanos-rule exist")
 		for _, label := range statefulsetLabels {
 			sts, err := hubClient.AppsV1().
@@ -80,7 +93,7 @@ var _ = Describe("Observability:", func() {
 		}
 	})
 
-	It("[P2][Sev2][observability][Stable] Should have the expected configmap (alert/g0)", func() {
+	It("RHACM4K-1404: Observability: Verify alert is created and received - Should have the expected configmap [P2][Sev2][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release (alert/g0)", func() {
 		By("Checking if CM: thanos-ruler-default-rules is existed")
 		cm, err := hubClient.CoreV1().ConfigMaps(MCO_NAMESPACE).Get(context.TODO(), configmap[0], metav1.GetOptions{})
 		Expect(err).NotTo(HaveOccurred())
@@ -89,7 +102,43 @@ var _ = Describe("Observability:", func() {
 		klog.V(3).Infof("Configmap %s does exist", configmap[0])
 	})
 
-	It("[P3][Sev3][observability][Stable] Should not have the CM: thanos-ruler-custom-rules (alert/g0)", func() {
+	It("RHACM4K-52080: Observability: Verify Endpointmetrics reconcile CMO Config changes [P2][Sev2][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release (alert/g2) (requires-ocp/g0)", func() {
+		By("Checking if CM: cluster-monitoring-config is existed")
+		namespace := "openshift-monitoring"
+		configMapName := "cluster-monitoring-config"
+		cm, err := hubClient.CoreV1().ConfigMaps(namespace).Get(context.TODO(), configMapName, metav1.GetOptions{})
+		Expect(err).NotTo(HaveOccurred())
+
+		Expect(cm.ResourceVersion).ShouldNot(BeEmpty())
+		klog.V(3).Infof("Configmap %s does exist", configmap[0])
+
+		By("Remove additionalAlertmanagerConfigs from the cm cluster-monitoring-config")
+		configContent := cm.Data["config.yaml"]
+		if strings.Contains(configContent, "additionalAlertmanagerConfigs:") {
+			// Find and remove the additionalAlertmanagerConfigs section
+			startIndex := strings.Index(configContent, "additionalAlertmanagerConfigs:")
+			endIndex := strings.Index(configContent[startIndex:], "externalLabels:")
+			if endIndex != -1 {
+				endIndex += startIndex
+				removedContent := configContent[startIndex:endIndex]
+
+				// Remove the section from the config.yaml
+				configContent = strings.Replace(configContent, removedContent, "", 1)
+				cm.Data["config.yaml"] = configContent
+
+				// Update the ConfigMap
+				_, err = hubClient.CoreV1().ConfigMaps(namespace).Update(context.TODO(), cm, metav1.UpdateOptions{})
+				Expect(err).NotTo(HaveOccurred(), "Failed to update ConfigMap")
+				fmt.Println("Removed additionalAlertmanagerConfigs and updated the ConfigMap.")
+			} else {
+				fmt.Println("Could not find the externalLabels section after additionalAlertmanagerConfigs.")
+			}
+		} else {
+			fmt.Println("No additionalAlertmanagerConfigs section found.")
+		}
+	})
+
+	It("RHACM4K-1404: Observability: Verify alert is created and received - Should not have the CM: thanos-ruler-custom-rules [P3][Sev3][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release (alert/g0)", func() {
 		By("Checking if CM: thanos-ruler-custom-rules not existed")
 		_, err := hubClient.CoreV1().ConfigMaps(MCO_NAMESPACE).Get(context.TODO(), configmap[1], metav1.GetOptions{})
 
@@ -102,7 +151,7 @@ var _ = Describe("Observability:", func() {
 		klog.V(3).Infof("Configmap %s does not exist", configmap[1])
 	})
 
-	It("@BVT - [P1][Sev1][observability][Stable] Should have the expected secret (alert/g0)", func() {
+	It("RHACM4K-1404: Observability: Verify alert is created and received - Should have the expected secret @BVT - [P1][Sev1][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release (alert/g0)", func() {
 		By("Checking if SECRETS: alertmanager-config is existed")
 		secret, err := hubClient.CoreV1().Secrets(MCO_NAMESPACE).Get(context.TODO(), secret, metav1.GetOptions{})
 		Expect(err).NotTo(HaveOccurred())
@@ -111,9 +160,10 @@ var _ = Describe("Observability:", func() {
 		klog.V(3).Infof("Successfully got secret: %s", secret.GetName())
 	})
 
-	It("@BVT - [P1][Sev1][observability][Stable] Should have the alertmanager configured in rule (alert/g0)", func() {
+	It("RHACM4K-1404: Observability: Verify alert is created and received - Should have the alertmanager configured in rule @BVT - [P1][Sev1][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release (alert/g0)", func() {
 		By(`Checking if --alertmanagers.url or --alertmanager.config or 
 		    --alertmanagers.config-file is configured in rule`)
+
 		rules, err := hubClient.AppsV1().StatefulSets(MCO_NAMESPACE).List(context.TODO(), metav1.ListOptions{
 			LabelSelector: THANOS_RULE_LABEL,
 		})
@@ -139,7 +189,7 @@ var _ = Describe("Observability:", func() {
 		klog.V(3).Info("Have the alertmanager url configured in rule")
 	})
 
-	It("[P2][Sev2][observability][Stable] Should have custom alert generated (alert/g0)", func() {
+	It("RHACM4K-1404: Observability: Verify alert is created and received - Should have custom alert generated P2][Sev2][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release (alert/g0)", func() {
 		By("Creating custom alert rules")
 
 		rules, err := hubClient.AppsV1().StatefulSets(MCO_NAMESPACE).List(context.TODO(), metav1.ListOptions{
@@ -220,7 +270,7 @@ var _ = Describe("Observability:", func() {
 	// 	klog.V(3).Infof("Successfully modified the secret: alertmanager-config")
 	// })
 
-	It("[P2][Sev2][observability][Stable] Should have custom alert updated (alert/g0)", func() {
+	It("RHACM4K-1668: Observability: Updated alert rule can take effect automatically - Should have custom alert updated [P2][Sev2][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release (alert/g0)", func() {
 		By("Updating custom alert rules")
 
 		// Replace preceding custom alert with new one that cannot fire
@@ -260,7 +310,7 @@ var _ = Describe("Observability:", func() {
 			EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
-	It("[P2][Sev2][observability][Stable] delete the customized rules (alert/g0)", func() {
+	It("RHACM4K-1668: Observability: Updated alert rule can take effect automatically - delete the customized rules [P2][Sev2][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release (alert/g0)", func() {
 
 		rules, err := hubClient.AppsV1().StatefulSets(MCO_NAMESPACE).List(context.TODO(), metav1.ListOptions{
 			LabelSelector: THANOS_RULE_LABEL,
@@ -301,13 +351,31 @@ var _ = Describe("Observability:", func() {
 		klog.V(3).Infof("Successfully deleted CM: thanos-ruler-custom-rules")
 	})
 
-	It("[P2][Sev2][observability][Integration] Should have alert named Watchdog forwarded to alertmanager (alertforward/g0)", func() {
+	It("RHACM4K-3457: Observability: Verify managed cluster alert would be forward to hub alert manager - Should have alert named Watchdog forwarded to alertmanager [P2][Sev2][Observability][Integration]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e (alertforward/g0)", func() {
 
-		amURL := url.URL{
-			Scheme: "https",
-			Host:   "alertmanager-open-cluster-management-observability.apps." + testOptions.HubCluster.BaseDomain,
-			Path:   "/api/v2/alerts",
+		cloudProvider := strings.ToLower(os.Getenv("CLOUD_PROVIDER"))
+		substring1 := "rosa"
+		substring2 := "hcp"
+
+		var amURL *url.URL
+
+		if strings.Contains(cloudProvider, substring1) && strings.Contains(cloudProvider, substring2) {
+			Skip("skip on rosa-hcp")
+			amURL = &url.URL{
+				Scheme: "https",
+				Host:   "alertmanager-open-cluster-management-observability.apps.rosa." + testOptions.HubCluster.BaseDomain,
+				Path:   "/api/v2/alerts",
+			}
+
+		} else {
+			amURL = &url.URL{
+				Scheme: "https",
+				Host:   "alertmanager-open-cluster-management-observability.apps." + testOptions.HubCluster.BaseDomain,
+				Path:   "/api/v2/alerts",
+			}
 		}
+		// Watchdog is an alert that is installed by default on OCP clusters by the in-cluster monitoring stack
+		// It thus exists by default on the hub and openshift spokes, and is always activated.
 		q := amURL.Query()
 		q.Set("filter", "alertname=Watchdog")
 		amURL.RawQuery = q.Encode()
@@ -334,17 +402,20 @@ var _ = Describe("Observability:", func() {
 			alertGetReq.Header.Set("Authorization", "Bearer "+BearerToken)
 		}
 
-		expectedOCPClusterIDs, err := utils.ListOCPManagedClusterIDs(testOptions, "4.8.0")
+		expectedOCPClusterIDs, err := utils.ListAvailableOCPManagedClusterIDs(testOptions)
 		Expect(err).NotTo(HaveOccurred())
-		expectedKSClusterNames, err := utils.ListKSManagedClusterNames(testOptions)
+		expectedKSClusterNames, err := utils.ListAvailableKSManagedClusterNames(testOptions)
 		Expect(err).NotTo(HaveOccurred())
-		expectClusterIdentifiers := append(expectedOCPClusterIDs, expectedKSClusterNames...)
+		var expectClusterIdentifiers []string
+		expectClusterIdentifiers = append(expectClusterIdentifiers, expectedOCPClusterIDs...)
 
 		// install watchdog PrometheusRule to *KS clusters
 		watchDogRuleKustomizationPath := "../../../examples/alerts/watchdog_rule"
 		yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: watchDogRuleKustomizationPath})
 		Expect(err).NotTo(HaveOccurred())
+		klog.Infof("List of cluster IDs to install the watchdog alert: %s", expectedKSClusterNames)
 		for _, ks := range expectedKSClusterNames {
+			promRuleAdded := false
 			for idx, mc := range testOptions.ManagedClusters {
 				if mc.Name == ks {
 					err = utils.Apply(
@@ -353,10 +424,22 @@ var _ = Describe("Observability:", func() {
 						testOptions.ManagedClusters[idx].KubeContext,
 						yamlB,
 					)
+					promRuleAdded = true
+					expectClusterIdentifiers = append(expectClusterIdentifiers, ks)
 					Expect(err).NotTo(HaveOccurred())
 				}
 			}
+			// If we couldn't find the credentials for the cluster and therefore
+			// unable to add the Prometheus rule, we skip the checking the cluster
+			if !promRuleAdded {
+				klog.Infof("WARNING: Credentials for cluster %s not found, not adding to the list of expected clusters", ks)
+			}
 		}
+
+		klog.Infof("List of cluster IDs expected to send the alert is: %s", expectClusterIdentifiers)
+		missingClusters := slices.Clone(expectClusterIdentifiers)
+		// Ensure we have at least a managedCluster
+		Expect(expectClusterIdentifiers).To(Not(BeEmpty()))
 
 		By("Checking Watchdog alerts are forwarded to the hub")
 		Eventually(func() error {
@@ -394,14 +477,163 @@ var _ = Describe("Observability:", func() {
 				}
 			}
 
-			sort.Strings(clusterIDsInAlerts)
-			sort.Strings(expectClusterIdentifiers)
-			if !reflect.DeepEqual(clusterIDsInAlerts, expectClusterIdentifiers) {
-				return fmt.Errorf("Not all openshift managedclusters >=4.8.0 forward Watchdog alert to hub cluster")
+			// Returned alerts by the alert manager is not consistent. It does not always contain all the alerts.
+			// To make the test more reliable, we remove clusters found in the response continuously on each retry
+			// until all have been identified in the alertmanager responses.
+			for _, foundID := range clusterIDsInAlerts {
+				missingClusters = slices.DeleteFunc(missingClusters, func(e string) bool { return e == foundID })
+			}
+
+			if len(missingClusters) != 0 {
+				klog.Infof("Watchdog alerts are still missing from these clusters %q. Retrying...", missingClusters)
+				return fmt.Errorf("Not all managedclusters forward Watchdog alert to hub cluster. Found following clusters in alerts %q. Following clusters are still missing: %q. Full list of expected clusters was: %q", clusterIDsInAlerts, missingClusters, expectClusterIdentifiers)
 			}
 
 			return nil
-		}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
+		}, EventuallyTimeoutMinute*3, EventuallyIntervalSecond*5).Should(Succeed())
+	})
+
+	It("RHACM4K-22427: Observability: Disable the managedcluster's alerts forward to the Hub [P2][Sev2][Observability][Integration] @e2e (alertforward/g1)", func() {
+
+		if len(testOptions.ManagedClusters) == 0 ||
+			utils.GetManagedClusterName(testOptions) == hubManagedClusterName {
+			Skip("Skipping test when there are no spokes")
+		}
+
+		cloudProvider := strings.ToLower(os.Getenv("CLOUD_PROVIDER"))
+		substring1 := "rosa"
+		substring2 := "hcp"
+
+		var amURL *url.URL
+
+		if strings.Contains(cloudProvider, substring1) && strings.Contains(cloudProvider, substring2) {
+			Skip("skip on rosa-hcp")
+			amURL = &url.URL{
+				Scheme: "https",
+				Host:   "alertmanager-open-cluster-management-observability.apps.rosa." + testOptions.HubCluster.BaseDomain,
+				Path:   "/api/v2/alerts",
+			}
+
+		} else {
+			amURL = &url.URL{
+				Scheme: "https",
+				Host:   "alertmanager-open-cluster-management-observability.apps." + testOptions.HubCluster.BaseDomain,
+				Path:   "/api/v2/alerts",
+			}
+
+		}
+		q := amURL.Query()
+		q.Set("filter", "alertname=Watchdog")
+		amURL.RawQuery = q.Encode()
+
+		caCrt, err := utils.GetRouterCA(hubClient)
+		Expect(err).NotTo(HaveOccurred())
+		pool := x509.NewCertPool()
+		pool.AppendCertsFromPEM(caCrt)
+
+		client := &http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{RootCAs: pool},
+			},
+		}
+
+		alertGetReq, err := http.NewRequest("GET", amURL.String(), nil)
+		Expect(err).NotTo(HaveOccurred())
+
+		if os.Getenv("IS_KIND_ENV") != "true" {
+			if BearerToken == "" {
+				BearerToken, err = utils.FetchBearerToken(testOptions)
+				Expect(err).NotTo(HaveOccurred())
+			}
+			alertGetReq.Header.Set("Authorization", "Bearer "+BearerToken)
+		}
+
+		expectedKSClusterNames, err := utils.GetManagedClusters(testOptions)
+		Expect(err).NotTo(HaveOccurred())
+
+		watchDogRuleKustomizationPath := "../../../examples/alerts/watchdog_rule"
+		yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: watchDogRuleKustomizationPath})
+		Expect(err).NotTo(HaveOccurred())
+		for _, ks := range expectedKSClusterNames {
+			for idx, mc := range testOptions.ManagedClusters {
+				if mc.Name == ks.Name {
+					err = utils.Apply(
+						testOptions.ManagedClusters[idx].ClusterServerURL,
+						testOptions.ManagedClusters[idx].KubeConfig,
+						testOptions.ManagedClusters[idx].KubeContext,
+						yamlB,
+					)
+					Expect(err).NotTo(HaveOccurred())
+				}
+			}
+		}
+
+		By("Add annotations to disable alert forward")
+		mco, getErr := dynClient.Resource(utils.NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+		if getErr != nil {
+			klog.Errorf("err: %+v\n", err)
+		}
+		spec := mco.Object["metadata"].(map[string]interface{})
+		annotations, found := spec["annotations"].(map[string]interface{})
+		if !found {
+			annotations = make(map[string]interface{})
+		}
+		annotations["mco-disable-alerting"] = "true"
+		spec["annotations"] = annotations
+		_, updateErr := dynClient.Resource(utils.NewMCOGVRV1BETA2()).Update(context.TODO(), mco, metav1.UpdateOptions{})
+		if updateErr != nil {
+			klog.Errorf("err: %+v\n", err)
+		}
+
+		By("Checking Watchdog alerts is not forwarded to the hub")
+		Eventually(func() bool {
+			resp, err := client.Do(alertGetReq)
+			if err != nil {
+				klog.Errorf("err: %+v\n", err)
+				return false
+			}
+			defer resp.Body.Close()
+
+			if resp.StatusCode != http.StatusOK {
+				klog.Errorf("err: %+v\n", resp)
+				return false
+			}
+
+			alertResult, err := io.ReadAll(resp.Body)
+			if err != nil {
+				return false
+			}
+
+			postableAlerts := models.PostableAlerts{}
+			err = json.Unmarshal(alertResult, &postableAlerts)
+			if err != nil {
+				return false
+			}
+			klog.V(3).Infof("postableAlerts is %+v", postableAlerts)
+
+			for _, alt := range postableAlerts {
+				klog.V(3).Infof("alt.Labels is %s", alt.Labels)
+				if alt.Labels != nil {
+					klog.V(3).Infof("waiting alerts are disappeared?")
+					return false
+				}
+			}
+
+			return true
+		}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*120).Should(BeTrue())
+
+		klog.V(3).Infof("before enable alert forward - spec is %s", spec)
+		mco1, getErr := dynClient.Resource(utils.NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+		if getErr != nil {
+			klog.Errorf("err: %+v\n", err)
+		}
+		spec1 := mco1.Object["metadata"].(map[string]interface{})
+		delete(spec1["annotations"].(map[string]interface{}), "mco-disable-alerting")
+		_, updateErr1 := dynClient.Resource(utils.NewMCOGVRV1BETA2()).Update(context.TODO(), mco1, metav1.UpdateOptions{})
+		if updateErr1 != nil {
+			klog.Errorf("err: %+v\n", updateErr1)
+		}
+		klog.V(3).Infof("enable alert forward - spec1 is %s", spec1)
 	})
 
 	JustAfterEach(func() {
@@ -409,9 +641,9 @@ var _ = Describe("Observability:", func() {
 	})
 
 	AfterEach(func() {
-		if CurrentGinkgoTestDescription().Failed {
+		if CurrentSpecReport().Failed() {
 			utils.LogFailingTestStandardDebugInfo(testOptions)
 		}
-		testFailed = testFailed || CurrentGinkgoTestDescription().Failed
+		testFailed = testFailed || CurrentSpecReport().Failed()
 	})
 })

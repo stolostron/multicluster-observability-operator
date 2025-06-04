@@ -49,7 +49,7 @@ metadata:
         }
       ]
     capabilities: Basic Install
-    createdAt: "2024-09-23T12:07:01Z"
+    createdAt: "2025-05-02T10:30:00Z"
     operators.operatorframework.io/builder: operator-sdk-v1.34.2
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
   name: multicluster-observability-operator.v0.1.0
@@ -314,6 +314,7 @@ spec:
           - delete
           - list
           - watch
+          - patch
         - apiGroups:
           - addon.open-cluster-management.io
           resources:
@@ -426,6 +427,7 @@ spec:
           - monitoring.coreos.com
           resources:
           - prometheusrules
+          - scrapeconfigs
           verbs:
           - create
           - delete
@@ -466,6 +468,29 @@ spec:
           - get
           - list
           - watch
+        - apiGroups:
+          - policy.open-cluster-management.io
+          resources:
+          - policies
+          - placementbindings
+          verbs:
+          - get
+          - list
+          - create
+          - update
+          - watch
+          - delete
+        - apiGroups:
+          - cluster.open-cluster-management.io
+          resources:
+          - placements
+          verbs:
+          - get
+          - list
+          - create
+          - update
+          - watch
+          - delete
         serviceAccountName: multicluster-observability-operator
       deployments:
       - label:
@@ -538,9 +563,6 @@ spec:
                   initialDelaySeconds: 5
                   periodSeconds: 10
                 resources:
-                  limits:
-                    cpu: 600m
-                    memory: 3Gi
                   requests:
                     cpu: 100m
                     memory: 128Mi

@@ -107,8 +107,8 @@ NewHistorgram,NewHistogramVec,NewSummary,NewSummaryVec}=github.com/prometheus/cl
 NewCounterVec,NewCounterVec,NewGauge,NewGaugeVec,NewGaugeFunc,NewHistorgram,NewHistogramVec,NewSummary,NewSummaryVec},\
 github.com/NYTimes/gziphandler.{GzipHandler}=github.com/klauspost/compress/gzhttp.{GzipHandler},\
 sync/atomic=go.uber.org/atomic,\
-io/ioutil.{Discard,NopCloser,ReadAll,ReadDir,ReadFile,TempDir,TempFile,Writefile}" ./...
-	@$(FAILLINT) -paths "fmt.{Print,Println}" -ignore-tests ./...
+io/ioutil.{Discard,NopCloser,ReadAll,ReadDir,ReadFile,TempDir,TempFile,Writefile}" ./operators/... ./collectors/... ./loaders/... ./proxy/...
+	@$(FAILLINT) -paths "fmt.{Print,Println}" -ignore-tests ./operators/... ./collectors/... ./loaders/... ./proxy/...
 	@echo ">> examining all of the Go files"
 	@go vet -stdmethods=false ./...
 	@echo ">> linting all of the Go files GOGC=${GOGC}"
@@ -117,20 +117,24 @@ io/ioutil.{Discard,NopCloser,ReadAll,ReadDir,ReadFile,TempDir,TempFile,Writefile
 	@go run ./scripts/copyright
 	$(call require_clean_work_tree,'detected files without copyright, run make lint and commit changes')
 
+.PHONY: check-metrics
+check-metrics:
+	@$(MAKE) -C cicd-scripts/metrics check-metrics
+
 .PHONY: unit-tests ## Run all unit tests.
 unit-tests: unit-tests-operators unit-tests-loaders unit-tests-proxy unit-tests-collectors
 
 .PHONY: unit-tests-operators
 unit-tests-operators:  ## Run operators unit tests only.
-	go test -v ${VERBOSE} `go list ./operators/... | $(GREP) -v test`
+	go test ${VERBOSE} `go list ./operators/... | $(GREP) -v test`
 
 .PHONY: unit-tests-loaders
 unit-tests-loaders: ## Run loaders unit tests only.
-	go test -v ${VERBOSE} `go list ./loaders/... | $(GREP) -v test`
+	go test ${VERBOSE} `go list ./loaders/... | $(GREP) -v test`
 
 .PHONY: unit-tests-proxy
 unit-tests-proxy: ## Run proxy uni tests only.
-	go test -v ${VERBOSE} `go list ./proxy/... | $(GREP) -v test`
+	go test ${VERBOSE} `go list ./proxy/... | $(GREP) -v test`
 
 .PHONY: unit-tests-collectors
 unit-tests-collectors: ## Run collectors unit tests only. 
@@ -188,6 +192,14 @@ install-envtest-deps: ## Install env-test.
 	@mkdir -p $(BIN_DIR)
 	@./scripts/install-binaries.sh install_envtest_deps $(BIN_DIR)
 
+.PHONY: install-check-metrics-deps
+install-check-metrics-deps:
+	@mkdir -p $(BIN_DIR)
+	@./scripts/install-binaries.sh install_jq $(BIN_DIR)
+	@./scripts/install-binaries.sh install_yq $(BIN_DIR)
+	@./scripts/install-binaries.sh install_mimirtool $(BIN_DIR)
+	@./scripts/install-binaries.sh install_promtool $(BIN_DIR)
+
 ##@ Multi-Cluster-Observability Operator
 
 .PHONY: deploy
@@ -197,7 +209,7 @@ deploy:  ## Deploy controller to the K8s cluster specified in ~/.kube/config.
 # UnDeploy controller from the configured Kubernetes cluster in ~/.kube/config
 .PHONY: undeploy
 undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
-	@$(MAKE) p-C operators/multiclusterobservability undeploy
+	@$(MAKE) -C operators/multiclusterobservability undeploy
 
 # Build the operator binary
 .PHONY: build

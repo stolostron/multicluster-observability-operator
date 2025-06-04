@@ -14,7 +14,7 @@ SED_COMMAND=${SED}' -i-e -e'
 
 # Set the latest snapshot if it is not set
 source ./scripts/test-utils.sh
-LATEST_SNAPSHOT=${LATEST_SNAPSHOT:-$(get_latest_snapshot)}
+LATEST_SNAPSHOT=${LATEST_SNAPSHOT:-$(get_latest_acm_snapshot)}
 
 if [[ -n ${IS_KIND_ENV} ]]; then
   source ./tests/run-in-kind/env.sh
@@ -31,36 +31,33 @@ update_mco_cr() {
     cd ${ROOTDIR} && git checkout -- .
   fi
   if [[ -n ${RBAC_QUERY_PROXY_IMAGE_REF} ]]; then
-    ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-rbac_query_proxy-image: ${RBAC_QUERY_PROXY_IMAGE_REF}" ${ROOTDIR}/examples/mco/e2e/v1beta1/observability.yaml
     ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-rbac_query_proxy-image: ${RBAC_QUERY_PROXY_IMAGE_REF}" ${ROOTDIR}/examples/mco/e2e/v1beta2/observability.yaml
   fi
   if [[ -n ${ENDPOINT_MONITORING_OPERATOR_IMAGE_REF} ]]; then
-    ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-endpoint_monitoring_operator-image: ${ENDPOINT_MONITORING_OPERATOR_IMAGE_REF}" ${ROOTDIR}/examples/mco/e2e/v1beta1/observability.yaml
     ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-endpoint_monitoring_operator-image: ${ENDPOINT_MONITORING_OPERATOR_IMAGE_REF}" ${ROOTDIR}/examples/mco/e2e/v1beta2/observability.yaml
   fi
   if [[ -n ${GRAFANA_DASHBOARD_LOADER_IMAGE_REF} ]]; then
-    ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-grafana_dashboard_loader-image: ${GRAFANA_DASHBOARD_LOADER_IMAGE_REF}" ${ROOTDIR}/examples/mco/e2e/v1beta1/observability.yaml
     ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-grafana_dashboard_loader-image: ${GRAFANA_DASHBOARD_LOADER_IMAGE_REF}" ${ROOTDIR}/examples/mco/e2e/v1beta2/observability.yaml
   fi
   if [[ -n ${METRICS_COLLECTOR_IMAGE_REF} ]]; then
-    ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-metrics_collector-image: ${METRICS_COLLECTOR_IMAGE_REF}" ${ROOTDIR}/examples/mco/e2e/v1beta1/observability.yaml
     ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-metrics_collector-image: ${METRICS_COLLECTOR_IMAGE_REF}" ${ROOTDIR}/examples/mco/e2e/v1beta2/observability.yaml
   fi
   if [[ -n ${OBSERVATORIUM_OPERATOR_IMAGE_REF} ]]; then
-    ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-observatorium_operator-image: ${OBSERVATORIUM_OPERATOR_IMAGE_REF}" ${ROOTDIR}/examples/mco/e2e/v1beta1/observability.yaml
     ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-metrics_collector-image: ${OBSERVATORIUM_OPERATOR_IMAGE_REF}" ${ROOTDIR}/examples/mco/e2e/v1beta2/observability.yaml
   fi
 
   # Add mco-imageTagSuffix annotation
-  ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-imageTagSuffix: ${LATEST_SNAPSHOT}" ${ROOTDIR}/examples/mco/e2e/v1beta1/observability.yaml
   ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-imageTagSuffix: ${LATEST_SNAPSHOT}" ${ROOTDIR}/examples/mco/e2e/v1beta2/observability.yaml
+  ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-imageTagSuffix: ${LATEST_SNAPSHOT}" ${ROOTDIR}/examples/mco/e2e/v1beta2/custom-certs/observability.yaml
+  ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-imageTagSuffix: ${LATEST_SNAPSHOT}" ${ROOTDIR}/examples/mco/e2e/v1beta2/custom-certs-kind/observability.yaml
 
   # need to add this annotation due to KinD cluster resources are insufficient
   if [[ -n ${IS_KIND_ENV} ]]; then
-    ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-thanos-without-resources-requests: true" ${ROOTDIR}/examples/mco/e2e/v1beta1/observability.yaml
     ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-thanos-without-resources-requests: true" ${ROOTDIR}/examples/mco/e2e/v1beta2/observability.yaml
     # annotate MCO in kind env to be able to install prometheus
-    ${SED_COMMAND} "/annotations.*/a \ \ \ \ test-env: kind-test" ${ROOTDIR}/examples/mco/e2e/v1beta1/observability.yaml
+    ${SED_COMMAND} "/annotations.*/a \ \ \ \ test-env: kind-test" ${ROOTDIR}/examples/mco/e2e/v1beta2/observability.yaml
+    ${SED_COMMAND} "/annotations.*/a \ \ \ \ test-env: kind-test" ${ROOTDIR}/examples/mco/e2e/v1beta2/custom-certs-kind/observability.yaml
+
   fi
 }
 
@@ -119,7 +116,8 @@ get_changed_components() {
 get_ginkgo_focus() {
   if [[ -n ${IS_KIND_ENV} ]]; then
     # For KinD cluster, do not need to run all test cases
-    GINKGO_FOCUS=" --focus manifestwork/g0 --focus endpoint_preserve/g0 --focus grafana/g0 --focus metrics/g0 --focus addon/g0 --focus alert/g0 --focus dashboard/g0"
+    # and we skip those that explictly requires OCP
+    GINKGO_FOCUS=" --focus manifestwork/g --focus endpoint_preserve/g --focus grafana/g --focus metrics/g --focus addon/g --focus alert/g --focus dashboard/g --skip requires-ocp/g0"
   else
     GINKGO_FOCUS=""
   fi

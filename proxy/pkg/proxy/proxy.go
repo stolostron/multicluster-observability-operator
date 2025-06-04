@@ -133,6 +133,8 @@ func preCheckRequest(req *http.Request) error {
 		if token == "" {
 			return errors.New("found unauthorized user")
 		} else {
+			// Remove Bearer from token if present
+			token = strings.TrimPrefix(token, "Bearer ")
 			req.Header.Set("X-Forwarded-Access-Token", token)
 		}
 	}
@@ -141,7 +143,7 @@ func preCheckRequest(req *http.Request) error {
 	if userName == "" {
 		userName = util.GetUserName(token, config.GetConfigOrDie().Host+userAPIPath)
 		if userName == "" {
-			return errors.New("failed to found user name")
+			return errors.New("failed to find user name")
 		} else {
 			req.Header.Set("X-Forwarded-User", userName)
 		}

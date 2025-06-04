@@ -8,6 +8,7 @@ import (
 	"context"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -16,9 +17,9 @@ import (
 	ocinfrav1 "github.com/openshift/api/config/v1"
 	operatorv1 "github.com/openshift/api/operator/v1"
 	routev1 "github.com/openshift/api/route/v1"
+	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
-	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -132,38 +133,23 @@ func newConsoleRoute() *routev1.Route {
 	}
 }
 
-func setupTest(t *testing.T) func() {
+func setupTest(t *testing.T) {
+	t.Log("begin setupTest")
 	wd, err := os.Getwd()
 	if err != nil {
 		t.Fatalf("Failed to get work dir: (%v)", err)
 	}
-	t.Log("begin setupTest")
-	os.MkdirAll(path.Join(wd, "../../tests"), 0755)
-	testManifestsPath := path.Join(wd, "../../tests/manifests")
 	manifestsPath := path.Join(wd, "../../manifests")
-	os.Setenv("TEMPLATES_PATH", testManifestsPath)
+	testManifestsPath := filepath.Join(t.TempDir(), "manifests")
+
+	t.Setenv("TEMPLATES_PATH", testManifestsPath)
 	templates.ResetTemplates()
-	// clean up the manifest path if left over from previous test
-	if fi, err := os.Lstat(testManifestsPath); err == nil && fi.Mode()&os.ModeSymlink != 0 {
-		if err = os.Remove(testManifestsPath); err != nil {
-			t.Logf("Failed to delete symlink(%s) for the test manifests: (%v)", testManifestsPath, err)
-		}
-	}
-	err = os.Symlink(manifestsPath, testManifestsPath)
-	if err != nil {
+
+	if err := os.Symlink(manifestsPath, testManifestsPath); err != nil {
 		t.Fatalf("Failed to create symbollink(%s) to(%s) for the test manifests: (%v)", testManifestsPath, manifestsPath, err)
 	}
-	t.Log("setupTest done")
 
-	return func() {
-		t.Log("begin teardownTest")
-		if err = os.Remove(testManifestsPath); err != nil {
-			t.Logf("Failed to delete symbollink(%s) for the test manifests: (%v)", testManifestsPath, err)
-		}
-		os.Remove(path.Join(wd, "../../tests"))
-		os.Unsetenv("TEMPLATES_PATH")
-		t.Log("teardownTest done")
-	}
+	t.Log("setupTest done")
 }
 
 func TestObservabilityAddonController(t *testing.T) {
@@ -173,17 +159,8 @@ func TestObservabilityAddonController(t *testing.T) {
 	config.SetMonitoringCRName(mcoName)
 	mco := newTestMCO()
 	pull := newTestPullSecret()
-	deprecatedRole := &rbacv1.Role{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "endpoint-observability-role",
-			Namespace: namespace,
-			Labels: map[string]string{
-				ownerLabelKey: ownerLabelValue,
-			},
-		},
-	}
 	objs := []runtime.Object{mco, pull, newConsoleRoute(), newTestObsApiRoute(), newTestAlertmanagerRoute(), newTestIngressController(), newTestRouteCASecret(), newCASecret(), newCertSecret(mcoNamespace), NewMetricsAllowListCM(),
-		NewAmAccessorSA(), NewAmAccessorTokenSecret(), deprecatedRole, newClusterMgmtAddon(),
+		NewAmAccessorSA(), NewAmAccessorTokenSecret(), newClusterMgmtAddon(),
 		newAddonDeploymentConfig(defaultAddonConfigName, namespace), newAddonDeploymentConfig(addonConfigName, namespace)}
 	c := fake.
 		NewClientBuilder().
@@ -196,7 +173,30 @@ func TestObservabilityAddonController(t *testing.T) {
 		Build()
 	r := &PlacementRuleReconciler{Client: c, Scheme: s, CRDMap: map[string]bool{config.IngressControllerCRD: true}}
 
-	defer setupTest(t)()
+	createManagedCluster := func(ns, version string) {
+		mc := &clusterv1.ManagedCluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: ns,
+				Labels: map[string]string{
+					"openshiftVersion": version,
+				},
+			},
+		}
+		err := c.Create(context.Background(), mc)
+		assert.NoError(t, err)
+	}
+
+	deleteManagedCluster := func(ns string) {
+		mc := &clusterv1.ManagedCluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: ns,
+			},
+		}
+		err := c.Delete(context.Background(), mc)
+		assert.NoError(t, err)
+	}
+
+	setupTest(t)
 
 	req := ctrl.Request{
 		NamespacedName: types.NamespacedName{
@@ -205,8 +205,8 @@ func TestObservabilityAddonController(t *testing.T) {
 		},
 	}
 
-	managedClusterList.Store(namespace, "4")
-	managedClusterList.Store(namespace2, "4")
+	createManagedCluster(namespace, "4")
+	createManagedCluster(namespace2, "4")
 
 	_, err := r.Reconcile(context.TODO(), req)
 	if err != nil {
@@ -221,17 +221,10 @@ func TestObservabilityAddonController(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get manifestwork for %s: (%v)", namespace2, err)
 	}
-	foundRole := &rbacv1.Role{}
-	err = c.Get(context.TODO(), types.NamespacedName{Name: "endpoint-observability-role", Namespace: namespace}, foundRole)
-	if err == nil || !errors.IsNotFound(err) {
-		t.Fatalf("Deprecated role not removed")
-	}
 
-	managedClusterList.Range(func(key, value interface{}) bool {
-		managedClusterList.Delete(key)
-		return true
-	})
-	managedClusterList.Store(namespace, "4")
+	deleteManagedCluster(namespace)
+	deleteManagedCluster(namespace2)
+	createManagedCluster(namespace, "4")
 	_, err = r.Reconcile(context.TODO(), req)
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)
@@ -262,6 +255,16 @@ func TestObservabilityAddonController(t *testing.T) {
 		HTTPSProxy: "https://test1.com",
 		NoProxy:    "test.com",
 	}
+	foundAddonDeploymentConfig.Spec.NodePlacement = &addonv1alpha1.NodePlacement{
+		NodeSelector: map[string]string{
+			"test": "test",
+		},
+		Tolerations: []corev1.Toleration{
+			{
+				Key: "test",
+			},
+		},
+	}
 
 	err = c.Update(context.TODO(), foundAddonDeploymentConfig)
 	if err != nil {
@@ -289,6 +292,9 @@ func TestObservabilityAddonController(t *testing.T) {
 		if obj.GetObjectKind().GroupVersionKind().Kind == "Deployment" {
 			// Check the proxy env variables
 			deployment := obj.(*appsv1.Deployment)
+			if deployment.ObjectMeta.Name != "endpoint-observability-operator" {
+				continue
+			}
 			spec := deployment.Spec.Template.Spec
 			for _, c := range spec.Containers {
 				if c.Name == "endpoint-observability-operator" {
@@ -309,6 +315,15 @@ func TestObservabilityAddonController(t *testing.T) {
 						}
 					}
 				}
+			}
+			if len(spec.NodeSelector) == 0 && len(spec.Tolerations) == 0 {
+				t.Fatalf("Node selector is not set")
+			}
+			if spec.NodeSelector["test"] != "test" {
+				t.Fatalf("Node selector is not set correctly")
+			}
+			if spec.Tolerations[0].Key != "test" {
+				t.Fatalf("Tolerations is not set correctly")
 			}
 		}
 	}
@@ -522,7 +537,7 @@ func TestObservabilityAddonController(t *testing.T) {
 		},
 	}
 
-	ok, err := config.ReadImageManifestConfigMap(c, testMCHInstance.Status.CurrentVersion)
+	_, ok, err := config.ReadImageManifestConfigMap(c, testMCHInstance.Status.CurrentVersion)
 	if err != nil || !ok {
 		t.Fatalf("Failed to read image manifest configmap: (%T,%v)", ok, err)
 	}

@@ -1,6 +1,6 @@
 # Copyright Contributors to the Open Cluster Management project
 
-FROM brew.registry.redhat.io/rh-osbs/openshift-golang-builder:rhel_9_1.22 AS builder
+FROM brew.registry.redhat.io/rh-osbs/openshift-golang-builder:rhel_9_1.23 AS builder
 
 WORKDIR /workspace
 COPY go.sum go.mod ./
@@ -23,7 +23,8 @@ ARG IMAGE_RELEASE
 ARG IMAGE_SUMMARY
 ARG IMAGE_OPENSHIFT_TAGS
 
-LABEL org.label-schema.vendor="Red Hat" \
+LABEL org.label-schema.vendor="RedHat" \
+    com.redhat.component="rbac-query-proxy" \
     org.label-schema.name="$IMAGE_NAME_ARCH" \
     org.label-schema.description="$IMAGE_DESCRIPTION" \
     org.label-schema.vcs-ref=$VCS_REF \
@@ -32,7 +33,6 @@ LABEL org.label-schema.vendor="Red Hat" \
     org.label-schema.schema-version="1.0" \
     name="$IMAGE_NAME" \
     maintainer="$IMAGE_MAINTAINER" \
-    vendor="$IMAGE_VENDOR" \
     version="$IMAGE_VERSION" \
     release="$IMAGE_RELEASE" \
     description="$IMAGE_DESCRIPTION" \

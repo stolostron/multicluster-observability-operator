@@ -10,6 +10,7 @@ const (
 	HubInfoSecretKey                = "hub-info.yaml" // #nosec G101 -- Not a hardcoded credential.
 	ObservatoriumAPIRemoteWritePath = "/api/metrics/v1/default/api/v1/receive"
 	AnnotationSkipCreation          = "skip-creation-if-exist"
+	ObservabilityAddonName          = "observability-addon"
 
 	ClusterLabelKeyForAlerts = "managed_cluster"
 
@@ -29,10 +30,13 @@ const (
 )
 
 const (
-	OCPClusterMonitoringNamespace         = "openshift-monitoring"
-	OCPClusterMonitoringConfigMapName     = "cluster-monitoring-config"
-	OCPClusterMonitoringConfigMapKey      = "config.yaml"
-	OCPClusterMonitoringPrometheusService = "prometheus-k8s"
+	OCPClusterMonitoringNamespace              = "openshift-monitoring"
+	OCPClusterMonitoringConfigMapName          = "cluster-monitoring-config"
+	OCPClusterMonitoringConfigMapKey           = "config.yaml"
+	OCPClusterMonitoringPrometheusService      = "prometheus-k8s"
+	OCPUserWorkloadMonitoringNamespace         = "openshift-user-workload-monitoring"
+	OCPUserWorkloadMonitoringConfigMap         = "user-workload-monitoring-config"
+	OCPUserWorkloadMonitoringPrometheusService = "prometheus"
 )
 
 const (

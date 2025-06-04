@@ -12,6 +12,7 @@ import (
 	"reflect"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	imagev1client "github.com/openshift/client-go/image/clientset/versioned/typed/image/v1"
@@ -30,6 +31,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
+	"github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring"
+	prometheusv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	observabilityv1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 )
 
@@ -117,7 +120,7 @@ const (
 
 const (
 	DefaultImgRepository = "quay.io/stolostron"
-	DefaultImgTagSuffix  = "2.4.0-SNAPSHOT-2021-09-23-07-02-14"
+	DefaultImgTagSuffix  = "2.13.0-SNAPSHOT-2025-03-07-03-19-34"
 
 	ObservatoriumImgRepo           = "quay.io/observatorium"
 	ObservatoriumAPIImgName        = "observatorium"
@@ -205,6 +208,10 @@ const (
 	MCGHCrdName                    = "multiclusterglobalhubs.operator.open-cluster-management.io"
 )
 
+var (
+	PrometheusScrapeConfigsCrdName = fmt.Sprintf("%s.%s", monitoring.GroupName, prometheusv1alpha1.ScrapeConfigName)
+)
+
 const (
 	ResourceTypeConfigMap = "ConfigMap"
 	ResourceTypeSecret    = "Secret"
@@ -229,6 +236,8 @@ const (
 	ClusterLogForwarderCRDName    = "clusterlogforwarders.observability.openshift.io"
 	OpenTelemetryCollectorCRDName = "opentelemetrycollectors.opentelemetry.io"
 	InstrumentationCRDName        = "instrumentations.opentelemetry.io"
+	PrometheusAgentCRDName        = "prometheusagents.monitoring.coreos.com"
+	UIPluginsCRDName              = "uiplugins.observability.openshift.io"
 )
 
 var (
@@ -236,6 +245,8 @@ var (
 		ClusterLogForwarderCRDName:    "v1",
 		OpenTelemetryCollectorCRDName: "v1beta1",
 		InstrumentationCRDName:        "v1alpha1",
+		PrometheusAgentCRDName:        "v1alpha1",
+		UIPluginsCRDName:              "v1alpha1",
 	}
 )
 
@@ -276,6 +287,7 @@ var (
 	}
 
 	multicloudConsoleRouteHost = ""
+	imageManifestCache         sync.Map
 )
 
 // GetCrLabelKey returns the key for the CR label injected into the resources created by the operator.
@@ -293,7 +305,7 @@ func GetImageManifestConfigMapName() string {
 }
 
 // ReadImageManifestConfigMap reads configmap with the label ocm-configmap-type=image-manifest.
-func ReadImageManifestConfigMap(c client.Client, version string) (bool, error) {
+func ReadImageManifestConfigMap(c client.Client, version string) (map[string]string, bool, error) {
 	mcoNamespace := GetMCONamespace()
 	// List image manifest configmap with label ocm-configmap-type=image-manifest and ocm-release-version
 	matchLabels := map[string]string{
@@ -308,17 +320,16 @@ func ReadImageManifestConfigMap(c client.Client, version string) (bool, error) {
 	imageCMList := &corev1.ConfigMapList{}
 	err := c.List(context.TODO(), imageCMList, listOpts...)
 	if err != nil {
-		return false, fmt.Errorf("failed to list mch-image-manifest configmaps: %w", err)
+		return nil, false, fmt.Errorf("failed to list mch-image-manifest configmaps: %w", err)
 	}
 
 	if len(imageCMList.Items) != 1 {
 		// there should be only one matched image manifest configmap found
-		return false, nil
+		return nil, false, nil
 	}
 
 	imageManifests = imageCMList.Items[0].Data
-	log.V(1).Info("the length of mch-image-manifest configmap", "imageManifests", len(imageManifests))
-	return true, nil
+	return imageManifests, true, nil
 }
 
 // GetImageManifests...
@@ -899,4 +910,17 @@ func GetMCOASupportedCRDFQDN(name string) string {
 	parts := strings.SplitN(name, ".", 2)
 
 	return fmt.Sprintf("%s.%s.%s", parts[0], version, parts[1])
+}
+
+func SetCachedImageManifestData(data map[string]string) {
+	imageManifestCache.Store("mch-image-manifest", data)
+}
+
+func GetCachedImageManifestData() (map[string]string, bool) {
+	if value, ok := imageManifestCache.Load("mch-image-manifest"); ok {
+		if cachedData, valid := value.(map[string]string); valid {
+			return cachedData, true
+		}
+	}
+	return nil, false
 }

@@ -6,50 +6,72 @@ data:
   metrics_list.yaml: |
     names:
       - :node_memory_MemAvailable_bytes:sum
-      - ALERTS
       - acm_managed_cluster_labels
+      - acm_rs:namespace:cpu_request_hard
+      - acm_rs:namespace:cpu_request
+      - acm_rs:namespace:cpu_usage
+      - acm_rs:namespace:cpu_recommendation
+      - acm_rs:namespace:memory_request_hard
+      - acm_rs:namespace:memory_request
+      - acm_rs:namespace:memory_usage
+      - acm_rs:namespace:memory_recommendation
+      - acm_rs:cluster:cpu_request
+      - acm_rs:cluster:cpu_usage
+      - acm_rs:cluster:cpu_recommendation
+      - acm_rs:cluster:memory_request
+      - acm_rs:cluster:memory_usage
+      - acm_rs:cluster:memory_recommendation
+      - ALERTS
       - authenticated_user_requests
       - authentication_attempts
+      - cluster_infrastructure_provider
+      - cluster_operator_conditions
+      - cluster_operator_up      
+      - cluster_policy_governance_info
+      - cluster_version
+      - cluster_version_payload
       - cluster:capacity_cpu_cores:sum
       - cluster:capacity_memory_bytes:sum
       - cluster:container_cpu_usage:ratio
       - cluster:container_spec_cpu_shares:ratio
       - cluster:cpu_usage_cores:sum
-      - cluster:memory_usage:ratio
+      - cluster:health:components:map
       - cluster:memory_usage_bytes:sum
+      - cluster:memory_usage:ratio
       - cluster:node_cpu:ratio
+      - cluster:policy_governance_info:propagated_count
+      - cluster:policy_governance_info:propagated_noncompliant_count
       - cluster:usage:resources:sum
-      - cluster_infrastructure_provider
-      - cluster_version
-      - cluster_version_payload
+      - cnv:vmi_status_running:count
+      - console_url
       - container_cpu_cfs_periods_total
       - container_cpu_cfs_throttled_periods_total
       - container_spec_cpu_quota
-      - coredns_dns_requests_total
       - coredns_dns_request_duration_seconds_sum
+      - coredns_dns_requests_total
       - coredns_forward_responses_total
-      - csv_succeeded
       - csv_abnormal
+      - csv_succeeded
       - etcd_debugging_mvcc_db_total_size_in_bytes
-      - etcd_mvcc_db_total_size_in_bytes
       - etcd_debugging_snap_save_total_duration_seconds_sum
       - etcd_disk_backend_commit_duration_seconds_bucket
       - etcd_disk_backend_commit_duration_seconds_sum
       - etcd_disk_wal_fsync_duration_seconds_bucket
       - etcd_disk_wal_fsync_duration_seconds_sum
-      - etcd_object_counts
+      - etcd_mvcc_db_total_size_in_bytes
       - etcd_network_client_grpc_received_bytes_total
       - etcd_network_client_grpc_sent_bytes_total
       - etcd_network_peer_received_bytes_total
       - etcd_network_peer_sent_bytes_total
+      - etcd_object_counts
       - etcd_server_client_requests_total
       - etcd_server_has_leader
       - etcd_server_health_failures
       - etcd_server_leader_changes_seen_total
+      - etcd_server_proposals_applied_total
+      - etcd_server_proposals_committed_total
       - etcd_server_proposals_failed_total
       - etcd_server_proposals_pending
-      - etcd_server_proposals_committed_total
-      - etcd_server_proposals_applied_total
       - etcd_server_quota_backend_bytes
       - grpc_server_started_total
       - haproxy_backend_connection_errors_total
@@ -60,8 +82,10 @@ data:
       - haproxy_backend_response_errors_total
       - haproxy_backend_up
       - http_requests_total
-      - instance:node_filesystem_usage:sum
+      - instance_device:node_disk_io_time_seconds:rate1m
+      - instance_device:node_disk_io_time_weighted_seconds:rate1m
       - instance:node_cpu_utilisation:rate1m
+      - instance:node_filesystem_usage:sum
       - instance:node_load1_per_cpu:ratio
       - instance:node_memory_utilisation:ratio
       - instance:node_network_receive_bytes_excluding_lo:rate1m
@@ -70,8 +94,6 @@ data:
       - instance:node_network_transmit_drop_excluding_lo:rate1m
       - instance:node_num_cpu:sum
       - instance:node_vmstat_pgmajfault:rate1m
-      - instance_device:node_disk_io_time_seconds:rate1m
-      - instance_device:node_disk_io_time_weighted_seconds:rate1m
       - kube_daemonset_status_desired_number_scheduled
       - kube_daemonset_status_number_unavailable
       - kube_node_spec_unschedulable
@@ -79,9 +101,10 @@ data:
       - kube_node_status_allocatable_cpu_cores
       - kube_node_status_allocatable_memory_bytes
       - kube_node_status_capacity
-      - kube_node_status_capacity_pods
       - kube_node_status_capacity_cpu_cores
+      - kube_node_status_capacity_pods
       - kube_node_status_condition
+      - kube_persistentvolume_status_phase
       - kube_pod_container_resource_limits
       - kube_pod_container_resource_limits_cpu_cores
       - kube_pod_container_resource_limits_memory_bytes
@@ -96,73 +119,86 @@ data:
       - kubelet_runtime_operations_duration_seconds_sum
       - kubelet_volume_stats_available_bytes
       - kubelet_volume_stats_capacity_bytes
-      - kube_persistentvolume_status_phase
+      - kubevirt_hco_system_health_status
+      - kubevirt_hyperconverged_operator_health_status
+      - kubevirt_vm_cpu_usage_seconds_total
+      - kubevirt_vm_create_date_timestamp_seconds
+      - kubevirt_vm_disk_allocated_size_bytes
+      - kubevirt_vm_error_status_last_transition_timestamp_seconds
+      - kubevirt_vm_info
+      - kubevirt_vm_migrating_status_last_transition_timestamp_seconds
+      - kubevirt_vm_non_running_status_last_transition_timestamp_seconds
+      - kubevirt_vm_resource_requests
+      - kubevirt_vm_running_status_last_transition_timestamp_seconds
+      - kubevirt_vm_starting_status_last_transition_timestamp_seconds
+      - kubevirt_vmi_cpu_usage_seconds_total
+      - kubevirt_vmi_filesystem_capacity_bytes
+      - kubevirt_vmi_filesystem_used_bytes
+      - kubevirt_vmi_info
+      - kubevirt_vmi_memory_available_bytes
+      - kubevirt_vmi_memory_cached_bytes
+      - kubevirt_vmi_memory_swap_in_traffic_bytes
+      - kubevirt_vmi_memory_swap_out_traffic_bytes
+      - kubevirt_vmi_memory_unused_bytes
+      - kubevirt_vmi_memory_used_bytes
+      - kubevirt_vmi_migration_end_time_seconds
+      - kubevirt_vmi_network_receive_bytes_total
+      - kubevirt_vmi_network_receive_packets_dropped_total
+      - kubevirt_vmi_network_receive_packets_total
+      - kubevirt_vmi_network_transmit_bytes_total
+      - kubevirt_vmi_network_transmit_packets_dropped_total
+      - kubevirt_vmi_network_transmit_packets_total
+      - kubevirt_vmi_phase_count
+      - kubevirt_vmi_status_addresses
+      - kubevirt_vmi_storage_iops_read_total
+      - kubevirt_vmi_storage_iops_write_total
+      - kubevirt_vmi_storage_read_traffic_bytes_total
+      - kubevirt_vmi_storage_write_traffic_bytes_total
+      - kubevirt_vmi_vcpu_delay_seconds_total
+      - kubevirt_vmi_vcpu_wait_seconds_total
+      - kubevirt_vmsnapshot_succeeded_timestamp_seconds
       - machine_cpu_cores
       - machine_memory_bytes
-      - mce_hs_addon_request_based_hcp_capacity_gauge
+      - mce_hs_addon_available_hosted_clusters_gauge
+      - mce_hs_addon_available_hosted_control_planes_gauge
+      - mce_hs_addon_average_qps_based_hcp_capacity_gauge
+      - mce_hs_addon_deleted_hosted_clusters_gauge
+      - mce_hs_addon_high_qps_based_hcp_capacity_gauge
+      - mce_hs_addon_hosted_control_planes_status_gauge
+      - mce_hs_addon_hypershift_operator_degraded_bool
       - mce_hs_addon_low_qps_based_hcp_capacity_gauge
       - mce_hs_addon_medium_qps_based_hcp_capacity_gauge
-      - mce_hs_addon_high_qps_based_hcp_capacity_gauge
-      - mce_hs_addon_average_qps_based_hcp_capacity_gauge
-      - mce_hs_addon_total_hosted_control_planes_gauge
-      - mce_hs_addon_available_hosted_control_planes_gauge
-      - mce_hs_addon_available_hosted_clusters_gauge
-      - mce_hs_addon_deleted_hosted_clusters_gauge
-      - mce_hs_addon_hypershift_operator_degraded_bool
-      - mce_hs_addon_hosted_control_planes_status_gauge
       - mce_hs_addon_qps_based_hcp_capacity_gauge
-      - mce_hs_addon_worker_node_resource_capacities_gauge
       - mce_hs_addon_qps_gauge
       - mce_hs_addon_request_based_hcp_capacity_current_gauge
+      - mce_hs_addon_request_based_hcp_capacity_gauge
+      - mce_hs_addon_total_hosted_control_planes_gauge
+      - mce_hs_addon_worker_node_resource_capacities_gauge
       - mixin_pod_workload
-      - namespace:kube_pod_container_resource_requests_cpu_cores:sum
-      - namespace_memory:kube_pod_container_resource_requests:sum
-      - namespace:container_memory_usage_bytes:sum
       - namespace_cpu:kube_pod_container_resource_requests:sum
+      - namespace_memory:kube_pod_container_resource_requests:sum
       - namespace_workload_pod:kube_pod_owner:relabel
+      - namespace:container_memory_usage_bytes:sum
+      - namespace:kube_pod_container_resource_requests_cpu_cores:sum
+      - node_cpu_seconds_total
       - node_cpu_seconds_total
       - node_filesystem_avail_bytes
       - node_filesystem_free_bytes
       - node_filesystem_size_bytes
       - node_memory_MemAvailable_bytes
-      - node_namespace_pod_container:container_cpu_usage_seconds_total:sum_rate
+      - node_memory_MemTotal_bytes
+      - node_memory_MemTotal_bytes
       - node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate
+      - node_namespace_pod_container:container_cpu_usage_seconds_total:sum_rate
       - node_netstat_Tcp_OutSegs
       - node_netstat_Tcp_RetransSegs
       - node_netstat_TcpExt_TCPSynRetrans
-      - policyreport_info
-      - up
-      - prometheus_operator_reconcile_errors_total
-      - prometheus_operator_reconcile_operations_total
-      - cluster_operator_conditions
-      - cluster_operator_up      
-      - cluster:policy_governance_info:propagated_count
-      - cluster:policy_governance_info:propagated_noncompliant_count
       - policy:policy_governance_info:propagated_count
       - policy:policy_governance_info:propagated_noncompliant_count
-      - cnv:vmi_status_running:count
-      - kubevirt_hyperconverged_operator_health_status
-      - kubevirt_hco_system_health_status
-      - kubevirt_vmi_info
-      - kubevirt_vm_running_status_last_transition_timestamp_seconds
-      - kubevirt_vm_non_running_status_last_transition_timestamp_seconds
-      - kubevirt_vm_error_status_last_transition_timestamp_seconds
-      - kubevirt_vm_starting_status_last_transition_timestamp_seconds
-      - kubevirt_vm_migrating_status_last_transition_timestamp_seconds
-      - kubevirt_vmi_memory_available_bytes
-      - kubevirt_vmi_memory_unused_bytes
-      - kubevirt_vmi_memory_cached_bytes
-      - kubevirt_vmi_memory_used_bytes
-      - kubevirt_vmi_phase_count
-      - kubevirt_vmi_cpu_usage_seconds_total
-      - kubevirt_vmi_network_receive_bytes_total
-      - kubevirt_vmi_network_transmit_bytes_total
-      - kubevirt_vmi_network_receive_packets_total
-      - kubevirt_vmi_network_transmit_packets_total
-      - kubevirt_vmi_storage_iops_read_total
-      - kubevirt_vmi_storage_iops_write_total
-      - kubevirt_vm_resource_requests
-
+      - policyreport_info
+      - prometheus_operator_reconcile_errors_total
+      - prometheus_operator_reconcile_operations_total
+      - up
 
     matches:
       - __name__="workqueue_queue_duration_seconds_bucket",job="apiserver"
@@ -257,140 +293,6 @@ data:
               - __name__="container_memory_swap",container!=""
               - __name__="container_memory_working_set_bytes",container!=""
  
-  ocp311_metrics_list.yaml: |
-    names:
-      - :node_memory_MemAvailable_bytes:sum
-      - container_cpu_cfs_periods_total
-      - container_cpu_cfs_throttled_periods_total
-      - etcd_debugging_mvcc_db_total_size_in_bytes
-      - etcd_disk_backend_commit_duration_seconds_bucket
-      - etcd_disk_wal_fsync_duration_seconds_bucket
-      - etcd_network_client_grpc_received_bytes_total
-      - etcd_network_client_grpc_sent_bytes_total
-      - etcd_network_peer_received_bytes_total
-      - etcd_network_peer_sent_bytes_total
-      - etcd_server_has_leader
-      - etcd_server_leader_changes_seen_total
-      - etcd_server_proposals_failed_total
-      - etcd_server_proposals_pending
-      - etcd_server_proposals_committed_total
-      - etcd_server_proposals_applied_total
-      - grpc_server_started_total
-      - instance:node_cpu_utilisation:rate1m
-      - instance:node_load1_per_cpu:ratio
-      - instance:node_memory_utilisation:ratio
-      - instance:node_network_receive_bytes_excluding_lo:rate1m
-      - instance:node_network_receive_drop_excluding_lo:rate1m
-      - instance:node_network_transmit_bytes_excluding_lo:rate1m
-      - instance:node_network_transmit_drop_excluding_lo:rate1m
-      - instance:node_num_cpu:sum
-      - instance:node_vmstat_pgmajfault:rate1m
-      - instance_device:node_disk_io_time_seconds:rate1m
-      - instance_device:node_disk_io_time_weighted_seconds:rate1m
-      - kube_node_status_allocatable
-      - kube_node_status_allocatable_cpu_cores
-      - kube_node_status_allocatable_memory_bytes
-      - kube_node_status_capacity_cpu_cores
-      - kube_node_status_condition
-      - kube_pod_container_resource_limits
-      - kube_pod_container_resource_limits_cpu_cores
-      - kube_pod_container_resource_limits_memory_bytes
-      - kube_pod_container_resource_requests
-      - kube_pod_container_resource_requests_cpu_cores
-      - kube_pod_container_resource_requests_memory_bytes
-      - kube_pod_info
-      - kube_pod_owner
-      - kube_resourcequota
-      - machine_cpu_cores
-      - machine_memory_bytes
-      - mixin_pod_workload
-      - namespace_workload_pod:kube_pod_owner:relabel
-      - node_cpu_seconds_total
-      - node_filesystem_avail_bytes
-      - node_filesystem_size_bytes
-      - node_memory_MemAvailable_bytes
-      - node_namespace_pod_container:container_cpu_usage_seconds_total:sum_rate
-      - node_netstat_Tcp_OutSegs
-      - node_netstat_Tcp_RetransSegs
-      - node_netstat_TcpExt_TCPSynRetrans
-      - up
-      - node:node_cpu_utilisation:avg1m
-      - kube_node_labels
-      - 'node_namespace_pod:kube_pod_info:'
-      - container_memory_usage_bytes
-      - node_memory_MemTotal_bytes
-      - node:node_memory_bytes_total:sum
-      - node:node_net_utilisation:sum_irate
-      - node_network_receive_bytes
-      - node_network_transmit_bytes
-      - node_disk_bytes_read
-      - node_disk_bytes_written
-      - node:node_disk_utilisation:avg_irate
-      - kube_pod_status_ready
-      - kube_pod_status_phase
-      - node_filesystem_size
-      - node_filesystem_avail
-      - kube_pod_container_status_restarts_total
-      - openshift_clusterresourcequota_usage
-      - openshift_clusterresourcequota_labels
-      - namespace_pod_name_container_name:container_cpu_usage_seconds_total:sum_rate
-      - kube_namespace_labels
-      - container_memory_rss
-      - container_network_receive_bytes_total
-      - container_network_transmit_bytes_total
-      - container_network_receive_packets_total
-      - container_network_transmit_packets_total
-      - container_network_receive_packets_dropped_total
-      - container_network_transmit_packets_dropped_total
-      - container_cpu_usage_seconds_total
-    matches:
-      - __name__="workqueue_queue_duration_seconds_bucket",job="apiserver"
-      - __name__="workqueue_adds_total",job="apiserver"
-      - __name__="workqueue_depth",job="apiserver"
-      - __name__="go_goroutines",job="apiserver"
-      - __name__="process_cpu_seconds_total",job="apiserver"
-      - __name__="process_resident_memory_bytes",job="apiserver"
-      - __name__="container_memory_cache",container!=""
-      - __name__="container_memory_rss",container!=""
-      - __name__="container_memory_swap",container!=""
-      - __name__="container_memory_working_set_bytes",container_name!=""
-    renames:
-      mixin_pod_workload: namespace_workload_pod:kube_pod_owner:relabel
-      namespace:kube_pod_container_resource_requests_cpu_cores:sum: namespace_cpu:kube_pod_container_resource_requests:sum
-      node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate: node_namespace_pod_container:container_cpu_usage_seconds_total:sum_rate
-      etcd_mvcc_db_total_size_in_bytes: etcd_debugging_mvcc_db_total_size_in_bytes
-    recording_rules:
-      - record: apiserver_request_duration_seconds:histogram_quantile_99
-        expr: (histogram_quantile(0.99,sum(rate(apiserver_request_latencies_bucket{job=\"apiserver\", verb!=\"WATCH\"}[5m])) by (le)))/1000000
-      - record: apiserver_request_duration_seconds:histogram_quantile_99:instance
-        expr: (histogram_quantile(0.99, sum(rate(apiserver_request_latencies_bucket{job=\"apiserver\", verb!=\"WATCH\"}[5m])) by (le, verb, instance)))/1000000
-      - record: sum:apiserver_request_total:1h
-        expr: sum(rate(apiserver_request_count{job=\"apiserver\"}[1h])) by(code, instance)
-      - record: sum:apiserver_request_total:5m
-        expr: sum(rate(apiserver_request_count{job=\"apiserver\"}[5m])) by(code, instance)
-      - record: rpc_rate:grpc_server_handled_total:sum_rate
-        expr: sum(rate(grpc_server_handled_total{job=\"etcd\",grpc_type=\"unary\",grpc_code!=\"OK\"}[5m]))
-      - record: active_streams_watch:grpc_server_handled_total:sum
-        expr: sum(grpc_server_started_total{job=\"etcd\",grpc_service=\"etcdserverpb.Watch\",grpc_type=\"bidi_stream\"}) - sum(grpc_server_handled_total{job=\"etcd\",grpc_service=\"etcdserverpb.Watch\",grpc_type=\"bidi_stream\"})
-      - record: active_streams_lease:grpc_server_handled_total:sum
-        expr: sum(grpc_server_started_total{job=\"etcd\",grpc_service=\"etcdserverpb.Lease\",grpc_type=\"bidi_stream\"}) - sum(grpc_server_handled_total{job=\"etcd\",grpc_service=\"etcdserverpb.Lease\",grpc_type=\"bidi_stream\"})
-      - record: cluster:kube_pod_container_resource_requests:cpu:sum
-        expr: sum(sum(sum(kube_pod_container_resource_requests_cpu_cores) by (pod,namespace,container) * on(pod,namespace) group_left(phase) max(kube_pod_status_phase{phase=~\"Running|Pending|Unknown\"} >0) by (pod,namespace,phase)) by (pod,namespace,phase))
-      - record: cluster:kube_pod_container_resource_requests:memory:sum
-        expr: sum(sum(sum(kube_pod_container_resource_requests_memory_bytes) by (pod,namespace,container) * on(pod,namespace) group_left(phase) max(kube_pod_status_phase{phase=~\"Running|Pending|Unknown\"} >0) by (pod,namespace,phase)) by (pod,namespace,phase))
-      - record: sli:apiserver_request_duration_seconds:trend:1m
-        expr: sum(increase(apiserver_request_latencies_bucket{job=\"apiserver\",service=\"kubernetes\",le=\"1\",verb=~\"POST|PUT|DELETE|PATCH\"}[1m])) / sum(increase(apiserver_request_latencies_count{job=\"apiserver\",service=\"kubernetes\",verb=~\"POST|PUT|DELETE|PATCH\"}[1m]))
-      - record: :node_memory_MemAvailable_bytes:sum
-        expr: sum(node_memory_MemAvailable_bytes{job=\"node-exporter\"}or(node_memory_Buffers_bytes{job=\"node-exporter\"} + node_memory_Cached_bytes{job=\"node-exporter\"} + node_memory_MemFree_bytes{job=\"node-exporter\"} + node_memory_Slab_bytes{job=\"node-exporter\"}))
-      - record: instance:node_network_receive_bytes_excluding_lo:rate1m
-        expr: sum(rate(node_network_receive_bytes_total{job=\"node-exporter\", device!=\"lo\"}[1m])) without(device)
-      - record: instance:node_network_transmit_bytes_excluding_lo:rate1m
-        expr: sum(rate(node_network_transmit_bytes_total{job=\"node-exporter\", device!=\"lo\"}[1m])) without(device)
-      - record: instance:node_network_receive_drop_excluding_lo:rate1m
-        expr: sum(rate(node_network_receive_drop_total{job=\"node-exporter\", device!=\"lo\"}[1m])) without(device)
-      - record: instance:node_network_transmit_drop_excluding_lo:rate1m
-        expr: sum(rate(node_network_transmit_drop_total{job=\"node-exporter\", device!=\"lo\"}[1m])) without(device)
-
   uwl_metrics_list.yaml: |
     names:
       - ALERTS

@@ -8,14 +8,19 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"strings"
 
 	prometheusv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	monitoringv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
+	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	"github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -23,8 +28,6 @@ import (
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-
-	"github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 )
 
 var log = logf.Log.WithName("deploying")
@@ -59,6 +62,7 @@ func NewDeployer(client client.Client) *Deployer {
 		"ServiceMonitor":           deployer.updateServiceMonitor,
 		"AddOnDeploymentConfig":    deployer.updateAddOnDeploymentConfig,
 		"ClusterManagementAddOn":   deployer.updateClusterManagementAddOn,
+		"ScrapeConfig":             deployer.updateScrapeConfig,
 	}
 	return deployer
 }
@@ -269,14 +273,28 @@ func (d *Deployer) updatePrometheusRule(ctx context.Context, desiredObj, runtime
 		return err
 	}
 
-	if !apiequality.Semantic.DeepEqual(desiredPrometheusRule.Spec, runtimePrometheusRule.Spec) {
-		logUpdateInfo(runtimeObj)
-		if desiredPrometheusRule.ResourceVersion != runtimePrometheusRule.ResourceVersion {
-			desiredPrometheusRule.ResourceVersion = runtimePrometheusRule.ResourceVersion
-		}
+	// Use ssa if MCOA
+	if mcoconfig.MultiClusterObservabilityAddon == desiredPrometheusRule.Labels["app.kubernetes.io/part-of"] {
+		// Merge labels
+		desiredLabels := maps.Clone(runtimePrometheusRule.GetLabels())
+		maps.Copy(desiredLabels, desiredPrometheusRule.Labels)
+		desiredPrometheusRule.Labels = desiredLabels
 
-		return d.client.Update(ctx, desiredPrometheusRule)
+		if !equality.Semantic.DeepDerivative(desiredPrometheusRule.Spec, runtimePrometheusRule.Spec) || !maps.Equal(desiredPrometheusRule.Labels, runtimePrometheusRule.Labels) {
+			logUpdateInfo(runtimeObj)
+			return d.client.Patch(ctx, desiredPrometheusRule, client.Apply, client.ForceOwnership, client.FieldOwner(mcoconfig.GetMonitoringCRName()))
+		}
+	} else {
+		if !apiequality.Semantic.DeepDerivative(desiredPrometheusRule.Spec, runtimePrometheusRule.Spec) {
+			logUpdateInfo(runtimeObj)
+			if desiredPrometheusRule.ResourceVersion != runtimePrometheusRule.ResourceVersion {
+				desiredPrometheusRule.ResourceVersion = runtimePrometheusRule.ResourceVersion
+			}
+
+			return d.client.Update(ctx, desiredPrometheusRule)
+		}
 	}
+
 	return nil
 }
 
@@ -395,12 +413,31 @@ func (d *Deployer) updateClusterManagementAddOn(
 		return err
 	}
 
-	if !apiequality.Semantic.DeepEqual(desiredCMAO.Spec, runtimeCMAO.Spec) {
+	if !apiequality.Semantic.DeepEqual(desiredCMAO.Spec, runtimeCMAO.Spec) || !maps.Equal(desiredCMAO.Annotations, runtimeCMAO.Annotations) {
 		logUpdateInfo(runtimeObj)
 		if desiredCMAO.ResourceVersion != runtimeCMAO.ResourceVersion {
 			desiredCMAO.ResourceVersion = runtimeCMAO.ResourceVersion
 		}
 		return d.client.Update(ctx, desiredCMAO)
+	}
+
+	return nil
+}
+
+func (d *Deployer) updateScrapeConfig(ctx context.Context, desiredObj, runtimeObj *unstructured.Unstructured) error {
+	desiredSC, runtimeSC, err := unstructuredPairToTyped[monitoringv1alpha1.ScrapeConfig](desiredObj, runtimeObj)
+	if err != nil {
+		return err
+	}
+
+	// Merge labels
+	desiredLabels := maps.Clone(runtimeSC.GetLabels())
+	maps.Copy(desiredLabels, desiredSC.Labels)
+	desiredSC.Labels = desiredLabels
+
+	if !equality.Semantic.DeepDerivative(desiredSC.Spec, runtimeSC.Spec) || !maps.Equal(desiredSC.Labels, runtimeSC.Labels) {
+		logUpdateInfo(runtimeObj)
+		return d.client.Patch(ctx, desiredSC, client.Apply, client.ForceOwnership, client.FieldOwner(mcoconfig.GetMonitoringCRName()))
 	}
 
 	return nil

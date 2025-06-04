@@ -31,62 +31,58 @@ type clusterManagementAddOnSpec struct {
 	CRDName     string `json:"crdName"`
 }
 
-func CreateClusterManagementAddon(c client.Client) (
+func CreateClusterManagementAddon(ctx context.Context, c client.Client) (
 	*addonv1alpha1.ClusterManagementAddOn, error) {
 	clusterManagementAddon, err := newClusterManagementAddon(c)
 	if err != nil {
 		return nil, err
 	}
+
 	found := &addonv1alpha1.ClusterManagementAddOn{}
-	err = c.Get(context.TODO(), types.NamespacedName{Name: ObservabilityController}, found)
-	if err != nil && errors.IsNotFound(err) {
-		if err := c.Create(context.TODO(), clusterManagementAddon); err != nil {
-			log.Error(err, "Failed to create observability-controller clustermanagementaddon ")
-			return nil, err
+	err = c.Get(ctx, types.NamespacedName{Name: ObservabilityController}, found)
+
+	if err != nil {
+		if errors.IsNotFound(err) {
+			log.Info("Creating observability-controller clustermanagementaddon")
+			if err := c.Create(ctx, clusterManagementAddon); err != nil {
+				return nil, fmt.Errorf("failed to create observability-controller clustermanagementaddon: %w", err)
+			}
+			return clusterManagementAddon, nil
 		}
-		log.Info("Created observability-controller clustermanagementaddon")
-		return clusterManagementAddon, nil
-	} else if err != nil {
-		log.Error(err, "Cannot create observability-controller clustermanagementaddon")
-		return nil, err
-	} else if found.ObjectMeta.Annotations[addonv1alpha1.AddonLifecycleAnnotationKey] !=
-		addonv1alpha1.AddonLifecycleSelfManageAnnotationValue {
-		// We need to set "addon.open-cluster-management.io/lifecycle: self" because
-		// we're not correctly setting supportedConfigs and desiredConfig->specHash
-		// ManagedClusterAddOn objects. This should probably be fixed correctly later.
-		// If this is not done the MCA will never get past progressing as the
-		// addon-manager-controller is otherwise looking for these properties to be set
-		// before progressing.
-		if found.ObjectMeta.Annotations == nil {
-			found.ObjectMeta.Annotations = map[string]string{}
-		}
-		found.ObjectMeta.Annotations[addonv1alpha1.AddonLifecycleAnnotationKey] =
-			addonv1alpha1.AddonLifecycleSelfManageAnnotationValue
-		err := c.Update(context.TODO(), found)
-		if err != nil {
-			log.Error(err, "Failed to update observability-controller clustermanagementaddon ")
-			return nil, err
-		} else {
-			log.Info("Updated observability-controller clustermanagementaddon")
-		}
-		return found, nil
+		return nil, fmt.Errorf("cannot create observability-controller clustermanagementaddon: %w", err)
 	}
 
-	log.Info(fmt.Sprintf("%s clustermanagementaddon is present ", ObservabilityController))
+	// With addon-framework v0.12.0 upgrade, the lifecycle annotation should not be present on clustermanagementaddon,
+	// as otherwise addon-manager-controller does not correctly precess the addon.
+	// Remove addon.open-cluster-management.io/lifecycle annotation if present.
+	if found.Annotations != nil {
+		if _, exists := found.Annotations[addonv1alpha1.AddonLifecycleAnnotationKey]; exists {
+			delete(found.Annotations, addonv1alpha1.AddonLifecycleAnnotationKey)
+
+			log.Info("Removing addon.open-cluster-management.io/lifecycle annotation from observability-controller clustermanagementaddon")
+			if err := c.Update(ctx, found); err != nil {
+				return nil, fmt.Errorf("failed to update clustermanagementaddon to remove lifecycle annotation: %w", err)
+			}
+		}
+	}
+
 	return found, nil
 }
 
-func DeleteClusterManagementAddon(client client.Client) error {
+func DeleteClusterManagementAddon(ctx context.Context, client client.Client) error {
 	clustermanagementaddon := &addonv1alpha1.ClusterManagementAddOn{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: ObservabilityController,
 		},
 	}
-	err := client.Delete(context.TODO(), clustermanagementaddon)
-	if err != nil && !errors.IsNotFound(err) {
-		log.Error(err, "Failed to delete clustermanagementaddon", "name", ObservabilityController)
-		return err
+	err := client.Delete(ctx, clustermanagementaddon)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return nil
+		}
+		return fmt.Errorf("failed to delete clustermanagementaddon %s: %w", clustermanagementaddon.Name, err)
 	}
+
 	log.Info("ClusterManagementAddon deleted", "name", ObservabilityController)
 	return nil
 }
@@ -94,7 +90,7 @@ func DeleteClusterManagementAddon(client client.Client) error {
 func newClusterManagementAddon(c client.Client) (*addonv1alpha1.ClusterManagementAddOn, error) {
 	host, err := config.GetRouteHost(c, config.GrafanaRouteName, config.GetDefaultNamespace())
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get host route: %w", err)
 	}
 	grafanaUrl := url.URL{
 		Scheme: "https",

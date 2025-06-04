@@ -28,7 +28,7 @@ Thanos Ecosystem | [kube-thanos](https://github.com/stolostron/kube-thanos) | Ku
 
 ### Prerequisites
 
-* Ensure [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl) and [kustomize](https://kubernetes-sigs.github.io/kustomize/installation) are installed.
+* Ensure [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl) and [kustomize](https://kubectl.docs.kubernetes.io/installation/kustomize/) are installed.
 * Prepare a OpenShift cluster to function as the hub cluster.
 * Ensure [docker 17.03+](https://docs.docker.com/get-started) is installed.
 * Ensure [golang 1.15+](https://golang.org/doc/install) is installed.
@@ -186,4 +186,4 @@ kubectl -n open-cluster-management-observability delete -k examples/minio
 kubectl delete ns open-cluster-management-observability
 ```
 
-Rebuild Image: Wed Jan 25 15:08:26 EST 2023
+Rebuild Image: Thu May 29 16:47:44 EDT 2025

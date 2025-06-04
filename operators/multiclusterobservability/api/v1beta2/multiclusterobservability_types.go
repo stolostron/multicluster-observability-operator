@@ -68,6 +68,16 @@ type PlatformLogsCollectionSpec struct {
 	Enabled bool `json:"enabled,omitempty"`
 }
 
+// PlatformMetricsCollectionSpec defines the spec for the addon to collect and forward metrics
+// from fleet managed clusters.
+type PlatformMetricsCollectionSpec struct {
+	// Enabled defines a flag to enable/disable the platform metrics collection.
+	//
+	// +optional
+	// +kubebuilder:validation:Optional
+	Enabled bool `json:"enabled,omitempty"`
+}
+
 // PlatformLogsSpec defines the spec for the addon to collect, forward and store logs
 // from fleet managed clusters.
 type PlatformLogsSpec struct {
@@ -79,6 +89,17 @@ type PlatformLogsSpec struct {
 	Collection PlatformLogsCollectionSpec `json:"collection,omitempty"`
 }
 
+// PlatformMetricsSpec defines the spec for the addon to collect, forward and store metrics
+// from fleet managed clusters.
+type PlatformMetricsSpec struct {
+	// Collection defines the spec for the addon to collect and forward metrics
+	// from fleet managed clusters.
+	//
+	// +optional
+	// +kubebuilder:validation:Optional
+	Collection PlatformMetricsCollectionSpec `json:"collection,omitempty"`
+}
+
 // PlatformCapabilitiesSpec defines the observability capabilities managed by the addon
 // for platform components.
 type PlatformCapabilitiesSpec struct {
@@ -88,6 +109,58 @@ type PlatformCapabilitiesSpec struct {
 	// +optional
 	// +kubebuilder:validation:Optional
 	Logs PlatformLogsSpec `json:"logs,omitempty"`
+
+	// Metrics defines the configuration spec for collecting and storing metrics from
+	// platform components running on fleet managed clusters.
+	//
+	// +optional
+	// +kubebuilder:validation:Optional
+	Metrics PlatformMetricsSpec `json:"metrics,omitempty"`
+
+	// Analytics provides the configuration for the analytics features
+	//
+	// +optional
+	// +kubebuilder:validation:Optional
+	Analytics PlatformAnalyticsSpec `json:"analytics,omitempty"`
+}
+
+type PlatformAnalyticsSpec struct {
+	// Incident detecion defines the configuration spec for the incident detection
+	// feature delivered via the cluster observability operator.
+	// If enabled, adds incidents UI to `Observe` section of OpenShift Console Platform
+	//
+	// +optional
+	// +kubebuilder:validation:Optional
+	IncidentDetection PlatformIncidentDetectionSpec `json:"incidentDetection,omitempty"`
+
+	// Feature to enable namespace right-sizing recommendation capabilities for the Analytics.
+	//
+	// +optional
+	// +kubebuilder:validation:Optional
+	NamespaceRightSizingRecommendation PlatformNamespaceRightSizingRecommendationSpec `json:"namespaceRightSizingRecommendation,omitempty"`
+}
+
+type PlatformIncidentDetectionSpec struct {
+	// Enabled defines a flag to enable/disable the incident detection.
+	//
+	// +optional
+	// +kubebuilder:validation:Optional
+	Enabled bool `json:"enabled,omitempty"`
+}
+
+type PlatformNamespaceRightSizingRecommendationSpec struct {
+	// Enabled defines a flag to enable/disable the namespace right-sizing feature for the Analytics.
+	//
+	// +optional
+	// +kubebuilder:validation:Optional
+	Enabled bool `json:"enabled,omitempty"`
+
+	// NamespaceBinding defines the namespace where all the required resources are created.
+	// The default namespace is `open-cluster-management-global-set
+	//
+	// +optional
+	// +kubebuilder:validation:Optional
+	NamespaceBinding string `json:"namespaceBinding,omitempty"`
 }
 
 // ClusterLogForwarderSpec defines the spec for the addon to collect and forward logs
@@ -112,6 +185,16 @@ type UserWorkloadLogsCollectionSpec struct {
 
 // UserWorkloadLogsSpec defines the spec for the addon to collect,forward and store logs
 // from user workloads hosted on fleet managed clusters.
+type UserWorkloadMetricsCollectionSpec struct {
+	// Enabled defines a flag to enable/disable the platform metrics collection.
+	//
+	// +optional
+	// +kubebuilder:validation:Optional
+	Enabled bool `json:"enabled,omitempty"`
+}
+
+// UserWorkloadLogsSpec defines the spec for the addon to collect,forward and store logs
+// from user workloads hosted on fleet managed clusters.
 type UserWorkloadLogsSpec struct {
 	// Collection defines the spec for the addon to collect and forward logs
 	// from user workloads hosted on fleet managed clusters.
@@ -119,6 +202,17 @@ type UserWorkloadLogsSpec struct {
 	// +optional
 	// +kubebuilder:validation:Optional
 	Collection UserWorkloadLogsCollectionSpec `json:"collection,omitempty"`
+}
+
+// UserWorkloadMetricsSpec defines the spec for the addon to collect, forward and store metrics
+// from user workloads hosted on fleet managed clusters.
+type UserWorkloadMetricsSpec struct {
+	// Collection defines the spec for the addon to collect and forward metrics
+	// from user workloads hosted on fleet managed clusters.
+	//
+	// +optional
+	// +kubebuilder:validation:Optional
+	Collection UserWorkloadMetricsCollectionSpec `json:"collection,omitempty"`
 }
 
 // OpenTelemetryCollectorSpec defines the spec for the addon to collect and forward observability signals
@@ -176,6 +270,14 @@ type UserWorkloadCapabilitiesSpec struct {
 	// +optional
 	// +kubebuilder:validation:Optional
 	Logs UserWorkloadLogsSpec `json:"logs,omitempty"`
+
+	// Metrics defines the spec for the addon to collect, forward and store metrics
+	// from user workloads hosted on fleet managed clusters.
+	//
+	// +optional
+	// +kubebuilder:validation:Optional
+	Metrics UserWorkloadMetricsSpec `json:"metrics,omitempty"`
+
 	// Traces defines the spec for the addon to collect, forward and store traces
 	// from user workloads hosted on fleet managed clusters.
 	//

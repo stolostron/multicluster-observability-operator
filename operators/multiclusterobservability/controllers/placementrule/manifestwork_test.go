@@ -33,7 +33,7 @@ import (
 
 const (
 	pullSecretName = "test-pull-secret"
-	workSize       = 13
+	workSize       = 14
 )
 
 func init() {
@@ -179,16 +179,6 @@ func NewMetricsAllowListCM() *corev1.ConfigMap {
             names:
               - foobar_metric
 `,
-			"ocp311_metrics_list.yaml": `
-  names:
-    - a
-    - b
-  renames:
-    a: c
-  recording_rules:
-    - record: f
-      expr: g
-`,
 			"uwl_metrics_list.yaml": `
   names:
     - a
@@ -316,7 +306,7 @@ func TestGetAllowList(t *testing.T) {
 		NewCorruptMetricsCustomAllowListCM(),
 	}
 	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
-	_, _, cc, err := util.GetAllowList(c, config.AllowlistCustomConfigMapName, config.GetDefaultNamespace())
+	_, cc, err := util.GetAllowList(c, config.AllowlistCustomConfigMapName, config.GetDefaultNamespace())
 	if err == nil {
 		t.Fatalf("the cm is %v, The yaml marshall error is ignored", cc)
 	}
@@ -345,9 +335,9 @@ func TestManifestWork(t *testing.T) {
 		WithRuntimeObjects(objs...).
 		Build()
 
-	defer setupTest(t)()
+	setupTest(t)
 
-	works, crdWork, _, err := generateGlobalManifestResources(c, newTestMCO())
+	works, crdWork, err := generateGlobalManifestResources(context.Background(), c, newTestMCO())
 	if err != nil {
 		t.Fatalf("Failed to get global manifestwork resource: (%v)", err)
 	}
@@ -383,10 +373,10 @@ func TestManifestWork(t *testing.T) {
 		},
 	}
 
-	err = createManifestWorks(
+	manWork, err := createManifestWorks(
 		c,
 		namespace,
-		clusterName,
+		managedClusterInfo{Name: clusterName, IsLocalCluster: false},
 		newTestMCO(),
 		works,
 		metricsAllowlistConfigMap,
@@ -398,6 +388,9 @@ func TestManifestWork(t *testing.T) {
 	)
 	if err != nil {
 		t.Fatalf("Failed to create manifestworks: (%v)", err)
+	}
+	if err := createManifestwork(c, manWork); err != nil {
+		t.Fatalf("Failed to apply manifestworks: (%v)", err)
 	}
 
 	annotations := endpointMetricsOperatorDeploy.Spec.Template.Annotations
@@ -426,13 +419,16 @@ func TestManifestWork(t *testing.T) {
 	}
 	// reset image pull secret
 	pullSecret = nil
-	works, crdWork, _, err = generateGlobalManifestResources(c, newTestMCO())
+	works, crdWork, err = generateGlobalManifestResources(context.Background(), c, newTestMCO())
 	if err != nil {
 		t.Fatalf("Failed to get global manifestwork resource: (%v)", err)
 	}
-	err = createManifestWorks(c, namespace, clusterName, newTestMCO(), works, metricsAllowlistConfigMap, crdWork, endpointMetricsOperatorDeploy, hubInfoSecret, addonConfig, false)
+	manWork, err = createManifestWorks(c, namespace, managedClusterInfo{Name: clusterName, IsLocalCluster: false}, newTestMCO(), works, metricsAllowlistConfigMap, crdWork, endpointMetricsOperatorDeploy, hubInfoSecret, addonConfig, false)
 	if err != nil {
 		t.Fatalf("Failed to create manifestworks: (%v)", err)
+	}
+	if err := createManifestwork(c, manWork); err != nil {
+		t.Fatalf("Failed to apply manifestworks: (%v)", err)
 	}
 	err = c.Get(context.TODO(), types.NamespacedName{Name: workName, Namespace: namespace}, found)
 	if err != nil {
@@ -443,9 +439,12 @@ func TestManifestWork(t *testing.T) {
 	}
 
 	spokeNameSpace = "spoke-ns"
-	err = createManifestWorks(c, namespace, clusterName, newTestMCO(), works, metricsAllowlistConfigMap, crdWork, endpointMetricsOperatorDeploy, hubInfoSecret, addonConfig, false)
+	manWork, err = createManifestWorks(c, namespace, managedClusterInfo{Name: clusterName, IsLocalCluster: false}, newTestMCO(), works, metricsAllowlistConfigMap, crdWork, endpointMetricsOperatorDeploy, hubInfoSecret, addonConfig, false)
 	if err != nil {
 		t.Fatalf("Failed to create manifestworks with updated namespace: (%v)", err)
+	}
+	if err := createManifestwork(c, manWork); err != nil {
+		t.Fatalf("Failed to apply manifestworks: (%v)", err)
 	}
 
 	err = deleteManifestWorks(c, namespace)
@@ -464,7 +463,7 @@ func TestManifestWork(t *testing.T) {
 	managedClusterImageRegistry[clusterName] = "open-cluster-management.io/image-registry=" + namespace + ".image_registry"
 	managedClusterImageRegistryMutex.Unlock()
 
-	works, crdWork, _, err = generateGlobalManifestResources(c, newTestMCO())
+	works, crdWork, err = generateGlobalManifestResources(context.Background(), c, newTestMCO())
 	if err != nil {
 		t.Fatalf("Failed to get global manifestwork resource: (%v)", err)
 	}
@@ -472,9 +471,12 @@ func TestManifestWork(t *testing.T) {
 		t.Fatalf("Failed to generate hubInfo secret: (%v)", err)
 	}
 
-	err = createManifestWorks(c, namespace, clusterName, newTestMCO(), works, metricsAllowlistConfigMap, crdWork, endpointMetricsOperatorDeploy, hubInfoSecret, addonConfig, false)
+	manWork, err = createManifestWorks(c, namespace, managedClusterInfo{Name: clusterName, IsLocalCluster: false}, newTestMCO(), works, metricsAllowlistConfigMap, crdWork, endpointMetricsOperatorDeploy, hubInfoSecret, addonConfig, false)
 	if err != nil {
 		t.Fatalf("Failed to create manifestworks: (%v)", err)
+	}
+	if err := createManifestwork(c, manWork); err != nil {
+		t.Fatalf("Failed to apply manifestworks: (%v)", err)
 	}
 	found = &workv1.ManifestWork{}
 	workName = namespace + workNameSuffix

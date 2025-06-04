@@ -6,12 +6,11 @@ package tests
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"time"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
@@ -36,6 +35,20 @@ func installMCO() {
 		testOptions.HubCluster.ClusterServerURL,
 		testOptions.KubeConfig,
 		testOptions.HubCluster.KubeContext)
+
+	if os.Getenv("IS_KIND_ENV") != trueStr {
+		By("Deploy CM cluster-monitoring-config")
+
+		yamlBc, _ := kustomize.Render(
+			kustomize.Options{KustomizationPath: "../../../examples/configmapcmc/cluster-monitoring-config"},
+		)
+		Expect(
+			utils.Apply(
+				testOptions.HubCluster.ClusterServerURL,
+				testOptions.KubeConfig,
+				testOptions.HubCluster.KubeContext,
+				yamlBc)).NotTo(HaveOccurred())
+	}
 
 	By("Checking MCO operator is started up and running")
 	podList, err := hubClient.CoreV1().Pods("").List(context.TODO(), metav1.ListOptions{LabelSelector: MCO_LABEL})
@@ -88,60 +101,6 @@ func installMCO() {
 	By("Creating the MCO testing RBAC resources")
 	Expect(utils.CreateMCOTestingRBAC(testOptions)).NotTo(HaveOccurred())
 
-	if os.Getenv("SKIP_INTEGRATION_CASES") != trueStr {
-		By("Creating MCO instance of v1beta1")
-		v1beta1KustomizationPath := "../../../examples/mco/e2e/v1beta1"
-		yamlB, err = kustomize.Render(kustomize.Options{KustomizationPath: v1beta1KustomizationPath})
-		Expect(err).NotTo(HaveOccurred())
-		Expect(
-			utils.Apply(
-				testOptions.HubCluster.ClusterServerURL,
-				testOptions.KubeConfig,
-				testOptions.HubCluster.KubeContext,
-				yamlB,
-			)).NotTo(HaveOccurred())
-
-		By("Waiting for MCO ready status")
-		allPodsIsReady := false
-		Eventually(func() error {
-			instance, err := dynClient.Resource(utils.NewMCOGVRV1BETA1()).
-				Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
-			if err == nil {
-				allPodsIsReady = utils.StatusContainsTypeEqualTo(instance, "Ready")
-				if allPodsIsReady {
-					testFailed = false
-					return nil
-				}
-			}
-			testFailed = true
-			if instance != nil && instance.Object != nil {
-				return fmt.Errorf(
-					"MCO componnets cannot be running in 20 minutes. check the MCO CR status for the details: %v",
-					instance.Object["status"],
-				)
-			} else {
-				return errors.New("Wait for reconciling.")
-			}
-		}, EventuallyTimeoutMinute*20, EventuallyIntervalSecond*5).Should(Succeed())
-
-		By("Check clustermanagementaddon CR is created")
-		Eventually(func() error {
-			_, err := dynClient.Resource(utils.NewMCOClusterManagementAddonsGVR()).
-				Get(context.TODO(), "observability-controller", metav1.GetOptions{})
-			if err != nil {
-				testFailed = true
-				return err
-			}
-			testFailed = false
-			return nil
-		}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
-
-		By("Check the api conversion is working as expected")
-		v1beta1Tov1beta2GoldenPath := "../../../examples/mco/e2e/v1beta1/observability-v1beta1-to-v1beta2-golden.yaml"
-		err = utils.CheckMCOConversion(testOptions, v1beta1Tov1beta2GoldenPath)
-		Expect(err).NotTo(HaveOccurred())
-	}
-
 	if os.Getenv("IS_CANARY_ENV") != trueStr {
 		By("Recreating Minio-tls as object storage")
 		//set resource quota and limit range for canary environment to avoid destruct the node
@@ -150,7 +109,12 @@ func installMCO() {
 		Expect(utils.Apply(testOptions.HubCluster.ClusterServerURL, testOptions.KubeConfig, testOptions.HubCluster.KubeContext, yamlB)).NotTo(HaveOccurred())
 
 		By("Apply MCO instance of v1beta2")
-		v1beta2KustomizationPath := "../../../examples/mco/e2e/v1beta2/custom-certs"
+		v1beta2KustomizationPath := ""
+		if os.Getenv("IS_KIND_ENV") == trueStr {
+			v1beta2KustomizationPath = "../../../examples/mco/e2e/v1beta2/custom-certs-kind"
+		} else {
+			v1beta2KustomizationPath = "../../../examples/mco/e2e/v1beta2/custom-certs"
+		}
 		yamlB, err = kustomize.Render(kustomize.Options{KustomizationPath: v1beta2KustomizationPath})
 		Expect(err).NotTo(HaveOccurred())
 		// add retry for update mco object failure

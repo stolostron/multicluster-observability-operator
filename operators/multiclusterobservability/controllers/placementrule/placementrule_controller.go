@@ -7,7 +7,8 @@ package placementrule
 import (
 	"context"
 	"errors"
-	"reflect"
+	"fmt"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -15,9 +16,9 @@ import (
 	"github.com/go-logr/logr"
 	operatorv1 "github.com/openshift/api/operator/v1"
 	mchv1 "github.com/stolostron/multiclusterhub-operator/api/v1"
-	"golang.org/x/exp/slices"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -26,12 +27,14 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/util/retry"
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
 	workv1 "open-cluster-management.io/api/work/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -41,10 +44,12 @@ import (
 
 	mcov1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
+	cert_controller "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/certificates"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering/templates"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
-	commonutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
+	templatesutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering/templates"
 )
 
 const (
@@ -57,13 +62,9 @@ const (
 
 var (
 	log                           = logf.Log.WithName("controller_placementrule")
-	isCRoleCreated                = false
 	clusterAddon                  = &addonv1alpha1.ClusterManagementAddOn{}
 	defaultAddonDeploymentConfig  = &addonv1alpha1.AddOnDeploymentConfig{}
 	isplacementControllerRunnning = false
-	managedClusterList            = sync.Map{}
-	managedClusterListMutex       = &sync.RWMutex{}
-	installMetricsWithoutAddon    = false
 )
 
 // PlacementRuleReconciler reconciles a PlacementRule object
@@ -100,20 +101,15 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		return ctrl.Result{}, nil
 	}
 
-	deleteAll := false
+	var mcoIsNotFound bool
 	// Fetch the MultiClusterObservability instance
 	mco := &mcov1beta2.MultiClusterObservability{}
-	err := r.Client.Get(context.TODO(),
-		types.NamespacedName{
-			Name: config.GetMonitoringCRName(),
-		}, mco)
+	err := r.Client.Get(ctx, types.NamespacedName{Name: config.GetMonitoringCRName()}, mco)
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
-			deleteAll = true
-			managedClusterList.Delete("local-cluster")
+			mcoIsNotFound = true
 		} else {
-			// Error reading the object - requeue the request.
-			return ctrl.Result{}, err
+			return ctrl.Result{}, fmt.Errorf("failed to get MCO CR: %w", err)
 		}
 	}
 
@@ -123,193 +119,313 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		return ctrl.Result{}, nil
 	}
 
-	// ACM 8509: Special case for hub/local cluster metrics collection
-	// We want to ensure that the local-cluster is always in the managedClusterList
-	// In the case when hubSelfManagement is enabled, we will delete it from the list and modify the object
-	// to cater to the use case of deploying in open-cluster-management-observability namespace
-	managedClusterList.Delete("local-cluster")
-	if _, ok := managedClusterList.Load("local-cluster"); !ok {
-		obj := &clusterv1.ManagedCluster{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "local-cluster",
-				Namespace: config.GetDefaultNamespace(),
-				Labels: map[string]string{
-					"openshiftVersion": "mimical",
-				},
-			},
-		}
-		installMetricsWithoutAddon = true
-		updateManagedClusterList(obj)
-	}
-
-	if !deleteAll && !mco.Spec.ObservabilityAddonSpec.EnableMetrics {
-		reqLogger.Info("EnableMetrics is set to false. Delete Observability addons")
-		deleteAll = true
-	}
-
-	// check if the MCH CRD exists
-	mchCrdExists := r.CRDMap[config.MCHCrdName]
-	// requeue after 10 seconds if the mch crd exists and image image manifests map is empty
-	if mchCrdExists && len(config.GetImageManifests()) == 0 {
-		// if the mch CR is not ready, then requeue the request after 10s
+	if r.waitForImageList(reqLogger) {
+		reqLogger.Info("Wait for image list, requeuing")
 		return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
 	}
 
-	// check if the server certificate for managedcluster
-	if managedClusterObsCert == nil {
-		var err error
-		managedClusterObsCert, err = generateObservabilityServerCACerts(r.Client)
-		if err != nil && k8serrors.IsNotFound(err) {
-			// if the servser certificate for managedcluster is not ready, then
-			// requeue the request after 10s to avoid useless reconcile loop.
-			return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
+	// only update managedclusteraddon status when obs addon's status updated
+	// ensure the status is updated once in the reconcile loop when the controller starts
+	if err := r.updateStatus(ctx, req); err != nil {
+		reqLogger.Info("Failed to update status: %s", err.Error())
+	}
+
+	// When MCOA is enabled, additionnally clean the hub resources as they are deployed wihtout the addon resource,
+	// and thus are not removed by the cleanResources function.
+	if mcoaForMetricsIsEnabled(mco) {
+		reqLogger.Info("Ensuring MCOA resources on the hub")
+		if err := r.ensureMCOAResources(ctx, mco); err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to ensure MCOA resources: %w", err)
+		}
+		if err := DeleteHubMetricsCollectorResourcesNotNeededForMCOA(ctx, r.Client); err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to delete hub metrics collection resources: %w", err)
 		}
 	}
 
-	opts := &client.ListOptions{
-		LabelSelector: labels.SelectorFromSet(map[string]string{ownerLabelKey: ownerLabelValue}),
-	}
-	if req.Namespace != config.GetDefaultNamespace() &&
-		req.Namespace != "" {
-		opts.Namespace = req.Namespace
-	}
-
-	obsAddonList := &mcov1beta1.ObservabilityAddonList{}
-	err = r.Client.List(context.TODO(), obsAddonList, opts)
-	if err != nil {
-		reqLogger.Error(err, "Failed to list observabilityaddon resource")
-		return ctrl.Result{}, err
-	}
-
-	if !deleteAll && installMetricsWithoutAddon {
-		err = deleteObsAddon(r.Client, localClusterName)
-		if err != nil {
-			log.Error(err, "Failed to delete observabilityaddon")
-			return ctrl.Result{}, err
+	// Clean spokes addon resources (except the hub collector) if metrics are disabled.
+	metricsAreDisabled := mco.Spec.ObservabilityAddonSpec != nil && !mco.Spec.ObservabilityAddonSpec.EnableMetrics
+	if mcoIsNotFound || metricsAreDisabled || mcoaForMetricsIsEnabled(mco) {
+		reqLogger.Info("Cleaning all spokes resources", "mcoIsNotFound", mcoIsNotFound, "metricsAreDisabled",
+			metricsAreDisabled, "mcoaIsEnabled", mcoaForMetricsIsEnabled(mco))
+		if err := r.cleanSpokesAddonResources(ctx); err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to clean all resources: %w", err)
 		}
-	}
 
-	if !deleteAll {
+		// Don't return right away from here because the above cleanup is not complete and it requires
+		// call to cleanOrphanResources for manifest works.
+	} else {
+		reqLogger.Info("Creating all addon resources")
+		opts := &client.ListOptions{
+			LabelSelector: labels.SelectorFromSet(map[string]string{ownerLabelKey: ownerLabelValue}),
+		}
+		if req.Namespace != "" && req.Namespace != config.GetDefaultNamespace() {
+			opts.Namespace = req.Namespace
+		}
+		obsAddonList := &mcov1beta1.ObservabilityAddonList{}
+		if err := r.Client.List(ctx, obsAddonList, opts); err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to list observabilityaddon resource: %w", err)
+		}
+
 		if err := createAllRelatedRes(
+			ctx,
 			r.Client,
 			req,
 			mco,
 			obsAddonList,
 			r.CRDMap,
 		); err != nil {
-			return ctrl.Result{}, err
-		}
-	} else {
-		if err := deleteAllObsAddons(r.Client, obsAddonList); err != nil {
-			return ctrl.Result{}, err
+			return ctrl.Result{}, fmt.Errorf("failed to create all related resources: %w", err)
 		}
 	}
 
-	obsAddonList = &mcov1beta1.ObservabilityAddonList{}
-	err = r.Client.List(context.TODO(), obsAddonList, opts)
-	if err != nil {
-		reqLogger.Error(err, "Failed to list observabilityaddon resource")
-		return ctrl.Result{}, err
+	// This cleanup must be kept at the end of the reconcile as createAllRelatedRes can remove some observabilityAddon
+	// resources that trigger then some cleanup here. Same for cleanResources that leaves resources behind.
+	if err := r.cleanOrphanResources(ctx, req); err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to clean orphaned resources: %w", err)
 	}
+
+	return ctrl.Result{}, nil
+}
+
+// updateStatus ensures that the addonStatuses are updated at least once on the first reconcile
+// to avoid stalled statuses, and then whenever the reconcile trigger is an observabilityAddon.
+func (r *PlacementRuleReconciler) updateStatus(ctx context.Context, req ctrl.Request) error {
+	r.statusMu.Lock()
+	defer r.statusMu.Unlock()
+
+	if req.Name != obsAddonName && r.statusIsInitialized {
+		return nil
+	}
+
+	opts := &client.ListOptions{LabelSelector: labels.SelectorFromSet(map[string]string{ownerLabelKey: ownerLabelValue})}
+	if r.statusIsInitialized && req.Namespace != "" {
+		opts.Namespace = req.Namespace
+	}
+	obsAddonList := &mcov1beta1.ObservabilityAddonList{}
+	if err := r.Client.List(ctx, obsAddonList, opts); err != nil {
+		return fmt.Errorf("failed to list observabilityaddon resource: %w", err)
+	}
+
+	if err := updateAddonStatus(ctx, r.Client, *obsAddonList); err != nil {
+		return err
+	}
+
+	r.statusIsInitialized = true
+	return nil
+}
+
+func (r *PlacementRuleReconciler) cleanOrphanResources(ctx context.Context, req ctrl.Request) error {
+	opts := &client.ListOptions{
+		LabelSelector: labels.SelectorFromSet(map[string]string{ownerLabelKey: ownerLabelValue}),
+	}
+	if req.Namespace != "" && req.Namespace != config.GetDefaultNamespace() {
+		opts.Namespace = req.Namespace
+	}
+
+	obsAddonList := &mcov1beta1.ObservabilityAddonList{}
+	if err := r.Client.List(ctx, obsAddonList, opts); err != nil {
+		return fmt.Errorf("failed to list owned observabilityaddon resources: %w", err)
+	}
+
 	workList := &workv1.ManifestWorkList{}
-	err = r.Client.List(context.TODO(), workList, opts)
-	if err != nil {
-		reqLogger.Error(err, "Failed to list manifestwork resource")
-		return ctrl.Result{}, err
-	}
-	managedclusteraddonList := &addonv1alpha1.ManagedClusterAddOnList{}
-	err = r.Client.List(context.TODO(), managedclusteraddonList, opts)
-	if err != nil {
-		reqLogger.Error(err, "Failed to list managedclusteraddon resource")
-		return ctrl.Result{}, err
-	}
-	latestClusters := []string{}
-	staleAddons := []string{}
-	for _, addon := range obsAddonList.Items {
-		latestClusters = append(latestClusters, addon.Namespace)
-		staleAddons = append(staleAddons, addon.Namespace)
+	if err := r.Client.List(ctx, workList, opts); err != nil {
+		return fmt.Errorf("failed to list owned manifestwork resources: %w", err)
 	}
 
+	managedclusteraddonList := &addonv1alpha1.ManagedClusterAddOnList{}
+	if err := r.Client.List(ctx, managedclusteraddonList, opts); err != nil {
+		return fmt.Errorf("failed to list owned managedclusteraddon resources: %w", err)
+	}
+
+	currentAddonNamespaces := map[string]mcov1beta1.ObservabilityAddon{}
+	for _, addon := range obsAddonList.Items {
+		currentAddonNamespaces[addon.GetNamespace()] = addon
+	}
+
+	namespacesWithResources := map[string]struct{}{}
 	for _, work := range workList.Items {
 		if work.Name != work.Namespace+workNameSuffix {
-			// ACM 8509: Special case for hub metrics collector
-			// In the upgrade case we want to clean up the obs add on and manifest work that was created
-			// for local-cluster before the upgrade that is why we check for the local-cluster namespace
-			reqLogger.Info("To delete invalid manifestwork", "name", work.Name, "namespace", work.Namespace)
-			err = deleteManifestWork(r.Client, work.Name, work.Namespace)
-			if err != nil {
-				return ctrl.Result{}, err
+			log.Info("Deleting ManifestWork with invalid name", "namespace", work.Namespace, "name", work.Name)
+			if err := deleteManifestWork(r.Client, work.Name, work.Namespace); err != nil {
+				return fmt.Errorf("failed to delete invalid ManifestWork: %w", err)
 			}
 		}
-		if !slices.Contains(latestClusters, work.Namespace) {
-			reqLogger.Info("To delete manifestwork", "namespace", work.Namespace)
-			err = deleteManagedClusterRes(r.Client, work.Namespace)
-			if err != nil {
-				return ctrl.Result{}, err
-			}
-		} else {
-			staleAddons = commonutil.Remove(staleAddons, work.Namespace)
-		}
+		namespacesWithResources[work.GetNamespace()] = struct{}{}
 	}
 
 	// after the managedcluster is detached, the manifestwork for observability will be delete be the cluster manager,
 	// but the managedclusteraddon for observability will not deleted by the cluster manager, so check against the
 	// managedclusteraddon list to remove the managedcluster resources after the managedcluster is detached.
 	for _, mcaddon := range managedclusteraddonList.Items {
-		if !slices.Contains(latestClusters, mcaddon.Namespace) && mcaddon.Namespace != config.GetDefaultNamespace() {
-			reqLogger.Info("To delete managedcluster resources", "namespace", mcaddon.Namespace)
-			err = deleteManagedClusterRes(r.Client, mcaddon.Namespace)
-			if err != nil {
-				return ctrl.Result{}, err
-			}
-		} else {
-			staleAddons = commonutil.Remove(staleAddons, mcaddon.Namespace)
+		namespacesWithResources[mcaddon.GetNamespace()] = struct{}{}
+	}
+
+	// Delete orphen resources in namespaces with no observability addon
+	for ns := range namespacesWithResources {
+		if _, ok := currentAddonNamespaces[ns]; ok {
+			continue
+		}
+
+		log.Info("Deleting orphaned ManagedCluster resources", "namespace", ns)
+		if err := deleteManagedClusterRes(r.Client, ns); err != nil {
+			return fmt.Errorf("failed to delete managed cluster resources in namespace %q: %w", ns, err)
 		}
 	}
 
-	// delete stale addons if manifestwork does not exist
-	for _, addon := range staleAddons {
-		err = deleteStaleObsAddon(r.Client, addon, true)
-		if err != nil {
-			return ctrl.Result{}, err
+	// Delete observability addon in namespaces with no resources that may be stalled
+	for ns := range currentAddonNamespaces {
+		if _, ok := namespacesWithResources[ns]; ok {
+			continue
+		}
+
+		addon := currentAddonNamespaces[ns]
+		if !deletionStalled(&addon) {
+			continue
+		}
+
+		if err := deleteFinalizer(r.Client, &addon); err != nil {
+			return fmt.Errorf("failed to delete observabilityaddon %s/%s finalizer: %w", ns, addon.GetName(), err)
+		}
+
+		if err := deleteObsAddonObject(ctx, r.Client, ns); err != nil {
+			return fmt.Errorf("failed to delete stalled observability addon in namespace %q: %w", ns, err)
 		}
 	}
 
-	// only update managedclusteraddon status when obs addon's status updated
-	// ensure the status is updated once in the reconcile loop when the controller starts
-	r.statusMu.Lock()
-	if req.Name == obsAddonName || !r.statusIsInitialized {
-		r.statusIsInitialized = true
-		err = updateAddonStatus(ctx, r.Client, *obsAddonList)
-		if err != nil {
-			r.statusMu.Unlock()
-			return ctrl.Result{}, err
-		}
-	}
-	r.statusMu.Unlock()
+	return nil
+}
 
-	if deleteAll {
-		// delete managedclusteraddon for local-cluster
-		err = deleteManagedClusterRes(r.Client, config.GetDefaultNamespace())
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-
-		opts.Namespace = ""
-		err = r.Client.List(context.TODO(), workList, opts)
-		if err != nil {
-			reqLogger.Error(err, "Failed to list manifestwork resource")
-			return ctrl.Result{}, err
-		}
-		if len(workList.Items) == 0 {
-			err = deleteGlobalResource(r.Client)
-		}
+func (r *PlacementRuleReconciler) waitForImageList(reqLogger logr.Logger) bool {
+	// check if the MCH CRD exists
+	mchCrdExists := r.CRDMap[config.MCHCrdName]
+	// requeue after 10 seconds if the mch crd exists and image image manifests map is empty
+	if mchCrdExists && len(config.GetImageManifests()) == 0 {
+		// if the mch CR is not ready, then requeue the request after 10s
+		reqLogger.Info("Empty images manifest, requeuing")
+		return true
 	}
 
-	return ctrl.Result{}, err
+	return false
+}
+
+func (r *PlacementRuleReconciler) cleanSpokesAddonResources(ctx context.Context) error {
+	opts := &client.ListOptions{LabelSelector: labels.SelectorFromSet(map[string]string{ownerLabelKey: ownerLabelValue})}
+	obsAddonList := &mcov1beta1.ObservabilityAddonList{}
+	if err := r.Client.List(ctx, obsAddonList, opts); err != nil {
+		return fmt.Errorf("failed to list observabilityaddon resource: %w", err)
+	}
+
+	if err := deleteAllObsAddons(ctx, r.Client, obsAddonList); err != nil {
+		return fmt.Errorf("failed to delete all observability addons: %w", err)
+	}
+
+	opts.Namespace = ""
+	workList := &workv1.ManifestWorkList{}
+	if err := r.Client.List(ctx, workList, opts); err != nil {
+		return fmt.Errorf("failed to list manifestwork resource: %w", err)
+	}
+
+	if len(workList.Items) == 0 {
+		if err := deleteGlobalResource(ctx, r.Client); err != nil {
+			return fmt.Errorf("failed to delete global resources: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// ensureMCOAResources reconciliates resources needed for MCOA (both hub and spoke).
+// This includes:
+// - The hub server CA cert to trust when sending metrics
+// - The Hub AlertManager Token to forward alerts from the spoke cluster's Prometheus
+// - The image list configMap
+// - the mTLS key and cert for sending metrics to the hub
+func (r *PlacementRuleReconciler) ensureMCOAResources(ctx context.Context, mco *mcov1beta2.MultiClusterObservability) error {
+	resourcesToCreate := []client.Object{}
+	hubServerCaCertSecret, err := generateObservabilityServerCACerts(ctx, r.Client)
+	if err != nil {
+		return fmt.Errorf("failed to generate observability server ca certs: %w", err)
+	}
+	hubServerCaCertSecret.SetNamespace(config.GetDefaultNamespace())
+	if err := controllerutil.SetControllerReference(mco, hubServerCaCertSecret, r.Client.Scheme()); err != nil {
+		return fmt.Errorf("failed to set controller reference: %w", err)
+	}
+	resourcesToCreate = append(resourcesToCreate, hubServerCaCertSecret)
+
+	amAccessorTokenSecret, err := generateAmAccessorTokenSecret(r.Client)
+	if err != nil {
+		return fmt.Errorf("failed to generate alertManager token secret: %w", err)
+	}
+	amAccessorTokenSecret.SetNamespace(config.GetDefaultNamespace())
+	if err := controllerutil.SetControllerReference(mco, amAccessorTokenSecret, r.Client.Scheme()); err != nil {
+		return fmt.Errorf("failed to set controller reference: %w", err)
+	}
+	resourcesToCreate = append(resourcesToCreate, amAccessorTokenSecret)
+
+	imageListCm, err := generateImageListConfigMap(mco)
+	if err != nil {
+		return fmt.Errorf("failed to generate image list configmap: %w", err)
+	}
+	imageListCm.SetNamespace(config.GetDefaultNamespace())
+	if err := controllerutil.SetControllerReference(mco, imageListCm, r.Client.Scheme()); err != nil {
+		return fmt.Errorf("failed to set controller reference: %w", err)
+	}
+	resourcesToCreate = append(resourcesToCreate, imageListCm)
+
+	for _, obj := range resourcesToCreate {
+		res, err := ctrl.CreateOrUpdate(ctx, r.Client, obj, mutateHubResourceFn(obj.DeepCopyObject().(client.Object), obj))
+		if err != nil {
+			return fmt.Errorf("failed to create or update resource %s: %w", obj.GetName(), err)
+		}
+		if res != controllerutil.OperationResultNone {
+			log.Info("resource created or updated", "kind", obj.GetObjectKind().GroupVersionKind().Kind, "name", obj.GetName(), "action", res)
+		}
+	}
+
+	if err := cert_controller.CreateUpdateMtlsCertSecretForHubCollector(ctx, r.Client); err != nil {
+		log.Error(err, "Failed to create client cert secret for hub metrics collection")
+		return err
+	}
+
+	return nil
+}
+
+func generateImageListConfigMap(mco *mcov1beta2.MultiClusterObservability) (*corev1.ConfigMap, error) {
+	endpointObsTemplates, err := templates.GetOrLoadEndpointObservabilityTemplates(templatesutil.GetTemplateRenderer())
+	if err != nil {
+		return nil, fmt.Errorf("failed to load observability templates: %w", err)
+	}
+
+	var imageListCm *corev1.ConfigMap
+	for _, tplt := range endpointObsTemplates {
+		if tplt.GetKind() != "ConfigMap" || tplt.GetName() != operatorconfig.ImageConfigMap {
+			continue
+		}
+
+		obj, err := updateRes(tplt, mco)
+		if err != nil {
+			return nil, fmt.Errorf("failed to generate image list resource")
+		}
+		// TODO: Apply special image changes when using custom registry
+
+		var ok bool
+		imageListCm, ok = obj.(*corev1.ConfigMap)
+		if !ok {
+			return nil, fmt.Errorf("failed to type assert image list configmap")
+		}
+
+		break
+	}
+
+	if imageListCm == nil {
+		return nil, errors.New("image list not found in templates")
+	}
+
+	return imageListCm, nil
 }
 
 func createAllRelatedRes(
+	ctx context.Context,
 	c client.Client,
 	request ctrl.Request,
 	mco *mcov1beta2.MultiClusterObservability,
@@ -318,24 +434,130 @@ func createAllRelatedRes(
 ) error {
 	var err error
 	// create the clusterrole if not there
-	if !isCRoleCreated {
-		err = createClusterRole(c)
-		if err != nil {
-			return err
-		}
-		err = createResourceRole(c)
-		if err != nil {
-			return err
-		}
-		isCRoleCreated = true
+	if err := createReadMCOClusterRole(ctx, c); err != nil {
+		return fmt.Errorf("failed to ensure cluster rule: %w", err)
+	}
+	if err := createResourceRole(ctx, c); err != nil {
+		return fmt.Errorf("failed to ensure resource role: %w", err)
 	}
 
 	// Get or create ClusterManagementAddon
-	clusterAddon, err = util.CreateClusterManagementAddon(c)
+	clusterAddon, err = util.CreateClusterManagementAddon(ctx, c)
+	if err != nil {
+		return fmt.Errorf("failed to ensure ClusterManagementAddon: %w", err)
+	}
+
+	if err := setDefaultDeploymentConfigVar(ctx, c); err != nil {
+		return fmt.Errorf("failed to set default deployment config: %w", err)
+	}
+
+	// need to reload the template and update the the corresponding resources
+	// the loadTemplates method is now lightweight operations as we have cache the templates in memory.
+	rawExtensionList, obsAddonCRDv1, obsAddonCRDv1beta1,
+		endpointMetricsOperatorDeploy, imageListConfigMap, err = loadTemplates(mco)
+	if err != nil {
+		return fmt.Errorf("failed to load templates: %w", err)
+	}
+
+	works, crdv1Work, err := generateGlobalManifestResources(ctx, c, mco)
 	if err != nil {
 		return err
 	}
 
+	// regenerate the hubinfo secret if empty
+	if hubInfoSecret == nil {
+		var err error
+		if hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, CRDMap[config.IngressControllerCRD]); err != nil {
+			return fmt.Errorf("failed to generate hub info secret: %w", err)
+		}
+	}
+
+	failedCreateManagedClusterRes := false
+	managedClusterList, err := getManagedClustersList(ctx, c)
+	if err != nil {
+		return fmt.Errorf("failed to get managed clusters list: %w", err)
+	}
+
+	for _, mci := range managedClusterList {
+		managedCluster := mci.Name
+		openshiftVersion := mci.OpenshiftVersion
+
+		if !isReconcileRequired(request, managedCluster) {
+			continue
+		}
+
+		log.Info("Reconciling managed cluster resources", "cluster_name", managedCluster, "request.name", request.Name,
+			"request.namespace", request.Namespace, "openshiftVersion", openshiftVersion)
+		var installProm bool
+		namespace := managedCluster
+		switch openshiftVersion {
+		case nonOCP:
+			installProm = true
+		case "mimical":
+			if mco.Annotations["test-env"] == "kind-test" {
+				installProm = true
+			}
+			namespace = config.GetDefaultNamespace()
+		}
+
+		addonDeployCfg, err := createManagedClusterRes(ctx, c, mco, managedCluster, namespace)
+		if err != nil {
+			failedCreateManagedClusterRes = true
+			log.Error(err, "Failed to create managedcluster resources", "namespace", managedCluster)
+			continue
+		}
+		manifestWork, err := createManifestWorks(c, namespace, mci, mco, works, metricsAllowlistConfigMap, crdv1Work, endpointMetricsOperatorDeploy, hubInfoSecret.DeepCopy(), addonDeployCfg, installProm)
+		if err != nil {
+			log.Error(err, "Failed to create manifestworks: %w", err)
+			continue
+		}
+
+		if managedCluster != namespace && os.Getenv("UNIT_TEST") != "true" {
+			// ACM 8509: Special case for hub/local cluster metrics collection
+			// install the endpoint operator into open-cluster-management-observability namespace for the hub cluster
+			log.Info("Creating resource for hub metrics collection", "cluster", managedCluster)
+			if err := ensureResourcesForHubMetricsCollection(ctx, c, mco, manifestWork.Spec.Workload.Manifests); err != nil {
+				log.Error(err, "Failed to ensure resources for hub metrics collection")
+				continue
+			}
+		} else {
+			retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+				return createManifestwork(c, manifestWork)
+			})
+			if retryErr != nil {
+				log.Error(retryErr, "Failed to create manifestwork")
+				continue
+			}
+		}
+	}
+
+	// Look through the obsAddonList items and find clusters
+	// which are no longer to be managed and therefore needs deletion
+	managedClustersNamespaces := make(map[string]struct{}, len(managedClusterList))
+	for _, mc := range managedClusterList {
+		managedClustersNamespaces[mc.Name] = struct{}{}
+	}
+
+	failedDeleteOba := false
+	for _, ep := range obsAddonList.Items {
+		if _, ok := managedClustersNamespaces[ep.Namespace]; ok {
+			continue
+		}
+
+		if err := deleteObsAddon(ctx, c, ep.Namespace); err != nil {
+			failedDeleteOba = true
+			log.Error(err, "Failed to delete observabilityaddon", "namespace", ep.Namespace)
+		}
+	}
+
+	if failedCreateManagedClusterRes || failedDeleteOba {
+		return fmt.Errorf("failed to create managedcluster resources or failed to delete observabilityaddon: failedCreateManagedClusterRes=%t, failedDeleteOba=%t", failedCreateManagedClusterRes, failedDeleteOba)
+	}
+
+	return nil
+}
+
+func setDefaultDeploymentConfigVar(ctx context.Context, c client.Client) error {
 	// Always start this loop with an empty addon deployment config.
 	// This simplifies the logic for the cases where:
 	// - There is nothing in `Spec.SupportedConfigs`.
@@ -350,7 +572,7 @@ func createAllRelatedRes(
 			config.ConfigGroupResource.Resource == util.AddonDeploymentConfigResource {
 			if config.DefaultConfig != nil {
 				addonConfig := &addonv1alpha1.AddOnDeploymentConfig{}
-				err = c.Get(context.TODO(),
+				err := c.Get(ctx,
 					types.NamespacedName{
 						Name:      config.DefaultConfig.Name,
 						Namespace: config.DefaultConfig.Namespace,
@@ -358,118 +580,25 @@ func createAllRelatedRes(
 					addonConfig,
 				)
 				if err != nil {
-					return err
+					return fmt.Errorf("failed to get default config: %w", err)
 				}
-				log.Info("There is default AddonDeploymentConfig for current addon")
+				log.Info("Setting the default AddonDeploymentConfig variable for current addon")
 				defaultAddonDeploymentConfig = addonConfig
 				break
 			}
 		}
 	}
 
-	// need to reload the template and update the the corresponding resources
-	// the loadTemplates method is now lightweight operations as we have cache the templates in memory.
-	log.Info("load and update templates for managedcluster resources")
-	rawExtensionList, obsAddonCRDv1, obsAddonCRDv1beta1,
-		endpointMetricsOperatorDeploy, imageListConfigMap, _ = loadTemplates(mco)
-
-	works, crdv1Work, crdv1beta1Work, err := generateGlobalManifestResources(c, mco)
-	if err != nil {
-		return err
-	}
-
-	// regenerate the hubinfo secret if empty
-	if hubInfoSecret == nil {
-		var err error
-		if hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, CRDMap[config.IngressControllerCRD]); err != nil {
-			return err
-		}
-	}
-
-	failedCreateManagedClusterRes := false
-	managedClusterListMutex.RLock()
-	managedClusterList.Range(func(key, value interface{}) bool {
-		managedCluster := key.(string)
-		openshiftVersion := value.(string)
-		if isReconcileRequired(request, managedCluster) {
-			log.Info(
-				"Monitoring operator should be installed in cluster",
-				"cluster_name",
-				managedCluster,
-				"request.name",
-				request.Name,
-				"request.namespace",
-				request.Namespace,
-				"openshiftVersion",
-				openshiftVersion,
-			)
-			if openshiftVersion == "3" {
-				err = createManagedClusterRes(c, mco,
-					managedCluster, managedCluster,
-					works, ocp311metricsAllowlistConfigMap, crdv1beta1Work, endpointMetricsOperatorDeploy, hubInfoSecret, false)
-			} else if openshiftVersion == nonOCP {
-				err = createManagedClusterRes(c, mco,
-					managedCluster, managedCluster,
-					works, metricsAllowlistConfigMap, crdv1Work, endpointMetricsOperatorDeploy, hubInfoSecret, true)
-			} else if openshiftVersion == "mimical" {
-				installProm := false
-				if mco.Annotations["test-env"] == "kind-test" {
-					installProm = true
-				}
-				// Create copy of hub-info-secret for local-cluster since hubInfo is global variable
-				hubInfoSecretCopy := hubInfoSecret.DeepCopy()
-				err = createManagedClusterRes(c, mco,
-					managedCluster, config.GetDefaultNamespace(),
-					works, metricsAllowlistConfigMap, crdv1Work, endpointMetricsOperatorDeploy, hubInfoSecretCopy, installProm)
-			} else {
-				err = createManagedClusterRes(c, mco,
-					managedCluster, managedCluster,
-					works, metricsAllowlistConfigMap, crdv1Work, endpointMetricsOperatorDeploy, hubInfoSecret, false)
-			}
-			if err != nil {
-				failedCreateManagedClusterRes = true
-				log.Error(err, "Failed to create managedcluster resources", "namespace", managedCluster)
-			}
-			if request.Namespace == managedCluster {
-				return false
-			}
-		}
-		return true
-	})
-
-	// Look through the obsAddonList items and find clusters
-	// which are no longer to be managed and therefore needs deletion
-	clustersToCleanup := []string{}
-	for _, ep := range obsAddonList.Items {
-		if _, ok := managedClusterList.Load(ep.Namespace); !ok {
-			clustersToCleanup = append(clustersToCleanup, ep.Namespace)
-		}
-	}
-
-	managedClusterListMutex.RUnlock()
-
-	failedDeleteOba := false
-	for _, cluster := range clustersToCleanup {
-		err = deleteObsAddon(c, cluster)
-		if err != nil {
-			failedDeleteOba = true
-			log.Error(err, "Failed to delete observabilityaddon", "namespace", cluster)
-		}
-	}
-
-	if failedCreateManagedClusterRes || failedDeleteOba {
-		return errors.New("failed to create managedcluster resources or failed to delete observabilityaddon, skip and reconcile later")
-	}
-
 	return nil
 }
 
 func deleteAllObsAddons(
+	ctx context.Context,
 	client client.Client,
 	obsAddonList *mcov1beta1.ObservabilityAddonList,
 ) error {
 	for _, ep := range obsAddonList.Items {
-		err := deleteObsAddon(client, ep.Namespace)
+		err := deleteObsAddon(ctx, client, ep.Namespace)
 		if err != nil {
 			log.Error(err, "Failed to delete observabilityaddon", "namespace", ep.Namespace)
 			return err
@@ -478,58 +607,47 @@ func deleteAllObsAddons(
 	return nil
 }
 
-func deleteGlobalResource(c client.Client) error {
-	err := deleteClusterRole(c)
+func deleteGlobalResource(ctx context.Context, c client.Client) error {
+	err := deleteClusterRole(ctx, c)
 	if err != nil {
 		return err
 	}
-	err = deleteResourceRole(c)
+	err = deleteResourceRole(ctx, c)
 	if err != nil {
 		return err
 	}
-	isCRoleCreated = false
 	// delete ClusterManagementAddon
-	err = util.DeleteClusterManagementAddon(c)
+	err = util.DeleteClusterManagementAddon(ctx, c)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func createManagedClusterRes(
-	c client.Client,
-	mco *mcov1beta2.MultiClusterObservability,
-	name string,
-	namespace string,
-	works []workv1.Manifest,
-	allowlist *corev1.ConfigMap,
-	crdWork *workv1.Manifest,
-	dep *appsv1.Deployment,
-	hubInfo *corev1.Secret,
-	installProm bool,
-) error {
-	err := createObsAddon(c, namespace)
-	if err != nil {
-		log.Error(err, "Failed to create observabilityaddon")
-		return err
+// createManagedClusterRes creates:
+// - the observability addon in the namespace
+// - the role bindings for system groups
+// - the managedClusterAddon named "observability-controller"
+func createManagedClusterRes(ctx context.Context, c client.Client, mco *mcov1beta2.MultiClusterObservability, name string, namespace string) (*addonv1alpha1.AddOnDeploymentConfig, error) {
+	if err := createObsAddon(mco, c, namespace); err != nil {
+		return nil, fmt.Errorf("failed to create observabilityaddon: %w", err)
 	}
 
-	err = createRolebindings(c, namespace, name)
-	if err != nil {
-		return err
+	if err := createRolebindings(c, namespace, name); err != nil {
+		return nil, fmt.Errorf("failed to create role bindings: %w", err)
 	}
 
 	addon, err := util.CreateManagedClusterAddonCR(c, namespace, ownerLabelKey, ownerLabelValue)
 	if err != nil {
-		log.Error(err, "Failed to create ManagedClusterAddon")
-		return err
+		return nil, fmt.Errorf("failed to create ManagedClusterAddon: %w", err)
 	}
+
 	addonConfig := &addonv1alpha1.AddOnDeploymentConfig{}
 	isCustomConfig := false
 	for _, config := range addon.Spec.Configs {
 		if config.ConfigGroupResource.Group == util.AddonGroup &&
 			config.ConfigGroupResource.Resource == util.AddonDeploymentConfigResource {
-			err = c.Get(context.TODO(),
+			err = c.Get(ctx,
 				types.NamespacedName{
 					Name:      config.ConfigReferent.Name,
 					Namespace: config.ConfigReferent.Namespace,
@@ -537,7 +655,7 @@ func createManagedClusterRes(
 				addonConfig,
 			)
 			if err != nil {
-				return err
+				return nil, err
 			}
 			isCustomConfig = true
 			log.Info("There is AddonDeploymentConfig for current addon", "namespace", namespace)
@@ -548,12 +666,7 @@ func createManagedClusterRes(
 		addonConfig = defaultAddonDeploymentConfig
 	}
 
-	if err = createManifestWorks(c, namespace, name, mco, works, allowlist, crdWork, dep, hubInfo, addonConfig, installProm); err != nil {
-		log.Error(err, "Failed to create manifestwork")
-		return err
-	}
-
-	return nil
+	return addonConfig, nil
 }
 
 func deleteManagedClusterRes(c client.Client, namespace string) error {
@@ -564,9 +677,13 @@ func deleteManagedClusterRes(c client.Client, namespace string) error {
 		},
 	}
 	err := c.Delete(context.TODO(), managedclusteraddon)
-	if err != nil && !k8serrors.IsNotFound(err) {
-		log.Error(err, "Failed to delete managedclusteraddon")
-		return err
+	if err != nil {
+		if !k8serrors.IsNotFound(err) {
+			log.Error(err, "Failed to delete managedclusteraddon")
+			return err
+		}
+	} else {
+		log.Info("Deleted managed cluster addon", "namespace", namespace, "name", managedclusteraddon.Name)
 	}
 
 	err = deleteRolebindings(c, namespace)
@@ -609,14 +726,52 @@ func areManagedClusterLabelsReady(obj client.Object) bool {
 	return true
 }
 
-func updateManagedClusterList(obj client.Object) {
-	managedClusterListMutex.Lock()
-	defer managedClusterListMutex.Unlock()
-	if version, ok := obj.GetLabels()["openshiftVersion"]; ok {
-		managedClusterList.Store(obj.GetName(), version)
-	} else {
-		managedClusterList.Store(obj.GetName(), nonOCP)
+type managedClusterInfo struct {
+	Name             string
+	OpenshiftVersion string
+	IsLocalCluster   bool
+}
+
+// getManagedClustersList returns the list of managed clusters info,
+// including the local cluster with a specific OpenshiftVersion for trigerring specific processings
+func getManagedClustersList(ctx context.Context, c client.Client) ([]managedClusterInfo, error) {
+	managedClustersList := &clusterv1.ManagedClusterList{}
+	if err := c.List(ctx, managedClustersList); err != nil {
+		return nil, fmt.Errorf("failed to list managed clusters: %w", err)
 	}
+
+	ret := make([]managedClusterInfo, 0, len(managedClustersList.Items))
+	appended := false
+
+	for _, mc := range managedClustersList.Items {
+		if mc.Labels["local-cluster"] == "true" && !appended {
+			ret = append(ret, managedClusterInfo{
+				Name:             mc.GetName(),
+				OpenshiftVersion: "mimical",
+				IsLocalCluster:   true,
+			})
+			appended = true
+			continue
+		}
+
+		if mc.GetDeletionTimestamp() != nil {
+			// ignore deleted clusters
+			continue
+		}
+
+		openshiftVersion := nonOCP
+		if version, ok := mc.GetLabels()["openshiftVersion"]; ok {
+			openshiftVersion = version
+		}
+
+		ret = append(ret, managedClusterInfo{
+			Name:             mc.GetName(),
+			OpenshiftVersion: openshiftVersion,
+			IsLocalCluster:   false,
+		})
+	}
+
+	return ret, nil
 }
 
 // Do not reconcile objects if this instance of mch has the
@@ -649,19 +804,23 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			return false
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
+			equalStatus := equality.Semantic.DeepEqual(e.ObjectNew.(*mcov1beta1.ObservabilityAddon).Status.Conditions,
+				e.ObjectOld.(*mcov1beta1.ObservabilityAddon).Status.Conditions)
+			equalSpec := equality.Semantic.DeepEqual(e.ObjectNew.(*mcov1beta1.ObservabilityAddon).Spec,
+				e.ObjectOld.(*mcov1beta1.ObservabilityAddon).Spec)
+			equalAnnotations := equality.Semantic.DeepEqual(e.ObjectNew.(*mcov1beta1.ObservabilityAddon).Annotations,
+				e.ObjectOld.(*mcov1beta1.ObservabilityAddon).Annotations)
+
 			if e.ObjectNew.GetName() == obsAddonName &&
 				e.ObjectNew.GetLabels()[ownerLabelKey] == ownerLabelValue &&
-				e.ObjectNew.GetNamespace() != localClusterName &&
-				!reflect.DeepEqual(e.ObjectNew.(*mcov1beta1.ObservabilityAddon).Status.Conditions,
-					e.ObjectOld.(*mcov1beta1.ObservabilityAddon).Status.Conditions) {
+				(!equalStatus || !equalSpec || !equalAnnotations) {
 				return true
 			}
 			return false
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
 			if e.Object.GetName() == obsAddonName &&
-				e.Object.GetLabels()[ownerLabelKey] == ownerLabelValue &&
-				e.Object.GetNamespace() != localClusterName {
+				e.Object.GetLabels()[ownerLabelKey] == ownerLabelValue {
 				log.Info(
 					"DeleteFunc",
 					"obsAddonNamespace",
@@ -686,7 +845,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				e.Object.GetNamespace() == config.GetDefaultNamespace() {
 				// generate the metrics allowlist configmap
 				log.Info("generate metric allow list configmap for allowlist configmap CREATE")
-				metricsAllowlistConfigMap, ocp311metricsAllowlistConfigMap, _ = generateMetricsListCM(c)
+				metricsAllowlistConfigMap, _ = generateMetricsListCM(c)
 				return true
 			}
 			return false
@@ -698,7 +857,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() {
 				// regenerate the metrics allowlist configmap
 				log.Info("generate metric allow list configmap for allowlist configmap UPDATE")
-				metricsAllowlistConfigMap, ocp311metricsAllowlistConfigMap, _ = generateMetricsListCM(c)
+				metricsAllowlistConfigMap, _ = generateMetricsListCM(c)
 				return true
 			}
 			return false
@@ -709,7 +868,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				e.Object.GetNamespace() == config.GetDefaultNamespace() {
 				// regenerate the metrics allowlist configmap
 				log.Info("generate metric allow list configmap for allowlist configmap UPDATE")
-				metricsAllowlistConfigMap, ocp311metricsAllowlistConfigMap, _ = generateMetricsListCM(c)
+				metricsAllowlistConfigMap, _ = generateMetricsListCM(c)
 				return true
 			}
 			return false
@@ -720,9 +879,6 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		CreateFunc: func(e event.CreateEvent) bool {
 			if e.Object.GetName() == config.ServerCACerts &&
 				e.Object.GetNamespace() == config.GetDefaultNamespace() {
-				// generate the certificate for managed cluster
-				log.Info("generate managedcluster observability certificate for server certificate CREATE")
-				managedClusterObsCert, _ = generateObservabilityServerCACerts(c)
 				return true
 			}
 			return false
@@ -731,9 +887,6 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			if (e.ObjectNew.GetName() == config.ServerCACerts &&
 				e.ObjectNew.GetNamespace() == config.GetDefaultNamespace()) &&
 				e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() {
-				// regenerate the certificate for managed cluster
-				log.Info("generate managedcluster observability certificate for server certificate UPDATE")
-				managedClusterObsCert, _ = generateObservabilityServerCACerts(c)
 				return true
 			}
 			return false
@@ -1112,4 +1265,21 @@ func isReconcileRequired(request ctrl.Request, managedCluster string) bool {
 		return true
 	}
 	return false
+}
+
+func mcoaForMetricsIsEnabled(mco *mcov1beta2.MultiClusterObservability) bool {
+	if mco.Spec.Capabilities == nil {
+		return false
+	}
+
+	if mco.Spec.Capabilities.Platform != nil && mco.Spec.Capabilities.Platform.Metrics.Collection.Enabled {
+		return true
+	}
+
+	if mco.Spec.Capabilities.UserWorkloads != nil && mco.Spec.Capabilities.UserWorkloads.Metrics.Collection.Enabled {
+		return true
+	}
+
+	return false
+
 }

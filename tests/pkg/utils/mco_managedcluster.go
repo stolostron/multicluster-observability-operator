@@ -7,11 +7,31 @@ package utils
 import (
 	"context"
 	"errors"
-	"os"
+	"fmt"
+	"slices"
 
-	goversion "github.com/hashicorp/go-version"
+	"github.com/onsi/ginkgo/v2"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime"
+	clusterv1 "open-cluster-management.io/api/cluster/v1"
 )
+
+const (
+	availableManagedClusterCondition = "ManagedClusterConditionAvailable"
+	idClusterClaim                   = "id.k8s.io"
+)
+
+var openshiftLabelSelector = labels.SelectorFromValidatedSet(map[string]string{
+	"vendor": "OpenShift",
+})
+
+type ClustersInfo struct {
+	Name           string
+	isLocalCluster bool
+}
 
 func UpdateObservabilityFromManagedCluster(opt TestOptions, enableObservability bool) error {
 	clusterName := GetManagedClusterName(opt)
@@ -42,22 +62,16 @@ func UpdateObservabilityFromManagedCluster(opt TestOptions, enableObservability 
 	return nil
 }
 
-func ListManagedClusters(opt TestOptions) ([]string, error) {
+func ListManagedClusters(opt TestOptions) ([]ClustersInfo, error) {
 	clientDynamic := GetKubeClientDynamic(opt, true)
 	objs, err := clientDynamic.Resource(NewOCMManagedClustersGVR()).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
-	clusterNames := []string{}
+	clusters := make([]ClustersInfo, 0, len(objs.Items))
 	for _, obj := range objs.Items {
 		metadata := obj.Object["metadata"].(map[string]interface{})
 		name := metadata["name"].(string)
-
-		if os.Getenv("IS_KIND_ENV") == "true" {
-			// We do not have the obs add on label added in kind cluster
-			clusterNames = append(clusterNames, name)
-			continue
-		}
 
 		status, ok := obj.Object["status"].(map[string]interface{})
 		if !ok {
@@ -85,95 +99,91 @@ func ListManagedClusters(opt TestOptions) ([]string, error) {
 
 		// Only add clusters with ManagedClusterConditionAvailable status == True
 		if available {
-			clusterNames = append(clusterNames, name)
+			clusters = append(clusters, ClustersInfo{
+				Name:           name,
+				isLocalCluster: metadata["labels"].(map[string]interface{})["local-cluster"] == "true",
+			})
 		}
 	}
 
-	if len(clusterNames) == 0 {
-		return clusterNames, errors.New("no managedcluster found")
+	if len(clusters) == 0 {
+		return clusters, errors.New("no managedcluster found")
 	}
 
-	return clusterNames, nil
+	return clusters, nil
 }
 
-func ListOCPManagedClusterIDs(opt TestOptions, minVersionStr string) ([]string, error) {
-	minVersion, err := goversion.NewVersion(minVersionStr)
+func ListAvailableOCPManagedClusterIDs(opt TestOptions) ([]string, error) {
+	managedClusters, err := GetManagedClusters(opt)
 	if err != nil {
 		return nil, err
 	}
+
+	// Filter out unavailable and non openshift clusters.
+	// This is necessary for some e2e testing environments where some managed clusters might not be available.
+	managedClusters = slices.DeleteFunc(managedClusters, func(e *clusterv1.ManagedCluster) bool {
+		return !meta.IsStatusConditionTrue(e.Status.Conditions, availableManagedClusterCondition) || !isOpenshiftVendor(e)
+	})
+
+	ret := make([]string, 0, len(managedClusters))
+	for _, mc := range managedClusters {
+		ret = append(ret, getManagedClusterID(mc))
+	}
+
+	return ret, nil
+}
+
+func ListAvailableKSManagedClusterNames(opt TestOptions) ([]string, error) {
+	managedClusters, err := GetManagedClusters(opt)
+	if err != nil {
+		return nil, err
+	}
+
+	// Filter out unavailable and non openshift clusters.
+	// This is necessary for some e2e testing environments where some managed clusters might not be available.
+	managedClusters = slices.DeleteFunc(managedClusters, func(e *clusterv1.ManagedCluster) bool {
+		return !meta.IsStatusConditionTrue(e.Status.Conditions, availableManagedClusterCondition) || isOpenshiftVendor(e)
+	})
+
+	ret := make([]string, 0, len(managedClusters))
+	for _, mc := range managedClusters {
+		ret = append(ret, getManagedClusterID(mc))
+	}
+
+	return ret, nil
+}
+
+func isOpenshiftVendor(mc *clusterv1.ManagedCluster) bool {
+	return openshiftLabelSelector.Matches(labels.Set(mc.GetLabels()))
+}
+
+func getManagedClusterID(mc *clusterv1.ManagedCluster) string {
+	for _, cc := range mc.Status.ClusterClaims {
+		if cc.Name == idClusterClaim {
+			return cc.Value
+		}
+	}
+
+	ginkgo.Fail(fmt.Sprintf("failed to get the managedCluster %q ID", mc.Name))
+
+	return ""
+}
+
+func GetManagedClusters(opt TestOptions) ([]*clusterv1.ManagedCluster, error) {
 	clientDynamic := GetKubeClientDynamic(opt, true)
 	objs, err := clientDynamic.Resource(NewOCMManagedClustersGVR()).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get ManagedClusters: %w", err)
 	}
-	clusterIDs := []string{}
+
+	ret := make([]*clusterv1.ManagedCluster, 0, len(objs.Items))
 	for _, obj := range objs.Items {
-		metadata := obj.Object["metadata"].(map[string]interface{})
-		labels := metadata["labels"].(map[string]interface{})
-		if labels != nil {
-			vendorStr := ""
-			if vendor, ok := labels["vendor"]; ok {
-				vendorStr = vendor.(string)
-			}
-			obsControllerStr := ""
-			if obsController, ok := labels["feature.open-cluster-management.io/addon-observability-controller"]; ok {
-				obsControllerStr = obsController.(string)
-			}
-			if vendorStr == "OpenShift" && obsControllerStr == "available" {
-				clusterVersionStr := ""
-				if clusterVersionVal, ok := labels["openshiftVersion"]; ok {
-					clusterVersionStr = clusterVersionVal.(string)
-				}
-				clusterVersion, err := goversion.NewVersion(clusterVersionStr)
-				if err != nil {
-					return nil, err
-				}
-				if clusterVersion.GreaterThanOrEqual(minVersion) {
-					clusterIDStr := ""
-					if clusterID, ok := labels["clusterID"]; ok {
-						clusterIDStr = clusterID.(string)
-					}
-					if len(clusterIDStr) > 0 {
-						clusterIDs = append(clusterIDs, clusterIDStr)
-					}
-				}
-			}
+		mc := &clusterv1.ManagedCluster{}
+		if err := runtime.DefaultUnstructuredConverter.FromUnstructured(obj.Object, mc); err != nil {
+			return nil, fmt.Errorf("failed to convert Unstructured to ManagedCluster: %w", err)
 		}
+		ret = append(ret, mc)
 	}
 
-	return clusterIDs, nil
-}
-
-func ListKSManagedClusterNames(opt TestOptions) ([]string, error) {
-	clientDynamic := GetKubeClientDynamic(opt, true)
-	objs, err := clientDynamic.Resource(NewOCMManagedClustersGVR()).List(context.TODO(), metav1.ListOptions{})
-	if err != nil {
-		return nil, err
-	}
-	clusterNames := []string{}
-	for _, obj := range objs.Items {
-		metadata := obj.Object["metadata"].(map[string]interface{})
-		labels := metadata["labels"].(map[string]interface{})
-		if labels != nil {
-			vendorStr := ""
-			if vendor, ok := labels["vendor"]; ok {
-				vendorStr = vendor.(string)
-			}
-			obsControllerStr := ""
-			if obsController, ok := labels["feature.open-cluster-management.io/addon-observability-controller"]; ok {
-				obsControllerStr = obsController.(string)
-			}
-			if vendorStr != "OpenShift" && obsControllerStr == "available" {
-				clusterNameStr := ""
-				if clusterNameVal, ok := labels["name"]; ok {
-					clusterNameStr = clusterNameVal.(string)
-				}
-				if len(clusterNameStr) > 0 {
-					clusterNames = append(clusterNames, clusterNameStr)
-				}
-			}
-		}
-	}
-
-	return clusterNames, nil
+	return ret, nil
 }

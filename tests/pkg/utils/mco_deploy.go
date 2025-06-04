@@ -12,9 +12,11 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -37,13 +39,6 @@ const (
 	OCM_CLUSTER_GROUP             = "cluster.open-cluster-management.io"
 	OCM_ADDON_GROUP               = "addon.open-cluster-management.io"
 )
-
-func NewMCOGVRV1BETA1() schema.GroupVersionResource {
-	return schema.GroupVersionResource{
-		Group:    MCO_GROUP,
-		Version:  "v1beta1",
-		Resource: "multiclusterobservabilities"}
-}
 
 func NewMCOGVRV1BETA2() schema.GroupVersionResource {
 	return schema.GroupVersionResource{
@@ -101,6 +96,13 @@ func NewOCMMultiClusterHubGVR() schema.GroupVersionResource {
 		Resource: "multiclusterhubs"}
 }
 
+func NewPrometheusRuleGVR() schema.GroupVersionResource {
+	return schema.GroupVersionResource{
+		Group:    "monitoring.coreos.com",
+		Version:  "v1",
+		Resource: "prometheusrules"}
+}
+
 func GetAllMCOPods(opt TestOptions) ([]corev1.Pod, error) {
 	hubClient := NewKubeClient(
 		opt.HubCluster.ClusterServerURL,
@@ -115,6 +117,18 @@ func GetAllMCOPods(opt TestOptions) ([]corev1.Pod, error) {
 	// ignore non-mco pods
 	mcoPods := []corev1.Pod{}
 	for _, p := range podList.Items {
+		if strings.Contains(p.GetName(), "metrics-collector") {
+			continue
+		}
+
+		if strings.Contains(p.GetName(), "endpoint-observability-operator") {
+			continue
+		}
+
+		if strings.Contains(p.GetName(), "uwl-metrics-collector") {
+			continue
+		}
+
 		if strings.Contains(p.GetName(), "grafana-test") {
 			continue
 		}
@@ -130,12 +144,20 @@ func GetAllMCOPods(opt TestOptions) ([]corev1.Pod, error) {
 }
 
 func PrintObject(ctx context.Context, client dynamic.Interface, gvr schema.GroupVersionResource, ns, name string) {
-	if ns == "" || name == "" {
-		klog.V(1).Info("Namespace or name cannot be empty")
+	if name == "" {
+		klog.V(1).Info("Name cannot be empty")
 		return
 	}
 
-	obj, err := client.Resource(gvr).Namespace(ns).Get(ctx, name, metav1.GetOptions{})
+	var obj *unstructured.Unstructured
+	var err error
+
+	if ns == "" {
+		obj, err = client.Resource(gvr).Get(ctx, name, metav1.GetOptions{})
+	} else {
+		obj, err = client.Resource(gvr).Namespace(ns).Get(ctx, name, metav1.GetOptions{})
+	}
+
 	if err != nil {
 		klog.V(1).Infof("Failed to get object %s in namespace %s: %v", name, ns, err)
 		return
@@ -350,29 +372,6 @@ func CheckStatefulSetPodReady(opt TestOptions, stsName string) error {
 	return nil
 }
 
-func CheckDeploymentPodReady(opt TestOptions, deployName string) error {
-	client := NewKubeClient(
-		opt.HubCluster.ClusterServerURL,
-		opt.KubeConfig,
-		opt.HubCluster.KubeContext)
-	deploys := client.AppsV1().Deployments(MCO_NAMESPACE)
-	deploy, err := deploys.Get(context.TODO(), deployName, metav1.GetOptions{})
-	if err != nil {
-		klog.V(1).Infof("Error while retrieving deployment %s: %s", deployName, err.Error())
-		return err
-	}
-
-	if deploy.Status.ReadyReplicas != *deploy.Spec.Replicas ||
-		deploy.Status.UpdatedReplicas != *deploy.Spec.Replicas ||
-		deploy.Status.AvailableReplicas != *deploy.Spec.Replicas {
-		err = fmt.Errorf("deployment %s should have %d but got %d ready replicas",
-			deployName, *deploy.Spec.Replicas,
-			deploy.Status.ReadyReplicas)
-		return err
-	}
-	return nil
-}
-
 // ModifyMCOCR modifies the MCO CR for reconciling. modify multiple parameter to save running time
 func ModifyMCOCR(opt TestOptions) error {
 	clientDynamic := NewKubeClientDynamic(
@@ -385,7 +384,7 @@ func ModifyMCOCR(opt TestOptions) error {
 	}
 	spec := mco.Object["spec"].(map[string]interface{})
 	storageConfig := spec["storageConfig"].(map[string]interface{})
-	storageConfig["alertmanagerStorageSize"] = "2Gi"
+	storageConfig["alertmanagerStorageSize"] = "3Gi"
 
 	advRetentionCon, _ := CheckAdvRetentionConfig(opt)
 	if advRetentionCon {
@@ -437,12 +436,23 @@ func RevertMCOCRModification(opt TestOptions) error {
 	advRetentionCon, _ := CheckAdvRetentionConfig(opt)
 	if advRetentionCon {
 		retentionConfig := spec["advanced"].(map[string]interface{})["retentionConfig"].(map[string]interface{})
-		retentionConfig["retentionResolutionRaw"] = "5d"
+		retentionConfig["retentionResolutionRaw"] = "6d"
 	}
 	_, updateErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Update(context.TODO(), mco, metav1.UpdateOptions{})
 	if updateErr != nil {
 		return updateErr
 	}
+
+	// we delete the statefulset so it comes up again with the correct size
+	kubeClient := NewKubeClient(
+		opt.HubCluster.ClusterServerURL,
+		opt.KubeConfig,
+		opt.HubCluster.KubeContext)
+	err := kubeClient.AppsV1().StatefulSets(MCO_NAMESPACE).Delete(context.TODO(), "observability-alertmanager", metav1.DeleteOptions{})
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -451,14 +461,8 @@ func CheckMCOAddonResources(opt TestOptions) error {
 		opt.HubCluster.ClusterServerURL,
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext)
-	if len(opt.ManagedClusters) > 0 {
-		client = NewKubeClient(
-			opt.ManagedClusters[0].ClusterServerURL,
-			opt.ManagedClusters[0].KubeConfig,
-			"")
-	}
 
-	deployList, err := client.AppsV1().Deployments(MCO_ADDON_NAMESPACE).List(context.TODO(), metav1.ListOptions{})
+	deployList, err := client.AppsV1().Deployments(MCO_NAMESPACE).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return err
 	}
@@ -518,7 +522,11 @@ func ModifyMCOAddonSpecInterval(opt TestOptions, interval int64) error {
 	}
 
 	observabilityAddonSpec := mco.Object["spec"].(map[string]interface{})["observabilityAddonSpec"].(map[string]interface{})
-	observabilityAddonSpec["interval"] = interval
+	if interval == 0 {
+		observabilityAddonSpec["interval"] = nil
+	} else {
+		observabilityAddonSpec["interval"] = interval
+	}
 	_, updateErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Update(context.TODO(), mco, metav1.UpdateOptions{})
 	if updateErr != nil {
 		return updateErr
@@ -610,6 +618,13 @@ func CreatePullSecret(opt TestOptions, mcoNs string) error {
 		return errGet
 	}
 
+	mcopSecret, errGet := clientKube.CoreV1().Secrets(MCO_NAMESPACE).Get(context.TODO(), name, metav1.GetOptions{})
+	if mcopSecret != nil {
+		errDelGet := clientKube.CoreV1().Secrets(MCO_NAMESPACE).Delete(context.TODO(), name, metav1.DeleteOptions{})
+		if errGet != nil {
+			klog.V(1).Infof("Delete existing pullSecret - %s", errDelGet)
+		}
+	}
 	pullSecret.ObjectMeta = metav1.ObjectMeta{
 		Name:      name,
 		Namespace: MCO_NAMESPACE,
@@ -656,6 +671,11 @@ func CreateObjSecret(opt TestOptions) error {
 	if secretKey == "" {
 		return errors.New("failed to get aws AWS_SECRET_ACCESS_KEY env")
 	}
+	re := regexp.MustCompile(`^\*+$`)
+	if re.MatchString(accessKey) || re.MatchString(secretKey) {
+		fmt.Printf("WARNING: store key/secret are invalid, replaced by stars: key %q. Continuing without creating/updating object storage secret.\n", secretKey)
+		return nil
+	}
 
 	objSecret := fmt.Sprintf(`apiVersion: v1
 kind: Secret
@@ -689,7 +709,7 @@ type: Opaque`,
 func UninstallMCO(opt TestOptions) error {
 	klog.V(1).Infof("Delete MCO instance")
 	deleteMCOErr := DeleteMCOInstance(opt, MCO_CR_NAME)
-	if deleteMCOErr != nil {
+	if deleteMCOErr != nil && !k8serrors.IsNotFound(deleteMCOErr) {
 		return deleteMCOErr
 	}
 
@@ -702,7 +722,7 @@ func UninstallMCO(opt TestOptions) error {
 	deleteObjSecretErr := clientKube.CoreV1().
 		Secrets(MCO_NAMESPACE).
 		Delete(context.TODO(), OBJ_SECRET_NAME, metav1.DeleteOptions{})
-	if deleteObjSecretErr != nil {
+	if deleteObjSecretErr != nil && !k8serrors.IsNotFound(deleteObjSecretErr) {
 		return deleteObjSecretErr
 	}
 
