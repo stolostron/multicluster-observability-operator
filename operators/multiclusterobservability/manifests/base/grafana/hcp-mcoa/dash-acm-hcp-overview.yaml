@@ -641,7 +641,7 @@ data:
                       "value": [
                         {
                           "title": "",
-                          "url": "d/ZGfrZUtIz/acm-resources-hosted-control-plane?${__url_time_range}&var-hcp_ns=${__data.fields.hcp_namespace}"
+                          "url": "d/76c2ca043e524c63ac841152dad7a5ca/acm-resources-hosted-control-plane?${__url_time_range}&var-hcp_ns=${__data.fields.hcp_namespace}"
                         }
                       ]
                     }

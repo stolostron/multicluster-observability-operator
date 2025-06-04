@@ -243,7 +243,7 @@ data:
                       {
                         "targetBlank": false,
                         "title": "Drill down to cluster",
-                        "url": "/d/09ec8aa1e996d6ffcd6817bbaff4db1b/kubernetes-api-server?${__url_time_range}&var-cluster=${__data.fields.cluster}&var-instance=All"
+                        "url": "/d/ef53cfadb93149efaf11b3976433c2ef/kubernetes-api-server?${__url_time_range}&var-cluster=${__data.fields.cluster}&var-instance=All"
                       }
                     ]
                   },
@@ -348,7 +348,7 @@ data:
                     "value": [
                       {
                         "title": "Drill down to cluster",
-                        "url": "/d/N8BxQ2jMz/kubernetes-etcd-cluster?${__url_time_range}&var-cluster=${__data.fields.cluster}"
+                        "url": "/d/4374ac7478b04293bb0032cbbe04118d/kubernetes-etcd-cluster?${__url_time_range}&var-cluster=${__data.fields.cluster}"
                       }
                     ]
                   }
@@ -675,7 +675,7 @@ data:
                       {
                         "targetBlank": false,
                         "title": "Drill down to cluster",
-                        "url": "/d/8Qvi3edMz/acm-resource-optimization-cluster?${__url_time_range}&var-cluster=${__data.fields.cluster}"
+                        "url": "/d/881c6e83c26a48e9afdd77b1272fc662/acm-resource-optimization-cluster?${__url_time_range}&var-cluster=${__data.fields.cluster}"
                       }
                     ]
                   },
@@ -788,7 +788,7 @@ data:
                       {
                         "targetBlank": false,
                         "title": "Drill down to cluster",
-                        "url": "/d/8Qvi3edMz/acm-resource-optimization-cluster?${__url_time_range}&var-cluster=${__data.fields.cluster}"
+                        "url": "/d/881c6e83c26a48e9afdd77b1272fc662/acm-resource-optimization-cluster?${__url_time_range}&var-cluster=${__data.fields.cluster}"
                       }
                     ]
                   },
@@ -1015,7 +1015,7 @@ data:
                       {
                         "targetBlank": false,
                         "title": "Drill down to cluster",
-                        "url": "/d/8Qvi3edMz/acm-resource-optimization-cluster?${__url_time_range}&var-cluster=${__data.fields.cluster}"
+                        "url": "/d/881c6e83c26a48e9afdd77b1272fc662/acm-resource-optimization-cluster?${__url_time_range}&var-cluster=${__data.fields.cluster}"
                       }
                     ]
                   },
@@ -1319,7 +1319,7 @@ data:
                       {
                         "targetBlank": false,
                         "title": "Drill down to cluster",
-                        "url": "/d/8Qvi3edMz/acm-resource-optimization-cluster?${__url_time_range}&var-cluster=${__data.fields.cluster}"
+                        "url": "/d/881c6e83c26a48e9afdd77b1272fc662/acm-resource-optimization-cluster?${__url_time_range}&var-cluster=${__data.fields.cluster}"
                       }
                     ]
                   },
@@ -1653,7 +1653,7 @@ data:
                     "value": [
                       {
                         "title": "Drill down to cluster",
-                        "url": "/d/ff635a025bcfea7bc3dd4f508990a3e9/kubernetes-networking-cluster?${__url_time_range}&var-cluster=${__data.fields.cluster}﻿"
+                        "url": "/d/efd9761bb5dd42a3800fdd6577a8430c/kubernetes-networking-cluster?${__url_time_range}&var-cluster=${__data.fields.cluster}﻿"
                       }
                     ]
                   }

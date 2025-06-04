@@ -413,7 +413,7 @@ func (d *Deployer) updateClusterManagementAddOn(
 		return err
 	}
 
-	if !apiequality.Semantic.DeepEqual(desiredCMAO.Spec, runtimeCMAO.Spec) {
+	if !apiequality.Semantic.DeepEqual(desiredCMAO.Spec, runtimeCMAO.Spec) || !maps.Equal(desiredCMAO.Annotations, runtimeCMAO.Annotations) {
 		logUpdateInfo(runtimeObj)
 		if desiredCMAO.ResourceVersion != runtimeCMAO.ResourceVersion {
 			desiredCMAO.ResourceVersion = runtimeCMAO.ResourceVersion
