@@ -113,11 +113,16 @@ func (r *MCORenderer) renderGrafanaTemplates(templates []*resource.Resource,
 			if err := addDeprecatedSuffixToDashboardName(template); err != nil {
 				return []*unstructured.Unstructured{}, fmt.Errorf("failed to modify dashboard title with deprecated suffix: %w", err)
 			}
-			removeHomeDashboard(template)
+			if err := removeHomeDashboard(template); err != nil {
+				return []*unstructured.Unstructured{}, fmt.Errorf("failed to remove home dashboard: %w", err)
+			}
 		}
+
 		// Add MCOA specific dashboard as the home dashboard
 		if MCOAPlatformMetricsEnabled(r.cr) && isMCOASpecificDashboard(template) {
-			addHomeDashboard(template)
+			if err := addHomeDashboard(template); err != nil {
+				return []*unstructured.Unstructured{}, fmt.Errorf("failed to add home dashboard: %w", err)
+			}
 		}
 
 		render, ok := r.renderGrafanaFns[template.GetKind()]
@@ -136,7 +141,6 @@ func (r *MCORenderer) renderGrafanaTemplates(templates []*resource.Resource,
 		if uobj == nil {
 			continue
 		}
-		klog.Info("Rendering object: %s", template.GetName())
 		uobjs = append(uobjs, uobj)
 
 	}
@@ -154,11 +158,9 @@ func isMCOASpecificResourceKind(res *resource.Resource) bool {
 	return false
 }
 
-
 func isMCOASpecificDashboard(res *resource.Resource) bool {
 	if res.GetKind() == "ConfigMap" {
 		dir := res.GetAnnotations(dashboardFolderAnnotationKey)[dashboardFolderAnnotationKey]
-		klog.Infof("isMCOASpecificDashboard: %s?", dir)	
 		if strings.Contains(dir, "MCOA") {
 			return true
 		}
@@ -188,23 +190,25 @@ func isNonMCOASpecificDashboard(res *resource.Resource) bool {
 func removeHomeDashboard(template *resource.Resource) error {
 	labels := template.GetLabels()
 	if _, ok := labels["set-home-dashboard"]; ok {
-		delete(labels, "set-home-dashboard");
-		klog.Info("Deleting home dashboard for: %v", template.GetName())
+		delete(labels, "set-home-dashboard")
+		klog.Infof("Deleting home dashboard for: %v", template.GetName())
 	}
 
-	template.SetLabels(labels)
-
+	if err := template.SetLabels(labels); err != nil {
+		return fmt.Errorf("failed to set labels: %w", err)
+	}
 
 	return nil
 }
 
 func addHomeDashboard(template *resource.Resource) error {
-	klog.Infof("Checking if we need to add homedashboard to: ", template.GetName())
 	labels := template.GetLabels()
 	if _, ok := labels["home-dashboard-uid"]; ok {
 		klog.Infof("Adding home dashboard to: %v", template.GetName())
-		labels["set-home-dashboard"] = 	"true"
-		template.SetLabels(labels)
+		labels["set-home-dashboard"] = "true"
+		if err := template.SetLabels(labels); err != nil {
+			return fmt.Errorf("failed to set labels: %w", err)
+		}
 	}
 
 	return nil
