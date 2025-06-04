@@ -245,7 +245,7 @@ data:
                       {
                         "targetBlank": false,
                         "title": "Drill down to workload",
-                        "url": "/d/a164a7f0339f99e89cea5cb47e9be617/k8s-resources-workload?${__url_time_range}&var-datasource=$datasource&var-cluster=$cluster&var-namespace=$namespace&var-workload=${__data.fields[workload]}&var-type=$type"
+                        "url": "/d/3765aa3069b54dacba0a1bbd484ada16/k8s-resources-workload?${__url_time_range}&var-datasource=$datasource&var-cluster=$cluster&var-namespace=$namespace&var-workload=${__data.fields[workload]}&var-type=$type"
                       }
                     ]
                   }
@@ -642,7 +642,7 @@ data:
                       {
                         "targetBlank": false,
                         "title": "Drill down to workload",
-                        "url": "/d/a164a7f0339f99e89cea5cb47e9be617/k8s-resources-workload?${__url_time_range}&var-datasource=$datasource&var-cluster=$cluster&var-namespace=$namespace&var-workload=${__data.fields[workload]}&var-type=$type"
+                        "url": "/d/3765aa3069b54dacba0a1bbd484ada16/k8s-resources-workload?${__url_time_range}&var-datasource=$datasource&var-cluster=$cluster&var-namespace=$namespace&var-workload=${__data.fields[workload]}&var-type=$type"
                       }
                     ]
                   }
