@@ -13,6 +13,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	obsv1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -21,7 +22,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	obsv1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/utils"
 )
 
@@ -86,7 +86,7 @@ placementConfiguration:
 		Expect(err).ToNot(HaveOccurred())
 	})
 
-	It("should wait until MCO CR reports components are deployed", func() {
+	It("should wait until MultiClusterObservability CR is Ready", func() {
 		Eventually(func() bool {
 			var mco obsv1beta2.MultiClusterObservability
 			err := k8sClient.Get(context.TODO(), types.NamespacedName{
@@ -96,13 +96,13 @@ placementConfiguration:
 			if err != nil {
 				return false
 			}
-			for _, comp := range mco.Status.Components {
-				if comp.Status != "Available" {
-					return false
+			for _, cond := range mco.Status.Conditions {
+				if cond.Type == "Available" && cond.Status == metav1.ConditionTrue {
+					return true
 				}
 			}
-			return true
-		}, 5*time.Minute, 10*time.Second).Should(BeTrue())
+			return false
+		}, 5*time.Minute, 5*time.Second).Should(BeTrue())
 	})
 
 	It("should create the PrometheusRule for namespace right-sizing", func() {
@@ -119,7 +119,7 @@ placementConfiguration:
 				return fmt.Errorf("PrometheusRule %q has no rule groups", promRuleName)
 			}
 			return nil
-		}, 5*time.Minute, 5*time.Second).Should(Succeed())
+		}, 3*time.Minute, 5*time.Second).Should(Succeed())
 	})
 
 	It("should create the corresponding Policy for the PrometheusRule", func() {
