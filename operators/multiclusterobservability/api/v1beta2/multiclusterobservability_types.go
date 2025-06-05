@@ -78,6 +78,15 @@ type PlatformMetricsCollectionSpec struct {
 	Enabled bool `json:"enabled,omitempty"`
 }
 
+// UIConfig defines the spec for the addon to expose the metrics UI through COO
+type UIConfig struct {
+	// Enabled defines a flag to enable/disable the metrics UI.
+	//
+	// +optional
+	// +kubebuilder:validation:Optional
+	Enabled bool `json:"enabled,omitempty"`
+}
+
 // PlatformLogsSpec defines the spec for the addon to collect, forward and store logs
 // from fleet managed clusters.
 type PlatformLogsSpec struct {
@@ -98,6 +107,12 @@ type PlatformMetricsSpec struct {
 	// +optional
 	// +kubebuilder:validation:Optional
 	Collection PlatformMetricsCollectionSpec `json:"collection,omitempty"`
+	// UI defines the spec for the addon to enable UI through COO on the hub
+	//
+	//
+	// +optional
+	// +kubebuilder:validation:Optional
+	UI UIConfig `json:"ui,omitempty"`
 }
 
 // PlatformCapabilitiesSpec defines the observability capabilities managed by the addon
