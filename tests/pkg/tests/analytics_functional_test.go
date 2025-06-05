@@ -6,7 +6,6 @@ package tests
 
 import (
 	"context"
-	"flag"
 	"fmt"
 	"time"
 
@@ -26,14 +25,6 @@ import (
 )
 
 var k8sClient client.Client
-
-// Prevent flag redefinition panic (only needed if running standalone)
-func init() {
-	if flag.Lookup("kubeconfig") == nil {
-		var kubeconfig string
-		flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to the kubeconfig file")
-	}
-}
 
 var _ = Describe("RHACM4K-XXXXX: Analytics Right-Sizing Functional Test [P1][Observability][Analytics] @e2e", Ordered, func() {
 	const (
@@ -71,21 +62,6 @@ var _ = Describe("RHACM4K-XXXXX: Analytics Right-Sizing Functional Test [P1][Obs
 			Create(context.TODO(), &unstructured.Unstructured{Object: mco}, metav1.CreateOptions{})
 		Expect(err).ToNot(HaveOccurred())
 
-		By("Waiting for MCO CR to become available")
-		Eventually(func() error {
-			obj, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).
-				Namespace(mcoNamespace).
-				Get(context.TODO(), mcoCRName, metav1.GetOptions{})
-			if err != nil {
-				return err
-			}
-			// Add more status check if needed
-			if obj == nil {
-				return fmt.Errorf("MCO CR not found")
-			}
-			return nil
-		}, 2*time.Minute, 5*time.Second).Should(Succeed(), "Expected MCO CR to become ready")
-
 		By("Creating Right-Sizing ConfigMap")
 		configMap := &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
@@ -110,7 +86,6 @@ placementConfiguration:
 	})
 
 	It("should create the PrometheusRule for namespace right-sizing", func() {
-		By("Waiting for PrometheusRule creation by analytics component")
 		Eventually(func() error {
 			var rule monitoringv1.PrometheusRule
 			err := k8sClient.Get(context.TODO(), types.NamespacedName{
@@ -124,11 +99,10 @@ placementConfiguration:
 				return fmt.Errorf("PrometheusRule %q has no rule groups", promRuleName)
 			}
 			return nil
-		}, 3*time.Minute, 5*time.Second).Should(Succeed(), "Expected PrometheusRule to be present and non-empty")
+		}, 3*time.Minute, 5*time.Second).Should(Succeed())
 	})
 
 	It("should create the corresponding Policy for the PrometheusRule", func() {
-		By("Waiting for Policy to be created from PrometheusRule")
 		Eventually(func() error {
 			var policy policyv1.Policy
 			err := k8sClient.Get(context.TODO(), types.NamespacedName{
@@ -142,7 +116,7 @@ placementConfiguration:
 				return fmt.Errorf("Policy %q is missing required spec fields", policyName)
 			}
 			return nil
-		}, 3*time.Minute, 5*time.Second).Should(Succeed(), "Expected Policy to be created for PrometheusRule")
+		}, 3*time.Minute, 5*time.Second).Should(Succeed())
 	})
 
 	AfterAll(func() {
