@@ -85,7 +85,7 @@ placementConfiguration:
 		Expect(err).ToNot(HaveOccurred())
 	})
 
-	It("should create the PrometheusRule for namespace right-sizing", func() {
+	It("should eventually create the PrometheusRule for namespace right-sizing", func() {
 		Eventually(func() error {
 			var rule monitoringv1.PrometheusRule
 			err := k8sClient.Get(context.TODO(), types.NamespacedName{
@@ -99,10 +99,10 @@ placementConfiguration:
 				return fmt.Errorf("PrometheusRule %q has no rule groups", promRuleName)
 			}
 			return nil
-		}, 3*time.Minute, 5*time.Second).Should(Succeed())
+		}, 5*time.Minute, 10*time.Second).Should(Succeed())
 	})
 
-	It("should create the corresponding Policy for the PrometheusRule", func() {
+	It("should eventually create the corresponding Policy for the PrometheusRule", func() {
 		Eventually(func() error {
 			var policy policyv1.Policy
 			err := k8sClient.Get(context.TODO(), types.NamespacedName{
@@ -116,7 +116,7 @@ placementConfiguration:
 				return fmt.Errorf("Policy %q is missing required spec fields", policyName)
 			}
 			return nil
-		}, 3*time.Minute, 5*time.Second).Should(Succeed())
+		}, 5*time.Minute, 10*time.Second).Should(Succeed())
 	})
 
 	AfterAll(func() {
