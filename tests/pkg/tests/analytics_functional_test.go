@@ -6,6 +6,7 @@ package tests
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"time"
 
@@ -25,6 +26,14 @@ import (
 )
 
 var k8sClient client.Client
+
+// Prevent flag redefinition panic (only needed if running standalone)
+func init() {
+	if flag.Lookup("kubeconfig") == nil {
+		var kubeconfig string
+		flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to the kubeconfig file")
+	}
+}
 
 var _ = Describe("RHACM4K-XXXXX: Analytics Right-Sizing Functional Test [P1][Observability][Analytics] @e2e", Ordered, func() {
 	const (
