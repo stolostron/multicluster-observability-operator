@@ -21,6 +21,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	obsv1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/utils"
 )
 
@@ -85,7 +86,26 @@ placementConfiguration:
 		Expect(err).ToNot(HaveOccurred())
 	})
 
-	It("should eventually create the PrometheusRule for namespace right-sizing", func() {
+	It("should wait until MCO CR reports components are deployed", func() {
+		Eventually(func() bool {
+			var mco obsv1beta2.MultiClusterObservability
+			err := k8sClient.Get(context.TODO(), types.NamespacedName{
+				Name:      mcoCRName,
+				Namespace: mcoNamespace,
+			}, &mco)
+			if err != nil {
+				return false
+			}
+			for _, comp := range mco.Status.Components {
+				if comp.Status != "Available" {
+					return false
+				}
+			}
+			return true
+		}, 5*time.Minute, 10*time.Second).Should(BeTrue())
+	})
+
+	It("should create the PrometheusRule for namespace right-sizing", func() {
 		Eventually(func() error {
 			var rule monitoringv1.PrometheusRule
 			err := k8sClient.Get(context.TODO(), types.NamespacedName{
@@ -99,10 +119,10 @@ placementConfiguration:
 				return fmt.Errorf("PrometheusRule %q has no rule groups", promRuleName)
 			}
 			return nil
-		}, 5*time.Minute, 10*time.Second).Should(Succeed())
+		}, 5*time.Minute, 5*time.Second).Should(Succeed())
 	})
 
-	It("should eventually create the corresponding Policy for the PrometheusRule", func() {
+	It("should create the corresponding Policy for the PrometheusRule", func() {
 		Eventually(func() error {
 			var policy policyv1.Policy
 			err := k8sClient.Get(context.TODO(), types.NamespacedName{
@@ -116,7 +136,7 @@ placementConfiguration:
 				return fmt.Errorf("Policy %q is missing required spec fields", policyName)
 			}
 			return nil
-		}, 5*time.Minute, 10*time.Second).Should(Succeed())
+		}, 3*time.Minute, 5*time.Second).Should(Succeed())
 	})
 
 	AfterAll(func() {
