@@ -173,6 +173,18 @@ spec:
       record: cluster:cpu_requested:ratio
     - expr: sum(machine_cpu_cores) by (cluster)
       record: cluster:cpu_cores:sum
+    - record: namespace_pod:container_network_receive_bytes_total:sum
+      expr: sum(irate(container_network_receive_bytes_total[5m])) by (namespace, pod)
+    - record: namespace_pod:container_network_receive_packets_total:sum
+      expr: sum(irate(container_network_receive_packets_total[5m])) by (namespace, pod)
+    - record: namespace_pod:container_network_receive_packets_dropped_total:sum
+      expr: sum(irate(container_network_receive_packets_dropped_total[5m])) by (namespace, pod)
+    - record: namespace_pod:container_network_transmit_packets_total:sum
+      expr: sum(irate(container_network_transmit_packets_total[5m])) by (namespace, pod)
+    - record: namespace_pod:container_network_transmit_bytes_total:sum
+      expr: sum(irate(container_network_transmit_bytes_total[5m])) by (namespace, pod)
+    - record: namespace_pod:container_network_transmit_packets_dropped_total:sum
+      expr: sum(irate(container_network_transmit_packets_dropped_total[5m])) by (namespace, pod)
   - name: kubernetes-storage
     rules:
       - alert: KubePersistentVolumeFillingUp1Min

@@ -1735,7 +1735,7 @@ data:
                       {
                         "targetBlank": false,
                         "title": "Drill down to pods",
-                        "url": "d/8b7a8b326d7a6f1f04244066368c67af/kubernetes-networking-namespace-pods?${__url_time_range}&orgId=1&refresh=1m&var-namespace=${__data.fields.namespace}"
+                        "url": "d/42e543edc5734d32ab2ff434b7dded44/kubernetes-networking-namespace-pods?${__url_time_range}&orgId=1&refresh=1m&var-namespace=${__data.fields.namespace}"
                       }
                     ]
                   },
