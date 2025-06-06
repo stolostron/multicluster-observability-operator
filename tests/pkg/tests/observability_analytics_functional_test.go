@@ -79,6 +79,7 @@ var _ = Describe("RHACM4K-XXXXX: Analytics Right-Sizing Functional Test [P1][Obs
 			},
 			"spec": map[string]interface{}{
 				"enableDownsampling": true,
+				"enableHubAlerting":  true,
 				"capabilities": map[string]interface{}{
 					"platform": map[string]interface{}{
 						"analytics": map[string]interface{}{
