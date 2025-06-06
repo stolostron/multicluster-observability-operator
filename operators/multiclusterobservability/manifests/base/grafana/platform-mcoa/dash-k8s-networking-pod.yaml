@@ -149,7 +149,7 @@ data:
           "tableColumn": "",
           "targets": [
             {
-              "expr": "sum(irate(container_network_receive_bytes_total{cluster=\"$cluster\",namespace=~\"$namespace\", pod=~\"$pod\"}[$interval:$resolution]))",
+              "expr": "namespace_pod:container_network_receive_bytes_total:sum{cluster=\"$cluster\",namespace=~\"$namespace\", pod=~\"$pod\"}",
               "format": "time_series",
               "instant": null,
               "intervalFactor": 1,
@@ -279,7 +279,7 @@ data:
           "tableColumn": "",
           "targets": [
             {
-              "expr": "sum(irate(container_network_transmit_bytes_total{cluster=\"$cluster\",namespace=~\"$namespace\", pod=~\"$pod\"}[$interval:$resolution]))",
+              "expr": "namespace_pod:container_network_transmit_bytes_total:sum{cluster=\"$cluster\",namespace=~\"$namespace\", pod=~\"$pod\"}",
               "format": "time_series",
               "instant": null,
               "intervalFactor": 1,
@@ -380,7 +380,7 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(irate(container_network_receive_bytes_total{cluster=\"$cluster\",namespace=~\"$namespace\", pod=~\"$pod\"}[$interval:$resolution])) by (pod)",
+              "expr": "namespace_pod:container_network_receive_bytes_total:sum{cluster=\"$cluster\",namespace=~\"$namespace\", pod=~\"$pod\"}",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "{{pod}}",
@@ -487,7 +487,7 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(irate(container_network_transmit_bytes_total{cluster=\"$cluster\",namespace=~\"$namespace\", pod=~\"$pod\"}[$interval:$resolution])) by (pod)",
+              "expr": "namespace_pod:container_network_transmit_bytes_total:sum{cluster=\"$cluster\",namespace=~\"$namespace\", pod=~\"$pod\"}",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "{{pod}}",
@@ -595,7 +595,7 @@ data:
               "steppedLine": false,
               "targets": [
                 {
-                  "expr": "sum(irate(container_network_receive_packets_total{cluster=\"$cluster\",namespace=~\"$namespace\", pod=~\"$pod\"}[$interval:$resolution])) by (pod)",
+                  "expr": "namespace_pod:container_network_receive_packets_total:sum{cluster=\"$cluster\",namespace=~\"$namespace\", pod=~\"$pod\"}",
                   "format": "time_series",
                   "intervalFactor": 1,
                   "legendFormat": "{{pod}}",
@@ -686,7 +686,7 @@ data:
               "steppedLine": false,
               "targets": [
                 {
-                  "expr": "sum(irate(container_network_transmit_packets_total{cluster=\"$cluster\",namespace=~\"$namespace\", pod=~\"$pod\"}[$interval:$resolution])) by (pod)",
+                  "expr": "namespace_pod:container_network_transmit_packets_total:sum{cluster=\"$cluster\",namespace=~\"$namespace\", pod=~\"$pod\"}",
                   "format": "time_series",
                   "intervalFactor": 1,
                   "legendFormat": "{{pod}}",
@@ -817,7 +817,7 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(irate(container_network_receive_packets_dropped_total{cluster=\"$cluster\",namespace=~\"$namespace\", pod=~\"$pod\"}[$interval:$resolution])) by (pod)",
+              "expr": "namespace_pod:container_network_receive_packets_dropped_total:sum{cluster=\"$cluster\",namespace=~\"$namespace\", pod=~\"$pod\"}",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "{{pod}}",
@@ -924,7 +924,7 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(irate(container_network_transmit_packets_dropped_total{cluster=\"$cluster\",namespace=~\"$namespace\", pod=~\"$pod\"}[$interval:$resolution])) by (pod)",
+              "expr": "namespace_pod:container_network_transmit_packets_dropped_total:sum{cluster=\"$cluster\",namespace=~\"$namespace\", pod=~\"$pod\"}",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "{{pod}}",
@@ -1043,7 +1043,7 @@ data:
               "value": ""
             },
             "datasource": "$datasource",
-            "definition": "label_values(container_network_receive_packets_total{cluster=\"$cluster\"}, namespace)",
+            "definition": "label_values(namespace_pod:container_network_receive_packets_total:sum{cluster=\"$cluster\"}, namespace)",
             "description": null,
             "error": null,
             "hide": 0,
@@ -1053,7 +1053,7 @@ data:
             "name": "namespace",
             "options": [],
             "query": {
-              "query": "label_values(container_network_receive_packets_total{cluster=\"$cluster\"}, namespace)",
+              "query": "label_values(namespace_pod:container_network_receive_packets_total:sum{cluster=\"$cluster\"}, namespace)",
               "refId": "Prometheus-namespace-Variable-Query"
             },
             "refresh": 1,
@@ -1077,7 +1077,7 @@ data:
               "value": ""
             },
             "datasource": "$datasource",
-            "definition": "label_values(container_network_receive_packets_total{cluster=\"$cluster\",namespace=~\"$namespace\"}, pod)",
+            "definition": "label_values(namespace_pod:container_network_receive_packets_total:sum{cluster=\"$cluster\",namespace=~\"$namespace\"}, pod)",
             "description": null,
             "error": null,
             "hide": 0,
@@ -1087,7 +1087,7 @@ data:
             "name": "pod",
             "options": [],
             "query": {
-              "query": "label_values(container_network_receive_packets_total{cluster=\"$cluster\",namespace=~\"$namespace\"}, pod)",
+              "query": "label_values(namespace_pod:container_network_receive_packets_total:sum{cluster=\"$cluster\",namespace=~\"$namespace\"}, pod)",
               "refId": "Prometheus-pod-Variable-Query"
             },
             "refresh": 1,
