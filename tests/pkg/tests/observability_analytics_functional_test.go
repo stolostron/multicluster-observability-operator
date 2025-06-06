@@ -27,7 +27,6 @@ import (
 
 var k8sClient client.Client
 
-// Prevent flag redefinition panic (only needed if running standalone)
 func init() {
 	if flag.Lookup("kubeconfig") == nil {
 		var kubeconfig string
@@ -39,10 +38,28 @@ var _ = Describe("RHACM4K-XXXXX: Analytics Right-Sizing Functional Test [P1][Obs
 	const (
 		mcoNamespace    = "open-cluster-management"
 		mcoCRName       = "open-cluster-management-observability"
-		rsConfigMapName = "right-sizing-config"
-		promRuleName    = "acm-ns-rightsizing-prometheus-rule"
-		policyName      = "acm-ns-rightsizing-prometheus-rule-policy"
+		rsConfigMapName = "rs-namespace-config"
+		promRuleName    = "acm-rs-namespace-prometheus-rules"
+		policyName      = "rs-prom-rules-policy"
 	)
+
+	expectedRecords := []string{
+		"acm_managed_cluster_labels",
+		"acm_rs:namespace:cpu_request_hard",
+		"acm_rs:namespace:cpu_request",
+		"acm_rs:namespace:cpu_usage",
+		"acm_rs:namespace:cpu_recommendation",
+		"acm_rs:namespace:memory_request_hard",
+		"acm_rs:namespace:memory_request",
+		"acm_rs:namespace:memory_usage",
+		"acm_rs:namespace:memory_recommendation",
+		"acm_rs:cluster:cpu_request",
+		"acm_rs:cluster:cpu_usage",
+		"acm_rs:cluster:cpu_recommendation",
+		"acm_rs:cluster:memory_request",
+		"acm_rs:cluster:memory_usage",
+		"acm_rs:cluster:memory_recommendation",
+	}
 
 	BeforeAll(func() {
 		cfg := ctrl.GetConfigOrDie()
@@ -50,11 +67,9 @@ var _ = Describe("RHACM4K-XXXXX: Analytics Right-Sizing Functional Test [P1][Obs
 		k8sClient, err = client.New(cfg, client.Options{})
 		Expect(err).NotTo(HaveOccurred())
 
-		By("Deleting previous ConfigMap and MCO CR (if any)")
 		_ = hubClient.CoreV1().ConfigMaps(mcoNamespace).Delete(context.TODO(), rsConfigMapName, metav1.DeleteOptions{})
 		_ = dynClient.Resource(utils.NewMCOGVRV1BETA2()).Namespace(mcoNamespace).Delete(context.TODO(), mcoCRName, metav1.DeleteOptions{})
 
-		By("Creating a minimal MCO CR to trigger analytics component")
 		mco := map[string]interface{}{
 			"apiVersion": "observability.open-cluster-management.io/v1beta2",
 			"kind":       "MultiClusterObservability",
@@ -80,7 +95,6 @@ var _ = Describe("RHACM4K-XXXXX: Analytics Right-Sizing Functional Test [P1][Obs
 			Create(context.TODO(), &unstructured.Unstructured{Object: mco}, metav1.CreateOptions{})
 		Expect(err).ToNot(HaveOccurred())
 
-		By("Creating Right-Sizing ConfigMap")
 		configMap := &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      rsConfigMapName,
@@ -101,10 +115,10 @@ placementConfiguration:
 		}
 		_, err = hubClient.CoreV1().ConfigMaps(mcoNamespace).Create(context.TODO(), configMap, metav1.CreateOptions{})
 		Expect(err).ToNot(HaveOccurred())
-		fmt.Println("✅ ConfigMap and MCO CR created with analytics right-sizing enabled")
+		fmt.Println("✅ Created rs-namespace-config ConfigMap and MCO CR")
 	})
 
-	It("should create the PrometheusRule for namespace right-sizing", func() {
+	It("should create the PrometheusRule for namespace right-sizing with all expected records", func() {
 		Eventually(func() error {
 			var rule monitoringv1.PrometheusRule
 			err := k8sClient.Get(context.TODO(), types.NamespacedName{
@@ -114,12 +128,20 @@ placementConfiguration:
 			if err != nil {
 				return err
 			}
-			if len(rule.Spec.Groups) == 0 {
-				return fmt.Errorf("PrometheusRule %q has no rule groups", promRuleName)
+			found := map[string]bool{}
+			for _, group := range rule.Spec.Groups {
+				for _, r := range group.Rules {
+					found[r.Record] = true
+				}
+			}
+			for _, expected := range expectedRecords {
+				if !found[expected] {
+					return fmt.Errorf("missing expected rule record: %s", expected)
+				}
 			}
 			return nil
 		}, 3*time.Minute, 5*time.Second).Should(Succeed())
-		fmt.Println("✅ PrometheusRule for namespace right-sizing created successfully")
+		fmt.Println("✅ All expected PrometheusRule records found")
 	})
 
 	It("should create the corresponding Policy for the PrometheusRule", func() {
@@ -137,13 +159,12 @@ placementConfiguration:
 			}
 			return nil
 		}, 3*time.Minute, 5*time.Second).Should(Succeed())
-		fmt.Println("✅ Policy for PrometheusRule created successfully")
+		fmt.Println("✅ Corresponding policy found and valid")
 	})
 
 	AfterAll(func() {
-		By("Cleaning up Right-Sizing ConfigMap and MCO CR")
 		_ = hubClient.CoreV1().ConfigMaps(mcoNamespace).Delete(context.TODO(), rsConfigMapName, metav1.DeleteOptions{})
 		_ = dynClient.Resource(utils.NewMCOGVRV1BETA2()).Namespace(mcoNamespace).Delete(context.TODO(), mcoCRName, metav1.DeleteOptions{})
-		fmt.Println("🧹 Cleanup complete: ConfigMap and MCO CR deleted")
+		fmt.Println("🧹 Cleaned up ConfigMap and MCO CR")
 	})
 })
