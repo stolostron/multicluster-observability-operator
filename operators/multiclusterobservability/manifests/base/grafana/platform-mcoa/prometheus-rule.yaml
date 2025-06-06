@@ -209,3 +209,107 @@ spec:
         for: 1m
         labels:
           severity: "{{ $labels.severity }}"
+  - name: acm-metrics-collector-federation-alerts
+    rules:
+      - alert: HighFederationEndpointErrorRate5Percent
+        expr: |
+          (
+            sum(
+              rate(prometheus_http_requests_total{handler="/federate",namespace=~"openshift-monitoring|openshift-user-workload-monitoring",job=~"prometheus-k8s|prometheus-user-workload",code=~"5..|4.."}[5m])
+            ) by (job, pod) 
+            / 
+            sum(
+              rate(prometheus_http_requests_total{handler="/federate",namespace=~"openshift-monitoring|openshift-user-workload-monitoring",job=~"prometheus-k8s|prometheus-user-workload"}[5m])
+            ) by (job, pod)
+            * 100
+          ) > 5
+          AND 
+          sum(
+            rate(prometheus_http_requests_total{handler="/federate",namespace=~"openshift-monitoring|openshift-user-workload-monitoring",job=~"prometheus-k8s|prometheus-user-workload"}[5m])
+          ) by (job, pod) 
+          > 0.1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: High error rate on /federate endpoint for {{ $labels.job }}/{{ $labels.pod }}.
+          description: 'The /federate endpoint on pod {{ $labels.pod }} (job {{ $labels.job }}) is experiencing an error rate of {{ printf "%.2f" $value }}% over the last 10 minutes, which is above the 5% threshold. This could be caused by Prometheus being overloaded, network issues, or misconfiguration. Check the logs of the pod.'
+      - alert: HighFederationEndpointLatencyOver8s
+        expr: |
+          sum (
+            increase(prometheus_http_request_duration_seconds_bucket{handler="/federate",namespace=~"openshift-monitoring|openshift-user-workload-monitoring",job=~"prometheus-k8s|prometheus-user-workload", le="+Inf"}[10m])
+            - 
+            increase(prometheus_http_request_duration_seconds_bucket{handler="/federate",namespace=~"openshift-monitoring|openshift-user-workload-monitoring",job=~"prometheus-k8s|prometheus-user-workload", le="8"}[10m])
+          ) by (job, pod) 
+          >0
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: High latency on /federate endpoint ({{ $labels.job }}/{{ $labels.pod }}).
+          description: '{{ printf "%.0f" $value }} federation request(s) on pod {{ $labels.pod }} (job {{ $labels.job }}) took longer than 8 seconds in the last 10 minutes. This indicates potential performance degradation or a scrape query federating too many metrics. Check for high CPU/memory usage or long-running queries on the Prometheus pod.'
+      - alert: HighFederationEndpointLatencyOver20s
+        expr: |
+          sum (
+            increase(prometheus_http_request_duration_seconds_bucket{handler="/federate",namespace=~"openshift-monitoring|openshift-user-workload-monitoring",job=~"prometheus-k8s|prometheus-user-workload", le="+Inf"}[10m])
+            - 
+            increase(prometheus_http_request_duration_seconds_bucket{handler="/federate",namespace=~"openshift-monitoring|openshift-user-workload-monitoring",job=~"prometheus-k8s|prometheus-user-workload", le="20"}[10m])
+          ) by (job, pod) 
+          > 0
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: Critically high latency on /federate endpoint ({{ $labels.job }}/{{ $labels.pod }}).
+          description: '{{ printf "%.0f" $value }} federation request(s) on pod {{ $labels.pod }} (job {{ $labels.job }}) took longer than 20 seconds in the last 10 minutes. This is critically close to the 30s proxy timeout and may lead to failed scrapes. Investigate performance on the Prometheus pod immediately.'
+      - alert: MetricsCollectorNotIngestingSamples
+        expr: rate(prometheus_agent_samples_appended_total{job=~"platform-metrics-collector|user-workload-metrics-collector"}[5m]) == 0
+        for: 15m
+        labels:
+          severity: critical
+        annotations:
+          summary: Prometheus Agent {{ $labels.namespace }}/{{ $labels.pod }} is not ingesting any sample.
+          description: 'The Prometheus Agent pod {{ $labels.pod }} in namespace {{ $labels.namespace }} has reported an ingestion rate of 0 samples/sec. This indicates a total stall. Check the logs of the pod for errors and verify its state.'
+  - name: acm-metrics-collector-remote-write-alerts
+    rules:
+      - alert: MetricsCollectorRemoteWriteFailures
+        expr: |
+          rate(prometheus_remote_storage_samples_failed_total{job=~"platform-metrics-collector|user-workload-metrics-collector",remote_name="acm-observability"}[5m]) 
+          / 
+          (
+            rate(prometheus_remote_storage_samples_failed_total{job=~"platform-metrics-collector|user-workload-metrics-collector",remote_name="acm-observability"}[5m] )
+            + 
+            rate(prometheus_remote_storage_samples_total{job=~"platform-metrics-collector|user-workload-metrics-collector",remote_name="acm-observability"}[5m])
+          ) 
+          * 100 
+          > 1
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: Prometheus Agent {{ $labels.namespace }}/{{ $labels.pod }} fails to remote write to the Hub.
+          description: 'The Prometheus Agent pod {{ $labels.pod }} in namespace {{ $labels.namespace }} fails to send {{ printf "%.1f" $value }}% of its samples to remote_name {{ $labels.remote_name }}. Check Agent logs and Hub receiver.'
+      - alert: MetricsCollectorRemoteWriteBehind
+        expr: |
+          (
+            max_over_time(prometheus_remote_storage_highest_timestamp_in_seconds{job=~"platform-metrics-collector|user-workload-metrics-collector"}[5m]) 
+            - 
+            ignoring(remote_name, url) group_right max_over_time(prometheus_remote_storage_queue_highest_sent_timestamp_seconds{job=~"platform-metrics-collector|user-workload-metrics-collector"}[5m])
+          ) > 120
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: Prometheus Agent {{ $labels.namespace }}/{{ $labels.pod }} remote write to the Hub is behind.
+          description: 'The Prometheus Agent pod {{ $labels.pod }} (namespace {{ $labels.namespace }}) remote write is {{ printf "%.0f" $value }}s behind for remote name {{ $labels.remote_name}}. This may indicate network latency or a struggling Hub receiver.'
+      - alert: MetricsCollectorRemoteWriteDesiredShards
+        expr: |
+          max_over_time(prometheus_remote_storage_shards_desired{job=~"platform-metrics-collector|user-workload-metrics-collector"}[5m]) 
+          > 
+          max_over_time(prometheus_remote_storage_shards_max{job=~"platform-metrics-collector|user-workload-metrics-collector"}[5m])
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: Prometheus Agent {{ $labels.namespace }}/{{ $labels.pod }} remote write needs more shards.
+          description: 'The Prometheus Agent pod {{ $labels.pod }} (namespace {{ $labels.namespace }}) remote write wants to run {{ printf "%.1f" $value }} shards for remote_name {{ $labels.remote_name}}, exceeding its configured maximum. This indicates sustained backpressure. Chack the queueConfig.maxShards for this remote_name or use the metric prometheus_remote_storage_shards_max.'
