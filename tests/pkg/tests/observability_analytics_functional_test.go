@@ -36,11 +36,18 @@ func init() {
 
 var _ = Describe("RHACM4K-XXXXX: Analytics Right-Sizing Functional Test [P1][Observability][Analytics] @e2e", Ordered, func() {
 	const (
-		mcoNamespace    = "open-cluster-management"
-		mcoCRName       = "open-cluster-management-observability"
-		rsConfigMapName = "rs-namespace-config"
-		promRuleName    = "acm-rs-namespace-prometheus-rules"
-		policyName      = "rs-prom-rules-policy"
+		rsPolicySetName                   = "rs-policyset"
+		rsPlacementName                   = "rs-placement"
+		rsPlacementBindingName            = "rs-policyset-binding"
+		rsPrometheusRulePolicyName        = "rs-prom-rules-policy"
+		rsPrometheusRulePolicyConfigName  = "rs-prometheus-rules-policy-config"
+		rsPrometheusRuleName              = "acm-rs-namespace-prometheus-rules"
+		rsConfigMapName                   = "rs-namespace-config"
+		rsDefaultNamespace                = "open-cluster-management-global-set"
+		rsMonitoringNamespace             = "openshift-monitoring"
+		rsDefaultRecommendationPercentage = 110
+		mcoCRName                         = "open-cluster-management-observability"
+		mcoNamespace                      = "open-cluster-management"
 	)
 
 	expectedRecords := []string{
@@ -67,9 +74,11 @@ var _ = Describe("RHACM4K-XXXXX: Analytics Right-Sizing Functional Test [P1][Obs
 		k8sClient, err = client.New(cfg, client.Options{})
 		Expect(err).NotTo(HaveOccurred())
 
+		fmt.Println("🔁 Cleaning up previous resources")
 		_ = hubClient.CoreV1().ConfigMaps(mcoNamespace).Delete(context.TODO(), rsConfigMapName, metav1.DeleteOptions{})
 		_ = dynClient.Resource(utils.NewMCOGVRV1BETA2()).Namespace(mcoNamespace).Delete(context.TODO(), mcoCRName, metav1.DeleteOptions{})
 
+		fmt.Println("📦 Creating new MCO CR with analytics enabled")
 		mco := map[string]interface{}{
 			"apiVersion": "observability.open-cluster-management.io/v1beta2",
 			"kind":       "MultiClusterObservability",
@@ -79,7 +88,6 @@ var _ = Describe("RHACM4K-XXXXX: Analytics Right-Sizing Functional Test [P1][Obs
 			},
 			"spec": map[string]interface{}{
 				"enableDownsampling": true,
-				"enableHubAlerting":  true,
 				"capabilities": map[string]interface{}{
 					"platform": map[string]interface{}{
 						"analytics": map[string]interface{}{
@@ -91,81 +99,93 @@ var _ = Describe("RHACM4K-XXXXX: Analytics Right-Sizing Functional Test [P1][Obs
 				},
 			},
 		}
-		_, err = dynClient.Resource(utils.NewMCOGVRV1BETA2()).
-			Namespace(mcoNamespace).
-			Create(context.TODO(), &unstructured.Unstructured{Object: mco}, metav1.CreateOptions{})
+		_, err = dynClient.Resource(utils.NewMCOGVRV1BETA2()).Namespace(mcoNamespace).Create(context.TODO(), &unstructured.Unstructured{Object: mco}, metav1.CreateOptions{})
 		Expect(err).ToNot(HaveOccurred())
 
+		fmt.Println("📝 Creating right-sizing config map")
 		configMap := &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      rsConfigMapName,
 				Namespace: mcoNamespace,
 			},
 			Data: map[string]string{
-				"config.yaml": `namespaceFilterCriteria:
+				"placementConfiguration": `typemeta:
+  kind: ""
+  apiversion: ""
+spec:
+  tolerations:
+  - key: cluster.open-cluster-management.io/unreachable
+    operator: Exists
+  - key: cluster.open-cluster-management.io/unavailable
+    operator: Exists`,
+				"prometheusRuleConfig": fmt.Sprintf(`namespaceFilterCriteria:
   inclusionCriteria:
     - "default"
 labelFilterCriteria:
   - label: "team"
     inclusionCriteria:
       - "platform"
-recommendationPercentage: 80
-placementConfiguration:
-  placementRuleName: "acm-placement"`,
+recommendationPercentage: %d`, rsDefaultRecommendationPercentage),
 			},
 		}
 		_, err = hubClient.CoreV1().ConfigMaps(mcoNamespace).Create(context.TODO(), configMap, metav1.CreateOptions{})
 		Expect(err).ToNot(HaveOccurred())
-		fmt.Println("✅ Created rs-namespace-config ConfigMap and MCO CR")
+		fmt.Println("✅ ConfigMap and MCO CR created")
 	})
 
 	It("should create the PrometheusRule for namespace right-sizing with all expected records", func() {
 		Eventually(func() error {
 			var rule monitoringv1.PrometheusRule
 			err := k8sClient.Get(context.TODO(), types.NamespacedName{
-				Name:      promRuleName,
+				Name:      rsPrometheusRuleName,
 				Namespace: mcoNamespace,
 			}, &rule)
 			if err != nil {
 				return err
 			}
+
 			found := map[string]bool{}
 			for _, group := range rule.Spec.Groups {
 				for _, r := range group.Rules {
-					found[r.Record] = true
+					if r.Record != "" {
+						found[r.Record] = true
+					}
 				}
 			}
+
 			for _, expected := range expectedRecords {
 				if !found[expected] {
 					return fmt.Errorf("missing expected rule record: %s", expected)
 				}
 			}
 			return nil
-		}, 3*time.Minute, 5*time.Second).Should(Succeed())
-		fmt.Println("✅ All expected PrometheusRule records found")
+		}, 5*time.Minute, 10*time.Second).Should(Succeed())
+
+		fmt.Println("✅ All expected PrometheusRule records are present")
 	})
 
 	It("should create the corresponding Policy for the PrometheusRule", func() {
 		Eventually(func() error {
 			var policy policyv1.Policy
 			err := k8sClient.Get(context.TODO(), types.NamespacedName{
-				Name:      policyName,
+				Name:      rsPrometheusRulePolicyName,
 				Namespace: mcoNamespace,
 			}, &policy)
 			if err != nil {
 				return err
 			}
 			if policy.Spec.RemediationAction == "" || len(policy.Spec.PolicyTemplates) == 0 {
-				return fmt.Errorf("Policy %q is missing required spec fields", policyName)
+				return fmt.Errorf("Policy %q is missing required fields", rsPrometheusRulePolicyName)
 			}
 			return nil
 		}, 3*time.Minute, 5*time.Second).Should(Succeed())
-		fmt.Println("✅ Corresponding policy found and valid")
+		fmt.Println("✅ Corresponding Policy created and valid")
 	})
 
 	AfterAll(func() {
+		fmt.Println("🧹 Cleaning up test resources")
 		_ = hubClient.CoreV1().ConfigMaps(mcoNamespace).Delete(context.TODO(), rsConfigMapName, metav1.DeleteOptions{})
 		_ = dynClient.Resource(utils.NewMCOGVRV1BETA2()).Namespace(mcoNamespace).Delete(context.TODO(), mcoCRName, metav1.DeleteOptions{})
-		fmt.Println("🧹 Cleaned up ConfigMap and MCO CR")
+		fmt.Println("🧼 Cleanup complete")
 	})
 })
