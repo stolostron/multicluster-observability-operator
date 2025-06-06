@@ -253,7 +253,7 @@ spec:
             - 
             increase(prometheus_http_request_duration_seconds_bucket{handler="/federate",namespace=~"openshift-monitoring|openshift-user-workload-monitoring",job=~"prometheus-k8s|prometheus-user-workload", le="8"}[10m])
           ) by (job, pod) 
-          >0
+          > 0
         for: 10m
         labels:
           severity: warning
@@ -294,7 +294,7 @@ spec:
             rate(prometheus_remote_storage_samples_total{job=~"platform-metrics-collector|user-workload-metrics-collector",remote_name="acm-observability"}[5m])
           ) 
           * 100 
-          > 1
+          > 10
         for: 10m
         labels:
           severity: critical
