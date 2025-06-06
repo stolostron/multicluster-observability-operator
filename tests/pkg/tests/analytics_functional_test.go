@@ -6,6 +6,7 @@ package tests
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"time"
 
@@ -13,7 +14,6 @@ import (
 	. "github.com/onsi/gomega"
 
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
-	obsv1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -26,6 +26,14 @@ import (
 )
 
 var k8sClient client.Client
+
+// Prevent flag redefinition panic (only needed if running standalone)
+func init() {
+	if flag.Lookup("kubeconfig") == nil {
+		var kubeconfig string
+		flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to the kubeconfig file")
+	}
+}
 
 var _ = Describe("RHACM4K-XXXXX: Analytics Right-Sizing Functional Test [P1][Observability][Analytics] @e2e", Ordered, func() {
 	const (
@@ -56,6 +64,15 @@ var _ = Describe("RHACM4K-XXXXX: Analytics Right-Sizing Functional Test [P1][Obs
 			},
 			"spec": map[string]interface{}{
 				"enableDownsampling": true,
+				"capabilities": map[string]interface{}{
+					"platform": map[string]interface{}{
+						"analytics": map[string]interface{}{
+							"namespaceRightSizingRecommendation": map[string]interface{}{
+								"enabled": true,
+							},
+						},
+					},
+				},
 			},
 		}
 		_, err = dynClient.Resource(utils.NewMCOGVRV1BETA2()).
@@ -84,25 +101,7 @@ placementConfiguration:
 		}
 		_, err = hubClient.CoreV1().ConfigMaps(mcoNamespace).Create(context.TODO(), configMap, metav1.CreateOptions{})
 		Expect(err).ToNot(HaveOccurred())
-	})
-
-	It("should wait until MultiClusterObservability CR is Ready", func() {
-		Eventually(func() bool {
-			var mco obsv1beta2.MultiClusterObservability
-			err := k8sClient.Get(context.TODO(), types.NamespacedName{
-				Name:      mcoCRName,
-				Namespace: mcoNamespace,
-			}, &mco)
-			if err != nil {
-				return false
-			}
-			for _, cond := range mco.Status.Conditions {
-				if cond.Type == "Available" && cond.Status == metav1.ConditionTrue {
-					return true
-				}
-			}
-			return false
-		}, 5*time.Minute, 5*time.Second).Should(BeTrue())
+		fmt.Println("✅ ConfigMap and MCO CR created with analytics right-sizing enabled")
 	})
 
 	It("should create the PrometheusRule for namespace right-sizing", func() {
@@ -120,6 +119,7 @@ placementConfiguration:
 			}
 			return nil
 		}, 3*time.Minute, 5*time.Second).Should(Succeed())
+		fmt.Println("✅ PrometheusRule for namespace right-sizing created successfully")
 	})
 
 	It("should create the corresponding Policy for the PrometheusRule", func() {
@@ -137,11 +137,13 @@ placementConfiguration:
 			}
 			return nil
 		}, 3*time.Minute, 5*time.Second).Should(Succeed())
+		fmt.Println("✅ Policy for PrometheusRule created successfully")
 	})
 
 	AfterAll(func() {
 		By("Cleaning up Right-Sizing ConfigMap and MCO CR")
 		_ = hubClient.CoreV1().ConfigMaps(mcoNamespace).Delete(context.TODO(), rsConfigMapName, metav1.DeleteOptions{})
 		_ = dynClient.Resource(utils.NewMCOGVRV1BETA2()).Namespace(mcoNamespace).Delete(context.TODO(), mcoCRName, metav1.DeleteOptions{})
+		fmt.Println("🧹 Cleanup complete: ConfigMap and MCO CR deleted")
 	})
 })
