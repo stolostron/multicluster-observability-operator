@@ -216,7 +216,7 @@ require (
 
 // Stolostron fork of the controller-filtered-cache upgraded to k8s libs up to 0.29.x and Go up to 1.21.
 replace (
-	github.com/IBM/controller-filtered-cache => github.com/stolostron/controller-filtered-cache v0.0.0-20240605101128-e033f9b9a990
+	github.com/IBM/controller-filtered-cache => github.com/stolostron/controller-filtered-cache 93982dba9e1e
 	github.com/imdario/mergo => dario.cat/mergo v0.3.16
 	sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.18.1-0.20240626171621-700befecdffa
 )
