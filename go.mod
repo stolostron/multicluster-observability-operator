@@ -42,7 +42,7 @@ require (
 	github.com/stretchr/testify v1.9.0
 	github.com/thanos-io/thanos v0.35.1
 	go.uber.org/zap v1.27.0
-	golang.org/x/exp v0.0.0-20240525044651-4c93da0ed11d
+	golang.org/x/exp dcc06ee1d476
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.31.0-alpha.2
 	k8s.io/apiextensions-apiserver v0.31.0-alpha.1
