@@ -131,6 +131,27 @@ recommendationPercentage: %d`, rsDefaultRecommendationPercentage),
 		_, err = hubClient.CoreV1().ConfigMaps(mcoNamespace).Create(context.TODO(), configMap, metav1.CreateOptions{})
 		Expect(err).ToNot(HaveOccurred())
 		fmt.Println("✅ ConfigMap and MCO CR created")
+
+		fmt.Println("⏳ Waiting for MCO CR status to become Ready")
+		Eventually(func() error {
+			obj, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).Namespace(mcoNamespace).Get(context.TODO(), mcoCRName, metav1.GetOptions{})
+			if err != nil {
+				return err
+			}
+			status, found, _ := unstructured.NestedSlice(obj.Object, "status", "conditions")
+			if !found {
+				return fmt.Errorf("status.conditions not found in MCO CR")
+			}
+			for _, cond := range status {
+				if m, ok := cond.(map[string]interface{}); ok {
+					if m["type"] == "Ready" && m["status"] == "True" {
+						return nil
+					}
+				}
+			}
+			return fmt.Errorf("MCO CR not Ready yet")
+		}, 5*time.Minute, 10*time.Second).Should(Succeed())
+		fmt.Println("✅ MCO CR is in Ready state")
 	})
 
 	It("should create the PrometheusRule for namespace right-sizing with all expected records", func() {
