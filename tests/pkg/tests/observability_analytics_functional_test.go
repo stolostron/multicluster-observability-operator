@@ -6,9 +6,7 @@ package tests
 
 import (
 	"context"
-	"flag"
 	"fmt"
-	"sync"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -27,15 +25,6 @@ import (
 )
 
 var k8sClient client.Client
-var once sync.Once
-
-func init() {
-	once.Do(func() {
-		if flag.Lookup("kubeconfig") == nil {
-			flag.String("kubeconfig", "", "Path to the kubeconfig file")
-		}
-	})
-}
 
 var _ = Describe("RHACM4K-XXXXX: Analytics Right-Sizing Functional Test [P1][Observability][Analytics] @e2e", Ordered, func() {
 	const (
