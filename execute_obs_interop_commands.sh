@@ -48,7 +48,7 @@ else
     set -x
  
     oc config view --minify --raw=true > userfile
-    //cat userfile
+    # cat userfile
     whoami
     rm -rf ~/.kube/config
     cp userfile ~/.kube/config
