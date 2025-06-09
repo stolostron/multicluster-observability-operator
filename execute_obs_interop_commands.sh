@@ -52,7 +52,7 @@ else
     whoami
     rm -rf ~/.kube/config
     cp userfile ~/.kube/config
-    //cat ~/.kube/config
+    # cat ~/.kube/config
     export KUBECONFIG=~/.kube/config
 
     go mod vendor && ginkgo build ./tests/pkg/tests/
