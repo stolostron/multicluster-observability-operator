@@ -64,22 +64,13 @@ var _ = Describe("RHACM4K-XXXXX: Analytics Right-Sizing Functional Test [P1][Obs
 		cfg := ctrl.GetConfigOrDie()
 		var err error
 		k8sClient, err = client.New(cfg, client.Options{})
-		if err != nil {
-			fmt.Printf("❌ Failed to create k8sClient: %v\n", err)
-		}
 		Expect(err).NotTo(HaveOccurred())
 
-		fmt.Println("🔁 Cleaning up previous resources")
-		err = hubClient.CoreV1().ConfigMaps(mcoNamespace).Delete(context.TODO(), rsConfigMapName, metav1.DeleteOptions{})
-		if err != nil {
-			fmt.Printf("⚠️ Failed to delete ConfigMap: %v\n", err)
-		}
-		err = dynClient.Resource(utils.NewMCOGVRV1BETA2()).Namespace(mcoNamespace).Delete(context.TODO(), mcoCRName, metav1.DeleteOptions{})
-		if err != nil {
-			fmt.Printf("⚠️ Failed to delete MCO CR: %v\n", err)
-		}
+		By("Cleaning up any previous config")
+		_ = hubClient.CoreV1().ConfigMaps(mcoNamespace).Delete(context.TODO(), rsConfigMapName, metav1.DeleteOptions{})
+		_ = dynClient.Resource(utils.NewMCOGVRV1BETA2()).Namespace(mcoNamespace).Delete(context.TODO(), mcoCRName, metav1.DeleteOptions{})
 
-		fmt.Println("📦 Creating new MCO CR with analytics enabled")
+		By("Creating the new MCO CR with analytics enabled")
 		mco := map[string]interface{}{
 			"apiVersion": "observability.open-cluster-management.io/v1beta2",
 			"kind":       "MultiClusterObservability",
@@ -101,27 +92,16 @@ var _ = Describe("RHACM4K-XXXXX: Analytics Right-Sizing Functional Test [P1][Obs
 			},
 		}
 		_, err = dynClient.Resource(utils.NewMCOGVRV1BETA2()).Namespace(mcoNamespace).Create(context.TODO(), &unstructured.Unstructured{Object: mco}, metav1.CreateOptions{})
-		if err != nil {
-			fmt.Printf("❌ Failed to create MCO CR: %v\n", err)
-		}
 		Expect(err).ToNot(HaveOccurred())
 
-		fmt.Println("📝 Creating right-sizing config map")
+		By("Creating the RightSizing config map")
 		configMap := &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      rsConfigMapName,
 				Namespace: mcoNamespace,
 			},
 			Data: map[string]string{
-				"placementConfiguration": `typemeta:
-  kind: ""
-  apiversion: ""
-spec:
-  tolerations:
-  - key: cluster.open-cluster-management.io/unreachable
-    operator: Exists
-  - key: cluster.open-cluster-management.io/unavailable
-    operator: Exists`,
+				"placementConfiguration": fmt.Sprintf(`placementRuleName: %q`, rsPlacementName),
 				"prometheusRuleConfig": fmt.Sprintf(`namespaceFilterCriteria:
   inclusionCriteria:
     - "default"
@@ -133,23 +113,17 @@ recommendationPercentage: %d`, rsDefaultRecommendationPercentage),
 			},
 		}
 		_, err = hubClient.CoreV1().ConfigMaps(mcoNamespace).Create(context.TODO(), configMap, metav1.CreateOptions{})
-		if err != nil {
-			fmt.Printf("❌ Failed to create ConfigMap: %v\n", err)
-		}
 		Expect(err).ToNot(HaveOccurred())
-		fmt.Println("✅ ConfigMap and MCO CR created")
 
-		fmt.Println("⏳ Waiting for MCO CR status to become Ready")
+		By("Waiting for MCO CR to become Ready")
 		Eventually(func() error {
 			obj, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).Namespace(mcoNamespace).Get(context.TODO(), mcoCRName, metav1.GetOptions{})
 			if err != nil {
-				fmt.Printf("❌ Failed to fetch MCO CR: %v\n", err)
 				return err
 			}
 			status, found, _ := unstructured.NestedSlice(obj.Object, "status", "conditions")
 			if !found {
-				fmt.Println("❌ status.conditions not found in MCO CR")
-				return fmt.Errorf("status.conditions not found in MCO CR")
+				return fmt.Errorf("status.conditions not found")
 			}
 			for _, cond := range status {
 				if m, ok := cond.(map[string]interface{}); ok {
@@ -158,13 +132,11 @@ recommendationPercentage: %d`, rsDefaultRecommendationPercentage),
 					}
 				}
 			}
-			fmt.Println("❌ MCO CR not Ready yet")
-			return fmt.Errorf("MCO CR not Ready yet")
+			return fmt.Errorf("MCO CR not ready yet")
 		}, 5*time.Minute, 10*time.Second).Should(Succeed())
-		fmt.Println("✅ MCO CR is in Ready state")
 	})
 
-	It("should create the PrometheusRule for namespace right-sizing with all expected records", func() {
+	It("should create all expected PrometheusRule records", func() {
 		Eventually(func() error {
 			var rule monitoringv1.PrometheusRule
 			err := k8sClient.Get(context.TODO(), types.NamespacedName{
@@ -172,10 +144,8 @@ recommendationPercentage: %d`, rsDefaultRecommendationPercentage),
 				Namespace: mcoNamespace,
 			}, &rule)
 			if err != nil {
-				fmt.Printf("❌ Failed to get PrometheusRule: %v\n", err)
 				return err
 			}
-
 			found := map[string]bool{}
 			for _, group := range rule.Spec.Groups {
 				for _, r := range group.Rules {
@@ -184,20 +154,16 @@ recommendationPercentage: %d`, rsDefaultRecommendationPercentage),
 					}
 				}
 			}
-
 			for _, expected := range expectedRecords {
 				if !found[expected] {
-					fmt.Printf("❌ Missing expected rule record: %s\n", expected)
-					return fmt.Errorf("missing expected rule record: %s", expected)
+					return fmt.Errorf("missing expected record: %s", expected)
 				}
 			}
 			return nil
 		}, 5*time.Minute, 10*time.Second).Should(Succeed())
-
-		fmt.Println("✅ All expected PrometheusRule records are present")
 	})
 
-	It("should create the corresponding Policy for the PrometheusRule", func() {
+	It("should create the right policy for the PrometheusRule", func() {
 		Eventually(func() error {
 			var policy policyv1.Policy
 			err := k8sClient.Get(context.TODO(), types.NamespacedName{
@@ -205,28 +171,18 @@ recommendationPercentage: %d`, rsDefaultRecommendationPercentage),
 				Namespace: mcoNamespace,
 			}, &policy)
 			if err != nil {
-				fmt.Printf("❌ Failed to get Policy: %v\n", err)
 				return err
 			}
-			if policy.Spec.RemediationAction == "" || len(policy.Spec.PolicyTemplates) == 0 {
-				fmt.Printf("❌ Policy %q is missing required fields\n", rsPrometheusRulePolicyName)
-				return fmt.Errorf("Policy %q is missing required fields", rsPrometheusRulePolicyName)
+			if len(policy.Spec.PolicyTemplates) == 0 || policy.Spec.RemediationAction == "" {
+				return fmt.Errorf("policy fields missing")
 			}
 			return nil
 		}, 3*time.Minute, 5*time.Second).Should(Succeed())
-		fmt.Println("✅ Corresponding Policy created and valid")
 	})
 
 	AfterAll(func() {
-		fmt.Println("🧹 Cleaning up test resources")
-		err := hubClient.CoreV1().ConfigMaps(mcoNamespace).Delete(context.TODO(), rsConfigMapName, metav1.DeleteOptions{})
-		if err != nil {
-			fmt.Printf("⚠️ Failed to delete ConfigMap: %v\n", err)
-		}
-		err = dynClient.Resource(utils.NewMCOGVRV1BETA2()).Namespace(mcoNamespace).Delete(context.TODO(), mcoCRName, metav1.DeleteOptions{})
-		if err != nil {
-			fmt.Printf("⚠️ Failed to delete MCO CR: %v\n", err)
-		}
-		fmt.Println("🧼 Cleanup complete")
+		By("Cleaning up test resources")
+		_ = hubClient.CoreV1().ConfigMaps(mcoNamespace).Delete(context.TODO(), rsConfigMapName, metav1.DeleteOptions{})
+		_ = dynClient.Resource(utils.NewMCOGVRV1BETA2()).Namespace(mcoNamespace).Delete(context.TODO(), mcoCRName, metav1.DeleteOptions{})
 	})
 })
