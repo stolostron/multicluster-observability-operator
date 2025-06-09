@@ -64,11 +64,20 @@ var _ = Describe("RHACM4K-XXXXX: Analytics Right-Sizing Functional Test [P1][Obs
 		cfg := ctrl.GetConfigOrDie()
 		var err error
 		k8sClient, err = client.New(cfg, client.Options{})
+		if err != nil {
+			fmt.Printf("❌ Failed to create k8sClient: %v\n", err)
+		}
 		Expect(err).NotTo(HaveOccurred())
 
 		fmt.Println("🔁 Cleaning up previous resources")
-		_ = hubClient.CoreV1().ConfigMaps(mcoNamespace).Delete(context.TODO(), rsConfigMapName, metav1.DeleteOptions{})
-		_ = dynClient.Resource(utils.NewMCOGVRV1BETA2()).Namespace(mcoNamespace).Delete(context.TODO(), mcoCRName, metav1.DeleteOptions{})
+		err = hubClient.CoreV1().ConfigMaps(mcoNamespace).Delete(context.TODO(), rsConfigMapName, metav1.DeleteOptions{})
+		if err != nil {
+			fmt.Printf("⚠️ Failed to delete ConfigMap: %v\n", err)
+		}
+		err = dynClient.Resource(utils.NewMCOGVRV1BETA2()).Namespace(mcoNamespace).Delete(context.TODO(), mcoCRName, metav1.DeleteOptions{})
+		if err != nil {
+			fmt.Printf("⚠️ Failed to delete MCO CR: %v\n", err)
+		}
 
 		fmt.Println("📦 Creating new MCO CR with analytics enabled")
 		mco := map[string]interface{}{
@@ -92,6 +101,9 @@ var _ = Describe("RHACM4K-XXXXX: Analytics Right-Sizing Functional Test [P1][Obs
 			},
 		}
 		_, err = dynClient.Resource(utils.NewMCOGVRV1BETA2()).Namespace(mcoNamespace).Create(context.TODO(), &unstructured.Unstructured{Object: mco}, metav1.CreateOptions{})
+		if err != nil {
+			fmt.Printf("❌ Failed to create MCO CR: %v\n", err)
+		}
 		Expect(err).ToNot(HaveOccurred())
 
 		fmt.Println("📝 Creating right-sizing config map")
@@ -121,6 +133,9 @@ recommendationPercentage: %d`, rsDefaultRecommendationPercentage),
 			},
 		}
 		_, err = hubClient.CoreV1().ConfigMaps(mcoNamespace).Create(context.TODO(), configMap, metav1.CreateOptions{})
+		if err != nil {
+			fmt.Printf("❌ Failed to create ConfigMap: %v\n", err)
+		}
 		Expect(err).ToNot(HaveOccurred())
 		fmt.Println("✅ ConfigMap and MCO CR created")
 
@@ -128,10 +143,12 @@ recommendationPercentage: %d`, rsDefaultRecommendationPercentage),
 		Eventually(func() error {
 			obj, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).Namespace(mcoNamespace).Get(context.TODO(), mcoCRName, metav1.GetOptions{})
 			if err != nil {
+				fmt.Printf("❌ Failed to fetch MCO CR: %v\n", err)
 				return err
 			}
 			status, found, _ := unstructured.NestedSlice(obj.Object, "status", "conditions")
 			if !found {
+				fmt.Println("❌ status.conditions not found in MCO CR")
 				return fmt.Errorf("status.conditions not found in MCO CR")
 			}
 			for _, cond := range status {
@@ -141,6 +158,7 @@ recommendationPercentage: %d`, rsDefaultRecommendationPercentage),
 					}
 				}
 			}
+			fmt.Println("❌ MCO CR not Ready yet")
 			return fmt.Errorf("MCO CR not Ready yet")
 		}, 5*time.Minute, 10*time.Second).Should(Succeed())
 		fmt.Println("✅ MCO CR is in Ready state")
@@ -154,6 +172,7 @@ recommendationPercentage: %d`, rsDefaultRecommendationPercentage),
 				Namespace: mcoNamespace,
 			}, &rule)
 			if err != nil {
+				fmt.Printf("❌ Failed to get PrometheusRule: %v\n", err)
 				return err
 			}
 
@@ -168,6 +187,7 @@ recommendationPercentage: %d`, rsDefaultRecommendationPercentage),
 
 			for _, expected := range expectedRecords {
 				if !found[expected] {
+					fmt.Printf("❌ Missing expected rule record: %s\n", expected)
 					return fmt.Errorf("missing expected rule record: %s", expected)
 				}
 			}
@@ -185,9 +205,11 @@ recommendationPercentage: %d`, rsDefaultRecommendationPercentage),
 				Namespace: mcoNamespace,
 			}, &policy)
 			if err != nil {
+				fmt.Printf("❌ Failed to get Policy: %v\n", err)
 				return err
 			}
 			if policy.Spec.RemediationAction == "" || len(policy.Spec.PolicyTemplates) == 0 {
+				fmt.Printf("❌ Policy %q is missing required fields\n", rsPrometheusRulePolicyName)
 				return fmt.Errorf("Policy %q is missing required fields", rsPrometheusRulePolicyName)
 			}
 			return nil
@@ -197,8 +219,14 @@ recommendationPercentage: %d`, rsDefaultRecommendationPercentage),
 
 	AfterAll(func() {
 		fmt.Println("🧹 Cleaning up test resources")
-		_ = hubClient.CoreV1().ConfigMaps(mcoNamespace).Delete(context.TODO(), rsConfigMapName, metav1.DeleteOptions{})
-		_ = dynClient.Resource(utils.NewMCOGVRV1BETA2()).Namespace(mcoNamespace).Delete(context.TODO(), mcoCRName, metav1.DeleteOptions{})
+		err := hubClient.CoreV1().ConfigMaps(mcoNamespace).Delete(context.TODO(), rsConfigMapName, metav1.DeleteOptions{})
+		if err != nil {
+			fmt.Printf("⚠️ Failed to delete ConfigMap: %v\n", err)
+		}
+		err = dynClient.Resource(utils.NewMCOGVRV1BETA2()).Namespace(mcoNamespace).Delete(context.TODO(), mcoCRName, metav1.DeleteOptions{})
+		if err != nil {
+			fmt.Printf("⚠️ Failed to delete MCO CR: %v\n", err)
+		}
 		fmt.Println("🧼 Cleanup complete")
 	})
 })
