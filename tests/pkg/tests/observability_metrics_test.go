@@ -21,7 +21,7 @@ const (
 )
 
 var (
-	clusters     []utils.ClustersInfo
+	clusters     []string
 	clusterError error
 )
 
@@ -63,7 +63,7 @@ var _ = Describe("", func() {
 		By("Waiting for new added metrics on grafana console")
 		Eventually(func() error {
 			for _, cluster := range clusters {
-				query := fmt.Sprintf("node_memory_Active_bytes{cluster=\"%s\"} offset 1m", cluster.Name)
+				query := fmt.Sprintf("node_memory_Active_bytes{cluster=\"%s\"} offset 1m", cluster)
 				res, err := utils.QueryGrafana(
 					testOptions,
 					query,
@@ -86,8 +86,8 @@ var _ = Describe("", func() {
 			for _, cluster := range clusters {
 				query := fmt.Sprintf(
 					"timestamp(instance:node_num_cpu:sum{cluster=\"%s\"}) - timestamp(instance:node_num_cpu:sum{cluster=\"%s\"} offset 1m) > 59",
-					cluster.Name,
-					cluster.Name,
+					cluster,
+					cluster,
 				)
 				res, err := utils.QueryGrafana(testOptions, query)
 				if err != nil {
@@ -108,8 +108,8 @@ var _ = Describe("", func() {
 			for _, cluster := range clusters {
 				query := fmt.Sprintf(
 					"timestamp(go_goroutines{cluster=\"%s\"}) - timestamp(go_goroutines{cluster=\"%s\"} offset 1m) > 59",
-					cluster.Name,
-					cluster.Name,
+					cluster,
+					cluster,
 				)
 				res, err := utils.QueryGrafana(testOptions, query)
 				if err != nil {
@@ -137,8 +137,8 @@ var _ = Describe("", func() {
 			for _, cluster := range clusters {
 				query := fmt.Sprintf(
 					"timestamp(node_memory_Active_bytes{cluster=\"%s\"}) - timestamp(node_memory_Active_bytes{cluster=\"%s\"} offset 1m) > 59",
-					cluster.Name,
-					cluster.Name,
+					cluster,
+					cluster,
 				)
 				res, err := utils.QueryGrafana(testOptions, query)
 				if err != nil {
@@ -169,14 +169,14 @@ var _ = Describe("", func() {
 		Eventually(func() error {
 			for _, cluster := range clusters {
 				for _, name := range metricList {
-					query := fmt.Sprintf("%s{cluster=\"%s\"}", name, cluster.Name)
+					query := fmt.Sprintf("%s{cluster=\"%s\"}", name, cluster)
 					res, err := utils.QueryGrafana(testOptions, query)
 					if err != nil {
-						return fmt.Errorf("failed to get metrics %s in cluster %s: %v", name, cluster.Name, err)
+						return fmt.Errorf("failed to get metrics %s in cluster %s: %v", name, cluster, err)
 					}
 
 					if len(res.Data.Result) == 0 {
-						return fmt.Errorf("no data found for %s in cluster %s", name, cluster.Name)
+						return fmt.Errorf("no data found for %s in cluster %s", name, cluster)
 					}
 				}
 			}
