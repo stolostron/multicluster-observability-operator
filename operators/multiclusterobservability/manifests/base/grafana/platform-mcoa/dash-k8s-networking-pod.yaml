@@ -1220,5 +1220,5 @@ kind: ConfigMap
 metadata:
   name: grafana-dashboard-k8s-networking-pod
   namespace: open-cluster-management-observability
-  labels:
+  annotations:
     observability.open-cluster-management.io/dashboard-folder: Platform - MCOA
