@@ -58,7 +58,8 @@ data:
         },
         {
           "datasource": {
-            "uid": "${datasource}"
+            "type": "prometheus",
+            "uid": "000000001"
           },
           "description": "",
           "fieldConfig": {
@@ -121,7 +122,8 @@ data:
           "targets": [
             {
               "datasource": {
-                "uid": "${datasource}"
+                "type": "prometheus",
+                "uid": "000000001"
               },
               "exemplar": true,
               "expr": "max_over_time(acm_rs:cluster:cpu_recommendation{cluster=\"$cluster\", profile=\"$profile\"}[$days:])",
@@ -316,9 +318,10 @@ data:
               },
               "exemplar": true,
               "expr": "max_over_time(acm_rs:cluster:cpu_usage{cluster=\"$cluster\", profile=\"$profile\"}[$days:])",
-              "instant": false,
+              "instant": true,
               "interval": "",
               "legendFormat": "",
+              "range": false,
               "refId": "A"
             }
           ],
@@ -406,9 +409,10 @@ data:
               },
               "exemplar": true,
               "expr": "max_over_time(acm_rs:cluster:cpu_request{cluster=\"$cluster\", profile=\"$profile\"}[$days:])",
-              "instant": false,
+              "instant": true,
               "interval": "",
               "legendFormat": "",
+              "range": false,
               "refId": "A"
             }
           ],
@@ -427,7 +431,8 @@ data:
         },
         {
           "datasource": {
-            "uid": "${datasource}"
+            "type": "prometheus",
+            "uid": "000000001"
           },
           "fieldConfig": {
             "defaults": {
@@ -494,12 +499,15 @@ data:
           "targets": [
             {
               "datasource": {
-                "uid": "${datasource}"
+                "type": "prometheus",
+                "uid": "000000001"
               },
               "exemplar": true,
               "expr": "max_over_time(acm_rs:cluster:cpu_usage{cluster=\"$cluster\", profile=\"$profile\"}[$days:]) / max_over_time(acm_rs:cluster:cpu_request{cluster=\"$cluster\", profile=\"$profile\"}[$days:])",
+              "instant": true,
               "interval": "",
               "legendFormat": "",
+              "range": false,
               "refId": "A"
             }
           ],
@@ -1351,7 +1359,8 @@ data:
         },
         {
           "datasource": {
-            "uid": "${datasource}"
+            "type": "prometheus",
+            "uid": "000000001"
           },
           "fieldConfig": {
             "defaults": {
@@ -1407,7 +1416,8 @@ data:
           "targets": [
             {
               "datasource": {
-                "uid": "${datasource}"
+                "type": "prometheus",
+                "uid": "000000001"
               },
               "exemplar": true,
               "expr": "max_over_time(acm_rs:cluster:memory_usage{cluster=\"$cluster\", profile=\"$profile\"}[$days:]) / max_over_time(acm_rs:cluster:memory_request{cluster=\"$cluster\", profile=\"$profile\"}[$days:])",
@@ -2006,7 +2016,7 @@ data:
       "timezone": "",
       "title": "ACM Right-Sizing Namespace",
       "uid": "bnqQIPySE",
-      "version": 7,
+      "version": 8,
       "weekStart": ""
     }
 kind: ConfigMap
