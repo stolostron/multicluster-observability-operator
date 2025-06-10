@@ -793,8 +793,10 @@ data:
                   "Value #F": "VM Create Date",
                   "Value #G": "Uptime",
                   "Value #H": "Uptime %",
+                  "cluster": "Cluster",
                   "clusterType": "",
-                  "name": "",
+                  "name": "VM Name",
+                  "namespace": "Namespace",
                   "status": "Reason",
                   "status_group": "Status"
                 }
@@ -912,8 +914,8 @@ data:
             "allValue": null,
             "current": {
               "selected": true,
-              "text": "running",
-              "value": "on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_info{status_group=\"running\"}>0)))"
+              "text": "All",
+              "value": "on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_info)))"
             },
             "description": null,
             "error": null,
@@ -924,7 +926,7 @@ data:
             "name": "status",
             "options": [
               {
-                "selected": false,
+                "selected": true,
                 "text": "All",
                 "value": "on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_info)))"
               },
@@ -949,7 +951,7 @@ data:
                 "value": "on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_info{status_group=\"error\"}>0)))"
               },
               {
-                "selected": true,
+                "selected": false,
                 "text": "running",
                 "value": "on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_info{status_group=\"running\"}>0)))"
               }
