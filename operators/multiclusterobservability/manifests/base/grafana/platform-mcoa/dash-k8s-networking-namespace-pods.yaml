@@ -549,7 +549,7 @@ data:
               "step": 10
             },
             {
-              "expr": "namespace_pod:container_network_receive_packets_total:sum{namespace=~\"$namespace\"}",
+              "expr": "namespace_pod:container_network_receive_packets_total:sum{cluster=\"$cluster\",namespace=~\"$namespace\"}",
               "format": "table",
               "instant": true,
               "intervalFactor": 2,
@@ -558,7 +558,7 @@ data:
               "step": 10
             },
             {
-              "expr": "namespace_pod:container_network_transmit_packets_total:sum{namespace=~\"$namespace\"}",
+              "expr": "namespace_pod:container_network_transmit_packets_total:sum{cluster=\"$cluster\",namespace=~\"$namespace\"}",
               "format": "table",
               "instant": true,
               "intervalFactor": 2,
@@ -576,7 +576,7 @@ data:
               "step": 10
             },
             {
-              "expr": "namespace_pod:container_network_transmit_packets_dropped_total:sum{namespace=~\"$namespace\"}",
+              "expr": "namespace_pod:container_network_transmit_packets_dropped_total:sum{cluster=\"$cluster\",namespace=~\"$namespace\"}",
               "format": "table",
               "instant": true,
               "intervalFactor": 2,
