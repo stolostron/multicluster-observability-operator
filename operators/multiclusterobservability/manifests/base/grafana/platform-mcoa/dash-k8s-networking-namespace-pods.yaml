@@ -529,7 +529,7 @@ data:
           "pluginVersion": "7.4.2",
           "targets": [
             {
-              "expr": "namespace_pod:container_network_receive_bytes_total:sum{cluster=\"$cluster\",namespace=~\"$namespace\"}",
+              "expr": "sum(namespace_pod:container_network_receive_bytes_total:sum{cluster=\"$cluster\",namespace=~\"$namespace\"}) by (pod)",
               "format": "table",
               "instant": true,
               "interval": "",
@@ -539,7 +539,7 @@ data:
               "step": 10
             },
             {
-              "expr": "namespace_pod:container_network_transmit_bytes_total:sum{cluster=\"$cluster\",namespace=~\"$namespace\"}",
+              "expr": "sum(namespace_pod:container_network_transmit_bytes_total:sum{cluster=\"$cluster\",namespace=~\"$namespace\"}) by (pod)",
               "format": "table",
               "instant": true,
               "interval": "",
@@ -549,7 +549,7 @@ data:
               "step": 10
             },
             {
-              "expr": "namespace_pod:container_network_receive_packets_total:sum{cluster=\"$cluster\",namespace=~\"$namespace\"}",
+              "expr": "sum(namespace_pod:container_network_receive_packets_total:sum{cluster=\"$cluster\",namespace=~\"$namespace\"}) by (pod)",
               "format": "table",
               "instant": true,
               "intervalFactor": 2,
@@ -558,7 +558,7 @@ data:
               "step": 10
             },
             {
-              "expr": "namespace_pod:container_network_transmit_packets_total:sum{cluster=\"$cluster\",namespace=~\"$namespace\"}",
+              "expr": "sum(namespace_pod:container_network_transmit_packets_total:sum{cluster=\"$cluster\",namespace=~\"$namespace\"}) by (pod)",
               "format": "table",
               "instant": true,
               "intervalFactor": 2,
@@ -567,7 +567,7 @@ data:
               "step": 10
             },
             {
-              "expr": "namespace_pod:container_network_receive_bytes_total:sum{namespace=~\"$namespace\", cluster=\"$cluster\"}",
+              "expr": "sum(namespace_pod:container_network_receive_bytes_total:sum{namespace=~\"$namespace\", cluster=\"$cluster\"}) by (pod)",
               "format": "table",
               "instant": true,
               "intervalFactor": 2,
@@ -576,7 +576,7 @@ data:
               "step": 10
             },
             {
-              "expr": "namespace_pod:container_network_transmit_packets_dropped_total:sum{cluster=\"$cluster\",namespace=~\"$namespace\"}",
+              "expr": "sum(namespace_pod:container_network_transmit_packets_dropped_total:sum{cluster=\"$cluster\",namespace=~\"$namespace\"}) by (pod)",
               "format": "table",
               "instant": true,
               "intervalFactor": 2,
