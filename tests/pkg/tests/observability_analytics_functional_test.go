@@ -28,15 +28,9 @@ var k8sClient client.Client
 
 var _ = Describe("RHACM4K-XXXXX: Analytics Right-Sizing Functional Test [P1][Observability][Analytics] @e2e", Ordered, func() {
 	const (
-		rsPolicySetName                   = "rs-policyset"
-		rsPlacementName                   = "rs-placement"
-		rsPlacementBindingName            = "rs-policyset-binding"
 		rsPrometheusRulePolicyName        = "rs-prom-rules-policy"
-		rsPrometheusRulePolicyConfigName  = "rs-prometheus-rules-policy-config"
 		rsPrometheusRuleName              = "acm-rs-namespace-prometheus-rules"
 		rsConfigMapName                   = "rs-namespace-config"
-		rsDefaultNamespace                = "open-cluster-management-global-set"
-		rsMonitoringNamespace             = "openshift-monitoring"
 		rsDefaultRecommendationPercentage = 110
 		mcoCRName                         = "open-cluster-management-observability"
 		mcoNamespace                      = "open-cluster-management"
@@ -66,33 +60,22 @@ var _ = Describe("RHACM4K-XXXXX: Analytics Right-Sizing Functional Test [P1][Obs
 		k8sClient, err = client.New(cfg, client.Options{})
 		Expect(err).NotTo(HaveOccurred())
 
-		By("Cleaning up any previous config")
-		_ = hubClient.CoreV1().ConfigMaps(mcoNamespace).Delete(context.TODO(), rsConfigMapName, metav1.DeleteOptions{})
-		_ = dynClient.Resource(utils.NewMCOGVRV1BETA2()).Namespace(mcoNamespace).Delete(context.TODO(), mcoCRName, metav1.DeleteOptions{})
-
-		By("Creating the new MCO CR with analytics enabled")
-		mco := map[string]interface{}{
-			"apiVersion": "observability.open-cluster-management.io/v1beta2",
-			"kind":       "MultiClusterObservability",
-			"metadata": map[string]interface{}{
-				"name":      mcoCRName,
-				"namespace": mcoNamespace,
-			},
-			"spec": map[string]interface{}{
-				"enableDownsampling": true,
-				"capabilities": map[string]interface{}{
-					"platform": map[string]interface{}{
-						"analytics": map[string]interface{}{
-							"namespaceRightSizingRecommendation": map[string]interface{}{
-								"enabled": true,
-							},
-						},
-					},
-				},
-			},
-		}
-		_, err = dynClient.Resource(utils.NewMCOGVRV1BETA2()).Namespace(mcoNamespace).Create(context.TODO(), &unstructured.Unstructured{Object: mco}, metav1.CreateOptions{})
-		Expect(err).ToNot(HaveOccurred())
+		By("Patching the MCO CR to enable right-sizing analytics")
+		Eventually(func() error {
+			mco, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).Namespace(mcoNamespace).Get(context.TODO(), mcoCRName, metav1.GetOptions{})
+			if err != nil {
+				return err
+			}
+			spec := mco.Object["spec"].(map[string]interface{})
+			capabilities := spec["capabilities"].(map[string]interface{})
+			platform := capabilities["platform"].(map[string]interface{})
+			analytics := platform["analytics"].(map[string]interface{})
+			analytics["namespaceRightSizingRecommendation"] = map[string]interface{}{
+				"enabled": true,
+			}
+			_, err = dynClient.Resource(utils.NewMCOGVRV1BETA2()).Namespace(mcoNamespace).Update(context.TODO(), mco, metav1.UpdateOptions{})
+			return err
+		}, 2*time.Minute, 5*time.Second).Should(Succeed())
 
 		By("Creating the RightSizing config map")
 		configMap := &corev1.ConfigMap{
@@ -101,7 +84,6 @@ var _ = Describe("RHACM4K-XXXXX: Analytics Right-Sizing Functional Test [P1][Obs
 				Namespace: mcoNamespace,
 			},
 			Data: map[string]string{
-				"placementConfiguration": fmt.Sprintf(`placementRuleName: %q`, rsPlacementName),
 				"prometheusRuleConfig": fmt.Sprintf(`namespaceFilterCriteria:
   inclusionCriteria:
     - "default"
@@ -183,6 +165,5 @@ recommendationPercentage: %d`, rsDefaultRecommendationPercentage),
 	AfterAll(func() {
 		By("Cleaning up test resources")
 		_ = hubClient.CoreV1().ConfigMaps(mcoNamespace).Delete(context.TODO(), rsConfigMapName, metav1.DeleteOptions{})
-		_ = dynClient.Resource(utils.NewMCOGVRV1BETA2()).Namespace(mcoNamespace).Delete(context.TODO(), mcoCRName, metav1.DeleteOptions{})
 	})
 })
