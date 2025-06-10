@@ -319,7 +319,7 @@ data:
                       {
                         "targetBlank": true,
                         "title": "",
-                        "url": "/d/lMD6V93Sz/service-level-dashboards-virtual-machines-by-time-in-status?orgId=1&var-cluster=$cluster&var-name=All&var-namespace=All&var-status=kubevirt_vm_non_running_status_last_transition_timestamp_seconds&var-days_in_status_gt=0&var-days_in_status_lt=1000&var-top_results=25"
+                        "url": "/d/lMD6V93Sz/service-level-dashboards-virtual-machines-by-time-in-status?orgId=1&var-cluster=$cluster&var-name=All&var-namespace=All&var-status=stopped&var-days_in_status_gt=0&var-days_in_status_lt=1000&var-top_results=25"
                       }
                     ]
                   }
@@ -344,7 +344,7 @@ data:
                       {
                         "targetBlank": true,
                         "title": "",
-                        "url": "/d/lMD6V93Sz/service-level-dashboards-virtual-machines-by-time-in-status?orgId=1&var-cluster=$cluster&var-name=All&var-namespace=All&var-status=kubevirt_vm_starting_status_last_transition_timestamp_seconds&var-days_in_status_gt=0&var-days_in_status_lt=1000&var-top_results=25"
+                        "url": "/d/lMD6V93Sz/service-level-dashboards-virtual-machines-by-time-in-status?orgId=1&var-cluster=$cluster&var-name=All&var-namespace=All&var-status=starting&var-days_in_status_gt=0&var-days_in_status_lt=1000&var-top_results=25"
                       }
                     ]
                   }
@@ -369,7 +369,7 @@ data:
                       {
                         "targetBlank": true,
                         "title": "",
-                        "url": "/d/lMD6V93Sz/service-level-dashboards-virtual-machines-by-time-in-status?orgId=1&var-cluster=$cluster&var-name=All&var-namespace=All&var-status=kubevirt_vm_migrating_status_last_transition_timestamp_seconds&var-days_in_status_gt=0&var-days_in_status_lt=1000&var-top_results=25"
+                        "url": "/d/lMD6V93Sz/service-level-dashboards-virtual-machines-by-time-in-status?orgId=1&var-cluster=$cluster&var-name=All&var-namespace=All&var-status=migrating&var-days_in_status_gt=0&var-days_in_status_lt=1000&var-top_results=25"
                       }
                     ]
                   }
@@ -387,7 +387,7 @@ data:
                       {
                         "targetBlank": true,
                         "title": "",
-                        "url": "/d/lMD6V93Sz/service-level-dashboards-virtual-machines-by-time-in-status?orgId=1&var-cluster=$cluster&var-name=All&var-namespace=All&var-status=kubevirt_vm_error_status_last_transition_timestamp_seconds&var-days_in_status_gt=0&var-days_in_status_lt=1000&var-top_results=25"
+                        "url": "/d/lMD6V93Sz/service-level-dashboards-virtual-machines-by-time-in-status?orgId=1&var-cluster=$cluster&var-name=All&var-namespace=All&var-status=error&var-days_in_status_gt=0&var-days_in_status_lt=1000&var-top_results=25"
                       }
                     ]
                   },
@@ -428,7 +428,7 @@ data:
                       {
                         "targetBlank": true,
                         "title": "",
-                        "url": "/d/lMD6V93Sz/service-level-dashboards-virtual-machines-by-time-in-status?orgId=1&var-cluster=$cluster&var-name=All&var-namespace=All&var-status=kubevirt_vm_running_status_last_transition_timestamp_seconds&var-days_in_status_gt=0&var-days_in_status_lt=1000&var-top_results=25"
+                        "url": "/d/lMD6V93Sz/service-level-dashboards-virtual-machines-by-time-in-status?orgId=1&var-cluster=$cluster&var-name=All&var-namespace=All&var-status=running&var-days_in_status_gt=0&var-days_in_status_lt=1000&var-top_results=25"
                       }
                     ]
                   }
@@ -965,6 +965,7 @@ data:
                     "id": "links",
                     "value": [
                       {
+                        "targetBlank": true,
                         "title": "",
                         "url": "/d/RnxEyj6Sz/executive-dashboards-single-virtual-machine-view?orgId=1&var-cluster=$cluster&var-name=${__data.fields[\"VM Name\"]}&var-namespace=${__data.fields.Namespace}"
                       }
