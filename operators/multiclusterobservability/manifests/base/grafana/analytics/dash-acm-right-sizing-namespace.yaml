@@ -255,7 +255,7 @@ data:
           "fieldConfig": {
             "defaults": {
               "color": {
-                "fixedColor": "#ffffff",
+                "fixedColor": "#808080",
                 "mode": "fixed"
               },
               "mappings": [
@@ -346,7 +346,7 @@ data:
           "fieldConfig": {
             "defaults": {
               "color": {
-                "fixedColor": "#ffffff",
+                "fixedColor": "#808080",
                 "mode": "fixed"
               },
               "mappings": [
@@ -437,6 +437,7 @@ data:
           "fieldConfig": {
             "defaults": {
               "color": {
+                "fixedColor": "#808080",
                 "mode": "fixed"
               },
               "mappings": [
@@ -1185,7 +1186,7 @@ data:
           "fieldConfig": {
             "defaults": {
               "color": {
-                "fixedColor": "#f9fcfb",
+                "fixedColor": "#808080",
                 "mode": "fixed"
               },
               "mappings": [
@@ -1275,7 +1276,7 @@ data:
           "fieldConfig": {
             "defaults": {
               "color": {
-                "fixedColor": "#f9fcfb",
+                "fixedColor": "#808080",
                 "mode": "fixed"
               },
               "mappings": [
