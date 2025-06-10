@@ -59,7 +59,7 @@ data:
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "000000001"
+            "uid": "${datasource}"
           },
           "description": "",
           "fieldConfig": {
@@ -123,7 +123,7 @@ data:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "000000001"
+                "uid": "${datasource}"
               },
               "exemplar": true,
               "expr": "max_over_time(acm_rs:cluster:cpu_recommendation{cluster=\"$cluster\", profile=\"$profile\"}[$days:])",
@@ -151,7 +151,7 @@ data:
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "000000001"
+            "uid": "${datasource}"
           },
           "fieldConfig": {
             "defaults": {
@@ -233,7 +233,7 @@ data:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "000000001"
+                "uid": "${datasource}"
               },
               "exemplar": true,
               "expr": "topk(20,\nsum by (namespace) (acm_rs:namespace:cpu_usage{cluster=\"$cluster\", profile=\"$profile\"})\n/\nsum by (namespace) (acm_rs:namespace:cpu_request{cluster=\"$cluster\", profile=\"$profile\"})\n)",
@@ -250,7 +250,7 @@ data:
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "000000001"
+            "uid": "${datasource}"
           },
           "fieldConfig": {
             "defaults": {
@@ -314,7 +314,7 @@ data:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "000000001"
+                "uid": "${datasource}"
               },
               "exemplar": true,
               "expr": "max_over_time(acm_rs:cluster:cpu_usage{cluster=\"$cluster\", profile=\"$profile\"}[$days:])",
@@ -341,7 +341,7 @@ data:
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "000000001"
+            "uid": "${datasource}"
           },
           "fieldConfig": {
             "defaults": {
@@ -405,7 +405,7 @@ data:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "000000001"
+                "uid": "${datasource}"
               },
               "exemplar": true,
               "expr": "max_over_time(acm_rs:cluster:cpu_request{cluster=\"$cluster\", profile=\"$profile\"}[$days:])",
@@ -432,7 +432,7 @@ data:
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "000000001"
+            "uid": "${datasource}"
           },
           "fieldConfig": {
             "defaults": {
@@ -501,7 +501,7 @@ data:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "000000001"
+                "uid": "${datasource}"
               },
               "exemplar": true,
               "expr": "max_over_time(acm_rs:cluster:cpu_usage{cluster=\"$cluster\", profile=\"$profile\"}[$days:]) / max_over_time(acm_rs:cluster:cpu_request{cluster=\"$cluster\", profile=\"$profile\"}[$days:])",
@@ -528,7 +528,7 @@ data:
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "000000001"
+            "uid": "${datasource}"
           },
           "fieldConfig": {
             "defaults": {
@@ -855,7 +855,7 @@ data:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "000000001"
+                "uid": "${datasource}"
               },
               "exemplar": true,
               "expr": "max_over_time(sum by (namespace) (acm_rs:namespace:cpu_usage{cluster=\"$cluster\", profile=\"$profile\"})[$days:]) / max_over_time(sum by (namespace) (acm_rs:namespace:cpu_request{cluster=\"$cluster\", profile=\"$profile\"})[$days:])",
@@ -868,7 +868,7 @@ data:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "000000001"
+                "uid": "${datasource}"
               },
               "exemplar": true,
               "expr": "max_over_time(sum by (namespace) (acm_rs:namespace:cpu_usage{cluster=\"$cluster\", profile=\"$profile\"})[$days:]) ",
@@ -882,7 +882,7 @@ data:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "000000001"
+                "uid": "${datasource}"
               },
               "exemplar": true,
               "expr": "max_over_time(sum by (namespace) (acm_rs:namespace:cpu_request{cluster=\"$cluster\", profile=\"$profile\"})[$days:])",
@@ -896,7 +896,7 @@ data:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "000000001"
+                "uid": "${datasource}"
               },
               "editorMode": "code",
               "exemplar": true,
@@ -911,7 +911,7 @@ data:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "000000001"
+                "uid": "${datasource}"
               },
               "editorMode": "code",
               "exemplar": false,
@@ -992,7 +992,7 @@ data:
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "000000001"
+            "uid": "${datasource}"
           },
           "description": "",
           "fieldConfig": {
@@ -1056,7 +1056,7 @@ data:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "000000001"
+                "uid": "${datasource}"
               },
               "exemplar": true,
               "expr": "max_over_time(acm_rs:cluster:memory_recommendation{cluster=\"$cluster\", profile=\"$profile\"}[$days:])",
@@ -1082,7 +1082,7 @@ data:
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "000000001"
+            "uid": "${datasource}"
           },
           "fieldConfig": {
             "defaults": {
@@ -1164,7 +1164,7 @@ data:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "000000001"
+                "uid": "${datasource}"
               },
               "exemplar": true,
               "expr": "topk(20,\nsum by (namespace) (acm_rs:namespace:memory_usage{cluster=\"$cluster\", profile=\"$profile\"})\n/\nsum by (namespace) (acm_rs:namespace:memory_request{cluster=\"$cluster\", profile=\"$profile\"})\n)",
@@ -1181,7 +1181,7 @@ data:
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "000000001"
+            "uid": "${datasource}"
           },
           "fieldConfig": {
             "defaults": {
@@ -1245,7 +1245,7 @@ data:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "000000001"
+                "uid": "${datasource}"
               },
               "exemplar": true,
               "expr": "max_over_time(acm_rs:cluster:memory_usage{cluster=\"$cluster\", profile=\"$profile\"}[$days:])",
@@ -1271,7 +1271,7 @@ data:
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "000000001"
+            "uid": "${datasource}"
           },
           "fieldConfig": {
             "defaults": {
@@ -1335,7 +1335,7 @@ data:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "000000001"
+                "uid": "${datasource}"
               },
               "exemplar": true,
               "expr": "max_over_time(acm_rs:cluster:memory_request{cluster=\"$cluster\", profile=\"$profile\"}[$days:])",
@@ -1361,7 +1361,7 @@ data:
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "000000001"
+            "uid": "${datasource}"
           },
           "fieldConfig": {
             "defaults": {
@@ -1418,7 +1418,7 @@ data:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "000000001"
+                "uid": "${datasource}"
               },
               "exemplar": true,
               "expr": "max_over_time(acm_rs:cluster:memory_usage{cluster=\"$cluster\", profile=\"$profile\"}[$days:]) / max_over_time(acm_rs:cluster:memory_request{cluster=\"$cluster\", profile=\"$profile\"}[$days:])",
@@ -1444,7 +1444,7 @@ data:
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "000000001"
+            "uid": "${datasource}"
           },
           "fieldConfig": {
             "defaults": {
@@ -1770,7 +1770,7 @@ data:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "000000001"
+                "uid": "${datasource}"
               },
               "exemplar": true,
               "expr": "max_over_time(sum by (namespace) (acm_rs:namespace:memory_usage{cluster=\"$cluster\", profile=\"$profile\"})[$days:]) / max_over_time(sum by (namespace) (acm_rs:namespace:memory_request{cluster=\"$cluster\", profile=\"$profile\"})[$days:])",
@@ -1783,7 +1783,7 @@ data:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "000000001"
+                "uid": "${datasource}"
               },
               "exemplar": true,
               "expr": "max_over_time(sum by (namespace) (acm_rs:namespace:memory_usage{cluster=\"$cluster\", profile=\"$profile\"})[$days:])",
@@ -1797,7 +1797,7 @@ data:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "000000001"
+                "uid": "${datasource}"
               },
               "exemplar": true,
               "expr": "max_over_time(sum by (namespace) (acm_rs:namespace:memory_request{cluster=\"$cluster\", profile=\"$profile\"})[$days:])",
@@ -1811,7 +1811,7 @@ data:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "000000001"
+                "uid": "${datasource}"
               },
               "editorMode": "code",
               "exemplar": true,
@@ -1826,7 +1826,7 @@ data:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "000000001"
+                "uid": "${datasource}"
               },
               "editorMode": "code",
               "exemplar": false,
