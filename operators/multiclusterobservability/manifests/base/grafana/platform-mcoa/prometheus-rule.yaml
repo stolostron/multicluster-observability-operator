@@ -226,33 +226,33 @@ spec:
       - alert: HighFederationEndpointErrorRate5Percent
         expr: |
           (
-            sum(
+            sum by (job, pod) (
               rate(prometheus_http_requests_total{handler="/federate",namespace=~"openshift-monitoring|openshift-user-workload-monitoring",job=~"prometheus-k8s|prometheus-user-workload",code=~"5..|4.."}[5m])
-            ) by (job, pod) 
+            ) 
             / 
-            sum(
+            sum by (job, pod) (
               rate(prometheus_http_requests_total{handler="/federate",namespace=~"openshift-monitoring|openshift-user-workload-monitoring",job=~"prometheus-k8s|prometheus-user-workload"}[5m])
-            ) by (job, pod)
+            )
             * 100
           ) > 5
           AND 
-          sum(
+          sum by (job, pod) (
             rate(prometheus_http_requests_total{handler="/federate",namespace=~"openshift-monitoring|openshift-user-workload-monitoring",job=~"prometheus-k8s|prometheus-user-workload"}[5m])
-          ) by (job, pod) 
+          )
           > 0.1
         for: 10m
         labels:
           severity: warning
         annotations:
           summary: High error rate on /federate endpoint for {{ $labels.job }}/{{ $labels.pod }}.
-          description: 'The /federate endpoint on pod {{ $labels.pod }} (job {{ $labels.job }}) is experiencing an error rate of {{ printf "%.2f" $value }}% over the last 10 minutes, which is above the 5% threshold. This could be caused by Prometheus being overloaded, network issues, or misconfiguration. Check the logs of the pod.'
+          description: 'The /federate endpoint on pod {{ $labels.pod }} (job {{ $labels.job }}) is experiencing an error rate of {{ printf "%.2f" $value }}% over the last 10 minutes, which is above the 5% threshold. This could be caused by Prometheus being overloaded, network issues, or misconfiguration.'
       - alert: HighFederationEndpointLatencyOver8s
         expr: |
-          sum (
+          sum by (job, pod) (
             increase(prometheus_http_request_duration_seconds_bucket{handler="/federate",namespace=~"openshift-monitoring|openshift-user-workload-monitoring",job=~"prometheus-k8s|prometheus-user-workload", le="+Inf"}[10m])
             - 
             increase(prometheus_http_request_duration_seconds_bucket{handler="/federate",namespace=~"openshift-monitoring|openshift-user-workload-monitoring",job=~"prometheus-k8s|prometheus-user-workload", le="8"}[10m])
-          ) by (job, pod) 
+          )
           > 0
         for: 10m
         labels:
@@ -262,11 +262,11 @@ spec:
           description: '{{ printf "%.0f" $value }} federation request(s) on pod {{ $labels.pod }} (job {{ $labels.job }}) took longer than 8 seconds in the last 10 minutes. This indicates potential performance degradation or a scrape query federating too many metrics. Check for high CPU/memory usage or long-running queries on the Prometheus pod.'
       - alert: HighFederationEndpointLatencyOver20s
         expr: |
-          sum (
+          sum by (job, pod) (
             increase(prometheus_http_request_duration_seconds_bucket{handler="/federate",namespace=~"openshift-monitoring|openshift-user-workload-monitoring",job=~"prometheus-k8s|prometheus-user-workload", le="+Inf"}[10m])
             - 
             increase(prometheus_http_request_duration_seconds_bucket{handler="/federate",namespace=~"openshift-monitoring|openshift-user-workload-monitoring",job=~"prometheus-k8s|prometheus-user-workload", le="20"}[10m])
-          ) by (job, pod) 
+          )
           > 0
         for: 10m
         labels:
@@ -324,4 +324,4 @@ spec:
           severity: warning
         annotations:
           summary: Prometheus Agent {{ $labels.namespace }}/{{ $labels.pod }} remote write needs more shards.
-          description: 'The Prometheus Agent pod {{ $labels.pod }} (namespace {{ $labels.namespace }}) remote write wants to run {{ printf "%.1f" $value }} shards for remote_name {{ $labels.remote_name}}, exceeding its configured maximum. This indicates sustained backpressure. Chack the queueConfig.maxShards for this remote_name or use the metric prometheus_remote_storage_shards_max.'
+          description: 'The Prometheus Agent pod {{ $labels.pod }} (namespace {{ $labels.namespace }}) remote write wants to run {{ printf "%.1f" $value }} shards for remote_name {{ $labels.remote_name}}, exceeding its configured maximum. This indicates sustained backpressure. Check the queueConfig.maxShards for this remote_name or use the metric prometheus_remote_storage_shards_max.'
