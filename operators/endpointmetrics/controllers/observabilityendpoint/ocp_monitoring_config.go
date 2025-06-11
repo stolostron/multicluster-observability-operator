@@ -654,7 +654,11 @@ func createOrUpdateUserWorkloadMonitoringConfig(
 
 	existingYAML, ok := existing.Data["config.yaml"]
 	if !ok {
-		existing.Data["config.yaml"] = string(yamlBytes)
+		if existing.Data == nil {
+			existing.Data = map[string]string{"config.yaml": string(yamlBytes)}
+		} else {
+			existing.Data["config.yaml"] = string(yamlBytes)
+		}
 		log.Info("user workload monitoring configmap missing config.yaml, updating")
 		return client.Update(ctx, existing)
 	}
