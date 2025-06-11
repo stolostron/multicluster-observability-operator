@@ -246,15 +246,22 @@ data:
           "type": "barchart"
         },
         {
-          "datasource": "$datasource",
+          "datasource": {
+            "uid": "$datasource"
+          },
           "fieldConfig": {
             "defaults": {
               "color": {
                 "mode": "thresholds"
               },
               "custom": {
-                "align": null,
-                "filterable": false
+                "cellOptions": {
+                  "type": "auto",
+                  "wrapText": true
+                },
+                "filterable": false,
+                "inspect": true,
+                "minWidth": 225
               },
               "mappings": [],
               "thresholds": {
@@ -445,8 +452,7 @@ data:
                     ]
                   },
                   {
-                    "id": "custom.align",
-                    "value": null
+                    "id": "custom.align"
                   },
                   {
                     "id": "custom.width",
@@ -465,13 +471,30 @@ data:
           "id": 5,
           "minSpan": 24,
           "options": {
+            "cellHeight": "sm",
+            "footer": {
+              "countRows": false,
+              "fields": "",
+              "reducer": [
+                "sum"
+              ],
+              "show": false
+            },
             "showHeader": true,
-            "sortBy": []
+            "sortBy": [
+              {
+                "desc": false,
+                "displayName": "Namespace"
+              }
+            ]
           },
-          "pluginVersion": "7.4.2",
+          "pluginVersion": "11.1.5",
           "targets": [
             {
-              "expr": "sort_desc(sum(namespace_pod:container_network_receive_bytes_total:sum{namespace=~\".+\",cluster=\"$cluster\"}) by (namespace))",
+              "datasource": {
+                "uid": "$datasource"
+              },
+              "expr": "sum(namespace_pod:container_network_receive_bytes_total:sum{namespace=~\".+\",cluster=\"$cluster\"}) by (namespace)",
               "format": "table",
               "instant": true,
               "intervalFactor": 2,
@@ -480,7 +503,10 @@ data:
               "step": 10
             },
             {
-              "expr": "sort_desc(sum(namespace_pod:container_network_transmit_bytes_total:sum{namespace=~\".+\",cluster=\"$cluster\"}) by (namespace))",
+              "datasource": {
+                "uid": "$datasource"
+              },
+              "expr": "sum(namespace_pod:container_network_transmit_bytes_total:sum{namespace=~\".+\",cluster=\"$cluster\"}) by (namespace)",
               "format": "table",
               "instant": true,
               "intervalFactor": 2,
@@ -489,7 +515,10 @@ data:
               "step": 10
             },
             {
-              "expr": "sort_desc(sum(namespace_pod:container_network_receive_packets_total:sum{namespace=~\".+\",cluster=\"$cluster\"}) by (namespace))",
+              "datasource": {
+                "uid": "$datasource"
+              },
+              "expr": "sum(namespace_pod:container_network_receive_packets_total:sum{namespace=~\".+\",cluster=\"$cluster\"}) by (namespace)",
               "format": "table",
               "instant": true,
               "intervalFactor": 2,
@@ -498,7 +527,10 @@ data:
               "step": 10
             },
             {
-              "expr": "sort_desc(sum(namespace_pod:container_network_transmit_packets_total:sum{namespace=~\".+\",cluster=\"$cluster\"}) by (namespace))",
+              "datasource": {
+                "uid": "$datasource"
+              },
+              "expr": "sum(namespace_pod:container_network_transmit_packets_total:sum{namespace=~\".+\",cluster=\"$cluster\"}) by (namespace)",
               "format": "table",
               "instant": true,
               "intervalFactor": 2,
@@ -507,7 +539,10 @@ data:
               "step": 10
             },
             {
-              "expr": "sort_desc(sum(namespace_pod:container_network_receive_packets_dropped_total:sum{namespace=~\".+\",cluster=\"$cluster\"}) by (namespace))",
+              "datasource": {
+                "uid": "$datasource"
+              },
+              "expr": "sum(namespace_pod:container_network_receive_packets_dropped_total:sum{namespace=~\".+\",cluster=\"$cluster\"}) by (namespace)",
               "format": "table",
               "instant": true,
               "intervalFactor": 2,
@@ -516,7 +551,10 @@ data:
               "step": 10
             },
             {
-              "expr": "sort_desc(sum(namespace_pod:container_network_transmit_packets_dropped_total:sum{namespace=~\".+\",cluster=\"$cluster\"}) by (namespace))",
+              "datasource": {
+                "uid": "$datasource"
+              },
+              "expr": "sum(namespace_pod:container_network_transmit_packets_dropped_total:sum{namespace=~\".+\",cluster=\"$cluster\"}) by (namespace)",
               "format": "table",
               "instant": true,
               "intervalFactor": 2,
@@ -525,8 +563,6 @@ data:
               "step": 10
             }
           ],
-          "timeFrom": null,
-          "timeShift": null,
           "title": "Current Status",
           "transformations": [
             {
