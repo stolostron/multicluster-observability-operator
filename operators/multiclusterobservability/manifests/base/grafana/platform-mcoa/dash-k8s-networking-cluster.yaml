@@ -1694,7 +1694,7 @@ data:
       },
       "timezone": "browser",
       "title": "Kubernetes / Networking / Cluster",
-      "uid": "efd9761bb5dd42a3800fdd6577a8430c",
+      "uid": "6d7b9829b45548a5aabf751052c20354",
       "version": 1
     }
 kind: ConfigMap
