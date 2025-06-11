@@ -13,6 +13,7 @@ resources:
 - dash-k8s-etcd.yaml
 - dash-k8s-networking-cluster.yaml
 - dash-k8s-networking-namespace-pods.yaml
+- dash-k8s-networking-node.yaml
 - dash-k8s-networking-pod.yaml
 - dash-k8s-service-level-overview-api-server-cluster.yaml
 - dash-k8s-service-level-overview-api-server.yaml
