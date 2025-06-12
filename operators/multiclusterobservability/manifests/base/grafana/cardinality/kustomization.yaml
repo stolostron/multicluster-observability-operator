@@ -1,0 +1,5 @@
+resources:
+- dash-acm-metrics-cardinality-cluster.yaml
+- dash-acm-metrics-cardinality-namespace.yaml
+- dash-acm-metrics-cardinality-overview.yaml
+- dash-acm-metrics-cardinality-pod.yaml
