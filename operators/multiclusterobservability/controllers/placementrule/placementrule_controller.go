@@ -61,10 +61,11 @@ const (
 )
 
 var (
-	log                           = logf.Log.WithName("controller_placementrule")
-	clusterAddon                  = &addonv1alpha1.ClusterManagementAddOn{}
-	defaultAddonDeploymentConfig  = &addonv1alpha1.AddOnDeploymentConfig{}
-	isplacementControllerRunnning = false
+	log                               = logf.Log.WithName("controller_placementrule")
+	clusterAddon                      = &addonv1alpha1.ClusterManagementAddOn{}
+	defaultAddonDeploymentConfig      = &addonv1alpha1.AddOnDeploymentConfig{}
+	isplacementControllerRunnning     = false
+	managedClustersHaveReconciledOnce bool // Ensures that all managedClusters are reconciled once on MCO reboot
 )
 
 // PlacementRuleReconciler reconciles a PlacementRule object
@@ -482,7 +483,7 @@ func createAllRelatedRes(
 		managedCluster := mci.Name
 		openshiftVersion := mci.OpenshiftVersion
 
-		if !isReconcileRequired(request, managedCluster) {
+		if managedClustersHaveReconciledOnce && !isReconcileRequired(request, managedCluster) {
 			continue
 		}
 
@@ -529,6 +530,10 @@ func createAllRelatedRes(
 				continue
 			}
 		}
+	}
+
+	if len(allErrors) == 0 {
+		managedClustersHaveReconciledOnce = true
 	}
 
 	// Look through the obsAddonList items and find clusters
