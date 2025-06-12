@@ -694,7 +694,7 @@ prometheus:
 		t.Fatalf("empty prometheus in UserWorkloadConfiguration: %v", foundUserWorkloadConfiguration)
 	}
 
-	if foundUserWorkloadConfiguration.Prometheus.AlertmanagerConfigs != nil && len(foundUserWorkloadConfiguration.Prometheus.AlertmanagerConfigs) > 0 {
+	if len(foundUserWorkloadConfiguration.Prometheus.AlertmanagerConfigs) > 0 {
 		t.Fatalf("AlertmanagerConfigs should be nil or empty when alerts are disabled, got: %v", foundUserWorkloadConfiguration.Prometheus.AlertmanagerConfigs)
 	}
 
@@ -835,7 +835,7 @@ prometheus:
 		t.Fatalf("empty prometheus in UserWorkloadConfiguration: %v", foundUserWorkloadConfiguration)
 	}
 
-	if foundUserWorkloadConfiguration.Prometheus.AlertmanagerConfigs != nil && len(foundUserWorkloadConfiguration.Prometheus.AlertmanagerConfigs) > 0 {
+	if len(foundUserWorkloadConfiguration.Prometheus.AlertmanagerConfigs) > 0 {
 		t.Fatalf("AlertmanagerConfigs should be nil or empty when UWM alerts are disabled, got: %v", foundUserWorkloadConfiguration.Prometheus.AlertmanagerConfigs)
 	}
 
