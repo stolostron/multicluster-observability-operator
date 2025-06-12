@@ -1,7 +1,7 @@
 # Command to build this Dockerfile
 # docker build -f Dockerfile -t quay.io/vboulos/acmqe-automation/obs:obs-ginkgo_1_14_2-linux-go .
 
-FROM quay.io/vboulos/acmqe-automation/ginkgo_1_14_2-linux-go
+FROM quay.io/vboulos/acmqe-automation/go:go1.21-ginkgo2.17.1
 
 
 # Copy the Obs repo repo into /tmp/obs folder
