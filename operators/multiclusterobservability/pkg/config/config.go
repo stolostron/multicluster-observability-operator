@@ -57,6 +57,7 @@ const (
 	AnnotationMCOPause           = "mco-pause"
 	AnnotationCertDuration       = "mco-cert-duration"
 	AnnotationDisableMCOAlerting = "mco-disable-alerting"
+	AnnotationDisableUWMAlerting = "mco-disable-uwm-alerting"
 
 	MCHUpdatedRequestName               = "mch-updated-request"
 	MCOUpdatedRequestName               = "mco-updated-request"
@@ -859,6 +860,16 @@ func IsAlertingDisabledInSpec(mco *observabilityv1beta2.MultiClusterObservabilit
 
 	annotations := mco.GetAnnotations()
 	return annotations != nil && annotations[AnnotationDisableMCOAlerting] == "true"
+}
+
+// Get AnnotationUWMAlerting.
+func IsUWMAlertingDisabledInSpec(mco *observabilityv1beta2.MultiClusterObservability) bool {
+	if mco == nil {
+		return false
+	}
+
+	annotations := mco.GetAnnotations()
+	return annotations != nil && annotations[AnnotationDisableUWMAlerting] == "true"
 }
 
 func GetOauthProxyImage(imageClient imagev1client.ImageV1Interface) (bool, string) {

@@ -180,7 +180,7 @@ func TestNewSecret(t *testing.T) {
 	}
 	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 
-	hubInfo, err := generateHubInfoSecret(c, mcoNamespace, namespace, true)
+	hubInfo, err := generateHubInfoSecret(c, mcoNamespace, namespace, true, mco)
 	if err != nil {
 		t.Fatalf("Failed to initial the hub info secret: (%v)", err)
 	}
@@ -198,7 +198,7 @@ func TestNewSecret(t *testing.T) {
 		CustomAlertmanagerHubURL:  "https://custom-am",
 	}
 	c = fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
-	hubInfo, err = generateHubInfoSecret(c, mcoNamespace, namespace, true)
+	hubInfo, err = generateHubInfoSecret(c, mcoNamespace, namespace, true, mco)
 	if err != nil {
 		t.Fatalf("Failed to initial the hub info secret: (%v)", err)
 	}
@@ -216,10 +216,11 @@ func TestNewSecret(t *testing.T) {
 func TestNewBYOSecret(t *testing.T) {
 	initSchema(t)
 
+	mco := newMultiClusterObservability()
 	objs := []runtime.Object{newTestObsApiRoute(), newTestAlertmanagerRoute(), newTestAmRouteBYOCA(), newTestAmRouteBYOCert()}
 	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 
-	hubInfo, err := generateHubInfoSecret(c, mcoNamespace, namespace, true)
+	hubInfo, err := generateHubInfoSecret(c, mcoNamespace, namespace, true, mco)
 	if err != nil {
 		t.Fatalf("Failed to initial the hub info secret: (%v)", err)
 	}
