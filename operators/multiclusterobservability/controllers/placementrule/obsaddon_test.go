@@ -12,7 +12,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
-	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -112,7 +111,7 @@ func TestStaleObsAddonCR(t *testing.T) {
 	if err == nil {
 		t.Fatalf("Failed to delete observabilityaddon, still present")
 	}
-	if err != nil && !k8serrors.IsNotFound(err) {
+	if err != nil && !errors.IsNotFound(err) {
 		t.Fatalf("Failed to delete observabilityaddon: %v", err)
 	}
 

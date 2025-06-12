@@ -365,6 +365,14 @@ func (r *ObservabilityAddonReconciler) initFinalization(
 		if err != nil {
 			return false, err
 		}
+
+		// revert the change to user workload monitoring stack
+		err = RevertUserWorkloadMonitoringConfig(ctx, r.Client)
+		if err != nil {
+			r.Logger.Error(err, "Failed to revert user workload monitoring config")
+			// Don't return error here as we want to continue with other cleanup
+		}
+
 		if isHypershift {
 			err = hypershift.DeleteServiceMonitors(ctx, r.Client)
 			if err != nil {

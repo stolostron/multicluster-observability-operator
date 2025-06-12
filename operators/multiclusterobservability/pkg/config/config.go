@@ -855,7 +855,7 @@ func IsAlertingDisabled() bool {
 // Get AnnotationMCOAlerting.
 func IsAlertingDisabledInSpec(mco *observabilityv1beta2.MultiClusterObservability) bool {
 	if mco == nil {
-		return false
+		return true
 	}
 
 	annotations := mco.GetAnnotations()
@@ -865,7 +865,7 @@ func IsAlertingDisabledInSpec(mco *observabilityv1beta2.MultiClusterObservabilit
 // Get AnnotationUWMAlerting.
 func IsUWMAlertingDisabledInSpec(mco *observabilityv1beta2.MultiClusterObservability) bool {
 	if mco == nil {
-		return false
+		return true
 	}
 
 	annotations := mco.GetAnnotations()
