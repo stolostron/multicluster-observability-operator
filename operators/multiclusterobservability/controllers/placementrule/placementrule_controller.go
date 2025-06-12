@@ -472,12 +472,12 @@ func createAllRelatedRes(
 		}
 	}
 
-	failedCreateManagedClusterRes := false
 	managedClusterList, err := getManagedClustersList(ctx, c)
 	if err != nil {
 		return fmt.Errorf("failed to get managed clusters list: %w", err)
 	}
 
+	var allErrors []error
 	for _, mci := range managedClusterList {
 		managedCluster := mci.Name
 		openshiftVersion := mci.OpenshiftVersion
@@ -502,7 +502,7 @@ func createAllRelatedRes(
 
 		addonDeployCfg, err := createManagedClusterRes(ctx, c, mco, managedCluster, namespace)
 		if err != nil {
-			failedCreateManagedClusterRes = true
+			allErrors = append(allErrors, fmt.Errorf("failed to createManagedClusterRes: %w", err))
 			log.Error(err, "Failed to create managedcluster resources", "namespace", managedCluster)
 			continue
 		}
@@ -538,20 +538,19 @@ func createAllRelatedRes(
 		managedClustersNamespaces[mc.Name] = struct{}{}
 	}
 
-	failedDeleteOba := false
 	for _, ep := range obsAddonList.Items {
 		if _, ok := managedClustersNamespaces[ep.Namespace]; ok {
 			continue
 		}
 
 		if err := deleteObsAddon(ctx, c, ep.Namespace); err != nil {
-			failedDeleteOba = true
+			allErrors = append(allErrors, fmt.Errorf("failed to deleteObsAddon: %w", err))
 			log.Error(err, "Failed to delete observabilityaddon", "namespace", ep.Namespace)
 		}
 	}
 
-	if failedCreateManagedClusterRes || failedDeleteOba {
-		return fmt.Errorf("failed to create managedcluster resources or failed to delete observabilityaddon: failedCreateManagedClusterRes=%t, failedDeleteOba=%t", failedCreateManagedClusterRes, failedDeleteOba)
+	if len(allErrors) > 0 {
+		return errors.Join(allErrors...)
 	}
 
 	return nil
