@@ -126,7 +126,7 @@ data:
                 "uid": "${datasource}"
               },
               "exemplar": true,
-              "expr": "max_over_time(acm_rs:cluster:cpu_recommendation{cluster=\"$cluster\", profile=\"$profile\"}[$days:])",
+              "expr": "max_over_time(sum by (cluster)(acm_rs:cluster:cpu_recommendation{cluster=\"$cluster\", profile=\"$profile\"})[$days:])",
               "instant": true,
               "interval": "",
               "legendFormat": "",
@@ -317,7 +317,7 @@ data:
                 "uid": "${datasource}"
               },
               "exemplar": true,
-              "expr": "max_over_time(acm_rs:cluster:cpu_usage{cluster=\"$cluster\", profile=\"$profile\"}[$days:])",
+              "expr": "max_over_time(sum by (cluster)(acm_rs:cluster:cpu_usage{cluster=\"$cluster\", profile=\"$profile\"})[$days:])",
               "instant": true,
               "interval": "",
               "legendFormat": "",
@@ -408,7 +408,7 @@ data:
                 "uid": "${datasource}"
               },
               "exemplar": true,
-              "expr": "max_over_time(acm_rs:cluster:cpu_request{cluster=\"$cluster\", profile=\"$profile\"}[$days:])",
+              "expr": "max_over_time(sum by (cluster)(acm_rs:cluster:cpu_request{cluster=\"$cluster\", profile=\"$profile\"})[$days:])",
               "instant": true,
               "interval": "",
               "legendFormat": "",
@@ -504,7 +504,7 @@ data:
                 "uid": "${datasource}"
               },
               "exemplar": true,
-              "expr": "max_over_time(acm_rs:cluster:cpu_usage{cluster=\"$cluster\", profile=\"$profile\"}[$days:]) / max_over_time(acm_rs:cluster:cpu_request{cluster=\"$cluster\", profile=\"$profile\"}[$days:])",
+              "expr": "max_over_time(sum by (cluster)(acm_rs:cluster:cpu_usage{cluster=\"$cluster\", profile=\"$profile\"})[$days:]) / max_over_time(sum by (cluster)(acm_rs:cluster:cpu_request{cluster=\"$cluster\", profile=\"$profile\"})[$days:])",
               "instant": true,
               "interval": "",
               "legendFormat": "",
@@ -1059,7 +1059,7 @@ data:
                 "uid": "${datasource}"
               },
               "exemplar": true,
-              "expr": "max_over_time(acm_rs:cluster:memory_recommendation{cluster=\"$cluster\", profile=\"$profile\"}[$days:])",
+              "expr": "max_over_time(sum by (cluster)(acm_rs:cluster:memory_recommendation{cluster=\"$cluster\", profile=\"$profile\"})[$days:])",
               "instant": true,
               "interval": "",
               "legendFormat": "",
@@ -1248,7 +1248,7 @@ data:
                 "uid": "${datasource}"
               },
               "exemplar": true,
-              "expr": "max_over_time(acm_rs:cluster:memory_usage{cluster=\"$cluster\", profile=\"$profile\"}[$days:])",
+              "expr": "max_over_time(sum by (cluster)(acm_rs:cluster:memory_usage{cluster=\"$cluster\", profile=\"$profile\"})[$days:])",
               "instant": true,
               "interval": "",
               "legendFormat": "",
@@ -1338,7 +1338,7 @@ data:
                 "uid": "${datasource}"
               },
               "exemplar": true,
-              "expr": "max_over_time(acm_rs:cluster:memory_request{cluster=\"$cluster\", profile=\"$profile\"}[$days:])",
+              "expr": "max_over_time(sum by (cluster)(acm_rs:cluster:memory_request{cluster=\"$cluster\", profile=\"$profile\"})[$days:])",
               "instant": true,
               "interval": "",
               "legendFormat": "",
@@ -1421,7 +1421,7 @@ data:
                 "uid": "${datasource}"
               },
               "exemplar": true,
-              "expr": "max_over_time(acm_rs:cluster:memory_usage{cluster=\"$cluster\", profile=\"$profile\"}[$days:]) / max_over_time(acm_rs:cluster:memory_request{cluster=\"$cluster\", profile=\"$profile\"}[$days:])",
+              "expr": "max_over_time(sum by (cluster)(acm_rs:cluster:memory_usage{cluster=\"$cluster\", profile=\"$profile\"})[$days:]) / max_over_time(sum by (cluster)(acm_rs:cluster:memory_request{cluster=\"$cluster\", profile=\"$profile\"})[$days:])",
               "instant": true,
               "interval": "",
               "legendFormat": "",
