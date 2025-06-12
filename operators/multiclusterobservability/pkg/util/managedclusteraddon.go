@@ -6,13 +6,15 @@ package util
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"time"
 
-	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/util/retry"
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -27,8 +29,22 @@ var (
 	spokeNameSpace = os.Getenv("SPOKE_NAMESPACE")
 )
 
-func CreateManagedClusterAddonCR(c client.Client, namespace, labelKey, labelValue string) (
-	*addonv1alpha1.ManagedClusterAddOn, error) {
+func CreateManagedClusterAddonCR(ctx context.Context, c client.Client, namespace, labelKey, labelValue string) (*addonv1alpha1.ManagedClusterAddOn, error) {
+	// check if managedClusterAddon exists
+	managedClusterAddon := &addonv1alpha1.ManagedClusterAddOn{}
+	objectKey := types.NamespacedName{
+		Name:      ManagedClusterAddonName,
+		Namespace: namespace,
+	}
+	err := c.Get(ctx, objectKey, managedClusterAddon)
+	if err != nil && !apierrors.IsNotFound(err) {
+		return nil, fmt.Errorf("failed to get the managedClusterAddon: %w", err)
+	}
+	if err == nil {
+		return managedClusterAddon, nil
+	}
+
+	// AddOn doesn't exist, create it
 	newManagedClusterAddon := &addonv1alpha1.ManagedClusterAddOn{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: addonv1alpha1.SchemeGroupVersion.String(),
@@ -45,56 +61,41 @@ func CreateManagedClusterAddonCR(c client.Client, namespace, labelKey, labelValu
 			InstallNamespace: spokeNameSpace,
 		},
 	}
+	if err := c.Create(ctx, newManagedClusterAddon); err != nil {
+		return nil, fmt.Errorf("failed to create managedclusteraddon for namespace %s: %w", namespace, err)
+	}
+
+	// Update its status
+	if managedClusterAddon, err = updateManagedClusterAddOnStatus(ctx, c, namespace); err != nil {
+		return nil, fmt.Errorf("failed to update newly created managedClusterAddonStatus: %w", err)
+	}
+
+	log.Info("ManagedClusterAddOn is created/updated successfully", "name", ManagedClusterAddonName, "namespace", namespace)
+	return managedClusterAddon, nil
+}
+
+func updateManagedClusterAddOnStatus(ctx context.Context, c client.Client, namespace string) (*addonv1alpha1.ManagedClusterAddOn, error) {
 	managedClusterAddon := &addonv1alpha1.ManagedClusterAddOn{}
-	// check if managedClusterAddon exists
-	if err := c.Get(
-		context.TODO(),
-		types.NamespacedName{
-			Name:      ManagedClusterAddonName,
-			Namespace: namespace,
-		},
-		managedClusterAddon,
-	); err != nil && errors.IsNotFound(err) {
-		// create new managedClusterAddon
-		if err := c.Create(context.TODO(), newManagedClusterAddon); err != nil {
-			log.Error(
-				err,
-				"failed to create managedclusteraddon",
-				"name",
-				ManagedClusterAddonName,
-				"namespace",
-				namespace,
-			)
-			return nil, err
-		}
-
-		// wait 10s for the created managedclusteraddon ready
-		if errPoll := wait.PollUntilContextTimeout(context.Background(), 2*time.Second, 10*time.Second, true, func(ctx context.Context) (bool, error) {
-			if err := c.Get(
-				ctx,
-				types.NamespacedName{
-					Name:      ManagedClusterAddonName,
-					Namespace: namespace,
-				},
-				managedClusterAddon,
-			); err == nil {
-				return true, nil
+	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		// wait until the cache gets the newly created managedClusterAddon
+		errPoll := wait.PollUntilContextTimeout(ctx, 100*time.Millisecond, 5*time.Second, true, func(ctx context.Context) (bool, error) {
+			objectKey := types.NamespacedName{
+				Name:      ManagedClusterAddonName,
+				Namespace: namespace,
 			}
-			return false, err
-		}); errPoll != nil {
-			log.Error(
-				errPoll,
-				"failed to get the created managedclusteraddon",
-				"name",
-				ManagedClusterAddonName,
-				"namespace",
-				namespace,
-			)
-			return nil, errPoll
+			if err := c.Get(ctx, objectKey, managedClusterAddon); err != nil {
+				if apierrors.IsNotFound(err) {
+					return false, nil // Not found yet, continue polling
+				}
+				return false, err
+			}
+			return true, nil
+		})
+		if errPoll != nil {
+			return fmt.Errorf("failed to get the created managedclusteraddon: %w", errPoll)
 		}
 
-		// got the created managedclusteraddon just now, uopdating its status
-		// TODO(saswatamcode): Remove deprecated field
+		// got the created managedclusteraddon just now, updating its status
 		//nolint:staticcheck
 		managedClusterAddon.Status.AddOnConfiguration = addonv1alpha1.ConfigCoordinates{
 			CRDName: "observabilityaddons.observability.open-cluster-management.io",
@@ -123,30 +124,14 @@ func CreateManagedClusterAddonCR(c client.Client, namespace, labelKey, labelValu
 				},
 			}
 		}
-		// update status for the created managedclusteraddon
-		if err := c.Status().Update(context.TODO(), managedClusterAddon); err != nil {
-			log.Error(
-				err,
-				"failed to update status for managedclusteraddon",
-				"name",
-				ManagedClusterAddonName,
-				"namespace",
-				namespace,
-			)
-			return nil, err
-		}
-		return managedClusterAddon, nil
-	} else if err != nil {
-		log.Error(err, "failed to get managedclusteraddon", "name", ManagedClusterAddonName, "namespace", namespace)
-		return nil, err
-	}
 
-	log.Info(
-		"ManagedClusterAddOn is created or updated successfully",
-		"name",
-		ManagedClusterAddonName,
-		"namespace",
-		namespace,
-	)
-	return managedClusterAddon, nil
+		// update status for the created managedclusteraddon
+		if err := c.Status().Update(ctx, managedClusterAddon); err != nil {
+			return fmt.Errorf("failed to update status for managedclusteraddon: %w", err)
+		}
+
+		return nil
+	})
+
+	return managedClusterAddon, retryErr
 }
