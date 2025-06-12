@@ -641,7 +641,7 @@ func createManagedClusterRes(ctx context.Context, c client.Client, mco *mcov1bet
 		return nil, fmt.Errorf("failed to create role bindings: %w", err)
 	}
 
-	addon, err := util.CreateManagedClusterAddonCR(c, namespace, ownerLabelKey, ownerLabelValue)
+	addon, err := util.CreateManagedClusterAddonCR(ctx, c, namespace, ownerLabelKey, ownerLabelValue)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create ManagedClusterAddon: %w", err)
 	}
