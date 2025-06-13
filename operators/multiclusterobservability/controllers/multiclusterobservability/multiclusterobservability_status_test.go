@@ -369,34 +369,7 @@ func TestUpdateMCOAStatus(t *testing.T) {
 			},
 		},
 		{
-			name: "When Logs and Metrics disabled, but NamespaceRightSizingRecommendation enabled",
-			instance: &mcov1beta2.MultiClusterObservability{
-				Spec: mcov1beta2.MultiClusterObservabilitySpec{
-					Capabilities: &mcov1beta2.CapabilitiesSpec{
-						Platform: &mcov1beta2.PlatformCapabilitiesSpec{
-							Logs: mcov1beta2.PlatformLogsSpec{
-								Collection: mcov1beta2.PlatformLogsCollectionSpec{
-									Enabled: false,
-								},
-							},
-							Metrics: mcov1beta2.PlatformMetricsSpec{
-								Collection: mcov1beta2.PlatformMetricsCollectionSpec{
-									Enabled: false,
-								},
-							},
-							Analytics: mcov1beta2.PlatformAnalyticsSpec{
-								NamespaceRightSizingRecommendation: mcov1beta2.PlatformNamespaceRightSizingRecommendationSpec{
-									Enabled: true,
-								},
-							},
-						},
-					},
-				},
-			},
-			expectedStatus: nil,
-		},
-		{
-			name: "When Logs and Metrics disabled, but IncidentDetection enabled",
+			name: "When Logs, Metrics, IncidentDetection all are disabled under platform",
 			instance: &mcov1beta2.MultiClusterObservability{
 				Spec: mcov1beta2.MultiClusterObservabilitySpec{
 					Capabilities: &mcov1beta2.CapabilitiesSpec{
@@ -413,7 +386,7 @@ func TestUpdateMCOAStatus(t *testing.T) {
 							},
 							Analytics: mcov1beta2.PlatformAnalyticsSpec{
 								IncidentDetection: mcov1beta2.PlatformIncidentDetectionSpec{
-									Enabled: true,
+									Enabled: false,
 								},
 							},
 						},
