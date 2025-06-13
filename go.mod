@@ -37,7 +37,7 @@ require (
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/pflag v1.0.6-0.20210604193023-d5e0c0615ace
 	github.com/stolostron/multiclusterhub-operator v0.0.0-20240626140553-4f1ed6be3b84
-	github.com/stolostron/observatorium-operator v0.0.0-20240521155951-b4302d25bd18
+	github.com/stolostron/observatorium-operator c070fc9bb17c
 	github.com/stolostron/rbac-api-utils v0.0.0-20240404212618-7f57fc664256
 	github.com/stretchr/testify v1.9.0
 	github.com/thanos-io/thanos v0.35.1
