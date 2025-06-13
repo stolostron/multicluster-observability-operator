@@ -509,6 +509,7 @@ func createAllRelatedRes(
 		}
 		manifestWork, err := createManifestWorks(c, namespace, mci, mco, works, metricsAllowlistConfigMap, crdv1Work, endpointMetricsOperatorDeploy, hubInfoSecret.DeepCopy(), addonDeployCfg, installProm)
 		if err != nil {
+			allErrors = append(allErrors, fmt.Errorf("failed to create manifestworks: %w", err))
 			log.Error(err, "Failed to create manifestworks: %w", err)
 			continue
 		}
@@ -518,6 +519,7 @@ func createAllRelatedRes(
 			// install the endpoint operator into open-cluster-management-observability namespace for the hub cluster
 			log.Info("Creating resource for hub metrics collection", "cluster", managedCluster)
 			if err := ensureResourcesForHubMetricsCollection(ctx, c, mco, manifestWork.Spec.Workload.Manifests); err != nil {
+				allErrors = append(allErrors, fmt.Errorf("failed to ensure resources for hub metrics collection: %w", err))
 				log.Error(err, "Failed to ensure resources for hub metrics collection")
 				continue
 			}
@@ -526,6 +528,7 @@ func createAllRelatedRes(
 				return createManifestwork(c, manifestWork)
 			})
 			if retryErr != nil {
+				allErrors = append(allErrors, fmt.Errorf("failed to create manifestwork: %w", retryErr))
 				log.Error(retryErr, "Failed to create manifestwork")
 				continue
 			}
