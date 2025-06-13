@@ -123,7 +123,7 @@ data:
                 "uid": "000000001"
               },
               "editorMode": "code",
-              "expr": "sum(cluster_name_namespace_prometheus:cardinality{metric_name=\"$metric_name\"}) by (cluster)",
+              "expr": "sum(cluster_name:cardinality{metric_name=\"$metric_name\"}) by (cluster)",
               "instant": false,
               "legendFormat": "__auto",
               "range": true,
@@ -220,7 +220,7 @@ data:
               },
               "editorMode": "code",
               "exemplar": false,
-              "expr": "sum(cluster_name_namespace_prometheus:cardinality{metric_name=\"$metric_name\"}) by (cluster)",
+              "expr": "sum(cluster_name:cardinality{metric_name=\"$metric_name\"}) by (cluster)",
               "format": "table",
               "instant": true,
               "legendFormat": "__auto",
@@ -800,7 +800,7 @@ data:
               "type": "prometheus",
               "uid": "000000001"
             },
-            "definition": "label_values(cluster_name_namespace_prometheus:cardinality,metric_name)",
+            "definition": "label_values(cluster_name:cardinality,metric_name)",
             "hide": 0,
             "includeAll": false,
             "label": "Metric name",
@@ -809,7 +809,7 @@ data:
             "options": [],
             "query": {
               "qryType": 1,
-              "query": "label_values(cluster_name_namespace_prometheus:cardinality,metric_name)",
+              "query": "label_values(cluster_name:cardinality,metric_name)",
               "refId": "PrometheusVariableQueryEditor-VariableQuery"
             },
             "refresh": 2,
@@ -828,7 +828,7 @@ data:
               "type": "prometheus",
               "uid": "000000001"
             },
-            "definition": "label_values(cluster_name_namespace_prometheus:cardinality{metric_name=\"$metric_name\"},cluster)",
+            "definition": "label_values(cluster_name:cardinality{metric_name=\"$metric_name\"},cluster)",
             "hide": 0,
             "includeAll": false,
             "label": "Cluster",
@@ -837,7 +837,7 @@ data:
             "options": [],
             "query": {
               "qryType": 1,
-              "query": "label_values(cluster_name_namespace_prometheus:cardinality{metric_name=\"$metric_name\"},cluster)",
+              "query": "label_values(cluster_name:cardinality{metric_name=\"$metric_name\"},cluster)",
               "refId": "PrometheusVariableQueryEditor-VariableQuery"
             },
             "refresh": 2,
@@ -856,7 +856,7 @@ data:
               "type": "prometheus",
               "uid": "000000001"
             },
-            "definition": "label_values(cluster_name_namespace_prometheus:cardinality{cluster=\"$cluster\", metric_name=\"$metric_name\"},namespace)",
+            "definition": "label_values(cluster_namespace:cardinality{cluster=\"$cluster\"},namespace)",
             "hide": 0,
             "includeAll": false,
             "label": "Namespace",
@@ -865,7 +865,7 @@ data:
             "options": [],
             "query": {
               "qryType": 1,
-              "query": "label_values(cluster_name_namespace_prometheus:cardinality{cluster=\"$cluster\", metric_name=\"$metric_name\"},namespace)",
+              "query": "label_values(cluster_namespace:cardinality{cluster=\"$cluster\"},namespace)",
               "refId": "PrometheusVariableQueryEditor-VariableQuery"
             },
             "refresh": 1,
