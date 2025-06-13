@@ -61,10 +61,11 @@ const (
 )
 
 var (
-	log                           = logf.Log.WithName("controller_placementrule")
-	clusterAddon                  = &addonv1alpha1.ClusterManagementAddOn{}
-	defaultAddonDeploymentConfig  = &addonv1alpha1.AddOnDeploymentConfig{}
-	isplacementControllerRunnning = false
+	log                               = logf.Log.WithName("controller_placementrule")
+	clusterAddon                      = &addonv1alpha1.ClusterManagementAddOn{}
+	defaultAddonDeploymentConfig      = &addonv1alpha1.AddOnDeploymentConfig{}
+	isplacementControllerRunnning     = false
+	managedClustersHaveReconciledOnce bool // Ensures that all managedClusters are reconciled once on MCO reboot
 )
 
 // PlacementRuleReconciler reconciles a PlacementRule object
@@ -472,17 +473,17 @@ func createAllRelatedRes(
 		}
 	}
 
-	failedCreateManagedClusterRes := false
 	managedClusterList, err := getManagedClustersList(ctx, c)
 	if err != nil {
 		return fmt.Errorf("failed to get managed clusters list: %w", err)
 	}
 
+	var allErrors []error
 	for _, mci := range managedClusterList {
 		managedCluster := mci.Name
 		openshiftVersion := mci.OpenshiftVersion
 
-		if !isReconcileRequired(request, managedCluster) {
+		if managedClustersHaveReconciledOnce && !isReconcileRequired(request, managedCluster) {
 			continue
 		}
 
@@ -502,12 +503,13 @@ func createAllRelatedRes(
 
 		addonDeployCfg, err := createManagedClusterRes(ctx, c, mco, managedCluster, namespace)
 		if err != nil {
-			failedCreateManagedClusterRes = true
+			allErrors = append(allErrors, fmt.Errorf("failed to createManagedClusterRes: %w", err))
 			log.Error(err, "Failed to create managedcluster resources", "namespace", managedCluster)
 			continue
 		}
 		manifestWork, err := createManifestWorks(c, namespace, mci, mco, works, metricsAllowlistConfigMap, crdv1Work, endpointMetricsOperatorDeploy, hubInfoSecret.DeepCopy(), addonDeployCfg, installProm)
 		if err != nil {
+			allErrors = append(allErrors, fmt.Errorf("failed to create manifestworks: %w", err))
 			log.Error(err, "Failed to create manifestworks: %w", err)
 			continue
 		}
@@ -517,6 +519,7 @@ func createAllRelatedRes(
 			// install the endpoint operator into open-cluster-management-observability namespace for the hub cluster
 			log.Info("Creating resource for hub metrics collection", "cluster", managedCluster)
 			if err := ensureResourcesForHubMetricsCollection(ctx, c, mco, manifestWork.Spec.Workload.Manifests); err != nil {
+				allErrors = append(allErrors, fmt.Errorf("failed to ensure resources for hub metrics collection: %w", err))
 				log.Error(err, "Failed to ensure resources for hub metrics collection")
 				continue
 			}
@@ -525,10 +528,15 @@ func createAllRelatedRes(
 				return createManifestwork(c, manifestWork)
 			})
 			if retryErr != nil {
+				allErrors = append(allErrors, fmt.Errorf("failed to create manifestwork: %w", retryErr))
 				log.Error(retryErr, "Failed to create manifestwork")
 				continue
 			}
 		}
+	}
+
+	if len(allErrors) == 0 {
+		managedClustersHaveReconciledOnce = true
 	}
 
 	// Look through the obsAddonList items and find clusters
@@ -538,20 +546,19 @@ func createAllRelatedRes(
 		managedClustersNamespaces[mc.Name] = struct{}{}
 	}
 
-	failedDeleteOba := false
 	for _, ep := range obsAddonList.Items {
 		if _, ok := managedClustersNamespaces[ep.Namespace]; ok {
 			continue
 		}
 
 		if err := deleteObsAddon(ctx, c, ep.Namespace); err != nil {
-			failedDeleteOba = true
+			allErrors = append(allErrors, fmt.Errorf("failed to deleteObsAddon: %w", err))
 			log.Error(err, "Failed to delete observabilityaddon", "namespace", ep.Namespace)
 		}
 	}
 
-	if failedCreateManagedClusterRes || failedDeleteOba {
-		return fmt.Errorf("failed to create managedcluster resources or failed to delete observabilityaddon: failedCreateManagedClusterRes=%t, failedDeleteOba=%t", failedCreateManagedClusterRes, failedDeleteOba)
+	if len(allErrors) > 0 {
+		return errors.Join(allErrors...)
 	}
 
 	return nil
@@ -637,7 +644,7 @@ func createManagedClusterRes(ctx context.Context, c client.Client, mco *mcov1bet
 		return nil, fmt.Errorf("failed to create role bindings: %w", err)
 	}
 
-	addon, err := util.CreateManagedClusterAddonCR(c, namespace, ownerLabelKey, ownerLabelValue)
+	addon, err := util.CreateManagedClusterAddonCR(ctx, c, namespace, ownerLabelKey, ownerLabelValue)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create ManagedClusterAddon: %w", err)
 	}
