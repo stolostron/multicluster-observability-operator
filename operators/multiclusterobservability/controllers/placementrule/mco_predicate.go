@@ -28,7 +28,7 @@ func getMCOPred(c client.Client, ingressCtlCrdExists bool) predicate.Funcs {
 			alertingStatus := config.IsAlertingDisabledInSpec(mco)
 			config.SetAlertingDisabled(alertingStatus)
 			var err error
-			hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, ingressCtlCrdExists)
+			hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, ingressCtlCrdExists, mco)
 			if err != nil {
 				log.Error(err, "unable to get HubInfoSecret", "controller", "PlacementRule")
 			}
@@ -55,7 +55,7 @@ func getMCOPred(c client.Client, ingressCtlCrdExists bool) predicate.Funcs {
 
 			if updateHubInfo {
 				var err error
-				hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, ingressCtlCrdExists)
+				hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, ingressCtlCrdExists, newMCO)
 				if err != nil {
 					log.Error(err, "unable to get HubInfoSecret", "controller", "PlacementRule")
 				}
