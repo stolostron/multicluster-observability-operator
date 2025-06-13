@@ -23,7 +23,9 @@ import (
 
 const (
 	ManagedClusterAddonName  = "observability-controller" // #nosec G101 -- Not a hardcoded credential.
-	ProgressingConditionType = "Progressing"
+	progressingConditionType = "Progressing"
+	availableConditionType   = "Available"
+	degradedConditionType    = "Degraded"
 )
 
 var (
@@ -100,9 +102,11 @@ func updateManagedClusterAddOnStatus(ctx context.Context, c client.Client, names
 		desiredStatus := existingManagedClusterAddon.Status.DeepCopy()
 
 		// Ensure that the progressing condition exists. If not, add it as it may have just been created.
-		if meta.FindStatusCondition(desiredStatus.Conditions, ProgressingConditionType) == nil {
+		isAvailable := meta.IsStatusConditionTrue(desiredStatus.Conditions, availableConditionType)
+		isDegraded := meta.IsStatusConditionTrue(desiredStatus.Conditions, degradedConditionType)
+		if meta.FindStatusCondition(desiredStatus.Conditions, progressingConditionType) == nil && !isAvailable && !isDegraded {
 			newCondition := metav1.Condition{
-				Type:               ProgressingConditionType,
+				Type:               progressingConditionType,
 				Status:             metav1.ConditionTrue,
 				LastTransitionTime: metav1.NewTime(time.Now()),
 				Reason:             "ManifestWorkCreated",
@@ -137,5 +141,9 @@ func updateManagedClusterAddOnStatus(ctx context.Context, c client.Client, names
 		return nil
 	})
 
-	return existingManagedClusterAddon, retryErr
+	if retryErr != nil {
+		return nil, retryErr
+	}
+
+	return existingManagedClusterAddon, nil
 }
