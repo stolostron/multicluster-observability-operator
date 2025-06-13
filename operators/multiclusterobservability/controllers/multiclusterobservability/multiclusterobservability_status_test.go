@@ -395,6 +395,33 @@ func TestUpdateMCOAStatus(t *testing.T) {
 			},
 			expectedStatus: nil,
 		},
+		{
+			name: "When Logs and Metrics disabled, but IncidentDetection enabled",
+			instance: &mcov1beta2.MultiClusterObservability{
+				Spec: mcov1beta2.MultiClusterObservabilitySpec{
+					Capabilities: &mcov1beta2.CapabilitiesSpec{
+						Platform: &mcov1beta2.PlatformCapabilitiesSpec{
+							Logs: mcov1beta2.PlatformLogsSpec{
+								Collection: mcov1beta2.PlatformLogsCollectionSpec{
+									Enabled: false,
+								},
+							},
+							Metrics: mcov1beta2.PlatformMetricsSpec{
+								Collection: mcov1beta2.PlatformMetricsCollectionSpec{
+									Enabled: false,
+								},
+							},
+							Analytics: mcov1beta2.PlatformAnalyticsSpec{
+								IncidentDetection: mcov1beta2.PlatformIncidentDetectionSpec{
+									Enabled: true,
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedStatus: nil,
+		},
 	}
 
 	for _, tt := range tests {
