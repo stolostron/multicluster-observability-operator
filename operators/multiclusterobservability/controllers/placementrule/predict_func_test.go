@@ -61,7 +61,13 @@ func TestGetMgClusterAddonPredFunc(t *testing.T) {
 	ce := event.CreateEvent{
 		Object: newManagedClusterAddon(),
 	}
-	if pred.CreateFunc(ce) {
+	if !pred.CreateFunc(ce) {
+		t.Fatal("reconcile failed to trigger for managedclusteraddon create event")
+	}
+
+	invalidAddon := newManagedClusterAddon()
+	invalidAddon.Name = "another-addon"
+	if pred.CreateFunc(event.CreateEvent{Object: invalidAddon}) {
 		t.Fatal("reconcile triggered for managedclusteraddon create event")
 	}
 
