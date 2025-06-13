@@ -272,6 +272,12 @@ func updateMCOAStatus(c client.Client, conds *[]mcoshared.Condition, mco *mcov1b
 		return
 	}
 
+	// Return early if only the NamespaceRightSizingRecommendation feature is enabled
+	// and both Logs and Metrics collection are disabled in the Platform configuration.
+	if mco.Spec.Capabilities.Platform != nil && !mco.Spec.Capabilities.Platform.Logs.Collection.Enabled && !mco.Spec.Capabilities.Platform.Metrics.Collection.Enabled && mco.Spec.Capabilities.Platform.Analytics.NamespaceRightSizingRecommendation.Enabled {
+		return
+	}
+
 	var missing []string
 
 outer:
