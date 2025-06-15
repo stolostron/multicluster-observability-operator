@@ -22,7 +22,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-co-op/gocron"
+	"github.com/go-co-op/gocron/v2"
 	projectv1 "github.com/openshift/api/project/v1"
 	userv1 "github.com/openshift/api/user/v1"
 	proxyconfig "github.com/stolostron/multicluster-observability-operator/proxy/pkg/config"

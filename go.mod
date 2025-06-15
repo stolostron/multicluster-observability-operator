@@ -9,7 +9,7 @@ require (
 	github.com/cenkalti/backoff/v4 v4.3.0
 	github.com/cloudflare/cfssl v1.6.5
 	github.com/ghodss/yaml v1.0.1-0.20220118164431-d8423dcdf344
-	github.com/go-co-op/gocron v1.37.0
+	github.com/go-co-op/gocron/v2 v2.16.2
 	github.com/go-kit/log v0.2.1
 	github.com/go-logr/logr v1.4.2
 	github.com/gogo/protobuf v1.3.2
@@ -39,7 +39,7 @@ require (
 	github.com/stolostron/multiclusterhub-operator v0.0.0-20240626140553-4f1ed6be3b84
 	github.com/stolostron/observatorium-operator v0.0.0-20240521155951-b4302d25bd18
 	github.com/stolostron/rbac-api-utils v0.0.0-20240404212618-7f57fc664256
-	github.com/stretchr/testify v1.9.0
+	github.com/stretchr/testify v1.10.0
 	github.com/thanos-io/thanos v0.35.1
 	go.uber.org/zap v1.27.0
 	golang.org/x/exp v0.0.0-20240525044651-4c93da0ed11d
@@ -126,6 +126,7 @@ require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/jmoiron/sqlx v1.3.5 // indirect
+	github.com/jonboulle/clockwork v0.5.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/jpillora/backoff v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
