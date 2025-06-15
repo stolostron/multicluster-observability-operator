@@ -84,7 +84,7 @@ require (
 	github.com/distribution/reference v0.6.0 // indirect
 	github.com/docker/go-connections v0.5.0 // indirect
 	github.com/edsrzf/mmap-go v1.1.0 // indirect
-	github.com/efficientgo/core v1.0.0-rc.2 // indirect
+	github.com/efficientgo/core v1.0.0-rc.3 // indirect
 	github.com/emicklei/go-restful/v3 v3.12.1 // indirect
 	github.com/evanphx/json-patch v5.9.0+incompatible // indirect
 	github.com/evanphx/json-patch/v5 v5.9.0 // indirect
