@@ -154,7 +154,7 @@ require (
 	github.com/stoewer/go-strcase v1.3.0 // indirect
 	github.com/uber/jaeger-client-go v2.30.0+incompatible // indirect
 	github.com/uber/jaeger-lib v2.4.1+incompatible // indirect
-	github.com/weppos/publicsuffix-go v0.30.0 // indirect
+	github.com/weppos/publicsuffix-go v0.40.2 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	github.com/xlab/treeprint v1.2.0 // indirect
 	github.com/zmap/zcrypto v0.0.0-20230310154051-c8b263fd8300 // indirect
