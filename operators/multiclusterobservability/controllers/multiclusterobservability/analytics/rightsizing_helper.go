@@ -5,7 +5,7 @@
 package analytics
 
 import (
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 	clusterv1beta1 "open-cluster-management.io/api/cluster/v1beta1"
 )
 

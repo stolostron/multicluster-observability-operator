@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/prometheus/common/model"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 // Config is for s3/azure/gcs compatible configuration.

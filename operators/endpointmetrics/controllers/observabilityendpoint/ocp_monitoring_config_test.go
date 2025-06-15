@@ -24,7 +24,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 const (
