@@ -17,7 +17,7 @@ import (
 	"github.com/onsi/ginkgo/v2/reporters"
 	. "github.com/onsi/gomega"
 	"gopkg.in/yaml.v2"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/utils"
 )

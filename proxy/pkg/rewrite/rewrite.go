@@ -11,7 +11,7 @@ import (
 	"github.com/prometheus-community/prom-label-proxy/injectproxy"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/promql/parser"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 )
 
 const (

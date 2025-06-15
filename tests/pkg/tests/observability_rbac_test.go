@@ -16,7 +16,7 @@ import (
 	"github.com/onsi/ginkgo/v2/types"
 	. "github.com/onsi/gomega"
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/utils"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 )
 
 var _ = Describe("", Ordered, func() {
