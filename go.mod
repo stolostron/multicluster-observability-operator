@@ -39,7 +39,7 @@ require (
 	github.com/stolostron/multiclusterhub-operator v0.0.0-20240626140553-4f1ed6be3b84
 	github.com/stolostron/observatorium-operator v0.0.0-20240521155951-b4302d25bd18
 	github.com/stolostron/rbac-api-utils v0.0.0-20240404212618-7f57fc664256
-	github.com/stretchr/testify v1.9.0
+	github.com/stretchr/testify v1.10.0
 	github.com/thanos-io/thanos v0.35.1
 	go.uber.org/zap v1.27.0
 	golang.org/x/exp v0.0.0-20240525044651-4c93da0ed11d
@@ -160,7 +160,7 @@ require (
 	github.com/zmap/zcrypto v0.0.0-20230310154051-c8b263fd8300 // indirect
 	github.com/zmap/zlint/v3 v3.5.0 // indirect
 	go.etcd.io/etcd/api/v3 v3.5.13 // indirect
-	go.etcd.io/etcd/client/pkg/v3 v3.5.13 // indirect
+	go.etcd.io/etcd/client/pkg/v3 v3.6.1 // indirect
 	go.etcd.io/etcd/client/v3 v3.5.13 // indirect
 	go.mongodb.org/mongo-driver v1.14.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.50.0 // indirect
