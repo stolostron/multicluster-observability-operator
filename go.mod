@@ -52,7 +52,7 @@ require (
 	k8s.io/kubectl v0.29.3
 	k8s.io/utils v0.0.0-20240502163921-fe8a2dddb1d0
 	open-cluster-management.io/addon-framework v0.12.0
-	open-cluster-management.io/api v0.16.0
+	open-cluster-management.io/api v0.16.2
 	open-cluster-management.io/config-policy-controller v0.14.0
 	open-cluster-management.io/governance-policy-propagator v0.12.0
 	sigs.k8s.io/controller-runtime v0.18.4
