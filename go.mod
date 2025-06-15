@@ -6,7 +6,7 @@ toolchain go1.23.7
 
 require (
 	github.com/IBM/controller-filtered-cache v0.3.6
-	github.com/cenkalti/backoff/v4 v4.3.0
+	github.com/cenkalti/backoff/v5 v5.0.2
 	github.com/cloudflare/cfssl v1.6.5
 	github.com/ghodss/yaml v1.0.1-0.20220118164431-d8423dcdf344
 	github.com/go-co-op/gocron v1.37.0
@@ -76,6 +76,7 @@ require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect
 	github.com/brancz/locutus v0.0.0-20210511124350-7a84f4d1bcb3 // indirect
+	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/coreos/go-semver v0.3.1 // indirect
 	github.com/coreos/go-systemd/v22 v22.5.0 // indirect
