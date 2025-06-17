@@ -208,9 +208,9 @@ data:
                 "expr": "min_over_time(timestamp(max by (group_id) (cluster:health:components:map{cluster=\"$cluster\"}))[$__interval:1m]) * 1000",
                 "format": "table",
                 "hide": false,
-                "instant": false,
+                "instant": true,
                 "legendFormat": "__auto",
-                "range": true,
+                "range": false,
                 "refId": "B"
                 }
             ],
