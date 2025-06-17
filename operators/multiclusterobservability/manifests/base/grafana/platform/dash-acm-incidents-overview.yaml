@@ -421,9 +421,9 @@ data:
                 "exemplar": false,
                 "expr": "count(sum(count_over_time((cluster:health:components:map{cluster=\"$cluster\",src_severity!=\"none\"}>0)[$__interval:1m])) by (group_id))",
                 "format": "time_series",
-                "instant": false,
+                "instant": true,
                 "legendFormat": "__auto",
-                "range": true,
+                "range": false,
                 "refId": "A"
                 }
             ],
