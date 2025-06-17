@@ -543,7 +543,12 @@ func createAllRelatedRes(
 	// which are no longer to be managed and therefore needs deletion
 	managedClustersNamespaces := make(map[string]struct{}, len(managedClusterList))
 	for _, mc := range managedClusterList {
-		managedClustersNamespaces[mc.Name] = struct{}{}
+		if mc.IsLocalCluster {
+			// local cluster resources live in a different namespace than the ManagedClusterName
+			managedClustersNamespaces[config.GetDefaultNamespace()] = struct{}{}
+		} else {
+			managedClustersNamespaces[mc.Name] = struct{}{}
+		}
 	}
 
 	for _, ep := range obsAddonList.Items {
