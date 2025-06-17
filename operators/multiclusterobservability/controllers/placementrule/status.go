@@ -16,7 +16,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	mcov1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
-	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"k8s.io/apimachinery/pkg/api/meta"
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 )
@@ -34,15 +34,15 @@ func updateAddonStatus(ctx context.Context, c client.Client, addonList mcov1beta
 		retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 			managedclusteraddon := &addonv1alpha1.ManagedClusterAddOn{}
 			err := c.Get(ctx, types.NamespacedName{
-				Name:      util.ManagedClusterAddonName,
+				Name:      config.ManagedClusterAddonName,
 				Namespace: addon.ObjectMeta.Namespace,
 			}, managedclusteraddon)
 			if err != nil {
 				if apierrors.IsNotFound(err) {
-					log.Info("managedclusteraddon does not exist", "namespace", addon.ObjectMeta.Namespace, "name", util.ManagedClusterAddonName)
+					log.Info("managedclusteraddon does not exist", "namespace", addon.ObjectMeta.Namespace, "name", config.ManagedClusterAddonName)
 					return nil
 				}
-				log.Error(err, "Failed to get managedclusteraddon", "namespace", addon.ObjectMeta.Namespace, "name", util.ManagedClusterAddonName)
+				log.Error(err, "Failed to get managedclusteraddon", "namespace", addon.ObjectMeta.Namespace, "name", config.ManagedClusterAddonName)
 				return err
 			}
 

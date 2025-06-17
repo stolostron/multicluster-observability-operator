@@ -8,6 +8,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -31,7 +32,7 @@ func TestManagedClusterAddon(t *testing.T) {
 	addon := &addonv1alpha1.ManagedClusterAddOn{}
 	err = c.Get(context.TODO(),
 		types.NamespacedName{
-			Name:      ManagedClusterAddonName,
+			Name:      config.ManagedClusterAddonName,
 			Namespace: namespace,
 		},
 		addon,

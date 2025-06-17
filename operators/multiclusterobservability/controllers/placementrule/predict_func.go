@@ -51,10 +51,10 @@ func getClusterMgmtAddonPredFunc() predicate.Funcs {
 func getMgClusterAddonPredFunc() predicate.Funcs {
 	return predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
-			return e.Object.GetName() == util.ManagedClusterAddonName
+			return e.Object.GetName() == config.ManagedClusterAddonName
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			if e.ObjectOld.GetName() != util.ManagedClusterAddonName {
+			if e.ObjectOld.GetName() != config.ManagedClusterAddonName {
 				return false
 			}
 			oldConfig := addonv1alpha1.ConfigReferent{}

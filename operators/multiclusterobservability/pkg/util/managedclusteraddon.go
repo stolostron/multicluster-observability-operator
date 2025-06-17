@@ -10,6 +10,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -22,7 +23,6 @@ import (
 )
 
 const (
-	ManagedClusterAddonName  = "observability-controller" // #nosec G101 -- Not a hardcoded credential.
 	progressingConditionType = "Progressing"
 	availableConditionType   = "Available"
 	degradedConditionType    = "Degraded"
@@ -37,7 +37,7 @@ func CreateManagedClusterAddonCR(ctx context.Context, c client.Client, namespace
 	// check if managedClusterAddon exists
 	managedClusterAddon := &addonv1alpha1.ManagedClusterAddOn{}
 	objectKey := types.NamespacedName{
-		Name:      ManagedClusterAddonName,
+		Name:      config.ManagedClusterAddonName,
 		Namespace: namespace,
 	}
 	err := c.Get(ctx, objectKey, managedClusterAddon)
@@ -70,7 +70,7 @@ func createManagedClusterAddOn(ctx context.Context, c client.Client, namespace, 
 			Kind:       "ManagedClusterAddOn",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      ManagedClusterAddonName,
+			Name:      config.ManagedClusterAddonName,
 			Namespace: namespace,
 			Labels: map[string]string{
 				labelKey: labelValue,
@@ -91,7 +91,7 @@ func updateManagedClusterAddOnStatus(ctx context.Context, c client.Client, names
 	existingManagedClusterAddon := &addonv1alpha1.ManagedClusterAddOn{}
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		objectKey := types.NamespacedName{
-			Name:      ManagedClusterAddonName,
+			Name:      config.ManagedClusterAddonName,
 			Namespace: namespace,
 		}
 		if err := c.Get(ctx, objectKey, existingManagedClusterAddon); err != nil {

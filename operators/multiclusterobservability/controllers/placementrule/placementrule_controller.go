@@ -689,7 +689,7 @@ func createManagedClusterRes(ctx context.Context, c client.Client, mco *mcov1bet
 func deleteManagedClusterRes(c client.Client, namespace string) error {
 	managedclusteraddon := &addonv1alpha1.ManagedClusterAddOn{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      util.ManagedClusterAddonName,
+			Name:      config.ManagedClusterAddonName,
 			Namespace: namespace,
 		},
 	}

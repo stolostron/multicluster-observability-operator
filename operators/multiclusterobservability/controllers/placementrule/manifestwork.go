@@ -106,8 +106,9 @@ func newManifestwork(name string, namespace string) *workv1.ManifestWork {
 			Name:      name,
 			Namespace: namespace,
 			Labels: map[string]string{
-				ownerLabelKey:               ownerLabelValue,
-				addonv1alpha1.AddonLabelKey: "observability-controller",
+				ownerLabelKey: ownerLabelValue,
+				// Add label expected by OCM to retrieve manifestWork belonging to the addon and update its status
+				addonv1alpha1.AddonLabelKey: config.ManagedClusterAddonName,
 			},
 			Annotations: map[string]string{
 				// Add the postpone delete annotation for manifestwork so that the observabilityaddon can be
