@@ -57,7 +57,7 @@ func updateAddonStatus(ctx context.Context, c client.Client, addonList mcov1beta
 			}
 
 			isUpdated = true
-			return c.Status().Patch(ctx, desiredAddon, client.StrategicMergeFrom(managedclusteraddon))
+			return c.Status().Patch(ctx, desiredAddon, client.MergeFrom(managedclusteraddon))
 		})
 		if retryErr != nil {
 			log.Error(retryErr, "Failed to update status for managedclusteraddon", "namespace", addon.ObjectMeta.Namespace)
