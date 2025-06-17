@@ -9,7 +9,6 @@ import (
 	"errors"
 	"slices"
 
-	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -49,20 +48,23 @@ func updateAddonStatus(ctx context.Context, c client.Client, addonList mcov1beta
 
 			desiredAddon := managedclusteraddon.DeepCopy()
 			for _, cond := range obsAddonConditions {
-				meta.SetStatusCondition(&desiredAddon.Status.Conditions, cond)
+				if meta.IsStatusConditionPresentAndEqual(desiredAddon.Status.Conditions, cond.Type, cond.Status) {
+					continue
+				}
+				if meta.SetStatusCondition(&desiredAddon.Status.Conditions, cond) {
+					isUpdated = true
+				}
 			}
 
-			if equality.Semantic.DeepEqual(desiredAddon.Status, managedclusteraddon.Status) {
+			if !isUpdated {
 				return nil
 			}
 
-			isUpdated = true
 			return c.Status().Patch(ctx, desiredAddon, client.MergeFrom(managedclusteraddon))
 		})
 		if retryErr != nil {
 			log.Error(retryErr, "Failed to update status for managedclusteraddon", "namespace", addon.ObjectMeta.Namespace)
 			allErrors = append(allErrors, retryErr)
-			// return retryErr
 		}
 
 		if retryErr == nil && isUpdated {
