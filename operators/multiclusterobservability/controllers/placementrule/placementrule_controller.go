@@ -267,6 +267,11 @@ func (r *PlacementRuleReconciler) cleanOrphanResources(ctx context.Context, req 
 			continue
 		}
 
+		if ns == config.GetDefaultNamespace() {
+			// Local cluster has no ObservabilityAddon, skip if the namespace matches
+			continue
+		}
+
 		log.Info("Deleting orphaned ManagedCluster resources", "namespace", ns)
 		if err := deleteManagedClusterRes(r.Client, ns); err != nil {
 			return fmt.Errorf("failed to delete managed cluster resources in namespace %q: %w", ns, err)
