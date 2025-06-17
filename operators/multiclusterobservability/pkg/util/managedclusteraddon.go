@@ -49,8 +49,7 @@ func CreateManagedClusterAddonCR(ctx context.Context, c client.Client, namespace
 				return nil, fmt.Errorf("failed to create managedclusteraddon for namespace %s: %w", namespace, err)
 			}
 
-			log.Info("Successfully created ManagedClusterAddOn. Waiting for next reconcile to update status.", "name", addon.Name, "namespace", addon.Namespace)
-			return addon, nil
+			log.Info("Successfully created ManagedClusterAddOn.", "name", addon.Name, "namespace", addon.Namespace)
 		} else {
 			return nil, fmt.Errorf("failed to get the managedClusterAddon: %w", err)
 		}
@@ -58,7 +57,7 @@ func CreateManagedClusterAddonCR(ctx context.Context, c client.Client, namespace
 
 	// Update its status
 	if managedClusterAddon, err = updateManagedClusterAddOnStatus(ctx, c, namespace); err != nil {
-		return nil, fmt.Errorf("failed to update newly created managedClusterAddonStatus: %w", err)
+		return nil, fmt.Errorf("failed to update the managedClusterAddon status: %w", err)
 	}
 
 	return managedClusterAddon, nil
