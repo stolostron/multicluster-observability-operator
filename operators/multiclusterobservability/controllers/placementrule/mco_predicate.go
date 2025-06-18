@@ -53,6 +53,14 @@ func getMCOPred(c client.Client, ingressCtlCrdExists bool) predicate.Funcs {
 				updateHubInfo = true
 			}
 
+			// Check if UWM alerting status changed
+			oldUWMAlertingStatus := config.IsUWMAlertingDisabledInSpec(oldMCO)
+			newUWMAlertingStatus := config.IsUWMAlertingDisabledInSpec(newMCO)
+			if oldUWMAlertingStatus != newUWMAlertingStatus {
+				retval = true
+				updateHubInfo = true
+			}
+
 			if updateHubInfo {
 				var err error
 				hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, ingressCtlCrdExists, config.IsUWMAlertingDisabledInSpec(newMCO))

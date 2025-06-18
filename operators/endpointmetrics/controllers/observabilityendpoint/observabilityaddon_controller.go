@@ -587,6 +587,13 @@ func (r *ObservabilityAddonReconciler) SetupWithManager(mgr ctrl.Manager) error 
 			builder.WithPredicates(configMapDataChangedPredicate(clusterMonitoringConfigName, promNamespace)),
 		).
 		Watches(
+			&corev1.ConfigMap{},
+			&handler.EnqueueRequestForObject{},
+			builder.WithPredicates(configMapDataChangedPredicate(
+				operatorconfig.OCPUserWorkloadMonitoringConfigMap,
+				operatorconfig.OCPUserWorkloadMonitoringNamespace)),
+		).
+		Watches(
 			&appsv1.Deployment{},
 			&handler.EnqueueRequestForObject{},
 			builder.WithPredicates(getPred(metricsCollectorName, r.Namespace, true, true, true)),

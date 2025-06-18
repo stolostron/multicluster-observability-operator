@@ -57,7 +57,7 @@ const (
 	AnnotationMCOPause           = "mco-pause"
 	AnnotationCertDuration       = "mco-cert-duration"
 	AnnotationDisableMCOAlerting = "mco-disable-alerting"
-	AnnotationDisableUWMAlerting = "mco-disable-uwm-alerting"
+	AnnotationDisableUWMAlerting = "mco-disable-uwl-alerting"
 
 	MCHUpdatedRequestName               = "mch-updated-request"
 	MCOUpdatedRequestName               = "mco-updated-request"

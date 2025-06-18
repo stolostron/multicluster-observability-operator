@@ -196,6 +196,64 @@ func TestNewSecret(t *testing.T) {
 		t.Fatalf("Wrong content in hub info secret: \ngot: "+hub.ObservatoriumAPIEndpoint+" "+hub.AlertmanagerEndpoint+" "+hub.AlertmanagerRouterCA, clusterName+" "+"https://test-host"+" "+"test-host"+" "+routerCA)
 	}
 
+	// Test UWM alerting disabled
+	mco.Annotations = map[string]string{config.AnnotationDisableUWMAlerting: "true"}
+	hubInfo, err = generateHubInfoSecret(c, mcoNamespace, namespace, true, config.IsUWMAlertingDisabledInSpec(mco))
+	if err != nil {
+		t.Fatalf("Failed to generate hub info secret with UWM alerting disabled: %v", err)
+	}
+	if hubInfo == nil {
+		t.Fatal("Generated hub info secret is nil")
+	}
+	hub = &operatorconfig.HubInfo{}
+	err = yaml.Unmarshal(hubInfo.Data[operatorconfig.HubInfoSecretKey], &hub)
+	if err != nil {
+		t.Fatalf("Failed to unmarshal data in hub info secret (%v)", err)
+	}
+	if !hub.UWMAlertingDisabled {
+		t.Fatalf("UWM alerting should be disabled, but UWMAlertingDisabled is false")
+	}
+
+	// Test UWM alerting enabled
+	mco.Annotations = map[string]string{config.AnnotationDisableUWMAlerting: "false"}
+	hubInfo, err = generateHubInfoSecret(c, mcoNamespace, namespace, true, config.IsUWMAlertingDisabledInSpec(mco))
+	if err != nil {
+		t.Fatalf("Failed to generate hub info secret with UWM alerting enabled: %v", err)
+	}
+	if hubInfo == nil {
+		t.Fatal("Generated hub info secret is nil")
+	}
+	hub = &operatorconfig.HubInfo{}
+	err = yaml.Unmarshal(hubInfo.Data[operatorconfig.HubInfoSecretKey], &hub)
+	if err != nil {
+		t.Fatalf("Failed to unmarshal data in hub info secret (%v)", err)
+	}
+	if hub.UWMAlertingDisabled {
+		t.Fatalf("UWM alerting should be enabled, but UWMAlertingDisabled is true")
+	}
+
+	// Test UWM alerting disabled but general alerting enabled
+	mco.Annotations = map[string]string{config.AnnotationDisableUWMAlerting: "true"}
+	config.SetAlertingDisabled(false) // Enable general alerting
+	hubInfo, err = generateHubInfoSecret(c, mcoNamespace, namespace, true, config.IsUWMAlertingDisabledInSpec(mco))
+	if err != nil {
+		t.Fatalf("Failed to generate hub info secret with UWM alerting disabled but general alerting enabled: %v", err)
+	}
+	if hubInfo == nil {
+		t.Fatal("Generated hub info secret is nil")
+	}
+	hub = &operatorconfig.HubInfo{}
+	err = yaml.Unmarshal(hubInfo.Data[operatorconfig.HubInfoSecretKey], &hub)
+	if err != nil {
+		t.Fatalf("Failed to unmarshal data in hub info secret (%v)", err)
+	}
+	if !hub.UWMAlertingDisabled {
+		t.Fatalf("UWM alerting should be disabled, but UWMAlertingDisabled is false")
+	}
+	if hub.AlertmanagerEndpoint == "" {
+		t.Fatalf("AlertmanagerEndpoint should be set when general alerting is enabled")
+	}
+
 	mco.Spec.AdvancedConfig = &mcov1beta2.AdvancedConfig{
 		CustomObservabilityHubURL: "https://custom-obs:8080",
 		CustomAlertmanagerHubURL:  "https://custom-am",
