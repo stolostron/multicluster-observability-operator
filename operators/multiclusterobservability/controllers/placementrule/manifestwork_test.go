@@ -389,7 +389,7 @@ func TestManifestWork(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create manifestworks: (%v)", err)
 	}
-	if err := createManifestwork(c, manWork); err != nil {
+	if err := createManifestwork(context.Background(), c, manWork); err != nil {
 		t.Fatalf("Failed to apply manifestworks: (%v)", err)
 	}
 
@@ -427,7 +427,7 @@ func TestManifestWork(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create manifestworks: (%v)", err)
 	}
-	if err := createManifestwork(c, manWork); err != nil {
+	if err := createManifestwork(context.Background(), c, manWork); err != nil {
 		t.Fatalf("Failed to apply manifestworks: (%v)", err)
 	}
 	err = c.Get(context.TODO(), types.NamespacedName{Name: workName, Namespace: namespace}, found)
@@ -443,7 +443,7 @@ func TestManifestWork(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create manifestworks with updated namespace: (%v)", err)
 	}
-	if err := createManifestwork(c, manWork); err != nil {
+	if err := createManifestwork(context.Background(), c, manWork); err != nil {
 		t.Fatalf("Failed to apply manifestworks: (%v)", err)
 	}
 
@@ -475,7 +475,7 @@ func TestManifestWork(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create manifestworks: (%v)", err)
 	}
-	if err := createManifestwork(c, manWork); err != nil {
+	if err := createManifestwork(context.Background(), c, manWork); err != nil {
 		t.Fatalf("Failed to apply manifestworks: (%v)", err)
 	}
 	found = &workv1.ManifestWork{}

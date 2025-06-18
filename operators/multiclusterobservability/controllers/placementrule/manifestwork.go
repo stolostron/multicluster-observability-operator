@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"strconv"
 	"strings"
 
@@ -151,15 +152,15 @@ func removePostponeDeleteAnnotationForManifestwork(c client.Client, namespace st
 	return nil
 }
 
-func createManifestwork(c client.Client, work *workv1.ManifestWork) error {
+func createManifestwork(ctx context.Context, c client.Client, work *workv1.ManifestWork) error {
 	name := work.ObjectMeta.Name
 	namespace := work.ObjectMeta.Namespace
 	found := &workv1.ManifestWork{}
-	err := c.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, found)
+	err := c.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, found)
 	if err != nil && k8serrors.IsNotFound(err) {
 		log.Info("Creating manifestwork", "namespace", namespace, "name", name)
 
-		err = c.Create(context.TODO(), work)
+		err = c.Create(ctx, work)
 		if err != nil {
 			logSizeErrorDetails(fmt.Sprint(err), work)
 			return fmt.Errorf("failed to create manifestwork %s/%s: %w", namespace, name, err)
@@ -174,14 +175,14 @@ func createManifestwork(c client.Client, work *workv1.ManifestWork) error {
 		return errors.New("existing manifestwork is terminating, skip and reconcile later")
 	}
 
-	if !shouldUpdateManifestWork(work.Spec.Workload.Manifests, found.Spec.Workload.Manifests) {
+	if !shouldUpdateManifestWork(work, found) {
 		log.Info("manifestwork already existed/unchanged", "namespace", namespace)
 		return nil
 	}
 
 	log.Info("Updating manifestwork", "namespace", namespace, "name", name)
 	found.Spec.Workload.Manifests = work.Spec.Workload.Manifests
-	err = c.Update(context.TODO(), found)
+	err = c.Update(ctx, found)
 	if err != nil {
 		logSizeErrorDetails(fmt.Sprint(err), work)
 		return fmt.Errorf("failed to update manifestwork %s/%s: %w", namespace, name, err)
@@ -189,7 +190,14 @@ func createManifestwork(c client.Client, work *workv1.ManifestWork) error {
 	return nil
 }
 
-func shouldUpdateManifestWork(desiredManifests []workv1.Manifest, foundManifests []workv1.Manifest) bool {
+func shouldUpdateManifestWork(desiredWork, foundWork *workv1.ManifestWork) bool {
+	foundManifests := foundWork.Spec.Workload.Manifests
+	desiredManifests := desiredWork.Spec.Workload.Manifests
+
+	if !maps.Equal(foundWork.Labels, desiredWork.Labels) {
+		return true
+	}
+
 	if len(desiredManifests) != len(foundManifests) {
 		return true
 	}

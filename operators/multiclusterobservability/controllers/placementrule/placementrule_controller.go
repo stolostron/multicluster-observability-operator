@@ -530,7 +530,7 @@ func createAllRelatedRes(
 			}
 		} else {
 			retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-				return createManifestwork(c, manifestWork)
+				return createManifestwork(ctx, c, manifestWork)
 			})
 			if retryErr != nil {
 				allErrors = append(allErrors, fmt.Errorf("failed to create manifestwork: %w", retryErr))
