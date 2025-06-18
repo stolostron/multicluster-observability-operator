@@ -473,7 +473,7 @@ func createAllRelatedRes(
 	// regenerate the hubinfo secret if empty
 	if hubInfoSecret == nil {
 		var err error
-		if hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, CRDMap[config.IngressControllerCRD], mco); err != nil {
+		if hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, CRDMap[config.IngressControllerCRD], config.IsUWMAlertingDisabledInSpec(mco)); err != nil {
 			return fmt.Errorf("failed to generate hub info secret: %w", err)
 		}
 	}
@@ -1260,7 +1260,7 @@ func updateHubInfoSecret(c client.Client, ingressCtlCrdExists bool) bool {
 		config.GetDefaultNamespace(),
 		spokeNameSpace,
 		ingressCtlCrdExists,
-		mco,
+		config.IsUWMAlertingDisabledInSpec(mco),
 	)
 	if err != nil {
 		log.Error(err, "Failed to generate hub info secret")

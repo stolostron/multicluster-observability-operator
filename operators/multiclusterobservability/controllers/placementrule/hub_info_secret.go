@@ -14,7 +14,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 )
@@ -22,7 +21,7 @@ import (
 // generateHubInfoSecret generates the secret that contains hubInfo.
 // this function should only called when the watched resources are created/updated.
 func generateHubInfoSecret(client client.Client, obsNamespace string,
-	namespace string, ingressCtlCrdExists bool, mco *mcov1beta2.MultiClusterObservability) (*corev1.Secret, error) {
+	namespace string, ingressCtlCrdExists bool, isUWMAlertingDisabled bool) (*corev1.Secret, error) {
 
 	obsAPIHost := ""
 	alertmanagerEndpoint := ""
@@ -89,7 +88,7 @@ func generateHubInfoSecret(client client.Client, obsNamespace string,
 		ObservatoriumAPIEndpoint: obsApiURL.String(),
 		AlertmanagerEndpoint:     alertmanagerEndpoint,
 		AlertmanagerRouterCA:     alertmanagerRouterCA,
-		UWMAlertingDisabled:      config.IsUWMAlertingDisabledInSpec(mco),
+		UWMAlertingDisabled:      isUWMAlertingDisabled,
 	}
 	configYaml, err := yaml.Marshal(hubInfo)
 	if err != nil {

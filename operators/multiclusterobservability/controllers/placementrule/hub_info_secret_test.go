@@ -180,9 +180,12 @@ func TestNewSecret(t *testing.T) {
 	}
 	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 
-	hubInfo, err := generateHubInfoSecret(c, mcoNamespace, namespace, true, mco)
+	hubInfo, err := generateHubInfoSecret(c, mcoNamespace, namespace, true, config.IsUWMAlertingDisabledInSpec(mco))
 	if err != nil {
 		t.Fatalf("Failed to initial the hub info secret: (%v)", err)
+	}
+	if hubInfo == nil {
+		t.Fatal("Generated hub info secret is nil")
 	}
 	hub := &operatorconfig.HubInfo{}
 	err = yaml.Unmarshal(hubInfo.Data[operatorconfig.HubInfoSecretKey], &hub)
@@ -198,9 +201,12 @@ func TestNewSecret(t *testing.T) {
 		CustomAlertmanagerHubURL:  "https://custom-am",
 	}
 	c = fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
-	hubInfo, err = generateHubInfoSecret(c, mcoNamespace, namespace, true, mco)
+	hubInfo, err = generateHubInfoSecret(c, mcoNamespace, namespace, true, config.IsUWMAlertingDisabledInSpec(mco))
 	if err != nil {
-		t.Fatalf("Failed to initial the hub info secret: (%v)", err)
+		t.Fatalf("Failed to generate hub info secret: %v", err)
+	}
+	if hubInfo == nil {
+		t.Fatal("Generated hub info secret is nil")
 	}
 	hub = &operatorconfig.HubInfo{}
 	err = yaml.Unmarshal(hubInfo.Data[operatorconfig.HubInfoSecretKey], &hub)
@@ -220,9 +226,12 @@ func TestNewBYOSecret(t *testing.T) {
 	objs := []runtime.Object{newTestObsApiRoute(), newTestAlertmanagerRoute(), newTestAmRouteBYOCA(), newTestAmRouteBYOCert()}
 	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 
-	hubInfo, err := generateHubInfoSecret(c, mcoNamespace, namespace, true, mco)
+	hubInfo, err := generateHubInfoSecret(c, mcoNamespace, namespace, true, config.IsUWMAlertingDisabledInSpec(mco))
 	if err != nil {
-		t.Fatalf("Failed to initial the hub info secret: (%v)", err)
+		t.Fatalf("Failed to initial the hub info secret: %v", err)
+	}
+	if hubInfo == nil {
+		t.Fatal("Generated hub info secret is nil")
 	}
 	hub := &operatorconfig.HubInfo{}
 	err = yaml.Unmarshal(hubInfo.Data[operatorconfig.HubInfoSecretKey], &hub)
