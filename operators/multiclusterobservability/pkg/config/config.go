@@ -184,6 +184,7 @@ const (
 	MetricsCollector               = "metrics-collector"
 	Observatorium                  = "observatorium"
 	MultiClusterObservabilityAddon = "multicluster-observability-addon"
+	ManagedClusterAddonName        = "observability-controller"
 
 	RetentionResolutionRaw = "365d"
 	RetentionResolution5m  = "365d"

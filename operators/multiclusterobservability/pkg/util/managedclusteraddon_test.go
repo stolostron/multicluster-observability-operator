@@ -8,6 +8,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -24,14 +25,14 @@ func TestManagedClusterAddon(t *testing.T) {
 	s := scheme.Scheme
 	addonv1alpha1.AddToScheme(s)
 	c := fake.NewClientBuilder().WithStatusSubresource(&addonv1alpha1.ManagedClusterAddOn{}).Build()
-	_, err := CreateManagedClusterAddonCR(c, namespace, "testKey", "value")
+	_, err := CreateManagedClusterAddonCR(context.Background(), c, namespace, "testKey", "value")
 	if err != nil {
 		t.Fatalf("Failed to create managedclusteraddon: (%v)", err)
 	}
 	addon := &addonv1alpha1.ManagedClusterAddOn{}
 	err = c.Get(context.TODO(),
 		types.NamespacedName{
-			Name:      ManagedClusterAddonName,
+			Name:      config.ManagedClusterAddonName,
 			Namespace: namespace,
 		},
 		addon,

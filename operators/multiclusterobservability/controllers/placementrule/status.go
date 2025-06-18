@@ -6,23 +6,25 @@ package placementrule
 
 import (
 	"context"
+	"errors"
 	"slices"
 
-	"k8s.io/apimachinery/pkg/api/equality"
-	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	mcov1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
-	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	"k8s.io/apimachinery/pkg/api/meta"
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 )
 
 var standardConditionTypes = []string{"Available", "Progressing", "Degraded"}
 
 func updateAddonStatus(ctx context.Context, c client.Client, addonList mcov1beta1.ObservabilityAddonList) error {
+	var allErrors []error
 	for _, addon := range addonList.Items {
 		if len(addon.Status.Conditions) == 0 {
 			continue
@@ -32,35 +34,46 @@ func updateAddonStatus(ctx context.Context, c client.Client, addonList mcov1beta
 		retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 			managedclusteraddon := &addonv1alpha1.ManagedClusterAddOn{}
 			err := c.Get(ctx, types.NamespacedName{
-				Name:      util.ManagedClusterAddonName,
+				Name:      config.ManagedClusterAddonName,
 				Namespace: addon.ObjectMeta.Namespace,
 			}, managedclusteraddon)
 			if err != nil {
-				if errors.IsNotFound(err) {
-					log.Info("managedclusteraddon does not exist", "namespace", addon.ObjectMeta.Namespace, "name", util.ManagedClusterAddonName)
+				if apierrors.IsNotFound(err) {
+					log.Info("managedclusteraddon does not exist", "namespace", addon.ObjectMeta.Namespace, "name", config.ManagedClusterAddonName)
 					return nil
 				}
-				log.Error(err, "Failed to get managedclusteraddon", "namespace", addon.ObjectMeta.Namespace, "name", util.ManagedClusterAddonName)
+				log.Error(err, "Failed to get managedclusteraddon", "namespace", addon.ObjectMeta.Namespace, "name", config.ManagedClusterAddonName)
 				return err
 			}
 
-			if equality.Semantic.DeepEqual(obsAddonConditions, managedclusteraddon.Status.Conditions) {
+			desiredAddon := managedclusteraddon.DeepCopy()
+			for _, cond := range obsAddonConditions {
+				if meta.IsStatusConditionPresentAndEqual(desiredAddon.Status.Conditions, cond.Type, cond.Status) {
+					continue
+				}
+				if meta.SetStatusCondition(&desiredAddon.Status.Conditions, cond) {
+					isUpdated = true
+				}
+			}
+
+			if !isUpdated {
 				return nil
 			}
 
-			managedclusteraddon.Status.Conditions = obsAddonConditions
-			isUpdated = true
-
-			return c.Status().Update(context.TODO(), managedclusteraddon)
+			return c.Status().Patch(ctx, desiredAddon, client.MergeFrom(managedclusteraddon))
 		})
 		if retryErr != nil {
 			log.Error(retryErr, "Failed to update status for managedclusteraddon", "namespace", addon.ObjectMeta.Namespace)
-			return retryErr
+			allErrors = append(allErrors, retryErr)
 		}
 
-		if isUpdated {
+		if retryErr == nil && isUpdated {
 			log.Info("Updated status for managedclusteraddon", "namespace", addon.ObjectMeta.Namespace)
 		}
+	}
+
+	if len(allErrors) > 0 {
+		return errors.Join(allErrors...)
 	}
 
 	return nil
