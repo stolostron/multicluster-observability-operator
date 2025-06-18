@@ -181,6 +181,7 @@ func createManifestwork(ctx context.Context, c client.Client, work *workv1.Manif
 	}
 
 	log.Info("Updating manifestwork", "namespace", namespace, "name", name)
+	found.SetLabels(work.Labels)
 	found.Spec.Workload.Manifests = work.Spec.Workload.Manifests
 	err = c.Update(ctx, found)
 	if err != nil {
