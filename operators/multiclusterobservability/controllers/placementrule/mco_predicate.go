@@ -28,7 +28,7 @@ func getMCOPred(c client.Client, ingressCtlCrdExists bool) predicate.Funcs {
 			alertingStatus := config.IsAlertingDisabledInSpec(mco)
 			config.SetAlertingDisabled(alertingStatus)
 			var err error
-			hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, ingressCtlCrdExists)
+			hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, ingressCtlCrdExists, config.IsUWMAlertingDisabledInSpec(mco))
 			if err != nil {
 				log.Error(err, "unable to get HubInfoSecret", "controller", "PlacementRule")
 			}
@@ -53,9 +53,17 @@ func getMCOPred(c client.Client, ingressCtlCrdExists bool) predicate.Funcs {
 				updateHubInfo = true
 			}
 
+			// Check if UWM alerting status changed
+			oldUWMAlertingStatus := config.IsUWMAlertingDisabledInSpec(oldMCO)
+			newUWMAlertingStatus := config.IsUWMAlertingDisabledInSpec(newMCO)
+			if oldUWMAlertingStatus != newUWMAlertingStatus {
+				retval = true
+				updateHubInfo = true
+			}
+
 			if updateHubInfo {
 				var err error
-				hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, ingressCtlCrdExists)
+				hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, ingressCtlCrdExists, config.IsUWMAlertingDisabledInSpec(newMCO))
 				if err != nil {
 					log.Error(err, "unable to get HubInfoSecret", "controller", "PlacementRule")
 				}
