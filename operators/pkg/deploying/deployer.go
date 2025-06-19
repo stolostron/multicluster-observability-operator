@@ -160,7 +160,7 @@ func (d *Deployer) updateConfigMap(ctx context.Context, desiredObj, runtimeObj *
 		return err
 	}
 
-	if !apiequality.Semantic.DeepDerivative(desiredConfigMap.Data, runtimeConfigMap.Data) {
+	if !apiequality.Semantic.DeepDerivative(desiredConfigMap.Data, runtimeConfigMap.Data) || !maps.Equal(desiredConfigMap.Labels, runtimeConfigMap.Labels) {
 		logUpdateInfo(runtimeObj)
 		return d.client.Update(ctx, desiredConfigMap)
 	}
