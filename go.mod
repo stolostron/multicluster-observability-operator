@@ -8,7 +8,7 @@ require (
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/imdario/mergo v0.3.9
 	github.com/observatorium/configuration v0.0.0-20200505130827-23ee12780d4c
-	github.com/open-cluster-management/api v0.0.0-20200602195039-a516cac2e038
+	github.com/open-cluster-management/api a6845f2ebcb1
 	github.com/open-cluster-management/multicloud-operators-placementrule v1.0.0-2020-05-08-20-30-09
 	github.com/openshift/api v3.9.1-0.20190924102528-32369d4db2ad+incompatible
 	github.com/openshift/client-go v0.0.0-20200116152001-92a2713fa240
