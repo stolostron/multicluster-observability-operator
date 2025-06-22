@@ -732,8 +732,8 @@ github.com/spf13/pflag v1.0.1/go.mod h1:DYY7MBk1bdzusC3SYhjObp+wFpr4gzcvqqNjLnIn
 github.com/spf13/pflag v1.0.5/go.mod h1:McXfInJRrz4CZXVZOBLb0bTZqETkiAhM9Iw0y3An2Bg=
 github.com/spf13/pflag v1.0.6-0.20210604193023-d5e0c0615ace h1:9PNP1jnUjRhfmGMlkXHjYPishpcw4jpSt/V/xYY3FMA=
 github.com/spf13/pflag v1.0.6-0.20210604193023-d5e0c0615ace/go.mod h1:McXfInJRrz4CZXVZOBLb0bTZqETkiAhM9Iw0y3An2Bg=
-github.com/stoewer/go-strcase v1.3.0 h1:g0eASXYtp+yvN9fK8sH94oCIk0fau9uV1/ZdJ0AVEzs=
-github.com/stoewer/go-strcase v1.3.0/go.mod h1:fAH5hQ5pehh+j3nZfvwdk2RgEgQjAoM8wodgtPmh1xo=
+github.com/stoewer/go-strcase v1.3.1 h1:iS0MdW+kVTxgMoE1LAZyMiYJFKlOzLooE4MxjirtkAs=
+github.com/stoewer/go-strcase v1.3.1/go.mod h1:fAH5hQ5pehh+j3nZfvwdk2RgEgQjAoM8wodgtPmh1xo=
 github.com/stolostron/controller-filtered-cache v0.0.0-20240605101128-e033f9b9a990 h1:eZGHAuC500dgn2U+U1DHgcx+9Bs3enawe2x2E9qwQaE=
 github.com/stolostron/controller-filtered-cache v0.0.0-20240605101128-e033f9b9a990/go.mod h1:fb84VRSuQLOvGbf5yzau1/RxR9rmBV7ZTnjpypN5s5k=
 github.com/stolostron/multiclusterhub-operator v0.0.0-20240626140553-4f1ed6be3b84 h1:kjoi1qzaohRJSzdtZVmLhxJsi9nQmpitjwwp83QcTF8=
