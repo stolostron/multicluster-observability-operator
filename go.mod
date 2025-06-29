@@ -12,7 +12,7 @@ require (
 	github.com/open-cluster-management/multicloud-operators-placementrule v1.0.0-2020-05-08-20-30-09
 	github.com/openshift/api v3.9.1-0.20190924102528-32369d4db2ad+incompatible
 	github.com/openshift/client-go v0.0.0-20200116152001-92a2713fa240
-	github.com/openshift/cluster-monitoring-operator v0.1.1-0.20200406225945-844f960a2a8d
+	github.com/openshift/cluster-monitoring-operator v0.1.1
 	github.com/operator-framework/operator-sdk v0.17.0
 	github.com/prometheus/client_golang v1.6.0 // indirect
 	github.com/spf13/pflag v1.0.5
