@@ -1,6 +1,6 @@
 # Copyright Contributors to the Open Cluster Management project
 
-FROM registry.access.redhat.com/ubi9/go-toolset@sha256:cbc354aed85c826d3b6d6d16250a46b1af0bf5805d109b200bc1998119c8ed29 AS builder
+FROM registry.access.redhat.com/ubi9/go-toolset@sha256:199e6b43a67ab49a616e8ac72b6fc9b810e075510cb967bc01af0bcda393d1e3 AS builder
 
 WORKDIR /workspace
 COPY go.sum go.mod ./
