@@ -634,7 +634,7 @@ data:
             "description": null,
             "error": null,
             "hide": 0,
-            "includeAll": true,
+            "includeAll": false,
             "label": "Status",
             "multi": false,
             "name": "status",
@@ -670,7 +670,7 @@ data:
                 "value": "on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_running_status_last_transition_timestamp_seconds>0)))"
               }
             ],
-            "query": "All=0, stopped:on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_non_running_status_last_transition_timestamp_seconds>0))), starting:on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_starting_status_last_transition_timestamp_seconds > 0))), migrating:on(cluster, name, namespace) group_left() (0*(sum by (cluster, namespace, name)(kubevirt_vm_migrating_status_last_transition_timestamp_seconds>0))), error:on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_error_status_last_transition_timestamp_seconds>0))), running:on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_running_status_last_transition_timestamp_seconds>0)))",
+            "query": "All : 0, stopped : on(cluster\\,name\\,namespace) group_left()(0*(sum by(cluster\\,namespace\\,name)(kubevirt_vm_non_running_status_last_transition_timestamp_seconds>0))), starting : on(cluster\\,name\\,namespace) group_left()(0*(sum by(cluster\\,namespace\\,name)(kubevirt_vm_starting_status_last_transition_timestamp_seconds > 0))), migrating : on(cluster\\, name\\, namespace) group_left() (0*(sum by (cluster\\, namespace\\, name)(kubevirt_vm_migrating_status_last_transition_timestamp_seconds>0))), error : on(cluster\\,name\\,namespace) group_left()(0*(sum by(cluster\\,namespace\\,name)(kubevirt_vm_error_status_last_transition_timestamp_seconds>0))), running : on(cluster\\,name\\,namespace) group_left()(0*(sum by(cluster\\,namespace\\,name)(kubevirt_vm_running_status_last_transition_timestamp_seconds>0)))",
             "queryValue": "",
             "skipUrlSync": false,
             "type": "custom"
