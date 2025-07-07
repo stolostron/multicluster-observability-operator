@@ -864,54 +864,51 @@ data:
             "type": "query"
           },
           {
-            "allValue": null,
+            "allowCustomValue": false,
             "current": {
-              "selected": true,
-              "text": "All",
-              "value": "on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_running_status_last_transition_timestamp_seconds)))"
+              "text": [
+                "on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_info)))"
+              ],
+              "value": [
+                "on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_info)))"
+              ]
             },
-            "description": null,
-            "error": null,
-            "hide": 0,
-            "includeAll": true,
+            "includeAll": false,
             "label": "Status",
-            "multi": false,
             "name": "status",
             "options": [
               {
                 "selected": true,
                 "text": "All",
-                "value": "on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_running_status_last_transition_timestamp_seconds)))"
+                "value": "on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_info)))"
               },
               {
                 "selected": false,
                 "text": "stopped",
-                "value": "on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_non_running_status_last_transition_timestamp_seconds>0)))"
+                "value": "on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_info{status_group=\"non_running\"}>0)))"
               },
               {
                 "selected": false,
                 "text": "starting",
-                "value": "on(cluster,name,namespace) group_left()(0*(sum by(cluster, namespace,name)(kubevirt_vm_starting_status_last_transition_timestamp_seconds>0)))"
+                "value": "on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_info{status_group=\"starting\"} > 0)))"
               },
               {
                 "selected": false,
                 "text": "migrating",
-                "value": "on(cluster,name,namespace) group_left()(0*(sum by(cluster, namespace,name)(kubevirt_vm_migrating_status_last_transition_timestamp_seconds>0)))"
+                "value": "on(cluster, name, namespace) group_left() (0*(sum by (cluster, namespace, name)(kubevirt_vm_info{status_group=\"migrating\"}>0)))"
               },
               {
                 "selected": false,
                 "text": "error",
-                "value": "on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_error_status_last_transition_timestamp_seconds>0)))"
+                "value": "on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_info{status_group=\"error\"}>0)))"
               },
               {
                 "selected": false,
                 "text": "running",
-                "value": "on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_running_status_last_transition_timestamp_seconds>0)))"
+                "value": "on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_info{status_group=\"running\"}>0)))"
               }
             ],
-            "query": "All:on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_running_status_last_transition_timestamp_seconds))), stopped:on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_non_running_status_last_transition_timestamp_seconds>0))), starting:on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_starting_status_last_transition_timestamp_seconds > 0))), migrating:on(cluster, name, namespace) group_left() (0*(sum by (cluster, namespace, name)(kubevirt_vm_migrating_status_last_transition_timestamp_seconds>0))), error:on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_error_status_last_transition_timestamp_seconds>0))), running:on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_running_status_last_transition_timestamp_seconds>0)))",
-            "queryValue": "",
-            "skipUrlSync": false,
+            "query": "All : on(cluster\\,name\\,namespace) group_left()(0*(sum by(cluster\\,namespace\\,name)(kubevirt_vm_info))), stopped : on(cluster\\,name\\,namespace) group_left()(0*(sum by(cluster\\,namespace\\,name)(kubevirt_vm_info{status_group=\"non_running\"}>0))), starting : on(cluster\\,name\\,namespace) group_left()(0*(sum by(cluster\\,namespace\\,name)(kubevirt_vm_info{status_group=\"starting\"} > 0))), migrating : on(cluster\\, name\\, namespace) group_left() (0*(sum by (cluster\\, namespace\\, name)(kubevirt_vm_info{status_group=\"migrating\"}>0))), error : on(cluster\\,name\\,namespace) group_left()(0*(sum by(cluster\\,namespace\\,name)(kubevirt_vm_info{status_group=\"error\"}>0))), running : on(cluster\\,name\\,namespace) group_left()(0*(sum by(cluster\\,namespace\\,name)(kubevirt_vm_info{status_group=\"running\"}>0)))",
             "type": "custom"
           }
         ]
