@@ -2,7 +2,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.16.0
+    controller-gen.kubebuilder.io/version: v0.18.0
     service.beta.openshift.io/inject-cabundle: "true"
   creationTimestamp: null
   name: multiclusterobservabilities.observability.open-cluster-management.io
@@ -1129,9 +1129,7 @@ spec:
                                       referred to by services.
                                     type: string
                                   protocol:
-                                    allOf:
-                                    - default: TCP
-                                    - default: TCP
+                                    default: TCP
                                     description: |-
                                       Protocol for port. Must be UDP, TCP, or SCTP.
                                       Defaults to "TCP".
@@ -2855,9 +2853,7 @@ spec:
                                       referred to by services.
                                     type: string
                                   protocol:
-                                    allOf:
-                                    - default: TCP
-                                    - default: TCP
+                                    default: TCP
                                     description: |-
                                       Protocol for port. Must be UDP, TCP, or SCTP.
                                       Defaults to "TCP".
@@ -4372,9 +4368,7 @@ spec:
                                       referred to by services.
                                     type: string
                                   protocol:
-                                    allOf:
-                                    - default: TCP
-                                    - default: TCP
+                                    default: TCP
                                     description: |-
                                       Protocol for port. Must be UDP, TCP, or SCTP.
                                       Defaults to "TCP".
@@ -6025,9 +6019,7 @@ spec:
                                       referred to by services.
                                     type: string
                                   protocol:
-                                    allOf:
-                                    - default: TCP
-                                    - default: TCP
+                                    default: TCP
                                     description: |-
                                       Protocol for port. Must be UDP, TCP, or SCTP.
                                       Defaults to "TCP".
@@ -7572,9 +7564,7 @@ spec:
                                       referred to by services.
                                     type: string
                                   protocol:
-                                    allOf:
-                                    - default: TCP
-                                    - default: TCP
+                                    default: TCP
                                     description: |-
                                       Protocol for port. Must be UDP, TCP, or SCTP.
                                       Defaults to "TCP".
@@ -9088,9 +9078,7 @@ spec:
                                       referred to by services.
                                     type: string
                                   protocol:
-                                    allOf:
-                                    - default: TCP
-                                    - default: TCP
+                                    default: TCP
                                     description: |-
                                       Protocol for port. Must be UDP, TCP, or SCTP.
                                       Defaults to "TCP".
