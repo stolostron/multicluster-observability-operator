@@ -42,7 +42,7 @@ require (
 	github.com/stretchr/testify v1.10.0
 	github.com/thanos-io/thanos v0.36.1
 	go.uber.org/zap v1.27.0
-	golang.org/x/exp v0.0.0-20240525044651-4c93da0ed11d
+	golang.org/x/exp v0.0.0-20241004190924-225e2abe05e6
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.31.9
 	k8s.io/apiextensions-apiserver v0.31.9
@@ -53,6 +53,8 @@ require (
 	k8s.io/utils v0.0.0-20250502105355-0f33e8f1c979
 	open-cluster-management.io/addon-framework v0.12.0
 	open-cluster-management.io/api v0.16.2
+	open-cluster-management.io/config-policy-controller v0.16.0
+	open-cluster-management.io/governance-policy-propagator v0.16.0
 	sigs.k8s.io/controller-runtime v0.19.7
 	sigs.k8s.io/kube-storage-version-migrator v0.0.6-0.20230721195810-5c8923c5ff96
 	sigs.k8s.io/kustomize/api v0.18.0
@@ -148,6 +150,7 @@ require (
 	github.com/prometheus/procfs v0.16.1 // indirect
 	github.com/redis/go-redis/v9 v9.7.3 // indirect
 	github.com/robfig/cron/v3 v3.0.1 // indirect
+	github.com/stolostron/kubernetes-dependency-watches v0.10.0 // indirect
 	github.com/uber/jaeger-client-go v2.30.0+incompatible // indirect
 	github.com/uber/jaeger-lib v2.4.1+incompatible // indirect
 	github.com/weppos/publicsuffix-go v0.30.0 // indirect
@@ -202,7 +205,4 @@ require (
 )
 
 // Stolostron fork of the controller-filtered-cache upgraded to k8s libs up to 0.29.x and Go up to 1.21.
-replace (
-	github.com/IBM/controller-filtered-cache => github.com/stolostron/controller-filtered-cache v0.0.0-20240605101128-e033f9b9a990
-	github.com/imdario/mergo => dario.cat/mergo v0.3.16
-)
+replace github.com/IBM/controller-filtered-cache => github.com/stolostron/controller-filtered-cache v0.0.0-20240605101128-e033f9b9a990
