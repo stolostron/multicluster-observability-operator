@@ -1,8 +1,8 @@
 module github.com/stolostron/multicluster-observability-operator
 
-go 1.23.0
+go 1.24.0
 
-toolchain go1.23.7
+toolchain go1.24.4
 
 require (
 	github.com/IBM/controller-filtered-cache v0.3.6
@@ -30,9 +30,9 @@ require (
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.76.2
 	github.com/prometheus-operator/prometheus-operator/pkg/client v0.76.2
 	github.com/prometheus/alertmanager v0.27.0
-	github.com/prometheus/client_golang v1.20.5
+	github.com/prometheus/client_golang v1.22.0
 	github.com/prometheus/client_model v0.6.2
-	github.com/prometheus/common v0.60.0
+	github.com/prometheus/common v0.62.0
 	github.com/prometheus/prometheus v0.55.1
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/pflag v1.0.6
@@ -44,10 +44,10 @@ require (
 	go.uber.org/zap v1.27.0
 	golang.org/x/exp v0.0.0-20241004190924-225e2abe05e6
 	gopkg.in/yaml.v2 v2.4.0
-	k8s.io/api v0.31.9
-	k8s.io/apiextensions-apiserver v0.31.9
-	k8s.io/apimachinery v0.31.9
-	k8s.io/client-go v0.31.9
+	k8s.io/api v0.33.0
+	k8s.io/apiextensions-apiserver v0.33.0
+	k8s.io/apimachinery v0.33.0
+	k8s.io/client-go v0.33.0
 	k8s.io/klog v1.0.0
 	k8s.io/kubectl v0.31.9
 	k8s.io/utils v0.0.0-20250502105355-0f33e8f1c979
@@ -55,7 +55,7 @@ require (
 	open-cluster-management.io/api v0.16.2
 	open-cluster-management.io/config-policy-controller v0.16.0
 	open-cluster-management.io/governance-policy-propagator v0.16.0
-	sigs.k8s.io/controller-runtime v0.19.7
+	sigs.k8s.io/controller-runtime v0.21.0
 	sigs.k8s.io/kube-storage-version-migrator v0.0.6-0.20230721195810-5c8923c5ff96
 	sigs.k8s.io/kustomize/api v0.18.0
 	sigs.k8s.io/kustomize/kyaml v0.18.1
@@ -111,6 +111,7 @@ require (
 	github.com/go-task/slim-sprig/v3 v3.0.0 // indirect
 	github.com/gobuffalo/flect v1.0.2 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
+	github.com/google/btree v1.1.3 // indirect
 	github.com/google/certificate-transparency-go v1.1.7 // indirect
 	github.com/google/gnostic-models v0.6.9 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
@@ -128,7 +129,7 @@ require (
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/jpillora/backoff v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
-	github.com/klauspost/compress v1.17.10 // indirect
+	github.com/klauspost/compress v1.18.0 // indirect
 	github.com/kylelemons/godebug v1.1.0 // indirect
 	github.com/mailru/easyjson v0.9.0 // indirect
 	github.com/metalmatze/signal v0.0.0-20210307161603-1c9aa721a97a // indirect
@@ -193,8 +194,8 @@ require (
 	gopkg.in/evanphx/json-patch.v4 v4.12.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	k8s.io/apiserver v0.31.9 // indirect
-	k8s.io/component-base v0.31.9 // indirect
+	k8s.io/apiserver v0.33.0 // indirect
+	k8s.io/component-base v0.33.0 // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect
 	k8s.io/kube-aggregator v0.31.9 // indirect
 	k8s.io/kube-openapi v0.0.0-20250318190949-c8a335a9a2ff // indirect
