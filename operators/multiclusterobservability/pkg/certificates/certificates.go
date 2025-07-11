@@ -627,7 +627,7 @@ func childCertIsSignedByCA(caPemCert, childPemCert []byte) (bool, error) {
 	}
 
 	if len(caCerts) != 1 {
-		return false, fmt.Errorf("expecting a single certificate for CA, found %d", len(caCerts))
+		log.Info(fmt.Sprintf("expecting a single certificate for CA, found %d", len(caCerts)))
 	}
 	caCertPool.AddCert(caCerts[0])
 
