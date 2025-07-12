@@ -1908,3 +1908,5 @@ metadata:
   namespace: open-cluster-management-observability
   annotations:
     observability.open-cluster-management.io/dashboard-folder: Platform - MCOA
+  labels:
+    home-dashboard-uid: '89eaec849a6e4837a619fb0540c22b13'
