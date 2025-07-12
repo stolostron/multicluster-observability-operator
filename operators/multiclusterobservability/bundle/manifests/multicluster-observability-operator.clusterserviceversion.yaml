@@ -6,22 +6,6 @@ metadata:
       [
         {
           "apiVersion": "observability.open-cluster-management.io/v1beta1",
-          "kind": "MultiClusterObservability",
-          "metadata": {
-            "name": "observability"
-          },
-          "spec": {
-            "observabilityAddonSpec": {},
-            "storageConfigObject": {
-              "metricObjectStorage": {
-                "key": "thanos.yaml",
-                "name": "thanos-object-storage"
-              }
-            }
-          }
-        },
-        {
-          "apiVersion": "observability.open-cluster-management.io/v1beta1",
           "kind": "ObservabilityAddon",
           "metadata": {
             "name": "observability-addon"
@@ -49,7 +33,7 @@ metadata:
         }
       ]
     capabilities: Basic Install
-    createdAt: "2025-05-02T10:30:00Z"
+    createdAt: "2025-05-16T09:12:11Z"
     operators.operatorframework.io/builder: operator-sdk-v1.34.2
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
   name: multicluster-observability-operator.v0.1.0
@@ -58,12 +42,6 @@ spec:
   apiservicedefinitions: {}
   customresourcedefinitions:
     owned:
-    - description: MultiClusterObservability defines the configuration for the Observability
-        installation on Hub and Managed Clusters all through this one custom resource.
-      displayName: MultiClusterObservability
-      kind: MultiClusterObservability
-      name: multiclusterobservabilities.observability.open-cluster-management.io
-      version: v1beta1
     - description: MultiClusterObservability defines the configuration for the Observability
         installation on Hub and Managed Clusters all through this one custom resource.
       displayName: MultiClusterObservability
