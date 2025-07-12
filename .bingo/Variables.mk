@@ -17,11 +17,11 @@ GO     ?= $(shell which go)
 #	@echo "Running controller-gen"
 #	@$(CONTROLLER_GEN) <flags/args..>
 #
-CONTROLLER_GEN := $(GOBIN)/controller-gen-v0.14.0
+CONTROLLER_GEN := $(GOBIN)/controller-gen-v0.18.0
 $(CONTROLLER_GEN): $(BINGO_DIR)/controller-gen.mod
 	@# Install binary/ries using Go 1.14+ build command. This is using bwplotka/bingo-controlled, separate go module with pinned dependencies.
-	@echo "(re)installing $(GOBIN)/controller-gen-v0.14.0"
-	@cd $(BINGO_DIR) && GOWORK=off $(GO) build -mod=mod -modfile=controller-gen.mod -o=$(GOBIN)/controller-gen-v0.14.0 "sigs.k8s.io/controller-tools/cmd/controller-gen"
+	@echo "(re)installing $(GOBIN)/controller-gen-v0.18.0"
+	@cd $(BINGO_DIR) && GOWORK=off $(GO) build -mod=mod -modfile=controller-gen.mod -o=$(GOBIN)/controller-gen-v0.18.0 "sigs.k8s.io/controller-tools/cmd/controller-gen"
 
 FAILLINT := $(GOBIN)/faillint-v1.15.0
 $(FAILLINT): $(BINGO_DIR)/faillint.mod
@@ -69,7 +69,7 @@ OPERATOR_SDK := $(GOBIN)/operator-sdk-v1.34.2
 $(OPERATOR_SDK): $(BINGO_DIR)/operator-sdk.mod
 	@# Install binary/ries using Go 1.14+ build command. This is using bwplotka/bingo-controlled, separate go module with pinned dependencies.
 	@echo "(re)installing $(GOBIN)/operator-sdk-v1.34.2"
-	@cd $(BINGO_DIR) && GOWORK=off $(GO) build -ldflags "-s -w -X 'github.com/operator-framework/operator-sdk/internal/version.Version=v1.34.2'" -mod=mod -modfile=operator-sdk.mod -o=$(GOBIN)/operator-sdk-v1.34.2 "github.com/operator-framework/operator-sdk/cmd/operator-sdk"
+	@cd $(BINGO_DIR) && GOWORK=off $(GO) build -mod=mod -modfile=operator-sdk.mod -o=$(GOBIN)/operator-sdk-v1.34.2 "github.com/operator-framework/operator-sdk/cmd/operator-sdk"
 
 OPM := $(GOBIN)/opm-v1.40.0
 $(OPM): $(BINGO_DIR)/opm.mod
