@@ -21,8 +21,15 @@ import (
 )
 
 var _ = Describe("RHACM4K-55205: Enable namespace right-sizing recommendation (rightsizing/g0)", Ordered, func() {
-	BeforeEach(func() {
-		// initialize both typed and dynamic clients
+	var (
+		mcoGVR       = utils.NewMCOGVRV1BETA2()
+		policyGVR    = schema.GroupVersionResource{Group: "policy.open-cluster-management.io", Version: "v1", Resource: "policies"}
+		configMapGVR = schema.GroupVersionResource{Group: "", Version: "v1", Resource: "configmaps"}
+		prGVR        = schema.GroupVersionResource{Group: "monitoring.coreos.com", Version: "v1", Resource: "prometheusrules"}
+	)
+
+	BeforeAll(func() {
+		// initialize clients once
 		hubClient = utils.NewKubeClient(
 			testOptions.HubCluster.ClusterServerURL,
 			testOptions.KubeConfig,
@@ -33,36 +40,42 @@ var _ = Describe("RHACM4K-55205: Enable namespace right-sizing recommendation (r
 			testOptions.KubeConfig,
 			testOptions.HubCluster.KubeContext,
 		)
-	})
 
-	It("Should patch the MultiClusterObservability CR to enable right-sizing recommendation", func() {
-		By("Updating spec.capabilities.platform.analytics.namespaceRightSizingRecommendation.enabled to true")
-
-		mcoGVR := utils.NewMCOGVRV1BETA2()
-
+		By("Enabling namespace right-sizing recommendation in the MCO CR")
 		Eventually(func() error {
-			// fetch the current CR
 			mco, err := dynClient.Resource(mcoGVR).
 				Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
 			if err != nil {
 				return err
 			}
-
-			// Safely set .spec.capabilities.platform.analytics.namespaceRightSizingRecommendation.enabled = true
 			if err := unstructured.SetNestedField(
 				mco.Object,
 				true,
-				"spec",
-				"capabilities",
-				"platform",
-				"analytics",
-				"namespaceRightSizingRecommendation",
-				"enabled",
+				"spec", "capabilities", "platform", "analytics", "namespaceRightSizingRecommendation", "enabled",
 			); err != nil {
 				return err
 			}
+			_, err = dynClient.Resource(mcoGVR).
+				Update(context.TODO(), mco, metav1.UpdateOptions{})
+			return err
+		}, 2*time.Minute, 10*time.Second).Should(Succeed())
+	})
 
-			// push the update
+	AfterAll(func() {
+		By("Disabling namespace right-sizing recommendation in the MCO CR")
+		Eventually(func() error {
+			mco, err := dynClient.Resource(mcoGVR).
+				Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+			if err != nil {
+				return err
+			}
+			if err := unstructured.SetNestedField(
+				mco.Object,
+				false,
+				"spec", "capabilities", "platform", "analytics", "namespaceRightSizingRecommendation", "enabled",
+			); err != nil {
+				return err
+			}
 			_, err = dynClient.Resource(mcoGVR).
 				Update(context.TODO(), mco, metav1.UpdateOptions{})
 			return err
@@ -70,7 +83,6 @@ var _ = Describe("RHACM4K-55205: Enable namespace right-sizing recommendation (r
 	})
 
 	It("Should find the rs-prom-rules-policy in the hub cluster namespace 'open-cluster-management-global-set'", func() {
-		policyGVR := schema.GroupVersionResource{Group: "policy.open-cluster-management.io", Version: "v1", Resource: "policies"}
 		Eventually(func() error {
 			_, err := dynClient.Resource(policyGVR).
 				Namespace("open-cluster-management-global-set").
@@ -80,7 +92,6 @@ var _ = Describe("RHACM4K-55205: Enable namespace right-sizing recommendation (r
 	})
 
 	It("Should create the ConfigMap 'rs-namespace-config' in namespace 'open-cluster-management-observability'", func() {
-		configMapGVR := schema.GroupVersionResource{Group: "", Version: "v1", Resource: "configmaps"}
 		Eventually(func() error {
 			_, err := dynClient.Resource(configMapGVR).
 				Namespace("open-cluster-management-observability").
@@ -90,7 +101,6 @@ var _ = Describe("RHACM4K-55205: Enable namespace right-sizing recommendation (r
 	})
 
 	It("Should find the PrometheusRule 'acm-rs-namespace-prometheus-rules' in namespace 'openshift-monitoring'", func() {
-		prGVR := schema.GroupVersionResource{Group: "monitoring.coreos.com", Version: "v1", Resource: "prometheusrules"}
 		Eventually(func() error {
 			_, err := dynClient.Resource(prGVR).
 				Namespace("openshift-monitoring").
@@ -100,9 +110,8 @@ var _ = Describe("RHACM4K-55205: Enable namespace right-sizing recommendation (r
 	})
 
 	It("Should validate the 'observability-metrics-allowlist' ConfigMap in namespace 'open-cluster-management-observability'", func() {
-		cmGVR := schema.GroupVersionResource{Group: "", Version: "v1", Resource: "configmaps"}
 		Eventually(func() error {
-			cm, err := dynClient.Resource(cmGVR).
+			cm, err := dynClient.Resource(configMapGVR).
 				Namespace("open-cluster-management-observability").
 				Get(context.TODO(), "observability-metrics-allowlist", metav1.GetOptions{})
 			if err != nil {
@@ -158,9 +167,8 @@ var _ = Describe("RHACM4K-55205: Enable namespace right-sizing recommendation (r
 	})
 
 	It("Should create the Grafana dashboard ConfigMap 'grafana-dashboard-acm-right-sizing-namespaces' in namespace 'open-cluster-management-observability'", func() {
-		cmGVR := schema.GroupVersionResource{Group: "", Version: "v1", Resource: "configmaps"}
 		Eventually(func() error {
-			_, err := dynClient.Resource(cmGVR).
+			_, err := dynClient.Resource(configMapGVR).
 				Namespace("open-cluster-management-observability").
 				Get(context.TODO(), "grafana-dashboard-acm-right-sizing-namespaces", metav1.GetOptions{})
 			return err
