@@ -32,6 +32,7 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/util/retry"
 	"k8s.io/klog"
 )
 
@@ -526,7 +527,12 @@ func Apply(url string, kubeconfig string, ctx string, yamlB []byte) error {
 		}
 
 		if err != nil {
-			return err
+			retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+				return Apply(url, kubeconfig, ctx, yamlB)
+			})
+			if retryErr != nil {
+				return retryErr
+			}
 		}
 	}
 	return nil
