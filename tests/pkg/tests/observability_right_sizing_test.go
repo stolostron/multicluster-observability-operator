@@ -158,9 +158,11 @@ var _ = Describe("RHACM4K-55205: Enable and teardown namespace right-sizing reco
 		)
 	})
 
-	// Disable and teardown
-	It("Should patch the MultiClusterObservability CR to disable namespaceRightSizingRecommendation", func() {
-		By("Updating spec.capabilities.platform.analytics.namespaceRightSizingRecommendation.enabled to false")
+	// Teardown in AfterAll
+	AfterAll(func() {
+		By("Disabling namespace right-sizing recommendation and cleaning up resources")
+
+		// Disable the feature
 		Eventually(func() error {
 			mco, err := dynClient.Resource(mcoGVR).
 				Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
@@ -178,32 +180,27 @@ var _ = Describe("RHACM4K-55205: Enable and teardown namespace right-sizing reco
 				Update(context.TODO(), mco, metav1.UpdateOptions{})
 			return err
 		}, 2*time.Minute, 10*time.Second).Should(Succeed())
-	})
 
-	It("Should remove the rs-prom-rules-policy in the hub cluster namespace 'open-cluster-management-global-set'", func() {
+		// Verify resources are removed
 		Eventually(func() bool {
 			_, err := dynClient.Resource(policyGVR).
 				Namespace("open-cluster-management-global-set").
 				Get(context.TODO(), "rs-prom-rules-policy", metav1.GetOptions{})
 			return apierrors.IsNotFound(err)
-		}, 2*time.Minute, 10*time.Second).Should(BeTrue())
-	})
+		}, 2*time.Minute, 10*time.Second).Should(BeTrue(), "rs-prom-rules-policy should be deleted")
 
-	It("Should remove the ConfigMap 'rs-namespace-config' in namespace 'open-cluster-management-observability'", func() {
 		Eventually(func() bool {
 			_, err := dynClient.Resource(configMapGVR).
 				Namespace("open-cluster-management-observability").
 				Get(context.TODO(), "rs-namespace-config", metav1.GetOptions{})
 			return apierrors.IsNotFound(err)
-		}, 2*time.Minute, 10*time.Second).Should(BeTrue())
-	})
+		}, 2*time.Minute, 10*time.Second).Should(BeTrue(), "rs-namespace-config should be deleted")
 
-	It("Should remove the PrometheusRule 'acm-rs-namespace-prometheus-rules' in namespace 'openshift-monitoring'", func() {
 		Eventually(func() bool {
 			_, err := dynClient.Resource(prGVR).
 				Namespace("openshift-monitoring").
 				Get(context.TODO(), "acm-rs-namespace-prometheus-rules", metav1.GetOptions{})
 			return apierrors.IsNotFound(err)
-		}, 2*time.Minute, 10*time.Second).Should(BeTrue())
+		}, 2*time.Minute, 10*time.Second).Should(BeTrue(), "acm-rs-namespace-prometheus-rules should be deleted")
 	})
 })
