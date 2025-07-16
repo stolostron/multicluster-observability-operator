@@ -26,8 +26,8 @@ pipeline {
         password(name:'AWS_SECRET_ACCESS_KEY', defaultValue: '', description: 'AWS secret access key')
         string(name:'SKIP_INSTALL_STEP', defaultValue: 'false', description: 'Skip Observability installation')
         string(name:'SKIP_UNINSTALL_STEP', defaultValue: 'true', description: 'Skip Observability uninstallation')
-        string(name:'TAGGING', defaultValue: '', description: 'with tagging value to run the specific test cases')
-        string(name:'SKIP_TAGGING', defaultValue: '', description: 'skip specs containing this string in their subject nodes')
+        string(name:'TAGGING', defaultValue: '', description: 'Comma-separated list of Ginkgo tags to run (uses --focus)')
+        string(name:'SKIP_TAGGING', defaultValue: '', description: 'Comma-separated list of Ginkgo tags to skip (uses --skip)')
         string(name:'USE_MINIO', defaultValue: 'false', description: 'If no AWS S3 bucket, you could use minio as object storage to instead')
     }
     environment {
@@ -108,11 +108,23 @@ pipeline {
 
                     ginkgo_args=("ginkgo")
                     if [[ -n "${params.TAGGING}" ]]; then
-                        ginkgo_args+=(--focus "${params.TAGGING}")
+                    IFS=',' read -ra tags <<< "${params.TAGGING}"
+                    for tag in "${tags[@]}"; do
+                        trimmed_tag=$(echo $tag)
+                        if [[ -n "$trimmed_tag" ]]; then
+                            ginkgo_args+=(--focus "${trimmed_tag}")
+                        fi
+                    done
                     fi
 
                     if [[ -n "${params.SKIP_TAGGING}" ]]; then
-                        ginkgo_args+=(--skip "${params.SKIP_TAGGING}")
+                    IFS=',' read -ra skips <<< "${params.SKIP_TAGGING}"
+                    for skip in "${skips[@]}"; do
+                        trimmed_skip=$(echo $skip)
+                        if [[ -n "$trimmed_skip" ]]; then
+                            ginkgo_args+=(--skip "${trimmed_skip}")
+                        fi
+                    done
                     fi
 
                     ginkgo_args+=(-v pkg/tests/ -- -options=../../resources/options.yaml -v=5)
