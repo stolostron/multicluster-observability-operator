@@ -6,6 +6,7 @@ package multiclusterobservability
 
 import (
 	"context"
+
 	"k8s.io/apimachinery/pkg/api/equality"
 
 	// The import of crypto/md5 below is not for cryptographic use. It is used to hash the contents of files to track
