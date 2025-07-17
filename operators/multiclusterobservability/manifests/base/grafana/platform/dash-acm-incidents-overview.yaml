@@ -208,9 +208,9 @@ data:
                 "expr": "min_over_time(timestamp(max by (group_id) (cluster:health:components:map{cluster=\"$cluster\"}))[$__interval:1m]) * 1000",
                 "format": "table",
                 "hide": false,
-                "instant": false,
+                "instant": true,
                 "legendFormat": "__auto",
-                "range": true,
+                "range": false,
                 "refId": "B"
                 }
             ],
@@ -421,9 +421,9 @@ data:
                 "exemplar": false,
                 "expr": "count(sum(count_over_time((cluster:health:components:map{cluster=\"$cluster\",src_severity!=\"none\"}>0)[$__interval:1m])) by (group_id))",
                 "format": "time_series",
-                "instant": true,
+                "instant": false,
                 "legendFormat": "__auto",
-                "range": false,
+                "range": true,
                 "refId": "A"
                 }
             ],
