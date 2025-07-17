@@ -6,6 +6,7 @@ package multiclusterobservability
 
 import (
 	"context"
+	"k8s.io/apimachinery/pkg/api/equality"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
