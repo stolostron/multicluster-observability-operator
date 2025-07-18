@@ -1212,13 +1212,13 @@ func TestNewMCOACRDEventHandler(t *testing.T) {
 			}
 
 			// Create a workqueue
-			queue := workqueue.NewNamedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[any](), "TestQueue")
+			queue := workqueue.NewTypedRateLimitingQueueWithConfig(workqueue.DefaultTypedControllerRateLimiter[reconcile.Request](), workqueue.TypedRateLimitingQueueConfig[reconcile.Request]{Name: "testQueue"})
 			handler.Create(context.TODO(), createEvent, queue)
 
 			reqs := []reconcile.Request{}
 			for queue.Len() > 0 {
 				item, _ := queue.Get()
-				reqs = append(reqs, item.(reconcile.Request))
+				reqs = append(reqs, item)
 				queue.Done(item)
 			}
 
