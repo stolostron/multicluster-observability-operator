@@ -32,6 +32,7 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/util"
 	oashared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
 	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
+	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 )
 
 func TestStatusController_HubNominalCase(t *testing.T) {
@@ -444,13 +445,14 @@ func newClient(objs ...runtime.Object) client.Client {
 	s := scheme.Scheme
 	addonv1alpha1.AddToScheme(s)
 	oav1beta1.AddToScheme(s)
+	mcov1beta2.AddToScheme(s)
 
 	return fake.NewClientBuilder().
 		WithScheme(s).
 		WithRuntimeObjects(objs...).
 		WithStatusSubresource(
 			&addonv1alpha1.ManagedClusterAddOn{},
-			&oav1beta1.MultiClusterObservability{},
+			&mcov1beta2.MultiClusterObservability{},
 			&oav1beta1.ObservabilityAddon{},
 		).
 		Build()
