@@ -188,13 +188,13 @@ func isNonMCOASpecificDashboard(res *resource.Resource) bool {
 }
 
 func removeHomeDashboard(template *resource.Resource) error {
-	labels := template.GetLabels()
-	if _, ok := labels["set-home-dashboard"]; ok {
-		delete(labels, "set-home-dashboard")
+	annotations := template.GetAnnotations()
+	if _, ok := annotations["set-home-dashboard"]; ok {
+		delete(annotations, "set-home-dashboard")
 		klog.Infof("Deleting home dashboard for: %v", template.GetName())
 	}
 
-	if err := template.SetLabels(labels); err != nil {
+	if err := template.SetAnnotations(annotations); err != nil {
 		return fmt.Errorf("failed to set labels: %w", err)
 	}
 
@@ -202,11 +202,12 @@ func removeHomeDashboard(template *resource.Resource) error {
 }
 
 func addHomeDashboard(template *resource.Resource) error {
+	annotations := template.GetAnnotations()
 	labels := template.GetLabels()
 	if _, ok := labels["home-dashboard-uid"]; ok {
 		klog.Infof("Adding home dashboard to: %v", template.GetName())
-		labels["set-home-dashboard"] = "true"
-		if err := template.SetLabels(labels); err != nil {
+		annotations["set-home-dashboard"] = "true"
+		if err := template.SetAnnotations(annotations); err != nil {
 			return fmt.Errorf("failed to set labels: %w", err)
 		}
 	}
