@@ -20,7 +20,6 @@ const (
 	testNamespace = "test-ns"
 )
 
-func int32Ptr(i int32) *int32            { return &i }
 func timePtr(t metav1.Time) *metav1.Time { return &t }
 
 func TestClusterPred(t *testing.T) {

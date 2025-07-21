@@ -212,7 +212,7 @@ func main() {
 			{FieldSelector: fmt.Sprintf("metadata.name=%s", util.ObservabilityController)},
 		},
 		addonv1alpha1.SchemeGroupVersion.WithKind("ManagedClusterAddOn"): {
-			{FieldSelector: fmt.Sprintf("metadata.name=%s", util.ManagedClusterAddonName)},
+			{FieldSelector: fmt.Sprintf("metadata.name=%s", config.ManagedClusterAddonName)},
 		},
 	}
 

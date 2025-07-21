@@ -146,7 +146,7 @@ data:
           "targets": [
             {
               "exemplar": true,
-              "expr": "sum (\n  (kubevirt_vm_resource_requests{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\", resource=\"memory\"})\n  + on(cluster, name, namespace) group_left(status)\n  0*(\n    (\n      (time() - label_replace(kubevirt_vm_starting_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > 0, \"status\", \"starting\", \"\", \"\"))\n      > ($days_in_status_gt * 24 * 60 * 60)\n    ) and (\n      (time() - label_replace(kubevirt_vm_starting_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > 0, \"status\", \"starting\", \"\", \"\"))\n      < ($days_in_status_lt * 24 * 60 * 60)\n    )\n    or\n    (\n      (time() - label_replace(kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > 0, \"status\", \"running\", \"\", \"\"))\n      > ($days_in_status_gt * 24 * 60 * 60)\n    ) and (\n      (time() - label_replace(kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > 0, \"status\", \"running\", \"\", \"\"))\n      < ($days_in_status_lt * 24 * 60 * 60)\n    )\n    or\n    (\n      (time() - label_replace(kubevirt_vm_non_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > 0, \"status\", \"stopped\", \"\", \"\"))\n      > ($days_in_status_gt * 24 * 60 * 60)\n    ) and (\n      (time() - label_replace(kubevirt_vm_non_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > 0, \"status\", \"stopped\", \"\", \"\"))\n      < ($days_in_status_lt * 24 * 60 * 60)\n    )\n    or\n    (\n      (time() - label_replace(kubevirt_vm_error_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > 0, \"status\", \"error\", \"\", \"\"))\n      > ($days_in_status_gt * 24 * 60 * 60)\n    ) and (\n      (time() - label_replace(kubevirt_vm_error_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > 0, \"status\", \"error\", \"\", \"\"))\n      < ($days_in_status_lt * 24 * 60 * 60)\n    )\n    or\n    (\n      (time() - label_replace(kubevirt_vm_migrating_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > 0, \"status\", \"migrating\", \"\", \"\"))\n      > ($days_in_status_gt * 24 * 60 * 60)\n    ) and (\n      (time() - label_replace(kubevirt_vm_migrating_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > 0, \"status\", \"migrating\", \"\", \"\"))\n      < ($days_in_status_lt * 24 * 60 * 60)\n    )\n  )\n  +${status:raw}\n) ",
+              "expr": "sum(\nmax by (cluster, namespace, name, status)(\n  (kubevirt_vm_resource_requests{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\", resource=\"memory\"})\n  + on(cluster, name, namespace) group_left(status)\n  0*(\n    (\n      (time() - label_replace(kubevirt_vm_starting_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > 0, \"status\", \"starting\", \"\", \"\"))\n      > ($days_in_status_gt * 24 * 60 * 60)\n    ) and (\n      (time() - label_replace(kubevirt_vm_starting_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > 0, \"status\", \"starting\", \"\", \"\"))\n      < ($days_in_status_lt * 24 * 60 * 60)\n    )\n    or\n    (\n      (time() - label_replace(kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > 0, \"status\", \"running\", \"\", \"\"))\n      > ($days_in_status_gt * 24 * 60 * 60)\n    ) and (\n      (time() - label_replace(kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > 0, \"status\", \"running\", \"\", \"\"))\n      < ($days_in_status_lt * 24 * 60 * 60)\n    )\n    or\n    (\n      (time() - label_replace(kubevirt_vm_non_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > 0, \"status\", \"stopped\", \"\", \"\"))\n      > ($days_in_status_gt * 24 * 60 * 60)\n    ) and (\n      (time() - label_replace(kubevirt_vm_non_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > 0, \"status\", \"stopped\", \"\", \"\"))\n      < ($days_in_status_lt * 24 * 60 * 60)\n    )\n    or\n    (\n      (time() - label_replace(kubevirt_vm_error_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > 0, \"status\", \"error\", \"\", \"\"))\n      > ($days_in_status_gt * 24 * 60 * 60)\n    ) and (\n      (time() - label_replace(kubevirt_vm_error_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > 0, \"status\", \"error\", \"\", \"\"))\n      < ($days_in_status_lt * 24 * 60 * 60)\n    )\n    or\n    (\n      (time() - label_replace(kubevirt_vm_migrating_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > 0, \"status\", \"migrating\", \"\", \"\"))\n      > ($days_in_status_gt * 24 * 60 * 60)\n    ) and (\n      (time() - label_replace(kubevirt_vm_migrating_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > 0, \"status\", \"migrating\", \"\", \"\"))\n      < ($days_in_status_lt * 24 * 60 * 60)\n    )\n  )\n  +${status:raw}\n))",
               "format": "table",
               "instant": true,
               "interval": "",
@@ -252,7 +252,7 @@ data:
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "cluster"
+                  "options": "Cluster"
                 },
                 "properties": [
                   {
@@ -264,7 +264,7 @@ data:
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "namespace"
+                  "options": "Namespace"
                 },
                 "properties": [
                   {
@@ -292,19 +292,29 @@ data:
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "name"
+                  "options": "VM Name"
                 },
                 "properties": [
                   {
                     "id": "custom.filterable",
                     "value": true
+                  },
+                  {
+                    "id": "links",
+                    "value": [
+                      {
+                        "targetBlank": true,
+                        "title": "",
+                        "url": "/d/RnxEyj6Sz/executive-dashboards-single-virtual-machine-view?orgId=1&var-cluster=${__data.fields.Cluster}&var-name=${__data.fields[\"VM Name\"]}&var-namespace=${__data.fields.Namespace}"
+                      }
+                    ]
                   }
                 ]
               },
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "status"
+                  "options": "Status"
                 },
                 "properties": [
                   {
@@ -358,6 +368,10 @@ data:
                   {
                     "id": "unit",
                     "value": "bytes"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 0
                   }
                 ]
               }
@@ -418,7 +432,7 @@ data:
             },
             {
               "exemplar": true,
-              "expr": "sum by (cluster, namespace, name, status)(\n  (kubevirt_vm_resource_requests{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\", resource=\"memory\"})\n  + on(cluster, name, namespace) group_left(status)\n  0*(\n    (\n      (time() - label_replace(kubevirt_vm_starting_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > 0, \"status\", \"starting\", \"\", \"\"))\n      > ($days_in_status_gt * 24 * 60 * 60)\n    ) and (\n      (time() - label_replace(kubevirt_vm_starting_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > 0, \"status\", \"starting\", \"\", \"\"))\n      < ($days_in_status_lt * 24 * 60 * 60)\n    )\n    or\n    (\n      (time() - label_replace(kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > 0, \"status\", \"running\", \"\", \"\"))\n      > ($days_in_status_gt * 24 * 60 * 60)\n    ) and (\n      (time() - label_replace(kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > 0, \"status\", \"running\", \"\", \"\"))\n      < ($days_in_status_lt * 24 * 60 * 60)\n    )\n    or\n    (\n      (time() - label_replace(kubevirt_vm_non_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > 0, \"status\", \"stopped\", \"\", \"\"))\n      > ($days_in_status_gt * 24 * 60 * 60)\n    ) and (\n      (time() - label_replace(kubevirt_vm_non_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > 0, \"status\", \"stopped\", \"\", \"\"))\n      < ($days_in_status_lt * 24 * 60 * 60)\n    )\n    or\n    (\n      (time() - label_replace(kubevirt_vm_error_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > 0, \"status\", \"error\", \"\", \"\"))\n      > ($days_in_status_gt * 24 * 60 * 60)\n    ) and (\n      (time() - label_replace(kubevirt_vm_error_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > 0, \"status\", \"error\", \"\", \"\"))\n      < ($days_in_status_lt * 24 * 60 * 60)\n    )\n    or\n    (\n      (time() - label_replace(kubevirt_vm_migrating_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > 0, \"status\", \"migrating\", \"\", \"\"))\n      > ($days_in_status_gt * 24 * 60 * 60)\n    ) and (\n      (time() - label_replace(kubevirt_vm_migrating_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > 0, \"status\", \"migrating\", \"\", \"\"))\n      < ($days_in_status_lt * 24 * 60 * 60)\n    )\n  )\n  +${status:raw}\n)\n",
+              "expr": "max by (cluster, namespace, name, status)(\n  (kubevirt_vm_resource_requests{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\", resource=\"memory\"})\n  + on(cluster, name, namespace) group_left(status)\n  0*(\n    (\n      (time() - label_replace(kubevirt_vm_starting_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > 0, \"status\", \"starting\", \"\", \"\"))\n      > ($days_in_status_gt * 24 * 60 * 60)\n    ) and (\n      (time() - label_replace(kubevirt_vm_starting_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > 0, \"status\", \"starting\", \"\", \"\"))\n      < ($days_in_status_lt * 24 * 60 * 60)\n    )\n    or\n    (\n      (time() - label_replace(kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > 0, \"status\", \"running\", \"\", \"\"))\n      > ($days_in_status_gt * 24 * 60 * 60)\n    ) and (\n      (time() - label_replace(kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > 0, \"status\", \"running\", \"\", \"\"))\n      < ($days_in_status_lt * 24 * 60 * 60)\n    )\n    or\n    (\n      (time() - label_replace(kubevirt_vm_non_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > 0, \"status\", \"stopped\", \"\", \"\"))\n      > ($days_in_status_gt * 24 * 60 * 60)\n    ) and (\n      (time() - label_replace(kubevirt_vm_non_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > 0, \"status\", \"stopped\", \"\", \"\"))\n      < ($days_in_status_lt * 24 * 60 * 60)\n    )\n    or\n    (\n      (time() - label_replace(kubevirt_vm_error_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > 0, \"status\", \"error\", \"\", \"\"))\n      > ($days_in_status_gt * 24 * 60 * 60)\n    ) and (\n      (time() - label_replace(kubevirt_vm_error_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > 0, \"status\", \"error\", \"\", \"\"))\n      < ($days_in_status_lt * 24 * 60 * 60)\n    )\n    or\n    (\n      (time() - label_replace(kubevirt_vm_migrating_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > 0, \"status\", \"migrating\", \"\", \"\"))\n      > ($days_in_status_gt * 24 * 60 * 60)\n    ) and (\n      (time() - label_replace(kubevirt_vm_migrating_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > 0, \"status\", \"migrating\", \"\", \"\"))\n      < ($days_in_status_lt * 24 * 60 * 60)\n    )\n  )\n  +${status:raw}\n)\n",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -492,7 +506,13 @@ data:
                   "Value #D": "Last Migration",
                   "Value #E": "Allocated Memory",
                   "Value #F": "Allocated CPU",
-                  "clusterType": ""
+                  "cluster": "Cluster",
+                  "clusterID": "",
+                  "clusterType": "",
+                  "name": "VM Name",
+                  "namespace": "Namespace",
+                  "status": "Status",
+                  "tenant_id": ""
                 }
               }
             }
@@ -504,10 +524,10 @@ data:
       "schemaVersion": 30,
       "style": "dark",
       "tags": [
-        "Virtualization",
-        "OpenShift",
         "ACM",
-        "KubeVirt"
+        "KubeVirt",
+        "OpenShift",
+        "Virtualization"
       ],
       "templating": {
         "list": [
@@ -605,54 +625,51 @@ data:
             "type": "query"
           },
           {
-            "allValue": null,
+            "allowCustomValue": false,
             "current": {
-              "selected": true,
-              "text": "All",
-              "value": "0"
+              "text": [
+                "on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_info)))"
+              ],
+              "value": [
+                "on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_info)))"
+              ]
             },
-            "description": null,
-            "error": null,
-            "hide": 0,
-            "includeAll": true,
+            "includeAll": false,
             "label": "Status",
-            "multi": false,
             "name": "status",
             "options": [
               {
                 "selected": true,
                 "text": "All",
-                "value": "0"
+                "value": "on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_info)))"
               },
               {
                 "selected": false,
                 "text": "stopped",
-                "value": "on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_non_running_status_last_transition_timestamp_seconds>0)))"
+                "value": "on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_info{status_group=\"non_running\"}>0)))"
               },
               {
                 "selected": false,
                 "text": "starting",
-                "value": "on(cluster,name,namespace) group_left()(0*(sum by(cluster, namespace,name)(kubevirt_vm_starting_status_last_transition_timestamp_seconds>0)))"
+                "value": "on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_info{status_group=\"starting\"} > 0)))"
               },
               {
                 "selected": false,
                 "text": "migrating",
-                "value": "on(cluster,name,namespace) group_left()(0*(sum by(cluster, namespace,name)(kubevirt_vm_migrating_status_last_transition_timestamp_seconds>0)))"
+                "value": "on(cluster, name, namespace) group_left() (0*(sum by (cluster, namespace, name)(kubevirt_vm_info{status_group=\"migrating\"}>0)))"
               },
               {
                 "selected": false,
                 "text": "error",
-                "value": "on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_error_status_last_transition_timestamp_seconds>0)))"
+                "value": "on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_info{status_group=\"error\"}>0)))"
               },
               {
                 "selected": false,
                 "text": "running",
-                "value": "on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_running_status_last_transition_timestamp_seconds>0)))"
+                "value": "on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_info{status_group=\"running\"}>0)))"
               }
             ],
-            "query": "All=0, stopped:on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_non_running_status_last_transition_timestamp_seconds>0))), starting:on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_starting_status_last_transition_timestamp_seconds > 0))), migrating:on(cluster, name, namespace) group_left() (0*(sum by (cluster, namespace, name)(kubevirt_vm_migrating_status_last_transition_timestamp_seconds>0))), error:on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_error_status_last_transition_timestamp_seconds>0))), running:on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_running_status_last_transition_timestamp_seconds>0)))",
-            "queryValue": "",
-            "skipUrlSync": false,
+            "query": "All : on(cluster\\,name\\,namespace) group_left()(0*(sum by(cluster\\,namespace\\,name)(kubevirt_vm_info))), stopped : on(cluster\\,name\\,namespace) group_left()(0*(sum by(cluster\\,namespace\\,name)(kubevirt_vm_info{status_group=\"non_running\"}>0))), starting : on(cluster\\,name\\,namespace) group_left()(0*(sum by(cluster\\,namespace\\,name)(kubevirt_vm_info{status_group=\"starting\"} > 0))), migrating : on(cluster\\, name\\, namespace) group_left() (0*(sum by (cluster\\, namespace\\, name)(kubevirt_vm_info{status_group=\"migrating\"}>0))), error : on(cluster\\,name\\,namespace) group_left()(0*(sum by(cluster\\,namespace\\,name)(kubevirt_vm_info{status_group=\"error\"}>0))), running : on(cluster\\,name\\,namespace) group_left()(0*(sum by(cluster\\,namespace\\,name)(kubevirt_vm_info{status_group=\"running\"}>0)))",
             "type": "custom"
           },
           {
@@ -702,7 +719,7 @@ data:
         ]
       },
       "time": {
-        "from": "now-6h",
+        "from": "now-30d",
         "to": "now"
       },
       "timepicker": {

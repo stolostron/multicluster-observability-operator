@@ -616,8 +616,8 @@ func createOrUpdateUserWorkloadMonitoringConfig(
 		return fmt.Errorf("failed to create or update alertmanager accessor token in UWM namespace: %w", err)
 	}
 
-	// handle the case when alert forwarding is disabled
-	if hubInfo.AlertmanagerEndpoint == "" {
+	// handle the case when alert forwarding is disabled globally or UWM alerting is disabled specifically
+	if hubInfo.AlertmanagerEndpoint == "" || hubInfo.UWMAlertingDisabled {
 		log.Info("request to disable alert forwarding")
 		return RevertUserWorkloadMonitoringConfig(ctx, client)
 	}
@@ -654,7 +654,11 @@ func createOrUpdateUserWorkloadMonitoringConfig(
 
 	existingYAML, ok := existing.Data["config.yaml"]
 	if !ok {
-		existing.Data["config.yaml"] = string(yamlBytes)
+		if existing.Data == nil {
+			existing.Data = map[string]string{"config.yaml": string(yamlBytes)}
+		} else {
+			existing.Data["config.yaml"] = string(yamlBytes)
+		}
 		log.Info("user workload monitoring configmap missing config.yaml, updating")
 		return client.Update(ctx, existing)
 	}

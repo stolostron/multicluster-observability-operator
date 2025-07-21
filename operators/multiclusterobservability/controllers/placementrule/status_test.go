@@ -18,7 +18,7 @@ import (
 
 	mcov1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
-	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -116,7 +116,7 @@ func TestUpdateAddonStatus(t *testing.T) {
 
 			clusterAddon := &addonv1alpha1.ManagedClusterAddOn{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      util.ManagedClusterAddonName,
+					Name:      config.ManagedClusterAddonName,
 					Namespace: namespace,
 				},
 				Status: addonv1alpha1.ManagedClusterAddOnStatus{
@@ -150,7 +150,7 @@ func TestUpdateAddonStatus(t *testing.T) {
 
 			foundClusterAddon := &addonv1alpha1.ManagedClusterAddOn{}
 			if err := c.Get(context.Background(), types.NamespacedName{
-				Name:      util.ManagedClusterAddonName,
+				Name:      config.ManagedClusterAddonName,
 				Namespace: namespace,
 			}, foundClusterAddon); err != nil {
 				t.Fatalf("Failed to get managedclusteraddon: (%v)", err)
@@ -163,7 +163,7 @@ func TestUpdateAddonStatus(t *testing.T) {
 			}
 
 			if err := c.Get(context.Background(), types.NamespacedName{
-				Name:      util.ManagedClusterAddonName,
+				Name:      config.ManagedClusterAddonName,
 				Namespace: namespace,
 			}, foundClusterAddon); err != nil {
 				t.Fatalf("Failed to get managedclusteraddon: (%v)", err)

@@ -12,6 +12,7 @@ import (
 	"strings"
 	"testing"
 
+	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -337,12 +338,15 @@ func TestManifestWork(t *testing.T) {
 
 	setupTest(t)
 
-	works, crdWork, err := generateGlobalManifestResources(context.Background(), c, newTestMCO())
+	// Test with UWM alerting disabled
+	mco := newTestMCO()
+	mco.Annotations = map[string]string{config.AnnotationDisableUWMAlerting: "true"}
+	works, crdWork, err := generateGlobalManifestResources(context.Background(), c, mco)
 	if err != nil {
 		t.Fatalf("Failed to get global manifestwork resource: (%v)", err)
 	}
 	t.Logf("work size is %d", len(works))
-	if hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, true); err != nil {
+	if hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, true, config.IsUWMAlertingDisabledInSpec(mco)); err != nil {
 		t.Fatalf("Failed to generate hubInfo secret: (%v)", err)
 	}
 
@@ -377,7 +381,7 @@ func TestManifestWork(t *testing.T) {
 		c,
 		namespace,
 		managedClusterInfo{Name: clusterName, IsLocalCluster: false},
-		newTestMCO(),
+		mco,
 		works,
 		metricsAllowlistConfigMap,
 		crdWork,
@@ -389,8 +393,94 @@ func TestManifestWork(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create manifestworks: (%v)", err)
 	}
-	if err := createManifestwork(c, manWork); err != nil {
+	if err := createManifestwork(context.Background(), c, manWork); err != nil {
 		t.Fatalf("Failed to apply manifestworks: (%v)", err)
+	}
+
+	// Verify the hub info secret in the manifestwork
+	found := &workv1.ManifestWork{}
+	workName := namespace + workNameSuffix
+	err = c.Get(context.TODO(), types.NamespacedName{Name: workName, Namespace: namespace}, found)
+	if err != nil {
+		t.Fatalf("Failed to get manifestwork %s: (%v)", workName, err)
+	}
+
+	// Find the hub info secret in the manifestwork
+	for _, manifest := range found.Spec.Workload.Manifests {
+		obj := &unstructured.Unstructured{}
+		obj.UnmarshalJSON(manifest.Raw)
+		if obj.GetKind() == "Secret" && obj.GetName() == operatorconfig.HubInfoSecretName {
+			hubInfo := &operatorconfig.HubInfo{}
+			secretData := obj.Object["data"].(map[string]interface{})[operatorconfig.HubInfoSecretKey].(string)
+			decodedData, err := base64.StdEncoding.DecodeString(secretData)
+			if err != nil {
+				t.Fatalf("Failed to decode base64 secret data: (%v)", err)
+			}
+			err = yaml.Unmarshal(decodedData, hubInfo)
+			if err != nil {
+				t.Fatalf("Failed to unmarshal hub info secret: (%v)", err)
+			}
+			if !hubInfo.UWMAlertingDisabled {
+				t.Fatalf("UWM alerting should be disabled in the hub info secret")
+			}
+		}
+	}
+
+	// Test with UWM alerting enabled
+	mco.Annotations = map[string]string{config.AnnotationDisableUWMAlerting: "false"}
+	works, crdWork, err = generateGlobalManifestResources(context.Background(), c, mco)
+	if err != nil {
+		t.Fatalf("Failed to get global manifestwork resource: (%v)", err)
+	}
+	if hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, true, config.IsUWMAlertingDisabledInSpec(mco)); err != nil {
+		t.Fatalf("Failed to generate hubInfo secret: (%v)", err)
+	}
+
+	manWork, err = createManifestWorks(
+		c,
+		namespace,
+		managedClusterInfo{Name: clusterName, IsLocalCluster: false},
+		mco,
+		works,
+		metricsAllowlistConfigMap,
+		crdWork,
+		endpointMetricsOperatorDeploy,
+		hubInfoSecret,
+		addonConfig,
+		false,
+	)
+	if err != nil {
+		t.Fatalf("Failed to create manifestworks: (%v)", err)
+	}
+	if err := createManifestwork(context.Background(), c, manWork); err != nil {
+		t.Fatalf("Failed to apply manifestworks: (%v)", err)
+	}
+
+	// Verify the hub info secret in the manifestwork
+	err = c.Get(context.TODO(), types.NamespacedName{Name: workName, Namespace: namespace}, found)
+	if err != nil {
+		t.Fatalf("Failed to get manifestwork %s: (%v)", workName, err)
+	}
+
+	// Find the hub info secret in the manifestwork
+	for _, manifest := range found.Spec.Workload.Manifests {
+		obj := &unstructured.Unstructured{}
+		obj.UnmarshalJSON(manifest.Raw)
+		if obj.GetKind() == "Secret" && obj.GetName() == operatorconfig.HubInfoSecretName {
+			hubInfo := &operatorconfig.HubInfo{}
+			secretData := obj.Object["data"].(map[string]interface{})[operatorconfig.HubInfoSecretKey].(string)
+			decodedData, err := base64.StdEncoding.DecodeString(secretData)
+			if err != nil {
+				t.Fatalf("Failed to decode base64 secret data: (%v)", err)
+			}
+			err = yaml.Unmarshal(decodedData, hubInfo)
+			if err != nil {
+				t.Fatalf("Failed to unmarshal hub info secret: (%v)", err)
+			}
+			if hubInfo.UWMAlertingDisabled {
+				t.Fatalf("UWM alerting should be enabled in the hub info secret")
+			}
+		}
 	}
 
 	annotations := endpointMetricsOperatorDeploy.Spec.Template.Annotations
@@ -403,8 +493,8 @@ func TestManifestWork(t *testing.T) {
 		)
 	}
 
-	found := &workv1.ManifestWork{}
-	workName := namespace + workNameSuffix
+	found = &workv1.ManifestWork{}
+	workName = namespace + workNameSuffix
 	err = c.Get(context.TODO(), types.NamespacedName{Name: workName, Namespace: namespace}, found)
 	if err != nil {
 		t.Fatalf("Failed to get manifestwork %s: (%v)", workName, err)
@@ -427,7 +517,7 @@ func TestManifestWork(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create manifestworks: (%v)", err)
 	}
-	if err := createManifestwork(c, manWork); err != nil {
+	if err := createManifestwork(context.Background(), c, manWork); err != nil {
 		t.Fatalf("Failed to apply manifestworks: (%v)", err)
 	}
 	err = c.Get(context.TODO(), types.NamespacedName{Name: workName, Namespace: namespace}, found)
@@ -443,7 +533,7 @@ func TestManifestWork(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create manifestworks with updated namespace: (%v)", err)
 	}
-	if err := createManifestwork(c, manWork); err != nil {
+	if err := createManifestwork(context.Background(), c, manWork); err != nil {
 		t.Fatalf("Failed to apply manifestworks: (%v)", err)
 	}
 
@@ -467,7 +557,7 @@ func TestManifestWork(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get global manifestwork resource: (%v)", err)
 	}
-	if hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, true); err != nil {
+	if hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, true, config.IsUWMAlertingDisabledInSpec(mco)); err != nil {
 		t.Fatalf("Failed to generate hubInfo secret: (%v)", err)
 	}
 
@@ -475,7 +565,7 @@ func TestManifestWork(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create manifestworks: (%v)", err)
 	}
-	if err := createManifestwork(c, manWork); err != nil {
+	if err := createManifestwork(context.Background(), c, manWork); err != nil {
 		t.Fatalf("Failed to apply manifestworks: (%v)", err)
 	}
 	found = &workv1.ManifestWork{}

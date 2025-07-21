@@ -35,6 +35,7 @@ const (
 	nameUserWorkloadInstrumentation   = "userWorkloadInstrumentation"
 	nameUserWorkloadMetricsCollection = "userWorkloadMetricsCollection"
 	nameMetricsHubHostname            = "metricsHubHostname"
+	namePLatformMetricsUI             = "platformMetricsUI"
 
 	grafanaLink = "/d/89eaec849a6e4837a619fb0540c22b13/acm-clusters-overview"
 )
@@ -223,6 +224,11 @@ func (r *MCORenderer) renderAddonDeploymentConfig(
 			if cs.Platform.Metrics.Collection.Enabled {
 				fqdn := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.PrometheusAgentCRDName)
 				appendCustomVar(aodc, namePlatformMetricsCollection, fqdn)
+
+				if cs.Platform.Metrics.UI.Enabled {
+					fqdn := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.UIPluginsCRDName)
+					appendCustomVar(aodc, namePLatformMetricsUI, fqdn)
+				}
 			}
 			if cs.Platform.Analytics.IncidentDetection.Enabled {
 				fqdn := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.UIPluginsCRDName)

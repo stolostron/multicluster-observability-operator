@@ -627,7 +627,7 @@ func childCertIsSignedByCA(caPemCert, childPemCert []byte) (bool, error) {
 	}
 
 	if len(caCerts) != 1 {
-		return false, fmt.Errorf("expecting a single certificate for CA, found %d", len(caCerts))
+		log.Info(fmt.Sprintf("expecting a single certificate for CA, found %d", len(caCerts)))
 	}
 	caCertPool.AddCert(caCerts[0])
 
@@ -647,7 +647,8 @@ func childCertIsSignedByCA(caPemCert, childPemCert []byte) (bool, error) {
 		KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
 	})
 	if err != nil {
-		return false, fmt.Errorf("child certificate verification against the CA certificate failed: %w", err)
+		log.Info(fmt.Sprintf("child certificate is not signed by CA: %v", err))
+		return false, nil
 	}
 
 	return true, nil

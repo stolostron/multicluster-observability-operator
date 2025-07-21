@@ -61,10 +61,11 @@ const (
 )
 
 var (
-	log                           = logf.Log.WithName("controller_placementrule")
-	clusterAddon                  = &addonv1alpha1.ClusterManagementAddOn{}
-	defaultAddonDeploymentConfig  = &addonv1alpha1.AddOnDeploymentConfig{}
-	isplacementControllerRunnning = false
+	log                               = logf.Log.WithName("controller_placementrule")
+	clusterAddon                      = &addonv1alpha1.ClusterManagementAddOn{}
+	defaultAddonDeploymentConfig      = &addonv1alpha1.AddOnDeploymentConfig{}
+	isplacementControllerRunnning     = false
+	managedClustersHaveReconciledOnce bool // Ensures that all managedClusters are reconciled once on MCO reboot
 )
 
 // PlacementRuleReconciler reconciles a PlacementRule object
@@ -263,6 +264,11 @@ func (r *PlacementRuleReconciler) cleanOrphanResources(ctx context.Context, req 
 	// Delete orphen resources in namespaces with no observability addon
 	for ns := range namespacesWithResources {
 		if _, ok := currentAddonNamespaces[ns]; ok {
+			continue
+		}
+
+		if ns == config.GetDefaultNamespace() {
+			// Local cluster has no ObservabilityAddon, skip if the namespace matches
 			continue
 		}
 
@@ -467,22 +473,22 @@ func createAllRelatedRes(
 	// regenerate the hubinfo secret if empty
 	if hubInfoSecret == nil {
 		var err error
-		if hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, CRDMap[config.IngressControllerCRD]); err != nil {
+		if hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, CRDMap[config.IngressControllerCRD], config.IsUWMAlertingDisabledInSpec(mco)); err != nil {
 			return fmt.Errorf("failed to generate hub info secret: %w", err)
 		}
 	}
 
-	failedCreateManagedClusterRes := false
 	managedClusterList, err := getManagedClustersList(ctx, c)
 	if err != nil {
 		return fmt.Errorf("failed to get managed clusters list: %w", err)
 	}
 
+	var allErrors []error
 	for _, mci := range managedClusterList {
 		managedCluster := mci.Name
 		openshiftVersion := mci.OpenshiftVersion
 
-		if !isReconcileRequired(request, managedCluster) {
+		if managedClustersHaveReconciledOnce && !isReconcileRequired(request, managedCluster) {
 			continue
 		}
 
@@ -502,12 +508,13 @@ func createAllRelatedRes(
 
 		addonDeployCfg, err := createManagedClusterRes(ctx, c, mco, managedCluster, namespace)
 		if err != nil {
-			failedCreateManagedClusterRes = true
+			allErrors = append(allErrors, fmt.Errorf("failed to createManagedClusterRes: %w", err))
 			log.Error(err, "Failed to create managedcluster resources", "namespace", managedCluster)
 			continue
 		}
 		manifestWork, err := createManifestWorks(c, namespace, mci, mco, works, metricsAllowlistConfigMap, crdv1Work, endpointMetricsOperatorDeploy, hubInfoSecret.DeepCopy(), addonDeployCfg, installProm)
 		if err != nil {
+			allErrors = append(allErrors, fmt.Errorf("failed to create manifestworks: %w", err))
 			log.Error(err, "Failed to create manifestworks: %w", err)
 			continue
 		}
@@ -517,41 +524,51 @@ func createAllRelatedRes(
 			// install the endpoint operator into open-cluster-management-observability namespace for the hub cluster
 			log.Info("Creating resource for hub metrics collection", "cluster", managedCluster)
 			if err := ensureResourcesForHubMetricsCollection(ctx, c, mco, manifestWork.Spec.Workload.Manifests); err != nil {
+				allErrors = append(allErrors, fmt.Errorf("failed to ensure resources for hub metrics collection: %w", err))
 				log.Error(err, "Failed to ensure resources for hub metrics collection")
 				continue
 			}
 		} else {
 			retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-				return createManifestwork(c, manifestWork)
+				return createManifestwork(ctx, c, manifestWork)
 			})
 			if retryErr != nil {
+				allErrors = append(allErrors, fmt.Errorf("failed to create manifestwork: %w", retryErr))
 				log.Error(retryErr, "Failed to create manifestwork")
 				continue
 			}
 		}
 	}
 
+	if len(allErrors) == 0 {
+		managedClustersHaveReconciledOnce = true
+	}
+
 	// Look through the obsAddonList items and find clusters
 	// which are no longer to be managed and therefore needs deletion
 	managedClustersNamespaces := make(map[string]struct{}, len(managedClusterList))
 	for _, mc := range managedClusterList {
-		managedClustersNamespaces[mc.Name] = struct{}{}
+		if mc.IsLocalCluster {
+			// local cluster resources live in a different namespace than the ManagedClusterName
+			managedClustersNamespaces[config.GetDefaultNamespace()] = struct{}{}
+		} else {
+			managedClustersNamespaces[mc.Name] = struct{}{}
+		}
 	}
 
-	failedDeleteOba := false
 	for _, ep := range obsAddonList.Items {
 		if _, ok := managedClustersNamespaces[ep.Namespace]; ok {
 			continue
 		}
 
 		if err := deleteObsAddon(ctx, c, ep.Namespace); err != nil {
-			failedDeleteOba = true
+			allErrors = append(allErrors, fmt.Errorf("failed to deleteObsAddon: %w", err))
 			log.Error(err, "Failed to delete observabilityaddon", "namespace", ep.Namespace)
 		}
 	}
 
-	if failedCreateManagedClusterRes || failedDeleteOba {
-		return fmt.Errorf("failed to create managedcluster resources or failed to delete observabilityaddon: failedCreateManagedClusterRes=%t, failedDeleteOba=%t", failedCreateManagedClusterRes, failedDeleteOba)
+	if len(allErrors) > 0 {
+		return errors.Join(allErrors...)
 	}
 
 	return nil
@@ -637,7 +654,7 @@ func createManagedClusterRes(ctx context.Context, c client.Client, mco *mcov1bet
 		return nil, fmt.Errorf("failed to create role bindings: %w", err)
 	}
 
-	addon, err := util.CreateManagedClusterAddonCR(c, namespace, ownerLabelKey, ownerLabelValue)
+	addon, err := util.CreateManagedClusterAddonCR(ctx, c, namespace, ownerLabelKey, ownerLabelValue)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create ManagedClusterAddon: %w", err)
 	}
@@ -672,7 +689,7 @@ func createManagedClusterRes(ctx context.Context, c client.Client, mco *mcov1bet
 func deleteManagedClusterRes(c client.Client, namespace string) error {
 	managedclusteraddon := &addonv1alpha1.ManagedClusterAddOn{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      util.ManagedClusterAddonName,
+			Name:      config.ManagedClusterAddonName,
 			Namespace: namespace,
 		},
 	}
@@ -904,14 +921,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		CreateFunc: func(e event.CreateEvent) bool {
 			if e.Object.GetName() == config.OpenshiftIngressOperatorCRName &&
 				e.Object.GetNamespace() == config.OpenshiftIngressOperatorNamespace {
-				// generate the hubInfo secret
-				hubInfoSecret, _ = generateHubInfoSecret(
-					c,
-					config.GetDefaultNamespace(),
-					spokeNameSpace,
-					ingressCtlCrdExists,
-				)
-				return true
+				return updateHubInfoSecret(c, ingressCtlCrdExists)
 			}
 			return false
 		},
@@ -919,28 +929,14 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			if e.ObjectNew.GetName() == config.OpenshiftIngressOperatorCRName &&
 				e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() &&
 				e.ObjectNew.GetNamespace() == config.OpenshiftIngressOperatorNamespace {
-				// regenerate the hubInfo secret
-				hubInfoSecret, _ = generateHubInfoSecret(
-					c,
-					config.GetDefaultNamespace(),
-					spokeNameSpace,
-					ingressCtlCrdExists,
-				)
-				return true
+				return updateHubInfoSecret(c, ingressCtlCrdExists)
 			}
 			return false
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
 			if e.Object.GetName() == config.OpenshiftIngressOperatorCRName &&
 				e.Object.GetNamespace() == config.OpenshiftIngressOperatorNamespace {
-				// regenerate the hubInfo secret
-				hubInfoSecret, _ = generateHubInfoSecret(
-					c,
-					config.GetDefaultNamespace(),
-					spokeNameSpace,
-					ingressCtlCrdExists,
-				)
-				return true
+				return updateHubInfoSecret(c, ingressCtlCrdExists)
 			}
 			return false
 		},
@@ -951,14 +947,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			if e.Object.GetNamespace() == config.GetDefaultNamespace() &&
 				(e.Object.GetName() == config.AlertmanagerRouteBYOCAName ||
 					e.Object.GetName() == config.AlertmanagerRouteBYOCERTName) {
-				// generate the hubInfo secret
-				hubInfoSecret, _ = generateHubInfoSecret(
-					c,
-					config.GetDefaultNamespace(),
-					spokeNameSpace,
-					ingressCtlCrdExists,
-				)
-				return true
+				return updateHubInfoSecret(c, ingressCtlCrdExists)
 			}
 			return false
 		},
@@ -967,14 +956,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() &&
 				(e.ObjectNew.GetName() == config.AlertmanagerRouteBYOCAName ||
 					e.ObjectNew.GetName() == config.AlertmanagerRouteBYOCERTName) {
-				// regenerate the hubInfo secret
-				hubInfoSecret, _ = generateHubInfoSecret(
-					c,
-					config.GetDefaultNamespace(),
-					spokeNameSpace,
-					ingressCtlCrdExists,
-				)
-				return true
+				return updateHubInfoSecret(c, ingressCtlCrdExists)
 			}
 			return false
 		},
@@ -982,14 +964,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			if e.Object.GetNamespace() == config.GetDefaultNamespace() &&
 				(e.Object.GetName() == config.AlertmanagerRouteBYOCAName ||
 					e.Object.GetName() == config.AlertmanagerRouteBYOCERTName) {
-				// regenerate the hubInfo secret
-				hubInfoSecret, _ = generateHubInfoSecret(
-					c,
-					config.GetDefaultNamespace(),
-					spokeNameSpace,
-					ingressCtlCrdExists,
-				)
-				return true
+				return updateHubInfoSecret(c, ingressCtlCrdExists)
 			}
 			return false
 		},
@@ -1001,14 +976,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				e.Object.GetName() == config.OpenshiftIngressRouteCAName) ||
 				(e.Object.GetNamespace() == config.OpenshiftIngressNamespace &&
 					e.Object.GetName() == config.OpenshiftIngressDefaultCertName) {
-				// generate the hubInfo secret
-				hubInfoSecret, _ = generateHubInfoSecret(
-					c,
-					config.GetDefaultNamespace(),
-					spokeNameSpace,
-					ingressCtlCrdExists,
-				)
-				return true
+				return updateHubInfoSecret(c, ingressCtlCrdExists)
 			}
 			return false
 		},
@@ -1018,14 +986,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				(e.ObjectNew.GetNamespace() == config.OpenshiftIngressNamespace &&
 					e.ObjectNew.GetName() == config.OpenshiftIngressDefaultCertName)) &&
 				e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() {
-				// regenerate the hubInfo secret
-				hubInfoSecret, _ = generateHubInfoSecret(
-					c,
-					config.GetDefaultNamespace(),
-					spokeNameSpace,
-					ingressCtlCrdExists,
-				)
-				return true
+				return updateHubInfoSecret(c, ingressCtlCrdExists)
 			}
 			return false
 		},
@@ -1282,4 +1243,28 @@ func mcoaForMetricsIsEnabled(mco *mcov1beta2.MultiClusterObservability) bool {
 
 	return false
 
+}
+
+// updateHubInfoSecret gets the MCO instance and updates the hub info secret
+func updateHubInfoSecret(c client.Client, ingressCtlCrdExists bool) bool {
+	// get the MCO instance
+	mco := &mcov1beta2.MultiClusterObservability{}
+	if err := c.Get(context.TODO(), types.NamespacedName{Name: config.GetMonitoringCRName()}, mco); err != nil {
+		log.Error(err, "Failed to get MCO instance")
+		return false
+	}
+	// generate the hubInfo secret
+	var err error
+	hubInfoSecret, err = generateHubInfoSecret(
+		c,
+		config.GetDefaultNamespace(),
+		spokeNameSpace,
+		ingressCtlCrdExists,
+		config.IsUWMAlertingDisabledInSpec(mco),
+	)
+	if err != nil {
+		log.Error(err, "Failed to generate hub info secret")
+		return false
+	}
+	return true
 }

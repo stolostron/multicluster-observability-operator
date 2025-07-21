@@ -272,6 +272,15 @@ func updateMCOAStatus(c client.Client, conds *[]mcoshared.Condition, mco *mcov1b
 		return
 	}
 
+	// Return early if MCOA components like Logs, Metrics collection and IncidentDetection are disabled
+	// in the Platform configuration (NamespaceRightSizingRecommendation can be enabled/disabled).
+	if mco.Spec.Capabilities.Platform != nil &&
+		!mco.Spec.Capabilities.Platform.Logs.Collection.Enabled &&
+		!mco.Spec.Capabilities.Platform.Metrics.Collection.Enabled &&
+		!mco.Spec.Capabilities.Platform.Analytics.IncidentDetection.Enabled {
+		return
+	}
+
 	var missing []string
 
 outer:

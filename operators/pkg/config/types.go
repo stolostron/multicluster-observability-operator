@@ -17,6 +17,7 @@ type HubInfo struct {
 	ObservatoriumAPIEndpoint string `yaml:"observatorium-api-endpoint"`
 	AlertmanagerEndpoint     string `yaml:"alertmanager-endpoint"`
 	AlertmanagerRouterCA     string `yaml:"alertmanager-router-ca"`
+	UWMAlertingDisabled      bool   `yaml:"uwm-alerting-disabled"`
 }
 
 type RecordingRule struct {

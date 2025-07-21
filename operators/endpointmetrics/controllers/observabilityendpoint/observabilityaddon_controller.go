@@ -365,6 +365,13 @@ func (r *ObservabilityAddonReconciler) initFinalization(
 		if err != nil {
 			return false, err
 		}
+
+		// revert the change to user workload monitoring stack
+		err = RevertUserWorkloadMonitoringConfig(ctx, r.Client)
+		if err != nil {
+			return false, err
+		}
+
 		if isHypershift {
 			err = hypershift.DeleteServiceMonitors(ctx, r.Client)
 			if err != nil {
@@ -578,6 +585,13 @@ func (r *ObservabilityAddonReconciler) SetupWithManager(mgr ctrl.Manager) error 
 			&corev1.ConfigMap{},
 			&handler.EnqueueRequestForObject{},
 			builder.WithPredicates(configMapDataChangedPredicate(clusterMonitoringConfigName, promNamespace)),
+		).
+		Watches(
+			&corev1.ConfigMap{},
+			&handler.EnqueueRequestForObject{},
+			builder.WithPredicates(configMapDataChangedPredicate(
+				operatorconfig.OCPUserWorkloadMonitoringConfigMap,
+				operatorconfig.OCPUserWorkloadMonitoringNamespace)),
 		).
 		Watches(
 			&appsv1.Deployment{},

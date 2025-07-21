@@ -5,6 +5,7 @@
 package placementrule
 
 import (
+	"maps"
 	"reflect"
 
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
@@ -51,10 +52,10 @@ func getClusterMgmtAddonPredFunc() predicate.Funcs {
 func getMgClusterAddonPredFunc() predicate.Funcs {
 	return predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
-			return false
+			return e.Object.GetName() == config.ManagedClusterAddonName
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			if e.ObjectOld.GetName() != util.ManagedClusterAddonName {
+			if e.ObjectOld.GetName() != config.ManagedClusterAddonName {
 				return false
 			}
 			oldConfig := addonv1alpha1.ConfigReferent{}
@@ -85,12 +86,23 @@ func getManifestworkPred() predicate.Funcs {
 			return false
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			if e.ObjectNew.GetLabels()[ownerLabelKey] == ownerLabelValue &&
-				e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() &&
-				!reflect.DeepEqual(e.ObjectNew.(*workv1.ManifestWork).Spec.Workload.Manifests,
-					e.ObjectOld.(*workv1.ManifestWork).Spec.Workload.Manifests) {
+			if e.ObjectNew.GetLabels()[ownerLabelKey] != ownerLabelValue {
+				return false
+			}
+
+			if e.ObjectNew.GetResourceVersion() == e.ObjectOld.GetResourceVersion() {
+				return false
+			}
+
+			if !reflect.DeepEqual(e.ObjectNew.(*workv1.ManifestWork).Spec.Workload.Manifests,
+				e.ObjectOld.(*workv1.ManifestWork).Spec.Workload.Manifests) {
 				return true
 			}
+
+			if !maps.Equal(e.ObjectNew.GetLabels(), e.ObjectOld.GetLabels()) {
+				return true
+			}
+
 			return false
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {

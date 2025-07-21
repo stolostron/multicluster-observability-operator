@@ -47,6 +47,16 @@ alertmanager-router-ca: |
     xxxxxxxxxxxxxxxxxxxxxxxxxxx
     -----END CERTIFICATE-----
 `
+	hubInfoYAMLUWMAlertsDisabled = `
+cluster-name: "test-cluster"
+endpoint: "http://test-endpoint"
+alertmanager-endpoint: "http://test-alertamanger-endpoint"
+alertmanager-router-ca: |
+    -----BEGIN CERTIFICATE-----
+    xxxxxxxxxxxxxxxxxxxxxxxxxxx
+    -----END CERTIFICATE-----
+uwm-alerting-disabled: true
+`
 	clusterMonitoringConfigDataYaml = `
 prometheusK8s:
   externalLabels:
@@ -684,11 +694,152 @@ prometheus:
 		t.Fatalf("empty prometheus in UserWorkloadConfiguration: %v", foundUserWorkloadConfiguration)
 	}
 
-	if foundUserWorkloadConfiguration.Prometheus.AlertmanagerConfigs != nil && len(foundUserWorkloadConfiguration.Prometheus.AlertmanagerConfigs) > 0 {
+	if len(foundUserWorkloadConfiguration.Prometheus.AlertmanagerConfigs) > 0 {
 		t.Fatalf("AlertmanagerConfigs should be nil or empty when alerts are disabled, got: %v", foundUserWorkloadConfiguration.Prometheus.AlertmanagerConfigs)
 	}
 
 	// Test re-enabling alert forwarding
+	hubInfo = &operatorconfig.HubInfo{}
+	err = yaml.Unmarshal([]byte(hubInfoYAML), &hubInfo)
+	if err != nil {
+		t.Fatalf("Failed to unmarshal hubInfo: (%v)", err)
+	}
+
+	err = createOrUpdateUserWorkloadMonitoringConfig(ctx, c, hubInfo)
+	if err != nil {
+		t.Fatalf("Failed to create or update the user-workload-monitoring-config configmap: (%v)", err)
+	}
+
+	// Verify the configmap is updated correctly
+	err = c.Get(ctx, types.NamespacedName{
+		Name:      operatorconfig.OCPUserWorkloadMonitoringConfigMap,
+		Namespace: operatorconfig.OCPUserWorkloadMonitoringNamespace,
+	}, foundUserWorkloadMonitoringConfigMap)
+	if err != nil {
+		t.Fatalf("failed to check configmap %s: %v", operatorconfig.OCPUserWorkloadMonitoringConfigMap, err)
+	}
+
+	foundUserWorkloadConfigurationYAML, ok = foundUserWorkloadMonitoringConfigMap.Data["config.yaml"]
+	if !ok {
+		t.Fatalf("configmap: %s doesn't contain key: config.yaml", operatorconfig.OCPUserWorkloadMonitoringConfigMap)
+	}
+
+	foundUserWorkloadConfigurationJSON, err = yamltool.YAMLToJSON([]byte(foundUserWorkloadConfigurationYAML))
+	if err != nil {
+		t.Fatalf("failed to transform YAML to JSON:\n%s\n", foundUserWorkloadConfigurationYAML)
+	}
+
+	foundUserWorkloadConfiguration = &cmomanifests.UserWorkloadConfiguration{}
+	if err := json.Unmarshal([]byte(foundUserWorkloadConfigurationJSON), foundUserWorkloadConfiguration); err != nil {
+		t.Fatalf("failed to marshal the user workload monitoring config: %v:\n%s\n", err, foundUserWorkloadConfigurationJSON)
+	}
+
+	if foundUserWorkloadConfiguration.Prometheus == nil {
+		t.Fatalf("empty prometheus in UserWorkloadConfiguration: %v", foundUserWorkloadConfiguration)
+	}
+
+	if foundUserWorkloadConfiguration.Prometheus.AlertmanagerConfigs == nil {
+		t.Fatalf("AlertmanagerConfigs should not be nil when alerts are enabled")
+	}
+
+	containsOCMAlertmanagerConfig := false
+	for _, v := range foundUserWorkloadConfiguration.Prometheus.AlertmanagerConfigs {
+		if v.TLSConfig != (cmomanifests.TLSConfig{}) &&
+			v.TLSConfig.CA != nil &&
+			v.TLSConfig.CA.LocalObjectReference != (corev1.LocalObjectReference{}) &&
+			v.TLSConfig.CA.LocalObjectReference.Name == hubAmRouterCASecretName {
+			containsOCMAlertmanagerConfig = true
+		}
+	}
+
+	if !containsOCMAlertmanagerConfig {
+		t.Fatalf("AlertmanagerConfigs should contain OCM config when alerts are enabled")
+	}
+}
+
+func TestUserWorkloadMonitoringConfigUWMAlertsDisabled(t *testing.T) {
+	testNamespace := operatorconfig.OCPUserWorkloadMonitoringNamespace
+	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&zap.Options{Development: true})))
+	ctx := context.TODO()
+
+	// Test with UWM alerting disabled but global alerting enabled
+	hubInfo := &operatorconfig.HubInfo{}
+	err := yaml.Unmarshal([]byte(hubInfoYAMLUWMAlertsDisabled), &hubInfo)
+	if err != nil {
+		t.Fatalf("Failed to unmarshal hubInfo: (%v)", err)
+	}
+	hubInfoObj := newHubInfoSecret([]byte(hubInfoYAMLUWMAlertsDisabled), testNamespace)
+	amAccessSrt := newAMAccessorSecret(testNamespace, "test-token")
+
+	// Create router CA secret in the user workload monitoring namespace
+	routerCASecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      hubAmRouterCASecretName,
+			Namespace: testNamespace,
+		},
+		Data: map[string][]byte{
+			"service-ca.crt": []byte("test-ca-crt"),
+		},
+	}
+
+	// Create user-workload-monitoring-config configmap with "manager: endpoint-monitoring-operator"
+	uwmConfig := newUserWorkloadMonitoringConfigCM(`
+prometheus:
+  alertmanagerConfigs:
+  - apiVersion: v2
+    bearerToken:
+      key: token
+      name: foo
+    pathPrefix: /
+    scheme: https
+    staticConfigs:
+    - test-host.com
+    tlsConfig:
+      insecureSkipVerify: true`, "endpoint-monitoring-operator")
+
+	objs := []runtime.Object{hubInfoObj, amAccessSrt, routerCASecret, uwmConfig}
+	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
+
+	// Test with UWM alerting disabled
+	err = createOrUpdateUserWorkloadMonitoringConfig(ctx, c, hubInfo)
+	if err != nil {
+		t.Fatalf("Failed to create or update the user-workload-monitoring-config configmap: (%v)", err)
+	}
+
+	// Verify the configmap is updated correctly
+	foundUserWorkloadMonitoringConfigMap := &corev1.ConfigMap{}
+	err = c.Get(ctx, types.NamespacedName{
+		Name:      operatorconfig.OCPUserWorkloadMonitoringConfigMap,
+		Namespace: operatorconfig.OCPUserWorkloadMonitoringNamespace,
+	}, foundUserWorkloadMonitoringConfigMap)
+	if err != nil {
+		t.Fatalf("failed to check configmap %s: %v", operatorconfig.OCPUserWorkloadMonitoringConfigMap, err)
+	}
+
+	foundUserWorkloadConfigurationYAML, ok := foundUserWorkloadMonitoringConfigMap.Data["config.yaml"]
+	if !ok {
+		t.Fatalf("configmap: %s doesn't contain key: config.yaml", operatorconfig.OCPUserWorkloadMonitoringConfigMap)
+	}
+
+	foundUserWorkloadConfigurationJSON, err := yamltool.YAMLToJSON([]byte(foundUserWorkloadConfigurationYAML))
+	if err != nil {
+		t.Fatalf("failed to transform YAML to JSON:\n%s\n", foundUserWorkloadConfigurationYAML)
+	}
+
+	foundUserWorkloadConfiguration := &cmomanifests.UserWorkloadConfiguration{}
+	if err := json.Unmarshal([]byte(foundUserWorkloadConfigurationJSON), foundUserWorkloadConfiguration); err != nil {
+		t.Fatalf("failed to marshal the user workload monitoring config: %v:\n%s\n", err, foundUserWorkloadConfigurationJSON)
+	}
+
+	if foundUserWorkloadConfiguration.Prometheus == nil {
+		t.Fatalf("empty prometheus in UserWorkloadConfiguration: %v", foundUserWorkloadConfiguration)
+	}
+
+	if len(foundUserWorkloadConfiguration.Prometheus.AlertmanagerConfigs) > 0 {
+		t.Fatalf("AlertmanagerConfigs should be nil or empty when UWM alerts are disabled, got: %v", foundUserWorkloadConfiguration.Prometheus.AlertmanagerConfigs)
+	}
+
+	// Test re-enabling UWM alerts
 	hubInfo = &operatorconfig.HubInfo{}
 	err = yaml.Unmarshal([]byte(hubInfoYAML), &hubInfo)
 	if err != nil {
