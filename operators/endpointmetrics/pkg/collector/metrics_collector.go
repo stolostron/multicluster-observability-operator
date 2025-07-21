@@ -795,7 +795,7 @@ func (m *MetricsCollector) ensureDeployment(ctx context.Context, isUWL bool, dep
 			return fmt.Errorf("failed to get Deployment %s/%s: %w", m.Namespace, name, err)
 		}
 
-		isDifferentSpec := !equality.Semantic.DeepDerivative(desiredMetricsCollectorDep.Spec.Template.Spec, foundMetricsCollectorDep.Spec.Template.Spec)
+		isDifferentSpec := !equality.Semantic.DeepEqual(desiredMetricsCollectorDep.Spec.Template.Spec, foundMetricsCollectorDep.Spec.Template.Spec)
 		isDifferentReplicas := !equality.Semantic.DeepEqual(desiredMetricsCollectorDep.Spec.Replicas, foundMetricsCollectorDep.Spec.Replicas)
 		isDifferentOwner := !metav1.IsControlledBy(foundMetricsCollectorDep, m.Owner)
 		if isDifferentSpec || isDifferentReplicas || isDifferentOwner || deployParams.forceRestart {
