@@ -320,7 +320,8 @@ func updateDashboard(old, new interface{}, overwrite bool) error {
 
 	homeDashboardUID := ""
 	labels := cm.ObjectMeta.Labels
-	if strings.ToLower(labels[setHomeDashboardKey]) == "true" && labels[homeDashboardUIDKey] != "" {
+	annotations := cm.ObjectMeta.Annotations
+	if strings.ToLower(annotations[setHomeDashboardKey]) == "true" && labels[homeDashboardUIDKey] != "" {
 		homeDashboardUID = labels[homeDashboardUIDKey]
 	}
 

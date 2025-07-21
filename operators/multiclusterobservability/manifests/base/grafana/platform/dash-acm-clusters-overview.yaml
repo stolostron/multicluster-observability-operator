@@ -1906,7 +1906,8 @@ kind: ConfigMap
 metadata:
   name: grafana-dashboard-acm-clusters-overview
   namespace: open-cluster-management-observability
+  annotations:
+    set-home-dashboard: 'true'
   labels:
     general-folder: 'true'
-    set-home-dashboard: 'true'
     home-dashboard-uid: '2b679d600f3b9e7676a7c5ac3643d448'
