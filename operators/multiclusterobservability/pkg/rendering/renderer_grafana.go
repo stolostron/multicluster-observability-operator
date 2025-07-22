@@ -189,9 +189,9 @@ func isNonMCOASpecificDashboard(res *resource.Resource) bool {
 
 func removeHomeDashboard(template *resource.Resource) error {
 	annotations := template.GetAnnotations()
-	if _, ok := annotations["set-home-dashboard"]; ok {
-		delete(annotations, "set-home-dashboard")
-		klog.Infof("Deleting home dashboard for: %v", template.GetName())
+	if val, ok := annotations["set-home-dashboard"]; ok && val == "true" {
+		annotations["set-home-dashboard"] = "false"
+		klog.Infof("Removing home dashboard for: %v", template.GetName())
 	}
 
 	if err := template.SetAnnotations(annotations); err != nil {
