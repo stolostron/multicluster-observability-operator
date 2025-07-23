@@ -17,10 +17,13 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	rendererutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering"
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
-	"k8s.io/klog"
 )
 
-const dashboardFolderAnnotationKey = "observability.open-cluster-management.io/dashboard-folder"
+const (
+	dashboardFolderAnnotationKey  = "observability.open-cluster-management.io/dashboard-folder"
+	homeDashboardUIDLabelKey      = "home-dashboard-uid"
+	setHomeDashboardAnnotationKey = "set-home-dashboard"
+)
 
 func (r *MCORenderer) newGranfanaRenderer() {
 	r.renderGrafanaFns = map[string]rendererutil.RenderFn{
@@ -99,6 +102,7 @@ func (r *MCORenderer) renderGrafanaDeployments(res *resource.Resource,
 func (r *MCORenderer) renderGrafanaTemplates(templates []*resource.Resource,
 	namespace string, labels map[string]string) ([]*unstructured.Unstructured, error) {
 	uobjs := []*unstructured.Unstructured{}
+
 	for _, template := range templates {
 		// Avoid rendering resource kinds that are specific to MCOA.
 		if !MCOAPlatformMetricsEnabled(r.cr) && isMCOASpecificResourceKind(template) {
@@ -109,19 +113,30 @@ func (r *MCORenderer) renderGrafanaTemplates(templates []*resource.Resource,
 
 		// Add deprecated suffix to the old dashboard names when MCOA is activated.
 		// Also remove the old main dashboard as the home one
-		if MCOAPlatformMetricsEnabled(r.cr) && isNonMCOASpecificDashboard(template) {
-			if err := addDeprecatedSuffixToDashboardName(template); err != nil {
-				return []*unstructured.Unstructured{}, fmt.Errorf("failed to modify dashboard title with deprecated suffix: %w", err)
-			}
-			if err := removeHomeDashboard(template); err != nil {
-				return []*unstructured.Unstructured{}, fmt.Errorf("failed to remove home dashboard: %w", err)
+		if MCOAPlatformMetricsEnabled(r.cr) {
+			if isNonMCOASpecificDashboard(template) {
+				if err := addDeprecatedSuffixToDashboardName(template); err != nil {
+					return []*unstructured.Unstructured{}, fmt.Errorf("failed to modify dashboard title with deprecated suffix: %w", err)
+				}
+				if err := removeHomeDashboard(template); err != nil {
+					return []*unstructured.Unstructured{}, fmt.Errorf("failed to remove home dashboard: %w", err)
+				}
+			} else if isMCOASpecificDashboard(template) {
+				if err := addHomeDashboard(template); err != nil {
+					return []*unstructured.Unstructured{}, fmt.Errorf("failed to add home dashboard: %w", err)
+				}
 			}
 		}
 
-		// Add MCOA specific dashboard as the home dashboard
-		if MCOAPlatformMetricsEnabled(r.cr) && isMCOASpecificDashboard(template) {
-			if err := addHomeDashboard(template); err != nil {
-				return []*unstructured.Unstructured{}, fmt.Errorf("failed to add home dashboard: %w", err)
+		if !MCOAPlatformMetricsEnabled(r.cr) {
+			if isNonMCOASpecificDashboard(template) {
+				if err := addHomeDashboard(template); err != nil {
+					return []*unstructured.Unstructured{}, fmt.Errorf("failed to add home dashboard: %w", err)
+				}
+			} else if isMCOASpecificDashboard(template) {
+				if err := removeHomeDashboard(template); err != nil {
+					return []*unstructured.Unstructured{}, fmt.Errorf("failed to remove home dashboard: %w", err)
+				}
 			}
 		}
 
@@ -189,13 +204,12 @@ func isNonMCOASpecificDashboard(res *resource.Resource) bool {
 
 func removeHomeDashboard(template *resource.Resource) error {
 	annotations := template.GetAnnotations()
-	if val, ok := annotations["set-home-dashboard"]; ok && val == "true" {
-		annotations["set-home-dashboard"] = "false"
-		klog.Infof("Removing home dashboard for: %v", template.GetName())
-	}
-
-	if err := template.SetAnnotations(annotations); err != nil {
-		return fmt.Errorf("failed to set labels: %w", err)
+	labels := template.GetLabels()
+	if _, ok := labels[homeDashboardUIDLabelKey]; ok {
+		annotations[setHomeDashboardAnnotationKey] = "false"
+		if err := template.SetAnnotations(annotations); err != nil {
+			return fmt.Errorf("failed to set annotations: %w", err)
+		}
 	}
 
 	return nil
@@ -204,11 +218,10 @@ func removeHomeDashboard(template *resource.Resource) error {
 func addHomeDashboard(template *resource.Resource) error {
 	annotations := template.GetAnnotations()
 	labels := template.GetLabels()
-	if _, ok := labels["home-dashboard-uid"]; ok {
-		klog.Infof("Adding home dashboard to: %v", template.GetName())
-		annotations["set-home-dashboard"] = "true"
+	if _, ok := labels[homeDashboardUIDLabelKey]; ok {
+		annotations[setHomeDashboardAnnotationKey] = "true"
 		if err := template.SetAnnotations(annotations); err != nil {
-			return fmt.Errorf("failed to set labels: %w", err)
+			return fmt.Errorf("failed to set annotations: %w", err)
 		}
 	}
 
