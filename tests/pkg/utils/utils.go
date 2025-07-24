@@ -32,6 +32,7 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/util/retry"
 	"k8s.io/klog"
 )
 
@@ -226,6 +227,13 @@ func LoadConfig(url, kubeconfig, ctx string) (*rest.Config, error) {
 	}
 
 	return nil, errors.New("could not create a valid kubeconfig")
+}
+
+func ApplyRetryOnConflict(url string, kubeconfig string, ctx string, yamlB []byte) error {
+	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		return Apply(url, kubeconfig, ctx, yamlB)
+	})
+	return err
 }
 
 // Apply a multi resources file to the cluster described by the url, kubeconfig and ctx.
