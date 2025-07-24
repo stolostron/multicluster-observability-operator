@@ -35,7 +35,6 @@ const (
 	customFolderKey     = "observability.open-cluster-management.io/dashboard-folder"
 	generalFolderKey    = "general-folder"
 	defaultCustomFolder = "Custom"
-	homeDashboardUID    = "2b679d600f3b9e7676a7c5ac3643d448"
 	homeDashboardTitle  = "ACM - Clusters Overview"
 	homeDashboardUIDKey = "home-dashboard-uid"
 	setHomeDashboardKey = "set-home-dashboard"
