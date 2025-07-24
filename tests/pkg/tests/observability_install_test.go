@@ -44,7 +44,7 @@ func installMCO() {
 			kustomize.Options{KustomizationPath: "../../../examples/configmapcmc/cluster-monitoring-config"},
 		)
 		Expect(
-			utils.Apply(
+			utils.ApplyRetryOnConflict(
 				testOptions.HubCluster.ClusterServerURL,
 				testOptions.KubeConfig,
 				testOptions.HubCluster.KubeContext,
@@ -85,14 +85,14 @@ func installMCO() {
 		//set resource quota and limit range for canary environment to avoid destruct the node
 		yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: "../../../examples/minio"})
 		Expect(err).NotTo(HaveOccurred())
-		Expect(utils.Apply(testOptions.HubCluster.ClusterServerURL, testOptions.KubeConfig, testOptions.HubCluster.KubeContext, yamlB)).NotTo(HaveOccurred())
+		Expect(utils.ApplyRetryOnConflict(testOptions.HubCluster.ClusterServerURL, testOptions.KubeConfig, testOptions.HubCluster.KubeContext, yamlB)).NotTo(HaveOccurred())
 	}
 
 	//set resource quota and limit range for canary environment to avoid destruct the node
 	yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: "../../../examples/policy"})
 	Expect(err).NotTo(HaveOccurred())
 	Expect(
-		utils.Apply(
+		utils.ApplyRetryOnConflict(
 			testOptions.HubCluster.ClusterServerURL,
 			testOptions.KubeConfig,
 			testOptions.HubCluster.KubeContext,
@@ -161,7 +161,7 @@ func installMCO() {
 		//set resource quota and limit range for canary environment to avoid destruct the node
 		yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: "../../../examples/minio-tls"})
 		Expect(err).NotTo(HaveOccurred())
-		Expect(utils.Apply(testOptions.HubCluster.ClusterServerURL, testOptions.KubeConfig, testOptions.HubCluster.KubeContext, yamlB)).NotTo(HaveOccurred())
+		Expect(utils.ApplyRetryOnConflict(testOptions.HubCluster.ClusterServerURL, testOptions.KubeConfig, testOptions.HubCluster.KubeContext, yamlB)).NotTo(HaveOccurred())
 
 		By("Apply MCO instance of v1beta2")
 		v1beta2KustomizationPath := "../../../examples/mco/e2e/v1beta2/custom-certs"
@@ -169,7 +169,7 @@ func installMCO() {
 		Expect(err).NotTo(HaveOccurred())
 		// add retry for update mco object failure
 		Eventually(func() error {
-			return utils.Apply(
+			return utils.ApplyRetryOnConflict(
 				testOptions.HubCluster.ClusterServerURL,
 				testOptions.KubeConfig,
 				testOptions.HubCluster.KubeContext,
@@ -184,7 +184,7 @@ func installMCO() {
 		Expect(err).NotTo(HaveOccurred())
 		// add retry for update mco object failure
 		Eventually(func() error {
-			return utils.Apply(
+			return utils.ApplyRetryOnConflict(
 				testOptions.HubCluster.ClusterServerURL,
 				testOptions.KubeConfig,
 				testOptions.HubCluster.KubeContext,
