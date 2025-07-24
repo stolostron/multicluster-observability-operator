@@ -53,7 +53,7 @@ var _ = Describe("", func() {
 		yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: "../../../examples/metrics/allowlist"})
 		Expect(err).ToNot(HaveOccurred())
 		Expect(
-			utils.Apply(
+			utils.ApplyRetryOnConflict(
 				testOptions.HubCluster.ClusterServerURL,
 				testOptions.KubeConfig,
 				testOptions.HubCluster.KubeContext,

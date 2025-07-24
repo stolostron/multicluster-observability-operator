@@ -54,7 +54,7 @@ var _ = Describe("", func() {
 		yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: "../../../examples/export"})
 		Expect(err).ToNot(HaveOccurred())
 		Expect(
-			utils.Apply(
+			utils.ApplyRetryOnConflict(
 				testOptions.HubCluster.ClusterServerURL,
 				testOptions.KubeConfig,
 				testOptions.HubCluster.KubeContext,
@@ -69,7 +69,7 @@ var _ = Describe("", func() {
 		yamlB, err = kustomize.Render(kustomize.Options{KustomizationPath: templatePath})
 		Expect(err).ToNot(HaveOccurred())
 		Expect(
-			utils.Apply(
+			utils.ApplyRetryOnConflict(
 				testOptions.HubCluster.ClusterServerURL,
 				testOptions.KubeConfig,
 				testOptions.HubCluster.KubeContext,
