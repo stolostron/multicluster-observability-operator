@@ -6,7 +6,6 @@ package rsvirtualization
 
 import (
 	"fmt"
-	"strings"
 
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	rsutility "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/multiclusterobservability/analytics/rs-utility"
@@ -16,12 +15,12 @@ import (
 
 // function helps to build PrometheusRule based on configdata
 func GeneratePrometheusRule(configData rsutility.RSNamespaceConfigMapData) (monitoringv1.PrometheusRule, error) {
-	nsFilter, err := buildNamespaceFilter(configData.PrometheusRuleConfig)
+	nsFilter, err := rsutility.BuildNamespaceFilter(configData.PrometheusRuleConfig)
 	if err != nil {
 		return monitoringv1.PrometheusRule{}, err
 	}
 
-	labelJoin, err := buildLabelJoin(configData.PrometheusRuleConfig.LabelFilterCriteria)
+	labelJoin, err := rsutility.BuildLabelJoin(configData.PrometheusRuleConfig.LabelFilterCriteria)
 	if err != nil {
 		return monitoringv1.PrometheusRule{}, err
 	}
@@ -87,41 +86,6 @@ func GeneratePrometheusRule(configData rsutility.RSNamespaceConfigMapData) (moni
 			},
 		},
 	}, nil
-}
-
-func buildNamespaceFilter(nsConfig rsutility.RSPrometheusRuleConfig) (string, error) {
-	ns := nsConfig.NamespaceFilterCriteria
-	if len(ns.InclusionCriteria) > 0 && len(ns.ExclusionCriteria) > 0 {
-		return "", fmt.Errorf("only one of inclusion or exclusion criteria allowed for namespacefiltercriteria")
-	}
-	if len(ns.InclusionCriteria) > 0 {
-		return fmt.Sprintf(`namespace=~"%s"`, strings.Join(ns.InclusionCriteria, "|")), nil
-	}
-	if len(ns.ExclusionCriteria) > 0 {
-		return fmt.Sprintf(`namespace!~"%s"`, strings.Join(ns.ExclusionCriteria, "|")), nil
-	}
-	return `namespace!=""`, nil
-}
-
-func buildLabelJoin(labelFilters []rsutility.RSLabelFilter) (string, error) {
-	for _, l := range labelFilters {
-		if l.LabelName != "label_env" {
-			continue
-		}
-		if len(l.InclusionCriteria) > 0 && len(l.ExclusionCriteria) > 0 {
-			return "", fmt.Errorf("only one of inclusion or exclusion allowed for label_env")
-		}
-		var selector string
-		if len(l.InclusionCriteria) > 0 {
-			selector = fmt.Sprintf(`kube_namespace_labels{label_env=~"%s"}`, strings.Join(l.InclusionCriteria, "|"))
-		} else if len(l.ExclusionCriteria) > 0 {
-			selector = fmt.Sprintf(`kube_namespace_labels{label_env!~"%s"}`, strings.Join(l.ExclusionCriteria, "|"))
-		} else {
-			continue
-		}
-		return fmt.Sprintf(`* on (namespace) group_left() (%s or kube_namespace_labels{label_env=""})`, selector), nil
-	}
-	return "", nil
 }
 
 func buildNamespaceRules5m(

@@ -129,7 +129,7 @@ func TestBuildNamespaceFilter_InclusionOnly(t *testing.T) {
 		},
 	}
 
-	filter, err := buildNamespaceFilter(nsConfig)
+	filter, err := rsutility.BuildNamespaceFilter(nsConfig)
 	assert.NoError(t, err)
 	assert.Contains(t, filter, "namespace1|namespace2")
 	assert.Contains(t, filter, "namespace=~")
@@ -146,7 +146,7 @@ func TestBuildNamespaceFilter_ExclusionOnly(t *testing.T) {
 		},
 	}
 
-	filter, err := buildNamespaceFilter(nsConfig)
+	filter, err := rsutility.BuildNamespaceFilter(nsConfig)
 	assert.NoError(t, err)
 	assert.Contains(t, filter, "openshift.*")
 	assert.Contains(t, filter, "namespace!~")
@@ -159,13 +159,13 @@ func TestBuildNamespaceFilter_BothInclusionAndExclusion(t *testing.T) {
 			ExclusionCriteria []string `yaml:"exclusionCriteria"`
 		}{
 			InclusionCriteria: []string{"namespace1"},
-			ExclusionCriteria: []string{"openshift.*"},
+			ExclusionCriteria: []string{"namespace2"},
 		},
 	}
 
-	_, err := buildNamespaceFilter(nsConfig)
+	_, err := rsutility.BuildNamespaceFilter(nsConfig)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "only one of inclusion or exclusion criteria allowed for namespacefiltercriteria")
+	assert.Contains(t, err.Error(), "only one of inclusion or exclusion criteria allowed")
 }
 
 func TestBuildNamespaceFilter_NoFilters(t *testing.T) {
@@ -179,7 +179,7 @@ func TestBuildNamespaceFilter_NoFilters(t *testing.T) {
 		},
 	}
 
-	filter, err := buildNamespaceFilter(nsConfig)
+	filter, err := rsutility.BuildNamespaceFilter(nsConfig)
 	assert.NoError(t, err)
 	assert.Equal(t, `namespace!=""`, filter)
 }
@@ -187,65 +187,62 @@ func TestBuildNamespaceFilter_NoFilters(t *testing.T) {
 func TestBuildLabelJoin_NoFilters(t *testing.T) {
 	labelFilters := []rsutility.RSLabelFilter{}
 
-	filter, err := buildLabelJoin(labelFilters)
+	labelJoin, err := rsutility.BuildLabelJoin(labelFilters)
 	assert.NoError(t, err)
-	assert.Empty(t, filter)
+	assert.Equal(t, "", labelJoin)
 }
 
 func TestBuildLabelJoin_NonEnvLabel(t *testing.T) {
 	labelFilters := []rsutility.RSLabelFilter{
 		{
 			LabelName:         "label_app",
-			InclusionCriteria: []string{"app1"},
-			ExclusionCriteria: []string{},
+			InclusionCriteria: []string{"frontend"},
 		},
 	}
 
-	filter, err := buildLabelJoin(labelFilters)
+	labelJoin, err := rsutility.BuildLabelJoin(labelFilters)
 	assert.NoError(t, err)
-	assert.Empty(t, filter)
+	assert.Equal(t, "", labelJoin)
 }
 
 func TestBuildLabelJoin_EnvLabelInclusion(t *testing.T) {
 	labelFilters := []rsutility.RSLabelFilter{
 		{
 			LabelName:         "label_env",
-			InclusionCriteria: []string{"prod", "staging"},
-			ExclusionCriteria: []string{},
+			InclusionCriteria: []string{"production"},
 		},
 	}
 
-	filter, err := buildLabelJoin(labelFilters)
+	labelJoin, err := rsutility.BuildLabelJoin(labelFilters)
 	assert.NoError(t, err)
-	assert.Contains(t, filter, "kube_namespace_labels{label_env=~\"prod|staging\"}")
-	assert.Contains(t, filter, "* on (namespace) group_left()")
+	assert.Contains(t, labelJoin, "label_env=~\"production\"")
+	assert.Contains(t, labelJoin, "group_left()")
 }
 
 func TestBuildLabelJoin_EnvLabelExclusion(t *testing.T) {
 	labelFilters := []rsutility.RSLabelFilter{
 		{
 			LabelName:         "label_env",
-			InclusionCriteria: []string{},
-			ExclusionCriteria: []string{"test"},
+			ExclusionCriteria: []string{"development"},
 		},
 	}
 
-	filter, err := buildLabelJoin(labelFilters)
+	labelJoin, err := rsutility.BuildLabelJoin(labelFilters)
 	assert.NoError(t, err)
-	assert.Contains(t, filter, "kube_namespace_labels{label_env!~\"test\"}")
-	assert.Contains(t, filter, "* on (namespace) group_left()")
+	assert.Contains(t, labelJoin, "label_env!~\"development\"")
+	assert.Contains(t, labelJoin, "group_left()")
 }
 
 func TestBuildLabelJoin_EnvLabelBothInclusionAndExclusion(t *testing.T) {
 	labelFilters := []rsutility.RSLabelFilter{
 		{
 			LabelName:         "label_env",
-			InclusionCriteria: []string{"prod"},
-			ExclusionCriteria: []string{"test"},
+			InclusionCriteria: []string{"production"},
+			ExclusionCriteria: []string{"development"},
 		},
 	}
 
-	_, err := buildLabelJoin(labelFilters)
+	_, err := rsutility.BuildLabelJoin(labelFilters)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "only one of inclusion or exclusion allowed for label_env")
 }

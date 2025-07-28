@@ -29,9 +29,8 @@ const (
 	ConfigMapName            = "rs-virt-config"
 
 	// Common constants
-	MonitoringNamespace             = "openshift-monitoring"
-	DefaultNamespace                = "open-cluster-management-global-set"
-	DefaultRecommendationPercentage = 110
+	MonitoringNamespace = "openshift-monitoring"
+	DefaultNamespace    = "open-cluster-management-global-set"
 )
 
 var (

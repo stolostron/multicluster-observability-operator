@@ -8,6 +8,7 @@ import (
 	"context"
 	"testing"
 
+	rsutility "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/multiclusterobservability/analytics/rs-utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -127,4 +128,11 @@ func TestGetRightSizingVirtualizationConfigData_InvalidYAML(t *testing.T) {
 	_, err := GetRightSizingVirtualizationConfigData(cm)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to unmarshal prometheusRuleConfig")
+}
+
+func TestDefaultRecommendationPercentage(t *testing.T) {
+	// Test that the default recommendation percentage from rs-utility is used
+	config := rsutility.GetDefaultRSPrometheusRuleConfig()
+	assert.Equal(t, rsutility.DefaultRecommendationPercentage, config.RecommendationPercentage)
+	assert.Equal(t, 110, config.RecommendationPercentage)
 }
