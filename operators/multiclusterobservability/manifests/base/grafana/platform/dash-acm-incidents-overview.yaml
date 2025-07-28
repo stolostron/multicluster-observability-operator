@@ -155,6 +155,18 @@ data:
                         "value": true
                     }
                     ]
+                },
+                {
+                    "matcher": {
+                        "id": "byName",
+                        "options": "start time"
+                    },
+                    "properties": [
+                        {
+                            "id": "unit",
+                            "value": "dateTimeAsLocal"
+                        }
+                    ]
                 }
                 ]
             },
