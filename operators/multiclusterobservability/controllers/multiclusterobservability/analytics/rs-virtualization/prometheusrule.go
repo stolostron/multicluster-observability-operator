@@ -55,7 +55,7 @@ func GeneratePrometheusRule(configData rsutility.RSNamespaceConfigMapData) (moni
 	return monitoringv1.PrometheusRule{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      PrometheusRuleName,
-			Namespace: MonitoringNamespace,
+			Namespace: rsutility.MonitoringNamespace,
 		},
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "PrometheusRule",
