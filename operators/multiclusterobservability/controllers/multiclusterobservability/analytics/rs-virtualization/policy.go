@@ -18,5 +18,5 @@ func CreateOrUpdateVirtualizationPrometheusRulePolicy(
 	c client.Client,
 	prometheusRule monitoringv1.PrometheusRule,
 ) error {
-	return rsutility.CreateOrUpdateRSPrometheusRulePolicy(ctx, c, PrometheusRulePolicyName, Namespace, &prometheusRule)
+	return rsutility.CreateOrUpdateRSPrometheusRulePolicy(ctx, c, PrometheusRulePolicyName, Namespace, prometheusRule)
 }
