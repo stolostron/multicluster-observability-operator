@@ -96,31 +96,42 @@ func buildNamespaceRules5m(
 		rule(
 			"acm_rs_vm:namespace:cpu_request:5m",
 			fmt.Sprintf(
-				`max_over_time(sum(kubevirt_vm_resource_requests{resource="cpu", type="hard", %s}) by (namespace)[5m:])`,
-				nsFilter,
+				`max_over_time(sum (
+				  (kubevirt_vm_resource_requests{%s, unit="cores", resource="cpu"} *
+				  on(name,namespace,resource)
+				  kubevirt_vm_resource_requests{%s, unit="sockets", resource="cpu"} *
+				  on(name,namespace,resource)
+				  kubevirt_vm_resource_requests{%s, unit="threads", resource="cpu"})
+				) by (name, namespace)[5m:])`,
+				nsFilter, nsFilter, nsFilter,
 			),
 		),
 		rule(
 			"acm_rs_vm:namespace:memory_request:5m",
 			fmt.Sprintf(
-				`max_over_time(sum(kubevirt_vm_resource_requests{`+
-					`%s, resource='memory', container!=""}) by (namespace)[5m:])`,
+				`max_over_time(sum (
+				  kubevirt_vm_resource_requests{%s, resource="memory"}
+				) by (name,namespace)[5m:])`,
 				nsFilter,
 			),
 		),
 		rule(
 			"acm_rs_vm:namespace:cpu_usage:5m",
 			fmt.Sprintf(
-				`max_over_time(sum(kubevirt_vmi_cpu_usage_seconds_total{`+
-					`%s, container!=""}) by (namespace)[5m:])`,
+				`max_over_time(sum (
+				  rate(kubevirt_vmi_cpu_usage_seconds_total{%s}[5m:])
+				) by (name,namespace)[5m:])`,
 				nsFilter,
 			),
 		),
 		rule(
 			"acm_rs_vm:namespace:memory_usage:5m",
 			fmt.Sprintf(
-				`max_over_time(sum(kubevirt_vmi_memory_available_bytes{resource=~"requests.memory", %s}) by (namespace)[5m:])`,
-				nsFilter,
+				`max_over_time(sum (
+				  kubevirt_vmi_memory_available_bytes{%s} -
+				  kubevirt_vmi_memory_usable_bytes{%s}
+				) by (name,namespace)[5m:])`,
+				nsFilter, nsFilter,
 			),
 		),
 	}
@@ -138,17 +149,11 @@ func buildNamespaceRules1d(
 		ruleWithLabels("acm_rs_vm:namespace:memory_usage", `max_over_time(acm_rs_vm:namespace:memory_usage:5m[1d])`),
 		ruleWithLabels(
 			"acm_rs_vm:namespace:cpu_recommendation",
-			fmt.Sprintf(
-				`max_over_time(acm_rs_vm:namespace:cpu_usage{profile="Max OverAll"}[1d]) * (%d/100)`,
-				rp,
-			),
+			fmt.Sprintf(`max_over_time(acm_rs_vm:namespace:cpu_usage{profile="Max OverAll"}[1d])*(1+(%d/100))`, rp),
 		),
 		ruleWithLabels(
-			"acm_rs_vm:namespace:cpu_recommendation",
-			fmt.Sprintf(
-				`max_over_time(acm_rs_vm:namespace:memory_usage{profile="Max OverAll"}[1d]) * (%d/100)`,
-				rp,
-			),
+			"acm_rs_vm:namespace:memory_recommendation",
+			fmt.Sprintf(`max_over_time(acm_rs_vm:namespace:memory_usage{profile="Max OverAll"}[1d])*(1+(%d/100))`, rp),
 		),
 	}
 }
@@ -159,35 +164,44 @@ func buildClusterRules5m(
 ) []monitoringv1.Rule {
 	return []monitoringv1.Rule{
 		rule(
-			"acm_vm_rs:cluster:cpu_request:5m",
+			"acm_rs_vm:cluster:cpu_request:5m",
 			fmt.Sprintf(
-				`max_over_time(sum(kubevirt_vm_resource_requests{`+
-					`%s, resource="cpu", container!=""}) by (cluster)[5m:])`,
+				`max_over_time(sum (
+				  (kubevirt_vm_resource_requests{%s, unit="cores", resource="cpu"} *
+				  on(name,namespace,resource)
+				  kubevirt_vm_resource_requests{%s, unit="sockets", resource="cpu"} *
+				  on(name,namespace,resource)
+				  kubevirt_vm_resource_requests{%s, unit="threads", resource="cpu"})
+				) by (cluster)[5m:])`,
+				nsFilter, nsFilter, nsFilter,
+			),
+		),
+		rule(
+			"acm_rs_vm:cluster:cpu_usage:5m",
+			fmt.Sprintf(
+				`max_over_time(sum (
+				  rate(kubevirt_vmi_cpu_usage_seconds_total{%s}[5m:])
+				) by (cluster)[5m:])`,
 				nsFilter,
 			),
 		),
 		rule(
-			"acm_vm_rs:cluster:cpu_usage:5m",
+			"acm_rs_vm:cluster:memory_request:5m",
 			fmt.Sprintf(
-				`max_over_time(sum(kubevirt_vmi_cpu_usage_seconds_total{`+
-					`%s, container!=""}) by (cluster)[5m:])`,
+				`max_over_time(sum (
+				  kubevirt_vm_resource_requests{%s, resource="memory"}
+				) by (cluster)[5m:])`,
 				nsFilter,
 			),
 		),
 		rule(
-			"acm_vm_rs:cluster:memory_request:5m",
+			"acm_rs_vm:cluster:memory_usage:5m",
 			fmt.Sprintf(
-				`max_over_time(sum(kubevirt_vm_resource_requests{`+
-					`%s, resource="memory", container!=""}) by (cluster)[5m:])`,
-				nsFilter,
-			),
-		),
-		rule(
-			"acm_vm_rs:cluster:memory_usage:5m",
-			fmt.Sprintf(
-				`max_over_time(sum(kubevirt_vmi_memory_available_bytes{`+
-					`%s, container!=""}) by (cluster)[5m:])`,
-				nsFilter,
+				`max_over_time(sum (
+				  kubevirt_vmi_memory_available_bytes{%s} -
+				  kubevirt_vmi_memory_usable_bytes{%s}
+				) by (cluster)[5m:])`,
+				nsFilter, nsFilter,
 			),
 		),
 	}
@@ -199,21 +213,21 @@ func buildClusterRules1d(
 ) []monitoringv1.Rule {
 	rp := configData.PrometheusRuleConfig.RecommendationPercentage
 	return []monitoringv1.Rule{
-		ruleWithLabels("acm_vm_rs:cluster:cpu_request", `max_over_time(acm_vm_rs:cluster:cpu_request:5m[1d])`),
-		ruleWithLabels("acm_vm_rs:cluster:cpu_usage", `max_over_time(acm_vm_rs:cluster:cpu_usage:5m[1d])`),
+		ruleWithLabels("acm_rs_vm:cluster:cpu_request", `max_over_time(acm_rs_vm:cluster:cpu_request:5m[1d])`),
+		ruleWithLabels("acm_rs_vm:cluster:cpu_usage", `max_over_time(acm_rs_vm:cluster:cpu_usage:5m[1d])`),
 		ruleWithLabels(
-			"acm_vm_rs:cluster:cpu_recommendation",
+			"acm_rs_vm:cluster:cpu_recommendation",
 			fmt.Sprintf(
-				`max_over_time(acm_vm_rs:cluster:cpu_usage{profile="Max OverAll"}[1d]) * (%d/100)`,
+				`max_over_time(acm_rs_vm:cluster:cpu_usage{profile="Max OverAll"}[1d]) * (%d/100)`,
 				rp,
 			),
 		),
-		ruleWithLabels("acm_vm_rs:cluster:memory_request", `max_over_time(acm_vm_rs:cluster:memory_request:5m[1d])`),
-		ruleWithLabels("acm_vm_rs:cluster:memory_usage", `max_over_time(acm_vm_rs:cluster:memory_usage:5m[1d])`),
+		ruleWithLabels("acm_rs_vm:cluster:memory_request", `max_over_time(acm_rs_vm:cluster:memory_request:5m[1d])`),
+		ruleWithLabels("acm_rs_vm:cluster:memory_usage", `max_over_time(acm_rs_vm:cluster:memory_usage:5m[1d])`),
 		ruleWithLabels(
-			"acm_vm_rs:cluster:memory_recommendation",
+			"acm_rs_vm:cluster:memory_recommendation",
 			fmt.Sprintf(
-				`max_over_time(acm_vm_rs:cluster:memory_usage{profile="Max OverAll"}[1d]) * (%d/100)`,
+				`max_over_time(acm_rs_vm:cluster:memory_usage{profile="Max OverAll"}[1d]) * (%d/100)`,
 				rp,
 			),
 		),
