@@ -1,0 +1,2805 @@
+apiVersion: v1
+data:
+  virt-main.json: |-
+    {
+      "annotations": {
+        "list": [
+          {
+            "builtIn": 1,
+            "datasource": {
+              "type": "datasource",
+              "uid": "grafana"
+            },
+            "enable": true,
+            "hide": true,
+            "iconColor": "rgba(0, 211, 255, 1)",
+            "name": "Annotations & Alerts",
+            "target": {
+              "limit": 100,
+              "matchAny": false,
+              "tags": [],
+              "type": "dashboard"
+            },
+            "type": "dashboard"
+          }
+        ]
+      },
+      "editable": true,
+      "fiscalYearStartMonth": 0,
+      "graphTooltip": 0,
+      "id": 117,
+      "links": [],
+      "panels": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "decimals": 0,
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "dark-green",
+                    "value": null
+                  },
+                  {
+                    "color": "semi-dark-red",
+                    "value": 0
+                  }
+                ]
+              },
+              "unit": "none"
+            },
+            "overrides": []
+          },
+          "id": 39,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "horizontal",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "text": {},
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "11.1.5",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "exemplar": true,
+              "expr": "sum(floor((max_over_time(sum by (name) (acm_rs_vm:namespace:cpu_request{cluster=\"$cluster\", namespace=~\"$namespace\"}\n+ on(cluster, namespace, name) group_left(_blah)(0 * max by (cluster, namespace, name) (kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=\"$cluster\", namespace=~\"$namespace\"} > 0))\n)[$days:])-\nmax_over_time(sum by (name) (acm_rs_vm:namespace:cpu_recommendation{cluster=\"$cluster\", namespace=~\"$namespace\"}\n+ on(cluster, namespace, name) group_left(_blah)(0 * max by (cluster, namespace, name) (kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=\"$cluster\", namespace=~\"$namespace\"} > 0))\n)[$days:])))>0)",
+              "format": "table",
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": "Total CPU Overestimation",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "decimals": 0,
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "#535353",
+                    "value": null
+                  },
+                  {
+                    "color": "semi-dark-yellow",
+                    "value": 0
+                  }
+                ]
+              },
+              "unit": "none"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 6,
+            "x": 6,
+            "y": 0
+          },
+          "id": 41,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "horizontal",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "last"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "text": {},
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "11.1.5",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "exemplar": true,
+              "expr": "sum(floor((max_over_time(sum by (name) (acm_rs_vm:namespace:cpu_request{cluster=\"$cluster\", namespace=~\"$namespace\"}\n+ on(cluster, namespace, name) group_left(_blah)(0 * max by (cluster, namespace, name) (kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=\"$cluster\", namespace=~\"$namespace\"} > 0))\n)[$days:])-\nmax_over_time(sum by (name) (acm_rs_vm:namespace:cpu_recommendation{cluster=\"$cluster\", namespace=~\"$namespace\"}\n+ on(cluster, namespace, name) group_left(_blah)(0 * max by (cluster, namespace, name) (kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=\"$cluster\", namespace=~\"$namespace\"} > 0))\n)[$days:])))<0) * (-1)",
+              "format": "table",
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": "Total CPU Underestimation",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "decimals": 0,
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "dark-green",
+                    "value": null
+                  },
+                  {
+                    "color": "semi-dark-red",
+                    "value": 0
+                  }
+                ]
+              },
+              "unit": "gbytes"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 6,
+            "x": 12,
+            "y": 0
+          },
+          "id": 40,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "horizontal",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "text": {},
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "11.1.5",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "exemplar": true,
+              "expr": "sum(floor((max_over_time(sum by (name) (acm_rs_vm:namespace:memory_request{cluster=\"$cluster\", namespace=~\"$namespace\"}\n+ on(cluster, namespace, name) group_left(_blah)(0 * max by (cluster, namespace, name) (kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=\"$cluster\", namespace=~\"$namespace\"} > 0))\n)[$days:]) / 1073741824)-\n(max_over_time(sum by (name) (acm_rs_vm:namespace:memory_recommendation{cluster=\"$cluster\", namespace=~\"$namespace\"}\n+ on(cluster, namespace, name) group_left(_blah)(0 * max by (cluster, namespace, name) (kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=\"$cluster\", namespace=~\"$namespace\"} > 0))\n)[$days:]) / 1073741824))>0)",
+              "format": "table",
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": "Total Memory Overestimation",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "decimals": 0,
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "dark-green",
+                    "value": null
+                  },
+                  {
+                    "color": "semi-dark-yellow",
+                    "value": 0
+                  }
+                ]
+              },
+              "unit": "gbytes"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 6,
+            "x": 18,
+            "y": 0
+          },
+          "id": 42,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "horizontal",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "last"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "text": {},
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "11.1.5",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "exemplar": true,
+              "expr": "sum(floor((max_over_time(sum by (name) (acm_rs_vm:namespace:memory_request{cluster=\"$cluster\", namespace=~\"$namespace\"}\n+ on(cluster, namespace, name) group_left(_blah)(0 * max by (cluster, namespace, name) (kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=\"$cluster\", namespace=~\"$namespace\"} > 0))\n)[$days:]) / 1073741824)-\n(max_over_time(sum by (name) (acm_rs_vm:namespace:memory_recommendation{cluster=\"$cluster\", namespace=~\"$namespace\"}\n+ on(cluster, namespace, name) group_left(_blah)(0 * max by (cluster, namespace, name) (kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=\"$cluster\", namespace=~\"$namespace\"} > 0))\n)[$days:]) / 1073741824))<0) * (-1)",
+              "format": "time_series",
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": "Total Memory Underestimation",
+          "type": "stat"
+        },
+        {
+          "collapsed": false,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 3
+          },
+          "id": 16,
+          "panels": [],
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "refId": "A"
+            }
+          ],
+          "title": "CPU",
+          "type": "row"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "custom": {
+                "align": "auto",
+                "cellOptions": {
+                  "type": "auto"
+                },
+                "filterable": true,
+                "inspect": false
+              },
+              "mappings": [
+                {
+                  "options": {
+                    "match": "null",
+                    "result": {
+                      "index": 0,
+                      "text": "N/A"
+                    }
+                  },
+                  "type": "special"
+                }
+              ],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "none"
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Value #A"
+                },
+                "properties": [
+                  {
+                    "id": "displayName",
+                    "value": "CPU Utilization %"
+                  },
+                  {
+                    "id": "unit",
+                    "value": "percentunit"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 2
+                  },
+                  {
+                    "id": "custom.align",
+                    "value": "left"
+                  },
+                  {
+                    "id": "noValue",
+                    "value": "NA"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "name"
+                },
+                "properties": [
+                  {
+                    "id": "displayName",
+                    "value": "VM Name"
+                  },
+                  {
+                    "id": "links",
+                    "value": [
+                      {
+                        "targetBlank": false,
+                        "title": "Show VM or Pod level details",
+                        "url": "/d/bnqQIPySEProdkhgafkdekgfOver/acm-right-sizing-openshift-virtualization-vm-dashboard-overestimation?${__url_time_range}&var-datasource=$datasource&var-cluster=$cluster&var-namespace=${__data.fields.namespace}&var-vm=${__data.fields.name}&var-days=$days"
+                      }
+                    ]
+                  },
+                  {
+                    "id": "unit",
+                    "value": "short"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 2
+                  },
+                  {
+                    "id": "custom.align",
+                    "value": "auto"
+                  },
+                  {
+                    "id": "noValue",
+                    "value": "NA"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Value #B"
+                },
+                "properties": [
+                  {
+                    "id": "displayName",
+                    "value": "CPU Usage"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 2
+                  },
+                  {
+                    "id": "unit",
+                    "value": "short"
+                  },
+                  {
+                    "id": "custom.align",
+                    "value": "left"
+                  },
+                  {
+                    "id": "noValue",
+                    "value": "NA"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Value #C"
+                },
+                "properties": [
+                  {
+                    "id": "displayName",
+                    "value": "CPU Request"
+                  },
+                  {
+                    "id": "unit",
+                    "value": "short"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 2
+                  },
+                  {
+                    "id": "custom.align",
+                    "value": "left"
+                  },
+                  {
+                    "id": "noValue",
+                    "value": "NA"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Value #D"
+                },
+                "properties": [
+                  {
+                    "id": "displayName",
+                    "value": "CPU Recommendation"
+                  },
+                  {
+                    "id": "unit",
+                    "value": "short"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 2
+                  },
+                  {
+                    "id": "custom.align",
+                    "value": "left"
+                  },
+                  {
+                    "id": "noValue",
+                    "value": "NA"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "namespace"
+                },
+                "properties": [
+                  {
+                    "id": "displayName",
+                    "value": "Namespace"
+                  },
+                  {
+                    "id": "unit",
+                    "value": "short"
+                  },
+                  {
+                    "id": "custom.align",
+                    "value": "left"
+                  },
+                  {
+                    "id": "links",
+                    "value": [
+                      {
+                        "targetBlank": false,
+                        "title": "Show VM or Pod level Details",
+                        "url": "/d/bnqQIPySEProdkhgafkdekgfOver/acm-right-sizing-openshift-virtualization-vm-dashboard-overestimation?${__url_time_range}&var-datasource=$datasource&var-cluster=$cluster&var-namespace=${__data.fields.namespace}&var-vm=${__data.fields.name}&var-days=$days"
+                      }
+                    ]
+                  },
+                  {
+                    "id": "noValue",
+                    "value": "NA"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Value #F"
+                },
+                "properties": [
+                  {
+                    "id": "displayName",
+                    "value": "CPU Overestimation"
+                  },
+                  {
+                    "id": "unit",
+                    "value": "short"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 2
+                  },
+                  {
+                    "id": "custom.align",
+                    "value": "left"
+                  },
+                  {
+                    "id": "thresholds",
+                    "value": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "dark-green",
+                          "value": null
+                        },
+                        {
+                          "color": "semi-dark-red",
+                          "value": 0
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "type": "color-text"
+                    }
+                  },
+                  {
+                    "id": "noValue",
+                    "value": "NA"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Namespace"
+                },
+                "properties": [
+                  {
+                    "id": "noValue",
+                    "value": "NA"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "CPU Utilization %"
+                },
+                "properties": [
+                  {
+                    "id": "noValue",
+                    "value": "NA"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "CPU Usage"
+                },
+                "properties": [
+                  {
+                    "id": "noValue",
+                    "value": "NA"
+                  },
+                  {
+                    "id": "custom.width"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "CPU Request"
+                },
+                "properties": [
+                  {
+                    "id": "noValue",
+                    "value": "NA"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "CPU Recommendation"
+                },
+                "properties": [
+                  {
+                    "id": "decimals",
+                    "value": 0
+                  },
+                  {
+                    "id": "noValue",
+                    "value": "NA"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "CPU Overestimation"
+                },
+                "properties": [
+                  {
+                    "id": "decimals",
+                    "value": 0
+                  },
+                  {
+                    "id": "mappings",
+                    "value": []
+                  },
+                  {
+                    "id": "noValue",
+                    "value": "NA"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "VM Name"
+                },
+                "properties": [
+                  {
+                    "id": "noValue",
+                    "value": "NA"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Value #G"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "dateTimeAsLocal"
+                  },
+                  {
+                    "id": "displayName",
+                    "value": "VM running status time"
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 6,
+            "w": 24,
+            "x": 0,
+            "y": 4
+          },
+          "id": 37,
+          "options": {
+            "cellHeight": "sm",
+            "footer": {
+              "countRows": false,
+              "fields": "",
+              "reducer": [
+                "sum"
+              ],
+              "show": false
+            },
+            "showHeader": true,
+            "sortBy": [
+              {
+                "desc": true,
+                "displayName": "CPU Overestimation"
+              }
+            ]
+          },
+          "pluginVersion": "11.1.5",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "exemplar": true,
+              "expr": "(max_over_time(sum by (name) (acm_rs_vm:namespace:cpu_usage{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"})[$days:]) / max_over_time(sum by (name) (acm_rs_vm:namespace:cpu_request{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"})[$days:])) > 0",
+              "format": "table",
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "exemplar": true,
+              "expr": "max_over_time(sum by (name) (acm_rs_vm:namespace:cpu_usage{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"})[$days:]) ",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "B"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "exemplar": true,
+              "expr": "max_over_time(sum by (name) (acm_rs_vm:namespace:cpu_request{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"})[$days:])",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "C"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "exemplar": true,
+              "expr": "ceil(max_over_time(sum by (name) (acm_rs_vm:namespace:cpu_recommendation{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"})[$days:]))",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "D"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "exemplar": true,
+              "expr": "label_join(\n  (\n    acm_rs_vm:namespace:cpu_usage{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"} + on(name, namespace) acm_rs_vm:namespace:cpu_request{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"}\n  ),\n  \"name_namespace\", \"-\", \"name\", \"namespace\"\n)",
+              "format": "table",
+              "hide": false,
+              "instant": false,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "E"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "exemplar": true,
+              "expr": "floor(max_over_time(sum by (name) (acm_rs_vm:namespace:cpu_request{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"})[$days:])-\nmax_over_time(sum by (name) (acm_rs_vm:namespace:cpu_recommendation{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"})[$days:]))",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "F"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "exemplar": true,
+              "expr": "max by (name) ((kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=\"$cluster\", namespace=~\"$namespace\"} > 0) * 1000)[$days:]",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "G"
+            }
+          ],
+          "title": "CPU Overestimation",
+          "transformations": [
+            {
+              "id": "seriesToColumns",
+              "options": {
+                "byField": "name"
+              }
+            },
+            {
+              "id": "filterFieldsByName",
+              "options": {
+                "include": {
+                  "names": [
+                    "name",
+                    "Value #A",
+                    "Value #B",
+                    "Value #C",
+                    "Value #D",
+                    "namespace",
+                    "Value #F",
+                    "Value #G"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Value #G": false
+                },
+                "indexByName": {
+                  "Value #A": 3,
+                  "Value #B": 4,
+                  "Value #C": 5,
+                  "Value #D": 6,
+                  "name": 0,
+                  "name_namespace": 2,
+                  "namespace": 1
+                },
+                "renameByName": {
+                  "Value #F": "",
+                  "name": ""
+                }
+              }
+            },
+            {
+              "id": "filterByValue",
+              "options": {
+                "filters": [
+                  {
+                    "config": {
+                      "id": "greater",
+                      "options": {
+                        "value": 0
+                      }
+                    },
+                    "fieldName": "Value #F"
+                  },
+                  {
+                    "config": {
+                      "id": "greater",
+                      "options": {
+                        "value": 0
+                      }
+                    },
+                    "fieldName": "Value #G"
+                  }
+                ],
+                "match": "all",
+                "type": "include"
+              }
+            },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Value #G": true
+                },
+                "indexByName": {},
+                "renameByName": {}
+              }
+            }
+          ],
+          "type": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "custom": {
+                "align": "auto",
+                "cellOptions": {
+                  "type": "auto"
+                },
+                "filterable": true,
+                "inspect": false
+              },
+              "mappings": [
+                {
+                  "options": {
+                    "match": "null",
+                    "result": {
+                      "index": 0,
+                      "text": "N/A"
+                    }
+                  },
+                  "type": "special"
+                }
+              ],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "none"
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Value #A"
+                },
+                "properties": [
+                  {
+                    "id": "displayName",
+                    "value": "CPU Utilization %"
+                  },
+                  {
+                    "id": "unit",
+                    "value": "percentunit"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 2
+                  },
+                  {
+                    "id": "custom.align",
+                    "value": "left"
+                  },
+                  {
+                    "id": "noValue",
+                    "value": "NA"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "name"
+                },
+                "properties": [
+                  {
+                    "id": "displayName",
+                    "value": "VM Name"
+                  },
+                  {
+                    "id": "links",
+                    "value": [
+                      {
+                        "targetBlank": false,
+                        "title": "Show VM or Pod level details",
+                        "url": "/d/bnqQIPySEProdkekgfunderestimated/acm-right-sizing-openshift-virtualization-vm-dashboard-underestimated?${__url_time_range}&var-datasource=$datasource&var-cluster=$cluster&var-namespace=${__data.fields.namespace}&var-vm=${__data.fields.name}&var-days=$days"
+                      }
+                    ]
+                  },
+                  {
+                    "id": "unit",
+                    "value": "short"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 2
+                  },
+                  {
+                    "id": "custom.align",
+                    "value": "auto"
+                  },
+                  {
+                    "id": "noValue",
+                    "value": "NA"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Value #B"
+                },
+                "properties": [
+                  {
+                    "id": "displayName",
+                    "value": "CPU Usage"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 2
+                  },
+                  {
+                    "id": "unit",
+                    "value": "short"
+                  },
+                  {
+                    "id": "custom.align",
+                    "value": "left"
+                  },
+                  {
+                    "id": "noValue",
+                    "value": "NA"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Value #C"
+                },
+                "properties": [
+                  {
+                    "id": "displayName",
+                    "value": "CPU Request"
+                  },
+                  {
+                    "id": "unit",
+                    "value": "short"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 2
+                  },
+                  {
+                    "id": "custom.align",
+                    "value": "left"
+                  },
+                  {
+                    "id": "noValue",
+                    "value": "NA"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Value #D"
+                },
+                "properties": [
+                  {
+                    "id": "displayName",
+                    "value": "CPU Recommendation"
+                  },
+                  {
+                    "id": "unit",
+                    "value": "short"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 0
+                  },
+                  {
+                    "id": "custom.align",
+                    "value": "left"
+                  },
+                  {
+                    "id": "noValue",
+                    "value": "NA"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "namespace"
+                },
+                "properties": [
+                  {
+                    "id": "displayName",
+                    "value": "Namespace"
+                  },
+                  {
+                    "id": "unit",
+                    "value": "short"
+                  },
+                  {
+                    "id": "custom.align",
+                    "value": "left"
+                  },
+                  {
+                    "id": "links",
+                    "value": [
+                      {
+                        "targetBlank": false,
+                        "title": "Shoe VM or Pod level Details",
+                        "url": "/d/bnqQIPySEProdkekgfunderestimated/acm-right-sizing-openshift-virtualization-vm-dashboard-underestimated?${__url_time_range}&var-datasource=$datasource&var-cluster=$cluster&var-namespace=${__data.fields.namespace}&var-vm=${__data.fields.name}&var-days=$days"
+                      }
+                    ]
+                  },
+                  {
+                    "id": "noValue",
+                    "value": "NA"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Value #F"
+                },
+                "properties": [
+                  {
+                    "id": "displayName",
+                    "value": "CPU Underestimation"
+                  },
+                  {
+                    "id": "unit",
+                    "value": "short"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 0
+                  },
+                  {
+                    "id": "custom.align",
+                    "value": "left"
+                  },
+                  {
+                    "id": "thresholds",
+                    "value": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "semi-dark-green",
+                          "value": null
+                        },
+                        {
+                          "color": "dark-yellow",
+                          "value": 0
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "type": "color-text"
+                    }
+                  },
+                  {
+                    "id": "noValue",
+                    "value": "NA"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Namespace"
+                },
+                "properties": [
+                  {
+                    "id": "noValue",
+                    "value": "NA"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "CPU Utilization %"
+                },
+                "properties": [
+                  {
+                    "id": "noValue",
+                    "value": "NA"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "CPU Usage"
+                },
+                "properties": [
+                  {
+                    "id": "noValue",
+                    "value": "NA"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "CPU Request"
+                },
+                "properties": [
+                  {
+                    "id": "noValue",
+                    "value": "NA"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "CPU Recommendation"
+                },
+                "properties": [
+                  {
+                    "id": "decimals",
+                    "value": 0
+                  },
+                  {
+                    "id": "noValue",
+                    "value": "NA"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "CPU Overestimation"
+                },
+                "properties": [
+                  {
+                    "id": "decimals",
+                    "value": 0
+                  },
+                  {
+                    "id": "mappings",
+                    "value": []
+                  },
+                  {
+                    "id": "noValue",
+                    "value": "NA"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "VM Name"
+                },
+                "properties": [
+                  {
+                    "id": "noValue",
+                    "value": "NA"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Value #G"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "dateTimeAsLocal"
+                  },
+                  {
+                    "id": "displayName",
+                    "value": "VM running status time"
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 6,
+            "w": 24,
+            "x": 0,
+            "y": 10
+          },
+          "id": 43,
+          "options": {
+            "cellHeight": "sm",
+            "footer": {
+              "countRows": false,
+              "fields": "",
+              "reducer": [
+                "sum"
+              ],
+              "show": false
+            },
+            "showHeader": true,
+            "sortBy": [
+              {
+                "desc": true,
+                "displayName": "CPU Overestimation"
+              }
+            ]
+          },
+          "pluginVersion": "11.1.5",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "exemplar": true,
+              "expr": "(max_over_time(sum by (name) (acm_rs_vm:namespace:cpu_usage{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"})[$days:]) / max_over_time(sum by (name) (acm_rs_vm:namespace:cpu_request{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"})[$days:])) > 0",
+              "format": "table",
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "exemplar": true,
+              "expr": "max_over_time(sum by (name) (acm_rs_vm:namespace:cpu_usage{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"})[$days:]) ",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "B"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "exemplar": true,
+              "expr": "max_over_time(sum by (name) (acm_rs_vm:namespace:cpu_request{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"})[$days:])",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "C"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "exemplar": true,
+              "expr": "ceil(max_over_time(sum by (name) (acm_rs_vm:namespace:cpu_recommendation{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"})[$days:]))",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "D"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "exemplar": true,
+              "expr": "label_join(\n  (\n    acm_rs_vm:namespace:cpu_usage{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"} + on(name, namespace) acm_rs_vm:namespace:cpu_request{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"}\n  ),\n  \"name_namespace\", \"-\", \"name\", \"namespace\"\n)",
+              "format": "table",
+              "hide": false,
+              "instant": false,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "E"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "exemplar": true,
+              "expr": "floor(max_over_time(sum by (name) (acm_rs_vm:namespace:cpu_request{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"})[$days:])-\nmax_over_time(sum by (name) (acm_rs_vm:namespace:cpu_recommendation{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"})[$days:])) * (-1)",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "F"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "exemplar": true,
+              "expr": "max by (name) ((kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=\"$cluster\", namespace=~\"$namespace\"} > 0) * 1000)[$days:]",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "G"
+            }
+          ],
+          "title": "CPU Underestimation",
+          "transformations": [
+            {
+              "id": "seriesToColumns",
+              "options": {
+                "byField": "name"
+              }
+            },
+            {
+              "id": "filterFieldsByName",
+              "options": {
+                "include": {
+                  "names": [
+                    "name",
+                    "Value #A",
+                    "Value #B",
+                    "Value #C",
+                    "Value #D",
+                    "namespace",
+                    "Value #F",
+                    "Value #G"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {},
+                "indexByName": {
+                  "Value #A": 3,
+                  "Value #B": 4,
+                  "Value #C": 5,
+                  "Value #D": 6,
+                  "name": 0,
+                  "name_namespace": 2,
+                  "namespace": 1
+                },
+                "renameByName": {
+                  "Value #F": "",
+                  "name": ""
+                }
+              }
+            },
+            {
+              "id": "filterByValue",
+              "options": {
+                "filters": [
+                  {
+                    "config": {
+                      "id": "greater",
+                      "options": {
+                        "value": 0
+                      }
+                    },
+                    "fieldName": "Value #F"
+                  },
+                  {
+                    "config": {
+                      "id": "greater",
+                      "options": {
+                        "value": 0
+                      }
+                    },
+                    "fieldName": "Value #G"
+                  }
+                ],
+                "match": "all",
+                "type": "include"
+              }
+            },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Value #G": true
+                },
+                "indexByName": {},
+                "renameByName": {}
+              }
+            }
+          ],
+          "type": "table"
+        },
+        {
+          "collapsed": false,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 16
+          },
+          "id": 8,
+          "panels": [],
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "refId": "A"
+            }
+          ],
+          "title": "Memory",
+          "type": "row"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "custom": {
+                "align": "auto",
+                "cellOptions": {
+                  "type": "auto"
+                },
+                "filterable": true,
+                "inspect": false
+              },
+              "mappings": [
+                {
+                  "options": {
+                    "match": "null",
+                    "result": {
+                      "index": 0,
+                      "text": "N/A"
+                    }
+                  },
+                  "type": "special"
+                }
+              ],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Value #A"
+                },
+                "properties": [
+                  {
+                    "id": "displayName",
+                    "value": "Memory Utilization %"
+                  },
+                  {
+                    "id": "unit",
+                    "value": "percentunit"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 2
+                  },
+                  {
+                    "id": "custom.align",
+                    "value": "left"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "name"
+                },
+                "properties": [
+                  {
+                    "id": "displayName",
+                    "value": "VM Name"
+                  },
+                  {
+                    "id": "links",
+                    "value": [
+                      {
+                        "targetBlank": false,
+                        "title": "Show VM or Pod level Details",
+                        "url": "/d/bnqQIPySEProdkhgafkdekgfOver/acm-right-sizing-openshift-virtualization-vm-dashboard-overestimation?${__url_time_range}&var-datasource=$datasource&var-cluster=$cluster&var-namespace=${__data.fields.namespace}&var-vm=${__data.fields.name}&var-days=$days"
+                      }
+                    ]
+                  },
+                  {
+                    "id": "unit",
+                    "value": "short"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 2
+                  },
+                  {
+                    "id": "custom.align",
+                    "value": "auto"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Value #B"
+                },
+                "properties": [
+                  {
+                    "id": "displayName",
+                    "value": "Memory Usage"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 2
+                  },
+                  {
+                    "id": "unit",
+                    "value": "gbytes"
+                  },
+                  {
+                    "id": "custom.align",
+                    "value": "left"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Value #C"
+                },
+                "properties": [
+                  {
+                    "id": "displayName",
+                    "value": "Memory Request"
+                  },
+                  {
+                    "id": "unit",
+                    "value": "gbytes"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 2
+                  },
+                  {
+                    "id": "custom.align",
+                    "value": "left"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Value #D"
+                },
+                "properties": [
+                  {
+                    "id": "displayName",
+                    "value": "Memory Recommendation"
+                  },
+                  {
+                    "id": "unit",
+                    "value": "gbytes"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 2
+                  },
+                  {
+                    "id": "custom.align",
+                    "value": "left"
+                  },
+                  {
+                    "id": "mappings",
+                    "value": [
+                      {
+                        "options": {
+                          "from": 0,
+                          "result": {
+                            "index": 0,
+                            "text": "1 GB"
+                          },
+                          "to": 0.99999
+                        },
+                        "type": "range"
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "namespace"
+                },
+                "properties": [
+                  {
+                    "id": "displayName",
+                    "value": "Namespace"
+                  },
+                  {
+                    "id": "unit",
+                    "value": "short"
+                  },
+                  {
+                    "id": "custom.align",
+                    "value": "left"
+                  },
+                  {
+                    "id": "links",
+                    "value": [
+                      {
+                        "targetBlank": false,
+                        "title": "Show VM or Pod level Details",
+                        "url": "/d/bnqQIPySEProdkhgafkdekgfOver/acm-right-sizing-openshift-virtualization-vm-dashboard-overestimation?${__url_time_range}&var-datasource=$datasource&var-cluster=$cluster&var-namespace=${__data.fields.namespace}&var-vm=${__data.fields.name}&var-days=$days"
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Value #F"
+                },
+                "properties": [
+                  {
+                    "id": "displayName",
+                    "value": "Memory Overestimation"
+                  },
+                  {
+                    "id": "unit",
+                    "value": "gbytes"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 0
+                  },
+                  {
+                    "id": "custom.align",
+                    "value": "left"
+                  },
+                  {
+                    "id": "thresholds",
+                    "value": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "dark-green",
+                          "value": null
+                        },
+                        {
+                          "color": "semi-dark-red",
+                          "value": 0
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "type": "color-text"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Memory Recommendation"
+                },
+                "properties": [
+                  {
+                    "id": "decimals",
+                    "value": 0
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Value #G"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "dateTimeAsLocal"
+                  },
+                  {
+                    "id": "displayName",
+                    "value": "VM running status time"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "VM Name"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width"
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 7,
+            "w": 24,
+            "x": 0,
+            "y": 17
+          },
+          "id": 36,
+          "options": {
+            "cellHeight": "sm",
+            "footer": {
+              "countRows": false,
+              "fields": "",
+              "reducer": [
+                "sum"
+              ],
+              "show": false
+            },
+            "showHeader": true,
+            "sortBy": [
+              {
+                "desc": true,
+                "displayName": "Memory Overestimation"
+              }
+            ]
+          },
+          "pluginVersion": "11.1.5",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "exemplar": true,
+              "expr": "max_over_time(sum by (name) (acm_rs_vm:namespace:memory_usage{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"})[$days:]) / max_over_time(sum by (name) (acm_rs_vm:namespace:memory_request{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"})[$days:])",
+              "format": "table",
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "exemplar": true,
+              "expr": "max_over_time(sum by (name) (acm_rs_vm:namespace:memory_usage{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"})[$days:]) /1073741824",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "B"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "exemplar": true,
+              "expr": "max_over_time(sum by (name) (acm_rs_vm:namespace:memory_request{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"})[$days:])/1073741824",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "C"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "exemplar": true,
+              "expr": "ceil(max_over_time(sum by (name) (acm_rs_vm:namespace:memory_recommendation{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"})[$days:])/ 1073741824)",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "D"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "exemplar": true,
+              "expr": "label_join(\n  (\n    acm_rs_vm:namespace:memory_usage{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"} + on(name, namespace) acm_rs_vm:namespace:memory_request{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"}\n  ),\n  \"name_namespace\", \"-\", \"name\", \"namespace\"\n)",
+              "format": "table",
+              "hide": false,
+              "instant": false,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "E"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "exemplar": true,
+              "expr": "floor((max_over_time(sum by (name) (acm_rs_vm:namespace:memory_request{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"})[$days:])) / 1073741824 -\n(max_over_time(sum by (name) (acm_rs_vm:namespace:memory_recommendation{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"})[$days:])) / 1073741824)",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "F"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "exemplar": true,
+              "expr": "max by (name) ((kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=\"$cluster\", namespace=~\"$namespace\"} > 0) * 1000)[$days:]",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "G"
+            }
+          ],
+          "title": "Memory Overestimation",
+          "transformations": [
+            {
+              "id": "filterFieldsByName",
+              "options": {
+                "include": {
+                  "names": [
+                    "name",
+                    "Value #A",
+                    "Value #B",
+                    "Value #C",
+                    "Value #D",
+                    "namespace",
+                    "Value #F",
+                    "Value #G"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "seriesToColumns",
+              "options": {
+                "byField": "name"
+              }
+            },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {},
+                "indexByName": {
+                  "Value #A": 3,
+                  "Value #B": 4,
+                  "Value #C": 5,
+                  "Value #D": 6,
+                  "name": 0,
+                  "name_namespace": 2,
+                  "namespace": 1
+                },
+                "renameByName": {}
+              }
+            },
+            {
+              "id": "filterByValue",
+              "options": {
+                "filters": [
+                  {
+                    "config": {
+                      "id": "greater",
+                      "options": {
+                        "value": 0
+                      }
+                    },
+                    "fieldName": "Value #F"
+                  },
+                  {
+                    "config": {
+                      "id": "greater",
+                      "options": {
+                        "value": 0
+                      }
+                    },
+                    "fieldName": "Value #G"
+                  }
+                ],
+                "match": "all",
+                "type": "include"
+              }
+            },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Value #G": true
+                },
+                "indexByName": {},
+                "renameByName": {}
+              }
+            }
+          ],
+          "type": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "custom": {
+                "align": "auto",
+                "cellOptions": {
+                  "type": "auto"
+                },
+                "filterable": true,
+                "inspect": false,
+                "minWidth": 50
+              },
+              "mappings": [
+                {
+                  "options": {
+                    "match": "null",
+                    "result": {
+                      "index": 0,
+                      "text": "N/A"
+                    }
+                  },
+                  "type": "special"
+                }
+              ],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Value #A"
+                },
+                "properties": [
+                  {
+                    "id": "displayName",
+                    "value": "Memory Utilization %"
+                  },
+                  {
+                    "id": "unit",
+                    "value": "percentunit"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 2
+                  },
+                  {
+                    "id": "custom.align",
+                    "value": "left"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "name"
+                },
+                "properties": [
+                  {
+                    "id": "displayName",
+                    "value": "VM Name"
+                  },
+                  {
+                    "id": "links",
+                    "value": [
+                      {
+                        "targetBlank": false,
+                        "title": "Show VM or Pod level Details",
+                        "url": "/d/bnqQIPySEProdkekgfunderestimated/acm-right-sizing-openshift-virtualization-vm-dashboard-underestimated?${__url_time_range}&var-datasource=$datasource&var-cluster=$cluster&var-namespace=${__data.fields.namespace}&var-vm=${__data.fields.name}&var-days=$days"
+                      }
+                    ]
+                  },
+                  {
+                    "id": "unit",
+                    "value": "short"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 2
+                  },
+                  {
+                    "id": "custom.align",
+                    "value": "auto"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Value #B"
+                },
+                "properties": [
+                  {
+                    "id": "displayName",
+                    "value": "Memory Usage"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 2
+                  },
+                  {
+                    "id": "unit",
+                    "value": "gbytes"
+                  },
+                  {
+                    "id": "custom.align",
+                    "value": "left"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Value #C"
+                },
+                "properties": [
+                  {
+                    "id": "displayName",
+                    "value": "Memory Request"
+                  },
+                  {
+                    "id": "unit",
+                    "value": "gbytes"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 2
+                  },
+                  {
+                    "id": "custom.align",
+                    "value": "left"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Value #D"
+                },
+                "properties": [
+                  {
+                    "id": "displayName",
+                    "value": "Memory Recommendation"
+                  },
+                  {
+                    "id": "unit",
+                    "value": "gbytes"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 2
+                  },
+                  {
+                    "id": "custom.align",
+                    "value": "left"
+                  },
+                  {
+                    "id": "mappings",
+                    "value": [
+                      {
+                        "options": {
+                          "from": 0,
+                          "result": {
+                            "index": 0,
+                            "text": "1 GB"
+                          },
+                          "to": 0.999999
+                        },
+                        "type": "range"
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "namespace"
+                },
+                "properties": [
+                  {
+                    "id": "displayName",
+                    "value": "Namespace"
+                  },
+                  {
+                    "id": "unit",
+                    "value": "short"
+                  },
+                  {
+                    "id": "custom.align",
+                    "value": "left"
+                  },
+                  {
+                    "id": "links",
+                    "value": [
+                      {
+                        "targetBlank": false,
+                        "title": "Show VM or Pod level Details",
+                        "url": "/d/bnqQIPySEProdkekgfunderestimated/acm-right-sizing-openshift-virtualization-vm-dashboard-underestimated?${__url_time_range}&var-datasource=$datasource&var-cluster=$cluster&var-namespace=${__data.fields.namespace}&var-vm=${__data.fields.name}&var-days=$days"
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Value #F"
+                },
+                "properties": [
+                  {
+                    "id": "displayName",
+                    "value": "Memory Underestimation"
+                  },
+                  {
+                    "id": "unit",
+                    "value": "gbytes"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 0
+                  },
+                  {
+                    "id": "custom.align",
+                    "value": "left"
+                  },
+                  {
+                    "id": "thresholds",
+                    "value": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "semi-dark-green",
+                          "value": null
+                        },
+                        {
+                          "color": "dark-yellow",
+                          "value": 0
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "type": "color-text"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Memory Recommendation"
+                },
+                "properties": [
+                  {
+                    "id": "decimals",
+                    "value": 0
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Memory Utilization %"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Value #G"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "dateTimeAsLocal"
+                  },
+                  {
+                    "id": "displayName",
+                    "value": "VM running status time"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Memory Usage"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 225
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 7,
+            "w": 24,
+            "x": 0,
+            "y": 24
+          },
+          "id": 44,
+          "options": {
+            "cellHeight": "sm",
+            "footer": {
+              "countRows": false,
+              "fields": "",
+              "reducer": [
+                "sum"
+              ],
+              "show": false
+            },
+            "showHeader": true,
+            "sortBy": []
+          },
+          "pluginVersion": "11.1.5",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "exemplar": true,
+              "expr": "max_over_time(sum by (name) (acm_rs_vm:namespace:memory_usage{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"})[$days:]) / max_over_time(sum by (name) (acm_rs_vm:namespace:memory_request{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"})[$days:])",
+              "format": "table",
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "exemplar": true,
+              "expr": "max_over_time(sum by (name) (acm_rs_vm:namespace:memory_usage{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"})[$days:])/ 1073741824",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "B"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "exemplar": true,
+              "expr": "max_over_time(sum by (name) (acm_rs_vm:namespace:memory_request{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"})[$days:])/ 1073741824",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "C"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "exemplar": true,
+              "expr": "ceil(max_over_time(sum by (name) (acm_rs_vm:namespace:memory_recommendation{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"})[$days:])/ 1073741824)",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "D"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "exemplar": true,
+              "expr": "label_join(\n  (\n    acm_rs_vm:namespace:memory_usage{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"} + on(name, namespace) acm_rs_vm:namespace:memory_request{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"}\n  ),\n  \"name_namespace\", \"-\", \"name\", \"namespace\"\n)",
+              "format": "table",
+              "hide": false,
+              "instant": false,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "E"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "exemplar": true,
+              "expr": "floor((max_over_time(sum by (name) (acm_rs_vm:namespace:memory_request{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"})[$days:])) / 1073741824 -\n(max_over_time(sum by (name) (acm_rs_vm:namespace:memory_recommendation{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"})[$days:])) / 1073741824)* (-1)",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "F"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "exemplar": true,
+              "expr": "max by (name) ((kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=\"$cluster\", namespace=~\"$namespace\"} > 0) * 1000)[$days:]",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "G"
+            }
+          ],
+          "title": "Memory Underestimation",
+          "transformations": [
+            {
+              "id": "filterFieldsByName",
+              "options": {
+                "include": {
+                  "names": [
+                    "name",
+                    "Value #A",
+                    "Value #B",
+                    "Value #C",
+                    "Value #D",
+                    "namespace",
+                    "Value #F",
+                    "Value #G"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "seriesToColumns",
+              "options": {
+                "byField": "name"
+              }
+            },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {},
+                "indexByName": {
+                  "Value #A": 3,
+                  "Value #B": 4,
+                  "Value #C": 5,
+                  "Value #D": 6,
+                  "name": 0,
+                  "name_namespace": 2,
+                  "namespace": 1
+                },
+                "renameByName": {}
+              }
+            },
+            {
+              "id": "filterByValue",
+              "options": {
+                "filters": [
+                  {
+                    "config": {
+                      "id": "greater",
+                      "options": {
+                        "value": 0
+                      }
+                    },
+                    "fieldName": "Value #F"
+                  },
+                  {
+                    "config": {
+                      "id": "greater",
+                      "options": {
+                        "value": 0
+                      }
+                    },
+                    "fieldName": "Value #G"
+                  }
+                ],
+                "match": "all",
+                "type": "include"
+              }
+            },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Value #G": true
+                },
+                "indexByName": {},
+                "renameByName": {}
+              }
+            }
+          ],
+          "type": "table"
+        }
+      ],
+      "refresh": "",
+      "schemaVersion": 39,
+      "tags": [],
+      "templating": {
+        "list": [
+          {
+            "current": {
+              "selected": false,
+              "text": "Observatorium",
+              "value": "000000001"
+            },
+            "hide": 2,
+            "includeAll": false,
+            "multi": false,
+            "name": "datasource",
+            "options": [],
+            "query": "prometheus",
+            "refresh": 1,
+            "regex": "",
+            "skipUrlSync": false,
+            "type": "datasource"
+          },
+          {
+            "current": {
+              "selected": true,
+              "text": "bleeding",
+              "value": "bleeding"
+            },
+            "datasource": {
+              "type": "prometheus",
+              "uid": "${datasource}"
+            },
+            "definition": "label_values(acm_rs_vm:cluster:cpu_request,cluster)",
+            "hide": 0,
+            "includeAll": false,
+            "label": "Cluster",
+            "multi": false,
+            "name": "cluster",
+            "options": [],
+            "query": {
+              "query": "label_values(acm_rs_vm:cluster:cpu_request,cluster)",
+              "refId": "StandardVariableQuery"
+            },
+            "refresh": 2,
+            "regex": "",
+            "skipUrlSync": false,
+            "sort": 1,
+            "type": "query"
+          },
+          {
+            "current": {
+              "selected": false,
+              "text": "Max OverAll",
+              "value": "Max OverAll"
+            },
+            "datasource": {
+              "type": "prometheus",
+              "uid": "${datasource}"
+            },
+            "definition": "label_values(acm_rs_vm:namespace:cpu_usage{cluster=\"$cluster\"},profile)",
+            "hide": 0,
+            "includeAll": false,
+            "label": "Profile",
+            "multi": false,
+            "name": "profile",
+            "options": [],
+            "query": {
+              "query": "label_values(acm_rs_vm:namespace:cpu_usage{cluster=\"$cluster\"},profile)",
+              "refId": "StandardVariableQuery"
+            },
+            "refresh": 2,
+            "regex": "",
+            "skipUrlSync": false,
+            "sort": 1,
+            "type": "query"
+          },
+          {
+            "current": {
+              "selected": false,
+              "text": "30d",
+              "value": "30d"
+            },
+            "hide": 0,
+            "includeAll": false,
+            "label": "Aggregation",
+            "multi": false,
+            "name": "days",
+            "options": [
+              {
+                "selected": false,
+                "text": "1d",
+                "value": "1d"
+              },
+              {
+                "selected": false,
+                "text": "2d",
+                "value": "2d"
+              },
+              {
+                "selected": false,
+                "text": "5d",
+                "value": "5d"
+              },
+              {
+                "selected": false,
+                "text": "10d",
+                "value": "10d"
+              },
+              {
+                "selected": true,
+                "text": "15d",
+                "value": "15d"
+              },
+              {
+                "selected": false,
+                "text": "30d",
+                "value": "30d"
+              },
+              {
+                "selected": false,
+                "text": "60d",
+                "value": "60d"
+              },
+              {
+                "selected": false,
+                "text": "90d",
+                "value": "90d"
+              }
+            ],
+            "query": "1d, 2d, 5d, 10d, 15d, 30d, 60d, 90d",
+            "queryValue": "",
+            "skipUrlSync": false,
+            "type": "custom"
+          },
+          {
+            "allValue": "",
+            "current": {
+              "selected": false,
+              "text": [
+                "All"
+              ],
+              "value": [
+                "$__all"
+              ]
+            },
+            "datasource": {
+              "type": "prometheus",
+              "uid": "${datasource}"
+            },
+            "definition": "label_values(acm_rs_vm:namespace:cpu_request,namespace)",
+            "hide": 0,
+            "includeAll": true,
+            "label": "Namespace",
+            "multi": true,
+            "name": "namespace",
+            "options": [],
+            "query": {
+              "query": "label_values(acm_rs_vm:namespace:cpu_request,namespace)",
+              "refId": "StandardVariableQuery"
+            },
+            "refresh": 2,
+            "regex": "",
+            "skipUrlSync": false,
+            "sort": 1,
+            "type": "query"
+          }
+        ]
+      },
+      "time": {
+        "from": "now-30d",
+        "to": "now"
+      },
+      "timepicker": {
+        "hidden": true
+      },
+      "timezone": "",
+      "title": "ACM Right Sizing Openshift Virtualization Dashboard",
+      "uid": "bnqQIPySEProdkhgafkOpenshiftVirt",
+      "version": 1,
+      "weekStart": ""
+    }
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-acm-right-sizing-virt-main
+  namespace: open-cluster-management-observability
+  annotations:
+    observability.open-cluster-management.io/dashboard-folder: "RightSizing Recommendation"

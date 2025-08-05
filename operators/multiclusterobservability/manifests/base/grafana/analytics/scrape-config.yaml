@@ -26,6 +26,18 @@ spec:
     - '{__name__="acm_rs:cluster:memory_request"}'
     - '{__name__="acm_rs:cluster:memory_usage"}'
     - '{__name__="acm_rs:cluster:memory_recommendation"}'
+    - '{__name__="acm_rs_vm:namespace:cpu_request"}'
+    - '{__name__="acm_rs_vm:namespace:cpu_usage"}'
+    - '{__name__="acm_rs_vm:namespace:cpu_recommendation"}'
+    - '{__name__="acm_rs_vm:namespace:memory_request"}'
+    - '{__name__="acm_rs_vm:namespace:memory_usage"}'
+    - '{__name__="acm_rs_vm:namespace:memory_recommendation"}'
+    - '{__name__="acm_rs_vm:cluster:cpu_request"}'
+    - '{__name__="acm_rs_vm:cluster:cpu_usage"}'
+    - '{__name__="acm_rs_vm:cluster:cpu_recommendation"}'
+    - '{__name__="acm_rs_vm:cluster:memory_request"}'
+    - '{__name__="acm_rs_vm:cluster:memory_usage"}'
+    - '{__name__="acm_rs_vm:cluster:memory_recommendation"}'
   metricRelabelings:
   - action: labeldrop
     regex: managed_cluster|id
