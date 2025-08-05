@@ -5,6 +5,7 @@
 package tests
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -14,6 +15,9 @@ import (
 
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/kustomize"
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/utils"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/klog"
 )
 
 var _ = Describe("", func() {
@@ -73,10 +77,20 @@ var _ = Describe("", func() {
 			)).NotTo(HaveOccurred())
 
 		// Get name of the hub cluster
+
+		clientDynamic := utils.GetKubeClientDynamic(testOptions, true)
+		objs, err := clientDynamic.Resource(utils.NewOCMManagedClustersGVR()).List(context.TODO(), metav1.ListOptions{})
+		if err != nil {
+			klog.V(1).Infof("Get the managedcluster failed, The err is: %s\n", err)
+		}
+
 		hubClusterName := "local-cluster"
-		for _, cluster := range testOptions.ManagedClusters {
-			if cluster.BaseDomain == testOptions.HubCluster.BaseDomain {
-				hubClusterName = cluster.Name
+		for _, obj := range objs.Items {
+			metadata := obj.Object["metadata"].(map[string]interface{})
+			labels := metadata["labels"].(map[string]interface{})
+			if labels["local-cluster"] == "true" {
+				hubClusterName = metadata["name"].(string)
+				klog.V(1).Infof("Found local-cluster name: %s", metadata["name"])
 			}
 		}
 
