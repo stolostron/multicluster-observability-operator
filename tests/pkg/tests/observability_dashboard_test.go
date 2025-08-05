@@ -39,7 +39,7 @@ var _ = Describe("", func() {
 			kustomize.Options{KustomizationPath: "../../../examples/dashboards/sample_custom_dashboard"},
 		)
 		Expect(
-			utils.Apply(
+			utils.ApplyRetryOnConflict(
 				testOptions.HubCluster.ClusterServerURL,
 				testOptions.KubeConfig,
 				testOptions.HubCluster.KubeContext,
@@ -56,7 +56,7 @@ var _ = Describe("", func() {
 			kustomize.Options{KustomizationPath: "../../../examples/dashboards/update_sample_custom_dashboard"},
 		)
 		Expect(
-			utils.Apply(
+			utils.ApplyRetryOnConflict(
 				testOptions.HubCluster.ClusterServerURL,
 				testOptions.KubeConfig,
 				testOptions.HubCluster.KubeContext,

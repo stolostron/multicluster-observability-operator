@@ -206,7 +206,7 @@ var _ = Describe("", func() {
 		)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(
-			utils.Apply(
+			utils.ApplyRetryOnConflict(
 				testOptions.HubCluster.ClusterServerURL,
 				testOptions.KubeConfig,
 				testOptions.HubCluster.KubeContext,
@@ -262,7 +262,7 @@ var _ = Describe("", func() {
 	// 	secret := utils.CreateCustomAlertConfigYaml(testOptions.HubCluster.BaseDomain)
 
 	// 	Expect(
-	// 		utils.Apply(
+	// 		utils.ApplyRetryOnConflict(
 	// 			testOptions.HubCluster.ClusterServerURL,
 	// 			testOptions.KubeConfig,
 	// 			testOptions.HubCluster.KubeContext,
@@ -278,7 +278,7 @@ var _ = Describe("", func() {
 			kustomize.Options{KustomizationPath: "../../../examples/alerts/custom_rules_invalid"},
 		)
 		Expect(
-			utils.Apply(
+			utils.ApplyRetryOnConflict(
 				testOptions.HubCluster.ClusterServerURL,
 				testOptions.KubeConfig,
 				testOptions.HubCluster.KubeContext,
@@ -418,7 +418,7 @@ var _ = Describe("", func() {
 			promRuleAdded := false
 			for idx, mc := range testOptions.ManagedClusters {
 				if mc.Name == ks {
-					err = utils.Apply(
+					err = utils.ApplyRetryOnConflict(
 						testOptions.ManagedClusters[idx].ClusterServerURL,
 						testOptions.ManagedClusters[idx].KubeConfig,
 						testOptions.ManagedClusters[idx].KubeContext,
@@ -557,7 +557,7 @@ var _ = Describe("", func() {
 		for _, ks := range expectedKSClusterNames {
 			for idx, mc := range testOptions.ManagedClusters {
 				if mc.Name == ks.Name {
-					err = utils.Apply(
+					err = utils.ApplyRetryOnConflict(
 						testOptions.ManagedClusters[idx].ClusterServerURL,
 						testOptions.ManagedClusters[idx].KubeConfig,
 						testOptions.ManagedClusters[idx].KubeContext,
