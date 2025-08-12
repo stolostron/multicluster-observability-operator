@@ -39,7 +39,7 @@ data:
           "title": "Back to Main Dashboard",
           "tooltip": "",
           "type": "link",
-          "url": ""
+          "url": "/d/bnqQIPySEProdkhgafkOpenshiftVirt/acm-right-sizing-openshift-virtualization-dashboard"
         }
       ],
       "panels": [

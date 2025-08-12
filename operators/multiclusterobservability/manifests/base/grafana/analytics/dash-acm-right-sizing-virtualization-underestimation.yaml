@@ -39,7 +39,7 @@ data:
           "title": "Back to Main Dashboard",
           "tooltip": "",
           "type": "link",
-          "url": "https://grafana-open-cluster-management-observability.apps.cnv2.engineering.redhat.com/d/bnqQIPySEProdkhgafkOpenshiftVirt/9a113e69-c170-5575-a893-fda4778b542f?orgId=1"
+          "url": "/d/bnqQIPySEProdkhgafkOpenshiftVirt/acm-right-sizing-openshift-virtualization-dashboard"
         }
       ],
       "panels": [
