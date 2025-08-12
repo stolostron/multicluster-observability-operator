@@ -93,9 +93,11 @@ func TestNewDefaultObservatoriumSpec(t *testing.T) {
 			"write_key": []byte(`url: http://remotewrite/endpoint`),
 		},
 	}
-	s := scheme.Scheme
+
+	s := runtime.NewScheme()
+
 	mcov1beta2.SchemeBuilder.AddToScheme(s)
-	observatoriumv1alpha1.AddToScheme(s)
+	observatoriumv1alpha1.SchemeBuilder.AddToScheme(s)
 
 	objs := []runtime.Object{mco, writeStorageS}
 	// Create a fake client to mock API calls.
@@ -192,7 +194,7 @@ func TestNewDefaultObservatoriumSpecWithTShirtSize(t *testing.T) {
 	}
 	s := scheme.Scheme
 	mcov1beta2.SchemeBuilder.AddToScheme(s)
-	observatoriumv1alpha1.AddToScheme(s)
+	observatoriumv1alpha1.SchemeBuilder.AddToScheme(s)
 
 	objs := []runtime.Object{mco, writeStorageS}
 	// Create a fake client to mock API calls.

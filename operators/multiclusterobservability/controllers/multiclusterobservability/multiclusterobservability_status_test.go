@@ -281,7 +281,7 @@ func TestStartStatusUpdate(t *testing.T) {
 
 func TestUpdateMCOAStatus(t *testing.T) {
 	// Register the necessary schemes
-	s := scheme.Scheme
+	s := runtime.NewScheme()
 	s.AddKnownTypes(mcov1beta2.GroupVersion, &mcov1beta2.MultiClusterObservability{})
 	s.AddKnownTypes(apiextensionsv1.SchemeGroupVersion, &apiextensionsv1.CustomResourceDefinition{})
 

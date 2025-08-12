@@ -1123,7 +1123,7 @@ func TestPrometheusRulesRemovedFromOpenshiftMonitoringNamespace(t *testing.T) {
 		},
 	}
 	s := scheme.Scheme
-	monitoringv1.AddToScheme(s)
+	monitoringv1.SchemeBuilder.AddToScheme(s)
 	objs := []runtime.Object{promRule}
 	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 	r := &MultiClusterObservabilityReconciler{Client: c, Scheme: s}
