@@ -1,0 +1,17 @@
+title Observability Bootstrapping (Managed Cluster)
+
+bottomparticipants
+
+
+participant "manifestwork\nres\n(replicated)" as mwork
+participant "work\nagent" as wagnt #yellow
+participant "endpoint\noperator" as ep
+participant "observability\naddon\nres(managed)" as oman
+participant "metrics\ncollector/\nuwl metrics\ncollector" as mcol
+participant "prometheus\noperator/\nprometheus\nstack(*KS only)" as prom #orange
+
+wagnt-->mwork:watches
+wagnt->ep:creates
+wagnt->oman:creates
+ep->mcol:creates
+ep->prom:creates

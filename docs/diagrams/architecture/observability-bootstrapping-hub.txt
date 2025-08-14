@@ -1,0 +1,24 @@
+title Observability Bootstrapping (Hub)
+
+bottomparticipants
+
+actor "Deployer" as dep
+participant "MCO\nres" as mco
+participant "mco\ncontroller" as mcoctrl
+participant "Observatorium Operator/\nObservatorium API/\nThanos" as obsthanos
+participant "Placement\nController" as plctrl
+participant "global\nwork\nres" as gwr
+participant "observability\naddon\nres(hub)" as obsaddon
+participant "managed\ncluster\naddon\nres" as maddon #yellow
+participant "manifestwork\nres\n(in cluster ns)" as mwork
+
+dep->mco:create
+mcoctrl-->mco:watches
+mcoctrl->obsthanos:create
+mcoctrl->plctrl:start
+plctrl->plctrl:reconcile
+abox over plctrl,mwork:loop for all managed clusters
+plctrl->gwr:create
+plctrl->obsaddon:create
+plctrl->maddon:create
+plctrl->mwork:create
