@@ -27,7 +27,7 @@ data:
       "editable": true,
       "fiscalYearStartMonth": 0,
       "graphTooltip": 0,
-      "id": 117,
+      "id": 25,
       "links": [],
       "panels": [
         {
@@ -35,6 +35,7 @@ data:
             "type": "prometheus",
             "uid": "${datasource}"
           },
+          "description": "Total CPU Overestimation",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -46,8 +47,7 @@ data:
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "dark-green",
-                    "value": null
+                    "color": "dark-green"
                   },
                   {
                     "color": "semi-dark-red",
@@ -58,6 +58,12 @@ data:
               "unit": "none"
             },
             "overrides": []
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 6,
+            "x": 0,
+            "y": 0
           },
           "id": 39,
           "options": {
@@ -78,7 +84,7 @@ data:
             "textMode": "auto",
             "wideLayout": true
           },
-          "pluginVersion": "11.1.5",
+          "pluginVersion": "11.6.1",
           "targets": [
             {
               "datasource": {
@@ -102,6 +108,7 @@ data:
             "type": "prometheus",
             "uid": "${datasource}"
           },
+          "description": "Total CPU Underestimation",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -113,8 +120,7 @@ data:
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "#535353",
-                    "value": null
+                    "color": "#535353"
                   },
                   {
                     "color": "semi-dark-yellow",
@@ -151,7 +157,7 @@ data:
             "textMode": "auto",
             "wideLayout": true
           },
-          "pluginVersion": "11.1.5",
+          "pluginVersion": "11.6.1",
           "targets": [
             {
               "datasource": {
@@ -175,6 +181,7 @@ data:
             "type": "prometheus",
             "uid": "${datasource}"
           },
+          "description": "Total Memory Overestimation",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -186,8 +193,7 @@ data:
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "dark-green",
-                    "value": null
+                    "color": "dark-green"
                   },
                   {
                     "color": "semi-dark-red",
@@ -224,7 +230,7 @@ data:
             "textMode": "auto",
             "wideLayout": true
           },
-          "pluginVersion": "11.1.5",
+          "pluginVersion": "11.6.1",
           "targets": [
             {
               "datasource": {
@@ -248,6 +254,7 @@ data:
             "type": "prometheus",
             "uid": "${datasource}"
           },
+          "description": "Total Memory Underestimation",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -259,8 +266,7 @@ data:
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "dark-green",
-                    "value": null
+                    "color": "dark-green"
                   },
                   {
                     "color": "semi-dark-yellow",
@@ -297,7 +303,7 @@ data:
             "textMode": "auto",
             "wideLayout": true
           },
-          "pluginVersion": "11.1.5",
+          "pluginVersion": "11.6.1",
           "targets": [
             {
               "datasource": {
@@ -318,10 +324,6 @@ data:
         },
         {
           "collapsed": false,
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
           "gridPos": {
             "h": 1,
             "w": 24,
@@ -330,15 +332,6 @@ data:
           },
           "id": 16,
           "panels": [],
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "${datasource}"
-              },
-              "refId": "A"
-            }
-          ],
           "title": "CPU",
           "type": "row"
         },
@@ -347,6 +340,7 @@ data:
             "type": "prometheus",
             "uid": "${datasource}"
           },
+          "description": "CPU Overestimation",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -376,8 +370,7 @@ data:
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -600,8 +593,7 @@ data:
                       "mode": "absolute",
                       "steps": [
                         {
-                          "color": "dark-green",
-                          "value": null
+                          "color": "dark-green"
                         },
                         {
                           "color": "semi-dark-red",
@@ -764,7 +756,7 @@ data:
               }
             ]
           },
-          "pluginVersion": "11.1.5",
+          "pluginVersion": "11.6.1",
           "targets": [
             {
               "datasource": {
@@ -898,14 +890,14 @@ data:
                 },
                 "includeByName": {},
                 "indexByName": {
-                  "name 1": 0,
-                  "namespace 1": 1,
                   "Value #A": 2,
                   "Value #B": 3,
                   "Value #C": 4,
                   "Value #D": 5,
                   "Value #E": 6,
-                  "Value #F": 7
+                  "Value #F": 7,
+                  "name 1": 0,
+                  "namespace 1": 1
                 },
                 "renameByName": {
                   "Value #F": "",
@@ -948,14 +940,14 @@ data:
                 },
                 "includeByName": {},
                 "indexByName": {
-                  "name": 0,
-                  "namespace": 1,
                   "Value #A": 2,
                   "Value #B": 3,
                   "Value #C": 4,
                   "Value #D": 5,
                   "Value #F": 6,
-                  "Value #G": 7
+                  "Value #G": 7,
+                  "name": 0,
+                  "namespace": 1
                 },
                 "renameByName": {}
               }
@@ -968,6 +960,7 @@ data:
             "type": "prometheus",
             "uid": "${datasource}"
           },
+          "description": "CPU Underestimation",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -997,8 +990,7 @@ data:
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -1221,8 +1213,7 @@ data:
                       "mode": "absolute",
                       "steps": [
                         {
-                          "color": "semi-dark-green",
-                          "value": null
+                          "color": "semi-dark-green"
                         },
                         {
                           "color": "dark-yellow",
@@ -1382,7 +1373,7 @@ data:
               }
             ]
           },
-          "pluginVersion": "11.1.5",
+          "pluginVersion": "11.6.1",
           "targets": [
             {
               "datasource": {
@@ -1562,14 +1553,14 @@ data:
                 },
                 "includeByName": {},
                 "indexByName": {
-                  "name": 0,
-                  "namespace": 1,
                   "Value #A": 2,
                   "Value #B": 3,
                   "Value #C": 4,
                   "Value #D": 5,
                   "Value #F": 6,
-                  "Value #G": 7
+                  "Value #G": 7,
+                  "name": 0,
+                  "namespace": 1
                 },
                 "renameByName": {}
               }
@@ -1579,10 +1570,6 @@ data:
         },
         {
           "collapsed": false,
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
           "gridPos": {
             "h": 1,
             "w": 24,
@@ -1591,15 +1578,6 @@ data:
           },
           "id": 8,
           "panels": [],
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "${datasource}"
-              },
-              "refId": "A"
-            }
-          ],
           "title": "Memory",
           "type": "row"
         },
@@ -1608,6 +1586,7 @@ data:
             "type": "prometheus",
             "uid": "${datasource}"
           },
+          "description": "Memory Overestimation",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -1637,8 +1616,7 @@ data:
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -1852,8 +1830,7 @@ data:
                       "mode": "absolute",
                       "steps": [
                         {
-                          "color": "dark-green",
-                          "value": null
+                          "color": "dark-green"
                         },
                         {
                           "color": "semi-dark-red",
@@ -1936,7 +1913,7 @@ data:
               }
             ]
           },
-          "pluginVersion": "11.1.5",
+          "pluginVersion": "11.6.1",
           "targets": [
             {
               "datasource": {
@@ -2114,14 +2091,14 @@ data:
                 },
                 "includeByName": {},
                 "indexByName": {
-                  "name": 0,
-                  "namespace": 1,
                   "Value #A": 2,
                   "Value #B": 3,
                   "Value #C": 4,
                   "Value #D": 5,
                   "Value #F": 6,
-                  "Value #G": 7
+                  "Value #G": 7,
+                  "name": 0,
+                  "namespace": 1
                 },
                 "renameByName": {}
               }
@@ -2134,6 +2111,7 @@ data:
             "type": "prometheus",
             "uid": "${datasource}"
           },
+          "description": "Memory Underestimation",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -2164,8 +2142,7 @@ data:
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -2379,8 +2356,7 @@ data:
                       "mode": "absolute",
                       "steps": [
                         {
-                          "color": "semi-dark-green",
-                          "value": null
+                          "color": "semi-dark-green"
                         },
                         {
                           "color": "dark-yellow",
@@ -2470,7 +2446,7 @@ data:
             "showHeader": true,
             "sortBy": []
           },
-          "pluginVersion": "11.1.5",
+          "pluginVersion": "11.6.1",
           "targets": [
             {
               "datasource": {
@@ -2647,14 +2623,14 @@ data:
                 },
                 "includeByName": {},
                 "indexByName": {
-                  "name": 0,
-                  "namespace": 1,
                   "Value #A": 2,
                   "Value #B": 3,
                   "Value #C": 4,
                   "Value #D": 5,
                   "Value #F": 6,
-                  "Value #G": 7
+                  "Value #G": 7,
+                  "name": 0,
+                  "namespace": 1
                 },
                 "renameByName": {}
               }
@@ -2663,43 +2639,39 @@ data:
           "type": "table"
         }
       ],
+      "preload": false,
       "refresh": "",
-      "schemaVersion": 39,
+      "schemaVersion": 41,
       "tags": [],
       "templating": {
         "list": [
           {
             "current": {
-              "selected": false,
               "text": "Observatorium",
               "value": "000000001"
             },
             "hide": 2,
             "includeAll": false,
-            "multi": false,
             "name": "datasource",
             "options": [],
             "query": "prometheus",
             "refresh": 1,
             "regex": "",
-            "skipUrlSync": false,
             "type": "datasource"
           },
           {
             "current": {
-              "selected": true,
-              "text": "bleeding",
-              "value": "bleeding"
+              "text": "collective-metal-4-19",
+              "value": "collective-metal-4-19"
             },
             "datasource": {
               "type": "prometheus",
               "uid": "${datasource}"
             },
             "definition": "label_values(acm_rs_vm:cluster:cpu_request,cluster)",
-            "hide": 0,
+            "description": "Cluster Variable",
             "includeAll": false,
             "label": "Cluster",
-            "multi": false,
             "name": "cluster",
             "options": [],
             "query": {
@@ -2708,13 +2680,11 @@ data:
             },
             "refresh": 2,
             "regex": "",
-            "skipUrlSync": false,
             "sort": 1,
             "type": "query"
           },
           {
             "current": {
-              "selected": false,
               "text": "Max OverAll",
               "value": "Max OverAll"
             },
@@ -2723,10 +2693,9 @@ data:
               "uid": "${datasource}"
             },
             "definition": "label_values(acm_rs_vm:namespace:cpu_usage{cluster=\"$cluster\"},profile)",
-            "hide": 0,
+            "description": "Profile Variable",
             "includeAll": false,
             "label": "Profile",
-            "multi": false,
             "name": "profile",
             "options": [],
             "query": {
@@ -2735,20 +2704,17 @@ data:
             },
             "refresh": 2,
             "regex": "",
-            "skipUrlSync": false,
             "sort": 1,
             "type": "query"
           },
           {
             "current": {
-              "selected": false,
-              "text": "30d",
-              "value": "30d"
+              "text": "5d",
+              "value": "5d"
             },
-            "hide": 0,
+            "description": "Days Aggregation Variable",
             "includeAll": false,
             "label": "Aggregation",
-            "multi": false,
             "name": "days",
             "options": [
               {
@@ -2762,7 +2728,7 @@ data:
                 "value": "2d"
               },
               {
-                "selected": false,
+                "selected": true,
                 "text": "5d",
                 "value": "5d"
               },
@@ -2772,7 +2738,7 @@ data:
                 "value": "10d"
               },
               {
-                "selected": true,
+                "selected": false,
                 "text": "15d",
                 "value": "15d"
               },
@@ -2793,17 +2759,11 @@ data:
               }
             ],
             "query": "1d, 2d, 5d, 10d, 15d, 30d, 60d, 90d",
-            "queryValue": "",
-            "skipUrlSync": false,
             "type": "custom"
           },
           {
-            "allValue": "",
             "current": {
-              "selected": false,
-              "text": [
-                "All"
-              ],
+              "text": "All",
               "value": [
                 "$__all"
               ]
@@ -2813,7 +2773,7 @@ data:
               "uid": "${datasource}"
             },
             "definition": "label_values(acm_rs_vm:namespace:cpu_request,namespace)",
-            "hide": 0,
+            "description": "Namespace Variable",
             "includeAll": true,
             "label": "Namespace",
             "multi": true,
@@ -2825,7 +2785,6 @@ data:
             },
             "refresh": 2,
             "regex": "",
-            "skipUrlSync": false,
             "sort": 1,
             "type": "query"
           }
@@ -2841,8 +2800,7 @@ data:
       "timezone": "",
       "title": "ACM Right Sizing Openshift Virtualization Dashboard",
       "uid": "bnqQIPySEProdkhgafkOpenshiftVirt",
-      "version": 1,
-      "weekStart": ""
+      "version": 6
     }
 kind: ConfigMap
 metadata:
