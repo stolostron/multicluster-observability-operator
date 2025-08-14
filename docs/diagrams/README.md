@@ -14,11 +14,10 @@ High-level architectural diagrams showing system setup and component relationshi
 ### Components (`components/`)
 Detailed component interaction diagrams showing how specific parts of the system work together:
 - **metrics-collection-alert-forwarding.txt** - Metrics collection and alert forwarding flow
-- **metrics-collection-status-propagation.txt** - Status propagation during metrics collection
 
 ### Workflows (`workflows/`)
 Process and workflow diagrams showing end-to-end system behaviors:
-- **status-propagation.txt** - Overall status propagation workflow across the system
+- **metrics-collection-status-propagation.txt** - Overall status propagation workflow across the system
 - **observability-placement-delete-flow.txt** - Managed cluster detach/disable observability process
 
 ## How to Use These Diagrams
