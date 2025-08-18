@@ -417,7 +417,6 @@ func GetManagedClusterLabelAllowListEventHandler(kubeClient kubernetes.Interface
 		UpdateFunc: func(oldObj, newObj interface{}) {
 			if newObj.(*v1.ConfigMap).Name == proxyconfig.GetManagedClusterLabelAllowListConfigMapName() {
 				klog.Infof("updated configmap: %s", proxyconfig.GetManagedClusterLabelAllowListConfigMapName())
-				// TODO race condition here
 				_ = unmarshalDataToManagedClusterLabelList(newObj.(*v1.ConfigMap).Data,
 					proxyconfig.GetManagedClusterLabelAllowListConfigMapKey(), syncLabelList)
 
@@ -429,7 +428,6 @@ func GetManagedClusterLabelAllowListEventHandler(kubeClient kubernetes.Interface
 					*syncLabelList = *managedLabelList
 				}
 				labelListMtx.Unlock()
-				// TODO race condition triggered when this is called
 				updateAllManagedClusterLabelNames(managedLabelList)
 			}
 		},
@@ -898,7 +896,6 @@ func resyncManagedClusterLabelAllowList(kubeClient kubernetes.Interface) error {
 		labelListMtx.Unlock()
 	}
 
-	// TODO race condition here
 	labelListMtx.Lock()
 	if ok := reflect.DeepEqual(syncLabelList, managedLabelList); !ok {
 		klog.Infof("resyncing required for managedcluster label allowlist: %v",
@@ -923,7 +920,6 @@ func resyncManagedClusterLabelAllowList(kubeClient kubernetes.Interface) error {
 			return err
 		}
 	} else {
-		// TODO temp unlock
 		labelListMtx.Unlock()
 	}
 
@@ -948,7 +944,6 @@ func marshalLabelListToConfigMap(obj interface{}, key string,
 // unmarshalDataToManagedClusterLabelList unmarshal managedcluster label allowlist.
 func unmarshalDataToManagedClusterLabelList(data map[string]string, key string,
 	managedLabelList *proxyconfig.ManagedClusterLabelList) error {
-	// TODO race condition here
 	labelListMtx.Lock()
 	err := yaml.Unmarshal([]byte(data[key]), managedLabelList)
 	labelListMtx.Unlock()
