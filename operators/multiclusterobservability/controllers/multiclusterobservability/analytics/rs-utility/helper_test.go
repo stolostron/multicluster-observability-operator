@@ -2,7 +2,7 @@
 // Copyright Contributors to the Open Cluster Management project
 // Licensed under the Apache License 2.0
 
-package analytics
+package rsutility
 
 import (
 	"testing"
@@ -31,7 +31,6 @@ func TestFormatYAML_ValidData(t *testing.T) {
 }
 
 func TestFormatYAML_WithPlacement(t *testing.T) {
-
 	labelSelector := metav1.LabelSelector{
 		MatchLabels: map[string]string{
 			"environment": "prod",
@@ -55,4 +54,14 @@ func TestFormatYAML_WithPlacement(t *testing.T) {
 	assert.Contains(t, output, "labelselector:")
 	assert.Contains(t, output, "matchlabels:")
 	assert.Contains(t, output, "environment: prod")
+}
+
+func TestGetDefaultRSPrometheusRuleConfig(t *testing.T) {
+	config := GetDefaultRSPrometheusRuleConfig()
+
+	assert.Equal(t, DefaultRecommendationPercentage, config.RecommendationPercentage)
+	assert.Equal(t, 110, config.RecommendationPercentage)
+	assert.Contains(t, config.NamespaceFilterCriteria.ExclusionCriteria, "openshift.*")
+	assert.Empty(t, config.NamespaceFilterCriteria.InclusionCriteria)
+	assert.Empty(t, config.LabelFilterCriteria)
 }

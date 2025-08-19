@@ -15,6 +15,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
+	rsnamespace "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/multiclusterobservability/analytics/rs-namespace"
+	rsutility "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/multiclusterobservability/analytics/rs-utility"
 	clusterv1beta1 "open-cluster-management.io/api/cluster/v1beta1"
 	policyv1 "open-cluster-management.io/governance-policy-propagator/api/v1"
 )
@@ -35,7 +37,7 @@ func newTestMCO(binding string, enabled bool) *mcov1beta2.MultiClusterObservabil
 			Capabilities: &mcov1beta2.CapabilitiesSpec{
 				Platform: &mcov1beta2.PlatformCapabilitiesSpec{
 					Analytics: mcov1beta2.PlatformAnalyticsSpec{
-						NamespaceRightSizingRecommendation: mcov1beta2.PlatformNamespaceRightSizingRecommendationSpec{
+						NamespaceRightSizingRecommendation: mcov1beta2.PlatformRightSizingRecommendationSpec{
 							Enabled:          enabled,
 							NamespaceBinding: binding,
 						},
@@ -49,15 +51,16 @@ func newTestMCO(binding string, enabled bool) *mcov1beta2.MultiClusterObservabil
 func TestCreateRightSizingComponent_FeatureEnabledWithNamespaceChange(t *testing.T) {
 	scheme := setupTestScheme(t)
 
-	rsNamespace = "old-ns"
-	isEnabled = true
+	// Set up initial state to test namespace change
+	rsnamespace.Namespace = "old-ns"
+	rsnamespace.Enabled = true
 
 	mco := newTestMCO("custom-ns", true)
 
 	configMap := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      rsConfigMapName,
-			Namespace: rsDefaultNamespace,
+			Name:      rsnamespace.ConfigMapName,
+			Namespace: rsutility.DefaultNamespace,
 		},
 		Data: map[string]string{
 			"config.yaml": `
@@ -85,10 +88,11 @@ func TestCreateRightSizingComponent_FeatureEnabledWithNamespaceChange(t *testing
 func TestCreateRightSizingComponent_FeatureEnabled_NoNamespaceChange(t *testing.T) {
 	scheme := setupTestScheme(t)
 
-	rsNamespace = rsDefaultNamespace
-	isEnabled = true
+	// Set up initial state
+	rsnamespace.Namespace = rsutility.DefaultNamespace
+	rsnamespace.Enabled = true
 
-	mco := newTestMCO(rsDefaultNamespace, true)
+	mco := newTestMCO(rsutility.DefaultNamespace, true)
 
 	client := fake.NewClientBuilder().
 		WithScheme(scheme).
@@ -102,8 +106,9 @@ func TestCreateRightSizingComponent_FeatureEnabled_NoNamespaceChange(t *testing.
 func TestCreateRightSizingComponent_FeatureDisabled(t *testing.T) {
 	scheme := setupTestScheme(t)
 
-	rsNamespace = rsDefaultNamespace
-	isEnabled = false
+	// Set up initial state
+	rsnamespace.Namespace = rsutility.DefaultNamespace
+	rsnamespace.Enabled = false
 
 	mco := newTestMCO("", false)
 
