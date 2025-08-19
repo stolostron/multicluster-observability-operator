@@ -229,13 +229,15 @@ func TestStartStatusUpdate(t *testing.T) {
 	}
 
 	// Register operator types with the runtime scheme.
-	s := scheme.Scheme
+	s := runtime.NewScheme()
+	scheme.AddToScheme(s)
 	mcov1beta2.SchemeBuilder.AddToScheme(s)
 	addonv1alpha1.AddToScheme(s)
 	oav1beta1.AddToScheme(s)
 
 	objs := []runtime.Object{mco, createSecret("test", "test", mcoconfig.GetMCONamespace())}
 	cl := fake.NewClientBuilder().
+		WithScheme(s).
 		WithRuntimeObjects(objs...).
 		WithStatusSubresource(
 			&addonv1alpha1.ManagedClusterAddOn{},
@@ -282,6 +284,7 @@ func TestStartStatusUpdate(t *testing.T) {
 func TestUpdateMCOAStatus(t *testing.T) {
 	// Register the necessary schemes
 	s := runtime.NewScheme()
+	scheme.AddToScheme(s)
 	s.AddKnownTypes(mcov1beta2.GroupVersion, &mcov1beta2.MultiClusterObservability{})
 	s.AddKnownTypes(apiextensionsv1.SchemeGroupVersion, &apiextensionsv1.CustomResourceDefinition{})
 

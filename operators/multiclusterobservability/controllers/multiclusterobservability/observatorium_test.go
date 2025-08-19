@@ -95,13 +95,13 @@ func TestNewDefaultObservatoriumSpec(t *testing.T) {
 	}
 
 	s := runtime.NewScheme()
-
+	scheme.AddToScheme(s)
 	mcov1beta2.SchemeBuilder.AddToScheme(s)
 	observatoriumv1alpha1.SchemeBuilder.AddToScheme(s)
 
 	objs := []runtime.Object{mco, writeStorageS}
 	// Create a fake client to mock API calls.
-	cl := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
+	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
 
 	obs, _ := newDefaultObservatoriumSpec(cl, mco, storageClassName, "")
 
@@ -192,13 +192,14 @@ func TestNewDefaultObservatoriumSpecWithTShirtSize(t *testing.T) {
 			"write_key": []byte(`url: http://remotewrite/endpoint`),
 		},
 	}
-	s := scheme.Scheme
+	s := runtime.NewScheme()
+	scheme.AddToScheme(s)
 	mcov1beta2.SchemeBuilder.AddToScheme(s)
 	observatoriumv1alpha1.SchemeBuilder.AddToScheme(s)
 
 	objs := []runtime.Object{mco, writeStorageS}
 	// Create a fake client to mock API calls.
-	cl := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
+	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
 
 	obs, err := newDefaultObservatoriumSpec(cl, mco, storageClassName, "")
 	if err != nil {
@@ -256,7 +257,8 @@ func TestUpdateObservatoriumCR(t *testing.T) {
 		},
 	}
 	// Register operator types with the runtime scheme.
-	s := scheme.Scheme
+	s := runtime.NewScheme()
+	scheme.AddToScheme(s)
 	mcov1beta2.SchemeBuilder.AddToScheme(s)
 	observatoriumv1alpha1.AddToScheme(s)
 
@@ -273,7 +275,7 @@ func TestUpdateObservatoriumCR(t *testing.T) {
 
 	// Create a fake client to mock API calls.
 	// This should have no extra objects beyond the CMO CRD.
-	noConfigCl := fake.NewClientBuilder().WithRuntimeObjects(mco).Build()
+	noConfigCl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(mco).Build()
 	mcoconfig.SetOperandNames(noConfigCl)
 
 	_, err := GenerateObservatoriumCR(noConfigCl, s, mco)
@@ -297,7 +299,7 @@ func TestUpdateObservatoriumCR(t *testing.T) {
 	}
 
 	// Create a fake client to mock API calls.
-	cl := fake.NewClientBuilder().WithRuntimeObjects(append(objs, createdObservatoriumCR)...).Build()
+	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(append(objs, createdObservatoriumCR)...).Build()
 	mcoconfig.SetOperandNames(cl)
 
 	_, err = GenerateObservatoriumCR(cl, s, mco)
@@ -358,13 +360,14 @@ func TestTShirtSizeUpdateObservatoriumCR(t *testing.T) {
 		},
 	}
 	// Register operator types with the runtime scheme.
-	s := scheme.Scheme
+	s := runtime.NewScheme()
+	scheme.AddToScheme(s)
 	mcov1beta2.SchemeBuilder.AddToScheme(s)
 	observatoriumv1alpha1.AddToScheme(s)
 
 	// Create a fake client to mock API calls.
 	// This should have no extra objects beyond the CMO CRD.
-	cl := fake.NewClientBuilder().WithRuntimeObjects(mco).Build()
+	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(mco).Build()
 	mcoconfig.SetOperandNames(cl)
 
 	_, err := GenerateObservatoriumCR(cl, s, mco)
@@ -438,7 +441,8 @@ func TestNoUpdateObservatoriumCR(t *testing.T) {
 		},
 	}
 	// Register operator types with the runtime scheme.
-	s := scheme.Scheme
+	s := runtime.NewScheme()
+	scheme.AddToScheme(s)
 	mcov1beta2.SchemeBuilder.AddToScheme(s)
 	observatoriumv1alpha1.AddToScheme(s)
 
@@ -476,7 +480,7 @@ func TestNoUpdateObservatoriumCR(t *testing.T) {
 	}...)
 
 	// Create a fake client to mock API calls.
-	cl := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
+	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
 	mcoconfig.SetOperandNames(cl)
 
 	_, err := GenerateObservatoriumCR(cl, s, mco)
@@ -799,7 +803,8 @@ func TestObservatoriumCustomArgs(t *testing.T) {
 
 func TestGenerateAPIGatewayRoute(t *testing.T) {
 	ctx := context.Background()
-	s := scheme.Scheme
+	s := runtime.NewScheme()
+	scheme.AddToScheme(s)
 	s.AddKnownTypes(mcov1beta2.GroupVersion)
 	if err := mcov1beta2.AddToScheme(s); err != nil {
 		t.Fatalf("Unable to add scheme: (%v)", err)
