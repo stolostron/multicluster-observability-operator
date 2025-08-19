@@ -117,6 +117,6 @@ func TestGetClusterID(t *testing.T) {
 		t.Fatalf("Failed to get clusterversion: (%v)", err)
 	}
 	if found != testClusterID {
-		t.Fatalf("Got wrong cluster id" + found)
+		t.Fatalf("Got wrong cluster id: %s", found)
 	}
 }

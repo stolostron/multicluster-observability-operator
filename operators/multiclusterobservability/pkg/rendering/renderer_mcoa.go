@@ -37,7 +37,8 @@ const (
 	nameMetricsHubHostname            = "metricsHubHostname"
 	namePLatformMetricsUI             = "platformMetricsUI"
 
-	grafanaLink = "/d/89eaec849a6e4837a619fb0540c22b13/acm-clusters-overview"
+	grafanaMCOAHomeDashboardID = "89eaec849a6e4837a619fb0540c22b13"
+	grafanaLink                = "/d/" + grafanaMCOAHomeDashboardID + "/acm-clusters-overview"
 )
 
 type MCOARendererOptions struct {

@@ -160,7 +160,9 @@ func (d *Deployer) updateConfigMap(ctx context.Context, desiredObj, runtimeObj *
 		return err
 	}
 
-	if !apiequality.Semantic.DeepDerivative(desiredConfigMap.Data, runtimeConfigMap.Data) {
+	if !apiequality.Semantic.DeepDerivative(desiredConfigMap.Data, runtimeConfigMap.Data) ||
+		!isMapSubset(runtimeConfigMap.Labels, desiredConfigMap.Labels) ||
+		!isMapSubset(runtimeConfigMap.Annotations, desiredConfigMap.Annotations) {
 		logUpdateInfo(runtimeObj)
 		return d.client.Update(ctx, desiredConfigMap)
 	}
@@ -489,4 +491,13 @@ func (d *Deployer) Undeploy(ctx context.Context, obj *unstructured.Unstructured)
 	}
 
 	return d.client.Delete(ctx, obj)
+}
+
+func isMapSubset(superset, subset map[string]string) bool {
+	for key, value := range subset {
+		if val, ok := superset[key]; !ok || val != value {
+			return false
+		}
+	}
+	return true
 }

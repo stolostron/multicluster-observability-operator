@@ -28,28 +28,29 @@ var kubeClient kubernetes.Interface
 
 func (mco *MultiClusterObservability) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
+		WithValidator(&MultiClusterObservability{}).
 		For(mco).
 		Complete()
 }
 
 // +kubebuilder:webhook:path=/validate-observability-open-cluster-management-io-v1beta2-multiclusterobservability,mutating=false,failurePolicy=fail,sideEffects=None,groups=observability.open-cluster-management.io,resources=multiclusterobservabilities,verbs=create;update,versions=v1beta2,name=vmulticlusterobservability.observability.open-cluster-management.io,admissionReviewVersions={v1}
 
-var _ webhook.Validator = &MultiClusterObservability{}
+var _ webhook.CustomValidator = &MultiClusterObservability{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-func (mco *MultiClusterObservability) ValidateCreate() (admission.Warnings, error) {
+func (mco *MultiClusterObservability) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
 	multiclusterobservabilitylog.Info("validate create", "name", mco.Name)
 	return nil, mco.validateMultiClusterObservability(nil)
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
-func (mco *MultiClusterObservability) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
+func (mco *MultiClusterObservability) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
 	multiclusterobservabilitylog.Info("validate update", "name", mco.Name)
-	return nil, mco.validateMultiClusterObservability(old)
+	return nil, mco.validateMultiClusterObservability(oldObj)
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
-func (mco *MultiClusterObservability) ValidateDelete() (admission.Warnings, error) {
+func (mco *MultiClusterObservability) ValidateDelete(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
 	multiclusterobservabilitylog.Info("validate delete", "name", mco.Name)
 
 	// no validation logic upon object delete.

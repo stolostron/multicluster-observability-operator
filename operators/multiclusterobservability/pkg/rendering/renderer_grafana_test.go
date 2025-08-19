@@ -79,6 +79,7 @@ func TestRenderGrafana(t *testing.T) {
 			expect: func(t *testing.T, templates []*unstructured.Unstructured) {
 				assert.Greater(t, len(templates), 1)
 				deprecatedCount := 0
+				homeDashboardsCount := 0
 
 				// Check that the deprecated field is added
 				for _, template := range templates {
@@ -93,14 +94,30 @@ func TestRenderGrafana(t *testing.T) {
 					isDeprecated := strings.Contains(templateStr, "DEPRECATED")
 
 					// Ensure mcoa dashboards are not the ones marked as deprecated
-					assert.False(t, isDeprecated && strings.Contains(templateStr, "MCOA"))
+					annotations := template.GetAnnotations()
+					assert.False(t, isDeprecated && strings.Contains(annotations[dashboardFolderAnnotationKey], "MCOA"))
 
 					if isDeprecated {
 						deprecatedCount++
 					}
+
+					// Ensure home dashboard is set for mcoa and disabled for the standard dashboard
+					labels := template.GetLabels()
+					if _, ok := labels[homeDashboardUIDLabelKey]; ok {
+						homeDashboardsCount++
+						isHome, ok := annotations[setHomeDashboardAnnotationKey]
+						if strings.Contains(templateStr, "MCOA") {
+							assert.True(t, ok)
+							assert.Equal(t, "true", isHome)
+						} else {
+							assert.True(t, ok)
+							assert.Equal(t, "false", isHome)
+						}
+					}
 				}
 
 				assert.NotZero(t, deprecatedCount)
+				assert.Equal(t, 2, homeDashboardsCount)
 			},
 		},
 		"MCOA for metrics is disabled": {
@@ -108,6 +125,7 @@ func TestRenderGrafana(t *testing.T) {
 			expect: func(t *testing.T, templates []*unstructured.Unstructured) {
 				assert.Greater(t, len(templates), 1)
 				forbiddenTypes := []string{"ScrapeConfig", "PrometheusRule"}
+				homeDashboardsCount := 0
 				// Check that the deprecated string is never added
 				for _, template := range templates {
 					assert.NotContains(t, forbiddenTypes, template.GetKind())
@@ -121,7 +139,23 @@ func TestRenderGrafana(t *testing.T) {
 
 					templateStr := string(templateJson)
 					assert.NotContains(t, templateStr, "DEPRECATED")
+
+					// Ensure home dashboard is disabled for mcoa and set for the standard dashboard
+					annotations := template.GetAnnotations()
+					labels := template.GetLabels()
+					if _, ok := labels[homeDashboardUIDLabelKey]; ok {
+						homeDashboardsCount++
+						isHome, ok := annotations[setHomeDashboardAnnotationKey]
+						if strings.Contains(templateStr, "MCOA") {
+							assert.True(t, ok)
+							assert.Equal(t, "false", isHome)
+						} else {
+							assert.True(t, ok)
+							assert.Equal(t, "true", isHome)
+						}
+					}
 				}
+				assert.Equal(t, 2, homeDashboardsCount)
 			},
 		},
 	}

@@ -1908,3 +1908,4 @@ metadata:
   namespace: open-cluster-management-observability
   labels:
     general-folder: 'true'
+    home-dashboard-uid: '2b679d600f3b9e7676a7c5ac3643d448'

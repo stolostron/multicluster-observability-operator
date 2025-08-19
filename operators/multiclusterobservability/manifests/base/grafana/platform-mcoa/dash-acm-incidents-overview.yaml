@@ -155,6 +155,18 @@ data:
                         "value": true
                     }
                     ]
+                },
+                {
+                    "matcher": {
+                        "id": "byName",
+                        "options": "start time"
+                    },
+                    "properties": [
+                        {
+                            "id": "unit",
+                            "value": "dateTimeAsLocal"
+                        }
+                    ]
                 }
                 ]
             },
@@ -481,7 +493,7 @@ data:
         },
         "timezone": "",
         "title": "Incidents overview",
-        "uid": "",
+        "uid": "8dea2c17282b709cf75422a66a0de966",
         "version": 0,
         "weekStart": ""
     }

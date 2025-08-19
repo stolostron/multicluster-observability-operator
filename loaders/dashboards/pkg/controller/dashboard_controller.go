@@ -35,7 +35,9 @@ const (
 	customFolderKey     = "observability.open-cluster-management.io/dashboard-folder"
 	generalFolderKey    = "general-folder"
 	defaultCustomFolder = "Custom"
-	homeDashboardUID    = "2b679d600f3b9e7676a7c5ac3643d448"
+	homeDashboardTitle  = "ACM - Clusters Overview"
+	homeDashboardUIDKey = "home-dashboard-uid"
+	setHomeDashboardKey = "set-home-dashboard"
 )
 
 var (
@@ -310,6 +312,18 @@ func updateDashboard(old, new interface{}, overwrite bool) error {
 		}
 	}
 
+	cm, ok := new.(*corev1.ConfigMap)
+	if !ok || cm == nil {
+		return fmt.Errorf("failed to get dashboard configmap")
+	}
+
+	homeDashboardUID := ""
+	labels := cm.ObjectMeta.Labels
+	annotations := cm.ObjectMeta.Annotations
+	if strings.ToLower(annotations[setHomeDashboardKey]) == "true" && labels[homeDashboardUIDKey] != "" {
+		homeDashboardUID = labels[homeDashboardUIDKey]
+	}
+
 	for _, value := range new.(*corev1.ConfigMap).Data {
 
 		dashboard := map[string]interface{}{}
@@ -317,9 +331,10 @@ func updateDashboard(old, new interface{}, overwrite bool) error {
 		if err != nil {
 			return fmt.Errorf("failed to unmarshall data: %v", err)
 		}
-		if dashboard["uid"] == nil {
+		if dashboard["uid"] == nil || dashboard["uid"] == "" {
 			dashboard["uid"], _ = util.GenerateUID(new.(*corev1.ConfigMap).GetName(),
 				new.(*corev1.ConfigMap).GetNamespace())
+			klog.Infof("dashboard uid is not set, generating a default: %s", dashboard["uid"])
 		}
 		dashboard["id"] = nil
 		data := map[string]interface{}{
@@ -350,7 +365,7 @@ func updateDashboard(old, new interface{}, overwrite bool) error {
 			}
 		}
 
-		if dashboard["uid"] == homeDashboardUID {
+		if homeDashboardUID != "" && dashboard["uid"] == homeDashboardUID {
 			// get "id" value from response
 			re := regexp.MustCompile("\"id\":(\\d+),")
 			result := re.FindSubmatch(body)
@@ -361,11 +376,12 @@ func updateDashboard(old, new interface{}, overwrite bool) error {
 				if err != nil {
 					return fmt.Errorf("failed to parse dashboard id: %v", err)
 				} else {
+					klog.Infof("Setting dashboard: %v as home dashboard", dashboard["title"])
 					setHomeDashboard(id)
 				}
 			}
 		}
-		klog.Infof("dashboard: %v created/updated successfully", new.(*corev1.ConfigMap).Name)
+		klog.Infof("dashboard: %v created/updated successfully", cm.Name)
 	}
 
 	folderTitle = getDashboardCustomFolderTitle(old)

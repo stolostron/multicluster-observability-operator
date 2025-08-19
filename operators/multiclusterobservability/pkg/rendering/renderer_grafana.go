@@ -19,7 +19,11 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 )
 
-const dashboardFolderAnnotationKey = "observability.open-cluster-management.io/dashboard-folder"
+const (
+	dashboardFolderAnnotationKey  = "observability.open-cluster-management.io/dashboard-folder"
+	homeDashboardUIDLabelKey      = "home-dashboard-uid"
+	setHomeDashboardAnnotationKey = "set-home-dashboard"
+)
 
 func (r *MCORenderer) newGranfanaRenderer() {
 	r.renderGrafanaFns = map[string]rendererutil.RenderFn{
@@ -98,6 +102,7 @@ func (r *MCORenderer) renderGrafanaDeployments(res *resource.Resource,
 func (r *MCORenderer) renderGrafanaTemplates(templates []*resource.Resource,
 	namespace string, labels map[string]string) ([]*unstructured.Unstructured, error) {
 	uobjs := []*unstructured.Unstructured{}
+
 	for _, template := range templates {
 		// Avoid rendering resource kinds that are specific to MCOA.
 		if !MCOAPlatformMetricsEnabled(r.cr) && isMCOASpecificResourceKind(template) {
@@ -107,9 +112,31 @@ func (r *MCORenderer) renderGrafanaTemplates(templates []*resource.Resource,
 		template = template.DeepCopy()
 
 		// Add deprecated suffix to the old dashboard names when MCOA is activated.
-		if MCOAPlatformMetricsEnabled(r.cr) && isNonMCOASpecificDashboard(template) {
-			if err := addDeprecatedSuffixToDashboardName(template); err != nil {
-				return []*unstructured.Unstructured{}, fmt.Errorf("failed to modify dashboard title with deprecated suffix: %w", err)
+		// Also remove the old main dashboard as the home one
+		if MCOAPlatformMetricsEnabled(r.cr) {
+			if isNonMCOASpecificDashboard(template) {
+				if err := addDeprecatedSuffixToDashboardName(template); err != nil {
+					return []*unstructured.Unstructured{}, fmt.Errorf("failed to modify dashboard title with deprecated suffix: %w", err)
+				}
+				if err := removeHomeDashboard(template); err != nil {
+					return []*unstructured.Unstructured{}, fmt.Errorf("failed to remove home dashboard: %w", err)
+				}
+			} else if isMCOASpecificDashboard(template) {
+				if err := addHomeDashboard(template); err != nil {
+					return []*unstructured.Unstructured{}, fmt.Errorf("failed to add home dashboard: %w", err)
+				}
+			}
+		}
+
+		if !MCOAPlatformMetricsEnabled(r.cr) {
+			if isNonMCOASpecificDashboard(template) {
+				if err := addHomeDashboard(template); err != nil {
+					return []*unstructured.Unstructured{}, fmt.Errorf("failed to add home dashboard: %w", err)
+				}
+			} else if isMCOASpecificDashboard(template) {
+				if err := removeHomeDashboard(template); err != nil {
+					return []*unstructured.Unstructured{}, fmt.Errorf("failed to remove home dashboard: %w", err)
+				}
 			}
 		}
 
@@ -146,6 +173,17 @@ func isMCOASpecificResourceKind(res *resource.Resource) bool {
 	return false
 }
 
+func isMCOASpecificDashboard(res *resource.Resource) bool {
+	if res.GetKind() == "ConfigMap" {
+		dir := res.GetAnnotations(dashboardFolderAnnotationKey)[dashboardFolderAnnotationKey]
+		if strings.Contains(dir, "MCOA") {
+			return true
+		}
+	}
+
+	return false
+}
+
 func isNonMCOASpecificDashboard(res *resource.Resource) bool {
 	// Exclude all dashboards living in the default directory as they are all duplicated
 	// for MCOA with some expressions adaptations due to the different set of metrics
@@ -162,6 +200,32 @@ func isNonMCOASpecificDashboard(res *resource.Resource) bool {
 	}
 
 	return false
+}
+
+func removeHomeDashboard(template *resource.Resource) error {
+	annotations := template.GetAnnotations()
+	labels := template.GetLabels()
+	if _, ok := labels[homeDashboardUIDLabelKey]; ok {
+		annotations[setHomeDashboardAnnotationKey] = "false"
+		if err := template.SetAnnotations(annotations); err != nil {
+			return fmt.Errorf("failed to set annotations: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func addHomeDashboard(template *resource.Resource) error {
+	annotations := template.GetAnnotations()
+	labels := template.GetLabels()
+	if _, ok := labels[homeDashboardUIDLabelKey]; ok {
+		annotations[setHomeDashboardAnnotationKey] = "true"
+		if err := template.SetAnnotations(annotations); err != nil {
+			return fmt.Errorf("failed to set annotations: %w", err)
+		}
+	}
+
+	return nil
 }
 
 func addDeprecatedSuffixToDashboardName(template *resource.Resource) error {
