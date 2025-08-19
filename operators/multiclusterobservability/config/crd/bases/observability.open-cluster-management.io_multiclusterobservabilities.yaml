@@ -10076,7 +10076,7 @@ spec:
                             properties:
                               enabled:
                                 description: Enabled defines a flag to enable/disable
-                                  the namespace right-sizing feature for the Analytics.
+                                  the right-sizing feature for the Analytics.
                                 type: boolean
                               namespaceBinding:
                                 description: |-
