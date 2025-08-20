@@ -22,20 +22,30 @@ const (
 	certPath = "/var/rbac_proxy/certs"
 )
 
-func getTLSTransport() (*http.Transport, error) {
+// TLSOptions holds the paths to the TLS assets.
+type TLSOptions struct {
+	CaFile   string
+	KeyFile  string
+	CertFile string
+}
 
-	caCertFile := path.Join(caPath, "ca.crt")
-	tlsKeyFile := path.Join(certPath, "tls.key")
-	tlsCrtFile := path.Join(certPath, "tls.crt")
+func GetTLSTransport() (*http.Transport, error) {
+	return getTLSTransportWithOptions(&TLSOptions{
+		CaFile:   path.Join(caPath, "ca.crt"),
+		KeyFile:  path.Join(certPath, "tls.key"),
+		CertFile: path.Join(certPath, "tls.crt"),
+	})
+}
 
+func getTLSTransportWithOptions(opts *TLSOptions) (*http.Transport, error) {
 	// Load Server CA cert
-	caCert, err := os.ReadFile(filepath.Clean(caCertFile))
+	caCert, err := os.ReadFile(filepath.Clean(opts.CaFile))
 	if err != nil {
 		klog.Error("failed to load server ca cert file")
 		return nil, err
 	}
 	// Load client cert signed by Client CA
-	cert, err := tls.LoadX509KeyPair(filepath.Clean(tlsCrtFile), filepath.Clean(tlsKeyFile))
+	cert, err := tls.LoadX509KeyPair(filepath.Clean(opts.CertFile), filepath.Clean(opts.KeyFile))
 	if err != nil {
 		klog.Error("failed to load client cert/key")
 		return nil, err

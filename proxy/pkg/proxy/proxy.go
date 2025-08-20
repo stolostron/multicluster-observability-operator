@@ -6,11 +6,11 @@ package proxy
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
-	"os"
 	"path"
 	"strings"
 
@@ -27,10 +27,26 @@ const (
 	userAPIPath     = "/apis/user.openshift.io/v1/users/~"
 )
 
-var (
-	serverScheme = ""
-	serverHost   = ""
-)
+// Proxy is a reverse proxy for the metrics server.
+type Proxy struct {
+	metricsServerURL *url.URL
+	apiServerHost    string
+	proxy            *httputil.ReverseProxy
+}
+
+// NewProxy creates a new Proxy.
+func NewProxy(serverURL *url.URL, transport http.RoundTripper, apiserverHost string) (*Proxy, error) {
+	p := &Proxy{
+		metricsServerURL: serverURL,
+		proxy: &httputil.ReverseProxy{
+			Director:  proxyRequest,
+			Transport: transport,
+		},
+		apiServerHost: apiserverHost,
+	}
+
+	return p, nil
+}
 
 func requestContainsRBACProxyLabeMetricName(req *http.Request) bool {
 	if req.Method == "POST" {
@@ -87,9 +103,9 @@ func createQueryResponse(labels []string, metricName string, urlPath string) str
 	return query
 }
 
-// HandleRequestAndRedirect is used to init proxy handler.
-func HandleRequestAndRedirect(res http.ResponseWriter, req *http.Request) {
-	if preCheckRequest(req) != nil {
+// ServeHTTP is used to init proxy handler.
+func (p *Proxy) ServeHTTP(res http.ResponseWriter, req *http.Request) {
+	if p.preCheckRequest(req) != nil {
 		_, err := res.Write(newEmptyMatrixHTTPBody())
 		if err != nil {
 			klog.Errorf("failed to write response: %v", err)
@@ -101,32 +117,14 @@ func HandleRequestAndRedirect(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	serverURL, err := url.Parse(os.Getenv("METRICS_SERVER"))
-	if err != nil {
-		klog.Errorf("failed to parse url: %v", err)
-	}
-	serverHost = serverURL.Host
-	serverScheme = serverURL.Scheme
-
-	tlsTransport, err := getTLSTransport()
-	if err != nil {
-		klog.Fatalf("failed to create tls transport: %v", err)
-	}
-
-	// create the reverse proxy
-	proxy := httputil.ReverseProxy{
-		Director:  proxyRequest,
-		Transport: tlsTransport,
-	}
-
 	req.Header.Set("X-Forwarded-Host", req.Header.Get("Host"))
-	req.Host = serverURL.Host
+	req.Host = p.metricsServerURL.Host
 	req.URL.Path = path.Join(basePath, req.URL.Path)
 	util.ModifyMetricsQueryParams(req, config.GetConfigOrDie().Host+projectsAPIPath, util.GetAccessReviewer())
-	proxy.ServeHTTP(res, req)
+	p.proxy.ServeHTTP(res, req)
 }
 
-func preCheckRequest(req *http.Request) error {
+func (p *Proxy) preCheckRequest(req *http.Request) error {
 	token := req.Header.Get("X-Forwarded-Access-Token")
 	if token == "" {
 		token = req.Header.Get("Authorization")
@@ -141,7 +139,11 @@ func preCheckRequest(req *http.Request) error {
 
 	userName := req.Header.Get("X-Forwarded-User")
 	if userName == "" {
-		userName = util.GetUserName(token, config.GetConfigOrDie().Host+userAPIPath)
+		userAPIURL, err := url.JoinPath(p.apiServerHost, userAPIPath)
+		if err != nil {
+			return fmt.Errorf("failed to join the user api path with the apiserver host: %w", err)
+		}
+		userName = util.GetUserName(token, userAPIURL)
 		if userName == "" {
 			return errors.New("failed to find user name")
 		} else {
@@ -151,7 +153,12 @@ func preCheckRequest(req *http.Request) error {
 
 	_, ok := util.GetUserProjectList(token)
 	if !ok {
-		projectList := util.FetchUserProjectList(token, config.GetConfigOrDie().Host+projectsAPIPath)
+		userProjectsURL, err := url.JoinPath(p.apiServerHost, projectsAPIPath)
+		if err != nil {
+			return fmt.Errorf("failed to join the user projects api path with the apiserver host: %w", err)
+
+		}
+		projectList := util.FetchUserProjectList(token, userProjectsURL)
 		up := util.NewUserProject(userName, token, projectList)
 		util.UpdateUserProject(up)
 	}
@@ -168,8 +175,6 @@ func newEmptyMatrixHTTPBody() []byte {
 }
 
 func proxyRequest(r *http.Request) {
-	r.URL.Scheme = serverScheme
-	r.URL.Host = serverHost
 	if r.Method == http.MethodGet {
 		if strings.HasSuffix(r.URL.Path, "/api/v1/query") ||
 			strings.HasSuffix(r.URL.Path, "/api/v1/query_range") ||

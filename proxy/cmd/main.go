@@ -7,6 +7,7 @@ package main
 import (
 	"flag"
 	"net/http"
+	"net/url"
 	"os"
 	"time"
 
@@ -47,9 +48,6 @@ func main() {
 		"The address the metrics server should run on.")
 
 	_ = flagset.Parse(os.Args[1:])
-	if err := os.Setenv("METRICS_SERVER", cfg.metricServer); err != nil {
-		klog.Fatalf("failed to Setenv: %v", err)
-	}
 
 	//Kubeconfig flag
 	flagset.StringVar(&cfg.kubeconfigLocation, "kubeconfig", "",
@@ -91,8 +89,22 @@ func main() {
 	go util.ScheduleManagedClusterLabelAllowlistResync(kubeClient)
 	go util.CleanExpiredProjectInfoJob(24 * 60 * 60)
 
+	serverURL, err := url.Parse(cfg.metricServer)
+	if err != nil {
+		klog.Fatalf("failed to parse metrics server url: %v", err)
+	}
+
+	tlsTransport, err := proxy.GetTLSTransport()
+	if err != nil {
+		klog.Fatalf("failed to set tls transport: %v", err)
+	}
+	p, err := proxy.NewProxy(serverURL, tlsTransport, kubeConfig.Host, mgr.GetClient())
+	if err != nil {
+		klog.Fatalf("failed to create proxy: %v", err)
+	}
+
 	handlers := http.NewServeMux()
-	handlers.HandleFunc("/", proxy.HandleRequestAndRedirect)
+	handlers.Handle("/", p)
 	s := http.Server{
 		Addr:              cfg.listenAddress,
 		Handler:           handlers,
