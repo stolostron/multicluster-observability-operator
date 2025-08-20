@@ -64,7 +64,7 @@ var (
 
 	managedLabelList   = proxyconfig.GetManagedClusterLabelList()
 	syncLabelList      = proxyconfig.GetSyncLabelList()
-	clusterMatchRegExp = regexp.MustCompile(`([{|,][ ]*)cluster(=|!=|=~|!~)([ ]*)"([^"]+)"`)
+	clusterMatchRegExp = regexp.MustCompile(`([{|,][ ]*)cluster(=|!=|=~|!~)([ ]*)"([^"]+)"`) 
 )
 
 // resources for the gocron scheduler.
@@ -177,7 +177,6 @@ func ignoreManagedClusterLabelNames(managedLabelList *proxyconfig.ManagedCluster
 
 	managedLabelList.RegexLabelList = []string{}
 	regex := regexp.MustCompile(`[^\w]+`)
-
 	allManagedClusterLabelNamesMtx.RLock()
 	defer allManagedClusterLabelNamesMtx.RUnlock()
 	for key, isEnabled := range allManagedClusterLabelNames {
@@ -428,22 +427,6 @@ func WatchManagedClusterLabelAllowList(kubeClient kubernetes.Interface) {
 }
 
 func sendHTTPRequest(url string, verb string, token string) (*http.Response, error) {
-	req, err := http.NewRequest(verb, url, nil)
-	if err != nil {
-		klog.Errorf("failed to new http request: %v", err)
-		return nil, err
-	}
-
-	if len(token) == 0 {
-		transport := &http.Transport{}
-		defaultClient := &http.Client{Transport: transport}
-		return defaultClient.Do(req)
-	}
-
-	if !strings.HasPrefix(token, "Bearer ") {
-		token = "Bearer " + token
-	}
-	req.Header.Set("Authorization", token)
 	caCert, err := os.ReadFile(filepath.Clean(caPath))
 	if err != nil {
 		klog.Error("failed to load root ca cert file")
@@ -462,12 +445,36 @@ func sendHTTPRequest(url string, verb string, token string) (*http.Response, err
 		IdleConnTimeout: 60 * time.Second,
 	}
 
-	client := http.Client{Transport: tr}
+	client := &http.Client{Transport: tr}
+	return sendHTTPRequestWithClient(client, url, verb, token)
+}
+
+func sendHTTPRequestWithClient(client *http.Client, url string, verb string, token string) (*http.Response, error) {
+	req, err := http.NewRequest(verb, url, nil)
+	if err != nil {
+		klog.Errorf("failed to new http request: %v", err)
+		return nil, err
+	}
+
+	if len(token) == 0 {
+		transport := &http.Transport{}
+		defaultClient := &http.Client{Transport: transport}
+		return defaultClient.Do(req)
+	}
+
+	if !strings.HasPrefix(token, "Bearer ") {
+		token = "Bearer " + token
+	}
+	req.Header.Set("Authorization", token)
 	return client.Do(req)
 }
 
 func FetchUserProjectList(token string, url string) []string {
-	resp, err := sendHTTPRequest(url, "GET", token)
+	return FetchUserProjectListWithClient(http.DefaultClient, token, url)
+}
+
+func FetchUserProjectListWithClient(client *http.Client, token string, url string) []string {
+	resp, err := sendHTTPRequestWithClient(client, url, "GET", token)
 	if err != nil {
 		klog.Errorf("failed to send http request: %v", err)
 		/*
@@ -502,7 +509,11 @@ func FetchUserProjectList(token string, url string) []string {
 }
 
 func GetUserName(token string, url string) string {
-	resp, err := sendHTTPRequest(url, "GET", token)
+	return GetUserNameWithClient(http.DefaultClient, token, url)
+}
+
+func GetUserNameWithClient(client *http.Client, token string, url string) string {
+	resp, err := sendHTTPRequestWithClient(client, url, "GET", token)
 	if err != nil {
 		klog.Errorf("failed to send http request: %v", err)
 		writeError(fmt.Sprintf("failed to send http request: %v", err))
