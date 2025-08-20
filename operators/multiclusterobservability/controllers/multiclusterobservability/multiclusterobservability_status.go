@@ -64,10 +64,12 @@ func StartStatusUpdate(c client.Client, instance *mcov1beta2.MultiClusterObserva
 			case <-requeueStatusUpdate:
 				log.V(1).Info("status update goroutine is triggered.")
 				updateStatus(c)
+				muUpdateReadyStatusIsRunnning.Lock()
 				if updateReadyStatusIsRunnning && checkReadyStatus(c, instance) {
 					log.V(1).Info("send singal to stop status check ready goroutine because MCO status is ready")
 					stopCheckReady <- struct{}{}
 				}
+				muUpdateReadyStatusIsRunnning.Unlock()
 			}
 		}
 	}()

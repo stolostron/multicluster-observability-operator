@@ -26,8 +26,10 @@ type UserProject struct {
 }
 
 func InitUserProjectInfo() {
-	userProjectInfo = new(UserProjectInfo)
-	userProjectInfo.ProjectInfo = map[string]UserProject{}
+	if userProjectInfo == nil {
+		userProjectInfo = new(UserProjectInfo)
+		userProjectInfo.ProjectInfo = map[string]UserProject{}
+	}
 }
 
 func NewUserProject(userName string, token string, projects []string) UserProject {
@@ -39,12 +41,6 @@ func NewUserProject(userName string, token string, projects []string) UserProjec
 	return up
 }
 
-func deleteUserProject(up UserProject) {
-	userProjectInfo.Lock()
-	delete(userProjectInfo.ProjectInfo, up.Token)
-	userProjectInfo.Unlock()
-}
-
 func UpdateUserProject(up UserProject) {
 	userProjectInfo.Lock()
 	userProjectInfo.ProjectInfo[up.Token] = up
@@ -53,8 +49,8 @@ func UpdateUserProject(up UserProject) {
 
 func GetUserProjectList(token string) ([]string, bool) {
 	userProjectInfo.Lock()
+	defer userProjectInfo.Unlock()
 	up, ok := userProjectInfo.ProjectInfo[token]
-	userProjectInfo.Unlock()
 	if ok {
 		return up.ProjectList, true
 	}
@@ -73,10 +69,12 @@ func CleanExpiredProjectInfoJob(expiredTimeSeconds int64) {
 }
 
 func CleanExpiredProjectInfo(expiredTimeSeconds int64) {
+	userProjectInfo.Lock()
+	defer userProjectInfo.Unlock()
 	for _, up := range userProjectInfo.ProjectInfo {
 		if time.Now().Unix()-up.Timestamp >= expiredTimeSeconds {
 			klog.Infof("clean %v project info", up.UserName)
-			deleteUserProject(up)
+			delete(userProjectInfo.ProjectInfo, up.Token)
 		}
 	}
 }

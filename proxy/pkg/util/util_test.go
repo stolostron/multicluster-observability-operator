@@ -589,7 +589,10 @@ func TestGetManagedClusterLabelAllowListEventHandler(t *testing.T) {
 
 	time.Sleep(5 * time.Second)
 
+	labelListMtx.Lock()
 	managedLabelList.IgnoreList = []string{"vendor"}
+	labelListMtx.Unlock()
+
 	eventHandler.UpdateFunc(testCase.oldObj, testCase.newObj)
 	if ok := GetAllManagedClusterLabelNames()["vendor"]; !ok {
 		t.Errorf("case (%v) output: (%v) is not the expected: (%v)", testCase.name, ok, true)
