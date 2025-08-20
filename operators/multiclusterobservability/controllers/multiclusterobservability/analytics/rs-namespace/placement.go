@@ -14,5 +14,5 @@ import (
 
 // CreateUpdatePlacement creates the Placement resource
 func CreateUpdatePlacement(ctx context.Context, c client.Client, placementConfig clusterv1beta1.Placement) error {
-	return rsutility.CreateUpdateRSPlacement(ctx, c, PlacementName, Namespace, placementConfig)
+	return rsutility.CreateUpdateRSPlacement(ctx, c, PlacementName, ComponentState.Namespace, placementConfig)
 }

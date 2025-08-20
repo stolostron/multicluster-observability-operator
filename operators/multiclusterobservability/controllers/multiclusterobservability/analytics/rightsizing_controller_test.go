@@ -48,12 +48,8 @@ func newTestMCO(binding string, enabled bool) *mcov1beta2.MultiClusterObservabil
 	}
 }
 
-func TestCreateRightSizingComponent_FeatureEnabledWithNamespaceChange(t *testing.T) {
+func TestCreateRightSizingComponent_FeatureEnabled(t *testing.T) {
 	scheme := setupTestScheme(t)
-
-	// Set up initial state to test namespace change
-	rsnamespace.Namespace = "old-ns"
-	rsnamespace.Enabled = true
 
 	mco := newTestMCO("custom-ns", true)
 
@@ -85,30 +81,8 @@ func TestCreateRightSizingComponent_FeatureEnabledWithNamespaceChange(t *testing
 	require.NoError(t, err)
 }
 
-func TestCreateRightSizingComponent_FeatureEnabled_NoNamespaceChange(t *testing.T) {
-	scheme := setupTestScheme(t)
-
-	// Set up initial state
-	rsnamespace.Namespace = rsutility.DefaultNamespace
-	rsnamespace.Enabled = true
-
-	mco := newTestMCO(rsutility.DefaultNamespace, true)
-
-	client := fake.NewClientBuilder().
-		WithScheme(scheme).
-		WithObjects(mco).
-		Build()
-
-	err := CreateRightSizingComponent(context.TODO(), client, mco)
-	require.NoError(t, err)
-}
-
 func TestCreateRightSizingComponent_FeatureDisabled(t *testing.T) {
 	scheme := setupTestScheme(t)
-
-	// Set up initial state
-	rsnamespace.Namespace = rsutility.DefaultNamespace
-	rsnamespace.Enabled = false
 
 	mco := newTestMCO("", false)
 

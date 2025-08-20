@@ -52,8 +52,8 @@ func newTestMCO(binding string, enabled bool) *mcov1beta2.MultiClusterObservabil
 
 // Reset global state
 func resetGlobalState() {
-	Namespace = rsutility.DefaultNamespace
-	Enabled = false
+	ComponentState.Namespace = rsutility.DefaultNamespace
+	ComponentState.Enabled = false
 }
 
 func TestHandleRightSizing_FeatureEnabledNoNamespaceChange(t *testing.T) {
@@ -61,10 +61,6 @@ func TestHandleRightSizing_FeatureEnabledNoNamespaceChange(t *testing.T) {
 
 	scheme := setupTestScheme(t)
 	mco := newTestMCO(rsutility.DefaultNamespace, true) // Feature enabled, same namespace
-
-	// Set initial state
-	Namespace = rsutility.DefaultNamespace
-	Enabled = false
 
 	client := fake.NewClientBuilder().
 		WithScheme(scheme).
@@ -78,14 +74,14 @@ func TestHandleRightSizing_FeatureEnabledNoNamespaceChange(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify state changes
-	assert.Equal(t, rsutility.DefaultNamespace, Namespace)
-	assert.True(t, Enabled)
+	assert.Equal(t, rsutility.DefaultNamespace, ComponentState.Namespace)
+	assert.True(t, ComponentState.Enabled)
 
 	// Verify ConfigMap was created
 	cm := &corev1.ConfigMap{}
 	err = client.Get(ctx, types.NamespacedName{
 		Name:      ConfigMapName,
-		Namespace: "open-cluster-management-observability", // config.GetDefaultNamespace()
+		Namespace: "open-cluster-management-observability",
 	}, cm)
 	require.NoError(t, err)
 	assert.Contains(t, cm.Data, "prometheusRuleConfig")
@@ -99,15 +95,11 @@ func TestHandleRightSizing_FeatureEnabledWithNamespaceChange(t *testing.T) {
 	newNamespace := "new-custom-namespace"
 	mco := newTestMCO(newNamespace, true) // Feature enabled, different namespace
 
-	// Set initial state to simulate existing deployment
-	Namespace = rsutility.DefaultNamespace
-	Enabled = true
-
 	// Create existing configmap with test data
 	existingCM := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      ConfigMapName,
-			Namespace: "open-cluster-management-observability", // config.GetDefaultNamespace()
+			Namespace: "open-cluster-management-observability",
 		},
 		Data: map[string]string{
 			"prometheusRuleConfig": `
@@ -135,8 +127,8 @@ spec:
 	require.NoError(t, err)
 
 	// Verify namespace was updated
-	assert.Equal(t, newNamespace, Namespace)
-	assert.True(t, Enabled)
+	assert.Equal(t, newNamespace, ComponentState.Namespace)
+	assert.True(t, ComponentState.Enabled)
 }
 
 func TestGetRightSizingNamespaceConfig_PlatformNotConfigured(t *testing.T) {

@@ -45,11 +45,11 @@ func TestCreateOrUpdatePrometheusRulePolicy_UsesCorrectConstants(t *testing.T) {
 	created := &policyv1.Policy{}
 	err = client.Get(context.TODO(), types.NamespacedName{
 		Name:      PrometheusRulePolicyName,
-		Namespace: Namespace,
+		Namespace: ComponentState.Namespace,
 	}, created)
 
 	require.NoError(t, err)
 	assert.Equal(t, PrometheusRulePolicyName, created.Name, "Should use PrometheusRulePolicyName constant")
-	assert.Equal(t, Namespace, created.Namespace, "Should use Namespace variable")
+	assert.Equal(t, ComponentState.Namespace, created.Namespace, "Should use Namespace variable")
 	assert.Len(t, created.Spec.PolicyTemplates, 1, "Should create policy with template")
 }

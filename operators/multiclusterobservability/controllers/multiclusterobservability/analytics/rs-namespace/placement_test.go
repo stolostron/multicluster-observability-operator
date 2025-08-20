@@ -41,10 +41,10 @@ func TestCreateUpdatePlacement_UsesCorrectConstants(t *testing.T) {
 	placement := &clusterv1beta1.Placement{}
 	err = client.Get(context.TODO(), types.NamespacedName{
 		Name:      PlacementName,
-		Namespace: Namespace,
+		Namespace: ComponentState.Namespace,
 	}, placement)
 
 	require.NoError(t, err)
 	assert.Equal(t, PlacementName, placement.Name, "Should use PlacementName constant")
-	assert.Equal(t, Namespace, placement.Namespace, "Should use Namespace constant")
+	assert.Equal(t, ComponentState.Namespace, placement.Namespace, "Should use Namespace constant")
 }

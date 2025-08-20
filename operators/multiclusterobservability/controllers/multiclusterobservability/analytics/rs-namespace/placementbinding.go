@@ -13,5 +13,5 @@ import (
 
 // CreatePlacementBinding creates the PlacementBinding resource
 func CreatePlacementBinding(ctx context.Context, c client.Client) error {
-	return rsutility.CreateRSPlacementBinding(ctx, c, PlacementBindingName, Namespace, PlacementName, PrometheusRulePolicyName)
+	return rsutility.CreateRSPlacementBinding(ctx, c, PlacementBindingName, ComponentState.Namespace, PlacementName, PrometheusRulePolicyName)
 }
