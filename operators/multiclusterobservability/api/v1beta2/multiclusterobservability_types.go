@@ -152,7 +152,7 @@ type PlatformAnalyticsSpec struct {
 	//
 	// +optional
 	// +kubebuilder:validation:Optional
-	NamespaceRightSizingRecommendation PlatformNamespaceRightSizingRecommendationSpec `json:"namespaceRightSizingRecommendation,omitempty"`
+	NamespaceRightSizingRecommendation PlatformRightSizingRecommendationSpec `json:"namespaceRightSizingRecommendation,omitempty"`
 }
 
 type PlatformIncidentDetectionSpec struct {
@@ -163,8 +163,8 @@ type PlatformIncidentDetectionSpec struct {
 	Enabled bool `json:"enabled,omitempty"`
 }
 
-type PlatformNamespaceRightSizingRecommendationSpec struct {
-	// Enabled defines a flag to enable/disable the namespace right-sizing feature for the Analytics.
+type PlatformRightSizingRecommendationSpec struct {
+	// Enabled defines a flag to enable/disable the right-sizing feature for the Analytics.
 	//
 	// +optional
 	// +kubebuilder:validation:Optional
