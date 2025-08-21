@@ -14,20 +14,19 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-
 	policyv1 "open-cluster-management.io/governance-policy-propagator/api/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-func TestCreateOrUpdateVirtualizationPrometheusRulePolicy_CreatesNewPolicy(t *testing.T) {
+// Note: CreateOrUpdateVirtualizationPrometheusRulePolicy is a thin wrapper around rsutility.CreateOrUpdateRSPrometheusRulePolicy
+// that only adds package-specific constants. The core Prometheus rule policy logic is extensively
+// tested in rs-utility/policy_test.go. This test focuses on verifying that the
+// wrapper correctly uses the expected constants.
+
+func TestCreateOrUpdateVirtualizationPrometheusRulePolicy_UsesCorrectConstants(t *testing.T) {
 	scheme := runtime.NewScheme()
 	require.NoError(t, policyv1.AddToScheme(scheme))
 	require.NoError(t, monitoringv1.AddToScheme(scheme))
-
-	// Set up the namespace state
-	originalNamespace := Namespace
-	defer func() { Namespace = originalNamespace }() // Restore after test
-	Namespace = "test-namespace"
 
 	rule := monitoringv1.PrometheusRule{
 		ObjectMeta: metav1.ObjectMeta{
@@ -41,66 +40,15 @@ func TestCreateOrUpdateVirtualizationPrometheusRulePolicy_CreatesNewPolicy(t *te
 	err := CreateOrUpdateVirtualizationPrometheusRulePolicy(context.TODO(), client, rule)
 	require.NoError(t, err)
 
-	// Verify policy was created
+	// Verify policy was created with the correct constants
 	created := &policyv1.Policy{}
 	err = client.Get(context.TODO(), types.NamespacedName{
 		Name:      PrometheusRulePolicyName,
-		Namespace: Namespace,
+		Namespace: ComponentState.Namespace,
 	}, created)
 
 	require.NoError(t, err)
-	assert.Equal(t, PrometheusRulePolicyName, created.Name)
-	assert.Equal(t, Namespace, created.Namespace)
-	assert.Len(t, created.Spec.PolicyTemplates, 1)
-}
-
-func TestCreateOrUpdateVirtualizationPrometheusRulePolicy_UpdatesExistingPolicy(t *testing.T) {
-	scheme := runtime.NewScheme()
-	require.NoError(t, policyv1.AddToScheme(scheme))
-	require.NoError(t, monitoringv1.AddToScheme(scheme))
-
-	// Set up the namespace state
-	originalNamespace := Namespace
-	defer func() { Namespace = originalNamespace }() // Restore after test
-	Namespace = "test-namespace"
-
-	// Create existing policy
-	existingPolicy := &policyv1.Policy{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      PrometheusRulePolicyName,
-			Namespace: Namespace,
-		},
-		Spec: policyv1.PolicySpec{
-			PolicyTemplates: []*policyv1.PolicyTemplate{
-				{
-					ObjectDefinition: runtime.RawExtension{
-						Raw: []byte(`{"kind": "PrometheusRule"}`),
-					},
-				},
-			},
-		},
-	}
-
-	rule := monitoringv1.PrometheusRule{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      PrometheusRuleName,
-			Namespace: "openshift-monitoring",
-		},
-	}
-
-	client := fake.NewClientBuilder().WithScheme(scheme).WithObjects(existingPolicy).Build()
-
-	err := CreateOrUpdateVirtualizationPrometheusRulePolicy(context.TODO(), client, rule)
-	require.NoError(t, err)
-
-	// Verify policy was updated
-	updated := &policyv1.Policy{}
-	err = client.Get(context.TODO(), types.NamespacedName{
-		Name:      PrometheusRulePolicyName,
-		Namespace: Namespace,
-	}, updated)
-
-	require.NoError(t, err)
-	assert.Equal(t, PrometheusRulePolicyName, updated.Name)
-	assert.Len(t, updated.Spec.PolicyTemplates, 1)
+	assert.Equal(t, PrometheusRulePolicyName, created.Name, "Should use PrometheusRulePolicyName constant")
+	assert.Equal(t, ComponentState.Namespace, created.Namespace, "Should use Namespace variable")
+	assert.Len(t, created.Spec.PolicyTemplates, 1, "Should create policy with template")
 }

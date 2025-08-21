@@ -25,7 +25,7 @@ func CreateRightSizingComponent(
 	c client.Client,
 	mco *mcov1beta2.MultiClusterObservability,
 ) error {
-	log.V(1).Info("rs - creating right-sizing components")
+	log.V(1).Info("rs - inside create rs component")
 
 	// Handle namespace right-sizing
 	if err := rsnamespace.HandleRightSizing(ctx, c, mco); err != nil {
@@ -37,7 +37,7 @@ func CreateRightSizingComponent(
 		return fmt.Errorf("failed to handle virtualization right-sizing: %w", err)
 	}
 
-	log.Info("rs - right-sizing components creation completed")
+	log.Info("rs - create component task completed")
 	return nil
 }
 
