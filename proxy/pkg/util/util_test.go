@@ -189,13 +189,13 @@ func TestGetAllManagedClusterNames(t *testing.T) {
 	time.Sleep(time.Second) // Wait a bit for the server to start
 
 	InitAllManagedClusterNames()
-	InitUserProjectInfo()
+	upi := NewUserProjectInfo(60*time.Second, 0)
 
 	for _, c := range testCaseList {
 		allManagedClusterNames = c.clusters
 		accessReviewer := c.mockAccessReviewer
 		req := newHTTPRequest()
-		ModifyMetricsQueryParams(req, "http://127.0.0.1:"+port+"/", accessReviewer)
+		ModifyMetricsQueryParams(req, "http://127.0.0.1:"+port+"/", accessReviewer, upi)
 		if req.URL.RawQuery != c.expected {
 			t.Errorf("case (%v) output: (%v) is not the expected: (%v)", c.name, req.URL.RawQuery, c.expected)
 		}

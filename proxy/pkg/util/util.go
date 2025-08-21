@@ -64,7 +64,7 @@ var (
 
 	managedLabelList   = proxyconfig.GetManagedClusterLabelList()
 	syncLabelList      = proxyconfig.GetSyncLabelList()
-	clusterMatchRegExp = regexp.MustCompile(`([{|,][ ]*)cluster(=|!=|=~|!~)([ ]*)"([^"]+)"`) 
+	clusterMatchRegExp = regexp.MustCompile(`([{|,][ ]*)cluster(=|!=|=~|!~)([ ]*)"([^"]+)"`)
 )
 
 // resources for the gocron scheduler.
@@ -206,7 +206,7 @@ func updateAllManagedClusterLabelNames(managedLabelList *proxyconfig.ManagedClus
 }
 
 // ModifyMetricsQueryParams will modify request url params for query metrics.
-func ModifyMetricsQueryParams(req *http.Request, reqUrl string, accessReviewer AccessReviewer) {
+func ModifyMetricsQueryParams(req *http.Request, reqUrl string, accessReviewer AccessReviewer, upi *UserProjectInfo) {
 
 	userName := req.Header.Get("X-Forwarded-User")
 	klog.V(1).Infof("user is %v", userName)
@@ -218,7 +218,7 @@ func ModifyMetricsQueryParams(req *http.Request, reqUrl string, accessReviewer A
 		klog.Errorf("failed to get token from http header")
 	}
 
-	userMetricsAccess, err := GetUserMetricsACLs(userName, token, reqUrl, accessReviewer)
+	userMetricsAccess, err := GetUserMetricsACLs(userName, token, reqUrl, accessReviewer, upi)
 	if err != nil {
 		klog.Errorf("Failed to determine user's metrics access: %v", err)
 		return
@@ -278,8 +278,6 @@ func GetManagedClusterEventHandler() cache.ResourceEventHandlerFuncs {
 			allManagedClusterNames[clusterName] = clusterName
 			allManagedClusterNamesMtx.Unlock()
 
-			CleanExpiredProjectInfo(1)
-
 			clusterLabels := obj.(*clusterv1.ManagedCluster).Labels
 			if ok := shouldUpdateManagedClusterLabelNames(clusterLabels, managedLabelList); ok {
 				addManagedClusterLabelNames(managedLabelList)
@@ -293,8 +291,6 @@ func GetManagedClusterEventHandler() cache.ResourceEventHandlerFuncs {
 			allManagedClusterNamesMtx.Lock()
 			delete(allManagedClusterNames, clusterName)
 			allManagedClusterNamesMtx.Unlock()
-
-			CleanExpiredProjectInfo(1)
 		},
 
 		UpdateFunc: func(oldObj, newObj interface{}) {
@@ -555,7 +551,7 @@ func getUserClusterList(projectList []string) []string {
 	return clusterList
 }
 
-func GetUserMetricsACLs(userName string, token string, reqUrl string, accessReviewer AccessReviewer) (map[string][]string, error) {
+func GetUserMetricsACLs(userName string, token string, reqUrl string, accessReviewer AccessReviewer, upi *UserProjectInfo) (map[string][]string, error) {
 
 	klog.Infof("Getting metrics access for user : %v", userName)
 
@@ -597,12 +593,10 @@ func GetUserMetricsACLs(userName string, token string, reqUrl string, accessRevi
 	// i.e access to managedcluster project\namespace means access to all namespaces on that managedcluster
 
 	//get all managedcluster project/namespace user has access to
-	projectList, ok := GetUserProjectList(token)
-	klog.V(1).Infof("projectList from local mem cache = %v, ok = %v", projectList, ok)
+	projectList, ok := upi.GetUserProjectList(token)
 	if !ok {
 		projectList = FetchUserProjectList(token, reqUrl)
-		up := NewUserProject(userName, token, projectList)
-		UpdateUserProject(up)
+		upi.UpdateUserProject(userName, token, projectList)
 		klog.V(1).Infof("projectList from api server = %v", projectList)
 	}
 	klog.V(1).Infof("cluster list: %v", allManagedClusterNames)
