@@ -38,7 +38,10 @@ func TestNewProxy(t *testing.T) {
 		t.Fatalf("failed to parse server url: %v", err)
 	}
 
-	p, err := NewProxy(serverURL, http.DefaultTransport, "")
+	upi := util.NewUserProjectInfo(24*60*60*time.Second, 5*60*time.Second)
+	defer upi.Stop()
+
+	p, err := NewProxy(serverURL, http.DefaultTransport, "", upi)
 	if err != nil {
 		t.Fatalf("failed to create proxy: %v", err)
 	}
@@ -53,7 +56,6 @@ func TestNewProxy(t *testing.T) {
 }
 
 func TestProxy_ServeHTTP(t *testing.T) {
-	util.InitUserProjectInfo()
 	var directorCalled bool
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		directorCalled = true
@@ -98,7 +100,10 @@ func TestProxy_ServeHTTP(t *testing.T) {
 	}))
 	defer apiServer.Close()
 
-	p, err := NewProxy(serverURL, transport, apiServer.URL)
+	upi := util.NewUserProjectInfo(24*60*60*time.Second, 0)
+	defer upi.Stop()
+
+	p, err := NewProxy(serverURL, transport, apiServer.URL, upi)
 	if err != nil {
 		t.Fatalf("failed to create proxy: %v", err)
 	}
@@ -248,15 +253,17 @@ func TestPreCheckRequest(t *testing.T) {
 	}
 	resp.Request.Header.Set("X-Forwarded-Access-Token", "test")
 	resp.Request.Header.Set("X-Forwarded-User", "test")
-	util.InitUserProjectInfo()
-	up := util.NewUserProject("test", "test", []string{"p"})
-	util.UpdateUserProject(up)
+
+	upi := util.NewUserProjectInfo(24*60*60*time.Second, 5*60*time.Second)
+	defer upi.Stop()
+	upi.UpdateUserProject("test", "test", []string{"p"})
+
 	util.InitAllManagedClusterNames()
 	clusters := util.GetAllManagedClusterNames()
 	clusters["p"] = "p"
 	serverUrl, err := url.Parse("http://localhost/test")
 	assert.NoError(t, err)
-	p, err := NewProxy(serverUrl, nil, "")
+	p, err := NewProxy(serverUrl, nil, "", upi)
 	assert.NoError(t, err)
 	err = p.preCheckRequest(req)
 	if err != nil {

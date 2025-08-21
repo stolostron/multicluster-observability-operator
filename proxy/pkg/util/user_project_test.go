@@ -5,112 +5,116 @@
 package util
 
 import (
-	"maps"
-	"strconv"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestGetUserProjectList(t *testing.T) {
-	testCaseList := []struct {
-		name            string
-		token           string
-		userProjectInfo *UserProjectInfo
-		expected        bool
+	testCases := []struct {
+		name        string
+		setup       func(upi *UserProjectInfo)
+		tokenToGet  string
+		expectFound bool
 	}{
 		{
-			"should has user project",
-			"1",
-			&UserProjectInfo{
-				ProjectInfo: map[string]UserProject{
-					"1": {
-						UserName:    "user" + strconv.Itoa(1),
-						Timestamp:   time.Now().Unix(),
-						Token:       strconv.Itoa(1),
-						ProjectList: []string{"p" + strconv.Itoa(1)},
-					},
-				},
+			name: "should find existing user project",
+			setup: func(upi *UserProjectInfo) {
+				upi.UpdateUserProject("user1", "token1", []string{"p1"})
 			},
-			true,
+			tokenToGet:  "token1",
+			expectFound: true,
 		},
-
 		{
-			"should has not user project",
-			"invalid",
-			&UserProjectInfo{
-				ProjectInfo: map[string]UserProject{
-					"1": {
-						UserName:    "user" + strconv.Itoa(1),
-						Timestamp:   time.Now().Unix(),
-						Token:       strconv.Itoa(1),
-						ProjectList: []string{"p" + strconv.Itoa(1)},
-					},
-				},
+			name: "should not find non-existing user project",
+			setup: func(upi *UserProjectInfo) {
+				upi.UpdateUserProject("user1", "token1", []string{"p1"})
 			},
-			false,
+			tokenToGet:  "invalid-token",
+			expectFound: false,
+		},
+		{
+			name:        "should not find project in empty cache",
+			setup:       func(upi *UserProjectInfo) {},
+			tokenToGet:  "any-token",
+			expectFound: false,
 		},
 	}
 
-	for _, c := range testCaseList {
-		userProjectInfo = c.userProjectInfo
-		_, output := GetUserProjectList(c.token)
-		if output != c.expected {
-			t.Errorf("case (%v) output: (%v) is not the expected: (%v)", c.name, output, c.expected)
-		}
+	for _, c := range testCases {
+		t.Run(c.name, func(t *testing.T) {
+			upi := NewUserProjectInfo(time.Hour, defaultCleanPeriod)
+			t.Cleanup(upi.Stop)
+
+			c.setup(upi)
+			_, found := upi.GetUserProjectList(c.tokenToGet)
+			assert.Equal(t, c.expectFound, found)
+		})
 	}
 }
 
 func TestCleanExpiredProjectInfo(t *testing.T) {
-	testCaseList := []struct {
-		name            string
-		token           string
-		userProjectInfo *UserProjectInfo
-		expected        bool
-	}{
-		{
-			"user project should expired",
-			"1",
-			&UserProjectInfo{
-				ProjectInfo: map[string]UserProject{
-					"1": {
-						UserName:    "user" + strconv.Itoa(1),
-						Timestamp:   time.Now().Unix(),
-						Token:       strconv.Itoa(1),
-						ProjectList: []string{"p" + strconv.Itoa(1)},
-					},
-				},
-			},
-			false,
-		},
+	expiredDuration := 10 * time.Millisecond
+	upi := NewUserProjectInfo(expiredDuration, defaultCleanPeriod)
+	t.Cleanup(upi.Stop)
 
-		{
-			"user project should not expired",
-			"2",
-			&UserProjectInfo{
-				ProjectInfo: map[string]UserProject{
-					"2": {
-						UserName:    "user" + strconv.Itoa(2),
-						Timestamp:   time.Now().Unix() + 10,
-						Token:       strconv.Itoa(2),
-						ProjectList: []string{"p" + strconv.Itoa(2)},
-					},
-				},
-			},
-			true,
-		},
-	}
+	// Add three users, one of whom will be updated to not expire.
+	upi.UpdateUserProject("user-expired-1", "token-expired-1", []string{"p1"})
+	upi.UpdateUserProject("user-valid", "token-valid", []string{"p2"})
+	upi.UpdateUserProject("user-expired-2", "token-expired-2", []string{"p3"})
 
-	InitUserProjectInfo()
-	go CleanExpiredProjectInfoJob(1)
-	for _, c := range testCaseList {
-		userProjectInfo.Lock()
-		userProjectInfo.ProjectInfo = make(map[string]UserProject)
-		maps.Copy(userProjectInfo.ProjectInfo, c.userProjectInfo.ProjectInfo)
-		userProjectInfo.Unlock()
-		time.Sleep(time.Second * 2)
-		_, output := GetUserProjectList(c.token)
-		if output != c.expected {
-			t.Errorf("case (%v) output: (%v) is not the expected: (%v)", c.name, output, c.expected)
-		}
-	}
+	// Wait for the expiration period to pass.
+	time.Sleep(expiredDuration * 2)
+
+	// Update one user to reset their timestamp.
+	upi.UpdateUserProject("user-valid", "token-valid", []string{"p2-updated"})
+
+	// Manually trigger the cleanup.
+	upi.cleanExpiredProjectInfo()
+
+	// Check that expired users are gone.
+	_, found := upi.GetUserProjectList("token-expired-1")
+	assert.False(t, found, "user-expired-1 should have been cleaned up")
+	_, found = upi.GetUserProjectList("token-expired-2")
+	assert.False(t, found, "user-expired-2 should have been cleaned up")
+
+	// Check that the valid user remains.
+	projects, found := upi.GetUserProjectList("token-valid")
+	assert.True(t, found, "user-valid should not have been cleaned up")
+	assert.Equal(t, []string{"p2-updated"}, projects)
+}
+
+func TestAutoCleanAndStop(t *testing.T) {
+	expiredDuration := 50 * time.Millisecond
+	cleanPeriod := 20 * time.Millisecond
+
+	upi := NewUserProjectInfo(expiredDuration, cleanPeriod)
+	t.Cleanup(upi.Stop)
+
+	// 1. Test that auto-cleaning works.
+	upi.UpdateUserProject("user-to-expire", "token-to-expire", []string{"p1"})
+	_, found := upi.GetUserProjectList("token-to-expire")
+	assert.True(t, found)
+
+	// Wait long enough for the auto-cleaner to run at least once.
+	time.Sleep(expiredDuration + cleanPeriod)
+
+	_, found = upi.GetUserProjectList("token-to-expire")
+	assert.False(t, found, "auto-cleaner should have removed the expired user")
+
+	// 2. Test that Stop() prevents further cleaning.
+	upi.UpdateUserProject("user-after-stop", "token-after-stop", []string{"p2"})
+	_, found = upi.GetUserProjectList("token-after-stop")
+	assert.True(t, found)
+
+	// Stop the cleaner.
+	upi.Stop()
+
+	// Wait long enough that the user would have expired and been cleaned.
+	time.Sleep(expiredDuration + cleanPeriod)
+
+	// Check that the user is still there because the cleaner was stopped.
+	_, found = upi.GetUserProjectList("token-after-stop")
+	assert.True(t, found, "user should not be cleaned up after Stop() is called")
 }

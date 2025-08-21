@@ -87,18 +87,20 @@ func main() {
 	go util.WatchManagedCluster(clusterClient, kubeClient)
 	go util.WatchManagedClusterLabelAllowList(kubeClient)
 	go util.ScheduleManagedClusterLabelAllowlistResync(kubeClient)
-	go util.CleanExpiredProjectInfoJob(24 * 60 * 60)
 
 	serverURL, err := url.Parse(cfg.metricServer)
 	if err != nil {
 		klog.Fatalf("failed to parse metrics server url: %v", err)
 	}
 
+	upi := util.NewUserProjectInfo(24*60*60*time.Second, 5*60*time.Second)
+	defer upi.Stop()
+
 	tlsTransport, err := proxy.GetTLSTransport()
 	if err != nil {
 		klog.Fatalf("failed to set tls transport: %v", err)
 	}
-	p, err := proxy.NewProxy(serverURL, tlsTransport, kubeConfig.Host, mgr.GetClient())
+	p, err := proxy.NewProxy(serverURL, tlsTransport, kubeConfig.Host, upi)
 	if err != nil {
 		klog.Fatalf("failed to create proxy: %v", err)
 	}
