@@ -32,17 +32,19 @@ type Proxy struct {
 	metricsServerURL *url.URL
 	apiServerHost    string
 	proxy            *httputil.ReverseProxy
+	userProjectInfo  *util.UserProjectInfo
 }
 
 // NewProxy creates a new Proxy.
-func NewProxy(serverURL *url.URL, transport http.RoundTripper, apiserverHost string) (*Proxy, error) {
+func NewProxy(serverURL *url.URL, transport http.RoundTripper, apiserverHost string, upi *util.UserProjectInfo) (*Proxy, error) {
 	p := &Proxy{
 		metricsServerURL: serverURL,
 		proxy: &httputil.ReverseProxy{
 			Director:  proxyRequest,
 			Transport: transport,
 		},
-		apiServerHost: apiserverHost,
+		apiServerHost:   apiserverHost,
+		userProjectInfo: upi,
 	}
 
 	return p, nil
@@ -120,7 +122,7 @@ func (p *Proxy) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 	req.Header.Set("X-Forwarded-Host", req.Header.Get("Host"))
 	req.Host = p.metricsServerURL.Host
 	req.URL.Path = path.Join(basePath, req.URL.Path)
-	util.ModifyMetricsQueryParams(req, config.GetConfigOrDie().Host+projectsAPIPath, util.GetAccessReviewer())
+	util.ModifyMetricsQueryParams(req, config.GetConfigOrDie().Host+projectsAPIPath, util.GetAccessReviewer(), p.userProjectInfo)
 	p.proxy.ServeHTTP(res, req)
 }
 
@@ -151,7 +153,7 @@ func (p *Proxy) preCheckRequest(req *http.Request) error {
 		}
 	}
 
-	_, ok := util.GetUserProjectList(token)
+	_, ok := p.userProjectInfo.GetUserProjectList(token)
 	if !ok {
 		userProjectsURL, err := url.JoinPath(p.apiServerHost, projectsAPIPath)
 		if err != nil {
@@ -159,8 +161,7 @@ func (p *Proxy) preCheckRequest(req *http.Request) error {
 
 		}
 		projectList := util.FetchUserProjectList(token, userProjectsURL)
-		up := util.NewUserProject(userName, token, projectList)
-		util.UpdateUserProject(up)
+		p.userProjectInfo.UpdateUserProject(userName, token, projectList)
 	}
 
 	if len(util.GetAllManagedClusterNames()) == 0 {
