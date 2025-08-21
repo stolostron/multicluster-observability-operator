@@ -23,10 +23,6 @@ const (
 )
 
 var (
-	// State variables - exported for testing
-	Namespace = rsutility.DefaultNamespace
-	Enabled   = false
-
 	log = logf.Log.WithName("rs-virtualization")
 
 	// Component configuration
@@ -42,7 +38,7 @@ var (
 	}
 
 	// Component state
-	componentState = &rsutility.ComponentState{
+	ComponentState = &rsutility.ComponentState{
 		Namespace: rsutility.DefaultNamespace,
 		Enabled:   false,
 	}
@@ -52,17 +48,8 @@ var (
 func HandleRightSizing(ctx context.Context, c client.Client, mco *mcov1beta2.MultiClusterObservability) error {
 	log.V(1).Info("rs - handling virtualization right-sizing")
 
-	// Sync global state with component state
-	componentState.Namespace = Namespace
-	componentState.Enabled = Enabled
-
 	// Use generic component handler
-	err := rsutility.HandleComponentRightSizing(ctx, c, mco, componentConfig, componentState)
-
-	// Sync component state back to global state for backward compatibility
-	Namespace = componentState.Namespace
-	Enabled = componentState.Enabled
-
+	err := rsutility.HandleComponentRightSizing(ctx, c, mco, componentConfig, ComponentState)
 	return err
 }
 

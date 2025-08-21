@@ -12,9 +12,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-
 	clusterv1beta1 "open-cluster-management.io/api/cluster/v1beta1"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 // Note: CreateUpdatePlacement is a thin wrapper around rsutility.CreateUpdateRSPlacement
@@ -47,36 +46,4 @@ func TestCreateUpdatePlacement_UsesCorrectConstants(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, PlacementName, placement.Name, "Should use PlacementName constant")
 	assert.Equal(t, ComponentState.Namespace, placement.Namespace, "Should use Namespace constant")
-}
-
-func TestCreateUpdatePlacement_UsesCorrectConstants(t *testing.T) {
-	scheme := runtime.NewScheme()
-	require.NoError(t, clusterv1beta1.AddToScheme(scheme))
-
-	// Set up the namespace state
-	originalNamespace := Namespace
-	defer func() { Namespace = originalNamespace }() // Restore after test
-	Namespace = "test-namespace"
-
-	placementSpec := clusterv1beta1.PlacementSpec{
-		NumberOfClusters: &[]int32{1}[0],
-	}
-
-	client := fake.NewClientBuilder().
-		WithScheme(scheme).
-		Build()
-
-	err := CreateUpdatePlacement(context.TODO(), client, clusterv1beta1.Placement{Spec: placementSpec})
-	require.NoError(t, err)
-
-	// Verify placement was created with the correct name and namespace from constants
-	placement := &clusterv1beta1.Placement{}
-	err = client.Get(context.TODO(), types.NamespacedName{
-		Name:      PlacementName,
-		Namespace: Namespace,
-	}, placement)
-
-	require.NoError(t, err)
-	assert.Equal(t, PlacementName, placement.Name, "Should use PlacementName constant")
-	assert.Equal(t, Namespace, placement.Namespace, "Should use Namespace constant")
 }

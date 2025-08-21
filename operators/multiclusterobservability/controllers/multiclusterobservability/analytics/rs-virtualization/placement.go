@@ -14,5 +14,5 @@ import (
 
 // CreateUpdateVirtualizationPlacement creates the Placement resource for virtualization
 func CreateUpdateVirtualizationPlacement(ctx context.Context, c client.Client, placementConfig clusterv1beta1.Placement) error {
-	return rsutility.CreateUpdateRSPlacement(ctx, c, PlacementName, Namespace, placementConfig)
+	return rsutility.CreateUpdateRSPlacement(ctx, c, PlacementName, ComponentState.Namespace, placementConfig)
 }
