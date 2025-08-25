@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/config"
+	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/informer"
 	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/util"
 	"github.com/stretchr/testify/assert"
 )
@@ -258,8 +259,8 @@ func TestPreCheckRequest(t *testing.T) {
 	defer upi.Stop()
 	upi.UpdateUserProject("test", "test", []string{"p"})
 
-	util.InitAllManagedClusterNames()
-	clusters := util.GetAllManagedClusterNames()
+	informer.InitAllManagedClusterNames()
+	clusters := informer.GetAllManagedClusterNames()
 	clusters["p"] = "p"
 	serverUrl, err := url.Parse("http://localhost/test")
 	assert.NoError(t, err)
