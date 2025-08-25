@@ -18,6 +18,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
 	proxyconfig "github.com/stolostron/multicluster-observability-operator/proxy/pkg/config"
+	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/informer"
 	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/util"
 )
 
@@ -164,7 +165,7 @@ func (p *Proxy) preCheckRequest(req *http.Request) error {
 		p.userProjectInfo.UpdateUserProject(userName, token, projectList)
 	}
 
-	if len(util.GetAllManagedClusterNames()) == 0 {
+	if len(informer.GetAllManagedClusterNames()) == 0 {
 		return errors.New("no project or cluster found")
 	}
 
