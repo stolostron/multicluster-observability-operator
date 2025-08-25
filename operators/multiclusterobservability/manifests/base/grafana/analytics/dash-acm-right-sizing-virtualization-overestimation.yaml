@@ -1110,14 +1110,14 @@ data:
               "type": "prometheus",
               "uid": "${datasource}"
             },
-            "definition": "label_values(acm_rs_vm:namespace:cpu_request,namespace)",
+            "definition": "label_values({__name__=~\"acm_rs_vm:namespace:(cpu_request|cpu_usage|memory_request|memory_usage)\",cluster=\"$cluster\",profile=\"$profile\"},namespace)",
             "description": "Namespace Variable",
             "includeAll": false,
             "label": "Namespace",
             "name": "namespace",
             "options": [],
             "query": {
-              "query": "label_values(acm_rs_vm:namespace:cpu_request,namespace)",
+              "query": "label_values({__name__=~\"acm_rs_vm:namespace:(cpu_request|cpu_usage|memory_request|memory_usage)\",cluster=\"$cluster\",profile=\"$profile\"},namespace)",
               "refId": "StandardVariableQuery"
             },
             "refresh": 2,
@@ -1133,14 +1133,14 @@ data:
               "type": "prometheus",
               "uid": "${datasource}"
             },
-            "definition": "label_values(acm_rs_vm:namespace:cpu_request{namespace=\"$namespace\"}, name)",
+            "definition": "label_values({__name__=~\"acm_rs_vm:namespace:(cpu_request|cpu_usage|memory_request|memory_usage)\",cluster=\"$cluster\",profile=\"$profile\",namespace=\"$namespace\"}, name)",
             "description": "VM Variable",
             "includeAll": false,
             "label": "VM",
             "name": "vm",
             "options": [],
             "query": {
-              "query": "label_values(acm_rs_vm:namespace:cpu_request{namespace=\"$namespace\"}, name)",
+              "query": "label_values({__name__=~\"acm_rs_vm:namespace:(cpu_request|cpu_usage|memory_request|memory_usage)\",cluster=\"$cluster\",profile=\"$profile\",namespace=\"$namespace\"}, name)",
               "refId": "StandardVariableQuery"
             },
             "refresh": 2,

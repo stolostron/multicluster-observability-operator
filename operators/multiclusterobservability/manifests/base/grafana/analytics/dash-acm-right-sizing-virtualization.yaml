@@ -2772,7 +2772,7 @@ data:
               "type": "prometheus",
               "uid": "${datasource}"
             },
-            "definition": "label_values(acm_rs_vm:namespace:cpu_request,namespace)",
+            "definition": "label_values({__name__=~\"acm_rs_vm:namespace:(cpu_request|cpu_usage|memory_request|memory_usage)\",cluster=\"$cluster\",profile=\"$profile\"},namespace)",
             "description": "Namespace Variable",
             "includeAll": true,
             "label": "Namespace",
@@ -2780,7 +2780,7 @@ data:
             "name": "namespace",
             "options": [],
             "query": {
-              "query": "label_values(acm_rs_vm:namespace:cpu_request,namespace)",
+              "query": "label_values({__name__=~\"acm_rs_vm:namespace:(cpu_request|cpu_usage|memory_request|memory_usage)\",cluster=\"$cluster\",profile=\"$profile\"},namespace)",
               "refId": "StandardVariableQuery"
             },
             "refresh": 2,
