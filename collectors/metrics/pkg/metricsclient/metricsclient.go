@@ -108,10 +108,6 @@ func (c *Client) RetrieveRecordingMetrics(
 	defer cancel()
 	families := make([]*clientmodel.MetricFamily, 0, 100)
 	err := withCancel(ctx, c.client, req, func(resp *http.Response) error {
-		if resp == nil {
-			c.metrics.FederateRequests.WithLabelValues("recording", "0").Inc()
-			return fmt.Errorf("failed to retrieve recording metrics: %s", req.URL)
-		}
 		switch resp.StatusCode {
 		case http.StatusOK:
 			c.metrics.FederateRequests.WithLabelValues("recording", "200").Inc()
@@ -207,10 +203,6 @@ func (c *Client) Retrieve(ctx context.Context, req *http.Request) ([]*clientmode
 
 	families := make([]*clientmodel.MetricFamily, 0, 100)
 	err := withCancel(ctx, c.client, req, func(resp *http.Response) error {
-		if resp == nil {
-			c.metrics.FederateRequests.WithLabelValues("normal", "0").Inc()
-			return fmt.Errorf("failed to retrieve metric federation: %s", req.URL)
-		}
 		switch resp.StatusCode {
 		case http.StatusOK:
 			c.metrics.FederateRequests.WithLabelValues("normal", "200").Inc()
@@ -301,19 +293,19 @@ func withCancel(ctx context.Context, client *http.Client, req *http.Request, fn 
 		}
 		return nil
 	}()
+	if err != nil {
+		return err
+	}
+
 	done := make(chan struct{})
 	go func() {
-		// must check that resp != nil in passed in function
 		err = fn(resp)
 		close(done)
 	}()
 
 	select {
 	case <-ctx.Done():
-		var closeErr error
-		if resp != nil {
-			closeErr = resp.Body.Close()
-		}
+		closeErr := resp.Body.Close()
 
 		// wait for the goroutine to finish.
 		<-done
@@ -332,6 +324,7 @@ func withCancel(ctx context.Context, client *http.Client, req *http.Request, fn 
 	case <-done:
 		// propagate the err from the spawned goroutine, if any.
 	}
+
 	return err
 }
 
