@@ -18,6 +18,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
 	proxyconfig "github.com/stolostron/multicluster-observability-operator/proxy/pkg/config"
+	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/informer"
 	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/proxy"
 	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/util"
 	clusterclientset "open-cluster-management.io/api/client/cluster/clientset/versioned"
@@ -84,9 +85,9 @@ func main() {
 	}
 
 	// watch all managed clusters
-	go util.WatchManagedCluster(clusterClient, kubeClient)
-	go util.WatchManagedClusterLabelAllowList(kubeClient)
-	go util.ScheduleManagedClusterLabelAllowlistResync(kubeClient)
+	go informer.WatchManagedCluster(clusterClient, kubeClient)
+	go informer.WatchManagedClusterLabelAllowList(kubeClient)
+	go informer.ScheduleManagedClusterLabelAllowlistResync(kubeClient)
 
 	serverURL, err := url.Parse(cfg.metricServer)
 	if err != nil {
