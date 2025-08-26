@@ -19,6 +19,7 @@ import (
 
 	proxyconfig "github.com/stolostron/multicluster-observability-operator/proxy/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/informer"
+	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/metricquery"
 	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/util"
 )
 
@@ -35,11 +36,11 @@ type Proxy struct {
 	proxy                  *httputil.ReverseProxy
 	userProjectInfo        *util.UserProjectInfo
 	managedClusterInformer informer.ManagedClusterInformable
-	accessReviewer         util.AccessReviewer
+	accessReviewer         metricquery.AccessReviewer
 }
 
 // NewProxy creates a new Proxy.
-func NewProxy(serverURL *url.URL, transport http.RoundTripper, apiserverHost string, upi *util.UserProjectInfo, managedClusterInformer informer.ManagedClusterInformable, accessReviewer util.AccessReviewer) (*Proxy, error) {
+func NewProxy(serverURL *url.URL, transport http.RoundTripper, apiserverHost string, upi *util.UserProjectInfo, managedClusterInformer informer.ManagedClusterInformable, accessReviewer metricquery.AccessReviewer) (*Proxy, error) {
 	p := &Proxy{
 		metricsServerURL: serverURL,
 		proxy: &httputil.ReverseProxy{
@@ -127,7 +128,7 @@ func (p *Proxy) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 	req.Header.Set("X-Forwarded-Host", req.Header.Get("Host"))
 	req.Host = p.metricsServerURL.Host
 	req.URL.Path = path.Join(basePath, req.URL.Path)
-		(&util.MetricsQueryParamsModifier{
+		(&metricquery.Modifier{
 		Req:            req,
 		ReqURL:         config.GetConfigOrDie().Host + projectsAPIPath,
 		AccessReviewer: p.accessReviewer,
