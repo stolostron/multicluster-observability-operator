@@ -80,8 +80,9 @@ func main() {
 		}
 	}
 
-	if err := util.InitAccessReviewer(kubeConfig); err != nil {
-		klog.Fatalf("failed to Initialize Access Reviewer: %v test", err)
+	accessReviewer, err := util.NewAccessReviewer(kubeConfig)
+	if err != nil {
+		klog.Fatalf("failed to create new access reviewer: %v", err)
 	}
 
 	// watch all managed clusters
@@ -100,7 +101,7 @@ func main() {
 	if err != nil {
 		klog.Fatalf("failed to set tls transport: %v", err)
 	}
-	p, err := proxy.NewProxy(serverURL, tlsTransport, kubeConfig.Host, upi, managedClusterInformer)
+	p, err := proxy.NewProxy(serverURL, tlsTransport, kubeConfig.Host, upi, managedClusterInformer, accessReviewer)
 	if err != nil {
 		klog.Fatalf("failed to create proxy: %v", err)
 	}

@@ -5,16 +5,20 @@
 package util
 
 import (
+	_ "embed"
 	"log"
 	"net/http"
 	"net/url"
 	"os"
-	"strings"
 	"testing"
 	"time"
 
-	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/informer"
+	proxyconfig "github.com/stolostron/multicluster-observability-operator/proxy/pkg/config"
+	"github.com/stretchr/testify/assert"
 )
+
+//go:embed testdata/projects.json
+var projectList string
 
 // MockAccessReviewer is a mock implementation of the AccessReviewer interface.
 type MockAccessReviewer struct {
@@ -24,6 +28,24 @@ type MockAccessReviewer struct {
 
 func (m *MockAccessReviewer) GetMetricsAccess(token string, extraArgs ...string) (map[string][]string, error) {
 	return m.metricsAccess, m.err
+}
+
+// MockManagedClusterInformer is a mock implementation of the ManagedClusterInformable interface.
+type MockManagedClusterInformer struct {
+	clusters     map[string]string
+	labels       map[string]bool
+	labelsConfig *proxyconfig.ManagedClusterLabelList
+}
+
+func (m *MockManagedClusterInformer) Run() {}
+func (m *MockManagedClusterInformer) GetAllManagedClusterNames() map[string]string {
+	return m.clusters
+}
+func (m *MockManagedClusterInformer) GetAllManagedClusterLabelNames() map[string]bool {
+	return m.labels
+}
+func (m *MockManagedClusterInformer) GetManagedClusterLabelList() *proxyconfig.ManagedClusterLabelList {
+	return m.labelsConfig
 }
 
 func newHTTPRequest() *http.Request {
@@ -36,7 +58,7 @@ func newHTTPRequest() *http.Request {
 func createFakeServerWithInvalidJSON(port string) *http.Server {
 	handler := http.NewServeMux()
 	handler.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("invalid json"))
+		_, _ = w.Write([]byte("invalid json"))
 	})
 
 	server := &http.Server{Addr: ":" + port, Handler: handler}
@@ -51,63 +73,9 @@ func createFakeServerWithInvalidJSON(port string) *http.Server {
 }
 
 func createFakeServer(port string) *http.Server {
-	projectList := `{
-		"kind": "ProjectList",
-		"apiVersion": "project.openshift.io/v1",
-		"metadata": {
-		  "selfLink": "/apis/project.openshift.io/v1/projects"
-		},
-		"items": [
-		  {
-			"metadata": {
-			  "name": "c0",
-			  "selfLink": "/apis/project.openshift.io/v1/projects/c0",
-			  "uid": "2f68fd63-097c-4519-8e8f-823bb0106acc",
-			  "resourceVersion": "7723",
-			  "creationTimestamp": "2020-09-25T13:35:09Z",
-			  "annotations": {
-				"openshift.io/sa.scc.mcs": "s0:c11,c10",
-				"openshift.io/sa.scc.supplemental-groups": "1000130000/10000",
-				"openshift.io/sa.scc.uid-range": "1000130000/10000"
-			  }
-			},
-			"spec": {
-			  "finalizers": [
-				"kubernetes"
-			  ]
-			},
-			"status": {
-			  "phase": "Active"
-			}
-		  },
-		  {
-			"metadata": {
-			  "name": "c1",
-			  "selfLink": "/apis/project.openshift.io/v1/projects/c1",
-			  "uid": "bce1176f-6dda-45ee-99ef-675a64300643",
-			  "resourceVersion": "59984227",
-			  "creationTimestamp": "2020-11-26T08:34:15Z",
-			  "annotations": {
-				"openshift.io/sa.scc.mcs": "s0:c25,c0",
-				"openshift.io/sa.scc.supplemental-groups": "1000600000/10000",
-				"openshift.io/sa.scc.uid-range": "1000600000/10000"
-			  }
-			},
-			"spec": {
-			  "finalizers": [
-				"kubernetes"
-			  ]
-			},
-			"status": {
-			  "phase": "Active"
-			}
-		  }
-		]
-	  }`
-
 	handler := http.NewServeMux()
 	handler.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(projectList))
+		_, _ = w.Write([]byte(projectList))
 	})
 
 	server := &http.Server{Addr: ":" + port, Handler: handler}
@@ -121,27 +89,8 @@ func createFakeServer(port string) *http.Server {
 	return server
 }
 
-func TestModifyMetricsQueryParams(t *testing.T) {
-	testCaseList := []struct {
-		name     string
-		clusters map[string]string
-		expected int
-	}{
-		{"1 cluster", map[string]string{"c0": "c0"}, 1},
-		{"2 clusters", map[string]string{"c0": "c0", "c2": "c2"}, 2},
-		{"no cluster", map[string]string{}, 0},
-	}
-	informer.AllManagedClusterNames = map[string]string{"c0": "c0", "c1": "c1"}
-	for _, c := range testCaseList {
-		informer.AllManagedClusterNames = c.clusters
-		if len(informer.GetAllManagedClusterNames()) != c.expected {
-			t.Errorf("case (%v) output: (%v) is not the expected: (%v)", c.name, len(informer.GetAllManagedClusterNames()), c.expected)
-		}
-	}
-}
-
 func TestRewriteQuery(t *testing.T) {
-	testCaseList := []struct {
+	testCases := []struct {
 		name        string
 		urlValue    url.Values
 		clusterList []string
@@ -149,49 +98,42 @@ func TestRewriteQuery(t *testing.T) {
 		expected    string
 	}{
 		{
-			"should not rewrite",
-			map[string][]string{},
-			[]string{"c1", "c2"},
-			"key",
-			"",
+			name:        "should not rewrite empty values",
+			urlValue:    map[string][]string{},
+			clusterList: []string{"c1", "c2"},
+			key:         "key",
+			expected:    "",
 		},
-
 		{
-			"should rewrite",
-			map[string][]string{"key": {"value"}},
-			[]string{"c1", "c2"},
-			"key",
-			"value{cluster=~\"c1|c2\",namespace=~\"\"}",
+			name:        "should rewrite simple query",
+			urlValue:    map[string][]string{"key": {"value"}},
+			clusterList: []string{"c1", "c2"},
+			key:         "key",
+			expected:    `value{cluster=~"c1|c2",namespace=~""}`,
 		},
-
 		{
-			"empty cluster list",
-			map[string][]string{"key": {"value"}},
-			[]string{},
-			"key",
-			"value{cluster=~\"\"}",
+			name:        "should handle empty cluster list",
+			urlValue:    map[string][]string{"key": {"value"}},
+			clusterList: []string{},
+			key:         "key",
+			expected:    `value{cluster=~""}`,
 		},
 	}
 
-	for _, c := range testCaseList {
-		clusterMap := make(map[string][]string, len(c.clusterList))
-		for _, cluster := range c.clusterList {
-			clusterMap[cluster] = []string{cluster}
-		}
-		output := rewriteQuery(c.urlValue, clusterMap, c.key)
-		if output.Get(c.key) != c.expected {
-			t.Errorf("case (%v) output: (%v) is not the expected: (%v)", c.name, output.Get(c.key), c.expected)
-		}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			clusterMap := make(map[string][]string, len(tc.clusterList))
+			for _, cluster := range tc.clusterList {
+				clusterMap[cluster] = []string{cluster}
+			}
+			output := rewriteQuery(tc.urlValue, clusterMap, tc.key)
+			assert.Equal(t, tc.expected, output.Get(tc.key))
+		})
 	}
 }
 
 func TestCanAccessAll(t *testing.T) {
-	// Helper function to set global variable
-	setAllManagedClusterNames := func(names map[string]string) {
-		informer.AllManagedClusterNames = names
-	}
-
-	tests := []struct {
+	testCases := []struct {
 		name               string
 		allManagedClusters map[string]string
 		clusterNamespaces  map[string][]string
@@ -212,92 +154,65 @@ func TestCanAccessAll(t *testing.T) {
 		{
 			name:               "Cluster does not have access to all namespaces",
 			allManagedClusters: map[string]string{"cluster1": "cluster1"},
-			clusterNamespaces: map[string][]string{
-				"cluster1": {"namespace1"},
-			},
-			expected: false,
+			clusterNamespaces:  map[string][]string{"cluster1": {"namespace1"}},
+			expected:           false,
 		},
 		{
 			name:               "Cluster has access to all namespaces",
 			allManagedClusters: map[string]string{"cluster1": "cluster1"},
-			clusterNamespaces: map[string][]string{
-				"cluster1": {"*"},
-			},
-			expected: true,
+			clusterNamespaces:  map[string][]string{"cluster1": {"*"}},
+			expected:           true,
 		},
 		{
 			name:               "Multiple clusters with full access",
 			allManagedClusters: map[string]string{"cluster1": "cluster1", "cluster2": "cluster2"},
-			clusterNamespaces: map[string][]string{
-				"cluster1": {"*"},
-				"cluster2": {"*"},
-			},
-			expected: true,
+			clusterNamespaces:  map[string][]string{"cluster1": {"*"}, "cluster2": {"*"}},
+			expected:           true,
 		},
 		{
 			name:               "Multiple clusters, one missing full access",
 			allManagedClusters: map[string]string{"cluster1": "cluster1", "cluster2": "cluster2"},
-			clusterNamespaces: map[string][]string{
-				"cluster1": {"*"},
-				"cluster2": {"namespace1"},
-			},
-			expected: false,
+			clusterNamespaces:  map[string][]string{"cluster1": {"*"}, "cluster2": {"namespace1"}},
+			expected:           false,
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// Set the global variable
-			setAllManagedClusterNames(tt.allManagedClusters)
-
-			got := CanAccessAll(tt.clusterNamespaces)
-			if got != tt.expected {
-				t.Errorf("CanAccessAll() = %v, want %v", got, tt.expected)
-			}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := canAccessAll(tc.clusterNamespaces, tc.allManagedClusters)
+			assert.Equal(t, tc.expected, got)
 		})
 	}
 }
 
 func TestFetchUserProjectList(t *testing.T) {
-	testCaseList := []struct {
+	// Start fake servers
+	server := createFakeServer("4002")
+	defer server.Close()
+	invalidJSONServer := createFakeServerWithInvalidJSON("5002")
+	defer invalidJSONServer.Close()
+	time.Sleep(100 * time.Millisecond) // Wait a bit for the servers to start
+
+	testCases := []struct {
 		name     string
-		token    string
 		url      string
 		expected int
 	}{
-		{"get 2 projects", "", "http://127.0.0.1:4002/", 2},
-		{"invalid url", "", "http://127.0.0.1:300/", 0},
+		{"get 2 projects from valid server", "http://127.0.0.1:4002/", 2},
+		{"get 0 projects from invalid url", "http://127.0.0.1:300/", 0},
+		{"get 0 projects from server with invalid json", "http://127.0.0.1:5002/", 0},
 	}
 
-	// Create a fake server with a custom port
-	port := "4002"
-	server := createFakeServer(port)
-	defer server.Close()
-
-	time.Sleep(time.Second) // Wait a bit for the server to start
-
-	for _, c := range testCaseList {
-		output := FetchUserProjectList(c.token, c.url)
-		if len(output) != c.expected {
-			t.Errorf("case (%v) output: (%v) is not the expected: (%v)", c.name, len(output), c.expected)
-		}
-	}
-
-	// Create a fake server with invalid JSON using a custom port
-	invalidPort := "5002"
-	invalidJSONServer := createFakeServerWithInvalidJSON(invalidPort)
-	defer invalidJSONServer.Close()
-
-	time.Sleep(time.Second) // Wait a bit for the server to start
-
-	output := FetchUserProjectList("", "http://127.0.0.1:"+invalidPort+"/")
-	if len(output) != 0 {
-		t.Errorf("case (invalid json) output: (%v) is not the expected: (0)", len(output))
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			output := FetchUserProjectList("", tc.url)
+			assert.Len(t, output, tc.expected)
+		})
 	}
 }
 
 func TestGetUserClusterList(t *testing.T) {
-	testCaseList := []struct {
+	testCases := []struct {
 		name        string
 		projectList []string
 		clusterList map[string]string
@@ -305,94 +220,95 @@ func TestGetUserClusterList(t *testing.T) {
 	}{
 		{"no project", []string{}, map[string]string{}, 0},
 		{"should get 1 cluster", []string{"c1", "c2"}, map[string]string{"c1": "c1"}, 1},
-		{"should get 2 cluster", []string{"c1", "c2"}, map[string]string{"c1": "c1", "c2": "c2"}, 2},
-		{"no cluster", []string{"c1"}, map[string]string{}, 0},
+		{"should get 2 clusters", []string{"c1", "c2"}, map[string]string{"c1": "c1", "c2": "c2"}, 2},
+		{"no cluster if project not in cluster list", []string{"c1"}, map[string]string{}, 0},
 	}
 
-	for _, c := range testCaseList {
-		informer.AllManagedClusterNames = c.clusterList
-		output := getUserClusterList(c.projectList)
-		if len(output) != c.expected {
-			t.Errorf("case (%v) output: (%v) is not the expected: (%v)", c.name, output, c.expected)
-		}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			output := getUserClusterList(tc.projectList, tc.clusterList)
+			assert.Len(t, output, tc.expected)
+		})
 	}
 }
 
 func TestWriteError(t *testing.T) {
-	writeError("test")
-	data, _ := os.ReadFile("/tmp/health")
-	if !strings.Contains(string(data), "test") {
-		t.Errorf("failed to find the health file")
-	}
+	tmpFile, err := os.CreateTemp("", "health")
+	assert.NoError(t, err)
+	defer os.Remove(tmpFile.Name())
+
+	// Overwrite the package-level variable for testing.
+	healthCheckFilePath = tmpFile.Name()
+
+	writeError("test error message")
+	data, err := os.ReadFile(tmpFile.Name())
+	assert.NoError(t, err)
+	assert.Contains(t, string(data), "test error message")
 }
 
-func TestGetAllManagedClusterNames(t *testing.T) {
-	testCaseList := []struct {
+func TestModifyMetricsQueryParams(t *testing.T) {
+	testCases := []struct {
 		name               string
 		clusters           map[string]string
 		expected           string
 		mockAccessReviewer *MockAccessReviewer
 	}{
 		{
-			"do not need modify params",
-			map[string]string{"c0": "c0"},
-			"query=foo",
-			&MockAccessReviewer{
-				metricsAccess: map[string][]string{
-					"c0": {"*", "*"},
-				},
+			name:     "do not need modify params when user has access to all namespaces",
+			clusters: map[string]string{"c0": "c0"},
+			expected: "query=foo",
+			mockAccessReviewer: &MockAccessReviewer{
+				metricsAccess: map[string][]string{"c0": {"*"}},
 			},
 		},
 		{
-			"modify params with 1 cluster",
-			map[string]string{"c0": "c0", "c2": "c2"},
-			`query=foo%7Bcluster%3D%22c0%22%7D`,
-			&MockAccessReviewer{
-				metricsAccess: map[string][]string{
-					"c0": {"*", "*"},
-				},
+			name:     "modify params with 1 cluster",
+			clusters: map[string]string{"c0": "c0", "c2": "c2"},
+			expected: `query=foo{cluster="c0"}`,
+			mockAccessReviewer: &MockAccessReviewer{
+				metricsAccess: map[string][]string{"c0": {"*"}},
 			},
 		},
 		{
-			"modify params with all cluster",
-			map[string]string{"c0": "c0", "c1": "c1"},
-			`query=foo`,
-			&MockAccessReviewer{
-				metricsAccess: map[string][]string{
-					"c0": {"*", "*"},
-					"c1": {"*", "*"},
-				},
+			name:     "modify params when user has access to all clusters",
+			clusters: map[string]string{"c0": "c0", "c1": "c1"},
+			expected: `query=foo`,
+			mockAccessReviewer: &MockAccessReviewer{
+				metricsAccess: map[string][]string{"c0": {"*"}, "c1": {"*"}},
 			},
 		},
 		{
-			"no cluster",
-			map[string]string{},
-			"query=foo",
-			&MockAccessReviewer{
-				metricsAccess: map[string][]string{
-					"c0": {"", ""},
-				},
+			name:     "no cluster",
+			clusters: map[string]string{},
+			expected: `query=foo{cluster=~""}`,
+			mockAccessReviewer: &MockAccessReviewer{
+				metricsAccess: map[string][]string{},
 			},
 		},
 	}
 
-	// Create a fake server with a custom port
-	port := "3002"
-	server := createFakeServer(port)
+	server := createFakeServer("3002")
 	defer server.Close()
+	time.Sleep(100 * time.Millisecond)
 
-	time.Sleep(time.Second) // Wait a bit for the server to start
-
-	informer.InitAllManagedClusterNames()
 	upi := NewUserProjectInfo(60*time.Second, 0)
 
-	for _, c := range testCaseList {
-		informer.AllManagedClusterNames = c.clusters
-		accessReviewer := c.mockAccessReviewer
-		req := newHTTPRequest()
-		ModifyMetricsQueryParams(req, "http://127.0.0.1:"+port+"/", accessReviewer, upi)
-		if req.URL.RawQuery != c.expected {
-			t.Errorf("case (%v) output: (%v) is not the expected: (%v)", c.name, req.URL.RawQuery, c.expected)
-		}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			req := newHTTPRequest()
+			mci := &MockManagedClusterInformer{
+				clusters: tc.clusters,
+			}
+			modifier := &MetricsQueryParamsModifier{
+				Req:            req,
+				ReqURL:         "http://127.0.0.1:3002/",
+				AccessReviewer: tc.mockAccessReviewer,
+				UPI:            upi,
+				MCI:            mci,
+			}
+			modifier.Modify()
+			decodedQuery, _ := url.QueryUnescape(req.URL.RawQuery)
+			assert.Equal(t, tc.expected, decodedQuery)
+		})
 	}
 }
