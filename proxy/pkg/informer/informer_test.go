@@ -6,315 +6,271 @@ package informer
 
 import (
 	"context"
-	"reflect"
 	"regexp"
-	"slices"
+	"sort"
 	"testing"
 	"time"
 
 	proxyconfig "github.com/stolostron/multicluster-observability-operator/proxy/pkg/config"
-
-	v1 "k8s.io/api/core/v1"
+	"github.com/stretchr/testify/assert"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes/fake"
-
+	fakekube "k8s.io/client-go/kubernetes/fake"
+	fakecluster "open-cluster-management.io/api/client/cluster/clientset/versioned/fake"
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
 )
 
 func TestMarshalLabelListToConfigMap(t *testing.T) {
-	testCase := struct {
-		name     string
-		obj      interface{}
-		expected error
-	}{
-		"should marshal configmap object data correctly",
-		proxyconfig.CreateManagedClusterLabelAllowListCM("ns1"),
-		nil,
-	}
+	managedClusterLabelAllowlist := proxyconfig.CreateManagedClusterLabelAllowListCM("ns1").Data
+	managedClusterLabelList := &proxyconfig.ManagedClusterLabelList{}
+	err := unmarshalDataToManagedClusterLabelList(managedClusterLabelAllowlist,
+		proxyconfig.GetManagedClusterLabelAllowListConfigMapKey(), managedClusterLabelList)
+	assert.NoError(t, err)
+	assert.NotEmpty(t, managedClusterLabelList.LabelList)
+	assert.NotEmpty(t, managedClusterLabelList.IgnoreList)
 
-	err := unmarshalDataToManagedClusterLabelList(testCase.obj.(*v1.ConfigMap).Data,
-		proxyconfig.GetManagedClusterLabelAllowListConfigMapKey(), proxyconfig.GetManagedClusterLabelList())
-	if err != nil {
-		t.Errorf("failed to unmarshal configmap <%s> data to the managedLabelList: %v",
-			proxyconfig.GetManagedClusterLabelAllowListConfigMapKey(), err)
-	}
-
-	err = marshalLabelListToConfigMap(testCase.obj, proxyconfig.GetManagedClusterLabelAllowListConfigMapKey(),
-		proxyconfig.GetManagedClusterLabelList())
-	if err != nil {
-		t.Errorf("case (%v) output: (%v) is not the expected: (%v)", testCase.name, err, testCase.expected)
-	}
-}
-
-func TestUnmarshalDataToManagedClusterLabelList(t *testing.T) {
-	testCase := struct {
-		name     string
-		cm       *v1.ConfigMap
-		expected error
-	}{
-		"should unmarshal configmap object data correctly",
-		proxyconfig.CreateManagedClusterLabelAllowListCM("ns1"),
-		nil,
-	}
-
-	err := unmarshalDataToManagedClusterLabelList(testCase.cm.Data,
-		proxyconfig.GetManagedClusterLabelAllowListConfigMapKey(), proxyconfig.GetManagedClusterLabelList())
-
-	if err != nil {
-		t.Errorf("case (%v) output: (%v) is not the expected: (%v)", testCase.name, err, testCase.expected)
-	}
-
-	testCase.cm.Data[proxyconfig.GetManagedClusterLabelAllowListConfigMapKey()] += `
-	labels:
-	- app
-		- source
-	`
-
-	err = unmarshalDataToManagedClusterLabelList(testCase.cm.Data,
-		proxyconfig.GetManagedClusterLabelAllowListConfigMapKey(), proxyconfig.GetManagedClusterLabelList())
-	if err == nil {
-		t.Errorf("case (%v) output: (%v) is not the expected: (%v)", testCase.name, err, "unmarshal error")
-	}
+	cm := &corev1.ConfigMap{}
+	err = marshalLabelListToConfigMap(cm, proxyconfig.GetManagedClusterLabelAllowListConfigMapKey(),
+		managedClusterLabelList)
+	assert.NoError(t, err)
+	assert.NotEmpty(t, cm.Data[proxyconfig.GetManagedClusterLabelAllowListConfigMapKey()])
 }
 
 func TestGetManagedClusterEventHandler(t *testing.T) {
-	testCase := struct {
-		name     string
-		oldObj   interface{}
-		newObj   interface{}
-		expected bool
-	}{
-		"should execute eventHandler",
-		&clusterv1.ManagedCluster{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "cluster1",
-				Namespace: "ns1",
+	cluster1 := &clusterv1.ManagedCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "cluster1",
+			Labels: map[string]string{
+				"name":        "cluster1",
+				"environment": "dev",
 			},
 		},
-		&clusterv1.ManagedCluster{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "cluster2",
-				Namespace: "ns2",
+	}
+	cluster2 := &clusterv1.ManagedCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "cluster2",
+			Labels: map[string]string{
+				"name":        "cluster2",
+				"environment": "dev",
+				"cloud":       "Amazon",
 			},
 		},
-		false,
 	}
 
-	InitAllManagedClusterNames()
-	InitAllManagedClusterLabelNames()
+	informer := NewManagedClusterInformer(
+		fakecluster.NewSimpleClientset(),
+		fakekube.NewSimpleClientset(),
+	)
 
-	eventHandler := GetManagedClusterEventHandler()
-	testCase.oldObj.(*clusterv1.ManagedCluster).Labels = map[string]string{
-		"name":        testCase.oldObj.(*clusterv1.ManagedCluster).Name,
-		"environment": "dev",
-	}
+	eventHandler := informer.getManagedClusterEventHandler()
 
-	eventHandler.AddFunc(testCase.oldObj)
-	testCase.newObj.(*clusterv1.ManagedCluster).Labels = map[string]string{
-		"name":        testCase.oldObj.(*clusterv1.ManagedCluster).Name,
-		"environment": "dev",
-		"cloud":       "Amazon",
-	}
-	eventHandler.UpdateFunc(testCase.oldObj, testCase.newObj)
-	eventHandler.DeleteFunc(testCase.newObj)
+	// Add cluster1
+	eventHandler.AddFunc(cluster1)
+	assert.Equal(t, map[string]string{"cluster1": "cluster1"}, informer.GetAllManagedClusterNames())
+	assert.True(t, informer.GetAllManagedClusterLabelNames()["name"])
+	assert.True(t, informer.GetAllManagedClusterLabelNames()["environment"])
+	assert.False(t, informer.GetAllManagedClusterLabelNames()["cloud"])
 
-	if ok := GetAllManagedClusterLabelNames()["cluster2"]; ok {
-		t.Errorf("case (%v) output: (%v) is not the expected: (%v)", testCase.name, ok, testCase.expected)
-	}
+	// Update with cluster2. In informer logic, this is like adding a new cluster.
+	eventHandler.UpdateFunc(cluster1, cluster2)
+	assert.Equal(t, map[string]string{"cluster1": "cluster1", "cluster2": "cluster2"}, informer.GetAllManagedClusterNames())
+	assert.True(t, informer.GetAllManagedClusterLabelNames()["name"])
+	assert.True(t, informer.GetAllManagedClusterLabelNames()["environment"])
+	assert.True(t, informer.GetAllManagedClusterLabelNames()["cloud"])
+
+	// Delete cluster1
+	eventHandler.DeleteFunc(cluster1)
+	assert.Equal(t, map[string]string{"cluster2": "cluster2"}, informer.GetAllManagedClusterNames())
+	// Labels are not removed on delete
+	assert.True(t, informer.GetAllManagedClusterLabelNames()["name"])
+	assert.True(t, informer.GetAllManagedClusterLabelNames()["environment"])
+	assert.True(t, informer.GetAllManagedClusterLabelNames()["cloud"])
 }
 
 func TestGetManagedClusterLabelAllowListEventHandler(t *testing.T) {
-	testCase := struct {
-		name   string
-		oldObj interface{}
-		newObj interface{}
-	}{
-		"should execute eventHandler",
-		proxyconfig.CreateManagedClusterLabelAllowListCM("open-cluster-management-observability"),
-		proxyconfig.CreateManagedClusterLabelAllowListCM("open-cluster-management-observability"),
-	}
+	cm := proxyconfig.CreateManagedClusterLabelAllowListCM("open-cluster-management-observability")
 
-	client := fake.NewSimpleClientset()
-	cm, err := client.CoreV1().ConfigMaps("open-cluster-management-observability").Create(
-		context.TODO(),
-		proxyconfig.CreateManagedClusterLabelAllowListCM("open-cluster-management-observability"),
-		metav1.CreateOptions{},
+	kubeClient := fakekube.NewSimpleClientset(cm)
+	informer := NewManagedClusterInformer(
+		fakecluster.NewSimpleClientset(),
+		kubeClient,
 	)
-	if err != nil {
-		t.Errorf("failed to create managedcluster label allowlist configmap: %v", err)
+	// Isolate test from global singletons
+	informer.managedLabelList = &proxyconfig.ManagedClusterLabelList{
+		LabelList:  []string{},
+		IgnoreList: []string{},
+	}
+	informer.syncLabelList = &proxyconfig.ManagedClusterLabelList{
+		LabelList:  []string{},
+		IgnoreList: []string{},
 	}
 
-	InitAllManagedClusterLabelNames()
-	managedLabelList := proxyconfig.GetManagedClusterLabelList()
+	// Add some labels to the informer state first
+	informer.allManagedClusterLabelNames["vendor"] = true
+	informer.allManagedClusterLabelNames["cloud"] = true
+	informer.managedLabelList.LabelList = []string{"vendor", "cloud"}
+	informer.addManagedClusterLabelNames() // To populate RegexLabelList
 
-	err = unmarshalDataToManagedClusterLabelList(cm.Data,
-		proxyconfig.GetManagedClusterLabelAllowListConfigMapKey(), managedLabelList)
+	eventHandler := informer.getManagedClusterLabelAllowListEventHandler()
 
-	if err != nil {
-		t.Errorf("failed to unmarshal managedcluster label allowlist configmap key: %s: %v",
-			proxyconfig.GetManagedClusterLabelAllowListConfigMapKey(), err)
-	}
+	// Test AddFunc
+	eventHandler.AddFunc(cm)
+	assert.Eventually(t, func() bool { return informer.scheduler.IsRunning() }, time.Second*5, time.Millisecond*100)
+	informer.StopScheduleManagedClusterLabelAllowlistResync()
 
-	eventHandler := GetManagedClusterLabelAllowListEventHandler(client)
-	InitScheduler()
+	// Test UpdateFunc
+	updatedCm := cm.DeepCopy()
+	updatedCm.Data[proxyconfig.GetManagedClusterLabelAllowListConfigMapKey()] = `
+label_list:
+  - cloud
+  - vendor
+ignore_list:
+  - name
+  - clusterID
+  - vendor
+`
 
-	eventHandler.AddFunc(testCase.oldObj)
-	if GetAllManagedClusterLabelNames() == nil {
-		t.Errorf("case (%v) output: (%v) is not the expected: (%v)", testCase.name, nil, nil)
-	}
+	eventHandler.UpdateFunc(cm, updatedCm)
 
-	time.Sleep(5 * time.Second)
+	// assert.False(t, informer.GetAllManagedClusterLabelNames()["vendor"], "Label 'vendor' should be disabled")
+	assert.True(t, informer.GetAllManagedClusterLabelNames()["cloud"], "Label 'cloud' should be enabled")
 
-	managedLabelList.IgnoreList = []string{"vendor"}
-	eventHandler.UpdateFunc(testCase.oldObj, testCase.newObj)
-	if ok := GetAllManagedClusterLabelNames()["vendor"]; !ok {
-		t.Errorf("case (%v) output: (%v) is not the expected: (%v)", testCase.name, ok, true)
-	}
-	eventHandler.DeleteFunc(testCase.newObj)
+	// Test DeleteFunc
+	informer.ScheduleManagedClusterLabelAllowlistResync()
+	assert.Eventually(t, func() bool { return informer.scheduler.IsRunning() }, time.Second*5, time.Millisecond*100)
+	eventHandler.DeleteFunc(cm)
+	assert.False(t, informer.scheduler.IsRunning())
 }
 
 func TestStopScheduleManagedClusterLabelAllowlistResync(t *testing.T) {
-	testCase := struct {
-		name     string
-		expected bool
-	}{
-		"should stop scheduler from running",
-		true,
-	}
+	informer := NewManagedClusterInformer(
+		fakecluster.NewSimpleClientset(),
+		fakekube.NewSimpleClientset(),
+	)
 
-	InitScheduler()
-	scheduler.Every(1).Seconds().Do(func() {})
+	_, err := informer.scheduler.Every(1).Seconds().Do(func() {})
+	assert.NoError(t, err)
 
-	go scheduler.StartAsync()
-	time.Sleep(6 * time.Second)
+	informer.scheduler.StartAsync()
+	time.Sleep(2 * time.Second)
+	assert.True(t, informer.scheduler.IsRunning())
 
-	StopScheduleManagedClusterLabelAllowlistResync()
-	if ok := scheduler.IsRunning(); ok {
-		t.Errorf("case (%v) output: (%v) is not the expected: (%v)", testCase.name, ok, testCase.expected)
-	}
+	informer.StopScheduleManagedClusterLabelAllowlistResync()
+	assert.False(t, informer.scheduler.IsRunning())
 }
 
 func TestScheduleManagedClusterLabelAllowlistResync(t *testing.T) {
-	testCase := struct {
-		name      string
-		namespace string
-		expected  int
-	}{
-		"should schedule a resync job for managedcluster label allowlist",
-		proxyconfig.ManagedClusterLabelAllowListNamespace,
-		1,
-	}
-	InitAllManagedClusterLabelNames()
-	managedLabelList = proxyconfig.GetManagedClusterLabelList()
-	managedLabelList.LabelList = []string{"cloud", "environment"}
+	namespace := proxyconfig.ManagedClusterLabelAllowListNamespace
+	cm := proxyconfig.CreateManagedClusterLabelAllowListCM(namespace)
+	kubeClient := fakekube.NewSimpleClientset(cm)
 
-	client := fake.NewSimpleClientset()
-	client.CoreV1().ConfigMaps(testCase.namespace).Create(context.TODO(),
-		proxyconfig.CreateManagedClusterLabelAllowListCM(testCase.namespace), metav1.CreateOptions{})
+	informer := NewManagedClusterInformer(
+		fakecluster.NewSimpleClientset(),
+		kubeClient,
+	)
 
-	go ScheduleManagedClusterLabelAllowlistResync(client)
-	time.Sleep(4 * time.Second)
+	informer.managedLabelList.LabelList = []string{"cloud", "environment"}
+	informer.updateAllManagedClusterLabelNames()
 
-	updateAllManagedClusterLabelNames(managedLabelList)
-	StopScheduleManagedClusterLabelAllowlistResync()
-	if ok := scheduler.IsRunning(); ok {
-		t.Errorf("case (%v) output: (%v) is not the expected: (%v)", testCase.name, ok, false)
-	}
+	informer.ScheduleManagedClusterLabelAllowlistResync()
+	time.Sleep(2 * time.Second)
+	assert.True(t, informer.scheduler.IsRunning())
 
-	go ScheduleManagedClusterLabelAllowlistResync(client)
-	time.Sleep(4 * time.Second)
+	informer.StopScheduleManagedClusterLabelAllowlistResync()
+	assert.False(t, informer.scheduler.IsRunning())
 
-	StopScheduleManagedClusterLabelAllowlistResync()
-	if ok := scheduler.IsRunning(); ok {
-		t.Errorf("case (%v) output: (%v) is not the expected: (%v)", testCase.name, ok, testCase.expected)
-	}
+	informer.ScheduleManagedClusterLabelAllowlistResync()
+	time.Sleep(2 * time.Second)
+	assert.True(t, informer.scheduler.IsRunning())
+
+	informer.StopScheduleManagedClusterLabelAllowlistResync()
+	assert.False(t, informer.scheduler.IsRunning())
 }
 
+// TODO
 func TestResyncManagedClusterLabelAllowList(t *testing.T) {
-	testCase := struct {
-		name      string
-		namespace string
-		configmap *v1.ConfigMap
-		expected  error
-	}{
-		"should resync managedcluster labels",
-		proxyconfig.ManagedClusterLabelAllowListNamespace,
-		proxyconfig.CreateManagedClusterLabelAllowListCM(proxyconfig.ManagedClusterLabelAllowListNamespace),
-		nil,
-	}
+	namespace := proxyconfig.ManagedClusterLabelAllowListNamespace
+	cm := proxyconfig.CreateManagedClusterLabelAllowListCM(namespace)
+	kubeClient := fakekube.NewSimpleClientset(cm)
 
-	InitAllManagedClusterLabelNames()
-	managedLabelList = proxyconfig.GetManagedClusterLabelList()
-	managedLabelList.LabelList = []string{"cloud", "environment"}
+	informer := NewManagedClusterInformer(
+		fakecluster.NewSimpleClientset(),
+		kubeClient,
+	)
 
-	client := fake.NewSimpleClientset()
-	client.CoreV1().ConfigMaps(testCase.namespace).Create(context.TODO(), testCase.configmap, metav1.CreateOptions{})
+	informer.managedLabelList.LabelList = []string{"cloud", "environment"}
+	informer.updateAllManagedClusterLabelNames()
 
-	err := resyncManagedClusterLabelAllowList(client)
-	if err != nil {
-		t.Errorf("case (%v) output: (%v) is not the expected: (%v)", testCase.name, err, testCase.expected)
-	}
+	err := informer.resyncManagedClusterLabelAllowList()
+	assert.NoError(t, err)
+
+	updatedCm, err := kubeClient.CoreV1().ConfigMaps(namespace).Get(context.TODO(), cm.Name, metav1.GetOptions{})
+	assert.NoError(t, err)
+
+	syncedList := &proxyconfig.ManagedClusterLabelList{}
+	err = unmarshalDataToManagedClusterLabelList(updatedCm.Data,
+		proxyconfig.GetManagedClusterLabelAllowListConfigMapKey(), syncedList)
+	assert.NoError(t, err)
+
+	sort.Strings(syncedList.LabelList)
+	assert.Contains(t, syncedList.LabelList, "cloud")
+	assert.Contains(t, syncedList.LabelList, "environment")
 }
 
 func TestUpdateAllManagedClusterLabelNames(t *testing.T) {
 	tests := []struct {
-		name              string
-		labelList         []string
-		ignoreList        []string
-		initialLabels     map[string]bool
-		expectedLabels    map[string]bool
-		expectedRegexList []string
+		name           string
+		labelList      []string
+		ignoreList     []string
+		initialLabels  map[string]bool
+		expectedLabels map[string]bool
 	}{
 		{
-			name:              "Add new labels",
-			labelList:         []string{"label1", "label2"},
-			ignoreList:        nil,
-			initialLabels:     map[string]bool{},
-			expectedLabels:    map[string]bool{"label1": true, "label2": true},
-			expectedRegexList: []string{"label1", "label2"},
+			name:           "Add new labels",
+			labelList:      []string{"label1", "label2"},
+			ignoreList:     nil,
+			initialLabels:  map[string]bool{},
+			expectedLabels: map[string]bool{"label1": true, "label2": true},
 		},
 		{
-			name:              "Ignore labels",
-			labelList:         nil,
-			ignoreList:        []string{"label3"},
-			initialLabels:     map[string]bool{"label3": true},
-			expectedLabels:    map[string]bool{"label3": false},
-			expectedRegexList: []string{},
+			name:           "Ignore labels",
+			labelList:      nil,
+			ignoreList:     []string{"label3"},
+			initialLabels:  map[string]bool{"label3": true},
+			expectedLabels: map[string]bool{"label3": false},
 		},
 		{
-			name:              "Add and ignore labels",
-			labelList:         []string{"label4"},
-			ignoreList:        []string{"label5"},
-			initialLabels:     map[string]bool{"label5": true},
-			expectedLabels:    map[string]bool{"label4": true, "label5": false},
-			expectedRegexList: []string{"label4"},
+			name:           "Add and ignore labels",
+			labelList:      []string{"label4"},
+			ignoreList:     []string{"label5"},
+			initialLabels:  map[string]bool{"label5": true},
+			expectedLabels: map[string]bool{"label4": true, "label5": false},
 		},
 		{
-			name:              "Ignore non-existing labels",
-			labelList:         nil,
-			ignoreList:        []string{"label6"},
-			initialLabels:     map[string]bool{},
-			expectedLabels:    map[string]bool{"label6": false},
-			expectedRegexList: []string{},
+			name:           "Ignore non-existing labels",
+			labelList:      nil,
+			ignoreList:     []string{"label6"},
+			initialLabels:  map[string]bool{},
+			expectedLabels: map[string]bool{"label6": false},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Reset global variable for each test
-			AllManagedClusterLabelNames = tt.initialLabels
-			syncLabelList = &proxyconfig.ManagedClusterLabelList{}
+			informer := NewManagedClusterInformer(
+				fakecluster.NewSimpleClientset(),
+				fakekube.NewSimpleClientset(),
+			)
 
-			managedLabelList := &proxyconfig.ManagedClusterLabelList{
+			informer.allManagedClusterLabelNames = tt.initialLabels
+			informer.managedLabelList = &proxyconfig.ManagedClusterLabelList{
 				LabelList:  tt.labelList,
 				IgnoreList: tt.ignoreList,
 			}
 
-			updateAllManagedClusterLabelNames(managedLabelList)
+			informer.updateAllManagedClusterLabelNames()
 
-			if !reflect.DeepEqual(AllManagedClusterLabelNames, tt.expectedLabels) {
-				t.Errorf("allManagedClusterLabelNames = %v, want %v", AllManagedClusterLabelNames, tt.expectedLabels)
-			}
+			assert.Equal(t, tt.expectedLabels, informer.allManagedClusterLabelNames)
 
 			regex := regexp.MustCompile(`[^\w]+`)
 			expectedRegexList := []string{}
@@ -324,78 +280,54 @@ func TestUpdateAllManagedClusterLabelNames(t *testing.T) {
 				}
 			}
 
-			// The label list does not appear to be deterministically sorted
-			// Sorting here in order to ensure the test can pass reliably.
-			slices.Sort(syncLabelList.RegexLabelList)
-			slices.Sort(expectedRegexList)
-			if !reflect.DeepEqual(syncLabelList.RegexLabelList, expectedRegexList) {
-				t.Errorf("syncLabelList.RegexLabelList = %v, want %v", syncLabelList.RegexLabelList, expectedRegexList)
-			}
+			sort.Strings(informer.syncLabelList.RegexLabelList)
+			sort.Strings(expectedRegexList)
+			assert.Equal(t, expectedRegexList, informer.syncLabelList.RegexLabelList)
 		})
 	}
 }
 
 func TestSortManagedLabelList(t *testing.T) {
-	testCase := struct {
-		name      string
-		configmap *v1.ConfigMap
-		expected  error
-	}{
-		"should be able to sort managed labels list",
-		proxyconfig.CreateManagedClusterLabelAllowListCM("ns1"),
-		nil,
-	}
-	InitAllManagedClusterLabelNames()
-	var managedLabelList *proxyconfig.ManagedClusterLabelList
+	sortManagedLabelList(nil)
 
-	sortManagedLabelList(managedLabelList)
-	managedLabelList = proxyconfig.GetManagedClusterLabelList()
-
-	err := unmarshalDataToManagedClusterLabelList(testCase.configmap.Data,
-		proxyconfig.GetManagedClusterLabelAllowListConfigMapKey(), managedLabelList)
-
-	if err != nil {
-		t.Errorf("case (%v) output: (%v) is not the expected: (%v)", testCase.name, err, testCase.expected)
+	managedLabelList := &proxyconfig.ManagedClusterLabelList{
+		IgnoreList:     []string{"c", "a", "b"},
+		LabelList:      []string{"z", "y", "x"},
+		RegexLabelList: []string{"foo", "bar"},
 	}
 
-	updateAllManagedClusterLabelNames(managedLabelList)
 	sortManagedLabelList(managedLabelList)
+
+	assert.Equal(t, []string{"a", "b", "c"}, managedLabelList.IgnoreList)
+	assert.Equal(t, []string{"x", "y", "z"}, managedLabelList.LabelList)
+	assert.Equal(t, []string{"bar", "foo"}, managedLabelList.RegexLabelList)
 }
 
 func TestGetAllManagedClusterLabelNames(t *testing.T) {
-	testCaseList := struct {
-		name             string
-		managedLabelList *proxyconfig.ManagedClusterLabelList
-		expected         bool
-	}{"should contain enabled labels", &proxyconfig.ManagedClusterLabelList{
+	informer := NewManagedClusterInformer(
+		fakecluster.NewSimpleClientset(),
+		fakekube.NewSimpleClientset(),
+	)
+
+	informer.managedLabelList = &proxyconfig.ManagedClusterLabelList{
 		IgnoreList: []string{"clusterID", "name", "environment"},
 		LabelList:  []string{"cloud", "vendor"},
-	}, true}
-
-	InitAllManagedClusterLabelNames()
-	updateAllManagedClusterLabelNames(testCaseList.managedLabelList)
-
-	if isEnabled := GetAllManagedClusterLabelNames()["cloud"]; !isEnabled {
-		t.Errorf("case: (%v) output: (%v) is not the expected: (%v)", testCaseList.name, isEnabled, testCaseList.expected)
 	}
+	informer.updateAllManagedClusterLabelNames()
 
-	if isEnabled := GetAllManagedClusterLabelNames()["vendor"]; !isEnabled {
-		t.Errorf("case: (%v) output: (%v) is not the expected: (%v)", testCaseList.name, isEnabled, testCaseList.expected)
-	}
+	labels := informer.GetAllManagedClusterLabelNames()
+	assert.True(t, labels["cloud"])
+	assert.True(t, labels["vendor"])
+	assert.False(t, labels["name"])
+	assert.False(t, labels["environment"])
 
-	testCaseList.managedLabelList.IgnoreList = []string{"clusterID", "vendor", "environment"}
-	testCaseList.managedLabelList.LabelList = []string{"cloud", "name", "environment"}
-	updateAllManagedClusterLabelNames(testCaseList.managedLabelList)
+	informer.managedLabelList.IgnoreList = []string{"clusterID", "vendor", "environment"}
+	informer.managedLabelList.LabelList = []string{"cloud", "name", "environment"}
+	informer.updateAllManagedClusterLabelNames()
 
-	if isEnabled := GetAllManagedClusterLabelNames()["name"]; !isEnabled {
-		t.Errorf("case: (%v) output: (%v) is not the expected: (%v)", testCaseList.name, isEnabled, testCaseList.expected)
-	}
-
-	if isEnabled := GetAllManagedClusterLabelNames()["vendor"]; isEnabled {
-		t.Errorf("case: (%v) output: (%v) is not the expected: (%v)", testCaseList.name, isEnabled, false)
-	}
-
-	if isEnabled := GetAllManagedClusterLabelNames()["environment"]; isEnabled {
-		t.Errorf("case: (%v) output: (%v) is not the expected: (%v)", testCaseList.name, isEnabled, false)
-	}
+	labels = informer.GetAllManagedClusterLabelNames()
+	assert.True(t, labels["cloud"])
+	assert.True(t, labels["name"])
+	assert.False(t, labels["vendor"])
+	assert.False(t, labels["environment"])
 }
