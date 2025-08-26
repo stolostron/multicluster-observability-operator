@@ -30,22 +30,24 @@ const (
 
 // Proxy is a reverse proxy for the metrics server.
 type Proxy struct {
-	metricsServerURL *url.URL
-	apiServerHost    string
-	proxy            *httputil.ReverseProxy
-	userProjectInfo  *util.UserProjectInfo
+	metricsServerURL       *url.URL
+	apiServerHost          string
+	proxy                  *httputil.ReverseProxy
+	userProjectInfo        *util.UserProjectInfo
+	managedClusterInformer *informer.ManagedClusterInformer
 }
 
 // NewProxy creates a new Proxy.
-func NewProxy(serverURL *url.URL, transport http.RoundTripper, apiserverHost string, upi *util.UserProjectInfo) (*Proxy, error) {
+func NewProxy(serverURL *url.URL, transport http.RoundTripper, apiserverHost string, upi *util.UserProjectInfo, managedClusterInformer *informer.ManagedClusterInformer) (*Proxy, error) {
 	p := &Proxy{
 		metricsServerURL: serverURL,
 		proxy: &httputil.ReverseProxy{
 			Director:  proxyRequest,
 			Transport: transport,
 		},
-		apiServerHost:   apiserverHost,
-		userProjectInfo: upi,
+		apiServerHost:          apiserverHost,
+		userProjectInfo:        upi,
+		managedClusterInformer: managedClusterInformer,
 	}
 
 	return p, nil
@@ -67,13 +69,13 @@ func requestContainsRBACProxyLabeMetricName(req *http.Request) bool {
 	return false
 }
 
-func shouldModifyAPISeriesResponse(res http.ResponseWriter, req *http.Request) bool {
+func (p *Proxy) shouldModifyAPISeriesResponse(res http.ResponseWriter, req *http.Request) bool {
 	// Different Grafana versions uses different calls, we handle:
 	// GET/POST requests for series and label_name
 	if strings.HasSuffix(req.URL.Path, "/api/v1/series") ||
 		strings.HasSuffix(req.URL.Path, "/api/v1/label/label_name/values") {
 		if requestContainsRBACProxyLabeMetricName(req) {
-			managedLabelList := proxyconfig.GetManagedClusterLabelList()
+			managedLabelList := p.managedClusterInformer.GetManagedClusterLabelList()
 
 			query := createQueryResponse(managedLabelList.RegexLabelList, proxyconfig.GetRBACProxyLabelMetricName(), req.URL.Path)
 			_, err := res.Write([]byte(query))
@@ -116,7 +118,7 @@ func (p *Proxy) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if ok := shouldModifyAPISeriesResponse(res, req); ok {
+	if ok := p.shouldModifyAPISeriesResponse(res, req); ok {
 		return
 	}
 
@@ -165,7 +167,7 @@ func (p *Proxy) preCheckRequest(req *http.Request) error {
 		p.userProjectInfo.UpdateUserProject(userName, token, projectList)
 	}
 
-	if len(informer.GetAllManagedClusterNames()) == 0 {
+	if len(p.managedClusterInformer.GetAllManagedClusterNames()) == 0 {
 		return errors.New("no project or cluster found")
 	}
 

@@ -85,9 +85,8 @@ func main() {
 	}
 
 	// watch all managed clusters
-	go informer.WatchManagedCluster(clusterClient, kubeClient)
-	go informer.WatchManagedClusterLabelAllowList(kubeClient)
-	go informer.ScheduleManagedClusterLabelAllowlistResync(kubeClient)
+	managedClusterInformer := informer.NewManagedClusterInformer(clusterClient, kubeClient)
+	managedClusterInformer.Run()
 
 	serverURL, err := url.Parse(cfg.metricServer)
 	if err != nil {
@@ -101,7 +100,7 @@ func main() {
 	if err != nil {
 		klog.Fatalf("failed to set tls transport: %v", err)
 	}
-	p, err := proxy.NewProxy(serverURL, tlsTransport, kubeConfig.Host, upi)
+	p, err := proxy.NewProxy(serverURL, tlsTransport, kubeConfig.Host, upi, managedClusterInformer)
 	if err != nil {
 		klog.Fatalf("failed to create proxy: %v", err)
 	}
