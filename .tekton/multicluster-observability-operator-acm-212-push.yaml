@@ -25,6 +25,20 @@ spec:
     value: quay.io/redhat-user-workloads/crt-redhat-acm-tenant/multicluster-observability-operator-acm-212:{{revision}}
   - name: dockerfile
     value: operators/multiclusterobservability/Containerfile.operator
+  - name: build-platforms
+    value:
+    - linux/x86_64
+    - linux/ppc64le
+    - linux/s390x
+    - linux/arm64
+  - name: path-context
+    value: .
+  - name: hermetic
+    value: true
+  - name: prefetch-input
+    value: '{"type": "gomod", "path": "."}'
+  - name: build-source-image
+    value: "true"
   pipelineSpec:
     description: |
       This pipeline is ideal for building container images from a Containerfile while maintaining trust after pipeline customization.
