@@ -34,11 +34,12 @@ type Proxy struct {
 	apiServerHost          string
 	proxy                  *httputil.ReverseProxy
 	userProjectInfo        *util.UserProjectInfo
-	managedClusterInformer *informer.ManagedClusterInformer
+	managedClusterInformer informer.ManagedClusterInformable
+	accessReviewer         util.AccessReviewer
 }
 
 // NewProxy creates a new Proxy.
-func NewProxy(serverURL *url.URL, transport http.RoundTripper, apiserverHost string, upi *util.UserProjectInfo, managedClusterInformer *informer.ManagedClusterInformer) (*Proxy, error) {
+func NewProxy(serverURL *url.URL, transport http.RoundTripper, apiserverHost string, upi *util.UserProjectInfo, managedClusterInformer informer.ManagedClusterInformable, accessReviewer util.AccessReviewer) (*Proxy, error) {
 	p := &Proxy{
 		metricsServerURL: serverURL,
 		proxy: &httputil.ReverseProxy{
@@ -48,6 +49,7 @@ func NewProxy(serverURL *url.URL, transport http.RoundTripper, apiserverHost str
 		apiServerHost:          apiserverHost,
 		userProjectInfo:        upi,
 		managedClusterInformer: managedClusterInformer,
+		accessReviewer:         accessReviewer,
 	}
 
 	return p, nil
@@ -125,7 +127,13 @@ func (p *Proxy) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 	req.Header.Set("X-Forwarded-Host", req.Header.Get("Host"))
 	req.Host = p.metricsServerURL.Host
 	req.URL.Path = path.Join(basePath, req.URL.Path)
-	util.ModifyMetricsQueryParams(req, config.GetConfigOrDie().Host+projectsAPIPath, util.GetAccessReviewer(), p.userProjectInfo)
+		(&util.MetricsQueryParamsModifier{
+		Req:            req,
+		ReqURL:         config.GetConfigOrDie().Host + projectsAPIPath,
+		AccessReviewer: p.accessReviewer,
+		UPI:            p.userProjectInfo,
+		MCI:            p.managedClusterInformer,
+	}).Modify()
 	p.proxy.ServeHTTP(res, req)
 }
 
