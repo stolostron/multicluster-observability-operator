@@ -21,6 +21,7 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/informer"
 	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/proxy"
 	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/util"
+	"github.com/stolostron/rbac-api-utils/pkg/rbac"
 	clusterclientset "open-cluster-management.io/api/client/cluster/clientset/versioned"
 )
 
@@ -80,7 +81,7 @@ func main() {
 		}
 	}
 
-	accessReviewer, err := util.NewAccessReviewer(kubeConfig)
+	accessReviewer, err := rbac.NewAccessReviewer(kubeConfig, nil)
 	if err != nil {
 		klog.Fatalf("failed to create new access reviewer: %v", err)
 	}
