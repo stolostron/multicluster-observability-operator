@@ -11,7 +11,7 @@ require (
 	github.com/ghodss/yaml v1.0.1-0.20220118164431-d8423dcdf344
 	github.com/go-co-op/gocron v1.37.0
 	github.com/go-kit/log v0.2.1
-	github.com/go-logr/logr v1.4.2
+	github.com/go-logr/logr v1.4.3
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang-jwt/jwt/v5 v5.2.2
 	github.com/golang/protobuf v1.5.4
@@ -37,20 +37,20 @@ require (
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/pflag v1.0.6
 	github.com/stolostron/multiclusterhub-operator v0.0.0-20240626140553-4f1ed6be3b84
-	github.com/stolostron/observatorium-operator v0.0.0-20240521155951-b4302d25bd18
+	github.com/stolostron/observatorium-operator v0.0.0-20250826082433-fd7581aeb385
 	github.com/stolostron/rbac-api-utils v0.0.0-20240404212618-7f57fc664256
 	github.com/stretchr/testify v1.10.0
 	github.com/thanos-io/thanos v0.36.1
 	go.uber.org/zap v1.27.0
 	golang.org/x/exp v0.0.0-20241004190924-225e2abe05e6
 	gopkg.in/yaml.v2 v2.4.0
-	k8s.io/api v0.33.0
-	k8s.io/apiextensions-apiserver v0.33.0
-	k8s.io/apimachinery v0.33.0
-	k8s.io/client-go v0.33.0
+	k8s.io/api v0.33.2
+	k8s.io/apiextensions-apiserver v0.33.2
+	k8s.io/apimachinery v0.33.2
+	k8s.io/client-go v0.33.2
 	k8s.io/klog v1.0.0
 	k8s.io/kubectl v0.31.9
-	k8s.io/utils v0.0.0-20250502105355-0f33e8f1c979
+	k8s.io/utils v0.0.0-20250604170112-4c0f3b243397
 	open-cluster-management.io/addon-framework v0.12.0
 	open-cluster-management.io/api v0.16.2
 	open-cluster-management.io/config-policy-controller v0.16.0
@@ -94,7 +94,7 @@ require (
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/fxamacker/cbor/v2 v2.8.0 // indirect
 	github.com/go-errors/errors v1.4.2 // indirect
-	github.com/go-kit/kit v0.12.0 // indirect
+	github.com/go-kit/kit v0.13.0 // indirect
 	github.com/go-logfmt/logfmt v0.6.0 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-logr/zapr v1.3.0 // indirect
@@ -190,11 +190,11 @@ require (
 	gopkg.in/evanphx/json-patch.v4 v4.12.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	k8s.io/apiserver v0.33.0 // indirect
-	k8s.io/component-base v0.33.0 // indirect
+	k8s.io/apiserver v0.33.2 // indirect
+	k8s.io/component-base v0.33.2 // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect
 	k8s.io/kube-aggregator v0.31.9 // indirect
-	k8s.io/kube-openapi v0.0.0-20250318190949-c8a335a9a2ff // indirect
+	k8s.io/kube-openapi v0.0.0-20250610211856-8b98d1ed966a // indirect
 	open-cluster-management.io/sdk-go v0.16.0 // indirect
 	sigs.k8s.io/json v0.0.0-20241014173422-cfa47c3a1cc8 // indirect
 	sigs.k8s.io/randfill v1.0.0 // indirect
