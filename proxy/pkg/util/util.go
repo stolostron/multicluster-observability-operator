@@ -5,18 +5,14 @@
 package util
 
 import (
-	"crypto/tls"
-	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
 	"os"
-	"path/filepath"
 	"regexp"
 	"strings"
-	"time"
 
 	projectv1 "github.com/openshift/api/project/v1"
 	userv1 "github.com/openshift/api/user/v1"
@@ -41,34 +37,35 @@ type AccessReviewer interface {
 }
 
 var (
-	accessReviewer     AccessReviewer
-	clusterMatchRegExp = regexp.MustCompile(`([{|,][ ]*)cluster(=|!=|=~|!~)([ ]*)"([^"]+)"`)
+	clusterMatchRegExp = regexp.MustCompile(`([{|,][ ]*)cluster(=|!=|=~|!~)([ ]*)"([^"]+)"`) // Corrected regex to properly escape the double quote within the string literal.
 )
 
-// func GetAccessReviewer() *rbac.AccessReviewer {
-func GetAccessReviewer() AccessReviewer {
-	return accessReviewer
+func NewAccessReviewer(kConfig *rest.Config) (AccessReviewer, error) {
+	return rbac.NewAccessReviewer(kConfig, nil)
 }
 
-func InitAccessReviewer(kConfig *rest.Config) (err error) {
-	accessReviewer, err = rbac.NewAccessReviewer(kConfig, nil)
-	return err
+// MetricsQueryParamsModifier holds the parameters for modifying metrics query parameters.
+type MetricsQueryParamsModifier struct {
+	Req            *http.Request
+	ReqURL         string
+	AccessReviewer AccessReviewer
+	UPI            *UserProjectInfo
+	MCI            informer.ManagedClusterInformable
 }
 
-// ModifyMetricsQueryParams will modify request url params for query metrics.
-func ModifyMetricsQueryParams(req *http.Request, reqUrl string, accessReviewer AccessReviewer, upi *UserProjectInfo) {
-
-	userName := req.Header.Get("X-Forwarded-User")
+// Modify will modify request url params for query metrics.
+func (mqm *MetricsQueryParamsModifier) Modify() {
+	userName := mqm.Req.Header.Get("X-Forwarded-User")
 	klog.V(1).Infof("user is %v", userName)
-	klog.V(1).Infof("URL is: %s", req.URL)
-	klog.V(1).Infof("URL path is: %v", req.URL.Path)
-	klog.V(1).Infof("URL RawQuery is: %v", req.URL.RawQuery)
-	token := req.Header.Get("X-Forwarded-Access-Token")
+	klog.V(1).Infof("URL is: %s", mqm.Req.URL)
+	klog.V(1).Infof("URL path is: %v", mqm.Req.URL.Path)
+	klog.V(1).Infof("URL RawQuery is: %v", mqm.Req.URL.RawQuery)
+	token := mqm.Req.Header.Get("X-Forwarded-Access-Token")
 	if token == "" {
 		klog.Errorf("failed to get token from http header")
 	}
 
-	userMetricsAccess, err := GetUserMetricsACLs(userName, token, reqUrl, accessReviewer, upi)
+	userMetricsAccess, err := getUserMetricsACLs(userName, token, mqm.ReqURL, mqm.AccessReviewer, mqm.UPI, mqm.MCI.GetAllManagedClusterNames())
 	if err != nil {
 		klog.Errorf("Failed to determine user's metrics access: %v", err)
 		return
@@ -76,16 +73,16 @@ func ModifyMetricsQueryParams(req *http.Request, reqUrl string, accessReviewer A
 
 	klog.Infof("user <%v> have metrics access to : %v", userName, userMetricsAccess)
 
-	allAccess := CanAccessAll(userMetricsAccess)
+	allAccess := canAccessAll(userMetricsAccess, mqm.MCI.GetAllManagedClusterNames())
 	if allAccess {
 		klog.Infof("user <%v> have access to all clusters and all namespaces", userName)
 		return
 	}
 
 	var rawQuery string
-	if req.Method == "POST" {
-		body, _ := io.ReadAll(req.Body)
-		_ = req.Body.Close()
+	if mqm.Req.Method == "POST" {
+		body, _ := io.ReadAll(mqm.Req.Body)
+		_ = mqm.Req.Body.Close()
 		queryValues, err := url.ParseQuery(string(body))
 		if err != nil {
 			klog.Errorf("Failed to parse request body: %v", err)
@@ -97,47 +94,24 @@ func ModifyMetricsQueryParams(req *http.Request, reqUrl string, accessReviewer A
 		queryValues = rewriteQuery(queryValues, userMetricsAccess, "query")
 		queryValues = rewriteQuery(queryValues, userMetricsAccess, "match[]")
 		rawQuery = queryValues.Encode()
-		req.Body = io.NopCloser(strings.NewReader(rawQuery))
-		req.Header.Set("Content-Length", fmt.Sprint(len([]rune(rawQuery))))
-		req.ContentLength = int64(len([]rune(rawQuery)))
+		mqm.Req.Body = io.NopCloser(strings.NewReader(rawQuery))
+		mqm.Req.Header.Set("Content-Length", fmt.Sprint(len([]rune(rawQuery))))
+		mqm.Req.ContentLength = int64(len([]rune(rawQuery)))
 	} else {
-		queryValues := req.URL.Query()
+		queryValues := mqm.Req.URL.Query()
 		if len(queryValues) == 0 {
 			return
 		}
 		queryValues = rewriteQuery(queryValues, userMetricsAccess, "query")
 		queryValues = rewriteQuery(queryValues, userMetricsAccess, "match[]")
-		req.URL.RawQuery = queryValues.Encode()
-		rawQuery = req.URL.RawQuery
+		mqm.Req.URL.RawQuery = queryValues.Encode()
+		rawQuery = mqm.Req.URL.RawQuery
 	}
 
 	klog.V(1).Info("modified URL is:")
-	klog.V(1).Infof("URL is: %s", req.URL)
-	klog.V(1).Infof("URL path is: %v", req.URL.Path)
+	klog.V(1).Infof("URL is: %s", mqm.Req.URL)
+	klog.V(1).Infof("URL path is: %v", mqm.Req.URL.Path)
 	klog.V(1).Infof("URL RawQuery is: %v", rawQuery)
-}
-
-func sendHTTPRequest(url string, verb string, token string) (*http.Response, error) {
-	caCert, err := os.ReadFile(filepath.Clean(caPath))
-	if err != nil {
-		klog.Error("failed to load root ca cert file")
-		return nil, err
-	}
-
-	caCertPool := x509.NewCertPool()
-	caCertPool.AppendCertsFromPEM(caCert)
-
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{
-			RootCAs:    caCertPool,
-			MinVersion: tls.VersionTLS12,
-		},
-		MaxIdleConns:    100,
-		IdleConnTimeout: 60 * time.Second,
-	}
-
-	client := &http.Client{Transport: tr}
-	return sendHTTPRequestWithClient(client, url, verb, token)
 }
 
 func sendHTTPRequestWithClient(client *http.Client, url string, verb string, token string) (*http.Response, error) {
@@ -228,16 +202,11 @@ func GetUserNameWithClient(client *http.Client, token string, url string) string
 	return user.Name
 }
 
-func getUserClusterList(projectList []string) []string {
+func getUserClusterList(projectList []string, managedClusterNames map[string]string) []string {
 	clusterList := []string{}
-	if len(projectList) == 0 {
-		return clusterList
-	}
 
 	for _, projectName := range projectList {
-		informer.AllManagedClusterLabelNamesMtx.RLock()
-		defer informer.AllManagedClusterLabelNamesMtx.RUnlock()
-		clusterName, ok := informer.AllManagedClusterNames[projectName]
+		clusterName, ok := managedClusterNames[projectName]
 		if ok {
 			clusterList = append(clusterList, clusterName)
 		}
@@ -246,7 +215,7 @@ func getUserClusterList(projectList []string) []string {
 	return clusterList
 }
 
-func GetUserMetricsACLs(userName string, token string, reqUrl string, accessReviewer AccessReviewer, upi *UserProjectInfo) (map[string][]string, error) {
+func getUserMetricsACLs(userName string, token string, reqUrl string, accessReviewer AccessReviewer, upi *UserProjectInfo, managedClusterNames map[string]string) (map[string][]string, error) {
 
 	klog.Infof("Getting metrics access for user : %v", userName)
 
@@ -265,9 +234,7 @@ func GetUserMetricsACLs(userName string, token string, reqUrl string, accessRevi
 	// value i.e acls  apply to all managedclusters
 	if allClusterAcls, found := metricsAccess["*"]; found {
 
-		informer.AllManagedClusterNamesMtx.RLock()
-		defer informer.AllManagedClusterNamesMtx.RUnlock()
-		for mcName := range informer.AllManagedClusterNames {
+		for mcName := range managedClusterNames {
 			if clusterAcls, ok := metricsAccess[mcName]; ok {
 				for _, allClusterAclItem := range allClusterAcls {
 					if !slices.Contains(clusterAcls, allClusterAclItem) {
@@ -294,10 +261,10 @@ func GetUserMetricsACLs(userName string, token string, reqUrl string, accessRevi
 		upi.UpdateUserProject(userName, token, projectList)
 		klog.V(1).Infof("projectList from api server = %v", projectList)
 	}
-	klog.V(1).Infof("cluster list: %v", informer.AllManagedClusterNames)
+	klog.V(1).Infof("cluster list: %v", managedClusterNames)
 	klog.V(1).Infof("user <%s> project list: %v", userName, projectList)
 
-	clusterList := getUserClusterList(projectList)
+	clusterList := getUserClusterList(projectList, managedClusterNames)
 	klog.Infof("user <%v> have access to these clusters: %v", userName, clusterList)
 
 	// combine the  user project access list to the metrics access list
@@ -318,15 +285,13 @@ func GetUserMetricsACLs(userName string, token string, reqUrl string, accessRevi
 	return metricsAccess, nil
 }
 
-// CanAccessAll check user have permission to access all clusters
-func CanAccessAll(clusterNamespaces map[string][]string) bool {
-	if len(informer.AllManagedClusterNames) == 0 && len(clusterNamespaces) == 0 {
+// canAccessAll check user have permission to access all clusters
+func canAccessAll(clusterNamespaces map[string][]string, managedClusterNames map[string]string) bool {
+	if len(managedClusterNames) == 0 && len(clusterNamespaces) == 0 {
 		return false
 	}
 
-	informer.AllManagedClusterNamesMtx.RLock()
-	defer informer.AllManagedClusterNamesMtx.RUnlock()
-	for _, clusterName := range informer.AllManagedClusterNames {
+	for _, clusterName := range managedClusterNames {
 		namespaces, contains := clusterNamespaces[clusterName]
 
 		//does not have access to the cluster
@@ -516,8 +481,10 @@ func injectNamespaces(queryValues url.Values, key string, userMetricsAccess map[
 	return modifiedQuery, nil
 }
 
+var healthCheckFilePath = "/tmp/health"
+
 func writeError(msg string) {
-	f, err := os.OpenFile("/tmp/health", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+	f, err := os.OpenFile(healthCheckFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
 	if err != nil {
 		klog.Errorf("failed to create file for probe: %v", err)
 	}

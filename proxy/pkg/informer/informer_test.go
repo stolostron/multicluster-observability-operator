@@ -116,7 +116,7 @@ func TestGetManagedClusterLabelAllowListEventHandler(t *testing.T) {
 	// Test AddFunc
 	eventHandler.AddFunc(cm)
 	assert.Eventually(t, func() bool { return informer.scheduler.IsRunning() }, time.Second*5, time.Millisecond*100)
-	informer.StopScheduleManagedClusterLabelAllowlistResync()
+	informer.stopScheduleManagedClusterLabelAllowlistResync()
 
 	// Test UpdateFunc
 	updatedCm := cm.DeepCopy()
@@ -136,7 +136,7 @@ ignore_list:
 	assert.True(t, informer.GetAllManagedClusterLabelNames()["cloud"], "Label 'cloud' should be enabled")
 
 	// Test DeleteFunc
-	informer.ScheduleManagedClusterLabelAllowlistResync()
+	informer.scheduleManagedClusterLabelAllowlistResync()
 	assert.Eventually(t, func() bool { return informer.scheduler.IsRunning() }, time.Second*5, time.Millisecond*100)
 	eventHandler.DeleteFunc(cm)
 	assert.False(t, informer.scheduler.IsRunning())
@@ -155,7 +155,7 @@ func TestStopScheduleManagedClusterLabelAllowlistResync(t *testing.T) {
 	time.Sleep(2 * time.Second)
 	assert.True(t, informer.scheduler.IsRunning())
 
-	informer.StopScheduleManagedClusterLabelAllowlistResync()
+	informer.stopScheduleManagedClusterLabelAllowlistResync()
 	assert.False(t, informer.scheduler.IsRunning())
 }
 
@@ -172,22 +172,21 @@ func TestScheduleManagedClusterLabelAllowlistResync(t *testing.T) {
 	informer.managedLabelList.LabelList = []string{"cloud", "environment"}
 	informer.updateAllManagedClusterLabelNames()
 
-	informer.ScheduleManagedClusterLabelAllowlistResync()
+	informer.scheduleManagedClusterLabelAllowlistResync()
 	time.Sleep(2 * time.Second)
 	assert.True(t, informer.scheduler.IsRunning())
 
-	informer.StopScheduleManagedClusterLabelAllowlistResync()
+	informer.stopScheduleManagedClusterLabelAllowlistResync()
 	assert.False(t, informer.scheduler.IsRunning())
 
-	informer.ScheduleManagedClusterLabelAllowlistResync()
+	informer.scheduleManagedClusterLabelAllowlistResync()
 	time.Sleep(2 * time.Second)
 	assert.True(t, informer.scheduler.IsRunning())
 
-	informer.StopScheduleManagedClusterLabelAllowlistResync()
+	informer.stopScheduleManagedClusterLabelAllowlistResync()
 	assert.False(t, informer.scheduler.IsRunning())
 }
 
-// TODO
 func TestResyncManagedClusterLabelAllowList(t *testing.T) {
 	namespace := proxyconfig.ManagedClusterLabelAllowListNamespace
 	cm := proxyconfig.CreateManagedClusterLabelAllowListCM(namespace)

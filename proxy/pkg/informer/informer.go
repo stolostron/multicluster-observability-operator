@@ -31,6 +31,14 @@ const (
 	resyncTag = "managed-cluster-label-allowlist-resync"
 )
 
+// ManagedClusterInformable is an interface for the ManagedClusterInformer.
+type ManagedClusterInformable interface {
+	Run()
+	GetAllManagedClusterNames() map[string]string
+	GetAllManagedClusterLabelNames() map[string]bool
+	GetManagedClusterLabelList() *proxyconfig.ManagedClusterLabelList
+}
+
 // ManagedClusterInformer keeps managedClusters names, labels and the managed label list
 // in a local cache using informers.
 type ManagedClusterInformer struct {
@@ -63,7 +71,7 @@ func NewManagedClusterInformer(clusterClient clusterclientset.Interface,
 func (i *ManagedClusterInformer) Run() {
 	go i.watchManagedCluster()
 	go i.watchManagedClusterLabelAllowList()
-	go i.ScheduleManagedClusterLabelAllowlistResync()
+	go i.scheduleManagedClusterLabelAllowlistResync()
 }
 
 // GetAllManagedClusterNames returns all managed cluster names.
@@ -224,7 +232,7 @@ func (i *ManagedClusterInformer) getManagedClusterLabelAllowListEventHandler() c
 
 				if ok := i.scheduler != nil; ok {
 					if ok := i.scheduler.IsRunning(); !ok {
-						go i.ScheduleManagedClusterLabelAllowlistResync()
+						go i.scheduleManagedClusterLabelAllowlistResync()
 					}
 				}
 			}
@@ -233,7 +241,7 @@ func (i *ManagedClusterInformer) getManagedClusterLabelAllowListEventHandler() c
 		DeleteFunc: func(obj interface{}) {
 			if obj.(*v1.ConfigMap).Name == proxyconfig.GetManagedClusterLabelAllowListConfigMapName() {
 				klog.Warningf("deleted configmap: %s", proxyconfig.GetManagedClusterLabelAllowListConfigMapName())
-				i.StopScheduleManagedClusterLabelAllowlistResync()
+				i.stopScheduleManagedClusterLabelAllowlistResync()
 			}
 		},
 
@@ -259,7 +267,7 @@ func (i *ManagedClusterInformer) getManagedClusterLabelAllowListEventHandler() c
 }
 
 // ScheduleManagedClusterLabelAllowlistResync schedules the managed cluster label allowlist resync.
-func (i *ManagedClusterInformer) ScheduleManagedClusterLabelAllowlistResync() {
+func (i *ManagedClusterInformer) scheduleManagedClusterLabelAllowlistResync() {
 	if i.scheduler == nil {
 		i.scheduler = gocron.NewScheduler(time.UTC)
 	}
@@ -274,7 +282,7 @@ func (i *ManagedClusterInformer) ScheduleManagedClusterLabelAllowlistResync() {
 }
 
 // StopScheduleManagedClusterLabelAllowlistResync stops the managed cluster label allowlist resync.
-func (i *ManagedClusterInformer) StopScheduleManagedClusterLabelAllowlistResync() {
+func (i *ManagedClusterInformer) stopScheduleManagedClusterLabelAllowlistResync() {
 	klog.Info("stopping scheduler for managedcluster allowlist resync")
 	i.scheduler.Stop()
 
