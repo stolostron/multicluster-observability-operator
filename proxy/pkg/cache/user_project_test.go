@@ -90,14 +90,13 @@ func TestAutoCleanAndStop(t *testing.T) {
 	cleanPeriod := 20 * time.Millisecond
 
 	upi := NewUserProjectInfo(expiredDuration, cleanPeriod)
-	t.Cleanup(upi.Stop)
 
 	// 1. Test that auto-cleaning works.
 	upi.UpdateUserProject("user-to-expire", "token-to-expire", []string{"p1"})
 	_, found := upi.GetUserProjectList("token-to-expire")
 	assert.True(t, found)
 
-	// Wait long enough for the auto-cleaner to run at least once.
+	// Wait long enough for the auto-cleaner to run at least once after expiration.
 	time.Sleep(expiredDuration + cleanPeriod)
 
 	_, found = upi.GetUserProjectList("token-to-expire")
