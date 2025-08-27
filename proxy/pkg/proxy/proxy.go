@@ -88,13 +88,18 @@ func (p *Proxy) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 	req.Header.Set("X-Forwarded-Host", req.Header.Get("Host"))
 	req.Host = p.metricsServerURL.Host
 	req.URL.Path = path.Join(basePath, req.URL.Path)
-	(&metricquery.Modifier{
+	modifier := &metricquery.Modifier{
 		Req:            req,
 		ReqURL:         config.GetConfigOrDie().Host + projectsAPIPath,
 		AccessReviewer: p.accessReviewer,
 		UPI:            p.userProjectInfo,
 		MCI:            p.managedClusterInformer,
-	}).Modify()
+	}
+	if err := modifier.Modify(); err != nil {
+		klog.Errorf("failed to modify query: %v", err)
+		http.Error(res, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
 	p.proxy.ServeHTTP(res, req)
 }
 
