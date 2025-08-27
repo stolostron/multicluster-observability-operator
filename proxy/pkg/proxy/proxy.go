@@ -183,12 +183,12 @@ type seriesData struct {
 	LabelName string `json:"label_name"`
 }
 type queryResponse struct {
-	Status string      `json:"status"`
-	Data   interface{} `json:"data"`
+	Status string `json:"status"`
+	Data   any    `json:"data"`
 }
 
 func createQueryResponse(labels []string, metricName string, urlPath string) ([]byte, error) {
-	var data interface{}
+	var data any
 	if strings.HasSuffix(urlPath, apiLabelNameValuesPath) {
 		data = labels
 	} else {
