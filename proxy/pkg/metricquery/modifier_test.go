@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/cache"
 	proxyconfig "github.com/stolostron/multicluster-observability-operator/proxy/pkg/config"
-	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/util"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -208,7 +208,7 @@ func TestModifyMetricsQueryParams(t *testing.T) {
 		},
 	}
 
-	upi := util.NewUserProjectInfo(60*time.Second, 0)
+	upi := cache.NewUserProjectInfo(60*time.Second, 0)
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {

@@ -17,6 +17,7 @@ import (
 	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
+	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/cache"
 	proxyconfig "github.com/stolostron/multicluster-observability-operator/proxy/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/informer"
 	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/metricquery"
@@ -34,13 +35,13 @@ type Proxy struct {
 	metricsServerURL       *url.URL
 	apiServerHost          string
 	proxy                  *httputil.ReverseProxy
-	userProjectInfo        *util.UserProjectInfo
+	userProjectInfo        *cache.UserProjectInfo
 	managedClusterInformer informer.ManagedClusterInformable
 	accessReviewer         metricquery.AccessReviewer
 }
 
 // NewProxy creates a new Proxy.
-func NewProxy(serverURL *url.URL, transport http.RoundTripper, apiserverHost string, upi *util.UserProjectInfo, managedClusterInformer informer.ManagedClusterInformable, accessReviewer metricquery.AccessReviewer) (*Proxy, error) {
+func NewProxy(serverURL *url.URL, transport http.RoundTripper, apiserverHost string, upi *cache.UserProjectInfo, managedClusterInformer informer.ManagedClusterInformable, accessReviewer metricquery.AccessReviewer) (*Proxy, error) {
 	p := &Proxy{
 		metricsServerURL: serverURL,
 		proxy: &httputil.ReverseProxy{
