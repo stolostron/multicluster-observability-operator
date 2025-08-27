@@ -57,7 +57,7 @@ func TestGetManagedClusterLabelAllowListConfigmap(t *testing.T) {
 
 	client := fake.NewSimpleClientset()
 	_, err := client.CoreV1().ConfigMaps(testCase.namespace).Create(
-		context.TODO(),
+		context.Background(),
 		CreateManagedClusterLabelAllowListCM(testCase.namespace),
 		metav1.CreateOptions{},
 	)
@@ -65,7 +65,7 @@ func TestGetManagedClusterLabelAllowListConfigmap(t *testing.T) {
 		t.Errorf("failed to create configmap: %v", err)
 	}
 
-	_, err = GetManagedClusterLabelAllowListConfigmap(client, testCase.namespace)
+	_, err = GetManagedClusterLabelAllowListConfigmap(context.Background(), client, testCase.namespace)
 	if err != nil {
 		t.Errorf("case (%v) output: (%v) is not the expected: (%v)", testCase.name, err, testCase.expected)
 	}
@@ -73,7 +73,7 @@ func TestGetManagedClusterLabelAllowListConfigmap(t *testing.T) {
 	testCase.name = "should not get managedcluster label allowlist configmap"
 	testCase.namespace = "ns2"
 
-	_, err = GetManagedClusterLabelAllowListConfigmap(client, "ns2")
+	_, err = GetManagedClusterLabelAllowListConfigmap(context.Background(), client, "ns2")
 	if err == nil {
 		t.Errorf("case (%v) output: (%v) is not the expected: (%v)", testCase.name, nil, err)
 	}

@@ -5,10 +5,14 @@
 package main
 
 import (
+	"context"
 	"flag"
+	"fmt"
 	"net/http"
 	"net/url"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/spf13/pflag"
@@ -36,7 +40,12 @@ type proxyConf struct {
 }
 
 func main() {
+	if err := run(); err != nil {
+		klog.Fatalf("failed to run proxy: %v", err)
+	}
+}
 
+func run() error {
 	cfg := proxyConf{}
 
 	klogFlags := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
@@ -59,19 +68,26 @@ func main() {
 	klog.Infof("metrics server is: %s", cfg.metricServer)
 	klog.Infof("kubeconfig is: %s", cfg.kubeconfigLocation)
 
+	// create a context that is cancelled on SIGINT/SIGTERM
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer cancel()
+
 	kubeConfig := config.GetConfigOrDie()
 	clusterClient, err := clusterclientset.NewForConfig(kubeConfig)
 	if err != nil {
-		klog.Fatalf("failed to initialize new cluster clientset: %v", err)
+		return fmt.Errorf("failed to initialize new cluster clientset: %w", err)
 	}
 
 	kubeClient, err := kubernetes.NewForConfig(kubeConfig)
 	if err != nil {
-		klog.Fatalf("failed to initialize new kubernetes client: %v", err)
+		return fmt.Errorf("failed to initialize new kubernetes client: %w", err)
 	}
 
-	_, err = proxyconfig.GetManagedClusterLabelAllowListConfigmap(kubeClient,
-		proxyconfig.ManagedClusterLabelAllowListNamespace)
+	_, err = proxyconfig.GetManagedClusterLabelAllowListConfigmap(
+		ctx,
+		kubeClient,
+		proxyconfig.ManagedClusterLabelAllowListNamespace,
+	)
 
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
@@ -83,16 +99,16 @@ func main() {
 
 	accessReviewer, err := rbac.NewAccessReviewer(kubeConfig, nil)
 	if err != nil {
-		klog.Fatalf("failed to create new access reviewer: %v", err)
+		return fmt.Errorf("failed to create new access reviewer: %w", err)
 	}
 
 	// watch all managed clusters
-	managedClusterInformer := informer.NewManagedClusterInformer(clusterClient, kubeClient)
+	managedClusterInformer := informer.NewManagedClusterInformer(ctx, clusterClient, kubeClient)
 	managedClusterInformer.Run()
 
 	serverURL, err := url.Parse(cfg.metricServer)
 	if err != nil {
-		klog.Fatalf("failed to parse metrics server url: %v", err)
+		return fmt.Errorf("failed to parse metrics server url: %w", err)
 	}
 
 	upi := cache.NewUserProjectInfo(24*60*60*time.Second, 5*60*time.Second)
@@ -100,11 +116,11 @@ func main() {
 
 	tlsTransport, err := proxy.GetTLSTransport()
 	if err != nil {
-		klog.Fatalf("failed to set tls transport: %v", err)
+		return fmt.Errorf("failed to set tls transport: %w", err)
 	}
 	p, err := proxy.NewProxy(serverURL, tlsTransport, kubeConfig.Host, upi, managedClusterInformer, accessReviewer)
 	if err != nil {
-		klog.Fatalf("failed to create proxy: %v", err)
+		return fmt.Errorf("failed to create proxy: %w", err)
 	}
 
 	handlers := http.NewServeMux()
@@ -117,7 +133,22 @@ func main() {
 		WriteTimeout:      12 * time.Minute,
 	}
 
-	if err := s.ListenAndServe(); err != nil {
-		klog.Fatalf("failed to ListenAndServe: %v", err)
+	// start the server in a goroutine
+	go func() {
+		if err := s.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			klog.Fatalf("failed to ListenAndServe: %v", err)
+		}
+	}()
+
+	// wait for the context to be cancelled
+	<-ctx.Done()
+
+	// shutdown the server
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer shutdownCancel()
+	if err := s.Shutdown(shutdownCtx); err != nil {
+		return fmt.Errorf("failed to shutdown server: %w", err)
 	}
+
+	return nil
 }

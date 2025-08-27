@@ -96,10 +96,10 @@ ignore_labels:
 }
 
 // GetManagedClusterLabelAllowListConfigmap returns the managedcluster label allowlist configmap.
-func GetManagedClusterLabelAllowListConfigmap(kubeClient kubernetes.Interface, namespace string) (*v1.ConfigMap,
+func GetManagedClusterLabelAllowListConfigmap(ctx context.Context, kubeClient kubernetes.Interface, namespace string) (*v1.ConfigMap,
 	error) {
 	configmap, err := kubeClient.CoreV1().ConfigMaps(namespace).Get(
-		context.TODO(),
+		ctx,
 		GetManagedClusterLabelAllowListConfigMapName(),
 		metav1.GetOptions{},
 	)
