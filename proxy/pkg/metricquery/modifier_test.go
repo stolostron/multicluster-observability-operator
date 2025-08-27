@@ -87,7 +87,8 @@ func TestRewriteQuery(t *testing.T) {
 			for _, cluster := range tc.clusterList {
 				clusterMap[cluster] = []string{cluster}
 			}
-			output := rewriteQuery(tc.urlValue, clusterMap, tc.key)
+			output, err := rewriteQuery(tc.urlValue, clusterMap, tc.key)
+			assert.NoError(t, err)
 			assert.Equal(t, tc.expected, output.Get(tc.key))
 		})
 	}
@@ -226,6 +227,83 @@ func TestModifyMetricsQueryParams(t *testing.T) {
 			modifier.Modify()
 			decodedQuery, _ := url.QueryUnescape(req.URL.RawQuery)
 			assert.Equal(t, tc.expected, decodedQuery)
+		})
+	}
+}
+
+func TestGetClustersInQuery(t *testing.T) {
+	userMetricsAccess := map[string][]string{
+		"cluster1":      {"namespace1", "namespace2"},
+		"cluster2":      {"namespace3"},
+		"dev-cluster":   {"dev-ns"},
+		"prod-cluster":  {"prod-ns"},
+		"test-cluster1": {"test-ns1"},
+		"test-cluster2": {"test-ns2"},
+	}
+
+	testCases := []struct {
+		name          string
+		query         string
+		expected      []string
+		expectedError bool
+	}{
+		{
+			name:          "query with no cluster label",
+			query:         `up`,
+			expected:      []string{},
+			expectedError: false,
+		},
+		{
+			name:          "query with cluster label",
+			query:         `up{cluster="cluster1"}`,
+			expected:      []string{"cluster1"},
+			expectedError: false,
+		},
+		{
+			name:          "query with regex cluster label",
+			query:         `up{cluster=~"test-cluster.*"}`,
+			expected:      []string{"test-cluster1", "test-cluster2"},
+			expectedError: false,
+		},
+		{
+			name:          "query with multiple cluster matchers",
+			query:         `up{cluster=~"dev-.*|prod-.*"}`,
+			expected:      []string{"dev-cluster", "prod-cluster"},
+			expectedError: false,
+		},
+		{
+			name:          "query with negative matcher",
+			query:         `up{cluster!="cluster1"}`,
+			expected:      []string{"cluster2", "dev-cluster", "prod-cluster", "test-cluster1", "test-cluster2"},
+			expectedError: false,
+		},
+		{
+			name:          "query with negative regex matcher",
+			query:         `up{cluster!~"test-.*"}`,
+			expected:      []string{"cluster1", "cluster2", "dev-cluster", "prod-cluster"},
+			expectedError: false,
+		},
+		{
+			name:          "invalid promql query",
+			query:         `up{`,
+			expected:      nil,
+			expectedError: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			queryValues := url.Values{}
+			queryValues.Set("query", tc.query)
+
+			clusters, err := getClustersInQuery(queryValues, "query", userMetricsAccess)
+
+			if tc.expectedError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				assert.ElementsMatch(t, tc.expected, clusters)
+			}
 		})
 	}
 }

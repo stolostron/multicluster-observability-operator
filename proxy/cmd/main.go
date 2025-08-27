@@ -17,6 +17,7 @@ import (
 
 	"github.com/spf13/pflag"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
@@ -88,12 +89,18 @@ func run() error {
 		kubeClient,
 		proxyconfig.ManagedClusterLabelAllowListNamespace,
 	)
-
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
-			_ = proxyconfig.CreateManagedClusterLabelAllowListCM(
-				proxyconfig.GetManagedClusterLabelAllowListConfigMapKey(),
+			klog.Info("managedcluster label allowlist configmap not found, creating it")
+			cm := proxyconfig.CreateManagedClusterLabelAllowListCM(
+				proxyconfig.ManagedClusterLabelAllowListNamespace,
 			)
+			_, err := kubeClient.CoreV1().ConfigMaps(proxyconfig.ManagedClusterLabelAllowListNamespace).Create(ctx, cm, metav1.CreateOptions{})
+			if err != nil {
+				return fmt.Errorf("failed to create managedcluster label allowlist configmap: %w", err)
+			}
+		} else {
+			return fmt.Errorf("failed to get managedcluster label allowlist configmap: %w", err)
 		}
 	}
 

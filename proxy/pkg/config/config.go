@@ -6,12 +6,11 @@ package config
 
 import (
 	"context"
+	"fmt"
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-
-	"k8s.io/klog"
 )
 
 const (
@@ -104,8 +103,7 @@ func GetManagedClusterLabelAllowListConfigmap(ctx context.Context, kubeClient ku
 		metav1.GetOptions{},
 	)
 	if err != nil {
-		klog.Errorf("failed to get managedcluster label allowlist configmap: %v", err)
-		return nil, err
+		return nil, fmt.Errorf("failed to get managedcluster label allowlist configmap: %w", err)
 	}
 	return configmap, nil
 }
