@@ -120,7 +120,7 @@ func (i *ManagedClusterInformer) watchManagedCluster() {
 // getManagedClusterEventHandler is the hendler for the ManagedClusters resources informer.
 func (i *ManagedClusterInformer) getManagedClusterEventHandler() cache.ResourceEventHandlerFuncs {
 	return cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj interface{}) {
+		AddFunc: func(obj any) {
 			clusterName := obj.(*clusterv1.ManagedCluster).Name
 			klog.Infof("added a managedcluster: %s \n", obj.(*clusterv1.ManagedCluster).Name)
 
@@ -134,7 +134,7 @@ func (i *ManagedClusterInformer) getManagedClusterEventHandler() cache.ResourceE
 			}
 		},
 
-		DeleteFunc: func(obj interface{}) {
+		DeleteFunc: func(obj any) {
 			clusterName := obj.(*clusterv1.ManagedCluster).Name
 			klog.Infof("deleted a managedcluster: %s \n", obj.(*clusterv1.ManagedCluster).Name)
 
@@ -143,7 +143,7 @@ func (i *ManagedClusterInformer) getManagedClusterEventHandler() cache.ResourceE
 			i.allManagedClusterNamesMtx.Unlock()
 		},
 
-		UpdateFunc: func(oldObj, newObj interface{}) {
+		UpdateFunc: func(oldObj, newObj any) {
 			oldCluster := oldObj.(*clusterv1.ManagedCluster)
 			newCluster := newObj.(*clusterv1.ManagedCluster)
 
@@ -232,7 +232,7 @@ func (i *ManagedClusterInformer) watchManagedClusterLabelAllowList() {
 
 func (i *ManagedClusterInformer) getManagedClusterLabelAllowListEventHandler() cache.ResourceEventHandlerFuncs {
 	return cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj interface{}) {
+		AddFunc: func(obj any) {
 			if obj.(*v1.ConfigMap).Name == proxyconfig.GetManagedClusterLabelAllowListConfigMapName() {
 				klog.Infof("added configmap: %s", proxyconfig.GetManagedClusterLabelAllowListConfigMapName())
 
@@ -244,14 +244,14 @@ func (i *ManagedClusterInformer) getManagedClusterLabelAllowListEventHandler() c
 			}
 		},
 
-		DeleteFunc: func(obj interface{}) {
+		DeleteFunc: func(obj any) {
 			if obj.(*v1.ConfigMap).Name == proxyconfig.GetManagedClusterLabelAllowListConfigMapName() {
 				klog.Warningf("deleted configmap: %s", proxyconfig.GetManagedClusterLabelAllowListConfigMapName())
 				i.stopScheduleManagedClusterLabelAllowlistResync()
 			}
 		},
 
-		UpdateFunc: func(oldObj, newObj interface{}) {
+		UpdateFunc: func(oldObj, newObj any) {
 			if newObj.(*v1.ConfigMap).Name == proxyconfig.GetManagedClusterLabelAllowListConfigMapName() {
 				klog.Infof("updated configmap: %s", proxyconfig.GetManagedClusterLabelAllowListConfigMapName())
 
