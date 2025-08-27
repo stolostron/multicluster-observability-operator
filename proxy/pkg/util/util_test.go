@@ -71,19 +71,25 @@ func TestFetchUserProjectList(t *testing.T) {
 	time.Sleep(100 * time.Millisecond) // Wait a bit for the servers to start
 
 	testCases := []struct {
-		name     string
-		url      string
-		expected int
+		name          string
+		url           string
+		expectedLen   int
+		expectedError bool
 	}{
-		{"get 2 projects from valid server", "http://127.0.0.1:4002/", 2},
-		{"get 0 projects from invalid url", "http://127.0.0.1:300/", 0},
-		{"get 0 projects from server with invalid json", "http://127.0.0.1:5002/", 0},
+		{"get 2 projects from valid server", "http://127.0.0.1:4002/", 2, false},
+		{"get 0 projects from invalid url", "http://127.0.0.1:300/", 0, true},
+		{"get 0 projects from server with invalid json", "http://127.0.0.1:5002/", 0, true},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			output := FetchUserProjectList("", tc.url)
-			assert.Len(t, output, tc.expected)
+			output, err := FetchUserProjectList("", tc.url)
+			if tc.expectedError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+			assert.Len(t, output, tc.expectedLen)
 		})
 	}
 }

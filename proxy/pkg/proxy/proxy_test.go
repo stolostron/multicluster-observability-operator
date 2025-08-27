@@ -164,6 +164,22 @@ func (r *FakeResponse) WriteHeader(status int) {
 }
 
 func TestPreCheckRequest(t *testing.T) {
+	// Mock API server
+	apiServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "/users/~") {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"metadata":{"name":"test-user"}}`))
+			return
+		}
+		if strings.HasSuffix(r.URL.Path, "/projects") {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"items":[{"metadata":{"name":"p"}}]}`))
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer apiServer.Close()
+
 	req, _ := http.NewRequest("GET", "http://127.0.0.1:3002/metrics/query?query=foo", nil)
 	req.Header.Set("X-Forwarded-Access-Token", "test")
 	req.Header.Set("X-Forwarded-User", "test")
@@ -179,7 +195,7 @@ func TestPreCheckRequest(t *testing.T) {
 
 	serverUrl, err := url.Parse("http://localhost/test")
 	assert.NoError(t, err)
-	p, err := NewProxy(serverUrl, nil, "", upi, mockInformer, mockAccessReviewer)
+	p, err := NewProxy(serverUrl, nil, apiServer.URL, upi, mockInformer, mockAccessReviewer)
 	assert.NoError(t, err)
 
 	// Test valid request
@@ -193,11 +209,11 @@ func TestPreCheckRequest(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "test", req.Header.Get("X-Forwarded-Access-Token"))
 
-	// Test with missing user
+	// Test with missing user, should be fetched automatically
 	req.Header.Del("X-Forwarded-User")
 	err = p.preCheckRequest(req)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to find user name")
+	assert.NoError(t, err)
+	assert.Equal(t, "test-user", req.Header.Get("X-Forwarded-User"))
 
 	// Test with missing token
 	req.Header.Del("X-Forwarded-Access-Token")

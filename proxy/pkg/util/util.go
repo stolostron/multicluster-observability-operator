@@ -35,16 +35,14 @@ func sendHTTPRequestWithClient(client *http.Client, url string, verb string, tok
 	return client.Do(req)
 }
 
-func FetchUserProjectList(token string, url string) []string {
+func FetchUserProjectList(token string, url string) ([]string, error) {
 	return FetchUserProjectListWithClient(http.DefaultClient, token, url)
 }
 
-func FetchUserProjectListWithClient(client *http.Client, token string, url string) []string {
+func FetchUserProjectListWithClient(client *http.Client, token string, url string) ([]string, error) {
 	resp, err := sendHTTPRequestWithClient(client, url, "GET", token)
 	if err != nil {
-		klog.Errorf("failed to send http request: %v", err)
-		writeError(fmt.Sprintf("failed to send http request: %v", err))
-		return []string{}
+		return nil, fmt.Errorf("failed to send http request: %w", err)
 	}
 
 	defer func() {
@@ -57,8 +55,7 @@ func FetchUserProjectListWithClient(client *http.Client, token string, url strin
 	var projects projectv1.ProjectList
 	err = json.NewDecoder(resp.Body).Decode(&projects)
 	if err != nil {
-		klog.Errorf("failed to decode response json body: %v", err)
-		return []string{}
+		return nil, fmt.Errorf("failed to decode response json body: %w", err)
 	}
 
 	projectList := make([]string, len(projects.Items))
@@ -66,19 +63,17 @@ func FetchUserProjectListWithClient(client *http.Client, token string, url strin
 		projectList[idx] = p.Name
 	}
 
-	return projectList
+	return projectList, nil
 }
 
-func GetUserName(token string, url string) string {
+func GetUserName(token string, url string) (string, error) {
 	return GetUserNameWithClient(http.DefaultClient, token, url)
 }
 
-func GetUserNameWithClient(client *http.Client, token string, url string) string {
+func GetUserNameWithClient(client *http.Client, token string, url string) (string, error) {
 	resp, err := sendHTTPRequestWithClient(client, url, "GET", token)
 	if err != nil {
-		klog.Errorf("failed to send http request: %v", err)
-		writeError(fmt.Sprintf("failed to send http request: %v", err))
-		return ""
+		return "", fmt.Errorf("failed to send http request: %w", err)
 	}
 
 	user := userv1.User{}
@@ -91,11 +86,10 @@ func GetUserNameWithClient(client *http.Client, token string, url string) string
 
 	err = json.NewDecoder(resp.Body).Decode(&user)
 	if err != nil {
-		klog.Errorf("failed to decode response json body: %v", err)
-		return ""
+		return "", fmt.Errorf("failed to decode response json body: %w", err)
 	}
 
-	return user.Name
+	return user.Name, nil
 }
 
 var healthCheckFilePath = "/tmp/health"
@@ -111,6 +105,8 @@ func writeError(msg string) {
 		klog.Errorf("failed to write error message to probe file: %v", err)
 	}
 
-	_ = f.Close()
+	if err = f.Close(); err != nil {
+		klog.Errorf("failed to close probe file: %v", err)
+	}
 }
 
