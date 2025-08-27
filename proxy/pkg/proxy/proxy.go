@@ -69,85 +69,6 @@ func NewProxy(serverURL *url.URL, transport http.RoundTripper, apiserverHost str
 	return p, nil
 }
 
-func requestContainsRBACProxyLabelMetricName(req *http.Request) bool {
-	switch req.Method {
-	case http.MethodPost:
-		body, err := io.ReadAll(req.Body)
-		if err != nil {
-			klog.Errorf("failed to read body: %v", err)
-			req.Body = io.NopCloser(bytes.NewReader(body))
-			return false
-		}
-		// Replace the body so it can be read again downstream.
-		req.Body = io.NopCloser(bytes.NewReader(body))
-		req.ContentLength = int64(len(body))
-		return strings.Contains(string(body), proxyconfig.GetRBACProxyLabelMetricName())
-	case http.MethodGet:
-		return strings.Contains(req.URL.Query().Get("match[]"), proxyconfig.GetRBACProxyLabelMetricName())
-	default:
-		return false
-	}
-}
-
-func (p *Proxy) shouldModifyAPISeriesResponse(res http.ResponseWriter, req *http.Request) bool {
-	// Different Grafana versions use different calls, we handle:
-	// GET/POST requests for series and label_name
-	if strings.HasSuffix(req.URL.Path, apiSeriesPath) ||
-		strings.HasSuffix(req.URL.Path, apiLabelNameValuesPath) {
-		if requestContainsRBACProxyLabelMetricName(req) {
-			managedLabelList := p.managedClusterInformer.GetManagedClusterLabelList()
-
-			query, err := createQueryResponse(managedLabelList.RegexLabelList, proxyconfig.GetRBACProxyLabelMetricName(), req.URL.Path)
-			if err != nil {
-				klog.Errorf("failed to create query response: %v", err)
-				// Let the request fall through to the proxy to return a proper error.
-				return false
-			}
-
-			res.Header().Set("Content-Type", "application/json")
-			_, err = res.Write(query)
-			if err != nil {
-				klog.Errorf("failed to write query response: %v", err)
-			}
-			return true // We've handled the request.
-		}
-	}
-	return false
-}
-
-// Structs for creating a JSON response for series queries.
-type seriesData struct {
-	Name      string `json:"__name__"`
-	LabelName string `json:"label_name"`
-}
-type queryResponse struct {
-	Status string      `json:"status"`
-	Data   interface{} `json:"data"`
-}
-
-func createQueryResponse(labels []string, metricName string, urlPath string) ([]byte, error) {
-	var data interface{}
-	if strings.HasSuffix(urlPath, apiLabelNameValuesPath) {
-		data = labels
-	} else {
-		series := make([]seriesData, len(labels))
-		for i, label := range labels {
-			series[i] = seriesData{
-				Name:      metricName,
-				LabelName: label,
-			}
-		}
-		data = series
-	}
-
-	response := queryResponse{
-		Status: "success",
-		Data:   data,
-	}
-
-	return json.Marshal(response)
-}
-
 // ServeHTTP is used to init proxy handler.
 func (p *Proxy) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 	if err := p.preCheckRequest(req); err != nil {
@@ -217,6 +138,65 @@ func (p *Proxy) preCheckRequest(req *http.Request) error {
 	return nil
 }
 
+func (p *Proxy) shouldModifyAPISeriesResponse(res http.ResponseWriter, req *http.Request) bool {
+	// Different Grafana versions use different calls, we handle:
+	// GET/POST requests for series and label_name
+	if strings.HasSuffix(req.URL.Path, apiSeriesPath) ||
+		strings.HasSuffix(req.URL.Path, apiLabelNameValuesPath) {
+		if requestContainsRBACProxyLabelMetricName(req) {
+			managedLabelList := p.managedClusterInformer.GetManagedClusterLabelList()
+
+			query, err := createQueryResponse(managedLabelList.RegexLabelList, proxyconfig.GetRBACProxyLabelMetricName(), req.URL.Path)
+			if err != nil {
+				klog.Errorf("failed to create query response: %v", err)
+				// Let the request fall through to the proxy to return a proper error.
+				return false
+			}
+
+			res.Header().Set("Content-Type", "application/json")
+			_, err = res.Write(query)
+			if err != nil {
+				klog.Errorf("failed to write query response: %v", err)
+			}
+			return true // We've handled the request.
+		}
+	}
+	return false
+}
+
+// Structs for creating a JSON response for series queries.
+type seriesData struct {
+	Name      string `json:"__name__"`
+	LabelName string `json:"label_name"`
+}
+type queryResponse struct {
+	Status string      `json:"status"`
+	Data   interface{} `json:"data"`
+}
+
+func createQueryResponse(labels []string, metricName string, urlPath string) ([]byte, error) {
+	var data interface{}
+	if strings.HasSuffix(urlPath, apiLabelNameValuesPath) {
+		data = labels
+	} else {
+		series := make([]seriesData, len(labels))
+		for i, label := range labels {
+			series[i] = seriesData{
+				Name:      metricName,
+				LabelName: label,
+			}
+		}
+		data = series
+	}
+
+	response := queryResponse{
+		Status: "success",
+		Data:   data,
+	}
+
+	return json.Marshal(response)
+}
+
 func newEmptyMatrixHTTPBody() []byte {
 	return []byte(`{"status":"success","data":{"resultType":"matrix","result":[]}}`)
 }
@@ -230,5 +210,25 @@ func proxyRequest(r *http.Request) {
 			r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 			r.Body = io.NopCloser(strings.NewReader(r.URL.RawQuery))
 		}
+	}
+}
+
+func requestContainsRBACProxyLabelMetricName(req *http.Request) bool {
+	switch req.Method {
+	case http.MethodPost:
+		body, err := io.ReadAll(req.Body)
+		if err != nil {
+			klog.Errorf("failed to read body: %v", err)
+			req.Body = io.NopCloser(bytes.NewReader(body))
+			return false
+		}
+		// Replace the body so it can be read again downstream.
+		req.Body = io.NopCloser(bytes.NewReader(body))
+		req.ContentLength = int64(len(body))
+		return strings.Contains(string(body), proxyconfig.GetRBACProxyLabelMetricName())
+	case http.MethodGet:
+		return strings.Contains(req.URL.Query().Get("match[]"), proxyconfig.GetRBACProxyLabelMetricName())
+	default:
+		return false
 	}
 }
