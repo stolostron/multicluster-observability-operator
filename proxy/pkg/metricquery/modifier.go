@@ -12,6 +12,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/cache"
 	proxyconfig "github.com/stolostron/multicluster-observability-operator/proxy/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/informer"
 	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/rewrite"
@@ -34,7 +35,7 @@ type Modifier struct {
 	Req            *http.Request
 	ReqURL         string
 	AccessReviewer AccessReviewer
-	UPI            *util.UserProjectInfo
+	UPI            *cache.UserProjectInfo
 	MCI            informer.ManagedClusterInformable
 }
 
@@ -99,7 +100,7 @@ func (mqm *Modifier) Modify() {
 	klog.V(1).Infof("URL RawQuery is: %v", rawQuery)
 }
 
-func getUserMetricsACLs(userName string, token string, reqUrl string, accessReviewer AccessReviewer, upi *util.UserProjectInfo, managedClusterNames map[string]string) (map[string][]string, error) {
+func getUserMetricsACLs(userName string, token string, reqUrl string, accessReviewer AccessReviewer, upi *cache.UserProjectInfo, managedClusterNames map[string]string) (map[string][]string, error) {
 
 	klog.Infof("Getting metrics access for user : %v", userName)
 
@@ -116,7 +117,7 @@ func getUserMetricsACLs(userName string, token string, reqUrl string, accessRevi
 
 	//if metrics access contains a key  "*" then the corresponding
 	// value i.e acls  apply to all managedclusters
-	if allClusterAcls, found := metricsAccess["*" ]; found {
+	if allClusterAcls, found := metricsAccess["*"]; found {
 
 		for mcName := range managedClusterNames {
 			if clusterAcls, ok := metricsAccess[mcName]; ok {

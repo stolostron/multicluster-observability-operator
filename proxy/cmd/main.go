@@ -17,10 +17,10 @@ import (
 	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
+	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/cache"
 	proxyconfig "github.com/stolostron/multicluster-observability-operator/proxy/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/informer"
 	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/proxy"
-	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/util"
 	"github.com/stolostron/rbac-api-utils/pkg/rbac"
 	clusterclientset "open-cluster-management.io/api/client/cluster/clientset/versioned"
 )
@@ -95,7 +95,7 @@ func main() {
 		klog.Fatalf("failed to parse metrics server url: %v", err)
 	}
 
-	upi := util.NewUserProjectInfo(24*60*60*time.Second, 5*60*time.Second)
+	upi := cache.NewUserProjectInfo(24*60*60*time.Second, 5*60*time.Second)
 	defer upi.Stop()
 
 	tlsTransport, err := proxy.GetTLSTransport()
