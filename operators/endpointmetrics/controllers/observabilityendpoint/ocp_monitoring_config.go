@@ -347,19 +347,11 @@ func createOrUpdateClusterMonitoringConfig(
 		return false, fmt.Errorf("failed to create or update the alertmanager accessor token secret: %w", err)
 	}
 
-	uwmEnabled := false
-	if !installProm {
-		var err error
-		uwmEnabled, err = isUserWorkloadMonitoringEnabled(ctx, client)
-		if err != nil {
-			return false, fmt.Errorf("failed to determine if UWM is enabled: %w", err)
-		}
-	}
-
 	// Determine if user-workload-monitoring namespace exists
+	// Check namespace existence regardless of current UWL enabled state to ensure proper cleanup
 	nsExists := false
-	if !installProm && uwmEnabled {
-		// nsExists is true only if 1. not *KS 2. user workload monitoring is enabled 3. namespace exists
+	if !installProm {
+		// nsExists is true if namespace exists, regardless of current UWL enabled state
 		nsExists = namespaceExists(ctx, client, operatorconfig.OCPUserWorkloadMonitoringNamespace)
 	}
 
@@ -411,9 +403,27 @@ func createOrUpdateClusterMonitoringConfig(
 		return false, err
 	}
 
+	// Check UWL enabled state after CMO config is updated
+	uwmEnabled := false
+	if !installProm {
+		var err error
+		uwmEnabled, err = isUserWorkloadMonitoringEnabled(ctx, client)
+		if err != nil {
+			return false, fmt.Errorf("failed to determine if UWM is enabled: %w", err)
+		}
+	}
+
 	if nsExists {
-		if err := createOrUpdateUserWorkloadMonitoringConfig(ctx, client, hubInfo); err != nil {
-			return updated, fmt.Errorf("failed to create or update user workload monitoring config: %w", err)
+		if uwmEnabled {
+			// UWL is enabled, create or update the config
+			if err := createOrUpdateUserWorkloadMonitoringConfig(ctx, client, hubInfo); err != nil {
+				return updated, fmt.Errorf("failed to create or update user workload monitoring config: %w", err)
+			}
+		} else {
+			// UWL is disabled, clean up the configmap
+			if err := RevertUserWorkloadMonitoringConfig(ctx, client); err != nil {
+				return updated, fmt.Errorf("failed to revert user workload monitoring config: %w", err)
+			}
 		}
 	}
 
@@ -556,6 +566,8 @@ func createOrUpdateCMOConfig(
 	if err := yaml.Unmarshal([]byte(currentYAML), existingCfg); err != nil {
 		return false, fmt.Errorf("failed to unmarshal existing CMO config: %w", err)
 	}
+
+	// Try to manually check for userWorkloadEnabled in the YAML
 
 	updatedCMOCfg := &cmomanifests.ClusterMonitoringConfiguration{}
 	if err := yaml.Unmarshal([]byte(currentYAML), updatedCMOCfg); err != nil {
