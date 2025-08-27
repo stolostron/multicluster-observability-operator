@@ -56,11 +56,11 @@ func (mqm *Modifier) Modify() error {
 		return fmt.Errorf("failed to determine user's metrics access: %w", err)
 	}
 
-	klog.Infof("user <%v> have metrics access to : %v", userName, userMetricsAccess)
+	klog.V(1).Infof("user <%v> have metrics access to : %v", userName, userMetricsAccess)
 
 	allAccess := canAccessAll(userMetricsAccess, mqm.MCI.GetAllManagedClusterNames())
 	if allAccess {
-		klog.Infof("user <%v> have access to all clusters and all namespaces", userName)
+		klog.V(1).Infof("user <%v> have access to all clusters and all namespaces", userName)
 		return nil
 	}
 
@@ -122,7 +122,7 @@ func getUserMetricsACLs(userName string, token string, reqUrl string, accessRevi
 		return nil, fmt.Errorf("failed to get Metrics Access from Access Reviewer: %w", arerr)
 	}
 
-	klog.Infof("user <%v>  metrics-access: %v", userName, metricsAccess)
+	klog.V(1).Infof("user <%v>  metrics-access: %v", userName, metricsAccess)
 
 	//if metrics access contains a key  "*" then the corresponding
 	// value i.e acls  apply to all managedclusters
@@ -149,7 +149,14 @@ func getUserMetricsACLs(userName string, token string, reqUrl string, accessRevi
 	//get all managedcluster project/namespace user has access to
 	projectList, ok := upi.GetUserProjectList(token)
 	if !ok {
-		projectList = util.FetchUserProjectList(token, reqUrl)
+		var err error
+		projectList, err = util.FetchUserProjectList(token, reqUrl)
+		if err != nil {
+			// if we cannot fetch project list, we will just assume the user has no project access.
+			// The query will be modified based on the metrics access list only.
+			klog.Errorf("failed to fetch user project list: %v", err)
+			projectList = []string{}
+		}
 		upi.UpdateUserProject(userName, token, projectList)
 		klog.V(1).Infof("projectList from api server = %v", projectList)
 	}
@@ -199,7 +206,7 @@ func canAccessAll(clusterNamespaces map[string][]string, managedClusterNames map
 }
 
 func getCommonNamespacesAcrossClusters(clusters []string, metricsAccess map[string][]string) []string {
-	klog.Infof("common namespaces across clusters: %v  in metrics access map: %v", clusters, metricsAccess)
+	klog.V(2).Infof("common namespaces across clusters: %v  in metrics access map: %v", clusters, metricsAccess)
 
 	//make a smaller map of metricsaccess for just the requested clusters
 	reqClustersMetricsAccess := make(map[string][]string)
@@ -210,7 +217,7 @@ func getCommonNamespacesAcrossClusters(clusters []string, metricsAccess map[stri
 			reqClustersMetricsAccess[cluster] = metricsAccess[cluster]
 		}
 	}
-	klog.Infof("requested clusters metrics access map: %v", reqClustersMetricsAccess)
+	klog.V(2).Infof("requested clusters metrics access map: %v", reqClustersMetricsAccess)
 
 	//make a count of how many times each unique namespace occurs across clusters
 	//if the count of a ns == le(clusters), it means it exists across all clusters
@@ -234,8 +241,8 @@ func getCommonNamespacesAcrossClusters(clusters []string, metricsAccess map[stri
 		}
 	}
 
-	klog.Infof("allAccessCount  : %v", allAccessCount)
-	klog.Infof("Namespaces Count  : %v", namespaceCounts)
+	klog.V(2).Infof("allAccessCount  : %v", allAccessCount)
+	klog.V(2).Infof("Namespaces Count  : %v", namespaceCounts)
 
 	commonNamespaces := []string{}
 
@@ -249,7 +256,7 @@ func getCommonNamespacesAcrossClusters(clusters []string, metricsAccess map[stri
 		}
 	}
 
-	klog.Infof("common namespaces across clusters: %v   : %v", clusters, commonNamespaces)
+	klog.V(2).Infof("common namespaces across clusters: %v   : %v", clusters, commonNamespaces)
 	return commonNamespaces
 }
 
@@ -348,9 +355,9 @@ func getClustersInQuery(queryValues url.Values, key string, userMetricsAccess ma
 }
 
 func rewriteQuery(queryValues url.Values, userMetricsAccess map[string][]string, key string) (url.Values, error) {
-	klog.Infof("REWRITE QUERY: queryValues: %v, userMetricsAccess: %v, key: %v\n", queryValues, userMetricsAccess, key)
+	klog.V(2).Infof("REWRITE QUERY: queryValues: %v, userMetricsAccess: %v, key: %v\n", queryValues, userMetricsAccess, key)
 	originalQuery := queryValues.Get(key)
-	klog.Infof("REWRITE QUERY: key is: %v, originalQuery is: %v\n", key, originalQuery)
+	klog.V(2).Infof("REWRITE QUERY: key is: %v, originalQuery is: %v\n", key, originalQuery)
 	if len(originalQuery) == 0 {
 		return queryValues, nil
 	}
@@ -362,7 +369,7 @@ func rewriteQuery(queryValues url.Values, userMetricsAccess map[string][]string,
 		return nil, err
 	}
 
-	klog.Infof("REWRITE QUERY Modified Query after injecting %v: %v\n", label, modifiedQuery)
+	klog.V(2).Infof("REWRITE QUERY Modified Query after injecting %v: %v\n", label, modifiedQuery)
 
 	if !strings.Contains(originalQuery, proxyconfig.GetACMManagedClusterLabelNamesMetricName()) {
 		modifiedQuery, err = injectNamespaces(queryValues, key, userMetricsAccess, modifiedQuery)
@@ -398,19 +405,19 @@ func injectNamespaces(queryValues url.Values, key string, userMetricsAccess map[
 		return "", err
 	}
 	commonNsAcrossQueryClusters := getCommonNamespacesAcrossClusters(queryClusters, userMetricsAccess)
-	allNamespaceAccess := len(commonNsAcrossQueryClusters) == 1 && commonNsAcrossQueryClusters[0] == "*"
+		allNamespaceAccess := len(commonNsAcrossQueryClusters) == 1 && commonNsAcrossQueryClusters[0] == "*"
 
-	klog.Infof("REWRITE QUERY Modified Query hasAccess to All namespaces: \n %v", allNamespaceAccess)
-	if !allNamespaceAccess {
-		modifiedQuery2, err := rewrite.InjectLabels(modifiedQuery, "namespace", commonNsAcrossQueryClusters)
-		if err != nil {
-			return modifiedQuery, err
+		klog.V(2).Infof("REWRITE QUERY Modified Query hasAccess to All namespaces: \n %v", allNamespaceAccess)
+		if !allNamespaceAccess {
+			modifiedQuery2, err := rewrite.InjectLabels(modifiedQuery, "namespace", commonNsAcrossQueryClusters)
+			if err != nil {
+				return modifiedQuery, err
+			}
+			klog.V(2).Infof("REWRITE QUERY Modified Query after injecting namespaces:  \n %v", modifiedQuery2)
+			return modifiedQuery2, nil
 		}
-		klog.Infof("REWRITE QUERY Modified Query after injecting namespaces:  \n %v", modifiedQuery2)
-		return modifiedQuery2, nil
+		return modifiedQuery, nil
 	}
-	return modifiedQuery, nil
-}
 
 func getUserClusterList(projectList []string, managedClusterNames map[string]string) []string {
 	clusterList := []string{}

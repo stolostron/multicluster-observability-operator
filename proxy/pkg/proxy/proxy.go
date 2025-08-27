@@ -120,7 +120,10 @@ func (p *Proxy) preCheckRequest(req *http.Request) error {
 		if err != nil {
 			return fmt.Errorf("failed to join the user api path with the apiserver host: %w", err)
 		}
-		userName = util.GetUserName(token, userAPIURL)
+		userName, err = util.GetUserName(token, userAPIURL)
+		if err != nil {
+			return fmt.Errorf("failed to get user name: %w", err)
+		}
 		if userName == "" {
 			return errors.New("failed to find user name")
 		}
@@ -132,7 +135,12 @@ func (p *Proxy) preCheckRequest(req *http.Request) error {
 		if err != nil {
 			return fmt.Errorf("failed to join the user projects api path with the apiserver host: %w", err)
 		}
-		projectList := util.FetchUserProjectList(token, userProjectsURL)
+		projectList, err := util.FetchUserProjectList(token, userProjectsURL)
+		if err != nil {
+			klog.Errorf("failed to fetch user project list: %v", err)
+			// if we cannot fetch project list, we will just assume the user has no project access.
+			projectList = []string{}
+		}
 		p.userProjectInfo.UpdateUserProject(userName, token, projectList)
 	}
 
