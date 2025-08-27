@@ -386,7 +386,7 @@ func TestProxyIntegrationScenarios(t *testing.T) {
 			token:                         "no-access-token",
 			apiProjectsResponse:           `{"items":[]}`,
 			accessReviewResponse:          map[string][]string{},
-			expectedUpstreamQueryContains: `query=up{cluster=~""}`,
+			expectedUpstreamQueryContains: `query=up{cluster=""}`,
 			expectedResponseCode:          http.StatusOK, // Returns empty matrix
 		},
 	}

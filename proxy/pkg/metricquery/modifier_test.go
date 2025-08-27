@@ -70,14 +70,14 @@ func TestRewriteQuery(t *testing.T) {
 			urlValue:    map[string][]string{"key": {"value"}},
 			clusterList: []string{"c1", "c2"},
 			key:         "key",
-			expected:    `value{cluster=~"c1|c2",namespace=~""}`,
+			expected:    `value{cluster=~"c1|c2",namespace=""}`,
 		},
 		{
 			name:        "should handle empty cluster list",
 			urlValue:    map[string][]string{"key": {"value"}},
 			clusterList: []string{},
 			key:         "key",
-			expected:    `value{cluster=~""}`,
+			expected:    `value{cluster=""}`,
 		},
 	}
 
@@ -201,7 +201,7 @@ func TestModifyMetricsQueryParams(t *testing.T) {
 		{
 			name:     "no cluster",
 			clusters: map[string]string{},
-			expected: `query=foo{cluster=~""}`,
+			expected: `query=foo{cluster=""}`,
 			mockAccessReviewer: &MockAccessReviewer{
 				metricsAccess: map[string][]string{},
 			},
