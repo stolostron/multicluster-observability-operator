@@ -311,7 +311,7 @@ func TestCreateQueryResponse(t *testing.T) {
 			name:         "label values path with multiple labels",
 			labels:       []string{"cloud", "vendor"},
 			metricName:   "acm_managed_cluster_labels",
-			urlPath:      apiLabelValuesPath,
+			urlPath:      apiLabelNameValuesPath,
 			expectedJSON: `{"status":"success","data":["cloud","vendor"]}`,
 			expectErr:    false,
 		},
@@ -319,7 +319,7 @@ func TestCreateQueryResponse(t *testing.T) {
 			name:         "label values path with no labels",
 			labels:       []string{},
 			metricName:   "acm_managed_cluster_labels",
-			urlPath:      apiLabelValuesPath,
+			urlPath:      apiLabelNameValuesPath,
 			expectedJSON: `{"status":"success","data":[]}`,
 			expectErr:    false,
 		},
@@ -351,6 +351,113 @@ func TestCreateQueryResponse(t *testing.T) {
 				assert.NoError(t, err)
 				assert.JSONEq(t, tc.expectedJSON, string(actualBytes))
 			}
+		})
+	}
+}
+
+// TestProxyIntegrationScenarios acts as a component integration test for various user permission scenarios.
+func TestProxyIntegrationScenarios(t *testing.T) {
+	testCases := []struct {
+		name                          string
+		token                         string
+		apiProjectsResponse           string
+		accessReviewResponse          map[string][]string
+		expectedUpstreamQueryContains string
+		expectedResponseCode          int
+	}{
+		{
+			name:                          "Admin user with access to all clusters",
+			token:                         "admin-token",
+			apiProjectsResponse:           `{"items":[{"metadata":{"name":"cluster1"}},{"metadata":{"name":"cluster2"}}]}`,
+			accessReviewResponse:          map[string][]string{"cluster1": {"*"}, "cluster2": {"*"}},
+			expectedUpstreamQueryContains: "query=up", // No cluster filter
+			expectedResponseCode:          http.StatusOK,
+		},
+		{
+			name:                          "Scoped user with access to one cluster",
+			token:                         "scoped-token",
+			apiProjectsResponse:           `{"items":[{"metadata":{"name":"cluster1"}}]}`,
+			accessReviewResponse:          map[string][]string{"cluster1": {"*"}},
+			expectedUpstreamQueryContains: `query=up{cluster="cluster1"}`,
+			expectedResponseCode:          http.StatusOK,
+		},
+		{
+			name:                          "User with no cluster access",
+			token:                         "no-access-token",
+			apiProjectsResponse:           `{"items":[]}`,
+			accessReviewResponse:          map[string][]string{},
+			expectedUpstreamQueryContains: `query=up{cluster=~""}`,
+			expectedResponseCode:          http.StatusOK, // Returns empty matrix
+		},
+	}
+
+	// Set up shared mock servers
+	var upstreamCalled bool
+	var receivedUpstreamQuery string
+	metricsServer := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		upstreamCalled = true
+		body, _ := io.ReadAll(r.Body)
+		receivedUpstreamQuery, _ = url.QueryUnescape(string(body))
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"status":"success"}`))
+	}))
+	defer metricsServer.Close()
+	metricsServerURL, err := url.Parse(metricsServer.URL)
+	assert.NoError(t, err)
+
+	// The mock API server will serve different project lists based on the token.
+	apiServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+		for _, tc := range testCases {
+			if tc.token == token {
+				if strings.HasSuffix(r.URL.Path, "/users/~") {
+					w.Header().Set("Content-Type", "application/json")
+					_, _ = w.Write([]byte(`{"metadata":{"name":"test-user"}}`))
+					return
+				}
+				if strings.HasSuffix(r.URL.Path, "/projects") {
+					w.Header().Set("Content-Type", "application/json")
+					_, _ = w.Write([]byte(tc.apiProjectsResponse))
+					return
+				}
+			}
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer apiServer.Close()
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Reset mocks for each run
+			upstreamCalled = false
+			receivedUpstreamQuery = ""
+
+			transport := &http.Transport{
+				TLSClientConfig: &tls.Config{
+					RootCAs: metricsServer.Client().Transport.(*http.Transport).TLSClientConfig.RootCAs,
+				},
+			}
+			userProjectCache := cache.NewUserProjectInfo(time.Minute, time.Minute)
+			defer userProjectCache.Stop()
+
+			mockInformer := &MockManagedClusterInformer{
+				clusters: map[string]string{"cluster1": "cluster1", "cluster2": "cluster2"},
+			}
+			mockAccessReviewer := &MockAccessReviewer{
+				metricsAccess: tc.accessReviewResponse,
+			}
+
+			proxy, err := NewProxy(metricsServerURL, transport, apiServer.URL, userProjectCache, mockInformer, mockAccessReviewer)
+			assert.NoError(t, err)
+
+			req := httptest.NewRequest("GET", "http://localhost/api/v1/query?query=up", nil)
+			req.Header.Set("Authorization", "Bearer "+tc.token)
+			recorder := httptest.NewRecorder()
+			proxy.ServeHTTP(recorder, req)
+
+			assert.Equal(t, tc.expectedResponseCode, recorder.Code)
+			assert.True(t, upstreamCalled)
+			assert.Contains(t, receivedUpstreamQuery, tc.expectedUpstreamQueryContains)
 		})
 	}
 }
