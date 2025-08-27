@@ -19,8 +19,7 @@ import (
 func sendHTTPRequestWithClient(client *http.Client, url string, verb string, token string) (*http.Response, error) {
 	req, err := http.NewRequest(verb, url, nil)
 	if err != nil {
-		klog.Errorf("failed to new http request: %v", err)
-		return nil, err
+		return nil, fmt.Errorf("failed to new http request: %w", err)
 	}
 
 	if len(token) == 0 {
@@ -44,11 +43,6 @@ func FetchUserProjectListWithClient(client *http.Client, token string, url strin
 	resp, err := sendHTTPRequestWithClient(client, url, "GET", token)
 	if err != nil {
 		klog.Errorf("failed to send http request: %v", err)
-		/*
-		   This is adhoc step to make sure that if this error happens,
-		   we can automatically restart the POD using liveness probe which checks for this file.
-		   Once the real cause is determined and fixed, we will remove this.
-		*/
 		writeError(fmt.Sprintf("failed to send http request: %v", err))
 		return []string{}
 	}
@@ -119,3 +113,4 @@ func writeError(msg string) {
 
 	_ = f.Close()
 }
+

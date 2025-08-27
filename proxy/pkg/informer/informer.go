@@ -31,7 +31,7 @@ const (
 	resyncTag = "managed-cluster-label-allowlist-resync"
 )
 
-// ManagedClusterInformable is an interface for the ManagedClusterInformer.
+// ManagedClusterInformable defines the interface for accessing cached managed cluster data.
 type ManagedClusterInformable interface {
 	Run()
 	GetAllManagedClusterNames() map[string]string
@@ -39,8 +39,9 @@ type ManagedClusterInformable interface {
 	GetManagedClusterLabelList() *proxyconfig.ManagedClusterLabelList
 }
 
-// ManagedClusterInformer keeps managedClusters names, labels and the managed label list
-// in a local cache using informers.
+// ManagedClusterInformer caches managed cluster data and manages the label allowlist.
+// It uses informers to watch for changes to ManagedCluster resources and the allowlist ConfigMap,
+// keeping the cache up-to-date.
 type ManagedClusterInformer struct {
 	ctx                            context.Context
 	clusterClient                  clusterclientset.Interface
@@ -112,18 +113,8 @@ func (i *ManagedClusterInformer) watchManagedCluster() {
 
 	go controller.Run(i.ctx.Done())
 
-	ticker := time.NewTicker(30 * time.Second)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-i.ctx.Done():
-			klog.Info("context cancelled, stopping managed cluster watcher")
-			return
-		case <-ticker.C:
-			klog.V(1).Infof("found %v clusters", len(i.allManagedClusterNames))
-		}
-	}
+	<-i.ctx.Done()
+	klog.Info("context cancelled, stopping managed cluster watcher")
 }
 
 // getManagedClusterEventHandler is the hendler for the ManagedClusters resources informer.
@@ -153,14 +144,21 @@ func (i *ManagedClusterInformer) getManagedClusterEventHandler() cache.ResourceE
 		},
 
 		UpdateFunc: func(oldObj, newObj interface{}) {
-			clusterName := newObj.(*clusterv1.ManagedCluster).Name
-			klog.Infof("changed a managedcluster: %s \n", newObj.(*clusterv1.ManagedCluster).Name)
+			oldCluster := oldObj.(*clusterv1.ManagedCluster)
+			newCluster := newObj.(*clusterv1.ManagedCluster)
+
+			if reflect.DeepEqual(oldCluster.Labels, newCluster.Labels) {
+				return
+			}
+
+			clusterName := newCluster.Name
+			klog.Infof("changed a managedcluster: %s \n", newCluster.Name)
 
 			i.allManagedClusterNamesMtx.Lock()
 			i.allManagedClusterNames[clusterName] = clusterName
 			i.allManagedClusterNamesMtx.Unlock()
 
-			clusterLabels := newObj.(*clusterv1.ManagedCluster).Labels
+			clusterLabels := newCluster.Labels
 			if ok := i.updateManagedLabelList(clusterLabels); ok {
 				i.addManagedClusterLabelNames()
 			}
@@ -180,7 +178,6 @@ func (i *ManagedClusterInformer) updateManagedLabelList(clusterLabels map[string
 		}
 	}
 
-	klog.Infof("managedcluster label names update required: %v", updated)
 	return updated
 }
 
@@ -193,6 +190,7 @@ func (i *ManagedClusterInformer) addManagedClusterLabelNames() {
 
 		isEnabled, ok := i.allManagedClusterLabelNames[key]
 		if !ok || !isEnabled {
+			klog.Infof("adding managedcluster label: %s", key)
 			i.allManagedClusterLabelNamesMtx.Lock()
 			i.allManagedClusterLabelNames[key] = true
 			i.allManagedClusterLabelNamesMtx.Unlock()
@@ -228,18 +226,8 @@ func (i *ManagedClusterInformer) watchManagedClusterLabelAllowList() {
 
 	go controller.Run(i.ctx.Done())
 
-	ticker := time.NewTicker(30 * time.Second)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-i.ctx.Done():
-			klog.Info("context cancelled, stopping managed cluster label allowlist watcher")
-			return
-		case <-ticker.C:
-			klog.V(1).Infof("found %v labels", len(i.allManagedClusterLabelNames))
-		}
-	}
+	<-i.ctx.Done()
+	klog.Info("context cancelled, stopping managed cluster label allowlist watcher")
 }
 
 func (i *ManagedClusterInformer) getManagedClusterLabelAllowListEventHandler() cache.ResourceEventHandlerFuncs {
@@ -364,8 +352,7 @@ func (i *ManagedClusterInformer) resyncManagedClusterLabelAllowList() error {
 			metav1.UpdateOptions{},
 		)
 		if err != nil {
-			klog.Errorf("failed to update managedcluster label allowlist configmap: %v", err)
-			return err
+			return fmt.Errorf("failed to update managedcluster label allowlist configmap: %w", err)
 		}
 	}
 
