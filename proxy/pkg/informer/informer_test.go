@@ -58,6 +58,7 @@ func TestGetManagedClusterEventHandler(t *testing.T) {
 	}
 
 	informer := NewManagedClusterInformer(
+		context.Background(),
 		fakecluster.NewSimpleClientset(),
 		fakekube.NewSimpleClientset(),
 	)
@@ -92,6 +93,7 @@ func TestGetManagedClusterLabelAllowListEventHandler(t *testing.T) {
 
 	kubeClient := fakekube.NewSimpleClientset(cm)
 	informer := NewManagedClusterInformer(
+		context.Background(),
 		fakecluster.NewSimpleClientset(),
 		kubeClient,
 	)
@@ -144,6 +146,7 @@ ignore_list:
 
 func TestStopScheduleManagedClusterLabelAllowlistResync(t *testing.T) {
 	informer := NewManagedClusterInformer(
+		context.Background(),
 		fakecluster.NewSimpleClientset(),
 		fakekube.NewSimpleClientset(),
 	)
@@ -165,6 +168,7 @@ func TestScheduleManagedClusterLabelAllowlistResync(t *testing.T) {
 	kubeClient := fakekube.NewSimpleClientset(cm)
 
 	informer := NewManagedClusterInformer(
+		context.Background(),
 		fakecluster.NewSimpleClientset(),
 		kubeClient,
 	)
@@ -193,6 +197,7 @@ func TestResyncManagedClusterLabelAllowList(t *testing.T) {
 	kubeClient := fakekube.NewSimpleClientset(cm)
 
 	informer := NewManagedClusterInformer(
+		context.Background(),
 		fakecluster.NewSimpleClientset(),
 		kubeClient,
 	)
@@ -203,7 +208,7 @@ func TestResyncManagedClusterLabelAllowList(t *testing.T) {
 	err := informer.resyncManagedClusterLabelAllowList()
 	assert.NoError(t, err)
 
-	updatedCm, err := kubeClient.CoreV1().ConfigMaps(namespace).Get(context.TODO(), cm.Name, metav1.GetOptions{})
+	updatedCm, err := kubeClient.CoreV1().ConfigMaps(namespace).Get(context.Background(), cm.Name, metav1.GetOptions{})
 	assert.NoError(t, err)
 
 	syncedList := &proxyconfig.ManagedClusterLabelList{}
@@ -257,6 +262,7 @@ func TestUpdateAllManagedClusterLabelNames(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			informer := NewManagedClusterInformer(
+				context.Background(),
 				fakecluster.NewSimpleClientset(),
 				fakekube.NewSimpleClientset(),
 			)
@@ -304,6 +310,7 @@ func TestSortManagedLabelList(t *testing.T) {
 
 func TestGetAllManagedClusterLabelNames(t *testing.T) {
 	informer := NewManagedClusterInformer(
+		context.Background(),
 		fakecluster.NewSimpleClientset(),
 		fakekube.NewSimpleClientset(),
 	)

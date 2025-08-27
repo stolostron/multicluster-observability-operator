@@ -42,6 +42,7 @@ type ManagedClusterInformable interface {
 // ManagedClusterInformer keeps managedClusters names, labels and the managed label list
 // in a local cache using informers.
 type ManagedClusterInformer struct {
+	ctx                            context.Context
 	clusterClient                  clusterclientset.Interface
 	kubeClient                     kubernetes.Interface
 	allManagedClusterNames         map[string]string
@@ -54,9 +55,10 @@ type ManagedClusterInformer struct {
 }
 
 // NewManagedClusterInformer creates a new ManagedClusterInformer.
-func NewManagedClusterInformer(clusterClient clusterclientset.Interface,
+func NewManagedClusterInformer(ctx context.Context, clusterClient clusterclientset.Interface,
 	kubeClient kubernetes.Interface) *ManagedClusterInformer {
 	return &ManagedClusterInformer{
+		ctx:                         ctx,
 		clusterClient:               clusterClient,
 		kubeClient:                  kubeClient,
 		allManagedClusterNames:      make(map[string]string),
@@ -108,11 +110,19 @@ func (i *ManagedClusterInformer) watchManagedCluster() {
 	}
 	_, controller := cache.NewInformerWithOptions(options)
 
-	stop := make(chan struct{})
-	go controller.Run(stop)
+	go controller.Run(i.ctx.Done())
+
+	ticker := time.NewTicker(30 * time.Second)
+	defer ticker.Stop()
+
 	for {
-		time.Sleep(time.Second * 30)
-		klog.V(1).Infof("found %v clusters", len(i.allManagedClusterNames))
+		select {
+		case <-i.ctx.Done():
+			klog.Info("context cancelled, stopping managed cluster watcher")
+			return
+		case <-ticker.C:
+			klog.V(1).Infof("found %v clusters", len(i.allManagedClusterNames))
+		}
 	}
 }
 
@@ -216,11 +226,19 @@ func (i *ManagedClusterInformer) watchManagedClusterLabelAllowList() {
 	}
 	_, controller := cache.NewInformerWithOptions(options)
 
-	stop := make(chan struct{})
-	go controller.Run(stop)
+	go controller.Run(i.ctx.Done())
+
+	ticker := time.NewTicker(30 * time.Second)
+	defer ticker.Stop()
+
 	for {
-		time.Sleep(time.Second * 30)
-		klog.V(1).Infof("found %v labels", len(i.allManagedClusterLabelNames))
+		select {
+		case <-i.ctx.Done():
+			klog.Info("context cancelled, stopping managed cluster label allowlist watcher")
+			return
+		case <-ticker.C:
+			klog.V(1).Infof("found %v labels", len(i.allManagedClusterLabelNames))
+		}
 	}
 }
 
@@ -279,6 +297,12 @@ func (i *ManagedClusterInformer) scheduleManagedClusterLabelAllowlistResync() {
 
 	klog.Info("starting scheduler for managedcluster allowlist resync")
 	i.scheduler.StartAsync()
+
+	go func() {
+		<-i.ctx.Done()
+		klog.Info("context cancelled, stopping scheduler for managedcluster allowlist resync")
+		i.scheduler.Stop()
+	}()
 }
 
 // StopScheduleManagedClusterLabelAllowlistResync stops the managed cluster label allowlist resync.
@@ -292,7 +316,7 @@ func (i *ManagedClusterInformer) stopScheduleManagedClusterLabelAllowlistResync(
 }
 
 func (i *ManagedClusterInformer) resyncManagedClusterLabelAllowList() error {
-	found, err := proxyconfig.GetManagedClusterLabelAllowListConfigmap(i.kubeClient,
+	found, err := proxyconfig.GetManagedClusterLabelAllowListConfigmap(i.ctx, i.kubeClient,
 		proxyconfig.ManagedClusterLabelAllowListNamespace)
 
 	if err != nil {
@@ -335,7 +359,7 @@ func (i *ManagedClusterInformer) resyncManagedClusterLabelAllowList() error {
 			proxyconfig.GetManagedClusterLabelAllowListConfigMapKey(), i.syncLabelList)
 
 		_, err := i.kubeClient.CoreV1().ConfigMaps(proxyconfig.ManagedClusterLabelAllowListNamespace).Update(
-			context.TODO(),
+			i.ctx,
 			found,
 			metav1.UpdateOptions{},
 		)
