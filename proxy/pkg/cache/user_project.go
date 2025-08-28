@@ -2,9 +2,20 @@
 // Copyright Contributors to the Open Cluster Management project
 // Licensed under the Apache License 2.0
 
+// Package cache provides a thread-safe, in-memory cache to store the list of projects a user has access to.
+// It uses the user's authentication token, which is forwarded by Grafana in an HTTP header, as the cache key.
+//
+// This custom cache is necessary because determining a user's project access requires making API requests
+// to the OpenShift API server with a client authenticated via that specific user's token. This is different from the main operator's
+// client, which uses a single service account. As a result, the standard controller-runtime client-side
+// caching mechanism cannot be leveraged for this purpose.
+//
+// The cache has a configurable expiration time for entries and a background process for automatic cleanup
+// to avoid repeatedly fetching the same data from the API server.
 package cache
 
 import (
+	"slices"
 	"sync"
 	"time"
 
@@ -13,6 +24,8 @@ import (
 
 const defaultCleanPeriod = time.Second * 60 * 5
 
+// UserProjectInfo holds the cache of user project lists, keyed by user tokens.
+// It manages concurrent access and automatic cleanup of expired entries.
 type UserProjectInfo struct {
 	mu              sync.RWMutex
 	projectInfo     map[string]userProject
@@ -21,12 +34,15 @@ type UserProjectInfo struct {
 	stopCh          chan struct{}
 }
 
+// userProject stores the list of projects for a user at a specific point in time.
 type userProject struct {
 	UserName    string
 	Timestamp   time.Time
 	ProjectList []string
 }
 
+// NewUserProjectInfo creates and starts a new UserProjectInfo cache.
+// It takes an expiration duration for cache entries and a cleaning period for the cleanup goroutine.
 func NewUserProjectInfo(expiredDuration, cleanPeriod time.Duration) *UserProjectInfo {
 	if cleanPeriod <= 0 {
 		cleanPeriod = defaultCleanPeriod
@@ -43,6 +59,8 @@ func NewUserProjectInfo(expiredDuration, cleanPeriod time.Duration) *UserProject
 	return upi
 }
 
+// UpdateUserProject adds or updates a user's project list in the cache.
+// The entry is timestamped with the current time.
 func (upi *UserProjectInfo) UpdateUserProject(userName string, token string, projects []string) {
 	upi.mu.Lock()
 	upi.projectInfo[token] = userProject{
@@ -53,20 +71,25 @@ func (upi *UserProjectInfo) UpdateUserProject(userName string, token string, pro
 	upi.mu.Unlock()
 }
 
+// GetUserProjectList retrieves a user's project list from the cache using their token.
+// It returns a copy of the project list and a boolean indicating if the entry was found.
+// The slice is copied to prevent the caller from modifying the cached data.
 func (upi *UserProjectInfo) GetUserProjectList(token string) ([]string, bool) {
 	upi.mu.RLock()
 	up, ok := upi.projectInfo[token]
 	upi.mu.RUnlock()
 	if ok {
-		return up.ProjectList, true
+		return slices.Clone(up.ProjectList), true
 	}
 	return []string{}, false
 }
 
+// Stop terminates the background cleanup goroutine.
 func (upi *UserProjectInfo) Stop() {
 	close(upi.stopCh)
 }
 
+// autoCleanExpiredProjectInfo runs a periodic check to clean expired entries from the cache.
 func (upi *UserProjectInfo) autoCleanExpiredProjectInfo() {
 	ticker := time.NewTicker(upi.cleanPeriod)
 	defer ticker.Stop()
@@ -82,6 +105,7 @@ func (upi *UserProjectInfo) autoCleanExpiredProjectInfo() {
 	}
 }
 
+// cleanExpiredProjectInfo iterates through the cache and removes entries that have exceeded their expiration duration.
 func (upi *UserProjectInfo) cleanExpiredProjectInfo() {
 	var expiredTokens []string
 	upi.mu.RLock()

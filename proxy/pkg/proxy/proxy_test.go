@@ -261,57 +261,83 @@ func newTestProxy(t *testing.T, labels []string) *Proxy {
 	return p
 }
 
-func TestModifyAPISeriesResponseSeriesPOST(t *testing.T) {
+func TestHandleManagedClusterLabelQuery(t *testing.T) {
 	p := newTestProxy(t, []string{"cloud", "vendor"})
-	resp := NewFakeResponse(t)
 
-	t.Run("should modify when body contains metric name", func(t *testing.T) {
-		body := io.NopCloser(strings.NewReader("match[]=" + config.GetRBACProxyLabelMetricName()))
-		req := httptest.NewRequest("POST", "/api/v1/series", body)
-		ok := p.shouldModifyAPISeriesResponse(resp, req)
-		assert.True(t, ok)
-	})
+	testCases := []struct {
+		name             string
+		method           string
+		path             string
+		body             io.Reader
+		expectedToHandle bool
+		expectedBody     string
+	}{
+		{
+			name:             "should handle POST to series endpoint with correct metric",
+			method:           "POST",
+			path:             "/api/v1/series",
+			body:             strings.NewReader("match[]=" + config.GetRBACProxyLabelMetricName()),
+			expectedToHandle: true,
+			expectedBody:     `{"status":"success","data":[{"__name__":"acm_label_names","label_name":"cloud"},{"__name__":"acm_label_names","label_name":"vendor"}]}`,
+		},
+		{
+			name:             "should not handle POST to series endpoint with other metric",
+			method:           "POST",
+			path:             "/api/v1/series",
+			body:             strings.NewReader("match[]=kube_pod_info"),
+			expectedToHandle: false,
+		},
+		{
+			name:             "should handle GET to series endpoint with correct metric",
+			method:           "GET",
+			path:             "/api/v1/series?match[]=" + config.GetRBACProxyLabelMetricName(),
+			body:             nil,
+			expectedToHandle: true,
+			expectedBody:     `{"status":"success","data":[{"__name__":"acm_label_names","label_name":"cloud"},{"__name__":"acm_label_names","label_name":"vendor"}]}`,
+		},
+		{
+			name:             "should not handle GET to series endpoint with other metric",
+			method:           "GET",
+			path:             "/api/v1/series?match[]=kube_pod_info",
+			body:             nil,
+			expectedToHandle: false,
+		},
+		{
+			name:             "should handle GET to label values endpoint with correct metric",
+			method:           "GET",
+			path:             "/api/v1/label/label_name/values?match[]=" + config.GetRBACProxyLabelMetricName(),
+			body:             nil,
+			expectedToHandle: true,
+			expectedBody:     `{"status":"success","data":["cloud","vendor"]}`,
+		},
+		{
+			name:             "should not handle GET to label values endpoint with other metric",
+			method:           "GET",
+			path:             "/api/v1/label/label_name/values?match[]=kube_pod_info",
+			body:             nil,
+			expectedToHandle: false,
+		},
+		{
+			name:             "should not handle irrelevant path",
+			method:           "GET",
+			path:             "/api/v1/query",
+			body:             nil,
+			expectedToHandle: false,
+		},
+	}
 
-	t.Run("should not modify when body does not contain metric name", func(t *testing.T) {
-		body := io.NopCloser(strings.NewReader("match[]=kube_pod_info"))
-		req := httptest.NewRequest("POST", "/api/v1/series", body)
-		ok := p.shouldModifyAPISeriesResponse(resp, req)
-		assert.False(t, ok)
-	})
-}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			resp := NewFakeResponse(t)
+			req := httptest.NewRequest(tc.method, tc.path, tc.body)
+			handled := p.handleManagedClusterLabelQuery(resp, req)
+			assert.Equal(t, tc.expectedToHandle, handled)
 
-func TestModifyAPISeriesResponseSeriesGET(t *testing.T) {
-	p := newTestProxy(t, []string{"cloud", "vendor"})
-	resp := NewFakeResponse(t)
-
-	t.Run("should modify when query param contains metric name", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/api/v1/series?match[]="+config.GetRBACProxyLabelMetricName(), nil)
-		ok := p.shouldModifyAPISeriesResponse(resp, req)
-		assert.True(t, ok)
-	})
-
-	t.Run("should not modify when query param does not contain metric name", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/api/v1/series?match[]=kube_pod_info", nil)
-		ok := p.shouldModifyAPISeriesResponse(resp, req)
-		assert.False(t, ok)
-	})
-}
-
-func TestModifyAPISeriesResponseLabelsGET(t *testing.T) {
-	p := newTestProxy(t, []string{"cloud", "vendor"})
-	resp := NewFakeResponse(t)
-
-	t.Run("should modify when query param contains metric name", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/api/v1/label/label_name/values?match[]="+config.GetRBACProxyLabelMetricName(), nil)
-		ok := p.shouldModifyAPISeriesResponse(resp, req)
-		assert.True(t, ok)
-	})
-
-	t.Run("should not modify when query param does not contain metric name", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/api/v1/label/label_name/values?match[]=kube_pod_info", nil)
-		ok := p.shouldModifyAPISeriesResponse(resp, req)
-		assert.False(t, ok)
-	})
+			if tc.expectedToHandle {
+				assert.JSONEq(t, tc.expectedBody, string(resp.body))
+			}
+		})
+	}
 }
 
 func TestCreateQueryResponse(t *testing.T) {
