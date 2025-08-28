@@ -405,19 +405,19 @@ func injectNamespaces(queryValues url.Values, key string, userMetricsAccess map[
 		return "", err
 	}
 	commonNsAcrossQueryClusters := getCommonNamespacesAcrossClusters(queryClusters, userMetricsAccess)
-		allNamespaceAccess := len(commonNsAcrossQueryClusters) == 1 && commonNsAcrossQueryClusters[0] == "*"
+	allNamespaceAccess := len(commonNsAcrossQueryClusters) == 1 && commonNsAcrossQueryClusters[0] == "*"
 
-		klog.V(2).Infof("REWRITE QUERY Modified Query hasAccess to All namespaces: \n %v", allNamespaceAccess)
-		if !allNamespaceAccess {
-			modifiedQuery2, err := rewrite.InjectLabels(modifiedQuery, "namespace", commonNsAcrossQueryClusters)
-			if err != nil {
-				return modifiedQuery, err
-			}
-			klog.V(2).Infof("REWRITE QUERY Modified Query after injecting namespaces:  \n %v", modifiedQuery2)
-			return modifiedQuery2, nil
+	klog.V(2).Infof("REWRITE QUERY Modified Query hasAccess to All namespaces: \n %v", allNamespaceAccess)
+	if !allNamespaceAccess {
+		modifiedQuery2, err := rewrite.InjectLabels(modifiedQuery, "namespace", commonNsAcrossQueryClusters)
+		if err != nil {
+			return modifiedQuery, err
 		}
-		return modifiedQuery, nil
+		klog.V(2).Infof("REWRITE QUERY Modified Query after injecting namespaces:  \n %v", modifiedQuery2)
+		return modifiedQuery2, nil
 	}
+	return modifiedQuery, nil
+}
 
 func getUserClusterList(projectList []string, managedClusterNames map[string]string) []string {
 	clusterList := []string{}

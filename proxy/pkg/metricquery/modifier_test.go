@@ -207,6 +207,14 @@ func TestModifyMetricsQueryParams(t *testing.T) {
 				metricsAccess: map[string][]string{},
 			},
 		},
+		{
+			name:     "modify params with namespace filtering",
+			clusters: map[string]string{"c0": "c0"},
+			expected: `query=foo{cluster="c0",namespace="ns1"}`,
+			mockAccessReviewer: &MockAccessReviewer{
+				metricsAccess: map[string][]string{"c0": {"ns1"}},
+			},
+		},
 	}
 
 	upi := cache.NewUserProjectInfo(60*time.Second, 0)
