@@ -42,10 +42,10 @@ func UpdateObservabilityFromManagedCluster(opt TestOptions, enableObservability 
 		if err != nil {
 			return err
 		}
-		labels, ok := cluster.Object["metadata"].(map[string]interface{})["labels"].(map[string]interface{})
+		labels, ok := cluster.Object["metadata"].(map[string]any)["labels"].(map[string]any)
 		if !ok {
-			cluster.Object["metadata"].(map[string]interface{})["labels"] = map[string]interface{}{}
-			labels = cluster.Object["metadata"].(map[string]interface{})["labels"].(map[string]interface{})
+			cluster.Object["metadata"].(map[string]any)["labels"] = map[string]any{}
+			labels = cluster.Object["metadata"].(map[string]any)["labels"].(map[string]any)
 		}
 
 		if !enableObservability {
@@ -70,16 +70,16 @@ func ListManagedClusters(opt TestOptions) ([]ClustersInfo, error) {
 	}
 	clusters := make([]ClustersInfo, 0, len(objs.Items))
 	for _, obj := range objs.Items {
-		metadata := obj.Object["metadata"].(map[string]interface{})
+		metadata := obj.Object["metadata"].(map[string]any)
 		name := metadata["name"].(string)
 
-		status, ok := obj.Object["status"].(map[string]interface{})
+		status, ok := obj.Object["status"].(map[string]any)
 		if !ok {
 			// No status found, skip this cluster
 			continue
 		}
 
-		conditions, ok := status["conditions"].([]interface{})
+		conditions, ok := status["conditions"].([]any)
 		if !ok {
 			// No conditions found, skip this cluster
 			continue
@@ -87,7 +87,7 @@ func ListManagedClusters(opt TestOptions) ([]ClustersInfo, error) {
 
 		available := false
 		for _, condition := range conditions {
-			conditionMap, ok := condition.(map[string]interface{})
+			conditionMap, ok := condition.(map[string]any)
 			if !ok {
 				continue
 			}
@@ -101,7 +101,7 @@ func ListManagedClusters(opt TestOptions) ([]ClustersInfo, error) {
 		if available {
 			clusters = append(clusters, ClustersInfo{
 				Name:           name,
-				isLocalCluster: metadata["labels"].(map[string]interface{})["local-cluster"] == "true",
+				isLocalCluster: metadata["labels"].(map[string]any)["local-cluster"] == "true",
 			})
 		}
 	}

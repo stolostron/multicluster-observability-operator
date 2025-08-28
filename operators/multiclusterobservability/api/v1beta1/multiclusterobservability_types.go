@@ -126,10 +126,10 @@ type MultiClusterObservabilityStatus struct {
 // +operator-sdk:csv:customresourcedefinitions:displayName="MultiClusterObservability"
 type MultiClusterObservability struct {
 	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty"`
+	metav1.ObjectMeta `json:"metadata"`
 
-	Spec   MultiClusterObservabilitySpec   `json:"spec,omitempty"`
-	Status MultiClusterObservabilityStatus `json:"status,omitempty"`
+	Spec   MultiClusterObservabilitySpec   `json:"spec"`
+	Status MultiClusterObservabilityStatus `json:"status"`
 }
 
 // +kubebuilder:object:root=true
@@ -137,7 +137,7 @@ type MultiClusterObservability struct {
 // MultiClusterObservabilityList contains a list of MultiClusterObservability
 type MultiClusterObservabilityList struct {
 	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata,omitempty"`
+	metav1.ListMeta `json:"metadata"`
 	Items           []MultiClusterObservability `json:"items"`
 }
 

@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"math"
 	"reflect"
+	"slices"
 	"strconv"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -43,9 +44,9 @@ var _ = Describe("", func() {
 			panic(err.Error())
 		}
 
-		if _, adv := mcoRes.Object["spec"].(map[string]interface{})["advanced"]; adv {
-			if _, rec := mcoRes.Object["spec"].(map[string]interface{})["advanced"].(map[string]interface{})["retentionConfig"]; rec {
-				for k, v := range mcoRes.Object["spec"].(map[string]interface{})["advanced"].(map[string]interface{})["retentionConfig"].(map[string]interface{}) {
+		if _, adv := mcoRes.Object["spec"].(map[string]any)["advanced"]; adv {
+			if _, rec := mcoRes.Object["spec"].(map[string]any)["advanced"].(map[string]any)["retentionConfig"]; rec {
+				for k, v := range mcoRes.Object["spec"].(map[string]any)["advanced"].(map[string]any)["retentionConfig"].(map[string]any) {
 					switch k {
 					case "deleteDelay":
 						deleteDelay = reflect.ValueOf(v).String()
@@ -74,10 +75,8 @@ var _ = Describe("", func() {
 				return err
 			}
 			argList := (*compacts).Items[0].Spec.Template.Spec.Containers[0].Args
-			for _, arg := range argList {
-				if arg == "--delete-delay="+deleteDelay {
-					return nil
-				}
+			if slices.Contains(argList, "--delete-delay="+deleteDelay) {
+				return nil
 			}
 			return fmt.Errorf("Failed to check compact args: --delete-delay="+deleteDelay+". args is %v", argList)
 		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*5).Should(Succeed())
@@ -93,10 +92,8 @@ var _ = Describe("", func() {
 				return err
 			}
 			argList := (*stores).Items[0].Spec.Template.Spec.Containers[0].Args
-			for _, arg := range argList {
-				if arg == "--ignore-deletion-marks-delay="+ignoreDeletionMarksDelay {
-					return nil
-				}
+			if slices.Contains(argList, "--ignore-deletion-marks-delay="+ignoreDeletionMarksDelay) {
+				return nil
 			}
 			return fmt.Errorf(
 				"Failed to check store args: --ignore-deletion-marks-delay="+ignoreDeletionMarksDelay+". The args is: %v",
@@ -115,10 +112,8 @@ var _ = Describe("", func() {
 				return err
 			}
 			argList := (*receives).Items[0].Spec.Template.Spec.Containers[0].Args
-			for _, arg := range argList {
-				if arg == "--tsdb.retention="+retentionInLocal {
-					return nil
-				}
+			if slices.Contains(argList, "--tsdb.retention="+retentionInLocal) {
+				return nil
 			}
 			return fmt.Errorf(
 				"Failed to check receive args: --tsdb.retention="+retentionInLocal+". The args is: %v",
@@ -137,10 +132,8 @@ var _ = Describe("", func() {
 				return err
 			}
 			argList := (*rules).Items[0].Spec.Template.Spec.Containers[0].Args
-			for _, arg := range argList {
-				if arg == "--tsdb.retention="+retentionInLocal {
-					return nil
-				}
+			if slices.Contains(argList, "--tsdb.retention="+retentionInLocal) {
+				return nil
 			}
 			return fmt.Errorf(
 				"Failed to check rule args: --tsdb.retention="+retentionInLocal+". The args is: %v",
@@ -159,10 +152,8 @@ var _ = Describe("", func() {
 				return err
 			}
 			argList := (*rules).Items[0].Spec.Template.Spec.Containers[0].Args
-			for _, arg := range argList {
-				if arg == "--tsdb.block-duration="+blockDuration {
-					return nil
-				}
+			if slices.Contains(argList, "--tsdb.block-duration="+blockDuration) {
+				return nil
 			}
 			return fmt.Errorf(
 				"Failed to check rule args: --tsdb.block-duration="+blockDuration+". The args is: %v",

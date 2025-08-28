@@ -38,10 +38,10 @@ type ObservabilityAddonStatus struct {
 // +operator-sdk:csv:customresourcedefinitions:displayName="ObservabilityAddon"
 type ObservabilityAddon struct {
 	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty"`
+	metav1.ObjectMeta `json:"metadata"`
 
-	Spec   observabilityshared.ObservabilityAddonSpec `json:"spec,omitempty"`
-	Status ObservabilityAddonStatus                   `json:"status,omitempty"`
+	Spec   observabilityshared.ObservabilityAddonSpec `json:"spec"`
+	Status ObservabilityAddonStatus                   `json:"status"`
 }
 
 // +kubebuilder:object:root=true
@@ -49,7 +49,7 @@ type ObservabilityAddon struct {
 // ObservabilityAddonList contains a list of ObservabilityAddon
 type ObservabilityAddonList struct {
 	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata,omitempty"`
+	metav1.ListMeta `json:"metadata"`
 	Items           []ObservabilityAddon `json:"items"`
 }
 

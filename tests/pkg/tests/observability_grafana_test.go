@@ -65,10 +65,10 @@ var _ = Describe("", func() {
 			}
 
 			for _, obj := range objs.Items {
-				metadata := obj.Object["metadata"].(map[string]interface{})
-				labels := metadata["labels"].(map[string]interface{})
+				metadata := obj.Object["metadata"].(map[string]any)
+				labels := metadata["labels"].(map[string]any)
 				if labels["local-cluster"] == "true" {
-					labels := metadata["labels"].(map[string]interface{})
+					labels := metadata["labels"].(map[string]any)
 					labels["autolabel"] = "grafanacm"
 					klog.V(1).Infof("The cluster with new label: %s\n", labels)
 					_, updateErr := clientDynamic.Resource(utils.NewOCMManagedClustersGVR()).Update(context.TODO(), &obj, metav1.UpdateOptions{})

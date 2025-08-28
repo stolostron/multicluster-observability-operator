@@ -11,7 +11,7 @@ func PackMetrics(family *clientmodel.MetricFamily) (bool, error) {
 	j := len(metrics)
 	next := 0
 Found:
-	for i := 0; i < j; i++ {
+	for i := range j {
 		if metrics[i] != nil {
 			continue
 		}
@@ -42,7 +42,7 @@ func Pack(families []*clientmodel.MetricFamily) []*clientmodel.MetricFamily {
 	j := len(families)
 	next := 0
 Found:
-	for i := 0; i < j; i++ {
+	for i := range j {
 		if families[i] != nil && len(families[i].Metric) > 0 {
 			continue
 		}

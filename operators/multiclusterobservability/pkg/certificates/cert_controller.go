@@ -166,14 +166,14 @@ func needsRenew(s v1.Secret) bool {
 	return false
 }
 
-func onAdd(c client.Client) func(obj interface{}) {
-	return func(obj interface{}) {
+func onAdd(c client.Client) func(obj any) {
+	return func(obj any) {
 		restartPods(c, *obj.(*v1.Secret), false)
 	}
 }
 
-func onDelete(c client.Client) func(obj interface{}) {
-	return func(obj interface{}) {
+func onDelete(c client.Client) func(obj any) {
+	return func(obj any) {
 		s := *obj.(*v1.Secret)
 		if slices.Contains(caSecretNames, s.Name) {
 			mco := &mcov1beta2.MultiClusterObservability{}
@@ -218,8 +218,8 @@ func onDelete(c client.Client) func(obj interface{}) {
 	}
 }
 
-func onUpdate(c client.Client, ingressCtlCrdExists bool) func(oldObj, newObj interface{}) {
-	return func(oldObj, newObj interface{}) {
+func onUpdate(c client.Client, ingressCtlCrdExists bool) func(oldObj, newObj any) {
+	return func(oldObj, newObj any) {
 		oldS := *oldObj.(*v1.Secret)
 		newS := *newObj.(*v1.Secret)
 		if !reflect.DeepEqual(oldS.Data, newS.Data) {

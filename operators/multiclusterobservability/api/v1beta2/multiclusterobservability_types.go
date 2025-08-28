@@ -95,7 +95,7 @@ type PlatformLogsSpec struct {
 	//
 	// +optional
 	// +kubebuilder:validation:Optional
-	Collection PlatformLogsCollectionSpec `json:"collection,omitempty"`
+	Collection PlatformLogsCollectionSpec `json:"collection"`
 }
 
 // PlatformMetricsSpec defines the spec for the addon to collect, forward and store metrics
@@ -106,13 +106,13 @@ type PlatformMetricsSpec struct {
 	//
 	// +optional
 	// +kubebuilder:validation:Optional
-	Collection PlatformMetricsCollectionSpec `json:"collection,omitempty"`
+	Collection PlatformMetricsCollectionSpec `json:"collection"`
 	// UI defines the spec for the addon to enable UI through COO on the hub
 	//
 	//
 	// +optional
 	// +kubebuilder:validation:Optional
-	UI UIConfig `json:"ui,omitempty"`
+	UI UIConfig `json:"ui"`
 }
 
 // PlatformCapabilitiesSpec defines the observability capabilities managed by the addon
@@ -123,20 +123,20 @@ type PlatformCapabilitiesSpec struct {
 	//
 	// +optional
 	// +kubebuilder:validation:Optional
-	Logs PlatformLogsSpec `json:"logs,omitempty"`
+	Logs PlatformLogsSpec `json:"logs"`
 
 	// Metrics defines the configuration spec for collecting and storing metrics from
 	// platform components running on fleet managed clusters.
 	//
 	// +optional
 	// +kubebuilder:validation:Optional
-	Metrics PlatformMetricsSpec `json:"metrics,omitempty"`
+	Metrics PlatformMetricsSpec `json:"metrics"`
 
 	// Analytics provides the configuration for the analytics features
 	//
 	// +optional
 	// +kubebuilder:validation:Optional
-	Analytics PlatformAnalyticsSpec `json:"analytics,omitempty"`
+	Analytics PlatformAnalyticsSpec `json:"analytics"`
 }
 
 type PlatformAnalyticsSpec struct {
@@ -146,13 +146,13 @@ type PlatformAnalyticsSpec struct {
 	//
 	// +optional
 	// +kubebuilder:validation:Optional
-	IncidentDetection PlatformIncidentDetectionSpec `json:"incidentDetection,omitempty"`
+	IncidentDetection PlatformIncidentDetectionSpec `json:"incidentDetection"`
 
 	// Feature to enable namespace right-sizing recommendation capabilities for the Analytics.
 	//
 	// +optional
 	// +kubebuilder:validation:Optional
-	NamespaceRightSizingRecommendation PlatformNamespaceRightSizingRecommendationSpec `json:"namespaceRightSizingRecommendation,omitempty"`
+	NamespaceRightSizingRecommendation PlatformNamespaceRightSizingRecommendationSpec `json:"namespaceRightSizingRecommendation"`
 }
 
 type PlatformIncidentDetectionSpec struct {
@@ -195,7 +195,7 @@ type UserWorkloadLogsCollectionSpec struct {
 	//
 	// +optional
 	// +kubebuilder:validation:Optional
-	ClusterLogForwarder ClusterLogForwarderSpec `json:"clusterLogForwarder,omitempty"`
+	ClusterLogForwarder ClusterLogForwarderSpec `json:"clusterLogForwarder"`
 }
 
 // UserWorkloadLogsSpec defines the spec for the addon to collect,forward and store logs
@@ -216,7 +216,7 @@ type UserWorkloadLogsSpec struct {
 	//
 	// +optional
 	// +kubebuilder:validation:Optional
-	Collection UserWorkloadLogsCollectionSpec `json:"collection,omitempty"`
+	Collection UserWorkloadLogsCollectionSpec `json:"collection"`
 }
 
 // UserWorkloadMetricsSpec defines the spec for the addon to collect, forward and store metrics
@@ -227,7 +227,7 @@ type UserWorkloadMetricsSpec struct {
 	//
 	// +optional
 	// +kubebuilder:validation:Optional
-	Collection UserWorkloadMetricsCollectionSpec `json:"collection,omitempty"`
+	Collection UserWorkloadMetricsCollectionSpec `json:"collection"`
 }
 
 // OpenTelemetryCollectorSpec defines the spec for the addon to collect and forward observability signals
@@ -258,12 +258,12 @@ type OpenTelemetryCollectionSpec struct {
 	//
 	// +optional
 	// +kubebuilder:validation:Optional
-	Collector OpenTelemetryCollectorSpec `json:"collector,omitempty"`
+	Collector OpenTelemetryCollectorSpec `json:"collector"`
 	// Instrumentation defines the spec for the user workload observability collection using the Instrumentation resource.
 	//
 	// +optional
 	// +kubebuilder:validation:Optional
-	Instrumentation InstrumentationSpec `json:"instrumentation,omitempty"`
+	Instrumentation InstrumentationSpec `json:"instrumentation"`
 }
 
 // UserWorkloadTracesSpec defines the spec for the addon to collect, forward and store traces
@@ -274,7 +274,7 @@ type UserWorkloadTracesSpec struct {
 	//
 	// +optional
 	// +kubebuilder:validation:Optional
-	Collection OpenTelemetryCollectionSpec `json:"collection,omitempty"`
+	Collection OpenTelemetryCollectionSpec `json:"collection"`
 }
 
 // UserWorkloadCapabilitiesSpec defines the spec for user workload observability capabilities managed by the addon.
@@ -284,21 +284,21 @@ type UserWorkloadCapabilitiesSpec struct {
 	//
 	// +optional
 	// +kubebuilder:validation:Optional
-	Logs UserWorkloadLogsSpec `json:"logs,omitempty"`
+	Logs UserWorkloadLogsSpec `json:"logs"`
 
 	// Metrics defines the spec for the addon to collect, forward and store metrics
 	// from user workloads hosted on fleet managed clusters.
 	//
 	// +optional
 	// +kubebuilder:validation:Optional
-	Metrics UserWorkloadMetricsSpec `json:"metrics,omitempty"`
+	Metrics UserWorkloadMetricsSpec `json:"metrics"`
 
 	// Traces defines the spec for the addon to collect, forward and store traces
 	// from user workloads hosted on fleet managed clusters.
 	//
 	// +optional
 	// +kubebuilder:validation:Optional
-	Traces UserWorkloadTracesSpec `json:"traces,omitempty"`
+	Traces UserWorkloadTracesSpec `json:"traces"`
 }
 
 // CapabilitiesSpec defines the platform and user workload observabilities capabilities
@@ -592,17 +592,17 @@ type MultiClusterObservabilityStatus struct {
 // +operator-sdk:csv:customresourcedefinitions:displayName="MultiClusterObservability"
 type MultiClusterObservability struct {
 	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty"`
+	metav1.ObjectMeta `json:"metadata"`
 
-	Spec   MultiClusterObservabilitySpec   `json:"spec,omitempty"`
-	Status MultiClusterObservabilityStatus `json:"status,omitempty"`
+	Spec   MultiClusterObservabilitySpec   `json:"spec"`
+	Status MultiClusterObservabilityStatus `json:"status"`
 }
 
 // +kubebuilder:object:root=true
 // MultiClusterObservabilityList contains a list of MultiClusterObservability
 type MultiClusterObservabilityList struct {
 	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata,omitempty"`
+	metav1.ListMeta `json:"metadata"`
 	Items           []MultiClusterObservability `json:"items"`
 }
 
