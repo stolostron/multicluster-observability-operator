@@ -81,7 +81,7 @@ func (p *Proxy) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if ok := p.shouldModifyAPISeriesResponse(res, req); ok {
+	if ok := p.handleManagedClusterLabelQuery(res, req); ok {
 		return
 	}
 
@@ -151,30 +151,45 @@ func (p *Proxy) preCheckRequest(req *http.Request) error {
 	return nil
 }
 
-func (p *Proxy) shouldModifyAPISeriesResponse(res http.ResponseWriter, req *http.Request) bool {
-	// Different Grafana versions use different calls, we handle:
-	// GET/POST requests for series and label_name
-	if strings.HasSuffix(req.URL.Path, apiSeriesPath) ||
-		strings.HasSuffix(req.URL.Path, apiLabelNameValuesPath) {
-		if requestContainsRBACProxyLabelMetricName(req) {
-			managedLabelList := p.managedClusterInformer.GetManagedClusterLabelList()
-
-			query, err := createQueryResponse(managedLabelList.RegexLabelList, proxyconfig.GetRBACProxyLabelMetricName(), req.URL.Path)
-			if err != nil {
-				klog.Errorf("failed to create query response: %v", err)
-				// Let the request fall through to the proxy to return a proper error.
-				return false
-			}
-
-			res.Header().Set("Content-Type", "application/json")
-			_, err = res.Write(query)
-			if err != nil {
-				klog.Errorf("failed to write query response: %v", err)
-			}
-			return true // We've handled the request.
-		}
+// handleManagedClusterLabelQuery intercepts Grafana requests for the synthetic `acm_label_names` metric.
+// This metric is generated within the proxy and does not exist upstream. The function directly returns
+// a JSON response with the list of allowed label names from the informer's cache.
+// It returns true if the request was handled, false otherwise.
+func (p *Proxy) handleManagedClusterLabelQuery(res http.ResponseWriter, req *http.Request) bool {
+	// This handler is only for the series and label values endpoints.
+	isSeriesPath := strings.HasSuffix(req.URL.Path, apiSeriesPath)
+	isLabelValuesPath := strings.HasSuffix(req.URL.Path, apiLabelNameValuesPath)
+	if !isSeriesPath && !isLabelValuesPath {
+		return false
 	}
-	return false
+
+	isQuery, err := isACMLabelQuery(req)
+	if err != nil {
+		// An error here means we couldn't parse the request, so we can't handle it.
+		// Let it fall through to the proxy to return a proper error.
+		klog.Warningf("Could not determine if request is for ACM labels: %v", err)
+		return false
+	}
+
+	if !isQuery {
+		return false
+	}
+
+	// If we are here, it's a request for our synthetic metric. Handle it directly.
+	managedLabelList := p.managedClusterInformer.GetManagedClusterLabelList()
+	query, err := createQueryResponse(managedLabelList.RegexLabelList, proxyconfig.GetRBACProxyLabelMetricName(), req.URL.Path)
+	if err != nil {
+		klog.Errorf("failed to create query response: %v", err)
+		// Let the request fall through to the proxy to return a proper error.
+		return false
+	}
+
+	res.Header().Set("Content-Type", "application/json")
+	_, err = res.Write(query)
+	if err != nil {
+		klog.Errorf("failed to write query response: %v", err)
+	}
+	return true // We've handled the request.
 }
 
 // Structs for creating a JSON response for series queries.
@@ -226,22 +241,42 @@ func proxyRequest(r *http.Request) {
 	}
 }
 
-func requestContainsRBACProxyLabelMetricName(req *http.Request) bool {
+// isACMLabelQuery checks if an HTTP request is querying for the synthetic ACM label metric.
+// It robustly parses the `match[]` parameters from either the URL query (for GET)
+// or the request body (for POST) and checks for an exact match.
+func isACMLabelQuery(req *http.Request) (bool, error) {
+	var values url.Values
+	var err error
+
 	switch req.Method {
-	case http.MethodPost:
-		body, err := io.ReadAll(req.Body)
-		if err != nil {
-			klog.Errorf("failed to read body: %v", err)
-			req.Body = io.NopCloser(bytes.NewReader(body))
-			return false
-		}
-		// Replace the body so it can be read again downstream.
-		req.Body = io.NopCloser(bytes.NewReader(body))
-		req.ContentLength = int64(len(body))
-		return strings.Contains(string(body), proxyconfig.GetRBACProxyLabelMetricName())
 	case http.MethodGet:
-		return strings.Contains(req.URL.Query().Get("match[]"), proxyconfig.GetRBACProxyLabelMetricName())
+		values = req.URL.Query()
+	case http.MethodPost:
+		// We need to read the body to check the 'match[]' param.
+		// The body needs to be preserved so it can be read again by the proxy director.
+		body, readErr := io.ReadAll(req.Body)
+		if readErr != nil {
+			// Restore the body with an empty reader on error.
+			req.Body = io.NopCloser(bytes.NewReader([]byte{}))
+			return false, fmt.Errorf("failed to read request body: %w", readErr)
+		}
+		// Restore the body so it can be read again.
+		req.Body = io.NopCloser(bytes.NewReader(body))
+
+		values, err = url.ParseQuery(string(body))
+		if err != nil {
+			return false, fmt.Errorf("failed to parse post body: %w", err)
+		}
 	default:
-		return false
+		return false, nil
 	}
+
+	matchers := values["match[]"]
+	for _, matcher := range matchers {
+		if matcher == proxyconfig.GetRBACProxyLabelMetricName() {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
