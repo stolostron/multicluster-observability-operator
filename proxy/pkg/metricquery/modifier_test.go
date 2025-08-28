@@ -39,8 +39,8 @@ func (m *MockManagedClusterInformer) GetAllManagedClusterNames() map[string]stri
 func (m *MockManagedClusterInformer) GetAllManagedClusterLabelNames() map[string]bool {
 	return m.labels
 }
-func (m *MockManagedClusterInformer) GetManagedClusterLabelList() *proxyconfig.ManagedClusterLabelList {
-	return m.labelsConfig
+func (m *MockManagedClusterInformer) GetManagedClusterLabelList() []string {
+	return m.labelsConfig.RegexLabelList
 }
 
 func newHTTPRequest() *http.Request {
