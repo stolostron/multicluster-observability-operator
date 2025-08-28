@@ -2,6 +2,11 @@
 // Copyright Contributors to the Open Cluster Management project
 // Licensed under the Apache License 2.0
 
+// Package metricquery is responsible for modifying incoming Prometheus queries to enforce multicluster
+// Role-Based Access Control (RBAC). It inspects the user's permissions and injects the appropriate
+// `cluster` and `namespace` label matchers into the PromQL query before it is sent to the upstream
+// Observatorium API. This ensures that users can only access metrics from the clusters and namespaces
+// they are authorized to see.
 package metricquery
 
 import (
@@ -10,12 +15,9 @@ import (
 	"maps"
 	"net/http"
 	"net/url"
-	"regexp"
 	"slices"
 	"strings"
 
-	"github.com/prometheus/prometheus/model/labels"
-	"github.com/prometheus/prometheus/promql/parser"
 	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/cache"
 	proxyconfig "github.com/stolostron/multicluster-observability-operator/proxy/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/informer"
@@ -24,13 +26,13 @@ import (
 	"k8s.io/klog"
 )
 
-// AccessReviewer defines an interface for the GetMetricsAccess method.
+// AccessReviewer defines an interface for checking a user's access to metrics on managed clusters.
 type AccessReviewer interface {
 	// GetMetricsAccess returns a map where the keys are managed clusters and the values are slices of allowed namespaces for the user.
 	GetMetricsAccess(token string, extraArgs ...string) (map[string][]string, error)
 }
 
-// Modifier holds the parameters for modifying metrics query parameters.
+// Modifier holds the necessary components to modify a metrics query based on user permissions.
 type Modifier struct {
 	Req            *http.Request
 	ReqURL         string
@@ -39,19 +41,22 @@ type Modifier struct {
 	MCI            informer.ManagedClusterInformable
 }
 
-// Modify will modify request url params for query metrics.
+// Modify inspects the incoming HTTP request, determines the user's access rights,
+// and rewrites the PromQL query parameters (`query` and `match[]`) to enforce RBAC.
+// If the user has access to all clusters and namespaces, the query is not modified.
 func (mqm *Modifier) Modify() error {
 	userName := mqm.Req.Header.Get("X-Forwarded-User")
 	klog.V(1).Infof("user is %v", userName)
 	klog.V(1).Infof("URL is: %s", mqm.Req.URL)
 	klog.V(1).Infof("URL path is: %v", mqm.Req.URL.Path)
 	klog.V(1).Infof("URL RawQuery is: %v", mqm.Req.URL.RawQuery)
+
 	token := mqm.Req.Header.Get("X-Forwarded-Access-Token")
 	if token == "" {
 		return fmt.Errorf("failed to get token from http header")
 	}
 
-	userMetricsAccess, err := getUserMetricsACLs(userName, token, mqm.ReqURL, mqm.AccessReviewer, mqm.UPI, mqm.MCI.GetAllManagedClusterNames())
+	userMetricsAccess, err := mqm.getUserMetricsACLs(userName, token)
 	if err != nil {
 		return fmt.Errorf("failed to determine user's metrics access: %w", err)
 	}
@@ -76,15 +81,13 @@ func (mqm *Modifier) Modify() error {
 			klog.V(1).Info("no query values found in POST body, skipping rewrite")
 			return nil
 		}
-		queryValues, err = rewriteQuery(queryValues, userMetricsAccess, "query")
+
+		modifiedQueryValues, err := rewriteQueryValues(queryValues, userMetricsAccess)
 		if err != nil {
-			return fmt.Errorf("failed to rewrite 'query' parameter: %w", err)
+			return err
 		}
-		queryValues, err = rewriteQuery(queryValues, userMetricsAccess, "match[]")
-		if err != nil {
-			return fmt.Errorf("failed to rewrite 'match[]' parameter: %w", err)
-		}
-		rawQuery = queryValues.Encode()
+
+		rawQuery = modifiedQueryValues.Encode()
 		mqm.Req.Body = io.NopCloser(strings.NewReader(rawQuery))
 		mqm.Req.Header.Set("Content-Length", fmt.Sprint(len([]rune(rawQuery))))
 		mqm.Req.ContentLength = int64(len([]rune(rawQuery)))
@@ -94,15 +97,13 @@ func (mqm *Modifier) Modify() error {
 			klog.V(1).Info("no query values found in URL, skipping rewrite")
 			return nil
 		}
-		queryValues, err = rewriteQuery(queryValues, userMetricsAccess, "query")
+
+		modifiedQueryValues, err := rewriteQueryValues(queryValues, userMetricsAccess)
 		if err != nil {
-			return fmt.Errorf("failed to rewrite 'query' parameter: %w", err)
+			return err
 		}
-		queryValues, err = rewriteQuery(queryValues, userMetricsAccess, "match[]")
-		if err != nil {
-			return fmt.Errorf("failed to rewrite 'match[]' parameter: %w", err)
-		}
-		mqm.Req.URL.RawQuery = queryValues.Encode()
+
+		mqm.Req.URL.RawQuery = modifiedQueryValues.Encode()
 		rawQuery = mqm.Req.URL.RawQuery
 	}
 
@@ -113,21 +114,21 @@ func (mqm *Modifier) Modify() error {
 	return nil
 }
 
-func getUserMetricsACLs(userName string, token string, reqUrl string, accessReviewer AccessReviewer, upi *cache.UserProjectInfo, managedClusterNames map[string]string) (map[string][]string, error) {
+func (mqm *Modifier) getUserMetricsACLs(userName string, token string) (map[string][]string, error) {
 	// get all metricsaccess ACLs for the user
 	// i.e every  metrics/<ns> on managedcluster CR defined for the user
 	// in the returned map -  key is managedcluster name , value is namespaces accesible on that cluster
-	metricsAccess, arerr := accessReviewer.GetMetricsAccess(token)
-	if arerr != nil {
-		return nil, fmt.Errorf("failed to get Metrics Access from Access Reviewer: %w", arerr)
+	metricsAccess, err := mqm.AccessReviewer.GetMetricsAccess(token)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get Metrics Access from Access Reviewer: %w", err)
 	}
 
 	klog.V(1).Infof("user <%v>  metrics-access: %v", userName, metricsAccess)
+	managedClusterNames := mqm.MCI.GetAllManagedClusterNames()
 
 	//if metrics access contains a key  "*" then the corresponding
 	// value i.e acls  apply to all managedclusters
 	if allClusterAcls, found := metricsAccess["*"]; found {
-
 		for mcName := range managedClusterNames {
 			if clusterAcls, ok := metricsAccess[mcName]; ok {
 				for _, allClusterAclItem := range allClusterAcls {
@@ -147,23 +148,22 @@ func getUserMetricsACLs(userName string, token string, reqUrl string, accessRevi
 	// i.e access to managedcluster project\namespace means access to all namespaces on that managedcluster
 
 	//get all managedcluster project/namespace user has access to
-	projectList, ok := upi.GetUserProjectList(token)
+	projectList, ok := mqm.UPI.GetUserProjectList(token)
 	if !ok {
-		var err error
-		projectList, err = util.FetchUserProjectList(token, reqUrl)
+		projectList, err = util.FetchUserProjectList(token, mqm.ReqURL)
 		if err != nil {
 			// if we cannot fetch project list, we will just assume the user has no project access.
 			// The query will be modified based on the metrics access list only.
 			klog.Errorf("failed to fetch user project list: %v", err)
 			projectList = []string{}
 		}
-		upi.UpdateUserProject(userName, token, projectList)
+		mqm.UPI.UpdateUserProject(userName, token, projectList)
 		klog.V(1).Infof("projectList from api server = %v", projectList)
 	}
 	klog.V(1).Infof("cluster list: %v", managedClusterNames)
 	klog.V(1).Infof("user <%s> project list: %v", userName, projectList)
 
-	clusterList := getUserClusterList(projectList, managedClusterNames)
+	clusterList := filterProjectsToManagedClusters(projectList, managedClusterNames)
 
 	// combine the  user project access list to the metrics access list
 	// project access by default give access to all namespaces ( i.e * ) unless
@@ -182,7 +182,82 @@ func getUserMetricsACLs(userName string, token string, reqUrl string, accessRevi
 	return metricsAccess, nil
 }
 
-// canAccessAll check user have permission to access all clusters
+// filterProjectsToManagedClusters filters a list of projects to only include those that are also managed clusters.
+func filterProjectsToManagedClusters(projectList []string, managedClusterNames map[string]string) []string {
+	clusterList := []string{}
+	for _, projectName := range projectList {
+		if clusterName, ok := managedClusterNames[projectName]; ok {
+			clusterList = append(clusterList, clusterName)
+		}
+	}
+
+	return clusterList
+}
+
+// rewriteQueryValues extracts the `query` and `match[]` parameters from a url.Values object,
+// rewrites them to enforce RBAC, and returns the modified url.Values.
+func rewriteQueryValues(queryValues url.Values, userMetricsAccess map[string][]string) (url.Values, error) {
+	if originalQuery := queryValues.Get("query"); originalQuery != "" {
+		modifiedQuery, err := rewriteQuery(originalQuery, userMetricsAccess)
+		if err != nil {
+			return nil, fmt.Errorf("failed to rewrite 'query' parameter: %w", err)
+		}
+		queryValues.Set("query", modifiedQuery)
+	}
+
+	if originalMatches, ok := queryValues["match[]"]; ok {
+		modifiedMatches := make([]string, 0, len(originalMatches))
+		for _, originalMatch := range originalMatches {
+			modifiedMatch, err := rewriteQuery(originalMatch, userMetricsAccess)
+			if err != nil {
+				return nil, fmt.Errorf("failed to rewrite 'match[]' parameter: %w", err)
+			}
+			modifiedMatches = append(modifiedMatches, modifiedMatch)
+		}
+		queryValues["match[]"] = modifiedMatches
+	}
+	return queryValues, nil
+}
+
+// rewriteQuery is the core logic that injects `cluster` and `namespace` label matchers
+// into a PromQL query based on the user's permissions.
+func rewriteQuery(originalQuery string, userMetricsAccess map[string][]string) (string, error) {
+	klog.V(2).Infof("REWRITE QUERY: originalQuery is: %v\n", originalQuery)
+	if originalQuery == "" {
+		return "", nil
+	}
+
+	clusterList := slices.Sorted(maps.Keys(userMetricsAccess))
+	label := getLabel(originalQuery)
+	modifiedQuery, err := rewrite.InjectLabels(originalQuery, label, clusterList)
+	if err != nil {
+		return "", err
+	}
+
+	klog.V(2).Infof("REWRITE QUERY Modified Query after injecting %v: %v\n", label, modifiedQuery)
+
+	if !strings.Contains(originalQuery, proxyconfig.GetACMManagedClusterLabelNamesMetricName()) {
+		filter := NewNamespaceFilter(userMetricsAccess)
+		modifiedQuery, err = filter.AddNamespaceFilters(originalQuery, modifiedQuery)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	return modifiedQuery, nil
+}
+
+// getLabel determines which label to use for injecting cluster names.
+// For the `acm_managed_cluster_labels` metric, the cluster name is held in the `name` label.
+// For all other metrics, the standard `cluster` label is used. This function accounts for that difference.
+func getLabel(originalQuery string) string {
+	if strings.Contains(originalQuery, proxyconfig.GetACMManagedClusterLabelNamesMetricName()) {
+		return "name"
+	}
+	return "cluster"
+}
+
+// canAccessAll checks if a user has permission to access all namespaces ("*") in all managed clusters.
 func canAccessAll(clusterNamespaces map[string][]string, managedClusterNames map[string]string) bool {
 	if len(managedClusterNames) == 0 && len(clusterNamespaces) == 0 {
 		return false
@@ -203,231 +278,4 @@ func canAccessAll(clusterNamespaces map[string][]string, managedClusterNames map
 	}
 
 	return true
-}
-
-func getCommonNamespacesAcrossClusters(clusters []string, metricsAccess map[string][]string) []string {
-	klog.V(2).Infof("common namespaces across clusters: %v  in metrics access map: %v", clusters, metricsAccess)
-
-	//make a smaller map of metricsaccess for just the requested clusters
-	reqClustersMetricsAccess := make(map[string][]string)
-	if len(clusters) == 0 {
-		reqClustersMetricsAccess = metricsAccess
-	} else {
-		for _, cluster := range clusters {
-			reqClustersMetricsAccess[cluster] = metricsAccess[cluster]
-		}
-	}
-	klog.V(2).Infof("requested clusters metrics access map: %v", reqClustersMetricsAccess)
-
-	//make a count of how many times each unique namespace occurs across clusters
-	//if the count of a ns == le(clusters), it means it exists across all clusters
-
-	namespaceCounts := make(map[string]int)
-	allAccessCount := 0
-
-	for _, namespaces := range reqClustersMetricsAccess {
-
-		if len(namespaces) == 0 || slices.Contains(namespaces, "*") {
-			allAccessCount++
-		} else {
-			for _, namespace := range namespaces {
-				count, ok := namespaceCounts[namespace]
-				if !ok {
-					namespaceCounts[namespace] = 1
-				} else {
-					namespaceCounts[namespace] = count + 1
-				}
-			}
-		}
-	}
-
-	klog.V(2).Infof("allAccessCount  : %v", allAccessCount)
-	klog.V(2).Infof("Namespaces Count  : %v", namespaceCounts)
-
-	commonNamespaces := []string{}
-
-	if allAccessCount == len(reqClustersMetricsAccess) {
-		commonNamespaces = append(commonNamespaces, "*")
-	} else {
-		for ns, count := range namespaceCounts {
-			if (count + allAccessCount) == len(reqClustersMetricsAccess) {
-				commonNamespaces = append(commonNamespaces, ns)
-			}
-		}
-	}
-
-	klog.V(2).Infof("common namespaces across clusters: %v   : %v", clusters, commonNamespaces)
-	return commonNamespaces
-}
-
-// clusterVisitor is a promql.Visitor that extracts the cluster names from a PromQL query.
-type clusterVisitor struct {
-	userMetricsAccess map[string][]string
-	queryClusters     map[string]struct{}
-}
-
-// Visit implements the promql.Visitor interface.
-func (v *clusterVisitor) Visit(node parser.Node, path []parser.Node) (parser.Visitor, error) {
-	if vs, ok := node.(*parser.VectorSelector); ok {
-		for _, matcher := range vs.LabelMatchers {
-			if matcher.Name == "cluster" {
-				// We found a cluster matcher. Now we need to apply it to the list of clusters
-				// the user has access to.
-				accessibleClusters := make([]string, 0, len(v.userMetricsAccess))
-				for cluster := range v.userMetricsAccess {
-					accessibleClusters = append(accessibleClusters, cluster)
-				}
-
-				// This is the pattern from the query (e.g., "dev-.*" or "prod-us-east-1")
-				pattern := matcher.Value
-
-				var matchedClusters []string
-				switch matcher.Type {
-				case labels.MatchEqual:
-					// Simple equality check
-					if _, exists := v.userMetricsAccess[pattern]; exists {
-						matchedClusters = []string{pattern}
-					}
-				case labels.MatchNotEqual:
-					for _, cluster := range accessibleClusters {
-						if cluster != pattern {
-							matchedClusters = append(matchedClusters, cluster)
-						}
-					}
-				case labels.MatchRegexp:
-					reg, err := regexp.Compile(pattern)
-					if err != nil {
-						// Invalid regex in query, skip this matcher
-						continue
-					}
-					for _, cluster := range accessibleClusters {
-						if reg.MatchString(cluster) {
-							matchedClusters = append(matchedClusters, cluster)
-						}
-					}
-				case labels.MatchNotRegexp:
-					reg, err := regexp.Compile(pattern)
-					if err != nil {
-						// Invalid regex in query, skip this matcher
-						continue
-					}
-					for _, cluster := range accessibleClusters {
-						if !reg.MatchString(cluster) {
-							matchedClusters = append(matchedClusters, cluster)
-						}
-					}
-				}
-
-				for _, c := range matchedClusters {
-					v.queryClusters[c] = struct{}{}
-				}
-			}
-		}
-	}
-	return v, nil
-}
-
-// read clusters in the user's query
-func getClustersInQuery(queryValues url.Values, key string, userMetricsAccess map[string][]string) ([]string, error) {
-	query := queryValues.Get(key)
-	if query == "" {
-		return []string{}, nil
-	}
-
-	expr, err := parser.ParseExpr(query)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse promql query <%s>: %w", query, err)
-	}
-
-	// Collect all unique cluster names found in the query's label matchers.
-	visitor := &clusterVisitor{
-		userMetricsAccess: userMetricsAccess,
-		queryClusters:     make(map[string]struct{}),
-	}
-
-	// Walk the AST
-	err = parser.Walk(visitor, expr, nil)
-	if err != nil {
-		return nil, fmt.Errorf("error walking promql ast: %w", err)
-	}
-
-	return slices.Collect(maps.Keys(visitor.queryClusters)), nil
-}
-
-func rewriteQuery(queryValues url.Values, userMetricsAccess map[string][]string, key string) (url.Values, error) {
-	klog.V(2).Infof("REWRITE QUERY: queryValues: %v, userMetricsAccess: %v, key: %v\n", queryValues, userMetricsAccess, key)
-	originalQuery := queryValues.Get(key)
-	klog.V(2).Infof("REWRITE QUERY: key is: %v, originalQuery is: %v\n", key, originalQuery)
-	if len(originalQuery) == 0 {
-		return queryValues, nil
-	}
-
-	clusterList := getClusterList(userMetricsAccess)
-	label := getLabel(originalQuery)
-	modifiedQuery, err := rewrite.InjectLabels(originalQuery, label, clusterList)
-	if err != nil {
-		return nil, err
-	}
-
-	klog.V(2).Infof("REWRITE QUERY Modified Query after injecting %v: %v\n", label, modifiedQuery)
-
-	if !strings.Contains(originalQuery, proxyconfig.GetACMManagedClusterLabelNamesMetricName()) {
-		modifiedQuery, err = injectNamespaces(queryValues, key, userMetricsAccess, modifiedQuery)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	queryValues.Del(key)
-	queryValues.Add(key, modifiedQuery)
-	return queryValues, nil
-}
-
-func getClusterList(userMetricsAccess map[string][]string) []string {
-	clusterList := make([]string, 0, len(userMetricsAccess))
-	for clusterName := range userMetricsAccess {
-		clusterList = append(clusterList, clusterName)
-	}
-	slices.Sort(clusterList)
-	return clusterList
-}
-
-func getLabel(originalQuery string) string {
-	if strings.Contains(originalQuery, proxyconfig.GetACMManagedClusterLabelNamesMetricName()) {
-		return "name"
-	}
-	return "cluster"
-}
-
-func injectNamespaces(queryValues url.Values, key string, userMetricsAccess map[string][]string, modifiedQuery string) (string, error) {
-	queryClusters, err := getClustersInQuery(queryValues, key, userMetricsAccess)
-	if err != nil {
-		return "", err
-	}
-	commonNsAcrossQueryClusters := getCommonNamespacesAcrossClusters(queryClusters, userMetricsAccess)
-	allNamespaceAccess := len(commonNsAcrossQueryClusters) == 1 && commonNsAcrossQueryClusters[0] == "*"
-
-	klog.V(2).Infof("REWRITE QUERY Modified Query hasAccess to All namespaces: \n %v", allNamespaceAccess)
-	if !allNamespaceAccess {
-		modifiedQuery2, err := rewrite.InjectLabels(modifiedQuery, "namespace", commonNsAcrossQueryClusters)
-		if err != nil {
-			return modifiedQuery, err
-		}
-		klog.V(2).Infof("REWRITE QUERY Modified Query after injecting namespaces:  \n %v", modifiedQuery2)
-		return modifiedQuery2, nil
-	}
-	return modifiedQuery, nil
-}
-
-func getUserClusterList(projectList []string, managedClusterNames map[string]string) []string {
-	clusterList := []string{}
-
-	for _, projectName := range projectList {
-		clusterName, ok := managedClusterNames[projectName]
-		if ok {
-			clusterList = append(clusterList, clusterName)
-		}
-	}
-
-	return clusterList
 }
