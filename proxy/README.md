@@ -6,7 +6,7 @@ The `rbac-query-proxy` is an HTTP reverse proxy that sits between Grafana and th
 
 ### Synthetic Metric for Grafana Filtering
 
-The proxy introduces a synthetic metric named `acm_managed_cluster_labels`. This metric is not stored in Prometheus but is generated on-the-fly by the proxy. Its labels are dynamically populated from two sources:
+The proxy introduces a synthetic metric named `acm_label_names`. This metric is not stored in Prometheus but is generated on-the-fly by the proxy. Its labels are dynamically populated from two sources:
 
 1.  The `observability-managed-cluster-label-allowlist` ConfigMap in the `open-cluster-management-addon-observability` namespace.
 2.  The labels present on the `ManagedCluster` custom resources.

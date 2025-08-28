@@ -52,44 +52,102 @@ func newHTTPRequest() *http.Request {
 
 func TestRewriteQuery(t *testing.T) {
 	testCases := []struct {
-		name        string
-		urlValue    url.Values
-		clusterList []string
-		key         string
-		expected    string
+		name              string
+		query             string
+		userMetricsAccess map[string][]string
+		expected          string
+		expectedError     bool
 	}{
 		{
-			name:        "should not rewrite empty values",
-			urlValue:    map[string][]string{},
-			clusterList: []string{"c1", "c2"},
-			key:         "key",
-			expected:    "",
+			name:              "simple query with two clusters",
+			query:             "up",
+			userMetricsAccess: map[string][]string{"c1": {"*"}, "c2": {"*"}},
+			expected:          `up{cluster=~"c1|c2"}`,
+			expectedError:     false,
 		},
 		{
-			name:        "should rewrite simple query",
-			urlValue:    map[string][]string{"key": {"value"}},
-			clusterList: []string{"c1", "c2"},
-			key:         "key",
-			expected:    `value{cluster=~"c1|c2",namespace=""}`,
+			name:              "query with namespace filtering",
+			query:             "up",
+			userMetricsAccess: map[string][]string{"c1": {"ns1"}},
+			expected:          `up{cluster="c1",namespace="ns1"}`,
+			expectedError:     false,
 		},
 		{
-			name:        "should handle empty cluster list",
-			urlValue:    map[string][]string{"key": {"value"}},
-			clusterList: []string{},
-			key:         "key",
-			expected:    `value{cluster=""}`,
+			name:              "empty user access",
+			query:             "up",
+			userMetricsAccess: map[string][]string{},
+			expected:          `up{cluster=""}`,
+			expectedError:     false,
+		},
+		{
+			name:              "empty query",
+			query:             "",
+			userMetricsAccess: map[string][]string{"c1": {"*"}},
+			expected:          "",
+			expectedError:     false,
+		},
+		{
+			name:              "query for acm_managed_cluster_labels should use 'name' label",
+			query:             proxyconfig.GetACMManagedClusterLabelNamesMetricName(),
+			userMetricsAccess: map[string][]string{"c1": {"*"}, "c2": {"*"}},
+			expected:          `acm_managed_cluster_labels{name=~"c1|c2"}`,
+			expectedError:     false,
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			clusterMap := make(map[string][]string, len(tc.clusterList))
-			for _, cluster := range tc.clusterList {
-				clusterMap[cluster] = []string{cluster}
+			modifiedQuery, err := rewriteQuery(tc.query, tc.userMetricsAccess)
+			if tc.expectedError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tc.expected, modifiedQuery)
 			}
-			output, err := rewriteQuery(tc.urlValue, clusterMap, tc.key)
-			assert.NoError(t, err)
-			assert.Equal(t, tc.expected, output.Get(tc.key))
+		})
+	}
+}
+
+func TestRewriteQueryValues(t *testing.T) {
+	testCases := []struct {
+		name              string
+		values            url.Values
+		userMetricsAccess map[string][]string
+		expectedValues    url.Values
+		expectedError     bool
+	}{
+		{
+			name:              "rewrite query and match[]",
+			values:            url.Values{"query": {"up"}, "match[]": {"up", "down"}},
+			userMetricsAccess: map[string][]string{"c1": {"*"}},
+			expectedValues:    url.Values{"query": {`up{cluster="c1"}`}, "match[]": {`up{cluster="c1"}`, `down{cluster="c1"}`}},
+			expectedError:     false,
+		},
+		{
+			name:              "rewrite only query",
+			values:            url.Values{"query": {"up"}},
+			userMetricsAccess: map[string][]string{"c1": {"ns1"}},
+			expectedValues:    url.Values{"query": {`up{cluster="c1",namespace="ns1"}`}},
+			expectedError:     false,
+		},
+		{
+			name:              "no relevant params",
+			values:            url.Values{"other": {"value"}},
+			userMetricsAccess: map[string][]string{"c1": {"*"}},
+			expectedValues:    url.Values{"other": {"value"}},
+			expectedError:     false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			modifiedValues, err := rewriteQueryValues(tc.values, tc.userMetricsAccess)
+			if tc.expectedError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tc.expectedValues, modifiedValues)
+			}
 		})
 	}
 }
@@ -147,7 +205,7 @@ func TestCanAccessAll(t *testing.T) {
 	}
 }
 
-func TestGetUserClusterList(t *testing.T) {
+func TestFilterProjectsToManagedClusters(t *testing.T) {
 	testCases := []struct {
 		name        string
 		projectList []string
@@ -162,8 +220,84 @@ func TestGetUserClusterList(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			output := getUserClusterList(tc.projectList, tc.clusterList)
+			output := filterProjectsToManagedClusters(tc.projectList, tc.clusterList)
 			assert.Len(t, output, tc.expected)
+		})
+	}
+}
+
+func TestGetUserMetricsACLs(t *testing.T) {
+	testCases := []struct {
+		name               string
+		managedClusters    map[string]string
+		metricsAccess      map[string][]string
+		cachedProjectList  []string
+		expectedACLs       map[string][]string
+	}{
+		{
+			name:              "project access only (backward compatibility)",
+			managedClusters:   map[string]string{"c1": "c1", "c2": "c2"},
+			metricsAccess:     map[string][]string{},
+			cachedProjectList: []string{"c1"},
+			expectedACLs:      map[string][]string{"c1": {"*"}},
+		},
+		{
+			name:              "metrics ACLs only",
+			managedClusters:   map[string]string{"c1": "c1", "c2": "c2"},
+			metricsAccess:     map[string][]string{"c2": {"ns2"}},
+			cachedProjectList: []string{},
+			expectedACLs:      map[string][]string{"c2": {"ns2"}},
+		},
+		{
+			name:              "specific metrics ACLs override project access",
+			managedClusters:   map[string]string{"c1": "c1", "c2": "c2"},
+			metricsAccess:     map[string][]string{"c1": {"ns1"}},
+			cachedProjectList: []string{"c1"},
+			expectedACLs:      map[string][]string{"c1": {"ns1"}},
+		},
+		{
+			name:              "wildcard cluster metrics ACL expansion",
+			managedClusters:   map[string]string{"c1": "c1", "c2": "c2"},
+			metricsAccess:     map[string][]string{"*": {"ns-all"}},
+			cachedProjectList: []string{},
+			expectedACLs:      map[string][]string{"c1": {"ns-all"}, "c2": {"ns-all"}},
+		},
+		{
+			name:              "wildcard and specific ACLs are merged",
+			managedClusters:   map[string]string{"c1": "c1", "c2": "c2"},
+			metricsAccess:     map[string][]string{"*": {"ns-all"}, "c1": {"ns1"}},
+			cachedProjectList: []string{},
+			expectedACLs:      map[string][]string{"c1": {"ns1", "ns-all"}, "c2": {"ns-all"}},
+		},
+		{
+			name:              "no access",
+			managedClusters:   map[string]string{"c1": "c1", "c2": "c2"},
+			metricsAccess:     map[string][]string{},
+			cachedProjectList: []string{},
+			expectedACLs:      map[string][]string{},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			userName := "test-user"
+			token := "test-token"
+
+			mockAccessReviewer := &MockAccessReviewer{metricsAccess: tc.metricsAccess}
+			mockMCI := &MockManagedClusterInformer{clusters: tc.managedClusters}
+			upi := cache.NewUserProjectInfo(time.Minute, time.Minute)
+			defer upi.Stop()
+			upi.UpdateUserProject(userName, token, tc.cachedProjectList)
+
+			modifier := &Modifier{
+				AccessReviewer: mockAccessReviewer,
+				UPI:            upi,
+				MCI:            mockMCI,
+			}
+
+			acls, err := modifier.getUserMetricsACLs(userName, token)
+			assert.NoError(t, err)
+			assert.Equal(t, tc.expectedACLs, acls)
 		})
 	}
 }
@@ -239,79 +373,3 @@ func TestModifyMetricsQueryParams(t *testing.T) {
 	}
 }
 
-func TestGetClustersInQuery(t *testing.T) {
-	userMetricsAccess := map[string][]string{
-		"cluster1":      {"namespace1", "namespace2"},
-		"cluster2":      {"namespace3"},
-		"dev-cluster":   {"dev-ns"},
-		"prod-cluster":  {"prod-ns"},
-		"test-cluster1": {"test-ns1"},
-		"test-cluster2": {"test-ns2"},
-	}
-
-	testCases := []struct {
-		name          string
-		query         string
-		expected      []string
-		expectedError bool
-	}{
-		{
-			name:          "query with no cluster label",
-			query:         `up`,
-			expected:      []string{},
-			expectedError: false,
-		},
-		{
-			name:          "query with cluster label",
-			query:         `up{cluster="cluster1"}`,
-			expected:      []string{"cluster1"},
-			expectedError: false,
-		},
-		{
-			name:          "query with regex cluster label",
-			query:         `up{cluster=~"test-cluster.*"}`,
-			expected:      []string{"test-cluster1", "test-cluster2"},
-			expectedError: false,
-		},
-		{
-			name:          "query with multiple cluster matchers",
-			query:         `up{cluster=~"dev-.*|prod-.*"}`,
-			expected:      []string{"dev-cluster", "prod-cluster"},
-			expectedError: false,
-		},
-		{
-			name:          "query with negative matcher",
-			query:         `up{cluster!="cluster1"}`,
-			expected:      []string{"cluster2", "dev-cluster", "prod-cluster", "test-cluster1", "test-cluster2"},
-			expectedError: false,
-		},
-		{
-			name:          "query with negative regex matcher",
-			query:         `up{cluster!~"test-.*"}`,
-			expected:      []string{"cluster1", "cluster2", "dev-cluster", "prod-cluster"},
-			expectedError: false,
-		},
-		{
-			name:          "invalid promql query",
-			query:         `up{`,
-			expected:      nil,
-			expectedError: true,
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			queryValues := url.Values{}
-			queryValues.Set("query", tc.query)
-
-			clusters, err := getClustersInQuery(queryValues, "query", userMetricsAccess)
-
-			if tc.expectedError {
-				assert.Error(t, err)
-			} else {
-				assert.NoError(t, err)
-				assert.ElementsMatch(t, tc.expected, clusters)
-			}
-		})
-	}
-}
