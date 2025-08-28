@@ -7,13 +7,14 @@ package informer
 import (
 	"context"
 	"fmt"
+	"maps"
 	"reflect"
 	"regexp"
+	"slices"
 	"sort"
 	"sync"
 	"time"
 
-	"github.com/go-co-op/gocron"
 	proxyconfig "github.com/stolostron/multicluster-observability-operator/proxy/pkg/config"
 	"gopkg.in/yaml.v2"
 	v1 "k8s.io/api/core/v1"
@@ -27,16 +28,14 @@ import (
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
 )
 
-const (
-	resyncTag = "managed-cluster-label-allowlist-resync"
-)
+var promLabelRegex = regexp.MustCompile(`[^\w]+`)
 
 // ManagedClusterInformable defines the interface for accessing cached managed cluster data.
 type ManagedClusterInformable interface {
 	Run()
 	GetAllManagedClusterNames() map[string]string
 	GetAllManagedClusterLabelNames() map[string]bool
-	GetManagedClusterLabelList() *proxyconfig.ManagedClusterLabelList
+	GetManagedClusterLabelList() []string
 }
 
 // ManagedClusterInformer caches managed cluster data and manages the label allowlist.
@@ -50,9 +49,18 @@ type ManagedClusterInformer struct {
 	allManagedClusterNamesMtx      sync.RWMutex
 	allManagedClusterLabelNames    map[string]bool
 	allManagedClusterLabelNamesMtx sync.RWMutex
-	managedLabelList               *proxyconfig.ManagedClusterLabelList
-	syncLabelList                  *proxyconfig.ManagedClusterLabelList
-	scheduler                      *gocron.Scheduler
+	// managedLabelList is the in-memory representation of the historical label list.
+	// It accumulates all labels ever seen on any managed cluster and is the source of truth for the informer.
+	// It is never cleared, ensuring that even if a label is removed from all clusters,
+	// it remains available for historical queries in Grafana.
+	managedLabelList *proxyconfig.ManagedClusterLabelList
+	// syncLabelList is a temporary snapshot of the label list as read from the allowlist ConfigMap.
+	// It is used for comparison against the in-memory managedLabelList to detect changes
+	// (either new labels discovered by the informer or manual user edits to the ConfigMap)
+	// that need to be persisted.
+	syncLabelList *proxyconfig.ManagedClusterLabelList
+	resyncStopCh  chan struct{}
+	resyncMtx     sync.Mutex
 }
 
 // NewManagedClusterInformer creates a new ManagedClusterInformer.
@@ -66,7 +74,6 @@ func NewManagedClusterInformer(ctx context.Context, clusterClient clusterclients
 		allManagedClusterLabelNames: make(map[string]bool),
 		managedLabelList:            &proxyconfig.ManagedClusterLabelList{},
 		syncLabelList:               &proxyconfig.ManagedClusterLabelList{},
-		scheduler:                   gocron.NewScheduler(time.UTC),
 	}
 }
 
@@ -81,19 +88,19 @@ func (i *ManagedClusterInformer) Run() {
 func (i *ManagedClusterInformer) GetAllManagedClusterNames() map[string]string {
 	i.allManagedClusterNamesMtx.RLock()
 	defer i.allManagedClusterNamesMtx.RUnlock()
-	return i.allManagedClusterNames
+	return maps.Clone(i.allManagedClusterNames)
 }
 
 // GetAllManagedClusterLabelNames returns all managed cluster labels.
 func (i *ManagedClusterInformer) GetAllManagedClusterLabelNames() map[string]bool {
 	i.allManagedClusterLabelNamesMtx.RLock()
 	defer i.allManagedClusterLabelNamesMtx.RUnlock()
-	return i.allManagedClusterLabelNames
+	return maps.Clone(i.allManagedClusterLabelNames)
 }
 
 // GetManagedClusterLabelList returns the managed cluster label list.
-func (i *ManagedClusterInformer) GetManagedClusterLabelList() *proxyconfig.ManagedClusterLabelList {
-	return i.managedLabelList
+func (i *ManagedClusterInformer) GetManagedClusterLabelList() []string {
+	return slices.Clone(i.managedLabelList.RegexLabelList)
 }
 
 func (i *ManagedClusterInformer) watchManagedCluster() {
@@ -129,9 +136,7 @@ func (i *ManagedClusterInformer) getManagedClusterEventHandler() cache.ResourceE
 			i.allManagedClusterNamesMtx.Unlock()
 
 			clusterLabels := obj.(*clusterv1.ManagedCluster).Labels
-			if ok := i.updateManagedLabelList(clusterLabels); ok {
-				i.addManagedClusterLabelNames()
-			}
+			i.updateManagedLabelList(clusterLabels)
 		},
 
 		DeleteFunc: func(obj any) {
@@ -158,19 +163,17 @@ func (i *ManagedClusterInformer) getManagedClusterEventHandler() cache.ResourceE
 			i.allManagedClusterNames[clusterName] = clusterName
 			i.allManagedClusterNamesMtx.Unlock()
 
-			clusterLabels := newCluster.Labels
-			if ok := i.updateManagedLabelList(clusterLabels); ok {
-				i.addManagedClusterLabelNames()
-			}
+			i.updateManagedLabelList(newCluster.Labels)
 		},
 	}
 }
 
 // updateManagedLabelList updated the managedLabelList by adding missing label keys from the clusterLabels parameter.
-// Returns true is the list has been updated
-func (i *ManagedClusterInformer) updateManagedLabelList(clusterLabels map[string]string) bool {
+// This function only adds new labels and never removes them. This ensures that once a label is observed,
+// it is permanently retained in the list, allowing users to query historical data for that label
+// even after it has been removed from all ManagedClusters.
+func (i *ManagedClusterInformer) updateManagedLabelList(clusterLabels map[string]string) {
 	updated := false
-
 	for key := range clusterLabels {
 		if !slice.ContainsString(i.managedLabelList.LabelList, key, nil) {
 			i.managedLabelList.LabelList = append(i.managedLabelList.LabelList, key)
@@ -178,7 +181,9 @@ func (i *ManagedClusterInformer) updateManagedLabelList(clusterLabels map[string
 		}
 	}
 
-	return updated
+	if updated {
+		i.addManagedClusterLabelNames()
+	}
 }
 
 func (i *ManagedClusterInformer) addManagedClusterLabelNames() {
@@ -197,20 +202,7 @@ func (i *ManagedClusterInformer) addManagedClusterLabelNames() {
 		}
 	}
 
-	i.managedLabelList.RegexLabelList = []string{}
-	regex := regexp.MustCompile(`[^\w]+`)
-
-	i.allManagedClusterLabelNamesMtx.RLock()
-	defer i.allManagedClusterLabelNamesMtx.RUnlock()
-	for key, isEnabled := range i.allManagedClusterLabelNames {
-		if isEnabled {
-			i.managedLabelList.RegexLabelList = append(
-				i.managedLabelList.RegexLabelList,
-				regex.ReplaceAllString(key, "_"),
-			)
-		}
-	}
-	i.syncLabelList.RegexLabelList = i.managedLabelList.RegexLabelList
+	i.updateRegexLabelList()
 }
 
 func (i *ManagedClusterInformer) watchManagedClusterLabelAllowList() {
@@ -235,12 +227,7 @@ func (i *ManagedClusterInformer) getManagedClusterLabelAllowListEventHandler() c
 		AddFunc: func(obj any) {
 			if obj.(*v1.ConfigMap).Name == proxyconfig.ManagedClusterLabelAllowListConfigMapName {
 				klog.Infof("added configmap: %s", proxyconfig.ManagedClusterLabelAllowListConfigMapName)
-
-				if ok := i.scheduler != nil; ok {
-					if ok := i.scheduler.IsRunning(); !ok {
-						go i.scheduleManagedClusterLabelAllowlistResync()
-					}
-				}
+				go i.scheduleManagedClusterLabelAllowlistResync()
 			}
 		},
 
@@ -272,34 +259,52 @@ func (i *ManagedClusterInformer) getManagedClusterLabelAllowListEventHandler() c
 	}
 }
 
-// ScheduleManagedClusterLabelAllowlistResync schedules the managed cluster label allowlist resync.
+// scheduleManagedClusterLabelAllowlistResync schedules a periodic task to reconcile the in-memory label list
+// with the persisted version in the `observability-managed-cluster-label-allowlist` ConfigMap.
+// This is critical for two reasons:
+//  1. Persistence: It saves newly discovered labels from the in-memory `managedLabelList` into the
+//     ConfigMap. This ensures that if the pod restarts, the historical list of labels is not lost.
+//  2. User Configuration: It detects and applies changes made directly to the ConfigMap by users,
+//     such as adding a label to the `ignore_labels` list.
 func (i *ManagedClusterInformer) scheduleManagedClusterLabelAllowlistResync() {
-	if i.scheduler == nil {
-		i.scheduler = gocron.NewScheduler(time.UTC)
+	i.resyncMtx.Lock()
+	if i.resyncStopCh != nil {
+		i.resyncMtx.Unlock()
+		return
 	}
-
-	_, err := i.scheduler.Tag(resyncTag).Every(30).Second().Do(i.resyncManagedClusterLabelAllowList)
-	if err != nil {
-		klog.Errorf("failed to schedule job for managedcluster allowlist resync: %v", err)
-	}
-
-	klog.Info("starting scheduler for managedcluster allowlist resync")
-	i.scheduler.StartAsync()
+	i.resyncStopCh = make(chan struct{})
+	i.resyncMtx.Unlock()
 
 	go func() {
-		<-i.ctx.Done()
-		klog.Info("context cancelled, stopping scheduler for managedcluster allowlist resync")
-		i.scheduler.Stop()
+		klog.Info("starting scheduler for managedcluster allowlist resync")
+		ticker := time.NewTicker(30 * time.Second)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ticker.C:
+				if err := i.resyncManagedClusterLabelAllowList(); err != nil {
+					klog.Errorf("failed to resync managedcluster allowlist: %v", err)
+				}
+			case <-i.resyncStopCh:
+				return
+			case <-i.ctx.Done():
+				klog.Info("context cancelled, stopping scheduler for managedcluster allowlist resync")
+				return
+			}
+		}
 	}()
 }
 
 // StopScheduleManagedClusterLabelAllowlistResync stops the managed cluster label allowlist resync.
 func (i *ManagedClusterInformer) stopScheduleManagedClusterLabelAllowlistResync() {
-	klog.Info("stopping scheduler for managedcluster allowlist resync")
-	i.scheduler.Stop()
+	i.resyncMtx.Lock()
+	defer i.resyncMtx.Unlock()
 
-	if ok := i.scheduler.IsRunning(); !ok {
-		i.scheduler = gocron.NewScheduler(time.UTC)
+	if i.resyncStopCh != nil {
+		klog.Info("stopping scheduler for managedcluster allowlist resync")
+		close(i.resyncStopCh)
+		i.resyncStopCh = nil
 	}
 }
 
@@ -343,8 +348,10 @@ func (i *ManagedClusterInformer) resyncManagedClusterLabelAllowList() error {
 		i.ignoreManagedClusterLabelNames()
 
 		*i.syncLabelList = *i.managedLabelList
-		_ = marshalLabelListToConfigMap(found,
-			proxyconfig.ManagedClusterLabelAllowListConfigMapKey, i.syncLabelList)
+		if err := marshalLabelListToConfigMap(found,
+			proxyconfig.ManagedClusterLabelAllowListConfigMapKey, i.syncLabelList); err != nil {
+			return err
+		}
 
 		_, err := i.kubeClient.CoreV1().ConfigMaps(proxyconfig.ManagedClusterLabelAllowListNamespace).Update(
 			i.ctx,
@@ -371,18 +378,28 @@ func (i *ManagedClusterInformer) ignoreManagedClusterLabelNames() {
 		i.allManagedClusterLabelNames[key] = false
 	}
 
+	i.updateRegexLabelList()
+}
+
+// updateRegexLabelList sanitizes the managed cluster label keys to be compatible with PromQL and updates the regex label list.
+func (i *ManagedClusterInformer) updateRegexLabelList() {
+	// The RegexLabelList holds a sanitized version of the Kubernetes label keys, making them
+	// compatible with the Prometheus query language (PromQL). Kubernetes labels can contain characters
+	// like '.', '-', and '/' which are invalid in PromQL label names. This code replaces all
+	// non-alphanumeric characters with underscores to create a valid PromQL-compatible label name.
+	// For example, `cluster.open-cluster-management.io/clusterset` becomes
+	// `cluster_open_cluster_management_io_clusterset`.
 	i.managedLabelList.RegexLabelList = []string{}
-	regex := regexp.MustCompile(`[^\w]+`)
 	i.allManagedClusterLabelNamesMtx.RLock()
-	defer i.allManagedClusterLabelNamesMtx.RUnlock()
 	for key, isEnabled := range i.allManagedClusterLabelNames {
 		if isEnabled {
 			i.managedLabelList.RegexLabelList = append(
 				i.managedLabelList.RegexLabelList,
-				regex.ReplaceAllString(key, "_"),
+				promLabelRegex.ReplaceAllString(key, "_"),
 			)
 		}
 	}
+	i.allManagedClusterLabelNamesMtx.RUnlock()
 	i.syncLabelList.RegexLabelList = i.managedLabelList.RegexLabelList
 }
 

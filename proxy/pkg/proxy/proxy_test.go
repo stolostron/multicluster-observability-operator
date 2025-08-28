@@ -40,11 +40,11 @@ func (m *MockManagedClusterInformer) GetAllManagedClusterLabelNames() map[string
 	}
 	return m.labels
 }
-func (m *MockManagedClusterInformer) GetManagedClusterLabelList() *config.ManagedClusterLabelList {
+func (m *MockManagedClusterInformer) GetManagedClusterLabelList() []string {
 	if m.labelsConfig == nil {
-		return &config.ManagedClusterLabelList{}
+		return []string{}
 	}
-	return m.labelsConfig
+	return m.labelsConfig.RegexLabelList
 }
 
 // MockAccessReviewer is a mock implementation of the AccessReviewer interface.

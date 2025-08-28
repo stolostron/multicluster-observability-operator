@@ -115,9 +115,15 @@ func TestGetManagedClusterLabelAllowListEventHandler(t *testing.T) {
 
 	eventHandler := informer.getManagedClusterLabelAllowListEventHandler()
 
+	isSchedulerRunning := func() bool {
+		informer.resyncMtx.Lock()
+		defer informer.resyncMtx.Unlock()
+		return informer.resyncStopCh != nil
+	}
+
 	// Test AddFunc
 	eventHandler.AddFunc(cm)
-	assert.Eventually(t, func() bool { return informer.scheduler.IsRunning() }, time.Second*5, time.Millisecond*100)
+	assert.Eventually(t, isSchedulerRunning, time.Second*5, time.Millisecond*100)
 	informer.stopScheduleManagedClusterLabelAllowlistResync()
 
 	// Test UpdateFunc
@@ -139,9 +145,9 @@ ignore_list:
 
 	// Test DeleteFunc
 	informer.scheduleManagedClusterLabelAllowlistResync()
-	assert.Eventually(t, func() bool { return informer.scheduler.IsRunning() }, time.Second*5, time.Millisecond*100)
+	assert.Eventually(t, isSchedulerRunning, time.Second*5, time.Millisecond*100)
 	eventHandler.DeleteFunc(cm)
-	assert.False(t, informer.scheduler.IsRunning())
+	assert.Eventually(t, func() bool { return !isSchedulerRunning() }, time.Second*5, time.Millisecond*100)
 }
 
 func TestStopScheduleManagedClusterLabelAllowlistResync(t *testing.T) {
@@ -151,15 +157,21 @@ func TestStopScheduleManagedClusterLabelAllowlistResync(t *testing.T) {
 		fakekube.NewSimpleClientset(),
 	)
 
-	_, err := informer.scheduler.Every(1).Seconds().Do(func() {})
-	assert.NoError(t, err)
+	informer.scheduleManagedClusterLabelAllowlistResync()
 
-	informer.scheduler.StartAsync()
-	time.Sleep(2 * time.Second)
-	assert.True(t, informer.scheduler.IsRunning())
+	assert.Eventually(t, func() bool {
+		informer.resyncMtx.Lock()
+		defer informer.resyncMtx.Unlock()
+		return informer.resyncStopCh != nil
+	}, time.Second, 10*time.Millisecond)
 
 	informer.stopScheduleManagedClusterLabelAllowlistResync()
-	assert.False(t, informer.scheduler.IsRunning())
+
+	assert.Eventually(t, func() bool {
+		informer.resyncMtx.Lock()
+		defer informer.resyncMtx.Unlock()
+		return informer.resyncStopCh == nil
+	}, time.Second, 10*time.Millisecond)
 }
 
 func TestScheduleManagedClusterLabelAllowlistResync(t *testing.T) {
@@ -176,19 +188,23 @@ func TestScheduleManagedClusterLabelAllowlistResync(t *testing.T) {
 	informer.managedLabelList.LabelList = []string{"cloud", "environment"}
 	informer.updateAllManagedClusterLabelNames()
 
+	isSchedulerRunning := func() bool {
+		informer.resyncMtx.Lock()
+		defer informer.resyncMtx.Unlock()
+		return informer.resyncStopCh != nil
+	}
+
 	informer.scheduleManagedClusterLabelAllowlistResync()
-	time.Sleep(2 * time.Second)
-	assert.True(t, informer.scheduler.IsRunning())
+	assert.Eventually(t, isSchedulerRunning, time.Second, 10*time.Millisecond)
 
 	informer.stopScheduleManagedClusterLabelAllowlistResync()
-	assert.False(t, informer.scheduler.IsRunning())
+	assert.Eventually(t, func() bool { return !isSchedulerRunning() }, time.Second, 10*time.Millisecond)
 
 	informer.scheduleManagedClusterLabelAllowlistResync()
-	time.Sleep(2 * time.Second)
-	assert.True(t, informer.scheduler.IsRunning())
+	assert.Eventually(t, isSchedulerRunning, time.Second, 10*time.Millisecond)
 
 	informer.stopScheduleManagedClusterLabelAllowlistResync()
-	assert.False(t, informer.scheduler.IsRunning())
+	assert.Eventually(t, func() bool { return !isSchedulerRunning() }, time.Second, 10*time.Millisecond)
 }
 
 func TestResyncManagedClusterLabelAllowList(t *testing.T) {
@@ -336,4 +352,54 @@ func TestGetAllManagedClusterLabelNames(t *testing.T) {
 	assert.True(t, labels["name"])
 	assert.False(t, labels["vendor"])
 	assert.False(t, labels["environment"])
+}
+
+func TestManagedClusterUpdateHandlerRetainsLabels(t *testing.T) {
+	cluster1 := &clusterv1.ManagedCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "cluster1",
+			Labels: map[string]string{
+				"name":   "cluster1",
+				"vendor": "RedHat",
+				"cloud":  "AWS",
+			},
+		},
+	}
+
+	informer := NewManagedClusterInformer(
+		context.Background(),
+		fakecluster.NewSimpleClientset(),
+		fakekube.NewSimpleClientset(),
+	)
+
+	eventHandler := informer.getManagedClusterEventHandler()
+
+	// 1. Add the initial cluster
+	eventHandler.AddFunc(cluster1)
+	assert.True(t, informer.GetAllManagedClusterLabelNames()["name"], "Label 'name' should be present after add")
+	assert.True(t, informer.GetAllManagedClusterLabelNames()["vendor"], "Label 'vendor' should be present after add")
+	assert.True(t, informer.GetAllManagedClusterLabelNames()["cloud"], "Label 'cloud' should be present after add")
+
+	// 2. Update the cluster: remove 'cloud', add 'region'
+	cluster1Updated := &clusterv1.ManagedCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "cluster1",
+			Labels: map[string]string{
+				"name":   "cluster1",
+				"vendor": "RedHat",
+				"region": "us-east-1",
+			},
+		},
+	}
+	eventHandler.UpdateFunc(cluster1, cluster1Updated)
+
+	// 3. Assert that the new state is correct
+	labels := informer.GetAllManagedClusterLabelNames()
+	assert.True(t, labels["name"], "Label 'name' should remain after update")
+	assert.True(t, labels["vendor"], "Label 'vendor' should remain after update")
+	assert.True(t, labels["region"], "Label 'region' should be added after update")
+
+	// This is the most critical assertion: the label removed during the update ('cloud')
+	// must be retained for historical querying.
+	assert.True(t, labels["cloud"], "Label 'cloud' should be retained even after being removed from the cluster")
 }
