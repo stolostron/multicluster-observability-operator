@@ -64,8 +64,8 @@ func NewManagedClusterInformer(ctx context.Context, clusterClient clusterclients
 		kubeClient:                  kubeClient,
 		allManagedClusterNames:      make(map[string]string),
 		allManagedClusterLabelNames: make(map[string]bool),
-		managedLabelList:            proxyconfig.GetManagedClusterLabelList(),
-		syncLabelList:               proxyconfig.GetSyncLabelList(),
+		managedLabelList:            &proxyconfig.ManagedClusterLabelList{},
+		syncLabelList:               &proxyconfig.ManagedClusterLabelList{},
 		scheduler:                   gocron.NewScheduler(time.UTC),
 	}
 }
@@ -233,8 +233,8 @@ func (i *ManagedClusterInformer) watchManagedClusterLabelAllowList() {
 func (i *ManagedClusterInformer) getManagedClusterLabelAllowListEventHandler() cache.ResourceEventHandlerFuncs {
 	return cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj any) {
-			if obj.(*v1.ConfigMap).Name == proxyconfig.GetManagedClusterLabelAllowListConfigMapName() {
-				klog.Infof("added configmap: %s", proxyconfig.GetManagedClusterLabelAllowListConfigMapName())
+			if obj.(*v1.ConfigMap).Name == proxyconfig.ManagedClusterLabelAllowListConfigMapName {
+				klog.Infof("added configmap: %s", proxyconfig.ManagedClusterLabelAllowListConfigMapName)
 
 				if ok := i.scheduler != nil; ok {
 					if ok := i.scheduler.IsRunning(); !ok {
@@ -245,18 +245,18 @@ func (i *ManagedClusterInformer) getManagedClusterLabelAllowListEventHandler() c
 		},
 
 		DeleteFunc: func(obj any) {
-			if obj.(*v1.ConfigMap).Name == proxyconfig.GetManagedClusterLabelAllowListConfigMapName() {
-				klog.Warningf("deleted configmap: %s", proxyconfig.GetManagedClusterLabelAllowListConfigMapName())
+			if obj.(*v1.ConfigMap).Name == proxyconfig.ManagedClusterLabelAllowListConfigMapName {
+				klog.Warningf("deleted configmap: %s", proxyconfig.ManagedClusterLabelAllowListConfigMapName)
 				i.stopScheduleManagedClusterLabelAllowlistResync()
 			}
 		},
 
 		UpdateFunc: func(oldObj, newObj any) {
-			if newObj.(*v1.ConfigMap).Name == proxyconfig.GetManagedClusterLabelAllowListConfigMapName() {
-				klog.Infof("updated configmap: %s", proxyconfig.GetManagedClusterLabelAllowListConfigMapName())
+			if newObj.(*v1.ConfigMap).Name == proxyconfig.ManagedClusterLabelAllowListConfigMapName {
+				klog.Infof("updated configmap: %s", proxyconfig.ManagedClusterLabelAllowListConfigMapName)
 
 				_ = unmarshalDataToManagedClusterLabelList(newObj.(*v1.ConfigMap).Data,
-					proxyconfig.GetManagedClusterLabelAllowListConfigMapKey(), i.syncLabelList)
+					proxyconfig.ManagedClusterLabelAllowListConfigMapKey, i.syncLabelList)
 
 				sortManagedLabelList(i.managedLabelList)
 				sortManagedLabelList(i.syncLabelList)
@@ -312,7 +312,7 @@ func (i *ManagedClusterInformer) resyncManagedClusterLabelAllowList() error {
 	}
 
 	err = unmarshalDataToManagedClusterLabelList(found.Data,
-		proxyconfig.GetManagedClusterLabelAllowListConfigMapKey(), i.syncLabelList)
+		proxyconfig.ManagedClusterLabelAllowListConfigMapKey, i.syncLabelList)
 
 	if err != nil {
 		return err
@@ -324,7 +324,7 @@ func (i *ManagedClusterInformer) resyncManagedClusterLabelAllowList() error {
 	syncIgnoreList := []string{}
 
 	for _, label := range i.syncLabelList.IgnoreList {
-		if slice.ContainsString(proxyconfig.GetRequiredLabelList(), label, nil) {
+		if slice.ContainsString(proxyconfig.RequiredLabelList, label, nil) {
 			klog.Infof("detected required managedcluster label in ignorelist. resetting label: %s", label)
 			continue
 		}
@@ -337,14 +337,14 @@ func (i *ManagedClusterInformer) resyncManagedClusterLabelAllowList() error {
 
 	if ok := reflect.DeepEqual(i.syncLabelList, i.managedLabelList); !ok {
 		klog.Infof("resyncing required for managedcluster label allowlist: %v",
-			proxyconfig.GetManagedClusterLabelAllowListConfigMapName())
+			proxyconfig.ManagedClusterLabelAllowListConfigMapName)
 
 		i.managedLabelList.IgnoreList = i.syncLabelList.IgnoreList
 		i.ignoreManagedClusterLabelNames()
 
 		*i.syncLabelList = *i.managedLabelList
 		_ = marshalLabelListToConfigMap(found,
-			proxyconfig.GetManagedClusterLabelAllowListConfigMapKey(), i.syncLabelList)
+			proxyconfig.ManagedClusterLabelAllowListConfigMapKey, i.syncLabelList)
 
 		_, err := i.kubeClient.CoreV1().ConfigMaps(proxyconfig.ManagedClusterLabelAllowListNamespace).Update(
 			i.ctx,

@@ -24,16 +24,16 @@ func TestMarshalLabelListToConfigMap(t *testing.T) {
 	managedClusterLabelAllowlist := proxyconfig.CreateManagedClusterLabelAllowListCM("ns1").Data
 	managedClusterLabelList := &proxyconfig.ManagedClusterLabelList{}
 	err := unmarshalDataToManagedClusterLabelList(managedClusterLabelAllowlist,
-		proxyconfig.GetManagedClusterLabelAllowListConfigMapKey(), managedClusterLabelList)
+		proxyconfig.ManagedClusterLabelAllowListConfigMapKey, managedClusterLabelList)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, managedClusterLabelList.LabelList)
 	assert.NotEmpty(t, managedClusterLabelList.IgnoreList)
 
 	cm := &corev1.ConfigMap{}
-	err = marshalLabelListToConfigMap(cm, proxyconfig.GetManagedClusterLabelAllowListConfigMapKey(),
+	err = marshalLabelListToConfigMap(cm, proxyconfig.ManagedClusterLabelAllowListConfigMapKey,
 		managedClusterLabelList)
 	assert.NoError(t, err)
-	assert.NotEmpty(t, cm.Data[proxyconfig.GetManagedClusterLabelAllowListConfigMapKey()])
+	assert.NotEmpty(t, cm.Data[proxyconfig.ManagedClusterLabelAllowListConfigMapKey])
 }
 
 func TestGetManagedClusterEventHandler(t *testing.T) {
@@ -122,7 +122,7 @@ func TestGetManagedClusterLabelAllowListEventHandler(t *testing.T) {
 
 	// Test UpdateFunc
 	updatedCm := cm.DeepCopy()
-	updatedCm.Data[proxyconfig.GetManagedClusterLabelAllowListConfigMapKey()] = `
+	updatedCm.Data[proxyconfig.ManagedClusterLabelAllowListConfigMapKey] = `
 label_list:
   - cloud
   - vendor
@@ -213,7 +213,7 @@ func TestResyncManagedClusterLabelAllowList(t *testing.T) {
 
 	syncedList := &proxyconfig.ManagedClusterLabelList{}
 	err = unmarshalDataToManagedClusterLabelList(updatedCm.Data,
-		proxyconfig.GetManagedClusterLabelAllowListConfigMapKey(), syncedList)
+		proxyconfig.ManagedClusterLabelAllowListConfigMapKey, syncedList)
 	assert.NoError(t, err)
 
 	sort.Strings(syncedList.LabelList)

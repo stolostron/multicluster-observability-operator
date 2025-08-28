@@ -177,7 +177,7 @@ func (p *Proxy) handleManagedClusterLabelQuery(res http.ResponseWriter, req *htt
 
 	// If we are here, it's a request for our synthetic metric. Handle it directly.
 	managedLabelList := p.managedClusterInformer.GetManagedClusterLabelList()
-	query, err := createQueryResponse(managedLabelList.RegexLabelList, proxyconfig.GetRBACProxyLabelMetricName(), req.URL.Path)
+	query, err := createQueryResponse(managedLabelList.RegexLabelList, proxyconfig.RBACProxyLabelMetricName, req.URL.Path)
 	if err != nil {
 		klog.Errorf("failed to create query response: %v", err)
 		// Let the request fall through to the proxy to return a proper error.
@@ -273,7 +273,7 @@ func isACMLabelQuery(req *http.Request) (bool, error) {
 
 	matchers := values["match[]"]
 	for _, matcher := range matchers {
-		if matcher == proxyconfig.GetRBACProxyLabelMetricName() {
+		if matcher == proxyconfig.RBACProxyLabelMetricName {
 			return true, nil
 		}
 	}
