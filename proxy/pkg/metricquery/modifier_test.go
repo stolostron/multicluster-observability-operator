@@ -88,7 +88,7 @@ func TestRewriteQuery(t *testing.T) {
 		},
 		{
 			name:              "query for acm_managed_cluster_labels should use 'name' label",
-			query:             proxyconfig.GetACMManagedClusterLabelNamesMetricName(),
+			query:             proxyconfig.ACMManagedClusterLabelNamesMetricName,
 			userMetricsAccess: map[string][]string{"c1": {"*"}, "c2": {"*"}},
 			expected:          `acm_managed_cluster_labels{name=~"c1|c2"}`,
 			expectedError:     false,
@@ -228,11 +228,11 @@ func TestFilterProjectsToManagedClusters(t *testing.T) {
 
 func TestGetUserMetricsACLs(t *testing.T) {
 	testCases := []struct {
-		name               string
-		managedClusters    map[string]string
-		metricsAccess      map[string][]string
-		cachedProjectList  []string
-		expectedACLs       map[string][]string
+		name              string
+		managedClusters   map[string]string
+		metricsAccess     map[string][]string
+		cachedProjectList []string
+		expectedACLs      map[string][]string
 	}{
 		{
 			name:              "project access only (backward compatibility)",
@@ -372,4 +372,3 @@ func TestModifyMetricsQueryParams(t *testing.T) {
 		})
 	}
 }
-
