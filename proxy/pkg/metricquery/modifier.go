@@ -236,7 +236,7 @@ func rewriteQuery(originalQuery string, userMetricsAccess map[string][]string) (
 
 	klog.V(2).Infof("REWRITE QUERY Modified Query after injecting %v: %v\n", label, modifiedQuery)
 
-	if !strings.Contains(originalQuery, proxyconfig.GetACMManagedClusterLabelNamesMetricName()) {
+	if !strings.Contains(originalQuery, proxyconfig.ACMManagedClusterLabelNamesMetricName) {
 		filter := NewNamespaceFilter(userMetricsAccess)
 		modifiedQuery, err = filter.AddNamespaceFilters(originalQuery, modifiedQuery)
 		if err != nil {
@@ -251,7 +251,7 @@ func rewriteQuery(originalQuery string, userMetricsAccess map[string][]string) (
 // For the `acm_managed_cluster_labels` metric, the cluster name is held in the `name` label.
 // For all other metrics, the standard `cluster` label is used. This function accounts for that difference.
 func getLabel(originalQuery string) string {
-	if strings.Contains(originalQuery, proxyconfig.GetACMManagedClusterLabelNamesMetricName()) {
+	if strings.Contains(originalQuery, proxyconfig.ACMManagedClusterLabelNamesMetricName) {
 		return "name"
 	}
 	return "cluster"

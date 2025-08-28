@@ -276,7 +276,7 @@ func TestHandleManagedClusterLabelQuery(t *testing.T) {
 			name:             "should handle POST to series endpoint with correct metric",
 			method:           "POST",
 			path:             "/api/v1/series",
-			body:             strings.NewReader("match[]=" + config.GetRBACProxyLabelMetricName()),
+			body:             strings.NewReader("match[]=" + config.RBACProxyLabelMetricName),
 			expectedToHandle: true,
 			expectedBody:     `{"status":"success","data":[{"__name__":"acm_label_names","label_name":"cloud"},{"__name__":"acm_label_names","label_name":"vendor"}]}`,
 		},
@@ -290,7 +290,7 @@ func TestHandleManagedClusterLabelQuery(t *testing.T) {
 		{
 			name:             "should handle GET to series endpoint with correct metric",
 			method:           "GET",
-			path:             "/api/v1/series?match[]=" + config.GetRBACProxyLabelMetricName(),
+			path:             "/api/v1/series?match[]=" + config.RBACProxyLabelMetricName,
 			body:             nil,
 			expectedToHandle: true,
 			expectedBody:     `{"status":"success","data":[{"__name__":"acm_label_names","label_name":"cloud"},{"__name__":"acm_label_names","label_name":"vendor"}]}`,
@@ -305,7 +305,7 @@ func TestHandleManagedClusterLabelQuery(t *testing.T) {
 		{
 			name:             "should handle GET to label values endpoint with correct metric",
 			method:           "GET",
-			path:             "/api/v1/label/label_name/values?match[]=" + config.GetRBACProxyLabelMetricName(),
+			path:             "/api/v1/label/label_name/values?match[]=" + config.RBACProxyLabelMetricName,
 			body:             nil,
 			expectedToHandle: true,
 			expectedBody:     `{"status":"success","data":["cloud","vendor"]}`,
