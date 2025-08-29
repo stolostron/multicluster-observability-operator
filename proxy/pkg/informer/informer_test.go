@@ -22,7 +22,7 @@ import (
 
 func TestMarshalLabelListToConfigMap(t *testing.T) {
 	managedClusterLabelAllowlist := proxyconfig.CreateManagedClusterLabelAllowListCM("ns1").Data
-	managedClusterLabelList := &proxyconfig.ManagedClusterLabelList{}
+	managedClusterLabelList := &ManagedClusterLabelList{}
 	err := unmarshalDataToManagedClusterLabelList(managedClusterLabelAllowlist,
 		proxyconfig.ManagedClusterLabelAllowListConfigMapKey, managedClusterLabelList)
 	assert.NoError(t, err)
@@ -98,11 +98,11 @@ func TestGetManagedClusterLabelAllowListEventHandler(t *testing.T) {
 		kubeClient,
 	)
 	// Isolate test from global singletons
-	informer.managedLabelList = &proxyconfig.ManagedClusterLabelList{
+	informer.managedLabelList = &ManagedClusterLabelList{
 		LabelList:  []string{},
 		IgnoreList: []string{},
 	}
-	informer.syncLabelList = &proxyconfig.ManagedClusterLabelList{
+	informer.syncLabelList = &ManagedClusterLabelList{
 		LabelList:  []string{},
 		IgnoreList: []string{},
 	}
@@ -227,7 +227,7 @@ func TestResyncManagedClusterLabelAllowList(t *testing.T) {
 	updatedCm, err := kubeClient.CoreV1().ConfigMaps(namespace).Get(context.Background(), cm.Name, metav1.GetOptions{})
 	assert.NoError(t, err)
 
-	syncedList := &proxyconfig.ManagedClusterLabelList{}
+	syncedList := &ManagedClusterLabelList{}
 	err = unmarshalDataToManagedClusterLabelList(updatedCm.Data,
 		proxyconfig.ManagedClusterLabelAllowListConfigMapKey, syncedList)
 	assert.NoError(t, err)
@@ -284,7 +284,7 @@ func TestUpdateAllManagedClusterLabelNames(t *testing.T) {
 			)
 
 			informer.allManagedClusterLabelNames = tt.initialLabels
-			informer.managedLabelList = &proxyconfig.ManagedClusterLabelList{
+			informer.managedLabelList = &ManagedClusterLabelList{
 				LabelList:  tt.labelList,
 				IgnoreList: tt.ignoreList,
 			}
@@ -311,7 +311,7 @@ func TestUpdateAllManagedClusterLabelNames(t *testing.T) {
 func TestSortManagedLabelList(t *testing.T) {
 	sortManagedLabelList(nil)
 
-	managedLabelList := &proxyconfig.ManagedClusterLabelList{
+	managedLabelList := &ManagedClusterLabelList{
 		IgnoreList:     []string{"c", "a", "b"},
 		LabelList:      []string{"z", "y", "x"},
 		RegexLabelList: []string{"foo", "bar"},
@@ -331,7 +331,7 @@ func TestGetAllManagedClusterLabelNames(t *testing.T) {
 		fakekube.NewSimpleClientset(),
 	)
 
-	informer.managedLabelList = &proxyconfig.ManagedClusterLabelList{
+	informer.managedLabelList = &ManagedClusterLabelList{
 		IgnoreList: []string{"clusterID", "name", "environment"},
 		LabelList:  []string{"cloud", "vendor"},
 	}

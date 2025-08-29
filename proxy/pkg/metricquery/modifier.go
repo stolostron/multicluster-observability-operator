@@ -228,13 +228,12 @@ func rewriteQuery(originalQuery string, userMetricsAccess map[string][]string) (
 	}
 
 	clusterList := slices.Sorted(maps.Keys(userMetricsAccess))
-	label := getLabel(originalQuery)
-	modifiedQuery, err := rewrite.InjectLabels(originalQuery, label, clusterList)
+	modifiedQuery, err := rewrite.InjectClusterLabels(originalQuery, clusterList)
 	if err != nil {
 		return "", err
 	}
 
-	klog.V(2).Infof("REWRITE QUERY Modified Query after injecting %v: %v\n", label, modifiedQuery)
+	klog.V(2).Infof("REWRITE QUERY Modified Query after injecting cluster labels: %v\n", modifiedQuery)
 
 	if !strings.Contains(originalQuery, proxyconfig.ACMManagedClusterLabelNamesMetricName) {
 		filter := NewNamespaceFilter(userMetricsAccess)
@@ -245,16 +244,6 @@ func rewriteQuery(originalQuery string, userMetricsAccess map[string][]string) (
 	}
 
 	return modifiedQuery, nil
-}
-
-// getLabel determines which label to use for injecting cluster names.
-// For the `acm_managed_cluster_labels` metric, the cluster name is held in the `name` label.
-// For all other metrics, the standard `cluster` label is used. This function accounts for that difference.
-func getLabel(originalQuery string) string {
-	if strings.Contains(originalQuery, proxyconfig.ACMManagedClusterLabelNamesMetricName) {
-		return "name"
-	}
-	return "cluster"
 }
 
 // canAccessAll checks if a user has permission to access all namespaces ("*") in all managed clusters.

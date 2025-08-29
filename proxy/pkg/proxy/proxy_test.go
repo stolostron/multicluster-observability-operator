@@ -22,9 +22,9 @@ import (
 
 // MockManagedClusterInformer is a mock implementation of the ManagedClusterInformable interface.
 type MockManagedClusterInformer struct {
-	clusters     map[string]string
-	labels       map[string]bool
-	labelsConfig *config.ManagedClusterLabelList
+	clusters       map[string]string
+	labels         map[string]bool
+	regexLabelList []string
 }
 
 func (m *MockManagedClusterInformer) Run() {}
@@ -41,10 +41,10 @@ func (m *MockManagedClusterInformer) GetAllManagedClusterLabelNames() map[string
 	return m.labels
 }
 func (m *MockManagedClusterInformer) GetManagedClusterLabelList() []string {
-	if m.labelsConfig == nil {
+	if m.regexLabelList == nil {
 		return []string{}
 	}
-	return m.labelsConfig.RegexLabelList
+	return m.regexLabelList
 }
 
 // MockAccessReviewer is a mock implementation of the AccessReviewer interface.
@@ -252,9 +252,7 @@ func TestProxyRequest(t *testing.T) {
 
 func newTestProxy(t *testing.T, labels []string) *Proxy {
 	mockInformer := &MockManagedClusterInformer{
-		labelsConfig: &config.ManagedClusterLabelList{
-			RegexLabelList: labels,
-		},
+		regexLabelList: labels,
 	}
 	p, err := NewProxy(nil, nil, "", nil, mockInformer, nil)
 	assert.NoError(t, err)
