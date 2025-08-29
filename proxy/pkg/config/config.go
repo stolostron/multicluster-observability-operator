@@ -8,8 +8,11 @@ import (
 	"context"
 	"fmt"
 
+	projectv1 "github.com/openshift/api/project/v1"
+	userv1 "github.com/openshift/api/user/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -24,7 +27,14 @@ const (
 
 var (
 	RequiredLabelList = []string{"name", "cluster.open-cluster-management.io/clusterset"}
+	// Scheme is the runtime scheme for the proxy.
+	Scheme = runtime.NewScheme()
 )
+
+func init() {
+	_ = userv1.AddToScheme(Scheme)
+	_ = projectv1.AddToScheme(Scheme)
+}
 
 // CreateManagedClusterLabelAllowListCM creates a managedcluster label allowlist configmap object.
 func CreateManagedClusterLabelAllowListCM(namespace string) *v1.ConfigMap {
