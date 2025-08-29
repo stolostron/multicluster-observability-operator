@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	slices0 "slices"
 	"strings"
 	"time"
 
@@ -1032,11 +1033,8 @@ func newMCOACRDEventHandler(c client.Client) handler.EventHandler {
 			var reqs []reconcile.Request
 
 			var isDependency bool
-			for _, name := range config.GetMCOASupportedCRDNames() {
-				if name == obj.GetName() {
-					isDependency = true
-					break
-				}
+			if slices0.Contains(config.GetMCOASupportedCRDNames(), obj.GetName()) {
+				isDependency = true
 			}
 
 			if !isDependency {

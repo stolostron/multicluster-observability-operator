@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"slices"
 	"strings"
 	"time"
 
@@ -66,10 +67,8 @@ var _ = Describe("", func() {
 			Expect(len(compacts.Items)).NotTo(Equal(0))
 
 			argList := (*compacts).Items[0].Spec.Template.Spec.Containers[0].Args
-			for _, arg := range argList {
-				if arg == "--retention.resolution-raw=3d" {
-					return nil
-				}
+			if slices.Contains(argList, "--retention.resolution-raw=3d") {
+				return nil
 			}
 			return fmt.Errorf("Failed to find modified retention field, the current args is: %v", argList)
 		}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(Succeed())
@@ -96,14 +95,14 @@ var _ = Describe("", func() {
 			Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
 		Expect(err).NotTo(HaveOccurred())
 
-		spec := mcoSC.Object["spec"].(map[string]interface{})
+		spec := mcoSC.Object["spec"].(map[string]any)
 		if _, ok := spec["nodeSelector"]; !ok {
 			Skip("Skip the case since the MCO CR did not set the nodeSelector")
 		}
 
 		By("Checking node selector for all pods")
 		Eventually(func() error {
-			err = utils.CheckAllPodNodeSelector(testOptions, spec["nodeSelector"].(map[string]interface{}))
+			err = utils.CheckAllPodNodeSelector(testOptions, spec["nodeSelector"].(map[string]any))
 			if err != nil {
 				return err
 			}
@@ -169,10 +168,8 @@ var _ = Describe("", func() {
 			Expect(len(compacts.Items)).NotTo(Equal(0))
 
 			argList := (*compacts).Items[0].Spec.Template.Spec.Containers[0].Args
-			for _, arg := range argList {
-				if arg == "--retention.resolution-raw=6d" {
-					return nil
-				}
+			if slices.Contains(argList, "--retention.resolution-raw=6d") {
+				return nil
 			}
 			return fmt.Errorf("Failed to find modified retention field, the current args is: %v", argList)
 		}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())

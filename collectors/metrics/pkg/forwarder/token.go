@@ -152,11 +152,7 @@ func parseTokenExpiration(token string) (time.Time, error) {
 
 func computeWaitTime(exiprationTime time.Time, backoff, remainingDurationBeforeBackoff time.Duration) time.Duration {
 	timeUntilExp := time.Until(exiprationTime)
-	timeToWait := timeUntilExp - remainingDurationBeforeBackoff - backoff
-
-	if timeToWait < backoff {
-		timeToWait = backoff
-	}
+	timeToWait := max(timeUntilExp-remainingDurationBeforeBackoff-backoff, backoff)
 
 	return timeToWait
 }

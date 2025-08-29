@@ -28,8 +28,8 @@ func Render(o Options) ([]byte, error) {
 }
 
 // GetLabels return labels.
-func GetLabels(yamlB []byte) (interface{}, error) {
-	data := map[string]interface{}{}
+func GetLabels(yamlB []byte) (any, error) {
+	data := map[string]any{}
 	err := yaml.Unmarshal(yamlB, &data)
-	return data["metadata"].(map[string]interface{})["labels"], err
+	return data["metadata"].(map[string]any)["labels"], err
 }

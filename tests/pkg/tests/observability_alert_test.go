@@ -235,8 +235,8 @@ var _ = Describe("", func() {
 		var labelName, labelValue string
 		labels, err := kustomize.GetLabels(yamlB)
 		Expect(err).NotTo(HaveOccurred())
-		for labelName = range labels.(map[string]interface{}) {
-			labelValue = labels.(map[string]interface{})[labelName].(string)
+		for labelName = range labels.(map[string]any) {
+			labelValue = labels.(map[string]any)[labelName].(string)
 		}
 
 		By("Checking alert generated")
@@ -286,8 +286,8 @@ var _ = Describe("", func() {
 
 		var labelName, labelValue string
 		labels, _ := kustomize.GetLabels(yamlB)
-		for labelName = range labels.(map[string]interface{}) {
-			labelValue = labels.(map[string]interface{})[labelName].(string)
+		for labelName = range labels.(map[string]any) {
+			labelValue = labels.(map[string]any)[labelName].(string)
 		}
 
 		By("Checking alert generated")
@@ -573,10 +573,10 @@ var _ = Describe("", func() {
 		if getErr != nil {
 			klog.Errorf("err: %+v\n", err)
 		}
-		spec := mco.Object["metadata"].(map[string]interface{})
-		annotations, found := spec["annotations"].(map[string]interface{})
+		spec := mco.Object["metadata"].(map[string]any)
+		annotations, found := spec["annotations"].(map[string]any)
 		if !found {
-			annotations = make(map[string]interface{})
+			annotations = make(map[string]any)
 		}
 		annotations["mco-disable-alerting"] = "true"
 		spec["annotations"] = annotations
@@ -627,8 +627,8 @@ var _ = Describe("", func() {
 		if getErr != nil {
 			klog.Errorf("err: %+v\n", err)
 		}
-		spec1 := mco1.Object["metadata"].(map[string]interface{})
-		delete(spec1["annotations"].(map[string]interface{}), "mco-disable-alerting")
+		spec1 := mco1.Object["metadata"].(map[string]any)
+		delete(spec1["annotations"].(map[string]any), "mco-disable-alerting")
 		_, updateErr1 := dynClient.Resource(utils.NewMCOGVRV1BETA2()).Update(context.TODO(), mco1, metav1.UpdateOptions{})
 		if updateErr1 != nil {
 			klog.Errorf("err: %+v\n", updateErr1)

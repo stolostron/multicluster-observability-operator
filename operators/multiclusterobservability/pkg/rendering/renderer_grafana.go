@@ -239,7 +239,7 @@ func addDeprecatedSuffixToDashboardName(template *resource.Resource) error {
 		key, val = k, v
 	}
 
-	dashboard := map[string]interface{}{}
+	dashboard := map[string]any{}
 	if err := json.Unmarshal([]byte(val), &dashboard); err != nil {
 		return fmt.Errorf("failed to unmarshal dashboard from configmap %q: %w", template.GetName(), err)
 	}

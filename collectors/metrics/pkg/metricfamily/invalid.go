@@ -172,7 +172,7 @@ func PackLabels(labels []*clientmodel.LabelPair) []*clientmodel.LabelPair {
 	j := len(labels)
 	next := 0
 Found:
-	for i := 0; i < j; i++ {
+	for i := range j {
 		if labels[i] != nil {
 			continue
 		}

@@ -411,7 +411,7 @@ func TestManifestWork(t *testing.T) {
 		obj.UnmarshalJSON(manifest.Raw)
 		if obj.GetKind() == "Secret" && obj.GetName() == operatorconfig.HubInfoSecretName {
 			hubInfo := &operatorconfig.HubInfo{}
-			secretData := obj.Object["data"].(map[string]interface{})[operatorconfig.HubInfoSecretKey].(string)
+			secretData := obj.Object["data"].(map[string]any)[operatorconfig.HubInfoSecretKey].(string)
 			decodedData, err := base64.StdEncoding.DecodeString(secretData)
 			if err != nil {
 				t.Fatalf("Failed to decode base64 secret data: (%v)", err)
@@ -468,7 +468,7 @@ func TestManifestWork(t *testing.T) {
 		obj.UnmarshalJSON(manifest.Raw)
 		if obj.GetKind() == "Secret" && obj.GetName() == operatorconfig.HubInfoSecretName {
 			hubInfo := &operatorconfig.HubInfo{}
-			secretData := obj.Object["data"].(map[string]interface{})[operatorconfig.HubInfoSecretKey].(string)
+			secretData := obj.Object["data"].(map[string]any)[operatorconfig.HubInfoSecretKey].(string)
 			decodedData, err := base64.StdEncoding.DecodeString(secretData)
 			if err != nil {
 				t.Fatalf("Failed to decode base64 secret data: (%v)", err)
@@ -597,18 +597,18 @@ func TestManifestWork(t *testing.T) {
 			}
 
 			// Check if HTTP_PROXY, HTTPS_PROXY, and NO_PROXY are present and set correctly
-			containers := obj.Object["spec"].(map[string]interface{})["template"].(map[string]interface{})["spec"].(map[string]interface{})["containers"].([]interface{})
+			containers := obj.Object["spec"].(map[string]any)["template"].(map[string]any)["spec"].(map[string]any)["containers"].([]any)
 			for _, container := range containers {
-				c := container.(map[string]interface{})
+				c := container.(map[string]any)
 				if c["name"] == "endpoint-observability-operator" {
 					foundHTTPProxy := false
 					foundHTTPSProxy := false
 					foundNOProxy := false
 					foundCABundle := false
 					//rewrite the below to check for env variables
-					env := c["env"].([]interface{})
+					env := c["env"].([]any)
 					for _, e := range env {
-						e := e.(map[string]interface{})
+						e := e.(map[string]any)
 						if e["name"] == "HTTP_PROXY" {
 							foundHTTPProxy = true
 							if e["value"] != "http://foo.com" {

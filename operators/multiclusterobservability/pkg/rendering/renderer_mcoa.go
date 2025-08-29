@@ -274,9 +274,7 @@ func (r *MCORenderer) renderAddonDeploymentConfig(
 	if cLabels == nil {
 		cLabels = make(map[string]string)
 	}
-	for k, v := range labels {
-		cLabels[k] = v
-	}
+	maps.Copy(cLabels, labels)
 	u.SetLabels(cLabels)
 
 	return u, nil

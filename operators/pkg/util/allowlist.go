@@ -6,6 +6,7 @@ package util
 
 import (
 	"context"
+	"maps"
 	"strings"
 
 	"gopkg.in/yaml.v2"
@@ -66,9 +67,7 @@ func MergeAllowlist(allowlist, customAllowlist, uwlAllowlist,
 	if allowlist.RenameMap == nil {
 		allowlist.RenameMap = make(map[string]string)
 	}
-	for k, v := range customAllowlist.RenameMap {
-		allowlist.RenameMap[k] = v
-	}
+	maps.Copy(allowlist.RenameMap, customAllowlist.RenameMap)
 	uwlAllowlist.NameList = mergeMetrics(uwlAllowlist.NameList, customUwlAllowlist.NameList)
 	uwlAllowlist.MatchList = mergeMetrics(uwlAllowlist.MatchList, customUwlAllowlist.MatchList)
 	uwlAllowlist.RuleList = append(uwlAllowlist.RuleList, customUwlAllowlist.RuleList...)
@@ -76,9 +75,7 @@ func MergeAllowlist(allowlist, customAllowlist, uwlAllowlist,
 	if uwlAllowlist.RenameMap == nil {
 		uwlAllowlist.RenameMap = make(map[string]string)
 	}
-	for k, v := range customUwlAllowlist.RenameMap {
-		uwlAllowlist.RenameMap[k] = v
-	}
+	maps.Copy(uwlAllowlist.RenameMap, customUwlAllowlist.RenameMap)
 
 	return allowlist, uwlAllowlist
 }
@@ -117,8 +114,8 @@ func mergeCollectorRuleGroupList(defaultCollectRuleGroupList []operatorconfig.Co
 	mergedCollectRuleGroups := []operatorconfig.CollectRuleGroup{}
 
 	for _, collectRuleGroup := range customCollectRuleGroupList {
-		if strings.HasPrefix(collectRuleGroup.Name, "-") {
-			deletedCollectRuleGroups[strings.TrimPrefix(collectRuleGroup.Name, "-")] = true
+		if after, ok := strings.CutPrefix(collectRuleGroup.Name, "-"); ok {
+			deletedCollectRuleGroups[after] = true
 		} else {
 			mergedCollectRuleGroups = append(mergedCollectRuleGroups, collectRuleGroup)
 		}

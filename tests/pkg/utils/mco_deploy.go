@@ -179,7 +179,7 @@ func PrintObject(ctx context.Context, client dynamic.Interface, gvr schema.Group
 	klog.V(1).Infof("Object %s/%s/%s status: %+v\n", ns, gvr.Resource, name, string(status))
 }
 
-func CheckAllPodNodeSelector(opt TestOptions, nodeSelector map[string]interface{}) error {
+func CheckAllPodNodeSelector(opt TestOptions, nodeSelector map[string]any) error {
 	podList, err := GetAllMCOPods(opt)
 	if err != nil {
 		return err
@@ -382,13 +382,13 @@ func ModifyMCOCR(opt TestOptions) error {
 	if getErr != nil {
 		return getErr
 	}
-	spec := mco.Object["spec"].(map[string]interface{})
-	storageConfig := spec["storageConfig"].(map[string]interface{})
+	spec := mco.Object["spec"].(map[string]any)
+	storageConfig := spec["storageConfig"].(map[string]any)
 	storageConfig["alertmanagerStorageSize"] = "3Gi"
 
 	advRetentionCon, _ := CheckAdvRetentionConfig(opt)
 	if advRetentionCon {
-		retentionConfig := spec["advanced"].(map[string]interface{})["retentionConfig"].(map[string]interface{})
+		retentionConfig := spec["advanced"].(map[string]any)["retentionConfig"].(map[string]any)
 		retentionConfig["retentionResolutionRaw"] = "3d"
 	}
 
@@ -409,11 +409,11 @@ func CheckAdvRetentionConfig(opt TestOptions) (bool, error) {
 		return false, getErr
 	}
 
-	spec := mco.Object["spec"].(map[string]interface{})
+	spec := mco.Object["spec"].(map[string]any)
 	if _, adv := spec["advanced"]; !adv {
 		return false, errors.New("the MCO CR did not have advanced spec configed")
 	} else {
-		advanced := spec["advanced"].(map[string]interface{})
+		advanced := spec["advanced"].(map[string]any)
 		if _, rec := advanced["retentionConfig"]; !rec {
 			return false, errors.New("the MCO CR did not have advanced retentionConfig spec configed")
 		} else {
@@ -432,10 +432,10 @@ func RevertMCOCRModification(opt TestOptions) error {
 	if getErr != nil {
 		return getErr
 	}
-	spec := mco.Object["spec"].(map[string]interface{})
+	spec := mco.Object["spec"].(map[string]any)
 	advRetentionCon, _ := CheckAdvRetentionConfig(opt)
 	if advRetentionCon {
-		retentionConfig := spec["advanced"].(map[string]interface{})["retentionConfig"].(map[string]interface{})
+		retentionConfig := spec["advanced"].(map[string]any)["retentionConfig"].(map[string]any)
 		retentionConfig["retentionResolutionRaw"] = "6d"
 	}
 	_, updateErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Update(context.TODO(), mco, metav1.UpdateOptions{})
@@ -502,7 +502,7 @@ func ModifyMCOAddonSpecMetrics(opt TestOptions, enable bool) error {
 		return getErr
 	}
 
-	observabilityAddonSpec := mco.Object["spec"].(map[string]interface{})["observabilityAddonSpec"].(map[string]interface{})
+	observabilityAddonSpec := mco.Object["spec"].(map[string]any)["observabilityAddonSpec"].(map[string]any)
 	observabilityAddonSpec["enableMetrics"] = enable
 	_, updateErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Update(context.TODO(), mco, metav1.UpdateOptions{})
 	if updateErr != nil {
@@ -521,7 +521,7 @@ func ModifyMCOAddonSpecInterval(opt TestOptions, interval int64) error {
 		return getErr
 	}
 
-	observabilityAddonSpec := mco.Object["spec"].(map[string]interface{})["observabilityAddonSpec"].(map[string]interface{})
+	observabilityAddonSpec := mco.Object["spec"].(map[string]any)["observabilityAddonSpec"].(map[string]any)
 	if interval == 0 {
 		observabilityAddonSpec["interval"] = nil
 	} else {
@@ -534,7 +534,7 @@ func ModifyMCOAddonSpecInterval(opt TestOptions, interval int64) error {
 	return nil
 }
 
-func GetMCOAddonSpecResources(opt TestOptions) (map[string]interface{}, error) {
+func GetMCOAddonSpecResources(opt TestOptions) (map[string]any, error) {
 	clientDynamic := NewKubeClientDynamic(
 		opt.HubCluster.ClusterServerURL,
 		opt.KubeConfig,
@@ -544,16 +544,16 @@ func GetMCOAddonSpecResources(opt TestOptions) (map[string]interface{}, error) {
 		return nil, getErr
 	}
 
-	spec := mco.Object["spec"].(map[string]interface{})
+	spec := mco.Object["spec"].(map[string]any)
 	if _, addonSpec := spec["observabilityAddonSpec"]; !addonSpec {
 		return nil, errors.New("the MCO CR did not have observabilityAddonSpec spec configed")
 	}
 
-	if _, resSpec := spec["observabilityAddonSpec"].(map[string]interface{})["resources"]; !resSpec {
+	if _, resSpec := spec["observabilityAddonSpec"].(map[string]any)["resources"]; !resSpec {
 		return nil, errors.New("the MCO CR did not have observabilityAddonSpec.resources spec configed")
 	}
 
-	res := spec["observabilityAddonSpec"].(map[string]interface{})["resources"].(map[string]interface{})
+	res := spec["observabilityAddonSpec"].(map[string]any)["resources"].(map[string]any)
 	return res, nil
 }
 
@@ -587,8 +587,8 @@ func CheckMCOConversion(opt TestOptions, v1beta1tov1beta2GoldenPath string) erro
 		return err
 	}
 
-	getMCOSpec := getMCO.Object["spec"].(map[string]interface{})
-	expectedMCOSpec := expectedMCO.Object["spec"].(map[string]interface{})
+	getMCOSpec := getMCO.Object["spec"].(map[string]any)
+	expectedMCOSpec := expectedMCO.Object["spec"].(map[string]any)
 
 	for k, v := range expectedMCOSpec {
 		val, ok := getMCOSpec[k]
