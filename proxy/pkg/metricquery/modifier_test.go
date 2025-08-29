@@ -33,6 +33,9 @@ type MockManagedClusterInformer struct {
 }
 
 func (m *MockManagedClusterInformer) Run() {}
+func (m *MockManagedClusterInformer) HasSynced() bool {
+	return true
+}
 func (m *MockManagedClusterInformer) GetAllManagedClusterNames() map[string]string {
 	return m.clusters
 }

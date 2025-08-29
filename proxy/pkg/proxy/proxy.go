@@ -23,6 +23,7 @@ import (
 
 	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/cache"
 	proxyconfig "github.com/stolostron/multicluster-observability-operator/proxy/pkg/config"
+	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/health"
 	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/informer"
 	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/metricquery"
 	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/util"
@@ -49,6 +50,7 @@ type Proxy struct {
 	kubeClientTransport       http.RoundTripper
 	// getKubeClientWithTokenFunc is used for dependency injection in tests.
 	getKubeClientWithTokenFunc func(token string) (client.Client, error)
+	healthChecker              *health.Checker
 }
 
 // NewProxy creates a new Proxy.
@@ -68,6 +70,7 @@ func NewProxy(serverURL *url.URL, transport http.RoundTripper, apiserverHost str
 		managedClusterInformer: managedClusterInformer,
 		accessReviewer:         accessReviewer,
 		kubeClientTransport:    kubeClientTransport,
+		healthChecker:          health.NewChecker(managedClusterInformer, transport, serverURL),
 	}
 	p.getKubeClientWithTokenFunc = p.getKubeClientWithToken
 
@@ -86,6 +89,11 @@ func NewProxy(serverURL *url.URL, transport http.RoundTripper, apiserverHost str
 
 // ServeHTTP is used to init proxy handler.
 func (p *Proxy) ServeHTTP(res http.ResponseWriter, req *http.Request) {
+	if req.URL.Path == "/healthz" || req.URL.Path == "/readyz" {
+		p.healthChecker.ServeHTTP(res, req)
+		return
+	}
+
 	if err := p.preCheckRequest(req); err != nil {
 		klog.Warningf("pre-check failed for user <%s>: %v", req.Header.Get("X-Forwarded-User"), err)
 		res.Header().Set("Content-Type", "application/json")
@@ -131,7 +139,7 @@ func (p *Proxy) getKubeClientWithToken(token string) (client.Client, error) {
 		Transport:   p.kubeClientTransport,
 	}
 	// Create a new client with the user's config
-	c, err := client.New(userConfig, client.Options{})
+	c, err := client.New(userConfig, client.Options{Scheme: proxyconfig.Scheme})
 	if err != nil {
 		return nil, err
 	}
