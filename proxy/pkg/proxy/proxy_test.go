@@ -14,7 +14,13 @@ import (
 	"testing"
 	"time"
 
+	projectv1 "github.com/openshift/api/project/v1"
+	userv1 "github.com/openshift/api/user/v1"
 	"github.com/stretchr/testify/assert"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/cache"
 	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/config"
@@ -164,42 +170,36 @@ func (r *FakeResponse) WriteHeader(status int) {
 }
 
 func TestPreCheckRequest(t *testing.T) {
-	// Mock API server
-	apiServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if strings.HasSuffix(r.URL.Path, "/users/~") {
-			w.Header().Set("Content-Type", "application/json")
-			_, _ = w.Write([]byte(`{"metadata":{"name":"test-user"}}`))
-			return
-		}
-		if strings.HasSuffix(r.URL.Path, "/projects") {
-			w.Header().Set("Content-Type", "application/json")
-			_, _ = w.Write([]byte(`{"items":[{"metadata":{"name":"p"}}]}`))
-			return
-		}
-		w.WriteHeader(http.StatusNotFound)
-	}))
-	defer apiServer.Close()
+	scheme := runtime.NewScheme()
+	_ = userv1.AddToScheme(scheme)
+	_ = projectv1.AddToScheme(scheme)
+
+	// Mock user and projects.
+	// The user object is named "~" because the GetUserName function specifically looks for
+	// a user with this name as a special shortcut for the current user. The fake client
+	// needs an object with this exact name to satisfy the Get call.
+	mockUser := &userv1.User{ObjectMeta: metav1.ObjectMeta{Name: "~"}, FullName: "test-user"}
+	mockProjects := &projectv1.ProjectList{Items: []projectv1.Project{{ObjectMeta: metav1.ObjectMeta{Name: "p"}}}}
+	fakeClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(mockUser).WithLists(mockProjects).Build()
+
+	upi := cache.NewUserProjectInfo(time.Minute, time.Minute)
+	defer upi.Stop()
+
+	p := &Proxy{
+		userProjectInfo:        upi,
+		managedClusterInformer: &MockManagedClusterInformer{clusters: map[string]string{"p": "p"}},
+		accessReviewer:         &MockAccessReviewer{},
+	}
+	p.getKubeClientWithTokenFunc = func(token string) (client.Client, error) {
+		return fakeClient, nil
+	}
 
 	req, _ := http.NewRequest("GET", "http://127.0.0.1:3002/metrics/query?query=foo", nil)
 	req.Header.Set("X-Forwarded-Access-Token", "test")
 	req.Header.Set("X-Forwarded-User", "test")
 
-	upi := cache.NewUserProjectInfo(24*60*60*time.Second, 5*60*time.Second)
-	defer upi.Stop()
-	upi.UpdateUserProject("test", "test", []string{"p"})
-
-	mockInformer := &MockManagedClusterInformer{
-		clusters: map[string]string{"p": "p"},
-	}
-	mockAccessReviewer := &MockAccessReviewer{}
-
-	serverUrl, err := url.Parse("http://localhost/test")
-	assert.NoError(t, err)
-	p, err := NewProxy(serverUrl, nil, apiServer.URL, upi, mockInformer, mockAccessReviewer)
-	assert.NoError(t, err)
-
 	// Test valid request
-	err = p.preCheckRequest(req)
+	err := p.preCheckRequest(req)
 	assert.NoError(t, err)
 
 	// Test with bearer token
@@ -213,7 +213,7 @@ func TestPreCheckRequest(t *testing.T) {
 	req.Header.Del("X-Forwarded-User")
 	err = p.preCheckRequest(req)
 	assert.NoError(t, err)
-	assert.Equal(t, "test-user", req.Header.Get("X-Forwarded-User"))
+	assert.Equal(t, "~", req.Header.Get("X-Forwarded-User"))
 
 	// Test with missing token
 	req.Header.Del("X-Forwarded-Access-Token")
@@ -468,6 +468,10 @@ func TestProxyIntegrationScenarios(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			scheme := runtime.NewScheme()
+			_ = userv1.AddToScheme(scheme)
+			_ = projectv1.AddToScheme(scheme)
+
 			// Reset mocks for each run
 			upstreamCalled = false
 			receivedUpstreamQuery = ""
@@ -487,8 +491,24 @@ func TestProxyIntegrationScenarios(t *testing.T) {
 				metricsAccess: tc.accessReviewResponse,
 			}
 
-			proxy, err := NewProxy(metricsServerURL, transport, apiServer.URL, userProjectCache, mockInformer, mockAccessReviewer)
+			proxy, err := NewProxy(metricsServerURL, transport, "", userProjectCache, mockInformer, mockAccessReviewer)
 			assert.NoError(t, err)
+			proxy.getKubeClientWithTokenFunc = func(token string) (client.Client, error) {
+				// Based on the token, return a client with the correct mock data.
+				fakeClientBuilder := fake.NewClientBuilder().WithScheme(scheme)
+				mockUser := &userv1.User{ObjectMeta: metav1.ObjectMeta{Name: "~"}, FullName: "test-user"}
+				fakeClientBuilder.WithObjects(mockUser)
+				// This is a simplified mock. A real scenario would parse the apiProjectsResponse.
+				switch tc.token {
+				case "admin-token":
+					fakeClientBuilder.WithLists(&projectv1.ProjectList{Items: []projectv1.Project{{ObjectMeta: metav1.ObjectMeta{Name: "cluster1"}}, {ObjectMeta: metav1.ObjectMeta{Name: "cluster2"}}}})
+				case "scoped-token":
+					fakeClientBuilder.WithLists(&projectv1.ProjectList{Items: []projectv1.Project{{ObjectMeta: metav1.ObjectMeta{Name: "cluster1"}}}})
+				default:
+					fakeClientBuilder.WithLists(&projectv1.ProjectList{Items: []projectv1.Project{}})
+				}
+				return fakeClientBuilder.Build(), nil
+			}
 
 			req := httptest.NewRequest("GET", "http://localhost/api/v1/query?query=up", nil)
 			req.Header.Set("Authorization", "Bearer "+tc.token)

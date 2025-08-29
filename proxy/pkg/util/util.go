@@ -5,90 +5,36 @@
 package util
 
 import (
-	"encoding/json"
+	"context"
 	"fmt"
-	"net/http"
 	"os"
-	"strings"
 
 	projectv1 "github.com/openshift/api/project/v1"
 	userv1 "github.com/openshift/api/user/v1"
 	"k8s.io/klog"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func sendHTTPRequestWithClient(client *http.Client, url string, verb string, token string) (*http.Response, error) {
-	req, err := http.NewRequest(verb, url, nil)
+func FetchUserProjectList(ctx context.Context, c client.Client) ([]string, error) {
+	projects := &projectv1.ProjectList{}
+	err := c.List(ctx, projects)
 	if err != nil {
-		return nil, fmt.Errorf("failed to new http request: %w", err)
+		return nil, fmt.Errorf("failed to list projects: %w", err)
 	}
-
-	if len(token) == 0 {
-		transport := &http.Transport{}
-		defaultClient := &http.Client{Transport: transport}
-		return defaultClient.Do(req)
-	}
-
-	if !strings.HasPrefix(token, "Bearer ") {
-		token = "Bearer " + token
-	}
-	req.Header.Set("Authorization", token)
-	return client.Do(req)
-}
-
-func FetchUserProjectList(token string, url string) ([]string, error) {
-	return FetchUserProjectListWithClient(http.DefaultClient, token, url)
-}
-
-func FetchUserProjectListWithClient(client *http.Client, token string, url string) ([]string, error) {
-	resp, err := sendHTTPRequestWithClient(client, url, "GET", token)
-	if err != nil {
-		return nil, fmt.Errorf("failed to send http request: %w", err)
-	}
-
-	defer func() {
-		err := resp.Body.Close()
-		if err != nil {
-			klog.Errorf("failed to close response body: %v", err)
-		}
-	}()
-
-	var projects projectv1.ProjectList
-	err = json.NewDecoder(resp.Body).Decode(&projects)
-	if err != nil {
-		return nil, fmt.Errorf("failed to decode response json body: %w", err)
-	}
-
 	projectList := make([]string, len(projects.Items))
-	for idx, p := range projects.Items {
-		projectList[idx] = p.Name
+	for i, p := range projects.Items {
+		projectList[i] = p.Name
 	}
-
 	return projectList, nil
 }
 
-func GetUserName(token string, url string) (string, error) {
-	return GetUserNameWithClient(http.DefaultClient, token, url)
-}
-
-func GetUserNameWithClient(client *http.Client, token string, url string) (string, error) {
-	resp, err := sendHTTPRequestWithClient(client, url, "GET", token)
+func GetUserName(ctx context.Context, c client.Client) (string, error) {
+	user := &userv1.User{}
+	// The "~" is a special OpenShift API shortcut to get the user associated with the request token.
+	err := c.Get(ctx, client.ObjectKey{Name: "~"}, user)
 	if err != nil {
-		return "", fmt.Errorf("failed to send http request: %w", err)
+		return "", fmt.Errorf("failed to get user: %w", err)
 	}
-
-	user := userv1.User{}
-	defer func() {
-		err := resp.Body.Close()
-		if err != nil {
-			klog.Errorf("failed to close response body: %v", err)
-		}
-	}()
-
-	err = json.NewDecoder(resp.Body).Decode(&user)
-	if err != nil {
-		return "", fmt.Errorf("failed to decode response json body: %w", err)
-	}
-
 	return user.Name, nil
 }
 
