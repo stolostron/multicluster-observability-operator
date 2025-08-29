@@ -130,7 +130,7 @@ func (mqm *Modifier) getKubeClientWithToken(token string) (client.Client, error)
 		Transport:   mqm.KubeClientTransport,
 	}
 	// Create a new client with the user's config
-	c, err := client.New(userConfig, client.Options{}) 
+	c, err := client.New(userConfig, client.Options{Scheme: proxyconfig.Scheme})
 	if err != nil {
 		return nil, err
 	}

@@ -34,6 +34,9 @@ type MockManagedClusterInformer struct {
 }
 
 func (m *MockManagedClusterInformer) Run() {}
+func (m *MockManagedClusterInformer) HasSynced() bool {
+	return true
+}
 func (m *MockManagedClusterInformer) GetAllManagedClusterNames() map[string]string {
 	if m.clusters == nil {
 		return map[string]string{}
@@ -254,7 +257,15 @@ func newTestProxy(t *testing.T, labels []string) *Proxy {
 	mockInformer := &MockManagedClusterInformer{
 		regexLabelList: labels,
 	}
-	p, err := NewProxy(nil, nil, "", nil, mockInformer, nil)
+	// Create a dummy server for the metrics server URL.
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+	serverURL, err := url.Parse(server.URL)
+	assert.NoError(t, err)
+
+	p, err := NewProxy(serverURL, server.Client().Transport, "", nil, mockInformer, nil)
 	assert.NoError(t, err)
 	return p
 }

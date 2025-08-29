@@ -4,6 +4,5 @@ resources:
 - cookie-secret.yaml
 - deployment.yaml
 - ingress.yaml
-- prob-cmd-configmap.yaml
 - service-account.yaml
 - service.yaml

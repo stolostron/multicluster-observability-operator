@@ -6,7 +6,6 @@ package util
 
 import (
 	"context"
-	"os"
 	"testing"
 
 	projectv1 "github.com/openshift/api/project/v1"
@@ -59,18 +58,4 @@ func TestGetUserName(t *testing.T) {
 	// Assert the results
 	assert.NoError(t, err)
 	assert.Equal(t, "~", userName)
-}
-
-func TestWriteError(t *testing.T) {
-	tmpFile, err := os.CreateTemp("", "health")
-	assert.NoError(t, err)
-	defer os.Remove(tmpFile.Name())
-
-	// Overwrite the package-level variable for testing.
-	healthCheckFilePath = tmpFile.Name()
-
-	writeError("test error message")
-	data, err := os.ReadFile(tmpFile.Name())
-	assert.NoError(t, err)
-	assert.Contains(t, string(data), "test error message")
 }

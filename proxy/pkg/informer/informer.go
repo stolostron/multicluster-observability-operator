@@ -39,6 +39,7 @@ type ManagedClusterLabelList struct {
 // ManagedClusterInformable defines the interface for accessing cached managed cluster data.
 type ManagedClusterInformable interface {
 	Run()
+	HasSynced() bool
 	GetAllManagedClusterNames() map[string]string
 	GetAllManagedClusterLabelNames() map[string]bool
 	GetManagedClusterLabelList() []string
@@ -64,16 +65,18 @@ type ManagedClusterInformer struct {
 	// It is used for comparison against the in-memory managedLabelList to detect changes
 	// (either new labels discovered by the informer or manual user edits to the ConfigMap)
 	// that need to be persisted.
-	syncLabelList *ManagedClusterLabelList
-	labelListMtx  sync.RWMutex
-	resyncStopCh  chan struct{}
-	resyncMtx     sync.Mutex
+	syncLabelList     *ManagedClusterLabelList
+	labelListMtx      sync.RWMutex
+	hasSynced         bool
+	hasSyncedMtx      sync.RWMutex
+	resyncStopCh      chan struct{}
+	resyncMtx         sync.Mutex
 }
 
 // NewManagedClusterInformer creates a new ManagedClusterInformer.
 func NewManagedClusterInformer(ctx context.Context, clusterClient clusterclientset.Interface,
 	kubeClient kubernetes.Interface) *ManagedClusterInformer {
-	i := &ManagedClusterInformer{
+	return &ManagedClusterInformer{
 		ctx:                         ctx,
 		clusterClient:               clusterClient,
 		kubeClient:                  kubeClient,
@@ -82,30 +85,45 @@ func NewManagedClusterInformer(ctx context.Context, clusterClient clusterclients
 		managedLabelList:            &ManagedClusterLabelList{},
 		syncLabelList:               &ManagedClusterLabelList{},
 	}
-
-	// Perform an initial synchronous load of the ConfigMap to ensure the informer starts with a valid state.
-	cm, err := proxyconfig.GetManagedClusterLabelAllowListConfigmap(ctx, kubeClient, proxyconfig.ManagedClusterLabelAllowListNamespace)
-	if err != nil {
-		klog.Warningf("failed to load initial managed cluster label allowlist: %v. Starting with an empty list.", err)
-	} else {
-		if err := unmarshalDataToManagedClusterLabelList(cm.Data, proxyconfig.ManagedClusterLabelAllowListConfigMapKey, i.managedLabelList); err != nil {
-			klog.Warningf("failed to unmarshal initial managed cluster label allowlist: %v. Starting with an empty list.", err)
-			// Reset to a clean state in case of partial unmarshalling.
-			i.managedLabelList = &ManagedClusterLabelList{}
-		} else {
-			klog.Info("successfully loaded initial managed cluster label allowlist")
-			// Initialize the snapshot to be in sync with the loaded state.
-			*i.syncLabelList = *i.managedLabelList
-		}
-	}
-
-	return i
 }
 
-// Run starts the informer.
+// Run starts the informer and waits for the caches to sync.
 func (i *ManagedClusterInformer) Run() {
-	go i.watchManagedCluster()
-	go i.watchManagedClusterLabelAllowList()
+	clusterWatchlist := cache.NewListWatchFromClient(
+		i.clusterClient.ClusterV1().RESTClient(),
+		"managedclusters",
+		v1.NamespaceAll,
+		fields.Everything(),
+	)
+	clusterOptions := cache.InformerOptions{
+		ListerWatcher: clusterWatchlist,
+		ObjectType:    &clusterv1.ManagedCluster{},
+		Handler:       i.getManagedClusterEventHandler(),
+	}
+	_, clusterController := cache.NewInformerWithOptions(clusterOptions)
+
+	cmWatchlist := cache.NewListWatchFromClient(i.kubeClient.CoreV1().RESTClient(), "configmaps",
+		proxyconfig.ManagedClusterLabelAllowListNamespace, fields.Everything())
+	cmOptions := cache.InformerOptions{
+		ListerWatcher: cmWatchlist,
+		ObjectType:    &v1.ConfigMap{},
+		Handler:       i.getManagedClusterLabelAllowListEventHandler(),
+	}
+	_, cmController := cache.NewInformerWithOptions(cmOptions)
+
+	go clusterController.Run(i.ctx.Done())
+	go cmController.Run(i.ctx.Done())
+
+	if !cache.WaitForCacheSync(i.ctx.Done(), clusterController.HasSynced, cmController.HasSynced) {
+		klog.Error("Failed to sync informer caches")
+		return
+	}
+
+	i.hasSyncedMtx.Lock()
+	i.hasSynced = true
+	i.hasSyncedMtx.Unlock()
+	klog.Info("Informer caches have successfully synced")
+
 	go i.scheduleManagedClusterLabelAllowlistResync()
 }
 
@@ -130,25 +148,11 @@ func (i *ManagedClusterInformer) GetManagedClusterLabelList() []string {
 	return slices.Clone(i.managedLabelList.RegexLabelList)
 }
 
-func (i *ManagedClusterInformer) watchManagedCluster() {
-	watchlist := cache.NewListWatchFromClient(
-		i.clusterClient.ClusterV1().RESTClient(),
-		"managedclusters",
-		v1.NamespaceAll,
-		fields.Everything(),
-	)
-
-	options := cache.InformerOptions{
-		ListerWatcher: watchlist,
-		ObjectType:    &clusterv1.ManagedCluster{},
-		Handler:       i.getManagedClusterEventHandler(),
-	}
-	_, controller := cache.NewInformerWithOptions(options)
-
-	go controller.Run(i.ctx.Done())
-
-	<-i.ctx.Done()
-	klog.Info("context cancelled, stopping managed cluster watcher")
+// HasSynced returns true if the informer has successfully synced.
+func (i *ManagedClusterInformer) HasSynced() bool {
+	i.hasSyncedMtx.RLock()
+	defer i.hasSyncedMtx.RUnlock()
+	return i.hasSynced
 }
 
 // getManagedClusterEventHandler is the hendler for the ManagedClusters resources informer.
@@ -165,6 +169,7 @@ func (i *ManagedClusterInformer) getManagedClusterEventHandler() cache.ResourceE
 			clusterLabels := obj.(*clusterv1.ManagedCluster).Labels
 			i.updateManagedLabelList(clusterLabels)
 		},
+
 
 		DeleteFunc: func(obj any) {
 			clusterName := obj.(*clusterv1.ManagedCluster).Name
@@ -235,28 +240,19 @@ func (i *ManagedClusterInformer) addManagedClusterLabelNames() {
 	i.updateRegexLabelList()
 }
 
-func (i *ManagedClusterInformer) watchManagedClusterLabelAllowList() {
-	watchlist := cache.NewListWatchFromClient(i.kubeClient.CoreV1().RESTClient(), "configmaps",
-		proxyconfig.ManagedClusterLabelAllowListNamespace, fields.Everything())
-
-	options := cache.InformerOptions{
-		ListerWatcher: watchlist,
-		ObjectType:    &v1.ConfigMap{},
-		Handler:       i.getManagedClusterLabelAllowListEventHandler(),
-	}
-	_, controller := cache.NewInformerWithOptions(options)
-
-	go controller.Run(i.ctx.Done())
-
-	<-i.ctx.Done()
-	klog.Info("context cancelled, stopping managed cluster label allowlist watcher")
-}
-
+// getManagedClusterLabelAllowListEventHandler is the handler for the ConfigMap informer.
 func (i *ManagedClusterInformer) getManagedClusterLabelAllowListEventHandler() cache.ResourceEventHandlerFuncs {
 	return cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj any) {
 			if obj.(*v1.ConfigMap).Name == proxyconfig.ManagedClusterLabelAllowListConfigMapName {
 				klog.Infof("added configmap: %s", proxyconfig.ManagedClusterLabelAllowListConfigMapName)
+				i.labelListMtx.Lock()
+				defer i.labelListMtx.Unlock()
+
+				_ = unmarshalDataToManagedClusterLabelList(obj.(*v1.ConfigMap).Data,
+					proxyconfig.ManagedClusterLabelAllowListConfigMapKey, i.managedLabelList)
+				*i.syncLabelList = *i.managedLabelList
+				i.updateAllManagedClusterLabelNames()
 				go i.scheduleManagedClusterLabelAllowlistResync()
 			}
 		},
