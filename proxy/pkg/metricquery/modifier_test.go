@@ -27,9 +27,9 @@ func (m *MockAccessReviewer) GetMetricsAccess(token string, extraArgs ...string)
 
 // MockManagedClusterInformer is a mock implementation of the ManagedClusterInformable interface.
 type MockManagedClusterInformer struct {
-	clusters     map[string]string
-	labels       map[string]bool
-	labelsConfig *proxyconfig.ManagedClusterLabelList
+	clusters       map[string]string
+	labels         map[string]bool
+	regexLabelList []string
 }
 
 func (m *MockManagedClusterInformer) Run() {}
@@ -40,7 +40,7 @@ func (m *MockManagedClusterInformer) GetAllManagedClusterLabelNames() map[string
 	return m.labels
 }
 func (m *MockManagedClusterInformer) GetManagedClusterLabelList() []string {
-	return m.labelsConfig.RegexLabelList
+	return m.regexLabelList
 }
 
 func newHTTPRequest() *http.Request {

@@ -98,6 +98,7 @@ func (nf *NamespaceFilter) getCommonNamespacesAcrossClusters(clusters []string) 
 	}
 
 	klog.V(2).Infof("common namespaces across clusters: %v   : %v", clusters, commonNamespaces)
+	slices.Sort(commonNamespaces)
 	return commonNamespaces
 }
 
