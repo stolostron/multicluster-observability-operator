@@ -2,7 +2,7 @@
 // Copyright Contributors to the Open Cluster Management project
 // Licensed under the Apache License 2.0
 
-package analytics
+package rsutility
 
 import (
 	"context"
@@ -20,15 +20,11 @@ import (
 )
 
 // Helps in creating or updating existing Policy for the PrometheusRule
-func createOrUpdatePrometheusRulePolicy(
-	ctx context.Context,
-	c client.Client,
-	prometheusRule monitoringv1.PrometheusRule) error {
-
+func CreateOrUpdateRSPrometheusRulePolicy(ctx context.Context, c client.Client, policyName string, namespace string, prometheusRule monitoringv1.PrometheusRule) error {
 	policy := &policyv1.Policy{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      rsPrometheusRulePolicyName,
-			Namespace: rsNamespace,
+			Name:      policyName,
+			Namespace: namespace,
 		},
 	}
 
@@ -63,7 +59,7 @@ func createOrUpdatePrometheusRulePolicy(
 			Kind:       "ConfigurationPolicy",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name: rsPrometheusRulePolicyConfigName,
+			Name: policyName + "-config",
 		},
 		Spec: &configpolicyv1.ConfigurationPolicySpec{
 			RemediationAction:   configpolicyv1.Inform,
@@ -71,7 +67,7 @@ func createOrUpdatePrometheusRulePolicy(
 			PruneObjectBehavior: configpolicyv1.PruneObjectBehavior("DeleteAll"),
 			NamespaceSelector: configpolicyv1.Target{
 				Include: []configpolicyv1.NonEmptyString{
-					configpolicyv1.NonEmptyString(rsMonitoringNamespace),
+					configpolicyv1.NonEmptyString(MonitoringNamespace),
 				},
 			},
 			ObjectTemplates: []*configpolicyv1.ObjectTemplate{

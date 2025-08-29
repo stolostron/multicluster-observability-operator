@@ -2,25 +2,25 @@
 // Copyright Contributors to the Open Cluster Management project
 // Licensed under the Apache License 2.0
 
-package analytics
+package rsnamespace
 
 import (
 	"fmt"
-	"strings"
 
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	rsutility "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/multiclusterobservability/analytics/rs-utility"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 // function helps to build PrometheusRule based on configdata
-func generatePrometheusRule(configData RSNamespaceConfigMapData) (monitoringv1.PrometheusRule, error) {
-	nsFilter, err := buildNamespaceFilter(configData.PrometheusRuleConfig)
+func GeneratePrometheusRule(configData rsutility.RSNamespaceConfigMapData) (monitoringv1.PrometheusRule, error) {
+	nsFilter, err := rsutility.BuildNamespaceFilter(configData.PrometheusRuleConfig)
 	if err != nil {
 		return monitoringv1.PrometheusRule{}, err
 	}
 
-	labelJoin, err := buildLabelJoin(configData.PrometheusRuleConfig.LabelFilterCriteria)
+	labelJoin, err := rsutility.BuildLabelJoin(configData.PrometheusRuleConfig.LabelFilterCriteria)
 	if err != nil {
 		return monitoringv1.PrometheusRule{}, err
 	}
@@ -54,8 +54,8 @@ func generatePrometheusRule(configData RSNamespaceConfigMapData) (monitoringv1.P
 
 	return monitoringv1.PrometheusRule{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      rsPrometheusRuleName,
-			Namespace: rsMonitoringNamespace,
+			Name:      PrometheusRuleName,
+			Namespace: rsutility.MonitoringNamespace,
 		},
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "PrometheusRule",
@@ -86,41 +86,6 @@ func generatePrometheusRule(configData RSNamespaceConfigMapData) (monitoringv1.P
 			},
 		},
 	}, nil
-}
-
-func buildNamespaceFilter(nsConfig RSPrometheusRuleConfig) (string, error) {
-	ns := nsConfig.NamespaceFilterCriteria
-	if len(ns.InclusionCriteria) > 0 && len(ns.ExclusionCriteria) > 0 {
-		return "", fmt.Errorf("only one of inclusion or exclusion criteria allowed for namespacefiltercriteria")
-	}
-	if len(ns.InclusionCriteria) > 0 {
-		return fmt.Sprintf(`namespace=~"%s"`, strings.Join(ns.InclusionCriteria, "|")), nil
-	}
-	if len(ns.ExclusionCriteria) > 0 {
-		return fmt.Sprintf(`namespace!~"%s"`, strings.Join(ns.ExclusionCriteria, "|")), nil
-	}
-	return `namespace!=""`, nil
-}
-
-func buildLabelJoin(labelFilters []RSLabelFilter) (string, error) {
-	for _, l := range labelFilters {
-		if l.LabelName != "label_env" {
-			continue
-		}
-		if len(l.InclusionCriteria) > 0 && len(l.ExclusionCriteria) > 0 {
-			return "", fmt.Errorf("only one of inclusion or exclusion allowed for label_env")
-		}
-		var selector string
-		if len(l.InclusionCriteria) > 0 {
-			selector = fmt.Sprintf(`kube_namespace_labels{label_env=~"%s"}`, strings.Join(l.InclusionCriteria, "|"))
-		} else if len(l.ExclusionCriteria) > 0 {
-			selector = fmt.Sprintf(`kube_namespace_labels{label_env!~"%s"}`, strings.Join(l.ExclusionCriteria, "|"))
-		} else {
-			continue
-		}
-		return fmt.Sprintf(`* on (namespace) group_left() (%s or kube_namespace_labels{label_env=""})`, selector), nil
-	}
-	return "", nil
 }
 
 func buildNamespaceRules5m(
@@ -179,7 +144,7 @@ func buildNamespaceRules5m(
 }
 
 func buildNamespaceRules1d(
-	configData RSNamespaceConfigMapData,
+	configData rsutility.RSNamespaceConfigMapData,
 	ruleWithLabels func(string, string) monitoringv1.Rule,
 ) []monitoringv1.Rule {
 	rp := configData.PrometheusRuleConfig.RecommendationPercentage
@@ -263,7 +228,7 @@ func buildClusterRules5m(
 }
 
 func buildClusterRules1d(
-	configData RSNamespaceConfigMapData,
+	configData rsutility.RSNamespaceConfigMapData,
 	ruleWithLabels func(string, string) monitoringv1.Rule,
 ) []monitoringv1.Rule {
 	rp := configData.PrometheusRuleConfig.RecommendationPercentage

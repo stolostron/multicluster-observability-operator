@@ -2,7 +2,7 @@
 // Copyright Contributors to the Open Cluster Management project
 // Licensed under the Apache License 2.0
 
-package analytics
+package rsutility
 
 import (
 	"context"
@@ -15,12 +15,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// createPlacementBinding creates the PlacementBinding resource
-func createPlacementBinding(ctx context.Context, c client.Client) error {
+// CreateRSPlacementBinding creates a PlacementBinding resource with the given configuration
+func CreateRSPlacementBinding(ctx context.Context, c client.Client, placementBindingName, namespace, placementName, policyName string) error {
 	placementBinding := &policyv1.PlacementBinding{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      rsPlacementBindingName,
-			Namespace: rsNamespace,
+			Name:      placementBindingName,
+			Namespace: namespace,
 		},
 	}
 
@@ -28,23 +28,27 @@ func createPlacementBinding(ctx context.Context, c client.Client) error {
 	logCtx := []any{"Namespace:", placementBinding.Namespace, ", Name:", placementBinding.Name}
 
 	// Fetch the PlacementBinding
-	err := c.Get(ctx, types.NamespacedName{
-		Namespace: placementBinding.Namespace,
-		Name:      placementBinding.Name,
-	}, placementBinding)
+	key := types.NamespacedName{
+		Namespace: namespace,
+		Name:      placementBindingName,
+	}
+
+	err := c.Get(ctx, key, placementBinding)
 
 	if err != nil {
 		if errors.IsNotFound(err) {
+			// Resource not found, create it
 			placementBinding.PlacementRef = policyv1.PlacementSubject{
-				Name:     rsPlacementName,
-				APIGroup: "cluster.open-cluster-management.io",
+				Name:     placementName,
 				Kind:     "Placement",
+				APIGroup: "cluster.open-cluster-management.io",
 			}
+
 			placementBinding.Subjects = []policyv1.Subject{
 				{
-					Name:     rsPrometheusRulePolicyName,
-					APIGroup: "policy.open-cluster-management.io",
+					Name:     policyName,
 					Kind:     "Policy",
+					APIGroup: "policy.open-cluster-management.io",
 				},
 			}
 
@@ -52,12 +56,11 @@ func createPlacementBinding(ctx context.Context, c client.Client) error {
 				return fmt.Errorf("rs - failed to create placementbinding: %w", err)
 			}
 			log.Info("rs - placementbinding created successfully", logCtx...)
-		} else {
-			return fmt.Errorf("rs - failed to fetch placementbinding: %w", err)
+			return nil
 		}
-	} else {
-		log.V(1).Info("rs - placementbinding already exists, skipping creation", logCtx...)
+		return fmt.Errorf("rs - failed to fetch placementbinding: %w", err)
 	}
 
+	log.V(1).Info("rs - placementbinding already exists, skipping creation", logCtx...)
 	return nil
 }
