@@ -109,4 +109,3 @@ func writeError(msg string) {
 		klog.Errorf("failed to close probe file: %v", err)
 	}
 }
-
