@@ -5,6 +5,7 @@
 package util
 
 import (
+	"maps"
 	"strconv"
 	"testing"
 	"time"
@@ -99,9 +100,13 @@ func TestCleanExpiredProjectInfo(t *testing.T) {
 		},
 	}
 
+	InitUserProjectInfo()
 	go CleanExpiredProjectInfoJob(1)
 	for _, c := range testCaseList {
-		userProjectInfo = c.userProjectInfo
+		userProjectInfo.Lock()
+		userProjectInfo.ProjectInfo = make(map[string]UserProject)
+		maps.Copy(userProjectInfo.ProjectInfo, c.userProjectInfo.ProjectInfo)
+		userProjectInfo.Unlock()
 		time.Sleep(time.Second * 2)
 		_, output := GetUserProjectList(c.token)
 		if output != c.expected {
