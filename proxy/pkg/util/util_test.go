@@ -5,93 +5,60 @@
 package util
 
 import (
-	_ "embed"
-	"log"
-	"net/http"
+	"context"
 	"os"
 	"testing"
-	"time"
 
+	projectv1 "github.com/openshift/api/project/v1"
+	userv1 "github.com/openshift/api/user/v1"
 	"github.com/stretchr/testify/assert"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-//go:embed testdata/projects.json
-var projectList string
-
-// MockAccessReviewer is a mock implementation of the AccessReviewer interface.
-type MockAccessReviewer struct {
-	metricsAccess map[string][]string
-	err           error
-}
-
-func (m *MockAccessReviewer) GetMetricsAccess(token string, extraArgs ...string) (map[string][]string, error) {
-	return m.metricsAccess, m.err
-}
-
-func createFakeServerWithInvalidJSON(port string) *http.Server {
-	handler := http.NewServeMux()
-	handler.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte("invalid json"))
-	})
-
-	server := &http.Server{Addr: ":" + port, Handler: handler}
-
-	go func() {
-		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("could not listen on %s due to %s", port, err)
-		}
-	}()
-
-	return server
-}
-
-func createFakeServer(port string) *http.Server {
-	handler := http.NewServeMux()
-	handler.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte(projectList))
-	})
-
-	server := &http.Server{Addr: ":" + port, Handler: handler}
-
-	go func() {
-		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("could not listen on %s due to %s", port, err)
-		}
-	}()
-
-	return server
-}
-
 func TestFetchUserProjectList(t *testing.T) {
-	// Start fake servers
-	server := createFakeServer("4002")
-	defer server.Close()
-	invalidJSONServer := createFakeServerWithInvalidJSON("5002")
-	defer invalidJSONServer.Close()
-	time.Sleep(100 * time.Millisecond) // Wait a bit for the servers to start
-
-	testCases := []struct {
-		name          string
-		url           string
-		expectedLen   int
-		expectedError bool
-	}{
-		{"get 2 projects from valid server", "http://127.0.0.1:4002/", 2, false},
-		{"get 0 projects from invalid url", "http://127.0.0.1:300/", 0, true},
-		{"get 0 projects from server with invalid json", "http://127.0.0.1:5002/", 0, true},
+	// Create a fake client with mock projects
+	scheme := runtime.NewScheme()
+	_ = projectv1.AddToScheme(scheme)
+	mockProjects := &projectv1.ProjectList{
+		Items: []projectv1.Project{
+			{ObjectMeta: metav1.ObjectMeta{Name: "proj-a"}},
+			{ObjectMeta: metav1.ObjectMeta{Name: "proj-b"}},
+		},
 	}
+	fakeClient := fake.NewClientBuilder().WithScheme(scheme).WithLists(mockProjects).Build()
 
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			output, err := FetchUserProjectList("", tc.url)
-			if tc.expectedError {
-				assert.Error(t, err)
-			} else {
-				assert.NoError(t, err)
-			}
-			assert.Len(t, output, tc.expectedLen)
-		})
+	// Call the function with the fake client
+	projectList, err := FetchUserProjectList(context.TODO(), fakeClient)
+
+	// Assert the results
+	assert.NoError(t, err)
+	assert.Len(t, projectList, 2)
+	assert.Contains(t, projectList, "proj-a")
+	assert.Contains(t, projectList, "proj-b")
+}
+
+func TestGetUserName(t *testing.T) {
+	// Create a fake client with a mock user
+	scheme := runtime.NewScheme()
+	_ = userv1.AddToScheme(scheme)
+	mockUser := &userv1.User{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "~",
+		},
 	}
+	// NOTE: The fake client's Get function uses the object's Name field for lookup,
+	// but the real API server uses the special "~" path segment. We name our mock object
+	// "~" to simulate this behavior with the fake client.
+	fakeClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(mockUser).Build()
+
+	// Call the function with the fake client
+	userName, err := GetUserName(context.TODO(), fakeClient)
+
+	// Assert the results
+	assert.NoError(t, err)
+	assert.Equal(t, "~", userName)
 }
 
 func TestWriteError(t *testing.T) {
