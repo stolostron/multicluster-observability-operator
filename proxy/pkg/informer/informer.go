@@ -317,7 +317,7 @@ func (i *ManagedClusterInformer) scheduleManagedClusterLabelAllowlistResync() {
 			case <-stopCh:
 				return
 			case <-i.ctx.Done():
-				klog.Info("context cancelled, stopping scheduler for managedcluster allowlist resync")
+				klog.Info("context canceled, stopping scheduler for managedcluster allowlist resync")
 				return
 			}
 		}
