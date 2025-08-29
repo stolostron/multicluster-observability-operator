@@ -69,7 +69,7 @@ func run() error {
 	klog.Infof("metrics server is: %s", cfg.metricServer)
 	klog.Infof("kubeconfig is: %s", cfg.kubeconfigLocation)
 
-	// create a context that is cancelled on SIGINT/SIGTERM
+	// create a context that is canceled on SIGINT/SIGTERM
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
@@ -147,7 +147,7 @@ func run() error {
 		}
 	}()
 
-	// wait for the context to be cancelled
+	// wait for the context to be canceled
 	<-ctx.Done()
 
 	// shutdown the server
