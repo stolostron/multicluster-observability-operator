@@ -35,22 +35,22 @@ func NewChecker(informer informer.ManagedClusterInformable, metricsTransport htt
 func (c *Checker) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 	switch req.URL.Path {
 	case "/healthz":
-		c.healthz(res, req)
+		c.healthz(res)
 	case "/readyz":
-		c.readyz(res, req)
+		c.readyz(res)
 	default:
 		http.NotFound(res, req)
 	}
 }
 
 // healthz is the liveness probe handler.
-func (c *Checker) healthz(res http.ResponseWriter, req *http.Request) {
+func (c *Checker) healthz(res http.ResponseWriter) {
 	res.WriteHeader(http.StatusOK)
 	fmt.Fprint(res, "OK")
 }
 
 // readyz is the readiness probe handler.
-func (c *Checker) readyz(res http.ResponseWriter, req *http.Request) {
+func (c *Checker) readyz(res http.ResponseWriter) {
 	// 1. Check if the informer has synced.
 	if !c.informer.HasSynced() {
 		klog.Warning("Readiness probe failed: informer has not synced")

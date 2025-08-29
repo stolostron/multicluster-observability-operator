@@ -65,12 +65,12 @@ type ManagedClusterInformer struct {
 	// It is used for comparison against the in-memory managedLabelList to detect changes
 	// (either new labels discovered by the informer or manual user edits to the ConfigMap)
 	// that need to be persisted.
-	syncLabelList     *ManagedClusterLabelList
-	labelListMtx      sync.RWMutex
-	hasSynced         bool
-	hasSyncedMtx      sync.RWMutex
-	resyncStopCh      chan struct{}
-	resyncMtx         sync.Mutex
+	syncLabelList *ManagedClusterLabelList
+	labelListMtx  sync.RWMutex
+	hasSynced     bool
+	hasSyncedMtx  sync.RWMutex
+	resyncStopCh  chan struct{}
+	resyncMtx     sync.Mutex
 }
 
 // NewManagedClusterInformer creates a new ManagedClusterInformer.
@@ -169,7 +169,6 @@ func (i *ManagedClusterInformer) getManagedClusterEventHandler() cache.ResourceE
 			clusterLabels := obj.(*clusterv1.ManagedCluster).Labels
 			i.updateManagedLabelList(clusterLabels)
 		},
-
 
 		DeleteFunc: func(obj any) {
 			clusterName := obj.(*clusterv1.ManagedCluster).Name
@@ -318,7 +317,7 @@ func (i *ManagedClusterInformer) scheduleManagedClusterLabelAllowlistResync() {
 			case <-stopCh:
 				return
 			case <-i.ctx.Done():
-				klog.Info("context cancelled, stopping scheduler for managedcluster allowlist resync")
+				klog.Info("context canceled, stopping scheduler for managedcluster allowlist resync")
 				return
 			}
 		}
