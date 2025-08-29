@@ -16,7 +16,9 @@ import (
 	"path"
 	"strings"
 
+	"k8s.io/client-go/rest"
 	"k8s.io/klog"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
 	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/cache"
@@ -38,23 +40,36 @@ const (
 
 // Proxy is a reverse proxy for the metrics server.
 type Proxy struct {
-	metricsServerURL       *url.URL
-	apiServerHost          string
-	proxy                  *httputil.ReverseProxy
-	userProjectInfo        *cache.UserProjectInfo
-	managedClusterInformer informer.ManagedClusterInformable
-	accessReviewer         metricquery.AccessReviewer
+	metricsServerURL          *url.URL
+	apiServerHost             string
+	proxy                     *httputil.ReverseProxy
+	userProjectInfo           *cache.UserProjectInfo
+	managedClusterInformer    informer.ManagedClusterInformable
+	accessReviewer            metricquery.AccessReviewer
+	kubeClientTransport       http.RoundTripper
+	// getKubeClientWithTokenFunc is used for dependency injection in tests.
+	getKubeClientWithTokenFunc func(token string) (client.Client, error)
 }
 
 // NewProxy creates a new Proxy.
 func NewProxy(serverURL *url.URL, transport http.RoundTripper, apiserverHost string, upi *cache.UserProjectInfo, managedClusterInformer informer.ManagedClusterInformable, accessReviewer metricquery.AccessReviewer) (*Proxy, error) {
+	cfg, err := config.GetConfig()
+	if err != nil {
+		return nil, err
+	}
+	kubeClientTransport, err := rest.TransportFor(cfg)
+	if err != nil {
+		return nil, err
+	}
 	p := &Proxy{
 		metricsServerURL:       serverURL,
 		apiServerHost:          apiserverHost,
 		userProjectInfo:        upi,
 		managedClusterInformer: managedClusterInformer,
 		accessReviewer:         accessReviewer,
+		kubeClientTransport:    kubeClientTransport,
 	}
+	p.getKubeClientWithTokenFunc = p.getKubeClientWithToken
 
 	p.proxy = &httputil.ReverseProxy{
 		Director: func(req *http.Request) {
@@ -89,11 +104,12 @@ func (p *Proxy) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 	req.Host = p.metricsServerURL.Host
 	req.URL.Path = path.Join(basePath, req.URL.Path)
 	modifier := &metricquery.Modifier{
-		Req:            req,
-		ReqURL:         config.GetConfigOrDie().Host + projectsAPIPath,
-		AccessReviewer: p.accessReviewer,
-		UPI:            p.userProjectInfo,
-		MCI:            p.managedClusterInformer,
+		Req:                 req,
+		ReqURL:              config.GetConfigOrDie().Host + projectsAPIPath,
+		AccessReviewer:      p.accessReviewer,
+		UPI:                 p.userProjectInfo,
+		MCI:                 p.managedClusterInformer,
+		KubeClientTransport: p.kubeClientTransport,
 	}
 	if err := modifier.Modify(); err != nil {
 		klog.Errorf("failed to modify query: %v", err)
@@ -101,6 +117,25 @@ func (p *Proxy) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	p.proxy.ServeHTTP(res, req)
+}
+
+func (p *Proxy) getKubeClientWithToken(token string) (client.Client, error) {
+	cfg, err := config.GetConfig()
+	if err != nil {
+		return nil, err
+	}
+	// Create a new REST config with the user's token
+	userConfig := &rest.Config{
+		Host:        cfg.Host,
+		BearerToken: token,
+		Transport:   p.kubeClientTransport,
+	}
+	// Create a new client with the user's config
+	c, err := client.New(userConfig, client.Options{})
+	if err != nil {
+		return nil, err
+	}
+	return c, nil
 }
 
 func (p *Proxy) preCheckRequest(req *http.Request) error {
@@ -114,13 +149,15 @@ func (p *Proxy) preCheckRequest(req *http.Request) error {
 		req.Header.Set("X-Forwarded-Access-Token", token)
 	}
 
+	c, err := p.getKubeClientWithTokenFunc(token)
+	if err != nil {
+		return fmt.Errorf("failed to get kube client: %w", err)
+	}
+
 	userName := req.Header.Get("X-Forwarded-User")
 	if userName == "" {
-		userAPIURL, err := url.JoinPath(p.apiServerHost, userAPIPath)
-		if err != nil {
-			return fmt.Errorf("failed to join the user api path with the apiserver host: %w", err)
-		}
-		userName, err = util.GetUserName(token, userAPIURL)
+		var err error
+		userName, err = util.GetUserName(req.Context(), c)
 		if err != nil {
 			return fmt.Errorf("failed to get user name: %w", err)
 		}
@@ -131,11 +168,7 @@ func (p *Proxy) preCheckRequest(req *http.Request) error {
 	}
 
 	if _, ok := p.userProjectInfo.GetUserProjectList(token); !ok {
-		userProjectsURL, err := url.JoinPath(p.apiServerHost, projectsAPIPath)
-		if err != nil {
-			return fmt.Errorf("failed to join the user projects api path with the apiserver host: %w", err)
-		}
-		projectList, err := util.FetchUserProjectList(token, userProjectsURL)
+		projectList, err := util.FetchUserProjectList(req.Context(), c)
 		if err != nil {
 			klog.Errorf("failed to fetch user project list: %v", err)
 			// if we cannot fetch project list, we will just assume the user has no project access.

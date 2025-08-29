@@ -23,7 +23,10 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/informer"
 	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/rewrite"
 	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/util"
+	"k8s.io/client-go/rest"
 	"k8s.io/klog"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/config"
 )
 
 // AccessReviewer defines an interface for checking a user's access to metrics on managed clusters.
@@ -34,11 +37,12 @@ type AccessReviewer interface {
 
 // Modifier holds the necessary components to modify a metrics query based on user permissions.
 type Modifier struct {
-	Req            *http.Request
-	ReqURL         string
-	AccessReviewer AccessReviewer
-	UPI            *cache.UserProjectInfo
-	MCI            informer.ManagedClusterInformable
+	Req                 *http.Request
+	ReqURL              string
+	AccessReviewer      AccessReviewer
+	UPI                 *cache.UserProjectInfo
+	MCI                 informer.ManagedClusterInformable
+	KubeClientTransport http.RoundTripper
 }
 
 // Modify inspects the incoming HTTP request, determines the user's access rights,
@@ -114,6 +118,25 @@ func (mqm *Modifier) Modify() error {
 	return nil
 }
 
+func (mqm *Modifier) getKubeClientWithToken(token string) (client.Client, error) {
+	cfg, err := config.GetConfig()
+	if err != nil {
+		return nil, err
+	}
+	// Create a new REST config with the user's token
+	userConfig := &rest.Config{
+		Host:        cfg.Host,
+		BearerToken: token,
+		Transport:   mqm.KubeClientTransport,
+	}
+	// Create a new client with the user's config
+	c, err := client.New(userConfig, client.Options{}) 
+	if err != nil {
+		return nil, err
+	}
+	return c, nil
+}
+
 func (mqm *Modifier) getUserMetricsACLs(userName string, token string) (map[string][]string, error) {
 	// get all metricsaccess ACLs for the user
 	// i.e every  metrics/<ns> on managedcluster CR defined for the user
@@ -150,12 +173,19 @@ func (mqm *Modifier) getUserMetricsACLs(userName string, token string) (map[stri
 	//get all managedcluster project/namespace user has access to
 	projectList, ok := mqm.UPI.GetUserProjectList(token)
 	if !ok {
-		projectList, err = util.FetchUserProjectList(token, mqm.ReqURL)
+		c, err := mqm.getKubeClientWithToken(token)
 		if err != nil {
-			// if we cannot fetch project list, we will just assume the user has no project access.
-			// The query will be modified based on the metrics access list only.
-			klog.Errorf("failed to fetch user project list: %v", err)
+			// if we cannot create a client, we will just assume the user has no project access.
+			klog.Errorf("failed to get kube client: %v", err)
 			projectList = []string{}
+		} else {
+			projectList, err = util.FetchUserProjectList(mqm.Req.Context(), c)
+			if err != nil {
+				// if we cannot fetch project list, we will just assume the user has no project access.
+				// The query will be modified based on the metrics access list only.
+				klog.Errorf("failed to fetch user project list: %v", err)
+				projectList = []string{}
+			}
 		}
 		mqm.UPI.UpdateUserProject(userName, token, projectList)
 		klog.V(1).Infof("projectList from api server = %v", projectList)
