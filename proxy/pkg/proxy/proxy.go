@@ -41,13 +41,13 @@ const (
 
 // Proxy is a reverse proxy for the metrics server.
 type Proxy struct {
-	metricsServerURL          *url.URL
-	apiServerHost             string
-	proxy                     *httputil.ReverseProxy
-	userProjectInfo           *cache.UserProjectInfo
-	managedClusterInformer    informer.ManagedClusterInformable
-	accessReviewer            metricquery.AccessReviewer
-	kubeClientTransport       http.RoundTripper
+	metricsServerURL       *url.URL
+	apiServerHost          string
+	proxy                  *httputil.ReverseProxy
+	userProjectInfo        *cache.UserProjectInfo
+	managedClusterInformer informer.ManagedClusterInformable
+	accessReviewer         metricquery.AccessReviewer
+	kubeClientTransport    http.RoundTripper
 	// getKubeClientWithTokenFunc is used for dependency injection in tests.
 	getKubeClientWithTokenFunc func(token string) (client.Client, error)
 	healthChecker              *health.Checker

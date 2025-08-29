@@ -18,11 +18,11 @@ type MockManagedClusterInformer struct {
 	synced bool
 }
 
-func (m *MockManagedClusterInformer) Run()                                     {}
-func (m *MockManagedClusterInformer) HasSynced() bool                          { return m.synced }
-func (m *MockManagedClusterInformer) GetAllManagedClusterNames() map[string]string   { return nil }
+func (m *MockManagedClusterInformer) Run()                                            {}
+func (m *MockManagedClusterInformer) HasSynced() bool                                 { return m.synced }
+func (m *MockManagedClusterInformer) GetAllManagedClusterNames() map[string]string    { return nil }
 func (m *MockManagedClusterInformer) GetAllManagedClusterLabelNames() map[string]bool { return nil }
-func (m *MockManagedClusterInformer) GetManagedClusterLabelList() []string         { return nil }
+func (m *MockManagedClusterInformer) GetManagedClusterLabelList() []string            { return nil }
 
 func TestHealthz(t *testing.T) {
 	checker := NewChecker(nil, nil, nil)
@@ -38,31 +38,31 @@ func TestHealthz(t *testing.T) {
 func TestReadyz(t *testing.T) {
 	// Test cases
 	testCases := []struct {
-		name               string
-		informerSynced     bool
-		metricsServerAlive bool
-		expectedStatus     int
+		name                 string
+		informerSynced       bool
+		metricsServerAlive   bool
+		expectedStatus       int
 		expectedBodyContains string
 	}{
 		{
-			name:               "informer not synced",
-			informerSynced:     false,
-			metricsServerAlive: true,
-			expectedStatus:     http.StatusServiceUnavailable,
+			name:                 "informer not synced",
+			informerSynced:       false,
+			metricsServerAlive:   true,
+			expectedStatus:       http.StatusServiceUnavailable,
 			expectedBodyContains: "Informer has not synced",
 		},
 		{
-			name:               "metrics server not alive",
-			informerSynced:     true,
-			metricsServerAlive: false,
-			expectedStatus:     http.StatusServiceUnavailable,
+			name:                 "metrics server not alive",
+			informerSynced:       true,
+			metricsServerAlive:   false,
+			expectedStatus:       http.StatusServiceUnavailable,
 			expectedBodyContains: "Upstream metrics server check failed",
 		},
 		{
-			name:               "all checks pass",
-			informerSynced:     true,
-			metricsServerAlive: true,
-			expectedStatus:     http.StatusOK,
+			name:                 "all checks pass",
+			informerSynced:       true,
+			metricsServerAlive:   true,
+			expectedStatus:       http.StatusOK,
 			expectedBodyContains: "OK",
 		},
 	}
@@ -86,7 +86,7 @@ func TestReadyz(t *testing.T) {
 			defer metricsServer.Close()
 
 			metricsURL, _ := url.Parse(metricsServer.URL)
-			
+
 			// Create checker
 			checker := NewChecker(mockInformer, metricsServer.Client().Transport, metricsURL)
 
