@@ -160,13 +160,6 @@ func (i *ManagedClusterInformer) HasSynced() bool {
 	return i.hasSynced
 }
 
-// GetAllManagedClusterLabelNames returns all managed cluster labels.
-func (i *ManagedClusterInformer) getAllManagedClusterLabelNames() map[string]bool {
-	i.allManagedClusterLabelNamesMtx.RLock()
-	defer i.allManagedClusterLabelNamesMtx.RUnlock()
-	return maps.Clone(i.allManagedClusterLabelNames)
-}
-
 // getManagedClusterEventHandler is the hendler for the ManagedClusters resources informer.
 func (i *ManagedClusterInformer) getManagedClusterEventHandler() cache.ResourceEventHandlerFuncs {
 	return cache.ResourceEventHandlerFuncs{

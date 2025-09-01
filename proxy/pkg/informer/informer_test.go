@@ -68,24 +68,24 @@ func TestGetManagedClusterEventHandler(t *testing.T) {
 	// Add cluster1
 	eventHandler.AddFunc(cluster1)
 	assert.Equal(t, map[string]string{"cluster1": "cluster1"}, informer.GetAllManagedClusterNames())
-	assert.True(t, informer.getAllManagedClusterLabelNames()["name"])
-	assert.True(t, informer.getAllManagedClusterLabelNames()["environment"])
-	assert.False(t, informer.getAllManagedClusterLabelNames()["cloud"])
+	assert.True(t, informer.allManagedClusterLabelNames["name"])
+	assert.True(t, informer.allManagedClusterLabelNames["environment"])
+	assert.False(t, informer.allManagedClusterLabelNames["cloud"])
 
 	// Update with cluster2. In informer logic, this is like adding a new cluster.
 	eventHandler.UpdateFunc(cluster1, cluster2)
 	assert.Equal(t, map[string]string{"cluster1": "cluster1", "cluster2": "cluster2"}, informer.GetAllManagedClusterNames())
-	assert.True(t, informer.getAllManagedClusterLabelNames()["name"])
-	assert.True(t, informer.getAllManagedClusterLabelNames()["environment"])
-	assert.True(t, informer.getAllManagedClusterLabelNames()["cloud"])
+	assert.True(t, informer.allManagedClusterLabelNames["name"])
+	assert.True(t, informer.allManagedClusterLabelNames["environment"])
+	assert.True(t, informer.allManagedClusterLabelNames["cloud"])
 
 	// Delete cluster1
 	eventHandler.DeleteFunc(cluster1)
 	assert.Equal(t, map[string]string{"cluster2": "cluster2"}, informer.GetAllManagedClusterNames())
 	// Labels are not removed on delete
-	assert.True(t, informer.getAllManagedClusterLabelNames()["name"])
-	assert.True(t, informer.getAllManagedClusterLabelNames()["environment"])
-	assert.True(t, informer.getAllManagedClusterLabelNames()["cloud"])
+	assert.True(t, informer.allManagedClusterLabelNames["name"])
+	assert.True(t, informer.allManagedClusterLabelNames["environment"])
+	assert.True(t, informer.allManagedClusterLabelNames["cloud"])
 }
 
 func TestGetManagedClusterLabelAllowListEventHandler(t *testing.T) {
@@ -140,8 +140,8 @@ ignore_list:
 
 	eventHandler.UpdateFunc(cm, updatedCm)
 
-	// assert.False(t, informer.getAllManagedClusterLabelNames()["vendor"], "Label 'vendor' should be disabled")
-	assert.True(t, informer.getAllManagedClusterLabelNames()["cloud"], "Label 'cloud' should be enabled")
+	// assert.False(t, informer.allManagedClusterLabelNames["vendor"], "Label 'vendor' should be disabled")
+	assert.True(t, informer.allManagedClusterLabelNames["cloud"], "Label 'cloud' should be enabled")
 
 	// Test DeleteFunc
 	informer.scheduleManagedClusterLabelAllowlistResync()
@@ -337,7 +337,7 @@ func TestGetAllManagedClusterLabelNames(t *testing.T) {
 	}
 	informer.updateAllManagedClusterLabelNames()
 
-	labels := informer.getAllManagedClusterLabelNames()
+	labels := informer.allManagedClusterLabelNames
 	assert.True(t, labels["cloud"])
 	assert.True(t, labels["vendor"])
 	assert.False(t, labels["name"])
@@ -347,7 +347,7 @@ func TestGetAllManagedClusterLabelNames(t *testing.T) {
 	informer.managedLabelList.LabelList = []string{"cloud", "name", "environment"}
 	informer.updateAllManagedClusterLabelNames()
 
-	labels = informer.getAllManagedClusterLabelNames()
+	labels = informer.allManagedClusterLabelNames
 	assert.True(t, labels["cloud"])
 	assert.True(t, labels["name"])
 	assert.False(t, labels["vendor"])
@@ -376,9 +376,9 @@ func TestManagedClusterUpdateHandlerRetainsLabels(t *testing.T) {
 
 	// 1. Add the initial cluster
 	eventHandler.AddFunc(cluster1)
-	assert.True(t, informer.getAllManagedClusterLabelNames()["name"], "Label 'name' should be present after add")
-	assert.True(t, informer.getAllManagedClusterLabelNames()["vendor"], "Label 'vendor' should be present after add")
-	assert.True(t, informer.getAllManagedClusterLabelNames()["cloud"], "Label 'cloud' should be present after add")
+	assert.True(t, informer.allManagedClusterLabelNames["name"], "Label 'name' should be present after add")
+	assert.True(t, informer.allManagedClusterLabelNames["vendor"], "Label 'vendor' should be present after add")
+	assert.True(t, informer.allManagedClusterLabelNames["cloud"], "Label 'cloud' should be present after add")
 
 	// 2. Update the cluster: remove 'cloud', add 'region'
 	cluster1Updated := &clusterv1.ManagedCluster{
@@ -394,7 +394,7 @@ func TestManagedClusterUpdateHandlerRetainsLabels(t *testing.T) {
 	eventHandler.UpdateFunc(cluster1, cluster1Updated)
 
 	// 3. Assert that the new state is correct
-	labels := informer.getAllManagedClusterLabelNames()
+	labels := informer.allManagedClusterLabelNames
 	assert.True(t, labels["name"], "Label 'name' should remain after update")
 	assert.True(t, labels["vendor"], "Label 'vendor' should remain after update")
 	assert.True(t, labels["region"], "Label 'region' should be added after update")
