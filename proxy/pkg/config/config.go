@@ -60,5 +60,3 @@ ignore_labels:
 - local-cluster
 `}}
 }
-
-

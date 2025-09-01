@@ -96,7 +96,6 @@ func (upi *UserProjectInfo) GetUserName(token string) (string, bool) {
 	return up.UserName, true
 }
 
-
 // Stop terminates the background cleanup goroutine.
 func (upi *UserProjectInfo) Stop() {
 	close(upi.stopCh)
