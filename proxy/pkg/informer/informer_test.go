@@ -67,21 +67,21 @@ func TestGetManagedClusterEventHandler(t *testing.T) {
 
 	// Add cluster1
 	eventHandler.AddFunc(cluster1)
-	assert.Equal(t, map[string]string{"cluster1": "cluster1"}, informer.GetAllManagedClusterNames())
+	assert.Equal(t, map[string]struct{}{"cluster1": {}}, informer.GetAllManagedClusterNames())
 	assert.True(t, informer.allManagedClusterLabelNames["name"])
 	assert.True(t, informer.allManagedClusterLabelNames["environment"])
 	assert.False(t, informer.allManagedClusterLabelNames["cloud"])
 
 	// Update with cluster2. In informer logic, this is like adding a new cluster.
 	eventHandler.UpdateFunc(cluster1, cluster2)
-	assert.Equal(t, map[string]string{"cluster1": "cluster1", "cluster2": "cluster2"}, informer.GetAllManagedClusterNames())
+	assert.Equal(t, map[string]struct{}{"cluster1": {}, "cluster2": {}}, informer.GetAllManagedClusterNames())
 	assert.True(t, informer.allManagedClusterLabelNames["name"])
 	assert.True(t, informer.allManagedClusterLabelNames["environment"])
 	assert.True(t, informer.allManagedClusterLabelNames["cloud"])
 
 	// Delete cluster1
 	eventHandler.DeleteFunc(cluster1)
-	assert.Equal(t, map[string]string{"cluster2": "cluster2"}, informer.GetAllManagedClusterNames())
+	assert.Equal(t, map[string]struct{}{"cluster2": {}}, informer.GetAllManagedClusterNames())
 	// Labels are not removed on delete
 	assert.True(t, informer.allManagedClusterLabelNames["name"])
 	assert.True(t, informer.allManagedClusterLabelNames["environment"])

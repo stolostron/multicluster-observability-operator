@@ -20,7 +20,7 @@ type MockManagedClusterInformer struct {
 
 func (m *MockManagedClusterInformer) Run()                                         {}
 func (m *MockManagedClusterInformer) HasSynced() bool                              { return m.synced }
-func (m *MockManagedClusterInformer) GetAllManagedClusterNames() map[string]string { return nil }
+func (m *MockManagedClusterInformer) GetAllManagedClusterNames() map[string]struct{} { return nil }
 func (m *MockManagedClusterInformer) GetManagedClusterLabelList() []string         { return nil }
 
 func TestHealthz(t *testing.T) {

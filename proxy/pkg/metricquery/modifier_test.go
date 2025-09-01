@@ -27,7 +27,7 @@ func (m *MockAccessReviewer) GetMetricsAccess(token string, extraArgs ...string)
 
 // MockManagedClusterInformer is a mock implementation of the ManagedClusterInformable interface.
 type MockManagedClusterInformer struct {
-	clusters       map[string]string
+	clusters       map[string]struct{}
 	regexLabelList []string
 }
 
@@ -35,7 +35,7 @@ func (m *MockManagedClusterInformer) Run() {}
 func (m *MockManagedClusterInformer) HasSynced() bool {
 	return true
 }
-func (m *MockManagedClusterInformer) GetAllManagedClusterNames() map[string]string {
+func (m *MockManagedClusterInformer) GetAllManagedClusterNames() map[string]struct{} {
 	return m.clusters
 }
 func (m *MockManagedClusterInformer) GetManagedClusterLabelList() []string {
@@ -154,43 +154,43 @@ func TestRewriteQueryValues(t *testing.T) {
 func TestCanAccessAll(t *testing.T) {
 	testCases := []struct {
 		name               string
-		allManagedClusters map[string]string
+		allManagedClusters map[string]struct{}
 		clusterNamespaces  map[string][]string
 		expected           bool
 	}{
 		{
 			name:               "Both allManagedClusterNames and clusterNamespaces are empty",
-			allManagedClusters: map[string]string{},
+			allManagedClusters: map[string]struct{}{},
 			clusterNamespaces:  map[string][]string{},
 			expected:           false,
 		},
 		{
 			name:               "Cluster not in clusterNamespaces",
-			allManagedClusters: map[string]string{"cluster1": "cluster1"},
+			allManagedClusters: map[string]struct{}{"cluster1": {}},
 			clusterNamespaces:  map[string][]string{},
 			expected:           false,
 		},
 		{
 			name:               "Cluster does not have access to all namespaces",
-			allManagedClusters: map[string]string{"cluster1": "cluster1"},
+			allManagedClusters: map[string]struct{}{"cluster1": {}},
 			clusterNamespaces:  map[string][]string{"cluster1": {"namespace1"}},
 			expected:           false,
 		},
 		{
 			name:               "Cluster has access to all namespaces",
-			allManagedClusters: map[string]string{"cluster1": "cluster1"},
+			allManagedClusters: map[string]struct{}{"cluster1": {}},
 			clusterNamespaces:  map[string][]string{"cluster1": {"*"}},
 			expected:           true,
 		},
 		{
 			name:               "Multiple clusters with full access",
-			allManagedClusters: map[string]string{"cluster1": "cluster1", "cluster2": "cluster2"},
+			allManagedClusters: map[string]struct{}{"cluster1": {}, "cluster2": {}},
 			clusterNamespaces:  map[string][]string{"cluster1": {"*"}, "cluster2": {"*"}},
 			expected:           true,
 		},
 		{
 			name:               "Multiple clusters, one missing full access",
-			allManagedClusters: map[string]string{"cluster1": "cluster1", "cluster2": "cluster2"},
+			allManagedClusters: map[string]struct{}{"cluster1": {}, "cluster2": {}},
 			clusterNamespaces:  map[string][]string{"cluster1": {"*"}, "cluster2": {"namespace1"}},
 			expected:           false,
 		},
@@ -208,13 +208,13 @@ func TestFilterProjectsToManagedClusters(t *testing.T) {
 	testCases := []struct {
 		name        string
 		projectList []string
-		clusterList map[string]string
+		clusterList map[string]struct{}
 		expected    int
 	}{
-		{"no project", []string{}, map[string]string{}, 0},
-		{"should get 1 cluster", []string{"c1", "c2"}, map[string]string{"c1": "c1"}, 1},
-		{"should get 2 clusters", []string{"c1", "c2"}, map[string]string{"c1": "c1", "c2": "c2"}, 2},
-		{"no cluster if project not in cluster list", []string{"c1"}, map[string]string{}, 0},
+		{"no project", []string{}, map[string]struct{}{}, 0},
+		{"should get 1 cluster", []string{"c1", "c2"}, map[string]struct{}{"c1": {}}, 1},
+		{"should get 2 clusters", []string{"c1", "c2"}, map[string]struct{}{"c1": {}, "c2": {}}, 2},
+		{"no cluster if project not in cluster list", []string{"c1"}, map[string]struct{}{}, 0},
 	}
 
 	for _, tc := range testCases {
@@ -228,49 +228,49 @@ func TestFilterProjectsToManagedClusters(t *testing.T) {
 func TestGetUserMetricsACLs(t *testing.T) {
 	testCases := []struct {
 		name              string
-		managedClusters   map[string]string
+		managedClusters   map[string]struct{}
 		metricsAccess     map[string][]string
 		cachedProjectList []string
 		expectedACLs      map[string][]string
 	}{
 		{
 			name:              "project access only (backward compatibility)",
-			managedClusters:   map[string]string{"c1": "c1", "c2": "c2"},
+			managedClusters:   map[string]struct{}{"c1": {}, "c2": {}},
 			metricsAccess:     map[string][]string{},
 			cachedProjectList: []string{"c1"},
 			expectedACLs:      map[string][]string{"c1": {"*"}},
 		},
 		{
 			name:              "metrics ACLs only",
-			managedClusters:   map[string]string{"c1": "c1", "c2": "c2"},
+			managedClusters:   map[string]struct{}{"c1": {}, "c2": {}},
 			metricsAccess:     map[string][]string{"c2": {"ns2"}},
 			cachedProjectList: []string{},
 			expectedACLs:      map[string][]string{"c2": {"ns2"}},
 		},
 		{
 			name:              "specific metrics ACLs override project access",
-			managedClusters:   map[string]string{"c1": "c1", "c2": "c2"},
+			managedClusters:   map[string]struct{}{"c1": {}, "c2": {}},
 			metricsAccess:     map[string][]string{"c1": {"ns1"}},
 			cachedProjectList: []string{"c1"},
 			expectedACLs:      map[string][]string{"c1": {"ns1"}},
 		},
 		{
 			name:              "wildcard cluster metrics ACL expansion",
-			managedClusters:   map[string]string{"c1": "c1", "c2": "c2"},
+			managedClusters:   map[string]struct{}{"c1": {}, "c2": {}},
 			metricsAccess:     map[string][]string{"*": {"ns-all"}},
 			cachedProjectList: []string{},
 			expectedACLs:      map[string][]string{"c1": {"ns-all"}, "c2": {"ns-all"}},
 		},
 		{
 			name:              "wildcard and specific ACLs are merged",
-			managedClusters:   map[string]string{"c1": "c1", "c2": "c2"},
+			managedClusters:   map[string]struct{}{"c1": {}, "c2": {}},
 			metricsAccess:     map[string][]string{"*": {"ns-all"}, "c1": {"ns1"}},
 			cachedProjectList: []string{},
 			expectedACLs:      map[string][]string{"c1": {"ns1", "ns-all"}, "c2": {"ns-all"}},
 		},
 		{
 			name:              "no access",
-			managedClusters:   map[string]string{"c1": "c1", "c2": "c2"},
+			managedClusters:   map[string]struct{}{"c1": {}, "c2": {}},
 			metricsAccess:     map[string][]string{},
 			cachedProjectList: []string{},
 			expectedACLs:      map[string][]string{},
@@ -304,13 +304,13 @@ func TestGetUserMetricsACLs(t *testing.T) {
 func TestModifyMetricsQueryParams(t *testing.T) {
 	testCases := []struct {
 		name               string
-		clusters           map[string]string
+		clusters           map[string]struct{}
 		expected           string
 		mockAccessReviewer *MockAccessReviewer
 	}{
 		{
 			name:     "do not need modify params when user has access to all namespaces",
-			clusters: map[string]string{"c0": "c0"},
+			clusters: map[string]struct{}{"c0": {}},
 			expected: "query=foo",
 			mockAccessReviewer: &MockAccessReviewer{
 				metricsAccess: map[string][]string{"c0": {"*"}},
@@ -318,7 +318,7 @@ func TestModifyMetricsQueryParams(t *testing.T) {
 		},
 		{
 			name:     "modify params with 1 cluster",
-			clusters: map[string]string{"c0": "c0", "c2": "c2"},
+			clusters: map[string]struct{}{"c0": {}, "c2": {}},
 			expected: `query=foo{cluster="c0"}`,
 			mockAccessReviewer: &MockAccessReviewer{
 				metricsAccess: map[string][]string{"c0": {"*"}},
@@ -326,7 +326,7 @@ func TestModifyMetricsQueryParams(t *testing.T) {
 		},
 		{
 			name:     "modify params when user has access to all clusters",
-			clusters: map[string]string{"c0": "c0", "c1": "c1"},
+			clusters: map[string]struct{}{"c0": {}, "c1": {}},
 			expected: `query=foo`,
 			mockAccessReviewer: &MockAccessReviewer{
 				metricsAccess: map[string][]string{"c0": {"*"}, "c1": {"*"}},
@@ -334,7 +334,7 @@ func TestModifyMetricsQueryParams(t *testing.T) {
 		},
 		{
 			name:     "no cluster",
-			clusters: map[string]string{},
+			clusters: map[string]struct{}{},
 			expected: `query=foo{cluster=""}`,
 			mockAccessReviewer: &MockAccessReviewer{
 				metricsAccess: map[string][]string{},
@@ -342,7 +342,7 @@ func TestModifyMetricsQueryParams(t *testing.T) {
 		},
 		{
 			name:     "modify params with namespace filtering",
-			clusters: map[string]string{"c0": "c0"},
+			clusters: map[string]struct{}{"c0": {}},
 			expected: `query=foo{cluster="c0",namespace="ns1"}`,
 			mockAccessReviewer: &MockAccessReviewer{
 				metricsAccess: map[string][]string{"c0": {"ns1"}},

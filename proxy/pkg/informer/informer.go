@@ -41,7 +41,7 @@ type ManagedClusterLabelList struct {
 type ManagedClusterInformable interface {
 	Run()
 	HasSynced() bool
-	GetAllManagedClusterNames() map[string]string
+	GetAllManagedClusterNames() map[string]struct{}
 	GetManagedClusterLabelList() []string
 }
 
@@ -52,7 +52,7 @@ type ManagedClusterInformer struct {
 	ctx                            context.Context
 	clusterClient                  clusterclientset.Interface
 	kubeClient                     kubernetes.Interface
-	allManagedClusterNames         map[string]string
+	allManagedClusterNames         map[string]struct{}
 	allManagedClusterNamesMtx      sync.RWMutex
 	allManagedClusterLabelNames    map[string]bool
 	allManagedClusterLabelNamesMtx sync.RWMutex
@@ -80,7 +80,7 @@ func NewManagedClusterInformer(ctx context.Context, clusterClient clusterclients
 		ctx:                         ctx,
 		clusterClient:               clusterClient,
 		kubeClient:                  kubeClient,
-		allManagedClusterNames:      make(map[string]string),
+		allManagedClusterNames:      make(map[string]struct{}),
 		allManagedClusterLabelNames: make(map[string]bool),
 		managedLabelList:            &ManagedClusterLabelList{},
 		syncLabelList:               &ManagedClusterLabelList{},
@@ -140,7 +140,7 @@ func (i *ManagedClusterInformer) Run() {
 }
 
 // GetAllManagedClusterNames returns all managed cluster names.
-func (i *ManagedClusterInformer) GetAllManagedClusterNames() map[string]string {
+func (i *ManagedClusterInformer) GetAllManagedClusterNames() map[string]struct{} {
 	i.allManagedClusterNamesMtx.RLock()
 	defer i.allManagedClusterNamesMtx.RUnlock()
 	return maps.Clone(i.allManagedClusterNames)
@@ -168,7 +168,7 @@ func (i *ManagedClusterInformer) getManagedClusterEventHandler() cache.ResourceE
 			klog.Infof("added a managedcluster: %s \n", obj.(*clusterv1.ManagedCluster).Name)
 
 			i.allManagedClusterNamesMtx.Lock()
-			i.allManagedClusterNames[clusterName] = clusterName
+			i.allManagedClusterNames[clusterName] = struct{}{}
 			i.allManagedClusterNamesMtx.Unlock()
 
 			clusterLabels := obj.(*clusterv1.ManagedCluster).Labels
@@ -196,7 +196,7 @@ func (i *ManagedClusterInformer) getManagedClusterEventHandler() cache.ResourceE
 			klog.Infof("changed a managedcluster: %s \n", newCluster.Name)
 
 			i.allManagedClusterNamesMtx.Lock()
-			i.allManagedClusterNames[clusterName] = clusterName
+			i.allManagedClusterNames[clusterName] = struct{}{}
 			i.allManagedClusterNamesMtx.Unlock()
 
 			i.updateManagedLabelList(newCluster.Labels)

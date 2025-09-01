@@ -28,7 +28,7 @@ import (
 
 // MockManagedClusterInformer is a mock implementation of the ManagedClusterInformable interface.
 type MockManagedClusterInformer struct {
-	clusters       map[string]string
+	clusters       map[string]struct{}
 	regexLabelList []string
 }
 
@@ -36,9 +36,9 @@ func (m *MockManagedClusterInformer) Run() {}
 func (m *MockManagedClusterInformer) HasSynced() bool {
 	return true
 }
-func (m *MockManagedClusterInformer) GetAllManagedClusterNames() map[string]string {
+func (m *MockManagedClusterInformer) GetAllManagedClusterNames() map[string]struct{} {
 	if m.clusters == nil {
-		return map[string]string{}
+		return map[string]struct{}{}
 	}
 	return m.clusters
 }
@@ -112,7 +112,7 @@ func TestProxy_ServeHTTP(t *testing.T) {
 	defer upi.Stop()
 
 	mockInformer := &MockManagedClusterInformer{
-		clusters: map[string]string{"dummy": "dummy"},
+		clusters: map[string]struct{}{"dummy": {}},
 	}
 	mockAccessReviewer := &MockAccessReviewer{metricsAccess: map[string][]string{}}
 
@@ -179,7 +179,7 @@ func TestPreCheckRequest(t *testing.T) {
 	fakeClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(mockUser).WithLists(mockProjects).Build()
 
 	p := &Proxy{
-		managedClusterInformer: &MockManagedClusterInformer{clusters: map[string]string{"p": "p"}},
+		managedClusterInformer: &MockManagedClusterInformer{clusters: map[string]struct{}{"p": {}}},
 		accessReviewer:         &MockAccessReviewer{},
 	}
 	p.getKubeClientWithTokenFunc = func(token string) (client.Client, error) {
@@ -504,7 +504,7 @@ func TestProxyIntegrationScenarios(t *testing.T) {
 			defer userProjectCache.Stop()
 
 			mockInformer := &MockManagedClusterInformer{
-				clusters: map[string]string{"cluster1": "cluster1", "cluster2": "cluster2"},
+				clusters: map[string]struct{}{"cluster1": {}, "cluster2": {}},
 			}
 			mockAccessReviewer := &MockAccessReviewer{
 				metricsAccess: tc.accessReviewResponse,
