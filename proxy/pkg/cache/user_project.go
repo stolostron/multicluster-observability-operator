@@ -84,6 +84,19 @@ func (upi *UserProjectInfo) GetUserProjectList(token string) ([]string, bool) {
 	return []string{}, false
 }
 
+// GetUserName retrieves a user's name from the cache using their token.
+// It returns the username and a boolean indicating if the entry was found.
+func (upi *UserProjectInfo) GetUserName(token string) (string, bool) {
+	upi.mu.RLock()
+	defer upi.mu.RUnlock()
+	up, ok := upi.projectInfo[token]
+	if !ok {
+		return "", false
+	}
+	return up.UserName, true
+}
+
+
 // Stop terminates the background cleanup goroutine.
 func (upi *UserProjectInfo) Stop() {
 	close(upi.stopCh)

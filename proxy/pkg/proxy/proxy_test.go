@@ -181,11 +181,7 @@ func TestPreCheckRequest(t *testing.T) {
 	mockProjects := &projectv1.ProjectList{Items: []projectv1.Project{{ObjectMeta: metav1.ObjectMeta{Name: "p"}}}}
 	fakeClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(mockUser).WithLists(mockProjects).Build()
 
-	upi := cache.NewUserProjectInfo(time.Minute, time.Minute)
-	defer upi.Stop()
-
 	p := &Proxy{
-		userProjectInfo:        upi,
 		managedClusterInformer: &MockManagedClusterInformer{clusters: map[string]string{"p": "p"}},
 		accessReviewer:         &MockAccessReviewer{},
 	}
@@ -193,33 +189,52 @@ func TestPreCheckRequest(t *testing.T) {
 		return fakeClient, nil
 	}
 
-	req, _ := http.NewRequest("GET", "http://127.0.0.1:3002/metrics/query?query=foo", nil)
-	req.Header.Set("X-Forwarded-Access-Token", "test")
-	req.Header.Set("X-Forwarded-User", "test")
+	t.Run("Test valid request", func(t *testing.T) {
+		upi := cache.NewUserProjectInfo(time.Minute, time.Minute)
+		defer upi.Stop()
+		p.userProjectInfo = upi
 
-	// Test valid request
-	err := p.preCheckRequest(req)
-	assert.NoError(t, err)
+		req, _ := http.NewRequest("GET", "http://127.0.0.1:3002/metrics/query?query=foo", nil)
+		req.Header.Set("X-Forwarded-Access-Token", "test")
+		req.Header.Set("X-Forwarded-User", "test")
+		err := p.preCheckRequest(req)
+		assert.NoError(t, err)
+	})
 
-	// Test with bearer token
-	req.Header.Del("X-Forwarded-Access-Token")
-	req.Header.Add("Authorization", "Bearer test")
-	err = p.preCheckRequest(req)
-	assert.NoError(t, err)
-	assert.Equal(t, "test", req.Header.Get("X-Forwarded-Access-Token"))
+	t.Run("Test with bearer token", func(t *testing.T) {
+		upi := cache.NewUserProjectInfo(time.Minute, time.Minute)
+		defer upi.Stop()
+		p.userProjectInfo = upi
 
-	// Test with missing user, should be fetched automatically
-	req.Header.Del("X-Forwarded-User")
-	err = p.preCheckRequest(req)
-	assert.NoError(t, err)
-	assert.Equal(t, "~", req.Header.Get("X-Forwarded-User"))
+		req, _ := http.NewRequest("GET", "http://127.0.0.1:3002/metrics/query?query=foo", nil)
+		req.Header.Add("Authorization", "Bearer test")
+		err := p.preCheckRequest(req)
+		assert.NoError(t, err)
+		assert.Equal(t, "test", req.Header.Get("X-Forwarded-Access-Token"))
+	})
 
-	// Test with missing token
-	req.Header.Del("X-Forwarded-Access-Token")
-	req.Header.Del("Authorization")
-	err = p.preCheckRequest(req)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "found unauthorized user")
+	t.Run("Test with missing user, should be fetched automatically", func(t *testing.T) {
+		upi := cache.NewUserProjectInfo(time.Minute, time.Minute)
+		defer upi.Stop()
+		p.userProjectInfo = upi
+
+		req, _ := http.NewRequest("GET", "http://127.0.0.1:3002/metrics/query?query=foo", nil)
+		req.Header.Set("X-Forwarded-Access-Token", "test-new-token")
+		err := p.preCheckRequest(req)
+		assert.NoError(t, err)
+		assert.Equal(t, "~", req.Header.Get("X-Forwarded-User"))
+	})
+
+	t.Run("Test with missing token", func(t *testing.T) {
+		upi := cache.NewUserProjectInfo(time.Minute, time.Minute)
+		defer upi.Stop()
+		p.userProjectInfo = upi
+
+		req, _ := http.NewRequest("GET", "http://127.0.0.1:3002/metrics/query?query=foo", nil)
+		err := p.preCheckRequest(req)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "found unauthorized user")
+	})
 }
 
 func TestProxyRequest(t *testing.T) {

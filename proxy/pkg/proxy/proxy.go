@@ -157,14 +157,21 @@ func (p *Proxy) preCheckRequest(req *http.Request) error {
 		req.Header.Set("X-Forwarded-Access-Token", token)
 	}
 
-	c, err := p.getKubeClientWithTokenFunc(token)
-	if err != nil {
-		return fmt.Errorf("failed to get kube client: %w", err)
-	}
-
+	// Try to get username from header or cache first.
 	userName := req.Header.Get("X-Forwarded-User")
 	if userName == "" {
+		userName, _ = p.userProjectInfo.GetUserName(token)
+	}
+
+	var c client.Client
+	// If username is still missing, fetch it from the API.
+	if userName == "" {
 		var err error
+		c, err = p.getKubeClientWithTokenFunc(token)
+		if err != nil {
+			return fmt.Errorf("failed to get kube client: %w", err)
+		}
+
 		userName, err = util.GetUserName(req.Context(), c)
 		if err != nil {
 			return fmt.Errorf("failed to get user name: %w", err)
@@ -172,10 +179,19 @@ func (p *Proxy) preCheckRequest(req *http.Request) error {
 		if userName == "" {
 			return errors.New("failed to find user name")
 		}
-		req.Header.Set("X-Forwarded-User", userName)
 	}
+	req.Header.Set("X-Forwarded-User", userName)
 
 	if _, ok := p.userProjectInfo.GetUserProjectList(token); !ok {
+		// Create client only if we haven't already.
+		if c == nil {
+			var err error
+			c, err = p.getKubeClientWithTokenFunc(token)
+			if err != nil {
+				return fmt.Errorf("failed to get kube client: %w", err)
+			}
+		}
+
 		projectList, err := util.FetchUserProjectList(req.Context(), c)
 		if err != nil {
 			klog.Errorf("failed to fetch user project list: %v", err)
