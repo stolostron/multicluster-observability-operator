@@ -277,11 +277,17 @@ func (i *ManagedClusterInformer) getManagedClusterLabelAllowListEventHandler() c
 				_ = unmarshalDataToManagedClusterLabelList(newObj.(*v1.ConfigMap).Data,
 					proxyconfig.ManagedClusterLabelAllowListConfigMapKey, i.syncLabelList)
 
+				i.managedLabelList.IgnoreList = i.syncLabelList.IgnoreList
+				for _, label := range i.syncLabelList.LabelList {
+					if !slice.ContainsString(i.managedLabelList.LabelList, label, nil) {
+						i.managedLabelList.LabelList = append(i.managedLabelList.LabelList, label)
+					}
+				}
+
 				sortManagedLabelList(i.managedLabelList)
 				sortManagedLabelList(i.syncLabelList)
 
 				if ok := reflect.DeepEqual(i.syncLabelList, i.managedLabelList); !ok {
-					i.managedLabelList.IgnoreList = i.syncLabelList.IgnoreList
 					*i.syncLabelList = *i.managedLabelList
 				}
 
