@@ -18,6 +18,7 @@ import (
 	proxyconfig "github.com/stolostron/multicluster-observability-operator/proxy/pkg/config"
 	"gopkg.in/yaml.v2"
 	v1 "k8s.io/api/core/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/kubernetes"
@@ -41,7 +42,6 @@ type ManagedClusterInformable interface {
 	Run()
 	HasSynced() bool
 	GetAllManagedClusterNames() map[string]string
-	GetAllManagedClusterLabelNames() map[string]bool
 	GetManagedClusterLabelList() []string
 }
 
@@ -89,6 +89,10 @@ func NewManagedClusterInformer(ctx context.Context, clusterClient clusterclients
 
 // Run starts the informer and waits for the caches to sync.
 func (i *ManagedClusterInformer) Run() {
+	if err := i.ensureManagedClusterLabelAllowListConfigmapExists(); err != nil {
+		klog.Fatalf("Failed to ensure managed cluster label allowlist configmap exists: %v", err)
+	}
+
 	clusterWatchlist := cache.NewListWatchFromClient(
 		i.clusterClient.ClusterV1().RESTClient(),
 		"managedclusters",
@@ -124,6 +128,14 @@ func (i *ManagedClusterInformer) Run() {
 	i.hasSyncedMtx.Unlock()
 	klog.Info("Informer caches have successfully synced")
 
+	i.allManagedClusterNamesMtx.RLock()
+	klog.Infof("allManagedClusterNames: %v", i.allManagedClusterNames)
+	i.allManagedClusterNamesMtx.RUnlock()
+
+	i.labelListMtx.RLock()
+	klog.Infof("managedLabelList.RegexLabelList: %v", i.managedLabelList.RegexLabelList)
+	i.labelListMtx.RUnlock()
+
 	go i.scheduleManagedClusterLabelAllowlistResync()
 }
 
@@ -132,13 +144,6 @@ func (i *ManagedClusterInformer) GetAllManagedClusterNames() map[string]string {
 	i.allManagedClusterNamesMtx.RLock()
 	defer i.allManagedClusterNamesMtx.RUnlock()
 	return maps.Clone(i.allManagedClusterNames)
-}
-
-// GetAllManagedClusterLabelNames returns all managed cluster labels.
-func (i *ManagedClusterInformer) GetAllManagedClusterLabelNames() map[string]bool {
-	i.allManagedClusterLabelNamesMtx.RLock()
-	defer i.allManagedClusterLabelNamesMtx.RUnlock()
-	return maps.Clone(i.allManagedClusterLabelNames)
 }
 
 // GetManagedClusterLabelList returns the managed cluster label list.
@@ -153,6 +158,13 @@ func (i *ManagedClusterInformer) HasSynced() bool {
 	i.hasSyncedMtx.RLock()
 	defer i.hasSyncedMtx.RUnlock()
 	return i.hasSynced
+}
+
+// GetAllManagedClusterLabelNames returns all managed cluster labels.
+func (i *ManagedClusterInformer) getAllManagedClusterLabelNames() map[string]bool {
+	i.allManagedClusterLabelNamesMtx.RLock()
+	defer i.allManagedClusterLabelNamesMtx.RUnlock()
+	return maps.Clone(i.allManagedClusterLabelNames)
 }
 
 // getManagedClusterEventHandler is the hendler for the ManagedClusters resources informer.
@@ -479,5 +491,29 @@ func unmarshalDataToManagedClusterLabelList(data map[string]string, key string,
 		return fmt.Errorf("failed to unmarshal configmap %s data to the managedLabelList: %w", key, err)
 	}
 
+	return nil
+}
+
+// ensureManagedClusterLabelAllowListConfigmapExists checks if the allowlist ConfigMap exists and creates it if it doesn't.
+func (i *ManagedClusterInformer) ensureManagedClusterLabelAllowListConfigmapExists() error {
+	_, err := proxyconfig.GetManagedClusterLabelAllowListConfigmap(
+		i.ctx,
+		i.kubeClient,
+		proxyconfig.ManagedClusterLabelAllowListNamespace,
+	)
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			klog.Info("managedcluster label allowlist configmap not found, creating it")
+			cm := proxyconfig.CreateManagedClusterLabelAllowListCM(
+				proxyconfig.ManagedClusterLabelAllowListNamespace,
+			)
+			_, err := i.kubeClient.CoreV1().ConfigMaps(proxyconfig.ManagedClusterLabelAllowListNamespace).Create(i.ctx, cm, metav1.CreateOptions{})
+			if err != nil {
+				return fmt.Errorf("failed to create managedcluster label allowlist configmap: %w", err)
+			}
+		} else {
+			return fmt.Errorf("failed to get managedcluster label allowlist configmap: %w", err)
+		}
+	}
 	return nil
 }

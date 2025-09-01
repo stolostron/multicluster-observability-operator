@@ -16,14 +16,11 @@ import (
 	"time"
 
 	"github.com/spf13/pflag"
-	k8serrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
 	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/cache"
-	proxyconfig "github.com/stolostron/multicluster-observability-operator/proxy/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/informer"
 	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/proxy"
 	"github.com/stolostron/rbac-api-utils/pkg/rbac"
@@ -82,26 +79,6 @@ func run() error {
 	kubeClient, err := kubernetes.NewForConfig(kubeConfig)
 	if err != nil {
 		return fmt.Errorf("failed to initialize new kubernetes client: %w", err)
-	}
-
-	_, err = proxyconfig.GetManagedClusterLabelAllowListConfigmap(
-		ctx,
-		kubeClient,
-		proxyconfig.ManagedClusterLabelAllowListNamespace,
-	)
-	if err != nil {
-		if k8serrors.IsNotFound(err) {
-			klog.Info("managedcluster label allowlist configmap not found, creating it")
-			cm := proxyconfig.CreateManagedClusterLabelAllowListCM(
-				proxyconfig.ManagedClusterLabelAllowListNamespace,
-			)
-			_, err := kubeClient.CoreV1().ConfigMaps(proxyconfig.ManagedClusterLabelAllowListNamespace).Create(ctx, cm, metav1.CreateOptions{})
-			if err != nil {
-				return fmt.Errorf("failed to create managedcluster label allowlist configmap: %w", err)
-			}
-		} else {
-			return fmt.Errorf("failed to get managedcluster label allowlist configmap: %w", err)
-		}
 	}
 
 	accessReviewer, err := rbac.NewAccessReviewer(kubeConfig, nil)

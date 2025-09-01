@@ -29,7 +29,6 @@ import (
 // MockManagedClusterInformer is a mock implementation of the ManagedClusterInformable interface.
 type MockManagedClusterInformer struct {
 	clusters       map[string]string
-	labels         map[string]bool
 	regexLabelList []string
 }
 
@@ -44,10 +43,7 @@ func (m *MockManagedClusterInformer) GetAllManagedClusterNames() map[string]stri
 	return m.clusters
 }
 func (m *MockManagedClusterInformer) GetAllManagedClusterLabelNames() map[string]bool {
-	if m.labels == nil {
-		return map[string]bool{}
-	}
-	return m.labels
+	return nil
 }
 func (m *MockManagedClusterInformer) GetManagedClusterLabelList() []string {
 	if m.regexLabelList == nil {
