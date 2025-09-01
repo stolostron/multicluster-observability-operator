@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/informer"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 )
 
 // Checker implements the HTTP handlers for liveness and readiness probes.

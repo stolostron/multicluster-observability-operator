@@ -24,7 +24,7 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/rewrite"
 	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/util"
 	"k8s.io/client-go/rest"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 )
