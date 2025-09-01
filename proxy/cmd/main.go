@@ -17,8 +17,9 @@ import (
 
 	"github.com/spf13/pflag"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/cache"
 	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/informer"
@@ -44,6 +45,7 @@ func main() {
 }
 
 func run() error {
+	log.SetLogger(klog.NewKlogr())
 	cfg := proxyConf{}
 
 	klogFlags := flag.NewFlagSet(os.Args[0], flag.ExitOnError)

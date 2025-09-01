@@ -13,7 +13,7 @@ import (
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/promql/parser"
 	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/rewrite"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 )
 
 // NamespaceFilter analyzes a PromQL query against a user's permissions to determine
