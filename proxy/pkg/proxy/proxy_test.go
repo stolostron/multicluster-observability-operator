@@ -42,9 +42,6 @@ func (m *MockManagedClusterInformer) GetAllManagedClusterNames() map[string]stri
 	}
 	return m.clusters
 }
-func (m *MockManagedClusterInformer) GetAllManagedClusterLabelNames() map[string]bool {
-	return nil
-}
 func (m *MockManagedClusterInformer) GetManagedClusterLabelList() []string {
 	if m.regexLabelList == nil {
 		return []string{}
