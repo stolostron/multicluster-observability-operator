@@ -5,15 +5,11 @@
 package config
 
 import (
-	"context"
-	"fmt"
-
 	projectv1 "github.com/openshift/api/project/v1"
 	userv1 "github.com/openshift/api/user/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/kubernetes"
 )
 
 const (
@@ -65,16 +61,4 @@ ignore_labels:
 `}}
 }
 
-// GetManagedClusterLabelAllowListConfigmap returns the managedcluster label allowlist configmap.
-func GetManagedClusterLabelAllowListConfigmap(ctx context.Context, kubeClient kubernetes.Interface, namespace string) (*v1.ConfigMap,
-	error) {
-	configmap, err := kubeClient.CoreV1().ConfigMaps(namespace).Get(
-		ctx,
-		ManagedClusterLabelAllowListConfigMapName,
-		metav1.GetOptions{},
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get managedcluster label allowlist configmap: %w", err)
-	}
-	return configmap, nil
-}
+

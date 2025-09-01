@@ -352,8 +352,11 @@ func (i *ManagedClusterInformer) resyncManagedClusterLabelAllowList() error {
 	i.labelListMtx.Lock()
 	defer i.labelListMtx.Unlock()
 
-	found, err := proxyconfig.GetManagedClusterLabelAllowListConfigmap(i.ctx, i.kubeClient,
-		proxyconfig.ManagedClusterLabelAllowListNamespace)
+	found, err := i.kubeClient.CoreV1().ConfigMaps(proxyconfig.ManagedClusterLabelAllowListNamespace).Get(
+		i.ctx,
+		proxyconfig.ManagedClusterLabelAllowListConfigMapName,
+		metav1.GetOptions{},
+	)
 
 	if err != nil {
 		return err
@@ -496,10 +499,10 @@ func unmarshalDataToManagedClusterLabelList(data map[string]string, key string,
 
 // ensureManagedClusterLabelAllowListConfigmapExists checks if the allowlist ConfigMap exists and creates it if it doesn't.
 func (i *ManagedClusterInformer) ensureManagedClusterLabelAllowListConfigmapExists() error {
-	_, err := proxyconfig.GetManagedClusterLabelAllowListConfigmap(
+	_, err := i.kubeClient.CoreV1().ConfigMaps(proxyconfig.ManagedClusterLabelAllowListNamespace).Get(
 		i.ctx,
-		i.kubeClient,
-		proxyconfig.ManagedClusterLabelAllowListNamespace,
+		proxyconfig.ManagedClusterLabelAllowListConfigMapName,
+		metav1.GetOptions{},
 	)
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
