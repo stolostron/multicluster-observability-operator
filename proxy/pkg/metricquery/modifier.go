@@ -213,11 +213,11 @@ func (mqm *Modifier) getUserMetricsACLs(userName string, token string) (map[stri
 }
 
 // filterProjectsToManagedClusters filters a list of projects to only include those that are also managed clusters.
-func filterProjectsToManagedClusters(projectList []string, managedClusterNames map[string]string) []string {
+func filterProjectsToManagedClusters(projectList []string, managedClusterNames map[string]struct{}) []string {
 	clusterList := []string{}
 	for _, projectName := range projectList {
-		if clusterName, ok := managedClusterNames[projectName]; ok {
-			clusterList = append(clusterList, clusterName)
+		if _, ok := managedClusterNames[projectName]; ok {
+			clusterList = append(clusterList, projectName)
 		}
 	}
 
@@ -277,12 +277,12 @@ func rewriteQuery(originalQuery string, userMetricsAccess map[string][]string) (
 }
 
 // canAccessAll checks if a user has permission to access all namespaces ("*") in all managed clusters.
-func canAccessAll(clusterNamespaces map[string][]string, managedClusterNames map[string]string) bool {
+func canAccessAll(clusterNamespaces map[string][]string, managedClusterNames map[string]struct{}) bool {
 	if len(managedClusterNames) == 0 && len(clusterNamespaces) == 0 {
 		return false
 	}
 
-	for _, clusterName := range managedClusterNames {
+	for clusterName := range managedClusterNames {
 		namespaces, contains := clusterNamespaces[clusterName]
 
 		//does not have access to the cluster
