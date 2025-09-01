@@ -50,6 +50,7 @@ func newTestMCO(binding string, enabled bool) *mcov1beta2.MultiClusterObservabil
 	}
 }
 
+// Reset global state
 func resetGlobalState() {
 	ComponentState.Namespace = rsutility.DefaultNamespace
 	ComponentState.Enabled = false

@@ -51,6 +51,11 @@ func newTestMCOForComponent(componentType ComponentType, binding string, enabled
 			Enabled:          enabled,
 			NamespaceBinding: binding,
 		}
+	case ComponentTypeVirtualization:
+		mco.Spec.Capabilities.Platform.Analytics.VirtualizationRightSizingRecommendation = mcov1beta2.PlatformRightSizingRecommendationSpec{
+			Enabled:          enabled,
+			NamespaceBinding: binding,
+		}
 	}
 
 	return mco
@@ -74,6 +79,15 @@ func TestGetComponentConfig_Namespace(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, enabled)
 	assert.Equal(t, "custom-namespace", binding)
+}
+
+func TestGetComponentConfig_Virtualization(t *testing.T) {
+	mco := newTestMCOForComponent(ComponentTypeVirtualization, "virt-namespace", false)
+
+	enabled, binding, err := GetComponentConfig(mco, ComponentTypeVirtualization)
+	require.NoError(t, err)
+	assert.False(t, enabled)
+	assert.Equal(t, "virt-namespace", binding)
 }
 
 func TestGetComponentConfig_PlatformNotConfigured(t *testing.T) {
