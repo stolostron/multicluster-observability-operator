@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -41,7 +42,7 @@ var _ = Describe("", func() {
 				if err != nil {
 					return err
 				}
-				oldCRResourceVersion = cr.Object["metadata"].(map[string]interface{})["resourceVersion"].(string)
+				oldCRResourceVersion = cr.Object["metadata"].(map[string]any)["resourceVersion"].(string)
 
 				sts, err := utils.GetStatefulSetWithLabel(testOptions, true, THANOS_COMPACT_LABEL, MCO_NAMESPACE)
 				if err != nil {
@@ -49,7 +50,7 @@ var _ = Describe("", func() {
 				}
 				oldCompactResourceVersion = (*sts).Items[0].ResourceVersion
 
-				cr.Object["spec"].(map[string]interface{})["thanos"].(map[string]interface{})["compact"].(map[string]interface{})["retentionResolution1h"] = updateRetention
+				cr.Object["spec"].(map[string]any)["thanos"].(map[string]any)["compact"].(map[string]any)["retentionResolution1h"] = updateRetention
 
 				_, err = dynClient.Resource(utils.NewMCOMObservatoriumGVR()).
 					Namespace(MCO_NAMESPACE).
@@ -62,8 +63,8 @@ var _ = Describe("", func() {
 					Namespace(MCO_NAMESPACE).
 					Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
 				if err == nil {
-					replicasNewRetention := cr.Object["spec"].(map[string]interface{})["thanos"].(map[string]interface{})["compact"].(map[string]interface{})["retentionResolution1h"]
-					newResourceVersion := cr.Object["metadata"].(map[string]interface{})["resourceVersion"].(string)
+					replicasNewRetention := cr.Object["spec"].(map[string]any)["thanos"].(map[string]any)["compact"].(map[string]any)["retentionResolution1h"]
+					newResourceVersion := cr.Object["metadata"].(map[string]any)["resourceVersion"].(string)
 					if newResourceVersion != oldCRResourceVersion &&
 						replicasNewRetention != updateRetention {
 						return true
@@ -82,11 +83,8 @@ var _ = Describe("", func() {
 					return errors.New("The thanos compact pod is not restarted. ResourceVersion has not changed.")
 				}
 				argList := sts.Items[0].Spec.Template.Spec.Containers[0].Args
-				for _, arg := range argList {
-					// check if the retention resolution is reverted to the original value
-					if arg == "--retention.resolution-1h="+updateRetention {
-						return fmt.Errorf("The thanos compact pod has not restored the retention to the original value in the MCO spec. Args: %v", argList)
-					}
+				if slices.Contains(argList, "--retention.resolution-1h="+updateRetention) {
+					return fmt.Errorf("The thanos compact pod has not restored the retention to the original value in the MCO spec. Args: %v", argList)
 				}
 
 				return nil

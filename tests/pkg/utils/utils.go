@@ -242,9 +242,9 @@ func ApplyRetryOnConflict(url string, kubeconfig string, ctx string, yamlB []byt
 // ctx, the ctx to use
 // yamlB, a byte array containing the resources file
 func Apply(url string, kubeconfig string, ctx string, yamlB []byte) error {
-	yamls := strings.Split(string(yamlB), "---")
+	yamls := strings.SplitSeq(string(yamlB), "---")
 	// yamlFiles is an []string
-	for _, f := range yamls {
+	for f := range yamls {
 		if len(strings.TrimSpace(f)) == 0 {
 			continue
 		}
@@ -503,7 +503,7 @@ func Apply(url string, kubeconfig string, ctx string, yamlB []byte) error {
 					KubeConfig: kubeconfig,
 				}
 				if ips, err := GetPullSecret(opt); err == nil {
-					obj.Object["spec"].(map[string]interface{})["imagePullSecret"] = ips
+					obj.Object["spec"].(map[string]any)["imagePullSecret"] = ips
 				}
 			}
 
@@ -557,7 +557,7 @@ func HaveCRDs(c Cluster, kubeconfig string, expectedCRDs []string) error {
 // IntegrityChecking checks to ensure all required conditions are met when completing the specs
 func IntegrityChecking(opt TestOptions) error {
 	var err error
-	for i := 0; i < 60; i++ { // wait at most 5 minutes
+	for range 60 { // wait at most 5 minutes
 		err = CheckMCOComponents(opt)
 		if err != nil {
 			time.Sleep(5 * time.Second)
@@ -594,7 +594,7 @@ func GetPullSecret(opt TestOptions) (string, error) {
 		return "", err
 	}
 
-	spec := getMCH.Object["spec"].(map[string]interface{})
+	spec := getMCH.Object["spec"].(map[string]any)
 	if _, ok := spec["imagePullSecret"]; !ok {
 		return "", errors.New("can not find imagePullSecret in MCH CR")
 	}

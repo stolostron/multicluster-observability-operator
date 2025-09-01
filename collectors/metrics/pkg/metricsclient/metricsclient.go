@@ -95,7 +95,7 @@ type MetricsData struct {
 
 type MetricsResult struct {
 	Metric map[string]string `json:"metric"`
-	Value  []interface{}     `json:"value"`
+	Value  []any             `json:"value"`
 }
 
 func (c *Client) RetrieveRecordingMetrics(
@@ -490,10 +490,7 @@ func (c *Client) RemoteWrite(ctx context.Context, req *http.Request,
 	*/
 
 	for i := 0; i < len(timeseries); i += maxSeriesLength {
-		length := len(timeseries)
-		if i+maxSeriesLength < length {
-			length = i + maxSeriesLength
-		}
+		length := min(i+maxSeriesLength, len(timeseries))
 		subTimeseries := timeseries[i:length]
 
 		wreq := &prompb.WriteRequest{Timeseries: subTimeseries}
@@ -508,10 +505,7 @@ func (c *Client) RemoteWrite(ctx context.Context, req *http.Request,
 		// retry RemoteWrite with exponential back-off
 		b := backoff.NewExponentialBackOff()
 		// Do not set max elapsed time more than half the scrape interval
-		halfInterval := len(timeseries) * 2 / maxSeriesLength
-		if halfInterval < 2 {
-			halfInterval = 2
-		}
+		halfInterval := max(len(timeseries)*2/maxSeriesLength, 2)
 		b.MaxElapsedTime = interval / time.Duration(halfInterval)
 		retryable := func() error {
 			return c.sendRequest(ctx, req.URL.String(), compressed)

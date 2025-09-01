@@ -68,7 +68,7 @@ func RunGrafanaDashboardController(stop <-chan struct{}) {
 	<-stop
 }
 
-func isDesiredDashboardConfigmap(obj interface{}) bool {
+func isDesiredDashboardConfigmap(obj any) bool {
 	cm, ok := obj.(*corev1.ConfigMap)
 	if !ok || cm == nil {
 		return false
@@ -108,7 +108,7 @@ func newKubeInformer(coreClient corev1client.CoreV1Interface) (cache.SharedIndex
 	)
 
 	_, err := kubeInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj interface{}) {
+		AddFunc: func(obj any) {
 			if !isDesiredDashboardConfigmap(obj) {
 				return
 			}
@@ -131,7 +131,7 @@ func newKubeInformer(coreClient corev1client.CoreV1Interface) (cache.SharedIndex
 				times++
 			}
 		},
-		UpdateFunc: func(old, new interface{}) {
+		UpdateFunc: func(old, new any) {
 			if old.(*corev1.ConfigMap).ObjectMeta.ResourceVersion == new.(*corev1.ConfigMap).ObjectMeta.ResourceVersion {
 				return
 			}
@@ -158,7 +158,7 @@ func newKubeInformer(coreClient corev1client.CoreV1Interface) (cache.SharedIndex
 				times++
 			}
 		},
-		DeleteFunc: func(obj interface{}) {
+		DeleteFunc: func(obj any) {
 			if !isDesiredDashboardConfigmap(obj) {
 				return
 			}
@@ -177,7 +177,7 @@ func hasCustomFolder(folderTitle string) float64 {
 	grafanaURL := grafanaURI + "/api/folders"
 	body, _ := util.SetRequest("GET", grafanaURL, nil, maxHttpRetry)
 
-	folders := []map[string]interface{}{}
+	folders := []map[string]any{}
 	err := json.Unmarshal(body, &folders)
 	if err != nil {
 		klog.Error(unmarshallErrMsg, "error", err)
@@ -198,7 +198,7 @@ func createCustomFolder(folderTitle string) float64 {
 		// Create the folder
 		grafanaURL := grafanaURI + "/api/folders"
 		body, _ := util.SetRequest("POST", grafanaURL, strings.NewReader("{\"title\":\""+folderTitle+"\"}"), maxHttpRetry)
-		folder := map[string]interface{}{}
+		folder := map[string]any{}
 		err := json.Unmarshal(body, &folder)
 		if err != nil {
 			klog.Error(unmarshallErrMsg, "error", err)
@@ -225,7 +225,7 @@ func createCustomFolder(folderTitle string) float64 {
 func getCustomFolderUID(folderID float64) string {
 	grafanaURL := grafanaURI + "/api/folders/id/" + fmt.Sprint(folderID)
 	body, _ := util.SetRequest("GET", grafanaURL, nil, maxHttpRetry)
-	folder := map[string]interface{}{}
+	folder := map[string]any{}
 	err := json.Unmarshal(body, &folder)
 	if err != nil {
 		klog.Error(unmarshallErrMsg, "error", err)
@@ -246,7 +246,7 @@ func isEmptyFolder(folderID float64) bool {
 
 	grafanaURL := grafanaURI + "/api/search?folderIds=" + fmt.Sprint(folderID)
 	body, _ := util.SetRequest("GET", grafanaURL, nil, maxHttpRetry)
-	dashboards := []map[string]interface{}{}
+	dashboards := []map[string]any{}
 	err := json.Unmarshal(body, &dashboards)
 	if err != nil {
 		klog.Error(unmarshallErrMsg, "error", err)
@@ -283,7 +283,7 @@ func deleteCustomFolder(folderID float64) bool {
 	return true
 }
 
-func getDashboardCustomFolderTitle(obj interface{}) string {
+func getDashboardCustomFolderTitle(obj any) string {
 	cm, ok := obj.(*corev1.ConfigMap)
 	if !ok || cm == nil {
 		return ""
@@ -302,7 +302,7 @@ func getDashboardCustomFolderTitle(obj interface{}) string {
 }
 
 // updateDashboard is used to update the customized dashboards via calling grafana api.
-func updateDashboard(old, new interface{}, overwrite bool) error {
+func updateDashboard(old, new any, overwrite bool) error {
 	folderID := 0.0
 	folderTitle := getDashboardCustomFolderTitle(new)
 	if folderTitle != "" {
@@ -326,7 +326,7 @@ func updateDashboard(old, new interface{}, overwrite bool) error {
 
 	for _, value := range new.(*corev1.ConfigMap).Data {
 
-		dashboard := map[string]interface{}{}
+		dashboard := map[string]any{}
 		err := json.Unmarshal([]byte(value), &dashboard)
 		if err != nil {
 			return fmt.Errorf("failed to unmarshall data: %v", err)
@@ -337,7 +337,7 @@ func updateDashboard(old, new interface{}, overwrite bool) error {
 			klog.Infof("dashboard uid is not set, generating a default: %s", dashboard["uid"])
 		}
 		dashboard["id"] = nil
-		data := map[string]interface{}{
+		data := map[string]any{
 			"folderId":  folderID,
 			"overwrite": overwrite,
 			"dashboard": dashboard,
@@ -395,10 +395,10 @@ func updateDashboard(old, new interface{}, overwrite bool) error {
 }
 
 // DeleteDashboard ...
-func deleteDashboard(obj interface{}) {
+func deleteDashboard(obj any) {
 	for _, value := range obj.(*corev1.ConfigMap).Data {
 
-		dashboard := map[string]interface{}{}
+		dashboard := map[string]any{}
 		err := json.Unmarshal([]byte(value), &dashboard)
 		if err != nil {
 			klog.Error("failed to unmarshall data", "error", err)
