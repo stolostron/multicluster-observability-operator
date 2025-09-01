@@ -187,7 +187,7 @@ data:
               "color": {
                 "mode": "thresholds"
               },
-              "decimals": 0,
+              "decimals": 2,
               "mappings": [],
               "thresholds": {
                 "mode": "absolute",
@@ -260,7 +260,7 @@ data:
               "color": {
                 "mode": "thresholds"
               },
-              "decimals": 0,
+              "decimals": 2,
               "mappings": [],
               "thresholds": {
                 "mode": "absolute",
@@ -1818,7 +1818,7 @@ data:
                   },
                   {
                     "id": "decimals",
-                    "value": 0
+                    "value": 2
                   },
                   {
                     "id": "custom.align",
@@ -1855,7 +1855,7 @@ data:
                 "properties": [
                   {
                     "id": "decimals",
-                    "value": 0
+                    "value": 2
                   }
                 ]
               },
@@ -2344,7 +2344,7 @@ data:
                   },
                   {
                     "id": "decimals",
-                    "value": 0
+                    "value": 2
                   },
                   {
                     "id": "custom.align",
@@ -2381,7 +2381,7 @@ data:
                 "properties": [
                   {
                     "id": "decimals",
-                    "value": 0
+                    "value": 2
                   }
                 ]
               },

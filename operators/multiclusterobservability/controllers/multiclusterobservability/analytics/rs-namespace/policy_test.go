@@ -14,8 +14,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	policyv1 "open-cluster-management.io/governance-policy-propagator/api/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	policyv1 "open-cluster-management.io/governance-policy-propagator/api/v1"
 )
 
 // Note: CreateOrUpdatePrometheusRulePolicy is a thin wrapper around rsutility.CreateOrUpdateRSPrometheusRulePolicy

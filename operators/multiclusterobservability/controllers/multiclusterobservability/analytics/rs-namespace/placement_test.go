@@ -12,8 +12,9 @@ import (
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	clusterv1beta1 "open-cluster-management.io/api/cluster/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	clusterv1beta1 "open-cluster-management.io/api/cluster/v1beta1"
 )
 
 // Note: CreateUpdatePlacement is a thin wrapper around rsutility.CreateUpdateRSPlacement

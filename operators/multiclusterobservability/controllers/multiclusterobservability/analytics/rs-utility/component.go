@@ -55,6 +55,10 @@ func GetComponentConfig(mco *mcov1beta2.MultiClusterObservability, componentType
 		enabled := mco.Spec.Capabilities.Platform.Analytics.NamespaceRightSizingRecommendation.Enabled
 		binding := mco.Spec.Capabilities.Platform.Analytics.NamespaceRightSizingRecommendation.NamespaceBinding
 		return enabled, binding, nil
+	case ComponentTypeVirtualization:
+		enabled := mco.Spec.Capabilities.Platform.Analytics.VirtualizationRightSizingRecommendation.Enabled
+		binding := mco.Spec.Capabilities.Platform.Analytics.VirtualizationRightSizingRecommendation.NamespaceBinding
+		return enabled, binding, nil
 	default:
 		return false, "", fmt.Errorf("unknown component type: %s", componentType)
 	}
