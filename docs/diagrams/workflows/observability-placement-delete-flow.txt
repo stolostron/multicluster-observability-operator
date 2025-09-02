@@ -1,0 +1,35 @@
+title Managed Cluster Detach or Disable Observability
+
+bottomparticipants
+
+participant "Placement\nController" as plctrl
+participant "managed\ncluster\nres" as mcl #yellow
+participant "observability\naddon\nres(hub)" as obsaddon
+participant "manifestwork\nres\n(in cluster ns)" as mwork
+participant "managed\ncluster\naddon\nres" as maddon #yellow
+participant "work\nagent" as wagnt #yellow
+participant "observability\naddon\nres(managed)" as oman
+participant "endpoint\noperator" as ep
+participant "metrics\ncollector/\nuwl metrics\ncollector" as mcol
+participant "cluster\nmonitoring\nconfig\nconfigmap" as cmc #orange
+participant "prometheus\nstack\n(only on *KS)" as prom
+
+==During\nManaged Cluster\nBootstrap==
+ep->obsaddon:Insert Finalizer
+==Managed Cluster\nDetach Flow==
+plctrl->plctrl:reconcile
+plctrl-->mcl:watch
+plctrl->obsaddon:mark as\nTerminating
+plctrl->mwork:delete ObsAddon\nin manifestwork
+wagnt-->mwork:watch
+wagnt->oman:delete
+ep->oman:watch
+ep->mcol:delete
+ep->cmc:revert\nconfig
+ep->prom:delete
+ep->obsaddon:remove Finalizer
+obsaddon->obsaddon:delete
+plctrl->mwork:delete
+wagnt-->mwork:watch
+wagnt->ep:delete 
+plctrl->maddon:delete

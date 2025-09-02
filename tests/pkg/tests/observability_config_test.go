@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"slices"
 	"strings"
 	"time"
 
@@ -134,7 +135,7 @@ var _ = Describe("", func() {
 		if err != nil {
 			panic(err.Error())
 		}
-		observabilityAddonSpec := mcoRes.Object["spec"].(map[string]interface{})["observabilityAddonSpec"].(map[string]interface{})
+		observabilityAddonSpec := mcoRes.Object["spec"].(map[string]any)["observabilityAddonSpec"].(map[string]any)
 		Expect(observabilityAddonSpec["enableMetrics"]).To(Equal(true))
 		Expect(observabilityAddonSpec["interval"]).To(Equal(int64(300)))
 	})
@@ -144,8 +145,8 @@ var _ = Describe("", func() {
 			Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
 		Expect(err).NotTo(HaveOccurred())
 
-		spec := mcoSC.Object["spec"].(map[string]interface{})
-		scInCR := spec["storageConfig"].(map[string]interface{})["storageClass"].(string)
+		spec := mcoSC.Object["spec"].(map[string]any)
+		scInCR := spec["storageConfig"].(map[string]any)["storageClass"].(string)
 
 		scList, _ := hubClient.StorageV1().StorageClasses().List(context.TODO(), metav1.ListOptions{})
 		scMatch := false
@@ -252,19 +253,19 @@ var _ = Describe("", func() {
 			panic(err.Error())
 		}
 
-		spec := mcoRes.Object["spec"].(map[string]interface{})
+		spec := mcoRes.Object["spec"].(map[string]any)
 		if _, adv := spec["advanced"]; !adv {
 			Skip("Skip the case since the MCO CR did not have advanced spec configed")
 		}
 
-		advancedSpec := mcoRes.Object["spec"].(map[string]interface{})["advanced"].(map[string]interface{})
+		advancedSpec := mcoRes.Object["spec"].(map[string]any)["advanced"].(map[string]any)
 
 		for key, component := range componentMap {
 			if key == "compact" || key == "store" {
 				continue
 			}
 			klog.V(1).Infof("The component is: %s\n", key)
-			replicas := advancedSpec[key].(map[string]interface{})["replicas"]
+			replicas := advancedSpec[key].(map[string]any)["replicas"]
 			if component.Type == "Deployment" {
 				deploys, err := utils.GetDeploymentWithLabel(testOptions, true, component.Label, MCO_NAMESPACE)
 				Expect(err).NotTo(HaveOccurred())
@@ -289,17 +290,17 @@ var _ = Describe("", func() {
 			panic(err.Error())
 		}
 
-		spec := mcoRes.Object["spec"].(map[string]interface{})
+		spec := mcoRes.Object["spec"].(map[string]any)
 		if _, adv := spec["advanced"]; !adv {
 			Skip("Skip the case since the MCO CR did not have advanced spec configed")
 		}
 
-		advancedSpec := mcoRes.Object["spec"].(map[string]interface{})["advanced"].(map[string]interface{})
+		advancedSpec := mcoRes.Object["spec"].(map[string]any)["advanced"].(map[string]any)
 
 		for key, component := range componentMap {
 			klog.V(1).Infof("The component is: %s\n", key)
-			resources := advancedSpec[key].(map[string]interface{})["resources"]
-			limits := resources.(map[string]interface{})["limits"].(map[string]interface{})
+			resources := advancedSpec[key].(map[string]any)["resources"]
+			limits := resources.(map[string]any)["limits"].(map[string]any)
 			var cpu string
 			switch v := limits["cpu"].(type) {
 			case int64:
@@ -336,16 +337,16 @@ var _ = Describe("", func() {
 			panic(err.Error())
 		}
 
-		spec := mcoRes.Object["spec"].(map[string]interface{})
+		spec := mcoRes.Object["spec"].(map[string]any)
 		if _, adv := spec["advanced"]; !adv {
 			Skip("Skip the case since the MCO CR did not have advanced spec configed")
 		}
 
-		advancedSpec := mcoRes.Object["spec"].(map[string]interface{})["advanced"].(map[string]interface{})
+		advancedSpec := mcoRes.Object["spec"].(map[string]any)["advanced"].(map[string]any)
 
 		for _, component := range []string{"compact", "store", "query", "receive", "rule"} {
 			klog.V(1).Infof("The component is: %s\n", component)
-			annotations := advancedSpec[component].(map[string]interface{})["serviceAccountAnnotations"].(map[string]interface{})
+			annotations := advancedSpec[component].(map[string]any)["serviceAccountAnnotations"].(map[string]any)
 			sas, err := utils.GetSAWithLabel(testOptions, true,
 				"app.kubernetes.io/name=thanos-"+component, MCO_NAMESPACE)
 			Expect(err).NotTo(HaveOccurred())
@@ -394,10 +395,8 @@ var _ = Describe("", func() {
 				Expect(err).NotTo(HaveOccurred())
 				for _, stsInfo := range (*sts).Items {
 					args := stsInfo.Spec.Template.Spec.Containers[0].Args
-					for _, arg := range args {
-						if arg == "--log.level=debug" {
-							return true
-						}
+					if slices.Contains(args, "--log.level=debug") {
+						return true
 					}
 				}
 			}
@@ -411,10 +410,10 @@ var _ = Describe("", func() {
 		}
 
 		// Update the MCO CR to change the log level for thanos-compact
-		spec := mcoRes.Object["spec"].(map[string]interface{})
-		advancedSpec, _ := spec["advanced"].(map[string]interface{})
-		if containers, ok := advancedSpec["compact"].(map[string]interface{})["containers"].([]interface{}); ok {
-			if args, ok := containers[0].(map[string]interface{})["args"].([]interface{}); ok {
+		spec := mcoRes.Object["spec"].(map[string]any)
+		advancedSpec, _ := spec["advanced"].(map[string]any)
+		if containers, ok := advancedSpec["compact"].(map[string]any)["containers"].([]any); ok {
+			if args, ok := containers[0].(map[string]any)["args"].([]any); ok {
 				for i, arg := range args {
 					if strings.HasPrefix(arg.(string), "--log.level=") {
 						args[i] = "--log.level=info"
@@ -434,10 +433,8 @@ var _ = Describe("", func() {
 			Expect(err).NotTo(HaveOccurred())
 			for _, stsInfo := range (*sts).Items {
 				args := stsInfo.Spec.Template.Spec.Containers[0].Args
-				for _, arg := range args {
-					if arg == "--log.level=info" {
-						return true
-					}
+				if slices.Contains(args, "--log.level=info") {
+					return true
 				}
 			}
 			return false
@@ -449,10 +446,8 @@ var _ = Describe("", func() {
 			Expect(err).NotTo(HaveOccurred())
 			for _, deployInfo := range (*deploys).Items {
 				args := deployInfo.Spec.Template.Spec.Containers[0].Args
-				for _, arg := range args {
-					if arg == "--log.level=debug" {
-						return true
-					}
+				if slices.Contains(args, "--log.level=debug") {
+					return true
 				}
 			}
 			return false

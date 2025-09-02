@@ -205,7 +205,7 @@ func (r *MCORenderer) HasImagestream() bool {
 	}
 
 	apiGroups := apiList.Groups
-	for i := 0; i < len(apiGroups); i++ {
+	for i := range apiGroups {
 		if apiGroups[i].Name == "image.openshift.io" {
 			return true
 		}
