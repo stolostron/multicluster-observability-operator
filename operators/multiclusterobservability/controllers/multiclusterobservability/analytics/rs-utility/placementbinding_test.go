@@ -2,7 +2,7 @@
 // Copyright Contributors to the Open Cluster Management project
 // Licensed under the Apache License 2.0
 
-package analytics
+package rsutility
 
 import (
 	"context"
@@ -11,20 +11,24 @@ import (
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types" //
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-
+	"k8s.io/apimachinery/pkg/types"
 	policyv1 "open-cluster-management.io/governance-policy-propagator/api/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func TestCreatePlacementBinding_CreatesWhenNotFound(t *testing.T) {
 	scheme := runtime.NewScheme()
 	_ = policyv1.AddToScheme(scheme)
 
+	rsPlacementBindingName := "test-placement-binding"
+	rsNamespace := "test-namespace"
+	rsPlacementName := "test-placement"
+	rsPrometheusRulePolicyName := "test-policy"
+
 	client := fake.NewClientBuilder().WithScheme(scheme).Build()
 	ctx := context.Background()
 
-	err := createPlacementBinding(ctx, client)
+	err := CreateRSPlacementBinding(context.TODO(), client, rsPlacementBindingName, rsNamespace, rsPlacementName, rsPrometheusRulePolicyName)
 	assert.NoError(t, err)
 
 	// Validate that it was created
@@ -44,6 +48,11 @@ func TestCreatePlacementBinding_SkipsIfAlreadyExists(t *testing.T) {
 	scheme := runtime.NewScheme()
 	_ = policyv1.AddToScheme(scheme)
 	ctx := context.Background()
+
+	rsPlacementBindingName := "test-placement-binding"
+	rsNamespace := "test-namespace"
+	rsPlacementName := "test-placement"
+	rsPrometheusRulePolicyName := "test-policy"
 
 	existing := &policyv1.PlacementBinding{
 		ObjectMeta: metav1.ObjectMeta{
@@ -66,7 +75,7 @@ func TestCreatePlacementBinding_SkipsIfAlreadyExists(t *testing.T) {
 
 	client := fake.NewClientBuilder().WithScheme(scheme).WithObjects(existing).Build()
 
-	err := createPlacementBinding(ctx, client)
+	err := CreateRSPlacementBinding(context.TODO(), client, rsPlacementBindingName, rsNamespace, rsPlacementName, rsPrometheusRulePolicyName)
 	assert.NoError(t, err)
 
 	// Ensure it hasn't changed
