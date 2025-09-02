@@ -129,7 +129,7 @@ func (i *ManagedClusterInformer) Run() {
 	klog.Info("Informer caches have successfully synced")
 
 	i.allManagedClusterNamesMtx.RLock()
-	klog.Infof("allManagedClusterNames: %v", i.allManagedClusterNames)
+	klog.Infof("allManagedClusterNames: %v", slices.Sorted(maps.Keys(i.allManagedClusterNames)))
 	i.allManagedClusterNamesMtx.RUnlock()
 
 	i.labelListMtx.RLock()
@@ -249,7 +249,7 @@ func (i *ManagedClusterInformer) getManagedClusterLabelAllowListEventHandler() c
 	return cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj any) {
 			if obj.(*v1.ConfigMap).Name == proxyconfig.ManagedClusterLabelAllowListConfigMapName {
-				klog.Infof("added configmap: %s", proxyconfig.ManagedClusterLabelAllowListConfigMapName)
+				klog.V(1).Infof("added configmap: %s", proxyconfig.ManagedClusterLabelAllowListConfigMapName)
 				i.labelListMtx.Lock()
 				defer i.labelListMtx.Unlock()
 
@@ -270,7 +270,7 @@ func (i *ManagedClusterInformer) getManagedClusterLabelAllowListEventHandler() c
 
 		UpdateFunc: func(oldObj, newObj any) {
 			if newObj.(*v1.ConfigMap).Name == proxyconfig.ManagedClusterLabelAllowListConfigMapName {
-				klog.Infof("updated configmap: %s", proxyconfig.ManagedClusterLabelAllowListConfigMapName)
+				klog.V(1).Infof("updated configmap: %s", proxyconfig.ManagedClusterLabelAllowListConfigMapName)
 				i.labelListMtx.Lock()
 				defer i.labelListMtx.Unlock()
 

@@ -18,10 +18,10 @@ type MockManagedClusterInformer struct {
 	synced bool
 }
 
-func (m *MockManagedClusterInformer) Run()                                         {}
-func (m *MockManagedClusterInformer) HasSynced() bool                              { return m.synced }
+func (m *MockManagedClusterInformer) Run()                                           {}
+func (m *MockManagedClusterInformer) HasSynced() bool                                { return m.synced }
 func (m *MockManagedClusterInformer) GetAllManagedClusterNames() map[string]struct{} { return nil }
-func (m *MockManagedClusterInformer) GetManagedClusterLabelList() []string         { return nil }
+func (m *MockManagedClusterInformer) GetManagedClusterLabelList() []string           { return nil }
 
 func TestHealthz(t *testing.T) {
 	checker := NewChecker(nil, nil, nil)
