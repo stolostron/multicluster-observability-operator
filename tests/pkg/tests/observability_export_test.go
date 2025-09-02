@@ -86,8 +86,8 @@ var _ = Describe("", func() {
 
 		hubClusterName := "local-cluster"
 		for _, obj := range objs.Items {
-			metadata := obj.Object["metadata"].(map[string]interface{})
-			labels := metadata["labels"].(map[string]interface{})
+			metadata := obj.Object["metadata"].(map[string]any)
+			labels := metadata["labels"].(map[string]any)
 			if labels["local-cluster"] == "true" {
 				hubClusterName = metadata["name"].(string)
 				klog.V(1).Infof("Found local-cluster name: %s", metadata["name"])

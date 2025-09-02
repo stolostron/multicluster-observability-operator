@@ -523,7 +523,7 @@ func (r *ObservabilityAddonReconciler) ensureOpenShiftMonitoringLabelAndRole(ctx
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *ObservabilityAddonReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	ctrlBuilder := ctrl.NewControllerManagedBy(mgr).For(
+	ctrlBuilder := ctrl.NewControllerManagedBy(mgr).Named("observabilityaddon-controller").For(
 		&oav1beta1.ObservabilityAddon{},
 		builder.WithPredicates(getPred(obAddonName, r.Namespace, true, true, true)),
 	)

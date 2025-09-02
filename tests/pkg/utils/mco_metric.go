@@ -26,7 +26,7 @@ type GrafanaResponse struct {
 		ResultType string `json:"resultType"`
 		Result     []struct {
 			Metric map[string]string `json:"metric"`
-			Value  []interface{}     `json:"value"` // Use interface{} because value can be mixed types
+			Value  []any             `json:"value"` // Use interface{} because value can be mixed types
 		} `json:"result"`
 	} `json:"data"`
 }

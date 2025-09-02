@@ -32,18 +32,23 @@ update_mco_cr() {
   fi
   if [[ -n ${RBAC_QUERY_PROXY_IMAGE_REF} ]]; then
     ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-rbac_query_proxy-image: ${RBAC_QUERY_PROXY_IMAGE_REF}" ${ROOTDIR}/examples/mco/e2e/v1beta2/observability.yaml
+    ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-rbac_query_proxy-image: ${RBAC_QUERY_PROXY_IMAGE_REF}" ${ROOTDIR}/examples/mco/e2e/v1beta2/*/observability.yaml
   fi
   if [[ -n ${ENDPOINT_MONITORING_OPERATOR_IMAGE_REF} ]]; then
     ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-endpoint_monitoring_operator-image: ${ENDPOINT_MONITORING_OPERATOR_IMAGE_REF}" ${ROOTDIR}/examples/mco/e2e/v1beta2/observability.yaml
+    ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-endpoint_monitoring_operator-image: ${ENDPOINT_MONITORING_OPERATOR_IMAGE_REF}" ${ROOTDIR}/examples/mco/e2e/v1beta2/*/observability.yaml
   fi
   if [[ -n ${GRAFANA_DASHBOARD_LOADER_IMAGE_REF} ]]; then
     ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-grafana_dashboard_loader-image: ${GRAFANA_DASHBOARD_LOADER_IMAGE_REF}" ${ROOTDIR}/examples/mco/e2e/v1beta2/observability.yaml
+    ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-grafana_dashboard_loader-image: ${GRAFANA_DASHBOARD_LOADER_IMAGE_REF}" ${ROOTDIR}/examples/mco/e2e/v1beta2/*/observability.yaml
   fi
   if [[ -n ${METRICS_COLLECTOR_IMAGE_REF} ]]; then
     ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-metrics_collector-image: ${METRICS_COLLECTOR_IMAGE_REF}" ${ROOTDIR}/examples/mco/e2e/v1beta2/observability.yaml
+    ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-metrics_collector-image: ${METRICS_COLLECTOR_IMAGE_REF}" ${ROOTDIR}/examples/mco/e2e/v1beta2/*/observability.yaml
   fi
   if [[ -n ${OBSERVATORIUM_OPERATOR_IMAGE_REF} ]]; then
     ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-metrics_collector-image: ${OBSERVATORIUM_OPERATOR_IMAGE_REF}" ${ROOTDIR}/examples/mco/e2e/v1beta2/observability.yaml
+    ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-metrics_collector-image: ${OBSERVATORIUM_OPERATOR_IMAGE_REF}" ${ROOTDIR}/examples/mco/e2e/v1beta2/*/observability.yaml
   fi
 
   # Add mco-imageTagSuffix annotation

@@ -300,7 +300,7 @@ func ModifyMetricsQueryParams(req *http.Request, reqUrl string, accessReviewer A
 // GetManagedClusterEventHandler return event handler functions for managed cluster watch events.
 func GetManagedClusterEventHandler() cache.ResourceEventHandlerFuncs {
 	return cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj interface{}) {
+		AddFunc: func(obj any) {
 			clusterName := obj.(*clusterv1.ManagedCluster).Name
 			klog.Infof("added a managedcluster: %s \n", obj.(*clusterv1.ManagedCluster).Name)
 
@@ -316,7 +316,7 @@ func GetManagedClusterEventHandler() cache.ResourceEventHandlerFuncs {
 			}
 		},
 
-		DeleteFunc: func(obj interface{}) {
+		DeleteFunc: func(obj any) {
 			clusterName := obj.(*clusterv1.ManagedCluster).Name
 			klog.Infof("deleted a managedcluster: %s \n", obj.(*clusterv1.ManagedCluster).Name)
 
@@ -327,7 +327,7 @@ func GetManagedClusterEventHandler() cache.ResourceEventHandlerFuncs {
 			CleanExpiredProjectInfo(1)
 		},
 
-		UpdateFunc: func(oldObj, newObj interface{}) {
+		UpdateFunc: func(oldObj, newObj any) {
 			clusterName := newObj.(*clusterv1.ManagedCluster).Name
 			klog.Infof("changed a managedcluster: %s \n", newObj.(*clusterv1.ManagedCluster).Name)
 
@@ -395,7 +395,7 @@ func StopScheduleManagedClusterLabelAllowlistResync() {
 // GetManagedClusterLabelAllowListEventHandler return event handler for managedcluster label allow list watch event.
 func GetManagedClusterLabelAllowListEventHandler(kubeClient kubernetes.Interface) cache.ResourceEventHandlerFuncs {
 	return cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj interface{}) {
+		AddFunc: func(obj any) {
 			if obj.(*v1.ConfigMap).Name == proxyconfig.GetManagedClusterLabelAllowListConfigMapName() {
 				klog.Infof("added configmap: %s", proxyconfig.GetManagedClusterLabelAllowListConfigMapName())
 
@@ -407,14 +407,14 @@ func GetManagedClusterLabelAllowListEventHandler(kubeClient kubernetes.Interface
 			}
 		},
 
-		DeleteFunc: func(obj interface{}) {
+		DeleteFunc: func(obj any) {
 			if obj.(*v1.ConfigMap).Name == proxyconfig.GetManagedClusterLabelAllowListConfigMapName() {
 				klog.Warningf("deleted configmap: %s", proxyconfig.GetManagedClusterLabelAllowListConfigMapName())
 				StopScheduleManagedClusterLabelAllowlistResync()
 			}
 		},
 
-		UpdateFunc: func(oldObj, newObj interface{}) {
+		UpdateFunc: func(oldObj, newObj any) {
 			if newObj.(*v1.ConfigMap).Name == proxyconfig.GetManagedClusterLabelAllowListConfigMapName() {
 				klog.Infof("updated configmap: %s", proxyconfig.GetManagedClusterLabelAllowListConfigMapName())
 				_ = unmarshalDataToManagedClusterLabelList(newObj.(*v1.ConfigMap).Data,
@@ -927,7 +927,7 @@ func resyncManagedClusterLabelAllowList(kubeClient kubernetes.Interface) error {
 }
 
 // marshalLabelListToConfigMap marshal managedcluster label list data to configmap data key.
-func marshalLabelListToConfigMap(obj interface{}, key string,
+func marshalLabelListToConfigMap(obj any, key string,
 	managedLabelList *proxyconfig.ManagedClusterLabelList) error {
 	labelListMtx.Lock()
 	data, err := yaml.Marshal(managedLabelList)
