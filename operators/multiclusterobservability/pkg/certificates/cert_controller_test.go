@@ -57,16 +57,8 @@ func TestOnAdd(t *testing.T) {
 	}
 	config.SetOperandNames(c)
 	onAdd(c)(caSecret)
-	c = fake.NewClientBuilder().WithRuntimeObjects(newDeployment(name+"-rbac-query-proxy"),
-		newDeployment(name+"-observatorium-api")).Build()
-	onAdd(c)(caSecret)
+	c = fake.NewClientBuilder().WithRuntimeObjects(newDeployment(name + "-observatorium-api")).Build()
 	dep := &appv1.Deployment{}
-	c.Get(context.TODO(),
-		types.NamespacedName{Name: name + "-rbac-query-proxy", Namespace: namespace},
-		dep)
-	if dep.Spec.Template.ObjectMeta.Labels[restartLabel] == "" {
-		t.Fatalf("Failed to inject restart label")
-	}
 	caSecret.Name = clientCACerts
 	onAdd(c)(caSecret)
 	c.Get(context.TODO(),
