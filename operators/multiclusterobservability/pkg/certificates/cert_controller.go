@@ -95,22 +95,26 @@ func Start(c client.Client, ingressCtlCrdExists bool) {
 	go controller.Run(stop)
 }
 
-func restartPods(c client.Client, s v1.Secret) {
+func restartPods(c client.Client, s v1.Secret, isUpdate bool) {
 	if config.GetMonitoringCRName() == "" {
 		return
 	}
-	if s.Name == config.ServerCACerts || s.Name == config.GrafanaCerts || s.Name == config.ServerCerts {
-		updateDeployLabel(c, config.GetOperandName(config.RBACQueryProxy))
+	dName := ""
+	if s.Name == config.ServerCACerts || s.Name == config.GrafanaCerts {
+		dName = config.GetOperandName(config.RBACQueryProxy)
 	}
 	if s.Name == config.ClientCACerts || s.Name == config.ServerCerts {
-		updateDeployLabel(c, config.GetOperandName(config.ObservatoriumAPI))
+		dName = config.GetOperandName(config.ObservatoriumAPI)
 	}
 	if s.Name == hubMetricsCollectorMtlsCert {
-		updateDeployLabel(c, config.HubMetricsCollectorName)
+		dName = config.HubMetricsCollectorName
+	}
+	if dName != "" {
+		updateDeployLabel(c, dName, isUpdate)
 	}
 }
 
-func updateDeployLabel(c client.Client, dName string) {
+func updateDeployLabel(c client.Client, dName string, isUpdate bool) {
 	dep := &appv1.Deployment{}
 	err := c.Get(context.TODO(), types.NamespacedName{
 		Name:      dName,
@@ -122,13 +126,15 @@ func updateDeployLabel(c client.Client, dName string) {
 		}
 		return
 	}
-	newDep := dep.DeepCopy()
-	newDep.Spec.Template.ObjectMeta.Labels[restartLabel] = time.Now().Format("2006-1-2.150405")
-	err = c.Patch(context.TODO(), newDep, client.StrategicMergeFrom(dep))
-	if err != nil {
-		log.Error(err, "Failed to update the deployment", "name", dName)
-	} else {
-		log.Info("Update deployment cert/restart label", "name", dName)
+	if isUpdate || dep.Status.ReadyReplicas != 0 {
+		newDep := dep.DeepCopy()
+		newDep.Spec.Template.ObjectMeta.Labels[restartLabel] = time.Now().Format("2006-1-2.150405")
+		err := c.Patch(context.TODO(), newDep, client.StrategicMergeFrom(dep))
+		if err != nil {
+			log.Error(err, "Failed to update the deployment", "name", dName)
+		} else {
+			log.Info("Update deployment cert/restart label", "name", dName)
+		}
 	}
 }
 
@@ -162,7 +168,7 @@ func needsRenew(s v1.Secret) bool {
 
 func onAdd(c client.Client) func(obj any) {
 	return func(obj any) {
-		restartPods(c, *obj.(*v1.Secret))
+		restartPods(c, *obj.(*v1.Secret), false)
 	}
 }
 
@@ -217,7 +223,7 @@ func onUpdate(c client.Client, ingressCtlCrdExists bool) func(oldObj, newObj any
 		oldS := *oldObj.(*v1.Secret)
 		newS := *newObj.(*v1.Secret)
 		if !reflect.DeepEqual(oldS.Data, newS.Data) {
-			restartPods(c, newS)
+			restartPods(c, newS, true)
 		} else {
 			if slices.Contains(caSecretNames, newS.Name) {
 				removeExpiredCA(c, newS.Name)

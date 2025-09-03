@@ -100,10 +100,16 @@ func run() error {
 	upi := cache.NewUserProjectInfo(24*60*60*time.Second, 5*60*time.Second)
 	defer upi.Stop()
 
-	tlsTransport, err := proxy.GetTLSTransport()
+	tlsTransport, err := proxy.NewTransport(&proxy.TLSOptions{
+		CaFile:          "/var/rbac_proxy/ca/ca.crt",
+		KeyFile:         "/var/rbac_proxy/certs/tls.key",
+		CertFile:        "/var/rbac_proxy/certs/tls.crt",
+		PollingInterval: 20 * time.Second,
+	})
 	if err != nil {
 		return fmt.Errorf("failed to set tls transport: %w", err)
 	}
+	defer tlsTransport.Close()
 	p, err := proxy.NewProxy(serverURL, tlsTransport, kubeConfig.Host, upi, managedClusterInformer, accessReviewer)
 	if err != nil {
 		return fmt.Errorf("failed to create proxy: %w", err)

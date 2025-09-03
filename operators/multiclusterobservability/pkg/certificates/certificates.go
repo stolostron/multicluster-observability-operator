@@ -255,22 +255,6 @@ func createCertSecret(c client.Client,
 		}
 	} else {
 		if crtSecret.Name == serverCerts && !isRenew {
-			_, _, caCertBytes, err := getCA(c, isServer)
-			if err != nil {
-				if !apierrors.IsNotFound(err) {
-					return err
-				}
-			} else {
-				isSigned, err := childCertIsSignedByCA(caCertBytes, crtSecret.Data["tls.crt"])
-				if err != nil {
-					log.Error(err, "Failed to check if server certificate is signed by CA, renewing it")
-					isRenew = true
-				} else if !isSigned {
-					log.Info("Server certificate is not signed by the current CA, renewing it")
-					isRenew = true
-				}
-			}
-
 			block, _ := pem.Decode(crtSecret.Data["tls.crt"])
 			if block == nil || block.Bytes == nil {
 				log.Info("Empty block in server certificate, skip")
