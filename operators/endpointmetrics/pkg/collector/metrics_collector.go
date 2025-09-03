@@ -472,7 +472,7 @@ func (m *MetricsCollector) ensureAlertingRule(ctx context.Context, isUWL bool) e
 								"summary":     "Error federating from in-cluster Prometheus.",
 								"description": "There are errors when federating from platform Prometheus",
 							},
-							Expr: intstr.FromString(`(sum by (name) (rate(` + replace + `federate_requests_total{status_code!~"2.*"}[10m]))) / (sum by (name) (rate(` + replace + `federate_requests_total[10m]))) > .2`),
+							Expr: intstr.FromString(`(sum(rate(` + replace + `federate_requests_total{status_code!~"2.*"}[10m]))) / (sum(rate(` + replace + `federate_requests_total[10m]))) > .2`),
 							For:  &forDuration,
 							Labels: map[string]string{
 								"severity": "critical",
@@ -484,7 +484,7 @@ func (m *MetricsCollector) ensureAlertingRule(ctx context.Context, isUWL bool) e
 								"summary":     "Error forwarding to Hub Thanos.",
 								"description": "There are errors when remote writing to Hub hub Thanos",
 							},
-							Expr: intstr.FromString(`(sum by (name) (rate(` + replace + `forward_write_requests_total{status_code!~"2.*"}[10m]))) / (sum by (name) (rate(` + replace + `forward_write_requests_total[10m]))) > .2`),
+							Expr: intstr.FromString(`(sum(rate(` + replace + `forward_write_requests_total{status_code!~"2.*"}[10m]))) / (sum(rate(` + replace + `forward_write_requests_total[10m]))) > .2`),
 							For:  &forDuration,
 							Labels: map[string]string{
 								"severity": "critical",
