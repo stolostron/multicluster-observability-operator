@@ -36,6 +36,9 @@ type proxyConf struct {
 	listenAddress      string
 	metricServer       string
 	kubeconfigLocation string
+	tlsCaFile          string
+	tlsCertFile        string
+	tlsKeyFile         string
 }
 
 func main() {
@@ -57,6 +60,9 @@ func run() error {
 		defaultListenAddress, "The address HTTP server should listen on.")
 	flagset.StringVar(&cfg.metricServer, "metrics-server", "",
 		"The address the metrics server should run on.")
+	flagset.StringVar(&cfg.tlsCaFile, "tls-ca-file", "/var/rbac_proxy/ca/ca.crt", "The path to the CA certificate file for connecting to the downstream server.")
+	flagset.StringVar(&cfg.tlsCertFile, "tls-cert-file", "/var/rbac_proxy/certs/tls.crt", "The path to the client certificate file for connecting to the downstream server.")
+	flagset.StringVar(&cfg.tlsKeyFile, "tls-key-file", "/var/rbac_proxy/certs/tls.key", "The path to the client key file for connecting to the downstream server.")
 
 	_ = flagset.Parse(os.Args[1:])
 
@@ -101,10 +107,10 @@ func run() error {
 	defer upi.Stop()
 
 	tlsTransport, err := proxy.NewTransport(&proxy.TLSOptions{
-		CaFile:          "/var/rbac_proxy/ca/ca.crt",
-		KeyFile:         "/var/rbac_proxy/certs/tls.key",
-		CertFile:        "/var/rbac_proxy/certs/tls.crt",
-		PollingInterval: 20 * time.Second,
+		CaFile:          cfg.tlsCaFile,
+		KeyFile:         cfg.tlsKeyFile,
+		CertFile:        cfg.tlsCertFile,
+		PollingInterval: 15 * time.Second,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to set tls transport: %w", err)

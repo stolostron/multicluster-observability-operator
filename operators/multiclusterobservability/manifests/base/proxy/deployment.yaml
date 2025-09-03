@@ -46,6 +46,9 @@ spec:
           args:
             - "--listen-address=0.0.0.0:8080"
             - "--metrics-server=https://{{OBSERVATORIUM_NAME}}-observatorium-api.{{MCO_NAMESPACE}}.svc.cluster.local:8080/api/metrics/v1/default"
+            - "--tls-ca-file=/var/rbac_proxy/ca/ca.crt"
+            - "--tls-cert-file=/var/rbac_proxy/certs/tls.crt"
+            - "--tls-key-file=/var/rbac_proxy/certs/tls.key"
           ports:
             - containerPort: 8080
               name: http
