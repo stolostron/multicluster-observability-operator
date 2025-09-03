@@ -100,9 +100,7 @@ func restartPods(c client.Client, s v1.Secret, isUpdate bool) {
 		return
 	}
 	dName := ""
-	if s.Name == config.ServerCACerts || s.Name == config.GrafanaCerts {
-		dName = config.GetOperandName(config.RBACQueryProxy)
-	}
+	// No need to restart the rbac-query-proxy, it auto reloads the mTLS config when changed.
 	if s.Name == config.ClientCACerts || s.Name == config.ServerCerts {
 		dName = config.GetOperandName(config.ObservatoriumAPI)
 	}
