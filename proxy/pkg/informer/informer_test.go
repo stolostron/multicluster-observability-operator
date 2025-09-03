@@ -6,400 +6,292 @@ package informer
 
 import (
 	"context"
-	"regexp"
-	"sort"
 	"testing"
 	"time"
 
 	proxyconfig "github.com/stolostron/multicluster-observability-operator/proxy/pkg/config"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	fakekube "k8s.io/client-go/kubernetes/fake"
-	fakecluster "open-cluster-management.io/api/client/cluster/clientset/versioned/fake"
+	"k8s.io/client-go/kubernetes/fake"
+	"k8s.io/client-go/tools/cache"
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
 )
 
-func TestMarshalLabelListToConfigMap(t *testing.T) {
-	managedClusterLabelAllowlist := proxyconfig.CreateManagedClusterLabelAllowListCM("ns1").Data
-	managedClusterLabelList := &ManagedClusterLabelList{}
-	err := unmarshalDataToManagedClusterLabelList(managedClusterLabelAllowlist,
-		proxyconfig.ManagedClusterLabelAllowListConfigMapKey, managedClusterLabelList)
-	assert.NoError(t, err)
-	assert.NotEmpty(t, managedClusterLabelList.LabelList)
-	assert.NotEmpty(t, managedClusterLabelList.IgnoreList)
-
-	cm := &corev1.ConfigMap{}
-	err = marshalLabelListToConfigMap(cm, proxyconfig.ManagedClusterLabelAllowListConfigMapKey,
-		managedClusterLabelList)
-	assert.NoError(t, err)
-	assert.NotEmpty(t, cm.Data[proxyconfig.ManagedClusterLabelAllowListConfigMapKey])
-}
-
-func TestGetManagedClusterEventHandler(t *testing.T) {
-	cluster1 := &clusterv1.ManagedCluster{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "cluster1",
-			Labels: map[string]string{
-				"name":        "cluster1",
-				"environment": "dev",
-			},
-		},
-	}
-	cluster2 := &clusterv1.ManagedCluster{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "cluster2",
-			Labels: map[string]string{
-				"name":        "cluster2",
-				"environment": "dev",
-				"cloud":       "Amazon",
-			},
-		},
-	}
-
-	informer := NewManagedClusterInformer(
-		context.Background(),
-		fakecluster.NewSimpleClientset(),
-		fakekube.NewSimpleClientset(),
-	)
-
-	eventHandler := informer.getManagedClusterEventHandler()
-
-	// Add cluster1
-	eventHandler.AddFunc(cluster1)
-	assert.Equal(t, map[string]struct{}{"cluster1": {}}, informer.GetAllManagedClusterNames())
-	assert.True(t, informer.allManagedClusterLabelNames["name"])
-	assert.True(t, informer.allManagedClusterLabelNames["environment"])
-	assert.False(t, informer.allManagedClusterLabelNames["cloud"])
-
-	// Update with cluster2. In informer logic, this is like adding a new cluster.
-	eventHandler.UpdateFunc(cluster1, cluster2)
-	assert.Equal(t, map[string]struct{}{"cluster1": {}, "cluster2": {}}, informer.GetAllManagedClusterNames())
-	assert.True(t, informer.allManagedClusterLabelNames["name"])
-	assert.True(t, informer.allManagedClusterLabelNames["environment"])
-	assert.True(t, informer.allManagedClusterLabelNames["cloud"])
-
-	// Delete cluster1
-	eventHandler.DeleteFunc(cluster1)
-	assert.Equal(t, map[string]struct{}{"cluster2": {}}, informer.GetAllManagedClusterNames())
-	// Labels are not removed on delete
-	assert.True(t, informer.allManagedClusterLabelNames["name"])
-	assert.True(t, informer.allManagedClusterLabelNames["environment"])
-	assert.True(t, informer.allManagedClusterLabelNames["cloud"])
-}
-
-func TestGetManagedClusterLabelAllowListEventHandler(t *testing.T) {
-	cm := proxyconfig.CreateManagedClusterLabelAllowListCM("open-cluster-management-observability")
-
-	kubeClient := fakekube.NewSimpleClientset(cm)
-	informer := NewManagedClusterInformer(
-		context.Background(),
-		fakecluster.NewSimpleClientset(),
-		kubeClient,
-	)
-	// Isolate test from global singletons
-	informer.managedLabelList = &ManagedClusterLabelList{
-		LabelList:  []string{},
-		IgnoreList: []string{},
-	}
-	informer.syncLabelList = &ManagedClusterLabelList{
-		LabelList:  []string{},
-		IgnoreList: []string{},
-	}
-
-	// Add some labels to the informer state first
-	informer.allManagedClusterLabelNames["vendor"] = true
-	informer.allManagedClusterLabelNames["cloud"] = true
-	informer.managedLabelList.LabelList = []string{"vendor", "cloud"}
-	informer.addManagedClusterLabelNames() // To populate RegexLabelList
-
-	eventHandler := informer.getManagedClusterLabelAllowListEventHandler()
-
-	isSchedulerRunning := func() bool {
-		informer.resyncMtx.Lock()
-		defer informer.resyncMtx.Unlock()
-		return informer.resyncStopCh != nil
-	}
-
-	// Test AddFunc
-	eventHandler.AddFunc(cm)
-	assert.Eventually(t, isSchedulerRunning, time.Second*5, time.Millisecond*100)
-	informer.stopScheduleManagedClusterLabelAllowlistResync()
-
-	// Test UpdateFunc
-	updatedCm := cm.DeepCopy()
-	updatedCm.Data[proxyconfig.ManagedClusterLabelAllowListConfigMapKey] = `
-label_list:
-  - cloud
-  - vendor
-ignore_list:
-  - name
-  - clusterID
-  - vendor
-`
-
-	eventHandler.UpdateFunc(cm, updatedCm)
-
-	// assert.False(t, informer.allManagedClusterLabelNames["vendor"], "Label 'vendor' should be disabled")
-	assert.True(t, informer.allManagedClusterLabelNames["cloud"], "Label 'cloud' should be enabled")
-
-	// Test DeleteFunc
-	informer.scheduleManagedClusterLabelAllowlistResync()
-	assert.Eventually(t, isSchedulerRunning, time.Second*5, time.Millisecond*100)
-	eventHandler.DeleteFunc(cm)
-	assert.Eventually(t, func() bool { return !isSchedulerRunning() }, time.Second*5, time.Millisecond*100)
-}
-
-func TestStopScheduleManagedClusterLabelAllowlistResync(t *testing.T) {
-	informer := NewManagedClusterInformer(
-		context.Background(),
-		fakecluster.NewSimpleClientset(),
-		fakekube.NewSimpleClientset(),
-	)
-
-	informer.scheduleManagedClusterLabelAllowlistResync()
-
-	assert.Eventually(t, func() bool {
-		informer.resyncMtx.Lock()
-		defer informer.resyncMtx.Unlock()
-		return informer.resyncStopCh != nil
-	}, time.Second, 10*time.Millisecond)
-
-	informer.stopScheduleManagedClusterLabelAllowlistResync()
-
-	assert.Eventually(t, func() bool {
-		informer.resyncMtx.Lock()
-		defer informer.resyncMtx.Unlock()
-		return informer.resyncStopCh == nil
-	}, time.Second, 10*time.Millisecond)
-}
-
-func TestScheduleManagedClusterLabelAllowlistResync(t *testing.T) {
-	namespace := proxyconfig.ManagedClusterLabelAllowListNamespace
-	cm := proxyconfig.CreateManagedClusterLabelAllowListCM(namespace)
-	kubeClient := fakekube.NewSimpleClientset(cm)
-
-	informer := NewManagedClusterInformer(
-		context.Background(),
-		fakecluster.NewSimpleClientset(),
-		kubeClient,
-	)
-
-	informer.managedLabelList.LabelList = []string{"cloud", "environment"}
-	informer.updateAllManagedClusterLabelNames()
-
-	isSchedulerRunning := func() bool {
-		informer.resyncMtx.Lock()
-		defer informer.resyncMtx.Unlock()
-		return informer.resyncStopCh != nil
-	}
-
-	informer.scheduleManagedClusterLabelAllowlistResync()
-	assert.Eventually(t, isSchedulerRunning, time.Second, 10*time.Millisecond)
-
-	informer.stopScheduleManagedClusterLabelAllowlistResync()
-	assert.Eventually(t, func() bool { return !isSchedulerRunning() }, time.Second, 10*time.Millisecond)
-
-	informer.scheduleManagedClusterLabelAllowlistResync()
-	assert.Eventually(t, isSchedulerRunning, time.Second, 10*time.Millisecond)
-
-	informer.stopScheduleManagedClusterLabelAllowlistResync()
-	assert.Eventually(t, func() bool { return !isSchedulerRunning() }, time.Second, 10*time.Millisecond)
-}
-
-func TestResyncManagedClusterLabelAllowList(t *testing.T) {
-	namespace := proxyconfig.ManagedClusterLabelAllowListNamespace
-	cm := proxyconfig.CreateManagedClusterLabelAllowListCM(namespace)
-	kubeClient := fakekube.NewSimpleClientset(cm)
-
-	informer := NewManagedClusterInformer(
-		context.Background(),
-		fakecluster.NewSimpleClientset(),
-		kubeClient,
-	)
-
-	informer.managedLabelList.LabelList = []string{"cloud", "environment"}
-	informer.updateAllManagedClusterLabelNames()
-
-	err := informer.resyncManagedClusterLabelAllowList()
-	assert.NoError(t, err)
-
-	updatedCm, err := kubeClient.CoreV1().ConfigMaps(namespace).Get(context.Background(), cm.Name, metav1.GetOptions{})
-	assert.NoError(t, err)
-
-	syncedList := &ManagedClusterLabelList{}
-	err = unmarshalDataToManagedClusterLabelList(updatedCm.Data,
-		proxyconfig.ManagedClusterLabelAllowListConfigMapKey, syncedList)
-	assert.NoError(t, err)
-
-	sort.Strings(syncedList.LabelList)
-	assert.Contains(t, syncedList.LabelList, "cloud")
-	assert.Contains(t, syncedList.LabelList, "environment")
-}
-
-func TestUpdateAllManagedClusterLabelNames(t *testing.T) {
-	tests := []struct {
-		name           string
-		labelList      []string
-		ignoreList     []string
-		initialLabels  map[string]bool
-		expectedLabels map[string]bool
+func TestGenerateAllowList(t *testing.T) {
+	testCases := []struct {
+		name              string
+		currentAllowList  *ManagedClusterLabelList
+		managedClusters   map[string]map[string]struct{}
+		expectedAllowList *ManagedClusterLabelList
 	}{
 		{
-			name:           "Add new labels",
-			labelList:      []string{"label1", "label2"},
-			ignoreList:     nil,
-			initialLabels:  map[string]bool{},
-			expectedLabels: map[string]bool{"label1": true, "label2": true},
+			name: "no clusters, default allowlist",
+			currentAllowList: &ManagedClusterLabelList{
+				LabelList:  []string{"cloud", "vendor"},
+				IgnoreList: []string{"name"},
+			},
+			managedClusters: map[string]map[string]struct{}{},
+			expectedAllowList: &ManagedClusterLabelList{
+				LabelList:  []string{"cloud", "vendor"},
+				IgnoreList: []string{"name"},
+			},
 		},
 		{
-			name:           "Ignore labels",
-			labelList:      nil,
-			ignoreList:     []string{"label3"},
-			initialLabels:  map[string]bool{"label3": true},
-			expectedLabels: map[string]bool{"label3": false},
+			name: "new labels from clusters are added",
+			currentAllowList: &ManagedClusterLabelList{
+				LabelList:  []string{"cloud"},
+				IgnoreList: []string{},
+			},
+			managedClusters: map[string]map[string]struct{}{
+				"cluster1": {"cloud": {}, "region": {}},
+				"cluster2": {"vendor": {}},
+			},
+			expectedAllowList: &ManagedClusterLabelList{
+				LabelList:  []string{"cloud", "region", "vendor"},
+				IgnoreList: nil,
+			},
 		},
 		{
-			name:           "Add and ignore labels",
-			labelList:      []string{"label4"},
-			ignoreList:     []string{"label5"},
-			initialLabels:  map[string]bool{"label5": true},
-			expectedLabels: map[string]bool{"label4": true, "label5": false},
+			name: "ignored labels are not added",
+			currentAllowList: &ManagedClusterLabelList{
+				LabelList:  []string{},
+				IgnoreList: []string{"region"},
+			},
+			managedClusters: map[string]map[string]struct{}{
+				"cluster1": {"cloud": {}, "region": {}},
+			},
+			expectedAllowList: &ManagedClusterLabelList{
+				LabelList:  []string{"cloud"},
+				IgnoreList: []string{"region"},
+			},
 		},
 		{
-			name:           "Ignore non-existing labels",
-			labelList:      nil,
-			ignoreList:     []string{"label6"},
-			initialLabels:  map[string]bool{},
-			expectedLabels: map[string]bool{"label6": false},
+			name:             "empty current allowlist",
+			currentAllowList: &ManagedClusterLabelList{},
+			managedClusters: map[string]map[string]struct{}{
+				"cluster1": {"cloud": {}, "region": {}},
+				"cluster2": {"vendor": {}},
+			},
+			expectedAllowList: &ManagedClusterLabelList{
+				LabelList:  []string{"cloud", "region", "vendor"},
+				IgnoreList: nil,
+			},
+		},
+		{
+			name: "no new labels to add",
+			currentAllowList: &ManagedClusterLabelList{
+				LabelList:  []string{"cloud", "region", "vendor"},
+				IgnoreList: []string{},
+			},
+			managedClusters: map[string]map[string]struct{}{
+				"cluster1": {"cloud": {}, "region": {}},
+				"cluster2": {"vendor": {}},
+			},
+			expectedAllowList: &ManagedClusterLabelList{
+				LabelList:  []string{"cloud", "region", "vendor"},
+				IgnoreList: nil,
+			},
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			informer := NewManagedClusterInformer(
-				context.Background(),
-				fakecluster.NewSimpleClientset(),
-				fakekube.NewSimpleClientset(),
-			)
-
-			informer.allManagedClusterLabelNames = tt.initialLabels
-			informer.managedLabelList = &ManagedClusterLabelList{
-				LabelList:  tt.labelList,
-				IgnoreList: tt.ignoreList,
-			}
-
-			informer.updateAllManagedClusterLabelNames()
-
-			assert.Equal(t, tt.expectedLabels, informer.allManagedClusterLabelNames)
-
-			regex := regexp.MustCompile(`[^\w]+`)
-			expectedRegexList := []string{}
-			for key, isEnabled := range tt.expectedLabels {
-				if isEnabled {
-					expectedRegexList = append(expectedRegexList, regex.ReplaceAllString(key, "_"))
-				}
-			}
-
-			sort.Strings(informer.syncLabelList.RegexLabelList)
-			sort.Strings(expectedRegexList)
-			assert.Equal(t, expectedRegexList, informer.syncLabelList.RegexLabelList)
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := generateAllowList(tc.currentAllowList, tc.managedClusters)
+			assert.Equal(t, tc.expectedAllowList, result)
 		})
 	}
 }
 
-func TestSortManagedLabelList(t *testing.T) {
-	sortManagedLabelList(nil)
-
-	managedLabelList := &ManagedClusterLabelList{
-		IgnoreList:     []string{"c", "a", "b"},
-		LabelList:      []string{"z", "y", "x"},
-		RegexLabelList: []string{"foo", "bar"},
+func TestManagedClusterEventHandler(t *testing.T) {
+	testCases := []struct {
+		name                string
+		action              func(handler cache.ResourceEventHandler)
+		initialClusters     map[string]map[string]struct{}
+		expectedClusters    map[string]map[string]struct{}
+		expectSyncTriggered bool
+	}{
+		{
+			name: "add cluster with new label",
+			action: func(handler cache.ResourceEventHandler) {
+				handler.OnAdd(&clusterv1.ManagedCluster{
+					ObjectMeta: metav1.ObjectMeta{Name: "cluster2", Labels: map[string]string{"new_label": "true"}},
+				}, false)
+			},
+			initialClusters:     map[string]map[string]struct{}{"cluster1": {"existing_label": {}}},
+			expectedClusters:    map[string]map[string]struct{}{"cluster1": {"existing_label": {}}, "cluster2": {"new_label": {}}},
+			expectSyncTriggered: true,
+		},
+		{
+			name: "add cluster with existing label",
+			action: func(handler cache.ResourceEventHandler) {
+				handler.OnAdd(&clusterv1.ManagedCluster{
+					ObjectMeta: metav1.ObjectMeta{Name: "cluster2", Labels: map[string]string{"existing_label": "true"}},
+				}, false)
+			},
+			initialClusters:     map[string]map[string]struct{}{"cluster1": {"existing_label": {}}},
+			expectedClusters:    map[string]map[string]struct{}{"cluster1": {"existing_label": {}}, "cluster2": {"existing_label": {}}},
+			expectSyncTriggered: false,
+		},
+		{
+			name: "update cluster, no label change",
+			action: func(handler cache.ResourceEventHandler) {
+				old := &clusterv1.ManagedCluster{ObjectMeta: metav1.ObjectMeta{Name: "cluster1", Labels: map[string]string{"label": "a"}}}
+				new := &clusterv1.ManagedCluster{ObjectMeta: metav1.ObjectMeta{Name: "cluster1", Labels: map[string]string{"label": "a"}}}
+				handler.OnUpdate(old, new)
+			},
+			initialClusters:     map[string]map[string]struct{}{"cluster1": {"label": {}}},
+			expectedClusters:    map[string]map[string]struct{}{"cluster1": {"label": {}}},
+			expectSyncTriggered: false,
+		},
+		{
+			name: "update cluster, add new label",
+			action: func(handler cache.ResourceEventHandler) {
+				old := &clusterv1.ManagedCluster{ObjectMeta: metav1.ObjectMeta{Name: "cluster1", Labels: map[string]string{"label": "a"}}}
+				new := &clusterv1.ManagedCluster{ObjectMeta: metav1.ObjectMeta{Name: "cluster1", Labels: map[string]string{"label": "a", "new_label": "b"}}}
+				handler.OnUpdate(old, new)
+			},
+			initialClusters:     map[string]map[string]struct{}{"cluster1": {"label": {}}},
+			expectedClusters:    map[string]map[string]struct{}{"cluster1": {"label": {}, "new_label": {}}},
+			expectSyncTriggered: true,
+		},
+		{
+			name: "delete cluster, removing last instance of a label",
+			action: func(handler cache.ResourceEventHandler) {
+				handler.OnDelete(&clusterv1.ManagedCluster{ObjectMeta: metav1.ObjectMeta{Name: "cluster2"}})
+			},
+			initialClusters:     map[string]map[string]struct{}{"cluster1": {"shared": {}}, "cluster2": {"unique": {}}},
+			expectedClusters:    map[string]map[string]struct{}{"cluster1": {"shared": {}}},
+			expectSyncTriggered: true,
+		},
+		{
+			name: "delete cluster, but its labels exist on other clusters",
+			action: func(handler cache.ResourceEventHandler) {
+				handler.OnDelete(&clusterv1.ManagedCluster{ObjectMeta: metav1.ObjectMeta{Name: "cluster2"}})
+			},
+			initialClusters:     map[string]map[string]struct{}{"cluster1": {"shared": {}}, "cluster2": {"shared": {}}},
+			expectedClusters:    map[string]map[string]struct{}{"cluster1": {"shared": {}}},
+			expectSyncTriggered: false,
+		},
 	}
 
-	sortManagedLabelList(managedLabelList)
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			informer := NewManagedClusterInformer(context.TODO(), nil, nil)
+			informer.managedClusters = tc.initialClusters
+			handler := informer.getManagedClusterEventHandler()
 
-	assert.Equal(t, []string{"a", "b", "c"}, managedLabelList.IgnoreList)
-	assert.Equal(t, []string{"x", "y", "z"}, managedLabelList.LabelList)
-	assert.Equal(t, []string{"bar", "foo"}, managedLabelList.RegexLabelList)
+			tc.action(&handler)
+
+			assert.Equal(t, tc.expectedClusters, informer.managedClusters)
+
+			select {
+			case <-informer.syncAllowList:
+				assert.True(t, tc.expectSyncTriggered, "sync should have been triggered but was not")
+			case <-time.After(100 * time.Millisecond):
+				assert.False(t, tc.expectSyncTriggered, "sync should not have been triggered but was")
+			}
+		})
+	}
 }
 
-func TestGetAllManagedClusterLabelNames(t *testing.T) {
-	informer := NewManagedClusterInformer(
-		context.Background(),
-		fakecluster.NewSimpleClientset(),
-		fakekube.NewSimpleClientset(),
-	)
+func TestCheckForUpdate(t *testing.T) {
+	namespace := proxyconfig.ManagedClusterLabelAllowListNamespace
+	cmName := proxyconfig.ManagedClusterLabelAllowListConfigMapName
+	cmKey := proxyconfig.ManagedClusterLabelAllowListConfigMapKey
 
-	informer.managedLabelList = &ManagedClusterLabelList{
-		IgnoreList: []string{"clusterID", "name", "environment"},
+	// Initial ConfigMap state
+	initialCMData := &ManagedClusterLabelList{
 		LabelList:  []string{"cloud", "vendor"},
+		IgnoreList: []string{"name"},
 	}
-	informer.updateAllManagedClusterLabelNames()
+	initialCMDataBytes, err := yaml.Marshal(initialCMData)
+	require.NoError(t, err)
 
-	labels := informer.allManagedClusterLabelNames
-	assert.True(t, labels["cloud"])
-	assert.True(t, labels["vendor"])
-	assert.False(t, labels["name"])
-	assert.False(t, labels["environment"])
+	cm := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: cmName, Namespace: namespace},
+		Data:       map[string]string{cmKey: string(initialCMDataBytes)},
+	}
 
-	informer.managedLabelList.IgnoreList = []string{"clusterID", "vendor", "environment"}
-	informer.managedLabelList.LabelList = []string{"cloud", "name", "environment"}
-	informer.updateAllManagedClusterLabelNames()
+	// Test case: an update is required because a new label "region" was discovered.
+	t.Run("update is required", func(t *testing.T) {
+		kubeClient := fake.NewSimpleClientset(cm.DeepCopy())
+		informer := NewManagedClusterInformer(context.TODO(), nil, kubeClient)
+		informer.managedClusters = map[string]map[string]struct{}{
+			"cluster1": {"cloud": {}, "vendor": {}, "region": {}},
+		}
+		informer.managedLabelAllowListConfigmap = initialCMData
 
-	labels = informer.allManagedClusterLabelNames
-	assert.True(t, labels["cloud"])
-	assert.True(t, labels["name"])
-	assert.False(t, labels["vendor"])
-	assert.False(t, labels["environment"])
+		informer.checkForUpdate()
+
+		updatedCM, err := kubeClient.CoreV1().ConfigMaps(namespace).Get(context.TODO(), cmName, metav1.GetOptions{})
+		require.NoError(t, err)
+
+		updatedList := &ManagedClusterLabelList{}
+		err = yaml.Unmarshal([]byte(updatedCM.Data[cmKey]), updatedList)
+		require.NoError(t, err)
+
+		expectedLabels := []string{"cloud", "region", "vendor"}
+		assert.Equal(t, expectedLabels, updatedList.LabelList)
+		assert.Equal(t, []string{"name"}, updatedList.IgnoreList)
+
+		// Check in-memory state is also updated
+		informer.allowlistMtx.RLock()
+		defer informer.allowlistMtx.RUnlock()
+		assert.Equal(t, expectedLabels, informer.managedLabelAllowListConfigmap.LabelList)
+		assert.Equal(t, []string{"cloud", "region", "vendor"}, informer.managedLabelAllowListConfigmap.RegexLabelList)
+	})
+
+	// Test case: no update is needed.
+	t.Run("no update needed", func(t *testing.T) {
+		kubeClient := fake.NewSimpleClientset(cm.DeepCopy())
+		informer := NewManagedClusterInformer(context.TODO(), nil, kubeClient)
+		// Clusters have labels that are already in the allowlist
+		informer.managedClusters = map[string]map[string]struct{}{
+			"cluster1": {"cloud": {}, "vendor": {}},
+		}
+		// In-memory state is the same as on-cluster state
+		informer.managedLabelAllowListConfigmap = initialCMData
+
+		informer.checkForUpdate()
+
+		// Verify the ConfigMap was NOT updated by checking if Data is unchanged.
+		updatedCM, err := kubeClient.CoreV1().ConfigMaps(namespace).Get(context.TODO(), cmName, metav1.GetOptions{})
+		require.NoError(t, err)
+		assert.Equal(t, string(initialCMDataBytes), updatedCM.Data[cmKey])
+	})
 }
 
-func TestManagedClusterUpdateHandlerRetainsLabels(t *testing.T) {
-	cluster1 := &clusterv1.ManagedCluster{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "cluster1",
-			Labels: map[string]string{
-				"name":   "cluster1",
-				"vendor": "RedHat",
-				"cloud":  "AWS",
-			},
-		},
-	}
+func TestEnsureManagedClusterLabelAllowListConfigmapExists(t *testing.T) {
+	namespace := proxyconfig.ManagedClusterLabelAllowListNamespace
+	cmName := proxyconfig.ManagedClusterLabelAllowListConfigMapName
 
-	informer := NewManagedClusterInformer(
-		context.Background(),
-		fakecluster.NewSimpleClientset(),
-		fakekube.NewSimpleClientset(),
-	)
+	t.Run("configmap does not exist", func(t *testing.T) {
+		kubeClient := fake.NewSimpleClientset()
+		informer := NewManagedClusterInformer(context.TODO(), nil, kubeClient)
 
-	eventHandler := informer.getManagedClusterEventHandler()
+		err := informer.ensureManagedClusterLabelAllowListConfigmapExists()
+		require.NoError(t, err)
 
-	// 1. Add the initial cluster
-	eventHandler.AddFunc(cluster1)
-	assert.True(t, informer.allManagedClusterLabelNames["name"], "Label 'name' should be present after add")
-	assert.True(t, informer.allManagedClusterLabelNames["vendor"], "Label 'vendor' should be present after add")
-	assert.True(t, informer.allManagedClusterLabelNames["cloud"], "Label 'cloud' should be present after add")
+		_, err = kubeClient.CoreV1().ConfigMaps(namespace).Get(context.TODO(), cmName, metav1.GetOptions{})
+		assert.NoError(t, err, "ConfigMap should have been created")
+	})
 
-	// 2. Update the cluster: remove 'cloud', add 'region'
-	cluster1Updated := &clusterv1.ManagedCluster{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "cluster1",
-			Labels: map[string]string{
-				"name":   "cluster1",
-				"vendor": "RedHat",
-				"region": "us-east-1",
-			},
-		},
-	}
-	eventHandler.UpdateFunc(cluster1, cluster1Updated)
+	t.Run("configmap already exists", func(t *testing.T) {
+		existingCM := &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{Name: cmName, Namespace: namespace},
+			Data:       map[string]string{"test": "data"},
+		}
+		kubeClient := fake.NewSimpleClientset(existingCM)
+		informer := NewManagedClusterInformer(context.TODO(), nil, kubeClient)
 
-	// 3. Assert that the new state is correct
-	labels := informer.allManagedClusterLabelNames
-	assert.True(t, labels["name"], "Label 'name' should remain after update")
-	assert.True(t, labels["vendor"], "Label 'vendor' should remain after update")
-	assert.True(t, labels["region"], "Label 'region' should be added after update")
+		err := informer.ensureManagedClusterLabelAllowListConfigmapExists()
+		require.NoError(t, err)
 
-	// This is the most critical assertion: the label removed during the update ('cloud')
-	// must be retained for historical querying.
-	assert.True(t, labels["cloud"], "Label 'cloud' should be retained even after being removed from the cluster")
+		cm, err := kubeClient.CoreV1().ConfigMaps(namespace).Get(context.TODO(), cmName, metav1.GetOptions{})
+		require.NoError(t, err)
+		assert.Equal(t, "data", cm.Data["test"], "Existing ConfigMap should not be modified")
+	})
 }
