@@ -35,7 +35,7 @@ func TestGenerateAllowList(t *testing.T) {
 			},
 			managedClusters: map[string]map[string]struct{}{},
 			expectedAllowList: &ManagedClusterLabelList{
-				LabelList:  []string{"cloud", "vendor"},
+				LabelList:  []string{"cloud", "cluster.open-cluster-management.io/clusterset", "vendor"},
 				IgnoreList: []string{"name"},
 			},
 		},
@@ -50,7 +50,7 @@ func TestGenerateAllowList(t *testing.T) {
 				"cluster2": {"vendor": {}},
 			},
 			expectedAllowList: &ManagedClusterLabelList{
-				LabelList:  []string{"cloud", "region", "vendor"},
+				LabelList:  []string{"cloud", "cluster.open-cluster-management.io/clusterset", "name", "region", "vendor"},
 				IgnoreList: nil,
 			},
 		},
@@ -64,7 +64,7 @@ func TestGenerateAllowList(t *testing.T) {
 				"cluster1": {"cloud": {}, "region": {}},
 			},
 			expectedAllowList: &ManagedClusterLabelList{
-				LabelList:  []string{"cloud"},
+				LabelList:  []string{"cloud", "cluster.open-cluster-management.io/clusterset", "name"},
 				IgnoreList: []string{"region"},
 			},
 		},
@@ -76,7 +76,7 @@ func TestGenerateAllowList(t *testing.T) {
 				"cluster2": {"vendor": {}},
 			},
 			expectedAllowList: &ManagedClusterLabelList{
-				LabelList:  []string{"cloud", "region", "vendor"},
+				LabelList:  []string{"cloud", "cluster.open-cluster-management.io/clusterset", "name", "region", "vendor"},
 				IgnoreList: nil,
 			},
 		},
@@ -91,8 +91,46 @@ func TestGenerateAllowList(t *testing.T) {
 				"cluster2": {"vendor": {}},
 			},
 			expectedAllowList: &ManagedClusterLabelList{
-				LabelList:  []string{"cloud", "region", "vendor"},
+				LabelList:  []string{"cloud", "cluster.open-cluster-management.io/clusterset", "name", "region", "vendor"},
 				IgnoreList: nil,
+			},
+		},
+		{
+			name: "label in both allowlist and ignorelist is removed from allowlist",
+			currentAllowList: &ManagedClusterLabelList{
+				LabelList:  []string{"cloud", "vendor"},
+				IgnoreList: []string{"vendor"},
+			},
+			managedClusters: map[string]map[string]struct{}{
+				"cluster1": {"region": {}},
+			},
+			expectedAllowList: &ManagedClusterLabelList{
+				LabelList:  []string{"cloud", "cluster.open-cluster-management.io/clusterset", "name", "region"},
+				IgnoreList: []string{"vendor"},
+			},
+		},
+		{
+			name: "required labels are added if missing",
+			currentAllowList: &ManagedClusterLabelList{
+				LabelList:  []string{"cloud"},
+				IgnoreList: []string{},
+			},
+			managedClusters: map[string]map[string]struct{}{},
+			expectedAllowList: &ManagedClusterLabelList{
+				LabelList:  []string{"cloud", "cluster.open-cluster-management.io/clusterset", "name"},
+				IgnoreList: nil,
+			},
+		},
+		{
+			name: "required labels are not added if in ignore list",
+			currentAllowList: &ManagedClusterLabelList{
+				LabelList:  []string{"cloud"},
+				IgnoreList: []string{"name"},
+			},
+			managedClusters: map[string]map[string]struct{}{},
+			expectedAllowList: &ManagedClusterLabelList{
+				LabelList:  []string{"cloud", "cluster.open-cluster-management.io/clusterset"},
+				IgnoreList: []string{"name"},
 			},
 		},
 	}
@@ -234,7 +272,7 @@ func TestSyncAllowlistConfigMap(t *testing.T) {
 		err = yaml.Unmarshal([]byte(updatedCM.Data[cmKey]), updatedList)
 		require.NoError(t, err)
 
-		expectedLabels := []string{"cloud", "region", "vendor"}
+		expectedLabels := []string{"cloud", "cluster.open-cluster-management.io/clusterset", "region", "vendor"}
 		assert.Equal(t, expectedLabels, updatedList.LabelList)
 		assert.Equal(t, []string{"name"}, updatedList.IgnoreList)
 
@@ -242,7 +280,7 @@ func TestSyncAllowlistConfigMap(t *testing.T) {
 		informer.allowlistMtx.RLock()
 		defer informer.allowlistMtx.RUnlock()
 		assert.Equal(t, expectedLabels, informer.inMemoryAllowlist.LabelList)
-		assert.Equal(t, []string{"cloud", "region", "vendor"}, informer.inMemoryAllowlist.RegexLabelList)
+		assert.Equal(t, []string{"cloud", "cluster_open_cluster_management_io_clusterset", "region", "vendor"}, informer.inMemoryAllowlist.RegexLabelList)
 	})
 
 	// Test case: no update is needed.
@@ -262,7 +300,10 @@ func TestSyncAllowlistConfigMap(t *testing.T) {
 		// Verify the ConfigMap was NOT updated by checking if Data is unchanged.
 		updatedCM, err := kubeClient.CoreV1().ConfigMaps(namespace).Get(context.TODO(), cmName, metav1.GetOptions{})
 		require.NoError(t, err)
-		assert.Equal(t, string(initialCMDataBytes), updatedCM.Data[cmKey])
+		updatedList := &ManagedClusterLabelList{}
+		err = yaml.Unmarshal([]byte(updatedCM.Data[cmKey]), updatedList)
+		require.NoError(t, err)
+		assert.Equal(t, []string{"cloud", "cluster.open-cluster-management.io/clusterset", "vendor"}, updatedList.LabelList)
 	})
 
 	t.Run("update is skipped if cache not synced", func(t *testing.T) {

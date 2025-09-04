@@ -54,18 +54,14 @@ type Proxy struct {
 }
 
 // NewProxy creates a new Proxy.
-func NewProxy(serverURL *url.URL, transport http.RoundTripper, apiserverHost string, upi *cache.UserProjectInfo, managedClusterInformer informer.ManagedClusterInformable, accessReviewer metricquery.AccessReviewer) (*Proxy, error) {
-	cfg, err := config.GetConfig()
-	if err != nil {
-		return nil, err
-	}
+func NewProxy(cfg *rest.Config, serverURL *url.URL, transport http.RoundTripper, upi *cache.UserProjectInfo, managedClusterInformer informer.ManagedClusterInformable, accessReviewer metricquery.AccessReviewer) (*Proxy, error) {
 	kubeClientTransport, err := rest.TransportFor(cfg)
 	if err != nil {
 		return nil, err
 	}
 	p := &Proxy{
 		metricsServerURL:       serverURL,
-		apiServerHost:          apiserverHost,
+		apiServerHost:          cfg.Host,
 		userProjectInfo:        upi,
 		managedClusterInformer: managedClusterInformer,
 		accessReviewer:         accessReviewer,

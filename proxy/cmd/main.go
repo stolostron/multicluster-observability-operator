@@ -116,7 +116,7 @@ func run() error {
 		return fmt.Errorf("failed to set tls transport: %w", err)
 	}
 	defer tlsTransport.Close()
-	p, err := proxy.NewProxy(serverURL, tlsTransport, kubeConfig.Host, upi, managedClusterInformer, accessReviewer)
+	p, err := proxy.NewProxy(kubeConfig, serverURL, tlsTransport, upi, managedClusterInformer, accessReviewer)
 	if err != nil {
 		return fmt.Errorf("failed to create proxy: %w", err)
 	}
