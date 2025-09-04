@@ -106,7 +106,6 @@ github.com/prometheus/client_golang/prometheus.{NewCounter,NewCounterVec,NewCoun
 NewHistorgram,NewHistogramVec,NewSummary,NewSummaryVec}=github.com/prometheus/client_golang/prometheus/promauto.{NewCounter,\
 NewCounterVec,NewCounterVec,NewGauge,NewGaugeVec,NewGaugeFunc,NewHistorgram,NewHistogramVec,NewSummary,NewSummaryVec},\
 github.com/NYTimes/gziphandler.{GzipHandler}=github.com/klauspost/compress/gzhttp.{GzipHandler},\
-sync/atomic=go.uber.org/atomic,\
 io/ioutil.{Discard,NopCloser,ReadAll,ReadDir,ReadFile,TempDir,TempFile,Writefile}" ./operators/... ./collectors/... ./loaders/... ./proxy/...
 	@$(FAILLINT) -paths "fmt.{Print,Println}" -ignore-tests ./operators/... ./collectors/... ./loaders/... ./proxy/...
 	@echo ">> examining all of the Go files"

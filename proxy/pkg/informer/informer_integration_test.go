@@ -1,8 +1,8 @@
-//go:build integration
-
 // Copyright (c) Red Hat, Inc.
 // Copyright Contributors to the Open Cluster Management project
 // Licensed under the Apache License 2.0
+
+//go:build integration
 
 // Package informer_test contains integration tests for the informer package.
 //
@@ -38,8 +38,8 @@ import (
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 
-	clusterv1 "open-cluster-management.io/api/cluster/v1"
 	clusterclientset "open-cluster-management.io/api/client/cluster/clientset/versioned"
+	clusterv1 "open-cluster-management.io/api/cluster/v1"
 )
 
 var (
