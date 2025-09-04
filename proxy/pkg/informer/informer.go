@@ -2,6 +2,12 @@
 // Copyright Contributors to the Open Cluster Management project
 // Licensed under the Apache License 2.0
 
+// Package informer provides a controller that watches ManagedCluster resources to keep a label allowlist synchronized.
+//
+// The primary role of this package is to automatically discover all labels present on ManagedCluster
+// resources and ensure they are added to the 'observability-managed-cluster-label-allowlist' ConfigMap.
+// This allowlist is then used by the rbac-query-proxy to generate a synthetic metric that powers
+// dynamic, multi-level filtering of clusters in Grafana.
 package informer
 
 import (
@@ -12,6 +18,7 @@ import (
 	"regexp"
 	"slices"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	proxyconfig "github.com/stolostron/multicluster-observability-operator/proxy/pkg/config"
@@ -28,12 +35,25 @@ import (
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
 )
 
-var promLabelRegex = regexp.MustCompile(`[^\w]+`)
+var promLabelRegex = regexp.MustCompile(`[^	\w]+`)
 
+// ManagedClusterLabelList defines the structure of the label allowlist data stored in the ConfigMap.
 type ManagedClusterLabelList struct {
 	IgnoreList     []string `yaml:"ignore_labels,omitempty"`
 	LabelList      []string `yaml:"labels"`
 	RegexLabelList []string `yaml:"-"`
+}
+
+// Clone creates a deep copy of the ManagedClusterLabelList.
+func (l *ManagedClusterLabelList) Clone() *ManagedClusterLabelList {
+	if l == nil {
+		return nil
+	}
+	return &ManagedClusterLabelList{
+		IgnoreList:     slices.Clone(l.IgnoreList),
+		LabelList:      slices.Clone(l.LabelList),
+		RegexLabelList: slices.Clone(l.RegexLabelList),
+	}
 }
 
 // ManagedClusterInformable defines the interface for accessing cached managed cluster data.
@@ -44,43 +64,40 @@ type ManagedClusterInformable interface {
 	GetManagedClusterLabelList() []string
 }
 
-// ManagedClusterInformer caches managed cluster data and manages the label allowlist.
-// It uses informers to watch for changes to ManagedCluster resources and the allowlist ConfigMap,
-// keeping the cache up-to-date.
+// ManagedClusterInformer caches ManagedCluster data and manages the label allowlist ConfigMap.
 type ManagedClusterInformer struct {
-	ctx                            context.Context
-	clusterClient                  clusterclientset.Interface
-	kubeClient                     kubernetes.Interface
-	managedClusters                map[string]map[string]struct{}
-	managedClustersMtx             sync.RWMutex
-	managedLabelAllowListConfigmap *ManagedClusterLabelList
-	allowlistMtx                   sync.RWMutex
-	hasSynced                      bool
-	hasSyncedMtx                   sync.RWMutex
-	syncAllowList                  chan struct{}
-	supervisorRestartDelay         time.Duration
-	debounceTimer                  *time.Timer
-	debounceDuration               time.Duration
+	ctx                    context.Context
+	clusterClient          clusterclientset.Interface
+	kubeClient             kubernetes.Interface
+	managedClusters        map[string]map[string]struct{}
+	managedClustersMtx     sync.RWMutex
+	inMemoryAllowlist      *ManagedClusterLabelList
+	allowlistMtx           sync.RWMutex
+	hasSynced              atomic.Bool
+	syncAllowListCh        chan struct{}
+	supervisorRestartDelay time.Duration
+	debounceTimer          *time.Timer
+	debounceDuration       time.Duration
 }
 
 // NewManagedClusterInformer creates a new ManagedClusterInformer.
 func NewManagedClusterInformer(ctx context.Context, clusterClient clusterclientset.Interface,
 	kubeClient kubernetes.Interface) *ManagedClusterInformer {
 	return &ManagedClusterInformer{
-		ctx:                            ctx,
-		clusterClient:                  clusterClient,
-		kubeClient:                     kubeClient,
-		managedClusters:                make(map[string]map[string]struct{}),
-		managedLabelAllowListConfigmap: &ManagedClusterLabelList{},
-		syncAllowList:                  make(chan struct{}, 1),
-		supervisorRestartDelay:         10 * time.Second,
-		debounceDuration:               2 * time.Second,
+		ctx:                    ctx,
+		clusterClient:          clusterClient,
+		kubeClient:             kubeClient,
+		managedClusters:        make(map[string]map[string]struct{}),
+		inMemoryAllowlist:      &ManagedClusterLabelList{},
+		syncAllowListCh:        make(chan struct{}, 1),
+		supervisorRestartDelay: 10 * time.Second,
+		debounceDuration:       2 * time.Second,
 	}
 }
 
-// Run starts the informer and waits for the caches to sync.
+// Run starts the informers and worker goroutines.
 func (i *ManagedClusterInformer) Run() {
-	if err := i.ensureManagedClusterLabelAllowListConfigmapExists(); err != nil {
+	if err := i.ensureAllowlistConfigMapExists(); err != nil {
 		klog.Fatalf("Failed to ensure managed cluster label allowlist configmap exists: %v", err)
 	}
 
@@ -98,13 +115,16 @@ func (i *ManagedClusterInformer) Run() {
 	_, clusterController := cache.NewInformerWithOptions(clusterOptions)
 
 	cmWatchlist := cache.NewListWatchFromClient(i.kubeClient.CoreV1().RESTClient(), "configmaps",
-		proxyconfig.ManagedClusterLabelAllowListNamespace, fields.Everything())
+		proxyconfig.ManagedClusterLabelAllowListNamespace,
+		fields.OneTermEqualSelector("metadata.name", proxyconfig.ManagedClusterLabelAllowListConfigMapName))
 	cmOptions := cache.InformerOptions{
 		ListerWatcher: cmWatchlist,
 		ObjectType:    &v1.ConfigMap{},
-		Handler:       i.getManagedClusterLabelAllowListEventHandler(),
+		Handler:       i.getAllowlistConfigMapEventHandler(),
 	}
 	_, cmController := cache.NewInformerWithOptions(cmOptions)
+
+	go i.runConfigMapSyncSupervisor()
 
 	go clusterController.Run(i.ctx.Done())
 	go cmController.Run(i.ctx.Done())
@@ -114,43 +134,41 @@ func (i *ManagedClusterInformer) Run() {
 		return
 	}
 
-	i.hasSyncedMtx.Lock()
-	i.hasSynced = true
-	i.hasSyncedMtx.Unlock()
+	i.hasSynced.Store(true)
 	klog.Info("Informer caches have successfully synced")
 
 	i.managedClustersMtx.RLock()
-	klog.Infof("allManagedClusterNames: %v", slices.Sorted(maps.Keys(i.managedClusters)))
+	klog.Infof("Initial list of managed clusters: %v", slices.Sorted(maps.Keys(i.managedClusters)))
 	i.managedClustersMtx.RUnlock()
 
 	i.allowlistMtx.RLock()
-	klog.Infof("managedLabelList.RegexLabelList: %v", i.managedLabelAllowListConfigmap.RegexLabelList)
+	klog.Infof("Initial regex label list: %v", i.inMemoryAllowlist.RegexLabelList)
 	i.allowlistMtx.RUnlock()
 
-	go i.runConfigmapSync()
+	// Trigger a sync after the initial cache sync to process all existing resources.
+	i.syncAllowListCh <- struct{}{}
 }
 
-// GetAllManagedClusterNames returns all managed cluster names.
+// GetAllManagedClusterNames returns a set of all cached managed cluster names.
 func (i *ManagedClusterInformer) GetAllManagedClusterNames() map[string]struct{} {
 	i.managedClustersMtx.RLock()
 	defer i.managedClustersMtx.RUnlock()
 	return extractMapKeysSet(i.managedClusters)
 }
 
-// GetManagedClusterLabelList returns the managed cluster label list.
+// GetManagedClusterLabelList returns a slice of all cached and sanitized label names.
 func (i *ManagedClusterInformer) GetManagedClusterLabelList() []string {
 	i.allowlistMtx.RLock()
 	defer i.allowlistMtx.RUnlock()
-	return slices.Clone(i.managedLabelAllowListConfigmap.RegexLabelList)
+	return slices.Clone(i.inMemoryAllowlist.RegexLabelList)
 }
 
-// HasSynced returns true if the informer has successfully synced.
+// HasSynced returns true if the informer caches have successfully synced.
 func (i *ManagedClusterInformer) HasSynced() bool {
-	i.hasSyncedMtx.RLock()
-	defer i.hasSyncedMtx.RUnlock()
-	return i.hasSynced
+	return i.hasSynced.Load()
 }
 
+// getAllLabels returns a set of all unique labels across all cached managed clusters.
 func (i *ManagedClusterInformer) getAllLabels() map[string]struct{} {
 	i.managedClustersMtx.RLock()
 	defer i.managedClustersMtx.RUnlock()
@@ -163,12 +181,12 @@ func (i *ManagedClusterInformer) getAllLabels() map[string]struct{} {
 	return allLabels
 }
 
-// getManagedClusterEventHandler is the hendler for the ManagedClusters resources informer.
+// getManagedClusterEventHandler creates the event handler for the ManagedCluster informer.
 func (i *ManagedClusterInformer) getManagedClusterEventHandler() cache.ResourceEventHandlerFuncs {
 	return cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj any) {
 			managedCluster := obj.(*clusterv1.ManagedCluster)
-			klog.Infof("added a managedcluster: %s \n", managedCluster.Name)
+			klog.Infof("Added managed cluster: %s", managedCluster.Name)
 
 			beforeLabels := i.getAllLabels()
 
@@ -178,13 +196,13 @@ func (i *ManagedClusterInformer) getManagedClusterEventHandler() cache.ResourceE
 
 			afterLabels := i.getAllLabels()
 			if !maps.Equal(beforeLabels, afterLabels) {
-				i.syncAllowList <- struct{}{}
+				i.syncAllowListCh <- struct{}{}
 			}
 		},
 
 		DeleteFunc: func(obj any) {
 			managedCluster := obj.(*clusterv1.ManagedCluster)
-			klog.Infof("deleted a managedcluster: %s \n", managedCluster.Name)
+			klog.Infof("Deleted managed cluster: %s", managedCluster.Name)
 
 			beforeLabels := i.getAllLabels()
 
@@ -194,7 +212,7 @@ func (i *ManagedClusterInformer) getManagedClusterEventHandler() cache.ResourceE
 
 			afterLabels := i.getAllLabels()
 			if !maps.Equal(beforeLabels, afterLabels) {
-				i.syncAllowList <- struct{}{}
+				i.syncAllowListCh <- struct{}{}
 			}
 		},
 
@@ -206,7 +224,7 @@ func (i *ManagedClusterInformer) getManagedClusterEventHandler() cache.ResourceE
 				return
 			}
 
-			klog.Infof("changed a managedcluster labels: %s \n", newCluster.Name)
+			klog.Infof("Updated managed cluster labels: %s", newCluster.Name)
 
 			beforeLabels := i.getAllLabels()
 
@@ -216,7 +234,7 @@ func (i *ManagedClusterInformer) getManagedClusterEventHandler() cache.ResourceE
 
 			afterLabels := i.getAllLabels()
 			if !maps.Equal(beforeLabels, afterLabels) {
-				i.syncAllowList <- struct{}{}
+				i.syncAllowListCh <- struct{}{}
 			}
 		},
 	}
@@ -230,69 +248,59 @@ func extractMapKeysSet[K comparable, V any](inputMap map[K]V) map[K]struct{} {
 	return ret
 }
 
-// getManagedClusterLabelAllowListEventHandler is the handler for the ConfigMap informer.
-func (i *ManagedClusterInformer) getManagedClusterLabelAllowListEventHandler() cache.ResourceEventHandlerFuncs {
+// getAllowlistConfigMapEventHandler creates the event handler for the allowlist ConfigMap informer.
+func (i *ManagedClusterInformer) getAllowlistConfigMapEventHandler() cache.ResourceEventHandlerFuncs {
 	return cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj any) {
-			if obj.(*v1.ConfigMap).Name == proxyconfig.ManagedClusterLabelAllowListConfigMapName {
-				klog.V(1).Infof("added configmap: %s", proxyconfig.ManagedClusterLabelAllowListConfigMapName)
-				i.syncAllowList <- struct{}{}
-			}
+			klog.V(1).Infof("Observed addition of ConfigMap: %s", proxyconfig.ManagedClusterLabelAllowListConfigMapName)
+			i.syncAllowListCh <- struct{}{}
 		},
 
 		DeleteFunc: func(obj any) {
-			if obj.(*v1.ConfigMap).Name == proxyconfig.ManagedClusterLabelAllowListConfigMapName {
-				klog.Warningf("ConfigMap %s was deleted, recreating it.", proxyconfig.ManagedClusterLabelAllowListConfigMapName)
-				if err := i.ensureManagedClusterLabelAllowListConfigmapExists(); err != nil {
-					klog.Errorf("Failed to recreate deleted configmap %s: %v", proxyconfig.ManagedClusterLabelAllowListConfigMapName, err)
-				}
+			klog.Warningf("ConfigMap %s was deleted, recreating it", proxyconfig.ManagedClusterLabelAllowListConfigMapName)
+			if err := i.ensureAllowlistConfigMapExists(); err != nil {
+				klog.Errorf("Failed to recreate deleted ConfigMap %s: %v", proxyconfig.ManagedClusterLabelAllowListConfigMapName, err)
 			}
 		},
 
 		UpdateFunc: func(oldObj, newObj any) {
-			if newObj.(*v1.ConfigMap).Name != proxyconfig.ManagedClusterLabelAllowListConfigMapName {
-				return
-			}
 			newConfig := newObj.(*v1.ConfigMap)
 			oldConfig := oldObj.(*v1.ConfigMap)
 
 			if reflect.DeepEqual(newConfig.Data, oldConfig.Data) {
 				return
 			}
-			klog.V(1).Infof("updated configmap: %s", proxyconfig.ManagedClusterLabelAllowListConfigMapName)
+			klog.V(1).Infof("Observed update of ConfigMap: %s", proxyconfig.ManagedClusterLabelAllowListConfigMapName)
 
-			i.syncAllowList <- struct{}{}
-
+			i.syncAllowListCh <- struct{}{}
 		},
 	}
 }
 
+// generateAllowList creates a new allowlist by merging newly discovered labels with the existing ones.
 func generateAllowList(currentAllowList *ManagedClusterLabelList, managedClusters map[string]map[string]struct{}) *ManagedClusterLabelList {
-	// Extract the labels set from the managed clusters
-	labelsSet := map[string]struct{}{}
+	labelsFromClusters := make(map[string]struct{})
 	for _, labels := range managedClusters {
 		for label := range labels {
-			labelsSet[label] = struct{}{}
+			labelsFromClusters[label] = struct{}{}
 		}
 	}
 
-	allowedLabels := map[string]struct{}{}
+	allowedLabels := make(map[string]struct{})
 	for _, label := range currentAllowList.LabelList {
 		allowedLabels[label] = struct{}{}
 	}
 
-	ignoredLabels := map[string]struct{}{}
+	ignoredLabels := make(map[string]struct{})
 	for _, label := range currentAllowList.IgnoreList {
 		ignoredLabels[label] = struct{}{}
-
 	}
 
-	// Add missing label in the allowedLabels list
-	for label := range ignoredLabels {
-		delete(labelsSet, label)
-	}
-	for label := range labelsSet {
-		allowedLabels[label] = struct{}{}
+	// Add labels from clusters to the allowed list, skipping any that are in the ignore list.
+	for label := range labelsFromClusters {
+		if _, isIgnored := ignoredLabels[label]; !isIgnored {
+			allowedLabels[label] = struct{}{}
+		}
 	}
 
 	return &ManagedClusterLabelList{
@@ -301,58 +309,62 @@ func generateAllowList(currentAllowList *ManagedClusterLabelList, managedCluster
 	}
 }
 
-func (i *ManagedClusterInformer) runConfigmapSync() {
+// runConfigMapSyncSupervisor is a resilient worker that runs the sync loop and restarts it on unexpected failures.
+func (i *ManagedClusterInformer) runConfigMapSyncSupervisor() {
 	for {
 		func() {
 			defer func() {
 				if r := recover(); r != nil {
-					klog.Errorf("Recovered from panic in configmap sync: %v", r)
+					klog.Errorf("Recovered from panic in ConfigMap sync loop: %v", r)
 				}
 			}()
 			i.syncLoop()
 		}()
 
-		// Check if the watcher was closed intentionally.
 		select {
 		case <-i.ctx.Done():
-			klog.Info("Configmap sync supervisor shutting down.")
+			klog.Info("ConfigMap sync supervisor shutting down.")
 			return
 		default:
-			// The watcher stopped unexpectedly. Log, wait, and restart.
-			klog.Warningf("Configmap sync loop stopped unexpectedly. Restarting in %v...", i.supervisorRestartDelay)
+			klog.Warningf("ConfigMap sync loop stopped unexpectedly. Restarting in %v...", i.supervisorRestartDelay)
 			time.Sleep(i.supervisorRestartDelay)
 		}
 	}
 }
 
+// syncLoop waits for signals to process allowlist updates.
 func (i *ManagedClusterInformer) syncLoop() {
 	for {
 		select {
-		case <-i.syncAllowList:
-			i.triggerCheck()
+		case <-i.syncAllowListCh:
+			i.debounceSync()
 		case <-i.ctx.Done():
 			return
 		}
 	}
 }
 
-func (i *ManagedClusterInformer) triggerCheck() {
+// debounceSync waits for a brief period of inactivity before triggering a sync to avoid redundant updates.
+func (i *ManagedClusterInformer) debounceSync() {
 	if i.debounceTimer != nil {
 		i.debounceTimer.Stop()
 	}
 
-	i.debounceTimer = time.AfterFunc(i.debounceDuration, i.checkForUpdate)
+	i.debounceTimer = time.AfterFunc(i.debounceDuration, i.syncAllowlistConfigMap)
 }
 
-func (i *ManagedClusterInformer) checkForUpdate() {
-	i.managedClustersMtx.RLock()
-	managedClustersCopy := make(map[string]map[string]struct{}, len(i.managedClusters))
-	for k, v := range i.managedClusters {
-		managedClustersCopy[k] = v
+// syncAllowlistConfigMap is the core reconciliation function that updates the ConfigMap if needed.
+func (i *ManagedClusterInformer) syncAllowlistConfigMap() {
+	if !i.HasSynced() {
+		klog.V(4).Info("Cache not synced yet, skipping ConfigMap update check")
+		return
 	}
+
+	i.managedClustersMtx.RLock()
+	managedClustersCopy := maps.Clone(i.managedClusters)
 	i.managedClustersMtx.RUnlock()
 
-	var mergedList *ManagedClusterLabelList
+	var newList *ManagedClusterLabelList
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		allowListCM, err := i.kubeClient.CoreV1().ConfigMaps(proxyconfig.ManagedClusterLabelAllowListNamespace).Get(
 			i.ctx,
@@ -364,26 +376,28 @@ func (i *ManagedClusterInformer) checkForUpdate() {
 		}
 
 		currentOnClusterList := &ManagedClusterLabelList{}
-		if err := unmarshalDataToManagedClusterLabelList(allowListCM.Data,
+		if err := unmarshalData(allowListCM.Data,
 			proxyconfig.ManagedClusterLabelAllowListConfigMapKey, currentOnClusterList); err != nil {
-			klog.Errorf("Failed to unmarshal configmap, will not retry: %v", err)
+			// If unmarshalling fails, we cannot proceed. This is not a conflict, so we return nil.
+			klog.Errorf("Failed to unmarshal data from ConfigMap, will not retry: %v", err)
 			return nil
 		}
 
-		mergedList = generateAllowList(currentOnClusterList, managedClustersCopy)
+		newList = generateAllowList(currentOnClusterList, managedClustersCopy)
 
 		i.allowlistMtx.RLock()
-		inMemoryList := i.managedLabelAllowListConfigmap
+		inMemoryListClone := i.inMemoryAllowlist.Clone()
 		i.allowlistMtx.RUnlock()
 
-		if slices.Equal(mergedList.LabelList, inMemoryList.LabelList) && slices.Equal(mergedList.IgnoreList, inMemoryList.IgnoreList) {
+		// If the generated list is identical to what's already in memory, no update is needed.
+		if slices.Equal(newList.LabelList, inMemoryListClone.LabelList) && slices.Equal(newList.IgnoreList, inMemoryListClone.IgnoreList) {
 			klog.V(4).Info("Managed cluster label allowlist is already up-to-date")
-			mergedList = nil // Ensure mergedList is nil if no update is needed
+			newList = nil // Signal that no update was performed.
 			return nil
 		}
 
-		if err := marshalLabelListToConfigMap(allowListCM,
-			proxyconfig.ManagedClusterLabelAllowListConfigMapKey, mergedList); err != nil {
+		if err := marshalData(allowListCM,
+			proxyconfig.ManagedClusterLabelAllowListConfigMapKey, newList); err != nil {
 			return err
 		}
 
@@ -396,48 +410,49 @@ func (i *ManagedClusterInformer) checkForUpdate() {
 	})
 
 	if err != nil {
-		klog.Errorf("Failed to update managedcluster label allowlist configmap after retries: %v", err)
+		klog.Errorf("Failed to update managed cluster label allowlist ConfigMap after retries: %v", err)
 		return
 	}
 
-	if mergedList != nil {
-		klog.Info("Successfully updated managedcluster label allowlist configmap")
-		mergedList.RegexLabelList = make([]string, 0, len(mergedList.LabelList))
-		for _, label := range mergedList.LabelList {
-			mergedList.RegexLabelList = append(mergedList.RegexLabelList, promLabelRegex.ReplaceAllString(label, "_"))
+	// If newList is not nil, an update was successfully performed.
+	if newList != nil {
+		klog.Info("Successfully updated managed cluster label allowlist ConfigMap")
+		newList.RegexLabelList = make([]string, 0, len(newList.LabelList))
+		for _, label := range newList.LabelList {
+			newList.RegexLabelList = append(newList.RegexLabelList, promLabelRegex.ReplaceAllString(label, "_"))
 		}
 		i.allowlistMtx.Lock()
-		i.managedLabelAllowListConfigmap = mergedList
+		i.inMemoryAllowlist = newList
 		i.allowlistMtx.Unlock()
 	}
 }
 
-func marshalLabelListToConfigMap(obj *v1.ConfigMap, key string,
+func marshalData(obj *v1.ConfigMap, key string,
 	labelList *ManagedClusterLabelList) error {
 	data, err := yaml.Marshal(labelList)
 	if err != nil {
-		return fmt.Errorf("failed to marshal managedLabelList data: %w", err)
+		return fmt.Errorf("failed to marshal allowlist data: %w", err)
 	}
 
 	if obj.Data == nil {
-		obj.Data = map[string]string{}
+		obj.Data = make(map[string]string)
 	}
 	obj.Data[key] = string(data)
 
 	return nil
 }
 
-func unmarshalDataToManagedClusterLabelList(data map[string]string, key string,
+func unmarshalData(data map[string]string, key string,
 	labelList *ManagedClusterLabelList) error {
 	if err := yaml.Unmarshal([]byte(data[key]), labelList); err != nil {
-		return fmt.Errorf("failed to unmarshal configmap %s data to the managedLabelList: %w", key, err)
+		return fmt.Errorf("failed to unmarshal data for key %s: %w", key, err)
 	}
 
 	return nil
 }
 
-// ensureManagedClusterLabelAllowListConfigmapExists checks if the allowlist ConfigMap exists and creates it if it doesn't.
-func (i *ManagedClusterInformer) ensureManagedClusterLabelAllowListConfigmapExists() error {
+// ensureAllowlistConfigMapExists checks if the allowlist ConfigMap exists and creates it if it doesn't.
+func (i *ManagedClusterInformer) ensureAllowlistConfigMapExists() error {
 	_, err := i.kubeClient.CoreV1().ConfigMaps(proxyconfig.ManagedClusterLabelAllowListNamespace).Get(
 		i.ctx,
 		proxyconfig.ManagedClusterLabelAllowListConfigMapName,
@@ -445,16 +460,16 @@ func (i *ManagedClusterInformer) ensureManagedClusterLabelAllowListConfigmapExis
 	)
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
-			klog.Info("managedcluster label allowlist configmap not found, creating it")
+			klog.Info("Managed cluster label allowlist ConfigMap not found, creating it")
 			cm := proxyconfig.CreateManagedClusterLabelAllowListCM(
 				proxyconfig.ManagedClusterLabelAllowListNamespace,
 			)
-			_, err := i.kubeClient.CoreV1().ConfigMaps(proxyconfig.ManagedClusterLabelAllowListNamespace).Create(i.ctx, cm, metav1.CreateOptions{})
-			if err != nil {
-				return fmt.Errorf("failed to create managedcluster label allowlist configmap: %w", err)
+			_, createErr := i.kubeClient.CoreV1().ConfigMaps(proxyconfig.ManagedClusterLabelAllowListNamespace).Create(i.ctx, cm, metav1.CreateOptions{})
+			if createErr != nil {
+				return fmt.Errorf("failed to create allowlist ConfigMap: %w", createErr)
 			}
 		} else {
-			return fmt.Errorf("failed to get managedcluster label allowlist configmap: %w", err)
+			return fmt.Errorf("failed to get allowlist ConfigMap: %w", err)
 		}
 	}
 	return nil

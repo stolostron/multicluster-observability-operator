@@ -188,7 +188,7 @@ func TestManagedClusterEventHandler(t *testing.T) {
 			assert.Equal(t, tc.expectedClusters, informer.managedClusters)
 
 			select {
-			case <-informer.syncAllowList:
+			case <-informer.syncAllowListCh:
 				assert.True(t, tc.expectSyncTriggered, "sync should have been triggered but was not")
 			case <-time.After(100 * time.Millisecond):
 				assert.False(t, tc.expectSyncTriggered, "sync should not have been triggered but was")
@@ -197,7 +197,7 @@ func TestManagedClusterEventHandler(t *testing.T) {
 	}
 }
 
-func TestCheckForUpdate(t *testing.T) {
+func TestSyncAllowlistConfigMap(t *testing.T) {
 	namespace := proxyconfig.ManagedClusterLabelAllowListNamespace
 	cmName := proxyconfig.ManagedClusterLabelAllowListConfigMapName
 	cmKey := proxyconfig.ManagedClusterLabelAllowListConfigMapKey
@@ -219,12 +219,13 @@ func TestCheckForUpdate(t *testing.T) {
 	t.Run("update is required", func(t *testing.T) {
 		kubeClient := fake.NewSimpleClientset(cm.DeepCopy())
 		informer := NewManagedClusterInformer(context.TODO(), nil, kubeClient)
+		informer.hasSynced.Store(true)
 		informer.managedClusters = map[string]map[string]struct{}{
 			"cluster1": {"cloud": {}, "vendor": {}, "region": {}},
 		}
-		informer.managedLabelAllowListConfigmap = initialCMData
+		informer.inMemoryAllowlist = initialCMData
 
-		informer.checkForUpdate()
+		informer.syncAllowlistConfigMap()
 
 		updatedCM, err := kubeClient.CoreV1().ConfigMaps(namespace).Get(context.TODO(), cmName, metav1.GetOptions{})
 		require.NoError(t, err)
@@ -240,31 +241,49 @@ func TestCheckForUpdate(t *testing.T) {
 		// Check in-memory state is also updated
 		informer.allowlistMtx.RLock()
 		defer informer.allowlistMtx.RUnlock()
-		assert.Equal(t, expectedLabels, informer.managedLabelAllowListConfigmap.LabelList)
-		assert.Equal(t, []string{"cloud", "region", "vendor"}, informer.managedLabelAllowListConfigmap.RegexLabelList)
+		assert.Equal(t, expectedLabels, informer.inMemoryAllowlist.LabelList)
+		assert.Equal(t, []string{"cloud", "region", "vendor"}, informer.inMemoryAllowlist.RegexLabelList)
 	})
 
 	// Test case: no update is needed.
 	t.Run("no update needed", func(t *testing.T) {
 		kubeClient := fake.NewSimpleClientset(cm.DeepCopy())
 		informer := NewManagedClusterInformer(context.TODO(), nil, kubeClient)
+		informer.hasSynced.Store(true)
 		// Clusters have labels that are already in the allowlist
 		informer.managedClusters = map[string]map[string]struct{}{
 			"cluster1": {"cloud": {}, "vendor": {}},
 		}
 		// In-memory state is the same as on-cluster state
-		informer.managedLabelAllowListConfigmap = initialCMData
+		informer.inMemoryAllowlist = initialCMData
 
-		informer.checkForUpdate()
+		informer.syncAllowlistConfigMap()
 
 		// Verify the ConfigMap was NOT updated by checking if Data is unchanged.
 		updatedCM, err := kubeClient.CoreV1().ConfigMaps(namespace).Get(context.TODO(), cmName, metav1.GetOptions{})
 		require.NoError(t, err)
 		assert.Equal(t, string(initialCMDataBytes), updatedCM.Data[cmKey])
 	})
+
+	t.Run("update is skipped if cache not synced", func(t *testing.T) {
+		kubeClient := fake.NewSimpleClientset(cm.DeepCopy())
+		informer := NewManagedClusterInformer(context.TODO(), nil, kubeClient)
+		informer.hasSynced.Store(false) // Ensure cache is not synced
+		informer.managedClusters = map[string]map[string]struct{}{
+			"cluster1": {"new_label": {}},
+		}
+		informer.inMemoryAllowlist = initialCMData
+
+		informer.syncAllowlistConfigMap()
+
+		// Verify the ConfigMap was NOT updated
+		updatedCM, err := kubeClient.CoreV1().ConfigMaps(namespace).Get(context.TODO(), cmName, metav1.GetOptions{})
+		require.NoError(t, err)
+		assert.Equal(t, string(initialCMDataBytes), updatedCM.Data[cmKey])
+	})
 }
 
-func TestEnsureManagedClusterLabelAllowListConfigmapExists(t *testing.T) {
+func TestEnsureAllowlistConfigMapExists(t *testing.T) {
 	namespace := proxyconfig.ManagedClusterLabelAllowListNamespace
 	cmName := proxyconfig.ManagedClusterLabelAllowListConfigMapName
 
@@ -272,7 +291,7 @@ func TestEnsureManagedClusterLabelAllowListConfigmapExists(t *testing.T) {
 		kubeClient := fake.NewSimpleClientset()
 		informer := NewManagedClusterInformer(context.TODO(), nil, kubeClient)
 
-		err := informer.ensureManagedClusterLabelAllowListConfigmapExists()
+		err := informer.ensureAllowlistConfigMapExists()
 		require.NoError(t, err)
 
 		_, err = kubeClient.CoreV1().ConfigMaps(namespace).Get(context.TODO(), cmName, metav1.GetOptions{})
@@ -287,7 +306,7 @@ func TestEnsureManagedClusterLabelAllowListConfigmapExists(t *testing.T) {
 		kubeClient := fake.NewSimpleClientset(existingCM)
 		informer := NewManagedClusterInformer(context.TODO(), nil, kubeClient)
 
-		err := informer.ensureManagedClusterLabelAllowListConfigmapExists()
+		err := informer.ensureAllowlistConfigMapExists()
 		require.NoError(t, err)
 
 		cm, err := kubeClient.CoreV1().ConfigMaps(namespace).Get(context.TODO(), cmName, metav1.GetOptions{})
