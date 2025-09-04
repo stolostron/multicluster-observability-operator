@@ -322,6 +322,50 @@ func TestSyncAllowlistConfigMap(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, string(initialCMDataBytes), updatedCM.Data[cmKey])
 	})
+
+	t.Run("reverts manual incorrect change", func(t *testing.T) {
+		// In-memory and managed clusters are in a correct, steady state.
+		steadyStateList := &ManagedClusterLabelList{
+			LabelList:  []string{"cloud", "cluster.open-cluster-management.io/clusterset", "name", "vendor"},
+			IgnoreList: []string{},
+		}
+
+		informer := NewManagedClusterInformer(context.TODO(), nil, nil)
+		informer.hasSynced.Store(true)
+		informer.managedClusters = map[string]map[string]struct{}{
+			"cluster1": {"cloud": {}, "vendor": {}},
+		}
+		informer.inMemoryAllowlist = steadyStateList
+
+		// But the ConfigMap on the cluster has been manually edited to be incorrect.
+		incorrectCMData := &ManagedClusterLabelList{
+			LabelList:  []string{"cloud"}, // "vendor" is missing
+			IgnoreList: []string{},
+		}
+		incorrectCMDataBytes, err := yaml.Marshal(incorrectCMData)
+		require.NoError(t, err)
+		incorrectCM := &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{Name: cmName, Namespace: namespace},
+			Data:       map[string]string{cmKey: string(incorrectCMDataBytes)},
+		}
+		kubeClient := fake.NewSimpleClientset(incorrectCM)
+		informer.kubeClient = kubeClient
+
+		// Act
+		informer.syncAllowlistConfigMap()
+
+		// Assert
+		updatedCM, err := kubeClient.CoreV1().ConfigMaps(namespace).Get(context.TODO(), cmName, metav1.GetOptions{})
+		require.NoError(t, err)
+
+		finalList := &ManagedClusterLabelList{}
+		err = yaml.Unmarshal([]byte(updatedCM.Data[cmKey]), finalList)
+		require.NoError(t, err)
+
+		// The informer should have added the missing labels back.
+		assert.ElementsMatch(t, steadyStateList.LabelList, finalList.LabelList)
+		assert.ElementsMatch(t, steadyStateList.IgnoreList, finalList.IgnoreList)
+	})
 }
 
 func TestEnsureAllowlistConfigMapExists(t *testing.T) {

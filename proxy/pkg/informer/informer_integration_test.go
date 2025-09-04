@@ -156,12 +156,12 @@ func TestRun_InitialSync(t *testing.T) {
 	err = yaml.Unmarshal([]byte(updatedCM.Data[cmKey]), updatedList)
 	require.NoError(t, err)
 
-	expectedLabels := []string{"cloud", "vendor"}
+	expectedLabels := []string{"cloud", "vendor", "name", "cluster.open-cluster-management.io/clusterset"}
 	assert.ElementsMatch(t, expectedLabels, updatedList.LabelList)
 
 	// Also check the in-memory representation.
 	informer.allowlistMtx.RLock()
 	defer informer.allowlistMtx.RUnlock()
 	assert.ElementsMatch(t, expectedLabels, informer.inMemoryAllowlist.LabelList)
-	assert.ElementsMatch(t, []string{"cloud", "vendor"}, informer.inMemoryAllowlist.RegexLabelList)
+	assert.ElementsMatch(t, []string{"cloud", "vendor", "name", "cluster_open_cluster_management_io_clusterset"}, informer.inMemoryAllowlist.RegexLabelList)
 }
