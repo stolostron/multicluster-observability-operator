@@ -145,7 +145,7 @@ integration-test-operators: ## Run operators integration tests.
 
 .PHONY: integration-test-proxy
 integration-test-proxy: ## Run proxy integration tests.
-	go test -v -tags=integration ./proxy/...
+	go test -tags=integration ./proxy/...
 
 .PHONY: integration-test
 integration-test: integration-test-operators integration-test-proxy ## Run all integration tests.

@@ -109,7 +109,7 @@ func (p *Proxy) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 	req.URL.Path = path.Join(basePath, req.URL.Path)
 	modifier := &metricquery.Modifier{
 		Req:                 req,
-		ReqURL:              config.GetConfigOrDie().Host + projectsAPIPath,
+		ReqURL:              p.apiServerHost + projectsAPIPath,
 		AccessReviewer:      p.accessReviewer,
 		UPI:                 p.userProjectInfo,
 		MCI:                 p.managedClusterInformer,
