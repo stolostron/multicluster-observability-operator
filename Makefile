@@ -126,19 +126,19 @@ unit-tests: unit-tests-operators unit-tests-loaders unit-tests-proxy unit-tests-
 
 .PHONY: unit-tests-operators
 unit-tests-operators:  ## Run operators unit tests only.
-	go test ${VERBOSE} `go list ./operators/... | $(GREP) -v test`
+	go test -race ${VERBOSE} `go list ./operators/... | $(GREP) -v test`
 
 .PHONY: unit-tests-loaders
 unit-tests-loaders: ## Run loaders unit tests only.
-	go test ${VERBOSE} `go list ./loaders/... | $(GREP) -v test`
+	go test -race ${VERBOSE} `go list ./loaders/... | $(GREP) -v test`
 
 .PHONY: unit-tests-proxy
 unit-tests-proxy: ## Run proxy uni tests only.
-	go test ${VERBOSE} `go list ./proxy/... | $(GREP) -v test`
+	go test -race ${VERBOSE} `go list ./proxy/... | $(GREP) -v test`
 
 .PHONY: unit-tests-collectors
 unit-tests-collectors: ## Run collectors unit tests only. 
-	go test ${VERBOSE} `go list ./collectors/... | $(GREP) -v test`
+	go test -race ${VERBOSE} `go list ./collectors/... | $(GREP) -v test`
 
 .PHONY: integration-test-operators
 integration-test-operators: ## Run operators integration tests.
