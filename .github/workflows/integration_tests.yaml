@@ -32,4 +32,4 @@ jobs:
       - name: Run tests
         run: |
           source <(BIN_DIR=$GOBIN make install-envtest-deps)
-          make integration-test-operators
+          make integration-test
