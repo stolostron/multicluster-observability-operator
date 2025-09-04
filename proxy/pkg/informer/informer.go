@@ -17,6 +17,7 @@ import (
 	"reflect"
 	"regexp"
 	"slices"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -362,6 +363,9 @@ func (i *ManagedClusterInformer) syncAllowlistConfigMap() {
 			allowListCM,
 			metav1.UpdateOptions{},
 		)
+		if err == nil {
+			logAllowlistChanges(currentOnClusterList, newList)
+		}
 		return err
 	})
 
@@ -372,7 +376,6 @@ func (i *ManagedClusterInformer) syncAllowlistConfigMap() {
 
 	// If newList is not nil, an update was successfully performed.
 	if newList != nil {
-		klog.Infof("Successfully updated managed cluster label allowlist ConfigMap. Allowed: %v, Ignored: %v", newList.LabelList, newList.IgnoreList)
 		newList.RegexLabelList = make([]string, 0, len(newList.LabelList))
 		for _, label := range newList.LabelList {
 			newList.RegexLabelList = append(newList.RegexLabelList, promLabelRegex.ReplaceAllString(label, "_"))
@@ -449,6 +452,55 @@ func generateAllowList(currentAllowList *ManagedClusterLabelList, managedCluster
 		IgnoreList: slices.Sorted(maps.Keys(ignoredLabels)),
 		LabelList:  slices.Sorted(maps.Keys(allowedLabels)),
 	}
+}
+
+// logAllowlistChanges calculates and logs the differences between two allowlists.
+func logAllowlistChanges(before, after *ManagedClusterLabelList) {
+	labelsAdded, labelsRemoved := getDiff(before.LabelList, after.LabelList)
+	ignoredAdded, ignoredRemoved := getDiff(before.IgnoreList, after.IgnoreList)
+
+	diffs := []struct {
+		name string
+		data []string
+	}{
+		{"labels_added", labelsAdded},
+		{"labels_removed", labelsRemoved},
+		{"ignored_added", ignoredAdded},
+		{"ignored_removed", ignoredRemoved},
+	}
+
+	var logParts []string
+	for _, d := range diffs {
+		if len(d.data) > 0 {
+			logParts = append(logParts, fmt.Sprintf("%s=%v", d.name, d.data))
+		}
+	}
+
+	if len(logParts) > 0 {
+		klog.Infof("Successfully updated managed cluster label allowlist ConfigMap: %s", strings.Join(logParts, ", "))
+	}
+}
+
+// getDiff calculates the items added to or removed from a string slice.
+func getDiff(before, after []string) ([]string, []string) {
+	beforeMap := make(map[string]struct{}, len(before))
+	for _, s := range before {
+		beforeMap[s] = struct{}{}
+	}
+
+	added := []string{}
+	for _, s := range after {
+		if _, found := beforeMap[s]; found {
+			// If it's in both, it's not a removed item. Delete it from the map.
+			delete(beforeMap, s)
+		} else {
+			// If it's in after but not before, it was added.
+			added = append(added, s)
+		}
+	}
+
+	slices.Sort(added)
+	return added, slices.Sorted(maps.Keys(beforeMap))
 }
 
 func extractMapKeysSet[K comparable, V any](inputMap map[K]V) map[K]struct{} {
