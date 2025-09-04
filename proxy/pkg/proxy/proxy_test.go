@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"regexp"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -26,6 +28,8 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/cache"
 	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/config"
 )
+
+var promLabelRegex = regexp.MustCompile(`[^\w]+`)
 
 // MockManagedClusterInformer is a mock implementation of the ManagedClusterInformable interface.
 type MockManagedClusterInformer struct {
@@ -298,7 +302,16 @@ func newTestProxy(t *testing.T, labels []string) *Proxy {
 }
 
 func TestHandleManagedClusterLabelQuery(t *testing.T) {
-	p := newTestProxy(t, []string{"cloud", "vendor"})
+	// The test should be responsible for providing the exact, final list.
+	// The real informer provides a sorted, sanitized list.
+	expectedLabels := []string{
+		"cloud",
+		"vendor",
+		promLabelRegex.ReplaceAllString(config.RequiredLabelList[0], "_"), // name
+		promLabelRegex.ReplaceAllString(config.RequiredLabelList[1], "_"), // cluster...
+	}
+	slices.Sort(expectedLabels)
+	p := newTestProxy(t, expectedLabels)
 
 	testCases := []struct {
 		name             string
@@ -314,7 +327,7 @@ func TestHandleManagedClusterLabelQuery(t *testing.T) {
 			path:             "/api/v1/series",
 			body:             strings.NewReader("match[]=" + config.RBACProxyLabelMetricName),
 			expectedToHandle: true,
-			expectedBody:     `{"status":"success","data":[{"__name__":"acm_label_names","label_name":"cloud"},{"__name__":"acm_label_names","label_name":"vendor"}]}`,
+			expectedBody:     `{"status":"success","data":[{"__name__":"acm_label_names","label_name":"cloud"},{"__name__":"acm_label_names","label_name":"cluster_open_cluster_management_io_clusterset"},{"__name__":"acm_label_names","label_name":"name"},{"__name__":"acm_label_names","label_name":"vendor"}]}`,
 		},
 		{
 			name:             "should not handle POST to series endpoint with other metric",
@@ -329,7 +342,7 @@ func TestHandleManagedClusterLabelQuery(t *testing.T) {
 			path:             "/api/v1/series?match[]=" + config.RBACProxyLabelMetricName,
 			body:             nil,
 			expectedToHandle: true,
-			expectedBody:     `{"status":"success","data":[{"__name__":"acm_label_names","label_name":"cloud"},{"__name__":"acm_label_names","label_name":"vendor"}]}`,
+			expectedBody:     `{"status":"success","data":[{"__name__":"acm_label_names","label_name":"cloud"},{"__name__":"acm_label_names","label_name":"cluster_open_cluster_management_io_clusterset"},{"__name__":"acm_label_names","label_name":"name"},{"__name__":"acm_label_names","label_name":"vendor"}]}`,
 		},
 		{
 			name:             "should not handle GET to series endpoint with other metric",
@@ -344,7 +357,7 @@ func TestHandleManagedClusterLabelQuery(t *testing.T) {
 			path:             "/api/v1/label/label_name/values?match[]=" + config.RBACProxyLabelMetricName,
 			body:             nil,
 			expectedToHandle: true,
-			expectedBody:     `{"status":"success","data":["cloud","vendor"]}`,
+			expectedBody:     `{"status":"success","data":["cloud","cluster_open_cluster_management_io_clusterset","name","vendor"]}`,
 		},
 		{
 			name:             "should not handle GET to label values endpoint with other metric",

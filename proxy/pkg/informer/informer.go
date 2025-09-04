@@ -35,7 +35,7 @@ import (
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
 )
 
-var promLabelRegex = regexp.MustCompile(`[^	\w]+`)
+var promLabelRegex = regexp.MustCompile(`[^\w]+`)
 
 // ManagedClusterLabelList defines the structure of the label allowlist data stored in the ConfigMap.
 type ManagedClusterLabelList struct {
@@ -240,14 +240,6 @@ func (i *ManagedClusterInformer) getManagedClusterEventHandler() cache.ResourceE
 	}
 }
 
-func extractMapKeysSet[K comparable, V any](inputMap map[K]V) map[K]struct{} {
-	ret := make(map[K]struct{}, len(inputMap))
-	for key := range inputMap {
-		ret[key] = struct{}{}
-	}
-	return ret
-}
-
 // getAllowlistConfigMapEventHandler creates the event handler for the allowlist ConfigMap informer.
 func (i *ManagedClusterInformer) getAllowlistConfigMapEventHandler() cache.ResourceEventHandlerFuncs {
 	return cache.ResourceEventHandlerFuncs{
@@ -274,50 +266,6 @@ func (i *ManagedClusterInformer) getAllowlistConfigMapEventHandler() cache.Resou
 
 			i.syncAllowListCh <- struct{}{}
 		},
-	}
-}
-
-// generateAllowList creates a new allowlist by merging newly discovered labels with the existing ones.
-func generateAllowList(currentAllowList *ManagedClusterLabelList, managedClusters map[string]map[string]struct{}) *ManagedClusterLabelList {
-	labelsFromClusters := make(map[string]struct{})
-	for _, labels := range managedClusters {
-		for label := range labels {
-			labelsFromClusters[label] = struct{}{}
-		}
-	}
-
-	allowedLabels := make(map[string]struct{})
-	for _, label := range currentAllowList.LabelList {
-		allowedLabels[label] = struct{}{}
-	}
-
-	ignoredLabels := make(map[string]struct{})
-	for _, label := range currentAllowList.IgnoreList {
-		ignoredLabels[label] = struct{}{}
-	}
-
-	// Add labels from clusters to the allowed list, skipping any that are in the ignore list.
-	for label := range labelsFromClusters {
-		if _, isIgnored := ignoredLabels[label]; !isIgnored {
-			allowedLabels[label] = struct{}{}
-		}
-	}
-
-	// Ensure required labels are present.
-	for _, requiredLabel := range proxyconfig.RequiredLabelList {
-		if _, isIgnored := ignoredLabels[requiredLabel]; !isIgnored {
-			allowedLabels[requiredLabel] = struct{}{}
-		}
-	}
-
-	// Remove any labels that are in the ignore list from the allowed list.
-	for label := range ignoredLabels {
-		delete(allowedLabels, label)
-	}
-
-	return &ManagedClusterLabelList{
-		IgnoreList: slices.Sorted(maps.Keys(ignoredLabels)),
-		LabelList:  slices.Sorted(maps.Keys(allowedLabels)),
 	}
 }
 
@@ -397,12 +345,8 @@ func (i *ManagedClusterInformer) syncAllowlistConfigMap() {
 
 		newList = generateAllowList(currentOnClusterList, managedClustersCopy)
 
-		i.allowlistMtx.RLock()
-		inMemoryListClone := i.inMemoryAllowlist.Clone()
-		i.allowlistMtx.RUnlock()
-
-		// If the generated list is identical to what's already in memory, no update is needed.
-		if slices.Equal(newList.LabelList, inMemoryListClone.LabelList) && slices.Equal(newList.IgnoreList, inMemoryListClone.IgnoreList) {
+		// If the generated list is identical to what's already on the cluster, no update is needed.
+		if slices.Equal(newList.LabelList, currentOnClusterList.LabelList) && slices.Equal(newList.IgnoreList, currentOnClusterList.IgnoreList) {
 			klog.V(4).Info("Managed cluster label allowlist is already up-to-date")
 			newList = nil // Signal that no update was performed.
 			return nil
@@ -439,30 +383,6 @@ func (i *ManagedClusterInformer) syncAllowlistConfigMap() {
 	}
 }
 
-func marshalData(obj *v1.ConfigMap, key string,
-	labelList *ManagedClusterLabelList) error {
-	data, err := yaml.Marshal(labelList)
-	if err != nil {
-		return fmt.Errorf("failed to marshal allowlist data: %w", err)
-	}
-
-	if obj.Data == nil {
-		obj.Data = make(map[string]string)
-	}
-	obj.Data[key] = string(data)
-
-	return nil
-}
-
-func unmarshalData(data map[string]string, key string,
-	labelList *ManagedClusterLabelList) error {
-	if err := yaml.Unmarshal([]byte(data[key]), labelList); err != nil {
-		return fmt.Errorf("failed to unmarshal data for key %s: %w", key, err)
-	}
-
-	return nil
-}
-
 // ensureAllowlistConfigMapExists checks if the allowlist ConfigMap exists and creates it if it doesn't.
 func (i *ManagedClusterInformer) ensureAllowlistConfigMapExists() error {
 	_, err := i.kubeClient.CoreV1().ConfigMaps(proxyconfig.ManagedClusterLabelAllowListNamespace).Get(
@@ -484,5 +404,81 @@ func (i *ManagedClusterInformer) ensureAllowlistConfigMapExists() error {
 			return fmt.Errorf("failed to get allowlist ConfigMap: %w", err)
 		}
 	}
+	return nil
+}
+
+// generateAllowList creates a new allowlist by merging newly discovered labels with the existing ones.
+func generateAllowList(currentAllowList *ManagedClusterLabelList, managedClusters map[string]map[string]struct{}) *ManagedClusterLabelList {
+	labelsFromClusters := make(map[string]struct{})
+	for _, labels := range managedClusters {
+		for label := range labels {
+			labelsFromClusters[label] = struct{}{}
+		}
+	}
+
+	allowedLabels := make(map[string]struct{})
+	for _, label := range currentAllowList.LabelList {
+		allowedLabels[label] = struct{}{}
+	}
+
+	ignoredLabels := make(map[string]struct{})
+	for _, label := range currentAllowList.IgnoreList {
+		ignoredLabels[label] = struct{}{}
+	}
+
+	// Add labels from clusters to the allowed list, skipping any that are in the ignore list.
+	for label := range labelsFromClusters {
+		if _, isIgnored := ignoredLabels[label]; !isIgnored {
+			allowedLabels[label] = struct{}{}
+		}
+	}
+
+	// Ensure required labels are present.
+	for _, requiredLabel := range proxyconfig.RequiredLabelList {
+		if _, isIgnored := ignoredLabels[requiredLabel]; !isIgnored {
+			allowedLabels[requiredLabel] = struct{}{}
+		}
+	}
+
+	// Remove any labels that are in the ignore list from the allowed list.
+	for label := range ignoredLabels {
+		delete(allowedLabels, label)
+	}
+
+	return &ManagedClusterLabelList{
+		IgnoreList: slices.Sorted(maps.Keys(ignoredLabels)),
+		LabelList:  slices.Sorted(maps.Keys(allowedLabels)),
+	}
+}
+
+func extractMapKeysSet[K comparable, V any](inputMap map[K]V) map[K]struct{} {
+	ret := make(map[K]struct{}, len(inputMap))
+	for key := range inputMap {
+		ret[key] = struct{}{}
+	}
+	return ret
+}
+
+func marshalData(obj *v1.ConfigMap, key string,
+	labelList *ManagedClusterLabelList) error {
+	data, err := yaml.Marshal(labelList)
+	if err != nil {
+		return fmt.Errorf("failed to marshal allowlist data: %w", err)
+	}
+
+	if obj.Data == nil {
+		obj.Data = make(map[string]string)
+	}
+	obj.Data[key] = string(data)
+
+	return nil
+}
+
+func unmarshalData(data map[string]string, key string,
+	labelList *ManagedClusterLabelList) error {
+	if err := yaml.Unmarshal([]byte(data[key]), labelList); err != nil {
+		return fmt.Errorf("failed to unmarshal data for key %s: %w", key, err)
+	}
+
 	return nil
 }
