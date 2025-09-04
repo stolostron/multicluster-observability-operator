@@ -567,8 +567,6 @@ func createOrUpdateCMOConfig(
 		return false, fmt.Errorf("failed to unmarshal existing CMO config: %w", err)
 	}
 
-	// Try to manually check for userWorkloadEnabled in the YAML
-
 	updatedCMOCfg := &cmomanifests.ClusterMonitoringConfiguration{}
 	if err := yaml.Unmarshal([]byte(currentYAML), updatedCMOCfg); err != nil {
 		return false, fmt.Errorf("failed to unmarshal updated CMO config: %w", err)
