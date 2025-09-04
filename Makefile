@@ -144,6 +144,13 @@ unit-tests-collectors: ## Run collectors unit tests only.
 integration-test-operators: ## Run operators integration tests.
 	go test -tags integration -run=Integration ./operators/...
 
+.PHONY: integration-test-proxy
+integration-test-proxy: ## Run proxy integration tests.
+	go test -v -tags=integration ./proxy/...
+
+.PHONY: integration-test
+integration-test: integration-test-operators integration-test-proxy ## Run all integration tests.
+
 .PHONY: e2e-tests
 e2e-tests: tools ## Run E2E tests.
 	@echo "Running e2e tests ..."
