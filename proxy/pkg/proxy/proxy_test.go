@@ -19,6 +19,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
@@ -74,7 +75,9 @@ func TestNewProxy(t *testing.T) {
 	mockInformer := &MockManagedClusterInformer{}
 	mockAccessReviewer := &MockAccessReviewer{}
 
-	p, err := NewProxy(serverURL, http.DefaultTransport, "", upi, mockInformer, mockAccessReviewer)
+	cfg := &rest.Config{Host: serverURL.Host}
+
+	p, err := NewProxy(cfg, serverURL, http.DefaultTransport, upi, mockInformer, mockAccessReviewer)
 	assert.NoError(t, err)
 	assert.NotNil(t, p)
 	assert.Equal(t, serverURL, p.metricsServerURL)
@@ -108,6 +111,10 @@ func TestProxy_ServeHTTP(t *testing.T) {
 	}))
 	defer apiServer.Close()
 
+	apiServerURL, err := url.Parse(apiServer.URL)
+	assert.NoError(t, err)
+	cfg := &rest.Config{Host: apiServerURL.Host}
+
 	upi := cache.NewUserProjectInfo(24*60*60*time.Second, 0)
 	defer upi.Stop()
 
@@ -116,8 +123,18 @@ func TestProxy_ServeHTTP(t *testing.T) {
 	}
 	mockAccessReviewer := &MockAccessReviewer{metricsAccess: map[string][]string{}}
 
-	p, err := NewProxy(serverURL, transport, apiServer.URL, upi, mockInformer, mockAccessReviewer)
+	p, err := NewProxy(cfg, serverURL, transport, upi, mockInformer, mockAccessReviewer)
 	assert.NoError(t, err)
+
+	scheme := runtime.NewScheme()
+	_ = userv1.AddToScheme(scheme)
+	_ = projectv1.AddToScheme(scheme)
+	mockUser := &userv1.User{ObjectMeta: metav1.ObjectMeta{Name: "~"}, FullName: "test-user"}
+	mockProjects := &projectv1.ProjectList{Items: []projectv1.Project{{ObjectMeta: metav1.ObjectMeta{Name: "dummy"}}}}
+	fakeClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(mockUser).WithLists(mockProjects).Build()
+	p.getKubeClientWithTokenFunc = func(token string) (client.Client, error) {
+		return fakeClient, nil
+	}
 
 	req := httptest.NewRequest("GET", "http://localhost/metrics/query?query=foo", nil)
 	req.Header.Set("X-Forwarded-User", "test")
@@ -273,7 +290,9 @@ func newTestProxy(t *testing.T, labels []string) *Proxy {
 	serverURL, err := url.Parse(server.URL)
 	assert.NoError(t, err)
 
-	p, err := NewProxy(serverURL, server.Client().Transport, "", nil, mockInformer, nil)
+	cfg := &rest.Config{Host: serverURL.Host}
+
+	p, err := NewProxy(cfg, serverURL, server.Client().Transport, nil, mockInformer, nil)
 	assert.NoError(t, err)
 	return p
 }
@@ -485,6 +504,10 @@ func TestProxyIntegrationScenarios(t *testing.T) {
 	}))
 	defer apiServer.Close()
 
+	apiServerURL, err := url.Parse(apiServer.URL)
+	assert.NoError(t, err)
+	cfg := &rest.Config{Host: apiServerURL.Host}
+
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			scheme := runtime.NewScheme()
@@ -510,7 +533,7 @@ func TestProxyIntegrationScenarios(t *testing.T) {
 				metricsAccess: tc.accessReviewResponse,
 			}
 
-			proxy, err := NewProxy(metricsServerURL, transport, "", userProjectCache, mockInformer, mockAccessReviewer)
+			proxy, err := NewProxy(cfg, metricsServerURL, transport, userProjectCache, mockInformer, mockAccessReviewer)
 			assert.NoError(t, err)
 			proxy.getKubeClientWithTokenFunc = func(token string) (client.Client, error) {
 				// Based on the token, return a client with the correct mock data.

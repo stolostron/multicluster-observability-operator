@@ -141,12 +141,12 @@ func (i *ManagedClusterInformer) Run() {
 	klog.Infof("Initial list of managed clusters: %v", slices.Sorted(maps.Keys(i.managedClusters)))
 	i.managedClustersMtx.RUnlock()
 
+	// Trigger a sync after the initial cache sync to process all existing resources.
+	i.syncAllowListCh <- struct{}{}
+
 	i.allowlistMtx.RLock()
 	klog.Infof("Initial regex label list: %v", i.inMemoryAllowlist.RegexLabelList)
 	i.allowlistMtx.RUnlock()
-
-	// Trigger a sync after the initial cache sync to process all existing resources.
-	i.syncAllowListCh <- struct{}{}
 }
 
 // GetAllManagedClusterNames returns a set of all cached managed cluster names.
@@ -303,6 +303,18 @@ func generateAllowList(currentAllowList *ManagedClusterLabelList, managedCluster
 		}
 	}
 
+	// Ensure required labels are present.
+	for _, requiredLabel := range proxyconfig.RequiredLabelList {
+		if _, isIgnored := ignoredLabels[requiredLabel]; !isIgnored {
+			allowedLabels[requiredLabel] = struct{}{}
+		}
+	}
+
+	// Remove any labels that are in the ignore list from the allowed list.
+	for label := range ignoredLabels {
+		delete(allowedLabels, label)
+	}
+
 	return &ManagedClusterLabelList{
 		IgnoreList: slices.Sorted(maps.Keys(ignoredLabels)),
 		LabelList:  slices.Sorted(maps.Keys(allowedLabels)),
@@ -416,7 +428,7 @@ func (i *ManagedClusterInformer) syncAllowlistConfigMap() {
 
 	// If newList is not nil, an update was successfully performed.
 	if newList != nil {
-		klog.Info("Successfully updated managed cluster label allowlist ConfigMap")
+		klog.Infof("Successfully updated managed cluster label allowlist ConfigMap. Allowed: %v, Ignored: %v", newList.LabelList, newList.IgnoreList)
 		newList.RegexLabelList = make([]string, 0, len(newList.LabelList))
 		for _, label := range newList.LabelList {
 			newList.RegexLabelList = append(newList.RegexLabelList, promLabelRegex.ReplaceAllString(label, "_"))
