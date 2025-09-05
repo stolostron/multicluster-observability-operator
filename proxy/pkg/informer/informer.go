@@ -348,7 +348,10 @@ func (i *ManagedClusterInformer) syncAllowlistConfigMap() {
 			return nil
 		}
 
-		newList = generateAllowList(currentOnClusterList, managedClustersCopy)
+		i.allowlistMtx.RLock()
+		inMemory := i.inMemoryAllowlist
+		i.allowlistMtx.RUnlock()
+		newList = generateAllowList(currentOnClusterList, inMemory, managedClustersCopy)
 
 		// If the generated list is identical to what's already on the cluster, no update is needed.
 		if slices.Equal(newList.LabelList, currentOnClusterList.LabelList) && slices.Equal(newList.IgnoreList, currentOnClusterList.IgnoreList) {
@@ -443,7 +446,11 @@ func (i *ManagedClusterInformer) ensureAllowlistConfigMapExists() error {
 }
 
 // generateAllowList creates a new allowlist by merging newly discovered labels with the existing ones.
-func generateAllowList(currentAllowList *ManagedClusterLabelList, managedClusters map[string]map[string]struct{}) *ManagedClusterLabelList {
+func generateAllowList(
+	currentAllowList *ManagedClusterLabelList,
+	lastKnownAllowlist *ManagedClusterLabelList,
+	managedClusters map[string]map[string]struct{},
+) *ManagedClusterLabelList {
 	labelsFromClusters := make(map[string]struct{})
 	for _, labels := range managedClusters {
 		for label := range labels {
@@ -461,9 +468,28 @@ func generateAllowList(currentAllowList *ManagedClusterLabelList, managedCluster
 		ignoredLabels[label] = struct{}{}
 	}
 
-	// Add labels from clusters to the allowed list, skipping any that are in the ignore list.
+	// Self-heal: If a label that exists on a cluster was removed from a list, add it back.
 	for label := range labelsFromClusters {
-		if _, isIgnored := ignoredLabels[label]; !isIgnored {
+		_, inAllowed := allowedLabels[label]
+		_, inIgnored := ignoredLabels[label]
+
+		if !inAllowed && !inIgnored {
+			// If the label was in the last known allowed list, put it back there.
+			if slices.Contains(lastKnownAllowlist.LabelList, label) {
+				allowedLabels[label] = struct{}{}
+			}
+			// If the label was in the last known ignored list, put it back there.
+			if slices.Contains(lastKnownAllowlist.IgnoreList, label) {
+				ignoredLabels[label] = struct{}{}
+			}
+		}
+	}
+
+	// Add newly discovered labels from clusters to the allowed list.
+	for label := range labelsFromClusters {
+		_, inAllowed := allowedLabels[label]
+		_, inIgnored := ignoredLabels[label]
+		if !inAllowed && !inIgnored {
 			allowedLabels[label] = struct{}{}
 		}
 	}
