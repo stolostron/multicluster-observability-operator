@@ -348,6 +348,52 @@ func TestSyncAllowlistConfigMap(t *testing.T) {
 		assert.ElementsMatch(t, steadyStateList.LabelList, finalList.LabelList)
 		assert.ElementsMatch(t, steadyStateList.IgnoreList, finalList.IgnoreList)
 	})
+
+	t.Run("in-memory list is updated when no-op update occurs", func(t *testing.T) {
+		// On-cluster ConfigMap is ahead of the in-memory list.
+		onClusterCMData := &ManagedClusterLabelList{
+			LabelList:  []string{"cloud", "cluster.open-cluster-management.io/clusterset", "region", "vendor"},
+			IgnoreList: []string{"name"},
+		}
+		onClusterCMDataBytes, err := yaml.Marshal(onClusterCMData)
+		require.NoError(t, err)
+		cm := &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{Name: cmName, Namespace: namespace},
+			Data:       map[string]string{cmKey: string(onClusterCMDataBytes)},
+		}
+
+		kubeClient := fake.NewSimpleClientset(cm.DeepCopy())
+		informer := NewManagedClusterInformer(context.TODO(), nil, kubeClient)
+		informer.hasSynced.Store(true)
+
+		// Clusters have labels that match the on-cluster ConfigMap.
+		informer.managedClusters = map[string]map[string]struct{}{
+			"cluster1": {"cloud": {}, "vendor": {}, "region": {}},
+		}
+
+		// But the in-memory state is stale.
+		staleInMemoryList := &ManagedClusterLabelList{
+			LabelList:  []string{"cloud", "vendor"},
+			IgnoreList: []string{"name"},
+		}
+		informer.inMemoryAllowlist = staleInMemoryList
+
+		informer.syncAllowlistConfigMap()
+
+		// Verify the ConfigMap was NOT updated.
+		updatedCM, err := kubeClient.CoreV1().ConfigMaps(namespace).Get(context.TODO(), cmName, metav1.GetOptions{})
+		require.NoError(t, err)
+		assert.Equal(t, string(onClusterCMDataBytes), updatedCM.Data[cmKey])
+
+		// Verify the in-memory state IS updated.
+		informer.allowlistMtx.RLock()
+		defer informer.allowlistMtx.RUnlock()
+		assert.ElementsMatch(t, onClusterCMData.LabelList, informer.inMemoryAllowlist.LabelList)
+		assert.ElementsMatch(t, onClusterCMData.IgnoreList, informer.inMemoryAllowlist.IgnoreList)
+
+		expectedRegexList := []string{"cloud", "cluster_open_cluster_management_io_clusterset", "region", "vendor"}
+		assert.ElementsMatch(t, expectedRegexList, informer.inMemoryAllowlist.RegexLabelList)
+	})
 }
 
 func TestEnsureAllowlistConfigMapExists(t *testing.T) {

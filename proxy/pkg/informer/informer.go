@@ -143,11 +143,11 @@ func (i *ManagedClusterInformer) Run() {
 	klog.Info("Informer caches have successfully synced")
 
 	i.managedClustersMtx.RLock()
-	klog.Infof("Initial list of managed clusters: %v", slices.Sorted(maps.Keys(i.managedClusters)))
+	klog.V(1).Infof("Initial list of managed clusters: %v", slices.Sorted(maps.Keys(i.managedClusters)))
 	i.managedClustersMtx.RUnlock()
 
 	i.allowlistMtx.RLock()
-	klog.Infof("Initial regex label list: %v", i.inMemoryAllowlist.RegexLabelList)
+	klog.V(1).Infof("Initial regex label list: %v", i.inMemoryAllowlist.RegexLabelList)
 	i.allowlistMtx.RUnlock()
 
 	// Trigger a sync after the initial cache sync to process all existing resources.
@@ -356,6 +356,8 @@ func (i *ManagedClusterInformer) syncAllowlistConfigMap() {
 		// If the generated list is identical to what's already on the cluster, no update is needed.
 		if slices.Equal(newList.LabelList, currentOnClusterList.LabelList) && slices.Equal(newList.IgnoreList, currentOnClusterList.IgnoreList) {
 			klog.V(4).Info("Managed cluster label allowlist is already up-to-date")
+			// The list may have been updated concurrently by another pod. This ensures the local state is up to date.
+			i.setInMemoryAllowlist(currentOnClusterList)
 			newList = nil // Signal that no update was performed.
 			return nil
 		}
@@ -451,11 +453,15 @@ func generateAllowList(
 	lastKnownAllowlist *ManagedClusterLabelList,
 	managedClusters map[string]map[string]struct{},
 ) *ManagedClusterLabelList {
-	labelsFromClusters := make(map[string]struct{})
+	neededLabels := make(map[string]struct{})
 	for _, labels := range managedClusters {
 		for label := range labels {
-			labelsFromClusters[label] = struct{}{}
+			neededLabels[label] = struct{}{}
 		}
+	}
+	// Add required labels
+	for _, label := range proxyconfig.RequiredLabelList {
+		neededLabels[label] = struct{}{}
 	}
 
 	allowedLabels := make(map[string]struct{})
@@ -469,7 +475,7 @@ func generateAllowList(
 	}
 
 	// Self-heal: If a label that exists on a cluster was removed from a list, add it back.
-	for label := range labelsFromClusters {
+	for label := range neededLabels {
 		_, inAllowed := allowedLabels[label]
 		_, inIgnored := ignoredLabels[label]
 
@@ -477,31 +483,20 @@ func generateAllowList(
 			// If the label was in the last known allowed list, put it back there.
 			if slices.Contains(lastKnownAllowlist.LabelList, label) {
 				allowedLabels[label] = struct{}{}
+				continue
 			}
 			// If the label was in the last known ignored list, put it back there.
 			if slices.Contains(lastKnownAllowlist.IgnoreList, label) {
 				ignoredLabels[label] = struct{}{}
+				continue
 			}
-		}
-	}
 
-	// Add newly discovered labels from clusters to the allowed list.
-	for label := range labelsFromClusters {
-		_, inAllowed := allowedLabels[label]
-		_, inIgnored := ignoredLabels[label]
-		if !inAllowed && !inIgnored {
+			// Add newly discovered labels from clusters to the allowed list.
 			allowedLabels[label] = struct{}{}
 		}
 	}
 
-	// Ensure required labels are present.
-	for _, requiredLabel := range proxyconfig.RequiredLabelList {
-		if _, isIgnored := ignoredLabels[requiredLabel]; !isIgnored {
-			allowedLabels[requiredLabel] = struct{}{}
-		}
-	}
-
-	// Remove any labels that are in the ignore list from the allowed list.
+	// Deduplicate by removing any labels that are in the ignore list from the allowed list.
 	for label := range ignoredLabels {
 		delete(allowedLabels, label)
 	}
