@@ -21,124 +21,106 @@ import (
 )
 
 func TestGenerateAllowList(t *testing.T) {
+	baseClusters := map[string]map[string]struct{}{
+		"cluster1": {"cloud": {}, "vendor": {}},
+		"cluster2": {"region": {}},
+	}
+
 	testCases := []struct {
-		name              string
-		currentAllowList  *ManagedClusterLabelList
-		managedClusters   map[string]map[string]struct{}
-		expectedAllowList *ManagedClusterLabelList
+		name               string
+		currentAllowList   *ManagedClusterLabelList
+		lastKnownAllowlist *ManagedClusterLabelList
+		managedClusters    map[string]map[string]struct{}
+		expectedAllowList  *ManagedClusterLabelList
 	}{
 		{
-			name: "no clusters, default allowlist",
-			currentAllowList: &ManagedClusterLabelList{
-				LabelList:  []string{"cloud", "vendor"},
-				IgnoreList: []string{"name"},
-			},
-			managedClusters: map[string]map[string]struct{}{},
-			expectedAllowList: &ManagedClusterLabelList{
-				LabelList:  []string{"cloud", "cluster.open-cluster-management.io/clusterset", "vendor"},
-				IgnoreList: []string{"name"},
-			},
-		},
-		{
-			name: "new labels from clusters are added",
-			currentAllowList: &ManagedClusterLabelList{
-				LabelList:  []string{"cloud"},
-				IgnoreList: []string{},
-			},
-			managedClusters: map[string]map[string]struct{}{
-				"cluster1": {"cloud": {}, "region": {}},
-				"cluster2": {"vendor": {}},
-			},
-			expectedAllowList: &ManagedClusterLabelList{
-				LabelList:  []string{"cloud", "cluster.open-cluster-management.io/clusterset", "name", "region", "vendor"},
-				IgnoreList: nil,
-			},
-		},
-		{
-			name: "ignored labels are not added",
+			name: "newly discovered labels are added to allowlist",
 			currentAllowList: &ManagedClusterLabelList{
 				LabelList:  []string{},
-				IgnoreList: []string{"region"},
-			},
-			managedClusters: map[string]map[string]struct{}{
-				"cluster1": {"cloud": {}, "region": {}},
-			},
-			expectedAllowList: &ManagedClusterLabelList{
-				LabelList:  []string{"cloud", "cluster.open-cluster-management.io/clusterset", "name"},
-				IgnoreList: []string{"region"},
-			},
-		},
-		{
-			name:             "empty current allowlist",
-			currentAllowList: &ManagedClusterLabelList{},
-			managedClusters: map[string]map[string]struct{}{
-				"cluster1": {"cloud": {}, "region": {}},
-				"cluster2": {"vendor": {}},
-			},
-			expectedAllowList: &ManagedClusterLabelList{
-				LabelList:  []string{"cloud", "cluster.open-cluster-management.io/clusterset", "name", "region", "vendor"},
-				IgnoreList: nil,
-			},
-		},
-		{
-			name: "no new labels to add",
-			currentAllowList: &ManagedClusterLabelList{
-				LabelList:  []string{"cloud", "region", "vendor"},
 				IgnoreList: []string{},
 			},
-			managedClusters: map[string]map[string]struct{}{
-				"cluster1": {"cloud": {}, "region": {}},
-				"cluster2": {"vendor": {}},
-			},
+			lastKnownAllowlist: &ManagedClusterLabelList{},
+			managedClusters:    baseClusters,
 			expectedAllowList: &ManagedClusterLabelList{
 				LabelList:  []string{"cloud", "cluster.open-cluster-management.io/clusterset", "name", "region", "vendor"},
 				IgnoreList: nil,
 			},
 		},
 		{
-			name: "label in both allowlist and ignorelist is removed from allowlist",
+			name: "label removed from ignore list is re-added (sticky)",
 			currentAllowList: &ManagedClusterLabelList{
-				LabelList:  []string{"cloud", "vendor"},
-				IgnoreList: []string{"vendor"},
+				LabelList:  []string{},
+				IgnoreList: []string{}, // User removed "vendor"
 			},
-			managedClusters: map[string]map[string]struct{}{
-				"cluster1": {"region": {}},
+			lastKnownAllowlist: &ManagedClusterLabelList{
+				LabelList:  []string{},
+				IgnoreList: []string{"vendor"}, // It was here before
 			},
+			managedClusters: baseClusters,
 			expectedAllowList: &ManagedClusterLabelList{
 				LabelList:  []string{"cloud", "cluster.open-cluster-management.io/clusterset", "name", "region"},
 				IgnoreList: []string{"vendor"},
 			},
 		},
 		{
-			name: "required labels are added if missing",
+			name: "label removed from allow list is re-added (sticky)",
 			currentAllowList: &ManagedClusterLabelList{
-				LabelList:  []string{"cloud"},
+				LabelList:  []string{}, // User removed "vendor"
 				IgnoreList: []string{},
 			},
-			managedClusters: map[string]map[string]struct{}{},
+			lastKnownAllowlist: &ManagedClusterLabelList{
+				LabelList:  []string{"vendor"}, // It was here before
+				IgnoreList: []string{},
+			},
+			managedClusters: baseClusters,
 			expectedAllowList: &ManagedClusterLabelList{
-				LabelList:  []string{"cloud", "cluster.open-cluster-management.io/clusterset", "name"},
+				LabelList:  []string{"cloud", "cluster.open-cluster-management.io/clusterset", "name", "region", "vendor"},
 				IgnoreList: nil,
 			},
 		},
 		{
-			name: "required labels are not added if in ignore list",
+			name: "un-ignoring a label requires moving it to the allowlist",
 			currentAllowList: &ManagedClusterLabelList{
-				LabelList:  []string{"cloud"},
-				IgnoreList: []string{"name"},
+				LabelList:  []string{"vendor"}, // User moved "vendor" here
+				IgnoreList: []string{},         // And removed it from here
 			},
-			managedClusters: map[string]map[string]struct{}{},
+			lastKnownAllowlist: &ManagedClusterLabelList{
+				LabelList:  []string{},
+				IgnoreList: []string{"vendor"},
+			},
+			managedClusters: baseClusters,
 			expectedAllowList: &ManagedClusterLabelList{
-				LabelList:  []string{"cloud", "cluster.open-cluster-management.io/clusterset"},
-				IgnoreList: []string{"name"},
+				LabelList:  []string{"cloud", "cluster.open-cluster-management.io/clusterset", "name", "region", "vendor"},
+				IgnoreList: nil,
+			},
+		},
+		{
+			name: "removed orphaned label stays removed",
+			currentAllowList: &ManagedClusterLabelList{
+				LabelList:  []string{"cloud"}, // User removed "orphaned"
+				IgnoreList: []string{},
+			},
+			lastKnownAllowlist: &ManagedClusterLabelList{
+				LabelList:  []string{"cloud", "orphaned"}, // It was here before
+				IgnoreList: []string{},
+			},
+			managedClusters: baseClusters,
+			expectedAllowList: &ManagedClusterLabelList{
+				LabelList:  []string{"cloud", "cluster.open-cluster-management.io/clusterset", "name", "region", "vendor"},
+				IgnoreList: nil,
 			},
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			result := generateAllowList(tc.currentAllowList, tc.managedClusters)
-			assert.Equal(t, tc.expectedAllowList, result)
+			result := generateAllowList(tc.currentAllowList, tc.lastKnownAllowlist, tc.managedClusters)
+			assert.ElementsMatch(t, tc.expectedAllowList.LabelList, result.LabelList)
+			if tc.expectedAllowList.IgnoreList == nil {
+				assert.Empty(t, result.IgnoreList)
+			} else {
+				assert.ElementsMatch(t, tc.expectedAllowList.IgnoreList, result.IgnoreList)
+			}
 		})
 	}
 }
