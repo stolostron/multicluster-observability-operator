@@ -91,7 +91,7 @@ func TestRun_InitialSync(t *testing.T) {
 
 	// Create a ConfigMap that will exist at startup.
 	initialCMData := &ManagedClusterLabelList{
-		LabelList:  []string{},
+		LabelList:  []string{"initial_label"},
 		IgnoreList: []string{},
 	}
 	initialCMDataBytes, err := yaml.Marshal(initialCMData)
@@ -133,6 +133,13 @@ func TestRun_InitialSync(t *testing.T) {
 	})
 	require.NoError(t, err, "informer did not sync within the timeout period")
 
+	// After sync, the initial load should have populated the in-memory allowlist
+	// with the content of the ConfigMap that existed at startup.
+	informer.allowlistMtx.RLock()
+	assert.ElementsMatch(t, []string{"initial_label"}, informer.inMemoryAllowlist.LabelList)
+	assert.ElementsMatch(t, []string{"initial_label"}, informer.inMemoryAllowlist.RegexLabelList)
+	informer.allowlistMtx.RUnlock()
+
 	// After sync, wait for the allowlist to be updated based on the initial resources.
 	err = wait.PollUntilContextTimeout(context.Background(), 100*time.Millisecond, 5*time.Second, true, func(ctx context.Context) (bool, error) {
 		updatedCM, err := kubeClient.CoreV1().ConfigMaps(namespace).Get(context.TODO(), cmName, metav1.GetOptions{})
@@ -145,7 +152,7 @@ func TestRun_InitialSync(t *testing.T) {
 			return false, err
 		}
 
-		return len(updatedList.LabelList) > 0, nil
+		return len(updatedList.LabelList) > 1, nil
 	})
 	require.NoError(t, err, "ConfigMap was not updated with cluster labels after sync")
 
@@ -156,12 +163,12 @@ func TestRun_InitialSync(t *testing.T) {
 	err = yaml.Unmarshal([]byte(updatedCM.Data[cmKey]), updatedList)
 	require.NoError(t, err)
 
-	expectedLabels := []string{"cloud", "vendor", "name", "cluster.open-cluster-management.io/clusterset"}
+	expectedLabels := []string{"cloud", "vendor", "name", "cluster.open-cluster-management.io/clusterset", "initial_label"}
 	assert.ElementsMatch(t, expectedLabels, updatedList.LabelList)
 
 	// Also check the in-memory representation.
 	informer.allowlistMtx.RLock()
 	defer informer.allowlistMtx.RUnlock()
 	assert.ElementsMatch(t, expectedLabels, informer.inMemoryAllowlist.LabelList)
-	assert.ElementsMatch(t, []string{"cloud", "vendor", "name", "cluster_open_cluster_management_io_clusterset"}, informer.inMemoryAllowlist.RegexLabelList)
+	assert.ElementsMatch(t, []string{"cloud", "vendor", "name", "cluster_open_cluster_management_io_clusterset", "initial_label"}, informer.inMemoryAllowlist.RegexLabelList)
 }

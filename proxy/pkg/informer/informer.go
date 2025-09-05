@@ -102,6 +102,10 @@ func (i *ManagedClusterInformer) Run() {
 		klog.Fatalf("Failed to ensure managed cluster label allowlist configmap exists: %v", err)
 	}
 
+	if err := i.initialAllowlistLoad(); err != nil {
+		klog.Warningf("Failed to perform initial load of allowlist: %v", err)
+	}
+
 	clusterWatchlist := cache.NewListWatchFromClient(
 		i.clusterClient.ClusterV1().RESTClient(),
 		"managedclusters",
@@ -142,12 +146,12 @@ func (i *ManagedClusterInformer) Run() {
 	klog.Infof("Initial list of managed clusters: %v", slices.Sorted(maps.Keys(i.managedClusters)))
 	i.managedClustersMtx.RUnlock()
 
-	// Trigger a sync after the initial cache sync to process all existing resources.
-	i.syncAllowListCh <- struct{}{}
-
 	i.allowlistMtx.RLock()
 	klog.Infof("Initial regex label list: %v", i.inMemoryAllowlist.RegexLabelList)
 	i.allowlistMtx.RUnlock()
+
+	// Trigger a sync after the initial cache sync to process all existing resources.
+	i.syncAllowListCh <- struct{}{}
 }
 
 // GetAllManagedClusterNames returns a set of all cached managed cluster names.
@@ -376,14 +380,42 @@ func (i *ManagedClusterInformer) syncAllowlistConfigMap() {
 
 	// If newList is not nil, an update was successfully performed.
 	if newList != nil {
-		newList.RegexLabelList = make([]string, 0, len(newList.LabelList))
-		for _, label := range newList.LabelList {
-			newList.RegexLabelList = append(newList.RegexLabelList, promLabelRegex.ReplaceAllString(label, "_"))
-		}
-		i.allowlistMtx.Lock()
-		i.inMemoryAllowlist = newList
-		i.allowlistMtx.Unlock()
+		i.setInMemoryAllowlist(newList)
 	}
+}
+
+// setInMemoryAllowlist updates the in-memory allowlist and sanitizes the labels for Prometheus.
+func (i *ManagedClusterInformer) setInMemoryAllowlist(list *ManagedClusterLabelList) {
+	list.RegexLabelList = make([]string, 0, len(list.LabelList))
+	for _, label := range list.LabelList {
+		list.RegexLabelList = append(list.RegexLabelList, promLabelRegex.ReplaceAllString(label, "_"))
+	}
+	i.allowlistMtx.Lock()
+	i.inMemoryAllowlist = list
+	i.allowlistMtx.Unlock()
+}
+
+// initialAllowlistLoad reads the allowlist ConfigMap from the cluster and populates the in-memory cache.
+// This is intended to be called once at startup.
+func (i *ManagedClusterInformer) initialAllowlistLoad() error {
+	allowListCM, err := i.kubeClient.CoreV1().ConfigMaps(proxyconfig.ManagedClusterLabelAllowListNamespace).Get(
+		i.ctx,
+		proxyconfig.ManagedClusterLabelAllowListConfigMapName,
+		metav1.GetOptions{},
+	)
+	if err != nil {
+		return fmt.Errorf("failed to get allowlist ConfigMap for initial load: %w", err)
+	}
+
+	list := &ManagedClusterLabelList{}
+	if err := unmarshalData(allowListCM.Data, proxyconfig.ManagedClusterLabelAllowListConfigMapKey, list); err != nil {
+		// An error here might mean the ConfigMap is empty or malformed.
+		// We can proceed with an empty list and let the sync loop correct it.
+		klog.Warningf("Failed to unmarshal data from ConfigMap for initial load: %v", err)
+	}
+
+	i.setInMemoryAllowlist(list)
+	return nil
 }
 
 // ensureAllowlistConfigMapExists checks if the allowlist ConfigMap exists and creates it if it doesn't.
