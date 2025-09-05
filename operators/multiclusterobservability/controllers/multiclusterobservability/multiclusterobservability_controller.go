@@ -495,6 +495,7 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 	mcoPred := GetMCOPredicateFunc()
 	cmPred := GetConfigMapPredicateFunc()
 	cmNamespaceRSPred := analyticsctrl.GetNamespaceRSConfigMapPredicateFunc(ctx, c)
+	cmVirtualizationRSPred := analyticsctrl.GetVirtualizationRSConfigMapPredicateFunc(ctx, c)
 	secretPred := GetAlertManagerSecretPredicateFunc()
 	namespacePred := GetNamespacePredicateFunc()
 	mcoaCRDPred := GetMCOACRDPredicateFunc()
@@ -523,6 +524,8 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 
 		// Watch the configmap for rightsizing recommendation update (keep in its own watcher as it applies some processing)
 		Watches(&corev1.ConfigMap{}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(cmNamespaceRSPred)).
+		// Watch the configmap for virtualization rightsizing recommendation update
+		Watches(&corev1.ConfigMap{}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(cmVirtualizationRSPred)).
 		// Watch the configmap for thanos-ruler-custom-rules update
 		Watches(&corev1.ConfigMap{}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(cmPred)).
 		// Watch the secret for deleting event of alertmanager-config

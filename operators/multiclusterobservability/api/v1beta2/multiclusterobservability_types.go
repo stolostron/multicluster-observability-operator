@@ -153,6 +153,12 @@ type PlatformAnalyticsSpec struct {
 	// +optional
 	// +kubebuilder:validation:Optional
 	NamespaceRightSizingRecommendation PlatformRightSizingRecommendationSpec `json:"namespaceRightSizingRecommendation,omitempty"`
+
+	// Feature to enable virtualization right-sizing recommendation capabilities for the Analytics.
+	//
+	// +optional
+	// +kubebuilder:validation:Optional
+	VirtualizationRightSizingRecommendation PlatformRightSizingRecommendationSpec `json:"virtualizationRightSizingRecommendation,omitempty"`
 }
 
 type PlatformIncidentDetectionSpec struct {
