@@ -34,6 +34,9 @@ The `rbac-query-proxy` is configured via command-line flags.
 | `--listen-address` | `0.0.0.0:3002`           | The address for the HTTP server to listen on.                                  |
 | `--metrics-server` |                          | The upstream URL of the Observatorium API. (Required)                            |
 | `--kubeconfig`     |                          | Path to a kubeconfig file. If unset, in-cluster configuration will be used.    |
+| `--tls-ca-file`    | `/var/rbac_proxy/ca/ca.crt` | The path to the CA certificate file for connecting to the downstream server.   |
+| `--tls-cert-file`  | `/var/rbac_proxy/certs/tls.crt` | The path to the client certificate file for connecting to the downstream server. |
+| `--tls-key-file`   | `/var/rbac_proxy/certs/tls.key` | The path to the client key file for connecting to the downstream server.       |
 | `--v`              | `0`                      | Sets the log verbosity level. Higher values produce more detailed log output.  |
 
 ## How to Build
