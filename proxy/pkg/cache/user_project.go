@@ -15,6 +15,7 @@
 package cache
 
 import (
+	"context"
 	"slices"
 	"sync"
 	"time"
@@ -31,7 +32,6 @@ type UserProjectInfo struct {
 	projectInfo     map[string]userProject
 	expiredDuration time.Duration
 	cleanPeriod     time.Duration
-	stopCh          chan struct{}
 }
 
 // userProject stores the list of projects for a user at a specific point in time.
@@ -43,7 +43,7 @@ type userProject struct {
 
 // NewUserProjectInfo creates and starts a new UserProjectInfo cache.
 // It takes an expiration duration for cache entries and a cleaning period for the cleanup goroutine.
-func NewUserProjectInfo(expiredDuration, cleanPeriod time.Duration) *UserProjectInfo {
+func NewUserProjectInfo(ctx context.Context, expiredDuration, cleanPeriod time.Duration) *UserProjectInfo {
 	if cleanPeriod <= 0 {
 		cleanPeriod = defaultCleanPeriod
 	}
@@ -51,10 +51,9 @@ func NewUserProjectInfo(expiredDuration, cleanPeriod time.Duration) *UserProject
 		projectInfo:     map[string]userProject{},
 		expiredDuration: expiredDuration,
 		cleanPeriod:     cleanPeriod,
-		stopCh:          make(chan struct{}),
 	}
 
-	go upi.autoCleanExpiredProjectInfo()
+	go upi.autoCleanExpiredProjectInfo(ctx)
 
 	return upi
 }
@@ -96,13 +95,8 @@ func (upi *UserProjectInfo) GetUserName(token string) (string, bool) {
 	return up.UserName, true
 }
 
-// Stop terminates the background cleanup goroutine.
-func (upi *UserProjectInfo) Stop() {
-	close(upi.stopCh)
-}
-
 // autoCleanExpiredProjectInfo runs a periodic check to clean expired entries from the cache.
-func (upi *UserProjectInfo) autoCleanExpiredProjectInfo() {
+func (upi *UserProjectInfo) autoCleanExpiredProjectInfo(ctx context.Context) {
 	ticker := time.NewTicker(upi.cleanPeriod)
 	defer ticker.Stop()
 
@@ -110,7 +104,7 @@ func (upi *UserProjectInfo) autoCleanExpiredProjectInfo() {
 		select {
 		case <-ticker.C:
 			upi.cleanExpiredProjectInfo()
-		case <-upi.stopCh:
+		case <-ctx.Done():
 			klog.Info("stopping user project info auto cleaning")
 			return
 		}

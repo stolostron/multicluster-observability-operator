@@ -73,8 +73,7 @@ func TestNewProxy(t *testing.T) {
 	serverURL, err := url.Parse(server.URL)
 	assert.NoError(t, err)
 
-	upi := cache.NewUserProjectInfo(24*60*60*time.Second, 5*60*time.Second)
-	defer upi.Stop()
+	upi := cache.NewUserProjectInfo(t.Context(), 24*60*60*time.Second, 5*60*time.Second)
 
 	mockInformer := &MockManagedClusterInformer{}
 	mockAccessReviewer := &MockAccessReviewer{}
@@ -119,8 +118,7 @@ func TestProxy_ServeHTTP(t *testing.T) {
 	assert.NoError(t, err)
 	cfg := &rest.Config{Host: apiServerURL.Host}
 
-	upi := cache.NewUserProjectInfo(24*60*60*time.Second, 0)
-	defer upi.Stop()
+	upi := cache.NewUserProjectInfo(t.Context(), 24*60*60*time.Second, 0)
 
 	mockInformer := &MockManagedClusterInformer{
 		clusters: map[string]struct{}{"dummy": {}},
@@ -208,8 +206,7 @@ func TestPreCheckRequest(t *testing.T) {
 	}
 
 	t.Run("Test valid request", func(t *testing.T) {
-		upi := cache.NewUserProjectInfo(time.Minute, time.Minute)
-		defer upi.Stop()
+		upi := cache.NewUserProjectInfo(t.Context(), time.Minute, time.Minute)
 		p.userProjectInfo = upi
 
 		req, _ := http.NewRequest("GET", "http://127.0.0.1:3002/metrics/query?query=foo", nil)
@@ -220,8 +217,7 @@ func TestPreCheckRequest(t *testing.T) {
 	})
 
 	t.Run("Test with bearer token", func(t *testing.T) {
-		upi := cache.NewUserProjectInfo(time.Minute, time.Minute)
-		defer upi.Stop()
+		upi := cache.NewUserProjectInfo(t.Context(), time.Minute, time.Minute)
 		p.userProjectInfo = upi
 
 		req, _ := http.NewRequest("GET", "http://127.0.0.1:3002/metrics/query?query=foo", nil)
@@ -232,8 +228,7 @@ func TestPreCheckRequest(t *testing.T) {
 	})
 
 	t.Run("Test with missing user, should be fetched automatically", func(t *testing.T) {
-		upi := cache.NewUserProjectInfo(time.Minute, time.Minute)
-		defer upi.Stop()
+		upi := cache.NewUserProjectInfo(t.Context(), time.Minute, time.Minute)
 		p.userProjectInfo = upi
 
 		req, _ := http.NewRequest("GET", "http://127.0.0.1:3002/metrics/query?query=foo", nil)
@@ -244,8 +239,7 @@ func TestPreCheckRequest(t *testing.T) {
 	})
 
 	t.Run("Test with missing token", func(t *testing.T) {
-		upi := cache.NewUserProjectInfo(time.Minute, time.Minute)
-		defer upi.Stop()
+		upi := cache.NewUserProjectInfo(t.Context(), time.Minute, time.Minute)
 		p.userProjectInfo = upi
 
 		req, _ := http.NewRequest("GET", "http://127.0.0.1:3002/metrics/query?query=foo", nil)
@@ -536,8 +530,7 @@ func TestProxyIntegrationScenarios(t *testing.T) {
 					RootCAs: metricsServer.Client().Transport.(*http.Transport).TLSClientConfig.RootCAs,
 				},
 			}
-			userProjectCache := cache.NewUserProjectInfo(time.Minute, time.Minute)
-			defer userProjectCache.Stop()
+			userProjectCache := cache.NewUserProjectInfo(t.Context(), time.Minute, time.Minute)
 
 			mockInformer := &MockManagedClusterInformer{
 				clusters: map[string]struct{}{"cluster1": {}, "cluster2": {}},

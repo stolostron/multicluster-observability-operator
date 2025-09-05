@@ -103,8 +103,7 @@ func run() error {
 		return fmt.Errorf("failed to parse metrics server url: %w", err)
 	}
 
-	upi := cache.NewUserProjectInfo(24*60*60*time.Second, 5*60*time.Second)
-	defer upi.Stop()
+	upi := cache.NewUserProjectInfo(ctx, 24*60*60*time.Second, 5*60*time.Second)
 
 	tlsTransport, err := proxy.NewTransport(&proxy.TLSOptions{
 		CaFile:          cfg.tlsCaFile,

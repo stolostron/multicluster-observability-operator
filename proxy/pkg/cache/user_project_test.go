@@ -5,6 +5,7 @@
 package cache
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -44,8 +45,7 @@ func TestGetUserProjectList(t *testing.T) {
 
 	for _, c := range testCases {
 		t.Run(c.name, func(t *testing.T) {
-			upi := NewUserProjectInfo(time.Hour, defaultCleanPeriod)
-			t.Cleanup(upi.Stop)
+			upi := NewUserProjectInfo(t.Context(), time.Hour, defaultCleanPeriod)
 
 			c.setup(upi)
 			_, found := upi.GetUserProjectList(c.tokenToGet)
@@ -56,8 +56,7 @@ func TestGetUserProjectList(t *testing.T) {
 
 func TestCleanExpiredProjectInfo(t *testing.T) {
 	expiredDuration := 10 * time.Millisecond
-	upi := NewUserProjectInfo(expiredDuration, defaultCleanPeriod)
-	t.Cleanup(upi.Stop)
+	upi := NewUserProjectInfo(t.Context(), expiredDuration, defaultCleanPeriod)
 
 	// Add three users, one of whom will be updated to not expire.
 	upi.UpdateUserProject("user-expired-1", "token-expired-1", []string{"p1"})
@@ -89,7 +88,8 @@ func TestAutoCleanAndStop(t *testing.T) {
 	expiredDuration := 50 * time.Millisecond
 	cleanPeriod := 20 * time.Millisecond
 
-	upi := NewUserProjectInfo(expiredDuration, cleanPeriod)
+	ctx, cancel := context.WithCancel(context.Background())
+	upi := NewUserProjectInfo(ctx, expiredDuration, cleanPeriod)
 
 	// 1. Test that auto-cleaning works.
 	upi.UpdateUserProject("user-to-expire", "token-to-expire", []string{"p1"})
@@ -102,18 +102,18 @@ func TestAutoCleanAndStop(t *testing.T) {
 	_, found = upi.GetUserProjectList("token-to-expire")
 	assert.False(t, found, "auto-cleaner should have removed the expired user")
 
-	// 2. Test that Stop() prevents further cleaning.
+	// 2. Test that canceling the context stops further cleaning.
 	upi.UpdateUserProject("user-after-stop", "token-after-stop", []string{"p2"})
 	_, found = upi.GetUserProjectList("token-after-stop")
 	assert.True(t, found)
 
 	// Stop the cleaner.
-	upi.Stop()
+	cancel()
 
 	// Wait long enough that the user would have expired and been cleaned.
 	time.Sleep(expiredDuration + cleanPeriod)
 
 	// Check that the user is still there because the cleaner was stopped.
 	_, found = upi.GetUserProjectList("token-after-stop")
-	assert.True(t, found, "user should not be cleaned up after Stop() is called")
+	assert.True(t, found, "user should not be cleaned up after context is canceled")
 }
