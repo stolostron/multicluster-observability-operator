@@ -28,6 +28,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -108,6 +109,9 @@ func TestIntegrationMCO_HubRules(t *testing.T) {
 		hubRules := &promv1.PrometheusRule{}
 		err = k8sHubClient.Get(ctx, types.NamespacedName{Name: "acm-observability-alert-rules", Namespace: hubNamespace}, hubRules)
 		if err != nil {
+			if errors.IsNotFound(err) {
+				return false, nil
+			}
 			return false, err
 		}
 		containsRules := slices.ContainsFunc(hubRules.Spec.Groups, func(e promv1.RuleGroup) bool { return e.Name == "acm-thanos-compact" }) // ensures content is set
