@@ -5,6 +5,7 @@
 package metricquery
 
 import (
+	"context"
 	"net/http"
 	"net/url"
 	"testing"
@@ -284,8 +285,9 @@ func TestGetUserMetricsACLs(t *testing.T) {
 
 			mockAccessReviewer := &MockAccessReviewer{metricsAccess: tc.metricsAccess}
 			mockMCI := &MockManagedClusterInformer{clusters: tc.managedClusters}
-			upi := cache.NewUserProjectInfo(time.Minute, time.Minute)
-			defer upi.Stop()
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			upi := cache.NewUserProjectInfo(ctx, time.Minute, time.Minute)
 			upi.UpdateUserProject(userName, token, tc.cachedProjectList)
 
 			modifier := &Modifier{
@@ -350,7 +352,9 @@ func TestModifyMetricsQueryParams(t *testing.T) {
 		},
 	}
 
-	upi := cache.NewUserProjectInfo(60*time.Second, 0)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	upi := cache.NewUserProjectInfo(ctx, 60*time.Second, 0)
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
