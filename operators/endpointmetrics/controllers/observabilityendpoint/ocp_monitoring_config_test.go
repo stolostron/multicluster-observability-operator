@@ -7,6 +7,7 @@ package observabilityendpoint
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
@@ -895,5 +896,257 @@ prometheus:
 
 	if !containsOCMAlertmanagerConfig {
 		t.Fatalf("AlertmanagerConfigs should contain OCM config when alerts are enabled")
+	}
+}
+
+// TestUWLMonitoringDisableScenario tests the specific scenario where UWL monitoring is disabled
+// and the configmap should be cleaned up even when the namespace still exists
+func TestUWLMonitoringDisableScenario(t *testing.T) {
+	ctx := context.Background()
+	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&zap.Options{Development: true})))
+
+	// Create test objects: UWL namespace, UWL configmap with ACM alertmanager config
+	uwlNamespace := &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: operatorconfig.OCPUserWorkloadMonitoringNamespace,
+		},
+	}
+
+	// Create UWL configmap with ACM alertmanager configuration
+	uwlConfigYAML := `
+prometheus:
+  alertmanagerConfigs:
+  - apiVersion: v2
+    bearerToken:
+      key: token
+      name: observability-alertmanager-accessor
+    pathPrefix: /
+    scheme: https
+    staticConfigs:
+    - test-host.com
+    tlsConfig:
+      ServerName: ""
+      ca:
+        key: service-ca.crt
+        name: hub-alertmanager-router-ca
+      insecureSkipVerify: true
+`
+
+	uwlConfigMap := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      operatorconfig.OCPUserWorkloadMonitoringConfigMap,
+			Namespace: operatorconfig.OCPUserWorkloadMonitoringNamespace,
+		},
+		Data: map[string]string{
+			"config.yaml": uwlConfigYAML,
+		},
+	}
+
+	// Create CMO configmap with UWL disabled
+	cmoConfigYAML := `
+userWorkloadEnabled: false
+`
+
+	cmoConfigMap := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      clusterMonitoringConfigName,
+			Namespace: promNamespace,
+		},
+		Data: map[string]string{
+			"config.yaml": cmoConfigYAML,
+		},
+	}
+
+	// Create required secrets
+	alertmanagerAccessorSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      hubAmAccessorSecretName,
+			Namespace: "test-ns",
+		},
+		Data: map[string][]byte{
+			hubAmAccessorSecretKey: []byte("test-token"),
+		},
+	}
+
+	hubAmRouterCASecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      hubAmRouterCASecretName,
+			Namespace: promNamespace,
+		},
+		Data: map[string][]byte{
+			hubAmRouterCASecretKey: []byte("test-ca"),
+		},
+	}
+
+	// Create hub info with alerts enabled (but UWL disabled)
+	hubInfo := &operatorconfig.HubInfo{}
+	err := yaml.Unmarshal([]byte(hubInfoYAML), &hubInfo)
+	if err != nil {
+		t.Fatalf("Failed to unmarshal hubInfo: (%v)", err)
+	}
+
+	// Create fake client with all objects
+	objs := []runtime.Object{uwlNamespace, uwlConfigMap, cmoConfigMap, alertmanagerAccessorSecret, hubAmRouterCASecret}
+	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
+
+	// Call the function that should handle UWL monitoring configuration
+	// This simulates the scenario where UWL is disabled but alerts are still enabled
+	_, err = createOrUpdateClusterMonitoringConfig(ctx, hubInfo, testClusterID, c, false, "test-ns")
+	if err != nil {
+		t.Fatalf("Failed to create or update cluster monitoring config: (%v)", err)
+	}
+
+	// Verify that the UWL configmap is deleted or cleaned up
+	foundUWLConfigMap := &corev1.ConfigMap{}
+	err = c.Get(ctx, types.NamespacedName{
+		Name:      operatorconfig.OCPUserWorkloadMonitoringConfigMap,
+		Namespace: operatorconfig.OCPUserWorkloadMonitoringNamespace,
+	}, foundUWLConfigMap)
+
+	if err == nil {
+		// If configmap still exists, check if it's been cleaned up (no ACM alertmanager config)
+		configYAML, ok := foundUWLConfigMap.Data["config.yaml"]
+		if ok {
+			parsed := &cmomanifests.UserWorkloadConfiguration{}
+			if err := yaml.Unmarshal([]byte(configYAML), parsed); err != nil {
+				t.Fatalf("Failed to unmarshal UWL config: %v", err)
+			}
+
+			// Check if the configmap still contains ACM alertmanager configuration
+			if parsed.Prometheus != nil && parsed.Prometheus.AlertmanagerConfigs != nil {
+				for _, config := range parsed.Prometheus.AlertmanagerConfigs {
+					if config.TLSConfig.CA != nil && config.TLSConfig.CA.LocalObjectReference.Name == hubAmRouterCASecretName {
+						t.Fatalf("UWL configmap still contains ACM alertmanager configuration when it should be cleaned up")
+					}
+				}
+			}
+		}
+	} else if !errors.IsNotFound(err) {
+		t.Fatalf("Unexpected error checking UWL configmap: %v", err)
+	}
+
+	// Verify that the namespace still exists (it should not be deleted)
+	foundNamespace := &corev1.Namespace{}
+	err = c.Get(ctx, types.NamespacedName{Name: operatorconfig.OCPUserWorkloadMonitoringNamespace}, foundNamespace)
+	if err != nil {
+		t.Fatalf("UWL namespace should still exist: %v", err)
+	}
+}
+
+// TestUWLMonitoringEnableScenario tests the scenario where UWL monitoring is enabled
+// and the configmap should be created/updated with ACM alertmanager configuration
+func TestUWLMonitoringEnableScenario(t *testing.T) {
+	ctx := context.Background()
+	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&zap.Options{Development: true})))
+
+	// Create the UWL monitoring namespace
+	uwlNamespace := &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: operatorconfig.OCPUserWorkloadMonitoringNamespace,
+		},
+	}
+
+	// Create CMO configmap with UWL monitoring enabled
+	cmoConfigYAML := `
+enableUserWorkload: true
+`
+
+	cmoConfigMap := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      clusterMonitoringConfigName,
+			Namespace: promNamespace,
+		},
+		Data: map[string]string{
+			"config.yaml": cmoConfigYAML,
+		},
+	}
+
+	// Create required secrets
+	alertmanagerAccessorSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      hubAmAccessorSecretName,
+			Namespace: "test-ns",
+		},
+		Data: map[string][]byte{
+			hubAmAccessorSecretKey: []byte("test-token"),
+		},
+	}
+
+	hubAmRouterCASecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      hubAmRouterCASecretName,
+			Namespace: promNamespace,
+		},
+		Data: map[string][]byte{
+			hubAmRouterCASecretKey: []byte("test-ca"),
+		},
+	}
+
+	// Create hub info with alerts enabled
+	hubInfo := &operatorconfig.HubInfo{}
+	err := yaml.Unmarshal([]byte(hubInfoYAML), &hubInfo)
+	if err != nil {
+		t.Fatalf("Failed to unmarshal hubInfo: (%v)", err)
+	}
+
+	// Create fake client with all objects
+	objs := []runtime.Object{uwlNamespace, cmoConfigMap, alertmanagerAccessorSecret, hubAmRouterCASecret}
+	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
+
+	// Reset the revert state to ensure clean test environment
+	unsetConfigReverted(ctx, c, "test-ns")
+
+	// Execute the UWL monitoring configuration logic
+	// This simulates the scenario where UWL monitoring is enabled and alerts are enabled
+	_, err = createOrUpdateClusterMonitoringConfig(ctx, hubInfo, testClusterID, c, false, "test-ns")
+	if err != nil {
+		t.Fatalf("Failed to create or update cluster monitoring config: (%v)", err)
+	}
+
+	// Verify that the UWL configmap is created with ACM alertmanager configuration
+	foundUWLConfigMap := &corev1.ConfigMap{}
+	err = c.Get(ctx, types.NamespacedName{
+		Name:      operatorconfig.OCPUserWorkloadMonitoringConfigMap,
+		Namespace: operatorconfig.OCPUserWorkloadMonitoringNamespace,
+	}, foundUWLConfigMap)
+	if err != nil {
+		t.Fatalf("UWL configmap should be created: %v", err)
+	}
+
+	// Verify the UWL configmap contains the expected configuration
+	configYAML, ok := foundUWLConfigMap.Data["config.yaml"]
+	if !ok {
+		t.Fatalf("UWL configmap should contain config.yaml")
+	}
+
+	// Parse the UWL configuration to verify its structure
+	parsed := &cmomanifests.UserWorkloadConfiguration{}
+	if err := yaml.Unmarshal([]byte(configYAML), parsed); err != nil {
+		t.Fatalf("Failed to unmarshal UWL config: %v", err)
+	}
+
+	// Verify that Prometheus configuration exists
+	if parsed.Prometheus == nil {
+		t.Fatalf("UWL configmap should contain prometheus configuration")
+	}
+
+	// Verify that additional alertmanager configurations are present
+	// Note: We check the YAML content directly since the struct field might be empty
+	// but the YAML could still contain the configuration
+	if !strings.Contains(configYAML, "additionalAlertmanagerConfigs") {
+		t.Fatalf("UWL configmap should contain additionalAlertmanagerConfigs")
+	}
+
+	// Verify that the ACM alertmanager configuration is present by checking for the CA secret
+	// The configuration should reference the hub alertmanager router CA secret
+	if !strings.Contains(configYAML, hubAmRouterCASecretName) {
+		t.Fatalf("UWL configmap should contain ACM alertmanager configuration with CA secret reference")
+	}
+
+	// Verify that the namespace still exists
+	foundNamespace := &corev1.Namespace{}
+	err = c.Get(ctx, types.NamespacedName{Name: operatorconfig.OCPUserWorkloadMonitoringNamespace}, foundNamespace)
+	if err != nil {
+		t.Fatalf("UWL namespace should still exist: %v", err)
 	}
 }
