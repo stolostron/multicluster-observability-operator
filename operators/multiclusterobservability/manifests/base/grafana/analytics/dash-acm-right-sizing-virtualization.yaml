@@ -2642,7 +2642,12 @@ data:
       "preload": false,
       "refresh": "",
       "schemaVersion": 41,
-      "tags": [],
+      "tags": [
+        "ACM",
+        "KubeVirt",
+        "Virtualization",
+        "Right-Sizing"
+      ],
       "templating": {
         "list": [
           {
@@ -2798,7 +2803,7 @@ data:
         "hidden": true
       },
       "timezone": "",
-      "title": "ACM Right Sizing Openshift Virtualization Dashboard",
+      "title": "ACM Right-Sizing OpenShift Virtualization",
       "uid": "bnqQIPySEProdkhgafkOpenshiftVirt",
       "version": 6
     }
