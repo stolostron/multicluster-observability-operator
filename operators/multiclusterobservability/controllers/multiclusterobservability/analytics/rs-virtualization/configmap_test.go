@@ -2,7 +2,7 @@
 // Copyright Contributors to the Open Cluster Management project
 // Licensed under the Apache License 2.0
 
-package rsnamespace
+package rsvirtualization
 
 import (
 	"context"
@@ -20,7 +20,7 @@ import (
 
 const testNamespace = "open-cluster-management-observability"
 
-func TestEnsureRSNamespaceConfigMapExists_CreatesIfNotExists(t *testing.T) {
+func TestEnsureRSVirtualizationConfigMapExists_CreatesIfNotExists(t *testing.T) {
 	scheme := runtime.NewScheme()
 	require.NoError(t, corev1.AddToScheme(scheme))
 
@@ -28,7 +28,7 @@ func TestEnsureRSNamespaceConfigMapExists_CreatesIfNotExists(t *testing.T) {
 		WithScheme(scheme).
 		Build()
 
-	err := EnsureRSNamespaceConfigMapExists(context.TODO(), client)
+	err := EnsureRSVirtualizationConfigMapExists(context.TODO(), client)
 	require.NoError(t, err)
 
 	// Verify ConfigMap was created
@@ -45,7 +45,7 @@ func TestEnsureRSNamespaceConfigMapExists_CreatesIfNotExists(t *testing.T) {
 	assert.Contains(t, fetchedCM.Data, "placementConfiguration")
 }
 
-func TestEnsureRSNamespaceConfigMapExists_SkipsIfExists(t *testing.T) {
+func TestEnsureRSVirtualizationConfigMapExists_SkipsIfExists(t *testing.T) {
 	scheme := runtime.NewScheme()
 	require.NoError(t, corev1.AddToScheme(scheme))
 
@@ -64,7 +64,7 @@ func TestEnsureRSNamespaceConfigMapExists_SkipsIfExists(t *testing.T) {
 		WithObjects(existingCM).
 		Build()
 
-	err := EnsureRSNamespaceConfigMapExists(context.TODO(), client)
+	err := EnsureRSVirtualizationConfigMapExists(context.TODO(), client)
 	require.NoError(t, err)
 
 	// Verify existing data is preserved
@@ -78,8 +78,8 @@ func TestEnsureRSNamespaceConfigMapExists_SkipsIfExists(t *testing.T) {
 	assert.Equal(t, "data", fetchedCM.Data["existing"])
 }
 
-func TestGetDefaultRSNamespaceConfig(t *testing.T) {
-	config := GetDefaultRSNamespaceConfig()
+func TestGetDefaultRSVirtualizationConfig(t *testing.T) {
+	config := GetDefaultRSVirtualizationConfig()
 
 	assert.NotNil(t, config)
 	assert.Contains(t, config, "prometheusRuleConfig")
@@ -88,7 +88,33 @@ func TestGetDefaultRSNamespaceConfig(t *testing.T) {
 	assert.NotEmpty(t, config["placementConfiguration"])
 }
 
-func TestGetRightSizingConfigData_InvalidYAML(t *testing.T) {
+func TestGetRightSizingVirtualizationConfigData_Success(t *testing.T) {
+	cm := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      ConfigMapName,
+			Namespace: testNamespace,
+		},
+		Data: map[string]string{
+			"prometheusRuleConfig": `
+namespaceFilterCriteria:
+  exclusionCriteria:
+    - "openshift.*"
+recommendationPercentage: 110
+`,
+			"placementConfiguration": `
+spec:
+  predicates: []
+`,
+		},
+	}
+
+	configData, err := GetRightSizingVirtualizationConfigData(cm)
+	require.NoError(t, err)
+	assert.NotEmpty(t, configData.PrometheusRuleConfig.NamespaceFilterCriteria.ExclusionCriteria)
+	assert.Equal(t, 110, configData.PrometheusRuleConfig.RecommendationPercentage)
+}
+
+func TestGetRightSizingVirtualizationConfigData_InvalidYAML(t *testing.T) {
 	cm := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      ConfigMapName,
@@ -99,7 +125,7 @@ func TestGetRightSizingConfigData_InvalidYAML(t *testing.T) {
 		},
 	}
 
-	_, err := GetRightSizingConfigData(cm)
+	_, err := GetRightSizingVirtualizationConfigData(cm)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to unmarshal prometheusRuleConfig")
 }

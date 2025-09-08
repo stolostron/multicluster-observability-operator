@@ -21,6 +21,18 @@ data:
       - acm_rs:cluster:memory_request
       - acm_rs:cluster:memory_usage
       - acm_rs:cluster:memory_recommendation
+      - acm_rs_vm:namespace:cpu_request
+      - acm_rs_vm:namespace:cpu_usage
+      - acm_rs_vm:namespace:cpu_recommendation
+      - acm_rs_vm:namespace:memory_request
+      - acm_rs_vm:namespace:memory_usage
+      - acm_rs_vm:namespace:memory_recommendation
+      - acm_rs_vm:cluster:cpu_request
+      - acm_rs_vm:cluster:cpu_usage
+      - acm_rs_vm:cluster:cpu_recommendation
+      - acm_rs_vm:cluster:memory_request
+      - acm_rs_vm:cluster:memory_usage
+      - acm_rs_vm:cluster:memory_recommendation
       - ALERTS
       - authenticated_user_requests
       - authentication_attempts
