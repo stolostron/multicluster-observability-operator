@@ -77,6 +77,7 @@ func (r *RightSizingReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	cmNamespaceRSPred := analyticsctrl.GetNamespaceRSConfigMapPredicateFunc(ctx, c)
 
 	return ctrl.NewControllerManagedBy(mgr).
+		Named("rightsizing").
 		For(&mcov1beta2.MultiClusterObservability{}, builder.WithPredicates(mcoPred)).
 		Watches(&corev1.ConfigMap{}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(cmNamespaceRSPred)).
 		Complete(r)
