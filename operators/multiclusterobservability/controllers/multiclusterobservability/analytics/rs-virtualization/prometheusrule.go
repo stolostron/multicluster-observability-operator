@@ -149,11 +149,11 @@ func buildNamespaceRules1d(
 		ruleWithLabels("acm_rs_vm:namespace:memory_usage", `max_over_time(acm_rs_vm:namespace:memory_usage:5m[1d])`),
 		ruleWithLabels(
 			"acm_rs_vm:namespace:cpu_recommendation",
-			fmt.Sprintf(`max_over_time(acm_rs_vm:namespace:cpu_usage{profile="Max OverAll"}[1d])*(%d/100)`, rp),
+			fmt.Sprintf(`max_over_time(acm_rs_vm:namespace:cpu_usage:5m[1d])*(%d/100)`, rp),
 		),
 		ruleWithLabels(
 			"acm_rs_vm:namespace:memory_recommendation",
-			fmt.Sprintf(`max_over_time(acm_rs_vm:namespace:memory_usage{profile="Max OverAll"}[1d])*(%d/100)`, rp),
+			fmt.Sprintf(`max_over_time(acm_rs_vm:namespace:memory_usage:5m[1d])*(%d/100)`, rp),
 		),
 	}
 }
@@ -218,7 +218,7 @@ func buildClusterRules1d(
 		ruleWithLabels(
 			"acm_rs_vm:cluster:cpu_recommendation",
 			fmt.Sprintf(
-				`max_over_time(acm_rs_vm:cluster:cpu_usage{profile="Max OverAll"}[1d]) * (%d/100)`,
+				`max_over_time(acm_rs_vm:cluster:cpu_usage:5m[1d]) * (%d/100)`,
 				rp,
 			),
 		),
@@ -227,7 +227,7 @@ func buildClusterRules1d(
 		ruleWithLabels(
 			"acm_rs_vm:cluster:memory_recommendation",
 			fmt.Sprintf(
-				`max_over_time(acm_rs_vm:cluster:memory_usage{profile="Max OverAll"}[1d]) * (%d/100)`,
+				`max_over_time(acm_rs_vm:cluster:memory_usage:5m[1d]) * (%d/100)`,
 				rp,
 			),
 		),
