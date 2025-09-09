@@ -212,20 +212,8 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 
 		clusterID, err = openshift.GetClusterID(ctx, r.Client)
 		if err != nil {
-			if meta.IsNoMatchError(err) {
-				// ClusterVersion kind does not exist in OCP 3.x
-				r.Logger.Info("ClusterVersion kind does not exist, treat spoke as OCP 3.x", "error", err)
-			} else if apierrors.IsNotFound(err) {
-				// If no ClusterVersion found, treat it as OCP 3.x (should not happen)
-				r.Logger.Info("Cluster id not found, treat spoke as OCP 3.x", "error", err)
-			} else {
 				return ctrl.Result{}, fmt.Errorf("failed to get cluster id: %w", err)
 			}
-
-			// OCP 3.11 has no cluster id, set it as empty string
-			clusterID = ""
-			// to differentiate ocp 3.x
-			clusterType = operatorconfig.OcpThreeClusterType
 		}
 
 		if isSNO, err := openshift.IsSNO(ctx, r.Client); err != nil {

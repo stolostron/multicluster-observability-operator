@@ -563,41 +563,39 @@ func (m *MetricsCollector) ensureDeployment(ctx context.Context, isUWL bool, dep
 		},
 	}
 
-	if m.ClusterInfo.ClusterType != operatorconfig.OcpThreeClusterType {
-		serviceCAOperatorGenerated := []corev1.Volume{
-			{
-				Name: "secret-kube-rbac-proxy-tls",
-				VolumeSource: corev1.VolumeSource{
-					Secret: &corev1.SecretVolumeSource{
-						SecretName:  secretName + "-kube-rbac-tls",
-						DefaultMode: &defaultMode,
+	serviceCAOperatorGenerated := []corev1.Volume{
+		{
+			Name: "secret-kube-rbac-proxy-tls",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName:  secretName + "-kube-rbac-tls",
+					DefaultMode: &defaultMode,
+				},
+			},
+		},
+		{
+			Name: "secret-kube-rbac-proxy-metric",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName:  secretName + "-kube-rbac-proxy-metric",
+					DefaultMode: &defaultMode,
+				},
+			},
+		},
+		{
+			Name: "metrics-client-ca",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					DefaultMode: &defaultMode,
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: secretName + "-clientca-metric",
 					},
 				},
 			},
-			{
-				Name: "secret-kube-rbac-proxy-metric",
-				VolumeSource: corev1.VolumeSource{
-					Secret: &corev1.SecretVolumeSource{
-						SecretName:  secretName + "-kube-rbac-proxy-metric",
-						DefaultMode: &defaultMode,
-					},
-				},
-			},
-			{
-				Name: "metrics-client-ca",
-				VolumeSource: corev1.VolumeSource{
-					ConfigMap: &corev1.ConfigMapVolumeSource{
-						DefaultMode: &defaultMode,
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: secretName + "-clientca-metric",
-						},
-					},
-				},
-			},
-		}
-
-		volumes = append(volumes, serviceCAOperatorGenerated...)
+		},
 	}
+
+	volumes = append(volumes, serviceCAOperatorGenerated...)
 
 	mounts := []corev1.VolumeMount{
 		{
@@ -958,10 +956,6 @@ func (m *MetricsCollector) getMetricsAllowlist(ctx context.Context) (*operatorco
 
 	if cm.Data != nil {
 		configmapKey := operatorconfig.MetricsConfigMapKey
-		if m.ClusterInfo.ClusterType == operatorconfig.OcpThreeClusterType {
-			configmapKey = operatorconfig.MetricsOcp311ConfigMapKey
-		}
-
 		err = yaml.Unmarshal([]byte(cm.Data[configmapKey]), allowList)
 		if err != nil {
 			return allowList, userAllowList, fmt.Errorf("failed to unmarshal allowList data in configmap %s/%s: %w", cm.Namespace, cm.Name, err)

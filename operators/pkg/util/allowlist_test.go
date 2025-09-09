@@ -52,11 +52,6 @@ collect_rules:
 names:
   - uwl_a
   - uwl_b
-`,
-			operatorconfig.MetricsOcp311ConfigMapKey: `
-names:
-  - ocp311_a
-  - ocp311_b
 `},
 	}
 }
