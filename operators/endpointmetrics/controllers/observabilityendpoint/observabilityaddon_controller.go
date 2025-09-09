@@ -16,7 +16,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	meta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -212,8 +211,7 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 
 		clusterID, err = openshift.GetClusterID(ctx, r.Client)
 		if err != nil {
-				return ctrl.Result{}, fmt.Errorf("failed to get cluster id: %w", err)
-			}
+			return ctrl.Result{}, fmt.Errorf("failed to get cluster id: %w", err)
 		}
 
 		if isSNO, err := openshift.IsSNO(ctx, r.Client); err != nil {
