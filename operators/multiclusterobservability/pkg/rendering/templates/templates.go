@@ -20,7 +20,6 @@ var (
 	thanosTemplates                []*resource.Resource
 	proxyTemplates                 []*resource.Resource
 	endpointObservabilityTemplates []*resource.Resource
-	prometheusTemplates            []*resource.Resource
 	mcoaTemplates                  []*resource.Resource
 )
 
