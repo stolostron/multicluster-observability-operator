@@ -978,6 +978,12 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 					e.Object.GetName() == config.OpenshiftIngressDefaultCertName) {
 				return updateHubInfoSecret(c, ingressCtlCrdExists)
 			}
+			// Check if this secret might be a custom ingress certificate
+			if e.Object.GetNamespace() == config.OpenshiftIngressNamespace {
+				if isCustomIngressCertificate(c, e.Object.GetName()) {
+					return updateHubInfoSecret(c, ingressCtlCrdExists)
+				}
+			}
 			return false
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
@@ -987,6 +993,13 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 					e.ObjectNew.GetName() == config.OpenshiftIngressDefaultCertName)) &&
 				e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() {
 				return updateHubInfoSecret(c, ingressCtlCrdExists)
+			}
+			// Check if this secret might be a custom ingress certificate
+			if e.ObjectNew.GetNamespace() == config.OpenshiftIngressNamespace &&
+				e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() {
+				if isCustomIngressCertificate(c, e.ObjectNew.GetName()) {
+					return updateHubInfoSecret(c, ingressCtlCrdExists)
+				}
 			}
 			return false
 		},
@@ -1243,6 +1256,28 @@ func mcoaForMetricsIsEnabled(mco *mcov1beta2.MultiClusterObservability) bool {
 
 	return false
 
+}
+
+// isCustomIngressCertificate checks if the given secret name is referenced by the IngressController
+// as a custom default certificate
+func isCustomIngressCertificate(c client.Client, secretName string) bool {
+	ingressOperator := &operatorv1.IngressController{}
+	err := c.Get(context.TODO(), types.NamespacedName{
+		Name:      config.OpenshiftIngressOperatorCRName,
+		Namespace: config.OpenshiftIngressOperatorNamespace,
+	}, ingressOperator)
+	if err != nil {
+		log.Error(err, "Failed to get IngressController to check custom certificate")
+		return false
+	}
+
+	// Check if this secret is referenced as the custom default certificate
+	if ingressOperator.Spec.DefaultCertificate != nil &&
+		ingressOperator.Spec.DefaultCertificate.Name == secretName {
+		return true
+	}
+
+	return false
 }
 
 // updateHubInfoSecret gets the MCO instance and updates the hub info secret
