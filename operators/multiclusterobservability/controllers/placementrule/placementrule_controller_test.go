@@ -171,7 +171,8 @@ func TestObservabilityAddonController(t *testing.T) {
 		).
 		WithRuntimeObjects(objs...).
 		Build()
-	r := &PlacementRuleReconciler{Client: c, Scheme: s, CRDMap: map[string]bool{config.IngressControllerCRD: true}}
+	kubeClient := newMockKubeClient()
+	r := &PlacementRuleReconciler{Client: c, Scheme: s, CRDMap: map[string]bool{config.IngressControllerCRD: true}, KubeClient: kubeClient}
 
 	createManagedCluster := func(ns, version string) {
 		mc := &clusterv1.ManagedCluster{
