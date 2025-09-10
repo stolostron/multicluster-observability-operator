@@ -20,7 +20,6 @@ var (
 	thanosTemplates                []*resource.Resource
 	proxyTemplates                 []*resource.Resource
 	endpointObservabilityTemplates []*resource.Resource
-	prometheusTemplates            []*resource.Resource
 	mcoaTemplates                  []*resource.Resource
 )
 
@@ -134,22 +133,6 @@ func GetOrLoadEndpointObservabilityTemplates(r *templates.TemplateRenderer) ([]*
 	}
 
 	return endpointObservabilityTemplates, nil
-}
-
-// GetOrLoadPrometheusTemplates reads endpoint-observability manifest.
-func GetOrLoadPrometheusTemplates(r *templates.TemplateRenderer) ([]*resource.Resource, error) {
-	if len(prometheusTemplates) > 0 {
-		return prometheusTemplates, nil
-	}
-
-	basePath := path.Join(r.GetTemplatesPath(), "prometheus")
-
-	// add endpoint ovservability template
-	if err := r.AddTemplateFromPath(basePath, &prometheusTemplates); err != nil {
-		return prometheusTemplates, err
-	}
-
-	return prometheusTemplates, nil
 }
 
 // ResetTemplates reset all the loaded templates.
