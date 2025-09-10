@@ -149,7 +149,7 @@ func TestSplitMatchersIntoShards(t *testing.T) {
 			}
 
 			// Check if each shard contains the expected matchers
-			for i := 0; i < len(got); i++ {
+			for i := range got {
 				if len(got[i]) != len(tt.want[i]) {
 					t.Errorf("shard %d: got %d matchers, want %d matchers",
 						i, len(got[i]), len(tt.want[i]))

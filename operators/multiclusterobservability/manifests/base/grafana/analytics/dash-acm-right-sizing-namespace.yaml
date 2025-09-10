@@ -1880,7 +1880,10 @@ data:
         }
       ],
       "schemaVersion": 39,
-      "tags": [],
+      "tags": [
+        "ACM",
+        "Right-Sizing"
+      ],
       "templating": {
         "list": [
           {

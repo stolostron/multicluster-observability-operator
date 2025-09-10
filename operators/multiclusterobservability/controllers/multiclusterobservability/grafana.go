@@ -83,11 +83,7 @@ func GenerateGrafanaDataSource(
 	scheme *runtime.Scheme,
 	mco *mcov1beta2.MultiClusterObservability) (*ctrl.Result, error) {
 
-	DynamicTimeInterval := mco.Spec.ObservabilityAddonSpec.Interval
-
-	if DynamicTimeInterval > 30 {
-		DynamicTimeInterval = 30
-	}
+	DynamicTimeInterval := min(mco.Spec.ObservabilityAddonSpec.Interval, 30)
 
 	grafanaDatasources, err := yaml.Marshal(GrafanaDatasources{
 		APIVersion: 1,

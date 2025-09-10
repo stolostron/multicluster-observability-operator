@@ -39,8 +39,8 @@ var _ = Describe("", func() {
 			By("Check addon resource requirement")
 			res, err := utils.GetMCOAddonSpecResources(testOptions)
 			Expect(err).ToNot(HaveOccurred())
-			limits := res["limits"].(map[string]interface{})
-			requests := res["requests"].(map[string]interface{})
+			limits := res["limits"].(map[string]any)
+			requests := res["requests"].(map[string]any)
 			Expect(limits["cpu"]).To(Equal("200m"))
 			Expect(limits["memory"]).To(Equal("700Mi"))
 			Expect(requests["cpu"]).To(Equal("10m"))
@@ -138,7 +138,7 @@ var _ = Describe("", func() {
 		mco, getErr := dynClient.Resource(utils.NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
 		Expect(getErr).NotTo(HaveOccurred())
 
-		observabilityAddonSpec := mco.Object["spec"].(map[string]interface{})["observabilityAddonSpec"].(map[string]interface{})
+		observabilityAddonSpec := mco.Object["spec"].(map[string]any)["observabilityAddonSpec"].(map[string]any)
 		oldInterval := observabilityAddonSpec["interval"]
 		// set the interval to 0 (null) to ensure the default interval is applied
 		err := utils.ModifyMCOAddonSpecInterval(testOptions, int64(0))
@@ -149,7 +149,7 @@ var _ = Describe("", func() {
 			mco, getErr := dynClient.Resource(utils.NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
 			Expect(getErr).NotTo(HaveOccurred())
 
-			observabilityAddonSpec := mco.Object["spec"].(map[string]interface{})["observabilityAddonSpec"].(map[string]interface{})
+			observabilityAddonSpec := mco.Object["spec"].(map[string]any)["observabilityAddonSpec"].(map[string]any)
 			return observabilityAddonSpec["interval"] == int64(300)
 		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*1).Should(BeTrue())
 

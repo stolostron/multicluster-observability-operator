@@ -86,9 +86,9 @@ func (d *Deployer) Deploy(ctx context.Context, obj *unstructured.Unstructured) e
 	}
 
 	// if resource has annotation skip-creation-if-exist: true, don't update it to keep customized changes from users
-	metadata, ok := obj.Object["metadata"].(map[string]interface{})
+	metadata, ok := obj.Object["metadata"].(map[string]any)
 	if ok {
-		annotations, ok := metadata["annotations"].(map[string]interface{})
+		annotations, ok := metadata["annotations"].(map[string]any)
 		if ok && annotations != nil && annotations[config.AnnotationSkipCreation] != nil {
 			if strings.ToLower(annotations[config.AnnotationSkipCreation].(string)) == "true" {
 				log.Info("Skip creation", "Kind", obj.GroupVersionKind(), "Name", obj.GetName())

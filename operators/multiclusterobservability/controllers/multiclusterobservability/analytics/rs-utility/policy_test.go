@@ -2,19 +2,19 @@
 // Copyright Contributors to the Open Cluster Management project
 // Licensed under the Apache License 2.0
 
-package analytics
+package rsutility
 
 import (
 	"context"
 	"testing"
 
+	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	configpolicyv1 "open-cluster-management.io/config-policy-controller/api/v1"
 	policyv1 "open-cluster-management.io/governance-policy-propagator/api/v1"
 )
@@ -31,15 +31,19 @@ func initScheme() *runtime.Scheme {
 func TestCreateOrUpdatePrometheusRulePolicy_CreatesNewPolicy(t *testing.T) {
 	scheme := initScheme()
 	client := fake.NewClientBuilder().WithScheme(scheme).Build()
+	ctx := context.Background()
 
-	rule := monitoringv1.PrometheusRule{
+	rsPrometheusRulePolicyName := "test-policy"
+	rsNamespace := "test-namespace"
+
+	prometheusRule := monitoringv1.PrometheusRule{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-rule",
-			Namespace: rsMonitoringNamespace,
+			Namespace: MonitoringNamespace,
 		},
 	}
 
-	err := createOrUpdatePrometheusRulePolicy(context.TODO(), client, rule)
+	err := CreateOrUpdateRSPrometheusRulePolicy(ctx, client, rsPrometheusRulePolicyName, rsNamespace, prometheusRule)
 	assert.NoError(t, err)
 
 	created := &policyv1.Policy{}

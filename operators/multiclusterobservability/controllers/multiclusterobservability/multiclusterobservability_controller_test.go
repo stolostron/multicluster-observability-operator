@@ -40,6 +40,7 @@ import (
 	"k8s.io/client-go/util/workqueue"
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
+	clusterv1beta1 "open-cluster-management.io/api/cluster/v1beta1"
 	policyv1 "open-cluster-management.io/governance-policy-propagator/api/v1"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -309,13 +310,15 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	}
 
 	// Register operator types with the runtime scheme.
-	s := scheme.Scheme
+	s := runtime.NewScheme()
+	scheme.AddToScheme(s)
 	mcov1beta2.SchemeBuilder.AddToScheme(s)
 	oav1beta1.AddToScheme(s)
 	observatoriumv1alpha1.AddToScheme(s)
 	routev1.AddToScheme(s)
 	oauthv1.AddToScheme(s)
 	clusterv1.AddToScheme(s)
+	clusterv1beta1.AddToScheme(s)
 	policyv1.AddToScheme(s)
 	addonv1alpha1.AddToScheme(s)
 	migrationv1alpha1.SchemeBuilder.AddToScheme(s)
@@ -348,6 +351,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	}
 	// Create a fake client to mock API calls.
 	cl := fake.NewClientBuilder().
+		WithScheme(s).
 		WithRuntimeObjects(objs...).
 		WithStatusSubresource(
 			&addonv1alpha1.ManagedClusterAddOn{},
@@ -750,7 +754,8 @@ func TestImageReplaceForMCO(t *testing.T) {
 	}
 
 	// Register operator types with the runtime scheme.
-	s := scheme.Scheme
+	s := runtime.NewScheme()
+	scheme.AddToScheme(s)
 	mcov1beta2.SchemeBuilder.AddToScheme(s)
 	observatoriumv1alpha1.AddToScheme(s)
 	routev1.AddToScheme(s)
@@ -788,7 +793,7 @@ func TestImageReplaceForMCO(t *testing.T) {
 		testMCHInstance, imageManifestsCM, testAmRouteBYOCaSecret, testAmRouteBYOCertSecret, clustermgmtAddon, extensionApiserverAuthenticationCM,
 	}
 	// Create a fake client to mock API calls.
-	cl := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
+	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
 
 	// Create fake imagestream client
 	imageClient := &fakeimagev1client.FakeImageV1{Fake: &(fakeimageclient.NewSimpleClientset().Fake)}
@@ -1123,7 +1128,7 @@ func TestPrometheusRulesRemovedFromOpenshiftMonitoringNamespace(t *testing.T) {
 		},
 	}
 	s := scheme.Scheme
-	monitoringv1.AddToScheme(s)
+	monitoringv1.SchemeBuilder.AddToScheme(s)
 	objs := []runtime.Object{promRule}
 	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 	r := &MultiClusterObservabilityReconciler{Client: c, Scheme: s}
@@ -1160,8 +1165,9 @@ func TestServiceMonitorRemovedFromOpenshiftMonitoringNamespace(t *testing.T) {
 
 func TestNewMCOACRDEventHandler(t *testing.T) {
 	// Register the necessary schemes
-	scheme := runtime.NewScheme()
-	mcov1beta2.AddToScheme(scheme)
+	s := runtime.NewScheme()
+	scheme.AddToScheme(s)
+	mcov1beta2.AddToScheme(s)
 
 	existingObjs := []runtime.Object{
 		&mcov1beta2.MultiClusterObservability{
@@ -1198,7 +1204,7 @@ func TestNewMCOACRDEventHandler(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			client := fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(existingObjs...).Build()
+			client := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(existingObjs...).Build()
 			handler := newMCOACRDEventHandler(client)
 
 			obj := &apiextensionsv1.CustomResourceDefinition{

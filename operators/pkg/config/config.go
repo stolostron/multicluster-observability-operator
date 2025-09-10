@@ -23,43 +23,27 @@ const (
 	MetricsConfigMapKey          = "metrics_list.yaml"
 	UwlMetricsConfigMapKey       = "uwl_metrics_list.yaml"
 	PrometheusUserWorkload       = "prometheus-user-workload"
-	MetricsOcp311ConfigMapKey    = "ocp311_metrics_list.yaml"
 	CaConfigmapName              = "metrics-collector-serving-certs-ca-bundle"
 	HubMetricsCollectorMtlsCert  = "observability-controller-open-cluster-management.io-observability-signer-client-cert"
 	ClientCACertificateCN        = "observability-client-ca-certificate"
 )
 
 const (
-	OCPClusterMonitoringNamespace              = "openshift-monitoring"
-	OCPClusterMonitoringConfigMapName          = "cluster-monitoring-config"
-	OCPClusterMonitoringConfigMapKey           = "config.yaml"
-	OCPClusterMonitoringPrometheusService      = "prometheus-k8s"
-	OCPUserWorkloadMonitoringNamespace         = "openshift-user-workload-monitoring"
-	OCPUserWorkloadMonitoringConfigMap         = "user-workload-monitoring-config"
-	OCPUserWorkloadMonitoringPrometheusService = "prometheus"
+	OCPClusterMonitoringNamespace         = "openshift-monitoring"
+	OCPClusterMonitoringConfigMapName     = "cluster-monitoring-config"
+	OCPClusterMonitoringPrometheusService = "prometheus-k8s"
+	OCPUserWorkloadMonitoringNamespace    = "openshift-user-workload-monitoring"
+	OCPUserWorkloadMonitoringConfigMap    = "user-workload-monitoring-config"
 )
 
 const (
-	MetricsCollectorImgName = "metrics-collector"
-	MetricsCollectorKey     = "metrics_collector"
-
-	PrometheusImgName = "prometheus"
-	PrometheusKey     = "prometheus"
-
-	KubeStateMetricsImgName = "kube-state-metrics"
-	KubeStateMetricsKey     = "kube_state_metrics"
-
-	NodeExporterImgName = "node-exporter"
-	NodeExporterKey     = "node_exporter"
-
-	KubeRbacProxyImgName = "kube-rbac-proxy"
-	KubeRbacProxyKey     = "kube_rbac_proxy"
-
-	PrometheusOperatorImgName = "prometheus-operator"
-	PrometheusOperatorKey     = "prometheus_operator"
-
-	PrometheusConfigmapReloaderImgName = "prometheus-config-reloader"
-	PrometheusConfigmapReloaderKey     = "prometheus_config_reloader"
+	MetricsCollectorKey            = "metrics_collector"
+	PrometheusKey                  = "prometheus"
+	KubeStateMetricsKey            = "kube_state_metrics"
+	NodeExporterKey                = "node_exporter"
+	KubeRbacProxyKey               = "kube_rbac_proxy"
+	PrometheusOperatorKey          = "prometheus_operator"
+	PrometheusConfigmapReloaderKey = "prometheus_config_reloader"
 )
 
 // Annotations to uspport OpenShift workload partitioning.
@@ -70,21 +54,11 @@ const (
 	WorkloadPartitioningNSExpectedValue  = "management"
 )
 
-var ImageKeyNameMap = map[string]string{
-	PrometheusKey:                  PrometheusKey,
-	KubeStateMetricsKey:            KubeStateMetricsImgName,
-	NodeExporterKey:                NodeExporterImgName,
-	KubeRbacProxyKey:               KubeRbacProxyImgName,
-	MetricsCollectorKey:            MetricsCollectorImgName,
-	PrometheusConfigmapReloaderKey: PrometheusConfigmapReloaderImgName,
-}
-
 var (
 	IsMCOTerminating = false
 )
 
 const (
-	DefaultClusterType  = ""
-	OcpThreeClusterType = "ocp3"
-	SnoClusterType      = "SNO"
+	DefaultClusterType = ""
+	SnoClusterType     = "SNO"
 )

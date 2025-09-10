@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	slices0 "slices"
 	"strings"
 	"time"
 
@@ -50,7 +51,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
-	analyticsctrl "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/multiclusterobservability/analytics"
 	placementctrl "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/placementrule"
 	certctrl "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/certificates"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
@@ -396,12 +396,6 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		}
 	}
 
-	// create rightsizing component
-	err = analyticsctrl.CreateRightSizingComponent(ctx, r.Client, instance)
-	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to create rightsizing component: %w", err)
-	}
-
 	if _, ok := os.LookupEnv("UNIT_TEST"); !ok && !isLegacyResourceRemoved {
 		// Delete PrometheusRule from openshift-monitoring namespace
 		if err := r.deleteSpecificPrometheusRule(ctx); err != nil {
@@ -489,11 +483,9 @@ func getStorageClass(mco *mcov1beta2.MultiClusterObservability, cl client.Client
 // SetupWithManager sets up the controller with the Manager.
 func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	c := mgr.GetClient()
-	ctx := context.Background()
 
 	mcoPred := GetMCOPredicateFunc()
 	cmPred := GetConfigMapPredicateFunc()
-	cmNamespaceRSPred := analyticsctrl.GetNamespaceRSConfigMapPredicateFunc(ctx, c)
 	secretPred := GetAlertManagerSecretPredicateFunc()
 	namespacePred := GetNamespacePredicateFunc()
 	mcoaCRDPred := GetMCOACRDPredicateFunc()
@@ -520,8 +512,6 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 		// Watch for changes to secondary PrometheusRule CR and requeue the owner MultiClusterObservability
 		Owns(&monitoringv1.PrometheusRule{}).
 
-		// Watch the configmap for rightsizing recommendation update (keep in its own watcher as it applies some processing)
-		Watches(&corev1.ConfigMap{}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(cmNamespaceRSPred)).
 		// Watch the configmap for thanos-ruler-custom-rules update
 		Watches(&corev1.ConfigMap{}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(cmPred)).
 		// Watch the secret for deleting event of alertmanager-config
@@ -1032,11 +1022,8 @@ func newMCOACRDEventHandler(c client.Client) handler.EventHandler {
 			var reqs []reconcile.Request
 
 			var isDependency bool
-			for _, name := range config.GetMCOASupportedCRDNames() {
-				if name == obj.GetName() {
-					isDependency = true
-					break
-				}
+			if slices0.Contains(config.GetMCOASupportedCRDNames(), obj.GetName()) {
+				isDependency = true
 			}
 
 			if !isDependency {

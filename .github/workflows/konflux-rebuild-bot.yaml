@@ -1,0 +1,15 @@
+name: Konflux periodic build bot
+on:
+  schedule:
+    - cron: '0 0 * * Sat' # Github Actions job run in UTC.
+  workflow_dispatch:
+
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Add comments
+        run: bash .github/workflows/konflux-rebuild-bot.sh ${{ secrets.GITHUB_TOKEN }} ${{ github.event.repository.default_branch }}

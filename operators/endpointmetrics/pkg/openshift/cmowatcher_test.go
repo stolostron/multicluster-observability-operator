@@ -101,7 +101,7 @@ func TestLeakyBucket_Add(t *testing.T) {
 	bucket := newLeakyBucket(capacity, leakPeriod)
 
 	// Should be able to add up to capacity
-	for i := 0; i < capacity; i++ {
+	for i := range capacity {
 		success := bucket.Add()
 		if !success {
 			t.Errorf("Failed to add item %d to bucket with capacity %d", i+1, capacity)
@@ -151,7 +151,7 @@ func TestLeakyBucket_Leaking(t *testing.T) {
 	bucket := newLeakyBucket(capacity, leakPeriod)
 
 	// Fill the bucket
-	for i := 0; i < capacity; i++ {
+	for range capacity {
 		bucket.Add()
 	}
 

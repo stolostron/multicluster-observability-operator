@@ -448,7 +448,7 @@ func TestWriteError(t *testing.T) {
 func TestMarshalLabelListToConfigMap(t *testing.T) {
 	testCase := struct {
 		name     string
-		obj      interface{}
+		obj      any
 		expected error
 	}{
 		"should marshal configmap object data correctly",
@@ -504,8 +504,8 @@ func TestUnmarshalDataToManagedClusterLabelList(t *testing.T) {
 func TestGetManagedClusterEventHandler(t *testing.T) {
 	testCase := struct {
 		name     string
-		oldObj   interface{}
-		newObj   interface{}
+		oldObj   any
+		newObj   any
 		expected bool
 	}{
 		"should execute eventHandler",
@@ -550,8 +550,8 @@ func TestGetManagedClusterEventHandler(t *testing.T) {
 func TestGetManagedClusterLabelAllowListEventHandler(t *testing.T) {
 	testCase := struct {
 		name   string
-		oldObj interface{}
-		newObj interface{}
+		oldObj any
+		newObj any
 	}{
 		"should execute eventHandler",
 		proxyconfig.CreateManagedClusterLabelAllowListCM("open-cluster-management-observability"),
@@ -589,7 +589,10 @@ func TestGetManagedClusterLabelAllowListEventHandler(t *testing.T) {
 
 	time.Sleep(5 * time.Second)
 
+	labelListMtx.Lock()
 	managedLabelList.IgnoreList = []string{"vendor"}
+	labelListMtx.Unlock()
+
 	eventHandler.UpdateFunc(testCase.oldObj, testCase.newObj)
 	if ok := GetAllManagedClusterLabelNames()["vendor"]; !ok {
 		t.Errorf("case (%v) output: (%v) is not the expected: (%v)", testCase.name, ok, true)

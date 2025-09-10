@@ -26,7 +26,7 @@ func TestRender(t *testing.T) {
 	assert.Equal(t, []string{"thanos-ruler-custom-rules"}, names, "rendered names")
 
 	labels, _ := GetLabels(buf)
-	for labelName := range labels.(map[string]interface{}) {
+	for labelName := range labels.(map[string]any) {
 		assert.Equal(t, "alertname", labelName, "metadata label")
 	}
 
@@ -36,29 +36,29 @@ func TestRender(t *testing.T) {
 
 }
 
-func containedNames(rendered []map[string]interface{}) (names []string) {
+func containedNames(rendered []map[string]any) (names []string) {
 	for _, o := range rendered {
 		m := o["metadata"]
 		name := ""
-		if mm, ok := m.(map[string]interface{}); ok {
+		if mm, ok := m.(map[string]any); ok {
 			name = mm["name"].(string)
 		} else {
-			name = m.(map[interface{}]interface{})["name"].(string)
+			name = m.(map[any]any)["name"].(string)
 		}
 		names = append(names, name)
 	}
 	return
 }
 
-func rendered(t *testing.T, rendered []byte) (r []map[string]interface{}) {
+func rendered(t *testing.T, rendered []byte) (r []map[string]any) {
 	dec := yaml.NewDecoder(bytes.NewReader(rendered))
-	o := map[string]interface{}{}
+	o := map[string]any{}
 	var err error
 	for ; err == nil; err = dec.Decode(o) {
 		require.NoError(t, err)
 		if len(o) > 0 {
 			r = append(r, o)
-			o = map[string]interface{}{}
+			o = map[string]any{}
 		}
 	}
 	if err != io.EOF {

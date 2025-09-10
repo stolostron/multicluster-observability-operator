@@ -7,6 +7,7 @@ package tests
 import (
 	"context"
 	"fmt"
+	"slices"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -132,13 +133,7 @@ var _ = Describe("RHACM4K-55205: Enable and teardown namespace right-sizing reco
 				"acm_rs:cluster:memory_recommendation",
 			}
 			for _, name := range expected {
-				found := false
-				for _, v := range ml.Names {
-					if v == name {
-						found = true
-						break
-					}
-				}
+				found := slices.Contains(ml.Names, name)
 				if !found {
 					return fmt.Errorf("expected metric %s not found in list", name)
 				}

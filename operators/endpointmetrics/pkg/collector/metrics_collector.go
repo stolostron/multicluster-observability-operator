@@ -472,7 +472,7 @@ func (m *MetricsCollector) ensureAlertingRule(ctx context.Context, isUWL bool) e
 								"summary":     "Error federating from in-cluster Prometheus.",
 								"description": "There are errors when federating from platform Prometheus",
 							},
-							Expr: intstr.FromString(`(sum by (status_code, type) (rate(` + replace + `federate_requests_total{status_code!~"2.*"}[10m]))) > 10`),
+							Expr: intstr.FromString(`(sum(rate(` + replace + `federate_requests_total{status_code!~"2.*"}[10m]))) / (sum(rate(` + replace + `federate_requests_total[10m]))) > .2`),
 							For:  &forDuration,
 							Labels: map[string]string{
 								"severity": "critical",
@@ -484,7 +484,7 @@ func (m *MetricsCollector) ensureAlertingRule(ctx context.Context, isUWL bool) e
 								"summary":     "Error forwarding to Hub Thanos.",
 								"description": "There are errors when remote writing to Hub hub Thanos",
 							},
-							Expr: intstr.FromString(`(sum by (status_code, type) (rate(` + replace + `forward_write_requests_total{status_code!~"2.*"}[10m]))) > 10`),
+							Expr: intstr.FromString(`(sum(rate(` + replace + `forward_write_requests_total{status_code!~"2.*"}[10m]))) / (sum(rate(` + replace + `forward_write_requests_total[10m]))) > .2`),
 							For:  &forDuration,
 							Labels: map[string]string{
 								"severity": "critical",
@@ -563,41 +563,39 @@ func (m *MetricsCollector) ensureDeployment(ctx context.Context, isUWL bool, dep
 		},
 	}
 
-	if m.ClusterInfo.ClusterType != operatorconfig.OcpThreeClusterType {
-		serviceCAOperatorGenerated := []corev1.Volume{
-			{
-				Name: "secret-kube-rbac-proxy-tls",
-				VolumeSource: corev1.VolumeSource{
-					Secret: &corev1.SecretVolumeSource{
-						SecretName:  secretName + "-kube-rbac-tls",
-						DefaultMode: &defaultMode,
+	serviceCAOperatorGenerated := []corev1.Volume{
+		{
+			Name: "secret-kube-rbac-proxy-tls",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName:  secretName + "-kube-rbac-tls",
+					DefaultMode: &defaultMode,
+				},
+			},
+		},
+		{
+			Name: "secret-kube-rbac-proxy-metric",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName:  secretName + "-kube-rbac-proxy-metric",
+					DefaultMode: &defaultMode,
+				},
+			},
+		},
+		{
+			Name: "metrics-client-ca",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					DefaultMode: &defaultMode,
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: secretName + "-clientca-metric",
 					},
 				},
 			},
-			{
-				Name: "secret-kube-rbac-proxy-metric",
-				VolumeSource: corev1.VolumeSource{
-					Secret: &corev1.SecretVolumeSource{
-						SecretName:  secretName + "-kube-rbac-proxy-metric",
-						DefaultMode: &defaultMode,
-					},
-				},
-			},
-			{
-				Name: "metrics-client-ca",
-				VolumeSource: corev1.VolumeSource{
-					ConfigMap: &corev1.ConfigMapVolumeSource{
-						DefaultMode: &defaultMode,
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: secretName + "-clientca-metric",
-						},
-					},
-				},
-			},
-		}
-
-		volumes = append(volumes, serviceCAOperatorGenerated...)
+		},
 	}
+
+	volumes = append(volumes, serviceCAOperatorGenerated...)
 
 	mounts := []corev1.VolumeMount{
 		{
@@ -958,10 +956,6 @@ func (m *MetricsCollector) getMetricsAllowlist(ctx context.Context) (*operatorco
 
 	if cm.Data != nil {
 		configmapKey := operatorconfig.MetricsConfigMapKey
-		if m.ClusterInfo.ClusterType == operatorconfig.OcpThreeClusterType {
-			configmapKey = operatorconfig.MetricsOcp311ConfigMapKey
-		}
-
 		err = yaml.Unmarshal([]byte(cm.Data[configmapKey]), allowList)
 		if err != nil {
 			return allowList, userAllowList, fmt.Errorf("failed to unmarshal allowList data in configmap %s/%s: %w", cm.Namespace, cm.Name, err)

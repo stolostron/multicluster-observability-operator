@@ -78,9 +78,9 @@ func Render(
 		// if resources kind is clusterrolebinding or rolebinding change the subjects namespace to "open-cluster-management-obserbability"
 		if isKindTest {
 			if resources[idx].GetKind() == "ClusterRoleBinding" || resources[idx].GetKind() == "RoleBinding" {
-				subjects := resources[idx].Object["subjects"].([]interface{})
+				subjects := resources[idx].Object["subjects"].([]any)
 				for i := range subjects {
-					subject := subjects[i].(map[string]interface{})
+					subject := subjects[i].(map[string]any)
 					if subject["kind"] == "ServiceAccount" {
 						subject["namespace"] = namespace
 					}

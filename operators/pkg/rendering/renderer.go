@@ -6,6 +6,7 @@ package rendering
 
 import (
 	"errors"
+	"maps"
 	"strconv"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -132,9 +133,7 @@ func (r *Renderer) RenderClusterRole(
 	if cLabels == nil {
 		cLabels = make(map[string]string)
 	}
-	for k, v := range labels {
-		cLabels[k] = v
-	}
+	maps.Copy(cLabels, labels)
 	u.SetLabels(cLabels)
 
 	return u, nil
@@ -155,16 +154,14 @@ func (r *Renderer) RenderClusterRoleBinding(
 	if cLabels == nil {
 		cLabels = make(map[string]string)
 	}
-	for k, v := range labels {
-		cLabels[k] = v
-	}
+	maps.Copy(cLabels, labels)
 	u.SetLabels(cLabels)
 
-	subjects, ok := u.Object["subjects"].([]interface{})
+	subjects, ok := u.Object["subjects"].([]any)
 	if !ok {
 		return nil, errors.New("failed to find clusterrolebinding subjects field")
 	}
-	subject := subjects[0].(map[string]interface{})
+	subject := subjects[0].(map[string]any)
 	kind := subject["kind"]
 	if kind == "Group" {
 		return u, nil
