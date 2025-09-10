@@ -32,6 +32,9 @@ rules:
   - serviceaccounts/token
   verbs:
   - create
+  - get
+  - list
+  - watch
 - apiGroups:
   - apps
   resources:
