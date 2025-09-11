@@ -596,7 +596,28 @@ func GetPullSecret(opt TestOptions) (string, error) {
 
 	spec := getMCH.Object["spec"].(map[string]any)
 	if _, ok := spec["imagePullSecret"]; !ok {
-		return "", errors.New("can not find imagePullSecret in MCH CR")
+		// if imagePullSecret is not set in MCH CR, copy the pull-secret from openshift-config namespace
+		clientKube := NewKubeClient(opt.HubCluster.ClusterServerURL, opt.KubeConfig, opt.HubCluster.KubeContext)
+		secret, err := clientKube.CoreV1().Secrets("openshift-config").Get(context.TODO(), "pull-secret", metav1.GetOptions{})
+		if err != nil {
+			return "", fmt.Errorf("failed to get pull-secret from openshift-config: %v", err)
+		}
+		// Create the secret in open-cluster-management-observability namespace
+		newSecret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "multiclusterhub-operator-pull-secret",
+				Namespace: "open-cluster-management",
+			},
+			Type: corev1.SecretTypeDockerConfigJson,
+			Data: map[string][]byte{
+				".dockerconfigjson": secret.Data[".dockerconfigjson"],
+			},
+		}
+		_, err = clientKube.CoreV1().Secrets("open-cluster-management").Create(context.TODO(), newSecret, metav1.CreateOptions{})
+		if err != nil && !k8sErrors.IsAlreadyExists(err) {
+			return "", fmt.Errorf("failed to create pull-secret in open-cluster-management-observability: %v", err)
+		}
+		return newSecret.Name, nil
 	}
 
 	ips := spec["imagePullSecret"].(string)
