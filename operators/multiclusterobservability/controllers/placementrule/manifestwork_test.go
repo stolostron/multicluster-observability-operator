@@ -44,7 +44,6 @@ const (
 
 func init() {
 	os.Setenv("UNIT_TEST", "true")
-	os.Setenv("SPOKE_NAMESPACE", "test-spoke-namespace")
 }
 
 func newTestMCO() *mcov1beta2.MultiClusterObservability {
@@ -82,12 +81,10 @@ func newMockKubeClient() kubernetes.Interface {
 	// Only include standard Kubernetes objects, not OpenShift-specific objects like Route
 	k8sObjects := []runtime.Object{
 		NewAmAccessorSA(),             // ServiceAccount (Kubernetes)
-		NewAmAccessorTokenSecret(),    // Secret (Kubernetes)
 		newCASecret(),                 // Secret (Kubernetes)
 		newCertSecret(mcoNamespace),   // Secret (Kubernetes)
 		NewMetricsAllowListCM(),       // ConfigMap (Kubernetes)
 		NewMetricsCustomAllowListCM(), // ConfigMap (Kubernetes)
-		// Note: Excluding OpenShift Route objects as they cause registration errors
 	}
 
 	return &mockKubeClient{
@@ -308,23 +305,6 @@ func NewAmAccessorSA() *corev1.ServiceAccount {
 	}
 }
 
-func NewAmAccessorTokenSecret() *corev1.Secret {
-	return &corev1.Secret{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Secret",
-			APIVersion: "v1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      config.AlertmanagerAccessorSecretName + "-token-xxx",
-			Namespace: mcoNamespace,
-		},
-		Data: map[string][]byte{
-			"token": []byte("xxxxx"),
-		},
-		Type: corev1.SecretTypeOpaque,
-	}
-}
-
 func newCluster(name string, annotation map[string]string) *clusterv1.ManagedCluster {
 	return &clusterv1.ManagedCluster{
 		TypeMeta: metav1.TypeMeta{
@@ -380,7 +360,6 @@ func getRuntimeObjects() []runtime.Object {
 		NewMetricsAllowListCM(),
 		NewMetricsCustomAllowListCM(),
 		NewAmAccessorSA(),
-		NewAmAccessorTokenSecret(),
 		newCluster(clusterName, map[string]string{
 			ClusterImageRegistriesAnnotation: newAnnotationRegistries([]Registry{
 				{Source: "quay.io/stolostron", Mirror: "registry_server/stolostron"}},
@@ -548,6 +527,25 @@ func TestManifestWork(t *testing.T) {
 			}
 			if hubInfo.UWMAlertingDisabled {
 				t.Fatalf("UWM alerting should be enabled in the hub info secret")
+			}
+		}
+	}
+
+	// Check that AlertmanagerAccessorSecret contains the token and expiration
+	for _, manifest := range found.Spec.Workload.Manifests {
+		obj := &unstructured.Unstructured{}
+		obj.UnmarshalJSON(manifest.Raw)
+		if obj.GetKind() == "Secret" && obj.GetName() == config.AlertmanagerAccessorSecretName {
+			if data, exists := obj.Object["data"]; exists {
+				dataMap := data.(map[string]any)
+				if _, exists := dataMap["token"]; !exists {
+					t.Fatalf("Failed to find token  in amAccessorSecret")
+				}
+				if _, exists := dataMap["token-expiration"]; !exists {
+					t.Fatalf("Failed to find token-expiration in amAccessorSecret")
+				}
+			} else {
+				t.Fatalf("Failed to find data inamAccessorSecret")
 			}
 		}
 	}

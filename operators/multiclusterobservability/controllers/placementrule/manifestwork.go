@@ -691,15 +691,12 @@ func generateAmAccessorTokenSecret(kubeClient kubernetes.Interface) (*corev1.Sec
 	if amAccessorTokenSecret != nil {
 		if expirationBytes, exists := amAccessorTokenSecret.Data["token-expiration"]; exists {
 			expiration := string(expirationBytes)
-			log.Info("Expiration string", "expiration", expiration)
 			if expiration, err := time.Parse(time.RFC3339, expiration); err == nil {
 				expectedDuration := time.Duration(8640*3600) * time.Second
 
-				log.Info("Check time until expiration", "until expiration", time.Until(expiration))
 				percentOfExp := float64(time.Until(expiration)) / float64(expectedDuration)
-				log.Info("Check if 80% of expiration is reached", "% of expiration", float64(time.Until(expiration))/float64(expectedDuration))
 				if percentOfExp >= 0.2 {
-					log.Info("Current amAccessorTokenSecret is not near expiration, returning it")
+					// Current amAccessorTokenSecret is not near expiration, returning it
 					return amAccessorTokenSecret, nil
 				}
 			}
@@ -711,15 +708,10 @@ func generateAmAccessorTokenSecret(kubeClient kubernetes.Interface) (*corev1.Sec
 		config.AlertmanagerAccessorSAName,
 		metav1.GetOptions{})
 	if err != nil {
-		if k8serrors.IsNotFound(err) {
-			log.Info("Kubernetes client - ServiceAccount not found, but controller-runtime client found it!",
-				"name", config.AlertmanagerAccessorSAName, "namespace", config.GetDefaultNamespace())
-		} else {
-			log.Error(err, "Kubernetes client - Failed to get Alertmanager accessor serviceaccount",
-				"name", config.AlertmanagerAccessorSAName,
-				"namespace", config.GetDefaultNamespace())
-			return nil, err
-		}
+		log.Error(err, "Kubernetes client - Failed to get Alertmanager accessor serviceaccount",
+			"name", config.AlertmanagerAccessorSAName,
+			"namespace", config.GetDefaultNamespace())
+		return nil, err
 	}
 
 	// Starting with kube 1.24 (ocp 4.11), the k8s won't generate secrets any longer
@@ -729,7 +721,7 @@ func generateAmAccessorTokenSecret(kubeClient kubernetes.Interface) (*corev1.Sec
 	// We will instead create our own token secret, and bind it to the service account
 	tokenRequest, err := kubeClient.CoreV1().ServiceAccounts(config.GetDefaultNamespace()).CreateToken(context.TODO(), config.AlertmanagerAccessorSAName, &authv1.TokenRequest{
 		Spec: authv1.TokenRequestSpec{
-			ExpirationSeconds: ptr.To(int64(8640 * 3600)), // set to 364 days
+			ExpirationSeconds: ptr.To(int64(8640 * 3600)), // expires in 364 days
 		},
 	}, metav1.CreateOptions{})
 
