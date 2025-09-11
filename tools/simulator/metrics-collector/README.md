@@ -109,8 +109,6 @@ By default, `setup-metrics-collector.sh` is using metrics data defined in env `M
 METRICS_IMAGE=<example/metrics-data:latest> ./generate-metrics-data.sh
 ```
 
-> _Note:_ if you want to generate metrics data against OCP 3.11 cluster, add `IS_GENERATING_OCP311_METRICS=true` before the command above.
-
 ## Setup metrics collector with your own metrics data source
 
 Running below command to setup metrics collectors with your own data source:
