@@ -2,7 +2,7 @@
 // Copyright Contributors to the Open Cluster Management project
 // Licensed under the Apache License 2.0
 
-package analytics
+package rightsizing
 
 import (
 	"context"
@@ -15,8 +15,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
-	rsnamespace "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/multiclusterobservability/analytics/rs-namespace"
-	rsutility "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/multiclusterobservability/analytics/rs-utility"
+	rsnamespace "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/analytics/rightsizing/rs-namespace"
+	rsutility "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/analytics/rightsizing/rs-utility"
 	clusterv1beta1 "open-cluster-management.io/api/cluster/v1beta1"
 	policyv1 "open-cluster-management.io/governance-policy-propagator/api/v1"
 )
