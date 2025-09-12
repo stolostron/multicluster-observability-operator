@@ -615,7 +615,7 @@ func GetPullSecret(opt TestOptions) (string, error) {
 		}
 		_, err = clientKube.CoreV1().Secrets("open-cluster-management").Create(context.TODO(), newSecret, metav1.CreateOptions{})
 		if err != nil && !k8sErrors.IsAlreadyExists(err) {
-			return "", fmt.Errorf("failed to create pull-secret in open-cluster-management-observability: %v", err)
+			return "", fmt.Errorf("failed to create pull-secret in open-cluster-management %v", err)
 		}
 		return newSecret.Name, nil
 	}
