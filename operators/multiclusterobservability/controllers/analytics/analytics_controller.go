@@ -17,7 +17,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
-	analyticsctrl "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/analytics/rightsizing"
+	rightsizingctrl "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/analytics/rightsizing"
 	mcoctrl "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/multiclusterobservability"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	corev1 "k8s.io/api/core/v1"
@@ -60,7 +60,7 @@ func (r *AnalyticsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	// create rightsizing component
-	err = analyticsctrl.CreateRightSizingComponent(ctx, r.Client, instance)
+	err = rightsizingctrl.CreateRightSizingComponent(ctx, r.Client, instance)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to create rightsizing component: %w", err)
 	}
@@ -74,8 +74,8 @@ func (r *AnalyticsReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	ctx := context.Background()
 
 	mcoPred := mcoctrl.GetMCOPredicateFunc()
-	cmNamespaceRSPred := analyticsctrl.GetNamespaceRSConfigMapPredicateFunc(ctx, c)
-	cmVirtualizationRSPred := analyticsctrl.GetVirtualizationRSConfigMapPredicateFunc(ctx, c)
+	cmNamespaceRSPred := rightsizingctrl.GetNamespaceRSConfigMapPredicateFunc(ctx, c)
+	cmVirtualizationRSPred := rightsizingctrl.GetVirtualizationRSConfigMapPredicateFunc(ctx, c)
 
 	return ctrl.NewControllerManagedBy(mgr).
 		Named("rightsizing").
