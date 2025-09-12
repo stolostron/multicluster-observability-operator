@@ -2,7 +2,7 @@
 // Copyright Contributors to the Open Cluster Management project
 // Licensed under the Apache License 2.0
 
-package rsvirtualization
+package rsnamespace
 
 import (
 	"context"
@@ -18,7 +18,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
-	rsutility "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/multiclusterobservability/analytics/rs-utility"
+	rsutility "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/analytics/rightsizing/rs-utility"
 	clusterv1beta1 "open-cluster-management.io/api/cluster/v1beta1"
 	policyv1 "open-cluster-management.io/governance-policy-propagator/api/v1"
 )
@@ -39,7 +39,7 @@ func newTestMCO(binding string, enabled bool) *mcov1beta2.MultiClusterObservabil
 			Capabilities: &mcov1beta2.CapabilitiesSpec{
 				Platform: &mcov1beta2.PlatformCapabilitiesSpec{
 					Analytics: mcov1beta2.PlatformAnalyticsSpec{
-						VirtualizationRightSizingRecommendation: mcov1beta2.PlatformRightSizingRecommendationSpec{
+						NamespaceRightSizingRecommendation: mcov1beta2.PlatformRightSizingRecommendationSpec{
 							Enabled:          enabled,
 							NamespaceBinding: binding,
 						},
@@ -50,6 +50,7 @@ func newTestMCO(binding string, enabled bool) *mcov1beta2.MultiClusterObservabil
 	}
 }
 
+// Reset global state
 func resetGlobalState() {
 	ComponentState.Namespace = rsutility.DefaultNamespace
 	ComponentState.Enabled = false
@@ -102,7 +103,7 @@ func TestHandleRightSizing_FeatureEnabledNoNamespaceChange(t *testing.T) {
 	cm := &corev1.ConfigMap{}
 	err = client.Get(ctx, types.NamespacedName{
 		Name:      ConfigMapName,
-		Namespace: "open-cluster-management-observability", // config.GetDefaultNamespace()
+		Namespace: "open-cluster-management-observability",
 	}, cm)
 	require.NoError(t, err)
 	assert.Contains(t, cm.Data, "prometheusRuleConfig")
@@ -120,7 +121,7 @@ func TestHandleRightSizing_FeatureEnabledWithNamespaceChange(t *testing.T) {
 	existingCM := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      ConfigMapName,
-			Namespace: "open-cluster-management-observability", // config.GetDefaultNamespace()
+			Namespace: "open-cluster-management-observability",
 		},
 		Data: map[string]string{
 			"prometheusRuleConfig": `
@@ -152,18 +153,39 @@ spec:
 	assert.True(t, ComponentState.Enabled)
 }
 
-func TestGetRightSizingVirtualizationConfig_PlatformNotConfigured(t *testing.T) {
+func TestHandleRightSizing_ConfigMapCreationFailure(t *testing.T) {
+	defer resetGlobalState()
+
+	scheme := runtime.NewScheme() // Minimal scheme without ConfigMap support
+	require.NoError(t, mcov1beta2.AddToScheme(scheme))
+
+	mco := newTestMCO(rsutility.DefaultNamespace, true)
+
+	client := fake.NewClientBuilder().
+		WithScheme(scheme).
+		WithObjects(mco).
+		Build()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	err := HandleRightSizing(ctx, client, mco)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "rs - failed to fetch configmap")
+}
+
+func TestGetRightSizingNamespaceConfig_PlatformNotConfigured(t *testing.T) {
 	mco := &mcov1beta2.MultiClusterObservability{
 		ObjectMeta: metav1.ObjectMeta{Name: "observability"},
 		Spec:       mcov1beta2.MultiClusterObservabilitySpec{},
 	}
 
-	enabled, binding := GetRightSizingVirtualizationConfig(mco)
+	enabled, binding := GetRightSizingNamespaceConfig(mco)
 	assert.False(t, enabled)
 	assert.Empty(t, binding)
 }
 
-func TestGetRightSizingVirtualizationConfig_CapabilitiesNil(t *testing.T) {
+func TestGetRightSizingNamespaceConfig_CapabilitiesNil(t *testing.T) {
 	mco := &mcov1beta2.MultiClusterObservability{
 		ObjectMeta: metav1.ObjectMeta{Name: "observability"},
 		Spec: mcov1beta2.MultiClusterObservabilitySpec{
@@ -171,12 +193,12 @@ func TestGetRightSizingVirtualizationConfig_CapabilitiesNil(t *testing.T) {
 		},
 	}
 
-	enabled, binding := GetRightSizingVirtualizationConfig(mco)
+	enabled, binding := GetRightSizingNamespaceConfig(mco)
 	assert.False(t, enabled)
 	assert.Empty(t, binding)
 }
 
-func TestGetRightSizingVirtualizationConfig_PlatformNil(t *testing.T) {
+func TestGetRightSizingNamespaceConfig_PlatformNil(t *testing.T) {
 	mco := &mcov1beta2.MultiClusterObservability{
 		ObjectMeta: metav1.ObjectMeta{Name: "observability"},
 		Spec: mcov1beta2.MultiClusterObservabilitySpec{
@@ -186,33 +208,33 @@ func TestGetRightSizingVirtualizationConfig_PlatformNil(t *testing.T) {
 		},
 	}
 
-	enabled, binding := GetRightSizingVirtualizationConfig(mco)
+	enabled, binding := GetRightSizingNamespaceConfig(mco)
 	assert.False(t, enabled)
 	assert.Empty(t, binding)
 }
 
-func TestGetRightSizingVirtualizationConfig_FeatureEnabled(t *testing.T) {
+func TestGetRightSizingNamespaceConfig_FeatureEnabled(t *testing.T) {
 	mco := newTestMCO("custom-namespace", true)
 
-	enabled, binding := GetRightSizingVirtualizationConfig(mco)
+	enabled, binding := GetRightSizingNamespaceConfig(mco)
 	assert.True(t, enabled)
 	assert.Equal(t, "custom-namespace", binding)
 }
 
-func TestGetRightSizingVirtualizationConfig_FeatureDisabled(t *testing.T) {
+func TestGetRightSizingNamespaceConfig_FeatureDisabled(t *testing.T) {
 	mco := newTestMCO("custom-namespace", false)
 
-	enabled, binding := GetRightSizingVirtualizationConfig(mco)
+	enabled, binding := GetRightSizingNamespaceConfig(mco)
 	assert.False(t, enabled)
 	assert.Equal(t, "custom-namespace", binding) // Binding still returned even if disabled
 }
 
-// Note: CleanupRSVirtualizationResources is a thin wrapper around rsutility.CleanupComponentResources
+// Note: CleanupRSNamespaceResources is a thin wrapper around rsutility.CleanupComponentResources
 // that only adds package-specific componentConfig. The core cleanup logic is extensively
 // tested in rs-utility/component_test.go. This test focuses on verifying that the
 // wrapper correctly uses the expected componentConfig.
 
-func TestCleanupRSVirtualizationResources_UsesCorrectComponentConfig(t *testing.T) {
+func TestCleanupRSNamespaceResources_UsesCorrectComponentConfig(t *testing.T) {
 	scheme := setupTestScheme(t)
 
 	client := fake.NewClientBuilder().
@@ -224,8 +246,8 @@ func TestCleanupRSVirtualizationResources_UsesCorrectComponentConfig(t *testing.
 
 	// Test that the function executes without error (basic smoke test)
 	// The actual cleanup logic is tested comprehensively in rs-utility/component_test.go
-	CleanupRSVirtualizationResources(ctx, client, rsutility.DefaultNamespace, false)
-	CleanupRSVirtualizationResources(ctx, client, rsutility.DefaultNamespace, true)
+	CleanupRSNamespaceResources(ctx, client, rsutility.DefaultNamespace, false)
+	CleanupRSNamespaceResources(ctx, client, rsutility.DefaultNamespace, true)
 
 	// Test passes if no panic or error occurs, confirming the wrapper works correctly
 }

@@ -7,7 +7,7 @@ package rsnamespace
 import (
 	"testing"
 
-	rsutility "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/multiclusterobservability/analytics/rs-utility"
+	rsutility "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/analytics/rightsizing/rs-utility"
 	"github.com/stretchr/testify/assert"
 )
 

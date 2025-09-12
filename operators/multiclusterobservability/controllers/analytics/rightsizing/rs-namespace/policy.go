@@ -2,18 +2,18 @@
 // Copyright Contributors to the Open Cluster Management project
 // Licensed under the Apache License 2.0
 
-package rsvirtualization
+package rsnamespace
 
 import (
 	"context"
 
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
-	rsutility "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/multiclusterobservability/analytics/rs-utility"
+	rsutility "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/analytics/rightsizing/rs-utility"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// CreateOrUpdateVirtualizationPrometheusRulePolicy creates or updates the PrometheusRule policy for virtualization
-func CreateOrUpdateVirtualizationPrometheusRulePolicy(
+// CreateOrUpdatePrometheusRulePolicy creates or updates the PrometheusRule policy
+func CreateOrUpdatePrometheusRulePolicy(
 	ctx context.Context,
 	c client.Client,
 	prometheusRule monitoringv1.PrometheusRule,
