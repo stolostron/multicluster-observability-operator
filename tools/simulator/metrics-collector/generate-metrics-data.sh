@@ -47,15 +47,9 @@ source ${WORKDIR}/../../../.bingo/variables.env
 
 function get_metrics_list() {
   echo "getting metrics list..."
-  if [[ -z ${IS_GENERATING_OCP311_METRICS} ]]; then
-    matches=$(curl -L ${METRICS_ALLOW_LIST_URL} | $GOJSONTOYAML --yamltojson | jq -r '.data."metrics_list.yaml"' | $GOJSONTOYAML --yamltojson | jq -r '.matches' | jq '"{" + .[] + "}"')
-    names=$(curl -L ${METRICS_ALLOW_LIST_URL} | $GOJSONTOYAML --yamltojson | jq -r '.data."metrics_list.yaml"' | $GOJSONTOYAML --yamltojson | jq -r '.names' | jq '"{__name__=\"" + .[] + "\"}"')
-    echo $matches $names | jq -s . >${METRICS_JSON_OUT}
-  else
-    matches=$(curl -L ${METRICS_ALLOW_LIST_URL} | $GOJSONTOYAML --yamltojson | jq -r '.data."ocp311_metrics_list.yaml"' | $GOJSONTOYAML --yamltojson | jq -r '.matches' | jq '"{" + .[] + "}"')
-    names=$(curl -L ${METRICS_ALLOW_LIST_URL} | $GOJSONTOYAML --yamltojson | jq -r '.data."ocp311_metrics_list.yaml"' | $GOJSONTOYAML --yamltojson | jq -r '.names' | jq '"{__name__=\"" + .[] + "\"}"')
-    echo $matches $names | jq -s . >${METRICS_JSON_OUT}
-  fi
+  matches=$(curl -L ${METRICS_ALLOW_LIST_URL} | $GOJSONTOYAML --yamltojson | jq -r '.data."metrics_list.yaml"' | $GOJSONTOYAML --yamltojson | jq -r '.matches' | jq '"{" + .[] + "}"')
+  names=$(curl -L ${METRICS_ALLOW_LIST_URL} | $GOJSONTOYAML --yamltojson | jq -r '.data."metrics_list.yaml"' | $GOJSONTOYAML --yamltojson | jq -r '.names' | jq '"{__name__=\"" + .[] + "\"}"')
+  echo $matches $names | jq -s . >${METRICS_JSON_OUT}
 }
 
 function get_recordingrules_list() {
