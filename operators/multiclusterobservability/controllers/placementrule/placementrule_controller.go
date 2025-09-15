@@ -361,7 +361,7 @@ func (r *PlacementRuleReconciler) ensureMCOAResources(ctx context.Context, mco *
 	}
 	resourcesToCreate = append(resourcesToCreate, hubServerCaCertSecret)
 
-	amAccessorTokenSecret, err := generateAmAccessorTokenSecret(r.KubeClient)
+	amAccessorTokenSecret, err := generateAmAccessorTokenSecret(r.Client, r.KubeClient)
 	if err != nil {
 		return fmt.Errorf("failed to generate alertManager token secret: %w", err)
 	}
@@ -1019,7 +1019,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				// wait 10s for access_token of alertmanager and generate the secret that contains the access_token
 				if err := wait.PollUntilContextTimeout(context.Background(), 2*time.Second, 10*time.Second, true, func(ctx context.Context) (bool, error) {
 					var err error
-					if amAccessorTokenSecret, err = generateAmAccessorTokenSecret(r.KubeClient); err == nil {
+					if amAccessorTokenSecret, err = generateAmAccessorTokenSecret(r.Client, r.KubeClient); err == nil {
 						return true, nil
 					}
 					return false, err
@@ -1036,7 +1036,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				e.ObjectNew.GetNamespace() == config.GetDefaultNamespace()) &&
 				e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() {
 				// regenerate the secret that contains the access_token for the Alertmanager in the Hub cluster
-				amAccessorTokenSecret, _ = generateAmAccessorTokenSecret(r.KubeClient)
+				amAccessorTokenSecret, _ = generateAmAccessorTokenSecret(r.Client, r.KubeClient)
 				return true
 			}
 			return false
