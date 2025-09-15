@@ -253,7 +253,7 @@ func generateGlobalManifestResources(ctx context.Context, c client.Client, mco *
 	// inject the alertmanager accessor bearer token secret
 	if amAccessorTokenSecret == nil {
 		var err error
-		if amAccessorTokenSecret, err = generateAmAccessorTokenSecret(kubeClient); err != nil {
+		if amAccessorTokenSecret, err = generateAmAccessorTokenSecret(c, kubeClient); err != nil {
 			return nil, nil, err
 		}
 	}
@@ -681,10 +681,15 @@ func deleteObject[T client.Object](ctx context.Context, c client.Client, obj T) 
 
 // generateAmAccessorTokenSecret generates the secret that contains the access_token
 // for the Alertmanager in the Hub cluster
-func generateAmAccessorTokenSecret(kubeClient kubernetes.Interface) (*corev1.Secret, error) {
+func generateAmAccessorTokenSecret(cl client.Client, kubeClient kubernetes.Interface) (*corev1.Secret, error) {
 
 	if kubeClient == nil {
 		return nil, fmt.Errorf("kubeClient is required but was nil")
+	}
+	// if it exists, delete the previous unbound token secret for the Alertmanager accessor service account
+	err := deleteAlertmanagerAccessorTokenSecret(context.TODO(), cl)
+	if err != nil {
+		log.Error(err, "Failed to delete alertmanager accessor token secret")
 	}
 
 	// Check expiration on amAccessorTokenSecret
@@ -747,6 +752,29 @@ func generateAmAccessorTokenSecret(kubeClient kubernetes.Interface) (*corev1.Sec
 			"token-expiration": []byte(tokenRequest.Status.ExpirationTimestamp.Format(time.RFC3339)),
 		},
 	}, nil
+}
+
+// deleteAlertmanagerAccessorTokenSecret deletes the previous unbound token secret
+func deleteAlertmanagerAccessorTokenSecret(ctx context.Context, cl client.Client) error {
+
+	secretToDelete := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      config.AlertmanagerAccessorSAName + "-token",
+			Namespace: config.GetDefaultNamespace(),
+		},
+	}
+
+	err := cl.Delete(ctx, secretToDelete, &client.DeleteOptions{})
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			// Unbound token secret not found
+			return nil
+		}
+		return fmt.Errorf("failed to delete secret %s/%s: %w", secretToDelete.Namespace, secretToDelete.Name, err)
+	}
+	log.Info("Removed depricated alertmanager accessor token secret", "name", config.AlertmanagerAccessorSAName+"-token", "namespace", config.GetDefaultNamespace())
+
+	return nil
 }
 
 // generatePullSecret generates the image pull secret for mco

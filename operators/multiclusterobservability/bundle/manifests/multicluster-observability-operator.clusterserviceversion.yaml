@@ -117,6 +117,12 @@ spec:
           verbs:
           - create
         - apiGroups:
+          - ""
+          resources:
+          - serviceaccounts/token
+          verbs:
+          - create
+        - apiGroups:
           - apps
           resources:
           - deployments
