@@ -2,7 +2,7 @@
 // Copyright Contributors to the Open Cluster Management project
 // Licensed under the Apache License 2.0
 
-package rightsizing
+package analytics
 
 import (
 	"context"
@@ -17,16 +17,16 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
+	rightsizingctrl "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/analytics/rightsizing"
 	mcoctrl "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/multiclusterobservability"
-	analyticsctrl "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/multiclusterobservability/analytics"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	corev1 "k8s.io/api/core/v1"
 )
 
 var log = logf.Log.WithName("controller_rightsizing")
 
-// RightSizingReconciler reconciles a MultiClusterObservability object
-type RightSizingReconciler struct {
+// AnalyticsReconciler reconciles a MultiClusterObservability object
+type AnalyticsReconciler struct {
 	Client client.Client
 	Log    logr.Logger
 	Scheme *runtime.Scheme
@@ -36,7 +36,7 @@ type RightSizingReconciler struct {
 // +kubebuilder:rbac:groups=observability.open-cluster-management.io,resources=multiclusterobservabilities/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=observability.open-cluster-management.io,resources=multiclusterobservabilities/finalizers,verbs=update
 
-func (r *RightSizingReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *AnalyticsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace", req.Namespace, "Request.Name", req.Name)
 	reqLogger.Info("Reconciling RightSizing")
 
@@ -60,7 +60,7 @@ func (r *RightSizingReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	}
 
 	// create rightsizing component
-	err = analyticsctrl.CreateRightSizingComponent(ctx, r.Client, instance)
+	err = rightsizingctrl.CreateRightSizingComponent(ctx, r.Client, instance)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to create rightsizing component: %w", err)
 	}
@@ -69,13 +69,13 @@ func (r *RightSizingReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *RightSizingReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *AnalyticsReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	c := mgr.GetClient()
 	ctx := context.Background()
 
 	mcoPred := mcoctrl.GetMCOPredicateFunc()
-	cmNamespaceRSPred := analyticsctrl.GetNamespaceRSConfigMapPredicateFunc(ctx, c)
-	cmVirtualizationRSPred := analyticsctrl.GetVirtualizationRSConfigMapPredicateFunc(ctx, c)
+	cmNamespaceRSPred := rightsizingctrl.GetNamespaceRSConfigMapPredicateFunc(ctx, c)
+	cmVirtualizationRSPred := rightsizingctrl.GetVirtualizationRSConfigMapPredicateFunc(ctx, c)
 
 	return ctrl.NewControllerManagedBy(mgr).
 		Named("rightsizing").

@@ -7,7 +7,7 @@ package rsnamespace
 import (
 	"context"
 
-	rsutility "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/multiclusterobservability/analytics/rs-utility"
+	rsutility "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/analytics/rightsizing/rs-utility"
 	clusterv1beta1 "open-cluster-management.io/api/cluster/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
