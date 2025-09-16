@@ -50,7 +50,7 @@ metadata:
       ]
     capabilities: Basic Install
     createdAt: "2025-09-15T20:29:19Z"
-    operators.operatorframework.io/builder: operator-sdk-v1.34.2
+    operators.operatorframework.io/builder: operator-sdk-unknown
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
   name: multicluster-observability-operator.v0.1.0
   namespace: placeholder
