@@ -49,8 +49,8 @@ metadata:
         }
       ]
     capabilities: Basic Install
-    createdAt: "2025-09-08T11:14:12Z"
-    operators.operatorframework.io/builder: operator-sdk-unknown
+    createdAt: "2025-09-16T11:33:18Z"
+    operators.operatorframework.io/builder: operator-sdk-v1.34.2
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
   name: multicluster-observability-operator.v0.1.0
   namespace: placeholder
@@ -110,6 +110,12 @@ spec:
           - patch
           - update
           - watch
+        - apiGroups:
+          - ""
+          resources:
+          - serviceaccounts/token
+          verbs:
+          - create
         - apiGroups:
           - apps
           resources:
