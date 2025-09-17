@@ -46,6 +46,9 @@ spec:
           args:
             - "--listen-address=0.0.0.0:8080"
             - "--metrics-server=https://{{OBSERVATORIUM_NAME}}-observatorium-api.{{MCO_NAMESPACE}}.svc.cluster.local:8080/api/metrics/v1/default"
+            - "--tls-ca-file=/var/rbac_proxy/ca/ca.crt"
+            - "--tls-cert-file=/var/rbac_proxy/certs/tls.crt"
+            - "--tls-key-file=/var/rbac_proxy/certs/tls.key"
           ports:
             - containerPort: 8080
               name: http
@@ -54,18 +57,18 @@ spec:
               mountPath: /var/rbac_proxy/ca
             - name: client-certs
               mountPath: /var/rbac_proxy/certs
-            - name: probe-command
-              mountPath: /etc/probe
           livenessProbe:
-            exec:
-              command:
-                - /bin/sh
-                - -c
-                - /etc/probe/check.sh
-            periodSeconds: 60
-            timeoutSeconds: 1
-            successThreshold: 1
-            failureThreshold: 3
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
           resources:
             requests:
               cpu: 20m
@@ -136,7 +139,3 @@ spec:
         - name: client-certs
           secret:
             secretName: observability-grafana-certs
-        - name: probe-command
-          configMap:
-            name: rbac-query-proxy-probe
-            defaultMode: 0777

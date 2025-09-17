@@ -5,24 +5,156 @@
 package proxy
 
 import (
-	"bytes"
+	"crypto/tls"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
+	"regexp"
+	"slices"
 	"strings"
 	"testing"
+	"time"
 
+	projectv1 "github.com/openshift/api/project/v1"
+	userv1 "github.com/openshift/api/user/v1"
+	"github.com/stretchr/testify/assert"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/rest"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/cache"
 	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/config"
-	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/util"
 )
+
+var promLabelRegex = regexp.MustCompile(`[^\w]+`)
+
+// MockManagedClusterInformer is a mock implementation of the ManagedClusterInformable interface.
+type MockManagedClusterInformer struct {
+	clusters       map[string]struct{}
+	regexLabelList []string
+}
+
+func (m *MockManagedClusterInformer) Run() {}
+func (m *MockManagedClusterInformer) HasSynced() bool {
+	return true
+}
+func (m *MockManagedClusterInformer) GetAllManagedClusterNames() map[string]struct{} {
+	if m.clusters == nil {
+		return map[string]struct{}{}
+	}
+	return m.clusters
+}
+func (m *MockManagedClusterInformer) GetManagedClusterLabelList() []string {
+	if m.regexLabelList == nil {
+		return []string{}
+	}
+	return m.regexLabelList
+}
+
+// MockAccessReviewer is a mock implementation of the AccessReviewer interface.
+type MockAccessReviewer struct {
+	metricsAccess map[string][]string
+	err           error
+}
+
+func (m *MockAccessReviewer) GetMetricsAccess(token string, extraArgs ...string) (map[string][]string, error) {
+	return m.metricsAccess, m.err
+}
+
+func TestNewProxy(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	serverURL, err := url.Parse(server.URL)
+	assert.NoError(t, err)
+
+	upi := cache.NewUserProjectInfo(t.Context(), 24*60*60*time.Second, 5*60*time.Second)
+
+	mockInformer := &MockManagedClusterInformer{}
+	mockAccessReviewer := &MockAccessReviewer{}
+
+	cfg := &rest.Config{Host: serverURL.Host}
+
+	p, err := NewProxy(cfg, serverURL, http.DefaultTransport, upi, mockInformer, mockAccessReviewer)
+	assert.NoError(t, err)
+	assert.NotNil(t, p)
+	assert.Equal(t, serverURL, p.metricsServerURL)
+	assert.NotNil(t, p.proxy)
+}
+
+func TestProxy_ServeHTTP(t *testing.T) {
+	var directorCalled bool
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		directorCalled = true
+		assert.Equal(t, "/api/metrics/v1/default/metrics/query", r.URL.Path)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	serverURL, err := url.Parse(server.URL)
+	assert.NoError(t, err)
+
+	// Create a custom transport that trusts the test server's certificate.
+	transport := &http.Transport{
+		TLSClientConfig: &tls.Config{
+			RootCAs: server.Client().Transport.(*http.Transport).TLSClientConfig.RootCAs,
+		},
+	}
+
+	apiServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.Path, projectsAPIPath) {
+			_, _ = w.Write([]byte(`{"items":[{"metadata":{"name":"dummy"},"spec":{}}]}`))
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer apiServer.Close()
+
+	apiServerURL, err := url.Parse(apiServer.URL)
+	assert.NoError(t, err)
+	cfg := &rest.Config{Host: apiServerURL.Host}
+
+	upi := cache.NewUserProjectInfo(t.Context(), 24*60*60*time.Second, 0)
+
+	mockInformer := &MockManagedClusterInformer{
+		clusters: map[string]struct{}{"dummy": {}},
+	}
+	mockAccessReviewer := &MockAccessReviewer{metricsAccess: map[string][]string{}}
+
+	p, err := NewProxy(cfg, serverURL, transport, upi, mockInformer, mockAccessReviewer)
+	assert.NoError(t, err)
+
+	scheme := runtime.NewScheme()
+	_ = userv1.AddToScheme(scheme)
+	_ = projectv1.AddToScheme(scheme)
+	mockUser := &userv1.User{ObjectMeta: metav1.ObjectMeta{Name: "~"}, FullName: "test-user"}
+	mockProjects := &projectv1.ProjectList{Items: []projectv1.Project{{ObjectMeta: metav1.ObjectMeta{Name: "dummy"}}}}
+	fakeClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(mockUser).WithLists(mockProjects).Build()
+	p.getKubeClientWithTokenFunc = func(token string) (client.Client, error) {
+		return fakeClient, nil
+	}
+
+	req := httptest.NewRequest("GET", "http://localhost/metrics/query?query=foo", nil)
+	req.Header.Set("X-Forwarded-User", "test")
+	req.Header.Set("X-Forwarded-Access-Token", "test")
+	w := httptest.NewRecorder()
+
+	p.ServeHTTP(w, req)
+
+	t.Logf("Response status: %d", w.Code)
+	t.Logf("Response body: %s", w.Body.String())
+
+	assert.True(t, directorCalled, "director was not called")
+}
 
 func TestNewEmptyMatrixHTTPBody(t *testing.T) {
 	body := newEmptyMatrixHTTPBody()
-
-	emptyMatrix := `{"status":"success","data":{"resultType":"matrix","result":[]}}`
-	if string(body) != emptyMatrix {
-		t.Errorf("(%v) is not the expected: (%v)", body, emptyMatrix)
-	}
+	expected := `{"status":"success","data":{"resultType":"matrix","result":[]}}`
+	assert.Equal(t, expected, string(body))
 }
 
 type FakeResponse struct {
@@ -53,177 +185,387 @@ func (r *FakeResponse) WriteHeader(status int) {
 }
 
 func TestPreCheckRequest(t *testing.T) {
-	req, _ := http.NewRequest("GET", "http://127.0.0.1:3002/metrics/query?query=foo", nil)
-	resp := http.Response{
-		Body:    io.NopCloser(bytes.NewBufferString("test")),
-		Header:  make(http.Header),
-		Request: req,
+	scheme := runtime.NewScheme()
+	_ = userv1.AddToScheme(scheme)
+	_ = projectv1.AddToScheme(scheme)
+
+	// Mock user and projects.
+	// The user object is named "~" because the GetUserName function specifically looks for
+	// a user with this name as a special shortcut for the current user. The fake client
+	// needs an object with this exact name to satisfy the Get call.
+	mockUser := &userv1.User{ObjectMeta: metav1.ObjectMeta{Name: "~"}, FullName: "test-user"}
+	mockProjects := &projectv1.ProjectList{Items: []projectv1.Project{{ObjectMeta: metav1.ObjectMeta{Name: "p"}}}}
+	fakeClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(mockUser).WithLists(mockProjects).Build()
+
+	p := &Proxy{
+		managedClusterInformer: &MockManagedClusterInformer{clusters: map[string]struct{}{"p": {}}},
+		accessReviewer:         &MockAccessReviewer{},
 	}
-	resp.Request.Header.Set("X-Forwarded-Access-Token", "test")
-	resp.Request.Header.Set("X-Forwarded-User", "test")
-	util.InitUserProjectInfo()
-	up := util.NewUserProject("test", "test", []string{"p"})
-	util.UpdateUserProject(up)
-	util.InitAllManagedClusterNames()
-	clusters := util.GetAllManagedClusterNames()
-	clusters["p"] = "p"
-	err := preCheckRequest(req)
-	if err != nil {
-		t.Errorf("failed to test preCheckRequest: %v", err)
+	p.getKubeClientWithTokenFunc = func(token string) (client.Client, error) {
+		return fakeClient, nil
 	}
 
-	resp.Request.Header.Del("X-Forwarded-Access-Token")
-	resp.Request.Header.Add("Authorization", "Bearer test")
-	err = preCheckRequest(req)
-	if err != nil {
-		t.Errorf("failed to test preCheckRequest with bearer token: %v", err)
-	}
-	// Check if the token is set correctly
-	if resp.Request.Header.Get("X-Forwarded-Access-Token") != "test" {
-		t.Errorf("expected X-Forwarded-Access-Token to be set to 'test', got: %s", resp.Request.Header.Get("X-Forwarded-Access-Token"))
-	}
+	t.Run("Test valid request", func(t *testing.T) {
+		upi := cache.NewUserProjectInfo(t.Context(), time.Minute, time.Minute)
+		p.userProjectInfo = upi
 
-	resp.Request.Header.Del("X-Forwarded-User")
-	err = preCheckRequest(req)
-	if !strings.Contains(err.Error(), "failed to find user name") {
-		t.Errorf("failed to test preCheckRequest: %v", err)
-	}
+		req, _ := http.NewRequest("GET", "http://127.0.0.1:3002/metrics/query?query=foo", nil)
+		req.Header.Set("X-Forwarded-Access-Token", "test")
+		req.Header.Set("X-Forwarded-User", "test")
+		err := p.preCheckRequest(req)
+		assert.NoError(t, err)
+	})
 
-	resp.Request.Header.Del("X-Forwarded-Access-Token")
-	resp.Request.Header.Del("Authorization")
-	err = preCheckRequest(req)
-	if !strings.Contains(err.Error(), "found unauthorized user") {
-		t.Errorf("failed to test preCheckRequest: %v", err)
-	}
+	t.Run("Test with bearer token", func(t *testing.T) {
+		upi := cache.NewUserProjectInfo(t.Context(), time.Minute, time.Minute)
+		p.userProjectInfo = upi
 
+		req, _ := http.NewRequest("GET", "http://127.0.0.1:3002/metrics/query?query=foo", nil)
+		req.Header.Add("Authorization", "Bearer test")
+		err := p.preCheckRequest(req)
+		assert.NoError(t, err)
+		assert.Equal(t, "test", req.Header.Get("X-Forwarded-Access-Token"))
+	})
+
+	t.Run("Test with missing user, should be fetched automatically", func(t *testing.T) {
+		upi := cache.NewUserProjectInfo(t.Context(), time.Minute, time.Minute)
+		p.userProjectInfo = upi
+
+		req, _ := http.NewRequest("GET", "http://127.0.0.1:3002/metrics/query?query=foo", nil)
+		req.Header.Set("X-Forwarded-Access-Token", "test-new-token")
+		err := p.preCheckRequest(req)
+		assert.NoError(t, err)
+		assert.Equal(t, "~", req.Header.Get("X-Forwarded-User"))
+	})
+
+	t.Run("Test with missing token", func(t *testing.T) {
+		upi := cache.NewUserProjectInfo(t.Context(), time.Minute, time.Minute)
+		p.userProjectInfo = upi
+
+		req, _ := http.NewRequest("GET", "http://127.0.0.1:3002/metrics/query?query=foo", nil)
+		err := p.preCheckRequest(req)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "found unauthorized user")
+	})
 }
 
 func TestProxyRequest(t *testing.T) {
-	req := http.Request{}
-	req.URL = &url.URL{}
-	req.Header = http.Header(map[string][]string{})
-	proxyRequest(&req)
-	if req.Body != nil {
-		t.Errorf("(%v) is not the expected nil", req.Body)
+	t.Run("No-op for non-GET or non-relevant paths", func(t *testing.T) {
+		req := httptest.NewRequest("POST", "/", http.NoBody)
+		proxyRequest(req)
+		assert.Equal(t, http.NoBody, req.Body)
+		assert.Equal(t, "", req.Header.Get("Content-Type"))
+	})
+
+	t.Run("Converts GET to POST for relevant paths", func(t *testing.T) {
+		pathList := []string{
+			"/api/v1/query",
+			"/api/v1/query_range",
+			"/api/v1/series",
+		}
+
+		for _, path := range pathList {
+			req := httptest.NewRequest("GET", path+"?query=up", nil)
+			proxyRequest(req)
+			assert.Equal(t, http.MethodPost, req.Method)
+			assert.Equal(t, "application/x-www-form-urlencoded", req.Header.Get("Content-Type"))
+			body, err := io.ReadAll(req.Body)
+			assert.NoError(t, err)
+			assert.Equal(t, "query=up", string(body))
+		}
+	})
+}
+
+func newTestProxy(t *testing.T, labels []string) *Proxy {
+	mockInformer := &MockManagedClusterInformer{
+		regexLabelList: labels,
 	}
-	if req.Header.Get("Content-Type") != "" {
-		t.Errorf("(%v) is not the expected: (\"\")", req.Header.Get("Content-Type"))
+	// Create a dummy server for the metrics server URL.
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+	serverURL, err := url.Parse(server.URL)
+	assert.NoError(t, err)
+
+	cfg := &rest.Config{Host: serverURL.Host}
+
+	p, err := NewProxy(cfg, serverURL, server.Client().Transport, nil, mockInformer, nil)
+	assert.NoError(t, err)
+	return p
+}
+
+func TestHandleManagedClusterLabelQuery(t *testing.T) {
+	// The test should be responsible for providing the exact, final list.
+	// The real informer provides a sorted, sanitized list.
+	expectedLabels := []string{
+		"cloud",
+		"vendor",
+		promLabelRegex.ReplaceAllString(config.RequiredLabelList[0], "_"), // name
+		promLabelRegex.ReplaceAllString(config.RequiredLabelList[1], "_"), // cluster...
+	}
+	slices.Sort(expectedLabels)
+	p := newTestProxy(t, expectedLabels)
+
+	testCases := []struct {
+		name             string
+		method           string
+		path             string
+		body             io.Reader
+		expectedToHandle bool
+		expectedBody     string
+	}{
+		{
+			name:             "should handle POST to series endpoint with correct metric",
+			method:           "POST",
+			path:             "/api/v1/series",
+			body:             strings.NewReader("match[]=" + config.RBACProxyLabelMetricName),
+			expectedToHandle: true,
+			expectedBody:     `{"status":"success","data":[{"__name__":"acm_label_names","label_name":"cloud"},{"__name__":"acm_label_names","label_name":"cluster_open_cluster_management_io_clusterset"},{"__name__":"acm_label_names","label_name":"name"},{"__name__":"acm_label_names","label_name":"vendor"}]}`,
+		},
+		{
+			name:             "should not handle POST to series endpoint with other metric",
+			method:           "POST",
+			path:             "/api/v1/series",
+			body:             strings.NewReader("match[]=kube_pod_info"),
+			expectedToHandle: false,
+		},
+		{
+			name:             "should handle GET to series endpoint with correct metric",
+			method:           "GET",
+			path:             "/api/v1/series?match[]=" + config.RBACProxyLabelMetricName,
+			body:             nil,
+			expectedToHandle: true,
+			expectedBody:     `{"status":"success","data":[{"__name__":"acm_label_names","label_name":"cloud"},{"__name__":"acm_label_names","label_name":"cluster_open_cluster_management_io_clusterset"},{"__name__":"acm_label_names","label_name":"name"},{"__name__":"acm_label_names","label_name":"vendor"}]}`,
+		},
+		{
+			name:             "should not handle GET to series endpoint with other metric",
+			method:           "GET",
+			path:             "/api/v1/series?match[]=kube_pod_info",
+			body:             nil,
+			expectedToHandle: false,
+		},
+		{
+			name:             "should handle GET to label values endpoint with correct metric",
+			method:           "GET",
+			path:             "/api/v1/label/label_name/values?match[]=" + config.RBACProxyLabelMetricName,
+			body:             nil,
+			expectedToHandle: true,
+			expectedBody:     `{"status":"success","data":["cloud","cluster_open_cluster_management_io_clusterset","name","vendor"]}`,
+		},
+		{
+			name:             "should not handle GET to label values endpoint with other metric",
+			method:           "GET",
+			path:             "/api/v1/label/label_name/values?match[]=kube_pod_info",
+			body:             nil,
+			expectedToHandle: false,
+		},
+		{
+			name:             "should not handle irrelevant path",
+			method:           "GET",
+			path:             "/api/v1/query",
+			body:             nil,
+			expectedToHandle: false,
+		},
 	}
 
-	req.Method = http.MethodGet
-	pathList := []string{
-		"/api/v1/query",
-		"/api/v1/query_range",
-		"/api/v1/series",
-	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			resp := NewFakeResponse(t)
+			req := httptest.NewRequest(tc.method, tc.path, tc.body)
+			handled := p.handleManagedClusterLabelQuery(resp, req)
+			assert.Equal(t, tc.expectedToHandle, handled)
 
-	for _, path := range pathList {
-		req.URL.Path = path
-		proxyRequest(&req)
-		if req.Method != http.MethodPost {
-			t.Errorf("(%v) is not the expected: (%v)", http.MethodPost, req.Method)
-		}
-
-		if req.Header.Get("Content-Type") != "application/x-www-form-urlencoded" {
-			t.Errorf("(%v) is not the expected: (%v)", req.Header.Get("Content-Type"), "application/x-www-form-urlencoded")
-		}
-
-		if req.Body == nil {
-			t.Errorf("(%v) is not the expected non-nil", req.Body)
-		}
-
-		if req.URL.Scheme != "" {
-			t.Errorf("(%v) is not the expected \"\"", req.URL.Scheme)
-		}
-
-		if req.URL.Host != "" {
-			t.Errorf("(%v) is not the expected \"\"", req.URL.Host)
-		}
+			if tc.expectedToHandle {
+				assert.JSONEq(t, tc.expectedBody, string(resp.body))
+			}
+		})
 	}
 }
 
-func TestModifyAPISeriesResponseSeriesPOST(t *testing.T) {
-	testCase := struct {
-		name     string
-		expected bool
+func TestCreateQueryResponse(t *testing.T) {
+	testCases := []struct {
+		name         string
+		labels       []string
+		metricName   string
+		urlPath      string
+		expectedJSON string
+		expectErr    bool
 	}{
-		"should modify the api series response",
-		true,
+		{
+			name:         "label values path with multiple labels",
+			labels:       []string{"cloud", "vendor"},
+			metricName:   "acm_managed_cluster_labels",
+			urlPath:      apiLabelNameValuesPath,
+			expectedJSON: `{"status":"success","data":["cloud","vendor"]}`,
+			expectErr:    false,
+		},
+		{
+			name:         "label values path with no labels",
+			labels:       []string{},
+			metricName:   "acm_managed_cluster_labels",
+			urlPath:      apiLabelNameValuesPath,
+			expectedJSON: `{"status":"success","data":[]}`,
+			expectErr:    false,
+		},
+		{
+			name:         "series path with multiple labels",
+			labels:       []string{"cloud", "vendor"},
+			metricName:   "acm_managed_cluster_labels",
+			urlPath:      apiSeriesPath,
+			expectedJSON: `{"status":"success","data":[{"__name__":"acm_managed_cluster_labels","label_name":"cloud"},{"__name__":"acm_managed_cluster_labels","label_name":"vendor"}]}`,
+			expectErr:    false,
+		},
+		{
+			name:         "series path with no labels",
+			labels:       []string{},
+			metricName:   "acm_managed_cluster_labels",
+			urlPath:      apiSeriesPath,
+			expectedJSON: `{"status":"success","data":[]}`,
+			expectErr:    false,
+		},
 	}
-	req := http.Request{}
-	req.URL = &url.URL{}
-	req.URL.Path = "/api/v1/series"
-	req.Method = "POST"
-	req.Header = http.Header(map[string][]string{})
 
-	stringReader := strings.NewReader(config.GetRBACProxyLabelMetricName())
-	stringReadClose := io.NopCloser(stringReader)
-	req.Body = stringReadClose
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			actualBytes, err := createQueryResponse(tc.labels, tc.metricName, tc.urlPath)
 
-	resp := NewFakeResponse(t)
-	config.GetManagedClusterLabelList().RegexLabelList = []string{"cloud", "vendor"}
-	if ok := shouldModifyAPISeriesResponse(resp, &req); !ok {
-		t.Errorf("case (%v) output: (%v) is not the expected: (%v)", testCase.name, ok, testCase.expected)
-	}
-
-	stringReader = strings.NewReader("kube_pod_info")
-	stringReadClose = io.NopCloser(stringReader)
-	req.Body = stringReadClose
-
-	if ok := shouldModifyAPISeriesResponse(resp, &req); ok {
-		t.Errorf("case (%v) output: (%v) is not the expected: (%v)", testCase.name, ok, !testCase.expected)
+			if tc.expectErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				assert.JSONEq(t, tc.expectedJSON, string(actualBytes))
+			}
+		})
 	}
 }
 
-func TestModifyAPISeriesResponseSeriesGET(t *testing.T) {
-	testCase := struct {
-		name     string
-		expected bool
+// TestProxyIntegrationScenarios acts as a component integration test for various user permission scenarios.
+func TestProxyIntegrationScenarios(t *testing.T) {
+	testCases := []struct {
+		name                          string
+		token                         string
+		apiProjectsResponse           string
+		accessReviewResponse          map[string][]string
+		expectedUpstreamQueryContains string
+		expectedResponseCode          int
 	}{
-		"should modify the api series response",
-		true,
-	}
-	req := http.Request{}
-	req.URL, _ = url.Parse("https://dummy.com/api/v1/series?match[]=" + config.GetRBACProxyLabelMetricName())
-	req.Method = "GET"
-	req.Header = http.Header(map[string][]string{})
-
-	resp := NewFakeResponse(t)
-	config.GetManagedClusterLabelList().RegexLabelList = []string{"cloud", "vendor"}
-	if ok := shouldModifyAPISeriesResponse(resp, &req); !ok {
-		t.Errorf("case (%v) output: (%v) is not the expected: (%v)", testCase.name, ok, testCase.expected)
-	}
-
-	req.URL, _ = url.Parse("https://dummy.com/api/v1/series?match[]=kube_pod_info")
-
-	if ok := shouldModifyAPISeriesResponse(resp, &req); ok {
-		t.Errorf("case (%v) output: (%v) is not the expected: (%v)", testCase.name, ok, !testCase.expected)
-	}
-}
-
-func TestModifyAPISeriesResponseLabelsGET(t *testing.T) {
-	testCase := struct {
-		name     string
-		expected bool
-	}{
-		"should modify the api series response",
-		true,
-	}
-	req := http.Request{}
-	req.URL, _ = url.Parse("https://dummy.com/api/v1/label/label_name/values?match[]=" + config.GetRBACProxyLabelMetricName())
-	req.Method = "GET"
-
-	req.Header = http.Header(map[string][]string{})
-
-	resp := NewFakeResponse(t)
-	config.GetManagedClusterLabelList().RegexLabelList = []string{"cloud", "vendor"}
-	if ok := shouldModifyAPISeriesResponse(resp, &req); !ok {
-		t.Errorf("case (%v) output: (%v) is not the expected: (%v)", testCase.name, ok, testCase.expected)
+		{
+			name:                          "Admin user with access to all clusters",
+			token:                         "admin-token",
+			apiProjectsResponse:           `{"items":[{"metadata":{"name":"cluster1"}},{"metadata":{"name":"cluster2"}}]}`,
+			accessReviewResponse:          map[string][]string{"cluster1": {"*"}, "cluster2": {"*"}},
+			expectedUpstreamQueryContains: "query=up", // No cluster filter
+			expectedResponseCode:          http.StatusOK,
+		},
+		{
+			name:                          "Scoped user with access to one cluster",
+			token:                         "scoped-token",
+			apiProjectsResponse:           `{"items":[{"metadata":{"name":"cluster1"}}]}`,
+			accessReviewResponse:          map[string][]string{"cluster1": {"*"}},
+			expectedUpstreamQueryContains: `query=up{cluster="cluster1"}`,
+			expectedResponseCode:          http.StatusOK,
+		},
+		{
+			name:                          "User with no cluster access",
+			token:                         "no-access-token",
+			apiProjectsResponse:           `{"items":[]}`,
+			accessReviewResponse:          map[string][]string{},
+			expectedUpstreamQueryContains: `query=up{cluster=""}`,
+			expectedResponseCode:          http.StatusOK, // Returns empty matrix
+		},
 	}
 
-	req.URL, _ = url.Parse("https://dummy.com/api/v1/label/label_name/values?matchf[]=kube_pod_info")
+	// Set up shared mock servers
+	var upstreamCalled bool
+	var receivedUpstreamQuery string
+	metricsServer := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		upstreamCalled = true
+		body, _ := io.ReadAll(r.Body)
+		receivedUpstreamQuery, _ = url.QueryUnescape(string(body))
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"status":"success"}`))
+	}))
+	defer metricsServer.Close()
+	metricsServerURL, err := url.Parse(metricsServer.URL)
+	assert.NoError(t, err)
 
-	if ok := shouldModifyAPISeriesResponse(resp, &req); ok {
-		t.Errorf("case (%v) output: (%v) is not the expected: (%v)", testCase.name, ok, !testCase.expected)
+	// The mock API server will serve different project lists based on the token.
+	apiServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+		for _, tc := range testCases {
+			if tc.token == token {
+				if strings.HasSuffix(r.URL.Path, "/users/~") {
+					w.Header().Set("Content-Type", "application/json")
+					_, _ = w.Write([]byte(`{"metadata":{"name":"test-user"}}`))
+					return
+				}
+				if strings.HasSuffix(r.URL.Path, "/projects") {
+					w.Header().Set("Content-Type", "application/json")
+					_, _ = w.Write([]byte(tc.apiProjectsResponse))
+					return
+				}
+			}
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer apiServer.Close()
+
+	apiServerURL, err := url.Parse(apiServer.URL)
+	assert.NoError(t, err)
+	cfg := &rest.Config{Host: apiServerURL.Host}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			scheme := runtime.NewScheme()
+			_ = userv1.AddToScheme(scheme)
+			_ = projectv1.AddToScheme(scheme)
+
+			// Reset mocks for each run
+			upstreamCalled = false
+			receivedUpstreamQuery = ""
+
+			transport := &http.Transport{
+				TLSClientConfig: &tls.Config{
+					RootCAs: metricsServer.Client().Transport.(*http.Transport).TLSClientConfig.RootCAs,
+				},
+			}
+			userProjectCache := cache.NewUserProjectInfo(t.Context(), time.Minute, time.Minute)
+
+			mockInformer := &MockManagedClusterInformer{
+				clusters: map[string]struct{}{"cluster1": {}, "cluster2": {}},
+			}
+			mockAccessReviewer := &MockAccessReviewer{
+				metricsAccess: tc.accessReviewResponse,
+			}
+
+			proxy, err := NewProxy(cfg, metricsServerURL, transport, userProjectCache, mockInformer, mockAccessReviewer)
+			assert.NoError(t, err)
+			proxy.getKubeClientWithTokenFunc = func(token string) (client.Client, error) {
+				// Based on the token, return a client with the correct mock data.
+				fakeClientBuilder := fake.NewClientBuilder().WithScheme(scheme)
+				mockUser := &userv1.User{ObjectMeta: metav1.ObjectMeta{Name: "~"}, FullName: "test-user"}
+				fakeClientBuilder.WithObjects(mockUser)
+				// This is a simplified mock. A real scenario would parse the apiProjectsResponse.
+				switch tc.token {
+				case "admin-token":
+					fakeClientBuilder.WithLists(&projectv1.ProjectList{Items: []projectv1.Project{{ObjectMeta: metav1.ObjectMeta{Name: "cluster1"}}, {ObjectMeta: metav1.ObjectMeta{Name: "cluster2"}}}})
+				case "scoped-token":
+					fakeClientBuilder.WithLists(&projectv1.ProjectList{Items: []projectv1.Project{{ObjectMeta: metav1.ObjectMeta{Name: "cluster1"}}}})
+				default:
+					fakeClientBuilder.WithLists(&projectv1.ProjectList{Items: []projectv1.Project{}})
+				}
+				return fakeClientBuilder.Build(), nil
+			}
+
+			req := httptest.NewRequest("GET", "http://localhost/api/v1/query?query=up", nil)
+			req.Header.Set("Authorization", "Bearer "+tc.token)
+			recorder := httptest.NewRecorder()
+			proxy.ServeHTTP(recorder, req)
+
+			assert.Equal(t, tc.expectedResponseCode, recorder.Code)
+			assert.True(t, upstreamCalled)
+			assert.Contains(t, receivedUpstreamQuery, tc.expectedUpstreamQueryContains)
+		})
 	}
 }

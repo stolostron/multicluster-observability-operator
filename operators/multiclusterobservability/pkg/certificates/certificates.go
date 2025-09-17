@@ -379,6 +379,10 @@ func getCA(c client.Client, isServer bool) (*x509.Certificate, *rsa.PrivateKey, 
 		return nil, nil, nil, err
 	}
 	block1, rest := pem.Decode(caSecret.Data["tls.crt"])
+	if block1 == nil {
+		err := fmt.Errorf("failed to decode ca cert: %s", caCertName)
+		return nil, nil, nil, err
+	}
 	caCertBytes := caSecret.Data["tls.crt"][:len(caSecret.Data["tls.crt"])-len(rest)]
 	caCerts, err := x509.ParseCertificates(block1.Bytes)
 	if err != nil {
