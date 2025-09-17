@@ -21,7 +21,7 @@ check-platform-metrics:
 	@cat $(PLATFORM_DASH_DIR)/prometheus-rule.yaml | yq '.spec' | promtool check rules
 	@go run cmd/rulescheck/main.go --scrape-configs=$(PLATFORM_DASH_DIR)/scrape-config.yaml \
 		--rules=$(PLATFORM_DASH_DIR)/prometheus-rule.yaml \
-		--ignored-rules-missing-definition=cluster:health:components:map \
+		--ignored-rules-missing-definition=cluster_health_components_map \
 		--ignore-duplicated-rules=namespace_workload_pod:kube_pod_owner:relabel
 	@rm -d $(TMPDIR)/dash-metrics
 
