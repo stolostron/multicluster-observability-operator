@@ -848,6 +848,18 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				)
 				return true
 			}
+			// Check if this secret might be a custom ingress certificate
+			if e.Object.GetNamespace() == config.OpenshiftIngressNamespace {
+				if isCustomIngressCertificate(c, e.Object.GetName()) {
+					hubInfoSecret, _ = generateHubInfoSecret(
+						c,
+						config.GetDefaultNamespace(),
+						spokeNameSpace,
+						ingressCtlCrdExists,
+					)
+					return true
+				}
+			}
 			return false
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
@@ -864,6 +876,19 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 					ingressCtlCrdExists,
 				)
 				return true
+			}
+			// Check if this secret might be a custom ingress certificate
+			if e.ObjectNew.GetNamespace() == config.OpenshiftIngressNamespace &&
+				e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() {
+				if isCustomIngressCertificate(c, e.ObjectNew.GetName()) {
+					hubInfoSecret, _ = generateHubInfoSecret(
+						c,
+						config.GetDefaultNamespace(),
+						spokeNameSpace,
+						ingressCtlCrdExists,
+					)
+					return true
+				}
 			}
 			return false
 		},
@@ -1102,5 +1127,27 @@ func isReconcileRequired(request ctrl.Request, managedCluster string) bool {
 		request.Namespace == managedCluster {
 		return true
 	}
+	return false
+}
+
+// isCustomIngressCertificate checks if the given secret name is referenced by the IngressController
+// as a custom default certificate
+func isCustomIngressCertificate(c client.Client, secretName string) bool {
+	ingressOperator := &operatorv1.IngressController{}
+	err := c.Get(context.TODO(), types.NamespacedName{
+		Name:      config.OpenshiftIngressOperatorCRName,
+		Namespace: config.OpenshiftIngressOperatorNamespace,
+	}, ingressOperator)
+	if err != nil {
+		log.Error(err, "Failed to get IngressController to check custom certificate")
+		return false
+	}
+
+	// Check if this secret is referenced as the custom default certificate
+	if ingressOperator.Spec.DefaultCertificate != nil &&
+		ingressOperator.Spec.DefaultCertificate.Name == secretName {
+		return true
+	}
+
 	return false
 }

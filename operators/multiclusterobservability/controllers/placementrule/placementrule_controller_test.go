@@ -640,3 +640,77 @@ func newAddonDeploymentConfig(name, namespace string) *addonv1alpha1.AddOnDeploy
 		},
 	}
 }
+
+// TestIsCustomIngressCertificate tests the custom ingress certificate detection functionality
+func TestIsCustomIngressCertificate(t *testing.T) {
+	tests := []struct {
+		name           string
+		secretName     string
+		ingressConfig  *operatorv1.IngressController
+		expectedResult bool
+	}{
+		{
+			name:       "Custom certificate referenced",
+			secretName: "custom-ingress-cert",
+			ingressConfig: &operatorv1.IngressController{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      config.OpenshiftIngressOperatorCRName,
+					Namespace: config.OpenshiftIngressOperatorNamespace,
+				},
+				Spec: operatorv1.IngressControllerSpec{
+					DefaultCertificate: &corev1.LocalObjectReference{
+						Name: "custom-ingress-cert",
+					},
+				},
+			},
+			expectedResult: true,
+		},
+		{
+			name:       "Default certificate not referenced",
+			secretName: "router-certs-default",
+			ingressConfig: &operatorv1.IngressController{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      config.OpenshiftIngressOperatorCRName,
+					Namespace: config.OpenshiftIngressOperatorNamespace,
+				},
+				Spec: operatorv1.IngressControllerSpec{
+					DefaultCertificate: &corev1.LocalObjectReference{
+						Name: "custom-ingress-cert",
+					},
+				},
+			},
+			expectedResult: false,
+		},
+		{
+			name:       "No custom certificate configured",
+			secretName: "custom-ingress-cert",
+			ingressConfig: &operatorv1.IngressController{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      config.OpenshiftIngressOperatorCRName,
+					Namespace: config.OpenshiftIngressOperatorNamespace,
+				},
+				Spec: operatorv1.IngressControllerSpec{
+					DefaultCertificate: nil,
+				},
+			},
+			expectedResult: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Initialize the schema for the test
+			initSchema(t)
+
+			// Create a fake client with the test ingress controller
+			client := fake.NewClientBuilder().WithRuntimeObjects(tt.ingressConfig).Build()
+
+			// Test the function
+			result := isCustomIngressCertificate(client, tt.secretName)
+
+			if result != tt.expectedResult {
+				t.Errorf("isCustomIngressCertificate() = %v, want %v", result, tt.expectedResult)
+			}
+		})
+	}
+}
