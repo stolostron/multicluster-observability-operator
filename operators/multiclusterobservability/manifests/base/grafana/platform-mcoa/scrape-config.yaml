@@ -23,7 +23,7 @@ spec:
     - '{__name__="cluster:cpu_allocatable:sum"}'
     - '{__name__="cluster:cpu_cores:sum"}'
     - '{__name__="cluster:cpu_requested:ratio"}'
-    - '{__name__="cluster:health:components:map"}'
+    - '{__name__="cluster_health_components_map"}'
     - '{__name__="cluster:kube_pod_container_resource_requests:cpu:sum"}'
     - '{__name__="cluster:kube_pod_container_resource_requests:memory:sum"}'
     - '{__name__="cluster:machine_memory:sum"}'
