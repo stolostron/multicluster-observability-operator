@@ -15,6 +15,11 @@ spec:
     - '{__name__="cnv:vmi_status_running:count"}'
     - '{__name__="csv_abnormal"}'
     - '{__name__="csv_succeeded"}'
+    - '{__name__="descheduler:averageworkersutilization:cpu:avg1m"}'
+    - '{__name__="descheduler:nodeutilization:cpu:avg1m"}'
+    - '{__name__="descheduler:nodepressure:cpu:avg1m"}'
+    - '{__name__="kube_node_labels"}'
+    - '{__name__="kube_node_role"}'
     - '{__name__="kubevirt_hco_system_health_status"}'
     - '{__name__="kubevirt_hyperconverged_operator_health_status"}'
     - '{__name__="kubevirt_vm_cpu_usage_seconds_total"}'
@@ -38,6 +43,7 @@ spec:
     - '{__name__="kubevirt_vmi_memory_unused_bytes"}'
     - '{__name__="kubevirt_vmi_memory_used_bytes"}'
     - '{__name__="kubevirt_vmi_migration_end_time_seconds"}'
+    - '{__name__="kubevirt_vmi_migration_succeeded"}'
     - '{__name__="kubevirt_vmi_network_receive_bytes_total"}'
     - '{__name__="kubevirt_vmi_network_receive_packets_dropped_total"}'
     - '{__name__="kubevirt_vmi_network_receive_packets_total"}'
@@ -55,6 +61,7 @@ spec:
     - '{__name__="kubevirt_vmsnapshot_succeeded_timestamp_seconds"}'
     - '{__name__="node_cpu_seconds_total"}'
     - '{__name__="node_memory_MemTotal_bytes"}'
+    - '{__name__="machine_cpu_cores"}'
   metricRelabelings:
   - action: labeldrop
     regex: managed_cluster|id

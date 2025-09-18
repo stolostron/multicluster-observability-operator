@@ -85,6 +85,9 @@ data:
       - etcd_server_proposals_failed_total
       - etcd_server_proposals_pending
       - etcd_server_quota_backend_bytes
+      - descheduler:averageworkersutilization:cpu:avg1m
+      - descheduler:nodeutilization:cpu:avg1m
+      - descheduler:nodepressure:cpu:avg1m
       - grpc_server_started_total
       - haproxy_backend_connection_errors_total
       - haproxy_backend_connections_total
@@ -108,6 +111,8 @@ data:
       - instance:node_vmstat_pgmajfault:rate1m
       - kube_daemonset_status_desired_number_scheduled
       - kube_daemonset_status_number_unavailable
+      - kube_node_labels
+      - kube_node_role
       - kube_node_spec_unschedulable
       - kube_node_status_allocatable
       - kube_node_status_allocatable_cpu_cores
@@ -154,6 +159,7 @@ data:
       - kubevirt_vmi_memory_unused_bytes
       - kubevirt_vmi_memory_used_bytes
       - kubevirt_vmi_migration_end_time_seconds
+      - kubevirt_vmi_migration_succeeded
       - kubevirt_vmi_network_receive_bytes_total
       - kubevirt_vmi_network_receive_packets_dropped_total
       - kubevirt_vmi_network_receive_packets_total
