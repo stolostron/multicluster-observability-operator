@@ -1,5 +1,6 @@
 resources:
 - dash-acm-openshift-virtualization-overview.yaml
+- dash-acm-openshift-virtualization-load-aware-rebalancing.yaml
 - dash-acm-openshift-virtualization-single-cluster-view.yaml
 - dash-acm-openshift-virtualization-single-vm-view.yaml
 - dash-acm-virtual-machines-by-time-in-status.yaml
