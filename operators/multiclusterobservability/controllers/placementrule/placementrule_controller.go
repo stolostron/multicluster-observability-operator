@@ -769,6 +769,14 @@ func getManagedClustersList(ctx context.Context, c client.Client) ([]managedClus
 			})
 			appended = true
 			continue
+		} else if !appended {
+			ret = append(ret, managedClusterInfo{
+				Name:             "local-cluster",
+				OpenshiftVersion: "mimical",
+				IsLocalCluster:   true,
+			})
+			appended = true
+			continue
 		}
 
 		if mc.GetDeletionTimestamp() != nil {
