@@ -43,6 +43,7 @@ if [[ -n ${IS_KIND_ENV} ]]; then
   clusterServerURL="https://127.0.0.1:32806"
   base_domain="placeholder"
 else
+  # TODO this is where we are getting the hub cluster
   clusterServerURL=$(kubectl config view -o jsonpath="{.clusters[0].cluster.server}")
   app_domain=$(kubectl -n openshift-ingress-operator get ingresscontrollers default -ojsonpath='{.status.domain}')
   base_domain="${app_domain#apps.}"
@@ -134,6 +135,9 @@ else
 
   echo "No separate managed cluster found - addon tests will be skipped"
 fi
+
+# TODO check environment variables for SPOKE cluster
+# If spoke cluster is detected, add it to the options file
 
 if command -v ginkgo &>/dev/null; then
   GINKGO_CMD=ginkgo

@@ -36,6 +36,8 @@ func GetDeploymentWithLabel(opt TestOptions, isHub bool, label string,
 	cluster := opt.HubCluster.BaseDomain
 	if !isHub {
 		cluster = opt.ManagedClusters[0].BaseDomain
+		// TODO remove this, check if hub=managed cluster
+		klog.V(1).Infof("Managed cluster name: %s", opt.ManagedClusters[0].Name)
 	}
 
 	klog.V(1).Infof("Get get deployment with label selector <%v> in namespace <%v>, isHub: <%v>, cluster: <%v>",
