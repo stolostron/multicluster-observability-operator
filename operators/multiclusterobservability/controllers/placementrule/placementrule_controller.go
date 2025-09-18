@@ -769,14 +769,6 @@ func getManagedClustersList(ctx context.Context, c client.Client) ([]managedClus
 			})
 			appended = true
 			continue
-		} else if !appended {
-			ret = append(ret, managedClusterInfo{
-				Name:             "local-cluster",
-				OpenshiftVersion: "mimical",
-				IsLocalCluster:   true,
-			})
-			appended = true
-			continue
 		}
 
 		if mc.GetDeletionTimestamp() != nil {
@@ -793,6 +785,16 @@ func getManagedClustersList(ctx context.Context, c client.Client) ([]managedClus
 			Name:             mc.GetName(),
 			OpenshiftVersion: openshiftVersion,
 			IsLocalCluster:   false,
+		})
+	}
+
+	// When hubSelfManagement is disabled, the local cluster is not registered as a managed cluster,
+	// so we need to add it manually to the list of managed clusters.
+	if !appended {
+		ret = append(ret, managedClusterInfo{
+			Name:             "local-cluster",
+			OpenshiftVersion: "mimical",
+			IsLocalCluster:   true,
 		})
 	}
 
