@@ -62,7 +62,7 @@ func CreateOrUpdateRSPrometheusRulePolicy(ctx context.Context, c client.Client, 
 			Name: policyName + "-config",
 		},
 		Spec: &configpolicyv1.ConfigurationPolicySpec{
-			RemediationAction:   configpolicyv1.Inform,
+			RemediationAction:   configpolicyv1.Enforce,
 			Severity:            "low",
 			PruneObjectBehavior: configpolicyv1.PruneObjectBehavior("DeleteAll"),
 			NamespaceSelector: configpolicyv1.Target{

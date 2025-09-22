@@ -60,7 +60,7 @@ data:
           "datasource": {
             "uid": "${datasource}"
           },
-          "description": "Overestimated CPU Cores\nCPU cores you can save and not being utilized",
+          "description": "Overestimated CPU Cores\n- CPU Cores you can save and not being utilized\n- If it shows the negative Value it represents underestimation",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -528,7 +528,7 @@ data:
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "description": "Overestimated Memory\nMemory you can save and not being utilized",
+          "description": "Overestimated Memory\n- Memory you can save and not being utilized\n- If it shows the negative Value it represents underestimation",
           "fieldConfig": {
             "defaults": {
               "color": {
