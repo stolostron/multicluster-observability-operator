@@ -13,6 +13,7 @@ import (
 	"maps"
 	"strconv"
 	"strings"
+	"time"
 
 	"golang.org/x/exp/slices"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -43,6 +44,9 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
+	authv1 "k8s.io/api/authentication/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/utils/ptr"
 )
 
 const (
@@ -215,7 +219,7 @@ func shouldUpdateManifestWork(desiredWork, foundWork *workv1.ManifestWork) bool 
 // generateGlobalManifestResources generates global resources, eg. manifestwork,
 // endpoint-metrics-operator deploy and hubInfo Secret...
 // this function is expensive and should not be called for each reconcile loop.
-func generateGlobalManifestResources(ctx context.Context, c client.Client, mco *mcov1beta2.MultiClusterObservability) (
+func generateGlobalManifestResources(ctx context.Context, c client.Client, mco *mcov1beta2.MultiClusterObservability, kubeClient kubernetes.Interface) (
 	[]workv1.Manifest, *workv1.Manifest, error) {
 
 	works := []workv1.Manifest{}
@@ -249,7 +253,7 @@ func generateGlobalManifestResources(ctx context.Context, c client.Client, mco *
 	// inject the alertmanager accessor bearer token secret
 	if amAccessorTokenSecret == nil {
 		var err error
-		if amAccessorTokenSecret, err = generateAmAccessorTokenSecret(c); err != nil {
+		if amAccessorTokenSecret, err = generateAmAccessorTokenSecret(c, kubeClient); err != nil {
 			return nil, nil, err
 		}
 	}
@@ -677,94 +681,59 @@ func deleteObject[T client.Object](ctx context.Context, c client.Client, obj T) 
 
 // generateAmAccessorTokenSecret generates the secret that contains the access_token
 // for the Alertmanager in the Hub cluster
-func generateAmAccessorTokenSecret(cl client.Client) (*corev1.Secret, error) {
-	amAccessorSA := &corev1.ServiceAccount{}
-	err := cl.Get(context.TODO(), types.NamespacedName{Name: config.AlertmanagerAccessorSAName,
-		Namespace: config.GetDefaultNamespace()}, amAccessorSA)
+func generateAmAccessorTokenSecret(cl client.Client, kubeClient kubernetes.Interface) (*corev1.Secret, error) {
+
+	if kubeClient == nil {
+		return nil, fmt.Errorf("kubeClient is required but was nil")
+	}
+	// if it exists, delete the previous unbound token secret for the Alertmanager accessor service account
+	err := deleteAlertmanagerAccessorTokenSecret(context.TODO(), cl)
 	if err != nil {
-		log.Error(err, "Failed to get Alertmanager accessor serviceaccount", "name", config.AlertmanagerAccessorSAName)
+		log.Error(err, "Failed to delete alertmanager accessor token secret")
+	}
+
+	// Check expiration on amAccessorTokenSecret
+	if amAccessorTokenSecret != nil {
+		if expirationBytes, exists := amAccessorTokenSecret.Data["token-expiration"]; exists {
+			expiration := string(expirationBytes)
+			if expiration, err := time.Parse(time.RFC3339, expiration); err == nil {
+				expectedDuration := time.Duration(8640*3600) * time.Second
+
+				percentOfExp := float64(time.Until(expiration)) / float64(expectedDuration)
+				if percentOfExp >= 0.2 {
+					// Current amAccessorTokenSecret is not near expiration, returning it
+					return amAccessorTokenSecret, nil
+				}
+			}
+		}
+	}
+
+	amAccessorSA, err := kubeClient.CoreV1().ServiceAccounts(config.GetDefaultNamespace()).Get(
+		context.TODO(),
+		config.AlertmanagerAccessorSAName,
+		metav1.GetOptions{})
+	if err != nil {
+		log.Error(err, "Kubernetes client - Failed to get Alertmanager accessor serviceaccount",
+			"name", config.AlertmanagerAccessorSAName,
+			"namespace", config.GetDefaultNamespace())
 		return nil, err
 	}
 
-	tokenSrtName := ""
-	for _, secretRef := range amAccessorSA.Secrets {
-		if strings.HasPrefix(secretRef.Name, config.AlertmanagerAccessorSAName+"-token") {
-			tokenSrtName = secretRef.Name
-			break
-		}
-	}
+	// Starting with kube 1.24 (ocp 4.11), the k8s won't generate secrets any longer
+	// automatically for ServiceAccounts, for OCP, when a service account is created,
+	// the OCP will create two secrets, one stores dockercfg with name format (<sa name>-dockercfg-<random>)
+	// the other secret stores the service account token, but as that token is unbound
+	// We will instead create our own token secret, and bind it to the service account
+	tokenRequest, err := kubeClient.CoreV1().ServiceAccounts(config.GetDefaultNamespace()).CreateToken(context.TODO(), config.AlertmanagerAccessorSAName, &authv1.TokenRequest{
+		Spec: authv1.TokenRequestSpec{
+			ExpirationSeconds: ptr.To(int64(8640 * 3600)), // expires in 364 days
+		},
+	}, metav1.CreateOptions{})
 
-	if tokenSrtName == "" {
-		// Starting with kube 1.24 (ocp 4.11), the k8s won't generate secrets any longer
-		// automatically for ServiceAccounts, for OCP, when a service account is created,
-		// the OCP will create two secrets, one stores dockercfg with name format (<sa name>-dockercfg-<random>)
-		// and the other stores the service account token  with name format (<sa name>-token-<random>),
-		// but the service account secrets won't list in the service account any longer.
-		secretList := &corev1.SecretList{}
-		err = cl.List(context.TODO(), secretList, &client.ListOptions{Namespace: config.GetDefaultNamespace()})
-		if err != nil {
-			return nil, err
-		}
-
-		for _, secret := range secretList.Items {
-			if secret.Type == corev1.SecretTypeServiceAccountToken &&
-				strings.HasPrefix(secret.Name, config.AlertmanagerAccessorSAName+"-token") {
-				tokenSrtName = secret.Name
-				break
-			}
-		}
-		// since we do not want to rely on the behavior above from OCP
-		// as the docs hint that it will be removed in the future
-		// if we do not find the token secret, we will create the Secret ourselves
-		// which should be picked up in the next reconcile loop
-		if tokenSrtName == "" {
-			secretName := config.AlertmanagerAccessorSAName + "-token"
-			secret := &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      secretName,
-					Namespace: config.GetDefaultNamespace(),
-					Annotations: map[string]string{
-						"kubernetes.io/service-account.name": amAccessorSA.Name,
-					},
-				},
-				Type: "kubernetes.io/service-account-token",
-			}
-			err := cl.Create(context.TODO(), secret, &client.CreateOptions{})
-			if err != nil && !k8serrors.IsAlreadyExists(err) {
-				log.Error(err, "Failed to create token secret for Alertmanager accessor serviceaccount",
-					"name", config.AlertmanagerAccessorSAName)
-				return nil, err
-			}
-			log.Info(
-				"Created secret for Alertmanager accessor serviceaccount",
-				"name",
-				secretName,
-				"namespace",
-				config.GetDefaultNamespace(),
-			)
-			tokenSrtName = secretName
-		}
-	}
-
-	tokenSrt := &corev1.Secret{}
-	err = cl.Get(context.TODO(), types.NamespacedName{Name: tokenSrtName,
-		Namespace: config.GetDefaultNamespace()}, tokenSrt)
 	if err != nil {
-		log.Error(err, "Failed to get token secret for Alertmanager accessor serviceaccount", "name", tokenSrtName)
-		return nil, err
-	}
-
-	data, ok := tokenSrt.Data["token"]
-	if !ok || len(data) == 0 {
-		err = fmt.Errorf("service account token not populated or empty: %s", config.AlertmanagerAccessorSAName)
-		log.Error(
-			err,
-			"no token present in Secret for Alertmanager accessor serviceaccount",
-			"service account name",
-			config.AlertmanagerAccessorSAName,
-			"secret name",
-			tokenSrtName,
-		)
+		log.Error(err, "Failed to create token for Alertmanager accessor serviceaccount",
+			"name", amAccessorSA.Name,
+			"namespace", amAccessorSA.Namespace)
 		return nil, err
 	}
 
@@ -777,10 +746,35 @@ func generateAmAccessorTokenSecret(cl client.Client) (*corev1.Secret, error) {
 			Name:      config.AlertmanagerAccessorSecretName,
 			Namespace: spokeNameSpace,
 		},
+		Type: corev1.SecretTypeOpaque,
 		Data: map[string][]byte{
-			"token": tokenSrt.Data["token"],
+			"token":            []byte(tokenRequest.Status.Token),
+			"token-expiration": []byte(tokenRequest.Status.ExpirationTimestamp.Format(time.RFC3339)),
 		},
 	}, nil
+}
+
+// deleteAlertmanagerAccessorTokenSecret deletes the previous unbound token secret
+func deleteAlertmanagerAccessorTokenSecret(ctx context.Context, cl client.Client) error {
+
+	secretToDelete := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      config.AlertmanagerAccessorSAName + "-token",
+			Namespace: config.GetDefaultNamespace(),
+		},
+	}
+
+	err := cl.Delete(ctx, secretToDelete, &client.DeleteOptions{})
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			// Unbound token secret not found
+			return nil
+		}
+		return fmt.Errorf("failed to delete secret %s/%s: %w", secretToDelete.Namespace, secretToDelete.Name, err)
+	}
+	log.Info("Removed depricated alertmanager accessor token secret", "name", config.AlertmanagerAccessorSAName+"-token", "namespace", config.GetDefaultNamespace())
+
+	return nil
 }
 
 // generatePullSecret generates the image pull secret for mco
