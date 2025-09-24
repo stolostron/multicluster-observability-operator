@@ -596,6 +596,10 @@ func createOrUpdateCMOConfig(
 				existing = true
 				index = i
 				break
+			} else if isGlobalHubManaged(cfg) {
+				existing = true
+				index = i
+				break
 			}
 		}
 		if existing {
@@ -766,6 +770,13 @@ func inManagedFields(cm *corev1.ConfigMap) bool {
 // isManaged checks if the additional alertmanager config is managed by ACM
 func isManaged(amc cmomanifests.AdditionalAlertmanagerConfig) bool {
 	if amc.TLSConfig.CA != nil && amc.TLSConfig.CA.LocalObjectReference.Name == hubAmRouterCASecretName {
+		return true
+	}
+	return false
+}
+
+func isGlobalHubManaged(amc cmomanifests.AdditionalAlertmanagerConfig) bool {
+	if amc.TLSConfig.CA != nil && amc.TLSConfig.CA.LocalObjectReference.Name == "global"+hubAmRouterCASecretName {
 		return true
 	}
 	return false
