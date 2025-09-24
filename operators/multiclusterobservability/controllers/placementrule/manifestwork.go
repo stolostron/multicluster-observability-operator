@@ -694,11 +694,17 @@ func generateAmAccessorTokenSecret(cl client.Client, kubeClient kubernetes.Inter
 
 	// Check expiration on amAccessorTokenSecret
 	if amAccessorTokenSecret != nil {
-		if expirationBytes, exists := amAccessorTokenSecret.Data["token-expiration"]; exists {
+		if expirationBytes, exists := amAccessorTokenSecret.Annotations["token-expiration"]; exists {
 			expiration := string(expirationBytes)
+			expectedDuration := time.Duration(8640*3600) * time.Second
 			if expiration, err := time.Parse(time.RFC3339, expiration); err == nil {
-				expectedDuration := time.Duration(8640*3600) * time.Second
-
+				// find out the expected duration of the token
+				if createdBytes, exists := amAccessorTokenSecret.Annotations["token-created"]; exists {
+					created := string(createdBytes)
+					if created, err := time.Parse(time.RFC3339, created); err == nil {
+						expectedDuration = expiration.Sub(created)
+					}
+				}
 				percentOfExp := float64(time.Until(expiration)) / float64(expectedDuration)
 				if percentOfExp >= 0.2 {
 					// Current amAccessorTokenSecret is not near expiration, returning it
@@ -719,11 +725,7 @@ func generateAmAccessorTokenSecret(cl client.Client, kubeClient kubernetes.Inter
 		return nil, err
 	}
 
-	// Starting with kube 1.24 (ocp 4.11), the k8s won't generate secrets any longer
-	// automatically for ServiceAccounts, for OCP, when a service account is created,
-	// the OCP will create two secrets, one stores dockercfg with name format (<sa name>-dockercfg-<random>)
-	// the other secret stores the service account token, but as that token is unbound
-	// We will instead create our own token secret, and bind it to the service account
+	// TODO add comment for clarity
 	tokenRequest, err := kubeClient.CoreV1().ServiceAccounts(config.GetDefaultNamespace()).CreateToken(context.TODO(), config.AlertmanagerAccessorSAName, &authv1.TokenRequest{
 		Spec: authv1.TokenRequestSpec{
 			ExpirationSeconds: ptr.To(int64(8640 * 3600)), // expires in 364 days
@@ -737,6 +739,7 @@ func generateAmAccessorTokenSecret(cl client.Client, kubeClient kubernetes.Inter
 		return nil, err
 	}
 
+	now := time.Now()
 	return &corev1.Secret{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: corev1.SchemeGroupVersion.String(),
@@ -745,11 +748,14 @@ func generateAmAccessorTokenSecret(cl client.Client, kubeClient kubernetes.Inter
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      config.AlertmanagerAccessorSecretName,
 			Namespace: spokeNameSpace,
+			Annotations: map[string]string{
+				"token-expiration": tokenRequest.Status.ExpirationTimestamp.Format(time.RFC3339),
+				"token-created":    now.Format(time.RFC3339),
+			},
 		},
 		Type: corev1.SecretTypeOpaque,
 		Data: map[string][]byte{
-			"token":            []byte(tokenRequest.Status.Token),
-			"token-expiration": []byte(tokenRequest.Status.ExpirationTimestamp.Format(time.RFC3339)),
+			"token": []byte(tokenRequest.Status.Token),
 		},
 	}, nil
 }

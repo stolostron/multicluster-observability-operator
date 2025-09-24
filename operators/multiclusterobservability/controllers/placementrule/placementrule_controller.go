@@ -1013,6 +1013,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}
 
 	amAccessorSAPred := predicate.Funcs{
+		// TODO may need to update the secret here, difference between what is stored in  amAccessorTokenSecret and the secret that is retrieved from the cluster
 		CreateFunc: func(e event.CreateEvent) bool {
 			if e.Object.GetName() == config.AlertmanagerAccessorSAName &&
 				e.Object.GetNamespace() == config.GetDefaultNamespace() {

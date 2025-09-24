@@ -531,23 +531,45 @@ func TestManifestWork(t *testing.T) {
 		}
 	}
 
+	amAccessorFound := false
 	// Check that AlertmanagerAccessorSecret contains the token and expiration
 	for _, manifest := range found.Spec.Workload.Manifests {
 		obj := &unstructured.Unstructured{}
 		obj.UnmarshalJSON(manifest.Raw)
 		if obj.GetKind() == "Secret" && obj.GetName() == config.AlertmanagerAccessorSecretName {
+			amAccessorFound = true
 			if data, exists := obj.Object["data"]; exists {
 				dataMap := data.(map[string]any)
 				if _, exists := dataMap["token"]; !exists {
-					t.Fatalf("Failed to find token  in amAccessorSecret")
-				}
-				if _, exists := dataMap["token-expiration"]; !exists {
-					t.Fatalf("Failed to find token-expiration in amAccessorSecret")
+					t.Fatalf("Failed to find token in amAccessorSecret")
 				}
 			} else {
-				t.Fatalf("Failed to find data inamAccessorSecret")
+				t.Fatalf("Failed to find data in amAccessorSecret")
 			}
+			// check for token-expiration
+			if metadata, exists := obj.Object["metadata"]; exists {
+				metadataMap := metadata.(map[string]any)
+				if annotations, exists := metadataMap["annotations"]; exists {
+					annotationsMap := annotations.(map[string]any)
+					if tokenExpiration, exists := annotationsMap["token-expiration"]; exists {
+						_, err := time.Parse(time.RFC3339, tokenExpiration.(string))
+						if err != nil {
+							t.Fatalf("Failed to parse token-expiration from secret: %v", err)
+						}
+					} else {
+						t.Fatalf("Failed to find token-expiration in amAccessorSecret")
+					}
+				} else {
+					t.Fatalf("Failed to find annotations in amAccessorSecret")
+				}
+			} else {
+				t.Fatalf("Failed to find metadata in amAccessorSecret")
+			}
+			break
 		}
+	}
+	if !amAccessorFound {
+		t.Fatalf("Failed to find amAccessorSecret in the manifestwork")
 	}
 
 	annotations := endpointMetricsOperatorDeploy.Spec.Template.Annotations
