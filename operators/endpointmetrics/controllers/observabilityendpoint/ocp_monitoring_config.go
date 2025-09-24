@@ -144,28 +144,33 @@ func createHubAmRouterCASecret(
 	client client.Client,
 	targetNamespace string) error {
 
+	hubAmRouterSecret := hubAmRouterCASecretName
+	if hubInfo.IsGlobalHubEnabled {
+		hubAmRouterSecret = "global" + hubAmRouterCASecretName
+	}
+
 	hubAmRouterCA := hubInfo.AlertmanagerRouterCA
 	dataMap := map[string][]byte{hubAmRouterCASecretKey: []byte(hubAmRouterCA)}
 	hubAmRouterCASecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      hubAmRouterCASecretName,
+			Name:      hubAmRouterSecret,
 			Namespace: targetNamespace,
 		},
 		Data: dataMap,
 	}
 
 	found := &corev1.Secret{}
-	err := client.Get(ctx, types.NamespacedName{Name: hubAmRouterCASecretName, Namespace: targetNamespace}, found)
+	err := client.Get(ctx, types.NamespacedName{Name: hubAmRouterSecret, Namespace: targetNamespace}, found)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			log.Info(fmt.Sprintf("creating %s/%s secret", targetNamespace, hubAmRouterCASecretName))
+			log.Info(fmt.Sprintf("creating %s/%s secret", targetNamespace, hubAmRouterSecret))
 			err = client.Create(ctx, hubAmRouterCASecret)
 			if err != nil {
-				return fmt.Errorf("failed to create %s/%s secret: %w", targetNamespace, hubAmRouterCASecretName, err)
+				return fmt.Errorf("failed to create %s/%s secret: %w", targetNamespace, hubAmRouterSecret, err)
 			}
 			return nil
 		} else {
-			return fmt.Errorf("failed to check the %s/%s secret: %w", targetNamespace, hubAmRouterCASecretName, err)
+			return fmt.Errorf("failed to check the %s/%s secret: %w", targetNamespace, hubAmRouterSecret, err)
 		}
 	}
 
@@ -173,10 +178,10 @@ func createHubAmRouterCASecret(
 		return nil
 	}
 
-	log.Info(fmt.Sprintf("updating %s/%s secret", targetNamespace, hubAmRouterCASecretName))
+	log.Info(fmt.Sprintf("updating %s/%s secret", targetNamespace, hubAmRouterSecret))
 	err = client.Update(ctx, hubAmRouterCASecret)
 	if err != nil {
-		return fmt.Errorf("failed to update the %s/%s secret: %w", targetNamespace, hubAmRouterCASecretName, err)
+		return fmt.Errorf("failed to update the %s/%s secret: %w", targetNamespace, hubAmRouterSecret, err)
 	}
 
 	return err
@@ -184,23 +189,27 @@ func createHubAmRouterCASecret(
 }
 
 // createHubAmAccessorTokenSecret creates the secret that contains access token of the Hub's Alertmanager.
-func createHubAmAccessorTokenSecret(ctx context.Context, client client.Client, namespace, targetNamespace string) error {
+func createHubAmAccessorTokenSecret(ctx context.Context, client client.Client, namespace, targetNamespace string, isGlobalHub bool) error {
 	amAccessorToken, err := getAmAccessorToken(ctx, client, namespace)
 	if err != nil {
 		return fmt.Errorf("fail to get %s/%s secret: %w", namespace, hubAmAccessorSecretName, err)
 	}
 
+	hubAmAccessorSecret := hubAmAccessorSecretName
+	if isGlobalHub {
+		hubAmAccessorSecret = "global" + hubAmAccessorSecretName
+	}
 	dataMap := map[string][]byte{hubAmAccessorSecretKey: []byte(amAccessorToken)}
 	hubAmAccessorTokenSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      hubAmAccessorSecretName,
+			Name:      hubAmAccessorSecret,
 			Namespace: targetNamespace,
 		},
 		Data: dataMap,
 	}
 
 	found := &corev1.Secret{}
-	err = client.Get(ctx, types.NamespacedName{Name: hubAmAccessorSecretName, Namespace: targetNamespace}, found)
+	err = client.Get(ctx, types.NamespacedName{Name: hubAmAccessorSecret, Namespace: targetNamespace}, found)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			err = client.Create(ctx, hubAmAccessorTokenSecret)
@@ -343,7 +352,7 @@ func createOrUpdateClusterMonitoringConfig(
 	}
 
 	// create the observability-alertmanager-accessor secret if it doesn't exist or update it if needed
-	if err := createHubAmAccessorTokenSecret(ctx, client, namespace, targetNamespace); err != nil {
+	if err := createHubAmAccessorTokenSecret(ctx, client, namespace, targetNamespace, hubInfo.IsGlobalHubEnabled); err != nil {
 		return false, fmt.Errorf("failed to create or update the alertmanager accessor token secret: %w", err)
 	}
 
@@ -362,7 +371,7 @@ func createOrUpdateClusterMonitoringConfig(
 		if err := createHubAmRouterCASecret(ctx, hubInfo, client, operatorconfig.OCPUserWorkloadMonitoringNamespace); err != nil {
 			return false, fmt.Errorf("failed to create or update hub-alertmanager-router-ca in UWM namespace: %w", err)
 		}
-		if err := createHubAmAccessorTokenSecret(ctx, client, namespace, operatorconfig.OCPUserWorkloadMonitoringNamespace); err != nil {
+		if err := createHubAmAccessorTokenSecret(ctx, client, namespace, operatorconfig.OCPUserWorkloadMonitoringNamespace, hubInfo.IsGlobalHubEnabled); err != nil {
 			return false, fmt.Errorf("failed to create or update alertmanager accessor token in UWM namespace: %w", err)
 		}
 	}
@@ -622,7 +631,7 @@ func createOrUpdateUserWorkloadMonitoringConfig(
 	if err := createHubAmRouterCASecret(ctx, hubInfo, client, operatorconfig.OCPUserWorkloadMonitoringNamespace); err != nil {
 		return fmt.Errorf("failed to create or update hub-alertmanager-router-ca in UWM namespace: %w", err)
 	}
-	if err := createHubAmAccessorTokenSecret(ctx, client, operatorconfig.OCPUserWorkloadMonitoringNamespace, operatorconfig.OCPUserWorkloadMonitoringNamespace); err != nil {
+	if err := createHubAmAccessorTokenSecret(ctx, client, operatorconfig.OCPUserWorkloadMonitoringNamespace, operatorconfig.OCPUserWorkloadMonitoringNamespace, hubInfo.IsGlobalHubEnabled); err != nil {
 		return fmt.Errorf("failed to create or update alertmanager accessor token in UWM namespace: %w", err)
 	}
 

@@ -179,8 +179,9 @@ func TestNewSecret(t *testing.T) {
 		mco,
 	}
 	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
+	crdMap := map[string]bool{config.IngressControllerCRD: true}
 
-	hubInfo, err := generateHubInfoSecret(c, mcoNamespace, namespace, true, config.IsUWMAlertingDisabledInSpec(mco))
+	hubInfo, err := generateHubInfoSecret(c, mcoNamespace, namespace, crdMap, config.IsUWMAlertingDisabledInSpec(mco))
 	if err != nil {
 		t.Fatalf("Failed to initial the hub info secret: (%v)", err)
 	}
@@ -198,7 +199,7 @@ func TestNewSecret(t *testing.T) {
 
 	// Test UWM alerting disabled
 	mco.Annotations = map[string]string{config.AnnotationDisableUWMAlerting: "true"}
-	hubInfo, err = generateHubInfoSecret(c, mcoNamespace, namespace, true, config.IsUWMAlertingDisabledInSpec(mco))
+	hubInfo, err = generateHubInfoSecret(c, mcoNamespace, namespace, crdMap, config.IsUWMAlertingDisabledInSpec(mco))
 	if err != nil {
 		t.Fatalf("Failed to generate hub info secret with UWM alerting disabled: %v", err)
 	}
@@ -216,7 +217,7 @@ func TestNewSecret(t *testing.T) {
 
 	// Test UWM alerting enabled
 	mco.Annotations = map[string]string{config.AnnotationDisableUWMAlerting: "false"}
-	hubInfo, err = generateHubInfoSecret(c, mcoNamespace, namespace, true, config.IsUWMAlertingDisabledInSpec(mco))
+	hubInfo, err = generateHubInfoSecret(c, mcoNamespace, namespace, crdMap, config.IsUWMAlertingDisabledInSpec(mco))
 	if err != nil {
 		t.Fatalf("Failed to generate hub info secret with UWM alerting enabled: %v", err)
 	}
@@ -235,7 +236,7 @@ func TestNewSecret(t *testing.T) {
 	// Test UWM alerting disabled but general alerting enabled
 	mco.Annotations = map[string]string{config.AnnotationDisableUWMAlerting: "true"}
 	config.SetAlertingDisabled(false) // Enable general alerting
-	hubInfo, err = generateHubInfoSecret(c, mcoNamespace, namespace, true, config.IsUWMAlertingDisabledInSpec(mco))
+	hubInfo, err = generateHubInfoSecret(c, mcoNamespace, namespace, crdMap, config.IsUWMAlertingDisabledInSpec(mco))
 	if err != nil {
 		t.Fatalf("Failed to generate hub info secret with UWM alerting disabled but general alerting enabled: %v", err)
 	}
@@ -259,7 +260,7 @@ func TestNewSecret(t *testing.T) {
 		CustomAlertmanagerHubURL:  "https://custom-am",
 	}
 	c = fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
-	hubInfo, err = generateHubInfoSecret(c, mcoNamespace, namespace, true, config.IsUWMAlertingDisabledInSpec(mco))
+	hubInfo, err = generateHubInfoSecret(c, mcoNamespace, namespace, crdMap, config.IsUWMAlertingDisabledInSpec(mco))
 	if err != nil {
 		t.Fatalf("Failed to generate hub info secret: %v", err)
 	}
@@ -284,7 +285,8 @@ func TestNewBYOSecret(t *testing.T) {
 	objs := []runtime.Object{newTestObsApiRoute(), newTestAlertmanagerRoute(), newTestAmRouteBYOCA(), newTestAmRouteBYOCert()}
 	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 
-	hubInfo, err := generateHubInfoSecret(c, mcoNamespace, namespace, true, config.IsUWMAlertingDisabledInSpec(mco))
+	crdMap := map[string]bool{config.IngressControllerCRD: true}
+	hubInfo, err := generateHubInfoSecret(c, mcoNamespace, namespace, crdMap, config.IsUWMAlertingDisabledInSpec(mco))
 	if err != nil {
 		t.Fatalf("Failed to initial the hub info secret: %v", err)
 	}

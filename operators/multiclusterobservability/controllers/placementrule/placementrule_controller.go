@@ -473,7 +473,7 @@ func createAllRelatedRes(
 	// regenerate the hubinfo secret if empty
 	if hubInfoSecret == nil {
 		var err error
-		if hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, CRDMap[config.IngressControllerCRD], config.IsUWMAlertingDisabledInSpec(mco)); err != nil {
+		if hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, CRDMap, config.IsUWMAlertingDisabledInSpec(mco)); err != nil {
 			return fmt.Errorf("failed to generate hub info secret: %w", err)
 		}
 	}
@@ -931,7 +931,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		CreateFunc: func(e event.CreateEvent) bool {
 			if e.Object.GetName() == config.OpenshiftIngressOperatorCRName &&
 				e.Object.GetNamespace() == config.OpenshiftIngressOperatorNamespace {
-				return updateHubInfoSecret(c, ingressCtlCrdExists)
+				return updateHubInfoSecret(c, r.CRDMap)
 			}
 			return false
 		},
@@ -939,14 +939,14 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			if e.ObjectNew.GetName() == config.OpenshiftIngressOperatorCRName &&
 				e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() &&
 				e.ObjectNew.GetNamespace() == config.OpenshiftIngressOperatorNamespace {
-				return updateHubInfoSecret(c, ingressCtlCrdExists)
+				return updateHubInfoSecret(c, r.CRDMap)
 			}
 			return false
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
 			if e.Object.GetName() == config.OpenshiftIngressOperatorCRName &&
 				e.Object.GetNamespace() == config.OpenshiftIngressOperatorNamespace {
-				return updateHubInfoSecret(c, ingressCtlCrdExists)
+				return updateHubInfoSecret(c, r.CRDMap)
 			}
 			return false
 		},
@@ -957,7 +957,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			if e.Object.GetNamespace() == config.GetDefaultNamespace() &&
 				(e.Object.GetName() == config.AlertmanagerRouteBYOCAName ||
 					e.Object.GetName() == config.AlertmanagerRouteBYOCERTName) {
-				return updateHubInfoSecret(c, ingressCtlCrdExists)
+				return updateHubInfoSecret(c, r.CRDMap)
 			}
 			return false
 		},
@@ -966,7 +966,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() &&
 				(e.ObjectNew.GetName() == config.AlertmanagerRouteBYOCAName ||
 					e.ObjectNew.GetName() == config.AlertmanagerRouteBYOCERTName) {
-				return updateHubInfoSecret(c, ingressCtlCrdExists)
+				return updateHubInfoSecret(c, r.CRDMap)
 			}
 			return false
 		},
@@ -974,7 +974,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			if e.Object.GetNamespace() == config.GetDefaultNamespace() &&
 				(e.Object.GetName() == config.AlertmanagerRouteBYOCAName ||
 					e.Object.GetName() == config.AlertmanagerRouteBYOCERTName) {
-				return updateHubInfoSecret(c, ingressCtlCrdExists)
+				return updateHubInfoSecret(c, r.CRDMap)
 			}
 			return false
 		},
@@ -986,12 +986,12 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				e.Object.GetName() == config.OpenshiftIngressRouteCAName) ||
 				(e.Object.GetNamespace() == config.OpenshiftIngressNamespace &&
 					e.Object.GetName() == config.OpenshiftIngressDefaultCertName) {
-				return updateHubInfoSecret(c, ingressCtlCrdExists)
+				return updateHubInfoSecret(c, r.CRDMap)
 			}
 			// Check if this secret might be a custom ingress certificate
 			if e.Object.GetNamespace() == config.OpenshiftIngressNamespace {
 				if isCustomIngressCertificate(c, e.Object.GetName()) {
-					return updateHubInfoSecret(c, ingressCtlCrdExists)
+					return updateHubInfoSecret(c, r.CRDMap)
 				}
 			}
 			return false
@@ -1002,13 +1002,13 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				(e.ObjectNew.GetNamespace() == config.OpenshiftIngressNamespace &&
 					e.ObjectNew.GetName() == config.OpenshiftIngressDefaultCertName)) &&
 				e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() {
-				return updateHubInfoSecret(c, ingressCtlCrdExists)
+				return updateHubInfoSecret(c, r.CRDMap)
 			}
 			// Check if this secret might be a custom ingress certificate
 			if e.ObjectNew.GetNamespace() == config.OpenshiftIngressNamespace &&
 				e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() {
 				if isCustomIngressCertificate(c, e.ObjectNew.GetName()) {
-					return updateHubInfoSecret(c, ingressCtlCrdExists)
+					return updateHubInfoSecret(c, r.CRDMap)
 				}
 			}
 			return false
@@ -1066,7 +1066,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 					Name: config.MCOUpdatedRequestName,
 				}},
 			}
-		}), builder.WithPredicates(getMCOPred(c, ingressCtlCrdExists))).
+		}), builder.WithPredicates(getMCOPred(c, r.CRDMap))).
 
 		// secondary watch for custom allowlist configmap
 		Watches(&corev1.ConfigMap{}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(allowlistPred)).
@@ -1291,7 +1291,7 @@ func isCustomIngressCertificate(c client.Client, secretName string) bool {
 }
 
 // updateHubInfoSecret gets the MCO instance and updates the hub info secret
-func updateHubInfoSecret(c client.Client, ingressCtlCrdExists bool) bool {
+func updateHubInfoSecret(c client.Client, crdMap map[string]bool) bool {
 	// get the MCO instance
 	mco := &mcov1beta2.MultiClusterObservability{}
 	if err := c.Get(context.TODO(), types.NamespacedName{Name: config.GetMonitoringCRName()}, mco); err != nil {
@@ -1304,7 +1304,7 @@ func updateHubInfoSecret(c client.Client, ingressCtlCrdExists bool) bool {
 		c,
 		config.GetDefaultNamespace(),
 		spokeNameSpace,
-		ingressCtlCrdExists,
+		crdMap,
 		config.IsUWMAlertingDisabledInSpec(mco),
 	)
 	if err != nil {
