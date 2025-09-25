@@ -7,8 +7,6 @@ package openshift
 import (
 	"context"
 	"fmt"
-	"reflect"
-
 	"github.com/go-logr/logr"
 	ocinfrav1 "github.com/openshift/api/config/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -45,6 +43,12 @@ func DeleteMonitoringClusterRoleBinding(ctx context.Context, client client.Clien
 }
 
 func CreateMonitoringClusterRoleBinding(ctx context.Context, log logr.Logger, client client.Client, namespace, serviceAccountName string) error {
+	saSubject := rbacv1.Subject{
+		Kind:      "ServiceAccount",
+		Name:      serviceAccountName,
+		Namespace: namespace,
+	}
+
 	rb := &rbacv1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: ClusterRoleBindingName,
@@ -57,18 +61,11 @@ func CreateMonitoringClusterRoleBinding(ctx context.Context, log logr.Logger, cl
 			Name:     "cluster-monitoring-view",
 			APIGroup: "rbac.authorization.k8s.io",
 		},
-		Subjects: []rbacv1.Subject{
-			{
-				Kind:      "ServiceAccount",
-				Name:      serviceAccountName,
-				Namespace: namespace,
-			},
-		},
+		Subjects: []rbacv1.Subject{saSubject},
 	}
 
 	found := &rbacv1.ClusterRoleBinding{}
-	err := client.Get(ctx, types.NamespacedName{Name: ClusterRoleBindingName,
-		Namespace: ""}, found)
+	err := client.Get(ctx, types.NamespacedName{Name: ClusterRoleBindingName, Namespace: ""}, found)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			if err := client.Create(ctx, rb); err != nil {
@@ -79,14 +76,21 @@ func CreateMonitoringClusterRoleBinding(ctx context.Context, log logr.Logger, cl
 		return fmt.Errorf("failed to check clusterrolebinding: %w", err)
 	}
 
-	if reflect.DeepEqual(rb.RoleRef, found.RoleRef) && reflect.DeepEqual(rb.Subjects, found.Subjects) {
-		return nil
+	// Check if the ServiceAccount is already present
+	exists := false
+	for _, subj := range found.Subjects {
+		if subj.Kind == saSubject.Kind && subj.Name == saSubject.Name && subj.Namespace == saSubject.Namespace {
+			exists = true
+			break
+		}
 	}
 
-	rb.ObjectMeta.ResourceVersion = found.ObjectMeta.ResourceVersion
-	err = client.Update(ctx, rb)
-	if err != nil {
-		log.Error(err, "Failed to update the clusterrolebinding")
+	if !exists {
+		found.Subjects = append(found.Subjects, saSubject)
+		if err := client.Update(ctx, found); err != nil {
+			log.Error(err, "Failed to update the clusterrolebinding with new ServiceAccount")
+			return err
+		}
 	}
 
 	return nil
