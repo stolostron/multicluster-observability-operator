@@ -85,7 +85,7 @@ func TestCmoConfigWatcher(t *testing.T) {
 	assert.InEpsilon(t, 200*time.Millisecond, res.RequeueAfter, 0.1, fmt.Sprintf("requeue after is: %v", res.RequeueAfter))
 
 	// Wait for returned requeue after (ensure it is not zero)
-	time.Sleep(res.RequeueAfter + 10*time.Millisecond) // Add some time to avoid flacky tests
+	time.Sleep(res.RequeueAfter + 100*time.Millisecond) // Add some time to avoid flacky tests
 
 	// Trigger one reconcile => status should be resolved
 	res, err = cmoWatcher.CheckRequest(context.Background(), req, false)
