@@ -251,11 +251,9 @@ func generateGlobalManifestResources(ctx context.Context, c client.Client, mco *
 	}
 
 	// inject the alertmanager accessor bearer token secret
-	if amAccessorTokenSecret == nil {
-		var err error
-		if amAccessorTokenSecret, err = generateAmAccessorTokenSecret(c, kubeClient); err != nil {
-			return nil, nil, err
-		}
+	amAccessorTokenSecret, err := generateAmAccessorTokenSecret(c, kubeClient)
+	if err != nil {
+		return nil, nil, err
 	}
 	works = injectIntoWork(works, amAccessorTokenSecret)
 
@@ -686,15 +684,16 @@ func generateAmAccessorTokenSecret(cl client.Client, kubeClient kubernetes.Inter
 	if kubeClient == nil {
 		return nil, fmt.Errorf("kubeClient is required but was nil")
 	}
-	// if it exists, delete the previous unbound token secret for the Alertmanager accessor service account
-	err := deleteAlertmanagerAccessorTokenSecret(context.TODO(), cl)
-	if err != nil {
-		log.Error(err, "Failed to delete alertmanager accessor token secret")
-	}
 
 	// Check expiration on amAccessorTokenSecret
 	if amAccessorTokenSecret != nil {
 		if expirationBytes, exists := amAccessorTokenSecret.Annotations["token-expiration"]; exists {
+			// if it exists, delete the previous unbound token secret for the Alertmanager accessor service account
+			err := deleteAlertmanagerAccessorTokenSecret(context.TODO(), cl)
+			if err != nil {
+				log.Error(err, "Failed to delete alertmanager accessor token secret")
+			}
+			// Check if the token is near expiration
 			expiration := string(expirationBytes)
 			expectedDuration := time.Duration(8640*3600) * time.Second
 			if expiration, err := time.Parse(time.RFC3339, expiration); err == nil {
@@ -714,18 +713,7 @@ func generateAmAccessorTokenSecret(cl client.Client, kubeClient kubernetes.Inter
 		}
 	}
 
-	amAccessorSA, err := kubeClient.CoreV1().ServiceAccounts(config.GetDefaultNamespace()).Get(
-		context.TODO(),
-		config.AlertmanagerAccessorSAName,
-		metav1.GetOptions{})
-	if err != nil {
-		log.Error(err, "Kubernetes client - Failed to get Alertmanager accessor serviceaccount",
-			"name", config.AlertmanagerAccessorSAName,
-			"namespace", config.GetDefaultNamespace())
-		return nil, err
-	}
-
-	// TODO add comment for clarity
+	// Creating our own token secret and binding it to the ServiceAccount
 	tokenRequest, err := kubeClient.CoreV1().ServiceAccounts(config.GetDefaultNamespace()).CreateToken(context.TODO(), config.AlertmanagerAccessorSAName, &authv1.TokenRequest{
 		Spec: authv1.TokenRequestSpec{
 			ExpirationSeconds: ptr.To(int64(8640 * 3600)), // expires in 364 days
@@ -734,8 +722,8 @@ func generateAmAccessorTokenSecret(cl client.Client, kubeClient kubernetes.Inter
 
 	if err != nil {
 		log.Error(err, "Failed to create token for Alertmanager accessor serviceaccount",
-			"name", amAccessorSA.Name,
-			"namespace", amAccessorSA.Namespace)
+			"name", config.AlertmanagerAccessorSAName,
+			"namespace", config.GetDefaultNamespace())
 		return nil, err
 	}
 
@@ -760,6 +748,7 @@ func generateAmAccessorTokenSecret(cl client.Client, kubeClient kubernetes.Inter
 	}, nil
 }
 
+// Note: This can be removed for 2.17
 // deleteAlertmanagerAccessorTokenSecret deletes the previous unbound token secret
 func deleteAlertmanagerAccessorTokenSecret(ctx context.Context, cl client.Client) error {
 

@@ -26,7 +26,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/util/retry"
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
@@ -1013,21 +1012,9 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}
 
 	amAccessorSAPred := predicate.Funcs{
-		// TODO may need to update the secret here, difference between what is stored in  amAccessorTokenSecret and the secret that is retrieved from the cluster
 		CreateFunc: func(e event.CreateEvent) bool {
 			if e.Object.GetName() == config.AlertmanagerAccessorSAName &&
 				e.Object.GetNamespace() == config.GetDefaultNamespace() {
-				// wait 10s for access_token of alertmanager and generate the secret that contains the access_token
-				if err := wait.PollUntilContextTimeout(context.Background(), 2*time.Second, 10*time.Second, true, func(ctx context.Context) (bool, error) {
-					var err error
-					if amAccessorTokenSecret, err = generateAmAccessorTokenSecret(r.Client, r.KubeClient); err == nil {
-						return true, nil
-					}
-					return false, err
-				}); err != nil {
-					log.Error(err, "error polling in createfunc")
-					return false
-				}
 				return true
 			}
 			return false
@@ -1036,8 +1023,6 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			if (e.ObjectNew.GetName() == config.AlertmanagerAccessorSAName &&
 				e.ObjectNew.GetNamespace() == config.GetDefaultNamespace()) &&
 				e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() {
-				// regenerate the secret that contains the access_token for the Alertmanager in the Hub cluster
-				amAccessorTokenSecret, _ = generateAmAccessorTokenSecret(r.Client, r.KubeClient)
 				return true
 			}
 			return false
