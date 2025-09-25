@@ -751,8 +751,8 @@ data:
             "showHeader": true,
             "sortBy": [
               {
-                "desc": true,
-                "displayName": "CPU Overestimation"
+                "desc": false,
+                "displayName": "CPU Utilization %"
               }
             ]
           },
@@ -1369,7 +1369,7 @@ data:
             "sortBy": [
               {
                 "desc": true,
-                "displayName": "CPU Overestimation"
+                "displayName": "CPU Utilization %"
               }
             ]
           },
@@ -1908,8 +1908,8 @@ data:
             "showHeader": true,
             "sortBy": [
               {
-                "desc": true,
-                "displayName": "Memory Overestimation"
+                "desc": false,
+                "displayName": "Memory Utilization %"
               }
             ]
           },
@@ -2444,7 +2444,12 @@ data:
               "show": false
             },
             "showHeader": true,
-            "sortBy": []
+            "sortBy": [
+              {
+                "desc": true,
+                "displayName": "Memory Utilization %"
+              }
+            ]
           },
           "pluginVersion": "11.6.1",
           "targets": [

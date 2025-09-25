@@ -60,7 +60,7 @@ data:
           "datasource": {
             "uid": "${datasource}"
           },
-          "description": "Underestimated CPU Cores\nCPU cores that needs more cpu resources.",
+          "description": "Underestimated CPU Cores\n- CPU cores that needs more cpu resources\n- If it shows the negative Value it represents overestimation",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -528,7 +528,7 @@ data:
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "description": "Underestimated Memory\nMemory that needs more Memory resources",
+          "description": "Underestimated Memory\n- Memory that needs more Memory resources\n- If it shows the negative Value it represents overestimation",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -1160,7 +1160,7 @@ data:
       },
       "timepicker": {},
       "timezone": "",
-      "title": "ACM Right-Sizing OpenShift Virtualization VM Underestimated",
+      "title": "ACM Right-Sizing OpenShift Virtualization VM Underestimation",
       "uid": "bnqQIPySEProdkekgfunderestimated",
       "version": 6
     }
