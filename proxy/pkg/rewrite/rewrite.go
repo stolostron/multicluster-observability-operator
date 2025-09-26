@@ -5,24 +5,41 @@
 package rewrite
 
 import (
-	"regexp"
 	"strings"
 
-	"github.com/prometheus-community/prom-label-proxy/injectproxy"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/promql/parser"
 	"k8s.io/klog"
 )
 
-const (
-	placeholderMetrics = "acm_metrics_placeholder"
-)
+// labelInjector is a visitor that walks the PromQL AST and appends a label matcher
+// into all vector and matrix selectors.
+type labelInjector struct {
+	matcher *labels.Matcher
+}
 
-// InjectLabels is used to inject additional label filters into original query.
+// Visit implements the parser.Visitor interface.
+func (li *labelInjector) Visit(node parser.Node, path []parser.Node) (parser.Visitor, error) {
+	switch n := node.(type) {
+	case *parser.VectorSelector:
+		n.LabelMatchers = append(n.LabelMatchers, li.matcher)
+	case *parser.MatrixSelector:
+		// MatrixSelectors embed VectorSelectors, so we modify the underlying VectorSelector.
+		if vs, ok := n.VectorSelector.(*parser.VectorSelector); ok {
+			vs.LabelMatchers = append(vs.LabelMatchers, li.matcher)
+		}
+	}
+	return li, nil
+}
+
+// InjectLabels is used to inject additional label filters into an original PromQL query
+// by walking its AST and appending a new matcher to every selector.
 func InjectLabels(query string, label string, values []string) (string, error) {
-
-	reg := regexp.MustCompile(`([{|,][ ]*)(` + label + `[ ]*)(=|!=|=~|!~)([ ]*"[^"]+")`)
-	query = reg.ReplaceAllString(query, "$1 "+placeholderMetrics+" $3$4")
+	if len(values) == 0 {
+		// If there are no values, create a matcher that matches nothing.
+		// This is more robust than returning an error or the original query.
+		values = []string{""}
+	}
 
 	expr, err := parser.ParseExpr(query)
 	if err != nil {
@@ -34,20 +51,21 @@ func InjectLabels(query string, label string, values []string) (string, error) {
 	if len(values) == 1 {
 		matchType = labels.MatchEqual
 	}
-	err = injectproxy.NewEnforcer(false, []*labels.Matcher{
-		{
-			Name:  label,
-			Type:  matchType,
-			Value: strings.Join(values[:], "|"),
-		},
-	}...).EnforceNode(expr)
-	if err != nil {
-		klog.Errorf("Failed to inject the label filters: %v", err)
+
+	matcher := &labels.Matcher{
+		Name:  label,
+		Type:  matchType,
+		Value: strings.Join(values, "|"),
+	}
+
+	visitor := &labelInjector{matcher: matcher}
+	if err := parser.Walk(visitor, expr, nil); err != nil {
+		klog.Errorf("Failed to walk the PromQL AST: %v", err)
 		return "", err
 	}
 
-	query = strings.Replace(expr.String(), placeholderMetrics, label, -1)
-	klog.Infof("Query string after filter inject: %s", query)
+	finalQuery := expr.String()
+	klog.Infof("Query string after filter inject: %s", finalQuery)
 
-	return query, nil
+	return finalQuery, nil
 }
