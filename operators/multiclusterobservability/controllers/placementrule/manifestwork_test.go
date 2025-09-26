@@ -346,7 +346,8 @@ func TestManifestWork(t *testing.T) {
 		t.Fatalf("Failed to get global manifestwork resource: (%v)", err)
 	}
 	t.Logf("work size is %d", len(works))
-	if hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, true, config.IsUWMAlertingDisabledInSpec(mco)); err != nil {
+	crdMap := map[string]bool{config.IngressControllerCRD: true}
+	if hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, crdMap, config.IsUWMAlertingDisabledInSpec(mco)); err != nil {
 		t.Fatalf("Failed to generate hubInfo secret: (%v)", err)
 	}
 
@@ -432,7 +433,7 @@ func TestManifestWork(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get global manifestwork resource: (%v)", err)
 	}
-	if hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, true, config.IsUWMAlertingDisabledInSpec(mco)); err != nil {
+	if hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, crdMap, config.IsUWMAlertingDisabledInSpec(mco)); err != nil {
 		t.Fatalf("Failed to generate hubInfo secret: (%v)", err)
 	}
 
@@ -557,7 +558,7 @@ func TestManifestWork(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get global manifestwork resource: (%v)", err)
 	}
-	if hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, true, config.IsUWMAlertingDisabledInSpec(mco)); err != nil {
+	if hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, crdMap, config.IsUWMAlertingDisabledInSpec(mco)); err != nil {
 		t.Fatalf("Failed to generate hubInfo secret: (%v)", err)
 	}
 

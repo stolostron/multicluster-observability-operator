@@ -21,13 +21,13 @@ import (
 // generateHubInfoSecret generates the secret that contains hubInfo.
 // this function should only called when the watched resources are created/updated.
 func generateHubInfoSecret(client client.Client, obsNamespace string,
-	namespace string, ingressCtlCrdExists bool, isUWMAlertingDisabled bool) (*corev1.Secret, error) {
+	namespace string, crdMap map[string]bool, isUWMAlertingDisabled bool) (*corev1.Secret, error) {
 
 	obsAPIHost := ""
 	alertmanagerEndpoint := ""
 	alertmanagerRouterCA := ""
 
-	if ingressCtlCrdExists {
+	if crdMap[config.IngressControllerCRD] {
 		var err error
 		obsAPIURL, err := config.GetObsAPIExternalURL(context.TODO(), client, obsNamespace)
 		if err != nil {
@@ -89,6 +89,7 @@ func generateHubInfoSecret(client client.Client, obsNamespace string,
 		AlertmanagerEndpoint:     alertmanagerEndpoint,
 		AlertmanagerRouterCA:     alertmanagerRouterCA,
 		UWMAlertingDisabled:      isUWMAlertingDisabled,
+		IsGlobalHubEnabled:       crdMap[config.MCGHCrdName],
 	}
 	configYaml, err := yaml.Marshal(hubInfo)
 	if err != nil {

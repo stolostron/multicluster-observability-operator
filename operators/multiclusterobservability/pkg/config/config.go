@@ -95,7 +95,6 @@ const (
 	AlertRuleDefaultFileKey       = "default_rules.yaml"
 	AlertRuleCustomConfigMapName  = "thanos-ruler-custom-rules"
 	AlertRuleCustomFileKey        = "custom_rules.yaml"
-	AlertmanagerURL               = "http://alertmanager:9093"
 	AlertmanagerConfigName        = "alertmanager-config"
 
 	AlertmanagersDefaultConfigMapName     = "thanos-ruler-config"
@@ -224,7 +223,8 @@ const (
 	HubMetricsCollectorName    = "metrics-collector-deployment"
 	HubUwlMetricsCollectorName = "uwl-metrics-collector-deployment"
 	HubUwlMetricsCollectorNs   = "openshift-user-workload-monitoring"
-	HubEndpointSaName          = "endpoint-observability-operator-sa"
+	HubEndpointSaName          = "hub-endpoint-observability-operator-sa"
+	HubEndpointRoleBindingName = "open-cluster-management:hub-endpoint-observability-operator-rb"
 )
 
 const schemeHttps = "https"
