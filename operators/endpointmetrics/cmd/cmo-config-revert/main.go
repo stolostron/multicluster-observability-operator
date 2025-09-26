@@ -33,13 +33,13 @@ func main() {
 	flag.Parse()
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
-	if err := observabilityendpoint.RevertClusterMonitoringConfig(ctx, kubeClient); err != nil {
-		log.Fatalf("unable to revert cluster monitoring config: %v", err)
-	}
-	log.Println("reverted cluster monitoring config")
-	if err := observabilityendpoint.RevertUserWorkloadMonitoringConfig(ctx, kubeClient); err != nil {
-		log.Fatalf("unable to revert user workload monitoring config: %v", err)
-	}
+	//if err := observabilityendpoint.RevertClusterMonitoringConfig(ctx, kubeClient); err != nil {
+	//	log.Fatalf("unable to revert cluster monitoring config: %v", err)
+	//}
+	//log.Println("reverted cluster monitoring config")
+	//if err := observabilityendpoint.RevertUserWorkloadMonitoringConfig(ctx, kubeClient); err != nil {
+	//	log.Fatalf("unable to revert user workload monitoring config: %v", err)
+	//}
 	log.Println("reverted user workload monitoring config")
 
 }

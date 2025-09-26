@@ -95,7 +95,6 @@ const (
 	AlertRuleDefaultFileKey       = "default_rules.yaml"
 	AlertRuleCustomConfigMapName  = "thanos-ruler-custom-rules"
 	AlertRuleCustomFileKey        = "custom_rules.yaml"
-	AlertmanagerURL               = "http://alertmanager:9093"
 	AlertmanagerConfigName        = "alertmanager-config"
 
 	AlertmanagersDefaultConfigMapName     = "thanos-ruler-config"

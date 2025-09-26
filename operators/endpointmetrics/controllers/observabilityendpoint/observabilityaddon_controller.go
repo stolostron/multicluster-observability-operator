@@ -95,6 +95,23 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 		}
 	}
 
+	// retrieve the hubInfo
+	hubSecret := &corev1.Secret{}
+	err := r.Client.Get(
+		ctx,
+		types.NamespacedName{Name: operatorconfig.HubInfoSecretName, Namespace: r.Namespace},
+		hubSecret,
+	)
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to get hub info secret %s/%s: %w", r.Namespace, operatorconfig.HubInfoSecretName, err)
+	}
+	hubInfo := &operatorconfig.HubInfo{}
+	err = yaml.Unmarshal(hubSecret.Data[operatorconfig.HubInfoSecretKey], &hubInfo)
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to unmarshal hub info: %w", err)
+	}
+	hubInfo.ClusterName = string(hubSecret.Data[operatorconfig.ClusterNameKey])
+
 	hubObsAddon := &oav1beta1.ObservabilityAddon{}
 	obsAddon := &oav1beta1.ObservabilityAddon{}
 	deleteFlag := false
@@ -142,23 +159,6 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 			return ctrl.Result{}, nil
 		}
 	}
-
-	// retrieve the hubInfo
-	hubSecret := &corev1.Secret{}
-	err := r.Client.Get(
-		ctx,
-		types.NamespacedName{Name: operatorconfig.HubInfoSecretName, Namespace: r.Namespace},
-		hubSecret,
-	)
-	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to get hub info secret %s/%s: %w", r.Namespace, operatorconfig.HubInfoSecretName, err)
-	}
-	hubInfo := &operatorconfig.HubInfo{}
-	err = yaml.Unmarshal(hubSecret.Data[operatorconfig.HubInfoSecretKey], &hubInfo)
-	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to unmarshal hub info: %w", err)
-	}
-	hubInfo.ClusterName = string(hubSecret.Data[operatorconfig.ClusterNameKey])
 
 	clusterType := operatorconfig.DefaultClusterType
 	clusterID := ""
@@ -332,7 +332,7 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 
 func (r *ObservabilityAddonReconciler) initFinalization(
 	ctx context.Context, delete bool, hubObsAddon *oav1beta1.ObservabilityAddon,
-	isHypershift bool,
+	isHypershift bool, hubInfo *operatorconfig.HubInfo,
 ) (bool, error) {
 	if delete && slices.Contains(hubObsAddon.GetFinalizers(), obsAddonFinalizer) {
 		r.Logger.Info("To clean observability components/configurations in the cluster")
@@ -347,7 +347,7 @@ func (r *ObservabilityAddonReconciler) initFinalization(
 		}
 
 		// revert the change to cluster monitoring stack
-		err := RevertClusterMonitoringConfig(ctx, r.Client)
+		err := RevertClusterMonitoringConfig(ctx, r.Client, hubInfo)
 		if err != nil {
 			return false, err
 		}
