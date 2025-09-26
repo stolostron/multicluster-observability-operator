@@ -764,7 +764,7 @@ func inManagedFields(cm *corev1.ConfigMap) bool {
 
 // isManaged checks if the additional alertmanager config is managed by ACM
 func isManaged(amc cmomanifests.AdditionalAlertmanagerConfig, hubInfo *operatorconfig.HubInfo) bool {
-	if amc.TLSConfig.CA != nil && amc.TLSConfig.CA.LocalObjectReference.Name == hubInfo.ClusterName+hubAmRouterCASecretName {
+	if amc.TLSConfig.CA != nil && amc.TLSConfig.CA.LocalObjectReference.Name == hubInfo.ClusterName+"-"+hubAmRouterCASecretName {
 		return true
 	}
 	return false
