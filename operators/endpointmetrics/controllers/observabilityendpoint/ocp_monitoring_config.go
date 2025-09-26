@@ -144,7 +144,7 @@ func createHubAmRouterCASecret(
 	client client.Client,
 	targetNamespace string) error {
 
-	hubAmRouterSecret := hubInfo.ClusterName + hubAmRouterCASecretName
+	hubAmRouterSecret := hubInfo.ClusterName + "-" + hubAmRouterCASecretName
 
 	hubAmRouterCA := hubInfo.AlertmanagerRouterCA
 	dataMap := map[string][]byte{hubAmRouterCASecretKey: []byte(hubAmRouterCA)}
@@ -192,7 +192,7 @@ func createHubAmAccessorTokenSecret(ctx context.Context, client client.Client, n
 		return fmt.Errorf("fail to get %s/%s secret: %w", namespace, hubAmAccessorSecretName, err)
 	}
 
-	hubAmAccessorSecret := hubInfo.ClusterName + hubAmAccessorSecretName
+	hubAmAccessorSecret := hubInfo.ClusterName + "-" + hubAmAccessorSecretName
 	dataMap := map[string][]byte{hubAmAccessorSecretKey: []byte(amAccessorToken)}
 	hubAmAccessorTokenSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -258,7 +258,7 @@ func newAdditionalAlertmanagerConfig(hubInfo *operatorconfig.HubInfo) cmomanifes
 		TLSConfig: cmomanifests.TLSConfig{
 			CA: &corev1.SecretKeySelector{
 				LocalObjectReference: corev1.LocalObjectReference{
-					Name: hubInfo.ClusterName + hubAmRouterCASecretName,
+					Name: hubInfo.ClusterName + "-" + hubAmRouterCASecretName,
 				},
 				Key: hubAmRouterCASecretKey,
 			},
@@ -266,7 +266,7 @@ func newAdditionalAlertmanagerConfig(hubInfo *operatorconfig.HubInfo) cmomanifes
 		},
 		BearerToken: &corev1.SecretKeySelector{
 			LocalObjectReference: corev1.LocalObjectReference{
-				Name: hubInfo.ClusterName + hubAmAccessorSecretName,
+				Name: hubInfo.ClusterName + "-" + hubAmAccessorSecretName,
 			},
 			Key: hubAmAccessorSecretKey,
 		},
