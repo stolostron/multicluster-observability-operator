@@ -28,9 +28,7 @@ const ( // #nosec G101 -- Not a hardcoded credential.
 	clusterMonitoringConfigDataKey = "config.yaml"
 	endpointMonitoringOperatorMgr  = "endpoint-monitoring-operator"
 	promNamespace                  = "openshift-monitoring"
-	clusterRoleBindingName         = "metrics-collector-view"
-	caConfigmapName                = "metrics-collector-serving-certs-ca-bundle"
-	hubMetricsCollectionNamespace  = "open-cluster-management-observability"
+	clusterRoleBindingName         = "hub-metrics-collector-view"
 	etcdServiceMonitor             = "acm-etcd"
 	kubeApiServiceMonitor          = "acm-kube-apiserver"
 )

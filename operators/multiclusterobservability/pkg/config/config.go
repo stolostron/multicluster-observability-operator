@@ -95,7 +95,6 @@ const (
 	AlertRuleDefaultFileKey       = "default_rules.yaml"
 	AlertRuleCustomConfigMapName  = "thanos-ruler-custom-rules"
 	AlertRuleCustomFileKey        = "custom_rules.yaml"
-	AlertmanagerURL               = "http://alertmanager:9093"
 	AlertmanagerConfigName        = "alertmanager-config"
 
 	AlertmanagersDefaultConfigMapName     = "thanos-ruler-config"
@@ -936,4 +935,19 @@ func GetCachedImageManifestData() (map[string]string, bool) {
 		}
 	}
 	return nil, false
+}
+
+func GetClusterName(obsApiURL string) string {
+	u, err := url.Parse(obsApiURL)
+	if err != nil {
+		log.Error(err, "Failed to parse obsApiURL", "obsApiURL", obsApiURL)
+		return ""
+	}
+	hostParts := strings.Split(u.Hostname(), ".")
+	if len(hostParts) < 3 {
+		log.Error(err, "Failed to get cluster name from obsApiURL", "obsApiURL", obsApiURL)
+		return ""
+	}
+	clusterName := hostParts[2]
+	return clusterName
 }

@@ -7,6 +7,8 @@ package openshift
 import (
 	"context"
 	"fmt"
+	"reflect"
+
 	"github.com/go-logr/logr"
 	ocinfrav1 "github.com/openshift/api/config/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -19,15 +21,20 @@ import (
 )
 
 const (
-	ClusterRoleBindingName = "metrics-collector-view"
-	CaConfigmapName        = "metrics-collector-serving-certs-ca-bundle"
-	OwnerLabelKey          = "owner"
-	OwnerLabelValue        = "observabilityaddon"
+	ClusterRoleBindingName    = "metrics-collector-view"
+	HubClusterRoleBindingName = "hub-metrics-collector-view"
+	CaConfigmapName           = "metrics-collector-serving-certs-ca-bundle"
+	OwnerLabelKey             = "owner"
+	OwnerLabelValue           = "observabilityaddon"
 )
 
-func DeleteMonitoringClusterRoleBinding(ctx context.Context, client client.Client) error {
+func DeleteMonitoringClusterRoleBinding(ctx context.Context, client client.Client, isHubMetricsCollector bool) error {
+	clusterRoleBindingName := ClusterRoleBindingName
+	if isHubMetricsCollector {
+		clusterRoleBindingName = "hub-" + ClusterRoleBindingName
+	}
 	rb := &rbacv1.ClusterRoleBinding{}
-	err := client.Get(ctx, types.NamespacedName{Name: ClusterRoleBindingName,
+	err := client.Get(ctx, types.NamespacedName{Name: clusterRoleBindingName,
 		Namespace: ""}, rb)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -42,7 +49,11 @@ func DeleteMonitoringClusterRoleBinding(ctx context.Context, client client.Clien
 	return nil
 }
 
-func CreateMonitoringClusterRoleBinding(ctx context.Context, log logr.Logger, client client.Client, namespace, serviceAccountName string) error {
+func CreateMonitoringClusterRoleBinding(ctx context.Context, log logr.Logger, client client.Client, namespace, serviceAccountName string, isHubMetricsCollector bool) error {
+	clusterRoleBindingName := ClusterRoleBindingName
+	if isHubMetricsCollector {
+		clusterRoleBindingName = "hub-" + ClusterRoleBindingName
+	}
 	saSubject := rbacv1.Subject{
 		Kind:      "ServiceAccount",
 		Name:      serviceAccountName,
@@ -51,7 +62,7 @@ func CreateMonitoringClusterRoleBinding(ctx context.Context, log logr.Logger, cl
 
 	rb := &rbacv1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: ClusterRoleBindingName,
+			Name: clusterRoleBindingName,
 			Annotations: map[string]string{
 				OwnerLabelKey: OwnerLabelValue,
 			},
@@ -65,7 +76,7 @@ func CreateMonitoringClusterRoleBinding(ctx context.Context, log logr.Logger, cl
 	}
 
 	found := &rbacv1.ClusterRoleBinding{}
-	err := client.Get(ctx, types.NamespacedName{Name: ClusterRoleBindingName, Namespace: ""}, found)
+	err := client.Get(ctx, types.NamespacedName{Name: clusterRoleBindingName, Namespace: ""}, found)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			if err := client.Create(ctx, rb); err != nil {
@@ -76,21 +87,13 @@ func CreateMonitoringClusterRoleBinding(ctx context.Context, log logr.Logger, cl
 		return fmt.Errorf("failed to check clusterrolebinding: %w", err)
 	}
 
-	// Check if the ServiceAccount is already present
-	exists := false
-	for _, subj := range found.Subjects {
-		if subj.Kind == saSubject.Kind && subj.Name == saSubject.Name && subj.Namespace == saSubject.Namespace {
-			exists = true
-			break
-		}
+	if reflect.DeepEqual(rb.RoleRef, found.RoleRef) && reflect.DeepEqual(rb.Subjects, found.Subjects) {
+		return nil
 	}
-
-	if !exists {
-		found.Subjects = append(found.Subjects, saSubject)
-		if err := client.Update(ctx, found); err != nil {
-			log.Error(err, "Failed to update the clusterrolebinding with new ServiceAccount")
-			return err
-		}
+	rb.ObjectMeta.ResourceVersion = found.ObjectMeta.ResourceVersion
+	err = client.Update(ctx, rb)
+	if err != nil {
+		log.Error(err, "Failed to update the clusterrolebinding")
 	}
 
 	return nil
