@@ -151,7 +151,7 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 			deleteFlag = true
 		}
 		// Init finalizers
-		deleted, err := r.initFinalization(ctx, deleteFlag, hubObsAddon, isHypershift)
+		deleted, err := r.initFinalization(ctx, deleteFlag, hubObsAddon, isHypershift, hubInfo)
 		if err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to init finalization: %w", err)
 		}
@@ -353,7 +353,7 @@ func (r *ObservabilityAddonReconciler) initFinalization(
 		}
 
 		// revert the change to user workload monitoring stack
-		err = RevertUserWorkloadMonitoringConfig(ctx, r.Client)
+		err = RevertUserWorkloadMonitoringConfig(ctx, r.Client, hubInfo)
 		if err != nil {
 			return false, err
 		}

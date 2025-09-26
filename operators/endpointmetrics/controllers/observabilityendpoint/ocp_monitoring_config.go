@@ -7,7 +7,6 @@ package observabilityendpoint
 import (
 	"context"
 	"fmt"
-	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"net/url"
 	"reflect"
 
@@ -188,7 +187,7 @@ func createHubAmRouterCASecret(
 
 // createHubAmAccessorTokenSecret creates the secret that contains access token of the Hub's Alertmanager.
 func createHubAmAccessorTokenSecret(ctx context.Context, client client.Client, namespace, targetNamespace string, hubInfo *operatorconfig.HubInfo) error {
-	amAccessorToken, err := getAmAccessorToken(ctx, client, namespace, hubInfo)
+	amAccessorToken, err := getAmAccessorToken(ctx, client, namespace)
 	if err != nil {
 		return fmt.Errorf("fail to get %s/%s secret: %w", namespace, hubAmAccessorSecretName, err)
 	}
@@ -236,7 +235,7 @@ func createHubAmAccessorTokenSecret(ctx context.Context, client client.Client, n
 }
 
 // getAmAccessorToken retrieves the alertmanager access token from observability-alertmanager-accessor secret.
-func getAmAccessorToken(ctx context.Context, client client.Client, ns string, hubInfo *operatorconfig.HubInfo) (string, error) {
+func getAmAccessorToken(ctx context.Context, client client.Client, ns string) (string, error) {
 	amAccessorSecret := &corev1.Secret{}
 	if err := client.Get(ctx, types.NamespacedName{Name: hubAmAccessorSecretName,
 		Namespace: ns}, amAccessorSecret); err != nil {
@@ -366,7 +365,7 @@ func createOrUpdateClusterMonitoringConfig(
 		if err := createHubAmRouterCASecret(ctx, hubInfo, client, operatorconfig.OCPUserWorkloadMonitoringNamespace); err != nil {
 			return false, fmt.Errorf("failed to create or update hub-alertmanager-router-ca in UWM namespace: %w", err)
 		}
-		if err := createHubAmAccessorTokenSecret(ctx, client, namespace, operatorconfig.OCPUserWorkloadMonitoringNamespace, hubInfo.IsGlobalHubEnabled); err != nil {
+		if err := createHubAmAccessorTokenSecret(ctx, client, namespace, operatorconfig.OCPUserWorkloadMonitoringNamespace, hubInfo); err != nil {
 			return false, fmt.Errorf("failed to create or update alertmanager accessor token in UWM namespace: %w", err)
 		}
 	}
@@ -384,7 +383,7 @@ func createOrUpdateClusterMonitoringConfig(
 				return false, err
 			}
 			if nsExists {
-				if err = RevertUserWorkloadMonitoringConfig(ctx, client); err != nil {
+				if err = RevertUserWorkloadMonitoringConfig(ctx, client, hubInfo); err != nil {
 					return false, err
 				}
 			}
@@ -425,7 +424,7 @@ func createOrUpdateClusterMonitoringConfig(
 			}
 		} else {
 			// UWL is disabled, clean up the configmap
-			if err := RevertUserWorkloadMonitoringConfig(ctx, client); err != nil {
+			if err := RevertUserWorkloadMonitoringConfig(ctx, client, hubInfo); err != nil {
 				return updated, fmt.Errorf("failed to revert user workload monitoring config: %w", err)
 			}
 		}
@@ -631,14 +630,14 @@ func createOrUpdateUserWorkloadMonitoringConfig(
 	if err := createHubAmRouterCASecret(ctx, hubInfo, client, operatorconfig.OCPUserWorkloadMonitoringNamespace); err != nil {
 		return fmt.Errorf("failed to create or update hub-alertmanager-router-ca in UWM namespace: %w", err)
 	}
-	if err := createHubAmAccessorTokenSecret(ctx, client, operatorconfig.OCPUserWorkloadMonitoringNamespace, operatorconfig.OCPUserWorkloadMonitoringNamespace, hubInfo.IsGlobalHubEnabled); err != nil {
+	if err := createHubAmAccessorTokenSecret(ctx, client, operatorconfig.OCPUserWorkloadMonitoringNamespace, operatorconfig.OCPUserWorkloadMonitoringNamespace, hubInfo); err != nil {
 		return fmt.Errorf("failed to create or update alertmanager accessor token in UWM namespace: %w", err)
 	}
 
 	// handle the case when alert forwarding is disabled globally or UWM alerting is disabled specifically
 	if hubInfo.AlertmanagerEndpoint == "" || hubInfo.UWMAlertingDisabled {
 		log.Info("request to disable alert forwarding")
-		return RevertUserWorkloadMonitoringConfig(ctx, client)
+		return RevertUserWorkloadMonitoringConfig(ctx, client, hubInfo)
 	}
 
 	alertCfg := cmomanifests.PrometheusRestrictedConfig{
@@ -771,12 +770,12 @@ func isManaged(amc cmomanifests.AdditionalAlertmanagerConfig, hubInfo *operatorc
 	return false
 }
 
-func isGlobalHubManaged(amc cmomanifests.AdditionalAlertmanagerConfig) bool {
-	if amc.TLSConfig.CA != nil && amc.TLSConfig.CA.LocalObjectReference.Name == "global"+hubAmRouterCASecretName {
-		return true
-	}
-	return false
-}
+//func isGlobalHubManaged(amc cmomanifests.AdditionalAlertmanagerConfig) bool {
+//	if amc.TLSConfig.CA != nil && amc.TLSConfig.CA.LocalObjectReference.Name == "global"+hubAmRouterCASecretName {
+//		return true
+//	}
+//	return false
+//}
 
 // hasClusterMonitoringConfigData checks if the configmap has the required key and logs if not
 func hasClusterMonitoringConfigData(cm *corev1.ConfigMap) (string, bool) {
@@ -795,7 +794,7 @@ func hasClusterMonitoringConfigData(cm *corev1.ConfigMap) (string, bool) {
 
 // RevertUserWorkloadMonitoringConfig reverts the configmap user-workload-monitoring-config
 // in the openshift-user-workload-monitoring namespace.
-func RevertUserWorkloadMonitoringConfig(ctx context.Context, client client.Client) error {
+func RevertUserWorkloadMonitoringConfig(ctx context.Context, client client.Client, hubInfo *operatorconfig.HubInfo) error {
 	log.Info("RevertUserWorkloadMonitoringConfig called")
 
 	found := &corev1.ConfigMap{}
@@ -836,7 +835,7 @@ func RevertUserWorkloadMonitoringConfig(ctx context.Context, client client.Clien
 	if parsed.Prometheus.AlertmanagerConfigs != nil {
 		copiedAlertmanagerConfigs := make([]cmomanifests.AdditionalAlertmanagerConfig, 0)
 		for _, v := range parsed.Prometheus.AlertmanagerConfigs {
-			if !isManaged(v, hub) {
+			if !isManaged(v, hubInfo) {
 				copiedAlertmanagerConfigs = append(copiedAlertmanagerConfigs, v)
 			}
 		}

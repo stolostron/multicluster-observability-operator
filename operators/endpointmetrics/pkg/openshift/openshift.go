@@ -7,6 +7,7 @@ package openshift
 import (
 	"context"
 	"fmt"
+
 	"github.com/go-logr/logr"
 	ocinfrav1 "github.com/openshift/api/config/v1"
 	corev1 "k8s.io/api/core/v1"
