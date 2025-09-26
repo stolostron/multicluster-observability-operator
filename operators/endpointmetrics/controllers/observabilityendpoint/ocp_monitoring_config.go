@@ -542,14 +542,14 @@ func createOrUpdateCMOConfig(
 	found := &corev1.ConfigMap{}
 	err = client.Get(ctx, types.NamespacedName{
 		Name:      clusterMonitoringConfigName,
-		Namespace: namespace,
+		Namespace: promNamespace,
 	}, found)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			newCM := &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      clusterMonitoringConfigName,
-					Namespace: namespace,
+					Namespace: promNamespace,
 				},
 				Data: map[string]string{clusterMonitoringConfigDataKey: string(yamlBytes)},
 			}
