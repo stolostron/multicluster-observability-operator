@@ -19,9 +19,24 @@ spec:
         args:
         - "--listen-address=0.0.0.0:8080"
         - "--metrics-server=https://observability-observatorium-observatorium-api.open-cluster-management-observability.svc.cluster.local:8080"
+        - "--tls-ca-file=/var/rbac_proxy/ca/ca.crt"
+        - "--tls-cert-file=/var/rbac_proxy/certs/tls.crt"
+        - "--tls-key-file=/var/rbac_proxy/certs/tls.key"
         ports:
         - containerPort: 8080
           name: http
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: http
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 10
         volumeMounts:
         - name: ca-certs
           mountPath: /var/rbac_proxy/ca

@@ -106,7 +106,7 @@ func (r *MCORenderer) renderProxyDeployment(res *resource.Resource,
 
 	for idx := range spec.Volumes {
 		if spec.Volumes[idx].Name == "ca-certs" {
-			spec.Volumes[idx].Secret.SecretName = mcoconfig.ServerCerts
+			spec.Volumes[idx].Secret.SecretName = mcoconfig.ServerCACerts
 		}
 		if spec.Volumes[idx].Name == "client-certs" {
 			spec.Volumes[idx].Secret.SecretName = mcoconfig.GrafanaCerts

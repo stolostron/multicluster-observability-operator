@@ -5,162 +5,277 @@
 package proxy
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
-	"os"
 	"path"
 	"strings"
 
-	"k8s.io/klog"
+	"k8s.io/client-go/rest"
+	"k8s.io/klog/v2"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
+	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/cache"
 	proxyconfig "github.com/stolostron/multicluster-observability-operator/proxy/pkg/config"
+	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/health"
+	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/informer"
+	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/metricquery"
 	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/util"
 )
 
 const (
-	basePath        = "/api/metrics/v1/default"
-	projectsAPIPath = "/apis/project.openshift.io/v1/projects"
-	userAPIPath     = "/apis/user.openshift.io/v1/users/~"
+	basePath               = "/api/metrics/v1/default"
+	projectsAPIPath        = "/apis/project.openshift.io/v1/projects"
+	userAPIPath            = "/apis/user.openshift.io/v1/users/~"
+	apiSeriesPath          = "/api/v1/series"
+	apiLabelNameValuesPath = "/api/v1/label/label_name/values"
+	apiQueryPath           = "/api/v1/query"
+	apiQueryRangePath      = "/api/v1/query_range"
 )
 
-var (
-	serverScheme = ""
-	serverHost   = ""
-)
-
-func requestContainsRBACProxyLabeMetricName(req *http.Request) bool {
-	if req.Method == "POST" {
-		body, err := io.ReadAll(req.Body)
-		if err != nil {
-			klog.Errorf("failed to read body: %v", err)
-		}
-		req.Body = io.NopCloser(strings.NewReader(string(body)))
-		req.ContentLength = int64(len([]rune(string(body))))
-		return strings.Contains(string(body), proxyconfig.GetRBACProxyLabelMetricName())
-	} else if req.Method == "GET" {
-		queryParams := req.URL.Query()
-		return strings.Contains(queryParams.Get("match[]"), proxyconfig.GetRBACProxyLabelMetricName())
-	}
-	return false
+// Proxy is a reverse proxy for the metrics server.
+type Proxy struct {
+	metricsServerURL       *url.URL
+	apiServerHost          string
+	proxy                  *httputil.ReverseProxy
+	userProjectInfo        *cache.UserProjectInfo
+	managedClusterInformer informer.ManagedClusterInformable
+	accessReviewer         metricquery.AccessReviewer
+	kubeClientTransport    http.RoundTripper
+	// getKubeClientWithTokenFunc is used for dependency injection in tests.
+	getKubeClientWithTokenFunc func(token string) (client.Client, error)
+	healthChecker              *health.Checker
 }
 
-func shouldModifyAPISeriesResponse(res http.ResponseWriter, req *http.Request) bool {
-	// Different Grafana versions uses different calls, we handle:
-	// GET/POST requests for series and label_name
-	if strings.HasSuffix(req.URL.Path, "/api/v1/series") ||
-		strings.HasSuffix(req.URL.Path, "/api/v1/label/label_name/values") {
-		if requestContainsRBACProxyLabeMetricName(req) {
-			managedLabelList := proxyconfig.GetManagedClusterLabelList()
+// NewProxy creates a new Proxy.
+func NewProxy(cfg *rest.Config, serverURL *url.URL, transport http.RoundTripper, upi *cache.UserProjectInfo, managedClusterInformer informer.ManagedClusterInformable, accessReviewer metricquery.AccessReviewer) (*Proxy, error) {
+	kubeClientTransport, err := rest.TransportFor(cfg)
+	if err != nil {
+		return nil, err
+	}
+	p := &Proxy{
+		metricsServerURL:       serverURL,
+		apiServerHost:          cfg.Host,
+		userProjectInfo:        upi,
+		managedClusterInformer: managedClusterInformer,
+		accessReviewer:         accessReviewer,
+		kubeClientTransport:    kubeClientTransport,
+		healthChecker:          health.NewChecker(managedClusterInformer, transport, serverURL),
+	}
+	p.getKubeClientWithTokenFunc = p.getKubeClientWithToken
 
-			query := createQueryResponse(managedLabelList.RegexLabelList, proxyconfig.GetRBACProxyLabelMetricName(), req.URL.Path)
-			_, err := res.Write([]byte(query))
-			if err == nil {
-				return true
-			} else {
-				klog.Errorf("failed to write query: %v", err)
-			}
-		}
-
+	p.proxy = &httputil.ReverseProxy{
+		Director: func(req *http.Request) {
+			proxyRequest(req)
+			req.URL.Scheme = serverURL.Scheme
+			req.URL.Host = serverURL.Host
+			req.Host = serverURL.Host
+		},
+		Transport: transport,
 	}
 
-	return false
+	return p, nil
 }
 
-func createQueryResponse(labels []string, metricName string, urlPath string) string {
-	query := `{"status":"success","data":[`
-	for index, label := range labels {
-		if strings.HasSuffix(urlPath, "/api/v1/label/label_name/values") {
-			query += `"` + label + `"`
-		} else {
-			// series
-			query += `{"__name__":"` + metricName + `","label_name":"` + label + `"}`
-		}
-		if index != len(labels)-1 {
-			query += ","
-		}
+// ServeHTTP is used to init proxy handler.
+func (p *Proxy) ServeHTTP(res http.ResponseWriter, req *http.Request) {
+	if req.URL.Path == "/healthz" || req.URL.Path == "/readyz" {
+		p.healthChecker.ServeHTTP(res, req)
+		return
 	}
-	query += `]}`
-	return query
-}
 
-// HandleRequestAndRedirect is used to init proxy handler.
-func HandleRequestAndRedirect(res http.ResponseWriter, req *http.Request) {
-	if preCheckRequest(req) != nil {
-		_, err := res.Write(newEmptyMatrixHTTPBody())
-		if err != nil {
-			klog.Errorf("failed to write response: %v", err)
+	if err := p.preCheckRequest(req); err != nil {
+		klog.Warningf("pre-check failed for user <%s>: %v", req.Header.Get("X-Forwarded-User"), err)
+		res.Header().Set("Content-Type", "application/json")
+		_, writeErr := res.Write(newEmptyMatrixHTTPBody())
+		if writeErr != nil {
+			klog.Errorf("failed to write response: %v", writeErr)
 		}
 		return
 	}
 
-	if ok := shouldModifyAPISeriesResponse(res, req); ok {
+	if ok := p.handleManagedClusterLabelQuery(res, req); ok {
 		return
-	}
-
-	serverURL, err := url.Parse(os.Getenv("METRICS_SERVER"))
-	if err != nil {
-		klog.Errorf("failed to parse url: %v", err)
-	}
-	serverHost = serverURL.Host
-	serverScheme = serverURL.Scheme
-
-	tlsTransport, err := getTLSTransport()
-	if err != nil {
-		klog.Fatalf("failed to create tls transport: %v", err)
-	}
-
-	// create the reverse proxy
-	proxy := httputil.ReverseProxy{
-		Director:  proxyRequest,
-		Transport: tlsTransport,
 	}
 
 	req.Header.Set("X-Forwarded-Host", req.Header.Get("Host"))
-	req.Host = serverURL.Host
+	req.Host = p.metricsServerURL.Host
 	req.URL.Path = path.Join(basePath, req.URL.Path)
-	util.ModifyMetricsQueryParams(req, config.GetConfigOrDie().Host+projectsAPIPath, util.GetAccessReviewer())
-	proxy.ServeHTTP(res, req)
+	modifier := &metricquery.Modifier{
+		Req:                 req,
+		ReqURL:              p.apiServerHost + projectsAPIPath,
+		AccessReviewer:      p.accessReviewer,
+		UPI:                 p.userProjectInfo,
+		MCI:                 p.managedClusterInformer,
+		KubeClientTransport: p.kubeClientTransport,
+	}
+	if err := modifier.Modify(); err != nil {
+		klog.Errorf("failed to modify query: %v", err)
+		http.Error(res, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	p.proxy.ServeHTTP(res, req)
 }
 
-func preCheckRequest(req *http.Request) error {
+func (p *Proxy) getKubeClientWithToken(token string) (client.Client, error) {
+	cfg, err := config.GetConfig()
+	if err != nil {
+		return nil, err
+	}
+	// Create a new REST config with the user's token
+	userConfig := &rest.Config{
+		Host:        cfg.Host,
+		BearerToken: token,
+		Transport:   p.kubeClientTransport,
+	}
+	// Create a new client with the user's config
+	c, err := client.New(userConfig, client.Options{Scheme: proxyconfig.Scheme})
+	if err != nil {
+		return nil, err
+	}
+	return c, nil
+}
+
+func (p *Proxy) preCheckRequest(req *http.Request) error {
 	token := req.Header.Get("X-Forwarded-Access-Token")
 	if token == "" {
 		token = req.Header.Get("Authorization")
 		if token == "" {
 			return errors.New("found unauthorized user")
-		} else {
-			// Remove Bearer from token if present
-			token = strings.TrimPrefix(token, "Bearer ")
-			req.Header.Set("X-Forwarded-Access-Token", token)
 		}
+		token = strings.TrimPrefix(token, "Bearer ")
+		req.Header.Set("X-Forwarded-Access-Token", token)
 	}
 
+	// Try to get username from header or cache first.
 	userName := req.Header.Get("X-Forwarded-User")
 	if userName == "" {
-		userName = util.GetUserName(token, config.GetConfigOrDie().Host+userAPIPath)
+		userName, _ = p.userProjectInfo.GetUserName(token)
+	}
+
+	var c client.Client
+	// If username is still missing, fetch it from the API.
+	if userName == "" {
+		var err error
+		c, err = p.getKubeClientWithTokenFunc(token)
+		if err != nil {
+			return fmt.Errorf("failed to get kube client: %w", err)
+		}
+
+		userName, err = util.GetUserName(req.Context(), c)
+		if err != nil {
+			return fmt.Errorf("failed to get user name: %w", err)
+		}
 		if userName == "" {
 			return errors.New("failed to find user name")
-		} else {
-			req.Header.Set("X-Forwarded-User", userName)
 		}
 	}
+	req.Header.Set("X-Forwarded-User", userName)
 
-	_, ok := util.GetUserProjectList(token)
-	if !ok {
-		projectList := util.FetchUserProjectList(token, config.GetConfigOrDie().Host+projectsAPIPath)
-		up := util.NewUserProject(userName, token, projectList)
-		util.UpdateUserProject(up)
+	if _, ok := p.userProjectInfo.GetUserProjectList(token); !ok {
+		// Create client only if we haven't already.
+		if c == nil {
+			var err error
+			c, err = p.getKubeClientWithTokenFunc(token)
+			if err != nil {
+				return fmt.Errorf("failed to get kube client: %w", err)
+			}
+		}
+
+		projectList, err := util.FetchUserProjectList(req.Context(), c)
+		if err != nil {
+			klog.Errorf("failed to fetch user project list: %v", err)
+			// if we cannot fetch project list, we will just assume the user has no project access.
+			projectList = []string{}
+		}
+		p.userProjectInfo.UpdateUserProject(userName, token, projectList)
 	}
 
-	if len(util.GetAllManagedClusterNames()) == 0 {
+	if len(p.managedClusterInformer.GetAllManagedClusterNames()) == 0 {
 		return errors.New("no project or cluster found")
 	}
 
 	return nil
+}
+
+// handleManagedClusterLabelQuery intercepts Grafana requests for the synthetic `acm_label_names` metric.
+// This metric is generated within the proxy and does not exist upstream. The function directly returns
+// a JSON response with the list of allowed label names from the informer's cache.
+// It returns true if the request was handled, false otherwise.
+func (p *Proxy) handleManagedClusterLabelQuery(res http.ResponseWriter, req *http.Request) bool {
+	// This handler is only for the series and label values endpoints.
+	isSeriesPath := strings.HasSuffix(req.URL.Path, apiSeriesPath)
+	isLabelValuesPath := strings.HasSuffix(req.URL.Path, apiLabelNameValuesPath)
+	if !isSeriesPath && !isLabelValuesPath {
+		return false
+	}
+
+	isQuery, err := isACMLabelQuery(req)
+	if err != nil {
+		// An error here means we couldn't parse the request, so we can't handle it.
+		// Let it fall through to the proxy to return a proper error.
+		klog.Warningf("Could not determine if request is for ACM labels: %v", err)
+		return false
+	}
+
+	if !isQuery {
+		return false
+	}
+
+	// If we are here, it's a request for our synthetic metric. Handle it directly.
+	managedLabelList := p.managedClusterInformer.GetManagedClusterLabelList()
+	query, err := createQueryResponse(managedLabelList, proxyconfig.RBACProxyLabelMetricName, req.URL.Path)
+	if err != nil {
+		klog.Errorf("failed to create query response: %v", err)
+		// Let the request fall through to the proxy to return a proper error.
+		return false
+	}
+
+	res.Header().Set("Content-Type", "application/json")
+	_, err = res.Write(query)
+	if err != nil {
+		klog.Errorf("failed to write query response: %v", err)
+	}
+	return true // We've handled the request.
+}
+
+// Structs for creating a JSON response for series queries.
+type seriesData struct {
+	Name      string `json:"__name__"`
+	LabelName string `json:"label_name"`
+}
+type queryResponse struct {
+	Status string `json:"status"`
+	Data   any    `json:"data"`
+}
+
+func createQueryResponse(labels []string, metricName string, urlPath string) ([]byte, error) {
+	var data any
+	if strings.HasSuffix(urlPath, apiLabelNameValuesPath) {
+		data = labels
+	} else {
+		series := make([]seriesData, len(labels))
+		for i, label := range labels {
+			series[i] = seriesData{
+				Name:      metricName,
+				LabelName: label,
+			}
+		}
+		data = series
+	}
+
+	response := queryResponse{
+		Status: "success",
+		Data:   data,
+	}
+
+	return json.Marshal(response)
 }
 
 func newEmptyMatrixHTTPBody() []byte {
@@ -168,15 +283,53 @@ func newEmptyMatrixHTTPBody() []byte {
 }
 
 func proxyRequest(r *http.Request) {
-	r.URL.Scheme = serverScheme
-	r.URL.Host = serverHost
 	if r.Method == http.MethodGet {
-		if strings.HasSuffix(r.URL.Path, "/api/v1/query") ||
-			strings.HasSuffix(r.URL.Path, "/api/v1/query_range") ||
-			strings.HasSuffix(r.URL.Path, "/api/v1/series") {
+		if strings.HasSuffix(r.URL.Path, apiQueryPath) ||
+			strings.HasSuffix(r.URL.Path, apiQueryRangePath) ||
+			strings.HasSuffix(r.URL.Path, apiSeriesPath) {
 			r.Method = http.MethodPost
 			r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 			r.Body = io.NopCloser(strings.NewReader(r.URL.RawQuery))
 		}
 	}
+}
+
+// isACMLabelQuery checks if an HTTP request is querying for the synthetic ACM label metric.
+// It robustly parses the `match[]` parameters from either the URL query (for GET)
+// or the request body (for POST) and checks for an exact match.
+func isACMLabelQuery(req *http.Request) (bool, error) {
+	var values url.Values
+	var err error
+
+	switch req.Method {
+	case http.MethodGet:
+		values = req.URL.Query()
+	case http.MethodPost:
+		// We need to read the body to check the 'match[]' param.
+		// The body needs to be preserved so it can be read again by the proxy director.
+		body, readErr := io.ReadAll(req.Body)
+		if readErr != nil {
+			// Restore the body with an empty reader on error.
+			req.Body = io.NopCloser(bytes.NewReader([]byte{}))
+			return false, fmt.Errorf("failed to read request body: %w", readErr)
+		}
+		// Restore the body so it can be read again.
+		req.Body = io.NopCloser(bytes.NewReader(body))
+
+		values, err = url.ParseQuery(string(body))
+		if err != nil {
+			return false, fmt.Errorf("failed to parse post body: %w", err)
+		}
+	default:
+		return false, nil
+	}
+
+	matchers := values["match[]"]
+	for _, matcher := range matchers {
+		if matcher == proxyconfig.RBACProxyLabelMetricName {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }

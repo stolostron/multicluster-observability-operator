@@ -6,6 +6,12 @@ package multiclusterobservability
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/pem"
+	"math/big"
 	"os"
 	"path"
 	"strings"
@@ -95,15 +101,41 @@ func setupTest(t *testing.T) func() {
 }
 
 func newTestCert(name string, namespace string) *corev1.Secret {
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		panic(err)
+	}
+	keyPEM := pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(key)})
+
+	serialNumber, err := rand.Int(rand.Reader, new(big.Int).Lsh(big.NewInt(1), 128))
+	if err != nil {
+		panic(err)
+	}
+	cert := &x509.Certificate{
+		SerialNumber: serialNumber,
+		Subject:      pkix.Name{CommonName: "test"},
+		NotBefore:    time.Now(),
+		NotAfter:     time.Now().Add(1 * time.Hour),
+		KeyUsage:     x509.KeyUsageCertSign | x509.KeyUsageDigitalSignature,
+		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
+		IsCA:         true,
+	}
+
+	certBytes, err := x509.CreateCertificate(rand.Reader, cert, cert, &key.PublicKey, key)
+	if err != nil {
+		panic(err)
+	}
+	certPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certBytes})
+
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
 		},
 		Data: map[string][]byte{
-			"ca.crt":  []byte("test-ca-crt"),
-			"tls.crt": []byte("test-tls-crt"),
-			"tls.key": []byte("test-tls-key"),
+			"ca.crt":  certPEM,
+			"tls.crt": certPEM,
+			"tls.key": keyPEM,
 		},
 	}
 }
@@ -436,9 +468,9 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 		t.Fatalf("Failed to get alertmanager's route: (%v)", err)
 	}
 	// check the BYO certificate for alertmanager's route
-	if amRoute.Spec.TLS.CACertificate != "test-tls-crt" ||
-		amRoute.Spec.TLS.Certificate != "test-tls-crt" ||
-		amRoute.Spec.TLS.Key != "test-tls-key" {
+	if amRoute.Spec.TLS.CACertificate != string(testAmRouteBYOCaSecret.Data["tls.crt"]) ||
+		amRoute.Spec.TLS.Certificate != string(testAmRouteBYOCertSecret.Data["tls.crt"]) ||
+		amRoute.Spec.TLS.Key != string(testAmRouteBYOCertSecret.Data["tls.key"]) {
 		t.Fatalf("incorrect certificate for alertmanager's route")
 	}
 

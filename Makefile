@@ -106,7 +106,6 @@ github.com/prometheus/client_golang/prometheus.{NewCounter,NewCounterVec,NewCoun
 NewHistorgram,NewHistogramVec,NewSummary,NewSummaryVec}=github.com/prometheus/client_golang/prometheus/promauto.{NewCounter,\
 NewCounterVec,NewCounterVec,NewGauge,NewGaugeVec,NewGaugeFunc,NewHistorgram,NewHistogramVec,NewSummary,NewSummaryVec},\
 github.com/NYTimes/gziphandler.{GzipHandler}=github.com/klauspost/compress/gzhttp.{GzipHandler},\
-sync/atomic=go.uber.org/atomic,\
 io/ioutil.{Discard,NopCloser,ReadAll,ReadDir,ReadFile,TempDir,TempFile,Writefile}" ./operators/... ./collectors/... ./loaders/... ./proxy/...
 	@$(FAILLINT) -paths "fmt.{Print,Println}" -ignore-tests ./operators/... ./collectors/... ./loaders/... ./proxy/...
 	@echo ">> examining all of the Go files"
@@ -143,6 +142,13 @@ unit-tests-collectors: ## Run collectors unit tests only.
 .PHONY: integration-test-operators
 integration-test-operators: ## Run operators integration tests.
 	go test -tags integration -run=Integration ./operators/...
+
+.PHONY: integration-test-proxy
+integration-test-proxy: ## Run proxy integration tests.
+	go test -tags=integration ./proxy/...
+
+.PHONY: integration-test
+integration-test: integration-test-operators integration-test-proxy ## Run all integration tests.
 
 .PHONY: e2e-tests
 e2e-tests: tools ## Run E2E tests.
