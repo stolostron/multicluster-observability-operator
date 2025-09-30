@@ -251,7 +251,7 @@ func generateGlobalManifestResources(ctx context.Context, c client.Client, mco *
 	}
 
 	// inject the alertmanager accessor bearer token secret
-	amAccessorTokenSecret, err := generateAmAccessorTokenSecret(c, kubeClient)
+	amAccessorTokenSecret, err = generateAmAccessorTokenSecret(c, kubeClient)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -541,6 +541,7 @@ func mutateHubResourceFn(want, existing client.Object) controllerutil.MutateFn {
 			existingTyped.Spec = want.(*appsv1.Deployment).Spec
 		case *corev1.Secret:
 			existingTyped.Data = want.(*corev1.Secret).Data
+			existingTyped.Annotations = want.(*corev1.Secret).Annotations
 		case *corev1.ConfigMap:
 			existingTyped.Data = want.(*corev1.ConfigMap).Data
 		case *rbacv1.ClusterRole:
@@ -688,11 +689,6 @@ func generateAmAccessorTokenSecret(cl client.Client, kubeClient kubernetes.Inter
 	// Check expiration on amAccessorTokenSecret
 	if amAccessorTokenSecret != nil {
 		if expirationBytes, exists := amAccessorTokenSecret.Annotations["token-expiration"]; exists {
-			// if it exists, delete the previous unbound token secret for the Alertmanager accessor service account
-			err := deleteAlertmanagerAccessorTokenSecret(context.TODO(), cl)
-			if err != nil {
-				log.Error(err, "Failed to delete alertmanager accessor token secret")
-			}
 			// Check if the token is near expiration
 			expiration := string(expirationBytes)
 			expectedDuration := time.Duration(8640*3600) * time.Second
@@ -725,6 +721,12 @@ func generateAmAccessorTokenSecret(cl client.Client, kubeClient kubernetes.Inter
 			"name", config.AlertmanagerAccessorSAName,
 			"namespace", config.GetDefaultNamespace())
 		return nil, err
+	}
+
+	// if it exists, delete the previous unbound token secret for the Alertmanager accessor service account
+	err = deleteAlertmanagerAccessorTokenSecret(context.TODO(), cl)
+	if err != nil {
+		log.Error(err, "Failed to delete alertmanager accessor token secret")
 	}
 
 	now := time.Now()

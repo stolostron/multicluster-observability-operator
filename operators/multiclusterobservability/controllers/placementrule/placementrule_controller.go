@@ -360,7 +360,7 @@ func (r *PlacementRuleReconciler) ensureMCOAResources(ctx context.Context, mco *
 	}
 	resourcesToCreate = append(resourcesToCreate, hubServerCaCertSecret)
 
-	amAccessorTokenSecret, err := generateAmAccessorTokenSecret(r.Client, r.KubeClient)
+	amAccessorTokenSecret, err = generateAmAccessorTokenSecret(r.Client, r.KubeClient)
 	if err != nil {
 		return fmt.Errorf("failed to generate alertManager token secret: %w", err)
 	}
