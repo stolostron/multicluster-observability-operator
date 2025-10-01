@@ -616,6 +616,13 @@ func setDefaultDeploymentConfigVar(ctx context.Context, c client.Client) error {
 				}
 				log.Info("Setting the default AddonDeploymentConfig variable for current addon")
 				defaultAddonDeploymentConfig = addonConfig
+
+				// Update the ClusterManagementAddOn status with the spec hash
+				// This prevents the "mca and work configs mismatch" error
+				if err := util.UpdateClusterManagementAddOnSpecHash(ctx, c, addonConfig); err != nil {
+					log.Error(err, "Failed to update ClusterManagementAddOn spec hash for default config")
+					return fmt.Errorf("failed to update spec hash for default config: %w", err)
+				}
 				break
 			}
 		}
@@ -696,6 +703,13 @@ func createManagedClusterRes(ctx context.Context, c client.Client, mco *mcov1bet
 	}
 	if !isCustomConfig {
 		addonConfig = defaultAddonDeploymentConfig
+	}
+
+	// Update the ClusterManagementAddOn status with the spec hash
+	// This prevents the "mca and work configs mismatch" error
+	if err := util.UpdateClusterManagementAddOnSpecHash(ctx, c, addonConfig); err != nil {
+		log.Error(err, "Failed to update ClusterManagementAddOn spec hash", "namespace", namespace)
+		return nil, fmt.Errorf("failed to update spec hash: %w", err)
 	}
 
 	return addonConfig, nil
