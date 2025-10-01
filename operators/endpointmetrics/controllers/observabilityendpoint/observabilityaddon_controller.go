@@ -520,7 +520,7 @@ func (r *ObservabilityAddonReconciler) SetupWithManager(mgr ctrl.Manager) error 
 			&handler.EnqueueRequestForObject{},
 		).Watches(&rbacv1.ClusterRoleBinding{},
 			&handler.EnqueueRequestForObject{},
-			builder.WithPredicates(getPred("hub-"+openshift.ClusterRoleBindingName, "", false, true, true)))
+			builder.WithPredicates(getPred(openshift.HubClusterRoleBindingName, "", false, true, true)))
 	}
 
 	return ctrlBuilder.

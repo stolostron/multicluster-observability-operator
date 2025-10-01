@@ -10,13 +10,12 @@ import (
 	"fmt"
 	"reflect"
 
+	"k8s.io/apimachinery/pkg/api/equality"
+
 	"github.com/ghodss/yaml"
 	cmomanifests "github.com/openshift/cluster-monitoring-operator/pkg/manifests"
-	hyperv1 "github.com/openshift/hypershift/api/hypershift/v1beta1"
-	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -29,14 +28,19 @@ const ( // #nosec G101 -- Not a hardcoded credential.
 	endpointMonitoringOperatorMgr  = "endpoint-monitoring-operator"
 	promNamespace                  = "openshift-monitoring"
 	clusterRoleBindingName         = "hub-metrics-collector-view"
-	etcdServiceMonitor             = "acm-etcd"
-	kubeApiServiceMonitor          = "acm-kube-apiserver"
 )
 
 // revertClusterMonitoringConfig reverts the configmap cluster-monitoring-config and relevant resources
 // (observability-alertmanager-accessor and hub-alertmanager-router-ca) for the openshift cluster monitoring stack.
 func RevertHubClusterMonitoringConfig(ctx context.Context, client client.Client) error {
 	// try to retrieve the current configmap in the cluster
+
+	hubInfo := &operatorconfig.HubInfo{}
+	err := yaml.Unmarshal(hubInfoSecret.Data[operatorconfig.HubInfoSecretKey], &hubInfo)
+	if err != nil {
+		return fmt.Errorf("failed to unmarshal hub info: %w", err)
+	}
+
 	found := &corev1.ConfigMap{}
 	if err := client.Get(ctx, types.NamespacedName{Name: clusterMonitoringConfigName,
 		Namespace: promNamespace}, found); err != nil {
@@ -91,15 +95,13 @@ func RevertHubClusterMonitoringConfig(ctx context.Context, client client.Client)
 		copiedAlertmanagerConfigs := make([]cmomanifests.AdditionalAlertmanagerConfig, 0)
 		for _, v := range foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs {
 			if v.TLSConfig == (cmomanifests.TLSConfig{}) ||
-				v.TLSConfig.CA == nil ||
-				v.TLSConfig.CA.LocalObjectReference == (corev1.LocalObjectReference{}) ||
-				v.TLSConfig.CA.LocalObjectReference.Name != hubAmRouterCASecretName {
+				(v.TLSConfig.CA != nil && v.TLSConfig.CA.LocalObjectReference.Name != hubAmRouterCASecretName+"-"+hubInfo.HubClusterDomain) {
 				copiedAlertmanagerConfigs = append(copiedAlertmanagerConfigs, v)
 			}
 		}
 		if len(copiedAlertmanagerConfigs) == 0 {
 			foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs = nil
-			if reflect.DeepEqual(*foundClusterMonitoringConfiguration.PrometheusK8sConfig, cmomanifests.PrometheusK8sConfig{}) {
+			if equality.Semantic.DeepEqual(*foundClusterMonitoringConfiguration.PrometheusK8sConfig, cmomanifests.PrometheusK8sConfig{}) {
 				foundClusterMonitoringConfiguration.PrometheusK8sConfig = nil
 			}
 		} else {
@@ -108,9 +110,10 @@ func RevertHubClusterMonitoringConfig(ctx context.Context, client client.Client)
 	}
 
 	// check if the foundClusterMonitoringConfiguration is empty
-	if equality.Semantic.DeepEqual(*foundClusterMonitoringConfiguration, cmomanifests.ClusterMonitoringConfiguration{}) {
+	if reflect.DeepEqual(*foundClusterMonitoringConfiguration, cmomanifests.ClusterMonitoringConfiguration{}) {
 		log.Info("empty ClusterMonitoringConfiguration, deleting configmap", "name", clusterMonitoringConfigName)
-		if err := client.Delete(ctx, found); err != nil {
+		err = client.Delete(ctx, found)
+		if err != nil && !errors.IsNotFound(err) {
 			return fmt.Errorf("failed to delete configmap %s: %w", clusterMonitoringConfigName, err)
 		}
 		return nil
@@ -133,47 +136,5 @@ func RevertHubClusterMonitoringConfig(ctx context.Context, client client.Client)
 		return fmt.Errorf("failed to update configmap %s: %w", clusterMonitoringConfigName, err)
 	}
 
-	return nil
-}
-
-func DeleteServiceMonitors(ctx context.Context, c client.Client) error {
-	hList := &hyperv1.HostedClusterList{}
-	err := c.List(context.TODO(), hList, &client.ListOptions{})
-	if err != nil {
-		log.Error(err, "Failed to list HyperShiftDeployment")
-		return err
-	}
-	for _, cluster := range hList.Items {
-		namespace := fmt.Sprintf("%s-%s", cluster.ObjectMeta.Namespace, cluster.ObjectMeta.Name)
-		err = deleteServiceMonitor(ctx, c, etcdServiceMonitor, namespace)
-		if err != nil {
-			return err
-		}
-		err = deleteServiceMonitor(ctx, c, kubeApiServiceMonitor, namespace)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func deleteServiceMonitor(ctx context.Context, c client.Client, name, namespace string) error {
-	sm := &promv1.ServiceMonitor{}
-	err := c.Get(ctx, types.NamespacedName{Name: name,
-		Namespace: namespace}, sm)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			log.Info("ServiceMonitor already deleted", "namespace", namespace, "name", name)
-			return nil
-		}
-		log.Error(err, "Failed to check the ServiceMonitor", "namespace", namespace, "name", name)
-		return err
-	}
-	err = c.Delete(ctx, sm)
-	if err != nil {
-		log.Error(err, "Error deleting ServiceMonitor", namespace, "name", name)
-		return err
-	}
-	log.Info("ServiceMonitor deleted", "namespace", namespace, "name", name)
 	return nil
 }

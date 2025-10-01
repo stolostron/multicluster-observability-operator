@@ -31,7 +31,7 @@ const (
 func DeleteMonitoringClusterRoleBinding(ctx context.Context, client client.Client, isHubMetricsCollector bool) error {
 	clusterRoleBindingName := ClusterRoleBindingName
 	if isHubMetricsCollector {
-		clusterRoleBindingName = "hub-" + ClusterRoleBindingName
+		clusterRoleBindingName = HubClusterRoleBindingName
 	}
 	rb := &rbacv1.ClusterRoleBinding{}
 	err := client.Get(ctx, types.NamespacedName{Name: clusterRoleBindingName,
@@ -52,7 +52,7 @@ func DeleteMonitoringClusterRoleBinding(ctx context.Context, client client.Clien
 func CreateMonitoringClusterRoleBinding(ctx context.Context, log logr.Logger, client client.Client, namespace, serviceAccountName string, isHubMetricsCollector bool) error {
 	clusterRoleBindingName := ClusterRoleBindingName
 	if isHubMetricsCollector {
-		clusterRoleBindingName = "hub-" + ClusterRoleBindingName
+		clusterRoleBindingName = HubClusterRoleBindingName
 	}
 	saSubject := rbacv1.Subject{
 		Kind:      "ServiceAccount",

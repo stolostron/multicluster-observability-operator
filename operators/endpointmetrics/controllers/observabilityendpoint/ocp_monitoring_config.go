@@ -8,7 +8,9 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"os"
 	"reflect"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -219,7 +221,6 @@ func createHubAmAccessorTokenSecret(ctx context.Context, client client.Client, n
 		}
 	}
 
-	log.Info("the observability-alertmanager-accessor secret already exists, check if it needs to be updated")
 	if reflect.DeepEqual(found.Data, dataMap) {
 		log.Info("no change for the observability-alertmanager-accessor secret")
 		return nil
@@ -591,11 +592,6 @@ func createOrUpdateCMOConfig(
 				index = i
 				break
 			}
-			//else if isGlobalHubManaged(cfg) {
-			//	existing = true
-			//	index = i
-			//	break
-			//}
 		}
 		if existing {
 			updatedCMOCfg.PrometheusK8sConfig.AlertmanagerConfigs[index] = newAdditionalAlertmanagerConfig(hubInfo)
@@ -625,14 +621,6 @@ func createOrUpdateUserWorkloadMonitoringConfig(
 	client client.Client,
 	hubInfo *operatorconfig.HubInfo,
 ) error {
-	// Create Router CA and Accessor Token secrets in the UWM namespace even when alert forwarding is disabled,
-	// so an external policy can configure UWM alert forwarding later if needed.
-	if err := createHubAmRouterCASecret(ctx, hubInfo, client, operatorconfig.OCPUserWorkloadMonitoringNamespace); err != nil {
-		return fmt.Errorf("failed to create or update hub-alertmanager-router-ca in UWM namespace: %w", err)
-	}
-	if err := createHubAmAccessorTokenSecret(ctx, client, operatorconfig.OCPUserWorkloadMonitoringNamespace, operatorconfig.OCPUserWorkloadMonitoringNamespace, hubInfo); err != nil {
-		return fmt.Errorf("failed to create or update alertmanager accessor token in UWM namespace: %w", err)
-	}
 
 	// handle the case when alert forwarding is disabled globally or UWM alerting is disabled specifically
 	if hubInfo.AlertmanagerEndpoint == "" || hubInfo.UWMAlertingDisabled {
@@ -686,10 +674,24 @@ func createOrUpdateUserWorkloadMonitoringConfig(
 		return fmt.Errorf("failed to unmarshal existing user workload monitoring config: %w", err)
 	}
 
-	if parsed.Prometheus == nil {
-		parsed.Prometheus = &alertCfg
+	if parsed.Prometheus != nil {
+		exists := false
+		var index int
+		for i, cfg := range parsed.Prometheus.AlertmanagerConfigs {
+			if isManaged(cfg, hubInfo) {
+				parsed.Prometheus.AlertmanagerConfigs[i] = newAdditionalAlertmanagerConfig(hubInfo)
+				exists = true
+				index = i
+				break
+			}
+		}
+		if !exists {
+			parsed.Prometheus.AlertmanagerConfigs = append(parsed.Prometheus.AlertmanagerConfigs, newAdditionalAlertmanagerConfig(hubInfo))
+		} else {
+			parsed.Prometheus.AlertmanagerConfigs[index] = newAdditionalAlertmanagerConfig(hubInfo)
+		}
 	} else {
-		parsed.Prometheus.AlertmanagerConfigs = alertCfg.AlertmanagerConfigs
+		parsed.Prometheus = &alertCfg
 	}
 
 	updatedYAMLBytes, err := yaml.Marshal(parsed)
@@ -764,7 +766,10 @@ func inManagedFields(cm *corev1.ConfigMap) bool {
 
 // isManaged checks if the additional alertmanager config is managed by ACM
 func isManaged(amc cmomanifests.AdditionalAlertmanagerConfig, hubInfo *operatorconfig.HubInfo) bool {
-	if amc.TLSConfig.CA != nil && amc.TLSConfig.CA.LocalObjectReference.Name == hubAmRouterCASecretName+"-"+hubInfo.HubClusterDomain {
+	if hubInfo != nil && amc.TLSConfig.CA != nil && amc.TLSConfig.CA.LocalObjectReference.Name == hubAmRouterCASecretName+"-"+hubInfo.HubClusterDomain {
+		return true
+	} else if os.Getenv("CMO_SCRIPT_MODE") == "true" && amc.TLSConfig.CA != nil && strings.Contains(amc.TLSConfig.CA.LocalObjectReference.Name, hubAmRouterCASecretName) {
+		//This is only for the CMO cleanup script to clean up old configs
 		return true
 	}
 	return false
