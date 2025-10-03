@@ -59,7 +59,7 @@ deps: ## Ensures fresh go.mod and go.sum.
 go-format: ## Formats Go code including imports.
 go-format: $(GOIMPORTS)
 	@echo ">> formatting go code"
-	@gofmt -s -w $(FILES_TO_FMT)
+	@go fmt ./...
 	@$(GOIMPORTS) -w $(FILES_TO_FMT)
 
 .PHONY: shell-format

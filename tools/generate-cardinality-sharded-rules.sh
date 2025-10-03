@@ -3,8 +3,6 @@
 set -e
 set -o pipefail
 
-# Usage: ./generate-sharded-rules.sh [number_of_shards]
-#
 # This script generates sharded Prometheus rules for cardinality dashboards.
 # It shards the rules based on the first character of the 'cluster' label (UUID).
 #
@@ -17,86 +15,86 @@ SHARDS=${1:-16}
 sharding_patterns=()
 
 case $SHARDS in
-    2)
-        sharding_patterns=("^[0-7].*")
-        sharding_patterns+=("^[8-f].*")
-        ;;
-    4)
-        sharding_patterns=("^[0-3].*")
-        sharding_patterns+=("^[4-7].*")
-        sharding_patterns+=("^[8-b].*")
-        sharding_patterns+=("^[c-f].*")
-        ;;
-    8)
-        sharding_patterns=("^[0-1].*")
-        sharding_patterns+=("^[2-3].*")
-        sharding_patterns+=("^[4-5].*")
-        sharding_patterns+=("^[6-7].*")
-        sharding_patterns+=("^[8-9].*")
-        sharding_patterns+=("^[a-b].*")
-        sharding_patterns+=("^[c-d].*")
-        sharding_patterns+=("^[e-f].*")
-        ;;
-    16)
-        for i in {0..9} {a..f}; do
-            sharding_patterns+=("^$i.*")
-        done
-        ;;
-    32)
-        for i in {0..9} {a..f}; do
-            sharding_patterns+=("^$i[0-7].*")
-            sharding_patterns+=("^$i[8-f].*")
-        done
-        ;;
-    64)
-        for i in {0..9} {a..f}; do
-            sharding_patterns+=("^$i[0-3].*")
-            sharding_patterns+=("^$i[4-7].*")
-            sharding_patterns+=("^$i[8-b].*")
-            sharding_patterns+=("^$i[c-f].*")
-        done
-        ;;
-    128)
-        for i in {0..9} {a..f}; do
-            sharding_patterns+=("^$i[0-1].*")
-            sharding_patterns+=("^$i[2-3].*")
-            sharding_patterns+=("^$i[4-5].*")
-            sharding_patterns+=("^$i[6-7].*")
-            sharding_patterns+=("^$i[8-9].*")
-            sharding_patterns+=("^$i[a-b].*")
-            sharding_patterns+=("^$i[c-d].*")
-            sharding_patterns+=("^$i[e-f].*")
-        done
-        ;;
-    256)
-        for i in {0..9} {a..f}; do
-            for j in {0..9} {a..f}; do
-                sharding_patterns+=("^$i$j.*")
-            done
-        done
-        ;;
-    512)
-        for i in {0..9} {a..f}; do
-            for j in {0..9} {a..f}; do
-                sharding_patterns+=("^$i$j[0-7].*")
-                sharding_patterns+=("^$i$j[8-f].*")
-            done
-        done
-        ;;
-    1024)
-        for i in {0..9} {a..f}; do
-            for j in {0..9} {a..f}; do
-                sharding_patterns+=("^$i$j[0-3].*")
-                sharding_patterns+=("^$i$j[4-7].*")
-                sharding_patterns+=("^$i$j[8-b].*")
-                sharding_patterns+=("^$i$j[c-f].*")
-            done
-        done
-        ;;
-    *)
-        echo "Unsupported number of shards: $SHARDS. Please use 2, 4, 8, 16, 32, 64, 128, 256, 512, or 1024." >&2
-        exit 1
-        ;;
+  2)
+    sharding_patterns=("^[0-7].*")
+    sharding_patterns+=("^[8-f].*")
+    ;;
+  4)
+    sharding_patterns=("^[0-3].*")
+    sharding_patterns+=("^[4-7].*")
+    sharding_patterns+=("^[8-b].*")
+    sharding_patterns+=("^[c-f].*")
+    ;;
+  8)
+    sharding_patterns=("^[0-1].*")
+    sharding_patterns+=("^[2-3].*")
+    sharding_patterns+=("^[4-5].*")
+    sharding_patterns+=("^[6-7].*")
+    sharding_patterns+=("^[8-9].*")
+    sharding_patterns+=("^[a-b].*")
+    sharding_patterns+=("^[c-d].*")
+    sharding_patterns+=("^[e-f].*")
+    ;;
+  16)
+    for i in {0..9} {a..f}; do
+      sharding_patterns+=("^$i.*")
+    done
+    ;;
+  32)
+    for i in {0..9} {a..f}; do
+      sharding_patterns+=("^$i[0-7].*")
+      sharding_patterns+=("^$i[8-f].*")
+    done
+    ;;
+  64)
+    for i in {0..9} {a..f}; do
+      sharding_patterns+=("^$i[0-3].*")
+      sharding_patterns+=("^$i[4-7].*")
+      sharding_patterns+=("^$i[8-b].*")
+      sharding_patterns+=("^$i[c-f].*")
+    done
+    ;;
+  128)
+    for i in {0..9} {a..f}; do
+      sharding_patterns+=("^$i[0-1].*")
+      sharding_patterns+=("^$i[2-3].*")
+      sharding_patterns+=("^$i[4-5].*")
+      sharding_patterns+=("^$i[6-7].*")
+      sharding_patterns+=("^$i[8-9].*")
+      sharding_patterns+=("^$i[a-b].*")
+      sharding_patterns+=("^$i[c-d].*")
+      sharding_patterns+=("^$i[e-f].*")
+    done
+    ;;
+  256)
+    for i in {0..9} {a..f}; do
+      for j in {0..9} {a..f}; do
+        sharding_patterns+=("^$i$j.*")
+      done
+    done
+    ;;
+  512)
+    for i in {0..9} {a..f}; do
+      for j in {0..9} {a..f}; do
+        sharding_patterns+=("^$i$j[0-7].*")
+        sharding_patterns+=("^$i$j[8-f].*")
+      done
+    done
+    ;;
+  1024)
+    for i in {0..9} {a..f}; do
+      for j in {0..9} {a..f}; do
+        sharding_patterns+=("^$i$j[0-3].*")
+        sharding_patterns+=("^$i$j[4-7].*")
+        sharding_patterns+=("^$i$j[8-b].*")
+        sharding_patterns+=("^$i$j[c-f].*")
+      done
+    done
+    ;;
+  *)
+    echo "Unsupported number of shards: $SHARDS. Please use 2, 4, 8, 16, 32, 64, 128, 256, 512, or 1024." >&2
+    exit 1
+    ;;
 esac
 
 cat <<'EOF'
@@ -115,8 +113,8 @@ data:
 EOF
 
 for pattern in "${sharding_patterns[@]}"; do
-    echo "          - expr: count by (cluster, namespace) ({__name__=~\".+\", clusterID=~\"${pattern}\"})"
-    echo "            record: cluster_namespace:cardinality"
+  echo "          - expr: count by (cluster, namespace) ({__name__=~\".+\", clusterID=~\"${pattern}\"})"
+  echo "            record: cluster_namespace:cardinality"
 done
 
 echo "          - expr: sum(cluster_namespace:cardinality) by (cluster)"
@@ -126,8 +124,8 @@ echo "        interval: 30m"
 echo "        rules:"
 
 for pattern in "${sharding_patterns[@]}"; do
-    echo "          - expr: label_replace(count by (cluster, __name__) ({__name__=~\".+\", clusterID=~\"${pattern}\"}), \"metric_name\", \"\$1\", \"__name__\", \"(.*)\")"
-    echo "            record: cluster_name:cardinality"
+  echo "          - expr: label_replace(count by (cluster, __name__) ({__name__=~\".+\", clusterID=~\"${pattern}\"}), \"metric_name\", \"\$1\", \"__name__\", \"(.*)\")"
+  echo "            record: cluster_name:cardinality"
 done
 
 echo "          - expr: sum(cluster_name:cardinality) by (metric_name)"
@@ -136,5 +134,5 @@ echo "            record: name:cardinality"
 echo "      - name: grafana-dashboard-cardinality-global-rules"
 echo "        interval: 30m"
 echo "        rules:"
-echo "          - expr: label_replace(count by (__name__) (last_over_time({__name__=~\".+\", clusterID=\"\"}[35m])), \"metric_name\", \"\$1\", \"__name__\", \"(.*)\")"
+echo '          - expr: label_replace(count by (__name__) (last_over_time({__name__=~".+", clusterID=""}[35m])), "metric_name", "$1", "__name__", "(.*)")'
 echo "            record: name:no_cluster:cardinality"
