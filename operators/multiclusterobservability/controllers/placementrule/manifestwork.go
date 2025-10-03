@@ -52,6 +52,8 @@ import (
 const (
 	workNameSuffix            = "-observability"
 	workPostponeDeleteAnnoKey = "open-cluster-management/postpone-delete"
+	amTokenExpiration         = "token-expiration"
+	amTokenCreated            = "token-created"
 )
 
 // intermediate resources for the manifest work.
@@ -688,25 +690,39 @@ func generateAmAccessorTokenSecret(cl client.Client, kubeClient kubernetes.Inter
 
 	// Check expiration on amAccessorTokenSecret
 	if amAccessorTokenSecret != nil {
-		if expirationBytes, exists := amAccessorTokenSecret.Annotations["token-expiration"]; exists {
+		expirationBytes, hasExpiration := amAccessorTokenSecret.Annotations[amTokenExpiration]
+		createdBytes, hasCreated := amAccessorTokenSecret.Annotations[amTokenCreated]
+
+		if hasExpiration && hasCreated {
 			// Check if the token is near expiration
-			expiration := string(expirationBytes)
+			expirationStr := string(expirationBytes)
 			expectedDuration := time.Duration(8640*3600) * time.Second
-			if expiration, err := time.Parse(time.RFC3339, expiration); err == nil {
-				// find out the expected duration of the token
-				if createdBytes, exists := amAccessorTokenSecret.Annotations["token-created"]; exists {
-					created := string(createdBytes)
-					if created, err := time.Parse(time.RFC3339, created); err == nil {
-						expectedDuration = expiration.Sub(created)
-					}
-				}
-				percentOfExp := float64(time.Until(expiration)) / float64(expectedDuration)
-				if percentOfExp >= 0.2 {
-					// Current amAccessorTokenSecret is not near expiration, returning it
-					return amAccessorTokenSecret, nil
-				}
+			expiration, err := time.Parse(time.RFC3339, expirationStr)
+			if err != nil {
+				log.Error(err, "Failed to parse alertmanager accessor token expiration date", "expiration", expiration)
+				return nil, err
+			}
+			// find out the expected duration of the token
+			createdStr := string(createdBytes)
+			created, err := time.Parse(time.RFC3339, createdStr)
+
+			if err != nil {
+				log.Error(err, "Failed to parse alertmanager accessor token creation date", "created", created)
+				return nil, err
+			}
+
+			expectedDuration = expiration.Sub(created)
+			if expectedDuration <= 0 {
+				log.Error(nil, "Invalid duration for alertmanager accessor token", "duration", expectedDuration)
+				return nil, nil
+			}
+			percentOfExp := float64(time.Until(expiration)) / float64(expectedDuration)
+			if percentOfExp >= 0.2 {
+				// Current amAccessorTokenSecret is not near expiration, returning it
+				return amAccessorTokenSecret, nil
 			}
 		}
+
 	}
 
 	// Creating our own token secret and binding it to the ServiceAccount
@@ -739,8 +755,8 @@ func generateAmAccessorTokenSecret(cl client.Client, kubeClient kubernetes.Inter
 			Name:      config.AlertmanagerAccessorSecretName,
 			Namespace: spokeNameSpace,
 			Annotations: map[string]string{
-				"token-expiration": tokenRequest.Status.ExpirationTimestamp.Format(time.RFC3339),
-				"token-created":    now.Format(time.RFC3339),
+				amTokenExpiration: tokenRequest.Status.ExpirationTimestamp.Format(time.RFC3339),
+				amTokenCreated:    now.Format(time.RFC3339),
 			},
 		},
 		Type: corev1.SecretTypeOpaque,

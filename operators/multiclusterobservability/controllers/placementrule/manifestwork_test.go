@@ -551,7 +551,7 @@ func TestManifestWork(t *testing.T) {
 				metadataMap := metadata.(map[string]any)
 				if annotations, exists := metadataMap["annotations"]; exists {
 					annotationsMap := annotations.(map[string]any)
-					if tokenExpiration, exists := annotationsMap["token-expiration"]; exists {
+					if tokenExpiration, exists := annotationsMap[amTokenExpiration]; exists {
 						_, err := time.Parse(time.RFC3339, tokenExpiration.(string))
 						if err != nil {
 							t.Fatalf("Failed to parse token-expiration from secret: %v", err)
