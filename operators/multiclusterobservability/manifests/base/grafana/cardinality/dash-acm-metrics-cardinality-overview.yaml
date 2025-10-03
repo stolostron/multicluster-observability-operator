@@ -21,20 +21,772 @@ data:
       "editable": true,
       "fiscalYearStartMonth": 0,
       "graphTooltip": 0,
-      "id": 72,
+      "id": 64,
       "links": [],
       "panels": [
         {
-          "collapsed": false,
+          "collapsed": true,
           "gridPos": {
             "h": 1,
             "w": 24,
             "x": 0,
             "y": 0
           },
+          "id": 7,
+          "panels": [
+            {
+              "fieldConfig": {
+                "defaults": {},
+                "overrides": []
+              },
+              "gridPos": {
+                "h": 10,
+                "w": 24,
+                "x": 0,
+                "y": 1
+              },
+              "id": 8,
+              "options": {
+                "code": {
+                  "language": "plaintext",
+                  "showLineNumbers": false,
+                  "showMiniMap": false
+                },
+                "content": "### **📝 Managing Monitoring Cardinality**\n\nThis dashboard helps you visualize the metric cardinality ingested from all managed clusters. Understanding and controlling cardinality is crucial, as the number of unique metrics directly correlates with the CPU, memory, and storage resources required by the Thanos monitoring platform.\n\n#### **⚠️ Important: Dashboard Prerequisites**\n\nFor this dashboard to display any data, a specific set of Prometheus recording rules must be configured on the hub. These rules perform the heavy cardinality calculations in the background and save the results as new, efficient metrics, such as cluster\\_name:cardinality.\n\nThese rules run at a **30-minute interval** to protect system performance. Therefore, the data on this dashboard will update every half hour.\n\nIf the panels are empty, the rules are likely not configured. Refer to the [ACM Dev Preview Documentation](https://github.com/stolostron/stolostron/blob/main/dev-preview/README.md) for complete setup instructions.\n\n#### **🤔 What is Cardinality?**\n\n**Cardinality** refers to the total number of unique **time series** in our monitoring system. A time series is a unique combination of a **metric name** and its descriptive **labels**.\n\nAdding a label with thousands of unique values (like a request\\_id) causes a \"cardinality explosion,\" which severely degrades system performance.\n\n#### **🔥 Why It Matters**\n\nHigh cardinality is the primary cause of performance issues in the Thanos-based monitoring system. It directly leads to:\n\n* **High CPU and Memory Usage:** The system struggles to ingest, index, and query the massive number of series.  \n* **Slow Dashboards and Alerts:** Queries take longer to complete, making dashboards slow and alerts unreliable.  \n* **Increased Storage Costs:** More unique series consume more disk space.\n\n#### **🔍 How to Use These Dashboards**\n\nThis overview uses the pre-calculated metrics to help you investigate issues without overloading the system:\n\n1. **Cardinality Outliers:** The top row of the dashboard automatically identifies clusters and metrics with a disproportionately high cardinality. It flags any item with a value greater than three times the standard deviation from the average. This allows you to spot the most significant contributors at a glance.\n2. **Cardinality by Cluster Name:** This graph shows the total number of series sent by each managed cluster. If you see a cluster with unusually high or spiking cardinality, click on it to drill down into a detailed dashboard. There, you can see the breakdown by namespace and pod to find the specific workload responsible.  \n3. **Cardinality by Metric Name:** This graph shows the highest-cardinality metrics across all clusters. If a metric has an unexpectedly high series count, click on it to drill down. The detailed view will show you which cluster, namespace, and pod are contributing the most series to that specific metric.\n\n#### **🚧 Limitations & Scope**\n\nThis dashboard provides a high-level overview, not a real-time, granular analysis tool. Please be aware of the following limitations:\n\n* **Data Latency:** The data is based on recording rules that run every 30 minutes. As a result, all panels have a data latency of up to half an hour and are not suitable for real-time monitoring.  \n* **Churn Rate is Not Visible:** The panels track standing cardinality (the total number of active series). They are perfect for spotting long-term growth but may not detect high **churn rates** (i.e., a large number of short-lived metrics), which also puts a significant load on the system.  \n* **Root Cause Labels are Not Shown:** This overview will identify a metric with high cardinality (the \"what\") but not the specific label causing it (the \"why\"). For example, it will flag http\\_requests\\_total as problematic but won't show that a pod\\_uuid label is the root cause. This level of analysis requires using the drill-down dashboards.\n\n#### **✅ Best Practices for Reducing Cardinality**\n\nOnce you've identified a problematic application, the primary method for reducing cardinality at the hub is to use recording rules on the managed clusters:\n\n* **Federate Aggregated Metrics via Recording Rules:** Instead of federating raw, high-cardinality metrics, the best practice is to push Prometheus recording rules to the managed cluster. These rules can pre-aggregate the data (e.g., by summing requests per namespace while dropping pod-level details). Then, configure federation to scrape *only the aggregated results* of these rules. This is the most effective way to prevent high-cardinality data from ever reaching the hub.  \n* **Be Selective About What You Federate:** Not every metric from a managed cluster needs to be centralized. Only federate the results of rules or raw metrics that are truly essential for global dashboards and alerting.\n* **Drop Unneeded Labels:** When writing your recording rules, ensure you drop any unnecessary, high-cardinality labels. Your goal is to preserve the essential dimensions for hub-level analysis while discarding volatile labels like pod, instance, or pod\\_uuid.  ",
+                "mode": "markdown"
+              },
+              "pluginVersion": "11.6.1",
+              "title": "",
+              "type": "text"
+            }
+          ],
+          "title": "Dashboard Guide (Click to Expand)",
+          "type": "row"
+        },
+        {
+          "collapsed": true,
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 1
+          },
+          "id": 14,
+          "panels": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "000000001"
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "color": {
+                    "mode": "thresholds"
+                  },
+                  "mappings": [],
+                  "noValue": "0",
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "green"
+                      },
+                      {
+                        "color": "red",
+                        "value": 1
+                      }
+                    ]
+                  }
+                },
+                "overrides": []
+              },
+              "gridPos": {
+                "h": 6,
+                "w": 3,
+                "x": 0,
+                "y": 22
+              },
+              "id": 15,
+              "options": {
+                "colorMode": "value",
+                "graphMode": "area",
+                "justifyMode": "auto",
+                "orientation": "auto",
+                "percentChangeColorMode": "standard",
+                "reduceOptions": {
+                  "calcs": [
+                    "lastNotNull"
+                  ],
+                  "fields": "",
+                  "values": false
+                },
+                "showPercentChange": false,
+                "textMode": "auto",
+                "wideLayout": true
+              },
+              "pluginVersion": "11.6.1",
+              "targets": [
+                {
+                  "editorMode": "code",
+                  "exemplar": false,
+                  "expr": "count(group by (cluster) (up) unless (group by (cluster) (last_over_time(cluster:cardinality[35m]))))",
+                  "format": "table",
+                  "instant": true,
+                  "legendFormat": "__auto",
+                  "range": false,
+                  "refId": "A"
+                }
+              ],
+              "title": "Excluded Clusters",
+              "type": "stat"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "000000001"
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "color": {
+                    "mode": "thresholds"
+                  },
+                  "custom": {
+                    "align": "auto",
+                    "cellOptions": {
+                      "type": "auto"
+                    },
+                    "inspect": false
+                  },
+                  "mappings": [],
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "green"
+                      },
+                      {
+                        "color": "red",
+                        "value": 80
+                      }
+                    ]
+                  }
+                },
+                "overrides": []
+              },
+              "gridPos": {
+                "h": 6,
+                "w": 9,
+                "x": 3,
+                "y": 22
+              },
+              "id": 17,
+              "options": {
+                "cellHeight": "sm",
+                "footer": {
+                  "countRows": false,
+                  "fields": "",
+                  "reducer": [
+                    "sum"
+                  ],
+                  "show": false
+                },
+                "showHeader": true
+              },
+              "pluginVersion": "11.6.1",
+              "targets": [
+                {
+                  "editorMode": "code",
+                  "exemplar": false,
+                  "expr": "group by (cluster) (up) unless (group by (cluster) (last_over_time(cluster:cardinality[35m])))",
+                  "format": "table",
+                  "hide": false,
+                  "instant": true,
+                  "interval": "",
+                  "legendFormat": "__auto",
+                  "range": false,
+                  "refId": "A"
+                }
+              ],
+              "title": "Cluster List",
+              "transformations": [
+                {
+                  "id": "filterFieldsByName",
+                  "options": {
+                    "include": {
+                      "names": [
+                        "cluster"
+                      ]
+                    }
+                  }
+                }
+              ],
+              "type": "table"
+            },
+            {
+              "fieldConfig": {
+                "defaults": {},
+                "overrides": []
+              },
+              "gridPos": {
+                "h": 6,
+                "w": 12,
+                "x": 12,
+                "y": 22
+              },
+              "id": 16,
+              "options": {
+                "code": {
+                  "language": "plaintext",
+                  "showLineNumbers": false,
+                  "showMiniMap": false
+                },
+                "content": "#### **Important Note on Data Coverage & Sharding**\n\nThis section helps you verify that all your managed clusters are correctly included in the cardinality analysis performed on this dashboard.\n\nThe recording rules that power these dashboards use a technique called **sharding** to distribute the high computational load. This sharding relies on the clusterID label, which is present in all metrics sent by a managed cluster.\n\nThe clusterID for OpenShift clusters is a UUID (e.g., a1b2c3d4-...), which is ideal for balanced sharding because its characters are randomly distributed. In contrast, other cluster types might use the cluster name as the clusterID. Since names often follow predictable patterns, this can cause two potential issues:\n\n1. **Exclusion:** If a cluster name contains characters outside the expected set (hexadecimal characters), the sharding rules may ignore its metrics entirely, excluding it from the analysis.  \n2. **Skew:** If many cluster names start with the same character (e.g., all Azure clusters starting with aks-), the sharding can become unbalanced, leading to performance degradation of the monitoring system.\n\n**Your Action:** Please review the table in this section. If any of your managed clusters are listed here, or are missing from the main dashboards below, please refer to the **ACM Documentation** for instructions on how to configure them correctly.",
+                "mode": "markdown"
+              },
+              "pluginVersion": "11.6.1",
+              "title": "Note on Data Coverage",
+              "type": "text"
+            }
+          ],
+          "title": "Clusters Excluded from Analysis",
+          "type": "row"
+        },
+        {
+          "collapsed": false,
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 2
+          },
+          "id": 9,
+          "panels": [],
+          "title": "Cardinality Outliers",
+          "type": "row"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "000000001"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [],
+              "noValue": "0",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  },
+                  {
+                    "color": "red",
+                    "value": 1
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 6,
+            "w": 3,
+            "x": 0,
+            "y": 3
+          },
+          "id": 11,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "11.6.1",
+          "targets": [
+            {
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "count(last_over_time(cluster:cardinality[35m]) > ignoring(cluster) group_left avg(last_over_time(cluster:cardinality[35m])) + 3 * stddev(last_over_time(cluster:cardinality[35m])))",
+              "format": "table",
+              "instant": true,
+              "interval": "10m",
+              "legendFormat": "__auto",
+              "range": false,
+              "refId": "A"
+            }
+          ],
+          "title": "Cluster Outliers",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "000000001"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "custom": {
+                "align": "auto",
+                "cellOptions": {
+                  "type": "auto"
+                },
+                "inspect": false
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "cluster"
+                },
+                "properties": [
+                  {
+                    "id": "links",
+                    "value": [
+                      {
+                        "title": "Detailed dashboard",
+                        "url": "/d/eeoqevt59fwn4c/cluster?${__url_time_range}&var-datasource=$datasource&var-cluster=${__data.fields.cluster}"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 6,
+            "w": 9,
+            "x": 3,
+            "y": 3
+          },
+          "id": 10,
+          "options": {
+            "cellHeight": "sm",
+            "footer": {
+              "countRows": false,
+              "fields": "",
+              "reducer": [
+                "sum"
+              ],
+              "show": true
+            },
+            "showHeader": true,
+            "sortBy": [
+              {
+                "desc": true,
+                "displayName": "Value"
+              }
+            ]
+          },
+          "pluginVersion": "11.6.1",
+          "targets": [
+            {
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "last_over_time(cluster:cardinality[35m]) > ignoring(cluster) group_left avg(last_over_time(cluster:cardinality[35m])) + 3 * stddev(last_over_time(cluster:cardinality[35m]))",
+              "format": "table",
+              "instant": true,
+              "interval": "",
+              "legendFormat": "__auto",
+              "range": false,
+              "refId": "Cluster Cardinality"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "000000001"
+              },
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "sum(last_over_time(cluster:cardinality[35m]))",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "legendFormat": "__auto",
+              "range": false,
+              "refId": "Total"
+            }
+          ],
+          "title": "Top Clusters",
+          "transformations": [
+            {
+              "id": "merge",
+              "options": {}
+            },
+            {
+              "id": "calculateField",
+              "options": {
+                "alias": "ratio",
+                "binary": {
+                  "left": {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Value #Cluster Cardinality"
+                    }
+                  },
+                  "operator": "/",
+                  "right": {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Value #Total"
+                    }
+                  }
+                },
+                "mode": "binary",
+                "reduce": {
+                  "reducer": "sum"
+                }
+              }
+            },
+            {
+              "id": "calculateField",
+              "options": {
+                "alias": "% of Total",
+                "binary": {
+                  "left": {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "ratio"
+                    }
+                  },
+                  "operator": "*",
+                  "right": {
+                    "fixed": "100"
+                  }
+                },
+                "mode": "binary",
+                "reduce": {
+                  "reducer": "sum"
+                }
+              }
+            },
+            {
+              "id": "filterFieldsByName",
+              "options": {
+                "include": {
+                  "names": [
+                    "Value #Cluster Cardinality",
+                    "% of Total",
+                    "cluster"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "renameByRegex",
+              "options": {
+                "regex": "Value #(.*)",
+                "renamePattern": "$1"
+              }
+            },
+            {
+              "id": "filterByValue",
+              "options": {
+                "filters": [
+                  {
+                    "config": {
+                      "id": "isNull",
+                      "options": {}
+                    },
+                    "fieldName": "Cluster Cardinality"
+                  }
+                ],
+                "match": "any",
+                "type": "exclude"
+              }
+            }
+          ],
+          "type": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "000000001"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [],
+              "noValue": "0",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  },
+                  {
+                    "color": "red",
+                    "value": 1
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 6,
+            "w": 3,
+            "x": 12,
+            "y": 3
+          },
+          "id": 12,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "11.6.1",
+          "targets": [
+            {
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "count(last_over_time(name:cardinality[35m]) > ignoring(metric_name) group_left avg(last_over_time(name:cardinality[35m])) + 3 * stddev(last_over_time(name:cardinality[35m])))",
+              "format": "table",
+              "instant": true,
+              "interval": "10m",
+              "legendFormat": "__auto",
+              "range": false,
+              "refId": "A"
+            }
+          ],
+          "title": "Metric Outliers",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "000000001"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "custom": {
+                "align": "auto",
+                "cellOptions": {
+                  "type": "auto"
+                },
+                "inspect": false
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "metric_name"
+                },
+                "properties": [
+                  {
+                    "id": "links",
+                    "value": [
+                      {
+                        "title": "Detailed dashboard",
+                        "url": "/d/aeotjz90jlkw0f?var-metric_name=${__data.fields.metric_name}"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 6,
+            "w": 9,
+            "x": 15,
+            "y": 3
+          },
+          "id": 13,
+          "options": {
+            "cellHeight": "sm",
+            "footer": {
+              "countRows": false,
+              "fields": "",
+              "reducer": [
+                "sum"
+              ],
+              "show": true
+            },
+            "showHeader": true,
+            "sortBy": [
+              {
+                "desc": true,
+                "displayName": "Cluster Cardinality"
+              }
+            ]
+          },
+          "pluginVersion": "11.6.1",
+          "targets": [
+            {
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "last_over_time(name:cardinality[35m]) > ignoring(metric_name) group_left avg(last_over_time(name:cardinality[35m])) + 3 * stddev(last_over_time(name:cardinality[35m]))",
+              "format": "table",
+              "instant": true,
+              "interval": "10m",
+              "legendFormat": "__auto",
+              "range": false,
+              "refId": "Cluster Cardinality"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "000000001"
+              },
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "sum(last_over_time(name:cardinality[35m]))",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "legendFormat": "__auto",
+              "range": false,
+              "refId": "Total"
+            }
+          ],
+          "title": "Top Metrics",
+          "transformations": [
+            {
+              "id": "merge",
+              "options": {}
+            },
+            {
+              "id": "calculateField",
+              "options": {
+                "alias": "ratio",
+                "binary": {
+                  "left": {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Value #Cluster Cardinality"
+                    }
+                  },
+                  "operator": "/",
+                  "right": {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Value #Total"
+                    }
+                  }
+                },
+                "mode": "binary",
+                "reduce": {
+                  "reducer": "sum"
+                }
+              }
+            },
+            {
+              "id": "calculateField",
+              "options": {
+                "alias": "% of Total",
+                "binary": {
+                  "left": {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "ratio"
+                    }
+                  },
+                  "operator": "*",
+                  "right": {
+                    "fixed": "100"
+                  }
+                },
+                "mode": "binary",
+                "reduce": {
+                  "reducer": "sum"
+                }
+              }
+            },
+            {
+              "id": "filterFieldsByName",
+              "options": {
+                "include": {
+                  "names": [
+                    "metric_name",
+                    "% of Total",
+                    "Value #Cluster Cardinality"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "renameByRegex",
+              "options": {
+                "regex": "Value #(.*)",
+                "renamePattern": "$1"
+              }
+            }
+          ],
+          "type": "table"
+        },
+        {
+          "collapsed": false,
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 9
+          },
           "id": 3,
           "panels": [],
-          "title": "Cluster Level Cardinality of Collected Metrics",
+          "title": "Cluster Cardinality",
           "type": "row"
         },
         {
@@ -55,6 +807,7 @@ data:
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
+                "barWidthFactor": 0.6,
                 "drawStyle": "line",
                 "fillOpacity": 0,
                 "gradientMode": "none",
@@ -85,8 +838,7 @@ data:
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -98,10 +850,10 @@ data:
             "overrides": []
           },
           "gridPos": {
-            "h": 11,
-            "w": 13,
+            "h": 13,
+            "w": 10,
             "x": 0,
-            "y": 1
+            "y": 10
           },
           "id": 1,
           "options": {
@@ -113,10 +865,12 @@ data:
               "width": 400
             },
             "tooltip": {
+              "hideZeros": false,
               "mode": "single",
               "sort": "none"
             }
           },
+          "pluginVersion": "11.6.1",
           "targets": [
             {
               "datasource": {
@@ -124,9 +878,10 @@ data:
                 "uid": "000000001"
               },
               "editorMode": "code",
-              "expr": "cluster:cardinality",
+              "expr": "topk(8, cluster:cardinality)",
               "instant": false,
-              "legendFormat": "__auto",
+              "interval": "30m",
+              "legendFormat": "{{cluster}}",
               "range": true,
               "refId": "A"
             }
@@ -149,19 +904,16 @@ data:
                 "cellOptions": {
                   "type": "auto"
                 },
-                "inspect": false
+                "filterable": true,
+                "inspect": false,
+                "minWidth": 100
               },
               "mappings": [],
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
+                    "color": "transparent"
                   }
                 ]
               }
@@ -183,29 +935,99 @@ data:
                     ]
                   }
                 ]
+              },
+              {
+                "matcher": {
+                  "id": "byRegexp",
+                  "options": "/Change/"
+                },
+                "properties": [
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "type": "color-text"
+                    }
+                  },
+                  {
+                    "id": "thresholds",
+                    "value": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "green"
+                        },
+                        {
+                          "color": "#EAB839",
+                          "value": 0.1
+                        },
+                        {
+                          "color": "orange",
+                          "value": 20
+                        },
+                        {
+                          "color": "red",
+                          "value": 40
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "% of Total"
+                },
+                "properties": [
+                  {
+                    "id": "mappings",
+                    "value": [
+                      {
+                        "options": {
+                          "NaN": {
+                            "index": 0,
+                            "text": " ​ "
+                          }
+                        },
+                        "type": "value"
+                      }
+                    ]
+                  }
+                ]
               }
             ]
           },
           "gridPos": {
-            "h": 11,
-            "w": 11,
-            "x": 13,
-            "y": 1
+            "h": 13,
+            "w": 14,
+            "x": 10,
+            "y": 10
           },
           "id": 2,
           "options": {
             "cellHeight": "sm",
             "footer": {
               "countRows": false,
-              "fields": "",
+              "enablePagination": true,
+              "fields": [
+                "Value #Now",
+                "Value #7d Ago",
+                "Value #30d Ago"
+              ],
               "reducer": [
                 "sum"
               ],
               "show": false
             },
-            "showHeader": true
+            "showHeader": true,
+            "sortBy": [
+              {
+                "desc": true,
+                "displayName": "Now"
+              }
+            ]
           },
-          "pluginVersion": "11.1.5",
+          "pluginVersion": "11.6.1",
           "targets": [
             {
               "datasource": {
@@ -214,25 +1036,317 @@ data:
               },
               "editorMode": "code",
               "exemplar": false,
-              "expr": "cluster:cardinality",
+              "expr": "last_over_time(cluster:cardinality[35m])",
               "format": "table",
+              "instant": true,
+              "interval": "",
+              "legendFormat": "__auto",
+              "range": false,
+              "refId": "Now"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "000000001"
+              },
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "last_over_time(cluster:cardinality[35m] offset 7d)",
+              "format": "table",
+              "hide": false,
               "instant": true,
               "legendFormat": "__auto",
               "range": false,
-              "refId": "A"
+              "refId": "7d Ago"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "000000001"
+              },
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "last_over_time(cluster:cardinality[35m] offset 30d)",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "__auto",
+              "range": false,
+              "refId": "30d Ago"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "000000001"
+              },
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "sum(last_over_time(cluster:cardinality[35m]))",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "__auto",
+              "range": false,
+              "refId": "Total"
             }
           ],
           "title": "Current Cardinality",
           "transformations": [
+            {
+              "id": "merge",
+              "options": {}
+            },
+            {
+              "id": "calculateField",
+              "options": {
+                "alias": "diff_7d",
+                "binary": {
+                  "left": {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Value #Now"
+                    }
+                  },
+                  "operator": "-",
+                  "right": {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Value #7d Ago"
+                    }
+                  }
+                },
+                "mode": "binary",
+                "reduce": {
+                  "include": [
+                    "Value #Now",
+                    "Value #7d ago"
+                  ],
+                  "reducer": "sum"
+                }
+              }
+            },
+            {
+              "id": "calculateField",
+              "options": {
+                "alias": "ratio_7d",
+                "binary": {
+                  "left": {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "diff_7d"
+                    }
+                  },
+                  "operator": "/",
+                  "right": {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Value #7d Ago"
+                    }
+                  }
+                },
+                "mode": "binary",
+                "reduce": {
+                  "reducer": "sum"
+                }
+              }
+            },
+            {
+              "id": "calculateField",
+              "options": {
+                "alias": "% Change (7d)",
+                "binary": {
+                  "left": {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "ratio_7d"
+                    }
+                  },
+                  "operator": "*",
+                  "right": {
+                    "fixed": "100"
+                  }
+                },
+                "mode": "binary",
+                "reduce": {
+                  "reducer": "sum"
+                }
+              }
+            },
+            {
+              "id": "calculateField",
+              "options": {
+                "alias": "diff_30d",
+                "binary": {
+                  "left": {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Value #Now"
+                    }
+                  },
+                  "operator": "-",
+                  "right": {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Value #30d Ago"
+                    }
+                  }
+                },
+                "mode": "binary",
+                "reduce": {
+                  "reducer": "sum"
+                }
+              }
+            },
+            {
+              "id": "calculateField",
+              "options": {
+                "alias": "ratio_30d",
+                "binary": {
+                  "left": {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "diff_30d"
+                    }
+                  },
+                  "operator": "/",
+                  "right": {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Value #30d Ago"
+                    }
+                  }
+                },
+                "mode": "binary",
+                "reduce": {
+                  "reducer": "sum"
+                }
+              }
+            },
+            {
+              "id": "calculateField",
+              "options": {
+                "alias": "% Change (30d)",
+                "binary": {
+                  "left": {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "ratio_30d"
+                    }
+                  },
+                  "operator": "*",
+                  "right": {
+                    "fixed": "100"
+                  }
+                },
+                "mode": "binary",
+                "reduce": {
+                  "reducer": "sum"
+                }
+              }
+            },
+            {
+              "id": "calculateField",
+              "options": {
+                "alias": "ratio_total",
+                "binary": {
+                  "left": {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Value #Now"
+                    }
+                  },
+                  "operator": "/",
+                  "right": {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Value #Total"
+                    }
+                  }
+                },
+                "mode": "binary",
+                "reduce": {
+                  "reducer": "sum"
+                }
+              }
+            },
+            {
+              "id": "calculateField",
+              "options": {
+                "alias": "% of Total",
+                "binary": {
+                  "left": {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "ratio_total"
+                    }
+                  },
+                  "operator": "*",
+                  "right": {
+                    "fixed": "100"
+                  }
+                },
+                "mode": "binary",
+                "reduce": {
+                  "reducer": "sum"
+                }
+              }
+            },
+            {
+              "id": "convertFieldType",
+              "options": {
+                "conversions": [
+                  {
+                    "destinationType": "number",
+                    "targetField": "% Change (7d)"
+                  },
+                  {
+                    "destinationType": "number",
+                    "targetField": "% Change (30d)"
+                  }
+                ],
+                "fields": {}
+              }
+            },
             {
               "id": "filterFieldsByName",
               "options": {
                 "include": {
                   "names": [
                     "cluster",
-                    "Value"
+                    "Value #Now",
+                    "Value #7d Ago",
+                    "Value #30d Ago",
+                    "% Change (7d)",
+                    "% of Total",
+                    "% Change (30d)"
                   ]
                 }
+              }
+            },
+            {
+              "id": "renameByRegex",
+              "options": {
+                "regex": "Value #(.*)",
+                "renamePattern": "$1"
+              }
+            },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {},
+                "includeByName": {},
+                "indexByName": {
+                  "% Change (30d)": 4,
+                  "% Change (7d)": 3,
+                  "% of Total": 2,
+                  "30d ago": 6,
+                  "7d ago": 5,
+                  "Now": 1,
+                  "cluster": 0
+                },
+                "renameByName": {}
               }
             }
           ],
@@ -244,11 +1358,11 @@ data:
             "h": 1,
             "w": 24,
             "x": 0,
-            "y": 12
+            "y": 23
           },
           "id": 4,
           "panels": [],
-          "title": "Metrics cardinality",
+          "title": "Metric Cardinality",
           "type": "row"
         },
         {
@@ -269,6 +1383,7 @@ data:
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
+                "barWidthFactor": 0.6,
                 "drawStyle": "line",
                 "fillOpacity": 0,
                 "gradientMode": "none",
@@ -299,8 +1414,7 @@ data:
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -312,10 +1426,10 @@ data:
             "overrides": []
           },
           "gridPos": {
-            "h": 10,
-            "w": 13,
+            "h": 12,
+            "w": 10,
             "x": 0,
-            "y": 13
+            "y": 24
           },
           "id": 6,
           "options": {
@@ -326,10 +1440,12 @@ data:
               "showLegend": true
             },
             "tooltip": {
+              "hideZeros": false,
               "mode": "single",
               "sort": "none"
             }
           },
+          "pluginVersion": "11.6.1",
           "targets": [
             {
               "datasource": {
@@ -337,9 +1453,10 @@ data:
                 "uid": "000000001"
               },
               "editorMode": "code",
-              "expr": "topk(10, name:cardinality)",
+              "expr": "topk(8, name:cardinality)",
               "instant": false,
-              "legendFormat": "__auto",
+              "interval": "30m",
+              "legendFormat": "{{metric_name}}",
               "range": true,
               "refId": "A"
             }
@@ -361,17 +1478,20 @@ data:
               "custom": {
                 "align": "auto",
                 "cellOptions": {
-                  "type": "auto"
+                  "type": "auto",
+                  "wrapText": false
                 },
-                "inspect": false
+                "filterable": true,
+                "inspect": false,
+                "minWidth": 100
               },
+              "fieldMinMax": false,
               "mappings": [],
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -397,35 +1517,77 @@ data:
                     ]
                   }
                 ]
+              },
+              {
+                "matcher": {
+                  "id": "byRegexp",
+                  "options": "/Change/"
+                },
+                "properties": [
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "type": "color-text"
+                    }
+                  },
+                  {
+                    "id": "thresholds",
+                    "value": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "green"
+                        },
+                        {
+                          "color": "#EAB839",
+                          "value": 1
+                        },
+                        {
+                          "color": "orange",
+                          "value": 20
+                        },
+                        {
+                          "color": "red",
+                          "value": 40
+                        }
+                      ]
+                    }
+                  }
+                ]
               }
             ]
           },
           "gridPos": {
-            "h": 10,
-            "w": 11,
-            "x": 13,
-            "y": 13
+            "h": 12,
+            "w": 14,
+            "x": 10,
+            "y": 24
           },
           "id": 5,
           "options": {
             "cellHeight": "sm",
             "footer": {
               "countRows": false,
-              "fields": "",
+              "enablePagination": true,
+              "fields": [
+                "Value #Now",
+                "Value #7d Ago",
+                "Value #30d Ago"
+              ],
               "reducer": [
                 "sum"
               ],
-              "show": false
+              "show": true
             },
             "showHeader": true,
             "sortBy": [
               {
                 "desc": true,
-                "displayName": "Value"
+                "displayName": "Now"
               }
             ]
           },
-          "pluginVersion": "11.1.5",
+          "pluginVersion": "11.6.1",
           "targets": [
             {
               "datasource": {
@@ -434,46 +1596,1017 @@ data:
               },
               "editorMode": "code",
               "exemplar": false,
-              "expr": "name:cardinality",
+              "expr": "last_over_time(name:cardinality[35m])",
               "format": "table",
               "instant": true,
               "legendFormat": "__auto",
               "range": false,
-              "refId": "A"
+              "refId": "Now"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "000000001"
+              },
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "last_over_time(name:cardinality[35m] offset 7d)",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "legendFormat": "__auto",
+              "range": false,
+              "refId": "7d Ago"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "000000001"
+              },
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "last_over_time(name:cardinality[35m]  offset 30d)",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "legendFormat": "__auto",
+              "range": false,
+              "refId": "30d Ago"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "000000001"
+              },
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "sum(last_over_time(name:cardinality[35m]))",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "legendFormat": "__auto",
+              "range": false,
+              "refId": "Total"
             }
           ],
           "title": "Current Cardinality",
           "transformations": [
+            {
+              "id": "merge",
+              "options": {}
+            },
+            {
+              "id": "calculateField",
+              "options": {
+                "alias": "diff_7d",
+                "binary": {
+                  "left": {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Value #Now"
+                    }
+                  },
+                  "operator": "-",
+                  "right": {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Value #7d Ago"
+                    }
+                  }
+                },
+                "mode": "binary",
+                "reduce": {
+                  "reducer": "sum"
+                }
+              }
+            },
+            {
+              "id": "calculateField",
+              "options": {
+                "alias": "ratio_7d",
+                "binary": {
+                  "left": {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "diff_7d"
+                    }
+                  },
+                  "operator": "/",
+                  "right": {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Value #7d Ago"
+                    }
+                  }
+                },
+                "mode": "binary",
+                "reduce": {
+                  "reducer": "sum"
+                }
+              }
+            },
+            {
+              "id": "calculateField",
+              "options": {
+                "alias": "% Change (7d)",
+                "binary": {
+                  "left": {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "ratio_7d"
+                    }
+                  },
+                  "operator": "*",
+                  "right": {
+                    "fixed": "100"
+                  }
+                },
+                "mode": "binary",
+                "reduce": {
+                  "reducer": "sum"
+                }
+              }
+            },
+            {
+              "id": "calculateField",
+              "options": {
+                "alias": "diff_30d",
+                "binary": {
+                  "left": {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Value #Now"
+                    }
+                  },
+                  "operator": "-",
+                  "right": {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Value #30d Ago"
+                    }
+                  }
+                },
+                "mode": "binary",
+                "reduce": {
+                  "reducer": "sum"
+                }
+              }
+            },
+            {
+              "id": "calculateField",
+              "options": {
+                "alias": "ratio_30d",
+                "binary": {
+                  "left": {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "diff_30d"
+                    }
+                  },
+                  "operator": "/",
+                  "right": {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Value #30d Ago"
+                    }
+                  }
+                },
+                "mode": "binary",
+                "reduce": {
+                  "reducer": "sum"
+                }
+              }
+            },
+            {
+              "id": "calculateField",
+              "options": {
+                "alias": "% Change (30d)",
+                "binary": {
+                  "left": {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "ratio_30d"
+                    }
+                  },
+                  "operator": "*",
+                  "right": {
+                    "fixed": "100"
+                  }
+                },
+                "mode": "binary",
+                "reduce": {
+                  "reducer": "sum"
+                }
+              }
+            },
+            {
+              "id": "calculateField",
+              "options": {
+                "alias": "ratio_total",
+                "binary": {
+                  "left": {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Value #Now"
+                    }
+                  },
+                  "operator": "/",
+                  "right": {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Value #Total"
+                    }
+                  }
+                },
+                "mode": "binary",
+                "reduce": {
+                  "reducer": "sum"
+                }
+              }
+            },
+            {
+              "id": "calculateField",
+              "options": {
+                "alias": "% of Total",
+                "binary": {
+                  "left": {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "ratio_total"
+                    }
+                  },
+                  "operator": "*",
+                  "right": {
+                    "fixed": "100"
+                  }
+                },
+                "mode": "binary",
+                "reduce": {
+                  "reducer": "sum"
+                }
+              }
+            },
+            {
+              "id": "convertFieldType",
+              "options": {
+                "conversions": [
+                  {
+                    "destinationType": "number",
+                    "targetField": "% Change (7d)"
+                  },
+                  {
+                    "destinationType": "number",
+                    "targetField": "% Change (30d)"
+                  }
+                ],
+                "fields": {}
+              }
+            },
             {
               "id": "filterFieldsByName",
               "options": {
                 "include": {
                   "names": [
                     "metric_name",
-                    "Value"
+                    "Value #Now",
+                    "Value #7d Ago",
+                    "Value #30d Ago",
+                    "% Change (7d)",
+                    "% Change (30d)",
+                    "% of Total"
                   ]
                 }
+              }
+            },
+            {
+              "id": "renameByRegex",
+              "options": {
+                "regex": "Value #(.*)",
+                "renamePattern": "$1"
+              }
+            },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {},
+                "includeByName": {},
+                "indexByName": {
+                  "% Change (30d)": 4,
+                  "% Change (7d)": 3,
+                  "% of Total": 2,
+                  "30d Ago": 6,
+                  "7d Ago": 5,
+                  "Now": 1,
+                  "metric_name": 0
+                },
+                "renameByName": {}
               }
             }
           ],
           "type": "table"
+        },
+        {
+          "collapsed": true,
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 36
+          },
+          "id": 20,
+          "panels": [
+            {
+              "fieldConfig": {
+                "defaults": {},
+                "overrides": []
+              },
+              "gridPos": {
+                "h": 2,
+                "w": 24,
+                "x": 0,
+                "y": 37
+              },
+              "id": 22,
+              "options": {
+                "code": {
+                  "language": "plaintext",
+                  "showLineNumbers": false,
+                  "showMiniMap": false
+                },
+                "content": "The metrics listed here are generated by global recording rules running on Thanos. They provide a platform-wide view by aggregating data from all managed clusters. As a result, they do not contain any cluster-specific labels and cannot be visualized in the drill-down dashboards.",
+                "mode": "markdown"
+              },
+              "pluginVersion": "11.6.1",
+              "title": "",
+              "type": "text"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "000000001"
+              },
+              "description": "",
+              "fieldConfig": {
+                "defaults": {
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "axisBorderShow": false,
+                    "axisCenteredZero": false,
+                    "axisColorMode": "text",
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
+                    "barAlignment": 0,
+                    "barWidthFactor": 0.6,
+                    "drawStyle": "line",
+                    "fillOpacity": 0,
+                    "gradientMode": "none",
+                    "hideFrom": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": false
+                    },
+                    "insertNulls": false,
+                    "lineInterpolation": "linear",
+                    "lineWidth": 1,
+                    "pointSize": 5,
+                    "scaleDistribution": {
+                      "type": "linear"
+                    },
+                    "showPoints": "auto",
+                    "spanNulls": false,
+                    "stacking": {
+                      "group": "A",
+                      "mode": "none"
+                    },
+                    "thresholdsStyle": {
+                      "mode": "off"
+                    }
+                  },
+                  "mappings": [],
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "green"
+                      },
+                      {
+                        "color": "red",
+                        "value": 80
+                      }
+                    ]
+                  }
+                },
+                "overrides": []
+              },
+              "gridPos": {
+                "h": 10,
+                "w": 10,
+                "x": 0,
+                "y": 39
+              },
+              "id": 21,
+              "options": {
+                "legend": {
+                  "calcs": [],
+                  "displayMode": "list",
+                  "placement": "bottom",
+                  "showLegend": true
+                },
+                "tooltip": {
+                  "hideZeros": false,
+                  "mode": "single",
+                  "sort": "none"
+                }
+              },
+              "pluginVersion": "11.6.1",
+              "targets": [
+                {
+                  "datasource": {
+                    "type": "prometheus",
+                    "uid": "000000001"
+                  },
+                  "editorMode": "code",
+                  "expr": "topk(8, name:no_cluster:cardinality)",
+                  "instant": false,
+                  "interval": "30m",
+                  "legendFormat": "{{metric_name}}",
+                  "range": true,
+                  "refId": "A"
+                }
+              ],
+              "title": "Cardinality Over Time",
+              "type": "timeseries"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "000000001"
+              },
+              "description": "",
+              "fieldConfig": {
+                "defaults": {
+                  "color": {
+                    "mode": "thresholds"
+                  },
+                  "custom": {
+                    "align": "auto",
+                    "cellOptions": {
+                      "type": "auto",
+                      "wrapText": false
+                    },
+                    "filterable": true,
+                    "inspect": false,
+                    "minWidth": 100
+                  },
+                  "fieldMinMax": false,
+                  "mappings": [],
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "green"
+                      },
+                      {
+                        "color": "red",
+                        "value": 80
+                      }
+                    ]
+                  }
+                },
+                "overrides": [
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "metric_name"
+                    },
+                    "properties": [
+                      {
+                        "id": "links",
+                        "value": [
+                          {
+                            "title": "",
+                            "url": "/d/aeotjz90jlkw0f?var-metric_name=${__data.fields.metric_name}"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byRegexp",
+                      "options": "/Change/"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.cellOptions",
+                        "value": {
+                          "type": "color-text"
+                        }
+                      },
+                      {
+                        "id": "thresholds",
+                        "value": {
+                          "mode": "absolute",
+                          "steps": [
+                            {
+                              "color": "green"
+                            },
+                            {
+                              "color": "#EAB839",
+                              "value": 1
+                            },
+                            {
+                              "color": "orange",
+                              "value": 20
+                            },
+                            {
+                              "color": "red",
+                              "value": 40
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              "gridPos": {
+                "h": 10,
+                "w": 14,
+                "x": 10,
+                "y": 39
+              },
+              "id": 23,
+              "options": {
+                "cellHeight": "sm",
+                "footer": {
+                  "countRows": false,
+                  "enablePagination": true,
+                  "fields": [
+                    "Value #Now",
+                    "Value #7d Ago",
+                    "Value #30d Ago"
+                  ],
+                  "reducer": [
+                    "sum"
+                  ],
+                  "show": true
+                },
+                "showHeader": true,
+                "sortBy": [
+                  {
+                    "desc": true,
+                    "displayName": "Now"
+                  }
+                ]
+              },
+              "pluginVersion": "11.6.1",
+              "targets": [
+                {
+                  "datasource": {
+                    "type": "prometheus",
+                    "uid": "000000001"
+                  },
+                  "editorMode": "code",
+                  "exemplar": false,
+                  "expr": "last_over_time(name:no_cluster:cardinality[35m])",
+                  "format": "table",
+                  "instant": true,
+                  "legendFormat": "__auto",
+                  "range": false,
+                  "refId": "Now"
+                },
+                {
+                  "datasource": {
+                    "type": "prometheus",
+                    "uid": "000000001"
+                  },
+                  "editorMode": "code",
+                  "exemplar": false,
+                  "expr": "last_over_time(name:no_cluster:cardinality[35m] offset 7d)",
+                  "format": "table",
+                  "hide": false,
+                  "instant": true,
+                  "legendFormat": "__auto",
+                  "range": false,
+                  "refId": "7d Ago"
+                },
+                {
+                  "datasource": {
+                    "type": "prometheus",
+                    "uid": "000000001"
+                  },
+                  "editorMode": "code",
+                  "exemplar": false,
+                  "expr": "last_over_time(name:no_cluster:cardinality[35m]  offset 30d)",
+                  "format": "table",
+                  "hide": false,
+                  "instant": true,
+                  "legendFormat": "__auto",
+                  "range": false,
+                  "refId": "30d Ago"
+                },
+                {
+                  "datasource": {
+                    "type": "prometheus",
+                    "uid": "000000001"
+                  },
+                  "editorMode": "code",
+                  "exemplar": false,
+                  "expr": "sum(last_over_time(name:no_cluster:cardinality[35m]))",
+                  "format": "table",
+                  "hide": false,
+                  "instant": true,
+                  "legendFormat": "__auto",
+                  "range": false,
+                  "refId": "Total"
+                }
+              ],
+              "title": "Current Cardinality",
+              "transformations": [
+                {
+                  "id": "merge",
+                  "options": {}
+                },
+                {
+                  "id": "calculateField",
+                  "options": {
+                    "alias": "diff_7d",
+                    "binary": {
+                      "left": {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "Value #Now"
+                        }
+                      },
+                      "operator": "-",
+                      "right": {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "Value #7d Ago"
+                        }
+                      }
+                    },
+                    "mode": "binary",
+                    "reduce": {
+                      "reducer": "sum"
+                    }
+                  }
+                },
+                {
+                  "id": "calculateField",
+                  "options": {
+                    "alias": "ratio_7d",
+                    "binary": {
+                      "left": {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "diff_7d"
+                        }
+                      },
+                      "operator": "/",
+                      "right": {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "Value #7d Ago"
+                        }
+                      }
+                    },
+                    "mode": "binary",
+                    "reduce": {
+                      "reducer": "sum"
+                    }
+                  }
+                },
+                {
+                  "id": "calculateField",
+                  "options": {
+                    "alias": "% Change (7d)",
+                    "binary": {
+                      "left": {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "ratio_7d"
+                        }
+                      },
+                      "operator": "*",
+                      "right": {
+                        "fixed": "100"
+                      }
+                    },
+                    "mode": "binary",
+                    "reduce": {
+                      "reducer": "sum"
+                    }
+                  }
+                },
+                {
+                  "id": "calculateField",
+                  "options": {
+                    "alias": "diff_30d",
+                    "binary": {
+                      "left": {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "Value #Now"
+                        }
+                      },
+                      "operator": "-",
+                      "right": {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "Value #30d Ago"
+                        }
+                      }
+                    },
+                    "mode": "binary",
+                    "reduce": {
+                      "reducer": "sum"
+                    }
+                  }
+                },
+                {
+                  "id": "calculateField",
+                  "options": {
+                    "alias": "ratio_30d",
+                    "binary": {
+                      "left": {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "diff_30d"
+                        }
+                      },
+                      "operator": "/",
+                      "right": {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "Value #30d Ago"
+                        }
+                      }
+                    },
+                    "mode": "binary",
+                    "reduce": {
+                      "reducer": "sum"
+                    }
+                  }
+                },
+                {
+                  "id": "calculateField",
+                  "options": {
+                    "alias": "% Change (30d)",
+                    "binary": {
+                      "left": {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "ratio_30d"
+                        }
+                      },
+                      "operator": "*",
+                      "right": {
+                        "fixed": "100"
+                      }
+                    },
+                    "mode": "binary",
+                    "reduce": {
+                      "reducer": "sum"
+                    }
+                  }
+                },
+                {
+                  "id": "calculateField",
+                  "options": {
+                    "alias": "ratio_total",
+                    "binary": {
+                      "left": {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "Value #Now"
+                        }
+                      },
+                      "operator": "/",
+                      "right": {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "Value #Total"
+                        }
+                      }
+                    },
+                    "mode": "binary",
+                    "reduce": {
+                      "reducer": "sum"
+                    }
+                  }
+                },
+                {
+                  "id": "calculateField",
+                  "options": {
+                    "alias": "% of Total",
+                    "binary": {
+                      "left": {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "ratio_total"
+                        }
+                      },
+                      "operator": "*",
+                      "right": {
+                        "fixed": "100"
+                      }
+                    },
+                    "mode": "binary",
+                    "reduce": {
+                      "reducer": "sum"
+                    }
+                  }
+                },
+                {
+                  "id": "convertFieldType",
+                  "options": {
+                    "conversions": [
+                      {
+                        "destinationType": "number",
+                        "targetField": "% Change (7d)"
+                      },
+                      {
+                        "destinationType": "number",
+                        "targetField": "% Change (30d)"
+                      }
+                    ],
+                    "fields": {}
+                  }
+                },
+                {
+                  "id": "filterFieldsByName",
+                  "options": {
+                    "include": {
+                      "names": [
+                        "metric_name",
+                        "Value #Now",
+                        "Value #7d Ago",
+                        "Value #30d Ago",
+                        "% Change (7d)",
+                        "% Change (30d)",
+                        "% of Total"
+                      ]
+                    }
+                  }
+                },
+                {
+                  "id": "renameByRegex",
+                  "options": {
+                    "regex": "Value #(.*)",
+                    "renamePattern": "$1"
+                  }
+                },
+                {
+                  "id": "organize",
+                  "options": {
+                    "excludeByName": {},
+                    "includeByName": {},
+                    "indexByName": {
+                      "% Change (30d)": 4,
+                      "% Change (7d)": 3,
+                      "% of Total": 2,
+                      "30d Ago": 6,
+                      "7d Ago": 5,
+                      "Now": 1,
+                      "metric_name": 0
+                    },
+                    "renameByName": {}
+                  }
+                }
+              ],
+              "type": "table"
+            }
+          ],
+          "title": "Global Recording Rules Cardinality",
+          "type": "row"
+        },
+        {
+          "collapsed": true,
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 37
+          },
+          "id": 18,
+          "panels": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "000000001"
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "axisBorderShow": false,
+                    "axisCenteredZero": false,
+                    "axisColorMode": "text",
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
+                    "barAlignment": 0,
+                    "barWidthFactor": 0.6,
+                    "drawStyle": "line",
+                    "fillOpacity": 0,
+                    "gradientMode": "none",
+                    "hideFrom": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": false
+                    },
+                    "insertNulls": false,
+                    "lineInterpolation": "linear",
+                    "lineWidth": 1,
+                    "pointSize": 5,
+                    "scaleDistribution": {
+                      "type": "linear"
+                    },
+                    "showPoints": "auto",
+                    "spanNulls": false,
+                    "stacking": {
+                      "group": "A",
+                      "mode": "none"
+                    },
+                    "thresholdsStyle": {
+                      "mode": "off"
+                    }
+                  },
+                  "mappings": [],
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "green"
+                      },
+                      {
+                        "color": "red",
+                        "value": 80
+                      }
+                    ]
+                  }
+                },
+                "overrides": []
+              },
+              "gridPos": {
+                "h": 11,
+                "w": 24,
+                "x": 0,
+                "y": 38
+              },
+              "id": 19,
+              "options": {
+                "legend": {
+                  "calcs": [],
+                  "displayMode": "list",
+                  "placement": "bottom",
+                  "showLegend": true
+                },
+                "tooltip": {
+                  "hideZeros": false,
+                  "mode": "single",
+                  "sort": "none"
+                }
+              },
+              "pluginVersion": "11.6.1",
+              "targets": [
+                {
+                  "editorMode": "code",
+                  "expr": "sum(cluster:cardinality) + sum(name:no_cluster:cardinality)",
+                  "interval": "30m",
+                  "legendFormat": "Total Cardinality",
+                  "range": true,
+                  "refId": "A"
+                }
+              ],
+              "title": "Cardinality Over Time",
+              "type": "timeseries"
+            }
+          ],
+          "title": "Total Cardinality",
+          "type": "row"
         }
       ],
-      "schemaVersion": 39,
+      "preload": false,
+      "schemaVersion": 41,
       "tags": [],
       "templating": {
         "list": []
       },
       "time": {
-        "from": "now-6h",
+        "from": "now-24h",
         "to": "now"
       },
       "timepicker": {},
       "timezone": "browser",
       "title": "Metrics Cardinality Overview",
       "uid": "deoqd2erz9xc0e",
-      "version": 22,
-      "weekStart": ""
+      "version": 109
     }
 kind: ConfigMap
 metadata:
