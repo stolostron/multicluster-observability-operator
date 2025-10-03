@@ -73,23 +73,3 @@ data:
           record: cluster:machine_memory:sum
           labels:
             usage: grafana-dashboard
-      - name: grafana-dashboard-cardinality
-        interval: 1m 
-        rules:
-          - expr: |
-              count by (cluster, namespace) (
-                {__name__=~".+"}
-              )
-            record: cluster_namespace:cardinality
-          - expr: |
-              label_replace(
-                count by (cluster, __name__) (
-                  {__name__=~".+"}
-                ),
-                "metric_name", "$1", "__name__", "(.*)"
-              )
-            record: cluster_name:cardinality
-          - expr: sum(cluster_namespace:cardinality) by (cluster)
-            record: cluster:cardinality
-          - expr: sum(cluster_name:cardinality) by (metric_name)
-            record: name:cardinality
