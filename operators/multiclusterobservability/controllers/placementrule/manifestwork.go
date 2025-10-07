@@ -696,7 +696,6 @@ func generateAmAccessorTokenSecret(cl client.Client, kubeClient kubernetes.Inter
 		if hasExpiration && hasCreated {
 			// Check if the token is near expiration
 			expirationStr := string(expirationBytes)
-			expectedDuration := time.Duration(8640*3600) * time.Second
 			expiration, err := time.Parse(time.RFC3339, expirationStr)
 			if err != nil {
 				log.Error(err, "Failed to parse alertmanager accessor token expiration date", "expiration", expiration)
@@ -711,7 +710,7 @@ func generateAmAccessorTokenSecret(cl client.Client, kubeClient kubernetes.Inter
 				return nil, err
 			}
 
-			expectedDuration = expiration.Sub(created)
+			expectedDuration := expiration.Sub(created)
 			if expectedDuration <= 0 {
 				log.Error(nil, "Invalid duration for alertmanager accessor token", "duration", expectedDuration)
 				return nil, nil
