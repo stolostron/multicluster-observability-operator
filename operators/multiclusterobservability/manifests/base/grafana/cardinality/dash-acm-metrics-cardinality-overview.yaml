@@ -1017,7 +1017,7 @@ data:
               "reducer": [
                 "sum"
               ],
-              "show": false
+              "show": true
             },
             "showHeader": true,
             "sortBy": [
