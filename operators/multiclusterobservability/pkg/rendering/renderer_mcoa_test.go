@@ -134,7 +134,7 @@ func TestRenderAddonDeploymentConfig(t *testing.T) {
 						},
 					},
 					Metrics: mcov1beta2.PlatformMetricsSpec{
-						Collection: mcov1beta2.PlatformMetricsCollectionSpec{
+						Default: mcov1beta2.PlatformMetricsDefaultSpec{
 							Enabled: true,
 						},
 						UI: mcov1beta2.UIConfig{
@@ -151,7 +151,7 @@ func TestRenderAddonDeploymentConfig(t *testing.T) {
 						},
 					},
 					Metrics: mcov1beta2.UserWorkloadMetricsSpec{
-						Collection: mcov1beta2.UserWorkloadMetricsCollectionSpec{
+						Default: mcov1beta2.UserWorkloadMetricsDefaultSpec{
 							Enabled: true,
 						},
 					},
@@ -259,7 +259,7 @@ func TestMCOAEnabled(t *testing.T) {
 					Capabilities: &mcov1beta2.CapabilitiesSpec{
 						Platform: &mcov1beta2.PlatformCapabilitiesSpec{
 							Metrics: mcov1beta2.PlatformMetricsSpec{
-								Collection: mcov1beta2.PlatformMetricsCollectionSpec{
+								Default: mcov1beta2.PlatformMetricsDefaultSpec{
 									Enabled: true,
 								},
 							},
@@ -276,7 +276,7 @@ func TestMCOAEnabled(t *testing.T) {
 					Capabilities: &mcov1beta2.CapabilitiesSpec{
 						UserWorkloads: &mcov1beta2.UserWorkloadCapabilitiesSpec{
 							Metrics: mcov1beta2.UserWorkloadMetricsSpec{
-								Collection: mcov1beta2.UserWorkloadMetricsCollectionSpec{
+								Default: mcov1beta2.UserWorkloadMetricsDefaultSpec{
 									Enabled: true,
 								},
 							},
@@ -320,7 +320,7 @@ func TestMCOAEnabled(t *testing.T) {
 								},
 							},
 							Metrics: mcov1beta2.PlatformMetricsSpec{
-								Collection: mcov1beta2.PlatformMetricsCollectionSpec{
+								Default: mcov1beta2.PlatformMetricsDefaultSpec{
 									Enabled: false,
 								},
 							},
@@ -334,7 +334,7 @@ func TestMCOAEnabled(t *testing.T) {
 								},
 							},
 							Metrics: mcov1beta2.UserWorkloadMetricsSpec{
-								Collection: mcov1beta2.UserWorkloadMetricsCollectionSpec{
+								Default: mcov1beta2.UserWorkloadMetricsDefaultSpec{
 									Enabled: false,
 								},
 							},

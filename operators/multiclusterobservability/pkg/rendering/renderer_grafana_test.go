@@ -68,7 +68,7 @@ func TestRenderGrafana(t *testing.T) {
 					Capabilities: &obv1beta2.CapabilitiesSpec{
 						Platform: &obv1beta2.PlatformCapabilitiesSpec{
 							Metrics: obv1beta2.PlatformMetricsSpec{
-								Collection: obv1beta2.PlatformMetricsCollectionSpec{
+								Default: obv1beta2.PlatformMetricsDefaultSpec{
 									Enabled: true,
 								},
 							},
