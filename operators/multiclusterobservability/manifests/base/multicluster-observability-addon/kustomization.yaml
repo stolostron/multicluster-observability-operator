@@ -5,3 +5,8 @@ resources:
 - cluster_role.yaml
 - deployment.yaml
 - service_account.yaml
+- monitoring.rhobs_prometheusagents.yaml
+- monitoring.rhobs_scrapeconfigs.yaml
+- observability.openshift.io_clusterlogforwarders.yaml
+- opentelemetry.io_instrumentations.yaml
+- opentelemetry.io_opentelemetrycollectors.yaml

@@ -238,7 +238,8 @@ const (
 	ClusterLogForwarderCRDName    = "clusterlogforwarders.observability.openshift.io"
 	OpenTelemetryCollectorCRDName = "opentelemetrycollectors.opentelemetry.io"
 	InstrumentationCRDName        = "instrumentations.opentelemetry.io"
-	PrometheusAgentCRDName        = "prometheusagents.monitoring.coreos.com"
+	PrometheusAgentCRDName        = "prometheusagents.monitoring.rhobs"
+	ScrapeConfigCRDName           = "scrapeconfigs.monitoring.rhobs"
 	UIPluginsCRDName              = "uiplugins.observability.openshift.io"
 )
 
@@ -248,6 +249,7 @@ var (
 		OpenTelemetryCollectorCRDName: "v1beta1",
 		InstrumentationCRDName:        "v1alpha1",
 		PrometheusAgentCRDName:        "v1alpha1",
+		ScrapeConfigCRDName:           "v1alpha1",
 		UIPluginsCRDName:              "v1alpha1",
 	}
 )

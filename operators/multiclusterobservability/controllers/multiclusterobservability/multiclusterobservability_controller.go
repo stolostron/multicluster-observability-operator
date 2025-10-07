@@ -141,7 +141,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 
 	// Fetch the MultiClusterObservability instance
 	mcoList := &mcov1beta2.MultiClusterObservabilityList{}
-	err := r.Client.List(context.TODO(), mcoList)
+	err := r.Client.List(ctx, mcoList)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to list MultiClusterObservability custom resources: %w", err)
 	}
@@ -263,7 +263,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 
 	// Disable rendering the MCOA ClusterManagementAddOn resource if already exists
 	mcoaCMAO := &addonv1alpha1.ClusterManagementAddOn{}
-	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: config.MultiClusterObservabilityAddon}, mcoaCMAO)
+	err = r.Client.Get(ctx, types.NamespacedName{Name: config.MultiClusterObservabilityAddon}, mcoaCMAO)
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
 			return ctrl.Result{}, fmt.Errorf("failed to get ClusterManagementAddOn %s: %w", config.MultiClusterObservabilityAddon, err)
@@ -301,12 +301,12 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		if resNS == "" {
 			resNS = config.GetDefaultNamespace()
 		}
-		if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: resNS}, ns); err != nil &&
+		if err := r.Client.Get(ctx, types.NamespacedName{Name: resNS}, ns); err != nil &&
 			apierrors.IsNotFound(err) {
 			ns = &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{
 				Name: resNS,
 			}}
-			if err := r.Client.Create(context.TODO(), ns); err != nil {
+			if err := r.Client.Create(ctx, ns); err != nil {
 				return ctrl.Result{}, fmt.Errorf("failed to create namespace %s during resource deployment: %w", resNS, err)
 			}
 		}

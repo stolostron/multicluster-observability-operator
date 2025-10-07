@@ -1,0 +1,3102 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.16.3
+  creationTimestamp: null
+  name: clusterlogforwarders.observability.openshift.io
+spec:
+  group: observability.openshift.io
+  names:
+    categories:
+    - observability
+    kind: ClusterLogForwarder
+    listKind: ClusterLogForwarderList
+    plural: clusterlogforwarders
+    shortNames:
+    - obsclf
+    - clf
+    singular: clusterlogforwarder
+  scope: Namespaced
+  versions:
+  - name: v1
+    schema:
+      openAPIV3Schema:
+        description: |-
+          ClusterLogForwarder is an API to configure forwarding logs.
+
+          You configure forwarding by specifying a list of `pipelines`,
+          which forward from a set of named inputs to a set of named outputs.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: ClusterLogForwarderSpec defines the desired state of ClusterLogForwarder
+            properties:
+              collector:
+                description: |-
+                  Specification of the Collector deployment to define
+                  resource limits and workload placement
+                properties:
+                  nodeSelector:
+                    additionalProperties:
+                      type: string
+                    description: Define nodes for scheduling the pods.
+                    nullable: true
+                    type: object
+                  resources:
+                    description: The resource requirements for the collector
+                    nullable: true
+                    properties:
+                      claims:
+                        description: |-
+                          Claims lists the names of resources, defined in spec.resourceClaims,
+                          that are used by this container.
+
+                          This is an alpha field and requires enabling the
+                          DynamicResourceAllocation feature gate.
+
+                          This field is immutable. It can only be set for containers.
+                        items:
+                          description: ResourceClaim references one entry in PodSpec.ResourceClaims.
+                          properties:
+                            name:
+                              description: |-
+                                Name must match the name of one entry in pod.spec.resourceClaims of
+                                the Pod where this field is used. It makes that resource available
+                                inside a container.
+                              type: string
+                          required:
+                          - name
+                          type: object
+                        type: array
+                        x-kubernetes-list-map-keys:
+                        - name
+                        x-kubernetes-list-type: map
+                      limits:
+                        additionalProperties:
+                          anyOf:
+                          - type: integer
+                          - type: string
+                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                          x-kubernetes-int-or-string: true
+                        description: |-
+                          Limits describes the maximum amount of compute resources allowed.
+                          More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+                        type: object
+                      requests:
+                        additionalProperties:
+                          anyOf:
+                          - type: integer
+                          - type: string
+                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                          x-kubernetes-int-or-string: true
+                        description: |-
+                          Requests describes the minimum amount of compute resources required.
+                          If Requests is omitted for a container, it defaults to Limits if that is explicitly specified,
+                          otherwise to an implementation-defined value. Requests cannot exceed Limits.
+                          More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+                        type: object
+                    type: object
+                  tolerations:
+                    description: Define the tolerations the collector pods will accept
+                    items:
+                      description: |-
+                        The pod this Toleration is attached to tolerates any taint that matches
+                        the triple <key,value,effect> using the matching operator <operator>.
+                      properties:
+                        effect:
+                          description: |-
+                            Effect indicates the taint effect to match. Empty means match all taint effects.
+                            When specified, allowed values are NoSchedule, PreferNoSchedule and NoExecute.
+                          type: string
+                        key:
+                          description: |-
+                            Key is the taint key that the toleration applies to. Empty means match all taint keys.
+                            If the key is empty, operator must be Exists; this combination means to match all values and all keys.
+                          type: string
+                        operator:
+                          description: |-
+                            Operator represents a key's relationship to the value.
+                            Valid operators are Exists and Equal. Defaults to Equal.
+                            Exists is equivalent to wildcard for value, so that a pod can
+                            tolerate all taints of a particular category.
+                          type: string
+                        tolerationSeconds:
+                          description: |-
+                            TolerationSeconds represents the period of time the toleration (which must be
+                            of effect NoExecute, otherwise this field is ignored) tolerates the taint. By default,
+                            it is not set, which means tolerate the taint forever (do not evict). Zero and
+                            negative values will be treated as 0 (evict immediately) by the system.
+                          format: int64
+                          type: integer
+                        value:
+                          description: |-
+                            Value is the taint value the toleration matches to.
+                            If the operator is Exists, the value should be empty, otherwise just a regular string.
+                          type: string
+                      type: object
+                    nullable: true
+                    type: array
+                type: object
+              filters:
+                description: |-
+                  Filters are applied to log records passing through a pipeline.
+                  There are different types of filter that can select and modify log records in different ways.
+                  See [FilterTypeSpec] for a list of filter types.
+                items:
+                  description: FilterSpec defines a filter for log messages.
+                  properties:
+                    drop:
+                      description: |-
+                        A drop filter applies a sequence of tests to a log record and drops the record if any test passes.
+                        Each test contains a sequence of conditions, all conditions must be true for the test to pass.
+                        A DropTestsSpec contains an array of tests which contains an array of conditions
+                      items:
+                        properties:
+                          test:
+                            description: DropConditions is an array of DropCondition
+                              which are conditions that are ANDed together
+                            items:
+                              properties:
+                                field:
+                                  description: |-
+                                    A dot delimited path to a field in the log record. It must start with a `.`.
+                                    The path can contain alpha-numeric characters and underscores (a-zA-Z0-9_).
+                                    If segments contain characters outside of this range, the segment must be quoted.
+                                    Examples: `.kubernetes.namespace_name`, `.log_type`, '.kubernetes.labels.foobar', `.kubernetes.labels."foo-bar/baz"`
+                                  pattern: ^(\.[a-zA-Z0-9_]+|\."[^"]+")(\.[a-zA-Z0-9_]+|\."[^"]+")*$
+                                  type: string
+                                matches:
+                                  description: |-
+                                    A regular expression that the field will match.
+                                    If the value of the field defined in the DropTest matches the regular expression, the log record will be dropped.
+                                    Must define only one of matches OR notMatches
+                                  type: string
+                                notMatches:
+                                  description: |-
+                                    A regular expression that the field does not match.
+                                    If the value of the field defined in the DropTest does not match the regular expression, the log record will be dropped.
+                                    Must define only one of matches or notMatches
+                                  type: string
+                              type: object
+                              x-kubernetes-validations:
+                              - message: only one of matches or notMatches can be
+                                  defined per field
+                                rule: '!(has(self.matches) && has(self.notMatches))'
+                            minItems: 1
+                            type: array
+                        required:
+                        - test
+                        type: object
+                      type: array
+                    kubeAPIAudit:
+                      description: |-
+                        KubeAPIAudit filter Kube API server audit logs, as described in [Kubernetes Auditing].
+
+                        # Policy Filtering
+
+                        Policy event rules are the same format as the [Kube Audit Policy] with some minor extensions.
+                        The extensions are described here, see the [Kube Audit Policy] for the standard rule behavior.
+                        Rules are checked in order, checking stops at the first matching rule.
+
+                        An audit policy event contains meta-data describing who made the request.
+                        It can also include the full body of the API request, and the response that was sent.
+                        The `level` of an audit rule determines how much data is included in the event:
+
+                          - None: the event is dropped.
+                          - Metadata: Only the audit metadata is included, request and response bodies are removed.
+                          - Request: Audit metadata and the request body are included, the response body is removed.
+                          - RequestResponse: All data is included: metadata, request body and response body. Note the response body can be very large.
+                            For example the a command like `oc get -A pods` generates a response body containing the YAML description of every pod in the cluster.
+
+                        # Extensions
+
+                        The following features are extensions to the standard [Kube Audit Policy]
+
+                        ## Wildcards
+
+                        Names of users, groups, namespaces, and resources can have a leading or trailing '*' character.
+                        For example namespace 'openshift-*' matches 'openshift-apiserver' or 'openshift-authentication.
+                        Resource '*/status' matches 'Pod/status' or 'Deployment/status'
+
+                        ## Default Rules
+
+                        Events that do not match any rule in the policy are filtered as follows:
+                        - User events (ie. non-system and non-serviceaccount) are forwarded
+                        - Read-only system events (get/list/watch etc) are dropped
+                        - Service account write events that occur within the same namespace as the service account are dropped
+                        - All other events are forwarded, subject to any configured [rate limits][#rate-lmiting]
+
+                        If you want to disable these defaults, end your rules list with rule that has only a `level` field.
+                        An empty rule matches any event, and prevents the defaults from taking effect.
+
+                        ## Omit Response Codes
+
+                        You can drop events based on the HTTP status code in the response. See the OmitResponseCodes field.
+
+                        [Kube Audit Policy]: https://kubernetes.io/docs/reference/config-api/apiserver-audit.v1/#audit-k8s-io-v1-Policy
+                        [Kubernetes Auditing]: https://kubernetes.io/docs/tasks/debug/debug-cluster/audit/
+                      properties:
+                        omitResponseCodes:
+                          description: |-
+                            OmitResponseCodes is a list of HTTP status code for which no events are created.
+                            If this field is missing or null, the default value used is [404, 409, 422, 429]
+                            (NotFound, Conflict, UnprocessableEntity, TooManyRequests)
+                            If it is the empty list [], then no status codes are omitted.
+                            Otherwise, this field should be a list of integer status codes to omit.
+                          items:
+                            type: integer
+                          type: array
+                        omitStages:
+                          description: |-
+                            OmitStages is a list of stages for which no events are created.
+                            Note that this can also be specified per rule in which case the union of both are omitted.
+                          items:
+                            description: Stage defines the stages in request handling
+                              that audit events may be generated.
+                            type: string
+                          type: array
+                        rules:
+                          description: |-
+                            Rules specify the audit Level a request should be recorded at.
+                            A request may match multiple rules, in which case the FIRST matching rule is used.
+                            PolicyRules are strictly ordered.
+
+                            If Rules is empty or missing default rules apply, see [KubeAPIAudit]
+                          items:
+                            description: |-
+                              PolicyRule maps requests based off metadata to an audit Level.
+                              Requests must match the rules of every field (an intersection of rules).
+                            properties:
+                              level:
+                                description: The Level that requests matching this
+                                  rule are recorded at.
+                                type: string
+                              namespaces:
+                                description: |-
+                                  Namespaces that this rule matches.
+                                  The empty string "" matches non-namespaced resources.
+                                  An empty list implies every namespace.
+                                items:
+                                  type: string
+                                type: array
+                              nonResourceURLs:
+                                description: |-
+                                  NonResourceURLs is a set of URL paths that should be audited.
+                                  `*`s are allowed, but only as the full, final step in the path.
+                                  Examples:
+                                  - `/metrics` - Log requests for apiserver metrics
+                                  - `/healthz*` - Log all health checks
+                                items:
+                                  type: string
+                                type: array
+                              omitManagedFields:
+                                description: |-
+                                  OmitManagedFields indicates whether to omit the managed fields of the request
+                                  and response bodies from being written to the API audit log.
+                                  - a value of 'true' will drop the managed fields from the API audit log
+                                  - a value of 'false' indicates that the managed fileds should be included
+                                    in the API audit log
+                                  Note that the value, if specified, in this rule will override the global default
+                                  If a value is not specified then the global default specified in
+                                  Policy.OmitManagedFields will stand.
+                                type: boolean
+                              omitStages:
+                                description: |-
+                                  OmitStages is a list of stages for which no events are created. Note that this can also
+                                  be specified policy wide in which case the union of both are omitted.
+                                  An empty list means no restrictions will apply.
+                                items:
+                                  description: Stage defines the stages in request
+                                    handling that audit events may be generated.
+                                  type: string
+                                type: array
+                              resources:
+                                description: Resources that this rule matches. An
+                                  empty list implies all kinds in all API groups.
+                                items:
+                                  description: GroupResources represents resource
+                                    kinds in an API group.
+                                  properties:
+                                    group:
+                                      description: |-
+                                        Group is the name of the API group that contains the resources.
+                                        The empty string represents the core API group.
+                                      type: string
+                                    resourceNames:
+                                      description: |-
+                                        ResourceNames is a list of resource instance names that the policy matches.
+                                        Using this field requires Resources to be specified.
+                                        An empty list implies that every instance of the resource is matched.
+                                      items:
+                                        type: string
+                                      type: array
+                                    resources:
+                                      description: |-
+                                        Resources is a list of resources this rule applies to.
+
+                                        For example:
+                                        - `pods` matches pods.
+                                        - `pods/log` matches the log subresource of pods.
+                                        - `*` matches all resources and their subresources.
+                                        - `pods/*` matches all subresources of pods.
+                                        - `*/scale` matches all scale subresources.
+
+                                        If wildcard is present, the validation rule will ensure resources do not
+                                        overlap with each other.
+
+                                        An empty list implies all resources and subresources in this API groups apply.
+                                      items:
+                                        type: string
+                                      type: array
+                                  type: object
+                                type: array
+                              userGroups:
+                                description: |-
+                                  The user groups this rule applies to. A user is considered matching
+                                  if it is a member of any of the UserGroups.
+                                  An empty list implies every user group.
+                                items:
+                                  type: string
+                                type: array
+                              users:
+                                description: |-
+                                  The users (by authenticated user name) this rule applies to.
+                                  An empty list implies every user.
+                                items:
+                                  type: string
+                                type: array
+                              verbs:
+                                description: |-
+                                  The verbs that match this rule.
+                                  An empty list implies every verb.
+                                items:
+                                  type: string
+                                type: array
+                            required:
+                            - level
+                            type: object
+                          type: array
+                      type: object
+                    name:
+                      description: Name used to refer to the filter from a "pipeline".
+                      pattern: ^[a-z][a-z0-9-]*[a-z0-9]$
+                      type: string
+                    openshiftLabels:
+                      additionalProperties:
+                        type: string
+                      description: |-
+                        Labels applied to log records passing through a pipeline.
+                        These labels appear in the `openshift.labels` map in the log record.
+                      type: object
+                    prune:
+                      description: The PruneFilterSpec consists of two arrays, namely
+                        in and notIn, which dictate the fields to be pruned.
+                      properties:
+                        in:
+                          description: |-
+                            `In` is an array of dot-delimited field paths. Fields included here are removed from the log record.
+
+                            Each field path expression must start with a "."
+
+                            The path can contain alphanumeric characters and underscores (a-zA-Z0-9_).
+
+                            If segments contain characters outside of this range, the segment must be quoted otherwise paths do NOT need to be quoted.
+
+                            Examples:
+
+                             - `.kubernetes.namespace_name`
+
+                             - `.log_type`
+
+                             - '.kubernetes.labels.foobar'
+
+                             - `.kubernetes.labels."foo-bar/baz"`
+
+                            NOTE1: `In` CANNOT contain `.log_type` or `.message` as those fields are required and cannot be pruned.
+
+                            NOTE2: If this filter is used in a pipeline with GoogleCloudLogging, `.hostname` CANNOT be added to this list as it is a required field.
+                          items:
+                            description: |-
+                              FieldPath represents a path to find a value for a given field.  The format must a value that can be converted to a
+                              valid collector configuration. It is a dot delimited path to a field in the log record. It must start with a `.`.
+                              The path can contain alphanumeric characters and underscores (a-zA-Z0-9_).
+                              If segments contain characters outside of this range, the segment must be quoted.
+                              Examples: `.kubernetes.namespace_name`, `.log_type`, '.kubernetes.labels.foobar', `.kubernetes.labels."foo-bar/baz"`
+                            pattern: ^(\.[a-zA-Z0-9_]+|\."[^"]+")(\.[a-zA-Z0-9_]+|\."[^"]+")*$
+                            type: string
+                          type: array
+                        notIn:
+                          description: |-
+                            `NotIn` is an array of dot-delimited field paths. All fields besides the ones listed here are removed from the log record.
+
+                            Each field path expression must start with a "."
+
+                            The path can contain alphanumeric characters and underscores (a-zA-Z0-9_).
+
+                            If segments contain characters outside of this range, the segment must be quoted otherwise paths do NOT need to be quoted.
+
+                            Examples:
+
+                             - `.kubernetes.namespace_name`
+
+                             - `.log_type`
+
+                             - '.kubernetes.labels.foobar'
+
+                             - `.kubernetes.labels."foo-bar/baz"`
+
+                            NOTE1: `NotIn` MUST contain `.log_type` and `.message` as those fields are required and cannot be pruned.
+
+                            NOTE2: If this filter is used in a pipeline with GoogleCloudLogging, `.hostname` MUST be added to this list as it is a required field.
+                          items:
+                            description: |-
+                              FieldPath represents a path to find a value for a given field.  The format must a value that can be converted to a
+                              valid collector configuration. It is a dot delimited path to a field in the log record. It must start with a `.`.
+                              The path can contain alphanumeric characters and underscores (a-zA-Z0-9_).
+                              If segments contain characters outside of this range, the segment must be quoted.
+                              Examples: `.kubernetes.namespace_name`, `.log_type`, '.kubernetes.labels.foobar', `.kubernetes.labels."foo-bar/baz"`
+                            pattern: ^(\.[a-zA-Z0-9_]+|\."[^"]+")(\.[a-zA-Z0-9_]+|\."[^"]+")*$
+                            type: string
+                          type: array
+                      type: object
+                    type:
+                      description: Type of filter.
+                      enum:
+                      - openshiftLabels
+                      - detectMultilineException
+                      - drop
+                      - kubeAPIAudit
+                      - parse
+                      - prune
+                      type: string
+                  required:
+                  - name
+                  - type
+                  type: object
+                  x-kubernetes-validations:
+                  - message: Additional type specific spec is required for the filter
+                      type
+                    rule: self.type != 'kubeAPIAudit' || has(self.kubeAPIAudit)
+                  - message: Additional type specific spec is required for the filter
+                      type
+                    rule: self.type != 'drop' || has(self.drop)
+                  - message: Additional type specific spec is required for the filter
+                      type
+                    rule: self.type != 'prune' || has(self.prune)
+                  - message: Additional type specific spec is required for the filter
+                      type
+                    rule: self.type != 'openshiftLabels' || has(self.openshiftLabels)
+                type: array
+                x-kubernetes-list-map-keys:
+                - name
+                x-kubernetes-list-type: map
+              inputs:
+                description: |-
+                  Inputs are named filters for log messages to be forwarded.
+
+                  There are three built-in inputs named `application`, `infrastructure` and
+                  `audit`. You don't need to define inputs here if those are sufficient for
+                  your needs. See `inputRefs` for more.
+                items:
+                  description: InputSpec defines a selector of log messages for a
+                    given log type.
+                  properties:
+                    application:
+                      description: |-
+                        Application, named set of `application` logs that
+                        can specify a set of match criteria
+                      nullable: true
+                      properties:
+                        excludes:
+                          description: |-
+                            Excludes is the set of namespaces and containers to ignore when collecting logs.
+
+                            Takes precedence over Includes option.
+                          items:
+                            properties:
+                              container:
+                                description: |-
+                                  Container spec the containers from which to collect logs
+                                  Supports glob patterns and presumes "*" if omitted.
+                                type: string
+                              namespace:
+                                description: |-
+                                  Namespace specs the namespace from which to collect logs
+                                  Supports glob patterns and presumes "*" if omitted.
+                                type: string
+                            type: object
+                          type: array
+                        includes:
+                          description: |-
+                            Includes is the set of namespaces and containers to include when collecting logs.
+
+                            Note: infrastructure namespaces are still excluded for "*" values unless a qualifying glob pattern is specified.
+                          items:
+                            properties:
+                              container:
+                                description: |-
+                                  Container spec the containers from which to collect logs
+                                  Supports glob patterns and presumes "*" if omitted.
+                                type: string
+                              namespace:
+                                description: |-
+                                  Namespace specs the namespace from which to collect logs
+                                  Supports glob patterns and presumes "*" if omitted.
+                                type: string
+                            type: object
+                          type: array
+                        selector:
+                          description: |-
+                            Selector for logs from pods with matching labels.
+
+                            Only messages from pods with these labels are collected.
+
+                            If absent or empty, logs are collected regardless of labels.
+                          properties:
+                            matchExpressions:
+                              description: matchExpressions is a list of label selector
+                                requirements. The requirements are ANDed.
+                              items:
+                                description: |-
+                                  A label selector requirement is a selector that contains values, a key, and an operator that
+                                  relates the key and values.
+                                properties:
+                                  key:
+                                    description: key is the label key that the selector
+                                      applies to.
+                                    type: string
+                                  operator:
+                                    description: |-
+                                      operator represents a key's relationship to a set of values.
+                                      Valid operators are In, NotIn, Exists and DoesNotExist.
+                                    type: string
+                                  values:
+                                    description: |-
+                                      values is an array of string values. If the operator is In or NotIn,
+                                      the values array must be non-empty. If the operator is Exists or DoesNotExist,
+                                      the values array must be empty. This array is replaced during a strategic
+                                      merge patch.
+                                    items:
+                                      type: string
+                                    type: array
+                                required:
+                                - key
+                                - operator
+                                type: object
+                              type: array
+                            matchLabels:
+                              additionalProperties:
+                                type: string
+                              description: |-
+                                matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels
+                                map is equivalent to an element of matchExpressions, whose key field is "key", the
+                                operator is "In", and the values array contains only "value". The requirements are ANDed.
+                              type: object
+                          type: object
+                          x-kubernetes-map-type: atomic
+                        tuning:
+                          description: Tuning is the container input tuning spec for
+                            this container sources
+                          properties:
+                            rateLimitPerContainer:
+                              description: |-
+                                RateLimitPerContainer is the limit applied to each container
+                                by this input. This limit is applied per collector deployment.
+                              properties:
+                                maxRecordsPerSecond:
+                                  description: |-
+                                    MaxRecordsPerSecond is the maximum number of log records
+                                    allowed per input/output in a pipeline
+                                  exclusiveMinimum: true
+                                  format: int64
+                                  minimum: 0
+                                  type: integer
+                              required:
+                              - maxRecordsPerSecond
+                              type: object
+                          type: object
+                      type: object
+                    audit:
+                      description: Audit, enables `audit` logs.
+                      properties:
+                        sources:
+                          description: |-
+                            Sources defines the list of audit sources to collect.
+                            This field is optional and its exclusion results in the collection of all audit sources.
+                          items:
+                            description: AuditSource defines which type of audit log
+                              source is used.
+                            enum:
+                            - auditd
+                            - kubeAPI
+                            - openshiftAPI
+                            - ovn
+                            type: string
+                          type: array
+                      type: object
+                    infrastructure:
+                      description: Infrastructure, Enables `infrastructure` logs.
+                      properties:
+                        sources:
+                          description: |-
+                            Sources defines the list of infrastructure sources to collect.
+                            This field is optional and omission results in the collection of all infrastructure sources.
+                          items:
+                            description: InfrastructureSource defines the type of
+                              infrastructure log source to use.
+                            enum:
+                            - container
+                            - node
+                            type: string
+                          type: array
+                      type: object
+                    name:
+                      description: Name used to refer to the input of a `pipeline`.
+                      pattern: ^[a-z][a-z0-9-]*[a-z0-9]$
+                      type: string
+                    receiver:
+                      description: Receiver to receive logs from non-cluster sources.
+                      properties:
+                        http:
+                          description: HTTPReceiver receives encoded logs as a HTTP
+                            endpoint.
+                          properties:
+                            format:
+                              description: Format is the format of incoming log data.
+                              enum:
+                              - kubeAPIAudit
+                              type: string
+                          required:
+                          - format
+                          type: object
+                        port:
+                          description: Port the Receiver listens on. It must be a
+                            value between 1024 and 65535
+                          format: int32
+                          maximum: 65535
+                          minimum: 1024
+                          type: integer
+                        tls:
+                          description: |-
+                            TLS contains settings for controlling options of TLS connections.
+
+                            The operator will request certificates from the cluster's cert signing service when TLS is not defined.
+                            The certificates are injected into a secret named "<clusterlogforwarder.name>-<input.name>" which is mounted into
+                            the collector. The collector is configured to use the public and private key provided by the service
+                          properties:
+                            ca:
+                              description: CA can be used to specify a custom list
+                                of trusted certificate authorities.
+                              properties:
+                                configMapName:
+                                  description: ConfigMapName contains the name of
+                                    the ConfigMap containing the referenced value.
+                                  type: string
+                                key:
+                                  description: Name of the key used to get the value
+                                    in either the referenced ConfigMap or Secret.
+                                  type: string
+                                secretName:
+                                  description: SecretName contains the name of the
+                                    Secret containing the referenced value.
+                                  type: string
+                              required:
+                              - key
+                              type: object
+                              x-kubernetes-validations:
+                              - message: Either configMapName or secretName needs
+                                  to be set
+                                rule: has(self.configMapName) || has(self.secretName)
+                              - message: Only one of configMapName and secretName
+                                  can be set
+                                rule: '!(has(self.configMapName) && has(self.secretName))'
+                            certificate:
+                              description: Certificate points to the server certificate
+                                to use.
+                              properties:
+                                configMapName:
+                                  description: ConfigMapName contains the name of
+                                    the ConfigMap containing the referenced value.
+                                  type: string
+                                key:
+                                  description: Name of the key used to get the value
+                                    in either the referenced ConfigMap or Secret.
+                                  type: string
+                                secretName:
+                                  description: SecretName contains the name of the
+                                    Secret containing the referenced value.
+                                  type: string
+                              required:
+                              - key
+                              type: object
+                              x-kubernetes-validations:
+                              - message: Either configMapName or secretName needs
+                                  to be set
+                                rule: has(self.configMapName) || has(self.secretName)
+                              - message: Only one of configMapName and secretName
+                                  can be set
+                                rule: '!(has(self.configMapName) && has(self.secretName))'
+                            key:
+                              description: Key points to the private key of the server
+                                certificate.
+                              properties:
+                                key:
+                                  description: Key contains the name of the key inside
+                                    the referenced Secret.
+                                  type: string
+                                secretName:
+                                  description: SecretName contains the name of the
+                                    Secret containing the referenced value.
+                                  type: string
+                              required:
+                              - key
+                              - secretName
+                              type: object
+                            keyPassphrase:
+                              description: KeyPassphrase points to the passphrase
+                                used to unlock the private key.
+                              properties:
+                                key:
+                                  description: Key contains the name of the key inside
+                                    the referenced Secret.
+                                  type: string
+                                secretName:
+                                  description: SecretName contains the name of the
+                                    Secret containing the referenced value.
+                                  type: string
+                              required:
+                              - key
+                              - secretName
+                              type: object
+                          type: object
+                        type:
+                          description: Type of Receiver plugin.
+                          enum:
+                          - http
+                          - syslog
+                          type: string
+                      required:
+                      - port
+                      - type
+                      type: object
+                    type:
+                      description: Type of output sink.
+                      enum:
+                      - audit
+                      - application
+                      - infrastructure
+                      - receiver
+                      type: string
+                  required:
+                  - name
+                  - type
+                  type: object
+                  x-kubernetes-validations:
+                  - message: Additional type specific spec is required for the input
+                      type
+                    rule: self.type != 'application' || has(self.application)
+                  - message: Additional type specific spec is required for the input
+                      type
+                    rule: self.type != 'infrastructure' || has(self.infrastructure)
+                  - message: Additional type specific spec is required for the input
+                      type
+                    rule: self.type != 'audit' || has(self.audit)
+                  - message: Additional type specific spec is required for the input
+                      type
+                    rule: self.type != 'receiver' || has(self.receiver)
+                type: array
+                x-kubernetes-list-map-keys:
+                - name
+                x-kubernetes-list-type: map
+              managementState:
+                default: Managed
+                description: Indicator if the resource is 'Managed' or 'Unmanaged'
+                  by the operator.
+                enum:
+                - Managed
+                - Unmanaged
+                type: string
+              outputs:
+                description: Outputs are named destinations for log messages.
+                items:
+                  description: OutputSpec defines a destination for log messages.
+                  properties:
+                    azureMonitor:
+                      properties:
+                        authentication:
+                          description: Authentication sets credentials for authenticating
+                            the requests.
+                          properties:
+                            sharedKey:
+                              description: SharedKey points to the secret containing
+                                the shared key used for authenticating requests.
+                              nullable: true
+                              properties:
+                                key:
+                                  description: Key contains the name of the key inside
+                                    the referenced Secret.
+                                  type: string
+                                secretName:
+                                  description: SecretName contains the name of the
+                                    Secret containing the referenced value.
+                                  type: string
+                              required:
+                              - key
+                              - secretName
+                              type: object
+                          required:
+                          - sharedKey
+                          type: object
+                        azureResourceId:
+                          description: |-
+                            AzureResourceId the Resource ID of the Azure resource the data should be associated with.
+                            https://learn.microsoft.com/en-us/azure/azure-monitor/logs/data-collector-api?tabs=powershell#request-headers
+                          type: string
+                        customerId:
+                          description: |-
+                            CustomerId che unique identifier for the Log Analytics workspace.
+                            https://learn.microsoft.com/en-us/azure/azure-monitor/logs/data-collector-api?tabs=powershell#request-uri-parameters
+                          type: string
+                        host:
+                          description: |-
+                            Host alternative host for dedicated Azure regions. (for example for China region)
+                            https://docs.azure.cn/en-us/articles/guidance/developerdifferences#check-endpoints-in-azure
+                          type: string
+                        logType:
+                          description: |-
+                            LogType the record type of the data that is being submitted.
+                            Can only contain letters, numbers, and underscores (_), and may not exceed 100 characters.
+                            https://learn.microsoft.com/en-us/azure/azure-monitor/logs/data-collector-api?tabs=powershell#request-headers
+                          pattern: ^[a-zA-Z0-9][a-zA-Z0-9_]{0,99}$
+                          type: string
+                        tuning:
+                          description: Tuning specs tuning for the output
+                          properties:
+                            deliveryMode:
+                              description: DeliveryMode sets the delivery mode for
+                                log forwarding.
+                              enum:
+                              - AtLeastOnce
+                              - AtMostOnce
+                              type: string
+                            maxRetryDuration:
+                              description: MaxRetryDuration is the maximum time to
+                                wait between retry attempts after a delivery failure.
+                              format: int64
+                              type: integer
+                            maxWrite:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              description: MaxWrite limits the maximum payload in
+                                terms of bytes of a single "send" to the output.
+                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                              x-kubernetes-int-or-string: true
+                            minRetryDuration:
+                              description: MinRetryDuration is the minimum time to
+                                wait between attempts to retry after delivery a failure.
+                              format: int64
+                              type: integer
+                          type: object
+                      required:
+                      - authentication
+                      - customerId
+                      type: object
+                    cloudwatch:
+                      description: Cloudwatch provides configuration for the output
+                        type `cloudwatch`
+                      properties:
+                        authentication:
+                          description: Authentication sets credentials for authenticating
+                            the requests.
+                          properties:
+                            awsAccessKey:
+                              description: AWSAccessKey points to the AWS access key
+                                id and secret to be used for authentication.
+                              nullable: true
+                              properties:
+                                keyId:
+                                  description: KeyId points to the AWS access key
+                                    id to be used for authentication.
+                                  properties:
+                                    key:
+                                      description: Key contains the name of the key
+                                        inside the referenced Secret.
+                                      type: string
+                                    secretName:
+                                      description: SecretName contains the name of
+                                        the Secret containing the referenced value.
+                                      type: string
+                                  required:
+                                  - key
+                                  - secretName
+                                  type: object
+                                keySecret:
+                                  description: KeySecret points to the AWS access
+                                    key secret to be used for authentication.
+                                  properties:
+                                    key:
+                                      description: Key contains the name of the key
+                                        inside the referenced Secret.
+                                      type: string
+                                    secretName:
+                                      description: SecretName contains the name of
+                                        the Secret containing the referenced value.
+                                      type: string
+                                  required:
+                                  - key
+                                  - secretName
+                                  type: object
+                              required:
+                              - keyId
+                              - keySecret
+                              type: object
+                            iamRole:
+                              description: |-
+                                IAMRole points to the secret containing the role ARN to be used for authentication.
+                                This can be used for authentication in STS-enabled clusters when additionally specifying
+                                a web identity token
+                              nullable: true
+                              properties:
+                                roleARN:
+                                  description: |-
+                                    RoleARN points to the secret containing the role ARN to be used for authentication.
+                                    This is used for authentication in STS-enabled clusters.
+                                  properties:
+                                    key:
+                                      description: Key contains the name of the key
+                                        inside the referenced Secret.
+                                      type: string
+                                    secretName:
+                                      description: SecretName contains the name of
+                                        the Secret containing the referenced value.
+                                      type: string
+                                  required:
+                                  - key
+                                  - secretName
+                                  type: object
+                                token:
+                                  description: Token specifies a bearer token to be
+                                    used for authenticating requests.
+                                  properties:
+                                    from:
+                                      description: From is the source from where to
+                                        find the token
+                                      enum:
+                                      - secret
+                                      - serviceAccount
+                                      type: string
+                                    secret:
+                                      description: Use Secret if the value should
+                                        be sourced from a Secret in the same namespace.
+                                      properties:
+                                        key:
+                                          description: Name of the key used to get
+                                            the value from the referenced Secret.
+                                          type: string
+                                        name:
+                                          description: Name of secret
+                                          type: string
+                                      required:
+                                      - key
+                                      - name
+                                      type: object
+                                  required:
+                                  - from
+                                  type: object
+                                  x-kubernetes-validations:
+                                  - message: Additional secret spec is required when
+                                      bearer token is sourced from a secret
+                                    rule: self.from != 'secret' || has(self.secret)
+                              required:
+                              - roleARN
+                              - token
+                              type: object
+                            type:
+                              description: Type is the type of cloudwatch authentication
+                                to configure
+                              enum:
+                              - awsAccessKey
+                              - iamRole
+                              type: string
+                          required:
+                          - type
+                          type: object
+                          x-kubernetes-validations:
+                          - message: Additional type specific spec is required for
+                              authentication
+                            rule: self.type != 'awsAccessKey' || has(self.awsAccessKey)
+                          - message: Additional type specific spec is required for
+                              authentication
+                            rule: self.type != 'iamRole' || has(self.iamRole)
+                        groupName:
+                          description: |-
+                            GroupName defines the strategy for grouping logstreams
+
+                            The GroupName can be a combination of static and dynamic values consisting of field paths followed by `||` followed by another field path or a static value.
+
+                            A dynamic value is encased in single curly brackets `{}` and MUST end with a static fallback value separated with `||`.
+
+                            Static values can only contain alphanumeric characters along with dashes, underscores, dots and forward slashes.
+
+                            Example:
+
+                             1. foo-{.bar||"none"}
+
+                             2. {.foo||.bar||"missing"}
+
+                             3. foo.{.bar.baz||.qux.quux.corge||.grault||"nil"}-waldo.fred{.plugh||"none"}
+                          pattern: ^(([a-zA-Z0-9-_.\/])*(\{(\.[a-zA-Z0-9_]+|\."[^"]+")+((\|\|)(\.[a-zA-Z0-9_]+|\.?"[^"]+")+)*\|\|"[^"]*"\})*)*$
+                          type: string
+                        region:
+                          type: string
+                        tuning:
+                          description: Tuning specs tuning for the output
+                          nullable: true
+                          properties:
+                            compression:
+                              description: |-
+                                Compression causes data to be compressed before sending over the network.
+                                It is an error if the compression type is not supported by the output.
+                              enum:
+                              - gzip
+                              - none
+                              - snappy
+                              - zlib
+                              - zstd
+                              type: string
+                            deliveryMode:
+                              description: DeliveryMode sets the delivery mode for
+                                log forwarding.
+                              enum:
+                              - AtLeastOnce
+                              - AtMostOnce
+                              type: string
+                            maxRetryDuration:
+                              description: MaxRetryDuration is the maximum time to
+                                wait between retry attempts after a delivery failure.
+                              format: int64
+                              type: integer
+                            maxWrite:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              description: MaxWrite limits the maximum payload in
+                                terms of bytes of a single "send" to the output.
+                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                              x-kubernetes-int-or-string: true
+                            minRetryDuration:
+                              description: MinRetryDuration is the minimum time to
+                                wait between attempts to retry after delivery a failure.
+                              format: int64
+                              type: integer
+                          type: object
+                        url:
+                          description: |-
+                            URL to send log records to.
+
+                            The 'username@password' part of `url` is ignored.
+                          type: string
+                          x-kubernetes-validations:
+                          - message: invalid URL
+                            rule: self == '' ||  isURL(self)
+                      required:
+                      - authentication
+                      - groupName
+                      - region
+                      type: object
+                    elasticsearch:
+                      properties:
+                        authentication:
+                          description: Authentication sets credentials for authenticating
+                            the requests.
+                          properties:
+                            password:
+                              description: Password to use for authenticating requests.
+                              nullable: true
+                              properties:
+                                key:
+                                  description: Key contains the name of the key inside
+                                    the referenced Secret.
+                                  type: string
+                                secretName:
+                                  description: SecretName contains the name of the
+                                    Secret containing the referenced value.
+                                  type: string
+                              required:
+                              - key
+                              - secretName
+                              type: object
+                            token:
+                              description: Token specifies a bearer token to be used
+                                for authenticating requests.
+                              nullable: true
+                              properties:
+                                from:
+                                  description: From is the source from where to find
+                                    the token
+                                  enum:
+                                  - secret
+                                  - serviceAccount
+                                  type: string
+                                secret:
+                                  description: Use Secret if the value should be sourced
+                                    from a Secret in the same namespace.
+                                  properties:
+                                    key:
+                                      description: Name of the key used to get the
+                                        value from the referenced Secret.
+                                      type: string
+                                    name:
+                                      description: Name of secret
+                                      type: string
+                                  required:
+                                  - key
+                                  - name
+                                  type: object
+                              required:
+                              - from
+                              type: object
+                              x-kubernetes-validations:
+                              - message: Additional secret spec is required when bearer
+                                  token is sourced from a secret
+                                rule: self.from != 'secret' || has(self.secret)
+                            username:
+                              description: Username to use for authenticating requests.
+                              nullable: true
+                              properties:
+                                key:
+                                  description: Key contains the name of the key inside
+                                    the referenced Secret.
+                                  type: string
+                                secretName:
+                                  description: SecretName contains the name of the
+                                    Secret containing the referenced value.
+                                  type: string
+                              required:
+                              - key
+                              - secretName
+                              type: object
+                          type: object
+                        index:
+                          description: |-
+                            Index is the index for the logs. This supports template syntax to allow dynamic per-event values.
+
+                            The Index can be a combination of static and dynamic values consisting of field paths followed by `||` followed by another field path or a static value.
+
+                            A dynamic value is encased in single curly brackets `{}` and MUST end with a static fallback value separated with `||`.
+
+                            Static values can only contain alphanumeric characters along with dashes, underscores, dots and forward slashes.
+
+                            Example:
+
+                             1. foo-{.bar||"none"}
+
+                             2. {.foo||.bar||"missing"}
+
+                             3. foo.{.bar.baz||.qux.quux.corge||.grault||"nil"}-waldo.fred{.plugh||"none"}
+                          pattern: ^(([a-zA-Z0-9-_.\/])*(\{(\.[a-zA-Z0-9_]+|\."[^"]+")+((\|\|)(\.[a-zA-Z0-9_]+|\.?"[^"]+")+)*\|\|"[^"]*"\})*)*$
+                          type: string
+                        tuning:
+                          description: Tuning specs tuning for the output
+                          properties:
+                            compression:
+                              description: Compression causes data to be compressed
+                                before sending over the network.
+                              enum:
+                              - none
+                              - gzip
+                              - zlib
+                              type: string
+                            deliveryMode:
+                              description: DeliveryMode sets the delivery mode for
+                                log forwarding.
+                              enum:
+                              - AtLeastOnce
+                              - AtMostOnce
+                              type: string
+                            maxRetryDuration:
+                              description: MaxRetryDuration is the maximum time to
+                                wait between retry attempts after a delivery failure.
+                              format: int64
+                              type: integer
+                            maxWrite:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              description: MaxWrite limits the maximum payload in
+                                terms of bytes of a single "send" to the output.
+                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                              x-kubernetes-int-or-string: true
+                            minRetryDuration:
+                              description: MinRetryDuration is the minimum time to
+                                wait between attempts to retry after delivery a failure.
+                              format: int64
+                              type: integer
+                          type: object
+                        url:
+                          description: |-
+                            URL to send log records to.
+                            Basic TLS is enabled if the URL scheme requires it (for example 'https' or 'tls').
+                            The 'username@password' part of `url` is ignored.
+                          type: string
+                          x-kubernetes-validations:
+                          - message: invalid URL
+                            rule: isURL(self)
+                        version:
+                          description: |-
+                            Version specifies the version of Elasticsearch to be used.
+                            Must be one of: 6-8
+                          maximum: 8
+                          minimum: 6
+                          type: integer
+                      required:
+                      - index
+                      - url
+                      - version
+                      type: object
+                    googleCloudLogging:
+                      description: GoogleCloudLogging provides configuration for sending
+                        logs to Google Cloud Logging.
+                      properties:
+                        authentication:
+                          description: Authentication sets credentials for authenticating
+                            the requests.
+                          properties:
+                            credentials:
+                              description: Credentials points to the secret containing
+                                the `google-application-credentials.json`.
+                              properties:
+                                key:
+                                  description: Key contains the name of the key inside
+                                    the referenced Secret.
+                                  type: string
+                                secretName:
+                                  description: SecretName contains the name of the
+                                    Secret containing the referenced value.
+                                  type: string
+                              required:
+                              - key
+                              - secretName
+                              type: object
+                          required:
+                          - credentials
+                          type: object
+                        id:
+                          description: ID must be one of the required ID fields for
+                            the output
+                          properties:
+                            type:
+                              description: Type is the ID type provided
+                              enum:
+                              - billingAccount
+                              - folder
+                              - project
+                              - organization
+                              type: string
+                            value:
+                              description: Value is the value of the ID
+                              type: string
+                          required:
+                          - type
+                          - value
+                          type: object
+                        logId:
+                          description: |-
+                            LogId is the log ID to which to publish logs. This identifies log stream.
+
+                            The LogId can be a combination of static and dynamic values consisting of field paths followed by `||` followed by another field path or a static value.
+
+                            A dynamic value is encased in single curly brackets `{}` and MUST end with a static fallback value separated with `||`.
+
+                            Static values can only contain alphanumeric characters along with dashes, underscores, dots and forward slashes.
+
+                            Example:
+
+                             1. foo-{.bar||"none"}
+
+                             2. {.foo||.bar||"missing"}
+
+                             3. foo.{.bar.baz||.qux.quux.corge||.grault||"nil"}-waldo.fred{.plugh||"none"}
+                          pattern: ^(([a-zA-Z0-9-_.\/])*(\{(\.[a-zA-Z0-9_]+|\."[^"]+")+((\|\|)(\.[a-zA-Z0-9_]+|\.?"[^"]+")+)*\|\|"[^"]*"\})*)*$
+                          type: string
+                        tuning:
+                          description: Tuning specs tuning for the output
+                          properties:
+                            deliveryMode:
+                              description: DeliveryMode sets the delivery mode for
+                                log forwarding.
+                              enum:
+                              - AtLeastOnce
+                              - AtMostOnce
+                              type: string
+                            maxRetryDuration:
+                              description: MaxRetryDuration is the maximum time to
+                                wait between retry attempts after a delivery failure.
+                              format: int64
+                              type: integer
+                            maxWrite:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              description: MaxWrite limits the maximum payload in
+                                terms of bytes of a single "send" to the output.
+                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                              x-kubernetes-int-or-string: true
+                            minRetryDuration:
+                              description: MinRetryDuration is the minimum time to
+                                wait between attempts to retry after delivery a failure.
+                              format: int64
+                              type: integer
+                          type: object
+                      required:
+                      - id
+                      - logId
+                      type: object
+                    http:
+                      description: HTTP provided configuration for sending json encoded
+                        logs to a generic HTTP endpoint.
+                      properties:
+                        authentication:
+                          description: Authentication sets credentials for authenticating
+                            the requests.
+                          properties:
+                            password:
+                              description: Password to use for authenticating requests.
+                              nullable: true
+                              properties:
+                                key:
+                                  description: Key contains the name of the key inside
+                                    the referenced Secret.
+                                  type: string
+                                secretName:
+                                  description: SecretName contains the name of the
+                                    Secret containing the referenced value.
+                                  type: string
+                              required:
+                              - key
+                              - secretName
+                              type: object
+                            token:
+                              description: Token specifies a bearer token to be used
+                                for authenticating requests.
+                              nullable: true
+                              properties:
+                                from:
+                                  description: From is the source from where to find
+                                    the token
+                                  enum:
+                                  - secret
+                                  - serviceAccount
+                                  type: string
+                                secret:
+                                  description: Use Secret if the value should be sourced
+                                    from a Secret in the same namespace.
+                                  properties:
+                                    key:
+                                      description: Name of the key used to get the
+                                        value from the referenced Secret.
+                                      type: string
+                                    name:
+                                      description: Name of secret
+                                      type: string
+                                  required:
+                                  - key
+                                  - name
+                                  type: object
+                              required:
+                              - from
+                              type: object
+                              x-kubernetes-validations:
+                              - message: Additional secret spec is required when bearer
+                                  token is sourced from a secret
+                                rule: self.from != 'secret' || has(self.secret)
+                            username:
+                              description: Username to use for authenticating requests.
+                              nullable: true
+                              properties:
+                                key:
+                                  description: Key contains the name of the key inside
+                                    the referenced Secret.
+                                  type: string
+                                secretName:
+                                  description: SecretName contains the name of the
+                                    Secret containing the referenced value.
+                                  type: string
+                              required:
+                              - key
+                              - secretName
+                              type: object
+                          type: object
+                        headers:
+                          additionalProperties:
+                            type: string
+                          description: Headers specify optional headers to be sent
+                            with the request
+                          type: object
+                        method:
+                          description: Method specifies the Http method to be used
+                            for sending logs. If not set, 'POST' is used.
+                          enum:
+                          - GET
+                          - HEAD
+                          - POST
+                          - PUT
+                          - DELETE
+                          - OPTIONS
+                          - TRACE
+                          - PATCH
+                          type: string
+                        timeout:
+                          description: Timeout specifies the Http request timeout
+                            in seconds. If not set, 10secs is used.
+                          type: integer
+                        tuning:
+                          description: Tuning specs tuning for the output
+                          nullable: true
+                          properties:
+                            compression:
+                              description: Compression causes data to be compressed
+                                before sending over the network.
+                              enum:
+                              - none
+                              - gzip
+                              - snappy
+                              - zlib
+                              type: string
+                            deliveryMode:
+                              description: DeliveryMode sets the delivery mode for
+                                log forwarding.
+                              enum:
+                              - AtLeastOnce
+                              - AtMostOnce
+                              type: string
+                            maxRetryDuration:
+                              description: MaxRetryDuration is the maximum time to
+                                wait between retry attempts after a delivery failure.
+                              format: int64
+                              type: integer
+                            maxWrite:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              description: MaxWrite limits the maximum payload in
+                                terms of bytes of a single "send" to the output.
+                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                              x-kubernetes-int-or-string: true
+                            minRetryDuration:
+                              description: MinRetryDuration is the minimum time to
+                                wait between attempts to retry after delivery a failure.
+                              format: int64
+                              type: integer
+                          type: object
+                        url:
+                          description: |-
+                            URL to send log records to.
+                            Basic TLS is enabled if the URL scheme requires it (for example 'https' or 'tls').
+                            The 'username@password' part of `url` is ignored.
+                          type: string
+                          x-kubernetes-validations:
+                          - message: invalid URL
+                            rule: isURL(self)
+                      required:
+                      - url
+                      type: object
+                    kafka:
+                      description: 'Kafka provides optional extra properties for `type:
+                        kafka`'
+                      properties:
+                        authentication:
+                          description: Authentication sets credentials for authenticating
+                            the requests.
+                          properties:
+                            sasl:
+                              description: SASL contains options configuring SASL
+                                authentication.
+                              properties:
+                                mechanism:
+                                  description: Mechanism sets the SASL mechanism to
+                                    use.
+                                  type: string
+                                password:
+                                  description: Username points to the secret to be
+                                    used as SASL password.
+                                  properties:
+                                    key:
+                                      description: Key contains the name of the key
+                                        inside the referenced Secret.
+                                      type: string
+                                    secretName:
+                                      description: SecretName contains the name of
+                                        the Secret containing the referenced value.
+                                      type: string
+                                  required:
+                                  - key
+                                  - secretName
+                                  type: object
+                                username:
+                                  description: Username points to the secret to be
+                                    used as SASL username.
+                                  properties:
+                                    key:
+                                      description: Key contains the name of the key
+                                        inside the referenced Secret.
+                                      type: string
+                                    secretName:
+                                      description: SecretName contains the name of
+                                        the Secret containing the referenced value.
+                                      type: string
+                                  required:
+                                  - key
+                                  - secretName
+                                  type: object
+                              type: object
+                          type: object
+                        brokers:
+                          description: |-
+                            Brokers specifies the list of broker endpoints of a Kafka cluster.
+
+                            The list represents only the initial set used by the collector's Kafka client for the
+                            first connection only. The collector's Kafka client fetches constantly an updated list
+                            from Kafka. These updates are not reconciled back to the collector configuration.
+
+                            If none provided the target URL from the OutputSpec is used as fallback.
+                          items:
+                            type: string
+                            x-kubernetes-validations:
+                            - message: invalid URL
+                              rule: isURL(self)
+                          type: array
+                        topic:
+                          description: |-
+                            Topic specifies the target topic to send logs to. The value when not specified is 'topic'
+
+                            The Topic can be a combination of static and dynamic values consisting of field paths followed by `||` followed by another field path or a static value.
+
+                            A dynamic value is encased in single curly brackets `{}` and MUST end with a static fallback value separated with `||`.
+
+                            Static values can only contain alphanumeric characters along with dashes, underscores, dots and forward slashes.
+
+                            Example:
+
+                             1. foo-{.bar||"none"}
+
+                             2. {.foo||.bar||"missing"}
+
+                             3. foo.{.bar.baz||.qux.quux.corge||.grault||"nil"}-waldo.fred{.plugh||"none"}
+                          pattern: ^(([a-zA-Z0-9-_.\/])*(\{(\.[a-zA-Z0-9_]+|\."[^"]+")+((\|\|)(\.[a-zA-Z0-9_]+|\.?"[^"]+")+)*\|\|"[^"]*"\})*)*$
+                          type: string
+                        tuning:
+                          description: Tuning specs tuning for the output
+                          nullable: true
+                          properties:
+                            compression:
+                              description: Compression causes data to be compressed
+                                before sending over the network.
+                              enum:
+                              - none
+                              - snappy
+                              - zstd
+                              - lz4
+                              type: string
+                            deliveryMode:
+                              description: DeliveryMode sets the delivery mode for
+                                log forwarding.
+                              enum:
+                              - AtLeastOnce
+                              - AtMostOnce
+                              type: string
+                            maxWrite:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              description: MaxWrite limits the maximum payload in
+                                terms of bytes of a single "send" to the output.
+                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                              x-kubernetes-int-or-string: true
+                          type: object
+                        url:
+                          description: |-
+                            URL to send log records to.
+
+                            The 'username@password' part of `url` is ignored.
+                          type: string
+                          x-kubernetes-validations:
+                          - message: invalid URL
+                            rule: self == '' ||  isURL(self)
+                      type: object
+                      x-kubernetes-validations:
+                      - message: URL or brokers required
+                        rule: has(self.url) || self.brokers.size() > 0
+                    loki:
+                      description: 'Loki provides optional extra properties for `type:
+                        loki`'
+                      properties:
+                        authentication:
+                          description: Authentication sets credentials for authenticating
+                            the requests.
+                          properties:
+                            password:
+                              description: Password to use for authenticating requests.
+                              nullable: true
+                              properties:
+                                key:
+                                  description: Key contains the name of the key inside
+                                    the referenced Secret.
+                                  type: string
+                                secretName:
+                                  description: SecretName contains the name of the
+                                    Secret containing the referenced value.
+                                  type: string
+                              required:
+                              - key
+                              - secretName
+                              type: object
+                            token:
+                              description: Token specifies a bearer token to be used
+                                for authenticating requests.
+                              nullable: true
+                              properties:
+                                from:
+                                  description: From is the source from where to find
+                                    the token
+                                  enum:
+                                  - secret
+                                  - serviceAccount
+                                  type: string
+                                secret:
+                                  description: Use Secret if the value should be sourced
+                                    from a Secret in the same namespace.
+                                  properties:
+                                    key:
+                                      description: Name of the key used to get the
+                                        value from the referenced Secret.
+                                      type: string
+                                    name:
+                                      description: Name of secret
+                                      type: string
+                                  required:
+                                  - key
+                                  - name
+                                  type: object
+                              required:
+                              - from
+                              type: object
+                              x-kubernetes-validations:
+                              - message: Additional secret spec is required when bearer
+                                  token is sourced from a secret
+                                rule: self.from != 'secret' || has(self.secret)
+                            username:
+                              description: Username to use for authenticating requests.
+                              nullable: true
+                              properties:
+                                key:
+                                  description: Key contains the name of the key inside
+                                    the referenced Secret.
+                                  type: string
+                                secretName:
+                                  description: SecretName contains the name of the
+                                    Secret containing the referenced value.
+                                  type: string
+                              required:
+                              - key
+                              - secretName
+                              type: object
+                          type: object
+                        labelKeys:
+                          description: |-
+                            LabelKeys can be used to customize which log record keys are mapped to Loki stream labels.
+
+                            If LabelKeys is not set, the default keys are:
+
+                            - log_type
+
+                            - kubernetes.container_name
+
+                            - kubernetes.namespace_name
+
+                            - kubernetes.pod_name
+
+                            One additional label "kubernetes_host" is not part of the label keys configuration. It contains the hostname
+                            where the collector is running and is always present.
+
+                            Note: Loki label names must match the regular expression "[a-zA-Z_:][a-zA-Z0-9_:]*"
+                            Log record keys may contain characters like "." and "/" that are not allowed in Loki labels.
+                            Log record keys are translated to Loki labels by replacing any illegal characters with '_'.
+
+                            For example the default log record keys translate to these Loki labels:
+
+                            - log_type
+
+                            - kubernetes_container_name
+
+                            - kubernetes_namespace_name
+
+                            - kubernetes_pod_name
+
+                            Note: the set of labels should be small, Loki imposes limits on the size and number of labels allowed.
+                            See https://grafana.com/docs/loki/latest/configuration/#limits_config for more.
+                            Loki queries can also query based on any log record field (not just labels) using query filters.
+                          items:
+                            type: string
+                          type: array
+                        tenantKey:
+                          description: |-
+                            TenantKey is the tenant for the logs. This supports vector's template syntax to allow dynamic per-event values.
+
+                            The TenantKey can be a combination of static and dynamic values consisting of field paths followed by `||` followed by another field path or a static value.
+
+                            A dynamic value is encased in single curly brackets `{}` and MUST end with a static fallback value separated with `||`.
+
+                            Static values can only contain alphanumeric characters along with dashes, underscores, dots and forward slashes.
+
+                            Example:
+
+                             1. foo-{.bar||"none"}
+
+                             2. {.foo||.bar||"missing"}
+
+                             3. foo.{.bar.baz||.qux.quux.corge||.grault||"nil"}-waldo.fred{.plugh||"none"}
+                          pattern: ^(([a-zA-Z0-9-_.\/])*(\{(\.[a-zA-Z0-9_]+|\."[^"]+")+((\|\|)(\.[a-zA-Z0-9_]+|\.?"[^"]+")+)*\|\|"[^"]*"\})*)*$
+                          type: string
+                        tuning:
+                          description: Tuning specs tuning for the output
+                          nullable: true
+                          properties:
+                            compression:
+                              description: Compression causes data to be compressed
+                                before sending over the network.
+                              enum:
+                              - none
+                              - gzip
+                              - snappy
+                              type: string
+                            deliveryMode:
+                              description: DeliveryMode sets the delivery mode for
+                                log forwarding.
+                              enum:
+                              - AtLeastOnce
+                              - AtMostOnce
+                              type: string
+                            maxRetryDuration:
+                              description: MaxRetryDuration is the maximum time to
+                                wait between retry attempts after a delivery failure.
+                              format: int64
+                              type: integer
+                            maxWrite:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              description: MaxWrite limits the maximum payload in
+                                terms of bytes of a single "send" to the output.
+                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                              x-kubernetes-int-or-string: true
+                            minRetryDuration:
+                              description: MinRetryDuration is the minimum time to
+                                wait between attempts to retry after delivery a failure.
+                              format: int64
+                              type: integer
+                          type: object
+                        url:
+                          description: |-
+                            URL to send log records to.
+                            Basic TLS is enabled if the URL scheme requires it (for example 'https' or 'tls').
+                            The 'username@password' part of `url` is ignored.
+                          type: string
+                          x-kubernetes-validations:
+                          - message: invalid URL
+                            rule: isURL(self)
+                      required:
+                      - url
+                      type: object
+                    lokiStack:
+                      description: 'LokiStack provides optional extra properties for
+                        `type: lokistack`'
+                      properties:
+                        authentication:
+                          description: Authentication sets credentials for authenticating
+                            the requests.
+                          properties:
+                            token:
+                              description: Token specifies a bearer token to be used
+                                for authenticating requests.
+                              nullable: true
+                              properties:
+                                from:
+                                  description: From is the source from where to find
+                                    the token
+                                  enum:
+                                  - secret
+                                  - serviceAccount
+                                  type: string
+                                secret:
+                                  description: Use Secret if the value should be sourced
+                                    from a Secret in the same namespace.
+                                  properties:
+                                    key:
+                                      description: Name of the key used to get the
+                                        value from the referenced Secret.
+                                      type: string
+                                    name:
+                                      description: Name of secret
+                                      type: string
+                                  required:
+                                  - key
+                                  - name
+                                  type: object
+                              required:
+                              - from
+                              type: object
+                              x-kubernetes-validations:
+                              - message: Additional secret spec is required when bearer
+                                  token is sourced from a secret
+                                rule: self.from != 'secret' || has(self.secret)
+                          required:
+                          - token
+                          type: object
+                        labelKeys:
+                          description: |-
+                            LabelKeys can be used to customize which log record keys are mapped to Loki stream labels.
+
+                            Note: Loki label names must match the regular expression "[a-zA-Z_:][a-zA-Z0-9_:]*"
+                            Log record keys may contain characters like "." and "/" that are not allowed in Loki labels.
+                            Log record keys are translated to Loki labels by replacing any illegal characters with '_'.
+
+                            For example the default log record keys translate to these Loki labels:
+
+                            - log_type
+
+                            - kubernetes_container_name
+
+                            - kubernetes_namespace_name
+
+                            - kubernetes_pod_name
+
+                            Note: the set of labels should be small, Loki imposes limits on the size and number of labels allowed.
+                            See https://grafana.com/docs/loki/latest/configuration/#limits_config for more.
+                            Loki queries can also query based on any log record field (not just labels) using query filters.
+                          properties:
+                            application:
+                              description: Application contains the label keys configuration
+                                for the "application" tenant.
+                              properties:
+                                ignoreGlobal:
+                                  description: |-
+                                    If IgnoreGlobal is true, then the tenant will not use the labels configured in the Global section of the label
+                                    keys configuration.
+                                  type: boolean
+                                labelKeys:
+                                  description: |-
+                                    LabelKeys contains a list of log record keys that are mapped to Loki stream labels.
+
+                                    By default, this list is combined with the labels specified in the Global configuration.
+                                    This behavior can be changed by setting IgnoreGlobal to true.
+                                  items:
+                                    type: string
+                                  type: array
+                              type: object
+                            audit:
+                              description: Audit contains the label keys configuration
+                                for the "audit" tenant.
+                              properties:
+                                ignoreGlobal:
+                                  description: |-
+                                    If IgnoreGlobal is true, then the tenant will not use the labels configured in the Global section of the label
+                                    keys configuration.
+                                  type: boolean
+                                labelKeys:
+                                  description: |-
+                                    LabelKeys contains a list of log record keys that are mapped to Loki stream labels.
+
+                                    By default, this list is combined with the labels specified in the Global configuration.
+                                    This behavior can be changed by setting IgnoreGlobal to true.
+                                  items:
+                                    type: string
+                                  type: array
+                              type: object
+                            global:
+                              description: |-
+                                Global contains a list of record keys which are used for all tenants.
+
+                                If LabelKeys is not set, the default keys are:
+
+                                 - log_type
+
+                                 - kubernetes.container_name
+
+                                 - kubernetes.namespace_name
+
+                                 - kubernetes.pod_name
+
+                                One additional label "kubernetes_host" is not part of the label keys configuration. It contains the hostname
+                                where the collector is running and is always present.
+                              items:
+                                type: string
+                              type: array
+                            infrastructure:
+                              description: Infrastructure contains the label keys
+                                configuration for the "infrastructure" tenant.
+                              properties:
+                                ignoreGlobal:
+                                  description: |-
+                                    If IgnoreGlobal is true, then the tenant will not use the labels configured in the Global section of the label
+                                    keys configuration.
+                                  type: boolean
+                                labelKeys:
+                                  description: |-
+                                    LabelKeys contains a list of log record keys that are mapped to Loki stream labels.
+
+                                    By default, this list is combined with the labels specified in the Global configuration.
+                                    This behavior can be changed by setting IgnoreGlobal to true.
+                                  items:
+                                    type: string
+                                  type: array
+                              type: object
+                          type: object
+                        target:
+                          description: Target points to the LokiStack resources that
+                            should be used as a target for the output.
+                          properties:
+                            name:
+                              description: Name of the in-cluster LokiStack resource.
+                              pattern: ^[a-z][a-z0-9-]{2,62}[a-z0-9]$
+                              type: string
+                            namespace:
+                              description: |-
+                                Namespace of the in-cluster LokiStack resource.
+
+                                If unset, this defaults to "openshift-logging".
+                              type: string
+                          required:
+                          - name
+                          type: object
+                        tuning:
+                          description: Tuning specs tuning for the output
+                          properties:
+                            compression:
+                              description: Compression causes data to be compressed
+                                before sending over the network.
+                              enum:
+                              - none
+                              - gzip
+                              - snappy
+                              type: string
+                            deliveryMode:
+                              description: DeliveryMode sets the delivery mode for
+                                log forwarding.
+                              enum:
+                              - AtLeastOnce
+                              - AtMostOnce
+                              type: string
+                            maxRetryDuration:
+                              description: MaxRetryDuration is the maximum time to
+                                wait between retry attempts after a delivery failure.
+                              format: int64
+                              type: integer
+                            maxWrite:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              description: MaxWrite limits the maximum payload in
+                                terms of bytes of a single "send" to the output.
+                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                              x-kubernetes-int-or-string: true
+                            minRetryDuration:
+                              description: MinRetryDuration is the minimum time to
+                                wait between attempts to retry after delivery a failure.
+                              format: int64
+                              type: integer
+                          type: object
+                      required:
+                      - authentication
+                      - target
+                      type: object
+                    name:
+                      description: Name used to refer to the output from a `pipeline`.
+                      pattern: ^[a-z][a-z0-9-]*[a-z0-9]$
+                      type: string
+                    otlp:
+                      description: |-
+                        OTLP defines configuration for sending logs via OTLP using OTEL semantic conventions
+                        https://opentelemetry.io/docs/specs/otlp/#otlphttp
+                      properties:
+                        authentication:
+                          description: Authentication sets credentials for authenticating
+                            the requests.
+                          properties:
+                            password:
+                              description: Password to use for authenticating requests.
+                              nullable: true
+                              properties:
+                                key:
+                                  description: Key contains the name of the key inside
+                                    the referenced Secret.
+                                  type: string
+                                secretName:
+                                  description: SecretName contains the name of the
+                                    Secret containing the referenced value.
+                                  type: string
+                              required:
+                              - key
+                              - secretName
+                              type: object
+                            token:
+                              description: Token specifies a bearer token to be used
+                                for authenticating requests.
+                              nullable: true
+                              properties:
+                                from:
+                                  description: From is the source from where to find
+                                    the token
+                                  enum:
+                                  - secret
+                                  - serviceAccount
+                                  type: string
+                                secret:
+                                  description: Use Secret if the value should be sourced
+                                    from a Secret in the same namespace.
+                                  properties:
+                                    key:
+                                      description: Name of the key used to get the
+                                        value from the referenced Secret.
+                                      type: string
+                                    name:
+                                      description: Name of secret
+                                      type: string
+                                  required:
+                                  - key
+                                  - name
+                                  type: object
+                              required:
+                              - from
+                              type: object
+                              x-kubernetes-validations:
+                              - message: Additional secret spec is required when bearer
+                                  token is sourced from a secret
+                                rule: self.from != 'secret' || has(self.secret)
+                            username:
+                              description: Username to use for authenticating requests.
+                              nullable: true
+                              properties:
+                                key:
+                                  description: Key contains the name of the key inside
+                                    the referenced Secret.
+                                  type: string
+                                secretName:
+                                  description: SecretName contains the name of the
+                                    Secret containing the referenced value.
+                                  type: string
+                              required:
+                              - key
+                              - secretName
+                              type: object
+                          type: object
+                        tuning:
+                          description: Tuning specs tuning for the output
+                          nullable: true
+                          properties:
+                            compression:
+                              description: |-
+                                Compression causes data to be compressed before sending over the network.
+                                It is an error if the compression type is not supported by the output.
+                              enum:
+                              - gzip
+                              - none
+                              type: string
+                            deliveryMode:
+                              description: DeliveryMode sets the delivery mode for
+                                log forwarding.
+                              enum:
+                              - AtLeastOnce
+                              - AtMostOnce
+                              type: string
+                            maxRetryDuration:
+                              description: MaxRetryDuration is the maximum time to
+                                wait between retry attempts after a delivery failure.
+                              format: int64
+                              type: integer
+                            maxWrite:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              description: MaxWrite limits the maximum payload in
+                                terms of bytes of a single "send" to the output.
+                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                              x-kubernetes-int-or-string: true
+                            minRetryDuration:
+                              description: MinRetryDuration is the minimum time to
+                                wait between attempts to retry after delivery a failure.
+                              format: int64
+                              type: integer
+                          type: object
+                        url:
+                          description: |-
+                            URL to send log records to.
+
+                            An absolute URL, with a valid http scheme. Must terminate with `/v1/logs`
+
+                            Basic TLS is enabled if the URL scheme requires it (for example 'https').
+                            The 'username@password' part of `url` is ignored.
+                          pattern: ^(https?):\/\/\S+\/v1\/logs$
+                          type: string
+                          x-kubernetes-validations:
+                          - message: invalid URL
+                            rule: isURL(self)
+                      required:
+                      - url
+                      type: object
+                    rateLimit:
+                      description: |-
+                        Limit imposes a limit in records-per-second on the total aggregate rate of logs forwarded
+                        to this output from any given collector container. The total log flow from an individual collector
+                        container to this output cannot exceed the limit.  Generally, one collector is deployed per cluster node
+                        Logs may be dropped to enforce the limit. Missing or 0 means no rate limit.
+                      properties:
+                        maxRecordsPerSecond:
+                          description: |-
+                            MaxRecordsPerSecond is the maximum number of log records
+                            allowed per input/output in a pipeline
+                          exclusiveMinimum: true
+                          format: int64
+                          minimum: 0
+                          type: integer
+                      required:
+                      - maxRecordsPerSecond
+                      type: object
+                    splunk:
+                      description: |-
+                        Splunk Deliver log data to Splunk’s HTTP Event Collector
+                        Provides optional extra properties for `type: splunk_hec` ('splunk_hec_logs' after Vector 0.23
+                      properties:
+                        authentication:
+                          description: Authentication sets credentials for authenticating
+                            the requests.
+                          properties:
+                            token:
+                              description: Token points to the secret containing the
+                                Splunk HEC token used for authenticating requests.
+                              properties:
+                                key:
+                                  description: Key contains the name of the key inside
+                                    the referenced Secret.
+                                  type: string
+                                secretName:
+                                  description: SecretName contains the name of the
+                                    Secret containing the referenced value.
+                                  type: string
+                              required:
+                              - key
+                              - secretName
+                              type: object
+                          required:
+                          - token
+                          type: object
+                        index:
+                          description: |-
+                            Index is the index for the logs. This supports template syntax to allow dynamic per-event values.
+
+                            The Index can be a combination of static and dynamic values consisting of field paths followed by `||` followed by another field path or a static value.
+
+                            A dynamic value is encased in single curly brackets `{}` and MUST end with a static fallback value separated with `||`.
+
+                            Static values can only contain alphanumeric characters along with dashes, underscores, dots and forward slashes.
+
+                            Example:
+
+                             1. foo-{.bar||"none"}
+
+                             2. {.foo||.bar||"missing"}
+
+                             3. foo.{.bar.baz||.qux.quux.corge||.grault||"nil"}-waldo.fred{.plugh||"none"}
+                          pattern: ^(([a-zA-Z0-9-_.\/])*(\{(\.[a-zA-Z0-9_]+|\."[^"]+")+((\|\|)(\.[a-zA-Z0-9_]+|\.?"[^"]+")+)*\|\|"[^"]*"\})*)*$
+                          type: string
+                        tuning:
+                          description: Tuning specs tuning for the output
+                          nullable: true
+                          properties:
+                            compression:
+                              description: Compression causes data to be compressed
+                                before sending over the network.
+                              enum:
+                              - none
+                              - gzip
+                              type: string
+                            deliveryMode:
+                              description: DeliveryMode sets the delivery mode for
+                                log forwarding.
+                              enum:
+                              - AtLeastOnce
+                              - AtMostOnce
+                              type: string
+                            maxRetryDuration:
+                              description: MaxRetryDuration is the maximum time to
+                                wait between retry attempts after a delivery failure.
+                              format: int64
+                              type: integer
+                            maxWrite:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              description: MaxWrite limits the maximum payload in
+                                terms of bytes of a single "send" to the output.
+                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                              x-kubernetes-int-or-string: true
+                            minRetryDuration:
+                              description: MinRetryDuration is the minimum time to
+                                wait between attempts to retry after delivery a failure.
+                              format: int64
+                              type: integer
+                          type: object
+                        url:
+                          description: |-
+                            URL to send log records to.
+                            Basic TLS is enabled if the URL scheme requires it (for example 'https' or 'tls').
+                            The 'username@password' part of `url` is ignored.
+                          type: string
+                          x-kubernetes-validations:
+                          - message: invalid URL
+                            rule: isURL(self)
+                      required:
+                      - authentication
+                      - url
+                      type: object
+                    syslog:
+                      description: Syslog provides optional extra properties for output
+                        type `syslog`
+                      properties:
+                        appName:
+                          description: |
+                            AppName is APP-NAME part of the syslog-msg header.
+
+                            AppName needs to be specified if using rfc5424. The maximum length of the final values is truncated to 48
+                            This supports template syntax to allow dynamic per-event values.
+
+                            The AppName can be a combination of static and dynamic values consisting of field paths followed by `||` followed by another field path or a static value.
+
+                            A dynamic value is encased in single curly brackets `{}` and MUST end with a static fallback value separated with `||`.
+
+                            Static values can only contain alphanumeric characters along with dashes, underscores, dots and forward slashes.
+
+                            Example:
+
+                             1. foo-{.bar||"none"}
+
+                             2. {.foo||.bar||"missing"}
+
+                             3. foo.{.bar.baz||.qux.quux.corge||.grault||"nil"}-waldo.fred{.plugh||"none"}
+                          pattern: ^(([a-zA-Z0-9-_.\/])*(\{(\.[a-zA-Z0-9_]+|\."[^"]+")+((\|\|)(\.[a-zA-Z0-9_]+|\.?"[^"]+")+)*\|\|"[^"]*"\})*)*$
+                          type: string
+                        enrichment:
+                          description: Enrichment is an additional modification the
+                            log message before forwarding it to the receiver
+                          enum:
+                          - None
+                          - KubernetesMinimal
+                          type: string
+                        facility:
+                          description: |-
+                            Facility to set on outgoing syslog records.
+
+                            Facility values are defined in https://tools.ietf.org/html/rfc5424#section-6.2.1.
+
+                            The value can be a decimal integer. Facility keywords are not standardized,
+                            this API recognizes at least the following case-insensitive keywords
+                            (defined by https://en.wikipedia.org/wiki/Syslog#Facility_Levels):
+
+                                kernel user mail daemon auth syslog lpr news
+                                uucp cron authpriv ftp ntp security console solaris-cron
+                                local0 local1 local2 local3 local4 local5 local6 local7
+                          type: string
+                        msgId:
+                          description: |-
+                            MsgId is MSGID part of the syslog-msg header. This supports template syntax to allow dynamic per-event values.
+
+                            The MsgId can be a combination of static and dynamic values consisting of field paths followed by `||` followed by another field path or a static value.
+
+                            A dynamic value is encased in single curly brackets `{}` and MUST end with a static fallback value separated with `||`.
+
+                            Static values can only contain alphanumeric characters along with dashes, underscores, dots and forward slashes.
+
+                            Example:
+
+                             1. foo-{.bar||"none"}
+
+                             2. {.foo||.bar||"missing"}
+
+                             3. foo.{.bar.baz||.qux.quux.corge||.grault||"nil"}-waldo.fred{.plugh||"none"}
+
+                            MsgId needs to be specified if using rfc5424.  The maximum length of the final values is truncated to 32
+                          pattern: ^(([a-zA-Z0-9-_.\/])*(\{(\.[a-zA-Z0-9_]+|\."[^"]+")+((\|\|)(\.[a-zA-Z0-9_]+|\.?"[^"]+")+)*\|\|"[^"]*"\})*)*$
+                          type: string
+                        payloadKey:
+                          description: |-
+                            PayloadKey specifies record field to use as payload. This supports template syntax to allow dynamic per-event values.
+
+                            The PayloadKey must be a single field path encased in single curly brackets `{}`.
+
+                            Field paths must only contain alphanumeric and underscores. Any field with other characters must be quoted.
+
+                            If left empty, Syslog will use the whole message as the payload key
+
+                            Example:
+
+                             1. {.bar}
+
+                             2. {.foo.bar.baz}
+
+                             3. {.foo.bar."baz/with/slashes"}
+                          pattern: ^\{(\.[a-zA-Z0-9_]+|\."[^"]+")(\.[a-zA-Z0-9_]+|\."[^"]+")*\}$
+                          type: string
+                        procId:
+                          description: |-
+                            ProcId is PROCID part of the syslog-msg header. This supports template syntax to allow dynamic per-event values.
+
+                            The ProcId can be a combination of static and dynamic values consisting of field paths followed by `||` followed by another field path or a static value.
+
+                            A dynamic value is encased in single curly brackets `{}` and MUST end with a static fallback value separated with `||`.
+
+                            Static values can only contain alphanumeric characters along with dashes, underscores, dots and forward slashes.
+
+                            Example:
+
+                             1. foo-{.bar||"none"}
+
+                             2. {.foo||.bar||"missing"}
+
+                             3. foo.{.bar.baz||.qux.quux.corge||.grault||"nil"}-waldo.fred{.plugh||"none"}
+
+                            ProcId needs to be specified if using rfc5424. The maximum length of the final values is truncated to 128
+                          pattern: ^(([a-zA-Z0-9-_.\/])*(\{(\.[a-zA-Z0-9_]+|\."[^"]+")+((\|\|)(\.[a-zA-Z0-9_]+|\.?"[^"]+")+)*\|\|"[^"]*"\})*)*$
+                          type: string
+                        rfc:
+                          description: SyslogRFCType sets which RFC the generated
+                            messages conform to.
+                          enum:
+                          - RFC3164
+                          - RFC5424
+                          type: string
+                        severity:
+                          description: |-
+                            Severity to set on outgoing syslog records.
+
+                            Severity values are defined in https://tools.ietf.org/html/rfc5424#section-6.2.1
+
+                            The value can be a decimal integer or one of these case-insensitive keywords:
+
+                                Emergency Alert Critical Error Warning Notice Informational Debug
+                          type: string
+                        tuning:
+                          description: Tuning specs tuning for the output
+                          nullable: true
+                          properties:
+                            deliveryMode:
+                              description: DeliveryMode sets the delivery mode for
+                                log forwarding.
+                              enum:
+                              - AtLeastOnce
+                              - AtMostOnce
+                              type: string
+                          type: object
+                        url:
+                          description: |-
+                            An absolute URL, with a scheme. Valid schemes are: `tcp`, `tls`, `udp` and `udps`
+                            For example, to send syslog records using secure UDP:
+                                url: udps://syslog.example.com:1234
+                          type: string
+                          x-kubernetes-validations:
+                          - message: invalid URL
+                            rule: isURL(self)
+                      required:
+                      - rfc
+                      - url
+                      type: object
+                    tls:
+                      description: TLS contains settings for controlling options on
+                        TLS client connections.
+                      properties:
+                        ca:
+                          description: CA can be used to specify a custom list of
+                            trusted certificate authorities.
+                          properties:
+                            configMapName:
+                              description: ConfigMapName contains the name of the
+                                ConfigMap containing the referenced value.
+                              type: string
+                            key:
+                              description: Name of the key used to get the value in
+                                either the referenced ConfigMap or Secret.
+                              type: string
+                            secretName:
+                              description: SecretName contains the name of the Secret
+                                containing the referenced value.
+                              type: string
+                          required:
+                          - key
+                          type: object
+                          x-kubernetes-validations:
+                          - message: Either configMapName or secretName needs to be
+                              set
+                            rule: has(self.configMapName) || has(self.secretName)
+                          - message: Only one of configMapName and secretName can
+                              be set
+                            rule: '!(has(self.configMapName) && has(self.secretName))'
+                        certificate:
+                          description: Certificate points to the server certificate
+                            to use.
+                          properties:
+                            configMapName:
+                              description: ConfigMapName contains the name of the
+                                ConfigMap containing the referenced value.
+                              type: string
+                            key:
+                              description: Name of the key used to get the value in
+                                either the referenced ConfigMap or Secret.
+                              type: string
+                            secretName:
+                              description: SecretName contains the name of the Secret
+                                containing the referenced value.
+                              type: string
+                          required:
+                          - key
+                          type: object
+                          x-kubernetes-validations:
+                          - message: Either configMapName or secretName needs to be
+                              set
+                            rule: has(self.configMapName) || has(self.secretName)
+                          - message: Only one of configMapName and secretName can
+                              be set
+                            rule: '!(has(self.configMapName) && has(self.secretName))'
+                        insecureSkipVerify:
+                          description: |-
+                            If InsecureSkipVerify is true, then the TLS client will be configured to skip validating server certificates.
+
+                            This option is *not* recommended for production configurations.
+                          type: boolean
+                        key:
+                          description: Key points to the private key of the server
+                            certificate.
+                          properties:
+                            key:
+                              description: Key contains the name of the key inside
+                                the referenced Secret.
+                              type: string
+                            secretName:
+                              description: SecretName contains the name of the Secret
+                                containing the referenced value.
+                              type: string
+                          required:
+                          - key
+                          - secretName
+                          type: object
+                        keyPassphrase:
+                          description: KeyPassphrase points to the passphrase used
+                            to unlock the private key.
+                          properties:
+                            key:
+                              description: Key contains the name of the key inside
+                                the referenced Secret.
+                              type: string
+                            secretName:
+                              description: SecretName contains the name of the Secret
+                                containing the referenced value.
+                              type: string
+                          required:
+                          - key
+                          - secretName
+                          type: object
+                        securityProfile:
+                          description: TLSSecurityProfile is the security profile
+                            to apply to the output connection.
+                          properties:
+                            custom:
+                              description: |-
+                                custom is a user-defined TLS security profile. Be extremely careful using a custom
+                                profile as invalid configurations can be catastrophic. An example custom profile
+                                looks like this:
+
+                                  ciphers:
+                                    - ECDHE-ECDSA-CHACHA20-POLY1305
+                                    - ECDHE-RSA-CHACHA20-POLY1305
+                                    - ECDHE-RSA-AES128-GCM-SHA256
+                                    - ECDHE-ECDSA-AES128-GCM-SHA256
+                                  minTLSVersion: VersionTLS11
+                              nullable: true
+                              properties:
+                                ciphers:
+                                  description: |-
+                                    ciphers is used to specify the cipher algorithms that are negotiated
+                                    during the TLS handshake.  Operators may remove entries their operands
+                                    do not support.  For example, to use DES-CBC3-SHA  (yaml):
+
+                                      ciphers:
+                                        - DES-CBC3-SHA
+                                  items:
+                                    type: string
+                                  type: array
+                                minTLSVersion:
+                                  description: |-
+                                    minTLSVersion is used to specify the minimal version of the TLS protocol
+                                    that is negotiated during the TLS handshake. For example, to use TLS
+                                    versions 1.1, 1.2 and 1.3 (yaml):
+
+                                      minTLSVersion: VersionTLS11
+
+                                    NOTE: currently the highest minTLSVersion allowed is VersionTLS12
+                                  enum:
+                                  - VersionTLS10
+                                  - VersionTLS11
+                                  - VersionTLS12
+                                  - VersionTLS13
+                                  type: string
+                              type: object
+                            intermediate:
+                              description: |-
+                                intermediate is a TLS security profile based on:
+
+                                https://wiki.mozilla.org/Security/Server_Side_TLS#Intermediate_compatibility_.28recommended.29
+
+                                and looks like this (yaml):
+
+                                  ciphers:
+                                    - TLS_AES_128_GCM_SHA256
+                                    - TLS_AES_256_GCM_SHA384
+                                    - TLS_CHACHA20_POLY1305_SHA256
+                                    - ECDHE-ECDSA-AES128-GCM-SHA256
+                                    - ECDHE-RSA-AES128-GCM-SHA256
+                                    - ECDHE-ECDSA-AES256-GCM-SHA384
+                                    - ECDHE-RSA-AES256-GCM-SHA384
+                                    - ECDHE-ECDSA-CHACHA20-POLY1305
+                                    - ECDHE-RSA-CHACHA20-POLY1305
+                                    - DHE-RSA-AES128-GCM-SHA256
+                                    - DHE-RSA-AES256-GCM-SHA384
+                                  minTLSVersion: VersionTLS12
+                              nullable: true
+                              type: object
+                            modern:
+                              description: |-
+                                modern is a TLS security profile based on:
+
+                                https://wiki.mozilla.org/Security/Server_Side_TLS#Modern_compatibility
+
+                                and looks like this (yaml):
+
+                                  ciphers:
+                                    - TLS_AES_128_GCM_SHA256
+                                    - TLS_AES_256_GCM_SHA384
+                                    - TLS_CHACHA20_POLY1305_SHA256
+                                  minTLSVersion: VersionTLS13
+
+                                NOTE: Currently unsupported.
+                              nullable: true
+                              type: object
+                            old:
+                              description: |-
+                                old is a TLS security profile based on:
+
+                                https://wiki.mozilla.org/Security/Server_Side_TLS#Old_backward_compatibility
+
+                                and looks like this (yaml):
+
+                                  ciphers:
+                                    - TLS_AES_128_GCM_SHA256
+                                    - TLS_AES_256_GCM_SHA384
+                                    - TLS_CHACHA20_POLY1305_SHA256
+                                    - ECDHE-ECDSA-AES128-GCM-SHA256
+                                    - ECDHE-RSA-AES128-GCM-SHA256
+                                    - ECDHE-ECDSA-AES256-GCM-SHA384
+                                    - ECDHE-RSA-AES256-GCM-SHA384
+                                    - ECDHE-ECDSA-CHACHA20-POLY1305
+                                    - ECDHE-RSA-CHACHA20-POLY1305
+                                    - DHE-RSA-AES128-GCM-SHA256
+                                    - DHE-RSA-AES256-GCM-SHA384
+                                    - DHE-RSA-CHACHA20-POLY1305
+                                    - ECDHE-ECDSA-AES128-SHA256
+                                    - ECDHE-RSA-AES128-SHA256
+                                    - ECDHE-ECDSA-AES128-SHA
+                                    - ECDHE-RSA-AES128-SHA
+                                    - ECDHE-ECDSA-AES256-SHA384
+                                    - ECDHE-RSA-AES256-SHA384
+                                    - ECDHE-ECDSA-AES256-SHA
+                                    - ECDHE-RSA-AES256-SHA
+                                    - DHE-RSA-AES128-SHA256
+                                    - DHE-RSA-AES256-SHA256
+                                    - AES128-GCM-SHA256
+                                    - AES256-GCM-SHA384
+                                    - AES128-SHA256
+                                    - AES256-SHA256
+                                    - AES128-SHA
+                                    - AES256-SHA
+                                    - DES-CBC3-SHA
+                                  minTLSVersion: VersionTLS10
+                              nullable: true
+                              type: object
+                            type:
+                              description: |-
+                                type is one of Old, Intermediate, Modern or Custom. Custom provides
+                                the ability to specify individual TLS security profile parameters.
+                                Old, Intermediate and Modern are TLS security profiles based on:
+
+                                https://wiki.mozilla.org/Security/Server_Side_TLS#Recommended_configurations
+
+                                The profiles are intent based, so they may change over time as new ciphers are developed and existing ciphers
+                                are found to be insecure.  Depending on precisely which ciphers are available to a process, the list may be
+                                reduced.
+
+                                Note that the Modern profile is currently not supported because it is not
+                                yet well adopted by common software libraries.
+                              enum:
+                              - Old
+                              - Intermediate
+                              - Modern
+                              - Custom
+                              type: string
+                          type: object
+                      type: object
+                    type:
+                      description: Type of output sink.
+                      enum:
+                      - azureMonitor
+                      - cloudwatch
+                      - elasticsearch
+                      - http
+                      - kafka
+                      - loki
+                      - lokiStack
+                      - googleCloudLogging
+                      - splunk
+                      - syslog
+                      - otlp
+                      type: string
+                  required:
+                  - name
+                  - type
+                  type: object
+                  x-kubernetes-validations:
+                  - message: Additional type specific spec is required for the output
+                      type
+                    rule: self.type != 'azureMonitor' || has(self.azureMonitor)
+                  - message: Additional type specific spec is required for the output
+                      type
+                    rule: self.type != 'cloudwatch' || has(self.cloudwatch)
+                  - message: Additional type specific spec is required for the output
+                      type
+                    rule: self.type != 'elasticsearch' || has(self.elasticsearch)
+                  - message: Additional type specific spec is required for the output
+                      type
+                    rule: self.type != 'googleCloudLogging' || has(self.googleCloudLogging)
+                  - message: Additional type specific spec is required for the output
+                      type
+                    rule: self.type != 'http' || has(self.http)
+                  - message: Additional type specific spec is required for the output
+                      type
+                    rule: self.type != 'kafka' || has(self.kafka)
+                  - message: Additional type specific spec is required for the output
+                      type
+                    rule: self.type != 'loki' || has(self.loki)
+                  - message: Additional type specific spec is required for the output
+                      type
+                    rule: self.type != 'lokiStack' || has(self.lokiStack)
+                  - message: Additional type specific spec is required the for output
+                      type
+                    rule: self.type != 'splunk' || has(self.splunk)
+                  - message: Additional type specific spec is required the for output
+                      type
+                    rule: self.type != 'syslog' || has(self.syslog)
+                  - message: Additional type specific spec is required the for output
+                      type
+                    rule: self.type != 'otlp' || has(self.otlp)
+                type: array
+                x-kubernetes-list-map-keys:
+                - name
+                x-kubernetes-list-type: map
+              pipelines:
+                description: Pipelines forward the messages selected by a set of inputs
+                  to a set of outputs.
+                items:
+                  description: PipelineSpec links a set of inputs and transformations
+                    to a set of outputs.
+                  properties:
+                    filterRefs:
+                      description: |-
+                        Filters lists the names of filters to be applied to records going through this pipeline.
+
+                        Each filter is applied in order.
+                        If a filter drops a records, subsequent filters are not applied.
+                      items:
+                        type: string
+                      type: array
+                    inputRefs:
+                      description: |-
+                        InputRefs lists the names (`input.name`) of inputs to this pipeline.
+
+                        The following built-in input names are always available:
+
+                         - `application` selects all logs from application pods.
+
+                         - `infrastructure` selects logs from openshift and kubernetes pods and some node logs.
+
+                         - `audit` selects node logs related to security audits.
+                      items:
+                        type: string
+                      minItems: 1
+                      type: array
+                    name:
+                      description: Name of the pipeline
+                      pattern: ^[a-z][a-z0-9-]*[a-z0-9]$
+                      type: string
+                    outputRefs:
+                      description: OutputRefs lists the names (`output.name`) of outputs
+                        from this pipeline.
+                      items:
+                        type: string
+                      minItems: 1
+                      type: array
+                  required:
+                  - inputRefs
+                  - name
+                  - outputRefs
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - name
+                x-kubernetes-list-type: map
+              serviceAccount:
+                description: ServiceAccount points to the ServiceAccount resource
+                  used by the collector pods.
+                properties:
+                  name:
+                    description: Name of the ServiceAccount to use to deploy the Forwarder.  The
+                      ServiceAccount is created by the administrator
+                    pattern: ^[a-z][a-z0-9-]{2,62}[a-z0-9]$
+                    type: string
+                required:
+                - name
+                type: object
+            required:
+            - outputs
+            - pipelines
+            - serviceAccount
+            type: object
+          status:
+            description: ClusterLogForwarderStatus defines the observed state of ClusterLogForwarder
+            properties:
+              conditions:
+                description: Conditions of the log forwarder.
+                items:
+                  description: Condition contains details for one aspect of the current
+                    state of this API Resource.
+                  properties:
+                    lastTransitionTime:
+                      description: |-
+                        lastTransitionTime is the last time the condition transitioned from one status to another.
+                        This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+                      format: date-time
+                      type: string
+                    message:
+                      description: |-
+                        message is a human readable message indicating details about the transition.
+                        This may be an empty string.
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      description: |-
+                        observedGeneration represents the .metadata.generation that the condition was set based upon.
+                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                        with respect to the current state of the instance.
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      description: |-
+                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                        Producers of specific condition types may define expected values and meanings for this field,
+                        and whether the values are considered a guaranteed API.
+                        The value should be a CamelCase string.
+                        This field may not be empty.
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      description: status of the condition, one of True, False, Unknown.
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+              filterConditions:
+                description: FilterConditions maps filter name to condition of the
+                  filter.
+                items:
+                  description: Condition contains details for one aspect of the current
+                    state of this API Resource.
+                  properties:
+                    lastTransitionTime:
+                      description: |-
+                        lastTransitionTime is the last time the condition transitioned from one status to another.
+                        This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+                      format: date-time
+                      type: string
+                    message:
+                      description: |-
+                        message is a human readable message indicating details about the transition.
+                        This may be an empty string.
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      description: |-
+                        observedGeneration represents the .metadata.generation that the condition was set based upon.
+                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                        with respect to the current state of the instance.
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      description: |-
+                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                        Producers of specific condition types may define expected values and meanings for this field,
+                        and whether the values are considered a guaranteed API.
+                        The value should be a CamelCase string.
+                        This field may not be empty.
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      description: status of the condition, one of True, False, Unknown.
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+              inputConditions:
+                description: InputConditions maps input name to condition of the input.
+                items:
+                  description: Condition contains details for one aspect of the current
+                    state of this API Resource.
+                  properties:
+                    lastTransitionTime:
+                      description: |-
+                        lastTransitionTime is the last time the condition transitioned from one status to another.
+                        This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+                      format: date-time
+                      type: string
+                    message:
+                      description: |-
+                        message is a human readable message indicating details about the transition.
+                        This may be an empty string.
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      description: |-
+                        observedGeneration represents the .metadata.generation that the condition was set based upon.
+                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                        with respect to the current state of the instance.
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      description: |-
+                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                        Producers of specific condition types may define expected values and meanings for this field,
+                        and whether the values are considered a guaranteed API.
+                        The value should be a CamelCase string.
+                        This field may not be empty.
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      description: status of the condition, one of True, False, Unknown.
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+              outputConditions:
+                description: OutputConditions maps output name to condition of the
+                  output.
+                items:
+                  description: Condition contains details for one aspect of the current
+                    state of this API Resource.
+                  properties:
+                    lastTransitionTime:
+                      description: |-
+                        lastTransitionTime is the last time the condition transitioned from one status to another.
+                        This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+                      format: date-time
+                      type: string
+                    message:
+                      description: |-
+                        message is a human readable message indicating details about the transition.
+                        This may be an empty string.
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      description: |-
+                        observedGeneration represents the .metadata.generation that the condition was set based upon.
+                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                        with respect to the current state of the instance.
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      description: |-
+                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                        Producers of specific condition types may define expected values and meanings for this field,
+                        and whether the values are considered a guaranteed API.
+                        The value should be a CamelCase string.
+                        This field may not be empty.
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      description: status of the condition, one of True, False, Unknown.
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+              pipelineConditions:
+                description: PipelineConditions maps pipeline name to condition of
+                  the pipeline.
+                items:
+                  description: Condition contains details for one aspect of the current
+                    state of this API Resource.
+                  properties:
+                    lastTransitionTime:
+                      description: |-
+                        lastTransitionTime is the last time the condition transitioned from one status to another.
+                        This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+                      format: date-time
+                      type: string
+                    message:
+                      description: |-
+                        message is a human readable message indicating details about the transition.
+                        This may be an empty string.
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      description: |-
+                        observedGeneration represents the .metadata.generation that the condition was set based upon.
+                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                        with respect to the current state of the instance.
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      description: |-
+                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                        Producers of specific condition types may define expected values and meanings for this field,
+                        and whether the values are considered a guaranteed API.
+                        The value should be a CamelCase string.
+                        This field may not be empty.
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      description: status of the condition, one of True, False, Unknown.
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+            type: object
+        type: object
+        x-kubernetes-validations:
+        - message: Name must be a valid DNS1035 label
+          rule: self.metadata.name.matches('^[a-z][a-z0-9-]{1,61}[a-z0-9]$')
+    served: true
+    storage: true
+    subresources:
+      status: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: null
+  storedVersions: null
