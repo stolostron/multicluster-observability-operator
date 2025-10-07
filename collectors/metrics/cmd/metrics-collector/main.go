@@ -688,10 +688,13 @@ func initShardedConfigs(o *Options, agent Agent) ([]*forwarder.Config, error) {
 
 		shardCfgs := make([]*forwarder.Config, len(shards))
 		for i, shard := range shards {
+			// make sure we copy the URL object so it's not shared between workers
+			fromCopy := *from
+			fromQueryCopy := *fromQuery
 			shardCfgs[i] = &forwarder.Config{
 				FromClientConfig: forwarder.FromClientConfig{
-					URL:       from,
-					QueryURL:  fromQuery,
+					URL:       &fromCopy,
+					QueryURL:  &fromQueryCopy,
 					Token:     o.FromToken,
 					TokenFile: o.FromTokenFile,
 					CAFile:    o.FromCAFile,
