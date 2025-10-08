@@ -342,7 +342,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		}
 		for _, res := range toDelete {
 			resNS := res.GetNamespace()
-			if err := deployer.Undeploy(ctx, res); err != nil {
+			if err := deployer.Undeploy(ctx, res, instance); err != nil {
 				return ctrl.Result{}, fmt.Errorf("failed to undeploy %s %s/%s: %w", res.GetKind(), resNS, res.GetName(), err)
 			}
 		}

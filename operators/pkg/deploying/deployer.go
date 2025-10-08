@@ -13,6 +13,7 @@ import (
 
 	prometheusv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	monitoringv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
+	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	appsv1 "k8s.io/api/apps/v1"
@@ -23,6 +24,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/equality"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
@@ -487,7 +489,7 @@ func logUpdateInfo(obj *unstructured.Unstructured) {
 	log.Info("Update", "kind", obj.GroupVersionKind().Kind, "kindVersion", obj.GroupVersionKind().Version, "name", obj.GetName())
 }
 
-func (d *Deployer) Undeploy(ctx context.Context, obj *unstructured.Unstructured) error {
+func (d *Deployer) Undeploy(ctx context.Context, obj *unstructured.Unstructured, mco *mcov1beta2.MultiClusterObservability) error {
 	found := &unstructured.Unstructured{}
 	found.SetGroupVersionKind(obj.GroupVersionKind())
 	err := d.client.Get(
@@ -502,7 +504,15 @@ func (d *Deployer) Undeploy(ctx context.Context, obj *unstructured.Unstructured)
 		return err
 	}
 
-	return d.client.Delete(ctx, obj)
+	// Only delete resources that are explicitly controlled by the passed MCO CR.
+	// This is a safety measure to prevent deleting shared resources.
+	if !isControllerOwner(found.GetOwnerReferences(), mco) {
+		log.V(1).Info("Skipping deletion of resource not controlled by MCO", "Kind", found.GetKind(), "Name", found.GetName(), "Namespace", found.GetNamespace())
+		return nil
+	}
+
+	log.Info("Deleting controlled resource", "Kind", found.GetKind(), "Name", found.GetName(), "Namespace", found.GetNamespace())
+	return d.client.Delete(ctx, found)
 }
 
 func isMapSubset(superset, subset map[string]string) bool {
@@ -512,4 +522,14 @@ func isMapSubset(superset, subset map[string]string) bool {
 		}
 	}
 	return true
+}
+
+func isControllerOwner(ownerRefs []metav1.OwnerReference, obj client.Object) bool {
+	for _, ownerRef := range ownerRefs {
+		if ownerRef.UID == obj.GetUID() && ownerRef.Controller != nil && *ownerRef.Controller {
+			return true
+		}
+	}
+
+	return false
 }
