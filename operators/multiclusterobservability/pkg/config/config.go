@@ -938,3 +938,29 @@ func GetCachedImageManifestData() (map[string]string, bool) {
 	}
 	return nil, false
 }
+
+var KindOrder = map[string]int{
+	"CustomResourceDefinition": 1,
+	"Namespace":                2,
+	"ClusterRole":              3,
+	"Role":                     3,
+	"ClusterRoleBinding":       4,
+	"RoleBinding":              4,
+	"ServiceAccount":           5,
+	"Secret":                   6,
+	"ConfigMap":                6,
+	"Deployment":               8,
+	"StatefulSet":              8,
+	"DaemonSet":                8,
+	"Service":                  9,
+	"Route":                    10,
+	"Ingress":                  10,
+	// Give CRs a lower priority to ensure CRDs are created first
+	"Observatorium":            11,
+	"Prometheus":               11,
+	"PrometheusRule":           11,
+	"ServiceMonitor":           11,
+	"AddOnDeploymentConfig":    11,
+	"ClusterManagementAddOn":   11,
+	"ScrapeConfig":             11,
+}

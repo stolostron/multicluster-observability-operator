@@ -10,7 +10,8 @@ import (
 	"fmt"
 	"os"
 	"reflect"
-	slices0 "slices"
+	slices "slices"
+	"sort"
 	"strings"
 	"time"
 
@@ -26,7 +27,6 @@ import (
 	monitoringv1aplha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	mchv1 "github.com/stolostron/multiclusterhub-operator/api/v1"
 	observatoriumv1alpha1 "github.com/stolostron/observatorium-operator/api/v1alpha1"
-	"golang.org/x/exp/slices"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -290,6 +290,25 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to render MCO templates for %s/%s: %w", instance.GetNamespace(), instance.GetName(), err)
 	}
+
+	// Ensure dependencies are created first (like CRDs)
+	kindOrder := mcoconfig.KindOrder
+	defaultOrder := 100
+	sort.Slice(toDeploy, func(i, j int) bool {
+		orderA, okA := kindOrder[toDeploy[i].GetKind()]
+		if !okA {
+			orderA = defaultOrder
+		}
+		orderB, okB := kindOrder[toDeploy[j].GetKind()]
+		if !okB {
+			orderB = defaultOrder
+		}
+		if orderA != orderB {
+			return orderA < orderB
+		}
+		return strings.Compare(toDeploy[i].GetName(), toDeploy[j].GetName()) < 0
+	})
+
 	deployer := deploying.NewDeployer(r.Client)
 	// Deploy the resources
 	ns := &corev1.Namespace{}
@@ -1022,7 +1041,7 @@ func newMCOACRDEventHandler(c client.Client) handler.EventHandler {
 			var reqs []reconcile.Request
 
 			var isDependency bool
-			if slices0.Contains(config.GetMCOASupportedCRDNames(), obj.GetName()) {
+			if slices.Contains(config.GetMCOASupportedCRDNames(), obj.GetName()) {
 				isDependency = true
 			}
 
