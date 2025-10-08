@@ -505,7 +505,7 @@ func (d *Deployer) Undeploy(ctx context.Context, obj *unstructured.Unstructured,
 	}
 
 	// Only delete resources that are explicitly controlled by the passed MCO CR.
-	// This is a safety measure to prevent deleting shared resources.
+	// This is a safety measure to prevent deleting shared resources such as some MCOA CRDs that are deployed using server-side apply.
 	if !isControllerOwner(found.GetOwnerReferences(), mco) {
 		log.V(1).Info("Skipping deletion of resource not controlled by MCO", "Kind", found.GetKind(), "Name", found.GetName(), "Namespace", found.GetNamespace())
 		return nil

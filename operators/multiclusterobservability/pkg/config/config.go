@@ -939,6 +939,10 @@ func GetCachedImageManifestData() (map[string]string, bool) {
 	return nil, false
 }
 
+// KindOrder is a map that defines the deployment order for Kubernetes resource kinds.
+// Resources with a lower number are deployed before resources with a higher number.
+// This is used to ensure dependencies are created in the correct order, for example,
+// CustomResourceDefinitions are created before their corresponding custom resources.
 var KindOrder = map[string]int{
 	"CustomResourceDefinition": 1,
 	"Namespace":                2,
@@ -955,7 +959,6 @@ var KindOrder = map[string]int{
 	"Service":                  9,
 	"Route":                    10,
 	"Ingress":                  10,
-	// Give CRs a lower priority to ensure CRDs are created first
 	"Observatorium":            11,
 	"Prometheus":               11,
 	"PrometheusRule":           11,
