@@ -6,7 +6,9 @@ package utils
 
 import (
 	"context"
+	"fmt"
 
+	. "github.com/onsi/gomega"
 	appv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
@@ -14,7 +16,7 @@ import (
 
 func GetDeployment(opt TestOptions, isHub bool, name string,
 	namespace string) (*appv1.Deployment, error) {
-	clientKube := getKubeClient(opt, isHub)
+	clientKube := GetKubeClient(opt, isHub)
 
 	cluster := opt.HubCluster.BaseDomain
 	if !isHub {
@@ -29,9 +31,20 @@ func GetDeployment(opt TestOptions, isHub bool, name string,
 	return dep, err
 }
 
+func GetDeploymentWithCluster(cluster Cluster, name string,
+	namespace string) (*appv1.Deployment, error) {
+	clientKube := GetKubeClientWithCluster(cluster)
+	klog.V(1).Infof("Get deployment <%v> in namespace <%v> on cluster <%v>", name, namespace, cluster.Name)
+	dep, err := clientKube.AppsV1().Deployments(namespace).Get(context.TODO(), name, metav1.GetOptions{})
+	if err != nil {
+		klog.Errorf("Failed to get deployment %s in namespace %s due to %v", name, namespace, err)
+	}
+	return dep, err
+}
+
 func GetDeploymentWithLabel(opt TestOptions, isHub bool, label string,
 	namespace string) (*appv1.DeploymentList, error) {
-	clientKube := getKubeClient(opt, isHub)
+	clientKube := GetKubeClient(opt, isHub)
 
 	cluster := opt.HubCluster.BaseDomain
 	if !isHub {
@@ -54,7 +67,7 @@ func GetDeploymentWithLabel(opt TestOptions, isHub bool, label string,
 }
 
 func DeleteDeployment(opt TestOptions, isHub bool, name string, namespace string) error {
-	clientKube := getKubeClient(opt, isHub)
+	clientKube := GetKubeClient(opt, isHub)
 	err := clientKube.AppsV1().Deployments(namespace).Delete(context.TODO(), name, metav1.DeleteOptions{})
 	if err != nil {
 		klog.Errorf("Failed to delete deployment %s in namespace %s due to %v", name, namespace, err)
@@ -68,10 +81,50 @@ func UpdateDeployment(
 	name string,
 	namespace string,
 	dep *appv1.Deployment) (*appv1.Deployment, error) {
-	clientKube := getKubeClient(opt, isHub)
+	clientKube := GetKubeClient(opt, isHub)
 	updateDep, err := clientKube.AppsV1().Deployments(namespace).Update(context.TODO(), dep, metav1.UpdateOptions{})
 	if err != nil {
 		klog.Errorf("Failed to update deployment %s in namespace %s due to %v", name, namespace, err)
 	}
 	return updateDep, err
+}
+
+func CheckDeploymentAvailability(cluster Cluster, name, namespace string, shouldExist bool) {
+	if shouldExist {
+		Eventually(func() error {
+			dep, err := GetDeploymentWithCluster(cluster, name, namespace)
+			if err != nil {
+				return err
+			}
+			if dep.Status.ReadyReplicas != *dep.Spec.Replicas {
+				return fmt.Errorf("deployment %s/%s is not ready: %d/%d", namespace, name, dep.Status.ReadyReplicas, *dep.Spec.Replicas)
+			}
+			return nil
+		}, 300, 1).Should(Not(HaveOccurred()))
+	} else {
+		Eventually(func() error {
+			_, err := GetDeploymentWithCluster(cluster, name, namespace)
+			return err
+		}, 300, 1).Should(HaveOccurred())
+	}
+}
+
+func CheckDeploymentAvailabilityOnAllManagedClusters(opt TestOptions, name, namespace string, shouldExist bool) {
+	managedClusters, err := GetAvailableManagedClusters(opt)
+	Expect(err).ToNot(HaveOccurred())
+
+	for _, managedCluster := range managedClusters {
+		var cluster Cluster
+		for _, c := range opt.ManagedClusters {
+			if c.Name == managedCluster.Name {
+				cluster = c
+				break
+			}
+		}
+		if cluster.Name == "" {
+			klog.Warningf("Could not find cluster %s in TestOptions", managedCluster.Name)
+			continue
+		}
+		CheckDeploymentAvailability(cluster, name, namespace, shouldExist)
+	}
 }
