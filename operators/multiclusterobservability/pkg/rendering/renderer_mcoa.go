@@ -262,6 +262,7 @@ func (r *MCORenderer) renderAddonDeploymentConfig(
 				return nil, fmt.Errorf("MetricsHubHostname is required when metrics collection is enabled")
 			}
 			appendCustomVar(aodc, nameMetricsHubHostname, r.rendererOptions.MCOAOptions.MetricsHubHostname)
+			aodc.Spec.AgentInstallNamespace = "test-coleen"
 		}
 
 		u.Object, err = runtime.DefaultUnstructuredConverter.ToUnstructured(aodc)
