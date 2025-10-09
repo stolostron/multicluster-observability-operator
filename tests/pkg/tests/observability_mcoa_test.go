@@ -54,7 +54,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 			})
 			By("MCOA should be deleted", func() {
 				utils.CheckDeploymentAvailability(testOptions.HubCluster, mcoaManagerDeploymentName, utils.MCO_ADDON_NAMESPACE, false)
-				utils.CheckStatefulSetAvailabilityOnAllManagedClusters(testOptions, oboPrometheusOperatorDeploymentName, utils.MCO_AGENT_ADDON_NAMESPACE, false)
+				utils.CheckDeploymentAvailabilityOnAllManagedClusters(testOptions, oboPrometheusOperatorDeploymentName, utils.MCO_AGENT_ADDON_NAMESPACE, false)
 				utils.CheckStatefulSetAvailabilityOnAllManagedClusters(testOptions, platformPrometheusAgentStatefulSetName, utils.MCO_AGENT_ADDON_NAMESPACE, false)
 			})
 			By("The metrics collector should be running and forwarding metrics", func() {
@@ -296,7 +296,8 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 			})
 
 			By("Checking for obo-prometheus-operator deployment on managed clusters", func() {
-				utils.CheckStatefulSetAvailabilityOnAllManagedClusters(testOptions, oboPrometheusOperatorDeploymentName, utils.MCO_AGENT_ADDON_NAMESPACE, false)
+				// It should use the COO operator
+				utils.CheckDeploymentAvailabilityOnAllOCPManagedClusters(testOptions, oboPrometheusOperatorDeploymentName, utils.MCO_AGENT_ADDON_NAMESPACE, false)
 			})
 			By("Deleting COO subscription", func() {
 				utils.DeleteCOOSubscription(testOptions)
@@ -309,7 +310,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 			})
 
 			By("Checking for obo-prometheus-operator deployment on managed clusters", func() {
-				utils.CheckStatefulSetAvailabilityOnAllManagedClusters(testOptions, oboPrometheusOperatorDeploymentName, utils.MCO_AGENT_ADDON_NAMESPACE, true)
+				utils.CheckDeploymentAvailabilityOnAllManagedClusters(testOptions, oboPrometheusOperatorDeploymentName, utils.MCO_AGENT_ADDON_NAMESPACE, true)
 			})
 
 			By("Deleting the custom UWL ScrapeConfig", func() {
