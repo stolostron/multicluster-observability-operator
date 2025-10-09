@@ -7,15 +7,8 @@ package utils
 import (
 	"context"
 
-	cooprometheusv1alpha1 "github.com/rhobs/obo-prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/utils/ptr"
-)
-
-const (
-	platformMetricsCollectorLabel = "platform-metrics-collector"
 )
 
 func CreateScrapeConfig(opt TestOptions, name, componentLabel string, matchParams []string) error {
@@ -24,35 +17,28 @@ func CreateScrapeConfig(opt TestOptions, name, componentLabel string, matchParam
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext)
 
-	scrapeConfigTyped := &cooprometheusv1alpha1.ScrapeConfig{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: cooprometheusv1alpha1.SchemeGroupVersion.String(),
-			Kind:       cooprometheusv1alpha1.ScrapeConfigsKind,
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: MCO_NAMESPACE,
-			Labels: map[string]string{
-				"app.kubernetes.io/component": componentLabel,
+	scrapeConfig := &unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"apiVersion": "monitoring.rhobs/v1alpha1",
+			"kind":       "ScrapeConfig",
+			"metadata": map[string]interface{}{
+				"name":      name,
+				"namespace": MCO_NAMESPACE,
+				"labels": map[string]string{
+					"app.kubernetes.io/component": componentLabel,
+				},
 			},
-		},
-		Spec: cooprometheusv1alpha1.ScrapeConfigSpec{
-			JobName:     ptr.To(name),
-			MetricsPath: ptr.To("/federate"),
-			Params: map[string][]string{
-				"match[]": matchParams,
+			"spec": map[string]interface{}{
+				"jobName":     name,
+				"metricsPath": "/federate",
+				"params": map[string][]string{
+					"match[]": matchParams,
+				},
 			},
 		},
 	}
 
-	scrapeConfigMap, err := runtime.DefaultUnstructuredConverter.ToUnstructured(scrapeConfigTyped)
-	if err != nil {
-		return err
-	}
-
-	scrapeConfig := &unstructured.Unstructured{Object: scrapeConfigMap}
-
-	_, err = clientDynamic.Resource(NewScrapeConfigGVR()).Namespace(MCO_NAMESPACE).Create(context.TODO(), scrapeConfig, metav1.CreateOptions{})
+	_, err := clientDynamic.Resource(NewScrapeConfigGVR()).Namespace(MCO_NAMESPACE).Create(context.TODO(), scrapeConfig, metav1.CreateOptions{})
 	return err
 }
 

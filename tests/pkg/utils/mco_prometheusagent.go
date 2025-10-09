@@ -8,10 +8,8 @@ import (
 	"context"
 	"fmt"
 
-	cooprometheusv1alpha1 "github.com/rhobs/obo-prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
@@ -42,25 +40,14 @@ func UpdatePlatformPrometheusAgent(opt TestOptions, interval string) error {
 	}
 
 	pa := paList.Items[0]
-	var paTyped cooprometheusv1alpha1.PrometheusAgent
-	err = runtime.DefaultUnstructuredConverter.FromUnstructured(pa.Object, &paTyped)
-	if err != nil {
-		return fmt.Errorf("failed to convert unstructured to PrometheusAgent: %w", err)
+	if err := unstructured.SetNestedField(pa.Object, interval, "spec", "scrapeInterval"); err != nil {
+		return fmt.Errorf("failed to set scrapeInterval on PrometheusAgent: %w", err)
 	}
 
-	paTyped.Spec.ScrapeInterval = interval
-
-	updatedPaMap, err := runtime.DefaultUnstructuredConverter.ToUnstructured(&paTyped)
-	if err != nil {
-		return fmt.Errorf("failed to convert PrometheusAgent to unstructured: %w", err)
-	}
-	updatedPa := &unstructured.Unstructured{Object: updatedPaMap}
-
-	_, err = clientDynamic.Resource(NewPrometheusAgentGVR()).Namespace(MCO_NAMESPACE).Update(context.TODO(), updatedPa, metav1.UpdateOptions{})
+	_, err = clientDynamic.Resource(NewPrometheusAgentGVR()).Namespace(MCO_NAMESPACE).Update(context.TODO(), &pa, metav1.UpdateOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to update PrometheusAgent %s: %w", pa.GetName(), err)
 	}
 
 	return nil
 }
-
