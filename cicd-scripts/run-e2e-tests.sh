@@ -13,6 +13,7 @@ ROOTDIR="$(
 SED_COMMAND=${SED}' -i-e -e'
 
 # customize the images for testing
+export MULTICLUSTER_OBSERVABILITY_ADDON_IMAGE_REF="quay.io/rhobs/multicluster-observability-addon:latest"
 ${ROOTDIR}/cicd-scripts/customize-mco.sh
 GINKGO_FOCUS="$(cat /tmp/ginkgo_focus)"
 

@@ -161,7 +161,7 @@ type CollectRuleGroup struct {
 
 func GetDefaultMetricList(opt TestOptions) ([]string, []string) {
 	allDefaultMetricName := []string{}
-	cl := getKubeClient(opt, true)
+	cl := GetKubeClient(opt, true)
 	cm, err := cl.CoreV1().ConfigMaps(MCO_NAMESPACE).Get(
 		context.TODO(),
 		"observability-metrics-allowlist",
