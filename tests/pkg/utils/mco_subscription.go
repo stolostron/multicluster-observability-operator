@@ -28,8 +28,44 @@ func NewSubscriptionGVR() schema.GroupVersionResource {
 	}
 }
 
+func getOCPClusters(opt TestOptions) ([]Cluster, error) {
+	availableManagedClusters, err := GetAvailableManagedClusters(opt)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get available managed clusters: %w", err)
+	}
+
+	managedClusterMap := make(map[string]Cluster, len(opt.ManagedClusters))
+	for _, c := range opt.ManagedClusters {
+		managedClusterMap[c.Name] = c
+	}
+
+	var ocpClusters []Cluster
+	hubAdded := false
+
+	for _, mc := range availableManagedClusters {
+		if !isOpenshiftVendor(mc) {
+			continue
+		}
+
+		if mc.GetLabels()["local-cluster"] == "true" {
+			if !hubAdded {
+				ocpClusters = append(ocpClusters, opt.HubCluster)
+				hubAdded = true
+			}
+		} else if c, ok := managedClusterMap[mc.Name]; ok {
+			ocpClusters = append(ocpClusters, c)
+			delete(managedClusterMap, mc.Name) // Avoid duplicates
+		}
+	}
+
+	return ocpClusters, nil
+}
+
 func CreateCOOSubscription(opt TestOptions) error {
-	clusters := append([]Cluster{opt.HubCluster}, opt.ManagedClusters...)
+	clusters, err := getOCPClusters(opt)
+	if err != nil {
+		return err
+	}
 	for _, cluster := range clusters {
 		clientDynamic := NewKubeClientDynamic(
 			cluster.ClusterServerURL,
@@ -63,7 +99,10 @@ func CreateCOOSubscription(opt TestOptions) error {
 }
 
 func DeleteCOOSubscription(opt TestOptions) error {
-	clusters := append([]Cluster{opt.HubCluster}, opt.ManagedClusters...)
+	clusters, err := getOCPClusters(opt)
+	if err != nil {
+		return err
+	}
 	for _, cluster := range clusters {
 		clientDynamic := NewKubeClientDynamic(
 			cluster.ClusterServerURL,
@@ -79,7 +118,10 @@ func DeleteCOOSubscription(opt TestOptions) error {
 }
 
 func CheckCOODeployment(opt TestOptions) error {
-	clusters := append([]Cluster{opt.HubCluster}, opt.ManagedClusters...)
+	clusters, err := getOCPClusters(opt)
+	if err != nil {
+		return err
+	}
 	for _, cluster := range clusters {
 		CheckDeploymentAvailability(cluster, cooDeploymentName, cooSubscriptionNamespace, true)
 	}

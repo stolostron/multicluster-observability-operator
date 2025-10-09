@@ -128,3 +128,12 @@ func CheckDeploymentAvailabilityOnAllManagedClusters(opt TestOptions, name, name
 		CheckDeploymentAvailability(cluster, name, namespace, shouldExist)
 	}
 }
+
+func CheckDeploymentAvailabilityOnAllOCPManagedClusters(opt TestOptions, name, namespace string, shouldExist bool) {
+	ocpClusters, err := getOCPClusters(opt)
+	Expect(err).ToNot(HaveOccurred())
+
+	for _, cluster := range ocpClusters {
+		CheckDeploymentAvailability(cluster, name, namespace, shouldExist)
+	}
+}
