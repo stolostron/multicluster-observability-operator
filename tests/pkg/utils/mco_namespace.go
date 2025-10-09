@@ -14,7 +14,7 @@ import (
 )
 
 func GetNamespace(opt TestOptions, isHub bool, namespace string) (error, *v1.Namespace) {
-	clientKube := getKubeClient(opt, isHub)
+	clientKube := GetKubeClient(opt, isHub)
 
 	ns, err := clientKube.CoreV1().Namespaces().Get(context.TODO(), namespace, metav1.GetOptions{})
 	if err != nil {

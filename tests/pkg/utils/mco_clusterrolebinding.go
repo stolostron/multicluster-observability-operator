@@ -14,7 +14,7 @@ import (
 )
 
 func GetCRB(opt TestOptions, isHub bool, name string) (error, *rbacv1.ClusterRoleBinding) {
-	clientKube := getKubeClient(opt, isHub)
+	clientKube := GetKubeClient(opt, isHub)
 	crb, err := clientKube.RbacV1().ClusterRoleBindings().Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
 		klog.Errorf("Failed to get cluster rolebinding %s due to %v", name, err)
@@ -23,7 +23,7 @@ func GetCRB(opt TestOptions, isHub bool, name string) (error, *rbacv1.ClusterRol
 }
 
 func DeleteCRB(opt TestOptions, isHub bool, name string) error {
-	clientKube := getKubeClient(opt, isHub)
+	clientKube := GetKubeClient(opt, isHub)
 	err := clientKube.RbacV1().ClusterRoleBindings().Delete(context.TODO(), name, metav1.DeleteOptions{})
 	if err != nil && !errors.IsNotFound(err) {
 		klog.Errorf("Failed to delete cluster rolebinding %s due to %v", name, err)
@@ -33,7 +33,7 @@ func DeleteCRB(opt TestOptions, isHub bool, name string) error {
 
 func UpdateCRB(opt TestOptions, isHub bool, name string,
 	crb *rbacv1.ClusterRoleBinding) (error, *rbacv1.ClusterRoleBinding) {
-	clientKube := getKubeClient(opt, isHub)
+	clientKube := GetKubeClient(opt, isHub)
 	updateCRB, err := clientKube.RbacV1().ClusterRoleBindings().Update(context.TODO(), crb, metav1.UpdateOptions{})
 	if err != nil {
 		klog.Errorf("Failed to update cluster rolebinding %s due to %v", name, err)
@@ -43,7 +43,7 @@ func UpdateCRB(opt TestOptions, isHub bool, name string,
 
 func CreateCRB(opt TestOptions, isHub bool,
 	crb *rbacv1.ClusterRoleBinding) error {
-	clientKube := getKubeClient(opt, isHub)
+	clientKube := GetKubeClient(opt, isHub)
 	_, err := clientKube.RbacV1().ClusterRoleBindings().Create(context.TODO(), crb, metav1.CreateOptions{})
 	if err != nil {
 		if errors.IsAlreadyExists(err) {
