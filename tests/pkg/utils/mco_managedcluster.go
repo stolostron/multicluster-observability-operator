@@ -187,3 +187,14 @@ func GetManagedClusters(opt TestOptions) ([]*clusterv1.ManagedCluster, error) {
 
 	return ret, nil
 }
+
+func GetAvailableManagedClusters(opt TestOptions) ([]*clusterv1.ManagedCluster, error) {
+	clusters, err := GetManagedClusters(opt)
+	if err != nil {
+		return nil, err
+	}
+
+	return slices.DeleteFunc(clusters, func(e *clusterv1.ManagedCluster) bool {
+		return meta.IsStatusConditionFalse(e.Status.Conditions, "ManagedClusterConditionAvailable")
+	}), nil
+}
