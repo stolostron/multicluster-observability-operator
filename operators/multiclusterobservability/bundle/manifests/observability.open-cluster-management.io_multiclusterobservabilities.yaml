@@ -10135,9 +10135,9 @@ spec:
                           Metrics defines the configuration spec for collecting and storing metrics from
                           platform components running on fleet managed clusters.
                         properties:
-                          collection:
+                          default:
                             description: |-
-                              Collection defines the spec for the addon to collect and forward metrics
+                              Default defines the spec for the addon to collect and forward metrics
                               from fleet managed clusters.
                             properties:
                               enabled:
@@ -10190,9 +10190,9 @@ spec:
                           Metrics defines the spec for the addon to collect, forward and store metrics
                           from user workloads hosted on fleet managed clusters.
                         properties:
-                          collection:
+                          default:
                             description: |-
-                              Collection defines the spec for the addon to collect and forward metrics
+                              Default defines the spec for the addon to collect and forward metrics
                               from user workloads hosted on fleet managed clusters.
                             properties:
                               enabled:
