@@ -71,22 +71,8 @@ func CheckStatefulSetAvailability(cluster Cluster, name, namespace string, shoul
 	}
 }
 
-func CheckStatefulSetAvailabilityOnAllManagedClusters(opt TestOptions, name, namespace string, shouldExist bool) {
-	managedClusters, err := GetAvailableManagedClusters(opt)
-	Expect(err).ToNot(HaveOccurred())
-
-	for _, managedCluster := range managedClusters {
-		var cluster Cluster
-		for _, c := range opt.ManagedClusters {
-			if c.Name == managedCluster.Name {
-				cluster = c
-				break
-			}
-		}
-		if cluster.Name == "" {
-			klog.Warningf("Could not find cluster %s in TestOptions", managedCluster.Name)
-			continue
-		}
+func CheckStatefulSetAvailabilityOnClusters(clusters []Cluster, name, namespace string, shouldExist bool) {
+	for _, cluster := range clusters {
 		CheckStatefulSetAvailability(cluster, name, namespace, shouldExist)
 	}
 }

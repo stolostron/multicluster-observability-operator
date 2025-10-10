@@ -109,31 +109,8 @@ func CheckDeploymentAvailability(cluster Cluster, name, namespace string, should
 	}
 }
 
-func CheckDeploymentAvailabilityOnAllManagedClusters(opt TestOptions, name, namespace string, shouldExist bool) {
-	managedClusters, err := GetAvailableManagedClusters(opt)
-	Expect(err).ToNot(HaveOccurred())
-
-	for _, managedCluster := range managedClusters {
-		var cluster Cluster
-		for _, c := range opt.ManagedClusters {
-			if c.Name == managedCluster.Name {
-				cluster = c
-				break
-			}
-		}
-		if cluster.Name == "" {
-			klog.Warningf("Could not find cluster %s in TestOptions", managedCluster.Name)
-			continue
-		}
-		CheckDeploymentAvailability(cluster, name, namespace, shouldExist)
-	}
-}
-
-func CheckDeploymentAvailabilityOnAllOCPManagedClusters(opt TestOptions, name, namespace string, shouldExist bool) {
-	ocpClusters, err := getOCPClusters(opt)
-	Expect(err).ToNot(HaveOccurred())
-
-	for _, cluster := range ocpClusters {
+func CheckDeploymentAvailabilityOnClusters(clusters []Cluster, name, namespace string, shouldExist bool) {
+	for _, cluster := range clusters {
 		CheckDeploymentAvailability(cluster, name, namespace, shouldExist)
 	}
 }

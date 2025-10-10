@@ -22,7 +22,7 @@ const (
 
 // EnableUWLMonitoringOnManagedClusters enables user workload monitoring on all managed OpenShift clusters.
 func EnableUWLMonitoringOnManagedClusters(opt TestOptions) error {
-	ocpClusters, err := getOCPClusters(opt)
+	ocpClusters, err := GetOCPClusters(opt)
 	if err != nil {
 		return err
 	}
