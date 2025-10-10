@@ -12,7 +12,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/klog"
 )
 
 const (
@@ -23,28 +22,12 @@ const (
 
 // EnableUWLMonitoringOnManagedClusters enables user workload monitoring on all managed OpenShift clusters.
 func EnableUWLMonitoringOnManagedClusters(opt TestOptions) error {
-	managedClusters, err := GetAvailableManagedClusters(opt)
+	ocpClusters, err := getOCPClusters(opt)
 	if err != nil {
 		return err
 	}
 
-	for _, managedCluster := range managedClusters {
-		if managedCluster.GetLabels()["vendor"] != "OpenShift" {
-			continue
-		}
-
-		var cluster Cluster
-		for _, c := range opt.ManagedClusters {
-			if c.Name == managedCluster.Name {
-				cluster = c
-				break
-			}
-		}
-		if cluster.Name == "" {
-			klog.Warningf("Could not find cluster %s in TestOptions", managedCluster.Name)
-			continue
-		}
-
+	for _, cluster := range ocpClusters {
 		kubeClient := NewKubeClient(
 			cluster.ClusterServerURL,
 			opt.KubeConfig,
@@ -79,15 +62,14 @@ func EnableUWLMonitoringOnManagedClusters(opt TestOptions) error {
 			}
 		} else {
 			// Update existing configmap
-			config := &cmomanifests.ClusterMonitoringConfiguration{}
+			config := make(map[string]interface{})
 			if cm.Data != nil && cm.Data[configKey] != "" {
-				err = yaml.Unmarshal([]byte(cm.Data[configKey]), config)
+				err = yaml.Unmarshal([]byte(cm.Data[configKey]), &config)
 				if err != nil {
 					return err
 				}
 			}
-			enabled := true
-			config.UserWorkloadEnabled = &enabled
+			config["enableUserWorkload"] = true
 			yamlData, err := yaml.Marshal(config)
 			if err != nil {
 				return err
