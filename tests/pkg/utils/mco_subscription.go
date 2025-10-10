@@ -28,7 +28,7 @@ func NewSubscriptionGVR() schema.GroupVersionResource {
 	}
 }
 
-func getOCPClusters(opt TestOptions) ([]Cluster, error) {
+func GetOCPClusters(opt TestOptions) ([]Cluster, error) {
 	availableManagedClusters, err := GetAvailableManagedClusters(opt)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get available managed clusters: %w", err)
@@ -62,7 +62,7 @@ func getOCPClusters(opt TestOptions) ([]Cluster, error) {
 }
 
 func CreateCOOSubscription(opt TestOptions) error {
-	clusters, err := getOCPClusters(opt)
+	clusters, err := GetOCPClusters(opt)
 	if err != nil {
 		return err
 	}
@@ -99,7 +99,7 @@ func CreateCOOSubscription(opt TestOptions) error {
 }
 
 func DeleteCOOSubscription(opt TestOptions) error {
-	clusters, err := getOCPClusters(opt)
+	clusters, err := GetOCPClusters(opt)
 	if err != nil {
 		return err
 	}
@@ -118,7 +118,7 @@ func DeleteCOOSubscription(opt TestOptions) error {
 }
 
 func CheckCOODeployment(opt TestOptions) error {
-	clusters, err := getOCPClusters(opt)
+	clusters, err := GetOCPClusters(opt)
 	if err != nil {
 		return err
 	}

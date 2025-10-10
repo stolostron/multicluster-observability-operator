@@ -36,6 +36,30 @@ func CheckManagedClusterAddonStatus(opt TestOptions, name string) {
 	}, 300, 1).Should(Not(HaveOccurred()))
 }
 
+// GetAvailableManagedClustersAsClusters returns a list of available managed clusters.
+// The hub cluster is not included in the list.
+func GetAvailableManagedClustersAsClusters(opt TestOptions) ([]Cluster, error) {
+	availableManagedClusters, err := GetAvailableManagedClusters(opt)
+	if err != nil {
+		return nil, err
+	}
+
+	var clusterList []Cluster
+	for _, managedCluster := range availableManagedClusters {
+		var cluster Cluster
+		for _, c := range opt.ManagedClusters {
+			if c.Name == managedCluster.Name {
+				cluster = c
+				break
+			}
+		}
+		if cluster.Name != "" {
+			clusterList = append(clusterList, cluster)
+		}
+	}
+	return clusterList, nil
+}
+
 func GetManagedClusterAddon(opt TestOptions, name, namespace string) (*addonapiv1alpha1.ManagedClusterAddOn, error) {
 	clientDynamic := GetKubeClientDynamic(opt, true)
 	obj, err := clientDynamic.Resource(NewMCOManagedClusterAddonsGVR()).Namespace(namespace).Get(context.TODO(), name, metav1.GetOptions{})
