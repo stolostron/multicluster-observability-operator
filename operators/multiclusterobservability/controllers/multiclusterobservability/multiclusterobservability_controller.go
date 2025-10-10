@@ -291,15 +291,16 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		return ctrl.Result{}, fmt.Errorf("failed to render MCO templates for %s/%s: %w", instance.GetNamespace(), instance.GetName(), err)
 	}
 
-	// Ensure dependencies are created first (like CRDs)
-	kindOrder := mcoconfig.KindOrder
+	// Sort resources to ensure dependencies like CRDs are created first, before CRs. The sort is
+	// primarily by Kind priority (lower values first), and secondarily by name for
+	// deterministic ordering. Kinds without a defined priority are created last.
 	defaultOrder := 100
 	sort.Slice(toDeploy, func(i, j int) bool {
-		orderA, okA := kindOrder[toDeploy[i].GetKind()]
+		orderA, okA := mcoconfig.KindOrder[toDeploy[i].GetKind()]
 		if !okA {
 			orderA = defaultOrder
 		}
-		orderB, okB := kindOrder[toDeploy[j].GetKind()]
+		orderB, okB := mcoconfig.KindOrder[toDeploy[j].GetKind()]
 		if !okB {
 			orderB = defaultOrder
 		}
