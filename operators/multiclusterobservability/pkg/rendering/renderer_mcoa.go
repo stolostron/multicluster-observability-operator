@@ -44,6 +44,7 @@ const (
 type MCOARendererOptions struct {
 	DisableCMAORender  bool
 	MetricsHubHostname string
+	IsGlobalHubEnabled bool
 }
 
 func (r *MCORenderer) newMCOARenderer() {
@@ -262,7 +263,10 @@ func (r *MCORenderer) renderAddonDeploymentConfig(
 				return nil, fmt.Errorf("MetricsHubHostname is required when metrics collection is enabled")
 			}
 			appendCustomVar(aodc, nameMetricsHubHostname, r.rendererOptions.MCOAOptions.MetricsHubHostname)
-			aodc.Spec.AgentInstallNamespace = "test-coleen"
+
+			if r.rendererOptions.MCOAOptions.IsGlobalHubEnabled {
+				aodc.Spec.AgentInstallNamespace = "open-cluster-management-global-hub-agent-addon"
+			}
 		}
 
 		u.Object, err = runtime.DefaultUnstructuredConverter.ToUnstructured(aodc)
