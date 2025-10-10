@@ -46,6 +46,10 @@ func GetAvailableManagedClustersAsClusters(opt TestOptions) ([]Cluster, error) {
 
 	var clusterList []Cluster
 	for _, managedCluster := range availableManagedClusters {
+		if IsHubCluster(managedCluster) {
+			continue
+		}
+
 		var cluster Cluster
 		for _, c := range opt.ManagedClusters {
 			if c.Name == managedCluster.Name {
