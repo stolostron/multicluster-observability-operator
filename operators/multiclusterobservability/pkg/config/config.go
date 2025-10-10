@@ -238,7 +238,8 @@ const (
 	ClusterLogForwarderCRDName    = "clusterlogforwarders.observability.openshift.io"
 	OpenTelemetryCollectorCRDName = "opentelemetrycollectors.opentelemetry.io"
 	InstrumentationCRDName        = "instrumentations.opentelemetry.io"
-	PrometheusAgentCRDName        = "prometheusagents.monitoring.coreos.com"
+	PrometheusAgentCRDName        = "prometheusagents.monitoring.rhobs"
+	ScrapeConfigCRDName           = "scrapeconfigs.monitoring.rhobs"
 	UIPluginsCRDName              = "uiplugins.observability.openshift.io"
 )
 
@@ -248,6 +249,7 @@ var (
 		OpenTelemetryCollectorCRDName: "v1beta1",
 		InstrumentationCRDName:        "v1alpha1",
 		PrometheusAgentCRDName:        "v1alpha1",
+		ScrapeConfigCRDName:           "v1alpha1",
 		UIPluginsCRDName:              "v1alpha1",
 	}
 )
@@ -935,4 +937,33 @@ func GetCachedImageManifestData() (map[string]string, bool) {
 		}
 	}
 	return nil, false
+}
+
+// KindOrder is a map that defines the deployment order for Kubernetes resource kinds.
+// Resources with a lower number are deployed before resources with a higher number.
+// This is used to ensure dependencies are created in the correct order, for example,
+// CustomResourceDefinitions are created before their corresponding custom resources.
+var KindOrder = map[string]int{
+	"CustomResourceDefinition": 1,
+	"Namespace":                2,
+	"ClusterRole":              3,
+	"Role":                     3,
+	"ClusterRoleBinding":       4,
+	"RoleBinding":              4,
+	"ServiceAccount":           5,
+	"Secret":                   6,
+	"ConfigMap":                6,
+	"Deployment":               8,
+	"StatefulSet":              8,
+	"DaemonSet":                8,
+	"Service":                  9,
+	"Route":                    10,
+	"Ingress":                  10,
+	"Observatorium":            11,
+	"Prometheus":               11,
+	"PrometheusRule":           11,
+	"ServiceMonitor":           11,
+	"AddOnDeploymentConfig":    11,
+	"ClusterManagementAddOn":   11,
+	"ScrapeConfig":             11,
 }

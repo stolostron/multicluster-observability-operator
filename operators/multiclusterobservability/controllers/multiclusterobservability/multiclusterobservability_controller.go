@@ -10,7 +10,8 @@ import (
 	"fmt"
 	"os"
 	"reflect"
-	slices0 "slices"
+	slices "slices"
+	"sort"
 	"strings"
 	"time"
 
@@ -26,7 +27,6 @@ import (
 	monitoringv1aplha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	mchv1 "github.com/stolostron/multiclusterhub-operator/api/v1"
 	observatoriumv1alpha1 "github.com/stolostron/observatorium-operator/api/v1alpha1"
-	"golang.org/x/exp/slices"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -141,7 +141,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 
 	// Fetch the MultiClusterObservability instance
 	mcoList := &mcov1beta2.MultiClusterObservabilityList{}
-	err := r.Client.List(context.TODO(), mcoList)
+	err := r.Client.List(ctx, mcoList)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to list MultiClusterObservability custom resources: %w", err)
 	}
@@ -263,7 +263,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 
 	// Disable rendering the MCOA ClusterManagementAddOn resource if already exists
 	mcoaCMAO := &addonv1alpha1.ClusterManagementAddOn{}
-	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: config.MultiClusterObservabilityAddon}, mcoaCMAO)
+	err = r.Client.Get(ctx, types.NamespacedName{Name: config.MultiClusterObservabilityAddon}, mcoaCMAO)
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
 			return ctrl.Result{}, fmt.Errorf("failed to get ClusterManagementAddOn %s: %w", config.MultiClusterObservabilityAddon, err)
@@ -290,6 +290,26 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to render MCO templates for %s/%s: %w", instance.GetNamespace(), instance.GetName(), err)
 	}
+
+	// Sort resources to ensure dependencies like CRDs are created first, before CRs. The sort is
+	// primarily by Kind priority (lower values first), and secondarily by name for
+	// deterministic ordering. Kinds without a defined priority are created last.
+	defaultOrder := 100
+	sort.Slice(toDeploy, func(i, j int) bool {
+		orderA, okA := mcoconfig.KindOrder[toDeploy[i].GetKind()]
+		if !okA {
+			orderA = defaultOrder
+		}
+		orderB, okB := mcoconfig.KindOrder[toDeploy[j].GetKind()]
+		if !okB {
+			orderB = defaultOrder
+		}
+		if orderA != orderB {
+			return orderA < orderB
+		}
+		return strings.Compare(toDeploy[i].GetName(), toDeploy[j].GetName()) < 0
+	})
+
 	deployer := deploying.NewDeployer(r.Client)
 	// Deploy the resources
 	ns := &corev1.Namespace{}
@@ -301,12 +321,12 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		if resNS == "" {
 			resNS = config.GetDefaultNamespace()
 		}
-		if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: resNS}, ns); err != nil &&
+		if err := r.Client.Get(ctx, types.NamespacedName{Name: resNS}, ns); err != nil &&
 			apierrors.IsNotFound(err) {
 			ns = &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{
 				Name: resNS,
 			}}
-			if err := r.Client.Create(context.TODO(), ns); err != nil {
+			if err := r.Client.Create(ctx, ns); err != nil {
 				return ctrl.Result{}, fmt.Errorf("failed to create namespace %s during resource deployment: %w", resNS, err)
 			}
 		}
@@ -323,7 +343,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		}
 		for _, res := range toDelete {
 			resNS := res.GetNamespace()
-			if err := deployer.Undeploy(ctx, res); err != nil {
+			if err := deployer.Undeploy(ctx, res, instance); err != nil {
 				return ctrl.Result{}, fmt.Errorf("failed to undeploy %s %s/%s: %w", res.GetKind(), resNS, res.GetName(), err)
 			}
 		}
@@ -1022,7 +1042,7 @@ func newMCOACRDEventHandler(c client.Client) handler.EventHandler {
 			var reqs []reconcile.Request
 
 			var isDependency bool
-			if slices0.Contains(config.GetMCOASupportedCRDNames(), obj.GetName()) {
+			if slices.Contains(config.GetMCOASupportedCRDNames(), obj.GetName()) {
 				isDependency = true
 			}
 
