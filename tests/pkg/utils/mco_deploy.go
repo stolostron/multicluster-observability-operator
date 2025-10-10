@@ -417,28 +417,10 @@ func SetMCOACapabilities(opt TestOptions, platformMetrics, userWorkloadMetrics b
 		return getErr
 	}
 
-	if err := unstructured.SetNestedField(mco.Object, platformMetrics, "spec", "capabilities", "platform", "metrics", "collection", "enabled"); err != nil {
+	if err := unstructured.SetNestedField(mco.Object, platformMetrics, "spec", "capabilities", "platform", "metrics", "default", "enabled"); err != nil {
 		return err
 	}
-	if err := unstructured.SetNestedField(mco.Object, userWorkloadMetrics, "spec", "capabilities", "userWorkloads", "metrics", "collection", "enabled"); err != nil {
-		return err
-	}
-
-	_, updateErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Update(context.TODO(), mco, metav1.UpdateOptions{})
-	return updateErr
-}
-
-func SetMetricsAllowlist(opt TestOptions, metrics []string) error {
-	clientDynamic := NewKubeClientDynamic(
-		opt.HubCluster.ClusterServerURL,
-		opt.KubeConfig,
-		opt.HubCluster.KubeContext)
-	mco, getErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
-	if getErr != nil {
-		return getErr
-	}
-
-	if err := unstructured.SetNestedStringSlice(mco.Object, metrics, "spec", "capabilities", "platform", "metrics", "collection", "allowlist"); err != nil {
+	if err := unstructured.SetNestedField(mco.Object, userWorkloadMetrics, "spec", "capabilities", "userWorkloads", "metrics", "default", "enabled"); err != nil {
 		return err
 	}
 
