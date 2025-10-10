@@ -62,12 +62,12 @@ func CheckStatefulSetAvailability(cluster Cluster, name, namespace string, shoul
 				return fmt.Errorf("statefulset %s/%s is not ready: %d/%d", namespace, name, sts.Status.ReadyReplicas, *sts.Spec.Replicas)
 			}
 			return nil
-		}, 300, 1).Should(Not(HaveOccurred()))
+		}, 300, 2).Should(Not(HaveOccurred()))
 	} else {
 		Eventually(func() error {
 			_, err := GetStatefulSetWithCluster(cluster, name, namespace)
 			return err
-		}, 300, 1).Should(HaveOccurred())
+		}, 300, 2).Should(HaveOccurred())
 	}
 }
 

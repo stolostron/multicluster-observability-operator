@@ -40,36 +40,29 @@ func GetOCPClusters(opt TestOptions) ([]Cluster, error) {
 	}
 
 	var ocpClusters []Cluster
-	hubAdded := false
-
 	for _, mc := range availableManagedClusters {
 		if !isOpenshiftVendor(mc) {
 			continue
 		}
 
-		if mc.GetLabels()["local-cluster"] == "true" {
-			if !hubAdded {
-				ocpClusters = append(ocpClusters, opt.HubCluster)
-				hubAdded = true
-			}
-		} else if c, ok := managedClusterMap[mc.Name]; ok {
+		if IsHubCluster(mc) {
+			continue
+		}
+
+		if c, ok := managedClusterMap[mc.Name]; ok {
 			ocpClusters = append(ocpClusters, c)
-			delete(managedClusterMap, mc.Name) // Avoid duplicates
+			delete(managedClusterMap, mc.Name)
 		}
 	}
 
 	return ocpClusters, nil
 }
 
-func CreateCOOSubscription(opt TestOptions) error {
-	clusters, err := GetOCPClusters(opt)
-	if err != nil {
-		return err
-	}
+func CreateCOOSubscription(clusters []Cluster) error {
 	for _, cluster := range clusters {
 		clientDynamic := NewKubeClientDynamic(
 			cluster.ClusterServerURL,
-			opt.KubeConfig,
+			cluster.KubeConfig,
 			cluster.KubeContext)
 
 		subUnstructured := &unstructured.Unstructured{
@@ -98,15 +91,11 @@ func CreateCOOSubscription(opt TestOptions) error {
 	return nil
 }
 
-func DeleteCOOSubscription(opt TestOptions) error {
-	clusters, err := GetOCPClusters(opt)
-	if err != nil {
-		return err
-	}
+func DeleteCOOSubscription(clusters []Cluster) error {
 	for _, cluster := range clusters {
 		clientDynamic := NewKubeClientDynamic(
 			cluster.ClusterServerURL,
-			opt.KubeConfig,
+			cluster.KubeConfig,
 			cluster.KubeContext)
 
 		err := clientDynamic.Resource(NewSubscriptionGVR()).Namespace(cooSubscriptionNamespace).Delete(context.TODO(), cooSubscriptionName, metav1.DeleteOptions{})
@@ -117,13 +106,8 @@ func DeleteCOOSubscription(opt TestOptions) error {
 	return nil
 }
 
-func CheckCOODeployment(opt TestOptions) error {
-	clusters, err := GetOCPClusters(opt)
-	if err != nil {
-		return err
-	}
+func CheckCOODeployment(clusters []Cluster) {
 	for _, cluster := range clusters {
 		CheckDeploymentAvailability(cluster, cooDeploymentName, cooSubscriptionNamespace, true)
 	}
-	return nil
 }

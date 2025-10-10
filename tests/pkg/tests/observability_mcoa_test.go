@@ -24,7 +24,9 @@ const (
 
 var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 	var managedClusters []utils.Cluster
+	var managedClustersWithHub []utils.Cluster
 	var ocpClusters []utils.Cluster
+	var ocpClustersWithHub []utils.Cluster
 
 	BeforeAll(func() {
 		By("Getting available managed clusters")
@@ -35,7 +37,8 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 		for _, cluster := range managedClusters {
 			clusterNames = append(clusterNames, cluster.Name)
 		}
-		By(fmt.Sprintf("Running tests against the following managed clusters: %v", clusterNames))
+		managedClustersWithHub = append(managedClusters, testOptions.HubCluster)
+		By(fmt.Sprintf("Running tests against the following managed clusters (excluding the hub): %v", clusterNames))
 
 		By("Getting available OCP managed clusters")
 		ocpClusters, err = utils.GetOCPClusters(testOptions)
@@ -44,6 +47,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 		for _, cluster := range ocpClusters {
 			ocpClusterNames = append(ocpClusterNames, cluster.Name)
 		}
+		ocpClustersWithHub = append(ocpClusters, testOptions.HubCluster)
 		By(fmt.Sprintf("Running tests against the following OCP managed clusters: %v", ocpClusterNames))
 
 		By("Enabling user workload monitoring on all openshift managed clusters", func() {
@@ -69,7 +73,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 			})
 			By("MCOA should be available", func() {
 				utils.CheckDeploymentAvailability(testOptions.HubCluster, mcoaManagerDeploymentName, utils.MCO_ADDON_NAMESPACE, true)
-				utils.CheckStatefulSetAvailabilityOnClusters(managedClusters, platformPrometheusAgentStatefulSetName, utils.MCO_AGENT_ADDON_NAMESPACE, true)
+				utils.CheckStatefulSetAvailabilityOnClusters(managedClustersWithHub, platformPrometheusAgentStatefulSetName, utils.MCO_AGENT_ADDON_NAMESPACE, true)
 				utils.CheckManagedClusterAddonStatus(testOptions, mcoaAddonName)
 			})
 			By("Disabling MCOA", func() {
@@ -77,8 +81,8 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 			})
 			By("MCOA should be deleted", func() {
 				utils.CheckDeploymentAvailability(testOptions.HubCluster, mcoaManagerDeploymentName, utils.MCO_ADDON_NAMESPACE, false)
-				utils.CheckDeploymentAvailabilityOnClusters(managedClusters, oboPrometheusOperatorDeploymentName, utils.MCO_AGENT_ADDON_NAMESPACE, false)
-				utils.CheckStatefulSetAvailabilityOnClusters(managedClusters, platformPrometheusAgentStatefulSetName, utils.MCO_AGENT_ADDON_NAMESPACE, false)
+				utils.CheckDeploymentAvailabilityOnClusters(managedClustersWithHub, oboPrometheusOperatorDeploymentName, utils.MCO_AGENT_ADDON_NAMESPACE, false)
+				utils.CheckStatefulSetAvailabilityOnClusters(managedClustersWithHub, platformPrometheusAgentStatefulSetName, utils.MCO_AGENT_ADDON_NAMESPACE, false)
 			})
 			By("The metrics collector should be running and forwarding metrics", func() {
 				utils.CheckDeploymentAvailability(testOptions.HubCluster, metricsCollectorDeploymentName, utils.MCO_NAMESPACE, true)
@@ -96,16 +100,16 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 			By("Configuring the platform scrape interval to 1 min", func() {
 				Eventually(func() error {
 					return utils.UpdatePlatformPrometheusAgent(testOptions, "60s")
-				}, 30, 1).Should(Not(HaveOccurred()))
+				}, 30, 2).Should(Not(HaveOccurred()))
 			})
 		})
 
 		It("should deploy the correct agents", func() {
 			By("The platform prometheus agent should be running", func() {
-				utils.CheckStatefulSetAvailabilityOnClusters(managedClusters, platformPrometheusAgentStatefulSetName, utils.MCO_AGENT_ADDON_NAMESPACE, true)
+				utils.CheckStatefulSetAvailabilityOnClusters(managedClustersWithHub, platformPrometheusAgentStatefulSetName, utils.MCO_AGENT_ADDON_NAMESPACE, true)
 			})
 			By("The user workload prometheus agent should NOT be running", func() {
-				utils.CheckStatefulSetAvailabilityOnClusters(managedClusters, uwlPrometheusAgentStatefulSetName, utils.MCO_AGENT_ADDON_NAMESPACE, false)
+				utils.CheckStatefulSetAvailabilityOnClusters(managedClustersWithHub, uwlPrometheusAgentStatefulSetName, utils.MCO_AGENT_ADDON_NAMESPACE, false)
 			})
 			By("The addon status should be Available", func() {
 				utils.CheckManagedClusterAddonStatus(testOptions, mcoaAddonName)
@@ -122,7 +126,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 					return fmt.Errorf("No results found for metric %q", metricName)
 				}
 				return nil
-			}, 300, 1).Should(Not(HaveOccurred()))
+			}, 300, 2).Should(Not(HaveOccurred()))
 		})
 
 		It("should allow updating the metrics list", func() {
@@ -142,7 +146,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 						return fmt.Errorf("No results found for metric %q", customMetricName)
 					}
 					return nil
-				}, 300, 1).Should(Not(HaveOccurred()))
+				}, 300, 2).Should(Not(HaveOccurred()))
 			})
 
 			By("Deleting the custom ScrapeConfig", func() {
@@ -172,7 +176,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 						return fmt.Errorf("No results found for metric %q", ruleMetricName)
 					}
 					return nil
-				}, 300, 1).Should(Not(HaveOccurred()))
+				}, 300, 2).Should(Not(HaveOccurred()))
 			})
 
 			By("Deleting the PrometheusRule", func() {
@@ -197,13 +201,13 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 			By("Configuring the platform scrape interval to 1 min", func() {
 				Eventually(func() error {
 					return utils.UpdatePlatformPrometheusAgent(testOptions, "60s")
-				}, 30, 1).Should(Not(HaveOccurred()))
+				}, 30, 2).Should(Not(HaveOccurred()))
 			})
 		})
 
 		It("should deploy the user workload agent only when required", func() {
 			By("The user workload prometheus agent should NOT be running", func() {
-				utils.CheckStatefulSetAvailabilityOnClusters(managedClusters, uwlPrometheusAgentStatefulSetName, utils.MCO_AGENT_ADDON_NAMESPACE, false)
+				utils.CheckStatefulSetAvailabilityOnClusters(managedClustersWithHub, uwlPrometheusAgentStatefulSetName, utils.MCO_AGENT_ADDON_NAMESPACE, false)
 			})
 
 			By("Creating a new ScrapeConfig for a custom UWL metric", func() {
@@ -211,7 +215,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 			})
 
 			By("The user workload prometheus agent should be running", func() {
-				utils.CheckStatefulSetAvailabilityOnClusters(managedClusters, uwlPrometheusAgentStatefulSetName, utils.MCO_AGENT_ADDON_NAMESPACE, true)
+				utils.CheckStatefulSetAvailabilityOnClusters(managedClustersWithHub, uwlPrometheusAgentStatefulSetName, utils.MCO_AGENT_ADDON_NAMESPACE, true)
 			})
 
 			By("Verifying the custom UWL metric is forwarded to the hub", func() {
@@ -232,7 +236,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 			})
 
 			By("The user workload prometheus agent should be terminated", func() {
-				utils.CheckStatefulSetAvailabilityOnClusters(managedClusters, uwlPrometheusAgentStatefulSetName, utils.MCO_AGENT_ADDON_NAMESPACE, false)
+				utils.CheckStatefulSetAvailabilityOnClusters(managedClustersWithHub, uwlPrometheusAgentStatefulSetName, utils.MCO_AGENT_ADDON_NAMESPACE, false)
 			})
 		})
 
@@ -249,7 +253,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 			})
 
 			By("The user workload prometheus agent should be running", func() {
-				utils.CheckStatefulSetAvailabilityOnClusters(managedClusters, uwlPrometheusAgentStatefulSetName, utils.MCO_AGENT_ADDON_NAMESPACE, true)
+				utils.CheckStatefulSetAvailabilityOnClusters(managedClustersWithHub, uwlPrometheusAgentStatefulSetName, utils.MCO_AGENT_ADDON_NAMESPACE, true)
 			})
 
 			By("Verifying the rule's metric is forwarded to the hub", func() {
@@ -274,7 +278,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 			})
 
 			By("The user workload prometheus agent should be terminated", func() {
-				utils.CheckStatefulSetAvailabilityOnClusters(managedClusters, uwlPrometheusAgentStatefulSetName, utils.MCO_AGENT_ADDON_NAMESPACE, false)
+				utils.CheckStatefulSetAvailabilityOnClusters(managedClustersWithHub, uwlPrometheusAgentStatefulSetName, utils.MCO_AGENT_ADDON_NAMESPACE, false)
 			})
 		})
 	})
@@ -285,7 +289,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 				Expect(utils.SetMCOACapabilities(testOptions, false, false)).NotTo(HaveOccurred())
 			})
 			By("Deleting COO subscription if it exists", func() {
-				utils.DeleteCOOSubscription(testOptions)
+				utils.DeleteCOOSubscription(ocpClustersWithHub)
 			})
 			By("Deleting monitoring CRDs", func() {
 				Expect(utils.DeleteMonitoringCRDs(testOptions)).NotTo(HaveOccurred())
@@ -296,13 +300,11 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 			uwlCustomMetricName := "go_threads"
 			uwlCustomScrapeConfigCR := "test-uwl-custom-metric"
 			By("Installing COO on all clusters", func() {
-				Expect(utils.CreateCOOSubscription(testOptions)).NotTo(HaveOccurred())
+				Expect(utils.CreateCOOSubscription(ocpClustersWithHub)).NotTo(HaveOccurred())
 			})
 
 			By("Waiting for COO to be installed", func() {
-				Eventually(func() error {
-					return utils.CheckCOODeployment(testOptions)
-				}, 300, 1).Should(Not(HaveOccurred()))
+				utils.CheckCOODeployment(ocpClustersWithHub)
 			})
 
 			By("Enabling MCOA", func() {
@@ -314,27 +316,27 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 			})
 
 			By("MCOA components should be running", func() {
-				utils.CheckStatefulSetAvailabilityOnClusters(managedClusters, platformPrometheusAgentStatefulSetName, utils.MCO_AGENT_ADDON_NAMESPACE, true)
-				utils.CheckStatefulSetAvailabilityOnClusters(managedClusters, uwlPrometheusAgentStatefulSetName, utils.MCO_AGENT_ADDON_NAMESPACE, true)
+				utils.CheckStatefulSetAvailabilityOnClusters(managedClustersWithHub, platformPrometheusAgentStatefulSetName, utils.MCO_AGENT_ADDON_NAMESPACE, true)
+				utils.CheckStatefulSetAvailabilityOnClusters(managedClustersWithHub, uwlPrometheusAgentStatefulSetName, utils.MCO_AGENT_ADDON_NAMESPACE, true)
 				utils.CheckManagedClusterAddonStatus(testOptions, mcoaAddonName)
 			})
 
 			By("Checking for obo-prometheus-operator deployment on managed clusters", func() {
 				// It should use the COO operator
-				utils.CheckDeploymentAvailabilityOnClusters(ocpClusters, oboPrometheusOperatorDeploymentName, utils.MCO_AGENT_ADDON_NAMESPACE, false)
+				utils.CheckDeploymentAvailabilityOnClusters(ocpClustersWithHub, oboPrometheusOperatorDeploymentName, utils.MCO_AGENT_ADDON_NAMESPACE, false)
 			})
 			By("Deleting COO subscription", func() {
-				utils.DeleteCOOSubscription(testOptions)
+				utils.DeleteCOOSubscription(ocpClustersWithHub)
 			})
 
 			By("MCOA components should still be running", func() {
-				utils.CheckStatefulSetAvailabilityOnClusters(managedClusters, platformPrometheusAgentStatefulSetName, utils.MCO_AGENT_ADDON_NAMESPACE, true)
-				utils.CheckStatefulSetAvailabilityOnClusters(managedClusters, uwlPrometheusAgentStatefulSetName, utils.MCO_AGENT_ADDON_NAMESPACE, true)
+				utils.CheckStatefulSetAvailabilityOnClusters(managedClustersWithHub, platformPrometheusAgentStatefulSetName, utils.MCO_AGENT_ADDON_NAMESPACE, true)
+				utils.CheckStatefulSetAvailabilityOnClusters(managedClustersWithHub, uwlPrometheusAgentStatefulSetName, utils.MCO_AGENT_ADDON_NAMESPACE, true)
 				utils.CheckManagedClusterAddonStatus(testOptions, mcoaAddonName)
 			})
 
 			By("Checking for obo-prometheus-operator deployment on managed clusters", func() {
-				utils.CheckDeploymentAvailabilityOnClusters(managedClusters, oboPrometheusOperatorDeploymentName, utils.MCO_AGENT_ADDON_NAMESPACE, true)
+				utils.CheckDeploymentAvailabilityOnClusters(managedClustersWithHub, oboPrometheusOperatorDeploymentName, utils.MCO_AGENT_ADDON_NAMESPACE, true)
 			})
 
 			By("Deleting the custom UWL ScrapeConfig", func() {
@@ -344,7 +346,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 
 		AfterAll(func() {
 			By("Deleting COO subscription", func() {
-				utils.DeleteCOOSubscription(testOptions)
+				utils.DeleteCOOSubscription(ocpClustersWithHub)
 			})
 		})
 	})
@@ -365,7 +367,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 			Expect(utils.SetMCOACapabilities(testOptions, false, false)).NotTo(HaveOccurred())
 		})
 		By("The MCOA components should be deleted", func() {
-			utils.CheckStatefulSetAvailabilityOnClusters(managedClusters, platformPrometheusAgentStatefulSetName, utils.MCO_AGENT_ADDON_NAMESPACE, false)
+			utils.CheckStatefulSetAvailabilityOnClusters(managedClustersWithHub, platformPrometheusAgentStatefulSetName, utils.MCO_AGENT_ADDON_NAMESPACE, false)
 			utils.CheckDeploymentAvailability(testOptions.HubCluster, mcoaManagerDeploymentName, utils.MCO_ADDON_NAMESPACE, false)
 		})
 	})
