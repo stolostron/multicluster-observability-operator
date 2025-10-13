@@ -6,7 +6,6 @@ package utils
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	. "github.com/onsi/gomega"
