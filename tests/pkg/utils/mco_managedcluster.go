@@ -13,6 +13,7 @@ import (
 	"github.com/onsi/ginkgo/v2"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/klog"
 
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -68,10 +69,15 @@ func ListManagedClusters(opt TestOptions) ([]ClustersInfo, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	klog.V(1).Infof("ListManagedClusters: Found %d total managed cluster objects", len(objs.Items))
+
 	clusters := make([]ClustersInfo, 0, len(objs.Items))
 	for _, obj := range objs.Items {
 		metadata := obj.Object["metadata"].(map[string]any)
 		name := metadata["name"].(string)
+
+		klog.V(2).Infof("ListManagedClusters: Processing cluster: %s", name)
 
 		status, ok := obj.Object["status"].(map[string]any)
 		if !ok {
@@ -103,11 +109,20 @@ func ListManagedClusters(opt TestOptions) ([]ClustersInfo, error) {
 				Name:           name,
 				isLocalCluster: metadata["labels"].(map[string]any)["local-cluster"] == "true",
 			})
+			klog.V(1).Infof("ListManagedClusters: Added available cluster: %s", name)
+		} else {
+			klog.V(2).Infof("ListManagedClusters: Skipping cluster %s - not available", name)
 		}
 	}
 
 	if len(clusters) == 0 {
 		return clusters, errors.New("no managedcluster found")
+	}
+
+	// Log final results
+	klog.V(1).Infof("ListManagedClusters: Final results:")
+	for i, cluster := range clusters {
+		klog.V(1).Infof("ListManagedClusters: [%d] Name: %s, IsLocalCluster: %t", i+1, cluster.Name, cluster.isLocalCluster)
 	}
 
 	return clusters, nil

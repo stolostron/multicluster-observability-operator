@@ -43,7 +43,6 @@ if [[ -n ${IS_KIND_ENV} ]]; then
   clusterServerURL="https://127.0.0.1:32806"
   base_domain="placeholder"
 else
-  # TODO this is where we are getting the hub cluster
   clusterServerURL=$(kubectl config view -o jsonpath="{.clusters[0].cluster.server}")
   app_domain=$(kubectl -n openshift-ingress-operator get ingresscontrollers default -ojsonpath='{.status.domain}')
   base_domain="${app_domain#apps.}"
@@ -73,23 +72,6 @@ fi
 printf "\n      baseDomain: ${base_domain}" >>${OPTIONSFILE}
 printf "\n      kubeconfig: ${kubeconfig_hub_path}" >>${OPTIONSFILE}
 printf "\n      kubecontext: ${kubecontext}" >>${OPTIONSFILE}
-if [ ! -z "${SHARED_DIR}" ] && [ -f "${SHARED_DIR}/managed-1.kc" ]; then
-  # Managed cluster kubeconfig exists in CI environment
-  kubeconfig_managed_path="${SHARED_DIR}/managed-1.kc"
-  # Get managed cluster context and server URL
-  managed_kubecontext=$(KUBECONFIG="${kubeconfig_managed_path}" kubectl config current-context)
-  managed_clusterServerURL=$(KUBECONFIG="${kubeconfig_managed_path}" kubectl config view -o jsonpath="{.clusters[0].cluster.server}")
-  managed_app_domain=$(KUBECONFIG="${kubeconfig_managed_path}" kubectl -n openshift-ingress-operator get ingresscontrollers default -ojsonpath='{.status.domain}')
-  managed_base_domain="${managed_app_domain#apps.}"
-  # TODO this is a guess at what the name of the managed cluster could be, need to verify
-  printf "\n    - name: managed" >>${OPTIONSFILE}
-  printf "\n      clusterServerURL: ${managed_clusterServerURL}" >>${OPTIONSFILE}
-  printf "\n      baseDomain: ${managed_base_domain}" >>${OPTIONSFILE}
-  printf "\n      kubeconfig: ${kubeconfig_managed_path}" >>${OPTIONSFILE}
-  printf "\n      kubecontext: ${managed_kubecontext}" >>${OPTIONSFILE}
-fi
-# TODO check environment variables for SPOKE cluster
-# If spoke cluster is detected, add it to the options file
 
 if command -v ginkgo &>/dev/null; then
   GINKGO_CMD=ginkgo
