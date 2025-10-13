@@ -10,6 +10,7 @@ import (
 
 	. "github.com/onsi/gomega"
 	appv1 "k8s.io/api/apps/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
 )
@@ -36,9 +37,6 @@ func GetDeploymentWithCluster(cluster Cluster, name string,
 	clientKube := GetKubeClientWithCluster(cluster)
 	klog.V(1).Infof("Get deployment <%v> in namespace <%v> on cluster <%v>", name, namespace, cluster.Name)
 	dep, err := clientKube.AppsV1().Deployments(namespace).Get(context.TODO(), name, metav1.GetOptions{})
-	if err != nil {
-		klog.Errorf("Failed to get deployment %s in namespace %s due to %v", name, namespace, err)
-	}
 	return dep, err
 }
 
@@ -94,6 +92,7 @@ func CheckDeploymentAvailability(cluster Cluster, name, namespace string, should
 		Eventually(func() error {
 			dep, err := GetDeploymentWithCluster(cluster, name, namespace)
 			if err != nil {
+				klog.Errorf("Failed to get deployment %s in namespace %s due to %v", name, namespace, err)
 				return err
 			}
 			if dep.Status.ReadyReplicas != *dep.Spec.Replicas {
@@ -104,8 +103,14 @@ func CheckDeploymentAvailability(cluster Cluster, name, namespace string, should
 	} else {
 		Eventually(func() error {
 			_, err := GetDeploymentWithCluster(cluster, name, namespace)
-			return err
-		}, 300, 2).Should(HaveOccurred())
+			if apierrors.IsNotFound(err) {
+				return nil
+			}
+			if err != nil {
+				return err
+			}
+			return fmt.Errorf("deployment %s/%s still exists", namespace, name)
+		}, 300, 2).Should(Succeed())
 	}
 }
 
