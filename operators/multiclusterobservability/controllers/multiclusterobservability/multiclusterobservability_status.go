@@ -278,7 +278,7 @@ func updateMCOAStatus(c client.Client, conds *[]mcoshared.Condition, mco *mcov1b
 	// in the Platform configuration (NamespaceRightSizingRecommendation can be enabled/disabled).
 	if mco.Spec.Capabilities.Platform != nil &&
 		!mco.Spec.Capabilities.Platform.Logs.Collection.Enabled &&
-		!mco.Spec.Capabilities.Platform.Metrics.Collection.Enabled &&
+		!mco.Spec.Capabilities.Platform.Metrics.Default.Enabled &&
 		!mco.Spec.Capabilities.Platform.Analytics.IncidentDetection.Enabled {
 		return
 	}

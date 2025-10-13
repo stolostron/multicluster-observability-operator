@@ -40,8 +40,10 @@ import (
 )
 
 const (
-	nameLabelName   = "__name__"
-	maxSeriesLength = 10000
+	nameLabelName       = "__name__"
+	maxSeriesLength     = 10000
+	minRetryElapsedTime = 15 * time.Second
+	requestTimeout      = 10 * time.Second
 )
 
 type HTTPError struct {
@@ -489,6 +491,9 @@ func (c *Client) RemoteWrite(ctx context.Context, req *http.Request,
 		}
 	*/
 
+	ctx, cancel := context.WithTimeout(ctx, interval)
+	defer cancel()
+
 	for i := 0; i < len(timeseries); i += maxSeriesLength {
 		length := min(i+maxSeriesLength, len(timeseries))
 		subTimeseries := timeseries[i:length]
@@ -504,14 +509,12 @@ func (c *Client) RemoteWrite(ctx context.Context, req *http.Request,
 
 		// retry RemoteWrite with exponential back-off
 		b := backoff.NewExponentialBackOff()
-		// Do not set max elapsed time more than half the scrape interval
-		halfInterval := max(len(timeseries)*2/maxSeriesLength, 2)
-		b.MaxElapsedTime = interval / time.Duration(halfInterval)
+		b.MaxElapsedTime = max(minRetryElapsedTime, interval/2)
 		retryable := func() error {
 			return c.sendRequest(ctx, req.URL.String(), compressed)
 		}
 		notify := func(err error, t time.Duration) {
-			msg := fmt.Sprintf("error: %v happened at time: %v", err, t)
+			msg := fmt.Sprintf("error: %v happened when the duration to wait before retrying the operation was: %v", err, t)
 			logger.Log(c.logger, logger.Warn, "msg", msg)
 		}
 
@@ -532,7 +535,7 @@ func (c *Client) sendRequest(ctx context.Context, serverURL string, body []byte)
 		return backoff.Permanent(wrappedErr)
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, requestTimeout)
 	defer cancel()
 
 	req1 = req1.WithContext(ctx)

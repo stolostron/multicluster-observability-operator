@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	prometheusv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -21,6 +22,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
@@ -1085,49 +1087,160 @@ func toPtr(t *testing.T, s string) *string {
 }
 
 func TestUndeploy(t *testing.T) {
+	// Mock MCO owner CR
+	mcoOwner := &mcov1beta2.MultiClusterObservability{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: mcov1beta2.GroupVersion.String(),
+			Kind:       "MultiClusterObservability",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-mco",
+			Namespace: "default",
+			UID:       "owner-uid-12345",
+		},
+	}
+
+	// Mock another owner
+	anotherOwner := &corev1.Pod{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "v1",
+			Kind:       "Pod",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "another-owner",
+			Namespace: "default",
+			UID:       "another-owner-uid-67890",
+		},
+	}
+
+	scheme := runtime.NewScheme()
+	corev1.AddToScheme(scheme)
+	mcov1beta2.AddToScheme(scheme)
+
+	controllerRef := func(owner metav1.Object) metav1.OwnerReference {
+		gvk, err := apiutil.GVKForObject(owner.(runtime.Object), scheme)
+		if err != nil {
+			t.Fatalf("failed to get gvk for owner: %v", err)
+		}
+		return *metav1.NewControllerRef(owner, gvk)
+	}
+
+	ownerRef := func(owner metav1.Object) metav1.OwnerReference {
+		gvk, err := apiutil.GVKForObject(owner.(runtime.Object), scheme)
+		if err != nil {
+			t.Fatalf("failed to get gvk for owner: %v", err)
+		}
+		ref := *metav1.NewControllerRef(owner, gvk)
+		ref.Controller = nil // Not a controller
+		return ref
+	}
+
 	tests := []struct {
-		name         string
-		obj          runtime.Object
-		existingObjs []runtime.Object
+		name            string
+		objToUndeploy   runtime.Object
+		existingObjs    []runtime.Object
+		owner           *mcov1beta2.MultiClusterObservability
+		shouldBeDeleted bool
 	}{
 		{
-			name: "Secret Not Found",
-			obj: &corev1.Secret{
-				TypeMeta: metav1.TypeMeta{
-					APIVersion: "v1",
-					Kind:       "Secret",
-				},
+			name: "Resource Not Found",
+			objToUndeploy: &corev1.Secret{
+				TypeMeta: metav1.TypeMeta{APIVersion: "v1", Kind: "Secret"},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-secret",
 					Namespace: "default",
 				},
 			},
-			existingObjs: []runtime.Object{},
+			existingObjs:    []runtime.Object{},
+			owner:           mcoOwner,
+			shouldBeDeleted: false, // Cannot be deleted if it doesn't exist
 		},
 		{
-			name: "Secret Found and Deleted",
-			obj: &corev1.Secret{
-				TypeMeta: metav1.TypeMeta{
-					APIVersion: "v1",
-					Kind:       "Secret",
-				},
+			name: "Resource Controlled by MCO is Deleted",
+			objToUndeploy: &corev1.Secret{
+				TypeMeta: metav1.TypeMeta{APIVersion: "v1", Kind: "Secret"},
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-secret",
+					Name:      "test-secret-controlled",
 					Namespace: "default",
 				},
 			},
 			existingObjs: []runtime.Object{
 				&corev1.Secret{
-					TypeMeta: metav1.TypeMeta{
-						APIVersion: "v1",
-						Kind:       "Secret",
-					},
+					TypeMeta: metav1.TypeMeta{APIVersion: "v1", Kind: "Secret"},
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-secret",
+						Name:            "test-secret-controlled",
+						Namespace:       "default",
+						OwnerReferences: []metav1.OwnerReference{controllerRef(mcoOwner)},
+					},
+				},
+			},
+			owner:           mcoOwner,
+			shouldBeDeleted: true,
+		},
+		{
+			name: "Resource Not Owned is Not Deleted",
+			objToUndeploy: &corev1.Secret{
+				TypeMeta: metav1.TypeMeta{APIVersion: "v1", Kind: "Secret"},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-secret-unowned",
+					Namespace: "default",
+				},
+			},
+			existingObjs: []runtime.Object{
+				&corev1.Secret{
+					TypeMeta: metav1.TypeMeta{APIVersion: "v1", Kind: "Secret"},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-secret-unowned",
 						Namespace: "default",
 					},
 				},
 			},
+			owner:           mcoOwner,
+			shouldBeDeleted: false,
+		},
+		{
+			name: "Resource Owned but Not Controlled is Not Deleted",
+			objToUndeploy: &corev1.Secret{
+				TypeMeta: metav1.TypeMeta{APIVersion: "v1", Kind: "Secret"},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-secret-owned-not-controlled",
+					Namespace: "default",
+				},
+			},
+			existingObjs: []runtime.Object{
+				&corev1.Secret{
+					TypeMeta: metav1.TypeMeta{APIVersion: "v1", Kind: "Secret"},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:            "test-secret-owned-not-controlled",
+						Namespace:       "default",
+						OwnerReferences: []metav1.OwnerReference{ownerRef(mcoOwner)},
+					},
+				},
+			},
+			owner:           mcoOwner,
+			shouldBeDeleted: false,
+		},
+		{
+			name: "Resource Controlled by Another Owner is Not Deleted",
+			objToUndeploy: &corev1.Secret{
+				TypeMeta: metav1.TypeMeta{APIVersion: "v1", Kind: "Secret"},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-secret-other-owner",
+					Namespace: "default",
+				},
+			},
+			existingObjs: []runtime.Object{
+				&corev1.Secret{
+					TypeMeta: metav1.TypeMeta{APIVersion: "v1", Kind: "Secret"},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:            "test-secret-other-owner",
+						Namespace:       "default",
+						OwnerReferences: []metav1.OwnerReference{controllerRef(anotherOwner)},
+					},
+				},
+			},
+			owner:           mcoOwner,
+			shouldBeDeleted: false,
 		},
 	}
 
@@ -1135,22 +1248,31 @@ func TestUndeploy(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			scheme := runtime.NewScheme()
 			corev1.AddToScheme(scheme)
+			mcov1beta2.AddToScheme(scheme)
 
 			client := fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(tt.existingObjs...).Build()
 			deployer := NewDeployer(client)
 
-			obj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(tt.obj)
+			obj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(tt.objToUndeploy)
 			assert.NoError(t, err)
 			unsObj := &unstructured.Unstructured{Object: obj}
 
-			err = deployer.Undeploy(context.TODO(), unsObj)
+			err = deployer.Undeploy(context.TODO(), unsObj, tt.owner)
 			assert.NoError(t, err)
 
 			found := &unstructured.Unstructured{}
 			found.SetGroupVersionKind(unsObj.GroupVersionKind())
 			err = client.Get(context.TODO(), types.NamespacedName{Name: unsObj.GetName(), Namespace: unsObj.GetNamespace()}, found)
-			assert.True(t, errors.IsNotFound(err))
 
+			if tt.shouldBeDeleted {
+				assert.True(t, errors.IsNotFound(err), "Expected resource to be deleted, but it was found")
+			} else {
+				if len(tt.existingObjs) > 0 {
+					assert.NoError(t, err, "Expected resource to be found, but got an error")
+				} else {
+					assert.True(t, errors.IsNotFound(err), "Expected resource to not be found")
+				}
+			}
 		})
 	}
 }

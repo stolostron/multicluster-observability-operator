@@ -54,21 +54,21 @@ func TestInjectLabels(t *testing.T) {
 			query:    `test_metrics{cluster!="A",cluster=~"C|D",cluster!~"E|F"}`,
 			label:    "cluster",
 			values:   []string{"A", "B"},
-			expected: `test_metrics{cluster!="A",cluster!~"E|F",cluster=~"C|D",cluster=~"A|B"}`,
+			expected: `test_metrics{cluster!="A",cluster!~"E|F",cluster=~"A|B",cluster=~"C|D"}`,
 		},
 		{
 			name:     "Existing label for cluster and others",
 			query:    `test_metrics{akey="value",cluster="A"}`,
 			label:    "cluster",
 			values:   []string{"A", "B"},
-			expected: `test_metrics{cluster="A",akey="value",cluster=~"A|B"}`,
+			expected: `test_metrics{akey="value",cluster="A",cluster=~"A|B"}`,
 		},
 		{
 			name:     "Blank in existing query",
 			query:    `test_metrics{akey = "value",  cluster = "A"}`,
 			label:    "cluster",
 			values:   []string{"A", "B"},
-			expected: `test_metrics{cluster="A",akey="value",cluster=~"A|B"}`,
+			expected: `test_metrics{akey="value",cluster="A",cluster=~"A|B"}`,
 		},
 	}
 

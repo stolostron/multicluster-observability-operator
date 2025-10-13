@@ -809,7 +809,8 @@ func TestGetMCOASupportedCRDNames(t *testing.T) {
 		"clusterlogforwarders.observability.openshift.io",
 		"opentelemetrycollectors.opentelemetry.io",
 		"instrumentations.opentelemetry.io",
-		"prometheusagents.monitoring.coreos.com",
+		"prometheusagents.monitoring.rhobs",
+		"scrapeconfigs.monitoring.rhobs",
 		"uiplugins.observability.openshift.io",
 	}
 

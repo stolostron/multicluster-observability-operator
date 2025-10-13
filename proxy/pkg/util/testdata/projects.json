@@ -1,0 +1,53 @@
+{
+  "kind": "ProjectList",
+  "apiVersion": "project.openshift.io/v1",
+  "metadata": {
+    "selfLink": "/apis/project.openshift.io/v1/projects"
+  },
+  "items": [
+    {
+      "metadata": {
+        "name": "c0",
+        "selfLink": "/apis/project.openshift.io/v1/projects/c0",
+        "uid": "2f68fd63-097c-4519-8e8f-823bb0106acc",
+        "resourceVersion": "7723",
+        "creationTimestamp": "2020-09-25T13:35:09Z",
+        "annotations": {
+          "openshift.io/sa.scc.mcs": "s0:c11,c10",
+          "openshift.io/sa.scc.supplemental-groups": "1000130000/10000",
+          "openshift.io/sa.scc.uid-range": "1000130000/10000"
+        }
+      },
+      "spec": {
+        "finalizers": [
+          "kubernetes"
+        ]
+      },
+      "status": {
+        "phase": "Active"
+      }
+    },
+    {
+      "metadata": {
+        "name": "c1",
+        "selfLink": "/apis/project.openshift.io/v1/projects/c1",
+        "uid": "bce1176f-6dda-45ee-99ef-675a64300643",
+        "resourceVersion": "59984227",
+        "creationTimestamp": "2020-11-26T08:34:15Z",
+        "annotations": {
+          "openshift.io/sa.scc.mcs": "s0:c25,c0",
+          "openshift.io/sa.scc.supplemental-groups": "1000600000/10000",
+          "openshift.io/sa.scc.uid-range": "1000600000/10000"
+        }
+      },
+      "spec": {
+        "finalizers": [
+          "kubernetes"
+        ]
+      },
+      "status": {
+        "phase": "Active"
+      }
+    }
+  ]
+}

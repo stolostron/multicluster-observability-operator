@@ -383,7 +383,7 @@ func TestUpdateMCOAStatus(t *testing.T) {
 								},
 							},
 							Metrics: mcov1beta2.PlatformMetricsSpec{
-								Collection: mcov1beta2.PlatformMetricsCollectionSpec{
+								Default: mcov1beta2.PlatformMetricsDefaultSpec{
 									Enabled: false,
 								},
 							},

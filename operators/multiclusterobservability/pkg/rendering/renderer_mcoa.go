@@ -222,7 +222,7 @@ func (r *MCORenderer) renderAddonDeploymentConfig(
 				fqdn := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.ClusterLogForwarderCRDName)
 				appendCustomVar(aodc, namePlatformLogsCollection, fqdn)
 			}
-			if cs.Platform.Metrics.Collection.Enabled {
+			if cs.Platform.Metrics.Default.Enabled {
 				fqdn := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.PrometheusAgentCRDName)
 				appendCustomVar(aodc, namePlatformMetricsCollection, fqdn)
 
@@ -242,7 +242,7 @@ func (r *MCORenderer) renderAddonDeploymentConfig(
 				fqdn := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.ClusterLogForwarderCRDName)
 				appendCustomVar(aodc, nameUserWorkloadLogsCollection, fqdn)
 			}
-			if cs.UserWorkloads.Metrics.Collection.Enabled {
+			if cs.UserWorkloads.Metrics.Default.Enabled {
 				fqdn := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.PrometheusAgentCRDName)
 				appendCustomVar(aodc, nameUserWorkloadMetricsCollection, fqdn)
 			}
@@ -256,8 +256,8 @@ func (r *MCORenderer) renderAddonDeploymentConfig(
 			}
 		}
 
-		if (cs.Platform != nil && cs.Platform.Metrics.Collection.Enabled) ||
-			(cs.UserWorkloads != nil && cs.UserWorkloads.Metrics.Collection.Enabled) {
+		if (cs.Platform != nil && cs.Platform.Metrics.Default.Enabled) ||
+			(cs.UserWorkloads != nil && cs.UserWorkloads.Metrics.Default.Enabled) {
 			if r.rendererOptions == nil || r.rendererOptions.MCOAOptions.MetricsHubHostname == "" {
 				return nil, fmt.Errorf("MetricsHubHostname is required when metrics collection is enabled")
 			}
@@ -327,14 +327,14 @@ func MCOAEnabled(cr *obv1beta2.MultiClusterObservability) bool {
 	if cr.Spec.Capabilities.Platform != nil {
 		mcoaEnabled = mcoaEnabled ||
 			cr.Spec.Capabilities.Platform.Logs.Collection.Enabled ||
-			cr.Spec.Capabilities.Platform.Metrics.Collection.Enabled ||
+			cr.Spec.Capabilities.Platform.Metrics.Default.Enabled ||
 			cr.Spec.Capabilities.Platform.Analytics.IncidentDetection.Enabled
 	}
 	if cr.Spec.Capabilities.UserWorkloads != nil {
 		mcoaEnabled = mcoaEnabled || cr.Spec.Capabilities.UserWorkloads.Logs.Collection.ClusterLogForwarder.Enabled
 		mcoaEnabled = mcoaEnabled || cr.Spec.Capabilities.UserWorkloads.Traces.Collection.Collector.Enabled
 		mcoaEnabled = mcoaEnabled || cr.Spec.Capabilities.UserWorkloads.Traces.Collection.Instrumentation.Enabled
-		mcoaEnabled = mcoaEnabled || cr.Spec.Capabilities.UserWorkloads.Metrics.Collection.Enabled
+		mcoaEnabled = mcoaEnabled || cr.Spec.Capabilities.UserWorkloads.Metrics.Default.Enabled
 	}
 	return mcoaEnabled
 }
@@ -344,7 +344,7 @@ func MCOAPlatformMetricsEnabled(cr *obv1beta2.MultiClusterObservability) bool {
 		return false
 	}
 
-	if cr.Spec.Capabilities.Platform != nil && cr.Spec.Capabilities.Platform.Metrics.Collection.Enabled {
+	if cr.Spec.Capabilities.Platform != nil && cr.Spec.Capabilities.Platform.Metrics.Default.Enabled {
 		return true
 	}
 

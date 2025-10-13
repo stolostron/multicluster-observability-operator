@@ -68,9 +68,9 @@ type PlatformLogsCollectionSpec struct {
 	Enabled bool `json:"enabled,omitempty"`
 }
 
-// PlatformMetricsCollectionSpec defines the spec for the addon to collect and forward metrics
+// PlatformMetricsDefaultSpec defines the spec for the addon to collect and forward metrics
 // from fleet managed clusters.
-type PlatformMetricsCollectionSpec struct {
+type PlatformMetricsDefaultSpec struct {
 	// Enabled defines a flag to enable/disable the platform metrics collection.
 	//
 	// +optional
@@ -101,12 +101,12 @@ type PlatformLogsSpec struct {
 // PlatformMetricsSpec defines the spec for the addon to collect, forward and store metrics
 // from fleet managed clusters.
 type PlatformMetricsSpec struct {
-	// Collection defines the spec for the addon to collect and forward metrics
+	// Default defines the spec for the addon to collect and forward metrics
 	// from fleet managed clusters.
 	//
 	// +optional
 	// +kubebuilder:validation:Optional
-	Collection PlatformMetricsCollectionSpec `json:"collection,omitempty"`
+	Default PlatformMetricsDefaultSpec `json:"default,omitempty"`
 	// UI defines the spec for the addon to enable UI through COO on the hub
 	//
 	//
@@ -204,9 +204,9 @@ type UserWorkloadLogsCollectionSpec struct {
 	ClusterLogForwarder ClusterLogForwarderSpec `json:"clusterLogForwarder,omitempty"`
 }
 
-// UserWorkloadLogsSpec defines the spec for the addon to collect,forward and store logs
+// UserWorkloadMetricsDefaultSpec defines the spec for the addon to collect and forward metrics
 // from user workloads hosted on fleet managed clusters.
-type UserWorkloadMetricsCollectionSpec struct {
+type UserWorkloadMetricsDefaultSpec struct {
 	// Enabled defines a flag to enable/disable the platform metrics collection.
 	//
 	// +optional
@@ -228,12 +228,12 @@ type UserWorkloadLogsSpec struct {
 // UserWorkloadMetricsSpec defines the spec for the addon to collect, forward and store metrics
 // from user workloads hosted on fleet managed clusters.
 type UserWorkloadMetricsSpec struct {
-	// Collection defines the spec for the addon to collect and forward metrics
+	// Default defines the spec for the addon to collect and forward metrics
 	// from user workloads hosted on fleet managed clusters.
 	//
 	// +optional
 	// +kubebuilder:validation:Optional
-	Collection UserWorkloadMetricsCollectionSpec `json:"collection,omitempty"`
+	Default UserWorkloadMetricsDefaultSpec `json:"default,omitempty"`
 }
 
 // OpenTelemetryCollectorSpec defines the spec for the addon to collect and forward observability signals
