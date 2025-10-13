@@ -6,10 +6,12 @@ package utils
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	. "github.com/onsi/gomega"
 	appv1 "k8s.io/api/apps/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
 )
@@ -40,13 +42,8 @@ func GetStatefulSetWithLabel(opt TestOptions, isHub bool, label string,
 	sts, err := clientKube.AppsV1().StatefulSets(namespace).List(context.TODO(), metav1.ListOptions{
 		LabelSelector: label,
 	})
-
 	if err != nil {
-		klog.Errorf(
-			"Failed to get statefulset with label selector %s in namespace %s due to %v",
-			label,
-			namespace,
-			err)
+		klog.Errorf("Failed to get statefulset with label %s in namespace %s due to %v", label, namespace, err)
 	}
 	return sts, err
 }
@@ -66,8 +63,14 @@ func CheckStatefulSetAvailability(cluster Cluster, name, namespace string, shoul
 	} else {
 		Eventually(func() error {
 			_, err := GetStatefulSetWithCluster(cluster, name, namespace)
-			return err
-		}, 300, 2).Should(HaveOccurred())
+			if apierrors.IsNotFound(err) {
+				return nil
+			}
+			if err != nil {
+				return err
+			}
+			return fmt.Errorf("statefulset %s/%s still exists", namespace, name)
+		}, 300, 2).Should(Succeed())
 	}
 }
 
