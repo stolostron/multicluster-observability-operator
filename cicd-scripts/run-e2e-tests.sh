@@ -43,7 +43,6 @@ if [[ -n ${IS_KIND_ENV} ]]; then
   clusterServerURL="https://127.0.0.1:32806"
   base_domain="placeholder"
 else
-  # TODO this is where we are getting the hub cluster
   clusterServerURL=$(kubectl config view -o jsonpath="{.clusters[0].cluster.server}")
   app_domain=$(kubectl -n openshift-ingress-operator get ingresscontrollers default -ojsonpath='{.status.domain}')
   base_domain="${app_domain#apps.}"
@@ -138,6 +137,13 @@ fi
 
 # TODO check environment variables for SPOKE cluster
 # If spoke cluster is detected, add it to the options file
+printf "\n    - name: ${cluster_name}" >>${OPTIONSFILE}
+if [[ -n ${IS_KIND_ENV} ]]; then
+  printf "\n      clusterServerURL: ${clusterServerURL}" >>${OPTIONSFILE}
+fi
+printf "\n      baseDomain: ${base_domain}" >>${OPTIONSFILE}
+printf "\n      kubeconfig: ${kubeconfig_hub_path}" >>${OPTIONSFILE}
+printf "\n      kubecontext: ${kubecontext}" >>${OPTIONSFILE}
 
 if command -v ginkgo &>/dev/null; then
   GINKGO_CMD=ginkgo

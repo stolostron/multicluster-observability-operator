@@ -60,7 +60,7 @@ func CheckAllOBAsEnabled(opt TestOptions) error {
 	if err != nil {
 		return err
 	}
-	klog.V(1).Infof("Check OBA status for managedclusters: %v", clusters)
+	klog.V(1).Infof("Check OBA status for \"managed\" clusters: %v", clusters)
 
 	for _, cluster := range clusters {
 		// skip the check for local-cluster
