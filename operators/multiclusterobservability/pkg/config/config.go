@@ -952,7 +952,8 @@ func GetClusterName(obsApiURL string) string {
 	}
 	clusterName := hostParts[2]
 	return clusterName
-}  
+}
+
 // KindOrder is a map that defines the deployment order for Kubernetes resource kinds.
 // Resources with a lower number are deployed before resources with a higher number.
 // This is used to ensure dependencies are created in the correct order, for example,
