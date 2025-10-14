@@ -36,6 +36,23 @@ else
   kubectl config view --raw --minify >${kubeconfig_hub_path}
 fi
 
+# TODO checking if kube context can be switched here to remove need for cm-cli
+echo "Kube Contexts: $(kubectl config get-contexts)"
+
+# Only run clusteradm commands if NOT in a kind environment
+if [[ -z ${IS_KIND_ENV} ]]; then
+  HUB_API_SERVER=$(oc whoami --show-server) || true
+  echo "HUB_API_SERVER: ${HUB_API_SERVER}"
+  HUB_TOKEN=$(clusteradm get token --use-bootstrap-token) || true
+  MANAGED_CLUSTER_NAME=managed
+  kubectl config use-context ${MANAGED_CLUSTER_NAME} --kubeconfig=${SHARED_DIR}/managed-1.kc || true
+  clusteradm join --hub-token ${HUB_TOKEN} --hub-api-server ${HUB_API_SERVER} --cluster-name ${MANAGED_CLUSTER_NAME} || true
+  kubectl config use-context hub-1 --kubeconfig=${SHARED_DIR}/hub-1.kc || true
+  clusteradm accept --clusters ${MANAGED_CLUSTER_NAME} || true
+else
+  echo "Skipping clusteradm commands in kind environment"
+fi 
+
 kubecontext=$(kubectl config current-context)
 cluster_name="local-cluster"
 
