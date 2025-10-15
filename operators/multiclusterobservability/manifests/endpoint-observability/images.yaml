@@ -6,7 +6,7 @@ data:
     prometheus: "quay.io/stolostron/prometheus:2.5.0-SNAPSHOT-2022-02-03-20-02-33"
     prometheus_config_reloader: "quay.io/stolostron/prometheus-config-reloader:2.5.0-SNAPSHOT-2022-02-03-20-02-33"
     prometheus_operator: "quay.io/stolostron/prometheus-operator:2.5.0-SNAPSHOT-2022-02-03-20-02-33"
-    obo_prometheus_operator: "quay.io/stolostron/obo-prometheus-operator:2.5.0-SNAPSHOT-2022-02-03-20-02-33"
+    obo_prometheus_rhel9_operator: "quay.io/stolostron/obo-prometheus-operator:2.5.0-SNAPSHOT-2022-02-03-20-02-33"
     kube_state_metrics: "quay.io/stolostron/kube-state-metrics:2.5.0-SNAPSHOT-2022-02-03-20-02-33"
     node_exporter: "quay.io/stolostron/node-exporter:2.5.0-SNAPSHOT-2022-02-03-20-02-33"
     kube_rbac_proxy: "quay.io/stolostron/kube-rbac-proxy:2.5.0-SNAPSHOT-2022-02-03-20-02-33"
