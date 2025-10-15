@@ -42,6 +42,7 @@ echo "Kube Contexts: $(kubectl config get-contexts)"
 # Only run clusteradm commands if NOT in a kind environment
 if [[ -z ${IS_KIND_ENV} ]] && [[ ! -z "${SHARED_DIR}" ]] && [[ -f "${SHARED_DIR}/managed-1.kc" ]]; then
     # Extract managed cluster info from JSON
+  set +x  
   MANAGED_CLUSTER_API_URL=$(jq -r '.api_url' "${SHARED_DIR}/managed-1.json")
   MANAGED_CLUSTER_USER=$(jq -r '.username' "${SHARED_DIR}/managed-1.json")
   MANAGED_CLUSTER_PASS=$(jq -r '.password' "${SHARED_DIR}/managed-1.json")
@@ -50,23 +51,22 @@ if [[ -z ${IS_KIND_ENV} ]] && [[ ! -z "${SHARED_DIR}" ]] && [[ -f "${SHARED_DIR}
   HUB_API_URL=$(jq -r '.api_url' "${SHARED_DIR}/hub-1.json")
   HUB_USER=$(jq -r '.username' "${SHARED_DIR}/hub-1.json")
   HUB_PASS=$(jq -r '.password' "${SHARED_DIR}/hub-1.json")
-  # TODO add some error handling here
-  # Get managed cluster context and server URL
-  managed_kubecontext=$(KUBECONFIG="${kubeconfig_managed_path}" kubectl config current-context)
-  export KUBECONFIG="${SHARED_DIR}/hub-1.kc"
-  HUB_API_SERVER=$(oc whoami --show-server) || true
-  echo "HUB_API_SERVER: ${HUB_API_SERVER}"
+  set -x 
+
+  # join clusters hub and managed cluster
   clusteradm init || true
+  set +x
   HUB_TOKEN=$(clusteradm get token) || true
   # Switch context to managed cluster
   oc login --insecure-skip-tls-verify -u "$MANAGED_CLUSTER_USER" -p "$MANAGED_CLUSTER_PASS" "$MANAGED_CLUSTER_API_URL"  || true
-  kubeconfig_managed_path="${SHARED_DIR}/managed-1.kc"  clusteradm join --hub-token ${HUB_TOKEN} --hub-api-server ${HUB_API_SERVER} --cluster-name ${MANAGED_CLUSTER_NAME} || true
+  set -x
+  clusteradm join --hub-token ${HUB_TOKEN} --hub-api-server ${HUB_API_SERVER} --cluster-name ${MANAGED_CLUSTER_NAME} || true
+  set +x
   oc login --insecure-skip-tls-verify -u "$HUB_USER" -p "$HUB_PASS" "$HUB_API_URL" || true
-  
+  set -x
   # Set kubeconfig back to hub
-  export KUBECONFIG="${SHARED_DIR}/hub-1.kc"  clusteradm accept --clusters ${MANAGED_CLUSTER_NAME} || true
-else
-  echo "Skipping clusteradm commands in kind environment"
+  export KUBECONFIG="${SHARED_DIR}/hub-1.kc"  
+  clusteradm accept --clusters ${MANAGED_CLUSTER_NAME} || true
 fi
 
 # After login to managed cluster 
