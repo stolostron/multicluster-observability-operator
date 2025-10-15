@@ -11,14 +11,18 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"gopkg.in/yaml.v2"
+	authv1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes"
+	kubefake "k8s.io/client-go/kubernetes/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
@@ -30,6 +34,7 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
+	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
 )
 
 const (
@@ -70,6 +75,53 @@ func newTestMCOWithAlertDisableAnnotation() *mcov1beta2.MultiClusterObservabilit
 			},
 		},
 	}
+}
+
+func newMockKubeClient() kubernetes.Interface {
+	// Only include standard Kubernetes objects, not OpenShift-specific objects like Route
+	k8sObjects := []runtime.Object{
+		NewAmAccessorSA(),             // ServiceAccount (Kubernetes)
+		newCASecret(),                 // Secret (Kubernetes)
+		newCertSecret(mcoNamespace),   // Secret (Kubernetes)
+		NewMetricsAllowListCM(),       // ConfigMap (Kubernetes)
+		NewMetricsCustomAllowListCM(), // ConfigMap (Kubernetes)
+	}
+
+	return &mockKubeClient{
+		Clientset: kubefake.NewSimpleClientset(k8sObjects...),
+	}
+}
+
+type mockKubeClient struct {
+	*kubefake.Clientset
+}
+
+func (m *mockKubeClient) CoreV1() v1.CoreV1Interface {
+	return &mockCoreV1Client{m.Clientset.CoreV1()}
+}
+
+type mockCoreV1Client struct {
+	v1.CoreV1Interface
+}
+
+func (m *mockCoreV1Client) ServiceAccounts(namespace string) v1.ServiceAccountInterface {
+	return &mockServiceAccountInterface{
+		ServiceAccountInterface: m.CoreV1Interface.ServiceAccounts(namespace),
+	}
+}
+
+type mockServiceAccountInterface struct {
+	v1.ServiceAccountInterface
+}
+
+func (m *mockServiceAccountInterface) CreateToken(ctx context.Context, name string, tokenRequest *authv1.TokenRequest, opts metav1.CreateOptions) (*authv1.TokenRequest, error) {
+	// Return a mock token request
+	return &authv1.TokenRequest{
+		Status: authv1.TokenRequestStatus{
+			Token:               "mock-token-12345",
+			ExpirationTimestamp: metav1.NewTime(time.Now().Add(24 * time.Hour)),
+		},
+	}, nil
 }
 
 func newTestPullSecret() *corev1.Secret {
@@ -235,6 +287,7 @@ func NewCorruptMetricsCustomAllowListCM() *corev1.ConfigMap {
 	}
 }
 
+// TODO check whether the namespace is correct
 func NewAmAccessorSA() *corev1.ServiceAccount {
 	return &corev1.ServiceAccount{
 		TypeMeta: metav1.TypeMeta{
@@ -249,23 +302,6 @@ func NewAmAccessorSA() *corev1.ServiceAccount {
 			// Test ocp 4.11 behavior where the service accounts won't list service account secrets any longger
 			// {Name: config.AlertmanagerAccessorSecretName + "-token-xxx"},
 		},
-	}
-}
-
-func NewAmAccessorTokenSecret() *corev1.Secret {
-	return &corev1.Secret{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Secret",
-			APIVersion: "v1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      config.AlertmanagerAccessorSecretName + "-token-xxx",
-			Namespace: mcoNamespace,
-		},
-		Data: map[string][]byte{
-			"token": []byte("xxxxx"),
-		},
-		Type: corev1.SecretTypeServiceAccountToken,
 	}
 }
 
@@ -313,9 +349,8 @@ func TestGetAllowList(t *testing.T) {
 	}
 }
 
-func TestManifestWork(t *testing.T) {
-	initSchema(t)
-	objs := []runtime.Object{
+func getRuntimeObjects() []runtime.Object {
+	return []runtime.Object{
 		newTestObsApiRoute(),
 		newTestAlertmanagerRoute(),
 		newTestIngressController(),
@@ -325,23 +360,36 @@ func TestManifestWork(t *testing.T) {
 		NewMetricsAllowListCM(),
 		NewMetricsCustomAllowListCM(),
 		NewAmAccessorSA(),
-		NewAmAccessorTokenSecret(),
 		newCluster(clusterName, map[string]string{
 			ClusterImageRegistriesAnnotation: newAnnotationRegistries([]Registry{
 				{Source: "quay.io/stolostron", Mirror: "registry_server/stolostron"}},
 				fmt.Sprintf("%s.%s", namespace, "custorm_pull_secret"))}),
 		newPullSecret("custorm_pull_secret", namespace, []byte("custorm")),
 	}
+}
+
+func TestManifestWork(t *testing.T) {
+	initSchema(t)
+	objs := getRuntimeObjects()
 	c := fake.NewClientBuilder().
 		WithRuntimeObjects(objs...).
 		Build()
 
 	setupTest(t)
-
+	t.Logf("config.GetDefaultNamespace() returns: '%s'", config.GetDefaultNamespace())
+	t.Logf("config.AlertmanagerAccessorSAName returns: '%s'", config.AlertmanagerAccessorSAName)
 	// Test with UWM alerting disabled
 	mco := newTestMCO()
 	mco.Annotations = map[string]string{config.AnnotationDisableUWMAlerting: "true"}
-	works, crdWork, err := generateGlobalManifestResources(context.Background(), c, mco)
+	t.Logf("Mocking kube client")
+
+	mockKubeClient := newMockKubeClient()
+
+	t.Logf("Successfully created mock kube client")
+	if mockKubeClient == nil {
+		t.Fatalf("Failed to create mock kube client")
+	}
+	works, crdWork, err := generateGlobalManifestResources(context.Background(), c, mco, mockKubeClient)
 	if err != nil {
 		t.Fatalf("Failed to get global manifestwork resource: (%v)", err)
 	}
@@ -429,7 +477,7 @@ func TestManifestWork(t *testing.T) {
 
 	// Test with UWM alerting enabled
 	mco.Annotations = map[string]string{config.AnnotationDisableUWMAlerting: "false"}
-	works, crdWork, err = generateGlobalManifestResources(context.Background(), c, mco)
+	works, crdWork, err = generateGlobalManifestResources(context.Background(), c, mco, mockKubeClient)
 	if err != nil {
 		t.Fatalf("Failed to get global manifestwork resource: (%v)", err)
 	}
@@ -484,6 +532,47 @@ func TestManifestWork(t *testing.T) {
 		}
 	}
 
+	amAccessorFound := false
+	// Check that AlertmanagerAccessorSecret contains the token and expiration
+	for _, manifest := range found.Spec.Workload.Manifests {
+		obj := &unstructured.Unstructured{}
+		obj.UnmarshalJSON(manifest.Raw)
+		if obj.GetKind() == "Secret" && obj.GetName() == config.AlertmanagerAccessorSecretName {
+			amAccessorFound = true
+			if data, exists := obj.Object["data"]; exists {
+				dataMap := data.(map[string]any)
+				if _, exists := dataMap["token"]; !exists {
+					t.Fatalf("Failed to find token in amAccessorSecret")
+				}
+			} else {
+				t.Fatalf("Failed to find data in amAccessorSecret")
+			}
+			// check for token-expiration
+			if metadata, exists := obj.Object["metadata"]; exists {
+				metadataMap := metadata.(map[string]any)
+				if annotations, exists := metadataMap["annotations"]; exists {
+					annotationsMap := annotations.(map[string]any)
+					if tokenExpiration, exists := annotationsMap[amTokenExpiration]; exists {
+						_, err := time.Parse(time.RFC3339, tokenExpiration.(string))
+						if err != nil {
+							t.Fatalf("Failed to parse token-expiration from secret: %v", err)
+						}
+					} else {
+						t.Fatalf("Failed to find token-expiration in amAccessorSecret")
+					}
+				} else {
+					t.Fatalf("Failed to find annotations in amAccessorSecret")
+				}
+			} else {
+				t.Fatalf("Failed to find metadata in amAccessorSecret")
+			}
+			break
+		}
+	}
+	if !amAccessorFound {
+		t.Fatalf("Failed to find amAccessorSecret in the manifestwork")
+	}
+
 	annotations := endpointMetricsOperatorDeploy.Spec.Template.Annotations
 	v, f := annotations[operatorconfig.WorkloadPartitioningPodAnnotationKey]
 	if !f || v != operatorconfig.WorkloadPodExpectedValueJSON {
@@ -510,7 +599,7 @@ func TestManifestWork(t *testing.T) {
 	}
 	// reset image pull secret
 	pullSecret = nil
-	works, crdWork, err = generateGlobalManifestResources(context.Background(), c, newTestMCO())
+	works, crdWork, err = generateGlobalManifestResources(context.Background(), c, newTestMCO(), mockKubeClient)
 	if err != nil {
 		t.Fatalf("Failed to get global manifestwork resource: (%v)", err)
 	}
@@ -554,7 +643,7 @@ func TestManifestWork(t *testing.T) {
 	managedClusterImageRegistry[clusterName] = "open-cluster-management.io/image-registry=" + namespace + ".image_registry"
 	managedClusterImageRegistryMutex.Unlock()
 
-	works, crdWork, err = generateGlobalManifestResources(context.Background(), c, newTestMCO())
+	works, crdWork, err = generateGlobalManifestResources(context.Background(), c, newTestMCO(), mockKubeClient)
 	if err != nil {
 		t.Fatalf("Failed to get global manifestwork resource: (%v)", err)
 	}

@@ -28,7 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/util/retry"
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
@@ -77,6 +77,7 @@ type PlacementRuleReconciler struct {
 	Scheme     *runtime.Scheme
 	CRDMap     map[string]bool
 	RESTMapper meta.RESTMapper
+	KubeClient kubernetes.Interface
 
 	statusIsInitialized bool
 	statusMu            sync.Mutex
@@ -186,6 +187,7 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 			mco,
 			obsAddonList,
 			r.CRDMap,
+			r.KubeClient,
 		); err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to create all related resources: %w", err)
 		}
@@ -370,7 +372,7 @@ func (r *PlacementRuleReconciler) ensureMCOAResources(ctx context.Context, mco *
 	}
 	resourcesToCreate = append(resourcesToCreate, hubServerCaCertSecret)
 
-	amAccessorTokenSecret, err := generateAmAccessorTokenSecret(r.Client)
+	amAccessorTokenSecret, err = generateAmAccessorTokenSecret(r.Client, r.KubeClient)
 	if err != nil {
 		return fmt.Errorf("failed to generate alertManager token secret: %w", err)
 	}
@@ -449,6 +451,7 @@ func createAllRelatedRes(
 	mco *mcov1beta2.MultiClusterObservability,
 	obsAddonList *mcov1beta1.ObservabilityAddonList,
 	CRDMap map[string]bool,
+	kubeClient kubernetes.Interface,
 ) error {
 	var err error
 	// create the clusterrole if not there
@@ -477,7 +480,7 @@ func createAllRelatedRes(
 		return fmt.Errorf("failed to load templates: %w", err)
 	}
 
-	works, crdv1Work, err := generateGlobalManifestResources(ctx, c, mco)
+	works, crdv1Work, err := generateGlobalManifestResources(ctx, c, mco, kubeClient)
 	if err != nil {
 		return err
 	}
@@ -1034,18 +1037,6 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		CreateFunc: func(e event.CreateEvent) bool {
 			if e.Object.GetName() == config.AlertmanagerAccessorSAName &&
 				e.Object.GetNamespace() == config.GetDefaultNamespace() {
-				// wait 10s for access_token of alertmanager and generate the secret that contains the access_token
-				if err := wait.PollUntilContextTimeout(context.Background(), 2*time.Second, 10*time.Second, true, func(ctx context.Context) (bool, error) {
-					var err error
-					log.Info("generate amAccessorTokenSecret for alertmanager access serviceaccount CREATE")
-					if amAccessorTokenSecret, err = generateAmAccessorTokenSecret(c); err == nil {
-						return true, nil
-					}
-					return false, err
-				}); err != nil {
-					log.Error(err, "error polling in createfunc")
-					return false
-				}
 				return true
 			}
 			return false
@@ -1054,8 +1045,6 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			if (e.ObjectNew.GetName() == config.AlertmanagerAccessorSAName &&
 				e.ObjectNew.GetNamespace() == config.GetDefaultNamespace()) &&
 				e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() {
-				// regenerate the secret that contains the access_token for the Alertmanager in the Hub cluster
-				amAccessorTokenSecret, _ = generateAmAccessorTokenSecret(c)
 				return true
 			}
 			return false
@@ -1233,6 +1222,7 @@ func StartPlacementController(mgr manager.Manager, crdMap map[string]bool) error
 		Scheme:     mgr.GetScheme(),
 		CRDMap:     crdMap,
 		RESTMapper: mgr.GetRESTMapper(),
+		KubeClient: kubernetes.NewForConfigOrDie(mgr.GetConfig()),
 	}).SetupWithManager(mgr); err != nil {
 		log.Error(err, "unable to create controller", "controller", "PlacementRule")
 		return err
