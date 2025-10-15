@@ -679,7 +679,6 @@ func createOrUpdateUserWorkloadMonitoringConfig(
 		var index int
 		for i, cfg := range parsed.Prometheus.AlertmanagerConfigs {
 			if isManaged(cfg, hubInfo) {
-				parsed.Prometheus.AlertmanagerConfigs[i] = newAdditionalAlertmanagerConfig(hubInfo)
 				exists = true
 				index = i
 				break
