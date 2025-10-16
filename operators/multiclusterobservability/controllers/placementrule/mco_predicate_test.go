@@ -33,7 +33,7 @@ func TestMCOPredFunc(t *testing.T) {
 	objs := []runtime.Object{pull, newConsoleRoute(), newTestObsApiRoute(),
 		newTestAlertmanagerRoute(), newTestIngressController(), newTestRouteCASecret(),
 		newCASecret(), newCertSecret(mcoNamespace), NewMetricsAllowListCM(),
-		NewAmAccessorSA(), NewAmAccessorTokenSecret(), newTestAmDefaultCA(), newManagedClusterAddon()}
+		NewAmAccessorSA(), newTestAmDefaultCA(), newManagedClusterAddon()}
 	cl := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 
 	caseList := []struct {
