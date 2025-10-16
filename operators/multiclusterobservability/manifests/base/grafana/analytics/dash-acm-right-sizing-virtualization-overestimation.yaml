@@ -127,11 +127,12 @@ data:
               "datasource": {
                 "uid": "${datasource}"
               },
-              "exemplar": true,
               "expr": "floor(max_over_time(acm_rs_vm:namespace:cpu_request{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\", name=~\"$vm\"}[$days:])-\nmax_over_time(acm_rs_vm:namespace:cpu_recommendation{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\", name=~\"$vm\"}[$days:]))",
               "hide": false,
+              "instant": true,
               "interval": "",
               "legendFormat": "",
+              "range": false,
               "refId": "A"
             }
           ],
@@ -307,11 +308,11 @@ data:
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "exemplar": true,
               "expr": "max_over_time(acm_rs_vm:namespace:cpu_usage{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\", name=~\"$vm\"}[$days:])",
-              "instant": false,
+              "instant": true,
               "interval": "",
               "legendFormat": "",
+              "range": false,
               "refId": "A"
             }
           ],
@@ -397,11 +398,11 @@ data:
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "exemplar": true,
               "expr": "max_over_time(acm_rs_vm:namespace:cpu_request{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\", name=~\"$vm\"}[$days:])",
-              "instant": false,
+              "instant": true,
               "interval": "",
               "legendFormat": "",
+              "range": false,
               "refId": "A"
             }
           ],
@@ -490,10 +491,11 @@ data:
               "datasource": {
                 "uid": "${datasource}"
               },
-              "exemplar": true,
               "expr": "max_over_time(acm_rs_vm:namespace:cpu_usage{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\", name=~\"$vm\"}[$days:]) / max_over_time(acm_rs_vm:namespace:cpu_request{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\", name=~\"$vm\"}[$days:])",
+              "instant": true,
               "interval": "",
               "legendFormat": "",
+              "range": false,
               "refId": "A"
             }
           ],
@@ -595,11 +597,11 @@ data:
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "exemplar": true,
               "expr": "floor((max_over_time(acm_rs_vm:namespace:memory_request{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\", name=~\"$vm\"}[$days:])/ 1073741824) -\n(max_over_time(acm_rs_vm:namespace:memory_recommendation{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\", name=~\"$vm\"}[$days:])/ 1073741824))",
-              "instant": false,
+              "instant": true,
               "interval": "",
               "legendFormat": "",
+              "range": false,
               "refId": "A"
             }
           ],
