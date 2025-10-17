@@ -22,10 +22,10 @@ spec:
     - expr: sum(grpc_server_started_total{job="etcd",grpc_service="etcdserverpb.Watch",grpc_type="bidi_stream"})
         - sum(grpc_server_handled_total{job="etcd",grpc_service="etcdserverpb.Watch",grpc_type="bidi_stream"})
       record: active_streams_watch:grpc_server_handled_total:sum
-    - expr: (histogram_quantile(0.99,sum(rate(apiserver_request_duration_seconds_bucket{job="apiserver",
+    - expr: (histogram_quantile(0.99,sum(rate(apiserver_request_duration_seconds_bucket{component="apiserver",
         verb!="WATCH"}[5m])) by (le)))
       record: apiserver_request_duration_seconds:histogram_quantile_99
-    - expr: (histogram_quantile(0.99,sum(rate(apiserver_request_duration_seconds_bucket{job="apiserver",
+    - expr: (histogram_quantile(0.99,sum(rate(apiserver_request_duration_seconds_bucket{component="apiserver",
         verb!="WATCH"}[5m])) by (le, verb, instance)))
       record: apiserver_request_duration_seconds:histogram_quantile_99:instance
     - expr: sum(machine_memory_bytes)
@@ -139,8 +139,8 @@ spec:
       expr: sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{container!=""}) by (namespace) or sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_rate{container!=""}) by (namespace)
     - expr: sum(rate(grpc_server_handled_total{job="etcd",grpc_type="unary",grpc_code!="OK"}[5m]))
       record: rpc_rate:grpc_server_handled_total:sum_rate
-    - expr: sum(increase(apiserver_request_duration_seconds_bucket{job="apiserver",service="kubernetes",le="1",verb=~"POST|PUT|DELETE|PATCH"}[1m]))
-        / sum(increase(apiserver_request_duration_seconds_bucket{job="apiserver",service="kubernetes",verb=~"POST|PUT|DELETE|PATCH"}[1m]))
+    - expr: sum(increase(apiserver_request_duration_seconds_bucket{component="apiserver",service="kubernetes",le="1",verb=~"POST|PUT|DELETE|PATCH"}[1m]))
+        / sum(increase(apiserver_request_duration_seconds_bucket{component="apiserver",service="kubernetes",verb=~"POST|PUT|DELETE|PATCH"}[1m]))
       record: sli:apiserver_request_duration_seconds:trend:1m
     - expr: sli:apiserver_request_duration_seconds:trend:1m >= bool 0.9900
       record: sli:apiserver_request_duration_seconds:bin:trend:1m
