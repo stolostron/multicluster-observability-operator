@@ -97,7 +97,7 @@ spec:
         rate(node_disk_io_time_weighted_seconds_total{job="node-exporter", device=~"mmcblk.p.+|nvme.+|rbd.+|sd.+|vd.+|xvd.+|dm-.+|dasd.+"}[1m])
       record: instance_device:node_disk_io_time_weighted_seconds:rate1m
     - expr: |-
-        max by (cluster, namespace, workload, pod) (
+        max by (namespace, workload, pod) (
           label_replace(
             label_replace(
               kube_pod_owner{job="kube-state-metrics", owner_kind="ReplicaSet"},
@@ -114,7 +114,7 @@ spec:
         workload_type: deployment
       record: namespace_workload_pod:kube_pod_owner:relabel
     - expr: |-
-        max by (cluster, namespace, workload, pod) (
+        max by (namespace, workload, pod) (
           label_replace(
             kube_pod_owner{job="kube-state-metrics", owner_kind="DaemonSet"},
             "workload", "$1", "owner_name", "(.*)"
@@ -124,7 +124,7 @@ spec:
         workload_type: daemonset
       record: namespace_workload_pod:kube_pod_owner:relabel
     - expr: |-
-        max by (cluster, namespace, workload, pod) (
+        max by (namespace, workload, pod) (
           label_replace(
             kube_pod_owner{job="kube-state-metrics", owner_kind="StatefulSet"},
             "workload", "$1", "owner_name", "(.*)"
@@ -151,10 +151,10 @@ spec:
     - record: kube_pod_container_resource_limits:sum
       expr: sum(kube_pod_container_resource_limits) by (resource, namespace)
     - expr: |-
-        sum by (cluster, namespace, pod, container) (
+        sum by (namespace, pod, container) (
           rate(container_cpu_usage_seconds_total{job="kubelet", metrics_path="/metrics/cadvisor", image!=""}[5m])
-        ) * on (cluster, namespace, pod) group_left(node) topk by (cluster, namespace, pod) (
-          1, max by(cluster, namespace, pod, node) (kube_pod_info{node!=""})
+        ) * on (namespace, pod) group_left(node) topk by (namespace, pod) (
+          1, max by(namespace, pod, node) (kube_pod_info{node!=""})
         )
       record: node_namespace_pod_container:container_cpu_usage_seconds_total:sum_rate
     - expr: histogram_quantile(0.99, sum(rate(workqueue_queue_duration_seconds_bucket{job="apiserver"}[5m])) by (instance, name, le))
@@ -163,15 +163,15 @@ spec:
       record: grpc_server_started_total:etcd_unary:sum_rate
     - expr: avg(rate(node_cpu_seconds_total{mode="idle"}[5m]))
       record: node_cpu_seconds_total:mode_idle:avg_rate5m
-    - expr: sum(cluster:kube_pod_container_resource_requests:memory:sum) by (cluster) / sum(kube_node_status_allocatable{resource="memory"}) by (cluster)
+    - expr: sum(cluster:kube_pod_container_resource_requests:memory:sum) / sum(kube_node_status_allocatable{resource="memory"})
       record: cluster:memory_requested:ratio
-    - expr: 1 - sum(:node_memory_MemAvailable_bytes:sum) by (cluster) / sum(kube_node_status_allocatable{resource="memory"}) by (cluster)
+    - expr: 1 - sum(:node_memory_MemAvailable_bytes:sum) / sum(kube_node_status_allocatable{resource="memory"})
       record: cluster:memory_utilized:ratio
-    - expr: sum(kube_node_status_allocatable{resource="cpu"}) by (cluster)
+    - expr: sum(kube_node_status_allocatable{resource="cpu"})
       record: cluster:cpu_allocatable:sum
-    - expr: sum(cluster:kube_pod_container_resource_requests:cpu:sum) by (cluster) / sum(kube_node_status_allocatable{resource="cpu"}) by (cluster)
+    - expr: sum(cluster:kube_pod_container_resource_requests:cpu:sum) / sum(kube_node_status_allocatable{resource="cpu"})
       record: cluster:cpu_requested:ratio
-    - expr: sum(machine_cpu_cores) by (cluster)
+    - expr: sum(machine_cpu_cores)
       record: cluster:cpu_cores:sum
     - record: namespace_pod:container_network_receive_bytes_total:sum
       expr: sum(irate(container_network_receive_bytes_total[5m])) by (namespace, pod)
