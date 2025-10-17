@@ -35,6 +35,7 @@ const (
 	nameUserWorkloadInstrumentation   = "userWorkloadInstrumentation"
 	nameUserWorkloadMetricsCollection = "userWorkloadMetricsCollection"
 	nameMetricsHubHostname            = "metricsHubHostname"
+	nameMetricsAlertManagerHostname   = "metricsAlertManagerHostname"
 	namePLatformMetricsUI             = "platformMetricsUI"
 
 	grafanaMCOAHomeDashboardID = "89eaec849a6e4837a619fb0540c22b13"
@@ -42,8 +43,9 @@ const (
 )
 
 type MCOARendererOptions struct {
-	DisableCMAORender  bool
-	MetricsHubHostname string
+	DisableCMAORender              bool
+	MetricsHubHostname             string
+	MetricsHubAlertmanagerHostname string
 }
 
 func (r *MCORenderer) newMCOARenderer() {
@@ -258,10 +260,17 @@ func (r *MCORenderer) renderAddonDeploymentConfig(
 
 		if (cs.Platform != nil && cs.Platform.Metrics.Default.Enabled) ||
 			(cs.UserWorkloads != nil && cs.UserWorkloads.Metrics.Default.Enabled) {
-			if r.rendererOptions == nil || r.rendererOptions.MCOAOptions.MetricsHubHostname == "" {
-				return nil, fmt.Errorf("MetricsHubHostname is required when metrics collection is enabled")
+			if r.rendererOptions == nil {
+				return nil, fmt.Errorf("rendererOptions is nil")
 			}
-			appendCustomVar(aodc, nameMetricsHubHostname, r.rendererOptions.MCOAOptions.MetricsHubHostname)
+			metricsHubHostname := r.rendererOptions.MCOAOptions.MetricsHubHostname
+			metricsHubAlertmanagerHostname := r.rendererOptions.MCOAOptions.MetricsHubAlertmanagerHostname
+			if metricsHubHostname == "" || metricsHubAlertmanagerHostname == "" {
+				return nil, fmt.Errorf("MetricsHubHostname (%q) and MetricsHubAlertmanagerHostname (%q) are required when metrics collection is enabled",
+					metricsHubHostname, metricsHubAlertmanagerHostname)
+			}
+			appendCustomVar(aodc, nameMetricsHubHostname, metricsHubHostname)
+			appendCustomVar(aodc, nameMetricsAlertManagerHostname, metricsHubAlertmanagerHostname)
 		}
 
 		u.Object, err = runtime.DefaultUnstructuredConverter.ToUnstructured(aodc)
