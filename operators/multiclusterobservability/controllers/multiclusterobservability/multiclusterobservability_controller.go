@@ -259,11 +259,17 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		return ctrl.Result{}, fmt.Errorf("failed to get the Observatorium API URL: %w", err) // Already wrapped
 	}
 
+	alertmanagerURL, err := mcoconfig.GetAlertmanagerURL(ctx, r.Client, mcoconfig.GetDefaultNamespace())
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to get the AlertManager API URL: %w", err)
+	}
+
 	// Build render options
 	rendererOptions := &rendering.RendererOptions{
 		MCOAOptions: rendering.MCOARendererOptions{
-			DisableCMAORender:  disableMCOACMAORender,
-			MetricsHubHostname: obsAPIURL.Host,
+			DisableCMAORender:              disableMCOACMAORender,
+			MetricsHubHostname:             obsAPIURL.Host,
+			MetricsHubAlertmanagerHostname: alertmanagerURL.Host,
 		},
 	}
 
