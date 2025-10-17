@@ -153,6 +153,9 @@ func removePostponeDeleteAnnotationForManifestwork(c client.Client, namespace st
 }
 
 func createManifestwork(ctx context.Context, c client.Client, work *workv1.ManifestWork) error {
+	if work.ObjectMeta.Namespace == config.GetDefaultNamespace() {
+		return nil
+	}
 	name := work.ObjectMeta.Name
 	namespace := work.ObjectMeta.Namespace
 	found := &workv1.ManifestWork{}
