@@ -60,7 +60,6 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/deploying"
 	commonutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
-	operatorsutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 )
 
 const (
@@ -161,22 +160,6 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 
 	// start to update mco status
 	StartStatusUpdate(r.Client, instance)
-
-	if _, ok := os.LookupEnv("UNIT_TEST"); !ok {
-		crdClient, err := operatorsutil.GetOrCreateCRDClient()
-		if err != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to get or create CRD client: %w", err)
-		}
-		mcghCrdExists, err := operatorsutil.CheckCRDExist(crdClient, config.MCGHCrdName)
-		if err != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to check for CRD %s: %w", config.MCGHCrdName, err)
-		}
-		if mcghCrdExists {
-			// Do not start the MCO if the MCGH CRD exists
-			reqLogger.Info("MCGH CRD exists, Observability is not supported")
-			return ctrl.Result{}, nil
-		}
-	}
 
 	ingressCtlCrdExists := r.CRDMap[config.IngressControllerCRD]
 	if _, ok := os.LookupEnv("UNIT_TEST"); !ok {
@@ -448,10 +431,6 @@ func (r *MultiClusterObservabilityReconciler) initFinalization(ctx context.Conte
 		operatorconfig.IsMCOTerminating = true
 		if err := cleanUpClusterScopedResources(r, mco); err != nil {
 			log.Error(err, "Failed to remove cluster scoped resources")
-			return false, err
-		}
-		if err := placementctrl.DeleteHubMetricsCollectionDeployments(ctx, r.Client); err != nil {
-			log.Error(err, "Failed to delete hub metrics collection deployments and resources")
 			return false, err
 		}
 		// clean up operand names

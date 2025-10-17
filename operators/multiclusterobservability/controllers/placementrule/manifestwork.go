@@ -499,6 +499,27 @@ func ensureResourcesForHubMetricsCollection(ctx context.Context, c client.Client
 			return fmt.Errorf("failed to set controller reference on object: %w", err)
 		}
 
+		//if kind is a Service account set the name as HubServiceAccount
+		if kind == "ServiceAccount" {
+			obj.SetName(config.HubEndpointSaName)
+		}
+
+		if kind == "ClusterRoleBinding" {
+			if role, ok := obj.(*rbacv1.ClusterRoleBinding); ok {
+				obj.SetName(config.HubEndpointRoleBindingName)
+				if len(role.Subjects) > 0 {
+					role.Subjects[0].Name = config.HubEndpointSaName
+				}
+			}
+		}
+
+		// set the service account name in the deployment to HubServiceAccount
+		if kind == "Deployment" {
+			if deploy, ok := obj.(*appsv1.Deployment); ok {
+				deploy.Spec.Template.Spec.ServiceAccountName = config.HubEndpointSaName
+			}
+		}
+
 		setHubNamespace(obj)
 		objectToDeploy = append(objectToDeploy, obj)
 	}

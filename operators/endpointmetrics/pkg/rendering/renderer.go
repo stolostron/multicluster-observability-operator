@@ -178,7 +178,7 @@ func Render(
 					},
 					Key: "alertmanager.yaml",
 				}
-				spec.Secrets = []string{"hub-alertmanager-router-ca", "observability-alertmanager-accessor"}
+				spec.Secrets = []string{"hub-alertmanager-router-ca" + "-" + hubInfo.HubClusterDomain, "observability-alertmanager-accessor" + "-" + hubInfo.HubClusterDomain}
 			}
 
 			unstructuredObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
@@ -259,6 +259,10 @@ func Render(
 			// replace the hub alertmanager address. Address will be set to null when alerts are disabled
 			hubAmEp := strings.TrimPrefix(hubInfo.AlertmanagerEndpoint, "https://")
 			amConfig = strings.ReplaceAll(amConfig, "_ALERTMANAGER_ENDPOINT_", hubAmEp)
+			amConfig = strings.ReplaceAll(amConfig, "credentials_file: /etc/prometheus/secrets/observability-alertmanager-accessor/token",
+				fmt.Sprintf("credentials_file: /etc/prometheus/secrets/observability-alertmanager-accessor-%s/token", hubInfo.HubClusterDomain))
+			amConfig = strings.ReplaceAll(amConfig, "ca_file: /etc/prometheus/secrets/hub-alertmanager-router-ca/service-ca.crt",
+				fmt.Sprintf("ca_file: /etc/prometheus/secrets/hub-alertmanager-router-ca-%s/service-ca.crt", hubInfo.HubClusterDomain))
 			s.StringData["alertmanager.yaml"] = amConfig
 
 			unstructuredObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
