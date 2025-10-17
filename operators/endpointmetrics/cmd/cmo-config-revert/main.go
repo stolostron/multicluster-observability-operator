@@ -8,7 +8,6 @@ import (
 	"context"
 	"flag"
 	"log"
-	"os"
 	"time"
 
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/controllers/observabilityendpoint"
@@ -21,11 +20,6 @@ import (
 )
 
 func main() {
-	//set env as CMO_SCRIPT_MODE to enable the script mode
-	err := os.Setenv("CMO_SCRIPT_MODE", "true")
-	if err != nil {
-		return
-	}
 	kubeClient, err := client.New(ctrl.GetConfigOrDie(), client.Options{})
 	if err != nil {
 		log.Fatalf("unable to create client: %v", err)
@@ -47,10 +41,4 @@ func main() {
 		log.Fatalf("unable to revert user workload monitoring config: %v", err)
 	}
 	log.Println("reverted user workload monitoring config")
-
-	//unset env after the script is done
-	err = os.Unsetenv("CMO_SCRIPT_MODE")
-	if err != nil {
-		return
-	}
 }
