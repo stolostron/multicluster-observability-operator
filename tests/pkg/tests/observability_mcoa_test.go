@@ -72,7 +72,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 				utils.CheckDeploymentAvailabilityOnClusters(managedClusters, metricsCollectorDeploymentName, utils.MCO_ADDON_NAMESPACE, false)
 			})
 			By("MCOA should be available", func() {
-				utils.CheckDeploymentAvailability(testOptions.HubCluster, mcoaManagerDeploymentName, utils.MCO_ADDON_NAMESPACE, true)
+				utils.CheckDeploymentAvailability(testOptions.HubCluster, mcoaManagerDeploymentName, utils.MCO_NAMESPACE, true)
 				utils.CheckStatefulSetAvailabilityOnClusters(managedClustersWithHub, platformPrometheusAgentStatefulSetName, utils.MCO_AGENT_ADDON_NAMESPACE, true)
 				utils.CheckManagedClusterAddonStatus(testOptions, mcoaAddonName)
 			})
@@ -80,7 +80,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 				Expect(utils.SetMCOACapabilities(testOptions, false, false)).NotTo(HaveOccurred())
 			})
 			By("MCOA should be deleted", func() {
-				utils.CheckDeploymentAvailability(testOptions.HubCluster, mcoaManagerDeploymentName, utils.MCO_ADDON_NAMESPACE, false)
+				utils.CheckDeploymentAvailability(testOptions.HubCluster, mcoaManagerDeploymentName, utils.MCO_NAMESPACE, false)
 				utils.CheckDeploymentAvailabilityOnClusters(managedClustersWithHub, oboPrometheusOperatorDeploymentName, utils.MCO_AGENT_ADDON_NAMESPACE, false)
 				utils.CheckStatefulSetAvailabilityOnClusters(managedClustersWithHub, platformPrometheusAgentStatefulSetName, utils.MCO_AGENT_ADDON_NAMESPACE, false)
 			})
@@ -368,7 +368,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 		})
 		By("The MCOA components should be deleted", func() {
 			utils.CheckStatefulSetAvailabilityOnClusters(managedClustersWithHub, platformPrometheusAgentStatefulSetName, utils.MCO_AGENT_ADDON_NAMESPACE, false)
-			utils.CheckDeploymentAvailability(testOptions.HubCluster, mcoaManagerDeploymentName, utils.MCO_ADDON_NAMESPACE, false)
+			utils.CheckDeploymentAvailability(testOptions.HubCluster, mcoaManagerDeploymentName, utils.MCO_NAMESPACE, false)
 		})
 	})
 })
