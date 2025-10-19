@@ -606,7 +606,7 @@ func createOrUpdateCMOConfig(
 		return false, err
 	}
 
-	if reflect.DeepEqual(*existingCfg, *updatedCMOCfg) {
+	if equality.Semantic.DeepEqual(*existingCfg, *updatedCMOCfg) {
 		return false, nil
 	}
 
@@ -839,14 +839,14 @@ func RevertUserWorkloadMonitoringConfig(ctx context.Context, client client.Clien
 		parsed.Prometheus.AlertmanagerConfigs = copiedAlertmanagerConfigs
 		if len(copiedAlertmanagerConfigs) == 0 {
 			parsed.Prometheus.AlertmanagerConfigs = nil
-			if reflect.DeepEqual(*parsed.Prometheus, cmomanifests.PrometheusRestrictedConfig{}) {
+			if equality.Semantic.DeepEqual(*parsed.Prometheus, cmomanifests.PrometheusRestrictedConfig{}) {
 				parsed.Prometheus = nil
 			}
 		}
 	}
 
 	// check if the parsed is empty UserWorkloadConfiguration
-	if reflect.DeepEqual(*parsed, cmomanifests.UserWorkloadConfiguration{}) {
+	if equality.Semantic.DeepEqual(*parsed, cmomanifests.UserWorkloadConfiguration{}) {
 		log.Info("empty UserWorkloadConfiguration, deleting configmap if it still exists", "name", operatorconfig.OCPUserWorkloadMonitoringConfigMap)
 		err = client.Delete(ctx, found)
 		if err != nil && !errors.IsNotFound(err) {
