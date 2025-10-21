@@ -13,6 +13,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/klog"
 
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/utils"
@@ -239,6 +240,50 @@ var _ = Describe("", func() {
 		})
 	},
 	)
+
+	Context("Observability: Verify ClusterManagementAddOn SpecHash functionality [P2][Sev2][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @pre-upgrade (addon/g0)", func() {
+		It("Observability: Verify ClusterManagementAddOn SpecHash is correctly set for addon framework", func() {
+			By("Checking that ClusterManagementAddOn exists")
+			Eventually(func() error {
+				_, err := utils.GetClusterManagementAddOn(testOptions)
+				return err
+			}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
+
+			By("Verifying that ClusterManagementAddOn has spec hash set in status")
+			Eventually(func() error {
+				return utils.ValidateSpecHashInClusterManagementAddOn(testOptions)
+			}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
+
+			By("Getting managed cluster to validate AddOnDeploymentConfig")
+			managedClusterName := utils.GetManagedClusterName(testOptions)
+			if managedClusterName == "" || managedClusterName == hubManagedClusterName {
+				klog.V(1).Infof("Skipping AddOnDeploymentConfig validation - no suitable managed cluster found")
+				return
+			}
+
+			By("Checking if AddOnDeploymentConfig is set for managed cluster")
+			var addonConfig *unstructured.Unstructured
+			Eventually(func() error {
+				var err error
+				addonConfig, err = utils.GetAddOnDeploymentConfigForCluster(testOptions, managedClusterName)
+				if err != nil {
+					klog.V(1).Infof("AddOnDeploymentConfig not found or error: %v", err)
+					// This is not necessarily an error - cluster may use default config
+					return nil
+				}
+				return nil
+			}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
+
+			if addonConfig != nil {
+				By("Validating that spec hash matches the AddOnDeploymentConfig")
+				Eventually(func() error {
+					return utils.ValidateSpecHashMatchesConfig(testOptions, addonConfig)
+				}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
+			} else {
+				klog.V(1).Infof("No custom AddOnDeploymentConfig found for cluster %s, using defaults", managedClusterName)
+			}
+		})
+	})
 
 	JustAfterEach(func() {
 		Expect(utils.IntegrityChecking(testOptions)).NotTo(HaveOccurred())
