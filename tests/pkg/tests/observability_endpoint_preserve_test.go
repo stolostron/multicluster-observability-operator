@@ -124,13 +124,13 @@ var _ = Describe("", func() {
 		}
 
 		By("Deleting metrics-collector-view clusterolebinding")
-		err, crb := utils.GetCRB(testOptions, false, "metrics-collector-view")
+		err, crb := utils.GetCRB(testOptions, true, "hub-metrics-collector-view")
 		Expect(err).ToNot(HaveOccurred())
-		err = utils.DeleteCRB(testOptions, false, "metrics-collector-view")
+		err = utils.DeleteCRB(testOptions, true, "hub-metrics-collector-view")
 		Expect(err).ToNot(HaveOccurred())
 		newCrb := &rbacv1.ClusterRoleBinding{}
 		Eventually(func() bool {
-			err, newCrb = utils.GetCRB(testOptions, false, "metrics-collector-view")
+			err, newCrb = utils.GetCRB(testOptions, true, "hub-metrics-collector-view")
 			if err == nil {
 				if crb.ObjectMeta.ResourceVersion != newCrb.ObjectMeta.ResourceVersion {
 					return true
@@ -142,10 +142,10 @@ var _ = Describe("", func() {
 		By("Updating metrics-collector-view clusterolebinding")
 		updateSubName := "test-subject"
 		newCrb.Subjects[0].Name = updateSubName
-		err, _ = utils.UpdateCRB(testOptions, false, "metrics-collector-view", newCrb)
+		err, _ = utils.UpdateCRB(testOptions, true, "hub-metrics-collector-view", newCrb)
 		Expect(err).ToNot(HaveOccurred())
 		Eventually(func() bool {
-			err, revertCrb := utils.GetCRB(testOptions, false, "metrics-collector-view")
+			err, revertCrb := utils.GetCRB(testOptions, true, "hub-metrics-collector-view")
 			if err == nil {
 				if revertCrb.ObjectMeta.ResourceVersion != newCrb.ObjectMeta.ResourceVersion &&
 					revertCrb.Subjects[0].Name != updateSubName {

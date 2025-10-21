@@ -21,15 +21,20 @@ import (
 )
 
 const (
-	ClusterRoleBindingName = "metrics-collector-view"
-	CaConfigmapName        = "metrics-collector-serving-certs-ca-bundle"
-	OwnerLabelKey          = "owner"
-	OwnerLabelValue        = "observabilityaddon"
+	ClusterRoleBindingName    = "metrics-collector-view"
+	HubClusterRoleBindingName = "hub-metrics-collector-view"
+	CaConfigmapName           = "metrics-collector-serving-certs-ca-bundle"
+	OwnerLabelKey             = "owner"
+	OwnerLabelValue           = "observabilityaddon"
 )
 
-func DeleteMonitoringClusterRoleBinding(ctx context.Context, client client.Client) error {
+func DeleteMonitoringClusterRoleBinding(ctx context.Context, client client.Client, isHubMetricsCollector bool) error {
+	clusterRoleBindingName := ClusterRoleBindingName
+	if isHubMetricsCollector {
+		clusterRoleBindingName = HubClusterRoleBindingName
+	}
 	rb := &rbacv1.ClusterRoleBinding{}
-	err := client.Get(ctx, types.NamespacedName{Name: ClusterRoleBindingName,
+	err := client.Get(ctx, types.NamespacedName{Name: clusterRoleBindingName,
 		Namespace: ""}, rb)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -44,10 +49,20 @@ func DeleteMonitoringClusterRoleBinding(ctx context.Context, client client.Clien
 	return nil
 }
 
-func CreateMonitoringClusterRoleBinding(ctx context.Context, log logr.Logger, client client.Client, namespace, serviceAccountName string) error {
+func CreateMonitoringClusterRoleBinding(ctx context.Context, log logr.Logger, client client.Client, namespace, serviceAccountName string, isHubMetricsCollector bool) error {
+	clusterRoleBindingName := ClusterRoleBindingName
+	if isHubMetricsCollector {
+		clusterRoleBindingName = HubClusterRoleBindingName
+	}
+	saSubject := rbacv1.Subject{
+		Kind:      "ServiceAccount",
+		Name:      serviceAccountName,
+		Namespace: namespace,
+	}
+
 	rb := &rbacv1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: ClusterRoleBindingName,
+			Name: clusterRoleBindingName,
 			Annotations: map[string]string{
 				OwnerLabelKey: OwnerLabelValue,
 			},
@@ -57,18 +72,11 @@ func CreateMonitoringClusterRoleBinding(ctx context.Context, log logr.Logger, cl
 			Name:     "cluster-monitoring-view",
 			APIGroup: "rbac.authorization.k8s.io",
 		},
-		Subjects: []rbacv1.Subject{
-			{
-				Kind:      "ServiceAccount",
-				Name:      serviceAccountName,
-				Namespace: namespace,
-			},
-		},
+		Subjects: []rbacv1.Subject{saSubject},
 	}
 
 	found := &rbacv1.ClusterRoleBinding{}
-	err := client.Get(ctx, types.NamespacedName{Name: ClusterRoleBindingName,
-		Namespace: ""}, found)
+	err := client.Get(ctx, types.NamespacedName{Name: clusterRoleBindingName, Namespace: ""}, found)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			if err := client.Create(ctx, rb); err != nil {
@@ -82,7 +90,6 @@ func CreateMonitoringClusterRoleBinding(ctx context.Context, log logr.Logger, cl
 	if reflect.DeepEqual(rb.RoleRef, found.RoleRef) && reflect.DeepEqual(rb.Subjects, found.Subjects) {
 		return nil
 	}
-
 	rb.ObjectMeta.ResourceVersion = found.ObjectMeta.ResourceVersion
 	err = client.Update(ctx, rb)
 	if err != nil {
