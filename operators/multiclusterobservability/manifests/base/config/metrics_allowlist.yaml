@@ -356,7 +356,7 @@ data:
     rules: []
     recording_rules:
       - record: apiserver_request_duration_seconds:histogram_quantile_99
-        expr: histogram_quantile(0.99,sum(rate(apiserver_request_duration_seconds_bucket{job=\"apiserver\", verb!=\"WATCH\", _id!=\"\"}[5m])) by (le, _id))
+        expr: histogram_quantile(0.99,sum(rate(apiserver_request_duration_seconds_bucket{component=\"apiserver\", verb!=\"WATCH\", _id!=\"\"}[5m])) by (le, _id))
       - record: sum:apiserver_request_total:1h
         expr: sum(rate(apiserver_request_total{job=\"apiserver\", _id!=\"\"}[1h])) by(code, instance, _id)
       - record: sum:apiserver_request_total:5m
