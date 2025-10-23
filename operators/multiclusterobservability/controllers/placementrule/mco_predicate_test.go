@@ -33,54 +33,54 @@ func TestMCOPredFunc(t *testing.T) {
 	objs := []runtime.Object{pull, newConsoleRoute(), newTestObsApiRoute(),
 		newTestAlertmanagerRoute(), newTestIngressController(), newTestRouteCASecret(),
 		newCASecret(), newCertSecret(mcoNamespace), NewMetricsAllowListCM(),
-		NewAmAccessorSA(), NewAmAccessorTokenSecret(), newTestAmDefaultCA(), newManagedClusterAddon()}
+		NewAmAccessorSA(), newTestAmDefaultCA(), newManagedClusterAddon()}
 	cl := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 
 	caseList := []struct {
-		caseName            string
-		disableAlerts       bool
-		ingressCtlCrdExists bool
-		expectedCreate      bool
-		expectedUpdate      bool
-		expectedDelete      bool
+		caseName       string
+		disableAlerts  bool
+		crdMap         map[string]bool
+		expectedCreate bool
+		expectedUpdate bool
+		expectedDelete bool
 	}{
 		{
-			caseName:            "no mco-disable-alerting annotation ingressCtlCrdExists=true",
-			disableAlerts:       false,
-			ingressCtlCrdExists: true,
-			expectedCreate:      true,
-			expectedUpdate:      false,
-			expectedDelete:      true,
+			caseName:       "no mco-disable-alerting annotation ingressCtlCrdExists=true",
+			disableAlerts:  false,
+			crdMap:         map[string]bool{config.IngressControllerCRD: true},
+			expectedCreate: true,
+			expectedUpdate: false,
+			expectedDelete: true,
 		},
 		{
-			caseName:            "no mco-disable-alerting annotation ingressCtlCrdExists=false",
-			disableAlerts:       false,
-			ingressCtlCrdExists: false,
-			expectedCreate:      true,
-			expectedUpdate:      false,
-			expectedDelete:      true,
+			caseName:       "no mco-disable-alerting annotation ingressCtlCrdExists=false",
+			disableAlerts:  false,
+			crdMap:         map[string]bool{config.IngressControllerCRD: false},
+			expectedCreate: true,
+			expectedUpdate: false,
+			expectedDelete: true,
 		},
 		{
-			caseName:            "mco-disable-alerting=true ingressCtlCrdExists=true",
-			disableAlerts:       true,
-			ingressCtlCrdExists: true,
-			expectedCreate:      true,
-			expectedUpdate:      true,
-			expectedDelete:      true,
+			caseName:       "mco-disable-alerting=true ingressCtlCrdExists=true",
+			disableAlerts:  true,
+			crdMap:         map[string]bool{config.IngressControllerCRD: true},
+			expectedCreate: true,
+			expectedUpdate: true,
+			expectedDelete: true,
 		},
 		{
-			caseName:            "mco-disable-alerting=true ingressCtlCrdExists=false",
-			disableAlerts:       true,
-			ingressCtlCrdExists: false,
-			expectedCreate:      true,
-			expectedUpdate:      true,
-			expectedDelete:      true,
+			caseName:       "mco-disable-alerting=true ingressCtlCrdExists=false",
+			disableAlerts:  true,
+			crdMap:         map[string]bool{config.IngressControllerCRD: false},
+			expectedCreate: true,
+			expectedUpdate: true,
+			expectedDelete: true,
 		},
 	}
 
 	for _, c := range caseList {
 		t.Run(c.caseName, func(t *testing.T) {
-			pred := getMCOPred(cl, c.ingressCtlCrdExists)
+			pred := getMCOPred(cl, c.crdMap)
 
 			// create
 			resetBeforeEachMCOPredTest()

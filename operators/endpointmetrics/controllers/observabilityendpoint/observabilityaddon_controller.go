@@ -95,6 +95,23 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 		}
 	}
 
+	// retrieve the hubInfo
+	hubSecret := &corev1.Secret{}
+	err := r.Client.Get(
+		ctx,
+		types.NamespacedName{Name: operatorconfig.HubInfoSecretName, Namespace: r.Namespace},
+		hubSecret,
+	)
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to get hub info secret %s/%s: %w", r.Namespace, operatorconfig.HubInfoSecretName, err)
+	}
+	hubInfo := &operatorconfig.HubInfo{}
+	err = yaml.Unmarshal(hubSecret.Data[operatorconfig.HubInfoSecretKey], &hubInfo)
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to unmarshal hub info: %w", err)
+	}
+	hubInfo.ClusterName = string(hubSecret.Data[operatorconfig.ClusterNameKey])
+
 	hubObsAddon := &oav1beta1.ObservabilityAddon{}
 	obsAddon := &oav1beta1.ObservabilityAddon{}
 	deleteFlag := false
@@ -134,7 +151,7 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 			deleteFlag = true
 		}
 		// Init finalizers
-		deleted, err := r.initFinalization(ctx, deleteFlag, hubObsAddon, isHypershift)
+		deleted, err := r.initFinalization(ctx, deleteFlag, hubObsAddon, isHypershift, hubInfo)
 		if err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to init finalization: %w", err)
 		}
@@ -142,23 +159,6 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 			return ctrl.Result{}, nil
 		}
 	}
-
-	// retrieve the hubInfo
-	hubSecret := &corev1.Secret{}
-	err := r.Client.Get(
-		ctx,
-		types.NamespacedName{Name: operatorconfig.HubInfoSecretName, Namespace: r.Namespace},
-		hubSecret,
-	)
-	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to get hub info secret %s/%s: %w", r.Namespace, operatorconfig.HubInfoSecretName, err)
-	}
-	hubInfo := &operatorconfig.HubInfo{}
-	err = yaml.Unmarshal(hubSecret.Data[operatorconfig.HubInfoSecretKey], &hubInfo)
-	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to unmarshal hub info: %w", err)
-	}
-	hubInfo.ClusterName = string(hubSecret.Data[operatorconfig.ClusterNameKey])
 
 	clusterType := operatorconfig.DefaultClusterType
 	clusterID := ""
@@ -220,7 +220,7 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 			clusterType = operatorconfig.SnoClusterType
 		}
 
-		err = openshift.CreateMonitoringClusterRoleBinding(ctx, r.Logger, r.Client, r.Namespace, r.ServiceAccountName)
+		err = openshift.CreateMonitoringClusterRoleBinding(ctx, r.Logger, r.Client, r.Namespace, r.ServiceAccountName, r.IsHubMetricsCollector)
 		if err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to create monitoring cluster role binding: %w", err)
 		}
@@ -332,7 +332,7 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 
 func (r *ObservabilityAddonReconciler) initFinalization(
 	ctx context.Context, delete bool, hubObsAddon *oav1beta1.ObservabilityAddon,
-	isHypershift bool,
+	isHypershift bool, hubInfo *operatorconfig.HubInfo,
 ) (bool, error) {
 	if delete && slices.Contains(hubObsAddon.GetFinalizers(), obsAddonFinalizer) {
 		r.Logger.Info("To clean observability components/configurations in the cluster")
@@ -347,13 +347,13 @@ func (r *ObservabilityAddonReconciler) initFinalization(
 		}
 
 		// revert the change to cluster monitoring stack
-		err := RevertClusterMonitoringConfig(ctx, r.Client)
+		err := RevertClusterMonitoringConfig(ctx, r.Client, hubInfo)
 		if err != nil {
 			return false, err
 		}
 
 		// revert the change to user workload monitoring stack
-		err = RevertUserWorkloadMonitoringConfig(ctx, r.Client)
+		err = RevertUserWorkloadMonitoringConfig(ctx, r.Client, hubInfo)
 		if err != nil {
 			return false, err
 		}
@@ -371,7 +371,7 @@ func (r *ObservabilityAddonReconciler) initFinalization(
 		// metrics collector is not present? Moved this part up as we need to clean
 		// up cm and crb before we remove the finalizer - is that the right way to do it?
 		if !r.InstallPrometheus {
-			err = openshift.DeleteMonitoringClusterRoleBinding(ctx, r.Client)
+			err = openshift.DeleteMonitoringClusterRoleBinding(ctx, r.Client, r.IsHubMetricsCollector)
 			if err != nil {
 				r.Logger.Error(err, "Failed to delete monitoring cluster role binding")
 				return false, err
@@ -518,7 +518,9 @@ func (r *ObservabilityAddonReconciler) SetupWithManager(mgr ctrl.Manager) error 
 		ctrlBuilder = ctrlBuilder.Watches(
 			&oav1beta2.MultiClusterObservability{},
 			&handler.EnqueueRequestForObject{},
-		)
+		).Watches(&rbacv1.ClusterRoleBinding{},
+			&handler.EnqueueRequestForObject{},
+			builder.WithPredicates(getPred(openshift.HubClusterRoleBindingName, "", false, true, true)))
 	}
 
 	return ctrlBuilder.

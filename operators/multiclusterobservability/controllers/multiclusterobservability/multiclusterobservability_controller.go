@@ -24,7 +24,7 @@ import (
 	"github.com/go-logr/logr"
 	routev1 "github.com/openshift/api/route/v1"
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
-	monitoringv1aplha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
+	monitoringv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	mchv1 "github.com/stolostron/multiclusterhub-operator/api/v1"
 	observatoriumv1alpha1 "github.com/stolostron/observatorium-operator/api/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
@@ -160,22 +160,6 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 
 	// start to update mco status
 	StartStatusUpdate(r.Client, instance)
-
-	//if _, ok := os.LookupEnv("UNIT_TEST"); !ok {
-	//	crdClient, err := operatorsutil.GetOrCreateCRDClient()
-	//	if err != nil {
-	//		return ctrl.Result{}, fmt.Errorf("failed to get or create CRD client: %w", err)
-	//	}
-	//	mcghCrdExists, err := operatorsutil.CheckCRDExist(crdClient, config.MCGHCrdName)
-	//	if err != nil {
-	//		return ctrl.Result{}, fmt.Errorf("failed to check for CRD %s: %w", config.MCGHCrdName, err)
-	//	}
-	//	if mcghCrdExists {
-	//		// Do not start the MCO if the MCGH CRD exists
-	//		reqLogger.Info("MCGH CRD exists, Observability is not supported")
-	//		return ctrl.Result{}, nil
-	//	}
-	//}
 
 	ingressCtlCrdExists := r.CRDMap[config.IngressControllerCRD]
 	if _, ok := os.LookupEnv("UNIT_TEST"); !ok {
@@ -331,6 +315,13 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 			}
 		}
 		if err := deployer.Deploy(ctx, res); err != nil {
+			if meta.IsNoMatchError(err) {
+				kind := res.GetKind()
+				if kind == monitoringv1.PrometheusRuleKind || kind == monitoringv1alpha1.ScrapeConfigsKind {
+					reqLogger.Info("CRD not yet available, waiting for MCOA to install it", "Kind", kind)
+					continue
+				}
+			}
 			return ctrl.Result{}, fmt.Errorf("failed to deploy %s %s/%s: %w", res.GetKind(), resNS, res.GetName(), err)
 		}
 	}
@@ -441,10 +432,6 @@ func (r *MultiClusterObservabilityReconciler) initFinalization(ctx context.Conte
 		operatorconfig.IsMCOTerminating = true
 		if err := cleanUpClusterScopedResources(r, mco); err != nil {
 			log.Error(err, "Failed to remove cluster scoped resources")
-			return false, err
-		}
-		if err := placementctrl.DeleteHubMetricsCollectionDeployments(ctx, r.Client); err != nil {
-			log.Error(err, "Failed to delete hub metrics collection deployments and resources")
 			return false, err
 		}
 		// clean up operand names
@@ -594,7 +581,7 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 
 	// Only watch owned ScrapeConfigs CR when the CRD exists (used by MCOA)
 	if exists, ok := r.CRDMap[config.PrometheusScrapeConfigsCrdName]; ok && exists {
-		ctrBuilder = ctrBuilder.Owns(&monitoringv1aplha1.ScrapeConfig{})
+		ctrBuilder = ctrBuilder.Owns(&monitoringv1alpha1.ScrapeConfig{})
 	} else {
 		log.Info("ScrapeConfig CRD will not be watched", "exists", exists, "ok", ok)
 	}

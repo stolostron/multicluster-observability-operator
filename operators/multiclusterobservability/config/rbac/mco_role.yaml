@@ -346,18 +346,29 @@ rules:
   - list
   - watch
 - apiGroups:
-  - monitoring.coreos.com
+    - monitoring.coreos.com
   resources:
-  - prometheusrules
-  - scrapeconfigs
+    - prometheusrules
   verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
+    - create
+    - delete
+    - get
+    - list
+    - patch
+    - update
+    - watch
+- apiGroups:
+    - monitoring.rhobs
+  resources:
+    - scrapeconfigs
+  verbs:
+    - create
+    - delete
+    - get
+    - list
+    - patch
+    - update
+    - watch
 - apiGroups:
   - oauth.openshift.io
   resources:

@@ -15,7 +15,7 @@ import (
 	config "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 )
 
-func getMCOPred(c client.Client, ingressCtlCrdExists bool) predicate.Funcs {
+func getMCOPred(c client.Client, crdMap map[string]bool) predicate.Funcs {
 	return predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 			// generate the image pull secret
@@ -28,7 +28,7 @@ func getMCOPred(c client.Client, ingressCtlCrdExists bool) predicate.Funcs {
 			alertingStatus := config.IsAlertingDisabledInSpec(mco)
 			config.SetAlertingDisabled(alertingStatus)
 			var err error
-			hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, ingressCtlCrdExists, config.IsUWMAlertingDisabledInSpec(mco))
+			hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, crdMap, config.IsUWMAlertingDisabledInSpec(mco))
 			if err != nil {
 				log.Error(err, "unable to get HubInfoSecret", "controller", "PlacementRule")
 			}
@@ -63,7 +63,7 @@ func getMCOPred(c client.Client, ingressCtlCrdExists bool) predicate.Funcs {
 
 			if updateHubInfo {
 				var err error
-				hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, ingressCtlCrdExists, config.IsUWMAlertingDisabledInSpec(newMCO))
+				hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, crdMap, config.IsUWMAlertingDisabledInSpec(newMCO))
 				if err != nil {
 					log.Error(err, "unable to get HubInfoSecret", "controller", "PlacementRule")
 				}
