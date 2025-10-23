@@ -69,84 +69,32 @@ if [[ -n ${IS_KIND_ENV} ]]; then
 fi
 printf "\n  clusters:" >>${OPTIONSFILE}
 
-# Check if there's a separate managed cluster (not local-cluster)
-# Priority order:
-# 1. CI clusterpool: ${SHARED_DIR}/managed-1.kc
-# 2. Explicit env vars: MANAGED_CLUSTER_KUBECONFIG or IMPORT_KUBECONFIG
-# 3. Fallback to local-cluster only
-
-managed_cluster_name=""
-managed_cluster_kubeconfig=""
-
-if [[ -n ${SHARED_DIR} ]] && [[ -f ${SHARED_DIR}/managed-1.kc ]]; then
-  # CI environment with clusterpool
-  managed_cluster_name="managed"
-  managed_cluster_kubeconfig="${SHARED_DIR}/managed-1.kc"
-  echo "Detected CI clusterpool environment: ${SHARED_DIR}/managed-1.kc"
-elif [[ -n ${MANAGED_CLUSTER_NAME} ]] && [[ ${MANAGED_CLUSTER_NAME} != "local-cluster" ]]; then
-  # Explicit environment variables
-  managed_cluster_name=${MANAGED_CLUSTER_NAME}
-  managed_cluster_kubeconfig=${MANAGED_CLUSTER_KUBECONFIG:-${IMPORT_KUBECONFIG}}
-fi
-
-if [[ -n ${managed_cluster_name} ]] && [[ -f ${managed_cluster_kubeconfig} ]]; then
-  # Add managed cluster as the first entry
-  managed_base_domain=${MANAGED_CLUSTER_BASE_DOMAIN:-""}
-  managed_api_url=${MANAGED_CLUSTER_API_URL:-""}
-
-  # Auto-extract API URL from kubeconfig if not provided
-  if [[ -z ${managed_api_url} ]]; then
-    managed_api_url=$(kubectl --kubeconfig=${managed_cluster_kubeconfig} config view -o jsonpath="{.clusters[0].cluster.server}" 2>/dev/null || echo "")
-    if [[ -n ${managed_api_url} ]]; then
-      echo "Extracted API URL from managed cluster kubeconfig: ${managed_api_url}"
-    fi
-  fi
-
-  # Auto-extract base domain from API URL
-  if [[ -z ${managed_base_domain} ]] && [[ -n ${managed_api_url} ]]; then
-    managed_base_domain=$(echo ${managed_api_url} | sed -E 's|https://api\.([^:]+).*|\1|')
-    if [[ -n ${managed_base_domain} ]]; then
-      echo "Extracted base domain from API URL: ${managed_base_domain}"
-    fi
-  fi
-
-  # construct API URL from base domain if we have it
-  if [[ -z ${managed_api_url} ]] && [[ -n ${managed_base_domain} ]]; then
-    managed_api_url="https://api.${managed_base_domain}:6443"
-  fi
-
-  printf "\n    - name: ${managed_cluster_name}" >>${OPTIONSFILE}
-  if [[ -n ${managed_api_url} ]]; then
-    printf "\n      clusterServerURL: ${managed_api_url}" >>${OPTIONSFILE}
-  fi
-  if [[ -n ${managed_base_domain} ]]; then
-    printf "\n      baseDomain: ${managed_base_domain}" >>${OPTIONSFILE}
-  fi
-  printf "\n      kubeconfig: ${managed_cluster_kubeconfig}" >>${OPTIONSFILE}
-
-  echo "Added managed cluster to options.yaml: ${managed_cluster_name} (kubeconfig: ${managed_cluster_kubeconfig})"
-else
-  # No separate managed cluster - add local-cluster only (for KinD or hub-only testing)
+if [[ -n ${IS_KIND_ENV} ]]; then
   printf "\n    - name: ${cluster_name}" >>${OPTIONSFILE}
-  if [[ -n ${IS_KIND_ENV} ]]; then
-    printf "\n      clusterServerURL: ${clusterServerURL}" >>${OPTIONSFILE}
-  fi
+  printf "\n      clusterServerURL: ${clusterServerURL}" >>${OPTIONSFILE}
   printf "\n      baseDomain: ${base_domain}" >>${OPTIONSFILE}
   printf "\n      kubeconfig: ${kubeconfig_hub_path}" >>${OPTIONSFILE}
   printf "\n      kubecontext: ${kubecontext}" >>${OPTIONSFILE}
-
-  echo "No separate managed cluster found - addon tests will be skipped"
 fi
 
-# TODO check environment variables for SPOKE cluster
-# If spoke cluster is detected, add it to the options file
-printf "\n    - name: ${cluster_name}" >>${OPTIONSFILE}
-if [[ -n ${IS_KIND_ENV} ]]; then
-  printf "\n      clusterServerURL: ${clusterServerURL}" >>${OPTIONSFILE}
+if [[ ! -z "${SHARED_DIR}" ]]; then
+  for ((i=1 ; i <= CLUSTERPOOL_MANAGED_COUNT ; i++)); do
+    if [[ -f "${SHARED_DIR}/managed-${i}.kc" ]]; then
+      # Managed cluster kubeconfig exists in CI environment
+      kubeconfig_managed_path="${SHARED_DIR}/managed-${i}.kc"
+      # Get managed cluster context and server URL
+      managed_kubecontext=$(KUBECONFIG="${kubeconfig_managed_path}" kubectl config current-context)
+      managed_clusterServerURL=$(KUBECONFIG="${kubeconfig_managed_path}" kubectl config view -o jsonpath="{.clusters[0].cluster.server}")
+      managed_app_domain=$(KUBECONFIG="${kubeconfig_managed_path}" kubectl -n openshift-ingress-operator get ingresscontrollers default -ojsonpath='{.status.domain}')
+      managed_base_domain="${managed_app_domain#apps.}"
+      printf "\n    - name: managed-${i}" >>${OPTIONSFILE}
+      printf "\n      clusterServerURL: ${managed_clusterServerURL}" >>${OPTIONSFILE}
+      printf "\n      baseDomain: ${managed_base_domain}" >>${OPTIONSFILE}
+      printf "\n      kubeconfig: ${kubeconfig_managed_path}" >>${OPTIONSFILE}
+      printf "\n      kubecontext: ${managed_kubecontext}" >>${OPTIONSFILE}
+    fi
+  done 
 fi
-printf "\n      baseDomain: ${base_domain}" >>${OPTIONSFILE}
-printf "\n      kubeconfig: ${kubeconfig_hub_path}" >>${OPTIONSFILE}
-printf "\n      kubecontext: ${kubecontext}" >>${OPTIONSFILE}
 
 if command -v ginkgo &>/dev/null; then
   GINKGO_CMD=ginkgo
