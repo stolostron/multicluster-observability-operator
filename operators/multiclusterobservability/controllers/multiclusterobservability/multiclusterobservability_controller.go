@@ -264,6 +264,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		MCOAOptions: rendering.MCOARendererOptions{
 			DisableCMAORender:  disableMCOACMAORender,
 			MetricsHubHostname: obsAPIURL.Host,
+			IsGlobalHubEnabled: r.CRDMap[config.MCGHCrdName],
 		},
 	}
 
