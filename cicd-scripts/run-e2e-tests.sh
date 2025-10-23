@@ -68,13 +68,33 @@ if [[ -n ${IS_KIND_ENV} ]]; then
   printf "\n    grafanaHost: grafana-test" >>${OPTIONSFILE}
 fi
 printf "\n  clusters:" >>${OPTIONSFILE}
-printf "\n    - name: ${cluster_name}" >>${OPTIONSFILE}
+
 if [[ -n ${IS_KIND_ENV} ]]; then
+  printf "\n    - name: ${cluster_name}" >>${OPTIONSFILE}
   printf "\n      clusterServerURL: ${clusterServerURL}" >>${OPTIONSFILE}
+  printf "\n      baseDomain: ${base_domain}" >>${OPTIONSFILE}
+  printf "\n      kubeconfig: ${kubeconfig_hub_path}" >>${OPTIONSFILE}
+  printf "\n      kubecontext: ${kubecontext}" >>${OPTIONSFILE}
 fi
-printf "\n      baseDomain: ${base_domain}" >>${OPTIONSFILE}
-printf "\n      kubeconfig: ${kubeconfig_hub_path}" >>${OPTIONSFILE}
-printf "\n      kubecontext: ${kubecontext}" >>${OPTIONSFILE}
+
+if [[ ! -z "${SHARED_DIR}" ]]; then
+  for ((i=1 ; i <= CLUSTERPOOL_MANAGED_COUNT ; i++)); do
+    if [[ -f "${SHARED_DIR}/managed-${i}.kc" ]]; then
+      # Managed cluster kubeconfig exists in CI environment
+      kubeconfig_managed_path="${SHARED_DIR}/managed-${i}.kc"
+      # Get managed cluster context and server URL
+      managed_kubecontext=$(KUBECONFIG="${kubeconfig_managed_path}" kubectl config current-context)
+      managed_clusterServerURL=$(KUBECONFIG="${kubeconfig_managed_path}" kubectl config view -o jsonpath="{.clusters[0].cluster.server}")
+      managed_app_domain=$(KUBECONFIG="${kubeconfig_managed_path}" kubectl -n openshift-ingress-operator get ingresscontrollers default -ojsonpath='{.status.domain}')
+      managed_base_domain="${managed_app_domain#apps.}"
+      printf "\n    - name: managed-${i}" >>${OPTIONSFILE}
+      printf "\n      clusterServerURL: ${managed_clusterServerURL}" >>${OPTIONSFILE}
+      printf "\n      baseDomain: ${managed_base_domain}" >>${OPTIONSFILE}
+      printf "\n      kubeconfig: ${kubeconfig_managed_path}" >>${OPTIONSFILE}
+      printf "\n      kubecontext: ${managed_kubecontext}" >>${OPTIONSFILE}
+    fi
+  done 
+fi
 
 if command -v ginkgo &>/dev/null; then
   GINKGO_CMD=ginkgo
