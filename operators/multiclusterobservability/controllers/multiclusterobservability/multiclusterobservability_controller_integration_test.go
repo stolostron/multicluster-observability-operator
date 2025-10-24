@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	operatorv1 "github.com/openshift/api/operator/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	imagev1client "github.com/openshift/client-go/image/clientset/versioned/typed/image/v1"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
@@ -70,6 +71,7 @@ func TestIntegrationMCO_HubRules(t *testing.T) {
 		newStorageSecret(storageSecretName, hubNamespace, storageSecretKey),
 		newObservatoriumApiRoute(hubNamespace),
 		newMCO(hubNamespace, storageSecretName, storageSecretKey),
+		newAlertManagerRoute(),
 	}
 	err = createResources(k8sHubClient, resources...)
 	require.NoError(t, err)
@@ -162,6 +164,8 @@ func createBaseScheme(t *testing.T) *runtime.Scheme {
 	require.NoError(t, promv1alpha1.AddToScheme(scheme))
 	require.NoError(t, routev1.AddToScheme(scheme))
 	require.NoError(t, addonapiv1alpha1.AddToScheme(scheme))
+	require.NoError(t, operatorv1.AddToScheme(scheme))
+
 	return scheme
 }
 
@@ -236,6 +240,21 @@ func newMCO(ns, storageSecretName, storageSecretKey string) *mcov1beta2.MultiClu
 					},
 				},
 			},
+		},
+	}
+}
+
+func newAlertManagerRoute() *routev1.Route {
+	return &routev1.Route{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "alertmanager",
+			Namespace: config.GetDefaultNamespace(),
+		},
+		Spec: routev1.RouteSpec{
+			To: routev1.RouteTargetReference{
+				Name: "alertmanager",
+			},
+			Host: "alert.manager",
 		},
 	}
 }
