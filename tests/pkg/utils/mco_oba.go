@@ -7,18 +7,16 @@ package utils
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/klog"
+	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 )
 
-const (
-	OBMAddonEnabledMessage = "Cluster metrics sent successfully"
-)
-
-func CheckOBAStatus(opt TestOptions, namespace, status string) error {
+func CheckOBAStatus(opt TestOptions, namespace string) error {
 	dynClient := NewKubeClientDynamic(
 		opt.HubCluster.ClusterServerURL,
 		opt.KubeConfig,
@@ -31,12 +29,17 @@ func CheckOBAStatus(opt TestOptions, namespace, status string) error {
 		return err
 	}
 
-	obaStatus := fmt.Sprint(oba.Object["status"])
-	if strings.Contains(obaStatus, status) {
-		return nil
-	} else {
-		return fmt.Errorf("observability-addon is not ready for managed cluster %q with status %q: %v", namespace, obaStatus, oba.Object)
+	addon := &addonv1alpha1.ManagedClusterAddOn{}
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(oba.Object, addon)
+	if err != nil {
+		return fmt.Errorf("failed to convert unstructured to addon: %w", err)
 	}
+
+	if meta.IsStatusConditionTrue(addon.Status.Conditions, "Available") {
+		return nil
+	}
+
+	return fmt.Errorf("observability-addon is not ready for managed cluster %q, conditions: %+v", namespace, addon.Status.Conditions)
 }
 
 func CheckOBADeleted(opt TestOptions, cluster ClustersInfo) error {
@@ -65,7 +68,7 @@ func CheckAllOBAsEnabled(opt TestOptions) error {
 			klog.V(1).Infof("Skip OBA status for managedcluster: %v", cluster.Name)
 			continue
 		}
-		err = CheckOBAStatus(opt, cluster.Name, OBMAddonEnabledMessage)
+		err = CheckOBAStatus(opt, cluster.Name)
 		if err != nil {
 			klog.V(1).Infof("Error checking OBA status for cluster %q: %v", cluster.Name, err)
 			return err

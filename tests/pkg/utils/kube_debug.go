@@ -16,9 +16,11 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog"
+	clusterv1 "open-cluster-management.io/api/cluster/v1"
 )
 
 // LogFailingTestStandardDebugInfo logs standard debug info for failing tests.
@@ -314,11 +316,26 @@ func LogManagedClusters(client dynamic.Interface) {
 	var managedClustersData strings.Builder
 	managedClustersData.WriteString(">>>>>>>>>> Managed Clusters >>>>>>>>>>\n")
 	for _, obj := range objs.Items {
-		mc, err := json.MarshalIndent(obj, "", "  ")
+		managedCluster := &clusterv1.ManagedCluster{}
+		err := runtime.DefaultUnstructuredConverter.FromUnstructured(obj.Object, managedCluster)
 		if err != nil {
-			klog.Errorf("Failed to marshal ManagedCluster %q: %s", obj.GetName(), err.Error())
+			klog.Errorf("failed to convert unstructured to ManagedCluster %s: %v", obj.GetName(), err)
+			continue
 		}
-		managedClustersData.WriteString(string(mc))
+
+		managedCluster.ManagedFields = nil
+
+		for i := range managedCluster.Spec.ManagedClusterClientConfigs {
+			if len(managedCluster.Spec.ManagedClusterClientConfigs[i].CABundle) > 0 {
+				managedCluster.Spec.ManagedClusterClientConfigs[i].CABundle = []byte("xxx_omitted")
+			}
+		}
+
+		mc, err := json.MarshalIndent(managedCluster, "", "  ")
+		if err != nil {
+			klog.Errorf("Failed to marshal ManagedCluster %q: %s", managedCluster.GetName(), err.Error())
+		}
+		managedClustersData.WriteString(string(mc) + "\n")
 	}
 	managedClustersData.WriteString("<<<<<<<<<< Managed Clusters <<<<<<<<<<")
 	klog.Info(managedClustersData.String())
