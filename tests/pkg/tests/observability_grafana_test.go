@@ -38,7 +38,6 @@ var _ = Describe("", func() {
 			if err != nil {
 				return err
 			}
-			klog.V(1).Infof("Checking metrics from spoke clusters for %v", clusters)
 			for _, cluster := range clusters {
 				query := fmt.Sprintf("node_memory_MemAvailable_bytes{cluster=\"%s\"}", cluster.Name)
 				res, err := utils.QueryGrafana(
