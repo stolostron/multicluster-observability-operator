@@ -19,7 +19,6 @@ const (
 )
 
 func CheckOBAStatus(opt TestOptions, namespace, status string) error {
-	klog.V(1).Infof("Check OBA status for a cluster: %q", namespace)
 	dynClient := NewKubeClientDynamic(
 		opt.HubCluster.ClusterServerURL,
 		opt.KubeConfig,
@@ -34,7 +33,6 @@ func CheckOBAStatus(opt TestOptions, namespace, status string) error {
 
 	obaStatus := fmt.Sprint(oba.Object["status"])
 	if strings.Contains(obaStatus, status) {
-		klog.V(1).Infof("observability-addon is ready for managed cluster %q with status %q", namespace, obaStatus)
 		return nil
 	} else {
 		return fmt.Errorf("observability-addon is not ready for managed cluster %q with status %q: %v", namespace, obaStatus, oba.Object)
@@ -59,7 +57,6 @@ func CheckAllOBAsEnabled(opt TestOptions) error {
 	if err != nil {
 		return err
 	}
-	klog.V(1).Infof("Check OBA status for \"managed\" clusters: %v", clusters)
 
 	for _, cluster := range clusters {
 		// skip the check for local-cluster
@@ -67,7 +64,6 @@ func CheckAllOBAsEnabled(opt TestOptions) error {
 			klog.V(1).Infof("Skip OBA status for managedcluster: %v", cluster.Name)
 			continue
 		}
-		klog.V(1).Infof("Check OBA status for managedcluster: %v", cluster.Name)
 		err = CheckOBAStatus(opt, cluster.Name, OBMAddonEnabledMessage)
 		if err != nil {
 			klog.V(1).Infof("Error checking OBA status for cluster %q: %v", cluster.Name, err)

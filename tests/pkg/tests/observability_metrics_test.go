@@ -11,7 +11,6 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/klog"
 
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/kustomize"
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/utils"
@@ -166,7 +165,6 @@ var _ = Describe("", func() {
 			"apiserver_request_duration_seconds:histogram_quantile_99",
 			"cluster:kube_pod_container_resource_requests:memory:sum",
 		}
-		klog.V(1).Infof("Checking metrics from spoke clusters for %v", metricList)
 		// Ensure that expected metrics are being collected
 		Eventually(func() error {
 			for _, cluster := range clusters {

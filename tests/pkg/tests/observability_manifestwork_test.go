@@ -12,7 +12,6 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/klog"
 
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/utils"
 )
@@ -108,7 +107,6 @@ var _ = Describe("", func() {
 
 			It("[Stable] Checking metric to ensure that no data is lost in 1 minute", func() {
 				Eventually(func() error {
-					klog.V(1).Infof("Checking metric to ensure that no data is lost in 1 minute for cluster %s", clusterName)
 					query := fmt.Sprintf(`timestamp(node_memory_MemAvailable_bytes{cluster="%s"}) - timestamp(node_memory_MemAvailable_bytes{cluster="%s"} offset 1m) > 59`, clusterName, clusterName)
 					res, err := utils.QueryGrafana(
 						testOptions,

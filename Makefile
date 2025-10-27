@@ -240,8 +240,3 @@ docker-push: ## Push docker image with the manager.
 .PHONY: bundle
 bundle: deps ## Generate bundle manifests and metadata, then validate generated files.
 	$(MAKE) -C operators/multiclusterobservability bundle
-
-.PHONY: attach-clusters
-attach-clusters: ## Attach managed clusters to hub cluster.
-	@echo "Attaching clusters ..."
-	@./cicd-scripts/cluster-join-e2e.sh
