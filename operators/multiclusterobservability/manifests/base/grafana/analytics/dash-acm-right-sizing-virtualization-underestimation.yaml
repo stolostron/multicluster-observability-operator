@@ -137,6 +137,18 @@ data:
             }
           ],
           "title": "CPU Underestimation",
+          "transformations": [
+            {
+              "id": "reduce",
+              "options": {
+                "includeTimeField": false,
+                "mode": "seriesToRows",
+                "reducers": [
+                  "lastNotNull"
+                ]
+              }
+            }
+          ],
           "type": "stat"
         },
         {
