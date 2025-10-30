@@ -36,6 +36,9 @@ else
   kubectl config view --raw --minify >${kubeconfig_hub_path}
 fi
 
+# After login to managed cluster
+echo "Kube Contexts: $(kubectl config get-contexts)"
+
 kubecontext=$(kubectl config current-context)
 cluster_name="local-cluster"
 
@@ -48,6 +51,8 @@ else
   base_domain="${app_domain#apps.}"
   kubectl apply -f ${ROOTDIR}/operators/multiclusterobservability/config/crd/bases --server-side=true --force-conflicts
 fi
+
+echo "CLUSTERPOOL_MANAGED_COUNT: ${CLUSTERPOOL_MANAGED_COUNT}"
 
 OPTIONSFILE=${ROOTDIR}/tests/resources/options.yaml
 # remove the options file if it exists
@@ -65,13 +70,34 @@ if [[ -n ${IS_KIND_ENV} ]]; then
   printf "\n    grafanaHost: grafana-test" >>${OPTIONSFILE}
 fi
 printf "\n  clusters:" >>${OPTIONSFILE}
-printf "\n    - name: ${cluster_name}" >>${OPTIONSFILE}
-if [[ -n ${IS_KIND_ENV} ]]; then
-  printf "\n      clusterServerURL: ${clusterServerURL}" >>${OPTIONSFILE}
+# If no shared dir or no managed cluster, add the hub cluster in list of managed clusters
+if [[ -z ${SHARED_DIR} ]] || [[ ! -f "${SHARED_DIR}/managed-1.kc" ]]; then
+  printf "\n    - name: ${cluster_name}" >>${OPTIONSFILE}
+  if [[ -n ${IS_KIND_ENV} ]]; then
+    printf "\n      clusterServerURL: ${clusterServerURL}" >>${OPTIONSFILE}
+  fi
+  printf "\n      baseDomain: ${base_domain}" >>${OPTIONSFILE}
+  printf "\n      kubeconfig: ${kubeconfig_hub_path}" >>${OPTIONSFILE}
+  printf "\n      kubecontext: ${kubecontext}" >>${OPTIONSFILE}
 fi
-printf "\n      baseDomain: ${base_domain}" >>${OPTIONSFILE}
-printf "\n      kubeconfig: ${kubeconfig_hub_path}" >>${OPTIONSFILE}
-printf "\n      kubecontext: ${kubecontext}" >>${OPTIONSFILE}
+
+if [[ -n ${SHARED_DIR} ]]; then
+  i=1
+  while [[ -f "${SHARED_DIR}/managed-${i}.kc" ]]; do
+    kubeconfig_managed_path="${SHARED_DIR}/managed-${i}.kc"
+    # Get managed cluster context, server URL, and base domain
+    managed_kubecontext=$(KUBECONFIG="${kubeconfig_managed_path}" kubectl config current-context)
+    managed_app_domain=$(KUBECONFIG="${kubeconfig_managed_path}" kubectl -n openshift-ingress-operator get ingresscontrollers default -ojsonpath='{.status.domain}')
+    managed_base_domain="${managed_app_domain#apps.}"
+    managed_server_url=$(KUBECONFIG="${kubeconfig_managed_path}" kubectl config view -o jsonpath="{.clusters[0].cluster.server}")
+    printf "\n    - baseDomain: ${managed_base_domain}" >>${OPTIONSFILE}
+    printf "\n      clusterServerURL: ${managed_server_url}" >>${OPTIONSFILE}
+    printf "\n      kubeconfig: ${kubeconfig_managed_path}" >>${OPTIONSFILE}
+    printf "\n      kubecontext: ${managed_kubecontext}" >>${OPTIONSFILE}
+    i=$((i + 1))
+  done
+  export KUBECONFIG="${kubeconfig_hub_path}"
+fi
 
 if command -v ginkgo &>/dev/null; then
   GINKGO_CMD=ginkgo

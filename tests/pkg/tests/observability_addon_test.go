@@ -81,6 +81,7 @@ var _ = Describe("", func() {
 				if clusterError != nil {
 					return clusterError
 				}
+				klog.V(1).Infof("observability_addon_test: Successfully retrieved %d managed clusters for metric testing", len(clusters))
 				for _, cluster := range clusters {
 					res, err := utils.QueryGrafana(
 						testOptions,
