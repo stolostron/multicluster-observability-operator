@@ -13,6 +13,7 @@ import (
 	"github.com/onsi/ginkgo/v2"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/klog"
 
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -35,6 +36,7 @@ type ClustersInfo struct {
 
 func UpdateObservabilityFromManagedCluster(opt TestOptions, enableObservability bool) error {
 	clusterName := GetManagedClusterName(opt)
+	klog.V(1).Infof("Clustername from GetManagedClusterName: <%s>\n", clusterName)
 	if clusterName != "" {
 		clientDynamic := GetKubeClientDynamic(opt, true)
 		cluster, err := clientDynamic.Resource(NewOCMManagedClustersGVR()).
