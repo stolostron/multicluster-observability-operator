@@ -61,7 +61,6 @@ var (
 	hubInfoSecret             *corev1.Secret
 	pullSecret                *corev1.Secret
 	metricsAllowlistConfigMap *corev1.ConfigMap
-	amAccessorTokenSecret     *corev1.Secret
 
 	obsAddonCRDv1                 *apiextensionsv1.CustomResourceDefinition
 	obsAddonCRDv1beta1            *apiextensionsv1beta1.CustomResourceDefinition
@@ -256,7 +255,7 @@ func generateGlobalManifestResources(ctx context.Context, c client.Client, mco *
 	}
 
 	// inject the alertmanager accessor bearer token secret
-	amAccessorTokenSecret, err = generateAmAccessorTokenSecret(c, kubeClient)
+	amAccessorTokenSecret, err := generateAmAccessorTokenSecret(c, kubeClient)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -712,8 +711,20 @@ func generateAmAccessorTokenSecret(cl client.Client, kubeClient kubernetes.Inter
 		return nil, fmt.Errorf("kubeClient is required but was nil")
 	}
 
-	// Check expiration on amAccessorTokenSecret
-	if amAccessorTokenSecret != nil {
+	// fetch any existing secrets
+	amAccessorTokenSecret := &corev1.Secret{}
+	err := cl.Get(context.TODO(),
+		types.NamespacedName{
+			Name:      config.AlertmanagerAccessorSecretName,
+			Namespace: spokeNameSpace,
+		}, amAccessorTokenSecret)
+	// If it's not found, we'll create it later
+	if err != nil && !k8serrors.IsNotFound(err) {
+		return nil, fmt.Errorf("unable to lookup existing alertmanager accessor secret. %w", err)
+	}
+
+	// If we managed to find an existing secret, check the expiration
+	if err == nil {
 		expirationBytes, hasExpiration := amAccessorTokenSecret.Annotations[amTokenExpiration]
 		createdBytes, hasCreated := amAccessorTokenSecret.Annotations[amTokenCreated]
 
