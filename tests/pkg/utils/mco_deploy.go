@@ -183,8 +183,15 @@ func PrintObject(ctx context.Context, client dynamic.Interface, gvr schema.Group
 		return
 	}
 
+	annotations, err := json.MarshalIndent(obj.GetAnnotations(), "", "  ")
+	if err != nil {
+		klog.V(1).Infof("Failed to marshal annotations for object %s in namespace %s: %v", name, ns, err)
+		return
+	}
+
 	klog.V(1).Infof("Object %s/%s/%s spec: %+v\n", ns, gvr.Resource, name, string(spec))
 	klog.V(1).Infof("Object %s/%s/%s status: %+v\n", ns, gvr.Resource, name, string(status))
+	klog.V(1).Infof("Object %s/%s/%s annotations: %+v\n", ns, gvr.Resource, name, string(annotations))
 }
 
 func CheckAllPodNodeSelector(opt TestOptions, nodeSelector map[string]any) error {
