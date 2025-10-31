@@ -32,6 +32,7 @@ const (
 	OBSERVATORIUM_COMPONENT_LABEL = "app.kubernetes.io/part-of=observatorium"
 	MCO_NAMESPACE                 = "open-cluster-management-observability"
 	MCO_ADDON_NAMESPACE           = "open-cluster-management-addon-observability"
+	MCO_AGENT_ADDON_NAMESPACE     = "open-cluster-management-agent-addon"
 	MCO_PULL_SECRET_NAME          = "multiclusterhub-operator-pull-secret"
 	OBJ_SECRET_NAME               = "thanos-object-storage" // #nosec G101 -- Not a hardcoded credential.
 	MCO_GROUP                     = "observability.open-cluster-management.io"
@@ -101,6 +102,13 @@ func NewPrometheusRuleGVR() schema.GroupVersionResource {
 		Group:    "monitoring.coreos.com",
 		Version:  "v1",
 		Resource: "prometheusrules"}
+}
+
+func NewScrapeConfigGVR() schema.GroupVersionResource {
+	return schema.GroupVersionResource{
+		Group:    "monitoring.rhobs",
+		Version:  "v1alpha1",
+		Resource: "scrapeconfigs"}
 }
 
 func GetAllMCOPods(opt TestOptions) ([]corev1.Pod, error) {
@@ -175,8 +183,15 @@ func PrintObject(ctx context.Context, client dynamic.Interface, gvr schema.Group
 		return
 	}
 
+	annotations, err := json.MarshalIndent(obj.GetAnnotations(), "", "  ")
+	if err != nil {
+		klog.V(1).Infof("Failed to marshal annotations for object %s in namespace %s: %v", name, ns, err)
+		return
+	}
+
 	klog.V(1).Infof("Object %s/%s/%s spec: %+v\n", ns, gvr.Resource, name, string(spec))
 	klog.V(1).Infof("Object %s/%s/%s status: %+v\n", ns, gvr.Resource, name, string(status))
+	klog.V(1).Infof("Object %s/%s/%s annotations: %+v\n", ns, gvr.Resource, name, string(annotations))
 }
 
 func CheckAllPodNodeSelector(opt TestOptions, nodeSelector map[string]any) error {
@@ -227,7 +242,7 @@ func CheckAllPodsAffinity(opt TestOptions) error {
 }
 
 func CheckStorageResize(opt TestOptions, stsName string, expectedCapacity string) error {
-	client := getKubeClient(opt, true)
+	client := GetKubeClient(opt, true)
 	statefulsets := client.AppsV1().StatefulSets(MCO_NAMESPACE)
 	statefulset, err := statefulsets.Get(context.TODO(), stsName, metav1.GetOptions{})
 	if err != nil {
@@ -245,7 +260,7 @@ func CheckStorageResize(opt TestOptions, stsName string, expectedCapacity string
 }
 
 func CheckOBAComponents(opt TestOptions) error {
-	client := getKubeClient(opt, false)
+	client := GetKubeClient(opt, false)
 	deployments := client.AppsV1().Deployments(MCO_ADDON_NAMESPACE)
 	expectedDeploymentNames := []string{
 		"endpoint-observability-operator",
@@ -397,6 +412,27 @@ func ModifyMCOCR(opt TestOptions) error {
 		return updateErr
 	}
 	return nil
+}
+
+func SetMCOACapabilities(opt TestOptions, platformMetrics, userWorkloadMetrics bool) error {
+	clientDynamic := NewKubeClientDynamic(
+		opt.HubCluster.ClusterServerURL,
+		opt.KubeConfig,
+		opt.HubCluster.KubeContext)
+	mco, getErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+	if getErr != nil {
+		return getErr
+	}
+
+	if err := unstructured.SetNestedField(mco.Object, platformMetrics, "spec", "capabilities", "platform", "metrics", "default", "enabled"); err != nil {
+		return err
+	}
+	if err := unstructured.SetNestedField(mco.Object, userWorkloadMetrics, "spec", "capabilities", "userWorkloads", "metrics", "default", "enabled"); err != nil {
+		return err
+	}
+
+	_, updateErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Update(context.TODO(), mco, metav1.UpdateOptions{})
+	return updateErr
 }
 
 func CheckAdvRetentionConfig(opt TestOptions) (bool, error) {
