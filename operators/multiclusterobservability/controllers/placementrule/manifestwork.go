@@ -712,7 +712,31 @@ func generateAmAccessorTokenSecret(cl client.Client, kubeClient kubernetes.Inter
 		return nil, fmt.Errorf("kubeClient is required but was nil")
 	}
 
-	// Check expiration on amAccessorTokenSecret
+	// fetch any existing secrets from the hub-namespace if we didn't already
+	// have a secret saved in the global variable. We use a global variable
+	// because we might reconcile a spoke before the hub in which the spoke
+	// has a token which is newer than the one in the hub namespace. This is
+	// not strictly needed but we might as well create as few tokens as possible
+	if amAccessorTokenSecret == nil {
+		amAccessorTokenSecret = &corev1.Secret{}
+		err := cl.Get(context.TODO(),
+			types.NamespacedName{
+				Name:      config.AlertmanagerAccessorSecretName,
+				Namespace: config.GetDefaultNamespace(),
+			}, amAccessorTokenSecret)
+		if err != nil {
+			// If it's not found, we'll create a new one later
+			// we null the var here as it was set to an empty
+			// secret above, which is required for the Get function
+			if k8serrors.IsNotFound(err) {
+				amAccessorTokenSecret = nil
+			} else {
+				return nil, fmt.Errorf("unable to lookup existing alertmanager accessor secret. %w", err)
+			}
+		}
+	}
+
+	// If we managed to find an existing secret, check the expiration
 	if amAccessorTokenSecret != nil {
 		expirationBytes, hasExpiration := amAccessorTokenSecret.Annotations[amTokenExpiration]
 		createdBytes, hasCreated := amAccessorTokenSecret.Annotations[amTokenCreated]
@@ -740,15 +764,23 @@ func generateAmAccessorTokenSecret(cl client.Client, kubeClient kubernetes.Inter
 				return nil, nil
 			}
 			percentOfExp := float64(time.Until(expiration)) / float64(expectedDuration)
+			// Current amAccessorTokenSecret is not near expiration, returning it
 			if percentOfExp >= 0.2 {
-				// Current amAccessorTokenSecret is not near expiration, returning it
+				// We set the spoke namespace here to ensure it is created on the right
+				// namespace on spokes, since we fetched it from the hub namespace which
+				// is different. Further we set the ResourceVersion to be empty to ensure
+				// if this is the first time we create the object on a spoke, it goes
+				// without errors. When we are on the hub, the namespace for the secret
+				// will later be overwritten in ensureResourcesForHubMetricsCollection
+				amAccessorTokenSecret.SetNamespace(spokeNameSpace)
+				amAccessorTokenSecret.SetResourceVersion("")
 				return amAccessorTokenSecret, nil
 			}
 		}
-
 	}
 
-	// Creating our own token secret and binding it to the ServiceAccount
+	// This creates a JWT token for the alertmanager service account.
+	// This is used to verify incoming alertmanager connetions from prometheus.
 	tokenRequest, err := kubeClient.CoreV1().ServiceAccounts(config.GetDefaultNamespace()).CreateToken(context.TODO(), config.AlertmanagerAccessorSAName, &authv1.TokenRequest{
 		Spec: authv1.TokenRequestSpec{
 			ExpirationSeconds: ptr.To(int64(8640 * 3600)), // expires in 364 days
@@ -769,6 +801,8 @@ func generateAmAccessorTokenSecret(cl client.Client, kubeClient kubernetes.Inter
 	}
 
 	now := time.Now()
+	// Now create the secret for the spoke, with the JWT token
+	// from the service account token request above.
 	return &corev1.Secret{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: corev1.SchemeGroupVersion.String(),
