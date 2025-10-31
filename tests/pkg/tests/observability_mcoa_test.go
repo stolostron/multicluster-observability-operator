@@ -14,8 +14,8 @@ import (
 
 const (
 	mcoaManagerDeploymentName              = "multicluster-observability-addon-manager"
-	platformPrometheusAgentStatefulSetName = "platform-prometheus-agent"
-	uwlPrometheusAgentStatefulSetName      = "userworkload-prometheus-agent"
+	platformPrometheusAgentStatefulSetName = "prom-agent-platform-metrics-collector"
+	uwlPrometheusAgentStatefulSetName      = "prom-agent-user-workload-metrics-collector"
 	oboPrometheusOperatorDeploymentName    = "obo-prometheus-operator"
 	metricsCollectorDeploymentName         = "metrics-collector-deployment"
 	mcoaAddonName                          = "multicluster-observability-addon"
