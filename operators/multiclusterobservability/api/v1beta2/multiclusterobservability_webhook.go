@@ -6,7 +6,10 @@ package v1beta2
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
+	"gopkg.in/yaml.v2"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -25,6 +28,26 @@ import (
 var multiclusterobservabilitylog = logf.Log.WithName("multiclusterobservability-resource")
 
 var kubeClient kubernetes.Interface
+
+const (
+	// defaultNamespace is the default namespace for MultiClusterObservability resources
+	defaultNamespace = "open-cluster-management-observability"
+	
+	// Bucket name constraints per S3/GCS specifications
+	minBucketNameLength = 3
+	maxBucketNameLength = 63
+)
+
+// objectStorageConf represents the structure of object storage configuration
+type objectStorageConf struct {
+	Type   string            `yaml:"type"`
+	Config storageBackendConfig `yaml:"config"`
+}
+
+// storageBackendConfig represents the storage backend configuration
+type storageBackendConfig struct {
+	Bucket string `yaml:"bucket"`
+}
 
 func (mco *MultiClusterObservability) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
@@ -95,6 +118,102 @@ func (mco *MultiClusterObservability) validateMultiClusterObservabilityName() *f
 // definition.
 func (mco *MultiClusterObservability) validateMultiClusterObservabilitySpec() *field.Error {
 	// The field helpers from the kubernetes API machinery help us return nicely structured validation errors.
+	
+	// Validate object storage configuration if provided
+	if mco.Spec.StorageConfig == nil || mco.Spec.StorageConfig.MetricObjectStorage == nil {
+		// No storage config provided, skip validation
+		return nil
+	}
+
+	objStorageConf := mco.Spec.StorageConfig.MetricObjectStorage
+	storageConfigPath := field.NewPath("spec").Child("storageConfig").Child("metricObjectStorage")
+
+	// Get kubernetes client to read the secret
+	kubeClient, err := createOrGetKubeClient()
+	if err != nil {
+		return field.InternalError(storageConfigPath, fmt.Errorf("failed to create kubernetes client: %w", err))
+	}
+
+	// Read the object storage secret
+	secret, err := kubeClient.CoreV1().Secrets(defaultNamespace).Get(
+		context.TODO(),
+		objStorageConf.Name,
+		metav1.GetOptions{},
+	)
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			return field.Invalid(
+				storageConfigPath.Child("name"),
+				objStorageConf.Name,
+				fmt.Sprintf("object storage secret not found in namespace %s", defaultNamespace),
+			)
+		}
+		return field.InternalError(storageConfigPath.Child("name"), fmt.Errorf("failed to get object storage secret: %w", err))
+	}
+
+	// Extract the configuration data from the secret
+	data, ok := secret.Data[objStorageConf.Key]
+	if !ok {
+		return field.Invalid(
+			storageConfigPath.Child("key"),
+			objStorageConf.Key,
+			fmt.Sprintf("key '%s' not found in secret '%s'", objStorageConf.Key, objStorageConf.Name),
+		)
+	}
+
+	// Validate the object storage configuration (including bucket name length)
+	err = validateObjectStorageConfig(data)
+	if err != nil {
+		return field.Invalid(
+			storageConfigPath,
+			objStorageConf.Name,
+			fmt.Sprintf("invalid object storage configuration: %v", err),
+		)
+	}
+
+	return nil
+}
+
+// validateObjectStorageConfig validates object storage configuration including bucket name length
+func validateObjectStorageConfig(data []byte) error {
+	var objConf objectStorageConf
+	err := yaml.Unmarshal(data, &objConf)
+	if err != nil {
+		return fmt.Errorf("failed to parse object storage configuration: %w", err)
+	}
+
+	storageType := strings.ToLower(objConf.Type)
+	
+	// Validate based on storage type
+	switch storageType {
+	case "s3", "gcs":
+		return validateBucketName(objConf.Config.Bucket, storageType)
+	case "azure":
+		// Azure uses "container" instead of "bucket", skip bucket validation
+		return nil
+	default:
+		return fmt.Errorf("unsupported storage type: %s", objConf.Type)
+	}
+}
+
+// validateBucketName validates bucket name length according to S3/GCS specifications
+func validateBucketName(bucket string, storageType string) error {
+	if bucket == "" {
+		return fmt.Errorf("bucket name cannot be empty")
+	}
+
+	bucketLen := len(bucket)
+	
+	if bucketLen > maxBucketNameLength {
+		return fmt.Errorf("bucket name '%s' is too long (%d characters). %s bucket names must be %d characters or less", 
+			bucket, bucketLen, strings.ToUpper(storageType), maxBucketNameLength)
+	}
+
+	if bucketLen < minBucketNameLength {
+		return fmt.Errorf("bucket name '%s' is too short (%d characters). %s bucket names must be at least %d characters", 
+			bucket, bucketLen, strings.ToUpper(storageType), minBucketNameLength)
+	}
+
 	return nil
 }
 
