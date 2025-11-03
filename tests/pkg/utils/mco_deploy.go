@@ -245,8 +245,6 @@ func CheckStorageResize(opt TestOptions, stsName string, expectedCapacity string
 }
 
 func CheckOBAComponents(opt TestOptions) error {
-	// TODO this should check the managed cluster
-	klog.V(1).Infof("CheckOBAComponents, get kube client for managed cluster")
 	client := getKubeClient(opt, false)
 	deployments := client.AppsV1().Deployments(MCO_ADDON_NAMESPACE)
 	expectedDeploymentNames := []string{

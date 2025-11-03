@@ -36,9 +36,6 @@ else
   kubectl config view --raw --minify >${kubeconfig_hub_path}
 fi
 
-# After login to managed cluster
-echo "Kube Contexts: $(kubectl config get-contexts)"
-
 kubecontext=$(kubectl config current-context)
 cluster_name="local-cluster"
 
@@ -51,8 +48,6 @@ else
   base_domain="${app_domain#apps.}"
   kubectl apply -f ${ROOTDIR}/operators/multiclusterobservability/config/crd/bases --server-side=true --force-conflicts
 fi
-
-echo "CLUSTERPOOL_MANAGED_COUNT: ${CLUSTERPOOL_MANAGED_COUNT}"
 
 OPTIONSFILE=${ROOTDIR}/tests/resources/options.yaml
 # remove the options file if it exists
@@ -90,7 +85,8 @@ if [[ -n ${SHARED_DIR} ]]; then
     managed_app_domain=$(KUBECONFIG="${kubeconfig_managed_path}" kubectl -n openshift-ingress-operator get ingresscontrollers default -ojsonpath='{.status.domain}')
     managed_base_domain="${managed_app_domain#apps.}"
     managed_server_url=$(KUBECONFIG="${kubeconfig_managed_path}" kubectl config view -o jsonpath="{.clusters[0].cluster.server}")
-    printf "\n    - baseDomain: ${managed_base_domain}" >>${OPTIONSFILE}
+    printf "\n    - name: managed-${i}" >>${OPTIONSFILE}
+    printf "\n      baseDomain: ${managed_base_domain}" >>${OPTIONSFILE}
     printf "\n      clusterServerURL: ${managed_server_url}" >>${OPTIONSFILE}
     printf "\n      kubeconfig: ${kubeconfig_managed_path}" >>${OPTIONSFILE}
     printf "\n      kubecontext: ${managed_kubecontext}" >>${OPTIONSFILE}

@@ -272,9 +272,6 @@ func initVars() {
 
 	if testOptions.ManagedClusters != nil && len(testOptions.ManagedClusters) > 0 {
 		for i, mc := range testOptions.ManagedClusters {
-			if mc.Name != "" {
-				klog.V(1).Infof("Test options cluster %d: Managed cluster name: %s", i, mc.Name)
-			}
 			if mc.ClusterServerURL == "" {
 				testOptions.ManagedClusters[i].ClusterServerURL = fmt.Sprintf("https://api.%s:6443", mc.BaseDomain)
 			}
