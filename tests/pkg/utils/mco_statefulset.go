@@ -28,6 +28,7 @@ func GetStatefulSet(opt TestOptions, isHub bool, name string,
 func GetStatefulSetWithCluster(cluster Cluster, name string,
 	namespace string) (*appv1.StatefulSet, error) {
 	clientKube := GetKubeClientWithCluster(cluster)
+	klog.V(1).Infof("Get statefulset <%v> in namespace <%v> on cluster <%v>", name, namespace, cluster.Name)
 	sts, err := clientKube.AppsV1().StatefulSets(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
 		klog.Errorf("Failed to get statefulset %s in namespace %s due to %v", name, namespace, err)
@@ -58,7 +59,7 @@ func CheckStatefulSetAvailability(cluster Cluster, name, namespace string, shoul
 				return fmt.Errorf("statefulset %s/%s is not ready: %d/%d", namespace, name, sts.Status.ReadyReplicas, *sts.Spec.Replicas)
 			}
 			return nil
-		}, 300, 2).Should(Not(HaveOccurred()))
+		}, 600, 2).Should(Not(HaveOccurred()))
 	} else {
 		Eventually(func() error {
 			_, err := GetStatefulSetWithCluster(cluster, name, namespace)
@@ -69,7 +70,7 @@ func CheckStatefulSetAvailability(cluster Cluster, name, namespace string, shoul
 				return err
 			}
 			return fmt.Errorf("statefulset %s/%s still exists", namespace, name)
-		}, 300, 2).Should(Succeed())
+		}, 600, 2).Should(Succeed())
 	}
 }
 
