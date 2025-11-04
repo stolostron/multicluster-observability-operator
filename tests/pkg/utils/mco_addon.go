@@ -12,28 +12,36 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/klog"
 	addonapiv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 )
 
 func CheckManagedClusterAddonStatus(opt TestOptions, name string) {
 	Eventually(func() error {
+		klog.V(1).Infof("Checking ManagedClusterAddon %s status", name)
 		managedClusters, err := GetAvailableManagedClusters(opt)
 		if err != nil {
+			klog.Errorf("Error getting available managed clusters: %v", err)
 			return err
 		}
 
 		for _, cluster := range managedClusters {
+			klog.V(1).Infof("Checking ManagedClusterAddon %s on cluster %s", name, cluster.Name)
 			addon, err := GetManagedClusterAddon(opt, name, cluster.Name)
 			if err != nil {
+				klog.Errorf("Error getting ManagedClusterAddon %s/%s: %v", cluster.Name, name, err)
 				return err
 			}
 
 			if !meta.IsStatusConditionTrue(addon.Status.Conditions, "Available") {
-				return fmt.Errorf("ManagedClusterAddon %s on cluster %s is not available", name, cluster.Name)
+				err := fmt.Errorf("ManagedClusterAddon %s on cluster %s is not available. Conditions: %v", name, cluster.Name, addon.Status.Conditions)
+				klog.V(1).Infof("%v", err)
+				return err
 			}
+			klog.V(1).Infof("ManagedClusterAddon %s on cluster %s is available", name, cluster.Name)
 		}
 		return nil
-	}, 300, 1).Should(Not(HaveOccurred()))
+	}, 300, 5).Should(Not(HaveOccurred()))
 }
 
 // GetAvailableManagedClustersAsClusters returns a list of available managed clusters.
