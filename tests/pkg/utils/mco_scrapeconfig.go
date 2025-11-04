@@ -7,6 +7,7 @@ package utils
 import (
 	"context"
 
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
@@ -39,6 +40,17 @@ func CreateScrapeConfig(opt TestOptions, name, componentLabel string, matchParam
 	}
 
 	_, err := clientDynamic.Resource(NewScrapeConfigGVR()).Namespace(MCO_NAMESPACE).Create(context.TODO(), scrapeConfig, metav1.CreateOptions{})
+	if err != nil {
+		if errors.IsAlreadyExists(err) {
+			existing, err := clientDynamic.Resource(NewScrapeConfigGVR()).Namespace(MCO_NAMESPACE).Get(context.TODO(), name, metav1.GetOptions{})
+			if err != nil {
+				return err
+			}
+			scrapeConfig.SetResourceVersion(existing.GetResourceVersion())
+			_, err = clientDynamic.Resource(NewScrapeConfigGVR()).Namespace(MCO_NAMESPACE).Update(context.TODO(), scrapeConfig, metav1.UpdateOptions{})
+			return err
+		}
+	}
 	return err
 }
 

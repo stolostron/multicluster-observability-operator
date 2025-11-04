@@ -8,6 +8,7 @@ import (
 	"context"
 
 	prometheusv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -55,6 +56,17 @@ func CreatePrometheusRule(opt TestOptions, name, namespace, componentLabel, metr
 	ruleUnstructured := &unstructured.Unstructured{Object: ruleMap}
 
 	_, err = clientDynamic.Resource(NewPrometheusRuleGVR()).Namespace(namespace).Create(context.TODO(), ruleUnstructured, metav1.CreateOptions{})
+	if err != nil {
+		if errors.IsAlreadyExists(err) {
+			existing, err := clientDynamic.Resource(NewPrometheusRuleGVR()).Namespace(namespace).Get(context.TODO(), name, metav1.GetOptions{})
+			if err != nil {
+				return err
+			}
+			ruleUnstructured.SetResourceVersion(existing.GetResourceVersion())
+			_, err = clientDynamic.Resource(NewPrometheusRuleGVR()).Namespace(namespace).Update(context.TODO(), ruleUnstructured, metav1.UpdateOptions{})
+			return err
+		}
+	}
 	return err
 }
 
