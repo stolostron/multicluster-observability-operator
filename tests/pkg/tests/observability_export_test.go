@@ -90,6 +90,7 @@ var _ = Describe("", func() {
 			labels := metadata["labels"].(map[string]any)
 			if labels["local-cluster"] == "true" {
 				hubClusterName = metadata["name"].(string)
+				klog.V(1).Infof("Found local-cluster name: %s", metadata["name"])
 			}
 		}
 

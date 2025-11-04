@@ -279,35 +279,5 @@ func initVars() {
 				testOptions.ManagedClusters[i].KubeConfig = os.Getenv("IMPORT_KUBECONFIG")
 			}
 		}
-		// Fix names of managed clusters to match ManagedCluster CR names
-		updateManagedClusterNames()
-	}
-}
-
-// Updates the managed cluster names in testOptions.ManagedClusters
-func updateManagedClusterNames() {
-	clusters, err := utils.GetManagedClusters(testOptions)
-	if err != nil {
-		klog.V(1).Infof("Warning: Failed to get ManagedCluster CRs from Kubernetes: %v", err)
-		return
-	}
-
-	if len(clusters) == 0 {
-		klog.V(1).Infof("No managed clusters found in Kubernetes.")
-		return
-	}
-
-	for i := 0; i < len(testOptions.ManagedClusters); i++ {
-		for _, mc := range clusters {
-			// check for matching url
-			if len(mc.Spec.ManagedClusterClientConfigs) > 0 {
-				klog.V(1).Infof("Managed cluster %q URL: %q", mc.Name, mc.Spec.ManagedClusterClientConfigs[0].URL)
-				klog.V(1).Infof("Test options managed cluster %q URL: %q", testOptions.ManagedClusters[i].Name, testOptions.ManagedClusters[i].ClusterServerURL)
-				if mc.Spec.ManagedClusterClientConfigs[0].URL == testOptions.ManagedClusters[i].ClusterServerURL {
-					testOptions.ManagedClusters[i].Name = mc.Name
-					break
-				}
-			}
-		}
 	}
 }

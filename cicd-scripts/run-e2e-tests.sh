@@ -82,10 +82,11 @@ if [[ -n ${SHARED_DIR} ]]; then
     kubeconfig_managed_path="${SHARED_DIR}/managed-${i}.kc"
     # Get managed cluster context, server URL, and base domain
     managed_kubecontext=$(KUBECONFIG="${kubeconfig_managed_path}" kubectl config current-context)
+    managed_cluster_name=$(KUBECONFIG="${kubeconfig_managed_path}" kubectl config view -o jsonpath="{.contexts[?(@.name==\"${managed_kubecontext}\")].context.cluster}")
+    managed_server_url=$(KUBECONFIG="${kubeconfig_managed_path}" kubectl config view -o jsonpath="{.clusters[?(@.name==\"${managed_cluster_name}\")].cluster.server}")
     managed_app_domain=$(KUBECONFIG="${kubeconfig_managed_path}" kubectl -n openshift-ingress-operator get ingresscontrollers default -ojsonpath='{.status.domain}')
     managed_base_domain="${managed_app_domain#apps.}"
-    managed_server_url=$(KUBECONFIG="${kubeconfig_managed_path}" kubectl config view -o jsonpath="{.clusters[0].cluster.server}")
-    printf "\n    - name: managed-${i}" >>${OPTIONSFILE}
+    printf "\n    - name: ${managed_cluster_name}" >>${OPTIONSFILE}
     printf "\n      baseDomain: ${managed_base_domain}" >>${OPTIONSFILE}
     printf "\n      clusterServerURL: ${managed_server_url}" >>${OPTIONSFILE}
     printf "\n      kubeconfig: ${kubeconfig_managed_path}" >>${OPTIONSFILE}
