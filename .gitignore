@@ -98,5 +98,4 @@ results.xml
 # build/tests artifacts
 registration-operator
 tmp
-
 .env

@@ -64,7 +64,7 @@ func TestCreateDeleteMonitoringClusterRoleBinding(t *testing.T) {
 	c := fake.NewClientBuilder().Build()
 	namespace := "test-ns"
 	saName := "test-sa"
-	err := openshift.CreateMonitoringClusterRoleBinding(ctx, logr.Logger{}, c, namespace, saName)
+	err := openshift.CreateMonitoringClusterRoleBinding(ctx, logr.Logger{}, c, namespace, saName, false)
 	if err != nil {
 		t.Fatalf("Failed to create clusterrolebinding: (%v)", err)
 	}
@@ -93,15 +93,15 @@ func TestCreateDeleteMonitoringClusterRoleBinding(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to update clusterrolebinding: (%v)", err)
 	}
-	err = openshift.CreateMonitoringClusterRoleBinding(ctx, logr.Logger{}, c, namespace, saName)
+	err = openshift.CreateMonitoringClusterRoleBinding(ctx, logr.Logger{}, c, namespace, saName, false)
 	if err != nil {
 		t.Fatalf("Failed to revert clusterrolebinding: (%v)", err)
 	}
-	err = openshift.DeleteMonitoringClusterRoleBinding(ctx, c)
+	err = openshift.DeleteMonitoringClusterRoleBinding(ctx, c, false)
 	if err != nil {
 		t.Fatalf("Failed to delete clusterrolebinding: (%v)", err)
 	}
-	err = openshift.DeleteMonitoringClusterRoleBinding(ctx, c)
+	err = openshift.DeleteMonitoringClusterRoleBinding(ctx, c, false)
 	if err != nil {
 		t.Fatalf("Run into error when try to delete delete clusterrolebinding twice: (%v)", err)
 	}

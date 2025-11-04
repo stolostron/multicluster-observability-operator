@@ -128,7 +128,7 @@ var _ = Describe("", func() {
 					return err
 				}
 				return nil
-			}, EventuallyTimeoutMinute*15, EventuallyIntervalSecond*5).Should(Succeed())
+			}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
 		})
 	})
 

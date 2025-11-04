@@ -26,6 +26,7 @@ import (
 	mchv1 "github.com/stolostron/multiclusterhub-operator/api/v1"
 	observatoriumv1alpha1 "github.com/stolostron/observatorium-operator/api/v1alpha1"
 
+	operatorv1 "github.com/openshift/api/operator/v1"
 	mcoshared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
 	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
@@ -354,6 +355,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	policyv1.AddToScheme(s)
 	addonv1alpha1.AddToScheme(s)
 	migrationv1alpha1.SchemeBuilder.AddToScheme(s)
+	operatorv1.AddToScheme(s)
 
 	svc := createObservatoriumAPIService(name, namespace)
 	serverCACerts := newTestCert(config.ServerCACerts, namespace)
@@ -376,10 +378,12 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 			"client-ca-file": "test",
 		},
 	}
+	alertManagerRoute := newAlertManagerRoute()
 
 	objs := []runtime.Object{
 		mco, svc, serverCACerts, clientCACerts, proxyRouteBYOCACerts, grafanaCert, serverCert,
 		testAmRouteBYOCaSecret, testAmRouteBYOCertSecret, proxyRouteBYOCert, clustermgmtAddon, extensionApiserverAuthenticationCM,
+		alertManagerRoute,
 	}
 	// Create a fake client to mock API calls.
 	cl := fake.NewClientBuilder().
@@ -797,6 +801,7 @@ func TestImageReplaceForMCO(t *testing.T) {
 	addonv1alpha1.AddToScheme(s)
 	mchv1.SchemeBuilder.AddToScheme(s)
 	migrationv1alpha1.SchemeBuilder.AddToScheme(s)
+	operatorv1.AddToScheme(s)
 
 	observatoriumAPIsvc := createObservatoriumAPIService(name, namespace)
 	serverCACerts := newTestCert(config.ServerCACerts, namespace)
@@ -820,9 +825,12 @@ func TestImageReplaceForMCO(t *testing.T) {
 		},
 	}
 
+	alertManagerRoute := newAlertManagerRoute()
+
 	objs := []runtime.Object{
 		mco, observatoriumAPIsvc, serverCACerts, clientCACerts, grafanaCert, serverCert,
 		testMCHInstance, imageManifestsCM, testAmRouteBYOCaSecret, testAmRouteBYOCertSecret, clustermgmtAddon, extensionApiserverAuthenticationCM,
+		alertManagerRoute,
 	}
 	// Create a fake client to mock API calls.
 	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
@@ -1262,5 +1270,17 @@ func TestNewMCOACRDEventHandler(t *testing.T) {
 
 			assert.Equal(t, tt.expectedReqs, reqs)
 		})
+	}
+}
+
+func newAlertManagerRoute() *routev1.Route {
+	return &routev1.Route{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "alertmanager",
+			Namespace: config.GetDefaultNamespace(),
+		},
+		Spec: routev1.RouteSpec{
+			Host: "alert.manager",
+		},
 	}
 }

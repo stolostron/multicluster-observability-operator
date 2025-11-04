@@ -433,6 +433,17 @@ spec:
           - monitoring.coreos.com
           resources:
           - prometheusrules
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - monitoring.rhobs
+          resources:
           - scrapeconfigs
           verbs:
           - create
