@@ -29,11 +29,7 @@ func GetStatefulSetWithCluster(cluster Cluster, name string,
 	namespace string) (*appv1.StatefulSet, error) {
 	clientKube := GetKubeClientWithCluster(cluster)
 	klog.V(1).Infof("Get statefulset <%v> in namespace <%v> on cluster <%v>", name, namespace, cluster.Name)
-	sts, err := clientKube.AppsV1().StatefulSets(namespace).Get(context.TODO(), name, metav1.GetOptions{})
-	if err != nil {
-		klog.Errorf("Failed to get statefulset %s in namespace %s due to %v", name, namespace, err)
-	}
-	return sts, err
+	return clientKube.AppsV1().StatefulSets(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 }
 
 func GetStatefulSetWithLabel(opt TestOptions, isHub bool, label string,
@@ -44,8 +40,9 @@ func GetStatefulSetWithLabel(opt TestOptions, isHub bool, label string,
 	})
 	if err != nil {
 		klog.Errorf("Failed to get statefulset with label %s in namespace %s due to %v", label, namespace, err)
+		return nil, err
 	}
-	return sts, err
+	return sts, nil
 }
 
 func CheckStatefulSetAvailability(cluster Cluster, name, namespace string, shouldExist bool) {
@@ -53,13 +50,14 @@ func CheckStatefulSetAvailability(cluster Cluster, name, namespace string, shoul
 		Eventually(func() error {
 			sts, err := GetStatefulSetWithCluster(cluster, name, namespace)
 			if err != nil {
-				return err
+				klog.Errorf("Failed to get statefulset %s/%s: %v", name, namespace, err)
+				return fmt.Errorf("failed to get statefulset %s/%s: %w", name, namespace, err)
 			}
 			if sts.Status.ReadyReplicas != *sts.Spec.Replicas {
 				return fmt.Errorf("statefulset %s/%s is not ready: %d/%d", namespace, name, sts.Status.ReadyReplicas, *sts.Spec.Replicas)
 			}
 			return nil
-		}, 600, 2).Should(Not(HaveOccurred()))
+		}, 600, 5).Should(Not(HaveOccurred()))
 	} else {
 		Eventually(func() error {
 			_, err := GetStatefulSetWithCluster(cluster, name, namespace)
@@ -67,10 +65,11 @@ func CheckStatefulSetAvailability(cluster Cluster, name, namespace string, shoul
 				return nil
 			}
 			if err != nil {
-				return err
+				klog.Errorf("Failed to get statefulset %s/%s: %v", name, namespace, err)
+				return fmt.Errorf("failed to get statefulset %s/%s: %w", name, namespace, err)
 			}
 			return fmt.Errorf("statefulset %s/%s still exists", namespace, name)
-		}, 600, 2).Should(Succeed())
+		}, 600, 5).Should(Succeed())
 	}
 }
 
