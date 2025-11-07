@@ -144,9 +144,9 @@ spec:
       record: sli:apiserver_request_duration_seconds:trend:1m
     - expr: sli:apiserver_request_duration_seconds:trend:1m >= bool 0.9900
       record: sli:apiserver_request_duration_seconds:bin:trend:1m
-    - expr: sum(rate(apiserver_request_total{job="apiserver"}[1h])) by (code, instance)
+    - expr: sum(rate(apiserver_request_total{component="apiserver",service="kubernetes"}[1h])) by (code, instance)
       record: sum:apiserver_request_total:1h
-    - expr: sum(rate(apiserver_request_total{job="apiserver"}[5m])) by (code, instance)
+    - expr: sum(rate(apiserver_request_total{component="apiserver",service="kubernetes"}[5m])) by (code, instance)
       record: sum:apiserver_request_total:5m
     - record: kube_pod_container_resource_limits:sum
       expr: sum(kube_pod_container_resource_limits) by (resource, namespace)

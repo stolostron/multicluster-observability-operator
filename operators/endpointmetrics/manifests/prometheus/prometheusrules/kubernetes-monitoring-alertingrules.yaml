@@ -447,7 +447,7 @@ spec:
         description: KubeAPI has disappeared from Prometheus target discovery.
         summary: Target disappeared from Prometheus target discovery.
       expr: |
-        absent(up{job="apiserver"} == 1)
+        absent(up{service="kubernetes"} == 1)
       for: 15m
       labels:
         severity: critical
@@ -456,7 +456,7 @@ spec:
         description: The apiserver has terminated {{ $value | humanizePercentage }} of its incoming requests.
         summary: The apiserver has terminated {{ $value | humanizePercentage }} of its incoming requests.
       expr: |
-        sum(rate(apiserver_request_terminations_total{job="apiserver"}[10m]))  / (  sum(rate(apiserver_request_total{job="apiserver"}[10m])) + sum(rate(apiserver_request_terminations_total{job="apiserver"}[10m])) ) > 0.20
+        sum(rate(apiserver_request_terminations_total{component="apiserver"}[10m]))  / (  sum(rate(apiserver_request_total{component="apiserver",service="kubernetes"}[10m])) + sum(rate(apiserver_request_terminations_total{component="apiserver"}[10m])) ) > 0.20
       for: 5m
       labels:
         severity: warning
