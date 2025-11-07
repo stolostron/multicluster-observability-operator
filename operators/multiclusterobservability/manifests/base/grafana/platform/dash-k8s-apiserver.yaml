@@ -96,7 +96,7 @@ data:
           "pluginVersion": "8.5.20",
           "targets": [
             {
-              "expr": "(sum(up{job=\"apiserver\",cluster=\"$cluster\"} == 1) / count(up{job=\"apiserver\",cluster=\"$cluster\"}))",
+              "expr": "(sum(up{service=\"kubernetes\",cluster=\"$cluster\"} == 1) / count(up{service=\"kubernetes\",cluster=\"$cluster\"}))",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "",

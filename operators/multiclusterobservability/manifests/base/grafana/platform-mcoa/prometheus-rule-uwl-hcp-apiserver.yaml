@@ -15,7 +15,7 @@ spec:
     - expr: (histogram_quantile(0.99,sum(rate(apiserver_request_duration_seconds_bucket{component="apiserver",
         verb!="WATCH",clusterID!=""}[5m])) by (le, verb, instance, cluster, clusterID, managementcluster, managementclusterID)))
       record: apiserver_request_duration_seconds:histogram_quantile_99:instance
-    - expr: sum(rate(apiserver_request_total{job="apiserver",clusterID!=""}[5m])) by (code, instance, cluster, clusterID, managementcluster, managementclusterID)
+    - expr: sum(rate(apiserver_request_total{component="apiserver",service="kubernetes",clusterID!=""}[5m])) by (code, instance, cluster, clusterID, managementcluster, managementclusterID)
       record: sum:apiserver_request_total:5m
     - expr: histogram_quantile(0.99, sum(rate(workqueue_queue_duration_seconds_bucket{job="apiserver",clusterID!=""}[5m])) by (instance, name, le, cluster, clusterID, managementcluster, managementclusterID))
       record: workqueue_queue_duration_seconds_bucket:apiserver:histogram_quantile_99
