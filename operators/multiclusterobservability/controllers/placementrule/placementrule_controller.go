@@ -705,6 +705,11 @@ func createManagedClusterRes(ctx context.Context, c client.Client, mco *mcov1bet
 		return nil, fmt.Errorf("failed to update spec hash: %w", err)
 	}
 
+	// Also update the ManagedClusterAddOn status with the spec hash, if applicable
+	if err := util.UpdateManagedClusterAddOnSpecHash(ctx, c, namespace, addonConfig); err != nil {
+		return nil, fmt.Errorf("failed to update managedclusteraddon spec hash: %w", err)
+	}
+
 	return addonConfig, nil
 }
 

@@ -13,8 +13,8 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/klog"
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	"sigs.k8s.io/yaml"
@@ -319,5 +319,78 @@ func ValidateSpecHashMatchesConfig(opt TestOptions, addonConfig *unstructured.Un
 	}
 
 	klog.V(1).Infof("Spec hash validation successful: %s", actualHash)
+	return nil
+}
+
+// GetSpecHashFromManagedClusterAddOn retrieves the spec hash from ManagedClusterAddOn status
+func GetSpecHashFromManagedClusterAddOn(opt TestOptions, clusterName string) (string, error) {
+	dynClient := NewKubeClientDynamic(
+		opt.HubCluster.ClusterServerURL,
+		opt.KubeConfig,
+		opt.HubCluster.KubeContext)
+
+	mca, err := dynClient.Resource(NewMCOManagedClusterAddonsGVR()).
+		Namespace(clusterName).
+		Get(context.TODO(), ObservabilityController, metav1.GetOptions{})
+	if err != nil {
+		return "", fmt.Errorf("failed to get managedclusteraddon for cluster %s: %w", clusterName, err)
+	}
+
+	status, found, err := unstructured.NestedMap(mca.Object, "status")
+	if err != nil || !found {
+		return "", fmt.Errorf("failed to get status from managedclusteraddon: %w", err)
+	}
+
+	configRefs, found, err := unstructured.NestedSlice(status, "configReferences")
+	if err != nil || !found {
+		return "", fmt.Errorf("no configReferences found in status")
+	}
+
+	// Find the AddOnDeploymentConfig entry
+	for _, ref := range configRefs {
+		refMap, ok := ref.(map[string]interface{})
+		if !ok {
+			continue
+		}
+
+		cgr, found, err := unstructured.NestedMap(refMap, "configGroupResource")
+		if err != nil || !found {
+			continue
+		}
+
+		group, _, _ := unstructured.NestedString(cgr, "group")
+		resource, _, _ := unstructured.NestedString(cgr, "resource")
+
+		if group == AddonGroup && resource == AddonDeploymentConfigResource {
+			// Found the AddOnDeploymentConfig entry
+			desiredConfig, found, err := unstructured.NestedMap(refMap, "desiredConfig")
+			if err != nil || !found {
+				return "", fmt.Errorf("no desiredConfig found for AddOnDeploymentConfig")
+			}
+
+			specHash, found, err := unstructured.NestedString(desiredConfig, "specHash")
+			if err != nil || !found {
+				return "", fmt.Errorf("no specHash found in desiredConfig")
+			}
+
+			return specHash, nil
+		}
+	}
+
+	return "", fmt.Errorf("no AddOnDeploymentConfig entry found in configReferences")
+}
+
+// ValidateSpecHashInManagedClusterAddOn validates that the spec hash is set in ManagedClusterAddOn
+func ValidateSpecHashInManagedClusterAddOn(opt TestOptions, clusterName string) error {
+	specHash, err := GetSpecHashFromManagedClusterAddOn(opt, clusterName)
+	if err != nil {
+		return fmt.Errorf("failed to get spec hash from ManagedClusterAddOn: %w", err)
+	}
+
+	if specHash == "" {
+		return fmt.Errorf("spec hash is empty in ManagedClusterAddOn for cluster %s", clusterName)
+	}
+
+	klog.V(1).Infof("Spec hash in ManagedClusterAddOn for cluster %s: %s", clusterName, specHash)
 	return nil
 }

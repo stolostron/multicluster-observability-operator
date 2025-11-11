@@ -157,7 +157,7 @@ func TestSpecHashCalculation(t *testing.T) {
 		},
 	}
 
-	hash1, err := calculateSpecHash(addonConfig)
+	hash1, err := CalculateAddOnDeploymentConfigSpecHash(addonConfig)
 	if err != nil {
 		t.Fatalf("Failed to calculate spec hash: %v", err)
 	}
@@ -166,7 +166,7 @@ func TestSpecHashCalculation(t *testing.T) {
 	}
 
 	// Calculate hash again with same config - should be identical
-	hash2, err := calculateSpecHash(addonConfig)
+	hash2, err := CalculateAddOnDeploymentConfigSpecHash(addonConfig)
 	if err != nil {
 		t.Fatalf("Failed to calculate spec hash second time: %v", err)
 	}
@@ -175,7 +175,7 @@ func TestSpecHashCalculation(t *testing.T) {
 	}
 
 	// Test with nil config
-	nilHash, err := calculateSpecHash(nil)
+	nilHash, err := CalculateAddOnDeploymentConfigSpecHash(nil)
 	if err != nil {
 		t.Fatalf("Failed to calculate spec hash for nil config: %v", err)
 	}
@@ -187,7 +187,7 @@ func TestSpecHashCalculation(t *testing.T) {
 	modifiedConfig := addonConfig.DeepCopy()
 	modifiedConfig.Spec.ProxyConfig.HTTPProxy = "http://different-proxy.com"
 
-	hash3, err := calculateSpecHash(modifiedConfig)
+	hash3, err := CalculateAddOnDeploymentConfigSpecHash(modifiedConfig)
 	if err != nil {
 		t.Fatalf("Failed to calculate hash for modified config: %v", err)
 	}
@@ -201,7 +201,7 @@ func TestSpecHashCalculation(t *testing.T) {
 	metadataOnlyChange.Namespace = "different-namespace"
 	metadataOnlyChange.Labels = map[string]string{"new": "label"}
 
-	hash4, err := calculateSpecHash(metadataOnlyChange)
+	hash4, err := CalculateAddOnDeploymentConfigSpecHash(metadataOnlyChange)
 	if err != nil {
 		t.Fatalf("Failed to calculate hash for metadata-only change: %v", err)
 	}

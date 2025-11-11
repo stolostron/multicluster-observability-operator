@@ -34,8 +34,9 @@ type clusterManagementAddOnSpec struct {
 	CRDName     string `json:"crdName"`
 }
 
-// calculateSpecHash computes a hash of the AddOnDeploymentConfig spec to track changes
-func calculateSpecHash(addonConfig *addonv1alpha1.AddOnDeploymentConfig) (string, error) {
+// CalculateAddOnDeploymentConfigSpecHash computes a hash of the AddOnDeploymentConfig spec to track changes.
+// This is a shared utility used by both ClusterManagementAddOn and ManagedClusterAddOn status updates.
+func CalculateAddOnDeploymentConfigSpecHash(addonConfig *addonv1alpha1.AddOnDeploymentConfig) (string, error) {
 	if addonConfig == nil {
 		return "", nil
 	}
@@ -59,7 +60,7 @@ func updateClusterManagementAddOnStatus(ctx context.Context, c client.Client, ad
 		return fmt.Errorf("failed to get clustermanagementaddon: %w", err)
 	}
 
-	specHash, err := calculateSpecHash(addonConfig)
+	specHash, err := CalculateAddOnDeploymentConfigSpecHash(addonConfig)
 	if err != nil {
 		return fmt.Errorf("failed to calculate spec hash: %w", err)
 	}
@@ -79,9 +80,13 @@ func updateClusterManagementAddOnStatus(ctx context.Context, c client.Client, ad
 	}
 
 	// If no matching config reference found, this indicates a configuration issue
+	// The DefaultConfigReference should be created by the framework or during CMA creation
 	if !found {
-		log.Info("No matching DefaultConfigReference found for AddOnDeploymentConfig, skipping spec hash update")
-		return nil // This is not an error - the config might not be set up yet
+		log.Info("No matching DefaultConfigReference found for AddOnDeploymentConfig, skipping spec hash update",
+			"config", addonConfig.Namespace+"/"+addonConfig.Name)
+		// Return nil to skip update - this is not an error as the config might not be set up yet
+		// The caller should ensure CMA is properly initialized before calling this function
+		return nil
 	}
 
 	// Update the status
@@ -89,7 +94,7 @@ func updateClusterManagementAddOnStatus(ctx context.Context, c client.Client, ad
 		return fmt.Errorf("failed to update clustermanagementaddon status: %w", err)
 	}
 
-	log.Info("Updated ClusterManagementAddOn status with spec hash", "hash", specHash)
+	log.Info("Updated ClusterManagementAddOn status with spec hash", "hash", specHash, "config", addonConfig.Namespace+"/"+addonConfig.Name)
 	return nil
 }
 

@@ -282,6 +282,11 @@ var _ = Describe("", func() {
 			} else {
 				klog.V(1).Infof("No custom AddOnDeploymentConfig found for cluster %s, using defaults", managedClusterName)
 			}
+
+			By("Validating that ManagedClusterAddOn has spec hash set in status")
+			Eventually(func() error {
+				return utils.ValidateSpecHashInManagedClusterAddOn(testOptions, managedClusterName)
+			}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
 		})
 	})
 
