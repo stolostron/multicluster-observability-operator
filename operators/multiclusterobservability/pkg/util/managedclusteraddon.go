@@ -148,10 +148,20 @@ func updateManagedClusterAddOnStatus(ctx context.Context, c client.Client, names
 }
 
 // UpdateManagedClusterAddOnSpecHash updates the ManagedClusterAddOn status spec hash for a given AddOnDeploymentConfig.
-// Since this operator doesn't use addon-framework's WithConfigGVRs, we manually manage both spec.configs and status.configReferences.
-// Errors are returned to let the controller retry the reconcile.
+// Since this operator doesn't use addon-framework's WithConfigGVRs, we manually manage status.configReferences.
+// This function should only be called when there IS a valid AddOnDeploymentConfig (addonConfig.Name != "").
+// When there's no config, the framework doesn't require configReferences to exist, so this function returns early.
 func UpdateManagedClusterAddOnSpecHash(ctx context.Context, c client.Client, namespace string, addonConfig *addonv1alpha1.AddOnDeploymentConfig) error {
-	if addonConfig == nil {
+	mca := &addonv1alpha1.ManagedClusterAddOn{}
+	if err := c.Get(ctx, types.NamespacedName{Name: config.ManagedClusterAddonName, Namespace: namespace}, mca); err != nil {
+		if apierrors.IsNotFound(err) {
+			return fmt.Errorf("managedclusteraddon %s/%s not found - ensure it exists before updating spec hash", namespace, config.ManagedClusterAddonName)
+		}
+		return fmt.Errorf("failed to get managedclusteraddon %s/%s: %w", namespace, config.ManagedClusterAddonName, err)
+	}
+
+	// If no config is provided, there's nothing to update
+	if addonConfig == nil || addonConfig.Name == "" {
 		return nil
 	}
 
@@ -164,14 +174,10 @@ func UpdateManagedClusterAddOnSpecHash(ctx context.Context, c client.Client, nam
 		return nil
 	}
 
-	// Get the ManagedClusterAddOn
-	mca := &addonv1alpha1.ManagedClusterAddOn{}
-	if err := c.Get(ctx, types.NamespacedName{Name: config.ManagedClusterAddonName, Namespace: namespace}, mca); err != nil {
-		if apierrors.IsNotFound(err) {
-			return fmt.Errorf("managedclusteraddon %s/%s not found - ensure it exists before updating spec hash", namespace, config.ManagedClusterAddonName)
-		}
-		return fmt.Errorf("failed to get managedclusteraddon %s/%s: %w", namespace, config.ManagedClusterAddonName, err)
-	}
+	// Save original MCA before modifying for Patch operation
+	// Use Patch instead of Update to avoid overwriting conditions set by the status controller
+	// The status controller uses Patch to update conditions, and we should preserve those updates
+	originalMCA := mca.DeepCopy()
 
 	// Ensure status.configReferences exists and has an entry for AddOnDeploymentConfig
 	// This mimics what addon-framework's addonconfig controller does
@@ -212,7 +218,12 @@ func UpdateManagedClusterAddOnSpecHash(ctx context.Context, c client.Client, nam
 		log.Info("Created new ConfigReference in ManagedClusterAddOn status", "namespace", namespace)
 	}
 
-	if err := c.Status().Update(ctx, mca); err != nil {
+	if equality.Semantic.DeepEqual(originalMCA.Status.ConfigReferences, mca.Status.ConfigReferences) {
+		log.V(1).Info("ConfigReferences unchanged, skipping status update", "namespace", namespace)
+		return nil
+	}
+
+	if err := c.Status().Patch(ctx, mca, client.MergeFrom(originalMCA)); err != nil {
 		return fmt.Errorf("failed to update managedclusteraddon status: %w", err)
 	}
 	log.Info("Updated ManagedClusterAddOn status with spec hash", "namespace", namespace, "hash", specHash, "config", addonConfig.Namespace+"/"+addonConfig.Name)

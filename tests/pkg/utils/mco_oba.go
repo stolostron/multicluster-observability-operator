@@ -36,15 +36,16 @@ func CheckOBAStatus(opt TestOptions, namespace, status string) error {
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext)
 
-	oba, err := dynClient.Resource(NewMCOAddonGVR()).
+	// Fetch ManagedClusterAddOn to check addon status
+	mca, err := dynClient.Resource(NewMCOManagedClusterAddonsGVR()).
 		Namespace(namespace).
-		Get(context.TODO(), "observability-addon", metav1.GetOptions{})
+		Get(context.TODO(), ObservabilityController, metav1.GetOptions{})
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get managedclusteraddon: %w", err)
 	}
 
 	addon := &addonv1alpha1.ManagedClusterAddOn{}
-	err = runtime.DefaultUnstructuredConverter.FromUnstructured(oba.Object, addon)
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(mca.Object, addon)
 	if err != nil {
 		return fmt.Errorf("failed to convert unstructured to addon: %w", err)
 	}

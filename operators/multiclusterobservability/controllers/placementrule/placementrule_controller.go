@@ -699,15 +699,21 @@ func createManagedClusterRes(ctx context.Context, c client.Client, mco *mcov1bet
 		addonConfig = defaultAddonDeploymentConfig
 	}
 
-	// Update the ClusterManagementAddOn status with the spec hash
-	// This prevents the "mca and work configs mismatch" error
-	if err := util.UpdateClusterManagementAddOnSpecHash(ctx, c, addonConfig); err != nil {
-		return nil, fmt.Errorf("failed to update spec hash: %w", err)
+	// Update the ClusterManagementAddOn status with the spec hash only when using the default config.
+	// CMA status only tracks default config hash, not custom configs.
+	// Only update if we have a valid default config (not empty struct).
+	if !isCustomConfig && defaultAddonDeploymentConfig != nil && defaultAddonDeploymentConfig.Name != "" {
+		if err := util.UpdateClusterManagementAddOnSpecHash(ctx, c, defaultAddonDeploymentConfig); err != nil {
+			return nil, fmt.Errorf("failed to update spec hash: %w", err)
+		}
 	}
 
-	// Also update the ManagedClusterAddOn status with the spec hash, if applicable
-	if err := util.UpdateManagedClusterAddOnSpecHash(ctx, c, namespace, addonConfig); err != nil {
-		return nil, fmt.Errorf("failed to update managedclusteraddon spec hash: %w", err)
+	// Update the ManagedClusterAddOn status with the spec hash for the config being used (default or custom)
+	// Only update if we have a valid config (not empty struct)
+	if addonConfig != nil && addonConfig.Name != "" {
+		if err := util.UpdateManagedClusterAddOnSpecHash(ctx, c, namespace, addonConfig); err != nil {
+			return nil, fmt.Errorf("failed to update managedclusteraddon spec hash: %w", err)
+		}
 	}
 
 	return addonConfig, nil

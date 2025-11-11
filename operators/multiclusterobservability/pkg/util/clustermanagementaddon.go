@@ -12,6 +12,7 @@ import (
 	"net/url"
 
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -54,6 +55,10 @@ func CalculateAddOnDeploymentConfigSpecHash(addonConfig *addonv1alpha1.AddOnDepl
 
 // updateClusterManagementAddOnStatus updates the ClusterManagementAddOn status with spec hash
 func updateClusterManagementAddOnStatus(ctx context.Context, c client.Client, addonConfig *addonv1alpha1.AddOnDeploymentConfig) error {
+	if addonConfig == nil {
+		return nil
+	}
+
 	clusterMgmtAddon := &addonv1alpha1.ClusterManagementAddOn{}
 	err := c.Get(ctx, types.NamespacedName{Name: ObservabilityController}, clusterMgmtAddon)
 	if err != nil {
@@ -64,6 +69,11 @@ func updateClusterManagementAddOnStatus(ctx context.Context, c client.Client, ad
 	if err != nil {
 		return fmt.Errorf("failed to calculate spec hash: %w", err)
 	}
+
+	// Save original CMA before modifying for Patch operation
+	// Use Patch instead of Update to avoid overwriting status fields set by addon-framework's cmaconfig controller
+	// The framework uses PatchStatus to update spec hashes, and we should preserve other status updates
+	originalCMA := clusterMgmtAddon.DeepCopy()
 
 	// Update status with desired config spec hash
 	// Find the configuration entry for AddOnDeploymentConfig and update its desiredConfig
@@ -79,18 +89,17 @@ func updateClusterManagementAddOnStatus(ctx context.Context, c client.Client, ad
 		}
 	}
 
-	// If no matching config reference found, this indicates a configuration issue
-	// The DefaultConfigReference should be created by the framework or during CMA creation
 	if !found {
-		log.Info("No matching DefaultConfigReference found for AddOnDeploymentConfig, skipping spec hash update",
-			"config", addonConfig.Namespace+"/"+addonConfig.Name)
-		// Return nil to skip update - this is not an error as the config might not be set up yet
-		// The caller should ensure CMA is properly initialized before calling this function
+		return fmt.Errorf("DefaultConfigReference not found in CMA status for config %s/%s - framework may not have created it yet, will retry", addonConfig.Namespace, addonConfig.Name)
+	}
+
+	if equality.Semantic.DeepEqual(originalCMA.Status.DefaultConfigReferences, clusterMgmtAddon.Status.DefaultConfigReferences) {
+		log.V(1).Info("DefaultConfigReferences unchanged, skipping status update")
 		return nil
 	}
 
-	// Update the status
-	if err := c.Status().Update(ctx, clusterMgmtAddon); err != nil {
+	// Use Patch instead of Update to preserve other status fields updated by the framework
+	if err := c.Status().Patch(ctx, clusterMgmtAddon, client.MergeFrom(originalCMA)); err != nil {
 		return fmt.Errorf("failed to update clustermanagementaddon status: %w", err)
 	}
 
@@ -141,9 +150,6 @@ func CreateClusterManagementAddon(ctx context.Context, c client.Client) (
 			return nil, fmt.Errorf("failed to update clustermanagementaddon to set self-management annotation: %w", err)
 		}
 	}
-
-	// Note: Status updates with spec hash are handled separately in the placement controller
-	// after all resources (certificates, configs, etc.) are properly initialized
 
 	return found, nil
 }

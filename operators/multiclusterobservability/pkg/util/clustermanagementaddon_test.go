@@ -6,6 +6,7 @@ package util
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	routev1 "github.com/openshift/api/route/v1"
@@ -210,7 +211,8 @@ func TestSpecHashCalculation(t *testing.T) {
 	}
 }
 
-// TestUpdateSpecHashWithMissingDefaultConfigReference tests graceful handling of missing config references
+// TestUpdateSpecHashWithMissingDefaultConfigReference tests error handling when DefaultConfigReference is missing.
+// This should return an error to trigger retry, as it indicates a framework timing issue.
 func TestUpdateSpecHashWithMissingDefaultConfigReference(t *testing.T) {
 	s := scheme.Scheme
 	addonv1alpha1.AddToScheme(s)
@@ -247,9 +249,12 @@ func TestUpdateSpecHashWithMissingDefaultConfigReference(t *testing.T) {
 	c := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(addonConfig, testAddon).Build()
 	ctx := context.Background()
 
-	// Try to update spec hash - should not fail, should handle gracefully
+	// Try to update spec hash - should return error to trigger retry
 	err := updateClusterManagementAddOnStatus(ctx, c, addonConfig)
-	if err != nil {
-		t.Fatalf("updateClusterManagementAddOnStatus should handle missing DefaultConfigReference gracefully: %v", err)
+	if err == nil {
+		t.Fatalf("updateClusterManagementAddOnStatus should return error when DefaultConfigReference is missing")
+	}
+	if !strings.Contains(err.Error(), "DefaultConfigReference not found") {
+		t.Fatalf("Expected error message about DefaultConfigReference not found, got: %v", err)
 	}
 }

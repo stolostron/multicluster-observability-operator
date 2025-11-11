@@ -213,6 +213,7 @@ func TestUpdateManagedClusterAddOnSpecHashWithExistingRef(t *testing.T) {
 }
 
 // TestUpdateManagedClusterAddOnSpecHashNilConfig tests handling of nil config
+// Verifies that no configReferences structure is created when no config is provided
 func TestUpdateManagedClusterAddOnSpecHashNilConfig(t *testing.T) {
 	s := scheme.Scheme
 	addonv1alpha1.AddToScheme(s)
@@ -227,9 +228,57 @@ func TestUpdateManagedClusterAddOnSpecHashNilConfig(t *testing.T) {
 	c := fake.NewClientBuilder().WithScheme(s).WithStatusSubresource(&addonv1alpha1.ManagedClusterAddOn{}).WithRuntimeObjects(mca).Build()
 	ctx := context.Background()
 
-	// Should not error with nil config
+	// Should not error with nil config and should create configReferences structure
 	err := UpdateManagedClusterAddOnSpecHash(ctx, c, namespace, nil)
 	if err != nil {
 		t.Fatalf("UpdateManagedClusterAddOnSpecHash should handle nil config gracefully: %v", err)
+	}
+
+	// Verify that configReferences was NOT created (since we can't create one without a name)
+	updatedMCA := &addonv1alpha1.ManagedClusterAddOn{}
+	if err := c.Get(ctx, types.NamespacedName{Name: config.ManagedClusterAddonName, Namespace: namespace}, updatedMCA); err != nil {
+		t.Fatalf("Failed to get updated MCA: %v", err)
+	}
+
+	// Should NOT have configReferences entry when no config is provided
+	if len(updatedMCA.Status.ConfigReferences) != 0 {
+		t.Fatalf("Expected no configReferences when no config is provided, got: %v", updatedMCA.Status.ConfigReferences)
+	}
+}
+
+// TestUpdateManagedClusterAddOnSpecHashEmptyConfig tests handling of empty config (Name == "")
+// Verifies that no configReferences structure is created when config has no name
+func TestUpdateManagedClusterAddOnSpecHashEmptyConfig(t *testing.T) {
+	s := scheme.Scheme
+	addonv1alpha1.AddToScheme(s)
+
+	mca := &addonv1alpha1.ManagedClusterAddOn{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      config.ManagedClusterAddonName,
+			Namespace: namespace,
+		},
+	}
+
+	c := fake.NewClientBuilder().WithScheme(s).WithStatusSubresource(&addonv1alpha1.ManagedClusterAddOn{}).WithRuntimeObjects(mca).Build()
+	ctx := context.Background()
+
+	// Create empty config struct (no name)
+	emptyConfig := &addonv1alpha1.AddOnDeploymentConfig{}
+
+	// Should not error with empty config and should return early without creating configReferences
+	err := UpdateManagedClusterAddOnSpecHash(ctx, c, namespace, emptyConfig)
+	if err != nil {
+		t.Fatalf("UpdateManagedClusterAddOnSpecHash should handle empty config gracefully: %v", err)
+	}
+
+	// Verify that configReferences was NOT created (since we can't create one without a name)
+	updatedMCA := &addonv1alpha1.ManagedClusterAddOn{}
+	if err := c.Get(ctx, types.NamespacedName{Name: config.ManagedClusterAddonName, Namespace: namespace}, updatedMCA); err != nil {
+		t.Fatalf("Failed to get updated MCA: %v", err)
+	}
+
+	// Should NOT have configReferences entry when empty config is provided
+	if len(updatedMCA.Status.ConfigReferences) != 0 {
+		t.Fatalf("Expected no configReferences when empty config is provided, got: %v", updatedMCA.Status.ConfigReferences)
 	}
 }

@@ -166,6 +166,7 @@ func TestObservabilityAddonController(t *testing.T) {
 		NewClientBuilder().
 		WithStatusSubresource(
 			&addonv1alpha1.ManagedClusterAddOn{},
+			&addonv1alpha1.ClusterManagementAddOn{},
 			&mcov1beta2.MultiClusterObservability{},
 			&mcov1beta1.ObservabilityAddon{},
 		).
@@ -625,6 +626,19 @@ func newClusterMgmtAddon() *addonv1alpha1.ClusterManagementAddOn {
 					DefaultConfig: &addonv1alpha1.ConfigReferent{
 						Namespace: namespace,
 						Name:      defaultAddonConfigName,
+					},
+				},
+			},
+		},
+		Status: addonv1alpha1.ClusterManagementAddOnStatus{
+			DefaultConfigReferences: []addonv1alpha1.DefaultConfigReference{
+				{
+					ConfigGroupResource: addonv1alpha1.ConfigGroupResource{
+						Group:    operatorutil.AddonGroup,
+						Resource: operatorutil.AddonDeploymentConfigResource,
+					},
+					DesiredConfig: &addonv1alpha1.ConfigSpecHash{
+						SpecHash: "",
 					},
 				},
 			},
