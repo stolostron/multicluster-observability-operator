@@ -219,11 +219,11 @@ data:
       - up
 
     matches:
-      - __name__="workqueue_queue_duration_seconds_bucket",job="apiserver"
-      - __name__="workqueue_adds_total",job="apiserver"
-      - __name__="workqueue_depth",job="apiserver"
-      - __name__="go_goroutines",job="apiserver"
-      - __name__="process_cpu_seconds_total",job="apiserver"
+      - __name__="workqueue_queue_duration_seconds_bucket",service="kubernetes"
+      - __name__="workqueue_adds_total",service="kubernetes"
+      - __name__="workqueue_depth",service="kubernetes"
+      - __name__="go_goroutines",service="kubernetes"
+      - __name__="process_cpu_seconds_total",service="kubernetes"
       - __name__="process_resident_memory_bytes",job=~"apiserver|etcd"
       - __name__="container_memory_cache",container!=""
       - __name__="container_memory_rss",container!=""
@@ -345,11 +345,11 @@ data:
       - __name__="process_resident_memory_bytes",job=~"apiserver|etcd"
       - __name__="grpc_server_started_total",job="etcd"
       - __name__="grpc_server_handled_total",job="etcd"
-      - __name__="go_goroutines",component="apiserver"
-      - __name__="process_cpu_seconds_total",component="apiserver"
-      - __name__="workqueue_adds_total",component="apiserver"
-      - __name__="workqueue_depth",component="apiserver"
-      - __name__="workqueue_queue_duration_seconds_bucket",component="apiserver"
+      - __name__="go_goroutines",service="kubernetes"
+      - __name__="process_cpu_seconds_total",service="kubernetes"
+      - __name__="workqueue_adds_total",service="kubernetes"
+      - __name__="workqueue_depth",service="kubernetes"
+      - __name__="workqueue_queue_duration_seconds_bucket",service="kubernetes"
     renames:
       etcd_mvcc_db_total_size_in_bytes: etcd_debugging_mvcc_db_total_size_in_bytes
     rules: []
