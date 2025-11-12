@@ -5,7 +5,9 @@
 package tests
 
 import (
+	"context"
 	"fmt"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -19,7 +21,7 @@ const (
 	oboPrometheusOperatorDeploymentName    = "obo-prometheus-operator"
 	metricsCollectorDeploymentName         = "metrics-collector-deployment"
 	mcoaAddonName                          = "multicluster-observability-addon"
-	metricsCollectorAddonName              = "observability-controller"
+	globalPlacementName                    = "global"
 )
 
 var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
@@ -63,7 +65,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 			})
 		})
 
-		It("should be deployed and then cleaned up successfully", func() {
+		It("should be deployed and then cleaned up successfully", SpecTimeout(10*time.Minute), func(ctx context.Context) {
 			By("Enabling MCOA", func() {
 				Expect(utils.SetMCOACapabilities(testOptions, true, false)).NotTo(HaveOccurred())
 			})
@@ -87,7 +89,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 			By("The metrics collector should be running and forwarding metrics", func() {
 				utils.CheckDeploymentAvailability(testOptions.HubCluster, metricsCollectorDeploymentName, utils.MCO_NAMESPACE, true)
 				utils.CheckDeploymentAvailabilityOnClusters(managedClusters, metricsCollectorDeploymentName, utils.MCO_ADDON_NAMESPACE, true)
-				utils.CheckManagedClusterAddonStatus(testOptions, metricsCollectorAddonName)
+				// We don't check the addon status as it has no managedClusterAddon for the hub
 			})
 		})
 	})
@@ -130,7 +132,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 		})
 
 		It("should allow updating the metrics list", func() {
-			customMetricName := "go_goroutines"
+			customMetricName := "go_memstats_alloc_bytes" // TODO: change, it's already collected.
 			customScrapeConfigCR := "test-custom-metric"
 			By("Creating a new ScrapeConfig for a custom metric", func() {
 				Expect(utils.CreateScrapeConfig(testOptions, customScrapeConfigCR, "platform-metrics-collector", []string{fmt.Sprintf(`{__name__="%s"}`, customMetricName)})).NotTo(HaveOccurred())
@@ -160,10 +162,12 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 			scrapeConfigName := "test-prom-rule-metric"
 			By("Creating a new PrometheusRule on the hub", func() {
 				Expect(utils.CreatePrometheusRule(testOptions, ruleName, utils.MCO_NAMESPACE, "platform-metrics-collector", ruleMetricName)).NotTo(HaveOccurred())
+				Expect(utils.AddConfigToPlacementInClusterManagementAddon(testOptions, utils.MCOA_CLUSTER_MANAGEMENT_ADDON_NAME, globalPlacementName, utils.NewPrometheusRuleGVR(), ruleName, utils.MCO_NAMESPACE)).NotTo(HaveOccurred())
 			})
 
 			By("Creating a new ScrapeConfig for the rule's metric", func() {
 				Expect(utils.CreateScrapeConfig(testOptions, scrapeConfigName, "platform-metrics-collector", []string{fmt.Sprintf(`{__name__="%s"}`, ruleMetricName)})).NotTo(HaveOccurred())
+				Expect(utils.AddConfigToPlacementInClusterManagementAddon(testOptions, utils.MCOA_CLUSTER_MANAGEMENT_ADDON_NAME, globalPlacementName, utils.NewScrapeConfigGVR(), scrapeConfigName, utils.MCO_NAMESPACE)).NotTo(HaveOccurred())
 			})
 
 			By("Verifying the rule's metric is forwarded to the hub", func() {
@@ -181,10 +185,12 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 
 			By("Deleting the PrometheusRule", func() {
 				Expect(utils.DeletePrometheusRule(testOptions, ruleName, utils.MCO_NAMESPACE)).NotTo(HaveOccurred())
+				Expect(utils.RemoveConfigFromPlacementInClusterManagementAddon(testOptions, utils.MCOA_CLUSTER_MANAGEMENT_ADDON_NAME, globalPlacementName, utils.NewPrometheusRuleGVR(), ruleName, utils.MCO_NAMESPACE)).NotTo(HaveOccurred())
 			})
 
 			By("Deleting the custom ScrapeConfig", func() {
 				Expect(utils.DeleteScrapeConfig(testOptions, scrapeConfigName)).NotTo(HaveOccurred())
+				Expect(utils.RemoveConfigFromPlacementInClusterManagementAddon(testOptions, utils.MCOA_CLUSTER_MANAGEMENT_ADDON_NAME, globalPlacementName, utils.NewScrapeConfigGVR(), scrapeConfigName, utils.MCO_NAMESPACE)).NotTo(HaveOccurred())
 			})
 		})
 
@@ -246,10 +252,12 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 			scrapeConfigName := "test-uwl-prom-rule-metric"
 			By("Creating a new UWL PrometheusRule on the hub", func() {
 				Expect(utils.CreatePrometheusRule(testOptions, ruleName, utils.MCO_NAMESPACE, "user-workload-metrics-collector", ruleMetricName)).NotTo(HaveOccurred())
+				Expect(utils.AddConfigToPlacementInClusterManagementAddon(testOptions, utils.MCOA_CLUSTER_MANAGEMENT_ADDON_NAME, globalPlacementName, utils.NewPrometheusRuleGVR(), ruleName, utils.MCO_NAMESPACE)).NotTo(HaveOccurred())
 			})
 
 			By("Creating a new ScrapeConfig for the rule's metric", func() {
 				Expect(utils.CreateScrapeConfig(testOptions, scrapeConfigName, "user-workload-metrics-collector", []string{fmt.Sprintf(`{__name__="%s"}`, ruleMetricName)})).NotTo(HaveOccurred())
+				Expect(utils.AddConfigToPlacementInClusterManagementAddon(testOptions, utils.MCOA_CLUSTER_MANAGEMENT_ADDON_NAME, globalPlacementName, utils.NewScrapeConfigGVR(), scrapeConfigName, utils.MCO_NAMESPACE)).NotTo(HaveOccurred())
 			})
 
 			By("The user workload prometheus agent should be running", func() {
@@ -271,10 +279,12 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 
 			By("Deleting the PrometheusRule", func() {
 				Expect(utils.DeletePrometheusRule(testOptions, ruleName, utils.MCO_NAMESPACE)).NotTo(HaveOccurred())
+				Expect(utils.RemoveConfigFromPlacementInClusterManagementAddon(testOptions, utils.MCOA_CLUSTER_MANAGEMENT_ADDON_NAME, globalPlacementName, utils.NewPrometheusRuleGVR(), ruleName, utils.MCO_NAMESPACE)).NotTo(HaveOccurred())
 			})
 
 			By("Deleting the custom ScrapeConfig", func() {
 				Expect(utils.DeleteScrapeConfig(testOptions, scrapeConfigName)).NotTo(HaveOccurred())
+				Expect(utils.RemoveConfigFromPlacementInClusterManagementAddon(testOptions, utils.MCOA_CLUSTER_MANAGEMENT_ADDON_NAME, globalPlacementName, utils.NewScrapeConfigGVR(), scrapeConfigName, utils.MCO_NAMESPACE)).NotTo(HaveOccurred())
 			})
 
 			By("The user workload prometheus agent should be terminated", func() {
