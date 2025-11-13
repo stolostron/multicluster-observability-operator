@@ -82,10 +82,8 @@ func TestClusterManagmentAddon(t *testing.T) {
 		t.Fatalf("Failed to delete clustermanagementaddon: (%v)", err)
 	}
 
-	// Create a clustermanagement addon with the self-mgmt lifecycle annotation
-	// This emulates a upgrade scenario where the addon is created with the self-mgmt annotation
-	// and then the addon-manager-controller is upgraded to a version that does not support it.
-	// The test case expects the annotation to be removed during the update.
+	// Test upgrade scenario: Create a CMA with the old lifecycle annotation
+	// The test expects the annotation to be removed during reconciliation.
 	clusterManagementAddon, err := newClusterManagementAddon(c)
 	if err != nil {
 		t.Fatalf("Failed to create new clustermanagementaddon: (%v)", err)
@@ -122,6 +120,20 @@ func TestClusterManagmentAddon(t *testing.T) {
 	// Verify the annotation has been removed
 	if _, found := addon.ObjectMeta.Annotations[addonv1alpha1.AddonLifecycleAnnotationKey]; found {
 		t.Fatalf("Addon lifecycle annotation was not removed as expected")
+	}
+
+	// Verify SupportedConfigs exists but has no DefaultConfig (backward compatible)
+	if len(addon.Spec.SupportedConfigs) == 0 {
+		t.Fatalf("No SupportedConfigs found in clustermanagementaddon")
+	}
+	for _, cfg := range addon.Spec.SupportedConfigs {
+		if cfg.ConfigGroupResource.Group == AddonGroup &&
+			cfg.ConfigGroupResource.Resource == AddonDeploymentConfigResource {
+			if cfg.DefaultConfig != nil {
+				t.Fatalf("Unexpected DefaultConfig found - should be nil for backward compatibility")
+			}
+			break
+		}
 	}
 
 	// delete it again for good measure
