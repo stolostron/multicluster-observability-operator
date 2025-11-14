@@ -42,7 +42,7 @@ func LogFailingTestStandardDebugInfo(opt TestOptions) {
 		opt.HubCluster.ClusterServerURL,
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext)
-	CheckPodsInNamespace(hubClient, "open-cluster-management", []string{"multicluster-observability-operator"}, map[string]string{
+	CheckPodsInNamespace(hubClient, "open-cluster-management", []string{"multicluster-observability-operator", "multicluster-observability-addon-manager"}, map[string]string{
 		"name": "multicluster-observability-operator",
 	})
 	CheckDeploymentsInNamespace(hubClient, MCO_NAMESPACE)
@@ -52,6 +52,10 @@ func LogFailingTestStandardDebugInfo(opt TestOptions) {
 	printConfigMapsInNamespace(hubClient, MCO_NAMESPACE)
 	printSecretsInNamespace(hubClient, MCO_NAMESPACE)
 	LogManagedClusters(hubDynClient)
+
+	CheckDeploymentsInNamespace(hubClient, MCO_AGENT_ADDON_NAMESPACE)
+	CheckStatefulSetsInNamespace(hubClient, MCO_AGENT_ADDON_NAMESPACE)
+	CheckPodsInNamespace(hubClient, MCO_AGENT_ADDON_NAMESPACE, []string{}, map[string]string{})
 
 	for _, mc := range opt.ManagedClusters {
 		if mc.Name == "local-cluster" {
@@ -164,7 +168,7 @@ func LogPodLogs(client kubernetes.Interface, ns string, pod corev1.Pod) {
 		}
 
 		// Filter error logs and keep all last 100 lines
-		maxLines := 100
+		maxLines := 80
 		cleanedLines := []string{}
 		lines := strings.Split(string(logs), "\n")
 		for i, line := range lines {
