@@ -6,14 +6,18 @@ package util
 
 import (
 	"context"
+	"crypto/md5" // #nosec G401 G501 - Not used for cryptographic purposes
+	"encoding/hex"
 	"fmt"
 	"net/url"
 
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/yaml"
 
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 )
@@ -29,6 +33,85 @@ type clusterManagementAddOnSpec struct {
 	DisplayName string `json:"displayName"`
 	Description string `json:"description"`
 	CRDName     string `json:"crdName"`
+}
+
+// CalculateAddOnDeploymentConfigSpecHash computes a hash of the AddOnDeploymentConfig spec to track changes.
+// This is a shared utility used by both ClusterManagementAddOn and ManagedClusterAddOn status updates.
+func CalculateAddOnDeploymentConfigSpecHash(addonConfig *addonv1alpha1.AddOnDeploymentConfig) (string, error) {
+	if addonConfig == nil {
+		return "", nil
+	}
+
+	// Hash the spec portion of the AddOnDeploymentConfig
+	hasher := md5.New() // #nosec G401 G501 - Not used for cryptographic purposes
+	specData, err := yaml.Marshal(addonConfig.Spec)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal addon config spec: %w", err)
+	}
+
+	hasher.Write(specData)
+	return hex.EncodeToString(hasher.Sum(nil)), nil
+}
+
+// updateClusterManagementAddOnStatus updates the ClusterManagementAddOn status with spec hash
+func updateClusterManagementAddOnStatus(ctx context.Context, c client.Client, addonConfig *addonv1alpha1.AddOnDeploymentConfig) error {
+	if addonConfig == nil {
+		return nil
+	}
+
+	clusterMgmtAddon := &addonv1alpha1.ClusterManagementAddOn{}
+	err := c.Get(ctx, types.NamespacedName{Name: ObservabilityController}, clusterMgmtAddon)
+	if err != nil {
+		return fmt.Errorf("failed to get clustermanagementaddon: %w", err)
+	}
+
+	specHash, err := CalculateAddOnDeploymentConfigSpecHash(addonConfig)
+	if err != nil {
+		return fmt.Errorf("failed to calculate spec hash: %w", err)
+	}
+
+	// Save original CMA before modifying for Patch operation
+	// Use Patch instead of Update to avoid overwriting status fields set by addon-framework's cmaconfig controller
+	// The framework uses PatchStatus to update spec hashes, and we should preserve other status updates
+	originalCMA := clusterMgmtAddon.DeepCopy()
+
+	// Update status with desired config spec hash
+	// Find the configuration entry for AddOnDeploymentConfig and update its desiredConfig
+	found := false
+	for i, configRef := range clusterMgmtAddon.Status.DefaultConfigReferences {
+		if configRef.ConfigGroupResource.Group == AddonGroup && configRef.ConfigGroupResource.Resource == AddonDeploymentConfigResource {
+			if clusterMgmtAddon.Status.DefaultConfigReferences[i].DesiredConfig == nil {
+				clusterMgmtAddon.Status.DefaultConfigReferences[i].DesiredConfig = &addonv1alpha1.ConfigSpecHash{}
+			}
+			clusterMgmtAddon.Status.DefaultConfigReferences[i].DesiredConfig.SpecHash = specHash
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		return fmt.Errorf("DefaultConfigReference not found in CMA status for config %s/%s - framework may not have created it yet, will retry", addonConfig.Namespace, addonConfig.Name)
+	}
+
+	if equality.Semantic.DeepEqual(originalCMA.Status.DefaultConfigReferences, clusterMgmtAddon.Status.DefaultConfigReferences) {
+		log.V(1).Info("DefaultConfigReferences unchanged, skipping status update")
+		return nil
+	}
+
+	// Use Patch instead of Update to preserve other status fields updated by the framework
+	if err := c.Status().Patch(ctx, clusterMgmtAddon, client.MergeFrom(originalCMA)); err != nil {
+		return fmt.Errorf("failed to update clustermanagementaddon status: %w", err)
+	}
+
+	log.Info("Updated ClusterManagementAddOn status with spec hash", "hash", specHash, "config", addonConfig.Namespace+"/"+addonConfig.Name)
+	return nil
+}
+
+// UpdateClusterManagementAddOnSpecHash is a public function that can be called to update
+// the ClusterManagementAddOn status with spec hash for a given AddOnDeploymentConfig.
+// This should be called whenever AddOnDeploymentConfigs are created or updated.
+func UpdateClusterManagementAddOnSpecHash(ctx context.Context, c client.Client, addonConfig *addonv1alpha1.AddOnDeploymentConfig) error {
+	return updateClusterManagementAddOnStatus(ctx, c, addonConfig)
 }
 
 func CreateClusterManagementAddon(ctx context.Context, c client.Client) (
@@ -52,17 +135,19 @@ func CreateClusterManagementAddon(ctx context.Context, c client.Client) (
 		return nil, fmt.Errorf("cannot create observability-controller clustermanagementaddon: %w", err)
 	}
 
-	// With addon-framework v0.12.0 upgrade, the lifecycle annotation should not be present on clustermanagementaddon,
-	// as otherwise addon-manager-controller does not correctly precess the addon.
-	// Remove addon.open-cluster-management.io/lifecycle annotation if present.
-	if found.Annotations != nil {
-		if _, exists := found.Annotations[addonv1alpha1.AddonLifecycleAnnotationKey]; exists {
-			delete(found.Annotations, addonv1alpha1.AddonLifecycleAnnotationKey)
+	// With addon-framework v0.12.0 upgrade, we need to ensure the self-management annotation is present
+	// to properly handle spec hash updates for AddOnDeploymentConfigs
+	if found.Annotations == nil {
+		found.Annotations = map[string]string{}
+	}
 
-			log.Info("Removing addon.open-cluster-management.io/lifecycle annotation from observability-controller clustermanagementaddon")
-			if err := c.Update(ctx, found); err != nil {
-				return nil, fmt.Errorf("failed to update clustermanagementaddon to remove lifecycle annotation: %w", err)
-			}
+	// Ensure the self-management annotation is set
+	if found.Annotations[addonv1alpha1.AddonLifecycleAnnotationKey] != addonv1alpha1.AddonLifecycleSelfManageAnnotationValue {
+		found.Annotations[addonv1alpha1.AddonLifecycleAnnotationKey] = addonv1alpha1.AddonLifecycleSelfManageAnnotationValue
+
+		log.Info("Setting self-management annotation on observability-controller clustermanagementaddon")
+		if err := c.Update(ctx, found); err != nil {
+			return nil, fmt.Errorf("failed to update clustermanagementaddon to set self-management annotation: %w", err)
 		}
 	}
 

@@ -82,6 +82,13 @@ func NewMCOManagedClusterAddonsGVR() schema.GroupVersionResource {
 		Resource: "managedclusteraddons"}
 }
 
+func NewAddOnDeploymentConfigGVR() schema.GroupVersionResource {
+	return schema.GroupVersionResource{
+		Group:    OCM_ADDON_GROUP,
+		Version:  "v1alpha1",
+		Resource: "addondeploymentconfigs"}
+}
+
 func NewMCOMObservatoriumGVR() schema.GroupVersionResource {
 	return schema.GroupVersionResource{
 		Group:    "core.observatorium.io",
