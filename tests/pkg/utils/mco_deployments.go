@@ -99,7 +99,7 @@ func CheckDeploymentAvailability(cluster Cluster, name, namespace string, should
 				return fmt.Errorf("deployment %s/%s is not ready: %d/%d", namespace, name, dep.Status.ReadyReplicas, *dep.Spec.Replicas)
 			}
 			return nil
-		}, 300, 2).Should(Not(HaveOccurred()))
+		}, 300, 5).Should(Not(HaveOccurred()))
 	} else {
 		Eventually(func() error {
 			_, err := GetDeploymentWithCluster(cluster, name, namespace)
@@ -110,7 +110,7 @@ func CheckDeploymentAvailability(cluster Cluster, name, namespace string, should
 				return err
 			}
 			return fmt.Errorf("deployment %s/%s still exists", namespace, name)
-		}, 300, 2).Should(Succeed())
+		}, 300, 5).Should(Succeed())
 	}
 }
 
