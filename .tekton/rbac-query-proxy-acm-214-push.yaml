@@ -47,7 +47,8 @@ spec:
         value: main
       - name: pathInRepo
         value: pipelines/common.yaml
-  taskRunTemplate: {}
+  taskRunTemplate:
+    serviceAccountName: build-pipeline-rbac-query-proxy-acm-214
   workspaces:
   - name: git-auth
     secret:
