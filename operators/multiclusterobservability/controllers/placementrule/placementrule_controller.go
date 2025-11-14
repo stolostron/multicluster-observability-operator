@@ -163,6 +163,8 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 			if err := DeleteHubMetricsCollectionDeployments(ctx, r.Client); err != nil {
 				return ctrl.Result{}, fmt.Errorf("failed to delete hub metrics collection deployments and resources: %w", err)
 			}
+			// Also clear the amAccessorToken global var, to ensure it's not re-used on re-deploys
+			amAccessorTokenSecret = nil
 		}
 
 		// Don't return right away from here because the above cleanup is not complete and it requires
