@@ -13,7 +13,8 @@ spec:
   metricsPath: /federate
   params:
     match[]:
-    - '{__name__="ALERTS"}'
+    - '{__name__="ALERTS",alertname!="PodDisruptionBudgetAtLimit"}'
+    - '{__name__="ALERTS",alertname="PodDisruptionBudgetAtLimit",poddisruptionbudget!~"kubevirt-disruption-budget-.*"}'
   metricRelabelings:
   - action: labeldrop
     regex: managed_cluster|id
