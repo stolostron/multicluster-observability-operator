@@ -41,7 +41,6 @@ func NewKubeClient(url, kubeconfig, ctx string) kubernetes.Interface {
 	if err != nil {
 		panic(err)
 	}
-	config.TLSClientConfig.Insecure = true
 
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
@@ -56,7 +55,6 @@ func NewKubeClientDynamic(url, kubeconfig, ctx string) dynamic.Interface {
 	if err != nil {
 		panic(err)
 	}
-	config.TLSClientConfig.Insecure = true
 
 	clientset, err := dynamic.NewForConfig(config)
 	if err != nil {
@@ -72,7 +70,6 @@ func NewKubeClientAPIExtension(url, kubeconfig, ctx string) apiextensionsclients
 	if err != nil {
 		panic(err)
 	}
-	config.TLSClientConfig.Insecure = true
 
 	clientset, err := apiextensionsclientset.NewForConfig(config)
 	if err != nil {
