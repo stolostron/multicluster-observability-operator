@@ -105,6 +105,29 @@ func GetOCPClusters(opt TestOptions) ([]Cluster, error) {
 	return ocpClusters, nil
 }
 
+func GetOCPClustersWithAPIAccess(opt TestOptions) ([]Cluster, error) {
+	ocpClusters, err := GetOCPClusters(opt)
+	if err != nil {
+		return nil, err
+	}
+
+	accessibleOCPClusters := []Cluster{}
+	for _, cluster := range ocpClusters {
+		clientKube := NewKubeClient(
+			cluster.ClusterServerURL,
+			cluster.KubeConfig,
+			cluster.KubeContext)
+		_, err := clientKube.CoreV1().Namespaces().List(context.TODO(), metav1.ListOptions{})
+		if err != nil {
+			klog.Warningf("failed to access cluster %s: %v", cluster.Name, err)
+		} else {
+			accessibleOCPClusters = append(accessibleOCPClusters, cluster)
+		}
+	}
+
+	return accessibleOCPClusters, nil
+}
+
 func CreateCOOSubscription(clusters []Cluster) error {
 	for _, cluster := range clusters {
 		clientKube := NewKubeClient(
@@ -392,6 +415,24 @@ func DeleteCOOSubscription(clusters []Cluster) error {
 		})
 		if err != nil {
 			return fmt.Errorf("failed to wait for OperatorGroup %s to be deleted on cluster %s: %w", cooOperatorGroupName, cluster.Name, err)
+		}
+
+		// Wait for namespace to be deleted
+		klog.Infof("Waiting for namespace %s to be deleted on cluster %s", cooSubscriptionNamespace, cluster.Name)
+		err = wait.PollUntilContextTimeout(context.Background(), 1*time.Second, 2*time.Minute, true, func(ctx context.Context) (bool, error) {
+			clientKube := NewKubeClient(
+				cluster.ClusterServerURL,
+				cluster.KubeConfig,
+				cluster.KubeContext)
+			_, errGet := clientKube.CoreV1().Namespaces().Get(ctx, cooSubscriptionNamespace, metav1.GetOptions{})
+			if errors.IsNotFound(errGet) {
+				klog.Infof("Namespace %s is deleted on cluster %s", cooSubscriptionNamespace, cluster.Name)
+				return true, nil
+			}
+			return false, errGet
+		})
+		if err != nil {
+			return fmt.Errorf("failed to wait for namespace %s to be deleted on cluster %s: %w", cooSubscriptionNamespace, cluster.Name, err)
 		}
 	}
 	return nil
