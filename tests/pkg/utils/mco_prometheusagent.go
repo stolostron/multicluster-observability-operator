@@ -21,14 +21,14 @@ func NewPrometheusAgentGVR() schema.GroupVersionResource {
 	}
 }
 
-func UpdatePlatformPrometheusAgent(opt TestOptions, interval string) error {
+func UpdatePrometheusAgentScrapeInterval(opt TestOptions, labelSelector string, interval string) error {
 	clientDynamic := NewKubeClientDynamic(
 		opt.HubCluster.ClusterServerURL,
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext)
 
 	listOpt := metav1.ListOptions{
-		LabelSelector: "app.kubernetes.io/component=platform-metrics-collector",
+		LabelSelector: fmt.Sprintf("app.kubernetes.io/component=%s", labelSelector),
 	}
 	paList, err := clientDynamic.Resource(NewPrometheusAgentGVR()).Namespace(MCO_NAMESPACE).List(context.TODO(), listOpt)
 	if err != nil {
@@ -36,7 +36,7 @@ func UpdatePlatformPrometheusAgent(opt TestOptions, interval string) error {
 	}
 
 	if len(paList.Items) != 1 {
-		return fmt.Errorf("expected 1 PrometheusAgent with label app.kubernetes.io/component=platform-metrics-collector, but found %d", len(paList.Items))
+		return fmt.Errorf("expected 1 PrometheusAgent with label app.kubernetes.io/component=%s, but found %d", labelSelector, len(paList.Items))
 	}
 
 	pa := paList.Items[0]

@@ -21,12 +21,7 @@ const (
 )
 
 // EnableUWLMonitoringOnManagedClusters enables user workload monitoring on all managed OpenShift clusters.
-func EnableUWLMonitoringOnManagedClusters(opt TestOptions) error {
-	ocpClusters, err := GetOCPClusters(opt)
-	if err != nil {
-		return err
-	}
-
+func EnableUWLMonitoringOnManagedClusters(opt TestOptions, ocpClusters []Cluster) error {
 	for _, cluster := range ocpClusters {
 		kubeClient := NewKubeClient(
 			cluster.ClusterServerURL,
