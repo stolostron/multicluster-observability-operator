@@ -42,8 +42,11 @@ func LogFailingTestStandardDebugInfo(opt TestOptions) {
 		opt.HubCluster.ClusterServerURL,
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext)
-	CheckPodsInNamespace(hubClient, "open-cluster-management", []string{"multicluster-observability-operator", "multicluster-observability-addon-manager"}, map[string]string{
+	CheckPodsInNamespace(hubClient, "open-cluster-management", []string{"multicluster-observability-operator"}, map[string]string{
 		"name": "multicluster-observability-operator",
+	})
+	CheckPodsInNamespace(hubClient, MCO_NAMESPACE, []string{"multicluster-observability-addon-manager"}, map[string]string{
+		"app": "multicluster-observability-addon-manager",
 	})
 	CheckDeploymentsInNamespace(hubClient, MCO_NAMESPACE)
 	CheckStatefulSetsInNamespace(hubClient, MCO_NAMESPACE)

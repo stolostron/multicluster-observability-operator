@@ -166,9 +166,7 @@ func CreateCOOSubscription(clusters []Cluster) error {
 					"name":      cooOperatorGroupName,
 					"namespace": cooSubscriptionNamespace,
 				},
-				"spec": map[string]interface{}{
-					"targetNamespaces": []string{cooSubscriptionNamespace},
-				},
+				"spec": map[string]interface{}{},
 			},
 		}
 		_, err = clientDynamic.Resource(NewOperatorGroupGVR()).Namespace(cooSubscriptionNamespace).Create(context.TODO(), og, metav1.CreateOptions{})
@@ -417,13 +415,20 @@ func DeleteCOOSubscription(clusters []Cluster) error {
 			return fmt.Errorf("failed to wait for OperatorGroup %s to be deleted on cluster %s: %w", cooOperatorGroupName, cluster.Name, err)
 		}
 
+		// Delete the namespace for COO
+		clientKube := NewKubeClient(
+			cluster.ClusterServerURL,
+			cluster.KubeConfig,
+			cluster.KubeContext)
+		klog.Infof("Deleting namespace %s on cluster %s", cooSubscriptionNamespace, cluster.Name)
+		err = clientKube.CoreV1().Namespaces().Delete(context.TODO(), cooSubscriptionNamespace, metav1.DeleteOptions{})
+		if err != nil && !errors.IsNotFound(err) {
+			return fmt.Errorf("failed to delete namespace %s on cluster %s: %w", cooSubscriptionNamespace, cluster.Name, err)
+		}
+
 		// Wait for namespace to be deleted
 		klog.Infof("Waiting for namespace %s to be deleted on cluster %s", cooSubscriptionNamespace, cluster.Name)
 		err = wait.PollUntilContextTimeout(context.Background(), 1*time.Second, 2*time.Minute, true, func(ctx context.Context) (bool, error) {
-			clientKube := NewKubeClient(
-				cluster.ClusterServerURL,
-				cluster.KubeConfig,
-				cluster.KubeContext)
 			_, errGet := clientKube.CoreV1().Namespaces().Get(ctx, cooSubscriptionNamespace, metav1.GetOptions{})
 			if errors.IsNotFound(errGet) {
 				klog.Infof("Namespace %s is deleted on cluster %s", cooSubscriptionNamespace, cluster.Name)
