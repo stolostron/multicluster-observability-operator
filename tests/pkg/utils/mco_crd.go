@@ -17,7 +17,7 @@ import (
 
 func DeleteMonitoringCRDs(opt TestOptions, clusters []Cluster) error {
 	for _, cluster := range clusters {
-		apiExtensionsClient := NewKubeClientAPIExtension(cluster.ClusterServerURL, opt.KubeConfig, cluster.KubeContext)
+		apiExtensionsClient := NewKubeClientAPIExtension(cluster.ClusterServerURL, cluster.KubeConfig, cluster.KubeContext)
 
 		crds, err := apiExtensionsClient.ApiextensionsV1().CustomResourceDefinitions().List(context.TODO(), metav1.ListOptions{})
 		if err != nil {
