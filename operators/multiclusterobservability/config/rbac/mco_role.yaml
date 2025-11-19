@@ -229,6 +229,7 @@ rules:
   resources:
   - clustermanagementaddons
   - clustermanagementaddons/finalizers
+  - clustermanagementaddons/status
   verbs:
   - create
   - update
