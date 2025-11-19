@@ -32,7 +32,7 @@ var kubeClient kubernetes.Interface
 const (
 	// defaultNamespace is the default namespace for MultiClusterObservability resources
 	defaultNamespace = "open-cluster-management-observability"
-	
+
 	// Bucket name constraints per S3/GCS specifications
 	minBucketNameLength = 3
 	maxBucketNameLength = 63
@@ -40,7 +40,7 @@ const (
 
 // objectStorageConf represents the structure of object storage configuration
 type objectStorageConf struct {
-	Type   string            `yaml:"type"`
+	Type   string               `yaml:"type"`
 	Config storageBackendConfig `yaml:"config"`
 }
 
@@ -118,7 +118,7 @@ func (mco *MultiClusterObservability) validateMultiClusterObservabilityName() *f
 // definition.
 func (mco *MultiClusterObservability) validateMultiClusterObservabilitySpec() *field.Error {
 	// The field helpers from the kubernetes API machinery help us return nicely structured validation errors.
-	
+
 	// Validate object storage configuration if provided
 	if mco.Spec.StorageConfig == nil || mco.Spec.StorageConfig.MetricObjectStorage == nil {
 		// No storage config provided, skip validation
@@ -183,7 +183,7 @@ func validateObjectStorageConfig(data []byte) error {
 	}
 
 	storageType := strings.ToLower(objConf.Type)
-	
+
 	// Validate based on storage type
 	switch storageType {
 	case "s3", "gcs":
@@ -203,14 +203,14 @@ func validateBucketName(bucket string, storageType string) error {
 	}
 
 	bucketLen := len(bucket)
-	
+
 	if bucketLen > maxBucketNameLength {
-		return fmt.Errorf("bucket name '%s' is too long (%d characters). %s bucket names must be %d characters or less", 
+		return fmt.Errorf("bucket name '%s' is too long (%d characters). %s bucket names must be %d characters or less",
 			bucket, bucketLen, strings.ToUpper(storageType), maxBucketNameLength)
 	}
 
 	if bucketLen < minBucketNameLength {
-		return fmt.Errorf("bucket name '%s' is too short (%d characters). %s bucket names must be at least %d characters", 
+		return fmt.Errorf("bucket name '%s' is too short (%d characters). %s bucket names must be at least %d characters",
 			bucket, bucketLen, strings.ToUpper(storageType), minBucketNameLength)
 	}
 
