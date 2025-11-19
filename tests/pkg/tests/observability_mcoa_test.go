@@ -181,7 +181,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 			ruleMetricName := "test_platform_metric_from_rule"
 			scrapeConfigName := "test-prom-rule-metric"
 			By("Creating a new PrometheusRule on the hub", func() {
-				Expect(utils.CreatePrometheusRule(testOptions, ruleName, utils.MCO_NAMESPACE, "platform-metrics-collector", ruleMetricName)).NotTo(HaveOccurred())
+				Expect(utils.CreatePrometheusRule(testOptions, ruleName, utils.MCO_NAMESPACE, "platform-metrics-collector", ruleMetricName, "")).NotTo(HaveOccurred())
 				Expect(utils.AddConfigToPlacementInClusterManagementAddon(testOptions, utils.MCOA_CLUSTER_MANAGEMENT_ADDON_NAME, globalPlacementName, utils.NewPrometheusRuleGVR(), ruleName, utils.MCO_NAMESPACE)).NotTo(HaveOccurred())
 			})
 
@@ -241,13 +241,14 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 			})
 		})
 
-		It("should allow collecting metrics for user workloads", func() {
+		It("should allow collecting metrics for user workloads", SpecTimeout(10*time.Minute), func(ctx context.Context) {
 			ruleName := "test-uwl-prom-rule"
 			ruleMetricName := "test_uwl_metric_from_rule"
 			scrapeConfigName := "test-uwl-prom-rule-metric"
 
-			By("Creating a uwl metric", func() {
-				Expect(utils.CreatePrometheusRuleForUserWorkload(testOptions, ruleName, "default", ruleMetricName)).NotTo(HaveOccurred())
+			By("Creating a new PrometheusRule on the hub", func() {
+				Expect(utils.CreatePrometheusRule(testOptions, ruleName, utils.MCO_NAMESPACE, "user-workload-metrics-collector", ruleMetricName, "default")).NotTo(HaveOccurred())
+				Expect(utils.AddConfigToPlacementInClusterManagementAddon(testOptions, utils.MCOA_CLUSTER_MANAGEMENT_ADDON_NAME, globalPlacementName, utils.NewPrometheusRuleGVR(), ruleName, utils.MCO_NAMESPACE)).NotTo(HaveOccurred())
 			})
 
 			By("Creating a new ScrapeConfig for the rule's metric", func() {
@@ -270,7 +271,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 					}
 					// TODO: check all managed clusters
 					return nil
-				}, 300, 1).Should(Not(HaveOccurred()))
+				}, 300, 2).Should(Not(HaveOccurred()))
 			})
 
 			By("Deleting the custom ScrapeConfig", func() {
@@ -278,8 +279,9 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 				Expect(utils.RemoveConfigFromPlacementInClusterManagementAddon(testOptions, utils.MCOA_CLUSTER_MANAGEMENT_ADDON_NAME, globalPlacementName, utils.NewScrapeConfigGVR(), scrapeConfigName, utils.MCO_NAMESPACE)).NotTo(HaveOccurred())
 			})
 
-			By("Deleting the uwl metric", func() {
-				Expect(utils.DeletePrometheusRule(testOptions, ruleName, "default")).NotTo(HaveOccurred())
+			By("Deleting the PrometheusRule", func() {
+				Expect(utils.DeletePrometheusRule(testOptions, ruleName, utils.MCO_NAMESPACE)).NotTo(HaveOccurred())
+				Expect(utils.RemoveConfigFromPlacementInClusterManagementAddon(testOptions, utils.MCOA_CLUSTER_MANAGEMENT_ADDON_NAME, globalPlacementName, utils.NewPrometheusRuleGVR(), ruleName, utils.MCO_NAMESPACE)).NotTo(HaveOccurred())
 			})
 		})
 	})
