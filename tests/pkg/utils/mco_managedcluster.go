@@ -200,6 +200,6 @@ func GetAvailableManagedClusters(opt TestOptions) ([]*clusterv1.ManagedCluster, 
 	}
 
 	return slices.DeleteFunc(clusters, func(e *clusterv1.ManagedCluster) bool {
-		return meta.IsStatusConditionFalse(e.Status.Conditions, "ManagedClusterConditionAvailable")
+		return !meta.IsStatusConditionTrue(e.Status.Conditions, "ManagedClusterConditionAvailable")
 	}), nil
 }
