@@ -51,8 +51,12 @@ update_mco_cr() {
     ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-metrics_collector-image: ${OBSERVATORIUM_OPERATOR_IMAGE_REF}" ${ROOTDIR}/examples/mco/e2e/v1beta2/*/observability.yaml
   fi
   if [[ -n ${MULTICLUSTER_OBSERVABILITY_ADDON_IMAGE_REF} ]]; then
-    ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-multicluster_observability_addon-image: ${MULTICLUSTER_OBSERVABILITY_ADDON_IMAGE_REF}" ${ROOTDIR}/examples/mco/e2e/v1beta2/observability.yaml
-    ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-multicluster_observability_addon-image: ${MULTICLUSTER_OBSERVABILITY_ADDON_IMAGE_REF}" ${ROOTDIR}/examples/mco/e2e/v1beta2/*/observability.yaml
+    "${SED_COMMAND[@]}" "/annotations.*/a \ \ \ \ mco-multicluster_observability_addon-image: ${MULTICLUSTER_OBSERVABILITY_ADDON_IMAGE_REF}" ${ROOTDIR}/examples/mco/e2e/v1beta2/observability.yaml
+    "${SED_COMMAND[@]}" "/annotations.*/a \ \ \ \ mco-multicluster_observability_addon-image: ${MULTICLUSTER_OBSERVABILITY_ADDON_IMAGE_REF}" ${ROOTDIR}/examples/mco/e2e/v1beta2/*/observability.yaml
+  fi
+  if [[ -n ${OBO_PROMETHEUS_OPERATOR_IMAGE_REF} ]]; then
+    "${SED_COMMAND[@]}" "/annotations.*/a \ \ \ \ mco-obo_prometheus_rhel9_operator-image: ${OBO_PROMETHEUS_OPERATOR_IMAGE_REF}" ${ROOTDIR}/examples/mco/e2e/v1beta2/observability.yaml
+    "${SED_COMMAND[@]}" "/annotations.*/a \ \ \ \ mco-obo_prometheus_rhel9_operator-image: ${OBO_PROMETHEUS_OPERATOR_IMAGE_REF}" ${ROOTDIR}/examples/mco/e2e/v1beta2/*/observability.yaml
   fi
 
   # Add mco-imageTagSuffix annotation
