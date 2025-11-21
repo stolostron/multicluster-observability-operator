@@ -267,10 +267,12 @@ func updateAddonSpecStatus(
 
 func updateMCOAStatus(c client.Client, conds *[]mcoshared.Condition, mco *mcov1beta2.MultiClusterObservability) {
 	if mco.Spec.Capabilities == nil {
+		removeStatusCondition(conds, reasonMCOADegraded)
 		return
 	}
 
 	if mco.Spec.Capabilities.Platform == nil && mco.Spec.Capabilities.UserWorkloads == nil {
+		removeStatusCondition(conds, reasonMCOADegraded)
 		return
 	}
 
@@ -280,6 +282,7 @@ func updateMCOAStatus(c client.Client, conds *[]mcoshared.Condition, mco *mcov1b
 		!mco.Spec.Capabilities.Platform.Logs.Collection.Enabled &&
 		!mco.Spec.Capabilities.Platform.Metrics.Default.Enabled &&
 		!mco.Spec.Capabilities.Platform.Analytics.IncidentDetection.Enabled {
+		removeStatusCondition(conds, reasonMCOADegraded)
 		return
 	}
 
