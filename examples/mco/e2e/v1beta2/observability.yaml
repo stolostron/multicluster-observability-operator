@@ -123,3 +123,4 @@ spec:
     ruleStorageSize: 1Gi
     storageClass: gp2
     storeStorageSize: 1Gi
+
