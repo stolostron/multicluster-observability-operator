@@ -10,7 +10,7 @@ ROOTDIR="$(
   pwd -P
 )"
 
-SED_COMMAND=${SED}' -i-e -e'
+SED_COMMAND=(sed -i -e)
 
 # Set the latest snapshot if it is not set
 source ./scripts/test-utils.sh
@@ -22,7 +22,6 @@ fi
 
 # list all components need to do test.
 CHANGED_COMPONENTS=""
-GINKGO_FOCUS=""
 IMAGE=""
 
 update_mco_cr() {
@@ -31,24 +30,24 @@ update_mco_cr() {
     cd ${ROOTDIR} && git checkout -- .
   fi
   if [[ -n ${RBAC_QUERY_PROXY_IMAGE_REF} ]]; then
-    ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-rbac_query_proxy-image: ${RBAC_QUERY_PROXY_IMAGE_REF}" ${ROOTDIR}/examples/mco/e2e/v1beta2/observability.yaml
-    ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-rbac_query_proxy-image: ${RBAC_QUERY_PROXY_IMAGE_REF}" ${ROOTDIR}/examples/mco/e2e/v1beta2/*/observability.yaml
+    "${SED_COMMAND[@]}" "/annotations.*/a \ \ \ \ mco-rbac_query_proxy-image: ${RBAC_QUERY_PROXY_IMAGE_REF}" ${ROOTDIR}/examples/mco/e2e/v1beta2/observability.yaml
+    "${SED_COMMAND[@]}" "/annotations.*/a \ \ \ \ mco-rbac_query_proxy-image: ${RBAC_QUERY_PROXY_IMAGE_REF}" ${ROOTDIR}/examples/mco/e2e/v1beta2/*/observability.yaml
   fi
   if [[ -n ${ENDPOINT_MONITORING_OPERATOR_IMAGE_REF} ]]; then
-    ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-endpoint_monitoring_operator-image: ${ENDPOINT_MONITORING_OPERATOR_IMAGE_REF}" ${ROOTDIR}/examples/mco/e2e/v1beta2/observability.yaml
-    ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-endpoint_monitoring_operator-image: ${ENDPOINT_MONITORING_OPERATOR_IMAGE_REF}" ${ROOTDIR}/examples/mco/e2e/v1beta2/*/observability.yaml
+    "${SED_COMMAND[@]}" "/annotations.*/a \ \ \ \ mco-endpoint_monitoring_operator-image: ${ENDPOINT_MONITORING_OPERATOR_IMAGE_REF}" ${ROOTDIR}/examples/mco/e2e/v1beta2/observability.yaml
+    "${SED_COMMAND[@]}" "/annotations.*/a \ \ \ \ mco-endpoint_monitoring_operator-image: ${ENDPOINT_MONITORING_OPERATOR_IMAGE_REF}" ${ROOTDIR}/examples/mco/e2e/v1beta2/*/observability.yaml
   fi
   if [[ -n ${GRAFANA_DASHBOARD_LOADER_IMAGE_REF} ]]; then
-    ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-grafana_dashboard_loader-image: ${GRAFANA_DASHBOARD_LOADER_IMAGE_REF}" ${ROOTDIR}/examples/mco/e2e/v1beta2/observability.yaml
-    ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-grafana_dashboard_loader-image: ${GRAFANA_DASHBOARD_LOADER_IMAGE_REF}" ${ROOTDIR}/examples/mco/e2e/v1beta2/*/observability.yaml
+    "${SED_COMMAND[@]}" "/annotations.*/a \ \ \ \ mco-grafana_dashboard_loader-image: ${GRAFANA_DASHBOARD_LOADER_IMAGE_REF}" ${ROOTDIR}/examples/mco/e2e/v1beta2/observability.yaml
+    "${SED_COMMAND[@]}" "/annotations.*/a \ \ \ \ mco-grafana_dashboard_loader-image: ${GRAFANA_DASHBOARD_LOADER_IMAGE_REF}" ${ROOTDIR}/examples/mco/e2e/v1beta2/*/observability.yaml
   fi
   if [[ -n ${METRICS_COLLECTOR_IMAGE_REF} ]]; then
-    ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-metrics_collector-image: ${METRICS_COLLECTOR_IMAGE_REF}" ${ROOTDIR}/examples/mco/e2e/v1beta2/observability.yaml
-    ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-metrics_collector-image: ${METRICS_COLLECTOR_IMAGE_REF}" ${ROOTDIR}/examples/mco/e2e/v1beta2/*/observability.yaml
+    "${SED_COMMAND[@]}" "/annotations.*/a \ \ \ \ mco-metrics_collector-image: ${METRICS_COLLECTOR_IMAGE_REF}" ${ROOTDIR}/examples/mco/e2e/v1beta2/observability.yaml
+    "${SED_COMMAND[@]}" "/annotations.*/a \ \ \ \ mco-metrics_collector-image: ${METRICS_COLLECTOR_IMAGE_REF}" ${ROOTDIR}/examples/mco/e2e/v1beta2/*/observability.yaml
   fi
   if [[ -n ${OBSERVATORIUM_OPERATOR_IMAGE_REF} ]]; then
-    ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-metrics_collector-image: ${OBSERVATORIUM_OPERATOR_IMAGE_REF}" ${ROOTDIR}/examples/mco/e2e/v1beta2/observability.yaml
-    ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-metrics_collector-image: ${OBSERVATORIUM_OPERATOR_IMAGE_REF}" ${ROOTDIR}/examples/mco/e2e/v1beta2/*/observability.yaml
+    "${SED_COMMAND[@]}" "/annotations.*/a \ \ \ \ mco-metrics_collector-image: ${OBSERVATORIUM_OPERATOR_IMAGE_REF}" ${ROOTDIR}/examples/mco/e2e/v1beta2/observability.yaml
+    "${SED_COMMAND[@]}" "/annotations.*/a \ \ \ \ mco-metrics_collector-image: ${OBSERVATORIUM_OPERATOR_IMAGE_REF}" ${ROOTDIR}/examples/mco/e2e/v1beta2/*/observability.yaml
   fi
   if [[ -n ${MULTICLUSTER_OBSERVABILITY_ADDON_IMAGE_REF} ]]; then
     "${SED_COMMAND[@]}" "/annotations.*/a \ \ \ \ mco-multicluster_observability_addon-image: ${MULTICLUSTER_OBSERVABILITY_ADDON_IMAGE_REF}" ${ROOTDIR}/examples/mco/e2e/v1beta2/observability.yaml
@@ -60,16 +59,16 @@ update_mco_cr() {
   fi
 
   # Add mco-imageTagSuffix annotation
-  ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-imageTagSuffix: ${LATEST_SNAPSHOT}" ${ROOTDIR}/examples/mco/e2e/v1beta2/observability.yaml
-  ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-imageTagSuffix: ${LATEST_SNAPSHOT}" ${ROOTDIR}/examples/mco/e2e/v1beta2/custom-certs/observability.yaml
-  ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-imageTagSuffix: ${LATEST_SNAPSHOT}" ${ROOTDIR}/examples/mco/e2e/v1beta2/custom-certs-kind/observability.yaml
+  # "${SED_COMMAND[@]}" "/annotations.*/a \ \ \ \ mco-imageTagSuffix: ${LATEST_SNAPSHOT}" ${ROOTDIR}/examples/mco/e2e/v1beta2/observability.yaml
+  # "${SED_COMMAND[@]}" "/annotations.*/a \ \ \ \ mco-imageTagSuffix: ${LATEST_SNAPSHOT}" ${ROOTDIR}/examples/mco/e2e/v1beta2/custom-certs/observability.yaml
+  # "${SED_COMMAND[@]}" "/annotations.*/a \ \ \ \ mco-imageTagSuffix: ${LATEST_SNAPSHOT}" ${ROOTDIR}/examples/mco/e2e/v1beta2/custom-certs-kind/observability.yaml
 
   # need to add this annotation due to KinD cluster resources are insufficient
   if [[ -n ${IS_KIND_ENV} ]]; then
-    ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-thanos-without-resources-requests: true" ${ROOTDIR}/examples/mco/e2e/v1beta2/observability.yaml
+    "${SED_COMMAND[@]}" "/annotations.*/a \ \ \ \ mco-thanos-without-resources-requests: true" ${ROOTDIR}/examples/mco/e2e/v1beta2/observability.yaml
     # annotate MCO in kind env to be able to install prometheus
-    ${SED_COMMAND} "/annotations.*/a \ \ \ \ test-env: kind-test" ${ROOTDIR}/examples/mco/e2e/v1beta2/observability.yaml
-    ${SED_COMMAND} "/annotations.*/a \ \ \ \ test-env: kind-test" ${ROOTDIR}/examples/mco/e2e/v1beta2/custom-certs-kind/observability.yaml
+    "${SED_COMMAND[@]}" "/annotations.*/a \ \ \ \ test-env: kind-test" ${ROOTDIR}/examples/mco/e2e/v1beta2/observability.yaml
+    "${SED_COMMAND[@]}" "/annotations.*/a \ \ \ \ test-env: kind-test" ${ROOTDIR}/examples/mco/e2e/v1beta2/custom-certs-kind/observability.yaml
 
   fi
 }
@@ -127,6 +126,10 @@ get_changed_components() {
 
 # function get_ginkgo_focus is to get the required cases
 get_ginkgo_focus() {
+  if [[ -n "${GINKGO_FOCUS}" ]]; then
+    echo "Using GINKGO_FOCUS from environment: ${GINKGO_FOCUS}"
+    return
+  fi
   if [[ -n ${IS_KIND_ENV} ]]; then
     # For KinD cluster, do not need to run all test cases
     # and we skip those that explictly requires OCP
