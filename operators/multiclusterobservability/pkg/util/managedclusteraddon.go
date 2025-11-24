@@ -125,6 +125,21 @@ func updateManagedClusterAddOnStatus(ctx context.Context, c client.Client, names
 			Description: "Manages Observability components.",
 		}
 
+		// Initialize ConfigReferences if the MCA should inherit from CMA defaultConfig
+		// This is required for the addon-framework to populate specHash
+		if len(existingManagedClusterAddon.Spec.Configs) == 0 {
+			// Check if CMA exists before trying to initialize
+			cma := &addonv1alpha1.ClusterManagementAddOn{}
+			if err := c.Get(ctx, types.NamespacedName{Name: ObservabilityController}, cma); err == nil {
+				// CMA exists, initialize MCA ConfigReferences from CMA defaultConfig
+				initializeConfigReferencesFromCMA(cma, desiredStatus)
+			} else if !apierrors.IsNotFound(err) {
+				// Real error (not just NotFound), should retry
+				return fmt.Errorf("failed to get ClusterManagementAddOn: %w", err)
+			}
+			// If NotFound, just skip initialization - nothing to inherit from
+		}
+
 		if equality.Semantic.DeepEqual(existingManagedClusterAddon.Status, desiredStatus) {
 			// nothing to do
 			return nil
@@ -145,4 +160,52 @@ func updateManagedClusterAddOnStatus(ctx context.Context, c client.Client, names
 	}
 
 	return existingManagedClusterAddon, nil
+}
+
+// initializeConfigReferencesFromCMA initializes MCA status.ConfigReferences based on CMA's defaultConfig.
+// This is needed because the addon-framework only updates existing ConfigReferences entries, it doesn't create them.
+// The caller is responsible for checking if CMA exists before calling this function.
+func initializeConfigReferencesFromCMA(cma *addonv1alpha1.ClusterManagementAddOn, mcaStatus *addonv1alpha1.ManagedClusterAddOnStatus) {
+	// Find the defaultConfig for addondeploymentconfigs
+	for _, supportedConfig := range cma.Spec.SupportedConfigs {
+		if supportedConfig.ConfigGroupResource.Group == AddonGroup &&
+			supportedConfig.ConfigGroupResource.Resource == AddonDeploymentConfigResource &&
+			supportedConfig.DefaultConfig != nil {
+
+			// Check if ConfigReferences already has this entry
+			found := false
+			for i := range mcaStatus.ConfigReferences {
+				if mcaStatus.ConfigReferences[i].ConfigGroupResource.Group == AddonGroup &&
+					mcaStatus.ConfigReferences[i].ConfigGroupResource.Resource == AddonDeploymentConfigResource {
+					found = true
+					// Update the name/namespace if they changed
+					mcaStatus.ConfigReferences[i].ConfigReferent.Name = supportedConfig.DefaultConfig.Name
+					mcaStatus.ConfigReferences[i].ConfigReferent.Namespace = supportedConfig.DefaultConfig.Namespace
+					if mcaStatus.ConfigReferences[i].DesiredConfig == nil {
+						mcaStatus.ConfigReferences[i].DesiredConfig = &addonv1alpha1.ConfigSpecHash{}
+					}
+					mcaStatus.ConfigReferences[i].DesiredConfig.ConfigReferent = *supportedConfig.DefaultConfig
+					// specHash and lastObservedGeneration will be filled by addon-framework
+					break
+				}
+			}
+
+			// If not found, create a new entry
+			if !found {
+				newConfigRef := addonv1alpha1.ConfigReference{
+					ConfigGroupResource: supportedConfig.ConfigGroupResource,
+					ConfigReferent:      *supportedConfig.DefaultConfig,
+					DesiredConfig: &addonv1alpha1.ConfigSpecHash{
+						ConfigReferent: *supportedConfig.DefaultConfig,
+						// SpecHash will be filled by addon-framework addonconfig controller
+					},
+					// LastObservedGeneration will be filled by addon-framework addonconfig controller
+				}
+				mcaStatus.ConfigReferences = append(mcaStatus.ConfigReferences, newConfigRef)
+				log.Info("Initialized ConfigReferences from CMA defaultConfig",
+					"config", supportedConfig.DefaultConfig.Name,
+					"namespace", supportedConfig.DefaultConfig.Namespace)
+			}
+		}
+	}
 }
