@@ -7,10 +7,12 @@ package utils
 import (
 	"context"
 	"fmt"
+	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/util/retry"
 )
 
@@ -40,7 +42,14 @@ func AddConfigToPlacementInClusterManagementAddon(
 	configNamespace string,
 ) error {
 	clientDynamic := GetKubeClientDynamic(opt, true)
-	return retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+	backoffConfig := wait.Backoff{
+		Steps:    10,
+		Duration: 10 * time.Millisecond,
+		Factor:   3.0,
+		Jitter:   0.1,
+		Cap:      500 * time.Millisecond,
+	}
+	return retry.RetryOnConflict(backoffConfig, func() error {
 		cma, err := clientDynamic.Resource(clusterManagementAddonGVR).Get(context.TODO(), name, metav1.GetOptions{})
 		if err != nil {
 			return fmt.Errorf("failed to get ClusterManagementAddon %s: %w", name, err)
