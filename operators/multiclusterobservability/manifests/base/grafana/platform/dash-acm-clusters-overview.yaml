@@ -270,7 +270,7 @@ data:
           "targets": [
             {
               "exemplar": true,
-              "expr": "topk(50,  max(apiserver_request_duration_seconds:histogram_quantile_99{cluster=~\"$cluster\",clusterType!=\"ocp3\"}) by (cluster))\n* on(cluster) group_left(api_up) count_values without() (\"api_up\", (sum(up{cluster=~\"$cluster\",job=\"apiserver\",clusterType!=\"ocp3\"} == 1) by (cluster) / count(up{cluster=~\"$cluster\",job=\"apiserver\",clusterType!=\"ocp3\"}) by (cluster)))",
+              "expr": "topk(50,  max(apiserver_request_duration_seconds:histogram_quantile_99{cluster=~\"$cluster\",clusterType!=\"ocp3\"}) by (cluster))\n* on(cluster) group_left(api_up) count_values without() (\"api_up\", (sum(up{cluster=~\"$cluster\",service=\"kubernetes\",clusterType!=\"ocp3\"} == 1) by (cluster) / count(up{cluster=~\"$cluster\",service=\"kubernetes\",clusterType!=\"ocp3\"}) by (cluster)))",
               "format": "table",
               "instant": true,
               "interval": "",
