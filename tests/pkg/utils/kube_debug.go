@@ -66,7 +66,7 @@ func LogFailingTestStandardDebugInfo(opt TestOptions) {
 			continue
 		}
 
-		spokeDynClient := NewKubeClientDynamic(mc.ClusterServerURL, opt.KubeConfig, mc.KubeContext)
+		spokeDynClient := NewKubeClientDynamic(mc.ClusterServerURL, mc.KubeConfig, mc.KubeContext)
 		PrintObject(context.TODO(), spokeDynClient, NewMCOAddonGVR(), MCO_ADDON_NAMESPACE, "observability-addon")
 
 		spokeClient := NewKubeClient(mc.ClusterServerURL, mc.KubeConfig, mc.KubeContext)

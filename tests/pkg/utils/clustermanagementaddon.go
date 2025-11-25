@@ -40,7 +40,7 @@ func AddConfigToPlacementInClusterManagementAddon(
 	configNamespace string,
 ) error {
 	clientDynamic := GetKubeClientDynamic(opt, true)
-	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+	return retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 		cma, err := clientDynamic.Resource(clusterManagementAddonGVR).Get(context.TODO(), name, metav1.GetOptions{})
 		if err != nil {
 			return fmt.Errorf("failed to get ClusterManagementAddon %s: %w", name, err)
