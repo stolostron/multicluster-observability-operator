@@ -25,7 +25,7 @@ func EnableUWLMonitoringOnManagedClusters(opt TestOptions, ocpClusters []Cluster
 	for _, cluster := range ocpClusters {
 		kubeClient := NewKubeClient(
 			cluster.ClusterServerURL,
-			opt.KubeConfig,
+			cluster.KubeConfig,
 			cluster.KubeContext)
 		cm, err := kubeClient.CoreV1().ConfigMaps(openshiftMonitoringNamespace).Get(context.TODO(), clusterMonitoringConfigMapName, metav1.GetOptions{})
 		if err != nil {
