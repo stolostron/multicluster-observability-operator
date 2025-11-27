@@ -43,11 +43,11 @@ func AddConfigToPlacementInClusterManagementAddon(
 ) error {
 	clientDynamic := GetKubeClientDynamic(opt, true)
 	backoffConfig := wait.Backoff{
-		Steps:    10,
+		Steps:    11,
 		Duration: 10 * time.Millisecond,
-		Factor:   3.0,
+		Factor:   2.0,
 		Jitter:   0.1,
-		Cap:      500 * time.Millisecond,
+		// Cap:      10 * time.Second,
 	}
 	return retry.RetryOnConflict(backoffConfig, func() error {
 		cma, err := clientDynamic.Resource(clusterManagementAddonGVR).Get(context.TODO(), name, metav1.GetOptions{})
@@ -123,11 +123,11 @@ func RemoveConfigFromPlacementInClusterManagementAddon(
 ) error {
 	clientDynamic := GetKubeClientDynamic(opt, true)
 	backoffConfig := wait.Backoff{
-		Steps:    10,
+		Steps:    11,
 		Duration: 10 * time.Millisecond,
-		Factor:   3.0,
+		Factor:   2.0,
 		Jitter:   0.1,
-		Cap:      500 * time.Millisecond,
+		// Cap:      500 * time.Millisecond,
 	}
 	return retry.RetryOnConflict(backoffConfig, func() error {
 		cma, err := clientDynamic.Resource(clusterManagementAddonGVR).Get(context.TODO(), name, metav1.GetOptions{})
