@@ -171,8 +171,8 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 			})
 
 			By("Deleting the custom ScrapeConfig", func() {
-				Expect(utils.DeleteScrapeConfig(testOptions, customScrapeConfigCR)).NotTo(HaveOccurred())
 				Expect(utils.RemoveConfigFromPlacementInClusterManagementAddon(testOptions, utils.MCOA_CLUSTER_MANAGEMENT_ADDON_NAME, globalPlacementName, utils.NewScrapeConfigGVR(), customScrapeConfigCR, utils.MCO_NAMESPACE)).NotTo(HaveOccurred())
+				Expect(utils.DeleteScrapeConfig(testOptions, customScrapeConfigCR)).NotTo(HaveOccurred())
 			})
 		})
 
@@ -205,13 +205,13 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 			})
 
 			By("Deleting the PrometheusRule", func() {
-				Expect(utils.DeletePrometheusRule(testOptions, ruleName, utils.MCO_NAMESPACE)).NotTo(HaveOccurred())
 				Expect(utils.RemoveConfigFromPlacementInClusterManagementAddon(testOptions, utils.MCOA_CLUSTER_MANAGEMENT_ADDON_NAME, globalPlacementName, utils.NewPrometheusRuleGVR(), ruleName, utils.MCO_NAMESPACE)).NotTo(HaveOccurred())
+				Expect(utils.DeletePrometheusRule(testOptions, ruleName, utils.MCO_NAMESPACE)).NotTo(HaveOccurred())
 			})
 
 			By("Deleting the custom ScrapeConfig", func() {
-				Expect(utils.DeleteScrapeConfig(testOptions, scrapeConfigName)).NotTo(HaveOccurred())
 				Expect(utils.RemoveConfigFromPlacementInClusterManagementAddon(testOptions, utils.MCOA_CLUSTER_MANAGEMENT_ADDON_NAME, globalPlacementName, utils.NewScrapeConfigGVR(), scrapeConfigName, utils.MCO_NAMESPACE)).NotTo(HaveOccurred())
+				Expect(utils.DeleteScrapeConfig(testOptions, scrapeConfigName)).NotTo(HaveOccurred())
 			})
 		})
 	})
@@ -275,13 +275,13 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 			})
 
 			By("Deleting the custom ScrapeConfig", func() {
-				Expect(utils.DeleteScrapeConfig(testOptions, scrapeConfigName)).NotTo(HaveOccurred())
 				Expect(utils.RemoveConfigFromPlacementInClusterManagementAddon(testOptions, utils.MCOA_CLUSTER_MANAGEMENT_ADDON_NAME, globalPlacementName, utils.NewScrapeConfigGVR(), scrapeConfigName, utils.MCO_NAMESPACE)).NotTo(HaveOccurred())
+				Expect(utils.DeleteScrapeConfig(testOptions, scrapeConfigName)).NotTo(HaveOccurred())
 			})
 
 			By("Deleting the PrometheusRule", func() {
-				Expect(utils.DeletePrometheusRule(testOptions, ruleName, utils.MCO_NAMESPACE)).NotTo(HaveOccurred())
 				Expect(utils.RemoveConfigFromPlacementInClusterManagementAddon(testOptions, utils.MCOA_CLUSTER_MANAGEMENT_ADDON_NAME, globalPlacementName, utils.NewPrometheusRuleGVR(), ruleName, utils.MCO_NAMESPACE)).NotTo(HaveOccurred())
+				Expect(utils.DeletePrometheusRule(testOptions, ruleName, utils.MCO_NAMESPACE)).NotTo(HaveOccurred())
 			})
 		})
 	})
