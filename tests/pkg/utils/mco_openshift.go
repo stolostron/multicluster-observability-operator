@@ -7,7 +7,6 @@ package utils
 import (
 	"context"
 
-	cmomanifests "github.com/openshift/cluster-monitoring-operator/pkg/manifests"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -31,9 +30,8 @@ func EnableUWLMonitoringOnManagedClusters(opt TestOptions, ocpClusters []Cluster
 		if err != nil {
 			if errors.IsNotFound(err) {
 				// Create configmap if it does not exist
-				enabled := true
-				config := &cmomanifests.ClusterMonitoringConfiguration{
-					UserWorkloadEnabled: &enabled,
+				config := map[string]interface{}{
+					"enableUserWorkload": true,
 				}
 				yamlData, err := yaml.Marshal(config)
 				if err != nil {
