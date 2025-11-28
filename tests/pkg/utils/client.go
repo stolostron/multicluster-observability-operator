@@ -10,7 +10,7 @@ import (
 	"k8s.io/klog"
 )
 
-func getKubeClient(opt TestOptions, isHub bool) kubernetes.Interface {
+func GetKubeClient(opt TestOptions, isHub bool) kubernetes.Interface {
 	clientKube := NewKubeClient(
 		opt.HubCluster.ClusterServerURL,
 		opt.KubeConfig,
@@ -36,6 +36,29 @@ func GetKubeClientDynamic(opt TestOptions, isHub bool) dynamic.Interface {
 	}
 
 	config, err := LoadConfig(url, kubeConfig, kubeContext)
+	if err != nil {
+		panic(err)
+	}
+
+	clientset, err := dynamic.NewForConfig(config)
+	if err != nil {
+		panic(err)
+	}
+
+	return clientset
+}
+
+func GetKubeClientWithCluster(cluster Cluster) kubernetes.Interface {
+	clientKube := NewKubeClient(
+		cluster.ClusterServerURL,
+		cluster.KubeConfig,
+		cluster.KubeContext)
+	klog.V(1).Infof("New kubeclient for cluster <%v>", cluster.Name)
+	return clientKube
+}
+
+func GetKubeClientDynamicWithCluster(cluster Cluster) dynamic.Interface {
+	config, err := LoadConfig(cluster.ClusterServerURL, cluster.KubeConfig, cluster.KubeContext)
 	if err != nil {
 		panic(err)
 	}

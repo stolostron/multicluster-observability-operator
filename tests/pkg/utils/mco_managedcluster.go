@@ -22,6 +22,7 @@ import (
 const (
 	availableManagedClusterCondition = "ManagedClusterConditionAvailable"
 	idClusterClaim                   = "id.k8s.io"
+	selfManagedClusterLabelKey       = "local-cluster"
 )
 
 var openshiftLabelSelector = labels.SelectorFromValidatedSet(map[string]string{
@@ -157,6 +158,10 @@ func isOpenshiftVendor(mc *clusterv1.ManagedCluster) bool {
 	return openshiftLabelSelector.Matches(labels.Set(mc.GetLabels()))
 }
 
+func IsHubCluster(cluster *clusterv1.ManagedCluster) bool {
+	return cluster.Labels[selfManagedClusterLabelKey] == "true"
+}
+
 func getManagedClusterID(mc *clusterv1.ManagedCluster) string {
 	for _, cc := range mc.Status.ClusterClaims {
 		if cc.Name == idClusterClaim {
@@ -186,4 +191,15 @@ func GetManagedClusters(opt TestOptions) ([]*clusterv1.ManagedCluster, error) {
 	}
 
 	return ret, nil
+}
+
+func GetAvailableManagedClusters(opt TestOptions) ([]*clusterv1.ManagedCluster, error) {
+	clusters, err := GetManagedClusters(opt)
+	if err != nil {
+		return nil, err
+	}
+
+	return slices.DeleteFunc(clusters, func(e *clusterv1.ManagedCluster) bool {
+		return !meta.IsStatusConditionTrue(e.Status.Conditions, "ManagedClusterConditionAvailable")
+	}), nil
 }

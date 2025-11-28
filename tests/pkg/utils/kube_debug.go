@@ -45,6 +45,9 @@ func LogFailingTestStandardDebugInfo(opt TestOptions) {
 	CheckPodsInNamespace(hubClient, "open-cluster-management", []string{"multicluster-observability-operator"}, map[string]string{
 		"name": "multicluster-observability-operator",
 	})
+	CheckPodsInNamespace(hubClient, MCO_NAMESPACE, []string{"multicluster-observability-addon-manager"}, map[string]string{
+		"app": "multicluster-observability-addon-manager",
+	})
 	CheckDeploymentsInNamespace(hubClient, MCO_NAMESPACE)
 	CheckStatefulSetsInNamespace(hubClient, MCO_NAMESPACE)
 	CheckDaemonSetsInNamespace(hubClient, MCO_NAMESPACE)
@@ -53,13 +56,17 @@ func LogFailingTestStandardDebugInfo(opt TestOptions) {
 	printSecretsInNamespace(hubClient, MCO_NAMESPACE)
 	LogManagedClusters(hubDynClient)
 
+	CheckDeploymentsInNamespace(hubClient, MCO_AGENT_ADDON_NAMESPACE)
+	CheckStatefulSetsInNamespace(hubClient, MCO_AGENT_ADDON_NAMESPACE)
+	CheckPodsInNamespace(hubClient, MCO_AGENT_ADDON_NAMESPACE, []string{}, map[string]string{})
+
 	for _, mc := range opt.ManagedClusters {
 		if mc.Name == "local-cluster" {
 			// Skip local-cluster as same namespace as hub, and already checked
 			continue
 		}
 
-		spokeDynClient := NewKubeClientDynamic(mc.ClusterServerURL, opt.KubeConfig, mc.KubeContext)
+		spokeDynClient := NewKubeClientDynamic(mc.ClusterServerURL, mc.KubeConfig, mc.KubeContext)
 		PrintObject(context.TODO(), spokeDynClient, NewMCOAddonGVR(), MCO_ADDON_NAMESPACE, "observability-addon")
 
 		spokeClient := NewKubeClient(mc.ClusterServerURL, mc.KubeConfig, mc.KubeContext)
@@ -164,7 +171,7 @@ func LogPodLogs(client kubernetes.Interface, ns string, pod corev1.Pod) {
 		}
 
 		// Filter error logs and keep all last 100 lines
-		maxLines := 100
+		maxLines := 80
 		cleanedLines := []string{}
 		lines := strings.Split(string(logs), "\n")
 		for i, line := range lines {

@@ -10,16 +10,18 @@ ROOTDIR="$(
   pwd -P
 )"
 
-SED_COMMAND=${SED}' -i-e -e'
+SED_COMMAND=(sed -i -e)
 
 # customize the images for testing
+export MULTICLUSTER_OBSERVABILITY_ADDON_IMAGE_REF="quay.io/rhobs/multicluster-observability-addon:latest"
+export OBO_PROMETHEUS_OPERATOR_IMAGE_REF="quay.io/rhobs/obo-prometheus-operator:v0.82.1-rhobs1"
 ${ROOTDIR}/cicd-scripts/customize-mco.sh
 GINKGO_FOCUS="$(cat /tmp/ginkgo_focus)"
 
 # need to modify sc for KinD
 if [[ -n ${IS_KIND_ENV} ]]; then
-  ${SED_COMMAND} "s~gp3-csi$~standard~g" ${ROOTDIR}/examples/minio/minio-pvc.yaml
-  ${SED_COMMAND} "s~gp3-csi$~standard~g" ${ROOTDIR}/examples/minio-tls/minio-pvc.yaml
+  "${SED_COMMAND[@]}" "s~gp3-csi$~standard~g" ${ROOTDIR}/examples/minio/minio-pvc.yaml
+  "${SED_COMMAND[@]}" "s~gp3-csi$~standard~g" ${ROOTDIR}/examples/minio-tls/minio-pvc.yaml
 fi
 
 kubeconfig_hub_path=""
