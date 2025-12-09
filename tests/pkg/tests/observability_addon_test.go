@@ -185,12 +185,39 @@ var _ = Describe("", func() {
 	It("RHACM4K-1259: Observability: Verify imported cluster is observed [P3][Sev3][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore (deploy/g1)", func() {
 
 		Eventually(func() error {
-			return utils.UpdateObservabilityFromManagedCluster(testOptions, false)
+			return utils.UpdateObservabilityFromManagedCluster(testOptions, true)
 		}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
 
 		klog.V(1).Infof("managedcluster number is <%d>", len(testOptions.ManagedClusters))
 		if len(testOptions.ManagedClusters) >= 1 {
+			By("Waiting for ObservabilityAddon to be enabled and ready")
+			Eventually(func() error {
+				return utils.CheckAllOBAsEnabled(testOptions)
+			}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
+
+			By("Waiting for MCO addon components to be running")
 			Eventually(func() bool {
+				err, podList := utils.GetPodList(
+					testOptions,
+					false,
+					MCO_ADDON_NAMESPACE,
+					"component=metrics-collector",
+				)
+				if err != nil {
+					klog.V(1).Infof("Failed to get pod list: %v", err)
+					return false
+				}
+				if len(podList.Items) < 1 {
+					klog.V(1).Infof("No metrics-collector pods found yet")
+					return false
+				}
+				// Verify all pods are in Running state
+				for _, pod := range podList.Items {
+					if pod.Status.Phase != "Running" {
+						klog.V(1).Infof("Pod %s is not running yet: %s", pod.Name, pod.Status.Phase)
+						return false
+					}
+				}
 				return true
 			}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(BeTrue())
 		}
