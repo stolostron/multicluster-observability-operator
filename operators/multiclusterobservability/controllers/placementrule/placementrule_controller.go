@@ -578,9 +578,9 @@ func createAllRelatedRes(
 			continue
 		}
 
-		if err := deleteObsAddon(ctx, c, ep.Namespace); err != nil {
-			allErrors = append(allErrors, fmt.Errorf("failed to deleteObsAddon: %w", err))
-			log.Error(err, "Failed to delete observabilityaddon", "namespace", ep.Namespace)
+		if err := deleteManagedClusterRes(c, ep.Namespace); err != nil {
+			allErrors = append(allErrors, fmt.Errorf("failed to delete managed cluster resources: %w", err))
+			log.Error(err, "Failed to delete managed cluster resources", "namespace", ep.Namespace)
 		}
 	}
 
