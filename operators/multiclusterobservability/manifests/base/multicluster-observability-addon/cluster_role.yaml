@@ -85,3 +85,6 @@
     - apiGroups: ["hypershift.openshift.io"]
       resources: ["hostedclusters"]
       verbs: ["get", "list", "watch"]
+    - apiGroups: [operator.openshift.io]
+      resources: [ingresscontrollers]
+      verbs: ["get", "list", "watch"]
