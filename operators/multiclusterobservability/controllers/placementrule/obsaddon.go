@@ -103,13 +103,13 @@ func createObsAddon(mco *mcov1beta2.MultiClusterObservability, c client.Client, 
 
 	found := &obsv1beta1.ObservabilityAddon{}
 	err := c.Get(context.TODO(), types.NamespacedName{Name: obsAddonName, Namespace: namespace}, found)
-	if err != nil && errors.IsNotFound(err) || err == nil && found.GetDeletionTimestamp() != nil {
-		if err == nil {
-			err = deleteFinalizer(c, found)
-			if err != nil {
-				return err
-			}
+	if err == nil && found.GetDeletionTimestamp() != nil {
+		err = deleteFinalizer(c, found)
+		if err != nil {
+			return err
 		}
+		return nil
+	} else if err != nil && errors.IsNotFound(err) {
 		log.Info("Creating observabilityaddon cr", "namespace", namespace)
 		err = c.Create(context.TODO(), ec)
 		if err != nil {
