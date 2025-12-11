@@ -950,7 +950,11 @@ func GetClusterName(obsApiURL string) string {
 		log.Error(err, "Failed to get cluster name from obsApiURL", "obsApiURL", obsApiURL)
 		return ""
 	}
-	//combine hostname except for last part
+
+	// Example:
+	// obsApiURL: https://observatorium-api-cluster1.apps.sno-4xlarge-419-5kjfk.dev07.red-chesterfield.com
+	// hostname: observatorium-api-cluster1.apps.sno-4xlarge-419-5kjfk.dev07.red-chesterfield.com
+	// clusterName: sno-4xlarge-419-5kjfk-dev07-red-chesterfield
 	clusterName := strings.Join(hostParts[2:len(hostParts)-1], "-")
 	return clusterName
 }
