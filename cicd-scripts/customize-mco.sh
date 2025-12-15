@@ -126,7 +126,7 @@ get_changed_components() {
 
 # function get_ginkgo_focus is to get the required cases
 get_ginkgo_focus() {
-  if [[ -n "${GINKGO_FOCUS}" ]]; then
+  if [[ -n ${GINKGO_FOCUS} ]]; then
     echo "Using GINKGO_FOCUS from environment: ${GINKGO_FOCUS}"
     return
   fi
