@@ -59,9 +59,9 @@ update_mco_cr() {
   fi
 
   # Add mco-imageTagSuffix annotation
-  # "${SED_COMMAND[@]}" "/annotations.*/a \ \ \ \ mco-imageTagSuffix: ${LATEST_SNAPSHOT}" ${ROOTDIR}/examples/mco/e2e/v1beta2/observability.yaml
-  # "${SED_COMMAND[@]}" "/annotations.*/a \ \ \ \ mco-imageTagSuffix: ${LATEST_SNAPSHOT}" ${ROOTDIR}/examples/mco/e2e/v1beta2/custom-certs/observability.yaml
-  # "${SED_COMMAND[@]}" "/annotations.*/a \ \ \ \ mco-imageTagSuffix: ${LATEST_SNAPSHOT}" ${ROOTDIR}/examples/mco/e2e/v1beta2/custom-certs-kind/observability.yaml
+  "${SED_COMMAND[@]}" "/annotations.*/a \ \ \ \ mco-imageTagSuffix: ${LATEST_SNAPSHOT}" ${ROOTDIR}/examples/mco/e2e/v1beta2/observability.yaml
+  "${SED_COMMAND[@]}" "/annotations.*/a \ \ \ \ mco-imageTagSuffix: ${LATEST_SNAPSHOT}" ${ROOTDIR}/examples/mco/e2e/v1beta2/custom-certs/observability.yaml
+  "${SED_COMMAND[@]}" "/annotations.*/a \ \ \ \ mco-imageTagSuffix: ${LATEST_SNAPSHOT}" ${ROOTDIR}/examples/mco/e2e/v1beta2/custom-certs-kind/observability.yaml
 
   # need to add this annotation due to KinD cluster resources are insufficient
   if [[ -n ${IS_KIND_ENV} ]]; then
