@@ -17,6 +17,7 @@ check-platform-metrics:
 	@echo "--> Checking platform metrics:"
 	@$(CURDIR)/scripts/extract-dashboards-metrics.sh -d $(PLATFORM_DASH_DIR) | tr '\n' ',' > $(TMPDIR)/dash-metrics
 	@go run cmd/dashcheck/main.go --scrape-configs=$(PLATFORM_DASH_DIR)/scrape-config.yaml \
+		--ignored-scrapeconfig-metrics=accelerator_card_info \
 		--dashboard-metrics=$$(cat $(TMPDIR)/dash-metrics)
 	@cat $(PLATFORM_DASH_DIR)/prometheus-rule.yaml | yq '.spec' | promtool check rules
 	@go run cmd/rulescheck/main.go --scrape-configs=$(PLATFORM_DASH_DIR)/scrape-config.yaml \

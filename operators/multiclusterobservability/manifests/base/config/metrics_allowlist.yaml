@@ -6,6 +6,7 @@ data:
   metrics_list.yaml: |
     names:
       - :node_memory_MemAvailable_bytes:sum
+      - accelerator_card_info
       - acm_managed_cluster_labels
       - acm_rs:namespace:cpu_request_hard
       - acm_rs:namespace:cpu_request
