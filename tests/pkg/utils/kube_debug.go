@@ -111,7 +111,7 @@ func CheckPodsInNamespace(client kubernetes.Interface, ns string, forcePodNamesL
 				break
 			}
 		}
-		if pod.Status.Phase == corev1.PodRunning && !force {
+		if (pod.Status.Phase == corev1.PodRunning || pod.Status.Phase == corev1.PodSucceeded) && !force {
 			continue
 		}
 
