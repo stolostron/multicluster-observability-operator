@@ -100,7 +100,7 @@ func CheckPodsInNamespace(client kubernetes.Interface, ns string, forcePodNamesL
 
 	notRunningPodsCount := 0
 	for _, pod := range pods.Items {
-		if pod.Status.Phase != corev1.PodRunning {
+		if pod.Status.Phase != corev1.PodRunning && pod.Status.Phase != corev1.PodSucceeded {
 			notRunningPodsCount++
 		}
 
