@@ -86,10 +86,6 @@ func TestEnsureRightSizingDefaultsAddsMissingFlags(t *testing.T) {
 	require.True(t, persisted.Spec.Capabilities.Platform.Analytics.VirtualizationRightSizingRecommendation.Enabled)
 }
 
-func TestEnsureRightSizingDefaultsPreservesExistingFlags(t *testing.T) {
-	t.Skip("Fake client conversion can omit explicit false due to omitempty; keep tests minimal and non-flaky")
-}
-
 func TestAnalyticsReconciler_FeatureEnabled(t *testing.T) {
 	scheme := setupTestScheme(t)
 

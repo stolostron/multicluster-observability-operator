@@ -12,7 +12,6 @@ import (
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -29,11 +28,7 @@ import (
 
 var log = logf.Log.WithName("controller_rightsizing")
 
-var mcoGVK = schema.GroupVersionKind{
-	Group:   "observability.open-cluster-management.io",
-	Version: "v1beta2",
-	Kind:    "MultiClusterObservability",
-}
+var mcoGVK = mcov1beta2.GroupVersion.WithKind("MultiClusterObservability")
 
 // AnalyticsReconciler reconciles a MultiClusterObservability object
 type AnalyticsReconciler struct {
@@ -114,28 +109,9 @@ func (r *AnalyticsReconciler) ensureRightSizingDefaults(ctx context.Context, ins
 
 			analytics := patchData["spec"].(map[string]interface{})["capabilities"].(map[string]interface{})["platform"].(map[string]interface{})["analytics"].(map[string]interface{})
 
-			// Only set if not already present
-			if !nsFound {
-				analytics["namespaceRightSizingRecommendation"] = map[string]interface{}{
-					"enabled": true,
-				}
-			} else {
-				// Preserve existing value in patch
-				analytics["namespaceRightSizingRecommendation"] = map[string]interface{}{
-					"enabled": nsEnabled,
-				}
-			}
-
-			if !virtFound {
-				analytics["virtualizationRightSizingRecommendation"] = map[string]interface{}{
-					"enabled": true,
-				}
-			} else {
-				// Preserve existing value in patch
-				analytics["virtualizationRightSizingRecommendation"] = map[string]interface{}{
-					"enabled": virtEnabled,
-				}
-			}
+			// Set true if not present else preserve existing value
+			analytics["namespaceRightSizingRecommendation"] = map[string]interface{}{"enabled": !nsFound || nsEnabled}
+			analytics["virtualizationRightSizingRecommendation"] = map[string]interface{}{"enabled": !virtFound || virtEnabled}
 
 			patchBytes, err := json.Marshal(patchData)
 			if err != nil {
@@ -150,7 +126,9 @@ func (r *AnalyticsReconciler) ensureRightSizingDefaults(ctx context.Context, ins
 
 			// refresh typed instance so downstream logic sees updated flags
 			refreshed := &mcov1beta2.MultiClusterObservability{}
-			if err := r.Client.Get(ctx, key, refreshed); err == nil {
+			if err := r.Client.Get(ctx, key, refreshed); err != nil {
+				reqLogger.Error(err, "Failed to refresh MCO after patching defaults, using stale instance")
+			} else {
 				instance = refreshed.DeepCopy()
 			}
 		}
