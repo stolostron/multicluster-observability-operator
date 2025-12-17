@@ -156,7 +156,7 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	if mcoIsNotFound || metricsAreDisabled || mcoaForMetricsIsEnabled(mco) {
 		reqLogger.Info("Cleaning all spokes resources", "mcoIsNotFound", mcoIsNotFound, "metricsAreDisabled",
 			metricsAreDisabled, "mcoaIsEnabled", mcoaForMetricsIsEnabled(mco))
-		if err := r.cleanSpokesAddonResources(ctx); err != nil {
+		if err := r.cleanSpokesAddonResources(ctx, mcoIsNotFound || mcoaForMetricsIsEnabled(mco)); err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to clean all resources: %w", err)
 		}
 		if mcoIsNotFound || metricsAreDisabled {
@@ -330,7 +330,7 @@ func (r *PlacementRuleReconciler) waitForImageList(reqLogger logr.Logger) bool {
 	return false
 }
 
-func (r *PlacementRuleReconciler) cleanSpokesAddonResources(ctx context.Context) error {
+func (r *PlacementRuleReconciler) cleanSpokesAddonResources(ctx context.Context, deleteGlobal bool) error {
 	opts := &client.ListOptions{LabelSelector: labels.SelectorFromSet(map[string]string{ownerLabelKey: ownerLabelValue})}
 	obsAddonList := &mcov1beta1.ObservabilityAddonList{}
 	if err := r.Client.List(ctx, obsAddonList, opts); err != nil {
@@ -347,7 +347,7 @@ func (r *PlacementRuleReconciler) cleanSpokesAddonResources(ctx context.Context)
 		return fmt.Errorf("failed to list manifestwork resource: %w", err)
 	}
 
-	if len(workList.Items) == 0 {
+	if len(workList.Items) == 0 && deleteGlobal {
 		if err := deleteGlobalResource(ctx, r.Client); err != nil {
 			return fmt.Errorf("failed to delete global resources: %w", err)
 		}
