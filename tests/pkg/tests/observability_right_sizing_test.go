@@ -22,6 +22,59 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/utils"
 )
 
+var _ = Describe("Right-sizing: defaults are enabled on fresh install", Ordered, func() {
+	var (
+		mcoGVR = utils.NewMCOGVRV1BETA2()
+	)
+
+	BeforeAll(func() {
+		// initialize clients once (if not already)
+		if hubClient == nil {
+			hubClient = utils.NewKubeClient(
+				testOptions.HubCluster.ClusterServerURL,
+				testOptions.KubeConfig,
+				testOptions.HubCluster.KubeContext,
+			)
+		}
+		if dynClient == nil {
+			dynClient = utils.NewKubeClientDynamic(
+				testOptions.HubCluster.ClusterServerURL,
+				testOptions.KubeConfig,
+				testOptions.HubCluster.KubeContext,
+			)
+		}
+	})
+
+	It("Should default analytics right-sizing flags to enabled in the MCO CR", func() {
+		Eventually(func() error {
+			mco, err := dynClient.Resource(mcoGVR).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+			if err != nil {
+				return err
+			}
+
+			nsEnabled, nsFound, err := unstructured.NestedBool(mco.Object,
+				"spec", "capabilities", "platform", "analytics", "namespaceRightSizingRecommendation", "enabled")
+			if err != nil {
+				return err
+			}
+			if !nsFound || !nsEnabled {
+				return fmt.Errorf("expected namespaceRightSizingRecommendation.enabled to be defaulted to true (found=%v enabled=%v)", nsFound, nsEnabled)
+			}
+
+			virtEnabled, virtFound, err := unstructured.NestedBool(mco.Object,
+				"spec", "capabilities", "platform", "analytics", "virtualizationRightSizingRecommendation", "enabled")
+			if err != nil {
+				return err
+			}
+			if !virtFound || !virtEnabled {
+				return fmt.Errorf("expected virtualizationRightSizingRecommendation.enabled to be defaulted to true (found=%v enabled=%v)", virtFound, virtEnabled)
+			}
+
+			return nil
+		}, 2*time.Minute, 10*time.Second).Should(Succeed())
+	})
+})
+
 var _ = Describe("RHACM4K-55205: Enable and teardown namespace right-sizing recommendation (rightsizing/g0)", Ordered, func() {
 	var (
 		mcoGVR       = utils.NewMCOGVRV1BETA2()
