@@ -35,7 +35,7 @@ func (o *ObservabilityAgent) Manifests(
 
 func (o *ObservabilityAgent) GetAgentAddonOptions() agent.AgentAddonOptions {
 	signAdaptor := func(csr *certificatesv1.CertificateSigningRequest) []byte {
-		res, err := Sign(csr)
+		res, err := Sign(o.client, csr)
 		if err != nil {
 			log.Error(err, "failed to sign")
 		}

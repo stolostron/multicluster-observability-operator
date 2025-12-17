@@ -19,6 +19,7 @@ import (
 	"time"
 
 	certificatesv1 "k8s.io/api/certificates/v1"
+	"k8s.io/client-go/util/retry"
 
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 
@@ -94,76 +95,83 @@ func createCASecret(c client.Client,
 	if isRenew {
 		log.Info("To renew CA certificates", "name", name)
 	}
-	caSecret := &corev1.Secret{}
-	err := c.Get(context.TODO(), types.NamespacedName{Namespace: config.GetDefaultNamespace(), Name: name}, caSecret)
-	if err != nil {
-		if !apierrors.IsNotFound(err) {
-			log.Error(err, "Failed to check ca secret", "name", name)
-			return err, false
-		} else {
-			key, cert, err := createCACertificate(cn, nil)
-			if err != nil {
-				return err, false
-			}
-			certPEM, keyPEM := pemEncode(cert, key)
-			caSecret = &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      name,
-					Namespace: config.GetDefaultNamespace(),
-					Labels: map[string]string{
-						config.BackupLabelName: config.BackupLabelValue,
+	var updated bool
+	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+		updated = false
+		caSecret := &corev1.Secret{}
+		err := c.Get(context.TODO(), types.NamespacedName{Namespace: config.GetDefaultNamespace(), Name: name}, caSecret)
+		if err != nil {
+			if !apierrors.IsNotFound(err) {
+				log.Error(err, "Failed to check ca secret", "name", name)
+				return err
+			} else {
+				key, cert, err := createCACertificate(cn, nil)
+				if err != nil {
+					return err
+				}
+				certPEM, keyPEM := pemEncode(cert, key)
+				caSecret = &corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      name,
+						Namespace: config.GetDefaultNamespace(),
+						Labels: map[string]string{
+							config.BackupLabelName: config.BackupLabelValue,
+						},
 					},
-				},
-				Data: map[string][]byte{
-					"ca.crt":  certPEM.Bytes(),
-					"tls.crt": certPEM.Bytes(),
-					"tls.key": keyPEM.Bytes(),
-				},
-			}
-			if mco != nil {
-				if err := controllerutil.SetControllerReference(mco, caSecret, scheme); err != nil {
-					return err, false
+					Data: map[string][]byte{
+						"ca.crt":  certPEM.Bytes(),
+						"tls.crt": certPEM.Bytes(),
+						"tls.key": keyPEM.Bytes(),
+					},
+				}
+				if mco != nil {
+					if err := controllerutil.SetControllerReference(mco, caSecret, scheme); err != nil {
+						return err
+					}
+				}
+
+				if err := c.Create(context.TODO(), caSecret); err != nil {
+					log.Error(err, "Failed to create secret", "name", name)
+					return err
+				} else {
+					updated = true
+					return nil
 				}
 			}
-
-			if err := c.Create(context.TODO(), caSecret); err != nil {
-				log.Error(err, "Failed to create secret", "name", name)
-				return err, false
-			} else {
-				return nil, true
-			}
-		}
-	} else {
-		if !isRenew {
-			log.Info("CA secrets already existed", "name", name)
-			if err := mcoutil.AddBackupLabelToSecretObj(c, caSecret); err != nil {
-				return err, false
-			}
 		} else {
-			block, _ := pem.Decode(caSecret.Data["tls.key"])
-			caKey, err := x509.ParsePKCS1PrivateKey(block.Bytes)
-			if err != nil {
-				log.Error(err, "Wrong private key found, create new one", "name", name)
-				caKey = nil
-			}
-			key, cert, err := createCACertificate(cn, caKey)
-			if err != nil {
-				return err, false
-			}
-			certPEM, keyPEM := pemEncode(cert, key)
-			caSecret.Data["ca.crt"] = certPEM.Bytes()
-			caSecret.Data["tls.crt"] = append(certPEM.Bytes(), caSecret.Data["tls.crt"]...)
-			caSecret.Data["tls.key"] = keyPEM.Bytes()
-			if err := c.Update(context.TODO(), caSecret); err != nil {
-				log.Error(err, "Failed to update secret", "name", name)
-				return err, false
+			if !isRenew {
+				log.Info("CA secrets already existed", "name", name)
+				if err := mcoutil.AddBackupLabelToSecretObj(c, caSecret); err != nil {
+					return err
+				}
 			} else {
-				log.Info("CA certificates renewed", "name", name)
-				return nil, true
+				block, _ := pem.Decode(caSecret.Data["tls.key"])
+				caKey, err := x509.ParsePKCS1PrivateKey(block.Bytes)
+				if err != nil {
+					log.Error(err, "Wrong private key found, create new one", "name", name)
+					caKey = nil
+				}
+				key, cert, err := createCACertificate(cn, caKey)
+				if err != nil {
+					return err
+				}
+				certPEM, keyPEM := pemEncode(cert, key)
+				caSecret.Data["ca.crt"] = certPEM.Bytes()
+				caSecret.Data["tls.crt"] = append(certPEM.Bytes(), caSecret.Data["tls.crt"]...)
+				caSecret.Data["tls.key"] = keyPEM.Bytes()
+				if err := c.Update(context.TODO(), caSecret); err != nil {
+					log.Error(err, "Failed to update secret", "name", name)
+					return err
+				} else {
+					log.Info("CA certificates renewed", "name", name)
+					updated = true
+					return nil
+				}
 			}
 		}
-	}
-	return nil, false
+		return nil
+	})
+	return err, updated
 }
 
 func createCACertificate(cn string, caKey *rsa.PrivateKey) ([]byte, []byte, error) {
@@ -212,101 +220,103 @@ func createCertSecret(c client.Client,
 	if isRenew {
 		log.Info("To renew certificates", "name", name)
 	}
-	crtSecret := &corev1.Secret{}
-	err := c.Get(context.TODO(), types.NamespacedName{Namespace: config.GetDefaultNamespace(), Name: name}, crtSecret)
-	if err != nil {
-		if !apierrors.IsNotFound(err) {
-			log.Error(err, "Failed to check certificate secret", "name", name)
-			return err
-		} else {
-			caCert, caKey, caCertBytes, err := getCA(c, isServer)
-			if err != nil {
+	return retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+		crtSecret := &corev1.Secret{}
+		err := c.Get(context.TODO(), types.NamespacedName{Namespace: config.GetDefaultNamespace(), Name: name}, crtSecret)
+		if err != nil {
+			if !apierrors.IsNotFound(err) {
+				log.Error(err, "Failed to check certificate secret", "name", name)
 				return err
-			}
-			key, cert, err := createCertificate(isServer, cn, ou, dns, ips, caCert, caKey, nil)
-			if err != nil {
-				return err
-			}
-			certPEM, keyPEM := pemEncode(cert, key)
-			crtSecret = &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      name,
-					Namespace: config.GetDefaultNamespace(),
-					Labels: map[string]string{
-						config.BackupLabelName: config.BackupLabelValue,
+			} else {
+				caCert, caKey, caCertBytes, err := getCA(c, isServer)
+				if err != nil {
+					return err
+				}
+				key, cert, err := createCertificate(isServer, cn, ou, dns, ips, caCert, caKey, nil)
+				if err != nil {
+					return err
+				}
+				certPEM, keyPEM := pemEncode(cert, key)
+				crtSecret = &corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      name,
+						Namespace: config.GetDefaultNamespace(),
+						Labels: map[string]string{
+							config.BackupLabelName: config.BackupLabelValue,
+						},
 					},
-				},
-				Data: map[string][]byte{
-					"ca.crt":  caCertBytes,
-					"tls.crt": certPEM.Bytes(),
-					"tls.key": keyPEM.Bytes(),
-				},
-			}
-			if mco != nil {
-				if err := controllerutil.SetControllerReference(mco, crtSecret, scheme); err != nil {
+					Data: map[string][]byte{
+						"ca.crt":  caCertBytes,
+						"tls.crt": certPEM.Bytes(),
+						"tls.key": keyPEM.Bytes(),
+					},
+				}
+				if mco != nil {
+					if err := controllerutil.SetControllerReference(mco, crtSecret, scheme); err != nil {
+						return err
+					}
+				}
+				err = c.Create(context.TODO(), crtSecret)
+				if err != nil {
+					log.Error(err, "Failed to create secret", "name", name)
 					return err
 				}
 			}
-			err = c.Create(context.TODO(), crtSecret)
-			if err != nil {
-				log.Error(err, "Failed to create secret", "name", name)
-				return err
-			}
-		}
-	} else {
-		if crtSecret.Name == serverCerts && !isRenew {
-			block, _ := pem.Decode(crtSecret.Data["tls.crt"])
-			if block == nil || block.Bytes == nil {
-				log.Info("Empty block in server certificate, skip")
-			} else {
-				serverCrt, err := x509.ParseCertificate(block.Bytes)
-				if err != nil {
-					log.Error(err, "Failed to parse the server certificate, renew it")
-					isRenew = true
-				}
-				// to handle upgrade scenario in which hosts maybe update
-				for _, dnsString := range dns {
-					if !slices.Contains(serverCrt.DNSNames, dnsString) {
+		} else {
+			if crtSecret.Name == serverCerts && !isRenew {
+				block, _ := pem.Decode(crtSecret.Data["tls.crt"])
+				if block == nil || block.Bytes == nil {
+					log.Info("Empty block in server certificate, skip")
+				} else {
+					serverCrt, err := x509.ParseCertificate(block.Bytes)
+					if err != nil {
+						log.Error(err, "Failed to parse the server certificate, renew it")
 						isRenew = true
-						break
+					}
+					// to handle upgrade scenario in which hosts maybe update
+					for _, dnsString := range dns {
+						if !slices.Contains(serverCrt.DNSNames, dnsString) {
+							isRenew = true
+							break
+						}
 					}
 				}
 			}
-		}
 
-		if !isRenew {
-			log.Info("Certificate secrets already existed", "name", name)
-			if err := mcoutil.AddBackupLabelToSecretObj(c, crtSecret); err != nil {
-				return err
-			}
-		} else {
-			caCert, caKey, caCertBytes, err := getCA(c, isServer)
-			if err != nil {
-				return err
-			}
-			block, _ := pem.Decode(crtSecret.Data["tls.key"])
-			crtkey, err := x509.ParsePKCS1PrivateKey(block.Bytes)
-			if err != nil {
-				log.Error(err, "Wrong private key found, create new one", "name", name)
-				crtkey = nil
-			}
-			key, cert, err := createCertificate(isServer, cn, ou, dns, ips, caCert, caKey, crtkey)
-			if err != nil {
-				return err
-			}
-			certPEM, keyPEM := pemEncode(cert, key)
-			crtSecret.Data["ca.crt"] = caCertBytes
-			crtSecret.Data["tls.crt"] = certPEM.Bytes()
-			crtSecret.Data["tls.key"] = keyPEM.Bytes()
-			if err := c.Update(context.TODO(), crtSecret); err != nil {
-				log.Error(err, "Failed to update secret", "name", name)
-				return err
+			if !isRenew {
+				log.Info("Certificate secrets already existed", "name", name)
+				if err := mcoutil.AddBackupLabelToSecretObj(c, crtSecret); err != nil {
+					return err
+				}
 			} else {
-				log.Info("Certificates renewed", "name", name)
+				caCert, caKey, caCertBytes, err := getCA(c, isServer)
+				if err != nil {
+					return err
+				}
+				block, _ := pem.Decode(crtSecret.Data["tls.key"])
+				crtkey, err := x509.ParsePKCS1PrivateKey(block.Bytes)
+				if err != nil {
+					log.Error(err, "Wrong private key found, create new one", "name", name)
+					crtkey = nil
+				}
+				key, cert, err := createCertificate(isServer, cn, ou, dns, ips, caCert, caKey, crtkey)
+				if err != nil {
+					return err
+				}
+				certPEM, keyPEM := pemEncode(cert, key)
+				crtSecret.Data["ca.crt"] = caCertBytes
+				crtSecret.Data["tls.crt"] = certPEM.Bytes()
+				crtSecret.Data["tls.key"] = keyPEM.Bytes()
+				if err := c.Update(context.TODO(), crtSecret); err != nil {
+					log.Error(err, "Failed to update secret", "name", name)
+					return err
+				} else {
+					log.Info("Certificates renewed", "name", name)
+				}
 			}
 		}
-	}
-	return nil
+		return nil
+	})
 }
 
 func createCertificate(isServer bool, cn string, ou []string, dns []string, ips []net.IP,
@@ -539,7 +549,7 @@ func CreateUpdateMtlsCertSecretForHubCollector(ctx context.Context, c client.Cli
 	updateReason := "None"
 	res, err := controllerutil.CreateOrUpdate(ctx, c, hubMtlsSecret, func() error {
 		renew := func() error {
-			if err := newMtlsCertSecretForHubCollector(hubMtlsSecret); err != nil {
+			if err := newMtlsCertSecretForHubCollector(c, hubMtlsSecret); err != nil {
 				return fmt.Errorf("failed to create hub mtls secret: %w", err)
 			}
 			return nil
@@ -587,7 +597,7 @@ func CreateUpdateMtlsCertSecretForHubCollector(ctx context.Context, c client.Cli
 	return nil
 }
 
-func newMtlsCertSecretForHubCollector(mtlsSecret *corev1.Secret) error {
+func newMtlsCertSecretForHubCollector(c client.Client, mtlsSecret *corev1.Secret) error {
 	csrBytes, privateKeyBytes, err := GenerateKeyAndCSR()
 	if err != nil {
 		return fmt.Errorf("failed to generate private key and CSR: %w", err)
@@ -599,7 +609,7 @@ func newMtlsCertSecretForHubCollector(mtlsSecret *corev1.Secret) error {
 			Usages:  []certificatesv1.KeyUsage{certificatesv1.UsageDigitalSignature, certificatesv1.UsageClientAuth},
 		},
 	}
-	signedClientCert, err := Sign(csr)
+	signedClientCert, err := Sign(c, csr)
 	if err != nil {
 		return fmt.Errorf("failed to sign CSR: %w", err)
 	}
