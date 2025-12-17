@@ -96,22 +96,22 @@ func (r *AnalyticsReconciler) ensureRightSizingDefaults(ctx context.Context, ins
 
 		// Only patch if at least one field is missing
 		if !nsFound || !virtFound {
-			// Build a minimal patch that only contains the analytics fields we want to set
+			// Build a minimal patch that only contains the analytics fields we want to set.
+			// Use typed locals to avoid chained type assertions (which can panic if the shape changes).
+			// Set true if not present else preserve existing value
+			analytics := map[string]interface{}{
+				"namespaceRightSizingRecommendation":      map[string]interface{}{"enabled": !nsFound || nsEnabled},
+				"virtualizationRightSizingRecommendation": map[string]interface{}{"enabled": !virtFound || virtEnabled},
+			}
 			patchData := map[string]interface{}{
 				"spec": map[string]interface{}{
 					"capabilities": map[string]interface{}{
 						"platform": map[string]interface{}{
-							"analytics": map[string]interface{}{},
+							"analytics": analytics,
 						},
 					},
 				},
 			}
-
-			analytics := patchData["spec"].(map[string]interface{})["capabilities"].(map[string]interface{})["platform"].(map[string]interface{})["analytics"].(map[string]interface{})
-
-			// Set true if not present else preserve existing value
-			analytics["namespaceRightSizingRecommendation"] = map[string]interface{}{"enabled": !nsFound || nsEnabled}
-			analytics["virtualizationRightSizingRecommendation"] = map[string]interface{}{"enabled": !virtFound || virtEnabled}
 
 			patchBytes, err := json.Marshal(patchData)
 			if err != nil {
