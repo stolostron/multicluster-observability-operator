@@ -35,7 +35,7 @@ func CheckOBAStatus(opt TestOptions, namespace string) error {
 		return fmt.Errorf("failed to convert unstructured to addon: %w", err)
 	}
 
-	if meta.IsStatusConditionTrue(addon.Status.Conditions, "Available") {
+	if meta.IsStatusConditionTrue(addon.Status.Conditions, "MetricsCollector") {
 		return nil
 	}
 
