@@ -74,7 +74,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 		})
 	})
 
-	Context("when enabling and disabling platform collection", func() {
+	Context("when enabling and disabling platform collection [P1][Sev1][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release @pre-upgrade (mcoa/g0)", func() {
 		BeforeAll(func() {
 			By("The metrics collector should be running", func() {
 				utils.CheckDeploymentAvailability(testOptions.HubCluster, metricsCollectorDeploymentName, utils.MCO_NAMESPACE, true)
@@ -111,7 +111,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 		})
 	})
 
-	Context("when only platform metrics are enabled", func() {
+	Context("when only platform metrics are enabled [P1][Sev1][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release @pre-upgrade (mcoa/g0)", func() {
 		BeforeAll(func() {
 			By("Enabling only platform metrics for MCOA", func() {
 				Expect(utils.SetMCOACapabilities(testOptions, true, false)).NotTo(HaveOccurred())
@@ -216,7 +216,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 		})
 	})
 
-	Context("when platform and user workload metrics are enabled", func() {
+	Context("when platform and user workload metrics are enabled [P1][Sev1][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release @pre-upgrade (mcoa/g0)", func() {
 		BeforeAll(func() {
 			By("Enabling user workload monitoring on all openshift managed clusters", func() {
 				Expect(utils.EnableUWLMonitoringOnManagedClusters(testOptions, accessibleOCPClusters)).NotTo(HaveOccurred())
@@ -286,7 +286,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 		})
 	})
 
-	Context("with Cluster Observability Operator (COO) installed", func() {
+	Context("with Cluster Observability Operator (COO) installed [P1][Sev1][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release @pre-upgrade (mcoa/g0)", func() {
 		// We retrict this test to the hub for simplification purpose. The processing is similar for the spokes.
 		onlyTheHub := []utils.Cluster{testOptions.HubCluster}
 
