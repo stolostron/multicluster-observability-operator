@@ -44,7 +44,12 @@ func TestSign(t *testing.T) {
 		},
 	}
 
-	res, err := Sign(csr)
+	c, err := getClient(nil)
+	if err != nil {
+		t.Fatal("Failed to get client", err)
+	}
+
+	res, err := Sign(c, csr)
 	if err != nil {
 		t.Fatal("Failed to sign CSR", err)
 	}
