@@ -170,20 +170,39 @@ func LogPodLogs(client kubernetes.Interface, ns string, pod corev1.Pod) {
 			continue
 		}
 
-		// Filter error logs and keep all last 100 lines
-		maxLines := 80
-		cleanedLines := []string{}
+		// Aggregate info, debug and error logs from the past 6 minutes
+		filteredLines := []string{}
 		lines := strings.Split(string(logs), "\n")
-		for i, line := range lines {
-			if strings.Contains(strings.ToLower(line), "error") || i > len(lines)-maxLines {
-				cleanedLines = append(cleanedLines, line)
+		cutoffTime := time.Now().Add(-6 * time.Minute)
+
+		for i := len(lines) - 1; i >= 0; i-- {
+			line := lines[i]
+			// Try to parse timestamp at the beginning of the line
+			// Format: 2025-12-17T18:56:14.441Z
+			fields := strings.Fields(line)
+			if len(fields) > 0 {
+				if t, err := time.Parse(time.RFC3339, fields[0]); err == nil {
+					if t.Before(cutoffTime) {
+						break
+					}
+				}
+			}
+
+			lowerLine := strings.ToLower(line)
+			if strings.Contains(lowerLine, "error") || strings.Contains(lowerLine, "info") || strings.Contains(lowerLine, "debug") {
+				filteredLines = append(filteredLines, line)
 			}
 		}
 
-		logs = []byte(strings.Join(cleanedLines, "\n"))
+		// Reverse the lines to restore order
+		for i, j := 0, len(filteredLines)-1; i < j; i, j = i+1, j-1 {
+			filteredLines[i], filteredLines[j] = filteredLines[j], filteredLines[i]
+		}
+
+		logs = []byte(strings.Join(filteredLines, "\n"))
 
 		delimitedLogs := fmt.Sprintf(">>>>>>>>>> container logs >>>>>>>>>>\n%s<<<<<<<<<< container logs <<<<<<<<<<", string(logs))
-		klog.V(1).Infof("Pod %q container %q logs (errors and last %d lines): \n%s", pod.Name, container.Name, maxLines, delimitedLogs)
+		klog.V(1).Infof("Pod %q container %q logs (aggregated info/debug/error from the last 6 minutes): \n%s", pod.Name, container.Name, delimitedLogs)
 	}
 }
 
