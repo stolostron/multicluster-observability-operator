@@ -20,7 +20,6 @@ import (
 	ocinfrav1 "github.com/openshift/api/config/v1"
 	operatorv1 "github.com/openshift/api/operator/v1"
 	routev1 "github.com/openshift/api/route/v1"
-	ocpClientSet "github.com/openshift/client-go/config/clientset/versioned"
 	obsv1alpha1 "github.com/stolostron/observatorium-operator/api/v1alpha1"
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -598,11 +597,10 @@ func GetKubeAPIServerAddress(client client.Client) (string, error) {
 }
 
 // GetClusterID is used to get the cluster uid.
-func GetClusterID(ocpClient ocpClientSet.Interface) (string, error) {
-	clusterVersion, err := ocpClient.ConfigV1().ClusterVersions().Get(context.TODO(), "version", v1.GetOptions{})
-	if err != nil {
-		log.Error(err, "Failed to get clusterVersion")
-		return "", err
+func GetClusterID(ctx context.Context, c client.Client) (string, error) {
+	clusterVersion := &ocinfrav1.ClusterVersion{}
+	if err := c.Get(ctx, types.NamespacedName{Name: "version"}, clusterVersion); err != nil {
+		return "", fmt.Errorf("failed to get clusterVersion: %w", err)
 	}
 
 	return string(clusterVersion.Spec.ClusterID), nil
@@ -939,24 +937,21 @@ func GetCachedImageManifestData() (map[string]string, bool) {
 	return nil, false
 }
 
-func GetClusterName(obsApiURL string) string {
-	u, err := url.Parse(obsApiURL)
+func GetClusterName(c client.Client) (string, error) {
+	id, err := GetClusterID(context.TODO(), c)
 	if err != nil {
-		log.Error(err, "Failed to parse obsApiURL", "obsApiURL", obsApiURL)
-		return ""
+		return err
 	}
-	hostParts := strings.Split(u.Hostname(), ".")
-	if len(hostParts) < 3 {
-		log.Error(err, "Failed to get cluster name from obsApiURL", "obsApiURL", obsApiURL)
-		return ""
-	}
-
-	// Example:
-	// obsApiURL: https://observatorium-api-cluster1.apps.sno-4xlarge-419-5kjfk.dev07.red-chesterfield.com
-	// hostname: observatorium-api-cluster1.apps.sno-4xlarge-419-5kjfk.dev07.red-chesterfield.com
-	// clusterName: sno-4xlarge-419-5kjfk-dev07-red-chesterfield
-	clusterName := strings.Join(hostParts[2:len(hostParts)-1], "-")
-	return clusterName
+	// We use this ID later to postfix the follow secrets:
+	// hub-alertmanager-router-ca
+	// observability-alertmanager-accessor
+	//
+	// Since these will be to long to comply with 63 char max length.
+	// we therefore have to truncate the id here to 27 chars.
+	// In order to avoid collisions as much as possible, we also
+	// remove any `-` chars.
+	idTrim := strings.ReplaceAll(id, "-", "")
+	return fmt.Sprintf("%.27s", idTrim), nil
 }
 
 // KindOrder is a map that defines the deployment order for Kubernetes resource kinds.

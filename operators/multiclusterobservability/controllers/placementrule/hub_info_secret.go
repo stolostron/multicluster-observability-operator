@@ -85,7 +85,7 @@ func generateHubInfoSecret(client client.Client, obsNamespace string,
 	}
 
 	//hash the obsApiURL to generate give a unique cluster name for each hub
-	clusterName := config.GetClusterName(obsApiURL.String())
+	clusterName := config.GetClusterName(client)
 
 	hubInfo := &operatorconfig.HubInfo{
 		ObservatoriumAPIEndpoint: obsApiURL.String(),
