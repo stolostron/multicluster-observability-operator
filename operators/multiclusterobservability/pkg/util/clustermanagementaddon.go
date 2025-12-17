@@ -112,7 +112,6 @@ func newClusterManagementAddon(c client.Client) (*addonv1alpha1.ClusterManagemen
 			Annotations: map[string]string{
 				"console.open-cluster-management.io/launch-link":      grafanaUrl.String(),
 				"console.open-cluster-management.io/launch-link-text": "Grafana",
-				addonv1alpha1.AddonLifecycleAnnotationKey:             addonv1alpha1.AddonLifecycleSelfManageAnnotationValue,
 			},
 		},
 		Spec: addonv1alpha1.ClusterManagementAddOnSpec{
