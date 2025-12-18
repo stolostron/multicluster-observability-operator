@@ -107,6 +107,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 				utils.CheckDeploymentAvailability(testOptions.HubCluster, metricsCollectorDeploymentName, utils.MCO_NAMESPACE, true)
 				utils.CheckDeploymentAvailabilityOnClusters(managedClusters, metricsCollectorDeploymentName, utils.MCO_ADDON_NAMESPACE, true)
 				// We don't check the addon status as it has no managedClusterAddon for the hub
+				Expect(utils.CheckAllOBAsEnabled(testOptions)).NotTo(HaveOccurred())
 			})
 		})
 	})
@@ -296,6 +297,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 				// Wait for the metrics collector to be running
 				utils.CheckDeploymentAvailability(testOptions.HubCluster, metricsCollectorDeploymentName, utils.MCO_NAMESPACE, true)
 				utils.CheckDeploymentAvailabilityOnClusters(managedClusters, metricsCollectorDeploymentName, utils.MCO_ADDON_NAMESPACE, true)
+				Expect(utils.CheckAllOBAsEnabled(testOptions)).NotTo(HaveOccurred())
 			})
 		})
 
@@ -354,6 +356,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 			// Wait for the metrics collector to be up to avoid race conditions with other tests setups
 			utils.CheckDeploymentAvailability(testOptions.HubCluster, metricsCollectorDeploymentName, utils.MCO_NAMESPACE, true)
 			utils.CheckDeploymentAvailabilityOnClusters(managedClusters, metricsCollectorDeploymentName, utils.MCO_ADDON_NAMESPACE, true)
+			Expect(utils.CheckAllOBAsEnabled(testOptions)).NotTo(HaveOccurred())
 		})
 	})
 })

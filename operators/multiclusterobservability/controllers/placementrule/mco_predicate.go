@@ -46,6 +46,10 @@ func getMCOPred(c client.Client, crdMap map[string]bool) predicate.Funcs {
 				updateHubInfo = true
 				retval = true
 			}
+			if !reflect.DeepEqual(newMCO.Spec.ObservabilityAddonSpec, oldMCO.Spec.ObservabilityAddonSpec) {
+				updateHubInfo = true
+				retval = true
+			}
 			// if value changed, then mustReconcile is true
 			if oldAlertingStatus != newAlertingStatus {
 				config.SetAlertingDisabled(newAlertingStatus)
