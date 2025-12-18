@@ -33,43 +33,54 @@ const (
 	addonSourceOverride   = "override"
 )
 
-func deleteObsAddon(ctx context.Context, c client.Client, namespace string) error {
-	if err := deleteObsAddonObject(ctx, c, namespace); err != nil {
-		return fmt.Errorf("failed to delete obsAddon object: %w", err)
+func deleteObsAddon(ctx context.Context, c client.Client, namespace string) (bool, error) {
+	requeue, err := deleteObsAddonObject(ctx, c, namespace)
+	if err != nil {
+		return requeue, fmt.Errorf("failed to delete obsAddon object: %w", err)
 	}
 
+	// The observabilityAddon resource is removed from the manifestWork.
+	// It triggers the initFinalization in the endpoint operator.
+	// When done, the endpoint-operator removes the finalizer on the ObservabilityAddon located on the hub.
+	// This in turn, allows the removal of the ManagedClusterAddOn and the manifestWorks,
+	// resulting in the removal of the managed cluster workloads.
 	if err := removeObservabilityAddonInManifestWork(ctx, c, namespace); err != nil {
-		return fmt.Errorf("failed to remove observabilityAddon from manifest work: %w", err)
+		return requeue, fmt.Errorf("failed to remove observabilityAddon from manifest work: %w", err)
 	}
 
-	return nil
+	return requeue, nil
 }
 
-func deleteObsAddonObject(ctx context.Context, c client.Client, namespace string) error {
+func deleteObsAddonObject(ctx context.Context, c client.Client, namespace string) (bool, error) {
 	found := &obsv1beta1.ObservabilityAddon{}
 	if err := c.Get(ctx, types.NamespacedName{Name: obsAddonName, Namespace: namespace}, found); err != nil {
 		if errors.IsNotFound(err) {
-			return nil
+			return false, nil
 		}
 
-		return fmt.Errorf("failed to get observabilityaddon cr before delete %s/%s: %w", namespace, obsAddonName, err)
+		return false, fmt.Errorf("failed to get observabilityaddon cr before delete %s/%s: %w", namespace, obsAddonName, err)
 	}
 
 	// is staled, delete finalizer
 	if deletionStalled(found) {
 		log.Info("Deleting stalled observabilityaddon finalizer", "namespace", namespace)
 		if err := deleteFinalizer(c, found); err != nil {
-			return fmt.Errorf("failed to delete observabilityaddon %s/%s finalizer: %w", namespace, obsAddonName, err)
+			return false, fmt.Errorf("failed to delete observabilityaddon %s/%s finalizer: %w", namespace, obsAddonName, err)
 		}
-		return nil
+		return false, nil
+	}
+
+	if found.GetDeletionTimestamp() != nil {
+		// deletion is in progress but not stalled yet
+		return true, nil
 	}
 
 	log.Info("Deleting observabilityaddon", "namespace", namespace)
 	if err := c.Delete(ctx, found); err != nil {
-		return fmt.Errorf("failed to delete observabilityaddon %s/%s: %w", namespace, obsAddonName, err)
+		return false, fmt.Errorf("failed to delete observabilityaddon %s/%s: %w", namespace, obsAddonName, err)
 	}
 
-	return nil
+	return slices.Contains(found.GetFinalizers(), obsAddonFinalizer), nil
 }
 
 // createObsAddon creates the default ObservabilityAddon in the spoke namespace in the hub cluster.

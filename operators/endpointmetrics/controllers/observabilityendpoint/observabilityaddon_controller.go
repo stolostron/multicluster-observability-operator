@@ -20,6 +20,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/util/retry"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -334,7 +335,10 @@ func (r *ObservabilityAddonReconciler) initFinalization(
 	ctx context.Context, delete bool, hubObsAddon *oav1beta1.ObservabilityAddon,
 	isHypershift bool, hubInfo *operatorconfig.HubInfo,
 ) (bool, error) {
-	if delete && slices.Contains(hubObsAddon.GetFinalizers(), obsAddonFinalizer) {
+	if delete || hubObsAddon.GetDeletionTimestamp() != nil {
+		if !slices.Contains(hubObsAddon.GetFinalizers(), obsAddonFinalizer) {
+			return true, nil
+		}
 		r.Logger.Info("To clean observability components/configurations in the cluster")
 
 		metricsCollector := collector.MetricsCollector{
@@ -365,11 +369,7 @@ func (r *ObservabilityAddonReconciler) initFinalization(
 				return false, err
 			}
 		}
-		// Should we return bool from the delete functions for crb and cm? What
-		// is it used for? Should we use the bool before removing finalizer?
-		// SHould we return true if metricscollector is not found as that means
-		// metrics collector is not present? Moved this part up as we need to clean
-		// up cm and crb before we remove the finalizer - is that the right way to do it?
+
 		if !r.InstallPrometheus {
 			err = openshift.DeleteMonitoringClusterRoleBinding(ctx, r.Client, r.IsHubMetricsCollector)
 			if err != nil {
@@ -392,18 +392,38 @@ func (r *ObservabilityAddonReconciler) initFinalization(
 				}
 			}
 		}
-		hubObsAddon.SetFinalizers(remove(hubObsAddon.GetFinalizers(), obsAddonFinalizer))
-		err = r.HubClient.Update(ctx, hubObsAddon)
+
+		// Remove finalizer
+		err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
+			if err := r.HubClient.Get(ctx, types.NamespacedName{Name: obAddonName, Namespace: r.HubNamespace}, hubObsAddon); err != nil {
+				return err
+			}
+			hubObsAddon.SetFinalizers(remove(hubObsAddon.GetFinalizers(), obsAddonFinalizer))
+			return r.HubClient.Update(ctx, hubObsAddon)
+		})
+
 		if err != nil {
 			r.Logger.Error(err, "Failed to remove finalizer to observabilityaddon", "namespace", hubObsAddon.Namespace)
 			return false, err
 		}
 		r.Logger.Info("Finalizer removed from observabilityaddon resource")
+
 		return true, nil
 	}
+
 	if !slices.Contains(hubObsAddon.GetFinalizers(), obsAddonFinalizer) {
-		hubObsAddon.SetFinalizers(append(hubObsAddon.GetFinalizers(), obsAddonFinalizer))
-		err := r.HubClient.Update(ctx, hubObsAddon)
+		// Add finalizer
+		err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+			if err := r.HubClient.Get(ctx, types.NamespacedName{Name: obAddonName, Namespace: r.HubNamespace}, hubObsAddon); err != nil {
+				return err
+			}
+			if !slices.Contains(hubObsAddon.GetFinalizers(), obsAddonFinalizer) {
+				hubObsAddon.SetFinalizers(append(hubObsAddon.GetFinalizers(), obsAddonFinalizer))
+				return r.HubClient.Update(ctx, hubObsAddon)
+			}
+			return nil
+		})
+
 		if err != nil {
 			r.Logger.Error(err, "Failed to add finalizer to observabilityaddon", "namespace", hubObsAddon.Namespace)
 			return false, err

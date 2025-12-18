@@ -19,15 +19,18 @@ func getMCOPred(c client.Client, crdMap map[string]bool) predicate.Funcs {
 	return predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 			// generate the image pull secret
-			pullSecret, _ = generatePullSecret(
+			var err error
+			pullSecret, err = generatePullSecret(
 				c,
 				config.GetImagePullSecret(e.Object.(*mcov1beta2.MultiClusterObservability).Spec),
 			)
+			if err != nil {
+				log.Error(err, "unable to generate image pull secret", "controller", "PlacementRule")
+			}
 
 			mco := e.Object.(*mcov1beta2.MultiClusterObservability)
 			alertingStatus := config.IsAlertingDisabledInSpec(mco)
 			config.SetAlertingDisabled(alertingStatus)
-			var err error
 			hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, crdMap, config.IsUWMAlertingDisabledInSpec(mco))
 			if err != nil {
 				log.Error(err, "unable to get HubInfoSecret", "controller", "PlacementRule")
@@ -79,10 +82,14 @@ func getMCOPred(c client.Client, crdMap map[string]bool) predicate.Funcs {
 					e.ObjectOld.(*mcov1beta2.MultiClusterObservability).Spec.ObservabilityAddonSpec) {
 				if e.ObjectNew.(*mcov1beta2.MultiClusterObservability).Spec.ImagePullSecret != e.ObjectOld.(*mcov1beta2.MultiClusterObservability).Spec.ImagePullSecret {
 					// regenerate the image pull secret
-					pullSecret, _ = generatePullSecret(
+					var err error
+					pullSecret, err = generatePullSecret(
 						c,
 						config.GetImagePullSecret(e.ObjectNew.(*mcov1beta2.MultiClusterObservability).Spec),
 					)
+					if err != nil {
+						log.Error(err, "unable to generate image pull secret", "controller", "PlacementRule")
+					}
 				}
 				retval = true
 			}

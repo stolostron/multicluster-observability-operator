@@ -117,7 +117,7 @@ var _ = Describe("", func() {
 					return true
 				}
 				return false
-			}, EventuallyTimeoutMinute*6, EventuallyIntervalSecond*5).Should(BeTrue())
+			}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(BeTrue())
 		})
 		It("RHACM4K-1074: Observability: Verify ObservabilityEndpoint operator deployment - Modifying MCO cr to enable observabilityaddon [P2][Sev2][Stable][Observability]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release @pre-upgrade (addon/g0)", func() {
 			// Eventually(func() error {
@@ -131,7 +131,7 @@ var _ = Describe("", func() {
 					return err
 				}
 				return nil
-			}, EventuallyTimeoutMinute*6, EventuallyIntervalSecond*5).Should(Succeed())
+			}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
 		})
 	})
 
