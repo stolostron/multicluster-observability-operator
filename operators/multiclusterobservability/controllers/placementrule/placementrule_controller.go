@@ -341,13 +341,13 @@ func (r *PlacementRuleReconciler) cleanSpokesAddonResources(ctx context.Context,
 		return fmt.Errorf("failed to delete all observability addons: %w", err)
 	}
 
-	// // Force deletion of ManagedCluster resources to ensure immediate cleanup
-	// // instead of waiting for cleanOrphanResources which might be delayed by finalizers.
-	// for _, addon := range obsAddonList.Items {
-	// 	if err := deleteManagedClusterRes(r.Client, addon.Namespace); err != nil {
-	// 		log.Error(err, "Failed to delete managed cluster resources", "namespace", addon.Namespace)
-	// 	}
-	// }
+	// Force deletion of ManagedCluster resources to ensure immediate cleanup
+	// instead of waiting for cleanOrphanResources which might be delayed by finalizers.
+	for _, addon := range obsAddonList.Items {
+		if err := deleteManagedClusterRes(r.Client, addon.Namespace); err != nil {
+			log.Error(err, "Failed to delete managed cluster resources", "namespace", addon.Namespace)
+		}
+	}
 
 	opts.Namespace = ""
 	workList := &workv1.ManifestWorkList{}
@@ -595,9 +595,13 @@ func createAllRelatedRes(
 			continue
 		}
 
-		if err := deleteObsAddon(ctx, c, ep.Namespace); err != nil {
-			allErrors = append(allErrors, fmt.Errorf("failed to deleteObsAddon: %w", err))
-			log.Error(err, "Failed to delete observabilityaddon", "namespace", ep.Namespace)
+		if err := deleteAllObsAddons(ctx, c, obsAddonList); err != nil {
+			return fmt.Errorf("failed to delete all observability addons: %w", err)
+		}
+
+		if err := deleteManagedClusterRes(c, ep.Namespace); err != nil {
+			allErrors = append(allErrors, fmt.Errorf("failed to delete managed cluster resources: %w", err))
+			log.Error(err, "Failed to delete managed cluster resources", "namespace", ep.Namespace)
 		}
 	}
 
