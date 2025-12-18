@@ -295,6 +295,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 				Expect(utils.SetMCOACapabilities(testOptions, false, false)).NotTo(HaveOccurred())
 				// Wait for the metrics collector to be running
 				utils.CheckDeploymentAvailability(testOptions.HubCluster, metricsCollectorDeploymentName, utils.MCO_NAMESPACE, true)
+				utils.CheckDeploymentAvailabilityOnClusters(managedClusters, metricsCollectorDeploymentName, utils.MCO_ADDON_NAMESPACE, true)
 			})
 		})
 
