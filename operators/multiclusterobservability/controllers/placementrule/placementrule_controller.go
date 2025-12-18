@@ -341,13 +341,13 @@ func (r *PlacementRuleReconciler) cleanSpokesAddonResources(ctx context.Context,
 		return fmt.Errorf("failed to delete all observability addons: %w", err)
 	}
 
-	// Force deletion of ManagedCluster resources to ensure immediate cleanup
-	// instead of waiting for cleanOrphanResources which might be delayed by finalizers.
-	for _, addon := range obsAddonList.Items {
-		if err := deleteManagedClusterRes(r.Client, addon.Namespace); err != nil {
-			log.Error(err, "Failed to delete managed cluster resources", "namespace", addon.Namespace)
-		}
-	}
+	// // Force deletion of ManagedCluster resources to ensure immediate cleanup
+	// // instead of waiting for cleanOrphanResources which might be delayed by finalizers.
+	// for _, addon := range obsAddonList.Items {
+	// 	if err := deleteManagedClusterRes(r.Client, addon.Namespace); err != nil {
+	// 		log.Error(err, "Failed to delete managed cluster resources", "namespace", addon.Namespace)
+	// 	}
+	// }
 
 	opts.Namespace = ""
 	workList := &workv1.ManifestWorkList{}
@@ -355,11 +355,11 @@ func (r *PlacementRuleReconciler) cleanSpokesAddonResources(ctx context.Context,
 		return fmt.Errorf("failed to list manifestwork resource: %w", err)
 	}
 
-	for _, work := range workList.Items {
-		if err := r.Client.Delete(ctx, &work); err != nil && !k8serrors.IsNotFound(err) {
-			log.Error(err, "Failed to delete manifestwork", "name", work.Name, "namespace", work.Namespace)
-		}
-	}
+	// for _, work := range workList.Items {
+	// 	if err := r.Client.Delete(ctx, &work); err != nil && !k8serrors.IsNotFound(err) {
+	// 		log.Error(err, "Failed to delete manifestwork", "name", work.Name, "namespace", work.Namespace)
+	// 	}
+	// }
 
 	// If deleteGlobal is true (MCO removal or MCOA enabled), we delete immediately.
 	// If deleteGlobal is false (metrics disabled), we wait for manifestWorks to be gone (len == 0)
@@ -595,9 +595,9 @@ func createAllRelatedRes(
 			continue
 		}
 
-		if err := deleteManagedClusterRes(c, ep.Namespace); err != nil {
-			allErrors = append(allErrors, fmt.Errorf("failed to delete managed cluster resources: %w", err))
-			log.Error(err, "Failed to delete managed cluster resources", "namespace", ep.Namespace)
+		if err := deleteObsAddon(ctx, c, ep.Namespace); err != nil {
+			allErrors = append(allErrors, fmt.Errorf("failed to deleteObsAddon: %w", err))
+			log.Error(err, "Failed to delete observabilityaddon", "namespace", ep.Namespace)
 		}
 	}
 
