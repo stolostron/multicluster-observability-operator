@@ -96,14 +96,12 @@ func buildNamespaceRules5m(
 		rule(
 			"acm_rs_vm:namespace:cpu_request:5m",
 			fmt.Sprintf(
-				`max_over_time(sum (
-				  (kubevirt_vm_resource_requests{%s, unit="cores", resource="cpu"} *
-				  on(name,namespace,resource)
-				  kubevirt_vm_resource_requests{%s, unit="sockets", resource="cpu"} *
-				  on(name,namespace,resource)
-				  kubevirt_vm_resource_requests{%s, unit="threads", resource="cpu"})
-				) by (name, namespace)[5m:])`,
-				nsFilter, nsFilter, nsFilter,
+				`max_over_time(
+					(
+						count by (name, namespace) (kubevirt_vmi_vcpu_seconds_total{%s}) 
+					)[5m:]
+				)`,
+				nsFilter,
 			),
 		),
 		rule(
@@ -166,14 +164,12 @@ func buildClusterRules5m(
 		rule(
 			"acm_rs_vm:cluster:cpu_request:5m",
 			fmt.Sprintf(
-				`max_over_time(sum (
-				  (kubevirt_vm_resource_requests{%s, unit="cores", resource="cpu"} *
-				  on(name,namespace,resource)
-				  kubevirt_vm_resource_requests{%s, unit="sockets", resource="cpu"} *
-				  on(name,namespace,resource)
-				  kubevirt_vm_resource_requests{%s, unit="threads", resource="cpu"})
-				) by (cluster)[5m:])`,
-				nsFilter, nsFilter, nsFilter,
+				`max_over_time(
+					(
+						count by (cluster) (kubevirt_vmi_vcpu_seconds_total{%s}) 
+					)[5m:]
+				)`,
+				nsFilter,
 			),
 		),
 		rule(

@@ -32,7 +32,6 @@ spec:
     - '{__name__="acm_rs_vm:namespace:memory_request"}'
     - '{__name__="acm_rs_vm:namespace:memory_usage"}'
     - '{__name__="acm_rs_vm:namespace:memory_recommendation"}'
-    - '{__name__="acm_rs_vm:cluster:cpu_request"}'
     - '{__name__="kubevirt_vm_running_status_last_transition_timestamp_seconds"}'
   metricRelabelings:
   - action: labeldrop
