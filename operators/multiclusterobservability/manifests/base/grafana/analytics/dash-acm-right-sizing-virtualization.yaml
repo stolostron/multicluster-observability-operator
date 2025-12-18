@@ -2678,14 +2678,14 @@ data:
               "type": "prometheus",
               "uid": "${datasource}"
             },
-            "definition": "label_values(acm_rs_vm:cluster:cpu_request,cluster)",
+            "definition": "label_values({__name__=~\"acm_rs_vm:cluster:(cpu_request|cpu_usage|memory_request|memory_usage)\"},cluster)",
             "description": "Cluster Variable",
             "includeAll": false,
             "label": "Cluster",
             "name": "cluster",
             "options": [],
             "query": {
-              "query": "label_values(acm_rs_vm:cluster:cpu_request,cluster)",
+              "query": "label_values({__name__=~\"acm_rs_vm:cluster:(cpu_request|cpu_usage|memory_request|memory_usage)\"},cluster)",
               "refId": "StandardVariableQuery"
             },
             "refresh": 2,
@@ -2702,14 +2702,14 @@ data:
               "type": "prometheus",
               "uid": "${datasource}"
             },
-            "definition": "label_values(acm_rs_vm:namespace:cpu_usage{cluster=\"$cluster\"},profile)",
+            "definition": "label_values({__name__=~\"acm_rs_vm:namespace:(cpu_request|cpu_usage|memory_request|memory_usage)\",cluster=\"$cluster\"},profile)",
             "description": "Profile Variable",
             "includeAll": false,
             "label": "Profile",
             "name": "profile",
             "options": [],
             "query": {
-              "query": "label_values(acm_rs_vm:namespace:cpu_usage{cluster=\"$cluster\"},profile)",
+              "query": "label_values({__name__=~\"acm_rs_vm:namespace:(cpu_request|cpu_usage|memory_request|memory_usage)\",cluster=\"$cluster\"},profile)",
               "refId": "StandardVariableQuery"
             },
             "refresh": 2,
