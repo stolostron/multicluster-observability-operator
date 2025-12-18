@@ -146,7 +146,7 @@ func deletionStalled(obj client.Object) bool {
 		return false
 	}
 
-	return time.Since(delTs.Time) > 5*time.Minute
+	return time.Since(delTs.Time) > 1*time.Minute
 }
 
 func deleteFinalizer(c client.Client, obsaddon *obsv1beta1.ObservabilityAddon) error {
