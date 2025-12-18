@@ -396,7 +396,7 @@ func (r *PlacementRuleReconciler) cleanSpokesAddonResources(ctx context.Context)
 	}
 	if requeue {
 		// We skip the deletion of the ManagedClusterAddOns for now to allow the endpoint operators
-		// to clean up the resources in the managed clusters. We will proceed with the final 
+		// to clean up the resources in the managed clusters. We will proceed with the final
 		// deletion once the ObservabilityAddon finalizers are removed.
 		return true, nil
 	}
