@@ -181,11 +181,14 @@ func ToCompactJSON(v interface{}, prefix string, depth int, maxDepth int) string
 	}
 
 	// If v is a struct or pointer to struct, convert to unstructured
-	val := reflect.ValueOf(v)
-	if val.Kind() == reflect.Ptr {
-		val = val.Elem()
+	rv := reflect.ValueOf(v)
+	if rv.Kind() == reflect.Ptr {
+		if rv.IsNil() {
+			return "null"
+		}
+		rv = rv.Elem()
 	}
-	if val.Kind() == reflect.Struct {
+	if rv.Kind() == reflect.Struct {
 		// ToUnstructured requires a pointer
 		var input interface{} = v
 		if reflect.ValueOf(v).Kind() == reflect.Struct {
@@ -197,44 +200,56 @@ func ToCompactJSON(v interface{}, prefix string, depth int, maxDepth int) string
 		unstructuredObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(input)
 		if err == nil {
 			v = unstructuredObj
+			rv = reflect.ValueOf(v)
 		} else {
 			klog.Errorf("Failed to convert object to unstructured: %v", err)
 		}
 	}
 
-	// Normalise map
-	var valMap map[string]interface{}
-	if m, ok := v.(map[string]interface{}); ok {
-		valMap = m
-	} else if m, ok := v.(map[string]string); ok {
-		valMap = make(map[string]interface{})
-		for k, v := range m {
-			valMap[k] = v
-		}
-	}
-
-	// If not a map or we reached max depth, compact marshaling
-	if valMap == nil || depth >= maxDepth {
+	// If we reached max depth, compact marshaling
+	if depth >= maxDepth {
 		b, _ := json.Marshal(v)
 		return string(b)
 	}
 
-	var sb strings.Builder
-	sb.WriteString("{\n")
-
-	i := 0
-	for k, subV := range valMap {
-		if i > 0 {
-			sb.WriteString(",\n")
+	if rv.Kind() == reflect.Map {
+		var sb strings.Builder
+		sb.WriteString("{\n")
+		keys := rv.MapKeys()
+		for i, k := range keys {
+			if i > 0 {
+				sb.WriteString(",\n")
+			}
+			subV := rv.MapIndex(k).Interface()
+			sb.WriteString(fmt.Sprintf("%s  %q: %s", prefix, k.String(), ToCompactJSON(subV, prefix+"  ", depth+1, maxDepth)))
 		}
-		sb.WriteString(fmt.Sprintf("%s  %q: %s", prefix, k, ToCompactJSON(subV, prefix+"  ", depth+1, maxDepth)))
-		i++
+		if len(keys) > 0 {
+			sb.WriteString("\n")
+		}
+		sb.WriteString(prefix + "}")
+		return sb.String()
 	}
-	if i > 0 {
-		sb.WriteString("\n")
+
+	if rv.Kind() == reflect.Slice || rv.Kind() == reflect.Array {
+		var sb strings.Builder
+		sb.WriteString("[\n")
+		for i := 0; i < rv.Len(); i++ {
+			if i > 0 {
+				sb.WriteString(",\n")
+			}
+			subV := rv.Index(i).Interface()
+			sb.WriteString(fmt.Sprintf("%s  %s", prefix, ToCompactJSON(subV, prefix+"  ", depth+1, maxDepth)))
+		}
+		if rv.Len() > 0 {
+			sb.WriteString("\n")
+		}
+		sb.WriteString(prefix + "]")
+		return sb.String()
 	}
-	sb.WriteString(prefix + "}")
-	return sb.String()
+
+	// Default to compact JSON
+	b, _ := json.Marshal(v)
+	return string(b)
 }
 
 func CheckAllPodNodeSelector(opt TestOptions, nodeSelector map[string]any) error {
