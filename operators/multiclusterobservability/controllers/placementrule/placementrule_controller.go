@@ -156,7 +156,7 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	if mcoIsNotFound || metricsAreDisabled || mcoaForMetricsIsEnabled(mco) {
 		reqLogger.Info("Cleaning all spokes resources", "mcoIsNotFound", mcoIsNotFound, "metricsAreDisabled",
 			metricsAreDisabled, "mcoaIsEnabled", mcoaForMetricsIsEnabled(mco))
-		if err := r.cleanSpokesAddonResources(ctx, mcoIsNotFound || mcoaForMetricsIsEnabled(mco)); err != nil {
+		if err := r.cleanSpokesAddonResources(ctx); err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to clean all resources: %w", err)
 		}
 		if mcoIsNotFound || metricsAreDisabled {
@@ -330,7 +330,7 @@ func (r *PlacementRuleReconciler) waitForImageList(reqLogger logr.Logger) bool {
 	return false
 }
 
-func (r *PlacementRuleReconciler) cleanSpokesAddonResources(ctx context.Context, deleteGlobal bool) error {
+func (r *PlacementRuleReconciler) cleanSpokesAddonResources(ctx context.Context) error {
 	opts := &client.ListOptions{LabelSelector: labels.SelectorFromSet(map[string]string{ownerLabelKey: ownerLabelValue})}
 	obsAddonList := &mcov1beta1.ObservabilityAddonList{}
 	if err := r.Client.List(ctx, obsAddonList, opts); err != nil {
@@ -364,7 +364,7 @@ func (r *PlacementRuleReconciler) cleanSpokesAddonResources(ctx context.Context,
 	// If deleteGlobal is true (MCO removal or MCOA enabled), we delete immediately.
 	// If deleteGlobal is false (metrics disabled), we wait for manifestWorks to be gone (len == 0)
 	// before removing global resources (ClusterManagementAddOn, Roles), ensuring graceful teardown.
-	if len(workList.Items) == 0 || deleteGlobal {
+	if len(workList.Items) == 0 {
 		if err := deleteGlobalResource(ctx, r.Client); err != nil {
 			return fmt.Errorf("failed to delete global resources: %w", err)
 		}
@@ -595,8 +595,10 @@ func createAllRelatedRes(
 			continue
 		}
 
-		if err := deleteAllObsAddons(ctx, c, obsAddonList); err != nil {
-			return fmt.Errorf("failed to delete all observability addons: %w", err)
+		err := deleteObsAddon(ctx, c, ep.Namespace)
+		if err != nil {
+			log.Error(err, "Failed to delete observabilityaddon", "namespace", ep.Namespace)
+			return err
 		}
 
 		if err := deleteManagedClusterRes(c, ep.Namespace); err != nil {
