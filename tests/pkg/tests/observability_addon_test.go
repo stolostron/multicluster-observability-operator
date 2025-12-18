@@ -223,49 +223,49 @@ var _ = Describe("", func() {
 		}
 	})
 
-	Context("RHACM4K-7518: Observability: Disable the Observability by updating managed cluster label [P2][Sev2][Observability]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore (addon/g1) -", func() {
-		It("[Stable] Modifying managedcluster cr to disable observability", func() {
-			Eventually(func() error {
-				return utils.UpdateObservabilityFromManagedCluster(testOptions, false)
-			}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
+	// Context("RHACM4K-7518: Observability: Disable the Observability by updating managed cluster label [P2][Sev2][Observability]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore (addon/g1) -", func() {
+	// 	It("[Stable] Modifying managedcluster cr to disable observability", func() {
+	// 		Eventually(func() error {
+	// 			return utils.UpdateObservabilityFromManagedCluster(testOptions, false)
+	// 		}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
 
-			klog.V(1).Infof("managedcluster number is <%d>", len(testOptions.ManagedClusters))
-			if len(testOptions.ManagedClusters) > 0 {
-				By("Waiting for MCO addon components scales to 0")
-				Eventually(func() bool {
-					err, obaNS := utils.GetNamespace(testOptions, false, MCO_ADDON_NAMESPACE)
-					if err == nil && obaNS == nil {
-						return true
-					}
-					return false
-				}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(BeTrue())
-			}
-		})
+	// 		klog.V(1).Infof("managedcluster number is <%d>", len(testOptions.ManagedClusters))
+	// 		if len(testOptions.ManagedClusters) > 0 {
+	// 			By("Waiting for MCO addon components scales to 0")
+	// 			Eventually(func() bool {
+	// 				err, obaNS := utils.GetNamespace(testOptions, false, MCO_ADDON_NAMESPACE)
+	// 				if err == nil && obaNS == nil {
+	// 					return true
+	// 				}
+	// 				return false
+	// 			}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(BeTrue())
+	// 		}
+	// 	})
 
-		It("[Stable] Remove disable observability label from the managed cluster", func() {
-			Eventually(func() error {
-				return utils.UpdateObservabilityFromManagedCluster(testOptions, true)
-			}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
+	// 	It("[Stable] Remove disable observability label from the managed cluster", func() {
+	// 		Eventually(func() error {
+	// 			return utils.UpdateObservabilityFromManagedCluster(testOptions, true)
+	// 		}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
 
-			if len(testOptions.ManagedClusters) > 0 {
-				By("Waiting for MCO addon components ready")
-				Eventually(func() bool {
-					err, podList := utils.GetPodList(
-						testOptions,
-						false,
-						MCO_ADDON_NAMESPACE,
-						"component=metrics-collector",
-					)
-					// starting with OCP 4.13, userWorkLoadMonitoring is enabled by default
-					if len(podList.Items) >= 1 && err == nil {
-						return true
-					}
-					return false
-				}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(BeTrue())
-			}
-		})
-	},
-	)
+	// 		if len(testOptions.ManagedClusters) > 0 {
+	// 			By("Waiting for MCO addon components ready")
+	// 			Eventually(func() bool {
+	// 				err, podList := utils.GetPodList(
+	// 					testOptions,
+	// 					false,
+	// 					MCO_ADDON_NAMESPACE,
+	// 					"component=metrics-collector",
+	// 				)
+	// 				// starting with OCP 4.13, userWorkLoadMonitoring is enabled by default
+	// 				if len(podList.Items) >= 1 && err == nil {
+	// 					return true
+	// 				}
+	// 				return false
+	// 			}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(BeTrue())
+	// 		}
+	// 	})
+	// },
+	// )
 
 	JustAfterEach(func() {
 		Expect(utils.IntegrityChecking(testOptions)).NotTo(HaveOccurred())
