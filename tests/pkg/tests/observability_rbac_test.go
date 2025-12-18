@@ -38,7 +38,7 @@ var _ = Describe("", Ordered, func() {
 		err = cmd.Run()
 		klog.V(1).Infof("the output of setup_rbac_test.sh: %v", out.String())
 		Expect(err).To(BeNil())
-		time.Sleep(2 * time.Minute)
+		time.Sleep(1 * time.Minute)
 	})
 	It("RHACM4K-1406 - Observability - RBAC - only authorized user could query managed cluster metrics data [Observability][Integration]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release (requires-ocp/g0) (obs_rbac/g0)", func() {
 		By("Logging in as admin and querying managed cluster metrics data", func() {
