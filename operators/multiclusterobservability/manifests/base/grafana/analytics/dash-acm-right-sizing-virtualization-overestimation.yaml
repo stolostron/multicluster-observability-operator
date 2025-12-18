@@ -1027,14 +1027,14 @@ data:
               "type": "prometheus",
               "uid": "${datasource}"
             },
-            "definition": "label_values({__name__=~\"acm_rs_vm:cluster:(cpu_request|cpu_usage|memory_request|memory_usage)\"},cluster)",
+            "definition": "label_values({__name__=~\"acm_rs_vm:namespace:(cpu_request|cpu_usage|memory_request|memory_usage)\"},cluster)",
             "description": "Cluster Variable",
             "includeAll": false,
             "label": "Cluster",
             "name": "cluster",
             "options": [],
             "query": {
-              "query": "label_values({__name__=~\"acm_rs_vm:cluster:(cpu_request|cpu_usage|memory_request|memory_usage)\"},cluster)",
+              "query": "label_values({__name__=~\"acm_rs_vm:namespace:(cpu_request|cpu_usage|memory_request|memory_usage)\"},cluster)",
               "refId": "StandardVariableQuery"
             },
             "refresh": 2,
