@@ -246,6 +246,8 @@ var _ = Describe("", func() {
 	// 	})
 
 	// 	It("[Stable] Remove disable observability label from the managed cluster", func() {
+	// 		By("Waiting for 1 minute to make sure the registration controller correctly takes into account the changes")
+	// 		time.Sleep(60 * time.Second)
 	// 		Eventually(func() error {
 	// 			return utils.UpdateObservabilityFromManagedCluster(testOptions, true)
 	// 		}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
