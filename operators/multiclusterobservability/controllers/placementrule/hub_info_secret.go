@@ -96,7 +96,7 @@ func generateHubInfoSecret(client client.Client, obsNamespace string,
 		AlertmanagerEndpoint:     alertmanagerEndpoint,
 		AlertmanagerRouterCA:     alertmanagerRouterCA,
 		UWMAlertingDisabled:      isUWMAlertingDisabled,
-		HubClusterID:         		trimmedClusterID,
+		HubClusterID:             trimmedClusterID,
 	}
 
 	configYaml, err := yaml.Marshal(hubInfo)
