@@ -156,9 +156,10 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	if mcoIsNotFound || metricsAreDisabled || mcoaForMetricsIsEnabled(mco) {
 		reqLogger.Info("Cleaning all spokes resources", "mcoIsNotFound", mcoIsNotFound, "metricsAreDisabled",
 			metricsAreDisabled, "mcoaIsEnabled", mcoaForMetricsIsEnabled(mco))
-		if err := r.cleanSpokesAddonResources(ctx); err != nil {
+		if requeue, err := r.cleanSpokesAddonResources(ctx); err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to clean all resources: %w", err)
-		}
+		} else if requeue {
+			        return ctrl.Result{RequeueAfter: 10 * time.Second}, nil		}
 		if mcoIsNotFound || metricsAreDisabled {
 			if err := DeleteHubMetricsCollectionDeployments(ctx, r.Client); err != nil {
 				return ctrl.Result{}, fmt.Errorf("failed to delete hub metrics collection deployments and resources: %w", err)
@@ -196,9 +197,10 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 
 	// This cleanup must be kept at the end of the reconcile as createAllRelatedRes can remove some observabilityAddon
 	// resources that trigger then some cleanup here. Same for cleanResources that leaves resources behind.
-	if err := r.cleanOrphanResources(ctx, req); err != nil {
+	if requeue, err := r.cleanOrphanResources(ctx, req); err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to clean orphaned resources: %w", err)
-	}
+	} else if requeue {
+		        return ctrl.Result{RequeueAfter: 10 * time.Second}, nil	}
 
 	return ctrl.Result{}, nil
 }
@@ -230,7 +232,7 @@ func (r *PlacementRuleReconciler) updateStatus(ctx context.Context, req ctrl.Req
 	return nil
 }
 
-func (r *PlacementRuleReconciler) cleanOrphanResources(ctx context.Context, req ctrl.Request) error {
+func (r *PlacementRuleReconciler) cleanOrphanResources(ctx context.Context, req ctrl.Request) (bool, error) {
 	opts := &client.ListOptions{
 		LabelSelector: labels.SelectorFromSet(map[string]string{ownerLabelKey: ownerLabelValue}),
 	}
@@ -240,17 +242,17 @@ func (r *PlacementRuleReconciler) cleanOrphanResources(ctx context.Context, req 
 
 	obsAddonList := &mcov1beta1.ObservabilityAddonList{}
 	if err := r.Client.List(ctx, obsAddonList, opts); err != nil {
-		return fmt.Errorf("failed to list owned observabilityaddon resources: %w", err)
+		return false, fmt.Errorf("failed to list owned observabilityaddon resources: %w", err)
 	}
 
 	workList := &workv1.ManifestWorkList{}
 	if err := r.Client.List(ctx, workList, opts); err != nil {
-		return fmt.Errorf("failed to list owned manifestwork resources: %w", err)
+		return false, fmt.Errorf("failed to list owned manifestwork resources: %w", err)
 	}
 
 	managedclusteraddonList := &addonv1alpha1.ManagedClusterAddOnList{}
 	if err := r.Client.List(ctx, managedclusteraddonList, opts); err != nil {
-		return fmt.Errorf("failed to list owned managedclusteraddon resources: %w", err)
+		return false, fmt.Errorf("failed to list owned managedclusteraddon resources: %w", err)
 	}
 
 	currentAddonNamespaces := map[string]mcov1beta1.ObservabilityAddon{}
@@ -260,7 +262,7 @@ func (r *PlacementRuleReconciler) cleanOrphanResources(ctx context.Context, req 
 
 	managedClusterList, err := getManagedClustersList(ctx, r.Client)
 	if err != nil {
-		return fmt.Errorf("failed to get managed clusters list: %w", err)
+		return false, fmt.Errorf("failed to get managed clusters list: %w", err)
 	}
 	managedClustersNamespaces := make(map[string]struct{}, len(managedClusterList))
 	for _, mc := range managedClusterList {
@@ -272,18 +274,26 @@ func (r *PlacementRuleReconciler) cleanOrphanResources(ctx context.Context, req 
 		}
 	}
 
+	requeue := false
 	// Detect and delete ObservabilityAddons for missing ManagedClusters
 	for ns := range currentAddonNamespaces {
 		if _, ok := managedClustersNamespaces[ns]; ok {
 			continue
 		}
 		log.Info("Deleting orphaned ObservabilityAddon (ManagedCluster missing)", "namespace", ns)
-		if err := deleteObsAddon(ctx, r.Client, ns); err != nil {
-			return fmt.Errorf("failed to delete orphaned observabilityaddon in namespace %q: %w", ns, err)
+		rq, err := deleteObsAddon(ctx, r.Client, ns)
+		if err != nil {
+			return false, fmt.Errorf("failed to delete orphaned observabilityaddon in namespace %q: %w", ns, err)
+		}
+		if rq {
+			requeue = true
+			// We skip the deletion of the ManagedClusterAddOn for now to allow the endpoint operator
+			// to clean up the resources in the managed cluster.
+			continue
 		}
 		// Also ensure managed cluster resources are gone
 		if err := deleteManagedClusterRes(r.Client, ns); err != nil {
-			return fmt.Errorf("failed to delete orphaned managed cluster resources in namespace %q: %w", ns, err)
+			return false, fmt.Errorf("failed to delete orphaned managed cluster resources in namespace %q: %w", ns, err)
 		}
 		// Remove from map so we don't process it again in the next loop
 		delete(currentAddonNamespaces, ns)
@@ -294,7 +304,7 @@ func (r *PlacementRuleReconciler) cleanOrphanResources(ctx context.Context, req 
 		if work.Name != work.Namespace+workNameSuffix {
 			log.Info("Deleting ManifestWork with invalid name", "namespace", work.Namespace, "name", work.Name)
 			if err := deleteManifestWork(r.Client, work.Name, work.Namespace); err != nil {
-				return fmt.Errorf("failed to delete invalid ManifestWork: %w", err)
+				return false, fmt.Errorf("failed to delete invalid ManifestWork: %w", err)
 			}
 		}
 		namespacesWithResources[work.GetNamespace()] = struct{}{}
@@ -320,7 +330,7 @@ func (r *PlacementRuleReconciler) cleanOrphanResources(ctx context.Context, req 
 
 		log.Info("Deleting orphaned ManagedCluster resources", "namespace", ns)
 		if err := deleteManagedClusterRes(r.Client, ns); err != nil {
-			return fmt.Errorf("failed to delete managed cluster resources in namespace %q: %w", ns, err)
+			return false, fmt.Errorf("failed to delete managed cluster resources in namespace %q: %w", ns, err)
 		}
 	}
 
@@ -336,15 +346,19 @@ func (r *PlacementRuleReconciler) cleanOrphanResources(ctx context.Context, req 
 		}
 
 		if err := deleteFinalizer(r.Client, &addon); err != nil {
-			return fmt.Errorf("failed to delete observabilityaddon %s/%s finalizer: %w", ns, addon.GetName(), err)
+			return false, fmt.Errorf("failed to delete observabilityaddon %s/%s finalizer: %w", ns, addon.GetName(), err)
 		}
 
-		if err := deleteObsAddonObject(ctx, r.Client, ns); err != nil {
-			return fmt.Errorf("failed to delete stalled observability addon in namespace %q: %w", ns, err)
+		rq, err := deleteObsAddonObject(ctx, r.Client, ns)
+		if err != nil {
+			return false, fmt.Errorf("failed to delete stalled observability addon in namespace %q: %w", ns, err)
+		}
+		if rq {
+			requeue = true
 		}
 	}
 
-	return nil
+	return requeue, nil
 }
 
 func (r *PlacementRuleReconciler) waitForImageList(reqLogger logr.Logger) bool {
@@ -360,15 +374,21 @@ func (r *PlacementRuleReconciler) waitForImageList(reqLogger logr.Logger) bool {
 	return false
 }
 
-func (r *PlacementRuleReconciler) cleanSpokesAddonResources(ctx context.Context) error {
+func (r *PlacementRuleReconciler) cleanSpokesAddonResources(ctx context.Context) (bool, error) {
 	opts := &client.ListOptions{LabelSelector: labels.SelectorFromSet(map[string]string{ownerLabelKey: ownerLabelValue})}
 	obsAddonList := &mcov1beta1.ObservabilityAddonList{}
 	if err := r.Client.List(ctx, obsAddonList, opts); err != nil {
-		return fmt.Errorf("failed to list observabilityaddon resource: %w", err)
+		return false, fmt.Errorf("failed to list observabilityaddon resource: %w", err)
 	}
 
-	if err := deleteAllObsAddons(ctx, r.Client, obsAddonList); err != nil {
-		return fmt.Errorf("failed to delete all observability addons: %w", err)
+	requeue, err := deleteAllObsAddons(ctx, r.Client, obsAddonList)
+	if err != nil {
+		return false, fmt.Errorf("failed to delete all observability addons: %w", err)
+	}
+	if requeue {
+		// We skip the deletion of the ManagedClusterAddOns for now to allow the endpoint operator
+		// to clean up the resources in the managed clusters.
+		return true, nil
 	}
 
 	// Force deletion of ManagedCluster resources to ensure immediate cleanup
@@ -382,7 +402,7 @@ func (r *PlacementRuleReconciler) cleanSpokesAddonResources(ctx context.Context)
 	opts.Namespace = ""
 	workList := &workv1.ManifestWorkList{}
 	if err := r.Client.List(ctx, workList, opts); err != nil {
-		return fmt.Errorf("failed to list manifestwork resource: %w", err)
+		return false, fmt.Errorf("failed to list manifestwork resource: %w", err)
 	}
 
 	// for _, work := range workList.Items {
@@ -396,11 +416,11 @@ func (r *PlacementRuleReconciler) cleanSpokesAddonResources(ctx context.Context)
 	// before removing global resources (ClusterManagementAddOn, Roles), ensuring graceful teardown.
 	if len(workList.Items) == 0 {
 		if err := deleteGlobalResource(ctx, r.Client); err != nil {
-			return fmt.Errorf("failed to delete global resources: %w", err)
+			return false, fmt.Errorf("failed to delete global resources: %w", err)
 		}
 	}
 
-	return nil
+	return false, nil
 }
 
 // ensureMCOAResources reconciliates resources needed for MCOA (both hub and spoke).
@@ -653,15 +673,19 @@ func deleteAllObsAddons(
 	ctx context.Context,
 	client client.Client,
 	obsAddonList *mcov1beta1.ObservabilityAddonList,
-) error {
+) (bool, error) {
+	requeue := false
 	for _, ep := range obsAddonList.Items {
-		err := deleteObsAddon(ctx, client, ep.Namespace)
+		rq, err := deleteObsAddon(ctx, client, ep.Namespace)
 		if err != nil {
 			log.Error(err, "Failed to delete observabilityaddon", "namespace", ep.Namespace)
-			return err
+			return false, err
+		}
+		if rq {
+			requeue = true
 		}
 	}
-	return nil
+	return requeue, nil
 }
 
 func deleteGlobalResource(ctx context.Context, c client.Client) error {
@@ -877,10 +901,12 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				e.ObjectOld.(*mcov1beta1.ObservabilityAddon).Spec)
 			equalAnnotations := equality.Semantic.DeepEqual(e.ObjectNew.(*mcov1beta1.ObservabilityAddon).Annotations,
 				e.ObjectOld.(*mcov1beta1.ObservabilityAddon).Annotations)
+			equalFinalizers := equality.Semantic.DeepEqual(e.ObjectNew.(*mcov1beta1.ObservabilityAddon).Finalizers,
+				e.ObjectOld.(*mcov1beta1.ObservabilityAddon).Finalizers)
 
 			if e.ObjectNew.GetName() == obsAddonName &&
 				e.ObjectNew.GetLabels()[ownerLabelKey] == ownerLabelValue &&
-				(!equalStatus || !equalSpec || !equalAnnotations) {
+				(!equalStatus || !equalSpec || !equalAnnotations || !equalFinalizers) {
 				return true
 			}
 			return false
