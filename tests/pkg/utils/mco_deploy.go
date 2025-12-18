@@ -171,27 +171,47 @@ func PrintObject(ctx context.Context, client dynamic.Interface, gvr schema.Group
 		return
 	}
 
-	spec, err := json.MarshalIndent(obj.Object["spec"], "", "  ")
-	if err != nil {
-		klog.V(1).Infof("Failed to marshal spec for object %s in namespace %s: %v", name, ns, err)
-		return
+	klog.V(1).Infof("Object %s/%s/%s:\n%s", ns, gvr.Resource, name, ToCompactJSON(obj.Object, "", 0))
+}
+
+func ToCompactJSON(v interface{}, prefix string, depth int) string {
+	if v == nil {
+		return "null"
 	}
 
-	status, err := json.MarshalIndent(obj.Object["status"], "", "  ")
-	if err != nil {
-		klog.V(1).Infof("Failed to marshal status for object %s in namespace %s: %v", name, ns, err)
-		return
+	// Normalise map
+	var val map[string]interface{}
+	if m, ok := v.(map[string]interface{}); ok {
+		val = m
+	} else if m, ok := v.(map[string]string); ok {
+		val = make(map[string]interface{})
+		for k, v := range m {
+			val[k] = v
+		}
 	}
 
-	annotations, err := json.MarshalIndent(obj.GetAnnotations(), "", "  ")
-	if err != nil {
-		klog.V(1).Infof("Failed to marshal annotations for object %s in namespace %s: %v", name, ns, err)
-		return
+	// If not a map or we reached max depth (2), compact marshaling
+	if val == nil || depth >= 2 {
+		b, _ := json.Marshal(v)
+		return string(b)
 	}
 
-	klog.V(1).Infof("Object %s/%s/%s spec: %+v\n", ns, gvr.Resource, name, string(spec))
-	klog.V(1).Infof("Object %s/%s/%s status: %+v\n", ns, gvr.Resource, name, string(status))
-	klog.V(1).Infof("Object %s/%s/%s annotations: %+v\n", ns, gvr.Resource, name, string(annotations))
+	var sb strings.Builder
+	sb.WriteString("{\n")
+
+	i := 0
+	for k, subV := range val {
+		if i > 0 {
+			sb.WriteString(",\n")
+		}
+		sb.WriteString(fmt.Sprintf("%s  %q: %s", prefix, k, ToCompactJSON(subV, prefix+"  ", depth+1)))
+		i++
+	}
+	if i > 0 {
+		sb.WriteString("\n")
+	}
+	sb.WriteString(prefix + "}")
+	return sb.String()
 }
 
 func CheckAllPodNodeSelector(opt TestOptions, nodeSelector map[string]any) error {

@@ -116,11 +116,8 @@ func CheckPodsInNamespace(client kubernetes.Interface, ns string, forcePodNamesL
 		}
 
 		// print pod spec
-		podSpec, err := json.MarshalIndent(pod.Spec, "", "  ")
-		if err != nil {
-			klog.Errorf("Failed to marshal pod %q spec: %s", pod.Name, err.Error())
-		}
-		klog.V(1).Infof("Pod %q spec: \n%s", pod.Name, string(podSpec))
+		podSpec := ToCompactJSON(pod.Spec, "", 0)
+		klog.V(1).Infof("Pod %q spec: \n%s", pod.Name, podSpec)
 
 		LogPodStatus(pod)
 		LogObjectEvents(client, ns, "Pod", pod.Name)
@@ -189,7 +186,7 @@ func LogPodLogs(client kubernetes.Interface, ns string, pod corev1.Pod) {
 			}
 
 			lowerLine := strings.ToLower(line)
-			if strings.Contains(lowerLine, "error") || strings.Contains(lowerLine, "info") || strings.Contains(lowerLine, "debug") {
+			if strings.Contains(lowerLine, "error") || strings.Contains(lowerLine, "info") {
 				filteredLines = append(filteredLines, line)
 			}
 		}
