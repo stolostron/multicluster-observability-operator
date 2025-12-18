@@ -20,6 +20,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer/yaml"
 	"k8s.io/client-go/dynamic"
@@ -171,27 +172,49 @@ func PrintObject(ctx context.Context, client dynamic.Interface, gvr schema.Group
 		return
 	}
 
-	klog.V(1).Infof("Object %s/%s/%s:\n%s", ns, gvr.Resource, name, ToCompactJSON(obj.Object, "", 0))
+	klog.V(1).Infof("Object %s/%s/%s:\n%s", ns, gvr.Resource, name, ToCompactJSON(obj.Object, "", 0, 3))
 }
 
-func ToCompactJSON(v interface{}, prefix string, depth int) string {
+func ToCompactJSON(v interface{}, prefix string, depth int, maxDepth int) string {
 	if v == nil {
 		return "null"
 	}
 
-	// Normalise map
-	var val map[string]interface{}
-	if m, ok := v.(map[string]interface{}); ok {
-		val = m
-	} else if m, ok := v.(map[string]string); ok {
-		val = make(map[string]interface{})
-		for k, v := range m {
-			val[k] = v
+	// If v is a struct or pointer to struct, convert to unstructured
+	val := reflect.ValueOf(v)
+	if val.Kind() == reflect.Ptr {
+		val = val.Elem()
+	}
+	if val.Kind() == reflect.Struct {
+		// ToUnstructured requires a pointer
+		var input interface{} = v
+		if reflect.ValueOf(v).Kind() == reflect.Struct {
+			ptr := reflect.New(reflect.TypeOf(v))
+			ptr.Elem().Set(reflect.ValueOf(v))
+			input = ptr.Interface()
+		}
+
+		unstructuredObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(input)
+		if err == nil {
+			v = unstructuredObj
+		} else {
+			klog.Errorf("Failed to convert object to unstructured: %v", err)
 		}
 	}
 
-	// If not a map or we reached max depth (2), compact marshaling
-	if val == nil || depth >= 2 {
+	// Normalise map
+	var valMap map[string]interface{}
+	if m, ok := v.(map[string]interface{}); ok {
+		valMap = m
+	} else if m, ok := v.(map[string]string); ok {
+		valMap = make(map[string]interface{})
+		for k, v := range m {
+			valMap[k] = v
+		}
+	}
+
+	// If not a map or we reached max depth, compact marshaling
+	if valMap == nil || depth >= maxDepth {
 		b, _ := json.Marshal(v)
 		return string(b)
 	}
@@ -200,11 +223,11 @@ func ToCompactJSON(v interface{}, prefix string, depth int) string {
 	sb.WriteString("{\n")
 
 	i := 0
-	for k, subV := range val {
+	for k, subV := range valMap {
 		if i > 0 {
 			sb.WriteString(",\n")
 		}
-		sb.WriteString(fmt.Sprintf("%s  %q: %s", prefix, k, ToCompactJSON(subV, prefix+"  ", depth+1)))
+		sb.WriteString(fmt.Sprintf("%s  %q: %s", prefix, k, ToCompactJSON(subV, prefix+"  ", depth+1, maxDepth)))
 		i++
 	}
 	if i > 0 {

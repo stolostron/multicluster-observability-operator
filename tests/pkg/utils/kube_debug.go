@@ -116,7 +116,7 @@ func CheckPodsInNamespace(client kubernetes.Interface, ns string, forcePodNamesL
 		}
 
 		// print pod spec
-		podSpec := ToCompactJSON(pod.Spec, "", 0)
+		podSpec := ToCompactJSON(pod.Spec, "", 0, 3)
 		klog.V(1).Infof("Pod %q spec: \n%s", pod.Name, podSpec)
 
 		LogPodStatus(pod)
@@ -171,18 +171,31 @@ func LogPodLogs(client kubernetes.Interface, ns string, pod corev1.Pod) {
 		filteredLines := []string{}
 		lines := strings.Split(string(logs), "\n")
 		cutoffTime := time.Now().Add(-6 * time.Minute)
+		unparseableCount := 0
 
 		for i := len(lines) - 1; i >= 0; i-- {
 			line := lines[i]
+			if line == "" {
+				continue
+			}
 			// Try to parse timestamp at the beginning of the line
 			// Format: 2025-12-17T18:56:14.441Z
 			fields := strings.Fields(line)
+			timestampParsed := false
 			if len(fields) > 0 {
 				if t, err := time.Parse(time.RFC3339, fields[0]); err == nil {
+					timestampParsed = true
 					if t.Before(cutoffTime) {
 						break
 					}
 				}
+			}
+
+			if !timestampParsed {
+				if unparseableCount >= 100 {
+					continue
+				}
+				unparseableCount++
 			}
 
 			lowerLine := strings.ToLower(line)
@@ -354,11 +367,7 @@ func LogManagedClusters(client dynamic.Interface) {
 			}
 		}
 
-		mc, err := json.MarshalIndent(managedCluster, "", "  ")
-		if err != nil {
-			klog.Errorf("Failed to marshal ManagedCluster %q: %s", managedCluster.GetName(), err.Error())
-		}
-		managedClustersData.WriteString(string(mc) + "\n")
+		managedClustersData.WriteString(ToCompactJSON(managedCluster, "", 0, 3) + "\n")
 	}
 	managedClustersData.WriteString("<<<<<<<<<< Managed Clusters <<<<<<<<<<")
 	klog.Info(managedClustersData.String())
