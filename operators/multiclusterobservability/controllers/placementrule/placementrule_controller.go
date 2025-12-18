@@ -367,6 +367,10 @@ func (r *PlacementRuleReconciler) cleanOrphanResources(ctx context.Context, req 
 		}
 	}
 
+	if requeue {
+		log.Info("Some resources are still pending deletion, requeueing")
+	}
+
 	return requeue, nil
 }
 
@@ -697,6 +701,9 @@ func deleteAllObsAddons(
 		if rq {
 			requeue = true
 		}
+	}
+	if requeue {
+		log.Info("At least one observabilityaddon is still pending deletion, requeueing")
 	}
 	return requeue, nil
 }
