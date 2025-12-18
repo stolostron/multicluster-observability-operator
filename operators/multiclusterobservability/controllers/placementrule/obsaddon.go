@@ -39,11 +39,12 @@ func deleteObsAddon(ctx context.Context, c client.Client, namespace string) (boo
 		return requeue, fmt.Errorf("failed to delete obsAddon object: %w", err)
 	}
 
-	// The observabilityAddon resource is removed from the manifestWork.
-	// It triggers the initFinalization in the endpoint operator.
+	// The observabilityAddon resource is removed from the manifestWork (Update).
+	// This triggers the deletion of the CR on the spoke, which in turn triggers 
+	// the initFinalization in the endpoint operator.
 	// When done, the endpoint-operator removes the finalizer on the ObservabilityAddon located on the hub.
-	// This in turn, allows the removal of the ManagedClusterAddOn and the manifestWorks,
-	// resulting in the removal of the managed cluster workloads.
+	// Only then we can safely proceed with the deletion of the ManagedClusterAddOn 
+	// and the manifestWork objects themselves.
 	if err := removeObservabilityAddonInManifestWork(ctx, c, namespace); err != nil {
 		return requeue, fmt.Errorf("failed to remove observabilityAddon from manifest work: %w", err)
 	}
