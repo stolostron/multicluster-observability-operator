@@ -159,7 +159,8 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		if requeue, err := r.cleanSpokesAddonResources(ctx); err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to clean all resources: %w", err)
 		} else if requeue {
-			        return ctrl.Result{RequeueAfter: 10 * time.Second}, nil		}
+			return ctrl.Result{RequeueAfter: 30 * time.Second}, nil
+		}
 		if mcoIsNotFound || metricsAreDisabled {
 			if err := DeleteHubMetricsCollectionDeployments(ctx, r.Client); err != nil {
 				return ctrl.Result{}, fmt.Errorf("failed to delete hub metrics collection deployments and resources: %w", err)
@@ -200,7 +201,8 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	if requeue, err := r.cleanOrphanResources(ctx, req); err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to clean orphaned resources: %w", err)
 	} else if requeue {
-		        return ctrl.Result{RequeueAfter: 10 * time.Second}, nil	}
+		return ctrl.Result{RequeueAfter: 30 * time.Second}, nil
+	}
 
 	return ctrl.Result{}, nil
 }
