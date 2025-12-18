@@ -937,10 +937,10 @@ func GetCachedImageManifestData() (map[string]string, bool) {
 	return nil, false
 }
 
-func GetClusterName(c client.Client) (string, error) {
+func GetTrimmedClusterID(c client.Client) (string, error) {
 	id, err := GetClusterID(context.TODO(), c)
 	if err != nil {
-		return err
+		return "", err
 	}
 	// We use this ID later to postfix the follow secrets:
 	// hub-alertmanager-router-ca

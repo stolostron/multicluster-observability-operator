@@ -18,7 +18,7 @@ type HubInfo struct {
 	AlertmanagerEndpoint     string `yaml:"alertmanager-endpoint"`
 	AlertmanagerRouterCA     string `yaml:"alertmanager-router-ca"`
 	UWMAlertingDisabled      bool   `yaml:"uwm-alerting-disabled"`
-	HubClusterDomain         string `yaml:"hub-cluster-domain"`
+	HubClusterID		         string `yaml:"hub-cluster-id"`
 }
 
 type RecordingRule struct {

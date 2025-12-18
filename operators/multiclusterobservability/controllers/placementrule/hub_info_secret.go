@@ -84,15 +84,19 @@ func generateHubInfoSecret(client client.Client, obsNamespace string,
 		obsApiURL = obsApiURL.JoinPath(operatorconfig.ObservatoriumAPIRemoteWritePath)
 	}
 
-	//hash the obsApiURL to generate give a unique cluster name for each hub
-	clusterName := config.GetClusterName(client)
+	// get the trimmed cluster id for the cluster
+	trimmedClusterID, err := config.GetTrimmedClusterID(client)
+	if err != nil {
+		// TODO: include better info
+		return nil, err
+	}
 
 	hubInfo := &operatorconfig.HubInfo{
 		ObservatoriumAPIEndpoint: obsApiURL.String(),
 		AlertmanagerEndpoint:     alertmanagerEndpoint,
 		AlertmanagerRouterCA:     alertmanagerRouterCA,
 		UWMAlertingDisabled:      isUWMAlertingDisabled,
-		HubClusterDomain:         clusterName,
+		HubClusterID:         		trimmedClusterID,
 	}
 
 	configYaml, err := yaml.Marshal(hubInfo)
