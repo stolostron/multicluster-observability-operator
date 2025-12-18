@@ -95,15 +95,27 @@ func buildNamespaceRules5m(
 	return []monitoringv1.Rule{
 		rule(
 			"acm_rs_vm:namespace:cpu_request:5m",
+			// Full topology: Cores * Sockets * Threads => # Fallback: Cores * Sockets => # Fallback: Just Cores
 			fmt.Sprintf(
-				`max_over_time(sum (
-				  (kubevirt_vm_resource_requests{%s, unit="cores", resource="cpu"} *
-				  on(name,namespace,resource)
-				  kubevirt_vm_resource_requests{%s, unit="sockets", resource="cpu"} *
-				  on(name,namespace,resource)
-				  kubevirt_vm_resource_requests{%s, unit="threads", resource="cpu"})
-				) by (name, namespace)[5m:])`,
-				nsFilter, nsFilter, nsFilter,
+				`max_over_time(
+  					(
+						sum by (name, namespace) (
+							kubevirt_vm_resource_requests{%s, resource="cpu", unit="cores", source=~"default|domain"}
+							* ignoring(unit, source) kubevirt_vm_resource_requests{%s, resource="cpu", unit="sockets", source=~"default|domain"}
+							* ignoring(unit, source) kubevirt_vm_resource_requests{%s, resource="cpu", unit="threads", source=~"default|domain"}
+						)
+						or
+						sum by (name, namespace) (
+							kubevirt_vm_resource_requests{%s, resource="cpu", unit="cores", source=~"default|domain"}
+							* ignoring(unit, source) kubevirt_vm_resource_requests{%s, resource="cpu", unit="sockets", source=~"default|domain"}
+						)
+						or
+						sum by (name, namespace) (
+							kubevirt_vm_resource_requests{%s, resource="cpu", unit="cores", source=~"default|domain"}
+						)
+					)[5m:]
+				)`,
+				nsFilter, nsFilter, nsFilter, nsFilter, nsFilter, nsFilter,
 			),
 		),
 		rule(
@@ -165,15 +177,27 @@ func buildClusterRules5m(
 	return []monitoringv1.Rule{
 		rule(
 			"acm_rs_vm:cluster:cpu_request:5m",
+			// Full topology: Cores * Sockets * Threads => # Fallback: Cores * Sockets => # Fallback: Just Cores
 			fmt.Sprintf(
-				`max_over_time(sum (
-				  (kubevirt_vm_resource_requests{%s, unit="cores", resource="cpu"} *
-				  on(name,namespace,resource)
-				  kubevirt_vm_resource_requests{%s, unit="sockets", resource="cpu"} *
-				  on(name,namespace,resource)
-				  kubevirt_vm_resource_requests{%s, unit="threads", resource="cpu"})
-				) by (cluster)[5m:])`,
-				nsFilter, nsFilter, nsFilter,
+				`max_over_time(
+  					(
+						sum by (cluster) (
+							kubevirt_vm_resource_requests{%s, resource="cpu", unit="cores", source=~"default|domain"}
+							* ignoring(unit, source) kubevirt_vm_resource_requests{%s, resource="cpu", unit="sockets", source=~"default|domain"}
+							* ignoring(unit, source) kubevirt_vm_resource_requests{%s, resource="cpu", unit="threads", source=~"default|domain"}
+						)
+						or
+						sum by (cluster) (
+							kubevirt_vm_resource_requests{%s, resource="cpu", unit="cores", source=~"default|domain"}
+							* ignoring(unit, source) kubevirt_vm_resource_requests{%s, resource="cpu", unit="sockets", source=~"default|domain"}
+						)
+						or
+						sum by (cluster) (
+							kubevirt_vm_resource_requests{%s, resource="cpu", unit="cores", source=~"default|domain"}
+						)
+					)[5m:]
+				)`,
+				nsFilter, nsFilter, nsFilter, nsFilter, nsFilter, nsFilter,
 			),
 		),
 		rule(
