@@ -173,7 +173,7 @@ func TestClusterMonitoringConfigUnchanged(t *testing.T) {
 		ClusterName:              "test-cluster",
 		ObservatoriumAPIEndpoint: "http://test-endpoint",
 		AlertmanagerEndpoint:     "http://test-alertamanger-endpoint",
-		HubClusterID:         		"1a9af6dc0801433cb28a200af81",
+		HubClusterID:             "1a9af6dc0801433cb28a200af81",
 	}
 	cmoCfg := newClusterMonitoringConfigCM(clusterMonitoringConfigDataYaml, endpointMonitoringOperatorMgr)
 	client := fake.NewClientBuilder().WithRuntimeObjects(newHubInfoSecret([]byte(hubInfoYAML), testNamespace), cmoCfg, amAccessSrt).Build()
