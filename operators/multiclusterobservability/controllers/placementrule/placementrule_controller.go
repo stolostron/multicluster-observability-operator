@@ -187,7 +187,6 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 			r.Client,
 			req,
 			mco,
-			obsAddonList,
 			r.CRDMap,
 			r.KubeClient,
 		); err != nil {
@@ -257,6 +256,37 @@ func (r *PlacementRuleReconciler) cleanOrphanResources(ctx context.Context, req 
 	currentAddonNamespaces := map[string]mcov1beta1.ObservabilityAddon{}
 	for _, addon := range obsAddonList.Items {
 		currentAddonNamespaces[addon.GetNamespace()] = addon
+	}
+
+	managedClusterList, err := getManagedClustersList(ctx, r.Client)
+	if err != nil {
+		return fmt.Errorf("failed to get managed clusters list: %w", err)
+	}
+	managedClustersNamespaces := make(map[string]struct{}, len(managedClusterList))
+	for _, mc := range managedClusterList {
+		if mc.IsLocalCluster {
+			// local cluster resources live in a different namespace than the ManagedClusterName
+			managedClustersNamespaces[config.GetDefaultNamespace()] = struct{}{}
+		} else {
+			managedClustersNamespaces[mc.Name] = struct{}{}
+		}
+	}
+
+	// Detect and delete ObservabilityAddons for missing ManagedClusters
+	for ns := range currentAddonNamespaces {
+		if _, ok := managedClustersNamespaces[ns]; ok {
+			continue
+		}
+		log.Info("Deleting orphaned ObservabilityAddon (ManagedCluster missing)", "namespace", ns)
+		if err := deleteObsAddon(ctx, r.Client, ns); err != nil {
+			return fmt.Errorf("failed to delete orphaned observabilityaddon in namespace %q: %w", ns, err)
+		}
+		// Also ensure managed cluster resources are gone
+		if err := deleteManagedClusterRes(r.Client, ns); err != nil {
+			return fmt.Errorf("failed to delete orphaned managed cluster resources in namespace %q: %w", ns, err)
+		}
+		// Remove from map so we don't process it again in the next loop
+		delete(currentAddonNamespaces, ns)
 	}
 
 	namespacesWithResources := map[string]struct{}{}
@@ -468,7 +498,6 @@ func createAllRelatedRes(
 	c client.Client,
 	request ctrl.Request,
 	mco *mcov1beta2.MultiClusterObservability,
-	obsAddonList *mcov1beta1.ObservabilityAddonList,
 	CRDMap map[string]bool,
 	kubeClient kubernetes.Interface,
 ) error {
@@ -576,35 +605,6 @@ func createAllRelatedRes(
 
 	if len(allErrors) == 0 {
 		managedClustersHaveReconciledOnce = true
-	}
-
-	// Look through the obsAddonList items and find clusters
-	// which are no longer to be managed and therefore needs deletion
-	managedClustersNamespaces := make(map[string]struct{}, len(managedClusterList))
-	for _, mc := range managedClusterList {
-		if mc.IsLocalCluster {
-			// local cluster resources live in a different namespace than the ManagedClusterName
-			managedClustersNamespaces[config.GetDefaultNamespace()] = struct{}{}
-		} else {
-			managedClustersNamespaces[mc.Name] = struct{}{}
-		}
-	}
-
-	for _, ep := range obsAddonList.Items {
-		if _, ok := managedClustersNamespaces[ep.Namespace]; ok {
-			continue
-		}
-
-		err := deleteObsAddon(ctx, c, ep.Namespace)
-		if err != nil {
-			log.Error(err, "Failed to delete observabilityaddon", "namespace", ep.Namespace)
-			return err
-		}
-
-		if err := deleteManagedClusterRes(c, ep.Namespace); err != nil {
-			allErrors = append(allErrors, fmt.Errorf("failed to delete managed cluster resources: %w", err))
-			log.Error(err, "Failed to delete managed cluster resources", "namespace", ep.Namespace)
-		}
 	}
 
 	if len(allErrors) > 0 {
