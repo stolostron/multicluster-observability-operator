@@ -22,6 +22,24 @@ func CheckOBAStatus(opt TestOptions, namespace string) error {
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext)
 
+	// Check ManagedClusterAddOn status first
+	mcaObj, err := dynClient.Resource(NewMCOManagedClusterAddonsGVR()).
+		Namespace(namespace).
+		Get(context.TODO(), "observability-controller", metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to get managedclusteraddon observability-controller: %w", err)
+	}
+
+	mca := &addonv1alpha1.ManagedClusterAddOn{}
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(mcaObj.Object, mca)
+	if err != nil {
+		return fmt.Errorf("failed to convert unstructured to managedclusteraddon: %w", err)
+	}
+
+	if !meta.IsStatusConditionTrue(mca.Status.Conditions, "Available") {
+		return fmt.Errorf("managedclusteraddon observability-controller is not available in %s, conditions: %+v", namespace, mca.Status.Conditions)
+	}
+
 	oba, err := dynClient.Resource(NewMCOAddonGVR()).
 		Namespace(namespace).
 		Get(context.TODO(), "observability-addon", metav1.GetOptions{})
@@ -43,14 +61,20 @@ func CheckOBAStatus(opt TestOptions, namespace string) error {
 }
 
 func CheckOBADeleted(opt TestOptions, cluster ClustersInfo) error {
+	klog.V(1).Infof("Checking observability-addon deleted for managed cluster %s", cluster.Name)
 	dynClient := NewKubeClientDynamic(
 		opt.HubCluster.ClusterServerURL,
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext)
 
 	_, err := dynClient.Resource(NewMCOAddonGVR()).Namespace(cluster.Name).Get(context.TODO(), "observability-addon", metav1.GetOptions{})
-	if err == nil || !errors.IsNotFound(err) {
-		return fmt.Errorf("observability-addon is not properly deleted for managed cluster %s", cluster.Name)
+	if err == nil {
+		klog.Errorf("observability-addon still exists for managed cluster %s", cluster.Name)
+		return fmt.Errorf("observability-addon still exists for managed cluster %s", cluster.Name)
+	}
+	if !errors.IsNotFound(err) {
+		klog.Errorf("failed to get observability-addon for managed cluster %s: %v", cluster.Name, err)
+		return fmt.Errorf("failed to get observability-addon for managed cluster %s: %w", cluster.Name, err)
 	}
 	return nil
 }
