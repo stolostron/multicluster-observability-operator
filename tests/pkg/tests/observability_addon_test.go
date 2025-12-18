@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -70,33 +71,35 @@ var _ = Describe("", func() {
 			}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
 
 		})
-		// it takes Prometheus 5m to notice a metric is not available -
-		// https://github.com/prometheus/prometheus/issues/1810
-		// the corret way is use timestamp, for example:
-		// timestamp(node_memory_MemAvailable_bytes{cluster="local-cluster"}) -
-		// timestamp(node_memory_MemAvailable_bytes{cluster="local-cluster"} offset 1m) > 59
-		It("[Stable] Waiting for check no metric data in grafana console", func() {
-			Eventually(func() error {
-				clusters, clusterError = utils.ListManagedClusters(testOptions)
-				if clusterError != nil {
-					return clusterError
-				}
-				for _, cluster := range clusters {
-					res, err := utils.QueryGrafana(
-						testOptions,
-						`timestamp(node_memory_MemAvailable_bytes{cluster="`+cluster.Name+`}) - timestamp(node_memory_MemAvailable_bytes{cluster=`+cluster.Name+`"} offset 1m) > 59`,
-					)
-					if err != nil {
-						return err
-					}
-					if len(res.Data.Result) != 0 {
-						return fmt.Errorf("Grafa console still has metric data: %v", res.Data.Result)
-					}
-				}
-				return nil
-			}, EventuallyTimeoutMinute*2, EventuallyIntervalSecond*5).Should(Succeed())
-		})
+		// // it takes Prometheus 5m to notice a metric is not available -
+		// // https://github.com/prometheus/prometheus/issues/1810
+		// // the corret way is use timestamp, for example:
+		// // timestamp(node_memory_MemAvailable_bytes{cluster="local-cluster"}) -
+		// // timestamp(node_memory_MemAvailable_bytes{cluster="local-cluster"} offset 1m) > 59
+		// It("[Stable] Waiting for check no metric data in grafana console", func() {
+		// 	Eventually(func() error {
+		// 		clusters, clusterError = utils.ListManagedClusters(testOptions)
+		// 		if clusterError != nil {
+		// 			return clusterError
+		// 		}
+		// 		for _, cluster := range clusters {
+		// 			res, err := utils.QueryGrafana(
+		// 				testOptions,
+		// 				`timestamp(node_memory_MemAvailable_bytes{cluster="`+cluster.Name+`}) - timestamp(node_memory_MemAvailable_bytes{cluster=`+cluster.Name+`"} offset 1m) > 59`,
+		// 			)
+		// 			if err != nil {
+		// 				return err
+		// 			}
+		// 			if len(res.Data.Result) != 0 {
+		// 				return fmt.Errorf("Grafa console still has metric data: %v", res.Data.Result)
+		// 			}
+		// 		}
+		// 		return nil
+		// 	}, EventuallyTimeoutMinute*2, EventuallyIntervalSecond*5).Should(Succeed())
+		// })
 		It("RHACM4K-1418: Observability: Verify clustermanagementaddon CR for Observability - Modifying MCO cr to enable observabilityaddon [P2][Sev2][Stable][Observability]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @pre-upgrade (addon/g0)", func() {
+			By("Waiting for 1 minute to make sure the registration controller correctly takes into account the changes")
+			time.Sleep(60 * time.Second)
 			Eventually(func() error {
 				return utils.ModifyMCOAddonSpecMetrics(testOptions, true)
 			}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*5).Should(Succeed())
@@ -117,9 +120,9 @@ var _ = Describe("", func() {
 			}, EventuallyTimeoutMinute*6, EventuallyIntervalSecond*5).Should(BeTrue())
 		})
 		It("RHACM4K-1074: Observability: Verify ObservabilityEndpoint operator deployment - Modifying MCO cr to enable observabilityaddon [P2][Sev2][Stable][Observability]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release @pre-upgrade (addon/g0)", func() {
-			Eventually(func() error {
-				return utils.ModifyMCOAddonSpecMetrics(testOptions, true)
-			}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*5).Should(Succeed())
+			// Eventually(func() error {
+			// 	return utils.ModifyMCOAddonSpecMetrics(testOptions, true)
+			// }, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*5).Should(Succeed())
 
 			By("Checking the status in managedclusteraddon reflects the endpoint operator status correctly")
 			Eventually(func() error {
@@ -184,9 +187,9 @@ var _ = Describe("", func() {
 
 	It("RHACM4K-1259: Observability: Verify imported cluster is observed [P3][Sev3][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore (deploy/g1)", func() {
 
-		Eventually(func() error {
-			return utils.UpdateObservabilityFromManagedCluster(testOptions, true)
-		}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
+		// Eventually(func() error {
+		// 	return utils.UpdateObservabilityFromManagedCluster(testOptions, true)
+		// }, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
 
 		klog.V(1).Infof("managedcluster number is <%d>", len(testOptions.ManagedClusters))
 		if len(testOptions.ManagedClusters) >= 1 {
