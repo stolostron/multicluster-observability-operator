@@ -80,32 +80,8 @@ var _ = Describe("", func() {
 			return true
 
 		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*10).Should(BeTrue())
-	})
 
-	It("RHACM4K-31475: Observability: Verify memcached setting max_item_size is populated on thanos-query-frontend - [P1][Sev1][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release(config/g1)", func() {
-
-		By("Updating mco cr to update values in storeMemcached")
-
-		mcoPath := ""
-		if os.Getenv("IS_CANARY_ENV") != trueStr {
-			mcoPath = "../../../examples/updatemcocr/initialmcoconfig/custom-certs"
-		} else {
-			mcoPath = "../../../examples/updatemcocr/initialmcoconfig"
-		}
-
-		yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: mcoPath})
-		Expect(err).ToNot(HaveOccurred())
-		Expect(
-			utils.ApplyRetryOnConflict(
-				testOptions.HubCluster.ClusterServerURL,
-				testOptions.KubeConfig,
-				testOptions.HubCluster.KubeContext,
-				yamlB,
-			)).NotTo(HaveOccurred())
-
-		time.Sleep(60 * time.Second)
-
-		By("Check the value is effect in the sts observability-thanos-store-shard-0")
+		By("Check the value is effect in the sts observability-thanos-query-frontend-memcached")
 		Eventually(func() bool {
 
 			thanosQueFronMemSts, _ := utils.GetStatefulSet(testOptions, true, "observability-thanos-query-frontend-memcached", MCO_NAMESPACE)
