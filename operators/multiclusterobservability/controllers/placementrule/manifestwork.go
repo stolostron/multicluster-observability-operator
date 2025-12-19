@@ -46,6 +46,7 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 	authv1 "k8s.io/api/authentication/v1"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/util/retry"
 	"k8s.io/utils/ptr"
 )
 
@@ -138,24 +139,25 @@ func newManifestwork(name string, namespace string) *workv1.ManifestWork {
 // the workagent can delete the manifestwork normally
 func removePostponeDeleteAnnotationForManifestwork(c client.Client, namespace string) error {
 	name := namespace + workNameSuffix
-	found := &workv1.ManifestWork{}
-	err := c.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, found)
-	if err != nil {
-		log.Error(err, "failed to check manifestwork", "namespace", namespace, "name", name)
-		return err
-	}
+	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		found := &workv1.ManifestWork{}
+		err := c.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, found)
+		if err != nil {
+			log.Error(err, "failed to check manifestwork", "namespace", namespace, "name", name)
+			return err
+		}
 
-	if found.GetAnnotations() != nil {
-		delete(found.GetAnnotations(), workPostponeDeleteAnnoKey)
-	}
+		if found.GetAnnotations() != nil {
+			delete(found.GetAnnotations(), workPostponeDeleteAnnoKey)
+		}
 
-	err = c.Update(context.TODO(), found)
-	if err != nil {
-		log.Error(err, "failed to update manifestwork", "namespace", namespace, "name", name)
-		return err
-	}
+		err = c.Update(context.TODO(), found)
+		if err != nil {
+			return err
+		}
 
-	return nil
+		return nil
+	})
 }
 
 func createManifestwork(ctx context.Context, c client.Client, work *workv1.ManifestWork) error {

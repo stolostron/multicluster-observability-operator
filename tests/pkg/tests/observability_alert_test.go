@@ -620,7 +620,7 @@ var _ = Describe("", func() {
 			}
 
 			return true
-		}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*120).Should(BeTrue())
+		}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*10).Should(BeTrue())
 
 		klog.V(3).Infof("before enable alert forward - spec is %s", spec)
 		mco1, getErr := dynClient.Resource(utils.NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})

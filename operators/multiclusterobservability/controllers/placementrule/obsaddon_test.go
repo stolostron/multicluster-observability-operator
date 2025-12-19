@@ -68,7 +68,7 @@ func TestObsAddonCR(t *testing.T) {
 		t.Fatalf("Failed to create manifestwork: (%v)", err)
 	}
 
-	err = deleteObsAddon(context.Background(), c, namespace)
+	_, err = deleteObsAddon(context.Background(), c, namespace)
 	if err != nil {
 		t.Fatalf("Failed to delete observabilityaddon: (%v)", err)
 	}
@@ -77,7 +77,7 @@ func TestObsAddonCR(t *testing.T) {
 		t.Fatalf("Failed to delete observabilityaddon: (%v)", err)
 	}
 
-	err = deleteObsAddon(context.Background(), c, namespace)
+	_, err = deleteObsAddon(context.Background(), c, namespace)
 	if err != nil {
 		t.Fatalf("Failed to delete observabilityaddon: (%v)", err)
 	}
@@ -102,7 +102,7 @@ func TestStaleObsAddonCR(t *testing.T) {
 	}
 	c := fake.NewClientBuilder().WithRuntimeObjects(addon).Build()
 
-	if err := deleteObsAddonObject(context.Background(), c, namespace); err != nil {
+	if _, err := deleteObsAddonObject(context.Background(), c, namespace); err != nil {
 		t.Fatalf("Failed to remove stale observabilityaddon: (%v)", err)
 	}
 

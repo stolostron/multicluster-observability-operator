@@ -35,7 +35,7 @@ func (o *ObservabilityAgent) Manifests(
 
 func (o *ObservabilityAgent) GetAgentAddonOptions() agent.AgentAddonOptions {
 	signAdaptor := func(csr *certificatesv1.CertificateSigningRequest) []byte {
-		res, err := Sign(csr)
+		res, err := Sign(o.client, csr)
 		if err != nil {
 			log.Error(err, "failed to sign")
 		}
@@ -66,8 +66,11 @@ func observabilitySignerConfigurations(client client.Client) func(cluster *clust
 		kubeClientSignerConfigurations := agent.KubeClientSignerConfigurations(addonName, agentName)
 		registrationConfigs := append(kubeClientSignerConfigurations(cluster), observabilityConfig)
 
+		// Get CA certificate for hash stamping
 		_, _, caCertBytes, err := getCA(client, true)
-		if err == nil {
+		if err != nil {
+			log.Error(err, "Failed to get CA certificate for hash stamping")
+		} else if len(caCertBytes) > 0 { // Only stamp if we actually got a CA cert
 			caHashStamp := fmt.Sprintf("ca-hash-%x", sha256.Sum256(caCertBytes))
 			for i := range registrationConfigs {
 				registrationConfigs[i].Subject.OrganizationUnits = append(registrationConfigs[i].Subject.OrganizationUnits, caHashStamp)

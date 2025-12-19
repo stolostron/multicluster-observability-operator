@@ -5,7 +5,6 @@
 package certificates
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"time"
@@ -14,37 +13,10 @@ import (
 	"github.com/cloudflare/cfssl/signer"
 	"github.com/cloudflare/cfssl/signer/local"
 	certificatesv1 "k8s.io/api/certificates/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-func getClient(s *runtime.Scheme) (client.Client, error) {
-	if os.Getenv("TEST") != "" {
-		c := fake.NewClientBuilder().Build()
-		return c, nil
-	}
-	config, err := clientcmd.BuildConfigFromFlags("", "")
-	if err != nil {
-		return nil, errors.New("failed to create the kube config")
-	}
-	options := client.Options{}
-	if s != nil {
-		options = client.Options{Scheme: s}
-	}
-	c, err := client.New(config, options)
-	if err != nil {
-		return nil, errors.New("failed to create the kube client")
-	}
-	return c, nil
-}
-
-func Sign(csr *certificatesv1.CertificateSigningRequest) ([]byte, error) {
-	c, err := getClient(nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get client: %w", err)
-	}
+func Sign(c client.Client, csr *certificatesv1.CertificateSigningRequest) ([]byte, error) {
 	if os.Getenv("TEST") != "" {
 		// Create the CA secret
 		err, _ := createCASecret(c, nil, nil, false, clientCACerts, clientCACertificateCN) // creates the

@@ -15,7 +15,7 @@ import (
 )
 
 func GetPodList(opt TestOptions, isHub bool, namespace string, labelSelector string) (error, *v1.PodList) {
-	clientKube := getKubeClient(opt, isHub)
+	clientKube := GetKubeClient(opt, isHub)
 	listOption := metav1.ListOptions{}
 	cluster := opt.HubCluster.BaseDomain
 	if !isHub {
@@ -49,7 +49,7 @@ func GetPodLogs(
 	previous bool,
 	tailLines int64,
 ) (string, error) {
-	clientKube := getKubeClient(opt, isHub)
+	clientKube := GetKubeClient(opt, isHub)
 	podLogOpts := v1.PodLogOptions{
 		Container: containerName,
 		Previous:  previous,
