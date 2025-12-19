@@ -71,32 +71,7 @@ var _ = Describe("", func() {
 			}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
 
 		})
-		// // it takes Prometheus 5m to notice a metric is not available -
-		// // https://github.com/prometheus/prometheus/issues/1810
-		// // the corret way is use timestamp, for example:
-		// // timestamp(node_memory_MemAvailable_bytes{cluster="local-cluster"}) -
-		// // timestamp(node_memory_MemAvailable_bytes{cluster="local-cluster"} offset 1m) > 59
-		// It("[Stable] Waiting for check no metric data in grafana console", func() {
-		// 	Eventually(func() error {
-		// 		clusters, clusterError = utils.ListManagedClusters(testOptions)
-		// 		if clusterError != nil {
-		// 			return clusterError
-		// 		}
-		// 		for _, cluster := range clusters {
-		// 			res, err := utils.QueryGrafana(
-		// 				testOptions,
-		// 				`timestamp(node_memory_MemAvailable_bytes{cluster="`+cluster.Name+`}) - timestamp(node_memory_MemAvailable_bytes{cluster=`+cluster.Name+`"} offset 1m) > 59`,
-		// 			)
-		// 			if err != nil {
-		// 				return err
-		// 			}
-		// 			if len(res.Data.Result) != 0 {
-		// 				return fmt.Errorf("Grafa console still has metric data: %v", res.Data.Result)
-		// 			}
-		// 		}
-		// 		return nil
-		// 	}, EventuallyTimeoutMinute*2, EventuallyIntervalSecond*5).Should(Succeed())
-		// })
+
 		It("RHACM4K-1418: Observability: Verify clustermanagementaddon CR for Observability - Modifying MCO cr to enable observabilityaddon [P2][Sev2][Stable][Observability]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @pre-upgrade (addon/g0)", func() {
 			By("Waiting for 1 minute to make sure the registration controller correctly takes into account the changes")
 			time.Sleep(60 * time.Second)
@@ -120,10 +95,6 @@ var _ = Describe("", func() {
 			}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(BeTrue())
 		})
 		It("RHACM4K-1074: Observability: Verify ObservabilityEndpoint operator deployment - Modifying MCO cr to enable observabilityaddon [P2][Sev2][Stable][Observability]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release @pre-upgrade (addon/g0)", func() {
-			// Eventually(func() error {
-			// 	return utils.ModifyMCOAddonSpecMetrics(testOptions, true)
-			// }, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*5).Should(Succeed())
-
 			By("Checking the status in managedclusteraddon reflects the endpoint operator status correctly")
 			Eventually(func() error {
 				err = utils.CheckAllOBAsEnabled(testOptions)
@@ -186,11 +157,6 @@ var _ = Describe("", func() {
 	})
 
 	It("RHACM4K-1259: Observability: Verify imported cluster is observed [P3][Sev3][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore (deploy/g1)", func() {
-
-		// Eventually(func() error {
-		// 	return utils.UpdateObservabilityFromManagedCluster(testOptions, true)
-		// }, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
-
 		klog.V(1).Infof("managedcluster number is <%d>", len(testOptions.ManagedClusters))
 		if len(testOptions.ManagedClusters) >= 1 {
 			By("Waiting for ObservabilityAddon to be enabled and ready")
@@ -226,6 +192,11 @@ var _ = Describe("", func() {
 		}
 	})
 
+	// This test is flaky because when the label is added to the managed cluster, the placement controller reconcile is triggered but
+	// the managed cluster still appears on this first reconcile. Then if we're lucky, or not, the addon is effectively removed from the managed cluster.
+	// And these enable/disable operations, when done quickly as in a test environment, are not well followed by OCM for this addon that is not
+	// managed by the addon framework. As a result, the hub-kubeconfig secret (bootstrapped asynchronously via the Registration Agent's CSR flow)
+	// is not always created on the managed cluster, making the rest of the test suite fail.
 	// Context("RHACM4K-7518: Observability: Disable the Observability by updating managed cluster label [P2][Sev2][Observability]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore (addon/g1) -", func() {
 	// 	It("[Stable] Modifying managedcluster cr to disable observability", func() {
 	// 		Eventually(func() error {
