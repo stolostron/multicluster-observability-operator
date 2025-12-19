@@ -145,7 +145,7 @@ func createHubAmRouterCASecret(
 	client client.Client,
 	targetNamespace string) error {
 
-	hubAmRouterSecret := hubAmRouterCASecretName + "-" + hubInfo.HubClusterDomain
+	hubAmRouterSecret := hubAmRouterCASecretName + "-" + hubInfo.HubClusterID
 
 	hubAmRouterCA := hubInfo.AlertmanagerRouterCA
 	dataMap := map[string][]byte{hubAmRouterCASecretKey: []byte(hubAmRouterCA)}
@@ -193,7 +193,7 @@ func createHubAmAccessorTokenSecret(ctx context.Context, client client.Client, n
 		return fmt.Errorf("fail to get %s/%s secret: %w", namespace, hubAmAccessorSecretName, err)
 	}
 
-	hubAmAccessorSecret := hubAmAccessorSecretName + "-" + hubInfo.HubClusterDomain
+	hubAmAccessorSecret := hubAmAccessorSecretName + "-" + hubInfo.HubClusterID
 	dataMap := map[string][]byte{hubAmAccessorSecretKey: []byte(amAccessorToken)}
 	hubAmAccessorTokenSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -258,7 +258,7 @@ func newAdditionalAlertmanagerConfig(hubInfo *operatorconfig.HubInfo) cmomanifes
 		TLSConfig: cmomanifests.TLSConfig{
 			CA: &corev1.SecretKeySelector{
 				LocalObjectReference: corev1.LocalObjectReference{
-					Name: hubAmRouterCASecretName + "-" + hubInfo.HubClusterDomain,
+					Name: hubAmRouterCASecretName + "-" + hubInfo.HubClusterID,
 				},
 				Key: hubAmRouterCASecretKey,
 			},
@@ -266,7 +266,7 @@ func newAdditionalAlertmanagerConfig(hubInfo *operatorconfig.HubInfo) cmomanifes
 		},
 		BearerToken: &corev1.SecretKeySelector{
 			LocalObjectReference: corev1.LocalObjectReference{
-				Name: hubAmAccessorSecretName + "-" + hubInfo.HubClusterDomain,
+				Name: hubAmAccessorSecretName + "-" + hubInfo.HubClusterID,
 			},
 			Key: hubAmAccessorSecretKey,
 		},
@@ -764,7 +764,7 @@ func inManagedFields(cm *corev1.ConfigMap) bool {
 
 // isManaged checks if the additional alertmanager config is managed by ACM
 func isManaged(amc cmomanifests.AdditionalAlertmanagerConfig, hubInfo *operatorconfig.HubInfo) bool {
-	if hubInfo != nil && amc.TLSConfig.CA != nil && amc.TLSConfig.CA.LocalObjectReference.Name == hubAmRouterCASecretName+"-"+hubInfo.HubClusterDomain {
+	if hubInfo != nil && amc.TLSConfig.CA != nil && amc.TLSConfig.CA.LocalObjectReference.Name == hubAmRouterCASecretName+"-"+hubInfo.HubClusterID {
 		return true
 	} else if hubInfo == nil && amc.TLSConfig.CA != nil && strings.Contains(amc.TLSConfig.CA.LocalObjectReference.Name, hubAmRouterCASecretName) {
 		//This is only for the CMO cleanup script to clean up old configs

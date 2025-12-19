@@ -13,7 +13,6 @@ import (
 
 	configv1 "github.com/openshift/api/config/v1"
 	routev1 "github.com/openshift/api/route/v1"
-	fakeconfigclient "github.com/openshift/client-go/config/clientset/versioned/fake"
 	observatoriumv1alpha1 "github.com/stolostron/observatorium-operator/api/v1alpha1"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
@@ -232,8 +231,11 @@ func TestGetClusterIDSuccess(t *testing.T) {
 			ClusterID: configv1.ClusterID(clusterID),
 		},
 	}
-	client := fakeconfigclient.NewSimpleClientset(version)
-	tmpClusterID, _ := GetClusterID(client)
+
+	scheme := runtime.NewScheme()
+	configv1.Install(scheme)
+	client := fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(version).Build()
+	tmpClusterID, _ := GetClusterID(context.TODO(), client)
 	if tmpClusterID != clusterID {
 		t.Errorf("OCP ClusterID (%v) is not the expected (%v)", tmpClusterID, clusterID)
 	}
@@ -246,8 +248,12 @@ func TestGetClusterIDFailed(t *testing.T) {
 			APIServerURL: apiServerURL,
 		},
 	}
-	client := fakeconfigclient.NewSimpleClientset(inf)
-	_, err := GetClusterID(client)
+
+	scheme := runtime.NewScheme()
+	configv1.Install(scheme)
+	client := fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(inf).Build()
+
+	_, err := GetClusterID(context.TODO(), client)
 	if err == nil {
 		t.Errorf("Should throw the error since there is no clusterversion defined")
 	}

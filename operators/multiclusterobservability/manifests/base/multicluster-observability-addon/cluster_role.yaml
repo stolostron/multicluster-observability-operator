@@ -88,3 +88,6 @@
     - apiGroups: [operator.openshift.io]
       resources: [ingresscontrollers]
       verbs: ["get", "list", "watch"]
+    - apiGroups: ["config.openshift.io"]
+      resources: [clusterversions]
+      verbs: ["get", "list", "watch"]
