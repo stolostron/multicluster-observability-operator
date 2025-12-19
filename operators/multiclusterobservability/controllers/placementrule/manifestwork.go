@@ -613,7 +613,8 @@ func mutateServiceAccount(want, existing *corev1.ServiceAccount) {
 
 // Delete resources created for hub metrics collection
 func DeleteHubMetricsCollectionDeployments(ctx context.Context, c client.Client) error {
-	if err := DeleteHubMetricsCollectorResourcesNotNeededForMCOA(ctx, c); err != nil {
+	err := DeleteHubMetricsCollectorResourcesNotNeededForMCOA(ctx, c)
+	if err != nil {
 		return fmt.Errorf("failed to delete MCOA resources: %w", err)
 	}
 
@@ -674,15 +675,15 @@ func DeleteHubMetricsCollectorResourcesNotNeededForMCOA(ctx context.Context, c c
 		}},
 	}
 
+	err := RevertHubClusterMonitoringConfig(ctx, c)
+	if err != nil {
+		return fmt.Errorf("failed to revert hub cluster monitoring config: %w", err)
+	}
+
 	for _, obj := range toDelete {
 		if err := deleteObject(ctx, c, obj); err != nil {
 			return err
 		}
-	}
-
-	err := RevertHubClusterMonitoringConfig(ctx, c)
-	if err != nil {
-		return fmt.Errorf("failed to revert cluster monitoring config: %w", err)
 	}
 
 	return nil
