@@ -9,13 +9,11 @@ import (
 	"testing"
 
 	"github.com/go-logr/logr"
-	ocinfrav1 "github.com/openshift/api/config/v1"
 	hyperv1 "github.com/openshift/hypershift/api/hypershift/v1beta1"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/openshift"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -24,15 +22,6 @@ const (
 	testClusterID         = "kind-cluster-id"
 	hostedClusterName     = "test-hosted-cluster"
 	hosteClusterNamespace = "clusters"
-)
-
-var (
-	cv = &ocinfrav1.ClusterVersion{
-		ObjectMeta: metav1.ObjectMeta{Name: "version"},
-		Spec: ocinfrav1.ClusterVersionSpec{
-			ClusterID: testClusterID,
-		},
-	}
 )
 
 func init() {
@@ -104,19 +93,5 @@ func TestCreateDeleteMonitoringClusterRoleBinding(t *testing.T) {
 	err = openshift.DeleteMonitoringClusterRoleBinding(ctx, c, false)
 	if err != nil {
 		t.Fatalf("Run into error when try to delete delete clusterrolebinding twice: (%v)", err)
-	}
-}
-
-func TestGetClusterID(t *testing.T) {
-	ctx := context.TODO()
-	scheme := runtime.NewScheme()
-	ocinfrav1.Install(scheme)
-	c := fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(cv).Build()
-	found, err := openshift.GetClusterID(ctx, c)
-	if err != nil {
-		t.Fatalf("Failed to get clusterversion: (%v)", err)
-	}
-	if found != testClusterID {
-		t.Fatalf("Got wrong cluster id: %s", found)
 	}
 }

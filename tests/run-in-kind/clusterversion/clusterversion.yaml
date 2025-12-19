@@ -1,0 +1,12 @@
+apiVersion: v1
+items:
+- apiVersion: config.openshift.io/v1
+  kind: ClusterVersion
+  metadata:
+    name: version
+  spec:
+    channel: stable-4.20
+    clusterID: 1a9af6dc-0801-433c-b28a-200af81e8eef
+kind: List
+metadata:
+  resourceVersion: ""

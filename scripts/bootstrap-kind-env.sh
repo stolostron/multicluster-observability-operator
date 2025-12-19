@@ -41,12 +41,21 @@ deploy_openshift_router() {
   kubectl apply -f ${WORKDIR}/router/
 }
 
+deploy_cluster_version() {
+  kubectl apply -f ${WORKDIR}/clusterversion/clusterversion-crd.yaml
+  # need a sleep otherwise we get error:
+  # Error from server (NotFound): error when creating "clusterversion.yaml": the server could not find the requested resource (post clusterversions.config.openshift.io)
+  sleep 2
+  kubectl apply -f ${WORKDIR}/clusterversion/clusterversion.yaml
+}
+
 run() {
   create_kind_cluster hub
   deploy_crds
   deploy_templates
   deploy_service_ca_operator
   deploy_openshift_router
+  deploy_cluster_version
 }
 
 run
