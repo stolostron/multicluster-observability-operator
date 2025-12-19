@@ -946,12 +946,12 @@ func GetTrimmedClusterID(c client.Client) (string, error) {
 	// hub-alertmanager-router-ca
 	// observability-alertmanager-accessor
 	//
-	// Since these will be to long to comply with 63 char max length.
-	// we therefore have to truncate the id here to 27 chars.
-	// In order to avoid collisions as much as possible, we also
-	// remove any `-` chars.
+	// when prom-opreator mounts these secrets to the prometheus-k8s pod
+	// it will take the name of the secret, and prepend `secret-` to the
+	// volume mount name. However since this is volume mount name is a label
+	// that must be at most 63 chars. Therefore we trim it here to 19 chars.
 	idTrim := strings.ReplaceAll(id, "-", "")
-	return fmt.Sprintf("%.27s", idTrim), nil
+	return fmt.Sprintf("%.19s", idTrim), nil
 }
 
 // KindOrder is a map that defines the deployment order for Kubernetes resource kinds.
