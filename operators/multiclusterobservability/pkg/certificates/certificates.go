@@ -206,6 +206,7 @@ func createCACertificate(cn string, caKey *rsa.PrivateKey) ([]byte, []byte, erro
 	return x509.MarshalPKCS1PrivateKey(caKey), caBytes, nil
 }
 
+//nolint:unparam
 func createCertSecret(c client.Client,
 	scheme *runtime.Scheme, mco *mcov1beta2.MultiClusterObservability,
 	isRenew bool, name string, isServer bool,
