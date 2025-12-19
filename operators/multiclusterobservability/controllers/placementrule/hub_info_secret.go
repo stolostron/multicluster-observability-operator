@@ -6,7 +6,9 @@ package placementrule
 
 import (
 	"context"
+	"fmt"
 	"net/url"
+	"os"
 	"strings"
 
 	"gopkg.in/yaml.v2"
@@ -84,15 +86,25 @@ func generateHubInfoSecret(client client.Client, obsNamespace string,
 		obsApiURL = obsApiURL.JoinPath(operatorconfig.ObservatoriumAPIRemoteWritePath)
 	}
 
-	//hash the obsApiURL to generate give a unique cluster name for each hub
-	clusterName := config.GetClusterName(obsApiURL.String())
+	// get the trimmed cluster id for the cluster
+	trimmedClusterID := ""
+	if os.Getenv("UNIT_TEST") != "true" {
+		trimmedClusterID, err = config.GetTrimmedClusterID(client)
+		if err != nil {
+			// TODO: include better info
+			return nil, fmt.Errorf("Unable to get hub ClusterID for hub-info-secret: %w", err)
+		}
+	} else {
+		// there is no clusterID to get in unit tests.
+		trimmedClusterID = "1a9af6dc0801433cb28a200af81"
+	}
 
 	hubInfo := &operatorconfig.HubInfo{
 		ObservatoriumAPIEndpoint: obsApiURL.String(),
 		AlertmanagerEndpoint:     alertmanagerEndpoint,
 		AlertmanagerRouterCA:     alertmanagerRouterCA,
 		UWMAlertingDisabled:      isUWMAlertingDisabled,
-		HubClusterDomain:         clusterName,
+		HubClusterID:             trimmedClusterID,
 	}
 
 	configYaml, err := yaml.Marshal(hubInfo)
