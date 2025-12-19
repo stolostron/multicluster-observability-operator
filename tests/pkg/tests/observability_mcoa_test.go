@@ -74,52 +74,14 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 		})
 	})
 
-	// Context("when enabling and disabling platform collection [P1][Sev1][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release @pre-upgrade (mcoa/g0)", func() {
-	// 	BeforeAll(func() {
-	// 		By("The metrics collector should be running", func() {
-	// 			utils.CheckDeploymentAvailability(testOptions.HubCluster, metricsCollectorDeploymentName, utils.MCO_NAMESPACE, true)
-	// 			utils.CheckDeploymentAvailabilityOnClusters(managedClusters, metricsCollectorDeploymentName, utils.MCO_ADDON_NAMESPACE, true)
-	// 		})
-	// 	})
-
-	// 	It("should be deployed and then cleaned up successfully", SpecTimeout(15*time.Minute), func(ctx context.Context) {
-	// 		By("Enabling MCOA", func() {
-	// 			Expect(utils.SetMCOACapabilities(testOptions, true, false)).NotTo(HaveOccurred())
-	// 		})
-	// 		By("The metrics collector should be deleted", func() {
-	// 			utils.CheckDeploymentAvailability(testOptions.HubCluster, metricsCollectorDeploymentName, utils.MCO_NAMESPACE, false)
-	// 			utils.CheckDeploymentAvailabilityOnClusters(managedClusters, metricsCollectorDeploymentName, utils.MCO_ADDON_NAMESPACE, false)
-	// 		})
-	// 		By("MCOA should be available", func() {
-	// 			utils.CheckDeploymentAvailability(testOptions.HubCluster, mcoaManagerDeploymentName, utils.MCO_NAMESPACE, true)
-	// 			utils.CheckStatefulSetAvailabilityOnClusters(managedClustersWithHub, platformPrometheusAgentStatefulSetName, utils.MCO_AGENT_ADDON_NAMESPACE, true)
-	// 			utils.CheckManagedClusterAddonStatus(testOptions, mcoaAddonName)
-	// 		})
-	// 		By("Disabling MCOA", func() {
-	// 			Expect(utils.SetMCOACapabilities(testOptions, false, false)).NotTo(HaveOccurred())
-	// 		})
-	// 		By("MCOA should be deleted", func() {
-	// 			utils.CheckDeploymentAvailability(testOptions.HubCluster, mcoaManagerDeploymentName, utils.MCO_NAMESPACE, false)
-	// 			utils.CheckDeploymentAvailabilityOnClusters(managedClustersWithHub, oboPrometheusOperatorDeploymentName, utils.MCO_AGENT_ADDON_NAMESPACE, false)
-	// 			utils.CheckStatefulSetAvailabilityOnClusters(managedClustersWithHub, platformPrometheusAgentStatefulSetName, utils.MCO_AGENT_ADDON_NAMESPACE, false)
-	// 		})
-	// 		By("The metrics collector should be running and forwarding metrics", func() {
-	// 			utils.CheckDeploymentAvailability(testOptions.HubCluster, metricsCollectorDeploymentName, utils.MCO_NAMESPACE, true)
-	// 			utils.CheckDeploymentAvailabilityOnClusters(managedClusters, metricsCollectorDeploymentName, utils.MCO_ADDON_NAMESPACE, true)
-	// 			// We don't check the addon status as it has no managedClusterAddon for the hub
-	// 			Expect(utils.CheckAllOBAsEnabled(testOptions)).NotTo(HaveOccurred())
-	// 		})
-	// 	})
-	// })
-
 	Context("when only platform metrics are enabled [P1][Sev1][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release @pre-upgrade (mcoa/g0)", func() {
 		BeforeAll(func() {
 			By("Enabling only platform metrics for MCOA", func() {
 				Expect(utils.SetMCOACapabilities(testOptions, true, false)).NotTo(HaveOccurred())
 			})
-			By("Configuring the platform scrape interval to 1 min", func() {
+			By("Configuring the platform scrape interval to 30s", func() {
 				Eventually(func() error {
-					return utils.UpdatePrometheusAgentScrapeInterval(testOptions, "platform-metrics-collector", "60s")
+					return utils.UpdatePrometheusAgentScrapeInterval(testOptions, "platform-metrics-collector", "30s")
 				}, 120, 2).Should(Not(HaveOccurred()))
 			})
 		})
@@ -145,8 +107,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 				if len(res.Data.Result) == 0 {
 					return fmt.Errorf("No results found for metric %q", metricName)
 				}
-				// TODO: check all managed clusters
-				return nil
+				return res.CheckMetricFromAllClusters(managedClustersWithHub)
 			}, 300, 2).Should(Not(HaveOccurred()))
 		})
 
@@ -167,7 +128,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 					if len(res.Data.Result) == 0 {
 						return fmt.Errorf("No results found for metric %q", customMetricName)
 					}
-					return nil
+					return res.CheckMetricFromAllClusters(managedClustersWithHub)
 				}, 600, 2).Should(Not(HaveOccurred()))
 			})
 
@@ -200,11 +161,9 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 					if len(res.Data.Result) == 0 {
 						return fmt.Errorf("No results found for metric %q", ruleMetricName)
 					}
-					// TODO: check all managed clusters
-					return nil
+					return res.CheckMetricFromAllClusters(managedClustersWithHub)
 				}, 300, 2).Should(Not(HaveOccurred()))
 			})
-
 			By("Deleting the PrometheusRule", func() {
 				Expect(utils.RemoveConfigFromPlacementInClusterManagementAddon(testOptions, utils.MCOA_CLUSTER_MANAGEMENT_ADDON_NAME, globalPlacementName, utils.NewPrometheusRuleGVR(), ruleName, utils.MCO_NAMESPACE)).NotTo(HaveOccurred())
 				Expect(utils.DeletePrometheusRule(testOptions, ruleName, utils.MCO_NAMESPACE)).NotTo(HaveOccurred())
@@ -231,9 +190,9 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 			By("Enabling platform and user workload metrics for MCOA", func() {
 				Expect(utils.SetMCOACapabilities(testOptions, true, true)).NotTo(HaveOccurred())
 			})
-			By("Configuring the user workload scrape interval to 1 min", func() {
+			By("Configuring the user workload scrape interval to 30s", func() {
 				Eventually(func() error {
-					return utils.UpdatePrometheusAgentScrapeInterval(testOptions, "user-workload-metrics-collector", "60s")
+					return utils.UpdatePrometheusAgentScrapeInterval(testOptions, "user-workload-metrics-collector", "30s")
 				}, 600, 5).Should(Not(HaveOccurred()))
 			})
 
@@ -270,8 +229,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 					if len(res.Data.Result) == 0 {
 						return fmt.Errorf("No results found for metric %q", ruleMetricName)
 					}
-					// TODO: check all managed clusters
-					return nil
+					return res.CheckMetricFromAllClusters(accessibleOCPClusters)
 				}, 300, 2).Should(Not(HaveOccurred()))
 			})
 

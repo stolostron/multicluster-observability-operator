@@ -47,6 +47,22 @@ loop:
 	return ret
 }
 
+func (r GrafanaResponse) CheckMetricFromAllClusters(clusters []Cluster) error {
+	for _, cluster := range clusters {
+		found := false
+		for _, result := range r.Data.Result {
+			if result.Metric["cluster"] == cluster.Name {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return fmt.Errorf("metric not found for cluster %s", cluster.Name)
+		}
+	}
+	return nil
+}
+
 func (r GrafanaResponse) String() string {
 	var ret strings.Builder
 	ret.WriteString(fmt.Sprintf("Status: %s\n", r.Status))
