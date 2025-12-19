@@ -277,7 +277,10 @@ func (r *PlacementRuleReconciler) cleanOrphanResources(ctx context.Context, req 
 	}
 
 	requeue := false
-	// Detect and delete ObservabilityAddons for missing ManagedClusters
+	// Detect and delete ObservabilityAddons for missing ManagedClusters.
+	// When a managedCluster resource gets the label 'observability: disabled', it disappears from the cache
+	// as defined in main.go (filtered cache). Then this resource becomes invisible from the controller's
+	// client. This is why this cleaning using the managedCluster resource is necessary.
 	for ns := range currentAddonNamespaces {
 		if _, ok := managedClustersNamespaces[ns]; ok {
 			continue
@@ -349,15 +352,6 @@ func (r *PlacementRuleReconciler) cleanOrphanResources(ctx context.Context, req 
 			continue
 		}
 
-		addon := currentAddonNamespaces[ns]
-		if !deletionStalled(&addon) {
-			continue
-		}
-
-		if err := deleteFinalizer(r.Client, &addon); err != nil {
-			return false, fmt.Errorf("failed to delete observabilityaddon %s/%s finalizer: %w", ns, addon.GetName(), err)
-		}
-
 		rq, err := deleteObsAddonObject(ctx, r.Client, ns)
 		if err != nil {
 			return false, fmt.Errorf("failed to delete stalled observability addon in namespace %q: %w", ns, err)
@@ -422,15 +416,6 @@ func (r *PlacementRuleReconciler) cleanSpokesAddonResources(ctx context.Context)
 		return false, fmt.Errorf("failed to list manifestwork resource: %w", err)
 	}
 
-	// for _, work := range workList.Items {
-	// 	if err := r.Client.Delete(ctx, &work); err != nil && !k8serrors.IsNotFound(err) {
-	// 		log.Error(err, "Failed to delete manifestwork", "name", work.Name, "namespace", work.Namespace)
-	// 	}
-	// }
-
-	// If deleteGlobal is true (MCO removal or MCOA enabled), we delete immediately.
-	// If deleteGlobal is false (metrics disabled), we wait for manifestWorks to be gone (len == 0)
-	// before removing global resources (ClusterManagementAddOn, Roles), ensuring graceful teardown.
 	if len(workList.Items) == 0 {
 		if err := deleteGlobalResource(ctx, r.Client); err != nil {
 			return false, fmt.Errorf("failed to delete global resources: %w", err)
