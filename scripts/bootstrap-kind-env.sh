@@ -41,12 +41,17 @@ deploy_openshift_router() {
   kubectl apply -f ${WORKDIR}/router/
 }
 
+deploy_cluster_version() {
+  kubectl apply -f ${WORKDIR}/clusterversion/
+}
+
 run() {
   create_kind_cluster hub
   deploy_crds
   deploy_templates
   deploy_service_ca_operator
   deploy_openshift_router
+  deploy_cluster_version
 }
 
 run
