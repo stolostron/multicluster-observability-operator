@@ -45,6 +45,9 @@ func LogFailingTestStandardDebugInfo(opt TestOptions) {
 	CheckPodsInNamespace(hubClient, "open-cluster-management", []string{"multicluster-observability-operator"}, map[string]string{
 		"name": "multicluster-observability-operator",
 	})
+	CheckPodsInNamespace(hubClient, MCO_NAMESPACE, []string{"multicluster-observability-addon-manager"}, map[string]string{
+		"app": "multicluster-observability-addon-manager",
+	})
 	CheckDeploymentsInNamespace(hubClient, MCO_NAMESPACE)
 	CheckStatefulSetsInNamespace(hubClient, MCO_NAMESPACE)
 	CheckDaemonSetsInNamespace(hubClient, MCO_NAMESPACE)
@@ -53,13 +56,17 @@ func LogFailingTestStandardDebugInfo(opt TestOptions) {
 	printSecretsInNamespace(hubClient, MCO_NAMESPACE)
 	LogManagedClusters(hubDynClient)
 
+	CheckDeploymentsInNamespace(hubClient, MCO_AGENT_ADDON_NAMESPACE)
+	CheckStatefulSetsInNamespace(hubClient, MCO_AGENT_ADDON_NAMESPACE)
+	CheckPodsInNamespace(hubClient, MCO_AGENT_ADDON_NAMESPACE, []string{}, map[string]string{})
+
 	for _, mc := range opt.ManagedClusters {
 		if mc.Name == "local-cluster" {
 			// Skip local-cluster as same namespace as hub, and already checked
 			continue
 		}
 
-		spokeDynClient := NewKubeClientDynamic(mc.ClusterServerURL, opt.KubeConfig, mc.KubeContext)
+		spokeDynClient := NewKubeClientDynamic(mc.ClusterServerURL, mc.KubeConfig, mc.KubeContext)
 		PrintObject(context.TODO(), spokeDynClient, NewMCOAddonGVR(), MCO_ADDON_NAMESPACE, "observability-addon")
 
 		spokeClient := NewKubeClient(mc.ClusterServerURL, mc.KubeConfig, mc.KubeContext)
@@ -93,7 +100,7 @@ func CheckPodsInNamespace(client kubernetes.Interface, ns string, forcePodNamesL
 
 	notRunningPodsCount := 0
 	for _, pod := range pods.Items {
-		if pod.Status.Phase != corev1.PodRunning {
+		if pod.Status.Phase != corev1.PodRunning && pod.Status.Phase != corev1.PodSucceeded {
 			notRunningPodsCount++
 		}
 
@@ -104,16 +111,13 @@ func CheckPodsInNamespace(client kubernetes.Interface, ns string, forcePodNamesL
 				break
 			}
 		}
-		if pod.Status.Phase == corev1.PodRunning && !force {
+		if (pod.Status.Phase == corev1.PodRunning || pod.Status.Phase == corev1.PodSucceeded) && !force {
 			continue
 		}
 
 		// print pod spec
-		podSpec, err := json.MarshalIndent(pod.Spec, "", "  ")
-		if err != nil {
-			klog.Errorf("Failed to marshal pod %q spec: %s", pod.Name, err.Error())
-		}
-		klog.V(1).Infof("Pod %q spec: \n%s", pod.Name, string(podSpec))
+		podSpec := ToCompactJSON(pod.Spec, "", 0, 3)
+		klog.V(1).Infof("Pod %q spec: \n%s", pod.Name, podSpec)
 
 		LogPodStatus(pod)
 		LogObjectEvents(client, ns, "Pod", pod.Name)
@@ -163,20 +167,52 @@ func LogPodLogs(client kubernetes.Interface, ns string, pod corev1.Pod) {
 			continue
 		}
 
-		// Filter error logs and keep all last 100 lines
-		maxLines := 100
-		cleanedLines := []string{}
+		// Aggregate info, debug and error logs from the past 6 minutes
+		filteredLines := []string{}
 		lines := strings.Split(string(logs), "\n")
-		for i, line := range lines {
-			if strings.Contains(strings.ToLower(line), "error") || i > len(lines)-maxLines {
-				cleanedLines = append(cleanedLines, line)
+		cutoffTime := time.Now().Add(-6 * time.Minute)
+		unparseableCount := 0
+
+		for i := len(lines) - 1; i >= 0; i-- {
+			line := lines[i]
+			if line == "" {
+				continue
+			}
+			// Try to parse timestamp at the beginning of the line
+			// Format: 2025-12-17T18:56:14.441Z
+			fields := strings.Fields(line)
+			timestampParsed := false
+			if len(fields) > 0 {
+				if t, err := time.Parse(time.RFC3339, fields[0]); err == nil {
+					timestampParsed = true
+					if t.Before(cutoffTime) {
+						break
+					}
+				}
+			}
+
+			if !timestampParsed {
+				if unparseableCount >= 100 {
+					continue
+				}
+				unparseableCount++
+			}
+
+			lowerLine := strings.ToLower(line)
+			if strings.Contains(lowerLine, "error") || strings.Contains(lowerLine, "info") {
+				filteredLines = append(filteredLines, line)
 			}
 		}
 
-		logs = []byte(strings.Join(cleanedLines, "\n"))
+		// Reverse the lines to restore order
+		for i, j := 0, len(filteredLines)-1; i < j; i, j = i+1, j-1 {
+			filteredLines[i], filteredLines[j] = filteredLines[j], filteredLines[i]
+		}
+
+		logs = []byte(strings.Join(filteredLines, "\n"))
 
 		delimitedLogs := fmt.Sprintf(">>>>>>>>>> container logs >>>>>>>>>>\n%s<<<<<<<<<< container logs <<<<<<<<<<", string(logs))
-		klog.V(1).Infof("Pod %q container %q logs (errors and last %d lines): \n%s", pod.Name, container.Name, maxLines, delimitedLogs)
+		klog.V(1).Infof("Pod %q container %q logs (aggregated info/debug/error from the last 6 minutes): \n%s", pod.Name, container.Name, delimitedLogs)
 	}
 }
 
@@ -331,11 +367,7 @@ func LogManagedClusters(client dynamic.Interface) {
 			}
 		}
 
-		mc, err := json.MarshalIndent(managedCluster, "", "  ")
-		if err != nil {
-			klog.Errorf("Failed to marshal ManagedCluster %q: %s", managedCluster.GetName(), err.Error())
-		}
-		managedClustersData.WriteString(string(mc) + "\n")
+		managedClustersData.WriteString(ToCompactJSON(managedCluster, "", 0, 3) + "\n")
 	}
 	managedClustersData.WriteString("<<<<<<<<<< Managed Clusters <<<<<<<<<<")
 	klog.Info(managedClustersData.String())

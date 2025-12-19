@@ -269,6 +269,9 @@ func initVars() {
 	if testOptions.HubCluster.Password != "" {
 		kubeadminCredential = testOptions.HubCluster.Password
 	}
+	if testOptions.HubCluster.Name == "" {
+		testOptions.HubCluster.Name = "local-cluster"
+	}
 
 	if testOptions.ManagedClusters != nil && len(testOptions.ManagedClusters) > 0 {
 		for i, mc := range testOptions.ManagedClusters {
