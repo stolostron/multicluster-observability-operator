@@ -450,8 +450,10 @@ func (r *MultiClusterObservabilityReconciler) initFinalization(ctx context.Conte
 		// clean up operand names
 		config.CleanUpOperandNames()
 
+		// Use Patch instead of Update to avoid serializing zero-value structs
+		mcoCopy := mco.DeepCopy()
 		mco.SetFinalizers(commonutil.Remove(mco.GetFinalizers(), resFinalizer))
-		err := r.Client.Update(ctx, mco)
+		err := r.Client.Patch(ctx, mco, client.MergeFrom(mcoCopy))
 		if err != nil {
 			log.Error(err, "Failed to remove finalizer from mco resource")
 			return false, err
@@ -464,9 +466,11 @@ func (r *MultiClusterObservabilityReconciler) initFinalization(ctx context.Conte
 		return true, nil
 	}
 	if !slices.Contains(mco.GetFinalizers(), resFinalizer) {
+		// Use Patch instead of Update to avoid serializing zero-value structs
+		mcoCopy := mco.DeepCopy()
 		mco.SetFinalizers(commonutil.Remove(mco.GetFinalizers(), certFinalizer))
 		mco.SetFinalizers(append(mco.GetFinalizers(), resFinalizer))
-		err := r.Client.Update(ctx, mco)
+		err := r.Client.Patch(ctx, mco, client.MergeFrom(mcoCopy))
 		if err != nil {
 			log.Error(err, "Failed to add finalizer to mco resource")
 			return false, err

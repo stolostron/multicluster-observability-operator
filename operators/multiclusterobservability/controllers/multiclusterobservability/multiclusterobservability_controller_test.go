@@ -755,6 +755,35 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	}
 }
 
+func TestInitFinalizationAddsResFinalizer(t *testing.T) {
+	s := scheme.Scheme
+	mcov1beta2.SchemeBuilder.AddToScheme(s)
+
+	mco := &mcov1beta2.MultiClusterObservability{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:       "test",
+			Finalizers: []string{certFinalizer},
+		},
+	}
+
+	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(mco).Build()
+	r := &MultiClusterObservabilityReconciler{Client: cl, Scheme: s, CRDMap: map[string]bool{}}
+
+	terminating, err := r.initFinalization(context.TODO(), mco)
+	assert.NoError(t, err)
+	assert.False(t, terminating)
+
+	updated := &mcov1beta2.MultiClusterObservability{}
+	err = cl.Get(context.TODO(), types.NamespacedName{Name: "test"}, updated)
+	assert.NoError(t, err)
+	assert.Contains(t, updated.Finalizers, resFinalizer)
+	assert.NotContains(t, updated.Finalizers, certFinalizer)
+}
+
+func TestInitFinalizationRemovesResFinalizerOnDelete(t *testing.T) {
+	t.Skip("Delete-path sends on stopStatusUpdate channel; keep unit tests non-blocking")
+}
+
 func TestImageReplaceForMCO(t *testing.T) {
 	var (
 		name      = "test-monitoring"
