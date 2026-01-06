@@ -14,6 +14,7 @@ spec:
   params:
     match[]:
     - '{__name__=":node_memory_MemAvailable_bytes:sum"}'
+    - '{__name__="accelerator_card_info"}'
     - '{__name__="acm_label_names"}' # metrics generated on the hub by MCE, needed for Grafana
     - '{__name__="acm_managed_cluster_labels"}' # metrics generated on the hub by MCE, needed for Grafana
     - '{__name__="active_streams_lease:grpc_server_handled_total:sum"}'
