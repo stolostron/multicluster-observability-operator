@@ -14,6 +14,7 @@ import (
 	"reflect"
 	"regexp"
 	"strings"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -547,6 +548,36 @@ func RevertMCOCRModification(opt TestOptions) error {
 		return err
 	}
 
+	return nil
+}
+
+// Trigger MCO reconcile by adding label to managed cluster
+func TriggerMCOReconcile(opt TestOptions, triggerLabel bool) error {
+	clusterName := GetManagedClusterName(opt)
+	if clusterName != "" {
+		clientDynamic := GetKubeClientDynamic(opt, true)
+		cluster, err := clientDynamic.Resource(NewOCMManagedClustersGVR()).
+			Get(context.TODO(), clusterName, metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+		labels, ok := cluster.Object["metadata"].(map[string]any)["labels"].(map[string]any)
+		if !ok {
+			cluster.Object["metadata"].(map[string]any)["labels"] = map[string]any{}
+			labels = cluster.Object["metadata"].(map[string]any)["labels"].(map[string]any)
+		}
+		if triggerLabel {
+			labels["reconcile-test"] = fmt.Sprintf("%d", time.Now().UnixNano())
+		} else {
+			delete(labels, "reconcile-test")
+		}
+
+		_, updateErr := clientDynamic.Resource(NewOCMManagedClustersGVR()).
+			Update(context.TODO(), cluster, metav1.UpdateOptions{})
+		if updateErr != nil {
+			return fmt.Errorf("failed to trigger reconcile from managed cluster %s: %w", clusterName, updateErr)
+		}
+	}
 	return nil
 }
 
