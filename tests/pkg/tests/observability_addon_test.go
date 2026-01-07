@@ -192,13 +192,11 @@ var _ = Describe("", func() {
 		}
 	})
 
-	// This test is flaky because when the label is added to the managed cluster, the placement controller reconcile is triggered but
-	// the managed cluster still appears on this first reconcile. Then if we're lucky, or not, the addon is effectively removed from the managed cluster.
-	// And these enable/disable operations, when done quickly as in a test environment, are not well followed by OCM for this addon that is not
-	// managed by the addon framework. As a result, the hub-kubeconfig secret (bootstrapped asynchronously via the Registration Agent's CSR flow)
-	// is not always created on the managed cluster, making the rest of the test suite fail.
-
-	// To avoid the timing issues associated with the removal of this managed cluster, we will
+	// There is a delay between the label being added to the managed cluster and the update of the managed cluster list. In test environments where the
+	// enable/disable operations are done quickly, this delay can cause the placement controller to reconcile before the list of managed clusters is updated.
+	// This is a problem, as with this timing some addon secrets failed to be bootstrapped by the Registration Agent, causing the test suite to fail.
+	// To account for this, a delay is added to ensure the list of managed clusters is updated, then a label is added to the managed cluster to trigger
+	// a second reconcile. This should make the test less flaky.
 	Context("RHACM4K-7518: Observability: Disable the Observability by updating managed cluster label [P2][Sev2][Observability]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore (addon/g1) -", func() {
 		It("[Stable] Modifying managedcluster cr to disable observability", func() {
 			Eventually(func() error {
