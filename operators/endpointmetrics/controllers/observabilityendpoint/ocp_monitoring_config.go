@@ -145,6 +145,17 @@ func createHubAmRouterCASecret(
 	client client.Client,
 	targetNamespace string) error {
 
+	// cleanup old secrets
+	err := client.Delete(ctx, &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      hubAmRouterCASecretName,
+			Namespace: targetNamespace,
+		},
+	})
+	if err != nil && !errors.IsNotFound(err) {
+		log.Error(err, fmt.Sprintf("failed to delete old secret %s/%s", targetNamespace, hubAmRouterCASecretName))
+	}
+
 	hubAmRouterSecret := hubAmRouterCASecretName + "-" + hubInfo.HubClusterID
 
 	hubAmRouterCA := hubInfo.AlertmanagerRouterCA
@@ -188,6 +199,17 @@ func createHubAmRouterCASecret(
 
 // createHubAmAccessorTokenSecret creates the secret that contains access token of the Hub's Alertmanager.
 func createHubAmAccessorTokenSecret(ctx context.Context, client client.Client, namespace, targetNamespace string, hubInfo *operatorconfig.HubInfo) error {
+	// cleanup old secrets
+	err := client.Delete(ctx, &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      hubAmAccessorSecretName,
+			Namespace: targetNamespace,
+		},
+	})
+	if err != nil && !errors.IsNotFound(err) {
+		log.Error(err, fmt.Sprintf("failed to delete old secret %s/%s", targetNamespace, hubAmAccessorSecretName))
+	}
+
 	amAccessorToken, err := getAmAccessorToken(ctx, client, namespace)
 	if err != nil {
 		return fmt.Errorf("fail to get %s/%s secret: %w", namespace, hubAmAccessorSecretName, err)
@@ -597,6 +619,16 @@ func createOrUpdateCMOConfig(
 		} else {
 			updatedCMOCfg.PrometheusK8sConfig.AlertmanagerConfigs = append(existingCfg.PrometheusK8sConfig.AlertmanagerConfigs, newAdditionalAlertmanagerConfig(hubInfo))
 		}
+		// remove am configs from previous versions if any
+		for i, cfg := range updatedCMOCfg.PrometheusK8sConfig.AlertmanagerConfigs {
+			if isOldManagedConfig(cfg, hubInfo) {
+				updatedCMOCfg.PrometheusK8sConfig.AlertmanagerConfigs = append(
+					updatedCMOCfg.PrometheusK8sConfig.AlertmanagerConfigs[:i],
+					updatedCMOCfg.PrometheusK8sConfig.AlertmanagerConfigs[i+1:]...,
+				)
+				break
+			}
+		}
 	} else {
 		updatedCMOCfg.PrometheusK8sConfig = newPmK8sConfig
 	}
@@ -769,6 +801,17 @@ func isManaged(amc cmomanifests.AdditionalAlertmanagerConfig, hubInfo *operatorc
 	} else if hubInfo == nil && amc.TLSConfig.CA != nil && strings.Contains(amc.TLSConfig.CA.LocalObjectReference.Name, hubAmRouterCASecretName) {
 		//This is only for the CMO cleanup script to clean up old configs
 		return true
+	}
+	return false
+}
+
+// isOldManagedConfig checks if the additional alertmanager config is managed by ACM with old secret names
+func isOldManagedConfig(amc cmomanifests.AdditionalAlertmanagerConfig, hubInfo *operatorconfig.HubInfo) bool {
+	if hubInfo != nil && amc.TLSConfig.CA != nil {
+		if amc.TLSConfig.CA.LocalObjectReference.Name == hubAmRouterCASecretName ||
+			(strings.Contains(amc.TLSConfig.CA.LocalObjectReference.Name, hubAmRouterCASecretName) && amc.TLSConfig.CA.LocalObjectReference.Name != hubAmRouterCASecretName+"-"+hubInfo.HubClusterID) {
+			return true
+		}
 	}
 	return false
 }
