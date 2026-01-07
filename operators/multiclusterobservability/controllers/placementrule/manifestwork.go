@@ -649,6 +649,12 @@ func DeleteHubMetricsCollectionDeployments(ctx context.Context, c client.Client)
 // DeleteHubMetricsCollectorResourcesNotNeededForMCOA deletes hub resources for the metrics collector but keeps the ones
 // common to MCOA and the metrics collector.
 func DeleteHubMetricsCollectorResourcesNotNeededForMCOA(ctx context.Context, c client.Client) error {
+	// This revert function depends on the hubInfoSecret, it must be executed before deleting it.
+	err := RevertHubClusterMonitoringConfig(ctx, c)
+	if err != nil {
+		return fmt.Errorf("failed to revert hub cluster monitoring config: %w", err)
+	}
+
 	toDelete := []client.Object{
 		&appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{ // hub endpoint operator
 			Name:      config.HubEndpointOperatorName,
@@ -673,11 +679,6 @@ func DeleteHubMetricsCollectorResourcesNotNeededForMCOA(ctx context.Context, c c
 		&rbacv1.ClusterRoleBinding{ObjectMeta: metav1.ObjectMeta{ // metrics-collector-view role
 			Name: clusterRoleBindingName,
 		}},
-	}
-
-	err := RevertHubClusterMonitoringConfig(ctx, c)
-	if err != nil {
-		return fmt.Errorf("failed to revert hub cluster monitoring config: %w", err)
 	}
 
 	for _, obj := range toDelete {
