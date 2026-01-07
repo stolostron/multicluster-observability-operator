@@ -26,6 +26,7 @@ const ( // #nosec G101 -- Not a hardcoded credential.
 	clusterMonitoringConfigName    = "cluster-monitoring-config"
 	clusterMonitoringConfigDataKey = "config.yaml"
 	endpointMonitoringOperatorMgr  = "endpoint-monitoring-operator"
+	mcoManager                     = "mco-operator"
 	promNamespace                  = "openshift-monitoring"
 	clusterRoleBindingName         = "hub-metrics-collector-view"
 )
@@ -53,7 +54,7 @@ func RevertHubClusterMonitoringConfig(ctx context.Context, client client.Client)
 	// do not touch the configmap if are not already a manager
 	touched := false
 	for _, field := range found.GetManagedFields() {
-		if field.Manager == endpointMonitoringOperatorMgr {
+		if field.Manager == endpointMonitoringOperatorMgr || field.Manager == mcoManager {
 			touched = true
 			break
 		}
