@@ -14,6 +14,7 @@ import (
 
 	"github.com/ghodss/yaml"
 	cmomanifests "github.com/openshift/cluster-monitoring-operator/pkg/manifests"
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -36,8 +37,20 @@ const ( // #nosec G101 -- Not a hardcoded credential.
 func RevertHubClusterMonitoringConfig(ctx context.Context, client client.Client) error {
 	// try to retrieve the current configmap in the cluster
 
+	hubInfoSecret := &corev1.Secret{}
+	err := client.Get(ctx, types.NamespacedName{
+		Name:      operatorconfig.HubInfoSecretName,
+		Namespace: config.GetDefaultNamespace(),
+	}, hubInfoSecret)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return nil
+		}
+		return fmt.Errorf("failed to get secret %s: %w", operatorconfig.HubInfoSecretName, err)
+	}
+
 	hubInfo := &operatorconfig.HubInfo{}
-	err := yaml.Unmarshal(hubInfoSecret.Data[operatorconfig.HubInfoSecretKey], &hubInfo)
+	err = yaml.Unmarshal(hubInfoSecret.Data[operatorconfig.HubInfoSecretKey], &hubInfo)
 	if err != nil {
 		return fmt.Errorf("failed to unmarshal hub info: %w", err)
 	}

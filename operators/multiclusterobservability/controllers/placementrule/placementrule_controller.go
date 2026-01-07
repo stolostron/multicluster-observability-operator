@@ -13,8 +13,6 @@ import (
 	"sync"
 	"time"
 
-	"gopkg.in/yaml.v2"
-
 	"github.com/go-logr/logr"
 	operatorv1 "github.com/openshift/api/operator/v1"
 	mchv1 "github.com/stolostron/multiclusterhub-operator/api/v1"
@@ -140,10 +138,6 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		reqLogger.Info("Ensuring MCOA resources on the hub")
 		if err := r.ensureMCOAResources(ctx, mco); err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to ensure MCOA resources: %w", err)
-		}
-		err := yaml.Unmarshal(hubInfoSecret.Data[operatorconfig.HubInfoSecretKey], hubInfoSecret)
-		if err != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to unmarshal hub info: %w", err)
 		}
 		// Force regeneration of the hubInfo secret to ensure MCOA settings are up to date
 		if err := DeleteHubMetricsCollectorResourcesNotNeededForMCOA(ctx, r.Client); err != nil {
