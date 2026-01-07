@@ -77,6 +77,40 @@ prometheusK8s:
         key: service-ca.crt
         name: hub-alertmanager-router-ca
       insecureSkipVerify: true`
+
+	clusterMonitoringConfigDataYamlCleanupGH = `
+prometheusK8s:
+  externalLabels:
+    managed_cluster: kind-cluster-id
+  additionalAlertManagerConfigs:
+  - apiVersion: v2
+    bearerToken:
+      key: token
+      name: foo
+    pathPrefix: /
+    scheme: https
+    staticConfigs:
+    - test-host.com
+    tlsConfig:
+      ServerName: ""
+      ca:
+        key: service-ca.crt
+        name: hub-alertmanager-router-ca-12345
+      insecureSkipVerify: true
+  - apiVersion: v2
+    bearerToken:
+      key: token
+      name: foo
+    pathPrefix: /
+    scheme: https
+    staticConfigs:
+    - test-host.com
+    tlsConfig:
+      ServerName: ""
+      ca:
+        key: service-ca.crt
+        name: hub-alertmanager-router-ca
+      insecureSkipVerify: true`
 )
 
 func TestClusterMonitoringConfig(t *testing.T) {
@@ -1140,5 +1174,57 @@ enableUserWorkload: true
 	err = c.Get(ctx, types.NamespacedName{Name: operatorconfig.OCPUserWorkloadMonitoringNamespace}, foundNamespace)
 	if err != nil {
 		t.Fatalf("UWL namespace should still exist: %v", err)
+	}
+}
+
+func TestClusterMonitoringCleanupGlobalHub(t *testing.T) {
+	testNamespace := "test-ns"
+	amAccessSrt := newAMAccessorSecret(testNamespace, "test-token")
+	hubInfo := &operatorconfig.HubInfo{
+		ClusterName:              "test-cluster",
+		ObservatoriumAPIEndpoint: "http://test-endpoint.abc.12345.com",
+		AlertmanagerEndpoint:     "http://test-alertamanger-endpoint",
+		HubClusterID:             "1a9af6dc0801433cb28a200af81",
+	}
+	cmoCfg := newClusterMonitoringConfigCM(clusterMonitoringConfigDataYamlCleanupGH, endpointMonitoringOperatorMgr)
+	client := fake.NewClientBuilder().WithRuntimeObjects(newHubInfoSecret([]byte(hubInfoYAML), testNamespace), cmoCfg, amAccessSrt).Build()
+	wasUpdated, err := createOrUpdateClusterMonitoringConfig(context.Background(), hubInfo, testClusterID, client, false, testNamespace)
+	if err != nil {
+		t.Fatalf("Failed to create or update the cluster-monitoring-config configmap: (%v)", err)
+	}
+	assert.True(t, wasUpdated)
+
+	cmoCfgBeforeUpdate := &corev1.ConfigMap{}
+	err = client.Get(context.Background(), types.NamespacedName{Name: clusterMonitoringConfigName, Namespace: promNamespace}, cmoCfgBeforeUpdate)
+	if err != nil {
+		t.Fatalf("failed to check configmap %s: %v", clusterMonitoringConfigName, err)
+	}
+
+	// check that in the cmoCfgBeforeUpdare hub-alertmanager-router-ca is removed
+	foundClusterMonitoringConfigurationYAML, ok := hasClusterMonitoringConfigData(cmoCfgBeforeUpdate)
+	if !ok {
+		t.Fatalf("configmap: %s doesn't contain key: config.yaml", clusterMonitoringConfigName)
+	}
+
+	foundClusterMonitoringConfigurationJSON, err := yamltool.YAMLToJSON([]byte(foundClusterMonitoringConfigurationYAML))
+	if err != nil {
+		t.Fatalf("failed to transform YAML to JSON:\n%s\n", foundClusterMonitoringConfigurationYAML)
+	}
+
+	foundClusterMonitoringConfiguration := &cmomanifests.ClusterMonitoringConfiguration{}
+	if err := json.Unmarshal([]byte(foundClusterMonitoringConfigurationJSON), foundClusterMonitoringConfiguration); err != nil {
+		t.Fatalf("failed to marshal the cluster monitoring config: %v:\n%s\n", err, foundClusterMonitoringConfigurationJSON)
+	}
+
+	if foundClusterMonitoringConfiguration.PrometheusK8sConfig != nil &&
+		foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs != nil {
+		for _, v := range foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs {
+			if v.TLSConfig != (cmomanifests.TLSConfig{}) &&
+				v.TLSConfig.CA != nil &&
+				v.TLSConfig.CA.LocalObjectReference != (corev1.LocalObjectReference{}) &&
+				v.TLSConfig.CA.LocalObjectReference.Name == hubAmRouterCASecretName || v.TLSConfig.CA.LocalObjectReference.Name == hubAmRouterCASecretName+"-"+"12345" {
+				t.Fatalf("%s secret reference should be removed from the cluster-monitoring-config configmap", v.TLSConfig.CA.LocalObjectReference.Name)
+			}
+		}
 	}
 }

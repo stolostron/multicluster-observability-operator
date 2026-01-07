@@ -7,6 +7,9 @@ package observabilityendpoint
 import (
 	"context"
 	"fmt"
+
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+
 	"net/url"
 	"reflect"
 	"strings"
@@ -39,6 +42,7 @@ var (
 	log                             = ctrl.Log.WithName("controllers").WithName("ObservabilityAddon")
 	clusterMonitoringConfigReverted = false
 	persistedRevertStateRead        = false
+	AMSecretCleanupDone             = false
 )
 
 // initializes clusterMonitoringConfigReverted based on the presence of clusterMonitoringRevertedName
@@ -169,7 +173,7 @@ func createHubAmRouterCASecret(
 	}
 
 	found := &corev1.Secret{}
-	err := client.Get(ctx, types.NamespacedName{Name: hubAmRouterSecret, Namespace: targetNamespace}, found)
+	err = client.Get(ctx, types.NamespacedName{Name: hubAmRouterSecret, Namespace: targetNamespace}, found)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			log.Info(fmt.Sprintf("creating %s/%s secret", targetNamespace, hubAmRouterSecret))
@@ -619,15 +623,17 @@ func createOrUpdateCMOConfig(
 		} else {
 			updatedCMOCfg.PrometheusK8sConfig.AlertmanagerConfigs = append(existingCfg.PrometheusK8sConfig.AlertmanagerConfigs, newAdditionalAlertmanagerConfig(hubInfo))
 		}
-		// remove am configs from previous versions if any
-		for i, cfg := range updatedCMOCfg.PrometheusK8sConfig.AlertmanagerConfigs {
-			if isOldManagedConfig(cfg, hubInfo) {
-				updatedCMOCfg.PrometheusK8sConfig.AlertmanagerConfigs = append(
-					updatedCMOCfg.PrometheusK8sConfig.AlertmanagerConfigs[:i],
-					updatedCMOCfg.PrometheusK8sConfig.AlertmanagerConfigs[i+1:]...,
-				)
-				break
+
+		//remove am configs from previous versions if any prior to Global Hub Changes (ACM 2.15.0)
+		updatedCMOCfgTmp := make([]cmomanifests.AdditionalAlertmanagerConfig, 0)
+		if AMSecretCleanupDone == false {
+			for i, cfg := range updatedCMOCfg.PrometheusK8sConfig.AlertmanagerConfigs {
+				AMSecretCleanupDone = true
+				if !isOldManagedConfig(cfg, hubInfo) {
+					updatedCMOCfgTmp = append(updatedCMOCfgTmp, updatedCMOCfg.PrometheusK8sConfig.AlertmanagerConfigs[i])
+				}
 			}
+			updatedCMOCfg.PrometheusK8sConfig.AlertmanagerConfigs = updatedCMOCfgTmp
 		}
 	} else {
 		updatedCMOCfg.PrometheusK8sConfig = newPmK8sConfig
@@ -805,11 +811,13 @@ func isManaged(amc cmomanifests.AdditionalAlertmanagerConfig, hubInfo *operatorc
 	return false
 }
 
-// isOldManagedConfig checks if the additional alertmanager config is managed by ACM with old secret names
+// isOldManagedConfig checks if the additional alertmanager config is managed by ACM with old secret names prior to Global Hub changes
 func isOldManagedConfig(amc cmomanifests.AdditionalAlertmanagerConfig, hubInfo *operatorconfig.HubInfo) bool {
 	if hubInfo != nil && amc.TLSConfig.CA != nil {
-		if amc.TLSConfig.CA.LocalObjectReference.Name == hubAmRouterCASecretName ||
-			(strings.Contains(amc.TLSConfig.CA.LocalObjectReference.Name, hubAmRouterCASecretName) && amc.TLSConfig.CA.LocalObjectReference.Name != hubAmRouterCASecretName+"-"+hubInfo.HubClusterID) {
+		clusterDomainName := config.GetClusterName(hubInfo.ObservatoriumAPIEndpoint)
+		if amc.TLSConfig.CA.LocalObjectReference.Name == hubAmRouterCASecretName {
+			return true
+		} else if amc.TLSConfig.CA.LocalObjectReference.Name == hubAmRouterCASecretName+"-"+clusterDomainName {
 			return true
 		}
 	}
