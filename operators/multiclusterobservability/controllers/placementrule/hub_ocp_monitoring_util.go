@@ -54,6 +54,7 @@ func RevertHubClusterMonitoringConfig(ctx context.Context, client client.Client)
 	if err != nil {
 		return fmt.Errorf("failed to unmarshal hub info: %w", err)
 	}
+	log.Info("Reverting hub cluster monitoring config", "HubClusterID", hubInfo.HubClusterID)
 
 	found := &corev1.ConfigMap{}
 	if err := client.Get(ctx, types.NamespacedName{Name: clusterMonitoringConfigName,
@@ -74,6 +75,7 @@ func RevertHubClusterMonitoringConfig(ctx context.Context, client client.Client)
 	}
 
 	if !touched {
+		log.Info("Configmap not touched by MCO, skipping revert", "name", clusterMonitoringConfigName)
 		return nil
 	}
 
@@ -93,11 +95,13 @@ func RevertHubClusterMonitoringConfig(ctx context.Context, client client.Client)
 	}
 
 	if foundClusterMonitoringConfiguration.PrometheusK8sConfig == nil {
+		log.Info("PrometheusK8sConfig is nil, nothing to revert")
 		return nil
 	}
 
 	// check if externalLabels exists
 	if foundClusterMonitoringConfiguration.PrometheusK8sConfig.ExternalLabels != nil {
+		log.Info("Checking externalLabels", "labels", foundClusterMonitoringConfiguration.PrometheusK8sConfig.ExternalLabels)
 		delete(foundClusterMonitoringConfiguration.PrometheusK8sConfig.ExternalLabels, operatorconfig.ClusterLabelKeyForAlerts)
 		if len(foundClusterMonitoringConfiguration.PrometheusK8sConfig.ExternalLabels) == 0 {
 			foundClusterMonitoringConfiguration.PrometheusK8sConfig.ExternalLabels = nil
@@ -106,11 +110,20 @@ func RevertHubClusterMonitoringConfig(ctx context.Context, client client.Client)
 
 	// check if alertmanagerConfigs exists
 	if foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs != nil {
+		log.Info("Checking AlertmanagerConfigs", "count", len(foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs))
 		copiedAlertmanagerConfigs := make([]cmomanifests.AdditionalAlertmanagerConfig, 0)
+		expectedSecretName := hubAmRouterCASecretName + "-" + hubInfo.HubClusterID
 		for _, v := range foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs {
+			var secretName string
+			if v.TLSConfig.CA != nil {
+				secretName = v.TLSConfig.CA.LocalObjectReference.Name
+			}
+			log.Info("Evaluating AlertmanagerConfig", "secretName", secretName, "expectedSecretName", expectedSecretName)
 			if v.TLSConfig == (cmomanifests.TLSConfig{}) ||
-				(v.TLSConfig.CA != nil && v.TLSConfig.CA.LocalObjectReference.Name != hubAmRouterCASecretName+"-"+hubInfo.HubClusterID) {
+				(v.TLSConfig.CA != nil && v.TLSConfig.CA.LocalObjectReference.Name != expectedSecretName) {
 				copiedAlertmanagerConfigs = append(copiedAlertmanagerConfigs, v)
+			} else {
+				log.Info("Removing AlertmanagerConfig match")
 			}
 		}
 		if len(copiedAlertmanagerConfigs) == 0 {
