@@ -148,20 +148,7 @@ func createHubAmRouterCASecret(
 	hubInfo *operatorconfig.HubInfo,
 	client client.Client,
 	targetNamespace string) error {
-
-	// cleanup old secrets
-	err := client.Delete(ctx, &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      hubAmRouterCASecretName,
-			Namespace: targetNamespace,
-		},
-	})
-	if err != nil && !errors.IsNotFound(err) {
-		log.Error(err, fmt.Sprintf("failed to delete old secret %s/%s", targetNamespace, hubAmRouterCASecretName))
-	}
-
 	hubAmRouterSecret := hubAmRouterCASecretName + "-" + hubInfo.HubClusterID
-
 	hubAmRouterCA := hubInfo.AlertmanagerRouterCA
 	dataMap := map[string][]byte{hubAmRouterCASecretKey: []byte(hubAmRouterCA)}
 	hubAmRouterCASecret := &corev1.Secret{
@@ -203,17 +190,6 @@ func createHubAmRouterCASecret(
 
 // createHubAmAccessorTokenSecret creates the secret that contains access token of the Hub's Alertmanager.
 func createHubAmAccessorTokenSecret(ctx context.Context, client client.Client, namespace, targetNamespace string, hubInfo *operatorconfig.HubInfo) error {
-	// cleanup old secrets
-	err := client.Delete(ctx, &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      hubAmAccessorSecretName,
-			Namespace: targetNamespace,
-		},
-	})
-	if err != nil && !errors.IsNotFound(err) {
-		log.Error(err, fmt.Sprintf("failed to delete old secret %s/%s", targetNamespace, hubAmAccessorSecretName))
-	}
-
 	amAccessorToken, err := getAmAccessorToken(ctx, client, namespace)
 	if err != nil {
 		return fmt.Errorf("fail to get %s/%s secret: %w", namespace, hubAmAccessorSecretName, err)
@@ -274,6 +250,47 @@ func getAmAccessorToken(ctx context.Context, client client.Client, ns string) (s
 	}
 
 	return string(amAccessorToken), nil
+}
+
+func cleanUpOldAMSecrets(ctx context.Context, client client.Client, targetNamespace string, hubInfo *operatorconfig.HubInfo) error {
+	var errs []string
+
+	clusterDomain := ""
+	if hubInfo != nil && hubInfo.ObservatoriumAPIEndpoint != "" {
+		clusterDomain = config.GetClusterName(hubInfo.ObservatoriumAPIEndpoint)
+	} else {
+		log.Info("hubInfo or ObservatoriumAPIEndpoint missing; skipping cluster-domain-specific secret deletions")
+	}
+
+	deleteSecret := func(name string) {
+		sec := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: targetNamespace,
+			},
+		}
+		if err := client.Delete(ctx, sec); err != nil {
+			if errors.IsNotFound(err) {
+				return
+			}
+			log.Error(err, fmt.Sprintf("failed to delete old secret %s/%s", targetNamespace, name))
+			errs = append(errs, fmt.Sprintf("%s: %v", name, err))
+		}
+	}
+
+	deleteSecret(hubAmAccessorSecretName)
+	if clusterDomain != "" {
+		deleteSecret(hubAmAccessorSecretName + "-" + clusterDomain)
+	}
+	deleteSecret(hubAmRouterCASecretName)
+	if clusterDomain != "" {
+		deleteSecret(hubAmRouterCASecretName + "-" + clusterDomain)
+	}
+
+	if len(errs) > 0 {
+		return fmt.Errorf("failed to delete one or more old secrets: %s", strings.Join(errs, "; "))
+	}
+	return nil
 }
 
 func newAdditionalAlertmanagerConfig(hubInfo *operatorconfig.HubInfo) cmomanifests.AdditionalAlertmanagerConfig {
@@ -364,6 +381,11 @@ func createOrUpdateClusterMonitoringConfig(
 		// for *KS, the hub CA and alertmanager access token should be created
 		// in namespace: open-cluster-management-addon-observability
 		targetNamespace = namespace
+	}
+	if !AMSecretCleanupDone {
+		if err := cleanUpOldAMSecrets(ctx, client, targetNamespace, hubInfo); err != nil {
+			return false, fmt.Errorf("failed to clean up old alertmanager secrets: %w", err)
+		}
 	}
 
 	// create the hub-alertmanager-router-ca secret if it doesn't exist or update it if needed
