@@ -139,10 +139,22 @@ func (r *MCORenderer) renderMCOADeployment(
 		r.cr.Spec.AdvancedConfig,
 	)
 
+	if r.cr.Spec.Capabilities != nil && r.cr.Spec.Capabilities.AddonManager != nil {
+		if r.cr.Spec.Capabilities.AddonManager.Resources != nil {
+			mcoaResources = *r.cr.Spec.Capabilities.AddonManager.Resources
+		}
+	}
+
 	patchContainer := &corev1.Container{
 		Image:           img,
 		ImagePullPolicy: mcoconfig.GetImagePullPolicy(r.cr.Spec),
 		Resources:       mcoaResources,
+	}
+
+	if r.cr.Spec.Capabilities != nil && r.cr.Spec.Capabilities.AddonManager != nil {
+		if r.cr.Spec.Capabilities.AddonManager.LogVerbosity != nil {
+			patchContainer.Args = append(patchContainer.Args, fmt.Sprintf("--log-verbosity=%d", *r.cr.Spec.Capabilities.AddonManager.LogVerbosity))
+		}
 	}
 
 	if err := mergo.Merge(&obj.Spec.Template.Spec.Containers[0], patchContainer, mergo.WithOverride); err != nil {
