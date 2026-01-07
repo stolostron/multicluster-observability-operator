@@ -1178,6 +1178,8 @@ enableUserWorkload: true
 }
 
 func TestClusterMonitoringCleanupGlobalHub(t *testing.T) {
+	AMSecretCleanupDone = false
+	AMSecretCleanupDoneUWL = false
 	testNamespace := "test-ns"
 	amAccessSrt := newAMAccessorSecret(testNamespace, "test-token")
 	hubInfo := &operatorconfig.HubInfo{

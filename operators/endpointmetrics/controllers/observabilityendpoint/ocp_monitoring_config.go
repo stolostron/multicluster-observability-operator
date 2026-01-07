@@ -43,6 +43,7 @@ var (
 	clusterMonitoringConfigReverted = false
 	persistedRevertStateRead        = false
 	AMSecretCleanupDone             = false
+	AMSecretCleanupDoneUWL          = false
 )
 
 // initializes clusterMonitoringConfigReverted based on the presence of clusterMonitoringRevertedName
@@ -160,7 +161,7 @@ func createHubAmRouterCASecret(
 	}
 
 	found := &corev1.Secret{}
-	err = client.Get(ctx, types.NamespacedName{Name: hubAmRouterSecret, Namespace: targetNamespace}, found)
+	err := client.Get(ctx, types.NamespacedName{Name: hubAmRouterSecret, Namespace: targetNamespace}, found)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			log.Info(fmt.Sprintf("creating %s/%s secret", targetNamespace, hubAmRouterSecret))
@@ -252,9 +253,8 @@ func getAmAccessorToken(ctx context.Context, client client.Client, ns string) (s
 	return string(amAccessorToken), nil
 }
 
-func cleanUpOldAMSecrets(ctx context.Context, client client.Client, targetNamespace string, hubInfo *operatorconfig.HubInfo) error {
+func cleanUpOldAMSecrets(ctx context.Context, client client.Client, targetNamespace string, hubInfo *operatorconfig.HubInfo, uwlNsExists bool) error {
 	var errs []string
-
 	clusterDomain := ""
 	if hubInfo != nil && hubInfo.ObservatoriumAPIEndpoint != "" {
 		clusterDomain = config.GetClusterName(hubInfo.ObservatoriumAPIEndpoint)
@@ -262,11 +262,11 @@ func cleanUpOldAMSecrets(ctx context.Context, client client.Client, targetNamesp
 		log.Info("hubInfo or ObservatoriumAPIEndpoint missing; skipping cluster-domain-specific secret deletions")
 	}
 
-	deleteSecret := func(name string) {
+	deleteSecret := func(name string, namespace string) {
 		sec := &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      name,
-				Namespace: targetNamespace,
+				Namespace: namespace,
 			},
 		}
 		if err := client.Delete(ctx, sec); err != nil {
@@ -278,13 +278,21 @@ func cleanUpOldAMSecrets(ctx context.Context, client client.Client, targetNamesp
 		}
 	}
 
-	deleteSecret(hubAmAccessorSecretName)
+	deleteSecret(hubAmAccessorSecretName, targetNamespace)
+	deleteSecret(hubAmRouterCASecretName, targetNamespace)
 	if clusterDomain != "" {
-		deleteSecret(hubAmAccessorSecretName + "-" + clusterDomain)
+		deleteSecret(hubAmAccessorSecretName+"-"+clusterDomain, targetNamespace)
+		deleteSecret(hubAmRouterCASecretName+"-"+clusterDomain, targetNamespace)
 	}
-	deleteSecret(hubAmRouterCASecretName)
-	if clusterDomain != "" {
-		deleteSecret(hubAmRouterCASecretName + "-" + clusterDomain)
+
+	if uwlNsExists {
+		ns := operatorconfig.OCPUserWorkloadMonitoringNamespace
+		deleteSecret(hubAmAccessorSecretName, ns)
+		deleteSecret(hubAmRouterCASecretName, ns)
+		if clusterDomain != "" {
+			deleteSecret(hubAmAccessorSecretName+"-"+clusterDomain, ns)
+			deleteSecret(hubAmRouterCASecretName+"-"+clusterDomain, ns)
+		}
 	}
 
 	if len(errs) > 0 {
@@ -382,11 +390,6 @@ func createOrUpdateClusterMonitoringConfig(
 		// in namespace: open-cluster-management-addon-observability
 		targetNamespace = namespace
 	}
-	if !AMSecretCleanupDone {
-		if err := cleanUpOldAMSecrets(ctx, client, targetNamespace, hubInfo); err != nil {
-			return false, fmt.Errorf("failed to clean up old alertmanager secrets: %w", err)
-		}
-	}
 
 	// create the hub-alertmanager-router-ca secret if it doesn't exist or update it if needed
 	if err := createHubAmRouterCASecret(ctx, hubInfo, client, targetNamespace); err != nil {
@@ -415,6 +418,13 @@ func createOrUpdateClusterMonitoringConfig(
 		}
 		if err := createHubAmAccessorTokenSecret(ctx, client, namespace, operatorconfig.OCPUserWorkloadMonitoringNamespace, hubInfo); err != nil {
 			return false, fmt.Errorf("failed to create or update alertmanager accessor token in UWM namespace: %w", err)
+		}
+	}
+
+	if !AMSecretCleanupDone {
+		// ACM-27841 - this is to clean up old alertmanager secrets created using cluster domain for Global Hub
+		if err := cleanUpOldAMSecrets(ctx, client, targetNamespace, hubInfo, nsExists); err != nil {
+			return false, fmt.Errorf("failed to clean up old alertmanager secrets: %w", err)
 		}
 	}
 
@@ -647,14 +657,14 @@ func createOrUpdateCMOConfig(
 		}
 
 		//remove am configs from previous versions if any prior to Global Hub Changes (ACM 2.15.0)
-		updatedCMOCfgTmp := make([]cmomanifests.AdditionalAlertmanagerConfig, 0)
-		if AMSecretCleanupDone == false {
+		if !AMSecretCleanupDone {
+			updatedCMOCfgTmp := make([]cmomanifests.AdditionalAlertmanagerConfig, 0)
 			for i, cfg := range updatedCMOCfg.PrometheusK8sConfig.AlertmanagerConfigs {
-				AMSecretCleanupDone = true
 				if !isOldManagedConfig(cfg, hubInfo) {
 					updatedCMOCfgTmp = append(updatedCMOCfgTmp, updatedCMOCfg.PrometheusK8sConfig.AlertmanagerConfigs[i])
 				}
 			}
+			AMSecretCleanupDone = true
 			updatedCMOCfg.PrometheusK8sConfig.AlertmanagerConfigs = updatedCMOCfgTmp
 		}
 	} else {
@@ -747,6 +757,18 @@ func createOrUpdateUserWorkloadMonitoringConfig(
 			parsed.Prometheus.AlertmanagerConfigs = append(parsed.Prometheus.AlertmanagerConfigs, newAdditionalAlertmanagerConfig(hubInfo))
 		} else {
 			parsed.Prometheus.AlertmanagerConfigs[index] = newAdditionalAlertmanagerConfig(hubInfo)
+		}
+
+		//remove am configs from previous versions if any prior to Global Hub Changes (ACM 2.15.0)
+		if !AMSecretCleanupDoneUWL {
+			updatedCMOCfgTmp := make([]cmomanifests.AdditionalAlertmanagerConfig, 0)
+			for i, cfg := range parsed.Prometheus.AlertmanagerConfigs {
+				if !isOldManagedConfig(cfg, hubInfo) {
+					updatedCMOCfgTmp = append(updatedCMOCfgTmp, parsed.Prometheus.AlertmanagerConfigs[i])
+				}
+			}
+			AMSecretCleanupDoneUWL = true
+			parsed.Prometheus.AlertmanagerConfigs = updatedCMOCfgTmp
 		}
 	} else {
 		parsed.Prometheus = &alertCfg
