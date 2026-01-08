@@ -3,7 +3,14 @@
 [![Build](https://img.shields.io/badge/build-Prow-informational)](https://prow.ci.openshift.org/?repo=stolostron%2F${multicluster-observability-operator})
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=stolostron_multicluster-observability-operator&metric=alert_status&token=3452dcca82a98e4aa297c1b31fd21939288db4c0)](https://sonarcloud.io/dashboard?id=stolostron_multicluster-observability-operator)
 
-This document attempts to explain how the different components in Open Cluster Management Observabilty come together to deliver multicluster fleet observability. We do leverage several open source projects: [Grafana](https://github.com/grafana/grafana), [Alertmanager](https://github.com/prometheus/alertmanager), [Thanos](https://github.com/thanos-io/thanos/), [Observatorium Operator and API Gateway](https://github.com/observatorium), [Prometheus](https://github.com/prometheus/prometheus); We also leverage a few [Open Cluster Mangement projects](https://open-cluster-management.io/) namely - [Cluster Manager or Registration Operator](https://github.com/stolostron/registration-operator), [Klusterlet](https://github.com/stolostron/registration-operator). The multicluster-observability operator is the root operator which pulls in all things needed.
+This document explains how the different components in Open Cluster Management Observability come together to deliver multicluster fleet observability. We leverage several open source projects: [Grafana](https://github.com/grafana/grafana), [Alertmanager](https://github.com/prometheus/alertmanager), [Thanos](https://github.com/thanos-io/thanos/), [Observatorium Operator and API Gateway](https://github.com/observatorium), [Prometheus](https://github.com/prometheus/prometheus). We also leverage [Open Cluster Management projects](https://open-cluster-management.io/) namely - [Cluster Manager or Registration Operator](https://github.com/stolostron/registration-operator), [Klusterlet](https://github.com/stolostron/registration-operator). The multicluster-observability operator is the root operator which pulls in all things needed.
+
+## Architecture
+
+The project currently supports two architectures:
+
+1.  **MCOA (Multi-Cluster Observability Addon) - New Standard**: Leverages the upstream `addon-framework` and `monitoring.rhobs` APIs (`PrometheusAgent`, `ScrapeConfig`) for a more standard and scalable approach.
+2.  **Legacy Architecture**: Uses the `observability-endpoint-operator` and custom `metrics-collector` deployed via `ManifestWorks`.
 
 ## Conceptual Diagram
 
@@ -11,18 +18,42 @@ This document attempts to explain how the different components in Open Cluster M
 
 ## Associated Github Repositories
 
-Component |Git Repo | Description
----  | ------ | ----  
-MCO Operator | [multicluster-observability-operator](https://github.com/stolostron/multicluster-observability-operator) | Operator for monitoring. This is the root repo. If we follow the Readme instructions here to install, the code from all other repos mentioned below are used/referenced.
-Endpoint Operator | [endpoint-metrics-operator](https://github.com/stolostron/multicluster-observability-operator/tree/main/operators/endpointmetrics) | Operator that manages  setting up observability and data collection at the managed clusters.
-Observatorium Operator | [observatorium-operator](https://github.com/stolostron/observatorium-operator) | Operator to deploy the Observatorium project. Inside the open cluster management, at this time, it means metrics using Thanos. Forked from main observatorium-operator repo.
-Metrics collector | [metrics-collector](https://github.com/stolostron/multicluster-observability-operator/tree/main/collectors/metrics) | Scrapes metrics from Prometheus at managed clusters, the metric collection being shaped by configuring allow-list.
-RBAC Proxy | [rbac_query_proxy](https://github.com/stolostron/multicluster-observability-operator/tree/main/proxy) | Helper service that acts a multicluster metrics RBAC proxy.
-Grafana | [grafana](https://github.com/stolostron/grafana) | Grafana repo -  for  dashboarding and metric analytics. Forked from main grafana repo.
-Dashboard Loader | [grafana-dashboard-loader](https://github.com/stolostron/multicluster-observability-operator/tree/main/loaders/dashboards) | Sidecar proxy to load grafana dashboards from configmaps.
-Management Ingress | [management-ingress](https://github.com/stolostron/management-ingress) | NGINX based ingress controller to serve Open Cluster Management services.
-Observatorium API | [observatorium](https://github.com/stolostron/observatorium) | API Gateway which controls reading, writing of the Observability data to the backend infrastructure. Forked from main observatorium API repo.
-Thanos Ecosystem | [kube-thanos](https://github.com/stolostron/kube-thanos) | Kubernetes specific configuration for deploying Thanos. The observatorium operator leverages this configuration to deploy the backend Thanos components.
+| Component | Git Repo | Description | Status |
+| :--- | :--- | :--- | :--- |
+| **MCO Operator** | [multicluster-observability-operator](https://github.com/stolostron/multicluster-observability-operator) | **Root repo**. Operator for monitoring and orchestration. | Active |
+| **MCOA** | [multicluster-observability-addon](https://github.com/stolostron/multicluster-observability-addon) | New metrics collection addon using standard upstream APIs. | Active |
+| **Endpoint Operator** | [endpoint-metrics-operator](https://github.com/stolostron/multicluster-observability-operator/tree/main/operators/endpointmetrics) | Manages observability setup on managed clusters. | **Legacy** |
+| **Observatorium Operator** | [observatorium-operator](https://github.com/stolostron/observatorium-operator) | Deploys Observatorium (Thanos) components. Forked from main repo. | Active |
+| **Metrics Collector** | [metrics-collector](https://github.com/stolostron/multicluster-observability-operator/tree/main/collectors/metrics) | Scrapes/filters metrics from managed clusters. | **Legacy** |
+| **RBAC Proxy** | [rbac_query_proxy](https://github.com/stolostron/multicluster-observability-operator/tree/main/proxy) | Enforces ACM permissions on metric queries. | Active |
+| **Grafana** | [grafana](https://github.com/stolostron/grafana) | Dashboarding and metric analytics. Forked from main repo. | Active |
+| **Dashboard Loader** | [grafana-dashboard-loader](https://github.com/stolostron/multicluster-observability-operator/tree/main/loaders/dashboards) | Sidecar to load dashboards from configmaps. | Active |
+| **Management Ingress** | [management-ingress](https://github.com/stolostron/management-ingress) | NGINX based ingress controller for OCM services. | Active |
+| **Observatorium API** | [observatorium](https://github.com/stolostron/observatorium) | API Gateway for reading/writing observability data. Forked from main repo. | Active |
+| **Thanos Ecosystem** | [kube-thanos](https://github.com/stolostron/kube-thanos) | Kubernetes configuration for deploying Thanos. | Active |
+
+## Integration Guide for External Projects
+
+External projects can integrate with ACM Observability to provide custom dashboards and collect additional metrics.
+
+### 1. Dashboard Integration
+*   Add your Grafana dashboards to the `operators/multiclusterobservability/manifests/base/grafana` directory. You can use existing folders or create new ones.
+*   **UID:** Each new dashboard must define a **unique `uid`** value in its JSON definition.
+*   **Folder:** The folder name visible in the Grafana UI is configured via the `observability.open-cluster-management.io/dashboard-folder` annotation in the dashboard ConfigMap/JSON.
+
+> **Note:** The short to mid-term goal is to migrate all dashboards to [Perses](https://github.com/perses/perses) with MCOA. This will allow users to view dashboards directly within the integrated OpenShift console.
+
+### 2. Metrics Integration
+To ensure your dashboards display data, you must whitelist the required metrics for collection.
+
+*   **Cardinality:** Users must ensure that added metrics have an **optimized cardinality**. Use aggregation rules (recording rules) when possible to keep the system efficient and scalable.
+*   **Legacy (Metrics Collector):** Add metrics to `operators/multiclusterobservability/manifests/base/config/metrics_allowlist.yaml`.
+*   **MCOA (New):** Add metrics to the `scrape-config.yaml` file located within the corresponding dashboard directory in `operators/multiclusterobservability/manifests/base/grafana`.
+
+### 3. CI Validation
+We enforce strict metric collection to minimize cardinality/cost.
+*   Run `make check-metrics` to verify that only the metrics required by your dashboards are being collected.
+*   **New Directories:** If you create a new directory for your dashboards, you must update `cicd-scripts/metrics/Makefile` to include this new path in the CI checks.
 
 ## Quick Start Guide
 
@@ -31,8 +62,7 @@ Thanos Ecosystem | [kube-thanos](https://github.com/stolostron/kube-thanos) | Ku
 * Ensure [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl) and [kustomize](https://kubectl.docs.kubernetes.io/installation/kustomize/) are installed.
 * Prepare a OpenShift cluster to function as the hub cluster.
 * Ensure [docker 17.03+](https://docs.docker.com/get-started) is installed.
-* Ensure [golang 1.15+](https://golang.org/doc/install) is installed.
-* Ensure [operator-sdk 1.4.2+](https://github.com/operator-framework/operator-sdk) in installed.
+* Ensure [golang](https://golang.org/doc/install) is installed (See `go.mod` for exact version).
 * Ensure the open-cluster-management cluster manager is installed. See [Cluster Manager](https://open-cluster-management.io/getting-started/core/cluster-manager/) for more information.
 * Ensure the `open-cluster-management` _klusterlet_ is installed. See [Klusterlet](https://open-cluster-management.io/getting-started/core/register-cluster/) for more information.
 
@@ -87,39 +117,6 @@ kubectl apply -f operators/multiclusterobservability/config/samples/observabilit
 
 ```bash
 kubectl -n open-cluster-management-observability get pod
-NAME                                                       READY   STATUS    RESTARTS   AGE
-minio-79c7ff488d-72h65                                     1/1     Running   0          9m38s
-observability-alertmanager-0                               3/3     Running   0          7m17s
-observability-alertmanager-1                               3/3     Running   0          6m36s
-observability-alertmanager-2                               3/3     Running   0          6m18s
-observability-grafana-85fdc8c48d-j67j6                     2/2     Running   0          7m17s
-observability-grafana-85fdc8c48d-wnltt                     2/2     Running   0          7m17s
-observability-observatorium-api-69cfff4c95-bpw5s           1/1     Running   0          7m2s
-observability-observatorium-api-69cfff4c95-gbh7b           1/1     Running   0          7m2s
-observability-observatorium-operator-5df6b7949c-kbpmp      1/1     Running   0          7m17s
-observability-rbac-query-proxy-d44df47c4-9ccdn             2/2     Running   0          7m15s
-observability-rbac-query-proxy-d44df47c4-rtcgh             2/2     Running   0          6m50s
-observability-thanos-compact-0                             1/1     Running   0          7m2s
-observability-thanos-query-79c4d9488b-bd5sf                1/1     Running   0          7m3s
-observability-thanos-query-79c4d9488b-d7wzt                1/1     Running   0          7m3s
-observability-thanos-query-frontend-6fdb5d4946-rgblb       1/1     Running   0          7m3s
-observability-thanos-query-frontend-6fdb5d4946-shsz2       1/1     Running   0          7m3s
-observability-thanos-query-frontend-memcached-0            2/2     Running   0          7m3s
-observability-thanos-query-frontend-memcached-1            2/2     Running   0          6m37s
-observability-thanos-query-frontend-memcached-2            2/2     Running   0          6m33s
-observability-thanos-receive-controller-6b446c5576-hj6xl   1/1     Running   0          7m3s
-observability-thanos-receive-default-0                     1/1     Running   0          7m2s
-observability-thanos-receive-default-1                     1/1     Running   0          6m20s
-observability-thanos-receive-default-2                     1/1     Running   0          5m50s
-observability-thanos-rule-0                                2/2     Running   0          7m3s
-observability-thanos-rule-1                                2/2     Running   0          6m27s
-observability-thanos-rule-2                                2/2     Running   0          5m56s
-observability-thanos-store-memcached-0                     2/2     Running   0          7m3s
-observability-thanos-store-memcached-1                     2/2     Running   0          6m37s
-observability-thanos-store-memcached-2                     2/2     Running   0          6m33s
-observability-thanos-store-shard-0-0                       1/1     Running   2          7m3s
-observability-thanos-store-shard-1-0                       1/1     Running   2          7m3s
-observability-thanos-store-shard-2-0                       1/1     Running   2          7m3s
 ```
 
 ### What is next
@@ -132,7 +129,7 @@ kubectl get managedcluster --show-labels
 
 If there is no `vendor=OpenShift` label exists in your managed cluster, you can manually add this label with this command `kubectl label managedcluster <managed cluster name> vendor=OpenShift`
 
-Then you should be able to have `metrics-collector` pod is running:
+Then you should be able to have `metrics-collector` pod is running (Legacy Architecture):
 
 ```bash
 kubectl -n open-cluster-management-addon-observability get pod
@@ -185,5 +182,3 @@ kubectl -n open-cluster-management-observability delete -k examples/minio
 ```bash
 kubectl delete ns open-cluster-management-observability
 ```
-
-Rebuild Image: Thu May 29 16:47:44 EDT 2025
