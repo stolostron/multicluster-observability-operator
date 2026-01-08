@@ -16,6 +16,7 @@ import (
 	cmomanifests "github.com/openshift/cluster-monitoring-operator/pkg/manifests"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
+	goyaml "gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -50,11 +51,14 @@ func RevertHubClusterMonitoringConfig(ctx context.Context, client client.Client)
 	}
 
 	hubInfo := &operatorconfig.HubInfo{}
-	err = yaml.Unmarshal(hubInfoSecret.Data[operatorconfig.HubInfoSecretKey], &hubInfo)
+	// We use goyaml (v2) here because HubInfo has yaml tags but no json tags.
+	// github.com/ghodss/yaml would fail to unmarshal correctly as it relies on JSON tags.
+	// Specifically, kebab-case keys like 'hub-cluster-id' are not automatically mapped to
+	// CamelCase struct fields by the standard JSON decoder.
+	err = goyaml.Unmarshal(hubInfoSecret.Data[operatorconfig.HubInfoSecretKey], &hubInfo)
 	if err != nil {
 		return fmt.Errorf("failed to unmarshal hub info: %w", err)
 	}
-	log.Info("Reverting hub cluster monitoring config", "HubClusterID", hubInfo.HubClusterID)
 
 	found := &corev1.ConfigMap{}
 	if err := client.Get(ctx, types.NamespacedName{Name: clusterMonitoringConfigName,
@@ -75,7 +79,6 @@ func RevertHubClusterMonitoringConfig(ctx context.Context, client client.Client)
 	}
 
 	if !touched {
-		log.Info("Configmap not touched by MCO, skipping revert", "name", clusterMonitoringConfigName)
 		return nil
 	}
 
@@ -95,13 +98,11 @@ func RevertHubClusterMonitoringConfig(ctx context.Context, client client.Client)
 	}
 
 	if foundClusterMonitoringConfiguration.PrometheusK8sConfig == nil {
-		log.Info("PrometheusK8sConfig is nil, nothing to revert")
 		return nil
 	}
 
 	// check if externalLabels exists
 	if foundClusterMonitoringConfiguration.PrometheusK8sConfig.ExternalLabels != nil {
-		log.Info("Checking externalLabels", "labels", foundClusterMonitoringConfiguration.PrometheusK8sConfig.ExternalLabels)
 		delete(foundClusterMonitoringConfiguration.PrometheusK8sConfig.ExternalLabels, operatorconfig.ClusterLabelKeyForAlerts)
 		if len(foundClusterMonitoringConfiguration.PrometheusK8sConfig.ExternalLabels) == 0 {
 			foundClusterMonitoringConfiguration.PrometheusK8sConfig.ExternalLabels = nil
@@ -110,20 +111,11 @@ func RevertHubClusterMonitoringConfig(ctx context.Context, client client.Client)
 
 	// check if alertmanagerConfigs exists
 	if foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs != nil {
-		log.Info("Checking AlertmanagerConfigs", "count", len(foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs))
 		copiedAlertmanagerConfigs := make([]cmomanifests.AdditionalAlertmanagerConfig, 0)
-		expectedSecretName := hubAmRouterCASecretName + "-" + hubInfo.HubClusterID
 		for _, v := range foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs {
-			var secretName string
-			if v.TLSConfig.CA != nil {
-				secretName = v.TLSConfig.CA.LocalObjectReference.Name
-			}
-			log.Info("Evaluating AlertmanagerConfig", "secretName", secretName, "expectedSecretName", expectedSecretName)
 			if v.TLSConfig == (cmomanifests.TLSConfig{}) ||
-				(v.TLSConfig.CA != nil && v.TLSConfig.CA.LocalObjectReference.Name != expectedSecretName) {
+				(v.TLSConfig.CA != nil && v.TLSConfig.CA.LocalObjectReference.Name != hubAmRouterCASecretName+"-"+hubInfo.HubClusterID) {
 				copiedAlertmanagerConfigs = append(copiedAlertmanagerConfigs, v)
-			} else {
-				log.Info("Removing AlertmanagerConfig match")
 			}
 		}
 		if len(copiedAlertmanagerConfigs) == 0 {
