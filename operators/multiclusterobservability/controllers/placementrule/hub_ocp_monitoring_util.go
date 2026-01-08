@@ -14,7 +14,9 @@ import (
 
 	"github.com/ghodss/yaml"
 	cmomanifests "github.com/openshift/cluster-monitoring-operator/pkg/manifests"
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
+	goyaml "gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -26,6 +28,7 @@ const ( // #nosec G101 -- Not a hardcoded credential.
 	clusterMonitoringConfigName    = "cluster-monitoring-config"
 	clusterMonitoringConfigDataKey = "config.yaml"
 	endpointMonitoringOperatorMgr  = "endpoint-monitoring-operator"
+	mcoManager                     = "mco-operator"
 	promNamespace                  = "openshift-monitoring"
 	clusterRoleBindingName         = "hub-metrics-collector-view"
 )
@@ -35,8 +38,24 @@ const ( // #nosec G101 -- Not a hardcoded credential.
 func RevertHubClusterMonitoringConfig(ctx context.Context, client client.Client) error {
 	// try to retrieve the current configmap in the cluster
 
+	hubInfoSecret := &corev1.Secret{}
+	err := client.Get(ctx, types.NamespacedName{
+		Name:      operatorconfig.HubInfoSecretName,
+		Namespace: config.GetDefaultNamespace(),
+	}, hubInfoSecret)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return nil
+		}
+		return fmt.Errorf("failed to get secret %s: %w", operatorconfig.HubInfoSecretName, err)
+	}
+
 	hubInfo := &operatorconfig.HubInfo{}
-	err := yaml.Unmarshal(hubInfoSecret.Data[operatorconfig.HubInfoSecretKey], &hubInfo)
+	// We use goyaml (v2) here because HubInfo has yaml tags but no json tags.
+	// github.com/ghodss/yaml would fail to unmarshal correctly as it relies on JSON tags.
+	// Specifically, kebab-case keys like 'hub-cluster-id' are not automatically mapped to
+	// CamelCase struct fields by the standard JSON decoder.
+	err = goyaml.Unmarshal(hubInfoSecret.Data[operatorconfig.HubInfoSecretKey], &hubInfo)
 	if err != nil {
 		return fmt.Errorf("failed to unmarshal hub info: %w", err)
 	}
@@ -53,7 +72,7 @@ func RevertHubClusterMonitoringConfig(ctx context.Context, client client.Client)
 	// do not touch the configmap if are not already a manager
 	touched := false
 	for _, field := range found.GetManagedFields() {
-		if field.Manager == endpointMonitoringOperatorMgr {
+		if field.Manager == endpointMonitoringOperatorMgr || field.Manager == mcoManager {
 			touched = true
 			break
 		}
