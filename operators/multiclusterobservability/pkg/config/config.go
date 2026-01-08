@@ -954,6 +954,26 @@ func GetTrimmedClusterID(c client.Client) (string, error) {
 	return fmt.Sprintf("%.19s", idTrim), nil
 }
 
+func GetClusterName(obsApiURL string) string {
+	u, err := url.Parse(obsApiURL)
+	if err != nil {
+		log.Error(err, "Failed to parse observatorium api url", "url", obsApiURL)
+		return ""
+	}
+	hostParts := strings.Split(u.Hostname(), ".")
+	if len(hostParts) < 3 {
+		log.Error(err, "Failed to get cluster name from obsApiURL", "obsApiURL", obsApiURL)
+		return ""
+	}
+	// Example:
+	// obsApiURL: https://observatorium-api-cluster1.apps.sno-4xlarge-419-5kjfk.dev07.red-chesterfield.com
+	// hostname: observatorium-api-cluster1.apps.sno-4xlarge-419-5kjfk.dev07.red-chesterfield.com
+	// clusterName: sno-4xlarge-419-5kjfk-dev07-red-chesterfield
+	// This naming convention was added in 2.15.0 release and changed to use cluster ID in 2.15.1
+	clusterName := hostParts[2]
+	return clusterName
+}
+
 // KindOrder is a map that defines the deployment order for Kubernetes resource kinds.
 // Resources with a lower number are deployed before resources with a higher number.
 // This is used to ensure dependencies are created in the correct order, for example,
