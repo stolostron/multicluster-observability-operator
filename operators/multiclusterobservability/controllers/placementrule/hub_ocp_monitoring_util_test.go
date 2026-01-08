@@ -8,9 +8,10 @@ import (
 	"context"
 	"testing"
 
-	"github.com/ghodss/yaml"
+	ghodssyaml "github.com/ghodss/yaml"
 	cmomanifests "github.com/openshift/cluster-monitoring-operator/pkg/manifests"
 	"github.com/stretchr/testify/assert"
+	goyaml "gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -33,7 +34,7 @@ func TestRevertHubClusterMonitoringConfig(t *testing.T) {
 		hubInfo := &operatorconfig.HubInfo{
 			HubClusterID: "test-cluster-id",
 		}
-		hubInfoBytes, _ := yaml.Marshal(hubInfo)
+		hubInfoBytes, _ := goyaml.Marshal(hubInfo)
 		hubInfoSecret := &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      operatorconfig.HubInfoSecretName,
@@ -73,8 +74,8 @@ func TestRevertHubClusterMonitoringConfig(t *testing.T) {
 				},
 			},
 		}
-		initialConfigBytes, _ := yaml.Marshal(initialConfig)
-		initialConfigYAMLBytes, _ := yaml.JSONToYAML(initialConfigBytes)
+		initialConfigBytes, _ := ghodssyaml.Marshal(initialConfig)
+		initialConfigYAMLBytes, _ := ghodssyaml.JSONToYAML(initialConfigBytes)
 
 		cm := &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
@@ -104,7 +105,7 @@ func TestRevertHubClusterMonitoringConfig(t *testing.T) {
 		assert.NoError(t, err)
 
 		updatedConfig := &cmomanifests.ClusterMonitoringConfiguration{}
-		yaml.Unmarshal([]byte(updatedCM.Data[clusterMonitoringConfigDataKey]), updatedConfig)
+		ghodssyaml.Unmarshal([]byte(updatedCM.Data[clusterMonitoringConfigDataKey]), updatedConfig)
 
 		// Check externalLabels: should have "other-label" but not "cluster_id"
 		assert.NotContains(t, updatedConfig.PrometheusK8sConfig.ExternalLabels, operatorconfig.ClusterLabelKeyForAlerts)
