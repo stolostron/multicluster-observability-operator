@@ -179,6 +179,7 @@ func TestObservabilityAddonController(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name: ns,
 				Labels: map[string]string{
+					"vendor":           "OpenShift",
 					"openshiftVersion": version,
 				},
 			},
@@ -726,6 +727,242 @@ func TestIsCustomIngressCertificate(t *testing.T) {
 
 			if result != tt.expectedResult {
 				t.Errorf("isCustomIngressCertificate() = %v, want %v", result, tt.expectedResult)
+			}
+		})
+	}
+}
+
+// TestAreManagedClusterLabelsReady tests the core decision points of the label readiness check.
+// Comprehensive scenarios are covered by TestGetManagedClustersListSkipsNotReady.
+func TestAreManagedClusterLabelsReady(t *testing.T) {
+	tests := []struct {
+		name           string
+		labels         map[string]string
+		expectedResult bool
+		description    string
+	}{
+		{
+			name:           "Not ready - no vendor",
+			labels:         map[string]string{},
+			expectedResult: false,
+			description:    "Should return false when vendor label is missing",
+		},
+		{
+			name:           "Not ready - vendor auto-detect",
+			labels:         map[string]string{"vendor": "auto-detect"},
+			expectedResult: false,
+			description:    "Should return false when vendor is still auto-detecting",
+		},
+		{
+			name:           "Not ready - OpenShift without version (HCP case)",
+			labels:         map[string]string{"vendor": "OpenShift"},
+			expectedResult: false,
+			description:    "Should return false for OpenShift cluster without openshiftVersion",
+		},
+		{
+			name:           "Ready - OpenShift with version",
+			labels:         map[string]string{"vendor": "OpenShift", "openshiftVersion": "4.19.3"},
+			expectedResult: true,
+			description:    "Should return true for OpenShift cluster with openshiftVersion",
+		},
+		{
+			name:           "Ready - non-OpenShift cluster",
+			labels:         map[string]string{"vendor": "IKS"},
+			expectedResult: true,
+			description:    "Should return true for non-OpenShift cluster (no version check)",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mc := &clusterv1.ManagedCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:   "test-cluster",
+					Labels: tt.labels,
+				},
+			}
+
+			result := areManagedClusterLabelsReady(mc)
+
+			if result != tt.expectedResult {
+				t.Errorf("areManagedClusterLabelsReady() = %v, want %v. %s", result, tt.expectedResult, tt.description)
+			}
+		})
+	}
+}
+
+// TestGetManagedClustersListSkipsNotReady tests that getManagedClustersList skips clusters
+// whose labels aren't ready, preventing premature classification as non-OCP
+func TestGetManagedClustersListSkipsNotReady(t *testing.T) {
+	initSchema(t)
+
+	tests := []struct {
+		name             string
+		managedClusters  []*clusterv1.ManagedCluster
+		expectedCount    int
+		expectedClusters []string
+		skippedClusters  []string
+		description      string
+	}{
+		{
+			name: "Skip cluster with no vendor label",
+			managedClusters: []*clusterv1.ManagedCluster{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:   "cluster-no-vendor",
+						Labels: map[string]string{},
+					},
+				},
+			},
+			expectedCount:    0,
+			expectedClusters: []string{},
+			skippedClusters:  []string{"cluster-no-vendor"},
+			description:      "Cluster without vendor label should be skipped",
+		},
+		{
+			name: "Skip cluster with vendor auto-detect",
+			managedClusters: []*clusterv1.ManagedCluster{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:   "cluster-autodetect",
+						Labels: map[string]string{"vendor": "auto-detect"},
+					},
+				},
+			},
+			expectedCount:    0,
+			expectedClusters: []string{},
+			skippedClusters:  []string{"cluster-autodetect"},
+			description:      "Cluster with vendor=auto-detect should be skipped",
+		},
+		{
+			name: "Skip HCP cluster without openshiftVersion",
+			managedClusters: []*clusterv1.ManagedCluster{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:   "hcp-cluster",
+						Labels: map[string]string{"vendor": "OpenShift"},
+					},
+				},
+			},
+			expectedCount:    0,
+			expectedClusters: []string{},
+			skippedClusters:  []string{"hcp-cluster"},
+			description:      "HCP cluster without openshiftVersion should be skipped (prevents incorrect non-OCP classification)",
+		},
+		{
+			name: "Include OpenShift cluster with version",
+			managedClusters: []*clusterv1.ManagedCluster{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:   "ocp-cluster",
+						Labels: map[string]string{"vendor": "OpenShift", "openshiftVersion": "4.19.3"},
+					},
+				},
+			},
+			expectedCount:    1,
+			expectedClusters: []string{"ocp-cluster"},
+			skippedClusters:  []string{},
+			description:      "OpenShift cluster with version should be included",
+		},
+		{
+			name: "Include non-OpenShift cluster",
+			managedClusters: []*clusterv1.ManagedCluster{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:   "iks-cluster",
+						Labels: map[string]string{"vendor": "IKS"},
+					},
+				},
+			},
+			expectedCount:    1,
+			expectedClusters: []string{"iks-cluster"},
+			skippedClusters:  []string{},
+			description:      "Non-OpenShift cluster should be included (no version check needed)",
+		},
+		{
+			name: "Mixed clusters - some ready, some not",
+			managedClusters: []*clusterv1.ManagedCluster{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:   "ready-ocp",
+						Labels: map[string]string{"vendor": "OpenShift", "openshiftVersion": "4.19.3"},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:   "not-ready-hcp",
+						Labels: map[string]string{"vendor": "OpenShift"},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:   "auto-detect",
+						Labels: map[string]string{"vendor": "auto-detect"},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:   "ready-iks",
+						Labels: map[string]string{"vendor": "IKS"},
+					},
+				},
+			},
+			expectedCount:    2,
+			expectedClusters: []string{"ready-ocp", "ready-iks"},
+			skippedClusters:  []string{"not-ready-hcp", "auto-detect"},
+			description:      "Should include only ready clusters and skip not-ready ones",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create a fake client with the managed clusters
+			objs := []runtime.Object{}
+			for _, mc := range tt.managedClusters {
+				objs = append(objs, mc)
+			}
+
+			client := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
+
+			// Call getManagedClustersList
+			result, err := getManagedClustersList(context.TODO(), client)
+			if err != nil {
+				t.Fatalf("getManagedClustersList() error = %v", err)
+			}
+
+			// Filter out local-cluster from results (it's added automatically)
+			filteredResult := []managedClusterInfo{}
+			for _, r := range result {
+				if !r.IsLocalCluster {
+					filteredResult = append(filteredResult, r)
+				}
+			}
+
+			// Check count
+			if len(filteredResult) != tt.expectedCount {
+				t.Errorf("getManagedClustersList() returned %d clusters, want %d. Description: %s",
+					len(filteredResult), tt.expectedCount, tt.description)
+			}
+
+			// Check that expected clusters are present
+			resultNames := make(map[string]bool)
+			for _, r := range filteredResult {
+				resultNames[r.Name] = true
+			}
+
+			for _, expectedName := range tt.expectedClusters {
+				if !resultNames[expectedName] {
+					t.Errorf("Expected cluster %s not found in results. Description: %s",
+						expectedName, tt.description)
+				}
+			}
+
+			// Check that skipped clusters are not present
+			for _, skippedName := range tt.skippedClusters {
+				if resultNames[skippedName] {
+					t.Errorf("Cluster %s should have been skipped but was included in results. Description: %s",
+						skippedName, tt.description)
+				}
 			}
 		})
 	}
