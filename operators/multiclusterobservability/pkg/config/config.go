@@ -969,7 +969,8 @@ func GetClusterName(obsApiURL string) string {
 	// obsApiURL: https://observatorium-api-cluster1.apps.sno-4xlarge-419-5kjfk.dev07.red-chesterfield.com
 	// hostname: observatorium-api-cluster1.apps.sno-4xlarge-419-5kjfk.dev07.red-chesterfield.com
 	// clusterName: sno-4xlarge-419-5kjfk-dev07-red-chesterfield
-	clusterName := strings.Join(hostParts[2:len(hostParts)-1], "-")
+	// This naming convention was added in 2.15.0 release and changed to use cluster ID in 2.15.1
+	clusterName := hostParts[2]
 	return clusterName
 }
 
