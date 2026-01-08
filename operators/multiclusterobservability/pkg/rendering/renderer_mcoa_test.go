@@ -98,6 +98,26 @@ func TestRenderMCOADeployment(t *testing.T) {
 	assert.Equal(t, corev1.PullIfNotPresent, container.ImagePullPolicy)
 	assert.Equal(t, *mco.Spec.AdvancedConfig.MultiClusterObservabilityAddon.Resources, container.Resources)
 	assert.True(t, *container.SecurityContext.RunAsNonRoot)
+
+	// Test with AddonManager resources and logVerbosity overrides
+	mco.Spec.Capabilities = &mcov1beta2.CapabilitiesSpec{
+		AddonManager: &mcov1beta2.AddonManagerSpec{
+			LogVerbosity: ptr.To[int32](5),
+			Resources: &corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceCPU:    resource.MustParse("300m"),
+					corev1.ResourceMemory: resource.MustParse("1Gi"),
+				},
+			},
+		},
+	}
+	uobj, err = renderer.renderMCOADeployment(dp, "test", map[string]string{"key": "value"})
+	assert.NoError(t, err)
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(uobj.Object, got)
+	assert.NoError(t, err)
+	container = got.Spec.Template.Spec.Containers[0]
+	assert.Equal(t, *mco.Spec.Capabilities.AddonManager.Resources, container.Resources)
+	assert.Contains(t, container.Args, "--log-verbosity=5")
 }
 
 func TestRenderAddonDeploymentConfig(t *testing.T) {

@@ -307,6 +307,16 @@ type UserWorkloadCapabilitiesSpec struct {
 	Traces UserWorkloadTracesSpec `json:"traces,omitempty"`
 }
 
+type AddonManagerSpec struct {
+	// Compute Resources required by this component.
+	// +optional
+	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
+
+	// Log verbosity for the addon-manager.
+	// +optional
+	LogVerbosity *int32 `json:"logVerbosity,omitempty"`
+}
+
 // CapabilitiesSpec defines the platform and user workload observabilities capabilities
 // managed exclusively by the multicluster-observability-addon. Enabling any of these
 // capabilities will result in deploying the following resources:
@@ -332,6 +342,12 @@ type CapabilitiesSpec struct {
 	// +optional
 	// +kubebuilder:validation:Optional
 	UserWorkloads *UserWorkloadCapabilitiesSpec `json:"userWorkloads,omitempty"`
+
+	// AddonManager defines the configuration spec for the addon-manager.
+	//
+	// +optional
+	// +kubebuilder:validation:Optional
+	AddonManager *AddonManagerSpec `json:"addonManager,omitempty"`
 }
 
 type AdvancedConfig struct {
