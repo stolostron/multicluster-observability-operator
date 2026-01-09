@@ -66,6 +66,9 @@ The project is currently in a transitional state between two architectures:
 
 ### 3.3 Coding Standards (Go)
 *   **Version:** Refer to `go.mod` for the current Go version and toolchain.
+*   **Unit Tests:** New contributions **MUST** include unit tests covering the modified logic.
+*   **Modern Idioms:** Prioritize the use of modern Go features (v1.23+). Favor the `iter` package, range-over-func, and functions like `maps.All` or `slices.Values` over manual iteration loops for common data transformations.
+*   **Dependencies:** Favor the Go standard library over adding new external dependencies whenever possible to minimize bloat and maintenance surface.
 *   **Commenting:** Focus on the "Why" over the "What". Add comments for non-obvious logic, architectural decisions, or complex workarounds where the rationale isn't immediately clear from the code itself.
 *   **Error Handling:** Use `fmt.Errorf("...: %w", err)` for wrapping. Handle errors once (log OR return, never both).
 *   **Logging:** Use structured logging (`log.Info("msg", "key", value)`). Log all state changes (Create/Update/Delete).
