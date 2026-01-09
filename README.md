@@ -1,20 +1,130 @@
 # Observability Overview
 
 [![Build](https://img.shields.io/badge/build-Prow-informational)](https://prow.ci.openshift.org/?repo=stolostron%2F${multicluster-observability-operator})
-[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=stolostron_multicluster-observability-operator&metric=alert_status&token=3452dcca82a98e4aa297c1b31fd21939288db4c0)](https://sonarcloud.io/dashboard?id=stolostron_multicluster-observability-operator)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 This document explains how the different components in Open Cluster Management Observability come together to deliver multicluster fleet observability. We leverage several open source projects: [Grafana](https://github.com/grafana/grafana), [Alertmanager](https://github.com/prometheus/alertmanager), [Thanos](https://github.com/thanos-io/thanos/), [Observatorium Operator and API Gateway](https://github.com/observatorium), [Prometheus](https://github.com/prometheus/prometheus). We also leverage [Open Cluster Management projects](https://open-cluster-management.io/) namely - [Cluster Manager or Registration Operator](https://github.com/stolostron/registration-operator), [Klusterlet](https://github.com/stolostron/registration-operator). The multicluster-observability operator is the root operator which pulls in all things needed.
 
 ## Architecture
 
-The project currently supports two architectures:
+### Component Orchestration
+
+The following hierarchy describes how components are deployed and managed:
+
+*   **MCO (Multicluster Observability Operator)**: The root operator on the hub cluster. It orchestrates the deployment of:
+    *   **Observatorium Operator**
+    *   **Grafana** and the **Dashboard Loader**
+    *   **AlertManager**
+    *   **MCOA Addon Manager** (when enabled)
+    *   **Endpoint Operator (on the Hub)**: Deployed directly by MCO's controller client (bypassing ManifestWorks) to satisfy Global Hub self-management constraints.
+*   **Observatorium Operator**: Manages the life cycle of the data plane components:
+    *   **Observatorium API**
+    *   **Thanos ecosystem** (Query, Store, Compact, Receive, etc.)
+*   **Endpoint Operator**: Manages observability on managed clusters.
+    *   **Deployment**: Distributed to managed clusters via `ManifestWorks` and applied by the `work-agent` (except on the Hub).
+    *   **Responsibility**: Deploys and configures the **Metrics Collector**. It can deploy separate collector instances for platform monitoring and **user workload monitoring**. It also configures the **Cluster Monitoring Operator (CMO)** to ensure both platform and user workload Prometheus instances forward alerts to the Hub's Alertmanager.
+
+### Collection Architectures
+
+The project currently supports two architectures for metrics collection:
 
 1.  **MCOA (Multi-Cluster Observability Addon) - New Standard**: Leverages the upstream `addon-framework` and `monitoring.rhobs` APIs (`PrometheusAgent`, `ScrapeConfig`) for a more standard and scalable approach.
 2.  **Legacy Architecture**: Uses the `observability-endpoint-operator` and custom `metrics-collector` deployed via `ManifestWorks`.
 
-## Conceptual Diagram
+### Data Flow
 
-![Conceptual Diagram of the Components](docs/images/observability_overview_in_ocm.png)
+```mermaid
+---
+config:
+  theme: 'base'
+  themeVariables:
+    primaryColor: '#2D70B5'
+    background: 'white'
+    primaryTextColor: '#fff'
+    lineColor: '#343628'
+    secondaryColor: 'transparent'
+    tertiaryColor: '#fdfdfd'
+---
+block
+    columns 7
+    
+    %% -- COLUMN 1: MANAGED CLUSTER --
+    block:MC
+        columns 1
+        ManagedCluster(["Managed Cluster"])
+        EndpointOp("Endpoint Operator")
+        space
+        MetCol("Metrics Collector")
+        space
+        PlatProm("Platform Prometheus")
+    end
+
+    space
+
+    %% -- COLUMN 2: HUB SERVER --
+    block:HUB:3
+        columns 5
+        space:2
+        HubCluster(["Hub Cluster"])
+        space:2
+        MCO("MCO Operator")
+        space
+        RBAC["RBAC Query Proxy"]
+        space
+        block:Grafana
+            columns 1
+            Loader["Dashboard Loader"]
+            Graf["Grafana"]
+        end
+        
+        ObsOp["Observatorium Operator"]
+        space:4
+
+        space:2
+        ObsAPI["Observatorium API"]
+        space:2
+
+        space:5
+
+        AlertMgr["Alert manager"]
+        space:1
+        Thanos["Thanos ecosystem"]
+        space:1
+    end
+
+    space
+
+    %% -- COLUMN 3: External systems --
+    block:Right
+        columns 1
+        ExtSystems(["External Systems"])
+        WebBrowser("Web Browser")
+        space
+        ExtEndpoint("External Endpoint")
+        space
+        ObjStore[("Object Storage")]
+    end
+
+    %% -- STYLING --
+    classDef mainBoxLabel fill:#B5362D,color:white,stroke:#333,stroke-width:0px;
+    class ManagedCluster mainBoxLabel
+    class HubCluster mainBoxLabel
+    class ExtSystems mainBoxLabel
+    classDef controlPlane fill:#ccc,color:#666,stroke:#bbb,stroke-width:2px,stroke-dasharray: 5 5;
+    class MCO,EndpointOp,ObsOp,Loader controlPlane    
+
+    %% -- CONNECTIONS --
+    MetCol -- "federates metrics" --> PlatProm
+    MetCol -- "remote writes" --> ObsAPI
+    PlatProm -- "alerts" --> AlertMgr
+    WebBrowser -- "accesses" --> Grafana
+    Grafana -- "queries via" --> RBAC
+    RBAC -- "proxies to" --> ObsAPI
+    ObsAPI -- "forwards" --> Thanos
+    ObsAPI -- "remote writes (optional)" --> ExtEndpoint
+    Thanos -- "sends alerts" --> AlertMgr
+    Thanos -- "stores" --> ObjStore
+```
 
 ## Associated Github Repositories
 
@@ -28,7 +138,6 @@ The project currently supports two architectures:
 | **RBAC Proxy** | [rbac_query_proxy](https://github.com/stolostron/multicluster-observability-operator/tree/main/proxy) | Enforces ACM permissions on metric queries. | Active |
 | **Grafana** | [grafana](https://github.com/stolostron/grafana) | Dashboarding and metric analytics. Forked from main repo. | Active |
 | **Dashboard Loader** | [grafana-dashboard-loader](https://github.com/stolostron/multicluster-observability-operator/tree/main/loaders/dashboards) | Sidecar to load dashboards from configmaps. | Active |
-| **Management Ingress** | [management-ingress](https://github.com/stolostron/management-ingress) | NGINX based ingress controller for OCM services. | Active |
 | **Observatorium API** | [observatorium](https://github.com/stolostron/observatorium) | API Gateway for reading/writing observability data. Forked from main repo. | Active |
 | **Thanos Ecosystem** | [kube-thanos](https://github.com/stolostron/kube-thanos) | Kubernetes configuration for deploying Thanos. | Active |
 
