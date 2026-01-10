@@ -571,8 +571,11 @@ func createAllRelatedRes(
 			continue
 		}
 
-		log.Info("Reconciling managed cluster resources", "cluster_name", managedCluster, "request.name", request.Name,
-			"request.namespace", request.Namespace, "openshiftVersion", openshiftVersion)
+		log.Info("Reconciling managed cluster resources",
+			"cluster", managedCluster,
+			"openshiftVersion", openshiftVersion,
+			"triggered_by", request.Name,
+			"in_namespace", request.Namespace)
 		var installProm bool
 		namespace := managedCluster
 		switch openshiftVersion {
@@ -834,6 +837,18 @@ func getManagedClustersList(ctx context.Context, c client.Client) ([]managedClus
 			continue
 		}
 
+		// ACM-27834: Skip clusters whose labels aren't ready yet
+		// This prevents treating any OCP cluster still provisioning or waiting for clusterverion to settle
+		// as non-OCP before openshiftVersion label is set
+		if !areManagedClusterLabelsReady(&mc) {
+			log.Info("Skipping managed cluster - labels not ready",
+				"cluster", mc.GetName(),
+				"vendor", mc.GetLabels()["vendor"],
+				"hasOpenshiftVersion", mc.GetLabels()["openshiftVersion"] != "")
+			continue // Will be picked up when labels are updated (watch triggers reconcile)
+		}
+
+		// Labels are ready - safe to use openshiftVersion
 		openshiftVersion := nonOCP
 		if version, ok := mc.GetLabels()["openshiftVersion"]; ok {
 			openshiftVersion = version
