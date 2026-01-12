@@ -90,7 +90,7 @@ func RegisterDebugEndpoint(register func(string, http.Handler) error) error {
 	if err != nil {
 		return err
 	}
-	err = register("/debug/pprof/block", http.Handler(pprof.Handler("block")))
+	err = register("/debug/pprof/block", pprof.Handler("block"))
 	if err != nil {
 		return err
 	}

@@ -564,7 +564,7 @@ func GetAlertmanagerCA(client client.Client) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return string(amCAConfigmap.Data["service-ca.crt"]), nil
+	return amCAConfigmap.Data["service-ca.crt"], nil
 }
 
 func GetDefaultNamespace() string {

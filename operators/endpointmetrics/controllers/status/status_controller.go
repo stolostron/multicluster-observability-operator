@@ -78,7 +78,7 @@ func newReason(s string) reason {
 }
 
 func (r reason) String() string {
-	return string(r.reason)
+	return r.reason
 }
 
 func (r reason) Priority() int {
