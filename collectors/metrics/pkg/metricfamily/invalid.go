@@ -16,9 +16,9 @@ type errorInvalidFederateSamples struct {
 	min int64
 }
 
-func NewErrorInvalidFederateSamples(min time.Time) Transformer {
+func NewErrorInvalidFederateSamples(minTime time.Time) Transformer {
 	return &errorInvalidFederateSamples{
-		min: min.Unix() * 1000,
+		min: minTime.Unix() * 1000,
 	}
 }
 
@@ -91,9 +91,9 @@ type dropInvalidFederateSamples struct {
 	min int64
 }
 
-func NewDropInvalidFederateSamples(min time.Time) Transformer {
+func NewDropInvalidFederateSamples(minTime time.Time) Transformer {
 	return &dropInvalidFederateSamples{
-		min: min.Unix() * 1000,
+		min: minTime.Unix() * 1000,
 	}
 }
 

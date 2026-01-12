@@ -14,9 +14,9 @@ type dropExpiredSamples struct {
 	min int64
 }
 
-func NewDropExpiredSamples(min time.Time) Transformer {
+func NewDropExpiredSamples(minTime time.Time) Transformer {
 	return &dropExpiredSamples{
-		min: min.Unix() * 1000,
+		min: minTime.Unix() * 1000,
 	}
 }
 

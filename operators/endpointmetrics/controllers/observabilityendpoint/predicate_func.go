@@ -18,7 +18,7 @@ import (
 )
 
 func getPred(name string, namespace string,
-	create bool, update bool, delete bool) predicate.Funcs {
+	create bool, update bool, isDelete bool) predicate.Funcs {
 	createFunc := func(e event.CreateEvent) bool {
 		return false
 	}
@@ -62,7 +62,7 @@ func getPred(name string, namespace string,
 			return false
 		}
 	}
-	if delete {
+	if isDelete {
 		deleteFunc = func(e event.DeleteEvent) bool {
 			if e.Object.GetName() == name && (namespace == "" || e.Object.GetNamespace() == namespace) {
 				return true

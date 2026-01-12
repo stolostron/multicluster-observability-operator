@@ -131,29 +131,29 @@ func newKubeInformer(coreClient corev1client.CoreV1Interface) (cache.SharedIndex
 				times++
 			}
 		},
-		UpdateFunc: func(old, new any) {
-			if old.(*corev1.ConfigMap).ObjectMeta.ResourceVersion == new.(*corev1.ConfigMap).ObjectMeta.ResourceVersion {
+		UpdateFunc: func(old, newObj any) {
+			if old.(*corev1.ConfigMap).ObjectMeta.ResourceVersion == newObj.(*corev1.ConfigMap).ObjectMeta.ResourceVersion {
 				return
 			}
-			if !isDesiredDashboardConfigmap(new) {
+			if !isDesiredDashboardConfigmap(newObj) {
 				return
 			}
-			klog.Infof("detect there is a dashboard %v updated", new.(*corev1.ConfigMap).Name)
-			err := updateDashboard(old, new, false)
+			klog.Infof("detect there is a dashboard %v updated", newObj.(*corev1.ConfigMap).Name)
+			err := updateDashboard(old, newObj, false)
 
 			times := 0
 			for {
 				if err == nil {
 					break
 				} else if times == maxDashboardRetry {
-					klog.Errorf("dashboard: %s could not be created after retrying %v times", new.(*corev1.ConfigMap).Name, maxDashboardRetry)
+					klog.Errorf("dashboard: %s could not be created after retrying %v times", newObj.(*corev1.ConfigMap).Name, maxDashboardRetry)
 					break
 				}
 
-				klog.Warningf("updating of dashboard: %v failed. Retrying in 10s. Error: %v", new.(*corev1.ConfigMap).Name, err)
+				klog.Warningf("updating of dashboard: %v failed. Retrying in 10s. Error: %v", newObj.(*corev1.ConfigMap).Name, err)
 				time.Sleep(time.Second * 10)
 
-				err = updateDashboard(old, new, false)
+				err = updateDashboard(old, newObj, false)
 
 				times++
 			}
@@ -302,9 +302,9 @@ func getDashboardCustomFolderTitle(obj any) string {
 }
 
 // updateDashboard is used to update the customized dashboards via calling grafana api.
-func updateDashboard(old, new any, overwrite bool) error {
+func updateDashboard(old, newObj any, overwrite bool) error {
 	folderID := 0.0
-	folderTitle := getDashboardCustomFolderTitle(new)
+	folderTitle := getDashboardCustomFolderTitle(newObj)
 	if folderTitle != "" {
 		folderID = createCustomFolder(folderTitle)
 		if folderID == 0 {
@@ -312,7 +312,7 @@ func updateDashboard(old, new any, overwrite bool) error {
 		}
 	}
 
-	cm, ok := new.(*corev1.ConfigMap)
+	cm, ok := newObj.(*corev1.ConfigMap)
 	if !ok || cm == nil {
 		return fmt.Errorf("failed to get dashboard configmap")
 	}
@@ -324,15 +324,15 @@ func updateDashboard(old, new any, overwrite bool) error {
 		homeDashboardUID = labels[homeDashboardUIDKey]
 	}
 
-	for _, value := range new.(*corev1.ConfigMap).Data {
+	for _, value := range newObj.(*corev1.ConfigMap).Data {
 		dashboard := map[string]any{}
 		err := json.Unmarshal([]byte(value), &dashboard)
 		if err != nil {
 			return fmt.Errorf("failed to unmarshall data: %v", err)
 		}
 		if dashboard["uid"] == nil || dashboard["uid"] == "" {
-			dashboard["uid"], _ = util.GenerateUID(new.(*corev1.ConfigMap).GetName(),
-				new.(*corev1.ConfigMap).GetNamespace())
+			dashboard["uid"], _ = util.GenerateUID(newObj.(*corev1.ConfigMap).GetName(),
+				newObj.(*corev1.ConfigMap).GetNamespace())
 			klog.Infof("dashboard uid is not set, generating a default: %s", dashboard["uid"])
 		}
 		dashboard["id"] = nil
@@ -354,7 +354,7 @@ func updateDashboard(old, new any, overwrite bool) error {
 			if respStatusCode == http.StatusPreconditionFailed {
 				switch {
 				case strings.Contains(string(body), "version-mismatch"):
-					return updateDashboard(nil, new, true)
+					return updateDashboard(nil, newObj, true)
 				case strings.Contains(string(body), "name-exists"):
 					return fmt.Errorf("the dashboard name already existed")
 				default:
