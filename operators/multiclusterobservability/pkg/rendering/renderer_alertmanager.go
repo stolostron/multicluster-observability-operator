@@ -79,7 +79,7 @@ func (r *MCORenderer) renderAlertManagerStatefulSet(res *resource.Resource, name
 	alertManagerContainer.ImagePullPolicy = imagePullPolicy
 	if *dep.Spec.Replicas > 1 {
 		alertManagerContainer.Args = append(alertManagerContainer.Args, "--cluster.listen-address=[$(POD_IP)]:9094")
-		for i := int32(0); i < *dep.Spec.Replicas; i++ {
+		for i := range *dep.Spec.Replicas {
 			alertManagerContainer.Args = append(alertManagerContainer.Args, "--cluster.peer="+
 				mcoconfig.GetOperandName(mcoconfig.Alertmanager)+"-"+
 				strconv.Itoa(int(i))+".alertmanager-operated."+

@@ -233,7 +233,7 @@ func ToCompactJSON(v interface{}, prefix string, depth int, maxDepth int) string
 	if rv.Kind() == reflect.Slice || rv.Kind() == reflect.Array {
 		var sb strings.Builder
 		sb.WriteString("[\n")
-		for i := 0; i < rv.Len(); i++ {
+		for i := range rv.Len() {
 			if i > 0 {
 				sb.WriteString(",\n")
 			}

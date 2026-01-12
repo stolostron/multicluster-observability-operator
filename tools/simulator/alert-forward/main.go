@@ -133,7 +133,7 @@ func (af *alertForwarder) Run() error {
 			return nil
 		case <-ticker.C:
 			var wg sync.WaitGroup
-			for i := 0; i < af.workers; i++ {
+			for i := range af.workers {
 				log.Printf("sending alerts with worker %d\n", i)
 				wg.Add(1)
 				go func(index int, client *http.Client, traceCtx context.Context, url string, payload []byte) {

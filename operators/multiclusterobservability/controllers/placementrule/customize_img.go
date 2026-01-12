@@ -115,7 +115,7 @@ func (c *DefaultClient) ImageOverride(imageName string) (newImageName string, er
 		return imageName, nil
 	}
 	overrideImageName := imageName
-	for i := 0; i < len(imageRegistries.Registries); i++ {
+	for i := range len(imageRegistries.Registries) {
 		registry := imageRegistries.Registries[i]
 		name := imageOverride(registry.Source, registry.Mirror, imageName)
 		if name != imageName {
