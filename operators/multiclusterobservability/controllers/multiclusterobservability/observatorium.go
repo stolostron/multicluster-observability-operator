@@ -248,7 +248,7 @@ func updateTenantID(
 	for j, hashring := range newSpec.Hashrings {
 		if slices.Contains(hashring.Tenants, newTenant.ID) {
 			newSpec.Hashrings[j].Tenants = util.Remove(newSpec.Hashrings[j].Tenants, newTenant.ID)
-			newSpec.Hashrings[j].Tenants = append(newSpec.Hashrings[0].Tenants, oldTenant.ID)
+			newSpec.Hashrings[j].Tenants = append(newSpec.Hashrings[j].Tenants, oldTenant.ID)
 		}
 	}
 }
