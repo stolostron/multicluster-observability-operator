@@ -502,7 +502,7 @@ func (w *Worker) forward(ctx context.Context) error {
 		return nil
 	}
 
-	req := &http.Request{Method: "POST", URL: w.to}
+	req := &http.Request{Method: http.MethodPost, URL: w.to}
 	if err := w.toClient.RemoteWrite(ctx, req, families, w.interval); err != nil {
 		var httpError *metricsclient.HTTPError
 		// Avoid degrading the status on 409
@@ -540,7 +540,7 @@ func (w *Worker) getFederateMetrics(ctx context.Context) ([]*clientmodel.MetricF
 	}
 	from.RawQuery = v.Encode()
 
-	req := &http.Request{Method: "GET", URL: from}
+	req := &http.Request{Method: http.MethodGet, URL: from}
 	families, err = w.fromClient.Retrieve(ctx, req)
 	if err != nil {
 		rlogger.Log(w.logger, rlogger.Warn, "msg", "Failed to retrieve metrics", "err", err)
@@ -577,7 +577,7 @@ func (w *Worker) getRecordingMetrics(ctx context.Context) ([]*clientmodel.Metric
 		v.Add(queryParam, rquery)
 		from.RawQuery = v.Encode()
 
-		req := &http.Request{Method: "GET", URL: from}
+		req := &http.Request{Method: http.MethodGet, URL: from}
 		rfamilies, err := w.fromClient.RetrieveRecordingMetrics(ctx, req, rname)
 		if err != nil {
 			rlogger.Log(w.logger, rlogger.Warn, "msg", "Failed to retrieve recording metrics", "err", err, "url", from)

@@ -59,7 +59,7 @@ func newAlertFowarder(opts *alertForwarderOptions) (*alertForwarder, error) {
 		Path:   fmt.Sprintf("/api/%s/alerts", opts.amAPIVersion),
 	}
 
-	accessToken := ""
+	var accessToken string
 	switch {
 	case len(opts.amAccessToken) > 0:
 		accessToken = opts.amAccessToken
@@ -73,7 +73,7 @@ func newAlertFowarder(opts *alertForwarderOptions) (*alertForwarder, error) {
 		return nil, errors.New("am-access-token or am-access-token-file must be specified")
 	}
 
-	alerts := ""
+	var alerts string
 	switch {
 	case len(opts.alerts) > 0:
 		alerts = opts.alerts
@@ -228,7 +228,7 @@ func createAlertmanagerConfig(amHost, amScheme, amAPIVersion, amAccessToken stri
 
 // send alerts to alertmanager with one http request.
 func sendOne(c *http.Client, traceCtx context.Context, url string, b []byte) error {
-	req, err := http.NewRequestWithContext(traceCtx, "POST", url, bytes.NewReader(b))
+	req, err := http.NewRequestWithContext(traceCtx, http.MethodPost, url, bytes.NewReader(b))
 	if err != nil {
 		return err
 	}

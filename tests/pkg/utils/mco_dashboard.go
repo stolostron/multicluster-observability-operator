@@ -26,7 +26,7 @@ func ContainDashboard(opt TestOptions, title string) (error, bool) {
 	path := "/api/search?"
 	queryParams := url.PathEscape(fmt.Sprintf("query=%s", title))
 	req, err := http.NewRequest(
-		"GET",
+		http.MethodGet,
 		grafanaConsoleURL+path+queryParams,
 		nil)
 	if err != nil {

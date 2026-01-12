@@ -74,7 +74,7 @@ func (mqm *Modifier) Modify() error {
 	}
 
 	var rawQuery string
-	if mqm.Req.Method == "POST" {
+	if mqm.Req.Method == http.MethodPost {
 		body, _ := io.ReadAll(mqm.Req.Body)
 		_ = mqm.Req.Body.Close()
 		queryValues, err := url.ParseQuery(string(body))
