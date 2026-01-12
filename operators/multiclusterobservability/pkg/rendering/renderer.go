@@ -84,7 +84,7 @@ func (r *MCORenderer) Render() ([]*unstructured.Unstructured, error) {
 	}
 	resources = append(resources, grafanaResources...)
 
-	//load and render alertmanager templates
+	// load and render alertmanager templates
 	alertTemplates, err := templates.GetOrLoadAlertManagerTemplates(templatesutil.GetTemplateRenderer())
 	if err != nil {
 		return nil, err
@@ -147,9 +147,7 @@ func (r *MCORenderer) Render() ([]*unstructured.Unstructured, error) {
 				{Name: mcoconfig.GetImagePullSecret(r.cr.Spec)},
 			}
 
-			switch resources[idx].GetName() {
-
-			case "observatorium-operator":
+			if resources[idx].GetName() == "observatorium-operator" {
 				spec.Containers[0].Image = mcoconfig.DefaultImgRepository + "/" +
 					mcoconfig.ObservatoriumOperatorImgName + ":" + mcoconfig.DefaultImgTagSuffix
 
@@ -159,7 +157,6 @@ func (r *MCORenderer) Render() ([]*unstructured.Unstructured, error) {
 					spec.Containers[0].Image = image
 				}
 				dep.Name = mcoconfig.GetOperandName(mcoconfig.ObservatoriumOperator)
-
 			}
 
 			unstructuredObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)

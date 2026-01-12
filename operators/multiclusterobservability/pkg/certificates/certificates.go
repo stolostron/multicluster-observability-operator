@@ -421,11 +421,9 @@ func removeExpiredCA(c client.Client, name string) {
 			if err != nil {
 				log.Error(err, "Find wrong cert bytes, needs to remove it", "name", name)
 				removeFlag = true
-			} else {
-				if time.Now().After(certs[0].NotAfter) {
-					log.Info("CA certificate expired, needs to remove it", "name", name)
-					removeFlag = true
-				}
+			} else if time.Now().After(certs[0].NotAfter) {
+				log.Info("CA certificate expired, needs to remove it", "name", name)
+				removeFlag = true
 			}
 			if !removeFlag {
 				caSecret.Data["tls.crt"] = append(caSecret.Data["tls.crt"], data[index:len(data)-len(restData)]...)

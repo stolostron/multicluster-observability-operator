@@ -60,28 +60,30 @@ func newAlertFowarder(opts *alertForwarderOptions) (*alertForwarder, error) {
 	}
 
 	accessToken := ""
-	if len(opts.amAccessToken) > 0 {
+	switch {
+	case len(opts.amAccessToken) > 0:
 		accessToken = opts.amAccessToken
-	} else if len(opts.amAccessTokenFile) > 0 {
+	case len(opts.amAccessTokenFile) > 0:
 		data, err := os.ReadFile(opts.amAccessTokenFile)
 		if err != nil {
 			return nil, err
 		}
 		accessToken = strings.TrimSpace(string(data))
-	} else {
+	default:
 		return nil, errors.New("am-access-token or am-access-token-file must be specified")
 	}
 
 	alerts := ""
-	if len(opts.alerts) > 0 {
+	switch {
+	case len(opts.alerts) > 0:
 		alerts = opts.alerts
-	} else if len(opts.alertsFile) > 0 {
+	case len(opts.alertsFile) > 0:
 		data, err := os.ReadFile(opts.alertsFile)
 		if err != nil {
 			return nil, err
 		}
 		alerts = strings.TrimSpace(string(data))
-	} else {
+	default:
 		return nil, errors.New("alerts or alerts-file must be specified")
 	}
 

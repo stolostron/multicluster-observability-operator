@@ -30,8 +30,7 @@ func applyLicenseToProtoAndGo() error {
 
 		// Filter out stuff that does not need copyright.
 		if info.IsDir() {
-			switch path {
-			case "vendor":
+			if path == "vendor" {
 				return filepath.SkipDir
 			}
 			return nil

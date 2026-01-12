@@ -133,13 +133,11 @@ func (cfg Config) CreateFromClient(
 		}
 
 		fromTransport.TLSClientConfig.RootCAs = pool
-	} else {
-		if fromTransport.TLSClientConfig == nil {
-			// #nosec G402 -- Only used if no TLS config is provided.
-			fromTransport.TLSClientConfig = &tls.Config{
-				MinVersion:         tls.VersionTLS12,
-				InsecureSkipVerify: true,
-			}
+	} else if fromTransport.TLSClientConfig == nil {
+		// #nosec G402 -- Only used if no TLS config is provided.
+		fromTransport.TLSClientConfig = &tls.Config{
+			MinVersion:         tls.VersionTLS12,
+			InsecureSkipVerify: true,
 		}
 	}
 
@@ -184,13 +182,11 @@ func (cfg Config) CreateToClient(
 		if err != nil {
 			return nil, fmt.Errorf("failed to create TLS transport: %w", err)
 		}
-	} else {
-		if toTransport.TLSClientConfig == nil {
-			// #nosec G402 -- Only used if no TLS config is provided.
-			toTransport.TLSClientConfig = &tls.Config{
-				MinVersion:         tls.VersionTLS12,
-				InsecureSkipVerify: true,
-			}
+	} else if toTransport.TLSClientConfig == nil {
+		// #nosec G402 -- Only used if no TLS config is provided.
+		toTransport.TLSClientConfig = &tls.Config{
+			MinVersion:         tls.VersionTLS12,
+			InsecureSkipVerify: true,
 		}
 	}
 
@@ -456,14 +452,15 @@ func (w *Worker) forward(ctx context.Context) error {
 
 	var families []*clientmodel.MetricFamily
 	var err error
-	if w.simulatedTimeseriesFile != "" {
+	switch {
+	case w.simulatedTimeseriesFile != "":
 		families, err = simulator.FetchSimulatedTimeseries(w.simulatedTimeseriesFile)
 		if err != nil {
 			rlogger.Log(w.logger, rlogger.Warn, "msg", "failed fetch simulated timeseries", "err", err)
 		}
-	} else if os.Getenv("SIMULATE") == "true" {
+	case os.Getenv("SIMULATE") == "true":
 		families = simulator.SimulateMetrics(w.logger)
-	} else {
+	default:
 		families, err = w.getFederateMetrics(ctx)
 		if err != nil {
 			updateStatus(statuslib.ForwardFailed, "Failed to retrieve metrics")

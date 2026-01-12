@@ -514,7 +514,7 @@ func createAllRelatedRes(
 	c client.Client,
 	request ctrl.Request,
 	mco *mcov1beta2.MultiClusterObservability,
-	CRDMap map[string]bool,
+	crdMap map[string]bool,
 	kubeClient kubernetes.Interface,
 ) error {
 	var err error
@@ -552,7 +552,7 @@ func createAllRelatedRes(
 	// regenerate the hubinfo secret if empty
 	if hubInfoSecret == nil {
 		var err error
-		if hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, CRDMap, config.IsUWMAlertingDisabledInSpec(mco)); err != nil {
+		if hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, crdMap, config.IsUWMAlertingDisabledInSpec(mco)); err != nil {
 			return fmt.Errorf("failed to generate hub info secret: %w", err)
 		}
 	}

@@ -188,7 +188,7 @@ func unmarshalCollectorRules(e *Evaluator) error {
 func getMatches() []string {
 	matches := []string{}
 	for _, v := range enabledMatches {
-		matches = append(matches, v[:]...)
+		matches = append(matches, v...)
 	}
 	return matches
 }
@@ -250,10 +250,10 @@ func evaluateRule(logger log.Logger, r CollectRule, metrics []*clientmodel.Metri
 	now := time.Now()
 	pendings := map[uint64]string{}
 	firings := map[uint64]string{}
-	for k := range (*pendingRules[r.Name]).triggerTime {
+	for k := range pendingRules[r.Name].triggerTime {
 		pendings[k] = ""
 	}
-	for k := range (*firingRules[r.Name]).triggerTime {
+	for k := range firingRules[r.Name].triggerTime {
 		firings[k] = ""
 	}
 	for _, metric := range metrics {
@@ -270,32 +270,32 @@ func evaluateRule(logger log.Logger, r CollectRule, metrics []*clientmodel.Metri
 				Value: r.Name,
 			})
 			h := ls.Hash()
-			if (*firingRules[r.Name]).triggerTime[h] != nil {
+			if firingRules[r.Name].triggerTime[h] != nil {
 				delete(firings, h)
-				if (*firingRules[r.Name]).resolveTime[h] != nil {
+				if firingRules[r.Name].resolveTime[h] != nil {
 					// resolved rule triggered again
-					delete((*firingRules[r.Name]).resolveTime, h)
+					delete(firingRules[r.Name].resolveTime, h)
 				}
 				continue
 			}
-			if (*pendingRules[r.Name]).triggerTime[h] == nil {
+			if pendingRules[r.Name].triggerTime[h] == nil {
 				if r.Duration == 0 {
 					// no duration defined, fire immediately
-					(*firingRules[r.Name]).triggerTime[h] = &now
+					firingRules[r.Name].triggerTime[h] = &now
 					enabledMatches[h] = renderMatches(r, ls)
 					isUpdate = true
 					rlogger.Log(logger, rlogger.Info, "msg", "collect rule fired", "name", r.Name, "labels", ls)
 				} else {
-					(*pendingRules[r.Name]).triggerTime[h] = &now
+					pendingRules[r.Name].triggerTime[h] = &now
 				}
 				continue
 			}
 
 			delete(pendings, h)
-			if time.Since(*(*pendingRules[r.Name]).triggerTime[h]) >= r.Duration {
+			if time.Since(*pendingRules[r.Name].triggerTime[h]) >= r.Duration {
 				// already passed duration, fire
-				(*firingRules[r.Name]).triggerTime[h] = &now
-				delete((*pendingRules[r.Name]).triggerTime, h)
+				firingRules[r.Name].triggerTime[h] = &now
+				delete(pendingRules[r.Name].triggerTime, h)
 				enabledMatches[h] = renderMatches(r, ls)
 				isUpdate = true
 				rlogger.Log(logger, rlogger.Info, "msg", "collect rule fired", "name", r.Name, "labels", ls)
@@ -303,14 +303,14 @@ func evaluateRule(logger log.Logger, r CollectRule, metrics []*clientmodel.Metri
 		}
 	}
 	for k := range pendings {
-		delete((*pendingRules[r.Name]).triggerTime, k)
+		delete(pendingRules[r.Name].triggerTime, k)
 	}
 	for k := range firings {
-		if (*firingRules[r.Name]).resolveTime[k] == nil {
-			(*firingRules[r.Name]).resolveTime[k] = &now
-		} else if time.Since(*(*firingRules[r.Name]).resolveTime[k]) >= expireDuration {
-			delete((*firingRules[r.Name]).triggerTime, k)
-			delete((*firingRules[r.Name]).resolveTime, k)
+		if firingRules[r.Name].resolveTime[k] == nil {
+			firingRules[r.Name].resolveTime[k] = &now
+		} else if time.Since(*firingRules[r.Name].resolveTime[k]) >= expireDuration {
+			delete(firingRules[r.Name].triggerTime, k)
+			delete(firingRules[r.Name].resolveTime, k)
 			delete(enabledMatches, k)
 			isUpdate = true
 			rlogger.Log(logger, rlogger.Info, "msg", "fired collect rule resolved", "name", r.Name)
@@ -333,10 +333,8 @@ func (e *Evaluator) evaluate(ctx context.Context) {
 		if err != nil {
 			rlogger.Log(e.logger, rlogger.Error, "msg", "failed to evaluate collect rule", "err", err, "rule", r.Expr)
 			continue
-		} else {
-			if evaluateRule(e.logger, r, result) {
-				isUpdate = true
-			}
+		} else if evaluateRule(e.logger, r, result) {
+			isUpdate = true
 		}
 	}
 	if isUpdate {

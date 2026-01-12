@@ -331,13 +331,14 @@ func createManifestWorks(
 	// inject the endpoint operator deployment
 	endpointMetricsOperatorDeployCopy := dep.DeepCopy()
 	spec := endpointMetricsOperatorDeployCopy.Spec.Template.Spec
-	if addonConfig.Spec.NodePlacement != nil {
+	switch {
+	case addonConfig.Spec.NodePlacement != nil:
 		spec.NodeSelector = addonConfig.Spec.NodePlacement.NodeSelector
 		spec.Tolerations = addonConfig.Spec.NodePlacement.Tolerations
-	} else if cluster.IsLocalCluster {
+	case cluster.IsLocalCluster:
 		spec.NodeSelector = mco.Spec.NodeSelector
 		spec.Tolerations = mco.Spec.Tolerations
-	} else {
+	default:
 		// reset NodeSelector and Tolerations
 		spec.NodeSelector = map[string]string{}
 		spec.Tolerations = []corev1.Toleration{}
@@ -501,7 +502,7 @@ func ensureResourcesForHubMetricsCollection(ctx context.Context, c client.Client
 			return fmt.Errorf("failed to set controller reference on object: %w", err)
 		}
 
-		//if kind is a Service account set the name as HubServiceAccount
+		// if kind is a Service account set the name as HubServiceAccount
 		if kind == "ServiceAccount" {
 			obj.SetName(config.HubEndpointSaName)
 		}

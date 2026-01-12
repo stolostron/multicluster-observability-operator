@@ -353,11 +353,12 @@ func updateDashboard(old, new any, overwrite bool) error {
 
 		if respStatusCode != http.StatusOK {
 			if respStatusCode == http.StatusPreconditionFailed {
-				if strings.Contains(string(body), "version-mismatch") {
+				switch {
+				case strings.Contains(string(body), "version-mismatch"):
 					return updateDashboard(nil, new, true)
-				} else if strings.Contains(string(body), "name-exists") {
+				case strings.Contains(string(body), "name-exists"):
 					return fmt.Errorf("the dashboard name already existed")
-				} else {
+				default:
 					return fmt.Errorf("failed to create/update dashboard: %v", respStatusCode)
 				}
 			} else {

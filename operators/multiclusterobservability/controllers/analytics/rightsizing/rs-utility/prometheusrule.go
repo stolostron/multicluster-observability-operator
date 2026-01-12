@@ -34,11 +34,12 @@ func BuildLabelJoin(labelFilters []RSLabelFilter) (string, error) {
 			return "", fmt.Errorf("only one of inclusion or exclusion allowed for label_env")
 		}
 		var selector string
-		if len(l.InclusionCriteria) > 0 {
+		switch {
+		case len(l.InclusionCriteria) > 0:
 			selector = fmt.Sprintf(`kube_namespace_labels{label_env=~"%s"}`, strings.Join(l.InclusionCriteria, "|"))
-		} else if len(l.ExclusionCriteria) > 0 {
+		case len(l.ExclusionCriteria) > 0:
 			selector = fmt.Sprintf(`kube_namespace_labels{label_env!~"%s"}`, strings.Join(l.ExclusionCriteria, "|"))
-		} else {
+		default:
 			continue
 		}
 		return fmt.Sprintf(`* on (namespace) group_left() (%s or kube_namespace_labels{label_env=""})`, selector), nil

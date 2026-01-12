@@ -370,11 +370,11 @@ func CheckMCOComponents(opt TestOptions) error {
 			return err
 		}
 
-		if len((*deployList).Items) == 0 {
+		if len(deployList.Items) == 0 {
 			return fmt.Errorf("should have deployment created with label %s", deploymentLabel)
 		}
 
-		for _, deployInfo := range (*deployList).Items {
+		for _, deployInfo := range deployList.Items {
 			if deployInfo.Status.ReadyReplicas != *deployInfo.Spec.Replicas {
 				err = fmt.Errorf("deployment %s should have %d but got %d ready replicas",
 					deployInfo.Name,
@@ -404,11 +404,11 @@ func CheckMCOComponents(opt TestOptions) error {
 			return err
 		}
 
-		if len((*statefulsetList).Items) == 0 {
+		if len(statefulsetList.Items) == 0 {
 			return fmt.Errorf("should have statefulset created with label %s", statefulsetLabel)
 		}
 
-		for _, statefulsetInfo := range (*statefulsetList).Items {
+		for _, statefulsetInfo := range statefulsetList.Items {
 			if statefulsetInfo.Status.ReadyReplicas != *statefulsetInfo.Spec.Replicas {
 				err = fmt.Errorf("statefulset %s should have %d but got %d ready replicas",
 					statefulsetInfo.Name,

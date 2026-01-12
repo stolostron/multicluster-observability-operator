@@ -61,7 +61,7 @@ func MergeAllowlist(allowlist, customAllowlist, uwlAllowlist,
 	if customAllowlist.RecordingRuleList != nil {
 		allowlist.RecordingRuleList = append(allowlist.RecordingRuleList, customAllowlist.RecordingRuleList...)
 	} else {
-		//check if rules are specified for backward compatibility
+		// check if rules are specified for backward compatibility
 		allowlist.RecordingRuleList = append(allowlist.RecordingRuleList, customAllowlist.RuleList...)
 	}
 	if allowlist.RenameMap == nil {

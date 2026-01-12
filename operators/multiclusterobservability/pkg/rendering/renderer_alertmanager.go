@@ -92,7 +92,7 @@ func (r *MCORenderer) renderAlertManagerStatefulSet(res *resource.Resource, name
 	}
 	alertManagerContainer.Resources = mcoconfig.GetResources(mcoconfig.Alertmanager, r.cr.Spec.InstanceSize, r.cr.Spec.AdvancedConfig)
 	alertManagerContainer.Image = mcoconfig.DefaultImgRepository + "/" + mcoconfig.AlertManagerImgName + ":" + mcoconfig.DefaultImgTagSuffix
-	//replace the alertmanager image
+	// replace the alertmanager image
 	found, image := mcoconfig.ReplaceImage(r.cr.Annotations, mcoconfig.DefaultImgRepository+"/"+mcoconfig.AlertManagerImgName, mcoconfig.AlertManagerImgKey)
 	if found {
 		alertManagerContainer.Image = image
@@ -122,7 +122,7 @@ func (r *MCORenderer) renderAlertManagerStatefulSet(res *resource.Resource, name
 	}
 
 	configReloaderContainer.ImagePullPolicy = imagePullPolicy
-	//replace the config-reloader image
+	// replace the config-reloader image
 	found, image = mcoconfig.ReplaceImage(r.cr.Annotations, mcoconfig.ConfigmapReloaderImgRepo, mcoconfig.ConfigmapReloaderKey)
 	if found {
 		configReloaderContainer.Image = image
@@ -144,7 +144,7 @@ func (r *MCORenderer) renderAlertManagerStatefulSet(res *resource.Resource, name
 	}
 	kubeRbacProxyContainer.ImagePullPolicy = imagePullPolicy
 
-	//replace the volumeClaimTemplate
+	// replace the volumeClaimTemplate
 	dep.Spec.VolumeClaimTemplates[0].Spec.StorageClassName = &r.cr.Spec.StorageConfig.StorageClass
 	dep.Spec.VolumeClaimTemplates[0].Spec.Resources.Requests[corev1.ResourceStorage] = apiresource.MustParse(r.cr.Spec.StorageConfig.AlertmanagerStorageSize)
 

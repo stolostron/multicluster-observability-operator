@@ -53,17 +53,18 @@ func loadTemplates(mco *mcov1beta2.MultiClusterObservability) (
 		if err != nil {
 			return nil, nil, nil, nil, nil, fmt.Errorf("failed to edit templates: %w", err)
 		}
-		if r.GetKind() == "Deployment" {
+		switch {
+		case r.GetKind() == "Deployment":
 			dep = obj.(*appsv1.Deployment)
-		} else if r.GetKind() == "ConfigMap" && r.GetName() == operatorconfig.ImageConfigMap {
+		case r.GetKind() == "ConfigMap" && r.GetName() == operatorconfig.ImageConfigMap:
 			imageListCM = obj.(*corev1.ConfigMap)
-		} else if r.GetKind() == "CustomResourceDefinition" {
+		case r.GetKind() == "CustomResourceDefinition":
 			if r.GetGvk().Version == "v1" {
 				crdv1 = obj.(*apiextensionsv1.CustomResourceDefinition)
 			} else {
 				crdv1beta1 = obj.(*apiextensionsv1beta1.CustomResourceDefinition)
 			}
-		} else {
+		default:
 			rawExtensionList = append(rawExtensionList, runtime.RawExtension{Object: obj})
 		}
 	}

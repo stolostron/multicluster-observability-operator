@@ -65,7 +65,7 @@ func GetK8sObjWithVersion(kind, version string) runtime.Object {
 		"Prometheus":                      &prometheusv1.Prometheus{},
 	}
 	if kind == "CustomResourceDefinition" {
-		kind = kind + version
+		kind += version
 	}
 	return objs[kind]
 }
@@ -93,7 +93,7 @@ func CompareObject(re1 runtime.RawExtension, re2 runtime.RawExtension) bool {
 		return false
 	}
 	if kind1 == "CustomResourceDefinition" {
-		kind1 = kind1 + version1
+		kind1 += version1
 	}
 	return compFns[kind1](obj1, obj2)
 }

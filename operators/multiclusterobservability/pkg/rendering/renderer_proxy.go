@@ -85,7 +85,7 @@ func (r *MCORenderer) renderProxyDeployment(res *resource.Resource,
 
 	spec.Containers[0].Image = mcoconfig.DefaultImgRepository + "/" + mcoconfig.RBACQueryProxyImgName +
 		":" + mcoconfig.DefaultImgTagSuffix
-	//replace the proxy image
+	// replace the proxy image
 	found, image := mcoconfig.ReplaceImage(
 		r.cr.Annotations,
 		spec.Containers[0].Image,

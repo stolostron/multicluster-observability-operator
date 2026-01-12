@@ -149,7 +149,7 @@ func (mqm *Modifier) getUserMetricsACLs(userName string, token string) (map[stri
 	klog.V(1).Infof("user <%v>  metrics-access: %v", userName, metricsAccess)
 	managedClusterNames := mqm.MCI.GetAllManagedClusterNames()
 
-	//if metrics access contains a key  "*" then the corresponding
+	// if metrics access contains a key  "*" then the corresponding
 	// value i.e acls  apply to all managedclusters
 	if allClusterAcls, found := metricsAccess["*"]; found {
 		for mcName := range managedClusterNames {
@@ -170,7 +170,7 @@ func (mqm *Modifier) getUserMetricsACLs(userName string, token string) (map[stri
 	// for backward compatibility, support the existing access control mechanism
 	// i.e access to managedcluster project\namespace means access to all namespaces on that managedcluster
 
-	//get all managedcluster project/namespace user has access to
+	// get all managedcluster project/namespace user has access to
 	projectList, ok := mqm.UPI.GetUserProjectList(token)
 	if !ok {
 		c, err := mqm.getKubeClientWithToken(token)
@@ -285,12 +285,12 @@ func canAccessAll(clusterNamespaces map[string][]string, managedClusterNames map
 	for clusterName := range managedClusterNames {
 		namespaces, contains := clusterNamespaces[clusterName]
 
-		//does not have access to the cluster
+		// does not have access to the cluster
 		if !contains {
 			return false
 		}
 
-		//does not have access to all the namespaces on the cluster
+		// does not have access to all the namespaces on the cluster
 		if len(namespaces) != 0 && !slices.Contains(namespaces, "*") {
 			return false
 		}
