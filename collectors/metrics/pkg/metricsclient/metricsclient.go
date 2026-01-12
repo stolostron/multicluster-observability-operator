@@ -104,7 +104,6 @@ func (c *Client) RetrieveRecordingMetrics(
 	ctx context.Context,
 	req *http.Request,
 	name string) ([]*clientmodel.MetricFamily, error) {
-
 	ctx, cancel := context.WithTimeout(ctx, c.timeout)
 	req = req.WithContext(ctx)
 	defer cancel()
@@ -372,7 +371,6 @@ func MTLSTransport(logger log.Logger, caCertFile, tlsCrtFile, tlsKeyFile string)
 		DisableKeepAlives:   true,
 		TLSClientConfig:     tlsConfig,
 	}, nil
-
 }
 
 func DefaultTransport(logger log.Logger) *http.Transport {
@@ -464,7 +462,6 @@ func (sl *sortableLabels) Less(i, j int) bool { return (*sl)[i].Name < (*sl)[j].
 // RemoteWrite is used to push the metrics to remote thanos endpoint.
 func (c *Client) RemoteWrite(ctx context.Context, req *http.Request,
 	families []*clientmodel.MetricFamily, interval time.Duration) error {
-
 	timeseries, err := convertToTimeseries(&PartitionedMetrics{Families: families}, time.Now())
 	if err != nil {
 		msg := "failed to convert timeseries"

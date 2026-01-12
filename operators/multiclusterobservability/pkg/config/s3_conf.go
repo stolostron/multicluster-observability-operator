@@ -13,7 +13,6 @@ import (
 )
 
 func validateS3(conf Config) error {
-
 	if conf.Bucket == "" {
 		return errors.New("no s3 bucket in config file")
 	}

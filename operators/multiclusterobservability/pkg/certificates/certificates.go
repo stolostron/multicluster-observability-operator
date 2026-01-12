@@ -62,7 +62,6 @@ func CreateObservabilityCerts(
 	mco *mcov1beta2.MultiClusterObservability,
 	ingressCtlCrdExists bool,
 ) error {
-
 	config.SetCertDuration(mco.Annotations)
 
 	err, serverCrtUpdated := createCASecret(c, scheme, mco, false, serverCACerts, serverCACertifcateCN)

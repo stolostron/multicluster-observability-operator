@@ -17,7 +17,6 @@ import (
 )
 
 func main() {
-
 	klogFlags := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 	klog.InitFlags(klogFlags)
 	flagset := pflag.NewFlagSet(os.Args[0], pflag.ExitOnError)
@@ -35,5 +34,4 @@ func main() {
 	signal.Notify(sigTerm, syscall.SIGTERM)
 	signal.Notify(sigTerm, syscall.SIGINT)
 	<-sigTerm
-
 }

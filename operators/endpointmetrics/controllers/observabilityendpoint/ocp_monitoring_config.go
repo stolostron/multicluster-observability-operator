@@ -186,7 +186,6 @@ func createHubAmRouterCASecret(
 	}
 
 	return err
-
 }
 
 // createHubAmAccessorTokenSecret creates the secret that contains access token of the Hub's Alertmanager.
@@ -690,7 +689,6 @@ func createOrUpdateUserWorkloadMonitoringConfig(
 	client client.Client,
 	hubInfo *operatorconfig.HubInfo,
 ) error {
-
 	// handle the case when alert forwarding is disabled globally or UWM alerting is disabled specifically
 	if hubInfo.AlertmanagerEndpoint == "" || hubInfo.UWMAlertingDisabled {
 		log.Info("request to disable alert forwarding")

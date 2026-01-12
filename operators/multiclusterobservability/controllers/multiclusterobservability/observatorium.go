@@ -93,7 +93,6 @@ func hashObservatoriumCRConfig(cl client.Client) (string, error) {
 func GenerateObservatoriumCR(
 	cl client.Client, scheme *runtime.Scheme,
 	mco *mcov1beta2.MultiClusterObservability) (*ctrl.Result, error) {
-
 	hash, err := hashObservatoriumCRConfig(cl)
 	if err != nil {
 		return &ctrl.Result{}, fmt.Errorf("failed to hash the observatorium CR config: %w", err)
@@ -239,7 +238,6 @@ func updateTenantID(
 	newTenant obsv1alpha1.APITenant,
 	oldTenant obsv1alpha1.APITenant,
 	idx int) {
-
 	if oldTenant.Name == newTenant.Name && newTenant.ID == oldTenant.ID {
 		return
 	}
@@ -258,7 +256,6 @@ func GenerateAPIGatewayRoute(
 	ctx context.Context,
 	runclient client.Client, scheme *runtime.Scheme,
 	mco *mcov1beta2.MultiClusterObservability) (*ctrl.Result, error) {
-
 	apiGateway := &routev1.Route{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      obsAPIGateway,
@@ -512,7 +509,6 @@ func applyEndpointsSecret(c client.Client, eps []mcoutil.RemoteWriteEndpointWith
 		}
 	}
 	return nil
-
 }
 
 func newAPISpec(c client.Client, mco *mcov1beta2.MultiClusterObservability) (obsv1alpha1.APISpec, error) {

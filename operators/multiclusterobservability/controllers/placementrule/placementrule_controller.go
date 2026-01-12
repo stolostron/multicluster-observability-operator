@@ -1312,7 +1312,6 @@ func mcoaForMetricsIsEnabled(mco *mcov1beta2.MultiClusterObservability) bool {
 	}
 
 	return false
-
 }
 
 // isCustomIngressCertificate checks if the given secret name is referenced by the IngressController

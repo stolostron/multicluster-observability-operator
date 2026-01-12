@@ -325,7 +325,6 @@ func updateDashboard(old, new any, overwrite bool) error {
 	}
 
 	for _, value := range new.(*corev1.ConfigMap).Data {
-
 		dashboard := map[string]any{}
 		err := json.Unmarshal([]byte(value), &dashboard)
 		if err != nil {
@@ -398,7 +397,6 @@ func updateDashboard(old, new any, overwrite bool) error {
 // DeleteDashboard ...
 func deleteDashboard(obj any) {
 	for _, value := range obj.(*corev1.ConfigMap).Data {
-
 		dashboard := map[string]any{}
 		err := json.Unmarshal([]byte(value), &dashboard)
 		if err != nil {

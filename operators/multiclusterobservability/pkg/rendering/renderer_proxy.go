@@ -172,7 +172,6 @@ func (r *MCORenderer) renderProxyTemplates(templates []*resource.Resource,
 			continue
 		}
 		uobjs = append(uobjs, uobj)
-
 	}
 
 	return uobjs, nil

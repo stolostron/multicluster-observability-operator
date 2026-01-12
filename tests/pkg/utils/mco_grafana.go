@@ -14,7 +14,6 @@ func GetGrafanaURL(opt TestOptions) string {
 	substring1 := "rosa"
 	substring2 := "hcp"
 	if strings.Contains(cloudProvider, substring1) && strings.Contains(cloudProvider, substring2) {
-
 		grafanaConsoleURL := "https://grafana-open-cluster-management-observability.apps.rosa." + opt.HubCluster.BaseDomain
 		if opt.HubCluster.GrafanaURL != "" {
 			grafanaConsoleURL = opt.HubCluster.GrafanaURL

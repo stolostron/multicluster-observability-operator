@@ -43,7 +43,6 @@ var (
 )
 
 func Start(c client.Client, ingressCtlCrdExists bool) {
-
 	if isCertControllerRunnning {
 		return
 	}

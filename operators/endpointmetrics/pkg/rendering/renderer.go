@@ -60,7 +60,6 @@ func Render(
 	hubInfo *operatorconfig.HubInfo,
 	namespace string,
 ) ([]*unstructured.Unstructured, error) {
-
 	isKindTest := false
 	if installPrometheus && isHubMetricsCollector {
 		isKindTest = true

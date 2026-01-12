@@ -71,7 +71,6 @@ func (r *Renderer) RenderTemplates(
 			continue
 		}
 		uobjs = append(uobjs, uobj)
-
 	}
 
 	return uobjs, nil

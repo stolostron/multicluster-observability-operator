@@ -82,7 +82,6 @@ func GenerateGrafanaDataSource(
 	c client.Client,
 	scheme *runtime.Scheme,
 	mco *mcov1beta2.MultiClusterObservability) (*ctrl.Result, error) {
-
 	DynamicTimeInterval := min(mco.Spec.ObservabilityAddonSpec.Interval, 30)
 
 	grafanaDatasources, err := yaml.Marshal(GrafanaDatasources{

@@ -34,7 +34,6 @@ var (
 )
 
 func Start() {
-
 	if isSmControllerRunning {
 		return
 	}

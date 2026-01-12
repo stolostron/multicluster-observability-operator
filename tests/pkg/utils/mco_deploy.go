@@ -745,7 +745,6 @@ metadata:
 }
 
 func CreateObjSecret(opt TestOptions) error {
-
 	bucket := os.Getenv("BUCKET")
 	if bucket == "" {
 		return errors.New("failed to get s3 BUCKET env")

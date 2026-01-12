@@ -39,7 +39,6 @@ func GetVirtualizationRSConfigMapPredicateFunc(ctx context.Context, c client.Cli
 }
 
 func ApplyRSVirtualizationConfigMapChanges(ctx context.Context, c client.Client, configData rsutility.RSNamespaceConfigMapData) error {
-
 	prometheusRule, err := GeneratePrometheusRule(configData)
 	if err != nil {
 		return err

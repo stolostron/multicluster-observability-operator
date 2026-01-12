@@ -73,7 +73,6 @@ var (
 )
 
 func deleteManifestWork(c client.Client, name string, namespace string) error {
-
 	addon := &workv1.ManifestWork{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
@@ -89,7 +88,6 @@ func deleteManifestWork(c client.Client, name string, namespace string) error {
 }
 
 func deleteManifestWorks(c client.Client, namespace string) error {
-
 	err := c.DeleteAllOf(context.TODO(), &workv1.ManifestWork{},
 		client.InNamespace(namespace), client.MatchingLabels{ownerLabelKey: ownerLabelValue})
 	if err != nil {
@@ -228,7 +226,6 @@ func shouldUpdateManifestWork(desiredWork, foundWork *workv1.ManifestWork) bool 
 // this function is expensive and should not be called for each reconcile loop.
 func generateGlobalManifestResources(ctx context.Context, c client.Client, mco *mcov1beta2.MultiClusterObservability, kubeClient kubernetes.Interface) (
 	[]workv1.Manifest, *workv1.Manifest, error) {
-
 	works := []workv1.Manifest{}
 
 	// inject the namespace
@@ -724,7 +721,6 @@ func deleteObject[T client.Object](ctx context.Context, c client.Client, obj T) 
 // generateAmAccessorTokenSecret generates the secret that contains the access_token
 // for the Alertmanager in the Hub cluster
 func generateAmAccessorTokenSecret(cl client.Client, kubeClient kubernetes.Interface) (*corev1.Secret, error) {
-
 	if kubeClient == nil {
 		return nil, fmt.Errorf("kubeClient is required but was nil")
 	}
@@ -843,7 +839,6 @@ func generateAmAccessorTokenSecret(cl client.Client, kubeClient kubernetes.Inter
 // Note: This can be removed for 2.17
 // deleteAlertmanagerAccessorTokenSecret deletes the previous unbound token secret
 func deleteAlertmanagerAccessorTokenSecret(ctx context.Context, cl client.Client) error {
-
 	secretToDelete := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      config.AlertmanagerAccessorSAName + "-token",

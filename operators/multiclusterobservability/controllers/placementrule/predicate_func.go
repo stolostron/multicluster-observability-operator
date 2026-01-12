@@ -20,7 +20,6 @@ import (
 )
 
 func getClusterPreds() predicate.Funcs {
-
 	createFunc := func(e event.CreateEvent) bool {
 		log.Info("CreateFunc", "managedCluster", e.Object.GetName())
 

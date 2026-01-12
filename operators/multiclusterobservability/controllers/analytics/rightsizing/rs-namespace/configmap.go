@@ -42,7 +42,6 @@ func GetNamespaceRSConfigMapPredicateFunc(ctx context.Context, c client.Client) 
 
 // ApplyRSNamespaceConfigMapChanges updates PrometheusRule, Policy, Placement based on configmap changes
 func ApplyRSNamespaceConfigMapChanges(ctx context.Context, c client.Client, configData rsutility.RSNamespaceConfigMapData) error {
-
 	prometheusRule, err := GeneratePrometheusRule(configData)
 	if err != nil {
 		return err

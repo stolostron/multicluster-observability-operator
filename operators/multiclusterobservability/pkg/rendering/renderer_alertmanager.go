@@ -255,7 +255,6 @@ func (r *MCORenderer) renderAlertManagerTemplates(templates []*resource.Resource
 			continue
 		}
 		uobjs = append(uobjs, uobj)
-
 	}
 
 	return uobjs, nil

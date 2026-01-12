@@ -13,7 +13,6 @@ import (
 )
 
 func validateGCS(conf Config) error {
-
 	if conf.Bucket == "" {
 		return errors.New("no bucket as gcs bucket name in config file")
 	}
