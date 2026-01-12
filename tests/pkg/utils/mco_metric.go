@@ -113,6 +113,7 @@ func QueryGrafana(opt TestOptions, query string) (*GrafanaResponse, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("failed to access managed cluster metrics via grafana console, status code: %d", resp.StatusCode)
