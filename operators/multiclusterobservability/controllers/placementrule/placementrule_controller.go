@@ -129,7 +129,7 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	// only update managedclusteraddon status when obs addon's status updated
 	// ensure the status is updated once in the reconcile loop when the controller starts
 	if err := r.updateStatus(ctx, req); err != nil {
-		reqLogger.Info("Failed to update status: %s", err.Error())
+		reqLogger.Info("Failed to update status", "error", err.Error())
 	}
 
 	// When MCOA is enabled, additionnally clean the hub resources as they are deployed wihtout the addon resource,
@@ -594,7 +594,7 @@ func createAllRelatedRes(
 		manifestWork, err := createManifestWorks(c, namespace, mci, mco, works, metricsAllowlistConfigMap, crdv1Work, endpointMetricsOperatorDeploy, hubInfoSecret.DeepCopy(), addonDeployCfg, installProm)
 		if err != nil {
 			allErrors = append(allErrors, fmt.Errorf("failed to create manifestworks: %w", err))
-			log.Error(err, "Failed to create manifestworks: %w", err)
+			log.Error(err, "Failed to create manifestworks")
 			continue
 		}
 
