@@ -119,3 +119,70 @@ func CheckAllOBAsDeleted(opt TestOptions) error {
 	}
 	return nil
 }
+
+// This will check that the ObservabilityAddon is removed from a specific managed cluster
+func CheckOBADeletedOnHub(opt TestOptions) error {
+	clusterName := GetManagedClusterName(opt)
+	if clusterName == "" {
+		return fmt.Errorf("managed cluster name is empty")
+	}
+	klog.V(1).Infof("Checking observability-addon deleted for managed cluster %s", clusterName)
+	dynClient := NewKubeClientDynamic(
+		opt.HubCluster.ClusterServerURL,
+		opt.KubeConfig,
+		opt.HubCluster.KubeContext)
+
+	_, err := dynClient.Resource(NewMCOAddonGVR()).Namespace(clusterName).Get(context.TODO(), "observability-addon", metav1.GetOptions{})
+	if err == nil {
+		klog.Errorf("observability-addon on hub cluster still exists for managed cluster %s", clusterName)
+		return fmt.Errorf("observability-addon on hub cluster still exists for managed cluster %s", clusterName)
+	}
+	if !errors.IsNotFound(err) {
+		klog.Errorf("failed to get observability-addon on hub cluster for managed cluster %s: %v", clusterName, err)
+		return fmt.Errorf("failed to get observability-addon on hub cluster for managed cluster %s: %w", clusterName, err)
+	}
+	return nil
+}
+
+func CheckOBADeletedOnManagedCluster(opt TestOptions) error {
+	if len(opt.ManagedClusters) == 0 {
+		return fmt.Errorf("no managed clusters found")
+	}
+	clusterName := GetManagedClusterName(opt)
+	if clusterName == "" {
+		return fmt.Errorf("managed cluster name is empty")
+	}
+	dynClient := NewKubeClientDynamic(
+		opt.ManagedClusters[0].ClusterServerURL,
+		opt.ManagedClusters[0].KubeConfig,
+		opt.ManagedClusters[0].KubeContext)
+
+	_, err := dynClient.Resource(NewMCOAddonGVR()).Namespace(MCO_ADDON_NAMESPACE).Get(context.TODO(), "observability-addon", metav1.GetOptions{})
+
+	if err == nil {
+		klog.Errorf("observability-addon still exists on managed cluster %s", clusterName)
+		return fmt.Errorf("observability-addon still exists on managed cluster %s", clusterName)
+	}
+	if !errors.IsNotFound(err) {
+		klog.Errorf("failed to get observability-addon on managed cluster %s: %v", clusterName, err)
+		return fmt.Errorf("failed to get observability-addon on managed cluster %s: %w", clusterName, err)
+	}
+	return nil
+}
+
+// Check for the removal of the manifestwork from the hub cluster
+func CheckObsAddonManifestWorkDeleted(opt TestOptions) error {
+	clientDynamic := GetKubeClientDynamic(opt, true)
+	clusterName := GetManagedClusterName(opt)
+	if clusterName == "" {
+		return fmt.Errorf("Cannot check for managed manifestwork on the hub cluster, managed cluster name is empty")
+	}
+	manifestWorkName := clusterName + "-observability"
+
+	_, err := clientDynamic.Resource(NewOCMManifestworksGVR()).Namespace(clusterName).Get(context.TODO(), manifestWorkName, metav1.GetOptions{})
+	if errors.IsNotFound(err) {
+		return nil
+	}
+
+	return fmt.Errorf("ManifestWork %s/%s still exists", clusterName, manifestWorkName)
+}

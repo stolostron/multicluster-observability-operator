@@ -216,10 +216,29 @@ var _ = Describe("", func() {
 				By("Waiting for MCO addon components scales to 0")
 				Eventually(func() bool {
 					err, obaNS := utils.GetNamespace(testOptions, false, MCO_ADDON_NAMESPACE)
-					if err == nil && obaNS == nil {
-						return true
+					if err != nil || obaNS != nil {
+						return false
 					}
-					return false
+
+					// check that the observability-addon is deleted from the managed cluster
+					err = utils.CheckOBADeletedOnManagedCluster(testOptions)
+					if err != nil {
+						return false
+					}
+
+					// check that the observability-addon is deleted from the hub cluster
+					err = utils.CheckOBADeletedOnHub(testOptions)
+					if err != nil {
+						return false
+					}
+
+					// check that the manifestwork is removed from hub
+					err = utils.CheckObsAddonManifestWorkDeleted(testOptions)
+					if err != nil {
+						return false
+					}
+
+					return true
 				}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(BeTrue())
 			}
 
