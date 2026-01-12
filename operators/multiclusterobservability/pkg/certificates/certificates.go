@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"math/big"
 	"net"
+	"slices"
 	"time"
 
 	certificatesv1 "k8s.io/api/certificates/v1"
@@ -23,7 +24,6 @@ import (
 
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 
-	"golang.org/x/exp/slices"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

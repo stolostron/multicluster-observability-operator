@@ -15,7 +15,8 @@ import (
 	"strings"
 	"time"
 
-	"golang.org/x/exp/slices"
+	"slices"
+
 	rbacv1 "k8s.io/api/rbac/v1"
 
 	"gopkg.in/yaml.v2"

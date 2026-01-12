@@ -7,9 +7,10 @@ package metricfamily
 import (
 	"sync"
 
+	"slices"
+
 	clientmodel "github.com/prometheus/client_model/go"
 	"github.com/prometheus/prometheus/prompb"
-	"golang.org/x/exp/slices"
 )
 
 type LabelRetriever interface {

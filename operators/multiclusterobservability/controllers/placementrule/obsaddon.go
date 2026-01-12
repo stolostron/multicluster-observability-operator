@@ -7,11 +7,11 @@ package placementrule
 import (
 	"context"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 
-	"golang.org/x/exp/slices"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
