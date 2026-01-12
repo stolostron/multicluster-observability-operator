@@ -897,7 +897,7 @@ func GetOauthProxyImage(imageClient imagev1client.ImageV1Interface) (bool, strin
 }
 
 func GetMCOASupportedCRDNames() []string {
-	var names []string
+	names := make([]string, 0, len(mcoaSupportedCRDs))
 	for name := range mcoaSupportedCRDs {
 		names = append(names, name)
 	}

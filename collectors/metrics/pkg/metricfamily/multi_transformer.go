@@ -24,7 +24,7 @@ func (a *MultiTransformer) WithFunc(f func() Transformer) {
 }
 
 func (a MultiTransformer) Transform(family *clientmodel.MetricFamily) (bool, error) {
-	var ts []Transformer
+	ts := make([]Transformer, 0, len(a.builderFuncs)+len(a.transformers))
 
 	for _, f := range a.builderFuncs {
 		ts = append(ts, f())

@@ -102,7 +102,7 @@ func FetchSimulatedTimeseries(timeseriesFile string) ([]*clientmodel.MetricFamil
 	if err != nil {
 		return nil, err
 	}
-	var families []*clientmodel.MetricFamily
+	families := make([]*clientmodel.MetricFamily, 0, len(parsed))
 	for _, mf := range parsed {
 		for _, m := range mf.Metric {
 			m.TimestampMs = &timestamp
