@@ -11,7 +11,7 @@ import (
 
 	// The import of crypto/md5 below is not for cryptographic use. It is used to hash the contents of files to track
 	// changes and thus it's not a security issue.
-	// nolint:gosec
+
 	"crypto/md5" // #nosec G401 G501
 	"encoding/hex"
 	"fmt"
@@ -70,7 +70,7 @@ func hashObservatoriumCRConfig(cl client.Client) (string, error) {
 
 	// The usage of crypto/md5 below is not for cryptographic use. It is used to hash the contents of files to track
 	// changes and thus it's not a security issue.
-	// nolint:gosec
+
 	hasher := md5.New() // #nosec G401 G501
 	resultConfigMap := &v1.ConfigMap{}
 	err := cl.Get(context.TODO(), types.NamespacedName{

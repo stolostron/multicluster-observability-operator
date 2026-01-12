@@ -74,7 +74,7 @@ func loadTemplates(mco *mcov1beta2.MultiClusterObservability) (
 func updateRes(r *resource.Resource,
 	mco *mcov1beta2.MultiClusterObservability) (runtime.Object, error) {
 	kind := r.GetKind()
-	//nolint:goconst
+
 	if kind != "ClusterRole" && kind != "ClusterRoleBinding" && kind != "CustomResourceDefinition" {
 		if err := r.SetNamespace(spokeNameSpace); err != nil {
 			log.Error(err, "failed to set namespace")

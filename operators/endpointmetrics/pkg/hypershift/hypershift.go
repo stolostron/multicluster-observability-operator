@@ -76,7 +76,7 @@ func DeleteServiceMonitors(ctx context.Context, c client.Client) error {
 	}
 
 	for _, cluster := range hList.Items {
-		namespace := HostedClusterNamespace(&cluster) // nolint:gosec
+		namespace := HostedClusterNamespace(&cluster)
 		if err := deleteServiceMonitor(ctx, c, AcmEtcdSmName, namespace); err != nil {
 			return fmt.Errorf("failed to delete ServiceMonitor %s/%s: %w", namespace, AcmEtcdSmName, err)
 		}
