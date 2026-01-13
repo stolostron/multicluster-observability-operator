@@ -7,6 +7,9 @@ package observabilityendpoint
 import (
 	"context"
 	"fmt"
+
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+
 	"net/url"
 	"reflect"
 	"strings"
@@ -39,6 +42,8 @@ var (
 	log                             = ctrl.Log.WithName("controllers").WithName("ObservabilityAddon")
 	clusterMonitoringConfigReverted = false
 	persistedRevertStateRead        = false
+	AMSecretCleanupDone             = false
+	AMSecretCleanupDoneUWL          = false
 )
 
 // initializes clusterMonitoringConfigReverted based on the presence of clusterMonitoringRevertedName
@@ -144,9 +149,7 @@ func createHubAmRouterCASecret(
 	hubInfo *operatorconfig.HubInfo,
 	client client.Client,
 	targetNamespace string) error {
-
 	hubAmRouterSecret := hubAmRouterCASecretName + "-" + hubInfo.HubClusterID
-
 	hubAmRouterCA := hubInfo.AlertmanagerRouterCA
 	dataMap := map[string][]byte{hubAmRouterCASecretKey: []byte(hubAmRouterCA)}
 	hubAmRouterCASecret := &corev1.Secret{
@@ -248,6 +251,54 @@ func getAmAccessorToken(ctx context.Context, client client.Client, ns string) (s
 	}
 
 	return string(amAccessorToken), nil
+}
+
+func cleanUpOldAMSecrets(ctx context.Context, client client.Client, targetNamespace string, hubInfo *operatorconfig.HubInfo, uwlNsExists bool) error {
+	var errs []string
+	clusterDomain := ""
+	if hubInfo != nil && hubInfo.ObservatoriumAPIEndpoint != "" {
+		clusterDomain = config.GetClusterName(hubInfo.ObservatoriumAPIEndpoint)
+	} else {
+		log.Info("hubInfo or ObservatoriumAPIEndpoint missing; skipping cluster-domain-specific secret deletions")
+	}
+
+	deleteSecret := func(name string, namespace string) {
+		sec := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+			},
+		}
+		if err := client.Delete(ctx, sec); err != nil {
+			if errors.IsNotFound(err) {
+				return
+			}
+			log.Error(err, fmt.Sprintf("failed to delete old secret %s/%s", targetNamespace, name))
+			errs = append(errs, fmt.Sprintf("%s: %v", name, err))
+		}
+	}
+
+	deleteSecret(hubAmAccessorSecretName, targetNamespace)
+	deleteSecret(hubAmRouterCASecretName, targetNamespace)
+	if clusterDomain != "" {
+		deleteSecret(hubAmAccessorSecretName+"-"+clusterDomain, targetNamespace)
+		deleteSecret(hubAmRouterCASecretName+"-"+clusterDomain, targetNamespace)
+	}
+
+	if uwlNsExists {
+		ns := operatorconfig.OCPUserWorkloadMonitoringNamespace
+		deleteSecret(hubAmAccessorSecretName, ns)
+		deleteSecret(hubAmRouterCASecretName, ns)
+		if clusterDomain != "" {
+			deleteSecret(hubAmAccessorSecretName+"-"+clusterDomain, ns)
+			deleteSecret(hubAmRouterCASecretName+"-"+clusterDomain, ns)
+		}
+	}
+
+	if len(errs) > 0 {
+		return fmt.Errorf("failed to delete one or more old secrets: %s", strings.Join(errs, "; "))
+	}
+	return nil
 }
 
 func newAdditionalAlertmanagerConfig(hubInfo *operatorconfig.HubInfo) cmomanifests.AdditionalAlertmanagerConfig {
@@ -367,6 +418,13 @@ func createOrUpdateClusterMonitoringConfig(
 		}
 		if err := createHubAmAccessorTokenSecret(ctx, client, namespace, operatorconfig.OCPUserWorkloadMonitoringNamespace, hubInfo); err != nil {
 			return false, fmt.Errorf("failed to create or update alertmanager accessor token in UWM namespace: %w", err)
+		}
+	}
+
+	if !AMSecretCleanupDone {
+		// ACM-27841 - this is to clean up old alertmanager secrets created using cluster domain for Global Hub
+		if err := cleanUpOldAMSecrets(ctx, client, targetNamespace, hubInfo, nsExists); err != nil {
+			return false, fmt.Errorf("failed to clean up old alertmanager secrets: %w", err)
 		}
 	}
 
@@ -597,6 +655,18 @@ func createOrUpdateCMOConfig(
 		} else {
 			updatedCMOCfg.PrometheusK8sConfig.AlertmanagerConfigs = append(existingCfg.PrometheusK8sConfig.AlertmanagerConfigs, newAdditionalAlertmanagerConfig(hubInfo))
 		}
+
+		//remove am configs from previous versions if any prior to Global Hub Changes (ACM 2.15.0)
+		if !AMSecretCleanupDone {
+			updatedCMOCfgTmp := make([]cmomanifests.AdditionalAlertmanagerConfig, 0)
+			for i, cfg := range updatedCMOCfg.PrometheusK8sConfig.AlertmanagerConfigs {
+				if !isOldManagedConfig(cfg, hubInfo) {
+					updatedCMOCfgTmp = append(updatedCMOCfgTmp, updatedCMOCfg.PrometheusK8sConfig.AlertmanagerConfigs[i])
+				}
+			}
+			AMSecretCleanupDone = true
+			updatedCMOCfg.PrometheusK8sConfig.AlertmanagerConfigs = updatedCMOCfgTmp
+		}
 	} else {
 		updatedCMOCfg.PrometheusK8sConfig = newPmK8sConfig
 	}
@@ -688,6 +758,18 @@ func createOrUpdateUserWorkloadMonitoringConfig(
 		} else {
 			parsed.Prometheus.AlertmanagerConfigs[index] = newAdditionalAlertmanagerConfig(hubInfo)
 		}
+
+		//remove am configs from previous versions if any prior to Global Hub Changes (ACM 2.15.0)
+		if !AMSecretCleanupDoneUWL {
+			updatedCMOCfgTmp := make([]cmomanifests.AdditionalAlertmanagerConfig, 0)
+			for i, cfg := range parsed.Prometheus.AlertmanagerConfigs {
+				if !isOldManagedConfig(cfg, hubInfo) {
+					updatedCMOCfgTmp = append(updatedCMOCfgTmp, parsed.Prometheus.AlertmanagerConfigs[i])
+				}
+			}
+			AMSecretCleanupDoneUWL = true
+			parsed.Prometheus.AlertmanagerConfigs = updatedCMOCfgTmp
+		}
 	} else {
 		parsed.Prometheus = &alertCfg
 	}
@@ -769,6 +851,19 @@ func isManaged(amc cmomanifests.AdditionalAlertmanagerConfig, hubInfo *operatorc
 	} else if hubInfo == nil && amc.TLSConfig.CA != nil && strings.Contains(amc.TLSConfig.CA.LocalObjectReference.Name, hubAmRouterCASecretName) {
 		//This is only for the CMO cleanup script to clean up old configs
 		return true
+	}
+	return false
+}
+
+// isOldManagedConfig checks if the additional alertmanager config is managed by ACM with old secret names prior to Global Hub changes
+func isOldManagedConfig(amc cmomanifests.AdditionalAlertmanagerConfig, hubInfo *operatorconfig.HubInfo) bool {
+	if hubInfo != nil && amc.TLSConfig.CA != nil {
+		clusterDomainName := config.GetClusterName(hubInfo.ObservatoriumAPIEndpoint)
+		if amc.TLSConfig.CA.LocalObjectReference.Name == hubAmRouterCASecretName {
+			return true
+		} else if amc.TLSConfig.CA.LocalObjectReference.Name == hubAmRouterCASecretName+"-"+clusterDomainName {
+			return true
+		}
 	}
 	return false
 }
