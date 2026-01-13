@@ -300,15 +300,13 @@ func (d *Deployer) updatePrometheusRule(ctx context.Context, desiredObj, runtime
 			logUpdateInfo(runtimeObj)
 			return d.client.Patch(ctx, desiredPrometheusRule, client.Apply, client.ForceOwnership, client.FieldOwner(mcoconfig.GetMonitoringCRName()))
 		}
-	} else {
-		if !apiequality.Semantic.DeepDerivative(desiredPrometheusRule.Spec, runtimePrometheusRule.Spec) {
-			logUpdateInfo(runtimeObj)
-			if desiredPrometheusRule.ResourceVersion != runtimePrometheusRule.ResourceVersion {
-				desiredPrometheusRule.ResourceVersion = runtimePrometheusRule.ResourceVersion
-			}
-
-			return d.client.Update(ctx, desiredPrometheusRule)
+	} else if !apiequality.Semantic.DeepDerivative(desiredPrometheusRule.Spec, runtimePrometheusRule.Spec) {
+		logUpdateInfo(runtimeObj)
+		if desiredPrometheusRule.ResourceVersion != runtimePrometheusRule.ResourceVersion {
+			desiredPrometheusRule.ResourceVersion = runtimePrometheusRule.ResourceVersion
 		}
+
+		return d.client.Update(ctx, desiredPrometheusRule)
 	}
 
 	return nil

@@ -159,7 +159,6 @@ func GetMCHPredicateFunc(c client.Client) predicate.Funcs {
 				e.ObjectNew.(*mchv1.MultiClusterHub).Status.CurrentVersion != "" &&
 				e.ObjectNew.(*mchv1.MultiClusterHub).Status.DesiredVersion ==
 					e.ObjectNew.(*mchv1.MultiClusterHub).Status.CurrentVersion {
-
 				currentData, _, err := config.ReadImageManifestConfigMap(
 					c,
 					e.ObjectNew.(*mchv1.MultiClusterHub).Status.CurrentVersion,

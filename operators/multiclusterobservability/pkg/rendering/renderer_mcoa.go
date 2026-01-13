@@ -334,7 +334,6 @@ func (r *MCORenderer) renderMCOATemplates(
 			continue
 		}
 		uobjs = append(uobjs, uobj)
-
 	}
 
 	return uobjs, nil

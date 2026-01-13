@@ -66,7 +66,7 @@ func run() error {
 
 	_ = flagset.Parse(os.Args[1:])
 
-	//Kubeconfig flag
+	// Kubeconfig flag
 	flagset.StringVar(&cfg.kubeconfigLocation, "kubeconfig", "",
 		"Path to a kubeconfig file. If unset, in-cluster configuration will be used")
 

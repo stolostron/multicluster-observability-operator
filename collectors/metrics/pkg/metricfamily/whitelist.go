@@ -18,7 +18,7 @@ type allowlist [][]*labels.Matcher
 // Each given rule is transformed into a matchset. Matchsets are OR-ed.
 // Individual matchers within a matchset are AND-ed, as in PromQL.
 func NewAllowlist(rules []string) (Transformer, error) {
-	var ms [][]*labels.Matcher
+	ms := make([][]*labels.Matcher, 0, len(rules))
 	for i := range rules {
 		matchers, err := parser.ParseMetricSelector(rules[i])
 		if err != nil {

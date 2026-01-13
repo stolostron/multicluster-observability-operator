@@ -54,7 +54,7 @@ type MetricsAllowlist struct {
 	NameList             []string           `yaml:"names"`
 	MatchList            []string           `yaml:"matches"`
 	RenameMap            map[string]string  `yaml:"renames"`
-	RuleList             []RecordingRule    `yaml:"rules"` //deprecated
+	RuleList             []RecordingRule    `yaml:"rules"` // deprecated
 	RecordingRuleList    []RecordingRule    `yaml:"recording_rules"`
 	CollectRuleGroupList []CollectRuleGroup `yaml:"collect_rules"`
 }

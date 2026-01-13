@@ -10,7 +10,8 @@ import (
 	"fmt"
 	"os"
 
-	"golang.org/x/exp/slices"
+	"slices"
+
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -333,10 +334,10 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 }
 
 func (r *ObservabilityAddonReconciler) initFinalization(
-	ctx context.Context, delete bool, hubObsAddon *oav1beta1.ObservabilityAddon,
+	ctx context.Context, isDelete bool, hubObsAddon *oav1beta1.ObservabilityAddon,
 	isHypershift bool, hubInfo *operatorconfig.HubInfo,
 ) (bool, error) {
-	if delete || hubObsAddon.GetDeletionTimestamp() != nil {
+	if isDelete || hubObsAddon.GetDeletionTimestamp() != nil {
 		if !slices.Contains(hubObsAddon.GetFinalizers(), obsAddonFinalizer) {
 			return true, nil
 		}

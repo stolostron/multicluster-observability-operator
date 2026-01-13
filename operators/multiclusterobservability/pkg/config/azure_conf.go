@@ -12,7 +12,6 @@ import (
 )
 
 func validateAzure(conf Config) error {
-
 	if conf.StorageAccount == "" {
 		return errors.New("no storage_account as azure storage account in config file")
 	}

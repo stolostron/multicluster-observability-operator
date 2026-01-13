@@ -79,7 +79,7 @@ func QueryGrafana(opt TestOptions, query string) (*GrafanaResponse, error) {
 	path := "/api/datasources/proxy/uid/000000001/api/v1/query?"
 	queryParams := url.PathEscape(fmt.Sprintf("query=%s", query))
 	req, err := http.NewRequest(
-		"GET",
+		http.MethodGet,
 		grafanaConsoleURL+path+queryParams,
 		nil)
 	if err != nil {
@@ -113,6 +113,7 @@ func QueryGrafana(opt TestOptions, query string) (*GrafanaResponse, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("failed to access managed cluster metrics via grafana console, status code: %d", resp.StatusCode)
@@ -140,7 +141,7 @@ type MetricsAllowlist struct {
 	NameList             []string           `yaml:"names"`
 	MatchList            []string           `yaml:"matches"`
 	RenameMap            map[string]string  `yaml:"renames"`
-	RuleList             []RecordingRule    `yaml:"rules"` //deprecated
+	RuleList             []RecordingRule    `yaml:"rules"` // deprecated
 	RecordingRuleList    []RecordingRule    `yaml:"recording_rules"`
 	CollectRuleGroupList []CollectRuleGroup `yaml:"collect_rules"`
 }

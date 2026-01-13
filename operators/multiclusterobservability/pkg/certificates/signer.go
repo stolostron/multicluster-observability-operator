@@ -30,7 +30,7 @@ func Sign(c client.Client, csr *certificatesv1.CertificateSigningRequest) ([]byt
 		return nil, fmt.Errorf("failed to get client CA: %w", err)
 	}
 
-	var usages []string
+	usages := make([]string, 0, len(csr.Spec.Usages))
 	for _, usage := range csr.Spec.Usages {
 		usages = append(usages, string(usage))
 	}

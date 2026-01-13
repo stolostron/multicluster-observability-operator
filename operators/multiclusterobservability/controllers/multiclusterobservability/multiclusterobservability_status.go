@@ -466,7 +466,7 @@ func newMetricsDisabledCondition() *mcoshared.Condition {
 func newMCOADegradedCondition(missing []string) *mcoshared.Condition {
 	tmpl := "MultiCluster-Observability-Addon degraded because the following CRDs are not installed on the hub: %s"
 
-	var missingVersions []string
+	missingVersions := make([]string, 0, len(missing))
 	for _, name := range missing {
 		version := config.GetMCOASupportedCRDVersion(name)
 		missingVersions = append(missingVersions, fmt.Sprintf("%s(%s)", name, version))

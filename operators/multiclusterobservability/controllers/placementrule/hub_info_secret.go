@@ -24,10 +24,9 @@ import (
 // this function should only called when the watched resources are created/updated.
 func generateHubInfoSecret(client client.Client, obsNamespace string,
 	namespace string, crdMap map[string]bool, isUWMAlertingDisabled bool) (*corev1.Secret, error) {
-
-	obsAPIHost := ""
+	var obsAPIHost string
 	alertmanagerEndpoint := ""
-	alertmanagerRouterCA := ""
+	var alertmanagerRouterCA string
 
 	if crdMap[config.IngressControllerCRD] {
 		var err error
@@ -87,7 +86,7 @@ func generateHubInfoSecret(client client.Client, obsNamespace string,
 	}
 
 	// get the trimmed cluster id for the cluster
-	trimmedClusterID := ""
+	var trimmedClusterID string
 	if os.Getenv("UNIT_TEST") != "true" {
 		trimmedClusterID, err = config.GetTrimmedClusterID(client)
 		if err != nil {

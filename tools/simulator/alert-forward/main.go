@@ -59,29 +59,31 @@ func newAlertFowarder(opts *alertForwarderOptions) (*alertForwarder, error) {
 		Path:   fmt.Sprintf("/api/%s/alerts", opts.amAPIVersion),
 	}
 
-	accessToken := ""
-	if len(opts.amAccessToken) > 0 {
+	var accessToken string
+	switch {
+	case len(opts.amAccessToken) > 0:
 		accessToken = opts.amAccessToken
-	} else if len(opts.amAccessTokenFile) > 0 {
+	case len(opts.amAccessTokenFile) > 0:
 		data, err := os.ReadFile(opts.amAccessTokenFile)
 		if err != nil {
 			return nil, err
 		}
 		accessToken = strings.TrimSpace(string(data))
-	} else {
+	default:
 		return nil, errors.New("am-access-token or am-access-token-file must be specified")
 	}
 
-	alerts := ""
-	if len(opts.alerts) > 0 {
+	var alerts string
+	switch {
+	case len(opts.alerts) > 0:
 		alerts = opts.alerts
-	} else if len(opts.alertsFile) > 0 {
+	case len(opts.alertsFile) > 0:
 		data, err := os.ReadFile(opts.alertsFile)
 		if err != nil {
 			return nil, err
 		}
 		alerts = strings.TrimSpace(string(data))
-	} else {
+	default:
 		return nil, errors.New("alerts or alerts-file must be specified")
 	}
 
@@ -131,7 +133,7 @@ func (af *alertForwarder) Run() error {
 			return nil
 		case <-ticker.C:
 			var wg sync.WaitGroup
-			for i := 0; i < af.workers; i++ {
+			for i := range af.workers {
 				log.Printf("sending alerts with worker %d\n", i)
 				wg.Add(1)
 				go func(index int, client *http.Client, traceCtx context.Context, url string, payload []byte) {
@@ -226,7 +228,7 @@ func createAlertmanagerConfig(amHost, amScheme, amAPIVersion, amAccessToken stri
 
 // send alerts to alertmanager with one http request.
 func sendOne(c *http.Client, traceCtx context.Context, url string, b []byte) error {
-	req, err := http.NewRequestWithContext(traceCtx, "POST", url, bytes.NewReader(b))
+	req, err := http.NewRequestWithContext(traceCtx, http.MethodPost, url, bytes.NewReader(b))
 	if err != nil {
 		return err
 	}

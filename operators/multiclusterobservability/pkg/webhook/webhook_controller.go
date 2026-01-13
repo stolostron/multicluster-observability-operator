@@ -52,7 +52,8 @@ func (wc *WebhookController) Start(ctx context.Context) error {
 		err := wc.client.Get(
 			context.TODO(),
 			types.NamespacedName{Name: wc.mutatingWebhook.GetName()}, foundMwhc)
-		if err != nil && apierrors.IsNotFound(err) {
+		switch {
+		case err != nil && apierrors.IsNotFound(err):
 			if err := wc.client.Create(context.TODO(), wc.mutatingWebhook); err != nil {
 				log.V(1).Info("failed to create the mutatingwebhookconfiguration",
 					"mutatingwebhookconfiguration", wc.mutatingWebhook.GetName(),
@@ -61,10 +62,10 @@ func (wc *WebhookController) Start(ctx context.Context) error {
 			}
 			log.V(1).Info("the mutatingwebhookconfiguration is created",
 				"mutatingwebhookconfiguration", wc.mutatingWebhook.GetName())
-		} else if err != nil {
+		case err != nil:
 			log.V(1).Info("failed to check the mutatingwebhookconfiguration", "mutatingwebhookconfiguration", wc.mutatingWebhook.GetName(), "error", err)
 			return err
-		} else {
+		default:
 			// there is an existing mutatingWebhookConfiguration
 			if len(foundMwhc.Webhooks) != len(wc.mutatingWebhook.Webhooks) ||
 				!(foundMwhc.Webhooks[0].Name == wc.mutatingWebhook.Webhooks[0].Name &&
@@ -72,15 +73,12 @@ func (wc *WebhookController) Start(ctx context.Context) error {
 					reflect.DeepEqual(foundMwhc.Webhooks[0].Rules, wc.mutatingWebhook.Webhooks[0].Rules) &&
 					reflect.DeepEqual(foundMwhc.Webhooks[0].ClientConfig.Service, wc.mutatingWebhook.Webhooks[0].ClientConfig.Service)) {
 				wc.mutatingWebhook.ObjectMeta.ResourceVersion = foundMwhc.ObjectMeta.ResourceVersion
-
-				err := wc.client.Update(context.TODO(), wc.mutatingWebhook)
-				if err != nil {
+				if err := wc.client.Update(context.TODO(), wc.mutatingWebhook); err != nil {
 					log.V(1).Info("failed to update the mutatingwebhookconfiguration", "mutatingwebhookconfiguration", wc.mutatingWebhook.GetName(), "error", err)
 					return err
 				}
 				log.V(1).Info("the mutatingwebhookconfiguration is updated", "mutatingwebhookconfiguration", wc.mutatingWebhook.GetName())
 			}
-			log.V(1).Info("the mutatingwebhookconfiguration already exists and no change", "mutatingwebhookconfiguration", wc.mutatingWebhook.GetName())
 		}
 	}
 

@@ -133,13 +133,11 @@ func (cfg Config) CreateFromClient(
 		}
 
 		fromTransport.TLSClientConfig.RootCAs = pool
-	} else {
-		if fromTransport.TLSClientConfig == nil {
-			// #nosec G402 -- Only used if no TLS config is provided.
-			fromTransport.TLSClientConfig = &tls.Config{
-				MinVersion:         tls.VersionTLS12,
-				InsecureSkipVerify: true,
-			}
+	} else if fromTransport.TLSClientConfig == nil {
+		// #nosec G402 -- Only used if no TLS config is provided.
+		fromTransport.TLSClientConfig = &tls.Config{
+			MinVersion:         tls.VersionTLS12,
+			InsecureSkipVerify: true,
 		}
 	}
 
@@ -184,13 +182,11 @@ func (cfg Config) CreateToClient(
 		if err != nil {
 			return nil, fmt.Errorf("failed to create TLS transport: %w", err)
 		}
-	} else {
-		if toTransport.TLSClientConfig == nil {
-			// #nosec G402 -- Only used if no TLS config is provided.
-			toTransport.TLSClientConfig = &tls.Config{
-				MinVersion:         tls.VersionTLS12,
-				InsecureSkipVerify: true,
-			}
+	} else if toTransport.TLSClientConfig == nil {
+		// #nosec G402 -- Only used if no TLS config is provided.
+		toTransport.TLSClientConfig = &tls.Config{
+			MinVersion:         tls.VersionTLS12,
+			InsecureSkipVerify: true,
 		}
 	}
 
@@ -456,14 +452,15 @@ func (w *Worker) forward(ctx context.Context) error {
 
 	var families []*clientmodel.MetricFamily
 	var err error
-	if w.simulatedTimeseriesFile != "" {
+	switch {
+	case w.simulatedTimeseriesFile != "":
 		families, err = simulator.FetchSimulatedTimeseries(w.simulatedTimeseriesFile)
 		if err != nil {
 			rlogger.Log(w.logger, rlogger.Warn, "msg", "failed fetch simulated timeseries", "err", err)
 		}
-	} else if os.Getenv("SIMULATE") == "true" {
+	case os.Getenv("SIMULATE") == "true":
 		families = simulator.SimulateMetrics(w.logger)
-	} else {
+	default:
 		families, err = w.getFederateMetrics(ctx)
 		if err != nil {
 			updateStatus(statuslib.ForwardFailed, "Failed to retrieve metrics")
@@ -505,7 +502,7 @@ func (w *Worker) forward(ctx context.Context) error {
 		return nil
 	}
 
-	req := &http.Request{Method: "POST", URL: w.to}
+	req := &http.Request{Method: http.MethodPost, URL: w.to}
 	if err := w.toClient.RemoteWrite(ctx, req, families, w.interval); err != nil {
 		var httpError *metricsclient.HTTPError
 		// Avoid degrading the status on 409
@@ -543,7 +540,7 @@ func (w *Worker) getFederateMetrics(ctx context.Context) ([]*clientmodel.MetricF
 	}
 	from.RawQuery = v.Encode()
 
-	req := &http.Request{Method: "GET", URL: from}
+	req := &http.Request{Method: http.MethodGet, URL: from}
 	families, err = w.fromClient.Retrieve(ctx, req)
 	if err != nil {
 		rlogger.Log(w.logger, rlogger.Warn, "msg", "Failed to retrieve metrics", "err", err)
@@ -580,7 +577,7 @@ func (w *Worker) getRecordingMetrics(ctx context.Context) ([]*clientmodel.Metric
 		v.Add(queryParam, rquery)
 		from.RawQuery = v.Encode()
 
-		req := &http.Request{Method: "GET", URL: from}
+		req := &http.Request{Method: http.MethodGet, URL: from}
 		rfamilies, err := w.fromClient.RetrieveRecordingMetrics(ctx, req, rname)
 		if err != nil {
 			rlogger.Log(w.logger, rlogger.Warn, "msg", "Failed to retrieve recording metrics", "err", err, "url", from)

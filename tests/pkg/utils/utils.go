@@ -180,11 +180,10 @@ func FetchBearerToken(opt TestOptions) (string, error) {
 		return "", err
 	}
 	for _, secret := range secretList.Items {
-		// nolint:staticcheck
 		if len(secret.GetObjectMeta().GetAnnotations()) > 0 {
 			annos := secret.GetObjectMeta().GetAnnotations()
 			sa, saExists := annos["kubernetes.io/service-account.name"]
-			//_, createByExists := annos["kubernetes.io/created-by"]
+			// _, createByExists := annos["kubernetes.io/created-by"]
 			if saExists && sa == "mco-e2e-testing-sa" {
 				data := secret.Data
 				if token, ok := data["token"]; ok {

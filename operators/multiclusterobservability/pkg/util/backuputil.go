@@ -43,7 +43,6 @@ func AddBackupLabelToConfigMap(c client.Client, name, namespace string) error {
 		} else {
 			log.Info("Add backup label for configMap", "name", name)
 		}
-
 	}
 	return nil
 }

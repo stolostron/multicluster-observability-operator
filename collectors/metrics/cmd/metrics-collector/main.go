@@ -779,7 +779,6 @@ func runMultiWorkers(o *Options, cfg *forwarder.Config) error {
 			forwardWorker.Run(ctx)
 			cancel()
 		}()
-
 	}
 	return nil
 }

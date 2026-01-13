@@ -7,11 +7,11 @@ package placementrule
 import (
 	"context"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 
-	"golang.org/x/exp/slices"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -115,13 +115,14 @@ func createObsAddon(mco *mcov1beta2.MultiClusterObservability, c client.Client, 
 
 	found := &obsv1beta1.ObservabilityAddon{}
 	err := c.Get(context.TODO(), types.NamespacedName{Name: obsAddonName, Namespace: namespace}, found)
-	if err == nil && found.GetDeletionTimestamp() != nil {
+	switch {
+	case err == nil && found.GetDeletionTimestamp() != nil:
 		err = deleteFinalizer(c, found)
 		if err != nil {
 			return err
 		}
 		return nil
-	} else if err != nil && errors.IsNotFound(err) {
+	case err != nil && errors.IsNotFound(err):
 		log.Info("Creating observabilityaddon cr", "namespace", namespace)
 		err = c.Create(context.TODO(), ec)
 		if err != nil {
@@ -129,7 +130,7 @@ func createObsAddon(mco *mcov1beta2.MultiClusterObservability, c client.Client, 
 			return err
 		}
 		return nil
-	} else if err != nil {
+	case err != nil:
 		log.Error(err, "Failed to check observabilityaddon cr before create")
 		return err
 	}

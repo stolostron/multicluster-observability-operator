@@ -45,9 +45,9 @@ func SimulateMetrics(logger log.Logger) []*clientmodel.MetricFamily {
 	families := make([]*clientmodel.MetricFamily, 0, 100)
 	timestamp := time.Now().UnixNano() / int64(time.Millisecond)
 	var sb strings.Builder
-	for i := 0; i < metrisNumber; i++ {
+	for i := range metrisNumber {
 		sb.WriteString(fmt.Sprintf("%s_%d{", metricsNamePrefix, i/1000))
-		for j := 0; j < labelNumber; j++ {
+		for j := range labelNumber {
 			if j == 0 {
 				sb.WriteString(fmt.Sprintf("%s_%d=\"%s-%d--%d\"", labelPrefix, j, labelValuePrefix, i/10, i%10))
 			} else {
@@ -102,7 +102,7 @@ func FetchSimulatedTimeseries(timeseriesFile string) ([]*clientmodel.MetricFamil
 	if err != nil {
 		return nil, err
 	}
-	var families []*clientmodel.MetricFamily
+	families := make([]*clientmodel.MetricFamily, 0, len(parsed))
 	for _, mf := range parsed {
 		for _, m := range mf.Metric {
 			m.TimestampMs = &timestamp

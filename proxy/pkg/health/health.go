@@ -82,7 +82,7 @@ func (c *Checker) checkMetricsServer() error {
 	// We use a HEAD request because we only need to verify that the mTLS connection
 	// can be established. We don't need a body, and any successful HTTP response
 	// (even a 403 or 404) proves that the connection was successful.
-	req, err := http.NewRequestWithContext(ctx, "HEAD", c.metricsServerURL.String(), nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodHead, c.metricsServerURL.String(), nil)
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}

@@ -15,7 +15,8 @@ import (
 	"strings"
 	"time"
 
-	"golang.org/x/exp/slices"
+	"slices"
+
 	rbacv1 "k8s.io/api/rbac/v1"
 
 	"gopkg.in/yaml.v2"
@@ -73,7 +74,6 @@ var (
 )
 
 func deleteManifestWork(c client.Client, name string, namespace string) error {
-
 	addon := &workv1.ManifestWork{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
@@ -89,7 +89,6 @@ func deleteManifestWork(c client.Client, name string, namespace string) error {
 }
 
 func deleteManifestWorks(c client.Client, namespace string) error {
-
 	err := c.DeleteAllOf(context.TODO(), &workv1.ManifestWork{},
 		client.InNamespace(namespace), client.MatchingLabels{ownerLabelKey: ownerLabelValue})
 	if err != nil {
@@ -228,7 +227,6 @@ func shouldUpdateManifestWork(desiredWork, foundWork *workv1.ManifestWork) bool 
 // this function is expensive and should not be called for each reconcile loop.
 func generateGlobalManifestResources(ctx context.Context, c client.Client, mco *mcov1beta2.MultiClusterObservability, kubeClient kubernetes.Interface) (
 	[]workv1.Manifest, *workv1.Manifest, error) {
-
 	works := []workv1.Manifest{}
 
 	// inject the namespace
@@ -331,13 +329,14 @@ func createManifestWorks(
 	// inject the endpoint operator deployment
 	endpointMetricsOperatorDeployCopy := dep.DeepCopy()
 	spec := endpointMetricsOperatorDeployCopy.Spec.Template.Spec
-	if addonConfig.Spec.NodePlacement != nil {
+	switch {
+	case addonConfig.Spec.NodePlacement != nil:
 		spec.NodeSelector = addonConfig.Spec.NodePlacement.NodeSelector
 		spec.Tolerations = addonConfig.Spec.NodePlacement.Tolerations
-	} else if cluster.IsLocalCluster {
+	case cluster.IsLocalCluster:
 		spec.NodeSelector = mco.Spec.NodeSelector
 		spec.Tolerations = mco.Spec.Tolerations
-	} else {
+	default:
 		// reset NodeSelector and Tolerations
 		spec.NodeSelector = map[string]string{}
 		spec.Tolerations = []corev1.Toleration{}
@@ -501,7 +500,7 @@ func ensureResourcesForHubMetricsCollection(ctx context.Context, c client.Client
 			return fmt.Errorf("failed to set controller reference on object: %w", err)
 		}
 
-		//if kind is a Service account set the name as HubServiceAccount
+		// if kind is a Service account set the name as HubServiceAccount
 		if kind == "ServiceAccount" {
 			obj.SetName(config.HubEndpointSaName)
 		}
@@ -723,7 +722,6 @@ func deleteObject[T client.Object](ctx context.Context, c client.Client, obj T) 
 // generateAmAccessorTokenSecret generates the secret that contains the access_token
 // for the Alertmanager in the Hub cluster
 func generateAmAccessorTokenSecret(cl client.Client, kubeClient kubernetes.Interface) (*corev1.Secret, error) {
-
 	if kubeClient == nil {
 		return nil, fmt.Errorf("kubeClient is required but was nil")
 	}
@@ -759,14 +757,14 @@ func generateAmAccessorTokenSecret(cl client.Client, kubeClient kubernetes.Inter
 
 		if hasExpiration && hasCreated {
 			// Check if the token is near expiration
-			expirationStr := string(expirationBytes)
+			expirationStr := expirationBytes
 			expiration, err := time.Parse(time.RFC3339, expirationStr)
 			if err != nil {
 				log.Error(err, "Failed to parse alertmanager accessor token expiration date", "expiration", expiration)
 				return nil, err
 			}
 			// find out the expected duration of the token
-			createdStr := string(createdBytes)
+			createdStr := createdBytes
 			created, err := time.Parse(time.RFC3339, createdStr)
 
 			if err != nil {
@@ -842,7 +840,6 @@ func generateAmAccessorTokenSecret(cl client.Client, kubeClient kubernetes.Inter
 // Note: This can be removed for 2.17
 // deleteAlertmanagerAccessorTokenSecret deletes the previous unbound token secret
 func deleteAlertmanagerAccessorTokenSecret(ctx context.Context, cl client.Client) error {
-
 	secretToDelete := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      config.AlertmanagerAccessorSAName + "-token",

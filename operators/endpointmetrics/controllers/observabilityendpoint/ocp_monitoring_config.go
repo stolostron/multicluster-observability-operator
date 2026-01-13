@@ -186,7 +186,6 @@ func createHubAmRouterCASecret(
 	}
 
 	return err
-
 }
 
 // createHubAmAccessorTokenSecret creates the secret that contains access token of the Hub's Alertmanager.
@@ -653,10 +652,10 @@ func createOrUpdateCMOConfig(
 		if existing {
 			updatedCMOCfg.PrometheusK8sConfig.AlertmanagerConfigs[index] = newAdditionalAlertmanagerConfig(hubInfo)
 		} else {
-			updatedCMOCfg.PrometheusK8sConfig.AlertmanagerConfigs = append(existingCfg.PrometheusK8sConfig.AlertmanagerConfigs, newAdditionalAlertmanagerConfig(hubInfo))
+			updatedCMOCfg.PrometheusK8sConfig.AlertmanagerConfigs = append(updatedCMOCfg.PrometheusK8sConfig.AlertmanagerConfigs, newAdditionalAlertmanagerConfig(hubInfo))
 		}
 
-		//remove am configs from previous versions if any prior to Global Hub Changes (ACM 2.15.0)
+		// remove am configs from previous versions if any prior to Global Hub Changes (ACM 2.15.0)
 		if !AMSecretCleanupDone {
 			updatedCMOCfgTmp := make([]cmomanifests.AdditionalAlertmanagerConfig, 0)
 			for i, cfg := range updatedCMOCfg.PrometheusK8sConfig.AlertmanagerConfigs {
@@ -690,7 +689,6 @@ func createOrUpdateUserWorkloadMonitoringConfig(
 	client client.Client,
 	hubInfo *operatorconfig.HubInfo,
 ) error {
-
 	// handle the case when alert forwarding is disabled globally or UWM alerting is disabled specifically
 	if hubInfo.AlertmanagerEndpoint == "" || hubInfo.UWMAlertingDisabled {
 		log.Info("request to disable alert forwarding")
@@ -759,7 +757,7 @@ func createOrUpdateUserWorkloadMonitoringConfig(
 			parsed.Prometheus.AlertmanagerConfigs[index] = newAdditionalAlertmanagerConfig(hubInfo)
 		}
 
-		//remove am configs from previous versions if any prior to Global Hub Changes (ACM 2.15.0)
+		// remove am configs from previous versions if any prior to Global Hub Changes (ACM 2.15.0)
 		if !AMSecretCleanupDoneUWL {
 			updatedCMOCfgTmp := make([]cmomanifests.AdditionalAlertmanagerConfig, 0)
 			for i, cfg := range parsed.Prometheus.AlertmanagerConfigs {
@@ -849,7 +847,7 @@ func isManaged(amc cmomanifests.AdditionalAlertmanagerConfig, hubInfo *operatorc
 	if hubInfo != nil && amc.TLSConfig.CA != nil && amc.TLSConfig.CA.LocalObjectReference.Name == hubAmRouterCASecretName+"-"+hubInfo.HubClusterID {
 		return true
 	} else if hubInfo == nil && amc.TLSConfig.CA != nil && strings.Contains(amc.TLSConfig.CA.LocalObjectReference.Name, hubAmRouterCASecretName) {
-		//This is only for the CMO cleanup script to clean up old configs
+		// This is only for the CMO cleanup script to clean up old configs
 		return true
 	}
 	return false

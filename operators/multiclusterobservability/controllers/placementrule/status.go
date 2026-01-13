@@ -80,7 +80,7 @@ func updateAddonStatus(ctx context.Context, c client.Client, addonList mcov1beta
 }
 
 func convertConditionsToMeta(conditions []mcov1beta1.StatusCondition) []metav1.Condition {
-	var metaConditions []metav1.Condition
+	metaConditions := make([]metav1.Condition, 0, len(conditions))
 	for _, c := range conditions {
 		metaCondition := metav1.Condition{
 			Type:               c.Type,

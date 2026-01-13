@@ -39,7 +39,7 @@ func LogLevelFromString(l string) level.Option {
 
 // Log is used to handle the error of logger.Log globally.
 func Log(log log.Logger, l LogLevel, keyvals ...any) {
-	//errkey := "failover_err_%d"
+	// errkey := "failover_err_%d"
 	switch l {
 	case Debug:
 		err := level.Debug(log).Log(keyvals...)

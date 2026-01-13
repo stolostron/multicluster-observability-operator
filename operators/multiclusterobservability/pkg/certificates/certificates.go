@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"math/big"
 	"net"
+	"slices"
 	"time"
 
 	certificatesv1 "k8s.io/api/certificates/v1"
@@ -23,7 +24,6 @@ import (
 
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 
-	"golang.org/x/exp/slices"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -62,7 +62,6 @@ func CreateObservabilityCerts(
 	mco *mcov1beta2.MultiClusterObservability,
 	ingressCtlCrdExists bool,
 ) error {
-
 	config.SetCertDuration(mco.Annotations)
 
 	err, serverCrtUpdated := createCASecret(c, scheme, mco, false, serverCACerts, serverCACertifcateCN)
@@ -421,11 +420,9 @@ func removeExpiredCA(c client.Client, name string) {
 			if err != nil {
 				log.Error(err, "Find wrong cert bytes, needs to remove it", "name", name)
 				removeFlag = true
-			} else {
-				if time.Now().After(certs[0].NotAfter) {
-					log.Info("CA certificate expired, needs to remove it", "name", name)
-					removeFlag = true
-				}
+			} else if time.Now().After(certs[0].NotAfter) {
+				log.Info("CA certificate expired, needs to remove it", "name", name)
+				removeFlag = true
 			}
 			if !removeFlag {
 				caSecret.Data["tls.crt"] = append(caSecret.Data["tls.crt"], data[index:len(data)-len(restData)]...)

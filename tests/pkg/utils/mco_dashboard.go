@@ -26,7 +26,7 @@ func ContainDashboard(opt TestOptions, title string) (error, bool) {
 	path := "/api/search?"
 	queryParams := url.PathEscape(fmt.Sprintf("query=%s", title))
 	req, err := http.NewRequest(
-		"GET",
+		http.MethodGet,
 		grafanaConsoleURL+path+queryParams,
 		nil)
 	if err != nil {
@@ -55,6 +55,7 @@ func ContainDashboard(opt TestOptions, title string) (error, bool) {
 	if err != nil {
 		return err, false
 	}
+	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		klog.Errorf("resp: %+v\n", resp)

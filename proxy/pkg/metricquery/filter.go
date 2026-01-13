@@ -54,7 +54,7 @@ func (nf *NamespaceFilter) AddNamespaceFilters(originalQuery, modifiedQuery stri
 func (nf *NamespaceFilter) getCommonNamespacesAcrossClusters(clusters []string) []string {
 	klog.V(2).Infof("common namespaces across clusters: %v  in metrics access map: %v", clusters, nf.userMetricsAccess)
 
-	//make a smaller map of metricsaccess for just the requested clusters
+	// make a smaller map of metricsaccess for just the requested clusters
 	reqClustersMetricsAccess := make(map[string][]string)
 	if len(clusters) == 0 {
 		reqClustersMetricsAccess = nf.userMetricsAccess
@@ -65,8 +65,8 @@ func (nf *NamespaceFilter) getCommonNamespacesAcrossClusters(clusters []string) 
 	}
 	klog.V(2).Infof("requested clusters metrics access map: %v", reqClustersMetricsAccess)
 
-	//make a count of how many times each unique namespace occurs across clusters
-	//if the count of a ns == le(clusters), it means it exists across all clusters
+	// make a count of how many times each unique namespace occurs across clusters
+	// if the count of a ns == le(clusters), it means it exists across all clusters
 	namespaceCounts := make(map[string]int)
 	allAccessCount := 0
 	for _, namespaces := range reqClustersMetricsAccess {

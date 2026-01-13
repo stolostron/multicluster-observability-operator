@@ -7,9 +7,10 @@ package metricfamily
 import (
 	"sync"
 
+	"slices"
+
 	clientmodel "github.com/prometheus/client_model/go"
 	"github.com/prometheus/prometheus/prompb"
-	"golang.org/x/exp/slices"
 )
 
 type LabelRetriever interface {
@@ -97,7 +98,6 @@ func appendLabels(
 func insertLexicographicallyByName(
 	existing []*clientmodel.LabelPair,
 	value *clientmodel.LabelPair) []*clientmodel.LabelPair {
-
 	existing = append(existing, value)
 	i := len(existing) - 1
 	for i > 0 && existing[i].GetName() < existing[i-1].GetName() {
@@ -110,7 +110,6 @@ func insertLexicographicallyByName(
 func InsertLabelLexicographicallyByName(
 	existing []prompb.Label,
 	value prompb.Label) []prompb.Label {
-
 	existing = append(existing, value)
 	i := len(existing) - 1
 	for i > 0 && existing[i].GetName() < existing[i-1].GetName() {

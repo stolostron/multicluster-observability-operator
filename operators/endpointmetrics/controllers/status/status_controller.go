@@ -78,7 +78,7 @@ func newReason(s string) reason {
 }
 
 func (r reason) String() string {
-	return string(r.reason)
+	return r.reason
 }
 
 func (r reason) Priority() int {
@@ -361,15 +361,18 @@ func aggregateComponentsConditions(conditions []oav1beta1.StatusCondition) *oav1
 	}
 
 	// Set some standard messages for the aggregated condition. It aligns with the registration-agent available message (see below)
-	if aggregatedCondition.Type == string(Available) {
+	switch aggregatedCondition.Type {
+	case string(Available):
 		// If the aggregated condition is Available, override the message with the same message as the registration-agent
 		// It avoids confusion for the user. Because at some point, the registration-agent overrides the "Available" condition
 		// with its own message.
 		aggregatedCondition.Message = "observability-controller add-on is available."
-	} else if aggregatedCondition.Type == string(Progressing) {
+	case string(Progressing):
 		aggregatedCondition.Message = "observability-controller add-on is progressing."
-	} else if aggregatedCondition.Type == string(Degraded) && aggregatedCondition.Reason == string(status.Disabled) {
-		aggregatedCondition.Message = "observability-controller add-on is disabled."
+	case string(Degraded):
+		if aggregatedCondition.Reason == string(status.Disabled) {
+			aggregatedCondition.Message = "observability-controller add-on is disabled."
+		}
 	}
 
 	// truncate the message if it exceeds the limit

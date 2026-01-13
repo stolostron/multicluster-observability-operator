@@ -746,7 +746,7 @@ func (m *MetricsCollector) ensureDeployment(ctx context.Context, isUWL bool, dep
 	}
 
 	if m.ClusterInfo.IsHubMetricsCollector {
-		//to avoid hub metrics collector from sending status
+		// to avoid hub metrics collector from sending status
 		desiredMetricsCollectorDep.Spec.Template.Spec.Containers[0].Env = append(desiredMetricsCollectorDep.Spec.Template.Spec.Containers[0].Env,
 			corev1.EnvVar{
 				Name:  "STANDALONE",

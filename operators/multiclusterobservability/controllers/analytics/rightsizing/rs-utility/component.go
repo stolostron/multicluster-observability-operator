@@ -157,7 +157,8 @@ func CleanupComponentResources(
 		// If NamespaceBinding has been updated delete only common resources
 		resourcesToDelete = commonResources
 	} else {
-		resourcesToDelete = append(commonResources,
+		resourcesToDelete = append(resourcesToDelete, commonResources...)
+		resourcesToDelete = append(resourcesToDelete,
 			&corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: componentConfig.ConfigMapName, Namespace: config.GetDefaultNamespace()}},
 		)
 	}

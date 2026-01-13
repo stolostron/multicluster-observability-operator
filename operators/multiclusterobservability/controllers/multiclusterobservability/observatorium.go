@@ -11,18 +11,18 @@ import (
 
 	// The import of crypto/md5 below is not for cryptographic use. It is used to hash the contents of files to track
 	// changes and thus it's not a security issue.
-	// nolint:gosec
+
 	"crypto/md5" // #nosec G401 G501
 	"encoding/hex"
 	"fmt"
 	"os"
 	"path"
 	"reflect"
+	"slices"
 	"time"
 
 	routev1 "github.com/openshift/api/route/v1"
 	obsv1alpha1 "github.com/stolostron/observatorium-operator/api/v1alpha1"
-	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
@@ -70,7 +70,7 @@ func hashObservatoriumCRConfig(cl client.Client) (string, error) {
 
 	// The usage of crypto/md5 below is not for cryptographic use. It is used to hash the contents of files to track
 	// changes and thus it's not a security issue.
-	// nolint:gosec
+
 	hasher := md5.New() // #nosec G401 G501
 	resultConfigMap := &v1.ConfigMap{}
 	err := cl.Get(context.TODO(), types.NamespacedName{
@@ -93,7 +93,6 @@ func hashObservatoriumCRConfig(cl client.Client) (string, error) {
 func GenerateObservatoriumCR(
 	cl client.Client, scheme *runtime.Scheme,
 	mco *mcov1beta2.MultiClusterObservability) (*ctrl.Result, error) {
-
 	hash, err := hashObservatoriumCRConfig(cl)
 	if err != nil {
 		return &ctrl.Result{}, fmt.Errorf("failed to hash the observatorium CR config: %w", err)
@@ -239,7 +238,6 @@ func updateTenantID(
 	newTenant obsv1alpha1.APITenant,
 	oldTenant obsv1alpha1.APITenant,
 	idx int) {
-
 	if oldTenant.Name == newTenant.Name && newTenant.ID == oldTenant.ID {
 		return
 	}
@@ -248,7 +246,7 @@ func updateTenantID(
 	for j, hashring := range newSpec.Hashrings {
 		if slices.Contains(hashring.Tenants, newTenant.ID) {
 			newSpec.Hashrings[j].Tenants = util.Remove(newSpec.Hashrings[j].Tenants, newTenant.ID)
-			newSpec.Hashrings[j].Tenants = append(newSpec.Hashrings[0].Tenants, oldTenant.ID)
+			newSpec.Hashrings[j].Tenants = append(newSpec.Hashrings[j].Tenants, oldTenant.ID)
 		}
 	}
 }
@@ -258,7 +256,6 @@ func GenerateAPIGatewayRoute(
 	ctx context.Context,
 	runclient client.Client, scheme *runtime.Scheme,
 	mco *mcov1beta2.MultiClusterObservability) (*ctrl.Result, error) {
-
 	apiGateway := &routev1.Route{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      obsAPIGateway,
@@ -512,7 +509,6 @@ func applyEndpointsSecret(c client.Client, eps []mcoutil.RemoteWriteEndpointWith
 		}
 	}
 	return nil
-
 }
 
 func newAPISpec(c client.Client, mco *mcov1beta2.MultiClusterObservability) (obsv1alpha1.APISpec, error) {
@@ -678,8 +674,8 @@ func newRuleSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string) o
 		}
 		ruleSpec.ReloaderResources = v1.ResourceRequirements{
 			Requests: v1.ResourceList{
-				v1.ResourceName(v1.ResourceCPU):    resource.MustParse(mcoconfig.ThanosRuleReloaderCPURequest[mco.Spec.InstanceSize]),
-				v1.ResourceName(v1.ResourceMemory): resource.MustParse(mcoconfig.ThanosRuleReloaderMemoryRequest[mco.Spec.InstanceSize]),
+				v1.ResourceCPU:    resource.MustParse(mcoconfig.ThanosRuleReloaderCPURequest[mco.Spec.InstanceSize]),
+				v1.ResourceMemory: resource.MustParse(mcoconfig.ThanosRuleReloaderMemoryRequest[mco.Spec.InstanceSize]),
 			},
 		}
 	}
@@ -904,10 +900,10 @@ func newReceiverControllerSpec(mco *mcov1beta2.MultiClusterObservability) obsv1a
 		}
 		receiveControllerSpec.Resources = v1.ResourceRequirements{
 			Requests: v1.ResourceList{
-				v1.ResourceName(v1.ResourceCPU): resource.MustParse(
+				v1.ResourceCPU: resource.MustParse(
 					mcoconfig.ObservatoriumReceiveControllerCPURequest[mco.Spec.InstanceSize],
 				),
-				v1.ResourceName(v1.ResourceMemory): resource.MustParse(
+				v1.ResourceMemory: resource.MustParse(
 					mcoconfig.ObservatoriumReceiveControllerMemoryRequest[mco.Spec.InstanceSize],
 				),
 			},

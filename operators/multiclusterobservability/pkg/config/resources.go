@@ -127,15 +127,15 @@ func getDefaultResourceRequirements(component string, tshirtSize observabilityv1
 	memoryLimit := getDefaultResourceMemoryLimit(component)
 	cpuLimit := getDefaultResourceCPULimit(component)
 
-	requests[corev1.ResourceName(corev1.ResourceMemory)] = resource.MustParse(memoryRequest)
-	requests[corev1.ResourceName(corev1.ResourceCPU)] = resource.MustParse(cpuRequest)
+	requests[corev1.ResourceMemory] = resource.MustParse(memoryRequest)
+	requests[corev1.ResourceCPU] = resource.MustParse(cpuRequest)
 
 	if memoryLimit != "" {
-		limits[corev1.ResourceName(corev1.ResourceMemory)] = resource.MustParse(memoryLimit)
+		limits[corev1.ResourceMemory] = resource.MustParse(memoryLimit)
 	}
 
 	if cpuLimit != "" {
-		limits[corev1.ResourceName(corev1.ResourceCPU)] = resource.MustParse(cpuLimit)
+		limits[corev1.ResourceCPU] = resource.MustParse(cpuLimit)
 	}
 
 	return corev1.ResourceRequirements{
@@ -284,16 +284,16 @@ func GetOBAResources(oba *mcoshared.ObservabilityAddonSpec, tshirtSize observabi
 	requests := corev1.ResourceList{}
 	limits := corev1.ResourceList{}
 	if cpuRequests != "" {
-		requests[corev1.ResourceName(corev1.ResourceCPU)] = resource.MustParse(cpuRequests)
+		requests[corev1.ResourceCPU] = resource.MustParse(cpuRequests)
 	}
 	if memoryRequests != "" {
-		requests[corev1.ResourceName(corev1.ResourceMemory)] = resource.MustParse(memoryRequests)
+		requests[corev1.ResourceMemory] = resource.MustParse(memoryRequests)
 	}
 	if cpuLimits != "" {
-		limits[corev1.ResourceName(corev1.ResourceCPU)] = resource.MustParse(cpuLimits)
+		limits[corev1.ResourceCPU] = resource.MustParse(cpuLimits)
 	}
 	if memoryLimits != "" {
-		limits[corev1.ResourceName(corev1.ResourceMemory)] = resource.MustParse(memoryLimits)
+		limits[corev1.ResourceMemory] = resource.MustParse(memoryLimits)
 	}
 	resourceReq.Limits = limits
 	resourceReq.Requests = requests

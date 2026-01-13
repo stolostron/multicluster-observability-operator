@@ -705,7 +705,7 @@ func updateStorageSizeChange(c client.Client, matchLabels map[string]string, sto
 	for index, pvc := range pvcList {
 		if !pvc.Spec.Resources.Requests.Storage().Equal(resource.MustParse(storageSize)) {
 			pvcList[index].Spec.Resources.Requests = corev1.ResourceList{
-				corev1.ResourceName(corev1.ResourceStorage): resource.MustParse(storageSize),
+				corev1.ResourceStorage: resource.MustParse(storageSize),
 			}
 			err := c.Update(context.TODO(), &pvcList[index])
 			if err != nil {

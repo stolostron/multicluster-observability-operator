@@ -93,7 +93,7 @@ func RevertHubClusterMonitoringConfig(ctx context.Context, client client.Client)
 	}
 
 	foundClusterMonitoringConfiguration := &cmomanifests.ClusterMonitoringConfiguration{}
-	if err := json.Unmarshal([]byte(foundClusterMonitoringConfigurationJSON), foundClusterMonitoringConfiguration); err != nil {
+	if err := json.Unmarshal(foundClusterMonitoringConfigurationJSON, foundClusterMonitoringConfiguration); err != nil {
 		return fmt.Errorf("failed to unmarshal cluster monitoring config: %w", err)
 	}
 

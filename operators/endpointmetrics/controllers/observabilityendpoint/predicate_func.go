@@ -18,7 +18,7 @@ import (
 )
 
 func getPred(name string, namespace string,
-	create bool, update bool, delete bool) predicate.Funcs {
+	create bool, update bool, isDelete bool) predicate.Funcs {
 	createFunc := func(e event.CreateEvent) bool {
 		return false
 	}
@@ -42,26 +42,27 @@ func getPred(name string, namespace string,
 				(namespace == "" || e.ObjectNew.GetNamespace() == namespace) &&
 				e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() {
 				// also check objectNew string in case Kind is empty
-				if strings.HasPrefix(fmt.Sprint(e.ObjectNew), "&Deployment") ||
-					e.ObjectNew.GetObjectKind().GroupVersionKind().Kind == "Deployment" {
+				switch {
+				case strings.HasPrefix(fmt.Sprint(e.ObjectNew), "&Deployment") ||
+					e.ObjectNew.GetObjectKind().GroupVersionKind().Kind == "Deployment":
 					if !reflect.DeepEqual(e.ObjectNew.(*v1.Deployment).Spec.Template.Spec,
 						e.ObjectOld.(*v1.Deployment).Spec.Template.Spec) {
 						return true
 					}
-				} else if e.ObjectNew.GetName() == obAddonName ||
-					e.ObjectNew.GetObjectKind().GroupVersionKind().Kind == "ObservabilityAddon" {
+				case e.ObjectNew.GetName() == obAddonName ||
+					e.ObjectNew.GetObjectKind().GroupVersionKind().Kind == "ObservabilityAddon":
 					if !reflect.DeepEqual(e.ObjectNew.(*oav1beta1.ObservabilityAddon).Spec,
 						e.ObjectOld.(*oav1beta1.ObservabilityAddon).Spec) {
 						return true
 					}
-				} else {
+				default:
 					return true
 				}
 			}
 			return false
 		}
 	}
-	if delete {
+	if isDelete {
 		deleteFunc = func(e event.DeleteEvent) bool {
 			if e.Object.GetName() == name && (namespace == "" || e.Object.GetNamespace() == namespace) {
 				return true

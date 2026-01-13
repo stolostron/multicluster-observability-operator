@@ -12,7 +12,6 @@ import (
 
 // GetTemplates reads base manifest.
 func GetTemplates(r *templates.TemplateRenderer) ([]*resource.Resource, error) {
-
 	// resourceList contains all kustomize resources
 	resourceList := []*resource.Resource{}
 

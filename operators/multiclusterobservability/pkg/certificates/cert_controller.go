@@ -18,7 +18,8 @@ import (
 
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 
-	"golang.org/x/exp/slices"
+	"slices"
+
 	appv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -43,7 +44,6 @@ var (
 )
 
 func Start(c client.Client, ingressCtlCrdExists bool) {
-
 	if isCertControllerRunnning {
 		return
 	}

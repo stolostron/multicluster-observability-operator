@@ -20,7 +20,6 @@ import (
 )
 
 func getClusterPreds() predicate.Funcs {
-
 	createFunc := func(e event.CreateEvent) bool {
 		log.Info("CreateFunc", "managedCluster", e.Object.GetName())
 
@@ -123,7 +122,7 @@ func getHubEndpointOperatorPredicates() predicate.Funcs {
 
 //nolint:unparam
 func getPred(name string, namespace string,
-	create bool, update bool, delete bool) predicate.Funcs {
+	create bool, update bool, isDelete bool) predicate.Funcs {
 	createFunc := func(e event.CreateEvent) bool {
 		return false
 	}
@@ -159,7 +158,7 @@ func getPred(name string, namespace string,
 			return false
 		}
 	}
-	if delete {
+	if isDelete {
 		deleteFunc = func(e event.DeleteEvent) bool {
 			if operatorconfig.IsMCOTerminating {
 				log.Info("MCO is terminating, skip reconcile for placementrule controller", "name", name, "namespace", namespace)
