@@ -649,6 +649,8 @@ func DeleteHubMetricsCollectionDeployments(ctx context.Context, c client.Client)
 // DeleteHubMetricsCollectorResourcesNotNeededForMCOA deletes hub resources for the metrics collector but keeps the ones
 // common to MCOA and the metrics collector.
 func DeleteHubMetricsCollectorResourcesNotNeededForMCOA(ctx context.Context, c client.Client) error {
+	// First delete the endpoint-operator so that it doesn't override changes on the CMO config
+	// Other resources are also deleted
 	toDelete := []client.Object{
 		&appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{ // hub endpoint operator
 			Name:      config.HubEndpointOperatorName,
@@ -666,18 +668,29 @@ func DeleteHubMetricsCollectorResourcesNotNeededForMCOA(ctx context.Context, c c
 			Name:      operatorconfig.CaConfigmapName,
 			Namespace: config.GetDefaultNamespace(),
 		}},
-		&corev1.Secret{ObjectMeta: metav1.ObjectMeta{ // hub info secret
-			Name:      operatorconfig.HubInfoSecretName,
-			Namespace: config.GetDefaultNamespace(),
-		}},
 		&rbacv1.ClusterRoleBinding{ObjectMeta: metav1.ObjectMeta{ // metrics-collector-view role
 			Name: clusterRoleBindingName,
 		}},
 	}
 
+	for _, obj := range toDelete {
+		if err := deleteObject(ctx, c, obj); err != nil {
+			return err
+		}
+	}
+
+	// This revert function depends on the hubInfoSecret, it must be executed before deleting it.
 	err := RevertHubClusterMonitoringConfig(ctx, c)
 	if err != nil {
 		return fmt.Errorf("failed to revert hub cluster monitoring config: %w", err)
+	}
+
+	// Delete the hubInfoSecret after the CMO config revert
+	toDelete = []client.Object{
+		&corev1.Secret{ObjectMeta: metav1.ObjectMeta{ // hub info secret
+			Name:      operatorconfig.HubInfoSecretName,
+			Namespace: config.GetDefaultNamespace(),
+		}},
 	}
 
 	for _, obj := range toDelete {
