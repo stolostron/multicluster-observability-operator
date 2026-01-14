@@ -15,7 +15,7 @@ import (
 )
 
 func readFile(scrapeConfigsPath string) (*prometheusalpha1.ScrapeConfig, error) {
-	fileData, err := os.ReadFile(scrapeConfigsPath)
+	fileData, err := os.ReadFile(scrapeConfigsPath) //nolint:gosec
 	if err != nil {
 		return nil, fmt.Errorf("failed to read file %s: %w", scrapeConfigsPath, err)
 	}
