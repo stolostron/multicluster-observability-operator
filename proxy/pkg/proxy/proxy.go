@@ -16,17 +16,16 @@ import (
 	"path"
 	"strings"
 
-	"k8s.io/client-go/rest"
-	"k8s.io/klog/v2"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/config"
-
 	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/cache"
 	proxyconfig "github.com/stolostron/multicluster-observability-operator/proxy/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/health"
 	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/informer"
 	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/metricquery"
 	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/util"
+	"k8s.io/client-go/rest"
+	"k8s.io/klog/v2"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/config"
 )
 
 const (

@@ -15,6 +15,14 @@ import (
 
 	"github.com/go-logr/logr"
 	operatorv1 "github.com/openshift/api/operator/v1"
+	mcov1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
+	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
+	cert_controller "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/certificates"
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering/templates"
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
+	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
+	templatesutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering/templates"
 	mchv1 "github.com/stolostron/multiclusterhub-operator/api/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -41,15 +49,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-
-	mcov1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
-	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
-	cert_controller "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/certificates"
-	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
-	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering/templates"
-	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
-	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
-	templatesutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering/templates"
 )
 
 const (

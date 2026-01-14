@@ -7,13 +7,14 @@ package observabilityendpoint
 import (
 	"context"
 	"fmt"
-
-	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
-
 	"net/url"
 	"reflect"
 	"strings"
 
+	"github.com/ghodss/yaml"
+	cmomanifests "github.com/openshift/cluster-monitoring-operator/pkg/manifests"
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -21,10 +22,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	"github.com/ghodss/yaml"
-	cmomanifests "github.com/openshift/cluster-monitoring-operator/pkg/manifests"
-	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 )
 
 const (

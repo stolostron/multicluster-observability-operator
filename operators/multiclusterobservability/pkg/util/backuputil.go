@@ -7,12 +7,11 @@ package util
 import (
 	"context"
 
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 )
 
 func AddBackupLabelToConfigMap(c client.Client, name, namespace string) error {

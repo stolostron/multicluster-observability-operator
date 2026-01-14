@@ -5,9 +5,8 @@
 package templates
 
 import (
-	"sigs.k8s.io/kustomize/api/resource"
-
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering/templates"
+	"sigs.k8s.io/kustomize/api/resource"
 )
 
 // GetTemplates reads base manifest.

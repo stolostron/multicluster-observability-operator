@@ -9,9 +9,21 @@ import (
 	"errors"
 	"fmt"
 	"os"
-
 	"slices"
 
+	"github.com/go-logr/logr"
+	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/collector"
+	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/hypershift"
+	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/openshift"
+	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/rendering"
+	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/util"
+	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
+	oav1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
+	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
+	"github.com/stolostron/multicluster-observability-operator/operators/pkg/deploying"
+	rendererutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering"
+	"github.com/stolostron/multicluster-observability-operator/operators/pkg/status"
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -29,20 +41,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-
-	"github.com/go-logr/logr"
-	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/collector"
-	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/hypershift"
-	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/openshift"
-	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/rendering"
-	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/util"
-	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
-	oav1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
-	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
-	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
-	"github.com/stolostron/multicluster-observability-operator/operators/pkg/deploying"
-	rendererutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering"
-	"github.com/stolostron/multicluster-observability-operator/operators/pkg/status"
 )
 
 var (

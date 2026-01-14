@@ -13,10 +13,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-
 	configpolicyv1 "open-cluster-management.io/config-policy-controller/api/v1"
 	policyv1 "open-cluster-management.io/governance-policy-propagator/api/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 // initScheme initializes and registers all required types into scheme

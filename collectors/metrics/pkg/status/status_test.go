@@ -11,14 +11,13 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
+	"github.com/stolostron/multicluster-observability-operator/operators/pkg/status"
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-
-	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
-	"github.com/stolostron/multicluster-observability-operator/operators/pkg/status"
 )
 
 func TestUpdateStatus(t *testing.T) {

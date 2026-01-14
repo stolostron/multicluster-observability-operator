@@ -9,12 +9,10 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-
+	"github.com/stolostron/multicluster-observability-operator/tests/pkg/utils"
 	appv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
-
-	"github.com/stolostron/multicluster-observability-operator/tests/pkg/utils"
 )
 
 var _ = Describe("", func() {

@@ -10,16 +10,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"open-cluster-management.io/api/addon/v1alpha1"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
-
-	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func TestCertAgent(t *testing.T) {

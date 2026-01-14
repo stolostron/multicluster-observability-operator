@@ -9,18 +9,16 @@ import (
 	"os"
 	"time"
 
-	"k8s.io/apimachinery/pkg/api/equality"
-
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	promclientset "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned"
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/tools/cache"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-
-	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 )
 
 const (

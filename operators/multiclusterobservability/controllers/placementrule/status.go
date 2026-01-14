@@ -9,16 +9,15 @@ import (
 	"errors"
 	"slices"
 
+	mcov1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/retry"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	mcov1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
-	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
-	"k8s.io/apimachinery/pkg/api/meta"
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var standardConditionTypes = []string{"Available", "Progressing", "Degraded"}

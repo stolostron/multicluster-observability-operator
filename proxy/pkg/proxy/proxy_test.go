@@ -18,15 +18,14 @@ import (
 
 	projectv1 "github.com/openshift/api/project/v1"
 	userv1 "github.com/openshift/api/user/v1"
+	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/cache"
+	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/config"
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-
-	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/cache"
-	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/config"
 )
 
 var promLabelRegex = regexp.MustCompile(`[^\w]+`)

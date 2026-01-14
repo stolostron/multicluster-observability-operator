@@ -13,6 +13,11 @@ import (
 	"testing"
 	"time"
 
+	mcoshared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
+	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
+	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 	"gopkg.in/yaml.v2"
 	authv1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -23,18 +28,11 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	kubefake "k8s.io/client-go/kubernetes/fake"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-
+	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
 	workv1 "open-cluster-management.io/api/work/v1"
-
-	mcoshared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
-	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
-	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
-	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
-	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
-	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 const (

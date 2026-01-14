@@ -18,6 +18,16 @@ import (
 	ocinfrav1 "github.com/openshift/api/config/v1"
 	hyperv1 "github.com/openshift/hypershift/api/hypershift/v1beta1"
 	prometheusv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	obsepctl "github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/controllers/observabilityendpoint"
+	statusctl "github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/controllers/status"
+	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/openshift"
+	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/util"
+	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/version"
+	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
+	oav1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
+	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
+	"github.com/stolostron/multicluster-observability-operator/operators/pkg/status"
+	operatorsutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 	"go.uber.org/zap/zapcore"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
@@ -32,18 +42,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	ctrlwebhook "sigs.k8s.io/controller-runtime/pkg/webhook"
-
-	obsepctl "github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/controllers/observabilityendpoint"
-	statusctl "github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/controllers/status"
-	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/openshift"
-	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/util"
-	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/version"
-	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
-	oav1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
-	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
-	"github.com/stolostron/multicluster-observability-operator/operators/pkg/status"
-	operatorsutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
-	// +kubebuilder:scaffold:imports
 )
 
 var (

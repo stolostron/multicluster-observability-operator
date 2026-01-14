@@ -13,6 +13,9 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/util"
+	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
+	"github.com/stolostron/multicluster-observability-operator/operators/pkg/status"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -23,10 +26,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-
-	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/util"
-	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
-	"github.com/stolostron/multicluster-observability-operator/operators/pkg/status"
 )
 
 // conditionType represents the standard conditions expected by ACM in the ObservabilityAddon status.

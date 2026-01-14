@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	certificatesv1 "k8s.io/api/certificates/v1"
-
 	addonapiv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
 )

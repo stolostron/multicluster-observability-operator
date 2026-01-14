@@ -11,9 +11,8 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 const (

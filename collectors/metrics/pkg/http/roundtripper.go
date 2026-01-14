@@ -14,7 +14,6 @@ import (
 	"unicode/utf8"
 
 	"github.com/go-kit/log"
-
 	"github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/logger"
 )
 

@@ -10,15 +10,14 @@ import (
 	"path"
 	"testing"
 
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	rendererutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering"
 	templatesutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering/templates"
 	"github.com/stretchr/testify/assert"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func getAllowlistCM(ns string) *corev1.ConfigMap {

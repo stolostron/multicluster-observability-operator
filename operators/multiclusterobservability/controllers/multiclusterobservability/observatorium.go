@@ -6,12 +6,6 @@ package multiclusterobservability
 
 import (
 	"context"
-
-	"k8s.io/apimachinery/pkg/api/equality"
-
-	// The import of crypto/md5 below is not for cryptographic use. It is used to hash the contents of files to track
-	// changes and thus it's not a security issue.
-
 	"crypto/md5" // #nosec G401 G501
 	"encoding/hex"
 	"fmt"
@@ -22,10 +16,17 @@ import (
 	"time"
 
 	routev1 "github.com/openshift/api/route/v1"
+	oashared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
+	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
+	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering"
+	mcoutil "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
+	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 	obsv1alpha1 "github.com/stolostron/observatorium-operator/api/v1alpha1"
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -35,13 +36,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-
-	oashared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
-	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
-	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
-	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering"
-	mcoutil "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
-	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 )
 
 const (

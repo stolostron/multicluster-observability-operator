@@ -9,6 +9,10 @@ import (
 	"maps"
 	"net/url"
 
+	"github.com/imdario/mergo"
+	obv1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
+	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	rendererutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -16,11 +20,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	addonapiv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	"sigs.k8s.io/kustomize/api/resource"
-
-	"github.com/imdario/mergo"
-	obv1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
-	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
-	rendererutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering"
 )
 
 const (

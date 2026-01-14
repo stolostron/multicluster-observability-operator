@@ -9,14 +9,13 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	rendererutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering"
+	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 	v1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/kustomize/api/resource"
-
-	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
-	rendererutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering"
-	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 )
 
 const (

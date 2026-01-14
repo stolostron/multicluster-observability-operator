@@ -7,10 +7,9 @@ package placementrule
 import (
 	"os"
 
+	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 )
 
 var (

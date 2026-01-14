@@ -34,7 +34,6 @@ import (
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/prompb"
 	"github.com/prometheus/prometheus/promql"
-
 	"github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/logger"
 	"github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/reader"
 )
@@ -349,7 +348,7 @@ func MTLSTransport(logger log.Logger, caCertFile, tlsCrtFile, tlsKeyFile string)
 
 	if os.Getenv("HTTPS_PROXY_CA_BUNDLE") != "" {
 		customCaCert, err := base64.StdEncoding.DecodeString(os.Getenv("HTTPS_PROXY_CA_BUNDLE"))
-		logger.Log(logger, logger.Log("msg", "caCert", "caCert", caCert))
+		_ = logger.Log(logger, logger.Log("msg", "caCert", "caCert", caCert))
 		if err != nil {
 			return nil, fmt.Errorf("failed to decode server ca cert: %w", err)
 		}

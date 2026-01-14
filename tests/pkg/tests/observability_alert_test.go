@@ -19,13 +19,11 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-
 	"github.com/prometheus/alertmanager/api/v2/models"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/klog"
-
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/kustomize"
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/utils"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/klog"
 )
 
 const (

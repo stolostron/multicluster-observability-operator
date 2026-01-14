@@ -11,9 +11,8 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-logr/logr"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/status"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (

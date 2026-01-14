@@ -8,11 +8,9 @@ import (
 	"testing"
 	"time"
 
-	clusterv1 "open-cluster-management.io/api/cluster/v1"
-
-	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
+	clusterv1 "open-cluster-management.io/api/cluster/v1"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 )
 

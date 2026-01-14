@@ -5,9 +5,8 @@
 package metricfamily
 
 import (
-	"sync"
-
 	"slices"
+	"sync"
 
 	clientmodel "github.com/prometheus/client_model/go"
 	"github.com/prometheus/prometheus/prompb"

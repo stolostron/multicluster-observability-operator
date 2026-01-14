@@ -7,6 +7,12 @@ package placementrule
 import (
 	"fmt"
 
+	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
+	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering/templates"
+	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
+	templatesutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering/templates"
+	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -14,19 +20,17 @@ import (
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/kustomize/api/resource"
-
-	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
-	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
-	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering/templates"
-	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
-	templatesutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering/templates"
-	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 )
 
 const (
 	deployName      = "endpoint-observability-operator"
 	saName          = "endpoint-observability-operator-sa"
 	rolebindingName = "open-cluster-management:endpoint-observability-operator-rb"
+
+	kindDeployment               = "Deployment"
+	kindConfigMap                = "ConfigMap"
+	kindCustomResourceDefinition = "CustomResourceDefinition"
+	kindClusterRoleBinding       = "ClusterRoleBinding"
 )
 
 // loadTemplates load manifests from manifests directory.
@@ -54,11 +58,11 @@ func loadTemplates(mco *mcov1beta2.MultiClusterObservability) (
 			return nil, nil, nil, nil, nil, fmt.Errorf("failed to edit templates: %w", err)
 		}
 		switch {
-		case r.GetKind() == "Deployment":
+		case r.GetKind() == kindDeployment:
 			dep = obj.(*appsv1.Deployment)
-		case r.GetKind() == "ConfigMap" && r.GetName() == operatorconfig.ImageConfigMap:
+		case r.GetKind() == kindConfigMap && r.GetName() == operatorconfig.ImageConfigMap:
 			imageListCM = obj.(*corev1.ConfigMap)
-		case r.GetKind() == "CustomResourceDefinition":
+		case r.GetKind() == kindCustomResourceDefinition:
 			if r.GetGvk().Version == "v1" {
 				crdv1 = obj.(*apiextensionsv1.CustomResourceDefinition)
 			} else {
@@ -75,14 +79,14 @@ func updateRes(r *resource.Resource,
 	mco *mcov1beta2.MultiClusterObservability) (runtime.Object, error) {
 	kind := r.GetKind()
 
-	if kind != "ClusterRole" && kind != "ClusterRoleBinding" && kind != "CustomResourceDefinition" {
+	if kind != "ClusterRole" && kind != kindClusterRoleBinding && kind != kindCustomResourceDefinition {
 		if err := r.SetNamespace(spokeNameSpace); err != nil {
 			log.Error(err, "failed to set namespace")
 			return nil, err
 		}
 	}
 	obj := util.GetK8sObj(kind)
-	if kind == "CustomResourceDefinition" && r.GetGvk().Version == "v1beta1" {
+	if kind == kindCustomResourceDefinition && r.GetGvk().Version == "v1beta1" {
 		obj = &apiextensionsv1beta1.CustomResourceDefinition{}
 	}
 	obj.GetObjectKind()
@@ -96,7 +100,7 @@ func updateRes(r *resource.Resource,
 		return nil, err
 	}
 	// set the images and watch_namespace for endpoint metrics operator
-	if r.GetKind() == "Deployment" && r.GetName() == deployName {
+	if r.GetKind() == kindDeployment && r.GetName() == deployName {
 		spec := obj.(*appsv1.Deployment).Spec.Template.Spec
 		for i, container := range spec.Containers {
 			if container.Name == "endpoint-observability-operator" {
@@ -115,12 +119,12 @@ func updateRes(r *resource.Resource,
 		}
 	}
 	// set namespace for rolebinding
-	if r.GetKind() == "ClusterRoleBinding" && r.GetName() == rolebindingName {
+	if r.GetKind() == kindClusterRoleBinding && r.GetName() == rolebindingName {
 		binding := obj.(*rbacv1.ClusterRoleBinding)
 		binding.Subjects[0].Namespace = spokeNameSpace
 	}
 	// set images for components in managed clusters
-	if r.GetKind() == "ConfigMap" && r.GetName() == operatorconfig.ImageConfigMap {
+	if r.GetKind() == kindConfigMap && r.GetName() == operatorconfig.ImageConfigMap {
 		images := obj.(*corev1.ConfigMap).Data
 		for key := range images {
 			found, image := mcoconfig.ReplaceImage(mco.Annotations, images[key], key)

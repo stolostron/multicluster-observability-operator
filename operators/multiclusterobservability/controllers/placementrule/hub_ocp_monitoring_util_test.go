@@ -10,6 +10,7 @@ import (
 
 	ghodssyaml "github.com/ghodss/yaml"
 	cmomanifests "github.com/openshift/cluster-monitoring-operator/pkg/manifests"
+	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	"github.com/stretchr/testify/assert"
 	goyaml "gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
@@ -17,8 +18,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-
-	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 )
 
 func TestRevertHubClusterMonitoringConfig(t *testing.T) {

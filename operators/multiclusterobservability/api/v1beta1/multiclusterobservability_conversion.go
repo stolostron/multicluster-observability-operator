@@ -11,9 +11,8 @@ package, plus the API version for our hub type (v1beta2), and finally some of th
 standard packages.
 */
 import (
-	"sigs.k8s.io/controller-runtime/pkg/conversion"
-
 	observabilityv1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
+	"sigs.k8s.io/controller-runtime/pkg/conversion"
 )
 
 // +kubebuilder:docs-gen:collapse=Imports

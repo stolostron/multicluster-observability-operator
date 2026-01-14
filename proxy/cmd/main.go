@@ -16,16 +16,15 @@ import (
 	"time"
 
 	"github.com/spf13/pflag"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/klog/v2"
-	"sigs.k8s.io/controller-runtime/pkg/client/config"
-	"sigs.k8s.io/controller-runtime/pkg/log"
-
 	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/cache"
 	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/informer"
 	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/proxy"
 	"github.com/stolostron/rbac-api-utils/pkg/rbac"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/klog/v2"
 	clusterclientset "open-cluster-management.io/api/client/cluster/clientset/versioned"
+	"sigs.k8s.io/controller-runtime/pkg/client/config"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 const (

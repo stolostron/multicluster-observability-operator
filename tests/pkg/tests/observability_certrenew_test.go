@@ -11,9 +11,8 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"k8s.io/klog"
-
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/utils"
+	"k8s.io/klog"
 )
 
 var _ = Describe("", func() {

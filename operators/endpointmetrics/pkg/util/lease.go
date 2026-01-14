@@ -11,9 +11,8 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
-	ctrl "sigs.k8s.io/controller-runtime"
-
 	"open-cluster-management.io/addon-framework/pkg/lease"
+	ctrl "sigs.k8s.io/controller-runtime"
 )
 
 const (

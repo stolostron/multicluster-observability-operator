@@ -23,17 +23,16 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/spf13/cobra"
-	"k8s.io/apimachinery/pkg/util/uuid"
-	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/client-go/tools/clientcmd"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
 	"github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/collectrule"
 	"github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/forwarder"
 	collectorhttp "github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/http"
 	"github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/logger"
 	"github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/metricfamily"
 	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
+	"k8s.io/apimachinery/pkg/util/uuid"
+	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/tools/clientcmd"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func main() {

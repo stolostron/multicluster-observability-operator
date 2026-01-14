@@ -17,6 +17,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/stolostron/multicluster-observability-operator/loaders/dashboards/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -26,8 +27,6 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/klog"
-
-	"github.com/stolostron/multicluster-observability-operator/loaders/dashboards/pkg/util"
 )
 
 const (
