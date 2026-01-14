@@ -33,160 +33,178 @@ var _ = Describe("", func() {
 		}
 	})
 
-	Context("RHACM4K-1260: Observability: Verify monitoring operator and deployment status when metrics collection disabled [P2][Sev2][Observability]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @pre-upgrade  (addon/g0) -", func() {
-		It("[Stable] Should have resource requirement defined in CR", func() {
-			By("Check addon resource requirement")
-			res, err := utils.GetMCOAddonSpecResources(testOptions)
-			Expect(err).ToNot(HaveOccurred())
-			limits := res["limits"].(map[string]any)
-			requests := res["requests"].(map[string]any)
-			Expect(limits["cpu"]).To(Equal("200m"))
-			Expect(limits["memory"]).To(Equal("700Mi"))
-			Expect(requests["cpu"]).To(Equal("10m"))
-			Expect(requests["memory"]).To(Equal("100Mi"))
-		})
+	Context(
+		"RHACM4K-1260: Observability: Verify monitoring operator and deployment status when metrics collection disabled [P2][Sev2][Observability]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @pre-upgrade  (addon/g0) -",
+		func() {
+			It("[Stable] Should have resource requirement defined in CR", func() {
+				By("Check addon resource requirement")
+				res, err := utils.GetMCOAddonSpecResources(testOptions)
+				Expect(err).ToNot(HaveOccurred())
+				limits := res["limits"].(map[string]any)
+				requests := res["requests"].(map[string]any)
+				Expect(limits["cpu"]).To(Equal("200m"))
+				Expect(limits["memory"]).To(Equal("700Mi"))
+				Expect(requests["cpu"]).To(Equal("10m"))
+				Expect(requests["memory"]).To(Equal("100Mi"))
+			})
 
-		It("[Stable] Should have resource requirement in metrics-collector", func() {
-			By("Check metrics-collector resource requirement")
-			Eventually(func() error {
-				return utils.CheckMCOAddonResources(testOptions)
-			}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
-		})
+			It("[Stable] Should have resource requirement in metrics-collector", func() {
+				By("Check metrics-collector resource requirement")
+				Eventually(func() error {
+					return utils.CheckMCOAddonResources(testOptions)
+				}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
+			})
 
-		It("[Stable] Should not have the expected MCO addon pods when disable observabilityaddon", func() {
-			Eventually(func() error {
-				return utils.ModifyMCOAddonSpecMetrics(testOptions, false)
-			}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*5).Should(Succeed())
+			It("[Stable] Should not have the expected MCO addon pods when disable observabilityaddon", func() {
+				Eventually(func() error {
+					return utils.ModifyMCOAddonSpecMetrics(testOptions, false)
+				}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*5).Should(Succeed())
 
-			By("Waiting for MCO addon components scales to 0")
-			Eventually(func() error {
-				err = utils.CheckAllOBAsDeleted(testOptions)
-				if err != nil {
-					return fmt.Errorf("Failed to disable observability addon")
-				}
-				return nil
-			}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
-		})
+				By("Waiting for MCO addon components scales to 0")
+				Eventually(func() error {
+					err = utils.CheckAllOBAsDeleted(testOptions)
+					if err != nil {
+						return fmt.Errorf("Failed to disable observability addon")
+					}
+					return nil
+				}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
+			})
 
-		It("RHACM4K-1418: Observability: Verify clustermanagementaddon CR for Observability - Modifying MCO cr to enable observabilityaddon [P2][Sev2][Stable][Observability]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @pre-upgrade (addon/g0)", func() {
-			By("Waiting for 1 minute to make sure the registration controller correctly takes into account the changes")
-			time.Sleep(60 * time.Second)
-			Eventually(func() error {
-				return utils.ModifyMCOAddonSpecMetrics(testOptions, true)
-			}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*5).Should(Succeed())
+			It(
+				"RHACM4K-1418: Observability: Verify clustermanagementaddon CR for Observability - Modifying MCO cr to enable observabilityaddon [P2][Sev2][Stable][Observability]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @pre-upgrade (addon/g0)",
+				func() {
+					By("Waiting for 1 minute to make sure the registration controller correctly takes into account the changes")
+					time.Sleep(60 * time.Second)
+					Eventually(func() error {
+						return utils.ModifyMCOAddonSpecMetrics(testOptions, true)
+					}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*5).Should(Succeed())
 
-			By("Waiting for MCO addon components ready")
-			Eventually(func() bool {
-				podList, err := utils.GetPodList(
-					testOptions,
-					true,
-					MCO_NAMESPACE,
-					"component=metrics-collector",
-				)
-				// starting with OCP 4.13, userWorkLoadMonitoring is enabled by default
-				if len(podList.Items) >= 1 && err == nil {
-					return true
-				}
-				return false
-			}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(BeTrue())
-		})
-		It("RHACM4K-1074: Observability: Verify ObservabilityEndpoint operator deployment - Modifying MCO cr to enable observabilityaddon [P2][Sev2][Stable][Observability]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release @pre-upgrade (addon/g0)", func() {
-			By("Checking the status in managedclusteraddon reflects the endpoint operator status correctly")
-			Eventually(func() error {
-				err = utils.CheckAllOBAsEnabled(testOptions)
-				if err != nil {
-					return err
-				}
-				return nil
-			}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
-		})
-	})
+					By("Waiting for MCO addon components ready")
+					Eventually(func() bool {
+						podList, err := utils.GetPodList(
+							testOptions,
+							true,
+							MCO_NAMESPACE,
+							"component=metrics-collector",
+						)
+						// starting with OCP 4.13, userWorkLoadMonitoring is enabled by default
+						if len(podList.Items) >= 1 && err == nil {
+							return true
+						}
+						return false
+					}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(BeTrue())
+				},
+			)
+			It(
+				"RHACM4K-1074: Observability: Verify ObservabilityEndpoint operator deployment - Modifying MCO cr to enable observabilityaddon [P2][Sev2][Stable][Observability]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release @pre-upgrade (addon/g0)",
+				func() {
+					By("Checking the status in managedclusteraddon reflects the endpoint operator status correctly")
+					Eventually(func() error {
+						err = utils.CheckAllOBAsEnabled(testOptions)
+						if err != nil {
+							return err
+						}
+						return nil
+					}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
+				},
+			)
+		},
+	)
 
-	It("RHACM4K-6923: Observability: Verify default scrap interval change to 5 minutes - [P2][Sev2][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release @pre-upgrade (addon/g2)", func() {
-		By("Check default interval value is 300")
-		// get the current interval, so we can revert to it after the test
-		mco, getErr := dynClient.Resource(utils.NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
-		Expect(getErr).NotTo(HaveOccurred())
-
-		observabilityAddonSpec := mco.Object["spec"].(map[string]any)["observabilityAddonSpec"].(map[string]any)
-		oldInterval := observabilityAddonSpec["interval"]
-		// set the interval to 0 (null) to ensure the default interval is applied
-		err := utils.ModifyMCOAddonSpecInterval(testOptions, int64(0))
-		Expect(err).NotTo(HaveOccurred())
-
-		// Test the interval is now 300, which should be the default
-		Eventually(func() bool {
+	It(
+		"RHACM4K-6923: Observability: Verify default scrap interval change to 5 minutes - [P2][Sev2][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release @pre-upgrade (addon/g2)",
+		func() {
+			By("Check default interval value is 300")
+			// get the current interval, so we can revert to it after the test
 			mco, getErr := dynClient.Resource(utils.NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
 			Expect(getErr).NotTo(HaveOccurred())
 
 			observabilityAddonSpec := mco.Object["spec"].(map[string]any)["observabilityAddonSpec"].(map[string]any)
-			return observabilityAddonSpec["interval"] == int64(300)
-		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*1).Should(BeTrue())
+			oldInterval := observabilityAddonSpec["interval"]
+			// set the interval to 0 (null) to ensure the default interval is applied
+			err := utils.ModifyMCOAddonSpecInterval(testOptions, int64(0))
+			Expect(err).NotTo(HaveOccurred())
 
-		// revert to original interval
-		err = utils.ModifyMCOAddonSpecInterval(testOptions, oldInterval.(int64))
-		Expect(err).NotTo(HaveOccurred())
-	})
-
-	It("RHACM4K-1235: Observability: Verify metrics data global setting on the managed cluster - Should not set interval to values beyond scope [P3][Sev3][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release @pre-upgrade (addon/g0)", func() {
-		By("Set interval to 14")
-		Eventually(func() bool {
-			err := utils.ModifyMCOAddonSpecInterval(testOptions, int64(14))
-			if strings.Contains(err.Error(), "Invalid value") &&
-				strings.Contains(err.Error(), "15") {
-				return true
-			}
-			klog.V(1).Infof("error message: <%s>\n", err.Error())
-			return false
-		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*1).Should(BeTrue())
-
-		By("Set interval to 3601")
-		Eventually(func() bool {
-			err := utils.ModifyMCOAddonSpecInterval(testOptions, int64(3601))
-			if strings.Contains(err.Error(), "Invalid value") &&
-				strings.Contains(err.Error(), "3600") {
-				return true
-			}
-			klog.V(1).Infof("error message: <%s>\n", err.Error())
-			return false
-		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*1).Should(BeTrue())
-	})
-
-	It("RHACM4K-1259: Observability: Verify imported cluster is observed [P3][Sev3][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore (deploy/g1)", func() {
-		klog.V(1).Infof("managedcluster number is <%d>", len(testOptions.ManagedClusters))
-		if len(testOptions.ManagedClusters) >= 1 {
-			By("Waiting for ObservabilityAddon to be enabled and ready")
-			Eventually(func() error {
-				return utils.CheckAllOBAsEnabled(testOptions)
-			}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
-
-			By("Waiting for MCO addon components to be running")
+			// Test the interval is now 300, which should be the default
 			Eventually(func() bool {
-				podList, err := utils.GetPodList(
-					testOptions,
-					false,
-					MCO_ADDON_NAMESPACE,
-					"component=metrics-collector",
-				)
-				if err != nil {
-					klog.V(1).Infof("Failed to get pod list: %v", err)
-					return false
+				mco, getErr := dynClient.Resource(utils.NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+				Expect(getErr).NotTo(HaveOccurred())
+
+				observabilityAddonSpec := mco.Object["spec"].(map[string]any)["observabilityAddonSpec"].(map[string]any)
+				return observabilityAddonSpec["interval"] == int64(300)
+			}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*1).Should(BeTrue())
+
+			// revert to original interval
+			err = utils.ModifyMCOAddonSpecInterval(testOptions, oldInterval.(int64))
+			Expect(err).NotTo(HaveOccurred())
+		},
+	)
+
+	It(
+		"RHACM4K-1235: Observability: Verify metrics data global setting on the managed cluster - Should not set interval to values beyond scope [P3][Sev3][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release @pre-upgrade (addon/g0)",
+		func() {
+			By("Set interval to 14")
+			Eventually(func() bool {
+				err := utils.ModifyMCOAddonSpecInterval(testOptions, int64(14))
+				if strings.Contains(err.Error(), "Invalid value") &&
+					strings.Contains(err.Error(), "15") {
+					return true
 				}
-				if len(podList.Items) < 1 {
-					klog.V(1).Infof("No metrics-collector pods found yet")
-					return false
+				klog.V(1).Infof("error message: <%s>\n", err.Error())
+				return false
+			}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*1).Should(BeTrue())
+
+			By("Set interval to 3601")
+			Eventually(func() bool {
+				err := utils.ModifyMCOAddonSpecInterval(testOptions, int64(3601))
+				if strings.Contains(err.Error(), "Invalid value") &&
+					strings.Contains(err.Error(), "3600") {
+					return true
 				}
-				// Verify all pods are in Running state
-				for _, pod := range podList.Items {
-					if pod.Status.Phase != "Running" {
-						klog.V(1).Infof("Pod %s is not running yet: %s", pod.Name, pod.Status.Phase)
+				klog.V(1).Infof("error message: <%s>\n", err.Error())
+				return false
+			}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*1).Should(BeTrue())
+		},
+	)
+
+	It(
+		"RHACM4K-1259: Observability: Verify imported cluster is observed [P3][Sev3][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore (deploy/g1)",
+		func() {
+			klog.V(1).Infof("managedcluster number is <%d>", len(testOptions.ManagedClusters))
+			if len(testOptions.ManagedClusters) >= 1 {
+				By("Waiting for ObservabilityAddon to be enabled and ready")
+				Eventually(func() error {
+					return utils.CheckAllOBAsEnabled(testOptions)
+				}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
+
+				By("Waiting for MCO addon components to be running")
+				Eventually(func() bool {
+					podList, err := utils.GetPodList(
+						testOptions,
+						false,
+						MCO_ADDON_NAMESPACE,
+						"component=metrics-collector",
+					)
+					if err != nil {
+						klog.V(1).Infof("Failed to get pod list: %v", err)
 						return false
 					}
-				}
-				return true
-			}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(BeTrue())
-		}
-	})
+					if len(podList.Items) < 1 {
+						klog.V(1).Infof("No metrics-collector pods found yet")
+						return false
+					}
+					// Verify all pods are in Running state
+					for _, pod := range podList.Items {
+						if pod.Status.Phase != "Running" {
+							klog.V(1).Infof("Pod %s is not running yet: %s", pod.Name, pod.Status.Phase)
+							return false
+						}
+					}
+					return true
+				}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(BeTrue())
+			}
+		},
+	)
 
 	// This test is flaky because when the label is added to the managed cluster, the placement controller reconcile is triggered but
 	// the managed cluster still appears on this first reconcile. Then if we're lucky, or not, the addon is effectively removed from the managed cluster.

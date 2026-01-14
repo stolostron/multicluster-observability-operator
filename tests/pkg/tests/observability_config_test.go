@@ -33,131 +33,140 @@ var _ = Describe("", func() {
 			testOptions.HubCluster.KubeContext)
 	})
 
-	It("RHACM4K-31474: Observability: Verify memcached setting max_item_size is populated on thanos-store - [P1][Sev1][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release(config/g1)", func() {
-		By("Updating mco cr to update values in storeMemcached")
+	It(
+		"RHACM4K-31474: Observability: Verify memcached setting max_item_size is populated on thanos-store - [P1][Sev1][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release(config/g1)",
+		func() {
+			By("Updating mco cr to update values in storeMemcached")
 
-		mcoPath := ""
-		if os.Getenv("IS_CANARY_ENV") != trueStr {
-			mcoPath = "../../../examples/updatemcocr/initialmcoconfig/custom-certs"
-		} else {
-			mcoPath = "../../../examples/updatemcocr/initialmcoconfig"
-		}
-
-		yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: mcoPath})
-		Expect(err).ToNot(HaveOccurred())
-		Expect(
-			utils.ApplyRetryOnConflict(
-				testOptions.HubCluster.ClusterServerURL,
-				testOptions.KubeConfig,
-				testOptions.HubCluster.KubeContext,
-				yamlB,
-			)).NotTo(HaveOccurred())
-
-		time.Sleep(60 * time.Second)
-
-		By("Check the value is effect in the sts observability-thanos-store-shard-0")
-		Eventually(func() bool {
-			thanosStoreMemSts, _ := utils.GetStatefulSet(testOptions, true, "observability-thanos-store-memcached", MCO_NAMESPACE)
-			// klog.V(3).Infof("STS thanosStoreSts is %s", thanosStoreMemSts)
-			containers := thanosStoreMemSts.Spec.Template.Spec.Containers
-
-			args := containers[0].Args
-			// klog.V(3).Infof("args is %s", args)
-
-			argsStr := strings.Join(args, " ")
-			// klog.V(3).Infof("argsStr is %s", argsStr)
-
-			if !strings.Contains(argsStr, "-I 10m") {
-				klog.V(3).Infof("maxItemSize is not effect in sts observability-thanos-store-memcached")
-				return false
+			mcoPath := ""
+			if os.Getenv("IS_CANARY_ENV") != trueStr {
+				mcoPath = "../../../examples/updatemcocr/initialmcoconfig/custom-certs"
+			} else {
+				mcoPath = "../../../examples/updatemcocr/initialmcoconfig"
 			}
 
-			klog.V(3).Infof("maxItemSize is effect in sts observability-thanos-store-memcached")
-			return true
-		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*10).Should(BeTrue())
+			yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: mcoPath})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(
+				utils.ApplyRetryOnConflict(
+					testOptions.HubCluster.ClusterServerURL,
+					testOptions.KubeConfig,
+					testOptions.HubCluster.KubeContext,
+					yamlB,
+				)).NotTo(HaveOccurred())
 
-		By("Check the value is effect in the sts observability-thanos-query-frontend-memcached")
-		Eventually(func() bool {
-			thanosQueFronMemSts, _ := utils.GetStatefulSet(testOptions, true, "observability-thanos-query-frontend-memcached", MCO_NAMESPACE)
-			// klog.V(3).Infof("STS thanosStoreSts is %s", thanosQueFronMemSts)
-			containers := thanosQueFronMemSts.Spec.Template.Spec.Containers
+			time.Sleep(60 * time.Second)
 
-			args := containers[0].Args
-			// klog.V(3).Infof("args is %s", args)
+			By("Check the value is effect in the sts observability-thanos-store-shard-0")
+			Eventually(func() bool {
+				thanosStoreMemSts, _ := utils.GetStatefulSet(testOptions, true, "observability-thanos-store-memcached", MCO_NAMESPACE)
+				// klog.V(3).Infof("STS thanosStoreSts is %s", thanosStoreMemSts)
+				containers := thanosStoreMemSts.Spec.Template.Spec.Containers
 
-			argsStr := strings.Join(args, " ")
-			// klog.V(3).Infof("argsStr is %s", argsStr)
+				args := containers[0].Args
+				// klog.V(3).Infof("args is %s", args)
 
-			if !strings.Contains(argsStr, "-I 10m") {
-				klog.V(3).Infof("maxItemSize is not effect in sts observability-thanos-query-frontend-memcached")
-				return false
-			}
+				argsStr := strings.Join(args, " ")
+				// klog.V(3).Infof("argsStr is %s", argsStr)
 
-			klog.V(3).Infof("maxItemSize is effect in sts observability-thanos-query-frontend-memcached")
-			return true
-		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*10).Should(BeTrue())
-	})
+				if !strings.Contains(argsStr, "-I 10m") {
+					klog.V(3).Infof("maxItemSize is not effect in sts observability-thanos-store-memcached")
+					return false
+				}
 
-	It("RHACM4K-1235: Observability: Verify metrics data global setting on the managed cluster @BVT - [P1][Sev1][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release(config/g0)", func() {
-		mcoRes, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).
-			Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
-		if err != nil {
-			panic(err.Error())
-		}
-		observabilityAddonSpec := mcoRes.Object["spec"].(map[string]any)["observabilityAddonSpec"].(map[string]any)
-		Expect(observabilityAddonSpec["enableMetrics"]).To(Equal(true))
-		Expect(observabilityAddonSpec["interval"]).To(Equal(int64(300)))
-	})
+				klog.V(3).Infof("maxItemSize is effect in sts observability-thanos-store-memcached")
+				return true
+			}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*10).Should(BeTrue())
 
-	It("RHACM4K-1065: Observability: Verify MCO CR storage class and PVC @BVT - [P1][Sev1][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release (config/g0)", func() {
-		mcoSC, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).
-			Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
-		Expect(err).NotTo(HaveOccurred())
+			By("Check the value is effect in the sts observability-thanos-query-frontend-memcached")
+			Eventually(func() bool {
+				thanosQueFronMemSts, _ := utils.GetStatefulSet(testOptions, true, "observability-thanos-query-frontend-memcached", MCO_NAMESPACE)
+				// klog.V(3).Infof("STS thanosStoreSts is %s", thanosQueFronMemSts)
+				containers := thanosQueFronMemSts.Spec.Template.Spec.Containers
 
-		spec := mcoSC.Object["spec"].(map[string]any)
-		scInCR := spec["storageConfig"].(map[string]any)["storageClass"].(string)
+				args := containers[0].Args
+				// klog.V(3).Infof("args is %s", args)
 
-		scList, _ := hubClient.StorageV1().StorageClasses().List(context.TODO(), metav1.ListOptions{})
-		scMatch := false
-		defaultSC := ""
-		for _, sc := range scList.Items {
-			if sc.Annotations["storageclass.kubernetes.io/is-default-class"] == trueStr {
-				defaultSC = sc.Name
-			}
-			if sc.Name == scInCR {
-				scMatch = true
-			}
-		}
-		expectedSC := defaultSC
-		if scMatch {
-			expectedSC = scInCR
-		}
+				argsStr := strings.Join(args, " ")
+				// klog.V(3).Infof("argsStr is %s", argsStr)
 
-		Eventually(func() error {
-			pvcList, err := hubClient.CoreV1().
-				PersistentVolumeClaims(MCO_NAMESPACE).
-				List(context.TODO(), metav1.ListOptions{})
+				if !strings.Contains(argsStr, "-I 10m") {
+					klog.V(3).Infof("maxItemSize is not effect in sts observability-thanos-query-frontend-memcached")
+					return false
+				}
+
+				klog.V(3).Infof("maxItemSize is effect in sts observability-thanos-query-frontend-memcached")
+				return true
+			}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*10).Should(BeTrue())
+		},
+	)
+
+	It(
+		"RHACM4K-1235: Observability: Verify metrics data global setting on the managed cluster @BVT - [P1][Sev1][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release(config/g0)",
+		func() {
+			mcoRes, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).
+				Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
 			if err != nil {
-				return err
+				panic(err.Error())
 			}
-			for _, pvc := range pvcList.Items {
-				// for KinD cluster, we use minio as object storage. the size is 1Gi.
-				if pvc.GetName() != "minio" {
-					scName := *pvc.Spec.StorageClassName
-					statusPhase := pvc.Status.Phase
-					if scName != expectedSC || statusPhase != "Bound" {
-						return fmt.Errorf(
-							"PVC check failed, scName = %s, expectedSC = %s, statusPhase = %s",
-							scName,
-							expectedSC,
-							statusPhase,
-						)
-					}
+			observabilityAddonSpec := mcoRes.Object["spec"].(map[string]any)["observabilityAddonSpec"].(map[string]any)
+			Expect(observabilityAddonSpec["enableMetrics"]).To(Equal(true))
+			Expect(observabilityAddonSpec["interval"]).To(Equal(int64(300)))
+		},
+	)
+
+	It(
+		"RHACM4K-1065: Observability: Verify MCO CR storage class and PVC @BVT - [P1][Sev1][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release (config/g0)",
+		func() {
+			mcoSC, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).
+				Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+			Expect(err).NotTo(HaveOccurred())
+
+			spec := mcoSC.Object["spec"].(map[string]any)
+			scInCR := spec["storageConfig"].(map[string]any)["storageClass"].(string)
+
+			scList, _ := hubClient.StorageV1().StorageClasses().List(context.TODO(), metav1.ListOptions{})
+			scMatch := false
+			defaultSC := ""
+			for _, sc := range scList.Items {
+				if sc.Annotations["storageclass.kubernetes.io/is-default-class"] == trueStr {
+					defaultSC = sc.Name
+				}
+				if sc.Name == scInCR {
+					scMatch = true
 				}
 			}
-			return nil
-		}, EventuallyTimeoutMinute*3, EventuallyIntervalSecond*5).Should(Succeed())
-	})
+			expectedSC := defaultSC
+			if scMatch {
+				expectedSC = scInCR
+			}
+
+			Eventually(func() error {
+				pvcList, err := hubClient.CoreV1().
+					PersistentVolumeClaims(MCO_NAMESPACE).
+					List(context.TODO(), metav1.ListOptions{})
+				if err != nil {
+					return err
+				}
+				for _, pvc := range pvcList.Items {
+					// for KinD cluster, we use minio as object storage. the size is 1Gi.
+					if pvc.GetName() != "minio" {
+						scName := *pvc.Spec.StorageClassName
+						statusPhase := pvc.Status.Phase
+						if scName != expectedSC || statusPhase != "Bound" {
+							return fmt.Errorf(
+								"PVC check failed, scName = %s, expectedSC = %s, statusPhase = %s",
+								scName,
+								expectedSC,
+								statusPhase,
+							)
+						}
+					}
+				}
+				return nil
+			}, EventuallyTimeoutMinute*3, EventuallyIntervalSecond*5).Should(Succeed())
+		},
+	)
 
 	componentMap := map[string]struct {
 		// deployment or statefulset
@@ -250,193 +259,202 @@ var _ = Describe("", func() {
 		}
 	})
 
-	It("RHACM4K-3419: Observability: Persist advance values in MCO CR - Checking resources in advanced config [P2][Sev2][Observability][Integration] @e2e @post-release @pre-upgrade (config/g0)", func() {
-		mcoRes, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).
-			Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
-		if err != nil {
-			panic(err.Error())
-		}
-
-		spec := mcoRes.Object["spec"].(map[string]any)
-		if _, adv := spec["advanced"]; !adv {
-			Skip("Skip the case since the MCO CR did not have advanced spec configed")
-		}
-
-		advancedSpec := mcoRes.Object["spec"].(map[string]any)["advanced"].(map[string]any)
-
-		for key, component := range componentMap {
-			klog.V(1).Infof("The component is: %s\n", key)
-			resources := advancedSpec[key].(map[string]any)["resources"]
-			limits := resources.(map[string]any)["limits"].(map[string]any)
-			var cpu string
-			switch v := limits["cpu"].(type) {
-			case int64:
-				cpu = fmt.Sprint(v)
-			default:
-				cpu = limits["cpu"].(string)
+	It(
+		"RHACM4K-3419: Observability: Persist advance values in MCO CR - Checking resources in advanced config [P2][Sev2][Observability][Integration] @e2e @post-release @pre-upgrade (config/g0)",
+		func() {
+			mcoRes, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).
+				Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+			if err != nil {
+				panic(err.Error())
 			}
-			if component.Type == "Deployment" {
-				deploys, err := utils.GetDeploymentWithLabel(testOptions, true, component.Label, MCO_NAMESPACE)
-				Expect(err).NotTo(HaveOccurred())
-				for _, deployInfo := range (*deploys).Items {
-					Expect(cpu).To(Equal(deployInfo.Spec.Template.Spec.Containers[0].Resources.Limits.Cpu().String()))
-					Expect(
-						limits["memory"],
-					).To(Equal(deployInfo.Spec.Template.Spec.Containers[0].Resources.Limits.Memory().String()))
+
+			spec := mcoRes.Object["spec"].(map[string]any)
+			if _, adv := spec["advanced"]; !adv {
+				Skip("Skip the case since the MCO CR did not have advanced spec configed")
+			}
+
+			advancedSpec := mcoRes.Object["spec"].(map[string]any)["advanced"].(map[string]any)
+
+			for key, component := range componentMap {
+				klog.V(1).Infof("The component is: %s\n", key)
+				resources := advancedSpec[key].(map[string]any)["resources"]
+				limits := resources.(map[string]any)["limits"].(map[string]any)
+				var cpu string
+				switch v := limits["cpu"].(type) {
+				case int64:
+					cpu = fmt.Sprint(v)
+				default:
+					cpu = limits["cpu"].(string)
 				}
+				if component.Type == "Deployment" {
+					deploys, err := utils.GetDeploymentWithLabel(testOptions, true, component.Label, MCO_NAMESPACE)
+					Expect(err).NotTo(HaveOccurred())
+					for _, deployInfo := range (*deploys).Items {
+						Expect(cpu).To(Equal(deployInfo.Spec.Template.Spec.Containers[0].Resources.Limits.Cpu().String()))
+						Expect(
+							limits["memory"],
+						).To(Equal(deployInfo.Spec.Template.Spec.Containers[0].Resources.Limits.Memory().String()))
+					}
+				} else {
+					sts, err := utils.GetStatefulSetWithLabel(testOptions, true, component.Label, MCO_NAMESPACE)
+					Expect(err).NotTo(HaveOccurred())
+					for _, stsInfo := range (*sts).Items {
+						Expect(cpu).To(Equal(stsInfo.Spec.Template.Spec.Containers[0].Resources.Limits.Cpu().String()))
+						memStr := stsInfo.Spec.Template.Spec.Containers[0].Resources.Limits.Memory().String()
+						Expect(limits["memory"]).To(Equal(memStr))
+					}
+				}
+			}
+		},
+	)
+
+	It(
+		"RHACM4K-11169: Observability: Verify ACM Observability with Security Service Token credentials - [P2][Sev2][observability][Integration]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @pre-upgrade Checking service account annotations is set for store/query/rule/compact/receive @e2e (config/g0)",
+		func() {
+			mcoRes, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).
+				Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+			if err != nil {
+				panic(err.Error())
+			}
+
+			spec := mcoRes.Object["spec"].(map[string]any)
+			if _, adv := spec["advanced"]; !adv {
+				Skip("Skip the case since the MCO CR did not have advanced spec configed")
+			}
+
+			advancedSpec := mcoRes.Object["spec"].(map[string]any)["advanced"].(map[string]any)
+
+			for _, component := range []string{"compact", "store", "query", "receive", "rule"} {
+				klog.V(1).Infof("The component is: %s\n", component)
+				annotations := advancedSpec[component].(map[string]any)["serviceAccountAnnotations"].(map[string]any)
+				sas, err := utils.GetSAWithLabel(testOptions, true,
+					"app.kubernetes.io/name=thanos-"+component, MCO_NAMESPACE)
+				Expect(err).NotTo(HaveOccurred())
+				for _, saInfo := range (*sas).Items {
+					for key, value := range annotations {
+						exist := false
+						for eKey, eValue := range saInfo.Annotations {
+							if eKey == key && eValue == value.(string) {
+								exist = true
+								continue
+							}
+						}
+						Expect(exist).To(BeTrue())
+					}
+				}
+
+			}
+		},
+	)
+
+	It(
+		"RHACM4K-43019 - Observability - Verify overwrite Thanos components CLI args in MCO CR - [P2][Sev2][Observability][Integration]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release (config/g0)",
+		func() {
+			By("Updating mco cr to update cli args")
+
+			mcoPath := ""
+			if os.Getenv("IS_CANARY_ENV") != trueStr {
+				mcoPath = "../../../examples/updatemcocr/advancedmcoconfig/custom-certs"
 			} else {
-				sts, err := utils.GetStatefulSetWithLabel(testOptions, true, component.Label, MCO_NAMESPACE)
-				Expect(err).NotTo(HaveOccurred())
-				for _, stsInfo := range (*sts).Items {
-					Expect(cpu).To(Equal(stsInfo.Spec.Template.Spec.Containers[0].Resources.Limits.Cpu().String()))
-					memStr := stsInfo.Spec.Template.Spec.Containers[0].Resources.Limits.Memory().String()
-					Expect(limits["memory"]).To(Equal(memStr))
-				}
+				mcoPath = "../../../examples/updatemcocr/advancedmcoconfig"
 			}
-		}
-	})
 
-	It("RHACM4K-11169: Observability: Verify ACM Observability with Security Service Token credentials - [P2][Sev2][observability][Integration]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @pre-upgrade Checking service account annotations is set for store/query/rule/compact/receive @e2e (config/g0)", func() {
-		mcoRes, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).
-			Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
-		if err != nil {
-			panic(err.Error())
-		}
+			yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: mcoPath})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(
+				utils.ApplyRetryOnConflict(
+					testOptions.HubCluster.ClusterServerURL,
+					testOptions.KubeConfig,
+					testOptions.HubCluster.KubeContext,
+					yamlB,
+				)).NotTo(HaveOccurred())
 
-		spec := mcoRes.Object["spec"].(map[string]any)
-		if _, adv := spec["advanced"]; !adv {
-			Skip("Skip the case since the MCO CR did not have advanced spec configed")
-		}
+			time.Sleep(60 * time.Second)
 
-		advancedSpec := mcoRes.Object["spec"].(map[string]any)["advanced"].(map[string]any)
-
-		for _, component := range []string{"compact", "store", "query", "receive", "rule"} {
-			klog.V(1).Infof("The component is: %s\n", component)
-			annotations := advancedSpec[component].(map[string]any)["serviceAccountAnnotations"].(map[string]any)
-			sas, err := utils.GetSAWithLabel(testOptions, true,
-				"app.kubernetes.io/name=thanos-"+component, MCO_NAMESPACE)
-			Expect(err).NotTo(HaveOccurred())
-			for _, saInfo := range (*sas).Items {
-				for key, value := range annotations {
-					exist := false
-					for eKey, eValue := range saInfo.Annotations {
-						if eKey == key && eValue == value.(string) {
-							exist = true
-							continue
+			By("Check the value is effect in the observability-thanos-compact and rule")
+			Eventually(func() bool {
+				for _, component := range []string{THANOS_COMPACT_LABEL, THANOS_RULE_LABEL} {
+					sts, err := utils.GetStatefulSetWithLabel(testOptions, true, component, MCO_NAMESPACE)
+					Expect(err).NotTo(HaveOccurred())
+					for _, stsInfo := range (*sts).Items {
+						args := stsInfo.Spec.Template.Spec.Containers[0].Args
+						if slices.Contains(args, "--log.level=debug") {
+							return true
 						}
 					}
-					Expect(exist).To(BeTrue())
+				}
+				return false
+			}).Should(BeTrue())
+
+			mcoRes, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).
+				Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+			if err != nil {
+				panic(err.Error())
+			}
+
+			// Update the MCO CR to change the log level for thanos-compact
+			spec := mcoRes.Object["spec"].(map[string]any)
+			advancedSpec, _ := spec["advanced"].(map[string]any)
+			if containers, ok := advancedSpec["compact"].(map[string]any)["containers"].([]any); ok {
+				if args, ok := containers[0].(map[string]any)["args"].([]any); ok {
+					for i, arg := range args {
+						if strings.HasPrefix(arg.(string), "--log.level=") {
+							args[i] = "--log.level=info"
+							break
+						}
+					}
 				}
 			}
 
-		}
-	})
+			_, err = dynClient.Resource(utils.NewMCOGVRV1BETA2()).
+				Update(context.TODO(), mcoRes, metav1.UpdateOptions{})
+			Expect(err).NotTo(HaveOccurred())
 
-	It("RHACM4K-43019 - Observability - Verify overwrite Thanos components CLI args in MCO CR - [P2][Sev2][Observability][Integration]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release (config/g0)", func() {
-		By("Updating mco cr to update cli args")
-
-		mcoPath := ""
-		if os.Getenv("IS_CANARY_ENV") != trueStr {
-			mcoPath = "../../../examples/updatemcocr/advancedmcoconfig/custom-certs"
-		} else {
-			mcoPath = "../../../examples/updatemcocr/advancedmcoconfig"
-		}
-
-		yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: mcoPath})
-		Expect(err).ToNot(HaveOccurred())
-		Expect(
-			utils.ApplyRetryOnConflict(
-				testOptions.HubCluster.ClusterServerURL,
-				testOptions.KubeConfig,
-				testOptions.HubCluster.KubeContext,
-				yamlB,
-			)).NotTo(HaveOccurred())
-
-		time.Sleep(60 * time.Second)
-
-		By("Check the value is effect in the observability-thanos-compact and rule")
-		Eventually(func() bool {
-			for _, component := range []string{THANOS_COMPACT_LABEL, THANOS_RULE_LABEL} {
-				sts, err := utils.GetStatefulSetWithLabel(testOptions, true, component, MCO_NAMESPACE)
+			By("Check the value is effect in the sts observability-thanos-compact")
+			Eventually(func() bool {
+				sts, err := utils.GetStatefulSetWithLabel(testOptions, true, THANOS_COMPACT_LABEL, MCO_NAMESPACE)
 				Expect(err).NotTo(HaveOccurred())
 				for _, stsInfo := range (*sts).Items {
 					args := stsInfo.Spec.Template.Spec.Containers[0].Args
+					if slices.Contains(args, "--log.level=info") {
+						return true
+					}
+				}
+				return false
+			}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*10).Should(BeTrue())
+
+			By("Check the value in observability-thanos-rule is not changed")
+			Eventually(func() bool {
+				deploys, err := utils.GetStatefulSetWithLabel(testOptions, true, THANOS_RULE_LABEL, MCO_NAMESPACE)
+				Expect(err).NotTo(HaveOccurred())
+				for _, deployInfo := range (*deploys).Items {
+					args := deployInfo.Spec.Template.Spec.Containers[0].Args
 					if slices.Contains(args, "--log.level=debug") {
 						return true
 					}
 				}
+				return false
+			}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*10).Should(BeTrue())
+
+			By("Revert MCO back to initial config")
+			if os.Getenv("IS_CANARY_ENV") != trueStr {
+				mcoPath = "../../../examples/updatemcocr/initialmcoconfig/custom-certs"
+			} else {
+				mcoPath = "../../../examples/updatemcocr/initialmcoconfig"
 			}
-			return false
-		}).Should(BeTrue())
+			yamlB, err = kustomize.Render(kustomize.Options{KustomizationPath: mcoPath})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(
+				utils.ApplyRetryOnConflict(
+					testOptions.HubCluster.ClusterServerURL,
+					testOptions.KubeConfig,
+					testOptions.HubCluster.KubeContext,
+					yamlB,
+				)).NotTo(HaveOccurred())
 
-		mcoRes, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).
-			Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
-		if err != nil {
-			panic(err.Error())
-		}
-
-		// Update the MCO CR to change the log level for thanos-compact
-		spec := mcoRes.Object["spec"].(map[string]any)
-		advancedSpec, _ := spec["advanced"].(map[string]any)
-		if containers, ok := advancedSpec["compact"].(map[string]any)["containers"].([]any); ok {
-			if args, ok := containers[0].(map[string]any)["args"].([]any); ok {
-				for i, arg := range args {
-					if strings.HasPrefix(arg.(string), "--log.level=") {
-						args[i] = "--log.level=info"
-						break
-					}
-				}
-			}
-		}
-
-		_, err = dynClient.Resource(utils.NewMCOGVRV1BETA2()).
-			Update(context.TODO(), mcoRes, metav1.UpdateOptions{})
-		Expect(err).NotTo(HaveOccurred())
-
-		By("Check the value is effect in the sts observability-thanos-compact")
-		Eventually(func() bool {
-			sts, err := utils.GetStatefulSetWithLabel(testOptions, true, THANOS_COMPACT_LABEL, MCO_NAMESPACE)
-			Expect(err).NotTo(HaveOccurred())
-			for _, stsInfo := range (*sts).Items {
-				args := stsInfo.Spec.Template.Spec.Containers[0].Args
-				if slices.Contains(args, "--log.level=info") {
-					return true
-				}
-			}
-			return false
-		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*10).Should(BeTrue())
-
-		By("Check the value in observability-thanos-rule is not changed")
-		Eventually(func() bool {
-			deploys, err := utils.GetStatefulSetWithLabel(testOptions, true, THANOS_RULE_LABEL, MCO_NAMESPACE)
-			Expect(err).NotTo(HaveOccurred())
-			for _, deployInfo := range (*deploys).Items {
-				args := deployInfo.Spec.Template.Spec.Containers[0].Args
-				if slices.Contains(args, "--log.level=debug") {
-					return true
-				}
-			}
-			return false
-		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*10).Should(BeTrue())
-
-		By("Revert MCO back to initial config")
-		if os.Getenv("IS_CANARY_ENV") != trueStr {
-			mcoPath = "../../../examples/updatemcocr/initialmcoconfig/custom-certs"
-		} else {
-			mcoPath = "../../../examples/updatemcocr/initialmcoconfig"
-		}
-		yamlB, err = kustomize.Render(kustomize.Options{KustomizationPath: mcoPath})
-		Expect(err).ToNot(HaveOccurred())
-		Expect(
-			utils.ApplyRetryOnConflict(
-				testOptions.HubCluster.ClusterServerURL,
-				testOptions.KubeConfig,
-				testOptions.HubCluster.KubeContext,
-				yamlB,
-			)).NotTo(HaveOccurred())
-
-		time.Sleep(60 * time.Second)
-	})
+			time.Sleep(60 * time.Second)
+		},
+	)
 
 	JustAfterEach(func() {
 		Expect(utils.IntegrityChecking(testOptions)).NotTo(HaveOccurred())

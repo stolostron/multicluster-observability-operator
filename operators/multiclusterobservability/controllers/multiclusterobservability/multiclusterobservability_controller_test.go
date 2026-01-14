@@ -908,7 +908,13 @@ func TestImageReplaceForMCO(t *testing.T) {
 				t.Fatalf("The image key(%s) for the container(%s) doesn't exist in the deployment(%s)", imageKey, container.Name, deployName)
 			}
 			if imageValue != container.Image {
-				t.Fatalf("The image(%s) for the container(%s) in the deployment(%s) should be replaced with the one(%s) in the image manifests", container.Image, container.Name, deployName, imageValue)
+				t.Fatalf(
+					"The image(%s) for the container(%s) in the deployment(%s) should be replaced with the one(%s) in the image manifests",
+					container.Image,
+					container.Name,
+					deployName,
+					imageValue,
+				)
 			}
 		}
 	}
@@ -1253,7 +1259,10 @@ func TestNewMCOACRDEventHandler(t *testing.T) {
 			}
 
 			// Create a workqueue
-			queue := workqueue.NewTypedRateLimitingQueueWithConfig(workqueue.DefaultTypedControllerRateLimiter[reconcile.Request](), workqueue.TypedRateLimitingQueueConfig[reconcile.Request]{Name: "testQueue"})
+			queue := workqueue.NewTypedRateLimitingQueueWithConfig(
+				workqueue.DefaultTypedControllerRateLimiter[reconcile.Request](),
+				workqueue.TypedRateLimitingQueueConfig[reconcile.Request]{Name: "testQueue"},
+			)
 			handler.Create(context.TODO(), createEvent, queue)
 
 			reqs := []reconcile.Request{}

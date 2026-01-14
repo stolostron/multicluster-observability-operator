@@ -31,99 +31,106 @@ var _ = Describe("", func() {
 		}
 	})
 
-	Context("[P2][Sev2][observability][Stable] Should be automatically created within 1 minute when delete manifestwork @ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release (manifestwork/g0) -", func() {
-		manifestWorkName := "endpoint-observability-work"
-		clientDynamic := utils.GetKubeClientDynamic(testOptions, true)
-		clusterName := utils.GetManagedClusterName(testOptions)
-		if clusterName != "" && clusterName != "local-cluster" {
-			// ACM 8509 : Special case for local-cluster
-			// We do not create manifestwork for local-cluster
-			oldManifestWorkResourceVersion := ""
-			oldCollectorPodName := ""
-			podList, _ := utils.GetPodList(testOptions, false, MCO_ADDON_NAMESPACE, "component=metrics-collector")
-			if podList != nil && len(podList.Items) > 0 {
-				oldCollectorPodName = podList.Items[0].Name
-			}
-
-			Eventually(func() error {
-				oldManifestWork, err := clientDynamic.Resource(utils.NewOCMManifestworksGVR()).
-					Namespace(clusterName).
-					Get(context.TODO(), manifestWorkName, metav1.GetOptions{})
-				oldManifestWorkResourceVersion = oldManifestWork.GetResourceVersion()
-				return err
-			}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*5).Should(Succeed())
-
-			By("Waiting for manifestwork to be deleted")
-			Eventually(func() error {
-				err := clientDynamic.Resource(utils.NewOCMManifestworksGVR()).
-					Namespace(clusterName).
-					Delete(context.TODO(), manifestWorkName, metav1.DeleteOptions{})
-				return err
-			}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*5).Should(Succeed())
-
-			By("Waiting for manifestwork to be created automatically")
-			Eventually(func() error {
-				newManifestWork, err := clientDynamic.Resource(utils.NewOCMManifestworksGVR()).
-					Namespace(clusterName).
-					Get(context.TODO(), manifestWorkName, metav1.GetOptions{})
-				if err == nil {
-					if newManifestWork.GetResourceVersion() != oldManifestWorkResourceVersion {
-						return nil
-					} else {
-						return errors.New("No new manifestwork generated")
-					}
-				} else {
-					return err
+	Context(
+		"[P2][Sev2][observability][Stable] Should be automatically created within 1 minute when delete manifestwork @ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release (manifestwork/g0) -",
+		func() {
+			manifestWorkName := "endpoint-observability-work"
+			clientDynamic := utils.GetKubeClientDynamic(testOptions, true)
+			clusterName := utils.GetManagedClusterName(testOptions)
+			if clusterName != "" && clusterName != "local-cluster" {
+				// ACM 8509 : Special case for local-cluster
+				// We do not create manifestwork for local-cluster
+				oldManifestWorkResourceVersion := ""
+				oldCollectorPodName := ""
+				podList, _ := utils.GetPodList(testOptions, false, MCO_ADDON_NAMESPACE, "component=metrics-collector")
+				if podList != nil && len(podList.Items) > 0 {
+					oldCollectorPodName = podList.Items[0].Name
 				}
-			}, EventuallyTimeoutMinute*2, EventuallyIntervalSecond*5).Should(Succeed())
 
-			It("[Stable] Waiting for metrics collector to be created automatically", func() {
 				Eventually(func() error {
-					podList, _ := utils.GetPodList(
-						testOptions,
-						false,
-						MCO_ADDON_NAMESPACE,
-						"component=metrics-collector",
-					)
-					if podList != nil && len(podList.Items) > 0 {
-						if oldCollectorPodName != podList.Items[0].Name {
+					oldManifestWork, err := clientDynamic.Resource(utils.NewOCMManifestworksGVR()).
+						Namespace(clusterName).
+						Get(context.TODO(), manifestWorkName, metav1.GetOptions{})
+					oldManifestWorkResourceVersion = oldManifestWork.GetResourceVersion()
+					return err
+				}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*5).Should(Succeed())
+
+				By("Waiting for manifestwork to be deleted")
+				Eventually(func() error {
+					err := clientDynamic.Resource(utils.NewOCMManifestworksGVR()).
+						Namespace(clusterName).
+						Delete(context.TODO(), manifestWorkName, metav1.DeleteOptions{})
+					return err
+				}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*5).Should(Succeed())
+
+				By("Waiting for manifestwork to be created automatically")
+				Eventually(func() error {
+					newManifestWork, err := clientDynamic.Resource(utils.NewOCMManifestworksGVR()).
+						Namespace(clusterName).
+						Get(context.TODO(), manifestWorkName, metav1.GetOptions{})
+					if err == nil {
+						if newManifestWork.GetResourceVersion() != oldManifestWorkResourceVersion {
 							return nil
+						} else {
+							return errors.New("No new manifestwork generated")
 						}
-					}
-					return errors.New("No new metrics collector generated")
-				}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
-			})
-
-			It("[Stable] Checking OBA components are ready", func() {
-				Eventually(func() error {
-					err = utils.CheckOBAComponents(testOptions)
-					if err != nil {
+					} else {
 						return err
 					}
-					return nil
-				}, EventuallyTimeoutMinute*3, EventuallyIntervalSecond*5).Should(Succeed())
-			})
+				}, EventuallyTimeoutMinute*2, EventuallyIntervalSecond*5).Should(Succeed())
 
-			It("[Stable] Checking metric to ensure that no data is lost in 1 minute", func() {
-				Eventually(func() error {
-					query := fmt.Sprintf(`timestamp(node_memory_MemAvailable_bytes{cluster="%s"}) - timestamp(node_memory_MemAvailable_bytes{cluster="%s"} offset 1m) > 59`, clusterName, clusterName)
-					res, err := utils.QueryGrafana(
-						testOptions,
-						query,
-					)
-					if err != nil {
-						return err
-					}
+				It("[Stable] Waiting for metrics collector to be created automatically", func() {
+					Eventually(func() error {
+						podList, _ := utils.GetPodList(
+							testOptions,
+							false,
+							MCO_ADDON_NAMESPACE,
+							"component=metrics-collector",
+						)
+						if podList != nil && len(podList.Items) > 0 {
+							if oldCollectorPodName != podList.Items[0].Name {
+								return nil
+							}
+						}
+						return errors.New("No new metrics collector generated")
+					}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
+				})
 
-					if len(res.Data.Result) == 0 {
-						return fmt.Errorf("no data found for %s", query)
-					}
+				It("[Stable] Checking OBA components are ready", func() {
+					Eventually(func() error {
+						err = utils.CheckOBAComponents(testOptions)
+						if err != nil {
+							return err
+						}
+						return nil
+					}, EventuallyTimeoutMinute*3, EventuallyIntervalSecond*5).Should(Succeed())
+				})
 
-					return nil
-				}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*3).Should(Succeed())
-			})
-		}
-	})
+				It("[Stable] Checking metric to ensure that no data is lost in 1 minute", func() {
+					Eventually(func() error {
+						query := fmt.Sprintf(
+							`timestamp(node_memory_MemAvailable_bytes{cluster="%s"}) - timestamp(node_memory_MemAvailable_bytes{cluster="%s"} offset 1m) > 59`,
+							clusterName,
+							clusterName,
+						)
+						res, err := utils.QueryGrafana(
+							testOptions,
+							query,
+						)
+						if err != nil {
+							return err
+						}
+
+						if len(res.Data.Result) == 0 {
+							return fmt.Errorf("no data found for %s", query)
+						}
+
+						return nil
+					}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*3).Should(Succeed())
+				})
+			}
+		},
+	)
 
 	JustAfterEach(func() {
 		Expect(utils.IntegrityChecking(testOptions)).NotTo(HaveOccurred())

@@ -193,7 +193,10 @@ func TestNewSecret(t *testing.T) {
 	}
 	if !strings.HasPrefix(hub.ObservatoriumAPIEndpoint, "https://observatorium-api-open-cluster-management-observability.apps.test-host") ||
 		hub.AlertmanagerEndpoint != "https://"+routeHost || hub.AlertmanagerRouterCA != routerCA || hub.HubClusterID != "1a9af6dc0801433cb28a200af81" {
-		t.Fatalf("Wrong content in hub info secret: \ngot: "+hub.ObservatoriumAPIEndpoint+" "+hub.AlertmanagerEndpoint+" "+hub.AlertmanagerRouterCA, clusterName+" "+"https://test-host"+" "+"test-host"+" "+routerCA)
+		t.Fatalf(
+			"Wrong content in hub info secret: \ngot: "+hub.ObservatoriumAPIEndpoint+" "+hub.AlertmanagerEndpoint+" "+hub.AlertmanagerRouterCA,
+			clusterName+" "+"https://test-host"+" "+"test-host"+" "+routerCA,
+		)
 	}
 
 	// Test UWM alerting disabled
@@ -272,7 +275,10 @@ func TestNewSecret(t *testing.T) {
 		t.Fatalf("Failed to unmarshal data in hub info secret (%v)", err)
 	}
 	if !strings.HasPrefix(hub.ObservatoriumAPIEndpoint, "https://custom-obs:8080") || !strings.HasPrefix(hub.AlertmanagerEndpoint, "https://custom-am") || hub.AlertmanagerRouterCA != routerCA {
-		t.Fatalf("Wrong content in hub info secret: \ngot: "+hub.ObservatoriumAPIEndpoint+" "+hub.AlertmanagerEndpoint+" "+hub.AlertmanagerRouterCA, clusterName+" "+"https://custom-obs"+" "+"custom-obs"+" "+routerCA)
+		t.Fatalf(
+			"Wrong content in hub info secret: \ngot: "+hub.ObservatoriumAPIEndpoint+" "+hub.AlertmanagerEndpoint+" "+hub.AlertmanagerRouterCA,
+			clusterName+" "+"https://custom-obs"+" "+"custom-obs"+" "+routerCA,
+		)
 	}
 }
 
@@ -298,6 +304,9 @@ func TestNewBYOSecret(t *testing.T) {
 	}
 	if !strings.HasPrefix(hub.ObservatoriumAPIEndpoint, "https://observatorium-api-open-cluster-management-observability.apps.test-host") ||
 		hub.AlertmanagerEndpoint != "https://"+routeHost || hub.AlertmanagerRouterCA != routerBYOCA {
-		t.Fatalf("Wrong content in hub info secret: \ngot: "+hub.ObservatoriumAPIEndpoint+" "+hub.AlertmanagerEndpoint+" "+hub.AlertmanagerRouterCA, clusterName+" "+"https://test-host"+" "+"test-host"+" "+routerBYOCA)
+		t.Fatalf(
+			"Wrong content in hub info secret: \ngot: "+hub.ObservatoriumAPIEndpoint+" "+hub.AlertmanagerEndpoint+" "+hub.AlertmanagerRouterCA,
+			clusterName+" "+"https://test-host"+" "+"test-host"+" "+routerBYOCA,
+		)
 	}
 }

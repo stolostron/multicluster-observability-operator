@@ -550,7 +550,9 @@ func TestProxyIntegrationScenarios(t *testing.T) {
 				// This is a simplified mock. A real scenario would parse the apiProjectsResponse.
 				switch tc.token {
 				case "admin-token":
-					fakeClientBuilder.WithLists(&projectv1.ProjectList{Items: []projectv1.Project{{ObjectMeta: metav1.ObjectMeta{Name: "cluster1"}}, {ObjectMeta: metav1.ObjectMeta{Name: "cluster2"}}}})
+					fakeClientBuilder.WithLists(
+						&projectv1.ProjectList{Items: []projectv1.Project{{ObjectMeta: metav1.ObjectMeta{Name: "cluster1"}}, {ObjectMeta: metav1.ObjectMeta{Name: "cluster2"}}}},
+					)
 				case "scoped-token":
 					fakeClientBuilder.WithLists(&projectv1.ProjectList{Items: []projectv1.Project{{ObjectMeta: metav1.ObjectMeta{Name: "cluster1"}}}})
 				default:
