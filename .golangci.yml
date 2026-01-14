@@ -57,10 +57,10 @@ linters:
         - G104 # Already covererd by errcheck which allows exclusions
 
   exclusions:
-      rules:
-        - path: tests/
-          linters:
-            - gosec
+    rules:
+      - path: tests/
+        linters:
+          - gosec
 
 formatters:
   # Enable specific formatter.
@@ -77,4 +77,8 @@ formatters:
       # Target maximum line length.
       # Default: 100
       max-len: 200
+
+  exclusions:
+    paths:
+      - "vendor/.*"
 
