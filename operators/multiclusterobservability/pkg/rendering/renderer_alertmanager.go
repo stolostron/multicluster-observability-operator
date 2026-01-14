@@ -156,7 +156,8 @@ func (r *MCORenderer) renderAlertManagerStatefulSet(res *resource.Resource, name
 }
 
 func (r *MCORenderer) renderAlertManagerSecret(res *resource.Resource,
-	namespace string, labels map[string]string) (*unstructured.Unstructured, error) {
+	namespace string, labels map[string]string,
+) (*unstructured.Unstructured, error) {
 	u, err := r.renderer.RenderNamespace(res, namespace, labels)
 	if err != nil {
 		return nil, err
@@ -185,7 +186,8 @@ func (r *MCORenderer) renderAlertManagerSecret(res *resource.Resource,
 }
 
 func (r *MCORenderer) renderAlertManagerConfigMap(res *resource.Resource,
-	namespace string, labels map[string]string) (*unstructured.Unstructured, error) {
+	namespace string, labels map[string]string,
+) (*unstructured.Unstructured, error) {
 	u, err := r.renderer.RenderNamespace(res, namespace, labels)
 	if err != nil {
 		return nil, err
@@ -234,7 +236,8 @@ func (r *MCORenderer) renderAlertManagerConfigMap(res *resource.Resource,
 }
 
 func (r *MCORenderer) renderAlertManagerTemplates(templates []*resource.Resource,
-	namespace string, labels map[string]string) ([]*unstructured.Unstructured, error) {
+	namespace string, labels map[string]string,
+) ([]*unstructured.Unstructured, error) {
 	uobjs := []*unstructured.Unstructured{}
 	for _, template := range templates {
 		render, ok := r.renderAlertManagerFns[template.GetKind()]

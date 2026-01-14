@@ -206,9 +206,7 @@ const (
 	MCGHCrdName                    = "multiclusterglobalhubs.operator.open-cluster-management.io"
 )
 
-var (
-	PrometheusScrapeConfigsCrdName = fmt.Sprintf("%s.%s", monitoring.GroupName, prometheusv1alpha1.ScrapeConfigName)
-)
+var PrometheusScrapeConfigsCrdName = fmt.Sprintf("%s.%s", monitoring.GroupName, prometheusv1alpha1.ScrapeConfigName)
 
 const (
 	ResourceTypeConfigMap = "ConfigMap"
@@ -240,16 +238,14 @@ const (
 	UIPluginsCRDName              = "uiplugins.observability.openshift.io"
 )
 
-var (
-	mcoaSupportedCRDs = map[string]string{
-		ClusterLogForwarderCRDName:    "v1",
-		OpenTelemetryCollectorCRDName: "v1beta1",
-		InstrumentationCRDName:        "v1alpha1",
-		PrometheusAgentCRDName:        "v1alpha1",
-		ScrapeConfigCRDName:           "v1alpha1",
-		UIPluginsCRDName:              "v1alpha1",
-	}
-)
+var mcoaSupportedCRDs = map[string]string{
+	ClusterLogForwarderCRDName:    "v1",
+	OpenTelemetryCollectorCRDName: "v1beta1",
+	InstrumentationCRDName:        "v1alpha1",
+	PrometheusAgentCRDName:        "v1alpha1",
+	ScrapeConfigCRDName:           "v1alpha1",
+	UIPluginsCRDName:              "v1alpha1",
+}
 
 // ObjectStorgeConf is used to Unmarshal from bytes to do validation.
 type ObjectStorgeConf struct {

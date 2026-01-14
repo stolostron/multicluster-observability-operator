@@ -80,7 +80,8 @@ type SecureJsonData struct {
 func GenerateGrafanaDataSource(
 	c client.Client,
 	scheme *runtime.Scheme,
-	mco *mcov1beta2.MultiClusterObservability) (*ctrl.Result, error) {
+	mco *mcov1beta2.MultiClusterObservability,
+) (*ctrl.Result, error) {
 	DynamicTimeInterval := min(mco.Spec.ObservabilityAddonSpec.Interval, 30)
 
 	grafanaDatasources, err := yaml.Marshal(GrafanaDatasources{
@@ -192,7 +193,8 @@ func GenerateGrafanaDataSource(
 
 func GenerateGrafanaRoute(
 	c client.Client, scheme *runtime.Scheme,
-	mco *mcov1beta2.MultiClusterObservability) (*ctrl.Result, error) {
+	mco *mcov1beta2.MultiClusterObservability,
+) (*ctrl.Result, error) {
 	grafanaRoute := &routev1.Route{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      config.GrafanaRouteName,
@@ -274,7 +276,8 @@ func GenerateGrafanaRoute(
 
 func GenerateGrafanaOauthClient(
 	c client.Client, scheme *runtime.Scheme,
-	mco *mcov1beta2.MultiClusterObservability) (*ctrl.Result, error) {
+	mco *mcov1beta2.MultiClusterObservability,
+) (*ctrl.Result, error) {
 	host, err := config.GetRouteHost(c, config.GrafanaRouteName, config.GetDefaultNamespace())
 	if err != nil {
 		return nil, err

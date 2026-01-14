@@ -12,9 +12,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-var (
-	spokeNameSpace = os.Getenv("SPOKE_NAMESPACE")
-)
+var spokeNameSpace = os.Getenv("SPOKE_NAMESPACE")
 
 func generateNamespace() *corev1.Namespace {
 	return &corev1.Namespace{

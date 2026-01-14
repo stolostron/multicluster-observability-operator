@@ -52,7 +52,8 @@ collect_rules:
 names:
   - uwl_a
   - uwl_b
-`},
+`,
+		},
 	}
 }
 
@@ -93,7 +94,8 @@ collect_rules:
 names:
   - custom_uwl_a
   - custom_uwl_b
-`},
+`,
+		},
 	}
 }
 

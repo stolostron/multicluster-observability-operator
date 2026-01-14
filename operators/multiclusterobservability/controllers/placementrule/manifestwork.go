@@ -222,7 +222,8 @@ func shouldUpdateManifestWork(desiredWork, foundWork *workv1.ManifestWork) bool 
 // endpoint-metrics-operator deploy and hubInfo Secret...
 // this function is expensive and should not be called for each reconcile loop.
 func generateGlobalManifestResources(ctx context.Context, c client.Client, mco *mcov1beta2.MultiClusterObservability, kubeClient kubernetes.Interface) (
-	[]workv1.Manifest, *workv1.Manifest, error) {
+	[]workv1.Manifest, *workv1.Manifest, error,
+) {
 	works := []workv1.Manifest{}
 
 	// inject the namespace
@@ -762,7 +763,6 @@ func generateAmAccessorTokenSecret(cl client.Client, kubeClient kubernetes.Inter
 			// find out the expected duration of the token
 			createdStr := createdBytes
 			created, err := time.Parse(time.RFC3339, createdStr)
-
 			if err != nil {
 				log.Error(err, "Failed to parse alertmanager accessor token creation date", "created", created)
 				return nil, err
@@ -796,7 +796,6 @@ func generateAmAccessorTokenSecret(cl client.Client, kubeClient kubernetes.Inter
 			ExpirationSeconds: ptr.To(int64(8640 * 3600)), // expires in 364 days
 		},
 	}, metav1.CreateOptions{})
-
 	if err != nil {
 		log.Error(err, "Failed to create token for Alertmanager accessor serviceaccount",
 			"name", config.AlertmanagerAccessorSAName,
@@ -965,7 +964,8 @@ func generateMetricsListCM(client client.Client) (*corev1.ConfigMap, error) {
 // If the addon is found with the override source annotation, it will not update the existing addon but it will use the existing values.
 // If the addon is found without any source annotation, it will add the mco source annotation and use the MCO values (upgrade case from ACM 2.12.2).
 func getObservabilityAddon(c client.Client, namespace string,
-	mco *mcov1beta2.MultiClusterObservability) (*mcov1beta1.ObservabilityAddon, error) {
+	mco *mcov1beta2.MultiClusterObservability,
+) (*mcov1beta1.ObservabilityAddon, error) {
 	if namespace == config.GetDefaultNamespace() {
 		return nil, nil
 	}

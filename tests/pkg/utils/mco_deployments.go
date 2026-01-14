@@ -16,7 +16,8 @@ import (
 )
 
 func GetDeployment(opt TestOptions, isHub bool, name string,
-	namespace string) (*appv1.Deployment, error) {
+	namespace string,
+) (*appv1.Deployment, error) {
 	clientKube := GetKubeClient(opt, isHub)
 
 	cluster := opt.HubCluster.BaseDomain
@@ -33,7 +34,8 @@ func GetDeployment(opt TestOptions, isHub bool, name string,
 }
 
 func GetDeploymentWithCluster(cluster Cluster, name string,
-	namespace string) (*appv1.Deployment, error) {
+	namespace string,
+) (*appv1.Deployment, error) {
 	clientKube := GetKubeClientWithCluster(cluster)
 	klog.V(1).Infof("Get deployment <%v> in namespace <%v> on cluster <%v>", name, namespace, cluster.Name)
 	dep, err := clientKube.AppsV1().Deployments(namespace).Get(context.TODO(), name, metav1.GetOptions{})
@@ -41,7 +43,8 @@ func GetDeploymentWithCluster(cluster Cluster, name string,
 }
 
 func GetDeploymentWithLabel(opt TestOptions, isHub bool, label string,
-	namespace string) (*appv1.DeploymentList, error) {
+	namespace string,
+) (*appv1.DeploymentList, error) {
 	clientKube := GetKubeClient(opt, isHub)
 
 	cluster := opt.HubCluster.BaseDomain
@@ -78,7 +81,8 @@ func UpdateDeployment(
 	isHub bool,
 	name string,
 	namespace string,
-	dep *appv1.Deployment) (*appv1.Deployment, error) {
+	dep *appv1.Deployment,
+) (*appv1.Deployment, error) {
 	clientKube := GetKubeClient(opt, isHub)
 	updateDep, err := clientKube.AppsV1().Deployments(namespace).Update(context.TODO(), dep, metav1.UpdateOptions{})
 	if err != nil {

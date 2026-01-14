@@ -276,8 +276,10 @@ func Render(
 
 func getDisabledMetrics(ctx context.Context, c runtimeclient.Client, namespace string) (string, error) {
 	cm := &corev1.ConfigMap{}
-	err := c.Get(ctx, types.NamespacedName{Name: operatorconfig.AllowlistConfigMapName,
-		Namespace: namespace}, cm)
+	err := c.Get(ctx, types.NamespacedName{
+		Name:      operatorconfig.AllowlistConfigMapName,
+		Namespace: namespace,
+	}, cm)
 	if err != nil {
 		return "", err
 	}

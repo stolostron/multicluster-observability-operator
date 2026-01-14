@@ -24,8 +24,10 @@ type Reporter interface {
 	UpdateStatus(ctx context.Context, reason status.Reason, message string) error
 }
 
-var _ Reporter = &StatusReport{}
-var _ Reporter = &NoopReporter{}
+var (
+	_ Reporter = &StatusReport{}
+	_ Reporter = &NoopReporter{}
+)
 
 type StatusReport struct {
 	statusClient   client.Client

@@ -947,8 +947,10 @@ func (m *MetricsCollector) getMetricsAllowlist(ctx context.Context) (*operatorco
 
 	// get allowlist configmap
 	cm := &corev1.ConfigMap{}
-	err := m.Client.Get(ctx, types.NamespacedName{Name: operatorconfig.AllowlistConfigMapName,
-		Namespace: m.Namespace}, cm)
+	err := m.Client.Get(ctx, types.NamespacedName{
+		Name:      operatorconfig.AllowlistConfigMapName,
+		Namespace: m.Namespace,
+	}, cm)
 	if err != nil {
 		m.Log.Error(err, "Failed to get configmap", "name", operatorconfig.AllowlistConfigMapName, "namespace", m.Namespace)
 	}
@@ -1054,7 +1056,8 @@ func getNameInMatch(match string) string {
 // 1. only support "names" and "matches".
 // 2. inject namespace label filter for all entries in the allowlist.
 func injectNamespaceLabel(allowlist *operatorconfig.MetricsAllowlist,
-	namespace string) *operatorconfig.MetricsAllowlist {
+	namespace string,
+) *operatorconfig.MetricsAllowlist {
 	updatedList := &operatorconfig.MetricsAllowlist{
 		NameList:  []string{},
 		MatchList: []string{},

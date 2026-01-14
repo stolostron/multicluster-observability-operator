@@ -39,7 +39,6 @@ func TestGetClusterNameLabelKey(t *testing.T) {
 }
 
 func TestReplaceImage(t *testing.T) {
-
 	caseList := []struct {
 		annotations map[string]string
 		name        string
@@ -199,7 +198,7 @@ func TestGetDefaultNamespace(t *testing.T) {
 }
 
 func TestMonitoringCRName(t *testing.T) {
-	var monitoringCR = "monitoring"
+	monitoringCR := "monitoring"
 	SetMonitoringCRName(monitoringCR)
 
 	if monitoringCR != GetMonitoringCRName() {
@@ -466,7 +465,8 @@ func TestIsPaused(t *testing.T) {
 }
 
 func NewFakeClient(mco *mcov1beta2.MultiClusterObservability,
-	obs *observatoriumv1alpha1.Observatorium) client.Client {
+	obs *observatoriumv1alpha1.Observatorium,
+) client.Client {
 	s := runtime.NewScheme()
 	s.AddKnownTypes(mcov1beta2.GroupVersion, mco)
 	s.AddKnownTypes(observatoriumv1alpha1.GroupVersion, obs)

@@ -80,13 +80,13 @@ func installMCO() {
 		Expect(utils.CreateObjSecret(testOptions)).NotTo(HaveOccurred())
 	} else {
 		By("Creating Minio as object storage")
-		//set resource quota and limit range for canary environment to avoid destruct the node
+		// set resource quota and limit range for canary environment to avoid destruct the node
 		yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: "../../../examples/minio"})
 		Expect(err).NotTo(HaveOccurred())
 		Expect(utils.ApplyRetryOnConflict(testOptions.HubCluster.ClusterServerURL, testOptions.KubeConfig, testOptions.HubCluster.KubeContext, yamlB)).NotTo(HaveOccurred())
 	}
 
-	//set resource quota and limit range for canary environment to avoid destruct the node
+	// set resource quota and limit range for canary environment to avoid destruct the node
 	yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: "../../../examples/policy"})
 	Expect(err).NotTo(HaveOccurred())
 	Expect(
@@ -102,7 +102,7 @@ func installMCO() {
 
 	if os.Getenv("IS_CANARY_ENV") != trueStr {
 		By("Recreating Minio-tls as object storage")
-		//set resource quota and limit range for canary environment to avoid destruct the node
+		// set resource quota and limit range for canary environment to avoid destruct the node
 		yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: "../../../examples/minio-tls"})
 		Expect(err).NotTo(HaveOccurred())
 		Expect(utils.ApplyRetryOnConflict(testOptions.HubCluster.ClusterServerURL, testOptions.KubeConfig, testOptions.HubCluster.KubeContext, yamlB)).NotTo(HaveOccurred())
@@ -154,7 +154,6 @@ func installMCO() {
 		Expect(err).NotTo(HaveOccurred())
 		fmt.Fprintf(GinkgoWriter, "[DEBUG] MCO is installed failed, checking MCO operator logs:\n%s\n", mcoLogs)
 		utils.LogFailingTestStandardDebugInfo(testOptions)
-
 	}()
 	By("Waiting for MCO ready status")
 	Eventually(func() error {
@@ -214,6 +213,5 @@ func installMCO() {
 			return fmt.Errorf("failed to get bearer token: %w", err)
 		}
 		return nil
-
 	}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*10).Should(Succeed())
 }

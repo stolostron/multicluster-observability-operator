@@ -19,13 +19,12 @@ import (
 	migrationv1alpha1 "sigs.k8s.io/kube-storage-version-migrator/pkg/apis/migration/v1alpha1"
 )
 
-var (
-	storageVersionMigrationPrefix = "storage-version-migration"
-)
+var storageVersionMigrationPrefix = "storage-version-migration"
 
 // createOrUpdateObservabilityStorageVersionMigrationResource create or update the StorageVersionMigration resource
 func createOrUpdateObservabilityStorageVersionMigrationResource(client client.Client, scheme *runtime.Scheme,
-	mco *mcov1beta2.MultiClusterObservability) error {
+	mco *mcov1beta2.MultiClusterObservability,
+) error {
 	storageVersionMigrationName := storageVersionMigrationPrefix
 	if mco != nil {
 		storageVersionMigrationName += "-" + mco.GetName()

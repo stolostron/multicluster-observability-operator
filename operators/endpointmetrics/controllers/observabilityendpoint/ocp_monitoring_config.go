@@ -145,7 +145,8 @@ func createHubAmRouterCASecret(
 	ctx context.Context,
 	hubInfo *operatorconfig.HubInfo,
 	client client.Client,
-	targetNamespace string) error {
+	targetNamespace string,
+) error {
 	hubAmRouterSecret := hubAmRouterCASecretName + "-" + hubInfo.HubClusterID
 	hubAmRouterCA := hubInfo.AlertmanagerRouterCA
 	dataMap := map[string][]byte{hubAmRouterCASecretKey: []byte(hubAmRouterCA)}
@@ -236,8 +237,10 @@ func createHubAmAccessorTokenSecret(ctx context.Context, client client.Client, n
 // getAmAccessorToken retrieves the alertmanager access token from observability-alertmanager-accessor secret.
 func getAmAccessorToken(ctx context.Context, client client.Client, ns string) (string, error) {
 	amAccessorSecret := &corev1.Secret{}
-	if err := client.Get(ctx, types.NamespacedName{Name: hubAmAccessorSecretName,
-		Namespace: ns}, amAccessorSecret); err != nil {
+	if err := client.Get(ctx, types.NamespacedName{
+		Name:      hubAmAccessorSecretName,
+		Namespace: ns,
+	}, amAccessorSecret); err != nil {
 		return "", err
 	}
 

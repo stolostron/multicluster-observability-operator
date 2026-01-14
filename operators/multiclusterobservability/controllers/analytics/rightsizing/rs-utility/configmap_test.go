@@ -17,8 +17,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-const testNamespace = "open-cluster-management-observability"
-const testConfigMapName = "test-rs-config"
+const (
+	testNamespace     = "open-cluster-management-observability"
+	testConfigMapName = "test-rs-config"
+)
 
 func TestEnsureRSConfigMapExists_CreatesIfNotExists(t *testing.T) {
 	scheme := runtime.NewScheme()

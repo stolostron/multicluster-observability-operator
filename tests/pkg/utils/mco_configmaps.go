@@ -13,7 +13,8 @@ import (
 )
 
 func GetConfigMap(opt TestOptions, isHub bool, name string,
-	namespace string) (error, *corev1.ConfigMap) {
+	namespace string,
+) (error, *corev1.ConfigMap) {
 	clientKube := GetKubeClient(opt, isHub)
 	cm, err := clientKube.CoreV1().ConfigMaps(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {

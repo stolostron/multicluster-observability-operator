@@ -20,7 +20,6 @@ func AddBackupLabelToConfigMap(c client.Client, name, namespace string) error {
 		Name:      name,
 		Namespace: namespace,
 	}, m)
-
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
@@ -52,7 +51,6 @@ func AddBackupLabelToSecret(c client.Client, name, namespace string) error {
 		Name:      name,
 		Namespace: namespace,
 	}, s)
-
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.

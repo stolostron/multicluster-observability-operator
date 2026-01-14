@@ -29,7 +29,8 @@ func (r *MCORenderer) newThanosRenderer() {
 }
 
 func (r *MCORenderer) renderThanosTemplates(templates []*resource.Resource,
-	namespace string, labels map[string]string) ([]*unstructured.Unstructured, error) {
+	namespace string, labels map[string]string,
+) ([]*unstructured.Unstructured, error) {
 	uobjs := []*unstructured.Unstructured{}
 	for _, template := range templates {
 		render, ok := r.renderThanosFns[template.GetKind()]
@@ -55,7 +56,8 @@ func (r *MCORenderer) renderThanosTemplates(templates []*resource.Resource,
 }
 
 func (r *MCORenderer) RenderThanosConfig(res *resource.Resource,
-	namespace string, labels map[string]string) (*unstructured.Unstructured, error) {
+	namespace string, labels map[string]string,
+) (*unstructured.Unstructured, error) {
 	u, err := r.renderer.RenderNamespace(res, namespace, labels)
 	if err != nil {
 		return nil, err

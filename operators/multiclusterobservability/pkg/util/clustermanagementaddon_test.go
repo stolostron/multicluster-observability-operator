@@ -94,8 +94,7 @@ func TestClusterManagmentAddon(t *testing.T) {
 	if clusterManagementAddon.ObjectMeta.Annotations == nil {
 		clusterManagementAddon.ObjectMeta.Annotations = map[string]string{}
 	}
-	clusterManagementAddon.ObjectMeta.Annotations[addonv1alpha1.AddonLifecycleAnnotationKey] =
-		addonv1alpha1.AddonLifecycleSelfManageAnnotationValue
+	clusterManagementAddon.ObjectMeta.Annotations[addonv1alpha1.AddonLifecycleAnnotationKey] = addonv1alpha1.AddonLifecycleSelfManageAnnotationValue
 
 	if err := c.Create(context.TODO(), clusterManagementAddon); err != nil {
 		t.Fatalf("Failed to create clustermanagementaddon: (%v)", err)
@@ -128,5 +127,4 @@ func TestClusterManagmentAddon(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to delete clustermanagementaddon: (%v)", err)
 	}
-
 }

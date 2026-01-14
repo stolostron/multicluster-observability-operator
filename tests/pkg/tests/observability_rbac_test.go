@@ -21,7 +21,6 @@ import (
 
 var _ = Describe("", Ordered, func() {
 	BeforeAll(func() {
-
 		// This test is currently not working well on shared enviroments
 		// as the test setup script does not take into account that
 		// others might add similar htaccess identity providers.
@@ -99,7 +98,6 @@ var _ = Describe("", Ordered, func() {
 	It("RHACM4K-1439 - Observability - RBAC - Verify only cluster-manager-admin role can deploy MCO CR [Observability][Integration]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release (requires-ocp/g0) (obs_rbac/g0)", func() {
 		By("Logging as kube:admin checking if MCO can be deleted by user1 and admin", func() {
 			Eventually(func() error {
-
 				if len(testOptions.HubCluster.KubeContext) > 0 {
 					_, err = exec.Command("oc", "config", "use-context", testOptions.HubCluster.KubeContext).CombinedOutput()
 					if err != nil {

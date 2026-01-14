@@ -168,7 +168,8 @@ func UpdateCRDWebhookNS(crdClient crdClientSet.Interface, namespace, crdName str
 
 // GetPVCList get pvc with matched labels.
 func GetPVCList(c client.Client, namespace string,
-	matchLabels map[string]string) ([]corev1.PersistentVolumeClaim, error) {
+	matchLabels map[string]string,
+) ([]corev1.PersistentVolumeClaim, error) {
 	pvcList := &corev1.PersistentVolumeClaimList{}
 	pvcListOpts := []client.ListOption{
 		client.InNamespace(namespace),
@@ -184,7 +185,8 @@ func GetPVCList(c client.Client, namespace string,
 
 // GetStatefulSetList get sts with matched labels.
 func GetStatefulSetList(c client.Client, namespace string,
-	matchLabels map[string]string) ([]appsv1.StatefulSet, error) {
+	matchLabels map[string]string,
+) ([]appsv1.StatefulSet, error) {
 	stsList := &appsv1.StatefulSetList{}
 	stsListOpts := []client.ListOption{
 		client.InNamespace(namespace),

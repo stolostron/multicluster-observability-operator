@@ -34,7 +34,6 @@ var _ = Describe("", func() {
 	})
 
 	It("RHACM4K-31474: Observability: Verify memcached setting max_item_size is populated on thanos-store - [P1][Sev1][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release(config/g1)", func() {
-
 		By("Updating mco cr to update values in storeMemcached")
 
 		mcoPath := ""
@@ -58,7 +57,6 @@ var _ = Describe("", func() {
 
 		By("Check the value is effect in the sts observability-thanos-store-shard-0")
 		Eventually(func() bool {
-
 			thanosStoreMemSts, _ := utils.GetStatefulSet(testOptions, true, "observability-thanos-store-memcached", MCO_NAMESPACE)
 			// klog.V(3).Infof("STS thanosStoreSts is %s", thanosStoreMemSts)
 			containers := thanosStoreMemSts.Spec.Template.Spec.Containers
@@ -76,21 +74,19 @@ var _ = Describe("", func() {
 
 			klog.V(3).Infof("maxItemSize is effect in sts observability-thanos-store-memcached")
 			return true
-
 		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*10).Should(BeTrue())
 
 		By("Check the value is effect in the sts observability-thanos-query-frontend-memcached")
 		Eventually(func() bool {
-
 			thanosQueFronMemSts, _ := utils.GetStatefulSet(testOptions, true, "observability-thanos-query-frontend-memcached", MCO_NAMESPACE)
-			//klog.V(3).Infof("STS thanosStoreSts is %s", thanosQueFronMemSts)
+			// klog.V(3).Infof("STS thanosStoreSts is %s", thanosQueFronMemSts)
 			containers := thanosQueFronMemSts.Spec.Template.Spec.Containers
 
 			args := containers[0].Args
-			//klog.V(3).Infof("args is %s", args)
+			// klog.V(3).Infof("args is %s", args)
 
 			argsStr := strings.Join(args, " ")
-			//klog.V(3).Infof("argsStr is %s", argsStr)
+			// klog.V(3).Infof("argsStr is %s", argsStr)
 
 			if !strings.Contains(argsStr, "-I 10m") {
 				klog.V(3).Infof("maxItemSize is not effect in sts observability-thanos-query-frontend-memcached")
@@ -99,7 +95,6 @@ var _ = Describe("", func() {
 
 			klog.V(3).Infof("maxItemSize is effect in sts observability-thanos-query-frontend-memcached")
 			return true
-
 		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*10).Should(BeTrue())
 	})
 
@@ -146,7 +141,7 @@ var _ = Describe("", func() {
 				return err
 			}
 			for _, pvc := range pvcList.Items {
-				//for KinD cluster, we use minio as object storage. the size is 1Gi.
+				// for KinD cluster, we use minio as object storage. the size is 1Gi.
 				if pvc.GetName() != "minio" {
 					scName := *pvc.Spec.StorageClassName
 					statusPhase := pvc.Status.Phase
@@ -220,7 +215,6 @@ var _ = Describe("", func() {
 	}
 
 	It("RHACM4K-2822: Observability: Verify the replica in advanced config for Observability components @BVT - [P1][Sev1][Observability][Integration] @e2e (config/g0)", func() {
-
 		mcoRes, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).
 			Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
 		if err != nil {
@@ -259,7 +253,6 @@ var _ = Describe("", func() {
 	It("RHACM4K-3419: Observability: Persist advance values in MCO CR - Checking resources in advanced config [P2][Sev2][Observability][Integration] @e2e @post-release @pre-upgrade (config/g0)", func() {
 		mcoRes, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).
 			Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
-
 		if err != nil {
 			panic(err.Error())
 		}
@@ -304,7 +297,6 @@ var _ = Describe("", func() {
 	})
 
 	It("RHACM4K-11169: Observability: Verify ACM Observability with Security Service Token credentials - [P2][Sev2][observability][Integration]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @pre-upgrade Checking service account annotations is set for store/query/rule/compact/receive @e2e (config/g0)", func() {
-
 		mcoRes, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).
 			Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
 		if err != nil {

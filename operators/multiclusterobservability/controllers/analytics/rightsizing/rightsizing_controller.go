@@ -16,9 +16,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
 
-var (
-	log = logf.Log.WithName("analytics")
-)
+var log = logf.Log.WithName("analytics")
 
 func CreateRightSizingComponent(
 	ctx context.Context,

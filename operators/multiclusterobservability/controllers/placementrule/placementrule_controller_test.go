@@ -49,9 +49,7 @@ const (
 	addonConfigName        = "test"
 )
 
-var (
-	mcoNamespace = config.GetDefaultNamespace()
-)
+var mcoNamespace = config.GetDefaultNamespace()
 
 func initSchema(t *testing.T) {
 	s := scheme.Scheme
@@ -155,9 +153,11 @@ func TestObservabilityAddonController(t *testing.T) {
 	config.SetMonitoringCRName(mcoName)
 	mco := newTestMCO()
 	pull := newTestPullSecret()
-	objs := []runtime.Object{mco, pull, newConsoleRoute(), newTestObsApiRoute(), newTestAlertmanagerRoute(), newTestIngressController(), newTestRouteCASecret(), newCASecret(), newCertSecret(mcoNamespace), NewMetricsAllowListCM(),
+	objs := []runtime.Object{
+		mco, pull, newConsoleRoute(), newTestObsApiRoute(), newTestAlertmanagerRoute(), newTestIngressController(), newTestRouteCASecret(), newCASecret(), newCertSecret(mcoNamespace), NewMetricsAllowListCM(),
 		NewAmAccessorSA(), newClusterMgmtAddon(),
-		newAddonDeploymentConfig(defaultAddonConfigName, namespace), newAddonDeploymentConfig(addonConfigName, namespace)}
+		newAddonDeploymentConfig(defaultAddonConfigName, namespace), newAddonDeploymentConfig(addonConfigName, namespace),
+	}
 	c := fake.
 		NewClientBuilder().
 		WithStatusSubresource(

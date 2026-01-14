@@ -140,7 +140,8 @@ func Test_DefaultClientImageOverride(t *testing.T) {
 			clusterName: "cluster1",
 			cluster: newFakeCluster("cluster1", newAnnotationRegistries([]Registry{
 				{Source: "registry.redhat.io/rhacm2", Mirror: "quay.io/rhacm2"},
-				{Source: "registry.redhat.io/multicluster-engine", Mirror: "quay.io/multicluster-engine"}}, "")),
+				{Source: "registry.redhat.io/multicluster-engine", Mirror: "quay.io/multicluster-engine"},
+			}, "")),
 			image:         "registry.redhat.io/rhacm2/registration@SHA256abc",
 			expectedImage: "quay.io/rhacm2/registration@SHA256abc",
 			expectedErr:   nil,
@@ -150,7 +151,8 @@ func Test_DefaultClientImageOverride(t *testing.T) {
 			clusterName: "cluster1",
 			cluster: newFakeCluster("cluster1", newAnnotationRegistries([]Registry{
 				{Source: "registry.redhat.io/rhacm2", Mirror: "quay.io/rhacm2"},
-				{Source: "registry.redhat.io/multicluster-engine", Mirror: "quay.io/multicluster-engine"}}, "")),
+				{Source: "registry.redhat.io/multicluster-engine", Mirror: "quay.io/multicluster-engine"},
+			}, "")),
 			image:         "registry.redhat.io/acm-d/registration@SHA256abc",
 			expectedImage: "registry.redhat.io/acm-d/registration@SHA256abc",
 			expectedErr:   nil,
@@ -160,7 +162,8 @@ func Test_DefaultClientImageOverride(t *testing.T) {
 			clusterName: "cluster1",
 			cluster: newFakeCluster("cluster1", newAnnotationRegistries([]Registry{
 				{Source: "registry.redhat.io/rhacm2", Mirror: "quay.io/rhacm2"},
-				{Source: "registry.redhat.io/multicluster-engine", Mirror: "quay.io/multicluster-engine"}}, "")),
+				{Source: "registry.redhat.io/multicluster-engine", Mirror: "quay.io/multicluster-engine"},
+			}, "")),
 			image:         "registry.redhat.io/multicluster-engine/registration@SHA256abc",
 			expectedImage: "quay.io/multicluster-engine/registration@SHA256abc",
 			expectedErr:   nil,
@@ -169,7 +172,8 @@ func Test_DefaultClientImageOverride(t *testing.T) {
 			name:        "override image without source ",
 			clusterName: "cluster1",
 			cluster: newFakeCluster("cluster1", newAnnotationRegistries([]Registry{
-				{Source: "", Mirror: "quay.io/rhacm2"}}, "")),
+				{Source: "", Mirror: "quay.io/rhacm2"},
+			}, "")),
 			image:         "registry.redhat.io/multicluster-engine/registration@SHA256abc",
 			expectedImage: "quay.io/rhacm2/registration@SHA256abc",
 			expectedErr:   nil,
@@ -179,8 +183,11 @@ func Test_DefaultClientImageOverride(t *testing.T) {
 			clusterName: "cluster1",
 			cluster: newFakeCluster("cluster1", newAnnotationRegistries([]Registry{
 				{Source: "registry.redhat.io/rhacm2", Mirror: "quay.io/rhacm2"},
-				{Source: "registry.redhat.io/rhacm2/registration@SHA256abc",
-					Mirror: "quay.io/acm-d/registration:latest"}}, "")),
+				{
+					Source: "registry.redhat.io/rhacm2/registration@SHA256abc",
+					Mirror: "quay.io/acm-d/registration:latest",
+				},
+			}, "")),
 			image:         "registry.redhat.io/rhacm2/registration@SHA256abc",
 			expectedImage: "quay.io/acm-d/registration:latest",
 			expectedErr:   nil,

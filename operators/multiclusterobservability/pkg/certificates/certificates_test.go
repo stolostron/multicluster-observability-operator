@@ -105,7 +105,6 @@ func TestCreateCertificates(t *testing.T) {
 }
 
 func TestRemoveExpiredCA(t *testing.T) {
-
 	caSecret := getExpiredCertSecret()
 	oldCertLength := len(caSecret.Data["tls.crt"])
 	c := fake.NewClientBuilder().WithRuntimeObjects(caSecret).Build()

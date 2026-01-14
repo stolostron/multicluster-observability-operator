@@ -17,7 +17,8 @@ import (
 )
 
 func getPred(name string, namespace string,
-	create bool, update bool, isDelete bool) predicate.Funcs {
+	create bool, update bool, isDelete bool,
+) predicate.Funcs {
 	createFunc := func(e event.CreateEvent) bool {
 		return false
 	}

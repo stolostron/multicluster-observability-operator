@@ -33,7 +33,6 @@ func TestRender(t *testing.T) {
 	str := string(buf)
 	pkgLabelPos := strings.Index(str, "alertname: NodeOutOfMemory\n")
 	assert.True(t, pkgLabelPos > 0, "alertname: NodeOutOfMemory label should be contained")
-
 }
 
 func containedNames(rendered []map[string]any) (names []string) {

@@ -14,13 +14,11 @@ import (
 
 type copyright []byte
 
-var (
-	stolostron copyright = []byte(`// Copyright (c) Red Hat, Inc.
+var stolostron copyright = []byte(`// Copyright (c) Red Hat, Inc.
 // Copyright Contributors to the Open Cluster Management project
 // Licensed under the Apache License 2.0
 
 `)
-)
 
 func applyLicenseToProtoAndGo() error {
 	return filepath.Walk(".", func(path string, info os.FileInfo, err error) error {
@@ -61,7 +59,7 @@ func writeLicence(cr copyright, path string, b []byte) error {
 		var bb bytes.Buffer
 		_, _ = bb.Write(cr)
 		_, _ = bb.Write(b)
-		if err := os.WriteFile(path, bb.Bytes(), 0600); err != nil {
+		if err := os.WriteFile(path, bb.Bytes(), 0o600); err != nil {
 			return err
 		}
 	}

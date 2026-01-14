@@ -219,6 +219,7 @@ func GetImageStreamPredicateFunc() predicate.Funcs {
 		},
 	}
 }
+
 func GetMCOACRDPredicateFunc() predicate.Funcs {
 	return predicate.Funcs{
 		CreateFunc:  func(_ event.CreateEvent) bool { return true },

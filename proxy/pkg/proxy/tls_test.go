@@ -67,7 +67,7 @@ func createTestCert(t *testing.T, commonName string) ([]byte, []byte) {
 // Helper to write certs to a file.
 func writeTestCert(t *testing.T, path string, content []byte) {
 	t.Helper()
-	if err := os.WriteFile(path, content, 0600); err != nil {
+	if err := os.WriteFile(path, content, 0o600); err != nil {
 		t.Fatalf("Failed to write to %s: %v", path, err)
 	}
 }
@@ -93,7 +93,7 @@ func TestPollingReloadOnSymlinkChange(t *testing.T) {
 	v2Dir := filepath.Join(baseDir, "v2")
 	liveDir := filepath.Join(baseDir, "live") // The dir the transport will point to
 	for _, dir := range []string{v1Dir, v2Dir, liveDir} {
-		if err := os.Mkdir(dir, 0755); err != nil {
+		if err := os.Mkdir(dir, 0o755); err != nil {
 			t.Fatalf("Failed to create dir %s: %v", dir, err)
 		}
 	}

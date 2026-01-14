@@ -92,7 +92,6 @@ var _ = Describe("", func() {
 			_, result := utils.ContainDashboard(testOptions, clusterOverviewOptimizedTitle)
 			return result
 		}, EventuallyTimeoutMinute*3, EventuallyIntervalSecond*5).Should(BeTrue())
-
 	})
 
 	JustAfterEach(func() {

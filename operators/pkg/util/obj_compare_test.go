@@ -22,7 +22,6 @@ var (
 )
 
 func TestCompareObject(t *testing.T) {
-
 	cases := []struct {
 		name            string
 		rawObj1         runtime.RawExtension
@@ -372,5 +371,4 @@ func TestCompareObject(t *testing.T) {
 			}
 		})
 	}
-
 }

@@ -30,7 +30,8 @@ func getAllowlistCM(ns string) *corev1.ConfigMap {
 			metricsConfigMapKey: `
 names:
   - apiserver_watch_events_sizes_bucket
-`},
+`,
+		},
 	}
 }
 

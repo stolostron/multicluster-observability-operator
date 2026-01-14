@@ -22,7 +22,8 @@ import (
 // generateHubInfoSecret generates the secret that contains hubInfo.
 // this function should only called when the watched resources are created/updated.
 func generateHubInfoSecret(client client.Client, obsNamespace string,
-	namespace string, crdMap map[string]bool, isUWMAlertingDisabled bool) (*corev1.Secret, error) {
+	namespace string, crdMap map[string]bool, isUWMAlertingDisabled bool,
+) (*corev1.Secret, error) {
 	var obsAPIHost string
 	alertmanagerEndpoint := ""
 	var alertmanagerRouterCA string

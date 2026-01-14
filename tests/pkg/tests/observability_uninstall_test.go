@@ -39,7 +39,7 @@ func uninstallMCO() {
 
 	By("Waiting for delete all MCO components")
 	Eventually(func() error {
-		var podList, _ = hubClient.CoreV1().Pods(MCO_NAMESPACE).List(context.TODO(), metav1.ListOptions{})
+		podList, _ := hubClient.CoreV1().Pods(MCO_NAMESPACE).List(context.TODO(), metav1.ListOptions{})
 		if len(podList.Items) != 0 {
 			return err
 		}
@@ -72,7 +72,7 @@ func uninstallMCO() {
 
 	By("Waiting for delete all MCO addon components")
 	Eventually(func() error {
-		var podList, _ = hubClient.CoreV1().Pods(MCO_ADDON_NAMESPACE).List(context.TODO(), metav1.ListOptions{})
+		podList, _ := hubClient.CoreV1().Pods(MCO_ADDON_NAMESPACE).List(context.TODO(), metav1.ListOptions{})
 		if len(podList.Items) != 0 {
 			return err
 		}

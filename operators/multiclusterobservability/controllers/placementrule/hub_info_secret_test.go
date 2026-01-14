@@ -78,7 +78,6 @@ func newTestIngressController() *operatorv1.IngressController {
 			},
 		},
 	}
-
 }
 
 func newTestRouteCASecret() *corev1.Secret {
@@ -275,7 +274,6 @@ func TestNewSecret(t *testing.T) {
 	if !strings.HasPrefix(hub.ObservatoriumAPIEndpoint, "https://custom-obs:8080") || !strings.HasPrefix(hub.AlertmanagerEndpoint, "https://custom-am") || hub.AlertmanagerRouterCA != routerCA {
 		t.Fatalf("Wrong content in hub info secret: \ngot: "+hub.ObservatoriumAPIEndpoint+" "+hub.AlertmanagerEndpoint+" "+hub.AlertmanagerRouterCA, clusterName+" "+"https://custom-obs"+" "+"custom-obs"+" "+routerCA)
 	}
-
 }
 
 func TestNewBYOSecret(t *testing.T) {

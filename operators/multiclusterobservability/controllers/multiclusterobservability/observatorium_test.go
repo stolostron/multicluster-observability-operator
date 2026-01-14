@@ -29,9 +29,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-var (
-	storageClassName = ""
-)
+var storageClassName = ""
 
 func TestNewVolumeClaimTemplate(t *testing.T) {
 	vct := newVolumeClaimTemplate("10Gi", "test")
@@ -323,7 +321,6 @@ func TestUpdateObservatoriumCR(t *testing.T) {
 	if res := bytes.Compare(updatedSpecBytes, createdSpecBytes); res != 0 {
 		t.Errorf("%v should be equal to %v", string(createdSpecBytes), string(updatedSpecBytes))
 	}
-
 }
 
 func TestTShirtSizeUpdateObservatoriumCR(t *testing.T) {
@@ -404,9 +401,7 @@ func TestTShirtSizeUpdateObservatoriumCR(t *testing.T) {
 }
 
 func TestNoUpdateObservatoriumCR(t *testing.T) {
-	var (
-		namespace = mcoconfig.GetDefaultNamespace()
-	)
+	namespace := mcoconfig.GetDefaultNamespace()
 
 	// A MultiClusterObservability object with metadata and spec.
 	mco := &mcov1beta2.MultiClusterObservability{
@@ -567,14 +562,12 @@ func TestHashObservatoriumCRWithConfig(t *testing.T) {
 }
 
 func TestGetTLSSecretMountPath(t *testing.T) {
-
 	testCaseList := []struct {
 		name        string
 		secret      *corev1.Secret
 		storeConfig *mcoshared.PreConfiguredStorage
 		expected    string
 	}{
-
 		{
 			"no tls secret defined",
 			&corev1.Secret{

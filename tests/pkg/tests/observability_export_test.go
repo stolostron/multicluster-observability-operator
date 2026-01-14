@@ -20,7 +20,6 @@ import (
 
 var _ = Describe("", func() {
 	BeforeEach(func() {
-
 		cloudProvider := strings.ToLower(os.Getenv("CLOUD_PROVIDER"))
 		if strings.Contains(cloudProvider, "ibmz") {
 			Skip("skip on IMB-z as victoria-metrics image not available")
@@ -130,7 +129,6 @@ var _ = Describe("", func() {
 	})
 
 	AfterEach(func() {
-
 		cloudProvider := strings.ToLower(os.Getenv("CLOUD_PROVIDER"))
 		if !strings.Contains(cloudProvider, "ibmz") {
 			Expect(utils.CleanExportResources(testOptions)).NotTo(HaveOccurred())

@@ -157,7 +157,6 @@ var _ = AfterSuite(func() {
 })
 
 func initVars() {
-
 	// default ginkgo test timeout 30s
 	// increased from original 10s
 	testUITimeout = time.Second * 30
@@ -228,12 +227,11 @@ func initVars() {
 	cloudProvider := strings.ToLower(os.Getenv("CLOUD_PROVIDER"))
 	substring1 := "rosa"
 	substring2 := "hcp"
-	substring3 := "rhov" //Format of rhov api url is https://<baseDomain>:6443
+	substring3 := "rhov" // Format of rhov api url is https://<baseDomain>:6443
 	if testOptions.HubCluster.BaseDomain != "" {
 		baseDomain = testOptions.HubCluster.BaseDomain
 		if testOptions.HubCluster.ClusterServerURL == "" {
 			if strings.Contains(cloudProvider, substring1) && strings.Contains(cloudProvider, substring2) {
-
 				testOptions.HubCluster.ClusterServerURL = fmt.Sprintf(
 					"https://api.%s:443",
 					testOptions.HubCluster.BaseDomain,
@@ -255,7 +253,6 @@ func initVars() {
 		testOptions.HubCluster.BaseDomain = baseDomain
 		testOptions.HubCluster.ClusterServerURL = fmt.Sprintf("https://api.%s:6443", baseDomain)
 		if strings.Contains(cloudProvider, substring1) && strings.Contains(cloudProvider, substring2) {
-
 			testOptions.HubCluster.ClusterServerURL = fmt.Sprintf("https://api.%s:443", baseDomain)
 		} else {
 			testOptions.HubCluster.ClusterServerURL = fmt.Sprintf("https://api.%s:6443", baseDomain)

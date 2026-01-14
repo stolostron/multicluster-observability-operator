@@ -276,7 +276,6 @@ func TestMetricsCollectorResourcesUpdate(t *testing.T) {
 			tc.expects(t, deployment, uwlDeployment)
 		})
 	}
-
 }
 
 // TestMetricsCollectorResourcesUpdate_Owner verifies that all generated resources are owned by the addon

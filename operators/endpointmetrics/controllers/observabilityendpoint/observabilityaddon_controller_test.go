@@ -157,7 +157,8 @@ alertmanager-router-ca: |
 	amAccessSrt := newAMAccessorSecret(testNamespace, "test-token")
 	allowList := getAllowlistCM(testNamespace)
 	images := newImagesCM(testNamespace)
-	objs := []runtime.Object{hubInfo, amAccessSrt, allowList, images, cv, infra,
+	objs := []runtime.Object{
+		hubInfo, amAccessSrt, allowList, images, cv, infra,
 		&corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "extension-apiserver-authentication",
@@ -260,26 +261,34 @@ alertmanager-router-ca: |
 		t.Fatalf("reconcile: (%v)", err)
 	}
 	rb := &rbacv1.ClusterRoleBinding{}
-	err = c.Get(ctx, types.NamespacedName{Name: openshift.ClusterRoleBindingName,
-		Namespace: ""}, rb)
+	err = c.Get(ctx, types.NamespacedName{
+		Name:      openshift.ClusterRoleBindingName,
+		Namespace: "",
+	}, rb)
 	if err != nil {
 		t.Fatalf("Required clusterrolebinding not created: (%v)", err)
 	}
 	cm := &corev1.ConfigMap{}
-	err = c.Get(ctx, types.NamespacedName{Name: openshift.CaConfigmapName,
-		Namespace: testNamespace}, cm)
+	err = c.Get(ctx, types.NamespacedName{
+		Name:      openshift.CaConfigmapName,
+		Namespace: testNamespace,
+	}, cm)
 	if err != nil {
 		t.Fatalf("Required configmap not created: (%v)", err)
 	}
 	deploy := &appv1.Deployment{}
-	err = c.Get(ctx, types.NamespacedName{Name: metricsCollectorName,
-		Namespace: testNamespace}, deploy)
+	err = c.Get(ctx, types.NamespacedName{
+		Name:      metricsCollectorName,
+		Namespace: testNamespace,
+	}, deploy)
 	if err != nil {
 		t.Fatalf("Metrics collector deployment not created: (%v)", err)
 	}
 	foundOba := &oav1beta1.ObservabilityAddon{}
-	err = hubClient.Get(ctx, types.NamespacedName{Name: obAddonName,
-		Namespace: testHubNamespace}, foundOba)
+	err = hubClient.Get(ctx, types.NamespacedName{
+		Name:      obAddonName,
+		Namespace: testHubNamespace,
+	}, foundOba)
 	if err != nil {
 		t.Fatalf("Failed to get observabilityAddon: (%v)", err)
 	}
@@ -289,8 +298,10 @@ alertmanager-router-ca: |
 
 	// test reconcile metrics collector deployment updated if cert secret updated
 	found := &appv1.Deployment{}
-	err = c.Get(ctx, types.NamespacedName{Name: metricsCollectorName,
-		Namespace: testNamespace}, found)
+	err = c.Get(ctx, types.NamespacedName{
+		Name:      metricsCollectorName,
+		Namespace: testNamespace,
+	}, found)
 	if err != nil {
 		t.Fatalf("Metrics collector deployment not found: (%v)", err)
 	}
@@ -309,8 +320,10 @@ alertmanager-router-ca: |
 	if err != nil {
 		t.Fatalf("reconcile for update: (%v)", err)
 	}
-	err = c.Get(ctx, types.NamespacedName{Name: metricsCollectorName,
-		Namespace: testNamespace}, deploy)
+	err = c.Get(ctx, types.NamespacedName{
+		Name:      metricsCollectorName,
+		Namespace: testNamespace,
+	}, deploy)
 	if err != nil {
 		t.Fatalf("Metrics collector deployment not found: (%v)", err)
 	}
@@ -339,8 +352,10 @@ alertmanager-router-ca: |
 	if err != nil {
 		t.Fatalf("reconcile for disable: (%v)", err)
 	}
-	err = c.Get(ctx, types.NamespacedName{Name: metricsCollectorName,
-		Namespace: testNamespace}, deploy)
+	err = c.Get(ctx, types.NamespacedName{
+		Name:      metricsCollectorName,
+		Namespace: testNamespace,
+	}, deploy)
 	if err != nil {
 		t.Fatalf("Metrics collector deployment not created: (%v)", err)
 	}
@@ -363,24 +378,32 @@ alertmanager-router-ca: |
 	if err != nil {
 		t.Fatalf("reconcile for delete: (%v)", err)
 	}
-	err = c.Get(ctx, types.NamespacedName{Name: openshift.ClusterRoleBindingName,
-		Namespace: ""}, rb)
+	err = c.Get(ctx, types.NamespacedName{
+		Name:      openshift.ClusterRoleBindingName,
+		Namespace: "",
+	}, rb)
 	if !errors.IsNotFound(err) {
 		t.Fatalf("Required clusterrolebinding not deleted")
 	}
-	err = c.Get(ctx, types.NamespacedName{Name: openshift.CaConfigmapName,
-		Namespace: testNamespace}, cm)
+	err = c.Get(ctx, types.NamespacedName{
+		Name:      openshift.CaConfigmapName,
+		Namespace: testNamespace,
+	}, cm)
 	if !errors.IsNotFound(err) {
 		t.Fatalf("Required configmap not deleted")
 	}
-	err = c.Get(ctx, types.NamespacedName{Name: metricsCollectorName,
-		Namespace: testNamespace}, deploy)
+	err = c.Get(ctx, types.NamespacedName{
+		Name:      metricsCollectorName,
+		Namespace: testNamespace,
+	}, deploy)
 	if !errors.IsNotFound(err) {
 		t.Fatalf("Metrics collector deployment not deleted")
 	}
 	foundOba1 := &oav1beta1.ObservabilityAddon{}
-	err = hubClient.Get(ctx, types.NamespacedName{Name: obAddonName,
-		Namespace: testHubNamespace}, foundOba1)
+	err = hubClient.Get(ctx, types.NamespacedName{
+		Name:      obAddonName,
+		Namespace: testHubNamespace,
+	}, foundOba1)
 	if err != nil {
 		t.Fatalf("Failed to get observabilityAddon: (%v)", err)
 	}
@@ -425,7 +448,8 @@ collect_rules:
 names:
   - uwl_a
   - uwl_b
-`},
+`,
+		},
 	}
 }
 

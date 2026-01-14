@@ -43,7 +43,8 @@ func (r *MCORenderer) newGranfanaRenderer() {
 }
 
 func (r *MCORenderer) renderGrafanaDeployments(res *resource.Resource,
-	namespace string, labels map[string]string) (*unstructured.Unstructured, error) {
+	namespace string, labels map[string]string,
+) (*unstructured.Unstructured, error) {
 	u, err := r.renderer.RenderDeployments(res, namespace, labels)
 	if err != nil {
 		return nil, err
@@ -99,7 +100,8 @@ func (r *MCORenderer) renderGrafanaDeployments(res *resource.Resource,
 }
 
 func (r *MCORenderer) renderGrafanaTemplates(templates []*resource.Resource,
-	namespace string, labels map[string]string) ([]*unstructured.Unstructured, error) {
+	namespace string, labels map[string]string,
+) ([]*unstructured.Unstructured, error) {
 	uobjs := []*unstructured.Unstructured{}
 
 	for _, template := range templates {

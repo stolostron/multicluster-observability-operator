@@ -34,7 +34,6 @@ func CreateRSPlacementBinding(ctx context.Context, c client.Client, placementBin
 	}
 
 	err := c.Get(ctx, key, placementBinding)
-
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Resource not found, create it

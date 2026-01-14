@@ -30,7 +30,6 @@ var (
 )
 
 var _ = Describe("", func() {
-
 	BeforeEach(func() {
 		hubClient = utils.NewKubeClient(
 			testOptions.HubCluster.ClusterServerURL,
@@ -125,7 +124,7 @@ var _ = Describe("", func() {
 		substring1 := "vmware"
 		substring2 := "ibm"
 		if strings.Contains(cloudProvider, substring1) || strings.Contains(cloudProvider, substring2) {
-			//if strings.Contains(string(os.Getenv("CLOUD_PROVIDER")), "VMWARE") {
+			// if strings.Contains(string(os.Getenv("CLOUD_PROVIDER")), "VMWARE") {
 			Skip("Skip the case due to it's not supported on the VMWARE and IBM")
 		}
 		By("Resizing alertmanager storage")
@@ -148,7 +147,7 @@ var _ = Describe("", func() {
 		substring1 := "vmware"
 		substring2 := "ibm"
 		if strings.Contains(cloudProvider, substring1) || strings.Contains(cloudProvider, substring2) {
-			//if strings.Contains(string(os.Getenv("CLOUD_PROVIDER")), "VMWARE") {
+			// if strings.Contains(string(os.Getenv("CLOUD_PROVIDER")), "VMWARE") {
 			Skip("Skip the case due to it's not supported on the VMWARE and IBM")
 		}
 		advRetentionCon, err := utils.CheckAdvRetentionConfig(testOptions)

@@ -185,7 +185,8 @@ func NewMetricsAllowListCM() *corev1.ConfigMap {
 			Name:      operatorconfig.AllowlistConfigMapName,
 			Namespace: mcoNamespace,
 		},
-		Data: map[string]string{"metrics_list.yaml": `
+		Data: map[string]string{
+			"metrics_list.yaml": `
   names:
     - a
     - b
@@ -236,7 +237,8 @@ func NewMetricsAllowListCM() *corev1.ConfigMap {
     - b
   renames:
     b: d
-`},
+`,
+		},
 	}
 }
 
@@ -250,7 +252,8 @@ func NewMetricsCustomAllowListCM() *corev1.ConfigMap {
 			Name:      config.AllowlistCustomConfigMapName,
 			Namespace: mcoNamespace,
 		},
-		Data: map[string]string{"metrics_list.yaml": `
+		Data: map[string]string{
+			"metrics_list.yaml": `
   names:
     - c
     - d
@@ -268,7 +271,8 @@ func NewMetricsCustomAllowListCM() *corev1.ConfigMap {
     - d
   renames:
     a: c
-`},
+`,
+		},
 	}
 }
 
@@ -360,8 +364,10 @@ func getRuntimeObjects() []runtime.Object {
 		NewAmAccessorSA(),
 		newCluster(clusterName, map[string]string{
 			ClusterImageRegistriesAnnotation: newAnnotationRegistries([]Registry{
-				{Source: "quay.io/stolostron", Mirror: "registry_server/stolostron"}},
-				fmt.Sprintf("%s.%s", namespace, "custorm_pull_secret"))}),
+				{Source: "quay.io/stolostron", Mirror: "registry_server/stolostron"},
+			},
+				fmt.Sprintf("%s.%s", namespace, "custorm_pull_secret")),
+		}),
 		newPullSecret("custorm_pull_secret", namespace, []byte("custorm")),
 	}
 }
@@ -693,7 +699,7 @@ func TestManifestWork(t *testing.T) {
 					foundHTTPSProxy := false
 					foundNOProxy := false
 					foundCABundle := false
-					//rewrite the below to check for env variables
+					// rewrite the below to check for env variables
 					env := c["env"].([]any)
 					for _, e := range env {
 						e := e.(map[string]any)

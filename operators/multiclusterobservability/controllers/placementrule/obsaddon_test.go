@@ -113,7 +113,6 @@ func TestStaleObsAddonCR(t *testing.T) {
 	if err != nil && !errors.IsNotFound(err) {
 		t.Fatalf("Failed to delete observabilityaddon: %v", err)
 	}
-
 }
 
 func TestSetObservabilityAddonSpec(t *testing.T) {

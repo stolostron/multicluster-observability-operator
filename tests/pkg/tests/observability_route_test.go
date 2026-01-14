@@ -21,9 +21,7 @@ import (
 	"k8s.io/klog"
 )
 
-var (
-	alertCreated bool = false
-)
+var alertCreated bool = false
 
 var _ = Describe("", func() {
 	BeforeEach(func() {
@@ -54,7 +52,6 @@ var _ = Describe("", func() {
 
 			} else {
 				url = "https://rbac-query-proxy-open-cluster-management-observability.apps." + testOptions.HubCluster.BaseDomain + query
-
 			}
 
 			req, err := http.NewRequest(

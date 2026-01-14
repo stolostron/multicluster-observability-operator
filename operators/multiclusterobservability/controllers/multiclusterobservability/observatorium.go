@@ -86,7 +86,8 @@ func hashObservatoriumCRConfig(cl client.Client) (string, error) {
 // GenerateObservatoriumCR returns Observatorium cr defined in MultiClusterObservability
 func GenerateObservatoriumCR(
 	cl client.Client, scheme *runtime.Scheme,
-	mco *mcov1beta2.MultiClusterObservability) (*ctrl.Result, error) {
+	mco *mcov1beta2.MultiClusterObservability,
+) (*ctrl.Result, error) {
 	hash, err := hashObservatoriumCRConfig(cl)
 	if err != nil {
 		return &ctrl.Result{}, fmt.Errorf("failed to hash the observatorium CR config: %w", err)
@@ -194,7 +195,8 @@ func GenerateObservatoriumCR(
 }
 
 func getTLSSecretMountPath(client client.Client,
-	objectStorage *oashared.PreConfiguredStorage) (string, error) {
+	objectStorage *oashared.PreConfiguredStorage,
+) (string, error) {
 	found := &v1.Secret{}
 	err := client.Get(
 		context.TODO(),
@@ -231,7 +233,8 @@ func updateTenantID(
 	newSpec *obsv1alpha1.ObservatoriumSpec,
 	newTenant obsv1alpha1.APITenant,
 	oldTenant obsv1alpha1.APITenant,
-	idx int) {
+	idx int,
+) {
 	if oldTenant.Name == newTenant.Name && newTenant.ID == oldTenant.ID {
 		return
 	}
@@ -249,7 +252,8 @@ func updateTenantID(
 func GenerateAPIGatewayRoute(
 	ctx context.Context,
 	runclient client.Client, scheme *runtime.Scheme,
-	mco *mcov1beta2.MultiClusterObservability) (*ctrl.Result, error) {
+	mco *mcov1beta2.MultiClusterObservability,
+) (*ctrl.Result, error) {
 	apiGateway := &routev1.Route{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      obsAPIGateway,
@@ -362,8 +366,7 @@ func newDefaultObservatoriumSpec(cl client.Client, mco *mcov1beta2.MultiClusterO
 		}
 
 		obs.ObjectStorageConfig.Thanos.TLSSecretMountPath = objStorageConf.TLSSecretMountPath
-		obs.ObjectStorageConfig.Thanos.ServiceAccountProjection =
-			mco.Spec.StorageConfig.MetricObjectStorage.ServiceAccountProjection
+		obs.ObjectStorageConfig.Thanos.ServiceAccountProjection = mco.Spec.StorageConfig.MetricObjectStorage.ServiceAccountProjection
 	}
 	return obs, nil
 }
@@ -477,8 +480,10 @@ func applyEndpointsSecret(c client.Client, eps []mcoutil.RemoteWriteEndpointWith
 		Data: epsYamlMap,
 	}
 	found := &v1.Secret{}
-	err = c.Get(context.TODO(), types.NamespacedName{Name: endpointsConfigName,
-		Namespace: mcoconfig.GetDefaultNamespace()}, found)
+	err = c.Get(context.TODO(), types.NamespacedName{
+		Name:      endpointsConfigName,
+		Namespace: mcoconfig.GetDefaultNamespace(),
+	}, found)
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
 			err = c.Create(context.TODO(), epsSecret)
@@ -528,8 +533,10 @@ func newAPISpec(c client.Client, mco *mcov1beta2.MultiClusterObservability) (obs
 		var mountSecrets []string
 		for _, storageConfig := range mco.Spec.StorageConfig.WriteStorage {
 			storageSecret := &v1.Secret{}
-			err := c.Get(context.TODO(), types.NamespacedName{Name: storageConfig.Name,
-				Namespace: mcoconfig.GetDefaultNamespace()}, storageSecret)
+			err := c.Get(context.TODO(), types.NamespacedName{
+				Name:      storageConfig.Name,
+				Namespace: mcoconfig.GetDefaultNamespace(),
+			}, storageSecret)
 			if err != nil {
 				log.Error(err, "Failed to get the secret", "name", storageConfig.Name)
 				return apiSpec, err
@@ -599,7 +606,8 @@ func newAPISpec(c client.Client, mco *mcov1beta2.MultiClusterObservability) (obs
 
 func newReceiversSpec(
 	mco *mcov1beta2.MultiClusterObservability,
-	scSelected string) obsv1alpha1.ReceiversSpec {
+	scSelected string,
+) obsv1alpha1.ReceiversSpec {
 	receSpec := obsv1alpha1.ReceiversSpec{}
 	if mco.Spec.AdvancedConfig != nil && mco.Spec.AdvancedConfig.RetentionConfig != nil &&
 		mco.Spec.AdvancedConfig.RetentionConfig.RetentionInLocal != "" {

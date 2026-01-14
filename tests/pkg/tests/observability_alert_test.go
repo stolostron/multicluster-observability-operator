@@ -309,7 +309,6 @@ var _ = Describe("", func() {
 	})
 
 	It("RHACM4K-1668: Observability: Updated alert rule can take effect automatically - delete the customized rules [P2][Sev2][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release (alert/g0)", func() {
-
 		rules, err := hubClient.AppsV1().StatefulSets(MCO_NAMESPACE).List(context.TODO(), metav1.ListOptions{
 			LabelSelector: THANOS_RULE_LABEL,
 		})
@@ -350,7 +349,6 @@ var _ = Describe("", func() {
 	})
 
 	It("RHACM4K-3457: Observability: Verify managed cluster alert would be forward to hub alert manager - Should have alert named Watchdog forwarded to alertmanager [P2][Sev2][Observability][Integration]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e (alertforward/g0)", func() {
-
 		cloudProvider := strings.ToLower(os.Getenv("CLOUD_PROVIDER"))
 		substring1 := "rosa"
 		substring2 := "hcp"
@@ -492,7 +490,6 @@ var _ = Describe("", func() {
 	})
 
 	It("RHACM4K-22427: Observability: Disable the managedcluster's alerts forward to the Hub [P2][Sev2][Observability][Integration] @e2e (alertforward/g1)", func() {
-
 		if len(testOptions.ManagedClusters) == 0 ||
 			utils.GetManagedClusterName(testOptions) == hubManagedClusterName {
 			Skip("Skipping test when there are no spokes")
@@ -518,7 +515,6 @@ var _ = Describe("", func() {
 				Host:   "alertmanager-open-cluster-management-observability.apps." + testOptions.HubCluster.BaseDomain,
 				Path:   "/api/v2/alerts",
 			}
-
 		}
 		q := amURL.Query()
 		q.Set("filter", "alertname=Watchdog")

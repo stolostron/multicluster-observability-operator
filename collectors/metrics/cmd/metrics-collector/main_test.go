@@ -71,7 +71,6 @@ func TestMultiWorkers(t *testing.T) {
 		t.Fatal(err)
 	}
 	time.Sleep(1 * time.Second)
-
 }
 
 func TestMultiWorkersRaceCondition(t *testing.T) {

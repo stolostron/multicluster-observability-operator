@@ -60,8 +60,10 @@ func RevertHubClusterMonitoringConfig(ctx context.Context, client client.Client)
 	}
 
 	found := &corev1.ConfigMap{}
-	if err := client.Get(ctx, types.NamespacedName{Name: clusterMonitoringConfigName,
-		Namespace: promNamespace}, found); err != nil {
+	if err := client.Get(ctx, types.NamespacedName{
+		Name:      clusterMonitoringConfigName,
+		Namespace: promNamespace,
+	}, found); err != nil {
 		if errors.IsNotFound(err) {
 			return nil
 		}

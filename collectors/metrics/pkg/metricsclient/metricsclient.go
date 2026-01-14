@@ -102,7 +102,8 @@ type MetricsResult struct {
 func (c *Client) RetrieveRecordingMetrics(
 	ctx context.Context,
 	req *http.Request,
-	name string) ([]*clientmodel.MetricFamily, error) {
+	name string,
+) ([]*clientmodel.MetricFamily, error) {
 	ctx, cancel := context.WithTimeout(ctx, c.timeout)
 	req = req.WithContext(ctx)
 	defer cancel()
@@ -460,7 +461,8 @@ func (sl *sortableLabels) Less(i, j int) bool { return (*sl)[i].Name < (*sl)[j].
 
 // RemoteWrite is used to push the metrics to remote thanos endpoint.
 func (c *Client) RemoteWrite(ctx context.Context, req *http.Request,
-	families []*clientmodel.MetricFamily, interval time.Duration) error {
+	families []*clientmodel.MetricFamily, interval time.Duration,
+) error {
 	timeseries, err := convertToTimeseries(&PartitionedMetrics{Families: families}, time.Now())
 	if err != nil {
 		msg := "failed to convert timeseries"

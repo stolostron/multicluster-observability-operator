@@ -43,9 +43,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-var (
-	globalRes = []*unstructured.Unstructured{}
-)
+var globalRes = []*unstructured.Unstructured{}
 
 const (
 	obAddonName                     = "observability-addon"
@@ -57,6 +55,7 @@ const (
 	uwlMetricsCollectorName         = "uwl-metrics-collector-deployment"
 	uwlNamespace                    = "openshift-user-workload-monitoring"
 )
+
 const (
 	promSvcName   = operatorconfig.OCPClusterMonitoringPrometheusService
 	promNamespace = operatorconfig.OCPClusterMonitoringNamespace
@@ -401,7 +400,6 @@ func (r *ObservabilityAddonReconciler) initFinalization(
 			hubObsAddon.SetFinalizers(remove(hubObsAddon.GetFinalizers(), obsAddonFinalizer))
 			return r.HubClient.Update(ctx, hubObsAddon)
 		})
-
 		if err != nil {
 			r.Logger.Error(err, "Failed to remove finalizer to observabilityaddon", "namespace", hubObsAddon.Namespace)
 			return false, err
@@ -423,7 +421,6 @@ func (r *ObservabilityAddonReconciler) initFinalization(
 			}
 			return nil
 		})
-
 		if err != nil {
 			r.Logger.Error(err, "Failed to add finalizer to observabilityaddon", "namespace", hubObsAddon.Namespace)
 			return false, err

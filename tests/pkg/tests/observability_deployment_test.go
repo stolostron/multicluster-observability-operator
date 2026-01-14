@@ -52,13 +52,11 @@ var _ = Describe("", func() {
 			testFailed = false
 			return nil
 		}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
-
 	})
 
 	It("RHACM4K-1288: Observability: Verify Observability function working on the hub cluster - [P1][Sev1][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release @pre-upgrade (deployment/g0)", func() {
 		By("Check etrics-collector pod is ready")
 		Eventually(func() error {
-
 			err, podList := utils.GetPodList(
 				testOptions,
 				true,
@@ -79,7 +77,6 @@ var _ = Describe("", func() {
 			}
 			return nil
 		}, EventuallyTimeoutMinute*20, EventuallyIntervalSecond*10).Should(Succeed())
-
 	})
 
 	It("RHACM4K-30645: Observability: Verify setting in CM cluster-monitoring-config is not removed after MCO enabled - [P1][Sev1][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release @pre-upgrade (deployment/g1)", func() {
@@ -88,7 +85,6 @@ var _ = Describe("", func() {
 			Skip("Skip the case due to this case is only available before MCOCR deployment")
 		}
 		Eventually(func() bool {
-
 			cm, err := hubClient.CoreV1().ConfigMaps("openshift-monitoring").Get(context.TODO(), "cluster-monitoring-config", metav1.GetOptions{})
 			Expect(err).NotTo(HaveOccurred())
 
@@ -105,5 +101,4 @@ var _ = Describe("", func() {
 		}
 		testFailed = testFailed || CurrentSpecReport().Failed()
 	})
-
 })

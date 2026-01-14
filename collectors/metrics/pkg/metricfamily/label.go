@@ -57,7 +57,8 @@ func (t *label) Transform(family *clientmodel.MetricFamily) (bool, error) {
 
 func appendLabels(
 	existing []*clientmodel.LabelPair,
-	overrides map[string]*clientmodel.LabelPair) []*clientmodel.LabelPair {
+	overrides map[string]*clientmodel.LabelPair,
+) []*clientmodel.LabelPair {
 	var found []string
 
 	// remove blank names and values
@@ -96,7 +97,8 @@ func appendLabels(
 
 func insertLexicographicallyByName(
 	existing []*clientmodel.LabelPair,
-	value *clientmodel.LabelPair) []*clientmodel.LabelPair {
+	value *clientmodel.LabelPair,
+) []*clientmodel.LabelPair {
 	existing = append(existing, value)
 	i := len(existing) - 1
 	for i > 0 && existing[i].GetName() < existing[i-1].GetName() {
@@ -108,7 +110,8 @@ func insertLexicographicallyByName(
 
 func InsertLabelLexicographicallyByName(
 	existing []prompb.Label,
-	value prompb.Label) []prompb.Label {
+	value prompb.Label,
+) []prompb.Label {
 	existing = append(existing, value)
 	i := len(existing) - 1
 	for i > 0 && existing[i].GetName() < existing[i-1].GetName() {

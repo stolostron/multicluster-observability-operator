@@ -73,7 +73,6 @@ func TestStatusController_HubNominalCase(t *testing.T) {
 		Type: "Available",
 	})
 	err = spokeClient.Status().Update(context.Background(), spokeOba)
-
 	if err != nil {
 		t.Fatalf("Failed to update status in spoke: %v", err)
 	}

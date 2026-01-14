@@ -17,7 +17,8 @@ import (
 )
 
 func GetAllowList(client client.Client, name, namespace string) (*operatorconfig.MetricsAllowlist,
-	*operatorconfig.MetricsAllowlist, error) {
+	*operatorconfig.MetricsAllowlist, error,
+) {
 	found := &corev1.ConfigMap{}
 	namespacedName := types.NamespacedName{
 		Name:      name,
@@ -32,7 +33,8 @@ func GetAllowList(client client.Client, name, namespace string) (*operatorconfig
 }
 
 func ParseAllowlistConfigMap(cm corev1.ConfigMap) (*operatorconfig.MetricsAllowlist,
-	*operatorconfig.MetricsAllowlist, error) {
+	*operatorconfig.MetricsAllowlist, error,
+) {
 	allowlist := &operatorconfig.MetricsAllowlist{}
 	err := yaml.Unmarshal([]byte(cm.Data["metrics_list.yaml"]), allowlist)
 	if err != nil {
@@ -52,7 +54,8 @@ func ParseAllowlistConfigMap(cm corev1.ConfigMap) (*operatorconfig.MetricsAllowl
 
 func MergeAllowlist(allowlist, customAllowlist, uwlAllowlist,
 	customUwlAllowlist *operatorconfig.MetricsAllowlist) (*operatorconfig.MetricsAllowlist,
-	*operatorconfig.MetricsAllowlist) {
+	*operatorconfig.MetricsAllowlist,
+) {
 	allowlist.NameList = mergeMetrics(allowlist.NameList, customAllowlist.NameList)
 	allowlist.MatchList = mergeMetrics(allowlist.MatchList, customAllowlist.MatchList)
 	allowlist.CollectRuleGroupList = mergeCollectorRuleGroupList(allowlist.CollectRuleGroupList,
@@ -108,7 +111,8 @@ func mergeMetrics(defaultAllowlist []string, customAllowlist []string) []string 
 }
 
 func mergeCollectorRuleGroupList(defaultCollectRuleGroupList []operatorconfig.CollectRuleGroup,
-	customCollectRuleGroupList []operatorconfig.CollectRuleGroup) []operatorconfig.CollectRuleGroup {
+	customCollectRuleGroupList []operatorconfig.CollectRuleGroup,
+) []operatorconfig.CollectRuleGroup {
 	deletedCollectRuleGroups := map[string]bool{}
 	mergedCollectRuleGroups := []operatorconfig.CollectRuleGroup{}
 

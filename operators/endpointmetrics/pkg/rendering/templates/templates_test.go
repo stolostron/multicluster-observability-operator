@@ -22,7 +22,6 @@ func TestGetCoreTemplates(t *testing.T) {
 	defer os.Unsetenv(templatesutil.TemplatesPathEnvVar)
 
 	_, err = GetTemplates(templatesutil.GetTemplateRenderer())
-
 	if err != nil {
 		t.Fatalf("failed to render core template %v", err)
 	}

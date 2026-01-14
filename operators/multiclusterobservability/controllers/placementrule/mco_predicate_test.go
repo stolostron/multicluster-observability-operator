@@ -29,10 +29,12 @@ func TestMCOPredFunc(t *testing.T) {
 	mcoWithAnnotation := newTestMCOWithAlertDisableAnnotation()
 	pull := newTestPullSecret()
 
-	objs := []runtime.Object{pull, newConsoleRoute(), newTestObsApiRoute(),
+	objs := []runtime.Object{
+		pull, newConsoleRoute(), newTestObsApiRoute(),
 		newTestAlertmanagerRoute(), newTestIngressController(), newTestRouteCASecret(),
 		newCASecret(), newCertSecret(mcoNamespace), NewMetricsAllowListCM(),
-		NewAmAccessorSA(), newTestAmDefaultCA(), newManagedClusterAddon()}
+		NewAmAccessorSA(), newTestAmDefaultCA(), newManagedClusterAddon(),
+	}
 	cl := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 
 	caseList := []struct {

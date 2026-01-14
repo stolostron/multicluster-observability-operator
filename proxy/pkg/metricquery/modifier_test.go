@@ -36,9 +36,11 @@ func (m *MockManagedClusterInformer) Run() {}
 func (m *MockManagedClusterInformer) HasSynced() bool {
 	return true
 }
+
 func (m *MockManagedClusterInformer) GetAllManagedClusterNames() map[string]struct{} {
 	return m.clusters
 }
+
 func (m *MockManagedClusterInformer) GetManagedClusterLabelList() []string {
 	return m.regexLabelList
 }

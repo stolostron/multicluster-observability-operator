@@ -13,7 +13,8 @@ import (
 )
 
 func approve(cluster *clusterv1.ManagedCluster, addon *addonapiv1alpha1.ManagedClusterAddOn,
-	csr *certificatesv1.CertificateSigningRequest) bool {
+	csr *certificatesv1.CertificateSigningRequest,
+) bool {
 	if strings.HasPrefix(csr.Spec.Username, "system:open-cluster-management:"+cluster.Name) {
 		log.Info("CSR approved")
 		return true

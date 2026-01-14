@@ -37,13 +37,11 @@ const (
 	Degraded    conditionType = "Degraded"
 )
 
-var (
-	// componentsMap contains the types of conditions (from individual components) that must be aggregated into standard conditions.
-	componentsMap = map[string]struct{}{
-		string(status.MetricsCollector):    {},
-		string(status.UwlMetricsCollector): {},
-	}
-)
+// componentsMap contains the types of conditions (from individual components) that must be aggregated into standard conditions.
+var componentsMap = map[string]struct{}{
+	string(status.MetricsCollector):    {},
+	string(status.UwlMetricsCollector): {},
+}
 
 // reason maps individual component reasons to standard types and assigns a priority to each reason.
 // The priority is used to aggregate the conditions of the components into a single condition.

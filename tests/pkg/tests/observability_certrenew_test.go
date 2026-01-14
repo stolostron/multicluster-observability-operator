@@ -29,7 +29,6 @@ var _ = Describe("", func() {
 	})
 
 	It("RHACM4K-3073: Observability: Verify Observability Certificate rotation - Should have metrics collector pod restart if cert secret re-generated [P1][Sev1][Observability][Integration]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release (certrenew/g0)", func() {
-
 		if len(testOptions.ManagedClusters) > 0 &&
 			utils.GetManagedClusterName(testOptions) != hubManagedClusterName {
 			Skip("Skipping unreliable cert-test on multi-spoke systems")

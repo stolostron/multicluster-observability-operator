@@ -45,64 +45,62 @@ var (
 	NotSupported             Reason = "NotSupported"
 )
 
-var (
-	// componentTransitions defines the valid transitions between component conditions
-	componentTransitions = map[Reason]map[Reason]struct{}{
-		UpdateSuccessful: {
-			UpdateFailed:             {},
-			CmoReconcileLoopDetected: {},
-			ForwardSuccessful:        {},
-			ForwardFailed:            {},
-			Disabled:                 {},
-			NotSupported:             {},
-		},
-		UpdateFailed: {
-			UpdateSuccessful: {},
-			Disabled:         {},
-			NotSupported:     {},
-		},
-		ForwardSuccessful: {
-			ForwardFailed:            {},
-			UpdateSuccessful:         {},
-			CmoReconcileLoopDetected: {},
-			UpdateFailed:             {},
-			Disabled:                 {},
-			NotSupported:             {},
-		},
-		ForwardFailed: {
-			ForwardSuccessful:        {},
-			UpdateSuccessful:         {},
-			CmoReconcileLoopDetected: {},
-			UpdateFailed:             {},
-			Disabled:                 {},
-			NotSupported:             {},
-		},
-		CmoReconcileLoopDetected: { // Getting out of this state is restricted to the resolution of it, plus exceptions
-			CmoReconcileLoopStopped: {},
-			Disabled:                {},
-			NotSupported:            {},
-		},
-		CmoReconcileLoopStopped: { // All transitions are enabled from this state
-			UpdateSuccessful:         {},
-			UpdateFailed:             {},
-			ForwardSuccessful:        {},
-			ForwardFailed:            {},
-			CmoReconcileLoopDetected: {},
-			Disabled:                 {},
-			NotSupported:             {},
-		},
-		Disabled: {
-			UpdateSuccessful: {},
-			UpdateFailed:     {},
-			NotSupported:     {},
-		},
-		NotSupported: {
-			UpdateSuccessful: {},
-			UpdateFailed:     {},
-			Disabled:         {},
-		},
-	}
-)
+// componentTransitions defines the valid transitions between component conditions
+var componentTransitions = map[Reason]map[Reason]struct{}{
+	UpdateSuccessful: {
+		UpdateFailed:             {},
+		CmoReconcileLoopDetected: {},
+		ForwardSuccessful:        {},
+		ForwardFailed:            {},
+		Disabled:                 {},
+		NotSupported:             {},
+	},
+	UpdateFailed: {
+		UpdateSuccessful: {},
+		Disabled:         {},
+		NotSupported:     {},
+	},
+	ForwardSuccessful: {
+		ForwardFailed:            {},
+		UpdateSuccessful:         {},
+		CmoReconcileLoopDetected: {},
+		UpdateFailed:             {},
+		Disabled:                 {},
+		NotSupported:             {},
+	},
+	ForwardFailed: {
+		ForwardSuccessful:        {},
+		UpdateSuccessful:         {},
+		CmoReconcileLoopDetected: {},
+		UpdateFailed:             {},
+		Disabled:                 {},
+		NotSupported:             {},
+	},
+	CmoReconcileLoopDetected: { // Getting out of this state is restricted to the resolution of it, plus exceptions
+		CmoReconcileLoopStopped: {},
+		Disabled:                {},
+		NotSupported:            {},
+	},
+	CmoReconcileLoopStopped: { // All transitions are enabled from this state
+		UpdateSuccessful:         {},
+		UpdateFailed:             {},
+		ForwardSuccessful:        {},
+		ForwardFailed:            {},
+		CmoReconcileLoopDetected: {},
+		Disabled:                 {},
+		NotSupported:             {},
+	},
+	Disabled: {
+		UpdateSuccessful: {},
+		UpdateFailed:     {},
+		NotSupported:     {},
+	},
+	NotSupported: {
+		UpdateSuccessful: {},
+		UpdateFailed:     {},
+		Disabled:         {},
+	},
+}
 
 // Status provides a method to update the status of the ObservabilityAddon for a specific component
 type Status struct {

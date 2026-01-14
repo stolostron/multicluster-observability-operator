@@ -32,7 +32,8 @@ func DeleteCRB(opt TestOptions, isHub bool, name string) error {
 }
 
 func UpdateCRB(opt TestOptions, isHub bool, name string,
-	crb *rbacv1.ClusterRoleBinding) (error, *rbacv1.ClusterRoleBinding) {
+	crb *rbacv1.ClusterRoleBinding,
+) (error, *rbacv1.ClusterRoleBinding) {
 	clientKube := GetKubeClient(opt, isHub)
 	updateCRB, err := clientKube.RbacV1().ClusterRoleBindings().Update(context.TODO(), crb, metav1.UpdateOptions{})
 	if err != nil {
@@ -42,7 +43,8 @@ func UpdateCRB(opt TestOptions, isHub bool, name string,
 }
 
 func CreateCRB(opt TestOptions, isHub bool,
-	crb *rbacv1.ClusterRoleBinding) error {
+	crb *rbacv1.ClusterRoleBinding,
+) error {
 	clientKube := GetKubeClient(opt, isHub)
 	_, err := clientKube.RbacV1().ClusterRoleBindings().Create(context.TODO(), crb, metav1.CreateOptions{})
 	if err != nil {

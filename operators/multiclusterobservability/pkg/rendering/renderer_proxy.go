@@ -35,7 +35,8 @@ func (r *MCORenderer) newProxyRenderer() {
 }
 
 func (r *MCORenderer) renderProxyDeployment(res *resource.Resource,
-	namespace string, labels map[string]string) (*unstructured.Unstructured, error) {
+	namespace string, labels map[string]string,
+) (*unstructured.Unstructured, error) {
 	u, err := r.renderer.RenderDeployments(res, namespace, labels)
 	if err != nil {
 		return nil, err
@@ -121,7 +122,8 @@ func (r *MCORenderer) renderProxyDeployment(res *resource.Resource,
 }
 
 func (r *MCORenderer) renderProxySecret(res *resource.Resource,
-	namespace string, labels map[string]string) (*unstructured.Unstructured, error) {
+	namespace string, labels map[string]string,
+) (*unstructured.Unstructured, error) {
 	u, err := r.renderer.RenderNamespace(res, namespace, labels)
 	if err != nil {
 		return nil, err
@@ -151,7 +153,8 @@ func (r *MCORenderer) renderProxySecret(res *resource.Resource,
 }
 
 func (r *MCORenderer) renderProxyTemplates(templates []*resource.Resource,
-	namespace string, labels map[string]string) ([]*unstructured.Unstructured, error) {
+	namespace string, labels map[string]string,
+) ([]*unstructured.Unstructured, error) {
 	uobjs := []*unstructured.Unstructured{}
 	for _, template := range templates {
 		render, ok := r.renderProxyFns[template.GetKind()]

@@ -195,7 +195,6 @@ alertmanager-router-ca: |
 		return true, err
 	})
 	assert.NoError(t, err)
-
 }
 
 // TestIntegrationReconcileHypershift tests the reconcile function for hypershift CRDs.

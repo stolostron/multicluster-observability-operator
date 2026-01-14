@@ -16,7 +16,8 @@ import (
 )
 
 func GetStatefulSet(opt TestOptions, isHub bool, name string,
-	namespace string) (*appv1.StatefulSet, error) {
+	namespace string,
+) (*appv1.StatefulSet, error) {
 	clientKube := GetKubeClient(opt, isHub)
 	sts, err := clientKube.AppsV1().StatefulSets(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
@@ -26,14 +27,16 @@ func GetStatefulSet(opt TestOptions, isHub bool, name string,
 }
 
 func GetStatefulSetWithCluster(cluster Cluster, name string,
-	namespace string) (*appv1.StatefulSet, error) {
+	namespace string,
+) (*appv1.StatefulSet, error) {
 	clientKube := GetKubeClientWithCluster(cluster)
 	klog.V(1).Infof("Get statefulset <%v> in namespace <%v> on cluster <%v>", name, namespace, cluster.Name)
 	return clientKube.AppsV1().StatefulSets(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 }
 
 func GetStatefulSetWithLabel(opt TestOptions, isHub bool, label string,
-	namespace string) (*appv1.StatefulSetList, error) {
+	namespace string,
+) (*appv1.StatefulSetList, error) {
 	clientKube := GetKubeClient(opt, isHub)
 	sts, err := clientKube.AppsV1().StatefulSets(namespace).List(context.TODO(), metav1.ListOptions{
 		LabelSelector: label,

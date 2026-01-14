@@ -19,7 +19,6 @@ import (
 )
 
 var _ = Describe("", func() {
-
 	var (
 		deleteDelay              = "48h"
 		retentionInLocal         = "24h"

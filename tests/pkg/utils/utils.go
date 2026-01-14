@@ -487,7 +487,8 @@ func Apply(url string, kubeconfig string, ctx string, yamlB []byte) error {
 				gvr = schema.GroupVersionResource{
 					Group:    "monitoring.coreos.com",
 					Version:  "v1",
-					Resource: "prometheusrules"}
+					Resource: "prometheusrules",
+				}
 			default:
 				return fmt.Errorf("resource %s not supported", kind)
 			}

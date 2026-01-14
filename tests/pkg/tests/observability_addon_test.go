@@ -61,13 +61,11 @@ var _ = Describe("", func() {
 			By("Waiting for MCO addon components scales to 0")
 			Eventually(func() error {
 				err = utils.CheckAllOBAsDeleted(testOptions)
-
 				if err != nil {
 					return fmt.Errorf("Failed to disable observability addon")
 				}
 				return nil
 			}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
-
 		})
 
 		It("RHACM4K-1418: Observability: Verify clustermanagementaddon CR for Observability - Modifying MCO cr to enable observabilityaddon [P2][Sev2][Stable][Observability]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @pre-upgrade (addon/g0)", func() {

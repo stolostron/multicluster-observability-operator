@@ -18,9 +18,7 @@ import (
 	"k8s.io/client-go/kubernetes/fake"
 )
 
-var (
-	hasFakeServer bool = false
-)
+var hasFakeServer bool = false
 
 func createDashboard() (*corev1.ConfigMap, error) {
 	// read the whole file at once
@@ -152,7 +150,6 @@ func TestIsDesiredDashboardConfigmap(t *testing.T) {
 		cm       *corev1.ConfigMap
 		expected bool
 	}{
-
 		{
 			"invalid cm",
 			nil,
@@ -245,7 +242,6 @@ func TestGetCustomFolderUID(t *testing.T) {
 		id       float64
 		expected string
 	}{
-
 		{
 			"valid folder",
 			1,
@@ -281,7 +277,6 @@ func TestIsEmptyFolder(t *testing.T) {
 		folderID float64
 		expected bool
 	}{
-
 		{
 			"invalid ID",
 			0,
@@ -309,7 +304,6 @@ func TestGetDashboardCustomFolderTitle(t *testing.T) {
 		cm       *corev1.ConfigMap
 		expected string
 	}{
-
 		{
 			"invalid cm",
 			nil,
@@ -359,7 +353,6 @@ func TestDeleteCustomFolder(t *testing.T) {
 		folderID float64
 		expected bool
 	}{
-
 		{
 			"invalid ID",
 			0,

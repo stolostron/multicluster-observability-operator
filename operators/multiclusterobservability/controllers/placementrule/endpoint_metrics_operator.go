@@ -40,7 +40,8 @@ func loadTemplates(mco *mcov1beta2.MultiClusterObservability) (
 	*apiextensionsv1beta1.CustomResourceDefinition,
 	*appsv1.Deployment,
 	*corev1.ConfigMap,
-	error) {
+	error,
+) {
 	// render endpoint-observability templates
 	endpointObsTemplates, err := templates.GetOrLoadEndpointObservabilityTemplates(templatesutil.GetTemplateRenderer())
 	if err != nil {
@@ -76,7 +77,8 @@ func loadTemplates(mco *mcov1beta2.MultiClusterObservability) (
 }
 
 func updateRes(r *resource.Resource,
-	mco *mcov1beta2.MultiClusterObservability) (runtime.Object, error) {
+	mco *mcov1beta2.MultiClusterObservability,
+) (runtime.Object, error) {
 	kind := r.GetKind()
 
 	if kind != "ClusterRole" && kind != kindClusterRoleBinding && kind != kindCustomResourceDefinition {
@@ -138,7 +140,8 @@ func updateRes(r *resource.Resource,
 }
 
 func updateEndpointOperator(mco *mcov1beta2.MultiClusterObservability,
-	container corev1.Container) corev1.Container {
+	container corev1.Container,
+) corev1.Container {
 	container.Image = getImage(mco, mcoconfig.EndpointControllerImgName,
 		mcoconfig.DefaultImgTagSuffix, mcoconfig.EndpointControllerKey)
 	container.ImagePullPolicy = mcoconfig.GetImagePullPolicy(mco.Spec)
@@ -151,7 +154,8 @@ func updateEndpointOperator(mco *mcov1beta2.MultiClusterObservability,
 }
 
 func getImage(mco *mcov1beta2.MultiClusterObservability,
-	name, tag, key string) string {
+	name, tag, key string,
+) string {
 	image := mcoconfig.DefaultImgRepository +
 		"/" + name + ":" + tag
 	found, replacedImage := mcoconfig.ReplaceImage(mco.Annotations, image, key)

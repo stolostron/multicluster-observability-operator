@@ -46,70 +46,80 @@ func NewMCOGVRV1BETA2() schema.GroupVersionResource {
 	return schema.GroupVersionResource{
 		Group:    MCO_GROUP,
 		Version:  "v1beta2",
-		Resource: "multiclusterobservabilities"}
+		Resource: "multiclusterobservabilities",
+	}
 }
 
 func NewMCOAddonGVR() schema.GroupVersionResource {
 	return schema.GroupVersionResource{
 		Group:    MCO_GROUP,
 		Version:  "v1beta1",
-		Resource: "observabilityaddons"}
+		Resource: "observabilityaddons",
+	}
 }
 
 func NewOCMManifestworksGVR() schema.GroupVersionResource {
 	return schema.GroupVersionResource{
 		Group:    OCM_WORK_GROUP,
 		Version:  "v1",
-		Resource: "manifestworks"}
+		Resource: "manifestworks",
+	}
 }
 
 func NewOCMManagedClustersGVR() schema.GroupVersionResource {
 	return schema.GroupVersionResource{
 		Group:    OCM_CLUSTER_GROUP,
 		Version:  "v1",
-		Resource: "managedclusters"}
+		Resource: "managedclusters",
+	}
 }
 
 func NewMCOClusterManagementAddonsGVR() schema.GroupVersionResource {
 	return schema.GroupVersionResource{
 		Group:    OCM_ADDON_GROUP,
 		Version:  "v1alpha1",
-		Resource: "clustermanagementaddons"}
+		Resource: "clustermanagementaddons",
+	}
 }
 
 func NewMCOManagedClusterAddonsGVR() schema.GroupVersionResource {
 	return schema.GroupVersionResource{
 		Group:    OCM_ADDON_GROUP,
 		Version:  "v1alpha1",
-		Resource: "managedclusteraddons"}
+		Resource: "managedclusteraddons",
+	}
 }
 
 func NewMCOMObservatoriumGVR() schema.GroupVersionResource {
 	return schema.GroupVersionResource{
 		Group:    "core.observatorium.io",
 		Version:  "v1alpha1",
-		Resource: "observatoria"}
+		Resource: "observatoria",
+	}
 }
 
 func NewOCMMultiClusterHubGVR() schema.GroupVersionResource {
 	return schema.GroupVersionResource{
 		Group:    "operator.open-cluster-management.io",
 		Version:  "v1",
-		Resource: "multiclusterhubs"}
+		Resource: "multiclusterhubs",
+	}
 }
 
 func NewPrometheusRuleGVR() schema.GroupVersionResource {
 	return schema.GroupVersionResource{
 		Group:    "monitoring.coreos.com",
 		Version:  "v1",
-		Resource: "prometheusrules"}
+		Resource: "prometheusrules",
+	}
 }
 
 func NewScrapeConfigGVR() schema.GroupVersionResource {
 	return schema.GroupVersionResource{
 		Group:    "monitoring.rhobs",
 		Version:  "v1alpha1",
-		Resource: "scrapeconfigs"}
+		Resource: "scrapeconfigs",
+	}
 }
 
 func GetAllMCOPods(opt TestOptions) ([]corev1.Pod, error) {
@@ -364,7 +374,6 @@ func CheckMCOComponents(opt TestOptions) error {
 		deployList, err := deployments.List(context.TODO(), metav1.ListOptions{
 			LabelSelector: deploymentLabel,
 		})
-
 		if err != nil {
 			klog.Errorf("Error while listing deployment with label %s due to: %s", deploymentLabel, err.Error())
 			return err

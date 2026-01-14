@@ -15,7 +15,6 @@ import (
 )
 
 var _ = Describe("", func() {
-
 	// Do not need to run this case in canary environment
 	// If we really need it in canary, ensure the grafana-dev-test.sh is available
 	// in observability-e2e-test image and all required commands exist
