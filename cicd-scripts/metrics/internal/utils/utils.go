@@ -46,7 +46,7 @@ func Duplicates(elements []string) []string {
 		}
 	}
 
-	ret := []string{}
+	ret := make([]string, 0, len(dups))
 	for k := range dups {
 		ret = append(ret, k)
 	}

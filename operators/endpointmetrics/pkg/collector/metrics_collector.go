@@ -889,7 +889,7 @@ func (m *MetricsCollector) getCommands(isUSW bool, deployParams *deploymentParam
 				}
 
 				for _, rule := range group.CollectRuleList {
-					matchList := []string{}
+					matchList := make([]string, 0, len(rule.Metrics.MatchList))
 					for _, match := range rule.Metrics.MatchList {
 						matchList = append(matchList, `"`+strings.ReplaceAll(match, `"`, `\"`)+`"`)
 						if name := getNameInMatch(match); name != "" {

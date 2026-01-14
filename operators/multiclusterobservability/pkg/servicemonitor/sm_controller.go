@@ -120,10 +120,10 @@ func rewriteLabels(sm *promv1.ServiceMonitor, resourceVersion string) *promv1.Se
 		},
 	}
 	replacement := metricsNamePrefix + "${1}"
-	endpoints := []promv1.Endpoint{}
+	endpoints := make([]promv1.Endpoint, 0, len(sm.Spec.Endpoints))
 	for _, endpoint := range sm.Spec.Endpoints {
 		if endpoint.MetricRelabelConfigs == nil {
-			metricsRelabels := []promv1.RelabelConfig{}
+			metricsRelabels := make([]promv1.RelabelConfig, 0, 1)
 			metricsRelabels = append(metricsRelabels, promv1.RelabelConfig{
 				SourceLabels: []promv1.LabelName{"__name__"},
 				Regex:        "(.+)",

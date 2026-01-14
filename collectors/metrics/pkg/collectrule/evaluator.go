@@ -186,7 +186,11 @@ func unmarshalCollectorRules(e *Evaluator) error {
 }
 
 func getMatches() []string {
-	matches := []string{}
+	count := 0
+	for _, v := range enabledMatches {
+		count += len(v)
+	}
+	matches := make([]string, 0, count)
 	for _, v := range enabledMatches {
 		matches = append(matches, v...)
 	}

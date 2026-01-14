@@ -1056,7 +1056,7 @@ func removeObservabilityAddonInManifestWork(ctx context.Context, client client.C
 
 func logSizeErrorDetails(str string, work *workv1.ManifestWork) {
 	if strings.Contains(str, "the size of manifests") {
-		var keyVal []any
+		keyVal := make([]any, 0, len(work.Spec.Workload.Manifests)*4)
 		for _, manifest := range work.Spec.Workload.Manifests {
 			raw, _ := json.Marshal(manifest.RawExtension.Object)
 			keyVal = append(keyVal, "kind", manifest.RawExtension.Object.GetObjectKind().
