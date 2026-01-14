@@ -483,8 +483,10 @@ func (m *MetricsCollector) ensureAlertingRule(ctx context.Context, isUWL bool) e
 								"summary":     "Error forwarding to Hub Thanos.",
 								"description": "There are errors when remote writing to Hub hub Thanos",
 							},
-							Expr: intstr.FromString(`(sum(rate(` + replace + `forward_write_requests_total{status_code!~"2.*"}[10m]))) / (sum(rate(` + replace + `forward_write_requests_total[10m]))) > .2`),
-							For:  &forDuration,
+							Expr: intstr.FromString(
+								`(sum(rate(` + replace + `forward_write_requests_total{status_code!~"2.*"}[10m]))) / (sum(rate(` + replace + `forward_write_requests_total[10m]))) > .2`,
+							),
+							For: &forDuration,
 							Labels: map[string]string{
 								"severity": "critical",
 							},
@@ -796,7 +798,21 @@ func (m *MetricsCollector) ensureDeployment(ctx context.Context, isUWL bool, dep
 		isDifferentReplicas := !equality.Semantic.DeepEqual(desiredMetricsCollectorDep.Spec.Replicas, foundMetricsCollectorDep.Spec.Replicas)
 		isDifferentOwner := !metav1.IsControlledBy(foundMetricsCollectorDep, m.Owner)
 		if isDifferentSpec || isDifferentReplicas || isDifferentOwner || deployParams.forceRestart {
-			m.Log.Info("Updating Deployment", "name", name, "namespace", m.Namespace, "isDifferentSpec", isDifferentSpec, "isDifferentReplicas", isDifferentReplicas, "forceRestart", deployParams.forceRestart, "isDifferentOwner", isDifferentOwner)
+			m.Log.Info(
+				"Updating Deployment",
+				"name",
+				name,
+				"namespace",
+				m.Namespace,
+				"isDifferentSpec",
+				isDifferentSpec,
+				"isDifferentReplicas",
+				isDifferentReplicas,
+				"forceRestart",
+				deployParams.forceRestart,
+				"isDifferentOwner",
+				isDifferentOwner,
+			)
 			if deployParams.forceRestart && foundMetricsCollectorDep.Status.ReadyReplicas != 0 {
 				desiredMetricsCollectorDep.Spec.Template.ObjectMeta.Labels[restartLabel] = time.Now().Format("2006-1-2.150405")
 			}

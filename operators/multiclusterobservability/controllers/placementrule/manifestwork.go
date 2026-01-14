@@ -1042,7 +1042,17 @@ func removeObservabilityAddonInManifestWork(ctx context.Context, client client.C
 
 	if len(updateManifests) != len(found.Spec.Workload.Manifests) {
 		found.Spec.Workload.Manifests = updateManifests
-		log.Info("Removing ObservabilityAddon from ManifestWork", "name", name, "namespace", namespace, "removed_objects", len(found.Spec.Workload.Manifests)-len(updateManifests), "objects_count", len(updateManifests))
+		log.Info(
+			"Removing ObservabilityAddon from ManifestWork",
+			"name",
+			name,
+			"namespace",
+			namespace,
+			"removed_objects",
+			len(found.Spec.Workload.Manifests)-len(updateManifests),
+			"objects_count",
+			len(updateManifests),
+		)
 		if err := client.Update(ctx, found); err != nil {
 			return fmt.Errorf("failed to update manifestwork %s/%s: %w", namespace, name, err)
 		}

@@ -144,7 +144,8 @@ func (s Status) UpdateComponentCondition(ctx context.Context, componentName Comp
 		currentCondition := getConditionByType(addon.Status.Conditions, string(componentName))
 
 		// check if the condition needs to be updated
-		isSameCondition := currentCondition != nil && currentCondition.Reason == newCondition.Reason && currentCondition.Message == newCondition.Message && currentCondition.Status == newCondition.Status
+		isSameCondition := currentCondition != nil && currentCondition.Reason == newCondition.Reason && currentCondition.Message == newCondition.Message &&
+			currentCondition.Status == newCondition.Status
 		if isSameCondition {
 			return nil
 		}
