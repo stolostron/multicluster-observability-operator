@@ -54,10 +54,10 @@ func (r *MCORenderer) renderAlertManagerStatefulSet(res *resource.Resource, name
 	crLabelKey := mcoconfig.GetCrLabelKey()
 	imagePullPolicy := mcoconfig.GetImagePullPolicy(r.cr.Spec)
 	dep := obj.(*v1.StatefulSet)
-	dep.ObjectMeta.Labels[crLabelKey] = r.cr.Name
+	dep.Labels[crLabelKey] = r.cr.Name
 	dep.Name = mcoconfig.GetOperandName(mcoconfig.Alertmanager)
 	dep.Spec.Selector.MatchLabels[crLabelKey] = r.cr.Name
-	dep.Spec.Template.ObjectMeta.Labels[crLabelKey] = r.cr.Name
+	dep.Spec.Template.Labels[crLabelKey] = r.cr.Name
 	dep.Spec.Replicas = mcoconfig.GetReplicas(mcoconfig.Alertmanager, r.cr.Spec.InstanceSize, r.cr.Spec.AdvancedConfig)
 
 	spec := &dep.Spec.Template.Spec

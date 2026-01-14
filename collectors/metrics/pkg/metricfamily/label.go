@@ -62,7 +62,7 @@ func appendLabels(
 	var found []string
 
 	// remove blank names and values
-	var withoutEmpties []*clientmodel.LabelPair = make([]*clientmodel.LabelPair, 0)
+	withoutEmpties := make([]*clientmodel.LabelPair, 0)
 
 	for i, pair := range existing {
 		name := pair.GetName()

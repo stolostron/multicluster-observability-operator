@@ -484,10 +484,10 @@ func getStorageClass(mco *mcov1beta2.MultiClusterObservability, cl client.Client
 	configuredWithValidSC := false
 	storageClassDefault := ""
 	for _, storageClass := range storageClassList.Items {
-		if storageClass.ObjectMeta.Annotations["storageclass.kubernetes.io/is-default-class"] == "true" {
-			storageClassDefault = storageClass.ObjectMeta.Name
+		if storageClass.Annotations["storageclass.kubernetes.io/is-default-class"] == "true" {
+			storageClassDefault = storageClass.Name
 		}
-		if storageClass.ObjectMeta.Name == storageClassSelected {
+		if storageClass.Name == storageClassSelected {
 			configuredWithValidSC = true
 		}
 	}
@@ -809,7 +809,7 @@ func GenerateAlertmanagerRoute(
 	}
 	if !reflect.DeepEqual(found.Spec.TLS, amGateway.Spec.TLS) {
 		log.Info("Found update for the TLS configuration of the Alertmanager Route, try to update the Route")
-		amGateway.ObjectMeta.ResourceVersion = found.ObjectMeta.ResourceVersion
+		amGateway.ResourceVersion = found.ResourceVersion
 		err = runclient.Update(context.TODO(), amGateway)
 		if err != nil {
 			return &ctrl.Result{}, err
@@ -904,7 +904,7 @@ func GenerateProxyRoute(
 	}
 	if !reflect.DeepEqual(found.Spec.TLS, proxyGateway.Spec.TLS) {
 		log.Info("Found update for the TLS configuration of the Proxy Route, try to update the Route")
-		proxyGateway.ObjectMeta.ResourceVersion = found.ObjectMeta.ResourceVersion
+		proxyGateway.ResourceVersion = found.ResourceVersion
 		err = runclient.Update(context.TODO(), proxyGateway)
 		if err != nil {
 			return &ctrl.Result{}, err
@@ -972,13 +972,13 @@ func (r *MultiClusterObservabilityReconciler) ensureOpenShiftNamespaceLabel(ctx 
 		return reconcile.Result{Requeue: true}, err
 	}
 
-	if len(existingNs.ObjectMeta.Labels) == 0 {
-		existingNs.ObjectMeta.Labels = make(map[string]string)
+	if len(existingNs.Labels) == 0 {
+		existingNs.Labels = make(map[string]string)
 	}
 
-	if _, ok := existingNs.ObjectMeta.Labels[config.OpenShiftClusterMonitoringlabel]; !ok {
+	if _, ok := existingNs.Labels[config.OpenShiftClusterMonitoringlabel]; !ok {
 		log.Info(fmt.Sprintf("Adding label: %s to namespace: %s", config.OpenShiftClusterMonitoringlabel, resNS))
-		existingNs.ObjectMeta.Labels[config.OpenShiftClusterMonitoringlabel] = "true"
+		existingNs.Labels[config.OpenShiftClusterMonitoringlabel] = "true"
 
 		err = r.Client.Update(ctx, existingNs)
 		if err != nil {

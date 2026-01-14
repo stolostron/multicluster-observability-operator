@@ -63,7 +63,7 @@ func createOrUpdateObservabilityStorageVersionMigrationResource(client client.Cl
 
 	if !reflect.DeepEqual(found.Spec, storageVersionMigration.Spec) {
 		log.Info("Updating StorageVersionMigration", "name", storageVersionMigrationName)
-		storageVersionMigration.ObjectMeta.ResourceVersion = found.ObjectMeta.ResourceVersion
+		storageVersionMigration.ResourceVersion = found.ResourceVersion
 		err = client.Update(context.TODO(), storageVersionMigration)
 		if err != nil {
 			log.Error(err, "Failed to update StorageVersionMigration", "name", storageVersionMigrationName)

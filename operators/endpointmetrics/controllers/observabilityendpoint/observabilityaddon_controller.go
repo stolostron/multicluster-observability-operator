@@ -473,13 +473,13 @@ func (r *ObservabilityAddonReconciler) ensureOpenShiftMonitoringLabelAndRole(ctx
 		return err
 	}
 
-	if len(existingNs.ObjectMeta.Labels) == 0 {
-		existingNs.ObjectMeta.Labels = make(map[string]string)
+	if len(existingNs.Labels) == 0 {
+		existingNs.Labels = make(map[string]string)
 	}
 
-	if _, ok := existingNs.ObjectMeta.Labels[openShiftClusterMonitoringlabel]; !ok {
+	if _, ok := existingNs.Labels[openShiftClusterMonitoringlabel]; !ok {
 		r.Logger.Info(fmt.Sprintf("Adding label: %s to namespace: %s", openShiftClusterMonitoringlabel, resNS))
-		existingNs.ObjectMeta.Labels[openShiftClusterMonitoringlabel] = "true"
+		existingNs.Labels[openShiftClusterMonitoringlabel] = "true"
 
 		err = r.Client.Update(ctx, existingNs)
 		if err != nil {

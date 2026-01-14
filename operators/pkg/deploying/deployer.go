@@ -147,7 +147,7 @@ func (d *Deployer) updateService(ctx context.Context, desiredObj, runtimeObj *un
 	}
 
 	if !apiequality.Semantic.DeepDerivative(desiredService.Spec, runtimeService.Spec) {
-		desiredService.ObjectMeta.ResourceVersion = runtimeService.ObjectMeta.ResourceVersion
+		desiredService.ResourceVersion = runtimeService.ResourceVersion
 		desiredService.Spec.ClusterIP = runtimeService.Spec.ClusterIP
 		logUpdateInfo(runtimeObj)
 		return d.client.Update(ctx, desiredService)
@@ -220,7 +220,7 @@ func (d *Deployer) updateCRD(ctx context.Context, desiredObj, runtimeObj *unstru
 		return err
 	}
 
-	desiredCRD.ObjectMeta.ResourceVersion = runtimeCRD.ObjectMeta.ResourceVersion
+	desiredCRD.ResourceVersion = runtimeCRD.ResourceVersion
 
 	if !apiequality.Semantic.DeepDerivative(desiredCRD.Spec, runtimeCRD.Spec) {
 		logUpdateInfo(runtimeObj)

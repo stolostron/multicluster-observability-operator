@@ -92,7 +92,7 @@ func CreateMonitoringClusterRoleBinding(ctx context.Context, log logr.Logger, cl
 	if reflect.DeepEqual(rb.RoleRef, found.RoleRef) && reflect.DeepEqual(rb.Subjects, found.Subjects) {
 		return nil
 	}
-	rb.ObjectMeta.ResourceVersion = found.ObjectMeta.ResourceVersion
+	rb.ResourceVersion = found.ResourceVersion
 	err = client.Update(ctx, rb)
 	if err != nil {
 		log.Error(err, "Failed to update the clusterrolebinding")

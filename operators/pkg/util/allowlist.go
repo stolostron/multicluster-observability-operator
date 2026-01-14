@@ -39,14 +39,14 @@ func ParseAllowlistConfigMap(cm corev1.ConfigMap) (*operatorconfig.MetricsAllowl
 	err := yaml.Unmarshal([]byte(cm.Data["metrics_list.yaml"]), allowlist)
 	if err != nil {
 		log.Error(err, "Failed to unmarshal metrics_list.yaml data in configmap ",
-			"namespace", cm.ObjectMeta.Namespace, "name", cm.ObjectMeta.Name)
+			"namespace", cm.Namespace, "name", cm.Name)
 		return nil, nil, err
 	}
 	uwlAllowlist := &operatorconfig.MetricsAllowlist{}
 	err = yaml.Unmarshal([]byte(cm.Data["uwl_metrics_list.yaml"]), uwlAllowlist)
 	if err != nil {
 		log.Error(err, "Failed to unmarshal uwl_metrics_list data in configmap ",
-			"namespace", cm.ObjectMeta.Namespace, "name", cm.ObjectMeta.Name)
+			"namespace", cm.Namespace, "name", cm.Name)
 		return nil, nil, err
 	}
 	return allowlist, uwlAllowlist, nil

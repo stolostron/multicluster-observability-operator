@@ -134,9 +134,9 @@ func (r *MCORenderer) Render() ([]*unstructured.Unstructured, error) {
 			}
 			crLabelKey := mcoconfig.GetCrLabelKey()
 			dep := obj.(*v1.Deployment)
-			dep.ObjectMeta.Labels[crLabelKey] = r.cr.Name
+			dep.Labels[crLabelKey] = r.cr.Name
 			dep.Spec.Selector.MatchLabels[crLabelKey] = r.cr.Name
-			dep.Spec.Template.ObjectMeta.Labels[crLabelKey] = r.cr.Name
+			dep.Spec.Template.Labels[crLabelKey] = r.cr.Name
 
 			spec := &dep.Spec.Template.Spec
 			spec.Containers[0].ImagePullPolicy = mcoconfig.GetImagePullPolicy(r.cr.Spec)

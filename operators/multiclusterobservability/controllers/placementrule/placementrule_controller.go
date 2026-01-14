@@ -655,8 +655,8 @@ func setDefaultDeploymentConfigVar(ctx context.Context, c client.Client) error {
 	//   (i.e. was deleted or there's a typo).
 	defaultAddonDeploymentConfig = &addonv1alpha1.AddOnDeploymentConfig{}
 	for _, config := range clusterAddon.Spec.SupportedConfigs {
-		if config.ConfigGroupResource.Group == util.AddonGroup &&
-			config.ConfigGroupResource.Resource == util.AddonDeploymentConfigResource {
+		if config.Group == util.AddonGroup &&
+			config.Resource == util.AddonDeploymentConfigResource {
 			if config.DefaultConfig != nil {
 				addonConfig := &addonv1alpha1.AddOnDeploymentConfig{}
 				err := c.Get(ctx,
@@ -739,12 +739,12 @@ func createManagedClusterRes(ctx context.Context, c client.Client, mco *mcov1bet
 	addonConfig := &addonv1alpha1.AddOnDeploymentConfig{}
 	isCustomConfig := false
 	for _, config := range addon.Spec.Configs {
-		if config.ConfigGroupResource.Group == util.AddonGroup &&
-			config.ConfigGroupResource.Resource == util.AddonDeploymentConfigResource {
+		if config.Group == util.AddonGroup &&
+			config.Resource == util.AddonDeploymentConfigResource {
 			err = c.Get(ctx,
 				types.NamespacedName{
-					Name:      config.ConfigReferent.Name,
-					Namespace: config.ConfigReferent.Namespace,
+					Name:      config.Name,
+					Namespace: config.Namespace,
 				},
 				addonConfig,
 			)

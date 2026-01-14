@@ -814,7 +814,7 @@ func (m *MetricsCollector) ensureDeployment(ctx context.Context, isUWL bool, dep
 				isDifferentOwner,
 			)
 			if deployParams.forceRestart && foundMetricsCollectorDep.Status.ReadyReplicas != 0 {
-				desiredMetricsCollectorDep.Spec.Template.ObjectMeta.Labels[restartLabel] = time.Now().Format("2006-1-2.150405")
+				desiredMetricsCollectorDep.Spec.Template.Labels[restartLabel] = time.Now().Format("2006-1-2.150405")
 			}
 
 			desiredMetricsCollectorDep.ResourceVersion = foundMetricsCollectorDep.ResourceVersion
@@ -996,20 +996,20 @@ func (m *MetricsCollector) getMetricsAllowlist(ctx context.Context) (*operatorco
 	}
 
 	for _, allowlistCM := range cmList.Items {
-		if allowlistCM.ObjectMeta.Name != operatorconfig.AllowlistCustomConfigMapName {
+		if allowlistCM.Name != operatorconfig.AllowlistCustomConfigMapName {
 			continue
 		}
 
-		cmNamespaces = append(cmNamespaces, allowlistCM.ObjectMeta.Namespace)
+		cmNamespaces = append(cmNamespaces, allowlistCM.Namespace)
 
 		customAllowlist, customUwlAllowlist, err := util.ParseAllowlistConfigMap(allowlistCM)
 		if err != nil {
-			m.Log.Error(err, "Failed to parse data in configmap", "namespace", allowlistCM.ObjectMeta.Namespace, "name", allowlistCM.ObjectMeta.Name)
+			m.Log.Error(err, "Failed to parse data in configmap", "namespace", allowlistCM.Namespace, "name", allowlistCM.Name)
 			continue
 		}
 
-		if allowlistCM.ObjectMeta.Namespace != m.Namespace {
-			customUwlAllowlist = injectNamespaceLabel(customUwlAllowlist, allowlistCM.ObjectMeta.Namespace)
+		if allowlistCM.Namespace != m.Namespace {
+			customUwlAllowlist = injectNamespaceLabel(customUwlAllowlist, allowlistCM.Namespace)
 		}
 
 		allowList, userAllowList = util.MergeAllowlist(allowList, customAllowlist, userAllowList, customUwlAllowlist)

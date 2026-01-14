@@ -122,7 +122,7 @@ func updateDeployLabel(c client.Client, dName string, isUpdate bool) {
 	}
 	if isUpdate || dep.Status.ReadyReplicas != 0 {
 		newDep := dep.DeepCopy()
-		newDep.Spec.Template.ObjectMeta.Labels[restartLabel] = time.Now().Format("2006-1-2.150405")
+		newDep.Spec.Template.Labels[restartLabel] = time.Now().Format("2006-1-2.150405")
 		err := c.Patch(context.TODO(), newDep, client.StrategicMergeFrom(dep))
 		if err != nil {
 			log.Error(err, "Failed to update the deployment", "name", dName)
@@ -225,19 +225,19 @@ func onUpdate(c client.Client, ingressCtlCrdExists bool) func(oldObj, newObj any
 			if needsRenew(newS) {
 				var err error
 				var hosts []string
-				switch name := newS.Name; {
-				case name == serverCACerts:
+				switch name := newS.Name; name {
+				case serverCACerts:
 					err, _ = createCASecret(c, nil, nil, true, serverCACerts, serverCACertifcateCN)
-				case name == clientCACerts:
+				case clientCACerts:
 					err, _ = createCASecret(c, nil, nil, true, clientCACerts, clientCACertificateCN)
-				case name == grafanaCerts:
+				case grafanaCerts:
 					err = createCertSecret(c, nil, nil, true, grafanaCerts, false, grafanaCertificateCN, nil, nil, nil)
-				case name == serverCerts:
+				case serverCerts:
 					hosts, err = getHosts(c, ingressCtlCrdExists)
 					if err == nil {
 						err = createCertSecret(c, nil, nil, true, serverCerts, true, serverCertificateCN, nil, hosts, nil)
 					}
-				case name == hubMetricsCollectorMtlsCert:
+				case hubMetricsCollectorMtlsCert:
 					// ACM 8509: Special case for hub metrics collector
 					// Delete the MTLS secret and the placement controller will reconcile to create a new one
 					HubMtlsSecret := &v1.Secret{

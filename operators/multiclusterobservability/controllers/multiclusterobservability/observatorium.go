@@ -495,7 +495,7 @@ func applyEndpointsSecret(c client.Client, eps []mcoutil.RemoteWriteEndpointWith
 		}
 	} else {
 		if !reflect.DeepEqual(epsYamlMap, found.Data) {
-			epsSecret.ObjectMeta.ResourceVersion = found.ObjectMeta.ResourceVersion
+			epsSecret.ResourceVersion = found.ResourceVersion
 			err = c.Update(context.TODO(), epsSecret)
 			if err != nil {
 				return err

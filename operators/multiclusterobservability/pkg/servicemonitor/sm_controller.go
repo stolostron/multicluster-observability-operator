@@ -66,7 +66,7 @@ func Start() {
 func onAdd(promClient promclientset.Interface) func(obj any) {
 	return func(obj any) {
 		sm := obj.(*promv1.ServiceMonitor)
-		if sm.ObjectMeta.OwnerReferences != nil && sm.ObjectMeta.OwnerReferences[0].Kind == "Observatorium" {
+		if sm.OwnerReferences != nil && sm.ObjectMeta.OwnerReferences[0].Kind == "Observatorium" {
 			updateServiceMonitor(promClient, sm)
 		}
 	}
@@ -76,7 +76,7 @@ func onUpdate(promClient promclientset.Interface) func(oldObj any, newObj any) {
 	return func(oldObj any, newObj any) {
 		newSm := newObj.(*promv1.ServiceMonitor)
 		oldSm := oldObj.(*promv1.ServiceMonitor)
-		if newSm.ObjectMeta.OwnerReferences != nil && newSm.ObjectMeta.OwnerReferences[0].Kind == "Observatorium" &&
+		if newSm.OwnerReferences != nil && newSm.ObjectMeta.OwnerReferences[0].Kind == "Observatorium" &&
 			!equality.Semantic.DeepEqual(newSm.Spec, oldSm.Spec) {
 			updateServiceMonitor(promClient, newSm)
 		}

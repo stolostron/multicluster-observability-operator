@@ -123,7 +123,7 @@ func UpdateDeployLabel(c client.Client, dName, namespace, label string) error {
 		return err
 	}
 	if dep.Status.ReadyReplicas != 0 {
-		dep.Spec.Template.ObjectMeta.Labels[label] = time.Now().Format("2006-1-2.150405")
+		dep.Spec.Template.Labels[label] = time.Now().Format("2006-1-2.150405")
 		err = c.Update(context.TODO(), dep)
 		if err != nil {
 			log.Error(err, "Failed to update the deployment", "name", dName)

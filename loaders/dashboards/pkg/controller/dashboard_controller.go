@@ -73,7 +73,7 @@ func isDesiredDashboardConfigmap(obj any) bool {
 		return false
 	}
 
-	labels := cm.ObjectMeta.Labels
+	labels := cm.Labels
 	if strings.ToLower(labels["grafana-custom-dashboard"]) == "true" {
 		return true
 	}
@@ -131,7 +131,7 @@ func newKubeInformer(coreClient corev1client.CoreV1Interface) (cache.SharedIndex
 			}
 		},
 		UpdateFunc: func(old, newObj any) {
-			if old.(*corev1.ConfigMap).ObjectMeta.ResourceVersion == newObj.(*corev1.ConfigMap).ObjectMeta.ResourceVersion {
+			if old.(*corev1.ConfigMap).ResourceVersion == newObj.(*corev1.ConfigMap).ResourceVersion {
 				return
 			}
 			if !isDesiredDashboardConfigmap(newObj) {
@@ -288,9 +288,9 @@ func getDashboardCustomFolderTitle(obj any) string {
 		return ""
 	}
 
-	labels := cm.ObjectMeta.Labels
+	labels := cm.Labels
 	if labels[generalFolderKey] == "" || strings.ToLower(labels[generalFolderKey]) != "true" {
-		annotations := cm.ObjectMeta.Annotations
+		annotations := cm.Annotations
 		customFolder, ok := annotations[customFolderKey]
 		if !ok || customFolder == "" {
 			customFolder = defaultCustomFolder
@@ -317,8 +317,8 @@ func updateDashboard(old, newObj any, overwrite bool) error {
 	}
 
 	homeDashboardUID := ""
-	labels := cm.ObjectMeta.Labels
-	annotations := cm.ObjectMeta.Annotations
+	labels := cm.Labels
+	annotations := cm.Annotations
 	if strings.ToLower(annotations[setHomeDashboardKey]) == "true" && labels[homeDashboardUIDKey] != "" {
 		homeDashboardUID = labels[homeDashboardUIDKey]
 	}

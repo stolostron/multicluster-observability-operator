@@ -124,7 +124,7 @@ func getHostedClusters(c client.Client, l log.Logger) (map[string]string, error)
 	logger.Log(l, logger.Info, "msg", "NewHypershiftTransformer", "HostedCluster size", len(hList.Items))
 	clusters := map[string]string{}
 	for _, hCluster := range hList.Items {
-		clusters[hCluster.Spec.ClusterID] = hCluster.ObjectMeta.Name
+		clusters[hCluster.Spec.ClusterID] = hCluster.Name
 	}
 	return clusters, nil
 }

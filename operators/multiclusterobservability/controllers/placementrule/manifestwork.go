@@ -156,11 +156,11 @@ func removePostponeDeleteAnnotationForManifestwork(c client.Client, namespace st
 }
 
 func createManifestwork(ctx context.Context, c client.Client, work *workv1.ManifestWork) error {
-	if work.ObjectMeta.Namespace == config.GetDefaultNamespace() {
+	if work.Namespace == config.GetDefaultNamespace() {
 		return nil
 	}
-	name := work.ObjectMeta.Name
-	namespace := work.ObjectMeta.Namespace
+	name := work.Name
+	namespace := work.Namespace
 	found := &workv1.ManifestWork{}
 	err := c.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, found)
 	if err != nil && k8serrors.IsNotFound(err) {
@@ -395,10 +395,10 @@ func createManifestWorks(
 	if CustomCABundle {
 		for i, manifest := range manifests {
 			if manifest.RawExtension.Object.GetObjectKind().GroupVersionKind().Kind == "Secret" {
-				secret := manifest.RawExtension.Object.DeepCopyObject().(*corev1.Secret)
+				secret := manifest.Object.DeepCopyObject().(*corev1.Secret)
 				if secret.Name == managedClusterObsCertName {
 					secret.Data["customCa.crt"] = addonConfig.Spec.ProxyConfig.CABundle
-					manifests[i].RawExtension.Object = secret
+					manifests[i].Object = secret
 					break
 				}
 			}
@@ -423,7 +423,7 @@ func createManifestWorks(
 			Value: "true",
 		})
 
-		dep.ObjectMeta.Name = config.HubEndpointOperatorName
+		dep.Name = config.HubEndpointOperatorName
 	}
 	endpointMetricsOperatorDeployCopy.Spec.Template.Spec = spec
 	manifests = injectIntoWork(manifests, endpointMetricsOperatorDeployCopy)
@@ -477,7 +477,7 @@ func ensureResourcesForHubMetricsCollection(ctx context.Context, c client.Client
 	objectToDeploy := make([]client.Object, 0, len(manifests))
 	keepListKind := []string{"Deployment", "Secret", "ConfigMap", "ServiceAccount", "ClusterRole", "ClusterRoleBinding"}
 	for _, manifest := range manifests {
-		obj, ok := manifest.RawExtension.Object.DeepCopyObject().(client.Object)
+		obj, ok := manifest.Object.DeepCopyObject().(client.Object)
 		if !ok {
 			log.Info("failed casting manaifest object as client.Object", "kind", manifest.Object.GetObjectKind())
 			continue
@@ -981,7 +981,7 @@ func getObservabilityAddon(c client.Client, namespace string,
 			return nil, err
 		}
 	}
-	if found.ObjectMeta.DeletionTimestamp != nil {
+	if found.DeletionTimestamp != nil {
 		return nil, nil
 	}
 
@@ -1064,7 +1064,7 @@ func logSizeErrorDetails(str string, work *workv1.ManifestWork) {
 	if strings.Contains(str, "the size of manifests") {
 		keyVal := make([]any, 0, len(work.Spec.Workload.Manifests)*4)
 		for _, manifest := range work.Spec.Workload.Manifests {
-			raw, _ := json.Marshal(manifest.RawExtension.Object)
+			raw, _ := json.Marshal(manifest.Object)
 			keyVal = append(keyVal, "kind", manifest.RawExtension.Object.GetObjectKind().
 				GroupVersionKind().Kind, "size", len(raw))
 		}

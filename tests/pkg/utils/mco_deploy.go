@@ -200,7 +200,7 @@ func ToCompactJSON(v interface{}, prefix string, depth int, maxDepth int) string
 	}
 	if rv.Kind() == reflect.Struct {
 		// ToUnstructured requires a pointer
-		var input interface{} = v
+		input := v
 		if reflect.ValueOf(v).Kind() == reflect.Struct {
 			ptr := reflect.New(reflect.TypeOf(v))
 			ptr.Elem().Set(reflect.ValueOf(v))
