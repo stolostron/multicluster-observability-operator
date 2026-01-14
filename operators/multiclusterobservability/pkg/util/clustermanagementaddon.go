@@ -121,14 +121,17 @@ func newClusterManagementAddon(c client.Client) (*addonv1alpha1.ClusterManagemen
 			InstallStrategy: addonv1alpha1.InstallStrategy{
 				Type: addonv1alpha1.AddonInstallStrategyManual,
 			},
-			AddOnConfiguration: addonv1alpha1.ConfigCoordinates{
-				CRDName: clusterManagementAddOnSpec.CRDName,
-			},
 			SupportedConfigs: []addonv1alpha1.ConfigMeta{
 				{
 					ConfigGroupResource: addonv1alpha1.ConfigGroupResource{
 						Group:    AddonGroup,
 						Resource: AddonDeploymentConfigResource,
+					},
+				},
+				{
+					ConfigGroupResource: addonv1alpha1.ConfigGroupResource{
+						Group:    "observability.open-cluster-management.io",
+						Resource: "observabilityaddons",
 					},
 				},
 			},

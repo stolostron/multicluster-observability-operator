@@ -212,8 +212,13 @@ func newClusterManagementAddon() *addonv1alpha1.ClusterManagementAddOn {
 				DisplayName: "ObservabilityController",
 				Description: "ObservabilityController Description",
 			},
-			AddOnConfiguration: addonv1alpha1.ConfigCoordinates{
-				CRDName: "observabilityaddons.observability.open-cluster-management.io",
+			SupportedConfigs: []addonv1alpha1.ConfigMeta{
+				{
+					ConfigGroupResource: addonv1alpha1.ConfigGroupResource{
+						Group:    "observability.open-cluster-management.io",
+						Resource: "observabilityaddons",
+					},
+				},
 			},
 		},
 	}

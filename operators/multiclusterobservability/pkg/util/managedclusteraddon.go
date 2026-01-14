@@ -116,9 +116,17 @@ func updateManagedClusterAddOnStatus(ctx context.Context, c client.Client, names
 
 		// got the created managedclusteraddon just now, updating its status
 
-		desiredStatus.AddOnConfiguration = addonv1alpha1.ConfigCoordinates{
-			CRDName: "observabilityaddons.observability.open-cluster-management.io",
-			CRName:  "observability-addon",
+		desiredStatus.ConfigReferences = []addonv1alpha1.ConfigReference{
+			{
+				ConfigGroupResource: addonv1alpha1.ConfigGroupResource{
+					Group:    "observability.open-cluster-management.io",
+					Resource: "observabilityaddons",
+				},
+				ConfigReferent: addonv1alpha1.ConfigReferent{
+					Namespace: namespace,
+					Name:      "observability-addon",
+				},
+			},
 		}
 		desiredStatus.AddOnMeta = addonv1alpha1.AddOnMeta{
 			DisplayName: "Observability Controller",

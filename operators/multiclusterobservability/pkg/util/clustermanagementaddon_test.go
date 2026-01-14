@@ -52,8 +52,15 @@ func TestClusterManagmentAddon(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get clustermanagementaddon: (%v)", err)
 	}
-	if addon.Spec.AddOnConfiguration.CRDName != "observabilityaddons.observability.open-cluster-management.io" {
-		t.Fatalf("Wrong CRD name included: %s", addon.Spec.AddOnConfiguration.CRDName)
+	found := false
+	for _, config := range addon.Spec.SupportedConfigs {
+		if config.Group == "observability.open-cluster-management.io" && config.Resource == "observabilityaddons" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("Missing observabilityaddons in SupportedConfigs")
 	}
 	if linkTxt, found := addon.ObjectMeta.Annotations["console.open-cluster-management.io/launch-link-text"]; found == false {
 		t.Fatalf("No launch-link-text annotation included")
