@@ -243,10 +243,9 @@ func sendOne(c *http.Client, traceCtx context.Context, url string, b []byte) err
 	defer func() {
 		/* #nosec */
 		// TODO(saswatamcode): Check err here.
-		//nolint:errcheck
-		io.Copy(io.Discard, resp.Body)
+		_, _ = io.Copy(io.Discard, resp.Body)
 		/* #nosec */
-		resp.Body.Close()
+		_ = resp.Body.Close()
 	}()
 
 	// Any HTTP status 2xx is OK.

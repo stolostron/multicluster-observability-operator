@@ -554,7 +554,7 @@ func (c *Client) sendRequest(ctx context.Context, serverURL string, body []byte)
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		// surfacing upstreams error to our users too
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 		bodyBytes, err := io.ReadAll(resp.Body)
 		if err != nil {
 			logger.Log(c.logger, logger.Warn, err)

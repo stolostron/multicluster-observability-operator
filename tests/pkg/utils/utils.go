@@ -638,6 +638,8 @@ func LoginOCUser(opt TestOptions, user string, password string) error {
 		return err
 	}
 	tokenBytes := token.Bytes()
-	os.Setenv("USER_TOKEN", strings.TrimSpace(string(tokenBytes)))
+	if err := os.Setenv("USER_TOKEN", strings.TrimSpace(string(tokenBytes))); err != nil {
+		return err
+	}
 	return nil
 }

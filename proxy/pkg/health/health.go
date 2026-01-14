@@ -46,7 +46,7 @@ func (c *Checker) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 // healthz is the liveness probe handler.
 func (c *Checker) healthz(res http.ResponseWriter) {
 	res.WriteHeader(http.StatusOK)
-	fmt.Fprint(res, "OK")
+	_, _ = fmt.Fprint(res, "OK")
 }
 
 // readyz is the readiness probe handler.
@@ -66,7 +66,7 @@ func (c *Checker) readyz(res http.ResponseWriter) {
 	}
 
 	res.WriteHeader(http.StatusOK)
-	fmt.Fprint(res, "OK")
+	_, _ = fmt.Fprint(res, "OK")
 }
 
 func (c *Checker) checkMetricsServer() error {
@@ -91,7 +91,7 @@ func (c *Checker) checkMetricsServer() error {
 	if err != nil {
 		return fmt.Errorf("request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	// Any response code below 500 indicates a successful connection, even if it's
 	// an auth error (401/403) or not found (404).
