@@ -844,9 +844,9 @@ func inManagedFields(cm *corev1.ConfigMap) bool {
 
 // isManaged checks if the additional alertmanager config is managed by ACM
 func isManaged(amc cmomanifests.AdditionalAlertmanagerConfig, hubInfo *operatorconfig.HubInfo) bool {
-	if hubInfo != nil && amc.TLSConfig.CA != nil && amc.TLSConfig.CA.LocalObjectReference.Name == hubAmRouterCASecretName+"-"+hubInfo.HubClusterID {
+	if hubInfo != nil && amc.TLSConfig.CA != nil && amc.TLSConfig.CA.Name == hubAmRouterCASecretName+"-"+hubInfo.HubClusterID {
 		return true
-	} else if hubInfo == nil && amc.TLSConfig.CA != nil && strings.Contains(amc.TLSConfig.CA.LocalObjectReference.Name, hubAmRouterCASecretName) {
+	} else if hubInfo == nil && amc.TLSConfig.CA != nil && strings.Contains(amc.TLSConfig.CA.Name, hubAmRouterCASecretName) {
 		// This is only for the CMO cleanup script to clean up old configs
 		return true
 	}
@@ -857,9 +857,8 @@ func isManaged(amc cmomanifests.AdditionalAlertmanagerConfig, hubInfo *operatorc
 func isOldManagedConfig(amc cmomanifests.AdditionalAlertmanagerConfig, hubInfo *operatorconfig.HubInfo) bool {
 	if hubInfo != nil && amc.TLSConfig.CA != nil {
 		clusterDomainName := config.GetClusterName(hubInfo.ObservatoriumAPIEndpoint)
-		if amc.TLSConfig.CA.LocalObjectReference.Name == hubAmRouterCASecretName {
-			return true
-		} else if amc.TLSConfig.CA.LocalObjectReference.Name == hubAmRouterCASecretName+"-"+clusterDomainName {
+		switch amc.TLSConfig.CA.Name {
+		case hubAmRouterCASecretName, hubAmRouterCASecretName + "-" + clusterDomainName:
 			return true
 		}
 	}

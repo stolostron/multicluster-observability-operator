@@ -57,7 +57,7 @@ var _ = Describe("", func() {
 	It("RHACM4K-1288: Observability: Verify Observability function working on the hub cluster - [P1][Sev1][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release @pre-upgrade (deployment/g0)", func() {
 		By("Check etrics-collector pod is ready")
 		Eventually(func() error {
-			err, podList := utils.GetPodList(
+			podList, err := utils.GetPodList(
 				testOptions,
 				true,
 				"open-cluster-management-observability",

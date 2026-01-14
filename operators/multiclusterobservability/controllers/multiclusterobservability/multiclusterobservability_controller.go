@@ -26,7 +26,6 @@ import (
 	placementctrl "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/placementrule"
 	certctrl "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/certificates"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
-	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering"
 	smctrl "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/servicemonitor"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
@@ -252,12 +251,12 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	}
 	disableMCOACMAORender := !apierrors.IsNotFound(err)
 
-	obsAPIURL, err := mcoconfig.GetObsAPIExternalURL(ctx, r.Client, mcoconfig.GetDefaultNamespace())
+	obsAPIURL, err := config.GetObsAPIExternalURL(ctx, r.Client, config.GetDefaultNamespace())
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to get the Observatorium API URL: %w", err) // Already wrapped
 	}
 
-	alertmanagerURL, err := mcoconfig.GetAlertmanagerURL(ctx, r.Client, mcoconfig.GetDefaultNamespace())
+	alertmanagerURL, err := config.GetAlertmanagerURL(ctx, r.Client, config.GetDefaultNamespace())
 	if err != nil {
 		// IngressController CRD is not available in non-OCP env (Kind), so we need to handle the error
 		// otherwise it breaks everything
@@ -290,11 +289,11 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	// deterministic ordering. Kinds without a defined priority are created last.
 	defaultOrder := 100
 	sort.Slice(toDeploy, func(i, j int) bool {
-		orderA, okA := mcoconfig.KindOrder[toDeploy[i].GetKind()]
+		orderA, okA := config.KindOrder[toDeploy[i].GetKind()]
 		if !okA {
 			orderA = defaultOrder
 		}
-		orderB, okB := mcoconfig.KindOrder[toDeploy[j].GetKind()]
+		orderB, okB := config.KindOrder[toDeploy[j].GetKind()]
 		if !okB {
 			orderB = defaultOrder
 		}

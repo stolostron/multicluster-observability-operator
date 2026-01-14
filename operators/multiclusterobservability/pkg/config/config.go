@@ -496,7 +496,7 @@ func getDomainForIngressController(client client.Client, name, namespace string)
 	}
 	domain := ingressOperatorInstance.Status.Domain
 	if domain == "" {
-		return "", fmt.Errorf("no domain found in the ingressOperator: %s/%s.", namespace, name)
+		return "", fmt.Errorf("no domain found in the ingressOperator: %s/%s", namespace, name)
 	}
 	return domain, nil
 }

@@ -122,13 +122,13 @@ var _ = Describe("", func() {
 		}
 
 		By("Deleting metrics-collector-view clusterolebinding")
-		err, crb := utils.GetCRB(testOptions, true, "hub-metrics-collector-view")
+		crb, err := utils.GetCRB(testOptions, true, "hub-metrics-collector-view")
 		Expect(err).ToNot(HaveOccurred())
 		err = utils.DeleteCRB(testOptions, true, "hub-metrics-collector-view")
 		Expect(err).ToNot(HaveOccurred())
 		newCrb := &rbacv1.ClusterRoleBinding{}
 		Eventually(func() bool {
-			err, newCrb = utils.GetCRB(testOptions, true, "hub-metrics-collector-view")
+			newCrb, err = utils.GetCRB(testOptions, true, "hub-metrics-collector-view")
 			if err == nil {
 				if crb.ObjectMeta.ResourceVersion != newCrb.ObjectMeta.ResourceVersion {
 					return true
@@ -140,10 +140,10 @@ var _ = Describe("", func() {
 		By("Updating metrics-collector-view clusterolebinding")
 		updateSubName := "test-subject"
 		newCrb.Subjects[0].Name = updateSubName
-		err, _ = utils.UpdateCRB(testOptions, true, "hub-metrics-collector-view", newCrb)
+		_, err = utils.UpdateCRB(testOptions, true, "hub-metrics-collector-view", newCrb)
 		Expect(err).ToNot(HaveOccurred())
 		Eventually(func() bool {
-			err, revertCrb := utils.GetCRB(testOptions, true, "hub-metrics-collector-view")
+			revertCrb, err := utils.GetCRB(testOptions, true, "hub-metrics-collector-view")
 			if err == nil {
 				if revertCrb.ObjectMeta.ResourceVersion != newCrb.ObjectMeta.ResourceVersion &&
 					revertCrb.Subjects[0].Name != updateSubName {
@@ -165,7 +165,7 @@ var _ = Describe("", func() {
 			cm  *v1.ConfigMap
 		)
 		Eventually(func() error {
-			err, cm = utils.GetConfigMap(
+			cm, err = utils.GetConfigMap(
 				testOptions,
 				true,
 				"metrics-collector-serving-certs-ca-bundle",
@@ -184,7 +184,7 @@ var _ = Describe("", func() {
 		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*1).Should(Succeed())
 		newCm := &v1.ConfigMap{}
 		Eventually(func() bool {
-			err, newCm = utils.GetConfigMap(
+			newCm, err = utils.GetConfigMap(
 				testOptions,
 				true,
 				"metrics-collector-serving-certs-ca-bundle",

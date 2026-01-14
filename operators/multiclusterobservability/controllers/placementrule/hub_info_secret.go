@@ -91,7 +91,7 @@ func generateHubInfoSecret(client client.Client, obsNamespace string,
 		trimmedClusterID, err = config.GetTrimmedClusterID(client)
 		if err != nil {
 			// TODO: include better info
-			return nil, fmt.Errorf("Unable to get hub ClusterID for hub-info-secret: %w", err)
+			return nil, fmt.Errorf("unable to get hub ClusterID for hub-info-secret: %w", err)
 		}
 	} else {
 		// there is no clusterID to get in unit tests.

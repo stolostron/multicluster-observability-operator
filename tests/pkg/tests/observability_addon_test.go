@@ -77,7 +77,7 @@ var _ = Describe("", func() {
 
 			By("Waiting for MCO addon components ready")
 			Eventually(func() bool {
-				err, podList := utils.GetPodList(
+				podList, err := utils.GetPodList(
 					testOptions,
 					true,
 					MCO_NAMESPACE,
@@ -162,7 +162,7 @@ var _ = Describe("", func() {
 
 			By("Waiting for MCO addon components to be running")
 			Eventually(func() bool {
-				err, podList := utils.GetPodList(
+				podList, err := utils.GetPodList(
 					testOptions,
 					false,
 					MCO_ADDON_NAMESPACE,

@@ -14,13 +14,13 @@ import (
 
 func GetConfigMap(opt TestOptions, isHub bool, name string,
 	namespace string,
-) (error, *corev1.ConfigMap) {
+) (*corev1.ConfigMap, error) {
 	clientKube := GetKubeClient(opt, isHub)
 	cm, err := clientKube.CoreV1().ConfigMaps(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
 		klog.Errorf("Failed to get configmap %s in namespace %s due to %v", name, namespace, err)
 	}
-	return err, cm
+	return cm, err
 }
 
 func DeleteConfigMap(opt TestOptions, isHub bool, name string, namespace string) error {

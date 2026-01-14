@@ -40,7 +40,7 @@ var _ = Describe("", func() {
 			// We do not create manifestwork for local-cluster
 			oldManifestWorkResourceVersion := ""
 			oldCollectorPodName := ""
-			_, podList := utils.GetPodList(testOptions, false, MCO_ADDON_NAMESPACE, "component=metrics-collector")
+			podList, _ := utils.GetPodList(testOptions, false, MCO_ADDON_NAMESPACE, "component=metrics-collector")
 			if podList != nil && len(podList.Items) > 0 {
 				oldCollectorPodName = podList.Items[0].Name
 			}
@@ -79,7 +79,7 @@ var _ = Describe("", func() {
 
 			It("[Stable] Waiting for metrics collector to be created automatically", func() {
 				Eventually(func() error {
-					_, podList := utils.GetPodList(
+					podList, _ := utils.GetPodList(
 						testOptions,
 						false,
 						MCO_ADDON_NAMESPACE,

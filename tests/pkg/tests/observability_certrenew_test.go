@@ -45,7 +45,7 @@ var _ = Describe("", func() {
 			if len(testOptions.ManagedClusters) > 0 &&
 				utils.GetManagedClusterName(testOptions) != hubManagedClusterName {
 				if collectorPodNameSpoke == "" {
-					_, podList := utils.GetPodList(
+					podList, _ := utils.GetPodList(
 						testOptions,
 						false,
 						MCO_ADDON_NAMESPACE,
@@ -62,7 +62,7 @@ var _ = Describe("", func() {
 
 			// Check obs/api, rbac-query-proxy, metrics collector on hub
 			if collectorPodNameHub == "" {
-				_, podList := utils.GetPodList(
+				podList, _ := utils.GetPodList(
 					testOptions,
 					true,
 					MCO_NAMESPACE,
@@ -75,7 +75,7 @@ var _ = Describe("", func() {
 			if collectorPodNameHub == "" {
 				return false
 			}
-			_, apiPodList := utils.GetPodList(
+			apiPodList, _ := utils.GetPodList(
 				testOptions,
 				true,
 				MCO_NAMESPACE,
@@ -88,7 +88,7 @@ var _ = Describe("", func() {
 			} else {
 				return false
 			}
-			_, rbacPodList := utils.GetPodList(testOptions, true, MCO_NAMESPACE, "app=rbac-query-proxy")
+			rbacPodList, _ := utils.GetPodList(testOptions, true, MCO_NAMESPACE, "app=rbac-query-proxy")
 			if rbacPodList != nil && len(rbacPodList.Items) != 0 {
 				for _, pod := range rbacPodList.Items {
 					hubPodsName = append(hubPodsName, pod.Name)
@@ -111,13 +111,13 @@ var _ = Describe("", func() {
 
 		By("Waiting for observatorium-api pods to be recreated and rbac-query-proxy to be ready")
 		Eventually(func() bool {
-			err1, appPodList := utils.GetPodList(
+			appPodList, err1 := utils.GetPodList(
 				testOptions,
 				true,
 				MCO_NAMESPACE,
 				"app.kubernetes.io/name=observatorium-api",
 			)
-			err2, rbacPodList := utils.GetPodList(testOptions, true, MCO_NAMESPACE, "app=rbac-query-proxy")
+			rbacPodList, err2 := utils.GetPodList(testOptions, true, MCO_NAMESPACE, "app=rbac-query-proxy")
 			if err1 != nil || err2 != nil {
 				return false
 			}
@@ -180,7 +180,7 @@ var _ = Describe("", func() {
 			utils.GetManagedClusterName(testOptions) != hubManagedClusterName {
 			By(fmt.Sprintf("Waiting for old pod <%s> removed and new pod created on spoke", collectorPodNameSpoke))
 			Eventually(func() bool {
-				err, podList := utils.GetPodList(
+				podList, err := utils.GetPodList(
 					testOptions,
 					false,
 					MCO_ADDON_NAMESPACE,
@@ -221,7 +221,7 @@ var _ = Describe("", func() {
 
 		By(fmt.Sprintf("Waiting for old pod <%s> removed and new pod created on Hub", collectorPodNameHub))
 		Eventually(func() bool {
-			err, podList := utils.GetPodList(
+			podList, err := utils.GetPodList(
 				testOptions,
 				true,
 				MCO_NAMESPACE,

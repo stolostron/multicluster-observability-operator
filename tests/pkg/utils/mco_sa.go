@@ -26,13 +26,13 @@ func DeleteSA(opt TestOptions, isHub bool, namespace string,
 
 func UpdateSA(opt TestOptions, isHub bool, namespace string,
 	sa *v1.ServiceAccount,
-) (error, *v1.ServiceAccount) {
+) (*v1.ServiceAccount, error) {
 	clientKube := GetKubeClient(opt, isHub)
 	updateSA, err := clientKube.CoreV1().ServiceAccounts(namespace).Update(context.TODO(), sa, metav1.UpdateOptions{})
 	if err != nil {
 		klog.Errorf("Failed to update serviceaccount %s due to %v", sa.GetName(), err)
 	}
-	return err, updateSA
+	return updateSA, err
 }
 
 func CreateSA(opt TestOptions, isHub bool, namespace string,
@@ -43,7 +43,7 @@ func CreateSA(opt TestOptions, isHub bool, namespace string,
 	if err != nil {
 		if errors.IsAlreadyExists(err) {
 			klog.V(1).Infof("serviceaccount %s already exists, updating...", sa.GetName())
-			err, _ := UpdateSA(opt, isHub, namespace, sa)
+			_, err := UpdateSA(opt, isHub, namespace, sa)
 			return err
 		}
 		klog.Errorf("Failed to create serviceaccount %s due to %v", sa.GetName(), err)

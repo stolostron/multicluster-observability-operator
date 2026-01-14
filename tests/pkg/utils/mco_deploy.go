@@ -293,7 +293,7 @@ func CheckAllPodsAffinity(opt TestOptions) error {
 			continue
 		}
 		if pod.Spec.Affinity == nil {
-			return fmt.Errorf("Failed to check affinity for pod: %s", pod.GetName())
+			return fmt.Errorf("failed to check affinity for pod: %s", pod.GetName())
 		}
 
 		weightedPodAffinityTerms := pod.Spec.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution

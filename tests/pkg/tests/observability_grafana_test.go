@@ -82,7 +82,7 @@ var _ = Describe("", func() {
 				errcm error
 				cm    *v1.ConfigMap
 			)
-			errcm, cm = utils.GetConfigMap(
+			cm, errcm = utils.GetConfigMap(
 				testOptions,
 				true,
 				"observability-managed-cluster-label-allowlist",
