@@ -209,9 +209,8 @@ func TestRenderAddonDeploymentConfig(t *testing.T) {
 	otelV1beta1 := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.OpenTelemetryCollectorCRDName)
 	instrV1alpha1 := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.InstrumentationCRDName)
 	promV1alpha1 := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.PrometheusAgentCRDName)
-	uiV1alpha1 := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.UIPluginsCRDName)
 
-	assert.Len(t, got.Spec.CustomizedVariables, 10)
+	assert.Len(t, got.Spec.CustomizedVariables, 9)
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1alpha1.CustomizedVariable{Name: namePlatformLogsCollection, Value: clfV1})
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1alpha1.CustomizedVariable{Name: nameUserWorkloadLogsCollection, Value: clfV1})
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1alpha1.CustomizedVariable{Name: nameUserWorkloadTracesCollection, Value: otelV1beta1})
@@ -220,7 +219,6 @@ func TestRenderAddonDeploymentConfig(t *testing.T) {
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1alpha1.CustomizedVariable{Name: nameUserWorkloadMetricsCollection, Value: promV1alpha1})
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1alpha1.CustomizedVariable{Name: nameMetricsHubHostname, Value: "observability-hub"})
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1alpha1.CustomizedVariable{Name: nameMetricsAlertManagerHostname, Value: "alertmanager-hub"})
-	assert.Contains(t, got.Spec.CustomizedVariables, addonv1alpha1.CustomizedVariable{Name: namePLatformMetricsUI, Value: uiV1alpha1})
 }
 
 func TestMCOAEnabled(t *testing.T) {
