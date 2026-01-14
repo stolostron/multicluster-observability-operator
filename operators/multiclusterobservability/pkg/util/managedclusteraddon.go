@@ -115,7 +115,7 @@ func updateManagedClusterAddOnStatus(ctx context.Context, c client.Client, names
 		}
 
 		// got the created managedclusteraddon just now, updating its status
-		//nolint:staticcheck
+
 		desiredStatus.AddOnConfiguration = addonv1alpha1.ConfigCoordinates{
 			CRDName: "observabilityaddons.observability.open-cluster-management.io",
 			CRName:  "observability-addon",

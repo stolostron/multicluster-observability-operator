@@ -185,7 +185,7 @@ func PrintObject(ctx context.Context, client dynamic.Interface, gvr schema.Group
 	klog.V(1).Infof("Object %s/%s/%s:\n%s", ns, gvr.Resource, name, ToCompactJSON(obj.Object, "", 0, 3))
 }
 
-func ToCompactJSON(v interface{}, prefix string, depth int, maxDepth int) string {
+func ToCompactJSON(v any, prefix string, depth int, maxDepth int) string {
 	if v == nil {
 		return "null"
 	}

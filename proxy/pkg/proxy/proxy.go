@@ -14,6 +14,7 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"path"
+	"slices"
 	"strings"
 
 	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/cache"
@@ -331,10 +332,8 @@ func isACMLabelQuery(req *http.Request) (bool, error) {
 	}
 
 	matchers := values["match[]"]
-	for _, matcher := range matchers {
-		if matcher == proxyconfig.RBACProxyLabelMetricName {
-			return true, nil
-		}
+	if slices.Contains(matchers, proxyconfig.RBACProxyLabelMetricName) {
+		return true, nil
 	}
 
 	return false, nil

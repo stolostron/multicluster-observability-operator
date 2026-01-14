@@ -159,14 +159,14 @@ func CreateCOOSubscription(clusters []Cluster) error {
 
 		// Create OperatorGroup
 		og := &unstructured.Unstructured{
-			Object: map[string]interface{}{
+			Object: map[string]any{
 				"apiVersion": "operators.coreos.com/v1",
 				"kind":       "OperatorGroup",
-				"metadata": map[string]interface{}{
+				"metadata": map[string]any{
 					"name":      cooOperatorGroupName,
 					"namespace": cooSubscriptionNamespace,
 				},
-				"spec": map[string]interface{}{},
+				"spec": map[string]any{},
 			},
 		}
 		_, err = clientDynamic.Resource(NewOperatorGroupGVR()).Namespace(cooSubscriptionNamespace).Create(context.TODO(), og, metav1.CreateOptions{})
@@ -179,19 +179,19 @@ func CreateCOOSubscription(clusters []Cluster) error {
 			return fmt.Errorf("failed to get packagemanifest for %s: %w", packageName, err)
 		}
 
-		status, ok := pkg.Object["status"].(map[string]interface{})
+		status, ok := pkg.Object["status"].(map[string]any)
 		if !ok {
 			return fmt.Errorf("failed to parse status of packagemanifest for %s", packageName)
 		}
 
-		channels, ok := status["channels"].([]interface{})
+		channels, ok := status["channels"].([]any)
 		if !ok {
 			return fmt.Errorf("failed to parse channels of packagemanifest for %s", packageName)
 		}
 
 		var latestCSV string
 		for _, channel := range channels {
-			ch, ok := channel.(map[string]interface{})
+			ch, ok := channel.(map[string]any)
 			if !ok {
 				continue
 			}
@@ -228,14 +228,14 @@ func CreateCOOSubscription(clusters []Cluster) error {
 		}
 
 		subUnstructured := &unstructured.Unstructured{
-			Object: map[string]interface{}{
+			Object: map[string]any{
 				"apiVersion": "operators.coreos.com/v1alpha1",
 				"kind":       "Subscription",
-				"metadata": map[string]interface{}{
+				"metadata": map[string]any{
 					"name":      cooSubscriptionName,
 					"namespace": cooSubscriptionNamespace,
 				},
-				"spec": map[string]interface{}{
+				"spec": map[string]any{
 					"channel":             "stable",
 					"installPlanApproval": "Automatic",
 					"name":                cooSubscriptionName,
@@ -259,7 +259,7 @@ func CreateCOOSubscription(clusters []Cluster) error {
 				return false, nil
 			}
 			if sub.Object["status"] != nil {
-				status := sub.Object["status"].(map[string]interface{})
+				status := sub.Object["status"].(map[string]any)
 				if status["installPlanRef"] != nil {
 					klog.Infof("InstallPlan created for subscription %s on cluster %s", cooSubscriptionName, cluster.Name)
 					return true, nil
@@ -323,7 +323,7 @@ func DeleteCOOSubscription(clusters []Cluster) error {
 
 		// Delete the installed CSV
 		if sub.Object["status"] != nil {
-			status, ok := sub.Object["status"].(map[string]interface{})
+			status, ok := sub.Object["status"].(map[string]any)
 			if ok && status["installedCSV"] != nil {
 				installedCSV, ok := status["installedCSV"].(string)
 				if ok && installedCSV != "" {
@@ -380,7 +380,7 @@ func DeleteCOOSubscription(clusters []Cluster) error {
 				return false, err
 			}
 			for _, cond := range conditions {
-				condition, ok := cond.(map[string]interface{})
+				condition, ok := cond.(map[string]any)
 				if !ok {
 					continue
 				}
