@@ -35,6 +35,12 @@ $(GCI): $(BINGO_DIR)/gci.mod
 	@echo "(re)installing $(GOBIN)/gci-v0.13.7"
 	@cd $(BINGO_DIR) && GOWORK=off $(GO) build -mod=mod -modfile=gci.mod -o=$(GOBIN)/gci-v0.13.7 "github.com/daixiang0/gci"
 
+GOFUMPT := $(GOBIN)/gofumpt-v0.9.2
+$(GOFUMPT): $(BINGO_DIR)/gofumpt.mod
+	@# Install binary/ries using Go 1.14+ build command. This is using bwplotka/bingo-controlled, separate go module with pinned dependencies.
+	@echo "(re)installing $(GOBIN)/gofumpt-v0.9.2"
+	@cd $(BINGO_DIR) && GOWORK=off $(GO) build -mod=mod -modfile=gofumpt.mod -o=$(GOBIN)/gofumpt-v0.9.2 "mvdan.cc/gofumpt"
+
 GOIMPORTS := $(GOBIN)/goimports-v0.37.0
 $(GOIMPORTS): $(BINGO_DIR)/goimports.mod
 	@# Install binary/ries using Go 1.14+ build command. This is using bwplotka/bingo-controlled, separate go module with pinned dependencies.

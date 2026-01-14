@@ -57,10 +57,11 @@ deps: ## Ensures fresh go.mod and go.sum.
 
 .PHONY: go-format
 go-format: ## Formats Go code including imports.
-go-format: $(GOIMPORTS) $(GCI)
+go-format: $(GOIMPORTS) $(GCI) $(GOFUMPT)
 	@echo ">> formatting go code"
 	@go fmt ./...
-	@gci write ./
+	@$(GCI) write ./
+	@$(GOFUMPT) -l -w . 
 	@$(GOIMPORTS) -w $(FILES_TO_FMT)
 
 .PHONY: shell-format
