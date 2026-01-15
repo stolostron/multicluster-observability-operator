@@ -118,6 +118,7 @@ func TestRenderMCOADeployment(t *testing.T) {
 	container = got.Spec.Template.Spec.Containers[0]
 	assert.Equal(t, *mco.Spec.Capabilities.AddonManager.Resources, container.Resources)
 	assert.Contains(t, container.Args, "--log-verbosity=5")
+	assert.Contains(t, container.Args, "controller")
 }
 
 func TestRenderAddonDeploymentConfig(t *testing.T) {

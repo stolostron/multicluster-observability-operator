@@ -152,7 +152,9 @@ func (r *MCORenderer) renderMCOADeployment(
 
 	if r.cr.Spec.Capabilities != nil && r.cr.Spec.Capabilities.AddonManager != nil {
 		if r.cr.Spec.Capabilities.AddonManager.LogVerbosity != nil {
-			patchContainer.Args = append(patchContainer.Args, fmt.Sprintf("--log-verbosity=%d", *r.cr.Spec.Capabilities.AddonManager.LogVerbosity))
+			if len(obj.Spec.Template.Spec.Containers) > 0 {
+				obj.Spec.Template.Spec.Containers[0].Args = append(obj.Spec.Template.Spec.Containers[0].Args, fmt.Sprintf("--log-verbosity=%d", *r.cr.Spec.Capabilities.AddonManager.LogVerbosity))
+			}
 		}
 	}
 
