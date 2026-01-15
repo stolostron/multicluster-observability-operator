@@ -429,6 +429,7 @@ func GetRouteHost(client client.Client, name string, namespace string) (string, 
 			OpenshiftIngressOperatorNamespace,
 		)
 		if err != nil {
+			log.Error(err, "Failed to get domain for ingress controller")
 			return "", nil
 		}
 		return name + "-" + namespace + "." + domain, nil

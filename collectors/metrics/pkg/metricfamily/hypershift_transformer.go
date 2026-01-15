@@ -106,10 +106,11 @@ func getClusterName(h *hypershiftTransformer, id string) (string, error) {
 	return clusterName, nil
 }
 
-func CheckCRDExist(_ log.Logger) (bool, error) {
+func CheckCRDExist(l log.Logger) (bool, error) {
 	c, err := util.GetOrCreateCRDClient()
 	if err != nil {
-		return false, nil
+		logger.Log(l, logger.Error, "msg", "Failed to get or create client")
+		return false, nil //nolint:nilerr
 	}
 	return util.CheckCRDExist(c, "hostedclusters.hypershift.openshift.io")
 }

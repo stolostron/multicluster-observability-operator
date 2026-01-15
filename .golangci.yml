@@ -28,6 +28,7 @@ linters:
     - loggercheck
     - misspell
     - modernize
+    - nilerr
     - nolintlint
     - prealloc
     - predeclared
