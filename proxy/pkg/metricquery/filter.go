@@ -109,7 +109,7 @@ type clusterVisitor struct {
 }
 
 // Visit implements the promql.Visitor interface, inspecting vector selectors for "cluster" labels.
-func (v *clusterVisitor) Visit(node parser.Node, path []parser.Node) (parser.Visitor, error) {
+func (v *clusterVisitor) Visit(node parser.Node, _ []parser.Node) (parser.Visitor, error) {
 	if vs, ok := node.(*parser.VectorSelector); ok {
 		for _, matcher := range vs.LabelMatchers {
 			if matcher.Name == "cluster" {

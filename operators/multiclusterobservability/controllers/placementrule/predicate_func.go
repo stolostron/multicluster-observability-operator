@@ -74,7 +74,7 @@ func getClusterPreds() predicate.Funcs {
 
 func GetAddOnDeploymentConfigPredicates() predicate.Funcs {
 	return predicate.Funcs{
-		CreateFunc: func(e event.CreateEvent) bool {
+		CreateFunc: func(_ event.CreateEvent) bool {
 			return true
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
@@ -86,7 +86,7 @@ func GetAddOnDeploymentConfigPredicates() predicate.Funcs {
 			log.Info("AddonDeploymentConfig is updated", e.ObjectNew.GetName(), "name", e.ObjectNew.GetNamespace(), "namespace")
 			return true
 		},
-		DeleteFunc: func(e event.DeleteEvent) bool {
+		DeleteFunc: func(_ event.DeleteEvent) bool {
 			return true
 		},
 	}
@@ -94,7 +94,7 @@ func GetAddOnDeploymentConfigPredicates() predicate.Funcs {
 
 func getHubEndpointOperatorPredicates() predicate.Funcs {
 	return predicate.Funcs{
-		CreateFunc: func(e event.CreateEvent) bool {
+		CreateFunc: func(_ event.CreateEvent) bool {
 			return false
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
@@ -122,13 +122,13 @@ func getHubEndpointOperatorPredicates() predicate.Funcs {
 func getPred(name string, namespace string,
 	create bool, update bool, isDelete bool,
 ) predicate.Funcs {
-	createFunc := func(e event.CreateEvent) bool {
+	createFunc := func(_ event.CreateEvent) bool {
 		return false
 	}
-	updateFunc := func(e event.UpdateEvent) bool {
+	updateFunc := func(_ event.UpdateEvent) bool {
 		return false
 	}
-	deleteFunc := func(e event.DeleteEvent) bool {
+	deleteFunc := func(_ event.DeleteEvent) bool {
 		return false
 	}
 	if create {

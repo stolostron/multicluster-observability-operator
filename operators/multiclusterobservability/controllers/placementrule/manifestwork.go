@@ -973,10 +973,9 @@ func generatePullSecret(c client.Client, name string) (*corev1.Secret, error) {
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
 			return nil, nil
-		} else {
-			log.Error(err, "Failed to get the pull secret", "name", name)
-			return nil, err
 		}
+		log.Error(err, "Failed to get the pull secret", "name", name)
+		return nil, err
 	}
 	return &corev1.Secret{
 		TypeMeta: metav1.TypeMeta{

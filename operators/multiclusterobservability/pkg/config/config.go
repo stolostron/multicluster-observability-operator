@@ -369,14 +369,13 @@ func ReplaceImage(annotations map[string]string, imageRepo, componentName string
 			return false, ""
 		}
 		return false, ""
-	} else {
-		image, found := imageManifests[componentName]
-		log.V(1).Info("image replacement", "componentName", componentName, "image", image)
-		if found {
-			return true, image
-		}
-		return false, ""
 	}
+	image, found := imageManifests[componentName]
+	log.V(1).Info("image replacement", "componentName", componentName, "image", image)
+	if found {
+		return true, image
+	}
+	return false, ""
 }
 
 // GetDefaultTenantName returns the default tenant name.
@@ -386,7 +385,7 @@ func GetDefaultTenantName() string {
 
 // GetObsAPIRouteHost is used to Route's host for Observatorium API. This doesn't take into consideration
 // the `advanced.customObservabilityHubURL` configuration.
-func GetObsAPIRouteHost(ctx context.Context, client client.Client, namespace string) (string, error) {
+func GetObsAPIRouteHost(_ context.Context, client client.Client, namespace string) (string, error) {
 	return GetRouteHost(client, obsAPIGateway, namespace)
 }
 
@@ -692,17 +691,15 @@ func GetOperandNamePrefix() string {
 func GetImagePullPolicy(mco observabilityv1beta2.MultiClusterObservabilitySpec) corev1.PullPolicy {
 	if mco.ImagePullPolicy != "" {
 		return mco.ImagePullPolicy
-	} else {
-		return DefaultImagePullPolicy
 	}
+	return DefaultImagePullPolicy
 }
 
 func GetImagePullSecret(mco observabilityv1beta2.MultiClusterObservabilitySpec) string {
 	if mco.ImagePullSecret != "" {
 		return mco.ImagePullSecret
-	} else {
-		return DefaultImagePullSecret
 	}
+	return DefaultImagePullSecret
 }
 
 func GetOperandName(name string) string {

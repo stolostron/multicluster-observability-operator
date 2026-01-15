@@ -27,8 +27,8 @@ type ObservabilityAgent struct {
 }
 
 func (o *ObservabilityAgent) Manifests(
-	cluster *clusterv1.ManagedCluster,
-	addon *addonapiv1alpha1.ManagedClusterAddOn,
+	_ *clusterv1.ManagedCluster,
+	_ *addonapiv1alpha1.ManagedClusterAddOn,
 ) ([]runtime.Object, error) {
 	return nil, nil
 }
@@ -51,10 +51,7 @@ func (o *ObservabilityAgent) GetAgentAddonOptions() agent.AgentAddonOptions {
 		Registration: &agent.RegistrationOption{
 			CSRConfigurations: observabilitySignerConfigurations(o.client),
 			CSRApproveCheck:   approve,
-			PermissionConfig: func(
-				cluster *clusterv1.ManagedCluster,
-				addon *addonapiv1alpha1.ManagedClusterAddOn,
-			) error {
+			PermissionConfig: func(_ *clusterv1.ManagedCluster, _ *addonapiv1alpha1.ManagedClusterAddOn) error {
 				return nil
 			},
 			CSRSign: signAdaptor,

@@ -624,7 +624,7 @@ func (r *ObservabilityAddonReconciler) SetupWithManager(mgr ctrl.Manager) error 
 // Watch the kube-system extension-apiserver-authentication ConfigMap for changes
 func enqueueForAPIServerAuth(namespace string) handler.EventHandler {
 	return handler.EnqueueRequestsFromMapFunc(
-		func(ctx context.Context, a client.Object) []reconcile.Request {
+		func(_ context.Context, a client.Object) []reconcile.Request {
 			if a.GetName() == "extension-apiserver-authentication" && a.GetNamespace() == "kube-system" {
 				return []reconcile.Request{
 					{NamespacedName: types.NamespacedName{

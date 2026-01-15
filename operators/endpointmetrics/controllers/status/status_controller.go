@@ -102,16 +102,16 @@ type StatusReconciler struct {
 // - a TerminalError if the reconciliation fails and no requeue is needed
 // - a non terminal error if the reconciliation fails and a requeue is needed
 // - a result.RequeueAfter if the reconciliation fails and a requeue with delay is needed
-func (r *StatusReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	r.Logger.WithValues("Request", req.String()).Info("Reconciling")
+func (s *StatusReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	s.Logger.WithValues("Request", req.String()).Info("Reconciling")
 
-	if res, err := r.updateSpokeAddon(ctx); err != nil {
+	if res, err := s.updateSpokeAddon(ctx); err != nil {
 		return res, err
 	} else if !res.IsZero() {
 		return res, nil
 	}
 
-	if res, err := r.updateHubAddon(ctx); err != nil {
+	if res, err := s.updateHubAddon(ctx); err != nil {
 		return res, err
 	} else if !res.IsZero() {
 		return res, nil
@@ -212,9 +212,9 @@ func (s *StatusReconciler) updateHubAddon(ctx context.Context) (ctrl.Result, err
 // requeueWithOptionalDelay requeues the request with a delay if suggested by the error
 // Otherwise, it requeues the request without a delay by returning an error
 // The runtime will requeue the request without a delay if the error is non-nil
-func (r *StatusReconciler) requeueWithOptionalDelay(err error) (ctrl.Result, error) {
+func (s *StatusReconciler) requeueWithOptionalDelay(err error) (ctrl.Result, error) {
 	if delay, ok := errors.SuggestsClientDelay(err); ok {
-		r.Logger.Info("Requeue with delay", "error", err, "delay", delay)
+		s.Logger.Info("Requeue with delay", "error", err, "delay", delay)
 		return ctrl.Result{RequeueAfter: time.Duration(delay) * time.Second}, nil
 	}
 
@@ -222,7 +222,7 @@ func (r *StatusReconciler) requeueWithOptionalDelay(err error) (ctrl.Result, err
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *StatusReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (s *StatusReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	filterOutStandardConditions := func(c []oav1beta1.StatusCondition) []oav1beta1.StatusCondition {
 		var filtered []oav1beta1.StatusCondition
 		for _, condition := range c {
@@ -234,11 +234,11 @@ func (r *StatusReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		return filtered
 	}
 	pred := predicate.Funcs{
-		CreateFunc: func(e event.CreateEvent) bool {
+		CreateFunc: func(_ event.CreateEvent) bool {
 			return false
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			if e.ObjectNew.GetNamespace() != r.Namespace {
+			if e.ObjectNew.GetNamespace() != s.Namespace {
 				return false
 			}
 
@@ -246,14 +246,14 @@ func (r *StatusReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			oldConditions := filterOutStandardConditions(e.ObjectOld.(*oav1beta1.ObservabilityAddon).Status.Conditions)
 			return !reflect.DeepEqual(newConditions, oldConditions)
 		},
-		DeleteFunc: func(e event.DeleteEvent) bool {
+		DeleteFunc: func(_ event.DeleteEvent) bool {
 			return false
 		},
 	}
 
 	return ctrl.NewControllerManagedBy(mgr).Named("observabilityaddon-status-controller").
 		For(&oav1beta1.ObservabilityAddon{}, builder.WithPredicates(pred)).
-		Complete(r)
+		Complete(s)
 }
 
 // isAuthOrConnectionErr checks if the error is an authentication error or a connection error

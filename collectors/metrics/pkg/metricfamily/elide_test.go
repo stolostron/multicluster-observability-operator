@@ -112,7 +112,7 @@ func TestElide(t *testing.T) {
 
 	for _, tc := range []struct {
 		family *clientmodel.MetricFamily
-		elide  *elide
+		elide  *Elide
 		name   string
 		checks []checkFunc
 	}{

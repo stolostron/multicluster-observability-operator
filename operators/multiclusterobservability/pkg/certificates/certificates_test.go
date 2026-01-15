@@ -93,7 +93,7 @@ func TestCreateCertificates(t *testing.T) {
 		t.Fatalf("Rerun CreateObservabilityCerts: (%v)", err)
 	}
 
-	err, _ = createCASecret(c, s, mco, true, serverCACerts, serverCACertifcateCN)
+	_, err = createCASecret(c, s, mco, true, serverCACerts, serverCACertifcateCN)
 	if err != nil {
 		t.Fatalf("Failed to renew server ca certificates: (%v)", err)
 	}

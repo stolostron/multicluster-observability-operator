@@ -20,7 +20,7 @@ type clusterLabelInjector struct {
 }
 
 // Visit implements the parser.Visitor interface. It inspects each node in the AST.
-func (li *clusterLabelInjector) Visit(node parser.Node, path []parser.Node) (parser.Visitor, error) {
+func (li *clusterLabelInjector) Visit(node parser.Node, _ []parser.Node) (parser.Visitor, error) {
 	var selector *parser.VectorSelector
 	switch n := node.(type) {
 	case *parser.VectorSelector:

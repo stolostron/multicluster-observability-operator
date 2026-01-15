@@ -102,9 +102,8 @@ func (d *Deployer) Deploy(ctx context.Context, obj *unstructured.Unstructured) e
 	deployerFn, ok := d.deployerFns[found.GetKind()]
 	if ok {
 		return deployerFn(ctx, obj, found)
-	} else {
-		log.Info("deployerFn not found", "kind", found.GetKind())
 	}
+	log.Info("deployerFn not found", "kind", found.GetKind())
 	return nil
 }
 
@@ -276,9 +275,8 @@ func (d *Deployer) updatePrometheus(ctx context.Context, desiredObj, runtimeObj 
 	if !equality.Semantic.DeepDerivative(desiredPrometheus.Spec, runtimePrometheus.Spec) {
 		logUpdateInfo(runtimeObj)
 		return d.client.Update(ctx, desiredPrometheus)
-	} else {
-		log.Info("Runtime Prometheus and Desired Prometheus are semantically equal!")
 	}
+	log.Info("Runtime Prometheus and Desired Prometheus are semantically equal!")
 	return nil
 }
 

@@ -25,9 +25,8 @@ func AddBackupLabelToConfigMap(c client.Client, name, namespace string) error {
 			// Request object not found, could have been deleted after reconcile request.
 			log.Error(err, "ConfigMap not found", "ConfigMap", name)
 			return nil
-		} else {
-			return err
 		}
+		return err
 	}
 
 	if _, ok := m.Labels[config.BackupLabelName]; !ok {
@@ -38,9 +37,8 @@ func AddBackupLabelToConfigMap(c client.Client, name, namespace string) error {
 		err := c.Update(context.TODO(), m)
 		if err != nil {
 			return err
-		} else {
-			log.Info("Add backup label for configMap", "name", name)
 		}
+		log.Info("Add backup label for configMap", "name", name)
 	}
 	return nil
 }
@@ -56,9 +54,8 @@ func AddBackupLabelToSecret(c client.Client, name, namespace string) error {
 			// Request object not found, could have been deleted after reconcile request.
 			log.Error(err, "Secret not found", "Secret", name)
 			return nil
-		} else {
-			return err
 		}
+		return err
 	}
 
 	return AddBackupLabelToSecretObj(c, s)
@@ -73,9 +70,8 @@ func AddBackupLabelToSecretObj(c client.Client, s *corev1.Secret) error {
 		err := c.Update(context.TODO(), s)
 		if err != nil {
 			return err
-		} else {
-			log.Info("Add backup label for secret", "name", s.Name)
 		}
+		log.Info("Add backup label for secret", "name", s.Name)
 	}
 	return nil
 }

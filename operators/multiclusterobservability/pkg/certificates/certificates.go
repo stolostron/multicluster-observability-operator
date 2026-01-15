@@ -61,11 +61,11 @@ func CreateObservabilityCerts(
 ) error {
 	config.SetCertDuration(mco.Annotations)
 
-	err, serverCrtUpdated := createCASecret(c, scheme, mco, false, serverCACerts, serverCACertifcateCN)
+	serverCrtUpdated, err := createCASecret(c, scheme, mco, false, serverCACerts, serverCACertifcateCN)
 	if err != nil {
 		return err
 	}
-	err, clientCrtUpdated := createCASecret(c, scheme, mco, false, clientCACerts, clientCACertificateCN)
+	clientCrtUpdated, err := createCASecret(c, scheme, mco, false, clientCACerts, clientCACertificateCN)
 	if err != nil {
 		return err
 	}
@@ -88,7 +88,7 @@ func CreateObservabilityCerts(
 func createCASecret(c client.Client,
 	scheme *runtime.Scheme, mco *mcov1beta2.MultiClusterObservability,
 	isRenew bool, name string, cn string,
-) (error, bool) {
+) (bool, error) {
 	if isRenew {
 		log.Info("To renew CA certificates", "name", name)
 	}
@@ -163,7 +163,7 @@ func createCASecret(c client.Client,
 		updated = true
 		return nil
 	})
-	return err, updated
+	return updated, err
 }
 
 func createCACertificate(cn string, caKey *rsa.PrivateKey) ([]byte, []byte, error) {

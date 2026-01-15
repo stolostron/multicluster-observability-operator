@@ -540,51 +540,50 @@ func newAPISpec(c client.Client, mco *mcov1beta2.MultiClusterObservability) (obs
 			if err != nil {
 				log.Error(err, "Failed to get the secret", "name", storageConfig.Name)
 				return apiSpec, err
-			} else {
-				// add backup label
-				err = addBackupLabel(c, storageConfig.Name, storageSecret)
-				if err != nil {
-					return apiSpec, err
-				}
-
-				data, ok := storageSecret.Data[storageConfig.Key]
-				if !ok {
-					log.Error(err, "Invalid key in secret", "name", storageConfig.Name, "key", storageConfig.Key)
-					return apiSpec, fmt.Errorf("invalid key %s in secret %s", storageConfig.Key, storageConfig.Name)
-				}
-				ep := &mcoutil.RemoteWriteEndpointWithSecret{}
-				err = yaml.Unmarshal(data, ep)
-				if err != nil {
-					log.Error(err, "Failed to unmarshal data in secret", "name", storageConfig.Name)
-					return apiSpec, err
-				}
-
-				err = ep.Validate()
-				if err != nil {
-					log.Error(err, "Failed to validate data in secret", "name", storageConfig.Name)
-					return apiSpec, err
-				}
-
-				newEp := &mcoutil.RemoteWriteEndpointWithSecret{
-					Name: storageConfig.Name,
-					URL:  ep.URL,
-				}
-				if ep.HttpClientConfig != nil {
-					newConfig, mountS := mcoutil.Transform(*ep.HttpClientConfig)
-
-					// add backup label
-					for _, s := range mountS {
-						err = addBackupLabel(c, s, nil)
-						if err != nil {
-							return apiSpec, err
-						}
-					}
-
-					mountSecrets = append(mountSecrets, mountS...)
-					newEp.HttpClientConfig = newConfig
-				}
-				eps = append(eps, *newEp)
 			}
+			// add backup label
+			err = addBackupLabel(c, storageConfig.Name, storageSecret)
+			if err != nil {
+				return apiSpec, err
+			}
+
+			data, ok := storageSecret.Data[storageConfig.Key]
+			if !ok {
+				log.Error(err, "Invalid key in secret", "name", storageConfig.Name, "key", storageConfig.Key)
+				return apiSpec, fmt.Errorf("invalid key %s in secret %s", storageConfig.Key, storageConfig.Name)
+			}
+			ep := &mcoutil.RemoteWriteEndpointWithSecret{}
+			err = yaml.Unmarshal(data, ep)
+			if err != nil {
+				log.Error(err, "Failed to unmarshal data in secret", "name", storageConfig.Name)
+				return apiSpec, err
+			}
+
+			err = ep.Validate()
+			if err != nil {
+				log.Error(err, "Failed to validate data in secret", "name", storageConfig.Name)
+				return apiSpec, err
+			}
+
+			newEp := &mcoutil.RemoteWriteEndpointWithSecret{
+				Name: storageConfig.Name,
+				URL:  ep.URL,
+			}
+			if ep.HttpClientConfig != nil {
+				newConfig, mountS := mcoutil.Transform(*ep.HttpClientConfig)
+
+				// add backup label
+				for _, s := range mountS {
+					err = addBackupLabel(c, s, nil)
+					if err != nil {
+						return apiSpec, err
+					}
+				}
+
+				mountSecrets = append(mountSecrets, mountS...)
+				newEp.HttpClientConfig = newConfig
+			}
+			eps = append(eps, *newEp)
 		}
 
 		err := applyEndpointsSecret(c, eps)

@@ -115,7 +115,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 
 	if res, ok := config.BackupResourceMap[req.Name]; ok {
 		reqLogger.Info(infoAddingBackupLabel)
-		var err error = nil
+		var err error
 		resourceTypeStr := ""
 		switch res {
 		case config.ResourceTypeConfigMap:
@@ -541,7 +541,7 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 			builder.WithPredicates(namespacePred)).
 		// Watch the kube-system extension-apiserver-authentication ConfigMap for changes
 		Watches(&corev1.ConfigMap{}, handler.EnqueueRequestsFromMapFunc(
-			func(ctx context.Context, a client.Object) []reconcile.Request {
+			func(_ context.Context, a client.Object) []reconcile.Request {
 				if a.GetName() == "extension-apiserver-authentication" && a.GetNamespace() == "kube-system" {
 					return []reconcile.Request{
 						{NamespacedName: types.NamespacedName{
@@ -579,7 +579,7 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 			// secondary watch for MCH
 			ctrBuilder = ctrBuilder.Watches(
 				&mchv1.MultiClusterHub{},
-				handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, a client.Object) []reconcile.Request {
+				handler.EnqueueRequestsFromMapFunc(func(_ context.Context, a client.Object) []reconcile.Request {
 					return []reconcile.Request{
 						{NamespacedName: types.NamespacedName{
 							Name:      config.MCHUpdatedRequestName,

@@ -128,9 +128,8 @@ func UpdateDeployLabel(c client.Client, dName, namespace, label string) error {
 		if err != nil {
 			log.Error(err, "Failed to update the deployment", "name", dName)
 			return err
-		} else {
-			log.Info("Update deployment restart label", "name", dName)
 		}
+		log.Info("Update deployment restart label", "name", dName)
 	}
 	return nil
 }

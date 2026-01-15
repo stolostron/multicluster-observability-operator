@@ -61,19 +61,19 @@ func (mco *MultiClusterObservability) SetupWebhookWithManager(mgr ctrl.Manager) 
 var _ webhook.CustomValidator = &MultiClusterObservability{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-func (mco *MultiClusterObservability) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
+func (mco *MultiClusterObservability) ValidateCreate(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
 	multiclusterobservabilitylog.Info("validate create", "name", mco.Name)
 	return nil, mco.validateMultiClusterObservability(nil)
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
-func (mco *MultiClusterObservability) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
+func (mco *MultiClusterObservability) ValidateUpdate(_ context.Context, oldObj, _ runtime.Object) (admission.Warnings, error) {
 	multiclusterobservabilitylog.Info("validate update", "name", mco.Name)
 	return nil, mco.validateMultiClusterObservability(oldObj)
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
-func (mco *MultiClusterObservability) ValidateDelete(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
+func (mco *MultiClusterObservability) ValidateDelete(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
 	multiclusterobservabilitylog.Info("validate delete", "name", mco.Name)
 
 	// no validation logic upon object delete.

@@ -173,7 +173,7 @@ func (r *MCORenderer) renderMCOADeployment(
 
 func (r *MCORenderer) renderClusterManagementAddOn(
 	res *resource.Resource,
-	namespace string,
+	_ string,
 	labels map[string]string,
 ) (*unstructured.Unstructured, error) {
 	m, err := res.Map()

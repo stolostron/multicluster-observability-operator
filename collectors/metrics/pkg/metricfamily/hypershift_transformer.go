@@ -106,7 +106,7 @@ func getClusterName(h *hypershiftTransformer, id string) (string, error) {
 	return clusterName, nil
 }
 
-func CheckCRDExist(l log.Logger) (bool, error) {
+func CheckCRDExist(_ log.Logger) (bool, error) {
 	c, err := util.GetOrCreateCRDClient()
 	if err != nil {
 		return false, nil

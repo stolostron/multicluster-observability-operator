@@ -91,7 +91,7 @@ func getMCOPred(c client.Client, crdMap map[string]bool) predicate.Funcs {
 			}
 			return retval
 		},
-		DeleteFunc: func(e event.DeleteEvent) bool {
+		DeleteFunc: func(_ event.DeleteEvent) bool {
 			return true
 		},
 	}

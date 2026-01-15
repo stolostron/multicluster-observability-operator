@@ -54,7 +54,7 @@ func main() {
 		Short:         "Remote write federated metrics from prometheus",
 		SilenceErrors: true,
 		SilenceUsage:  true,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			return opt.Run()
 		},
 	}

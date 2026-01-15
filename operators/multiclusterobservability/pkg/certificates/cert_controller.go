@@ -227,9 +227,9 @@ func onUpdate(c client.Client, ingressCtlCrdExists bool) func(oldObj, newObj any
 				var hosts []string
 				switch name := newS.Name; name {
 				case serverCACerts:
-					err, _ = createCASecret(c, nil, nil, true, serverCACerts, serverCACertifcateCN)
+					_, err = createCASecret(c, nil, nil, true, serverCACerts, serverCACertifcateCN)
 				case clientCACerts:
-					err, _ = createCASecret(c, nil, nil, true, clientCACerts, clientCACertificateCN)
+					_, err = createCASecret(c, nil, nil, true, clientCACerts, clientCACertificateCN)
 				case grafanaCerts:
 					err = createCertSecret(c, nil, nil, true, grafanaCerts, false, grafanaCertificateCN, nil, nil, nil)
 				case serverCerts:

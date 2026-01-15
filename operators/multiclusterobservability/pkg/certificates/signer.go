@@ -19,7 +19,7 @@ import (
 func Sign(c client.Client, csr *certificatesv1.CertificateSigningRequest) ([]byte, error) {
 	if os.Getenv("TEST") != "" {
 		// Create the CA secret
-		err, _ := createCASecret(c, nil, nil, false, clientCACerts, clientCACertificateCN) // creates the
+		_, err := createCASecret(c, nil, nil, false, clientCACerts, clientCACertificateCN) // creates the
 		if err != nil {
 			return nil, fmt.Errorf("failed to create CA secret: %w", err)
 		}

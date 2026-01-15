@@ -327,9 +327,8 @@ func DeleteGrafanaOauthClient(c client.Client) error {
 	if err != nil {
 		if !errors.IsNotFound(err) {
 			return err
-		} else {
-			return nil
 		}
+		return nil
 	}
 	err = c.Delete(context.TODO(), found, &client.DeleteOptions{})
 	return err

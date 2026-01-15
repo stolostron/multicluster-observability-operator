@@ -33,6 +33,7 @@ linters:
     - predeclared
     - promlinter
     - reassign
+    - revive
     - staticcheck
     - tparallel
     - unconvert
@@ -56,12 +57,22 @@ linters:
     gosec:
       excludes:
         - G104 # Already covererd by errcheck which allows exclusions
+    revive:
+      enable-default-rules: true
+      rules:
+        - name: var-naming
+          disabled: true
+        - name: exported
+          disabled: true
+        - name: package-comments
+          disabled: true
 
   exclusions:
     rules:
       - path: tests/
         linters:
           - gosec
+          - revive
 
 formatters:
   # Enable specific formatter.
@@ -82,4 +93,5 @@ formatters:
   exclusions:
     paths:
       - "vendor/.*"
+      - "zz_generated.deepcopy.go"
 
