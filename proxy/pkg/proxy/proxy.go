@@ -14,12 +14,8 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"path"
+	"slices"
 	"strings"
-
-	"k8s.io/client-go/rest"
-	"k8s.io/klog/v2"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
 	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/cache"
 	proxyconfig "github.com/stolostron/multicluster-observability-operator/proxy/pkg/config"
@@ -27,6 +23,10 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/informer"
 	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/metricquery"
 	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/util"
+	"k8s.io/client-go/rest"
+	"k8s.io/klog/v2"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/config"
 )
 
 const (
@@ -54,7 +54,14 @@ type Proxy struct {
 }
 
 // NewProxy creates a new Proxy.
-func NewProxy(cfg *rest.Config, serverURL *url.URL, transport http.RoundTripper, upi *cache.UserProjectInfo, managedClusterInformer informer.ManagedClusterInformable, accessReviewer metricquery.AccessReviewer) (*Proxy, error) {
+func NewProxy(
+	cfg *rest.Config,
+	serverURL *url.URL,
+	transport http.RoundTripper,
+	upi *cache.UserProjectInfo,
+	managedClusterInformer informer.ManagedClusterInformable,
+	accessReviewer metricquery.AccessReviewer,
+) (*Proxy, error) {
 	kubeClientTransport, err := rest.TransportFor(cfg)
 	if err != nil {
 		return nil, err
@@ -325,10 +332,8 @@ func isACMLabelQuery(req *http.Request) (bool, error) {
 	}
 
 	matchers := values["match[]"]
-	for _, matcher := range matchers {
-		if matcher == proxyconfig.RBACProxyLabelMetricName {
-			return true, nil
-		}
+	if slices.Contains(matchers, proxyconfig.RBACProxyLabelMetricName) {
+		return true, nil
 	}
 
 	return false, nil

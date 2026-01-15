@@ -1,5 +1,4 @@
-# This file contains all available configuration options
-# with their default values.
+version: "2"
 
 # options for analysis running
 run:
@@ -12,19 +11,9 @@ run:
   # TODO(saswatamcode): Remove this by cleaning up our test suite.
   tests: false
 
-# output configuration options
-output:
-  # colored-line-number|line-number|json|tab|checkstyle, default is "colored-line-number"
-  formats:
-    - format: colored-line-number
-
-  # print lines of code with issue, default is true
-  print-issued-lines: true
-
-  # print linter name in the end of issue text, default is true
-  print-linter-name: true
 
 linters:
+  default: none
   enable:
     # Sorted alphabetically.
     - bodyclose
@@ -32,15 +21,13 @@ linters:
     - exptostd
     - goconst
     - gocritic
-    - gofmt
-    - goimports
     - gosec
-    - gosimple
     - govet
     - ineffassign
     - intrange
     - loggercheck
     - misspell
+    - modernize
     - nolintlint
     - prealloc
     - predeclared
@@ -48,7 +35,6 @@ linters:
     - reassign
     - staticcheck
     - tparallel
-    - typecheck
     - unconvert
     - unparam
     - unused
@@ -57,18 +43,43 @@ linters:
     - wastedassign
     - whitespace
 
-linters-settings:
-  errcheck:
-    exclude-functions:
-      - (github.com/go-kit/log.Logger).Log
-  misspell:
-    locale: US
-  goconst:
-    min-occurrences: 5
+  settings:
+    errcheck:
+      exclude-functions:
+        - (github.com/go-kit/log.Logger).Log
+    misspell:
+      locale: US
+    goconst:
+      min-occurrences: 5
+      ignore-string-values:
+        - 'true'
+    gosec:
+      excludes:
+        - G104 # Already covererd by errcheck which allows exclusions
 
-issues:
-  exclude-rules:
-    # We don't check metrics naming in the tests.
-    - path: _test\.go
-      linters:
-      - promlinter
+  exclusions:
+    rules:
+      - path: tests/
+        linters:
+          - gosec
+
+formatters:
+  # Enable specific formatter.
+  # Default: [] (uses standard Go formatting)
+  enable:
+    - gci
+    - gofmt
+    - gofumpt
+    - goimports
+    - golines
+
+  settings:
+    golines:
+      # Target maximum line length.
+      # Default: 100
+      max-len: 200
+
+  exclusions:
+    paths:
+      - "vendor/.*"
+

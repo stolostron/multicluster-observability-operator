@@ -14,9 +14,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func TestClusterManagmentAddon(t *testing.T) {
@@ -53,8 +52,15 @@ func TestClusterManagmentAddon(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get clustermanagementaddon: (%v)", err)
 	}
-	if addon.Spec.AddOnConfiguration.CRDName != "observabilityaddons.observability.open-cluster-management.io" {
-		t.Fatalf("Wrong CRD name included: %s", addon.Spec.AddOnConfiguration.CRDName)
+	found := false
+	for _, config := range addon.Spec.SupportedConfigs {
+		if config.Group == "observability.open-cluster-management.io" && config.Resource == "observabilityaddons" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("Missing observabilityaddons in SupportedConfigs")
 	}
 	if linkTxt, found := addon.ObjectMeta.Annotations["console.open-cluster-management.io/launch-link-text"]; found == false {
 		t.Fatalf("No launch-link-text annotation included")
@@ -95,8 +101,7 @@ func TestClusterManagmentAddon(t *testing.T) {
 	if clusterManagementAddon.ObjectMeta.Annotations == nil {
 		clusterManagementAddon.ObjectMeta.Annotations = map[string]string{}
 	}
-	clusterManagementAddon.ObjectMeta.Annotations[addonv1alpha1.AddonLifecycleAnnotationKey] =
-		addonv1alpha1.AddonLifecycleSelfManageAnnotationValue
+	clusterManagementAddon.ObjectMeta.Annotations[addonv1alpha1.AddonLifecycleAnnotationKey] = addonv1alpha1.AddonLifecycleSelfManageAnnotationValue
 
 	if err := c.Create(context.TODO(), clusterManagementAddon); err != nil {
 		t.Fatalf("Failed to create clustermanagementaddon: (%v)", err)
@@ -129,5 +134,4 @@ func TestClusterManagmentAddon(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to delete clustermanagementaddon: (%v)", err)
 	}
-
 }

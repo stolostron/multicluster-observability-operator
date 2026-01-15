@@ -46,70 +46,80 @@ func NewMCOGVRV1BETA2() schema.GroupVersionResource {
 	return schema.GroupVersionResource{
 		Group:    MCO_GROUP,
 		Version:  "v1beta2",
-		Resource: "multiclusterobservabilities"}
+		Resource: "multiclusterobservabilities",
+	}
 }
 
 func NewMCOAddonGVR() schema.GroupVersionResource {
 	return schema.GroupVersionResource{
 		Group:    MCO_GROUP,
 		Version:  "v1beta1",
-		Resource: "observabilityaddons"}
+		Resource: "observabilityaddons",
+	}
 }
 
 func NewOCMManifestworksGVR() schema.GroupVersionResource {
 	return schema.GroupVersionResource{
 		Group:    OCM_WORK_GROUP,
 		Version:  "v1",
-		Resource: "manifestworks"}
+		Resource: "manifestworks",
+	}
 }
 
 func NewOCMManagedClustersGVR() schema.GroupVersionResource {
 	return schema.GroupVersionResource{
 		Group:    OCM_CLUSTER_GROUP,
 		Version:  "v1",
-		Resource: "managedclusters"}
+		Resource: "managedclusters",
+	}
 }
 
 func NewMCOClusterManagementAddonsGVR() schema.GroupVersionResource {
 	return schema.GroupVersionResource{
 		Group:    OCM_ADDON_GROUP,
 		Version:  "v1alpha1",
-		Resource: "clustermanagementaddons"}
+		Resource: "clustermanagementaddons",
+	}
 }
 
 func NewMCOManagedClusterAddonsGVR() schema.GroupVersionResource {
 	return schema.GroupVersionResource{
 		Group:    OCM_ADDON_GROUP,
 		Version:  "v1alpha1",
-		Resource: "managedclusteraddons"}
+		Resource: "managedclusteraddons",
+	}
 }
 
 func NewMCOMObservatoriumGVR() schema.GroupVersionResource {
 	return schema.GroupVersionResource{
 		Group:    "core.observatorium.io",
 		Version:  "v1alpha1",
-		Resource: "observatoria"}
+		Resource: "observatoria",
+	}
 }
 
 func NewOCMMultiClusterHubGVR() schema.GroupVersionResource {
 	return schema.GroupVersionResource{
 		Group:    "operator.open-cluster-management.io",
 		Version:  "v1",
-		Resource: "multiclusterhubs"}
+		Resource: "multiclusterhubs",
+	}
 }
 
 func NewPrometheusRuleGVR() schema.GroupVersionResource {
 	return schema.GroupVersionResource{
 		Group:    "monitoring.coreos.com",
 		Version:  "v1",
-		Resource: "prometheusrules"}
+		Resource: "prometheusrules",
+	}
 }
 
 func NewScrapeConfigGVR() schema.GroupVersionResource {
 	return schema.GroupVersionResource{
 		Group:    "monitoring.rhobs",
 		Version:  "v1alpha1",
-		Resource: "scrapeconfigs"}
+		Resource: "scrapeconfigs",
+	}
 }
 
 func GetAllMCOPods(opt TestOptions) ([]corev1.Pod, error) {
@@ -175,7 +185,7 @@ func PrintObject(ctx context.Context, client dynamic.Interface, gvr schema.Group
 	klog.V(1).Infof("Object %s/%s/%s:\n%s", ns, gvr.Resource, name, ToCompactJSON(obj.Object, "", 0, 3))
 }
 
-func ToCompactJSON(v interface{}, prefix string, depth int, maxDepth int) string {
+func ToCompactJSON(v any, prefix string, depth int, maxDepth int) string {
 	if v == nil {
 		return "null"
 	}
@@ -190,7 +200,7 @@ func ToCompactJSON(v interface{}, prefix string, depth int, maxDepth int) string
 	}
 	if rv.Kind() == reflect.Struct {
 		// ToUnstructured requires a pointer
-		var input interface{} = v
+		input := v
 		if reflect.ValueOf(v).Kind() == reflect.Struct {
 			ptr := reflect.New(reflect.TypeOf(v))
 			ptr.Elem().Set(reflect.ValueOf(v))
@@ -283,7 +293,7 @@ func CheckAllPodsAffinity(opt TestOptions) error {
 			continue
 		}
 		if pod.Spec.Affinity == nil {
-			return fmt.Errorf("Failed to check affinity for pod: %s", pod.GetName())
+			return fmt.Errorf("failed to check affinity for pod: %s", pod.GetName())
 		}
 
 		weightedPodAffinityTerms := pod.Spec.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution
@@ -364,7 +374,6 @@ func CheckMCOComponents(opt TestOptions) error {
 		deployList, err := deployments.List(context.TODO(), metav1.ListOptions{
 			LabelSelector: deploymentLabel,
 		})
-
 		if err != nil {
 			klog.Errorf("Error while listing deployment with label %s due to: %s", deploymentLabel, err.Error())
 			return err

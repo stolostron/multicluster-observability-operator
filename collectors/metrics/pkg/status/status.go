@@ -11,9 +11,8 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-logr/logr"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/status"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -25,8 +24,10 @@ type Reporter interface {
 	UpdateStatus(ctx context.Context, reason status.Reason, message string) error
 }
 
-var _ Reporter = &StatusReport{}
-var _ Reporter = &NoopReporter{}
+var (
+	_ Reporter = &StatusReport{}
+	_ Reporter = &NoopReporter{}
+)
 
 type StatusReport struct {
 	statusClient   client.Client

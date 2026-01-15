@@ -188,7 +188,7 @@ func (t *reloadingTransport) reloadTLSConfig() error {
 	defer t.mutex.Unlock()
 
 	t.tlsConfig = newTLSConfig
-	t.Transport.TLSClientConfig = t.tlsConfig
+	t.TLSClientConfig = t.tlsConfig
 
 	return nil
 }

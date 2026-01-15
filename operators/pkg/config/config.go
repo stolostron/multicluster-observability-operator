@@ -54,9 +54,7 @@ const (
 	WorkloadPartitioningNSExpectedValue  = "management"
 )
 
-var (
-	IsMCOTerminating = false
-)
+var IsMCOTerminating = false
 
 const (
 	DefaultClusterType = ""

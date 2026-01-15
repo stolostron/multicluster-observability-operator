@@ -42,9 +42,9 @@ func ReconcileHostedClustersServiceMonitors(ctx context.Context, c client.Client
 
 	reconciledHCsCount := 0
 	for _, cluster := range hostedClusters.Items {
-		namespace := fmt.Sprintf("%s-%s", cluster.ObjectMeta.Namespace, cluster.ObjectMeta.Name)
+		namespace := fmt.Sprintf("%s-%s", cluster.Namespace, cluster.Name)
 
-		etcdSMDesired, err := getEtcdServiceMonitor(ctx, c, namespace, cluster.Spec.ClusterID, cluster.ObjectMeta.Name)
+		etcdSMDesired, err := getEtcdServiceMonitor(ctx, c, namespace, cluster.Spec.ClusterID, cluster.Name)
 		if err != nil {
 			return reconciledHCsCount, fmt.Errorf("failed to get etcd ServiceMonitor: %w", err)
 		}
@@ -53,7 +53,7 @@ func ReconcileHostedClustersServiceMonitors(ctx context.Context, c client.Client
 			return reconciledHCsCount, fmt.Errorf("failed to create/update etcd ServiceMonitor %s/%s: %w", etcdSMDesired.GetNamespace(), etcdSMDesired.GetName(), err)
 		}
 
-		apiServerSMDesired, err := getKubeServiceMonitor(ctx, c, namespace, cluster.Spec.ClusterID, cluster.ObjectMeta.Name)
+		apiServerSMDesired, err := getKubeServiceMonitor(ctx, c, namespace, cluster.Spec.ClusterID, cluster.Name)
 		if err != nil {
 			return reconciledHCsCount, fmt.Errorf("failed to get kube-apiserver ServiceMonitor: %w", err)
 		}
@@ -92,7 +92,7 @@ func DeleteServiceMonitors(ctx context.Context, c client.Client) error {
 // HostedClusterNamespace returns the namespace for a hosted cluster
 // This is a helper function to centralize the logic for creating the namespace name
 func HostedClusterNamespace(cluster *hyperv1.HostedCluster) string {
-	return fmt.Sprintf("%s-%s", cluster.ObjectMeta.Namespace, cluster.ObjectMeta.Name)
+	return fmt.Sprintf("%s-%s", cluster.Namespace, cluster.Name)
 }
 
 func IsHypershiftCluster() (bool, error) {
@@ -127,7 +127,7 @@ func createOrUpdateSM(ctx context.Context, c client.Client, smDesired *promv1.Se
 		return nil
 	}
 
-	smDesired.ObjectMeta.ResourceVersion = smCurrent.ObjectMeta.ResourceVersion
+	smDesired.ResourceVersion = smCurrent.ResourceVersion
 	if err := c.Update(ctx, smDesired, &client.UpdateOptions{}); err != nil {
 		return fmt.Errorf("failed to update ServiceMonitor: %w", err)
 	}

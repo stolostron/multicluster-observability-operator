@@ -10,6 +10,11 @@ import (
 	"strings"
 	"testing"
 
+	yamltool "github.com/ghodss/yaml"
+	cmomanifests "github.com/openshift/cluster-monitoring-operator/pkg/manifests"
+	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
+	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -19,13 +24,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
-
-	yamltool "github.com/ghodss/yaml"
-	cmomanifests "github.com/openshift/cluster-monitoring-operator/pkg/manifests"
-	"github.com/stretchr/testify/assert"
-
-	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
-	"gopkg.in/yaml.v2"
 )
 
 const (
@@ -287,15 +285,19 @@ func TestClusterMonitoringConfigAlertsDisabled(t *testing.T) {
 		assert.True(t, wasUpdated)
 
 		foundclusterMonitoringRevertedCM := &corev1.ConfigMap{}
-		err = c.Get(ctx, types.NamespacedName{Name: clusterMonitoringRevertedName,
-			Namespace: testNamespace}, foundclusterMonitoringRevertedCM)
+		err = c.Get(ctx, types.NamespacedName{
+			Name:      clusterMonitoringRevertedName,
+			Namespace: testNamespace,
+		}, foundclusterMonitoringRevertedCM)
 		if err == nil {
 			t.Fatalf("configmap %s still present after reenabling alerts", clusterMonitoringRevertedName)
 		}
 
 		foundCusterMonitoringConfigMap := &corev1.ConfigMap{}
-		err = c.Get(ctx, types.NamespacedName{Name: clusterMonitoringConfigName,
-			Namespace: promNamespace}, foundCusterMonitoringConfigMap)
+		err = c.Get(ctx, types.NamespacedName{
+			Name:      clusterMonitoringConfigName,
+			Namespace: promNamespace,
+		}, foundCusterMonitoringConfigMap)
 		if err != nil {
 			t.Fatalf("could not retrieve configmap %s: %v", clusterMonitoringConfigName, err)
 		}
@@ -338,8 +340,10 @@ func testCreateOrUpdateClusterMonitoringConfig(t *testing.T, hubInfo *operatorco
 	assert.True(t, wasUpdated)
 
 	foundCusterMonitoringConfigMap := &corev1.ConfigMap{}
-	err = c.Get(ctx, types.NamespacedName{Name: clusterMonitoringConfigName,
-		Namespace: promNamespace}, foundCusterMonitoringConfigMap)
+	err = c.Get(ctx, types.NamespacedName{
+		Name:      clusterMonitoringConfigName,
+		Namespace: promNamespace,
+	}, foundCusterMonitoringConfigMap)
 	if err != nil {
 		t.Fatalf("failed to check configmap %s: %v", clusterMonitoringConfigName, err)
 	}
@@ -377,8 +381,10 @@ func testCreateOrUpdateClusterMonitoringConfig(t *testing.T, hubInfo *operatorco
 			v.BearerToken.LocalObjectReference.Name == hubAmAccessorSecretName+"-"+hubInfo.HubClusterID {
 			containsOCMAlertmanagerConfig = true
 			foundHubAmAccessorSecret := &corev1.Secret{}
-			err = c.Get(ctx, types.NamespacedName{Name: v.BearerToken.LocalObjectReference.Name,
-				Namespace: promNamespace}, foundHubAmAccessorSecret)
+			err = c.Get(ctx, types.NamespacedName{
+				Name:      v.BearerToken.LocalObjectReference.Name,
+				Namespace: promNamespace,
+			}, foundHubAmAccessorSecret)
 			if err != nil {
 				t.Fatalf("failed to check the observability-alertmanager-accessor secret %s: %v", clusterMonitoringConfigName, err)
 			}
@@ -401,8 +407,10 @@ func testCreateOrUpdateClusterMonitoringConfig(t *testing.T, hubInfo *operatorco
 		t.Fatalf("Failed to revert cluster-monitoring-config configmap: (%v)", err)
 	}
 
-	err = c.Get(ctx, types.NamespacedName{Name: clusterMonitoringConfigName,
-		Namespace: promNamespace}, foundCusterMonitoringConfigMap)
+	err = c.Get(ctx, types.NamespacedName{
+		Name:      clusterMonitoringConfigName,
+		Namespace: promNamespace,
+	}, foundCusterMonitoringConfigMap)
 	if expectedCMDelete {
 		if err == nil || !errors.IsNotFound(err) {
 			t.Fatalf("the configmap %s should be deleted", clusterMonitoringConfigName)
@@ -410,15 +418,19 @@ func testCreateOrUpdateClusterMonitoringConfig(t *testing.T, hubInfo *operatorco
 	}
 
 	foundHubAmAccessorSecret := &corev1.Secret{}
-	err = c.Get(ctx, types.NamespacedName{Name: hubAmAccessorSecretName + "-" + hubInfo.HubClusterID,
-		Namespace: promNamespace}, foundHubAmAccessorSecret)
+	err = c.Get(ctx, types.NamespacedName{
+		Name:      hubAmAccessorSecretName + "-" + hubInfo.HubClusterID,
+		Namespace: promNamespace,
+	}, foundHubAmAccessorSecret)
 	if err != nil {
 		t.Fatalf("the secret %s should not be deleted", hubAmAccessorSecretName+"-"+hubInfo.HubClusterID)
 	}
 
 	foundHubAmRouterCASecret := &corev1.Secret{}
-	err = c.Get(ctx, types.NamespacedName{Name: hubAmRouterCASecretName + "-" + hubInfo.HubClusterID,
-		Namespace: promNamespace}, foundHubAmRouterCASecret)
+	err = c.Get(ctx, types.NamespacedName{
+		Name:      hubAmRouterCASecretName + "-" + hubInfo.HubClusterID,
+		Namespace: promNamespace,
+	}, foundHubAmRouterCASecret)
 	if err != nil {
 		t.Fatalf("the secret %s should not be deleted", hubAmRouterCASecretName+"-"+hubInfo.HubClusterID)
 	}

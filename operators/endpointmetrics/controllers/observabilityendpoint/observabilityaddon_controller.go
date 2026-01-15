@@ -9,9 +9,21 @@ import (
 	"errors"
 	"fmt"
 	"os"
-
 	"slices"
 
+	"github.com/go-logr/logr"
+	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/collector"
+	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/hypershift"
+	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/openshift"
+	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/rendering"
+	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/util"
+	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
+	oav1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
+	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
+	"github.com/stolostron/multicluster-observability-operator/operators/pkg/deploying"
+	rendererutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering"
+	"github.com/stolostron/multicluster-observability-operator/operators/pkg/status"
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -29,25 +41,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-
-	"github.com/go-logr/logr"
-	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/collector"
-	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/hypershift"
-	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/openshift"
-	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/rendering"
-	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/util"
-	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
-	oav1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
-	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
-	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
-	"github.com/stolostron/multicluster-observability-operator/operators/pkg/deploying"
-	rendererutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering"
-	"github.com/stolostron/multicluster-observability-operator/operators/pkg/status"
 )
 
-var (
-	globalRes = []*unstructured.Unstructured{}
-)
+var globalRes = []*unstructured.Unstructured{}
 
 const (
 	obAddonName                     = "observability-addon"
@@ -59,6 +55,7 @@ const (
 	uwlMetricsCollectorName         = "uwl-metrics-collector-deployment"
 	uwlNamespace                    = "openshift-user-workload-monitoring"
 )
+
 const (
 	promSvcName   = operatorconfig.OCPClusterMonitoringPrometheusService
 	promNamespace = operatorconfig.OCPClusterMonitoringNamespace
@@ -403,7 +400,6 @@ func (r *ObservabilityAddonReconciler) initFinalization(
 			hubObsAddon.SetFinalizers(remove(hubObsAddon.GetFinalizers(), obsAddonFinalizer))
 			return r.HubClient.Update(ctx, hubObsAddon)
 		})
-
 		if err != nil {
 			r.Logger.Error(err, "Failed to remove finalizer to observabilityaddon", "namespace", hubObsAddon.Namespace)
 			return false, err
@@ -425,7 +421,6 @@ func (r *ObservabilityAddonReconciler) initFinalization(
 			}
 			return nil
 		})
-
 		if err != nil {
 			r.Logger.Error(err, "Failed to add finalizer to observabilityaddon", "namespace", hubObsAddon.Namespace)
 			return false, err
@@ -478,13 +473,13 @@ func (r *ObservabilityAddonReconciler) ensureOpenShiftMonitoringLabelAndRole(ctx
 		return err
 	}
 
-	if len(existingNs.ObjectMeta.Labels) == 0 {
-		existingNs.ObjectMeta.Labels = make(map[string]string)
+	if len(existingNs.Labels) == 0 {
+		existingNs.Labels = make(map[string]string)
 	}
 
-	if _, ok := existingNs.ObjectMeta.Labels[openShiftClusterMonitoringlabel]; !ok {
+	if _, ok := existingNs.Labels[openShiftClusterMonitoringlabel]; !ok {
 		r.Logger.Info(fmt.Sprintf("Adding label: %s to namespace: %s", openShiftClusterMonitoringlabel, resNS))
-		existingNs.ObjectMeta.Labels[openShiftClusterMonitoringlabel] = "true"
+		existingNs.Labels[openShiftClusterMonitoringlabel] = "true"
 
 		err = r.Client.Update(ctx, existingNs)
 		if err != nil {

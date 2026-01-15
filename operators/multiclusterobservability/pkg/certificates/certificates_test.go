@@ -15,14 +15,13 @@ import (
 	"time"
 
 	routev1 "github.com/openshift/api/route/v1"
+	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
+	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-
-	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
-	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 )
 
 var (
@@ -106,7 +105,6 @@ func TestCreateCertificates(t *testing.T) {
 }
 
 func TestRemoveExpiredCA(t *testing.T) {
-
 	caSecret := getExpiredCertSecret()
 	oldCertLength := len(caSecret.Data["tls.crt"])
 	c := fake.NewClientBuilder().WithRuntimeObjects(caSecret).Build()

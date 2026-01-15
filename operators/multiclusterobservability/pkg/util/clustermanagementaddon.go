@@ -13,9 +13,8 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -32,7 +31,8 @@ type clusterManagementAddOnSpec struct {
 }
 
 func CreateClusterManagementAddon(ctx context.Context, c client.Client) (
-	*addonv1alpha1.ClusterManagementAddOn, error) {
+	*addonv1alpha1.ClusterManagementAddOn, error,
+) {
 	clusterManagementAddon, err := newClusterManagementAddon(c)
 	if err != nil {
 		return nil, err
@@ -40,7 +40,6 @@ func CreateClusterManagementAddon(ctx context.Context, c client.Client) (
 
 	found := &addonv1alpha1.ClusterManagementAddOn{}
 	err = c.Get(ctx, types.NamespacedName{Name: ObservabilityController}, found)
-
 	if err != nil {
 		if errors.IsNotFound(err) {
 			log.Info("Creating observability-controller clustermanagementaddon")
@@ -122,14 +121,17 @@ func newClusterManagementAddon(c client.Client) (*addonv1alpha1.ClusterManagemen
 			InstallStrategy: addonv1alpha1.InstallStrategy{
 				Type: addonv1alpha1.AddonInstallStrategyManual,
 			},
-			AddOnConfiguration: addonv1alpha1.ConfigCoordinates{
-				CRDName: clusterManagementAddOnSpec.CRDName,
-			},
 			SupportedConfigs: []addonv1alpha1.ConfigMeta{
 				{
 					ConfigGroupResource: addonv1alpha1.ConfigGroupResource{
 						Group:    AddonGroup,
 						Resource: AddonDeploymentConfigResource,
+					},
+				},
+				{
+					ConfigGroupResource: addonv1alpha1.ConfigGroupResource{
+						Group:    "observability.open-cluster-management.io",
+						Resource: "observabilityaddons",
 					},
 				},
 			},

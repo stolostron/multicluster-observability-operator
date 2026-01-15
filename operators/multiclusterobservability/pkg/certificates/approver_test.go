@@ -9,7 +9,6 @@ import (
 
 	certificatesv1 "k8s.io/api/certificates/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
 )
 

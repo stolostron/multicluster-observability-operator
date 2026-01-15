@@ -19,23 +19,20 @@ import (
 	"slices"
 	"time"
 
-	certificatesv1 "k8s.io/api/certificates/v1"
-	"k8s.io/client-go/util/retry"
-
+	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	mcoutil "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
-
+	certificatesv1 "k8s.io/api/certificates/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-
-	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
-	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
-	mcoutil "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
 )
 
 const (
@@ -90,7 +87,8 @@ func CreateObservabilityCerts(
 
 func createCASecret(c client.Client,
 	scheme *runtime.Scheme, mco *mcov1beta2.MultiClusterObservability,
-	isRenew bool, name string, cn string) (error, bool) {
+	isRenew bool, name string, cn string,
+) (error, bool) {
 	if isRenew {
 		log.Info("To renew CA certificates", "name", name)
 	}
@@ -209,7 +207,8 @@ func createCACertificate(cn string, caKey *rsa.PrivateKey) ([]byte, []byte, erro
 func createCertSecret(c client.Client,
 	scheme *runtime.Scheme, mco *mcov1beta2.MultiClusterObservability,
 	isRenew bool, name string, isServer bool,
-	cn string, ou []string, dns []string, ips []net.IP) error {
+	cn string, ou []string, dns []string, ips []net.IP,
+) error {
 	if isRenew {
 		log.Info("To renew certificates", "name", name)
 	}
@@ -312,7 +311,8 @@ func createCertSecret(c client.Client,
 }
 
 func createCertificate(isServer bool, cn string, ou []string, dns []string, ips []net.IP,
-	caCert *x509.Certificate, caKey *rsa.PrivateKey, key *rsa.PrivateKey) ([]byte, []byte, error) {
+	caCert *x509.Certificate, caKey *rsa.PrivateKey, key *rsa.PrivateKey,
+) ([]byte, []byte, error) {
 	sn, err := rand.Int(rand.Reader, serialNumberLimit)
 	if err != nil {
 		log.Error(err, "failed to generate serial number")
@@ -501,7 +501,7 @@ func GenerateKeyAndCSR() ([]byte, []byte, error) {
 	oidOrganization := []int{2, 5, 4, 11} // Object Identifier (OID) for Organization Unit
 	oidUser := []int{2, 5, 4, 3}          // Object Identifier (OID) for User
 
-	var csrTemplate = x509.CertificateRequest{
+	csrTemplate := x509.CertificateRequest{
 		Subject: pkix.Name{
 			Organization: []string{"Red Hat, Inc."},
 			Country:      []string{"US"},

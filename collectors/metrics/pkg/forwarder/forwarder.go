@@ -22,8 +22,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	clientmodel "github.com/prometheus/client_model/go"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
 	metricshttp "github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/http"
 	rlogger "github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/logger"
 	"github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/metricfamily"
@@ -31,6 +29,7 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/simulator"
 	"github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/status"
 	statuslib "github.com/stolostron/multicluster-observability-operator/operators/pkg/status"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (

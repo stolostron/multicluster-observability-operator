@@ -11,19 +11,19 @@ import (
 	"os"
 	"strings"
 
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
-	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 )
 
 // generateHubInfoSecret generates the secret that contains hubInfo.
 // this function should only called when the watched resources are created/updated.
 func generateHubInfoSecret(client client.Client, obsNamespace string,
-	namespace string, crdMap map[string]bool, isUWMAlertingDisabled bool) (*corev1.Secret, error) {
+	namespace string, crdMap map[string]bool, isUWMAlertingDisabled bool,
+) (*corev1.Secret, error) {
 	var obsAPIHost string
 	alertmanagerEndpoint := ""
 	var alertmanagerRouterCA string
@@ -91,7 +91,7 @@ func generateHubInfoSecret(client client.Client, obsNamespace string,
 		trimmedClusterID, err = config.GetTrimmedClusterID(client)
 		if err != nil {
 			// TODO: include better info
-			return nil, fmt.Errorf("Unable to get hub ClusterID for hub-info-secret: %w", err)
+			return nil, fmt.Errorf("unable to get hub ClusterID for hub-info-secret: %w", err)
 		}
 	} else {
 		// there is no clusterID to get in unit tests.

@@ -83,7 +83,8 @@ type ManagedClusterInformer struct {
 
 // NewManagedClusterInformer creates a new ManagedClusterInformer.
 func NewManagedClusterInformer(ctx context.Context, clusterClient clusterclientset.Interface,
-	kubeClient kubernetes.Interface) *ManagedClusterInformer {
+	kubeClient kubernetes.Interface,
+) *ManagedClusterInformer {
 	return &ManagedClusterInformer{
 		ctx:                    ctx,
 		clusterClient:          clusterClient,
@@ -377,7 +378,6 @@ func (i *ManagedClusterInformer) syncAllowlistConfigMap() {
 		}
 		return err
 	})
-
 	if err != nil {
 		klog.Errorf("Failed to update managed cluster label allowlist ConfigMap after retries: %v", err)
 		return
@@ -565,7 +565,8 @@ func extractMapKeysSet[K comparable, V any](inputMap map[K]V) map[K]struct{} {
 }
 
 func marshalData(obj *v1.ConfigMap, key string,
-	labelList *ManagedClusterLabelList) error {
+	labelList *ManagedClusterLabelList,
+) error {
 	data, err := yaml.Marshal(labelList)
 	if err != nil {
 		return fmt.Errorf("failed to marshal allowlist data: %w", err)
@@ -580,7 +581,8 @@ func marshalData(obj *v1.ConfigMap, key string,
 }
 
 func unmarshalData(data map[string]string, key string,
-	labelList *ManagedClusterLabelList) error {
+	labelList *ManagedClusterLabelList,
+) error {
 	if err := yaml.Unmarshal([]byte(data[key]), labelList); err != nil {
 		return fmt.Errorf("failed to unmarshal data for key %s: %w", key, err)
 	}

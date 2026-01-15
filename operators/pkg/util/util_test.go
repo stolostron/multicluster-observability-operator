@@ -19,7 +19,7 @@ func TestRemove(t *testing.T) {
 		expected []string
 	}
 
-	var testCaseLists = []testCaseList{
+	testCaseLists := []testCaseList{
 		{"Should return string with 'test' removed", []string{"test", "test1", "test2"}, "test", []string{"test1", "test2"}},
 		{"Should return identical list", []string{"test", "test1", "test2"}, "test3", []string{"test", "test1", "test2"}},
 		{"Null String", []string{"", "test", "test1"}, "", []string{"test", "test1"}},
@@ -44,17 +44,17 @@ func TestGetAnnotation(t *testing.T) {
 		key        string
 		expected   string
 	}
-	//tests whether func returns correct value for a given key
+	// tests whether func returns correct value for a given key
 	fullMap := map[string]string{
 		"a": "aTest",
 		"b": "bTest",
 		"c": "cTest",
 	}
 
-	//tests whether func returns nil for a nil map
+	// tests whether func returns nil for a nil map
 	var nilMap map[string]string
 
-	var testCaseLists = []testCaseList{
+	testCaseLists := []testCaseList{
 		{"Fundamental key-value pair", fullMap, "b", "bTest"},
 		{"Nil Map", nilMap, "", ""},
 	}
@@ -75,7 +75,7 @@ func TestGeneratePassword(t *testing.T) {
 		n        int
 		expected error
 	}
-	var testCaseLists = []testCaseList{
+	testCaseLists := []testCaseList{
 		{"=0", 0, nil},
 		{">0", 4, nil},
 	}
@@ -98,8 +98,8 @@ func setEnvVars(http, https, no_proxy string) {
 	os.Setenv("HTTP_PROXY", http)
 	os.Setenv("HTTPS_PROXY", https)
 	os.Setenv("NO_PROXY", no_proxy)
-
 }
+
 func TestProxyEnvVarsAreSet(t *testing.T) {
 	type testCaseList struct {
 		name     string
@@ -108,7 +108,7 @@ func TestProxyEnvVarsAreSet(t *testing.T) {
 		no_proxy string
 		expected bool
 	}
-	var testCaseLists = []testCaseList{
+	testCaseLists := []testCaseList{
 		{"set http", "test", "", "", true},
 		{"set https", "", "test", "", true},
 		{"set no_proxy", "", "", "test", true},
@@ -132,7 +132,7 @@ func TestRemoveDuplicates(t *testing.T) {
 		elements []string
 		expected []string
 	}
-	var testCaseLists = []testCaseList{
+	testCaseLists := []testCaseList{
 		{"One duplicate pair", []string{"a", "b", "a", "c", "d"}, []string{"a", "b", "c", "d"}},
 		{"Two duplicate pairs", []string{"a", "b", "c", "d", "c", "a"}, []string{"a", "b", "c", "d"}},
 		{"No duplicates", []string{"a", "b", "c", "d"}, []string{"a", "b", "c", "d"}},

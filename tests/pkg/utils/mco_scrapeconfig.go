@@ -19,17 +19,17 @@ func CreateScrapeConfig(opt TestOptions, name, componentLabel string, matchParam
 		opt.HubCluster.KubeContext)
 
 	scrapeConfig := &unstructured.Unstructured{
-		Object: map[string]interface{}{
+		Object: map[string]any{
 			"apiVersion": "monitoring.rhobs/v1alpha1",
 			"kind":       "ScrapeConfig",
-			"metadata": map[string]interface{}{
+			"metadata": map[string]any{
 				"name":      name,
 				"namespace": MCO_NAMESPACE,
 				"labels": map[string]string{
 					"app.kubernetes.io/component": componentLabel,
 				},
 			},
-			"spec": map[string]interface{}{
+			"spec": map[string]any{
 				"jobName":     name,
 				"metricsPath": "/federate",
 				"params": map[string][]string{

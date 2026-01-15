@@ -11,17 +11,24 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
 
-	"slices"
-
-	rbacv1 "k8s.io/api/rbac/v1"
-
+	gocmp "github.com/google/go-cmp/cmp"
+	gocmpopts "github.com/google/go-cmp/cmp/cmpopts"
+	mcov1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
+	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
+	cert_controller "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/certificates"
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
+	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
+	authv1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -29,26 +36,15 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/util/retry"
+	"k8s.io/utils/ptr"
+	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
+	workv1 "open-cluster-management.io/api/work/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-
-	gocmp "github.com/google/go-cmp/cmp"
-	gocmpopts "github.com/google/go-cmp/cmp/cmpopts"
-	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
-	workv1 "open-cluster-management.io/api/work/v1"
-
-	mcov1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
-	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
-	cert_controller "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/certificates"
-	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
-	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
-	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
-	authv1 "k8s.io/api/authentication/v1"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/util/retry"
-	"k8s.io/utils/ptr"
 )
 
 const (
@@ -160,11 +156,11 @@ func removePostponeDeleteAnnotationForManifestwork(c client.Client, namespace st
 }
 
 func createManifestwork(ctx context.Context, c client.Client, work *workv1.ManifestWork) error {
-	if work.ObjectMeta.Namespace == config.GetDefaultNamespace() {
+	if work.Namespace == config.GetDefaultNamespace() {
 		return nil
 	}
-	name := work.ObjectMeta.Name
-	namespace := work.ObjectMeta.Namespace
+	name := work.Name
+	namespace := work.Namespace
 	found := &workv1.ManifestWork{}
 	err := c.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, found)
 	if err != nil && k8serrors.IsNotFound(err) {
@@ -226,7 +222,8 @@ func shouldUpdateManifestWork(desiredWork, foundWork *workv1.ManifestWork) bool 
 // endpoint-metrics-operator deploy and hubInfo Secret...
 // this function is expensive and should not be called for each reconcile loop.
 func generateGlobalManifestResources(ctx context.Context, c client.Client, mco *mcov1beta2.MultiClusterObservability, kubeClient kubernetes.Interface) (
-	[]workv1.Manifest, *workv1.Manifest, error) {
+	[]workv1.Manifest, *workv1.Manifest, error,
+) {
 	works := []workv1.Manifest{}
 
 	// inject the namespace
@@ -398,10 +395,10 @@ func createManifestWorks(
 	if CustomCABundle {
 		for i, manifest := range manifests {
 			if manifest.RawExtension.Object.GetObjectKind().GroupVersionKind().Kind == "Secret" {
-				secret := manifest.RawExtension.Object.DeepCopyObject().(*corev1.Secret)
+				secret := manifest.Object.DeepCopyObject().(*corev1.Secret)
 				if secret.Name == managedClusterObsCertName {
 					secret.Data["customCa.crt"] = addonConfig.Spec.ProxyConfig.CABundle
-					manifests[i].RawExtension.Object = secret
+					manifests[i].Object = secret
 					break
 				}
 			}
@@ -426,7 +423,7 @@ func createManifestWorks(
 			Value: "true",
 		})
 
-		dep.ObjectMeta.Name = config.HubEndpointOperatorName
+		dep.Name = config.HubEndpointOperatorName
 	}
 	endpointMetricsOperatorDeployCopy.Spec.Template.Spec = spec
 	manifests = injectIntoWork(manifests, endpointMetricsOperatorDeployCopy)
@@ -480,7 +477,7 @@ func ensureResourcesForHubMetricsCollection(ctx context.Context, c client.Client
 	objectToDeploy := make([]client.Object, 0, len(manifests))
 	keepListKind := []string{"Deployment", "Secret", "ConfigMap", "ServiceAccount", "ClusterRole", "ClusterRoleBinding"}
 	for _, manifest := range manifests {
-		obj, ok := manifest.RawExtension.Object.DeepCopyObject().(client.Object)
+		obj, ok := manifest.Object.DeepCopyObject().(client.Object)
 		if !ok {
 			log.Info("failed casting manaifest object as client.Object", "kind", manifest.Object.GetObjectKind())
 			continue
@@ -766,7 +763,6 @@ func generateAmAccessorTokenSecret(cl client.Client, kubeClient kubernetes.Inter
 			// find out the expected duration of the token
 			createdStr := createdBytes
 			created, err := time.Parse(time.RFC3339, createdStr)
-
 			if err != nil {
 				log.Error(err, "Failed to parse alertmanager accessor token creation date", "created", created)
 				return nil, err
@@ -800,7 +796,6 @@ func generateAmAccessorTokenSecret(cl client.Client, kubeClient kubernetes.Inter
 			ExpirationSeconds: ptr.To(int64(8640 * 3600)), // expires in 364 days
 		},
 	}, metav1.CreateOptions{})
-
 	if err != nil {
 		log.Error(err, "Failed to create token for Alertmanager accessor serviceaccount",
 			"name", config.AlertmanagerAccessorSAName,
@@ -969,7 +964,8 @@ func generateMetricsListCM(client client.Client) (*corev1.ConfigMap, error) {
 // If the addon is found with the override source annotation, it will not update the existing addon but it will use the existing values.
 // If the addon is found without any source annotation, it will add the mco source annotation and use the MCO values (upgrade case from ACM 2.12.2).
 func getObservabilityAddon(c client.Client, namespace string,
-	mco *mcov1beta2.MultiClusterObservability) (*mcov1beta1.ObservabilityAddon, error) {
+	mco *mcov1beta2.MultiClusterObservability,
+) (*mcov1beta1.ObservabilityAddon, error) {
 	if namespace == config.GetDefaultNamespace() {
 		return nil, nil
 	}
@@ -985,7 +981,7 @@ func getObservabilityAddon(c client.Client, namespace string,
 			return nil, err
 		}
 	}
-	if found.ObjectMeta.DeletionTimestamp != nil {
+	if found.DeletionTimestamp != nil {
 		return nil, nil
 	}
 
@@ -1046,7 +1042,17 @@ func removeObservabilityAddonInManifestWork(ctx context.Context, client client.C
 
 	if len(updateManifests) != len(found.Spec.Workload.Manifests) {
 		found.Spec.Workload.Manifests = updateManifests
-		log.Info("Removing ObservabilityAddon from ManifestWork", "name", name, "namespace", namespace, "removed_objects", len(found.Spec.Workload.Manifests)-len(updateManifests), "objects_count", len(updateManifests))
+		log.Info(
+			"Removing ObservabilityAddon from ManifestWork",
+			"name",
+			name,
+			"namespace",
+			namespace,
+			"removed_objects",
+			len(found.Spec.Workload.Manifests)-len(updateManifests),
+			"objects_count",
+			len(updateManifests),
+		)
 		if err := client.Update(ctx, found); err != nil {
 			return fmt.Errorf("failed to update manifestwork %s/%s: %w", namespace, name, err)
 		}
@@ -1056,9 +1062,9 @@ func removeObservabilityAddonInManifestWork(ctx context.Context, client client.C
 
 func logSizeErrorDetails(str string, work *workv1.ManifestWork) {
 	if strings.Contains(str, "the size of manifests") {
-		var keyVal []any
+		keyVal := make([]any, 0, len(work.Spec.Workload.Manifests)*4)
 		for _, manifest := range work.Spec.Workload.Manifests {
-			raw, _ := json.Marshal(manifest.RawExtension.Object)
+			raw, _ := json.Marshal(manifest.Object)
 			keyVal = append(keyVal, "kind", manifest.RawExtension.Object.GetObjectKind().
 				GroupVersionKind().Kind, "size", len(raw))
 		}

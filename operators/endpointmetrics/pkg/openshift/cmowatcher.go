@@ -44,7 +44,14 @@ type CmoConfigChangesWatcher struct {
 //
 // 2. Degrades system status when the bucket reaches capacity
 // 3. Restores normal status when the bucket fill ratio drops below statusResetFillRatio
-func NewCmoConfigChangesWatcher(c client.Client, logger logr.Logger, statusReporter statusUpdaterI, bucketCapacity int, bucketLeakPeriod time.Duration, statusResetFillRatio float64) *CmoConfigChangesWatcher {
+func NewCmoConfigChangesWatcher(
+	c client.Client,
+	logger logr.Logger,
+	statusReporter statusUpdaterI,
+	bucketCapacity int,
+	bucketLeakPeriod time.Duration,
+	statusResetFillRatio float64,
+) *CmoConfigChangesWatcher {
 	return &CmoConfigChangesWatcher{
 		leakyBucket:          newLeakyBucket(bucketCapacity, bucketLeakPeriod),
 		statusReporter:       statusReporter,
@@ -66,7 +73,11 @@ func (c *CmoConfigChangesWatcher) CheckRequest(ctx context.Context, req ctrl.Req
 		// Only add to the bucket on effective cmo configuration updates. Otherwise, requeues for status update will continue filling the bucket.
 		if ok := c.leakyBucket.Add(); !ok {
 			// Is already full. Degrade status and requeue after estimated delay
-			c.logger.Info("Detected excessive reconciliations triggered by CMO configurations, potentially resulting from reconciliation conflicts between operators. Degrading the addon status.", "request", req.String())
+			c.logger.Info(
+				"Detected excessive reconciliations triggered by CMO configurations, potentially resulting from reconciliation conflicts between operators. Degrading the addon status.",
+				"request",
+				req.String(),
+			)
 			wasReported, err := c.statusReporter.UpdateComponentCondition(ctx, status.MetricsCollector, status.CmoReconcileLoopDetected, "CMO configuration is being constantly updated.")
 			if err != nil {
 				if errors.Is(err, status.ErrInvalidTransition) {
@@ -111,7 +122,13 @@ func (c *CmoConfigChangesWatcher) CheckRequest(ctx context.Context, req ctrl.Req
 		targetCapacity := int(float64(c.leakyBucket.Capacity) * c.statusResetFillRatio)
 		remainingLen := max(c.leakyBucket.Len()-targetCapacity, 1)
 		requeueAfter := c.leakyBucket.LeakPeriod * time.Duration(remainingLen)
-		c.logger.Info("Requeueing with delay to ensure status update, bucket fill ratio is too high to restore the addon status", "requeueAfter", requeueAfter, "bucketFillRatio", c.leakyBucket.FillRatio())
+		c.logger.Info(
+			"Requeueing with delay to ensure status update, bucket fill ratio is too high to restore the addon status",
+			"requeueAfter",
+			requeueAfter,
+			"bucketFillRatio",
+			c.leakyBucket.FillRatio(),
+		)
 		return ctrl.Result{RequeueAfter: requeueAfter}, nil
 	}
 

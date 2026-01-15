@@ -487,7 +487,8 @@ func Apply(url string, kubeconfig string, ctx string, yamlB []byte) error {
 				gvr = schema.GroupVersionResource{
 					Group:    "monitoring.coreos.com",
 					Version:  "v1",
-					Resource: "prometheusrules"}
+					Resource: "prometheusrules",
+				}
 			default:
 				return fmt.Errorf("resource %s not supported", kind)
 			}
@@ -624,7 +625,6 @@ func GetPullSecret(opt TestOptions) (string, error) {
 }
 
 func LoginOCUser(opt TestOptions, user string, password string) error {
-	//nolint:gosec
 	cmd, err := exec.Command("oc", "login", "-u", user, "-p", password, "--server", opt.HubCluster.ClusterServerURL, "--insecure-skip-tls-verify").CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("failed to login as %s: %s err %s", user, cmd, err)
@@ -638,6 +638,8 @@ func LoginOCUser(opt TestOptions, user string, password string) error {
 		return err
 	}
 	tokenBytes := token.Bytes()
-	os.Setenv("USER_TOKEN", strings.TrimSpace(string(tokenBytes)))
+	if err := os.Setenv("USER_TOKEN", strings.TrimSpace(string(tokenBytes))); err != nil {
+		return err
+	}
 	return nil
 }

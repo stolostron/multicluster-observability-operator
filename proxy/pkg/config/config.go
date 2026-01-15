@@ -58,5 +58,7 @@ ignore_labels:
 - installer.name
 - installer.namespace
 - local-cluster
-`}}
+`,
+		},
+	}
 }

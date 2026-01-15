@@ -17,10 +17,8 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-
 	clientmodel "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
-
 	rlogger "github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/logger"
 )
 

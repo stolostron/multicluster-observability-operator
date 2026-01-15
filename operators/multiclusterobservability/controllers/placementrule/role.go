@@ -9,14 +9,13 @@ import (
 	"fmt"
 	"reflect"
 
+	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
-	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 )
 
 const (
@@ -70,7 +69,7 @@ func createReadMCOClusterRole(ctx context.Context, c client.Client) error {
 
 	if !reflect.DeepEqual(found.Rules, role.Rules) {
 		log.Info("Updating endpoint-observability-mco-role clusterRole")
-		role.ObjectMeta.ResourceVersion = found.ObjectMeta.ResourceVersion
+		role.ResourceVersion = found.ResourceVersion
 		err = c.Update(ctx, role)
 		if err != nil {
 			return fmt.Errorf("failed to update endpoint-observability-mco-role clusterRole: %w", err)
@@ -120,7 +119,7 @@ func createReadMCOClusterRoleBinding(c client.Client, namespace string, name str
 
 	if !reflect.DeepEqual(found.Subjects, rb.Subjects) && !reflect.DeepEqual(found.RoleRef, rb.RoleRef) {
 		log.Info("Updating endpoint-observability-mco-rolebinding clusterrolebinding")
-		rb.ObjectMeta.ResourceVersion = found.ObjectMeta.ResourceVersion
+		rb.ResourceVersion = found.ResourceVersion
 		err = c.Update(context.TODO(), rb)
 		if err != nil {
 			log.Error(err, "Failed to update endpoint-observability-mco-rolebinding clusterrolebinding")
@@ -221,7 +220,7 @@ func createResourceRole(ctx context.Context, c client.Client) error {
 
 	if !reflect.DeepEqual(found.Rules, role.Rules) {
 		log.Info("Updating endpoint-observability-res-role clusterrole")
-		role.ObjectMeta.ResourceVersion = found.ObjectMeta.ResourceVersion
+		role.ResourceVersion = found.ResourceVersion
 		if err := c.Update(ctx, role); err != nil {
 			log.Error(err, "Failed to update endpoint-observability-res-role clusterrole")
 			return err
@@ -276,7 +275,7 @@ func createResourceRoleBinding(c client.Client, namespace string, name string) e
 
 	if !reflect.DeepEqual(found.Subjects, rb.Subjects) && !reflect.DeepEqual(found.RoleRef, rb.RoleRef) {
 		log.Info("Updating endpoint-observability-res-rolebinding rolebinding", "namespace", namespace)
-		rb.ObjectMeta.ResourceVersion = found.ObjectMeta.ResourceVersion
+		rb.ResourceVersion = found.ResourceVersion
 		err = c.Update(context.TODO(), rb)
 		if err != nil {
 			log.Error(

@@ -32,7 +32,7 @@ func TestTokenFile_Renewal(t *testing.T) {
 	tokenStr, err := token.SignedString(privateKey)
 	assert.NoError(t, err)
 	tmpFile := filepath.Join(t.TempDir(), "token")
-	err = os.WriteFile(tmpFile, []byte(tokenStr), 0644)
+	err = os.WriteFile(tmpFile, []byte(tokenStr), 0o644)
 	assert.NoError(t, err)
 
 	// Create token file with short backoff and wait to trigger failing and finally succesful reads
@@ -51,7 +51,7 @@ func TestTokenFile_Renewal(t *testing.T) {
 	newTokenStr, err := newToken.SignedString(privateKey)
 	assert.NoError(t, err)
 	assert.NotEqual(t, tokenStr, newTokenStr)
-	err = os.WriteFile(tmpFile, []byte(newTokenStr), 0644)
+	err = os.WriteFile(tmpFile, []byte(newTokenStr), 0o644)
 	assert.NoError(t, err)
 
 	// Check that the token has been updated

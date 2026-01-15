@@ -104,7 +104,6 @@ func TestAlertManagerRenderer(t *testing.T) {
 	// alertmanager-proxy must have the secret value generated
 	proxy := getResource[*corev1.Secret](alertResources, "alertmanager-proxy")
 	assert.True(t, len(proxy.Data["session_secret"]) > 0)
-
 }
 
 func TestAlertManagerRendererMCOConfig(t *testing.T) {
@@ -197,7 +196,6 @@ func TestAlertManagerRendererMCOConfig(t *testing.T) {
 			mco: func() *mcov1beta2.MultiClusterObservability {
 				ret := makeBaseMco()
 				ret.Spec.AdvancedConfig = &mcov1beta2.AdvancedConfig{
-
 					Alertmanager: &mcov1beta2.AlertmanagerSpec{
 						CommonSpec: mcov1beta2.CommonSpec{
 							Resources: &corev1.ResourceRequirements{
@@ -338,7 +336,7 @@ func renderTemplates(t *testing.T, kubeClient client.Client, mco *mcov1beta2.Mul
 
 	renderer := NewMCORenderer(mco, kubeClient, imageClient)
 
-	//load and render alertmanager templates
+	// load and render alertmanager templates
 	alertTemplates, err := templates.GetOrLoadAlertManagerTemplates(templatesutil.GetTemplateRenderer())
 	assert.NoError(t, err)
 	alertResources, err := renderer.renderAlertManagerTemplates(alertTemplates, "namespace", map[string]string{"test": "test"})

@@ -9,6 +9,9 @@ import (
 	"fmt"
 	"strconv"
 
+	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	rendererutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering"
+	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apiresource "k8s.io/apimachinery/pkg/api/resource"
@@ -16,10 +19,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/kustomize/api/resource"
-
-	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
-	rendererutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering"
-	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 )
 
 func (r *MCORenderer) newAlertManagerRenderer() {
@@ -55,10 +54,10 @@ func (r *MCORenderer) renderAlertManagerStatefulSet(res *resource.Resource, name
 	crLabelKey := mcoconfig.GetCrLabelKey()
 	imagePullPolicy := mcoconfig.GetImagePullPolicy(r.cr.Spec)
 	dep := obj.(*v1.StatefulSet)
-	dep.ObjectMeta.Labels[crLabelKey] = r.cr.Name
+	dep.Labels[crLabelKey] = r.cr.Name
 	dep.Name = mcoconfig.GetOperandName(mcoconfig.Alertmanager)
 	dep.Spec.Selector.MatchLabels[crLabelKey] = r.cr.Name
-	dep.Spec.Template.ObjectMeta.Labels[crLabelKey] = r.cr.Name
+	dep.Spec.Template.Labels[crLabelKey] = r.cr.Name
 	dep.Spec.Replicas = mcoconfig.GetReplicas(mcoconfig.Alertmanager, r.cr.Spec.InstanceSize, r.cr.Spec.AdvancedConfig)
 
 	spec := &dep.Spec.Template.Spec
@@ -157,7 +156,8 @@ func (r *MCORenderer) renderAlertManagerStatefulSet(res *resource.Resource, name
 }
 
 func (r *MCORenderer) renderAlertManagerSecret(res *resource.Resource,
-	namespace string, labels map[string]string) (*unstructured.Unstructured, error) {
+	namespace string, labels map[string]string,
+) (*unstructured.Unstructured, error) {
 	u, err := r.renderer.RenderNamespace(res, namespace, labels)
 	if err != nil {
 		return nil, err
@@ -186,7 +186,8 @@ func (r *MCORenderer) renderAlertManagerSecret(res *resource.Resource,
 }
 
 func (r *MCORenderer) renderAlertManagerConfigMap(res *resource.Resource,
-	namespace string, labels map[string]string) (*unstructured.Unstructured, error) {
+	namespace string, labels map[string]string,
+) (*unstructured.Unstructured, error) {
 	u, err := r.renderer.RenderNamespace(res, namespace, labels)
 	if err != nil {
 		return nil, err
@@ -235,7 +236,8 @@ func (r *MCORenderer) renderAlertManagerConfigMap(res *resource.Resource,
 }
 
 func (r *MCORenderer) renderAlertManagerTemplates(templates []*resource.Resource,
-	namespace string, labels map[string]string) ([]*unstructured.Unstructured, error) {
+	namespace string, labels map[string]string,
+) ([]*unstructured.Unstructured, error) {
 	uobjs := []*unstructured.Unstructured{}
 	for _, template := range templates {
 		render, ok := r.renderAlertManagerFns[template.GetKind()]

@@ -7,13 +7,14 @@ package observabilityendpoint
 import (
 	"context"
 	"fmt"
-
-	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
-
 	"net/url"
 	"reflect"
 	"strings"
 
+	"github.com/ghodss/yaml"
+	cmomanifests "github.com/openshift/cluster-monitoring-operator/pkg/manifests"
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -21,10 +22,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	"github.com/ghodss/yaml"
-	cmomanifests "github.com/openshift/cluster-monitoring-operator/pkg/manifests"
-	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 )
 
 const (
@@ -148,7 +145,8 @@ func createHubAmRouterCASecret(
 	ctx context.Context,
 	hubInfo *operatorconfig.HubInfo,
 	client client.Client,
-	targetNamespace string) error {
+	targetNamespace string,
+) error {
 	hubAmRouterSecret := hubAmRouterCASecretName + "-" + hubInfo.HubClusterID
 	hubAmRouterCA := hubInfo.AlertmanagerRouterCA
 	dataMap := map[string][]byte{hubAmRouterCASecretKey: []byte(hubAmRouterCA)}
@@ -239,8 +237,10 @@ func createHubAmAccessorTokenSecret(ctx context.Context, client client.Client, n
 // getAmAccessorToken retrieves the alertmanager access token from observability-alertmanager-accessor secret.
 func getAmAccessorToken(ctx context.Context, client client.Client, ns string) (string, error) {
 	amAccessorSecret := &corev1.Secret{}
-	if err := client.Get(ctx, types.NamespacedName{Name: hubAmAccessorSecretName,
-		Namespace: ns}, amAccessorSecret); err != nil {
+	if err := client.Get(ctx, types.NamespacedName{
+		Name:      hubAmAccessorSecretName,
+		Namespace: ns,
+	}, amAccessorSecret); err != nil {
 		return "", err
 	}
 
@@ -844,9 +844,9 @@ func inManagedFields(cm *corev1.ConfigMap) bool {
 
 // isManaged checks if the additional alertmanager config is managed by ACM
 func isManaged(amc cmomanifests.AdditionalAlertmanagerConfig, hubInfo *operatorconfig.HubInfo) bool {
-	if hubInfo != nil && amc.TLSConfig.CA != nil && amc.TLSConfig.CA.LocalObjectReference.Name == hubAmRouterCASecretName+"-"+hubInfo.HubClusterID {
+	if hubInfo != nil && amc.TLSConfig.CA != nil && amc.TLSConfig.CA.Name == hubAmRouterCASecretName+"-"+hubInfo.HubClusterID {
 		return true
-	} else if hubInfo == nil && amc.TLSConfig.CA != nil && strings.Contains(amc.TLSConfig.CA.LocalObjectReference.Name, hubAmRouterCASecretName) {
+	} else if hubInfo == nil && amc.TLSConfig.CA != nil && strings.Contains(amc.TLSConfig.CA.Name, hubAmRouterCASecretName) {
 		// This is only for the CMO cleanup script to clean up old configs
 		return true
 	}
@@ -857,9 +857,8 @@ func isManaged(amc cmomanifests.AdditionalAlertmanagerConfig, hubInfo *operatorc
 func isOldManagedConfig(amc cmomanifests.AdditionalAlertmanagerConfig, hubInfo *operatorconfig.HubInfo) bool {
 	if hubInfo != nil && amc.TLSConfig.CA != nil {
 		clusterDomainName := config.GetClusterName(hubInfo.ObservatoriumAPIEndpoint)
-		if amc.TLSConfig.CA.LocalObjectReference.Name == hubAmRouterCASecretName {
-			return true
-		} else if amc.TLSConfig.CA.LocalObjectReference.Name == hubAmRouterCASecretName+"-"+clusterDomainName {
+		switch amc.TLSConfig.CA.Name {
+		case hubAmRouterCASecretName, hubAmRouterCASecretName + "-" + clusterDomainName:
 			return true
 		}
 	}

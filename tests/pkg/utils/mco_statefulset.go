@@ -8,7 +8,7 @@ import (
 	"context"
 	"fmt"
 
-	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega"
 	appv1 "k8s.io/api/apps/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -16,7 +16,8 @@ import (
 )
 
 func GetStatefulSet(opt TestOptions, isHub bool, name string,
-	namespace string) (*appv1.StatefulSet, error) {
+	namespace string,
+) (*appv1.StatefulSet, error) {
 	clientKube := GetKubeClient(opt, isHub)
 	sts, err := clientKube.AppsV1().StatefulSets(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
@@ -26,14 +27,16 @@ func GetStatefulSet(opt TestOptions, isHub bool, name string,
 }
 
 func GetStatefulSetWithCluster(cluster Cluster, name string,
-	namespace string) (*appv1.StatefulSet, error) {
+	namespace string,
+) (*appv1.StatefulSet, error) {
 	clientKube := GetKubeClientWithCluster(cluster)
 	klog.V(1).Infof("Get statefulset <%v> in namespace <%v> on cluster <%v>", name, namespace, cluster.Name)
 	return clientKube.AppsV1().StatefulSets(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 }
 
 func GetStatefulSetWithLabel(opt TestOptions, isHub bool, label string,
-	namespace string) (*appv1.StatefulSetList, error) {
+	namespace string,
+) (*appv1.StatefulSetList, error) {
 	clientKube := GetKubeClient(opt, isHub)
 	sts, err := clientKube.AppsV1().StatefulSets(namespace).List(context.TODO(), metav1.ListOptions{
 		LabelSelector: label,
@@ -47,7 +50,7 @@ func GetStatefulSetWithLabel(opt TestOptions, isHub bool, label string,
 
 func CheckStatefulSetAvailability(cluster Cluster, name, namespace string, shouldExist bool) {
 	if shouldExist {
-		Eventually(func() error {
+		gomega.Eventually(func() error {
 			sts, err := GetStatefulSetWithCluster(cluster, name, namespace)
 			if err != nil {
 				klog.Errorf("Failed to get statefulset %s/%s: %v", name, namespace, err)
@@ -58,9 +61,9 @@ func CheckStatefulSetAvailability(cluster Cluster, name, namespace string, shoul
 				return fmt.Errorf("statefulset %s/%s is not ready: %d/%d", namespace, name, sts.Status.ReadyReplicas, *sts.Spec.Replicas)
 			}
 			return nil
-		}, 300, 5).Should(Succeed())
+		}, 300, 5).Should(gomega.Succeed())
 	} else {
-		Eventually(func() error {
+		gomega.Eventually(func() error {
 			_, err := GetStatefulSetWithCluster(cluster, name, namespace)
 			if apierrors.IsNotFound(err) {
 				return nil
@@ -70,7 +73,7 @@ func CheckStatefulSetAvailability(cluster Cluster, name, namespace string, shoul
 				return fmt.Errorf("failed to get statefulset %s/%s: %w", name, namespace, err)
 			}
 			return fmt.Errorf("statefulset %s/%s still exists", namespace, name)
-		}, 300, 5).Should(Succeed())
+		}, 300, 5).Should(gomega.Succeed())
 	}
 }
 

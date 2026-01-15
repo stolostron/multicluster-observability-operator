@@ -6,12 +6,6 @@ package multiclusterobservability
 
 import (
 	"context"
-
-	"k8s.io/apimachinery/pkg/api/equality"
-
-	// The import of crypto/md5 below is not for cryptographic use. It is used to hash the contents of files to track
-	// changes and thus it's not a security issue.
-
 	"crypto/md5" // #nosec G401 G501
 	"encoding/hex"
 	"fmt"
@@ -22,10 +16,17 @@ import (
 	"time"
 
 	routev1 "github.com/openshift/api/route/v1"
+	oashared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
+	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
+	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering"
+	mcoutil "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
+	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 	obsv1alpha1 "github.com/stolostron/observatorium-operator/api/v1alpha1"
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -35,13 +36,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-
-	oashared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
-	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
-	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
-	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering"
-	mcoutil "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
-	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 )
 
 const (
@@ -92,7 +86,8 @@ func hashObservatoriumCRConfig(cl client.Client) (string, error) {
 // GenerateObservatoriumCR returns Observatorium cr defined in MultiClusterObservability
 func GenerateObservatoriumCR(
 	cl client.Client, scheme *runtime.Scheme,
-	mco *mcov1beta2.MultiClusterObservability) (*ctrl.Result, error) {
+	mco *mcov1beta2.MultiClusterObservability,
+) (*ctrl.Result, error) {
 	hash, err := hashObservatoriumCRConfig(cl)
 	if err != nil {
 		return &ctrl.Result{}, fmt.Errorf("failed to hash the observatorium CR config: %w", err)
@@ -200,7 +195,8 @@ func GenerateObservatoriumCR(
 }
 
 func getTLSSecretMountPath(client client.Client,
-	objectStorage *oashared.PreConfiguredStorage) (string, error) {
+	objectStorage *oashared.PreConfiguredStorage,
+) (string, error) {
 	found := &v1.Secret{}
 	err := client.Get(
 		context.TODO(),
@@ -237,7 +233,8 @@ func updateTenantID(
 	newSpec *obsv1alpha1.ObservatoriumSpec,
 	newTenant obsv1alpha1.APITenant,
 	oldTenant obsv1alpha1.APITenant,
-	idx int) {
+	idx int,
+) {
 	if oldTenant.Name == newTenant.Name && newTenant.ID == oldTenant.ID {
 		return
 	}
@@ -255,7 +252,8 @@ func updateTenantID(
 func GenerateAPIGatewayRoute(
 	ctx context.Context,
 	runclient client.Client, scheme *runtime.Scheme,
-	mco *mcov1beta2.MultiClusterObservability) (*ctrl.Result, error) {
+	mco *mcov1beta2.MultiClusterObservability,
+) (*ctrl.Result, error) {
 	apiGateway := &routev1.Route{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      obsAPIGateway,
@@ -368,8 +366,7 @@ func newDefaultObservatoriumSpec(cl client.Client, mco *mcov1beta2.MultiClusterO
 		}
 
 		obs.ObjectStorageConfig.Thanos.TLSSecretMountPath = objStorageConf.TLSSecretMountPath
-		obs.ObjectStorageConfig.Thanos.ServiceAccountProjection =
-			mco.Spec.StorageConfig.MetricObjectStorage.ServiceAccountProjection
+		obs.ObjectStorageConfig.Thanos.ServiceAccountProjection = mco.Spec.StorageConfig.MetricObjectStorage.ServiceAccountProjection
 	}
 	return obs, nil
 }
@@ -483,8 +480,10 @@ func applyEndpointsSecret(c client.Client, eps []mcoutil.RemoteWriteEndpointWith
 		Data: epsYamlMap,
 	}
 	found := &v1.Secret{}
-	err = c.Get(context.TODO(), types.NamespacedName{Name: endpointsConfigName,
-		Namespace: mcoconfig.GetDefaultNamespace()}, found)
+	err = c.Get(context.TODO(), types.NamespacedName{
+		Name:      endpointsConfigName,
+		Namespace: mcoconfig.GetDefaultNamespace(),
+	}, found)
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
 			err = c.Create(context.TODO(), epsSecret)
@@ -496,7 +495,7 @@ func applyEndpointsSecret(c client.Client, eps []mcoutil.RemoteWriteEndpointWith
 		}
 	} else {
 		if !reflect.DeepEqual(epsYamlMap, found.Data) {
-			epsSecret.ObjectMeta.ResourceVersion = found.ObjectMeta.ResourceVersion
+			epsSecret.ResourceVersion = found.ResourceVersion
 			err = c.Update(context.TODO(), epsSecret)
 			if err != nil {
 				return err
@@ -534,8 +533,10 @@ func newAPISpec(c client.Client, mco *mcov1beta2.MultiClusterObservability) (obs
 		var mountSecrets []string
 		for _, storageConfig := range mco.Spec.StorageConfig.WriteStorage {
 			storageSecret := &v1.Secret{}
-			err := c.Get(context.TODO(), types.NamespacedName{Name: storageConfig.Name,
-				Namespace: mcoconfig.GetDefaultNamespace()}, storageSecret)
+			err := c.Get(context.TODO(), types.NamespacedName{
+				Name:      storageConfig.Name,
+				Namespace: mcoconfig.GetDefaultNamespace(),
+			}, storageSecret)
 			if err != nil {
 				log.Error(err, "Failed to get the secret", "name", storageConfig.Name)
 				return apiSpec, err
@@ -605,7 +606,8 @@ func newAPISpec(c client.Client, mco *mcov1beta2.MultiClusterObservability) (obs
 
 func newReceiversSpec(
 	mco *mcov1beta2.MultiClusterObservability,
-	scSelected string) obsv1alpha1.ReceiversSpec {
+	scSelected string,
+) obsv1alpha1.ReceiversSpec {
 	receSpec := obsv1alpha1.ReceiversSpec{}
 	if mco.Spec.AdvancedConfig != nil && mco.Spec.AdvancedConfig.RetentionConfig != nil &&
 		mco.Spec.AdvancedConfig.RetentionConfig.RetentionInLocal != "" {

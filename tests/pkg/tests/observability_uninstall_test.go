@@ -11,9 +11,8 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/utils"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func uninstallMCO() {
@@ -40,7 +39,7 @@ func uninstallMCO() {
 
 	By("Waiting for delete all MCO components")
 	Eventually(func() error {
-		var podList, _ = hubClient.CoreV1().Pods(MCO_NAMESPACE).List(context.TODO(), metav1.ListOptions{})
+		podList, _ := hubClient.CoreV1().Pods(MCO_NAMESPACE).List(context.TODO(), metav1.ListOptions{})
 		if len(podList.Items) != 0 {
 			return err
 		}
@@ -73,7 +72,7 @@ func uninstallMCO() {
 
 	By("Waiting for delete all MCO addon components")
 	Eventually(func() error {
-		var podList, _ = hubClient.CoreV1().Pods(MCO_ADDON_NAMESPACE).List(context.TODO(), metav1.ListOptions{})
+		podList, _ := hubClient.CoreV1().Pods(MCO_ADDON_NAMESPACE).List(context.TODO(), metav1.ListOptions{})
 		if len(podList.Items) != 0 {
 			return err
 		}

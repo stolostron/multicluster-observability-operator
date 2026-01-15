@@ -9,18 +9,16 @@ import (
 	"os"
 	"time"
 
-	"k8s.io/apimachinery/pkg/api/equality"
-
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	promclientset "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned"
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/tools/cache"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-
-	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 )
 
 const (
@@ -68,7 +66,7 @@ func Start() {
 func onAdd(promClient promclientset.Interface) func(obj any) {
 	return func(obj any) {
 		sm := obj.(*promv1.ServiceMonitor)
-		if sm.ObjectMeta.OwnerReferences != nil && sm.ObjectMeta.OwnerReferences[0].Kind == "Observatorium" {
+		if sm.OwnerReferences != nil && sm.ObjectMeta.OwnerReferences[0].Kind == "Observatorium" {
 			updateServiceMonitor(promClient, sm)
 		}
 	}
@@ -78,7 +76,7 @@ func onUpdate(promClient promclientset.Interface) func(oldObj any, newObj any) {
 	return func(oldObj any, newObj any) {
 		newSm := newObj.(*promv1.ServiceMonitor)
 		oldSm := oldObj.(*promv1.ServiceMonitor)
-		if newSm.ObjectMeta.OwnerReferences != nil && newSm.ObjectMeta.OwnerReferences[0].Kind == "Observatorium" &&
+		if newSm.OwnerReferences != nil && newSm.ObjectMeta.OwnerReferences[0].Kind == "Observatorium" &&
 			!equality.Semantic.DeepEqual(newSm.Spec, oldSm.Spec) {
 			updateServiceMonitor(promClient, newSm)
 		}
@@ -120,10 +118,10 @@ func rewriteLabels(sm *promv1.ServiceMonitor, resourceVersion string) *promv1.Se
 		},
 	}
 	replacement := metricsNamePrefix + "${1}"
-	endpoints := []promv1.Endpoint{}
+	endpoints := make([]promv1.Endpoint, 0, len(sm.Spec.Endpoints))
 	for _, endpoint := range sm.Spec.Endpoints {
 		if endpoint.MetricRelabelConfigs == nil {
-			metricsRelabels := []promv1.RelabelConfig{}
+			metricsRelabels := make([]promv1.RelabelConfig, 0, 1)
 			metricsRelabels = append(metricsRelabels, promv1.RelabelConfig{
 				SourceLabels: []promv1.LabelName{"__name__"},
 				Regex:        "(.+)",

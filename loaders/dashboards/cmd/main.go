@@ -11,9 +11,8 @@ import (
 	"syscall"
 
 	"github.com/spf13/pflag"
-	"k8s.io/klog"
-
 	"github.com/stolostron/multicluster-observability-operator/loaders/dashboards/pkg/controller"
+	"k8s.io/klog"
 )
 
 func main() {

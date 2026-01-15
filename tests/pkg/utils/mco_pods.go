@@ -14,7 +14,7 @@ import (
 	"k8s.io/klog"
 )
 
-func GetPodList(opt TestOptions, isHub bool, namespace string, labelSelector string) (error, *v1.PodList) {
+func GetPodList(opt TestOptions, isHub bool, namespace string, labelSelector string) (*v1.PodList, error) {
 	clientKube := GetKubeClient(opt, isHub)
 	listOption := metav1.ListOptions{}
 	cluster := opt.HubCluster.BaseDomain
@@ -34,12 +34,12 @@ func GetPodList(opt TestOptions, isHub bool, namespace string, labelSelector str
 			labelSelector,
 			err,
 		)
-		return err, podList
+		return podList, err
 	}
 	if podList != nil && len(podList.Items) == 0 {
 		klog.V(1).Infof("No pod found for labelselector %s namespace %s", labelSelector, namespace)
 	}
-	return nil, podList
+	return podList, nil
 }
 
 func GetPodLogs(

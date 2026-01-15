@@ -375,20 +375,20 @@ func LogManagedClusters(client dynamic.Interface) {
 
 func printPodsStatuses(pods []corev1.Pod) {
 	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)
-	fmt.Fprintln(writer, "NAME\tSTATUS\tRESTARTS\tAGE")
+	_, _ = fmt.Fprintln(writer, "NAME\tSTATUS\tRESTARTS\tAGE")
 	for _, pod := range pods {
 		var restartCount int32
 		if len(pod.Status.ContainerStatuses) > 0 {
 			restartCount = pod.Status.ContainerStatuses[0].RestartCount
 		}
 		age := time.Since(pod.CreationTimestamp.Time).Round(time.Second)
-		fmt.Fprintf(writer, "%s\t%s\t%d\t%s\n",
+		_, _ = fmt.Fprintf(writer, "%s\t%s\t%d\t%s\n",
 			pod.Name,
 			pod.Status.Phase,
 			restartCount,
 			age)
 	}
-	writer.Flush()
+	_ = writer.Flush()
 }
 
 func printDeploymentsStatuses(clientset kubernetes.Interface, namespace string) {
@@ -399,18 +399,18 @@ func printDeploymentsStatuses(clientset kubernetes.Interface, namespace string) 
 	}
 
 	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)
-	fmt.Fprintln(writer, "NAME\tREADY\tUP-TO-DATE\tAVAILABLE\tAGE")
+	_, _ = fmt.Fprintln(writer, "NAME\tREADY\tUP-TO-DATE\tAVAILABLE\tAGE")
 	for _, deployment := range deployments.Items {
 		ready := fmt.Sprintf("%d/%d", deployment.Status.ReadyReplicas, *deployment.Spec.Replicas)
 		age := time.Since(deployment.CreationTimestamp.Time).Round(time.Second)
-		fmt.Fprintf(writer, "%s\t%s\t%d\t%d\t%s\n",
+		_, _ = fmt.Fprintf(writer, "%s\t%s\t%d\t%d\t%s\n",
 			deployment.Name,
 			ready,
 			deployment.Status.UpdatedReplicas,
 			deployment.Status.AvailableReplicas,
 			age)
 	}
-	writer.Flush()
+	_ = writer.Flush()
 }
 
 func printStatefulSetsStatuses(clientset kubernetes.Interface, namespace string) {
@@ -421,16 +421,16 @@ func printStatefulSetsStatuses(clientset kubernetes.Interface, namespace string)
 	}
 
 	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)
-	fmt.Fprintln(writer, "NAME\tREADY\tAGE")
+	_, _ = fmt.Fprintln(writer, "NAME\tREADY\tAGE")
 	for _, statefulSet := range statefulSets.Items {
 		ready := fmt.Sprintf("%d/%d", statefulSet.Status.ReadyReplicas, *statefulSet.Spec.Replicas)
 		age := time.Since(statefulSet.CreationTimestamp.Time).Round(time.Second)
-		fmt.Fprintf(writer, "%s\t%s\t%s\n",
+		_, _ = fmt.Fprintf(writer, "%s\t%s\t%s\n",
 			statefulSet.Name,
 			ready,
 			age)
 	}
-	writer.Flush()
+	_ = writer.Flush()
 }
 
 func printDaemonSetsStatuses(clientset kubernetes.Interface, namespace string) {
@@ -441,17 +441,17 @@ func printDaemonSetsStatuses(clientset kubernetes.Interface, namespace string) {
 	}
 
 	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)
-	fmt.Fprintln(writer, "NAME\tDESIRED\tCURRENT\tREADY\tAGE")
+	_, _ = fmt.Fprintln(writer, "NAME\tDESIRED\tCURRENT\tREADY\tAGE")
 	for _, daemonSet := range daemonSets.Items {
 		age := time.Since(daemonSet.CreationTimestamp.Time).Round(time.Second)
-		fmt.Fprintf(writer, "%s\t%d\t%d\t%d\t%s\n",
+		_, _ = fmt.Fprintf(writer, "%s\t%d\t%d\t%d\t%s\n",
 			daemonSet.Name,
 			daemonSet.Status.DesiredNumberScheduled,
 			daemonSet.Status.CurrentNumberScheduled,
 			daemonSet.Status.NumberReady,
 			age)
 	}
-	writer.Flush()
+	_ = writer.Flush()
 }
 
 func printConfigMapsInNamespace(client kubernetes.Interface, ns string) {
@@ -468,15 +468,15 @@ func printConfigMapsInNamespace(client kubernetes.Interface, ns string) {
 
 	klog.V(1).Infof("ConfigMaps in namespace %s: \n", ns)
 	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)
-	fmt.Fprintln(writer, "NAME\tDATA\tAGE")
+	_, _ = fmt.Fprintln(writer, "NAME\tDATA\tAGE")
 	for _, configMap := range configMaps.Items {
 		age := time.Since(configMap.CreationTimestamp.Time).Round(time.Second)
-		fmt.Fprintf(writer, "%s\t%d\t%s\n",
+		_, _ = fmt.Fprintf(writer, "%s\t%d\t%s\n",
 			configMap.Name,
 			len(configMap.Data),
 			age)
 	}
-	writer.Flush()
+	_ = writer.Flush()
 }
 
 func printSecretsInNamespace(client kubernetes.Interface, ns string) {
@@ -492,14 +492,14 @@ func printSecretsInNamespace(client kubernetes.Interface, ns string) {
 	}
 
 	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)
-	fmt.Fprintln(writer, "NAME\tTYPE\tDATA\tAGE")
+	_, _ = fmt.Fprintln(writer, "NAME\tTYPE\tDATA\tAGE")
 	for _, secret := range secrets.Items {
 		age := time.Since(secret.CreationTimestamp.Time).Round(time.Second)
-		fmt.Fprintf(writer, "%s\t%s\t%d\t%s\n",
+		_, _ = fmt.Fprintf(writer, "%s\t%s\t%d\t%s\n",
 			secret.Name,
 			secret.Type,
 			len(secret.Data),
 			age)
 	}
-	writer.Flush()
+	_ = writer.Flush()
 }

@@ -32,7 +32,6 @@ func TestGetPVCList(t *testing.T) {
 }
 
 func TestCreateClient(t *testing.T) {
-
 	inCluster := false
 	errMsg := "Failed to catch error"
 	_, err := restclient.InClusterConfig()

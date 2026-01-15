@@ -8,15 +8,14 @@ import (
 	"fmt"
 	"strings"
 
+	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	rendererutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering"
+	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/kustomize/api/resource"
-
-	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
-	rendererutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering"
-	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 )
 
 func (r *MCORenderer) newProxyRenderer() {
@@ -36,7 +35,8 @@ func (r *MCORenderer) newProxyRenderer() {
 }
 
 func (r *MCORenderer) renderProxyDeployment(res *resource.Resource,
-	namespace string, labels map[string]string) (*unstructured.Unstructured, error) {
+	namespace string, labels map[string]string,
+) (*unstructured.Unstructured, error) {
 	u, err := r.renderer.RenderDeployments(res, namespace, labels)
 	if err != nil {
 		return nil, err
@@ -49,9 +49,9 @@ func (r *MCORenderer) renderProxyDeployment(res *resource.Resource,
 
 	crLabelKey := mcoconfig.GetCrLabelKey()
 	dep := obj.(*v1.Deployment)
-	dep.ObjectMeta.Labels[crLabelKey] = r.cr.Name
+	dep.Labels[crLabelKey] = r.cr.Name
 	dep.Spec.Selector.MatchLabels[crLabelKey] = r.cr.Name
-	dep.Spec.Template.ObjectMeta.Labels[crLabelKey] = r.cr.Name
+	dep.Spec.Template.Labels[crLabelKey] = r.cr.Name
 	dep.Name = mcoconfig.GetOperandName(mcoconfig.RBACQueryProxy)
 	dep.Spec.Replicas = mcoconfig.GetReplicas(mcoconfig.RBACQueryProxy, r.cr.Spec.InstanceSize, r.cr.Spec.AdvancedConfig)
 
@@ -122,7 +122,8 @@ func (r *MCORenderer) renderProxyDeployment(res *resource.Resource,
 }
 
 func (r *MCORenderer) renderProxySecret(res *resource.Resource,
-	namespace string, labels map[string]string) (*unstructured.Unstructured, error) {
+	namespace string, labels map[string]string,
+) (*unstructured.Unstructured, error) {
 	u, err := r.renderer.RenderNamespace(res, namespace, labels)
 	if err != nil {
 		return nil, err
@@ -152,7 +153,8 @@ func (r *MCORenderer) renderProxySecret(res *resource.Resource,
 }
 
 func (r *MCORenderer) renderProxyTemplates(templates []*resource.Resource,
-	namespace string, labels map[string]string) ([]*unstructured.Unstructured, error) {
+	namespace string, labels map[string]string,
+) ([]*unstructured.Unstructured, error) {
 	uobjs := []*unstructured.Unstructured{}
 	for _, template := range templates {
 		render, ok := r.renderProxyFns[template.GetKind()]

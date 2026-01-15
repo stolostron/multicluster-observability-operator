@@ -12,6 +12,12 @@ import (
 	"strings"
 
 	prometheusv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/microshift"
+	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/rendering/templates"
+	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
+	rendererutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering"
+	templatesutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering/templates"
+	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -19,13 +25,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-
-	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/microshift"
-	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/rendering/templates"
-	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
-	rendererutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering"
-	templatesutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering/templates"
-	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 )
 
 const (
@@ -277,8 +276,10 @@ func Render(
 
 func getDisabledMetrics(ctx context.Context, c runtimeclient.Client, namespace string) (string, error) {
 	cm := &corev1.ConfigMap{}
-	err := c.Get(ctx, types.NamespacedName{Name: operatorconfig.AllowlistConfigMapName,
-		Namespace: namespace}, cm)
+	err := c.Get(ctx, types.NamespacedName{
+		Name:      operatorconfig.AllowlistConfigMapName,
+		Namespace: namespace,
+	}, cm)
 	if err != nil {
 		return "", err
 	}

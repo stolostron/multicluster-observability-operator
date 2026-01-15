@@ -18,21 +18,21 @@ import (
 	"testing"
 	"time"
 
+	imagev1 "github.com/openshift/api/image/v1"
 	oauthv1 "github.com/openshift/api/oauth/v1"
-	routev1 "github.com/openshift/api/route/v1"
-	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
-	"github.com/stretchr/testify/assert"
-
-	mchv1 "github.com/stolostron/multiclusterhub-operator/api/v1"
-	observatoriumv1alpha1 "github.com/stolostron/observatorium-operator/api/v1alpha1"
-
 	operatorv1 "github.com/openshift/api/operator/v1"
+	routev1 "github.com/openshift/api/route/v1"
+	fakeimageclient "github.com/openshift/client-go/image/clientset/versioned/fake"
+	fakeimagev1client "github.com/openshift/client-go/image/clientset/versioned/typed/image/v1/fake"
+	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	mcoshared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
 	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering/templates"
-
+	mchv1 "github.com/stolostron/multiclusterhub-operator/api/v1"
+	observatoriumv1alpha1 "github.com/stolostron/observatorium-operator/api/v1alpha1"
+	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -49,17 +49,12 @@ import (
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
 	clusterv1beta1 "open-cluster-management.io/api/cluster/v1beta1"
 	policyv1 "open-cluster-management.io/governance-policy-propagator/api/v1"
-	"sigs.k8s.io/controller-runtime/pkg/event"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	migrationv1alpha1 "sigs.k8s.io/kube-storage-version-migrator/pkg/apis/migration/v1alpha1"
-
-	imagev1 "github.com/openshift/api/image/v1"
-	fakeimageclient "github.com/openshift/client-go/image/clientset/versioned/fake"
-	fakeimagev1client "github.com/openshift/client-go/image/clientset/versioned/typed/image/v1/fake"
 )
 
 func init() {
@@ -217,8 +212,13 @@ func newClusterManagementAddon() *addonv1alpha1.ClusterManagementAddOn {
 				DisplayName: "ObservabilityController",
 				Description: "ObservabilityController Description",
 			},
-			AddOnConfiguration: addonv1alpha1.ConfigCoordinates{
-				CRDName: "observabilityaddons.observability.open-cluster-management.io",
+			SupportedConfigs: []addonv1alpha1.ConfigMeta{
+				{
+					ConfigGroupResource: addonv1alpha1.ConfigGroupResource{
+						Group:    "observability.open-cluster-management.io",
+						Resource: "observabilityaddons",
+					},
+				},
 			},
 		},
 	}
@@ -913,7 +913,13 @@ func TestImageReplaceForMCO(t *testing.T) {
 				t.Fatalf("The image key(%s) for the container(%s) doesn't exist in the deployment(%s)", imageKey, container.Name, deployName)
 			}
 			if imageValue != container.Image {
-				t.Fatalf("The image(%s) for the container(%s) in the deployment(%s) should be replaced with the one(%s) in the image manifests", container.Image, container.Name, deployName, imageValue)
+				t.Fatalf(
+					"The image(%s) for the container(%s) in the deployment(%s) should be replaced with the one(%s) in the image manifests",
+					container.Image,
+					container.Name,
+					deployName,
+					imageValue,
+				)
 			}
 		}
 	}
@@ -1258,7 +1264,10 @@ func TestNewMCOACRDEventHandler(t *testing.T) {
 			}
 
 			// Create a workqueue
-			queue := workqueue.NewTypedRateLimitingQueueWithConfig(workqueue.DefaultTypedControllerRateLimiter[reconcile.Request](), workqueue.TypedRateLimitingQueueConfig[reconcile.Request]{Name: "testQueue"})
+			queue := workqueue.NewTypedRateLimitingQueueWithConfig(
+				workqueue.DefaultTypedControllerRateLimiter[reconcile.Request](),
+				workqueue.TypedRateLimitingQueueConfig[reconcile.Request]{Name: "testQueue"},
+			)
 			handler.Create(context.TODO(), createEvent, queue)
 
 			reqs := []reconcile.Request{}

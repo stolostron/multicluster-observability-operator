@@ -38,7 +38,6 @@ func EnsureRSConfigMapExists(ctx context.Context, c client.Client, configMapName
 		Name:      existingCM.Name,
 		Namespace: existingCM.Namespace,
 	}, existingCM)
-
 	if err != nil {
 		if errors.IsNotFound(err) {
 			existingCM.Data = getDefaultDataFunc()

@@ -66,7 +66,7 @@ func AddConfigToPlacementInClusterManagementAddon(
 		}
 
 		for i, p := range placements {
-			placement, ok := p.(map[string]interface{})
+			placement, ok := p.(map[string]any)
 			if !ok {
 				continue
 			}
@@ -76,10 +76,10 @@ func AddConfigToPlacementInClusterManagementAddon(
 					return fmt.Errorf("failed to get configs from placement %s: %w", placementName, err)
 				}
 				if !found {
-					configs = []interface{}{}
+					configs = []any{}
 				}
 
-				newConfig := map[string]interface{}{
+				newConfig := map[string]any{
 					"group":    configGVR.Group,
 					"resource": configGVR.Resource,
 					"name":     configName,
@@ -146,7 +146,7 @@ func RemoveConfigFromPlacementInClusterManagementAddon(
 		}
 
 		for i, p := range placements {
-			placement, ok := p.(map[string]interface{})
+			placement, ok := p.(map[string]any)
 			if !ok {
 				continue
 			}
@@ -156,9 +156,9 @@ func RemoveConfigFromPlacementInClusterManagementAddon(
 					return fmt.Errorf("failed to get configs from placement %s or it's not found: %w", placementName, err)
 				}
 
-				newConfigs := []interface{}{}
+				newConfigs := []any{}
 				for _, config := range configs {
-					configMap, ok := config.(map[string]interface{})
+					configMap, ok := config.(map[string]any)
 					if !ok {
 						continue
 					}

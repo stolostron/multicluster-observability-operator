@@ -9,16 +9,15 @@ import (
 	"errors"
 	"slices"
 
+	mcov1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/retry"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	mcov1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
-	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
-	"k8s.io/apimachinery/pkg/api/meta"
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var standardConditionTypes = []string{"Available", "Progressing", "Degraded"}
@@ -35,14 +34,14 @@ func updateAddonStatus(ctx context.Context, c client.Client, addonList mcov1beta
 			managedclusteraddon := &addonv1alpha1.ManagedClusterAddOn{}
 			err := c.Get(ctx, types.NamespacedName{
 				Name:      config.ManagedClusterAddonName,
-				Namespace: addon.ObjectMeta.Namespace,
+				Namespace: addon.Namespace,
 			}, managedclusteraddon)
 			if err != nil {
 				if apierrors.IsNotFound(err) {
-					log.Info("managedclusteraddon does not exist", "namespace", addon.ObjectMeta.Namespace, "name", config.ManagedClusterAddonName)
+					log.Info("managedclusteraddon does not exist", "namespace", addon.Namespace, "name", config.ManagedClusterAddonName)
 					return nil
 				}
-				log.Error(err, "Failed to get managedclusteraddon", "namespace", addon.ObjectMeta.Namespace, "name", config.ManagedClusterAddonName)
+				log.Error(err, "Failed to get managedclusteraddon", "namespace", addon.Namespace, "name", config.ManagedClusterAddonName)
 				return err
 			}
 
@@ -63,12 +62,12 @@ func updateAddonStatus(ctx context.Context, c client.Client, addonList mcov1beta
 			return c.Status().Patch(ctx, desiredAddon, client.MergeFrom(managedclusteraddon))
 		})
 		if retryErr != nil {
-			log.Error(retryErr, "Failed to update status for managedclusteraddon", "namespace", addon.ObjectMeta.Namespace)
+			log.Error(retryErr, "Failed to update status for managedclusteraddon", "namespace", addon.Namespace)
 			allErrors = append(allErrors, retryErr)
 		}
 
 		if retryErr == nil && isUpdated {
-			log.Info("Updated status for managedclusteraddon", "namespace", addon.ObjectMeta.Namespace)
+			log.Info("Updated status for managedclusteraddon", "namespace", addon.Namespace)
 		}
 	}
 

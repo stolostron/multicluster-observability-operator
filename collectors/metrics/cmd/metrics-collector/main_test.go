@@ -21,13 +21,12 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	clientmodel "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
-	"github.com/stretchr/testify/assert"
-	"k8s.io/client-go/kubernetes/scheme"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-
 	"github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/forwarder"
 	"github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/logger"
 	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
+	"github.com/stretchr/testify/assert"
+	"k8s.io/client-go/kubernetes/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func TestMultiWorkers(t *testing.T) {
@@ -72,7 +71,6 @@ func TestMultiWorkers(t *testing.T) {
 		t.Fatal(err)
 	}
 	time.Sleep(1 * time.Second)
-
 }
 
 func TestMultiWorkersRaceCondition(t *testing.T) {

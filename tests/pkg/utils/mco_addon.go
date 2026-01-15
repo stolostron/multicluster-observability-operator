@@ -8,7 +8,7 @@ import (
 	"context"
 	"fmt"
 
-	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -17,7 +17,7 @@ import (
 )
 
 func CheckManagedClusterAddonStatus(opt TestOptions, name string) {
-	Eventually(func() error {
+	gomega.Eventually(func() error {
 		klog.V(1).Infof("Checking ManagedClusterAddon %s status", name)
 		managedClusters, err := GetAvailableManagedClusters(opt)
 		if err != nil {
@@ -41,7 +41,7 @@ func CheckManagedClusterAddonStatus(opt TestOptions, name string) {
 			klog.V(1).Infof("ManagedClusterAddon %s on cluster %s is available", name, cluster.Name)
 		}
 		return nil
-	}, 300, 5).Should(Not(HaveOccurred()))
+	}, 300, 5).Should(gomega.Not(gomega.HaveOccurred()))
 }
 
 // GetAvailableManagedClustersAsClusters returns a list of available managed clusters.

@@ -57,10 +57,9 @@ deps: ## Ensures fresh go.mod and go.sum.
 
 .PHONY: go-format
 go-format: ## Formats Go code including imports.
-go-format: $(GOIMPORTS)
+go-format: $(GOLANGCI_LINT)
 	@echo ">> formatting go code"
-	@go fmt ./...
-	@$(GOIMPORTS) -w $(FILES_TO_FMT)
+	@$(GOLANGCI_LINT) fmt
 
 .PHONY: shell-format
 shell-format: $(SHFMT) ## Formats shell code.

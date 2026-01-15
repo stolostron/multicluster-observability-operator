@@ -30,7 +30,7 @@ func EnableUWLMonitoringOnManagedClusters(opt TestOptions, ocpClusters []Cluster
 		if err != nil {
 			if errors.IsNotFound(err) {
 				// Create configmap if it does not exist
-				config := map[string]interface{}{
+				config := map[string]any{
 					"enableUserWorkload": true,
 				}
 				yamlData, err := yaml.Marshal(config)
@@ -55,7 +55,7 @@ func EnableUWLMonitoringOnManagedClusters(opt TestOptions, ocpClusters []Cluster
 			}
 		} else {
 			// Update existing configmap
-			config := make(map[string]interface{})
+			config := make(map[string]any)
 			if cm.Data != nil && cm.Data[configKey] != "" {
 				err = yaml.Unmarshal([]byte(cm.Data[configKey]), &config)
 				if err != nil {

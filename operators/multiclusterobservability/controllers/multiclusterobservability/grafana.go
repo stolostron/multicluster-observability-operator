@@ -12,6 +12,9 @@ import (
 
 	oauthv1 "github.com/openshift/api/oauth/v1"
 	routev1 "github.com/openshift/api/route/v1"
+	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -22,10 +25,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-
-	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
-	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
-	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 )
 
 const (
@@ -81,7 +80,8 @@ type SecureJsonData struct {
 func GenerateGrafanaDataSource(
 	c client.Client,
 	scheme *runtime.Scheme,
-	mco *mcov1beta2.MultiClusterObservability) (*ctrl.Result, error) {
+	mco *mcov1beta2.MultiClusterObservability,
+) (*ctrl.Result, error) {
 	DynamicTimeInterval := min(mco.Spec.ObservabilityAddonSpec.Interval, 30)
 
 	grafanaDatasources, err := yaml.Marshal(GrafanaDatasources{
@@ -193,7 +193,8 @@ func GenerateGrafanaDataSource(
 
 func GenerateGrafanaRoute(
 	c client.Client, scheme *runtime.Scheme,
-	mco *mcov1beta2.MultiClusterObservability) (*ctrl.Result, error) {
+	mco *mcov1beta2.MultiClusterObservability,
+) (*ctrl.Result, error) {
 	grafanaRoute := &routev1.Route{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      config.GrafanaRouteName,
@@ -275,7 +276,8 @@ func GenerateGrafanaRoute(
 
 func GenerateGrafanaOauthClient(
 	c client.Client, scheme *runtime.Scheme,
-	mco *mcov1beta2.MultiClusterObservability) (*ctrl.Result, error) {
+	mco *mcov1beta2.MultiClusterObservability,
+) (*ctrl.Result, error) {
 	host, err := config.GetRouteHost(c, config.GrafanaRouteName, config.GetDefaultNamespace())
 	if err != nil {
 		return nil, err

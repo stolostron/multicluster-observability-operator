@@ -9,6 +9,9 @@ import (
 	"testing"
 	"time"
 
+	obshared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
+	mcov1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
+	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -18,10 +21,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-
-	obshared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
-	mcov1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
-	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 )
 
 func TestObsAddonCR(t *testing.T) {
@@ -114,7 +113,6 @@ func TestStaleObsAddonCR(t *testing.T) {
 	if err != nil && !errors.IsNotFound(err) {
 		t.Fatalf("Failed to delete observabilityaddon: %v", err)
 	}
-
 }
 
 func TestSetObservabilityAddonSpec(t *testing.T) {

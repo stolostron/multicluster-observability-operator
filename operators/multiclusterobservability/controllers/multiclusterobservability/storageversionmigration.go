@@ -8,6 +8,8 @@ import (
 	"context"
 	"reflect"
 
+	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -15,18 +17,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	migrationv1alpha1 "sigs.k8s.io/kube-storage-version-migrator/pkg/apis/migration/v1alpha1"
-
-	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
-	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 )
 
-var (
-	storageVersionMigrationPrefix = "storage-version-migration"
-)
+var storageVersionMigrationPrefix = "storage-version-migration"
 
 // createOrUpdateObservabilityStorageVersionMigrationResource create or update the StorageVersionMigration resource
 func createOrUpdateObservabilityStorageVersionMigrationResource(client client.Client, scheme *runtime.Scheme,
-	mco *mcov1beta2.MultiClusterObservability) error {
+	mco *mcov1beta2.MultiClusterObservability,
+) error {
 	storageVersionMigrationName := storageVersionMigrationPrefix
 	if mco != nil {
 		storageVersionMigrationName += "-" + mco.GetName()
@@ -65,7 +63,7 @@ func createOrUpdateObservabilityStorageVersionMigrationResource(client client.Cl
 
 	if !reflect.DeepEqual(found.Spec, storageVersionMigration.Spec) {
 		log.Info("Updating StorageVersionMigration", "name", storageVersionMigrationName)
-		storageVersionMigration.ObjectMeta.ResourceVersion = found.ObjectMeta.ResourceVersion
+		storageVersionMigration.ResourceVersion = found.ResourceVersion
 		err = client.Update(context.TODO(), storageVersionMigration)
 		if err != nil {
 			log.Error(err, "Failed to update StorageVersionMigration", "name", storageVersionMigrationName)

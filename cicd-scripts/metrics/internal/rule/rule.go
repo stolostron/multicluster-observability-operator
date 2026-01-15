@@ -33,7 +33,7 @@ func ReadFiles(rulesPath string) ([]*prometheusv1.PrometheusRule, error) {
 }
 
 func ReadFile(rulesPath string) (*prometheusv1.PrometheusRule, error) {
-	fileData, err := os.ReadFile(rulesPath)
+	fileData, err := os.ReadFile(rulesPath) //nolint:gosec
 	if err != nil {
 		return nil, fmt.Errorf("failed to read file %s: %w", rulesPath, err)
 	}

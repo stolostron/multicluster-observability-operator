@@ -15,11 +15,13 @@ import (
 	"sync"
 	"time"
 
-	imagev1client "github.com/openshift/client-go/image/clientset/versioned/typed/image/v1"
-
 	ocinfrav1 "github.com/openshift/api/config/v1"
 	operatorv1 "github.com/openshift/api/operator/v1"
 	routev1 "github.com/openshift/api/route/v1"
+	imagev1client "github.com/openshift/client-go/image/clientset/versioned/typed/image/v1"
+	"github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring"
+	prometheusv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
+	observabilityv1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	obsv1alpha1 "github.com/stolostron/observatorium-operator/api/v1alpha1"
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -29,10 +31,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/uuid"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-
-	"github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring"
-	prometheusv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
-	observabilityv1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 )
 
 const (
@@ -208,9 +206,7 @@ const (
 	MCGHCrdName                    = "multiclusterglobalhubs.operator.open-cluster-management.io"
 )
 
-var (
-	PrometheusScrapeConfigsCrdName = fmt.Sprintf("%s.%s", monitoring.GroupName, prometheusv1alpha1.ScrapeConfigName)
-)
+var PrometheusScrapeConfigsCrdName = fmt.Sprintf("%s.%s", monitoring.GroupName, prometheusv1alpha1.ScrapeConfigName)
 
 const (
 	ResourceTypeConfigMap = "ConfigMap"
@@ -242,16 +238,14 @@ const (
 	UIPluginsCRDName              = "uiplugins.observability.openshift.io"
 )
 
-var (
-	mcoaSupportedCRDs = map[string]string{
-		ClusterLogForwarderCRDName:    "v1",
-		OpenTelemetryCollectorCRDName: "v1beta1",
-		InstrumentationCRDName:        "v1alpha1",
-		PrometheusAgentCRDName:        "v1alpha1",
-		ScrapeConfigCRDName:           "v1alpha1",
-		UIPluginsCRDName:              "v1alpha1",
-	}
-)
+var mcoaSupportedCRDs = map[string]string{
+	ClusterLogForwarderCRDName:    "v1",
+	OpenTelemetryCollectorCRDName: "v1beta1",
+	InstrumentationCRDName:        "v1alpha1",
+	PrometheusAgentCRDName:        "v1alpha1",
+	ScrapeConfigCRDName:           "v1alpha1",
+	UIPluginsCRDName:              "v1alpha1",
+}
 
 // ObjectStorgeConf is used to Unmarshal from bytes to do validation.
 type ObjectStorgeConf struct {
@@ -502,7 +496,7 @@ func getDomainForIngressController(client client.Client, name, namespace string)
 	}
 	domain := ingressOperatorInstance.Status.Domain
 	if domain == "" {
-		return "", fmt.Errorf("no domain found in the ingressOperator: %s/%s.", namespace, name)
+		return "", fmt.Errorf("no domain found in the ingressOperator: %s/%s", namespace, name)
 	}
 	return domain, nil
 }

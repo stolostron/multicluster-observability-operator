@@ -16,16 +16,22 @@ import (
 	"strings"
 	"time"
 
-	imagev1 "github.com/openshift/api/image/v1"
-	imagev1client "github.com/openshift/client-go/image/clientset/versioned/typed/image/v1"
-
-	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
-	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
-
 	"github.com/go-logr/logr"
+	imagev1 "github.com/openshift/api/image/v1"
 	routev1 "github.com/openshift/api/route/v1"
+	imagev1client "github.com/openshift/client-go/image/clientset/versioned/typed/image/v1"
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	monitoringv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
+	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
+	placementctrl "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/placementrule"
+	certctrl "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/certificates"
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering"
+	smctrl "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/servicemonitor"
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
+	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
+	"github.com/stolostron/multicluster-observability-operator/operators/pkg/deploying"
+	commonutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 	mchv1 "github.com/stolostron/multiclusterhub-operator/api/v1"
 	observatoriumv1alpha1 "github.com/stolostron/observatorium-operator/api/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
@@ -41,6 +47,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -50,17 +57,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-
-	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
-	placementctrl "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/placementrule"
-	certctrl "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/certificates"
-	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
-	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
-	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering"
-	smctrl "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/servicemonitor"
-	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
-	"github.com/stolostron/multicluster-observability-operator/operators/pkg/deploying"
-	commonutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 )
 
 const (
@@ -255,12 +251,12 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	}
 	disableMCOACMAORender := !apierrors.IsNotFound(err)
 
-	obsAPIURL, err := mcoconfig.GetObsAPIExternalURL(ctx, r.Client, mcoconfig.GetDefaultNamespace())
+	obsAPIURL, err := config.GetObsAPIExternalURL(ctx, r.Client, config.GetDefaultNamespace())
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to get the Observatorium API URL: %w", err) // Already wrapped
 	}
 
-	alertmanagerURL, err := mcoconfig.GetAlertmanagerURL(ctx, r.Client, mcoconfig.GetDefaultNamespace())
+	alertmanagerURL, err := config.GetAlertmanagerURL(ctx, r.Client, config.GetDefaultNamespace())
 	if err != nil {
 		// IngressController CRD is not available in non-OCP env (Kind), so we need to handle the error
 		// otherwise it breaks everything
@@ -293,11 +289,11 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	// deterministic ordering. Kinds without a defined priority are created last.
 	defaultOrder := 100
 	sort.Slice(toDeploy, func(i, j int) bool {
-		orderA, okA := mcoconfig.KindOrder[toDeploy[i].GetKind()]
+		orderA, okA := config.KindOrder[toDeploy[i].GetKind()]
 		if !okA {
 			orderA = defaultOrder
 		}
-		orderB, okB := mcoconfig.KindOrder[toDeploy[j].GetKind()]
+		orderB, okB := config.KindOrder[toDeploy[j].GetKind()]
 		if !okB {
 			orderB = defaultOrder
 		}
@@ -487,10 +483,10 @@ func getStorageClass(mco *mcov1beta2.MultiClusterObservability, cl client.Client
 	configuredWithValidSC := false
 	storageClassDefault := ""
 	for _, storageClass := range storageClassList.Items {
-		if storageClass.ObjectMeta.Annotations["storageclass.kubernetes.io/is-default-class"] == "true" {
-			storageClassDefault = storageClass.ObjectMeta.Name
+		if storageClass.Annotations["storageclass.kubernetes.io/is-default-class"] == "true" {
+			storageClassDefault = storageClass.Name
 		}
-		if storageClass.ObjectMeta.Name == storageClassSelected {
+		if storageClass.Name == storageClassSelected {
 			configuredWithValidSC = true
 		}
 	}
@@ -812,7 +808,7 @@ func GenerateAlertmanagerRoute(
 	}
 	if !reflect.DeepEqual(found.Spec.TLS, amGateway.Spec.TLS) {
 		log.Info("Found update for the TLS configuration of the Alertmanager Route, try to update the Route")
-		amGateway.ObjectMeta.ResourceVersion = found.ObjectMeta.ResourceVersion
+		amGateway.ResourceVersion = found.ResourceVersion
 		err = runclient.Update(context.TODO(), amGateway)
 		if err != nil {
 			return &ctrl.Result{}, err
@@ -907,7 +903,7 @@ func GenerateProxyRoute(
 	}
 	if !reflect.DeepEqual(found.Spec.TLS, proxyGateway.Spec.TLS) {
 		log.Info("Found update for the TLS configuration of the Proxy Route, try to update the Route")
-		proxyGateway.ObjectMeta.ResourceVersion = found.ObjectMeta.ResourceVersion
+		proxyGateway.ResourceVersion = found.ResourceVersion
 		err = runclient.Update(context.TODO(), proxyGateway)
 		if err != nil {
 			return &ctrl.Result{}, err
@@ -975,13 +971,13 @@ func (r *MultiClusterObservabilityReconciler) ensureOpenShiftNamespaceLabel(ctx 
 		return reconcile.Result{Requeue: true}, err
 	}
 
-	if len(existingNs.ObjectMeta.Labels) == 0 {
-		existingNs.ObjectMeta.Labels = make(map[string]string)
+	if len(existingNs.Labels) == 0 {
+		existingNs.Labels = make(map[string]string)
 	}
 
-	if _, ok := existingNs.ObjectMeta.Labels[config.OpenShiftClusterMonitoringlabel]; !ok {
+	if _, ok := existingNs.Labels[config.OpenShiftClusterMonitoringlabel]; !ok {
 		log.Info(fmt.Sprintf("Adding label: %s to namespace: %s", config.OpenShiftClusterMonitoringlabel, resNS))
-		existingNs.ObjectMeta.Labels[config.OpenShiftClusterMonitoringlabel] = "true"
+		existingNs.Labels[config.OpenShiftClusterMonitoringlabel] = "true"
 
 		err = r.Client.Update(ctx, existingNs)
 		if err != nil {

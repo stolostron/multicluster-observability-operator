@@ -161,7 +161,6 @@ func TestRenderGrafana(t *testing.T) {
 	}
 
 	for tcName, tc := range testCases {
-
 		t.Run(tcName, func(t *testing.T) {
 			mcoRenderer := &MCORenderer{
 				renderer:    rendererutil.NewRenderer(),

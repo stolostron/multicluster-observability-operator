@@ -7,12 +7,11 @@ package util
 import (
 	"context"
 
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 )
 
 func AddBackupLabelToConfigMap(c client.Client, name, namespace string) error {
@@ -21,7 +20,6 @@ func AddBackupLabelToConfigMap(c client.Client, name, namespace string) error {
 		Name:      name,
 		Namespace: namespace,
 	}, m)
-
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
@@ -32,11 +30,11 @@ func AddBackupLabelToConfigMap(c client.Client, name, namespace string) error {
 		}
 	}
 
-	if _, ok := m.ObjectMeta.Labels[config.BackupLabelName]; !ok {
-		if m.ObjectMeta.Labels == nil {
-			m.ObjectMeta.Labels = make(map[string]string)
+	if _, ok := m.Labels[config.BackupLabelName]; !ok {
+		if m.Labels == nil {
+			m.Labels = make(map[string]string)
 		}
-		m.ObjectMeta.Labels[config.BackupLabelName] = config.BackupLabelValue
+		m.Labels[config.BackupLabelName] = config.BackupLabelValue
 		err := c.Update(context.TODO(), m)
 		if err != nil {
 			return err
@@ -53,7 +51,6 @@ func AddBackupLabelToSecret(c client.Client, name, namespace string) error {
 		Name:      name,
 		Namespace: namespace,
 	}, s)
-
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
@@ -68,16 +65,16 @@ func AddBackupLabelToSecret(c client.Client, name, namespace string) error {
 }
 
 func AddBackupLabelToSecretObj(c client.Client, s *corev1.Secret) error {
-	if _, ok := s.ObjectMeta.Labels[config.BackupLabelName]; !ok {
-		if s.ObjectMeta.Labels == nil {
-			s.ObjectMeta.Labels = make(map[string]string)
+	if _, ok := s.Labels[config.BackupLabelName]; !ok {
+		if s.Labels == nil {
+			s.Labels = make(map[string]string)
 		}
-		s.ObjectMeta.Labels[config.BackupLabelName] = config.BackupLabelValue
+		s.Labels[config.BackupLabelName] = config.BackupLabelValue
 		err := c.Update(context.TODO(), s)
 		if err != nil {
 			return err
 		} else {
-			log.Info("Add backup label for secret", "name", s.ObjectMeta.Name)
+			log.Info("Add backup label for secret", "name", s.Name)
 		}
 	}
 	return nil

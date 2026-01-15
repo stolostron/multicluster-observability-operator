@@ -28,7 +28,7 @@ func init() {
 func createCSR() []byte {
 	keys, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	var csrTemplate = x509.CertificateRequest{
+	csrTemplate := x509.CertificateRequest{
 		Subject: pkix.Name{
 			Country: []string{"US"},
 		},

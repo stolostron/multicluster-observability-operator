@@ -15,6 +15,14 @@ import (
 
 	"github.com/go-logr/logr"
 	operatorv1 "github.com/openshift/api/operator/v1"
+	mcov1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
+	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
+	cert_controller "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/certificates"
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering/templates"
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
+	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
+	templatesutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering/templates"
 	mchv1 "github.com/stolostron/multiclusterhub-operator/api/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -41,15 +49,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-
-	mcov1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
-	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
-	cert_controller "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/certificates"
-	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
-	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering/templates"
-	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
-	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
-	templatesutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering/templates"
 )
 
 const (
@@ -594,7 +593,19 @@ func createAllRelatedRes(
 			log.Error(err, "Failed to create managedcluster resources", "namespace", managedCluster)
 			continue
 		}
-		manifestWork, err := createManifestWorks(c, namespace, mci, mco, works, metricsAllowlistConfigMap, crdv1Work, endpointMetricsOperatorDeploy, hubInfoSecret.DeepCopy(), addonDeployCfg, installProm)
+		manifestWork, err := createManifestWorks(
+			c,
+			namespace,
+			mci,
+			mco,
+			works,
+			metricsAllowlistConfigMap,
+			crdv1Work,
+			endpointMetricsOperatorDeploy,
+			hubInfoSecret.DeepCopy(),
+			addonDeployCfg,
+			installProm,
+		)
 		if err != nil {
 			allErrors = append(allErrors, fmt.Errorf("failed to create manifestworks: %w", err))
 			log.Error(err, "Failed to create manifestworks")
@@ -644,8 +655,8 @@ func setDefaultDeploymentConfigVar(ctx context.Context, c client.Client) error {
 	//   (i.e. was deleted or there's a typo).
 	defaultAddonDeploymentConfig = &addonv1alpha1.AddOnDeploymentConfig{}
 	for _, config := range clusterAddon.Spec.SupportedConfigs {
-		if config.ConfigGroupResource.Group == util.AddonGroup &&
-			config.ConfigGroupResource.Resource == util.AddonDeploymentConfigResource {
+		if config.Group == util.AddonGroup &&
+			config.Resource == util.AddonDeploymentConfigResource {
 			if config.DefaultConfig != nil {
 				addonConfig := &addonv1alpha1.AddOnDeploymentConfig{}
 				err := c.Get(ctx,
@@ -728,12 +739,12 @@ func createManagedClusterRes(ctx context.Context, c client.Client, mco *mcov1bet
 	addonConfig := &addonv1alpha1.AddOnDeploymentConfig{}
 	isCustomConfig := false
 	for _, config := range addon.Spec.Configs {
-		if config.ConfigGroupResource.Group == util.AddonGroup &&
-			config.ConfigGroupResource.Resource == util.AddonDeploymentConfigResource {
+		if config.Group == util.AddonGroup &&
+			config.Resource == util.AddonDeploymentConfigResource {
 			err = c.Get(ctx,
 				types.NamespacedName{
-					Name:      config.ConfigReferent.Name,
-					Namespace: config.ConfigReferent.Namespace,
+					Name:      config.Name,
+					Namespace: config.Namespace,
 				},
 				addonConfig,
 			)

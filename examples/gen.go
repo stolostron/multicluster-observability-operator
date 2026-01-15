@@ -28,7 +28,7 @@ func main() {
 	privkeyPath := "./minio/certs/private.key"
 	caPath := "./minio/certs/ca.crt"
 	serverName := "minio"
-	var caRoot = &x509.Certificate{
+	caRoot := &x509.Certificate{
 		SerialNumber:          big.NewInt(2019),
 		NotAfter:              time.Now().AddDate(10, 0, 0),
 		IsCA:                  true,
@@ -37,7 +37,7 @@ func main() {
 		BasicConstraintsValid: true,
 	}
 
-	var cert = &x509.Certificate{
+	cert := &x509.Certificate{
 		SerialNumber: big.NewInt(1658),
 		DNSNames:     []string{serverName},
 		IPAddresses:  []net.IP{net.ParseIP("127.0.0.1"), net.ParseIP("::1")},
@@ -68,7 +68,7 @@ func main() {
 		Type:  "CERTIFICATE",
 		Bytes: caBytes,
 	})
-	err = os.WriteFile(caPath, caPEM, 0600)
+	err = os.WriteFile(caPath, caPEM, 0o600)
 	if err != nil {
 		log.Error(err)
 		os.Exit(1)
@@ -84,7 +84,7 @@ func main() {
 		Type:  "CERTIFICATE",
 		Bytes: certBytes,
 	})
-	err = os.WriteFile(certPath, certPEM, 0600)
+	err = os.WriteFile(certPath, certPEM, 0o600)
 	if err != nil {
 		log.Error(err)
 		os.Exit(1)
@@ -94,7 +94,7 @@ func main() {
 		Type:  "RSA PRIVATE KEY",
 		Bytes: x509.MarshalPKCS1PrivateKey(certPrivKey),
 	})
-	err = os.WriteFile(privkeyPath, certPrivKeyPEM, 0600)
+	err = os.WriteFile(privkeyPath, certPrivKeyPEM, 0o600)
 	if err != nil {
 		log.Error(err)
 		os.Exit(1)

@@ -12,6 +12,13 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/go-logr/logr"
+	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/collector"
+	oashared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
+	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
+	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
+	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -23,14 +30,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/kustomize/kyaml/yaml"
-
-	"github.com/go-logr/logr"
-	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
-	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/collector"
-	oashared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
-	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
-	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
-	"github.com/stretchr/testify/assert"
 )
 
 const (
@@ -277,7 +276,6 @@ func TestMetricsCollectorResourcesUpdate(t *testing.T) {
 			tc.expects(t, deployment, uwlDeployment)
 		})
 	}
-
 }
 
 // TestMetricsCollectorResourcesUpdate_Owner verifies that all generated resources are owned by the addon

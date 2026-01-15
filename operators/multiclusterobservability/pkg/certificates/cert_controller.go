@@ -11,27 +11,23 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"slices"
 	"time"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"open-cluster-management.io/addon-framework/pkg/addonmanager"
-
+	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
-
-	"slices"
-
 	appv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
+	"open-cluster-management.io/addon-framework/pkg/addonmanager"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
-	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 )
 
 const (
@@ -126,7 +122,7 @@ func updateDeployLabel(c client.Client, dName string, isUpdate bool) {
 	}
 	if isUpdate || dep.Status.ReadyReplicas != 0 {
 		newDep := dep.DeepCopy()
-		newDep.Spec.Template.ObjectMeta.Labels[restartLabel] = time.Now().Format("2006-1-2.150405")
+		newDep.Spec.Template.Labels[restartLabel] = time.Now().Format("2006-1-2.150405")
 		err := c.Patch(context.TODO(), newDep, client.StrategicMergeFrom(dep))
 		if err != nil {
 			log.Error(err, "Failed to update the deployment", "name", dName)
@@ -229,19 +225,19 @@ func onUpdate(c client.Client, ingressCtlCrdExists bool) func(oldObj, newObj any
 			if needsRenew(newS) {
 				var err error
 				var hosts []string
-				switch name := newS.Name; {
-				case name == serverCACerts:
+				switch name := newS.Name; name {
+				case serverCACerts:
 					err, _ = createCASecret(c, nil, nil, true, serverCACerts, serverCACertifcateCN)
-				case name == clientCACerts:
+				case clientCACerts:
 					err, _ = createCASecret(c, nil, nil, true, clientCACerts, clientCACertificateCN)
-				case name == grafanaCerts:
+				case grafanaCerts:
 					err = createCertSecret(c, nil, nil, true, grafanaCerts, false, grafanaCertificateCN, nil, nil, nil)
-				case name == serverCerts:
+				case serverCerts:
 					hosts, err = getHosts(c, ingressCtlCrdExists)
 					if err == nil {
 						err = createCertSecret(c, nil, nil, true, serverCerts, true, serverCertificateCN, nil, hosts, nil)
 					}
-				case name == hubMetricsCollectorMtlsCert:
+				case hubMetricsCollectorMtlsCert:
 					// ACM 8509: Special case for hub metrics collector
 					// Delete the MTLS secret and the placement controller will reconcile to create a new one
 					HubMtlsSecret := &v1.Secret{

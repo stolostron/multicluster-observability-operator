@@ -7,17 +7,16 @@ package placementrule
 import (
 	"testing"
 
+	config "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	"gopkg.in/yaml.v2"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
+	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
-
-	config "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
-	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
-	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 )
 
 func TestMCOPredFunc(t *testing.T) {
@@ -30,10 +29,12 @@ func TestMCOPredFunc(t *testing.T) {
 	mcoWithAnnotation := newTestMCOWithAlertDisableAnnotation()
 	pull := newTestPullSecret()
 
-	objs := []runtime.Object{pull, newConsoleRoute(), newTestObsApiRoute(),
+	objs := []runtime.Object{
+		pull, newConsoleRoute(), newTestObsApiRoute(),
 		newTestAlertmanagerRoute(), newTestIngressController(), newTestRouteCASecret(),
 		newCASecret(), newCertSecret(mcoNamespace), NewMetricsAllowListCM(),
-		NewAmAccessorSA(), newTestAmDefaultCA(), newManagedClusterAddon()}
+		NewAmAccessorSA(), newTestAmDefaultCA(), newManagedClusterAddon(),
+	}
 	cl := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 
 	caseList := []struct {

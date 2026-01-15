@@ -15,6 +15,12 @@ import (
 
 	"github.com/go-logr/logr"
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/openshift"
+	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/rendering"
+	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
+	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
+	"github.com/stolostron/multicluster-observability-operator/operators/pkg/status"
+	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -27,13 +33,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-
-	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/openshift"
-	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/rendering"
-	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
-	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
-	"github.com/stolostron/multicluster-observability-operator/operators/pkg/status"
-	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 )
 
 const (
@@ -484,8 +483,10 @@ func (m *MetricsCollector) ensureAlertingRule(ctx context.Context, isUWL bool) e
 								"summary":     "Error forwarding to Hub Thanos.",
 								"description": "There are errors when remote writing to Hub hub Thanos",
 							},
-							Expr: intstr.FromString(`(sum(rate(` + replace + `forward_write_requests_total{status_code!~"2.*"}[10m]))) / (sum(rate(` + replace + `forward_write_requests_total[10m]))) > .2`),
-							For:  &forDuration,
+							Expr: intstr.FromString(
+								`(sum(rate(` + replace + `forward_write_requests_total{status_code!~"2.*"}[10m]))) / (sum(rate(` + replace + `forward_write_requests_total[10m]))) > .2`,
+							),
+							For: &forDuration,
 							Labels: map[string]string{
 								"severity": "critical",
 							},
@@ -797,9 +798,23 @@ func (m *MetricsCollector) ensureDeployment(ctx context.Context, isUWL bool, dep
 		isDifferentReplicas := !equality.Semantic.DeepEqual(desiredMetricsCollectorDep.Spec.Replicas, foundMetricsCollectorDep.Spec.Replicas)
 		isDifferentOwner := !metav1.IsControlledBy(foundMetricsCollectorDep, m.Owner)
 		if isDifferentSpec || isDifferentReplicas || isDifferentOwner || deployParams.forceRestart {
-			m.Log.Info("Updating Deployment", "name", name, "namespace", m.Namespace, "isDifferentSpec", isDifferentSpec, "isDifferentReplicas", isDifferentReplicas, "forceRestart", deployParams.forceRestart, "isDifferentOwner", isDifferentOwner)
+			m.Log.Info(
+				"Updating Deployment",
+				"name",
+				name,
+				"namespace",
+				m.Namespace,
+				"isDifferentSpec",
+				isDifferentSpec,
+				"isDifferentReplicas",
+				isDifferentReplicas,
+				"forceRestart",
+				deployParams.forceRestart,
+				"isDifferentOwner",
+				isDifferentOwner,
+			)
 			if deployParams.forceRestart && foundMetricsCollectorDep.Status.ReadyReplicas != 0 {
-				desiredMetricsCollectorDep.Spec.Template.ObjectMeta.Labels[restartLabel] = time.Now().Format("2006-1-2.150405")
+				desiredMetricsCollectorDep.Spec.Template.Labels[restartLabel] = time.Now().Format("2006-1-2.150405")
 			}
 
 			desiredMetricsCollectorDep.ResourceVersion = foundMetricsCollectorDep.ResourceVersion
@@ -889,7 +904,7 @@ func (m *MetricsCollector) getCommands(isUSW bool, deployParams *deploymentParam
 				}
 
 				for _, rule := range group.CollectRuleList {
-					matchList := []string{}
+					matchList := make([]string, 0, len(rule.Metrics.MatchList))
 					for _, match := range rule.Metrics.MatchList {
 						matchList = append(matchList, `"`+strings.ReplaceAll(match, `"`, `\"`)+`"`)
 						if name := getNameInMatch(match); name != "" {
@@ -948,8 +963,10 @@ func (m *MetricsCollector) getMetricsAllowlist(ctx context.Context) (*operatorco
 
 	// get allowlist configmap
 	cm := &corev1.ConfigMap{}
-	err := m.Client.Get(ctx, types.NamespacedName{Name: operatorconfig.AllowlistConfigMapName,
-		Namespace: m.Namespace}, cm)
+	err := m.Client.Get(ctx, types.NamespacedName{
+		Name:      operatorconfig.AllowlistConfigMapName,
+		Namespace: m.Namespace,
+	}, cm)
 	if err != nil {
 		m.Log.Error(err, "Failed to get configmap", "name", operatorconfig.AllowlistConfigMapName, "namespace", m.Namespace)
 	}
@@ -979,20 +996,20 @@ func (m *MetricsCollector) getMetricsAllowlist(ctx context.Context) (*operatorco
 	}
 
 	for _, allowlistCM := range cmList.Items {
-		if allowlistCM.ObjectMeta.Name != operatorconfig.AllowlistCustomConfigMapName {
+		if allowlistCM.Name != operatorconfig.AllowlistCustomConfigMapName {
 			continue
 		}
 
-		cmNamespaces = append(cmNamespaces, allowlistCM.ObjectMeta.Namespace)
+		cmNamespaces = append(cmNamespaces, allowlistCM.Namespace)
 
 		customAllowlist, customUwlAllowlist, err := util.ParseAllowlistConfigMap(allowlistCM)
 		if err != nil {
-			m.Log.Error(err, "Failed to parse data in configmap", "namespace", allowlistCM.ObjectMeta.Namespace, "name", allowlistCM.ObjectMeta.Name)
+			m.Log.Error(err, "Failed to parse data in configmap", "namespace", allowlistCM.Namespace, "name", allowlistCM.Name)
 			continue
 		}
 
-		if allowlistCM.ObjectMeta.Namespace != m.Namespace {
-			customUwlAllowlist = injectNamespaceLabel(customUwlAllowlist, allowlistCM.ObjectMeta.Namespace)
+		if allowlistCM.Namespace != m.Namespace {
+			customUwlAllowlist = injectNamespaceLabel(customUwlAllowlist, allowlistCM.Namespace)
 		}
 
 		allowList, userAllowList = util.MergeAllowlist(allowList, customAllowlist, userAllowList, customUwlAllowlist)
@@ -1055,7 +1072,8 @@ func getNameInMatch(match string) string {
 // 1. only support "names" and "matches".
 // 2. inject namespace label filter for all entries in the allowlist.
 func injectNamespaceLabel(allowlist *operatorconfig.MetricsAllowlist,
-	namespace string) *operatorconfig.MetricsAllowlist {
+	namespace string,
+) *operatorconfig.MetricsAllowlist {
 	updatedList := &operatorconfig.MetricsAllowlist{
 		NameList:  []string{},
 		MatchList: []string{},

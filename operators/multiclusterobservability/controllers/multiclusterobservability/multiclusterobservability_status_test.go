@@ -26,7 +26,6 @@ import (
 )
 
 func TestFillupStatus(t *testing.T) {
-
 	raw := `
 conditions:
 - message: Installation is in progress

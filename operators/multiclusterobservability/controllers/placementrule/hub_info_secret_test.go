@@ -12,14 +12,13 @@ import (
 	routev1 "github.com/openshift/api/route/v1"
 	mcoshared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-
-	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
-	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 )
 
 const (
@@ -79,7 +78,6 @@ func newTestIngressController() *operatorv1.IngressController {
 			},
 		},
 	}
-
 }
 
 func newTestRouteCASecret() *corev1.Secret {
@@ -195,7 +193,10 @@ func TestNewSecret(t *testing.T) {
 	}
 	if !strings.HasPrefix(hub.ObservatoriumAPIEndpoint, "https://observatorium-api-open-cluster-management-observability.apps.test-host") ||
 		hub.AlertmanagerEndpoint != "https://"+routeHost || hub.AlertmanagerRouterCA != routerCA || hub.HubClusterID != "1a9af6dc0801433cb28a200af81" {
-		t.Fatalf("Wrong content in hub info secret: \ngot: "+hub.ObservatoriumAPIEndpoint+" "+hub.AlertmanagerEndpoint+" "+hub.AlertmanagerRouterCA, clusterName+" "+"https://test-host"+" "+"test-host"+" "+routerCA)
+		t.Fatalf(
+			"Wrong content in hub info secret: \ngot: "+hub.ObservatoriumAPIEndpoint+" "+hub.AlertmanagerEndpoint+" "+hub.AlertmanagerRouterCA,
+			clusterName+" "+"https://test-host"+" "+"test-host"+" "+routerCA,
+		)
 	}
 
 	// Test UWM alerting disabled
@@ -274,9 +275,11 @@ func TestNewSecret(t *testing.T) {
 		t.Fatalf("Failed to unmarshal data in hub info secret (%v)", err)
 	}
 	if !strings.HasPrefix(hub.ObservatoriumAPIEndpoint, "https://custom-obs:8080") || !strings.HasPrefix(hub.AlertmanagerEndpoint, "https://custom-am") || hub.AlertmanagerRouterCA != routerCA {
-		t.Fatalf("Wrong content in hub info secret: \ngot: "+hub.ObservatoriumAPIEndpoint+" "+hub.AlertmanagerEndpoint+" "+hub.AlertmanagerRouterCA, clusterName+" "+"https://custom-obs"+" "+"custom-obs"+" "+routerCA)
+		t.Fatalf(
+			"Wrong content in hub info secret: \ngot: "+hub.ObservatoriumAPIEndpoint+" "+hub.AlertmanagerEndpoint+" "+hub.AlertmanagerRouterCA,
+			clusterName+" "+"https://custom-obs"+" "+"custom-obs"+" "+routerCA,
+		)
 	}
-
 }
 
 func TestNewBYOSecret(t *testing.T) {
@@ -301,6 +304,9 @@ func TestNewBYOSecret(t *testing.T) {
 	}
 	if !strings.HasPrefix(hub.ObservatoriumAPIEndpoint, "https://observatorium-api-open-cluster-management-observability.apps.test-host") ||
 		hub.AlertmanagerEndpoint != "https://"+routeHost || hub.AlertmanagerRouterCA != routerBYOCA {
-		t.Fatalf("Wrong content in hub info secret: \ngot: "+hub.ObservatoriumAPIEndpoint+" "+hub.AlertmanagerEndpoint+" "+hub.AlertmanagerRouterCA, clusterName+" "+"https://test-host"+" "+"test-host"+" "+routerBYOCA)
+		t.Fatalf(
+			"Wrong content in hub info secret: \ngot: "+hub.ObservatoriumAPIEndpoint+" "+hub.AlertmanagerEndpoint+" "+hub.AlertmanagerRouterCA,
+			clusterName+" "+"https://test-host"+" "+"test-host"+" "+routerBYOCA,
+		)
 	}
 }

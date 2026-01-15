@@ -30,14 +30,14 @@ func getClusterMgmtAddonPredFunc() predicate.Funcs {
 			oldDefault := &addonv1alpha1.ConfigReferent{}
 			newDefault := &addonv1alpha1.ConfigReferent{}
 			for _, config := range e.ObjectOld.(*addonv1alpha1.ClusterManagementAddOn).Spec.SupportedConfigs {
-				if config.ConfigGroupResource.Group == util.AddonGroup &&
-					config.ConfigGroupResource.Resource == util.AddonDeploymentConfigResource {
+				if config.Group == util.AddonGroup &&
+					config.Resource == util.AddonDeploymentConfigResource {
 					oldDefault = config.DefaultConfig
 				}
 			}
 			for _, config := range e.ObjectNew.(*addonv1alpha1.ClusterManagementAddOn).Spec.SupportedConfigs {
-				if config.ConfigGroupResource.Group == util.AddonGroup &&
-					config.ConfigGroupResource.Resource == util.AddonDeploymentConfigResource {
+				if config.Group == util.AddonGroup &&
+					config.Resource == util.AddonDeploymentConfigResource {
 					newDefault = config.DefaultConfig
 				}
 			}
@@ -61,14 +61,14 @@ func getMgClusterAddonPredFunc() predicate.Funcs {
 			oldConfig := addonv1alpha1.ConfigReferent{}
 			newConfig := addonv1alpha1.ConfigReferent{}
 			for _, config := range e.ObjectOld.(*addonv1alpha1.ManagedClusterAddOn).Spec.Configs {
-				if config.ConfigGroupResource.Group == util.AddonGroup &&
-					config.ConfigGroupResource.Resource == util.AddonDeploymentConfigResource {
+				if config.Group == util.AddonGroup &&
+					config.Resource == util.AddonDeploymentConfigResource {
 					oldConfig = config.ConfigReferent
 				}
 			}
 			for _, config := range e.ObjectNew.(*addonv1alpha1.ManagedClusterAddOn).Spec.Configs {
-				if config.ConfigGroupResource.Group == util.AddonGroup &&
-					config.ConfigGroupResource.Resource == util.AddonDeploymentConfigResource {
+				if config.Group == util.AddonGroup &&
+					config.Resource == util.AddonDeploymentConfigResource {
 					newConfig = config.ConfigReferent
 				}
 			}

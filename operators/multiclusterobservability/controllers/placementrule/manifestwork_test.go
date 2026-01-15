@@ -13,6 +13,11 @@ import (
 	"testing"
 	"time"
 
+	mcoshared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
+	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
+	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 	"gopkg.in/yaml.v2"
 	authv1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -23,18 +28,11 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	kubefake "k8s.io/client-go/kubernetes/fake"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-
+	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
 	workv1 "open-cluster-management.io/api/work/v1"
-
-	mcoshared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
-	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
-	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
-	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
-	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
-	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 const (
@@ -187,7 +185,8 @@ func NewMetricsAllowListCM() *corev1.ConfigMap {
 			Name:      operatorconfig.AllowlistConfigMapName,
 			Namespace: mcoNamespace,
 		},
-		Data: map[string]string{"metrics_list.yaml": `
+		Data: map[string]string{
+			"metrics_list.yaml": `
   names:
     - a
     - b
@@ -238,7 +237,8 @@ func NewMetricsAllowListCM() *corev1.ConfigMap {
     - b
   renames:
     b: d
-`},
+`,
+		},
 	}
 }
 
@@ -252,7 +252,8 @@ func NewMetricsCustomAllowListCM() *corev1.ConfigMap {
 			Name:      config.AllowlistCustomConfigMapName,
 			Namespace: mcoNamespace,
 		},
-		Data: map[string]string{"metrics_list.yaml": `
+		Data: map[string]string{
+			"metrics_list.yaml": `
   names:
     - c
     - d
@@ -270,7 +271,8 @@ func NewMetricsCustomAllowListCM() *corev1.ConfigMap {
     - d
   renames:
     a: c
-`},
+`,
+		},
 	}
 }
 
@@ -362,8 +364,10 @@ func getRuntimeObjects() []runtime.Object {
 		NewAmAccessorSA(),
 		newCluster(clusterName, map[string]string{
 			ClusterImageRegistriesAnnotation: newAnnotationRegistries([]Registry{
-				{Source: "quay.io/stolostron", Mirror: "registry_server/stolostron"}},
-				fmt.Sprintf("%s.%s", namespace, "custorm_pull_secret"))}),
+				{Source: "quay.io/stolostron", Mirror: "registry_server/stolostron"},
+			},
+				fmt.Sprintf("%s.%s", namespace, "custorm_pull_secret")),
+		}),
 		newPullSecret("custorm_pull_secret", namespace, []byte("custorm")),
 	}
 }
@@ -603,7 +607,19 @@ func TestManifestWork(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get global manifestwork resource: (%v)", err)
 	}
-	manWork, err = createManifestWorks(c, namespace, managedClusterInfo{Name: clusterName, IsLocalCluster: false}, newTestMCO(), works, metricsAllowlistConfigMap, crdWork, endpointMetricsOperatorDeploy, hubInfoSecret, addonConfig, false)
+	manWork, err = createManifestWorks(
+		c,
+		namespace,
+		managedClusterInfo{Name: clusterName, IsLocalCluster: false},
+		newTestMCO(),
+		works,
+		metricsAllowlistConfigMap,
+		crdWork,
+		endpointMetricsOperatorDeploy,
+		hubInfoSecret,
+		addonConfig,
+		false,
+	)
 	if err != nil {
 		t.Fatalf("Failed to create manifestworks: (%v)", err)
 	}
@@ -619,7 +635,19 @@ func TestManifestWork(t *testing.T) {
 	}
 
 	spokeNameSpace = "spoke-ns"
-	manWork, err = createManifestWorks(c, namespace, managedClusterInfo{Name: clusterName, IsLocalCluster: false}, newTestMCO(), works, metricsAllowlistConfigMap, crdWork, endpointMetricsOperatorDeploy, hubInfoSecret, addonConfig, false)
+	manWork, err = createManifestWorks(
+		c,
+		namespace,
+		managedClusterInfo{Name: clusterName, IsLocalCluster: false},
+		newTestMCO(),
+		works,
+		metricsAllowlistConfigMap,
+		crdWork,
+		endpointMetricsOperatorDeploy,
+		hubInfoSecret,
+		addonConfig,
+		false,
+	)
 	if err != nil {
 		t.Fatalf("Failed to create manifestworks with updated namespace: (%v)", err)
 	}
@@ -651,7 +679,19 @@ func TestManifestWork(t *testing.T) {
 		t.Fatalf("Failed to generate hubInfo secret: (%v)", err)
 	}
 
-	manWork, err = createManifestWorks(c, namespace, managedClusterInfo{Name: clusterName, IsLocalCluster: false}, newTestMCO(), works, metricsAllowlistConfigMap, crdWork, endpointMetricsOperatorDeploy, hubInfoSecret, addonConfig, false)
+	manWork, err = createManifestWorks(
+		c,
+		namespace,
+		managedClusterInfo{Name: clusterName, IsLocalCluster: false},
+		newTestMCO(),
+		works,
+		metricsAllowlistConfigMap,
+		crdWork,
+		endpointMetricsOperatorDeploy,
+		hubInfoSecret,
+		addonConfig,
+		false,
+	)
 	if err != nil {
 		t.Fatalf("Failed to create manifestworks: (%v)", err)
 	}
@@ -695,7 +735,7 @@ func TestManifestWork(t *testing.T) {
 					foundHTTPSProxy := false
 					foundNOProxy := false
 					foundCABundle := false
-					//rewrite the below to check for env variables
+					// rewrite the below to check for env variables
 					env := c["env"].([]any)
 					for _, e := range env {
 						e := e.(map[string]any)

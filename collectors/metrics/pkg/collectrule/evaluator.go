@@ -18,7 +18,6 @@ import (
 	"github.com/go-kit/log"
 	clientmodel "github.com/prometheus/client_model/go"
 	"github.com/prometheus/prometheus/model/labels"
-
 	"github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/forwarder"
 	rlogger "github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/logger"
 	"github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/metricsclient"
@@ -186,7 +185,11 @@ func unmarshalCollectorRules(e *Evaluator) error {
 }
 
 func getMatches() []string {
-	matches := []string{}
+	count := 0
+	for _, v := range enabledMatches {
+		count += len(v)
+	}
+	matches := make([]string, 0, count)
 	for _, v := range enabledMatches {
 		matches = append(matches, v...)
 	}

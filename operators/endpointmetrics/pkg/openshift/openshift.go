@@ -34,8 +34,10 @@ func DeleteMonitoringClusterRoleBinding(ctx context.Context, client client.Clien
 		clusterRoleBindingName = HubClusterRoleBindingName
 	}
 	rb := &rbacv1.ClusterRoleBinding{}
-	err := client.Get(ctx, types.NamespacedName{Name: clusterRoleBindingName,
-		Namespace: ""}, rb)
+	err := client.Get(ctx, types.NamespacedName{
+		Name:      clusterRoleBindingName,
+		Namespace: "",
+	}, rb)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return nil
@@ -90,7 +92,7 @@ func CreateMonitoringClusterRoleBinding(ctx context.Context, log logr.Logger, cl
 	if reflect.DeepEqual(rb.RoleRef, found.RoleRef) && reflect.DeepEqual(rb.Subjects, found.Subjects) {
 		return nil
 	}
-	rb.ObjectMeta.ResourceVersion = found.ObjectMeta.ResourceVersion
+	rb.ResourceVersion = found.ResourceVersion
 	err = client.Update(ctx, rb)
 	if err != nil {
 		log.Error(err, "Failed to update the clusterrolebinding")
@@ -101,8 +103,10 @@ func CreateMonitoringClusterRoleBinding(ctx context.Context, log logr.Logger, cl
 
 func DeleteCAConfigmap(ctx context.Context, client client.Client, namespace string) error {
 	cm := &corev1.ConfigMap{}
-	err := client.Get(ctx, types.NamespacedName{Name: CaConfigmapName,
-		Namespace: namespace}, cm)
+	err := client.Get(ctx, types.NamespacedName{
+		Name:      CaConfigmapName,
+		Namespace: namespace,
+	}, cm)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return nil
@@ -119,8 +123,10 @@ func DeleteCAConfigmap(ctx context.Context, client client.Client, namespace stri
 
 func CreateCAConfigmap(ctx context.Context, client client.Client, namespace string) error {
 	cm := &corev1.ConfigMap{}
-	err := client.Get(ctx, types.NamespacedName{Name: CaConfigmapName,
-		Namespace: namespace}, cm)
+	err := client.Get(ctx, types.NamespacedName{
+		Name:      CaConfigmapName,
+		Namespace: namespace,
+	}, cm)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			cm := &corev1.ConfigMap{

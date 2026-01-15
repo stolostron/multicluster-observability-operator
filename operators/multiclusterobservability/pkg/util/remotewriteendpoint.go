@@ -18,13 +18,13 @@ type TLSConfigWithSecret struct {
 	// Name of the secret which contains the file
 	SecretName string `yaml:"secret_name,omitempty" json:"secret_name,omitempty"`
 	// The CA cert to use for the targets.
-	CAFile    string `yaml:"ca_file,omitempty" json:"ca_file,omitempty"`
+	CAFile    string `yaml:"ca_file,omitempty"     json:"ca_file,omitempty"`
 	CAFileKey string `yaml:"ca_file_key,omitempty" json:"ca_file_key,omitempty"`
 	// The client cert file for the targets.
-	CertFile    string `yaml:"cert_file,omitempty" json:"cert_file,omitempty"`
+	CertFile    string `yaml:"cert_file,omitempty"     json:"cert_file,omitempty"`
 	CertFileKey string `yaml:"cert_file_key,omitempty" json:"cert_file_key,omitempty"`
 	// The client key file for the targets.
-	KeyFile    string `yaml:"key_file,omitempty" json:"key_file,omitempty"`
+	KeyFile    string `yaml:"key_file,omitempty"     json:"key_file,omitempty"`
 	KeyFileKey string `yaml:"key_file_key,omitempty" json:"key_file_key,omitempty"`
 	// Used to verify the hostname for the targets.
 	ServerName string `yaml:"server_name,omitempty" json:"server_name,omitempty"`
@@ -33,14 +33,14 @@ type TLSConfigWithSecret struct {
 }
 
 type OAuth2WithSecret struct {
-	ClientID         string `yaml:"client_id" json:"client_id"`
-	ClientSecret     string `yaml:"client_secret" json:"client_secret"`
+	ClientID         string `yaml:"client_id"          json:"client_id"`
+	ClientSecret     string `yaml:"client_secret"      json:"client_secret"`
 	ClientSecretFile string `yaml:"client_secret_file" json:"client_secret_file"`
 	// Name of the secret which contains the file
-	SecretName          string            `yaml:"secret_name,omitempty" json:"secret_name,omitempty"`
-	ClientSecretFileKey string            `yaml:"client_secret_file_key" json:"client_secret_file_key"`
-	Scopes              []string          `yaml:"scopes,omitempty" json:"scopes,omitempty"`
-	TokenURL            string            `yaml:"token_url" json:"token_url"`
+	SecretName          string            `yaml:"secret_name,omitempty"     json:"secret_name,omitempty"`
+	ClientSecretFileKey string            `yaml:"client_secret_file_key"    json:"client_secret_file_key"`
+	Scopes              []string          `yaml:"scopes,omitempty"          json:"scopes,omitempty"`
+	TokenURL            string            `yaml:"token_url"                 json:"token_url"`
 	EndpointParams      map[string]string `yaml:"endpoint_params,omitempty" json:"endpoint_params,omitempty"`
 
 	// TLSConfig is used to connect to the token URL.
@@ -48,20 +48,20 @@ type OAuth2WithSecret struct {
 }
 
 type BasicAuthWithSecret struct {
-	Username     string `yaml:"username" json:"username"`
-	Password     string `yaml:"password,omitempty" json:"password,omitempty"`
+	Username     string `yaml:"username"                json:"username"`
+	Password     string `yaml:"password,omitempty"      json:"password,omitempty"`
 	PasswordFile string `yaml:"password_file,omitempty" json:"password_file,omitempty"`
 	// Name of the secret which contains the file
-	SecretName      string `yaml:"secret_name,omitempty" json:"secret_name,omitempty"`
+	SecretName      string `yaml:"secret_name,omitempty"       json:"secret_name,omitempty"`
 	PasswordFileKey string `yaml:"password_file_key,omitempty" json:"password_file_key,omitempty"`
 }
 
 type AuthorizationWithSecret struct {
-	Type            string `yaml:"type,omitempty" json:"type,omitempty"`
-	Credentials     string `yaml:"credentials,omitempty" json:"credentials,omitempty"`
+	Type            string `yaml:"type,omitempty"             json:"type,omitempty"`
+	Credentials     string `yaml:"credentials,omitempty"      json:"credentials,omitempty"`
 	CredentialsFile string `yaml:"credentials_file,omitempty" json:"credentials_file,omitempty"`
 	// Name of the secret which contains the file
-	SecretName         string `yaml:"secret_name,omitempty" json:"secret_name,omitempty"`
+	SecretName         string `yaml:"secret_name,omitempty"          json:"secret_name,omitempty"`
 	CredentialsFileKey string `yaml:"credentials_file_key,omitempty" json:"credentials_file_key,omitempty"`
 }
 
@@ -79,7 +79,7 @@ type HTTPClientConfigWithSecret struct {
 	// Authorization.CredentialsFile.
 	BearerTokenFile string `yaml:"bearer_token_file,omitempty" json:"bearer_token_file,omitempty"`
 	// Name of the secret which contains the file
-	SecretName         string `yaml:"secret_name,omitempty" json:"secret_name,omitempty"`
+	SecretName         string `yaml:"secret_name,omitempty"           json:"secret_name,omitempty"`
 	BearerTokenFileKey string `yaml:"bearer_token_file_key,omitempty" json:"bearer_token_file_key,omitempty"`
 	// HTTP proxy server to use to connect to the targets.
 	ProxyURL *config.URL `yaml:"proxy_url,omitempty" json:"proxy_url,omitempty"`
@@ -92,8 +92,8 @@ type HTTPClientConfigWithSecret struct {
 }
 
 type RemoteWriteEndpointWithSecret struct {
-	Name             string                      `yaml:"name" json:"name"`
-	URL              config.URL                  `yaml:"url" json:"url"`
+	Name             string                      `yaml:"name"                         json:"name"`
+	URL              config.URL                  `yaml:"url"                          json:"url"`
 	HttpClientConfig *HTTPClientConfigWithSecret `yaml:"http_client_config,omitempty" json:"http_client_config,omitempty"`
 }
 

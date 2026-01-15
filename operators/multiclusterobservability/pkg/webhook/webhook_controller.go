@@ -68,11 +68,11 @@ func (wc *WebhookController) Start(ctx context.Context) error {
 		default:
 			// there is an existing mutatingWebhookConfiguration
 			if len(foundMwhc.Webhooks) != len(wc.mutatingWebhook.Webhooks) ||
-				!(foundMwhc.Webhooks[0].Name == wc.mutatingWebhook.Webhooks[0].Name &&
-					reflect.DeepEqual(foundMwhc.Webhooks[0].AdmissionReviewVersions, wc.mutatingWebhook.Webhooks[0].AdmissionReviewVersions) &&
-					reflect.DeepEqual(foundMwhc.Webhooks[0].Rules, wc.mutatingWebhook.Webhooks[0].Rules) &&
-					reflect.DeepEqual(foundMwhc.Webhooks[0].ClientConfig.Service, wc.mutatingWebhook.Webhooks[0].ClientConfig.Service)) {
-				wc.mutatingWebhook.ObjectMeta.ResourceVersion = foundMwhc.ObjectMeta.ResourceVersion
+				(foundMwhc.Webhooks[0].Name != wc.mutatingWebhook.Webhooks[0].Name ||
+					!reflect.DeepEqual(foundMwhc.Webhooks[0].AdmissionReviewVersions, wc.mutatingWebhook.Webhooks[0].AdmissionReviewVersions) ||
+					!reflect.DeepEqual(foundMwhc.Webhooks[0].Rules, wc.mutatingWebhook.Webhooks[0].Rules) ||
+					!reflect.DeepEqual(foundMwhc.Webhooks[0].ClientConfig.Service, wc.mutatingWebhook.Webhooks[0].ClientConfig.Service)) {
+				wc.mutatingWebhook.ResourceVersion = foundMwhc.ResourceVersion
 				if err := wc.client.Update(context.TODO(), wc.mutatingWebhook); err != nil {
 					log.V(1).Info("failed to update the mutatingwebhookconfiguration", "mutatingwebhookconfiguration", wc.mutatingWebhook.GetName(), "error", err)
 					return err
@@ -102,11 +102,11 @@ func (wc *WebhookController) Start(ctx context.Context) error {
 		} else {
 			// there is an existing validatingwebhookconfiguration
 			if len(foundVwhc.Webhooks) != len(wc.validatingWebhook.Webhooks) ||
-				!(foundVwhc.Webhooks[0].Name == wc.validatingWebhook.Webhooks[0].Name &&
-					reflect.DeepEqual(foundVwhc.Webhooks[0].AdmissionReviewVersions, wc.validatingWebhook.Webhooks[0].AdmissionReviewVersions) &&
-					reflect.DeepEqual(foundVwhc.Webhooks[0].Rules, wc.validatingWebhook.Webhooks[0].Rules) &&
-					reflect.DeepEqual(foundVwhc.Webhooks[0].ClientConfig.Service, wc.validatingWebhook.Webhooks[0].ClientConfig.Service)) {
-				wc.validatingWebhook.ObjectMeta.ResourceVersion = foundVwhc.ObjectMeta.ResourceVersion
+				(foundVwhc.Webhooks[0].Name != wc.validatingWebhook.Webhooks[0].Name ||
+					!reflect.DeepEqual(foundVwhc.Webhooks[0].AdmissionReviewVersions, wc.validatingWebhook.Webhooks[0].AdmissionReviewVersions) ||
+					!reflect.DeepEqual(foundVwhc.Webhooks[0].Rules, wc.validatingWebhook.Webhooks[0].Rules) ||
+					!reflect.DeepEqual(foundVwhc.Webhooks[0].ClientConfig.Service, wc.validatingWebhook.Webhooks[0].ClientConfig.Service)) {
+				wc.validatingWebhook.ResourceVersion = foundVwhc.ResourceVersion
 
 				err := wc.client.Update(context.TODO(), wc.validatingWebhook)
 				if err != nil {

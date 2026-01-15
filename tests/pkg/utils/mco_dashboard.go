@@ -55,7 +55,7 @@ func ContainDashboard(opt TestOptions, title string) (error, bool) {
 	if err != nil {
 		return err, false
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		klog.Errorf("resp: %+v\n", resp)

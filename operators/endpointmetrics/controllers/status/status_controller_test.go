@@ -15,6 +15,10 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/controllers/status"
+	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/util"
+	oashared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
+	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	"github.com/stretchr/testify/assert"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -27,11 +31,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-
-	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/controllers/status"
-	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/util"
-	oashared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
-	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 )
 
 func TestStatusController_HubNominalCase(t *testing.T) {
@@ -74,7 +73,6 @@ func TestStatusController_HubNominalCase(t *testing.T) {
 		Type: "Available",
 	})
 	err = spokeClient.Status().Update(context.Background(), spokeOba)
-
 	if err != nil {
 		t.Fatalf("Failed to update status in spoke: %v", err)
 	}

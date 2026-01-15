@@ -6,20 +6,19 @@ package rendering
 
 import (
 	imagev1client "github.com/openshift/client-go/image/clientset/versioned/typed/image/v1"
-	v1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/discovery"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
-
 	obv1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering/templates"
 	rendererutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering"
 	templatesutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering/templates"
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
+	v1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/discovery"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 var log = logf.Log.WithName("renderer")
@@ -135,9 +134,9 @@ func (r *MCORenderer) Render() ([]*unstructured.Unstructured, error) {
 			}
 			crLabelKey := mcoconfig.GetCrLabelKey()
 			dep := obj.(*v1.Deployment)
-			dep.ObjectMeta.Labels[crLabelKey] = r.cr.Name
+			dep.Labels[crLabelKey] = r.cr.Name
 			dep.Spec.Selector.MatchLabels[crLabelKey] = r.cr.Name
-			dep.Spec.Template.ObjectMeta.Labels[crLabelKey] = r.cr.Name
+			dep.Spec.Template.Labels[crLabelKey] = r.cr.Name
 
 			spec := &dep.Spec.Template.Spec
 			spec.Containers[0].ImagePullPolicy = mcoconfig.GetImagePullPolicy(r.cr.Spec)

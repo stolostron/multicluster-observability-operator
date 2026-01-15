@@ -51,7 +51,6 @@ func CreateUpdateRSPlacement(ctx context.Context, c client.Client, placementName
 	logCtx := []any{"Namespace:", placement.Namespace, ", Name:", placement.Name}
 
 	err := c.Get(ctx, key, placement)
-
 	if err != nil {
 		if errors.IsNotFound(err) {
 			placement.Spec = placementConfig.Spec

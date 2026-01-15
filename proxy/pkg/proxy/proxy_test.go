@@ -18,15 +18,14 @@ import (
 
 	projectv1 "github.com/openshift/api/project/v1"
 	userv1 "github.com/openshift/api/user/v1"
+	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/cache"
+	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/config"
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-
-	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/cache"
-	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/config"
 )
 
 var promLabelRegex = regexp.MustCompile(`[^\w]+`)
@@ -41,12 +40,14 @@ func (m *MockManagedClusterInformer) Run() {}
 func (m *MockManagedClusterInformer) HasSynced() bool {
 	return true
 }
+
 func (m *MockManagedClusterInformer) GetAllManagedClusterNames() map[string]struct{} {
 	if m.clusters == nil {
 		return map[string]struct{}{}
 	}
 	return m.clusters
 }
+
 func (m *MockManagedClusterInformer) GetManagedClusterLabelList() []string {
 	if m.regexLabelList == nil {
 		return []string{}
@@ -549,7 +550,9 @@ func TestProxyIntegrationScenarios(t *testing.T) {
 				// This is a simplified mock. A real scenario would parse the apiProjectsResponse.
 				switch tc.token {
 				case "admin-token":
-					fakeClientBuilder.WithLists(&projectv1.ProjectList{Items: []projectv1.Project{{ObjectMeta: metav1.ObjectMeta{Name: "cluster1"}}, {ObjectMeta: metav1.ObjectMeta{Name: "cluster2"}}}})
+					fakeClientBuilder.WithLists(
+						&projectv1.ProjectList{Items: []projectv1.Project{{ObjectMeta: metav1.ObjectMeta{Name: "cluster1"}}, {ObjectMeta: metav1.ObjectMeta{Name: "cluster2"}}}},
+					)
 				case "scoped-token":
 					fakeClientBuilder.WithLists(&projectv1.ProjectList{Items: []projectv1.Project{{ObjectMeta: metav1.ObjectMeta{Name: "cluster1"}}}})
 				default:

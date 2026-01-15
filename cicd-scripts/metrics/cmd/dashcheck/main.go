@@ -23,9 +23,21 @@ import (
 func main() {
 	scrapeConfigsArg := flag.String("scrape-configs", "", "Path to the comma separated scrape_configs")
 	dashboardMetricsArg := flag.String("dashboard-metrics", "", "Comma separated dashboard metrics")
-	ignoredDashboardMetricsArg := flag.String("ignored-dashboard-metrics", "", "Comma separated ignored dashboard metrics. For example, rules that are computed on the hub instead of being collected from the spokes.")
-	ignoredScrapeConfigMetricsArg := flag.String("ignored-scrapeconfig-metrics", "", "Comma separated ignored ScrapeConfig metrics. For example, metrics that are needed for a specific widget in a dashboard that is not included in the check.")
-	additionalScrapeConfigsArg := flag.String("additional-scrape-configs", "", "Path to the comma separated scrape_configs that are collected in addition of the main one. Over collected metrics from them are ignored.")
+	ignoredDashboardMetricsArg := flag.String(
+		"ignored-dashboard-metrics",
+		"",
+		"Comma separated ignored dashboard metrics. For example, rules that are computed on the hub instead of being collected from the spokes.",
+	)
+	ignoredScrapeConfigMetricsArg := flag.String(
+		"ignored-scrapeconfig-metrics",
+		"",
+		"Comma separated ignored ScrapeConfig metrics. For example, metrics that are needed for a specific widget in a dashboard that is not included in the check.",
+	)
+	additionalScrapeConfigsArg := flag.String(
+		"additional-scrape-configs",
+		"",
+		"Path to the comma separated scrape_configs that are collected in addition of the main one. Over collected metrics from them are ignored.",
+	)
 	flag.Parse()
 
 	fmt.Println("Dashcheck — Verifying alignement of federated metrics from scrape configs for dashboard metrics.")

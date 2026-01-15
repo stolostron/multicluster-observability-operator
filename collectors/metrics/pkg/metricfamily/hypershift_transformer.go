@@ -11,10 +11,9 @@ import (
 	"github.com/go-kit/log"
 	hyperv1 "github.com/openshift/hypershift/api/hypershift/v1beta1"
 	prom "github.com/prometheus/client_model/go"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
 	"github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/logger"
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var (
@@ -125,7 +124,7 @@ func getHostedClusters(c client.Client, l log.Logger) (map[string]string, error)
 	logger.Log(l, logger.Info, "msg", "NewHypershiftTransformer", "HostedCluster size", len(hList.Items))
 	clusters := map[string]string{}
 	for _, hCluster := range hList.Items {
-		clusters[hCluster.Spec.ClusterID] = hCluster.ObjectMeta.Name
+		clusters[hCluster.Spec.ClusterID] = hCluster.Name
 	}
 	return clusters, nil
 }

@@ -12,7 +12,6 @@ import (
 )
 
 func TestDropTimestamp(t *testing.T) {
-
 	family := func(name string, metrics ...*clientmodel.Metric) *clientmodel.MetricFamily {
 		families := &clientmodel.MetricFamily{Name: &name}
 		families.Metric = append(families.Metric, metrics...)

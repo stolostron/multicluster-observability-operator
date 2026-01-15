@@ -12,17 +12,14 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/kustomize"
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/utils"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
 )
 
 var _ = Describe("", func() {
 	BeforeEach(func() {
-
 		cloudProvider := strings.ToLower(os.Getenv("CLOUD_PROVIDER"))
 		if strings.Contains(cloudProvider, "ibmz") {
 			Skip("skip on IMB-z as victoria-metrics image not available")
@@ -49,80 +46,83 @@ var _ = Describe("", func() {
 		}, EventuallyTimeoutMinute*6, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
-	It("RHACM4K-11170: Observability: Verify metrics would be exported to corp tools(2.5)(draft)[P2][Sev2][observability][Integration] Should have acm_remote_write_requests_total metrics with correct labels/value  @e2e (export/g0)", func() {
-		By("Adding victoriametrics deployment/service/secret")
-		yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: "../../../examples/export"})
-		Expect(err).ToNot(HaveOccurred())
-		Expect(
-			utils.ApplyRetryOnConflict(
-				testOptions.HubCluster.ClusterServerURL,
-				testOptions.KubeConfig,
-				testOptions.HubCluster.KubeContext,
-				yamlB,
-			)).NotTo(HaveOccurred())
+	It(
+		"RHACM4K-11170: Observability: Verify metrics would be exported to corp tools(2.5)(draft)[P2][Sev2][observability][Integration] Should have acm_remote_write_requests_total metrics with correct labels/value  @e2e (export/g0)",
+		func() {
+			By("Adding victoriametrics deployment/service/secret")
+			yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: "../../../examples/export"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(
+				utils.ApplyRetryOnConflict(
+					testOptions.HubCluster.ClusterServerURL,
+					testOptions.KubeConfig,
+					testOptions.HubCluster.KubeContext,
+					yamlB,
+				)).NotTo(HaveOccurred())
 
-		By("Updating mco cr to inject WriteStorage")
-		templatePath := "../../../examples/export/v1beta2"
-		if os.Getenv("IS_CANARY_ENV") != trueStr {
-			templatePath = "../../../examples/export/v1beta2/custom-certs"
-		}
-		yamlB, err = kustomize.Render(kustomize.Options{KustomizationPath: templatePath})
-		Expect(err).ToNot(HaveOccurred())
-		Expect(
-			utils.ApplyRetryOnConflict(
-				testOptions.HubCluster.ClusterServerURL,
-				testOptions.KubeConfig,
-				testOptions.HubCluster.KubeContext,
-				yamlB,
-			)).NotTo(HaveOccurred())
-
-		// Get name of the hub cluster
-
-		clientDynamic := utils.GetKubeClientDynamic(testOptions, true)
-		objs, err := clientDynamic.Resource(utils.NewOCMManagedClustersGVR()).List(context.TODO(), metav1.ListOptions{})
-		if err != nil {
-			klog.V(1).Infof("Get the managedcluster failed, The err is: %s\n", err)
-		}
-
-		hubClusterName := "local-cluster"
-		for _, obj := range objs.Items {
-			metadata := obj.Object["metadata"].(map[string]any)
-			labels := metadata["labels"].(map[string]any)
-			if labels["local-cluster"] == "true" {
-				hubClusterName = metadata["name"].(string)
-				klog.V(1).Infof("Found local-cluster name: %s", metadata["name"])
+			By("Updating mco cr to inject WriteStorage")
+			templatePath := "../../../examples/export/v1beta2"
+			if os.Getenv("IS_CANARY_ENV") != trueStr {
+				templatePath = "../../../examples/export/v1beta2/custom-certs"
 			}
-		}
+			yamlB, err = kustomize.Render(kustomize.Options{KustomizationPath: templatePath})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(
+				utils.ApplyRetryOnConflict(
+					testOptions.HubCluster.ClusterServerURL,
+					testOptions.KubeConfig,
+					testOptions.HubCluster.KubeContext,
+					yamlB,
+				)).NotTo(HaveOccurred())
 
-		By("Waiting for metrics acm_remote_write_requests_total on grafana console")
-		Eventually(func() error {
-			query := fmt.Sprintf("acm_remote_write_requests_total{cluster=\"%s\"} offset 1m", hubClusterName)
-			res, err := utils.QueryGrafana(
-				testOptions,
-				query,
-			)
+			// Get name of the hub cluster
+
+			clientDynamic := utils.GetKubeClientDynamic(testOptions, true)
+			objs, err := clientDynamic.Resource(utils.NewOCMManagedClustersGVR()).List(context.TODO(), metav1.ListOptions{})
 			if err != nil {
-				return err
-			}
-			if len(res.Data.Result) == 0 {
-				return fmt.Errorf("metric %s not found in response", query)
+				klog.V(1).Infof("Get the managedcluster failed, The err is: %s\n", err)
 			}
 
-			// Check if the metric is forwarded to thanos-receiver
-			labelSet := map[string]string{"code": "200", "name": "thanos-receiver"}
-			if !res.ContainsLabelsSet(labelSet) {
-				return fmt.Errorf("labels %v not found in response: %v", labelSet, res)
+			hubClusterName := "local-cluster"
+			for _, obj := range objs.Items {
+				metadata := obj.Object["metadata"].(map[string]any)
+				labels := metadata["labels"].(map[string]any)
+				if labels["local-cluster"] == "true" {
+					hubClusterName = metadata["name"].(string)
+					klog.V(1).Infof("Found local-cluster name: %s", metadata["name"])
+				}
 			}
 
-			// Check if the metric is forwarded to victoriametrics
-			labelSet = map[string]string{"code": "204", "name": "victoriametrics"}
-			if !res.ContainsLabelsSet(labelSet) {
-				return fmt.Errorf("labels %v not found in response: %v", labelSet, res)
-			}
+			By("Waiting for metrics acm_remote_write_requests_total on grafana console")
+			Eventually(func() error {
+				query := fmt.Sprintf("acm_remote_write_requests_total{cluster=\"%s\"} offset 1m", hubClusterName)
+				res, err := utils.QueryGrafana(
+					testOptions,
+					query,
+				)
+				if err != nil {
+					return err
+				}
+				if len(res.Data.Result) == 0 {
+					return fmt.Errorf("metric %s not found in response", query)
+				}
 
-			return nil
-		}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
-	})
+				// Check if the metric is forwarded to thanos-receiver
+				labelSet := map[string]string{"code": "200", "name": "thanos-receiver"}
+				if !res.ContainsLabelsSet(labelSet) {
+					return fmt.Errorf("labels %v not found in response: %v", labelSet, res)
+				}
+
+				// Check if the metric is forwarded to victoriametrics
+				labelSet = map[string]string{"code": "204", "name": "victoriametrics"}
+				if !res.ContainsLabelsSet(labelSet) {
+					return fmt.Errorf("labels %v not found in response: %v", labelSet, res)
+				}
+
+				return nil
+			}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
+		},
+	)
 
 	JustAfterEach(func() {
 		if CurrentSpecReport().Failed() {
@@ -132,7 +132,6 @@ var _ = Describe("", func() {
 	})
 
 	AfterEach(func() {
-
 		cloudProvider := strings.ToLower(os.Getenv("CLOUD_PROVIDER"))
 		if !strings.Contains(cloudProvider, "ibmz") {
 			Expect(utils.CleanExportResources(testOptions)).NotTo(HaveOccurred())

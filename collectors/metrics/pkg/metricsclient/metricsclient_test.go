@@ -33,7 +33,6 @@ func TestDefaultTransport(t *testing.T) {
 	if http.DialContext == nil || reflect.TypeOf(http) != reflect.TypeOf(want) {
 		t.Errorf("Default transport doesn't match expected format")
 	}
-
 }
 
 func Test_convertToTimeseries(t *testing.T) {
@@ -183,20 +182,21 @@ func Test_convertToTimeseries(t *testing.T) {
 				Name: &fooMetricName,
 				Help: &fooHelp,
 				Type: &counter,
-				Metric: []*clientmodel.Metric{{
-					Label:       []*clientmodel.LabelPair{{Name: &fooLabelName, Value: &fooLabelValue1}},
-					Counter:     &clientmodel.Counter{Value: &value42},
-					TimestampMs: &timestamp,
-				}, {
-					Label:       []*clientmodel.LabelPair{{Name: &fooLabelName, Value: &fooLabelValue2}},
-					Counter:     &clientmodel.Counter{Value: &value50},
-					TimestampMs: &timestamp,
-				}, {
-					// With empty label.
-					Label:       []*clientmodel.LabelPair{{Name: &emptyLabelName, Value: &fooLabelValue2}},
-					Counter:     &clientmodel.Counter{Value: &value50},
-					TimestampMs: &timestamp,
-				},
+				Metric: []*clientmodel.Metric{
+					{
+						Label:       []*clientmodel.LabelPair{{Name: &fooLabelName, Value: &fooLabelValue1}},
+						Counter:     &clientmodel.Counter{Value: &value42},
+						TimestampMs: &timestamp,
+					}, {
+						Label:       []*clientmodel.LabelPair{{Name: &fooLabelName, Value: &fooLabelValue2}},
+						Counter:     &clientmodel.Counter{Value: &value50},
+						TimestampMs: &timestamp,
+					}, {
+						// With empty label.
+						Label:       []*clientmodel.LabelPair{{Name: &emptyLabelName, Value: &fooLabelValue2}},
+						Counter:     &clientmodel.Counter{Value: &value50},
+						TimestampMs: &timestamp,
+					},
 				},
 			}, {
 				Name: &barMetricName,
