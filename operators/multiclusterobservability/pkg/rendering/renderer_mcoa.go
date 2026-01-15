@@ -28,6 +28,7 @@ const (
 	// AODC CustomizedVariable Names
 	namePlatformLogsCollection        = "platformLogsCollection"
 	namePlatformIncidentDetection     = "platformIncidentDetection"
+	uipluginsCRDFQDN                  = "uiplugins.v1alpha1.observability.openshift.io"
 	namePlatformMetricsCollection     = "platformMetricsCollection"
 	nameUserWorkloadLogsCollection    = "userWorkloadLogsCollection"
 	nameUserWorkloadTracesCollection  = "userWorkloadTracesCollection"
@@ -35,7 +36,6 @@ const (
 	nameUserWorkloadMetricsCollection = "userWorkloadMetricsCollection"
 	nameMetricsHubHostname            = "metricsHubHostname"
 	nameMetricsAlertManagerHostname   = "metricsAlertManagerHostname"
-	namePLatformMetricsUI             = "platformMetricsUI"
 
 	grafanaMCOAHomeDashboardID = "89eaec849a6e4837a619fb0540c22b13"
 	grafanaLink                = "/d/" + grafanaMCOAHomeDashboardID + "/acm-clusters-overview"
@@ -238,6 +238,9 @@ func (r *MCORenderer) renderAddonDeploymentConfig(
 			if cs.Platform.Metrics.Default.Enabled {
 				fqdn := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.PrometheusAgentCRDName)
 				appendCustomVar(aodc, namePlatformMetricsCollection, fqdn)
+			}
+			if cs.Platform.Analytics.IncidentDetection.Enabled {
+				appendCustomVar(aodc, namePlatformIncidentDetection, uipluginsCRDFQDN)
 			}
 		}
 

@@ -161,6 +161,11 @@ func TestRenderAddonDeploymentConfig(t *testing.T) {
 							Enabled: true,
 						},
 					},
+					Analytics: mcov1beta2.PlatformAnalyticsSpec{
+						IncidentDetection: mcov1beta2.PlatformIncidentDetectionSpec{
+							Enabled: true,
+						},
+					},
 				},
 				UserWorkloads: &mcov1beta2.UserWorkloadCapabilitiesSpec{
 					Logs: mcov1beta2.UserWorkloadLogsSpec{
@@ -210,8 +215,9 @@ func TestRenderAddonDeploymentConfig(t *testing.T) {
 	instrV1alpha1 := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.InstrumentationCRDName)
 	promV1alpha1 := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.PrometheusAgentCRDName)
 
-	assert.Len(t, got.Spec.CustomizedVariables, 9)
+	assert.Len(t, got.Spec.CustomizedVariables, 10)
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1alpha1.CustomizedVariable{Name: namePlatformLogsCollection, Value: clfV1})
+	assert.Contains(t, got.Spec.CustomizedVariables, addonv1alpha1.CustomizedVariable{Name: namePlatformIncidentDetection, Value: uipluginsCRDFQDN})
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1alpha1.CustomizedVariable{Name: nameUserWorkloadLogsCollection, Value: clfV1})
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1alpha1.CustomizedVariable{Name: nameUserWorkloadTracesCollection, Value: otelV1beta1})
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1alpha1.CustomizedVariable{Name: nameUserWorkloadInstrumentation, Value: instrV1alpha1})
