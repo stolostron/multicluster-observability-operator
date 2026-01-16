@@ -130,6 +130,64 @@ func newManifestwork(name string, namespace string) *workv1.ManifestWork {
 	}
 }
 
+// getConfigSpecHashAnnotation retrieves the ManagedClusterAddOn and converts its configReferences
+// to the annotation format expected by the addon-framework for ManifestWork.
+// Returns the annotation key-value map, or nil if no configs are present.
+func getConfigSpecHashAnnotation(ctx context.Context, c client.Client, namespace string) (map[string]string, error) {
+	// Get the ManagedClusterAddOn for this cluster
+	mca := &addonv1alpha1.ManagedClusterAddOn{}
+	err := c.Get(ctx, types.NamespacedName{
+		Name:      config.ManagedClusterAddonName,
+		Namespace: namespace,
+	}, mca)
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			// MCA doesn't exist yet, no config annotation needed
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to get ManagedClusterAddOn: %w", err)
+	}
+
+	// If there are no configReferences, no annotation is needed
+	if len(mca.Status.ConfigReferences) == 0 {
+		return nil, nil
+	}
+
+	// Convert configReferences to the annotation format
+	// Format: map[<resource>.<group>/<namespace>/<name>] = specHash
+	specHashMap := make(map[string]string)
+	for _, configRef := range mca.Status.ConfigReferences {
+		if configRef.DesiredConfig == nil || configRef.DesiredConfig.SpecHash == "" {
+			continue
+		}
+
+		// Build the config key: <resource>.<group>/<namespace>/<name>
+		configKey := configRef.Resource
+		if len(configRef.Group) > 0 {
+			configKey += fmt.Sprintf(".%s", configRef.Group)
+		}
+		configKey += fmt.Sprintf("/%s/%s", configRef.DesiredConfig.Namespace, configRef.DesiredConfig.Name)
+
+		specHashMap[configKey] = configRef.DesiredConfig.SpecHash
+	}
+
+	// If no valid configs with specHash, return nil
+	if len(specHashMap) == 0 {
+		return nil, nil
+	}
+
+	// Marshal the map to JSON
+	jsonBytes, err := json.Marshal(specHashMap)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal config spec hash map: %w", err)
+	}
+
+	// Return the annotation with the expected key
+	return map[string]string{
+		workv1.ManifestConfigSpecHashAnnotationKey: string(jsonBytes),
+	}, nil
+}
+
 // removePostponeDeleteAnnotationForManifestwork removes the postpone delete annotation for manifestwork so that
 // the workagent can delete the manifestwork normally
 func removePostponeDeleteAnnotationForManifestwork(c client.Client, namespace string) error {
@@ -188,6 +246,7 @@ func createManifestwork(ctx context.Context, c client.Client, work *workv1.Manif
 
 	log.Info("Updating manifestwork", "namespace", namespace, "name", name)
 	found.SetLabels(work.Labels)
+	found.SetAnnotations(work.Annotations)
 	found.Spec.Workload.Manifests = work.Spec.Workload.Manifests
 	err = c.Update(ctx, found)
 	if err != nil {
@@ -202,6 +261,10 @@ func shouldUpdateManifestWork(desiredWork, foundWork *workv1.ManifestWork) bool 
 	desiredManifests := desiredWork.Spec.Workload.Manifests
 
 	if !maps.Equal(foundWork.Labels, desiredWork.Labels) {
+		return true
+	}
+
+	if !maps.Equal(foundWork.Annotations, desiredWork.Annotations) {
 		return true
 	}
 
@@ -463,6 +526,13 @@ func createManifestWorks(
 	manifests = injectIntoWork(manifests, hubInfo)
 
 	work.Spec.Workload.Manifests = manifests
+
+	// Set the config spec hash annotation if the ManagedClusterAddOn has configReferences
+	configAnnotation, err := getConfigSpecHashAnnotation(context.TODO(), c, clusterNamespace)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get config spec hash annotation: %w", err)
+	}
+	maps.Copy(work.Annotations, configAnnotation)
 
 	return work, nil
 }
