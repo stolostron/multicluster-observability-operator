@@ -28,6 +28,7 @@ const (
 	// AODC CustomizedVariable Names
 	namePlatformLogsCollection        = "platformLogsCollection"
 	namePlatformIncidentDetection     = "platformIncidentDetection"
+	uipluginsCRDFQDN                  = "uiplugins.v1alpha1.observability.openshift.io"
 	namePlatformMetricsCollection     = "platformMetricsCollection"
 	nameUserWorkloadLogsCollection    = "userWorkloadLogsCollection"
 	nameUserWorkloadTracesCollection  = "userWorkloadTracesCollection"
@@ -240,15 +241,12 @@ func (r *MCORenderer) renderAddonDeploymentConfig(
 			if cs.Platform.Metrics.Default.Enabled {
 				fqdn := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.PrometheusAgentCRDName)
 				appendCustomVar(aodc, namePlatformMetricsCollection, fqdn)
-
 				if cs.Platform.Metrics.UI.Enabled {
-					fqdn := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.UIPluginsCRDName)
-					appendCustomVar(aodc, namePLatformMetricsUI, fqdn)
+					appendCustomVar(aodc, namePLatformMetricsUI, uipluginsCRDFQDN)
 				}
 			}
 			if cs.Platform.Analytics.IncidentDetection.Enabled {
-				fqdn := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.UIPluginsCRDName)
-				appendCustomVar(aodc, namePlatformIncidentDetection, fqdn)
+				appendCustomVar(aodc, namePlatformIncidentDetection, uipluginsCRDFQDN)
 			}
 		}
 
