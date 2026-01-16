@@ -206,56 +206,87 @@ var _ = Describe("", func() {
 		},
 	)
 
-	// This test is flaky because when the label is added to the managed cluster, the placement controller reconcile is triggered but
-	// the managed cluster still appears on this first reconcile. Then if we're lucky, or not, the addon is effectively removed from the managed cluster.
-	// And these enable/disable operations, when done quickly as in a test environment, are not well followed by OCM for this addon that is not
-	// managed by the addon framework. As a result, the hub-kubeconfig secret (bootstrapped asynchronously via the Registration Agent's CSR flow)
-	// is not always created on the managed cluster, making the rest of the test suite fail.
-	// Context("RHACM4K-7518: Observability: Disable the Observability by updating managed cluster label [P2][Sev2][Observability]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore (addon/g1) -", func() {
-	// 	It("[Stable] Modifying managedcluster cr to disable observability", func() {
-	// 		Eventually(func() error {
-	// 			return utils.UpdateObservabilityFromManagedCluster(testOptions, false)
-	// 		}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
+	// There is a delay between the label being added to the managed cluster and the update of the managed cluster list. In test environments where the
+	// enable/disable operations are done quickly, this delay can cause the placement controller to reconcile before the list of managed clusters is updated.
+	// This is a problem, as with this timing some addon secrets failed to be bootstrapped by the Registration Agent, causing the test suite to fail.
+	// To account for this, a delay is added to ensure the list of managed clusters is updated, then a label is added to the managed cluster to trigger
+	// a second reconcile. This should make the test less flaky.
+	Context("RHACM4K-7518: Observability: Disable the Observability by updating managed cluster label [P2][Sev2][Observability]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore (addon/g1) -", func() {
+		It("[Stable] Modifying managedcluster cr to disable observability", func() {
+			Eventually(func() error {
+				return utils.UpdateObservabilityFromManagedCluster(testOptions, false)
+			}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
 
-	// 		klog.V(1).Infof("managedcluster number is <%d>", len(testOptions.ManagedClusters))
-	// 		if len(testOptions.ManagedClusters) > 0 {
-	// 			By("Waiting for MCO addon components scales to 0")
-	// 			Eventually(func() bool {
-	// 				err, obaNS := utils.GetNamespace(testOptions, false, MCO_ADDON_NAMESPACE)
-	// 				if err == nil && obaNS == nil {
-	// 					return true
-	// 				}
-	// 				return false
-	// 			}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(BeTrue())
-	// 		}
-	// 	})
+			// add delay to ensure that the list of managed clusters in ManagedClusterList is updated before reconcile
+			By("Waiting for 20 seconds to make sure the list of managed clusters is updated")
+			time.Sleep(20 * time.Second)
 
-	// 	It("[Stable] Remove disable observability label from the managed cluster", func() {
-	// 		By("Waiting for 1 minute to make sure the registration controller correctly takes into account the changes")
-	// 		time.Sleep(60 * time.Second)
-	// 		Eventually(func() error {
-	// 			return utils.UpdateObservabilityFromManagedCluster(testOptions, true)
-	// 		}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
+			// trigger reconcile here
+			err := utils.TriggerMCOReconcile(testOptions, true)
+			Expect(err).NotTo(HaveOccurred())
 
-	// 		if len(testOptions.ManagedClusters) > 0 {
-	// 			By("Waiting for MCO addon components ready")
-	// 			Eventually(func() bool {
-	// 				err, podList := utils.GetPodList(
-	// 					testOptions,
-	// 					false,
-	// 					MCO_ADDON_NAMESPACE,
-	// 					"component=metrics-collector",
-	// 				)
-	// 				// starting with OCP 4.13, userWorkLoadMonitoring is enabled by default
-	// 				if len(podList.Items) >= 1 && err == nil {
-	// 					return true
-	// 				}
-	// 				return false
-	// 			}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(BeTrue())
-	// 		}
-	// 	})
-	// },
-	// )
+			klog.V(1).Infof("managedcluster number is <%d>", len(testOptions.ManagedClusters))
+			if len(testOptions.ManagedClusters) > 0 {
+				By("Waiting for MCO addon components scales to 0")
+				Eventually(func() bool {
+					err, obaNS := utils.GetNamespace(testOptions, false, MCO_ADDON_NAMESPACE)
+					if err != nil || obaNS != nil {
+						return false
+					}
+
+					// check that the observability-addon is deleted from the managed cluster
+					err = utils.CheckOBADeletedOnManagedCluster(testOptions)
+					if err != nil {
+						return false
+					}
+
+					// check that the observability-addon is deleted from the hub cluster
+					err = utils.CheckOBADeletedOnHub(testOptions)
+					if err != nil {
+						return false
+					}
+
+					// check that the manifestwork is removed from hub
+					err = utils.CheckObsAddonManifestWorkDeleted(testOptions)
+					if err != nil {
+						return false
+					}
+
+					return true
+				}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(BeTrue())
+			}
+
+			// cleanup the trigger label
+			err = utils.TriggerMCOReconcile(testOptions, false)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("[Stable] Remove disable observability label from the managed cluster", func() {
+			By("Waiting for 1 minute to make sure the registration controller correctly takes into account the changes")
+			time.Sleep(60 * time.Second)
+			Eventually(func() error {
+				return utils.UpdateObservabilityFromManagedCluster(testOptions, true)
+			}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
+
+			if len(testOptions.ManagedClusters) > 0 {
+				By("Waiting for MCO addon components ready")
+				Eventually(func() bool {
+					err, podList := utils.GetPodList(
+						testOptions,
+						false,
+						MCO_ADDON_NAMESPACE,
+						"component=metrics-collector",
+					)
+					// starting with OCP 4.13, userWorkLoadMonitoring is enabled by default
+					if len(podList.Items) >= 1 && err == nil {
+						return true
+					}
+					return false
+				}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(BeTrue())
+			}
+		})
+	},
+	)
 
 	JustAfterEach(func() {
 		Expect(utils.IntegrityChecking(testOptions)).NotTo(HaveOccurred())
