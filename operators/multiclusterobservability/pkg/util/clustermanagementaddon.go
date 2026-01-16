@@ -128,12 +128,6 @@ func newClusterManagementAddon(c client.Client) (*addonv1alpha1.ClusterManagemen
 						Resource: AddonDeploymentConfigResource,
 					},
 				},
-				{
-					ConfigGroupResource: addonv1alpha1.ConfigGroupResource{
-						Group:    "observability.open-cluster-management.io",
-						Resource: "observabilityaddons",
-					},
-				},
 			},
 		},
 	}, nil
