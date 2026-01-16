@@ -286,7 +286,7 @@ func (r *MultiClusterObservabilityReconciler) startComponents(ctx context.Contex
 func (r *MultiClusterObservabilityReconciler) checkMCHReadiness(logger logr.Logger) (bool, time.Duration) {
 	// check if the MCH CRD exists
 	mchCrdExists := r.CRDMap[config.MCHCrdName]
-	// requeue after 10 seconds if the mch crd exists and image image manifests map is empty
+	// requeue after 10 seconds if the mch crd exists and image manifests map is empty
 	if mchCrdExists && len(config.GetImageManifests()) == 0 {
 		currentTime := time.Now()
 

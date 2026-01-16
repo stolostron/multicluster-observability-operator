@@ -249,7 +249,7 @@ func (d *Deployer) updatePrometheus(ctx context.Context, desiredObj, runtimeObj 
 	// On GKE clusters, it was observed that the runtime object was not in sync with the object attributes
 	// seen via kube client. There may be an issue with caching inside the operator that may need to be
 	// investigated. For now, if the Prometheus attributes are not picked up by operator, by performing the
-	// the two operations, the object will be correctly regenetated.
+	// two operations, the object will be correctly regenetated.
 	// 1. delete Prometheus object
 	// 2. delete endpoint operator pod
 

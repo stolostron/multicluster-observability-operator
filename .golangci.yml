@@ -18,6 +18,7 @@ linters:
     # Sorted alphabetically.
     - bodyclose
     - contextcheck
+    - dupword
     - errcheck
     - exptostd
     - gocognit

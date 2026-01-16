@@ -364,7 +364,7 @@ func (r *PlacementRuleReconciler) cleanOrphanResources(ctx context.Context, req 
 func (r *PlacementRuleReconciler) waitForImageList(reqLogger logr.Logger) bool {
 	// check if the MCH CRD exists
 	mchCrdExists := r.CRDMap[config.MCHCrdName]
-	// requeue after 10 seconds if the mch crd exists and image image manifests map is empty
+	// requeue after 10 seconds if the mch crd exists and image manifests map is empty
 	if mchCrdExists && len(config.GetImageManifests()) == 0 {
 		// if the mch CR is not ready, then requeue the request after 10s
 		reqLogger.Info("Empty images manifest, requeuing")
@@ -535,7 +535,7 @@ func createAllRelatedRes(
 		return fmt.Errorf("failed to set default deployment config: %w", err)
 	}
 
-	// need to reload the template and update the the corresponding resources
+	// need to reload the template and update the corresponding resources
 	// the loadTemplates method is now lightweight operations as we have cache the templates in memory.
 	rawExtensionList, obsAddonCRDv1, obsAddonCRDv1beta1,
 		endpointMetricsOperatorDeploy, imageListConfigMap, err = loadTemplates(mco)

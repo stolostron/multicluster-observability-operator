@@ -318,7 +318,7 @@ func withCancel(ctx context.Context, client *http.Client, req *http.Request, fn 
 		}
 
 		// if there is no close err,
-		// we propagate the context context error.
+		// we propagate the context error.
 		if err == nil {
 			err = ctx.Err()
 		}

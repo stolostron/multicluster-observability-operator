@@ -128,7 +128,7 @@ func newManifestwork(name string, namespace string) *workv1.ManifestWork {
 				// cleaned up before the manifestwork is deleted by the managedcluster-import-controller when
 				// the corresponding managedcluster is detached.
 				// Note the annotation value is currently not taking effect, because managedcluster-import-controller
-				// managedcluster-import-controller hard code the value to be 10m
+				// hard code the value to be 10m
 				workPostponeDeleteAnnoKey: "",
 			},
 		},
