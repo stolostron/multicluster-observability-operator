@@ -6,6 +6,7 @@ package status
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"reflect"
@@ -16,7 +17,7 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/util"
 	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/status"
-	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/retry"
@@ -146,7 +147,7 @@ func (s *StatusReconciler) updateSpokeAddon(ctx context.Context) (ctrl.Result, e
 	})
 
 	if retryErr != nil {
-		if errors.IsConflict(retryErr) || util.IsTransientClientErr(retryErr) {
+		if apierrors.IsConflict(retryErr) || util.IsTransientClientErr(retryErr) {
 			return s.requeueWithOptionalDelay(fmt.Errorf("failed to update status in spoke cluster with retryable error: %w", retryErr))
 		}
 		return ctrl.Result{}, reconcile.TerminalError(retryErr)
@@ -182,7 +183,7 @@ func (s *StatusReconciler) updateHubAddon(ctx context.Context) (ctrl.Result, err
 	retryErr := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 		// Fetch the ObservabilityAddon instance in local cluster
 		obsAddon := &oav1beta1.ObservabilityAddon{}
-		if err != s.Client.Get(ctx, types.NamespacedName{Name: s.ObsAddonName, Namespace: s.Namespace}, obsAddon) {
+		if !errors.Is(err, s.Client.Get(ctx, types.NamespacedName{Name: s.ObsAddonName, Namespace: s.Namespace}, obsAddon)) {
 			return err
 		}
 
@@ -198,7 +199,7 @@ func (s *StatusReconciler) updateHubAddon(ctx context.Context) (ctrl.Result, err
 		return s.HubClient.Status().Update(ctx, updatedAddon)
 	})
 	if retryErr != nil {
-		if util.IsTransientClientErr(retryErr) || errors.IsConflict(retryErr) {
+		if util.IsTransientClientErr(retryErr) || apierrors.IsConflict(retryErr) {
 			s.Logger.Info("Retryable error while updating status, request will be retried.", "error", retryErr)
 			return s.requeueWithOptionalDelay(retryErr)
 		}
@@ -213,7 +214,7 @@ func (s *StatusReconciler) updateHubAddon(ctx context.Context) (ctrl.Result, err
 // Otherwise, it requeues the request without a delay by returning an error
 // The runtime will requeue the request without a delay if the error is non-nil
 func (s *StatusReconciler) requeueWithOptionalDelay(err error) (ctrl.Result, error) {
-	if delay, ok := errors.SuggestsClientDelay(err); ok {
+	if delay, ok := apierrors.SuggestsClientDelay(err); ok {
 		s.Logger.Info("Requeue with delay", "error", err, "delay", delay)
 		return ctrl.Result{RequeueAfter: time.Duration(delay) * time.Second}, nil
 	}
@@ -259,15 +260,12 @@ func (s *StatusReconciler) SetupWithManager(mgr ctrl.Manager) error {
 // isAuthOrConnectionErr checks if the error is an authentication error or a connection error
 // This suggests an issue with the client configuration and a reload might be needed
 func isAuthOrConnectionErr(err error) bool {
-	if errors.IsUnauthorized(err) || errors.IsForbidden(err) || errors.IsTimeout(err) {
+	if apierrors.IsUnauthorized(err) || apierrors.IsForbidden(err) || apierrors.IsTimeout(err) {
 		return true
 	}
 
-	if _, ok := err.(net.Error); ok {
-		return true
-	}
-
-	return false
+	var netError net.Error
+	return errors.As(err, &netError)
 }
 
 // mutateOrAppend updates the status conditions with the new condition.

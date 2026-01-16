@@ -229,7 +229,7 @@ func (c *Client) Retrieve(ctx context.Context, req *http.Request) ([]*clientmode
 			family := &clientmodel.MetricFamily{}
 			families = append(families, family)
 			if err := decoder.Decode(family); err != nil {
-				if err != io.EOF {
+				if !errors.Is(err, io.EOF) {
 					logger.Log(c.logger, logger.Error, "msg", "error reading body", "err", err)
 				}
 				break
@@ -253,7 +253,7 @@ func Read(r io.Reader) ([]*clientmodel.MetricFamily, error) {
 	for {
 		family := &clientmodel.MetricFamily{}
 		if err := decoder.Decode(family); err != nil {
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				break
 			}
 			return nil, err
@@ -576,7 +576,8 @@ func (c *Client) sendRequest(ctx context.Context, serverURL string, body []byte)
 }
 
 func isTransientError(err error) bool {
-	if urlErr, ok := err.(*url.Error); ok {
+	urlErr := &url.Error{}
+	if errors.As(err, &urlErr) {
 		return urlErr.Timeout()
 	}
 

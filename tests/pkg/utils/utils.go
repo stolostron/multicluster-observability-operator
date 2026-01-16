@@ -105,7 +105,7 @@ func CreateMCOTestingRBAC(opt TestOptions) error {
 		},
 	}
 	if err := CreateCRB(opt, true, mcoTestingCRB); err != nil {
-		return fmt.Errorf("failed to create clusterrolebing for %s: %v", mcoTestingCRB.GetName(), err)
+		return fmt.Errorf("failed to create clusterrolebing for %s: %w", mcoTestingCRB.GetName(), err)
 	}
 
 	mcoTestingSA := &corev1.ServiceAccount{
@@ -115,7 +115,7 @@ func CreateMCOTestingRBAC(opt TestOptions) error {
 		},
 	}
 	if err := CreateSA(opt, true, MCO_NAMESPACE, mcoTestingSA); err != nil {
-		return fmt.Errorf("failed to create serviceaccount for %s: %v", mcoTestingSA.GetName(), err)
+		return fmt.Errorf("failed to create serviceaccount for %s: %w", mcoTestingSA.GetName(), err)
 	}
 	return nil
 }
@@ -600,7 +600,7 @@ func GetPullSecret(opt TestOptions) (string, error) {
 		clientKube := NewKubeClient(opt.HubCluster.ClusterServerURL, opt.KubeConfig, opt.HubCluster.KubeContext)
 		secret, err := clientKube.CoreV1().Secrets("openshift-config").Get(context.TODO(), "pull-secret", metav1.GetOptions{})
 		if err != nil {
-			return "", fmt.Errorf("failed to get pull-secret from openshift-config: %v", err)
+			return "", fmt.Errorf("failed to get pull-secret from openshift-config: %w", err)
 		}
 		// Create the secret in open-cluster-management-observability namespace
 		newSecret := &corev1.Secret{
@@ -615,7 +615,7 @@ func GetPullSecret(opt TestOptions) (string, error) {
 		}
 		_, err = clientKube.CoreV1().Secrets("open-cluster-management").Create(context.TODO(), newSecret, metav1.CreateOptions{})
 		if err != nil && !k8sErrors.IsAlreadyExists(err) {
-			return "", fmt.Errorf("failed to create pull-secret in open-cluster-management %v", err)
+			return "", fmt.Errorf("failed to create pull-secret in open-cluster-management %w", err)
 		}
 		return newSecret.Name, nil
 	}
@@ -627,7 +627,7 @@ func GetPullSecret(opt TestOptions) (string, error) {
 func LoginOCUser(opt TestOptions, user string, password string) error {
 	cmd, err := exec.Command("oc", "login", "-u", user, "-p", password, "--server", opt.HubCluster.ClusterServerURL, "--insecure-skip-tls-verify").CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("failed to login as %s: %s err %s", user, cmd, err)
+		return fmt.Errorf("failed to login as %s: %s err %w", user, cmd, err)
 	}
 
 	tokenCmd := exec.Command("oc", "whoami", "-t")

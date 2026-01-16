@@ -377,7 +377,7 @@ func (o *Options) Run() error {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			if err := s.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			if err := s.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 				logger.Log(o.Logger, logger.Error, "msg", "server exited unexpectedly", "err", err)
 				stop()
 			}
