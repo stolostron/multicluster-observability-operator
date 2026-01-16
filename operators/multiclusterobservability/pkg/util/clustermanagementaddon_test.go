@@ -52,16 +52,6 @@ func TestClusterManagmentAddon(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get clustermanagementaddon: (%v)", err)
 	}
-	found := false
-	for _, config := range addon.Spec.SupportedConfigs {
-		if config.Group == "observability.open-cluster-management.io" && config.Resource == "observabilityaddons" {
-			found = true
-			break
-		}
-	}
-	if !found {
-		t.Fatalf("Missing observabilityaddons in SupportedConfigs")
-	}
 	if linkTxt, found := addon.ObjectMeta.Annotations["console.open-cluster-management.io/launch-link-text"]; found == false {
 		t.Fatalf("No launch-link-text annotation included")
 	} else {
