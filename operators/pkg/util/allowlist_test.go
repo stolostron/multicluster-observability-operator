@@ -101,12 +101,12 @@ names:
 
 func TestMergeAllowList(t *testing.T) {
 	c := fake.NewClientBuilder().WithRuntimeObjects(getAllowlistCM(), geCustomAllowlistCM()).Build()
-	allowlist, uwlAllowlist, err := GetAllowList(c, operatorconfig.AllowlistConfigMapName,
+	allowlist, uwlAllowlist, err := GetAllowList(t.Context(), c, operatorconfig.AllowlistConfigMapName,
 		config.GetDefaultNamespace())
 	if err != nil {
 		t.Errorf("Failed to get allowlist: (%v)", err)
 	}
-	customAllowlist, customUwlAllowlist, err := GetAllowList(c, operatorconfig.AllowlistCustomConfigMapName,
+	customAllowlist, customUwlAllowlist, err := GetAllowList(t.Context(), c, operatorconfig.AllowlistCustomConfigMapName,
 		config.GetDefaultNamespace())
 	if err != nil {
 		t.Errorf("Failed to get allowlist: (%v)", err)

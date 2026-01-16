@@ -54,6 +54,7 @@ var (
 )
 
 func CreateObservabilityCerts(
+	ctx context.Context,
 	c client.Client,
 	scheme *runtime.Scheme,
 	mco *mcov1beta2.MultiClusterObservability,
@@ -61,23 +62,23 @@ func CreateObservabilityCerts(
 ) error {
 	config.SetCertDuration(mco.Annotations)
 
-	serverCrtUpdated, err := createCASecret(c, scheme, mco, false, serverCACerts, serverCACertifcateCN)
+	serverCrtUpdated, err := createCASecret(ctx, c, scheme, mco, false, serverCACerts, serverCACertifcateCN)
 	if err != nil {
 		return err
 	}
-	clientCrtUpdated, err := createCASecret(c, scheme, mco, false, clientCACerts, clientCACertificateCN)
+	clientCrtUpdated, err := createCASecret(ctx, c, scheme, mco, false, clientCACerts, clientCACertificateCN)
 	if err != nil {
 		return err
 	}
-	hosts, err := getHosts(c, ingressCtlCrdExists)
+	hosts, err := getHosts(ctx, c, ingressCtlCrdExists)
 	if err != nil {
 		return err
 	}
-	err = createCertSecret(c, scheme, mco, serverCrtUpdated, serverCerts, true, serverCertificateCN, nil, hosts, nil)
+	err = createCertSecret(ctx, c, scheme, mco, serverCrtUpdated, serverCerts, true, serverCertificateCN, nil, hosts, nil)
 	if err != nil {
 		return err
 	}
-	err = createCertSecret(c, scheme, mco, clientCrtUpdated, grafanaCerts, false, grafanaCertificateCN, nil, nil, nil)
+	err = createCertSecret(ctx, c, scheme, mco, clientCrtUpdated, grafanaCerts, false, grafanaCertificateCN, nil, nil, nil)
 	if err != nil {
 		return err
 	}
@@ -85,7 +86,7 @@ func CreateObservabilityCerts(
 	return nil
 }
 
-func createCASecret(c client.Client,
+func createCASecret(ctx context.Context, c client.Client,
 	scheme *runtime.Scheme, mco *mcov1beta2.MultiClusterObservability,
 	isRenew bool, name string, cn string,
 ) (bool, error) {
@@ -96,7 +97,7 @@ func createCASecret(c client.Client,
 	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 		updated = false
 		caSecret := &corev1.Secret{}
-		err := c.Get(context.TODO(), types.NamespacedName{Namespace: config.GetDefaultNamespace(), Name: name}, caSecret)
+		err := c.Get(ctx, types.NamespacedName{Namespace: config.GetDefaultNamespace(), Name: name}, caSecret)
 		if err != nil && !apierrors.IsNotFound(err) {
 			log.Error(err, "Failed to check ca secret", "name", name)
 			return err
@@ -128,7 +129,7 @@ func createCASecret(c client.Client,
 				}
 			}
 
-			if err := c.Create(context.TODO(), caSecret); err != nil {
+			if err := c.Create(ctx, caSecret); err != nil {
 				log.Error(err, "Failed to create secret", "name", name)
 				return err
 			}
@@ -138,7 +139,7 @@ func createCASecret(c client.Client,
 
 		if !isRenew {
 			log.Info("CA secrets already existed", "name", name)
-			return mcoutil.AddBackupLabelToSecretObj(c, caSecret)
+			return mcoutil.AddBackupLabelToSecretObj(ctx, c, caSecret)
 		}
 
 		block, _ := pem.Decode(caSecret.Data["tls.key"])
@@ -155,7 +156,7 @@ func createCASecret(c client.Client,
 		caSecret.Data["ca.crt"] = certPEM.Bytes()
 		caSecret.Data["tls.crt"] = append(certPEM.Bytes(), caSecret.Data["tls.crt"]...)
 		caSecret.Data["tls.key"] = keyPEM.Bytes()
-		if err := c.Update(context.TODO(), caSecret); err != nil {
+		if err := c.Update(ctx, caSecret); err != nil {
 			log.Error(err, "Failed to update secret", "name", name)
 			return err
 		}
@@ -204,7 +205,7 @@ func createCACertificate(cn string, caKey *rsa.PrivateKey) ([]byte, []byte, erro
 }
 
 //nolint:unparam
-func createCertSecret(c client.Client,
+func createCertSecret(ctx context.Context, c client.Client,
 	scheme *runtime.Scheme, mco *mcov1beta2.MultiClusterObservability,
 	isRenew bool, name string, isServer bool,
 	cn string, ou []string, dns []string, ips []net.IP,
@@ -214,14 +215,14 @@ func createCertSecret(c client.Client,
 	}
 	return retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 		crtSecret := &corev1.Secret{}
-		err := c.Get(context.TODO(), types.NamespacedName{Namespace: config.GetDefaultNamespace(), Name: name}, crtSecret)
+		err := c.Get(ctx, types.NamespacedName{Namespace: config.GetDefaultNamespace(), Name: name}, crtSecret)
 		if err != nil && !apierrors.IsNotFound(err) {
 			log.Error(err, "Failed to check certificate secret", "name", name)
 			return err
 		}
 
 		if apierrors.IsNotFound(err) {
-			caCert, caKey, caCertBytes, err := getCA(c, isServer)
+			caCert, caKey, caCertBytes, err := getCA(ctx, c, isServer)
 			if err != nil {
 				return err
 			}
@@ -249,7 +250,7 @@ func createCertSecret(c client.Client,
 					return err
 				}
 			}
-			err = c.Create(context.TODO(), crtSecret)
+			err = c.Create(ctx, crtSecret)
 			if err != nil {
 				log.Error(err, "Failed to create secret", "name", name)
 				return err
@@ -279,10 +280,10 @@ func createCertSecret(c client.Client,
 
 		if !isRenew {
 			log.Info("Certificate secrets already existed", "name", name)
-			return mcoutil.AddBackupLabelToSecretObj(c, crtSecret)
+			return mcoutil.AddBackupLabelToSecretObj(ctx, c, crtSecret)
 		}
 
-		caCert, caKey, caCertBytes, err := getCA(c, isServer)
+		caCert, caKey, caCertBytes, err := getCA(ctx, c, isServer)
 		if err != nil {
 			return err
 		}
@@ -300,7 +301,7 @@ func createCertSecret(c client.Client,
 		crtSecret.Data["ca.crt"] = caCertBytes
 		crtSecret.Data["tls.crt"] = certPEM.Bytes()
 		crtSecret.Data["tls.key"] = keyPEM.Bytes()
-		if err := c.Update(context.TODO(), crtSecret); err != nil {
+		if err := c.Update(ctx, crtSecret); err != nil {
 			log.Error(err, "Failed to update secret", "name", name)
 			return err
 		}
@@ -365,14 +366,14 @@ func createCertificate(isServer bool, cn string, ou []string, dns []string, ips 
 	return keyBytes, caBytes, nil
 }
 
-func getCA(c client.Client, isServer bool) (*x509.Certificate, *rsa.PrivateKey, []byte, error) {
+func getCA(ctx context.Context, c client.Client, isServer bool) (*x509.Certificate, *rsa.PrivateKey, []byte, error) {
 	caCertName := serverCACerts
 	if !isServer {
 		caCertName = clientCACerts
 	}
 	caSecret := &corev1.Secret{}
 	err := c.Get(
-		context.TODO(),
+		ctx,
 		types.NamespacedName{Namespace: config.GetDefaultNamespace(), Name: caCertName},
 		caSecret,
 	)
@@ -400,9 +401,9 @@ func getCA(c client.Client, isServer bool) (*x509.Certificate, *rsa.PrivateKey, 
 	return caCerts[0], caKey, caCertBytes, nil
 }
 
-func removeExpiredCA(c client.Client, name string) {
+func removeExpiredCA(ctx context.Context, c client.Client, name string) {
 	caSecret := &corev1.Secret{}
-	err := c.Get(context.TODO(), types.NamespacedName{Namespace: config.GetDefaultNamespace(), Name: name}, caSecret)
+	err := c.Get(ctx, types.NamespacedName{Namespace: config.GetDefaultNamespace(), Name: name}, caSecret)
 	if err != nil {
 		log.Error(err, "Failed to get ca secret", "name", name)
 		return
@@ -433,7 +434,7 @@ func removeExpiredCA(c client.Client, name string) {
 		}
 	}
 	if len(data) != len(caSecret.Data["tls.crt"]) {
-		err = c.Update(context.TODO(), caSecret)
+		err = c.Update(ctx, caSecret)
 		if err != nil {
 			log.Error(err, "Failed to update ca secret to removed expired ca", "name", name)
 		} else {
@@ -464,10 +465,10 @@ func pemEncode(cert []byte, key []byte) (*bytes.Buffer, *bytes.Buffer) {
 	return certPEM, keyPEM
 }
 
-func getHosts(c client.Client, ingressCtlCrdExists bool) ([]string, error) {
+func getHosts(ctx context.Context, c client.Client, ingressCtlCrdExists bool) ([]string, error) {
 	hosts := []string{config.GetObsAPISvc(config.GetOperandName(config.Observatorium))}
 
-	customHostURL, err := config.GetObsAPIExternalURL(context.TODO(), c, config.GetDefaultNamespace())
+	customHostURL, err := config.GetObsAPIExternalURL(ctx, c, config.GetDefaultNamespace())
 	if err != nil {
 		return nil, err
 	}
@@ -479,7 +480,7 @@ func getHosts(c client.Client, ingressCtlCrdExists bool) ([]string, error) {
 	}
 
 	if ingressCtlCrdExists {
-		url, err := config.GetObsAPIRouteHost(context.TODO(), c, config.GetDefaultNamespace())
+		url, err := config.GetObsAPIRouteHost(ctx, c, config.GetDefaultNamespace())
 		if err != nil {
 			log.Error(err, "Failed to get api route address")
 			return nil, err
@@ -539,7 +540,7 @@ func CreateUpdateMtlsCertSecretForHubCollector(ctx context.Context, c client.Cli
 	updateReason := "None"
 	res, err := controllerutil.CreateOrUpdate(ctx, c, hubMtlsSecret, func() error {
 		renew := func() error {
-			if err := newMtlsCertSecretForHubCollector(c, hubMtlsSecret); err != nil {
+			if err := newMtlsCertSecretForHubCollector(ctx, c, hubMtlsSecret); err != nil {
 				return fmt.Errorf("failed to create hub mtls secret: %w", err)
 			}
 			return nil
@@ -587,7 +588,7 @@ func CreateUpdateMtlsCertSecretForHubCollector(ctx context.Context, c client.Cli
 	return nil
 }
 
-func newMtlsCertSecretForHubCollector(c client.Client, mtlsSecret *corev1.Secret) error {
+func newMtlsCertSecretForHubCollector(ctx context.Context, c client.Client, mtlsSecret *corev1.Secret) error {
 	csrBytes, privateKeyBytes, err := GenerateKeyAndCSR()
 	if err != nil {
 		return fmt.Errorf("failed to generate private key and CSR: %w", err)
@@ -599,7 +600,7 @@ func newMtlsCertSecretForHubCollector(c client.Client, mtlsSecret *corev1.Secret
 			Usages:  []certificatesv1.KeyUsage{certificatesv1.UsageDigitalSignature, certificatesv1.UsageClientAuth},
 		},
 	}
-	signedClientCert, err := Sign(c, csr)
+	signedClientCert, err := Sign(ctx, c, csr)
 	if err != nil {
 		return fmt.Errorf("failed to sign CSR: %w", err)
 	}

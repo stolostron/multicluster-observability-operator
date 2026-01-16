@@ -5,7 +5,6 @@
 package multiclusterobservability
 
 import (
-	"context"
 	"reflect"
 	"testing"
 
@@ -112,13 +111,13 @@ func TestGenerateGrafanaRoute(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := GenerateGrafanaRoute(tt.c, s, instance)
+			_, err := GenerateGrafanaRoute(t.Context(), tt.c, s, instance)
 			if err != nil {
 				t.Errorf("GenerateGrafanaDataSource() error = %v", err)
 				return
 			}
 			list := &routev1.RouteList{}
-			if err := tt.c.List(context.Background(), list); err != nil {
+			if err := tt.c.List(t.Context(), list); err != nil {
 				t.Fatalf("Unable to list routes: (%v)", err)
 			}
 			if len(list.Items) != 1 {

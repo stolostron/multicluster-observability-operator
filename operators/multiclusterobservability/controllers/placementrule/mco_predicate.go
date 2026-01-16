@@ -5,6 +5,7 @@
 package placementrule
 
 import (
+	"context"
 	"reflect"
 
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
@@ -20,6 +21,7 @@ func getMCOPred(c client.Client, crdMap map[string]bool) predicate.Funcs {
 			// generate the image pull secret
 			var err error
 			pullSecret, err = generatePullSecret(
+				context.Background(),
 				c,
 				config.GetImagePullSecret(e.Object.(*mcov1beta2.MultiClusterObservability).Spec),
 			)
@@ -30,7 +32,7 @@ func getMCOPred(c client.Client, crdMap map[string]bool) predicate.Funcs {
 			mco := e.Object.(*mcov1beta2.MultiClusterObservability)
 			alertingStatus := config.IsAlertingDisabledInSpec(mco)
 			config.SetAlertingDisabled(alertingStatus)
-			hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, crdMap, config.IsUWMAlertingDisabledInSpec(mco))
+			hubInfoSecret, err = generateHubInfoSecret(context.Background(), c, config.GetDefaultNamespace(), spokeNameSpace, crdMap, config.IsUWMAlertingDisabledInSpec(mco))
 			if err != nil {
 				log.Error(err, "unable to get HubInfoSecret", "controller", "PlacementRule")
 			}
@@ -66,7 +68,7 @@ func getMCOPred(c client.Client, crdMap map[string]bool) predicate.Funcs {
 
 			if updateHubInfo {
 				var err error
-				hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, crdMap, config.IsUWMAlertingDisabledInSpec(newMCO))
+				hubInfoSecret, err = generateHubInfoSecret(context.Background(), c, config.GetDefaultNamespace(), spokeNameSpace, crdMap, config.IsUWMAlertingDisabledInSpec(newMCO))
 				if err != nil {
 					log.Error(err, "unable to get HubInfoSecret", "controller", "PlacementRule")
 				}
@@ -80,6 +82,7 @@ func getMCOPred(c client.Client, crdMap map[string]bool) predicate.Funcs {
 					// regenerate the image pull secret
 					var err error
 					pullSecret, err = generatePullSecret(
+						context.Background(),
 						c,
 						config.GetImagePullSecret(e.ObjectNew.(*mcov1beta2.MultiClusterObservability).Spec),
 					)

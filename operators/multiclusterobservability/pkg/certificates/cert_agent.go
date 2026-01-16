@@ -5,6 +5,7 @@
 package certificates
 
 import (
+	"context"
 	"crypto/sha256"
 	"fmt"
 
@@ -39,7 +40,7 @@ func (o *ObservabilityAgent) GetAgentAddonOptions() agent.AgentAddonOptions {
 		addon *addonapiv1alpha1.ManagedClusterAddOn,
 		csr *certificatesv1.CertificateSigningRequest,
 	) ([]byte, error) {
-		res, err := Sign(o.client, csr)
+		res, err := Sign(context.Background(), o.client, csr)
 		if err != nil {
 			log.Error(err, "failed to sign")
 			return nil, err

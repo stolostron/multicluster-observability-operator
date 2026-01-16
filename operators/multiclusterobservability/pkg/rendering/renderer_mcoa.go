@@ -5,6 +5,7 @@
 package rendering
 
 import (
+	"context"
 	"fmt"
 	"maps"
 	"net/url"
@@ -183,7 +184,7 @@ func (r *MCORenderer) renderClusterManagementAddOn(
 	u := &unstructured.Unstructured{Object: m}
 
 	// Add grafana link annotation
-	host, err := mcoconfig.GetRouteHost(r.kubeClient, mcoconfig.GrafanaRouteName, mcoconfig.GetDefaultNamespace())
+	host, err := mcoconfig.GetRouteHost(context.TODO(), r.kubeClient, mcoconfig.GrafanaRouteName, mcoconfig.GetDefaultNamespace())
 	if err != nil {
 		return nil, fmt.Errorf("failed to get host route: %w", err)
 	}

@@ -95,14 +95,14 @@ func HostedClusterNamespace(cluster *hyperv1.HostedCluster) string {
 	return fmt.Sprintf("%s-%s", cluster.Namespace, cluster.Name)
 }
 
-func IsHypershiftCluster() (bool, error) {
+func IsHypershiftCluster(ctx context.Context) (bool, error) {
 	var isHypershift bool
 	crdClient, err := operatorutil.GetOrCreateCRDClient()
 	if err != nil {
 		return false, fmt.Errorf("failed to get/create CRD client: %w", err)
 	}
 
-	isHypershift, err = operatorutil.CheckCRDExist(crdClient, "hostedclusters.hypershift.openshift.io")
+	isHypershift, err = operatorutil.CheckCRDExist(ctx, crdClient, "hostedclusters.hypershift.openshift.io")
 	if err != nil {
 		return false, fmt.Errorf("failed to check if the CRD hostedclusters.hypershift.openshift.io exists: %w", err)
 	}

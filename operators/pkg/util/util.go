@@ -110,9 +110,9 @@ func RegisterDebugEndpoint(register func(string, http.Handler) error) error {
 	return nil
 }
 
-func UpdateDeployLabel(c client.Client, dName, namespace, label string) error {
+func UpdateDeployLabel(ctx context.Context, c client.Client, dName, namespace, label string) error {
 	dep := &appv1.Deployment{}
-	err := c.Get(context.TODO(), types.NamespacedName{
+	err := c.Get(ctx, types.NamespacedName{
 		Name:      dName,
 		Namespace: namespace,
 	}, dep)
@@ -124,7 +124,7 @@ func UpdateDeployLabel(c client.Client, dName, namespace, label string) error {
 	}
 	if dep.Status.ReadyReplicas != 0 {
 		dep.Spec.Template.Labels[label] = time.Now().Format("2006-1-2.150405")
-		err = c.Update(context.TODO(), dep)
+		err = c.Update(ctx, dep)
 		if err != nil {
 			log.Error(err, "Failed to update the deployment", "name", dName)
 			return err

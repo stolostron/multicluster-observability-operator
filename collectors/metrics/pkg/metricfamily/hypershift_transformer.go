@@ -32,8 +32,8 @@ type hypershiftTransformer struct {
 	managementClusterID string
 }
 
-func NewHypershiftTransformer(c client.Client, l log.Logger, labels map[string]string) (Transformer, error) {
-	clusters, err := getHostedClusters(c, l)
+func NewHypershiftTransformer(ctx context.Context, c client.Client, l log.Logger, labels map[string]string) (Transformer, error) {
+	clusters, err := getHostedClusters(ctx, c, l)
 	if err != nil {
 		return nil, err
 	}
@@ -93,7 +93,7 @@ func (h *hypershiftTransformer) Transform(family *prom.MetricFamily) (bool, erro
 func getClusterName(h *hypershiftTransformer, id string) (string, error) {
 	clusterName, ok := h.hostedClusters[id]
 	if !ok {
-		clusters, err := getHostedClusters(h.kubeClient, h.logger)
+		clusters, err := getHostedClusters(context.TODO(), h.kubeClient, h.logger)
 		h.hostedClusters = clusters
 		if err != nil {
 			return "", err
@@ -106,18 +106,18 @@ func getClusterName(h *hypershiftTransformer, id string) (string, error) {
 	return clusterName, nil
 }
 
-func CheckCRDExist(l log.Logger) (bool, error) {
+func CheckCRDExist(ctx context.Context, l log.Logger) (bool, error) {
 	c, err := util.GetOrCreateCRDClient()
 	if err != nil {
 		logger.Log(l, logger.Error, "msg", "Failed to get or create client")
 		return false, nil //nolint:nilerr
 	}
-	return util.CheckCRDExist(c, "hostedclusters.hypershift.openshift.io")
+	return util.CheckCRDExist(ctx, c, "hostedclusters.hypershift.openshift.io")
 }
 
-func getHostedClusters(c client.Client, l log.Logger) (map[string]string, error) {
+func getHostedClusters(ctx context.Context, c client.Client, l log.Logger) (map[string]string, error) {
 	hList := &hyperv1.HostedClusterList{}
-	err := c.List(context.TODO(), hList, &client.ListOptions{})
+	err := c.List(ctx, hList, &client.ListOptions{})
 	if err != nil {
 		logger.Log(l, logger.Error, "msg", "Failed to list HyperShiftDeployment", "error", err)
 		return nil, err

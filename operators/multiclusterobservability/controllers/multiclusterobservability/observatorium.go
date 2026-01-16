@@ -57,7 +57,7 @@ const (
 // Fetch contents of the configmap: observability-observatorium-api.
 // Concatenate all of the above and hash their contents.
 // If any of the secrets or configmaps aren't found, an empty struct of the respective type is used for the hash.
-func hashObservatoriumCRConfig(cl client.Client) (string, error) {
+func hashObservatoriumCRConfig(ctx context.Context, cl client.Client) (string, error) {
 	configMapToQuery := metav1.ObjectMeta{
 		Name: mcoconfig.GetOperandNamePrefix() + mcoconfig.ObservatoriumAPI, Namespace: mcoconfig.GetDefaultNamespace(),
 	}
@@ -67,7 +67,7 @@ func hashObservatoriumCRConfig(cl client.Client) (string, error) {
 
 	hasher := md5.New() // #nosec G401 G501
 	resultConfigMap := &v1.ConfigMap{}
-	err := cl.Get(context.TODO(), types.NamespacedName{
+	err := cl.Get(ctx, types.NamespacedName{
 		Name:      configMapToQuery.Name,
 		Namespace: configMapToQuery.Namespace,
 	}, resultConfigMap)
@@ -85,10 +85,11 @@ func hashObservatoriumCRConfig(cl client.Client) (string, error) {
 
 // GenerateObservatoriumCR returns Observatorium cr defined in MultiClusterObservability
 func GenerateObservatoriumCR(
+	ctx context.Context,
 	cl client.Client, scheme *runtime.Scheme,
 	mco *mcov1beta2.MultiClusterObservability,
 ) (*ctrl.Result, error) {
-	hash, err := hashObservatoriumCRConfig(cl)
+	hash, err := hashObservatoriumCRConfig(ctx, cl)
 	if err != nil {
 		return &ctrl.Result{}, fmt.Errorf("failed to hash the observatorium CR config: %w", err)
 	}
@@ -98,20 +99,20 @@ func GenerateObservatoriumCR(
 		obsCRConfigHashLabelName: hash,
 	}
 
-	storageClassSelected, err := getStorageClass(mco, cl)
+	storageClassSelected, err := getStorageClass(ctx, mco, cl)
 	if err != nil {
 		return &ctrl.Result{}, fmt.Errorf("failed to get the storage class: %w", err)
 	}
 
 	// fetch TLS secret mount path from the object store secret
-	tlsSecretMountPath, err := getTLSSecretMountPath(cl, mco.Spec.StorageConfig.MetricObjectStorage)
+	tlsSecretMountPath, err := getTLSSecretMountPath(ctx, cl, mco.Spec.StorageConfig.MetricObjectStorage)
 	if err != nil {
 		return &ctrl.Result{}, fmt.Errorf("failed to get the tls secret mount path: %w", err)
 	}
 
 	log.Info("storageClassSelected", "storageClassSelected", storageClassSelected)
 
-	obsSpec, err := newDefaultObservatoriumSpec(cl, mco, storageClassSelected, tlsSecretMountPath)
+	obsSpec, err := newDefaultObservatoriumSpec(ctx, cl, mco, storageClassSelected, tlsSecretMountPath)
 	if err != nil {
 		return &ctrl.Result{}, fmt.Errorf("failed to generate the observatorium spec: %w", err)
 	}
@@ -133,7 +134,7 @@ func GenerateObservatoriumCR(
 	// Check if this Observatorium CR already exists
 	observatoriumCRFound := &obsv1alpha1.Observatorium{}
 	err = cl.Get(
-		context.TODO(),
+		ctx,
 		types.NamespacedName{
 			Name:      observatoriumCR.Name,
 			Namespace: observatoriumCR.Namespace,
@@ -145,7 +146,7 @@ func GenerateObservatoriumCR(
 		log.Info("Creating a new observatorium CR",
 			"observatorium", observatoriumCR.Name,
 		)
-		err = cl.Create(context.TODO(), observatoriumCR)
+		err = cl.Create(ctx, observatoriumCR)
 		if err != nil {
 			return &ctrl.Result{}, err
 		}
@@ -177,7 +178,7 @@ func GenerateObservatoriumCR(
 	newObj := observatoriumCRFound.DeepCopy()
 	newObj.Spec = newSpec
 	newObj.Labels[obsCRConfigHashLabelName] = observatoriumCR.Labels[obsCRConfigHashLabelName]
-	err = cl.Update(context.TODO(), newObj)
+	err = cl.Update(ctx, newObj)
 	if err != nil {
 		log.Error(err, "Failed to update observatorium CR %s", "name", observatoriumCR.Name)
 		// add timeout for update failure avoid update conflict
@@ -185,7 +186,7 @@ func GenerateObservatoriumCR(
 	}
 
 	// delete the store-share statefulset in scalein scenario
-	err = deleteStoreSts(cl, observatoriumCR.Name,
+	err = deleteStoreSts(ctx, cl, observatoriumCR.Name,
 		*oldSpec.Thanos.Store.Shards, *newSpec.Thanos.Store.Shards)
 	if err != nil {
 		return &ctrl.Result{}, err
@@ -194,12 +195,12 @@ func GenerateObservatoriumCR(
 	return nil, nil
 }
 
-func getTLSSecretMountPath(client client.Client,
+func getTLSSecretMountPath(ctx context.Context, client client.Client,
 	objectStorage *oashared.PreConfiguredStorage,
 ) (string, error) {
 	found := &v1.Secret{}
 	err := client.Get(
-		context.TODO(),
+		ctx,
 		types.NamespacedName{Name: objectStorage.Name, Namespace: mcoconfig.GetDefaultNamespace()},
 		found,
 	)
@@ -286,7 +287,7 @@ func GenerateAPIGatewayRoute(
 			"apiGateway.Namespace", apiGateway.Namespace,
 			"apiGateway.Name", apiGateway.Name,
 		)
-		err = runclient.Create(context.TODO(), apiGateway)
+		err = runclient.Create(ctx, apiGateway)
 		if err != nil {
 			return &ctrl.Result{}, err
 		}
@@ -321,7 +322,7 @@ func GenerateAPIGatewayRoute(
 			"apiGateway.Namespace", apiGateway.Namespace,
 			"apiGateway.Name", apiGateway.Name,
 		)
-		err = runclient.Update(context.TODO(), found)
+		err = runclient.Update(ctx, found)
 		if err != nil {
 			log.Error(err, "failed update Route for observatorium api gateway",
 				"apiGateway.Name", apiGateway.Name)
@@ -332,13 +333,19 @@ func GenerateAPIGatewayRoute(
 	return nil, nil
 }
 
-func newDefaultObservatoriumSpec(cl client.Client, mco *mcov1beta2.MultiClusterObservability, scSelected string, tlsSecretMountPath string) (*obsv1alpha1.ObservatoriumSpec, error) {
+func newDefaultObservatoriumSpec(
+	ctx context.Context,
+	cl client.Client,
+	mco *mcov1beta2.MultiClusterObservability,
+	scSelected string,
+	tlsSecretMountPath string,
+) (*obsv1alpha1.ObservatoriumSpec, error) {
 	obs := &obsv1alpha1.ObservatoriumSpec{}
 	obs.SecurityContext = &v1.SecurityContext{}
 	obs.PullSecret = mcoconfig.GetImagePullSecret(mco.Spec)
 	obs.NodeSelector = mco.Spec.NodeSelector
 	obs.Tolerations = mco.Spec.Tolerations
-	obsApi, err := newAPISpec(cl, mco)
+	obsApi, err := newAPISpec(ctx, cl, mco)
 	if err != nil {
 		return obs, err
 	}
@@ -461,7 +468,7 @@ func newAPITLS() obsv1alpha1.TLS {
 	}
 }
 
-func applyEndpointsSecret(c client.Client, eps []mcoutil.RemoteWriteEndpointWithSecret) error {
+func applyEndpointsSecret(ctx context.Context, c client.Client, eps []mcoutil.RemoteWriteEndpointWithSecret) error {
 	epsYaml, err := yaml.Marshal(eps)
 	if err != nil {
 		return err
@@ -480,13 +487,13 @@ func applyEndpointsSecret(c client.Client, eps []mcoutil.RemoteWriteEndpointWith
 		Data: epsYamlMap,
 	}
 	found := &v1.Secret{}
-	err = c.Get(context.TODO(), types.NamespacedName{
+	err = c.Get(ctx, types.NamespacedName{
 		Name:      endpointsConfigName,
 		Namespace: mcoconfig.GetDefaultNamespace(),
 	}, found)
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
-			err = c.Create(context.TODO(), epsSecret)
+			err = c.Create(ctx, epsSecret)
 			if err != nil {
 				return err
 			}
@@ -496,11 +503,11 @@ func applyEndpointsSecret(c client.Client, eps []mcoutil.RemoteWriteEndpointWith
 	} else {
 		if !reflect.DeepEqual(epsYamlMap, found.Data) {
 			epsSecret.ResourceVersion = found.ResourceVersion
-			err = c.Update(context.TODO(), epsSecret)
+			err = c.Update(ctx, epsSecret)
 			if err != nil {
 				return err
 			}
-			err = util.UpdateDeployLabel(c, mcoconfig.GetOperandName(mcoconfig.ObservatoriumAPI),
+			err = util.UpdateDeployLabel(ctx, c, mcoconfig.GetOperandName(mcoconfig.ObservatoriumAPI),
 				mcoconfig.GetDefaultNamespace(), endpointsRestartLabel)
 			if err != nil {
 				return err
@@ -510,7 +517,7 @@ func applyEndpointsSecret(c client.Client, eps []mcoutil.RemoteWriteEndpointWith
 	return nil
 }
 
-func newAPISpec(c client.Client, mco *mcov1beta2.MultiClusterObservability) (obsv1alpha1.APISpec, error) {
+func newAPISpec(ctx context.Context, c client.Client, mco *mcov1beta2.MultiClusterObservability) (obsv1alpha1.APISpec, error) {
 	apiSpec := obsv1alpha1.APISpec{}
 	apiSpec.RBAC = newAPIRBAC()
 	apiSpec.Tenants = newAPITenants()
@@ -533,7 +540,7 @@ func newAPISpec(c client.Client, mco *mcov1beta2.MultiClusterObservability) (obs
 		var mountSecrets []string
 		for _, storageConfig := range mco.Spec.StorageConfig.WriteStorage {
 			storageSecret := &v1.Secret{}
-			err := c.Get(context.TODO(), types.NamespacedName{
+			err := c.Get(ctx, types.NamespacedName{
 				Name:      storageConfig.Name,
 				Namespace: mcoconfig.GetDefaultNamespace(),
 			}, storageSecret)
@@ -542,7 +549,7 @@ func newAPISpec(c client.Client, mco *mcov1beta2.MultiClusterObservability) (obs
 				return apiSpec, err
 			}
 			// add backup label
-			err = addBackupLabel(c, storageConfig.Name, storageSecret)
+			err = addBackupLabel(ctx, c, storageConfig.Name, storageSecret)
 			if err != nil {
 				return apiSpec, err
 			}
@@ -574,7 +581,7 @@ func newAPISpec(c client.Client, mco *mcov1beta2.MultiClusterObservability) (obs
 
 				// add backup label
 				for _, s := range mountS {
-					err = addBackupLabel(c, s, nil)
+					err = addBackupLabel(ctx, c, s, nil)
 					if err != nil {
 						return apiSpec, err
 					}
@@ -586,7 +593,7 @@ func newAPISpec(c client.Client, mco *mcov1beta2.MultiClusterObservability) (obs
 			eps = append(eps, *newEp)
 		}
 
-		err := applyEndpointsSecret(c, eps)
+		err := applyEndpointsSecret(ctx, c, eps)
 		if err != nil {
 			return apiSpec, err
 		}
@@ -989,13 +996,13 @@ func newVolumeClaimTemplate(size string, storageClass string) obsv1alpha1.Volume
 	return vct
 }
 
-func deleteStoreSts(cl client.Client, name string, oldNum int32, newNum int32) error {
+func deleteStoreSts(ctx context.Context, cl client.Client, name string, oldNum int32, newNum int32) error {
 	if oldNum > newNum {
 		for i := newNum; i < oldNum; i++ {
 			stsName := fmt.Sprintf("%s-thanos-store-shard-%d", name, i)
 			found := &appsv1.StatefulSet{}
 			err := cl.Get(
-				context.TODO(),
+				ctx,
 				types.NamespacedName{Name: stsName, Namespace: mcoconfig.GetDefaultNamespace()},
 				found,
 			)
@@ -1005,7 +1012,7 @@ func deleteStoreSts(cl client.Client, name string, oldNum int32, newNum int32) e
 					return err
 				}
 			} else {
-				err = cl.Delete(context.TODO(), found)
+				err = cl.Delete(ctx, found)
 				if err != nil {
 					log.Error(err, "Failed to delete statefulset", "name", stsName)
 					return err
@@ -1016,15 +1023,15 @@ func deleteStoreSts(cl client.Client, name string, oldNum int32, newNum int32) e
 	return nil
 }
 
-func addBackupLabel(c client.Client, name string, backupS *v1.Secret) error {
+func addBackupLabel(ctx context.Context, c client.Client, name string, backupS *v1.Secret) error {
 	if _, ok := mcoconfig.BackupResourceMap[name]; !ok {
 		log.Info("Adding backup label", "Secret", name)
 		mcoconfig.BackupResourceMap[name] = mcoconfig.ResourceTypeSecret
 		var err error
 		if backupS == nil {
-			err = mcoutil.AddBackupLabelToSecret(c, name, mcoconfig.GetDefaultNamespace())
+			err = mcoutil.AddBackupLabelToSecret(ctx, c, name, mcoconfig.GetDefaultNamespace())
 		} else {
-			err = mcoutil.AddBackupLabelToSecretObj(c, backupS)
+			err = mcoutil.AddBackupLabelToSecretObj(ctx, c, backupS)
 		}
 		if err != nil {
 			return err

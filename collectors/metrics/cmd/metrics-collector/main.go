@@ -317,7 +317,7 @@ func (o *Options) Run() error {
 	metrics := forwarder.NewWorkerMetrics(metricsReg)
 	evalCfg[0].Metrics = metrics
 	cfgRR[0].Metrics = metrics
-	recordingRuleWorker, err := forwarder.New(*cfgRR[0])
+	recordingRuleWorker, err := forwarder.New(context.Background(), *cfgRR[0])
 	if err != nil {
 		return fmt.Errorf("failed to configure recording rule worker: %w", err)
 	}
@@ -325,7 +325,7 @@ func (o *Options) Run() error {
 	shardWorkers := make([]*forwarder.Worker, len(shardCfgs))
 	for i, shardCfg := range shardCfgs {
 		shardCfg.Metrics = metrics
-		shardWorkers[i], err = forwarder.New(*shardCfg)
+		shardWorkers[i], err = forwarder.New(context.Background(), *shardCfg)
 		if err != nil {
 			return fmt.Errorf("failed to configure shard worker %d: %w", i, err)
 		}
@@ -404,7 +404,7 @@ func (o *Options) Run() error {
 
 	// Run the Collectrules agent.
 	if len(o.CollectRules) != 0 {
-		evaluator, err := collectrule.New(*evalCfg[0])
+		evaluator, err := collectrule.New(context.Background(), *evalCfg[0])
 		if err != nil {
 			return fmt.Errorf("failed to configure collect rule evaluator: %w", err)
 		}
@@ -543,7 +543,7 @@ func createTransformer(o *Options) (metricfamily.MultiTransformer, error) {
 	// There is much better way to do this, with relabel configs.
 	// A collection agent shouldn't be calling out to Kube API server just to add labels.
 	if !o.DisableHyperShift {
-		isHypershift, err := metricfamily.CheckCRDExist(o.Logger)
+		isHypershift, err := metricfamily.CheckCRDExist(context.Background(), o.Logger)
 		if err != nil {
 			return transformer, err
 		}
@@ -561,7 +561,7 @@ func createTransformer(o *Options) (metricfamily.MultiTransformer, error) {
 				return transformer, errors.New("failed to create the kube client")
 			}
 
-			hyperTransformer, err := metricfamily.NewHypershiftTransformer(hClient, o.Logger, o.Labels)
+			hyperTransformer, err := metricfamily.NewHypershiftTransformer(context.Background(), hClient, o.Logger, o.Labels)
 			if err != nil {
 				return transformer, err
 			}
@@ -798,7 +798,7 @@ func runMultiWorkers(ctx context.Context, wg *sync.WaitGroup, o *Options, cfg *f
 		}
 
 		forwardCfg[0].Metrics = cfg.Metrics
-		forwardWorker, err := forwarder.New(*forwardCfg[0])
+		forwardWorker, err := forwarder.New(context.Background(), *forwardCfg[0])
 		if err != nil {
 			return fmt.Errorf("failed to configure metrics collector: %w", err)
 		}

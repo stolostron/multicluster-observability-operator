@@ -433,7 +433,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 
 	// Create empty client. The test secret specified in MCO is not yet created.
 	t.Log("Reconcile empty client")
-	_, err = r.Reconcile(context.TODO(), req)
+	_, err = r.Reconcile(t.Context(), req)
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)
 	}
@@ -442,7 +442,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 
 	// verify openshiftcluster monitoring label is set to true in namespace
 	updatedNS := &corev1.Namespace{}
-	err = cl.Get(context.TODO(), types.NamespacedName{
+	err = cl.Get(t.Context(), types.NamespacedName{
 		Name: namespace,
 	}, updatedNS)
 	if err != nil {
@@ -453,7 +453,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	}
 
 	updatedMCO := &mcov1beta2.MultiClusterObservability{}
-	err = cl.Get(context.TODO(), req.NamespacedName, updatedMCO)
+	err = cl.Get(t.Context(), req.NamespacedName, updatedMCO)
 	if err != nil {
 		t.Fatalf("Failed to get MultiClusterObservability: (%v)", err)
 	}
@@ -464,7 +464,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	}
 
 	amRoute := &routev1.Route{}
-	err = cl.Get(context.TODO(), types.NamespacedName{
+	err = cl.Get(t.Context(), types.NamespacedName{
 		Name:      config.AlertmanagerRouteName,
 		Namespace: namespace,
 	}, amRoute)
@@ -478,7 +478,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 		t.Fatalf("incorrect certificate for alertmanager's route")
 	}
 
-	err = cl.Create(context.TODO(), createSecret("test", "test", namespace))
+	err = cl.Create(t.Context(), createSecret("test", "test", namespace))
 	if err != nil {
 		t.Fatalf("Failed to create secret: (%v)", err)
 	}
@@ -492,7 +492,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	}
 
 	t.Log("---- Reconcile secret, verify backup label ---- ")
-	_, err = r.Reconcile(context.TODO(), req2)
+	_, err = r.Reconcile(t.Context(), req2)
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)
 	}
@@ -500,7 +500,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	time.Sleep(1 * time.Second)
 
 	updatedObjectStoreSecret := &corev1.Secret{}
-	err = r.Client.Get(context.TODO(), req2.NamespacedName, updatedObjectStoreSecret)
+	err = r.Client.Get(t.Context(), req2.NamespacedName, updatedObjectStoreSecret)
 	if err != nil {
 		t.Fatalf("backup Failed to get ObjectStore secret (%v)", err)
 	}
@@ -510,7 +510,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	}
 
 	// backup label test for Configmap
-	err = cl.Create(context.TODO(), &corev1.ConfigMap{
+	err = cl.Create(t.Context(), &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      config.AlertRuleCustomConfigMapName,
 			Namespace: namespace,
@@ -528,7 +528,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	}
 
 	t.Log("---- Reconcile configmap, verify backup label ---- ")
-	_, err = r.Reconcile(context.TODO(), req2)
+	_, err = r.Reconcile(t.Context(), req2)
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)
 	}
@@ -536,7 +536,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	time.Sleep(1 * time.Second)
 
 	updatedConfigmap := &corev1.ConfigMap{}
-	err = r.Client.Get(context.TODO(), req2.NamespacedName, updatedConfigmap)
+	err = r.Client.Get(t.Context(), req2.NamespacedName, updatedConfigmap)
 	if err != nil {
 		t.Fatalf("backup Failed to get configmap (%v)", err)
 	}
@@ -546,7 +546,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	}
 
 	updatedMCO = &mcov1beta2.MultiClusterObservability{}
-	err = r.Client.Get(context.TODO(), req.NamespacedName, updatedMCO)
+	err = r.Client.Get(t.Context(), req.NamespacedName, updatedMCO)
 	if err != nil {
 		t.Fatalf("Failed to get MultiClusterObservability: (%v)", err)
 	}
@@ -557,17 +557,17 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	expectedDeploymentNames := getExpectedDeploymentNames()
 	for _, deployName := range expectedDeploymentNames {
 		deploy := createReadyDeployment(deployName, namespace)
-		err = cl.Get(context.TODO(), types.NamespacedName{Name: deploy.Name, Namespace: deploy.Namespace}, deploy)
+		err = cl.Get(t.Context(), types.NamespacedName{Name: deploy.Name, Namespace: deploy.Namespace}, deploy)
 		if errors.IsNotFound(err) {
 			t.Log(err)
-			err = cl.Create(context.TODO(), deploy)
+			err = cl.Create(t.Context(), deploy)
 			if err != nil {
 				t.Fatalf("Failed to create deployment %s: %v", deployName, err)
 			}
 		}
 	}
 
-	_, err = r.Reconcile(context.TODO(), req)
+	_, err = r.Reconcile(t.Context(), req)
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)
 	}
@@ -575,7 +575,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	time.Sleep(1 * time.Second)
 
 	updatedMCO = &mcov1beta2.MultiClusterObservability{}
-	err = r.Client.Get(context.TODO(), req.NamespacedName, updatedMCO)
+	err = r.Client.Get(t.Context(), req.NamespacedName, updatedMCO)
 	if err != nil {
 		t.Fatalf("Failed to get MultiClusterObservability: (%v)", err)
 	}
@@ -587,22 +587,22 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	expectedStatefulSetNames := getExpectedStatefulSetNames()
 	for _, statefulName := range expectedStatefulSetNames {
 		deploy := createReadyStatefulSet(name, namespace, statefulName)
-		err = cl.Get(context.TODO(), types.NamespacedName{Name: deploy.Name, Namespace: deploy.Namespace}, deploy)
+		err = cl.Get(t.Context(), types.NamespacedName{Name: deploy.Name, Namespace: deploy.Namespace}, deploy)
 		if errors.IsNotFound(err) {
-			err = cl.Create(context.TODO(), deploy)
+			err = cl.Create(t.Context(), deploy)
 			if err != nil {
 				t.Fatalf("Failed to create stateful set %s: %v", statefulName, err)
 			}
 		}
 	}
 
-	result, err := r.Reconcile(context.TODO(), req)
+	result, err := r.Reconcile(t.Context(), req)
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)
 	}
 
 	if result.Requeue {
-		_, err = r.Reconcile(context.TODO(), req)
+		_, err = r.Reconcile(t.Context(), req)
 		if err != nil {
 			t.Fatalf("reconcile: (%v)", err)
 		}
@@ -611,7 +611,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	time.Sleep(1 * time.Second)
 
 	updatedMCO = &mcov1beta2.MultiClusterObservability{}
-	err = r.Client.Get(context.TODO(), req.NamespacedName, updatedMCO)
+	err = r.Client.Get(t.Context(), req.NamespacedName, updatedMCO)
 	if err != nil {
 		t.Fatalf("Failed to get MultiClusterObservability: (%v)", err)
 	}
@@ -627,12 +627,12 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	}
 
 	// test MetricsDisabled status
-	err = cl.Delete(context.TODO(), mco)
+	err = cl.Delete(t.Context(), mco)
 	if err != nil {
 		t.Fatalf("Failed to delete mco: (%v)", err)
 	}
 	// reconcile to make sure the finalizer of the mco cr is deleted
-	_, err = r.Reconcile(context.TODO(), req)
+	_, err = r.Reconcile(t.Context(), req)
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)
 	}
@@ -642,11 +642,11 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 
 	mco.Spec.ObservabilityAddonSpec.EnableMetrics = true
 	mco.ObjectMeta.ResourceVersion = ""
-	err = cl.Create(context.TODO(), mco)
+	err = cl.Create(t.Context(), mco)
 	if err != nil {
 		t.Fatalf("Failed to create mco: (%v)", err)
 	}
-	_, err = r.Reconcile(context.TODO(), req)
+	_, err = r.Reconcile(t.Context(), req)
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)
 	}
@@ -654,7 +654,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	time.Sleep(1 * time.Second)
 
 	updatedMCO = &mcov1beta2.MultiClusterObservability{}
-	err = r.Client.Get(context.TODO(), req.NamespacedName, updatedMCO)
+	err = r.Client.Get(t.Context(), req.NamespacedName, updatedMCO)
 	if err != nil {
 		t.Fatalf("Failed to get MultiClusterObservability: (%v)", err)
 	}
@@ -665,7 +665,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	}
 
 	// test StatefulSetNotReady status
-	err = cl.Delete(context.TODO(), createReadyStatefulSet(
+	err = cl.Delete(t.Context(), createReadyStatefulSet(
 		name,
 		namespace,
 		config.GetOperandNamePrefix()+"alertmanager"))
@@ -676,11 +676,11 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 		name,
 		namespace,
 		config.GetOperandNamePrefix()+"alertmanager")
-	err = cl.Create(context.TODO(), failedAlertManager)
+	err = cl.Create(t.Context(), failedAlertManager)
 	if err != nil {
 		t.Fatalf("Failed to create alertmanager: (%v)", err)
 	}
-	_, err = r.Reconcile(context.TODO(), req)
+	_, err = r.Reconcile(t.Context(), req)
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)
 	}
@@ -688,7 +688,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	time.Sleep(1 * time.Second)
 
 	updatedMCO = &mcov1beta2.MultiClusterObservability{}
-	err = r.Client.Get(context.TODO(), req.NamespacedName, updatedMCO)
+	err = r.Client.Get(t.Context(), req.NamespacedName, updatedMCO)
 	if err != nil {
 		t.Fatalf("Failed to get MultiClusterObservability: (%v)", err)
 	}
@@ -699,15 +699,15 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	}
 
 	// test DeploymentNotReady status
-	err = cl.Delete(context.TODO(), createReadyDeployment(config.GetOperandNamePrefix()+"rbac-query-proxy", namespace))
+	err = cl.Delete(t.Context(), createReadyDeployment(config.GetOperandNamePrefix()+"rbac-query-proxy", namespace))
 	if err != nil {
 		t.Fatalf("Failed to delete rbac-query-proxy: (%v)", err)
 	}
-	err = cl.Delete(context.TODO(), failedAlertManager)
+	err = cl.Delete(t.Context(), failedAlertManager)
 	if err != nil {
 		t.Fatalf("Failed to delete alertmanager: (%v)", err)
 	}
-	err = cl.Create(context.TODO(), createReadyStatefulSet(
+	err = cl.Create(t.Context(), createReadyStatefulSet(
 		name,
 		namespace,
 		config.GetOperandNamePrefix()+"alertmanager"))
@@ -716,11 +716,11 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	}
 
 	failedRbacProxy := createFailedDeployment("rbac-query-proxy", namespace)
-	err = cl.Create(context.TODO(), failedRbacProxy)
+	err = cl.Create(t.Context(), failedRbacProxy)
 	if err != nil {
 		t.Fatalf("Failed to create rbac-query-proxy: (%v)", err)
 	}
-	_, err = r.Reconcile(context.TODO(), req)
+	_, err = r.Reconcile(t.Context(), req)
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)
 	}
@@ -728,7 +728,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	time.Sleep(1 * time.Second)
 
 	updatedMCO = &mcov1beta2.MultiClusterObservability{}
-	err = r.Client.Get(context.TODO(), req.NamespacedName, updatedMCO)
+	err = r.Client.Get(t.Context(), req.NamespacedName, updatedMCO)
 	if err != nil {
 		t.Fatalf("Failed to get MultiClusterObservability: (%v)", err)
 	}
@@ -741,15 +741,15 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	// Test finalizer
 	mco.ObjectMeta.Finalizers = []string{resFinalizer, "test-finalizerr"}
 	mco.ObjectMeta.ResourceVersion = updatedMCO.ObjectMeta.ResourceVersion
-	err = cl.Update(context.TODO(), mco)
+	err = cl.Update(t.Context(), mco)
 	if err != nil {
 		t.Fatalf("Failed to update MultiClusterObservability: (%v)", err)
 	}
-	err = cl.Delete(context.TODO(), mco)
+	err = cl.Delete(t.Context(), mco)
 	if err != nil {
 		t.Fatalf("Failed to delete MultiClusterObservability: (%v)", err)
 	}
-	_, err = r.Reconcile(context.TODO(), req)
+	_, err = r.Reconcile(t.Context(), req)
 	if err != nil {
 		t.Fatalf("reconcile for finalizer: (%v)", err)
 	}
@@ -904,7 +904,7 @@ func TestImageReplaceForMCO(t *testing.T) {
 	config.SetImageManifests(testImagemanifestsMap)
 
 	// trigger another reconcile for MCH update event
-	_, err = r.Reconcile(context.TODO(), req)
+	_, err = r.Reconcile(t.Context(), req)
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)
 	}
@@ -919,7 +919,7 @@ func TestImageReplaceForMCO(t *testing.T) {
 	}
 	for _, deployName := range expectedDeploymentNames {
 		deploy := &appsv1.Deployment{}
-		err = cl.Get(context.TODO(), types.NamespacedName{
+		err = cl.Get(t.Context(), types.NamespacedName{
 			Name:      deployName,
 			Namespace: namespace,
 		}, deploy)
@@ -958,7 +958,7 @@ func TestImageReplaceForMCO(t *testing.T) {
 	}
 	for _, statefulName := range expectedStatefulSetNames {
 		sts := &appsv1.StatefulSet{}
-		err = cl.Get(context.TODO(), types.NamespacedName{
+		err = cl.Get(t.Context(), types.NamespacedName{
 			Name:      statefulName,
 			Namespace: namespace,
 		}, sts)
@@ -1036,29 +1036,29 @@ func TestCheckObjStorageStatus(t *testing.T) {
 	mcov1beta2.SchemeBuilder.AddToScheme(s)
 	objs := []runtime.Object{mco}
 	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
-	mcoCondition := checkObjStorageStatus(c, mco)
+	mcoCondition := checkObjStorageStatus(t.Context(), c, mco)
 	if mcoCondition == nil {
 		t.Errorf("check s3 conf failed: got %v, expected non-nil", mcoCondition)
 	}
 
-	err := c.Create(context.TODO(), createSecret("test", "test", config.GetDefaultNamespace()))
+	err := c.Create(t.Context(), createSecret("test", "test", config.GetDefaultNamespace()))
 	if err != nil {
 		t.Fatalf("Failed to create secret: (%v)", err)
 	}
 
-	mcoCondition = checkObjStorageStatus(c, mco)
+	mcoCondition = checkObjStorageStatus(t.Context(), c, mco)
 	if mcoCondition != nil {
 		t.Errorf("check s3 conf failed: got %v, expected nil", mcoCondition)
 	}
 
 	updateSecret := createSecret("error", "test", config.GetDefaultNamespace())
 	updateSecret.ObjectMeta.ResourceVersion = "1"
-	err = c.Update(context.TODO(), updateSecret)
+	err = c.Update(t.Context(), updateSecret)
 	if err != nil {
 		t.Fatalf("Failed to update secret: (%v)", err)
 	}
 
-	mcoCondition = checkObjStorageStatus(c, mco)
+	mcoCondition = checkObjStorageStatus(t.Context(), c, mco)
 	if mcoCondition == nil {
 		t.Errorf("check s3 conf failed: got %v, expected no-nil", mcoCondition)
 	}
@@ -1089,10 +1089,10 @@ func TestHandleStorageSizeChange(t *testing.T) {
 	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 	r := &MultiClusterObservabilityReconciler{Client: c, Scheme: s}
 	isAlertmanagerStorageSizeChanged = true
-	r.HandleStorageSizeChange(mco)
+	r.HandleStorageSizeChange(t.Context(), mco)
 
 	pvc := &corev1.PersistentVolumeClaim{}
-	err := c.Get(context.TODO(), types.NamespacedName{
+	err := c.Get(t.Context(), types.NamespacedName{
 		Name:      "test",
 		Namespace: config.GetDefaultNamespace(),
 	}, pvc)
@@ -1207,7 +1207,7 @@ func TestPrometheusRulesRemovedFromOpenshiftMonitoringNamespace(t *testing.T) {
 	objs := []runtime.Object{promRule}
 	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 	r := &MultiClusterObservabilityReconciler{Client: c, Scheme: s}
-	err := r.deleteSpecificPrometheusRule(context.TODO())
+	err := r.deleteSpecificPrometheusRule(t.Context())
 	if err != nil {
 		t.Fatalf("Failed to delete PrometheusRule: (%v)", err)
 	}
@@ -1232,7 +1232,7 @@ func TestServiceMonitorRemovedFromOpenshiftMonitoringNamespace(t *testing.T) {
 	objs := []runtime.Object{sm}
 	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 	r := &MultiClusterObservabilityReconciler{Client: c, Scheme: s}
-	err := r.deleteServiceMonitorInOpenshiftMonitoringNamespace(context.TODO())
+	err := r.deleteServiceMonitorInOpenshiftMonitoringNamespace(t.Context())
 	if err != nil {
 		t.Fatalf("Failed to delete ServiceMonitor: (%v)", err)
 	}
@@ -1297,7 +1297,7 @@ func TestNewMCOACRDEventHandler(t *testing.T) {
 				workqueue.DefaultTypedControllerRateLimiter[reconcile.Request](),
 				workqueue.TypedRateLimitingQueueConfig[reconcile.Request]{Name: "testQueue"},
 			)
-			handler.Create(context.TODO(), createEvent, queue)
+			handler.Create(t.Context(), createEvent, queue)
 
 			reqs := []reconcile.Request{}
 			for queue.Len() > 0 {

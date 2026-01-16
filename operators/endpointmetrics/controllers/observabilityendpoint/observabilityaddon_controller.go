@@ -86,7 +86,7 @@ type ObservabilityAddonReconciler struct {
 func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	r.Logger.Info("Reconciling", "Request", req.String())
 
-	isHypershift, err := r.getIsHypershift()
+	isHypershift, err := r.getIsHypershift(ctx)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -164,11 +164,11 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 	return r.updateMetricsCollector(ctx, req, obsAddon, hubInfo, clusterID, clusterType)
 }
 
-func (r *ObservabilityAddonReconciler) getIsHypershift() (bool, error) {
+func (r *ObservabilityAddonReconciler) getIsHypershift(ctx context.Context) (bool, error) {
 	if os.Getenv("UNIT_TEST") == "true" {
 		return true, nil
 	}
-	isHypershift, err := hypershift.IsHypershiftCluster()
+	isHypershift, err := hypershift.IsHypershiftCluster(ctx)
 	if err != nil {
 		return false, fmt.Errorf("failed to check if the cluster is hypershift: %w", err)
 	}
@@ -459,7 +459,7 @@ func (r *ObservabilityAddonReconciler) initFinalization(
 		} else {
 			// delete resources which is not namespace scoped or located in other namespaces
 			for _, res := range globalRes {
-				err = r.Client.Delete(context.TODO(), res)
+				err = r.Client.Delete(ctx, res)
 				if err != nil && !apierrors.IsNotFound(err) {
 					return false, err
 				}

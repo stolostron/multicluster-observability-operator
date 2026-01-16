@@ -5,7 +5,6 @@
 package multiclusterobservability
 
 import (
-	"context"
 	"testing"
 
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
@@ -34,7 +33,7 @@ func TestCreateOrUpdateObservabilityStorageVersionMigrationResource(t *testing.T
 	c := fake.NewClientBuilder().Build()
 
 	// test scenario of creating StorageVersionMigration
-	err := createOrUpdateObservabilityStorageVersionMigrationResource(c, s, mco)
+	err := createOrUpdateObservabilityStorageVersionMigrationResource(t.Context(), c, s, mco)
 	if err != nil {
 		t.Fatalf("createOrUpdateObservabilityStorageVersionMigrationResource: (%v)", err)
 	}
@@ -53,13 +52,13 @@ func TestCreateOrUpdateObservabilityStorageVersionMigrationResource(t *testing.T
 		},
 	}
 	c = fake.NewClientBuilder().WithRuntimeObjects(svm).Build()
-	err = createOrUpdateObservabilityStorageVersionMigrationResource(c, s, mco)
+	err = createOrUpdateObservabilityStorageVersionMigrationResource(t.Context(), c, s, mco)
 	if err != nil {
 		t.Fatalf("createOrUpdateObservabilityStorageVersionMigrationResource: (%v)", err)
 	}
 
 	foundSvm := &migrationv1alpha1.StorageVersionMigration{}
-	err = c.Get(context.TODO(), types.NamespacedName{Name: svmName}, foundSvm)
+	err = c.Get(t.Context(), types.NamespacedName{Name: svmName}, foundSvm)
 	if err != nil {
 		t.Fatalf("Failed to get StorageVersionMigration (%s): (%v)", svmName, err)
 	}
@@ -68,12 +67,12 @@ func TestCreateOrUpdateObservabilityStorageVersionMigrationResource(t *testing.T
 	}
 
 	// Test clean scenario in which StorageVersionMigration is already removed
-	err = createOrUpdateObservabilityStorageVersionMigrationResource(c, s, mco)
+	err = createOrUpdateObservabilityStorageVersionMigrationResource(t.Context(), c, s, mco)
 	if err != nil {
 		t.Fatalf("Failed to StorageVersionMigration: (%v)", err)
 	}
 
-	err = c.Delete(context.TODO(), svm)
+	err = c.Delete(t.Context(), svm)
 	if err != nil {
 		t.Fatalf("Failed to delete (%s): (%v)", svmName, err)
 	}

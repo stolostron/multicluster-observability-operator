@@ -132,10 +132,11 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	}
 
 	// start to update mco status
+	//nolint:contextcheck // StartStatusUpdate starts a background goroutine for status updates.
 	StartStatusUpdate(r.Client, instance)
 
 	ingressCtlCrdExists := r.CRDMap[config.IngressControllerCRD]
-	if err := r.startComponents(ingressCtlCrdExists); err != nil {
+	if err := r.startComponents(ctx, ingressCtlCrdExists); err != nil {
 		return ctrl.Result{}, err
 	}
 
@@ -159,24 +160,24 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		return ctrl.Result{}, nil
 	}
 
-	if err := r.handleBackupSecrets(instance); err != nil {
+	if err := r.handleBackupSecrets(ctx, instance); err != nil {
 		return ctrl.Result{}, err
 	}
 
-	storageClassSelected, err := getStorageClass(instance, r.Client)
+	storageClassSelected, err := getStorageClass(ctx, instance, r.Client)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to get storage class: %w", err)
 	}
 
 	// handle storagesize changes
-	result, err := r.HandleStorageSizeChange(instance)
+	result, err := r.HandleStorageSizeChange(ctx, instance)
 	if result != nil {
 		// If err is non-nil, wrap it. fmt.Errorf with %w handles nil err gracefully (returns nil).
 		return *result, fmt.Errorf("error during storage size change handling: %w", err)
 	}
 
 	// set operand names to cover the upgrade case since we have name changed in new release
-	err = config.SetOperandNames(r.Client)
+	err = config.SetOperandNames(ctx, r.Client)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to set operand names: %w", err)
 	}
@@ -201,7 +202,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	svmCrdExists := r.CRDMap[config.StorageVersionMigrationCrdName]
 	if svmCrdExists {
 		// create or update the storage version migration resource
-		err = createOrUpdateObservabilityStorageVersionMigrationResource(r.Client, r.Scheme, instance)
+		err = createOrUpdateObservabilityStorageVersionMigrationResource(ctx, r.Client, r.Scheme, instance)
 		if err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to create or update ObservabilityStorageVersionMigration resource: %w", err)
 		}
@@ -225,7 +226,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	return ctrl.Result{}, nil
 }
 
-func (r *MultiClusterObservabilityReconciler) handleBackupLabels(_ context.Context, name string, logger logr.Logger) error {
+func (r *MultiClusterObservabilityReconciler) handleBackupLabels(ctx context.Context, name string, logger logr.Logger) error {
 	if res, ok := config.BackupResourceMap[name]; ok {
 		logger.Info(infoAddingBackupLabel)
 		var err error
@@ -233,10 +234,10 @@ func (r *MultiClusterObservabilityReconciler) handleBackupLabels(_ context.Conte
 		switch res {
 		case config.ResourceTypeConfigMap:
 			resourceTypeStr = "ConfigMap"
-			err = util.AddBackupLabelToConfigMap(r.Client, name, config.GetDefaultNamespace())
+			err = util.AddBackupLabelToConfigMap(ctx, r.Client, name, config.GetDefaultNamespace())
 		case config.ResourceTypeSecret:
 			resourceTypeStr = "Secret"
-			err = util.AddBackupLabelToSecret(r.Client, name, config.GetDefaultNamespace())
+			err = util.AddBackupLabelToSecret(ctx, r.Client, name, config.GetDefaultNamespace())
 		default:
 			log.Info("unknown type " + res)
 		}
@@ -265,17 +266,18 @@ func (r *MultiClusterObservabilityReconciler) getMCOInstance(ctx context.Context
 	return &mcoList.Items[0], nil
 }
 
-func (r *MultiClusterObservabilityReconciler) startComponents(ingressCtlCrdExists bool) error {
+func (r *MultiClusterObservabilityReconciler) startComponents(ctx context.Context, ingressCtlCrdExists bool) error {
 	if _, ok := os.LookupEnv("UNIT_TEST"); !ok {
 		// start placement controller
-		err := placementctrl.StartPlacementController(r.Manager, r.CRDMap)
+		err := placementctrl.StartPlacementController(ctx, r.Manager, r.CRDMap)
 		if err != nil {
 			return fmt.Errorf("failed to start placement controller: %w", err)
 		}
 		// setup ocm addon manager
-		certctrl.Start(r.Client, ingressCtlCrdExists)
+		certctrl.Start(ctx, r.Client, ingressCtlCrdExists)
 
 		// start servicemonitor controller
+		//nolint:contextcheck // smctrl.Start() launches a long-running controller that manages its own context.
 		smctrl.Start()
 	}
 	return nil
@@ -300,11 +302,11 @@ func (r *MultiClusterObservabilityReconciler) checkMCHReadiness(logger logr.Logg
 	return true, 0
 }
 
-func (r *MultiClusterObservabilityReconciler) handleBackupSecrets(instance *mcov1beta2.MultiClusterObservability) error {
+func (r *MultiClusterObservabilityReconciler) handleBackupSecrets(ctx context.Context, instance *mcov1beta2.MultiClusterObservability) error {
 	if _, ok := config.BackupResourceMap[instance.Spec.StorageConfig.MetricObjectStorage.Name]; !ok {
 		log.Info(infoAddingBackupLabel, "Secret", instance.Spec.StorageConfig.MetricObjectStorage.Name)
 		config.BackupResourceMap[instance.Spec.StorageConfig.MetricObjectStorage.Name] = config.ResourceTypeSecret
-		err := util.AddBackupLabelToSecret(r.Client, instance.Spec.StorageConfig.MetricObjectStorage.Name, config.GetDefaultNamespace())
+		err := util.AddBackupLabelToSecret(ctx, r.Client, instance.Spec.StorageConfig.MetricObjectStorage.Name, config.GetDefaultNamespace())
 		if err != nil {
 			return fmt.Errorf("failed to add backup label to metric object storage secret %s: %w", instance.Spec.StorageConfig.MetricObjectStorage.Name, err)
 		}
@@ -314,7 +316,7 @@ func (r *MultiClusterObservabilityReconciler) handleBackupSecrets(instance *mcov
 	if _, ok := config.BackupResourceMap[imagePullSecret]; !ok {
 		log.Info(infoAddingBackupLabel, "Secret", imagePullSecret)
 		config.BackupResourceMap[imagePullSecret] = config.ResourceTypeSecret
-		err := util.AddBackupLabelToSecret(r.Client, imagePullSecret, config.GetDefaultNamespace())
+		err := util.AddBackupLabelToSecret(ctx, r.Client, imagePullSecret, config.GetDefaultNamespace())
 		if err != nil {
 			return fmt.Errorf("failed to add backup label to image pull secret %s: %w", imagePullSecret, err)
 		}
@@ -442,7 +444,7 @@ func (r *MultiClusterObservabilityReconciler) generateRoutesAndCerts(
 ) (ctrl.Result, error) {
 	if ingressCtlCrdExists {
 		// expose alertmanager through route
-		result, err := GenerateAlertmanagerRoute(r.Client, r.Scheme, instance)
+		result, err := GenerateAlertmanagerRoute(ctx, r.Client, r.Scheme, instance)
 		if result != nil {
 			return *result, err
 		}
@@ -454,36 +456,37 @@ func (r *MultiClusterObservabilityReconciler) generateRoutesAndCerts(
 		}
 
 		// expose rbac proxy through route
-		result, err = GenerateProxyRoute(r.Client, r.Scheme, instance)
+		result, err = GenerateProxyRoute(ctx, r.Client, r.Scheme, instance)
 		if result != nil {
 			return *result, err
 		}
 
 		// expose grafana through route
-		result, err = GenerateGrafanaRoute(r.Client, r.Scheme, instance)
+		result, err = GenerateGrafanaRoute(ctx, r.Client, r.Scheme, instance)
 		if result != nil {
 			return *result, err
 		}
-		result, err = GenerateGrafanaOauthClient(r.Client, r.Scheme, instance)
+		result, err = GenerateGrafanaOauthClient(ctx, r.Client, r.Scheme, instance)
 		if result != nil {
 			return *result, err
 		}
 	}
 
 	// create the certificates
-	err := certctrl.CreateObservabilityCerts(r.Client, r.Scheme, instance, ingressCtlCrdExists)
+	err := certctrl.CreateObservabilityCerts(ctx, r.Client, r.Scheme, instance, ingressCtlCrdExists)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to create observability certs: %w", err)
 	}
 
 	// create an Observatorium CR
-	result, err := GenerateObservatoriumCR(r.Client, r.Scheme, instance)
+	result, err := GenerateObservatoriumCR(ctx, r.Client, r.Scheme, instance)
 	if result != nil {
 		return *result, err
 	}
 
-	// generate grafana datasource to point to observatorium api gateway
-	result, err = GenerateGrafanaDataSource(r.Client, r.Scheme, instance)
+	// create the grafana datasource
+	result, err = GenerateGrafanaDataSource(ctx, r.Client, r.Scheme, instance)
+
 	if result != nil {
 		return *result, err
 	}
@@ -496,7 +499,7 @@ func (r *MultiClusterObservabilityReconciler) initFinalization(ctx context.Conte
 		log.Info("To delete resources across namespaces")
 		// clean up the cluster resources, eg. clusterrole, clusterrolebinding, etc
 		operatorconfig.IsMCOTerminating = true
-		if err := cleanUpClusterScopedResources(r, mco); err != nil {
+		if err := cleanUpClusterScopedResources(ctx, r, mco); err != nil {
 			log.Error(err, "Failed to remove cluster scoped resources")
 			return false, err
 		}
@@ -533,11 +536,11 @@ func (r *MultiClusterObservabilityReconciler) initFinalization(ctx context.Conte
 	return false, nil
 }
 
-func getStorageClass(mco *mcov1beta2.MultiClusterObservability, cl client.Client) (string, error) {
+func getStorageClass(ctx context.Context, mco *mcov1beta2.MultiClusterObservability, cl client.Client) (string, error) {
 	storageClassSelected := mco.Spec.StorageConfig.StorageClass
 	// for the test, the reader is just nil
 	storageClassList := &storev1.StorageClassList{}
-	err := cl.List(context.TODO(), storageClassList, &client.ListOptions{})
+	err := cl.List(ctx, storageClassList, &client.ListOptions{})
 	if err != nil {
 		return "", err
 	}
@@ -683,11 +686,12 @@ func checkStorageChanged(mcoOldConfig, mcoNewConfig *mcov1beta2.StorageConfig) {
 // 2. Removed StatefulSet and
 // wait for operator to re-create the StatefulSet with the correct size on the claim
 func (r *MultiClusterObservabilityReconciler) HandleStorageSizeChange(
+	ctx context.Context,
 	mco *mcov1beta2.MultiClusterObservability,
 ) (*reconcile.Result, error) {
 	if isAlertmanagerStorageSizeChanged {
 		isAlertmanagerStorageSizeChanged = false
-		err := updateStorageSizeChange(r.Client,
+		err := updateStorageSizeChange(ctx, r.Client,
 			map[string]string{
 				"observability.open-cluster-management.io/name": mco.GetName(),
 				"alertmanager": "observability",
@@ -699,7 +703,7 @@ func (r *MultiClusterObservabilityReconciler) HandleStorageSizeChange(
 
 	if isReceiveStorageSizeChanged {
 		isReceiveStorageSizeChanged = false
-		err := updateStorageSizeChange(r.Client,
+		err := updateStorageSizeChange(ctx, r.Client,
 			map[string]string{
 				"app.kubernetes.io/instance": mco.GetName(),
 				"app.kubernetes.io/name":     "thanos-receive",
@@ -711,7 +715,7 @@ func (r *MultiClusterObservabilityReconciler) HandleStorageSizeChange(
 
 	if isCompactStorageSizeChanged {
 		isCompactStorageSizeChanged = false
-		err := updateStorageSizeChange(r.Client,
+		err := updateStorageSizeChange(ctx, r.Client,
 			map[string]string{
 				"app.kubernetes.io/instance": mco.GetName(),
 				"app.kubernetes.io/name":     "thanos-compact",
@@ -723,7 +727,7 @@ func (r *MultiClusterObservabilityReconciler) HandleStorageSizeChange(
 
 	if isRuleStorageSizeChanged {
 		isRuleStorageSizeChanged = false
-		err := updateStorageSizeChange(r.Client,
+		err := updateStorageSizeChange(ctx, r.Client,
 			map[string]string{
 				"app.kubernetes.io/instance": mco.GetName(),
 				"app.kubernetes.io/name":     "thanos-rule",
@@ -735,7 +739,7 @@ func (r *MultiClusterObservabilityReconciler) HandleStorageSizeChange(
 
 	if isStoreStorageSizeChanged {
 		isStoreStorageSizeChanged = false
-		err := updateStorageSizeChange(r.Client,
+		err := updateStorageSizeChange(ctx, r.Client,
 			map[string]string{
 				"app.kubernetes.io/instance": mco.GetName(),
 				"app.kubernetes.io/name":     "thanos-store",
@@ -747,13 +751,13 @@ func (r *MultiClusterObservabilityReconciler) HandleStorageSizeChange(
 	return nil, nil
 }
 
-func updateStorageSizeChange(c client.Client, matchLabels map[string]string, storageSize string) error {
-	pvcList, err := commonutil.GetPVCList(c, config.GetDefaultNamespace(), matchLabels)
+func updateStorageSizeChange(ctx context.Context, c client.Client, matchLabels map[string]string, storageSize string) error {
+	pvcList, err := commonutil.GetPVCList(ctx, c, config.GetDefaultNamespace(), matchLabels)
 	if err != nil {
 		return err
 	}
 
-	stsList, err := commonutil.GetStatefulSetList(c, config.GetDefaultNamespace(), matchLabels)
+	stsList, err := commonutil.GetStatefulSetList(ctx, c, config.GetDefaultNamespace(), matchLabels)
 	if err != nil {
 		return err
 	}
@@ -764,7 +768,7 @@ func updateStorageSizeChange(c client.Client, matchLabels map[string]string, sto
 			pvcList[index].Spec.Resources.Requests = corev1.ResourceList{
 				corev1.ResourceStorage: resource.MustParse(storageSize),
 			}
-			err := c.Update(context.TODO(), &pvcList[index])
+			err := c.Update(ctx, &pvcList[index])
 			if err != nil {
 				return err
 			}
@@ -773,7 +777,7 @@ func updateStorageSizeChange(c client.Client, matchLabels map[string]string, sto
 	}
 	// update sts
 	for index, sts := range stsList {
-		err := c.Delete(context.TODO(), &stsList[index], &client.DeleteOptions{})
+		err := c.Delete(ctx, &stsList[index], &client.DeleteOptions{})
 		if err != nil && !apierrors.IsNotFound(err) {
 			return err
 		}
@@ -784,6 +788,7 @@ func updateStorageSizeChange(c client.Client, matchLabels map[string]string, sto
 
 // GenerateAlertmanagerRoute create route for Alertmanager endpoint
 func GenerateAlertmanagerRoute(
+	ctx context.Context,
 	runclient client.Client, scheme *runtime.Scheme,
 	mco *mcov1beta2.MultiClusterObservability,
 ) (*ctrl.Result, error) {
@@ -811,12 +816,12 @@ func GenerateAlertmanagerRoute(
 	amRouteBYOCaSrt := &corev1.Secret{}
 	amRouteBYOCertSrt := &corev1.Secret{}
 	err1 := runclient.Get(
-		context.TODO(),
+		ctx,
 		types.NamespacedName{Name: config.AlertmanagerRouteBYOCAName, Namespace: config.GetDefaultNamespace()},
 		amRouteBYOCaSrt,
 	)
 	err2 := runclient.Get(
-		context.TODO(),
+		ctx,
 		types.NamespacedName{Name: config.AlertmanagerRouteBYOCERTName, Namespace: config.GetDefaultNamespace()},
 		amRouteBYOCertSrt,
 	)
@@ -849,7 +854,7 @@ func GenerateAlertmanagerRoute(
 
 	found := &routev1.Route{}
 	err := runclient.Get(
-		context.TODO(),
+		ctx,
 		types.NamespacedName{Name: amGateway.Name, Namespace: amGateway.Namespace},
 		found,
 	)
@@ -861,7 +866,7 @@ func GenerateAlertmanagerRoute(
 			"amGateway.Name",
 			amGateway.Name,
 		)
-		err = runclient.Create(context.TODO(), amGateway)
+		err = runclient.Create(ctx, amGateway)
 		if err != nil {
 			return &ctrl.Result{}, err
 		}
@@ -870,7 +875,7 @@ func GenerateAlertmanagerRoute(
 	if !reflect.DeepEqual(found.Spec.TLS, amGateway.Spec.TLS) {
 		log.Info("Found update for the TLS configuration of the Alertmanager Route, try to update the Route")
 		amGateway.ResourceVersion = found.ResourceVersion
-		err = runclient.Update(context.TODO(), amGateway)
+		err = runclient.Update(ctx, amGateway)
 		if err != nil {
 			return &ctrl.Result{}, err
 		}
@@ -880,6 +885,7 @@ func GenerateAlertmanagerRoute(
 
 // GenerateProxyRoute create route for Proxy endpoint
 func GenerateProxyRoute(
+	ctx context.Context,
 	runclient client.Client, scheme *runtime.Scheme,
 	mco *mcov1beta2.MultiClusterObservability,
 ) (*ctrl.Result, error) {
@@ -906,12 +912,12 @@ func GenerateProxyRoute(
 	proxyRouteBYOCaSrt := &corev1.Secret{}
 	proxyRouteBYOCertSrt := &corev1.Secret{}
 	err1 := runclient.Get(
-		context.TODO(),
+		ctx,
 		types.NamespacedName{Name: config.ProxyRouteBYOCAName, Namespace: config.GetDefaultNamespace()},
 		proxyRouteBYOCaSrt,
 	)
 	err2 := runclient.Get(
-		context.TODO(),
+		ctx,
 		types.NamespacedName{Name: config.ProxyRouteBYOCERTName, Namespace: config.GetDefaultNamespace()},
 		proxyRouteBYOCertSrt,
 	)
@@ -944,7 +950,7 @@ func GenerateProxyRoute(
 
 	found := &routev1.Route{}
 	err := runclient.Get(
-		context.TODO(),
+		ctx,
 		types.NamespacedName{Name: proxyGateway.Name, Namespace: proxyGateway.Namespace},
 		found,
 	)
@@ -956,7 +962,7 @@ func GenerateProxyRoute(
 			"proxyGateway.Name",
 			proxyGateway.Name,
 		)
-		err = runclient.Create(context.TODO(), proxyGateway)
+		err = runclient.Create(ctx, proxyGateway)
 		if err != nil {
 			return &ctrl.Result{}, err
 		}
@@ -965,7 +971,7 @@ func GenerateProxyRoute(
 	if !reflect.DeepEqual(found.Spec.TLS, proxyGateway.Spec.TLS) {
 		log.Info("Found update for the TLS configuration of the Proxy Route, try to update the Route")
 		proxyGateway.ResourceVersion = found.ResourceVersion
-		err = runclient.Update(context.TODO(), proxyGateway)
+		err = runclient.Update(ctx, proxyGateway)
 		if err != nil {
 			return &ctrl.Result{}, err
 		}
@@ -976,6 +982,7 @@ func GenerateProxyRoute(
 // cleanUpClusterScopedResources delete the cluster scoped resources created by the MCO operator
 // The cluster scoped resources need to be deleted manually because they don't have ownerrefenence set as the MCO CR
 func cleanUpClusterScopedResources(
+	ctx context.Context,
 	r *MultiClusterObservabilityReconciler,
 	mco *mcov1beta2.MultiClusterObservability,
 ) error {
@@ -985,24 +992,24 @@ func cleanUpClusterScopedResources(
 	}
 
 	clusterRoleList := &rbacv1.ClusterRoleList{}
-	err := r.Client.List(context.TODO(), clusterRoleList, listOpts...)
+	err := r.Client.List(ctx, clusterRoleList, listOpts...)
 	if err != nil {
 		return err
 	}
 	for idx := range clusterRoleList.Items {
-		err := r.Client.Delete(context.TODO(), &clusterRoleList.Items[idx], &client.DeleteOptions{})
+		err := r.Client.Delete(ctx, &clusterRoleList.Items[idx], &client.DeleteOptions{})
 		if err != nil {
 			return err
 		}
 	}
 
 	clusterRoleBindingList := &rbacv1.ClusterRoleBindingList{}
-	err = r.Client.List(context.TODO(), clusterRoleBindingList, listOpts...)
+	err = r.Client.List(ctx, clusterRoleBindingList, listOpts...)
 	if err != nil {
 		return err
 	}
 	for idx := range clusterRoleBindingList.Items {
-		err := r.Client.Delete(context.TODO(), &clusterRoleBindingList.Items[idx], &client.DeleteOptions{})
+		err := r.Client.Delete(ctx, &clusterRoleBindingList.Items[idx], &client.DeleteOptions{})
 		if err != nil {
 			return err
 		}
@@ -1010,7 +1017,7 @@ func cleanUpClusterScopedResources(
 
 	ingressCtlCrdExists := r.CRDMap[config.IngressControllerCRD]
 	if ingressCtlCrdExists {
-		return DeleteGrafanaOauthClient(r.Client)
+		return DeleteGrafanaOauthClient(ctx, r.Client)
 	}
 
 	return nil

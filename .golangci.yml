@@ -17,6 +17,7 @@ linters:
   enable:
     # Sorted alphabetically.
     - bodyclose
+    - contextcheck
     - errcheck
     - exptostd
     - gocognit

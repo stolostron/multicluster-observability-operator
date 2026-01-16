@@ -291,10 +291,10 @@ func (r *PlacementRuleReconciler) cleanOrphanResources(ctx context.Context, req 
 			continue
 		}
 		// Also ensure managed cluster resources are gone
-		if err := deleteManifestWorks(r.Client, ns); err != nil {
+		if err := deleteManifestWorks(ctx, r.Client, ns); err != nil {
 			return false, fmt.Errorf("failed to delete manifestworks in namespace %q: %w", ns, err)
 		}
-		if err := deleteManagedClusterAddOn(r.Client, ns); err != nil {
+		if err := deleteManagedClusterAddOn(ctx, r.Client, ns); err != nil {
 			return false, fmt.Errorf("failed to delete orphaned managed cluster resources in namespace %q: %w", ns, err)
 		}
 		// Remove from map so we don't process it again in the next loop
@@ -305,7 +305,7 @@ func (r *PlacementRuleReconciler) cleanOrphanResources(ctx context.Context, req 
 	for _, work := range workList.Items {
 		if work.Name != work.Namespace+workNameSuffix {
 			log.Info("Deleting ManifestWork with invalid name", "namespace", work.Namespace, "name", work.Name)
-			if err := deleteManifestWork(r.Client, work.Name, work.Namespace); err != nil {
+			if err := deleteManifestWork(ctx, r.Client, work.Name, work.Namespace); err != nil {
 				return false, fmt.Errorf("failed to delete invalid ManifestWork: %w", err)
 			}
 		}
@@ -331,10 +331,10 @@ func (r *PlacementRuleReconciler) cleanOrphanResources(ctx context.Context, req 
 		}
 
 		log.Info("Deleting orphaned ManagedCluster resources", "namespace", ns)
-		if err := deleteManifestWorks(r.Client, ns); err != nil {
+		if err := deleteManifestWorks(ctx, r.Client, ns); err != nil {
 			return false, fmt.Errorf("failed to delete manifestworks in namespace %q: %w", ns, err)
 		}
-		if err := deleteManagedClusterAddOn(r.Client, ns); err != nil {
+		if err := deleteManagedClusterAddOn(ctx, r.Client, ns); err != nil {
 			return false, fmt.Errorf("failed to delete managed cluster resources in namespace %q: %w", ns, err)
 		}
 	}
@@ -395,10 +395,10 @@ func (r *PlacementRuleReconciler) cleanSpokesAddonResources(ctx context.Context)
 	// Force deletion of ManagedCluster resources to ensure immediate cleanup
 	// instead of waiting for cleanOrphanResources which might be delayed by finalizers.
 	for _, addon := range obsAddonList.Items {
-		if err := deleteManifestWorks(r.Client, addon.Namespace); err != nil {
+		if err := deleteManifestWorks(ctx, r.Client, addon.Namespace); err != nil {
 			log.Error(err, "Failed to delete manifestworks", "namespace", addon.Namespace)
 		}
-		if err := deleteManagedClusterAddOn(r.Client, addon.Namespace); err != nil {
+		if err := deleteManagedClusterAddOn(ctx, r.Client, addon.Namespace); err != nil {
 			log.Error(err, "Failed to delete managed cluster resources", "namespace", addon.Namespace)
 		}
 	}
@@ -436,7 +436,7 @@ func (r *PlacementRuleReconciler) ensureMCOAResources(ctx context.Context, mco *
 	}
 	resourcesToCreate = append(resourcesToCreate, hubServerCaCertSecret)
 
-	amAccessorTokenSecret, err = generateAmAccessorTokenSecret(r.Client, r.KubeClient)
+	amAccessorTokenSecret, err = generateAmAccessorTokenSecret(ctx, r.Client, r.KubeClient)
 	if err != nil {
 		return fmt.Errorf("failed to generate alertManager token secret: %w", err)
 	}
@@ -551,7 +551,7 @@ func createAllRelatedRes(
 	// regenerate the hubinfo secret if empty
 	if hubInfoSecret == nil {
 		var err error
-		if hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, crdMap, config.IsUWMAlertingDisabledInSpec(mco)); err != nil {
+		if hubInfoSecret, err = generateHubInfoSecret(ctx, c, config.GetDefaultNamespace(), spokeNameSpace, crdMap, config.IsUWMAlertingDisabledInSpec(mco)); err != nil {
 			return fmt.Errorf("failed to generate hub info secret: %w", err)
 		}
 	}
@@ -724,11 +724,11 @@ func deleteGlobalResource(ctx context.Context, c client.Client) error {
 // - the role bindings for system groups
 // - the managedClusterAddon named "observability-controller"
 func createManagedClusterRes(ctx context.Context, c client.Client, mco *mcov1beta2.MultiClusterObservability, name string, namespace string) (*addonv1alpha1.AddOnDeploymentConfig, error) {
-	if err := createObsAddon(mco, c, namespace); err != nil {
+	if err := createObsAddon(ctx, mco, c, namespace); err != nil {
 		return nil, fmt.Errorf("failed to create observabilityaddon: %w", err)
 	}
 
-	if err := createRolebindings(c, namespace, name); err != nil {
+	if err := createRolebindings(ctx, c, namespace, name); err != nil {
 		return nil, fmt.Errorf("failed to create role bindings: %w", err)
 	}
 
@@ -764,14 +764,14 @@ func createManagedClusterRes(ctx context.Context, c client.Client, mco *mcov1bet
 	return addonConfig, nil
 }
 
-func deleteManagedClusterAddOn(c client.Client, namespace string) error {
+func deleteManagedClusterAddOn(ctx context.Context, c client.Client, namespace string) error {
 	managedclusteraddon := &addonv1alpha1.ManagedClusterAddOn{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      config.ManagedClusterAddonName,
 			Namespace: namespace,
 		},
 	}
-	err := c.Delete(context.TODO(), managedclusteraddon)
+	err := c.Delete(ctx, managedclusteraddon)
 	if err != nil {
 		if !k8serrors.IsNotFound(err) {
 			log.Error(err, "Failed to delete managedclusteraddon")
@@ -781,7 +781,7 @@ func deleteManagedClusterAddOn(c client.Client, namespace string) error {
 		log.Info("Deleted managed cluster addon", "namespace", namespace, "name", managedclusteraddon.Name)
 	}
 
-	err = deleteRolebindings(c, namespace)
+	err = deleteRolebindings(ctx, c, namespace)
 	if err != nil {
 		return err
 	}
@@ -929,7 +929,8 @@ func getObsAddonPred(c client.Client) predicate.Funcs {
 					"obsAddonName",
 					e.Object.GetName(),
 				)
-				if err := removePostponeDeleteAnnotationForManifestwork(c, e.Object.GetNamespace()); err != nil {
+
+				if err := removePostponeDeleteAnnotationForManifestwork(context.Background(), c, e.Object.GetNamespace()); err != nil {
 					log.Error(err, "postpone delete annotation for manifestwork could not be removed")
 					return false
 				}
@@ -948,7 +949,7 @@ func getAllowlistPred(c client.Client) predicate.Funcs {
 				e.Object.GetNamespace() == config.GetDefaultNamespace() {
 				// generate the metrics allowlist configmap
 				log.Info("generate metric allow list configmap for allowlist configmap CREATE")
-				metricsAllowlistConfigMap, _ = generateMetricsListCM(c)
+				metricsAllowlistConfigMap, _ = generateMetricsListCM(context.Background(), c)
 				return true
 			}
 			return false
@@ -960,7 +961,7 @@ func getAllowlistPred(c client.Client) predicate.Funcs {
 				e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() {
 				// regenerate the metrics allowlist configmap
 				log.Info("generate metric allow list configmap for allowlist configmap UPDATE")
-				metricsAllowlistConfigMap, _ = generateMetricsListCM(c)
+				metricsAllowlistConfigMap, _ = generateMetricsListCM(context.Background(), c)
 				return true
 			}
 			return false
@@ -971,7 +972,7 @@ func getAllowlistPred(c client.Client) predicate.Funcs {
 				e.Object.GetNamespace() == config.GetDefaultNamespace() {
 				// regenerate the metrics allowlist configmap
 				log.Info("generate metric allow list configmap for allowlist configmap UPDATE")
-				metricsAllowlistConfigMap, _ = generateMetricsListCM(c)
+				metricsAllowlistConfigMap, _ = generateMetricsListCM(context.Background(), c)
 				return true
 			}
 			return false
@@ -1297,12 +1298,13 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrBuilder.Complete(r)
 }
 
-func StartPlacementController(mgr manager.Manager, crdMap map[string]bool) error {
+func StartPlacementController(_ context.Context, mgr manager.Manager, crdMap map[string]bool) error {
 	if isplacementControllerRunnning {
 		return nil
 	}
 	isplacementControllerRunnning = true
 
+	//nolint:contextcheck // SetupWithManager creates a controller that runs in the background and manages its own context.
 	if err := (&PlacementRuleReconciler{
 		Client:     mgr.GetClient(),
 		Log:        ctrl.Log.WithName("controllers").WithName("PlacementRule"),
@@ -1360,7 +1362,7 @@ func mcoaForMetricsIsEnabled(mco *mcov1beta2.MultiClusterObservability) bool {
 // as a custom default certificate
 func isCustomIngressCertificate(c client.Client, secretName string) bool {
 	ingressOperator := &operatorv1.IngressController{}
-	err := c.Get(context.TODO(), types.NamespacedName{
+	err := c.Get(context.Background(), types.NamespacedName{
 		Name:      config.OpenshiftIngressOperatorCRName,
 		Namespace: config.OpenshiftIngressOperatorNamespace,
 	}, ingressOperator)
@@ -1382,13 +1384,14 @@ func isCustomIngressCertificate(c client.Client, secretName string) bool {
 func updateHubInfoSecret(c client.Client, crdMap map[string]bool) bool {
 	// get the MCO instance
 	mco := &mcov1beta2.MultiClusterObservability{}
-	if err := c.Get(context.TODO(), types.NamespacedName{Name: config.GetMonitoringCRName()}, mco); err != nil {
+	if err := c.Get(context.Background(), types.NamespacedName{Name: config.GetMonitoringCRName()}, mco); err != nil {
 		log.Error(err, "Failed to get MCO instance")
 		return false
 	}
 	// generate the hubInfo secret
 	var err error
 	hubInfoSecret, err = generateHubInfoSecret(
+		context.Background(),
 		c,
 		config.GetDefaultNamespace(),
 		spokeNameSpace,

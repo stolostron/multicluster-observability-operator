@@ -103,6 +103,7 @@ type ToClientConfig struct {
 // CreateFromClient creates a new metrics client for the from URL.
 // Needs to be exported here so that it can be used in collectrule evaluator.
 func (cfg Config) CreateFromClient(
+	ctx context.Context,
 	metrics *WorkerMetrics,
 	interval time.Duration,
 	_ string,
@@ -151,7 +152,7 @@ func (cfg Config) CreateFromClient(
 	}
 
 	if len(cfg.FromClientConfig.TokenFile) > 0 {
-		tf, err := NewTokenFile(context.Background(), logger, cfg.FromClientConfig.TokenFile, 2*time.Minute)
+		tf, err := NewTokenFile(ctx, logger, cfg.FromClientConfig.TokenFile, 2*time.Minute)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create tokenFile: %w", err)
 		}
@@ -168,6 +169,7 @@ func (cfg Config) CreateFromClient(
 // Uses config for CA, Cert, Key for configuring mTLS transport.
 // Skips if nothing is provided.
 func (cfg Config) CreateToClient(
+	_ context.Context,
 	metrics *WorkerMetrics,
 	interval time.Duration,
 	name string,
@@ -292,7 +294,7 @@ func NewWorkerMetrics(reg *prometheus.Registry) *WorkerMetrics {
 }
 
 // New creates a new Worker based on the provided Config.
-func New(cfg Config) (*Worker, error) {
+func New(ctx context.Context, cfg Config) (*Worker, error) {
 	if cfg.FromClientConfig.URL == nil {
 		return nil, errors.New("a URL from which to scrape is required")
 	}
@@ -315,12 +317,12 @@ func New(cfg Config) (*Worker, error) {
 		w.interval = 4*time.Minute + 30*time.Second
 	}
 
-	fromClient, err := cfg.CreateFromClient(w.metrics, w.interval, "federate_from", logger)
+	fromClient, err := cfg.CreateFromClient(ctx, w.metrics, w.interval, "federate_from", logger)
 	if err != nil {
 		return nil, err
 	}
 
-	toClient, err := cfg.CreateToClient(w.metrics, w.interval, "federate_to", logger)
+	toClient, err := cfg.CreateToClient(ctx, w.metrics, w.interval, "federate_to", logger)
 	if err != nil {
 		return nil, err
 	}
@@ -369,8 +371,8 @@ func New(cfg Config) (*Worker, error) {
 // Keeping this method for now, but it is effectively unused.
 // Reconfigure temporarily stops a worker and reconfigures is with the provided Condfig.
 // Is thread safe and can run concurrently with `LastMetrics` and `Run`.
-func (w *Worker) Reconfigure(cfg Config) error {
-	worker, err := New(cfg)
+func (w *Worker) Reconfigure(ctx context.Context, cfg Config) error {
+	worker, err := New(ctx, cfg)
 	if err != nil {
 		return fmt.Errorf("failed to reconfigure: %w", err)
 	}

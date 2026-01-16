@@ -169,7 +169,7 @@ func TestNew(t *testing.T) {
 		if i == 10 {
 			os.Setenv("HTTPS_PROXY_CA_BUNDLE", customCA)
 		}
-		if _, err := New(tc[i].c); (err != nil) != tc[i].err {
+		if _, err := New(t.Context(), tc[i].c); (err != nil) != tc[i].err {
 			no := "no"
 			if tc[i].err {
 				no = "an"
@@ -191,7 +191,7 @@ func TestReconfigure(t *testing.T) {
 		Logger:  log.NewNopLogger(),
 		Metrics: NewWorkerMetrics(prometheus.NewRegistry()),
 	}
-	w, err := New(c)
+	w, err := New(t.Context(), c)
 	if err != nil {
 		t.Fatalf("failed to create new worker: %v", err)
 	}
@@ -237,7 +237,7 @@ func TestReconfigure(t *testing.T) {
 
 	for i := range tc {
 		tc[i].c.Metrics = NewWorkerMetrics(prometheus.NewRegistry())
-		if err := w.Reconfigure(tc[i].c); (err != nil) != tc[i].err {
+		if err := w.Reconfigure(t.Context(), tc[i].c); (err != nil) != tc[i].err {
 			no := "no"
 			if tc[i].err {
 				no = "an"

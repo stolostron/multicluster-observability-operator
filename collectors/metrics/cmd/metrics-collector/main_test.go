@@ -150,7 +150,7 @@ func TestMultiWorkersRaceCondition(t *testing.T) {
 
 	for _, cfg := range cfgs {
 		cfg.Metrics = metrics
-		worker, err := forwarder.New(*cfg)
+		worker, err := forwarder.New(t.Context(), *cfg)
 		assert.NoError(t, err)
 		go worker.Run(ctx)
 	}

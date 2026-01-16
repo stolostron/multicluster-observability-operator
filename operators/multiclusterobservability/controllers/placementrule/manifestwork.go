@@ -79,14 +79,14 @@ var (
 	rawExtensionList []runtime.RawExtension
 )
 
-func deleteManifestWork(c client.Client, name string, namespace string) error {
+func deleteManifestWork(ctx context.Context, c client.Client, name string, namespace string) error {
 	addon := &workv1.ManifestWork{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
 		},
 	}
-	err := c.Delete(context.TODO(), addon)
+	err := c.Delete(ctx, addon)
 	if err != nil && !k8serrors.IsNotFound(err) {
 		log.Error(err, "Failed to delete manifestworks", "name", name, "namespace", namespace)
 		return err
@@ -94,8 +94,8 @@ func deleteManifestWork(c client.Client, name string, namespace string) error {
 	return nil
 }
 
-func deleteManifestWorks(c client.Client, namespace string) error {
-	err := c.DeleteAllOf(context.TODO(), &workv1.ManifestWork{},
+func deleteManifestWorks(ctx context.Context, c client.Client, namespace string) error {
+	err := c.DeleteAllOf(ctx, &workv1.ManifestWork{},
 		client.InNamespace(namespace), client.MatchingLabels{ownerLabelKey: ownerLabelValue})
 	if err != nil {
 		log.Error(err, "Failed to delete observability manifestworks", "namespace", namespace)
@@ -200,11 +200,11 @@ func getConfigSpecHashAnnotation(ctx context.Context, c client.Client, namespace
 
 // removePostponeDeleteAnnotationForManifestwork removes the postpone delete annotation for manifestwork so that
 // the workagent can delete the manifestwork normally
-func removePostponeDeleteAnnotationForManifestwork(c client.Client, namespace string) error {
+func removePostponeDeleteAnnotationForManifestwork(ctx context.Context, c client.Client, namespace string) error {
 	name := namespace + workNameSuffix
 	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		found := &workv1.ManifestWork{}
-		err := c.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, found)
+		err := c.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, found)
 		if err != nil {
 			log.Error(err, "failed to check manifestwork", "namespace", namespace, "name", name)
 			return err
@@ -214,7 +214,7 @@ func removePostponeDeleteAnnotationForManifestwork(c client.Client, namespace st
 			delete(found.GetAnnotations(), workPostponeDeleteAnnoKey)
 		}
 
-		err = c.Update(context.TODO(), found)
+		err = c.Update(ctx, found)
 		if err != nil {
 			return err
 		}
@@ -331,7 +331,7 @@ func generateGlobalManifestResources(ctx context.Context, c client.Client, mco *
 	// inject the image pull secret
 	if pullSecret == nil {
 		var err error
-		if pullSecret, err = generatePullSecret(c, config.GetImagePullSecret(mco.Spec)); err != nil {
+		if pullSecret, err = generatePullSecret(ctx, c, config.GetImagePullSecret(mco.Spec)); err != nil {
 			return nil, nil, err
 		}
 	}
@@ -346,13 +346,13 @@ func generateGlobalManifestResources(ctx context.Context, c client.Client, mco *
 	// generate the metrics allowlist configmap
 	if metricsAllowlistConfigMap == nil {
 		var err error
-		if metricsAllowlistConfigMap, err = generateMetricsListCM(c); err != nil {
+		if metricsAllowlistConfigMap, err = generateMetricsListCM(ctx, c); err != nil {
 			return nil, nil, fmt.Errorf("failed to generate metrics list configmap: %w", err)
 		}
 	}
 
 	// inject the alertmanager accessor bearer token secret
-	amAccessorTokenSecret, err = generateAmAccessorTokenSecret(c, kubeClient)
+	amAccessorTokenSecret, err = generateAmAccessorTokenSecret(ctx, c, kubeClient)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -402,7 +402,7 @@ func createManifestWorks(
 
 	manifests := work.Spec.Workload.Manifests
 	// inject observabilityAddon
-	obaddon, err := getObservabilityAddon(c, clusterNamespace, mco)
+	obaddon, err := getObservabilityAddon(ctx, c, clusterNamespace, mco)
 	if err != nil {
 		return nil, err
 	}
@@ -859,7 +859,7 @@ func deleteObject[T client.Object](ctx context.Context, c client.Client, obj T) 
 
 // generateAmAccessorTokenSecret generates the secret that contains the access_token
 // for the Alertmanager in the Hub cluster
-func generateAmAccessorTokenSecret(cl client.Client, kubeClient kubernetes.Interface) (*corev1.Secret, error) {
+func generateAmAccessorTokenSecret(ctx context.Context, cl client.Client, kubeClient kubernetes.Interface) (*corev1.Secret, error) {
 	if kubeClient == nil {
 		return nil, fmt.Errorf("kubeClient is required but was nil")
 	}
@@ -871,7 +871,7 @@ func generateAmAccessorTokenSecret(cl client.Client, kubeClient kubernetes.Inter
 	// not strictly needed but we might as well create as few tokens as possible
 	if amAccessorTokenSecret == nil {
 		amAccessorTokenSecret = &corev1.Secret{}
-		err := cl.Get(context.TODO(),
+		err := cl.Get(ctx,
 			types.NamespacedName{
 				Name:      config.AlertmanagerAccessorSecretName,
 				Namespace: config.GetDefaultNamespace(),
@@ -932,7 +932,7 @@ func generateAmAccessorTokenSecret(cl client.Client, kubeClient kubernetes.Inter
 
 	// This creates a JWT token for the alertmanager service account.
 	// This is used to verify incoming alertmanager connetions from prometheus.
-	tokenRequest, err := kubeClient.CoreV1().ServiceAccounts(config.GetDefaultNamespace()).CreateToken(context.TODO(), config.AlertmanagerAccessorSAName, &authv1.TokenRequest{
+	tokenRequest, err := kubeClient.CoreV1().ServiceAccounts(config.GetDefaultNamespace()).CreateToken(ctx, config.AlertmanagerAccessorSAName, &authv1.TokenRequest{
 		Spec: authv1.TokenRequestSpec{
 			ExpirationSeconds: ptr.To(int64(8640 * 3600)), // expires in 364 days
 		},
@@ -945,7 +945,7 @@ func generateAmAccessorTokenSecret(cl client.Client, kubeClient kubernetes.Inter
 	}
 
 	// if it exists, delete the previous unbound token secret for the Alertmanager accessor service account
-	err = deleteAlertmanagerAccessorTokenSecret(context.TODO(), cl)
+	err = deleteAlertmanagerAccessorTokenSecret(ctx, cl)
 	if err != nil {
 		log.Error(err, "Failed to delete alertmanager accessor token secret")
 	}
@@ -997,9 +997,9 @@ func deleteAlertmanagerAccessorTokenSecret(ctx context.Context, cl client.Client
 }
 
 // generatePullSecret generates the image pull secret for mco
-func generatePullSecret(c client.Client, name string) (*corev1.Secret, error) {
+func generatePullSecret(ctx context.Context, c client.Client, name string) (*corev1.Secret, error) {
 	imagePullSecret := &corev1.Secret{}
-	err := c.Get(context.TODO(),
+	err := c.Get(ctx,
 		types.NamespacedName{
 			Name:      name,
 			Namespace: config.GetDefaultNamespace(),
@@ -1052,7 +1052,7 @@ func generateObservabilityServerCACerts(ctx context.Context, client client.Clien
 }
 
 // generateMetricsListCM generates the configmap that contains the metrics allowlist
-func generateMetricsListCM(client client.Client) (*corev1.ConfigMap, error) {
+func generateMetricsListCM(ctx context.Context, client client.Client) (*corev1.ConfigMap, error) {
 	metricsAllowlistCM := &corev1.ConfigMap{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: corev1.SchemeGroupVersion.String(),
@@ -1065,14 +1065,14 @@ func generateMetricsListCM(client client.Client) (*corev1.ConfigMap, error) {
 		Data: map[string]string{},
 	}
 
-	allowlist, uwlAllowlist, err := util.GetAllowList(client,
+	allowlist, uwlAllowlist, err := util.GetAllowList(ctx, client,
 		operatorconfig.AllowlistConfigMapName, config.GetDefaultNamespace())
 	if err != nil {
 		log.Error(err, "Failed to get metrics allowlist configmap "+operatorconfig.AllowlistConfigMapName)
 		return nil, err
 	}
 
-	customAllowlist, customUwlAllowlist, err := util.GetAllowList(client,
+	customAllowlist, customUwlAllowlist, err := util.GetAllowList(ctx, client,
 		config.AllowlistCustomConfigMapName, config.GetDefaultNamespace())
 	if err == nil {
 		allowlist, uwlAllowlist = util.MergeAllowlist(allowlist,
@@ -1103,7 +1103,7 @@ func generateMetricsListCM(client client.Client) (*corev1.ConfigMap, error) {
 // If the addon is found with the mco source annotation, it will update the existing addon with the new values from MCO
 // If the addon is found with the override source annotation, it will not update the existing addon but it will use the existing values.
 // If the addon is found without any source annotation, it will add the mco source annotation and use the MCO values (upgrade case from ACM 2.12.2).
-func getObservabilityAddon(c client.Client, namespace string,
+func getObservabilityAddon(ctx context.Context, c client.Client, namespace string,
 	mco *mcov1beta2.MultiClusterObservability,
 ) (*mcov1beta1.ObservabilityAddon, error) {
 	if namespace == config.GetDefaultNamespace() {
@@ -1114,7 +1114,7 @@ func getObservabilityAddon(c client.Client, namespace string,
 		Name:      obsAddonName,
 		Namespace: namespace,
 	}
-	err := c.Get(context.TODO(), namespacedName, found)
+	err := c.Get(ctx, namespacedName, found)
 	if err != nil {
 		if !k8serrors.IsNotFound(err) {
 			log.Error(err, "Failed to check observabilityAddon")
