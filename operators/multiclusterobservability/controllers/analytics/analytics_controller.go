@@ -98,14 +98,14 @@ func (r *AnalyticsReconciler) ensureRightSizingDefaults(ctx context.Context, ins
 			// Build a minimal patch that only contains the analytics fields we want to set.
 			// Use typed locals to avoid chained type assertions (which can panic if the shape changes).
 			// Set true if not present else preserve existing value
-			analytics := map[string]interface{}{
-				"namespaceRightSizingRecommendation":      map[string]interface{}{"enabled": !nsFound || nsEnabled},
-				"virtualizationRightSizingRecommendation": map[string]interface{}{"enabled": !virtFound || virtEnabled},
+			analytics := map[string]any{
+				"namespaceRightSizingRecommendation":      map[string]any{"enabled": !nsFound || nsEnabled},
+				"virtualizationRightSizingRecommendation": map[string]any{"enabled": !virtFound || virtEnabled},
 			}
-			patchData := map[string]interface{}{
-				"spec": map[string]interface{}{
-					"capabilities": map[string]interface{}{
-						"platform": map[string]interface{}{
+			patchData := map[string]any{
+				"spec": map[string]any{
+					"capabilities": map[string]any{
+						"platform": map[string]any{
 							"analytics": analytics,
 						},
 					},

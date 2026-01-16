@@ -13,7 +13,6 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/utils"
-
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -23,9 +22,7 @@ import (
 )
 
 var _ = Describe("Right-sizing: defaults are enabled on fresh install", Ordered, func() {
-	var (
-		mcoGVR = utils.NewMCOGVRV1BETA2()
-	)
+	mcoGVR := utils.NewMCOGVRV1BETA2()
 
 	BeforeAll(func() {
 		// initialize clients once (if not already)
