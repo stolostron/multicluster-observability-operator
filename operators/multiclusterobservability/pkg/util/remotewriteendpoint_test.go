@@ -130,7 +130,7 @@ func TestValidateRemoteWriteEndpointWithSecret(t *testing.T) {
 func mustParseURL(t *testing.T, s string) config.URL {
 	u, err := url.Parse(s)
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatalf("failed to parse URL: %v", err)
 	}
 
 	return config.URL{URL: u}

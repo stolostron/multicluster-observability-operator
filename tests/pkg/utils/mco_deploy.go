@@ -82,6 +82,14 @@ func NewMCOManagedClusterAddonsGVR() schema.GroupVersionResource {
 		Resource: "managedclusteraddons"}
 }
 
+func NewMCOAddOnDeploymentConfigGVR() schema.GroupVersionResource {
+	return schema.GroupVersionResource{
+		Group:    OCM_ADDON_GROUP,
+		Version:  "v1alpha1",
+		Resource: "addondeploymentconfigs",
+	}
+}
+
 func NewMCOMObservatoriumGVR() schema.GroupVersionResource {
 	return schema.GroupVersionResource{
 		Group:    "core.observatorium.io",
@@ -210,7 +218,7 @@ func CheckAllPodsAffinity(opt TestOptions) error {
 			continue
 		}
 		if pod.Spec.Affinity == nil {
-			return fmt.Errorf("Failed to check affinity for pod: %v" + pod.GetName())
+			return fmt.Errorf("Failed to check affinity for pod: %v", pod.GetName())
 		}
 
 		weightedPodAffinityTerms := pod.Spec.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution
@@ -219,7 +227,7 @@ func CheckAllPodsAffinity(opt TestOptions) error {
 			if (topologyKey == "kubernetes.io/hostname" && weightedPodAffinityTerm.Weight == 30) ||
 				(topologyKey == "topology.kubernetes.io/zone" && weightedPodAffinityTerm.Weight == 70) {
 			} else {
-				return fmt.Errorf("failed to check affinity for pod: %v" + pod.GetName())
+				return fmt.Errorf("failed to check affinity for pod: %v", pod.GetName())
 			}
 		}
 	}
