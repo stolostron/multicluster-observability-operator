@@ -15,13 +15,12 @@ run:
 linters:
   default: none
   enable:
-    # Sorted alphabetically.
     - bodyclose
     - contextcheck
     - dupword
     - embeddedstructfieldcheck
-    - errorlint
     - errcheck
+    - errorlint
     - exptostd
     - gocognit
     - goconst
@@ -54,8 +53,8 @@ linters:
     errcheck:
       exclude-functions:
         - (github.com/go-kit/log.Logger).Log
-    misspell:
-      locale: US
+    gocognit:
+      min-complexity: 50
     goconst:
       min-occurrences: 5
       ignore-string-values:
@@ -63,6 +62,8 @@ linters:
     gosec:
       excludes:
         - G104 # Already covererd by errcheck which allows exclusions
+    misspell:
+      locale: US
     revive:
       enable-default-rules: true
       rules:
@@ -72,16 +73,14 @@ linters:
           disabled: true
         - name: package-comments
           disabled: true
-    gocognit:
-      min-complexity: 50
 
   exclusions:
     rules:
       - path: tests/
         linters:
+          - gocognit
           - gosec
           - revive
-          - gocognit
 
 formatters:
   # Enable specific formatter.
