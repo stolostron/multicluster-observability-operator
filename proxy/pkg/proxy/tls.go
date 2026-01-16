@@ -32,6 +32,7 @@ type TLSOptions struct {
 // ReloadingTransport wraps http.Transport to allow for safe, concurrent reloading of TLS configuration.
 type ReloadingTransport struct {
 	*http.Transport
+
 	tlsConfig *tls.Config
 	opts      *TLSOptions
 	mutex     sync.RWMutex

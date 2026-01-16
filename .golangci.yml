@@ -19,6 +19,7 @@ linters:
     - bodyclose
     - contextcheck
     - dupword
+    - embeddedstructfieldcheck
     - errcheck
     - exptostd
     - gocognit
