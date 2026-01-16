@@ -87,7 +87,7 @@ type PlacementRuleReconciler struct {
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
 // Modify the Reconcile function to compare the state specified by
-// the PlacementRule object against the actual cluster state, and then
+// the MultiClusterObservability object against the actual cluster state, and then
 // perform operations to make the cluster state reflect the state specified by
 // the user.
 //
@@ -897,21 +897,8 @@ func isAutomaticAddonInstallationDisabled(obj client.Object) bool {
 	return false
 }
 
-// SetupWithManager sets up the controller with the Manager.
-// TODO refactor (if possible) to match format of observabilityaddon_controller.go
-func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	c := mgr.GetClient()
-	ingressCtlCrdExists := r.CRDMap[config.IngressControllerCRD]
-
-	clusterPred := getClusterPreds()
-
-	// Watch changes for AddonDeploymentConfig
-	addOnDeploymentConfigPred := GetAddOnDeploymentConfigPredicates()
-
-	// Watch changes to endpoint-operator deployment
-	hubEndpointOperatorPred := getHubEndpointOperatorPredicates()
-
-	obsAddonPred := predicate.Funcs{
+func getObsAddonPred(c client.Client) predicate.Funcs {
+	return predicate.Funcs{
 		CreateFunc: func(_ event.CreateEvent) bool {
 			return false
 		},
@@ -951,8 +938,10 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			return false
 		},
 	}
+}
 
-	allowlistPred := predicate.Funcs{
+func getAllowlistPred(c client.Client) predicate.Funcs {
+	return predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 			if (e.Object.GetName() == config.AllowlistCustomConfigMapName ||
 				e.Object.GetName() == operatorconfig.AllowlistConfigMapName) &&
@@ -988,37 +977,39 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			return false
 		},
 	}
+}
 
-	certSecretPred := predicate.Funcs{
-		CreateFunc: func(e event.CreateEvent) bool {
-			if e.Object.GetName() == config.ServerCACerts &&
-				e.Object.GetNamespace() == config.GetDefaultNamespace() {
-				return true
-			}
-			return false
-		},
-		UpdateFunc: func(e event.UpdateEvent) bool {
-			if (e.ObjectNew.GetName() == config.ServerCACerts &&
-				e.ObjectNew.GetNamespace() == config.GetDefaultNamespace()) &&
-				e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() {
-				return true
-			}
-			return false
-		},
-		DeleteFunc: func(e event.DeleteEvent) bool {
-			if e.Object.GetName() == config.ServerCACerts &&
-				e.Object.GetNamespace() == config.GetDefaultNamespace() {
-				return true
-			}
-			return false
-		},
-	}
+var certSecretPred = predicate.Funcs{
+	CreateFunc: func(e event.CreateEvent) bool {
+		if e.Object.GetName() == config.ServerCACerts &&
+			e.Object.GetNamespace() == config.GetDefaultNamespace() {
+			return true
+		}
+		return false
+	},
+	UpdateFunc: func(e event.UpdateEvent) bool {
+		if (e.ObjectNew.GetName() == config.ServerCACerts &&
+			e.ObjectNew.GetNamespace() == config.GetDefaultNamespace()) &&
+			e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() {
+			return true
+		}
+		return false
+	},
+	DeleteFunc: func(e event.DeleteEvent) bool {
+		if e.Object.GetName() == config.ServerCACerts &&
+			e.Object.GetNamespace() == config.GetDefaultNamespace() {
+			return true
+		}
+		return false
+	},
+}
 
-	ingressControllerPred := predicate.Funcs{
+func getIngressControllerPred(c client.Client, crdMap map[string]bool) predicate.Funcs {
+	return predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 			if e.Object.GetName() == config.OpenshiftIngressOperatorCRName &&
 				e.Object.GetNamespace() == config.OpenshiftIngressOperatorNamespace {
-				return updateHubInfoSecret(c, r.CRDMap)
+				return updateHubInfoSecret(c, crdMap)
 			}
 			return false
 		},
@@ -1026,25 +1017,27 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			if e.ObjectNew.GetName() == config.OpenshiftIngressOperatorCRName &&
 				e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() &&
 				e.ObjectNew.GetNamespace() == config.OpenshiftIngressOperatorNamespace {
-				return updateHubInfoSecret(c, r.CRDMap)
+				return updateHubInfoSecret(c, crdMap)
 			}
 			return false
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
 			if e.Object.GetName() == config.OpenshiftIngressOperatorCRName &&
 				e.Object.GetNamespace() == config.OpenshiftIngressOperatorNamespace {
-				return updateHubInfoSecret(c, r.CRDMap)
+				return updateHubInfoSecret(c, crdMap)
 			}
 			return false
 		},
 	}
+}
 
-	amRouterCertSecretPred := predicate.Funcs{
+func getAmRouterCertSecretPred(c client.Client, crdMap map[string]bool) predicate.Funcs {
+	return predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 			if e.Object.GetNamespace() == config.GetDefaultNamespace() &&
 				(e.Object.GetName() == config.AlertmanagerRouteBYOCAName ||
 					e.Object.GetName() == config.AlertmanagerRouteBYOCERTName) {
-				return updateHubInfoSecret(c, r.CRDMap)
+				return updateHubInfoSecret(c, crdMap)
 			}
 			return false
 		},
@@ -1053,7 +1046,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() &&
 				(e.ObjectNew.GetName() == config.AlertmanagerRouteBYOCAName ||
 					e.ObjectNew.GetName() == config.AlertmanagerRouteBYOCERTName) {
-				return updateHubInfoSecret(c, r.CRDMap)
+				return updateHubInfoSecret(c, crdMap)
 			}
 			return false
 		},
@@ -1061,11 +1054,33 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			if e.Object.GetNamespace() == config.GetDefaultNamespace() &&
 				(e.Object.GetName() == config.AlertmanagerRouteBYOCAName ||
 					e.Object.GetName() == config.AlertmanagerRouteBYOCERTName) {
-				return updateHubInfoSecret(c, r.CRDMap)
+				return updateHubInfoSecret(c, crdMap)
 			}
 			return false
 		},
 	}
+}
+
+// SetupWithManager sets up the controller with the Manager.
+func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	c := mgr.GetClient()
+	ingressCtlCrdExists := r.CRDMap[config.IngressControllerCRD]
+
+	clusterPred := getClusterPreds()
+
+	// Watch changes for AddonDeploymentConfig
+	addOnDeploymentConfigPred := GetAddOnDeploymentConfigPredicates()
+
+	// Watch changes to endpoint-operator deployment
+	hubEndpointOperatorPred := getHubEndpointOperatorPredicates()
+
+	obsAddonPred := getObsAddonPred(c)
+
+	allowlistPred := getAllowlistPred(c)
+
+	ingressControllerPred := getIngressControllerPred(c, r.CRDMap)
+
+	amRouterCertSecretPred := getAmRouterCertSecretPred(c, r.CRDMap)
 
 	routeCASecretPred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {

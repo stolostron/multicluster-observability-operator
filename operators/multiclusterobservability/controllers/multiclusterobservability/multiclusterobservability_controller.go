@@ -113,44 +113,20 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	reqLogger := log.WithValues("Request.Namespace", req.Namespace, "Request.Name", req.Name)
 	reqLogger.Info("Reconciling MultiClusterObservability")
 
-	if res, ok := config.BackupResourceMap[req.Name]; ok {
-		reqLogger.Info(infoAddingBackupLabel)
-		var err error
-		resourceTypeStr := ""
-		switch res {
-		case config.ResourceTypeConfigMap:
-			resourceTypeStr = "ConfigMap"
-			err = util.AddBackupLabelToConfigMap(r.Client, req.Name, config.GetDefaultNamespace())
-		case config.ResourceTypeSecret:
-			resourceTypeStr = "Secret"
-			err = util.AddBackupLabelToSecret(r.Client, req.Name, config.GetDefaultNamespace())
-		default:
-			// we should never be here
-			log.Info("unknown type " + res)
-		}
-
-		if err != nil {
-			reqLogger.Error(err, errorAddingBackupLabel)
-			return ctrl.Result{}, fmt.Errorf("failed to add backup label to %s %s in namespace %s: %w", resourceTypeStr, req.Name, config.GetDefaultNamespace(), err)
-		}
+	if err := r.handleBackupLabels(ctx, req.Name, reqLogger); err != nil {
+		reqLogger.Error(err, errorAddingBackupLabel)
+		return ctrl.Result{}, err
 	}
 
-	// Fetch the MultiClusterObservability instance
-	mcoList := &mcov1beta2.MultiClusterObservabilityList{}
-	err := r.Client.List(ctx, mcoList)
+	instance, err := r.getMCOInstance(ctx, reqLogger)
 	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to list MultiClusterObservability custom resources: %w", err)
+		return ctrl.Result{}, err
 	}
-	if len(mcoList.Items) > 1 {
-		reqLogger.Info("more than one MultiClusterObservability CR exists, only one should exist")
-		return ctrl.Result{}, nil
-	}
-	if len(mcoList.Items) == 0 {
-		reqLogger.Info("no MultiClusterObservability CR exists, nothing to do")
+	if instance == nil {
 		return ctrl.Result{}, nil
 	}
 
-	instance := mcoList.Items[0].DeepCopy()
+	instance = instance.DeepCopy()
 	if config.GetMonitoringCRName() != instance.GetName() {
 		config.SetMonitoringCRName(instance.GetName())
 	}
@@ -159,17 +135,8 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	StartStatusUpdate(r.Client, instance)
 
 	ingressCtlCrdExists := r.CRDMap[config.IngressControllerCRD]
-	if _, ok := os.LookupEnv("UNIT_TEST"); !ok {
-		// start placement controller
-		err := placementctrl.StartPlacementController(r.Manager, r.CRDMap)
-		if err != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to start placement controller: %w", err)
-		}
-		// setup ocm addon manager
-		certctrl.Start(r.Client, ingressCtlCrdExists)
-
-		// start servicemonitor controller
-		smctrl.Start()
+	if err := r.startComponents(ingressCtlCrdExists); err != nil {
+		return ctrl.Result{}, err
 	}
 
 	// Init finalizers
@@ -181,20 +148,9 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		return ctrl.Result{}, nil
 	}
 
-	// check if the MCH CRD exists
-	mchCrdExists := r.CRDMap[config.MCHCrdName]
-	// requeue after 10 seconds if the mch crd exists and image image manifests map is empty
-	if mchCrdExists && len(config.GetImageManifests()) == 0 {
-		currentTime := time.Now()
-
-		// Log the message if it has been longer than 5 minutes since the last log
-		if currentTime.Sub(lastLogTime) > 5*time.Minute {
-			reqLogger.Info("Waiting for the mch CR to be ready", "mchCrdExists", mchCrdExists, "imageManifests", len(config.GetImageManifests()))
-			lastLogTime = currentTime
-		}
-
-		// if the mch CR is not ready, then requeue the request after 10s
-		return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
+	ready, requeueAfter := r.checkMCHReadiness(reqLogger)
+	if !ready {
+		return ctrl.Result{RequeueAfter: requeueAfter}, nil
 	}
 
 	// Do not reconcile objects if this instance of mch is labeled "paused"
@@ -203,23 +159,8 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		return ctrl.Result{}, nil
 	}
 
-	if _, ok := config.BackupResourceMap[instance.Spec.StorageConfig.MetricObjectStorage.Name]; !ok {
-		log.Info(infoAddingBackupLabel, "Secret", instance.Spec.StorageConfig.MetricObjectStorage.Name)
-		config.BackupResourceMap[instance.Spec.StorageConfig.MetricObjectStorage.Name] = config.ResourceTypeSecret
-		err = util.AddBackupLabelToSecret(r.Client, instance.Spec.StorageConfig.MetricObjectStorage.Name, config.GetDefaultNamespace())
-		if err != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to add backup label to metric object storage secret %s: %w", instance.Spec.StorageConfig.MetricObjectStorage.Name, err)
-		}
-	}
-
-	imagePullSecret := config.GetImagePullSecret(instance.Spec)
-	if _, ok := config.BackupResourceMap[imagePullSecret]; !ok {
-		log.Info(infoAddingBackupLabel, "Secret", imagePullSecret)
-		config.BackupResourceMap[imagePullSecret] = config.ResourceTypeSecret
-		err = util.AddBackupLabelToSecret(r.Client, imagePullSecret, config.GetDefaultNamespace())
-		if err != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to add backup label to image pull secret %s: %w", imagePullSecret, err)
-		}
+	if err := r.handleBackupSecrets(instance); err != nil {
+		return ctrl.Result{}, err
 	}
 
 	storageClassSelected, err := getStorageClass(instance, r.Client)
@@ -241,112 +182,8 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	}
 	instance.Spec.StorageConfig.StorageClass = storageClassSelected
 
-	// Disable rendering the MCOA ClusterManagementAddOn resource if already exists
-	mcoaCMAO := &addonv1alpha1.ClusterManagementAddOn{}
-	err = r.Client.Get(ctx, types.NamespacedName{Name: config.MultiClusterObservabilityAddon}, mcoaCMAO)
-	if err != nil {
-		if !apierrors.IsNotFound(err) {
-			return ctrl.Result{}, fmt.Errorf("failed to get ClusterManagementAddOn %s: %w", config.MultiClusterObservabilityAddon, err)
-		}
-	}
-	disableMCOACMAORender := !apierrors.IsNotFound(err)
-
-	obsAPIURL, err := config.GetObsAPIExternalURL(ctx, r.Client, config.GetDefaultNamespace())
-	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to get the Observatorium API URL: %w", err) // Already wrapped
-	}
-
-	alertmanagerURL, err := config.GetAlertmanagerURL(ctx, r.Client, config.GetDefaultNamespace())
-	if err != nil {
-		// IngressController CRD is not available in non-OCP env (Kind), so we need to handle the error
-		// otherwise it breaks everything
-		if meta.IsNoMatchError(err) {
-			reqLogger.Error(err, "Cannot get AlertManager URL, IngressController CRD not found. Continuing without it.")
-			alertmanagerURL = &url.URL{}
-		} else {
-			return ctrl.Result{}, fmt.Errorf("failed to get the AlertManager API URL: %w", err)
-		}
-	}
-
-	// Build render options
-	rendererOptions := &rendering.RendererOptions{
-		MCOAOptions: rendering.MCOARendererOptions{
-			DisableCMAORender:              disableMCOACMAORender,
-			MetricsHubHostname:             obsAPIURL.Host,
-			MetricsHubAlertmanagerHostname: alertmanagerURL.Host,
-		},
-	}
-
-	// Render the templates with a specified CR
-	renderer := rendering.NewMCORenderer(instance, r.Client, r.ImageClient).WithRendererOptions(rendererOptions)
-	toDeploy, err := renderer.Render()
-	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to render MCO templates for %s/%s: %w", instance.GetNamespace(), instance.GetName(), err)
-	}
-
-	// Sort resources to ensure dependencies like CRDs are created first, before CRs. The sort is
-	// primarily by Kind priority (lower values first), and secondarily by name for
-	// deterministic ordering. Kinds without a defined priority are created last.
-	defaultOrder := 100
-	sort.Slice(toDeploy, func(i, j int) bool {
-		orderA, okA := config.KindOrder[toDeploy[i].GetKind()]
-		if !okA {
-			orderA = defaultOrder
-		}
-		orderB, okB := config.KindOrder[toDeploy[j].GetKind()]
-		if !okB {
-			orderB = defaultOrder
-		}
-		if orderA != orderB {
-			return orderA < orderB
-		}
-		return strings.Compare(toDeploy[i].GetName(), toDeploy[j].GetName()) < 0
-	})
-
-	deployer := deploying.NewDeployer(r.Client)
-	// Deploy the resources
-	ns := &corev1.Namespace{}
-	for _, res := range toDeploy {
-		resNS := res.GetNamespace()
-		if err := controllerutil.SetControllerReference(instance, res, r.Scheme); err != nil {
-			reqLogger.Error(err, "Failed to set controller reference", "kind", res.GetKind(), "name", res.GetName())
-		}
-		if resNS == "" {
-			resNS = config.GetDefaultNamespace()
-		}
-		if err := r.Client.Get(ctx, types.NamespacedName{Name: resNS}, ns); err != nil &&
-			apierrors.IsNotFound(err) {
-			ns = &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{
-				Name: resNS,
-			}}
-			if err := r.Client.Create(ctx, ns); err != nil {
-				return ctrl.Result{}, fmt.Errorf("failed to create namespace %s during resource deployment: %w", resNS, err)
-			}
-		}
-		if err := deployer.Deploy(ctx, res); err != nil {
-			if meta.IsNoMatchError(err) {
-				kind := res.GetKind()
-				if kind == monitoringv1.PrometheusRuleKind || kind == monitoringv1alpha1.ScrapeConfigsKind {
-					reqLogger.Info("CRD not yet available, waiting for MCOA to install it", "Kind", kind)
-					continue
-				}
-			}
-			return ctrl.Result{}, fmt.Errorf("failed to deploy %s %s/%s: %w", res.GetKind(), resNS, res.GetName(), err)
-		}
-	}
-
-	if !rendering.MCOAEnabled(instance) {
-		namespace, labels := renderer.NamespaceAndLabels()
-		toDelete, err := renderer.MCOAResources(namespace, labels)
-		if err != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to list MCOA resources for deletion in namespace %s: %w", namespace, err)
-		}
-		for _, res := range toDelete {
-			resNS := res.GetNamespace()
-			if err := deployer.Undeploy(ctx, res, instance); err != nil {
-				return ctrl.Result{}, fmt.Errorf("failed to undeploy %s %s/%s: %w", res.GetKind(), resNS, res.GetName(), err)
-			}
-		}
+	if err := r.renderAndDeploy(ctx, instance, reqLogger); err != nil {
+		return ctrl.Result{}, err
 	}
 
 	_, err = r.ensureOpenShiftNamespaceLabel(ctx, instance)
@@ -356,55 +193,9 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		return ctrl.Result{}, fmt.Errorf("failed to ensure %q label on namespace %s: %w", config.OpenShiftClusterMonitoringlabel, instance.GetNamespace(), err)
 	}
 
-	// the route resource won't be created in testing env, for instance, KinD
-	// in the testing env, the service can be accessed via service name, we assume that
-	// in testing env, the local-cluster is the only allowed managedcluster
-	if ingressCtlCrdExists {
-		// expose alertmanager through route
-		result, err = GenerateAlertmanagerRoute(r.Client, r.Scheme, instance)
-		if result != nil {
-			return *result, fmt.Errorf("failed to generate Alertmanager route: %w", err)
-		}
-
-		// expose observatorium api gateway
-		result, err = GenerateAPIGatewayRoute(ctx, r.Client, r.Scheme, instance)
-		if result != nil {
-			return *result, fmt.Errorf("failed to generate API Gateway route: %w", err)
-		}
-
-		// expose rbac proxy through route
-		result, err = GenerateProxyRoute(r.Client, r.Scheme, instance)
-		if result != nil {
-			return *result, fmt.Errorf("failed to generate proxy route: %w", err)
-		}
-
-		// expose grafana through route
-		result, err = GenerateGrafanaRoute(r.Client, r.Scheme, instance)
-		if result != nil {
-			return *result, fmt.Errorf("failed to generate Grafana route: %w", err)
-		}
-		result, err = GenerateGrafanaOauthClient(r.Client, r.Scheme, instance)
-		if result != nil {
-			return *result, fmt.Errorf("failed to generate Grafana OAuth client: %w", err)
-		}
-	}
-
-	// create the certificates
-	err = certctrl.CreateObservabilityCerts(r.Client, r.Scheme, instance, ingressCtlCrdExists)
-	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to create observability certs: %w", err)
-	}
-
-	// create an Observatorium CR
-	result, err = GenerateObservatoriumCR(r.Client, r.Scheme, instance)
-	if result != nil {
-		return *result, fmt.Errorf("failed to generate the observatorium CR: %w", err)
-	}
-
-	// generate grafana datasource to point to observatorium api gateway
-	result, err = GenerateGrafanaDataSource(r.Client, r.Scheme, instance)
-	if result != nil {
-		return *result, fmt.Errorf("failed to generate Grafana data source: %w", err)
+	res, err := r.generateRoutesAndCerts(ctx, instance, ingressCtlCrdExists)
+	if err != nil || !res.IsZero() {
+		return res, err
 	}
 
 	svmCrdExists := r.CRDMap[config.StorageVersionMigrationCrdName]
@@ -430,6 +221,272 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 
 	// update status
 	requeueStatusUpdate <- struct{}{}
+
+	return ctrl.Result{}, nil
+}
+
+func (r *MultiClusterObservabilityReconciler) handleBackupLabels(_ context.Context, name string, logger logr.Logger) error {
+	if res, ok := config.BackupResourceMap[name]; ok {
+		logger.Info(infoAddingBackupLabel)
+		var err error
+		resourceTypeStr := ""
+		switch res {
+		case config.ResourceTypeConfigMap:
+			resourceTypeStr = "ConfigMap"
+			err = util.AddBackupLabelToConfigMap(r.Client, name, config.GetDefaultNamespace())
+		case config.ResourceTypeSecret:
+			resourceTypeStr = "Secret"
+			err = util.AddBackupLabelToSecret(r.Client, name, config.GetDefaultNamespace())
+		default:
+			log.Info("unknown type " + res)
+		}
+
+		if err != nil {
+			return fmt.Errorf("failed to add backup label to %s %s in namespace %s: %w", resourceTypeStr, name, config.GetDefaultNamespace(), err)
+		}
+	}
+	return nil
+}
+
+func (r *MultiClusterObservabilityReconciler) getMCOInstance(ctx context.Context, logger logr.Logger) (*mcov1beta2.MultiClusterObservability, error) {
+	mcoList := &mcov1beta2.MultiClusterObservabilityList{}
+	err := r.Client.List(ctx, mcoList)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list MultiClusterObservability custom resources: %w", err)
+	}
+	if len(mcoList.Items) > 1 {
+		logger.Info("more than one MultiClusterObservability CR exists, only one should exist")
+		return nil, nil
+	}
+	if len(mcoList.Items) == 0 {
+		logger.Info("no MultiClusterObservability CR exists, nothing to do")
+		return nil, nil
+	}
+	return &mcoList.Items[0], nil
+}
+
+func (r *MultiClusterObservabilityReconciler) startComponents(ingressCtlCrdExists bool) error {
+	if _, ok := os.LookupEnv("UNIT_TEST"); !ok {
+		// start placement controller
+		err := placementctrl.StartPlacementController(r.Manager, r.CRDMap)
+		if err != nil {
+			return fmt.Errorf("failed to start placement controller: %w", err)
+		}
+		// setup ocm addon manager
+		certctrl.Start(r.Client, ingressCtlCrdExists)
+
+		// start servicemonitor controller
+		smctrl.Start()
+	}
+	return nil
+}
+
+func (r *MultiClusterObservabilityReconciler) checkMCHReadiness(logger logr.Logger) (bool, time.Duration) {
+	// check if the MCH CRD exists
+	mchCrdExists := r.CRDMap[config.MCHCrdName]
+	// requeue after 10 seconds if the mch crd exists and image image manifests map is empty
+	if mchCrdExists && len(config.GetImageManifests()) == 0 {
+		currentTime := time.Now()
+
+		// Log the message if it has been longer than 5 minutes since the last log
+		if currentTime.Sub(lastLogTime) > 5*time.Minute {
+			logger.Info("Waiting for the mch CR to be ready", "mchCrdExists", mchCrdExists, "imageManifests", len(config.GetImageManifests()))
+			lastLogTime = currentTime
+		}
+
+		// if the mch CR is not ready, then requeue the request after 10s
+		return false, 10 * time.Second
+	}
+	return true, 0
+}
+
+func (r *MultiClusterObservabilityReconciler) handleBackupSecrets(instance *mcov1beta2.MultiClusterObservability) error {
+	if _, ok := config.BackupResourceMap[instance.Spec.StorageConfig.MetricObjectStorage.Name]; !ok {
+		log.Info(infoAddingBackupLabel, "Secret", instance.Spec.StorageConfig.MetricObjectStorage.Name)
+		config.BackupResourceMap[instance.Spec.StorageConfig.MetricObjectStorage.Name] = config.ResourceTypeSecret
+		err := util.AddBackupLabelToSecret(r.Client, instance.Spec.StorageConfig.MetricObjectStorage.Name, config.GetDefaultNamespace())
+		if err != nil {
+			return fmt.Errorf("failed to add backup label to metric object storage secret %s: %w", instance.Spec.StorageConfig.MetricObjectStorage.Name, err)
+		}
+	}
+
+	imagePullSecret := config.GetImagePullSecret(instance.Spec)
+	if _, ok := config.BackupResourceMap[imagePullSecret]; !ok {
+		log.Info(infoAddingBackupLabel, "Secret", imagePullSecret)
+		config.BackupResourceMap[imagePullSecret] = config.ResourceTypeSecret
+		err := util.AddBackupLabelToSecret(r.Client, imagePullSecret, config.GetDefaultNamespace())
+		if err != nil {
+			return fmt.Errorf("failed to add backup label to image pull secret %s: %w", imagePullSecret, err)
+		}
+	}
+	return nil
+}
+
+func (r *MultiClusterObservabilityReconciler) renderAndDeploy(
+	ctx context.Context,
+	instance *mcov1beta2.MultiClusterObservability,
+	logger logr.Logger,
+) error {
+	// Disable rendering the MCOA ClusterManagementAddOn resource if already exists
+	mcoaCMAO := &addonv1alpha1.ClusterManagementAddOn{}
+	err := r.Client.Get(ctx, types.NamespacedName{Name: config.MultiClusterObservabilityAddon}, mcoaCMAO)
+	if err != nil {
+		if !apierrors.IsNotFound(err) {
+			return fmt.Errorf("failed to get ClusterManagementAddOn %s: %w", config.MultiClusterObservabilityAddon, err)
+		}
+	}
+	disableMCOACMAORender := !apierrors.IsNotFound(err)
+
+	obsAPIURL, err := config.GetObsAPIExternalURL(ctx, r.Client, config.GetDefaultNamespace())
+	if err != nil {
+		return fmt.Errorf("failed to get the Observatorium API URL: %w", err)
+	}
+
+	alertmanagerURL, err := config.GetAlertmanagerURL(ctx, r.Client, config.GetDefaultNamespace())
+	if err != nil {
+		// IngressController CRD is not available in non-OCP env (Kind), so we need to handle the error
+		// otherwise it breaks everything
+		if meta.IsNoMatchError(err) {
+			logger.Error(err, "Cannot get AlertManager URL, IngressController CRD not found. Continuing without it.")
+			alertmanagerURL = &url.URL{}
+		} else {
+			return fmt.Errorf("failed to get the AlertManager API URL: %w", err)
+		}
+	}
+
+	// Build render options
+	rendererOptions := &rendering.RendererOptions{
+		MCOAOptions: rendering.MCOARendererOptions{
+			DisableCMAORender:              disableMCOACMAORender,
+			MetricsHubHostname:             obsAPIURL.Host,
+			MetricsHubAlertmanagerHostname: alertmanagerURL.Host,
+		},
+	}
+
+	// Render the templates with a specified CR
+	renderer := rendering.NewMCORenderer(instance, r.Client, r.ImageClient).WithRendererOptions(rendererOptions)
+	toDeploy, err := renderer.Render()
+	if err != nil {
+		return fmt.Errorf("failed to render MCO templates for %s/%s: %w", instance.GetNamespace(), instance.GetName(), err)
+	}
+
+	// Sort resources to ensure dependencies like CRDs are created first, before CRs.
+	defaultOrder := 100
+	sort.Slice(toDeploy, func(i, j int) bool {
+		orderA, okA := config.KindOrder[toDeploy[i].GetKind()]
+		if !okA {
+			orderA = defaultOrder
+		}
+		orderB, okB := config.KindOrder[toDeploy[j].GetKind()]
+		if !okB {
+			orderB = defaultOrder
+		}
+		if orderA != orderB {
+			return orderA < orderB
+		}
+		return strings.Compare(toDeploy[i].GetName(), toDeploy[j].GetName()) < 0
+	})
+
+	deployer := deploying.NewDeployer(r.Client)
+	// Deploy the resources
+	ns := &corev1.Namespace{}
+	for _, res := range toDeploy {
+		resNS := res.GetNamespace()
+		if err := controllerutil.SetControllerReference(instance, res, r.Scheme); err != nil {
+			logger.Error(err, "Failed to set controller reference", "kind", res.GetKind(), "name", res.GetName())
+		}
+		if resNS == "" {
+			resNS = config.GetDefaultNamespace()
+		}
+		if err := r.Client.Get(ctx, types.NamespacedName{Name: resNS}, ns); err != nil &&
+			apierrors.IsNotFound(err) {
+			ns = &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{
+				Name: resNS,
+			}}
+			if err := r.Client.Create(ctx, ns); err != nil {
+				return fmt.Errorf("failed to create namespace %s during resource deployment: %w", resNS, err)
+			}
+		}
+		if err := deployer.Deploy(ctx, res); err != nil {
+			if meta.IsNoMatchError(err) {
+				kind := res.GetKind()
+				if kind == monitoringv1.PrometheusRuleKind || kind == monitoringv1alpha1.ScrapeConfigsKind {
+					logger.Info("CRD not yet available, waiting for MCOA to install it", "Kind", kind)
+					continue
+				}
+			}
+			return fmt.Errorf("failed to deploy %s %s/%s: %w", res.GetKind(), resNS, res.GetName(), err)
+		}
+	}
+
+	if !rendering.MCOAEnabled(instance) {
+		namespace, labels := renderer.NamespaceAndLabels()
+		toDelete, err := renderer.MCOAResources(namespace, labels)
+		if err != nil {
+			return fmt.Errorf("failed to list MCOA resources for deletion in namespace %s: %w", namespace, err)
+		}
+		for _, res := range toDelete {
+			resNS := res.GetNamespace()
+			if err := deployer.Undeploy(ctx, res, instance); err != nil {
+				return fmt.Errorf("failed to undeploy %s %s/%s: %w", res.GetKind(), resNS, res.GetName(), err)
+			}
+		}
+	}
+	return nil
+}
+
+func (r *MultiClusterObservabilityReconciler) generateRoutesAndCerts(
+	ctx context.Context,
+	instance *mcov1beta2.MultiClusterObservability,
+	ingressCtlCrdExists bool,
+) (ctrl.Result, error) {
+	if ingressCtlCrdExists {
+		// expose alertmanager through route
+		result, err := GenerateAlertmanagerRoute(r.Client, r.Scheme, instance)
+		if result != nil {
+			return *result, err
+		}
+
+		// expose observatorium api gateway
+		result, err = GenerateAPIGatewayRoute(ctx, r.Client, r.Scheme, instance)
+		if result != nil {
+			return *result, err
+		}
+
+		// expose rbac proxy through route
+		result, err = GenerateProxyRoute(r.Client, r.Scheme, instance)
+		if result != nil {
+			return *result, err
+		}
+
+		// expose grafana through route
+		result, err = GenerateGrafanaRoute(r.Client, r.Scheme, instance)
+		if result != nil {
+			return *result, err
+		}
+		result, err = GenerateGrafanaOauthClient(r.Client, r.Scheme, instance)
+		if result != nil {
+			return *result, err
+		}
+	}
+
+	// create the certificates
+	err := certctrl.CreateObservabilityCerts(r.Client, r.Scheme, instance, ingressCtlCrdExists)
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to create observability certs: %w", err)
+	}
+
+	// create an Observatorium CR
+	result, err := GenerateObservatoriumCR(r.Client, r.Scheme, instance)
+	if result != nil {
+		return *result, err
+	}
+
+	// generate grafana datasource to point to observatorium api gateway
+	result, err = GenerateGrafanaDataSource(r.Client, r.Scheme, instance)
+	if result != nil {
+		return *result, err
+	}
 
 	return ctrl.Result{}, nil
 }

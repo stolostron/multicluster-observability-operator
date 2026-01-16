@@ -425,74 +425,21 @@ func createManifestWorks(
 
 	// inject the endpoint operator deployment
 	endpointMetricsOperatorDeployCopy := dep.DeepCopy()
-	spec := endpointMetricsOperatorDeployCopy.Spec.Template.Spec
-	switch {
-	case addonConfig.Spec.NodePlacement != nil:
-		spec.NodeSelector = addonConfig.Spec.NodePlacement.NodeSelector
-		spec.Tolerations = addonConfig.Spec.NodePlacement.Tolerations
-	case cluster.IsLocalCluster:
-		spec.NodeSelector = mco.Spec.NodeSelector
-		spec.Tolerations = mco.Spec.Tolerations
-	default:
-		// reset NodeSelector and Tolerations
-		spec.NodeSelector = map[string]string{}
-		spec.Tolerations = []corev1.Toleration{}
+	customCABundle := customizeEndpointOperator(
+		endpointMetricsOperatorDeployCopy,
+		mco,
+		addonConfig,
+		cluster,
+		clusterNamespace,
+		installProm,
+		hasCustomRegistry,
+		imageRegistryClient,
+	)
+	if err != nil {
+		return nil, err
 	}
-	CustomCABundle := false
-	for i, container := range spec.Containers {
-		if container.Name == "endpoint-observability-operator" {
-			for j, env := range container.Env {
-				if env.Name == "HUB_NAMESPACE" {
-					container.Env[j].Value = clusterNamespace
-				}
-				if env.Name == operatorconfig.InstallPrometheus {
-					container.Env[j].Value = strconv.FormatBool(installProm)
-				}
-			}
-			// If ProxyConfig is specified as part of addonConfig, set the proxy envs
-			if !cluster.IsLocalCluster {
-				for i := range spec.Containers {
-					container := &spec.Containers[i]
-					if addonConfig.Spec.ProxyConfig.HTTPProxy != "" {
-						container.Env = append(container.Env, corev1.EnvVar{
-							Name:  "HTTP_PROXY",
-							Value: addonConfig.Spec.ProxyConfig.HTTPProxy,
-						})
-					}
-					if addonConfig.Spec.ProxyConfig.HTTPSProxy != "" {
-						container.Env = append(container.Env, corev1.EnvVar{
-							Name:  "HTTPS_PROXY",
-							Value: addonConfig.Spec.ProxyConfig.HTTPSProxy,
-						})
-						// CA is allowed only when HTTPS proxy is set
-						if addonConfig.Spec.ProxyConfig.CABundle != nil {
-							CustomCABundle = true
-							container.Env = append(container.Env, corev1.EnvVar{
-								Name:  "HTTPS_PROXY_CA_BUNDLE",
-								Value: base64.StdEncoding.EncodeToString(addonConfig.Spec.ProxyConfig.CABundle),
-							})
-						}
-					}
-					if addonConfig.Spec.ProxyConfig.NoProxy != "" {
-						container.Env = append(container.Env, corev1.EnvVar{
-							Name:  "NO_PROXY",
-							Value: addonConfig.Spec.ProxyConfig.NoProxy,
-						})
-					}
-				}
-			}
 
-			if hasCustomRegistry {
-				oldImage := container.Image
-				newImage, err := imageRegistryClient.Cluster(cluster.Name).ImageOverride(oldImage)
-				log.Info("Replace the endpoint operator image", "cluster", cluster.Name, "newImage", newImage)
-				if err == nil {
-					spec.Containers[i].Image = newImage
-				}
-			}
-		}
-	}
-	if CustomCABundle {
+	if customCABundle {
 		for i, manifest := range manifests {
 			if manifest.RawExtension.Object.GetObjectKind().GroupVersionKind().Kind == "Secret" {
 				secret := manifest.Object.DeepCopyObject().(*corev1.Secret)
@@ -505,27 +452,9 @@ func createManifestWorks(
 		}
 	}
 
-	log.Info(fmt.Sprintf("Cluster: %+v, Spec.NodeSelector (after): %+v", cluster.Name, spec.NodeSelector))
-	log.Info(fmt.Sprintf("Cluster: %+v, Spec.Tolerations (after): %+v", cluster.Name, spec.Tolerations))
+	log.Info(fmt.Sprintf("Cluster: %+v, Spec.NodeSelector (after): %+v", cluster.Name, endpointMetricsOperatorDeployCopy.Spec.Template.Spec.NodeSelector))
+	log.Info(fmt.Sprintf("Cluster: %+v, Spec.Tolerations (after): %+v", cluster.Name, endpointMetricsOperatorDeployCopy.Spec.Template.Spec.Tolerations))
 
-	if cluster.IsLocalCluster {
-		spec.Volumes = []corev1.Volume{}
-		spec.Containers[0].VolumeMounts = []corev1.VolumeMount{}
-		for i, env := range spec.Containers[0].Env {
-			if env.Name == "HUB_KUBECONFIG" {
-				spec.Containers[0].Env[i].Value = ""
-				break
-			}
-		}
-		// Set HUB_ENDPOINT_OPERATOR when the endpoint operator is installed in hub cluster
-		spec.Containers[0].Env = append(spec.Containers[0].Env, corev1.EnvVar{
-			Name:  "HUB_ENDPOINT_OPERATOR",
-			Value: "true",
-		})
-
-		dep.Name = config.HubEndpointOperatorName
-	}
-	endpointMetricsOperatorDeployCopy.Spec.Template.Spec = spec
 	manifests = injectIntoWork(manifests, endpointMetricsOperatorDeployCopy)
 	// replace the pull secret and addon components image
 	if hasCustomRegistry {
@@ -572,6 +501,111 @@ func createManifestWorks(
 	maps.Copy(work.Annotations, configAnnotation)
 
 	return work, nil
+}
+
+func customizeEndpointOperator(
+	dep *appsv1.Deployment,
+	mco *mcov1beta2.MultiClusterObservability,
+	addonConfig *addonv1alpha1.AddOnDeploymentConfig,
+	cluster managedClusterInfo,
+	clusterNamespace string,
+	installProm bool,
+	hasCustomRegistry bool,
+	imageRegistryClient Client,
+) bool {
+	spec := &dep.Spec.Template.Spec
+	switch {
+	case addonConfig.Spec.NodePlacement != nil:
+		spec.NodeSelector = addonConfig.Spec.NodePlacement.NodeSelector
+		spec.Tolerations = addonConfig.Spec.NodePlacement.Tolerations
+	case cluster.IsLocalCluster:
+		spec.NodeSelector = mco.Spec.NodeSelector
+		spec.Tolerations = mco.Spec.Tolerations
+	default:
+		// reset NodeSelector and Tolerations
+		spec.NodeSelector = map[string]string{}
+		spec.Tolerations = []corev1.Toleration{}
+	}
+
+	customCABundle := false
+	for i, container := range spec.Containers {
+		if container.Name == "endpoint-observability-operator" {
+			for j, env := range container.Env {
+				if env.Name == "HUB_NAMESPACE" {
+					container.Env[j].Value = clusterNamespace
+				}
+				if env.Name == operatorconfig.InstallPrometheus {
+					container.Env[j].Value = strconv.FormatBool(installProm)
+				}
+			}
+			// If ProxyConfig is specified as part of addonConfig, set the proxy envs
+			if !cluster.IsLocalCluster {
+				customCABundle = injectProxyConfig(spec, addonConfig)
+			}
+
+			if hasCustomRegistry {
+				oldImage := container.Image
+				newImage, err := imageRegistryClient.Cluster(cluster.Name).ImageOverride(oldImage)
+				log.Info("Replace the endpoint operator image", "cluster", cluster.Name, "newImage", newImage)
+				if err == nil {
+					spec.Containers[i].Image = newImage
+				}
+			}
+		}
+	}
+
+	if cluster.IsLocalCluster {
+		spec.Volumes = []corev1.Volume{}
+		spec.Containers[0].VolumeMounts = []corev1.VolumeMount{}
+		for i, env := range spec.Containers[0].Env {
+			if env.Name == "HUB_KUBECONFIG" {
+				spec.Containers[0].Env[i].Value = ""
+				break
+			}
+		}
+		// Set HUB_ENDPOINT_OPERATOR when the endpoint operator is installed in hub cluster
+		spec.Containers[0].Env = append(spec.Containers[0].Env, corev1.EnvVar{
+			Name:  "HUB_ENDPOINT_OPERATOR",
+			Value: "true",
+		})
+
+		dep.Name = config.HubEndpointOperatorName
+	}
+	return customCABundle
+}
+
+func injectProxyConfig(spec *corev1.PodSpec, addonConfig *addonv1alpha1.AddOnDeploymentConfig) bool {
+	customCABundle := false
+	for i := range spec.Containers {
+		container := &spec.Containers[i]
+		if addonConfig.Spec.ProxyConfig.HTTPProxy != "" {
+			container.Env = append(container.Env, corev1.EnvVar{
+				Name:  "HTTP_PROXY",
+				Value: addonConfig.Spec.ProxyConfig.HTTPProxy,
+			})
+		}
+		if addonConfig.Spec.ProxyConfig.HTTPSProxy != "" {
+			container.Env = append(container.Env, corev1.EnvVar{
+				Name:  "HTTPS_PROXY",
+				Value: addonConfig.Spec.ProxyConfig.HTTPSProxy,
+			})
+			// CA is allowed only when HTTPS proxy is set
+			if addonConfig.Spec.ProxyConfig.CABundle != nil {
+				customCABundle = true
+				container.Env = append(container.Env, corev1.EnvVar{
+					Name:  "HTTPS_PROXY_CA_BUNDLE",
+					Value: base64.StdEncoding.EncodeToString(addonConfig.Spec.ProxyConfig.CABundle),
+				})
+			}
+		}
+		if addonConfig.Spec.ProxyConfig.NoProxy != "" {
+			container.Env = append(container.Env, corev1.EnvVar{
+				Name:  "NO_PROXY",
+				Value: addonConfig.Spec.ProxyConfig.NoProxy,
+			})
+		}
+	}
+	return customCABundle
 }
 
 func ensureResourcesForHubMetricsCollection(ctx context.Context, c client.Client, owner client.Object, manifests []workv1.Manifest) error {

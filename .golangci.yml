@@ -19,6 +19,7 @@ linters:
     - bodyclose
     - errcheck
     - exptostd
+    - gocognit
     - goconst
     - gocritic
     - gosec
@@ -67,6 +68,8 @@ linters:
           disabled: true
         - name: package-comments
           disabled: true
+    gocognit:
+      min-complexity: 50
 
   exclusions:
     rules:
@@ -74,6 +77,7 @@ linters:
         linters:
           - gosec
           - revive
+          - gocognit
 
 formatters:
   # Enable specific formatter.
