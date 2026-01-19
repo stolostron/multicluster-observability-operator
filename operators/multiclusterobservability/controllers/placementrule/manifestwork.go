@@ -54,6 +54,16 @@ const (
 	amTokenCreated            = "token-created"
 )
 
+// managedManifestWorkAnnotations explicitly lists the annotations we own on ManifestWork.
+// We only update/remove annotations in this list, preserving all others to avoid
+// conflicts with addon-framework and other OCM controllers.
+//
+// When adding a new annotation to ManifestWork in createManifestWorks(), add it to this list.
+var managedManifestWorkAnnotations = []string{
+	workPostponeDeleteAnnoKey,                  // "open-cluster-management/postpone-delete"
+	workv1.ManifestConfigSpecHashAnnotationKey, // "open-cluster-management.io/config-spec-hash"
+}
+
 // intermediate resources for the manifest work.
 var (
 	hubInfoSecret             *corev1.Secret
@@ -246,7 +256,8 @@ func createManifestwork(ctx context.Context, c client.Client, work *workv1.Manif
 
 	log.Info("Updating manifestwork", "namespace", namespace, "name", name)
 	found.SetLabels(work.Labels)
-	found.SetAnnotations(work.Annotations)
+	// Only update annotations we manage, preserving annotations from other controllers
+	updateManagedAnnotations(found, work)
 	found.Spec.Workload.Manifests = work.Spec.Workload.Manifests
 	err = c.Update(ctx, found)
 	if err != nil {
@@ -254,6 +265,24 @@ func createManifestwork(ctx context.Context, c client.Client, work *workv1.Manif
 		return fmt.Errorf("failed to update manifestwork %s/%s: %w", namespace, name, err)
 	}
 	return nil
+}
+
+// updateManagedAnnotations updates only the annotations we manage on the target ManifestWork,
+// preserving any annotations set by other controllers. This prevents reconciliation conflicts.
+func updateManagedAnnotations(target, source *workv1.ManifestWork) {
+	if target.Annotations == nil {
+		target.Annotations = make(map[string]string)
+	}
+
+	for _, key := range managedManifestWorkAnnotations {
+		if val, exists := source.Annotations[key]; exists {
+			// Set or update our annotation
+			target.Annotations[key] = val
+		} else {
+			// Remove our annotation if we no longer set it
+			delete(target.Annotations, key)
+		}
+	}
 }
 
 func shouldUpdateManifestWork(desiredWork, foundWork *workv1.ManifestWork) bool {
@@ -264,8 +293,15 @@ func shouldUpdateManifestWork(desiredWork, foundWork *workv1.ManifestWork) bool 
 		return true
 	}
 
-	if !maps.Equal(foundWork.Annotations, desiredWork.Annotations) {
-		return true
+	// Only check annotations we manage to avoid triggering updates for annotations
+	// set by other controllers
+	for _, key := range managedManifestWorkAnnotations {
+		desired, desiredExists := desiredWork.Annotations[key]
+		found, foundExists := foundWork.Annotations[key]
+
+		if desiredExists != foundExists || (desiredExists && desired != found) {
+			return true
+		}
 	}
 
 	if len(desiredManifests) != len(foundManifests) {
@@ -349,6 +385,7 @@ func generateGlobalManifestResources(ctx context.Context, c client.Client, mco *
 // - pull secret
 // - from the arg: the allowList, works, crdWork, hubInfo
 func createManifestWorks(
+	ctx context.Context,
 	c client.Client,
 	clusterNamespace string,
 	cluster managedClusterInfo,
@@ -528,7 +565,7 @@ func createManifestWorks(
 	work.Spec.Workload.Manifests = manifests
 
 	// Set the config spec hash annotation if the ManagedClusterAddOn has configReferences
-	configAnnotation, err := getConfigSpecHashAnnotation(context.TODO(), c, clusterNamespace)
+	configAnnotation, err := getConfigSpecHashAnnotation(ctx, c, clusterNamespace)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get config spec hash annotation: %w", err)
 	}
