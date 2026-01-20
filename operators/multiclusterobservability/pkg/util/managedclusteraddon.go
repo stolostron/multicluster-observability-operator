@@ -57,9 +57,8 @@ func CreateManagedClusterAddonCR(ctx context.Context, c client.Client, namespace
 
 			log.Info("Successfully created and initialized ManagedClusterAddOn.", "name", addon.Name, "namespace", addon.Namespace)
 			return addon, nil
-		} else {
-			return nil, fmt.Errorf("failed to get the managedClusterAddon: %w", err)
 		}
+		return nil, fmt.Errorf("failed to get the managedClusterAddon: %w", err)
 	}
 
 	// MCA already exists - check if ConfigReferences need initialization.

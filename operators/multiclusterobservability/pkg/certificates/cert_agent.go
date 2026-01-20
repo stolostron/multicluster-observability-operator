@@ -36,8 +36,8 @@ func (o *ObservabilityAgent) Manifests(
 
 func (o *ObservabilityAgent) GetAgentAddonOptions() agent.AgentAddonOptions {
 	signAdaptor := func(
-		cluster *clusterv1.ManagedCluster,
-		addon *addonapiv1alpha1.ManagedClusterAddOn,
+		_ *clusterv1.ManagedCluster,
+		_ *addonapiv1alpha1.ManagedClusterAddOn,
 		csr *certificatesv1.CertificateSigningRequest,
 	) ([]byte, error) {
 		res, err := Sign(context.Background(), o.client, csr)
@@ -89,7 +89,7 @@ func observabilitySignerConfigurations(
 		//nolint:gocritic // Creating new slice with additional config
 		registrationConfigs := append(kubeClientConfigs, observabilityConfig)
 
-		_, _, caCertBytes, caErr := getCA(client, true)
+		_, _, caCertBytes, caErr := getCA(context.Background(), client, true)
 		if caErr == nil {
 			caHashStamp := fmt.Sprintf("ca-hash-%x", sha256.Sum256(caCertBytes))
 			for i := range registrationConfigs {
