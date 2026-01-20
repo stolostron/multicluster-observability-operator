@@ -227,7 +227,7 @@ func setStatusCondition(conditions *[]mcoshared.Condition, newCondition mcoshare
 // removeStatusCondition removes the corresponding conditionType from conditions.
 // conditions must be non-nil.
 func removeStatusCondition(conditions *[]mcoshared.Condition, conditionType string) {
-	if conditions == nil {
+	if conditions == nil || len(*conditions) == 0 {
 		return
 	}
 	newConditions := make([]mcoshared.Condition, 0, len(*conditions)-1)
