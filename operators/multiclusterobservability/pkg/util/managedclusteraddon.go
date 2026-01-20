@@ -180,9 +180,7 @@ func createManagedClusterAddOn(ctx context.Context, c client.Client, namespace, 
 
 func updateManagedClusterAddOnStatus(ctx context.Context, c client.Client, namespace string) (*addonv1alpha1.ManagedClusterAddOn, error) {
 	existingManagedClusterAddon := &addonv1alpha1.ManagedClusterAddOn{}
-	retryAttempt := 0
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		retryAttempt++
 		objectKey := types.NamespacedName{
 			Name:      config.ManagedClusterAddonName,
 			Namespace: namespace,
@@ -192,24 +190,6 @@ func updateManagedClusterAddOnStatus(ctx context.Context, c client.Client, names
 		}
 
 		desiredStatus := existingManagedClusterAddon.Status.DeepCopy()
-
-		// Log current state before modifications on retries
-		if retryAttempt > 1 {
-			var currentConfigRefInfo string
-			for _, ref := range desiredStatus.ConfigReferences {
-				if ref.Group == AddonGroup && ref.Resource == AddonDeploymentConfigResource {
-					if ref.DesiredConfig != nil {
-						currentConfigRefInfo = fmt.Sprintf("ConfigReferent=%s/%s, SpecHash=%s",
-							ref.DesiredConfig.Name, ref.DesiredConfig.Namespace, ref.DesiredConfig.SpecHash)
-					} else {
-						currentConfigRefInfo = "DesiredConfig=nil"
-					}
-					break
-				}
-			}
-			log.Info("Retry attempt for MCA status update", "namespace", namespace, "attempt", retryAttempt,
-				"configRefsCount", len(desiredStatus.ConfigReferences), "configRefInfo", currentConfigRefInfo)
-		}
 
 		// Ensure that the progressing condition exists. If not, add it as it may have just been created.
 		isAvailable := meta.IsStatusConditionTrue(desiredStatus.Conditions, availableConditionType)
