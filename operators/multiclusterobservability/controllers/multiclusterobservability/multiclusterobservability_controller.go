@@ -1025,7 +1025,7 @@ func (r *MultiClusterObservabilityReconciler) deleteServiceMonitorInOpenshiftMon
 
 	for _, sm := range serviceMonitorList.Items {
 		if strings.HasPrefix(sm.Name, "observability-") {
-			err = r.Client.Delete(ctx, sm)
+			err = r.Client.Delete(ctx, &sm)
 			if err != nil {
 				log.Error(err, "Failed to delete ServiceMonitor", "ServiceMonitorName", sm.Name)
 				return err

@@ -230,12 +230,12 @@ func renderMatches(r CollectRule, ls labels.Labels) []string {
 		m := r.FindAllStringSubmatch(match, -1)
 		for _, v := range m {
 			if _, ok := labelsMap[v[1]]; !ok {
-				for _, l := range ls {
+				ls.Range(func(l labels.Label) {
 					if l.Name == v[1] {
 						labelsMap[l.Name] = l.Value
-						break
+						return
 					}
-				}
+				})
 			}
 			original := fmt.Sprintf("{{ $labels.%s }}", v[1])
 			replace := labelsMap[v[1]]
@@ -261,7 +261,7 @@ func evaluateRule(logger log.Logger, r CollectRule, metrics []*clientmodel.Metri
 	}
 	for _, metric := range metrics {
 		for _, m := range metric.Metric {
-			ls := labels.Labels{}
+			ls := make([]labels.Label, 0, len(m.Label))
 			for _, l := range m.Label {
 				ls = append(ls, labels.Label{
 					Name:  *l.Name,
@@ -272,7 +272,7 @@ func evaluateRule(logger log.Logger, r CollectRule, metrics []*clientmodel.Metri
 				Name:  "rule_name",
 				Value: r.Name,
 			})
-			h := ls.Hash()
+			h := labels.New(ls...).Hash()
 			if firingRules[r.Name].triggerTime[h] != nil {
 				delete(firings, h)
 				if firingRules[r.Name].resolveTime[h] != nil {
@@ -285,7 +285,7 @@ func evaluateRule(logger log.Logger, r CollectRule, metrics []*clientmodel.Metri
 				if r.Duration == 0 {
 					// no duration defined, fire immediately
 					firingRules[r.Name].triggerTime[h] = &now
-					enabledMatches[h] = renderMatches(r, ls)
+					enabledMatches[h] = renderMatches(r, labels.New(ls...))
 					isUpdate = true
 					rlogger.Log(logger, rlogger.Info, "msg", "collect rule fired", "name", r.Name, "labels", ls)
 				} else {
@@ -299,7 +299,7 @@ func evaluateRule(logger log.Logger, r CollectRule, metrics []*clientmodel.Metri
 				// already passed duration, fire
 				firingRules[r.Name].triggerTime[h] = &now
 				delete(pendingRules[r.Name].triggerTime, h)
-				enabledMatches[h] = renderMatches(r, ls)
+				enabledMatches[h] = renderMatches(r, labels.New(ls...))
 				isUpdate = true
 				rlogger.Log(logger, rlogger.Info, "msg", "collect rule fired", "name", r.Name, "labels", ls)
 			}
