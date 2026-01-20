@@ -594,6 +594,7 @@ func createAllRelatedRes(
 			continue
 		}
 		manifestWork, err := createManifestWorks(
+			ctx,
 			c,
 			namespace,
 			mci,

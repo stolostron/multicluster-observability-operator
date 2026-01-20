@@ -27,26 +27,61 @@ func getClusterMgmtAddonPredFunc() predicate.Funcs {
 			if e.ObjectOld.GetName() != util.ObservabilityController {
 				return false
 			}
+
+			oldCMA := e.ObjectOld.(*addonv1alpha1.ClusterManagementAddOn)
+			newCMA := e.ObjectNew.(*addonv1alpha1.ClusterManagementAddOn)
+
+			// Check if spec.supportedConfigs[].defaultConfig changed
 			oldDefault := &addonv1alpha1.ConfigReferent{}
 			newDefault := &addonv1alpha1.ConfigReferent{}
-			for _, config := range e.ObjectOld.(*addonv1alpha1.ClusterManagementAddOn).Spec.SupportedConfigs {
+			for _, config := range oldCMA.Spec.SupportedConfigs {
 				if config.Group == util.AddonGroup &&
 					config.Resource == util.AddonDeploymentConfigResource {
 					oldDefault = config.DefaultConfig
 				}
 			}
-			for _, config := range e.ObjectNew.(*addonv1alpha1.ClusterManagementAddOn).Spec.SupportedConfigs {
+			for _, config := range newCMA.Spec.SupportedConfigs {
 				if config.Group == util.AddonGroup &&
 					config.Resource == util.AddonDeploymentConfigResource {
 					newDefault = config.DefaultConfig
 				}
 			}
-			return !reflect.DeepEqual(oldDefault, newDefault)
+			if !reflect.DeepEqual(oldDefault, newDefault) {
+				return true
+			}
+
+			// Also check if status.defaultConfigReferences changed (addon-framework updates specHash here)
+			// This ensures ManifestWork annotation gets updated when framework populates specHash
+			oldStatusConfig := findAddonDeploymentDefaultConfigReference(oldCMA.Status.DefaultConfigReferences)
+			newStatusConfig := findAddonDeploymentDefaultConfigReference(newCMA.Status.DefaultConfigReferences)
+			return !reflect.DeepEqual(oldStatusConfig, newStatusConfig)
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
 			return false
 		},
 	}
+}
+
+// findAddonDeploymentConfigReference finds the AddOnDeploymentConfig reference in MCA configReferences.
+func findAddonDeploymentConfigReference(configRefs []addonv1alpha1.ConfigReference) *addonv1alpha1.ConfigReference {
+	for i := range configRefs {
+		if configRefs[i].Group == util.AddonGroup &&
+			configRefs[i].Resource == util.AddonDeploymentConfigResource {
+			return &configRefs[i]
+		}
+	}
+	return nil
+}
+
+// findAddonDeploymentDefaultConfigReference finds the AddOnDeploymentConfig reference in CMA defaultConfigReferences.
+func findAddonDeploymentDefaultConfigReference(configRefs []addonv1alpha1.DefaultConfigReference) *addonv1alpha1.DefaultConfigReference {
+	for i := range configRefs {
+		if configRefs[i].Group == util.AddonGroup &&
+			configRefs[i].Resource == util.AddonDeploymentConfigResource {
+			return &configRefs[i]
+		}
+	}
+	return nil
 }
 
 func getMgClusterAddonPredFunc() predicate.Funcs {
@@ -58,21 +93,34 @@ func getMgClusterAddonPredFunc() predicate.Funcs {
 			if e.ObjectOld.GetName() != config.ManagedClusterAddonName {
 				return false
 			}
+
+			oldMCA := e.ObjectOld.(*addonv1alpha1.ManagedClusterAddOn)
+			newMCA := e.ObjectNew.(*addonv1alpha1.ManagedClusterAddOn)
+
+			// Check if spec.configs changed
 			oldConfig := addonv1alpha1.ConfigReferent{}
 			newConfig := addonv1alpha1.ConfigReferent{}
-			for _, config := range e.ObjectOld.(*addonv1alpha1.ManagedClusterAddOn).Spec.Configs {
+			for _, config := range oldMCA.Spec.Configs {
 				if config.Group == util.AddonGroup &&
 					config.Resource == util.AddonDeploymentConfigResource {
 					oldConfig = config.ConfigReferent
 				}
 			}
-			for _, config := range e.ObjectNew.(*addonv1alpha1.ManagedClusterAddOn).Spec.Configs {
+			for _, config := range newMCA.Spec.Configs {
 				if config.Group == util.AddonGroup &&
 					config.Resource == util.AddonDeploymentConfigResource {
 					newConfig = config.ConfigReferent
 				}
 			}
-			return !reflect.DeepEqual(oldConfig, newConfig)
+			if !reflect.DeepEqual(oldConfig, newConfig) {
+				return true
+			}
+
+			// Also check if status.configReferences changed (addon-framework updates specHash here)
+			// This ensures ManifestWork annotation gets updated when framework populates specHash
+			oldStatusConfig := findAddonDeploymentConfigReference(oldMCA.Status.ConfigReferences)
+			newStatusConfig := findAddonDeploymentConfigReference(newMCA.Status.ConfigReferences)
+			return !reflect.DeepEqual(oldStatusConfig, newStatusConfig)
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
 			return false
