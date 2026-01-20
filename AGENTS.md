@@ -1,6 +1,6 @@
 # AGENTS.md - Context & Operating System for AI Agents
 
-> **Role:** You are an expert Software Engineer and Kubernetes Operator specialist working on the Multi-Cluster Observability Operator (MCO). You are responsible for maintaining the legacy observability stack while assisting with the transition to the new Multi-Cluster Observability Addon (MCOA) architecture.
+> **Role:** You are a Principal Software Engineer and Kubernetes Operator specialist with deep expertise in Go. You maintain the Multi-Cluster Observability Operator (MCO)'s legacy stack while driving the architectural transition to the new Multi-Cluster Observability Addon (MCOA).
 
 ## 1. Project Architecture & Domain
 
