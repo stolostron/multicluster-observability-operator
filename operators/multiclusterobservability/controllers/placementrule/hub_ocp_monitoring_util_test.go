@@ -8,7 +8,6 @@ import (
 	"context"
 	"testing"
 
-	ghodssyaml "github.com/ghodss/yaml"
 	cmomanifests "github.com/openshift/cluster-monitoring-operator/pkg/manifests"
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	"github.com/stretchr/testify/assert"
@@ -18,6 +17,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	sigsyaml "sigs.k8s.io/yaml"
 )
 
 func TestRevertHubClusterMonitoringConfig(t *testing.T) {
@@ -73,8 +73,8 @@ func TestRevertHubClusterMonitoringConfig(t *testing.T) {
 				},
 			},
 		}
-		initialConfigBytes, _ := ghodssyaml.Marshal(initialConfig)
-		initialConfigYAMLBytes, _ := ghodssyaml.JSONToYAML(initialConfigBytes)
+		initialConfigBytes, _ := sigsyaml.Marshal(initialConfig)
+		initialConfigYAMLBytes, _ := sigsyaml.JSONToYAML(initialConfigBytes)
 
 		cm := &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
@@ -104,7 +104,7 @@ func TestRevertHubClusterMonitoringConfig(t *testing.T) {
 		assert.NoError(t, err)
 
 		updatedConfig := &cmomanifests.ClusterMonitoringConfiguration{}
-		ghodssyaml.Unmarshal([]byte(updatedCM.Data[clusterMonitoringConfigDataKey]), updatedConfig)
+		sigsyaml.Unmarshal([]byte(updatedCM.Data[clusterMonitoringConfigDataKey]), updatedConfig)
 
 		// Check externalLabels: should have "other-label" but not "cluster_id"
 		assert.NotContains(t, updatedConfig.PrometheusK8sConfig.ExternalLabels, operatorconfig.ClusterLabelKeyForAlerts)

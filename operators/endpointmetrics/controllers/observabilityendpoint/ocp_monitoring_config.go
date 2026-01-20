@@ -11,7 +11,6 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/ghodss/yaml"
 	cmomanifests "github.com/openshift/cluster-monitoring-operator/pkg/manifests"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
@@ -22,6 +21,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/yaml"
 )
 
 const (

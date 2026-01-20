@@ -16,7 +16,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ghodss/yaml"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -34,6 +33,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/klog"
+	"sigs.k8s.io/yaml"
 )
 
 func NewKubeClient(url, kubeconfig, ctx string) kubernetes.Interface {

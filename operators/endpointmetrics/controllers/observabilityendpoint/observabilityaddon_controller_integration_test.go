@@ -14,7 +14,6 @@ import (
 	"testing"
 	"time"
 
-	yaml2 "github.com/ghodss/yaml"
 	ocinfrav1 "github.com/openshift/api/config/v1"
 	cmomanifests "github.com/openshift/cluster-monitoring-operator/pkg/manifests"
 	hyperv1 "github.com/openshift/hypershift/api/hypershift/v1beta1"
@@ -41,6 +40,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
+	yaml2 "sigs.k8s.io/yaml"
 )
 
 var (
