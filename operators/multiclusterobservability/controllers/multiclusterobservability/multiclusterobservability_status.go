@@ -227,7 +227,7 @@ func setStatusCondition(conditions *[]mcoshared.Condition, newCondition mcoshare
 // removeStatusCondition removes the corresponding conditionType from conditions.
 // conditions must be non-nil.
 func removeStatusCondition(conditions *[]mcoshared.Condition, conditionType string) {
-	if conditions == nil {
+	if conditions == nil || len(*conditions) == 0 {
 		return
 	}
 	newConditions := make([]mcoshared.Condition, 0, len(*conditions)-1)
@@ -265,10 +265,12 @@ func updateAddonSpecStatus(
 
 func updateMCOAStatus(c client.Client, conds *[]mcoshared.Condition, mco *mcov1beta2.MultiClusterObservability) {
 	if mco.Spec.Capabilities == nil {
+		removeStatusCondition(conds, reasonMCOADegraded)
 		return
 	}
 
 	if mco.Spec.Capabilities.Platform == nil && mco.Spec.Capabilities.UserWorkloads == nil {
+		removeStatusCondition(conds, reasonMCOADegraded)
 		return
 	}
 
@@ -278,6 +280,7 @@ func updateMCOAStatus(c client.Client, conds *[]mcoshared.Condition, mco *mcov1b
 		!mco.Spec.Capabilities.Platform.Logs.Collection.Enabled &&
 		!mco.Spec.Capabilities.Platform.Metrics.Collection.Enabled &&
 		!mco.Spec.Capabilities.Platform.Analytics.IncidentDetection.Enabled {
+		removeStatusCondition(conds, reasonMCOADegraded)
 		return
 	}
 
