@@ -427,8 +427,8 @@ github.com/openshift/cluster-monitoring-operator v0.1.1-0.20250418140607-8e7bb77
 github.com/openshift/cluster-monitoring-operator v0.1.1-0.20250418140607-8e7bb7723bfe/go.mod h1:HomHf7WXN8nOnCPpR0abrTz+p3+/ReFcwJkoTmYoVqM=
 github.com/openshift/hypershift/api v0.0.0-20241119231618-9aca80837541 h1:EDOyhkg4cZk5AQ9Sbndk5cjGr4HFK4ND7qLY5LTsQ4Y=
 github.com/openshift/hypershift/api v0.0.0-20241119231618-9aca80837541/go.mod h1:NIT2Bs83re4seKsT3Xp+ENOOCN2Gl++mguuGGhNnN/8=
-github.com/openshift/library-go v0.0.0-20241106000323-9fcf3125a28e h1:ZPAUe9p5nfbzJzb23s+rdFqDrl3U58hC4Y0merEkoSE=
-github.com/openshift/library-go v0.0.0-20241106000323-9fcf3125a28e/go.mod h1:9B1MYPoLtP9tqjWxcbUNVpwxy68zOH/3EIP6c31dAM0=
+github.com/openshift/library-go v0.0.0-20250711143941-47604345e7ea h1:0BNis5UGo5Z7J9GtRY1nw/pt8hWxIZqvfqnqH3eV5cs=
+github.com/openshift/library-go v0.0.0-20250711143941-47604345e7ea/go.mod h1:tptKNust9MdRI0p90DoBSPHIrBa9oh+Rok59tF0vT8c=
 github.com/opentracing/opentracing-go v1.2.0 h1:uEJPy/1a5RIPAJ0Ov+OIO8OxWu77jEv+1B0VhjKrZUs=
 github.com/opentracing/opentracing-go v1.2.0/go.mod h1:GxEUsuufX4nBwe+T+Wl9TAgYrxe9dPLANfrWvHYVTgc=
 github.com/ovh/go-ovh v1.6.0 h1:ixLOwxQdzYDx296sXcgS35TOPEahJkpjMGtzPadCjQI=

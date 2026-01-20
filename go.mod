@@ -8,7 +8,6 @@ toolchain go1.24.4
 replace (
 	github.com/openshift/api => github.com/openshift/api v0.0.0-20241001152557-e415140e5d5f
 	github.com/openshift/client-go => github.com/openshift/client-go v0.0.0-20241001162912-da6d55e4611f
-	github.com/openshift/library-go => github.com/openshift/library-go v0.0.0-20241106000323-9fcf3125a28e
 	sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.19.7
 )
 
@@ -32,7 +31,6 @@ require (
 	github.com/openshift/client-go v0.0.0-20250710075018-396b36f983ee
 	github.com/openshift/cluster-monitoring-operator v0.1.1-0.20250418140607-8e7bb7723bfe
 	github.com/openshift/hypershift/api v0.0.0-20241119231618-9aca80837541
-	github.com/openshift/library-go v0.0.0-20250711143941-47604345e7ea
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.76.2
 	github.com/prometheus-operator/prometheus-operator/pkg/client v0.76.2
 	github.com/prometheus/alertmanager v0.27.0
@@ -142,6 +140,7 @@ require (
 	github.com/mwitkow/go-conntrack v0.0.0-20190716064945-2f068394615f // indirect
 	github.com/oklog/ulid v1.3.1 // indirect
 	github.com/opencontainers/image-spec v1.1.1 // indirect
+	github.com/openshift/library-go v0.0.0-20250711143941-47604345e7ea // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/pelletier/go-toml v1.9.5 // indirect
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c // indirect
