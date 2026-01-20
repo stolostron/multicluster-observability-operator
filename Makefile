@@ -95,7 +95,7 @@ endef
 #      --mem-profile-path string   Path to memory profile output file
 # to debug big allocations during linting.
 .PHONY: lint
-lint: check-git deps format $(GOLANGCI_LINT) $(FAILLINT)
+lint: check-git deps format go-lint $(FAILLINT) ## Applies all linting and formating checks
 	$(call require_clean_work_tree,'detected files without copyright, run make lint and commit changes')
 	@echo ">> verifying modules being imported"
 	@$(FAILLINT) -paths "github.com/prometheus/tsdb=github.com/prometheus/prometheus/tsdb,\
@@ -110,10 +110,13 @@ io/ioutil.{Discard,NopCloser,ReadAll,ReadDir,ReadFile,TempDir,TempFile,Writefile
 	@echo ">> examining all of the Go files"
 	@go vet -stdmethods=false ./...
 	@echo ">> linting all of the Go files GOGC=${GOGC}"
-	@$(GOLANGCI_LINT) run
 	@echo ">> ensuring Copyright headers"
 	@go run ./scripts/copyright
 	$(call require_clean_work_tree,'detected files without copyright, run make lint and commit changes')
+
+.PHONY: go-lint
+go-lint: $(GOLANGCI_LINT) ## Run the golangci linter
+	@$(GOLANGCI_LINT) run
 
 .PHONY: check-metrics
 check-metrics:

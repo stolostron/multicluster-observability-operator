@@ -1,4 +1,7 @@
-# endpoint-monitoring-operator
+# endpoint-monitoring-operator (Legacy)
+
+> **⚠️ WARNING: LEGACY COMPONENT**
+> This component is part of the legacy observability architecture and is being deprecated in favor of the **Multi-Cluster Observability Addon (MCOA)**. For new development and the current standard, please refer to the MCOA documentation.
 
 ## Overview
 
