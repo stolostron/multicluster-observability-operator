@@ -24,7 +24,7 @@ func getTimePointer(d time.Duration) *time.Time {
 }
 
 func getHash(k string, v string) uint64 {
-	ls := labels.Labels{}
+	ls := []labels.Label{}
 	ls = append(ls, labels.Label{
 		Name:  k,
 		Value: v,
@@ -33,7 +33,7 @@ func getHash(k string, v string) uint64 {
 		Name:  "rule_name",
 		Value: TEST_RULE_NAME,
 	})
-	return ls.Hash()
+	return labels.New(ls...).Hash()
 }
 
 func createMetricsFamiliy(k string, v string) []*clientmodel.MetricFamily {

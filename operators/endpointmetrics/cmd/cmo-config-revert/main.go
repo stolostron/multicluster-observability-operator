@@ -11,10 +11,9 @@ import (
 	"time"
 
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/controllers/observabilityendpoint"
-	"go.uber.org/zap/zapcore"
+	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
 
 func main() {
@@ -26,10 +25,9 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	opts := zap.Options{Development: true, TimeEncoder: zapcore.ISO8601TimeEncoder}
-	opts.BindFlags(flag.CommandLine)
+	klog.InitFlags(flag.CommandLine)
 	flag.Parse()
-	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
+	ctrl.SetLogger(klog.NewKlogr())
 
 	if err := observabilityendpoint.RevertClusterMonitoringConfig(ctx, kubeClient, nil); err != nil {
 		log.Printf("unable to revert cluster monitoring config: %v", err)

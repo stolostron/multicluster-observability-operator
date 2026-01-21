@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/ghodss/yaml"
 	cmomanifests "github.com/openshift/cluster-monitoring-operator/pkg/manifests"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
@@ -20,6 +19,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/yaml"
 )
 
 const ( // #nosec G101 -- Not a hardcoded credential.
@@ -51,7 +51,7 @@ func RevertHubClusterMonitoringConfig(ctx context.Context, client client.Client)
 
 	hubInfo := &operatorconfig.HubInfo{}
 	// We use goyaml (v2) here because HubInfo has yaml tags but no json tags.
-	// github.com/ghodss/yaml would fail to unmarshal correctly as it relies on JSON tags.
+	// sigs.k8s.io/yaml would fail to unmarshal correctly as it relies on JSON tags.
 	// Specifically, kebab-case keys like 'hub-cluster-id' are not automatically mapped to
 	// CamelCase struct fields by the standard JSON decoder.
 	err = goyaml.Unmarshal(hubInfoSecret.Data[operatorconfig.HubInfoSecretKey], &hubInfo)

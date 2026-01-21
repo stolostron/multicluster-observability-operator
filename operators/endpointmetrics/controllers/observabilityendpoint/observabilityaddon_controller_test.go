@@ -7,6 +7,7 @@ package observabilityendpoint
 import (
 	"context"
 	"os"
+	"slices"
 	"testing"
 	"time"
 
@@ -20,7 +21,6 @@ import (
 	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/status"
-	"golang.org/x/exp/slices"
 	appv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"

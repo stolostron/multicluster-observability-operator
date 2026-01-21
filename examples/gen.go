@@ -15,12 +15,11 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
+	"log/slog"
 	"math/big"
 	"net"
 	"os"
 	"time"
-
-	"github.com/cloudflare/cfssl/log"
 )
 
 func main() {
@@ -49,19 +48,19 @@ func main() {
 
 	caPrivKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
-		log.Error(err)
+		slog.Error("Failed to generate CA private key", "error", err)
 		os.Exit(1)
 	}
 
 	certPrivKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
-		log.Error(err)
+		slog.Error("Failed to generate certificate private key", "error", err)
 		os.Exit(1)
 	}
 	// Generate CA cert.
 	caBytes, err := x509.CreateCertificate(rand.Reader, caRoot, caRoot, &caPrivKey.PublicKey, caPrivKey)
 	if err != nil {
-		log.Error(err)
+		slog.Error("Failed to create CA certificate", "error", err)
 		os.Exit(1)
 	}
 	caPEM := pem.EncodeToMemory(&pem.Block{
@@ -70,14 +69,14 @@ func main() {
 	})
 	err = os.WriteFile(caPath, caPEM, 0o600)
 	if err != nil {
-		log.Error(err)
+		slog.Error("Failed to write CA certificate to file", "error", err)
 		os.Exit(1)
 	}
 
 	// Sign the cert with the CA private key.
 	certBytes, err := x509.CreateCertificate(rand.Reader, cert, caRoot, &certPrivKey.PublicKey, caPrivKey)
 	if err != nil {
-		log.Error(err)
+		slog.Error("Failed to create certificate", "error", err)
 		os.Exit(1)
 	}
 	certPEM := pem.EncodeToMemory(&pem.Block{
@@ -86,7 +85,7 @@ func main() {
 	})
 	err = os.WriteFile(certPath, certPEM, 0o600)
 	if err != nil {
-		log.Error(err)
+		slog.Error("Failed to write certificate to file", "error", err)
 		os.Exit(1)
 	}
 
@@ -96,7 +95,7 @@ func main() {
 	})
 	err = os.WriteFile(privkeyPath, certPrivKeyPEM, 0o600)
 	if err != nil {
-		log.Error(err)
+		slog.Error("Failed to write private key to file", "error", err)
 		os.Exit(1)
 	}
 

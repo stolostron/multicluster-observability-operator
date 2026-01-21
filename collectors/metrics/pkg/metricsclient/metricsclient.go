@@ -148,7 +148,7 @@ func (c *Client) RetrieveRecordingMetrics(
 				ls = append(ls, *l)
 			}
 			vec = append(vec, promql.Sample{
-				Metric: ls,
+				Metric: labels.New(ls...),
 				T:      t,
 				F:      v,
 			})
@@ -162,17 +162,17 @@ func (c *Client) RetrieveRecordingMetrics(
 				Type: clientmodel.MetricType_UNTYPED.Enum(),
 				Name: proto.String(name),
 			}
-			for _, l := range s.Metric {
+			s.Metric.Range(func(l labels.Label) {
 				if l.Value == "" {
 					// No value means unset. Never consider those labels.
 					// This is also important to protect against nameless metrics.
-					continue
+					return
 				}
 				protMetric.Label = append(protMetric.Label, &clientmodel.LabelPair{
 					Name:  proto.String(l.Name),
 					Value: proto.String(l.Value),
 				})
-			}
+			})
 
 			protMetric.TimestampMs = proto.Int64(s.T)
 			protMetric.Untyped.Value = proto.Float64(s.F)
