@@ -44,7 +44,7 @@ type OAuth2WithSecret struct {
 	EndpointParams      map[string]string `yaml:"endpoint_params,omitempty" json:"endpoint_params,omitempty"`
 
 	// TLSConfig is used to connect to the token URL.
-	TLSConfig TLSConfigWithSecret `yaml:"tls_config,omitempty" json:"tls_config,omitempty"`
+	TLSConfig TLSConfigWithSecret `yaml:"tls_config" json:"tls_config"`
 }
 
 type BasicAuthWithSecret struct {

@@ -7,9 +7,9 @@ package utils
 // InstallConfig definition for install config structure from install-config.yaml
 type InstallConfig struct {
 	BaseDomain string     `json:"baseDomain,omitempty"`
-	Networking Networking `json:"networking,omitempty"`
+	Networking Networking `json:"networking"`
 	Metadata   Metadata   `json:"metadata"`
-	Platform   Platform   `json:"platform,omitempty"`
+	Platform   Platform   `json:"platform"`
 	PullSecret string     `json:"pullSecret,omitempty"`
 	SSHKey     string     `json:"sshKey,omitempty"`
 }
@@ -22,7 +22,7 @@ type Networking struct {
 
 // Platform definition
 type Platform struct {
-	Baremetal Baremetal `json:"baremetal,omitempty"`
+	Baremetal Baremetal `json:"baremetal"`
 }
 
 // Baremetal specs for target baremetal provisioning

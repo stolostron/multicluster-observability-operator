@@ -15,8 +15,8 @@ type ClusterDeploy struct {
 type Items struct {
 	Kind       string     `json:"kind"`
 	Metadata   Metadata   `json:"metadata"`
-	StringData StringData `json:"stringData,omitempty"`
-	Spec       Spec       `json:"spec,omitempty"`
+	StringData StringData `json:"stringData"`
+	Spec       Spec       `json:"spec"`
 }
 
 // Metadata defines the name
@@ -34,7 +34,7 @@ type StringData struct {
 type Spec struct {
 	BaseDomain   string       `json:"baseDomain,omitempty"`
 	ClusterName  string       `json:"clusterName,omitempty"`
-	Provisioning Provisioning `json:"provisioning,omitempty"`
+	Provisioning Provisioning `json:"provisioning"`
 }
 
 // Provisioning defines the data related to cluster creation

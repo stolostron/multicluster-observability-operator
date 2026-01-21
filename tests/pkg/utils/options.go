@@ -12,9 +12,9 @@ type TestOptionsContainer struct {
 type TestOptions struct {
 	HubCluster      Cluster         `json:"hub"`
 	ManagedClusters []Cluster       `json:"clusters"`
-	ImageRegistry   Registry        `json:"imageRegistry,omitempty"`
+	ImageRegistry   Registry        `json:"imageRegistry"`
 	KubeConfig      string          `json:"kubeconfig,omitempty"`
-	Connection      CloudConnection `json:"cloudConnection,omitempty"`
+	Connection      CloudConnection `json:"cloudConnection"`
 	Headless        string          `json:"headless,omitempty"`
 	OwnerPrefix     string          `json:"ownerPrefix,omitempty"`
 }
@@ -47,14 +47,14 @@ type CloudConnection struct {
 	PullSecret    string  `json:"pullSecret"`
 	SSHPrivateKey string  `json:"sshPrivatekey"`
 	SSHPublicKey  string  `json:"sshPublickey"`
-	Keys          APIKeys `json:"apiKeys,omitempty"`
+	Keys          APIKeys `json:"apiKeys"`
 	OCPRelease    string  `json:"ocpRelease,omitempty"`
 }
 
 type APIKeys struct {
-	AWS   AWSAPIKey   `json:"aws,omitempty"`
-	GCP   GCPAPIKey   `json:"gcp,omitempty"`
-	Azure AzureAPIKey `json:"azure,omitempty"`
+	AWS   AWSAPIKey   `json:"aws"`
+	GCP   GCPAPIKey   `json:"gcp"`
+	Azure AzureAPIKey `json:"azure"`
 }
 
 type AWSAPIKey struct {
