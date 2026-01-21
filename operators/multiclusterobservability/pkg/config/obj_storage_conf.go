@@ -10,60 +10,60 @@ import (
 	"strings"
 
 	"github.com/prometheus/common/model"
-	"gopkg.in/yaml.v2"
+	"sigs.k8s.io/yaml"
 )
 
 // Config is for s3/azure/gcs compatible configuration.
 type Config struct {
 	// s3 configuration
-	Bucket     string     `yaml:"bucket"`
-	Endpoint   string     `yaml:"endpoint"`
-	Insecure   bool       `yaml:"insecure"`
-	AccessKey  string     `yaml:"access_key"`
-	SecretKey  string     `yaml:"secret_key"`
-	HTTPConfig HTTPConfig `yaml:"http_config"`
+	Bucket     string     `json:"bucket"`
+	Endpoint   string     `json:"endpoint"`
+	Insecure   bool       `json:"insecure"`
+	AccessKey  string     `json:"access_key"`
+	SecretKey  string     `json:"secret_key"`
+	HTTPConfig HTTPConfig `json:"http_config"`
 	// azure configuration
-	// Bucket    string `yaml:"bucket"`
-	StorageAccount    string `yaml:"storage_account"`
-	StorageAccountKey string `yaml:"storage_account_key"`
-	Container         string `yaml:"container"`
-	MaxRetries        int32  `yaml:"max_retries"`
+	// Bucket    string `json:"bucket"`
+	StorageAccount    string `json:"storage_account"`
+	StorageAccountKey string `json:"storage_account_key"`
+	Container         string `json:"container"`
+	MaxRetries        int32  `json:"max_retries"`
 
 	// gcs configuration
-	// Endpoint  string `yaml:"endpoint"`
-	ServiceAccount string `yaml:"service_account"`
+	// Endpoint  string `json:"endpoint"`
+	ServiceAccount string `json:"service_account"`
 }
 
 // HTTPConfig stores the http.Transport configuration for the s3 minio client.
 type HTTPConfig struct {
-	IdleConnTimeout       model.Duration `yaml:"idle_conn_timeout"`
-	ResponseHeaderTimeout model.Duration `yaml:"response_header_timeout"`
-	InsecureSkipVerify    bool           `yaml:"insecure_skip_verify"`
+	IdleConnTimeout       model.Duration `json:"idle_conn_timeout"`
+	ResponseHeaderTimeout model.Duration `json:"response_header_timeout"`
+	InsecureSkipVerify    bool           `json:"insecure_skip_verify"`
 
-	TLSHandshakeTimeout   model.Duration `yaml:"tls_handshake_timeout"`
-	ExpectContinueTimeout model.Duration `yaml:"expect_continue_timeout"`
-	MaxIdleConns          int            `yaml:"max_idle_conns"`
-	MaxIdleConnsPerHost   int            `yaml:"max_idle_conns_per_host"`
-	MaxConnsPerHost       int            `yaml:"max_conns_per_host"`
+	TLSHandshakeTimeout   model.Duration `json:"tls_handshake_timeout"`
+	ExpectContinueTimeout model.Duration `json:"expect_continue_timeout"`
+	MaxIdleConns          int            `json:"max_idle_conns"`
+	MaxIdleConnsPerHost   int            `json:"max_idle_conns_per_host"`
+	MaxConnsPerHost       int            `json:"max_conns_per_host"`
 
 	// Allow upstream callers to inject a round tripper
-	Transport http.RoundTripper `yaml:"-"`
+	Transport http.RoundTripper `json:"-"`
 
-	TLSConfig TLSConfig `yaml:"tls_config"`
+	TLSConfig TLSConfig `json:"tls_config"`
 }
 
 // TLSConfig configures the options for TLS connections.
 type TLSConfig struct {
 	// The CA cert to use for the targets.
-	CAFile string `yaml:"ca_file"`
+	CAFile string `json:"ca_file"`
 	// The client cert file for the targets.
-	CertFile string `yaml:"cert_file"`
+	CertFile string `json:"cert_file"`
 	// The client key file for the targets.
-	KeyFile string `yaml:"key_file"`
+	KeyFile string `json:"key_file"`
 	// Used to verify the hostname for the targets.
-	ServerName string `yaml:"server_name"`
+	ServerName string `json:"server_name"`
 	// Disable target certificate validation.
-	InsecureSkipVerify bool `yaml:"insecure_skip_verify"`
+	InsecureSkipVerify bool `json:"insecure_skip_verify"`
 }
 
 // CheckObjStorageConf is used to check/valid the object storage configurations.

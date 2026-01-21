@@ -20,23 +20,23 @@ const (
 
 // RSLabelFilter represents label filtering criteria for right-sizing
 type RSLabelFilter struct {
-	LabelName         string   `yaml:"labelName"`
-	InclusionCriteria []string `yaml:"inclusionCriteria,omitempty"`
-	ExclusionCriteria []string `yaml:"exclusionCriteria,omitempty"`
+	LabelName         string   `json:"labelName"`
+	InclusionCriteria []string `json:"inclusionCriteria,omitempty"`
+	ExclusionCriteria []string `json:"exclusionCriteria,omitempty"`
 }
 
 // RSPrometheusRuleConfig represents the Prometheus rule configuration for right-sizing
 type RSPrometheusRuleConfig struct {
 	NamespaceFilterCriteria struct {
-		InclusionCriteria []string `yaml:"inclusionCriteria"`
-		ExclusionCriteria []string `yaml:"exclusionCriteria"`
-	} `yaml:"namespaceFilterCriteria"`
-	LabelFilterCriteria      []RSLabelFilter `yaml:"labelFilterCriteria"`
-	RecommendationPercentage int             `yaml:"recommendationPercentage"`
+		InclusionCriteria []string `json:"inclusionCriteria"`
+		ExclusionCriteria []string `json:"exclusionCriteria"`
+	} `json:"namespaceFilterCriteria"`
+	LabelFilterCriteria      []RSLabelFilter `json:"labelFilterCriteria"`
+	RecommendationPercentage int             `json:"recommendationPercentage"`
 }
 
 // RSNamespaceConfigMapData represents the configmap data structure for right-sizing namespace
 type RSNamespaceConfigMapData struct {
-	PrometheusRuleConfig   RSPrometheusRuleConfig   `yaml:"prometheusRuleConfig"`
-	PlacementConfiguration clusterv1beta1.Placement `yaml:"placementConfiguration"`
+	PrometheusRuleConfig   RSPrometheusRuleConfig   `json:"prometheusRuleConfig"`
+	PlacementConfiguration clusterv1beta1.Placement `json:"placementConfiguration"`
 }

@@ -6,8 +6,8 @@ package rsutility
 
 import (
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
-	"gopkg.in/yaml.v2"
 	clusterv1beta1 "open-cluster-management.io/api/cluster/v1beta1"
+	"sigs.k8s.io/yaml"
 )
 
 // FormatYAML converts a Go data structure to a YAML-formatted string

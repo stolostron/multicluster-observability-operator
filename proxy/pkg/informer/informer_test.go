@@ -12,12 +12,12 @@ import (
 	proxyconfig "github.com/stolostron/multicluster-observability-operator/proxy/pkg/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/cache"
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
+	"sigs.k8s.io/yaml"
 )
 
 func TestGenerateAllowList(t *testing.T) {

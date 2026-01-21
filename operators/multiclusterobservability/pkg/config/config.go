@@ -247,8 +247,8 @@ var mcoaSupportedCRDs = map[string]string{
 
 // ObjectStorgeConf is used to Unmarshal from bytes to do validation.
 type ObjectStorgeConf struct {
-	Type   string `yaml:"type"`
-	Config Config `yaml:"config"`
+	Type   string `json:"type"`
+	Config Config `json:"config"`
 }
 
 var (

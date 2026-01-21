@@ -13,48 +13,48 @@ import (
 // observatorium api gateway, the URL of hub alertmanager and the CA for the
 // hub router.
 type HubInfo struct {
-	ClusterName              string `yaml:"cluster-name"`
-	ObservatoriumAPIEndpoint string `yaml:"observatorium-api-endpoint"`
-	AlertmanagerEndpoint     string `yaml:"alertmanager-endpoint"`
-	AlertmanagerRouterCA     string `yaml:"alertmanager-router-ca"`
-	UWMAlertingDisabled      bool   `yaml:"uwm-alerting-disabled"`
-	HubClusterID             string `yaml:"hub-cluster-id"`
+	ClusterName              string `json:"cluster-name"`
+	ObservatoriumAPIEndpoint string `json:"observatorium-api-endpoint"`
+	AlertmanagerEndpoint     string `json:"alertmanager-endpoint"`
+	AlertmanagerRouterCA     string `json:"alertmanager-router-ca"`
+	UWMAlertingDisabled      bool   `json:"uwm-alerting-disabled"`
+	HubClusterID             string `json:"hub-cluster-id"`
 }
 
 type RecordingRule struct {
-	Record string `yaml:"record"`
-	Expr   string `yaml:"expr"`
+	Record string `json:"record"`
+	Expr   string `json:"expr"`
 }
 type CollectRule struct {
-	Collect     string            `yaml:"collect"`
-	Annotations map[string]string `yaml:"annotations"`
-	Expr        string            `yaml:"expr"`
-	For         string            `yaml:"for"`
-	Metrics     DynamicMetrics    `yaml:"dynamic_metrics"`
+	Collect     string            `json:"collect"`
+	Annotations map[string]string `json:"annotations"`
+	Expr        string            `json:"expr"`
+	For         string            `json:"for"`
+	Metrics     DynamicMetrics    `json:"dynamic_metrics"`
 }
 
 type DynamicMetrics struct {
-	NameList  []string `yaml:"names"`
-	MatchList []string `yaml:"matches"`
+	NameList  []string `json:"names"`
+	MatchList []string `json:"matches"`
 }
 
 type CollectRuleSelector struct {
-	MatchExpression []metav1.LabelSelectorRequirement `yaml:"matchExpressions"`
+	MatchExpression []metav1.LabelSelectorRequirement `json:"matchExpressions"`
 }
 
 // CollectRuleGroup structure contains information of a group of collect rules used for
 // dnamically collecting metrics.
 type CollectRuleGroup struct {
-	Name            string              `yaml:"group"`
-	Annotations     map[string]string   `yaml:"annotations"`
-	Selector        CollectRuleSelector `yaml:"selector"`
-	CollectRuleList []CollectRule       `yaml:"rules"`
+	Name            string              `json:"group"`
+	Annotations     map[string]string   `json:"annotations"`
+	Selector        CollectRuleSelector `json:"selector"`
+	CollectRuleList []CollectRule       `json:"rules"`
 }
 type MetricsAllowlist struct {
-	NameList             []string           `yaml:"names"`
-	MatchList            []string           `yaml:"matches"`
-	RenameMap            map[string]string  `yaml:"renames"`
-	RuleList             []RecordingRule    `yaml:"rules"` // deprecated
-	RecordingRuleList    []RecordingRule    `yaml:"recording_rules"`
-	CollectRuleGroupList []CollectRuleGroup `yaml:"collect_rules"`
+	NameList             []string           `json:"names"`
+	MatchList            []string           `json:"matches"`
+	RenameMap            map[string]string  `json:"renames"`
+	RuleList             []RecordingRule    `json:"rules"` // deprecated
+	RecordingRuleList    []RecordingRule    `json:"recording_rules"`
+	CollectRuleGroupList []CollectRuleGroup `json:"collect_rules"`
 }

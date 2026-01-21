@@ -11,11 +11,11 @@ import (
 	rendererutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering"
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 	"github.com/thanos-io/thanos/pkg/alert"
-	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/kustomize/api/resource"
+	"sigs.k8s.io/yaml"
 )
 
 func (r *MCORenderer) newThanosRenderer() {

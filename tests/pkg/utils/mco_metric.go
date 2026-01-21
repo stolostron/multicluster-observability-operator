@@ -15,9 +15,9 @@ import (
 	"regexp"
 	"strings"
 
-	"gopkg.in/yaml.v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
+	"sigs.k8s.io/yaml"
 )
 
 type GrafanaResponse struct {
@@ -138,42 +138,42 @@ func QueryGrafana(opt TestOptions, query string) (*GrafanaResponse, error) {
 }
 
 type MetricsAllowlist struct {
-	NameList             []string           `yaml:"names"`
-	MatchList            []string           `yaml:"matches"`
-	RenameMap            map[string]string  `yaml:"renames"`
-	RuleList             []RecordingRule    `yaml:"rules"` // deprecated
-	RecordingRuleList    []RecordingRule    `yaml:"recording_rules"`
-	CollectRuleGroupList []CollectRuleGroup `yaml:"collect_rules"`
+	NameList             []string           `json:"names"`
+	MatchList            []string           `json:"matches"`
+	RenameMap            map[string]string  `json:"renames"`
+	RuleList             []RecordingRule    `json:"rules"` // deprecated
+	RecordingRuleList    []RecordingRule    `json:"recording_rules"`
+	CollectRuleGroupList []CollectRuleGroup `json:"collect_rules"`
 }
 
 type RecordingRule struct {
-	Record string `yaml:"record"`
-	Expr   string `yaml:"expr"`
+	Record string `json:"record"`
+	Expr   string `json:"expr"`
 }
 type CollectRule struct {
-	Collect     string            `yaml:"collect"`
-	Annotations map[string]string `yaml:"annotations"`
-	Expr        string            `yaml:"expr"`
-	For         string            `yaml:"for"`
-	Metrics     DynamicMetrics    `yaml:"dynamic_metrics"`
+	Collect     string            `json:"collect"`
+	Annotations map[string]string `json:"annotations"`
+	Expr        string            `json:"expr"`
+	For         string            `json:"for"`
+	Metrics     DynamicMetrics    `json:"dynamic_metrics"`
 }
 
 type DynamicMetrics struct {
-	NameList  []string `yaml:"names"`
-	MatchList []string `yaml:"matches"`
+	NameList  []string `json:"names"`
+	MatchList []string `json:"matches"`
 }
 
 type CollectRuleSelector struct {
-	MatchExpression []metav1.LabelSelectorRequirement `yaml:"matchExpressions"`
+	MatchExpression []metav1.LabelSelectorRequirement `json:"matchExpressions"`
 }
 
 // CollectRuleGroup structure contains information of a group of collect rules used for
 // dnamically collecting metrics.
 type CollectRuleGroup struct {
-	Name            string              `yaml:"group"`
-	Annotations     map[string]string   `yaml:"annotations"`
-	Selector        CollectRuleSelector `yaml:"selector"`
-	CollectRuleList []CollectRule       `yaml:"rules"`
+	Name            string              `json:"group"`
+	Annotations     map[string]string   `json:"annotations"`
+	Selector        CollectRuleSelector `json:"selector"`
+	CollectRuleList []CollectRule       `json:"rules"`
 }
 
 func GetDefaultMetricList(opt TestOptions) ([]string, []string) {

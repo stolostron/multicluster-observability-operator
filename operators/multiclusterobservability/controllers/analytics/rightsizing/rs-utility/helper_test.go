@@ -15,8 +15,8 @@ import (
 func TestFormatYAML_ValidData(t *testing.T) {
 	input := RSPrometheusRuleConfig{
 		NamespaceFilterCriteria: struct {
-			InclusionCriteria []string `yaml:"inclusionCriteria"`
-			ExclusionCriteria []string `yaml:"exclusionCriteria"`
+			InclusionCriteria []string `json:"inclusionCriteria"`
+			ExclusionCriteria []string `json:"exclusionCriteria"`
 		}{
 			InclusionCriteria: []string{"ns1", "ns2"},
 			ExclusionCriteria: []string{"ns3"},

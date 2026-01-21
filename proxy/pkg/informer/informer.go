@@ -23,7 +23,6 @@ import (
 	"time"
 
 	proxyconfig "github.com/stolostron/multicluster-observability-operator/proxy/pkg/config"
-	"gopkg.in/yaml.v2"
 	v1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -34,15 +33,16 @@ import (
 	"k8s.io/klog/v2"
 	clusterclientset "open-cluster-management.io/api/client/cluster/clientset/versioned"
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
+	"sigs.k8s.io/yaml"
 )
 
 var promLabelRegex = regexp.MustCompile(`[^\w]+`)
 
 // ManagedClusterLabelList defines the structure of the label allowlist data stored in the ConfigMap.
 type ManagedClusterLabelList struct {
-	IgnoreList     []string `yaml:"ignore_labels,omitempty"`
-	LabelList      []string `yaml:"labels"`
-	RegexLabelList []string `yaml:"-"`
+	IgnoreList     []string `json:"ignore_labels,omitempty"`
+	LabelList      []string `json:"labels"`
+	RegexLabelList []string `json:"-"`
 }
 
 // Clone creates a deep copy of the ManagedClusterLabelList.

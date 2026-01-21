@@ -211,7 +211,7 @@ var _ = Describe("RHACM4K-55205: Enable and teardown namespace right-sizing reco
 			}
 
 			var ml struct {
-				Names []string `yaml:"names"`
+				Names []string `json:"names"`
 			}
 			if err := yaml.Unmarshal([]byte(raw), &ml); err != nil {
 				return err
@@ -428,7 +428,7 @@ var _ = Describe("RHACM4K-58751: Enable and teardown virtualization right-sizing
 			}
 
 			var ml struct {
-				Names []string `yaml:"names"`
+				Names []string `json:"names"`
 			}
 			if err := yaml.Unmarshal([]byte(raw), &ml); err != nil {
 				return err

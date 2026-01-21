@@ -5,78 +5,78 @@
 package utils
 
 type TestOptionsContainer struct {
-	Options TestOptions `yaml:"options"`
+	Options TestOptions `json:"options"`
 }
 
 // Define options available for Tests to consume
 type TestOptions struct {
-	HubCluster      Cluster         `yaml:"hub"`
-	ManagedClusters []Cluster       `yaml:"clusters"`
-	ImageRegistry   Registry        `yaml:"imageRegistry,omitempty"`
-	KubeConfig      string          `yaml:"kubeconfig,omitempty"`
-	Connection      CloudConnection `yaml:"cloudConnection,omitempty"`
-	Headless        string          `yaml:"headless,omitempty"`
-	OwnerPrefix     string          `yaml:"ownerPrefix,omitempty"`
+	HubCluster      Cluster         `json:"hub"`
+	ManagedClusters []Cluster       `json:"clusters"`
+	ImageRegistry   Registry        `json:"imageRegistry,omitempty"`
+	KubeConfig      string          `json:"kubeconfig,omitempty"`
+	Connection      CloudConnection `json:"cloudConnection,omitempty"`
+	Headless        string          `json:"headless,omitempty"`
+	OwnerPrefix     string          `json:"ownerPrefix,omitempty"`
 }
 
 // Define the shape of clusters that may be added under management
 type Cluster struct {
-	Name             string          `yaml:"name,omitempty"`
-	Namespace        string          `yaml:"namespace,omitempty"`
-	Tags             map[string]bool `yaml:"tags,omitempty"`
-	BaseDomain       string          `yaml:"baseDomain"`
-	User             string          `yaml:"user,omitempty"`
-	Password         string          `yaml:"password,omitempty"`
-	KubeContext      string          `yaml:"kubecontext,omitempty"`
-	ClusterServerURL string          `yaml:"clusterServerURL,omitempty"`
-	GrafanaURL       string          `yaml:"grafanaURL,omitempty"`
-	GrafanaHost      string          `yaml:"grafanaHost,omitempty"`
-	KubeConfig       string          `yaml:"kubeconfig,omitempty"`
+	Name             string          `json:"name,omitempty"`
+	Namespace        string          `json:"namespace,omitempty"`
+	Tags             map[string]bool `json:"tags,omitempty"`
+	BaseDomain       string          `json:"baseDomain"`
+	User             string          `json:"user,omitempty"`
+	Password         string          `json:"password,omitempty"`
+	KubeContext      string          `json:"kubecontext,omitempty"`
+	ClusterServerURL string          `json:"clusterServerURL,omitempty"`
+	GrafanaURL       string          `json:"grafanaURL,omitempty"`
+	GrafanaHost      string          `json:"grafanaHost,omitempty"`
+	KubeConfig       string          `json:"kubeconfig,omitempty"`
 }
 
 // Define the image registry
 type Registry struct {
 	// example: quay.io/stolostron
-	Server   string `yaml:"server"`
-	User     string `yaml:"user"`
-	Password string `yaml:"password"`
+	Server   string `json:"server"`
+	User     string `json:"user"`
+	Password string `json:"password"`
 }
 
 // CloudConnection struct for bits having to do with Connections
 type CloudConnection struct {
-	PullSecret    string  `yaml:"pullSecret"`
-	SSHPrivateKey string  `yaml:"sshPrivatekey"`
-	SSHPublicKey  string  `yaml:"sshPublickey"`
-	Keys          APIKeys `yaml:"apiKeys,omitempty"`
-	OCPRelease    string  `yaml:"ocpRelease,omitempty"`
+	PullSecret    string  `json:"pullSecret"`
+	SSHPrivateKey string  `json:"sshPrivatekey"`
+	SSHPublicKey  string  `json:"sshPublickey"`
+	Keys          APIKeys `json:"apiKeys,omitempty"`
+	OCPRelease    string  `json:"ocpRelease,omitempty"`
 }
 
 type APIKeys struct {
-	AWS   AWSAPIKey   `yaml:"aws,omitempty"`
-	GCP   GCPAPIKey   `yaml:"gcp,omitempty"`
-	Azure AzureAPIKey `yaml:"azure,omitempty"`
+	AWS   AWSAPIKey   `json:"aws,omitempty"`
+	GCP   GCPAPIKey   `json:"gcp,omitempty"`
+	Azure AzureAPIKey `json:"azure,omitempty"`
 }
 
 type AWSAPIKey struct {
-	AWSAccessID     string `yaml:"awsAccessKeyID"`
-	AWSAccessSecret string `yaml:"awsSecretAccessKeyID"`
-	BaseDnsDomain   string `yaml:"baseDnsDomain"`
-	Region          string `yaml:"region"`
+	AWSAccessID     string `json:"awsAccessKeyID"`
+	AWSAccessSecret string `json:"awsSecretAccessKeyID"`
+	BaseDnsDomain   string `json:"baseDnsDomain"`
+	Region          string `json:"region"`
 }
 
 type GCPAPIKey struct {
-	ProjectID             string `yaml:"gcpProjectID"`
-	ServiceAccountJsonKey string `yaml:"gcpServiceAccountJsonKey"`
-	BaseDnsDomain         string `yaml:"baseDnsDomain"`
-	Region                string `yaml:"region"`
+	ProjectID             string `json:"gcpProjectID"`
+	ServiceAccountJsonKey string `json:"gcpServiceAccountJsonKey"`
+	BaseDnsDomain         string `json:"baseDnsDomain"`
+	Region                string `json:"region"`
 }
 
 type AzureAPIKey struct {
-	BaseDnsDomain  string `yaml:"baseDnsDomain"`
-	BaseDomainRGN  string `yaml:"azureBaseDomainRGN"`
-	Region         string `yaml:"region"`
-	SubscriptionID string `yaml:"subscriptionID"`
-	TenantID       string `yaml:"tenantID"`
-	ClientID       string `yaml:"clientID"`
-	ClientSecret   string `yaml:"clientSecret"`
+	BaseDnsDomain  string `json:"baseDnsDomain"`
+	BaseDomainRGN  string `json:"azureBaseDomainRGN"`
+	Region         string `json:"region"`
+	SubscriptionID string `json:"subscriptionID"`
+	TenantID       string `json:"tenantID"`
+	ClientID       string `json:"clientID"`
+	ClientSecret   string `json:"clientSecret"`
 }

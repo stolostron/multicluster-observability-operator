@@ -6,39 +6,39 @@ package utils
 
 // ClusterDeploy defines the data passed to Hive
 type ClusterDeploy struct {
-	Kind       string  `yaml:"kind"`
-	APIVersion string  `yaml:"apiVersion"`
-	Items      []Items `yaml:"items"`
+	Kind       string  `json:"kind"`
+	APIVersion string  `json:"apiVersion"`
+	Items      []Items `json:"items"`
 }
 
 // Items defines the list of items in the cluster deploy yaml
 type Items struct {
-	Kind       string     `yaml:"kind"`
-	Metadata   Metadata   `yaml:"metadata"`
-	StringData StringData `yaml:"stringData,omitempty"`
-	Spec       Spec       `yaml:"spec,omitempty"`
+	Kind       string     `json:"kind"`
+	Metadata   Metadata   `json:"metadata"`
+	StringData StringData `json:"stringData,omitempty"`
+	Spec       Spec       `json:"spec,omitempty"`
 }
 
 // Metadata defines the name
 type Metadata struct {
-	Name string `yaml:"name,omitempty"`
+	Name string `json:"name,omitempty"`
 }
 
 // StringData defiines the ssh values
 type StringData struct {
-	Dockerconfigjson string `yaml:".dockerconfigjson,omitempty"`
-	SSHPrivateKey    string `yaml:"ssh-privatekey,omitempty"`
+	Dockerconfigjson string `json:".dockerconfigjson,omitempty"`
+	SSHPrivateKey    string `json:"ssh-privatekey,omitempty"`
 }
 
 // Spec defines the kube specifications
 type Spec struct {
-	BaseDomain   string       `yaml:"baseDomain,omitempty"`
-	ClusterName  string       `yaml:"clusterName,omitempty"`
-	Provisioning Provisioning `yaml:"provisioning,omitempty"`
+	BaseDomain   string       `json:"baseDomain,omitempty"`
+	ClusterName  string       `json:"clusterName,omitempty"`
+	Provisioning Provisioning `json:"provisioning,omitempty"`
 }
 
 // Provisioning defines the data related to cluster creation
 type Provisioning struct {
-	ReleaseImage  string   `yaml:"releaseImage,omitempty"`
-	SSHKnownHosts []string `yaml:"sshKnownHosts,omitempty"`
+	ReleaseImage  string   `json:"releaseImage,omitempty"`
+	SSHKnownHosts []string `json:"sshKnownHosts,omitempty"`
 }

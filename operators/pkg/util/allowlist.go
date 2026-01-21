@@ -10,10 +10,10 @@ import (
 	"strings"
 
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
-	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/yaml"
 )
 
 func GetAllowList(client client.Client, name, namespace string) (*operatorconfig.MetricsAllowlist,
