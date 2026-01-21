@@ -106,7 +106,7 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 		return ctrl.Result{}, fmt.Errorf("failed to get hub info secret %s/%s: %w", r.Namespace, operatorconfig.HubInfoSecretName, err)
 	}
 	hubInfo := &operatorconfig.HubInfo{}
-	err = yaml.Unmarshal(hubSecret.Data[operatorconfig.HubInfoSecretKey], &hubInfo)
+	err = yaml.Unmarshal(hubSecret.Data[operatorconfig.HubInfoSecretKey], hubInfo)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to unmarshal hub info: %w", err)
 	}
