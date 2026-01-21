@@ -12,7 +12,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"sigs.k8s.io/yaml"
+	"k8s.io/apimachinery/pkg/util/yaml"
 )
 
 func TestRender(t *testing.T) {
@@ -37,31 +37,27 @@ func TestRender(t *testing.T) {
 
 func containedNames(rendered []map[string]any) (names []string) {
 	for _, o := range rendered {
-		m := o["metadata"]
-		name := ""
-		if mm, ok := m.(map[string]any); ok {
-			name = mm["name"].(string)
-		} else {
-			name = m.(map[any]any)["name"].(string)
+		m, ok := o["metadata"].(map[string]any)
+		if ok {
+			names = append(names, m["name"].(string))
 		}
-		names = append(names, name)
 	}
 	return
 }
 
 func rendered(t *testing.T, rendered []byte) (r []map[string]any) {
-	dec := yaml.NewDecoder(bytes.NewReader(rendered))
-	o := map[string]any{}
-	var err error
-	for ; err == nil; err = dec.Decode(o) {
-		require.NoError(t, err)
+	dec := yaml.NewYAMLOrJSONDecoder(bytes.NewReader(rendered), 4096)
+	for {
+		o := map[string]any{}
+		if err := dec.Decode(&o); err != nil {
+			if err == io.EOF {
+				break
+			}
+			require.NoError(t, err)
+		}
 		if len(o) > 0 {
 			r = append(r, o)
-			o = map[string]any{}
 		}
-	}
-	if err != io.EOF {
-		require.NoError(t, err)
 	}
 	return
 }
