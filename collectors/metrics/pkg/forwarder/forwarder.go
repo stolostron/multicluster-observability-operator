@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
@@ -18,12 +19,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	clientmodel "github.com/prometheus/client_model/go"
 	metricshttp "github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/http"
-	rlogger "github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/logger"
 	"github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/metricfamily"
 	"github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/metricsclient"
 	"github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/simulator"
@@ -44,7 +43,7 @@ const (
 type Config struct {
 	// StatusClient is a kube client used to report status to the hub.
 	StatusClient client.Client
-	Logger       log.Logger
+	Logger       *slog.Logger
 	Metrics      *workerMetrics
 
 	// FromClientConfig is the config for the client used in sending /federate requests to Prometheus.
@@ -106,7 +105,7 @@ func (cfg Config) CreateFromClient(
 	metrics *workerMetrics,
 	interval time.Duration,
 	name string,
-	logger log.Logger,
+	logger *slog.Logger,
 ) (*metricsclient.Client, error) {
 	fromTransport := metricsclient.DefaultTransport(logger)
 
@@ -128,7 +127,7 @@ func (cfg Config) CreateFromClient(
 		}
 
 		if !pool.AppendCertsFromPEM(data) {
-			rlogger.Log(logger, rlogger.Warn, "msg", "no certs found in from-ca-file")
+			logger.Warn("no certs found in from-ca-file")
 		}
 
 		fromTransport.TLSClientConfig.RootCAs = pool
@@ -147,7 +146,7 @@ func (cfg Config) CreateFromClient(
 	}
 
 	if len(cfg.FromClientConfig.Token) > 0 && len(cfg.FromClientConfig.TokenFile) > 0 {
-		rlogger.Log(logger, rlogger.Info, "msg", "FromClient token is ignored as token file is specified")
+		logger.Info("FromClient token is ignored as token file is specified")
 	}
 
 	if len(cfg.FromClientConfig.TokenFile) > 0 {
@@ -171,7 +170,7 @@ func (cfg Config) CreateToClient(
 	metrics *workerMetrics,
 	interval time.Duration,
 	name string,
-	logger log.Logger,
+	logger *slog.Logger,
 ) (*metricsclient.Client, error) {
 	var err error
 	toTransport := metricsclient.DefaultTransport(logger)
@@ -199,7 +198,7 @@ func (cfg Config) CreateToClient(
 }
 
 // GetTransformer creates a new transformer based on the provided Config.
-func (cfg Config) GetTransformer(logger log.Logger) (metricfamily.MultiTransformer, error) {
+func (cfg Config) GetTransformer(logger *slog.Logger) (metricfamily.MultiTransformer, error) {
 	var transformer metricfamily.MultiTransformer
 
 	// Configure the anonymization.
@@ -217,7 +216,7 @@ func (cfg Config) GetTransformer(logger log.Logger) (metricfamily.MultiTransform
 	}
 
 	if len(cfg.AnonymizeLabels) == 0 {
-		rlogger.Log(logger, rlogger.Warn, "msg", "not anonymizing any labels")
+		logger.Warn("not anonymizing any labels")
 	}
 
 	// Combine with config transformer
@@ -236,7 +235,7 @@ func (cfg Config) GetTransformer(logger log.Logger) (metricfamily.MultiTransform
 // A Worker should be configured with a `Config` and instantiated with the `New` func.
 // Workers are thread safe; all access to shared fields are synchronized.
 type Worker struct {
-	logger          log.Logger
+	logger          *slog.Logger
 	status          status.Reporter
 	reconfigure     chan struct{}
 	lock            sync.Mutex
@@ -297,8 +296,10 @@ func New(cfg Config) (*Worker, error) {
 		return nil, errors.New("a URL from which to scrape is required")
 	}
 
-	logger := log.With(cfg.Logger, "component", "forwarder")
-	rlogger.Log(logger, rlogger.Warn, "msg", cfg.ToClientConfig.URL)
+	logger := cfg.Logger.With("component", "forwarder")
+	if cfg.ToClientConfig.URL != nil {
+		logger.Warn(cfg.ToClientConfig.URL.String())
+	}
 
 	w := Worker{
 		from:                    cfg.FromClientConfig.URL,
@@ -306,7 +307,7 @@ func New(cfg Config) (*Worker, error) {
 		interval:                cfg.Interval,
 		reconfigure:             make(chan struct{}),
 		to:                      cfg.ToClientConfig.URL,
-		logger:                  log.With(cfg.Logger, "component", "forwarder/worker"),
+		logger:                  logger.With("component", "worker"),
 		simulatedTimeseriesFile: cfg.SimulatedTimeseriesFile,
 		metrics:                 cfg.Metrics,
 	}
@@ -405,7 +406,7 @@ func (w *Worker) LastMetrics() []*clientmodel.MetricFamily {
 func (w *Worker) Run(ctx context.Context) {
 	// Forward metrics immediately on startup.
 	if err := w.forward(ctx); err != nil {
-		rlogger.Log(w.logger, rlogger.Error, "msg", "unable to forward results", "err", err)
+		w.logger.Error("unable to forward results", "err", err)
 	}
 
 	ticker := time.NewTicker(w.interval)
@@ -419,7 +420,7 @@ func (w *Worker) Run(ctx context.Context) {
 			return
 		case <-ticker.C:
 			if err := w.forward(ctx); err != nil {
-				rlogger.Log(w.logger, rlogger.Error, "msg", "unable to forward results", "err", err)
+				w.logger.Error("unable to forward results", "err", err)
 			}
 		// We want to be able to interrupt a sleep to immediately apply a new configuration.
 		case <-w.reconfigure:
@@ -445,7 +446,7 @@ func (w *Worker) forward(ctx context.Context) error {
 		w.forwardFailures = 0
 
 		if err := w.status.UpdateStatus(ctx, reason, message); err != nil {
-			rlogger.Log(w.logger, rlogger.Warn, "msg", failedStatusReportMsg, "err", err)
+			w.logger.Warn(failedStatusReportMsg, "err", err)
 		}
 	}
 
@@ -455,7 +456,7 @@ func (w *Worker) forward(ctx context.Context) error {
 	case w.simulatedTimeseriesFile != "":
 		families, err = simulator.FetchSimulatedTimeseries(w.simulatedTimeseriesFile)
 		if err != nil {
-			rlogger.Log(w.logger, rlogger.Warn, "msg", "failed fetch simulated timeseries", "err", err)
+			w.logger.Warn("failed fetch simulated timeseries", "err", err)
 		}
 	case os.Getenv("SIMULATE") == "true":
 		families = simulator.SimulateMetrics(w.logger)
@@ -490,13 +491,13 @@ func (w *Worker) forward(ctx context.Context) error {
 	w.lastMetrics = families
 
 	if len(families) == 0 {
-		rlogger.Log(w.logger, rlogger.Warn, "msg", "no metrics to send, doing nothing")
+		w.logger.Warn("no metrics to send, doing nothing")
 		updateStatus(statuslib.ForwardSuccessful, "No metrics to send")
 		return nil
 	}
 
 	if w.to == nil {
-		rlogger.Log(w.logger, rlogger.Warn, "msg", "to is nil, doing nothing")
+		w.logger.Warn("to is nil, doing nothing")
 		updateStatus(statuslib.ForwardSuccessful, "Metrics is not required to send")
 		return nil
 	}
@@ -516,7 +517,7 @@ func (w *Worker) forward(ctx context.Context) error {
 	if w.simulatedTimeseriesFile == "" {
 		updateStatus(statuslib.ForwardSuccessful, "Cluster metrics sent successfully")
 	} else {
-		rlogger.Log(w.logger, rlogger.Warn, "msg", "Simulated metrics sent successfully")
+		w.logger.Warn("Simulated metrics sent successfully")
 	}
 
 	return nil
@@ -542,7 +543,7 @@ func (w *Worker) getFederateMetrics(ctx context.Context) ([]*clientmodel.MetricF
 	req := &http.Request{Method: http.MethodGet, URL: from}
 	families, err = w.fromClient.Retrieve(ctx, req)
 	if err != nil {
-		rlogger.Log(w.logger, rlogger.Warn, "msg", "Failed to retrieve metrics", "err", err)
+		w.logger.Warn("Failed to retrieve metrics", "err", err)
 		return families, err
 	}
 
@@ -563,7 +564,7 @@ func (w *Worker) getRecordingMetrics(ctx context.Context) ([]*clientmodel.Metric
 		var r map[string]string
 		err := json.Unmarshal(([]byte)(rule), &r)
 		if err != nil {
-			rlogger.Log(w.logger, rlogger.Warn, "msg", "Input error", "rule", rule, "err", err)
+			w.logger.Warn("Input error", "rule", rule, "err", err)
 			e = err
 			continue
 		}
@@ -579,7 +580,7 @@ func (w *Worker) getRecordingMetrics(ctx context.Context) ([]*clientmodel.Metric
 		req := &http.Request{Method: http.MethodGet, URL: from}
 		rfamilies, err := w.fromClient.RetrieveRecordingMetrics(ctx, req, rname)
 		if err != nil {
-			rlogger.Log(w.logger, rlogger.Warn, "msg", "Failed to retrieve recording metrics", "err", err, "url", from)
+			w.logger.Warn("Failed to retrieve recording metrics", "err", err, "url", from)
 			e = err
 			continue
 		} else {

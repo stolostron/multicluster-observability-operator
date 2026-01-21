@@ -7,7 +7,7 @@ package main
 import (
 	"context"
 	"fmt"
-	stdlog "log"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -15,14 +15,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/gogo/protobuf/proto"
 	"github.com/prometheus/client_golang/prometheus"
 	clientmodel "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
 	"github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/forwarder"
-	"github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/logger"
 	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -47,11 +44,10 @@ func TestMultiWorkers(t *testing.T) {
 		DisableStatusReporting: true,
 	}
 
-	l := log.NewLogfmtLogger(log.NewSyncWriter(os.Stderr))
-	l = level.NewFilter(l, logger.LogLevelFromString("debug"))
-	l = log.WithPrefix(l, "ts", log.DefaultTimestampUTC)
-	l = log.WithPrefix(l, "caller", log.DefaultCaller)
-	stdlog.SetOutput(log.NewStdlibAdapter(l))
+	opts := &slog.HandlerOptions{
+		Level: slog.LevelDebug,
+	}
+	l := slog.New(slog.NewTextHandler(os.Stderr, opts))
 	opt.Logger = l
 
 	sc := scheme.Scheme
@@ -132,11 +128,10 @@ func TestMultiWorkersRaceCondition(t *testing.T) {
 		DisableStatusReporting: true,
 	}
 
-	l := log.NewLogfmtLogger(log.NewSyncWriter(os.Stderr))
-	l = level.NewFilter(l, logger.LogLevelFromString("debug"))
-	l = log.WithPrefix(l, "ts", log.DefaultTimestampUTC)
-	l = log.WithPrefix(l, "caller", log.DefaultCaller)
-	stdlog.SetOutput(log.NewStdlibAdapter(l))
+	opts := &slog.HandlerOptions{
+		Level: slog.LevelDebug,
+	}
+	l := slog.New(slog.NewTextHandler(os.Stderr, opts))
 	opt.Logger = l
 
 	cfgs, err := initShardedConfigs(opt, AgentShardedForwarder)

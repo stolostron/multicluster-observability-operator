@@ -8,7 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	stdlog "log"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
@@ -16,8 +16,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/oklog/run"
 	hyperv1 "github.com/openshift/hypershift/api/hypershift/v1beta1"
 	"github.com/prometheus/client_golang/prometheus"
@@ -26,7 +24,6 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/collectrule"
 	"github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/forwarder"
 	collectorhttp "github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/http"
-	"github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/logger"
 	"github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/metricfamily"
 	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	"k8s.io/apimachinery/pkg/util/uuid"
@@ -215,20 +212,23 @@ func main() {
 		opt.SimulatedTimeseriesFile,
 		"A file containing the sample of timeseries.")
 
-	l := log.NewLogfmtLogger(log.NewSyncWriter(os.Stderr))
-	lvl, err := cmd.Flags().GetString("log-level")
-	if err != nil {
-		logger.Log(l, logger.Error, "msg", "could not parse log-level.")
+	var level slog.Level
+	if err := level.UnmarshalText([]byte(opt.LogLevel)); err != nil {
+		// Default to Info if parsing fails or is empty, but we can check flags explicitly if needed
+		// The flag default is usually empty string or "info" depending on setup, here it is empty string in struct
+		// but cobra doesn't set default there.
+		level = slog.LevelInfo
 	}
-	l = level.NewFilter(l, logger.LogLevelFromString(lvl))
-	l = log.WithPrefix(l, "ts", log.DefaultTimestampUTC)
-	l = log.WithPrefix(l, "caller", log.DefaultCaller)
-	stdlog.SetOutput(log.NewStdlibAdapter(l))
+
+	opts := &slog.HandlerOptions{
+		Level: level,
+	}
+	l := slog.New(slog.NewTextHandler(os.Stderr, opts))
 	opt.Logger = l
-	logger.Log(l, logger.Info, "msg", "metrics collector initialized")
+	l.Info("metrics collector initialized")
 
 	if err := cmd.Execute(); err != nil {
-		logger.Log(l, logger.Error, "err", err)
+		l.Error("error executing command", "error", err)
 		os.Exit(1)
 	}
 }
@@ -269,7 +269,7 @@ type Options struct {
 	EvaluateInterval time.Duration
 
 	LogLevel string
-	Logger   log.Logger
+	Logger   *slog.Logger
 
 	// simulation file
 	SimulatedTimeseriesFile string
@@ -331,9 +331,8 @@ func (o *Options) Run() error {
 		}
 	}
 
-	logger.Log(
-		o.Logger, logger.Info,
-		"msg", "starting metrics collector",
+	o.Logger.Info(
+		"starting metrics collector",
 		"from", o.From,
 		"to", o.ToUpload,
 		"listen", o.Listen)
@@ -355,7 +354,7 @@ func (o *Options) Run() error {
 		g.Add(func() error {
 			for i, shardWorker := range shardWorkers {
 				go func(i int, shardWorker *forwarder.Worker) {
-					logger.Log(o.Logger, logger.Info, "msg", "Starting shard worker", "worker", i)
+					o.Logger.Info("Starting shard worker", "worker", i)
 					shardWorker.Run(ctx)
 				}(i, shardWorker)
 			}
@@ -383,14 +382,14 @@ func (o *Options) Run() error {
 			// Run the HTTP server.
 			g.Add(func() error {
 				if err := s.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-					logger.Log(o.Logger, logger.Error, "msg", "server exited unexpectedly", "err", err)
+					o.Logger.Error("server exited unexpectedly", "err", err)
 					return err
 				}
 				return nil
 			}, func(error) {
 				err := s.Shutdown(ctx)
 				if err != nil {
-					logger.Log(o.Logger, logger.Error, "msg", "failed to close listener", "err", err)
+					o.Logger.Error("failed to close listener", "err", err)
 				}
 			})
 		}
@@ -714,7 +713,7 @@ func initShardedConfigs(o *Options, agent Agent) ([]*forwarder.Config, error) {
 				LimitBytes:              o.LimitBytes,
 				Matchers:                shard,
 				Transformer:             transformer,
-				Logger:                  log.With(o.Logger, "shard", i),
+				Logger:                  o.Logger.With("shard", i),
 				SimulatedTimeseriesFile: o.SimulatedTimeseriesFile,
 			}
 		}

@@ -5,11 +5,11 @@
 package collectrule
 
 import (
+	"log/slog"
 	"os"
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	clientmodel "github.com/prometheus/client_model/go"
 	"github.com/prometheus/prometheus/model/labels"
 )
@@ -229,7 +229,7 @@ func TestEvaluateRule(t *testing.T) {
 		},
 	}
 
-	logger := log.NewLogfmtLogger(log.NewSyncWriter(os.Stderr))
+	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
 	for _, c := range caseList {
 		t.Run(c.name, func(t *testing.T) {
 			pendingRules = c.pendingRules

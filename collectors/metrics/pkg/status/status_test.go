@@ -6,11 +6,11 @@ package status
 
 import (
 	"context"
+	"log/slog"
 	"os"
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/status"
 	"github.com/stretchr/testify/assert"
@@ -123,7 +123,7 @@ func TestUpdateStatus(t *testing.T) {
 				WithStatusSubresource(&oav1beta1.ObservabilityAddon{}).
 				Build()
 
-			s, err := New(kubeClient, log.NewLogfmtLogger(os.Stdout), false, tc.isUwl)
+			s, err := New(kubeClient, slog.New(slog.NewTextHandler(os.Stdout, nil)), false, tc.isUwl)
 			if err != nil {
 				t.Fatalf("Failed to create new Status struct: (%v)", err)
 			}

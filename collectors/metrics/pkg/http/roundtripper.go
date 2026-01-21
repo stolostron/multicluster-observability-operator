@@ -9,12 +9,10 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httputil"
 	"unicode/utf8"
-
-	"github.com/go-kit/log"
-	"github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/logger"
 )
 
 type tokenGetter func() string
@@ -35,11 +33,11 @@ func (rt *bearerRoundTripper) RoundTrip(req *http.Request) (*http.Response, erro
 
 type debugRoundTripper struct {
 	next   http.RoundTripper
-	logger log.Logger
+	logger *slog.Logger
 }
 
-func NewDebugRoundTripper(logger log.Logger, next http.RoundTripper) *debugRoundTripper {
-	return &debugRoundTripper{next, log.With(logger, "component", "http/debugroundtripper")}
+func NewDebugRoundTripper(logger *slog.Logger, next http.RoundTripper) *debugRoundTripper {
+	return &debugRoundTripper{next, logger.With("component", "http/debugroundtripper")}
 }
 
 func (rt *debugRoundTripper) RoundTrip(req *http.Request) (res *http.Response, err error) {
@@ -48,14 +46,14 @@ func (rt *debugRoundTripper) RoundTrip(req *http.Request) (res *http.Response, e
 
 	res, err = rt.next.RoundTrip(req)
 	if err != nil {
-		logger.Log(rt.logger, logger.Error, "err", err)
+		rt.logger.Error("err", "error", err)
 		return
 	}
 
 	resd, _ := httputil.DumpResponse(res, false)
 	resBody := bodyToString(&res.Body)
 
-	logger.Log(rt.logger, logger.Debug, "msg", "round trip", "url", req.URL,
+	rt.logger.Debug("round trip", "url", req.URL,
 		"requestdump", string(reqd), "requestbody", reqBody,
 		"responsedump", string(resd), "responsebody", resBody)
 	return

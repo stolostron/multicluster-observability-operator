@@ -14,6 +14,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/url"
@@ -25,7 +26,6 @@ import (
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
-	"github.com/go-kit/log"
 	"github.com/gogo/protobuf/proto"
 	"github.com/golang/snappy"
 	"github.com/prometheus/client_golang/prometheus"
@@ -34,7 +34,6 @@ import (
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/prompb"
 	"github.com/prometheus/prometheus/promql"
-	"github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/logger"
 	"github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/reader"
 )
 
@@ -59,7 +58,7 @@ type Client struct {
 	maxBytes    int64
 	timeout     time.Duration
 	metricsName string
-	logger      log.Logger
+	logger      *slog.Logger
 
 	metrics *ClientMetrics
 }
@@ -73,13 +72,13 @@ type PartitionedMetrics struct {
 	Families []*clientmodel.MetricFamily
 }
 
-func New(logger log.Logger, metrics *ClientMetrics, client *http.Client, maxBytes int64, timeout time.Duration, metricsName string) *Client {
+func New(logger *slog.Logger, metrics *ClientMetrics, client *http.Client, maxBytes int64, timeout time.Duration, metricsName string) *Client {
 	return &Client{
 		client:      client,
 		maxBytes:    maxBytes,
 		timeout:     timeout,
 		metricsName: metricsName,
-		logger:      log.With(logger, "component", "metricsclient"),
+		logger:      logger.With("component", "metricsclient"),
 		metrics:     metrics,
 	}
 }
@@ -130,7 +129,7 @@ func (c *Client) RetrieveRecordingMetrics(
 		var data MetricsJson
 		err := decoder.Decode(&data)
 		if err != nil {
-			logger.Log(c.logger, logger.Error, "msg", "failed to decode", "err", err)
+			c.logger.Error("failed to decode", "err", err)
 			return nil
 		}
 		vec := make(promql.Vector, 0, 100)
@@ -230,7 +229,7 @@ func (c *Client) Retrieve(ctx context.Context, req *http.Request) ([]*clientmode
 			families = append(families, family)
 			if err := decoder.Decode(family); err != nil {
 				if err != io.EOF {
-					logger.Log(c.logger, logger.Error, "msg", "error reading body", "err", err)
+					c.logger.Error("error reading body", "err", err)
 				}
 				break
 			}
@@ -329,7 +328,7 @@ func withCancel(ctx context.Context, client *http.Client, req *http.Request, fn 
 	return err
 }
 
-func MTLSTransport(logger log.Logger, caCertFile, tlsCrtFile, tlsKeyFile string) (*http.Transport, error) {
+func MTLSTransport(logger *slog.Logger, caCertFile, tlsCrtFile, tlsKeyFile string) (*http.Transport, error) {
 	// Load Server CA cert
 	var caCert []byte
 	var err error
@@ -349,7 +348,7 @@ func MTLSTransport(logger log.Logger, caCertFile, tlsCrtFile, tlsKeyFile string)
 
 	if os.Getenv("HTTPS_PROXY_CA_BUNDLE") != "" {
 		customCaCert, err := base64.StdEncoding.DecodeString(os.Getenv("HTTPS_PROXY_CA_BUNDLE"))
-		_ = logger.Log(logger, logger.Log("msg", "caCert", "caCert", caCert))
+		logger.Info("caCert", "caCert", caCert)
 		if err != nil {
 			return nil, fmt.Errorf("failed to decode server ca cert: %w", err)
 		}
@@ -373,7 +372,7 @@ func MTLSTransport(logger log.Logger, caCertFile, tlsCrtFile, tlsKeyFile string)
 	}, nil
 }
 
-func DefaultTransport(logger log.Logger) *http.Transport {
+func DefaultTransport(logger *slog.Logger) *http.Transport {
 	return &http.Transport{
 		DialContext: (&net.Dialer{
 			Timeout:   30 * time.Second,
@@ -466,15 +465,15 @@ func (c *Client) RemoteWrite(ctx context.Context, req *http.Request,
 	timeseries, err := convertToTimeseries(&PartitionedMetrics{Families: families}, time.Now())
 	if err != nil {
 		msg := "failed to convert timeseries"
-		logger.Log(c.logger, logger.Warn, "msg", msg, "err", err)
+		c.logger.Warn(msg, "err", err)
 		return errors.New(msg)
 	}
 
 	if len(timeseries) == 0 {
-		logger.Log(c.logger, logger.Info, "msg", "no time series to forward to receive endpoint")
+		c.logger.Info("no time series to forward to receive endpoint")
 		return nil
 	}
-	logger.Log(c.logger, logger.Debug, "timeseries number", len(timeseries))
+	c.logger.Debug("timeseries number", "len", len(timeseries))
 
 	// uncomment here to generate timeseries
 	/*
@@ -500,7 +499,7 @@ func (c *Client) RemoteWrite(ctx context.Context, req *http.Request,
 		data, err := proto.Marshal(wreq)
 		if err != nil {
 			msg := "failed to marshal proto"
-			logger.Log(c.logger, logger.Warn, "msg", msg, "err", err)
+			c.logger.Warn(msg, "err", err)
 			return errors.New(msg)
 		}
 		compressed := snappy.Encode(nil, data)
@@ -513,7 +512,7 @@ func (c *Client) RemoteWrite(ctx context.Context, req *http.Request,
 		}
 		notify := func(err error, t time.Duration) {
 			msg := fmt.Sprintf("error: %v happened when the duration to wait before retrying the operation was: %v", err, t)
-			logger.Log(c.logger, logger.Warn, "msg", msg)
+			c.logger.Warn(msg)
 		}
 
 		err = backoff.RetryNotify(retryable, b, notify)
@@ -521,7 +520,7 @@ func (c *Client) RemoteWrite(ctx context.Context, req *http.Request,
 			return err
 		}
 	}
-	logger.Log(c.logger, logger.Info, "msg", "metrics pushed successfully")
+	c.logger.Info("metrics pushed successfully")
 	return nil
 }
 
@@ -557,7 +556,7 @@ func (c *Client) sendRequest(ctx context.Context, serverURL string, body []byte)
 		defer func() { _ = resp.Body.Close() }()
 		bodyBytes, err := io.ReadAll(resp.Body)
 		if err != nil {
-			logger.Log(c.logger, logger.Warn, err)
+			c.logger.Warn(err.Error())
 		}
 
 		retErr := &HTTPError{
