@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"strings"
 
-	"gopkg.in/yaml.v2"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -20,6 +19,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
+	"sigs.k8s.io/yaml"
 )
 
 // +kubebuilder:docs-gen:collapse=Go imports
@@ -40,13 +40,13 @@ const (
 
 // objectStorageConf represents the structure of object storage configuration
 type objectStorageConf struct {
-	Type   string               `yaml:"type"`
-	Config storageBackendConfig `yaml:"config"`
+	Type   string               `json:"type"`
+	Config storageBackendConfig `json:"config"`
 }
 
 // storageBackendConfig represents the storage backend configuration
 type storageBackendConfig struct {
-	Bucket string `yaml:"bucket"`
+	Bucket string `json:"bucket"`
 }
 
 func (mco *MultiClusterObservability) SetupWebhookWithManager(mgr ctrl.Manager) error {

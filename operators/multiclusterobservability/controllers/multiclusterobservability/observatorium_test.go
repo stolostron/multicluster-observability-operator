@@ -17,7 +17,6 @@ import (
 	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	mcoutil "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
 	observatoriumv1alpha1 "github.com/stolostron/observatorium-operator/api/v1alpha1"
-	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -27,6 +26,7 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/yaml"
 )
 
 var storageClassName = ""
@@ -287,7 +287,7 @@ func TestUpdateObservatoriumCR(t *testing.T) {
 	if !configHashFound {
 		t.Errorf("config-hash label not found in Observatorium CR")
 	}
-	const observatoriumEmptyConfigHash = "8a80554c91d9fca8acb82f023de02f11"
+	const observatoriumEmptyConfigHash = "674441960ca1ba2de08ad4e50c9fde98"
 	if hash != observatoriumEmptyConfigHash {
 		t.Errorf("config-hash label contains unexpected hash. Want: '%s', got '%s'", observatoriumEmptyConfigHash, hash)
 	}
@@ -539,7 +539,7 @@ func TestHashObservatoriumCRWithConfig(t *testing.T) {
 			name: "Without Observatorium's secrets and configmap present",
 			// The hash is still calculated when the configmap isn't present, because the implementation
 			// is hashing an empty object if it isn't found.
-			expectedHash: "8a80554c91d9fca8acb82f023de02f11",
+			expectedHash: "674441960ca1ba2de08ad4e50c9fde98",
 			objs:         []runtime.Object{},
 		},
 	}

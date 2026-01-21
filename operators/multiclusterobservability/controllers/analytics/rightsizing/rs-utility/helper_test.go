@@ -15,8 +15,8 @@ import (
 func TestFormatYAML_ValidData(t *testing.T) {
 	input := RSPrometheusRuleConfig{
 		NamespaceFilterCriteria: struct {
-			InclusionCriteria []string `yaml:"inclusionCriteria"`
-			ExclusionCriteria []string `yaml:"exclusionCriteria"`
+			InclusionCriteria []string `json:"inclusionCriteria"`
+			ExclusionCriteria []string `json:"exclusionCriteria"`
 		}{
 			InclusionCriteria: []string{"ns1", "ns2"},
 			ExclusionCriteria: []string{"ns3"},
@@ -51,8 +51,8 @@ func TestFormatYAML_WithPlacement(t *testing.T) {
 
 	output := FormatYAML(placement)
 	assert.Contains(t, output, "predicates:")
-	assert.Contains(t, output, "labelselector:")
-	assert.Contains(t, output, "matchlabels:")
+	assert.Contains(t, output, "labelSelector:")
+	assert.Contains(t, output, "matchLabels:")
 	assert.Contains(t, output, "environment: prod")
 }
 

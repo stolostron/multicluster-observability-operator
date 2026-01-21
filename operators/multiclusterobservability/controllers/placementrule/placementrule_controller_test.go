@@ -24,7 +24,6 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 	mchv1 "github.com/stolostron/multiclusterhub-operator/api/v1"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -37,6 +36,7 @@ import (
 	workv1 "open-cluster-management.io/api/work/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/yaml"
 )
 
 const (

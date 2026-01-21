@@ -15,8 +15,8 @@ func TestGeneratePrometheusRule_InclusionOnly(t *testing.T) {
 	config := rsutility.RSNamespaceConfigMapData{
 		PrometheusRuleConfig: rsutility.RSPrometheusRuleConfig{
 			NamespaceFilterCriteria: struct {
-				InclusionCriteria []string `yaml:"inclusionCriteria"`
-				ExclusionCriteria []string `yaml:"exclusionCriteria"`
+				InclusionCriteria []string `json:"inclusionCriteria"`
+				ExclusionCriteria []string `json:"exclusionCriteria"`
 			}{
 				InclusionCriteria: []string{"vm1", "vm2"},
 				ExclusionCriteria: []string{},
@@ -54,8 +54,8 @@ func TestGeneratePrometheusRule_ExclusionOnly(t *testing.T) {
 	config := rsutility.RSNamespaceConfigMapData{
 		PrometheusRuleConfig: rsutility.RSPrometheusRuleConfig{
 			NamespaceFilterCriteria: struct {
-				InclusionCriteria []string `yaml:"inclusionCriteria"`
-				ExclusionCriteria []string `yaml:"exclusionCriteria"`
+				InclusionCriteria []string `json:"inclusionCriteria"`
+				ExclusionCriteria []string `json:"exclusionCriteria"`
 			}{
 				InclusionCriteria: []string{},
 				ExclusionCriteria: []string{"openshift.*"},
@@ -75,8 +75,8 @@ func TestGeneratePrometheusRule_BothInclusionAndExclusion(t *testing.T) {
 	config := rsutility.RSNamespaceConfigMapData{
 		PrometheusRuleConfig: rsutility.RSPrometheusRuleConfig{
 			NamespaceFilterCriteria: struct {
-				InclusionCriteria []string `yaml:"inclusionCriteria"`
-				ExclusionCriteria []string `yaml:"exclusionCriteria"`
+				InclusionCriteria []string `json:"inclusionCriteria"`
+				ExclusionCriteria []string `json:"exclusionCriteria"`
 			}{
 				InclusionCriteria: []string{"vm1"},
 				ExclusionCriteria: []string{"openshift.*"},
@@ -95,8 +95,8 @@ func TestGeneratePrometheusRule_WithLabelFilter(t *testing.T) {
 	config := rsutility.RSNamespaceConfigMapData{
 		PrometheusRuleConfig: rsutility.RSPrometheusRuleConfig{
 			NamespaceFilterCriteria: struct {
-				InclusionCriteria []string `yaml:"inclusionCriteria"`
-				ExclusionCriteria []string `yaml:"exclusionCriteria"`
+				InclusionCriteria []string `json:"inclusionCriteria"`
+				ExclusionCriteria []string `json:"exclusionCriteria"`
 			}{
 				InclusionCriteria: []string{},
 				ExclusionCriteria: []string{},
@@ -121,8 +121,8 @@ func TestGeneratePrometheusRule_WithLabelFilter(t *testing.T) {
 func TestBuildNamespaceFilter_InclusionOnly(t *testing.T) {
 	nsConfig := rsutility.RSPrometheusRuleConfig{
 		NamespaceFilterCriteria: struct {
-			InclusionCriteria []string `yaml:"inclusionCriteria"`
-			ExclusionCriteria []string `yaml:"exclusionCriteria"`
+			InclusionCriteria []string `json:"inclusionCriteria"`
+			ExclusionCriteria []string `json:"exclusionCriteria"`
 		}{
 			InclusionCriteria: []string{"namespace1", "namespace2"},
 			ExclusionCriteria: []string{},
@@ -138,8 +138,8 @@ func TestBuildNamespaceFilter_InclusionOnly(t *testing.T) {
 func TestBuildNamespaceFilter_ExclusionOnly(t *testing.T) {
 	nsConfig := rsutility.RSPrometheusRuleConfig{
 		NamespaceFilterCriteria: struct {
-			InclusionCriteria []string `yaml:"inclusionCriteria"`
-			ExclusionCriteria []string `yaml:"exclusionCriteria"`
+			InclusionCriteria []string `json:"inclusionCriteria"`
+			ExclusionCriteria []string `json:"exclusionCriteria"`
 		}{
 			InclusionCriteria: []string{},
 			ExclusionCriteria: []string{"openshift.*"},
@@ -155,8 +155,8 @@ func TestBuildNamespaceFilter_ExclusionOnly(t *testing.T) {
 func TestBuildNamespaceFilter_BothInclusionAndExclusion(t *testing.T) {
 	nsConfig := rsutility.RSPrometheusRuleConfig{
 		NamespaceFilterCriteria: struct {
-			InclusionCriteria []string `yaml:"inclusionCriteria"`
-			ExclusionCriteria []string `yaml:"exclusionCriteria"`
+			InclusionCriteria []string `json:"inclusionCriteria"`
+			ExclusionCriteria []string `json:"exclusionCriteria"`
 		}{
 			InclusionCriteria: []string{"namespace1"},
 			ExclusionCriteria: []string{"namespace2"},
@@ -171,8 +171,8 @@ func TestBuildNamespaceFilter_BothInclusionAndExclusion(t *testing.T) {
 func TestBuildNamespaceFilter_NoFilters(t *testing.T) {
 	nsConfig := rsutility.RSPrometheusRuleConfig{
 		NamespaceFilterCriteria: struct {
-			InclusionCriteria []string `yaml:"inclusionCriteria"`
-			ExclusionCriteria []string `yaml:"exclusionCriteria"`
+			InclusionCriteria []string `json:"inclusionCriteria"`
+			ExclusionCriteria []string `json:"exclusionCriteria"`
 		}{
 			InclusionCriteria: []string{},
 			ExclusionCriteria: []string{},

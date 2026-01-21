@@ -15,7 +15,6 @@ import (
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
-	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -25,6 +24,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/yaml"
 )
 
 const (
@@ -37,42 +37,42 @@ const (
 )
 
 type GrafanaDatasources struct {
-	APIVersion  int                  `yaml:"apiVersion,omitempty"`
-	Datasources []*GrafanaDatasource `yaml:"datasources,omitempty"`
+	APIVersion  int                  `json:"apiVersion,omitempty"`
+	Datasources []*GrafanaDatasource `json:"datasources,omitempty"`
 }
 
 type GrafanaDatasource struct {
-	Access            string          `yaml:"access,omitempty"`
-	BasicAuth         bool            `yaml:"basicAuth,omitempty"`
-	BasicAuthPassword string          `yaml:"basicAuthPassword,omitempty"`
-	BasicAuthUser     string          `yaml:"basicAuthUser,omitempty"`
-	Editable          bool            `yaml:"editable,omitempty"`
-	IsDefault         bool            `yaml:"isDefault,omitempty"`
-	Name              string          `yaml:"name,omitempty"`
-	OrgID             int             `yaml:"orgId,omitempty"`
-	Type              string          `yaml:"type,omitempty"`
-	URL               string          `yaml:"url,omitempty"`
-	Version           int             `yaml:"version,omitempty"`
-	UID               string          `yaml:"uid,omitempty"`
-	JSONData          *JsonData       `yaml:"jsonData,omitempty"`
-	SecureJSONData    *SecureJsonData `yaml:"secureJsonData,omitempty"`
+	Access            string          `json:"access,omitempty"`
+	BasicAuth         bool            `json:"basicAuth,omitempty"`
+	BasicAuthPassword string          `json:"basicAuthPassword,omitempty"`
+	BasicAuthUser     string          `json:"basicAuthUser,omitempty"`
+	Editable          bool            `json:"editable,omitempty"`
+	IsDefault         bool            `json:"isDefault,omitempty"`
+	Name              string          `json:"name,omitempty"`
+	OrgID             int             `json:"orgId,omitempty"`
+	Type              string          `json:"type,omitempty"`
+	URL               string          `json:"url,omitempty"`
+	Version           int             `json:"version,omitempty"`
+	UID               string          `json:"uid,omitempty"`
+	JSONData          *JsonData       `json:"jsonData,omitempty"`
+	SecureJSONData    *SecureJsonData `json:"secureJsonData,omitempty"`
 }
 
 type JsonData struct {
-	TLSAuth   bool `yaml:"tlsAuth,omitempty"`
-	TLSAuthCA bool `yaml:"tlsAuthWithCACert,omitempty"`
+	TLSAuth   bool `json:"tlsAuth,omitempty"`
+	TLSAuthCA bool `json:"tlsAuthWithCACert,omitempty"`
 	// Timeout is the request timeout in seconds for an HTTP datasource.
-	Timeout               string   `yaml:"timeout,omitempty"`
-	HttpMethod            string   `yaml:"httpMethod,omitempty"`
-	TimeInterval          string   `yaml:"timeInterval,omitempty"`
-	CustomQueryParameters string   `yaml:"customQueryParameters,omitempty"`
-	ForwardHeaders        []string `yaml:"forwardHeaders,omitempty"`
+	Timeout               string   `json:"timeout,omitempty"`
+	HttpMethod            string   `json:"httpMethod,omitempty"`
+	TimeInterval          string   `json:"timeInterval,omitempty"`
+	CustomQueryParameters string   `json:"customQueryParameters,omitempty"`
+	ForwardHeaders        []string `json:"forwardHeaders,omitempty"`
 }
 
 type SecureJsonData struct {
-	TLSCACert     string `yaml:"tlsCACert,omitempty"`
-	TLSClientCert string `yaml:"tlsClientCert,omitempty"`
-	TLSClientKey  string `yaml:"tlsClientKey,omitempty"`
+	TLSCACert     string `json:"tlsCACert,omitempty"`
+	TLSClientCert string `json:"tlsClientCert,omitempty"`
+	TLSClientKey  string `json:"tlsClientKey,omitempty"`
 }
 
 // GenerateGrafanaDataSource is used to generate the GrafanaDatasource as a secret.

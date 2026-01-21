@@ -24,7 +24,6 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/deploying"
 	rendererutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering"
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/status"
-	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -41,6 +40,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/yaml"
 )
 
 var globalRes = []*unstructured.Unstructured{}
@@ -106,7 +106,7 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 		return ctrl.Result{}, fmt.Errorf("failed to get hub info secret %s/%s: %w", r.Namespace, operatorconfig.HubInfoSecretName, err)
 	}
 	hubInfo := &operatorconfig.HubInfo{}
-	err = yaml.Unmarshal(hubSecret.Data[operatorconfig.HubInfoSecretKey], &hubInfo)
+	err = yaml.Unmarshal(hubSecret.Data[operatorconfig.HubInfoSecretKey], hubInfo)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to unmarshal hub info: %w", err)
 	}

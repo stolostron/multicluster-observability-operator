@@ -17,8 +17,8 @@ import (
 	"github.com/onsi/ginkgo/v2/reporters"
 	. "github.com/onsi/gomega"
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/utils"
-	"gopkg.in/yaml.v2"
 	"k8s.io/klog"
+	"sigs.k8s.io/yaml"
 )
 
 var (
