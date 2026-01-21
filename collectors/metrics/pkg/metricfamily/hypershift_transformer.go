@@ -7,11 +7,10 @@ package metricfamily
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
-	"github.com/go-kit/log"
 	hyperv1 "github.com/openshift/hypershift/api/hypershift/v1beta1"
 	prom "github.com/prometheus/client_model/go"
-	"github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/logger"
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -26,13 +25,13 @@ var (
 
 type hypershiftTransformer struct {
 	kubeClient          client.Client
-	logger              log.Logger
+	logger              *slog.Logger
 	hostedClusters      map[string]string
 	managementCluster   string
 	managementClusterID string
 }
 
-func NewHypershiftTransformer(c client.Client, l log.Logger, labels map[string]string) (Transformer, error) {
+func NewHypershiftTransformer(c client.Client, l *slog.Logger, labels map[string]string) (Transformer, error) {
 	clusters, err := getHostedClusters(c, l)
 	if err != nil {
 		return nil, err
@@ -106,7 +105,7 @@ func getClusterName(h *hypershiftTransformer, id string) (string, error) {
 	return clusterName, nil
 }
 
-func CheckCRDExist(l log.Logger) (bool, error) {
+func CheckCRDExist(l *slog.Logger) (bool, error) {
 	c, err := util.GetOrCreateCRDClient()
 	if err != nil {
 		return false, nil
@@ -114,14 +113,14 @@ func CheckCRDExist(l log.Logger) (bool, error) {
 	return util.CheckCRDExist(c, "hostedclusters.hypershift.openshift.io")
 }
 
-func getHostedClusters(c client.Client, l log.Logger) (map[string]string, error) {
+func getHostedClusters(c client.Client, l *slog.Logger) (map[string]string, error) {
 	hList := &hyperv1.HostedClusterList{}
 	err := c.List(context.TODO(), hList, &client.ListOptions{})
 	if err != nil {
-		logger.Log(l, logger.Error, "msg", "Failed to list HyperShiftDeployment", "error", err)
+		l.Error("Failed to list HyperShiftDeployment", "error", err)
 		return nil, err
 	}
-	logger.Log(l, logger.Info, "msg", "NewHypershiftTransformer", "HostedCluster size", len(hList.Items))
+	l.Info("NewHypershiftTransformer", "HostedCluster size", len(hList.Items))
 	clusters := map[string]string{}
 	for _, hCluster := range hList.Items {
 		clusters[hCluster.Spec.ClusterID] = hCluster.Name

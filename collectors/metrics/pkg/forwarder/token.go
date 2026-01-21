@@ -8,14 +8,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/golang-jwt/jwt/v5"
-	rlogger "github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/logger"
 )
 
 const remainingDurationBeforeBackoff = 10 * time.Minute
@@ -28,7 +27,7 @@ var (
 
 type TokenFile struct {
 	filePath    string
-	logger      log.Logger
+	logger      *slog.Logger
 	readBackoff time.Duration
 	token       string
 	expiration  time.Time
@@ -38,7 +37,7 @@ type TokenFile struct {
 // NewTokenFile initiates a new TokenFile.
 // It reads the token value from the provided filePath and the caller can access this value using the GetToken() method.
 // The token value is automatically updated by re-reading the file as the token approaches expiration.
-func NewTokenFile(ctx context.Context, logger log.Logger, filePath string, readBackoff time.Duration) (*TokenFile, error) {
+func NewTokenFile(ctx context.Context, logger *slog.Logger, filePath string, readBackoff time.Duration) (*TokenFile, error) {
 	if len(filePath) == 0 {
 		return nil, ErrEmptyTokenFilePath
 	}
@@ -106,7 +105,7 @@ func (t *TokenFile) autoRenew(ctx context.Context) {
 
 		waitTime := computeWaitTime(exp, t.readBackoff, remainingDurationBeforeBackoff)
 		timer := time.NewTimer(waitTime)
-		rlogger.Log(t.logger, rlogger.Info, "msg", "Token renewal triggered", "waitTime", waitTime)
+		t.logger.Info("Token renewal triggered", "waitTime", waitTime)
 		select {
 		case <-ctx.Done():
 			return
@@ -116,18 +115,18 @@ func (t *TokenFile) autoRenew(ctx context.Context) {
 		ok, err := t.renewTokenFromFile()
 		if err != nil {
 			if waitTime <= t.readBackoff {
-				rlogger.Log(t.logger, rlogger.Error, "msg", "Failed to renew token", "error", err, "expiration", t.expiration, "path", t.filePath)
+				t.logger.Error("Failed to renew token", "error", err, "expiration", t.expiration, "path", t.filePath)
 			} else {
-				rlogger.Log(t.logger, rlogger.Warn, "msg", "Failed to renew token", "error", err, "expiration", t.expiration, "path", t.filePath)
+				t.logger.Warn("Failed to renew token", "error", err, "expiration", t.expiration, "path", t.filePath)
 			}
 		}
 
 		if !ok && waitTime <= t.readBackoff {
-			rlogger.Log(t.logger, rlogger.Warn, "msg", "Failed to renew token while approaching expiration, same token read from file", "expiration", t.expiration, "path", t.filePath)
+			t.logger.Warn("Failed to renew token while approaching expiration, same token read from file", "expiration", t.expiration, "path", t.filePath)
 		}
 
 		if ok {
-			rlogger.Log(t.logger, rlogger.Info, "msg", "Successful Token renewal from file")
+			t.logger.Info("Successful Token renewal from file")
 		}
 	}
 }

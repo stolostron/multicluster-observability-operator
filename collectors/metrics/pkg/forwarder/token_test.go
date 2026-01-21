@@ -9,12 +9,12 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/assert"
 )
@@ -37,7 +37,7 @@ func TestTokenFile_Renewal(t *testing.T) {
 
 	// Create token file with short backoff and wait to trigger failing and finally succesful reads
 	backoff := 1 * time.Second
-	tf, err := NewTokenFile(context.Background(), log.NewLogfmtLogger(os.Stderr), tmpFile, backoff)
+	tf, err := NewTokenFile(context.Background(), slog.New(slog.NewTextHandler(os.Stderr, nil)), tmpFile, backoff)
 	assert.NoError(t, err)
 	assert.Equal(t, tokenStr, tf.GetToken())
 	time.Sleep(2 * backoff)

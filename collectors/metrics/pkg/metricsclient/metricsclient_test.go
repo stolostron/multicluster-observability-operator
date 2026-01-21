@@ -8,13 +8,14 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/gogo/protobuf/proto"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -24,7 +25,7 @@ import (
 )
 
 func TestDefaultTransport(t *testing.T) {
-	logger := log.NewNopLogger()
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	want := &http.Transport{
 		TLSHandshakeTimeout: 10 * time.Second,
 		DisableKeepAlives:   true,
@@ -359,7 +360,7 @@ func TestClient_RemoteWrite(t *testing.T) {
 					Help: "Counter of forward remote write requests.",
 				}, []string{"status_code"}),
 			}
-			client := &Client{logger: log.NewNopLogger(), client: ts.Client(), metrics: clientMetrics}
+			client := &Client{logger: slog.New(slog.NewTextHandler(io.Discard, nil)), client: ts.Client(), metrics: clientMetrics}
 
 			req, err := http.NewRequest("POST", ts.URL, bytes.NewBuffer([]byte{}))
 			assert.NoError(t, err)

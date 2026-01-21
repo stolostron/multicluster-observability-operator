@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -15,11 +16,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
 	clientmodel "github.com/prometheus/client_model/go"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/forwarder"
-	rlogger "github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/logger"
 	"github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/metricsclient"
 )
 
@@ -60,7 +59,7 @@ type Evaluator struct {
 	lock        sync.Mutex
 	reconfigure chan struct{}
 
-	logger log.Logger
+	logger *slog.Logger
 }
 
 func New(cfg forwarder.Config) (*Evaluator, error) {
@@ -89,7 +88,7 @@ func New(cfg forwarder.Config) (*Evaluator, error) {
 		interval:     cfg.EvaluateInterval,
 		collectRules: cfg.CollectRules,
 		reconfigure:  make(chan struct{}),
-		logger:       log.With(cfg.Logger, "component", "collectrule/evaluator"),
+		logger:       cfg.Logger.With("component", "collectrule/evaluator"),
 	}
 
 	if err := unmarshalCollectorRules(&evaluator); err != nil {
@@ -159,13 +158,13 @@ func unmarshalCollectorRules(e *Evaluator) error {
 		rule := &CollectRule{}
 		err := json.Unmarshal(([]byte)(ruleStr), rule)
 		if err != nil {
-			rlogger.Log(e.logger, rlogger.Error, "msg", "Input error", "err", err, "rule", rule)
+			e.logger.Error("Input error", "err", err, "rule", rule)
 			return err
 		}
 		if rule.DurationStr != "" {
 			rule.Duration, err = time.ParseDuration(rule.DurationStr)
 			if err != nil {
-				rlogger.Log(e.logger, rlogger.Error, "msg", "wrong duration string found in collect rule", "for", rule.DurationStr)
+				e.logger.Error("wrong duration string found in collect rule", "for", rule.DurationStr)
 			}
 		}
 		rules = append(rules, *rule)
@@ -248,7 +247,7 @@ func renderMatches(r CollectRule, ls labels.Labels) []string {
 	return matches
 }
 
-func evaluateRule(logger log.Logger, r CollectRule, metrics []*clientmodel.MetricFamily) bool {
+func evaluateRule(logger *slog.Logger, r CollectRule, metrics []*clientmodel.MetricFamily) bool {
 	isUpdate := false
 	now := time.Now()
 	pendings := map[uint64]string{}
@@ -287,7 +286,7 @@ func evaluateRule(logger log.Logger, r CollectRule, metrics []*clientmodel.Metri
 					firingRules[r.Name].triggerTime[h] = &now
 					enabledMatches[h] = renderMatches(r, ls)
 					isUpdate = true
-					rlogger.Log(logger, rlogger.Info, "msg", "collect rule fired", "name", r.Name, "labels", ls)
+					logger.Info("collect rule fired", "name", r.Name, "labels", ls)
 				} else {
 					pendingRules[r.Name].triggerTime[h] = &now
 				}
@@ -301,7 +300,7 @@ func evaluateRule(logger log.Logger, r CollectRule, metrics []*clientmodel.Metri
 				delete(pendingRules[r.Name].triggerTime, h)
 				enabledMatches[h] = renderMatches(r, ls)
 				isUpdate = true
-				rlogger.Log(logger, rlogger.Info, "msg", "collect rule fired", "name", r.Name, "labels", ls)
+				logger.Info("collect rule fired", "name", r.Name, "labels", ls)
 			}
 		}
 	}
@@ -316,7 +315,7 @@ func evaluateRule(logger log.Logger, r CollectRule, metrics []*clientmodel.Metri
 			delete(firingRules[r.Name].resolveTime, k)
 			delete(enabledMatches, k)
 			isUpdate = true
-			rlogger.Log(logger, rlogger.Info, "msg", "fired collect rule resolved", "name", r.Name)
+			logger.Info("fired collect rule resolved", "name", r.Name)
 		}
 	}
 	return isUpdate
@@ -334,7 +333,7 @@ func (e *Evaluator) evaluate(ctx context.Context) {
 		req := &http.Request{Method: http.MethodGet, URL: from}
 		result, err := e.fromClient.RetrieveRecordingMetrics(ctx, req, r.Name)
 		if err != nil {
-			rlogger.Log(e.logger, rlogger.Error, "msg", "failed to evaluate collect rule", "err", err, "rule", r.Expr)
+			e.logger.Error("failed to evaluate collect rule", "err", err, "rule", r.Expr)
 			continue
 		} else if evaluateRule(e.logger, r, result) {
 			isUpdate = true
@@ -347,14 +346,14 @@ func (e *Evaluator) evaluate(ctx context.Context) {
 			if forwardWorker != nil && cancel != nil {
 				cancel()
 				forwardWorker = nil
-				rlogger.Log(e.logger, rlogger.Info, "msg", "forwarder stopped")
+				e.logger.Info("forwarder stopped")
 			}
 		} else {
 			err := startWorker()
 			if err != nil {
-				rlogger.Log(e.logger, rlogger.Error, "msg", "failed to start forwarder to collect metrics", "error", err)
+				e.logger.Error("failed to start forwarder to collect metrics", "error", err)
 			} else {
-				rlogger.Log(e.logger, rlogger.Info, "msg", "forwarder started/reconfigued to collect metrics")
+				e.logger.Info("forwarder started/reconfigued to collect metrics")
 			}
 		}
 	}

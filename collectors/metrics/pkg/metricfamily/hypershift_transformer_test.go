@@ -6,10 +6,10 @@ package metricfamily
 
 import (
 	"context"
+	"log/slog"
 	"os"
 	"testing"
 
-	"github.com/go-kit/log"
 	hyperv1 "github.com/openshift/hypershift/api/hypershift/v1beta1"
 	prom "github.com/prometheus/client_model/go"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -57,7 +57,7 @@ func TestTransform(t *testing.T) {
 
 	c := fake.NewClientBuilder().WithRuntimeObjects(hCluster).Build()
 
-	l := log.NewLogfmtLogger(log.NewSyncWriter(os.Stderr))
+	l := slog.New(slog.NewTextHandler(os.Stderr, nil))
 	labels := map[string]string{
 		"cluster":   "test-cluster",
 		"clusterID": "test-clusterID",

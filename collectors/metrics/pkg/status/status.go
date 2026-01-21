@@ -9,7 +9,6 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/go-kit/log"
 	"github.com/go-logr/logr"
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/status"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -34,11 +33,11 @@ type StatusReport struct {
 	standalone     bool
 	isUwl          bool
 	statusReporter status.Status
-	logger         log.Logger
+	logger         *slog.Logger
 }
 
-func New(c client.Client, logger log.Logger, standalone, isUwl bool) (*StatusReport, error) {
-	logger.Log("msg", "Creating status client", "standalone", standalone, "isUwl", isUwl)
+func New(c client.Client, logger *slog.Logger, standalone, isUwl bool) (*StatusReport, error) {
+	logger.Info("Creating status client", "standalone", standalone, "isUwl", isUwl)
 
 	statusLogger := logr.FromSlogHandler(slog.New(slog.NewTextHandler(os.Stdout, nil)).With("component", "statusclient").Handler())
 	return &StatusReport{
@@ -65,7 +64,7 @@ func (s *StatusReport) UpdateStatus(ctx context.Context, reason status.Reason, m
 	if wasReported, err := s.statusReporter.UpdateComponentCondition(ctx, component, reason, message); err != nil {
 		return err
 	} else if wasReported {
-		s.logger.Log("msg", "Status updated", "component", component, "reason", reason, "message", message)
+		s.logger.Info("Status updated", "component", component, "reason", reason, "message", message)
 	}
 
 	return nil

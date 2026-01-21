@@ -5,11 +5,11 @@
 package forwarder
 
 import (
+	"log/slog"
 	"net/url"
 	"os"
 	"testing"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -33,7 +33,7 @@ func TestNew(t *testing.T) {
 		{
 			// Empty configuration should error.
 			c: Config{
-				Logger: log.NewNopLogger(),
+				Logger: slog.New(slog.NewTextHandler(os.Stderr, nil)),
 			},
 			err: true,
 		},
@@ -43,7 +43,7 @@ func TestNew(t *testing.T) {
 				FromClientConfig: FromClientConfig{
 					URL: from,
 				},
-				Logger: log.NewNopLogger(),
+				Logger: slog.New(slog.NewTextHandler(os.Stderr, nil)),
 			},
 			err: false,
 		},
@@ -56,7 +56,7 @@ func TestNew(t *testing.T) {
 				ToClientConfig: ToClientConfig{
 					URL: toUpload,
 				},
-				Logger: log.NewNopLogger(),
+				Logger: slog.New(slog.NewTextHandler(os.Stderr, nil)),
 			},
 			err: false,
 		},
@@ -67,7 +67,7 @@ func TestNew(t *testing.T) {
 					URL:       from,
 					TokenFile: "/this/path/does/not/exist",
 				},
-				Logger: log.NewNopLogger(),
+				Logger: slog.New(slog.NewTextHandler(os.Stderr, nil)),
 			},
 			err: true,
 		},
@@ -78,7 +78,7 @@ func TestNew(t *testing.T) {
 					URL: from,
 				},
 				AnonymizeSalt: "1",
-				Logger:        log.NewNopLogger(),
+				Logger:        slog.New(slog.NewTextHandler(os.Stderr, nil)),
 			},
 			err: false,
 		},
@@ -89,7 +89,7 @@ func TestNew(t *testing.T) {
 					URL: from,
 				},
 				AnonymizeLabels: []string{"foo"},
-				Logger:          log.NewNopLogger(),
+				Logger:          slog.New(slog.NewTextHandler(os.Stderr, nil)),
 			},
 			err: true,
 		},
@@ -101,7 +101,7 @@ func TestNew(t *testing.T) {
 				},
 				AnonymizeLabels: []string{"foo"},
 				AnonymizeSalt:   "1",
-				Logger:          log.NewNopLogger(),
+				Logger:          slog.New(slog.NewTextHandler(os.Stderr, nil)),
 			},
 			err: false,
 		},
@@ -113,7 +113,7 @@ func TestNew(t *testing.T) {
 				},
 				AnonymizeLabels:   []string{"foo"},
 				AnonymizeSaltFile: "/this/path/does/not/exist",
-				Logger:            log.NewNopLogger(),
+				Logger:            slog.New(slog.NewTextHandler(os.Stderr, nil)),
 			},
 			err: true,
 		},
@@ -126,7 +126,7 @@ func TestNew(t *testing.T) {
 				AnonymizeLabels:   []string{"foo"},
 				AnonymizeSalt:     "1",
 				AnonymizeSaltFile: "/this/path/does/not/exist",
-				Logger:            log.NewNopLogger(),
+				Logger:            slog.New(slog.NewTextHandler(os.Stderr, nil)),
 				ToClientConfig: ToClientConfig{
 					CAFile:   "../../testdata/tls/ca.crt",
 					CertFile: "../../testdata/tls/tls.crt",
@@ -142,7 +142,7 @@ func TestNew(t *testing.T) {
 					URL:    from,
 					CAFile: "/this/path/does/not/exist",
 				},
-				Logger: log.NewNopLogger(),
+				Logger: slog.New(slog.NewTextHandler(os.Stderr, nil)),
 			},
 			err: true,
 		},
@@ -158,7 +158,7 @@ func TestNew(t *testing.T) {
 					CertFile: "../../testdata/tls/tls.crt",
 					KeyFile:  "../../testdata/tls/tls.key",
 				},
-				Logger: log.NewNopLogger(),
+				Logger: slog.New(slog.NewTextHandler(os.Stderr, nil)),
 			},
 			err: false,
 		},
@@ -188,7 +188,7 @@ func TestReconfigure(t *testing.T) {
 		FromClientConfig: FromClientConfig{
 			URL: from,
 		},
-		Logger:  log.NewNopLogger(),
+		Logger:  slog.New(slog.NewTextHandler(os.Stderr, nil)),
 		Metrics: NewWorkerMetrics(prometheus.NewRegistry()),
 	}
 	w, err := New(c)
@@ -208,7 +208,7 @@ func TestReconfigure(t *testing.T) {
 		{
 			// Empty configuration should error.
 			c: Config{
-				Logger: log.NewNopLogger(),
+				Logger: slog.New(slog.NewTextHandler(os.Stderr, nil)),
 			},
 			err: true,
 		},
@@ -218,7 +218,7 @@ func TestReconfigure(t *testing.T) {
 				FromClientConfig: FromClientConfig{
 					URL: from2,
 				},
-				Logger: log.NewNopLogger(),
+				Logger: slog.New(slog.NewTextHandler(os.Stderr, nil)),
 			},
 			err: false,
 		},
@@ -229,7 +229,7 @@ func TestReconfigure(t *testing.T) {
 					URL:       from,
 					TokenFile: "/this/path/does/not/exist",
 				},
-				Logger: log.NewNopLogger(),
+				Logger: slog.New(slog.NewTextHandler(os.Stderr, nil)),
 			},
 			err: true,
 		},

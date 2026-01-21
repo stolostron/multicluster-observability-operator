@@ -9,6 +9,7 @@ import (
 	"crypto/rand"
 	"fmt"
 	"io"
+	"log/slog"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -16,10 +17,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-kit/log"
 	clientmodel "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
-	rlogger "github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/logger"
 )
 
 const (
@@ -30,7 +29,7 @@ const (
 	labelValuePrefix    = "label-value-prefix"
 )
 
-func SimulateMetrics(logger log.Logger) []*clientmodel.MetricFamily {
+func SimulateMetrics(logger *slog.Logger) []*clientmodel.MetricFamily {
 	metrisNumber, err := strconv.Atoi(os.Getenv("SIMULATE_METRICS_NUM"))
 	if err != nil {
 		metrisNumber = defaultMetrisNumber
@@ -68,7 +67,7 @@ func SimulateMetrics(logger log.Logger) []*clientmodel.MetricFamily {
 		families = append(families, family)
 		if err := decoder.Decode(family); err != nil {
 			if err != io.EOF {
-				rlogger.Log(logger, rlogger.Error, "msg", "error reading body", "err", err)
+				logger.Error("error reading body", "err", err)
 			}
 			break
 		}
