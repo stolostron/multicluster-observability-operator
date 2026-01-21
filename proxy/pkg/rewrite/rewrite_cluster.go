@@ -10,7 +10,7 @@ import (
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/promql/parser"
 	proxyconfig "github.com/stolostron/multicluster-observability-operator/proxy/pkg/config"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 )
 
 // clusterLabelInjector is a visitor that walks the PromQL AST. It intelligently injects

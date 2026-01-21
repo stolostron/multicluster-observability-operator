@@ -9,7 +9,7 @@ import (
 
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/promql/parser"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 )
 
 // labelInjector is a visitor that walks the PromQL AST and appends a label matcher

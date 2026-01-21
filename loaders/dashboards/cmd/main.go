@@ -12,7 +12,7 @@ import (
 
 	"github.com/spf13/pflag"
 	"github.com/stolostron/multicluster-observability-operator/loaders/dashboards/pkg/controller"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 )
 
 func main() {

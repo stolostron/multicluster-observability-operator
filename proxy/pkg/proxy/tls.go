@@ -16,7 +16,7 @@ import (
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 )
 
 // TLSOptions holds the paths to the TLS assets and the polling configuration.

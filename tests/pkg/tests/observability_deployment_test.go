@@ -14,7 +14,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/utils"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 )
 
 var _ = Describe("", func() {

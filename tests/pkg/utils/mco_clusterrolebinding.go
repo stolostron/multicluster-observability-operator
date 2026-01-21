@@ -10,7 +10,7 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 )
 
 func GetCRB(opt TestOptions, isHub bool, name string) (*rbacv1.ClusterRoleBinding, error) {

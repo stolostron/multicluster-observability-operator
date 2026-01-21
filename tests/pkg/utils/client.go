@@ -7,7 +7,7 @@ package utils
 import (
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 )
 
 func GetKubeClient(opt TestOptions, isHub bool) kubernetes.Interface {
