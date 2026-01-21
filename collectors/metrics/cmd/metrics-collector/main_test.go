@@ -12,6 +12,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -63,7 +64,7 @@ func TestMultiWorkers(t *testing.T) {
 		WithStatusSubresource(&oav1beta1.ObservabilityAddon{}).
 		Build()
 
-	err := runMultiWorkers(opt, &forwarder.Config{
+	err := runMultiWorkers(context.TODO(), &sync.WaitGroup{}, opt, &forwarder.Config{
 		Metrics:      forwarder.NewWorkerMetrics(prometheus.NewRegistry()),
 		StatusClient: kubeClient,
 	})
