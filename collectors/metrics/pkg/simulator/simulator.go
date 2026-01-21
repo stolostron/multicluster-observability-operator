@@ -19,6 +19,7 @@ import (
 	"github.com/go-kit/log"
 	clientmodel "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
+	"github.com/prometheus/common/model"
 	rlogger "github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/logger"
 )
 
@@ -94,7 +95,7 @@ func FetchSimulatedTimeseries(timeseriesFile string) ([]*clientmodel.MetricFamil
 		return nil, err
 	}
 
-	var parser expfmt.TextParser
+	parser := expfmt.NewTextParser(model.LegacyValidation)
 
 	parsed, err := parser.TextToMetricFamilies(reader)
 	if err != nil {
