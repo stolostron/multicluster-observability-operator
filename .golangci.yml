@@ -44,9 +44,6 @@ linters:
     - whitespace
 
   settings:
-    errcheck:
-      exclude-functions:
-        - (github.com/go-kit/log.Logger).Log
     misspell:
       locale: US
     goconst:
