@@ -51,8 +51,8 @@ func TestFormatYAML_WithPlacement(t *testing.T) {
 
 	output := FormatYAML(placement)
 	assert.Contains(t, output, "predicates:")
-	assert.Contains(t, output, "labelselector:")
-	assert.Contains(t, output, "matchlabels:")
+	assert.Contains(t, output, "labelSelector:")
+	assert.Contains(t, output, "matchLabels:")
 	assert.Contains(t, output, "environment: prod")
 }
 

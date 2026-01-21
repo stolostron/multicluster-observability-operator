@@ -15,8 +15,8 @@ func TestGeneratePrometheusRule_InclusionOnly(t *testing.T) {
 	config := rsutility.RSNamespaceConfigMapData{
 		PrometheusRuleConfig: rsutility.RSPrometheusRuleConfig{
 			NamespaceFilterCriteria: struct {
-				InclusionCriteria []string "yaml:\"inclusionCriteria\""
-				ExclusionCriteria []string "yaml:\"exclusionCriteria\""
+				InclusionCriteria []string "json:\"inclusionCriteria\""
+				ExclusionCriteria []string "json:\"exclusionCriteria\""
 			}{
 				InclusionCriteria: []string{"ns-a", "ns-b"},
 			},
@@ -42,8 +42,8 @@ func TestGeneratePrometheusRule_ExclusionOnly(t *testing.T) {
 	config := rsutility.RSNamespaceConfigMapData{
 		PrometheusRuleConfig: rsutility.RSPrometheusRuleConfig{
 			NamespaceFilterCriteria: struct {
-				InclusionCriteria []string "yaml:\"inclusionCriteria\""
-				ExclusionCriteria []string "yaml:\"exclusionCriteria\""
+				InclusionCriteria []string "json:\"inclusionCriteria\""
+				ExclusionCriteria []string "json:\"exclusionCriteria\""
 			}{
 				ExclusionCriteria: []string{"openshift.*"},
 			},
@@ -60,8 +60,8 @@ func TestGeneratePrometheusRule_BothNamespaceInclusionAndExclusion(t *testing.T)
 	config := rsutility.RSNamespaceConfigMapData{
 		PrometheusRuleConfig: rsutility.RSPrometheusRuleConfig{
 			NamespaceFilterCriteria: struct {
-				InclusionCriteria []string "yaml:\"inclusionCriteria\""
-				ExclusionCriteria []string "yaml:\"exclusionCriteria\""
+				InclusionCriteria []string "json:\"inclusionCriteria\""
+				ExclusionCriteria []string "json:\"exclusionCriteria\""
 			}{
 				InclusionCriteria: []string{"ns-a"},
 				ExclusionCriteria: []string{"ns-b"},
@@ -78,8 +78,8 @@ func TestGeneratePrometheusRule_LabelEnvInclusionAndExclusion(t *testing.T) {
 	config := rsutility.RSNamespaceConfigMapData{
 		PrometheusRuleConfig: rsutility.RSPrometheusRuleConfig{
 			NamespaceFilterCriteria: struct {
-				InclusionCriteria []string "yaml:\"inclusionCriteria\""
-				ExclusionCriteria []string "yaml:\"exclusionCriteria\""
+				InclusionCriteria []string "json:\"inclusionCriteria\""
+				ExclusionCriteria []string "json:\"exclusionCriteria\""
 			}{
 				InclusionCriteria: []string{"ns-a"},
 			},

@@ -287,7 +287,7 @@ func TestUpdateObservatoriumCR(t *testing.T) {
 	if !configHashFound {
 		t.Errorf("config-hash label not found in Observatorium CR")
 	}
-	const observatoriumEmptyConfigHash = "8a80554c91d9fca8acb82f023de02f11"
+	const observatoriumEmptyConfigHash = "674441960ca1ba2de08ad4e50c9fde98"
 	if hash != observatoriumEmptyConfigHash {
 		t.Errorf("config-hash label contains unexpected hash. Want: '%s', got '%s'", observatoriumEmptyConfigHash, hash)
 	}
@@ -539,7 +539,7 @@ func TestHashObservatoriumCRWithConfig(t *testing.T) {
 			name: "Without Observatorium's secrets and configmap present",
 			// The hash is still calculated when the configmap isn't present, because the implementation
 			// is hashing an empty object if it isn't found.
-			expectedHash: "8a80554c91d9fca8acb82f023de02f11",
+			expectedHash: "674441960ca1ba2de08ad4e50c9fde98",
 			objs:         []runtime.Object{},
 		},
 	}
