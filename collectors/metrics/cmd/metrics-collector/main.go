@@ -12,13 +12,15 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/signal"
 	"regexp"
 	"strings"
+	"sync"
+	"syscall"
 	"time"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/oklog/run"
 	hyperv1 "github.com/openshift/hypershift/api/hypershift/v1beta1"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
@@ -285,8 +287,6 @@ type Options struct {
 // Run is the entry point of the metrics collector
 // It is in charge of running forwarders, collectrule agent and recording rule agents.
 func (o *Options) Run() error {
-	var g run.Group
-
 	metricsReg := prometheus.NewRegistry()
 	metricsReg.MustRegister(
 		collectors.NewBuildInfoCollector(),
@@ -338,32 +338,26 @@ func (o *Options) Run() error {
 		"to", o.ToUpload,
 		"listen", o.Listen)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
 
-	{
-		// Execute the recording rule worker's `Run` func.
-		g.Add(func() error {
-			recordingRuleWorker.Run(ctx)
-			return nil
-		}, func(error) {
-			cancel()
-		})
-	}
-	{
-		// Execute the shard workers' `Run` func.
-		g.Add(func() error {
-			for i, shardWorker := range shardWorkers {
-				go func(i int, shardWorker *forwarder.Worker) {
-					logger.Log(o.Logger, logger.Info, "msg", "Starting shard worker", "worker", i)
-					shardWorker.Run(ctx)
-				}(i, shardWorker)
-			}
-			<-ctx.Done()
-			return nil
-		}, func(error) {
-			cancel()
-		})
+	wg := &sync.WaitGroup{}
+
+	// Execute the recording rule worker's `Run` func.
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		recordingRuleWorker.Run(ctx)
+	}()
+
+	// Execute the shard workers' `Run` func.
+	for i, shardWorker := range shardWorkers {
+		wg.Add(1)
+		go func(i int, shardWorker *forwarder.Worker) {
+			defer wg.Done()
+			logger.Log(o.Logger, logger.Info, "msg", "Starting shard worker", "worker", i)
+			shardWorker.Run(ctx)
+		}(i, shardWorker)
 	}
 
 	if len(o.Listen) > 0 {
@@ -379,25 +373,31 @@ func (o *Options) Run() error {
 			WriteTimeout:      12 * time.Minute,
 		}
 
-		{
-			// Run the HTTP server.
-			g.Add(func() error {
-				if err := s.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-					logger.Log(o.Logger, logger.Error, "msg", "server exited unexpectedly", "err", err)
-					return err
-				}
-				return nil
-			}, func(error) {
-				err := s.Shutdown(ctx)
-				if err != nil {
-					logger.Log(o.Logger, logger.Error, "msg", "failed to close listener", "err", err)
-				}
-			})
-		}
+		// Run the HTTP server.
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if err := s.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				logger.Log(o.Logger, logger.Error, "msg", "server exited unexpectedly", "err", err)
+				stop()
+			}
+		}()
+
+		// Handle HTTP server shutdown.
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			<-ctx.Done()
+			shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer shutdownCancel()
+			if err := s.Shutdown(shutdownCtx); err != nil {
+				logger.Log(o.Logger, logger.Error, "msg", "failed to close listener", "err", err)
+			}
+		}()
 	}
 
 	// Run the simulation agent.
-	err = runMultiWorkers(o, evalCfg[0])
+	err = runMultiWorkers(ctx, wg, o, evalCfg[0])
 	if err != nil {
 		return err
 	}
@@ -408,15 +408,15 @@ func (o *Options) Run() error {
 		if err != nil {
 			return fmt.Errorf("failed to configure collect rule evaluator: %w", err)
 		}
-		g.Add(func() error {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
 			evaluator.Run(ctx)
-			return nil
-		}, func(error) {
-			cancel()
-		})
+		}()
 	}
 
-	return g.Run()
+	wg.Wait()
+	return nil
 }
 
 // splitMatchersIntoShards divides the matchers into approximately equal shards
@@ -724,7 +724,7 @@ func initShardedConfigs(o *Options, agent Agent) ([]*forwarder.Config, error) {
 	}
 }
 
-func runMultiWorkers(o *Options, cfg *forwarder.Config) error {
+func runMultiWorkers(ctx context.Context, wg *sync.WaitGroup, o *Options, cfg *forwarder.Config) error {
 	if o.WorkerNum > 1 && o.SimulatedTimeseriesFile == "" {
 		return nil
 	}
@@ -773,10 +773,10 @@ func runMultiWorkers(o *Options, cfg *forwarder.Config) error {
 			return fmt.Errorf("failed to configure metrics collector: %w", err)
 		}
 
-		ctx, cancel := context.WithCancel(context.Background())
+		wg.Add(1)
 		go func() {
+			defer wg.Done()
 			forwardWorker.Run(ctx)
-			cancel()
 		}()
 	}
 	return nil

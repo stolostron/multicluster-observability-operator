@@ -19,7 +19,8 @@ require (
 	github.com/golang/snappy v1.0.0
 	github.com/google/go-cmp v0.7.0
 	github.com/imdario/mergo v1.0.2
-	github.com/oklog/run v1.1.0
+	github.com/openshift/hypershift v0.0.0-20241029175440-6623d8c1143c
+
 	github.com/onsi/ginkgo/v2 v2.26.0
 	github.com/onsi/gomega v1.38.2
 	github.com/openshift/api v0.0.0-20251013165757-fe48e8fd548b
