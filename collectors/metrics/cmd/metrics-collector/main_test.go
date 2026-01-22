@@ -140,7 +140,7 @@ func TestMultiWorkersRaceCondition(t *testing.T) {
 	stdlog.SetOutput(log.NewStdlibAdapter(l))
 	opt.Logger = l
 
-	cfgs, err := initShardedConfigs(opt, AgentShardedForwarder)
+	cfgs, err := initShardedConfigs(t.Context(), opt, AgentShardedForwarder)
 	assert.NoError(t, err)
 	assert.Equal(t, 5, len(cfgs))
 
