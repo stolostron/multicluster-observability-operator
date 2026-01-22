@@ -24,6 +24,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 )
 
 var (
@@ -843,7 +844,7 @@ func TestDeploy(t *testing.T) {
 			},
 		},
 		{
-			name: "create and update AddOnDeploymentConfig: two variables to one",
+			name: "create and update AddOnDeploymentConfig: preserve user variables",
 			createObj: &addonv1alpha1.AddOnDeploymentConfig{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "addon.open-cluster-management.io/v1alpha1",
@@ -893,8 +894,64 @@ func TestDeploy(t *testing.T) {
 				obj := &addonv1alpha1.AddOnDeploymentConfig{}
 				client.Get(context.Background(), namespacedName, obj)
 
+				// Should preserve the "other" variable
+				if len(obj.Spec.CustomizedVariables) != 2 {
+					t.Fatalf("Should preserve user variables, got %#v", obj.Spec.CustomizedVariables)
+				}
+			},
+		},
+		{
+			name: "create and update AddOnDeploymentConfig: modify variable value",
+			createObj: &addonv1alpha1.AddOnDeploymentConfig{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "addon.open-cluster-management.io/v1alpha1",
+					Kind:       "AddOnDeploymentConfig",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-aodc-modify",
+					Namespace: "ns1",
+				},
+				Spec: addonv1alpha1.AddOnDeploymentConfigSpec{
+					CustomizedVariables: []addonv1alpha1.CustomizedVariable{
+						{
+							Name:  "test",
+							Value: "value",
+						},
+					},
+				},
+			},
+			updateObj: &addonv1alpha1.AddOnDeploymentConfig{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "addon.open-cluster-management.io/v1alpha1",
+					Kind:       "AddOnDeploymentConfig",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:            "test-aodc-modify",
+					Namespace:       "ns1",
+					ResourceVersion: "1",
+				},
+				Spec: addonv1alpha1.AddOnDeploymentConfigSpec{
+					CustomizedVariables: []addonv1alpha1.CustomizedVariable{
+						{
+							Name:  "test",
+							Value: "newValue",
+						},
+					},
+				},
+			},
+			validateResults: func(client client.Client) {
+				namespacedName := types.NamespacedName{
+					Name:      "test-aodc-modify",
+					Namespace: "ns1",
+				}
+				obj := &addonv1alpha1.AddOnDeploymentConfig{}
+				client.Get(context.Background(), namespacedName, obj)
+
 				if len(obj.Spec.CustomizedVariables) != 1 {
-					t.Fatalf("Too many Customied Variables, got %#v", obj.Spec.CustomizedVariables)
+					t.Fatalf("Unexpected number of variables, got %#v", obj.Spec.CustomizedVariables)
+				}
+				if obj.Spec.CustomizedVariables[0].Value != "newValue" {
+					t.Fatalf("Failed to update variable value, got %s", obj.Spec.CustomizedVariables[0].Value)
 				}
 			},
 		},
@@ -1057,9 +1114,16 @@ func TestDeploy(t *testing.T) {
 	prometheusv1.AddToScheme(scheme)
 	networkingv1.AddToScheme(scheme)
 	addonv1alpha1.AddToScheme(scheme)
-	client := fake.NewClientBuilder().WithScheme(scheme).Build()
+	fakeClient := fake.NewClientBuilder().WithScheme(scheme).WithInterceptorFuncs(interceptor.Funcs{
+		Patch: func(ctx context.Context, clientww client.WithWatch, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
+			if patch == client.Apply {
+				return clientww.Patch(ctx, obj, client.Merge, opts...)
+			}
+			return clientww.Patch(ctx, obj, patch, opts...)
+		},
+	}).Build()
 
-	deployer := NewDeployer(client)
+	deployer := NewDeployer(fakeClient)
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -1076,7 +1140,7 @@ func TestDeploy(t *testing.T) {
 				}
 			}
 
-			c.validateResults(client)
+			c.validateResults(fakeClient)
 		})
 	}
 }
