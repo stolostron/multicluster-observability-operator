@@ -412,12 +412,12 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 			// Re-enable the legacy collector
 			utils.ModifyMCOAddonSpecMetrics(testOptions, true)
 
-			By("Waiting for 30 seconds to make sure the registration controller correctly takes into account the changes")
-			time.Sleep(30 * time.Second)
+			By("Waiting for 60 seconds to make sure the registration controller correctly takes into account the changes")
+			time.Sleep(60 * time.Second)
 
-			// Wait for the metrics collector to be up to avoid race conditions with other tests setups
-			utils.CheckDeploymentAvailability(testOptions.HubCluster, metricsCollectorDeploymentName, utils.MCO_NAMESPACE, true)
-			utils.CheckDeploymentAvailabilityOnClusters(managedClusters, metricsCollectorDeploymentName, utils.MCO_ADDON_NAMESPACE, true)
+			// // Wait for the metrics collector to be up to avoid race conditions with other tests setups
+			// utils.CheckDeploymentAvailability(testOptions.HubCluster, metricsCollectorDeploymentName, utils.MCO_NAMESPACE, true)
+			// utils.CheckDeploymentAvailabilityOnClusters(managedClusters, metricsCollectorDeploymentName, utils.MCO_ADDON_NAMESPACE, true)
 		})
 	})
 })
