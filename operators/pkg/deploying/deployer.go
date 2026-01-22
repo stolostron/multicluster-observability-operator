@@ -25,6 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -406,12 +407,21 @@ func (d *Deployer) updateAddOnDeploymentConfig(
 		return err
 	}
 
-	if !equality.Semantic.DeepEqual(desiredAODC.Spec, runtimeAODC.Spec) {
+	runtimeCustomizedVariables := make(map[string]string, len(runtimeAODC.Spec.CustomizedVariables))
+	for _, cv := range runtimeAODC.Spec.CustomizedVariables {
+		runtimeCustomizedVariables[cv.Name] = cv.Value
+	}
+
+	desiredCustomizedVariables := make(map[string]string, len(desiredAODC.Spec.CustomizedVariables))
+	for _, cv := range desiredAODC.Spec.CustomizedVariables {
+		desiredCustomizedVariables[cv.Name] = cv.Value
+	}
+
+	if !isMapSubset(runtimeCustomizedVariables, desiredCustomizedVariables) ||
+		!isMapSubset(runtimeAODC.Labels, desiredAODC.Labels) ||
+		!isMapSubset(runtimeAODC.Annotations, desiredAODC.Annotations) {
 		logUpdateInfo(runtimeObj)
-		if desiredAODC.ResourceVersion != runtimeAODC.ResourceVersion {
-			desiredAODC.ResourceVersion = runtimeAODC.ResourceVersion
-		}
-		return d.client.Update(ctx, desiredAODC)
+		return d.client.Patch(ctx, desiredAODC, client.Apply, client.ForceOwnership, client.FieldOwner(mcoconfig.GetMonitoringCRName()))
 	}
 
 	return nil
@@ -473,10 +483,16 @@ func unstructuredPairToTyped[T any](obja, objb *unstructured.Unstructured) (*T, 
 	if err := unstructuredToType(obja, a); err != nil {
 		return nil, nil, fmt.Errorf("failed to convert obja %s/%s/%s: %w", obja.GetKind(), obja.GetNamespace(), obja.GetName(), err)
 	}
+	if ro, ok := any(a).(runtime.Object); ok {
+		ro.GetObjectKind().SetGroupVersionKind(obja.GroupVersionKind())
+	}
 
 	b := new(T)
 	if err := unstructuredToType(objb, b); err != nil {
-		return nil, nil, fmt.Errorf("failed to convert objb %s/%s/%s: %w", obja.GetKind(), obja.GetNamespace(), obja.GetName(), err)
+		return nil, nil, fmt.Errorf("failed to convert objb %s/%s/%s: %w", objb.GetKind(), objb.GetNamespace(), objb.GetName(), err)
+	}
+	if ro, ok := any(b).(runtime.Object); ok {
+		ro.GetObjectKind().SetGroupVersionKind(objb.GroupVersionKind())
 	}
 
 	return a, b, nil
@@ -513,6 +529,10 @@ func (d *Deployer) Undeploy(ctx context.Context, obj *unstructured.Unstructured,
 }
 
 func isMapSubset(superset, subset map[string]string) bool {
+	if len(subset) > len(superset) {
+		return false
+	}
+
 	for key, value := range subset {
 		if val, ok := superset[key]; !ok || val != value {
 			return false
