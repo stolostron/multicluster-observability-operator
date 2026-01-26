@@ -20,8 +20,8 @@ FAILED=0
 CONTAINERFILES=$(find . -name "Containerfile.operator" \
   -not -path "*/vendor/*" \
   -not -path "*/tests/*" \
-  -not -path "*/tools/*" \
-  | sort)
+  -not -path "*/tools/*" |
+  sort)
 
 if [ -z "$CONTAINERFILES" ]; then
   echo "ERROR: No Containerfile.operator files found"
@@ -69,7 +69,7 @@ for containerfile in $CONTAINERFILES; do
 
   # Verify name label format (must not use $IMAGE_NAME variable)
   if grep -q 'name="\$IMAGE_NAME"' "$containerfile"; then
-    echo "  ❌ ERROR: name label uses \$IMAGE_NAME variable instead of hardcoded value"
+    echo '  ❌ ERROR: name label uses $IMAGE_NAME variable instead of hardcoded value'
     FAILED=1
   fi
 
@@ -90,7 +90,7 @@ else
   echo ""
   echo "When updating RHEL versions, you must update:"
   echo "  1. FROM registry.access.redhat.com/ubi{VERSION}/ubi-minimal:latest"
-  echo "  2. name=\"rhacm2/{component}-rhel{VERSION}-operator\""
-  echo "  3. cpe=\"cpe:/a:redhat:acm:{ACM_VER}::el{VERSION}\""
+  echo '  2. name="rhacm2/{component}-rhel{VERSION}-operator"'
+  echo '  3. cpe="cpe:/a:redhat:acm:{ACM_VER}::el{VERSION}"'
   exit 1
 fi
