@@ -77,7 +77,24 @@ The project is currently in a transitional state between two architectures:
     *   **Status:** Update `Status` subresources independently of `Spec`.
     *   **Client:** Use `client.Reader` for cached reads, `APIReader` only for strong consistency after writes.
 
-### 3.4 Commit Protocol
+### 3.4 Containerfile Maintenance
+
+**Container Label Requirements (KONFLUX-6210):**
+All production `Containerfile.operator` files must have hardcoded `name` and `cpe` labels for container-first vulnerability scanning:
+*   `name="rhacm2/{component}-rhel{VERSION}-{operator}"` - Must match destination repository in registry.redhat.io
+*   `cpe="cpe:/a:redhat:acm:{ACM_VERSION}::el{RHEL_VERSION}"` - Product CPE identifier from product security
+
+**RHEL Base Image Updates:**
+When updating RHEL versions (e.g., ubi9 → ubi10), you **MUST** update in all 5 production Containerfiles:
+1. `FROM registry.access.redhat.com/ubi{VERSION}/ubi-minimal:latest`
+2. `name="rhacm2/{component}-rhel{VERSION}-operator"` (or `-rhel{VERSION}` for non-operators)
+3. `cpe="cpe:/a:redhat:acm:{ACM_VER}::el{VERSION}"`
+4. Verify destination repository exists in registry.redhat.io
+5. Coordinate with product security for correct CPE identifier
+
+**Verification:** Run `make verify-containerfile-labels` to check consistency. This runs automatically in CI on every PR.
+
+### 3.5 Commit Protocol
 *   **DCO:** All commits **MUST** be signed off: `Signed-off-by: Name <email@example.com>`.
 
 ## 4. Agent Operational Protocol
