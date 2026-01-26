@@ -427,6 +427,7 @@ func TestManifestWork(t *testing.T) {
 	}
 
 	manWork, err := createManifestWorks(
+		context.Background(),
 		c,
 		namespace,
 		managedClusterInfo{Name: clusterName, IsLocalCluster: false},
@@ -486,6 +487,7 @@ func TestManifestWork(t *testing.T) {
 	}
 
 	manWork, err = createManifestWorks(
+		context.Background(),
 		c,
 		namespace,
 		managedClusterInfo{Name: clusterName, IsLocalCluster: false},
@@ -603,7 +605,7 @@ func TestManifestWork(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get global manifestwork resource: (%v)", err)
 	}
-	manWork, err = createManifestWorks(c, namespace, managedClusterInfo{Name: clusterName, IsLocalCluster: false}, newTestMCO(), works, metricsAllowlistConfigMap, crdWork, endpointMetricsOperatorDeploy, hubInfoSecret, addonConfig, false)
+	manWork, err = createManifestWorks(context.Background(), c, namespace, managedClusterInfo{Name: clusterName, IsLocalCluster: false}, newTestMCO(), works, metricsAllowlistConfigMap, crdWork, endpointMetricsOperatorDeploy, hubInfoSecret, addonConfig, false)
 	if err != nil {
 		t.Fatalf("Failed to create manifestworks: (%v)", err)
 	}
@@ -619,7 +621,7 @@ func TestManifestWork(t *testing.T) {
 	}
 
 	spokeNameSpace = "spoke-ns"
-	manWork, err = createManifestWorks(c, namespace, managedClusterInfo{Name: clusterName, IsLocalCluster: false}, newTestMCO(), works, metricsAllowlistConfigMap, crdWork, endpointMetricsOperatorDeploy, hubInfoSecret, addonConfig, false)
+	manWork, err = createManifestWorks(context.Background(), c, namespace, managedClusterInfo{Name: clusterName, IsLocalCluster: false}, newTestMCO(), works, metricsAllowlistConfigMap, crdWork, endpointMetricsOperatorDeploy, hubInfoSecret, addonConfig, false)
 	if err != nil {
 		t.Fatalf("Failed to create manifestworks with updated namespace: (%v)", err)
 	}
@@ -651,7 +653,7 @@ func TestManifestWork(t *testing.T) {
 		t.Fatalf("Failed to generate hubInfo secret: (%v)", err)
 	}
 
-	manWork, err = createManifestWorks(c, namespace, managedClusterInfo{Name: clusterName, IsLocalCluster: false}, newTestMCO(), works, metricsAllowlistConfigMap, crdWork, endpointMetricsOperatorDeploy, hubInfoSecret, addonConfig, false)
+	manWork, err = createManifestWorks(context.Background(), c, namespace, managedClusterInfo{Name: clusterName, IsLocalCluster: false}, newTestMCO(), works, metricsAllowlistConfigMap, crdWork, endpointMetricsOperatorDeploy, hubInfoSecret, addonConfig, false)
 	if err != nil {
 		t.Fatalf("Failed to create manifestworks: (%v)", err)
 	}
@@ -754,4 +756,247 @@ func TestLogSizeErrorDetails(t *testing.T) {
 			},
 		},
 	})
+}
+
+func TestUpdateManagedAnnotations(t *testing.T) {
+	tests := []struct {
+		name         string
+		targetAnno   map[string]string
+		sourceAnno   map[string]string
+		expectedAnno map[string]string
+		description  string
+	}{
+		{
+			name:       "add our annotations to empty target",
+			targetAnno: nil,
+			sourceAnno: map[string]string{
+				workPostponeDeleteAnnoKey:                  "",
+				workv1.ManifestConfigSpecHashAnnotationKey: `{"config1":"hash1"}`,
+			},
+			expectedAnno: map[string]string{
+				workPostponeDeleteAnnoKey:                  "",
+				workv1.ManifestConfigSpecHashAnnotationKey: `{"config1":"hash1"}`,
+			},
+			description: "Should add both our annotations when target is empty",
+		},
+		{
+			name: "update our annotations, preserve others",
+			targetAnno: map[string]string{
+				workPostponeDeleteAnnoKey:                  "",
+				workv1.ManifestConfigSpecHashAnnotationKey: `{"config1":"old-hash"}`,
+				"addon-framework.io/some-annotation":       "framework-value",
+				"other-controller/annotation":              "other-value",
+			},
+			sourceAnno: map[string]string{
+				workPostponeDeleteAnnoKey:                  "",
+				workv1.ManifestConfigSpecHashAnnotationKey: `{"config1":"new-hash"}`,
+			},
+			expectedAnno: map[string]string{
+				workPostponeDeleteAnnoKey:                  "",
+				workv1.ManifestConfigSpecHashAnnotationKey: `{"config1":"new-hash"}`,
+				"addon-framework.io/some-annotation":       "framework-value",
+				"other-controller/annotation":              "other-value",
+			},
+			description: "Should update our annotations but preserve framework and other controller annotations",
+		},
+		{
+			name: "remove our annotation when not in source",
+			targetAnno: map[string]string{
+				workPostponeDeleteAnnoKey:                  "",
+				workv1.ManifestConfigSpecHashAnnotationKey: `{"config1":"hash1"}`,
+				"addon-framework.io/some-annotation":       "framework-value",
+			},
+			sourceAnno: map[string]string{
+				workPostponeDeleteAnnoKey: "",
+				// config-spec-hash not in source - should be removed
+			},
+			expectedAnno: map[string]string{
+				workPostponeDeleteAnnoKey:            "",
+				"addon-framework.io/some-annotation": "framework-value",
+			},
+			description: "Should remove config-spec-hash when not in source, but preserve framework annotations",
+		},
+		{
+			name: "preserve framework annotations with same prefix",
+			targetAnno: map[string]string{
+				"open-cluster-management.io/framework-annotation": "framework-value",
+			},
+			sourceAnno: map[string]string{
+				workPostponeDeleteAnnoKey:                  "",
+				workv1.ManifestConfigSpecHashAnnotationKey: `{"config1":"hash1"}`,
+			},
+			expectedAnno: map[string]string{
+				workPostponeDeleteAnnoKey:                         "",
+				workv1.ManifestConfigSpecHashAnnotationKey:        `{"config1":"hash1"}`,
+				"open-cluster-management.io/framework-annotation": "framework-value",
+			},
+			description: "Should not remove framework annotations even if they share open-cluster-management.io prefix",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			target := &workv1.ManifestWork{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: tt.targetAnno,
+				},
+			}
+			source := &workv1.ManifestWork{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: tt.sourceAnno,
+				},
+			}
+
+			updateManagedAnnotations(target, source)
+
+			if len(target.Annotations) != len(tt.expectedAnno) {
+				t.Errorf("%s: annotation count mismatch. got %d, want %d\nGot: %v\nWant: %v",
+					tt.description, len(target.Annotations), len(tt.expectedAnno), target.Annotations, tt.expectedAnno)
+			}
+
+			for key, expectedVal := range tt.expectedAnno {
+				if actualVal, exists := target.Annotations[key]; !exists {
+					t.Errorf("%s: missing annotation %q", tt.description, key)
+				} else if actualVal != expectedVal {
+					t.Errorf("%s: annotation %q value mismatch. got %q, want %q",
+						tt.description, key, actualVal, expectedVal)
+				}
+			}
+
+			// Verify no unexpected annotations
+			for key := range target.Annotations {
+				if _, expected := tt.expectedAnno[key]; !expected {
+					t.Errorf("%s: unexpected annotation %q with value %q",
+						tt.description, key, target.Annotations[key])
+				}
+			}
+		})
+	}
+}
+
+func TestShouldUpdateManifestWork(t *testing.T) {
+	tests := []struct {
+		name         string
+		foundAnno    map[string]string
+		desiredAnno  map[string]string
+		shouldUpdate bool
+		description  string
+	}{
+		{
+			name: "no update needed when our annotations match",
+			foundAnno: map[string]string{
+				workPostponeDeleteAnnoKey:                  "",
+				workv1.ManifestConfigSpecHashAnnotationKey: `{"config1":"hash1"}`,
+				"addon-framework.io/some-annotation":       "framework-value",
+			},
+			desiredAnno: map[string]string{
+				workPostponeDeleteAnnoKey:                  "",
+				workv1.ManifestConfigSpecHashAnnotationKey: `{"config1":"hash1"}`,
+			},
+			shouldUpdate: false,
+			description:  "Should not trigger update when our annotations match (ignore framework annotations)",
+		},
+		{
+			name: "update needed when our annotation value changes",
+			foundAnno: map[string]string{
+				workPostponeDeleteAnnoKey:                  "",
+				workv1.ManifestConfigSpecHashAnnotationKey: `{"config1":"old-hash"}`,
+			},
+			desiredAnno: map[string]string{
+				workPostponeDeleteAnnoKey:                  "",
+				workv1.ManifestConfigSpecHashAnnotationKey: `{"config1":"new-hash"}`,
+			},
+			shouldUpdate: true,
+			description:  "Should trigger update when config-spec-hash value changes",
+		},
+		{
+			name: "update needed when our annotation added",
+			foundAnno: map[string]string{
+				workPostponeDeleteAnnoKey: "",
+			},
+			desiredAnno: map[string]string{
+				workPostponeDeleteAnnoKey:                  "",
+				workv1.ManifestConfigSpecHashAnnotationKey: `{"config1":"hash1"}`,
+			},
+			shouldUpdate: true,
+			description:  "Should trigger update when config-spec-hash is added",
+		},
+		{
+			name: "update needed when our annotation removed",
+			foundAnno: map[string]string{
+				workPostponeDeleteAnnoKey:                  "",
+				workv1.ManifestConfigSpecHashAnnotationKey: `{"config1":"hash1"}`,
+			},
+			desiredAnno: map[string]string{
+				workPostponeDeleteAnnoKey: "",
+			},
+			shouldUpdate: true,
+			description:  "Should trigger update when config-spec-hash is removed",
+		},
+		{
+			name: "no update when framework annotation added",
+			foundAnno: map[string]string{
+				workPostponeDeleteAnnoKey:                  "",
+				workv1.ManifestConfigSpecHashAnnotationKey: `{"config1":"hash1"}`,
+			},
+			desiredAnno: map[string]string{
+				workPostponeDeleteAnnoKey:                  "",
+				workv1.ManifestConfigSpecHashAnnotationKey: `{"config1":"hash1"}`,
+				// Framework adds annotation - we don't include it in our desired state
+			},
+			shouldUpdate: false,
+			description:  "Should not trigger update when framework adds their own annotation",
+		},
+		{
+			name: "no update when framework annotation changes",
+			foundAnno: map[string]string{
+				workPostponeDeleteAnnoKey:                  "",
+				workv1.ManifestConfigSpecHashAnnotationKey: `{"config1":"hash1"}`,
+				"addon-framework.io/some-annotation":       "old-value",
+			},
+			desiredAnno: map[string]string{
+				workPostponeDeleteAnnoKey:                  "",
+				workv1.ManifestConfigSpecHashAnnotationKey: `{"config1":"hash1"}`,
+			},
+			shouldUpdate: false,
+			description:  "Should not trigger update when framework changes their annotation (we ignore it)",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			found := &workv1.ManifestWork{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: tt.foundAnno,
+					Labels:      map[string]string{"test": "label"},
+				},
+				Spec: workv1.ManifestWorkSpec{
+					Workload: workv1.ManifestsTemplate{
+						Manifests: []workv1.Manifest{
+							{RawExtension: runtime.RawExtension{Raw: []byte(`{"kind":"Secret"}`)}},
+						},
+					},
+				},
+			}
+			desired := &workv1.ManifestWork{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: tt.desiredAnno,
+					Labels:      map[string]string{"test": "label"},
+				},
+				Spec: workv1.ManifestWorkSpec{
+					Workload: workv1.ManifestsTemplate{
+						Manifests: []workv1.Manifest{
+							{RawExtension: runtime.RawExtension{Raw: []byte(`{"kind":"Secret"}`)}},
+						},
+					},
+				},
+			}
+
+			result := shouldUpdateManifestWork(desired, found)
+			if result != tt.shouldUpdate {
+				t.Errorf("%s: shouldUpdate mismatch. got %v, want %v\nFound: %v\nDesired: %v",
+					tt.description, result, tt.shouldUpdate, tt.foundAnno, tt.desiredAnno)
+			}
+		})
+	}
 }

@@ -51,7 +51,16 @@ func TestCertAgent(t *testing.T) {
 			Name: clusterName,
 		},
 	}
-	configs := options.Registration.CSRConfigurations(cluster)
+	addon := &v1alpha1.ManagedClusterAddOn{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "observability-controller",
+			Namespace: clusterName,
+		},
+	}
+	configs, err := options.Registration.CSRConfigurations(cluster, addon)
+	if err != nil {
+		t.Fatalf("Failed to get CSR configurations: %v", err)
+	}
 	expectedCSRs := 2
 	if len(configs) != expectedCSRs {
 		t.Fatalf("expected %d CSRs, found %d", expectedCSRs, len(configs))

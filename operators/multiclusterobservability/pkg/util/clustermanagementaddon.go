@@ -52,16 +52,13 @@ func CreateClusterManagementAddon(ctx context.Context, c client.Client) (
 		return nil, fmt.Errorf("cannot create observability-controller clustermanagementaddon: %w", err)
 	}
 
-	// With addon-framework v0.12.0 upgrade, the lifecycle annotation should not be present on clustermanagementaddon,
-	// as otherwise addon-manager-controller does not correctly precess the addon.
 	// Remove addon.open-cluster-management.io/lifecycle annotation if present.
 	if found.Annotations != nil {
 		if _, exists := found.Annotations[addonv1alpha1.AddonLifecycleAnnotationKey]; exists {
 			delete(found.Annotations, addonv1alpha1.AddonLifecycleAnnotationKey)
-
 			log.Info("Removing addon.open-cluster-management.io/lifecycle annotation from observability-controller clustermanagementaddon")
 			if err := c.Update(ctx, found); err != nil {
-				return nil, fmt.Errorf("failed to update clustermanagementaddon to remove lifecycle annotation: %w", err)
+				return nil, fmt.Errorf("failed to update clustermanagementaddon: %w", err)
 			}
 		}
 	}
