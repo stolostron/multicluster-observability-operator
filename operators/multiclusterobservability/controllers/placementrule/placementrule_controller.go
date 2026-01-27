@@ -591,7 +591,9 @@ func createAllRelatedRes(
 			log.Error(err, "Failed to create managedcluster resources", "namespace", managedCluster)
 			continue
 		}
-		manifestWork, err := createManifestWorks(c, namespace, mci, mco, works, metricsAllowlistConfigMap, crdv1Work, endpointMetricsOperatorDeploy, hubInfoSecret.DeepCopy(), addonDeployCfg, installProm)
+		manifestWork, err := createManifestWorks(
+			ctx,
+			c, namespace, mci, mco, works, metricsAllowlistConfigMap, crdv1Work, endpointMetricsOperatorDeploy, hubInfoSecret.DeepCopy(), addonDeployCfg, installProm)
 		if err != nil {
 			allErrors = append(allErrors, fmt.Errorf("failed to create manifestworks: %w", err))
 			log.Error(err, "Failed to create manifestworks: %w", err)
