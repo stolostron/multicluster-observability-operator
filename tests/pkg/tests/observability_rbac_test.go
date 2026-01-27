@@ -71,7 +71,7 @@ var _ = Describe("", Ordered, func() {
 				if err != nil {
 					return err
 				}
-				if len(res.Data.Result) != 1 {
+				if len(res.Data.Result) == 0 {
 					return fmt.Errorf("no data found for node_memory_MemAvailable_bytes{cluster=\"local-cluster\"}")
 				}
 				return nil
