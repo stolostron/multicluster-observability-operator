@@ -448,17 +448,17 @@ func createAllRelatedRes(
 
 	managedClusterListMutex.RUnlock()
 
-	failedDeleteOba := false
+	failedDeleteManagedRes := false
 	for _, cluster := range clustersToCleanup {
-		err = deleteObsAddon(c, cluster)
+		err = deleteManagedClusterRes(c, cluster)
 		if err != nil {
-			failedDeleteOba = true
-			log.Error(err, "Failed to delete observabilityaddon", "namespace", cluster)
+			failedDeleteManagedRes = true
+			log.Error(err, "Failed to delete managedcluster resources", "namespace", cluster)
 		}
 	}
 
-	if failedCreateManagedClusterRes || failedDeleteOba {
-		return errors.New("failed to create managedcluster resources or failed to delete observabilityaddon, skip and reconcile later")
+	if failedCreateManagedClusterRes || failedDeleteManagedRes {
+		return errors.New("failed to create or deletemanagedcluster resources, skip and reconcile later")
 	}
 
 	return nil
