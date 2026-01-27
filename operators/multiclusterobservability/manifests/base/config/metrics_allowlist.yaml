@@ -100,6 +100,7 @@ data:
       - http_requests_total
       - instance_device:node_disk_io_time_seconds:rate1m
       - instance_device:node_disk_io_time_weighted_seconds:rate1m
+      - instance:node_cpu:rate:sum
       - instance:node_cpu_utilisation:rate1m
       - instance:node_filesystem_usage:sum
       - instance:node_load1_per_cpu:ratio
