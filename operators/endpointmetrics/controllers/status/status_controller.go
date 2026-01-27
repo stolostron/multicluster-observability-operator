@@ -250,7 +250,7 @@ func (r *StatusReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		},
 	}
 
-	return ctrl.NewControllerManagedBy(mgr).
+	return ctrl.NewControllerManagedBy(mgr).Named("observabilityaddon-status-controller").
 		For(&oav1beta1.ObservabilityAddon{}, builder.WithPredicates(pred)).
 		Complete(r)
 }
