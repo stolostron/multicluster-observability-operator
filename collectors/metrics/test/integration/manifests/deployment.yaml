@@ -89,8 +89,8 @@ spec:
         - --match={__name__="node_netstat_Tcp_OutSegs"}
         - --match={__name__="node_netstat_Tcp_RetransSegs"}
         - --match={__name__="node_netstat_TcpExt_TCPSynRetrans"}
-        - --recordingrule={"name":"apiserver_request_duration_seconds:histogram_quantile_99","query":"histogram_quantile(0.99,sum(rate(apiserver_request_duration_seconds_bucket{job=\"apiserver\", verb!=\"WATCH\"}[5m])) by (verb,le))"}
-        - --recordingrule={"name":"apiserver_request_duration_seconds:histogram_quantile_90","query":"histogram_quantile(0.90,sum(rate(apiserver_request_duration_seconds_bucket{job=\"apiserver\", verb!=\"WATCH\"}[5m])) by (verb,le))"}
+        - --recordingrule={"name":"apiserver_request_duration_seconds:histogram_quantile_99","query":"histogram_quantile(0.99,sum(rate(apiserver_request_duration_seconds_bucket{component=\"apiserver\", verb!=\"WATCH\"}[5m])) by (verb,le))"}
+        - --recordingrule={"name":"apiserver_request_duration_seconds:histogram_quantile_90","query":"histogram_quantile(0.90,sum(rate(apiserver_request_duration_seconds_bucket{component=\"apiserver\", verb!=\"WATCH\"}[5m])) by (verb,le))"}
         - --limit-bytes=52428800
         - --log-level=debug
         - --label="cluster=func_e2e_test_travis-blue0/metrics-client:0.1.0-blue0/metrics-client:0.1.0"

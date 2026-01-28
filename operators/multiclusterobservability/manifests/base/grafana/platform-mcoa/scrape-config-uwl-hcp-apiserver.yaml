@@ -19,7 +19,7 @@ spec:
     - '{__name__="process_cpu_seconds_total",job="apiserver"}'
     - '{__name__="process_resident_memory_bytes",job="apiserver"}'
     - '{__name__="sum:apiserver_request_total:5m"}'
-    - '{__name__="up",job="apiserver"}'
+    - '{__name__="up",service="kubernetes"}'
     - '{__name__="workqueue_adds_total",job="apiserver"}'
     - '{__name__="workqueue_depth",job="apiserver"}'
     - '{__name__="workqueue_queue_duration_seconds_bucket:apiserver:histogram_quantile_99"}'
