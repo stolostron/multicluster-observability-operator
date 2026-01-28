@@ -89,13 +89,18 @@ define require_clean_work_tree
 
 endef
 
+.PHONY: verify-containerfile-labels
+verify-containerfile-labels: ## Verify Containerfile.operator RHEL version consistency
+	@echo ">> verifying Containerfile.operator label consistency"
+	@./scripts/verify-containerfile-labels.sh
+
 # PROTIP:
 # Add
 #      --cpu-profile-path string   Path to CPU profile output file
 #      --mem-profile-path string   Path to memory profile output file
 # to debug big allocations during linting.
 .PHONY: lint
-lint: check-git deps format go-lint $(FAILLINT) ## Applies all linting and formating checks
+lint: check-git deps format go-lint verify-containerfile-labels $(FAILLINT) ## Applies all linting and formating checks
 	$(call require_clean_work_tree,'detected files without copyright, run make lint and commit changes')
 	@echo ">> verifying modules being imported"
 	@$(FAILLINT) -paths "github.com/prometheus/tsdb=github.com/prometheus/prometheus/tsdb,\
