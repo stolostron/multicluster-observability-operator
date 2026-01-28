@@ -4,7 +4,4 @@ metadata:
   name: multicluster-observability-addon
   namespace: open-cluster-management-observability
 spec:
-  customizedVariables:
-  # Operator Subscription Channels
-  - name: openshiftLoggingChannel
-    value: stable-6.0
+  customizedVariables: []
