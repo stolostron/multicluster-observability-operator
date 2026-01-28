@@ -80,7 +80,7 @@ func TestClusterManagmentAddon(t *testing.T) {
 
 	// Test upgrade scenario: Create a CMA with the old lifecycle annotation
 	// The test expects the annotation to be removed during reconciliation.
-	clusterManagementAddon, err := newClusterManagementAddon(c)
+	clusterManagementAddon, err := newClusterManagementAddon(t.Context(), c)
 	if err != nil {
 		t.Fatalf("Failed to create new clustermanagementaddon: (%v)", err)
 	}

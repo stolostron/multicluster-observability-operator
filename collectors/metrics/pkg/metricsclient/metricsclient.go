@@ -229,7 +229,7 @@ func (c *Client) Retrieve(ctx context.Context, req *http.Request) ([]*clientmode
 			family := &clientmodel.MetricFamily{}
 			families = append(families, family)
 			if err := decoder.Decode(family); err != nil {
-				if err != io.EOF {
+				if !errors.Is(err, io.EOF) {
 					logger.Log(c.logger, logger.Error, "msg", "error reading body", "err", err)
 				}
 				break
@@ -253,7 +253,7 @@ func Read(r io.Reader) ([]*clientmodel.MetricFamily, error) {
 	for {
 		family := &clientmodel.MetricFamily{}
 		if err := decoder.Decode(family); err != nil {
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				break
 			}
 			return nil, err
@@ -318,7 +318,7 @@ func withCancel(ctx context.Context, client *http.Client, req *http.Request, fn 
 		}
 
 		// if there is no close err,
-		// we propagate the context context error.
+		// we propagate the context error.
 		if err == nil {
 			err = ctx.Err()
 		}
@@ -373,7 +373,7 @@ func MTLSTransport(logger log.Logger, caCertFile, tlsCrtFile, tlsKeyFile string)
 	}, nil
 }
 
-func DefaultTransport(logger log.Logger) *http.Transport {
+func DefaultTransport(_ log.Logger) *http.Transport {
 	return &http.Transport{
 		DialContext: (&net.Dialer{
 			Timeout:   30 * time.Second,
@@ -576,7 +576,8 @@ func (c *Client) sendRequest(ctx context.Context, serverURL string, body []byte)
 }
 
 func isTransientError(err error) bool {
-	if urlErr, ok := err.(*url.Error); ok {
+	urlErr := &url.Error{}
+	if errors.As(err, &urlErr) {
 		return urlErr.Timeout()
 	}
 

@@ -5,7 +5,6 @@
 package certificates
 
 import (
-	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -83,22 +82,22 @@ func TestCreateCertificates(t *testing.T) {
 
 	c := fake.NewClientBuilder().WithRuntimeObjects(route).Build()
 
-	err := CreateObservabilityCerts(c, s, mco, true)
+	err := CreateObservabilityCerts(t.Context(), c, s, mco, true)
 	if err != nil {
 		t.Fatalf("CreateObservabilityCerts: (%v)", err)
 	}
 
-	err = CreateObservabilityCerts(c, s, mco, true)
+	err = CreateObservabilityCerts(t.Context(), c, s, mco, true)
 	if err != nil {
 		t.Fatalf("Rerun CreateObservabilityCerts: (%v)", err)
 	}
 
-	err, _ = createCASecret(c, s, mco, true, serverCACerts, serverCACertifcateCN)
+	_, err = createCASecret(t.Context(), c, s, mco, true, serverCACerts, serverCACertifcateCN)
 	if err != nil {
 		t.Fatalf("Failed to renew server ca certificates: (%v)", err)
 	}
 
-	err = createCertSecret(c, s, mco, true, grafanaCerts, false, grafanaCertificateCN, nil, nil, nil)
+	err = createCertSecret(t.Context(), c, s, mco, true, grafanaCerts, false, grafanaCertificateCN, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("Failed to renew server certificates: (%v)", err)
 	}
@@ -108,8 +107,8 @@ func TestRemoveExpiredCA(t *testing.T) {
 	caSecret := getExpiredCertSecret()
 	oldCertLength := len(caSecret.Data["tls.crt"])
 	c := fake.NewClientBuilder().WithRuntimeObjects(caSecret).Build()
-	removeExpiredCA(c, serverCACerts)
-	c.Get(context.TODO(),
+	removeExpiredCA(t.Context(), c, serverCACerts)
+	c.Get(t.Context(),
 		types.NamespacedName{Name: serverCACerts, Namespace: namespace},
 		caSecret)
 	if len(caSecret.Data["tls.crt"]) != oldCertLength/2 {

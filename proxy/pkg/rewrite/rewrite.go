@@ -19,7 +19,7 @@ type labelInjector struct {
 }
 
 // Visit implements the parser.Visitor interface.
-func (li *labelInjector) Visit(node parser.Node, path []parser.Node) (parser.Visitor, error) {
+func (li *labelInjector) Visit(node parser.Node, _ []parser.Node) (parser.Visitor, error) {
 	switch n := node.(type) {
 	case *parser.VectorSelector:
 		n.LabelMatchers = append(n.LabelMatchers, li.matcher)

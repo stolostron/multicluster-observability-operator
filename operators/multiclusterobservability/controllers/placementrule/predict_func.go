@@ -20,7 +20,7 @@ import (
 
 func getClusterMgmtAddonPredFunc() predicate.Funcs {
 	return predicate.Funcs{
-		CreateFunc: func(e event.CreateEvent) bool {
+		CreateFunc: func(_ event.CreateEvent) bool {
 			return false
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
@@ -56,7 +56,7 @@ func getClusterMgmtAddonPredFunc() predicate.Funcs {
 			newStatusConfig := findAddonDeploymentDefaultConfigReference(newCMA.Status.DefaultConfigReferences)
 			return !reflect.DeepEqual(oldStatusConfig, newStatusConfig)
 		},
-		DeleteFunc: func(e event.DeleteEvent) bool {
+		DeleteFunc: func(_ event.DeleteEvent) bool {
 			return false
 		},
 	}
@@ -122,7 +122,7 @@ func getMgClusterAddonPredFunc() predicate.Funcs {
 			newStatusConfig := findAddonDeploymentConfigReference(newMCA.Status.ConfigReferences)
 			return !reflect.DeepEqual(oldStatusConfig, newStatusConfig)
 		},
-		DeleteFunc: func(e event.DeleteEvent) bool {
+		DeleteFunc: func(_ event.DeleteEvent) bool {
 			return false
 		},
 	}
@@ -130,7 +130,7 @@ func getMgClusterAddonPredFunc() predicate.Funcs {
 
 func getManifestworkPred() predicate.Funcs {
 	return predicate.Funcs{
-		CreateFunc: func(e event.CreateEvent) bool {
+		CreateFunc: func(_ event.CreateEvent) bool {
 			return false
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
@@ -208,7 +208,7 @@ func getMchPred(c client.Client) predicate.Funcs {
 			}
 			return false
 		},
-		DeleteFunc: func(e event.DeleteEvent) bool {
+		DeleteFunc: func(_ event.DeleteEvent) bool {
 			return false
 		},
 	}

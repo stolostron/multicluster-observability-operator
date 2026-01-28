@@ -137,7 +137,8 @@ type MultiClusterObservability struct {
 type MultiClusterObservabilityList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []MultiClusterObservability `json:"items"`
+
+	Items []MultiClusterObservability `json:"items"`
 }
 
 func init() {

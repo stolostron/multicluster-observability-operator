@@ -38,7 +38,7 @@ type debugRoundTripper struct {
 	logger log.Logger
 }
 
-func NewDebugRoundTripper(logger log.Logger, next http.RoundTripper) *debugRoundTripper {
+func NewDebugRoundTripper(logger log.Logger, next http.RoundTripper) http.RoundTripper {
 	return &debugRoundTripper{next, log.With(logger, "component", "http/debugroundtripper")}
 }
 

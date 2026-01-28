@@ -105,7 +105,7 @@ func (res *RemoteWriteEndpointWithSecret) Validate() error {
 
 	u, err := url.ParseRequestURI(res.URL.String())
 	if err != nil {
-		return fmt.Errorf("url %s is invalid for remote write endpoint %s: %s", res.URL.String(), res.Name, err)
+		return fmt.Errorf("url %s is invalid for remote write endpoint %s: %w", res.URL.String(), res.Name, err)
 	}
 
 	if u.Scheme == "" || u.Scheme != "http" && u.Scheme != "https" {

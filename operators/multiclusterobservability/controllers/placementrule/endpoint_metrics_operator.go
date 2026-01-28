@@ -45,7 +45,7 @@ func loadTemplates(mco *mcov1beta2.MultiClusterObservability) (
 	// render endpoint-observability templates
 	endpointObsTemplates, err := templates.GetOrLoadEndpointObservabilityTemplates(templatesutil.GetTemplateRenderer())
 	if err != nil {
-		return nil, nil, nil, nil, nil, fmt.Errorf("failed to load load endpoint observability templates: %w", err)
+		return nil, nil, nil, nil, nil, fmt.Errorf("failed to load endpoint observability templates: %w", err)
 	}
 
 	crdv1 := &apiextensionsv1.CustomResourceDefinition{}

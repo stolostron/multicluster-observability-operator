@@ -403,7 +403,7 @@ func TestUpdateMCOAStatus(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			client := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(tt.existingObjs...).Build()
 			conds := []mcoshared.Condition{}
-			updateMCOAStatus(client, &conds, tt.instance)
+			updateMCOAStatus(t.Context(), client, &conds, tt.instance)
 
 			if tt.expectedStatus == nil {
 				assert.Empty(t, conds)

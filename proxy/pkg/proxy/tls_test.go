@@ -130,7 +130,7 @@ func TestPollingReloadOnSymlinkChange(t *testing.T) {
 	defer transport.Close()
 
 	// 5. Verify initial load is v1
-	getCommonName := func(tr *reloadingTransport) (string, error) {
+	getCommonName := func(tr *ReloadingTransport) (string, error) {
 		tr.mutex.RLock()
 		defer tr.mutex.RUnlock()
 		if tr.Transport.TLSClientConfig == nil || len(tr.Transport.TLSClientConfig.Certificates) == 0 {

@@ -8,23 +8,23 @@ import (
 	prom "github.com/prometheus/client_model/go"
 )
 
-type elide struct {
+type Elide struct {
 	labelSet map[string]struct{}
 }
 
 // NewElide creates a new elide transformer for the given metrics.
-func NewElide(labels ...string) *elide {
+func NewElide(labels ...string) *Elide {
 	labelSet := make(map[string]struct{})
 	for i := range labels {
 		labelSet[labels[i]] = struct{}{}
 	}
 
-	return &elide{labelSet}
+	return &Elide{labelSet}
 }
 
 // Transform filters label pairs in the given metrics family,
 // eliding labels.
-func (t *elide) Transform(family *prom.MetricFamily) (bool, error) {
+func (t *Elide) Transform(family *prom.MetricFamily) (bool, error) {
 	if family == nil || len(family.Metric) == 0 {
 		return true, nil
 	}

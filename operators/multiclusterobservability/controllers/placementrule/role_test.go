@@ -66,7 +66,7 @@ func TestCreateClusterRole(t *testing.T) {
 		t.Fatalf("createRole: (%v)", err)
 	}
 	found := &rbacv1.ClusterRole{}
-	err = c.Get(context.TODO(), types.NamespacedName{Name: mcoRoleName}, found)
+	err = c.Get(t.Context(), types.NamespacedName{Name: mcoRoleName}, found)
 	if err != nil {
 		t.Fatalf("Failed to update mcoClusterRole: (%v)", err)
 	}
@@ -98,12 +98,12 @@ func TestCreateClusterRoleBinding(t *testing.T) {
 	}
 	objs := []runtime.Object{rb}
 	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
-	err := createReadMCOClusterRoleBinding(c, namespace, namespace)
+	err := createReadMCOClusterRoleBinding(t.Context(), c, namespace, namespace)
 	if err != nil {
 		t.Fatalf("createRoleBinding: (%v)", err)
 	}
 	found := &rbacv1.ClusterRoleBinding{}
-	err = c.Get(context.TODO(), types.NamespacedName{Name: namespace + "-" + mcoRoleBindingName}, found)
+	err = c.Get(t.Context(), types.NamespacedName{Name: namespace + "-" + mcoRoleBindingName}, found)
 	if err != nil {
 		t.Fatalf("Failed to update ClusterRoleBinding: (%v)", err)
 	}
@@ -120,7 +120,7 @@ func TestCreateRole(t *testing.T) {
 		t.Fatalf("createRole: (%v)", err)
 	}
 	found := &rbacv1.ClusterRole{}
-	err = c.Get(context.TODO(), types.NamespacedName{Name: resRoleName, Namespace: ""}, found)
+	err = c.Get(t.Context(), types.NamespacedName{Name: resRoleName, Namespace: ""}, found)
 	if err != nil {
 		t.Fatalf("Failed to create Role: (%v)", err)
 	}
@@ -160,7 +160,7 @@ func TestCreateRole(t *testing.T) {
 		t.Fatalf("createRole: (%v)", err)
 	}
 	found = &rbacv1.ClusterRole{}
-	err = c.Get(context.TODO(), types.NamespacedName{Name: resRoleName, Namespace: ""}, found)
+	err = c.Get(t.Context(), types.NamespacedName{Name: resRoleName, Namespace: ""}, found)
 	if err != nil {
 		t.Fatalf("Failed to update Role: (%v)", err)
 	}
@@ -171,12 +171,12 @@ func TestCreateRole(t *testing.T) {
 
 func TestCreateRoleBinding(t *testing.T) {
 	c := fake.NewClientBuilder().Build()
-	err := createResourceRoleBinding(c, namespace, namespace)
+	err := createResourceRoleBinding(t.Context(), c, namespace, namespace)
 	if err != nil {
 		t.Fatalf("createRole: (%v)", err)
 	}
 	found := &rbacv1.RoleBinding{}
-	err = c.Get(context.TODO(), types.NamespacedName{Name: resRoleBindingName, Namespace: namespace}, found)
+	err = c.Get(t.Context(), types.NamespacedName{Name: resRoleBindingName, Namespace: namespace}, found)
 	if err != nil {
 		t.Fatalf("Failed to create RoleBinding: (%v)", err)
 	}
@@ -208,12 +208,12 @@ func TestCreateRoleBinding(t *testing.T) {
 	}
 	objs := []runtime.Object{rb}
 	c = fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
-	err = createResourceRoleBinding(c, namespace, namespace)
+	err = createResourceRoleBinding(t.Context(), c, namespace, namespace)
 	if err != nil {
 		t.Fatalf("createRoleBinding: (%v)", err)
 	}
 	found = &rbacv1.RoleBinding{}
-	err = c.Get(context.TODO(), types.NamespacedName{Name: resRoleBindingName, Namespace: namespace}, found)
+	err = c.Get(t.Context(), types.NamespacedName{Name: resRoleBindingName, Namespace: namespace}, found)
 	if err != nil {
 		t.Fatalf("Failed to update RoleBinding: (%v)", err)
 	}

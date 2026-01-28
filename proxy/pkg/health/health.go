@@ -37,7 +37,7 @@ func (c *Checker) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 	case "/healthz":
 		c.healthz(res)
 	case "/readyz":
-		c.readyz(res)
+		c.readyz(req.Context(), res)
 	default:
 		http.NotFound(res, req)
 	}
@@ -50,7 +50,7 @@ func (c *Checker) healthz(res http.ResponseWriter) {
 }
 
 // readyz is the readiness probe handler.
-func (c *Checker) readyz(res http.ResponseWriter) {
+func (c *Checker) readyz(ctx context.Context, res http.ResponseWriter) {
 	// 1. Check if the informer has synced.
 	if !c.informer.HasSynced() {
 		klog.Warning("Readiness probe failed: informer has not synced")
@@ -59,7 +59,7 @@ func (c *Checker) readyz(res http.ResponseWriter) {
 	}
 
 	// 2. Check the upstream metrics server connection.
-	if err := c.checkMetricsServer(); err != nil {
+	if err := c.checkMetricsServer(ctx); err != nil {
 		klog.Warningf("Readiness probe failed: upstream metrics server check failed: %v", err)
 		http.Error(res, fmt.Sprintf("Upstream metrics server check failed: %v", err), http.StatusServiceUnavailable)
 		return
@@ -69,14 +69,14 @@ func (c *Checker) readyz(res http.ResponseWriter) {
 	_, _ = fmt.Fprint(res, "OK")
 }
 
-func (c *Checker) checkMetricsServer() error {
+func (c *Checker) checkMetricsServer(ctx context.Context) error {
 	if c.metricsServerURL == nil || c.metricsServerTransport == nil {
 		return fmt.Errorf("metrics server URL or transport is not configured")
 	}
 
 	client := &http.Client{Transport: c.metricsServerTransport}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
 	// We use a HEAD request because we only need to verify that the mTLS connection

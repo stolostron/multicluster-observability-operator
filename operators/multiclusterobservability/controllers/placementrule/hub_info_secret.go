@@ -21,7 +21,7 @@ import (
 
 // generateHubInfoSecret generates the secret that contains hubInfo.
 // this function should only called when the watched resources are created/updated.
-func generateHubInfoSecret(client client.Client, obsNamespace string,
+func generateHubInfoSecret(ctx context.Context, client client.Client, obsNamespace string,
 	namespace string, crdMap map[string]bool, isUWMAlertingDisabled bool,
 ) (*corev1.Secret, error) {
 	var obsAPIHost string
@@ -30,7 +30,7 @@ func generateHubInfoSecret(client client.Client, obsNamespace string,
 
 	if crdMap[config.IngressControllerCRD] {
 		var err error
-		obsAPIURL, err := config.GetObsAPIExternalURL(context.TODO(), client, obsNamespace)
+		obsAPIURL, err := config.GetObsAPIExternalURL(ctx, client, obsNamespace)
 		if err != nil {
 			log.Error(err, "Failed to get the host for Observatorium API host URL")
 			return nil, err
@@ -39,7 +39,7 @@ func generateHubInfoSecret(client client.Client, obsNamespace string,
 
 		// if alerting is disabled, do not set alertmanagerEndpoint
 		if !config.IsAlertingDisabled() {
-			alertmanagerURL, err := config.GetAlertmanagerURL(context.TODO(), client, obsNamespace)
+			alertmanagerURL, err := config.GetAlertmanagerURL(ctx, client, obsNamespace)
 			if err != nil {
 				log.Error(err, "Failed to get alertmanager endpoint")
 				return nil, err
@@ -47,7 +47,7 @@ func generateHubInfoSecret(client client.Client, obsNamespace string,
 			alertmanagerEndpoint = alertmanagerURL.String()
 		}
 
-		alertmanagerRouterCA, err = config.GetAlertmanagerRouterCA(client)
+		alertmanagerRouterCA, err = config.GetAlertmanagerRouterCA(ctx, client)
 		if err != nil {
 			log.Error(err, "Failed to CA of openshift Route")
 			return nil, err
@@ -61,7 +61,7 @@ func generateHubInfoSecret(client client.Client, obsNamespace string,
 			alertmanagerEndpoint = config.AlertmanagerServiceName + "." + config.GetDefaultNamespace() + ".svc.cluster.local:9095"
 		}
 		var err error
-		alertmanagerRouterCA, err = config.GetAlertmanagerCA(client)
+		alertmanagerRouterCA, err = config.GetAlertmanagerCA(ctx, client)
 		if err != nil {
 			log.Error(err, "Failed to CA of the Alertmanager")
 			return nil, err
@@ -88,7 +88,7 @@ func generateHubInfoSecret(client client.Client, obsNamespace string,
 	// get the trimmed cluster id for the cluster
 	var trimmedClusterID string
 	if os.Getenv("UNIT_TEST") != "true" {
-		trimmedClusterID, err = config.GetTrimmedClusterID(client)
+		trimmedClusterID, err = config.GetTrimmedClusterID(ctx, client)
 		if err != nil {
 			// TODO: include better info
 			return nil, fmt.Errorf("unable to get hub ClusterID for hub-info-secret: %w", err)

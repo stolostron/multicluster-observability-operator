@@ -652,7 +652,7 @@ func TestGetOperandName(t *testing.T) {
 			name:          "No Observatorium CR",
 			componentName: Alertmanager,
 			prepare: func() {
-				SetOperandNames(fake.NewClientBuilder().WithScheme(runtime.NewScheme()).Build())
+				SetOperandNames(t.Context(), fake.NewClientBuilder().WithScheme(runtime.NewScheme()).Build())
 			},
 			result: func() bool {
 				return GetOperandName(Alertmanager) == GetOperandNamePrefix()+"alertmanager"
@@ -692,7 +692,7 @@ func TestGetOperandName(t *testing.T) {
 				observatoriumv1alpha1.AddToScheme(s)
 				client := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(mco, observatorium).Build()
 				SetMonitoringCRName(GetDefaultCRName())
-				SetOperandNames(client)
+				SetOperandNames(t.Context(), client)
 			},
 			result: func() bool {
 				return GetOperandName(Alertmanager) == GetOperandNamePrefix()+Alertmanager &&
@@ -741,7 +741,7 @@ func TestGetOperandName(t *testing.T) {
 				client := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(mco, observatorium).Build()
 
 				SetMonitoringCRName(GetDefaultCRName())
-				SetOperandNames(client)
+				SetOperandNames(t.Context(), client)
 			},
 			result: func() bool {
 				return GetOperandName(Alertmanager) == Alertmanager &&
@@ -790,7 +790,7 @@ func TestGetOperandName(t *testing.T) {
 				client := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(mco, observatorium).Build()
 
 				SetMonitoringCRName(GetDefaultCRName())
-				SetOperandNames(client)
+				SetOperandNames(t.Context(), client)
 			},
 			result: func() bool {
 				return GetOperandName(Alertmanager) == GetOperandNamePrefix()+Alertmanager &&
