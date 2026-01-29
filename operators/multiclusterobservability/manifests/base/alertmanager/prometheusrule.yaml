@@ -13,6 +13,7 @@ spec:
           annotations:
             summary: "Observatorium API remote-write forwards failed"
             description: "More than 20% of remote-write requests from observatorium-api to endpoint: \'{{ $labels.name }}\' failed"
+            runbook_url: https://github.com/openshift/runbooks/blob/master/alerts/advanced-cluster-management-operator/ACMRemoteWriteError.md
           expr: sum by (name) (rate(acm_remote_write_requests_total{code!~"2.*"}[10m])) / sum by (name) (rate(acm_remote_write_requests_total[10m])) > 0.2
           for: 10m
           labels:
@@ -25,6 +26,7 @@ spec:
           #TODO: add link to ACM documentation link to description
           message: ACM Thanos Compact {{$labels.job}} in {{$labels.namespace}} has failed to run and now is halted.
           summary: ACM Thanos Compact has failed to run and is now halted.
+          runbook_url: https://github.com/openshift/runbooks/blob/master/alerts/advanced-cluster-management-operator/ACMThanosCompactHalted.md
         expr: acm_thanos_compact_halted{job="observability-thanos-compact"} == 1
         for: 5m
         labels:
@@ -36,6 +38,7 @@ spec:
           #TODO: add link to ACM documentation link to description
           message: ACM Thanos Compact {{$labels.job}} in {{$labels.namespace}} is failing to execute {{$value | humanize}}% of compactions.
           summary: ACM Thanos Compact is failing to execute compactions.
+          #runbook_url: https://github.com/openshift/runbooks/blob/master/alerts/advanced-cluster-management-operator/ACMThanosCompactHighCompactionFailures.md
         expr: |
           (
             sum by (namespace, job) (rate(acm_thanos_compact_group_compactions_failures_total{job="observability-thanos-compact"}[5m]))
@@ -53,6 +56,7 @@ spec:
           #TODO: add link to ACM documentation link to description
           message: ACM Thanos Compact {{$labels.job}} in {{$labels.namespace}} Bucket is failing to execute {{$value | humanize}}% of operations.
           summary: ACM Thanos Compact Bucket is having a high number of operation failures.
+          #runbook_url: https://github.com/openshift/runbooks/blob/master/alerts/advanced-cluster-management-operator/ACMThanosCompactBucketHighOperationFailures.md
         expr: |
           (
             sum by (namespace, job) (rate(acm_thanos_objstore_bucket_operation_failures_total{job="observability-thanos-compact"}[5m]))
@@ -70,6 +74,7 @@ spec:
           #TODO: add link to ACM documentation link to description
           message: ACM Thanos Compact {{$labels.job}} in {{$labels.namespace}} has not uploaded anything for 24 hours.
           summary: ACM Thanos Compact has not uploaded anything for last 24 hours.
+          #runbook_url: https://github.com/openshift/runbooks/blob/master/alerts/advanced-cluster-management-operator/ACMThanosCompactHasNotRun.md
         expr: (time() - max by (namespace, job) (max_over_time(acm_thanos_objstore_bucket_last_successful_upload_time{job="observability-thanos-compact"}[24h] offset 6h))) / 60 / 60 > 24
         labels:
           namespace: open-cluster-management-observability
