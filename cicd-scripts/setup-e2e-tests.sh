@@ -36,7 +36,6 @@ deploy_hub_spoke_core() {
   cd ${ROOTDIR}
 
   export OCM_BRANCH=main
-  export IMAGE_NAME=quay.io/stolostron/registration-operator:$LATEST_MCE_SNAPSHOT
   export OPERATOR_IMAGE_NAME=quay.io/stolostron/registration-operator:$LATEST_MCE_SNAPSHOT
   export REGISTRATION_IMAGE=quay.io/stolostron/registration:$LATEST_MCE_SNAPSHOT
   export WORK_IMAGE=quay.io/stolostron/work:$LATEST_MCE_SNAPSHOT
@@ -48,7 +47,12 @@ deploy_hub_spoke_core() {
   fi
   ${SED_COMMAND} "s~clusterName: cluster1$~clusterName: ${MANAGED_CLUSTER}~g" ./_repo_ocm/deploy/klusterlet/config/samples/operator_open-cluster-management_klusterlets.cr.yaml
 
-  make deploy-hub cluster-ip deploy-spoke-operator apply-spoke-cr -C ./_repo_ocm
+  make deploy-hub deploy-spoke-operator apply-spoke-cr -C ./_repo_ocm
+
+  echo "Listing deployments and pods in ${OCM_DEFAULT_NS}:"
+  kubectl -n "${OCM_DEFAULT_NS}" get deploy,pod
+  echo "Listing deployments and pods in ${HUB_NS}":
+  kubectl -n "${HUB_NS}" get deploy,pod
 
   # wait until hub and spoke are ready
   wait_for_deployment_ready 10 60s "${OCM_DEFAULT_NS}" cluster-manager
