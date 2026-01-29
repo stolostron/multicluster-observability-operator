@@ -167,19 +167,18 @@ wait_for_observability_ready() {
   retry_number=10
   timeout=60s
   for ((i = 1; i <= retry_number; i++)); do
-
     if kubectl wait --timeout=${timeout} --for=condition=Ready mco/observability &>/dev/null; then
       echo "Observability has been started up and is running."
-      break
+      return 0
     else
       echo "timeout wait for mco are ready, retry in 10s...."
-      sleep 10
-      continue
     fi
+
     if [[ ${i} -eq ${retry_number} ]]; then
       echo "timeout wait for mco is ready."
       exit 1
     fi
+    sleep 10
   done
 }
 
@@ -207,32 +206,31 @@ wait_for_deployment_ready() {
   for ((i = 1; i <= retry_number; i++)); do
     if ! kubectl get ns ${ns} &>/dev/null; then
       echo "namespace ${ns} is not created, retry in 10s...."
-      sleep 10
-      continue
-    fi
-
-    if ! kubectl -n ${ns} get deploy ${@:4} &>/dev/null; then
+    elif ! kubectl -n ${ns} get deploy ${@:4} &>/dev/null; then
       echo "deployment ${@:4} are not created yet, retry in 10s...."
       echo "Current deployments and pods in ${ns}:"
       kubectl -n ${ns} get deploy,pod
-      sleep 10
-      continue
-    fi
-
-    if kubectl -n ${ns} wait --timeout=${timeout} --for=condition=Available deploy ${@:4} &>/dev/null; then
+    elif kubectl -n ${ns} wait --timeout=${timeout} --for=condition=Available deploy ${@:4} &>/dev/null; then
       echo "deployment ${@:4} have been started up and are running."
-      break
+      return 0
     else
       echo "timeout wait for deployment ${@:4} are ready, retry in 10s...."
       echo "Current deployments and pods in ${ns}:"
       kubectl -n ${ns} get deploy,pod
-      sleep 10
-      continue
     fi
+
     if [[ ${i} -eq ${retry_number} ]]; then
       echo "timeout wait for deployment ${@:4} are ready."
+      echo "Debugging information before exiting:"
+      echo "Namespaces:"
+      kubectl get ns
+      echo "Pods in ${OCM_DEFAULT_NS}:"
+      kubectl -n "${OCM_DEFAULT_NS}" get pod
+      echo "Pods in ${HUB_NS}:"
+      kubectl -n "${HUB_NS}" get pod
       exit 1
     fi
+    sleep 10
   done
 }
 
