@@ -43,7 +43,24 @@ deploy_hub_spoke_core() {
   export ADDON_MANAGER_IMAGE=quay.io/stolostron/addon-manager:$LATEST_MCE_SNAPSHOT
 
   if [[ ! -d "_repo_ocm" ]]; then
-    git clone --depth 1 --branch $OCM_BRANCH https://github.com/stolostron/ocm.git ./_repo_ocm
+    git clone --branch $OCM_BRANCH https://github.com/stolostron/ocm.git ./_repo_ocm
+    if [[ $LATEST_MCE_SNAPSHOT =~ ([0-9]{4}-[0-9]{2}-[0-9]{2}-[0-9]{2}-[0-9]{2}-[0-9]{2}) ]]; then
+      SNAPSHOT_DATE_STR="${BASH_REMATCH[1]}"
+      # Convert to YYYY-MM-DD HH:MM:SS format
+      SNAPSHOT_DATE=$(echo $SNAPSHOT_DATE_STR | sed 's/\(....\)-\(..\)-\(..\)-\(..\)-\(..\)-\(..\)/\1-\2-\3 \4:\5:\6/')
+      echo "Checking out OCM commit before snapshot date: $SNAPSHOT_DATE"
+
+      pushd ./_repo_ocm
+      # Find the last commit before the snapshot date
+      COMMIT_HASH=$(git log -n 1 --before="$SNAPSHOT_DATE" --format="%H")
+      if [[ -n "$COMMIT_HASH" ]]; then
+        echo "Switching to commit: $COMMIT_HASH"
+        git checkout $COMMIT_HASH
+      else
+        echo "Warning: Could not find a commit before $SNAPSHOT_DATE, using HEAD of $OCM_BRANCH"
+      fi
+      popd
+    fi
   fi
   ${SED_COMMAND} "s~clusterName: cluster1$~clusterName: ${MANAGED_CLUSTER}~g" ./_repo_ocm/deploy/klusterlet/config/samples/operator_open-cluster-management_klusterlets.cr.yaml
 
