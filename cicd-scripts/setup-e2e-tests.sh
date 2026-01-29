@@ -53,7 +53,7 @@ deploy_hub_spoke_core() {
       pushd ./_repo_ocm
       # Find the last commit before the snapshot date
       COMMIT_HASH=$(git log -n 1 --before="$SNAPSHOT_DATE" --format="%H")
-      if [[ -n "$COMMIT_HASH" ]]; then
+      if [[ -n $COMMIT_HASH ]]; then
         echo "Switching to commit: $COMMIT_HASH"
         git checkout $COMMIT_HASH
       else
