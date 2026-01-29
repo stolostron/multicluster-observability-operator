@@ -49,11 +49,6 @@ deploy_hub_spoke_core() {
 
   make deploy-hub deploy-spoke-operator apply-spoke-cr -C ./_repo_ocm
 
-  echo "Listing deployments and pods in ${OCM_DEFAULT_NS}:"
-  kubectl -n "${OCM_DEFAULT_NS}" get deploy,pod
-  echo "Listing deployments and pods in ${HUB_NS}":
-  kubectl -n "${HUB_NS}" get deploy,pod
-
   # wait until hub and spoke are ready
   wait_for_deployment_ready 10 60s "${OCM_DEFAULT_NS}" cluster-manager
   kubectl -n "${OCM_DEFAULT_NS}" rollout status deploy cluster-manager --timeout=120s
@@ -218,6 +213,8 @@ wait_for_deployment_ready() {
 
     if ! kubectl -n ${ns} get deploy ${@:4} &>/dev/null; then
       echo "deployment ${@:4} are not created yet, retry in 10s...."
+      echo "Current deployments and pods in ${ns}:"
+      kubectl -n ${ns} get deploy,pod
       sleep 10
       continue
     fi
@@ -227,6 +224,8 @@ wait_for_deployment_ready() {
       break
     else
       echo "timeout wait for deployment ${@:4} are ready, retry in 10s...."
+      echo "Current deployments and pods in ${ns}:"
+      kubectl -n ${ns} get deploy,pod
       sleep 10
       continue
     fi
