@@ -446,15 +446,16 @@ var _ = Describe("", func() {
 				promRuleAdded := false
 				for idx, mc := range testOptions.ManagedClusters {
 					if mc.Name == ks {
-						err = utils.ApplyRetryOnConflict(
-							testOptions.ManagedClusters[idx].ClusterServerURL,
-							testOptions.ManagedClusters[idx].KubeConfig,
-							testOptions.ManagedClusters[idx].KubeContext,
-							yamlB,
-						)
+						Eventually(func() error {
+							return utils.ApplyRetryOnConflict(
+								testOptions.ManagedClusters[idx].ClusterServerURL,
+								testOptions.ManagedClusters[idx].KubeConfig,
+								testOptions.ManagedClusters[idx].KubeContext,
+								yamlB,
+							)
+						}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*5).Should(Succeed())
 						promRuleAdded = true
 						expectClusterIdentifiers = append(expectClusterIdentifiers, ks)
-						Expect(err).NotTo(HaveOccurred())
 					}
 				}
 				// If we couldn't find the credentials for the cluster and therefore
@@ -580,7 +581,7 @@ var _ = Describe("", func() {
 			alertGetReq.Header.Set("Authorization", "Bearer "+BearerToken)
 		}
 
-		expectedKSClusterNames, err := utils.GetManagedClusters(testOptions)
+		expectedKSClusterNames, err := utils.ListAvailableKSManagedClusterNames(testOptions)
 		Expect(err).NotTo(HaveOccurred())
 
 		watchDogRuleKustomizationPath := "../../../examples/alerts/watchdog_rule"
@@ -588,14 +589,15 @@ var _ = Describe("", func() {
 		Expect(err).NotTo(HaveOccurred())
 		for _, ks := range expectedKSClusterNames {
 			for idx, mc := range testOptions.ManagedClusters {
-				if mc.Name == ks.Name {
-					err = utils.ApplyRetryOnConflict(
-						testOptions.ManagedClusters[idx].ClusterServerURL,
-						testOptions.ManagedClusters[idx].KubeConfig,
-						testOptions.ManagedClusters[idx].KubeContext,
-						yamlB,
-					)
-					Expect(err).NotTo(HaveOccurred())
+				if mc.Name == ks {
+					Eventually(func() error {
+						return utils.ApplyRetryOnConflict(
+							testOptions.ManagedClusters[idx].ClusterServerURL,
+							testOptions.ManagedClusters[idx].KubeConfig,
+							testOptions.ManagedClusters[idx].KubeContext,
+							yamlB,
+						)
+					}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*5).Should(Succeed())
 				}
 			}
 		}
