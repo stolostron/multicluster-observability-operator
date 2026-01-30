@@ -252,7 +252,7 @@ func getAmAccessorToken(ctx context.Context, client client.Client, ns string) (s
 	return string(amAccessorToken), nil
 }
 
-func cleanUpOldAMSecrets(ctx context.Context, client client.Client, targetNamespace string, hubInfo *operatorconfig.HubInfo, uwlNsExists bool) error {
+func cleanUpOldAMSecrets(ctx context.Context, client client.Client, targetNamespace string, hubInfo *operatorconfig.HubInfo, uwlNsExists bool, installProm bool) error {
 	var errs []string
 	clusterDomain := ""
 	if hubInfo != nil && hubInfo.ObservatoriumAPIEndpoint != "" {
@@ -277,8 +277,12 @@ func cleanUpOldAMSecrets(ctx context.Context, client client.Client, targetNamesp
 		}
 	}
 
-	deleteSecret(hubAmAccessorSecretName, targetNamespace)
-	deleteSecret(hubAmRouterCASecretName, targetNamespace)
+	if !installProm {
+		// we do not cleanup in *KS scenario as those secrets reside in the addon namespace and not openshift-monitoring
+		// and are referenced for creating AM accessor token secret
+		deleteSecret(hubAmAccessorSecretName, targetNamespace)
+		deleteSecret(hubAmRouterCASecretName, targetNamespace)
+	}
 	if clusterDomain != "" {
 		deleteSecret(hubAmAccessorSecretName+"-"+clusterDomain, targetNamespace)
 		deleteSecret(hubAmRouterCASecretName+"-"+clusterDomain, targetNamespace)
@@ -390,6 +394,21 @@ func createOrUpdateClusterMonitoringConfig(
 		targetNamespace = namespace
 	}
 
+	// Determine if user-workload-monitoring namespace exists
+	// Check namespace existence regardless of current UWL enabled state to ensure proper cleanup
+	nsExists := false
+	if !installProm {
+		// nsExists is true if namespace exists, regardless of current UWL enabled state
+		nsExists = namespaceExists(ctx, client, operatorconfig.OCPUserWorkloadMonitoringNamespace)
+	}
+
+	if !AMSecretCleanupDone {
+		// ACM-27841 - this is to clean up old alertmanager secrets created using cluster domain for Global Hu
+		if err := cleanUpOldAMSecrets(ctx, client, targetNamespace, hubInfo, nsExists, installProm); err != nil {
+			return false, fmt.Errorf("failed to clean up old alertmanager secrets: %w", err)
+		}
+	}
+
 	// create the hub-alertmanager-router-ca secret if it doesn't exist or update it if needed
 	if err := createHubAmRouterCASecret(ctx, hubInfo, client, targetNamespace); err != nil {
 		return false, fmt.Errorf("failed to create or update the hub-alertmanager-router-ca secret: %w", err)
@@ -398,14 +417,6 @@ func createOrUpdateClusterMonitoringConfig(
 	// create the observability-alertmanager-accessor secret if it doesn't exist or update it if needed
 	if err := createHubAmAccessorTokenSecret(ctx, client, namespace, targetNamespace, hubInfo); err != nil {
 		return false, fmt.Errorf("failed to create or update the alertmanager accessor token secret: %w", err)
-	}
-
-	// Determine if user-workload-monitoring namespace exists
-	// Check namespace existence regardless of current UWL enabled state to ensure proper cleanup
-	nsExists := false
-	if !installProm {
-		// nsExists is true if namespace exists, regardless of current UWL enabled state
-		nsExists = namespaceExists(ctx, client, operatorconfig.OCPUserWorkloadMonitoringNamespace)
 	}
 
 	// Create secrets for user workload monitoring if namespace exists
@@ -417,13 +428,6 @@ func createOrUpdateClusterMonitoringConfig(
 		}
 		if err := createHubAmAccessorTokenSecret(ctx, client, namespace, operatorconfig.OCPUserWorkloadMonitoringNamespace, hubInfo); err != nil {
 			return false, fmt.Errorf("failed to create or update alertmanager accessor token in UWM namespace: %w", err)
-		}
-	}
-
-	if !AMSecretCleanupDone {
-		// ACM-27841 - this is to clean up old alertmanager secrets created using cluster domain for Global Hub
-		if err := cleanUpOldAMSecrets(ctx, client, targetNamespace, hubInfo, nsExists); err != nil {
-			return false, fmt.Errorf("failed to clean up old alertmanager secrets: %w", err)
 		}
 	}
 

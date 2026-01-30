@@ -220,11 +220,11 @@ data:
       - up
 
     matches:
-      - __name__="workqueue_queue_duration_seconds_bucket",job="apiserver"
-      - __name__="workqueue_adds_total",job="apiserver"
-      - __name__="workqueue_depth",job="apiserver"
-      - __name__="go_goroutines",job="apiserver"
-      - __name__="process_cpu_seconds_total",job="apiserver"
+      - __name__="workqueue_queue_duration_seconds_bucket",service="kubernetes"
+      - __name__="workqueue_adds_total",service="kubernetes"
+      - __name__="workqueue_depth",service="kubernetes"
+      - __name__="go_goroutines",service="kubernetes"
+      - __name__="process_cpu_seconds_total",service="kubernetes"
       - __name__="process_resident_memory_bytes",job=~"apiserver|etcd"
       - __name__="container_memory_cache",container!=""
       - __name__="container_memory_rss",container!=""
@@ -237,13 +237,13 @@ data:
       etcd_mvcc_db_total_size_in_bytes: etcd_debugging_mvcc_db_total_size_in_bytes
     recording_rules:
       - record: apiserver_request_duration_seconds:histogram_quantile_99
-        expr: histogram_quantile(0.99,sum(rate(apiserver_request_duration_seconds_bucket{job=\"apiserver\", verb!=\"WATCH\"}[5m])) by (le))
+        expr: histogram_quantile(0.99,sum(rate(apiserver_request_duration_seconds_bucket{component=\"apiserver\", verb!=\"WATCH\"}[5m])) by (le))
       - record: apiserver_request_duration_seconds:histogram_quantile_99:instance
-        expr: histogram_quantile(0.99, sum(rate(apiserver_request_duration_seconds_bucket{job=\"apiserver\", verb!=\"WATCH\"}[5m])) by (le, verb, instance))
+        expr: histogram_quantile(0.99, sum(rate(apiserver_request_duration_seconds_bucket{component=\"apiserver\", verb!=\"WATCH\"}[5m])) by (le, verb, instance))
       - record: sum:apiserver_request_total:1h
-        expr: sum(rate(apiserver_request_total{job=\"apiserver\"}[1h])) by(code, instance)
+        expr: sum(rate(apiserver_request_total{component=\"apiserver\",service=\"kubernetes\"}[1h])) by(code, instance)
       - record: sum:apiserver_request_total:5m
-        expr: sum(rate(apiserver_request_total{job=\"apiserver\"}[5m])) by(code, instance)
+        expr: sum(rate(apiserver_request_total{component=\"apiserver\",service=\"kubernetes\"}[5m])) by(code, instance)
       - record: rpc_rate:grpc_server_handled_total:sum_rate
         expr: sum(rate(grpc_server_handled_total{job=\"etcd\",grpc_type=\"unary\",grpc_code!=\"OK\"}[5m]))
       - record: active_streams_watch:grpc_server_handled_total:sum
@@ -255,7 +255,7 @@ data:
       - record: cluster:kube_pod_container_resource_requests:memory:sum
         expr: sum(sum(sum(kube_pod_container_resource_requests{resource=\"memory\"}) by (pod,namespace,container) * on(pod,namespace) group_left(phase) max(kube_pod_status_phase{phase=~\"Running|Pending|Unknown\"} >0) by (pod,namespace,phase)) by (pod,namespace,phase))
       - record: sli:apiserver_request_duration_seconds:trend:1m
-        expr: sum(increase(apiserver_request_duration_seconds_bucket{job=\"apiserver\",service=\"kubernetes\",le=\"1\",verb=~\"POST|PUT|DELETE|PATCH\"}[1m])) / sum(increase(apiserver_request_duration_seconds_count{job=\"apiserver\",service=\"kubernetes\",verb=~\"POST|PUT|DELETE|PATCH\"}[1m]))
+        expr: sum(increase(apiserver_request_duration_seconds_bucket{component=\"apiserver\",service=\"kubernetes\",le=~\"1|1.0\",verb=~\"POST|PUT|DELETE|PATCH\"}[1m])) / sum(increase(apiserver_request_duration_seconds_count{component=\"apiserver\",service=\"kubernetes\",verb=~\"POST|PUT|DELETE|PATCH\"}[1m]))
       - record: container_memory_rss:sum
         expr: sum(container_memory_rss) by (container, namespace)
       - record: kube_pod_container_resource_limits:sum
@@ -346,21 +346,21 @@ data:
       - __name__="process_resident_memory_bytes",job=~"apiserver|etcd"
       - __name__="grpc_server_started_total",job="etcd"
       - __name__="grpc_server_handled_total",job="etcd"
-      - __name__="go_goroutines",job="apiserver"
-      - __name__="process_cpu_seconds_total",job="apiserver"
-      - __name__="workqueue_adds_total",job="apiserver"
-      - __name__="workqueue_depth",job="apiserver"
-      - __name__="workqueue_queue_duration_seconds_bucket",job="apiserver"
+      - __name__="go_goroutines",service="kubernetes"
+      - __name__="process_cpu_seconds_total",service="kubernetes"
+      - __name__="workqueue_adds_total",service="kubernetes"
+      - __name__="workqueue_depth",service="kubernetes"
+      - __name__="workqueue_queue_duration_seconds_bucket",service="kubernetes"
     renames:
       etcd_mvcc_db_total_size_in_bytes: etcd_debugging_mvcc_db_total_size_in_bytes
     rules: []
     recording_rules:
       - record: apiserver_request_duration_seconds:histogram_quantile_99
-        expr: histogram_quantile(0.99,sum(rate(apiserver_request_duration_seconds_bucket{job=\"apiserver\", verb!=\"WATCH\", _id!=\"\"}[5m])) by (le, _id))
+        expr: histogram_quantile(0.99,sum(rate(apiserver_request_duration_seconds_bucket{component=\"apiserver\", verb!=\"WATCH\", _id!=\"\"}[5m])) by (le, _id))
       - record: sum:apiserver_request_total:1h
-        expr: sum(rate(apiserver_request_total{job=\"apiserver\", _id!=\"\"}[1h])) by(code, instance, _id)
+        expr: sum(rate(apiserver_request_total{component=\"apiserver\",service=\"kubernetes\", _id!=\"\"}[1h])) by(code, instance, _id)
       - record: sum:apiserver_request_total:5m
-        expr: sum(rate(apiserver_request_total{job=\"apiserver\"}[5m])) by(code, instance)
+        expr: sum(rate(apiserver_request_total{component=\"apiserver\",service=\"kubernetes\"}[5m])) by(code, instance)
       - record: rpc_rate:grpc_server_handled_total:sum_rate
         expr: sum(rate(grpc_server_handled_total{job=\"etcd\",grpc_type=\"unary\",grpc_code!=\"OK\"}[5m]))
       - record: active_streams_watch:grpc_server_handled_total:sum
