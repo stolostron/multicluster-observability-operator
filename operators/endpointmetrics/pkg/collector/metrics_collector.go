@@ -453,6 +453,9 @@ func (m *MetricsCollector) ensureAlertingRule(ctx context.Context, isUWL bool) e
 		replace = "acm_uwl_metrics_collector_"
 	}
 
+	federationAlert := "ACM" + alert + "FederationError"
+	remoteWriteAlert := "ACM" + alert + "ForwardRemoteWriteError"
+
 	name := fmt.Sprintf("acm-%s-alerting-rules", baseName)
 	forDuration := monitoringv1.Duration("10m")
 	desiredPromRule := &monitoringv1.PrometheusRule{
@@ -466,10 +469,11 @@ func (m *MetricsCollector) ensureAlertingRule(ctx context.Context, isUWL bool) e
 					Name: baseName + "-rules",
 					Rules: []monitoringv1.Rule{
 						{
-							Alert: "ACM" + alert + "FederationError",
+							Alert: federationAlert,
 							Annotations: map[string]string{
 								"summary":     "Error federating from in-cluster Prometheus.",
 								"description": "There are errors when federating from platform Prometheus",
+								"runbook_url": "https://github.com/openshift/runbooks/blob/master/alerts/advanced-cluster-management-operator/" + federationAlert + ".md",
 							},
 							Expr: intstr.FromString(`(sum(rate(` + replace + `federate_requests_total{status_code!~"2.*"}[10m]))) / (sum(rate(` + replace + `federate_requests_total[10m]))) > .2`),
 							For:  &forDuration,
@@ -478,10 +482,11 @@ func (m *MetricsCollector) ensureAlertingRule(ctx context.Context, isUWL bool) e
 							},
 						},
 						{
-							Alert: "ACM" + alert + "ForwardRemoteWriteError",
+							Alert: remoteWriteAlert,
 							Annotations: map[string]string{
 								"summary":     "Error forwarding to Hub Thanos.",
 								"description": "There are errors when remote writing to Hub hub Thanos",
+								"runbook_url": "https://github.com/openshift/runbooks/blob/master/alerts/advanced-cluster-management-operator/" + remoteWriteAlert + ".md",
 							},
 							Expr: intstr.FromString(
 								`(sum(rate(` + replace + `forward_write_requests_total{status_code!~"2.*"}[10m]))) / (sum(rate(` + replace + `forward_write_requests_total[10m]))) > .2`,
