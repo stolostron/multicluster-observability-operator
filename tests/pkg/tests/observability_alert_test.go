@@ -460,19 +460,25 @@ var _ = Describe("", func() {
 				return err
 			}
 
-			postableAlerts := models.PostableAlerts{}
-			err = json.Unmarshal(alertResult, &postableAlerts)
-			if err != nil {
-				return err
-			}
-
-			clusterIDsInAlerts := []string{}
-			for _, alt := range postableAlerts {
-				if alt.Labels != nil {
-					labelSets := map[string]string(alt.Labels)
-					clusterID := labelSets["managed_cluster"]
-					if clusterID != "" {
-						clusterIDsInAlerts = append(clusterIDsInAlerts, clusterID)
+			// install watchdog PrometheusRule to *KS clusters
+			watchDogRuleKustomizationPath := "../../../examples/alerts/watchdog_rule"
+			yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: watchDogRuleKustomizationPath})
+			Expect(err).NotTo(HaveOccurred())
+			klog.Infof("List of cluster IDs to install the watchdog alert: %s", expectedKSClusterNames)
+			for _, ks := range expectedKSClusterNames {
+				promRuleAdded := false
+				for idx, mc := range testOptions.ManagedClusters {
+					if mc.Name == ks {
+						Eventually(func() error {
+							return utils.ApplyRetryOnConflict(
+								testOptions.ManagedClusters[idx].ClusterServerURL,
+								testOptions.ManagedClusters[idx].KubeConfig,
+								testOptions.ManagedClusters[idx].KubeContext,
+								yamlB,
+							)
+						}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*5).Should(Succeed())
+						promRuleAdded = true
+						expectClusterIdentifiers = append(expectClusterIdentifiers, ks)
 					}
 				}
 			}
@@ -548,7 +554,7 @@ var _ = Describe("", func() {
 			alertGetReq.Header.Set("Authorization", "Bearer "+BearerToken)
 		}
 
-		expectedKSClusterNames, err := utils.GetManagedClusters(testOptions)
+		expectedKSClusterNames, err := utils.ListAvailableKSManagedClusterNames(testOptions)
 		Expect(err).NotTo(HaveOccurred())
 
 		watchDogRuleKustomizationPath := "../../../examples/alerts/watchdog_rule"
@@ -556,14 +562,15 @@ var _ = Describe("", func() {
 		Expect(err).NotTo(HaveOccurred())
 		for _, ks := range expectedKSClusterNames {
 			for idx, mc := range testOptions.ManagedClusters {
-				if mc.Name == ks.Name {
-					err = utils.ApplyRetryOnConflict(
-						testOptions.ManagedClusters[idx].ClusterServerURL,
-						testOptions.ManagedClusters[idx].KubeConfig,
-						testOptions.ManagedClusters[idx].KubeContext,
-						yamlB,
-					)
-					Expect(err).NotTo(HaveOccurred())
+				if mc.Name == ks {
+					Eventually(func() error {
+						return utils.ApplyRetryOnConflict(
+							testOptions.ManagedClusters[idx].ClusterServerURL,
+							testOptions.ManagedClusters[idx].KubeConfig,
+							testOptions.ManagedClusters[idx].KubeContext,
+							yamlB,
+						)
+					}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*5).Should(Succeed())
 				}
 			}
 		}

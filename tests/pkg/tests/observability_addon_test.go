@@ -132,33 +132,48 @@ var _ = Describe("", func() {
 		Expect(err).NotTo(HaveOccurred())
 	})
 
-	It("RHACM4K-1235: Observability: Verify metrics data global setting on the managed cluster - Should not set interval to values beyond scope [P3][Sev3][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release @pre-upgrade (addon/g0)", func() {
-		By("Set interval to 14")
-		Eventually(func() bool {
-			err := utils.ModifyMCOAddonSpecInterval(testOptions, int64(14))
-			if strings.Contains(err.Error(), "Invalid value") &&
-				strings.Contains(err.Error(), "15") {
-				return true
-			}
-			klog.V(1).Infof("error message: <%s>\n", err.Error())
-			return false
-		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*1).Should(BeTrue())
+	It(
+		"RHACM4K-1235: Observability: Verify metrics data global setting on the managed cluster - Should not set interval to values beyond scope [P3][Sev3][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release @pre-upgrade (addon/g0)",
+		func() {
+			By("Set interval to 14")
+			Eventually(func() bool {
+				err := utils.ModifyMCOAddonSpecInterval(testOptions, int64(14))
+				if strings.Contains(err.Error(), "Invalid value") &&
+					strings.Contains(err.Error(), "15") {
+					return true
+				}
+				klog.V(1).Infof("error message: <%s>\n", err.Error())
+				return false
+			}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*1).Should(BeTrue())
 
-		By("Set interval to 3601")
-		Eventually(func() bool {
-			err := utils.ModifyMCOAddonSpecInterval(testOptions, int64(3601))
-			if strings.Contains(err.Error(), "Invalid value") &&
-				strings.Contains(err.Error(), "3600") {
-				return true
-			}
-			klog.V(1).Infof("error message: <%s>\n", err.Error())
-			return false
-		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*1).Should(BeTrue())
-	})
+			By("Set interval to 3601")
+			Eventually(func() bool {
+				err := utils.ModifyMCOAddonSpecInterval(testOptions, int64(3601))
+				if strings.Contains(err.Error(), "Invalid value") &&
+					strings.Contains(err.Error(), "3600") {
+					return true
+				}
+				klog.V(1).Infof("error message: <%s>\n", err.Error())
+				return false
+			}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*1).Should(BeTrue())
+		},
+	)
 
-	It("RHACM4K-1259: Observability: Verify imported cluster is observed [P3][Sev3][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore (deploy/g1)", func() {
-		klog.V(1).Infof("managedcluster number is <%d>", len(testOptions.ManagedClusters))
-		if len(testOptions.ManagedClusters) >= 1 {
+	It(
+		"RHACM4K-1259: Observability: Verify imported cluster is observed [P3][Sev3][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore (deploy/g1)",
+		func() {
+			klog.V(1).Infof("managedcluster number is <%d>", len(testOptions.ManagedClusters))
+
+			clusters, err := utils.ListManagedClusters(testOptions)
+			if err != nil {
+				klog.Errorf("Failed to list managed clusters: %v", err)
+				Skip("Skipping test: no available managed clusters found")
+			}
+
+			if len(clusters) < 2 {
+				Skip("Skipping test: no managed cluster beyond the hub found")
+			}
+
 			By("Waiting for ObservabilityAddon to be enabled and ready")
 			Eventually(func() error {
 				return utils.CheckAllOBAsEnabled(testOptions)
@@ -166,31 +181,55 @@ var _ = Describe("", func() {
 
 			By("Waiting for MCO addon components to be running")
 			Eventually(func() bool {
-				err, podList := utils.GetPodList(
-					testOptions,
-					false,
-					MCO_ADDON_NAMESPACE,
-					"component=metrics-collector",
-				)
+				// Re-list clusters inside Eventually in case the status changes
+				currentClusters, err := utils.ListManagedClusters(testOptions)
 				if err != nil {
-					klog.V(1).Infof("Failed to get pod list: %v", err)
+					klog.V(1).Infof("Failed to get managed clusters: %v", err)
 					return false
 				}
-				if len(podList.Items) < 1 {
-					klog.V(1).Infof("No metrics-collector pods found yet")
-					return false
-				}
-				// Verify all pods are in Running state
-				for _, pod := range podList.Items {
-					if pod.Status.Phase != "Running" {
-						klog.V(1).Infof("Pod %s is not running yet: %s", pod.Name, pod.Status.Phase)
+
+				for _, clusterInfo := range currentClusters {
+					if clusterInfo.IsLocalCluster {
+						continue
+					}
+
+					var clusterObj *utils.Cluster
+					for _, c := range testOptions.ManagedClusters {
+						if c.Name == clusterInfo.Name {
+							clusterObj = &c
+							break
+						}
+					}
+
+					if clusterObj == nil {
+						klog.V(1).Infof("Cluster %s not found in testOptions", clusterInfo.Name)
+						continue
+					}
+
+					client := utils.GetKubeClientWithCluster(*clusterObj)
+					podList, err := client.CoreV1().Pods(MCO_ADDON_NAMESPACE).List(context.TODO(), metav1.ListOptions{
+						LabelSelector: "component=metrics-collector",
+					})
+					if err != nil {
+						klog.V(1).Infof("Failed to get pod list for cluster %s: %v", clusterInfo.Name, err)
 						return false
+					}
+					if len(podList.Items) < 1 {
+						klog.V(1).Infof("No metrics-collector pods found yet for cluster %s", clusterInfo.Name)
+						return false
+					}
+					// Verify all pods are in Running state
+					for _, pod := range podList.Items {
+						if pod.Status.Phase != "Running" {
+							klog.V(1).Infof("Pod %s on cluster %s is not running yet: %s", pod.Name, clusterInfo.Name, pod.Status.Phase)
+							return false
+						}
 					}
 				}
 				return true
 			}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(BeTrue())
-		}
-	})
+		},
+	)
 
 	// This test is flaky because when the label is added to the managed cluster, the placement controller reconcile is triggered but
 	// the managed cluster still appears on this first reconcile. Then if we're lucky, or not, the addon is effectively removed from the managed cluster.
