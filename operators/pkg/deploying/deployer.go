@@ -225,7 +225,7 @@ func (d *Deployer) updateCRD(ctx context.Context, desiredObj, runtimeObj *unstru
 		logUpdateInfo(runtimeObj)
 		if mcoconfig.GetMCOASupportedCRDVersion(desiredCRD.Name) != "" {
 			log.V(1).Info("Applying MCOA CRD with SSA", "name", desiredCRD.Name)
-			err := d.client.Patch(ctx, desiredObj, client.Apply, client.ForceOwnership, client.FieldOwner(mcoconfig.GetMonitoringCRName()))
+			err := d.client.Patch(ctx, desiredObj, client.Apply, client.FieldOwner(mcoconfig.GetMonitoringCRName()))
 			if err != nil {
 				if errors.IsConflict(err) {
 					log.V(1).Info("Conflict applying MCOA CRD, likely managed by another operator, skipping update", "name", desiredCRD.Name, "error", err.Error())
