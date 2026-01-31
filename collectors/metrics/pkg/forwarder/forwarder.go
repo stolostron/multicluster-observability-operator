@@ -45,7 +45,7 @@ type Config struct {
 	// StatusClient is a kube client used to report status to the hub.
 	StatusClient client.Client
 	Logger       log.Logger
-	Metrics      *workerMetrics
+	Metrics      *WorkerMetrics
 
 	// FromClientConfig is the config for the client used in sending /federate requests to Prometheus.
 	FromClientConfig FromClientConfig
@@ -103,9 +103,10 @@ type ToClientConfig struct {
 // CreateFromClient creates a new metrics client for the from URL.
 // Needs to be exported here so that it can be used in collectrule evaluator.
 func (cfg Config) CreateFromClient(
-	metrics *workerMetrics,
+	ctx context.Context,
+	metrics *WorkerMetrics,
 	interval time.Duration,
-	name string,
+	_ string,
 	logger log.Logger,
 ) (*metricsclient.Client, error) {
 	fromTransport := metricsclient.DefaultTransport(logger)
@@ -151,7 +152,7 @@ func (cfg Config) CreateFromClient(
 	}
 
 	if len(cfg.FromClientConfig.TokenFile) > 0 {
-		tf, err := NewTokenFile(context.Background(), logger, cfg.FromClientConfig.TokenFile, 2*time.Minute)
+		tf, err := NewTokenFile(ctx, logger, cfg.FromClientConfig.TokenFile, 2*time.Minute)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create tokenFile: %w", err)
 		}
@@ -168,7 +169,8 @@ func (cfg Config) CreateFromClient(
 // Uses config for CA, Cert, Key for configuring mTLS transport.
 // Skips if nothing is provided.
 func (cfg Config) CreateToClient(
-	metrics *workerMetrics,
+	_ context.Context,
+	metrics *WorkerMetrics,
 	interval time.Duration,
 	name string,
 	logger log.Logger,
@@ -240,7 +242,7 @@ type Worker struct {
 	status          status.Reporter
 	reconfigure     chan struct{}
 	lock            sync.Mutex
-	metrics         *workerMetrics
+	metrics         *WorkerMetrics
 	forwardFailures int
 
 	fromClient *metricsclient.Client
@@ -259,15 +261,15 @@ type Worker struct {
 	lastMetrics []*clientmodel.MetricFamily
 }
 
-type workerMetrics struct {
+type WorkerMetrics struct {
 	gaugeFederateSamples         prometheus.Gauge
 	gaugeFederateFilteredSamples prometheus.Gauge
 
 	clientMetrics *metricsclient.ClientMetrics
 }
 
-func NewWorkerMetrics(reg *prometheus.Registry) *workerMetrics {
-	return &workerMetrics{
+func NewWorkerMetrics(reg *prometheus.Registry) *WorkerMetrics {
+	return &WorkerMetrics{
 		gaugeFederateSamples: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
 			Name: "federate_samples",
 			Help: "Tracks the number of samples per federation",
@@ -292,7 +294,7 @@ func NewWorkerMetrics(reg *prometheus.Registry) *workerMetrics {
 }
 
 // New creates a new Worker based on the provided Config.
-func New(cfg Config) (*Worker, error) {
+func New(ctx context.Context, cfg Config) (*Worker, error) {
 	if cfg.FromClientConfig.URL == nil {
 		return nil, errors.New("a URL from which to scrape is required")
 	}
@@ -315,12 +317,12 @@ func New(cfg Config) (*Worker, error) {
 		w.interval = 4*time.Minute + 30*time.Second
 	}
 
-	fromClient, err := cfg.CreateFromClient(w.metrics, w.interval, "federate_from", logger)
+	fromClient, err := cfg.CreateFromClient(ctx, w.metrics, w.interval, "federate_from", logger)
 	if err != nil {
 		return nil, err
 	}
 
-	toClient, err := cfg.CreateToClient(w.metrics, w.interval, "federate_to", logger)
+	toClient, err := cfg.CreateToClient(ctx, w.metrics, w.interval, "federate_to", logger)
 	if err != nil {
 		return nil, err
 	}
@@ -369,8 +371,8 @@ func New(cfg Config) (*Worker, error) {
 // Keeping this method for now, but it is effectively unused.
 // Reconfigure temporarily stops a worker and reconfigures is with the provided Condfig.
 // Is thread safe and can run concurrently with `LastMetrics` and `Run`.
-func (w *Worker) Reconfigure(cfg Config) error {
-	worker, err := New(cfg)
+func (w *Worker) Reconfigure(ctx context.Context, cfg Config) error {
+	worker, err := New(ctx, cfg)
 	if err != nil {
 		return fmt.Errorf("failed to reconfigure: %w", err)
 	}
@@ -436,7 +438,7 @@ func (w *Worker) forward(ctx context.Context) error {
 
 	updateStatus := func(reason statuslib.Reason, message string) {
 		if reason == statuslib.ForwardFailed {
-			w.forwardFailures += 1
+			w.forwardFailures++
 			if w.forwardFailures < 3 {
 				return
 			}
@@ -470,9 +472,8 @@ func (w *Worker) forward(ctx context.Context) error {
 		if err != nil && len(rfamilies) == 0 {
 			updateStatus(statuslib.ForwardFailed, "Failed to retrieve recording metrics")
 			return err
-		} else {
-			families = append(families, rfamilies...)
 		}
+		families = append(families, rfamilies...)
 	}
 
 	before := metricfamily.MetricsCount(families)
@@ -582,9 +583,8 @@ func (w *Worker) getRecordingMetrics(ctx context.Context) ([]*clientmodel.Metric
 			rlogger.Log(w.logger, rlogger.Warn, "msg", "Failed to retrieve recording metrics", "err", err, "url", from)
 			e = err
 			continue
-		} else {
-			families = append(families, rfamilies...)
 		}
+		families = append(families, rfamilies...)
 	}
 
 	return families, e

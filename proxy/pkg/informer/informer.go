@@ -249,12 +249,12 @@ func (i *ManagedClusterInformer) getManagedClusterEventHandler() cache.ResourceE
 // getAllowlistConfigMapEventHandler creates the event handler for the allowlist ConfigMap informer.
 func (i *ManagedClusterInformer) getAllowlistConfigMapEventHandler() cache.ResourceEventHandlerFuncs {
 	return cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj any) {
+		AddFunc: func(_ any) {
 			klog.V(1).Infof("Observed addition of ConfigMap: %s", proxyconfig.ManagedClusterLabelAllowListConfigMapName)
 			i.syncAllowListCh <- struct{}{}
 		},
 
-		DeleteFunc: func(obj any) {
+		DeleteFunc: func(_ any) {
 			klog.Warningf("ConfigMap %s was deleted, recreating it", proxyconfig.ManagedClusterLabelAllowListConfigMapName)
 			if err := i.ensureAllowlistConfigMapExists(); err != nil {
 				klog.Errorf("Failed to recreate deleted ConfigMap %s: %v", proxyconfig.ManagedClusterLabelAllowListConfigMapName, err)

@@ -22,7 +22,7 @@ import (
 var storageVersionMigrationPrefix = "storage-version-migration"
 
 // createOrUpdateObservabilityStorageVersionMigrationResource create or update the StorageVersionMigration resource
-func createOrUpdateObservabilityStorageVersionMigrationResource(client client.Client, scheme *runtime.Scheme,
+func createOrUpdateObservabilityStorageVersionMigrationResource(ctx context.Context, client client.Client, scheme *runtime.Scheme,
 	mco *mcov1beta2.MultiClusterObservability,
 ) error {
 	storageVersionMigrationName := storageVersionMigrationPrefix
@@ -47,10 +47,10 @@ func createOrUpdateObservabilityStorageVersionMigrationResource(client client.Cl
 	}
 
 	found := &migrationv1alpha1.StorageVersionMigration{}
-	err := client.Get(context.TODO(), types.NamespacedName{Name: storageVersionMigrationName}, found)
+	err := client.Get(ctx, types.NamespacedName{Name: storageVersionMigrationName}, found)
 	if err != nil && errors.IsNotFound(err) {
 		log.Info("Creating StorageVersionMigration", "name", storageVersionMigrationName)
-		err = client.Create(context.TODO(), storageVersionMigration)
+		err = client.Create(ctx, storageVersionMigration)
 		if err != nil {
 			log.Error(err, "Failed to create StorageVersionMigration", "name", storageVersionMigrationName)
 			return err
@@ -64,7 +64,7 @@ func createOrUpdateObservabilityStorageVersionMigrationResource(client client.Cl
 	if !reflect.DeepEqual(found.Spec, storageVersionMigration.Spec) {
 		log.Info("Updating StorageVersionMigration", "name", storageVersionMigrationName)
 		storageVersionMigration.ResourceVersion = found.ResourceVersion
-		err = client.Update(context.TODO(), storageVersionMigration)
+		err = client.Update(ctx, storageVersionMigration)
 		if err != nil {
 			log.Error(err, "Failed to update StorageVersionMigration", "name", storageVersionMigrationName)
 			return err

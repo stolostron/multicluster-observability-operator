@@ -16,7 +16,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func GetAllowList(client client.Client, name, namespace string) (*operatorconfig.MetricsAllowlist,
+func GetAllowList(ctx context.Context, client client.Client, name, namespace string) (*operatorconfig.MetricsAllowlist,
 	*operatorconfig.MetricsAllowlist, error,
 ) {
 	found := &corev1.ConfigMap{}
@@ -24,7 +24,7 @@ func GetAllowList(client client.Client, name, namespace string) (*operatorconfig
 		Name:      name,
 		Namespace: namespace,
 	}
-	err := client.Get(context.TODO(), namespacedName, found)
+	err := client.Get(ctx, namespacedName, found)
 	if err != nil {
 		return nil, nil, err
 	}

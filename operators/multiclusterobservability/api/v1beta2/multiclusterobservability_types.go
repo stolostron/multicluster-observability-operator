@@ -415,17 +415,20 @@ type CommonSpec struct {
 
 // AlertmanagerSpec defines the spec for the Alertmanager component.
 type AlertmanagerSpec struct {
+	// +optional
+	CommonSpec `json:",inline"`
+
 	// Secrets is a list of Secrets in the same namespace as the MCO object.
 	// Each of these Secrets shall be mounted into the Alertmanager Pods.
 	// Secrets are added to the StatefulSet as a volume named secret-<secret-name>.
 	// Secrets are mounted into /etc/alertmanager/secrets/<secret-name> in the 'alertmanager' container.
 	Secrets []string `json:"secrets,omitempty"`
-	// +optional
-	CommonSpec `json:",inline"`
 }
 
 // Thanos Query Spec.
 type QuerySpec struct {
+	CommonSpec `json:",inline"`
+
 	// Annotations is an unstructured key value map stored with a service account
 	// +optional
 	ServiceAccountAnnotations map[string]string `json:"serviceAccountAnnotations,omitempty"`
@@ -438,12 +441,12 @@ type QuerySpec struct {
 	// lead to an unrecoverable state, data loss, or both, which is not covered by Red Hat Support.
 	// +optional
 	Containers []corev1.Container `json:"containers,omitempty"`
-
-	CommonSpec `json:",inline"`
 }
 
 // Thanos Receive Spec.
 type ReceiveSpec struct {
+	CommonSpec `json:",inline"`
+
 	// Annotations is an unstructured key value map stored with a service account
 	// +optional
 	ServiceAccountAnnotations map[string]string `json:"serviceAccountAnnotations,omitempty"`
@@ -452,17 +455,15 @@ type ReceiveSpec struct {
 	// lead to an unrecoverable state, data loss, or both, which is not covered by Red Hat Support.
 	// +optional
 	Containers []corev1.Container `json:"containers,omitempty"`
-
-	CommonSpec `json:",inline"`
 }
 
 // Thanos Store Spec.
 type StoreSpec struct {
+	CommonSpec `json:",inline"`
+
 	// Annotations is an unstructured key value map stored with a service account
 	// +optional
 	ServiceAccountAnnotations map[string]string `json:"serviceAccountAnnotations,omitempty"`
-
-	CommonSpec `json:",inline"`
 
 	// WARNING: Use only with guidance from Red Hat Support. Using this feature incorrectly can
 	// lead to an unrecoverable state, data loss, or both, which is not covered by Red Hat Support.
@@ -472,6 +473,8 @@ type StoreSpec struct {
 
 // Thanos Rule Spec.
 type RuleSpec struct {
+	CommonSpec `json:",inline"`
+
 	// Evaluation interval
 	// +optional
 	EvalInterval string `json:"evalInterval,omitempty"`
@@ -484,8 +487,6 @@ type RuleSpec struct {
 	// lead to an unrecoverable state, data loss, or both, which is not covered by Red Hat Support.
 	// +optional
 	Containers []corev1.Container `json:"containers,omitempty"`
-
-	CommonSpec `json:",inline"`
 }
 
 // Thanos Compact Spec.
@@ -505,6 +506,8 @@ type CompactSpec struct {
 
 // CacheConfig is the spec of memcached.
 type CacheConfig struct {
+	CommonSpec `json:",inline"`
+
 	// Memory limit of Memcached in megabytes.
 	// +optional
 	MemoryLimitMB *int32 `json:"memoryLimitMb,omitempty"`
@@ -514,18 +517,16 @@ type CacheConfig struct {
 	// Max simultaneous connections of Memcached.
 	// +optional
 	ConnectionLimit *int32 `json:"connectionLimit,omitempty"`
-
-	CommonSpec `json:",inline"`
 }
 
 // Thanos QueryFrontend Spec.
 type QueryFrontendSpec struct {
+	CommonSpec `json:",inline"`
+
 	// WARNING: Use only with guidance from Red Hat Support. Using this feature incorrectly can
 	// lead to an unrecoverable state, data loss, or both, which is not covered by Red Hat Support.
 	// +optional
 	Containers []corev1.Container `json:"containers,omitempty"`
-
-	CommonSpec `json:",inline"`
 }
 
 // RetentionConfig is the spec of retention configurations.
@@ -624,7 +625,8 @@ type MultiClusterObservability struct {
 type MultiClusterObservabilityList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []MultiClusterObservability `json:"items"`
+
+	Items []MultiClusterObservability `json:"items"`
 }
 
 func init() {

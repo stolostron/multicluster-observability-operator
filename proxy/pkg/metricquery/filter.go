@@ -109,60 +109,64 @@ type clusterVisitor struct {
 }
 
 // Visit implements the promql.Visitor interface, inspecting vector selectors for "cluster" labels.
-func (v *clusterVisitor) Visit(node parser.Node, path []parser.Node) (parser.Visitor, error) {
+func (v *clusterVisitor) handleClusterMatcher(matcher *labels.Matcher) {
+	// We found a cluster matcher. Now we need to apply it to the list of clusters
+	// the user has access to.
+	accessibleClusters := make([]string, 0, len(v.userMetricsAccess))
+	for cluster := range v.userMetricsAccess {
+		accessibleClusters = append(accessibleClusters, cluster)
+	}
+
+	// This is the pattern from the query (e.g., "dev-.*" or "prod-us-east-1")
+	pattern := matcher.Value
+
+	var matchedClusters []string
+	switch matcher.Type {
+	case labels.MatchEqual:
+		// Simple equality check
+		if _, exists := v.userMetricsAccess[pattern]; exists {
+			matchedClusters = []string{pattern}
+		}
+	case labels.MatchNotEqual:
+		for _, cluster := range accessibleClusters {
+			if cluster != pattern {
+				matchedClusters = append(matchedClusters, cluster)
+			}
+		}
+	case labels.MatchRegexp:
+		reg, err := regexp.Compile(pattern)
+		if err != nil {
+			// Invalid regex in query, skip this matcher
+			return
+		}
+		for _, cluster := range accessibleClusters {
+			if reg.MatchString(cluster) {
+				matchedClusters = append(matchedClusters, cluster)
+			}
+		}
+	case labels.MatchNotRegexp:
+		reg, err := regexp.Compile(pattern)
+		if err != nil {
+			// Invalid regex in query, skip this matcher
+			return
+		}
+		for _, cluster := range accessibleClusters {
+			if !reg.MatchString(cluster) {
+				matchedClusters = append(matchedClusters, cluster)
+			}
+		}
+	}
+
+	for _, c := range matchedClusters {
+		v.queryClusters[c] = struct{}{}
+	}
+}
+
+func (v *clusterVisitor) Visit(node parser.Node, _ []parser.Node) (parser.Visitor, error) {
 	if vs, ok := node.(*parser.VectorSelector); ok {
 		for _, matcher := range vs.LabelMatchers {
 			if matcher.Name == "cluster" {
-				// We found a cluster matcher. Now we need to apply it to the list of clusters
-				// the user has access to.
-				accessibleClusters := make([]string, 0, len(v.userMetricsAccess))
-				for cluster := range v.userMetricsAccess {
-					accessibleClusters = append(accessibleClusters, cluster)
-				}
-
-				// This is the pattern from the query (e.g., "dev-.*" or "prod-us-east-1")
-				pattern := matcher.Value
-
-				var matchedClusters []string
-				switch matcher.Type {
-				case labels.MatchEqual:
-					// Simple equality check
-					if _, exists := v.userMetricsAccess[pattern]; exists {
-						matchedClusters = []string{pattern}
-					}
-				case labels.MatchNotEqual:
-					for _, cluster := range accessibleClusters {
-						if cluster != pattern {
-							matchedClusters = append(matchedClusters, cluster)
-						}
-					}
-				case labels.MatchRegexp:
-					reg, err := regexp.Compile(pattern)
-					if err != nil {
-						// Invalid regex in query, skip this matcher
-						continue
-					}
-					for _, cluster := range accessibleClusters {
-						if reg.MatchString(cluster) {
-							matchedClusters = append(matchedClusters, cluster)
-						}
-					}
-				case labels.MatchNotRegexp:
-					reg, err := regexp.Compile(pattern)
-					if err != nil {
-						// Invalid regex in query, skip this matcher
-						continue
-					}
-					for _, cluster := range accessibleClusters {
-						if !reg.MatchString(cluster) {
-							matchedClusters = append(matchedClusters, cluster)
-						}
-					}
-				}
-
-				for _, c := range matchedClusters {
-					v.queryClusters[c] = struct{}{}
-				}
+				v.handleClusterMatcher(matcher)
 			}
 		}
 	}

@@ -6,6 +6,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"net/http"
@@ -131,7 +132,7 @@ func run() error {
 
 	// start the server in a goroutine
 	go func() {
-		if err := s.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err := s.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			klog.Fatalf("failed to ListenAndServe: %v", err)
 		}
 	}()

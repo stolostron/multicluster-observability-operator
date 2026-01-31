@@ -5,7 +5,6 @@
 package certificates
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -54,13 +53,13 @@ func TestOnAdd(t *testing.T) {
 			CreationTimestamp: metav1.Date(2020, time.January, 2, 0, 0, 0, 0, time.UTC),
 		},
 	}
-	config.SetOperandNames(c)
+	config.SetOperandNames(t.Context(), c)
 	onAdd(c)(caSecret)
 	c = fake.NewClientBuilder().WithRuntimeObjects(newDeployment(name + "-observatorium-api")).Build()
 	dep := &appv1.Deployment{}
 	caSecret.Name = clientCACerts
 	onAdd(c)(caSecret)
-	c.Get(context.TODO(),
+	c.Get(t.Context(),
 		types.NamespacedName{Name: name + "-observatorium-api", Namespace: namespace},
 		dep)
 	if dep.Spec.Template.ObjectMeta.Labels[restartLabel] == "" {
@@ -89,7 +88,7 @@ func TestOnDelete(t *testing.T) {
 	}
 	c := fake.NewClientBuilder().WithRuntimeObjects(caSecret, getMco()).Build()
 	onDelete(c)(deletCaSecret)
-	c.Get(context.TODO(), types.NamespacedName{Name: serverCACerts, Namespace: namespace}, caSecret)
+	c.Get(t.Context(), types.NamespacedName{Name: serverCACerts, Namespace: namespace}, caSecret)
 	data := string(caSecret.Data["tls.crt"])
 	if data != "new cert-old cert" {
 		t.Fatalf("deleted cert not added back: %s", data)
@@ -107,7 +106,7 @@ func TestOnUpdate(t *testing.T) {
 	onUpdate(c, true)(certSecret, certSecret)
 	certSecret.Name = serverCerts
 	onUpdate(c, true)(certSecret, certSecret)
-	c.Get(context.TODO(), types.NamespacedName{Name: serverCACerts, Namespace: namespace}, certSecret)
+	c.Get(t.Context(), types.NamespacedName{Name: serverCACerts, Namespace: namespace}, certSecret)
 	if len(certSecret.Data["tls.crt"]) <= oldCertLength {
 		t.Fatal("certificate not renewed correctly")
 	}

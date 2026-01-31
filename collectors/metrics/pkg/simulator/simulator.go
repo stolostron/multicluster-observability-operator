@@ -7,6 +7,7 @@ package simulator
 import (
 	"bytes"
 	"crypto/rand"
+	"errors"
 	"fmt"
 	"io"
 	"math/big"
@@ -68,7 +69,7 @@ func SimulateMetrics(logger log.Logger) []*clientmodel.MetricFamily {
 		family := &clientmodel.MetricFamily{}
 		families = append(families, family)
 		if err := decoder.Decode(family); err != nil {
-			if err != io.EOF {
+			if !errors.Is(err, io.EOF) {
 				rlogger.Log(logger, rlogger.Error, "msg", "error reading body", "err", err)
 			}
 			break

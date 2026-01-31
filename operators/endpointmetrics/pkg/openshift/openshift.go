@@ -156,7 +156,7 @@ func IsSNO(ctx context.Context, c client.Client) (bool, error) {
 		parentErr := err
 		isSNO, err := isSingleNode(ctx, c)
 		if err != nil {
-			return isSNO, fmt.Errorf("failed to get OCP infrastructure: %s; failed to check if single node: %w", parentErr, err)
+			return isSNO, fmt.Errorf("failed to get OCP infrastructure: %w; failed to check if single node: %w", parentErr, err)
 		}
 
 		return isSNO, nil
