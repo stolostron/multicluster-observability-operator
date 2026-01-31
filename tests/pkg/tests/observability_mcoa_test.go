@@ -341,59 +341,60 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 		},
 	)
 
-	// Context("with Cluster Observability Operator (COO) installed [P1][Sev1][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release @pre-upgrade (mcoa/g0)", func() {
-	// 	// We retrict this test to the hub for simplification purpose. The processing is similar for the spokes.
-	// 	onlyTheHub := []utils.Cluster{testOptions.HubCluster}
+	Context(
+		"with Cluster Observability Operator (COO) installed [P1][Sev1][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release @pre-upgrade (mcoa/g0)",
+		func() {
+			// We retrict this test to the hub for simplification purpose. The processing is similar for the spokes.
+			onlyTheHub := []utils.Cluster{testOptions.HubCluster}
 
-	// 	BeforeAll(func() {
-	// 		By("Disabling MCOA", func() {
-	// 			Expect(utils.SetMCOACapabilities(testOptions, false, false)).NotTo(HaveOccurred())
+			BeforeAll(func() {
+				By("Disabling MCOA", func() {
+					// Disable the legacy addon to avoid entering bad states that mey happen when disabling and re-enabling too quickly
+					utils.ModifyMCOAddonSpecMetrics(testOptions, false)
+					// Then disable MCOA
+					Expect(utils.SetMCOACapabilities(testOptions, false, false)).NotTo(HaveOccurred())
 
-	// 			By("Waiting for 1 minute to make sure the registration controller correctly takes into account the changes")
-	// 			time.Sleep(60 * time.Second)
+					By("Waiting for 30 seconds to enable resources deletion")
+					time.Sleep(30 * time.Second)
+				})
+			})
 
-	// 			// Wait for the metrics collector to be running
-	// 			utils.CheckDeploymentAvailability(testOptions.HubCluster, metricsCollectorDeploymentName, utils.MCO_NAMESPACE, true)
-	// 			utils.CheckDeploymentAvailabilityOnClusters(managedClusters, metricsCollectorDeploymentName, utils.MCO_ADDON_NAMESPACE, true)
-	// 			Expect(utils.CheckAllOBAsEnabled(testOptions)).NotTo(HaveOccurred())
-	// 		})
-	// 	})
+			It("should ingest metrics from hub and spoke clusters", SpecTimeout(15*time.Minute), func(ctx context.Context) {
+				By("Installing COO on the hub", func() {
+					Expect(utils.CreateCOOSubscription(onlyTheHub)).NotTo(HaveOccurred())
+					// Wait for COO to be running
+					utils.CheckCOODeployment(onlyTheHub)
+				})
 
-	// 	It("should ingest metrics from hub and spoke clusters", SpecTimeout(15*time.Minute), func(ctx context.Context) {
-	// 		By("Installing COO on the hub", func() {
-	// 			Expect(utils.CreateCOOSubscription(onlyTheHub)).NotTo(HaveOccurred())
-	// 			// Wait for COO to be running
-	// 			utils.CheckCOODeployment(onlyTheHub)
-	// 		})
+				By("Enabling MCOA", func() {
+					Expect(utils.SetMCOACapabilities(testOptions, true, true)).NotTo(HaveOccurred())
+				})
 
-	// 		By("Enabling MCOA", func() {
-	// 			Expect(utils.SetMCOACapabilities(testOptions, true, true)).NotTo(HaveOccurred())
-	// 		})
+				By("MCOA components should be running", func() {
+					utils.CheckStatefulSetAvailabilityOnClusters(onlyTheHub, platformPrometheusAgentStatefulSetName, utils.MCO_AGENT_ADDON_NAMESPACE, true)
+					utils.CheckStatefulSetAvailabilityOnClusters(onlyTheHub, uwlPrometheusAgentStatefulSetName, utils.MCO_AGENT_ADDON_NAMESPACE, true)
+					utils.CheckManagedClusterAddonStatus(testOptions, mcoaAddonName)
+				})
 
-	// 		By("MCOA components should be running", func() {
-	// 			utils.CheckStatefulSetAvailabilityOnClusters(onlyTheHub, platformPrometheusAgentStatefulSetName, utils.MCO_AGENT_ADDON_NAMESPACE, true)
-	// 			utils.CheckStatefulSetAvailabilityOnClusters(onlyTheHub, uwlPrometheusAgentStatefulSetName, utils.MCO_AGENT_ADDON_NAMESPACE, true)
-	// 			utils.CheckManagedClusterAddonStatus(testOptions, mcoaAddonName)
-	// 		})
+				By("Checking for obo-prometheus-operator deployment on managed clusters", func() {
+					// It should use the COO operator, we check that the prometheus operator is not deployed
+					utils.CheckDeploymentAvailabilityOnClusters(onlyTheHub, oboPrometheusOperatorDeploymentName, utils.MCO_AGENT_ADDON_NAMESPACE, false)
+				})
+			})
 
-	// 		By("Checking for obo-prometheus-operator deployment on managed clusters", func() {
-	// 			// It should use the COO operator, we check that the prometheus operator is not deployed
-	// 			utils.CheckDeploymentAvailabilityOnClusters(onlyTheHub, oboPrometheusOperatorDeploymentName, utils.MCO_AGENT_ADDON_NAMESPACE, false)
-	// 		})
-	// 	})
-
-	// 	AfterAll(func() {
-	// 		By("Disabling MCOA", func() {
-	// 			Expect(utils.SetMCOACapabilities(testOptions, false, false)).NotTo(HaveOccurred())
-	// 			utils.CheckStatefulSetAvailabilityOnClusters(onlyTheHub, platformPrometheusAgentStatefulSetName, utils.MCO_AGENT_ADDON_NAMESPACE, false)
-	// 			utils.CheckDeploymentAvailability(testOptions.HubCluster, mcoaManagerDeploymentName, utils.MCO_NAMESPACE, false)
-	// 		})
-	// 		By("Deleting COO subscription", func() {
-	// 			utils.DeleteCOOSubscription(onlyTheHub)
-	// 			Expect(utils.DeleteMonitoringCRDs(testOptions, onlyTheHub)).NotTo(HaveOccurred())
-	// 		})
-	// 	})
-	// })
+			AfterAll(func() {
+				By("Disabling MCOA", func() {
+					Expect(utils.SetMCOACapabilities(testOptions, false, false)).NotTo(HaveOccurred())
+					utils.CheckStatefulSetAvailabilityOnClusters(onlyTheHub, platformPrometheusAgentStatefulSetName, utils.MCO_AGENT_ADDON_NAMESPACE, false)
+					utils.CheckDeploymentAvailability(testOptions.HubCluster, mcoaManagerDeploymentName, utils.MCO_NAMESPACE, false)
+				})
+				By("Deleting COO subscription", func() {
+					utils.DeleteCOOSubscription(onlyTheHub)
+					Expect(utils.DeleteMonitoringCRDs(testOptions, onlyTheHub)).NotTo(HaveOccurred())
+				})
+			})
+		},
+	)
 
 	JustAfterEach(func() {
 		Expect(utils.IntegrityChecking(testOptions)).NotTo(HaveOccurred())
@@ -411,13 +412,15 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 			Expect(utils.SetMCOACapabilities(testOptions, false, false)).NotTo(HaveOccurred())
 			utils.CheckStatefulSetAvailabilityOnClusters(managedClustersWithHub, platformPrometheusAgentStatefulSetName, utils.MCO_AGENT_ADDON_NAMESPACE, false)
 			utils.CheckDeploymentAvailability(testOptions.HubCluster, mcoaManagerDeploymentName, utils.MCO_NAMESPACE, false)
+			// Re-enable the legacy collector
+			utils.ModifyMCOAddonSpecMetrics(testOptions, true)
 
-			By("Waiting for 1 minute to make sure the registration controller correctly takes into account the changes")
+			By("Waiting for 60 seconds to make sure the registration controller correctly takes into account the changes")
 			time.Sleep(60 * time.Second)
 
-			// Wait for the metrics collector to be up to avoid race conditions with other tests setups
-			utils.CheckDeploymentAvailability(testOptions.HubCluster, metricsCollectorDeploymentName, utils.MCO_NAMESPACE, true)
-			utils.CheckDeploymentAvailabilityOnClusters(managedClusters, metricsCollectorDeploymentName, utils.MCO_ADDON_NAMESPACE, true)
+			// // Wait for the metrics collector to be up to avoid race conditions with other tests setups
+			// utils.CheckDeploymentAvailability(testOptions.HubCluster, metricsCollectorDeploymentName, utils.MCO_NAMESPACE, true)
+			// utils.CheckDeploymentAvailabilityOnClusters(managedClusters, metricsCollectorDeploymentName, utils.MCO_ADDON_NAMESPACE, true)
 		})
 	})
 })
