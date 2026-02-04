@@ -121,13 +121,13 @@ func QueryGrafana(opt TestOptions, query string) (*GrafanaResponse, error) {
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read response body: %v", err)
+		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
 	metricResult := GrafanaResponse{}
 	err = yaml.Unmarshal(respBody, &metricResult)
 	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal response body: %v", err)
+		return nil, fmt.Errorf("failed to unmarshal response body: %w", err)
 	}
 
 	if metricResult.Status != "success" {

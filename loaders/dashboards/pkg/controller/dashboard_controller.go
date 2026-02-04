@@ -92,10 +92,10 @@ func newKubeInformer(coreClient corev1client.CoreV1Interface) (cache.SharedIndex
 	// get watched namespace
 	watchedNS := os.Getenv("POD_NAMESPACE")
 	watchlist := &cache.ListWatch{
-		ListFunc: func(opts metav1.ListOptions) (runtime.Object, error) {
+		ListFunc: func(_ metav1.ListOptions) (runtime.Object, error) {
 			return coreClient.ConfigMaps(watchedNS).List(context.TODO(), metav1.ListOptions{})
 		},
-		WatchFunc: func(opts metav1.ListOptions) (watch.Interface, error) {
+		WatchFunc: func(_ metav1.ListOptions) (watch.Interface, error) {
 			return coreClient.ConfigMaps(watchedNS).Watch(context.TODO(), metav1.ListOptions{})
 		},
 	}
@@ -327,7 +327,7 @@ func updateDashboard(old, newObj any, overwrite bool) error {
 		dashboard := map[string]any{}
 		err := json.Unmarshal([]byte(value), &dashboard)
 		if err != nil {
-			return fmt.Errorf("failed to unmarshall data: %v", err)
+			return fmt.Errorf("failed to unmarshall data: %w", err)
 		}
 		if dashboard["uid"] == nil || dashboard["uid"] == "" {
 			dashboard["uid"], _ = util.GenerateUID(newObj.(*corev1.ConfigMap).GetName(),
@@ -343,7 +343,7 @@ func updateDashboard(old, newObj any, overwrite bool) error {
 
 		b, err := json.Marshal(data)
 		if err != nil {
-			return fmt.Errorf("failed to marshal body: %v", err)
+			return fmt.Errorf("failed to marshal body: %w", err)
 		}
 
 		grafanaURL := grafanaURI + "/api/dashboards/db"
@@ -373,11 +373,10 @@ func updateDashboard(old, newObj any, overwrite bool) error {
 			} else {
 				id, err := strconv.Atoi(strings.Trim(string(result[1]), " "))
 				if err != nil {
-					return fmt.Errorf("failed to parse dashboard id: %v", err)
-				} else {
-					klog.Infof("Setting dashboard: %v as home dashboard", dashboard["title"])
-					setHomeDashboard(id)
+					return fmt.Errorf("failed to parse dashboard id: %w", err)
 				}
+				klog.Infof("Setting dashboard: %v as home dashboard", dashboard["title"])
+				setHomeDashboard(id)
 			}
 		}
 		klog.Infof("dashboard: %v created/updated successfully", cm.Name)

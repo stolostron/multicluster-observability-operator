@@ -112,14 +112,13 @@ func (m *MetricsCollector) Update(ctx context.Context, req ctrl.Request) error {
 	if err := m.updateMetricsCollector(ctx, false, deployParams); err != nil {
 		m.reportStatus(ctx, status.MetricsCollector, status.UpdateFailed, "Failed to update metrics collector")
 		return err
-	} else {
-		if m.ObsAddon.Spec.EnableMetrics {
-			if m.platformCollectorWasUpdated {
-				m.reportStatus(ctx, status.MetricsCollector, status.UpdateSuccessful, "Metrics collector updated")
-			}
-		} else {
-			m.reportStatus(ctx, status.MetricsCollector, status.Disabled, "Metrics collector disabled")
+	}
+	if m.ObsAddon.Spec.EnableMetrics {
+		if m.platformCollectorWasUpdated {
+			m.reportStatus(ctx, status.MetricsCollector, status.UpdateSuccessful, "Metrics collector updated")
 		}
+	} else {
+		m.reportStatus(ctx, status.MetricsCollector, status.Disabled, "Metrics collector disabled")
 	}
 
 	isUwl, err := m.isUWLMonitoringEnabled(ctx)
@@ -133,22 +132,20 @@ func (m *MetricsCollector) Update(ctx context.Context, req ctrl.Request) error {
 		if err := m.updateMetricsCollector(ctx, true, deployParams); err != nil {
 			m.reportStatus(ctx, status.UwlMetricsCollector, status.UpdateFailed, "Failed to update UWL Metrics collector")
 			return err
-		} else {
-			if m.ObsAddon.Spec.EnableMetrics {
-				if m.userWorkloadCollectorWasUpdated {
-					m.reportStatus(ctx, status.UwlMetricsCollector, status.UpdateSuccessful, "UWL Metrics collector updated")
-				}
-			} else {
-				m.reportStatus(ctx, status.UwlMetricsCollector, status.Disabled, "UWL Metrics collector disabled")
+		}
+		if m.ObsAddon.Spec.EnableMetrics {
+			if m.userWorkloadCollectorWasUpdated {
+				m.reportStatus(ctx, status.UwlMetricsCollector, status.UpdateSuccessful, "UWL Metrics collector updated")
 			}
+		} else {
+			m.reportStatus(ctx, status.UwlMetricsCollector, status.Disabled, "UWL Metrics collector disabled")
 		}
 	} else {
 		if err := m.deleteMetricsCollector(ctx, true); err != nil {
 			m.reportStatus(ctx, status.UwlMetricsCollector, status.UpdateFailed, err.Error())
 			return err
-		} else {
-			m.reportStatus(ctx, status.UwlMetricsCollector, status.Disabled, "UWL Metrics collector disabled")
 		}
+		m.reportStatus(ctx, status.UwlMetricsCollector, status.Disabled, "UWL Metrics collector disabled")
 	}
 
 	return nil

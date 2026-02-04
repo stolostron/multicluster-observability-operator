@@ -345,7 +345,7 @@ func TestGetAllowList(t *testing.T) {
 		NewCorruptMetricsCustomAllowListCM(),
 	}
 	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
-	_, cc, err := util.GetAllowList(c, config.AllowlistCustomConfigMapName, config.GetDefaultNamespace())
+	_, cc, err := util.GetAllowList(t.Context(), c, config.AllowlistCustomConfigMapName, config.GetDefaultNamespace())
 	if err == nil {
 		t.Fatalf("the cm is %v, The yaml marshall error is ignored", cc)
 	}
@@ -399,7 +399,7 @@ func TestManifestWork(t *testing.T) {
 	}
 	t.Logf("work size is %d", len(works))
 	crdMap := map[string]bool{config.IngressControllerCRD: true}
-	if hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, crdMap, config.IsUWMAlertingDisabledInSpec(mco)); err != nil {
+	if hubInfoSecret, err = generateHubInfoSecret(t.Context(), c, config.GetDefaultNamespace(), spokeNameSpace, crdMap, config.IsUWMAlertingDisabledInSpec(mco)); err != nil {
 		t.Fatalf("Failed to generate hubInfo secret: (%v)", err)
 	}
 
@@ -431,7 +431,7 @@ func TestManifestWork(t *testing.T) {
 	}
 
 	manWork, err := createManifestWorks(
-		context.Background(),
+		t.Context(),
 		c,
 		namespace,
 		managedClusterInfo{Name: clusterName, IsLocalCluster: false},
@@ -454,7 +454,7 @@ func TestManifestWork(t *testing.T) {
 	// Verify the hub info secret in the manifestwork
 	found := &workv1.ManifestWork{}
 	workName := namespace + workNameSuffix
-	err = c.Get(context.TODO(), types.NamespacedName{Name: workName, Namespace: namespace}, found)
+	err = c.Get(t.Context(), types.NamespacedName{Name: workName, Namespace: namespace}, found)
 	if err != nil {
 		t.Fatalf("Failed to get manifestwork %s: (%v)", workName, err)
 	}
@@ -486,12 +486,12 @@ func TestManifestWork(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get global manifestwork resource: (%v)", err)
 	}
-	if hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, crdMap, config.IsUWMAlertingDisabledInSpec(mco)); err != nil {
+	if hubInfoSecret, err = generateHubInfoSecret(t.Context(), c, config.GetDefaultNamespace(), spokeNameSpace, crdMap, config.IsUWMAlertingDisabledInSpec(mco)); err != nil {
 		t.Fatalf("Failed to generate hubInfo secret: (%v)", err)
 	}
 
 	manWork, err = createManifestWorks(
-		context.Background(),
+		t.Context(),
 		c,
 		namespace,
 		managedClusterInfo{Name: clusterName, IsLocalCluster: false},
@@ -512,7 +512,7 @@ func TestManifestWork(t *testing.T) {
 	}
 
 	// Verify the hub info secret in the manifestwork
-	err = c.Get(context.TODO(), types.NamespacedName{Name: workName, Namespace: namespace}, found)
+	err = c.Get(t.Context(), types.NamespacedName{Name: workName, Namespace: namespace}, found)
 	if err != nil {
 		t.Fatalf("Failed to get manifestwork %s: (%v)", workName, err)
 	}
@@ -591,7 +591,7 @@ func TestManifestWork(t *testing.T) {
 
 	found = &workv1.ManifestWork{}
 	workName = namespace + workNameSuffix
-	err = c.Get(context.TODO(), types.NamespacedName{Name: workName, Namespace: namespace}, found)
+	err = c.Get(t.Context(), types.NamespacedName{Name: workName, Namespace: namespace}, found)
 	if err != nil {
 		t.Fatalf("Failed to get manifestwork %s: (%v)", workName, err)
 	}
@@ -599,7 +599,7 @@ func TestManifestWork(t *testing.T) {
 		t.Fatalf("Wrong size of manifests in the mainfestwork %s: %d", workName, len(found.Spec.Workload.Manifests))
 	}
 
-	err = c.Create(context.TODO(), newTestPullSecret())
+	err = c.Create(t.Context(), newTestPullSecret())
 	if err != nil {
 		t.Fatalf("Failed to create pull secret: (%v)", err)
 	}
@@ -610,7 +610,7 @@ func TestManifestWork(t *testing.T) {
 		t.Fatalf("Failed to get global manifestwork resource: (%v)", err)
 	}
 	manWork, err = createManifestWorks(
-		context.Background(),
+		t.Context(),
 		c,
 		namespace,
 		managedClusterInfo{Name: clusterName, IsLocalCluster: false},
@@ -629,7 +629,7 @@ func TestManifestWork(t *testing.T) {
 	if err := createManifestwork(context.Background(), c, manWork); err != nil {
 		t.Fatalf("Failed to apply manifestworks: (%v)", err)
 	}
-	err = c.Get(context.TODO(), types.NamespacedName{Name: workName, Namespace: namespace}, found)
+	err = c.Get(t.Context(), types.NamespacedName{Name: workName, Namespace: namespace}, found)
 	if err != nil {
 		t.Fatalf("Failed to get manifestwork %s: (%v)", workName, err)
 	}
@@ -639,7 +639,7 @@ func TestManifestWork(t *testing.T) {
 
 	spokeNameSpace = "spoke-ns"
 	manWork, err = createManifestWorks(
-		context.Background(),
+		t.Context(),
 		c,
 		namespace,
 		managedClusterInfo{Name: clusterName, IsLocalCluster: false},
@@ -659,11 +659,11 @@ func TestManifestWork(t *testing.T) {
 		t.Fatalf("Failed to apply manifestworks: (%v)", err)
 	}
 
-	err = deleteManifestWorks(c, namespace)
+	err = deleteManifestWorks(t.Context(), c, namespace)
 	if err != nil {
 		t.Fatalf("Failed to delete manifestworks: (%v)", err)
 	}
-	err = c.Get(context.TODO(), types.NamespacedName{Name: namespace + workNameSuffix, Namespace: namespace}, found)
+	err = c.Get(t.Context(), types.NamespacedName{Name: namespace + workNameSuffix, Namespace: namespace}, found)
 	if err == nil || !errors.IsNotFound(err) {
 		t.Fatalf("Manifestwork not deleted: (%v)", err)
 	}
@@ -679,12 +679,12 @@ func TestManifestWork(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get global manifestwork resource: (%v)", err)
 	}
-	if hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, crdMap, config.IsUWMAlertingDisabledInSpec(mco)); err != nil {
+	if hubInfoSecret, err = generateHubInfoSecret(t.Context(), c, config.GetDefaultNamespace(), spokeNameSpace, crdMap, config.IsUWMAlertingDisabledInSpec(mco)); err != nil {
 		t.Fatalf("Failed to generate hubInfo secret: (%v)", err)
 	}
 
 	manWork, err = createManifestWorks(
-		context.Background(),
+		t.Context(),
 		c,
 		namespace,
 		managedClusterInfo{Name: clusterName, IsLocalCluster: false},
@@ -705,7 +705,7 @@ func TestManifestWork(t *testing.T) {
 	}
 	found = &workv1.ManifestWork{}
 	workName = namespace + workNameSuffix
-	err = c.Get(context.TODO(), types.NamespacedName{Name: workName, Namespace: namespace}, found)
+	err = c.Get(t.Context(), types.NamespacedName{Name: workName, Namespace: namespace}, found)
 	if err != nil {
 		t.Fatalf("Failed to get manifestwork %s: (%v)", workName, err)
 	}

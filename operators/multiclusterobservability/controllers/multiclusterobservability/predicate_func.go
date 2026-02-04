@@ -181,7 +181,7 @@ func GetMCHPredicateFunc(c client.Client) predicate.Funcs {
 			}
 			return false
 		},
-		DeleteFunc: func(e event.DeleteEvent) bool {
+		DeleteFunc: func(_ event.DeleteEvent) bool {
 			return false
 		},
 	}
@@ -197,7 +197,7 @@ func GetNamespacePredicateFunc() predicate.Funcs {
 			shouldReconcile := !labelExists || (labelExists && labelVal != "true")
 			return e.ObjectNew.GetName() == config.GetDefaultNamespace() && shouldReconcile
 		},
-		DeleteFunc: func(e event.DeleteEvent) bool {
+		DeleteFunc: func(_ event.DeleteEvent) bool {
 			return false
 		},
 	}
@@ -214,7 +214,7 @@ func GetImageStreamPredicateFunc() predicate.Funcs {
 			}
 			return e.ObjectOld.GetGeneration() != e.ObjectNew.GetGeneration()
 		},
-		DeleteFunc: func(e event.DeleteEvent) bool {
+		DeleteFunc: func(_ event.DeleteEvent) bool {
 			return false
 		},
 	}

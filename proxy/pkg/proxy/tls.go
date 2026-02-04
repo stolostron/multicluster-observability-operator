@@ -29,9 +29,10 @@ type TLSOptions struct {
 	PollingInterval time.Duration
 }
 
-// reloadingTransport wraps http.Transport to allow for safe, concurrent reloading of TLS configuration.
-type reloadingTransport struct {
+// ReloadingTransport wraps http.Transport to allow for safe, concurrent reloading of TLS configuration.
+type ReloadingTransport struct {
 	*http.Transport
+
 	tlsConfig *tls.Config
 	opts      *TLSOptions
 	mutex     sync.RWMutex
@@ -43,8 +44,8 @@ type reloadingTransport struct {
 }
 
 // newReloadingTransport creates a new transport that can reload its TLS configuration.
-func newReloadingTransport(opts *TLSOptions) (*reloadingTransport, error) {
-	transport := &reloadingTransport{
+func newReloadingTransport(opts *TLSOptions) (*ReloadingTransport, error) {
+	transport := &ReloadingTransport{
 		opts:      opts,
 		realPaths: make(map[string]string),
 		closed:    make(chan struct{}),
@@ -75,14 +76,14 @@ func newReloadingTransport(opts *TLSOptions) (*reloadingTransport, error) {
 }
 
 // Close stops the transport's polling goroutine to prevent leaks.
-func (t *reloadingTransport) Close() {
+func (t *ReloadingTransport) Close() {
 	t.closeOnce.Do(func() {
 		close(t.closed)
 	})
 }
 
 // pollingLoop is the main loop that periodically checks for certificate changes.
-func (t *reloadingTransport) pollingLoop() {
+func (t *ReloadingTransport) pollingLoop() {
 	ticker := time.NewTicker(t.opts.PollingInterval)
 	defer ticker.Stop()
 
@@ -98,7 +99,7 @@ func (t *reloadingTransport) pollingLoop() {
 }
 
 // updateRealPaths resolves the symlinks for all certificate files and stores them.
-func (t *reloadingTransport) updateRealPaths() error {
+func (t *ReloadingTransport) updateRealPaths() error {
 	filesToWatch := []string{t.opts.CaFile, t.opts.CertFile, t.opts.KeyFile}
 	for _, file := range filesToWatch {
 		realPath, err := filepath.EvalSymlinks(file)
@@ -111,7 +112,7 @@ func (t *reloadingTransport) updateRealPaths() error {
 }
 
 // checkForReload checks if the underlying certificate files have changed and triggers a reload if they have.
-func (t *reloadingTransport) checkForReload() {
+func (t *ReloadingTransport) checkForReload() {
 	// Resiliently resolve symlinks, treating a non-existent file as a change.
 	resolve := func(path string) (string, error) {
 		realPath, err := filepath.EvalSymlinks(path)
@@ -163,7 +164,7 @@ func (t *reloadingTransport) checkForReload() {
 
 // reloadTLSConfig reloads the TLS configuration from the file paths.
 // It performs file I/O before locking the mutex to minimize contention.
-func (t *reloadingTransport) reloadTLSConfig() error {
+func (t *ReloadingTransport) reloadTLSConfig() error {
 	// Read and parse all certificate files before acquiring the lock.
 	caCert, err := os.ReadFile(filepath.Clean(t.opts.CaFile))
 	if err != nil {
@@ -195,7 +196,7 @@ func (t *reloadingTransport) reloadTLSConfig() error {
 
 // NewTransport returns a closable http.RoundTripper that automatically reloads TLS configuration via polling.
 // The caller is responsible for calling Close() on the returned transport to prevent goroutine leaks.
-func NewTransport(opts *TLSOptions) (*reloadingTransport, error) {
+func NewTransport(opts *TLSOptions) (*ReloadingTransport, error) {
 	if opts.PollingInterval == 0 {
 		opts.PollingInterval = 30 * time.Second
 	}
