@@ -432,8 +432,6 @@ github.com/stolostron/locutus v0.0.0-20250206205144-9e42fd1bc0a2 h1:ylP11oTJB5wC
 github.com/stolostron/locutus v0.0.0-20250206205144-9e42fd1bc0a2/go.mod h1:/vWrwexkfG8FKRfV694BBe6u1Vf37rB8nDsvgF8xPa0=
 github.com/stolostron/multiclusterhub-operator v0.0.0-20251208152055-6387a883b4de h1:k1GhP/OhermEnwg/VgpmKzi+ty0g3TcGdnGa9YIhQmg=
 github.com/stolostron/multiclusterhub-operator v0.0.0-20251208152055-6387a883b4de/go.mod h1:TtRgS8E5O4Y+b4p3s0+OdI544MNOoWhyXQzFiL9HukU=
-github.com/stolostron/observatorium-operator v0.0.0-20260129083906-6481be6eed52 h1:ptAUXadQW/+jmzPWO6dtqBVefvOdgKZbSz31X02TEbA=
-github.com/stolostron/observatorium-operator v0.0.0-20260129083906-6481be6eed52/go.mod h1:ZDh8f7Fj7GzUR5BXqH9FMmJwelVOnC+mUF9qt5BandI=
 github.com/stolostron/rbac-api-utils v0.0.0-20240404212618-7f57fc664256 h1:BeTUZoAkKzPKSH0sG4a9PaakKHuJ0h9Cks9joBn3Ns8=
 github.com/stolostron/rbac-api-utils v0.0.0-20240404212618-7f57fc664256/go.mod h1:zYGYkVgY+sL501na1x5RDCKMrHD+JAwb6oRFU8e9XlU=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
@@ -455,6 +453,8 @@ github.com/stretchr/testify v1.11.1 h1:7s2iGBzp5EwR7/aIZr8ao5+dra3wiQyKjjFuvgVKu
 github.com/stretchr/testify v1.11.1/go.mod h1:wZwfW3scLgRK+23gO65QZefKpKQRnfz6sD981Nm4B6U=
 github.com/thanos-io/thanos v0.39.2 h1:edN03y7giEc6lD17HJhYcv8ELapXxElmhJnFIYJ2GqQ=
 github.com/thanos-io/thanos v0.39.2/go.mod h1:bvUPJNIx2LBXme6yBinRiGqQinxlGikLlK7PGeFQPkQ=
+github.com/thibaultmg/stolostron.observatorium-operator v0.0.0-20260130144142-a8dc1fb99022 h1:UtTaJF7crmakoFIXDDcpY0FgkMtEYkxWVfgTbT3Vvkg=
+github.com/thibaultmg/stolostron.observatorium-operator v0.0.0-20260130144142-a8dc1fb99022/go.mod h1:ZDh8f7Fj7GzUR5BXqH9FMmJwelVOnC+mUF9qt5BandI=
 github.com/tidwall/gjson v1.18.0 h1:FIDeeyB800efLX89e5a8Y0BNH+LOngJyGrIWxG2FKQY=
 github.com/tidwall/gjson v1.18.0/go.mod h1:/wbyibRr2FHMks5tjHJ5F8dMZh3AcwJEMf5vlfC0lxk=
 github.com/tidwall/match v1.1.1 h1:+Ho715JplO36QYgwN9PGYNhgZvoUSc9X2c80KVTi+GA=

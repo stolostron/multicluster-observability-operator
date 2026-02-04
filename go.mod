@@ -226,3 +226,5 @@ require (
 replace github.com/IBM/controller-filtered-cache => github.com/stolostron/controller-filtered-cache v0.0.0-20250724152010-527bae6c160c
 
 replace github.com/brancz/locutus => github.com/stolostron/locutus v0.0.0-20250206205144-9e42fd1bc0a2
+
+replace github.com/stolostron/observatorium-operator => github.com/thibaultmg/stolostron.observatorium-operator v0.0.0-20260130144142-a8dc1fb99022
