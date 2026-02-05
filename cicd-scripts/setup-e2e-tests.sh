@@ -45,7 +45,15 @@ deploy_hub_spoke_core() {
     export OCM_BRANCH="main"
   else
     VERSION=$(awk -F '.' '{ print $1"."$2 }' <"${ROOTDIR}/COMPONENT_VERSION")
-    export OCM_BRANCH="release-${VERSION}"
+    # For MCO versions >= 2.17, the versions align.
+    # For MCO versions < 2.17, MCO 2.16 corresponds to backplane-2.11, so subtract 0.05.
+    if (( $(echo "$VERSION >= 2.17" | bc -l) )); then
+        export OCM_BRANCH="backplane-${VERSION}"
+    else
+        # Calculate OCM version: MCO Version - 0.05
+        OCM_VERSION=$(echo "$VERSION - 0.05" | bc)
+        export OCM_BRANCH="backplane-${OCM_VERSION}"
+    fi
   fi
   export OPERATOR_IMAGE_NAME=quay.io/stolostron/registration-operator:$LATEST_MCE_SNAPSHOT
   export REGISTRATION_IMAGE=quay.io/stolostron/registration:$LATEST_MCE_SNAPSHOT
