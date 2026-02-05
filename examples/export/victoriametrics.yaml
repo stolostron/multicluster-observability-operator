@@ -16,7 +16,7 @@ spec:
       containers:
         - name: victoriametrics
           image: >-
-            victoriametrics/victoria-metrics
+            quay.io/victoriametrics/victoria-metrics
           ports:
             - name: http
               containerPort: 8428
