@@ -37,11 +37,11 @@ deploy_hub_spoke_core() {
 
   # Determine the branch to use for OCM
   CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "HEAD")
-  if [[ -n "${PULL_BASE_REF}" ]]; then
+  if [[ -n ${PULL_BASE_REF} ]]; then
     CURRENT_BRANCH="${PULL_BASE_REF}"
   fi
 
-  if [[ "${CURRENT_BRANCH}" == "main" ]]; then
+  if [[ ${CURRENT_BRANCH} == "main" ]]; then
     export OCM_BRANCH="main"
   else
     VERSION=$(awk -F '.' '{ print $1"."$2 }' <"${ROOTDIR}/COMPONENT_VERSION")
