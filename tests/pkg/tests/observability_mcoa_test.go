@@ -25,7 +25,7 @@ const (
 )
 
 var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
-	var managedClusters []utils.Cluster
+	// var managedClusters []utils.Cluster
 	var managedClustersWithHub []utils.Cluster
 	var ocpClusters []utils.Cluster
 	var accessibleOCPClusters []utils.Cluster
@@ -37,7 +37,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 		managedClustersWithHub, err = utils.GetAvailableManagedClustersAsClusters(testOptions)
 		Expect(err).ToNot(HaveOccurred())
 		clusterNames := []string{}
-		for _, cluster := range managedClusters {
+		for _, cluster := range managedClustersWithHub {
 			clusterNames = append(clusterNames, cluster.Name)
 		}
 		By(fmt.Sprintf("Running tests against the following managed clusters: %v", clusterNames))
