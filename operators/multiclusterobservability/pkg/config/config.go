@@ -710,7 +710,10 @@ func GetOperandName(name string) string {
 	return operandNames[name]
 }
 
-func GetGrafanaQueryTimeout() string {
+func GetGrafanaQueryTimeout(mco *observabilityv1beta2.MultiClusterObservability) string {
+	if mco.Spec.AdvancedConfig != nil && mco.Spec.AdvancedConfig.QueryTimeout != "" {
+		return mco.Spec.AdvancedConfig.QueryTimeout
+	}
 	return "300s"
 }
 
