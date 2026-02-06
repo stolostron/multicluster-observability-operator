@@ -35,7 +35,26 @@ LATEST_MCE_SNAPSHOT=${LATEST_MCE_SNAPSHOT:-$(get_latest_mce_snapshot)}
 deploy_hub_spoke_core() {
   cd ${ROOTDIR}
 
-  export OCM_BRANCH=main
+  # Determine the branch to use for OCM
+  CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "HEAD")
+  if [[ -n ${PULL_BASE_REF} ]]; then
+    CURRENT_BRANCH="${PULL_BASE_REF}"
+  fi
+
+  if [[ ${CURRENT_BRANCH} == "main" ]]; then
+    export OCM_BRANCH="main"
+  else
+    VERSION=$(awk -F '.' '{ print $1"."$2 }' <"${ROOTDIR}/COMPONENT_VERSION")
+    # For MCO versions >= 2.17, the versions align.
+    # For MCO versions < 2.17, MCO 2.16 corresponds to backplane-2.11, so subtract 0.05.
+    if (($(echo "$VERSION >= 2.17" | bc -l))); then
+      export OCM_BRANCH="backplane-${VERSION}"
+    else
+      # Calculate OCM version: MCO Version - 0.05
+      OCM_VERSION=$(echo "$VERSION - 0.05" | bc)
+      export OCM_BRANCH="backplane-${OCM_VERSION}"
+    fi
+  fi
   export OPERATOR_IMAGE_NAME=quay.io/stolostron/registration-operator:$LATEST_MCE_SNAPSHOT
   export REGISTRATION_IMAGE=quay.io/stolostron/registration:$LATEST_MCE_SNAPSHOT
   export WORK_IMAGE=quay.io/stolostron/work:$LATEST_MCE_SNAPSHOT
