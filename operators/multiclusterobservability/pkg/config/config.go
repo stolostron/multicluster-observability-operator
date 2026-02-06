@@ -710,6 +710,10 @@ func GetOperandName(name string) string {
 	return operandNames[name]
 }
 
+func GetGrafanaQueryTimeout() string {
+	return "300s"
+}
+
 func SetOperandNames(c client.Client) error {
 	if len(operandNames) != 0 {
 		return nil

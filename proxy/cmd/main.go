@@ -38,6 +38,7 @@ type proxyConf struct {
 	tlsCaFile          string
 	tlsCertFile        string
 	tlsKeyFile         string
+	proxyTimeout       time.Duration
 }
 
 func main() {
@@ -62,6 +63,7 @@ func run() error {
 	flagset.StringVar(&cfg.tlsCaFile, "tls-ca-file", "/var/rbac_proxy/ca/ca.crt", "The path to the CA certificate file for connecting to the downstream server.")
 	flagset.StringVar(&cfg.tlsCertFile, "tls-cert-file", "/var/rbac_proxy/certs/tls.crt", "The path to the client certificate file for connecting to the downstream server.")
 	flagset.StringVar(&cfg.tlsKeyFile, "tls-key-file", "/var/rbac_proxy/certs/tls.key", "The path to the client key file for connecting to the downstream server.")
+	flagset.DurationVar(&cfg.proxyTimeout, "proxy-timeout", 5*time.Minute, "The timeout for the proxy to wait for the downstream server response.")
 
 	_ = flagset.Parse(os.Args[1:])
 
@@ -109,6 +111,7 @@ func run() error {
 		KeyFile:         cfg.tlsKeyFile,
 		CertFile:        cfg.tlsCertFile,
 		PollingInterval: 15 * time.Second,
+		ProxyTimeout:    cfg.proxyTimeout,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to set tls transport: %w", err)
