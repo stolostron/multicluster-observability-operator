@@ -32,6 +32,7 @@ type Cluster struct {
 	GrafanaURL       string          `yaml:"grafanaURL,omitempty"`
 	GrafanaHost      string          `yaml:"grafanaHost,omitempty"`
 	KubeConfig       string          `yaml:"kubeconfig,omitempty"`
+	IsHubCluster     bool            `yaml:"isHubCluster,omitempty"`
 }
 
 // Define the image registry
