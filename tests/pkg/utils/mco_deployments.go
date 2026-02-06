@@ -120,6 +120,9 @@ func CheckDeploymentAvailability(cluster Cluster, name, namespace string, should
 
 func CheckDeploymentAvailabilityOnClusters(clusters []Cluster, name, namespace string, shouldExist bool) {
 	for _, cluster := range clusters {
+		if cluster.IsHubCluster {
+			namespace = MCO_NAMESPACE
+		}
 		CheckDeploymentAvailability(cluster, name, namespace, shouldExist)
 	}
 }
