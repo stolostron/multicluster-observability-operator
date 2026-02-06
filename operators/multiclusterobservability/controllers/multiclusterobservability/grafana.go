@@ -84,7 +84,7 @@ func GenerateGrafanaDataSource(
 	mco *mcov1beta2.MultiClusterObservability,
 ) (*ctrl.Result, error) {
 	DynamicTimeInterval := min(mco.Spec.ObservabilityAddonSpec.Interval, 30)
-	queryTimeout := config.GetGrafanaQueryTimeout()
+	queryTimeout := config.GetGrafanaQueryTimeout(mco)
 	// Robustly convert duration string to seconds string
 	duration, err := time.ParseDuration(queryTimeout)
 	if err != nil {
@@ -203,7 +203,7 @@ func GenerateGrafanaRoute(
 	c client.Client, scheme *runtime.Scheme,
 	mco *mcov1beta2.MultiClusterObservability,
 ) (*ctrl.Result, error) {
-	queryTimeout := config.GetGrafanaQueryTimeout()
+	queryTimeout := config.GetGrafanaQueryTimeout(mco)
 
 	grafanaRoute := &routev1.Route{
 		ObjectMeta: metav1.ObjectMeta{
