@@ -35,8 +35,26 @@ LATEST_MCE_SNAPSHOT=${LATEST_MCE_SNAPSHOT:-$(get_latest_mce_snapshot)}
 deploy_hub_spoke_core() {
   cd ${ROOTDIR}
 
-  export OCM_BRANCH=main
-  export IMAGE_NAME=quay.io/stolostron/registration-operator:$LATEST_MCE_SNAPSHOT
+  # Determine the branch to use for OCM
+  CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "HEAD")
+  if [[ -n ${PULL_BASE_REF} ]]; then
+    CURRENT_BRANCH="${PULL_BASE_REF}"
+  fi
+
+  if [[ ${CURRENT_BRANCH} == "main" ]]; then
+    export OCM_BRANCH="main"
+  else
+    VERSION=$(awk -F '.' '{ print $1"."$2 }' <"${ROOTDIR}/COMPONENT_VERSION")
+    # For MCO versions >= 2.17, the versions align.
+    # For MCO versions < 2.17, MCO 2.16 corresponds to backplane-2.11, so subtract 0.05.
+    if (($(echo "$VERSION >= 2.17" | bc -l))); then
+      export OCM_BRANCH="backplane-${VERSION}"
+    else
+      # Calculate OCM version: MCO Version - 0.05
+      OCM_VERSION=$(echo "$VERSION - 0.05" | bc)
+      export OCM_BRANCH="backplane-${OCM_VERSION}"
+    fi
+  fi
   export OPERATOR_IMAGE_NAME=quay.io/stolostron/registration-operator:$LATEST_MCE_SNAPSHOT
   export REGISTRATION_IMAGE=quay.io/stolostron/registration:$LATEST_MCE_SNAPSHOT
   export WORK_IMAGE=quay.io/stolostron/work:$LATEST_MCE_SNAPSHOT
@@ -44,11 +62,28 @@ deploy_hub_spoke_core() {
   export ADDON_MANAGER_IMAGE=quay.io/stolostron/addon-manager:$LATEST_MCE_SNAPSHOT
 
   if [[ ! -d "_repo_ocm" ]]; then
-    git clone --depth 1 --branch $OCM_BRANCH https://github.com/stolostron/ocm.git ./_repo_ocm
+    git clone --branch $OCM_BRANCH https://github.com/stolostron/ocm.git ./_repo_ocm
+    if [[ $LATEST_MCE_SNAPSHOT =~ ([0-9]{4}-[0-9]{2}-[0-9]{2}-[0-9]{2}-[0-9]{2}-[0-9]{2}) ]]; then
+      SNAPSHOT_DATE_STR="${BASH_REMATCH[1]}"
+      # Convert to YYYY-MM-DD HH:MM:SS format
+      SNAPSHOT_DATE=$(echo $SNAPSHOT_DATE_STR | sed 's/\(....\)-\(..\)-\(..\)-\(..\)-\(..\)-\(..\)/\1-\2-\3 \4:\5:\6/')
+      echo "Checking out OCM commit before snapshot date: $SNAPSHOT_DATE"
+
+      pushd ./_repo_ocm
+      # Find the last commit before the snapshot date
+      COMMIT_HASH=$(git log -n 1 --before="$SNAPSHOT_DATE" --format="%H")
+      if [[ -n $COMMIT_HASH ]]; then
+        echo "Switching to commit: $COMMIT_HASH"
+        git checkout $COMMIT_HASH
+      else
+        echo "Warning: Could not find a commit before $SNAPSHOT_DATE, using HEAD of $OCM_BRANCH"
+      fi
+      popd
+    fi
   fi
   ${SED_COMMAND} "s~clusterName: cluster1$~clusterName: ${MANAGED_CLUSTER}~g" ./_repo_ocm/deploy/klusterlet/config/samples/operator_open-cluster-management_klusterlets.cr.yaml
 
-  make deploy-hub cluster-ip deploy-spoke-operator apply-spoke-cr -C ./_repo_ocm
+  make deploy-hub deploy-spoke-operator apply-spoke-cr -C ./_repo_ocm
 
   # wait until hub and spoke are ready
   wait_for_deployment_ready 10 60s "${OCM_DEFAULT_NS}" cluster-manager
@@ -93,6 +128,7 @@ approve_csr_joinrequest() {
           # update vendor label for KinD env
           kubectl label managedcluster ${clustername} vendor-
           kubectl label managedcluster ${clustername} vendor=GKE
+          kubectl label managedcluster ${clustername} local-cluster=true
         fi
       done
       break
@@ -167,19 +203,18 @@ wait_for_observability_ready() {
   retry_number=10
   timeout=60s
   for ((i = 1; i <= retry_number; i++)); do
-
     if kubectl wait --timeout=${timeout} --for=condition=Ready mco/observability &>/dev/null; then
       echo "Observability has been started up and is running."
-      break
+      return 0
     else
       echo "timeout wait for mco are ready, retry in 10s...."
-      sleep 10
-      continue
     fi
+
     if [[ ${i} -eq ${retry_number} ]]; then
       echo "timeout wait for mco is ready."
       exit 1
     fi
+    sleep 10
   done
 }
 
@@ -207,28 +242,31 @@ wait_for_deployment_ready() {
   for ((i = 1; i <= retry_number; i++)); do
     if ! kubectl get ns ${ns} &>/dev/null; then
       echo "namespace ${ns} is not created, retry in 10s...."
-      sleep 10
-      continue
-    fi
-
-    if ! kubectl -n ${ns} get deploy ${@:4} &>/dev/null; then
+    elif ! kubectl -n ${ns} get deploy ${@:4} &>/dev/null; then
       echo "deployment ${@:4} are not created yet, retry in 10s...."
-      sleep 10
-      continue
-    fi
-
-    if kubectl -n ${ns} wait --timeout=${timeout} --for=condition=Available deploy ${@:4} &>/dev/null; then
+      echo "Current deployments and pods in ${ns}:"
+      kubectl -n ${ns} get deploy,pod
+    elif kubectl -n ${ns} wait --timeout=${timeout} --for=condition=Available deploy ${@:4} &>/dev/null; then
       echo "deployment ${@:4} have been started up and are running."
-      break
+      return 0
     else
       echo "timeout wait for deployment ${@:4} are ready, retry in 10s...."
-      sleep 10
-      continue
+      echo "Current deployments and pods in ${ns}:"
+      kubectl -n ${ns} get deploy,pod
     fi
+
     if [[ ${i} -eq ${retry_number} ]]; then
       echo "timeout wait for deployment ${@:4} are ready."
+      echo "Debugging information before exiting:"
+      echo "Namespaces:"
+      kubectl get ns
+      echo "Pods in ${OCM_DEFAULT_NS}:"
+      kubectl -n "${OCM_DEFAULT_NS}" get pod
+      echo "Pods in ${HUB_NS}:"
+      kubectl -n "${HUB_NS}" get pod
       exit 1
     fi
+    sleep 10
   done
 }
 
