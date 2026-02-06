@@ -27,6 +27,8 @@ type TLSOptions struct {
 
 	// PollingInterval specifies how often to check for certificate changes.
 	PollingInterval time.Duration
+	// ProxyTimeout specifies the response header timeout for the proxy.
+	ProxyTimeout time.Duration
 }
 
 // reloadingTransport wraps http.Transport to allow for safe, concurrent reloading of TLS configuration.
@@ -44,6 +46,9 @@ type reloadingTransport struct {
 
 // newReloadingTransport creates a new transport that can reload its TLS configuration.
 func newReloadingTransport(opts *TLSOptions) (*reloadingTransport, error) {
+	if opts.ProxyTimeout == 0 {
+		opts.ProxyTimeout = 300 * time.Second
+	}
 	transport := &reloadingTransport{
 		opts:      opts,
 		realPaths: make(map[string]string),
@@ -54,7 +59,7 @@ func newReloadingTransport(opts *TLSOptions) (*reloadingTransport, error) {
 				KeepAlive: 300 * time.Second,
 			}).Dial,
 			TLSHandshakeTimeout:   30 * time.Second,
-			ResponseHeaderTimeout: 120 * time.Second,
+			ResponseHeaderTimeout: opts.ProxyTimeout,
 		},
 	}
 
