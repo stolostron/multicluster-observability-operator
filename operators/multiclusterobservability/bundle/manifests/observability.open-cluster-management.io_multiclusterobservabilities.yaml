@@ -5310,6 +5310,13 @@ spec:
                             type: object
                         type: object
                     type: object
+                  queryTimeout:
+                    description: |-
+                      QueryTimeout is the timeout for queries executed in Grafana.
+                      It is applied to the read path components from Grafana.
+                      Default is 300s.
+                    pattern: ^([0-9]+(ms|s|m|h))+$
+                    type: string
                   rbacQueryProxy:
                     description: The spec of rbac-query-proxy
                     properties:
