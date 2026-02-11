@@ -223,8 +223,6 @@ func (r *MCORenderer) renderAlertManagerConfigMap(res *resource.Resource,
 
 		// Update the ConfigMap with the CA certificate data
 		cm.Data["client-ca-file"] = caData
-		// todo remove log debug alertmanager-clientca-metric
-		log.Info("rendering alertmanager-clientca-metric from extension-apiserver-authentication")
 
 		unstructuredObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(cm)
 		if err != nil {
