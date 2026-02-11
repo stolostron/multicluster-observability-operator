@@ -160,8 +160,6 @@ func (d *Deployer) updateConfigMap(ctx context.Context, desiredObj, runtimeObj *
 
 	if !apiequality.Semantic.DeepDerivative(desiredConfigMap.Data, runtimeConfigMap.Data) {
 		logUpdateInfo(runtimeObj)
-		// todo add resource version. Have not verified its necessary
-		desiredConfigMap.ResourceVersion = runtimeConfigMap.ResourceVersion
 		return d.client.Update(ctx, desiredConfigMap)
 	}
 
