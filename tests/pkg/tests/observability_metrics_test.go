@@ -185,6 +185,87 @@ var _ = Describe("", func() {
 
 	})
 
+	It("[P2][Sev2][observability][Integration] Verify metrics are collected for apiserver component (metrics/g0)", func() {
+		Eventually(func() error {
+			clusters, err := utils.ListManagedClusters(testOptions)
+			if err != nil {
+				return err
+			}
+			if len(clusters) == 0 {
+				return fmt.Errorf("no managed clusters found")
+			}
+
+			// Test metrics that previously relied on label job="apiserver"
+			for _, cluster := range clusters {
+				// Test recording rule: sli:apiserver_request_duration_seconds:bin:trend:1m
+				query := fmt.Sprintf("sli:apiserver_request_duration_seconds:bin:trend:1m{cluster=\"%s\"}", cluster.Name)
+				res, err := utils.QueryGrafana(testOptions, query)
+				if err != nil {
+					return fmt.Errorf("failed to query bin:trend metric for cluster %s: %v", cluster.Name, err)
+				}
+
+				if res.Status != "success" {
+					return fmt.Errorf("bin:trend query failed for cluster %s: status %s", cluster.Name, res.Status)
+				}
+
+				// Test recording rule: sli:apiserver_request_duration_seconds:trend:1m
+				query = fmt.Sprintf("sli:apiserver_request_duration_seconds:trend:1m{cluster=\"%s\"}", cluster.Name)
+				res, err = utils.QueryGrafana(testOptions, query)
+				if err != nil {
+					return fmt.Errorf("failed to query apiserver_request_duration_seconds metric for cluster %s: %v", cluster.Name, err)
+				}
+
+				if res.Status != "success" {
+					return fmt.Errorf("apiserver_request_duration_seconds query failed for cluster %s: status %s", cluster.Name, res.Status)
+				}
+
+				// Test recording rule: sum:apiserver_request_total:5m
+				query = fmt.Sprintf("sum:apiserver_request_total:5m{cluster=\"%s\"}", cluster.Name)
+				res, err = utils.QueryGrafana(testOptions, query)
+				if err != nil {
+					return fmt.Errorf("failed to query sum:apiserver_request_total:5m for cluster %s: %v", cluster.Name, err)
+				}
+
+				if res.Status != "success" {
+					return fmt.Errorf("sum:apiserver_request_total:5m query failed for cluster %s: status %s", cluster.Name, res.Status)
+				}
+
+				// Test recording rule: apiserver_request_duration_seconds:histogram_quantile_99
+				query = fmt.Sprintf("apiserver_request_duration_seconds:histogram_quantile_99{cluster=\"%s\"}", cluster.Name)
+				res, err = utils.QueryGrafana(testOptions, query)
+				if err != nil {
+					return fmt.Errorf("failed to query apiserver_request_duration_seconds:histogram_quantile_99 for cluster %s: %v", cluster.Name, err)
+				}
+
+				if res.Status != "success" {
+					return fmt.Errorf("apiserver_request_duration_seconds:histogram_quantile_99 query failed for cluster %s: status %s", cluster.Name, res.Status)
+				}
+
+				rawMetrics := []string{
+					"workqueue_queue_duration_seconds_bucket",
+					"workqueue_adds_total",
+					"workqueue_depth",
+					"go_goroutines",
+					"process_cpu_seconds_total",
+				}
+
+				// checks that metrics matched under service="kubernetes" includes metrics with job="apiserver"
+				for _, metricName := range rawMetrics {
+					query = fmt.Sprintf("%s{cluster=\"%s\",job=\"apiserver\"}", metricName, cluster.Name)
+					res, err = utils.QueryGrafana(testOptions, query)
+					if err != nil {
+						return fmt.Errorf("failed to query %s for cluster %s: %v", metricName, cluster.Name, err)
+					}
+
+					if res.Status != "success" {
+						return fmt.Errorf("%s query failed for cluster %s: status %s", metricName, cluster.Name, res.Status)
+					}
+				}
+			}
+			return nil
+		}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
+	})
+
 	JustAfterEach(func() {
 		Expect(utils.IntegrityChecking(testOptions)).NotTo(HaveOccurred())
 	})
