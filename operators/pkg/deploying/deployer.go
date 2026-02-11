@@ -166,8 +166,6 @@ func (d *Deployer) updateConfigMap(ctx context.Context, desiredObj, runtimeObj *
 		!isMapSubset(runtimeConfigMap.Labels, desiredConfigMap.Labels) ||
 		!isMapSubset(runtimeConfigMap.Annotations, desiredConfigMap.Annotations) {
 		logUpdateInfo(runtimeObj)
-		// todo add resource version. Have not verified its necessary
-		desiredConfigMap.ResourceVersion = runtimeConfigMap.ResourceVersion
 		return d.client.Update(ctx, desiredConfigMap)
 	}
 

@@ -543,8 +543,6 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 		Watches(&corev1.ConfigMap{}, handler.EnqueueRequestsFromMapFunc(
 			func(ctx context.Context, a client.Object) []reconcile.Request {
 				if a.GetName() == "extension-apiserver-authentication" && a.GetNamespace() == "kube-system" {
-					// todo remove log debug alertmanager-clientca-metric
-					log.Info("enqueueing alertmanager-clientca-metric from predicate")
 					return []reconcile.Request{
 						{NamespacedName: types.NamespacedName{
 							Name:      "alertmanager-clientca-metric",
