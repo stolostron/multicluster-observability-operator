@@ -25,7 +25,7 @@ const (
 )
 
 var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
-	var managedClusters []utils.Cluster
+	// var managedClusters []utils.Cluster
 	var managedClustersWithHub []utils.Cluster
 	var ocpClusters []utils.Cluster
 	var accessibleOCPClusters []utils.Cluster
@@ -34,14 +34,13 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 	BeforeAll(func() {
 		By("Getting available managed clusters")
 		var err error
-		managedClusters, err = utils.GetAvailableManagedClustersAsClusters(testOptions)
+		managedClustersWithHub, err = utils.GetAvailableManagedClustersAsClusters(testOptions)
 		Expect(err).ToNot(HaveOccurred())
 		clusterNames := []string{}
-		for _, cluster := range managedClusters {
+		for _, cluster := range managedClustersWithHub {
 			clusterNames = append(clusterNames, cluster.Name)
 		}
-		managedClustersWithHub = append(managedClusters, testOptions.HubCluster)
-		By(fmt.Sprintf("Running tests against the following managed clusters (excluding the hub): %v", clusterNames))
+		By(fmt.Sprintf("Running tests against the following managed clusters: %v", clusterNames))
 
 		By("Getting available OCP managed clusters")
 		ocpClusters, err = utils.GetOCPClusters(testOptions)
@@ -416,8 +415,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 			time.Sleep(60 * time.Second)
 
 			// Wait for the metrics collector to be up to avoid race conditions with other tests setups
-			utils.CheckDeploymentAvailability(testOptions.HubCluster, metricsCollectorDeploymentName, utils.MCO_NAMESPACE, true)
-			utils.CheckDeploymentAvailabilityOnClusters(managedClusters, metricsCollectorDeploymentName, utils.MCO_ADDON_NAMESPACE, true)
+			utils.CheckDeploymentAvailabilityOnClusters(managedClustersWithHub, metricsCollectorDeploymentName, utils.MCO_ADDON_NAMESPACE, true)
 		})
 	})
 })
