@@ -9,6 +9,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"time"
 
 	oauthv1 "github.com/openshift/api/oauth/v1"
 	routev1 "github.com/openshift/api/route/v1"
@@ -83,6 +84,13 @@ func GenerateGrafanaDataSource(
 	mco *mcov1beta2.MultiClusterObservability,
 ) (*ctrl.Result, error) {
 	DynamicTimeInterval := min(mco.Spec.ObservabilityAddonSpec.Interval, 30)
+	queryTimeout := config.GetGrafanaQueryTimeout(mco)
+	// Robustly convert duration string to seconds string
+	duration, err := time.ParseDuration(queryTimeout)
+	if err != nil {
+		return &ctrl.Result{}, fmt.Errorf("failed to parse query timeout duration %s: %w", queryTimeout, err)
+	}
+	queryTimeoutSec := fmt.Sprintf("%.0f", duration.Seconds())
 
 	grafanaDatasources, err := yaml.Marshal(GrafanaDatasources{
 		APIVersion: 1,
@@ -99,7 +107,7 @@ func GenerateGrafanaDataSource(
 				),
 				UID: "000000001",
 				JSONData: &JsonData{
-					Timeout:               "300",
+					Timeout:               queryTimeoutSec,
 					CustomQueryParameters: "max_source_resolution=auto",
 					TimeInterval:          fmt.Sprintf("%ds", mco.Spec.ObservabilityAddonSpec.Interval),
 					ForwardHeaders:        []string{"X-Forwarded-Access-Token"},
@@ -117,7 +125,7 @@ func GenerateGrafanaDataSource(
 				),
 				UID: "000000002",
 				JSONData: &JsonData{
-					Timeout:               "300",
+					Timeout:               queryTimeoutSec,
 					CustomQueryParameters: "max_source_resolution=auto",
 					TimeInterval:          fmt.Sprintf("%ds", DynamicTimeInterval),
 					ForwardHeaders:        []string{"X-Forwarded-Access-Token"},
@@ -195,12 +203,14 @@ func GenerateGrafanaRoute(
 	c client.Client, scheme *runtime.Scheme,
 	mco *mcov1beta2.MultiClusterObservability,
 ) (*ctrl.Result, error) {
+	queryTimeout := config.GetGrafanaQueryTimeout(mco)
+
 	grafanaRoute := &routev1.Route{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      config.GrafanaRouteName,
 			Namespace: config.GetDefaultNamespace(),
 			Annotations: map[string]string{
-				haProxyRouterTimeoutKey: defaultHaProxyRouterTimeout,
+				haProxyRouterTimeoutKey: queryTimeout,
 			},
 		},
 		Spec: routev1.RouteSpec{
