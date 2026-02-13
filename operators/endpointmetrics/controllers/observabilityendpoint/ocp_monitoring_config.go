@@ -77,10 +77,9 @@ func isRevertedAlready(ctx context.Context, client client.Client, ns string) (bo
 	if err != nil {
 		log.Info("isRevertedAlready: error from initPersistedRevertState", "error:", err.Error())
 		return clusterMonitoringConfigReverted, err
-	} else {
-		log.Info("isRevertedAlready", "clusterMonitoringConfigReverted:", clusterMonitoringConfigReverted)
-		return clusterMonitoringConfigReverted, nil
 	}
+	log.Info("isRevertedAlready", "clusterMonitoringConfigReverted:", clusterMonitoringConfigReverted)
+	return clusterMonitoringConfigReverted, nil
 }
 
 func setConfigReverted(ctx context.Context, client client.Client, ns string) error {
@@ -168,9 +167,8 @@ func createHubAmRouterCASecret(
 				return fmt.Errorf("failed to create %s/%s secret: %w", targetNamespace, hubAmRouterSecret, err)
 			}
 			return nil
-		} else {
-			return fmt.Errorf("failed to check the %s/%s secret: %w", targetNamespace, hubAmRouterSecret, err)
 		}
+		return fmt.Errorf("failed to check the %s/%s secret: %w", targetNamespace, hubAmRouterSecret, err)
 	}
 
 	if equality.Semantic.DeepEqual(found.Data, dataMap) {
@@ -214,24 +212,22 @@ func createHubAmAccessorTokenSecret(ctx context.Context, client client.Client, n
 			}
 			log.Info("the observability-alertmanager-accessor secret is created")
 			return nil
-		} else {
-			log.Error(err, "failed to check the observability-alertmanager-accessor secret")
-			return err
 		}
+		log.Error(err, "failed to check the observability-alertmanager-accessor secret")
+		return err
 	}
 
 	if reflect.DeepEqual(found.Data, dataMap) {
 		log.Info("no change for the observability-alertmanager-accessor secret")
 		return nil
-	} else {
-		err = client.Update(ctx, hubAmAccessorTokenSecret)
-		if err != nil {
-			log.Error(err, "failed to update the observability-alertmanager-accessor secret")
-			return nil
-		}
-		log.Info("the observability-alertmanager-accessor secret is updated")
-		return err
 	}
+	err = client.Update(ctx, hubAmAccessorTokenSecret)
+	if err != nil {
+		log.Error(err, "failed to update the observability-alertmanager-accessor secret")
+		return nil
+	}
+	log.Info("the observability-alertmanager-accessor secret is updated")
+	return err
 }
 
 // getAmAccessorToken retrieves the alertmanager access token from observability-alertmanager-accessor secret.

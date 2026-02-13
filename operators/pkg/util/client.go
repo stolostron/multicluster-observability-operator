@@ -120,8 +120,8 @@ func GetOrCreatePromClient() (promClientSet.Interface, error) {
 	return promClient, err
 }
 
-func CheckCRDExist(crdClient crdClientSet.Interface, crdName string) (bool, error) {
-	_, err := crdClient.ApiextensionsV1().CustomResourceDefinitions().Get(context.TODO(), crdName, metav1.GetOptions{})
+func CheckCRDExist(ctx context.Context, crdClient crdClientSet.Interface, crdName string) (bool, error) {
+	_, err := crdClient.ApiextensionsV1().CustomResourceDefinitions().Get(ctx, crdName, metav1.GetOptions{})
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			log.Info("unable to get CRD with ApiextensionsV1 Client, not found.", "CRD", crdName)
@@ -133,10 +133,10 @@ func CheckCRDExist(crdClient crdClientSet.Interface, crdName string) (bool, erro
 	return true, nil
 }
 
-func UpdateCRDWebhookNS(crdClient crdClientSet.Interface, namespace, crdName string) error {
+func UpdateCRDWebhookNS(ctx context.Context, crdClient crdClientSet.Interface, namespace, crdName string) error {
 	crdObj, err := crdClient.ApiextensionsV1().
 		CustomResourceDefinitions().
-		Get(context.TODO(), crdName, metav1.GetOptions{})
+		Get(ctx, crdName, metav1.GetOptions{})
 	if err != nil {
 		log.Error(err, "failed to get CRD", "CRD", crdName)
 		return err
@@ -157,7 +157,7 @@ func UpdateCRDWebhookNS(crdClient crdClientSet.Interface, namespace, crdName str
 		crdObj.Spec.Conversion.Webhook.ClientConfig.Service.Namespace = namespace
 		_, err := crdClient.ApiextensionsV1().
 			CustomResourceDefinitions().
-			Update(context.TODO(), crdObj, metav1.UpdateOptions{})
+			Update(ctx, crdObj, metav1.UpdateOptions{})
 		if err != nil {
 			log.Error(err, "failed to update webhook service namespace")
 			return err
@@ -167,7 +167,7 @@ func UpdateCRDWebhookNS(crdClient crdClientSet.Interface, namespace, crdName str
 }
 
 // GetPVCList get pvc with matched labels.
-func GetPVCList(c client.Client, namespace string,
+func GetPVCList(ctx context.Context, c client.Client, namespace string,
 	matchLabels map[string]string,
 ) ([]corev1.PersistentVolumeClaim, error) {
 	pvcList := &corev1.PersistentVolumeClaimList{}
@@ -176,7 +176,7 @@ func GetPVCList(c client.Client, namespace string,
 		client.MatchingLabels(matchLabels),
 	}
 
-	err := c.List(context.TODO(), pvcList, pvcListOpts...)
+	err := c.List(ctx, pvcList, pvcListOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -184,7 +184,7 @@ func GetPVCList(c client.Client, namespace string,
 }
 
 // GetStatefulSetList get sts with matched labels.
-func GetStatefulSetList(c client.Client, namespace string,
+func GetStatefulSetList(ctx context.Context, c client.Client, namespace string,
 	matchLabels map[string]string,
 ) ([]appsv1.StatefulSet, error) {
 	stsList := &appsv1.StatefulSetList{}
@@ -193,7 +193,7 @@ func GetStatefulSetList(c client.Client, namespace string,
 		client.MatchingLabels(matchLabels),
 	}
 
-	err := c.List(context.TODO(), stsList, stsListOpts...)
+	err := c.List(ctx, stsList, stsListOpts...)
 	if err != nil {
 		return nil, err
 	}

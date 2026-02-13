@@ -97,13 +97,13 @@ func TestNewDefaultObservatoriumSpec(t *testing.T) {
 	// Create a fake client to mock API calls.
 	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
 
-	obs, _ := newDefaultObservatoriumSpec(cl, mco, storageClassName, "")
+	obs, _ := newDefaultObservatoriumSpec(t.Context(), cl, mco, storageClassName, "")
 
 	receiversStorage := obs.Thanos.Receivers.VolumeClaimTemplate.Spec.Resources.Requests["storage"]
 	ruleStorage := obs.Thanos.Rule.VolumeClaimTemplate.Spec.Resources.Requests["storage"]
 	storeStorage := obs.Thanos.Store.VolumeClaimTemplate.Spec.Resources.Requests["storage"]
 	compactStorage := obs.Thanos.Compact.VolumeClaimTemplate.Spec.Resources.Requests["storage"]
-	obs, _ = newDefaultObservatoriumSpec(cl, mco, storageClassName, "")
+	obs, _ = newDefaultObservatoriumSpec(t.Context(), cl, mco, storageClassName, "")
 	if *obs.Thanos.Receivers.VolumeClaimTemplate.Spec.StorageClassName != storageClassName ||
 		*obs.Thanos.Rule.VolumeClaimTemplate.Spec.StorageClassName != storageClassName ||
 		*obs.Thanos.Store.VolumeClaimTemplate.Spec.StorageClassName != storageClassName ||
@@ -121,7 +121,7 @@ func TestNewDefaultObservatoriumSpec(t *testing.T) {
 	}
 
 	endpointS := &corev1.Secret{}
-	err := cl.Get(context.TODO(), types.NamespacedName{
+	err := cl.Get(t.Context(), types.NamespacedName{
 		Name:      endpointsConfigName,
 		Namespace: mcoconfig.GetDefaultNamespace(),
 	}, endpointS)
@@ -195,7 +195,7 @@ func TestNewDefaultObservatoriumSpecWithTShirtSize(t *testing.T) {
 	// Create a fake client to mock API calls.
 	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
 
-	obs, err := newDefaultObservatoriumSpec(cl, mco, storageClassName, "")
+	obs, err := newDefaultObservatoriumSpec(t.Context(), cl, mco, storageClassName, "")
 	if err != nil {
 		t.Errorf("failed to create obs spec")
 	}
@@ -270,16 +270,16 @@ func TestUpdateObservatoriumCR(t *testing.T) {
 	// Create a fake client to mock API calls.
 	// This should have no extra objects beyond the CMO CRD.
 	noConfigCl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(mco).Build()
-	mcoconfig.SetOperandNames(noConfigCl)
+	mcoconfig.SetOperandNames(t.Context(), noConfigCl)
 
-	_, err := GenerateObservatoriumCR(noConfigCl, s, mco)
+	_, err := GenerateObservatoriumCR(t.Context(), noConfigCl, s, mco)
 	if err != nil {
 		t.Errorf("Failed to create observatorium due to %v", err)
 	}
 
 	// Check if this Observatorium CR already exists
 	createdObservatoriumCR := &observatoriumv1alpha1.Observatorium{}
-	noConfigCl.Get(context.TODO(), types.NamespacedName{
+	noConfigCl.Get(t.Context(), types.NamespacedName{
 		Name:      mcoconfig.GetDefaultCRName(),
 		Namespace: namespace,
 	}, createdObservatoriumCR)
@@ -294,15 +294,15 @@ func TestUpdateObservatoriumCR(t *testing.T) {
 
 	// Create a fake client to mock API calls.
 	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(append(objs, createdObservatoriumCR)...).Build()
-	mcoconfig.SetOperandNames(cl)
+	mcoconfig.SetOperandNames(t.Context(), cl)
 
-	_, err = GenerateObservatoriumCR(cl, s, mco)
+	_, err = GenerateObservatoriumCR(t.Context(), cl, s, mco)
 	if err != nil {
 		t.Errorf("Failed to update observatorium due to %v", err)
 	}
 	objs = append(objs, []runtime.Object{createdObservatoriumCR}...)
 	updatedObservatorium := &observatoriumv1alpha1.Observatorium{}
-	cl.Get(context.TODO(), types.NamespacedName{
+	cl.Get(t.Context(), types.NamespacedName{
 		Name:      mcoconfig.GetDefaultCRName(),
 		Namespace: namespace,
 	}, updatedObservatorium)
@@ -361,16 +361,16 @@ func TestTShirtSizeUpdateObservatoriumCR(t *testing.T) {
 	// Create a fake client to mock API calls.
 	// This should have no extra objects beyond the CMO CRD.
 	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(mco).Build()
-	mcoconfig.SetOperandNames(cl)
+	mcoconfig.SetOperandNames(t.Context(), cl)
 
-	_, err := GenerateObservatoriumCR(cl, s, mco)
+	_, err := GenerateObservatoriumCR(t.Context(), cl, s, mco)
 	if err != nil {
 		t.Errorf("Failed to create observatorium due to %v", err)
 	}
 
 	// Check if this Observatorium CR already exists
 	createdObservatoriumCR := &observatoriumv1alpha1.Observatorium{}
-	cl.Get(context.TODO(), types.NamespacedName{
+	cl.Get(t.Context(), types.NamespacedName{
 		Name:      mcoconfig.GetDefaultCRName(),
 		Namespace: namespace,
 	}, createdObservatoriumCR)
@@ -382,13 +382,13 @@ func TestTShirtSizeUpdateObservatoriumCR(t *testing.T) {
 	}
 
 	mco.Spec.InstanceSize = mcoconfig.TwoXLarge
-	_, err = GenerateObservatoriumCR(cl, s, mco)
+	_, err = GenerateObservatoriumCR(t.Context(), cl, s, mco)
 	if err != nil {
 		t.Errorf("Failed to update observatorium due to %v", err)
 	}
 
 	updatedObservatorium := &observatoriumv1alpha1.Observatorium{}
-	cl.Get(context.TODO(), types.NamespacedName{
+	cl.Get(t.Context(), types.NamespacedName{
 		Name:      mcoconfig.GetDefaultCRName(),
 		Namespace: namespace,
 	}, updatedObservatorium)
@@ -472,9 +472,9 @@ func TestNoUpdateObservatoriumCR(t *testing.T) {
 
 	// Create a fake client to mock API calls.
 	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
-	mcoconfig.SetOperandNames(cl)
+	mcoconfig.SetOperandNames(t.Context(), cl)
 
-	_, err := GenerateObservatoriumCR(cl, s, mco)
+	_, err := GenerateObservatoriumCR(t.Context(), cl, s, mco)
 	if err != nil {
 		t.Errorf("Failed to create observatorium due to %v", err)
 	}
@@ -482,7 +482,7 @@ func TestNoUpdateObservatoriumCR(t *testing.T) {
 	// Check if this Observatorium CR already exists
 	createdObservatoriumCR := &observatoriumv1alpha1.Observatorium{}
 	cl.Get(
-		context.TODO(),
+		t.Context(),
 		types.NamespacedName{
 			Name:      mcoconfig.GetDefaultCRName(),
 			Namespace: namespace,
@@ -500,14 +500,14 @@ func TestNoUpdateObservatoriumCR(t *testing.T) {
 	}
 
 	oldSpecBytes, _ := yaml.Marshal(createdObservatoriumCR.Spec)
-	newSpec, _ := newDefaultObservatoriumSpec(cl, mco, storageClassName, "")
+	newSpec, _ := newDefaultObservatoriumSpec(t.Context(), cl, mco, storageClassName, "")
 	newSpecBytes, _ := yaml.Marshal(newSpec)
 
 	if res := bytes.Compare(newSpecBytes, oldSpecBytes); res != 0 {
 		t.Errorf("%v should be equal to %v", string(oldSpecBytes), string(newSpecBytes))
 	}
 
-	_, err = GenerateObservatoriumCR(cl, s, mco)
+	_, err = GenerateObservatoriumCR(t.Context(), cl, s, mco)
 	if err != nil {
 		t.Errorf("Failed to update observatorium due to %v", err)
 	}
@@ -548,7 +548,7 @@ func TestHashObservatoriumCRWithConfig(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Create a fake client to mock API calls.
 			cl := fake.NewClientBuilder().WithRuntimeObjects(tc.objs...).Build()
-			hash, err := hashObservatoriumCRConfig(cl)
+			hash, err := hashObservatoriumCRConfig(t.Context(), cl)
 
 			if !errors.Is(err, tc.expectedErr) {
 				t.Errorf("unexpected error: %v\nwant: %v", err, tc.expectedErr)
@@ -652,11 +652,11 @@ config:
 
 	client := fake.NewClientBuilder().Build()
 	for _, c := range testCaseList {
-		err := client.Create(context.TODO(), c.secret)
+		err := client.Create(t.Context(), c.secret)
 		if err != nil {
 			t.Errorf("failed to create object storage secret, due to %v", err)
 		}
-		path, err := getTLSSecretMountPath(client, c.storeConfig)
+		path, err := getTLSSecretMountPath(t.Context(), client, c.storeConfig)
 		if err != nil {
 			t.Errorf("failed to get tls secret mount path, due to %v", err)
 		}
@@ -769,7 +769,7 @@ func TestObservatoriumCustomArgs(t *testing.T) {
 	// Create a fake client to mock API calls.
 	cl := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 
-	obs, _ := newDefaultObservatoriumSpec(cl, mco, storageClassName, "")
+	obs, _ := newDefaultObservatoriumSpec(t.Context(), cl, mco, storageClassName, "")
 	if !reflect.DeepEqual(obs.Thanos.Receivers.Containers[0].Args, receiveTestArgs) {
 		t.Errorf("Failed to propagate custom args to Receive Observatorium spec")
 	}

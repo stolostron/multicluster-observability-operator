@@ -45,7 +45,7 @@ type CmoConfigChangesWatcher struct {
 // 2. Degrades system status when the bucket reaches capacity
 // 3. Restores normal status when the bucket fill ratio drops below statusResetFillRatio
 func NewCmoConfigChangesWatcher(
-	c client.Client,
+	_ client.Client,
 	logger logr.Logger,
 	statusReporter statusUpdaterI,
 	bucketCapacity int,

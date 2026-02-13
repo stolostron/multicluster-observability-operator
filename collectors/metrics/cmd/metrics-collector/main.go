@@ -54,7 +54,7 @@ func main() {
 		Short:         "Remote write federated metrics from prometheus",
 		SilenceErrors: true,
 		SilenceUsage:  true,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			return opt.Run()
 		},
 	}
@@ -299,17 +299,20 @@ func (o *Options) Run() error {
 	// Some packages still use default Register. Replace to have those metrics.
 	prometheus.DefaultRegisterer = metricsReg
 
-	cfgRR, err := initShardedConfigs(o, AgentRecordingRule)
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	cfgRR, err := initShardedConfigs(ctx, o, AgentRecordingRule)
 	if err != nil {
 		return err
 	}
 
-	shardCfgs, err := initShardedConfigs(o, AgentShardedForwarder)
+	shardCfgs, err := initShardedConfigs(ctx, o, AgentShardedForwarder)
 	if err != nil {
 		return err
 	}
 
-	evalCfg, err := initShardedConfigs(o, AgentCollectRule)
+	evalCfg, err := initShardedConfigs(ctx, o, AgentCollectRule)
 	if err != nil {
 		return err
 	}
@@ -317,7 +320,7 @@ func (o *Options) Run() error {
 	metrics := forwarder.NewWorkerMetrics(metricsReg)
 	evalCfg[0].Metrics = metrics
 	cfgRR[0].Metrics = metrics
-	recordingRuleWorker, err := forwarder.New(*cfgRR[0])
+	recordingRuleWorker, err := forwarder.New(ctx, *cfgRR[0])
 	if err != nil {
 		return fmt.Errorf("failed to configure recording rule worker: %w", err)
 	}
@@ -325,7 +328,7 @@ func (o *Options) Run() error {
 	shardWorkers := make([]*forwarder.Worker, len(shardCfgs))
 	for i, shardCfg := range shardCfgs {
 		shardCfg.Metrics = metrics
-		shardWorkers[i], err = forwarder.New(*shardCfg)
+		shardWorkers[i], err = forwarder.New(ctx, *shardCfg)
 		if err != nil {
 			return fmt.Errorf("failed to configure shard worker %d: %w", i, err)
 		}
@@ -337,9 +340,6 @@ func (o *Options) Run() error {
 		"from", o.From,
 		"to", o.ToUpload,
 		"listen", o.Listen)
-
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
 
 	wg := &sync.WaitGroup{}
 
@@ -377,7 +377,7 @@ func (o *Options) Run() error {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			if err := s.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			if err := s.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 				logger.Log(o.Logger, logger.Error, "msg", "server exited unexpectedly", "err", err)
 				stop()
 			}
@@ -388,7 +388,7 @@ func (o *Options) Run() error {
 		go func() {
 			defer wg.Done()
 			<-ctx.Done()
-			shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
+			shutdownCtx, shutdownCancel := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)
 			defer shutdownCancel()
 			if err := s.Shutdown(shutdownCtx); err != nil {
 				logger.Log(o.Logger, logger.Error, "msg", "failed to close listener", "err", err)
@@ -404,7 +404,7 @@ func (o *Options) Run() error {
 
 	// Run the Collectrules agent.
 	if len(o.CollectRules) != 0 {
-		evaluator, err := collectrule.New(*evalCfg[0])
+		evaluator, err := collectrule.New(ctx, *evalCfg[0])
 		if err != nil {
 			return fmt.Errorf("failed to configure collect rule evaluator: %w", err)
 		}
@@ -444,15 +444,11 @@ const (
 	AgentShardedForwarder Agent = "forwarder"
 )
 
-func initShardedConfigs(o *Options, agent Agent) ([]*forwarder.Config, error) {
-	if len(o.From) == 0 {
-		return nil, errors.New("you must specify a Prometheus server to federate from (e.g. http://localhost:9090)")
-	}
-
+func parseLabelsAndRenames(o *Options) error {
 	for _, flag := range o.LabelFlag {
 		values := strings.SplitN(flag, "=", 2)
 		if len(values) != 2 {
-			return nil, fmt.Errorf("--label must be of the form key=value: %s", flag)
+			return fmt.Errorf("--label must be of the form key=value: %s", flag)
 		}
 		if o.Labels == nil {
 			o.Labels = make(map[string]string)
@@ -466,26 +462,29 @@ func initShardedConfigs(o *Options, agent Agent) ([]*forwarder.Config, error) {
 		}
 		values := strings.SplitN(flag, "=", 2)
 		if len(values) != 2 {
-			return nil, fmt.Errorf("--rename must be of the form OLD_NAME=NEW_NAME: %s", flag)
+			return fmt.Errorf("--rename must be of the form OLD_NAME=NEW_NAME: %s", flag)
 		}
 		if o.Renames == nil {
 			o.Renames = make(map[string]string)
 		}
 		o.Renames[values[0]] = values[1]
 	}
+	return nil
+}
 
-	from, err := url.Parse(o.From)
+func parseURLs(o *Options) (from, fromQuery, toUpload *url.URL, err error) {
+	from, err = url.Parse(o.From)
 	if err != nil {
-		return nil, fmt.Errorf("--from is not a valid URL: %w", err)
+		return nil, nil, nil, fmt.Errorf("--from is not a valid URL: %w", err)
 	}
 	from.Path = strings.TrimRight(from.Path, "/")
 	if len(from.Path) == 0 {
 		from.Path = "/federate"
 	}
 
-	fromQuery, err := url.Parse(o.FromQuery)
+	fromQuery, err = url.Parse(o.FromQuery)
 	if err != nil {
-		return nil, fmt.Errorf("--from-query is not a valid URL: %w", err)
+		return nil, nil, nil, fmt.Errorf("--from-query is not a valid URL: %w", err)
 	}
 
 	fromQuery.Path = strings.TrimRight(fromQuery.Path, "/")
@@ -493,18 +492,20 @@ func initShardedConfigs(o *Options, agent Agent) ([]*forwarder.Config, error) {
 		fromQuery.Path = "/api/v1/query"
 	}
 
-	var toUpload *url.URL
 	if len(o.ToUpload) > 0 {
 		toUpload, err = url.Parse(o.ToUpload)
 		if err != nil {
-			return nil, fmt.Errorf("--to-upload is not a valid URL: %w", err)
+			return nil, nil, nil, fmt.Errorf("--to-upload is not a valid URL: %w", err)
 		}
 	}
 
 	if toUpload == nil {
-		return nil, errors.New("--to-upload must be specified")
+		return nil, nil, nil, errors.New("--to-upload must be specified")
 	}
+	return from, fromQuery, toUpload, nil
+}
 
+func createTransformer(ctx context.Context, o *Options) (metricfamily.MultiTransformer, error) {
 	var transformer metricfamily.MultiTransformer
 
 	if len(o.Labels) > 0 {
@@ -542,35 +543,37 @@ func initShardedConfigs(o *Options, agent Agent) ([]*forwarder.Config, error) {
 	// There is much better way to do this, with relabel configs.
 	// A collection agent shouldn't be calling out to Kube API server just to add labels.
 	if !o.DisableHyperShift {
-		isHypershift, err := metricfamily.CheckCRDExist(o.Logger)
+		isHypershift, err := metricfamily.CheckCRDExist(ctx, o.Logger)
 		if err != nil {
-			return nil, err
+			return transformer, err
 		}
 		if isHypershift {
 			config, err := clientcmd.BuildConfigFromFlags("", "")
 			if err != nil {
-				return nil, errors.New("failed to create the kube config for hypershiftv1")
+				return transformer, errors.New("failed to create the kube config for hypershiftv1")
 			}
 			s := scheme.Scheme
 			if err := hyperv1.AddToScheme(s); err != nil {
-				return nil, errors.New("failed to add observabilityaddon into scheme")
+				return transformer, errors.New("failed to add observabilityaddon into scheme")
 			}
 			hClient, err := client.New(config, client.Options{Scheme: s})
 			if err != nil {
-				return nil, errors.New("failed to create the kube client")
+				return transformer, errors.New("failed to create the kube client")
 			}
 
-			hyperTransformer, err := metricfamily.NewHypershiftTransformer(hClient, o.Logger, o.Labels)
+			hyperTransformer, err := metricfamily.NewHypershiftTransformer(ctx, hClient, o.Logger, o.Labels)
 			if err != nil {
-				return nil, err
+				return transformer, err
 			}
 			transformer.WithFunc(func() metricfamily.Transformer {
 				return hyperTransformer
 			})
 		}
 	}
+	return transformer, nil
+}
 
-	// Configure matchers.
+func parseMatchers(o *Options) ([]string, error) {
 	matchers := o.Matchers
 	if len(o.MatcherFile) > 0 {
 		data, err := os.ReadFile(o.MatcherFile)
@@ -579,36 +582,63 @@ func initShardedConfigs(o *Options, agent Agent) ([]*forwarder.Config, error) {
 		}
 		matchers = append(matchers, strings.Split(string(data), "\n")...)
 	}
-	for i := 0; i < len(matchers); {
-		s := strings.TrimSpace(matchers[i])
-		if len(s) == 0 {
-			matchers = append(matchers[:i], matchers[i+1:]...)
-			continue
+	var result []string
+	for _, m := range matchers {
+		s := strings.TrimSpace(m)
+		if len(s) > 0 {
+			result = append(result, s)
 		}
-		matchers[i] = s
-		i++
+	}
+	return result, nil
+}
+
+func createStatusClient(o *Options) (client.Client, error) {
+	if o.DisableStatusReporting {
+		return nil, nil
+	}
+	config, err := clientcmd.BuildConfigFromFlags("", "")
+	if err != nil {
+		return nil, errors.New("failed to create the kube config for status")
+	}
+	s := scheme.Scheme
+	if err := oav1beta1.AddToScheme(s); err != nil {
+		return nil, errors.New("failed to add observabilityaddon into scheme")
 	}
 
-	var statusClient client.Client
+	statusClient, err := client.New(config, client.Options{Scheme: s})
+	if err != nil {
+		return nil, errors.New("failed to create the kube client")
+	}
+	return statusClient, nil
+}
 
-	// TODO(saswatamcode): Evaluate better way for status reporting.
-	// Currently, it reports status for every 3 errors in forward request. This is too much of an overhead
-	// Every remote write request error does not need to be reported.
-	// Instead we can try to do this with metrics-collector meta-monitoring
-	if !o.DisableStatusReporting {
-		config, err := clientcmd.BuildConfigFromFlags("", "")
-		if err != nil {
-			return nil, errors.New("failed to create the kube config for status")
-		}
-		s := scheme.Scheme
-		if err := oav1beta1.AddToScheme(s); err != nil {
-			return nil, errors.New("failed to add observabilityaddon into scheme")
-		}
+func initShardedConfigs(ctx context.Context, o *Options, agent Agent) ([]*forwarder.Config, error) {
+	if len(o.From) == 0 {
+		return nil, errors.New("you must specify a Prometheus server to federate from (e.g. http://localhost:9090)")
+	}
 
-		statusClient, err = client.New(config, client.Options{Scheme: s})
-		if err != nil {
-			return nil, errors.New("failed to create the kube client")
-		}
+	if err := parseLabelsAndRenames(o); err != nil {
+		return nil, err
+	}
+
+	from, fromQuery, toUpload, err := parseURLs(o)
+	if err != nil {
+		return nil, err
+	}
+
+	transformer, err := createTransformer(ctx, o)
+	if err != nil {
+		return nil, err
+	}
+
+	matchers, err := parseMatchers(o)
+	if err != nil {
+		return nil, err
+	}
+
+	statusClient, err := createStatusClient(o)
+	if err != nil {
+		return nil, err
 	}
 
 	switch agent {
@@ -762,13 +792,13 @@ func runMultiWorkers(ctx context.Context, wg *sync.WaitGroup, o *Options, cfg *f
 			opt.Labels[values[0]] = values[1]
 		}
 
-		forwardCfg, err := initShardedConfigs(opt, AgentCollectRule)
+		forwardCfg, err := initShardedConfigs(ctx, opt, AgentCollectRule)
 		if err != nil {
 			return err
 		}
 
 		forwardCfg[0].Metrics = cfg.Metrics
-		forwardWorker, err := forwarder.New(*forwardCfg[0])
+		forwardWorker, err := forwarder.New(ctx, *forwardCfg[0])
 		if err != nil {
 			return fmt.Errorf("failed to configure metrics collector: %w", err)
 		}

@@ -15,10 +15,14 @@ run:
 linters:
   default: none
   enable:
-    # Sorted alphabetically.
     - bodyclose
+    - contextcheck
+    - dupword
+    - embeddedstructfieldcheck
     - errcheck
+    - errorlint
     - exptostd
+    - gocognit
     - goconst
     - gocritic
     - gosec
@@ -28,11 +32,13 @@ linters:
     - loggercheck
     - misspell
     - modernize
+    - nilerr
     - nolintlint
     - prealloc
     - predeclared
     - promlinter
     - reassign
+    - revive
     - staticcheck
     - tparallel
     - unconvert
@@ -47,8 +53,8 @@ linters:
     errcheck:
       exclude-functions:
         - (github.com/go-kit/log.Logger).Log
-    misspell:
-      locale: US
+    gocognit:
+      min-complexity: 50
     goconst:
       min-occurrences: 5
       ignore-string-values:
@@ -56,12 +62,25 @@ linters:
     gosec:
       excludes:
         - G104 # Already covererd by errcheck which allows exclusions
+    misspell:
+      locale: US
+    revive:
+      enable-default-rules: true
+      rules:
+        - name: var-naming
+          disabled: true
+        - name: exported
+          disabled: true
+        - name: package-comments
+          disabled: true
 
   exclusions:
     rules:
       - path: tests/
         linters:
+          - gocognit
           - gosec
+          - revive
 
 formatters:
   # Enable specific formatter.
@@ -82,4 +101,5 @@ formatters:
   exclusions:
     paths:
       - "vendor/.*"
+      - "zz_generated.deepcopy.go"
 

@@ -33,7 +33,7 @@ type clusterManagementAddOnSpec struct {
 func CreateClusterManagementAddon(ctx context.Context, c client.Client) (
 	*addonv1alpha1.ClusterManagementAddOn, error,
 ) {
-	clusterManagementAddon, err := newClusterManagementAddon(c)
+	clusterManagementAddon, err := newClusterManagementAddon(ctx, c)
 	if err != nil {
 		return nil, err
 	}
@@ -83,8 +83,8 @@ func DeleteClusterManagementAddon(ctx context.Context, client client.Client) err
 	return nil
 }
 
-func newClusterManagementAddon(c client.Client) (*addonv1alpha1.ClusterManagementAddOn, error) {
-	host, err := config.GetRouteHost(c, config.GrafanaRouteName, config.GetDefaultNamespace())
+func newClusterManagementAddon(ctx context.Context, c client.Client) (*addonv1alpha1.ClusterManagementAddOn, error) {
+	host, err := config.GetRouteHost(ctx, c, config.GrafanaRouteName, config.GetDefaultNamespace())
 	if err != nil {
 		return nil, fmt.Errorf("failed to get host route: %w", err)
 	}

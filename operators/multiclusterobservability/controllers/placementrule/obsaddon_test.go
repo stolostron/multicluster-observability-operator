@@ -36,17 +36,17 @@ func TestObsAddonCR(t *testing.T) {
 		).
 		Build()
 
-	err := createObsAddon(&mcov1beta2.MultiClusterObservability{}, c, namespace)
+	err := createObsAddon(t.Context(), &mcov1beta2.MultiClusterObservability{}, c, namespace)
 	if err != nil {
 		t.Fatalf("Failed to create observabilityaddon: (%v)", err)
 	}
 	found := &mcov1beta1.ObservabilityAddon{}
-	err = c.Get(context.TODO(), types.NamespacedName{Name: obsAddonName, Namespace: namespace}, found)
+	err = c.Get(t.Context(), types.NamespacedName{Name: obsAddonName, Namespace: namespace}, found)
 	if err != nil {
 		t.Fatalf("Failed to get observabilityaddon: (%v)", err)
 	}
 
-	err = createObsAddon(&mcov1beta2.MultiClusterObservability{}, c, namespace)
+	err = createObsAddon(t.Context(), &mcov1beta2.MultiClusterObservability{}, c, namespace)
 	if err != nil {
 		t.Fatalf("Failed to create observabilityaddon: (%v)", err)
 	}
@@ -54,7 +54,7 @@ func TestObsAddonCR(t *testing.T) {
 	testWork := newManifestwork(namespace+workNameSuffix, namespace)
 	testManifests := testWork.Spec.Workload.Manifests
 	testObservabilityAddon := &mcov1beta1.ObservabilityAddon{}
-	err = c.Get(context.TODO(), types.NamespacedName{Name: obsAddonName, Namespace: namespace}, testObservabilityAddon)
+	err = c.Get(t.Context(), types.NamespacedName{Name: obsAddonName, Namespace: namespace}, testObservabilityAddon)
 	if err != nil {
 		t.Fatalf("Failed to get observabilityaddon: (%v)", err)
 	}
@@ -62,7 +62,7 @@ func TestObsAddonCR(t *testing.T) {
 	testManifests = injectIntoWork(testManifests, testObservabilityAddon)
 	testWork.Spec.Workload.Manifests = testManifests
 
-	err = c.Create(context.TODO(), testWork)
+	err = c.Create(t.Context(), testWork)
 	if err != nil {
 		t.Fatalf("Failed to create manifestwork: (%v)", err)
 	}
@@ -71,7 +71,7 @@ func TestObsAddonCR(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to delete observabilityaddon: (%v)", err)
 	}
-	err = c.Get(context.TODO(), types.NamespacedName{Name: obsAddonName, Namespace: namespace}, found)
+	err = c.Get(t.Context(), types.NamespacedName{Name: obsAddonName, Namespace: namespace}, found)
 	if err == nil || !errors.IsNotFound(err) {
 		t.Fatalf("Failed to delete observabilityaddon: (%v)", err)
 	}
@@ -81,7 +81,7 @@ func TestObsAddonCR(t *testing.T) {
 		t.Fatalf("Failed to delete observabilityaddon: (%v)", err)
 	}
 
-	err = deleteManifestWork(c, namespace+workNameSuffix, namespace)
+	err = deleteManifestWork(t.Context(), c, namespace+workNameSuffix, namespace)
 	if err != nil {
 		t.Fatalf("Failed to delete manifestwork: (%v)", err)
 	}
@@ -106,7 +106,7 @@ func TestStaleObsAddonCR(t *testing.T) {
 	}
 
 	found := &mcov1beta1.ObservabilityAddon{}
-	err := c.Get(context.TODO(), types.NamespacedName{Name: obsAddonName, Namespace: namespace}, found)
+	err := c.Get(t.Context(), types.NamespacedName{Name: obsAddonName, Namespace: namespace}, found)
 	if err == nil {
 		t.Fatalf("Failed to delete observabilityaddon, still present")
 	}

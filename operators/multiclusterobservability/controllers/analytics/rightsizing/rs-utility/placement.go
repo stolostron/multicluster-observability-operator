@@ -62,9 +62,8 @@ func CreateUpdateRSPlacement(ctx context.Context, c client.Client, placementName
 
 			log.Info("rs - placement created successfully", logCtx...)
 			return nil
-		} else {
-			return fmt.Errorf("rs - unable to fetch placement: %w", err)
 		}
+		return fmt.Errorf("rs - unable to fetch placement: %w", err)
 	}
 
 	// Update existing placement

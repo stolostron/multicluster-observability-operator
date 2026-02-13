@@ -61,19 +61,19 @@ func (mco *MultiClusterObservability) SetupWebhookWithManager(mgr ctrl.Manager) 
 var _ webhook.CustomValidator = &MultiClusterObservability{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-func (mco *MultiClusterObservability) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
+func (mco *MultiClusterObservability) ValidateCreate(ctx context.Context, _ runtime.Object) (admission.Warnings, error) {
 	multiclusterobservabilitylog.Info("validate create", "name", mco.Name)
-	return nil, mco.validateMultiClusterObservability(nil)
+	return nil, mco.validateMultiClusterObservability(ctx, nil)
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
-func (mco *MultiClusterObservability) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
+func (mco *MultiClusterObservability) ValidateUpdate(ctx context.Context, oldObj, _ runtime.Object) (admission.Warnings, error) {
 	multiclusterobservabilitylog.Info("validate update", "name", mco.Name)
-	return nil, mco.validateMultiClusterObservability(oldObj)
+	return nil, mco.validateMultiClusterObservability(ctx, oldObj)
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
-func (mco *MultiClusterObservability) ValidateDelete(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
+func (mco *MultiClusterObservability) ValidateDelete(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
 	multiclusterobservabilitylog.Info("validate delete", "name", mco.Name)
 
 	// no validation logic upon object delete.
@@ -81,18 +81,18 @@ func (mco *MultiClusterObservability) ValidateDelete(ctx context.Context, obj ru
 }
 
 // validateMultiClusterObservability validates  the name and the spec of the MultiClusterObservability CR.
-func (mco *MultiClusterObservability) validateMultiClusterObservability(old runtime.Object) error {
+func (mco *MultiClusterObservability) validateMultiClusterObservability(ctx context.Context, old runtime.Object) error {
 	var allErrs field.ErrorList
 	if err := mco.validateMultiClusterObservabilityName(); err != nil {
 		allErrs = append(allErrs, err)
 	}
-	if err := mco.validateMultiClusterObservabilitySpec(); err != nil {
+	if err := mco.validateMultiClusterObservabilitySpec(ctx); err != nil {
 		allErrs = append(allErrs, err)
 	}
 
 	// validate the MultiClusterObservability CR update
 	if old != nil {
-		if errlists := mco.validateUpdateMultiClusterObservabilitySpec(old); errlists != nil {
+		if errlists := mco.validateUpdateMultiClusterObservabilitySpec(ctx, old); errlists != nil {
 			allErrs = append(allErrs, errlists...)
 		}
 	}
@@ -116,7 +116,7 @@ func (mco *MultiClusterObservability) validateMultiClusterObservabilityName() *f
 // validateMultiClusterObservabilitySpec validates the spec of the MultiClusterObservability CR.
 // notice that some fields are declaratively validated by OpenAPI schema with `// +kubebuilder:validation` in the type
 // definition.
-func (mco *MultiClusterObservability) validateMultiClusterObservabilitySpec() *field.Error {
+func (mco *MultiClusterObservability) validateMultiClusterObservabilitySpec(ctx context.Context) *field.Error {
 	// The field helpers from the kubernetes API machinery help us return nicely structured validation errors.
 
 	// Validate object storage configuration if provided
@@ -136,7 +136,7 @@ func (mco *MultiClusterObservability) validateMultiClusterObservabilitySpec() *f
 
 	// Read the object storage secret
 	secret, err := kubeClient.CoreV1().Secrets(defaultNamespace).Get(
-		context.TODO(),
+		ctx,
 		objStorageConf.Name,
 		metav1.GetOptions{},
 	)
@@ -218,13 +218,14 @@ func validateBucketName(bucket string, storageType string) error {
 }
 
 // validateUpdateMultiClusterObservabilitySpec validates the update of the MultiClusterObservability CR.
-func (mco *MultiClusterObservability) validateUpdateMultiClusterObservabilitySpec(old runtime.Object) field.ErrorList {
-	return mco.validateUpdateMultiClusterObservabilityStorageSize(old)
+func (mco *MultiClusterObservability) validateUpdateMultiClusterObservabilitySpec(ctx context.Context, old runtime.Object) field.ErrorList {
+	return mco.validateUpdateMultiClusterObservabilityStorageSize(ctx, old)
 }
 
 // validateUpdateMultiClusterObservabilityStorageSize validates the update of storage size in the
 // MultiClusterObservability CR.
 func (mco *MultiClusterObservability) validateUpdateMultiClusterObservabilityStorageSize(
+	ctx context.Context,
 	old runtime.Object,
 ) field.ErrorList {
 	var errs field.ErrorList
@@ -234,12 +235,12 @@ func (mco *MultiClusterObservability) validateUpdateMultiClusterObservabilitySto
 		return append(errs, field.InternalError(nil, err))
 	}
 
-	selectedSC, err := getSelectedStorageClassForMultiClusterObservability(kubeClient, oldMCO)
+	selectedSC, err := getSelectedStorageClassForMultiClusterObservability(ctx, kubeClient, oldMCO)
 	if err != nil {
 		return append(errs, field.InternalError(nil, err))
 	}
 
-	selectedSCAllowResize, err := storageClassAllowVolumeExpansion(kubeClient, selectedSC)
+	selectedSCAllowResize, err := storageClassAllowVolumeExpansion(ctx, kubeClient, selectedSC)
 	if err != nil {
 		return append(errs, field.InternalError(nil, err))
 	}
@@ -304,6 +305,7 @@ func createOrGetKubeClient() (kubernetes.Interface, error) {
 
 // getSelectedStorageClassForMultiClusterObservability get secected for the MultiClusterObservability CR.
 func getSelectedStorageClassForMultiClusterObservability(
+	ctx context.Context,
 	c kubernetes.Interface,
 	mco *MultiClusterObservability,
 ) (string, error) {
@@ -312,7 +314,7 @@ func getSelectedStorageClassForMultiClusterObservability(
 		scInCR = mco.Spec.StorageConfig.StorageClass
 	}
 
-	scList, err := c.StorageV1().StorageClasses().List(context.TODO(), metav1.ListOptions{})
+	scList, err := c.StorageV1().StorageClasses().List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return "", err
 	}
@@ -340,8 +342,8 @@ func getSelectedStorageClassForMultiClusterObservability(
 }
 
 // storageClassAllowVolumeExpansion check if the storageclass allow volume expansion.
-func storageClassAllowVolumeExpansion(c kubernetes.Interface, name string) (bool, error) {
-	sc, err := c.StorageV1().StorageClasses().Get(context.TODO(), name, metav1.GetOptions{})
+func storageClassAllowVolumeExpansion(ctx context.Context, c kubernetes.Interface, name string) (bool, error) {
+	sc, err := c.StorageV1().StorageClasses().Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
 		return false, err
 	}

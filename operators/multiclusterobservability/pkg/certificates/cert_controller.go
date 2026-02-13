@@ -39,7 +39,7 @@ var (
 	isCertControllerRunnning = false
 )
 
-func Start(c client.Client, ingressCtlCrdExists bool) {
+func Start(ctx context.Context, c client.Client, ingressCtlCrdExists bool) {
 	if isCertControllerRunnning {
 		return
 	}
@@ -58,7 +58,7 @@ func Start(c client.Client, ingressCtlCrdExists bool) {
 		os.Exit(1)
 	}
 
-	err = addonMgr.Start(context.TODO())
+	err = addonMgr.Start(ctx)
 	if err != nil {
 		log.Error(err, "Failed to start addon manager")
 		os.Exit(1)
@@ -79,6 +79,7 @@ func Start(c client.Client, ingressCtlCrdExists bool) {
 		ListerWatcher: watchlist,
 		ObjectType:    &v1.Secret{},
 		ResyncPeriod:  time.Minute * 60,
+		//nolint:contextcheck // Informer handler callbacks do not accept a context.
 		Handler: cache.ResourceEventHandlerFuncs{
 			AddFunc:    onAdd(c),
 			DeleteFunc: onDelete(c),
@@ -91,7 +92,7 @@ func Start(c client.Client, ingressCtlCrdExists bool) {
 	go controller.Run(stop)
 }
 
-func restartPods(c client.Client, s v1.Secret, isUpdate bool) {
+func restartPods(ctx context.Context, c client.Client, s v1.Secret, isUpdate bool) {
 	if config.GetMonitoringCRName() == "" {
 		return
 	}
@@ -104,13 +105,13 @@ func restartPods(c client.Client, s v1.Secret, isUpdate bool) {
 		dName = config.HubMetricsCollectorName
 	}
 	if dName != "" {
-		updateDeployLabel(c, dName, isUpdate)
+		updateDeployLabel(ctx, c, dName, isUpdate)
 	}
 }
 
-func updateDeployLabel(c client.Client, dName string, isUpdate bool) {
+func updateDeployLabel(ctx context.Context, c client.Client, dName string, isUpdate bool) {
 	dep := &appv1.Deployment{}
-	err := c.Get(context.TODO(), types.NamespacedName{
+	err := c.Get(ctx, types.NamespacedName{
 		Name:      dName,
 		Namespace: config.GetDefaultNamespace(),
 	}, dep)
@@ -123,7 +124,7 @@ func updateDeployLabel(c client.Client, dName string, isUpdate bool) {
 	if isUpdate || dep.Status.ReadyReplicas != 0 {
 		newDep := dep.DeepCopy()
 		newDep.Spec.Template.Labels[restartLabel] = time.Now().Format("2006-1-2.150405")
-		err := c.Patch(context.TODO(), newDep, client.StrategicMergeFrom(dep))
+		err := c.Patch(ctx, newDep, client.StrategicMergeFrom(dep))
 		if err != nil {
 			log.Error(err, "Failed to update the deployment", "name", dName)
 		} else {
@@ -162,7 +163,7 @@ func needsRenew(s v1.Secret) bool {
 
 func onAdd(c client.Client) func(obj any) {
 	return func(obj any) {
-		restartPods(c, *obj.(*v1.Secret), false)
+		restartPods(context.Background(), c, *obj.(*v1.Secret), false)
 	}
 }
 
@@ -171,7 +172,7 @@ func onDelete(c client.Client) func(obj any) {
 		s := *obj.(*v1.Secret)
 		if slices.Contains(caSecretNames, s.Name) {
 			mco := &mcov1beta2.MultiClusterObservability{}
-			err := c.Get(context.TODO(), types.NamespacedName{
+			err := c.Get(context.Background(), types.NamespacedName{
 				Name: config.GetMonitoringCRName(),
 			}, mco)
 			if err == nil {
@@ -183,13 +184,13 @@ func onDelete(c client.Client) func(obj any) {
 				i := 0
 				for {
 					caSecret := &v1.Secret{}
-					err = c.Get(context.TODO(), types.NamespacedName{
+					err = c.Get(context.Background(), types.NamespacedName{
 						Name:      s.Name,
 						Namespace: config.GetDefaultNamespace(),
 					}, caSecret)
 					if err == nil {
 						caSecret.Data["tls.crt"] = append(caSecret.Data["tls.crt"], s.Data["tls.crt"]...)
-						err = c.Update(context.TODO(), caSecret)
+						err = c.Update(context.Background(), caSecret)
 						if err != nil {
 							log.Error(err, "Failed to update secret for ca certificate", "name", s.Name)
 							i++
@@ -217,25 +218,25 @@ func onUpdate(c client.Client, ingressCtlCrdExists bool) func(oldObj, newObj any
 		oldS := *oldObj.(*v1.Secret)
 		newS := *newObj.(*v1.Secret)
 		if !reflect.DeepEqual(oldS.Data, newS.Data) {
-			restartPods(c, newS, true)
+			restartPods(context.Background(), c, newS, true)
 		} else {
 			if slices.Contains(caSecretNames, newS.Name) {
-				removeExpiredCA(c, newS.Name)
+				removeExpiredCA(context.Background(), c, newS.Name)
 			}
 			if needsRenew(newS) {
 				var err error
 				var hosts []string
 				switch name := newS.Name; name {
 				case serverCACerts:
-					err, _ = createCASecret(c, nil, nil, true, serverCACerts, serverCACertifcateCN)
+					_, err = createCASecret(context.Background(), c, nil, nil, true, serverCACerts, serverCACertifcateCN)
 				case clientCACerts:
-					err, _ = createCASecret(c, nil, nil, true, clientCACerts, clientCACertificateCN)
+					_, err = createCASecret(context.Background(), c, nil, nil, true, clientCACerts, clientCACertificateCN)
 				case grafanaCerts:
-					err = createCertSecret(c, nil, nil, true, grafanaCerts, false, grafanaCertificateCN, nil, nil, nil)
+					err = createCertSecret(context.Background(), c, nil, nil, true, grafanaCerts, false, grafanaCertificateCN, nil, nil, nil)
 				case serverCerts:
-					hosts, err = getHosts(c, ingressCtlCrdExists)
+					hosts, err = getHosts(context.Background(), c, ingressCtlCrdExists)
 					if err == nil {
-						err = createCertSecret(c, nil, nil, true, serverCerts, true, serverCertificateCN, nil, hosts, nil)
+						err = createCertSecret(context.Background(), c, nil, nil, true, serverCerts, true, serverCertificateCN, nil, hosts, nil)
 					}
 				case hubMetricsCollectorMtlsCert:
 					// ACM 8509: Special case for hub metrics collector

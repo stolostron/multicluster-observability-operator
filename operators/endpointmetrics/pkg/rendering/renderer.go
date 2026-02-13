@@ -52,6 +52,201 @@ var (
 
 var Images = map[string]string{}
 
+func updateKubeStateMetrics(ctx context.Context, c runtimeclient.Client, res *unstructured.Unstructured) error {
+	obj := util.GetK8sObj(res.GetKind())
+	err := runtime.DefaultUnstructuredConverter.FromUnstructured(res.Object, obj)
+	if err != nil {
+		return err
+	}
+	dep := obj.(*v1.Deployment)
+	spec := &dep.Spec.Template.Spec
+	spec.Containers[0].Image = Images[operatorconfig.KubeStateMetricsKey]
+	spec.Containers[1].Image = Images[operatorconfig.KubeRbacProxyKey]
+	spec.Containers[2].Image = Images[operatorconfig.KubeRbacProxyKey]
+	spec.ImagePullSecrets = []corev1.LocalObjectReference{
+		{Name: os.Getenv(operatorconfig.PullSecret)},
+	}
+
+	// Add user number to ensure non root user
+	// Do nothing on microshift as it is restricted by the restricted SCC
+	microshiftVersion, err := microshift.IsMicroshiftCluster(ctx, c)
+	if err != nil {
+		return err
+	}
+	userNumber := int64(65534)
+	if microshiftVersion == "" {
+		for _, container := range spec.Containers {
+			if container.SecurityContext == nil {
+				container.SecurityContext = &corev1.SecurityContext{}
+			}
+			container.SecurityContext.RunAsUser = &userNumber
+			container.SecurityContext.RunAsGroup = &userNumber
+		}
+	}
+
+	unstructuredObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
+	if err != nil {
+		return err
+	}
+	res.Object = unstructuredObj
+	return nil
+}
+
+func updatePrometheusOperator(res *unstructured.Unstructured, namespace string) error {
+	obj := util.GetK8sObj(res.GetKind())
+	err := runtime.DefaultUnstructuredConverter.FromUnstructured(res.Object, obj)
+	if err != nil {
+		return err
+	}
+	dep := obj.(*v1.Deployment)
+	spec := &dep.Spec.Template.Spec
+	spec.Containers[0].Image = Images[operatorconfig.PrometheusOperatorKey]
+	spec.ImagePullSecrets = []corev1.LocalObjectReference{
+		{Name: os.Getenv(operatorconfig.PullSecret)},
+	}
+	args := spec.Containers[0].Args
+	for idx := range args {
+		args[idx] = strings.Replace(args[idx], "{{NAMESPACE}}", namespace, 1)
+		args[idx] = strings.Replace(args[idx], "{{PROM_CONFIGMAP_RELOADER_IMG}}", Images[operatorconfig.PrometheusConfigmapReloaderKey], 1)
+	}
+	spec.Containers[0].Args = args
+
+	unstructuredObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
+	if err != nil {
+		return err
+	}
+	res.Object = unstructuredObj
+	return nil
+}
+
+func updatePrometheusK8s(res *unstructured.Unstructured, hubInfo *operatorconfig.HubInfo) error {
+	obj := util.GetK8sObj(res.GetKind())
+	err := runtime.DefaultUnstructuredConverter.FromUnstructured(res.Object, obj)
+	if err != nil {
+		return err
+	}
+	prom := obj.(*prometheusv1.Prometheus)
+	spec := &prom.Spec
+	image := Images[operatorconfig.PrometheusKey]
+	spec.Image = &image
+	spec.Containers[0].Image = Images[operatorconfig.KubeRbacProxyKey]
+	spec.ImagePullSecrets = []corev1.LocalObjectReference{
+		{Name: os.Getenv(operatorconfig.PullSecret)},
+	}
+	spec.ExternalLabels[operatorconfig.ClusterLabelKeyForAlerts] = hubInfo.ClusterName
+	if hubInfo.AlertmanagerEndpoint == "" {
+		log.Info("setting AdditionalAlertManagerConfigs to nil, deleting secrets")
+		spec.AdditionalAlertManagerConfigs = nil
+		spec.Secrets = []string{}
+	} else {
+		log.Info("restoring AdditionalAlertManagerConfigs, secrets")
+		spec.AdditionalAlertManagerConfigs = &corev1.SecretKeySelector{
+			LocalObjectReference: corev1.LocalObjectReference{
+				Name: "prometheus-alertmanager",
+			},
+			Key: "alertmanager.yaml",
+		}
+		spec.Secrets = []string{"hub-alertmanager-router-ca" + "-" + hubInfo.HubClusterID, "observability-alertmanager-accessor" + "-" + hubInfo.HubClusterID}
+	}
+
+	unstructuredObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
+	if err != nil {
+		return err
+	}
+	res.Object = unstructuredObj
+	return nil
+}
+
+func updateNodeExporter(res *unstructured.Unstructured) error {
+	obj := util.GetK8sObj(res.GetKind())
+	err := runtime.DefaultUnstructuredConverter.FromUnstructured(res.Object, obj)
+	if err != nil {
+		return err
+	}
+	ds := obj.(*v1.DaemonSet)
+	spec := &ds.Spec.Template.Spec
+	spec.Containers[0].Image = Images[operatorconfig.NodeExporterKey]
+	spec.Containers[1].Image = Images[operatorconfig.KubeRbacProxyKey]
+	spec.ImagePullSecrets = []corev1.LocalObjectReference{
+		{Name: os.Getenv(operatorconfig.PullSecret)},
+	}
+
+	unstructuredObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
+	if err != nil {
+		return err
+	}
+	res.Object = unstructuredObj
+	return nil
+}
+
+func updatePrometheusScrapeTargets(ctx context.Context, c runtimeclient.Client, res *unstructured.Unstructured, namespace string, isKindTest bool) error {
+	obj := util.GetK8sObj(res.GetKind())
+	err := runtime.DefaultUnstructuredConverter.FromUnstructured(res.Object, obj)
+	if err != nil {
+		return err
+	}
+	s := obj.(*corev1.Secret)
+	promConfig, exists := s.StringData["scrape-targets.yaml"]
+	if !exists {
+		return fmt.Errorf(
+			"no key 'scrape-targets.yaml' found in the secret: %s/%s",
+			s.GetNamespace(),
+			s.GetName(),
+		)
+	}
+
+	// replace the disabled metrics
+	disabledMetricsSt, err := getDisabledMetrics(ctx, c, namespace)
+	if err != nil {
+		return err
+	}
+	if disabledMetricsSt != "" {
+		s.StringData["scrape-targets.yaml"] = strings.ReplaceAll(promConfig, "_DISABLED_METRICS_", disabledMetricsSt)
+	}
+
+	if isKindTest {
+		s.StringData["scrape-targets.yaml"] = strings.ReplaceAll(promConfig, "open-cluster-management-addon-observability", "open-cluster-management-observability")
+	}
+	unstructuredObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
+	if err != nil {
+		return err
+	}
+	res.Object = unstructuredObj
+	return nil
+}
+
+func updatePrometheusAlertmanager(res *unstructured.Unstructured, hubInfo *operatorconfig.HubInfo) error {
+	obj := util.GetK8sObj(res.GetKind())
+	err := runtime.DefaultUnstructuredConverter.FromUnstructured(res.Object, obj)
+	if err != nil {
+		return err
+	}
+	s := obj.(*corev1.Secret)
+	amConfig, exists := s.StringData["alertmanager.yaml"]
+	if !exists {
+		return fmt.Errorf(
+			"no key 'alertmanager.yaml' found in the configmap: %s/%s",
+			s.GetNamespace(),
+			s.GetName(),
+		)
+	}
+	// replace the hub alertmanager address. Address will be set to null when alerts are disabled
+	hubAmEp := strings.TrimPrefix(hubInfo.AlertmanagerEndpoint, "https://")
+	amConfig = strings.ReplaceAll(amConfig, "_ALERTMANAGER_ENDPOINT_", hubAmEp)
+	amConfig = strings.ReplaceAll(amConfig, "credentials_file: /etc/prometheus/secrets/observability-alertmanager-accessor/token",
+		fmt.Sprintf("credentials_file: /etc/prometheus/secrets/observability-alertmanager-accessor-%s/token", hubInfo.HubClusterID))
+	amConfig = strings.ReplaceAll(amConfig, "ca_file: /etc/prometheus/secrets/hub-alertmanager-router-ca/service-ca.crt",
+		fmt.Sprintf("ca_file: /etc/prometheus/secrets/hub-alertmanager-router-ca-%s/service-ca.crt", hubInfo.HubClusterID))
+	s.StringData["alertmanager.yaml"] = amConfig
+
+	unstructuredObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
+	if err != nil {
+		return err
+	}
+	res.Object = unstructuredObj
+	return nil
+}
+
 func Render(
 	ctx context.Context,
 	r *rendererutil.Renderer,
@@ -86,188 +281,27 @@ func Render(
 				resources[idx].Object["subjects"] = subjects
 			}
 		}
-		if resources[idx].GetKind() == "Deployment" && resources[idx].GetName() == "kube-state-metrics" {
-			obj := util.GetK8sObj(resources[idx].GetKind())
-			err := runtime.DefaultUnstructuredConverter.FromUnstructured(resources[idx].Object, obj)
-			if err != nil {
-				return nil, err
-			}
-			dep := obj.(*v1.Deployment)
-			spec := &dep.Spec.Template.Spec
-			spec.Containers[0].Image = Images[operatorconfig.KubeStateMetricsKey]
-			spec.Containers[1].Image = Images[operatorconfig.KubeRbacProxyKey]
-			spec.Containers[2].Image = Images[operatorconfig.KubeRbacProxyKey]
-			spec.ImagePullSecrets = []corev1.LocalObjectReference{
-				{Name: os.Getenv(operatorconfig.PullSecret)},
-			}
 
-			// Add user number to ensure non root user
-			// Do nothing on microshift as it is restricted by the restricted SCC
-			microshiftVersion, err := microshift.IsMicroshiftCluster(ctx, c)
-			if err != nil {
-				return nil, err
-			}
-			userNumber := int64(65534)
-			if microshiftVersion == "" {
-				for _, container := range spec.Containers {
-					if container.SecurityContext == nil {
-						container.SecurityContext = &corev1.SecurityContext{}
-					}
-					container.SecurityContext.RunAsUser = &userNumber
-					container.SecurityContext.RunAsGroup = &userNumber
-				}
-			}
+		kind := resources[idx].GetKind()
+		name := resources[idx].GetName()
 
-			unstructuredObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
-			if err != nil {
-				return nil, err
-			}
-			resources[idx].Object = unstructuredObj
+		var err error
+		switch {
+		case kind == "Deployment" && name == "kube-state-metrics":
+			err = updateKubeStateMetrics(ctx, c, resources[idx])
+		case kind == "Deployment" && name == "prometheus-operator":
+			err = updatePrometheusOperator(resources[idx], namespace)
+		case kind == "Prometheus" && name == "k8s":
+			err = updatePrometheusK8s(resources[idx], hubInfo)
+		case kind == "DaemonSet" && name == "node-exporter":
+			err = updateNodeExporter(resources[idx])
+		case kind == "Secret" && name == "prometheus-scrape-targets":
+			err = updatePrometheusScrapeTargets(ctx, c, resources[idx], namespace, isKindTest)
+		case kind == "Secret" && name == "prometheus-alertmanager":
+			err = updatePrometheusAlertmanager(resources[idx], hubInfo)
 		}
-		if resources[idx].GetKind() == "Deployment" && resources[idx].GetName() == "prometheus-operator" {
-			obj := util.GetK8sObj(resources[idx].GetKind())
-			err := runtime.DefaultUnstructuredConverter.FromUnstructured(resources[idx].Object, obj)
-			if err != nil {
-				return nil, err
-			}
-			dep := obj.(*v1.Deployment)
-			spec := &dep.Spec.Template.Spec
-			spec.Containers[0].Image = Images[operatorconfig.PrometheusOperatorKey]
-			spec.ImagePullSecrets = []corev1.LocalObjectReference{
-				{Name: os.Getenv(operatorconfig.PullSecret)},
-			}
-			args := spec.Containers[0].Args
-			for idx := range args {
-				args[idx] = strings.Replace(args[idx], "{{NAMESPACE}}", namespace, 1)
-				args[idx] = strings.Replace(args[idx], "{{PROM_CONFIGMAP_RELOADER_IMG}}", Images[operatorconfig.PrometheusConfigmapReloaderKey], 1)
-			}
-			spec.Containers[0].Args = args
-
-			unstructuredObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
-			if err != nil {
-				return nil, err
-			}
-			resources[idx].Object = unstructuredObj
-		}
-		if resources[idx].GetKind() == "Prometheus" && resources[idx].GetName() == "k8s" {
-			obj := util.GetK8sObj(resources[idx].GetKind())
-			err := runtime.DefaultUnstructuredConverter.FromUnstructured(resources[idx].Object, obj)
-			if err != nil {
-				return nil, err
-			}
-			prom := obj.(*prometheusv1.Prometheus)
-			spec := &prom.Spec
-			image := Images[operatorconfig.PrometheusKey]
-			spec.Image = &image
-			spec.Containers[0].Image = Images[operatorconfig.KubeRbacProxyKey]
-			spec.ImagePullSecrets = []corev1.LocalObjectReference{
-				{Name: os.Getenv(operatorconfig.PullSecret)},
-			}
-			spec.ExternalLabels[operatorconfig.ClusterLabelKeyForAlerts] = hubInfo.ClusterName
-			if hubInfo.AlertmanagerEndpoint == "" {
-				log.Info("setting AdditionalAlertManagerConfigs to nil, deleting secrets")
-				spec.AdditionalAlertManagerConfigs = nil
-				spec.Secrets = []string{}
-			} else {
-				log.Info("restoring AdditionalAlertManagerConfigs, secrets")
-				spec.AdditionalAlertManagerConfigs = &corev1.SecretKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: "prometheus-alertmanager",
-					},
-					Key: "alertmanager.yaml",
-				}
-				spec.Secrets = []string{"hub-alertmanager-router-ca" + "-" + hubInfo.HubClusterID, "observability-alertmanager-accessor" + "-" + hubInfo.HubClusterID}
-			}
-
-			unstructuredObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
-			if err != nil {
-				return nil, err
-			}
-			resources[idx].Object = unstructuredObj
-		}
-		if resources[idx].GetKind() == "DaemonSet" && resources[idx].GetName() == "node-exporter" {
-			obj := util.GetK8sObj(resources[idx].GetKind())
-			err := runtime.DefaultUnstructuredConverter.FromUnstructured(resources[idx].Object, obj)
-			if err != nil {
-				return nil, err
-			}
-			ds := obj.(*v1.DaemonSet)
-			spec := &ds.Spec.Template.Spec
-			spec.Containers[0].Image = Images[operatorconfig.NodeExporterKey]
-			spec.Containers[1].Image = Images[operatorconfig.KubeRbacProxyKey]
-			spec.ImagePullSecrets = []corev1.LocalObjectReference{
-				{Name: os.Getenv(operatorconfig.PullSecret)},
-			}
-
-			unstructuredObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
-			if err != nil {
-				return nil, err
-			}
-			resources[idx].Object = unstructuredObj
-		}
-		if resources[idx].GetKind() == "Secret" && resources[idx].GetName() == "prometheus-scrape-targets" {
-			obj := util.GetK8sObj(resources[idx].GetKind())
-			err := runtime.DefaultUnstructuredConverter.FromUnstructured(resources[idx].Object, obj)
-			if err != nil {
-				return nil, err
-			}
-			s := obj.(*corev1.Secret)
-			promConfig, exists := s.StringData["scrape-targets.yaml"]
-			if !exists {
-				return nil, fmt.Errorf(
-					"no key 'scrape-targets.yaml' found in the secret: %s/%s",
-					s.GetNamespace(),
-					s.GetName(),
-				)
-			}
-
-			// replace the disabled metrics
-			disabledMetricsSt, err := getDisabledMetrics(ctx, c, namespace)
-			if err != nil {
-				return nil, err
-			}
-			if disabledMetricsSt != "" {
-				s.StringData["scrape-targets.yaml"] = strings.ReplaceAll(promConfig, "_DISABLED_METRICS_", disabledMetricsSt)
-			}
-
-			if isKindTest {
-				s.StringData["scrape-targets.yaml"] = strings.ReplaceAll(promConfig, "open-cluster-management-addon-observability", "open-cluster-management-observability")
-			}
-			unstructuredObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
-			if err != nil {
-				return nil, err
-			}
-			resources[idx].Object = unstructuredObj
-		}
-		if resources[idx].GetKind() == "Secret" && resources[idx].GetName() == "prometheus-alertmanager" {
-			obj := util.GetK8sObj(resources[idx].GetKind())
-			err := runtime.DefaultUnstructuredConverter.FromUnstructured(resources[idx].Object, obj)
-			if err != nil {
-				return nil, err
-			}
-			s := obj.(*corev1.Secret)
-			amConfig, exists := s.StringData["alertmanager.yaml"]
-			if !exists {
-				return nil, fmt.Errorf(
-					"no key 'alertmanager.yaml' found in the configmap: %s/%s",
-					s.GetNamespace(),
-					s.GetName(),
-				)
-			}
-			// replace the hub alertmanager address. Address will be set to null when alerts are disabled
-			hubAmEp := strings.TrimPrefix(hubInfo.AlertmanagerEndpoint, "https://")
-			amConfig = strings.ReplaceAll(amConfig, "_ALERTMANAGER_ENDPOINT_", hubAmEp)
-			amConfig = strings.ReplaceAll(amConfig, "credentials_file: /etc/prometheus/secrets/observability-alertmanager-accessor/token",
-				fmt.Sprintf("credentials_file: /etc/prometheus/secrets/observability-alertmanager-accessor-%s/token", hubInfo.HubClusterID))
-			amConfig = strings.ReplaceAll(amConfig, "ca_file: /etc/prometheus/secrets/hub-alertmanager-router-ca/service-ca.crt",
-				fmt.Sprintf("ca_file: /etc/prometheus/secrets/hub-alertmanager-router-ca-%s/service-ca.crt", hubInfo.HubClusterID))
-			s.StringData["alertmanager.yaml"] = amConfig
-
-			unstructuredObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
-			if err != nil {
-				return nil, err
-			}
-			resources[idx].Object = unstructuredObj
+		if err != nil {
+			return nil, err
 		}
 	}
 

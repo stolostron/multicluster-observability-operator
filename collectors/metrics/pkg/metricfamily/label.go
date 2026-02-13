@@ -103,7 +103,7 @@ func insertLexicographicallyByName(
 	i := len(existing) - 1
 	for i > 0 && existing[i].GetName() < existing[i-1].GetName() {
 		existing[i], existing[i-1] = existing[i-1], existing[i]
-		i -= 1
+		i--
 	}
 	return existing
 }
@@ -116,7 +116,7 @@ func InsertLabelLexicographicallyByName(
 	i := len(existing) - 1
 	for i > 0 && existing[i].GetName() < existing[i-1].GetName() {
 		existing[i], existing[i-1] = existing[i-1], existing[i]
-		i -= 1
+		i--
 	}
 	return existing
 }

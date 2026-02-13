@@ -63,7 +63,7 @@ func deleteObsAddonObject(ctx context.Context, c client.Client, namespace string
 	// is staled, delete finalizer
 	if deletionStalled(found) {
 		log.Info("Deleting stalled observabilityaddon finalizer", "namespace", namespace)
-		if err := deleteFinalizer(c, found); err != nil {
+		if err := deleteFinalizer(ctx, c, found); err != nil {
 			return false, fmt.Errorf("failed to delete observabilityaddon %s/%s finalizer: %w", namespace, obsAddonName, err)
 		}
 		return false, nil
@@ -86,7 +86,7 @@ func deleteObsAddonObject(ctx context.Context, c client.Client, namespace string
 // It will initially mirror values from the MultiClusterObservability CR with the mco source annotation.
 // If an existing addon is found with the mco source annotation it will update the existing addon with the new values.
 // If the existing addon is created by the user with the override source annotation, it will not update the existing addon.
-func createObsAddon(mco *mcov1beta2.MultiClusterObservability, c client.Client, namespace string) error {
+func createObsAddon(ctx context.Context, mco *mcov1beta2.MultiClusterObservability, c client.Client, namespace string) error {
 	if namespace == config.GetDefaultNamespace() {
 		return nil
 	}
@@ -112,17 +112,17 @@ func createObsAddon(mco *mcov1beta2.MultiClusterObservability, c client.Client, 
 	}
 
 	found := &obsv1beta1.ObservabilityAddon{}
-	err := c.Get(context.TODO(), types.NamespacedName{Name: obsAddonName, Namespace: namespace}, found)
+	err := c.Get(ctx, types.NamespacedName{Name: obsAddonName, Namespace: namespace}, found)
 	switch {
 	case err == nil && found.GetDeletionTimestamp() != nil:
-		err = deleteFinalizer(c, found)
+		err = deleteFinalizer(ctx, c, found)
 		if err != nil {
 			return err
 		}
 		return nil
 	case err != nil && errors.IsNotFound(err):
 		log.Info("Creating observabilityaddon cr", "namespace", namespace)
-		err = c.Create(context.TODO(), ec)
+		err = c.Create(ctx, ec)
 		if err != nil {
 			log.Error(err, "Failed to create observabilityaddon cr")
 			return err
@@ -138,7 +138,7 @@ func createObsAddon(mco *mcov1beta2.MultiClusterObservability, c client.Client, 
 		// Only update if specs are different
 		if !equality.Semantic.DeepEqual(found.Spec, ec.Spec) {
 			found.Spec = ec.Spec
-			err = c.Update(context.TODO(), found)
+			err = c.Update(ctx, found)
 			if err != nil {
 				return fmt.Errorf("failed to update observabilityaddon cr: %w", err)
 			}
@@ -160,11 +160,11 @@ func deletionStalled(obj client.Object) bool {
 	return time.Since(delTs.Time) > 1*time.Minute
 }
 
-func deleteFinalizer(c client.Client, obsaddon *obsv1beta1.ObservabilityAddon) error {
+func deleteFinalizer(ctx context.Context, c client.Client, obsaddon *obsv1beta1.ObservabilityAddon) error {
 	if slices.Contains(obsaddon.GetFinalizers(), obsAddonFinalizer) {
 		log.Info("Deleting observabilityaddon's finalizer", "namespace", obsaddon.Namespace)
 		obsaddon.SetFinalizers(util.Remove(obsaddon.GetFinalizers(), obsAddonFinalizer))
-		err := c.Update(context.TODO(), obsaddon)
+		err := c.Update(ctx, obsaddon)
 		if err != nil {
 			return fmt.Errorf("failed to delete finalizer in observabilityaddon: %w", err)
 		}

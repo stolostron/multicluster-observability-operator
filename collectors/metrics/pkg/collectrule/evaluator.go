@@ -63,7 +63,7 @@ type Evaluator struct {
 	logger log.Logger
 }
 
-func New(cfg forwarder.Config) (*Evaluator, error) {
+func New(ctx context.Context, cfg forwarder.Config) (*Evaluator, error) {
 	config = forwarder.Config{
 		FromClientConfig: cfg.FromClientConfig,
 		ToClientConfig:   cfg.ToClientConfig,
@@ -100,36 +100,13 @@ func New(cfg forwarder.Config) (*Evaluator, error) {
 		evaluator.interval = 30 * time.Second
 	}
 
-	fromClient, err := cfg.CreateFromClient(cfg.Metrics, evaluator.interval, "evaluate_query", cfg.Logger)
+	fromClient, err := cfg.CreateFromClient(ctx, cfg.Metrics, evaluator.interval, "evaluate_query", cfg.Logger)
 	if err != nil {
 		return nil, err
 	}
 	evaluator.fromClient = fromClient
 
 	return &evaluator, nil
-}
-
-func (e *Evaluator) Reconfigure(cfg forwarder.Config) error {
-	evaluator, err := New(cfg)
-	if err != nil {
-		return fmt.Errorf("failed to reconfigure: %w", err)
-	}
-
-	e.lock.Lock()
-	defer e.lock.Unlock()
-
-	e.fromClient = evaluator.fromClient
-	e.interval = evaluator.interval
-	e.from = evaluator.from
-	e.collectRules = evaluator.collectRules
-	if err = unmarshalCollectorRules(e); err != nil {
-		return err
-	}
-
-	// Signal a restart to Run func.
-	// Do this in a goroutine since we do not care if restarting the Run loop is asynchronous.
-	go func() { e.reconfigure <- struct{}{} }()
-	return nil
 }
 
 func (e *Evaluator) Run(ctx context.Context) {
@@ -196,21 +173,21 @@ func getMatches() []string {
 	return matches
 }
 
-func startWorker() error {
+func startWorker(ctx context.Context) error {
 	if forwardWorker == nil {
 		var err error
-		forwardWorker, err = forwarder.New(config)
+		forwardWorker, err = forwarder.New(ctx, config)
 		if err != nil {
 			return fmt.Errorf("failed to configure forwarder for additional metrics: %w", err)
 		}
-		var ctx context.Context
-		ctx, cancel = context.WithCancel(context.Background())
+		var workerCtx context.Context
+		workerCtx, cancel = context.WithCancel(ctx)
 		go func() {
-			forwardWorker.Run(ctx)
+			forwardWorker.Run(workerCtx)
 			cancel()
 		}()
 	} else {
-		err := forwardWorker.Reconfigure(config)
+		err := forwardWorker.Reconfigure(ctx, config)
 		if err != nil {
 			return fmt.Errorf("failed to reconfigure forwarder for additional metrics: %w", err)
 		}
@@ -350,7 +327,7 @@ func (e *Evaluator) evaluate(ctx context.Context) {
 				rlogger.Log(e.logger, rlogger.Info, "msg", "forwarder stopped")
 			}
 		} else {
-			err := startWorker()
+			err := startWorker(ctx)
 			if err != nil {
 				rlogger.Log(e.logger, rlogger.Error, "msg", "failed to start forwarder to collect metrics", "error", err)
 			} else {

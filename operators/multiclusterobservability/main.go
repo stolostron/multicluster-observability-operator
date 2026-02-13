@@ -5,6 +5,7 @@
 package main
 
 import (
+	"context"
 	"crypto/tls"
 	"flag"
 	"fmt"
@@ -139,13 +140,13 @@ func main() {
 		os.Exit(1)
 	}
 
-	ingressCtlCrdExists, err := operatorsutil.CheckCRDExist(crdClient, config.IngressControllerCRD)
+	ingressCtlCrdExists, err := operatorsutil.CheckCRDExist(context.Background(), crdClient, config.IngressControllerCRD)
 	if err != nil {
 		setupLog.Error(err, "")
 		os.Exit(1)
 	}
 
-	mchCrdExists, err := operatorsutil.CheckCRDExist(crdClient, config.MCHCrdName)
+	mchCrdExists, err := operatorsutil.CheckCRDExist(context.Background(), crdClient, config.MCHCrdName)
 	if err != nil {
 		setupLog.Error(err, "")
 		os.Exit(1)
@@ -265,7 +266,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = operatorsutil.UpdateCRDWebhookNS(crdClient, mcoNamespace, config.MCOCrdName); err != nil {
+	if err = operatorsutil.UpdateCRDWebhookNS(context.Background(), crdClient, mcoNamespace, config.MCOCrdName); err != nil {
 		setupLog.Error(
 			err,
 			"unable to update webhook service namespace in MCO CRD",
@@ -274,19 +275,19 @@ func main() {
 		)
 	}
 
-	svmCrdExists, err := operatorsutil.CheckCRDExist(crdClient, config.StorageVersionMigrationCrdName)
+	svmCrdExists, err := operatorsutil.CheckCRDExist(context.Background(), crdClient, config.StorageVersionMigrationCrdName)
 	if err != nil {
 		setupLog.Error(err, "")
 		os.Exit(1)
 	}
 
-	mcghCrdExists, err := operatorsutil.CheckCRDExist(crdClient, config.MCGHCrdName)
+	mcghCrdExists, err := operatorsutil.CheckCRDExist(context.Background(), crdClient, config.MCGHCrdName)
 	if err != nil {
 		setupLog.Error(err, "")
 		os.Exit(1)
 	}
 
-	scrapeConfigCrdExists, err := operatorsutil.CheckCRDExist(crdClient, config.PrometheusScrapeConfigsCrdName)
+	scrapeConfigCrdExists, err := operatorsutil.CheckCRDExist(context.Background(), crdClient, config.PrometheusScrapeConfigsCrdName)
 	if err != nil {
 		setupLog.Error(err, "")
 		os.Exit(1)

@@ -5,6 +5,7 @@
 package certificates
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"time"
@@ -16,16 +17,16 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func Sign(c client.Client, csr *certificatesv1.CertificateSigningRequest) ([]byte, error) {
+func Sign(ctx context.Context, c client.Client, csr *certificatesv1.CertificateSigningRequest) ([]byte, error) {
 	if os.Getenv("TEST") != "" {
 		// Create the CA secret
-		err, _ := createCASecret(c, nil, nil, false, clientCACerts, clientCACertificateCN) // creates the
+		_, err := createCASecret(ctx, c, nil, nil, false, clientCACerts, clientCACertificateCN) // creates the
 		if err != nil {
 			return nil, fmt.Errorf("failed to create CA secret: %w", err)
 		}
 	}
 
-	caCert, caKey, _, err := getCA(c, false) // gets client CA
+	caCert, caKey, _, err := getCA(ctx, c, false) // gets client CA
 	if err != nil {
 		return nil, fmt.Errorf("failed to get client CA: %w", err)
 	}

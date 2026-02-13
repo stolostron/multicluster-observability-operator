@@ -63,7 +63,7 @@ func TestTransform(t *testing.T) {
 		"clusterID": "test-clusterID",
 	}
 
-	h, err := NewHypershiftTransformer(c, l, labels)
+	h, err := NewHypershiftTransformer(t.Context(), c, l, labels)
 	if err != nil {
 		t.Fatal("Failed to new HyperShiftTransformer", err)
 	}

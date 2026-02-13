@@ -369,14 +369,13 @@ func ReplaceImage(annotations map[string]string, imageRepo, componentName string
 			return false, ""
 		}
 		return false, ""
-	} else {
-		image, found := imageManifests[componentName]
-		log.V(1).Info("image replacement", "componentName", componentName, "image", image)
-		if found {
-			return true, image
-		}
-		return false, ""
 	}
+	image, found := imageManifests[componentName]
+	log.V(1).Info("image replacement", "componentName", componentName, "image", image)
+	if found {
+		return true, image
+	}
+	return false, ""
 }
 
 // GetDefaultTenantName returns the default tenant name.
@@ -387,7 +386,7 @@ func GetDefaultTenantName() string {
 // GetObsAPIRouteHost is used to Route's host for Observatorium API. This doesn't take into consideration
 // the `advanced.customObservabilityHubURL` configuration.
 func GetObsAPIRouteHost(ctx context.Context, client client.Client, namespace string) (string, error) {
-	return GetRouteHost(client, obsAPIGateway, namespace)
+	return GetRouteHost(ctx, client, obsAPIGateway, namespace)
 }
 
 // GetObsAPIExternalURL is used to get the frontend URL that should be used to reach the Observatorium API instance.
@@ -410,26 +409,28 @@ func GetObsAPIExternalURL(ctx context.Context, client client.Client, namespace s
 		}
 		return obsURL, nil
 	}
-	routeHost, err := GetRouteHost(client, obsAPIGateway, namespace)
+	routeHost, err := GetRouteHost(ctx, client, obsAPIGateway, namespace)
 	if err != nil {
 		return nil, err
 	}
 	return url.Parse(fmt.Sprintf("%s://%s", schemeHttps, routeHost))
 }
 
-func GetRouteHost(client client.Client, name string, namespace string) (string, error) {
+func GetRouteHost(ctx context.Context, client client.Client, name string, namespace string) (string, error) {
 	found := &routev1.Route{}
 
-	err := client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, found)
+	err := client.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, found)
 	if err != nil && errors.IsNotFound(err) {
 		// if the router is not created yet, fallback to get host
 		// from the domain of ingresscontroller
 		domain, err := getDomainForIngressController(
+			ctx,
 			client,
 			OpenshiftIngressOperatorCRName,
 			OpenshiftIngressOperatorNamespace,
 		)
 		if err != nil {
+			log.Error(err, "Failed to get domain for ingress controller")
 			return "", nil
 		}
 		return name + "-" + namespace + "." + domain, nil
@@ -471,6 +472,7 @@ func GetAlertmanagerURL(ctx context.Context, client client.Client, namespace str
 	if err != nil && errors.IsNotFound(err) {
 		// if the alertmanager router is not created yet, fallback to get host from the domain of ingresscontroller
 		domain, err := getDomainForIngressController(
+			ctx,
 			client,
 			OpenshiftIngressOperatorCRName,
 			OpenshiftIngressOperatorNamespace,
@@ -486,9 +488,9 @@ func GetAlertmanagerURL(ctx context.Context, client client.Client, namespace str
 }
 
 // getDomainForIngressController get the domain for the given ingresscontroller instance.
-func getDomainForIngressController(client client.Client, name, namespace string) (string, error) {
+func getDomainForIngressController(ctx context.Context, client client.Client, name, namespace string) (string, error) {
 	ingressOperatorInstance := &operatorv1.IngressController{}
-	err := client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, ingressOperatorInstance)
+	err := client.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, ingressOperatorInstance)
 	if err != nil {
 		return "", err
 	}
@@ -500,16 +502,16 @@ func getDomainForIngressController(client client.Client, name, namespace string)
 }
 
 // GetAlertmanagerRouterCA is used to get the CA of openshift Route.
-func GetAlertmanagerRouterCA(client client.Client) (string, error) {
+func GetAlertmanagerRouterCA(ctx context.Context, client client.Client) (string, error) {
 	amRouteBYOCaSrt := &corev1.Secret{}
 	amRouteBYOCertSrt := &corev1.Secret{}
 	err1 := client.Get(
-		context.TODO(),
+		ctx,
 		types.NamespacedName{Name: AlertmanagerRouteBYOCAName, Namespace: GetDefaultNamespace()},
 		amRouteBYOCaSrt,
 	)
 	err2 := client.Get(
-		context.TODO(),
+		ctx,
 		types.NamespacedName{Name: AlertmanagerRouteBYOCERTName, Namespace: GetDefaultNamespace()},
 		amRouteBYOCertSrt,
 	)
@@ -519,7 +521,7 @@ func GetAlertmanagerRouterCA(client client.Client) (string, error) {
 
 	ingressOperator := &operatorv1.IngressController{}
 	err := client.Get(
-		context.TODO(),
+		ctx,
 		types.NamespacedName{Name: OpenshiftIngressOperatorCRName, Namespace: OpenshiftIngressOperatorNamespace},
 		ingressOperator,
 	)
@@ -535,7 +537,7 @@ func GetAlertmanagerRouterCA(client client.Client) (string, error) {
 
 	routerCASecret := &corev1.Secret{}
 	err = client.Get(
-		context.TODO(),
+		ctx,
 		types.NamespacedName{Name: routerCASrtName, Namespace: OpenshiftIngressNamespace},
 		routerCASecret,
 	)
@@ -546,10 +548,10 @@ func GetAlertmanagerRouterCA(client client.Client) (string, error) {
 }
 
 // GetAlertmanagerCA is used to get the CA of Alertmanager.
-func GetAlertmanagerCA(client client.Client) (string, error) {
+func GetAlertmanagerCA(ctx context.Context, client client.Client) (string, error) {
 	amCAConfigmap := &corev1.ConfigMap{}
 	err := client.Get(
-		context.TODO(),
+		ctx,
 		types.NamespacedName{Name: AlertmanagersDefaultCaBundleName, Namespace: GetDefaultNamespace()},
 		amCAConfigmap,
 	)
@@ -692,17 +694,15 @@ func GetOperandNamePrefix() string {
 func GetImagePullPolicy(mco observabilityv1beta2.MultiClusterObservabilitySpec) corev1.PullPolicy {
 	if mco.ImagePullPolicy != "" {
 		return mco.ImagePullPolicy
-	} else {
-		return DefaultImagePullPolicy
 	}
+	return DefaultImagePullPolicy
 }
 
 func GetImagePullSecret(mco observabilityv1beta2.MultiClusterObservabilitySpec) string {
 	if mco.ImagePullSecret != "" {
 		return mco.ImagePullSecret
-	} else {
-		return DefaultImagePullSecret
 	}
+	return DefaultImagePullSecret
 }
 
 func GetOperandName(name string) string {
@@ -710,7 +710,7 @@ func GetOperandName(name string) string {
 	return operandNames[name]
 }
 
-func SetOperandNames(c client.Client) error {
+func SetOperandNames(ctx context.Context, c client.Client) error {
 	if len(operandNames) != 0 {
 		return nil
 	}
@@ -729,7 +729,7 @@ func SetOperandNames(c client.Client) error {
 	}
 
 	observatoriumList := &obsv1alpha1.ObservatoriumList{}
-	err := c.List(context.TODO(), observatoriumList, opts)
+	err := c.List(ctx, observatoriumList, opts)
 	if err != nil {
 		return err
 	}
@@ -930,8 +930,8 @@ func GetCachedImageManifestData() (map[string]string, bool) {
 	return nil, false
 }
 
-func GetTrimmedClusterID(c client.Client) (string, error) {
-	id, err := GetClusterID(context.TODO(), c)
+func GetTrimmedClusterID(ctx context.Context, c client.Client) (string, error) {
+	id, err := GetClusterID(ctx, c)
 	if err != nil {
 		return "", err
 	}

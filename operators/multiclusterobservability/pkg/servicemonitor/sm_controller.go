@@ -67,7 +67,7 @@ func onAdd(promClient promclientset.Interface) func(obj any) {
 	return func(obj any) {
 		sm := obj.(*promv1.ServiceMonitor)
 		if sm.OwnerReferences != nil && sm.ObjectMeta.OwnerReferences[0].Kind == "Observatorium" {
-			updateServiceMonitor(promClient, sm)
+			updateServiceMonitor(context.Background(), promClient, sm)
 		}
 	}
 }
@@ -78,18 +78,18 @@ func onUpdate(promClient promclientset.Interface) func(oldObj any, newObj any) {
 		oldSm := oldObj.(*promv1.ServiceMonitor)
 		if newSm.OwnerReferences != nil && newSm.ObjectMeta.OwnerReferences[0].Kind == "Observatorium" &&
 			!equality.Semantic.DeepEqual(newSm.Spec, oldSm.Spec) {
-			updateServiceMonitor(promClient, newSm)
+			updateServiceMonitor(context.Background(), promClient, newSm)
 		}
 	}
 }
 
-func updateServiceMonitor(promClient promclientset.Interface, sm *promv1.ServiceMonitor) {
+func updateServiceMonitor(ctx context.Context, promClient promclientset.Interface, sm *promv1.ServiceMonitor) {
 	found, err := promClient.MonitoringV1().
 		ServiceMonitors(ocpMonitoringNamespace).
-		Get(context.TODO(), sm.Name, metav1.GetOptions{})
+		Get(ctx, sm.Name, metav1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
-			_, err := promClient.MonitoringV1().ServiceMonitors(ocpMonitoringNamespace).Create(context.TODO(),
+			_, err := promClient.MonitoringV1().ServiceMonitors(ocpMonitoringNamespace).Create(ctx,
 				rewriteLabels(sm, ""), metav1.CreateOptions{})
 			if err != nil {
 				log.Error(err, "Failed to create ServiceMonitor", "namespace", ocpMonitoringNamespace, "name", sm.Name)
@@ -101,7 +101,7 @@ func updateServiceMonitor(promClient promclientset.Interface, sm *promv1.Service
 		}
 		return
 	}
-	_, err = promClient.MonitoringV1().ServiceMonitors(ocpMonitoringNamespace).Update(context.TODO(),
+	_, err = promClient.MonitoringV1().ServiceMonitors(ocpMonitoringNamespace).Update(ctx,
 		rewriteLabels(sm, found.ResourceVersion), metav1.UpdateOptions{})
 	if err != nil {
 		log.Error(err, "Failed to update ServiceMonitor", "namespace", ocpMonitoringNamespace, "name", sm.Name)

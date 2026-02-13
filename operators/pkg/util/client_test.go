@@ -17,7 +17,7 @@ const (
 
 func TestGetStatefulSetList(t *testing.T) {
 	c := fake.NewClientBuilder().Build()
-	_, err := GetStatefulSetList(c, namespace, map[string]string{})
+	_, err := GetStatefulSetList(t.Context(), c, namespace, map[string]string{})
 	if err != nil {
 		t.Fatalf("Failed to list statefulset: (%v)", err)
 	}
@@ -25,7 +25,7 @@ func TestGetStatefulSetList(t *testing.T) {
 
 func TestGetPVCList(t *testing.T) {
 	c := fake.NewClientBuilder().Build()
-	_, err := GetPVCList(c, namespace, map[string]string{})
+	_, err := GetPVCList(t.Context(), c, namespace, map[string]string{})
 	if err != nil {
 		t.Fatalf("Failed to list pvc: (%v)", err)
 	}

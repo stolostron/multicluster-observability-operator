@@ -19,6 +19,7 @@ import (
 // This is useful when the kubeconfig file is updated.
 type ReloadableHubClient struct {
 	client.Client
+
 	reload func() (client.Client, error)
 }
 

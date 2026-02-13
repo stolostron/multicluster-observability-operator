@@ -5,6 +5,7 @@
 package certificates
 
 import (
+	"context"
 	"crypto/sha256"
 	"fmt"
 
@@ -27,19 +28,19 @@ type ObservabilityAgent struct {
 }
 
 func (o *ObservabilityAgent) Manifests(
-	cluster *clusterv1.ManagedCluster,
-	addon *addonapiv1alpha1.ManagedClusterAddOn,
+	_ *clusterv1.ManagedCluster,
+	_ *addonapiv1alpha1.ManagedClusterAddOn,
 ) ([]runtime.Object, error) {
 	return nil, nil
 }
 
 func (o *ObservabilityAgent) GetAgentAddonOptions() agent.AgentAddonOptions {
 	signAdaptor := func(
-		cluster *clusterv1.ManagedCluster,
-		addon *addonapiv1alpha1.ManagedClusterAddOn,
+		_ *clusterv1.ManagedCluster,
+		_ *addonapiv1alpha1.ManagedClusterAddOn,
 		csr *certificatesv1.CertificateSigningRequest,
 	) ([]byte, error) {
-		res, err := Sign(o.client, csr)
+		res, err := Sign(context.Background(), o.client, csr)
 		if err != nil {
 			log.Error(err, "failed to sign")
 			return nil, err
@@ -51,10 +52,7 @@ func (o *ObservabilityAgent) GetAgentAddonOptions() agent.AgentAddonOptions {
 		Registration: &agent.RegistrationOption{
 			CSRConfigurations: observabilitySignerConfigurations(o.client),
 			CSRApproveCheck:   approve,
-			PermissionConfig: func(
-				cluster *clusterv1.ManagedCluster,
-				addon *addonapiv1alpha1.ManagedClusterAddOn,
-			) error {
+			PermissionConfig: func(_ *clusterv1.ManagedCluster, _ *addonapiv1alpha1.ManagedClusterAddOn) error {
 				return nil
 			},
 			CSRSign: signAdaptor,
@@ -91,7 +89,7 @@ func observabilitySignerConfigurations(
 		//nolint:gocritic // Creating new slice with additional config
 		registrationConfigs := append(kubeClientConfigs, observabilityConfig)
 
-		_, _, caCertBytes, caErr := getCA(client, true)
+		_, _, caCertBytes, caErr := getCA(context.Background(), client, true)
 		if caErr == nil {
 			caHashStamp := fmt.Sprintf("ca-hash-%x", sha256.Sum256(caCertBytes))
 			for i := range registrationConfigs {

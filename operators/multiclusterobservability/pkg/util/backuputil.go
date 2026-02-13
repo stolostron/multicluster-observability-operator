@@ -14,9 +14,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func AddBackupLabelToConfigMap(c client.Client, name, namespace string) error {
+func AddBackupLabelToConfigMap(ctx context.Context, c client.Client, name, namespace string) error {
 	m := &corev1.ConfigMap{}
-	err := c.Get(context.TODO(), types.NamespacedName{
+	err := c.Get(ctx, types.NamespacedName{
 		Name:      name,
 		Namespace: namespace,
 	}, m)
@@ -25,9 +25,8 @@ func AddBackupLabelToConfigMap(c client.Client, name, namespace string) error {
 			// Request object not found, could have been deleted after reconcile request.
 			log.Error(err, "ConfigMap not found", "ConfigMap", name)
 			return nil
-		} else {
-			return err
 		}
+		return err
 	}
 
 	if _, ok := m.Labels[config.BackupLabelName]; !ok {
@@ -35,19 +34,18 @@ func AddBackupLabelToConfigMap(c client.Client, name, namespace string) error {
 			m.Labels = make(map[string]string)
 		}
 		m.Labels[config.BackupLabelName] = config.BackupLabelValue
-		err := c.Update(context.TODO(), m)
+		err := c.Update(ctx, m)
 		if err != nil {
 			return err
-		} else {
-			log.Info("Add backup label for configMap", "name", name)
 		}
+		log.Info("Add backup label for configMap", "name", name)
 	}
 	return nil
 }
 
-func AddBackupLabelToSecret(c client.Client, name, namespace string) error {
+func AddBackupLabelToSecret(ctx context.Context, c client.Client, name, namespace string) error {
 	s := &corev1.Secret{}
-	err := c.Get(context.TODO(), types.NamespacedName{
+	err := c.Get(ctx, types.NamespacedName{
 		Name:      name,
 		Namespace: namespace,
 	}, s)
@@ -56,26 +54,24 @@ func AddBackupLabelToSecret(c client.Client, name, namespace string) error {
 			// Request object not found, could have been deleted after reconcile request.
 			log.Error(err, "Secret not found", "Secret", name)
 			return nil
-		} else {
-			return err
 		}
+		return err
 	}
 
-	return AddBackupLabelToSecretObj(c, s)
+	return AddBackupLabelToSecretObj(ctx, c, s)
 }
 
-func AddBackupLabelToSecretObj(c client.Client, s *corev1.Secret) error {
+func AddBackupLabelToSecretObj(ctx context.Context, c client.Client, s *corev1.Secret) error {
 	if _, ok := s.Labels[config.BackupLabelName]; !ok {
 		if s.Labels == nil {
 			s.Labels = make(map[string]string)
 		}
 		s.Labels[config.BackupLabelName] = config.BackupLabelValue
-		err := c.Update(context.TODO(), s)
+		err := c.Update(ctx, s)
 		if err != nil {
 			return err
-		} else {
-			log.Info("Add backup label for secret", "name", s.Name)
 		}
+		log.Info("Add backup label for secret", "name", s.Name)
 	}
 	return nil
 }
