@@ -95,8 +95,13 @@ endef
 #      --cpu-profile-path string   Path to CPU profile output file
 #      --mem-profile-path string   Path to memory profile output file
 # to debug big allocations during linting.
+.PHONY: verify-containerfile-labels
+verify-containerfile-labels: ## Verify Containerfile.operator RHEL version consistency
+	@echo ">> verifying Containerfile.operator label consistency"
+	@./scripts/verify-containerfile-labels.sh
+
 .PHONY: lint
-lint: check-git deps format $(GOLANGCI_LINT) $(FAILLINT)
+lint: check-git deps format verify-containerfile-labels $(GOLANGCI_LINT) $(FAILLINT)
 	$(call require_clean_work_tree,'detected files without copyright, run make lint and commit changes')
 	@echo ">> verifying modules being imported"
 	@$(FAILLINT) -paths "github.com/prometheus/tsdb=github.com/prometheus/prometheus/tsdb,\
