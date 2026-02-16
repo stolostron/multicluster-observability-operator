@@ -191,6 +191,8 @@ func main() {
 		},
 		corev1.SchemeGroupVersion.WithKind("ConfigMap"): {
 			{FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace())},
+			// ACM-20743 add kube-system to watch extension-apiserver-authentication
+			{FieldSelector: "metadata.namespace==kube-system"},
 		},
 		corev1.SchemeGroupVersion.WithKind("Service"): {
 			{FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace())},
