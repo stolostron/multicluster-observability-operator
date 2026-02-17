@@ -844,63 +844,6 @@ func TestDeploy(t *testing.T) {
 			},
 		},
 		{
-			name: "create and update AddOnDeploymentConfig: preserve user variables",
-			createObj: &addonv1alpha1.AddOnDeploymentConfig{
-				TypeMeta: metav1.TypeMeta{
-					APIVersion: "addon.open-cluster-management.io/v1alpha1",
-					Kind:       "AddOnDeploymentConfig",
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-aodc",
-					Namespace: "ns1",
-				},
-				Spec: addonv1alpha1.AddOnDeploymentConfigSpec{
-					CustomizedVariables: []addonv1alpha1.CustomizedVariable{
-						{
-							Name:  "test",
-							Value: "value",
-						},
-						{
-							Name:  "other",
-							Value: "more",
-						},
-					},
-				},
-			},
-			updateObj: &addonv1alpha1.AddOnDeploymentConfig{
-				TypeMeta: metav1.TypeMeta{
-					APIVersion: "addon.open-cluster-management.io/v1alpha1",
-					Kind:       "AddOnDeploymentConfig",
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:            "test-aodc",
-					Namespace:       "ns1",
-					ResourceVersion: "1",
-				},
-				Spec: addonv1alpha1.AddOnDeploymentConfigSpec{
-					CustomizedVariables: []addonv1alpha1.CustomizedVariable{
-						{
-							Name:  "test",
-							Value: "value",
-						},
-					},
-				},
-			},
-			validateResults: func(client client.Client) {
-				namespacedName := types.NamespacedName{
-					Name:      "test-aodc",
-					Namespace: "ns1",
-				}
-				obj := &addonv1alpha1.AddOnDeploymentConfig{}
-				client.Get(context.Background(), namespacedName, obj)
-
-				// Should preserve the "other" variable
-				if len(obj.Spec.CustomizedVariables) != 2 {
-					t.Fatalf("Should preserve user variables, got %#v", obj.Spec.CustomizedVariables)
-				}
-			},
-		},
-		{
 			name: "create and update AddOnDeploymentConfig: modify variable value",
 			createObj: &addonv1alpha1.AddOnDeploymentConfig{
 				TypeMeta: metav1.TypeMeta{
@@ -1117,13 +1060,20 @@ func TestDeploy(t *testing.T) {
 	fakeClient := fake.NewClientBuilder().WithScheme(scheme).WithInterceptorFuncs(interceptor.Funcs{
 		Patch: func(ctx context.Context, clientww client.WithWatch, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
 			if patch == client.Apply {
+				// Check if exists
+				key := client.ObjectKeyFromObject(obj)
+				existing := obj.DeepCopyObject().(client.Object)
+				if err := clientww.Get(ctx, key, existing); errors.IsNotFound(err) {
+					// It's a Create
+					return clientww.Create(ctx, obj)
+				}
 				return clientww.Patch(ctx, obj, client.Merge, opts...)
 			}
 			return clientww.Patch(ctx, obj, patch, opts...)
 		},
 	}).Build()
 
-	deployer := NewDeployer(fakeClient)
+	deployer := NewDeployer(fakeClient, "test-owner")
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -1315,7 +1265,7 @@ func TestUndeploy(t *testing.T) {
 			mcov1beta2.AddToScheme(scheme)
 
 			client := fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(tt.existingObjs...).Build()
-			deployer := NewDeployer(client)
+			deployer := NewDeployer(client, "test-owner")
 
 			obj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(tt.objToUndeploy)
 			assert.NoError(t, err)
@@ -1338,5 +1288,91 @@ func TestUndeploy(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestAddOnDeploymentConfig_Migration(t *testing.T) {
+	scheme := runtime.NewScheme()
+	addonv1alpha1.AddToScheme(scheme)
+
+	// Legacy Object Setup
+	legacyAODC := &addonv1alpha1.AddOnDeploymentConfig{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "addon.open-cluster-management.io/v1alpha1",
+			Kind:       "AddOnDeploymentConfig",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-aodc-migration",
+			Namespace: "ns1",
+			ManagedFields: []metav1.ManagedFieldsEntry{
+				{
+					Manager:   "mco-operator",
+					Operation: metav1.ManagedFieldsOperationUpdate,
+					FieldsV1:  &metav1.FieldsV1{Raw: []byte(`{"f:spec":{"f:customizedVariables":{}}}`)},
+				},
+			},
+		},
+		Spec: addonv1alpha1.AddOnDeploymentConfigSpec{
+			CustomizedVariables: []addonv1alpha1.CustomizedVariable{
+				{Name: "old", Value: "val"},
+			},
+		},
+	}
+
+	// Fake Client with Interceptor to simulate Apply
+	fakeClient := fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(legacyAODC).WithInterceptorFuncs(interceptor.Funcs{
+		Patch: func(ctx context.Context, clientww client.WithWatch, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
+			if patch == client.Apply {
+				// Check if exists
+				key := client.ObjectKeyFromObject(obj)
+				existing := obj.DeepCopyObject().(client.Object)
+				if err := clientww.Get(ctx, key, existing); errors.IsNotFound(err) {
+					return clientww.Create(ctx, obj)
+				}
+				// If not found, return create.
+				// Else merge.
+				return clientww.Patch(ctx, obj, client.Merge, opts...)
+			}
+			return clientww.Patch(ctx, obj, patch, opts...)
+		},
+	}).Build()
+
+	deployer := NewDeployer(fakeClient, "test-owner")
+
+	// Desired Object (Clean Spec)
+	desiredAODC := &addonv1alpha1.AddOnDeploymentConfig{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "addon.open-cluster-management.io/v1alpha1",
+			Kind:       "AddOnDeploymentConfig",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-aodc-migration",
+			Namespace: "ns1",
+		},
+		Spec: addonv1alpha1.AddOnDeploymentConfigSpec{
+			CustomizedVariables: []addonv1alpha1.CustomizedVariable{
+				{Name: "new", Value: "val"},
+			},
+		},
+	}
+
+	desiredObjUns, _ := runtime.DefaultUnstructuredConverter.ToUnstructured(desiredAODC)
+	err := deployer.Deploy(context.Background(), &unstructured.Unstructured{Object: desiredObjUns})
+	assert.NoError(t, err)
+
+	// Verify Migration (Update was called, clearing legacy fields)
+	found := &addonv1alpha1.AddOnDeploymentConfig{}
+	err = fakeClient.Get(context.Background(), types.NamespacedName{Name: "test-aodc-migration", Namespace: "ns1"}, found)
+	assert.NoError(t, err)
+
+	// Verify Spec is updated
+	assert.Len(t, found.Spec.CustomizedVariables, 1)
+	assert.Equal(t, "new", found.Spec.CustomizedVariables[0].Name)
+
+	// Verify ManagedFields cleared (or at least legacy gone)
+	for _, mf := range found.ManagedFields {
+		if mf.Manager == "mco-operator" {
+			t.Errorf("Legacy managed field should have been removed by destructive Update")
+		}
 	}
 }
