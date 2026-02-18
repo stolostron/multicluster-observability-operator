@@ -433,10 +433,17 @@ func (d *Deployer) applyAddOnDeploymentConfig(
 	// 2. Detect Legacy Ownership
 	hasLegacyOwnership := false
 	for _, mf := range runtimeAODC.ManagedFields {
-		if (mf.Manager == "mco-operator" || mf.Manager != d.fieldOwner) && mf.Operation == metav1.ManagedFieldsOperationUpdate {
-			if mf.FieldsV1 != nil && strings.Contains(string(mf.FieldsV1.Raw), "\"f:customizedVariables\"") {
-				hasLegacyOwnership = true
-				break
+		if mf.Manager == "mco-operator" && mf.Operation == metav1.ManagedFieldsOperationUpdate {
+			if mf.FieldsV1 != nil {
+				var fields map[string]interface{}
+				if err := json.Unmarshal(mf.FieldsV1.Raw, &fields); err == nil {
+					if spec, ok := fields["f:spec"].(map[string]interface{}); ok {
+						if _, ok := spec["f:customizedVariables"]; ok {
+							hasLegacyOwnership = true
+							break
+						}
+					}
+				}
 			}
 		}
 	}
@@ -445,7 +452,7 @@ func (d *Deployer) applyAddOnDeploymentConfig(
 	if hasLegacyOwnership {
 		logUpdateInfo(runtimeObj)
 		desiredAODC.ResourceVersion = runtimeAODC.ResourceVersion
-		return d.client.Update(ctx, desiredAODC)
+		return d.client.Update(ctx, desiredAODC, client.FieldOwner(d.fieldOwner))
 	}
 
 	log.Info("Apply", "kind", desiredObj.GroupVersionKind().Kind, "kindVersion", desiredObj.GroupVersionKind().Version, "name", desiredObj.GetName())
