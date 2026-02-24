@@ -26,6 +26,10 @@ const (
 	CaConfigmapName              = "metrics-collector-serving-certs-ca-bundle"
 	HubMetricsCollectorMtlsCert  = "observability-controller-open-cluster-management.io-observability-signer-client-cert"
 	ClientCACertificateCN        = "observability-client-ca-certificate"
+
+	MCOOperatorManagerName             = "mco-operator"
+	EndpointMetricsOperatorManagerName = "observability-endpoint-operator"
+	LegacyCleanerManagerName           = "legacy-cleaner"
 )
 
 const (
