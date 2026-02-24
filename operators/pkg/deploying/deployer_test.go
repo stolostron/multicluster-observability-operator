@@ -1307,6 +1307,11 @@ func TestAddOnDeploymentConfig_Migration(t *testing.T) {
 			shouldBeRemoved: true,
 		},
 		{
+			name:            "migration from observability",
+			manager:         "test-owner",
+			shouldBeRemoved: true,
+		},
+		{
 			name:            "preserve other managers",
 			manager:         "kubectl-edit",
 			shouldBeRemoved: false,
