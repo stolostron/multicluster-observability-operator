@@ -431,9 +431,11 @@ func (d *Deployer) applyAddOnDeploymentConfig(
 	}
 
 	// 2. Detect Legacy Ownership
+	// SSA cannot delete slice elements previously owned by an Update operation.
+	// We parse the raw JSON to check if customizedVariables is still owned by an Update.
 	hasLegacyOwnership := false
 	for _, mf := range runtimeAODC.ManagedFields {
-		if mf.Manager == "mco-operator" && mf.Operation == metav1.ManagedFieldsOperationUpdate {
+		if (mf.Manager == "mco-operator" || mf.Manager == d.fieldOwner) && mf.Operation == metav1.ManagedFieldsOperationUpdate {
 			if mf.FieldsV1 != nil {
 				var fields map[string]any
 				if err := json.Unmarshal(mf.FieldsV1.Raw, &fields); err == nil {
@@ -452,15 +454,21 @@ func (d *Deployer) applyAddOnDeploymentConfig(
 	if hasLegacyOwnership {
 		var newManagedFields []metav1.ManagedFieldsEntry
 		for _, mf := range runtimeAODC.ManagedFields {
-			if mf.Manager != "mco-operator" {
+			if mf.Manager != "mco-operator" && mf.Manager != d.fieldOwner {
 				newManagedFields = append(newManagedFields, mf)
 			}
 		}
-		desiredAODC.ManagedFields = newManagedFields
+
+		// Preserve metadata while clearing zombie fields in Spec/Labels/Annotations
+		runtimeAODC.ManagedFields = newManagedFields
+		runtimeAODC.Spec = desiredAODC.Spec
+		runtimeAODC.Labels = desiredAODC.Labels
+		runtimeAODC.Annotations = desiredAODC.Annotations
 
 		logUpdateInfo(runtimeObj)
-		desiredAODC.ResourceVersion = runtimeAODC.ResourceVersion
-		return d.client.Update(ctx, desiredAODC, client.FieldOwner(d.fieldOwner))
+		if err := d.client.Update(ctx, runtimeAODC, client.FieldOwner("legacy-cleaner")); err != nil {
+			return err
+		}
 	}
 
 	log.Info("Apply", "kind", desiredObj.GroupVersionKind().Kind, "kindVersion", desiredObj.GroupVersionKind().Version, "name", desiredObj.GetName())
