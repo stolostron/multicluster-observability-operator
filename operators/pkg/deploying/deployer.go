@@ -438,7 +438,7 @@ func (d *Deployer) applyAddOnDeploymentConfig(
 	// We parse the raw JSON to check if customizedVariables is still owned by an Update.
 	hasLegacyOwnership := false
 	for _, mf := range runtimeAODC.ManagedFields {
-		if (mf.Manager == "mco-operator" || mf.Manager == d.fieldOwner) && mf.Operation == metav1.ManagedFieldsOperationUpdate {
+		if (mf.Manager == config.MCOOperatorManagerName || mf.Manager == d.fieldOwner) && mf.Operation == metav1.ManagedFieldsOperationUpdate {
 			if mf.FieldsV1 != nil {
 				var fields map[string]any
 				if err := json.Unmarshal(mf.FieldsV1.Raw, &fields); err == nil {
@@ -457,7 +457,7 @@ func (d *Deployer) applyAddOnDeploymentConfig(
 	if hasLegacyOwnership {
 		var newManagedFields []metav1.ManagedFieldsEntry
 		for _, mf := range runtimeAODC.ManagedFields {
-			if mf.Manager != "mco-operator" && mf.Manager != d.fieldOwner {
+			if mf.Manager != config.MCOOperatorManagerName && mf.Manager != d.fieldOwner {
 				newManagedFields = append(newManagedFields, mf)
 			}
 		}
@@ -469,7 +469,7 @@ func (d *Deployer) applyAddOnDeploymentConfig(
 		runtimeAODC.Annotations = desiredAODC.Annotations
 
 		logUpdateInfo(runtimeObj)
-		if err := d.client.Update(ctx, runtimeAODC, client.FieldOwner("legacy-cleaner")); err != nil {
+		if err := d.client.Update(ctx, runtimeAODC, client.FieldOwner(config.LegacyCleanerManagerName)); err != nil {
 			return err
 		}
 	}

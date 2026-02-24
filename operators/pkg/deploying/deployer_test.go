@@ -11,6 +11,7 @@ import (
 
 	prometheusv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
+	"github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -1303,7 +1304,7 @@ func TestAddOnDeploymentConfig_Migration(t *testing.T) {
 	}{
 		{
 			name:            "migration from mco-operator",
-			manager:         "mco-operator",
+			manager:         config.MCOOperatorManagerName,
 			shouldBeRemoved: true,
 		},
 		{
