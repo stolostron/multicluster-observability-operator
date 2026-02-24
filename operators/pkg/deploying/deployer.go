@@ -435,9 +435,9 @@ func (d *Deployer) applyAddOnDeploymentConfig(
 	for _, mf := range runtimeAODC.ManagedFields {
 		if mf.Manager == "mco-operator" && mf.Operation == metav1.ManagedFieldsOperationUpdate {
 			if mf.FieldsV1 != nil {
-				var fields map[string]interface{}
+				var fields map[string]any
 				if err := json.Unmarshal(mf.FieldsV1.Raw, &fields); err == nil {
-					if spec, ok := fields["f:spec"].(map[string]interface{}); ok {
+					if spec, ok := fields["f:spec"].(map[string]any); ok {
 						if _, ok := spec["f:customizedVariables"]; ok {
 							hasLegacyOwnership = true
 							break
@@ -450,6 +450,14 @@ func (d *Deployer) applyAddOnDeploymentConfig(
 
 	// 3. Migration Path: Perform a destructive Update to clear zombie fields
 	if hasLegacyOwnership {
+		var newManagedFields []metav1.ManagedFieldsEntry
+		for _, mf := range runtimeAODC.ManagedFields {
+			if mf.Manager != "mco-operator" {
+				newManagedFields = append(newManagedFields, mf)
+			}
+		}
+		desiredAODC.ManagedFields = newManagedFields
+
 		logUpdateInfo(runtimeObj)
 		desiredAODC.ResourceVersion = runtimeAODC.ResourceVersion
 		return d.client.Update(ctx, desiredAODC, client.FieldOwner(d.fieldOwner))
