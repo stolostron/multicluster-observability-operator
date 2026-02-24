@@ -73,6 +73,9 @@ func NewDeployer(client client.Client, fieldOwner string) *Deployer {
 
 // Deploy is used to create or update the resources.
 func (d *Deployer) Deploy(ctx context.Context, obj *unstructured.Unstructured) error {
+	// AddOnDeploymentConfig uses a dedicated Server-Side Apply (SSA) workflow.
+	// We bypass the generic create/update logic so we can cleanly merge and
+	// preserve user-provided customizations.
 	if obj.GetKind() == "AddOnDeploymentConfig" {
 		return d.applyAddOnDeploymentConfig(ctx, obj)
 	}
@@ -88,7 +91,7 @@ func (d *Deployer) Deploy(ctx context.Context, obj *unstructured.Unstructured) e
 	if err != nil {
 		if errors.IsNotFound(err) {
 			log.Info("Create", "Kind", obj.GroupVersionKind(), "Name", obj.GetName())
-			return d.client.Create(ctx, obj, client.FieldOwner(d.fieldOwner))
+			return d.client.Create(ctx, obj)
 		}
 		return err
 	}
