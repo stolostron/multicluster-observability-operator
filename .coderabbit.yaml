@@ -1,32 +1,24 @@
 language: "en-US"
 early_access: false
-base_branches:
-  - "main"
-  - "release-2.1[4-6]"
+tone_instructions: "Act as senior engineer: professional with dry humor, constructive feedback only. Serious about security/performance. Use engineering metaphors. End positively. We're debugging together! 🔍🚨✅"
+
 reviews:
-  profile: "chill"
-  request_changes_workflow: false
+  profile: chill
   high_level_summary: true
-  poem: false
-  review_status: true
-  review_details: false
-  tone_instructions: |
-    Be professional yet approachable with a touch of humor. Think of yourself as a helpful colleague who:
-    - Uses light humor and occasional tech puns, but stays focused on the code quality
-    - Is genuinely enthusiastic about good observability practices (because monitoring is life!)
-    - Celebrates clever solutions while being constructive about improvements
-    - Remembers that behind every Kubernetes cluster is a human who deserves empathy
-    - Occasionally drops observability wisdom like "A metric without context is just a number crying alone in the dark"
-    - Is serious about security, performance, and reliability - these aren't jokes when clusters go down at 3AM
-    - Uses emojis sparingly but effectively (🔍 for issues, ✨ for great code, 🚨 for serious problems)
-    - Ends reviews on an encouraging note, even when suggesting major changes
-    - Never mocks or belittles - we're all learning in this distributed systems journey together
   auto_review:
     enabled: true
-    drafts: false
-    ignore_title_keywords:
-      - "WIP"
+    base_branches:
+      - "main"
+      - "release-2.1[4-6]"
   path_filters:
+    - "!**/*.deepcopy.go"
+    - "!**/zz_generated.*"
+    - "!**/vendor/**"
+    - "!**/.bingo/**"
+    - "!**/testdata/**"
+    - "!**/*.pb.go"
+    - "!hack/boilerplate.go.txt"
+  path_instructions:
     - path: "**/*.go"
       instructions: |
         - Focus on Go best practices, error handling, and concurrency patterns
@@ -36,6 +28,7 @@ reviews:
         - Verify proper logging using structured logging (logr)
         - Check for potential race conditions in controller logic
         - Review for proper resource cleanup and finalizers
+
     - path: "**/manifests/**/*.yaml"
       instructions: |
         - Validate Kubernetes manifest syntax and resource definitions
@@ -43,12 +36,14 @@ reviews:
         - Verify resource limits and requests are set appropriately
         - Ensure proper labeling and annotation conventions
         - Review for observability and monitoring configurations
+
     - path: "**/config/**/*.yaml"
       instructions: |
         - Review CRD schemas for completeness and validation rules
         - Check RBAC permissions for least privilege principle
         - Verify manager configurations and deployment specs
         - Ensure kustomization files are properly structured
+
     - path: "**/*_test.go"
       instructions: |
         - Focus on test coverage and test quality
@@ -56,19 +51,22 @@ reviews:
         - Check for proper test setup and teardown
         - Verify integration test scenarios cover error cases
         - Ensure tests are deterministic and not flaky
+
     - path: "collectors/**"
       instructions: |
         - Review metrics collection logic and performance implications
         - Check for proper metric forwarding and transformation
         - Verify TLS and authentication configurations
         - Review memory usage patterns for metric processing
+
     - path: "operators/**"
       instructions: |
         - Focus on operator pattern implementation
         - Review controller reconciliation logic
         - Check for proper status reporting and conditions
         - Verify resource ownership and garbage collection
-    - path: "**/{Dockerfile,Dockerfile.*}"
+
+    - path: "**/Dockerfile*"
       instructions: |
         - Review container security best practices
         - Check for minimal base images and proper layering
@@ -79,51 +77,5 @@ chat:
   auto_reply: true
 
 knowledge_base:
-  optimal_files_and_directories:
-    - "docs/**"
-    - "README.md"
-    - "CONTRIBUTING.md"
-    - "examples/**"
-    - "AGENTS.md"
-
-  # Ignore patterns for files that don't need detailed review
-ignore:
-  - "**/*.deepcopy.go"          # Generated code
-  - "**/zz_generated.*"         # Generated code
-  - "vendor/**"                 # Dependencies
-  - ".bingo/**"                 # Tool dependencies
-  - "**/testdata/**"           # Test fixtures
-  - "**/*.pb.go"               # Generated protobuf
-  - "hack/boilerplate.go.txt"  # License headers
-  - ".git/**"                  # Git internals
-
-# Custom instructions for this specific project
-custom_instructions: |
-  This is the MultiCluster Observability Operator for OpenShift/Kubernetes. When reviewing:
-
-  ## Architecture Context
-  - This operator manages observability across multiple Kubernetes clusters
-  - Uses Thanos for long-term storage, Prometheus for metrics collection, Grafana for visualization
-  - Integrates with OpenShift Cluster Monitoring Operator
-  - Deploys components via Observatorium Operator and endpoint operators
-
-  ## Key Areas to Review
-  - **Controller Logic**: Ensure proper reconciliation, status reporting, and error handling
-  - **Security**: RBAC, TLS certificates, secret management
-  - **Performance**: Resource limits, memory usage in metric processing
-  - **Observability**: Proper logging, metrics, and alerting configurations
-  - **Multi-cluster**: Resource distribution via ManifestWorks
-  - **Integration**: Compatibility with OpenShift monitoring stack
-
-  ## Common Patterns
-  - Use controller-runtime for operators
-  - Follow Open Cluster Management conventions
-  - Leverage observatorium-operator for data plane components
-  - Use structured logging with logr interface
-  - Implement proper finalizers for resource cleanup
-
-  ## Testing Standards
-  - Unit tests for business logic
-  - Integration tests with envtest for controllers
-  - E2E tests for complete workflows
-  - Use Ginkgo/Gomega testing framework
+  learnings:
+    scope: "global"
