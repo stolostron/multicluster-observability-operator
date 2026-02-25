@@ -10,6 +10,9 @@ reviews:
     base_branches:
       - "main"
       - "release-2.1[4-6]"
+    drafts: false
+    ignore_title_keywords:
+      - "WIP"
   path_filters:
     - "!**/*.deepcopy.go"
     - "!**/zz_generated.*"
