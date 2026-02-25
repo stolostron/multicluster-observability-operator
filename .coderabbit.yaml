@@ -84,6 +84,7 @@ knowledge_base:
     - "README.md"
     - "CONTRIBUTING.md"
     - "examples/**"
+    - "AGENTS.md"
 
   # Ignore patterns for files that don't need detailed review
 ignore:
