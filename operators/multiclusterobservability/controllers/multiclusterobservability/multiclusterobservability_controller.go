@@ -303,7 +303,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		return strings.Compare(toDeploy[i].GetName(), toDeploy[j].GetName()) < 0
 	})
 
-	deployer := deploying.NewDeployer(r.Client)
+	deployer := deploying.NewDeployer(r.Client, config.GetMonitoringCRName())
 	// Deploy the resources
 	ns := &corev1.Namespace{}
 	for _, res := range toDeploy {

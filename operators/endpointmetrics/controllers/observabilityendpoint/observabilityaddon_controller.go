@@ -236,7 +236,7 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 			return ctrl.Result{}, fmt.Errorf("failed to render prometheus templates: %w", err)
 		}
 
-		deployer := deploying.NewDeployer(r.Client)
+		deployer := deploying.NewDeployer(r.Client, operatorconfig.EndpointMetricsOperatorManagerName)
 
 		// Ordering resources to ensure they are applied in the correct order
 		slices.SortFunc(toDeploy, func(a, b *unstructured.Unstructured) int {

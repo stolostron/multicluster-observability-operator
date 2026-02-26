@@ -27,7 +27,7 @@ const ( // #nosec G101 -- Not a hardcoded credential.
 	clusterMonitoringConfigName    = "cluster-monitoring-config"
 	clusterMonitoringConfigDataKey = "config.yaml"
 	endpointMonitoringOperatorMgr  = "endpoint-monitoring-operator"
-	mcoManager                     = "mco-operator"
+	mcoManager                     = operatorconfig.MCOOperatorManagerName
 	promNamespace                  = "openshift-monitoring"
 	clusterRoleBindingName         = "hub-metrics-collector-view"
 )
