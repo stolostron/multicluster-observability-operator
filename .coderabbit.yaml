@@ -1,0 +1,84 @@
+language: "en-US"
+early_access: false
+tone_instructions: "Act as senior engineer: professional with dry humor, constructive feedback only. Serious about security/performance. Use engineering metaphors. End positively. We're debugging together! 🔍🚨✅"
+
+reviews:
+  profile: chill
+  high_level_summary: true
+  auto_review:
+    enabled: true
+    base_branches:
+      - "main"
+      - "release-2.1[4-6]"
+    drafts: false
+    ignore_title_keywords:
+      - "WIP"
+  path_filters:
+    - "!**/*.deepcopy.go"
+    - "!**/zz_generated.*"
+    - "!**/vendor/**"
+    - "!**/.bingo/**"
+    - "!**/testdata/**"
+    - "!**/*.pb.go"
+    - "!hack/boilerplate.go.txt"
+  path_instructions:
+    - path: "**/*.go"
+      instructions: |
+        - Focus on Go best practices, error handling, and concurrency patterns
+        - Review Kubernetes client-go usage for proper resource management and error handling
+        - Check for proper context propagation and cancellation
+        - Ensure controller-runtime patterns are followed correctly
+        - Verify proper logging using structured logging (logr)
+        - Check for potential race conditions in controller logic
+        - Review for proper resource cleanup and finalizers
+
+    - path: "**/manifests/**/*.yaml"
+      instructions: |
+        - Validate Kubernetes manifest syntax and resource definitions
+        - Check for security best practices (RBAC, SecurityContext, NetworkPolicies)
+        - Verify resource limits and requests are set appropriately
+        - Ensure proper labeling and annotation conventions
+        - Review for observability and monitoring configurations
+
+    - path: "**/config/**/*.yaml"
+      instructions: |
+        - Review CRD schemas for completeness and validation rules
+        - Check RBAC permissions for least privilege principle
+        - Verify manager configurations and deployment specs
+        - Ensure kustomization files are properly structured
+
+    - path: "**/*_test.go"
+      instructions: |
+        - Focus on test coverage and test quality
+        - Review Ginkgo/Gomega usage patterns
+        - Check for proper test setup and teardown
+        - Verify integration test scenarios cover error cases
+        - Ensure tests are deterministic and not flaky
+
+    - path: "collectors/**"
+      instructions: |
+        - Review metrics collection logic and performance implications
+        - Check for proper metric forwarding and transformation
+        - Verify TLS and authentication configurations
+        - Review memory usage patterns for metric processing
+
+    - path: "operators/**"
+      instructions: |
+        - Focus on operator pattern implementation
+        - Review controller reconciliation logic
+        - Check for proper status reporting and conditions
+        - Verify resource ownership and garbage collection
+
+    - path: "**/Dockerfile*"
+      instructions: |
+        - Review container security best practices
+        - Check for minimal base images and proper layering
+        - Verify proper handling of secrets and environment variables
+        - Review multi-stage build optimizations
+
+chat:
+  auto_reply: true
+
+knowledge_base:
+  learnings:
+    scope: "global"
