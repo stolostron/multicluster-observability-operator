@@ -13,7 +13,6 @@ import (
 
 	prometheusv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	monitoringv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
-	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	appsv1 "k8s.io/api/apps/v1"
@@ -40,11 +39,15 @@ type deployerFn func(context.Context, *unstructured.Unstructured, *unstructured.
 type Deployer struct {
 	client      client.Client
 	deployerFns map[string]deployerFn
+	fieldOwner  string
 }
 
 // NewDeployer inits the deployer.
-func NewDeployer(client client.Client) *Deployer {
-	deployer := &Deployer{client: client}
+func NewDeployer(client client.Client, fieldOwner string) *Deployer {
+	deployer := &Deployer{
+		client:     client,
+		fieldOwner: fieldOwner,
+	}
 	deployer.deployerFns = map[string]deployerFn{
 		"Deployment":               deployer.updateDeployment,
 		"StatefulSet":              deployer.updateStatefulSet,
@@ -62,7 +65,6 @@ func NewDeployer(client client.Client) *Deployer {
 		"ServiceAccount":           deployer.updateServiceAccount,
 		"DaemonSet":                deployer.updateDaemonSet,
 		"ServiceMonitor":           deployer.updateServiceMonitor,
-		"AddOnDeploymentConfig":    deployer.updateAddOnDeploymentConfig,
 		"ClusterManagementAddOn":   deployer.updateClusterManagementAddOn,
 		"ScrapeConfig":             deployer.updateScrapeConfig,
 	}
@@ -71,6 +73,13 @@ func NewDeployer(client client.Client) *Deployer {
 
 // Deploy is used to create or update the resources.
 func (d *Deployer) Deploy(ctx context.Context, obj *unstructured.Unstructured) error {
+	// AddOnDeploymentConfig uses a dedicated Server-Side Apply (SSA) workflow.
+	// We bypass the generic create/update logic so we can cleanly merge and
+	// preserve user-provided customizations.
+	if obj.GetKind() == "AddOnDeploymentConfig" {
+		return d.applyAddOnDeploymentConfig(ctx, obj)
+	}
+
 	// Create the resource if it doesn't exist
 	found := &unstructured.Unstructured{}
 	found.SetGroupVersionKind(obj.GroupVersionKind())
@@ -398,33 +407,75 @@ func (d *Deployer) updateServiceMonitor(ctx context.Context, desiredObj, runtime
 	return nil
 }
 
-func (d *Deployer) updateAddOnDeploymentConfig(
+func (d *Deployer) applyAddOnDeploymentConfig(
 	ctx context.Context,
-	desiredObj, runtimeObj *unstructured.Unstructured,
+	desiredObj *unstructured.Unstructured,
 ) error {
-	desiredAODC, runtimeAODC, err := unstructuredPairToTyped[addonv1alpha1.AddOnDeploymentConfig](desiredObj, runtimeObj)
+	desiredAODC := &addonv1alpha1.AddOnDeploymentConfig{}
+	if err := unstructuredToType(desiredObj, desiredAODC); err != nil {
+		return fmt.Errorf("failed to convert desiredObj %s/%s/%s: %w", desiredObj.GetKind(), desiredObj.GetNamespace(), desiredObj.GetName(), err)
+	}
+
+	// 1. Get the current object to check for legacy ownership
+	runtimeObj := &unstructured.Unstructured{}
+	runtimeObj.SetGroupVersionKind(desiredObj.GroupVersionKind())
+	err := d.client.Get(ctx, types.NamespacedName{Name: desiredObj.GetName(), Namespace: desiredObj.GetNamespace()}, runtimeObj)
 	if err != nil {
+		if errors.IsNotFound(err) {
+			log.Info("Apply (Create)", "kind", desiredObj.GroupVersionKind().Kind, "kindVersion", desiredObj.GroupVersionKind().Version, "name", desiredObj.GetName())
+			return d.client.Patch(ctx, desiredAODC, client.Apply, client.ForceOwnership, client.FieldOwner(d.fieldOwner))
+		}
 		return err
 	}
 
-	runtimeCustomizedVariables := make(map[string]string, len(runtimeAODC.Spec.CustomizedVariables))
-	for _, cv := range runtimeAODC.Spec.CustomizedVariables {
-		runtimeCustomizedVariables[cv.Name] = cv.Value
+	runtimeAODC := &addonv1alpha1.AddOnDeploymentConfig{}
+	if err := unstructuredToType(runtimeObj, runtimeAODC); err != nil {
+		return fmt.Errorf("failed to convert runtimeObj %s/%s/%s: %w", runtimeObj.GetKind(), runtimeObj.GetNamespace(), runtimeObj.GetName(), err)
 	}
 
-	desiredCustomizedVariables := make(map[string]string, len(desiredAODC.Spec.CustomizedVariables))
-	for _, cv := range desiredAODC.Spec.CustomizedVariables {
-		desiredCustomizedVariables[cv.Name] = cv.Value
+	// 2. Detect Legacy Ownership
+	// SSA cannot delete slice elements previously owned by an Update operation.
+	// We parse the raw JSON to check if customizedVariables is still owned by an Update.
+	hasLegacyOwnership := false
+	for _, mf := range runtimeAODC.ManagedFields {
+		if (mf.Manager == config.MCOOperatorManagerName || mf.Manager == d.fieldOwner) && mf.Operation == metav1.ManagedFieldsOperationUpdate {
+			if mf.FieldsV1 != nil {
+				var fields map[string]any
+				if err := json.Unmarshal(mf.FieldsV1.Raw, &fields); err == nil {
+					if spec, ok := fields["f:spec"].(map[string]any); ok {
+						if _, ok := spec["f:customizedVariables"]; ok {
+							hasLegacyOwnership = true
+							break
+						}
+					}
+				}
+			}
+		}
 	}
 
-	if !isMapSubset(runtimeCustomizedVariables, desiredCustomizedVariables) ||
-		!isMapSubset(runtimeAODC.Labels, desiredAODC.Labels) ||
-		!isMapSubset(runtimeAODC.Annotations, desiredAODC.Annotations) {
+	// 3. Migration Path: Perform a destructive Update to clear zombie fields
+	if hasLegacyOwnership {
+		var newManagedFields []metav1.ManagedFieldsEntry
+		for _, mf := range runtimeAODC.ManagedFields {
+			if mf.Manager != config.MCOOperatorManagerName && mf.Manager != d.fieldOwner {
+				newManagedFields = append(newManagedFields, mf)
+			}
+		}
+
+		// Preserve metadata while clearing zombie fields in Spec/Labels/Annotations
+		runtimeAODC.ManagedFields = newManagedFields
+		runtimeAODC.Spec = desiredAODC.Spec
+		runtimeAODC.Labels = desiredAODC.Labels
+		runtimeAODC.Annotations = desiredAODC.Annotations
+
 		logUpdateInfo(runtimeObj)
-		return d.client.Patch(ctx, desiredAODC, client.Apply, client.ForceOwnership, client.FieldOwner(mcoconfig.GetMonitoringCRName()))
+		if err := d.client.Update(ctx, runtimeAODC, client.FieldOwner(config.LegacyCleanerManagerName)); err != nil {
+			return err
+		}
 	}
 
-	return nil
+	log.Info("Apply", "kind", desiredObj.GroupVersionKind().Kind, "kindVersion", desiredObj.GroupVersionKind().Version, "name", desiredObj.GetName())
+	return d.client.Patch(ctx, desiredAODC, client.Apply, client.ForceOwnership, client.FieldOwner(d.fieldOwner))
 }
 
 func (d *Deployer) updateClusterManagementAddOn(
@@ -502,7 +553,7 @@ func logUpdateInfo(obj *unstructured.Unstructured) {
 	log.Info("Update", "kind", obj.GroupVersionKind().Kind, "kindVersion", obj.GroupVersionKind().Version, "name", obj.GetName())
 }
 
-func (d *Deployer) Undeploy(ctx context.Context, obj *unstructured.Unstructured, mco *mcov1beta2.MultiClusterObservability) error {
+func (d *Deployer) Undeploy(ctx context.Context, obj *unstructured.Unstructured, mco client.Object) error {
 	found := &unstructured.Unstructured{}
 	found.SetGroupVersionKind(obj.GroupVersionKind())
 	err := d.client.Get(
