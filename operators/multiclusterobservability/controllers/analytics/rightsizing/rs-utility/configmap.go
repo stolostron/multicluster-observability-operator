@@ -63,13 +63,13 @@ func GetRSConfigData(cm *corev1.ConfigMap) (RSNamespaceConfigMapData, error) {
 
 	// Unmarshal prometheusRuleConfig
 	if err := yaml.Unmarshal([]byte(cm.Data["prometheusRuleConfig"]), &configData.PrometheusRuleConfig); err != nil {
-		return configData, fmt.Errorf("failed to unmarshal prometheusRuleConfig: %v", err)
+		return configData, fmt.Errorf("failed to unmarshal prometheusRuleConfig: %w", err)
 	}
 
 	// Unmarshal placementConfiguration
 	if cm.Data["placementConfiguration"] != "" {
 		if err := yaml.Unmarshal([]byte(cm.Data["placementConfiguration"]), &configData.PlacementConfiguration); err != nil {
-			return configData, fmt.Errorf("failed to unmarshal placementConfiguration: %v", err)
+			return configData, fmt.Errorf("failed to unmarshal placementConfiguration: %w", err)
 		}
 	}
 

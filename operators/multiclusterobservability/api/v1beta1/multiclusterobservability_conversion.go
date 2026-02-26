@@ -29,48 +29,48 @@ ConvertTo is expected to modify its argument to contain the converted object.
 Most of the conversion is straightforward copying, except for converting our changed field.
 */
 // ConvertTo converts this MultiClusterObservability to the Hub version (v1beta2).
-func (src *MultiClusterObservability) ConvertTo(dstRaw conversion.Hub) error {
+func (m *MultiClusterObservability) ConvertTo(dstRaw conversion.Hub) error {
 	dst := dstRaw.(*observabilityv1beta2.MultiClusterObservability)
 
 	// TODO(morvencao)?: convert the AvailabilityConfig field
 	// availabilityConfig := src.Spec.AvailabilityConfig
 
 	dst.Spec.StorageConfig = &observabilityv1beta2.StorageConfig{
-		MetricObjectStorage: src.Spec.StorageConfig.MetricObjectStorage,
-		StorageClass:        src.Spec.StorageConfig.StatefulSetStorageClass,
+		MetricObjectStorage: m.Spec.StorageConfig.MetricObjectStorage,
+		StorageClass:        m.Spec.StorageConfig.StatefulSetStorageClass,
 		// How to convert the current storage size to new one?
-		AlertmanagerStorageSize: src.Spec.StorageConfig.StatefulSetSize,
-		RuleStorageSize:         src.Spec.StorageConfig.StatefulSetSize,
-		StoreStorageSize:        src.Spec.StorageConfig.StatefulSetSize,
-		CompactStorageSize:      src.Spec.StorageConfig.StatefulSetSize,
-		ReceiveStorageSize:      src.Spec.StorageConfig.StatefulSetSize,
+		AlertmanagerStorageSize: m.Spec.StorageConfig.StatefulSetSize,
+		RuleStorageSize:         m.Spec.StorageConfig.StatefulSetSize,
+		StoreStorageSize:        m.Spec.StorageConfig.StatefulSetSize,
+		CompactStorageSize:      m.Spec.StorageConfig.StatefulSetSize,
+		ReceiveStorageSize:      m.Spec.StorageConfig.StatefulSetSize,
 	}
 
 	dst.Spec.AdvancedConfig = &observabilityv1beta2.AdvancedConfig{
 		RetentionConfig: &observabilityv1beta2.RetentionConfig{
-			RetentionResolutionRaw: src.Spec.RetentionResolutionRaw,
-			RetentionResolution5m:  src.Spec.RetentionResolution5m,
-			RetentionResolution1h:  src.Spec.RetentionResolution1h,
+			RetentionResolutionRaw: m.Spec.RetentionResolutionRaw,
+			RetentionResolution5m:  m.Spec.RetentionResolution5m,
+			RetentionResolution1h:  m.Spec.RetentionResolution1h,
 		},
 	}
 
-	dst.Spec.EnableDownsampling = src.Spec.EnableDownSampling
+	dst.Spec.EnableDownsampling = m.Spec.EnableDownSampling
 
 	/*
 		The rest of the conversion is pretty rote.
 	*/
 	// ObjectMeta
-	dst.ObjectMeta = src.ObjectMeta
+	dst.ObjectMeta = m.ObjectMeta
 
 	// Spec
-	dst.Spec.ImagePullPolicy = src.Spec.ImagePullPolicy
-	dst.Spec.ImagePullSecret = src.Spec.ImagePullSecret
-	dst.Spec.NodeSelector = src.Spec.NodeSelector
-	dst.Spec.Tolerations = src.Spec.Tolerations
-	dst.Spec.ObservabilityAddonSpec = src.Spec.ObservabilityAddonSpec
+	dst.Spec.ImagePullPolicy = m.Spec.ImagePullPolicy
+	dst.Spec.ImagePullSecret = m.Spec.ImagePullSecret
+	dst.Spec.NodeSelector = m.Spec.NodeSelector
+	dst.Spec.Tolerations = m.Spec.Tolerations
+	dst.Spec.ObservabilityAddonSpec = m.Spec.ObservabilityAddonSpec
 
 	// Status
-	dst.Status.Conditions = src.Status.Conditions
+	dst.Status.Conditions = m.Status.Conditions
 
 	// +kubebuilder:docs-gen:collapse=rote conversion
 	return nil
@@ -82,42 +82,42 @@ Most of the conversion is straightforward copying, except for converting our cha
 */
 
 // ConvertFrom converts from the Hub version (observabilityv1beta2) to this version.
-func (dst *MultiClusterObservability) ConvertFrom(srcRaw conversion.Hub) error {
-	src := srcRaw.(*observabilityv1beta2.MultiClusterObservability)
+func (m *MultiClusterObservability) ConvertFrom(srcRaw conversion.Hub) error {
+	hubSrc := srcRaw.(*observabilityv1beta2.MultiClusterObservability)
 
 	// TODO(morvencao): convert the AvailabilityConfig field
-	// dst.Spec.AvailabilityConfig =
+	// src.Spec.AvailabilityConfig =
 
-	if src.Spec.AdvancedConfig != nil && src.Spec.AdvancedConfig.RetentionConfig != nil {
-		dst.Spec.RetentionResolutionRaw = src.Spec.AdvancedConfig.RetentionConfig.RetentionResolutionRaw
-		dst.Spec.RetentionResolution5m = src.Spec.AdvancedConfig.RetentionConfig.RetentionResolution5m
-		dst.Spec.RetentionResolution1h = src.Spec.AdvancedConfig.RetentionConfig.RetentionResolution1h
+	if hubSrc.Spec.AdvancedConfig != nil && hubSrc.Spec.AdvancedConfig.RetentionConfig != nil {
+		m.Spec.RetentionResolutionRaw = hubSrc.Spec.AdvancedConfig.RetentionConfig.RetentionResolutionRaw
+		m.Spec.RetentionResolution5m = hubSrc.Spec.AdvancedConfig.RetentionConfig.RetentionResolution5m
+		m.Spec.RetentionResolution1h = hubSrc.Spec.AdvancedConfig.RetentionConfig.RetentionResolution1h
 	}
 
-	dst.Spec.StorageConfig = &StorageConfigObject{
-		MetricObjectStorage:     src.Spec.StorageConfig.MetricObjectStorage,
-		StatefulSetStorageClass: src.Spec.StorageConfig.StorageClass,
+	m.Spec.StorageConfig = &StorageConfigObject{
+		MetricObjectStorage:     hubSrc.Spec.StorageConfig.MetricObjectStorage,
+		StatefulSetStorageClass: hubSrc.Spec.StorageConfig.StorageClass,
 		// How to convert the new storage size to old one?
 		// StatefulSetSize =
 	}
 
-	dst.Spec.EnableDownSampling = src.Spec.EnableDownsampling
+	m.Spec.EnableDownSampling = hubSrc.Spec.EnableDownsampling
 
 	/*
 		The rest of the conversion is pretty rote.
 	*/
 	// ObjectMeta
-	dst.ObjectMeta = src.ObjectMeta
+	m.ObjectMeta = hubSrc.ObjectMeta
 
 	// Spec
-	dst.Spec.ImagePullPolicy = src.Spec.ImagePullPolicy
-	dst.Spec.ImagePullSecret = src.Spec.ImagePullSecret
-	dst.Spec.NodeSelector = src.Spec.NodeSelector
-	dst.Spec.Tolerations = src.Spec.Tolerations
-	dst.Spec.ObservabilityAddonSpec = src.Spec.ObservabilityAddonSpec
+	m.Spec.ImagePullPolicy = hubSrc.Spec.ImagePullPolicy
+	m.Spec.ImagePullSecret = hubSrc.Spec.ImagePullSecret
+	m.Spec.NodeSelector = hubSrc.Spec.NodeSelector
+	m.Spec.Tolerations = hubSrc.Spec.Tolerations
+	m.Spec.ObservabilityAddonSpec = hubSrc.Spec.ObservabilityAddonSpec
 
 	// Status
-	dst.Status.Conditions = src.Status.Conditions
+	m.Status.Conditions = hubSrc.Status.Conditions
 
 	// +kubebuilder:docs-gen:collapse=rote conversion
 	return nil

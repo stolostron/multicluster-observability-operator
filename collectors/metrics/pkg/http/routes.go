@@ -26,8 +26,8 @@ func DebugRoutes(mux *http.ServeMux) *http.ServeMux {
 
 // HealthRoutes adds the health checks to a mux.
 func HealthRoutes(mux *http.ServeMux) *http.ServeMux {
-	mux.HandleFunc("/healthz", func(w http.ResponseWriter, req *http.Request) { _, _ = fmt.Fprintln(w, "ok") })
-	mux.HandleFunc("/healthz/ready", func(w http.ResponseWriter, req *http.Request) { _, _ = fmt.Fprintln(w, "ok") })
+	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) { _, _ = fmt.Fprintln(w, "ok") })
+	mux.HandleFunc("/healthz/ready", func(w http.ResponseWriter, _ *http.Request) { _, _ = fmt.Fprintln(w, "ok") })
 	return mux
 }
 

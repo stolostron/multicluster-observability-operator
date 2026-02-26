@@ -137,7 +137,7 @@ func (af *alertForwarder) Run() error {
 				log.Printf("sending alerts with worker %d\n", i)
 				wg.Add(1)
 				go func(index int, client *http.Client, traceCtx context.Context, url string, payload []byte) {
-					if err := sendOne(client, traceCtx, url, payload); err != nil {
+					if err := sendOne(traceCtx, client, url, payload); err != nil {
 						log.Printf("failed to send alerts: %v\n", err)
 						log.Printf("failed to send alerts to %s: %v\n", url, err)
 					}
@@ -162,7 +162,7 @@ func main() {
 		Short:         "Application for forwarding alerts to target Alertmanager.",
 		SilenceErrors: true,
 		SilenceUsage:  true,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			af, err := newAlertFowarder(opts)
 			if err != nil {
 				log.Printf("failed to create alert forwarder: %v", err)
@@ -227,7 +227,7 @@ func createAlertmanagerConfig(amHost, amScheme, amAPIVersion, amAccessToken stri
 }
 
 // send alerts to alertmanager with one http request.
-func sendOne(c *http.Client, traceCtx context.Context, url string, b []byte) error {
+func sendOne(traceCtx context.Context, c *http.Client, url string, b []byte) error {
 	req, err := http.NewRequestWithContext(traceCtx, http.MethodPost, url, bytes.NewReader(b))
 	if err != nil {
 		return err

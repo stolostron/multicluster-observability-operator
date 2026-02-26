@@ -50,11 +50,11 @@ func (wc *WebhookController) Start(ctx context.Context) error {
 			wc.mutatingWebhook.GetName())
 		foundMwhc := &admissionregistrationv1.MutatingWebhookConfiguration{}
 		err := wc.client.Get(
-			context.TODO(),
+			ctx,
 			types.NamespacedName{Name: wc.mutatingWebhook.GetName()}, foundMwhc)
 		switch {
 		case err != nil && apierrors.IsNotFound(err):
-			if err := wc.client.Create(context.TODO(), wc.mutatingWebhook); err != nil {
+			if err := wc.client.Create(ctx, wc.mutatingWebhook); err != nil {
 				log.V(1).Info("failed to create the mutatingwebhookconfiguration",
 					"mutatingwebhookconfiguration", wc.mutatingWebhook.GetName(),
 					"error", err)
@@ -73,7 +73,7 @@ func (wc *WebhookController) Start(ctx context.Context) error {
 					!reflect.DeepEqual(foundMwhc.Webhooks[0].Rules, wc.mutatingWebhook.Webhooks[0].Rules) ||
 					!reflect.DeepEqual(foundMwhc.Webhooks[0].ClientConfig.Service, wc.mutatingWebhook.Webhooks[0].ClientConfig.Service)) {
 				wc.mutatingWebhook.ResourceVersion = foundMwhc.ResourceVersion
-				if err := wc.client.Update(context.TODO(), wc.mutatingWebhook); err != nil {
+				if err := wc.client.Update(ctx, wc.mutatingWebhook); err != nil {
 					log.V(1).Info("failed to update the mutatingwebhookconfiguration", "mutatingwebhookconfiguration", wc.mutatingWebhook.GetName(), "error", err)
 					return err
 				}
@@ -86,9 +86,9 @@ func (wc *WebhookController) Start(ctx context.Context) error {
 		log.V(1).Info("creating or updating the validatingwebhookconfiguration",
 			"validatingwebhookconfiguration", wc.validatingWebhook.GetName())
 		foundVwhc := &admissionregistrationv1.ValidatingWebhookConfiguration{}
-		if err := wc.client.Get(context.TODO(), types.NamespacedName{Name: wc.validatingWebhook.GetName()}, foundVwhc); err != nil &&
+		if err := wc.client.Get(ctx, types.NamespacedName{Name: wc.validatingWebhook.GetName()}, foundVwhc); err != nil &&
 			apierrors.IsNotFound(err) {
-			if err := wc.client.Create(context.TODO(), wc.validatingWebhook); err != nil {
+			if err := wc.client.Create(ctx, wc.validatingWebhook); err != nil {
 				log.V(1).Info("failed to create the validatingwebhookconfiguration",
 					"validatingwebhookconfiguration", wc.validatingWebhook.GetName(),
 					"error", err)
@@ -108,7 +108,7 @@ func (wc *WebhookController) Start(ctx context.Context) error {
 					!reflect.DeepEqual(foundVwhc.Webhooks[0].ClientConfig.Service, wc.validatingWebhook.Webhooks[0].ClientConfig.Service)) {
 				wc.validatingWebhook.ResourceVersion = foundVwhc.ResourceVersion
 
-				err := wc.client.Update(context.TODO(), wc.validatingWebhook)
+				err := wc.client.Update(ctx, wc.validatingWebhook)
 				if err != nil {
 					log.V(1).Info("failed to update the validatingwebhookconfiguration", "validatingwebhookconfiguration", wc.validatingWebhook.GetName(), "error", err)
 					return err
@@ -130,14 +130,14 @@ func (wc *WebhookController) Start(ctx context.Context) error {
 		log.V(1).Info("Shutdown signal received, waiting for the webhook cleanup.")
 		if wc.mutatingWebhook != nil {
 			// delete the mutatingwebhookconfiguration and ignore error
-			err := wc.client.Delete(context.TODO(), wc.mutatingWebhook, &client.DeleteOptions{})
+			err := wc.client.Delete(ctx, wc.mutatingWebhook, &client.DeleteOptions{})
 			if err != nil {
 				log.V(1).Info("error to delete the mutatingwebhookconfiguration", "mutatingwebhookconfiguration", wc.mutatingWebhook.GetName(), "error", err)
 			}
 		}
 		if wc.validatingWebhook != nil {
 			// delete the validatingwebhookconfiguration and ignore error
-			err := wc.client.Delete(context.TODO(), wc.validatingWebhook, &client.DeleteOptions{})
+			err := wc.client.Delete(ctx, wc.validatingWebhook, &client.DeleteOptions{})
 			if err != nil {
 				log.V(1).Info("error to delete the validatingwebhookconfiguration", "validatingwebhookconfiguration", wc.validatingWebhook.GetName(), "error", err)
 			}

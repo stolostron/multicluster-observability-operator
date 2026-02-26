@@ -19,13 +19,13 @@ import (
 func getPred(name string, namespace string,
 	create bool, update bool, isDelete bool,
 ) predicate.Funcs {
-	createFunc := func(e event.CreateEvent) bool {
+	createFunc := func(_ event.CreateEvent) bool {
 		return false
 	}
-	updateFunc := func(e event.UpdateEvent) bool {
+	updateFunc := func(_ event.UpdateEvent) bool {
 		return false
 	}
-	deleteFunc := func(e event.DeleteEvent) bool {
+	deleteFunc := func(_ event.DeleteEvent) bool {
 		return false
 	}
 	if create {

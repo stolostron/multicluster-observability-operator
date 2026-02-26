@@ -62,9 +62,9 @@ func StartStatusUpdate(c client.Client, instance *mcov1beta2.MultiClusterObserva
 				return
 			case <-requeueStatusUpdate:
 				log.V(1).Info("status update goroutine is triggered.")
-				updateStatus(c)
+				updateStatus(context.Background(), c)
 				muUpdateReadyStatusIsRunnning.Lock()
-				if updateReadyStatusIsRunnning && checkReadyStatus(c, instance) {
+				if updateReadyStatusIsRunnning && checkReadyStatus(context.Background(), c, instance) {
 					log.V(1).Info("send singal to stop status check ready goroutine because MCO status is ready")
 					stopCheckReady <- struct{}{}
 				}
@@ -92,7 +92,7 @@ func StartStatusUpdate(c client.Client, instance *mcov1beta2.MultiClusterObserva
 				return
 			case <-time.After(2 * time.Second):
 				log.V(1).Info("check status ready goroutine is triggered.")
-				if checkReadyStatus(c, instance) {
+				if checkReadyStatus(context.Background(), c, instance) {
 					requeueStatusUpdate <- struct{}{}
 				}
 			}
@@ -101,9 +101,9 @@ func StartStatusUpdate(c client.Client, instance *mcov1beta2.MultiClusterObserva
 }
 
 // updateStatus override UpdateStatus interface
-func updateStatus(c client.Client) {
+func updateStatus(ctx context.Context, c client.Client) {
 	instance := &mcov1beta2.MultiClusterObservability{}
-	err := c.Get(context.TODO(), types.NamespacedName{
+	err := c.Get(ctx, types.NamespacedName{
 		Name: config.GetMonitoringCRName(),
 	}, instance)
 	if err != nil {
@@ -113,13 +113,13 @@ func updateStatus(c client.Client) {
 	oldStatus := instance.Status
 	newStatus := oldStatus.DeepCopy()
 	updateInstallStatus(&newStatus.Conditions)
-	updateReadyStatus(&newStatus.Conditions, c, instance)
+	updateReadyStatus(ctx, &newStatus.Conditions, c, instance)
 	updateAddonSpecStatus(&newStatus.Conditions, instance)
-	updateMCOAStatus(c, &newStatus.Conditions, instance)
+	updateMCOAStatus(ctx, c, &newStatus.Conditions, instance)
 	fillupStatus(&newStatus.Conditions)
 	instance.Status.Conditions = newStatus.Conditions
 	if !reflect.DeepEqual(newStatus.Conditions, oldStatus.Conditions) {
-		err := c.Status().Update(context.TODO(), instance)
+		err := c.Status().Update(ctx, instance)
 		if err != nil {
 			log.Error(err, fmt.Sprintf("failed to update status of mco %s", instance.Name))
 			return
@@ -143,26 +143,27 @@ func updateInstallStatus(conditions *[]mcoshared.Condition) {
 	setStatusCondition(conditions, *newInstallingCondition())
 }
 
-func checkReadyStatus(c client.Client, mco *mcov1beta2.MultiClusterObservability) bool {
+func checkReadyStatus(ctx context.Context, c client.Client, mco *mcov1beta2.MultiClusterObservability) bool {
 	if findStatusCondition(mco.Status.Conditions, "Ready") != nil {
 		return true
 	}
 
-	objStorageStatus := checkObjStorageStatus(c, mco)
+	objStorageStatus := checkObjStorageStatus(ctx, c, mco)
 	if objStorageStatus != nil {
 		return false
 	}
 
-	deployStatus := checkDeployStatus(c)
+	deployStatus := checkDeployStatus(ctx, c)
 	if deployStatus != nil {
 		return false
 	}
 
-	statefulStatus := checkStatefulSetStatus(c)
+	statefulStatus := checkStatefulSetStatus(ctx, c)
 	return statefulStatus == nil
 }
 
 func updateReadyStatus(
+	ctx context.Context,
 	conditions *[]mcoshared.Condition,
 	c client.Client,
 	mco *mcov1beta2.MultiClusterObservability,
@@ -171,19 +172,19 @@ func updateReadyStatus(
 		return
 	}
 
-	objStorageStatus := checkObjStorageStatus(c, mco)
+	objStorageStatus := checkObjStorageStatus(ctx, c, mco)
 	if objStorageStatus != nil {
 		setStatusCondition(conditions, *objStorageStatus)
 		return
 	}
 
-	deployStatus := checkDeployStatus(c)
+	deployStatus := checkDeployStatus(ctx, c)
 	if deployStatus != nil {
 		setStatusCondition(conditions, *deployStatus)
 		return
 	}
 
-	statefulStatus := checkStatefulSetStatus(c)
+	statefulStatus := checkStatefulSetStatus(ctx, c)
 	if statefulStatus != nil {
 		setStatusCondition(conditions, *statefulStatus)
 		return
@@ -264,7 +265,7 @@ func updateAddonSpecStatus(
 	}
 }
 
-func updateMCOAStatus(c client.Client, conds *[]mcoshared.Condition, mco *mcov1beta2.MultiClusterObservability) {
+func updateMCOAStatus(ctx context.Context, c client.Client, conds *[]mcoshared.Condition, mco *mcov1beta2.MultiClusterObservability) {
 	if mco.Spec.Capabilities == nil {
 		removeStatusCondition(conds, reasonMCOADegraded)
 		return
@@ -292,7 +293,7 @@ outer:
 		crd := &apiextensionsv1.CustomResourceDefinition{}
 		key := client.ObjectKey{Name: crdName}
 
-		err := c.Get(context.TODO(), key, crd)
+		err := c.Get(ctx, key, crd)
 		if client.IgnoreAlreadyExists(err) != nil {
 			missing = append(missing, crdName)
 			continue
@@ -330,7 +331,7 @@ func getExpectedDeploymentNames() []string {
 	}
 }
 
-func checkDeployStatus(c client.Client) *mcoshared.Condition {
+func checkDeployStatus(ctx context.Context, c client.Client) *mcoshared.Condition {
 	expectedDeploymentNames := getExpectedDeploymentNames()
 	for _, name := range expectedDeploymentNames {
 		found := &appsv1.Deployment{}
@@ -338,7 +339,7 @@ func checkDeployStatus(c client.Client) *mcoshared.Condition {
 			Name:      name,
 			Namespace: config.GetDefaultNamespace(),
 		}
-		err := c.Get(context.TODO(), namespacedName, found)
+		err := c.Get(ctx, namespacedName, found)
 		if err != nil {
 			msg := fmt.Sprintf("Failed to found expected deployment %s", name)
 			return newFailedCondition("DeploymentNotFound", msg)
@@ -364,7 +365,7 @@ func getExpectedStatefulSetNames() []string {
 	}
 }
 
-func checkStatefulSetStatus(c client.Client) *mcoshared.Condition {
+func checkStatefulSetStatus(ctx context.Context, c client.Client) *mcoshared.Condition {
 	expectedStatefulSetNames := getExpectedStatefulSetNames()
 	for _, name := range expectedStatefulSetNames {
 		found := &appsv1.StatefulSet{}
@@ -372,7 +373,7 @@ func checkStatefulSetStatus(c client.Client) *mcoshared.Condition {
 			Name:      name,
 			Namespace: config.GetDefaultNamespace(),
 		}
-		err := c.Get(context.TODO(), namespacedName, found)
+		err := c.Get(ctx, namespacedName, found)
 		if err != nil {
 			msg := fmt.Sprintf("Failed to found expected stateful set %s", name)
 			return newFailedCondition("StatefulSetNotFound", msg)
@@ -388,6 +389,7 @@ func checkStatefulSetStatus(c client.Client) *mcoshared.Condition {
 }
 
 func checkObjStorageStatus(
+	ctx context.Context,
 	c client.Client,
 	mco *mcov1beta2.MultiClusterObservability,
 ) *mcoshared.Condition {
@@ -398,7 +400,7 @@ func checkObjStorageStatus(
 		Namespace: config.GetDefaultNamespace(),
 	}
 
-	err := c.Get(context.TODO(), namespacedName, secret)
+	err := c.Get(ctx, namespacedName, secret)
 	if err != nil {
 		return newFailedCondition("ObjectStorageSecretNotFound", err.Error())
 	}

@@ -80,7 +80,7 @@ func createReadMCOClusterRole(ctx context.Context, c client.Client) error {
 	return nil
 }
 
-func createReadMCOClusterRoleBinding(c client.Client, namespace string, name string) error {
+func createReadMCOClusterRoleBinding(ctx context.Context, c client.Client, namespace string, name string) error {
 	rb := &rbacv1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: namespace + "-" + mcoRoleBindingName,
@@ -102,11 +102,11 @@ func createReadMCOClusterRoleBinding(c client.Client, namespace string, name str
 		},
 	}
 	found := &rbacv1.ClusterRoleBinding{}
-	err := c.Get(context.TODO(), types.NamespacedName{Name: namespace + "-" +
+	err := c.Get(ctx, types.NamespacedName{Name: namespace + "-" +
 		mcoRoleBindingName}, found)
 	if err != nil && errors.IsNotFound(err) {
 		log.Info("Creating endpoint-observability-mco-rolebinding clusterrolebinding")
-		err = c.Create(context.TODO(), rb)
+		err = c.Create(ctx, rb)
 		if err != nil {
 			log.Error(err, "Failed to create endpoint-observability-mco-rolebinding clusterrolebinding")
 			return err
@@ -120,7 +120,7 @@ func createReadMCOClusterRoleBinding(c client.Client, namespace string, name str
 	if !reflect.DeepEqual(found.Subjects, rb.Subjects) && !reflect.DeepEqual(found.RoleRef, rb.RoleRef) {
 		log.Info("Updating endpoint-observability-mco-rolebinding clusterrolebinding")
 		rb.ResourceVersion = found.ResourceVersion
-		err = c.Update(context.TODO(), rb)
+		err = c.Update(ctx, rb)
 		if err != nil {
 			log.Error(err, "Failed to update endpoint-observability-mco-rolebinding clusterrolebinding")
 			return err
@@ -231,7 +231,7 @@ func createResourceRole(ctx context.Context, c client.Client) error {
 	return nil
 }
 
-func createResourceRoleBinding(c client.Client, namespace string, name string) error {
+func createResourceRoleBinding(ctx context.Context, c client.Client, namespace string, name string) error {
 	rb := &rbacv1.RoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      resRoleBindingName,
@@ -254,10 +254,10 @@ func createResourceRoleBinding(c client.Client, namespace string, name string) e
 		},
 	}
 	found := &rbacv1.RoleBinding{}
-	err := c.Get(context.TODO(), types.NamespacedName{Name: resRoleBindingName, Namespace: namespace}, found)
+	err := c.Get(ctx, types.NamespacedName{Name: resRoleBindingName, Namespace: namespace}, found)
 	if err != nil && errors.IsNotFound(err) {
 		log.Info("Creating endpoint-observability-res-rolebinding rolebinding", "namespace", namespace)
-		err = c.Create(context.TODO(), rb)
+		err = c.Create(ctx, rb)
 		if err != nil {
 			log.Error(
 				err,
@@ -276,7 +276,7 @@ func createResourceRoleBinding(c client.Client, namespace string, name string) e
 	if !reflect.DeepEqual(found.Subjects, rb.Subjects) && !reflect.DeepEqual(found.RoleRef, rb.RoleRef) {
 		log.Info("Updating endpoint-observability-res-rolebinding rolebinding", "namespace", namespace)
 		rb.ResourceVersion = found.ResourceVersion
-		err = c.Update(context.TODO(), rb)
+		err = c.Update(ctx, rb)
 		if err != nil {
 			log.Error(
 				err,
@@ -329,13 +329,13 @@ func deleteResourceRole(ctx context.Context, c client.Client) error {
 	return nil
 }
 
-func deleteRolebindings(c client.Client, namespace string) error {
+func deleteRolebindings(ctx context.Context, c client.Client, namespace string) error {
 	crb := &rbacv1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: namespace + "-" + mcoRoleBindingName,
 		},
 	}
-	err := c.Delete(context.TODO(), crb)
+	err := c.Delete(ctx, crb)
 	if err != nil {
 		if !errors.IsNotFound(err) {
 			log.Error(err, "Failed to delete clusterrolebinding", "name", namespace+"-"+resRoleBindingName)
@@ -351,7 +351,7 @@ func deleteRolebindings(c client.Client, namespace string) error {
 			Namespace: namespace,
 		},
 	}
-	err = c.Delete(context.TODO(), rb)
+	err = c.Delete(ctx, rb)
 	if err != nil {
 		if !errors.IsNotFound(err) {
 			log.Error(err, "Failed to delete rolebinding", "name", resRoleBindingName, "namespace", namespace)
@@ -364,11 +364,11 @@ func deleteRolebindings(c client.Client, namespace string) error {
 	return nil
 }
 
-func createRolebindings(c client.Client, namespace string, name string) error {
-	err := createReadMCOClusterRoleBinding(c, namespace, name)
+func createRolebindings(ctx context.Context, c client.Client, namespace string, name string) error {
+	err := createReadMCOClusterRoleBinding(ctx, c, namespace, name)
 	if err != nil {
 		return err
 	}
-	err = createResourceRoleBinding(c, namespace, name)
+	err = createResourceRoleBinding(ctx, c, namespace, name)
 	return err
 }

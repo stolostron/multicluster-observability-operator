@@ -79,7 +79,7 @@ func (r *Renderer) RenderTemplates(
 func (r *Renderer) RenderDeployments(
 	res *resource.Resource,
 	namespace string,
-	labels map[string]string,
+	_ map[string]string,
 ) (*unstructured.Unstructured, error) {
 	/* 	err := patching.ApplyGlobalPatches(res, r.cr)
 	   	if err != nil {
@@ -100,7 +100,7 @@ func (r *Renderer) RenderDeployments(
 func (r *Renderer) RenderNamespace(
 	res *resource.Resource,
 	namespace string,
-	labels map[string]string,
+	_ map[string]string,
 ) (*unstructured.Unstructured, error) {
 	m, err := res.Map()
 	if err != nil {
@@ -119,7 +119,7 @@ func (r *Renderer) RenderNamespace(
 
 func (r *Renderer) RenderClusterRole(
 	res *resource.Resource,
-	namespace string,
+	_ string,
 	labels map[string]string,
 ) (*unstructured.Unstructured, error) {
 	m, err := res.Map()
