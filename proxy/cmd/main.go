@@ -129,7 +129,7 @@ func run() error {
 		Handler:           handlers,
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,
-		WriteTimeout:      12 * time.Minute,
+		WriteTimeout:      cfg.proxyTimeout + 1*time.Minute,
 	}
 
 	// start the server in a goroutine

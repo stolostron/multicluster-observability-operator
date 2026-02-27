@@ -252,34 +252,35 @@ func GenerateGrafanaRoute(
 			return &ctrl.Result{}, err
 		}
 		return nil, nil
+	} else if err != nil {
+		return &ctrl.Result{}, err
 	}
 
-	// if no annotations are set, set the default timeout
+	updated := false
 	if found.Annotations == nil {
 		found.Annotations = map[string]string{}
-		found.Annotations[haProxyRouterTimeoutKey] = defaultHaProxyRouterTimeout
 	}
-
-	// if some annotations are set, but the timeout is not set, set the default timeout
-	// otherwise, use the existing timeout which allows for custom timeouts.
-	// we do not want to overwrite other labels that may be set.
-	if _, ok := found.Annotations[haProxyRouterTimeoutKey]; !ok {
-		found.Annotations[haProxyRouterTimeoutKey] = defaultHaProxyRouterTimeout
+	if found.Annotations[haProxyRouterTimeoutKey] != queryTimeout {
+		found.Annotations[haProxyRouterTimeoutKey] = queryTimeout
+		updated = true
 	}
 
 	if !reflect.DeepEqual(found.Spec, grafanaRoute.Spec) {
 		found.Spec = grafanaRoute.Spec
+		updated = true
 	}
 
-	err = c.Update(context.TODO(), found)
-	if err != nil {
-		log.Error(
-			err,
-			"failed update for Grafana Route",
-			"grafanaRoute.Name",
-			grafanaRoute.Name,
-		)
-		return &ctrl.Result{}, err
+	if updated {
+		err = c.Update(context.TODO(), found)
+		if err != nil {
+			log.Error(
+				err,
+				"failed update for Grafana Route",
+				"grafanaRoute.Name",
+				grafanaRoute.Name,
+			)
+			return &ctrl.Result{}, err
+		}
 	}
 	return nil, nil
 }
