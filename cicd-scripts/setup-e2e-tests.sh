@@ -51,7 +51,10 @@ deploy_hub_spoke_core() {
       export OCM_BRANCH="backplane-${VERSION}"
     else
       # Calculate OCM version: MCO Version - 0.05
-      OCM_VERSION=$(echo "$VERSION - 0.05" | bc)
+      MIN_VERSION=${VERSION#*.}
+      MAJ_VERSION=${VERSION%.*}
+      OCM_MIN_VERSION=$(echo "$MIN_VERSION - 5" | bc)
+      OCM_VERSION="$MAJ_VERSION.$OCM_MIN_VERSION"
       export OCM_BRANCH="backplane-${OCM_VERSION}"
     fi
   fi
