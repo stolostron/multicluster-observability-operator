@@ -16,6 +16,7 @@ import (
 	appv1 "k8s.io/api/apps/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -111,26 +112,31 @@ func RegisterDebugEndpoint(register func(string, http.Handler) error) error {
 }
 
 func UpdateDeployLabel(c client.Client, dName, namespace, label string) error {
-	dep := &appv1.Deployment{}
-	err := c.Get(context.TODO(), types.NamespacedName{
-		Name:      dName,
-		Namespace: namespace,
-	}, dep)
-	if err != nil {
-		if !k8serrors.IsNotFound(err) {
-			log.Error(err, "Failed to check the deployment", "name", dName)
-		}
-		return err
-	}
-	if dep.Status.ReadyReplicas != 0 {
-		dep.Spec.Template.Labels[label] = time.Now().Format("2006-1-2.150405")
-		err = c.Update(context.TODO(), dep)
+	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		dep := &appv1.Deployment{}
+		err := c.Get(context.TODO(), types.NamespacedName{
+			Name:      dName,
+			Namespace: namespace,
+		}, dep)
 		if err != nil {
-			log.Error(err, "Failed to update the deployment", "name", dName)
+			if !k8serrors.IsNotFound(err) {
+				log.Error(err, "Failed to check the deployment", "name", dName)
+			}
 			return err
-		} else {
-			log.Info("Update deployment restart label", "name", dName)
 		}
-	}
-	return nil
+		if dep.Status.ReadyReplicas != 0 {
+			if dep.Spec.Template.Labels == nil {
+				dep.Spec.Template.Labels = map[string]string{}
+			}
+			dep.Spec.Template.Labels[label] = time.Now().Format("2006-1-2.150405")
+			err = c.Update(context.TODO(), dep)
+			if err != nil {
+				log.Error(err, "Failed to update the deployment", "name", dName)
+				return err
+			} else {
+				log.Info("Update deployment restart label", "name", dName)
+			}
+		}
+		return nil
+	})
 }
