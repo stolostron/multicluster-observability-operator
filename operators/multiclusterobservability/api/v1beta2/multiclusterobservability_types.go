@@ -364,7 +364,7 @@ type AdvancedConfig struct {
 	// It is applied to the read path components from Grafana.
 	// Default is 300s.
 	// +optional
-	// +kubebuilder:validation:Pattern="^([0-9]+(ms|s|m|h))+$"
+	// +kubebuilder:validation:Pattern="^([0-9]+(\.[0-9]+)?(ms|s|m|h))+$"
 	QueryTimeout string `json:"queryTimeout,omitempty"`
 	// The spec of the data retention configurations
 	// +optional
