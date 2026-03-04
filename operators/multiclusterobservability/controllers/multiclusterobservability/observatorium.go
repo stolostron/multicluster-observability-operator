@@ -641,6 +641,10 @@ func newReceiversSpec(
 		mco.Spec.AdvancedConfig.Receive.Containers != nil {
 		receSpec.Containers = mco.Spec.AdvancedConfig.Receive.Containers
 	}
+
+	if rendering.MCOAEnabled(mco) && (mco.Spec.AdvancedConfig == nil || mco.Spec.AdvancedConfig.Receive == nil || mco.Spec.AdvancedConfig.Receive.Containers == nil) {
+		receSpec.Args = []string{"--tsdb.out-of-order.time-window=1h"}
+	}
 	return receSpec
 }
 
@@ -967,6 +971,10 @@ func newCompactSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string
 	if mco.Spec.AdvancedConfig != nil && mco.Spec.AdvancedConfig.Compact != nil &&
 		mco.Spec.AdvancedConfig.Compact.Containers != nil {
 		compactSpec.Containers = mco.Spec.AdvancedConfig.Compact.Containers
+	}
+
+	if rendering.MCOAEnabled(mco) && (mco.Spec.AdvancedConfig == nil || mco.Spec.AdvancedConfig.Compact == nil || mco.Spec.AdvancedConfig.Compact.Containers == nil) {
+		compactSpec.Args = []string{"--compact.enable-vertical-compaction"}
 	}
 
 	compactSpec.VolumeClaimTemplate = newVolumeClaimTemplate(
