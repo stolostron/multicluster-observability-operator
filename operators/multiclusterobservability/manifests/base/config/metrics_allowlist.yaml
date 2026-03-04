@@ -100,6 +100,7 @@ data:
       - http_requests_total
       - instance_device:node_disk_io_time_seconds:rate1m
       - instance_device:node_disk_io_time_weighted_seconds:rate1m
+      - instance:node_cpu:rate:sum
       - instance:node_cpu_utilisation:rate1m
       - instance:node_filesystem_usage:sum
       - instance:node_load1_per_cpu:ratio
@@ -199,7 +200,6 @@ data:
       - namespace_workload_pod:kube_pod_owner:relabel
       - namespace:container_memory_usage_bytes:sum
       - namespace:kube_pod_container_resource_requests_cpu_cores:sum
-      - node_cpu_seconds_total
       - node_cpu_seconds_total
       - node_filesystem_avail_bytes
       - node_filesystem_free_bytes
