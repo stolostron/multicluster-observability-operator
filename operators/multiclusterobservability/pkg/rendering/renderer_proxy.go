@@ -68,6 +68,8 @@ func (r *MCORenderer) renderProxyDeployment(res *resource.Resource,
 			1,
 		)
 	}
+	queryTimeout := mcoconfig.GetGrafanaQueryTimeout(r.cr)
+	args0 = append(args0, fmt.Sprintf("--proxy-timeout=%s", queryTimeout))
 	spec.Containers[0].Args = args0
 	spec.Containers[0].Resources = mcoconfig.GetResources(mcoconfig.RBACQueryProxy, r.cr.Spec.InstanceSize, r.cr.Spec.AdvancedConfig)
 
