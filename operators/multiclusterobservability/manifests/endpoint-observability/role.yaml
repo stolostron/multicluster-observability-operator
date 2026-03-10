@@ -15,7 +15,6 @@ rules:
   - ""
   resources:
   - nodes
-  - nodes/proxy
   verbs:
   - list
   - watch
