@@ -399,7 +399,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 		).
 		Build()
 
-		// Create fake imagestream client
+	// Create fake imagestream client
 	imageClient := &fakeimagev1client.FakeImageV1{Fake: &(fakeimageclient.NewSimpleClientset().Fake)}
 	_, err := imageClient.ImageStreams(config.OauthProxyImageStreamNamespace).Create(context.Background(),
 		&imagev1.ImageStream{
@@ -1193,6 +1193,10 @@ func TestGetStorageClass(t *testing.T) {
 func TestHandleStorageClassChange(t *testing.T) {
 	s := scheme.Scheme
 	mcov1beta2.SchemeBuilder.AddToScheme(s)
+
+	t.Cleanup(func() {
+		isStorageClassChanged = false
+	})
 
 	mco := &mcov1beta2.MultiClusterObservability{
 		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterObservability"},
