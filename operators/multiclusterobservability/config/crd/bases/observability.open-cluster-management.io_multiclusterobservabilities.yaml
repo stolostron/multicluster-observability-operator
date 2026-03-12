@@ -217,7 +217,6 @@ spec:
                       Thanos store, Rule, compact and receiver.
                     type: string
                   statefulSetStorageClass:
-                    default: gp2
                     description: "\tSpecify the storageClass Stateful Sets. This storage
                       class will also\nbe used for Object Storage if MetricObjectStorage
                       was configured for\nthe system to create the storage."
@@ -10462,7 +10461,6 @@ spec:
                       sets,
                     type: string
                   storageClass:
-                    default: gp2
                     description: |-
                       Specify the storageClass Stateful Sets. This storage class will also
                       be used for Object Storage if MetricObjectStorage was configured for
