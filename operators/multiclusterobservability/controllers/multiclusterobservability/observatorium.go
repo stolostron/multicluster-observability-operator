@@ -98,17 +98,13 @@ func GenerateObservatoriumCR(
 		obsCRConfigHashLabelName: hash,
 	}
 
-	storageClassSelected, err := getStorageClass(mco, cl)
-	if err != nil {
-		return &ctrl.Result{}, fmt.Errorf("failed to get the storage class: %w", err)
-	}
-
 	// fetch TLS secret mount path from the object store secret
 	tlsSecretMountPath, err := getTLSSecretMountPath(cl, mco.Spec.StorageConfig.MetricObjectStorage)
 	if err != nil {
 		return &ctrl.Result{}, fmt.Errorf("failed to get the tls secret mount path: %w", err)
 	}
 
+	storageClassSelected := mco.Spec.StorageConfig.StorageClass
 	log.Info("storageClassSelected", "storageClassSelected", storageClassSelected)
 
 	obsSpec, err := newDefaultObservatoriumSpec(cl, mco, storageClassSelected, tlsSecretMountPath)
