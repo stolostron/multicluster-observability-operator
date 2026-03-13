@@ -1224,7 +1224,28 @@ func TestHandleStorageClassChange(t *testing.T) {
 		},
 	}
 
-	objs := []runtime.Object{mco, receiveSts}
+	storageName := "gp2"
+	receivePVC := &corev1.PersistentVolumeClaim{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "data-thanos-receive-default-0",
+			Namespace: config.GetDefaultNamespace(),
+			Labels: map[string]string{
+				"app.kubernetes.io/instance": mco.GetName(),
+				"app.kubernetes.io/name":     "thanos-receive",
+			},
+		},
+		Spec: corev1.PersistentVolumeClaimSpec{
+			AccessModes:      []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
+			StorageClassName: &storageName,
+			Resources: corev1.VolumeResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceStorage: resource.MustParse("1Gi"),
+				},
+			},
+		},
+	}
+
+	objs := []runtime.Object{mco, receiveSts, receivePVC}
 	c := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
 	r := &MultiClusterObservabilityReconciler{Client: c, Scheme: s}
 
@@ -1241,6 +1262,14 @@ func TestHandleStorageClassChange(t *testing.T) {
 		Namespace: config.GetDefaultNamespace(),
 	}, sts)
 	assert.True(t, errors.IsNotFound(err), "StatefulSet should have been deleted")
+
+	// Verify the PVC was deleted
+	pvc := &corev1.PersistentVolumeClaim{}
+	err = c.Get(context.TODO(), types.NamespacedName{
+		Name:      "data-thanos-receive-default-0",
+		Namespace: config.GetDefaultNamespace(),
+	}, pvc)
+	assert.True(t, errors.IsNotFound(err), "PVC should have been deleted")
 }
 
 func createStatefulSet(name, namespace, statefulSetName string) *appsv1.StatefulSet {

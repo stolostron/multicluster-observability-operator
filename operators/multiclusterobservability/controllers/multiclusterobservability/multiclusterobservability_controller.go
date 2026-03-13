@@ -707,7 +707,7 @@ func (r *MultiClusterObservabilityReconciler) HandleStorageSizeChange(
 			{"app.kubernetes.io/instance": mco.GetName(), "app.kubernetes.io/name": "thanos-rule"},
 			{"app.kubernetes.io/instance": mco.GetName(), "app.kubernetes.io/name": "thanos-store"},
 		} {
-			if err := deleteStatefulSets(r.Client, component); err != nil {
+			if err := deleteStatefulSetsAndPVCs(r.Client, component); err != nil {
 				return &reconcile.Result{}, err
 			}
 		}
@@ -716,7 +716,7 @@ func (r *MultiClusterObservabilityReconciler) HandleStorageSizeChange(
 	return nil, nil
 }
 
-func deleteStatefulSets(c client.Client, matchLabels map[string]string) error {
+func deleteStatefulSetsAndPVCs(c client.Client, matchLabels map[string]string) error {
 	stsList, err := commonutil.GetStatefulSetList(c, config.GetDefaultNamespace(), matchLabels)
 	if err != nil {
 		return err
@@ -726,6 +726,16 @@ func deleteStatefulSets(c client.Client, matchLabels map[string]string) error {
 			return err
 		}
 		log.Info("Deleted StatefulSet due to storage class change", "sts", sts.Name)
+	}
+	pvcList, err := commonutil.GetPVCList(c, config.GetDefaultNamespace(), matchLabels)
+	if err != nil {
+		return err
+	}
+	for index, pvc := range pvcList {
+		if err := c.Delete(context.TODO(), &pvcList[index]); err != nil && !apierrors.IsNotFound(err) {
+			return err
+		}
+		log.Info("Deleted PVC due to storage class change", "pvc", pvc.Name)
 	}
 	return nil
 }
