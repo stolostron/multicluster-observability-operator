@@ -568,7 +568,6 @@ type StorageConfig struct {
 	// be used for Object Storage if MetricObjectStorage was configured for
 	// the system to create the storage.
 	// +optional
-	// +kubebuilder:default:=gp2
 	StorageClass string `json:"storageClass,omitempty"`
 	// The amount of storage applied to alertmanager stateful sets,
 	// +optional

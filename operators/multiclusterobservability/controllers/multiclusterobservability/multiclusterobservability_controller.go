@@ -77,6 +77,7 @@ var (
 	isRuleStorageSizeChanged         = false
 	isReceiveStorageSizeChanged      = false
 	isStoreStorageSizeChanged        = false
+	isStorageClassChanged            = false
 	isLegacyResourceRemoved          = false
 	lastLogTime                      = time.Now()
 )
@@ -226,6 +227,14 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to get storage class: %w", err)
 	}
+	if instance.Spec.StorageConfig.StorageClass != storageClassSelected {
+		instance.Spec.StorageConfig.StorageClass = storageClassSelected
+		if err := r.Client.Update(ctx, instance); err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to persist resolved storage class to MCO CR: %w", err)
+		}
+		log.Info("Persisted resolved storage class to MCO CR", "storageClass", storageClassSelected)
+		return ctrl.Result{Requeue: true}, nil
+	}
 
 	// handle storagesize changes
 	result, err := r.HandleStorageSizeChange(instance)
@@ -239,7 +248,6 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to set operand names: %w", err)
 	}
-	instance.Spec.StorageConfig.StorageClass = storageClassSelected
 
 	// Disable rendering the MCOA ClusterManagementAddOn resource if already exists
 	mcoaCMAO := &addonv1alpha1.ClusterManagementAddOn{}
@@ -619,6 +627,9 @@ func checkStorageChanged(mcoOldConfig, mcoNewConfig *mcov1beta2.StorageConfig) {
 	if mcoOldConfig.StoreStorageSize != mcoNewConfig.StoreStorageSize {
 		isStoreStorageSizeChanged = true
 	}
+	if mcoOldConfig.StorageClass != mcoNewConfig.StorageClass {
+		isStorageClassChanged = true
+	}
 }
 
 // HandleStorageSizeChange is used to deal with the storagesize change in CR
@@ -687,7 +698,46 @@ func (r *MultiClusterObservabilityReconciler) HandleStorageSizeChange(
 			return &reconcile.Result{}, err
 		}
 	}
+	if isStorageClassChanged {
+		isStorageClassChanged = false
+		for _, component := range []map[string]string{
+			{"observability.open-cluster-management.io/name": mco.GetName(), "alertmanager": "observability"},
+			{"app.kubernetes.io/instance": mco.GetName(), "app.kubernetes.io/name": "thanos-receive"},
+			{"app.kubernetes.io/instance": mco.GetName(), "app.kubernetes.io/name": "thanos-compact"},
+			{"app.kubernetes.io/instance": mco.GetName(), "app.kubernetes.io/name": "thanos-rule"},
+			{"app.kubernetes.io/instance": mco.GetName(), "app.kubernetes.io/name": "thanos-store"},
+		} {
+			if err := deleteStatefulSetsAndPVCs(r.Client, component); err != nil {
+				return &reconcile.Result{}, err
+			}
+		}
+	}
+
 	return nil, nil
+}
+
+func deleteStatefulSetsAndPVCs(c client.Client, matchLabels map[string]string) error {
+	stsList, err := commonutil.GetStatefulSetList(c, config.GetDefaultNamespace(), matchLabels)
+	if err != nil {
+		return err
+	}
+	for index, sts := range stsList {
+		if err := c.Delete(context.TODO(), &stsList[index]); err != nil && !apierrors.IsNotFound(err) {
+			return err
+		}
+		log.Info("Deleted StatefulSet due to storage class change", "sts", sts.Name)
+	}
+	pvcList, err := commonutil.GetPVCList(c, config.GetDefaultNamespace(), matchLabels)
+	if err != nil {
+		return err
+	}
+	for index, pvc := range pvcList {
+		if err := c.Delete(context.TODO(), &pvcList[index]); err != nil && !apierrors.IsNotFound(err) {
+			return err
+		}
+		log.Info("Deleted PVC due to storage class change", "pvc", pvc.Name)
+	}
+	return nil
 }
 
 func updateStorageSizeChange(c client.Client, matchLabels map[string]string, storageSize string) error {
