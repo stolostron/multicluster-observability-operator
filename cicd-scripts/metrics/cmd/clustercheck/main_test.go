@@ -61,8 +61,8 @@ func Test_getManagedClusters(t *testing.T) {
 			wantQuery: "group by (name) (acm_managed_cluster_labels)",
 		},
 		{
-			name:      "with regex",
-			regex:     "cluster1.*",
+			name:  "with regex",
+			regex: "cluster1.*",
 			mockValue: model.Vector{
 				&model.Sample{
 					Metric: model.Metric{"name": "cluster1-dev"},

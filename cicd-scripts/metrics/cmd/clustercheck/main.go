@@ -68,7 +68,7 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("failed to read scrape configs: %w", err)
 	}
-	
+
 	collectedMetrics = slices.DeleteFunc(collectedMetrics, func(s string) bool {
 		if s == "" {
 			return true
