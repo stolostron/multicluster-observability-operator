@@ -21,6 +21,7 @@ import (
 	"github.com/prometheus/client_golang/api"
 	v1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/model/labels"
 	"github.com/stolostron/multicluster-observability-operator/cicd-scripts/metrics/internal/scrapeconfig"
 )
 
@@ -188,7 +189,12 @@ func fetchMetricAvailability(ctx context.Context, v1api v1.API, clusters []strin
 		end := min(i+chunkSize, len(collectedMetrics))
 		chunk := collectedMetrics[i:end]
 
-		query := fmt.Sprintf("group by (cluster, __name__) ({__name__=~\"^(%s)$\"})", strings.Join(chunk, "|"))
+		regexStr := fmt.Sprintf("^(%s)$", strings.Join(chunk, "|"))
+		matcher, err := labels.NewMatcher(labels.MatchRegexp, "__name__", regexStr)
+		if err != nil {
+			return nil, fmt.Errorf("invalid metric regex: %w", err)
+		}
+		query := fmt.Sprintf("group by (cluster, __name__) ({%s})", matcher.String())
 		result, warnings, err := v1api.Query(ctx, query, queryTime)
 		if err != nil {
 			return nil, fmt.Errorf("querying metrics chunk failed: %w", err)
@@ -197,6 +203,9 @@ func fetchMetricAvailability(ctx context.Context, v1api v1.API, clusters []strin
 			fmt.Printf("Warnings: %v\n", warnings)
 		}
 
+		if result == nil {
+			return nil, fmt.Errorf("querying metrics chunk failed: result is nil")
+		}
 		vec, ok := result.(model.Vector)
 		if !ok {
 			return nil, fmt.Errorf("expected Vector result, got %v", result.Type())
@@ -218,7 +227,11 @@ func fetchMetricAvailability(ctx context.Context, v1api v1.API, clusters []strin
 func getManagedClusters(ctx context.Context, v1api v1.API, clusterRegex string) ([]string, error) {
 	query := "group by (name) (acm_managed_cluster_labels)"
 	if clusterRegex != "" {
-		query = fmt.Sprintf("group by (name) (acm_managed_cluster_labels{name=~\"%s\"})", clusterRegex)
+		matcher, err := labels.NewMatcher(labels.MatchRegexp, "name", clusterRegex)
+		if err != nil {
+			return nil, fmt.Errorf("invalid cluster regex: %w", err)
+		}
+		query = fmt.Sprintf("group by (name) (acm_managed_cluster_labels{%s})", matcher.String())
 	}
 	result, warnings, err := v1api.Query(ctx, query, time.Now())
 	if err != nil {
@@ -228,6 +241,9 @@ func getManagedClusters(ctx context.Context, v1api v1.API, clusterRegex string) 
 		fmt.Printf("Warnings fetching clusters: %v\n", warnings)
 	}
 
+	if result == nil {
+		return nil, fmt.Errorf("query failed: result is nil")
+	}
 	vec, ok := result.(model.Vector)
 	if !ok {
 		return nil, fmt.Errorf("expected Vector result for clusters, got %v", result.Type())
