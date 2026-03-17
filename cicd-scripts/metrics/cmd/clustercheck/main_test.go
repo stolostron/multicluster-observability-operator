@@ -6,6 +6,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -71,6 +72,15 @@ func Test_getManagedClusters(t *testing.T) {
 			want:      []string{"cluster1-dev"},
 			wantErr:   false,
 			wantQuery: "group by (name) (acm_managed_cluster_labels{name=~\"cluster1.*\"})",
+		},
+		{
+			name:      "query error",
+			regex:     "",
+			mockErr:   fmt.Errorf("connection refused"),
+			mockValue: nil,
+			want:      nil,
+			wantErr:   true,
+			wantQuery: "group by (name) (acm_managed_cluster_labels)",
 		},
 	}
 
