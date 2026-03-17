@@ -266,12 +266,13 @@ func createCertSecret(c client.Client,
 				if err != nil {
 					log.Error(err, "Failed to parse the server certificate, renew it")
 					isRenew = true
-				}
-				// to handle upgrade scenario in which hosts maybe update
-				for _, dnsString := range dns {
-					if !slices.Contains(serverCrt.DNSNames, dnsString) {
-						isRenew = true
-						break
+				} else {
+					// to handle upgrade scenario in which hosts maybe update
+					for _, dnsString := range dns {
+						if !slices.Contains(serverCrt.DNSNames, dnsString) {
+							isRenew = true
+							break
+						}
 					}
 				}
 			}
