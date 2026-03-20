@@ -5,6 +5,7 @@
 package rendering
 
 import (
+	"context"
 	"errors"
 	"maps"
 	"strconv"
@@ -18,7 +19,7 @@ const (
 	nsUpdateAnnoKey = "update-namespace"
 )
 
-type RenderFn func(*resource.Resource, string, map[string]string) (*unstructured.Unstructured, error)
+type RenderFn func(context.Context, *resource.Resource, string, map[string]string) (*unstructured.Unstructured, error)
 
 type Renderer struct {
 	renderFns map[string]RenderFn
@@ -48,6 +49,7 @@ func NewRenderer() *Renderer {
 }
 
 func (r *Renderer) RenderTemplates(
+	ctx context.Context,
 	templates []*resource.Resource,
 	namespace string,
 	labels map[string]string,
@@ -63,7 +65,7 @@ func (r *Renderer) RenderTemplates(
 			uobjs = append(uobjs, &unstructured.Unstructured{Object: m})
 			continue
 		}
-		uobj, err := render(template.DeepCopy(), namespace, labels)
+		uobj, err := render(ctx, template.DeepCopy(), namespace, labels)
 		if err != nil {
 			return []*unstructured.Unstructured{}, err
 		}
@@ -77,6 +79,7 @@ func (r *Renderer) RenderTemplates(
 }
 
 func (r *Renderer) RenderDeployments(
+	ctx context.Context,
 	res *resource.Resource,
 	namespace string,
 	labels map[string]string,
@@ -98,6 +101,7 @@ func (r *Renderer) RenderDeployments(
 }
 
 func (r *Renderer) RenderNamespace(
+	ctx context.Context,
 	res *resource.Resource,
 	namespace string,
 	labels map[string]string,
@@ -118,6 +122,7 @@ func (r *Renderer) RenderNamespace(
 }
 
 func (r *Renderer) RenderClusterRole(
+	ctx context.Context,
 	res *resource.Resource,
 	namespace string,
 	labels map[string]string,
@@ -139,6 +144,7 @@ func (r *Renderer) RenderClusterRole(
 }
 
 func (r *Renderer) RenderClusterRoleBinding(
+	ctx context.Context,
 	res *resource.Resource,
 	namespace string,
 	labels map[string]string,

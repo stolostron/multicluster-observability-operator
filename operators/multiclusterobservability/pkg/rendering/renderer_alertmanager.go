@@ -39,8 +39,8 @@ func (r *MCORenderer) newAlertManagerRenderer() {
 	}
 }
 
-func (r *MCORenderer) renderAlertManagerStatefulSet(res *resource.Resource, namespace string, labels map[string]string) (*unstructured.Unstructured, error) {
-	u, err := r.renderer.RenderNamespace(res, namespace, labels)
+func (r *MCORenderer) renderAlertManagerStatefulSet(ctx context.Context, res *resource.Resource, namespace string, labels map[string]string) (*unstructured.Unstructured, error) {
+	u, err := r.renderer.RenderNamespace(ctx, res, namespace, labels)
 	if err != nil {
 		return nil, err
 	}
@@ -155,10 +155,10 @@ func (r *MCORenderer) renderAlertManagerStatefulSet(res *resource.Resource, name
 	return &unstructured.Unstructured{Object: unstructuredObj}, nil
 }
 
-func (r *MCORenderer) renderAlertManagerSecret(res *resource.Resource,
+func (r *MCORenderer) renderAlertManagerSecret(ctx context.Context, res *resource.Resource,
 	namespace string, labels map[string]string,
 ) (*unstructured.Unstructured, error) {
-	u, err := r.renderer.RenderNamespace(res, namespace, labels)
+	u, err := r.renderer.RenderNamespace(ctx, res, namespace, labels)
 	if err != nil {
 		return nil, err
 	}
@@ -185,10 +185,10 @@ func (r *MCORenderer) renderAlertManagerSecret(res *resource.Resource,
 	return u, nil
 }
 
-func (r *MCORenderer) renderAlertManagerConfigMap(res *resource.Resource,
+func (r *MCORenderer) renderAlertManagerConfigMap(ctx context.Context, res *resource.Resource,
 	namespace string, labels map[string]string,
 ) (*unstructured.Unstructured, error) {
-	u, err := r.renderer.RenderNamespace(res, namespace, labels)
+	u, err := r.renderer.RenderNamespace(ctx, res, namespace, labels)
 	if err != nil {
 		return nil, err
 	}
@@ -206,7 +206,7 @@ func (r *MCORenderer) renderAlertManagerConfigMap(res *resource.Resource,
 			Namespace: "kube-system",
 		}
 		sourceConfigMap := &corev1.ConfigMap{}
-		err = r.kubeClient.Get(context.Background(), namespacedName, sourceConfigMap)
+		err = r.kubeClient.Get(ctx, namespacedName, sourceConfigMap)
 		if err != nil {
 			return nil, fmt.Errorf("error fetching source ConfigMap: %w", err)
 		}
@@ -235,7 +235,7 @@ func (r *MCORenderer) renderAlertManagerConfigMap(res *resource.Resource,
 	return u, nil
 }
 
-func (r *MCORenderer) renderAlertManagerTemplates(templates []*resource.Resource,
+func (r *MCORenderer) renderAlertManagerTemplates(ctx context.Context, templates []*resource.Resource,
 	namespace string, labels map[string]string,
 ) ([]*unstructured.Unstructured, error) {
 	uobjs := []*unstructured.Unstructured{}
@@ -249,7 +249,7 @@ func (r *MCORenderer) renderAlertManagerTemplates(templates []*resource.Resource
 			uobjs = append(uobjs, &unstructured.Unstructured{Object: m})
 			continue
 		}
-		uobj, err := render(template.DeepCopy(), namespace, labels)
+		uobj, err := render(ctx, template.DeepCopy(), namespace, labels)
 		if err != nil {
 			return []*unstructured.Unstructured{}, err
 		}
