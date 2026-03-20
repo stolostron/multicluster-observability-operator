@@ -395,7 +395,7 @@ func GetDefaultTenantName() string {
 // GetObsAPIRouteHost is used to Route's host for Observatorium API. This doesn't take into consideration
 // the `advanced.customObservabilityHubURL` configuration.
 func GetObsAPIRouteHost(ctx context.Context, client client.Client, namespace string) (string, error) {
-	return GetRouteHost(client, obsAPIGateway, namespace)
+	return GetRouteHost(ctx, client, obsAPIGateway, namespace)
 }
 
 // GetObsAPIExternalURL is used to get the frontend URL that should be used to reach the Observatorium API instance.
@@ -418,21 +418,22 @@ func GetObsAPIExternalURL(ctx context.Context, client client.Client, namespace s
 		}
 		return obsURL, nil
 	}
-	routeHost, err := GetRouteHost(client, obsAPIGateway, namespace)
+	routeHost, err := GetRouteHost(ctx, client, obsAPIGateway, namespace)
 	if err != nil {
 		return nil, err
 	}
 	return url.Parse(fmt.Sprintf("%s://%s", schemeHttps, routeHost))
 }
 
-func GetRouteHost(client client.Client, name string, namespace string) (string, error) {
+func GetRouteHost(ctx context.Context, client client.Client, name string, namespace string) (string, error) {
 	found := &routev1.Route{}
 
-	err := client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, found)
+	err := client.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, found)
 	if err != nil && errors.IsNotFound(err) {
 		// if the router is not created yet, fallback to get host
 		// from the domain of ingresscontroller
 		domain, err := getDomainForIngressController(
+			ctx,
 			client,
 			OpenshiftIngressOperatorCRName,
 			OpenshiftIngressOperatorNamespace,
@@ -479,6 +480,7 @@ func GetAlertmanagerURL(ctx context.Context, client client.Client, namespace str
 	if err != nil && errors.IsNotFound(err) {
 		// if the alertmanager router is not created yet, fallback to get host from the domain of ingresscontroller
 		domain, err := getDomainForIngressController(
+			ctx,
 			client,
 			OpenshiftIngressOperatorCRName,
 			OpenshiftIngressOperatorNamespace,
@@ -494,9 +496,9 @@ func GetAlertmanagerURL(ctx context.Context, client client.Client, namespace str
 }
 
 // getDomainForIngressController get the domain for the given ingresscontroller instance.
-func getDomainForIngressController(client client.Client, name, namespace string) (string, error) {
+func getDomainForIngressController(ctx context.Context, client client.Client, name, namespace string) (string, error) {
 	ingressOperatorInstance := &operatorv1.IngressController{}
-	err := client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, ingressOperatorInstance)
+	err := client.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, ingressOperatorInstance)
 	if err != nil {
 		return "", err
 	}
