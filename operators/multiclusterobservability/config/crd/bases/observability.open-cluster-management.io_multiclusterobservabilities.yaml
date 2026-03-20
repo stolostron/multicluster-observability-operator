@@ -5579,6 +5579,7 @@ spec:
                         type: object
                     type: object
                   queryTimeout:
+                    default: 300s
                     description: |-
                       QueryTimeout is the timeout for queries executed in Grafana.
                       It is applied to the read path components from Grafana.
