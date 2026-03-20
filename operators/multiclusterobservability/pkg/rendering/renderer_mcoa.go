@@ -61,11 +61,12 @@ func (r *MCORenderer) newMCOARenderer() {
 }
 
 func (r *MCORenderer) renderMCOADeployment(
+	ctx context.Context,
 	res *resource.Resource,
 	namespace string,
 	labels map[string]string,
 ) (*unstructured.Unstructured, error) {
-	u, err := r.renderer.RenderNamespace(res, namespace, labels)
+	u, err := r.renderer.RenderNamespace(ctx, res, namespace, labels)
 	if err != nil {
 		return nil, err
 	}
@@ -177,6 +178,7 @@ func (r *MCORenderer) renderMCOADeployment(
 }
 
 func (r *MCORenderer) renderClusterManagementAddOn(
+	ctx context.Context,
 	res *resource.Resource,
 	namespace string,
 	labels map[string]string,
@@ -188,7 +190,7 @@ func (r *MCORenderer) renderClusterManagementAddOn(
 	u := &unstructured.Unstructured{Object: m}
 
 	// Add grafana link annotation
-	host, err := mcoconfig.GetRouteHost(context.TODO(), r.kubeClient, mcoconfig.GrafanaRouteName, mcoconfig.GetDefaultNamespace())
+	host, err := mcoconfig.GetRouteHost(ctx, r.kubeClient, mcoconfig.GrafanaRouteName, mcoconfig.GetDefaultNamespace())
 	if err != nil {
 		return nil, fmt.Errorf("failed to get host route: %w", err)
 	}
@@ -216,11 +218,12 @@ func (r *MCORenderer) renderClusterManagementAddOn(
 }
 
 func (r *MCORenderer) renderAddonDeploymentConfig(
+	ctx context.Context,
 	res *resource.Resource,
 	namespace string,
 	labels map[string]string,
 ) (*unstructured.Unstructured, error) {
-	u, err := r.renderer.RenderNamespace(res, namespace, labels)
+	u, err := r.renderer.RenderNamespace(ctx, res, namespace, labels)
 	if err != nil {
 		return nil, err
 	}
@@ -307,6 +310,7 @@ func (r *MCORenderer) renderAddonDeploymentConfig(
 }
 
 func (r *MCORenderer) renderMCOATemplates(
+	ctx context.Context,
 	templates []*resource.Resource,
 	namespace string,
 	labels map[string]string,
@@ -331,7 +335,7 @@ func (r *MCORenderer) renderMCOATemplates(
 			uobjs = append(uobjs, &unstructured.Unstructured{Object: m})
 			continue
 		}
-		uobj, err := render(template.DeepCopy(), namespace, labels)
+		uobj, err := render(ctx, template.DeepCopy(), namespace, labels)
 		if err != nil {
 			return []*unstructured.Unstructured{}, err
 		}

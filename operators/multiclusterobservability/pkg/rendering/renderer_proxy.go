@@ -5,6 +5,7 @@
 package rendering
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -34,10 +35,10 @@ func (r *MCORenderer) newProxyRenderer() {
 	}
 }
 
-func (r *MCORenderer) renderProxyDeployment(res *resource.Resource,
+func (r *MCORenderer) renderProxyDeployment(ctx context.Context, res *resource.Resource,
 	namespace string, labels map[string]string,
 ) (*unstructured.Unstructured, error) {
-	u, err := r.renderer.RenderDeployments(res, namespace, labels)
+	u, err := r.renderer.RenderDeployments(ctx, res, namespace, labels)
 	if err != nil {
 		return nil, err
 	}
@@ -123,10 +124,10 @@ func (r *MCORenderer) renderProxyDeployment(res *resource.Resource,
 	return &unstructured.Unstructured{Object: unstructuredObj}, nil
 }
 
-func (r *MCORenderer) renderProxySecret(res *resource.Resource,
+func (r *MCORenderer) renderProxySecret(ctx context.Context, res *resource.Resource,
 	namespace string, labels map[string]string,
 ) (*unstructured.Unstructured, error) {
-	u, err := r.renderer.RenderNamespace(res, namespace, labels)
+	u, err := r.renderer.RenderNamespace(ctx, res, namespace, labels)
 	if err != nil {
 		return nil, err
 	}
@@ -154,7 +155,7 @@ func (r *MCORenderer) renderProxySecret(res *resource.Resource,
 	return u, nil
 }
 
-func (r *MCORenderer) renderProxyTemplates(templates []*resource.Resource,
+func (r *MCORenderer) renderProxyTemplates(ctx context.Context, templates []*resource.Resource,
 	namespace string, labels map[string]string,
 ) ([]*unstructured.Unstructured, error) {
 	uobjs := []*unstructured.Unstructured{}
@@ -168,7 +169,7 @@ func (r *MCORenderer) renderProxyTemplates(templates []*resource.Resource,
 			uobjs = append(uobjs, &unstructured.Unstructured{Object: m})
 			continue
 		}
-		uobj, err := render(template.DeepCopy(), namespace, labels)
+		uobj, err := render(ctx, template.DeepCopy(), namespace, labels)
 		if err != nil {
 			return []*unstructured.Unstructured{}, err
 		}

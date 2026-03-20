@@ -281,7 +281,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 
 	// Render the templates with a specified CR
 	renderer := rendering.NewMCORenderer(instance, r.Client, r.ImageClient).WithRendererOptions(rendererOptions)
-	toDeploy, err := renderer.Render()
+	toDeploy, err := renderer.Render(ctx)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to render MCO templates for %s/%s: %w", instance.GetNamespace(), instance.GetName(), err)
 	}
@@ -339,7 +339,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 
 	if !rendering.MCOAEnabled(instance) {
 		namespace, labels := renderer.NamespaceAndLabels()
-		toDelete, err := renderer.MCOAResources(namespace, labels)
+		toDelete, err := renderer.MCOAResources(ctx, namespace, labels)
 		if err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to list MCOA resources for deletion in namespace %s: %w", namespace, err)
 		}
