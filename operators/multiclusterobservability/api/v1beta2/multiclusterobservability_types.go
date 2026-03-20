@@ -365,6 +365,7 @@ type AdvancedConfig struct {
 	// Default is 300s.
 	// +optional
 	// +kubebuilder:validation:Pattern=`^([0-9]+(\.[0-9]+)?(ms|s|m|h))+$`
+	// +kubebuilder:default="300s"
 	QueryTimeout string `json:"queryTimeout,omitempty"`
 	// The spec of the data retention configurations
 	// +optional
