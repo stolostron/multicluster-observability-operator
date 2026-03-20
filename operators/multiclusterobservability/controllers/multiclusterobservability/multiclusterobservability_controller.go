@@ -381,11 +381,11 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		}
 
 		// expose grafana through route
-		result, err = GenerateGrafanaRoute(r.Client, r.Scheme, instance)
+		result, err = GenerateGrafanaRoute(ctx, r.Client, r.Scheme, instance)
 		if result != nil {
 			return *result, fmt.Errorf("failed to generate Grafana route: %w", err)
 		}
-		result, err = GenerateGrafanaOauthClient(r.Client, r.Scheme, instance)
+		result, err = GenerateGrafanaOauthClient(ctx, r.Client, r.Scheme, instance)
 		if result != nil {
 			return *result, fmt.Errorf("failed to generate Grafana OAuth client: %w", err)
 		}
@@ -404,7 +404,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	}
 
 	// generate grafana datasource to point to observatorium api gateway
-	result, err = GenerateGrafanaDataSource(r.Client, r.Scheme, instance)
+	result, err = GenerateGrafanaDataSource(ctx, r.Client, r.Scheme, instance)
 	if result != nil {
 		return *result, fmt.Errorf("failed to generate Grafana data source: %w", err)
 	}

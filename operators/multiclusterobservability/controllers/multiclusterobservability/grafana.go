@@ -8,7 +8,9 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"math"
 	"reflect"
+	"strconv"
 	"time"
 
 	oauthv1 "github.com/openshift/api/oauth/v1"
@@ -79,6 +81,7 @@ type SecureJsonData struct {
 // GenerateGrafanaDataSource is used to generate the GrafanaDatasource as a secret.
 // the GrafanaDatasource points to observatorium api gateway service.
 func GenerateGrafanaDataSource(
+	ctx context.Context,
 	c client.Client,
 	scheme *runtime.Scheme,
 	mco *mcov1beta2.MultiClusterObservability,
@@ -90,7 +93,14 @@ func GenerateGrafanaDataSource(
 	if err != nil {
 		return &ctrl.Result{}, fmt.Errorf("failed to parse query timeout duration %s: %w", queryTimeout, err)
 	}
-	queryTimeoutSec := fmt.Sprintf("%.0f", duration.Seconds())
+
+	var secs int
+	if duration < time.Second {
+		secs = 1
+	} else {
+		secs = int(math.Ceil(duration.Seconds()))
+	}
+	queryTimeoutSec := strconv.Itoa(secs)
 
 	grafanaDatasources, err := yaml.Marshal(GrafanaDatasources{
 		APIVersion: 1,
@@ -156,7 +166,7 @@ func GenerateGrafanaDataSource(
 	// Check if this already exists
 	grafanaDSFound := &corev1.Secret{}
 	err = c.Get(
-		context.TODO(),
+		ctx,
 		types.NamespacedName{
 			Name:      dsSecret.Name,
 			Namespace: dsSecret.Namespace,
@@ -170,7 +180,7 @@ func GenerateGrafanaDataSource(
 			"dsSecret.Name", dsSecret.Name,
 		)
 
-		err = c.Create(context.TODO(), dsSecret)
+		err = c.Create(ctx, dsSecret)
 		if err != nil {
 			return &ctrl.Result{}, err
 		}
@@ -184,7 +194,7 @@ func GenerateGrafanaDataSource(
 		!bytes.Equal(grafanaDSFound.Data[datasourceKey], dsSecret.Data[datasourceKey])) ||
 		grafanaDSFound.Data[datasourceKey] == nil {
 		log.Info("Updating grafana datasource secret")
-		err = c.Update(context.TODO(), dsSecret)
+		err = c.Update(ctx, dsSecret)
 		if err != nil {
 			log.Error(err, "Failed to update grafana datasource secret")
 			return &ctrl.Result{}, err
@@ -200,6 +210,7 @@ func GenerateGrafanaDataSource(
 }
 
 func GenerateGrafanaRoute(
+	ctx context.Context,
 	c client.Client, scheme *runtime.Scheme,
 	mco *mcov1beta2.MultiClusterObservability,
 ) (*ctrl.Result, error) {
@@ -235,7 +246,7 @@ func GenerateGrafanaRoute(
 
 	found := &routev1.Route{}
 	err := c.Get(
-		context.TODO(),
+		ctx,
 		types.NamespacedName{Name: grafanaRoute.Name, Namespace: grafanaRoute.Namespace},
 		found,
 	)
@@ -247,7 +258,7 @@ func GenerateGrafanaRoute(
 			"grafanaRoute.Name",
 			grafanaRoute.Name,
 		)
-		err = c.Create(context.TODO(), grafanaRoute)
+		err = c.Create(ctx, grafanaRoute)
 		if err != nil {
 			return &ctrl.Result{}, err
 		}
@@ -271,7 +282,7 @@ func GenerateGrafanaRoute(
 	}
 
 	if updated {
-		err = c.Update(context.TODO(), found)
+		err = c.Update(ctx, found)
 		if err != nil {
 			log.Error(
 				err,
@@ -286,10 +297,11 @@ func GenerateGrafanaRoute(
 }
 
 func GenerateGrafanaOauthClient(
+	ctx context.Context,
 	c client.Client, scheme *runtime.Scheme,
 	mco *mcov1beta2.MultiClusterObservability,
 ) (*ctrl.Result, error) {
-	host, err := config.GetRouteHost(c, config.GrafanaRouteName, config.GetDefaultNamespace())
+	host, err := config.GetRouteHost(ctx, c, config.GrafanaRouteName, config.GetDefaultNamespace())
 	if err != nil {
 		return nil, err
 	}
@@ -309,7 +321,7 @@ func GenerateGrafanaOauthClient(
 
 	found := &oauthv1.OAuthClient{}
 	err = c.Get(
-		context.TODO(),
+		ctx,
 		types.NamespacedName{Name: config.GrafanaOauthClientName},
 		found,
 	)
@@ -319,7 +331,7 @@ func GenerateGrafanaOauthClient(
 			"GrafanaOauthClientName",
 			config.GrafanaOauthClientName,
 		)
-		err = c.Create(context.TODO(), oauthClient)
+		err = c.Create(ctx, oauthClient)
 		if err != nil {
 			return &ctrl.Result{}, err
 		}

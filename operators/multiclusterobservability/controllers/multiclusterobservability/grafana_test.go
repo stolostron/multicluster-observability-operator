@@ -124,7 +124,7 @@ func TestGenerateGrafanaRoute(t *testing.T) {
 			} else {
 				instance.Spec.AdvancedConfig = nil
 			}
-			_, err := GenerateGrafanaRoute(tt.c, s, instance)
+			_, err := GenerateGrafanaRoute(context.Background(), tt.c, s, instance)
 			if err != nil {
 				t.Errorf("GenerateGrafanaDataSource() error = %v", err)
 				return
@@ -199,19 +199,94 @@ func TestGenerateGrafanaDataSource(t *testing.T) {
 			},
 			expectedTimeout: "60",
 		},
+		{
+			name: "Custom timeout 500ms",
+			mco: &mcov1beta2.MultiClusterObservability{
+				ObjectMeta: metav1.ObjectMeta{Name: "test-mco"},
+				Spec: mcov1beta2.MultiClusterObservabilitySpec{
+					ObservabilityAddonSpec: &mcoshared.ObservabilityAddonSpec{
+						Interval: 300,
+					},
+					AdvancedConfig: &mcov1beta2.AdvancedConfig{
+						QueryTimeout: "500ms",
+					},
+				},
+			},
+			expectedTimeout: "1",
+		},
+		{
+			name: "Custom timeout 0s",
+			mco: &mcov1beta2.MultiClusterObservability{
+				ObjectMeta: metav1.ObjectMeta{Name: "test-mco"},
+				Spec: mcov1beta2.MultiClusterObservabilitySpec{
+					ObservabilityAddonSpec: &mcoshared.ObservabilityAddonSpec{
+						Interval: 300,
+					},
+					AdvancedConfig: &mcov1beta2.AdvancedConfig{
+						QueryTimeout: "0s",
+					},
+				},
+			},
+			expectedTimeout: "1",
+		},
+		{
+			name: "Custom timeout -5s",
+			mco: &mcov1beta2.MultiClusterObservability{
+				ObjectMeta: metav1.ObjectMeta{Name: "test-mco"},
+				Spec: mcov1beta2.MultiClusterObservabilitySpec{
+					ObservabilityAddonSpec: &mcoshared.ObservabilityAddonSpec{
+						Interval: 300,
+					},
+					AdvancedConfig: &mcov1beta2.AdvancedConfig{
+						QueryTimeout: "-5s",
+					},
+				},
+			},
+			expectedTimeout: "1",
+		},
+		{
+			name: "Custom timeout 1.2s",
+			mco: &mcov1beta2.MultiClusterObservability{
+				ObjectMeta: metav1.ObjectMeta{Name: "test-mco"},
+				Spec: mcov1beta2.MultiClusterObservabilitySpec{
+					ObservabilityAddonSpec: &mcoshared.ObservabilityAddonSpec{
+						Interval: 300,
+					},
+					AdvancedConfig: &mcov1beta2.AdvancedConfig{
+						QueryTimeout: "1.2s",
+					},
+				},
+			},
+			expectedTimeout: "2",
+		},
+		{
+			name: "Custom timeout 1s",
+			mco: &mcov1beta2.MultiClusterObservability{
+				ObjectMeta: metav1.ObjectMeta{Name: "test-mco"},
+				Spec: mcov1beta2.MultiClusterObservabilitySpec{
+					ObservabilityAddonSpec: &mcoshared.ObservabilityAddonSpec{
+						Interval: 300,
+					},
+					AdvancedConfig: &mcov1beta2.AdvancedConfig{
+						QueryTimeout: "1s",
+					},
+				},
+			},
+			expectedTimeout: "1",
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := fake.NewClientBuilder().WithScheme(s).Build()
-			_, err := GenerateGrafanaDataSource(c, s, tt.mco)
+			_, err := GenerateGrafanaDataSource(context.Background(), c, s, tt.mco)
 			if err != nil {
 				t.Errorf("GenerateGrafanaDataSource() error = %v", err)
 				return
 			}
 
 			secret := &corev1.Secret{}
-			err = c.Get(context.TODO(), client.ObjectKey{
+			err = c.Get(context.Background(), client.ObjectKey{
 				Name:      "grafana-datasources",
 				Namespace: config.GetDefaultNamespace(),
 			}, secret)
