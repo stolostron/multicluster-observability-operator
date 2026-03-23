@@ -44,7 +44,7 @@ collect_rules:
           - kube_pod_container_resource_requests   
           - namespace_workload_pod:kube_pod_owner:relabel 
           - node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate 
-          - node_namespace_pod_container:container_cpu_usage_seconds_total:sum_rate 
+          - node_namespace_pod_container:container_cpu_usage_seconds_total:sum_rate5m
     - collect: SNOHighMemoryUsage
       annotations:
         description: >
