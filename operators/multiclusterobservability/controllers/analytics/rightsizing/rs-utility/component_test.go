@@ -240,10 +240,11 @@ func TestCleanupComponentResources_WithConfigMap(t *testing.T) {
 	defer cancel()
 
 	// Test cleanup with bindingUpdated=false (should delete all resources including configmap)
-	CleanupComponentResources(ctx, client, componentConfig, "test-ns", false)
+	err := CleanupComponentResources(ctx, client, componentConfig, "test-ns", false)
+	assert.NoError(t, err)
 
 	// Verify all resources were deleted
-	err := client.Get(ctx, types.NamespacedName{Name: "test-config", Namespace: "open-cluster-management-observability"}, &corev1.ConfigMap{})
+	err = client.Get(ctx, types.NamespacedName{Name: "test-config", Namespace: "open-cluster-management-observability"}, &corev1.ConfigMap{})
 	assert.True(t, errors.IsNotFound(err))
 
 	err = client.Get(ctx, types.NamespacedName{Name: "test-placement", Namespace: "test-ns"}, &clusterv1beta1.Placement{})
@@ -292,10 +293,11 @@ func TestCleanupComponentResources_WithoutConfigMap(t *testing.T) {
 	defer cancel()
 
 	// Test cleanup with bindingUpdated=true (should not delete configmap)
-	CleanupComponentResources(ctx, client, componentConfig, "test-ns", true)
+	err := CleanupComponentResources(ctx, client, componentConfig, "test-ns", true)
+	assert.NoError(t, err)
 
 	// Verify configmap was not deleted
-	err := client.Get(ctx, types.NamespacedName{Name: "test-config", Namespace: "open-cluster-management-observability"}, &corev1.ConfigMap{})
+	err = client.Get(ctx, types.NamespacedName{Name: "test-config", Namespace: "open-cluster-management-observability"}, &corev1.ConfigMap{})
 	assert.NoError(t, err) // ConfigMap should still exist
 
 	// Verify other resources were deleted

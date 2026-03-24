@@ -14,6 +14,7 @@ import (
 	rightsizingctrl "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/analytics/rightsizing"
 	mcoctrl "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/multiclusterobservability"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -43,6 +44,12 @@ type AnalyticsReconciler struct {
 func (r *AnalyticsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace", req.Namespace, "Request.Name", req.Name)
 	reqLogger.Info("Reconciling RightSizing")
+
+	// Skip reconciliation if MCO is being deleted
+	if operatorconfig.IsMCOTerminating {
+		reqLogger.Info("MCO is terminating, skip reconcile for rightsizing controller")
+		return ctrl.Result{}, nil
+	}
 
 	// Fetch the MultiClusterObservability instance
 	mcoList := &mcov1beta2.MultiClusterObservabilityList{}
