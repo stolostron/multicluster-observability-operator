@@ -1739,7 +1739,12 @@ data:
       ],
       "refresh": "5m",
       "schemaVersion": 39,
-      "tags": [],
+      "tags": [
+        "OpenShift",
+        "Virtualization",
+        "ACM",
+        "KubeVirt"
+      ],
       "templating": {
         "list": [
           {
@@ -1812,7 +1817,7 @@ data:
         ]
       },
       "timezone": "",
-      "title": "Load Aware ReBalancing",
+      "title": "Executive dashboards / Load Aware Rebalancing",
       "uid": "fekygyep7mbr4b",
       "version": 2,
       "weekStart": ""
