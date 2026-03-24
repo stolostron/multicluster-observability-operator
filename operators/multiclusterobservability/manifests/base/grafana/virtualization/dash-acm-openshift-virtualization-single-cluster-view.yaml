@@ -89,7 +89,7 @@ data:
           "targets": [
             {
               "exemplar": true,
-              "expr": "kubevirt_hyperconverged_operator_health_status{name=~\".*hyperconverged.*\", cluster=~\"$cluster\"}",
+              "expr": "max by (cluster, name)(kubevirt_hyperconverged_operator_health_status{name=~\".*hyperconverged.*\", cluster=~\"$cluster\"})",
               "format": "table",
               "instant": false,
               "interval": "",
@@ -270,7 +270,7 @@ data:
           "targets": [
             {
               "exemplar": true,
-              "expr": "sum(count(kubevirt_vm_error_status_last_transition_timestamp_seconds{cluster=~\"$cluster\"}) by (name))",
+              "expr": "count(count by (cluster, namespace, name)(kubevirt_vm_info{cluster=~\"$cluster\"}))",
               "format": "table",
               "instant": true,
               "interval": "",
@@ -462,7 +462,7 @@ data:
           "targets": [
             {
               "exemplar": true,
-              "expr": "sum(count(kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\"}>0) by (name)) or vector(0)",
+              "expr": "sum(sum(kubevirt_vm_info{cluster=~\"$cluster\", status_group=\"running\"}>0) by (status_group) or vector(0))",
               "format": "time_series",
               "instant": true,
               "interval": "",
@@ -471,7 +471,7 @@ data:
             },
             {
               "exemplar": true,
-              "expr": "sum(count(kubevirt_vm_non_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\"}>0) by (name)) or vector(0)",
+              "expr": "sum(sum(kubevirt_vm_info{cluster=~\"$cluster\", status_group=\"non_running\"}>0) by (status_group) or vector(0))",
               "format": "time_series",
               "hide": false,
               "instant": true,
@@ -481,7 +481,7 @@ data:
             },
             {
               "exemplar": true,
-              "expr": "sum(count(kubevirt_vm_error_status_last_transition_timestamp_seconds{cluster=~\"$cluster\"}>0) by (name)) or vector(0)",
+              "expr": "sum(sum(kubevirt_vm_info{cluster=~\"$cluster\", status_group=\"error\"}>0) by (status_group) or vector(0))",
               "format": "time_series",
               "hide": false,
               "instant": true,
@@ -491,7 +491,7 @@ data:
             },
             {
               "exemplar": true,
-              "expr": "sum(count(kubevirt_vm_starting_status_last_transition_timestamp_seconds{cluster=~\"$cluster\"}>0) by (name)) or vector(0)",
+              "expr": "sum(sum(kubevirt_vm_info{cluster=~\"$cluster\", status_group=\"starting\"}>0) by (status_group) or vector(0))",
               "format": "time_series",
               "hide": false,
               "instant": true,
@@ -501,7 +501,7 @@ data:
             },
             {
               "exemplar": true,
-              "expr": "sum(count(kubevirt_vm_migrating_status_last_transition_timestamp_seconds{cluster=~\"$cluster\"}>0) by (name)) or vector(0)",
+              "expr": "sum(sum(kubevirt_vm_info{cluster=~\"$cluster\", status_group=\"migrating\"}>0) by (status_group) or vector(0))",
               "format": "time_series",
               "hide": false,
               "instant": true,
@@ -714,7 +714,7 @@ data:
           "targets": [
             {
               "exemplar": true,
-              "expr": "sum by (cluster)(kubevirt_hyperconverged_operator_health_status{cluster=~\"$cluster\"})",
+              "expr": "max by (cluster)(kubevirt_hyperconverged_operator_health_status{cluster=~\"$cluster\"})",
               "format": "time_series",
               "interval": "",
               "legendFormat": "",
@@ -857,7 +857,7 @@ data:
           "targets": [
             {
               "exemplar": true,
-              "expr": "sum by (os)(sum by (cluster, os)(label_replace(kubevirt_vmi_info{cluster=~\"$cluster\", guest_os_name!=\"\", phase=\"running\"}, \"os\", \"$1\", \"guest_os_name\", \"(.*)\")\n+ on (cluster, namespace, name) group_left()(0*(kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\"}>0))))",
+              "expr": "sum by (os)(max by (cluster, namespace, name, os)(label_replace(kubevirt_vmi_info{cluster=~\"$cluster\", guest_os_name!=\"\", phase=\"running\"}, \"os\", \"$1\", \"guest_os_name\", \"(.*)\")\n+ on (cluster, namespace, name) group_left()(0*(kubevirt_vm_info{cluster=~\"$cluster\", status_group=\"running\"}>0))))",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -867,7 +867,7 @@ data:
             },
             {
               "exemplar": true,
-              "expr": "sum by (os)(sum by (cluster, os)(label_replace(kubevirt_vmi_info{cluster=~\"$cluster\", guest_os_name=\"\", phase=\"running\"}, \"os\", \"unknown\", \"guest_os_name\", \"\")\n+ on (cluster, namespace, name) group_left()(0*(kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\"}>0))))",
+              "expr": "sum by (os)(max by (cluster, namespace, name, os)(label_replace(kubevirt_vmi_info{cluster=~\"$cluster\", guest_os_name=\"\", phase=\"running\"}, \"os\", \"unknown\", \"guest_os_name\", \"\")\n+ on (cluster, namespace, name) group_left()(0*(kubevirt_vm_info{cluster=~\"$cluster\", status_group=\"running\"}>0)))\nunless on (cluster, namespace, name)\nmax by (cluster, namespace, name)(kubevirt_vmi_info{cluster=~\"$cluster\", guest_os_name!=\"\", phase=\"running\"}))",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -1296,7 +1296,7 @@ data:
               "targets": [
                 {
                   "exemplar": true,
-                  "expr": "sum(count(kubevirt_vm_starting_status_last_transition_timestamp_seconds{cluster=~\"$cluster\"} > 0)) or vector(0)",
+                  "expr": "sum(sum(kubevirt_vm_info{cluster=~\"$cluster\", status_group=\"starting\"}>0) by (status_group) or vector(0))",
                   "format": "time_series",
                   "hide": false,
                   "instant": false,
@@ -1307,7 +1307,7 @@ data:
                 },
                 {
                   "exemplar": true,
-                  "expr": "sum(count(kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\"} > 0)) or vector(0)",
+                  "expr": "sum(sum(kubevirt_vm_info{cluster=~\"$cluster\", status_group=\"running\"}>0) by (status_group) or vector(0))",
                   "format": "time_series",
                   "hide": false,
                   "instant": false,
@@ -1317,7 +1317,7 @@ data:
                 },
                 {
                   "exemplar": true,
-                  "expr": "sum(count(kubevirt_vm_migrating_status_last_transition_timestamp_seconds{cluster=~\"$cluster\"} > 0)) or vector(0)",
+                  "expr": "sum(sum(kubevirt_vm_info{cluster=~\"$cluster\", status_group=\"migrating\"}>0) by (status_group) or vector(0))",
                   "format": "time_series",
                   "hide": false,
                   "instant": false,
@@ -1327,7 +1327,7 @@ data:
                 },
                 {
                   "exemplar": true,
-                  "expr": "sum(count(kubevirt_vm_error_status_last_transition_timestamp_seconds{cluster=~\"$cluster\"} > 0)) or vector(0)",
+                  "expr": "sum(sum(kubevirt_vm_info{cluster=~\"$cluster\", status_group=\"error\"}>0) by (status_group) or vector(0))",
                   "format": "time_series",
                   "hide": false,
                   "instant": false,
@@ -1337,7 +1337,7 @@ data:
                 },
                 {
                   "exemplar": true,
-                  "expr": "sum(count(kubevirt_vm_non_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\"} > 0)) or vector(0)",
+                  "expr": "sum(sum(kubevirt_vm_info{cluster=~\"$cluster\", status_group=\"non_running\"}>0) by (status_group) or vector(0))",
                   "format": "time_series",
                   "hide": false,
                   "instant": false,
@@ -2034,7 +2034,7 @@ data:
             },
             {
               "datasource": "Observatorium-Dynamic",
-              "description": "This panel displays the memory usage for the top 20 virtual machines (VMs) in the cluster. Memory usage is calculated as the allocated memory minus unused and cached memory. This provides insight into the most memory-intensive VMs, helping identify resource-heavy workloads and potential optimizations. The data is based on the most recent metrics collected.",
+              "description": "This panel displays the memory usage for the top 20 virtual machines (VMs) in the cluster over the selected time range. Memory usage is based on the `kubevirt_vmi_memory_used_bytes` metric. This provides insight into the most memory-intensive VMs, helping identify resource-heavy workloads and potential optimizations.",
               "fieldConfig": {
                 "defaults": {
                   "color": {
@@ -2108,7 +2108,7 @@ data:
               "targets": [
                 {
                   "exemplar": true,
-                  "expr": "topk(20,(sum by (namespace, name) (\nkubevirt_vmi_memory_available_bytes{cluster=~\"$cluster\",namespace=~\".*\"} - kubevirt_vmi_memory_unused_bytes{cluster=~\"$cluster\",namespace=~\".*\"} -kubevirt_vmi_memory_cached_bytes{cluster=~\"$cluster\",namespace=~\".*\"})))",
+                  "expr": "topk(20,(sum by (namespace, name) (\nkubevirt_vmi_memory_used_bytes{cluster=~\"$cluster\",namespace=~\".*\"})))",
                   "hide": false,
                   "instant": false,
                   "interval": "",
@@ -2206,7 +2206,7 @@ data:
             },
             {
               "datasource": "Observatorium-Dynamic",
-              "description": "This panel displays the memory usage for the top 20 virtual machines (VMs) in the cluster. Memory usage is calculated as the allocated memory minus unused and cached memory. This provides insight into the most memory-intensive VMs, helping identify resource-heavy workloads and potential optimizations. The data is based on the most recent metrics collected.",
+              "description": "This panel displays the memory usage percentage for the top 20 virtual machines (VMs) in the cluster over the selected time range. Memory usage is based on the `kubevirt_vmi_memory_used_bytes` metric divided by requested memory. Values are shown as a percentage of memory used. This provides insight into the most memory-intensive VMs, helping identify resource-heavy workloads and potential optimizations.",
               "fieldConfig": {
                 "defaults": {
                   "color": {
@@ -2280,7 +2280,7 @@ data:
               "targets": [
                 {
                   "exemplar": true,
-                  "expr": "topk(20,(\n  sum by (namespace, name) (\n    kubevirt_vmi_memory_available_bytes{cluster=~\"$cluster\",namespace=~\".*\"} -        \n    kubevirt_vmi_memory_unused_bytes{cluster=~\"$cluster\",namespace=~\".*\"} - \n    kubevirt_vmi_memory_cached_bytes{cluster=~\"$cluster\",namespace=~\".*\"}\n  )\n  /\n  (sum by (namespace, name)(\n      max by (cluster, namespace, name)(kubevirt_vm_resource_requests{cluster=~\"$cluster\",namespace=~\".*\",resource=\"memory\"}))\n      )\n )\n)",
+                  "expr": "topk(20,(\n  sum by (namespace, name) (\n    kubevirt_vmi_memory_used_bytes{cluster=~\"$cluster\",namespace=~\".*\"}\n  )\n  /\n  (sum by (namespace, name)(\n      max by (cluster, namespace, name)(kubevirt_vm_resource_requests{cluster=~\"$cluster\",namespace=~\".*\",resource=\"memory\"}))\n      )\n )\n)",
                   "hide": false,
                   "instant": false,
                   "interval": "",

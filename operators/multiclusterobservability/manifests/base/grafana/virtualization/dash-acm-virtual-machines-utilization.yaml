@@ -484,7 +484,7 @@ data:
           "targets": [
             {
               "exemplar": true,
-              "expr": "sum by (cluster, namespace, name, status) (\n  label_replace(kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > 0, \"status\", \"running\", \"__name__\", \".*\") \n  or label_replace(kubevirt_vm_non_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > 0, \"status\", \"stopped\", \"__name__\", \".*\")\n  or label_replace(kubevirt_vm_error_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > 0, \"status\", \"error\", \"__name__\", \".*\") \n  or label_replace(kubevirt_vm_starting_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > 0, \"status\", \"starting\", \"__name__\", \".*\") \n  or label_replace(kubevirt_vm_migrating_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"} > 0, \"status\", \"migrating\", \"__name__\", \".*\")\n)+${status:raw}",
+              "expr": "sum by (cluster, namespace, name, status) (\n  label_replace(\n    label_replace(\n      kubevirt_vm_info{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\", status_group=~\"$status\"} > 0,\n      \"status\", \"$1\", \"status_group\", \"(.*)\"\n    ),\n    \"status\", \"stopped\", \"status\", \"non_running\"\n  )\n)",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -494,7 +494,7 @@ data:
             },
             {
               "exemplar": true,
-              "expr": "sum by (cluster,namespace,name)(rate(kubevirt_vmi_cpu_usage_seconds_total{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"}[$__range]))+${status:raw}",
+              "expr": "sum by (cluster,namespace,name)(rate(kubevirt_vmi_cpu_usage_seconds_total{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"}[$__range]))+on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_info{status_group=~\"$status\"})))",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -504,7 +504,7 @@ data:
             },
             {
               "exemplar": true,
-              "expr": "(\n  sum by (cluster, namespace, name) (\n  kubevirt_vm_resource_requests{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\", resource=\"cpu\", unit=\"cores\", source=~\"default|domain\"}\n  * ignoring (unit)(kubevirt_vm_resource_requests{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\", resource=\"cpu\", unit=\"sockets\", source=~\"default|domain\"})\n  * ignoring (unit)(kubevirt_vm_resource_requests{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\", resource=\"cpu\", unit=\"threads\", source=~\"default|domain\"})\n  ) or\n  sum by (cluster, namespace, name) (\n  kubevirt_vm_resource_requests{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\", resource=\"cpu\", unit=\"cores\", source=~\"default|domain\"}\n  * ignoring (unit)(kubevirt_vm_resource_requests{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\", resource=\"cpu\", unit=\"sockets\", source=~\"default|domain\"})\n  )\n   or\n  sum by (cluster, namespace, name) (\n  kubevirt_vm_resource_requests{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\", resource=\"cpu\", unit=\"cores\", source=~\"default|domain\"}\n  )\n)+${status:raw}",
+              "expr": "(\n  sum by (cluster, namespace, name) (\n  kubevirt_vm_resource_requests{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\", resource=\"cpu\", unit=\"cores\", source=~\"default|domain\"}\n  * ignoring (unit)(kubevirt_vm_resource_requests{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\", resource=\"cpu\", unit=\"sockets\", source=~\"default|domain\"})\n  * ignoring (unit)(kubevirt_vm_resource_requests{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\", resource=\"cpu\", unit=\"threads\", source=~\"default|domain\"})\n  ) or\n  sum by (cluster, namespace, name) (\n  kubevirt_vm_resource_requests{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\", resource=\"cpu\", unit=\"cores\", source=~\"default|domain\"}\n  * ignoring (unit)(kubevirt_vm_resource_requests{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\", resource=\"cpu\", unit=\"sockets\", source=~\"default|domain\"})\n  )\n   or\n  sum by (cluster, namespace, name) (\n  kubevirt_vm_resource_requests{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\", resource=\"cpu\", unit=\"cores\", source=~\"default|domain\"}\n  )\n)+on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_info{status_group=~\"$status\"})))",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -514,7 +514,7 @@ data:
             },
             {
               "exemplar": true,
-              "expr": "(\n  sum by (cluster,namespace,name)(\n  rate(kubevirt_vmi_cpu_usage_seconds_total{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"}[$__range])\n  )>0\n)\n/\n(\n  sum by (cluster, namespace, name) (\n  (kubevirt_vm_resource_requests{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\", resource=\"cpu\", unit=\"cores\", source=~\"default|domain\"})\n  * ignoring (unit)(kubevirt_vm_resource_requests{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\", resource=\"cpu\", unit=\"sockets\", source=~\"default|domain\"})\n  * ignoring (unit)(kubevirt_vm_resource_requests{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\", resource=\"cpu\", unit=\"threads\", source=~\"default|domain\"})\n  ) or\n  sum by (cluster, namespace, name) (\n  (kubevirt_vm_resource_requests{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\", resource=\"cpu\", unit=\"cores\", source=~\"default|domain\"})\n  * ignoring (unit)(kubevirt_vm_resource_requests{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\", resource=\"cpu\", unit=\"sockets\", source=~\"default|domain\"})\n)\n)+ ${status:raw}",
+              "expr": "(\n  sum by (cluster,namespace,name)(\n  rate(kubevirt_vmi_cpu_usage_seconds_total{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"}[$__range])\n  )>0\n)\n/\n(\n  sum by (cluster, namespace, name) (\n  (kubevirt_vm_resource_requests{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\", resource=\"cpu\", unit=\"cores\", source=~\"default|domain\"})\n  * ignoring (unit)(kubevirt_vm_resource_requests{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\", resource=\"cpu\", unit=\"sockets\", source=~\"default|domain\"})\n  * ignoring (unit)(kubevirt_vm_resource_requests{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\", resource=\"cpu\", unit=\"threads\", source=~\"default|domain\"})\n  ) or\n  sum by (cluster, namespace, name) (\n  (kubevirt_vm_resource_requests{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\", resource=\"cpu\", unit=\"cores\", source=~\"default|domain\"})\n  * ignoring (unit)(kubevirt_vm_resource_requests{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\", resource=\"cpu\", unit=\"sockets\", source=~\"default|domain\"})\n)\n)+on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_info{status_group=~\"$status\"})))",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -524,7 +524,7 @@ data:
             },
             {
               "exemplar": true,
-              "expr": "avg by (cluster,namespace,name) (\navg_over_time(kubevirt_vmi_memory_available_bytes{cluster=~\"$cluster\",namespace=~\"$namespace\", name=~\"$name\"}[$__range]) - avg_over_time(kubevirt_vmi_memory_unused_bytes{cluster=~\"$cluster\",namespace=~\"$namespace\", name=~\"$name\"}[$__range]) - avg_over_time(kubevirt_vmi_memory_cached_bytes{cluster=~\"$cluster\",namespace=~\"$namespace\", name=~\"$name\"}[$__range])\n)+${status:raw}",
+              "expr": "avg by (cluster,namespace,name) (\navg_over_time(kubevirt_vmi_memory_used_bytes{cluster=~\"$cluster\",namespace=~\"$namespace\", name=~\"$name\"}[$__range])\n)+on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_info{status_group=~\"$status\"})))",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -534,7 +534,7 @@ data:
             },
             {
               "exemplar": true,
-              "expr": "sum by(cluster, namespace, name)(max by (cluster, namespace, name)(kubevirt_vm_resource_requests{cluster=~\"$cluster\", namespace=~\"$namespace\", name=~\"$name\", resource=\"memory\"}))+${status:raw}",
+              "expr": "sum by(cluster, namespace, name)(max by (cluster, namespace, name)(kubevirt_vm_resource_requests{cluster=~\"$cluster\", namespace=~\"$namespace\", name=~\"$name\", resource=\"memory\"}))+on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_info{status_group=~\"$status\"})))",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -544,7 +544,7 @@ data:
             },
             {
               "exemplar": true,
-              "expr": "(\n  avg by (cluster, namespace, name) (\n    avg_over_time(kubevirt_vmi_memory_available_bytes{cluster=~\"$cluster\", namespace=~\"$namespace\", name=~\"$name\"}[$__range])\n    - avg_over_time(kubevirt_vmi_memory_unused_bytes{cluster=~\"$cluster\", namespace=~\"$namespace\", name=~\"$name\"}[$__range])\n    - avg_over_time(kubevirt_vmi_memory_cached_bytes{cluster=~\"$cluster\", namespace=~\"$namespace\", name=~\"$name\"}[$__range])\n  )+${status:raw}\n)\n/\n(\n  sum by (cluster, namespace, name) (\n    max by (cluster, namespace, name)(kubevirt_vm_resource_requests{cluster=~\"$cluster\", namespace=~\"$namespace\", name=~\"$name\", resource=\"memory\"})\n  )+${status:raw}\n)",
+              "expr": "(\n  avg by (cluster, namespace, name) (\n    avg_over_time(kubevirt_vmi_memory_used_bytes{cluster=~\"$cluster\", namespace=~\"$namespace\", name=~\"$name\"}[$__range])\n  )+on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_info{status_group=~\"$status\"})))\n)\n/\n(\n  sum by (cluster, namespace, name) (\n    max by (cluster, namespace, name)(kubevirt_vm_resource_requests{cluster=~\"$cluster\", namespace=~\"$namespace\", name=~\"$name\", resource=\"memory\"})\n  )+on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_info{status_group=~\"$status\"})))\n)",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -554,7 +554,7 @@ data:
             },
             {
               "exemplar": true,
-              "expr": "sum by (cluster,namespace,name)(rate(kubevirt_vmi_network_transmit_bytes_total{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"}[$__range]) + rate(kubevirt_vmi_network_receive_bytes_total{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"}[$__range]))+${status:raw}",
+              "expr": "sum by (cluster,namespace,name)(rate(kubevirt_vmi_network_transmit_bytes_total{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"}[$__range]) + rate(kubevirt_vmi_network_receive_bytes_total{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\"}[$__range]))+on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_info{status_group=~\"$status\"})))",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -564,7 +564,7 @@ data:
             },
             {
               "exemplar": true,
-              "expr": "sum by (cluster, namespace, name)(rate(kubevirt_vmi_storage_read_traffic_bytes_total{cluster=~\"$cluster\",namespace=~\"$namespace\", name=~\"$name\"}[$__range]) + rate(kubevirt_vmi_storage_write_traffic_bytes_total{cluster=~\"$cluster\",namespace=~\"$namespace\", name=~\"$name\"}[$__range]))+${status:raw}",
+              "expr": "sum by (cluster, namespace, name)(rate(kubevirt_vmi_storage_read_traffic_bytes_total{cluster=~\"$cluster\",namespace=~\"$namespace\", name=~\"$name\"}[$__range]) + rate(kubevirt_vmi_storage_write_traffic_bytes_total{cluster=~\"$cluster\",namespace=~\"$namespace\", name=~\"$name\"}[$__range]))+on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_info{status_group=~\"$status\"})))",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -574,7 +574,7 @@ data:
             },
             {
               "exemplar": true,
-              "expr": "sum by (cluster,namespace,name) (rate(kubevirt_vmi_storage_iops_read_total{cluster=~\"$cluster\",namespace=~\"$namespace\", name=~\"$name\"}[$__range]) + rate(kubevirt_vmi_storage_iops_write_total{cluster=~\"$cluster\",namespace=~\"$namespace\", name=~\"$name\"}[$__range]))+${status:raw}",
+              "expr": "sum by (cluster,namespace,name) (rate(kubevirt_vmi_storage_iops_read_total{cluster=~\"$cluster\",namespace=~\"$namespace\", name=~\"$name\"}[$__range]) + rate(kubevirt_vmi_storage_iops_write_total{cluster=~\"$cluster\",namespace=~\"$namespace\", name=~\"$name\"}[$__range]))+on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_info{status_group=~\"$status\"})))",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -584,7 +584,7 @@ data:
             },
             {
               "exemplar": true,
-              "expr": "sum by (cluster,namespace,name) (rate(kubevirt_vmi_vcpu_delay_seconds_total{cluster=~\"$cluster\",namespace=~\"$namespace\", name=~\"$name\"}[$__range]))+${status:raw}",
+              "expr": "sum by (cluster,namespace,name) (rate(kubevirt_vmi_vcpu_delay_seconds_total{cluster=~\"$cluster\",namespace=~\"$namespace\", name=~\"$name\"}[$__range]))+on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_info{status_group=~\"$status\"})))",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -594,7 +594,7 @@ data:
             },
             {
               "exemplar": true,
-              "expr": "(\n  sum by (name, namespace, cluster)(\n    rate(kubevirt_vmi_vcpu_delay_seconds_total{cluster=~\"$cluster\", namespace=~\"$namespace\", name=~\"$name\"}[$__range])\n  )>0\n)\n/\n(\n  sum by (cluster, namespace, name) (\n  (kubevirt_vm_resource_requests{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\", resource=\"cpu\", unit=\"cores\", source=~\"default|domain\"})\n  * ignoring (unit)(kubevirt_vm_resource_requests{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\", resource=\"cpu\", unit=\"sockets\", source=~\"default|domain\"})\n  * ignoring (unit)(kubevirt_vm_resource_requests{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\", resource=\"cpu\", unit=\"threads\", source=~\"default|domain\"})\n  ) or\n  sum by (cluster, namespace, name) (\n  (kubevirt_vm_resource_requests{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\", resource=\"cpu\", unit=\"cores\", source=~\"default|domain\"})\n  * ignoring (unit)(kubevirt_vm_resource_requests{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\", resource=\"cpu\", unit=\"sockets\", source=~\"default|domain\"})\n)\n)+${status:raw}",
+              "expr": "(\n  sum by (name, namespace, cluster)(\n    rate(kubevirt_vmi_vcpu_delay_seconds_total{cluster=~\"$cluster\", namespace=~\"$namespace\", name=~\"$name\"}[$__range])\n  )>0\n)\n/\n(\n  sum by (cluster, namespace, name) (\n  (kubevirt_vm_resource_requests{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\", resource=\"cpu\", unit=\"cores\", source=~\"default|domain\"})\n  * ignoring (unit)(kubevirt_vm_resource_requests{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\", resource=\"cpu\", unit=\"sockets\", source=~\"default|domain\"})\n  * ignoring (unit)(kubevirt_vm_resource_requests{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\", resource=\"cpu\", unit=\"threads\", source=~\"default|domain\"})\n  ) or\n  sum by (cluster, namespace, name) (\n  (kubevirt_vm_resource_requests{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\", resource=\"cpu\", unit=\"cores\", source=~\"default|domain\"})\n  * ignoring (unit)(kubevirt_vm_resource_requests{cluster=~\"$cluster\", name=~\"$name\", namespace=~\"$namespace\", resource=\"cpu\", unit=\"sockets\", source=~\"default|domain\"})\n)\n)+on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_info{status_group=~\"$status\"})))",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -604,7 +604,7 @@ data:
             },
             {
               "exemplar": true,
-              "expr": "sum by (cluster,namespace,name)(rate(kubevirt_vmi_vcpu_wait_seconds_total{cluster=~\"$cluster\",namespace=~\"$namespace\", name=~\"$name\"}[$__range]))+${status:raw}",
+              "expr": "sum by (cluster,namespace,name)(rate(kubevirt_vmi_vcpu_wait_seconds_total{cluster=~\"$cluster\",namespace=~\"$namespace\", name=~\"$name\"}[$__range]))+on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_info{status_group=~\"$status\"})))",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -614,7 +614,7 @@ data:
             },
             {
               "exemplar": true,
-              "expr": "sum by (cluster,namespace,name) (avg_over_time(kubevirt_vmi_memory_swap_in_traffic_bytes{cluster=~\"$cluster\",namespace=~\"$namespace\", name=~\"$name\"}[$__range]) + avg_over_time(kubevirt_vmi_memory_swap_out_traffic_bytes{cluster=~\"$cluster\",namespace=~\"$namespace\", name=~\"$name\"}[$__range]))+${status:raw}",
+              "expr": "sum by (cluster,namespace,name) (avg_over_time(kubevirt_vmi_memory_swap_in_traffic_bytes{cluster=~\"$cluster\",namespace=~\"$namespace\", name=~\"$name\"}[$__range]) + avg_over_time(kubevirt_vmi_memory_swap_out_traffic_bytes{cluster=~\"$cluster\",namespace=~\"$namespace\", name=~\"$name\"}[$__range]))+on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_info{status_group=~\"$status\"})))",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -624,7 +624,7 @@ data:
             },
             {
               "exemplar": true,
-              "expr": "avg by (cluster, namespace, name) (avg_over_time(kubevirt_vmi_filesystem_capacity_bytes{cluster=~\"$cluster\", namespace=~\"$namespace\", name=~\"$name\"}[$__range]))+${status:raw}",
+              "expr": "avg by (cluster, namespace, name) (avg_over_time(kubevirt_vmi_filesystem_capacity_bytes{cluster=~\"$cluster\", namespace=~\"$namespace\", name=~\"$name\"}[$__range]))+on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_info{status_group=~\"$status\"})))",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -634,7 +634,7 @@ data:
             },
             {
               "exemplar": true,
-              "expr": "avg by (cluster, namespace, name) (avg_over_time(kubevirt_vmi_filesystem_used_bytes{cluster=~\"$cluster\", namespace=~\"$namespace\", name=~\"$name\"}[$__range]))+${status:raw}",
+              "expr": "avg by (cluster, namespace, name) (avg_over_time(kubevirt_vmi_filesystem_used_bytes{cluster=~\"$cluster\", namespace=~\"$namespace\", name=~\"$name\"}[$__range]))+on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_info{status_group=~\"$status\"})))",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -644,7 +644,7 @@ data:
             },
             {
               "exemplar": true,
-              "expr": "topk(1,\n(max by (cluster, namespace, name, disk_name) (\n  avg_over_time(kubevirt_vmi_filesystem_used_bytes{cluster=~\"$cluster\", namespace=~\"$namespace\", name=~\"$name\"}[$__range])\n))\n/\n(max by (cluster, namespace, name, disk_name) (\n  avg_over_time(kubevirt_vmi_filesystem_capacity_bytes{cluster=~\"$cluster\", namespace=~\"$namespace\", name=~\"$name\"}[$__range])\n))+${status:raw}\n) by (cluster, namespace, name)",
+              "expr": "topk(1,\n(max by (cluster, namespace, name, disk_name) (\n  avg_over_time(kubevirt_vmi_filesystem_used_bytes{cluster=~\"$cluster\", namespace=~\"$namespace\", name=~\"$name\"}[$__range])\n))\n/\n(max by (cluster, namespace, name, disk_name) (\n  avg_over_time(kubevirt_vmi_filesystem_capacity_bytes{cluster=~\"$cluster\", namespace=~\"$namespace\", name=~\"$name\"}[$__range])\n))+on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_info{status_group=~\"$status\"})))\n) by (cluster, namespace, name)",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -654,7 +654,7 @@ data:
             },
             {
               "exemplar": true,
-              "expr": "sum by (cluster, namespace, name)(kubevirt_vmi_memory_available_bytes{cluster=~\"$cluster\", namespace=~\"$namespace\", name=~\"$name\"}*0+1)+${status:raw}",
+              "expr": "sum by (cluster, namespace, name)(kubevirt_vmi_memory_available_bytes{cluster=~\"$cluster\", namespace=~\"$namespace\", name=~\"$name\"}*0+1)+on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_info{status_group=~\"$status\"})))",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -782,7 +782,7 @@ data:
               "selected": false
             },
             "datasource": null,
-            "definition": "label_values(kubevirt_vm_running_status_last_transition_timestamp_seconds, cluster)",
+            "definition": "label_values(kubevirt_vm_info, cluster)",
             "description": null,
             "error": null,
             "hide": 0,
@@ -792,7 +792,7 @@ data:
             "name": "cluster",
             "options": [],
             "query": {
-              "query": "label_values(kubevirt_vm_running_status_last_transition_timestamp_seconds, cluster)",
+              "query": "label_values(kubevirt_vm_info, cluster)",
               "refId": "StandardVariableQuery"
             },
             "refresh": 2,
@@ -813,7 +813,7 @@ data:
               ]
             },
             "datasource": null,
-            "definition": "label_values(kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\"}, namespace)",
+            "definition": "label_values(kubevirt_vm_info{cluster=~\"$cluster\"}, namespace)",
             "description": "Filter the Virtual Machine by its Namespace",
             "error": null,
             "hide": 0,
@@ -823,7 +823,7 @@ data:
             "name": "namespace",
             "options": [],
             "query": {
-              "query": "label_values(kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\"}, namespace)",
+              "query": "label_values(kubevirt_vm_info{cluster=~\"$cluster\"}, namespace)",
               "refId": "StandardVariableQuery"
             },
             "refresh": 2,
@@ -844,7 +844,7 @@ data:
               ]
             },
             "datasource": null,
-            "definition": "query_result(sum by (name)(kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", namespace=~\"$namespace\"} ))\n",
+            "definition": "query_result(sum by (name)(kubevirt_vm_info{cluster=~\"$cluster\", namespace=~\"$namespace\"} ))\n",
             "description": "Filter the Virtual Machine by its name",
             "error": null,
             "hide": 0,
@@ -854,7 +854,7 @@ data:
             "name": "name",
             "options": [],
             "query": {
-              "query": "query_result(sum by (name)(kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=~\"$cluster\", namespace=~\"$namespace\"} ))\n",
+              "query": "query_result(sum by (name)(kubevirt_vm_info{cluster=~\"$cluster\", namespace=~\"$namespace\"} ))\n",
               "refId": "StandardVariableQuery"
             },
             "refresh": 2,
@@ -864,51 +864,53 @@ data:
             "type": "query"
           },
           {
-            "allowCustomValue": false,
+            "allValue": ".*",
             "current": {
+              "selected": true,
               "text": [
-                "on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_info)))"
+                "All"
               ],
               "value": [
-                "on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_info)))"
+                "$__all"
               ]
             },
-            "includeAll": false,
+            "includeAll": true,
             "label": "Status",
+            "multi": true,
             "name": "status",
             "options": [
               {
                 "selected": true,
                 "text": "All",
-                "value": "on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_info)))"
-              },
-              {
-                "selected": false,
-                "text": "stopped",
-                "value": "on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_info{status_group=\"non_running\"}>0)))"
-              },
-              {
-                "selected": false,
-                "text": "starting",
-                "value": "on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_info{status_group=\"starting\"} > 0)))"
-              },
-              {
-                "selected": false,
-                "text": "migrating",
-                "value": "on(cluster, name, namespace) group_left() (0*(sum by (cluster, namespace, name)(kubevirt_vm_info{status_group=\"migrating\"}>0)))"
-              },
-              {
-                "selected": false,
-                "text": "error",
-                "value": "on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_info{status_group=\"error\"}>0)))"
+                "value": "$__all"
               },
               {
                 "selected": false,
                 "text": "running",
-                "value": "on(cluster,name,namespace) group_left()(0*(sum by(cluster,namespace,name)(kubevirt_vm_info{status_group=\"running\"}>0)))"
+                "value": "running"
+              },
+              {
+                "selected": false,
+                "text": "stopped",
+                "value": "non_running"
+              },
+              {
+                "selected": false,
+                "text": "starting",
+                "value": "starting"
+              },
+              {
+                "selected": false,
+                "text": "migrating",
+                "value": "migrating"
+              },
+              {
+                "selected": false,
+                "text": "error",
+                "value": "error"
               }
             ],
-            "query": "All : on(cluster\\,name\\,namespace) group_left()(0*(sum by(cluster\\,namespace\\,name)(kubevirt_vm_info))), stopped : on(cluster\\,name\\,namespace) group_left()(0*(sum by(cluster\\,namespace\\,name)(kubevirt_vm_info{status_group=\"non_running\"}>0))), starting : on(cluster\\,name\\,namespace) group_left()(0*(sum by(cluster\\,namespace\\,name)(kubevirt_vm_info{status_group=\"starting\"} > 0))), migrating : on(cluster\\, name\\, namespace) group_left() (0*(sum by (cluster\\, namespace\\, name)(kubevirt_vm_info{status_group=\"migrating\"}>0))), error : on(cluster\\,name\\,namespace) group_left()(0*(sum by(cluster\\,namespace\\,name)(kubevirt_vm_info{status_group=\"error\"}>0))), running : on(cluster\\,name\\,namespace) group_left()(0*(sum by(cluster\\,namespace\\,name)(kubevirt_vm_info{status_group=\"running\"}>0)))",
+            "query": "running : running, stopped : non_running, starting : starting, migrating : migrating, error : error",
             "type": "custom"
           }
         ]
