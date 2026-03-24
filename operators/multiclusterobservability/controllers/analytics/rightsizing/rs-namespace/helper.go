@@ -64,7 +64,7 @@ func GetRightSizingNamespaceConfig(mco *mcov1beta2.MultiClusterObservability) (b
 }
 
 // CleanupRSNamespaceResources cleans up the resources created for namespace right-sizing
-func CleanupRSNamespaceResources(ctx context.Context, c client.Client, namespace string, bindingUpdated bool) {
+func CleanupRSNamespaceResources(ctx context.Context, c client.Client, namespace string, bindingUpdated bool) error {
 	log.V(1).Info("rs - cleaning up namespace resources if exist")
-	rsutility.CleanupComponentResources(ctx, c, componentConfig, namespace, bindingUpdated)
+	return rsutility.CleanupComponentResources(ctx, c, componentConfig, namespace, bindingUpdated)
 }

@@ -23,6 +23,7 @@ import (
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	monitoringv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
+	rightsizingctrl "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/analytics/rightsizing"
 	placementctrl "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/placementrule"
 	certctrl "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/certificates"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
@@ -949,6 +950,11 @@ func cleanUpClusterScopedResources(
 		if err != nil {
 			return err
 		}
+	}
+
+	// Clean up right-sizing resources
+	if err := rightsizingctrl.CleanupRightSizingResources(context.TODO(), r.Client, mco); err != nil {
+		return err
 	}
 
 	ingressCtlCrdExists := r.CRDMap[config.IngressControllerCRD]

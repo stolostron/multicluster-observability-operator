@@ -223,8 +223,8 @@ func TestCleanupRSVirtualizationResources_UsesCorrectComponentConfig(t *testing.
 
 	// Test that the function executes without error (basic smoke test)
 	// The actual cleanup logic is tested comprehensively in rs-utility/component_test.go
-	CleanupRSVirtualizationResources(ctx, client, rsutility.DefaultNamespace, false)
-	CleanupRSVirtualizationResources(ctx, client, rsutility.DefaultNamespace, true)
+	require.NoError(t, CleanupRSVirtualizationResources(ctx, client, rsutility.DefaultNamespace, false))
+	require.NoError(t, CleanupRSVirtualizationResources(ctx, client, rsutility.DefaultNamespace, true))
 
 	// Test passes if no panic or error occurs, confirming the wrapper works correctly
 }
