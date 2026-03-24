@@ -6,12 +6,13 @@ package rsutility
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clusterv1beta1 "open-cluster-management.io/api/cluster/v1beta1"
 	policyv1 "open-cluster-management.io/governance-policy-propagator/api/v1"
@@ -77,7 +78,7 @@ func HandleComponentRightSizing(
 	// Get right-sizing configuration
 	isEnabled, newBinding, err := GetComponentConfig(mco, componentConfig.ComponentType)
 	if err != nil {
-		return fmt.Errorf("failed to get %s right-sizing config: %w", componentConfig.ComponentType, err)
+		return fmt.Errorf("rs - failed to get %s right-sizing config: %w", componentConfig.ComponentType, err)
 	}
 
 	// Set to default namespace if not given
@@ -89,7 +90,9 @@ func HandleComponentRightSizing(
 	// If disabled then cleanup related resources
 	if !isEnabled {
 		log.V(1).Info("rs - feature not enabled", "component", componentConfig.ComponentType)
-		CleanupComponentResources(ctx, c, componentConfig, state.Namespace, false)
+		if err := CleanupComponentResources(ctx, c, componentConfig, state.Namespace, false); err != nil {
+			return fmt.Errorf("rs - failed to cleanup %s resources: %w", componentConfig.ComponentType, err)
+		}
 		state.Namespace = newBinding
 		state.Enabled = false
 		return nil
@@ -112,7 +115,9 @@ func HandleComponentRightSizing(
 
 	if namespaceBindingUpdated {
 		// Clean up resources except config map to update NamespaceBinding
-		CleanupComponentResources(ctx, c, componentConfig, existingNamespace, true)
+		if err := CleanupComponentResources(ctx, c, componentConfig, existingNamespace, true); err != nil {
+			return fmt.Errorf("rs - failed to cleanup %s resources after namespace binding update: %w", componentConfig.ComponentType, err)
+		}
 
 		// Get configmap
 		cm := &corev1.ConfigMap{}
@@ -143,7 +148,7 @@ func CleanupComponentResources(
 	componentConfig ComponentConfig,
 	namespace string,
 	bindingUpdated bool,
-) {
+) error {
 	log.V(1).Info("rs - cleaning up resources if exist", "component", componentConfig.ComponentType)
 
 	var resourcesToDelete []client.Object
@@ -163,12 +168,18 @@ func CleanupComponentResources(
 		)
 	}
 
-	// Delete related resources
+	// Delete related resources, collecting errors so all deletes are attempted
+	var errs []error
 	for _, resource := range resourcesToDelete {
 		err := c.Delete(ctx, resource)
-		if err != nil && !errors.IsNotFound(err) {
+		if err != nil && !apierrors.IsNotFound(err) {
 			log.Error(err, "rs - failed to delete resource", "name", resource.GetName(), "component", componentConfig.ComponentType)
+			errs = append(errs, err)
 		}
 	}
+	if len(errs) > 0 {
+		return errors.Join(errs...)
+	}
 	log.Info("rs - cleanup success", "component", componentConfig.ComponentType)
+	return nil
 }
