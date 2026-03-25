@@ -174,13 +174,15 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	}
 
 	// Init finalizers
-	operatorconfig.IsMCOTerminating, err = r.initFinalization(ctx, instance)
+	terminating, err := r.initFinalization(ctx, instance)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to initialize finalization: %w", err)
-	} else if operatorconfig.IsMCOTerminating {
+	}
+	if terminating {
 		reqLogger.Info("MCO instance is in Terminating status, skip the reconcile")
 		return ctrl.Result{}, nil
 	}
+	operatorconfig.IsMCOTerminating.Store(false)
 
 	// check if the MCH CRD exists
 	mchCrdExists := r.CRDMap[config.MCHCrdName]
@@ -437,10 +439,13 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 
 func (r *MultiClusterObservabilityReconciler) initFinalization(ctx context.Context, mco *mcov1beta2.MultiClusterObservability) (bool, error) {
 	if mco.GetDeletionTimestamp() != nil && slices.Contains(mco.GetFinalizers(), resFinalizer) {
+		// Signal termination before cleanup so other controllers (analytics, placementrule)
+		// stop reconciling and don't recreate resources being deleted.
+		operatorconfig.IsMCOTerminating.Store(true)
+
 		log.Info("To delete resources across namespaces")
 		// clean up the cluster resources, eg. clusterrole, clusterrolebinding, etc
-		operatorconfig.IsMCOTerminating = true
-		if err := cleanUpClusterScopedResources(r, mco); err != nil {
+		if err := cleanUpClusterScopedResources(ctx, r, mco); err != nil {
 			log.Error(err, "Failed to remove cluster scoped resources")
 			return false, err
 		}
@@ -920,6 +925,7 @@ func GenerateProxyRoute(
 // cleanUpClusterScopedResources delete the cluster scoped resources created by the MCO operator
 // The cluster scoped resources need to be deleted manually because they don't have ownerrefenence set as the MCO CR
 func cleanUpClusterScopedResources(
+	ctx context.Context,
 	r *MultiClusterObservabilityReconciler,
 	mco *mcov1beta2.MultiClusterObservability,
 ) error {
@@ -929,37 +935,37 @@ func cleanUpClusterScopedResources(
 	}
 
 	clusterRoleList := &rbacv1.ClusterRoleList{}
-	err := r.Client.List(context.TODO(), clusterRoleList, listOpts...)
+	err := r.Client.List(ctx, clusterRoleList, listOpts...)
 	if err != nil {
 		return err
 	}
 	for idx := range clusterRoleList.Items {
-		err := r.Client.Delete(context.TODO(), &clusterRoleList.Items[idx], &client.DeleteOptions{})
+		err := r.Client.Delete(ctx, &clusterRoleList.Items[idx], &client.DeleteOptions{})
 		if err != nil {
 			return err
 		}
 	}
 
 	clusterRoleBindingList := &rbacv1.ClusterRoleBindingList{}
-	err = r.Client.List(context.TODO(), clusterRoleBindingList, listOpts...)
+	err = r.Client.List(ctx, clusterRoleBindingList, listOpts...)
 	if err != nil {
 		return err
 	}
 	for idx := range clusterRoleBindingList.Items {
-		err := r.Client.Delete(context.TODO(), &clusterRoleBindingList.Items[idx], &client.DeleteOptions{})
+		err := r.Client.Delete(ctx, &clusterRoleBindingList.Items[idx], &client.DeleteOptions{})
 		if err != nil {
 			return err
 		}
 	}
 
 	// Clean up right-sizing resources
-	if err := rightsizingctrl.CleanupRightSizingResources(context.TODO(), r.Client, mco); err != nil {
+	if err := rightsizingctrl.CleanupRightSizingResources(ctx, r.Client, mco); err != nil {
 		return err
 	}
 
 	ingressCtlCrdExists := r.CRDMap[config.IngressControllerCRD]
 	if ingressCtlCrdExists {
-		return DeleteGrafanaOauthClient(r.Client)
+		return DeleteGrafanaOauthClient(ctx, r.Client)
 	}
 
 	return nil

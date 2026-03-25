@@ -317,10 +317,10 @@ func GenerateGrafanaOauthClient(
 	return nil, nil
 }
 
-func DeleteGrafanaOauthClient(c client.Client) error {
+func DeleteGrafanaOauthClient(ctx context.Context, c client.Client) error {
 	found := &oauthv1.OAuthClient{}
 	err := c.Get(
-		context.TODO(),
+		ctx,
 		types.NamespacedName{Name: config.GrafanaOauthClientName},
 		found,
 	)
@@ -331,6 +331,6 @@ func DeleteGrafanaOauthClient(c client.Client) error {
 			return nil
 		}
 	}
-	err = c.Delete(context.TODO(), found, &client.DeleteOptions{})
+	err = c.Delete(ctx, found, &client.DeleteOptions{})
 	return err
 }

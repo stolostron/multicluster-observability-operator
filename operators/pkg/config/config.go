@@ -4,6 +4,8 @@
 
 package config
 
+import "sync/atomic"
+
 const (
 	ClusterNameKey                  = "cluster-name"
 	HubInfoSecretName               = "hub-info-secret"
@@ -58,7 +60,7 @@ const (
 	WorkloadPartitioningNSExpectedValue  = "management"
 )
 
-var IsMCOTerminating = false
+var IsMCOTerminating atomic.Bool
 
 const (
 	DefaultClusterType = ""

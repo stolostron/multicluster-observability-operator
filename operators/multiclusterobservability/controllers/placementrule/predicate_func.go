@@ -106,7 +106,7 @@ func getHubEndpointOperatorPredicates() predicate.Funcs {
 			return false
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
-			if operatorconfig.IsMCOTerminating {
+			if operatorconfig.IsMCOTerminating.Load() {
 				log.Info("MCO is terminating, skip reconcile for hub endpoint operator")
 				return false
 			}
@@ -159,7 +159,7 @@ func getPred(name string, namespace string,
 	}
 	if isDelete {
 		deleteFunc = func(e event.DeleteEvent) bool {
-			if operatorconfig.IsMCOTerminating {
+			if operatorconfig.IsMCOTerminating.Load() {
 				log.Info("MCO is terminating, skip reconcile for placementrule controller", "name", name, "namespace", namespace)
 				return false
 			}
