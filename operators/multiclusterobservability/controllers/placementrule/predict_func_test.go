@@ -9,8 +9,8 @@ import (
 
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	operatorutil "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
-	mchv1 "github.com/stolostron/multiclusterhub-operator/api/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	workv1 "open-cluster-management.io/api/work/v1"
@@ -281,19 +281,23 @@ func TestGetManifestworkPredFunc(t *testing.T) {
 func TestGetMchPred(t *testing.T) {
 	c := fake.NewClientBuilder().WithRuntimeObjects().Build()
 	pred := getMchPred(c)
-	mch := &mchv1.MultiClusterHub{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            "mch",
-			Namespace:       config.GetMCONamespace(),
-			ResourceVersion: "1",
-		},
-		Status: mchv1.MultiClusterHubStatus{
-			CurrentVersion: "1.0",
-			DesiredVersion: "1.0",
+	mchObj := &unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"apiVersion": config.MCHGroup + "/" + config.MCHVersion,
+			"kind":       config.MCHKind,
+			"metadata": map[string]interface{}{
+				"name":            "mch",
+				"namespace":       config.GetMCONamespace(),
+				"resourceVersion": "1",
+			},
+			"status": map[string]interface{}{
+				"currentVersion": "1.0",
+				"desiredVersion": "1.0",
+			},
 		},
 	}
 	ce := event.CreateEvent{
-		Object: mch,
+		Object: mchObj,
 	}
 	if pred.CreateFunc(ce) {
 		t.Fatal("reconcile triggered for mch create event")
@@ -304,21 +308,25 @@ func TestGetMchPred(t *testing.T) {
 	}
 
 	de := event.DeleteEvent{
-		Object: mch,
+		Object: mchObj,
 	}
 	if pred.DeleteFunc(de) {
 		t.Fatal("reconcile triggered for mch delete event")
 	}
 
-	oldMch := &mchv1.MultiClusterHub{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            "mch",
-			Namespace:       config.GetMCONamespace(),
-			ResourceVersion: "0",
+	oldMch := &unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"apiVersion": config.MCHGroup + "/" + config.MCHVersion,
+			"kind":       config.MCHKind,
+			"metadata": map[string]interface{}{
+				"name":            "mch",
+				"namespace":       config.GetMCONamespace(),
+				"resourceVersion": "0",
+			},
 		},
 	}
 	ue := event.UpdateEvent{
-		ObjectNew: mch,
+		ObjectNew: mchObj,
 		ObjectOld: oldMch,
 	}
 	if pred.UpdateFunc(ue) {

@@ -2,11 +2,6 @@ module github.com/stolostron/multicluster-observability-operator
 
 go 1.25.0
 
-// replace directive for sigs.k8s.io/controller-runtime is needed because
-// github.com/stolostron/multiclusterhub-operator and its github.com/stolostron/backplane-operator
-// dependency are not compatible with controller-runtime v0.20
-replace sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.19.7
-
 require (
 	github.com/IBM/controller-filtered-cache v0.3.6
 	github.com/cenkalti/backoff/v4 v4.3.0
@@ -34,7 +29,6 @@ require (
 	github.com/prometheus/prometheus v0.305.0
 	github.com/spf13/cobra v1.10.0
 	github.com/spf13/pflag v1.0.10
-	github.com/stolostron/multiclusterhub-operator v0.0.0-20251208152055-6387a883b4de
 	github.com/stolostron/observatorium-operator v0.0.0-20260129083906-6481be6eed52
 	github.com/stolostron/rbac-api-utils v0.0.0-20240404212618-7f57fc664256
 	github.com/stretchr/testify v1.11.1
@@ -129,6 +123,7 @@ require (
 	github.com/go-openapi/validate v0.24.0 // indirect
 	github.com/go-task/slim-sprig/v3 v3.0.0 // indirect
 	github.com/gobuffalo/flect v1.0.3 // indirect
+	github.com/google/btree v1.1.3 // indirect
 	github.com/google/certificate-transparency-go v1.1.7 // indirect
 	github.com/google/gnostic-models v0.7.0 // indirect
 	github.com/google/pprof v0.0.0-20251114195745-4902fdda35c8 // indirect
@@ -161,7 +156,6 @@ require (
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/prometheus/procfs v0.17.0 // indirect
 	github.com/prometheus/sigv4 v0.2.0 // indirect
-	github.com/stolostron/backplane-operator v0.0.0-20251125195118-2183147327e4 // indirect
 	github.com/stolostron/kubernetes-dependency-watches v0.10.0 // indirect
 	github.com/tjhop/slog-gokit v0.1.4 // indirect
 	github.com/uber/jaeger-client-go v2.30.0+incompatible // indirect
