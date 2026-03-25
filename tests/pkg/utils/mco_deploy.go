@@ -34,12 +34,14 @@ const (
 	MCO_NAMESPACE                 = "open-cluster-management-observability"
 	MCO_ADDON_NAMESPACE           = "open-cluster-management-addon-observability"
 	MCO_AGENT_ADDON_NAMESPACE     = "open-cluster-management-agent-addon"
+	MCO_GLOBAL_SET_NAMESPACE      = "open-cluster-management-global-set"
 	MCO_PULL_SECRET_NAME          = "multiclusterhub-operator-pull-secret"
 	OBJ_SECRET_NAME               = "thanos-object-storage" // #nosec G101 -- Not a hardcoded credential.
 	MCO_GROUP                     = "observability.open-cluster-management.io"
 	OCM_WORK_GROUP                = "work.open-cluster-management.io"
 	OCM_CLUSTER_GROUP             = "cluster.open-cluster-management.io"
 	OCM_ADDON_GROUP               = "addon.open-cluster-management.io"
+	OCM_POLICY_GROUP              = "policy.open-cluster-management.io"
 )
 
 func NewMCOGVRV1BETA2() schema.GroupVersionResource {
@@ -128,6 +130,66 @@ func NewScrapeConfigGVR() schema.GroupVersionResource {
 		Version:  "v1alpha1",
 		Resource: "scrapeconfigs",
 	}
+}
+
+func NewPolicyGVR() schema.GroupVersionResource {
+	return schema.GroupVersionResource{
+		Group:    OCM_POLICY_GROUP,
+		Version:  "v1",
+		Resource: "policies",
+	}
+}
+
+func NewPlacementGVR() schema.GroupVersionResource {
+	return schema.GroupVersionResource{
+		Group:    OCM_CLUSTER_GROUP,
+		Version:  "v1beta1",
+		Resource: "placements",
+	}
+}
+
+func NewPlacementBindingGVR() schema.GroupVersionResource {
+	return schema.GroupVersionResource{
+		Group:    OCM_POLICY_GROUP,
+		Version:  "v1",
+		Resource: "placementbindings",
+	}
+}
+
+// VerifyRSResourcesCleanedUp checks that all right-sizing resources have been deleted.
+// Returns an error listing any resources that still exist, or nil if all are gone.
+func VerifyRSResourcesCleanedUp(dynClient dynamic.Interface) error {
+	configMapGVR := schema.GroupVersionResource{Group: "", Version: "v1", Resource: "configmaps"}
+
+	rsResources := []struct {
+		gvr       schema.GroupVersionResource
+		name      string
+		namespace string
+	}{
+		{NewPolicyGVR(), "rs-prom-rules-policy", MCO_GLOBAL_SET_NAMESPACE},
+		{NewPolicyGVR(), "rs-virt-prom-rules-policy", MCO_GLOBAL_SET_NAMESPACE},
+		{NewPlacementGVR(), "rs-placement", MCO_GLOBAL_SET_NAMESPACE},
+		{NewPlacementGVR(), "rs-virt-placement", MCO_GLOBAL_SET_NAMESPACE},
+		{NewPlacementBindingGVR(), "rs-policyset-binding", MCO_GLOBAL_SET_NAMESPACE},
+		{NewPlacementBindingGVR(), "rs-virt-policyset-binding", MCO_GLOBAL_SET_NAMESPACE},
+		{configMapGVR, "rs-namespace-config", MCO_NAMESPACE},
+		{configMapGVR, "rs-virt-config", MCO_NAMESPACE},
+	}
+
+	var remaining []string
+	for _, r := range rsResources {
+		_, err := dynClient.Resource(r.gvr).Namespace(r.namespace).Get(context.TODO(), r.name, metav1.GetOptions{})
+		if err == nil {
+			remaining = append(remaining, fmt.Sprintf("%s/%s", r.namespace, r.name))
+		} else if !k8serrors.IsNotFound(err) {
+			return fmt.Errorf("error checking resource %s/%s: %w", r.namespace, r.name, err)
+		}
+	}
+
+	if len(remaining) > 0 {
+		return fmt.Errorf("right-sizing resources still exist: %v", remaining)
+	}
+	return nil
 }
 
 func GetAllMCOPods(opt TestOptions) ([]corev1.Pod, error) {
