@@ -76,6 +76,7 @@ func (r *MCORenderer) renderProxyDeployment(res *resource.Resource,
 	for idx := range args1 {
 		args1[idx] = strings.Replace(args1[idx], "{{MCO_NAMESPACE}}", mcoconfig.GetDefaultNamespace(), 1)
 	}
+	args1 = util.AppendOauthProxyTLSArgs(args1, r.tlsProfile)
 	spec.Containers[1].Args = args1
 	spec.NodeSelector = r.cr.Spec.NodeSelector
 	spec.Tolerations = r.cr.Spec.Tolerations

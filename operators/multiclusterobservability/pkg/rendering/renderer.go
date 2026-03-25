@@ -5,6 +5,7 @@
 package rendering
 
 import (
+	ocinfrav1 "github.com/openshift/api/config/v1"
 	imagev1client "github.com/openshift/client-go/image/clientset/versioned/typed/image/v1"
 	obv1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
@@ -25,6 +26,7 @@ var log = logf.Log.WithName("renderer")
 
 type RendererOptions struct {
 	MCOAOptions MCOARendererOptions
+	TLSProfile  *ocinfrav1.TLSSecurityProfile
 }
 
 type MCORenderer struct {
@@ -32,6 +34,7 @@ type MCORenderer struct {
 	imageClient           imagev1client.ImageV1Interface
 	renderer              *rendererutil.Renderer
 	cr                    *obv1beta2.MultiClusterObservability
+	tlsProfile            *ocinfrav1.TLSSecurityProfile
 	rendererOptions       *RendererOptions
 	renderGrafanaFns      map[string]rendererutil.RenderFn
 	renderAlertManagerFns map[string]rendererutil.RenderFn
@@ -40,7 +43,11 @@ type MCORenderer struct {
 	renderMCOAFns         map[string]rendererutil.RenderFn
 }
 
-func NewMCORenderer(multipleClusterMonitoring *obv1beta2.MultiClusterObservability, kubeClient client.Client, imageClient imagev1client.ImageV1Interface) *MCORenderer {
+func NewMCORenderer(
+	multipleClusterMonitoring *obv1beta2.MultiClusterObservability,
+	kubeClient client.Client,
+	imageClient imagev1client.ImageV1Interface,
+) *MCORenderer {
 	mcoRenderer := &MCORenderer{
 		renderer:    rendererutil.NewRenderer(),
 		cr:          multipleClusterMonitoring,
@@ -57,6 +64,9 @@ func NewMCORenderer(multipleClusterMonitoring *obv1beta2.MultiClusterObservabili
 
 func (r *MCORenderer) WithRendererOptions(options *RendererOptions) *MCORenderer {
 	r.rendererOptions = options
+	if options != nil {
+		r.tlsProfile = options.TLSProfile
+	}
 	return r
 }
 

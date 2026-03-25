@@ -5,10 +5,11 @@
 package main
 
 import (
-	"crypto/tls"
+	"context"
 	"flag"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/IBM/controller-filtered-cache/filteredcache"
 	ocinfrav1 "github.com/openshift/api/config/v1"
@@ -33,6 +34,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -45,6 +47,7 @@ import (
 	workv1 "open-cluster-management.io/api/work/v1"
 	policyv1 "open-cluster-management.io/governance-policy-propagator/api/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	ctrlruntimescheme "sigs.k8s.io/controller-runtime/pkg/scheme"
@@ -244,20 +247,45 @@ func main() {
 		{LabelSelector: "owner==multicluster-observability-operator"},
 	}
 
+	directClient, err := client.New(ctrl.GetConfigOrDie(), client.Options{Scheme: scheme})
+	if err != nil {
+		setupLog.Error(err, "unable to create client")
+		os.Exit(1)
+	}
+	apiServer := &ocinfrav1.APIServer{}
+	var tlsProfile *ocinfrav1.TLSSecurityProfile
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	if err := directClient.Get(ctx, client.ObjectKey{Name: "cluster"}, apiServer); err != nil {
+		cancel()
+		if !errors.IsNotFound(err) {
+			setupLog.Error(err, "unable to get apiserver cluster config")
+			os.Exit(1)
+		}
+		setupLog.Info("apiserver cluster config not found, using default TLS profile")
+	} else {
+		cancel()
+		tlsProfile = apiServer.Spec.TLSSecurityProfile
+		if tlsProfile != nil {
+			setupLog.Info("Detected TLS profile", "type", tlsProfile.Type)
+		} else {
+			setupLog.Info("No TLS profile configured on apiserver, using default")
+		}
+	}
+	operatorsutil.SyncBaseTLSConfig(tlsProfile)
+
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-		Scheme:                 scheme,
-		Metrics:                server.Options{BindAddress: fmt.Sprintf("%s:%d", metricsHost, metricsPort)},
+		Scheme: scheme,
+		Metrics: server.Options{
+			BindAddress: fmt.Sprintf("%s:%d", metricsHost, metricsPort),
+			TLSOpts:     operatorsutil.GetDynamicTLSConfig(),
+		},
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "b9d51391.open-cluster-management.io",
 		NewCache:               filteredcache.NewEnhancedFilteredCacheBuilder(gvkLabelsMap),
 		WebhookServer: ctrlwebhook.NewServer(ctrlwebhook.Options{
-			Port: webhookPort,
-			TLSOpts: []func(*tls.Config){
-				func(t *tls.Config) {
-					t.MinVersion = tls.VersionTLS12
-				},
-			},
+			Port:    webhookPort,
+			TLSOpts: operatorsutil.GetDynamicTLSConfig(),
 		}),
 	})
 	if err != nil {

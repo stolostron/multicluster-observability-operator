@@ -25,6 +25,7 @@ require (
 	github.com/openshift/client-go v0.0.0-20250710075018-396b36f983ee
 	github.com/openshift/cluster-monitoring-operator v0.1.1-0.20251021084408-d3eba7e97d65
 	github.com/openshift/hypershift/api v0.0.0-20241119231618-9aca80837541
+	github.com/openshift/library-go v0.0.0-20250711143941-47604345e7ea
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.82.0
 	github.com/prometheus-operator/prometheus-operator/pkg/client v0.82.0
 	github.com/prometheus/alertmanager v0.28.1
@@ -154,7 +155,6 @@ require (
 	github.com/oklog/ulid v1.3.1 // indirect
 	github.com/oklog/ulid/v2 v2.1.1 // indirect
 	github.com/opencontainers/image-spec v1.1.1 // indirect
-	github.com/openshift/library-go v0.0.0-20250711143941-47604345e7ea // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/pelletier/go-toml v1.9.5 // indirect
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c // indirect

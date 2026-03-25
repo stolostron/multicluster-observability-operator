@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	ocinfrav1 "github.com/openshift/api/config/v1"
 	imagev1 "github.com/openshift/api/image/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	imagev1client "github.com/openshift/client-go/image/clientset/versioned/typed/image/v1"
@@ -203,6 +204,19 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		return ctrl.Result{}, nil
 	}
 
+	apiServer := &ocinfrav1.APIServer{}
+	var tlsProfile *ocinfrav1.TLSSecurityProfile
+	if err := r.Client.Get(ctx, client.ObjectKey{Name: "cluster"}, apiServer); err != nil {
+		if !apierrors.IsNotFound(err) {
+			return ctrl.Result{}, fmt.Errorf("failed to get apiserver cluster config: %w", err)
+		}
+	} else {
+		tlsProfile = apiServer.Spec.TLSSecurityProfile
+	}
+
+	// Ensure the manager's metrics and webhook servers dynamically update their TLS configuration.
+	commonutil.SyncBaseTLSConfig(tlsProfile)
+
 	if _, ok := config.BackupResourceMap[instance.Spec.StorageConfig.MetricObjectStorage.Name]; !ok {
 		log.Info(infoAddingBackupLabel, "Secret", instance.Spec.StorageConfig.MetricObjectStorage.Name)
 		config.BackupResourceMap[instance.Spec.StorageConfig.MetricObjectStorage.Name] = config.ResourceTypeSecret
@@ -270,6 +284,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 
 	// Build render options
 	rendererOptions := &rendering.RendererOptions{
+		TLSProfile: tlsProfile,
 		MCOAOptions: rendering.MCOARendererOptions{
 			DisableCMAORender:              disableMCOACMAORender,
 			MetricsHubHostname:             obsAPIURL.Host,
@@ -552,7 +567,17 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 				}
 				return nil
 			}), builder.WithPredicates(predicate.ResourceVersionChangedPredicate{})).
-		Watches(&apiextensionsv1.CustomResourceDefinition{}, newMCOACRDEventHandler(c), builder.WithPredicates(mcoaCRDPred))
+		Watches(&apiextensionsv1.CustomResourceDefinition{}, newMCOACRDEventHandler(c), builder.WithPredicates(mcoaCRDPred)).
+		Watches(&ocinfrav1.APIServer{}, handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, a client.Object) []reconcile.Request {
+			if a.GetName() == "cluster" {
+				return []reconcile.Request{
+					{NamespacedName: types.NamespacedName{
+						Name: config.GetMonitoringCRName(),
+					}},
+				}
+			}
+			return nil
+		}), builder.WithPredicates(predicate.ResourceVersionChangedPredicate{}))
 
 	if _, err := mgr.GetRESTMapper().KindFor(schema.GroupVersionResource{
 		Group:    "image.openshift.io",
