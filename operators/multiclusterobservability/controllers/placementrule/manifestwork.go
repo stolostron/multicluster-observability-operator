@@ -575,7 +575,7 @@ func createManifestWorks(
 }
 
 func ensureResourcesForHubMetricsCollection(ctx context.Context, c client.Client, owner client.Object, manifests []workv1.Manifest) error {
-	if operatorconfig.IsMCOTerminating {
+	if operatorconfig.IsMCOTerminating.Load() {
 		log.Info("MCO Operator is terminating, skip creating resources for hub metrics collection")
 		return nil
 	}
