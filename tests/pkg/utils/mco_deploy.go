@@ -158,7 +158,7 @@ func NewPlacementBindingGVR() schema.GroupVersionResource {
 
 // VerifyRSResourcesCleanedUp checks that all right-sizing resources have been deleted.
 // Returns an error listing any resources that still exist, or nil if all are gone.
-func VerifyRSResourcesCleanedUp(dynClient dynamic.Interface) error {
+func VerifyRSResourcesCleanedUp(ctx context.Context, dynClient dynamic.Interface) error {
 	configMapGVR := schema.GroupVersionResource{Group: "", Version: "v1", Resource: "configmaps"}
 
 	rsResources := []struct {
@@ -178,7 +178,7 @@ func VerifyRSResourcesCleanedUp(dynClient dynamic.Interface) error {
 
 	var remaining []string
 	for _, r := range rsResources {
-		_, err := dynClient.Resource(r.gvr).Namespace(r.namespace).Get(context.TODO(), r.name, metav1.GetOptions{})
+		_, err := dynClient.Resource(r.gvr).Namespace(r.namespace).Get(ctx, r.name, metav1.GetOptions{})
 		if err == nil {
 			remaining = append(remaining, fmt.Sprintf("%s/%s", r.namespace, r.name))
 		} else if !k8serrors.IsNotFound(err) {
