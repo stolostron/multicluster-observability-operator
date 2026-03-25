@@ -42,7 +42,7 @@ func uninstallMCO() {
 	// these resources must still be cleaned up by the MCO finalizer.
 	By("Verifying right-sizing resources are cleaned up after MCO deletion")
 	Eventually(func() error {
-		return utils.VerifyRSResourcesCleanedUp(dynClient)
+		return utils.VerifyRSResourcesCleanedUp(context.TODO(), dynClient)
 	}, EventuallyTimeoutMinute*2, EventuallyIntervalSecond*5).Should(Succeed())
 
 	By("Waiting for delete all MCO components")

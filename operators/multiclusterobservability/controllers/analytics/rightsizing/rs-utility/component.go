@@ -13,6 +13,7 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clusterv1beta1 "open-cluster-management.io/api/cluster/v1beta1"
 	policyv1 "open-cluster-management.io/governance-policy-propagator/api/v1"
@@ -172,7 +173,7 @@ func CleanupComponentResources(
 	var errs []error
 	for _, resource := range resourcesToDelete {
 		err := c.Delete(ctx, resource)
-		if err != nil && !apierrors.IsNotFound(err) {
+		if err != nil && !apierrors.IsNotFound(err) && !meta.IsNoMatchError(err) {
 			log.Error(err, "rs - failed to delete resource", "name", resource.GetName(), "namespace", resource.GetNamespace(), "component", componentConfig.ComponentType)
 			errs = append(errs, err)
 		}
