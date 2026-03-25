@@ -173,7 +173,7 @@ func CleanupComponentResources(
 	for _, resource := range resourcesToDelete {
 		err := c.Delete(ctx, resource)
 		if err != nil && !apierrors.IsNotFound(err) {
-			log.Error(err, "rs - failed to delete resource", "name", resource.GetName(), "component", componentConfig.ComponentType)
+			log.Error(err, "rs - failed to delete resource", "name", resource.GetName(), "namespace", resource.GetNamespace(), "component", componentConfig.ComponentType)
 			errs = append(errs, err)
 		}
 	}

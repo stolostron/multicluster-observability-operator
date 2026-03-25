@@ -20,6 +20,7 @@ import (
 
 var log = logf.Log.WithName("analytics")
 
+// CreateRightSizingComponent reconciles namespace and virtualization right-sizing resources based on the MCO spec.
 func CreateRightSizingComponent(
 	ctx context.Context,
 	c client.Client,
@@ -63,7 +64,11 @@ func CleanupRightSizingResources(ctx context.Context, c client.Client, mco *mcov
 // Falls back to the default namespace if not configured.
 func getNamespaceBinding(mco *mcov1beta2.MultiClusterObservability, componentType rsutility.ComponentType) string {
 	_, binding, err := rsutility.GetComponentConfig(mco, componentType)
-	if err != nil || binding == "" {
+	if err != nil {
+		log.V(1).Info("rs - falling back to default namespace", "component", componentType, "error", err)
+		return rsutility.DefaultNamespace
+	}
+	if binding == "" {
 		return rsutility.DefaultNamespace
 	}
 	return binding
