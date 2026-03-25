@@ -46,7 +46,7 @@ func (r *AnalyticsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	reqLogger.Info("Reconciling RightSizing")
 
 	// Skip reconciliation if MCO is being deleted
-	if operatorconfig.IsMCOTerminating {
+	if operatorconfig.IsMCOTerminating.Load() {
 		reqLogger.Info("MCO is terminating, skip reconcile for rightsizing controller")
 		return ctrl.Result{}, nil
 	}
