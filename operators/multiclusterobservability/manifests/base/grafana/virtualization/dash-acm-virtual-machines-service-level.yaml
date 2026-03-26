@@ -756,7 +756,8 @@ data:
                   "pod": true,
                   "receive": true,
                   "service": true,
-                  "tenant_id": true
+                  "tenant_id": true,
+                  "Value #I": true
                 },
                 "indexByName": {
                   "Time": 0,
