@@ -5,7 +5,6 @@
 package multiclusterobservability
 
 import (
-	"context"
 	"testing"
 
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
@@ -37,7 +36,9 @@ func TestGetMCHPredicateFunc(t *testing.T) {
 			"key": "value",
 		},
 	}
-	c.Create(context.TODO(), cm)
+	if err := c.Create(t.Context(), cm); err != nil {
+		t.Fatalf("Failed to create configmap: %v", err)
+	}
 
 	mchPred := GetMCHPredicateFunc(c)
 
