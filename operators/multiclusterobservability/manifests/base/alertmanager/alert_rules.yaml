@@ -73,3 +73,49 @@ data:
           record: cluster:machine_memory:sum
           labels:
             usage: grafana-dashboard
+      - name: cluster-health-records
+        rules:
+        - record: cluster:metrics_received:heartbeat
+          # We use a set of fallback metrics to create a reliable heartbeat.
+          # We aggregate raw metrics by cluster FIRST to keep cardinality low.
+          # Pre-aggregated recording rules are placed first.
+          expr: |
+            sum by (cluster, clusterID) (cluster:cpu_cores:sum)
+            or
+            sum by (cluster, clusterID) (machine_cpu_cores)
+            or
+            sum by (cluster, clusterID) (node_memory_MemAvailable_bytes)
+            or
+            sum by (cluster, clusterID) (up)
+            or
+            sum by (cluster, clusterID) (apiserver_request_total)
+            or
+            sum by (cluster, clusterID) (kube_pod_info)
+      - name: cluster-health
+        rules:
+        - alert: ManagedClusterMetricsMissing
+          annotations:
+            summary: "Managed cluster {{ $labels.cluster }} is not sending metrics."
+            description: "The managed cluster {{ $labels.cluster }} observability addon lease is reporting as 'available', but no metrics have been received on the Hub for the last 15 minutes."
+            investigation: >
+              Context: The OCM 'feature.open-cluster-management.io/addon-*' label only tracks 
+              the lease status (available, unhealthy, unreachable). It does not reflect functional 
+              degradation. The collector might be running and updating its lease, but failing 
+              to federate or remote-write metrics due to network issues, auth failures, or 
+              internal crashes. Check the metrics-collector or prometheus-agent (MCOA) logs on 
+              the spoke cluster and the Thanos receive endpoints on the Hub.
+          # This alert uses the synthetic heartbeat to support both Legacy and MCOA architectures.
+          expr: |
+            (
+              label_replace(label_replace(acm_managed_cluster_labels{maintenance_mode=~"false|", feature_open_cluster_management_io_addon_multicluster_observability_addon="available"}, "cluster", "$1", "name", "(.*)"), "clusterID", "$1", "managed_cluster_id", "(.*)")
+              or
+              label_replace(label_replace(acm_managed_cluster_labels{maintenance_mode=~"false|", feature_open_cluster_management_io_addon_observability_controller="available"}, "cluster", "$1", "name", "(.*)"), "clusterID", "$1", "managed_cluster_id", "(.*)")
+            )
+            unless on(cluster, clusterID) (
+              cluster:metrics_received:heartbeat
+            )
+          for: 15m
+          labels:
+            severity: critical
+            cluster: "{{ $labels.cluster }}"
+            clusterID: "{{ $labels.clusterID }}"
