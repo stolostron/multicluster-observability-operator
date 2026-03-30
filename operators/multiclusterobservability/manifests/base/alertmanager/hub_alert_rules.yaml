@@ -25,6 +25,22 @@ data:
             sum by (cluster, clusterID) (kube_pod_info)
       - name: cluster-health
         rules:
+        - alert: ObservabilityHubInventoryMissing
+          annotations:
+            summary: "Hub cluster lifecycle inventory metrics are missing."
+            description: "The foundational metric 'acm_managed_cluster_labels' is missing from the Hub. This indicates that the Hub's own cluster-lifecycle metrics collection is failing, rendering all multi-cluster observability alerts blind."
+            investigation: >
+              The 'acm_managed_cluster_labels' metric is managed by MCE and scraped from the 
+              clusterlifecycle-state-metrics pod in the multicluster-engine namespace by the 
+              Hub's in-cluster Prometheus. First, verify the metric is successfully scraped by 
+              the Hub platform Prometheus (check OCP Console -> Observe -> Metrics). If present 
+              there, verify ACM Observability is configured to ingest it (allow-list/scrapeConfig) 
+              and trace the ingestion path from the Prometheus agent/collector to the Hub's 
+              Thanos Receive endpoint.
+          expr: absent(acm_managed_cluster_labels)
+          for: 10m
+          labels:
+            severity: critical
         - alert: ManagedClusterMetricsMissing
           annotations:
             summary: "Managed cluster {{ $labels.cluster }} is not sending metrics."
