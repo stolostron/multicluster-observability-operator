@@ -729,6 +729,12 @@ func newRuleSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string) o
 		})
 	}
 
+	// Always append hub-level metrics rules (e.g. synthetic heartbeat for missing clusters)
+	ruleSpec.RulesConfig = append(ruleSpec.RulesConfig, obsv1alpha1.RuleConfig{
+		Name: mcoconfig.AlertRuleHubMetricsConfigMapName,
+		Key:  mcoconfig.AlertRuleHubMetricsFileKey,
+	})
+
 	if mco.Spec.AdvancedConfig != nil && mco.Spec.AdvancedConfig.Rule != nil &&
 		mco.Spec.AdvancedConfig.Rule.ServiceAccountAnnotations != nil {
 		ruleSpec.ServiceAccountAnnotations = mco.Spec.AdvancedConfig.Rule.ServiceAccountAnnotations

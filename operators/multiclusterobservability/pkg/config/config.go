@@ -88,11 +88,13 @@ const (
 	AlertmanagerRouteBYOCAName     = "alertmanager-byo-ca"
 	AlertmanagerRouteBYOCERTName   = "alertmanager-byo-cert"
 
-	AlertRuleDefaultConfigMapName = "thanos-ruler-default-rules"
-	AlertRuleDefaultFileKey       = "default_rules.yaml"
-	AlertRuleCustomConfigMapName  = "thanos-ruler-custom-rules"
-	AlertRuleCustomFileKey        = "custom_rules.yaml"
-	AlertmanagerConfigName        = "alertmanager-config"
+	AlertRuleDefaultConfigMapName    = "thanos-ruler-default-rules"
+	AlertRuleDefaultFileKey          = "default_rules.yaml"
+	AlertRuleHubMetricsConfigMapName = "thanos-ruler-hub-metrics-rules"
+	AlertRuleHubMetricsFileKey       = "hub_rules.yaml"
+	AlertRuleCustomConfigMapName     = "thanos-ruler-custom-rules"
+	AlertRuleCustomFileKey           = "custom_rules.yaml"
+	AlertmanagerConfigName           = "alertmanager-config"
 
 	AlertmanagersDefaultConfigMapName     = "thanos-ruler-config"
 	AlertmanagersDefaultConfigFileKey     = "config.yaml"

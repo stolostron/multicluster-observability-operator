@@ -881,3 +881,86 @@ func TestGenerateAPIGatewayRoute(t *testing.T) {
 		})
 	}
 }
+
+func TestNewRuleSpec(t *testing.T) {
+	tests := []struct {
+		name                 string
+		mcoaEnabled          bool
+		customRulesConfig    bool
+		expectedRulesConfigs []string
+	}{
+		{
+			name:                 "MCOA disabled, no custom rules",
+			mcoaEnabled:          false,
+			customRulesConfig:    false,
+			expectedRulesConfigs: []string{mcoconfig.AlertRuleDefaultConfigMapName, mcoconfig.AlertRuleHubMetricsConfigMapName},
+		},
+		{
+			name:                 "MCOA disabled, with custom rules",
+			mcoaEnabled:          false,
+			customRulesConfig:    true,
+			expectedRulesConfigs: []string{mcoconfig.AlertRuleCustomConfigMapName, mcoconfig.AlertRuleDefaultConfigMapName, mcoconfig.AlertRuleHubMetricsConfigMapName},
+		},
+		{
+			name:                 "MCOA enabled, no custom rules",
+			mcoaEnabled:          true,
+			customRulesConfig:    false,
+			expectedRulesConfigs: []string{mcoconfig.AlertRuleHubMetricsConfigMapName},
+		},
+		{
+			name:                 "MCOA enabled, with custom rules",
+			mcoaEnabled:          true,
+			customRulesConfig:    true,
+			expectedRulesConfigs: []string{mcoconfig.AlertRuleCustomConfigMapName, mcoconfig.AlertRuleHubMetricsConfigMapName},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mco := &mcov1beta2.MultiClusterObservability{
+				Spec: mcov1beta2.MultiClusterObservabilitySpec{
+					EnableDownsampling: true,
+					InstanceSize: mcoconfig.Default,
+					StorageConfig: &mcov1beta2.StorageConfig{
+						RuleStorageSize: "1Gi",
+					},
+					ObservabilityAddonSpec: &mcoshared.ObservabilityAddonSpec{
+						EnableMetrics: true,
+						Interval:      60,
+					},
+				},
+			}
+
+			if tt.mcoaEnabled {
+				mco.Spec.Capabilities = &mcov1beta2.CapabilitiesSpec{
+					Platform: &mcov1beta2.PlatformCapabilitiesSpec{
+						Metrics: mcov1beta2.PlatformMetricsSpec{
+							Default: mcov1beta2.PlatformMetricsDefaultSpec{
+								Enabled: true,
+							},
+						},
+					},
+				}
+			}
+
+			mcoconfig.SetCustomRuleConfigMap(tt.customRulesConfig)
+
+			ruleSpec := newRuleSpec(mco, "test-sc")
+
+			actualRuleConfigNames := []string{}
+			for _, rc := range ruleSpec.RulesConfig {
+				actualRuleConfigNames = append(actualRuleConfigNames, rc.Name)
+			}
+
+			if len(actualRuleConfigNames) != len(tt.expectedRulesConfigs) {
+				t.Fatalf("expected %d rule configs, got %d", len(tt.expectedRulesConfigs), len(actualRuleConfigNames))
+			}
+
+			for i, expectedName := range tt.expectedRulesConfigs {
+				if actualRuleConfigNames[i] != expectedName {
+					t.Errorf("expected rule config %s at index %d, got %s", expectedName, i, actualRuleConfigNames[i])
+				}
+			}
+		})
+	}
+}
