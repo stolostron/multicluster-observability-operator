@@ -71,7 +71,7 @@ const (
 )
 
 var (
-	log                 = logf.Log.WithName("controller_multiclustermonitoring")
+	log                     = logf.Log.WithName("controller_multiclustermonitoring")
 	isLegacyResourceRemoved = false
 	lastLogTime             = time.Now()
 )
