@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"time"
 
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -34,6 +35,7 @@ var (
 )
 
 func AddConfigToPlacementInClusterManagementAddon(
+	ctx context.Context,
 	opt TestOptions,
 	name string,
 	placementName string,
@@ -50,7 +52,7 @@ func AddConfigToPlacementInClusterManagementAddon(
 		// Cap:      10 * time.Second,
 	}
 	retryErr := retry.RetryOnConflict(backoffConfig, func() error {
-		cma, err := clientDynamic.Resource(clusterManagementAddonGVR).Get(context.TODO(), name, metav1.GetOptions{})
+		cma, err := clientDynamic.Resource(clusterManagementAddonGVR).Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
 			return fmt.Errorf("failed to get ClusterManagementAddon %s: %w", name, err)
 		}
@@ -104,7 +106,7 @@ func AddConfigToPlacementInClusterManagementAddon(
 			return fmt.Errorf("failed to set installStrategy in ClusterManagementAddon: %w", err)
 		}
 
-		_, err = clientDynamic.Resource(clusterManagementAddonGVR).Update(context.TODO(), cma, metav1.UpdateOptions{})
+		_, err = clientDynamic.Resource(clusterManagementAddonGVR).Update(ctx, cma, metav1.UpdateOptions{})
 		if err != nil {
 			return fmt.Errorf("failed to update ClusterManagementAddon: %w", err)
 		}
@@ -124,7 +126,7 @@ func AddConfigToPlacementInClusterManagementAddon(
 	// Waiting for the newly added config's hash to be populated confirms that the
 	// addonconfig-controller completed its pass and all hashes — including AddOnDeploymentConfig
 	// — are populated again.
-	return waitForConfigHashPopulated(context.Background(), opt, name, configGVR, configName, configNamespace)
+	return waitForConfigHashPopulated(ctx, opt, name, configGVR, configName, configNamespace)
 }
 
 const (
@@ -154,7 +156,13 @@ func waitForConfigHashPopulated(ctx context.Context, opt TestOptions, addonName 
 				Namespace(cluster.Name).
 				Get(ctx, addonName, metav1.GetOptions{})
 			if err != nil {
-				return false, nil // transient, retry
+				if apierrors.IsNotFound(err) ||
+					apierrors.IsTimeout(err) ||
+					apierrors.IsServerTimeout(err) ||
+					apierrors.IsTooManyRequests(err) {
+					return false, nil // transient, retry
+				}
+				return false, err // permanent error (Forbidden, Unauthorized, BadRequest, …), stop polling
 			}
 
 			configRefs, found, err := unstructured.NestedSlice(mca.Object, "status", "configReferences")
