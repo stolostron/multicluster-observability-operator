@@ -1135,9 +1135,14 @@ func TestHandleStorageSizeChange(t *testing.T) {
 		createPersistentVolumeClaim(mco.Name, config.GetDefaultNamespace(), "test"),
 	}
 	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
-	r := &MultiClusterObservabilityReconciler{Client: c, Scheme: s}
-	isAlertmanagerStorageSizeChanged = true
-	r.HandleStorageSizeChange(mco)
+	r := &MultiClusterObservabilityReconciler{
+		Client: c,
+		Scheme: s,
+		LastStorageConfig: &mcov1beta2.StorageConfig{
+			AlertmanagerStorageSize: "1Gi",
+		},
+	}
+	r.HandleStorageSizeChange(context.TODO(), mco)
 
 	pvc := &corev1.PersistentVolumeClaim{}
 	err := c.Get(t.Context(), types.NamespacedName{
@@ -1226,7 +1231,7 @@ func TestGetStorageClass(t *testing.T) {
 			}
 			objs := append([]runtime.Object{mco}, tt.storageClasses...)
 			c := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
-			got, err := getStorageClass(mco, c)
+			got, err := getStorageClass(context.TODO(), mco, c)
 			assert.NoError(t, err)
 			assert.Equal(t, tt.expectedSC, got)
 		})
@@ -1237,10 +1242,6 @@ func TestHandleStorageClassChange(t *testing.T) {
 	s := scheme.Scheme
 	mcov1beta2.SchemeBuilder.AddToScheme(s)
 
-	t.Cleanup(func() {
-		isStorageClassChanged = false
-	})
-
 	mco := &mcov1beta2.MultiClusterObservability{
 		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterObservability"},
 		ObjectMeta: metav1.ObjectMeta{Name: "test"},
@@ -1250,6 +1251,7 @@ func TestHandleStorageClassChange(t *testing.T) {
 					Key:  "test",
 					Name: "test",
 				},
+				StorageClass:            "gp3",
 				AlertmanagerStorageSize: "1Gi",
 			},
 		},
@@ -1290,11 +1292,17 @@ func TestHandleStorageClassChange(t *testing.T) {
 
 	objs := []runtime.Object{mco, receiveSts, receivePVC}
 	c := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
-	r := &MultiClusterObservabilityReconciler{Client: c, Scheme: s}
+	r := &MultiClusterObservabilityReconciler{
+		Client: c,
+		Scheme: s,
+		LastStorageConfig: &mcov1beta2.StorageConfig{
+			StorageClass:            "gp2",
+			AlertmanagerStorageSize: "1Gi",
+		},
+	}
 
-	// Simulate storage class change
-	isStorageClassChanged = true
-	result, err := r.HandleStorageSizeChange(mco)
+	// HandleStorageSizeChange detects storage class changed from gp2 -> gp3
+	result, err := r.HandleStorageSizeChange(context.TODO(), mco)
 	assert.NoError(t, err)
 	assert.Nil(t, result)
 
