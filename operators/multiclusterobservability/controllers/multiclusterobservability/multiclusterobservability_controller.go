@@ -631,10 +631,6 @@ func (r *MultiClusterObservabilityReconciler) HandleStorageSizeChange(
 		return nil, nil
 	}
 
-	defer func() {
-		r.LastStorageConfig = currentConfig.DeepCopy()
-	}()
-
 	if lastConfig.AlertmanagerStorageSize != currentConfig.AlertmanagerStorageSize {
 		err := updateStorageSizeChange(ctx, r.Client,
 			map[string]string{
@@ -703,7 +699,7 @@ func (r *MultiClusterObservabilityReconciler) HandleStorageSizeChange(
 			}
 		}
 	}
-
+	r.LastStorageConfig = currentConfig.DeepCopy()
 	return nil, nil
 }
 
