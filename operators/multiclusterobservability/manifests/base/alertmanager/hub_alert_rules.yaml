@@ -12,19 +12,17 @@ data:
           # We aggregate raw metrics by cluster FIRST to keep cardinality low.
           # Pre-aggregated recording rules are placed first.
           expr: |
-            (
-              sum by (cluster, clusterID) (cluster:cpu_cores:sum)
-              or
-              sum by (cluster, clusterID) (machine_cpu_cores)
-              or
-              sum by (cluster, clusterID) (node_memory_MemAvailable_bytes)
-              or
-              sum by (cluster, clusterID) (up)
-              or
-              sum by (cluster, clusterID) (apiserver_request_total)
-              or
-              sum by (cluster, clusterID) (kube_pod_info)
-            ) * 0 + 1
+            group by (cluster, clusterID) (cluster:cpu_cores:sum)
+            or
+            group by (cluster, clusterID) (machine_cpu_cores)
+            or
+            group by (cluster, clusterID) (node_memory_MemAvailable_bytes)
+            or
+            group by (cluster, clusterID) (up)
+            or
+            group by (cluster, clusterID) (apiserver_request_total)
+            or
+            group by (cluster, clusterID) (kube_pod_info)
       - name: cluster-health
         rules:
         - alert: ObservabilityHubInventoryMissing
