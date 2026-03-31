@@ -920,7 +920,7 @@ func TestNewRuleSpec(t *testing.T) {
 			mco := &mcov1beta2.MultiClusterObservability{
 				Spec: mcov1beta2.MultiClusterObservabilitySpec{
 					EnableDownsampling: true,
-					InstanceSize: mcoconfig.Default,
+					InstanceSize:       mcoconfig.Default,
 					StorageConfig: &mcov1beta2.StorageConfig{
 						RuleStorageSize: "1Gi",
 					},
