@@ -38,6 +38,27 @@ You can now update the stateful sets individually in the `observability.open-clu
 
 **Note**: The default storage class, as configured in the system, is used for configuring the persistent volumes automatically unless a different storage class is specified in the custom resource specification. If no storage class exists, for example in default OpenShift bare metal installations, a storage class must be created and specified or the installation of observability fails.
 
+## Warning: Changing the Storage Class is a Destructive Operation
+
+Changing the `StorageClass` in the `MultiClusterObservability` custom resource triggers the deletion of all StatefulSets and their associated PersistentVolumeClaims (PVCs). The operator then re-creates them with the new storage class. This means **all locally stored data across every component is lost**.
+
+Before changing the storage class, understand what each component loses:
+
+| Component | Data Lost |
+| --------- | --------- |
+| **alertmanager** | Active and resolved notification logs (`nflog`), silenced alerts. Any silences you have configured will need to be re-created. |
+| **thanos-compact** | Intermediate compaction data and bucket state cache. The compactor will re-download and reprocess blocks from object storage on restart, which may take significant time depending on the volume of stored data. |
+| **thanos-rule** | Locally cached rule evaluation results (Prometheus TSDB blocks). Rule results will be re-evaluated and rewritten, but historical local data up to the `RetentionInLocal` window is lost. |
+| **thanos-receive-default** | Locally buffered incoming metrics data that has not yet been uploaded to object storage. Any data received within the most recent 2-hour TSDB block that has not been uploaded will be permanently lost. |
+| **thanos-store-shard** | Local block metadata cache. The store gateway will re-sync metadata from the object storage bucket on restart, resulting in increased startup time but no permanent data loss. |
+
+**Recommendations:**
+
+- Plan storage class changes during a maintenance window.
+- Ensure that all `thanos-receive` TSDB blocks have been uploaded to object storage before making the change. The default upload interval is 2 hours.
+- Document any active Alertmanager silences so they can be re-created after the change.
+- Monitor the cluster after the change to verify that all components have restarted and are functioning correctly.
+
 ## Object Store
 
 In addition to the persistent volumes previously mentioned, the time series historical data is stored in object stores. Thanos uses object storage as the primary storage for metrics and metadata related to them. Details about the object storage and downsampling are provided in another document.
