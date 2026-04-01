@@ -210,13 +210,6 @@ func main() {
 			},
 		}
 	}
-	if mchCrdExists {
-		mchGVK := schema.GroupVersionKind{Group: config.MCHGroup, Version: config.MCHVersion, Kind: config.MCHKind}
-		gvkLabelsMap[mchGVK] = []filteredcache.Selector{
-			{FieldSelector: fmt.Sprintf("metadata.namespace==%s", mcoNamespace)},
-		}
-	}
-
 	// The following RBAC resources will not be watched by MCO, the selector will not impact the mco behavior, which
 	// means MCO will fetch kube-apiserver for the correspoding resource if the resource can't be found in the cache.
 	// Adding selector will reduce the cache size when the managedcluster scale.
