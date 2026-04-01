@@ -22,13 +22,13 @@ import (
 	operatorutil "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
-	mchv1 "github.com/stolostron/multiclusterhub-operator/api/v1"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -77,9 +77,6 @@ func initSchema(t *testing.T) {
 	if err := addonv1alpha1.AddToScheme(s); err != nil {
 		t.Fatalf("Unable to add addonv1alpha1 scheme: (%v)", err)
 	}
-	if err := mchv1.SchemeBuilder.AddToScheme(s); err != nil {
-		t.Fatalf("Unable to add mchv1 scheme: (%v)", err)
-	}
 }
 
 var testImagemanifestsMap = map[string]string{
@@ -101,16 +98,19 @@ func newTestImageManifestsConfigMap(namespace, version string) *corev1.ConfigMap
 	}
 }
 
-func newMCHInstanceWithVersion(namespace, version string) *mchv1.MultiClusterHub {
-	return &mchv1.MultiClusterHub{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test",
-			Namespace: namespace,
-		},
-		Spec: mchv1.MultiClusterHubSpec{},
-		Status: mchv1.MultiClusterHubStatus{
-			CurrentVersion: version,
-			DesiredVersion: version,
+func newMCHInstanceWithVersion(namespace, version string) *unstructured.Unstructured {
+	return &unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"apiVersion": config.MCHGroup + "/" + config.MCHVersion,
+			"kind":       config.MCHKind,
+			"metadata": map[string]interface{}{
+				"name":      "test",
+				"namespace": namespace,
+			},
+			"status": map[string]interface{}{
+				"currentVersion": version,
+				"desiredVersion": version,
+			},
 		},
 	}
 }
@@ -535,7 +535,8 @@ func TestObservabilityAddonController(t *testing.T) {
 		},
 	}
 
-	_, ok, err := config.ReadImageManifestConfigMap(c, testMCHInstance.Status.CurrentVersion)
+	currentVersion, _ := config.GetMCHVersions(testMCHInstance)
+	_, ok, err := config.ReadImageManifestConfigMap(c, currentVersion)
 	if err != nil || !ok {
 		t.Fatalf("Failed to read image manifest configmap: (%T,%v)", ok, err)
 	}

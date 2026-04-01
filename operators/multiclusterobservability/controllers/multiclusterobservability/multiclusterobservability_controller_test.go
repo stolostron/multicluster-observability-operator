@@ -30,7 +30,6 @@ import (
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering/templates"
-	mchv1 "github.com/stolostron/multiclusterhub-operator/api/v1"
 	observatoriumv1alpha1 "github.com/stolostron/observatorium-operator/api/v1alpha1"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
@@ -40,6 +39,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -166,16 +166,19 @@ func newTestImageManifestsConfigMap(namespace, version string) *corev1.ConfigMap
 	}
 }
 
-func newMCHInstanceWithVersion(namespace, version string) *mchv1.MultiClusterHub {
-	return &mchv1.MultiClusterHub{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test",
-			Namespace: namespace,
-		},
-		Spec: mchv1.MultiClusterHubSpec{},
-		Status: mchv1.MultiClusterHubStatus{
-			CurrentVersion: version,
-			DesiredVersion: version,
+func newMCHInstanceWithVersion(namespace, version string) *unstructured.Unstructured {
+	return &unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"apiVersion": config.MCHGroup + "/" + config.MCHVersion,
+			"kind":       config.MCHKind,
+			"metadata": map[string]interface{}{
+				"name":      "test",
+				"namespace": namespace,
+			},
+			"status": map[string]interface{}{
+				"currentVersion": version,
+				"desiredVersion": version,
+			},
 		},
 	}
 }
@@ -828,7 +831,6 @@ func TestImageReplaceForMCO(t *testing.T) {
 	clusterv1.AddToScheme(s)
 	policyv1.AddToScheme(s)
 	addonv1alpha1.AddToScheme(s)
-	mchv1.SchemeBuilder.AddToScheme(s)
 	migrationv1alpha1.SchemeBuilder.AddToScheme(s)
 	operatorv1.AddToScheme(s)
 

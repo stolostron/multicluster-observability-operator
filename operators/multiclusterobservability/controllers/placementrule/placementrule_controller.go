@@ -23,13 +23,13 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	templatesutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering/templates"
-	mchv1 "github.com/stolostron/multiclusterhub-operator/api/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -1206,8 +1206,8 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		)
 	}
 
-	mchGroupKind := schema.GroupKind{Group: mchv1.GroupVersion.Group, Kind: "MultiClusterHub"}
-	if _, err := r.RESTMapper.RESTMapping(mchGroupKind, mchv1.GroupVersion.Version); err == nil {
+	mchGroupKind := schema.GroupKind{Group: config.MCHGroup, Kind: config.MCHKind}
+	if _, err := r.RESTMapper.RESTMapping(mchGroupKind, config.MCHVersion); err == nil {
 		mchPred := getMchPred(c)
 
 		if ingressCtlCrdExists {
@@ -1223,9 +1223,15 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 		mchCrdExists := r.CRDMap[config.MCHCrdName]
 		if mchCrdExists {
+			mchObj := &unstructured.Unstructured{}
+			mchObj.SetGroupVersionKind(schema.GroupVersionKind{
+				Group:   config.MCHGroup,
+				Version: config.MCHVersion,
+				Kind:    config.MCHKind,
+			})
 			// secondary watch for MCH
 			ctrBuilder = ctrBuilder.Watches(
-				&mchv1.MultiClusterHub{},
+				mchObj,
 				handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, obj client.Object) []reconcile.Request {
 					return []reconcile.Request{
 						{NamespacedName: types.NamespacedName{

@@ -27,7 +27,6 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/webhook"
 	operatorsutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
-	mchv1 "github.com/stolostron/multiclusterhub-operator/api/v1"
 	observatoriumAPIs "github.com/stolostron/observatorium-operator/api/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -150,12 +149,6 @@ func main() {
 		setupLog.Error(err, "")
 		os.Exit(1)
 	}
-	if mchCrdExists {
-		if err := mchv1.SchemeBuilder.AddToScheme(scheme); err != nil {
-			setupLog.Error(err, "")
-			os.Exit(1)
-		}
-	}
 
 	// add scheme of storage version migration
 	if err := migrationv1alpha1.AddToScheme(scheme); err != nil {
@@ -218,7 +211,8 @@ func main() {
 		}
 	}
 	if mchCrdExists {
-		gvkLabelsMap[mchv1.GroupVersion.WithKind("MultiClusterHub")] = []filteredcache.Selector{
+		mchGVK := schema.GroupVersionKind{Group: config.MCHGroup, Version: config.MCHVersion, Kind: config.MCHKind}
+		gvkLabelsMap[mchGVK] = []filteredcache.Selector{
 			{FieldSelector: fmt.Sprintf("metadata.namespace==%s", mcoNamespace)},
 		}
 	}

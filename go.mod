@@ -1,11 +1,6 @@
 module github.com/stolostron/multicluster-observability-operator
 
-go 1.24.4
-
-// replace directive for sigs.k8s.io/controller-runtime is needed because
-// github.com/stolostron/multiclusterhub-operator and its github.com/stolostron/backplane-operator
-// dependency are not compatible with controller-runtime v0.20
-replace sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.19.7
+go 1.25.0
 
 require (
 	github.com/IBM/controller-filtered-cache v0.3.6
@@ -19,43 +14,42 @@ require (
 	github.com/golang/snappy v1.0.0
 	github.com/google/go-cmp v0.7.0
 	github.com/imdario/mergo v1.0.2
-	github.com/onsi/ginkgo/v2 v2.26.0
+	github.com/onsi/ginkgo/v2 v2.27.2
 	github.com/onsi/gomega v1.38.2
-	github.com/openshift/api v0.0.0-20251013165757-fe48e8fd548b
-	github.com/openshift/client-go v0.0.0-20250710075018-396b36f983ee
+	github.com/openshift/api v0.0.0-20260325070019-86893981287e
+	github.com/openshift/client-go v0.0.0-20260320040014-4b5fc2cdad98
 	github.com/openshift/cluster-monitoring-operator v0.1.1-0.20251021084408-d3eba7e97d65
 	github.com/openshift/hypershift/api v0.0.0-20241119231618-9aca80837541
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.82.0
 	github.com/prometheus-operator/prometheus-operator/pkg/client v0.82.0
 	github.com/prometheus/alertmanager v0.28.1
-	github.com/prometheus/client_golang v1.22.0
+	github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/client_model v0.6.2
 	github.com/prometheus/common v0.67.4
 	github.com/prometheus/prometheus v0.305.0
-	github.com/spf13/cobra v1.9.1
+	github.com/spf13/cobra v1.10.0
 	github.com/spf13/pflag v1.0.10
-	github.com/stolostron/multiclusterhub-operator v0.0.0-20251208152055-6387a883b4de
 	github.com/stolostron/observatorium-operator v0.0.0-20260129083906-6481be6eed52
 	github.com/stolostron/rbac-api-utils v0.0.0-20240404212618-7f57fc664256
 	github.com/stretchr/testify v1.11.1
 	github.com/thanos-io/thanos v0.39.2
 	gopkg.in/yaml.v2 v2.4.0
-	k8s.io/api v0.33.3
-	k8s.io/apiextensions-apiserver v0.33.3
-	k8s.io/apimachinery v0.33.3
-	k8s.io/client-go v0.33.3
+	k8s.io/api v0.35.2
+	k8s.io/apiextensions-apiserver v0.35.2
+	k8s.io/apimachinery v0.35.2
+	k8s.io/client-go v0.35.2
 	k8s.io/klog/v2 v2.130.1
-	k8s.io/kubectl v0.33.3
-	k8s.io/utils v0.0.0-20251002143259-bc988d571ff4
+	k8s.io/kubectl v0.35.2
+	k8s.io/utils v0.0.0-20260319190234-28399d86e0b5
 	open-cluster-management.io/addon-framework v1.1.0
 	open-cluster-management.io/api v1.1.0
 	open-cluster-management.io/config-policy-controller v0.16.0
 	open-cluster-management.io/governance-policy-propagator v0.16.0
 	sigs.k8s.io/controller-runtime v0.20.4
 	sigs.k8s.io/kube-storage-version-migrator v0.0.6-0.20230721195810-5c8923c5ff96
-	sigs.k8s.io/kustomize/api v0.19.0
-	sigs.k8s.io/kustomize/kyaml v0.19.0
-	sigs.k8s.io/yaml v1.5.0
+	sigs.k8s.io/kustomize/api v0.20.1
+	sigs.k8s.io/kustomize/kyaml v0.20.1
+	sigs.k8s.io/yaml v1.6.0
 )
 
 replace github.com/imdario/mergo => github.com/imdario/mergo v0.3.16
@@ -129,11 +123,11 @@ require (
 	github.com/go-openapi/validate v0.24.0 // indirect
 	github.com/go-task/slim-sprig/v3 v3.0.0 // indirect
 	github.com/gobuffalo/flect v1.0.3 // indirect
+	github.com/google/btree v1.1.3 // indirect
 	github.com/google/certificate-transparency-go v1.1.7 // indirect
 	github.com/google/gnostic-models v0.7.0 // indirect
 	github.com/google/pprof v0.0.0-20251114195745-4902fdda35c8 // indirect
 	github.com/google/s2a-go v0.1.9 // indirect
-	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.6 // indirect
 	github.com/googleapis/gax-go/v2 v2.14.2 // indirect
@@ -147,7 +141,7 @@ require (
 	github.com/miekg/dns v1.1.66 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
-	github.com/modern-go/reflect2 v1.0.2 // indirect
+	github.com/modern-go/reflect2 v1.0.3-0.20250322232337-35a7c28c31ee // indirect
 	github.com/monochromegane/go-gitignore v0.0.0-20200626010858-205db1a8cc00 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/mwitkow/go-conntrack v0.0.0-20190716064945-2f068394615f // indirect
@@ -162,7 +156,6 @@ require (
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/prometheus/procfs v0.17.0 // indirect
 	github.com/prometheus/sigv4 v0.2.0 // indirect
-	github.com/stolostron/backplane-operator v0.0.0-20251125195118-2183147327e4 // indirect
 	github.com/stolostron/kubernetes-dependency-watches v0.10.0 // indirect
 	github.com/tjhop/slog-gokit v0.1.4 // indirect
 	github.com/uber/jaeger-client-go v2.30.0+incompatible // indirect
@@ -187,7 +180,6 @@ require (
 	go.opentelemetry.io/otel/sdk v1.40.0 // indirect
 	go.opentelemetry.io/otel/trace v1.40.0 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
-	go.uber.org/automaxprocs v1.6.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.1 // indirect
 	go.yaml.in/yaml/v2 v2.4.3 // indirect
@@ -211,15 +203,15 @@ require (
 	gopkg.in/evanphx/json-patch.v4 v4.13.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	k8s.io/apiserver v0.33.3 // indirect
-	k8s.io/component-base v0.33.3 // indirect
+	k8s.io/apiserver v0.35.2 // indirect
+	k8s.io/component-base v0.35.2 // indirect
 	k8s.io/klog v1.0.0 // indirect
 	k8s.io/kube-aggregator v0.33.2 // indirect
-	k8s.io/kube-openapi v0.0.0-20250701173324-9bd5c66d9911 // indirect
+	k8s.io/kube-openapi v0.0.0-20250910181357-589584f1c912 // indirect
 	open-cluster-management.io/sdk-go v1.1.0 // indirect
 	sigs.k8s.io/json v0.0.0-20250730193827-2d320260d730 // indirect
 	sigs.k8s.io/randfill v1.0.0 // indirect
-	sigs.k8s.io/structured-merge-diff/v4 v4.7.0 // indirect
+	sigs.k8s.io/structured-merge-diff/v6 v6.3.0 // indirect
 )
 
 // Stolostron fork of the controller-filtered-cache upgraded to k8s libs up to 0.29.x and Go up to 1.21.

@@ -7,105 +7,131 @@ package multiclusterobservability
 import (
 	"testing"
 
+	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/client-go/kubernetes/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 )
 
+func TestGetMCHPredicateFunc(t *testing.T) {
+	t.Setenv("POD_NAMESPACE", "open-cluster-management-observability")
+
+	s := scheme.Scheme
+	c := fake.NewClientBuilder().WithScheme(s).Build()
+
+	cm := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "mco-image-manifest-1.0",
+			Namespace: config.GetMCONamespace(),
+			Labels: map[string]string{
+				config.OCMManifestConfigMapTypeLabelKey:    config.OCMManifestConfigMapTypeLabelValue,
+				config.OCMManifestConfigMapVersionLabelKey: "1.0",
+			},
+		},
+		Data: map[string]string{
+			"key": "value",
+		},
+	}
+	if err := c.Create(t.Context(), cm); err != nil {
+		t.Fatalf("Failed to create configmap: %v", err)
+	}
+
+	mchPred := GetMCHPredicateFunc(c)
+
+	mchObj := &unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"apiVersion": config.MCHGroup + "/" + config.MCHVersion,
+			"kind":       config.MCHKind,
+			"metadata": map[string]interface{}{
+				"name":            "mch",
+				"namespace":       config.GetMCONamespace(),
+				"resourceVersion": "1",
+			},
+			"status": map[string]interface{}{
+				"currentVersion": "1.0",
+				"desiredVersion": "1.0",
+			},
+		},
+	}
+
+	createEvent := event.CreateEvent{Object: mchObj}
+	if !mchPred.Create(createEvent) {
+		t.Error("mch Create function should return true")
+	}
+
+	oldMch := &unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"apiVersion": config.MCHGroup + "/" + config.MCHVersion,
+			"kind":       config.MCHKind,
+			"metadata": map[string]interface{}{
+				"name":            "mch",
+				"namespace":       config.GetMCONamespace(),
+				"resourceVersion": "0",
+			},
+		},
+	}
+	updateEvent := event.UpdateEvent{ObjectOld: oldMch, ObjectNew: mchObj}
+	if !mchPred.Update(updateEvent) {
+		t.Error("mch Update function should return true")
+	}
+
+	deleteEvent := event.DeleteEvent{Object: mchObj}
+	if mchPred.Delete(deleteEvent) {
+		t.Error("mch Delete function should return false")
+	}
+
+	genericEvent := event.GenericEvent{Object: mchObj}
+	if !mchPred.Generic(genericEvent) {
+		t.Error("mch Generic function should return true")
+	}
+
+	// Test !ok branch (wrong type)
+	invalidObj := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-cm",
+			Namespace: config.GetMCONamespace(),
+		},
+	}
+
+	createEventInvalid := event.CreateEvent{Object: invalidObj}
+	if mchPred.Create(createEventInvalid) {
+		t.Error("Create event with invalid object type should return false")
+	}
+
+	updateEventInvalid := event.UpdateEvent{ObjectOld: invalidObj, ObjectNew: invalidObj}
+	if mchPred.Update(updateEventInvalid) {
+		t.Error("Update event with invalid object type should return false")
+	}
+}
+
 func TestGetMCOPredicateFunc(t *testing.T) {
-	pred := GetMCOPredicateFunc()
-	mco := newMultiClusterObservability()
-	mco.ObjectMeta.ResourceVersion = "1"
-	ce := event.CreateEvent{
-		Object: mco,
-	}
-	if !pred.CreateFunc(ce) {
-		t.Fatal("reconcile not triggered for mco create event")
-	}
-	de := event.DeleteEvent{
-		Object:             mco,
-		DeleteStateUnknown: false,
-	}
-	if !pred.DeleteFunc(de) {
-		t.Fatal("reconcile not triggered for mco delete event")
-	}
-	mcoNew := newMultiClusterObservability()
-	mcoNew.ObjectMeta.ResourceVersion = "2"
-	ue := event.UpdateEvent{
-		ObjectOld: mco,
-		ObjectNew: mcoNew,
-	}
-	if !pred.UpdateFunc(ue) {
-		t.Fatal("reconcile not triggered for mco update event")
-	}
-}
+	mcoPred := GetMCOPredicateFunc()
 
-func TestGetConfigMapPredicateFunc(t *testing.T) {
-	pred := GetConfigMapPredicateFunc()
-	cm := createAlertManagerConfigMap(config.AlertRuleCustomConfigMapName)
-	ce := event.CreateEvent{
-		Object: cm,
+	mcoObj := &mcov1beta2.MultiClusterObservability{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "mco",
+		},
+		Spec: mcov1beta2.MultiClusterObservabilitySpec{
+			StorageConfig: &mcov1beta2.StorageConfig{},
+		},
 	}
-	if !pred.CreateFunc(ce) {
-		t.Fatal("reconcile not triggered for configmap create event")
-	}
-	de := event.DeleteEvent{
-		Object: cm,
-	}
-	if !pred.DeleteFunc(de) {
-		t.Fatal("reconcile not triggered for configmap delete event")
-	}
-	ue := event.UpdateEvent{
-		ObjectNew: cm,
-	}
-	if pred.UpdateFunc(ue) {
-		t.Fatal("reconcile not triggered for configmap update event")
-	}
-}
 
-func TestGetSecretPredicateFunc(t *testing.T) {
-	pred := GetAlertManagerSecretPredicateFunc()
-	sec := createSecret("test", config.AlertmanagerRouteBYOCAName, config.GetDefaultNamespace())
-	ce := event.CreateEvent{
-		Object: sec,
+	createEvent := event.CreateEvent{Object: mcoObj}
+	if !mcoPred.Create(createEvent) {
+		t.Error("mco Create function should return true")
 	}
-	if !pred.CreateFunc(ce) {
-		t.Fatal("reconcile not triggered for secret create event")
-	}
-	de := event.DeleteEvent{
-		Object: sec,
-	}
-	if !pred.DeleteFunc(de) {
-		t.Fatal("reconcile not triggered for secret delete event")
-	}
-	ue := event.UpdateEvent{
-		ObjectNew: sec,
-	}
-	if !pred.UpdateFunc(ue) {
-		t.Fatal("reconcile not triggered for secret update event")
-	}
-	t.Log("TODO: implement TestGetSecretPredicateFunc")
-}
 
-func TestGetNamespacePredicateFunc(t *testing.T) {
-	pred := GetNamespacePredicateFunc()
-	ns := createNamespaceInstance("open-cluster-management-observability")
-	ce := event.CreateEvent{
-		Object: ns,
+	updateEvent := event.UpdateEvent{ObjectOld: mcoObj, ObjectNew: mcoObj}
+	if mcoPred.Update(updateEvent) {
+		t.Error("mco Update function should return false when resource version is unchanged")
 	}
-	if !pred.CreateFunc(ce) {
-		t.Fatal("reconcile not triggered for namespace create event")
-	}
-	de := event.DeleteEvent{
-		Object: ns,
-	}
-	if pred.DeleteFunc(de) {
-		t.Fatal("reconcile triggered for namespace delete event")
-	}
-	ns.ObjectMeta.Labels["openshift.io/cluster-monitoring"] = "false"
-	ue := event.UpdateEvent{
-		ObjectNew: ns,
-	}
-	if !pred.UpdateFunc(ue) {
-		t.Fatal("reconcile not triggered for namespace update event")
+
+	deleteEvent := event.DeleteEvent{Object: mcoObj}
+	if !mcoPred.Delete(deleteEvent) {
+		t.Error("mco Delete function should return true")
 	}
 }

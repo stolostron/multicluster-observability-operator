@@ -27,6 +27,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -201,6 +202,9 @@ const (
 const (
 	IngressControllerCRD           = "ingresscontrollers.operator.openshift.io"
 	MCHCrdName                     = "multiclusterhubs.operator.open-cluster-management.io"
+	MCHGroup                       = "operator.open-cluster-management.io"
+	MCHVersion                     = "v1"
+	MCHKind                        = "MultiClusterHub"
 	MCOCrdName                     = "multiclusterobservabilities.observability.open-cluster-management.io"
 	StorageVersionMigrationCrdName = "storageversionmigrations.migration.k8s.io"
 	MCGHCrdName                    = "multiclusterglobalhubs.operator.open-cluster-management.io"
@@ -994,4 +998,18 @@ var KindOrder = map[string]int{
 	"AddOnDeploymentConfig":    11,
 	"ClusterManagementAddOn":   11,
 	"ScrapeConfig":             11,
+}
+
+// GetMCHVersions extracts current and desired versions from an unstructured MultiClusterHub object
+func GetMCHVersions(u *unstructured.Unstructured) (currentVersion, desiredVersion string) {
+	var err error
+	currentVersion, _, err = unstructured.NestedString(u.Object, "status", "currentVersion")
+	if err != nil {
+		log.V(1).Info("Failed to extract currentVersion from MCH", "error", err)
+	}
+	desiredVersion, _, err = unstructured.NestedString(u.Object, "status", "desiredVersion")
+	if err != nil {
+		log.V(1).Info("Failed to extract desiredVersion from MCH", "error", err)
+	}
+	return currentVersion, desiredVersion
 }

@@ -19,6 +19,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -854,6 +855,56 @@ func TestGetMCOASupportedCRDFQDN(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			result := GetMCOASupportedCRDFQDN(tt.crdName)
 			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestGetMCHVersions(t *testing.T) {
+	tests := []struct {
+		name        string
+		obj         map[string]interface{}
+		wantCurrent string
+		wantDesired string
+	}{
+		{
+			name: "both fields populated",
+			obj: map[string]interface{}{
+				"status": map[string]interface{}{
+					"currentVersion": "1.0.0",
+					"desiredVersion": "1.0.0",
+				},
+			},
+			wantCurrent: "1.0.0",
+			wantDesired: "1.0.0",
+		},
+		{
+			name:        "missing status entirely",
+			obj:         map[string]interface{}{},
+			wantCurrent: "",
+			wantDesired: "",
+		},
+		{
+			name: "currentVersion set but desiredVersion absent",
+			obj: map[string]interface{}{
+				"status": map[string]interface{}{
+					"currentVersion": "1.0.0",
+				},
+			},
+			wantCurrent: "1.0.0",
+			wantDesired: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			u := &unstructured.Unstructured{Object: tt.obj}
+			gotCurrent, gotDesired := GetMCHVersions(u)
+			if gotCurrent != tt.wantCurrent {
+				t.Errorf("GetMCHVersions() gotCurrent = %v, want %v", gotCurrent, tt.wantCurrent)
+			}
+			if gotDesired != tt.wantDesired {
+				t.Errorf("GetMCHVersions() gotDesired = %v, want %v", gotDesired, tt.wantDesired)
+			}
 		})
 	}
 }

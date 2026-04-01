@@ -5,11 +5,12 @@
 package multiclusterobservability
 
 import (
+	"fmt"
 	"reflect"
 
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
-	mchv1 "github.com/stolostron/multiclusterhub-operator/api/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
@@ -132,36 +133,48 @@ func GetAlertManagerSecretPredicateFunc() predicate.Funcs {
 	}
 }
 
+// GetMCHPredicateFunc requires a *unstructured.Unstructured watch source.
 func GetMCHPredicateFunc(c client.Client) predicate.Funcs {
 	return predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 			// this is for operator restart, the mch CREATE event will be caught and the mch should be ready
+			u, ok := e.Object.(*unstructured.Unstructured)
+			if !ok {
+				log.V(1).Info("MCH predicate received unexpected type in Create", "type", fmt.Sprintf("%T", e.Object))
+				return false
+			}
+			currentVersion, desiredVersion := config.GetMCHVersions(u)
+
 			if e.Object.GetNamespace() == config.GetMCONamespace() &&
-				e.Object.(*mchv1.MultiClusterHub).Status.CurrentVersion != "" &&
-				e.Object.(*mchv1.MultiClusterHub).Status.DesiredVersion == e.Object.(*mchv1.MultiClusterHub).Status.CurrentVersion {
+				currentVersion != "" && desiredVersion == currentVersion {
 				// only read the image manifests configmap and enqueue the request when the MCH is
 				// installed/upgraded successfully
-				_, ok, err := config.ReadImageManifestConfigMap(
+				_, found, err := config.ReadImageManifestConfigMap(
 					c,
-					e.Object.(*mchv1.MultiClusterHub).Status.CurrentVersion,
+					currentVersion,
 				)
 				if err != nil {
 					return false
 				}
-				return ok
+				return found
 			}
 			return false
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			// Ensure the event pertains to the target namespace and object type
+			uNew, ok := e.ObjectNew.(*unstructured.Unstructured)
+			if !ok {
+				log.V(1).Info("MCH predicate received unexpected type in Update", "type", fmt.Sprintf("%T", e.ObjectNew))
+				return false
+			}
+			currentVersion, desiredVersion := config.GetMCHVersions(uNew)
+
 			if e.ObjectNew.GetNamespace() == config.GetMCONamespace() &&
 				e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() &&
-				e.ObjectNew.(*mchv1.MultiClusterHub).Status.CurrentVersion != "" &&
-				e.ObjectNew.(*mchv1.MultiClusterHub).Status.DesiredVersion ==
-					e.ObjectNew.(*mchv1.MultiClusterHub).Status.CurrentVersion {
+				currentVersion != "" && desiredVersion == currentVersion {
 				currentData, _, err := config.ReadImageManifestConfigMap(
 					c,
-					e.ObjectNew.(*mchv1.MultiClusterHub).Status.CurrentVersion,
+					currentVersion,
 				)
 				if err != nil {
 					log.Error(err, "Failed to read image manifest ConfigMap")
