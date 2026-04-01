@@ -23,7 +23,6 @@ import (
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	monitoringv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
-	rightsizingctrl "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/analytics/rightsizing"
 	placementctrl "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/placementrule"
 	certctrl "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/certificates"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
@@ -467,6 +466,14 @@ func (r *MultiClusterObservabilityReconciler) initFinalization(ctx context.Conte
 
 		return true, nil
 	}
+
+	// Do not add finalizer to an object being deleted.
+	// After MCO removes resFinalizer, the CR may survive if the analytics
+	// finalizer is still present. Without this guard, we'd re-add resFinalizer.
+	if mco.GetDeletionTimestamp() != nil {
+		return true, nil
+	}
+
 	if !slices.Contains(mco.GetFinalizers(), resFinalizer) {
 		// Use Patch instead of Update to avoid serializing zero-value structs
 		mcoCopy := mco.DeepCopy()
@@ -962,11 +969,6 @@ func cleanUpClusterScopedResources(
 		if err != nil {
 			return err
 		}
-	}
-
-	// Clean up right-sizing resources
-	if err := rightsizingctrl.CleanupRightSizingResources(ctx, r.Client, mco); err != nil {
-		return err
 	}
 
 	ingressCtlCrdExists := r.CRDMap[config.IngressControllerCRD]

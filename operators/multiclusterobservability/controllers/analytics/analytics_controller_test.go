@@ -34,7 +34,10 @@ func setupTestScheme(t *testing.T) *runtime.Scheme {
 
 func newTestMCO(binding string, enabled bool, paused bool) *mcov1beta2.MultiClusterObservability {
 	mco := &mcov1beta2.MultiClusterObservability{
-		ObjectMeta: metav1.ObjectMeta{Name: "observability"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:       "observability",
+			Finalizers: []string{analyticsFinalizer},
+		},
 		Spec: mcov1beta2.MultiClusterObservabilitySpec{
 			Capabilities: &mcov1beta2.CapabilitiesSpec{
 				Platform: &mcov1beta2.PlatformCapabilitiesSpec{
@@ -182,4 +185,113 @@ func TestAnalyticsReconciler_PausedAnnotation(t *testing.T) {
 	r := &AnalyticsReconciler{Client: c, Scheme: scheme}
 	_, err := r.Reconcile(context.TODO(), ctrl.Request{})
 	require.NoError(t, err)
+}
+
+func TestAnalyticsReconciler_AddsFinalizer(t *testing.T) {
+	scheme := setupTestScheme(t)
+
+	// MCO without analytics finalizer
+	mco := &mcov1beta2.MultiClusterObservability{
+		ObjectMeta: metav1.ObjectMeta{Name: "observability"},
+		Spec: mcov1beta2.MultiClusterObservabilitySpec{
+			Capabilities: &mcov1beta2.CapabilitiesSpec{
+				Platform: &mcov1beta2.PlatformCapabilitiesSpec{
+					Analytics: mcov1beta2.PlatformAnalyticsSpec{
+						NamespaceRightSizingRecommendation: mcov1beta2.PlatformRightSizingRecommendationSpec{
+							Enabled: true,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	c := fake.NewClientBuilder().
+		WithScheme(scheme).
+		WithObjects(mco).
+		Build()
+
+	r := &AnalyticsReconciler{Client: c, Scheme: scheme}
+	_, err := r.Reconcile(context.TODO(), ctrl.Request{})
+	require.NoError(t, err)
+
+	// Verify finalizer was added
+	updated := &mcov1beta2.MultiClusterObservability{}
+	err = c.Get(context.TODO(), types.NamespacedName{Name: "observability"}, updated)
+	require.NoError(t, err)
+	require.Contains(t, updated.GetFinalizers(), analyticsFinalizer)
+}
+
+func TestAnalyticsReconciler_DeletionCleansUp(t *testing.T) {
+	scheme := setupTestScheme(t)
+
+	// Include a second finalizer (simulating MCO's resFinalizer) so the object
+	// survives after removing only the analytics finalizer.
+	mco := &mcov1beta2.MultiClusterObservability{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:       "observability",
+			Finalizers: []string{"observability.open-cluster-management.io/res-cleanup", analyticsFinalizer},
+		},
+		Spec: mcov1beta2.MultiClusterObservabilitySpec{
+			Capabilities: &mcov1beta2.CapabilitiesSpec{
+				Platform: &mcov1beta2.PlatformCapabilitiesSpec{
+					Analytics: mcov1beta2.PlatformAnalyticsSpec{
+						NamespaceRightSizingRecommendation: mcov1beta2.PlatformRightSizingRecommendationSpec{
+							Enabled: true,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	c := fake.NewClientBuilder().
+		WithScheme(scheme).
+		WithObjects(mco).
+		Build()
+
+	// Delete the object to set DeletionTimestamp (finalizers prevent actual removal)
+	err := c.Delete(context.TODO(), mco)
+	require.NoError(t, err)
+
+	r := &AnalyticsReconciler{Client: c, Scheme: scheme}
+	_, err = r.Reconcile(context.TODO(), ctrl.Request{})
+	require.NoError(t, err)
+
+	// Verify analytics finalizer was removed but MCO's finalizer remains
+	updated := &mcov1beta2.MultiClusterObservability{}
+	err = c.Get(context.TODO(), types.NamespacedName{Name: "observability"}, updated)
+	require.NoError(t, err)
+	require.NotContains(t, updated.GetFinalizers(), analyticsFinalizer)
+	require.Contains(t, updated.GetFinalizers(), "observability.open-cluster-management.io/res-cleanup")
+}
+
+func TestAnalyticsReconciler_DeletionSkipsWithoutFinalizer(t *testing.T) {
+	scheme := setupTestScheme(t)
+
+	mco := &mcov1beta2.MultiClusterObservability{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:       "observability",
+			Finalizers: []string{"other-finalizer"}, // no analytics finalizer
+		},
+	}
+
+	c := fake.NewClientBuilder().
+		WithScheme(scheme).
+		WithObjects(mco).
+		Build()
+
+	// Delete the object to set DeletionTimestamp (finalizer prevents actual removal)
+	err := c.Delete(context.TODO(), mco)
+	require.NoError(t, err)
+
+	r := &AnalyticsReconciler{Client: c, Scheme: scheme}
+	_, err = r.Reconcile(context.TODO(), ctrl.Request{})
+	require.NoError(t, err)
+
+	// Verify the other finalizer is still present (we didn't touch it)
+	updated := &mcov1beta2.MultiClusterObservability{}
+	err = c.Get(context.TODO(), types.NamespacedName{Name: "observability"}, updated)
+	require.NoError(t, err)
+	require.Contains(t, updated.GetFinalizers(), "other-finalizer")
 }
