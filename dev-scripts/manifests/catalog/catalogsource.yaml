@@ -1,0 +1,92 @@
+# Rendered by setup-downstream-catalog.sh via envsubst.
+#
+# WARNING: this file contains Namespaces, OperatorGroups and Subscriptions in addition
+# to the CatalogSources. Do NOT run "oc delete -f" on it — that would uninstall ACM.
+# Teardown: delete only the CatalogSources by name (see teardown-downstream-catalog.sh).
+#
+# Required variables:
+#   ACM_VERSION      e.g. 2.16  — sets the OLM channel and default catalog tag
+#   MCE_VERSION      e.g. 2.11  — sets the OLM channel and default catalog tag
+# Optional variables (override the catalog image tag independently of the channel):
+#   ACM_CATALOG_TAG  defaults to latest-${ACM_VERSION}; also accepts v2.16.1 or 2.16.1-DOWNSTREAM-2026-03-30-06-49-38
+#   MCE_CATALOG_TAG  defaults to latest-${MCE_VERSION}; same tag formats apply
+---
+apiVersion: operators.coreos.com/v1alpha1
+kind: CatalogSource
+metadata:
+  name: acm-custom-registry
+  namespace: openshift-marketplace
+spec:
+  displayName: Advanced Cluster Management
+  publisher: Red Hat
+  sourceType: grpc
+  image: "quay.io:443/acm-d/acm-dev-catalog:${ACM_CATALOG_TAG}"
+  updateStrategy:
+    registryPoll:
+      interval: 10m
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: open-cluster-management
+---
+apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata:
+  name: default
+  namespace: open-cluster-management
+spec:
+  targetNamespaces:
+    - open-cluster-management
+---
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: acm-sub
+  namespace: open-cluster-management
+spec:
+  channel: release-${ACM_VERSION}
+  installPlanApproval: Automatic
+  name: advanced-cluster-management
+  source: acm-custom-registry
+  sourceNamespace: openshift-marketplace
+---
+apiVersion: operators.coreos.com/v1alpha1
+kind: CatalogSource
+metadata:
+  name: multiclusterengine-catalog
+  namespace: openshift-marketplace
+spec:
+  displayName: MultiCluster Engine
+  publisher: Red Hat
+  sourceType: grpc
+  image: "quay.io:443/acm-d/mce-dev-catalog:${MCE_CATALOG_TAG}"
+  updateStrategy:
+    registryPoll:
+      interval: 10m
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: multicluster-engine
+---
+apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata:
+  name: default
+  namespace: multicluster-engine
+spec:
+  targetNamespaces:
+    - multicluster-engine
+---
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: mce-sub
+  namespace: multicluster-engine
+spec:
+  channel: stable-${MCE_VERSION}
+  installPlanApproval: Automatic
+  name: multicluster-engine
+  source: multiclusterengine-catalog
+  sourceNamespace: openshift-marketplace
