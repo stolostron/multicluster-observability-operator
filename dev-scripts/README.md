@@ -273,6 +273,50 @@ setup-observability.sh
 
 ---
 
+## Running e2e tests
+
+`run-e2e.sh` is a thin wrapper around `dev-scripts/cmd/run-e2e`, a Go tool that:
+
+1. Connects to the hub cluster and lists `ManagedCluster` resources
+2. Matches each managed cluster to a kubecontext by comparing API server URLs
+3. Verifies connectivity to each reachable cluster
+4. Generates `tests/resources/options.yaml`
+5. Invokes `ginkgo` with the requested focus/skip patterns
+
+MCO is assumed to be already deployed, so install and uninstall steps are skipped by default.
+
+Requires `ginkgo` on your PATH:
+```bash
+go install github.com/onsi/ginkgo/v2/ginkgo@latest
+```
+
+```bash
+# Hub = current context; spokes auto-discovered from ManagedCluster resources
+./dev-scripts/run-e2e.sh
+
+# Explicit hub context (spokes still auto-discovered)
+./dev-scripts/run-e2e.sh --hub ctx-hub
+
+# Focus on a specific area (any substring of the test label works)
+./dev-scripts/run-e2e.sh --focus mcoa
+./dev-scripts/run-e2e.sh --focus metrics --focus alert
+
+# Run only fast tests (labelled g0)
+./dev-scripts/run-e2e.sh --focus g0
+
+# Skip specific tests
+./dev-scripts/run-e2e.sh --skip grafana
+./dev-scripts/run-e2e.sh --focus mcoa --skip requires-ocp
+
+# Let the suite install/uninstall MCO itself
+./dev-scripts/run-e2e.sh --install --uninstall
+```
+
+Per-cluster kubeconfigs are written to `tests/resources/kubeconfigs/` (gitignored).
+Results are written to `tests/pkg/tests/results.xml`.
+
+---
+
 ## Notes
 
 - **MinIO storage is ephemeral** — all Thanos data is lost if the MinIO pod restarts.
