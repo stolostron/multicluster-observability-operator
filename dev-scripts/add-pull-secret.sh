@@ -16,8 +16,8 @@ trap 'rm -rf "$WORK_DIR"' EXIT
 
 log_info "Fetching existing cluster pull secret..."
 oc get secret pull-secret -n openshift-config \
-  -o jsonpath='{.data.\.dockerconfigjson}' \
-  | base64 -d > "${WORK_DIR}/pull-secret.json"
+  -o jsonpath='{.data.\.dockerconfigjson}' |
+  base64 -d >"${WORK_DIR}/pull-secret.json"
 
 log_info "Merging quay.io credentials for user ${QUAY_USER}..."
 oc registry login \

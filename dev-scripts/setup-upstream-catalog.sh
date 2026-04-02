@@ -21,7 +21,7 @@ require_tool envsubst "Install gettext: brew install gettext (macOS) / dnf insta
 MANIFESTS="${SCRIPT_DIR}/manifests"
 
 log_info "Creating ACM namespace, OperatorGroup, and Subscription (channel: release-${ACM_VERSION})..."
-envsubst < "${MANIFESTS}/catalog/upstream/subscription.yaml" | oc apply -f -
+envsubst <"${MANIFESTS}/catalog/upstream/subscription.yaml" | oc apply -f -
 
 wait_for_resource crd multiclusterhubs.operator.open-cluster-management.io "" 600
 

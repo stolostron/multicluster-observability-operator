@@ -24,7 +24,7 @@ log_info "Copying cluster pull secret into ${MCO_NS}..."
 PULL_SECRET_TMP=$(mktemp)
 trap 'rm -f "$PULL_SECRET_TMP"' EXIT
 oc get secret pull-secret -n openshift-config \
-  -o jsonpath='{.data.\.dockerconfigjson}' | base64 -d > "$PULL_SECRET_TMP"
+  -o jsonpath='{.data.\.dockerconfigjson}' | base64 -d >"$PULL_SECRET_TMP"
 oc create secret generic multiclusterhub-operator-pull-secret \
   -n "${MCO_NS}" \
   --from-file=.dockerconfigjson="$PULL_SECRET_TMP" \

@@ -53,14 +53,14 @@ oc apply -f "${SCRIPT_DIR}/manifests/mcoa/uwl-scrape-config.yaml"
 # We get the current CMA, merge in the new config entry (deduplicating by name),
 # and replace the resource in one shot to avoid an oc edit loop.
 log_info "Registering ScrapeConfig in ClusterManagementAddon '${CMA_NAME}' (placement: ${PLACEMENT_NAME})..."
-oc get clustermanagementaddon "${CMA_NAME}" -o json \
-  | jq \
-      --arg group     "${SCRAPE_CONFIG_GROUP}" \
-      --arg resource  "${SCRAPE_CONFIG_RESOURCE}" \
-      --arg name      "${SCRAPE_CONFIG_NAME}" \
-      --arg namespace "${MCO_NS}" \
-      --arg placement "${PLACEMENT_NAME}" \
-      '
+oc get clustermanagementaddon "${CMA_NAME}" -o json |
+  jq \
+    --arg group "${SCRAPE_CONFIG_GROUP}" \
+    --arg resource "${SCRAPE_CONFIG_RESOURCE}" \
+    --arg name "${SCRAPE_CONFIG_NAME}" \
+    --arg namespace "${MCO_NS}" \
+    --arg placement "${PLACEMENT_NAME}" \
+    '
       .spec.installStrategy.placements |=
         if type != "array" then
           error("placements is not an array — has the ClusterManagementAddon been fully initialized?")
@@ -82,8 +82,8 @@ oc get clustermanagementaddon "${CMA_NAME}" -o json \
             else . end
           )
         end
-      ' \
-  | oc replace -f -
+      ' |
+  oc replace -f -
 
 log_info "Done. The PrometheusAgent for user-workload metrics will be deployed to managed clusters."
 log_info "  ScrapeConfig: ${SCRAPE_CONFIG_NAME} (namespace: ${MCO_NS})"

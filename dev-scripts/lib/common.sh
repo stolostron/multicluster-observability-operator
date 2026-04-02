@@ -8,8 +8,8 @@ GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
 NC='\033[0m'
 
-log_info()  { printf "${GREEN}[INFO]${NC}  %s\n" "$*"; }
-log_warn()  { printf "${YELLOW}[WARN]${NC}  %s\n" "$*"; }
+log_info() { printf "${GREEN}[INFO]${NC}  %s\n" "$*"; }
+log_warn() { printf "${YELLOW}[WARN]${NC}  %s\n" "$*"; }
 log_error() { printf "${RED}[ERROR]${NC} %s\n" "$*" >&2; }
 
 # Erase N previously printed lines in-place. No-op when stdout is not a TTY
@@ -23,15 +23,15 @@ _erase_lines() {
 # in the environment — so CLI overrides (e.g. ACM_VERSION=2.17 ./script.sh) win.
 _load_dotenv() {
   local env_file="${SCRIPT_DIR}/.env"
-  [[ -f "$env_file" ]] || return 0
+  [[ -f $env_file ]] || return 0
   local line varname
-  while IFS= read -r line || [[ -n "$line" ]]; do
-    [[ "$line" =~ ^[[:space:]]*# ]] && continue   # skip comments
-    [[ "$line" =~ ^[[:space:]]*$ ]] && continue   # skip blank lines
+  while IFS= read -r line || [[ -n $line ]]; do
+    [[ $line =~ ^[[:space:]]*# ]] && continue # skip comments
+    [[ $line =~ ^[[:space:]]*$ ]] && continue # skip blank lines
     varname="${line%%=*}"
     # ${!varname+x} is non-empty iff the variable is already set (bash 3.2+)
-    [[ -n "${!varname+x}" ]] || export "$line"
-  done < "$env_file"
+    [[ -n ${!varname+x} ]] || export "$line"
+  done <"$env_file"
 }
 _load_dotenv
 
@@ -46,7 +46,7 @@ ACM_NS="open-cluster-management"
 require_env() {
   local missing=0
   for var in "$@"; do
-    if [[ -z "${!var:-}" ]]; then
+    if [[ -z ${!var:-} ]]; then
       log_error "Required environment variable \$${var} is not set"
       missing=1
     fi
@@ -69,7 +69,7 @@ wait_for_resource() {
 
   # Build the oc command as an array to avoid empty-array issues under set -u.
   local cmd=(oc get "$resource" "$name")
-  [[ -n "$namespace" ]] && cmd+=(-n "$namespace")
+  [[ -n $namespace ]] && cmd+=(-n "$namespace")
 
   log_info "Waiting for ${resource}/${name} to exist (timeout: ${timeout}s)..."
   local elapsed=0
@@ -88,7 +88,7 @@ wait_for_resource() {
 wait_for_deletion() {
   local resource="$1" name="$2" namespace="${3:-}" timeout="${4:-300}"
   local cmd=(oc get "$resource" "$name")
-  [[ -n "$namespace" ]] && cmd+=(-n "$namespace")
+  [[ -n $namespace ]] && cmd+=(-n "$namespace")
 
   log_info "Waiting for ${resource}/${name} to be deleted (timeout: ${timeout}s)..."
   local elapsed=0
@@ -128,28 +128,28 @@ wait_for_mch_running() {
   local elapsed=0 not_ready phase prev_lines=0
 
   until [[ "$(oc get multiclusterhub multiclusterhub -n "${ACM_NS}" \
-               -o jsonpath='{.status.phase}' 2>/dev/null)" == "Running" ]]; do
+    -o jsonpath='{.status.phase}' 2>/dev/null)" == "Running" ]]; do
     if [[ $elapsed -ge $timeout ]]; then
       _erase_lines "$prev_lines"
       log_error "Timed out waiting for MultiClusterHub after ${timeout}s"
       return 1
     fi
     if command -v jq &>/dev/null; then
-      not_ready=$(oc get multiclusterhub multiclusterhub -n "${ACM_NS}" -o json 2>/dev/null \
-        | jq -r '.status.components // {} | to_entries[]
+      not_ready=$(oc get multiclusterhub multiclusterhub -n "${ACM_NS}" -o json 2>/dev/null |
+        jq -r '.status.components // {} | to_entries[]
             | select(.value.type != "Available" or .value.status != "True")
             | "  \(.key) (\(.value.kind)): \(.value.reason)"')
       _erase_lines "$prev_lines"
-      if [[ -n "$not_ready" ]]; then
+      if [[ -n $not_ready ]]; then
         log_info "Components not yet available (${elapsed}s elapsed):"
         printf '%s\n' "$not_ready"
-        prev_lines=$(( $(printf '%s\n' "$not_ready" | wc -l) + 1 ))
+        prev_lines=$(($(printf '%s\n' "$not_ready" | wc -l) + 1))
       else
         prev_lines=0
       fi
     else
       phase=$(oc get multiclusterhub multiclusterhub -n "${ACM_NS}" \
-                -o jsonpath='{.status.phase}' 2>/dev/null || true)
+        -o jsonpath='{.status.phase}' 2>/dev/null || true)
       _erase_lines "$prev_lines"
       log_info "Current phase: ${phase:-unknown} (${elapsed}s elapsed)"
       prev_lines=1
@@ -175,21 +175,21 @@ wait_for_mch_deleted() {
       return 1
     fi
     if command -v jq &>/dev/null; then
-      remaining=$(oc get multiclusterhub multiclusterhub -n "${ACM_NS}" -o json 2>/dev/null \
-        | jq -r '.status.components // {} | to_entries[]
+      remaining=$(oc get multiclusterhub multiclusterhub -n "${ACM_NS}" -o json 2>/dev/null |
+        jq -r '.status.components // {} | to_entries[]
             | select(.value.status != "Unknown")
             | "  \(.key) (\(.value.kind)): still present"')
       _erase_lines "$prev_lines"
-      if [[ -n "$remaining" ]]; then
+      if [[ -n $remaining ]]; then
         log_info "Components still being removed (${elapsed}s elapsed):"
         printf '%s\n' "$remaining"
-        prev_lines=$(( $(printf '%s\n' "$remaining" | wc -l) + 1 ))
+        prev_lines=$(($(printf '%s\n' "$remaining" | wc -l) + 1))
       else
         prev_lines=0
       fi
     else
       phase=$(oc get multiclusterhub multiclusterhub -n "${ACM_NS}" \
-                -o jsonpath='{.status.phase}' 2>/dev/null || true)
+        -o jsonpath='{.status.phase}' 2>/dev/null || true)
       _erase_lines "$prev_lines"
       log_info "Current phase: ${phase:-unknown} (${elapsed}s elapsed)"
       prev_lines=1
@@ -207,7 +207,7 @@ wait_for_mco_ready() {
   log_info "Waiting for MultiClusterObservability to be Ready (timeout: ${timeout}s)..."
   local elapsed=0
   until [[ "$(oc get multiclusterobservability observability \
-               -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null)" == "True" ]]; do
+    -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null)" == "True" ]]; do
     if [[ $elapsed -ge $timeout ]]; then
       log_error "Timed out waiting for MultiClusterObservability after ${timeout}s"
       return 1

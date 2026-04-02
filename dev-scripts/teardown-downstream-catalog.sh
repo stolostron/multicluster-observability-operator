@@ -33,7 +33,7 @@ oc patch subscription.operators.coreos.com mce-sub -n multicluster-engine \
 log_info "Removing downstream CatalogSources..."
 # Delete only the CatalogSources by name — the catalogsource.yaml also contains Namespaces,
 # OperatorGroups and Subscriptions which must stay intact for ACM to keep running.
-oc delete catalogsource acm-custom-registry        -n openshift-marketplace --ignore-not-found
+oc delete catalogsource acm-custom-registry -n openshift-marketplace --ignore-not-found
 oc delete catalogsource multiclusterengine-catalog -n openshift-marketplace --ignore-not-found
 
 log_info "Removing ImageDigestMirrorSet..."

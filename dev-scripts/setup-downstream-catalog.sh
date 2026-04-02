@@ -38,7 +38,7 @@ oc apply -f "${MANIFESTS}/image-digest-mirror-set.yaml"
 
 log_info "Applying CatalogSources and Subscriptions for ACM ${ACM_VERSION} / MCE ${MCE_VERSION}..."
 export ACM_VERSION MCE_VERSION
-envsubst < "${MANIFESTS}/catalogsource.yaml" | oc apply -f -
+envsubst <"${MANIFESTS}/catalogsource.yaml" | oc apply -f -
 
 log_info "Waiting for ACM CSV to appear in ${ACM_NS}..."
 # The subscription triggers an InstallPlan; wait for the CRD that signals ACM is installed.

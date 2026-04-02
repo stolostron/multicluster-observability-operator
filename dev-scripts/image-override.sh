@@ -64,10 +64,10 @@ add_repo_component() {
   tag_val="${!tag_var:-}"
   tag_resolved="$(resolve_tag "$tag_val")"
 
-  if [[ -n "$image_val" ]]; then
-    read -r r t <<< "$(parse_image_ref "$image_val")"
+  if [[ -n $image_val ]]; then
+    read -r r t <<<"$(parse_image_ref "$image_val")"
     format_entry "$image_name" "$key" "$r" "$t"
-  elif [[ -n "$tag_resolved" ]]; then
+  elif [[ -n $tag_resolved ]]; then
     format_entry "$image_name" "$key" "$REGISTRY" "$tag_resolved"
   fi
 }
@@ -78,10 +78,10 @@ add_external_component() {
   local image_name="$1" key="$2" image_var="$3" tag_var="$4" registry_var="$5"
   local image_val="${!image_var:-}" tag_val="${!tag_var:-}" registry_val="${!registry_var:-}" r t
 
-  if [[ -n "$image_val" ]]; then
-    read -r r t <<< "$(parse_image_ref "$image_val")"
+  if [[ -n $image_val ]]; then
+    read -r r t <<<"$(parse_image_ref "$image_val")"
     format_entry "$image_name" "$key" "$r" "$t"
-  elif [[ -n "$tag_val" ]]; then
+  elif [[ -n $tag_val ]]; then
     format_entry "$image_name" "$key" "$(resolve_registry "$registry_val")" "$tag_val"
   fi
 }
@@ -91,41 +91,41 @@ build_override_json() {
 
   # --- This-repo components (covered by TAG) ---
   entry=$(add_repo_component multicluster-observability-operator multicluster_observability_operator MCO_IMAGE MCO_TAG)
-  [[ -n "$entry" ]] && entries+=("$entry")
+  [[ -n $entry ]] && entries+=("$entry")
 
   entry=$(add_repo_component endpoint-monitoring-operator endpoint_monitoring_operator ENDPOINT_IMAGE ENDPOINT_TAG)
-  [[ -n "$entry" ]] && entries+=("$entry")
+  [[ -n $entry ]] && entries+=("$entry")
 
   entry=$(add_repo_component metrics-collector metrics_collector METRICS_COLLECTOR_IMAGE METRICS_COLLECTOR_TAG)
-  [[ -n "$entry" ]] && entries+=("$entry")
+  [[ -n $entry ]] && entries+=("$entry")
 
   entry=$(add_repo_component rbac-query-proxy rbac_query_proxy RBAC_QUERY_PROXY_IMAGE RBAC_QUERY_PROXY_TAG)
-  [[ -n "$entry" ]] && entries+=("$entry")
+  [[ -n $entry ]] && entries+=("$entry")
 
   entry=$(add_repo_component grafana-dashboard-loader grafana_dashboard_loader GRAFANA_DASHBOARD_LOADER_IMAGE GRAFANA_DASHBOARD_LOADER_TAG)
-  [[ -n "$entry" ]] && entries+=("$entry")
+  [[ -n $entry ]] && entries+=("$entry")
 
   # --- External components (independent tag + registry per component) ---
   entry=$(add_external_component multicluster-observability-addon multicluster_observability_addon MCOA_ADDON_IMAGE MCOA_ADDON_TAG MCOA_ADDON_REGISTRY)
-  [[ -n "$entry" ]] && entries+=("$entry")
+  [[ -n $entry ]] && entries+=("$entry")
 
   entry=$(add_external_component observatorium-operator observatorium_operator OBSERVATORIUM_OPERATOR_IMAGE OBSERVATORIUM_OPERATOR_TAG OBSERVATORIUM_OPERATOR_REGISTRY)
-  [[ -n "$entry" ]] && entries+=("$entry")
+  [[ -n $entry ]] && entries+=("$entry")
 
   entry=$(add_external_component observatorium observatorium OBSERVATORIUM_IMAGE OBSERVATORIUM_TAG OBSERVATORIUM_REGISTRY)
-  [[ -n "$entry" ]] && entries+=("$entry")
+  [[ -n $entry ]] && entries+=("$entry")
 
   entry=$(add_external_component grafana grafana GRAFANA_IMAGE GRAFANA_TAG GRAFANA_REGISTRY)
-  [[ -n "$entry" ]] && entries+=("$entry")
+  [[ -n $entry ]] && entries+=("$entry")
 
   entry=$(add_external_component thanos thanos THANOS_IMAGE THANOS_TAG THANOS_REGISTRY)
-  [[ -n "$entry" ]] && entries+=("$entry")
+  [[ -n $entry ]] && entries+=("$entry")
 
   entry=$(add_external_component prometheus-alertmanager prometheus_alertmanager PROMETHEUS_ALERTMANAGER_IMAGE PROMETHEUS_ALERTMANAGER_TAG PROMETHEUS_ALERTMANAGER_REGISTRY)
-  [[ -n "$entry" ]] && entries+=("$entry")
+  [[ -n $entry ]] && entries+=("$entry")
 
   entry=$(add_external_component thanos-receive-controller thanos_receive_controller THANOS_RECEIVE_CONTROLLER_IMAGE THANOS_RECEIVE_CONTROLLER_TAG THANOS_RECEIVE_CONTROLLER_REGISTRY)
-  [[ -n "$entry" ]] && entries+=("$entry")
+  [[ -n $entry ]] && entries+=("$entry")
 
   if [[ ${#entries[@]} -eq 0 ]]; then
     log_error "Set at least one override. Examples:"
@@ -144,7 +144,7 @@ TMPFILE=$(mktemp /tmp/image-override-XXXXXX.json)
 trap 'rm -f "$TMPFILE"' EXIT
 
 log_info "Generating image-override.json (default registry: ${REGISTRY})..."
-build_override_json > "$TMPFILE"
+build_override_json >"$TMPFILE"
 log_info "Overrides: $(cat "$TMPFILE")"
 
 log_info "Creating image-override ConfigMap in ${ACM_NS}..."
