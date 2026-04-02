@@ -10,7 +10,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib/common.sh"
 
-MANIFESTS="${SCRIPT_DIR}/manifests/catalog"
+MANIFESTS="${SCRIPT_DIR}/manifests/catalog/downstream"
 
 log_info "Switching ACM subscription back to redhat-operators..."
 oc patch subscription.operators.coreos.com acm-sub -n "${ACM_NS}" \

@@ -16,46 +16,22 @@ source "${SCRIPT_DIR}/lib/common.sh"
 
 require_env ACM_VERSION
 
-log_info "Creating ACM namespace and OperatorGroup..."
-oc apply -f - <<EOF
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: ${ACM_NS}
----
-apiVersion: operators.coreos.com/v1
-kind: OperatorGroup
-metadata:
-  name: default
-  namespace: ${ACM_NS}
-spec:
-  targetNamespaces:
-    - ${ACM_NS}
-EOF
+require_tool envsubst "Install gettext: brew install gettext (macOS) / dnf install gettext (Fedora)"
 
-log_info "Creating ACM subscription (channel: release-${ACM_VERSION})..."
-oc apply -f - <<EOF
-apiVersion: operators.coreos.com/v1alpha1
-kind: Subscription
-metadata:
-  name: acm-sub
-  namespace: ${ACM_NS}
-spec:
-  channel: release-${ACM_VERSION}
-  installPlanApproval: Automatic
-  name: advanced-cluster-management
-  source: redhat-operators
-  sourceNamespace: openshift-marketplace
-EOF
+MANIFESTS="${SCRIPT_DIR}/manifests"
+
+log_info "Creating ACM namespace, OperatorGroup, and Subscription (channel: release-${ACM_VERSION})..."
+envsubst < "${MANIFESTS}/catalog/upstream/subscription.yaml" | oc apply -f -
 
 wait_for_resource crd multiclusterhubs.operator.open-cluster-management.io "" 600
 
 log_info "Waiting for MultiClusterHub operator webhook to be ready..."
+until oc get pod -n "${ACM_NS}" -l name=multiclusterhub-operator --no-headers 2>/dev/null | grep -q .; do sleep 5; done
 oc wait pod -n "${ACM_NS}" -l name=multiclusterhub-operator \
   --for=condition=Ready --timeout=300s
 
 log_info "Creating MultiClusterHub CR..."
-oc apply -f "${SCRIPT_DIR}/manifests/multiclusterhub-cr.yaml"
+oc apply -f "${MANIFESTS}/acm/multiclusterhub-cr.yaml"
 
 wait_for_mch_running 900
 

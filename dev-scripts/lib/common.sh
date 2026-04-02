@@ -12,6 +12,29 @@ log_info()  { printf "${GREEN}[INFO]${NC}  %s\n" "$*"; }
 log_warn()  { printf "${YELLOW}[WARN]${NC}  %s\n" "$*"; }
 log_error() { printf "${RED}[ERROR]${NC} %s\n" "$*" >&2; }
 
+# Erase N previously printed lines in-place. No-op when stdout is not a TTY
+# (e.g. when output is piped or redirected), so logs remain readable in CI.
+_erase_lines() {
+  local n="$1"
+  [[ -t 1 ]] && [[ $n -gt 0 ]] && printf "\033[%dA\033[J" "$n" || true
+}
+
+# Load variables from .env if present, without overwriting variables already set
+# in the environment — so CLI overrides (e.g. ACM_VERSION=2.17 ./script.sh) win.
+_load_dotenv() {
+  local env_file="${SCRIPT_DIR}/.env"
+  [[ -f "$env_file" ]] || return 0
+  local line varname
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    [[ "$line" =~ ^[[:space:]]*# ]] && continue   # skip comments
+    [[ "$line" =~ ^[[:space:]]*$ ]] && continue   # skip blank lines
+    varname="${line%%=*}"
+    # ${!varname+x} is non-empty iff the variable is already set (bash 3.2+)
+    [[ -n "${!varname+x}" ]] || export "$line"
+  done < "$env_file"
+}
+_load_dotenv
+
 # Shared namespace constants used across scripts.
 # NOTE: YAML manifests under manifests/ hardcode these namespace names and must
 # be updated manually if these values ever change.
@@ -97,20 +120,85 @@ wait_for_no_pods_in_namespace() {
 }
 
 # Poll until MultiClusterHub reaches Running phase.
+# On each iteration, refreshes the list of components not yet available in-place.
+# Requires jq for the component breakdown; falls back to the current phase if absent.
 wait_for_mch_running() {
   local timeout="${1:-900}"
   log_info "Waiting for MultiClusterHub to reach Running state (timeout: ${timeout}s)..."
-  local elapsed=0
+  local elapsed=0 not_ready phase prev_lines=0
+
   until [[ "$(oc get multiclusterhub multiclusterhub -n "${ACM_NS}" \
                -o jsonpath='{.status.phase}' 2>/dev/null)" == "Running" ]]; do
     if [[ $elapsed -ge $timeout ]]; then
+      _erase_lines "$prev_lines"
       log_error "Timed out waiting for MultiClusterHub after ${timeout}s"
       return 1
+    fi
+    if command -v jq &>/dev/null; then
+      not_ready=$(oc get multiclusterhub multiclusterhub -n "${ACM_NS}" -o json 2>/dev/null \
+        | jq -r '.status.components // {} | to_entries[]
+            | select(.value.type != "Available" or .value.status != "True")
+            | "  \(.key) (\(.value.kind)): \(.value.reason)"')
+      _erase_lines "$prev_lines"
+      if [[ -n "$not_ready" ]]; then
+        log_info "Components not yet available (${elapsed}s elapsed):"
+        printf '%s\n' "$not_ready"
+        prev_lines=$(( $(printf '%s\n' "$not_ready" | wc -l) + 1 ))
+      else
+        prev_lines=0
+      fi
+    else
+      phase=$(oc get multiclusterhub multiclusterhub -n "${ACM_NS}" \
+                -o jsonpath='{.status.phase}' 2>/dev/null || true)
+      _erase_lines "$prev_lines"
+      log_info "Current phase: ${phase:-unknown} (${elapsed}s elapsed)"
+      prev_lines=1
     fi
     sleep 15
     elapsed=$((elapsed + 15))
   done
+  _erase_lines "$prev_lines"
   log_info "MultiClusterHub is Running."
+}
+
+# Poll until MultiClusterHub CR is fully gone, refreshing components still being removed.
+# Requires jq for the component breakdown; falls back to the current phase if absent.
+wait_for_mch_deleted() {
+  local timeout="${1:-600}"
+  log_info "Waiting for MultiClusterHub components to be removed (timeout: ${timeout}s)..."
+  local elapsed=0 remaining phase prev_lines=0
+
+  until ! oc get multiclusterhub multiclusterhub -n "${ACM_NS}" &>/dev/null; do
+    if [[ $elapsed -ge $timeout ]]; then
+      _erase_lines "$prev_lines"
+      log_error "Timed out waiting for MultiClusterHub deletion after ${timeout}s"
+      return 1
+    fi
+    if command -v jq &>/dev/null; then
+      remaining=$(oc get multiclusterhub multiclusterhub -n "${ACM_NS}" -o json 2>/dev/null \
+        | jq -r '.status.components // {} | to_entries[]
+            | select(.value.status != "Unknown")
+            | "  \(.key) (\(.value.kind)): still present"')
+      _erase_lines "$prev_lines"
+      if [[ -n "$remaining" ]]; then
+        log_info "Components still being removed (${elapsed}s elapsed):"
+        printf '%s\n' "$remaining"
+        prev_lines=$(( $(printf '%s\n' "$remaining" | wc -l) + 1 ))
+      else
+        prev_lines=0
+      fi
+    else
+      phase=$(oc get multiclusterhub multiclusterhub -n "${ACM_NS}" \
+                -o jsonpath='{.status.phase}' 2>/dev/null || true)
+      _erase_lines "$prev_lines"
+      log_info "Current phase: ${phase:-unknown} (${elapsed}s elapsed)"
+      prev_lines=1
+    fi
+    sleep 15
+    elapsed=$((elapsed + 15))
+  done
+  _erase_lines "$prev_lines"
+  log_info "MultiClusterHub CR deleted."
 }
 
 # Poll until MultiClusterObservability has a Ready=True condition.

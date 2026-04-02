@@ -15,7 +15,7 @@ source "${SCRIPT_DIR}/lib/common.sh"
 MANIFESTS="${SCRIPT_DIR}/manifests"
 
 log_info "Creating namespace ${MCO_NS}..."
-oc apply -f "${MANIFESTS}/namespace.yaml"
+oc apply -f "${MANIFESTS}/observability/namespace.yaml"
 
 # Copy the cluster pull secret into the MCO namespace. MCO uses this to pull
 # component images. We read it from openshift-config and recreate it rather
@@ -32,18 +32,18 @@ oc create secret generic multiclusterhub-operator-pull-secret \
   --dry-run=client -o yaml | oc apply -f -
 
 log_info "Deploying MinIO (ephemeral storage — data is lost on pod restart)..."
-oc apply -f "${MANIFESTS}/minio-deployment.yaml"
-oc apply -f "${MANIFESTS}/minio-service.yaml"
-oc apply -f "${MANIFESTS}/minio-route.yaml"
+oc apply -f "${MANIFESTS}/storage/minio-deployment.yaml"
+oc apply -f "${MANIFESTS}/storage/minio-service.yaml"
+oc apply -f "${MANIFESTS}/storage/minio-route.yaml"
 
 log_info "Waiting for MinIO to be ready..."
 oc rollout status deployment/minio -n "${MCO_NS}" --timeout=120s
 
 log_info "Creating Thanos object storage secret..."
-oc apply -f "${MANIFESTS}/thanos-storage-secret.yaml"
+oc apply -f "${MANIFESTS}/storage/thanos-storage-secret.yaml"
 
 log_info "Deploying MultiClusterObservability CR..."
-oc apply -f "${MANIFESTS}/multiclusterobservability-cr.yaml"
+oc apply -f "${MANIFESTS}/observability/multiclusterobservability-cr.yaml"
 
 wait_for_mco_ready 600
 

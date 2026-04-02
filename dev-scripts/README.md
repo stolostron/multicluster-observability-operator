@@ -6,9 +6,31 @@ These are developer tools, not intended for production use.
 ## Prerequisites
 
 - `oc` logged into your target OCP cluster
-- `jq` (for `enable-mcoa-uwl.sh`)
-- `gettext` / `envsubst` (for `setup-downstream-catalog.sh` — `brew install gettext` on macOS)
-- `cert-manager` installed on the cluster (optional — used for the MinIO Route TLS cert; without it the cluster's default wildcard ingress cert is used)
+- `gettext` / `envsubst` (`brew install gettext` on macOS, `dnf install gettext` on Fedora)
+- `jq` — optional but recommended; enables per-component progress display during MCH install/teardown, and required by `enable-mcoa-uwl.sh`
+
+## Configuration
+
+All scripts automatically load variables from `dev-scripts/.env` if it exists.
+Variables already set in your shell take precedence, so CLI overrides still work:
+
+```bash
+cp dev-scripts/.env.example dev-scripts/.env
+# edit dev-scripts/.env
+```
+
+```bash
+# .env is loaded automatically — no need to repeat this on every command
+ACM_VERSION=2.16
+MCE_VERSION=2.11
+```
+
+```bash
+# CLI override still wins over .env
+ACM_VERSION=2.17 ./dev-scripts/setup-upstream-catalog.sh
+```
+
+See `.env.example` for all supported variables.
 
 ---
 
@@ -39,9 +61,10 @@ The `quay.io:443/acm-d` repository requires Red Hat employee credentials. You ne
 your personal quay.io CLI token (not your password) — find it at
 **quay.io → Account Settings → CLI Password → Generate Encrypted Password**.
 
-Store your credentials in `dev-scripts/.env` (gitignored, never commit it):
+Add your credentials to `dev-scripts/.env` (gitignored, never commit it):
 
 ```bash
+# If you haven't created .env yet:
 cp dev-scripts/.env.example dev-scripts/.env
 # edit dev-scripts/.env and fill in QUAY_USER and QUAY_TOKEN
 ```
@@ -57,14 +80,6 @@ Or pass them inline without the file:
 ```bash
 QUAY_USER=rh-ee-you QUAY_TOKEN=<your-cli-token> ./dev-scripts/add-pull-secret.sh
 ```
-
-> **Note:** Many dev clusters provisioned internally already have `quay.io:443` credentials
-> in their pull secret. You can check with:
-> ```bash
-> oc get secret pull-secret -n openshift-config \
->   -o jsonpath='{.data.\.dockerconfigjson}' | base64 -d | python3 -m json.tool | grep -q 'quay.io:443' \
->   && echo "credentials already present" || echo "credentials missing — run add-pull-secret.sh"
-> ```
 
 ### 2. Install dev catalog sources and ACM
 
@@ -186,9 +201,8 @@ This script:
 
 ## Switching between upstream and downstream catalogs
 
-The catalog setup/teardown scripts act as a toggle and are safe to run on a cluster
-regardless of its current catalog state — they patch or apply subscriptions idempotently,
-no ACM uninstall required.
+The catalog setup/teardown scripts are safe to run on a cluster with ACM already installed —
+they patch subscriptions idempotently without uninstalling ACM.
 
 **Upstream → Downstream** (ACM already installed from `redhat-operators`):
 ```bash
@@ -207,9 +221,9 @@ ACM_VERSION=2.16 MCE_VERSION=2.11 ./dev-scripts/setup-downstream-catalog.sh
 
 ## Teardown
 
-### Remove the observability stack
+### Remove only the observability stack
 
-Deletes only the `MultiClusterObservability` CR and waits for all observability pods to
+Deletes the `MultiClusterObservability` CR and waits for all observability pods to
 terminate. MCH and ACM are left running.
 
 ```bash
@@ -226,13 +240,35 @@ itself are left intact — only the catalog wiring changes.
 ./dev-scripts/teardown-downstream-catalog.sh
 ```
 
-The typical workflow on a long-running cluster:
+### Fully remove ACM
 
+Follows the OLM uninstall sequence: deletes the MCH CR (operator runs finalizer cleanup),
+then removes CSVs, Subscriptions, and both namespaces. Run `teardown-observability.sh`
+first if MCO is still deployed.
+
+```bash
+./dev-scripts/teardown-observability.sh   # if observability is deployed
+./dev-scripts/teardown-acm.sh
+```
+
+---
+
+### Typical workflows
+
+**Long-running cluster — swap catalog and redeploy:**
 ```
 teardown-observability.sh          # remove MCO stack
 teardown-downstream-catalog.sh     # switch back to redhat-operators
 image-override.sh                  # test a specific PR build on top
 setup-observability.sh             # re-deploy the MCO stack
+```
+
+**Full reset — clean cluster for a fresh install:**
+```
+teardown-observability.sh          # remove MCO stack (if deployed)
+teardown-acm.sh                    # fully remove ACM and MCE
+setup-upstream-catalog.sh          # reinstall from scratch
+setup-observability.sh
 ```
 
 ---

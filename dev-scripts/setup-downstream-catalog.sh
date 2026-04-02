@@ -29,9 +29,9 @@ require_env ACM_VERSION MCE_VERSION
 export ACM_CATALOG_TAG="${ACM_CATALOG_TAG:-latest-${ACM_VERSION}}"
 export MCE_CATALOG_TAG="${MCE_CATALOG_TAG:-latest-${MCE_VERSION}}"
 
-require_tool envsubst "Install gettext: brew install gettext on macOS"
+require_tool envsubst "Install gettext: brew install gettext (macOS) / dnf install gettext (Fedora)"
 
-MANIFESTS="${SCRIPT_DIR}/manifests/catalog"
+MANIFESTS="${SCRIPT_DIR}/manifests/catalog/downstream"
 
 log_info "Applying ImageDigestMirrorSet (applied without node reboots)..."
 oc apply -f "${MANIFESTS}/image-digest-mirror-set.yaml"
@@ -45,11 +45,12 @@ log_info "Waiting for ACM CSV to appear in ${ACM_NS}..."
 wait_for_resource crd multiclusterhubs.operator.open-cluster-management.io "" 600
 
 log_info "Waiting for MultiClusterHub operator webhook to be ready..."
+until oc get pod -n "${ACM_NS}" -l name=multiclusterhub-operator --no-headers 2>/dev/null | grep -q .; do sleep 5; done
 oc wait pod -n "${ACM_NS}" -l name=multiclusterhub-operator \
   --for=condition=Ready --timeout=300s
 
 log_info "Creating MultiClusterHub CR..."
-oc apply -f "${SCRIPT_DIR}/manifests/multiclusterhub-cr.yaml"
+oc apply -f "${SCRIPT_DIR}/manifests/acm/multiclusterhub-cr.yaml"
 
 wait_for_mch_running 900
 

@@ -9,9 +9,6 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib/common.sh"
 
-# Load credentials from .env if present (copy from .env.example to get started).
-[[ -f "${SCRIPT_DIR}/.env" ]] && source "${SCRIPT_DIR}/.env"
-
 require_env QUAY_USER QUAY_TOKEN
 
 WORK_DIR=$(mktemp -d)
