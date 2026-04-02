@@ -112,7 +112,10 @@ func main() {
 
 	if err := run(ctx, hubContext, focuses, skips, install, uninstall); err != nil {
 		slog.Error("fatal", "err", err)
-		os.Exit(1)
+		// Use stop() explicitly before returning so the deferred call is a no-op,
+		// allowing the exit code to be communicated via os.Exit without suppressing it.
+		stop()
+		os.Exit(1) //nolint:gocritic // exitAfterDefer: stop() is called explicitly above
 	}
 }
 
@@ -492,13 +495,18 @@ func writeOptionsFile(path string, data optionsData) error {
 	if err != nil {
 		return fmt.Errorf("parsing options template: %w", err)
 	}
-	f, err := os.Create(path)
+	f, err := os.Create(path) //nolint:gosec // path is an internal repo-relative location, not user input
 	if err != nil {
 		return fmt.Errorf("creating options file %s: %w", path, err)
 	}
-	defer f.Close()
 	if err := tmpl.Execute(f, data); err != nil {
+		if closeErr := f.Close(); closeErr != nil {
+			slog.Warn("closing options file after render failure", "path", path, "err", closeErr)
+		}
 		return fmt.Errorf("rendering options template: %w", err)
+	}
+	if err := f.Close(); err != nil {
+		return fmt.Errorf("closing options file %s: %w", path, err)
 	}
 	return nil
 }
@@ -543,7 +551,7 @@ func runGinkgo(ctx context.Context, repoRoot, optionsFile string, focuses, skips
 		"-v=6",
 	)
 
-	cmd := exec.CommandContext(ctx, "ginkgo", args...)
+	cmd := exec.CommandContext(ctx, "ginkgo", args...) //nolint:gosec // ginkgo is a known test runner resolved via PATH
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
