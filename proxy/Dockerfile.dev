@@ -1,5 +1,5 @@
 # Developer build using publicly available base images.
-# Build from the repository root: podman build -f collectors/metrics/Dockerfile.dev -t <image> .
+# Build from the repository root: podman build -f proxy/Dockerfile.dev -t <image> .
 
 # Builder always runs on the host platform so Go cross-compilation is native (no emulation).
 FROM --platform=$BUILDPLATFORM golang:1.25 AS builder
@@ -9,19 +9,18 @@ ARG TARGETARCH=amd64
 
 WORKDIR /workspace
 COPY go.sum go.mod ./
-COPY ./collectors/metrics ./collectors/metrics
-COPY ./operators/pkg ./operators/pkg
-COPY ./operators/multiclusterobservability/api ./operators/multiclusterobservability/api
+COPY ./proxy ./proxy
 
 RUN --mount=type=cache,target=/go/pkg/mod,sharing=shared \
     --mount=type=cache,target=/root/.cache/go-build,sharing=shared \
     CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
-    go build -o /usr/local/bin/metrics-collector ./collectors/metrics/cmd/metrics-collector/main.go
+    go build -o /usr/local/bin/rbac-query-proxy proxy/cmd/main.go
 
 FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
 
 USER 1001:1001
 
-COPY --from=builder /usr/local/bin/metrics-collector /usr/local/bin/metrics-collector
+COPY --from=builder /usr/local/bin/rbac-query-proxy /usr/local/bin/rbac-query-proxy
 
-ENTRYPOINT ["/usr/local/bin/metrics-collector"]
+EXPOSE 3002
+ENTRYPOINT ["/usr/local/bin/rbac-query-proxy"]

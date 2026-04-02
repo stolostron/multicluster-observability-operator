@@ -1,0 +1,32 @@
+# Developer build using publicly available base images.
+# Build from the repository root: podman build -f operators/endpointmetrics/Dockerfile.dev -t <image> .
+
+# Builder always runs on the host platform so Go cross-compilation is native (no emulation).
+FROM --platform=$BUILDPLATFORM golang:1.25 AS builder
+
+ARG TARGETOS=linux
+ARG TARGETARCH=amd64
+
+WORKDIR /workspace
+COPY go.sum go.mod ./
+COPY ./operators/endpointmetrics ./operators/endpointmetrics
+COPY ./operators/multiclusterobservability/api ./operators/multiclusterobservability/api
+COPY ./operators/multiclusterobservability/pkg/config ./operators/multiclusterobservability/pkg/config
+COPY ./operators/pkg ./operators/pkg
+
+RUN --mount=type=cache,target=/go/pkg/mod,sharing=shared \
+    --mount=type=cache,target=/root/.cache/go-build,sharing=shared \
+    CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} sh -c '\
+      go build -o /usr/local/bin/endpoint-monitoring-operator operators/endpointmetrics/main.go && \
+      go build -o /usr/local/bin/cmo-config-revert operators/endpointmetrics/cmd/cmo-config-revert/main.go'
+
+FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
+
+COPY ./operators/endpointmetrics/manifests /usr/local/manifests
+COPY --from=builder /usr/local/bin/endpoint-monitoring-operator /usr/local/bin/endpoint-monitoring-operator
+COPY --from=builder /usr/local/bin/cmo-config-revert /usr/local/bin/cmo-config-revert
+
+EXPOSE 8081 8383
+
+USER 1001:1001
+ENTRYPOINT ["/usr/local/bin/endpoint-monitoring-operator"]
