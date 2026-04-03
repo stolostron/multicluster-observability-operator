@@ -1,3 +1,7 @@
+// Copyright (c) Red Hat, Inc.
+// Copyright Contributors to the Open Cluster Management project
+// Licensed under the Apache License 2.0
+
 // run-e2e generates tests/resources/options.yaml from the live cluster state and
 // runs the e2e suite via ginkgo.
 //
