@@ -9,13 +9,26 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib/common.sh"
 
-if ! oc get multiclusterobservability observability &>/dev/null; then
-  log_info "No MultiClusterObservability CR found, nothing to do."
+mco_exists=false
+minio_exists=false
+oc get multiclusterobservability observability &>/dev/null && mco_exists=true
+oc get deployment minio -n "${MCO_NS}" &>/dev/null && minio_exists=true
+
+if ! $mco_exists && ! $minio_exists; then
+  log_info "Nothing to tear down (no MCO CR, no MinIO deployment found)."
   exit 0
 fi
 
-log_info "Deleting MultiClusterObservability CR..."
-oc delete multiclusterobservability observability
+if $mco_exists; then
+  log_info "Deleting MultiClusterObservability CR..."
+  oc delete multiclusterobservability observability
+fi
+
+log_info "Deleting MinIO (ephemeral storage deployed by setup-observability.sh)..."
+oc delete -f "${SCRIPT_DIR}/manifests/storage/minio-route.yaml" --ignore-not-found
+oc delete -f "${SCRIPT_DIR}/manifests/storage/minio-service.yaml" --ignore-not-found
+oc delete -f "${SCRIPT_DIR}/manifests/storage/minio-deployment.yaml" --ignore-not-found
+oc delete -f "${SCRIPT_DIR}/manifests/storage/thanos-storage-secret.yaml" --ignore-not-found
 
 wait_for_no_pods_in_namespace "${MCO_NS}" 300
 

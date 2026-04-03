@@ -25,10 +25,27 @@ if ! oc get multiclusterhub multiclusterhub -n "${ACM_NS}" &>/dev/null; then
   exit 0
 fi
 
-log_info "Deleting MultiClusterHub CR (letting the operator run finalizer cleanup)..."
-oc delete multiclusterhub multiclusterhub -n "${ACM_NS}"
+# Check whether a previous deletion attempt already set a deletionTimestamp.
+# If it did, the finalizer cleanup stalled — skip re-issuing the delete and the
+# wait, and proceed directly to the forced cluster-scoped cleanup below.
+mch_deletion_ts=$(oc get multiclusterhub multiclusterhub -n "${ACM_NS}" \
+  -o jsonpath='{.metadata.deletionTimestamp}' 2>/dev/null || true)
 
-wait_for_mch_deleted 600
+if [[ -n $mch_deletion_ts ]]; then
+  log_warn "MultiClusterHub already has deletionTimestamp=${mch_deletion_ts} — previous deletion stalled."
+  read -r -p "Skip the wait and proceed with forced cleanup? [y/N] " reply
+  if [[ $reply =~ ^[Yy]$ ]]; then
+    log_warn "Skipping wait; proceeding with forced cleanup of cluster-scoped artifacts."
+  else
+    # Deletion is already in progress — just wait for the finalizer to complete.
+    wait_for_mch_deleted 600
+  fi
+else
+  log_info "Deleting MultiClusterHub CR (letting the operator run finalizer cleanup)..."
+  oc delete multiclusterhub multiclusterhub -n "${ACM_NS}" --wait=false
+
+  wait_for_mch_deleted 600
+fi
 
 # Remove cluster-scoped artifacts that can block namespace deletion if the MCH
 # operator did not fully clean them up (e.g. on an aborted previous teardown).

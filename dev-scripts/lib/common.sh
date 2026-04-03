@@ -120,12 +120,13 @@ wait_for_no_pods_in_namespace() {
 }
 
 # Poll until MultiClusterHub reaches Running phase.
-# On each iteration, refreshes the list of components not yet available in-place.
+# On each iteration, refreshes the full component list in-place with colored status
+# indicators so the display height is stable and there is no need to scroll.
 # Requires jq for the component breakdown; falls back to the current phase if absent.
 wait_for_mch_running() {
   local timeout="${1:-900}"
   log_info "Waiting for MultiClusterHub to reach Running state (timeout: ${timeout}s)..."
-  local elapsed=0 not_ready phase prev_lines=0
+  local elapsed=0 prev_lines=0
 
   until [[ "$(oc get multiclusterhub multiclusterhub -n "${ACM_NS}" \
     -o jsonpath='{.status.phase}' 2>/dev/null)" == "Running" ]]; do
@@ -135,19 +136,31 @@ wait_for_mch_running() {
       return 1
     fi
     if command -v jq &>/dev/null; then
-      not_ready=$(oc get multiclusterhub multiclusterhub -n "${ACM_NS}" -o json 2>/dev/null |
-        jq -r '.status.components // {} | to_entries[]
-            | select(.value.type != "Available" or .value.status != "True")
-            | "  \(.key) (\(.value.kind)): \(.value.reason)"')
+      local status_msg
+      status_msg=$(oc get multiclusterhub multiclusterhub -n "${ACM_NS}" -o json 2>/dev/null |
+        jq -r '
+          [.status.components // {} | to_entries[] | select(.value.type != "Available" or .value.status != "True") | .key] | sort as $pending |
+          ($pending | length) as $len |
+          if $len > 0 then
+            ($len|tostring) + " pending [" +
+            if $len > 3 then
+              ($pending[0:3] | join(", ")) + ", ..."
+            else
+              ($pending | join(", "))
+            end + "]"
+          else
+            "All components available"
+          end
+        ')
       _erase_lines "$prev_lines"
-      if [[ -n $not_ready ]]; then
-        log_info "Components not yet available (${elapsed}s elapsed):"
-        printf '%s\n' "$not_ready"
-        prev_lines=$(($(printf '%s\n' "$not_ready" | wc -l) + 1))
+      if [[ -n $status_msg ]]; then
+        log_info "Component status (${elapsed}s elapsed): $status_msg"
+        prev_lines=1
       else
         prev_lines=0
       fi
     else
+      local phase
       phase=$(oc get multiclusterhub multiclusterhub -n "${ACM_NS}" \
         -o jsonpath='{.status.phase}' 2>/dev/null || true)
       _erase_lines "$prev_lines"
@@ -161,12 +174,13 @@ wait_for_mch_running() {
   log_info "MultiClusterHub is Running."
 }
 
-# Poll until MultiClusterHub CR is fully gone, refreshing components still being removed.
+# Poll until MultiClusterHub CR is fully gone, refreshing the full component list
+# in-place with colored status indicators so the display height is stable.
 # Requires jq for the component breakdown; falls back to the current phase if absent.
 wait_for_mch_deleted() {
   local timeout="${1:-600}"
   log_info "Waiting for MultiClusterHub components to be removed (timeout: ${timeout}s)..."
-  local elapsed=0 remaining phase prev_lines=0
+  local elapsed=0 prev_lines=0
 
   until ! oc get multiclusterhub multiclusterhub -n "${ACM_NS}" &>/dev/null; do
     if [[ $elapsed -ge $timeout ]]; then
@@ -175,19 +189,31 @@ wait_for_mch_deleted() {
       return 1
     fi
     if command -v jq &>/dev/null; then
-      remaining=$(oc get multiclusterhub multiclusterhub -n "${ACM_NS}" -o json 2>/dev/null |
-        jq -r '.status.components // {} | to_entries[]
-            | select(.value.status != "Unknown")
-            | "  \(.key) (\(.value.kind)): still present"')
+      local status_msg
+      status_msg=$(oc get multiclusterhub multiclusterhub -n "${ACM_NS}" -o json 2>/dev/null |
+        jq -r '
+          [.status.components // {} | to_entries[] | select(.value.status != "Unknown") | .key] | sort as $rem |
+          ($rem | length) as $len |
+          if $len > 0 then
+            ($len|tostring) + " remaining [" +
+            if $len > 3 then
+              ($rem[0:3] | join(", ")) + ", ..."
+            else
+              ($rem | join(", "))
+            end + "]"
+          else
+            "0 remaining"
+          end
+        ')
       _erase_lines "$prev_lines"
-      if [[ -n $remaining ]]; then
-        log_info "Components still being removed (${elapsed}s elapsed):"
-        printf '%s\n' "$remaining"
-        prev_lines=$(($(printf '%s\n' "$remaining" | wc -l) + 1))
+      if [[ -n $status_msg ]]; then
+        log_info "Removal status (${elapsed}s elapsed): $status_msg"
+        prev_lines=1
       else
         prev_lines=0
       fi
     else
+      local phase
       phase=$(oc get multiclusterhub multiclusterhub -n "${ACM_NS}" \
         -o jsonpath='{.status.phase}' 2>/dev/null || true)
       _erase_lines "$prev_lines"
