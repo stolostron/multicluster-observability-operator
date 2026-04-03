@@ -31,6 +31,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"syscall"
@@ -125,7 +126,7 @@ func main() {
 
 func run(ctx context.Context, hubContext string, focuses, skips stringSlice, install, uninstall bool) error {
 	if _, err := exec.LookPath("ginkgo"); err != nil {
-		return fmt.Errorf("ginkgo not found in PATH — install with: go install github.com/onsi/ginkgo/v2/ginkgo@latest")
+		return fmt.Errorf("ginkgo not found in PATH — install with: go install github.com/onsi/ginkgo/v2/ginkgo@v2.27.2")
 	}
 
 	rawConfig, err := clientcmd.NewDefaultClientConfigLoadingRules().Load()
@@ -382,13 +383,23 @@ func findContextForURLs(rawConfig *clientcmdapi.Config, serverURLs []string) (co
 		}
 	}
 
-	// Return the first context that uses a matching cluster.
+	// Collect all contexts that reference a matching cluster, then sort by name
+	// so the selection is deterministic regardless of map iteration order.
+	type match struct {
+		ctxName   string
+		serverURL string
+	}
+	var matches []match
 	for ctxName, ctx := range rawConfig.Contexts {
 		if orig, matched := matchingClusters[ctx.Cluster]; matched {
-			return ctxName, orig, true
+			matches = append(matches, match{ctxName, orig})
 		}
 	}
-	return "", "", false
+	if len(matches) == 0 {
+		return "", "", false
+	}
+	slices.SortFunc(matches, func(a, b match) int { return strings.Compare(a.ctxName, b.ctxName) })
+	return matches[0].ctxName, matches[0].serverURL, true
 }
 
 // getBaseDomain returns the cluster base domain by reading the default IngressController.

@@ -60,7 +60,15 @@ if $mch_exists; then
 
   if [[ -n $mch_deletion_ts ]]; then
     log_warn "MultiClusterHub already has deletionTimestamp=${mch_deletion_ts} — previous deletion stalled."
-    read -r -p "Skip the wait and proceed with forced cleanup? [y/N] " reply
+    reply=n
+    if [[ -n ${FORCE_CLEANUP:-} ]]; then
+      log_warn "FORCE_CLEANUP set — skipping wait and proceeding with forced cleanup."
+      reply=y
+    elif [[ -t 0 ]]; then
+      read -r -p "Skip the wait and proceed with forced cleanup? [y/N] " reply
+    else
+      log_warn "Non-interactive mode — defaulting to wait. Set FORCE_CLEANUP=1 to skip."
+    fi
     if [[ $reply =~ ^[Yy]$ ]]; then
       log_warn "Skipping wait; proceeding with forced cleanup of cluster-scoped artifacts."
     else

@@ -88,6 +88,23 @@ func TestFindContextForURLs(t *testing.T) {
 			wantServerURL: "https://api.cluster.example.com:6443",
 			wantOK:        true,
 		},
+		{
+			// Two contexts point at the same cluster server; the lexicographically
+			// smaller context name must always be returned regardless of map
+			// iteration order.
+			name: "two matching contexts — deterministic selection",
+			config: func() *clientcmdapi.Config {
+				cfg := clientcmdapi.NewConfig()
+				cfg.Clusters["my-cluster"] = &clientcmdapi.Cluster{Server: "https://api.cluster.example.com:6443"}
+				cfg.Contexts["zzz-context"] = &clientcmdapi.Context{Cluster: "my-cluster"}
+				cfg.Contexts["aaa-context"] = &clientcmdapi.Context{Cluster: "my-cluster"}
+				return cfg
+			}(),
+			serverURLs:    []string{"https://api.cluster.example.com:6443"},
+			wantContext:   "aaa-context",
+			wantServerURL: "https://api.cluster.example.com:6443",
+			wantOK:        true,
+		},
 	}
 
 	for _, tt := range tests {

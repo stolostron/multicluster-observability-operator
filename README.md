@@ -177,7 +177,7 @@ ACM_VERSION=2.16 ./dev-scripts/setup-upstream-catalog.sh
 ./dev-scripts/setup-observability.sh
 
 # Test a specific image build
-MCO_TAG=2.17.0-SNAPSHOT-... ./dev-scripts/image-override.sh
+MCO_TAG=2.17.0-SNAPSHOT-<YOUR_TAG> ./dev-scripts/image-override.sh
 
 # Run e2e tests (requires ginkgo)
 ./dev-scripts/run-e2e.sh --focus mcoa
