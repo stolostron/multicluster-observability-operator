@@ -108,8 +108,8 @@ if command -v jq &>/dev/null; then
     log_info "  Removing finalizers from ManagedClusterAddOn ${ns}/${name}..."
     oc patch managedclusteraddon "$name" -n "$ns" \
       --type=merge -p '{"metadata":{"finalizers":null}}' 2>/dev/null || true
-  done < <(oc get managedclusteraddon --all-namespaces -o json 2>/dev/null \
-    | jq -r '.items[] | select(.metadata.deletionTimestamp != null) | "\(.metadata.namespace)/\(.metadata.name)"')
+  done < <(oc get managedclusteraddon --all-namespaces -o json 2>/dev/null |
+    jq -r '.items[] | select(.metadata.deletionTimestamp != null) | "\(.metadata.namespace)/\(.metadata.name)"')
 else
   log_warn "jq not available — skipping addon finalizer cleanup; MCE deletion may stall"
 fi
@@ -125,8 +125,8 @@ if command -v jq &>/dev/null; then
     log_info "  Removing finalizers from Klusterlet ${name}..."
     oc patch klusterlet "$name" \
       --type=merge -p '{"metadata":{"finalizers":null}}' 2>/dev/null || true
-  done < <(oc get klusterlet -o json 2>/dev/null \
-    | jq -r '.items[] | select(.metadata.deletionTimestamp != null) | .metadata.name')
+  done < <(oc get klusterlet -o json 2>/dev/null |
+    jq -r '.items[] | select(.metadata.deletionTimestamp != null) | .metadata.name')
 fi
 
 # Now tell OLM to stop managing both operators.
