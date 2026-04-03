@@ -548,7 +548,7 @@ func runGinkgo(ctx context.Context, repoRoot, optionsFile string, focuses, skips
 		filepath.Join(repoRoot, testSuiteDir),
 		"--",
 		"-options="+optionsFile,
-		"-v=6",
+		"-v=2",
 	)
 
 	cmd := exec.CommandContext(ctx, "ginkgo", args...) //nolint:gosec // ginkgo is a known test runner resolved via PATH
