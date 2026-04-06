@@ -66,8 +66,14 @@ func mockApplyChangesFunc(ctx context.Context, c client.Client, configData RSNam
 
 func mockGetDefaultConfigFunc() map[string]string {
 	return map[string]string{
-		"prometheusRuleConfig":   "test-rule-config",
-		"placementConfiguration": "test-placement-config",
+		"prometheusRuleConfig": `namespaceFilterCriteria:
+  exclusionCriteria:
+    - "openshift.*"
+recommendationPercentage: 110
+`,
+		"placementConfiguration": `spec:
+  predicates: []
+`,
 	}
 }
 
@@ -188,6 +194,61 @@ func TestHandleComponentRightSizing_FeatureEnabled(t *testing.T) {
 	}, cm)
 	require.NoError(t, err)
 	assert.Contains(t, cm.Data, "prometheusRuleConfig")
+}
+
+func TestHandleComponentRightSizing_FreshEnableAfterDelegation(t *testing.T) {
+	scheme := setupComponentTestScheme(t)
+	mco := newTestMCOForComponent(ComponentTypeNamespace, "custom-ns", true)
+
+	applyChangesCalled := false
+	trackingApplyFunc := func(ctx context.Context, c client.Client, configData RSNamespaceConfigMapData) error {
+		applyChangesCalled = true
+		return nil
+	}
+
+	componentConfig := ComponentConfig{
+		ComponentType:            ComponentTypeNamespace,
+		ConfigMapName:            "test-config",
+		PlacementName:            "test-placement",
+		PlacementBindingName:     "test-binding",
+		PrometheusRulePolicyName: "test-policy",
+		DefaultNamespace:         "default-ns",
+		GetDefaultConfigFunc:     mockGetDefaultConfigFunc,
+		ApplyChangesFunc:         trackingApplyFunc,
+	}
+
+	// Simulate state after delegation cleanup reset (Change 1)
+	state := &ComponentState{
+		Namespace: "custom-ns",
+		Enabled:   false, // Reset by CleanupPolicyResourcesForDelegation
+	}
+
+	// Pre-create ConfigMap with valid data (as would exist from prior MCOA usage)
+	existingCM := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-config",
+			Namespace: "open-cluster-management-observability",
+		},
+		Data: mockGetDefaultConfigFunc(),
+	}
+
+	client := fake.NewClientBuilder().
+		WithScheme(scheme).
+		WithObjects(mco, existingCM).
+		Build()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	err := HandleComponentRightSizing(ctx, client, mco, componentConfig, state)
+	require.NoError(t, err)
+
+	// Verify state
+	assert.True(t, state.Enabled)
+	assert.Equal(t, "custom-ns", state.Namespace)
+
+	// Verify ApplyChangesFunc was called (freshEnable path)
+	assert.True(t, applyChangesCalled, "ApplyChangesFunc should be called on fresh enable after delegation reset")
 }
 
 func TestCleanupComponentResources_WithConfigMap(t *testing.T) {

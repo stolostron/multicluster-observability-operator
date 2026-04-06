@@ -108,6 +108,9 @@ func HandleComponentRightSizing(
 		return nil
 	}
 
+	// Detect fresh enable (first time, or re-enable after delegation cleanup reset)
+	freshEnable := !state.Enabled
+
 	// Set the flag if namespaceBindingUpdated
 	namespaceBindingUpdated := state.Namespace != newBinding && state.Enabled
 
@@ -123,10 +126,12 @@ func HandleComponentRightSizing(
 		return err
 	}
 
-	if namespaceBindingUpdated {
-		// Clean up resources except config map to update NamespaceBinding
-		if err := CleanupComponentResources(ctx, c, componentConfig, existingNamespace, true); err != nil {
-			return fmt.Errorf("rs - failed to cleanup %s resources after namespace binding update: %w", componentConfig.ComponentType, err)
+	if namespaceBindingUpdated || freshEnable {
+		if namespaceBindingUpdated {
+			// Clean up resources except config map to update NamespaceBinding
+			if err := CleanupComponentResources(ctx, c, componentConfig, existingNamespace, true); err != nil {
+				return fmt.Errorf("rs - failed to cleanup %s resources after namespace binding update: %w", componentConfig.ComponentType, err)
+			}
 		}
 
 		// Get configmap
@@ -141,7 +146,7 @@ func HandleComponentRightSizing(
 			return fmt.Errorf("rs - failed to extract config data: %w", err)
 		}
 
-		// If NamespaceBinding has been updated apply the Policy Placement Placementbinding again
+		// Apply the Policy, Placement, PlacementBinding
 		if err := componentConfig.ApplyChangesFunc(ctx, c, configData); err != nil {
 			return fmt.Errorf("rs - failed to apply configmap changes: %w", err)
 		}

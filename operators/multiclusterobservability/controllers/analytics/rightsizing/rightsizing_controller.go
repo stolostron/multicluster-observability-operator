@@ -110,5 +110,10 @@ func CleanupPolicyResourcesForDelegation(
 	rsnamespace.CleanupRSNamespaceResources(ctx, c, rsnamespace.ComponentState.Namespace, true)
 	rsvirtualization.CleanupRSVirtualizationResources(ctx, c, rsvirtualization.ComponentState.Namespace, true)
 
+	// Reset component state so next MCO-mode reconcile treats it as fresh enable
+	// and recreates Policy/Placement/PlacementBinding resources.
+	rsnamespace.ComponentState.Enabled = false
+	rsvirtualization.ComponentState.Enabled = false
+
 	log.Info("rs - Policy cleanup for MCOA delegation completed")
 }
