@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	routev1 "github.com/openshift/api/route/v1"
+	obv1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -135,5 +136,54 @@ func TestClusterManagmentAddon(t *testing.T) {
 	err = DeleteClusterManagementAddon(context.Background(), c)
 	if err != nil {
 		t.Fatalf("Failed to delete clustermanagementaddon: (%v)", err)
+	}
+}
+
+func TestIsRightSizingDelegated(t *testing.T) {
+	tests := []struct {
+		name     string
+		cr       *obv1beta2.MultiClusterObservability
+		expected bool
+	}{
+		{
+			name:     "no annotations",
+			cr:       &obv1beta2.MultiClusterObservability{},
+			expected: false,
+		},
+		{
+			name: "other annotation only",
+			cr: &obv1beta2.MultiClusterObservability{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{"other": "value"},
+				},
+			},
+			expected: false,
+		},
+		{
+			name: "annotation v1",
+			cr: &obv1beta2.MultiClusterObservability{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{RightSizingCapableAnnotation: "v1"},
+				},
+			},
+			expected: true,
+		},
+		{
+			name: "annotation v2 (unsupported)",
+			cr: &obv1beta2.MultiClusterObservability{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{RightSizingCapableAnnotation: "v2"},
+				},
+			},
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := IsRightSizingDelegated(tt.cr); got != tt.expected {
+				t.Errorf("got %v, want %v", got, tt.expected)
+			}
+		})
 	}
 }

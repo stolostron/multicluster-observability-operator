@@ -253,6 +253,9 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	}
 	disableMCOACMAORender := !apierrors.IsNotFound(err)
 
+	// Check if right-sizing is delegated to MCOA via MCO CR annotation.
+	rightSizingDelegated := util.IsRightSizingDelegated(instance)
+
 	obsAPIURL, err := config.GetObsAPIExternalURL(ctx, r.Client, config.GetDefaultNamespace())
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to get the Observatorium API URL: %w", err) // Already wrapped
@@ -276,6 +279,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 			DisableCMAORender:              disableMCOACMAORender,
 			MetricsHubHostname:             obsAPIURL.Host,
 			MetricsHubAlertmanagerHostname: alertmanagerURL.Host,
+			RightSizingDelegated:           rightSizingDelegated,
 		},
 	}
 
@@ -337,7 +341,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		}
 	}
 
-	if !rendering.MCOAEnabled(instance) {
+	if !rendering.MCOAEnabled(instance) && !rightSizingDelegated {
 		namespace, labels := renderer.NamespaceAndLabels()
 		toDelete, err := renderer.MCOAResources(namespace, labels)
 		if err != nil {
@@ -347,6 +351,18 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 			resNS := res.GetNamespace()
 			if err := deployer.Undeploy(ctx, res, instance); err != nil {
 				return ctrl.Result{}, fmt.Errorf("failed to undeploy %s %s/%s: %w", res.GetKind(), resNS, res.GetName(), err)
+			}
+		}
+
+		// Explicitly delete the CMA so the addon framework cleans up ManagedClusterAddons
+		// and ManifestWorks on spokes. MCOAResources() skips CMA when DisableCMAORender
+		// is set (to preserve user annotations during normal operation), but during cleanup
+		// we must remove it to trigger the full addon lifecycle teardown.
+		cma := &addonv1alpha1.ClusterManagementAddOn{}
+		if err := r.Client.Get(ctx, types.NamespacedName{Name: config.MultiClusterObservabilityAddon}, cma); err == nil {
+			reqLogger.Info("Deleting ClusterManagementAddOn for MCOA cleanup", "name", config.MultiClusterObservabilityAddon)
+			if err := r.Client.Delete(ctx, cma); err != nil && !apierrors.IsNotFound(err) {
+				return ctrl.Result{}, fmt.Errorf("failed to delete ClusterManagementAddOn %s: %w", config.MultiClusterObservabilityAddon, err)
 			}
 		}
 	}

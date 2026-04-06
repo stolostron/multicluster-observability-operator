@@ -16,10 +16,13 @@ import (
 	mcoctrl "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/multiclusterobservability"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	commonutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
+	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -35,9 +38,10 @@ const analyticsFinalizer = "observability.open-cluster-management.io/analytics-c
 
 // AnalyticsReconciler reconciles a MultiClusterObservability object
 type AnalyticsReconciler struct {
-	Client client.Client
-	Log    logr.Logger
-	Scheme *runtime.Scheme
+	Client   client.Client
+	Log      logr.Logger
+	Scheme   *runtime.Scheme
+	Recorder record.EventRecorder
 }
 
 // +kubebuilder:rbac:groups=observability.open-cluster-management.io,resources=multiclusterobservabilities,verbs=get;list;watch;create;update;patch;delete
@@ -46,6 +50,10 @@ type AnalyticsReconciler struct {
 
 // Reconcile handles reconciliation of right-sizing resources based on the MCO lifecycle.
 func (r *AnalyticsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	// TODO: Future enhancement - Add status subresource to track right-sizing state
+	// This would allow users to see current mode (MCO Policy vs MCOA ManifestWork)
+	// and configuration details via: kubectl get mco -o jsonpath='{.status.rightSizing}'
+
 	reqLogger := log.WithValues("Request.Namespace", req.Namespace, "Request.Name", req.Name)
 	reqLogger.Info("Reconciling RightSizing")
 
@@ -102,9 +110,48 @@ func (r *AnalyticsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, err
 	}
 
-	// create rightsizing component
+	// ═══════════════════════════════════════════════════════════════════
+	// MIGRATION GATE: Check if MCOA should handle right-sizing
+	// ═══════════════════════════════════════════════════════════════════
+
+	// Check if right-sizing is delegated to MCOA via MCO CR annotation.
+	// The annotation is the authoritative signal — if present, MCOA manages right-sizing
+	// via ManifestWork instead of MCO's Policy-based approach.
+	mcoaCapable := util.IsRightSizingDelegated(instance)
+
+	if mcoaCapable {
+		reqLogger.Info("Right-sizing delegated to MCOA via MCO CR annotation")
+		// Cleanup Policy resources but keep ConfigMaps
+		rightsizingctrl.CleanupPolicyResourcesForDelegation(ctx, r.Client, instance)
+
+		// Sync MCO CR's right-sizing state to ADC so MCOA knows what to deploy.
+		// This is critical when switching from MCO mode (which sets "disabled" in ADC)
+		// to MCOA mode — without this, MCOA would see stale "disabled" values.
+		if err := r.syncRightSizingStateToADC(ctx, instance, true, reqLogger); err != nil {
+			reqLogger.Error(err, "Failed to sync right-sizing state to AddOnDeploymentConfig for MCOA delegation")
+		}
+
+		// Record event for observability
+		if r.Recorder != nil {
+			r.Recorder.Event(instance, corev1.EventTypeNormal, "RightSizingDelegated",
+				"Right-sizing management delegated to MCOA (MCO CR has delegation annotation)")
+		}
+		return ctrl.Result{}, nil
+	}
+
+	// ═══════════════════════════════════════════════════════════════════
+	// MCO Mode: Create Policy resources (current GA behavior)
+	// ═══════════════════════════════════════════════════════════════════
+	reqLogger.V(1).Info("MCO managing right-sizing via Policy")
 	if err := rightsizingctrl.CreateRightSizingComponent(ctx, r.Client, instance); err != nil {
 		return ctrl.Result{}, fmt.Errorf("rs - failed to create rightsizing component: %w", err)
+	}
+
+	// When MCO manages right-sizing, sync "disabled" to AddOnDeploymentConfig
+	// This tells MCOA to NOT deploy PrometheusRules via ManifestWork
+	if err := r.syncRightSizingStateToADC(ctx, instance, false, reqLogger); err != nil {
+		reqLogger.Error(err, "Failed to sync disabled state to AddOnDeploymentConfig")
+		// Don't fail the reconcile, MCO can still manage via Policy
 	}
 
 	return ctrl.Result{}, nil
@@ -175,11 +222,94 @@ func (r *AnalyticsReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	mcoPred := mcoctrl.GetMCOPredicateFunc()
 	cmNamespaceRSPred := rightsizingctrl.GetNamespaceRSConfigMapPredicateFunc(ctx, c)
 	cmVirtualizationRSPred := rightsizingctrl.GetVirtualizationRSConfigMapPredicateFunc(ctx, c)
-
 	return ctrl.NewControllerManagedBy(mgr).
 		Named("rightsizing").
 		For(&mcov1beta2.MultiClusterObservability{}, builder.WithPredicates(mcoPred)).
 		Watches(&corev1.ConfigMap{}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(cmNamespaceRSPred)).
 		Watches(&corev1.ConfigMap{}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(cmVirtualizationRSPred)).
 		Complete(r)
+}
+
+// syncRightSizingStateToADC syncs right-sizing state to AddOnDeploymentConfig.
+// When delegatingToMCOA=true: syncs the MCO CR's actual enabled/disabled state so MCOA knows what to deploy.
+// When delegatingToMCOA=false: forces "disabled" so MCOA does NOT deploy PrometheusRules (MCO manages via Policy).
+func (r *AnalyticsReconciler) syncRightSizingStateToADC(ctx context.Context, instance *mcov1beta2.MultiClusterObservability, delegatingToMCOA bool, reqLogger logr.Logger) error {
+	const (
+		keyPlatformNamespaceRightSizing      = "platformNamespaceRightSizing"
+		keyPlatformVirtualizationRightSizing = "platformVirtualizationRightSizing"
+		valueEnabled                         = "enabled"
+		valueDisabled                        = "disabled"
+	)
+
+	// Determine target values based on mode
+	nsValue := valueDisabled
+	virtValue := valueDisabled
+	if delegatingToMCOA {
+		// When delegating to MCOA, sync the MCO CR's actual right-sizing state
+		if instance.Spec.Capabilities != nil && instance.Spec.Capabilities.Platform != nil {
+			if instance.Spec.Capabilities.Platform.Analytics.NamespaceRightSizingRecommendation.Enabled {
+				nsValue = valueEnabled
+			}
+			if instance.Spec.Capabilities.Platform.Analytics.VirtualizationRightSizingRecommendation.Enabled {
+				virtValue = valueEnabled
+			}
+		}
+	}
+
+	adc := &addonv1alpha1.AddOnDeploymentConfig{}
+	err := r.Client.Get(ctx, types.NamespacedName{
+		Name:      util.MCOAClusterManagementAddOnName,
+		Namespace: config.GetDefaultNamespace(),
+	}, adc)
+	if err != nil {
+		// ADC doesn't exist - nothing to sync
+		return nil
+	}
+
+	// Single-pass: find indices and track if update needed
+	nsIdx, virtIdx := -1, -1
+	needsUpdate := false
+
+	for i, cv := range adc.Spec.CustomizedVariables {
+		switch cv.Name {
+		case keyPlatformNamespaceRightSizing:
+			nsIdx = i
+			if cv.Value != nsValue {
+				adc.Spec.CustomizedVariables[i].Value = nsValue
+				needsUpdate = true
+			}
+		case keyPlatformVirtualizationRightSizing:
+			virtIdx = i
+			if cv.Value != virtValue {
+				adc.Spec.CustomizedVariables[i].Value = virtValue
+				needsUpdate = true
+			}
+		}
+	}
+
+	// Append if not found
+	if nsIdx == -1 {
+		adc.Spec.CustomizedVariables = append(adc.Spec.CustomizedVariables,
+			addonv1alpha1.CustomizedVariable{Name: keyPlatformNamespaceRightSizing, Value: nsValue})
+		needsUpdate = true
+	}
+	if virtIdx == -1 {
+		adc.Spec.CustomizedVariables = append(adc.Spec.CustomizedVariables,
+			addonv1alpha1.CustomizedVariable{Name: keyPlatformVirtualizationRightSizing, Value: virtValue})
+		needsUpdate = true
+	}
+
+	if needsUpdate {
+		if delegatingToMCOA {
+			reqLogger.Info("rs - syncing right-sizing state to ADC for MCOA delegation",
+				"namespace", nsValue, "virtualization", virtValue)
+		} else {
+			reqLogger.V(1).Info("rs - syncing disabled state to ADC (MCO takes over)")
+		}
+		if err := r.Client.Update(ctx, adc); err != nil {
+			return fmt.Errorf("failed to update AddOnDeploymentConfig: %w", err)
+		}
+	}
+
+	return nil
 }

@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net/url"
 
+	obv1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -22,6 +23,12 @@ const (
 	AddonGroup                    = "addon.open-cluster-management.io"
 	AddonDeploymentConfigResource = "addondeploymentconfigs"
 	grafanaLink                   = "/d/2b679d600f3b9e7676a7c5ac3643d448/acm-clusters-overview"
+
+	// MCOA ClusterManagementAddOn name
+	MCOAClusterManagementAddOnName = "multicluster-observability-addon"
+
+	// Right-sizing capability annotation - indicates MCOA can handle right-sizing
+	RightSizingCapableAnnotation = "observability.open-cluster-management.io/right-sizing-capable"
 )
 
 type clusterManagementAddOnSpec struct {
@@ -81,6 +88,24 @@ func DeleteClusterManagementAddon(ctx context.Context, client client.Client) err
 
 	log.Info("ClusterManagementAddon deleted", "name", ObservabilityController)
 	return nil
+}
+
+// SupportedRightSizingVersion is the version of right-sizing capability that MCO supports.
+// Currently only "v1" is supported. This enables forward compatibility checks.
+const SupportedRightSizingVersion = "v1"
+
+// IsRightSizingDelegated checks if the MCO CR has the right-sizing delegation
+// annotation with a supported version value. When true, MCOA handles right-sizing
+// via ManifestWork instead of MCO's Policy-based approach.
+func IsRightSizingDelegated(cr *obv1beta2.MultiClusterObservability) bool {
+	if cr.Annotations == nil {
+		return false
+	}
+	value, exists := cr.Annotations[RightSizingCapableAnnotation]
+	if !exists {
+		return false
+	}
+	return value == SupportedRightSizingVersion
 }
 
 func newClusterManagementAddon(c client.Client) (*addonv1alpha1.ClusterManagementAddOn, error) {

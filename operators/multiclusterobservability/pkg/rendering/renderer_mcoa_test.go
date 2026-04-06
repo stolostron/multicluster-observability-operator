@@ -216,7 +216,7 @@ func TestRenderAddonDeploymentConfig(t *testing.T) {
 	instrV1alpha1 := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.InstrumentationCRDName)
 	promV1alpha1 := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.PrometheusAgentCRDName)
 
-	assert.Len(t, got.Spec.CustomizedVariables, 10)
+	assert.Len(t, got.Spec.CustomizedVariables, 12)
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1alpha1.CustomizedVariable{Name: namePlatformLogsCollection, Value: clfV1})
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1alpha1.CustomizedVariable{Name: namePlatformIncidentDetection, Value: uipluginsCRDFQDN})
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1alpha1.CustomizedVariable{Name: nameUserWorkloadLogsCollection, Value: clfV1})
@@ -227,6 +227,9 @@ func TestRenderAddonDeploymentConfig(t *testing.T) {
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1alpha1.CustomizedVariable{Name: nameMetricsHubHostname, Value: "observability-hub"})
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1alpha1.CustomizedVariable{Name: nameMetricsAlertManagerHostname, Value: "alertmanager-hub"})
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1alpha1.CustomizedVariable{Name: namePLatformMetricsUI, Value: uipluginsCRDFQDN})
+	// Right-sizing variables are included when platform metrics is enabled
+	assert.Contains(t, got.Spec.CustomizedVariables, addonv1alpha1.CustomizedVariable{Name: "platformNamespaceRightSizing", Value: "disabled"})
+	assert.Contains(t, got.Spec.CustomizedVariables, addonv1alpha1.CustomizedVariable{Name: "platformVirtualizationRightSizing", Value: "disabled"})
 }
 
 func TestMCOAEnabled(t *testing.T) {
