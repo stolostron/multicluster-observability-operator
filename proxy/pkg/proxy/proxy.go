@@ -332,7 +332,7 @@ func isACMLabelQuery(req *http.Request) (bool, error) {
 	}
 
 	matchers := values["match[]"]
-	if slices.Contains(matchers, proxyconfig.RBACProxyLabelMetricName) {
+	if slices.Contains(matchers, proxyconfig.RBACProxyLabelMetricName+"{}") || slices.Contains(matchers, proxyconfig.RBACProxyLabelMetricName) {
 		return true, nil
 	}
 
