@@ -19,12 +19,14 @@ import (
 	observatoriumv1alpha1 "github.com/stolostron/observatorium-operator/api/v1alpha1"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
+	discoveryv1 "k8s.io/api/discovery/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -877,6 +879,195 @@ func TestGenerateAPIGatewayRoute(t *testing.T) {
 			}
 			if !reflect.DeepEqual(list.Items[0].Spec, tt.want.Spec) {
 				t.Fatalf("Expected route spec: %v, got %v", tt.want.Spec, list.Items[0].Spec)
+			}
+		})
+	}
+}
+
+func TestReconcileAlertmanagerEndpointsConfigMap(t *testing.T) {
+	ctx := context.Background()
+	targetNamespace := mcoconfig.GetDefaultNamespace()
+	tcpProtocol := corev1.ProtocolTCP
+
+	newEndpointSlice := func(name string, endpoints []discoveryv1.Endpoint, ports []discoveryv1.EndpointPort) *discoveryv1.EndpointSlice {
+		return &discoveryv1.EndpointSlice{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: targetNamespace,
+				Labels:    map[string]string{"kubernetes.io/service-name": mcoconfig.AlertmanagerServiceName},
+			},
+			AddressType: discoveryv1.AddressTypeIPv4,
+			Endpoints:   endpoints,
+			Ports:       ports,
+		}
+	}
+
+	tests := []struct {
+		name           string
+		existingCM     *corev1.ConfigMap
+		endpointSlices []*discoveryv1.EndpointSlice
+		wantAddresses  []string
+	}{
+		{
+			name:          "creates ConfigMap with no EndpointSlices",
+			wantAddresses: []string{},
+		},
+		{
+			name: "creates ConfigMap from ready endpoints",
+			endpointSlices: []*discoveryv1.EndpointSlice{
+				newEndpointSlice("am-slice-1",
+					[]discoveryv1.Endpoint{
+						{Addresses: []string{"10.0.0.1"}, Conditions: discoveryv1.EndpointConditions{Ready: ptr.To(true)}},
+						{Addresses: []string{"10.0.0.2"}, Conditions: discoveryv1.EndpointConditions{Ready: ptr.To(true)}},
+					},
+					[]discoveryv1.EndpointPort{
+						{Port: ptr.To(int32(9093)), Protocol: &tcpProtocol},
+					},
+				),
+			},
+			wantAddresses: []string{"10.0.0.1:9093", "10.0.0.2:9093"},
+		},
+		{
+			name: "skips not-ready endpoints",
+			endpointSlices: []*discoveryv1.EndpointSlice{
+				newEndpointSlice("am-slice-2",
+					[]discoveryv1.Endpoint{
+						{Addresses: []string{"10.0.0.1"}, Conditions: discoveryv1.EndpointConditions{Ready: ptr.To(true)}},
+						{Addresses: []string{"10.0.0.2"}, Conditions: discoveryv1.EndpointConditions{Ready: ptr.To(false)}},
+					},
+					[]discoveryv1.EndpointPort{
+						{Port: ptr.To(int32(9093)), Protocol: &tcpProtocol},
+					},
+				),
+			},
+			wantAddresses: []string{"10.0.0.1:9093"},
+		},
+		{
+			name: "includes endpoints with nil Ready condition",
+			endpointSlices: []*discoveryv1.EndpointSlice{
+				newEndpointSlice("am-slice-3",
+					[]discoveryv1.Endpoint{
+						{Addresses: []string{"10.0.0.5"}, Conditions: discoveryv1.EndpointConditions{Ready: nil}},
+					},
+					[]discoveryv1.EndpointPort{
+						{Port: ptr.To(int32(9093)), Protocol: &tcpProtocol},
+					},
+				),
+			},
+			wantAddresses: []string{"10.0.0.5:9093"},
+		},
+		{
+			name: "aggregates across multiple EndpointSlices and sorts",
+			endpointSlices: []*discoveryv1.EndpointSlice{
+				newEndpointSlice("am-slice-a",
+					[]discoveryv1.Endpoint{
+						{Addresses: []string{"10.0.0.3"}, Conditions: discoveryv1.EndpointConditions{Ready: ptr.To(true)}},
+					},
+					[]discoveryv1.EndpointPort{
+						{Port: ptr.To(int32(9093)), Protocol: &tcpProtocol},
+					},
+				),
+				newEndpointSlice("am-slice-b",
+					[]discoveryv1.Endpoint{
+						{Addresses: []string{"10.0.0.1"}, Conditions: discoveryv1.EndpointConditions{Ready: ptr.To(true)}},
+					},
+					[]discoveryv1.EndpointPort{
+						{Port: ptr.To(int32(9093)), Protocol: &tcpProtocol},
+					},
+				),
+			},
+			wantAddresses: []string{"10.0.0.1:9093", "10.0.0.3:9093"},
+		},
+		{
+			name: "updates existing ConfigMap when data changes",
+			existingCM: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      alertmanagerEndpointsConfigMapName,
+					Namespace: targetNamespace,
+				},
+				Data: map[string]string{
+					alertmanagerEndpointsKey: "- old-stale-address:9093\n",
+				},
+			},
+			endpointSlices: []*discoveryv1.EndpointSlice{
+				newEndpointSlice("am-slice-upd",
+					[]discoveryv1.Endpoint{
+						{Addresses: []string{"10.0.1.1"}, Conditions: discoveryv1.EndpointConditions{Ready: ptr.To(true)}},
+					},
+					[]discoveryv1.EndpointPort{
+						{Port: ptr.To(int32(9093)), Protocol: &tcpProtocol},
+					},
+				),
+			},
+			wantAddresses: []string{"10.0.1.1:9093"},
+		},
+		{
+			name: "no-op when existing ConfigMap already matches",
+			existingCM: func() *corev1.ConfigMap {
+				data, _ := yaml.Marshal([]string{"10.0.2.1:9093"})
+				return &corev1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      alertmanagerEndpointsConfigMapName,
+						Namespace: targetNamespace,
+					},
+					Data: map[string]string{
+						alertmanagerEndpointsKey: string(data),
+					},
+				}
+			}(),
+			endpointSlices: []*discoveryv1.EndpointSlice{
+				newEndpointSlice("am-slice-noop",
+					[]discoveryv1.Endpoint{
+						{Addresses: []string{"10.0.2.1"}, Conditions: discoveryv1.EndpointConditions{Ready: ptr.To(true)}},
+					},
+					[]discoveryv1.EndpointPort{
+						{Port: ptr.To(int32(9093)), Protocol: &tcpProtocol},
+					},
+				),
+			},
+			wantAddresses: []string{"10.0.2.1:9093"},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			s := runtime.NewScheme()
+			scheme.AddToScheme(s)
+			discoveryv1.AddToScheme(s)
+
+			builder := fake.NewClientBuilder().WithScheme(s)
+
+			var objs []client.Object
+			for _, eps := range tc.endpointSlices {
+				objs = append(objs, eps)
+			}
+			if tc.existingCM != nil {
+				objs = append(objs, tc.existingCM)
+			}
+			if len(objs) > 0 {
+				builder = builder.WithObjects(objs...)
+			}
+			cl := builder.Build()
+
+			if err := reconcileAlertmanagerEndpointsConfigMap(ctx, cl); err != nil {
+				t.Fatalf("reconcileAlertmanagerEndpointsConfigMap() returned error: %v", err)
+			}
+
+			cm := &corev1.ConfigMap{}
+			if err := cl.Get(ctx, types.NamespacedName{
+				Name:      alertmanagerEndpointsConfigMapName,
+				Namespace: targetNamespace,
+			}, cm); err != nil {
+				t.Fatalf("failed to get ConfigMap: %v", err)
+			}
+
+			var got []string
+			if err := yaml.Unmarshal([]byte(cm.Data[alertmanagerEndpointsKey]), &got); err != nil {
+				t.Fatalf("failed to unmarshal ConfigMap data: %v", err)
+			}
+
+			if !reflect.DeepEqual(got, tc.wantAddresses) {
+				t.Errorf("addresses mismatch\n  got:  %v\n  want: %v", got, tc.wantAddresses)
 			}
 		})
 	}

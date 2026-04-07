@@ -26,6 +26,7 @@ import (
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
+	discoveryv1 "k8s.io/api/discovery/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -41,6 +42,9 @@ import (
 const (
 	endpointsConfigName = "observability-remotewrite-endpoints"
 	endpointsKey        = "endpoints.yaml"
+
+	alertmanagerEndpointsConfigMapName = "alertmanager-endpoints"
+	alertmanagerEndpointsKey           = "alertmanager-endpoints.yaml"
 
 	obsAPIGateway           = "observatorium-api"
 	obsApiGatewayTargetPort = "public"
@@ -601,6 +605,14 @@ func newAPISpec(c client.Client, mco *mcov1beta2.MultiClusterObservability) (obs
 			}
 		}
 	}
+	apiSpec.ExtraVolumeMounts = []obsv1alpha1.VolumeMount{
+		{
+			Type:      obsv1alpha1.VolumeMountTypeConfigMap,
+			MountPath: "/etc/observatorium/" + alertmanagerEndpointsKey,
+			Name:      alertmanagerEndpointsConfigMapName,
+			Key:       alertmanagerEndpointsKey,
+		},
+	}
 	return apiSpec, nil
 }
 
@@ -1045,5 +1057,69 @@ func addBackupLabel(c client.Client, name string, backupS *v1.Secret) error {
 			return err
 		}
 	}
+	return nil
+}
+
+func reconcileAlertmanagerEndpointsConfigMap(ctx context.Context, c client.Client) error {
+	endpointSliceList := &discoveryv1.EndpointSliceList{}
+	if err := c.List(ctx, endpointSliceList,
+		client.InNamespace(mcoconfig.GetDefaultNamespace()),
+		client.MatchingLabels{"kubernetes.io/service-name": mcoconfig.AlertmanagerServiceName},
+	); err != nil {
+		return fmt.Errorf("failed to list alertmanager EndpointSlices: %w", err)
+	}
+
+	// there may be a better way to handle addresses here...
+	var addresses []string
+	for _, eps := range endpointSliceList.Items {
+		for _, endpoint := range eps.Endpoints {
+			if endpoint.Conditions.Ready != nil && !*endpoint.Conditions.Ready {
+				continue
+			}
+			for _, addr := range endpoint.Addresses {
+				for _, port := range eps.Ports {
+					if port.Port != nil {
+						addresses = append(addresses, fmt.Sprintf("%s:%d", addr, *port.Port))
+					}
+				}
+			}
+		}
+	}
+	slices.Sort(addresses)
+
+	amYaml, err := yaml.Marshal(addresses)
+	if err != nil {
+		return fmt.Errorf("failed to marshal alertmanager endpoints: %w", err)
+	}
+
+	desired := &v1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      alertmanagerEndpointsConfigMapName,
+			Namespace: mcoconfig.GetDefaultNamespace(),
+		},
+		Data: map[string]string{
+			alertmanagerEndpointsKey: string(amYaml),
+		},
+	}
+
+	existing := &v1.ConfigMap{}
+	err = c.Get(ctx, types.NamespacedName{
+		Name:      alertmanagerEndpointsConfigMapName,
+		Namespace: mcoconfig.GetDefaultNamespace(),
+	}, existing)
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			log.Info("Creating alertmanager endpoints ConfigMap", "name", alertmanagerEndpointsConfigMapName)
+			return c.Create(ctx, desired)
+		}
+		return fmt.Errorf("failed to get alertmanager endpoints ConfigMap: %w", err)
+	}
+
+	if !reflect.DeepEqual(existing.Data, desired.Data) {
+		log.Info("Updating alertmanager endpoints ConfigMap", "name", alertmanagerEndpointsConfigMapName)
+		existing.Data = desired.Data
+		return c.Update(ctx, existing)
+	}
+
 	return nil
 }

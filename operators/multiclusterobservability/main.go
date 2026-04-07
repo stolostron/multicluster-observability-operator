@@ -31,6 +31,7 @@ import (
 	observatoriumAPIs "github.com/stolostron/observatorium-operator/api/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	discoveryv1 "k8s.io/api/discovery/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -197,6 +198,9 @@ func main() {
 		},
 		addonv1alpha1.SchemeGroupVersion.WithKind("ManagedClusterAddOn"): {
 			{FieldSelector: fmt.Sprintf("metadata.name=%s", config.ManagedClusterAddonName)},
+		},
+		discoveryv1.SchemeGroupVersion.WithKind("EndpointSlice"): {
+			{FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace())},
 		},
 	}
 
