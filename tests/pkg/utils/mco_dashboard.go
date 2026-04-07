@@ -5,73 +5,163 @@
 package utils
 
 import (
+	"context"
 	"crypto/tls"
-	"errors"
+	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"os"
-	"strings"
-
-	"k8s.io/klog/v2"
 )
 
 const (
 	trueStr = "true"
 )
 
-func ContainDashboard(opt TestOptions, title string) (error, bool) {
-	grafanaConsoleURL := GetGrafanaURL(opt)
-	path := "/api/search?"
-	queryParams := url.PathEscape(fmt.Sprintf("query=%s", title))
-	req, err := http.NewRequest(
-		http.MethodGet,
-		grafanaConsoleURL+path+queryParams,
-		nil)
-	if err != nil {
-		return err, false
-	}
+type DashboardMeta struct {
+	ID          int64
+	UID         string
+	Tags        []string
+	FolderTitle string
+}
 
+func getGrafanaHttpClient(opt TestOptions) (*http.Client, string, bool, error) {
 	client := &http.Client{}
-	if os.Getenv("IS_KIND_ENV") != trueStr {
+	token := ""
+	isKind := os.Getenv("IS_KIND_ENV") == trueStr
+
+	if !isKind {
 		tr := &http.Transport{
 			// #nosec G402 -- Used in test.
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 		}
 
 		client = &http.Client{Transport: tr}
-		token, err := FetchBearerToken(opt)
+		var err error
+		token, err = FetchBearerToken(opt)
 		if err != nil {
-			return err, false
+			return nil, "", false, err
 		}
-		if token != "" {
-			req.Header.Set("Authorization", "Bearer "+token)
-		}
+	}
+	return client, token, isKind, nil
+}
+
+func doGrafanaGet(ctx context.Context, opt TestOptions, path string) (*http.Response, error) {
+	client, token, isKind, err := getGrafanaHttpClient(opt)
+	if err != nil {
+		return nil, err
+	}
+
+	grafanaConsoleURL := GetGrafanaURL(opt)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, grafanaConsoleURL+path, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
+	if !isKind {
 		req.Host = opt.HubCluster.GrafanaHost
 	}
 
-	resp, err := client.Do(req)
+	return client.Do(req)
+}
+
+func grafanaDecodeJSON[T any](resp *http.Response, errMsg string) (T, error) {
+	var result T
+	if resp.StatusCode != http.StatusOK {
+		return result, fmt.Errorf("%s, status: %d", errMsg, resp.StatusCode)
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return result, fmt.Errorf("failed to decode grafana response: %w", err)
+	}
+
+	return result, nil
+}
+
+func ContainDashboard(opt TestOptions, title string) (bool, error) {
+	meta, err := GetDashboardMetadata(context.Background(), opt, title)
 	if err != nil {
-		return err, false
+		return false, err
+	}
+	return meta != nil, nil
+}
+
+func GetDashboardMetadata(ctx context.Context, opt TestOptions, title string) (*DashboardMeta, error) {
+	params := url.Values{}
+	params.Add("query", title)
+	path := "/api/search?" + params.Encode()
+	resp, err := doGrafanaGet(ctx, opt, path)
+	if err != nil {
+		return nil, err
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	if resp.StatusCode != http.StatusOK {
-		klog.Errorf("resp: %+v\n", resp)
-		klog.Errorf("err: %+v\n", err)
-		return errors.New("failed to access grafana api"), false
+	type searchResult struct {
+		ID          int64    `json:"id"`
+		UID         string   `json:"uid"`
+		Title       string   `json:"title"`
+		Tags        []string `json:"tags"`
+		FolderTitle string   `json:"folderTitle"`
 	}
 
-	result, err := io.ReadAll(resp.Body)
-	klog.V(1).Infof("result: %s\n", result)
+	results, err := grafanaDecodeJSON[[]searchResult](resp, "failed to access grafana search api")
 	if err != nil {
-		return err, false
+		return nil, err
 	}
 
-	if !strings.Contains(string(result), fmt.Sprintf(`"title":"%s"`, title)) {
-		return errors.New("failed to find the dashboard"), false
-	} else {
-		return nil, true
+	for _, res := range results {
+		if res.Title == title {
+			return &DashboardMeta{
+				ID:          res.ID,
+				UID:         res.UID,
+				Tags:        res.Tags,
+				FolderTitle: res.FolderTitle,
+			}, nil
+		}
 	}
+
+	return nil, nil
+}
+
+func GetGrafanaHomeDashboard(ctx context.Context, opt TestOptions) (int64, error) {
+	resp, err := doGrafanaGet(ctx, opt, "/api/org/preferences")
+	if err != nil {
+		return 0, err
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	res, err := grafanaDecodeJSON[struct {
+		HomeDashboardID int64 `json:"homeDashboardId"`
+	}](resp, "failed to access grafana preferences")
+	if err != nil {
+		return 0, err
+	}
+
+	return res.HomeDashboardID, nil
+}
+
+func FolderExists(ctx context.Context, opt TestOptions, title string) (bool, error) {
+	resp, err := doGrafanaGet(ctx, opt, "/api/search?type=dash-folder")
+	if err != nil {
+		return false, err
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	results, err := grafanaDecodeJSON[[]struct {
+		Title string `json:"title"`
+	}](resp, "failed to search folders")
+	if err != nil {
+		return false, err
+	}
+
+	for _, res := range results {
+		if res.Title == title {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }

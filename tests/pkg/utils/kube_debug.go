@@ -169,6 +169,7 @@ func LogPodLogs(client kubernetes.Interface, ns string, pod corev1.Pod) {
 
 		// Aggregate info, debug and error logs from the past 6 minutes
 		filteredLines := []string{}
+		windowLines := []string{}
 		lines := strings.Split(string(logs), "\n")
 		cutoffTime := time.Now().Add(-6 * time.Minute)
 		unparseableCount := 0
@@ -198,21 +199,39 @@ func LogPodLogs(client kubernetes.Interface, ns string, pod corev1.Pod) {
 				unparseableCount++
 			}
 
+			windowLines = append(windowLines, line)
 			lowerLine := strings.ToLower(line)
-			if strings.Contains(lowerLine, "error") || strings.Contains(lowerLine, "info") {
+			// Match "info", "error" OR standard klog headers: I (Info), E (Error), W (Warning)
+			// Standard klog header format is e.g. I0409 12:34:56.123456
+			isKlog := false
+			if len(line) > 0 {
+				header := line[0]
+				isKlog = header == 'I' || header == 'E' || header == 'W'
+			}
+
+			if strings.Contains(lowerLine, "error") || strings.Contains(lowerLine, "info") || isKlog {
 				filteredLines = append(filteredLines, line)
 			}
 		}
 
-		// Reverse the lines to restore order
-		for i, j := 0, len(filteredLines)-1; i < j; i, j = i+1, j-1 {
-			filteredLines[i], filteredLines[j] = filteredLines[j], filteredLines[i]
+		// If all lines were filtered out, fallback to the last 40 lines from the window
+		displayLines := filteredLines
+		msg := "aggregated info/debug/error from the last 6 minutes"
+		if len(displayLines) == 0 && len(windowLines) > 0 {
+			count := min(40, len(windowLines))
+			displayLines = windowLines[:count]
+			msg = fmt.Sprintf("last %d lines from the last 6 minutes (filter returned no results)", count)
 		}
 
-		logs = []byte(strings.Join(filteredLines, "\n"))
+		// Reverse the lines to restore chronological order
+		for i, j := 0, len(displayLines)-1; i < j; i, j = i+1, j-1 {
+			displayLines[i], displayLines[j] = displayLines[j], displayLines[i]
+		}
 
-		delimitedLogs := fmt.Sprintf(">>>>>>>>>> container logs >>>>>>>>>>\n%s<<<<<<<<<< container logs <<<<<<<<<<", string(logs))
-		klog.V(1).Infof("Pod %q container %q logs (aggregated info/debug/error from the last 6 minutes): \n%s", pod.Name, container.Name, delimitedLogs)
+		logs = []byte(strings.Join(displayLines, "\n"))
+
+		delimitedLogs := fmt.Sprintf(">>>>>>>>>> container logs >>>>>>>>>>\n%s\n<<<<<<<<<< container logs <<<<<<<<<<", string(logs))
+		klog.V(1).Infof("Pod %q container %q logs (%s): \n%s", pod.Name, container.Name, msg, delimitedLogs)
 	}
 }
 

@@ -15,10 +15,9 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/utils"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/klog/v2"
 )
 
-var _ = Describe("", func() {
+var _ = Describe("Observability: Grafana Connectivity", func() {
 	BeforeEach(func() {
 		hubClient = utils.NewKubeClient(
 			testOptions.HubCluster.ClusterServerURL,
@@ -54,7 +53,7 @@ var _ = Describe("", func() {
 					}
 				}
 				return nil
-			}, EventuallyTimeoutMinute*6, EventuallyIntervalSecond*5).Should(Succeed())
+			}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
 		},
 	)
 
@@ -65,7 +64,7 @@ var _ = Describe("", func() {
 				clientDynamic := utils.GetKubeClientDynamic(testOptions, true)
 				objs, err := clientDynamic.Resource(utils.NewOCMManagedClustersGVR()).List(context.TODO(), metav1.ListOptions{})
 				if err != nil {
-					klog.V(1).Infof("Get the managedcluster failed, The err is: %s\n", err)
+					GinkgoWriter.Printf("Get the managedcluster failed, The err is: %s\n", err)
 				}
 
 				for _, obj := range objs.Items {
@@ -74,10 +73,10 @@ var _ = Describe("", func() {
 					if labels["local-cluster"] == "true" {
 						labels := metadata["labels"].(map[string]any)
 						labels["autolabel"] = "grafanacm"
-						klog.V(1).Infof("The cluster with new label: %s\n", labels)
+						GinkgoWriter.Printf("The cluster with new label: %s\n", labels)
 						_, updateErr := clientDynamic.Resource(utils.NewOCMManagedClustersGVR()).Update(context.TODO(), &obj, metav1.UpdateOptions{})
 						if updateErr != nil {
-							klog.V(1).Infof("Update label failed, updateErr is : %s\n", updateErr)
+							GinkgoWriter.Printf("Update label failed, updateErr is : %s\n", updateErr)
 						}
 					}
 
@@ -94,18 +93,18 @@ var _ = Describe("", func() {
 					MCO_NAMESPACE,
 				)
 				if errcm != nil {
-					klog.V(1).Infof("The errcm is: %s\n", errcm)
+					GinkgoWriter.Printf("The errcm is: %s\n", errcm)
 				}
 
 				data, err := json.Marshal(cm)
 				if err != nil {
-					klog.V(1).Infof("The err is: %s\n", err)
+					GinkgoWriter.Printf("The err is: %s\n", err)
 				}
 				if !strings.Contains(string(data), "autolabel") {
-					klog.V(1).Infof("new managedcluster label autolabel is NOT added into configmap  observability-managed-cluster-label-allowlist")
+					GinkgoWriter.Printf("new managedcluster label autolabel is NOT added into configmap  observability-managed-cluster-label-allowlist\n")
 					return false
 				} else {
-					klog.V(1).Infof("new managedcluster label autolabel is added into configmap  observability-managed-cluster-label-allowlist")
+					GinkgoWriter.Printf("new managedcluster label autolabel is added into configmap  observability-managed-cluster-label-allowlist\n")
 					return true
 				}
 			}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*10).Should(BeTrue())
@@ -119,6 +118,10 @@ var _ = Describe("", func() {
 	AfterEach(func() {
 		if CurrentSpecReport().Failed() {
 			utils.LogFailingTestStandardDebugInfo(testOptions)
+			// Force logs for Grafana pods
+			utils.CheckPodsInNamespace(hubClient, MCO_NAMESPACE, []string{"observability-grafana"}, map[string]string{
+				"app": "multicluster-observability-grafana",
+			})
 		}
 		testFailed = testFailed || CurrentSpecReport().Failed()
 	})

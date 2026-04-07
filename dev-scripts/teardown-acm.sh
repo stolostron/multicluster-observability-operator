@@ -88,12 +88,15 @@ fi
 # Remove cluster-scoped artifacts that can block namespace deletion if the MCH
 # operator did not fully clean them up (e.g. on an aborted previous teardown).
 # These are safe to delete unconditionally — they are recreated on reinstall.
-log_info "Removing cluster-scoped MCE artifacts..."
+log_info "Removing cluster-scoped MCE/ACM artifacts..."
 oc delete apiservice \
   v1.admission.cluster.open-cluster-management.io \
   v1.admission.work.open-cluster-management.io \
   --ignore-not-found
-oc delete validatingwebhookconfiguration multiclusterengines.multicluster.openshift.io \
+# Validating webhooks can block namespace deletion if the underlying service is gone.
+oc delete validatingwebhookconfiguration \
+  multiclusterengines.multicluster.openshift.io \
+  multiclusterhub.validating-webhook.open-cluster-management.io \
   --ignore-not-found
 oc delete mce --all --ignore-not-found --wait=false
 
@@ -137,6 +140,13 @@ if command -v jq &>/dev/null; then
     jq -r '.items[] | select(.metadata.deletionTimestamp != null) | .metadata.name')
 fi
 
+# MultiClusterHub finalizer can get stuck if the webhook is gone.
+if $mch_exists; then
+  log_info "Ensuring MultiClusterHub finalizers are cleared..."
+  oc patch multiclusterhub multiclusterhub -n "${ACM_NS}" \
+    --type=merge -p '{"metadata":{"finalizers":null}}' 2>/dev/null || true
+fi
+
 # Now tell OLM to stop managing both operators.
 log_info "Removing ACM OLM resources (CSV and Subscription)..."
 oc delete csv --all -n "${ACM_NS}" --ignore-not-found
@@ -165,5 +175,15 @@ wait_for_deletion namespace open-cluster-management-agent "" 120
 wait_for_deletion namespace open-cluster-management-agent-addon "" 120
 wait_for_deletion namespace open-cluster-management-policies "" 60
 wait_for_deletion namespace hypershift "" 120
+
+# Final safety check: if namespaces are still stuck in Terminating, force-strip finalizers.
+for _ns in "${_acm_namespaces[@]}"; do
+  if oc get namespace "$_ns" 2>/dev/null | grep -q Terminating; then
+    log_warn "Namespace $_ns is stuck in Terminating. Forcefully stripping finalizers..."
+    oc get namespace "$_ns" -o json | jq '.spec.finalizers = []' >"/tmp/finalize-$_ns.json"
+    oc replace --raw "/api/v1/namespaces/$_ns/finalize" -f "/tmp/finalize-$_ns.json" &>/dev/null || true
+    rm "/tmp/finalize-$_ns.json"
+  fi
+done
 
 log_info "ACM removed."
