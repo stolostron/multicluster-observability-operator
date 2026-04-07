@@ -349,6 +349,14 @@ func TestHandleManagedClusterLabelQuery(t *testing.T) {
 		{
 			name:             "should handle GET to label values endpoint with correct metric",
 			method:           "GET",
+			path:             "/api/v1/label/label_name/values?match[]=" + config.RBACProxyLabelMetricName + "{}",
+			body:             nil,
+			expectedToHandle: true,
+			expectedBody:     `{"status":"success","data":["cloud","cluster_open_cluster_management_io_clusterset","name","vendor"]}`,
+		},
+		{
+			name:             "should handle GET to label values endpoint with correct metric",
+			method:           "GET",
 			path:             "/api/v1/label/label_name/values?match[]=" + config.RBACProxyLabelMetricName,
 			body:             nil,
 			expectedToHandle: true,
