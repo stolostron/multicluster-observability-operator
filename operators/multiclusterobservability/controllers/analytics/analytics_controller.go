@@ -18,10 +18,10 @@ import (
 	commonutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -38,10 +38,10 @@ const analyticsFinalizer = "observability.open-cluster-management.io/analytics-c
 
 // AnalyticsReconciler reconciles a MultiClusterObservability object
 type AnalyticsReconciler struct {
-	Client   client.Client
-	Log      logr.Logger
-	Scheme   *runtime.Scheme
-	Recorder record.EventRecorder
+	Client       client.Client
+	Log          logr.Logger
+	Scheme       *runtime.Scheme
+	wasDelegated bool
 }
 
 // +kubebuilder:rbac:groups=observability.open-cluster-management.io,resources=multiclusterobservabilities,verbs=get;list;watch;create;update;patch;delete
@@ -120,29 +120,31 @@ func (r *AnalyticsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	mcoaCapable := util.IsRightSizingDelegated(instance)
 
 	if mcoaCapable {
-		reqLogger.Info("Right-sizing delegated to MCOA via MCO CR annotation")
-		// Cleanup Policy resources but keep ConfigMaps
-		rightsizingctrl.CleanupPolicyResourcesForDelegation(ctx, r.Client, instance)
+		reqLogger.Info("rs - right-sizing delegated to MCOA via MCO CR annotation")
+
+		// On transition to MCOA mode: cleanup Policy resources
+		if !r.wasDelegated {
+			rightsizingctrl.CleanupPolicyResourcesForDelegation(ctx, r.Client, instance)
+			r.wasDelegated = true
+		}
 
 		// Sync MCO CR's right-sizing state to ADC so MCOA knows what to deploy.
 		// This is critical when switching from MCO mode (which sets "disabled" in ADC)
 		// to MCOA mode — without this, MCOA would see stale "disabled" values.
 		if err := r.syncRightSizingStateToADC(ctx, instance, true, reqLogger); err != nil {
-			reqLogger.Error(err, "Failed to sync right-sizing state to AddOnDeploymentConfig for MCOA delegation")
+			return ctrl.Result{}, fmt.Errorf("failed to sync RS state to ADC for MCOA delegation: %w", err)
 		}
 
-		// Record event for observability
-		if r.Recorder != nil {
-			r.Recorder.Event(instance, corev1.EventTypeNormal, "RightSizingDelegated",
-				"Right-sizing management delegated to MCOA (MCO CR has delegation annotation)")
-		}
 		return ctrl.Result{}, nil
 	}
+
+	// Reset delegation tracking when in MCO mode
+	r.wasDelegated = false
 
 	// ═══════════════════════════════════════════════════════════════════
 	// MCO Mode: Create Policy resources (current GA behavior)
 	// ═══════════════════════════════════════════════════════════════════
-	reqLogger.V(1).Info("MCO managing right-sizing via Policy")
+	reqLogger.V(1).Info("rs - MCO managing right-sizing via Policy")
 	if err := rightsizingctrl.CreateRightSizingComponent(ctx, r.Client, instance); err != nil {
 		return ctrl.Result{}, fmt.Errorf("rs - failed to create rightsizing component: %w", err)
 	}
@@ -150,7 +152,7 @@ func (r *AnalyticsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	// When MCO manages right-sizing, sync "disabled" to AddOnDeploymentConfig
 	// This tells MCOA to NOT deploy PrometheusRules via ManifestWork
 	if err := r.syncRightSizingStateToADC(ctx, instance, false, reqLogger); err != nil {
-		reqLogger.Error(err, "Failed to sync disabled state to AddOnDeploymentConfig")
+		reqLogger.Error(err, "rs - failed to sync disabled state to AddOnDeploymentConfig")
 		// Don't fail the reconcile, MCO can still manage via Policy
 	}
 
@@ -235,10 +237,8 @@ func (r *AnalyticsReconciler) SetupWithManager(mgr ctrl.Manager) error {
 // When delegatingToMCOA=false: forces "disabled" so MCOA does NOT deploy PrometheusRules (MCO manages via Policy).
 func (r *AnalyticsReconciler) syncRightSizingStateToADC(ctx context.Context, instance *mcov1beta2.MultiClusterObservability, delegatingToMCOA bool, reqLogger logr.Logger) error {
 	const (
-		keyPlatformNamespaceRightSizing      = "platformNamespaceRightSizing"
-		keyPlatformVirtualizationRightSizing = "platformVirtualizationRightSizing"
-		valueEnabled                         = "enabled"
-		valueDisabled                        = "disabled"
+		valueEnabled  = "enabled"
+		valueDisabled = "disabled"
 	)
 
 	// Determine target values based on mode
@@ -258,12 +258,15 @@ func (r *AnalyticsReconciler) syncRightSizingStateToADC(ctx context.Context, ins
 
 	adc := &addonv1alpha1.AddOnDeploymentConfig{}
 	err := r.Client.Get(ctx, types.NamespacedName{
-		Name:      util.MCOAClusterManagementAddOnName,
+		Name:      config.MultiClusterObservabilityAddon,
 		Namespace: config.GetDefaultNamespace(),
 	}, adc)
 	if err != nil {
-		// ADC doesn't exist - nothing to sync
-		return nil
+		if apierrors.IsNotFound(err) {
+			// ADC doesn't exist yet - nothing to sync
+			return nil
+		}
+		return fmt.Errorf("failed to get AddOnDeploymentConfig: %w", err)
 	}
 
 	// Single-pass: find indices and track if update needed
@@ -272,13 +275,13 @@ func (r *AnalyticsReconciler) syncRightSizingStateToADC(ctx context.Context, ins
 
 	for i, cv := range adc.Spec.CustomizedVariables {
 		switch cv.Name {
-		case keyPlatformNamespaceRightSizing:
+		case util.ADCKeyPlatformNamespaceRightSizing:
 			nsIdx = i
 			if cv.Value != nsValue {
 				adc.Spec.CustomizedVariables[i].Value = nsValue
 				needsUpdate = true
 			}
-		case keyPlatformVirtualizationRightSizing:
+		case util.ADCKeyPlatformVirtualizationRightSizing:
 			virtIdx = i
 			if cv.Value != virtValue {
 				adc.Spec.CustomizedVariables[i].Value = virtValue
@@ -290,12 +293,12 @@ func (r *AnalyticsReconciler) syncRightSizingStateToADC(ctx context.Context, ins
 	// Append if not found
 	if nsIdx == -1 {
 		adc.Spec.CustomizedVariables = append(adc.Spec.CustomizedVariables,
-			addonv1alpha1.CustomizedVariable{Name: keyPlatformNamespaceRightSizing, Value: nsValue})
+			addonv1alpha1.CustomizedVariable{Name: util.ADCKeyPlatformNamespaceRightSizing, Value: nsValue})
 		needsUpdate = true
 	}
 	if virtIdx == -1 {
 		adc.Spec.CustomizedVariables = append(adc.Spec.CustomizedVariables,
-			addonv1alpha1.CustomizedVariable{Name: keyPlatformVirtualizationRightSizing, Value: virtValue})
+			addonv1alpha1.CustomizedVariable{Name: util.ADCKeyPlatformVirtualizationRightSizing, Value: virtValue})
 		needsUpdate = true
 	}
 

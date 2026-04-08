@@ -12,6 +12,7 @@ import (
 	rsnamespace "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/analytics/rightsizing/rs-namespace"
 	rsutility "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/analytics/rightsizing/rs-utility"
 	rsvirtualization "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/analytics/rightsizing/rs-virtualization"
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -33,6 +34,26 @@ func setupTestScheme(t *testing.T) *runtime.Scheme {
 	require.NoError(t, policyv1.AddToScheme(scheme))
 	require.NoError(t, addonv1alpha1.AddToScheme(scheme))
 	return scheme
+}
+
+func newTestMCOWithBothRS(nsEnabled, virtEnabled bool) *mcov1beta2.MultiClusterObservability {
+	return &mcov1beta2.MultiClusterObservability{
+		ObjectMeta: metav1.ObjectMeta{Name: "observability"},
+		Spec: mcov1beta2.MultiClusterObservabilitySpec{
+			Capabilities: &mcov1beta2.CapabilitiesSpec{
+				Platform: &mcov1beta2.PlatformCapabilitiesSpec{
+					Analytics: mcov1beta2.PlatformAnalyticsSpec{
+						NamespaceRightSizingRecommendation: mcov1beta2.PlatformRightSizingRecommendationSpec{
+							Enabled: nsEnabled,
+						},
+						VirtualizationRightSizingRecommendation: mcov1beta2.PlatformRightSizingRecommendationSpec{
+							Enabled: virtEnabled,
+						},
+					},
+				},
+			},
+		},
+	}
 }
 
 func newTestMCO(binding string, enabled bool, paused bool) *mcov1beta2.MultiClusterObservability {
@@ -306,13 +327,13 @@ func TestSyncRightSizingStateToADC_DelegatingEnabled(t *testing.T) {
 	// Create ADC with stale "disabled" values (simulates MCO → MCOA transition)
 	adc := &addonv1alpha1.AddOnDeploymentConfig{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      util.MCOAClusterManagementAddOnName,
+			Name:      config.MultiClusterObservabilityAddon,
 			Namespace: "open-cluster-management-observability",
 		},
 		Spec: addonv1alpha1.AddOnDeploymentConfigSpec{
 			CustomizedVariables: []addonv1alpha1.CustomizedVariable{
-				{Name: "platformNamespaceRightSizing", Value: "disabled"},
-				{Name: "platformVirtualizationRightSizing", Value: "disabled"},
+				{Name: util.ADCKeyPlatformNamespaceRightSizing, Value: "disabled"},
+				{Name: util.ADCKeyPlatformVirtualizationRightSizing, Value: "disabled"},
 			},
 		},
 	}
@@ -326,16 +347,16 @@ func TestSyncRightSizingStateToADC_DelegatingEnabled(t *testing.T) {
 	// Verify ADC was updated to "enabled"
 	updated := &addonv1alpha1.AddOnDeploymentConfig{}
 	err = c.Get(context.TODO(), types.NamespacedName{
-		Name:      util.MCOAClusterManagementAddOnName,
+		Name:      config.MultiClusterObservabilityAddon,
 		Namespace: "open-cluster-management-observability",
 	}, updated)
 	require.NoError(t, err)
 
 	for _, cv := range updated.Spec.CustomizedVariables {
 		switch cv.Name {
-		case "platformNamespaceRightSizing":
+		case util.ADCKeyPlatformNamespaceRightSizing:
 			require.Equal(t, "enabled", cv.Value)
-		case "platformVirtualizationRightSizing":
+		case util.ADCKeyPlatformVirtualizationRightSizing:
 			// virtualization was not set in newTestMCO, so it defaults to disabled
 			require.Equal(t, "disabled", cv.Value)
 		}
@@ -349,7 +370,7 @@ func TestSyncRightSizingStateToADC_MCOManaging(t *testing.T) {
 	// Create ADC without RS keys
 	adc := &addonv1alpha1.AddOnDeploymentConfig{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      util.MCOAClusterManagementAddOnName,
+			Name:      config.MultiClusterObservabilityAddon,
 			Namespace: "open-cluster-management-observability",
 		},
 		Spec: addonv1alpha1.AddOnDeploymentConfigSpec{},
@@ -364,17 +385,164 @@ func TestSyncRightSizingStateToADC_MCOManaging(t *testing.T) {
 
 	updated := &addonv1alpha1.AddOnDeploymentConfig{}
 	err = c.Get(context.TODO(), types.NamespacedName{
-		Name:      util.MCOAClusterManagementAddOnName,
+		Name:      config.MultiClusterObservabilityAddon,
 		Namespace: "open-cluster-management-observability",
 	}, updated)
 	require.NoError(t, err)
 
 	for _, cv := range updated.Spec.CustomizedVariables {
 		switch cv.Name {
-		case "platformNamespaceRightSizing":
+		case util.ADCKeyPlatformNamespaceRightSizing:
 			require.Equal(t, "disabled", cv.Value)
-		case "platformVirtualizationRightSizing":
+		case util.ADCKeyPlatformVirtualizationRightSizing:
 			require.Equal(t, "disabled", cv.Value)
 		}
 	}
+}
+
+func TestSyncRightSizingStateToADC_BothEnabled(t *testing.T) {
+	scheme := setupTestScheme(t)
+	mco := newTestMCOWithBothRS(true, true)
+
+	adc := &addonv1alpha1.AddOnDeploymentConfig{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      config.MultiClusterObservabilityAddon,
+			Namespace: "open-cluster-management-observability",
+		},
+		Spec: addonv1alpha1.AddOnDeploymentConfigSpec{
+			CustomizedVariables: []addonv1alpha1.CustomizedVariable{
+				{Name: util.ADCKeyPlatformNamespaceRightSizing, Value: "disabled"},
+				{Name: util.ADCKeyPlatformVirtualizationRightSizing, Value: "disabled"},
+			},
+		},
+	}
+
+	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(mco, adc).Build()
+	r := &AnalyticsReconciler{Client: c, Scheme: scheme}
+
+	err := r.syncRightSizingStateToADC(context.TODO(), mco, true, log)
+	require.NoError(t, err)
+
+	updated := &addonv1alpha1.AddOnDeploymentConfig{}
+	err = c.Get(context.TODO(), types.NamespacedName{
+		Name:      config.MultiClusterObservabilityAddon,
+		Namespace: "open-cluster-management-observability",
+	}, updated)
+	require.NoError(t, err)
+
+	for _, cv := range updated.Spec.CustomizedVariables {
+		switch cv.Name {
+		case util.ADCKeyPlatformNamespaceRightSizing:
+			require.Equal(t, "enabled", cv.Value)
+		case util.ADCKeyPlatformVirtualizationRightSizing:
+			require.Equal(t, "enabled", cv.Value)
+		}
+	}
+}
+
+func TestSyncRightSizingStateToADC_ADCNotFound(t *testing.T) {
+	scheme := setupTestScheme(t)
+	mco := newTestMCO("", true, false)
+
+	// No ADC created — should return nil (not an error)
+	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(mco).Build()
+	r := &AnalyticsReconciler{Client: c, Scheme: scheme}
+
+	err := r.syncRightSizingStateToADC(context.TODO(), mco, true, log)
+	require.NoError(t, err)
+}
+
+func TestSyncRightSizingStateToADC_NoUpdateWhenValuesMatch(t *testing.T) {
+	scheme := setupTestScheme(t)
+	mco := newTestMCOWithBothRS(true, false)
+
+	// ADC already has correct values — should not trigger an update
+	adc := &addonv1alpha1.AddOnDeploymentConfig{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      config.MultiClusterObservabilityAddon,
+			Namespace: "open-cluster-management-observability",
+		},
+		Spec: addonv1alpha1.AddOnDeploymentConfigSpec{
+			CustomizedVariables: []addonv1alpha1.CustomizedVariable{
+				{Name: util.ADCKeyPlatformNamespaceRightSizing, Value: "enabled"},
+				{Name: util.ADCKeyPlatformVirtualizationRightSizing, Value: "disabled"},
+			},
+		},
+	}
+
+	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(mco, adc).Build()
+	r := &AnalyticsReconciler{Client: c, Scheme: scheme}
+
+	err := r.syncRightSizingStateToADC(context.TODO(), mco, true, log)
+	require.NoError(t, err)
+
+	// Verify values unchanged
+	updated := &addonv1alpha1.AddOnDeploymentConfig{}
+	err = c.Get(context.TODO(), types.NamespacedName{
+		Name:      config.MultiClusterObservabilityAddon,
+		Namespace: "open-cluster-management-observability",
+	}, updated)
+	require.NoError(t, err)
+
+	for _, cv := range updated.Spec.CustomizedVariables {
+		switch cv.Name {
+		case util.ADCKeyPlatformNamespaceRightSizing:
+			require.Equal(t, "enabled", cv.Value)
+		case util.ADCKeyPlatformVirtualizationRightSizing:
+			require.Equal(t, "disabled", cv.Value)
+		}
+	}
+}
+
+func TestWasDelegated_EventOnlyOnTransition(t *testing.T) {
+	scheme := setupTestScheme(t)
+	mco := newTestMCO("", true, false)
+	mco.Annotations = map[string]string{
+		util.RightSizingCapableAnnotation: "v1",
+	}
+
+	namespaceRSConfigMap := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      rsnamespace.ConfigMapName,
+			Namespace: rsutility.DefaultNamespace,
+		},
+		Data: map[string]string{"config.yaml": "test: true"},
+	}
+	virtualizationRSConfigMap := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      rsvirtualization.ConfigMapName,
+			Namespace: rsutility.DefaultNamespace,
+		},
+		Data: map[string]string{"config.yaml": "test: true"},
+	}
+
+	c := fake.NewClientBuilder().WithScheme(scheme).
+		WithObjects(mco, namespaceRSConfigMap, virtualizationRSConfigMap).
+		Build()
+
+	r := &AnalyticsReconciler{Client: c, Scheme: scheme}
+
+	// First reconcile: wasDelegated starts false, should transition to true
+	require.False(t, r.wasDelegated)
+	_, err := r.Reconcile(context.TODO(), ctrl.Request{})
+	require.NoError(t, err)
+	require.True(t, r.wasDelegated, "wasDelegated should be true after first delegated reconcile")
+
+	// Second reconcile: wasDelegated already true, no transition
+	_, err = r.Reconcile(context.TODO(), ctrl.Request{})
+	require.NoError(t, err)
+	require.True(t, r.wasDelegated, "wasDelegated should remain true on subsequent reconciles")
+
+	// Remove delegation annotation → MCO mode
+	// Re-fetch to get latest resourceVersion (ensureRightSizingDefaults patches MCO)
+	freshMCO := &mcov1beta2.MultiClusterObservability{}
+	err = c.Get(context.TODO(), types.NamespacedName{Name: "observability"}, freshMCO)
+	require.NoError(t, err)
+	freshMCO.Annotations = nil
+	err = c.Update(context.TODO(), freshMCO)
+	require.NoError(t, err)
+
+	_, err = r.Reconcile(context.TODO(), ctrl.Request{})
+	require.NoError(t, err)
+	require.False(t, r.wasDelegated, "wasDelegated should reset to false when delegation removed")
 }

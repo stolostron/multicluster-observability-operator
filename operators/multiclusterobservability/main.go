@@ -210,7 +210,6 @@ func main() {
 			},
 		}
 	}
-
 	// The following RBAC resources will not be watched by MCO, the selector will not impact the mco behavior, which
 	// means MCO will fetch kube-apiserver for the correspoding resource if the resource can't be found in the cache.
 	// Adding selector will reduce the cache size when the managedcluster scale.
@@ -309,10 +308,9 @@ func main() {
 	}
 
 	if err = (&analytics.AnalyticsReconciler{
-		Client:   mgr.GetClient(),
-		Log:      ctrl.Log.WithName("controllers").WithName("Analytics"),
-		Scheme:   mgr.GetScheme(),
-		Recorder: mgr.GetEventRecorderFor("analytics-controller"),
+		Client: mgr.GetClient(),
+		Log:    ctrl.Log.WithName("controllers").WithName("Analytics"),
+		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Analytics")
 		os.Exit(1)

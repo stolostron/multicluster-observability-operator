@@ -7,11 +7,11 @@ package rendering
 import (
 	"fmt"
 	"maps"
-	"net/url"
 
 	"github.com/imdario/mergo"
 	obv1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	mcoutil "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
 	rendererutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -37,13 +37,6 @@ const (
 	nameMetricsHubHostname            = "metricsHubHostname"
 	nameMetricsAlertManagerHostname   = "metricsAlertManagerHostname"
 	namePLatformMetricsUI             = "platformMetricsUI"
-
-	// Right-sizing AODC CustomizedVariable Names
-	namePlatformNamespaceRightSizing      = "platformNamespaceRightSizing"
-	namePlatformVirtualizationRightSizing = "platformVirtualizationRightSizing"
-
-	grafanaMCOAHomeDashboardID = "89eaec849a6e4837a619fb0540c22b13"
-	grafanaLink                = "/d/" + grafanaMCOAHomeDashboardID + "/acm-clusters-overview"
 )
 
 type MCOARendererOptions struct {
@@ -187,23 +180,9 @@ func (r *MCORenderer) renderClusterManagementAddOn(
 	}
 	u := &unstructured.Unstructured{Object: m}
 
-	// Add grafana link annotation
-	host, err := mcoconfig.GetRouteHost(r.kubeClient, mcoconfig.GrafanaRouteName, mcoconfig.GetDefaultNamespace())
-	if err != nil {
-		return nil, fmt.Errorf("failed to get host route: %w", err)
-	}
-	grafanaUrl := url.URL{
-		Scheme: "https",
-		Host:   host,
-		Path:   grafanaLink,
-	}
-	annotations := maps.Clone(u.GetAnnotations())
-	if annotations == nil {
-		annotations = make(map[string]string)
-	}
-	annotations["console.open-cluster-management.io/launch-link"] = grafanaUrl.String()
-	annotations["console.open-cluster-management.io/launch-link-text"] = "Grafana"
-	u.SetAnnotations(annotations)
+	// NOTE: No Grafana launch-link annotation here. The observability-controller CMA
+	// (created in pkg/util/clustermanagementaddon.go) owns the single Grafana link.
+	// Adding one here causes duplicate "Grafana" entries in the ACM console.
 
 	cLabels := u.GetLabels()
 	if cLabels == nil {
@@ -258,14 +237,14 @@ func (r *MCORenderer) renderAddonDeploymentConfig(
 			// sync actual CR state. Otherwise set "disabled" so MCOA doesn't deploy RS.
 			delegated := r.rendererOptions != nil && r.rendererOptions.MCOAOptions.RightSizingDelegated
 			if delegated && cs.Platform.Analytics.NamespaceRightSizingRecommendation.Enabled {
-				appendCustomVar(aodc, namePlatformNamespaceRightSizing, "enabled")
+				appendCustomVar(aodc, mcoutil.ADCKeyPlatformNamespaceRightSizing, "enabled")
 			} else {
-				appendCustomVar(aodc, namePlatformNamespaceRightSizing, "disabled")
+				appendCustomVar(aodc, mcoutil.ADCKeyPlatformNamespaceRightSizing, "disabled")
 			}
 			if delegated && cs.Platform.Analytics.VirtualizationRightSizingRecommendation.Enabled {
-				appendCustomVar(aodc, namePlatformVirtualizationRightSizing, "enabled")
+				appendCustomVar(aodc, mcoutil.ADCKeyPlatformVirtualizationRightSizing, "enabled")
 			} else {
-				appendCustomVar(aodc, namePlatformVirtualizationRightSizing, "disabled")
+				appendCustomVar(aodc, mcoutil.ADCKeyPlatformVirtualizationRightSizing, "disabled")
 			}
 		}
 
@@ -327,8 +306,9 @@ func (r *MCORenderer) renderMCOATemplates(
 	uobjs := []*unstructured.Unstructured{}
 	for _, template := range templates {
 		// Skip rendering the ClusterManagementAddOn resource if it already exists.
-		// MCO creates this resource on first deploy, then allows users to manage it
-		// (e.g., adding right-sizing delegation annotation).
+		// MCO creates this resource on first deploy, then allows users to manage it.
+		// No MCOAEnabled guard needed here — the caller (Render/MCOAResources) already
+		// gates entry via MCOAEnabled || rightSizingDelegated.
 		if template.GetKind() == cmaoKind &&
 			r.rendererOptions != nil && r.rendererOptions.MCOAOptions.DisableCMAORender {
 			continue
@@ -357,8 +337,8 @@ func (r *MCORenderer) renderMCOATemplates(
 }
 
 // MCOAEnabled returns true if any non-right-sizing MCOA capability is enabled.
-// Right-sizing alone does NOT trigger MCOA deployment — it requires the CMA
-// annotation (rightSizingDelegated) to be set for MCOA-based right-sizing.
+// Right-sizing alone does NOT trigger MCOA deployment — it requires the MCO CR
+// delegation annotation to be set for MCOA-based right-sizing.
 func MCOAEnabled(cr *obv1beta2.MultiClusterObservability) bool {
 	if cr.Spec.Capabilities == nil {
 		return false
