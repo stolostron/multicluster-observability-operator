@@ -98,17 +98,24 @@ func GetVirtualizationRSConfigMapPredicateFunc(ctx context.Context, c client.Cli
 // CleanupPolicyResourcesForDelegation cleans up Policy-based right-sizing resources when delegating to MCOA.
 // ConfigMaps are PRESERVED because MCOA owns them in the same namespace (open-cluster-management-observability).
 // Only Policy, Placement, and PlacementBinding resources are cleaned up.
+//
+// Namespaces are derived from the MCO CR rather than process-local ComponentState,
+// which may be stale after a controller restart where MCOA mode was already active.
 func CleanupPolicyResourcesForDelegation(
 	ctx context.Context,
 	c client.Client,
 	mco *mcov1beta2.MultiClusterObservability,
 ) error {
-	log.Info("rs - cleaning up Policy resources for MCOA delegation (preserving ConfigMaps for MCOA)")
+	nsNamespace := resolveNamespaceBinding(mco, rsutility.ComponentTypeNamespace)
+	virtNamespace := resolveNamespaceBinding(mco, rsutility.ComponentTypeVirtualization)
 
-	if err := rsnamespace.CleanupRSNamespaceResources(ctx, c, rsnamespace.ComponentState.Namespace, true); err != nil {
+	log.Info("rs - cleaning up Policy resources for MCOA delegation (preserving ConfigMaps for MCOA)",
+		"nsNamespace", nsNamespace, "virtNamespace", virtNamespace)
+
+	if err := rsnamespace.CleanupRSNamespaceResources(ctx, c, nsNamespace, true); err != nil {
 		return fmt.Errorf("namespace right-sizing cleanup: %w", err)
 	}
-	if err := rsvirtualization.CleanupRSVirtualizationResources(ctx, c, rsvirtualization.ComponentState.Namespace, true); err != nil {
+	if err := rsvirtualization.CleanupRSVirtualizationResources(ctx, c, virtNamespace, true); err != nil {
 		return fmt.Errorf("virtualization right-sizing cleanup: %w", err)
 	}
 
@@ -119,4 +126,14 @@ func CleanupPolicyResourcesForDelegation(
 
 	log.Info("rs - Policy cleanup for MCOA delegation completed")
 	return nil
+}
+
+// resolveNamespaceBinding reads the NamespaceBinding for a component type from the
+// MCO CR and falls back to the default namespace when the field is absent or empty.
+func resolveNamespaceBinding(mco *mcov1beta2.MultiClusterObservability, ct rsutility.ComponentType) string {
+	_, binding, _ := rsutility.GetComponentConfig(mco, ct)
+	if binding == "" {
+		return rsutility.DefaultNamespace
+	}
+	return binding
 }

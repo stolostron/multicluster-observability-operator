@@ -14,6 +14,7 @@ import (
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	rightsizingctrl "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/analytics/rightsizing"
 	rsnamespace "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/analytics/rightsizing/rs-namespace"
+	rsvirtualization "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/analytics/rightsizing/rs-virtualization"
 	mcoctrl "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/multiclusterobservability"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	commonutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
@@ -128,7 +129,11 @@ func (r *AnalyticsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		// The existence check avoids unnecessary API calls on controller restarts
 		// when cleanup already happened in a previous lifecycle.
 		if !r.wasDelegated {
-			if r.hasPolicyResourcesToCleanup(ctx) {
+			hasResources, err := r.hasPolicyResourcesToCleanup(ctx)
+			if err != nil {
+				return ctrl.Result{}, fmt.Errorf("failed to check for Policy resources to cleanup: %w", err)
+			}
+			if hasResources {
 				if err := rightsizingctrl.CleanupPolicyResourcesForDelegation(ctx, r.Client, instance); err != nil {
 					return ctrl.Result{}, fmt.Errorf("failed to cleanup Policy resources for MCOA delegation: %w", err)
 				}
@@ -326,17 +331,33 @@ func (r *AnalyticsReconciler) syncRightSizingStateToADC(ctx context.Context, ins
 	return nil
 }
 
-// hasPolicyResourcesToCleanup checks if any MCO-managed Policy resources exist for right-sizing.
-// Returns false if resources were already cleaned up (e.g., after a controller restart in MCOA mode).
-func (r *AnalyticsReconciler) hasPolicyResourcesToCleanup(ctx context.Context) bool {
-	namespace := rsnamespace.ComponentState.Namespace
-	if namespace == "" {
-		namespace = config.GetDefaultNamespace()
+// hasPolicyResourcesToCleanup checks whether any MCO-managed Policy resources
+// exist for right-sizing (namespace or virtualization). Only apierrors.IsNotFound
+// is treated as "not present"; any other GET error is returned so the caller
+// can requeue instead of permanently skipping cleanup.
+func (r *AnalyticsReconciler) hasPolicyResourcesToCleanup(ctx context.Context) (bool, error) {
+	checks := []struct {
+		name      string
+		namespace string
+	}{
+		{rsnamespace.PrometheusRulePolicyName, rsnamespace.ComponentState.Namespace},
+		{rsvirtualization.PrometheusRulePolicyName, rsvirtualization.ComponentState.Namespace},
 	}
-	policy := &policyv1.Policy{}
-	key := types.NamespacedName{Name: rsnamespace.PrometheusRulePolicyName, Namespace: namespace}
-	if err := r.Client.Get(ctx, key, policy); err != nil {
-		return false // Not found or error — nothing to clean
+
+	for _, check := range checks {
+		ns := check.namespace
+		if ns == "" {
+			ns = config.GetDefaultNamespace()
+		}
+		key := types.NamespacedName{Name: check.name, Namespace: ns}
+		if err := r.Client.Get(ctx, key, &policyv1.Policy{}); err != nil {
+			if apierrors.IsNotFound(err) {
+				continue
+			}
+			return false, fmt.Errorf("checking policy %s/%s: %w", ns, check.name, err)
+		}
+		return true, nil
 	}
-	return true
+
+	return false, nil
 }
