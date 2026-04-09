@@ -243,10 +243,7 @@ func TestCleanupRSNamespaceResources_UsesCorrectComponentConfig(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	// Test that the function executes without error (basic smoke test)
 	// The actual cleanup logic is tested comprehensively in rs-utility/component_test.go
-	require.NoError(t, CleanupRSNamespaceResources(ctx, client, rsutility.DefaultNamespace, false))
-	require.NoError(t, CleanupRSNamespaceResources(ctx, client, rsutility.DefaultNamespace, true))
-
-	// Test passes if no panic or error occurs, confirming the wrapper works correctly
+	assert.NoError(t, CleanupRSNamespaceResources(ctx, client, rsutility.DefaultNamespace, false))
+	assert.NoError(t, CleanupRSNamespaceResources(ctx, client, rsutility.DefaultNamespace, true))
 }

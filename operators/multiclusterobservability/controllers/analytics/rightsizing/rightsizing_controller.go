@@ -102,13 +102,15 @@ func CleanupPolicyResourcesForDelegation(
 	ctx context.Context,
 	c client.Client,
 	mco *mcov1beta2.MultiClusterObservability,
-) {
+) error {
 	log.Info("rs - cleaning up Policy resources for MCOA delegation (preserving ConfigMaps for MCOA)")
 
-	// Use bindingUpdated=true to preserve ConfigMaps - MCOA owns them
-	// Only clean up Policy, Placement, PlacementBinding resources
-	rsnamespace.CleanupRSNamespaceResources(ctx, c, rsnamespace.ComponentState.Namespace, true)
-	rsvirtualization.CleanupRSVirtualizationResources(ctx, c, rsvirtualization.ComponentState.Namespace, true)
+	if err := rsnamespace.CleanupRSNamespaceResources(ctx, c, rsnamespace.ComponentState.Namespace, true); err != nil {
+		return fmt.Errorf("namespace right-sizing cleanup: %w", err)
+	}
+	if err := rsvirtualization.CleanupRSVirtualizationResources(ctx, c, rsvirtualization.ComponentState.Namespace, true); err != nil {
+		return fmt.Errorf("virtualization right-sizing cleanup: %w", err)
+	}
 
 	// Reset component state so next MCO-mode reconcile treats it as fresh enable
 	// and recreates Policy/Placement/PlacementBinding resources.
@@ -116,4 +118,5 @@ func CleanupPolicyResourcesForDelegation(
 	rsvirtualization.ComponentState.Enabled = false
 
 	log.Info("rs - Policy cleanup for MCOA delegation completed")
+	return nil
 }

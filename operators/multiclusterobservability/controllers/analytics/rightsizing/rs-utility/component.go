@@ -156,7 +156,8 @@ func HandleComponentRightSizing(
 	return nil
 }
 
-// CleanupComponentResources cleans up the resources created for any component type
+// CleanupComponentResources cleans up the resources created for any component type.
+// NotFound errors are ignored; any other delete failure is returned immediately.
 func CleanupComponentResources(
 	ctx context.Context,
 	c client.Client,
@@ -174,7 +175,6 @@ func CleanupComponentResources(
 	}
 
 	if bindingUpdated {
-		// If NamespaceBinding has been updated delete only common resources
 		resourcesToDelete = commonResources
 	} else {
 		resourcesToDelete = append(resourcesToDelete, commonResources...)

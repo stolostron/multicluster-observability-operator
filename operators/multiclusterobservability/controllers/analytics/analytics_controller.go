@@ -128,8 +128,10 @@ func (r *AnalyticsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		// The existence check avoids unnecessary API calls on controller restarts
 		// when cleanup already happened in a previous lifecycle.
 		if !r.wasDelegated {
-			if r.hasPolicyResourcesToCleanup(ctx, instance) {
-				rightsizingctrl.CleanupPolicyResourcesForDelegation(ctx, r.Client, instance)
+			if r.hasPolicyResourcesToCleanup(ctx) {
+				if err := rightsizingctrl.CleanupPolicyResourcesForDelegation(ctx, r.Client, instance); err != nil {
+					return ctrl.Result{}, fmt.Errorf("failed to cleanup Policy resources for MCOA delegation: %w", err)
+				}
 			}
 			r.wasDelegated = true
 		}
@@ -326,7 +328,7 @@ func (r *AnalyticsReconciler) syncRightSizingStateToADC(ctx context.Context, ins
 
 // hasPolicyResourcesToCleanup checks if any MCO-managed Policy resources exist for right-sizing.
 // Returns false if resources were already cleaned up (e.g., after a controller restart in MCOA mode).
-func (r *AnalyticsReconciler) hasPolicyResourcesToCleanup(ctx context.Context, instance *mcov1beta2.MultiClusterObservability) bool {
+func (r *AnalyticsReconciler) hasPolicyResourcesToCleanup(ctx context.Context) bool {
 	namespace := rsnamespace.ComponentState.Namespace
 	if namespace == "" {
 		namespace = config.GetDefaultNamespace()
