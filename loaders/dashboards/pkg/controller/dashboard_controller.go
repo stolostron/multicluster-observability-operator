@@ -84,7 +84,8 @@ func NewGrafanaDashboardController(kubeClient corev1client.CoreV1Interface, uri 
 
 	ns := os.Getenv("POD_NAMESPACE")
 	if ns == "" {
-		klog.Warning("POD_NAMESPACE environment variable is empty. The controller will watch all namespaces.")
+		ns = "open-cluster-management-observability"
+		klog.InfoS("POD_NAMESPACE environment variable is empty. Defaulting to standard observability namespace.", "namespace", ns)
 	}
 	return &GrafanaDashboardController{
 		kubeClient:        kubeClient,
@@ -120,7 +121,20 @@ func (c *GrafanaDashboardController) Run(ctx context.Context) error {
 	c.indexer = informer.GetIndexer()
 
 	klog.InfoS("performing initial orphan cleanup")
-	c.cleanupOrphanDashboards(ctx, c.indexer)
+	// Retry the initial sweep for up to 1 minute to allow Grafana to start.
+	// This ensures we discover existing UIDs and don't start with a blank state
+	// which would cause the first delete event to be ignored.
+	err = wait.PollUntilContextTimeout(ctx, 5*time.Second, 1*time.Minute, true, func(ctx context.Context) (bool, error) {
+		err := c.cleanupOrphanDashboards(ctx, c.indexer)
+		if err != nil {
+			klog.InfoS("waiting for Grafana to be ready", "error", err)
+			return false, nil
+		}
+		return true, nil
+	})
+	if err != nil {
+		return fmt.Errorf("initial orphan cleanup failed after 1 minute timeout: %w", err)
+	}
 
 	klog.Info("starting worker")
 	wg.Go(func() {
@@ -129,7 +143,11 @@ func (c *GrafanaDashboardController) Run(ctx context.Context) error {
 
 	// Periodically run orphan cleanup to catch any missed deletions and ghost folders.
 	wg.Go(func() {
-		wait.UntilWithContext(ctx, func(ctx context.Context) { c.cleanupOrphanDashboards(ctx, c.indexer) }, resyncPeriod)
+		wait.UntilWithContext(ctx, func(ctx context.Context) {
+			if err := c.cleanupOrphanDashboards(ctx, c.indexer); err != nil {
+				klog.ErrorS(err, "periodic orphan cleanup failed")
+			}
+		}, resyncPeriod)
 	})
 
 	<-ctx.Done()
@@ -303,17 +321,17 @@ func (c *GrafanaDashboardController) shouldEnqueue(oldCm, newCm *corev1.ConfigMa
 	return false
 }
 
-func (c *GrafanaDashboardController) cleanupOrphanDashboards(ctx context.Context, indexer cache.Indexer) {
-	klog.Info("scanning for orphan dashboards in Grafana")
+func (c *GrafanaDashboardController) cleanupOrphanDashboards(ctx context.Context, indexer cache.Indexer) error {
+	klog.InfoS("scanning for orphan dashboards in Grafana")
 	dashboards, err := c.grafana.ListAllDashboards(ctx)
 	if err != nil {
-		klog.ErrorS(err, "failed to list dashboards for cleanup")
-		return
+		return fmt.Errorf("failed to list dashboards for cleanup: %w", err)
 	}
+
 	klog.InfoS("found dashboards in Grafana", "count", len(dashboards))
 
 	if ctx.Err() != nil {
-		return
+		return ctx.Err()
 	}
 
 	// Build a set of all expected UIDs from ConfigMaps in the indexer.
@@ -325,7 +343,7 @@ func (c *GrafanaDashboardController) cleanupOrphanDashboards(ctx context.Context
 	for _, obj := range list {
 		select {
 		case <-ctx.Done():
-			return
+			return ctx.Err()
 		default:
 		}
 		cm, ok := obj.(*corev1.ConfigMap)
@@ -344,7 +362,7 @@ func (c *GrafanaDashboardController) cleanupOrphanDashboards(ctx context.Context
 			for key, val := range cm.Data {
 				dashboard := map[string]any{}
 				if err := json.Unmarshal([]byte(val), &dashboard); err != nil {
-					klog.ErrorS(err, "failed to unmarshal dashboard during cleanup, falling back to name-based UID", "namespace", cm.Namespace, "name", cm.Name, "key", key)
+					klog.V(2).InfoS("failed to unmarshal dashboard during cleanup, falling back to name-based UID", "namespace", cm.Namespace, "name", cm.Name, "key", key)
 					dashboard = nil
 				}
 				uid, err := c.resolveDashboardUID(dashboard, cm, key)
@@ -372,7 +390,7 @@ func (c *GrafanaDashboardController) cleanupOrphanDashboards(ctx context.Context
 	for _, d := range dashboards {
 		select {
 		case <-ctx.Done():
-			return
+			return ctx.Err()
 		default:
 		}
 		if _, expected := expectedUIDs[d.UID]; !expected {
@@ -385,6 +403,7 @@ func (c *GrafanaDashboardController) cleanupOrphanDashboards(ctx context.Context
 
 	// orphan deletion may leave folders empty; this is a catch-all sweep.
 	c.cleanupAllEmptyFolders(ctx)
+	return nil
 }
 
 func (c *GrafanaDashboardController) findCustomFolderID(ctx context.Context, folderTitle string) int64 {
@@ -454,12 +473,27 @@ func (c *GrafanaDashboardController) cleanupFolderIfEmpty(ctx context.Context, f
 	if err != nil {
 		return
 	}
-	empty, err := c.grafana.IsEmpty(ctx, folder.UID)
-	if err == nil && empty {
-		klog.InfoS("deleting empty folder", "title", folderTitle, "uid", folder.UID)
-		if err := c.grafana.DeleteFolder(ctx, folder.UID); err != nil {
-			klog.ErrorS(err, "failed to cleanup empty folder", "folderTitle", folderTitle)
+
+	// Wait up to 5 seconds for Grafana's search index to reflect the change.
+	// This is an optimization for immediate UX during move/delete operations.
+	err = wait.PollUntilContextTimeout(ctx, 1*time.Second, 5*time.Second, true, func(ctx context.Context) (bool, error) {
+		empty, err := c.grafana.IsEmpty(ctx, folder.UID)
+		if err != nil {
+			klog.V(4).InfoS("failed to check if folder is empty during poll, retrying", "folder", folderTitle, "error", err)
+			return false, nil // retry
 		}
+		if empty {
+			klog.InfoS("deleting empty folder", "title", folderTitle, "uid", folder.UID)
+			if err := c.grafana.DeleteFolder(ctx, folder.UID); err != nil {
+				klog.ErrorS(err, "failed to cleanup empty folder", "folderTitle", folderTitle)
+			}
+			return true, nil
+		}
+		return false, nil // not empty yet, retry
+	})
+
+	if err != nil && !errors.Is(err, context.DeadlineExceeded) {
+		klog.V(2).InfoS("folder not empty yet, leaving for periodic sweep", "folderTitle", folderTitle)
 	}
 }
 
@@ -498,7 +532,18 @@ func (c *GrafanaDashboardController) resolveDashboardUID(dashboard map[string]an
 		}
 	}
 
-	uid, err := util.GenerateUID(cm.GetNamespace(), cm.GetName()+"-"+key)
+	// Fallback UID generation logic (Legacy Compatibility)
+	// The old loader used: util.GenerateUID(cm.Name, cm.Namespace) -> "name-namespace"
+	// To support multi-dashboard CMs without breaking existing single-dashboard CMs:
+	// 1. If key matches CM name (common case), use CM name to keep legacy UID.
+	// 2. Otherwise, use name-key to ensure uniqueness.
+	nameArg := cm.GetName()
+	keyBase := strings.TrimSuffix(key, ".json")
+	if keyBase != cm.GetName() && !strings.Contains(cm.GetName(), keyBase) {
+		nameArg = cm.GetName() + "-" + keyBase
+	}
+
+	uid, err := util.GenerateUID(nameArg, cm.GetNamespace())
 	if err != nil {
 		return "", fmt.Errorf("failed to generate fallback dashboard UID for key %s: %w", key, err)
 	}
@@ -539,10 +584,10 @@ func (c *GrafanaDashboardController) updateDashboard(ctx context.Context, newObj
 		dashboard := map[string]any{}
 		err := json.Unmarshal([]byte(value), &dashboard)
 		if err != nil {
-			// Unmarshal errors are terminal user input issues. We log and ignore them
+			// Unmarshal errors are terminal user input issues. We log at V(2) and ignore them
 			// to avoid endless workqueue retries, while letting other valid dashboards
 			// in the same ConfigMap proceed.
-			klog.ErrorS(err, "failed to unmarshal dashboard data, skipping", "namespace", newObj.Namespace, "name", newObj.Name, "key", key)
+			klog.V(2).InfoS("failed to unmarshal dashboard data, skipping", "namespace", newObj.Namespace, "name", newObj.Name, "key", key, "error", err)
 			continue
 		}
 
@@ -648,10 +693,15 @@ func isDesiredDashboardConfigmap(cm *corev1.ConfigMap) bool {
 	if strings.ToLower(labels[CustomDashboardLabelKey]) == "true" {
 		return true
 	}
+	if strings.ToLower(labels[GeneralFolderKey]) == "true" {
+		return true
+	}
 
+	// Platform dashboards are created by the MCO operator and typically follow this naming convention.
+	// We check both ownerRef and name prefix to avoid processing unrelated MCO resources like configs.
 	owners := cm.GetOwnerReferences()
 	for _, owner := range owners {
-		if strings.Contains(cm.Name, "grafana-dashboard") && owner.Kind == "MultiClusterObservability" {
+		if owner.Kind == "MultiClusterObservability" && strings.HasPrefix(cm.Name, "grafana-dashboard-") {
 			return true
 		}
 	}

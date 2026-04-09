@@ -236,6 +236,7 @@ func (g *grafanaClient) HasPermissions(ctx context.Context, uid string) (bool, e
 func (g *grafanaClient) IsEmpty(ctx context.Context, uid string) (bool, error) {
 	params := url.Values{}
 	params.Add("folderUids", uid)
+	params.Add("type", "dash-db")
 	targetURL := g.uri + apiSearch + "?" + params.Encode()
 	body, status := util.SendRequest(ctx, nil, http.MethodGet, targetURL, nil)
 	if status != http.StatusOK {

@@ -356,31 +356,30 @@ var _ = Describe("Observability: Dashboard Lifecycle", func() {
 				_ = hubClient.CoreV1().ConfigMaps(MCO_NAMESPACE).Delete(context.Background(), cmName, metav1.DeleteOptions{})
 			})
 
-			var dashID int64
 			Eventually(func() bool {
 				meta, _ := utils.GetDashboardMetadata(context.Background(), testOptions, dashTitle)
-				if meta != nil {
-					dashID = meta.ID
-					return true
-				}
-				return false
+				return meta != nil && meta.UID == dashUID
 			}, syncTimeout, syncInterval).Should(BeTrue())
 
 			By("Verifying Grafana home dashboard preference")
 			isForbidden := false
-			Eventually(func() int64 {
+			Eventually(func() string {
 				id, err := utils.GetGrafanaHomeDashboard(context.Background(), testOptions)
 				if err != nil {
 					if strings.Contains(err.Error(), "403") {
 						isForbidden = true
-						return -1
+						return "403"
 					}
-					return 0
+					return ""
 				}
-				return id
+				if id == 0 {
+					return "none"
+				}
+				homeUID, _ := utils.GetDashboardUIDByID(context.Background(), testOptions, id)
+				return homeUID
 			}, syncTimeout, syncInterval).Should(SatisfyAny(
-				Equal(dashID),
-				Equal(int64(-1)), // marker for 403
+				Equal(dashUID),
+				Equal("403"), // Handle 403 Access Denied
 			))
 
 			if isForbidden {

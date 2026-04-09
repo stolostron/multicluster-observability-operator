@@ -321,6 +321,11 @@ func TestIsDesiredDashboardConfigmap(t *testing.T) {
 			true,
 		},
 		{
+			"general folder dashboard",
+			&corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{GeneralFolderKey: "true"}}},
+			true,
+		},
+		{
 			"not custom dashboard",
 			&corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{CustomDashboardLabelKey: "false"}}},
 			false,
@@ -329,21 +334,11 @@ func TestIsDesiredDashboardConfigmap(t *testing.T) {
 			"mco dashboard",
 			&corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:            "grafana-dashboard-test",
+					Name:            "grafana-dashboard-mco",
 					OwnerReferences: []metav1.OwnerReference{{Kind: "MultiClusterObservability"}},
 				},
 			},
 			true,
-		},
-		{
-			"not mco dashboard (wrong name)",
-			&corev1.ConfigMap{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:            "not-grafana",
-					OwnerReferences: []metav1.OwnerReference{{Kind: "MultiClusterObservability"}},
-				},
-			},
-			false,
 		},
 		{
 			"not mco dashboard (wrong owner)",
@@ -498,9 +493,18 @@ func TestResolveDashboardUID(t *testing.T) {
 	t.Run("fallback", func(t *testing.T) {
 		dash := map[string]any{"uid": ""}
 		uid, _ := c.resolveDashboardUID(dash, cm, "key1")
-		// Fallback should be namespace-name-key
-		if uid != "my-ns-my-cm-key1" {
-			t.Errorf("expected my-ns-my-cm-key1, got %s", uid)
+		// Fallback should be name-namespace (legacy)
+		// Since key1 is NOT in my-cm, it should be my-cm-key1-my-ns
+		if uid != "my-cm-key1-my-ns" {
+			t.Errorf("expected my-cm-key1-my-ns, got %s", uid)
+		}
+	})
+
+	t.Run("legacy fallback (key matches name)", func(t *testing.T) {
+		cm2 := &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "my-dash", Namespace: "ns"}}
+		uid, _ := c.resolveDashboardUID(nil, cm2, "my-dash.json")
+		if uid != "my-dash-ns" {
+			t.Errorf("expected my-dash-ns, got %s", uid)
 		}
 	})
 
@@ -525,7 +529,7 @@ func TestResolveDashboardUID(t *testing.T) {
 		if u1 == u2 {
 			t.Errorf("expected unique UIDs for different keys, both got %s", u1)
 		}
-		if !strings.Contains(u1, "k1") || !strings.Contains(u2, "k2") {
+		if !strings.Contains(u1, "multi-k1") || !strings.Contains(u2, "multi-k2") {
 			t.Errorf("UIDs should contain the key name: %s, %s", u1, u2)
 		}
 	})

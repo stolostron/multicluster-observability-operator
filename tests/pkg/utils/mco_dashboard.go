@@ -143,6 +143,35 @@ func GetGrafanaHomeDashboard(ctx context.Context, opt TestOptions) (int64, error
 	return res.HomeDashboardID, nil
 }
 
+func GetDashboardUIDByID(ctx context.Context, opt TestOptions, id int64) (string, error) {
+	if id == 0 {
+		return "", nil
+	}
+	// Grafana search API doesn't have a direct "by id" filter, so we list all and find it.
+	// This is only used for verification in tests.
+	resp, err := doGrafanaGet(ctx, opt, "/api/search?type=dash-db")
+	if err != nil {
+		return "", err
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	results, err := grafanaDecodeJSON[[]struct {
+		ID  int64  `json:"id"`
+		UID string `json:"uid"`
+	}](resp, "failed to search dashboards for UID resolution")
+	if err != nil {
+		return "", err
+	}
+
+	for _, res := range results {
+		if res.ID == id {
+			return res.UID, nil
+		}
+	}
+
+	return "", nil
+}
+
 func FolderExists(ctx context.Context, opt TestOptions, title string) (bool, error) {
 	resp, err := doGrafanaGet(ctx, opt, "/api/search?type=dash-folder")
 	if err != nil {
