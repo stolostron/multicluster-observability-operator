@@ -229,20 +229,96 @@ undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/confi
 build: ## Build manager binary.
 	@$(MAKE) -C operators/multiclusterobservability build
 
+CONTAINER_ENGINE ?= docker
+PLATFORM ?= linux/amd64
+
 # Build the docker image
 .PHONY: docker-build
 docker-build: ## Build docker image with the manager using private RHEL base images.
-	@$(MAKE) -C operators/multiclusterobservability docker-build
+	@$(MAKE) -C operators/multiclusterobservability docker-build CONTAINER_ENGINE=$(CONTAINER_ENGINE) PLATFORM=$(PLATFORM)
 
 # Build the docker image using a public image registry
 .PHONY: docker-build-local
 docker-build-local:  ## Build docker image with the manager using public UBI base images.
-	@$(MAKE) -C operators/multiclusterobservability docker-build-local
+	@$(MAKE) -C operators/multiclusterobservability docker-build-local CONTAINER_ENGINE=$(CONTAINER_ENGINE) PLATFORM=$(PLATFORM)
 
 # Push the docker image
 .PHONY: docker-push
 docker-push: ## Push docker image with the manager.
-	@$(MAKE) -C operators/multiclusterobservability docker-push
+	@$(MAKE) -C operators/multiclusterobservability docker-push CONTAINER_ENGINE=$(CONTAINER_ENGINE)
+
+##@ Dev image builds (public base images, no registry auth required)
+# Registry and tag for dev image targets. Override for your own fork:
+#   DEV_REGISTRY=quay.io/<you> DEV_TAG=my-dev make docker-build-dev-all
+DEV_REGISTRY ?= quay.io/stolostron
+DEV_TAG ?= dev
+
+_dev_build = $(CONTAINER_ENGINE) build --platform=$(PLATFORM) -f $1 -t $(DEV_REGISTRY)/$2:$(DEV_TAG) .
+_dev_push  = $(CONTAINER_ENGINE) push $(DEV_REGISTRY)/$1:$(DEV_TAG)
+
+.PHONY: docker-build-dev-mco
+docker-build-dev-mco: ## Build MCO operator dev image.
+	$(call _dev_build,operators/multiclusterobservability/Dockerfile.dev,multicluster-observability-operator)
+
+.PHONY: docker-push-dev-mco
+docker-push-dev-mco: ## Push MCO operator dev image.
+	$(call _dev_push,multicluster-observability-operator)
+
+.PHONY: docker-build-push-dev-mco
+docker-build-push-dev-mco: docker-build-dev-mco docker-push-dev-mco ## Build and push MCO operator dev image.
+
+.PHONY: docker-build-dev-endpoint
+docker-build-dev-endpoint: ## Build endpoint metrics operator dev image.
+	$(call _dev_build,operators/endpointmetrics/Dockerfile.dev,endpoint-monitoring-operator)
+
+.PHONY: docker-push-dev-endpoint
+docker-push-dev-endpoint: ## Push endpoint metrics operator dev image.
+	$(call _dev_push,endpoint-monitoring-operator)
+
+.PHONY: docker-build-push-dev-endpoint
+docker-build-push-dev-endpoint: docker-build-dev-endpoint docker-push-dev-endpoint ## Build and push endpoint metrics operator dev image.
+
+.PHONY: docker-build-dev-metrics-collector
+docker-build-dev-metrics-collector: ## Build metrics collector dev image.
+	$(call _dev_build,collectors/metrics/Dockerfile.dev,metrics-collector)
+
+.PHONY: docker-push-dev-metrics-collector
+docker-push-dev-metrics-collector: ## Push metrics collector dev image.
+	$(call _dev_push,metrics-collector)
+
+.PHONY: docker-build-push-dev-metrics-collector
+docker-build-push-dev-metrics-collector: docker-build-dev-metrics-collector docker-push-dev-metrics-collector ## Build and push metrics collector dev image.
+
+.PHONY: docker-build-dev-rbac-proxy
+docker-build-dev-rbac-proxy: ## Build RBAC query proxy dev image.
+	$(call _dev_build,proxy/Dockerfile.dev,rbac-query-proxy)
+
+.PHONY: docker-push-dev-rbac-proxy
+docker-push-dev-rbac-proxy: ## Push RBAC query proxy dev image.
+	$(call _dev_push,rbac-query-proxy)
+
+.PHONY: docker-build-push-dev-rbac-proxy
+docker-build-push-dev-rbac-proxy: docker-build-dev-rbac-proxy docker-push-dev-rbac-proxy ## Build and push RBAC query proxy dev image.
+
+.PHONY: docker-build-dev-dashboard-loader
+docker-build-dev-dashboard-loader: ## Build Grafana dashboard loader dev image.
+	$(call _dev_build,loaders/dashboards/Dockerfile.dev,grafana-dashboard-loader)
+
+.PHONY: docker-push-dev-dashboard-loader
+docker-push-dev-dashboard-loader: ## Push Grafana dashboard loader dev image.
+	$(call _dev_push,grafana-dashboard-loader)
+
+.PHONY: docker-build-push-dev-dashboard-loader
+docker-build-push-dev-dashboard-loader: docker-build-dev-dashboard-loader docker-push-dev-dashboard-loader ## Build and push Grafana dashboard loader dev image.
+
+.PHONY: docker-build-dev-all
+docker-build-dev-all: docker-build-dev-mco docker-build-dev-endpoint docker-build-dev-metrics-collector docker-build-dev-rbac-proxy docker-build-dev-dashboard-loader ## Build all component dev images.
+
+.PHONY: docker-push-dev-all
+docker-push-dev-all: docker-push-dev-mco docker-push-dev-endpoint docker-push-dev-metrics-collector docker-push-dev-rbac-proxy docker-push-dev-dashboard-loader ## Push all component dev images.
+
+.PHONY: docker-build-push-dev-all
+docker-build-push-dev-all: docker-build-dev-all docker-push-dev-all ## Build and push all component dev images.
 
 .PHONY: bundle
 bundle: deps ## Generate bundle manifests and metadata, then validate generated files.

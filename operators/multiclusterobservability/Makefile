@@ -149,17 +149,20 @@ build: manifests generate fmt vet ## Build manager binary.
 run: generate fmt vet manifests ## Run a controller from your host.
 	go run ./main.go
 
+CONTAINER_ENGINE ?= docker
+PLATFORM ?= linux/amd64
+
 .PHONY: docker-build
 docker-build: ## Build docker image with the manager using private RHEL base images.
-	docker build -t ${IMG} -f Dockerfile ../../
+	$(CONTAINER_ENGINE) build --platform=$(PLATFORM) -t ${IMG} -f Dockerfile ../../
 
 .PHONY: docker-build-local
 docker-build-local: test ## Build docker image with the manager using public UBI base images.
-	docker buildx build -t ${IMG} -f Dockerfile.dev --load  ../../
+	$(CONTAINER_ENGINE) build --platform=$(PLATFORM) -t ${IMG} -f Dockerfile.dev ../../
 
 .PHONY: docker-push
 docker-push: ## Push docker image with the manager.
-	docker push ${IMG}
+	$(CONTAINER_ENGINE) push ${IMG}
 
 # PLATFORMS defines the target platforms for  the manager image be build to provide support to multiple
 # architectures. (i.e. make docker-buildx IMG=myregistry/mypoperator:0.0.1). To use this option you need to:

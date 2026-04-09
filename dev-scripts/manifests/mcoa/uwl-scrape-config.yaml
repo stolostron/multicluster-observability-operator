@@ -1,0 +1,26 @@
+apiVersion: monitoring.rhobs/v1alpha1
+kind: ScrapeConfig
+metadata:
+  name: dev-uwl-metrics
+  namespace: open-cluster-management-observability
+  labels:
+    app.kubernetes.io/component: user-workload-metrics-collector
+    app.kubernetes.io/part-of: multicluster-observability-addon
+    app.kubernetes.io/managed-by: multicluster-observability-operator
+spec:
+  jobName: dev-uwl-metrics
+  metricsPath: /federate
+  params:
+    # 'up' confirms scrapers are reachable; kube_node/pod_info give useful
+    # cluster topology signal without high cardinality.
+    match[]:
+      - '{__name__="up"}'
+      - '{__name__=~"kube_node_info|kube_pod_info"}'
+  metricRelabelings:
+    - action: labeldrop
+      regex: prometheus_replica|managed_cluster|id
+  staticConfigs:
+    - targets:
+        # localhost:8090 is the in-pod proxy that provides federation access to
+        # the cluster's Prometheus from within the PrometheusAgent pod.
+        - localhost:8090

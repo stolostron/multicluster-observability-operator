@@ -1,0 +1,3 @@
+# Follow source directives with dynamic paths, resolved relative to each script's directory.
+external-sources=true
+source-path=SCRIPTDIR

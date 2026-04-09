@@ -1,0 +1,20 @@
+apiVersion: operator.open-cluster-management.io/v1
+kind: MultiClusterHub
+metadata:
+  name: multiclusterhub
+  namespace: open-cluster-management
+spec:
+  overrides:
+    components:
+    - name: grc
+      enabled: false
+    - name: app-lifecycle
+      enabled: false
+    - name: search
+      enabled: false
+    - name: submariner-addon
+      enabled: false
+    - name: volsync
+      enabled: false
+    - name: insights
+      enabled: false

@@ -99,3 +99,5 @@ results.xml
 registration-operator
 tmp
 .env
+tests/resources/kubeconfigs/
+tests/resources/options.yaml

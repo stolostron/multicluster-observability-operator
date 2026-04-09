@@ -1,0 +1,15 @@
+apiVersion: config.openshift.io/v1
+kind: ImageDigestMirrorSet
+metadata:
+  name: rhacm-repo
+spec:
+  imageDigestMirrors:
+    - source: registry.redhat.io/rhacm2
+      mirrors:
+        - quay.io:443/acm-d
+    - source: registry.redhat.io/multicluster-engine
+      mirrors:
+        - quay.io:443/acm-d
+    - source: registry.access.redhat.com/openshift4/ose-oauth-proxy
+      mirrors:
+        - registry.redhat.io/openshift4/ose-oauth-proxy

@@ -164,6 +164,29 @@ We enforce strict metric collection to minimize cardinality/cost.
 *   Run `make check-metrics` to verify that only the metrics required by your dashboards are being collected.
 *   **New Directories:** If you create a new directory for your dashboards, you must update `cicd-scripts/metrics/Makefile` to include this new path in the CI checks.
 
+## Developer Setup
+
+For day-to-day development on a real OCP cluster, `dev-scripts/` provides a set of
+scripts that automate the full lifecycle: installing ACM via OLM, deploying the MCO
+stack with MinIO as ephemeral storage, overriding component images for PR testing,
+and tearing everything down cleanly.
+
+```bash
+# Install ACM and deploy the observability stack
+ACM_VERSION=2.16 ./dev-scripts/setup-upstream-catalog.sh
+./dev-scripts/setup-observability.sh
+
+# Test a specific image build
+MCO_TAG=2.17.0-SNAPSHOT-<YOUR_TAG> ./dev-scripts/image-override.sh
+
+# Run e2e tests (requires ginkgo)
+./dev-scripts/run-e2e.sh --focus mcoa
+```
+
+See [`dev-scripts/README.md`](dev-scripts/README.md) for the full reference.
+
+---
+
 ## Quick Start Guide
 
 ### Prerequisites
