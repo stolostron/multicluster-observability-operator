@@ -7,6 +7,7 @@ package rsutility
 import (
 	"context"
 	"fmt"
+	"maps"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -40,6 +41,7 @@ func CreateUpdateRSPlacement(ctx context.Context, c client.Client, placementName
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      placementName,
 			Namespace: namespace,
+			Labels:    RSLabels(),
 		},
 	}
 	key := types.NamespacedName{
@@ -68,6 +70,10 @@ func CreateUpdateRSPlacement(ctx context.Context, c client.Client, placementName
 	}
 
 	// Update existing placement
+	if placement.Labels == nil {
+		placement.Labels = map[string]string{}
+	}
+	maps.Copy(placement.Labels, RSLabels())
 	placement.Spec = placementConfig.Spec
 	if err := c.Update(ctx, placement); err != nil {
 		return fmt.Errorf("rs - failed to update placement: %w", err)

@@ -27,6 +27,7 @@ func EnsureRSConfigMapExists(ctx context.Context, c client.Client, configMapName
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      configMapName,
 			Namespace: config.GetDefaultNamespace(),
+			Labels:    RSLabels(),
 		},
 	}
 
