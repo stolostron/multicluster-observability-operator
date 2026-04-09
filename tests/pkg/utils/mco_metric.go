@@ -89,6 +89,7 @@ func QueryGrafana(opt TestOptions, query string) (*GrafanaResponse, error) {
 	client := &http.Client{}
 	if os.Getenv("IS_KIND_ENV") != "true" {
 		tr := &http.Transport{
+			Proxy: http.ProxyFromEnvironment,
 			// #nosec G402 -- Only used in test.
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 		}

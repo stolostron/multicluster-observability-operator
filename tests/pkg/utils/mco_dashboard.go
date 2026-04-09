@@ -36,6 +36,7 @@ func ContainDashboard(opt TestOptions, title string) (error, bool) {
 	client := &http.Client{}
 	if os.Getenv("IS_KIND_ENV") != trueStr {
 		tr := &http.Transport{
+			Proxy: http.ProxyFromEnvironment,
 			// #nosec G402 -- Used in test.
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 		}
