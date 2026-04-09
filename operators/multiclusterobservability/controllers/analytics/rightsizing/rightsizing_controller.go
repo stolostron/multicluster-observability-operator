@@ -43,20 +43,31 @@ func CreateRightSizingComponent(
 }
 
 // CleanupRightSizingResources cleans up all right-sizing resources (Policies, Placements, PlacementBindings, ConfigMaps).
-// It reads the namespace from the MCO spec to avoid relying on in-memory state which may be stale after operator restart.
+// It uses a hybrid approach:
+//  1. Label-based cleanup: discovers RS resources across all namespaces using the managed-by label.
+//     This handles cases where NamespaceBinding was changed before deletion.
+//  2. Name-based fallback: cleans up resources by well-known names in the spec namespace.
+//     This handles upgrade scenarios where existing resources don't have labels yet.
 func CleanupRightSizingResources(ctx context.Context, c client.Client, mco *mcov1beta2.MultiClusterObservability) error {
 	log.Info("rs - cleaning up all right-sizing resources")
 
+	var errs []error
+
+	// Label-based cleanup: catches resources in any namespace
+	if err := rsutility.CleanupRSResourcesByLabel(ctx, c); err != nil {
+		errs = append(errs, err)
+	}
+
+	// Name-based fallback: catches old unlabeled resources (upgrade path)
 	nsNamespace := getNamespaceBinding(mco, rsutility.ComponentTypeNamespace)
 	virtNamespace := getNamespaceBinding(mco, rsutility.ComponentTypeVirtualization)
-
-	var errs []error
 	if err := rsnamespace.CleanupRSNamespaceResources(ctx, c, nsNamespace, false); err != nil {
 		errs = append(errs, err)
 	}
 	if err := rsvirtualization.CleanupRSVirtualizationResources(ctx, c, virtNamespace, false); err != nil {
 		errs = append(errs, err)
 	}
+
 	return errors.Join(errs...)
 }
 

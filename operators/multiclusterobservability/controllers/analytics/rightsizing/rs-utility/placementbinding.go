@@ -21,6 +21,7 @@ func CreateRSPlacementBinding(ctx context.Context, c client.Client, placementBin
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      placementBindingName,
 			Namespace: namespace,
+			Labels:    RSLabels(),
 		},
 	}
 

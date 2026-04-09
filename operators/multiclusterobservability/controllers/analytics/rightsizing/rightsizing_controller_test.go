@@ -15,6 +15,7 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clusterv1beta1 "open-cluster-management.io/api/cluster/v1beta1"
@@ -130,17 +131,17 @@ func TestCleanupRightSizingResources_DefaultNamespace(t *testing.T) {
 	err := CleanupRightSizingResources(context.TODO(), client, mco)
 	require.NoError(t, err)
 
-	// Verify all namespace RS resources are deleted
-	require.Error(t, client.Get(context.TODO(), keyFor(rsnamespace.PrometheusRulePolicyName, ns), &policyv1.Policy{}))
-	require.Error(t, client.Get(context.TODO(), keyFor(rsnamespace.PlacementName, ns), &clusterv1beta1.Placement{}))
-	require.Error(t, client.Get(context.TODO(), keyFor(rsnamespace.PlacementBindingName, ns), &policyv1.PlacementBinding{}))
-	require.Error(t, client.Get(context.TODO(), keyFor(rsnamespace.ConfigMapName, config.GetDefaultNamespace()), &corev1.ConfigMap{}))
+	// Verify all namespace RS resources are deleted (NotFound, not just any error)
+	require.True(t, apierrors.IsNotFound(client.Get(context.TODO(), keyFor(rsnamespace.PrometheusRulePolicyName, ns), &policyv1.Policy{})))
+	require.True(t, apierrors.IsNotFound(client.Get(context.TODO(), keyFor(rsnamespace.PlacementName, ns), &clusterv1beta1.Placement{})))
+	require.True(t, apierrors.IsNotFound(client.Get(context.TODO(), keyFor(rsnamespace.PlacementBindingName, ns), &policyv1.PlacementBinding{})))
+	require.True(t, apierrors.IsNotFound(client.Get(context.TODO(), keyFor(rsnamespace.ConfigMapName, config.GetDefaultNamespace()), &corev1.ConfigMap{})))
 
-	// Verify all virtualization RS resources are deleted
-	require.Error(t, client.Get(context.TODO(), keyFor(rsvirtualization.PrometheusRulePolicyName, ns), &policyv1.Policy{}))
-	require.Error(t, client.Get(context.TODO(), keyFor(rsvirtualization.PlacementName, ns), &clusterv1beta1.Placement{}))
-	require.Error(t, client.Get(context.TODO(), keyFor(rsvirtualization.PlacementBindingName, ns), &policyv1.PlacementBinding{}))
-	require.Error(t, client.Get(context.TODO(), keyFor(rsvirtualization.ConfigMapName, config.GetDefaultNamespace()), &corev1.ConfigMap{}))
+	// Verify all virtualization RS resources are deleted (NotFound, not just any error)
+	require.True(t, apierrors.IsNotFound(client.Get(context.TODO(), keyFor(rsvirtualization.PrometheusRulePolicyName, ns), &policyv1.Policy{})))
+	require.True(t, apierrors.IsNotFound(client.Get(context.TODO(), keyFor(rsvirtualization.PlacementName, ns), &clusterv1beta1.Placement{})))
+	require.True(t, apierrors.IsNotFound(client.Get(context.TODO(), keyFor(rsvirtualization.PlacementBindingName, ns), &policyv1.PlacementBinding{})))
+	require.True(t, apierrors.IsNotFound(client.Get(context.TODO(), keyFor(rsvirtualization.ConfigMapName, config.GetDefaultNamespace()), &corev1.ConfigMap{})))
 }
 
 func TestCleanupRightSizingResources_CustomNamespace(t *testing.T) {
@@ -177,10 +178,10 @@ func TestCleanupRightSizingResources_CustomNamespace(t *testing.T) {
 	err := CleanupRightSizingResources(context.TODO(), client, mco)
 	require.NoError(t, err)
 
-	// Verify resources in custom namespace are deleted
-	require.Error(t, client.Get(context.TODO(), keyFor(rsnamespace.PrometheusRulePolicyName, customNS), &policyv1.Policy{}))
-	require.Error(t, client.Get(context.TODO(), keyFor(rsnamespace.PlacementName, customNS), &clusterv1beta1.Placement{}))
-	require.Error(t, client.Get(context.TODO(), keyFor(rsnamespace.PlacementBindingName, customNS), &policyv1.PlacementBinding{}))
+	// Verify resources in custom namespace are deleted (NotFound, not just any error)
+	require.True(t, apierrors.IsNotFound(client.Get(context.TODO(), keyFor(rsnamespace.PrometheusRulePolicyName, customNS), &policyv1.Policy{})))
+	require.True(t, apierrors.IsNotFound(client.Get(context.TODO(), keyFor(rsnamespace.PlacementName, customNS), &clusterv1beta1.Placement{})))
+	require.True(t, apierrors.IsNotFound(client.Get(context.TODO(), keyFor(rsnamespace.PlacementBindingName, customNS), &policyv1.PlacementBinding{})))
 }
 
 func keyFor(name, namespace string) client.ObjectKey {
