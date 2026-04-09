@@ -6,12 +6,12 @@ package rendering
 
 import (
 	"context"
-	"strconv"
 
 	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	rendererutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering"
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 	"github.com/thanos-io/thanos/pkg/alert"
+	"github.com/thanos-io/thanos/pkg/clientconfig"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -76,13 +76,22 @@ func (r *MCORenderer) RenderThanosConfig(ctx context.Context, res *resource.Reso
 			log.Error(err, "Failed to unmarshal data in configmap thanos-ruler-config")
 			return nil, err
 		}
-		addr := []string{}
-		replicas := mcoconfig.GetReplicas(mcoconfig.Alertmanager, r.cr.Spec.InstanceSize, r.cr.Spec.AdvancedConfig)
-		for i := range *replicas {
-			addr = append(addr, "observability-alertmanager-"+strconv.Itoa(int(i))+
-				".alertmanager-operated.open-cluster-management-observability.svc:9095")
+		// addr := []string{}
+		// replicas := mcoconfig.GetReplicas(mcoconfig.Alertmanager, r.cr.Spec.InstanceSize, r.cr.Spec.AdvancedConfig)
+		//
+		// for i := range *replicas {
+		// 	addr = append(addr, "observability-alertmanager-"+strconv.Itoa(int(i))+
+		// 		".alertmanager-operated.open-cluster-management-observability.svc:9095")
+		// }
+		// TODO redirect to observatorium-api
+		addr := []string{
+			mcoconfig.GetOperandNamePrefix() + "observatorium-api." +
+				mcoconfig.GetDefaultNamespace() + ".svc.cluster.local:8080",
 		}
 		alertingConfig.Alertmanagers[0].EndpointsConfig.StaticAddresses = addr
+		alertingConfig.Alertmanagers[0].EndpointsConfig.PathPrefix = "/api/alertmanager/v2"
+		alertingConfig.Alertmanagers[0].EndpointsConfig.Scheme = "http"
+		alertingConfig.Alertmanagers[0].HTTPClientConfig = clientconfig.HTTPClientConfig{}
 		updateConfig, err := yaml.Marshal(alertingConfig)
 		if err != nil {
 			log.Error(err, "Failed to marshal data")
