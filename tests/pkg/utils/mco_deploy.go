@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"slices"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
@@ -132,6 +133,7 @@ func NewScrapeConfigGVR() schema.GroupVersionResource {
 	}
 }
 
+// NewPolicyGVR returns the GVR for OCM Policy resources.
 func NewPolicyGVR() schema.GroupVersionResource {
 	return schema.GroupVersionResource{
 		Group:    OCM_POLICY_GROUP,
@@ -140,6 +142,7 @@ func NewPolicyGVR() schema.GroupVersionResource {
 	}
 }
 
+// NewPlacementGVR returns the GVR for OCM Placement resources.
 func NewPlacementGVR() schema.GroupVersionResource {
 	return schema.GroupVersionResource{
 		Group:    OCM_CLUSTER_GROUP,
@@ -148,6 +151,7 @@ func NewPlacementGVR() schema.GroupVersionResource {
 	}
 }
 
+// NewPlacementBindingGVR returns the GVR for OCM PlacementBinding resources.
 func NewPlacementBindingGVR() schema.GroupVersionResource {
 	return schema.GroupVersionResource{
 		Group:    OCM_POLICY_GROUP,
@@ -157,10 +161,36 @@ func NewPlacementBindingGVR() schema.GroupVersionResource {
 }
 
 // VerifyRSResourcesCleanedUp checks that all right-sizing resources have been deleted.
-// Returns an error listing any resources that still exist, or nil if all are gone.
+// Uses both label-based discovery (catches resources in any namespace) and name-based
+// checks (catches old unlabeled resources) to ensure nothing is left behind.
 func VerifyRSResourcesCleanedUp(ctx context.Context, dynClient dynamic.Interface) error {
 	configMapGVR := schema.GroupVersionResource{Group: "", Version: "v1", Resource: "configmaps"}
 
+	var remaining []string
+
+	// Label-based check: find RS resources in any namespace by managed-by label
+	rsLabel := "observability.open-cluster-management.io/managed-by=analytics-rightsizing"
+	labeledGVRs := []schema.GroupVersionResource{
+		NewPolicyGVR(),
+		NewPlacementGVR(),
+		NewPlacementBindingGVR(),
+		configMapGVR,
+	}
+	for _, gvr := range labeledGVRs {
+		list, err := dynClient.Resource(gvr).Namespace("").List(ctx, metav1.ListOptions{LabelSelector: rsLabel})
+		if err == nil {
+			for _, item := range list.Items {
+				remaining = append(remaining, fmt.Sprintf("%s/%s (labeled)", item.GetNamespace(), item.GetName()))
+			}
+			continue
+		}
+		// Ignore NotFound (CRD may not exist), but fail on transient API/RBAC errors
+		if !k8serrors.IsNotFound(err) {
+			return fmt.Errorf("error listing %s for right-sizing cleanup verification: %w", gvr.Resource, err)
+		}
+	}
+
+	// Name-based fallback: check well-known names in default namespaces (upgrade path)
 	rsResources := []struct {
 		gvr       schema.GroupVersionResource
 		name      string
@@ -176,11 +206,14 @@ func VerifyRSResourcesCleanedUp(ctx context.Context, dynClient dynamic.Interface
 		{configMapGVR, "rs-virt-config", MCO_NAMESPACE},
 	}
 
-	var remaining []string
 	for _, r := range rsResources {
 		_, err := dynClient.Resource(r.gvr).Namespace(r.namespace).Get(ctx, r.name, metav1.GetOptions{})
 		if err == nil {
-			remaining = append(remaining, fmt.Sprintf("%s/%s", r.namespace, r.name))
+			entry := fmt.Sprintf("%s/%s", r.namespace, r.name)
+			// Avoid duplicates from label-based check
+			if !slices.Contains(remaining, entry+" (labeled)") {
+				remaining = append(remaining, entry)
+			}
 		} else if !k8serrors.IsNotFound(err) {
 			return fmt.Errorf("error checking resource %s/%s: %w", r.namespace, r.name, err)
 		}

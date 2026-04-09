@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -25,6 +26,7 @@ func CreateOrUpdateRSPrometheusRulePolicy(ctx context.Context, c client.Client, 
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      policyName,
 			Namespace: namespace,
+			Labels:    RSLabels(),
 		},
 	}
 
@@ -106,6 +108,10 @@ func CreateOrUpdateRSPrometheusRulePolicy(ctx context.Context, c client.Client, 
 		}
 		log.Info("rs - created prometheusrulepolicy successfully", logCtx...)
 	} else {
+		if policy.Labels == nil {
+			policy.Labels = map[string]string{}
+		}
+		maps.Copy(policy.Labels, RSLabels())
 		if err := c.Update(ctx, policy); err != nil {
 			return fmt.Errorf("rs - failed to update prometheusrulepolicy: %w", err)
 		}

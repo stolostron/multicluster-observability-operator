@@ -26,7 +26,16 @@ type ComponentType string
 const (
 	ComponentTypeNamespace      ComponentType = "namespace"
 	ComponentTypeVirtualization ComponentType = "virtualization"
+
+	// RSManagedByLabel is applied to all RS resources for label-based discovery during cleanup.
+	RSManagedByLabel = "observability.open-cluster-management.io/managed-by"
+	RSManagedByValue = "analytics-rightsizing"
 )
+
+// RSLabels returns the standard labels applied to all right-sizing resources.
+func RSLabels() map[string]string {
+	return map[string]string{RSManagedByLabel: RSManagedByValue}
+}
 
 // ComponentConfig holds configuration for a right-sizing component
 type ComponentConfig struct {
@@ -183,4 +192,71 @@ func CleanupComponentResources(
 	}
 	log.Info("rs - cleanup success", "component", componentConfig.ComponentType)
 	return nil
+}
+
+// CleanupRSResourcesByLabel deletes all right-sizing resources across namespaces using the managed-by label.
+// This catches resources that may have been created in a different namespace due to NamespaceBinding changes.
+func CleanupRSResourcesByLabel(ctx context.Context, c client.Client) error {
+	log.Info("rs - label-based cleanup of all right-sizing resources")
+	labelSelector := client.MatchingLabels{RSManagedByLabel: RSManagedByValue}
+
+	var errs []error
+
+	// Clean up Policies
+	policyList := &policyv1.PolicyList{}
+	if err := c.List(ctx, policyList, labelSelector); err != nil {
+		if !meta.IsNoMatchError(err) {
+			errs = append(errs, fmt.Errorf("rs - failed to list policies: %w", err))
+		}
+	} else {
+		for i := range policyList.Items {
+			if err := c.Delete(ctx, &policyList.Items[i]); err != nil && !apierrors.IsNotFound(err) {
+				errs = append(errs, err)
+			}
+		}
+	}
+
+	// Clean up PlacementBindings
+	pbList := &policyv1.PlacementBindingList{}
+	if err := c.List(ctx, pbList, labelSelector); err != nil {
+		if !meta.IsNoMatchError(err) {
+			errs = append(errs, fmt.Errorf("rs - failed to list placementbindings: %w", err))
+		}
+	} else {
+		for i := range pbList.Items {
+			if err := c.Delete(ctx, &pbList.Items[i]); err != nil && !apierrors.IsNotFound(err) {
+				errs = append(errs, err)
+			}
+		}
+	}
+
+	// Clean up Placements
+	placementList := &clusterv1beta1.PlacementList{}
+	if err := c.List(ctx, placementList, labelSelector); err != nil {
+		if !meta.IsNoMatchError(err) {
+			errs = append(errs, fmt.Errorf("rs - failed to list placements: %w", err))
+		}
+	} else {
+		for i := range placementList.Items {
+			if err := c.Delete(ctx, &placementList.Items[i]); err != nil && !apierrors.IsNotFound(err) {
+				errs = append(errs, err)
+			}
+		}
+	}
+
+	// Clean up ConfigMaps
+	cmList := &corev1.ConfigMapList{}
+	if err := c.List(ctx, cmList, labelSelector); err != nil {
+		if !meta.IsNoMatchError(err) {
+			errs = append(errs, fmt.Errorf("rs - failed to list configmaps: %w", err))
+		}
+	} else {
+		for i := range cmList.Items {
+			if err := c.Delete(ctx, &cmList.Items[i]); err != nil && !apierrors.IsNotFound(err) {
+				errs = append(errs, err)
+			}
+		}
+	}
+
+	return errors.Join(errs...)
 }
