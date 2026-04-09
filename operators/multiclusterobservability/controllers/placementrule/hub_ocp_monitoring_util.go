@@ -114,8 +114,16 @@ func RevertHubClusterMonitoringConfig(ctx context.Context, client client.Client)
 	if foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs != nil {
 		copiedAlertmanagerConfigs := make([]cmomanifests.AdditionalAlertmanagerConfig, 0)
 		for _, v := range foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs {
-			if v.TLSConfig == (cmomanifests.TLSConfig{}) ||
-				(v.TLSConfig.CA != nil && v.TLSConfig.CA.Name != hubAmRouterCASecretName+"-"+hubInfo.HubClusterID) {
+			managed := false
+			if v.TLSConfig.CA != nil {
+				if v.TLSConfig.CA.Name == hubAmRouterCASecretName+"-"+hubInfo.HubClusterID {
+					managed = true
+				}
+				if v.TLSConfig.CA.Name == managedClusterObsCertName {
+					managed = true
+				}
+			}
+			if !managed {
 				copiedAlertmanagerConfigs = append(copiedAlertmanagerConfigs, v)
 			}
 		}

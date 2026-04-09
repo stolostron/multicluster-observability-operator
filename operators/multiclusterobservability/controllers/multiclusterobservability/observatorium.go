@@ -725,6 +725,12 @@ func newRuleSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string) o
 			Name:      mcoconfig.AlertmanagersDefaultCaBundleName,
 			Key:       mcoconfig.AlertmanagersDefaultCaBundleKey,
 		},
+		{
+			Type:      obsv1alpha1.VolumeMountTypeSecret,
+			MountPath: mcoconfig.ThanosRuleServerCACertMountPath,
+			Name:      mcoconfig.ServerCACerts,
+			Key:       "ca.crt",
+		},
 	}
 
 	if mcoconfig.HasCustomRuleConfigMap() {
