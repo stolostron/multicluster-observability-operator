@@ -46,6 +46,7 @@ type MCOARendererOptions struct {
 	RightSizingDelegated           bool
 }
 
+// newMCOARenderer initializes the MCOA template rendering functions.
 func (r *MCORenderer) newMCOARenderer() {
 	r.renderMCOAFns = map[string]rendererutil.RenderFn{
 		"AddOnDeploymentConfig":  r.renderAddonDeploymentConfig,
@@ -57,6 +58,7 @@ func (r *MCORenderer) newMCOARenderer() {
 	}
 }
 
+// renderMCOADeployment renders the MCOA addon manager deployment with image overrides and node placement.
 func (r *MCORenderer) renderMCOADeployment(
 	res *resource.Resource,
 	namespace string,
@@ -169,6 +171,7 @@ func (r *MCORenderer) renderMCOADeployment(
 	return &unstructured.Unstructured{Object: uObj}, nil
 }
 
+// renderClusterManagementAddOn renders the CMA resource with addon lifecycle annotations.
 func (r *MCORenderer) renderClusterManagementAddOn(
 	res *resource.Resource,
 	namespace string,
@@ -194,6 +197,7 @@ func (r *MCORenderer) renderClusterManagementAddOn(
 	return u, nil
 }
 
+// renderAddonDeploymentConfig renders the ADC with platform metrics, right-sizing, and incident detection variables.
 func (r *MCORenderer) renderAddonDeploymentConfig(
 	res *resource.Resource,
 	namespace string,
@@ -298,6 +302,7 @@ func (r *MCORenderer) renderAddonDeploymentConfig(
 	return u, nil
 }
 
+// renderMCOATemplates renders MCOA templates, applying per-kind render functions and filtering as needed.
 func (r *MCORenderer) renderMCOATemplates(
 	templates []*resource.Resource,
 	namespace string,
@@ -359,6 +364,7 @@ func MCOAEnabled(cr *obv1beta2.MultiClusterObservability) bool {
 	return mcoaEnabled
 }
 
+// MCOAPlatformMetricsEnabled checks if platform metrics collection is enabled in the MCO CR capabilities.
 func MCOAPlatformMetricsEnabled(cr *obv1beta2.MultiClusterObservability) bool {
 	if cr.Spec.Capabilities == nil {
 		return false

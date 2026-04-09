@@ -13,6 +13,7 @@ import (
 	"github.com/go-logr/logr"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	rightsizingctrl "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/analytics/rightsizing"
+	rsnamespace "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/analytics/rightsizing/rs-namespace"
 	mcoctrl "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/multiclusterobservability"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	commonutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
@@ -23,6 +24,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
+	policyv1 "open-cluster-management.io/governance-policy-propagator/api/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -48,7 +50,7 @@ type AnalyticsReconciler struct {
 // +kubebuilder:rbac:groups=observability.open-cluster-management.io,resources=multiclusterobservabilities/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=observability.open-cluster-management.io,resources=multiclusterobservabilities/finalizers,verbs=update
 
-// Reconcile handles reconciliation of right-sizing resources based on the MCO lifecycle.
+// Reconcile handles reconciliation of right-sizing analytics resources based on the MCO lifecycle.
 func (r *AnalyticsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	// TODO: Future enhancement - Add status subresource to track right-sizing state
 	// This would allow users to see current mode (MCO Policy vs MCOA ManifestWork)
@@ -122,9 +124,13 @@ func (r *AnalyticsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	if mcoaCapable {
 		reqLogger.Info("rs - right-sizing delegated to MCOA via MCO CR annotation")
 
-		// On transition to MCOA mode: cleanup Policy resources
+		// On transition to MCOA mode: cleanup Policy resources (if any exist).
+		// The existence check avoids unnecessary API calls on controller restarts
+		// when cleanup already happened in a previous lifecycle.
 		if !r.wasDelegated {
-			rightsizingctrl.CleanupPolicyResourcesForDelegation(ctx, r.Client, instance)
+			if r.hasPolicyResourcesToCleanup(ctx, instance) {
+				rightsizingctrl.CleanupPolicyResourcesForDelegation(ctx, r.Client, instance)
+			}
 			r.wasDelegated = true
 		}
 
@@ -149,11 +155,12 @@ func (r *AnalyticsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, fmt.Errorf("rs - failed to create rightsizing component: %w", err)
 	}
 
-	// When MCO manages right-sizing, sync "disabled" to AddOnDeploymentConfig
-	// This tells MCOA to NOT deploy PrometheusRules via ManifestWork
+	// When MCO manages right-sizing, sync "disabled" to AddOnDeploymentConfig.
+	// This tells MCOA to NOT deploy PrometheusRules via ManifestWork.
+	// Return error to requeue — if this fails, MCOA keeps stale "enabled" values
+	// and both MCO (Policy) and MCOA (ManifestWork) would deploy RS simultaneously.
 	if err := r.syncRightSizingStateToADC(ctx, instance, false, reqLogger); err != nil {
-		reqLogger.Error(err, "rs - failed to sync disabled state to AddOnDeploymentConfig")
-		// Don't fail the reconcile, MCO can still manage via Policy
+		return ctrl.Result{}, fmt.Errorf("rs - failed to sync disabled state to ADC: %w", err)
 	}
 
 	return ctrl.Result{}, nil
@@ -315,4 +322,19 @@ func (r *AnalyticsReconciler) syncRightSizingStateToADC(ctx context.Context, ins
 	}
 
 	return nil
+}
+
+// hasPolicyResourcesToCleanup checks if any MCO-managed Policy resources exist for right-sizing.
+// Returns false if resources were already cleaned up (e.g., after a controller restart in MCOA mode).
+func (r *AnalyticsReconciler) hasPolicyResourcesToCleanup(ctx context.Context, instance *mcov1beta2.MultiClusterObservability) bool {
+	namespace := rsnamespace.ComponentState.Namespace
+	if namespace == "" {
+		namespace = config.GetDefaultNamespace()
+	}
+	policy := &policyv1.Policy{}
+	key := types.NamespacedName{Name: rsnamespace.PrometheusRulePolicyName, Namespace: namespace}
+	if err := r.Client.Get(ctx, key, policy); err != nil {
+		return false // Not found or error — nothing to clean
+	}
+	return true
 }

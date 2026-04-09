@@ -40,6 +40,7 @@ type MCORenderer struct {
 	renderMCOAFns         map[string]rendererutil.RenderFn
 }
 
+// NewMCORenderer creates a new MCO renderer with all sub-renderers initialized.
 func NewMCORenderer(multipleClusterMonitoring *obv1beta2.MultiClusterObservability, kubeClient client.Client, imageClient imagev1client.ImageV1Interface) *MCORenderer {
 	mcoRenderer := &MCORenderer{
 		renderer:    rendererutil.NewRenderer(),
@@ -55,11 +56,13 @@ func NewMCORenderer(multipleClusterMonitoring *obv1beta2.MultiClusterObservabili
 	return mcoRenderer
 }
 
+// WithRendererOptions sets the renderer options and returns the renderer for chaining.
 func (r *MCORenderer) WithRendererOptions(options *RendererOptions) *MCORenderer {
 	r.rendererOptions = options
 	return r
 }
 
+// Render loads and renders all MCO templates into unstructured Kubernetes resources.
 func (r *MCORenderer) Render() ([]*unstructured.Unstructured, error) {
 	// load and render generic templates
 	genericTemplates, err := templates.GetOrLoadGenericTemplates(templatesutil.GetTemplateRenderer())
@@ -171,6 +174,7 @@ func (r *MCORenderer) Render() ([]*unstructured.Unstructured, error) {
 	return resources, nil
 }
 
+// NamespaceAndLabels returns the default MCO namespace and CR labels.
 func (r *MCORenderer) NamespaceAndLabels() (string, map[string]string) {
 	namespace := mcoconfig.GetDefaultNamespace()
 	labels := map[string]string{
@@ -179,6 +183,7 @@ func (r *MCORenderer) NamespaceAndLabels() (string, map[string]string) {
 	return namespace, labels
 }
 
+// MCOAResources renders the MCOA addon templates into unstructured resources.
 func (r *MCORenderer) MCOAResources(namespace string, labels map[string]string) ([]*unstructured.Unstructured, error) {
 	mcoaTemplates, err := templates.GetOrLoadMCOATemplates(templatesutil.GetTemplateRenderer())
 	if err != nil {
@@ -192,6 +197,7 @@ func (r *MCORenderer) MCOAResources(namespace string, labels map[string]string) 
 	return mcoaResources, nil
 }
 
+// HasImagestream checks if the cluster supports OpenShift ImageStream resources.
 func (r *MCORenderer) HasImagestream() bool {
 	dcl := discovery.NewDiscoveryClient(r.imageClient.RESTClient())
 

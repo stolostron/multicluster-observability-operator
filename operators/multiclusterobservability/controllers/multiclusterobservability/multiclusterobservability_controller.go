@@ -452,6 +452,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	return ctrl.Result{}, nil
 }
 
+// initFinalization handles MCO deletion by cleaning up resources across namespaces and removing the finalizer.
 func (r *MultiClusterObservabilityReconciler) initFinalization(ctx context.Context, mco *mcov1beta2.MultiClusterObservability) (bool, error) {
 	if mco.GetDeletionTimestamp() != nil && slices.Contains(mco.GetFinalizers(), resFinalizer) {
 		// Signal termination before cleanup so other controllers (analytics, placementrule)
@@ -505,6 +506,7 @@ func (r *MultiClusterObservabilityReconciler) initFinalization(ctx context.Conte
 	return false, nil
 }
 
+// getStorageClass resolves the storage class to use for MCO persistent volumes.
 func getStorageClass(mco *mcov1beta2.MultiClusterObservability, cl client.Client) (string, error) {
 	storageClassSelected := mco.Spec.StorageConfig.StorageClass
 	// for the test, the reader is just nil
@@ -638,6 +640,7 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 	return ctrBuilder.Complete(r)
 }
 
+// checkStorageChanged detects storage configuration changes between old and new MCO specs.
 func checkStorageChanged(mcoOldConfig, mcoNewConfig *mcov1beta2.StorageConfig) {
 	if mcoOldConfig.AlertmanagerStorageSize != mcoNewConfig.AlertmanagerStorageSize {
 		isAlertmanagerStorageSizeChanged = true
@@ -725,6 +728,7 @@ func (r *MultiClusterObservabilityReconciler) HandleStorageSizeChange(
 	return nil, nil
 }
 
+// updateStorageSizeChange updates PVC sizes for matching persistent volume claims.
 func updateStorageSizeChange(c client.Client, matchLabels map[string]string, storageSize string) error {
 	pvcList, err := commonutil.GetPVCList(c, config.GetDefaultNamespace(), matchLabels)
 	if err != nil {
@@ -995,6 +999,7 @@ func cleanUpClusterScopedResources(
 	return nil
 }
 
+// ensureOpenShiftNamespaceLabel ensures the MCO namespace has the required OpenShift labels.
 func (r *MultiClusterObservabilityReconciler) ensureOpenShiftNamespaceLabel(ctx context.Context,
 	m *mcov1beta2.MultiClusterObservability,
 ) (reconcile.Result, error) {
@@ -1030,6 +1035,7 @@ func (r *MultiClusterObservabilityReconciler) ensureOpenShiftNamespaceLabel(ctx 
 	return reconcile.Result{}, nil
 }
 
+// deleteSpecificPrometheusRule removes the MCO-managed PrometheusRule from openshift-monitoring.
 func (r *MultiClusterObservabilityReconciler) deleteSpecificPrometheusRule(ctx context.Context) error {
 	promRule := &monitoringv1.PrometheusRule{}
 	err := r.Client.Get(ctx, client.ObjectKey{
@@ -1051,6 +1057,7 @@ func (r *MultiClusterObservabilityReconciler) deleteSpecificPrometheusRule(ctx c
 	return nil
 }
 
+// deleteServiceMonitorInOpenshiftMonitoringNamespace removes MCO-managed ServiceMonitors from openshift-monitoring.
 func (r *MultiClusterObservabilityReconciler) deleteServiceMonitorInOpenshiftMonitoringNamespace(ctx context.Context) error {
 	serviceMonitorList := &monitoringv1.ServiceMonitorList{}
 	err := r.Client.List(ctx, serviceMonitorList, client.InNamespace("openshift-monitoring"))
@@ -1072,6 +1079,7 @@ func (r *MultiClusterObservabilityReconciler) deleteServiceMonitorInOpenshiftMon
 	return nil
 }
 
+// newMCOACRDEventHandler creates an event handler that maps MCOA CRD events to MCO reconcile requests.
 func newMCOACRDEventHandler(c client.Client) handler.EventHandler {
 	return handler.EnqueueRequestsFromMapFunc(
 		func(ctx context.Context, obj client.Object) []reconcile.Request {
