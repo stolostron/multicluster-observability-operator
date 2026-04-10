@@ -777,6 +777,38 @@ func TestUpdateDashboard_GrafanaErrors(t *testing.T) {
 	})
 }
 
+func TestCleanupFolder_APIErrorRetries(t *testing.T) {
+	ctx := t.Context()
+	c, mock := newTestController(t, "default")
+
+	// Setup a custom folder
+	mock.folders = []grafanaFolder{{ID: 1, UID: "folder-uid", Title: "Custom"}}
+	// Force the IsEmpty check to return a transient API error
+	mock.emptyErr = errors.New("transient grafana 500 error")
+
+	cm := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: "test-cm", Namespace: "default", Labels: map[string]string{CustomDashboardLabelKey: "true"}},
+		Data:       map[string]string{}, // Empty data triggers immediate folder cleanup in updateDashboard
+	}
+	cm.Annotations = map[string]string{CustomFolderKey: "Custom"}
+	c.uidMap["default/test-cm"] = trackedState{folder: "Custom"}
+
+	err := c.updateDashboard(ctx, cm)
+
+	if err == nil {
+		t.Fatal("expected an error due to the transient API failure during cleanup")
+	}
+
+	if !strings.Contains(err.Error(), "transient grafana 500 error") {
+		t.Errorf("expected the API error to bubble up, got: %v", err)
+	}
+
+	// Verify that the poller aborted immediately and didn't attempt to delete the folder
+	if mock.deleteFolderCalled["folder-uid"] > 0 {
+		t.Error("expected folder deletion to be skipped when the emptiness check fails")
+	}
+}
+
 func TestGetDashboardCustomFolderTitle(t *testing.T) {
 	testCaseList := []struct {
 		name     string

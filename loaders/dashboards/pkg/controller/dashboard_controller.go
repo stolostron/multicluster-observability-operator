@@ -435,11 +435,6 @@ func (c *GrafanaDashboardController) cleanupOrphanDashboards(ctx context.Context
 
 	folderUIDsWithDashboards := make(map[string]struct{})
 	for _, d := range dashboards {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		default:
-		}
 		if _, expected := expectedUIDs[d.UID]; !expected {
 			klog.InfoS("deleting orphan dashboard", "uid", d.UID)
 			if err := c.grafana.DeleteDashboard(ctx, d.UID); err != nil {
@@ -505,6 +500,7 @@ func (c *GrafanaDashboardController) createCustomFolder(ctx context.Context, fol
 			return 0
 		case <-time.After(permissionsRetryDelay):
 		}
+
 		if err := c.grafana.DeleteFolder(ctx, folder.UID); err != nil {
 			klog.ErrorS(err, "failed to delete folder during retry", "folderUID", folder.UID)
 		}
@@ -531,28 +527,20 @@ func (c *GrafanaDashboardController) cleanupFolderIfEmpty(ctx context.Context, f
 		return fmt.Errorf("failed to check folder status in Grafana: %w", err)
 	}
 
-	// Wait up to 10 seconds for Grafana's search index to reflect the change.
-	// If it takes longer, we return an error to trigger a rate-limited retry in the workqueue.
-	err = wait.PollUntilContextTimeout(ctx, 2*time.Second, 10*time.Second, true, func(ctx context.Context) (bool, error) {
-		empty, err := c.grafana.IsEmpty(ctx, folder.UID)
-		if err != nil {
-			klog.V(4).InfoS("failed to check if folder is empty during poll, retrying", "folder", folderTitle, "error", err)
-			return false, nil // retry
-		}
-		if empty {
-			klog.InfoS("deleting empty folder", "title", folderTitle, "uid", folder.UID)
-			if err := c.grafana.DeleteFolder(ctx, folder.UID); err != nil {
-				klog.ErrorS(err, "failed to cleanup empty folder", "folderTitle", folderTitle, "folderUID", folder.UID)
-			}
-			return true, nil
-		}
-		return false, nil // not empty yet, retry
-	})
+	// Check if the folder is empty. Grafana's search index is eventually consistent,
+	// so if this check fails because dashboards are still being indexed as "present",
+	// we return an error to trigger a rate-limited retry in the workqueue.
+	empty, err := c.grafana.IsEmpty(ctx, folder.UID)
 	if err != nil {
-		if errors.Is(err, context.DeadlineExceeded) {
-			return fmt.Errorf("folder %q is not empty yet in Grafana index; will retry cleanup", folderTitle)
-		}
-		return err
+		return fmt.Errorf("failed to check folder emptiness: %w", err)
+	}
+	if !empty {
+		return fmt.Errorf("folder %q is not empty yet in Grafana index; will retry cleanup", folderTitle)
+	}
+
+	klog.InfoS("deleting empty folder", "title", folderTitle, "uid", folder.UID)
+	if err := c.grafana.DeleteFolder(ctx, folder.UID); err != nil {
+		return fmt.Errorf("failed to delete empty folder: %w", err)
 	}
 	return nil
 }
@@ -651,10 +639,10 @@ func (c *GrafanaDashboardController) updateDashboard(ctx context.Context, newObj
 		dashboard := map[string]any{}
 		err := json.Unmarshal([]byte(value), &dashboard)
 		if err != nil {
-			// Unmarshal errors are terminal user input issues. We log at V(2) and ignore them
-			// to avoid endless workqueue retries, while letting other valid dashboards
-			// in the same ConfigMap proceed.
-			klog.V(2).InfoS("failed to unmarshal dashboard data, skipping", "namespace", newObj.Namespace, "name", newObj.Name, "key", key, "error", err)
+			// Unmarshal errors are terminal user input issues. We log them as errors
+			// for visibility but skip the entry to avoid endless workqueue retries,
+			// while letting other valid dashboards in the same ConfigMap proceed.
+			klog.ErrorS(err, "failed to unmarshal dashboard data, skipping", "namespace", newObj.Namespace, "name", newObj.Name, "key", key)
 			continue
 		}
 

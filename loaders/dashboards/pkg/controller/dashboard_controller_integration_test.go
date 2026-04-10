@@ -109,7 +109,12 @@ func TestIntegrationGrafanaDashboardController(t *testing.T) {
 
 		if r.URL.Path == "/api/search" {
 			var res []map[string]any
-			folderUIDs := r.URL.Query().Get("folderUids")
+			// Handle both documented and legacy casing
+			folderUIDs := r.URL.Query().Get("folderUIDs")
+			if folderUIDs == "" {
+				folderUIDs = r.URL.Query().Get("folderUids")
+			}
+
 			for uid, dash := range dashboards {
 				match := true
 				if folderUIDs != "" {
@@ -123,6 +128,12 @@ func TestIntegrationGrafanaDashboardController(t *testing.T) {
 					res = append(res, map[string]any{"uid": uid, "tags": dash["tags"]})
 				}
 			}
+
+			// Respect limit=1 optimization
+			if r.URL.Query().Get("limit") == "1" && len(res) > 1 {
+				res = res[:1]
+			}
+
 			json.NewEncoder(w).Encode(res)
 			return
 		}
@@ -224,7 +235,8 @@ func TestIntegrationGrafanaDashboardController(t *testing.T) {
 		if err != nil {
 			t.Fatalf("failed to update configmap for move: %v", err)
 		}
-		err = wait.PollUntilContextTimeout(ctx, 100*time.Millisecond, 10*time.Second, true, func(ctx context.Context) (bool, error) {
+		// Increased timeout (30s) to allow for the workqueue rate-limited retry of the folder cleanup.
+		err = wait.PollUntilContextTimeout(ctx, 500*time.Millisecond, 30*time.Second, true, func(ctx context.Context) (bool, error) {
 			mu.Lock()
 			defer mu.Unlock()
 			foundNew, foundOld := false, false

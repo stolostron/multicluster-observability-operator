@@ -140,7 +140,11 @@ func TestGrafanaClient(t *testing.T) {
 			case "/api/folders/f2" + folderPermissionsSuffix:
 				w.Write([]byte("[]"))
 			case apiSearch:
-				if r.URL.Query().Get("folderUids") == "f_empty" {
+				fUID := r.URL.Query().Get("folderUIDs")
+				if fUID == "" {
+					fUID = r.URL.Query().Get("folderUids")
+				}
+				if fUID == "f_empty" {
 					w.Write([]byte("[]"))
 				} else {
 					w.Write([]byte("[{}]"))
