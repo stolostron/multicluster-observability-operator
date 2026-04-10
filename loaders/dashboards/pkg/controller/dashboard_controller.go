@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"net/url"
 	"os"
 	"strings"
@@ -282,7 +283,7 @@ func (c *GrafanaDashboardController) deleteTrackedUIDs(ctx context.Context, key 
 	delete(c.uidMap, key)
 
 	if state.folder != "" {
-		c.cleanupFolderIfEmpty(ctx, state.folder)
+		return c.cleanupFolderIfEmpty(ctx, state.folder)
 	}
 
 	return nil
@@ -513,22 +514,26 @@ func (c *GrafanaDashboardController) createCustomFolder(ctx context.Context, fol
 	return folder.ID
 }
 
-func (c *GrafanaDashboardController) cleanupFolderIfEmpty(ctx context.Context, folderTitle string) {
+func (c *GrafanaDashboardController) cleanupFolderIfEmpty(ctx context.Context, folderTitle string) error {
 	if folderTitle == "" {
-		return
+		return nil
 	}
 	folderID := c.findCustomFolderID(ctx, folderTitle)
 	if folderID == 0 {
-		return
+		return nil
 	}
 	folder, err := c.grafana.GetFolderByID(ctx, folderID)
 	if err != nil {
-		return
+		var gErr *GrafanaError
+		if errors.As(err, &gErr) && gErr.Status == http.StatusNotFound {
+			return nil // Folder already gone, nothing to clean
+		}
+		return fmt.Errorf("failed to check folder status in Grafana: %w", err)
 	}
 
-	// Wait up to 5 seconds for Grafana's search index to reflect the change.
-	// This is an optimization for immediate UX during move/delete operations.
-	err = wait.PollUntilContextTimeout(ctx, 1*time.Second, 5*time.Second, true, func(ctx context.Context) (bool, error) {
+	// Wait up to 10 seconds for Grafana's search index to reflect the change.
+	// If it takes longer, we return an error to trigger a rate-limited retry in the workqueue.
+	err = wait.PollUntilContextTimeout(ctx, 2*time.Second, 10*time.Second, true, func(ctx context.Context) (bool, error) {
 		empty, err := c.grafana.IsEmpty(ctx, folder.UID)
 		if err != nil {
 			klog.V(4).InfoS("failed to check if folder is empty during poll, retrying", "folder", folderTitle, "error", err)
@@ -543,10 +548,13 @@ func (c *GrafanaDashboardController) cleanupFolderIfEmpty(ctx context.Context, f
 		}
 		return false, nil // not empty yet, retry
 	})
-
-	if err != nil && !errors.Is(err, context.DeadlineExceeded) {
-		klog.V(2).InfoS("folder not empty yet, leaving for periodic sweep", "folderTitle", folderTitle)
+	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			return fmt.Errorf("folder %q is not empty yet in Grafana index; will retry cleanup", folderTitle)
+		}
+		return err
 	}
+	return nil
 }
 
 func (c *GrafanaDashboardController) cleanupAllEmptyFolders(ctx context.Context, folderUIDsWithDashboards map[string]struct{}) {
@@ -724,11 +732,15 @@ func (c *GrafanaDashboardController) updateDashboard(ctx context.Context, newObj
 	// Perform immediate folder cleanup.
 	// 1. Check the CURRENT folder (in case all dashboards were removed from it but CM still exists)
 	if folderTitle != "" && len(currentUIDs) == 0 {
-		c.cleanupFolderIfEmpty(ctx, folderTitle)
+		if err := c.cleanupFolderIfEmpty(ctx, folderTitle); err != nil {
+			errs = append(errs, err)
+		}
 	}
 	// 2. Check the OLD folder (if it changed)
 	if oldState.folder != "" && oldState.folder != folderTitle {
-		c.cleanupFolderIfEmpty(ctx, oldState.folder)
+		if err := c.cleanupFolderIfEmpty(ctx, oldState.folder); err != nil {
+			errs = append(errs, err)
+		}
 	}
 	// For immediate UX, the sweep is 10m away, which is acceptable for an empty folder.
 

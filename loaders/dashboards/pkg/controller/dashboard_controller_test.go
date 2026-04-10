@@ -89,7 +89,7 @@ func (m *mockGrafanaClient) GetFolderByID(ctx context.Context, id int64) (*grafa
 			return &f, nil
 		}
 	}
-	return nil, errors.New("not found")
+	return nil, &GrafanaError{Status: http.StatusNotFound, Body: "not found"}
 }
 
 func (m *mockGrafanaClient) CreateFolder(ctx context.Context, title string) (*grafanaFolder, error) {
@@ -111,7 +111,10 @@ func (m *mockGrafanaClient) HasPermissions(ctx context.Context, uid string) (boo
 }
 
 func (m *mockGrafanaClient) IsEmpty(ctx context.Context, uid string) (bool, error) {
-	return m.emptyResp[uid], m.emptyErr
+	if val, ok := m.emptyResp[uid]; ok {
+		return val, m.emptyErr
+	}
+	return true, m.emptyErr
 }
 
 func createDashboard() (*corev1.ConfigMap, error) {
