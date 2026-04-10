@@ -111,8 +111,9 @@ var _ = Describe("Observability: Dashboard Lifecycle", func() {
 					testOptions.HubCluster.KubeContext,
 					yamlB)).NotTo(HaveOccurred())
 
-			Eventually(func() bool {
-				result, _ := utils.ContainDashboard(testOptions, dashboardTitle)
+			Eventually(func(g Gomega) bool {
+				result, err := utils.ContainDashboard(testOptions, dashboardTitle)
+				g.Expect(err).ToNot(HaveOccurred())
 				return result
 			}, cleanupTimeout, cleanupInterval).Should(BeFalse())
 
@@ -142,8 +143,9 @@ var _ = Describe("Observability: Dashboard Lifecycle", func() {
 			err = utils.DeleteConfigMap(testOptions, true, dashboardName, MCO_NAMESPACE)
 			Expect(err).ToNot(HaveOccurred())
 
-			Eventually(func() bool {
-				result, _ := utils.ContainDashboard(testOptions, dashboardTitle)
+			Eventually(func(g Gomega) bool {
+				result, err := utils.ContainDashboard(testOptions, dashboardTitle)
+				g.Expect(err).ToNot(HaveOccurred())
 				return result
 			}, syncTimeout, syncInterval).Should(BeFalse())
 		},
@@ -209,18 +211,21 @@ var _ = Describe("Observability: Dashboard Lifecycle", func() {
 			err = hubClient.CoreV1().ConfigMaps(MCO_NAMESPACE).Delete(context.Background(), cmName, metav1.DeleteOptions{})
 			Expect(err).NotTo(HaveOccurred())
 
-			Eventually(func() bool {
-				meta, _ := utils.GetDashboardMetadata(context.Background(), testOptions, updateTitle)
+			Eventually(func(g Gomega) bool {
+				meta, err := utils.GetDashboardMetadata(context.Background(), testOptions, updateTitle)
+				g.Expect(err).ToNot(HaveOccurred())
 				return meta != nil
 			}, cleanupTimeout, cleanupInterval).Should(BeFalse())
 
 			// The folder should be reaped eventually (moving/deletion triggers immediate cleanup in the new code)
-			Eventually(func() bool {
-				exists, _ := utils.FolderExists(context.Background(), testOptions, folderA)
+			Eventually(func(g Gomega) bool {
+				exists, err := utils.FolderExists(context.Background(), testOptions, folderA)
+				g.Expect(err).ToNot(HaveOccurred())
 				return exists
 			}, syncTimeout, syncInterval).Should(BeFalse())
-			Eventually(func() bool {
-				exists, _ := utils.FolderExists(context.Background(), testOptions, folderB)
+			Eventually(func(g Gomega) bool {
+				exists, err := utils.FolderExists(context.Background(), testOptions, folderB)
+				g.Expect(err).ToNot(HaveOccurred())
 				return exists
 			}, syncTimeout, syncInterval).Should(BeFalse())
 		},
@@ -259,9 +264,11 @@ var _ = Describe("Observability: Dashboard Lifecycle", func() {
 			err = hubClient.CoreV1().ConfigMaps(MCO_NAMESPACE).Delete(context.Background(), cmName, metav1.DeleteOptions{})
 			Expect(err).NotTo(HaveOccurred())
 
-			Eventually(func() bool {
-				found1, _ := utils.ContainDashboard(testOptions, "Multi Dash 1")
-				found2, _ := utils.ContainDashboard(testOptions, "Multi Dash 2")
+			Eventually(func(g Gomega) bool {
+				found1, err1 := utils.ContainDashboard(testOptions, "Multi Dash 1")
+				g.Expect(err1).ToNot(HaveOccurred())
+				found2, err2 := utils.ContainDashboard(testOptions, "Multi Dash 2")
+				g.Expect(err2).ToNot(HaveOccurred())
 				return !found1 && !found2
 			}, cleanupTimeout, cleanupInterval).Should(BeTrue())
 		},
@@ -307,8 +314,9 @@ var _ = Describe("Observability: Dashboard Lifecycle", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			// Wait for deletion in Grafana
-			Eventually(func() bool {
-				found, _ := utils.ContainDashboard(testOptions, dashTitle)
+			Eventually(func(g Gomega) bool {
+				found, err := utils.ContainDashboard(testOptions, dashTitle)
+				g.Expect(err).ToNot(HaveOccurred())
 				return found
 			}, cleanupTimeout, cleanupInterval).Should(BeFalse())
 
