@@ -94,4 +94,8 @@
     - apiGroups: ["config.openshift.io"]
       resources: [clusterversions]
       verbs: ["get", "list", "watch"]
+    # Role for addon to perform thanos operator specific actions
+    - apiGroups: ["monitoring.thanos.io"]
+      resources: ["thanosreceives", "thanosqueries", "thanoscompacts", "thanosstores", "thanosrulers"]
+      verbs: ["get", "list", "watch", "create", "update", "delete", "patch"]
 
