@@ -134,7 +134,9 @@ func newTestController(t *testing.T, ns string) (*GrafanaDashboardController, *m
 		maxDashboardRetry: defaultMaxDashboardRetry,
 		watchedNS:         ns,
 		uidMap:            make(map[string]trackedState),
+		reconcileMu:       make(chan struct{}, 1),
 	}
+	c.reconcileMu <- struct{}{}
 	return c, mock
 }
 
@@ -208,9 +210,7 @@ func TestDeleteTrackedUIDs(t *testing.T) {
 			t.Error("expected error on deletion failure")
 		}
 
-		c.mapMu.RLock()
 		state, exists := c.uidMap[key]
-		c.mapMu.RUnlock()
 
 		if !exists {
 			t.Error("expected state to remain in map on failure")
@@ -226,9 +226,7 @@ func TestDeleteTrackedUIDs(t *testing.T) {
 			t.Errorf("expected nil error on second attempt, got %v", err)
 		}
 
-		c.mapMu.RLock()
 		_, exists = c.uidMap[key]
-		c.mapMu.RUnlock()
 		if exists {
 			t.Error("expected state to be removed from map after successful deletion")
 		}
@@ -297,9 +295,7 @@ func TestCleanupOrphanDashboards_MapPopulation(t *testing.T) {
 	}
 
 	// CRITICAL: Verify uidMap was populated during cleanup!
-	c.mapMu.RLock()
 	state, exists := c.uidMap["default/pre-existing"]
-	c.mapMu.RUnlock()
 
 	if !exists {
 		t.Fatal("expected uidMap to be populated during initial scan")
@@ -535,6 +531,30 @@ func TestResolveDashboardUID(t *testing.T) {
 	})
 }
 
+func TestResolveDashboardUID_Extensions(t *testing.T) {
+	c := &GrafanaDashboardController{}
+	cm := &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "my-dash", Namespace: "ns"}}
+
+	testCases := []struct {
+		key      string
+		expected string
+	}{
+		{"my-dash.json", "my-dash-ns"},
+		{"my-dash.yaml", "my-dash-ns"},
+		{"my-dash.yml", "my-dash-ns"},
+		{"other.json", "my-dash-other-ns"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.key, func(t *testing.T) {
+			uid, _ := c.resolveDashboardUID(nil, cm, tc.key)
+			if uid != tc.expected {
+				t.Errorf("for key %q: expected %q, got %q", tc.key, tc.expected, uid)
+			}
+		})
+	}
+}
+
 func TestCreateCustomFolder_PermissionsRetry(t *testing.T) {
 	ctx := t.Context()
 	c, mock := newTestController(t, "default")
@@ -613,9 +633,7 @@ func TestUpdateDashboard_GrafanaErrors(t *testing.T) {
 			t.Errorf("expected 1 setHome call, got %d", mock.setHomeCalled)
 		}
 
-		c.mapMu.RLock()
 		state := c.uidMap["default/multi-dash"]
-		c.mapMu.RUnlock()
 		if len(state.uids) != 2 {
 			t.Errorf("expected 2 UIDs in map, got %v", state.uids)
 		}
@@ -663,9 +681,7 @@ func TestUpdateDashboard_GrafanaErrors(t *testing.T) {
 			t.Errorf("expected 2 create attempts, got %d", mock.createDashCalled)
 		}
 
-		c.mapMu.RLock()
 		state := c.uidMap["default/partial"]
-		c.mapMu.RUnlock()
 		// BOTH should be in the map to protect the failing one from accidental deletion
 		if len(state.uids) != 2 {
 			t.Errorf("expected 2 UIDs in map (including failing one), got %v", state.uids)
@@ -695,9 +711,7 @@ func TestUpdateDashboard_GrafanaErrors(t *testing.T) {
 			t.Error("expected cleanup to run despite unmarshal failure on a different key")
 		}
 
-		c.mapMu.RLock()
 		state := c.uidMap["default/unmarshal"]
-		c.mapMu.RUnlock()
 		// Map should only contain good-uid because currentUIDs is the new truth
 		if len(state.uids) != 1 || state.uids[0] != "good-uid" {
 			t.Errorf("expected only good-uid in map, got %v", state.uids)
@@ -753,9 +767,7 @@ func TestUpdateDashboard_GrafanaErrors(t *testing.T) {
 			t.Errorf("expected 2 create attempts, got %d", mock.createDashCalled)
 		}
 
-		c.mapMu.RLock()
 		state := c.uidMap["default/name-exists"]
-		c.mapMu.RUnlock()
 		if len(state.uids) != 2 {
 			t.Errorf("expected both UIDs in map (protection logic), got %v", state.uids)
 		}

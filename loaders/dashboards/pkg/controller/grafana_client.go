@@ -70,8 +70,8 @@ func (e *GrafanaError) IsNameExists() bool {
 
 // grafanaDashboard represents the structure returned by Grafana search
 type grafanaDashboard struct {
-	UID  string `json:"uid"`
-	Tags []any  `json:"tags"`
+	UID       string `json:"uid"`
+	FolderUID string `json:"folderUid"`
 }
 
 // grafanaFolder represents a Grafana folder

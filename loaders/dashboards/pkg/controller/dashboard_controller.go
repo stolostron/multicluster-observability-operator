@@ -48,6 +48,7 @@ const (
 	permissionsRetryDelay    = 5 * time.Second
 	defaultMaxDashboardRetry = 40
 	resyncPeriod             = 10 * time.Minute
+	reconcileTimeout         = 2 * time.Minute
 )
 
 type trackedState struct {
@@ -66,7 +67,12 @@ type GrafanaDashboardController struct {
 	// uidMap tracks which Grafana UIDs and folders are associated with a given ConfigMap (key).
 	// This allows for immediate deletion of dashboards and empty folders when a ConfigMap is removed or moved.
 	uidMap map[string]trackedState
-	mapMu  sync.RWMutex
+
+	// reconcileMu ensures that only one reconciliation operation (ConfigMap update, deletion,
+	// or total orphan sweep) interacts with the Grafana API and the internal state at a time.
+	// This prevents race conditions between the incremental worker and the periodic sweep.
+	// We use a channel as a semaphore to support context-aware locking and timeouts.
+	reconcileMu chan struct{}
 }
 
 // NewGrafanaDashboardController creates a new GrafanaDashboardController
@@ -87,13 +93,16 @@ func NewGrafanaDashboardController(kubeClient corev1client.CoreV1Interface, uri 
 		ns = "open-cluster-management-observability"
 		klog.InfoS("POD_NAMESPACE environment variable is empty. Defaulting to standard observability namespace.", "namespace", ns)
 	}
-	return &GrafanaDashboardController{
+	c := &GrafanaDashboardController{
 		kubeClient:        kubeClient,
 		grafana:           &grafanaClient{uri: uri},
 		maxDashboardRetry: defaultMaxDashboardRetry,
 		watchedNS:         ns,
 		uidMap:            make(map[string]trackedState),
-	}, nil
+		reconcileMu:       make(chan struct{}, 1),
+	}
+	c.reconcileMu <- struct{}{}
+	return c, nil
 }
 
 // Run runs the controller until the context is canceled.
@@ -144,7 +153,9 @@ func (c *GrafanaDashboardController) Run(ctx context.Context) error {
 	// Periodically run orphan cleanup to catch any missed deletions and ghost folders.
 	wg.Go(func() {
 		wait.UntilWithContext(ctx, func(ctx context.Context) {
-			if err := c.cleanupOrphanDashboards(ctx, c.indexer); err != nil {
+			tCtx, cancel := context.WithTimeout(ctx, reconcileTimeout)
+			defer cancel()
+			if err := c.cleanupOrphanDashboards(tCtx, c.indexer); err != nil {
 				klog.ErrorS(err, "periodic orphan cleanup failed")
 			}
 		}, resyncPeriod)
@@ -167,7 +178,10 @@ func (c *GrafanaDashboardController) processNextItem(ctx context.Context, queue 
 	}
 	defer queue.Done(obj)
 
-	err := c.syncHandler(ctx, obj, indexer)
+	tCtx, cancel := context.WithTimeout(ctx, reconcileTimeout)
+	defer cancel()
+
+	err := c.syncHandler(tCtx, obj, indexer)
 	if err == nil {
 		queue.Forget(obj)
 		return true
@@ -215,12 +229,31 @@ func (c *GrafanaDashboardController) syncHandler(ctx context.Context, item any, 
 	return c.updateDashboard(ctx, cm)
 }
 
-func (c *GrafanaDashboardController) deleteTrackedUIDs(ctx context.Context, key string) error {
-	c.mapMu.Lock()
-	state, exists := c.uidMap[key]
-	// We don't delete from map immediately. We only delete if all UIDs are successfully removed.
-	c.mapMu.Unlock()
+func (c *GrafanaDashboardController) lockReconcile(ctx context.Context) error {
+	select {
+	case <-c.reconcileMu:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
 
+func (c *GrafanaDashboardController) unlockReconcile() {
+	select {
+	case c.reconcileMu <- struct{}{}:
+	default:
+		// Should not happen if used correctly
+		klog.Error("reconcileMu semaphore already full during unlock")
+	}
+}
+
+func (c *GrafanaDashboardController) deleteTrackedUIDs(ctx context.Context, key string) error {
+	if err := c.lockReconcile(ctx); err != nil {
+		return err
+	}
+	defer c.unlockReconcile()
+
+	state, exists := c.uidMap[key]
 	if !exists {
 		return nil
 	}
@@ -238,19 +271,15 @@ func (c *GrafanaDashboardController) deleteTrackedUIDs(ctx context.Context, key 
 
 	if len(failedUIDs) > 0 {
 		// Update the map to only track what's left
-		c.mapMu.Lock()
 		c.uidMap[key] = trackedState{
 			uids:   failedUIDs,
 			folder: state.folder,
 		}
-		c.mapMu.Unlock()
 		return errors.Join(errs...)
 	}
 
 	// All deleted successfully
-	c.mapMu.Lock()
 	delete(c.uidMap, key)
-	c.mapMu.Unlock()
 
 	if state.folder != "" {
 		c.cleanupFolderIfEmpty(ctx, state.folder)
@@ -322,6 +351,11 @@ func (c *GrafanaDashboardController) shouldEnqueue(oldCm, newCm *corev1.ConfigMa
 }
 
 func (c *GrafanaDashboardController) cleanupOrphanDashboards(ctx context.Context, indexer cache.Indexer) error {
+	if err := c.lockReconcile(ctx); err != nil {
+		return err
+	}
+	defer c.unlockReconcile()
+
 	klog.InfoS("scanning for orphan dashboards in Grafana")
 	dashboards, err := c.grafana.ListAllDashboards(ctx)
 	if err != nil {
@@ -378,15 +412,27 @@ func (c *GrafanaDashboardController) cleanupOrphanDashboards(ctx context.Context
 	}
 
 	// Update the controller's map with the fresh state discovered from Kubernetes.
-	// Note on Map Overwrite Race: This performs a full overwrite of c.uidMap, which could
-	// theoretically overwrite a concurrent syncHandler update. However, because this
-	// runs periodically and rebuilds state from the informer cache, the worst-case
-	// scenario is that an immediate deletion is delayed until the next sweep (10 minutes).
-	// This is an acceptable tradeoff for the simplicity of the current implementation.
-	c.mapMu.Lock()
-	c.uidMap = newUIDMap
-	c.mapMu.Unlock()
+	// We perform a surgical update instead of a full overwrite to minimize the risk
+	// of overwriting a concurrent syncHandler update for a specific ConfigMap.
+	// 1. Remove keys from the map that are no longer present in Kubernetes as desired dashboards.
+	for key := range c.uidMap {
+		if _, exists := newUIDMap[key]; !exists {
+			delete(c.uidMap, key)
+		}
+	}
+	// 2. Update/Add keys from the fresh scan.
+	// We only overwrite the state for a ConfigMap if the desired UIDs or folder changed.
+	// This preserves any "failed deletions" (extra UIDs) that updateDashboard might
+	// be tracking, ensuring they continue to be retried until they successfully
+	// vanish from Grafana.
+	for key, newState := range newUIDMap {
+		oldState, exists := c.uidMap[key]
+		if !exists || oldState.folder != newState.folder || !uidsMatch(oldState.uids, newState.uids) {
+			c.uidMap[key] = newState
+		}
+	}
 
+	folderUIDsWithDashboards := make(map[string]struct{})
 	for _, d := range dashboards {
 		select {
 		case <-ctx.Done():
@@ -398,11 +444,13 @@ func (c *GrafanaDashboardController) cleanupOrphanDashboards(ctx context.Context
 			if err := c.grafana.DeleteDashboard(ctx, d.UID); err != nil {
 				klog.ErrorS(err, "failed to delete orphan dashboard", "uid", d.UID)
 			}
+		} else if d.FolderUID != "" {
+			folderUIDsWithDashboards[d.FolderUID] = struct{}{}
 		}
 	}
 
 	// orphan deletion may leave folders empty; this is a catch-all sweep.
-	c.cleanupAllEmptyFolders(ctx)
+	c.cleanupAllEmptyFolders(ctx, folderUIDsWithDashboards)
 	return nil
 }
 
@@ -445,7 +493,11 @@ func (c *GrafanaDashboardController) createCustomFolder(ctx context.Context, fol
 
 	// check permissions
 	hasPerm, err := c.grafana.HasPermissions(ctx, folder.UID)
-	if err == nil && !hasPerm {
+	if err != nil {
+		klog.ErrorS(err, "failed to check folder permissions", "folderTitle", folderTitle)
+		return 0
+	}
+	if !hasPerm {
 		klog.InfoS("failed to set permissions for folder. Deleting folder and retrying later.", "folderTitle", folderTitle)
 		select {
 		case <-ctx.Done():
@@ -485,7 +537,7 @@ func (c *GrafanaDashboardController) cleanupFolderIfEmpty(ctx context.Context, f
 		if empty {
 			klog.InfoS("deleting empty folder", "title", folderTitle, "uid", folder.UID)
 			if err := c.grafana.DeleteFolder(ctx, folder.UID); err != nil {
-				klog.ErrorS(err, "failed to cleanup empty folder", "folderTitle", folderTitle)
+				klog.ErrorS(err, "failed to cleanup empty folder", "folderTitle", folderTitle, "folderUID", folder.UID)
 			}
 			return true, nil
 		}
@@ -497,7 +549,7 @@ func (c *GrafanaDashboardController) cleanupFolderIfEmpty(ctx context.Context, f
 	}
 }
 
-func (c *GrafanaDashboardController) cleanupAllEmptyFolders(ctx context.Context) {
+func (c *GrafanaDashboardController) cleanupAllEmptyFolders(ctx context.Context, folderUIDsWithDashboards map[string]struct{}) {
 	klog.InfoS("scanning for empty folders in Grafana")
 	folders, err := c.grafana.ListFolders(ctx)
 	if err != nil {
@@ -510,11 +562,10 @@ func (c *GrafanaDashboardController) cleanupAllEmptyFolders(ctx context.Context)
 			continue
 		}
 
-		empty, err := c.grafana.IsEmpty(ctx, folder.UID)
-		if err == nil && empty {
+		if _, hasDashboards := folderUIDsWithDashboards[folder.UID]; !hasDashboards {
 			klog.InfoS("deleting empty folder during total sweep", "folderTitle", folder.Title, "uid", folder.UID)
 			if err := c.grafana.DeleteFolder(ctx, folder.UID); err != nil {
-				klog.ErrorS(err, "failed to delete empty folder", "folderTitle", folder.Title)
+				klog.ErrorS(err, "failed to delete empty folder", "folderTitle", folder.Title, "folderUID", folder.UID)
 			}
 		}
 	}
@@ -538,7 +589,10 @@ func (c *GrafanaDashboardController) resolveDashboardUID(dashboard map[string]an
 	// 1. If key matches CM name (common case), use CM name to keep legacy UID.
 	// 2. Otherwise, use name-key to ensure uniqueness.
 	nameArg := cm.GetName()
-	keyBase := strings.TrimSuffix(key, ".json")
+	keyBase := key
+	for _, suffix := range []string{".json", ".yaml", ".yml"} {
+		keyBase = strings.TrimSuffix(keyBase, suffix)
+	}
 	if keyBase != cm.GetName() && !strings.Contains(cm.GetName(), keyBase) {
 		nameArg = cm.GetName() + "-" + keyBase
 	}
@@ -556,6 +610,11 @@ func (c *GrafanaDashboardController) resolveDashboardUID(dashboard map[string]an
 // pattern while still supporting multi-dashboard ConfigMaps by accumulating errors and
 // ensuring sibling dashboards are not blocked by a failure in one.
 func (c *GrafanaDashboardController) updateDashboard(ctx context.Context, newObj *corev1.ConfigMap) error {
+	if err := c.lockReconcile(ctx); err != nil {
+		return err
+	}
+	defer c.unlockReconcile()
+
 	var folderID int64
 	folderTitle := getDashboardCustomFolderTitle(newObj)
 	if folderTitle != "" {
@@ -604,7 +663,7 @@ func (c *GrafanaDashboardController) updateDashboard(ctx context.Context, newObj
 		// by the cleanup phase below.
 		currentUIDs = append(currentUIDs, uid)
 		dashboard["uid"] = uid
-		dashboard["id"] = nil
+		delete(dashboard, "id")
 
 		id, err := c.grafana.CreateOrUpdateDashboard(ctx, dashboard, folderID)
 		if err != nil {
@@ -634,9 +693,7 @@ func (c *GrafanaDashboardController) updateDashboard(ctx context.Context, newObj
 	// Immediate cleanup for keys removed from this ConfigMap.
 	// We compare the UIDs we just identified as desired (currentUIDs) against
 	// the UIDs we knew about from the previous successful reconcile (oldUIDs).
-	c.mapMu.RLock()
 	oldState := c.uidMap[cmKey]
-	c.mapMu.RUnlock()
 
 	// Find UIDs that were in the map but are not in the current ConfigMap data
 	currentSet := make(map[string]struct{}, len(currentUIDs))
@@ -659,16 +716,14 @@ func (c *GrafanaDashboardController) updateDashboard(ctx context.Context, newObj
 	}
 
 	// Update the map with current state + those that failed to delete.
-	c.mapMu.Lock()
 	c.uidMap[cmKey] = trackedState{
 		uids:   append(currentUIDs, failedDeletions...),
 		folder: folderTitle,
 	}
-	c.mapMu.Unlock()
 
 	// Perform immediate folder cleanup.
 	// 1. Check the CURRENT folder (in case all dashboards were removed from it but CM still exists)
-	if folderTitle != "" {
+	if folderTitle != "" && len(currentUIDs) == 0 {
 		c.cleanupFolderIfEmpty(ctx, folderTitle)
 	}
 	// 2. Check the OLD folder (if it changed)
@@ -725,4 +780,24 @@ func getDashboardCustomFolderTitle(cm *corev1.ConfigMap) string {
 	}
 
 	return DefaultCustomFolder
+}
+
+// uidsMatch returns true if all UIDs in the new set are already present in the old set.
+// This is used to detect if the "Desired" state from Kubernetes has changed, while
+// allowing the "Old" state to contain additional UIDs (failed deletions) that
+// we want to preserve.
+func uidsMatch(oldUIDs, newUIDs []string) bool {
+	if len(newUIDs) > len(oldUIDs) {
+		return false
+	}
+	oldSet := make(map[string]struct{}, len(oldUIDs))
+	for _, u := range oldUIDs {
+		oldSet[u] = struct{}{}
+	}
+	for _, u := range newUIDs {
+		if _, exists := oldSet[u]; !exists {
+			return false
+		}
+	}
+	return true
 }
