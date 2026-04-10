@@ -31,9 +31,9 @@ const (
 	clusterOverviewTitle          = "ACM - Clusters Overview"
 	clusterOverviewOptimizedTitle = "ACM - Clusters Overview (Optimized)"
 
-	syncTimeout      = 5 * time.Minute
+	syncTimeout      = 1 * time.Minute
 	syncInterval     = 5 * time.Second
-	cleanupTimeout   = 2 * time.Minute
+	cleanupTimeout   = 1 * time.Minute
 	cleanupInterval  = 5 * time.Second
 	metadataTimeout  = 1 * time.Minute
 	metadataInterval = 5 * time.Second
@@ -72,9 +72,8 @@ var _ = Describe("Observability: Dashboard Lifecycle", func() {
 				_ = utils.DeleteConfigMap(testOptions, true, dashboardName, MCO_NAMESPACE)
 			})
 
-			Eventually(func() bool {
-				result, _ := utils.ContainDashboard(testOptions, dashboardTitle)
-				return result
+			Eventually(func() (bool, error) {
+				return utils.ContainDashboard(testOptions, dashboardTitle)
 			}, syncTimeout, syncInterval).Should(BeTrue())
 		},
 	)
@@ -111,15 +110,12 @@ var _ = Describe("Observability: Dashboard Lifecycle", func() {
 					testOptions.HubCluster.KubeContext,
 					yamlB)).NotTo(HaveOccurred())
 
-			Eventually(func(g Gomega) bool {
-				result, err := utils.ContainDashboard(testOptions, dashboardTitle)
-				g.Expect(err).ToNot(HaveOccurred())
-				return result
+			Eventually(func() (bool, error) {
+				return utils.ContainDashboard(testOptions, dashboardTitle)
 			}, cleanupTimeout, cleanupInterval).Should(BeFalse())
 
-			Eventually(func() bool {
-				result, _ := utils.ContainDashboard(testOptions, updateDashboardTitle)
-				return result
+			Eventually(func() (bool, error) {
+				return utils.ContainDashboard(testOptions, updateDashboardTitle)
 			}, syncTimeout, syncInterval).Should(BeTrue())
 		},
 	)
@@ -143,10 +139,8 @@ var _ = Describe("Observability: Dashboard Lifecycle", func() {
 			err = utils.DeleteConfigMap(testOptions, true, dashboardName, MCO_NAMESPACE)
 			Expect(err).ToNot(HaveOccurred())
 
-			Eventually(func(g Gomega) bool {
-				result, err := utils.ContainDashboard(testOptions, dashboardTitle)
-				g.Expect(err).ToNot(HaveOccurred())
-				return result
+			Eventually(func() (bool, error) {
+				return utils.ContainDashboard(testOptions, dashboardTitle)
 			}, syncTimeout, syncInterval).Should(BeFalse())
 		},
 	)
@@ -181,12 +175,15 @@ var _ = Describe("Observability: Dashboard Lifecycle", func() {
 				_ = hubClient.CoreV1().ConfigMaps(MCO_NAMESPACE).Delete(context.Background(), cmName, metav1.DeleteOptions{})
 			})
 
-			Eventually(func() string {
-				meta, _ := utils.GetDashboardMetadata(context.Background(), testOptions, dashTitle)
-				if meta != nil {
-					return meta.FolderTitle
+			Eventually(func() (string, error) {
+				meta, err := utils.GetDashboardMetadata(context.Background(), testOptions, dashTitle)
+				if err != nil {
+					return "", err
 				}
-				return ""
+				if meta != nil {
+					return meta.FolderTitle, nil
+				}
+				return "", nil
 			}, metadataTimeout, metadataInterval).Should(Equal(folderA))
 
 			By("Moving dashboard to Folder-B")
@@ -199,34 +196,32 @@ var _ = Describe("Observability: Dashboard Lifecycle", func() {
 			_, err = hubClient.CoreV1().ConfigMaps(MCO_NAMESPACE).Update(context.Background(), cm, metav1.UpdateOptions{})
 			Expect(err).NotTo(HaveOccurred())
 
-			Eventually(func() string {
-				meta, _ := utils.GetDashboardMetadata(context.Background(), testOptions, updateTitle)
-				if meta != nil {
-					return meta.FolderTitle
+			Eventually(func() (string, error) {
+				meta, err := utils.GetDashboardMetadata(context.Background(), testOptions, updateTitle)
+				if err != nil {
+					return "", err
 				}
-				return ""
+				if meta != nil {
+					return meta.FolderTitle, nil
+				}
+				return "", nil
 			}, syncTimeout, syncInterval).Should(Equal(folderB))
 
 			By("Deleting dashboard and verifying folder reaping")
 			err = hubClient.CoreV1().ConfigMaps(MCO_NAMESPACE).Delete(context.Background(), cmName, metav1.DeleteOptions{})
 			Expect(err).NotTo(HaveOccurred())
 
-			Eventually(func(g Gomega) bool {
+			Eventually(func() (bool, error) {
 				meta, err := utils.GetDashboardMetadata(context.Background(), testOptions, updateTitle)
-				g.Expect(err).ToNot(HaveOccurred())
-				return meta != nil
+				return meta != nil, err
 			}, cleanupTimeout, cleanupInterval).Should(BeFalse())
 
 			// The folder should be reaped eventually (moving/deletion triggers immediate cleanup in the new code)
-			Eventually(func(g Gomega) bool {
-				exists, err := utils.FolderExists(context.Background(), testOptions, folderA)
-				g.Expect(err).ToNot(HaveOccurred())
-				return exists
+			Eventually(func() (bool, error) {
+				return utils.FolderExists(context.Background(), testOptions, folderA)
 			}, syncTimeout, syncInterval).Should(BeFalse())
-			Eventually(func(g Gomega) bool {
-				exists, err := utils.FolderExists(context.Background(), testOptions, folderB)
-				g.Expect(err).ToNot(HaveOccurred())
-				return exists
+			Eventually(func() (bool, error) {
+				return utils.FolderExists(context.Background(), testOptions, folderB)
 			}, syncTimeout, syncInterval).Should(BeFalse())
 		},
 	)
@@ -254,22 +249,32 @@ var _ = Describe("Observability: Dashboard Lifecycle", func() {
 				_ = hubClient.CoreV1().ConfigMaps(MCO_NAMESPACE).Delete(context.Background(), cmName, metav1.DeleteOptions{})
 			})
 
-			Eventually(func() bool {
-				found1, _ := utils.ContainDashboard(testOptions, "Multi Dash 1")
-				found2, _ := utils.ContainDashboard(testOptions, "Multi Dash 2")
-				return found1 && found2
+			Eventually(func() (bool, error) {
+				found1, err := utils.ContainDashboard(testOptions, "Multi Dash 1")
+				if err != nil {
+					return false, err
+				}
+				found2, err := utils.ContainDashboard(testOptions, "Multi Dash 2")
+				if err != nil {
+					return false, err
+				}
+				return found1 && found2, nil
 			}, syncTimeout, syncInterval).Should(BeTrue())
 
 			By("Deleting the whole ConfigMap for immediate cleanup")
 			err = hubClient.CoreV1().ConfigMaps(MCO_NAMESPACE).Delete(context.Background(), cmName, metav1.DeleteOptions{})
 			Expect(err).NotTo(HaveOccurred())
 
-			Eventually(func(g Gomega) bool {
-				found1, err1 := utils.ContainDashboard(testOptions, "Multi Dash 1")
-				g.Expect(err1).ToNot(HaveOccurred())
-				found2, err2 := utils.ContainDashboard(testOptions, "Multi Dash 2")
-				g.Expect(err2).ToNot(HaveOccurred())
-				return !found1 && !found2
+			Eventually(func() (bool, error) {
+				found1, err := utils.ContainDashboard(testOptions, "Multi Dash 1")
+				if err != nil {
+					return false, err
+				}
+				found2, err := utils.ContainDashboard(testOptions, "Multi Dash 2")
+				if err != nil {
+					return false, err
+				}
+				return !found1 && !found2, nil
 			}, cleanupTimeout, cleanupInterval).Should(BeTrue())
 		},
 	)
@@ -298,13 +303,16 @@ var _ = Describe("Observability: Dashboard Lifecycle", func() {
 			})
 
 			var initialUID string
-			Eventually(func() bool {
-				meta, _ := utils.GetDashboardMetadata(context.Background(), testOptions, dashTitle)
+			Eventually(func() (bool, error) {
+				meta, err := utils.GetDashboardMetadata(context.Background(), testOptions, dashTitle)
+				if err != nil {
+					return false, err
+				}
 				if meta != nil {
 					initialUID = meta.UID
-					return true
+					return true, nil
 				}
-				return false
+				return false, nil
 			}, syncTimeout, syncInterval).Should(BeTrue())
 
 			Expect(initialUID).NotTo(BeEmpty())
@@ -314,22 +322,23 @@ var _ = Describe("Observability: Dashboard Lifecycle", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			// Wait for deletion in Grafana
-			Eventually(func(g Gomega) bool {
-				found, err := utils.ContainDashboard(testOptions, dashTitle)
-				g.Expect(err).ToNot(HaveOccurred())
-				return found
+			Eventually(func() (bool, error) {
+				return utils.ContainDashboard(testOptions, dashTitle)
 			}, cleanupTimeout, cleanupInterval).Should(BeFalse())
 
 			// Recreate exactly same
 			_, err = hubClient.CoreV1().ConfigMaps(MCO_NAMESPACE).Create(context.Background(), cm, metav1.CreateOptions{})
 			Expect(err).NotTo(HaveOccurred())
 
-			Eventually(func() string {
-				meta, _ := utils.GetDashboardMetadata(context.Background(), testOptions, dashTitle)
-				if meta != nil {
-					return meta.UID
+			Eventually(func() (string, error) {
+				meta, err := utils.GetDashboardMetadata(context.Background(), testOptions, dashTitle)
+				if err != nil {
+					return "", err
 				}
-				return ""
+				if meta != nil {
+					return meta.UID, nil
+				}
+				return "", nil
 			}, syncTimeout, syncInterval).Should(Equal(initialUID))
 		},
 	)
@@ -364,27 +373,30 @@ var _ = Describe("Observability: Dashboard Lifecycle", func() {
 				_ = hubClient.CoreV1().ConfigMaps(MCO_NAMESPACE).Delete(context.Background(), cmName, metav1.DeleteOptions{})
 			})
 
-			Eventually(func() bool {
-				meta, _ := utils.GetDashboardMetadata(context.Background(), testOptions, dashTitle)
-				return meta != nil && meta.UID == dashUID
+			Eventually(func() (bool, error) {
+				meta, err := utils.GetDashboardMetadata(context.Background(), testOptions, dashTitle)
+				if err != nil {
+					return false, err
+				}
+				return meta != nil && meta.UID == dashUID, nil
 			}, syncTimeout, syncInterval).Should(BeTrue())
 
 			By("Verifying Grafana home dashboard preference")
 			isForbidden := false
-			Eventually(func() string {
+			Eventually(func() (string, error) {
 				id, err := utils.GetGrafanaHomeDashboard(context.Background(), testOptions)
 				if err != nil {
 					if strings.Contains(err.Error(), "403") {
 						isForbidden = true
-						return "403"
+						return "403", nil
 					}
-					return ""
+					return "", err
 				}
 				if id == 0 {
-					return "none"
+					return "none", nil
 				}
-				homeUID, _ := utils.GetDashboardUIDByID(context.Background(), testOptions, id)
-				return homeUID
+				homeUID, err := utils.GetDashboardUIDByID(context.Background(), testOptions, id)
+				return homeUID, err
 			}, syncTimeout, syncInterval).Should(SatisfyAny(
 				Equal(dashUID),
 				Equal("403"), // Handle 403 Access Denied
@@ -400,14 +412,12 @@ var _ = Describe("Observability: Dashboard Lifecycle", func() {
 	// TODO: Need RHACM4K no
 	It("[P2][Sev2][observability][Stable] Should have default overview dashboards (dashboard/g0)", func() {
 		// Check Original dash exists
-		Eventually(func() bool {
-			result, _ := utils.ContainDashboard(testOptions, clusterOverviewTitle)
-			return result
+		Eventually(func() (bool, error) {
+			return utils.ContainDashboard(testOptions, clusterOverviewTitle)
 		}, syncTimeout, syncInterval).Should(BeTrue())
 		// Check optimized dash
-		Eventually(func() bool {
-			result, _ := utils.ContainDashboard(testOptions, clusterOverviewOptimizedTitle)
-			return result
+		Eventually(func() (bool, error) {
+			return utils.ContainDashboard(testOptions, clusterOverviewOptimizedTitle)
 		}, syncTimeout, syncInterval).Should(BeTrue())
 	})
 
