@@ -189,7 +189,7 @@ func (c *GrafanaDashboardController) processNextItem(ctx context.Context, queue 
 	}
 
 	if queue.NumRequeues(obj) < c.maxDashboardRetry {
-		klog.V(1).InfoS("syncing dashboard failed, retrying", "object", obj, "error", err)
+		klog.ErrorS(err, "syncing dashboard failed, retrying", "object", obj)
 		queue.AddRateLimited(obj)
 		return true
 	}
