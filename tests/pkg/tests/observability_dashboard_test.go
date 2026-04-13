@@ -7,7 +7,7 @@ package tests
 import (
 	"context"
 	"fmt"
-	"strings"
+	"os"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -25,11 +25,11 @@ const (
 	homeDashboardUIDKey     = "home-dashboard-uid"
 	setHomeDashboardKey     = "set-home-dashboard"
 
-	dashboardName                 = "sample-dashboard"
-	dashboardTitle                = "Sample Dashboard for E2E"
-	updateDashboardTitle          = "Update Sample Dashboard for E2E"
-	clusterOverviewTitle          = "ACM - Clusters Overview"
-	clusterOverviewOptimizedTitle = "ACM - Clusters Overview (Optimized)"
+	dashboardName               = "sample-dashboard"
+	dashboardTitle              = "Sample Dashboard for E2E"
+	updateDashboardTitle        = "Update Sample Dashboard for E2E"
+	clusterOverviewUID          = "2b679d600f3b9e7676a7c5ac3643d448"
+	clusterOverviewOptimizedUID = "b4733fbea8104bae951b04961f47bd20"
 
 	syncTimeout      = 1 * time.Minute
 	syncInterval     = 5 * time.Second
@@ -41,6 +41,10 @@ const (
 
 var _ = Describe("Observability: Dashboard Lifecycle", func() {
 	BeforeEach(func() {
+		if os.Getenv("IS_KIND_ENV") == "true" {
+			Skip("Skip dashboard lifecycle tests in KinD environment")
+		}
+
 		hubClient = utils.NewKubeClient(
 			testOptions.HubCluster.ClusterServerURL,
 			testOptions.KubeConfig,
@@ -382,30 +386,9 @@ var _ = Describe("Observability: Dashboard Lifecycle", func() {
 			}, syncTimeout, syncInterval).Should(BeTrue())
 
 			By("Verifying Grafana home dashboard preference")
-			isForbidden := false
 			Eventually(func() (string, error) {
-				id, err := utils.GetGrafanaHomeDashboard(context.Background(), testOptions)
-				if err != nil {
-					if strings.Contains(err.Error(), "403") {
-						isForbidden = true
-						return "403", nil
-					}
-					return "", err
-				}
-				if id == 0 {
-					return "none", nil
-				}
-				homeUID, err := utils.GetDashboardUIDByID(context.Background(), testOptions, id)
-				return homeUID, err
-			}, syncTimeout, syncInterval).Should(SatisfyAny(
-				Equal(dashUID),
-				Equal("403"), // Handle 403 Access Denied
-			))
-
-			if isForbidden {
-				GinkgoWriter.Printf("WARNING: Access denied (403) while checking home dashboard preference. This is expected if the token lacks organization preference read permissions.\n")
-				Skip("Skipping home dashboard verification due to 403 Access Denied on preferences API")
-			}
+				return utils.GetGrafanaHomeDashboard(context.Background(), testOptions)
+			}, syncTimeout, syncInterval).Should(Equal(dashUID))
 		},
 	)
 
@@ -413,11 +396,11 @@ var _ = Describe("Observability: Dashboard Lifecycle", func() {
 	It("[P2][Sev2][observability][Stable] Should have default overview dashboards (dashboard/g0)", func() {
 		// Check Original dash exists
 		Eventually(func() (bool, error) {
-			return utils.ContainDashboard(testOptions, clusterOverviewTitle)
+			return utils.ContainDashboardByUID(context.Background(), testOptions, clusterOverviewUID)
 		}, syncTimeout, syncInterval).Should(BeTrue())
 		// Check optimized dash
 		Eventually(func() (bool, error) {
-			return utils.ContainDashboard(testOptions, clusterOverviewOptimizedTitle)
+			return utils.ContainDashboardByUID(context.Background(), testOptions, clusterOverviewOptimizedUID)
 		}, syncTimeout, syncInterval).Should(BeTrue())
 	})
 

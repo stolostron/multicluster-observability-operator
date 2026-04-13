@@ -99,6 +99,8 @@ func CheckPodsInNamespace(client kubernetes.Interface, ns string, forcePodNamesL
 	printPodsStatuses(pods.Items)
 
 	notRunningPodsCount := 0
+	forcedPodsLogged := make(map[string]bool)
+
 	for _, pod := range pods.Items {
 		if pod.Status.Phase != corev1.PodRunning && pod.Status.Phase != corev1.PodSucceeded {
 			notRunningPodsCount++
@@ -107,7 +109,16 @@ func CheckPodsInNamespace(client kubernetes.Interface, ns string, forcePodNamesL
 		force := false
 		for _, forcePodName := range forcePodNamesLog {
 			if strings.Contains(pod.Name, forcePodName) {
-				force = true
+				// If the pod is running/succeeded, only force logs for one replica to avoid spam
+				if pod.Status.Phase == corev1.PodRunning || pod.Status.Phase == corev1.PodSucceeded {
+					if !forcedPodsLogged[forcePodName] {
+						force = true
+						forcedPodsLogged[forcePodName] = true
+					}
+				} else {
+					// Always log failing pods
+					force = true
+				}
 				break
 			}
 		}
