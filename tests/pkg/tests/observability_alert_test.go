@@ -397,6 +397,7 @@ var _ = Describe("", func() {
 
 		client := &http.Client{
 			Transport: &http.Transport{
+				Proxy:           http.ProxyFromEnvironment,
 				TLSClientConfig: &tls.Config{RootCAs: pool},
 			},
 		}
@@ -543,6 +544,7 @@ var _ = Describe("", func() {
 
 		client := &http.Client{
 			Transport: &http.Transport{
+				Proxy:           http.ProxyFromEnvironment,
 				TLSClientConfig: &tls.Config{RootCAs: pool},
 			},
 		}
