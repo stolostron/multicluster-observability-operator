@@ -88,23 +88,35 @@ fi
 # Remove cluster-scoped artifacts that can block namespace deletion if the MCH
 # operator did not fully clean them up (e.g. on an aborted previous teardown).
 # These are safe to delete unconditionally — they are recreated on reinstall.
-log_info "Removing cluster-scoped MCE/ACM artifacts..."
-oc delete apiservice \
-  v1.admission.cluster.open-cluster-management.io \
-  v1.admission.work.open-cluster-management.io \
+
+log_info "Removing cluster-scoped ACM artifacts..."
+oc delete validatingwebhookconfiguration multiclusterhub-operator-validating-webhook \
   --ignore-not-found
-# Validating webhooks can block namespace deletion if the underlying service is gone.
-oc delete validatingwebhookconfiguration \
-  multiclusterengines.multicluster.openshift.io \
-  multiclusterhub.validating-webhook.open-cluster-management.io \
-  --ignore-not-found
-oc delete mce --all --ignore-not-found --wait=false
+# If MCH is stuck, force remove its finalizer
+if oc get multiclusterhub multiclusterhub -n "${ACM_NS}" &>/dev/null; then
+  log_info "Force-removing finalizer from MultiClusterHub..."
+  oc patch multiclusterhub multiclusterhub -n "${ACM_NS}" \
+    --type=merge -p '{"metadata":{"finalizers":null}}' 2>/dev/null || true
+fi
+
+if oc get mce --ignore-not-found &>/dev/null 2>&1; then
+  log_info "Removing cluster-scoped MCE artifacts..."
+  oc delete apiservice \
+    v1.admission.cluster.open-cluster-management.io \
+    v1.admission.work.open-cluster-management.io \
+    --ignore-not-found
+  oc delete validatingwebhookconfiguration multiclusterengines.multicluster.openshift.io \
+    --ignore-not-found
+  oc delete mce --all --ignore-not-found --wait=false
+fi
 
 # Delete the Klusterlet CR while the ACM operator is still running so the
 # klusterlet-operator can process its finalizer and clean up the agent namespaces.
 # The klusterlet operator lives in the ACM namespace whose CSV we remove later.
-log_info "Removing Klusterlet..."
-oc delete klusterlet --all --ignore-not-found --wait=false
+if oc get klusterlet --ignore-not-found &>/dev/null 2>&1; then
+  log_info "Removing Klusterlet..."
+  oc delete klusterlet --all --ignore-not-found --wait=false
+fi
 
 # The MCE finalizer waits for all ManagedClusterAddOn resources to be removed.
 # The hypershift-addon pre-delete hook works by deploying a cleanup Job via
@@ -112,32 +124,38 @@ oc delete klusterlet --all --ignore-not-found --wait=false
 # At this point the klusterlet is already down, so the Job can never execute,
 # the ManifestWork never reports completion, and the finalizer never clears.
 # Force-remove finalizers from any ManagedClusterAddOn still pending deletion.
-log_info "Removing stuck addon-pre-delete finalizers from ManagedClusterAddOns..."
-if command -v jq &>/dev/null; then
-  while IFS=/ read -r ns name; do
-    [[ -z $name ]] && continue
-    log_info "  Removing finalizers from ManagedClusterAddOn ${ns}/${name}..."
-    oc patch managedclusteraddon "$name" -n "$ns" \
-      --type=merge -p '{"metadata":{"finalizers":null}}' 2>/dev/null || true
-  done < <(oc get managedclusteraddon --all-namespaces -o json 2>/dev/null |
-    jq -r '.items[] | select(.metadata.deletionTimestamp != null) | "\(.metadata.namespace)/\(.metadata.name)"')
-else
-  log_warn "jq not available — skipping addon finalizer cleanup; MCE deletion may stall"
+if oc get managedclusteraddon --ignore-not-found &>/dev/null 2>&1; then
+  log_info "Removing stuck addon-pre-delete finalizers from ManagedClusterAddOns..."
+  if command -v jq &>/dev/null; then
+    while IFS=/ read -r ns name; do
+      [[ -z $name ]] && continue
+      log_info "  Removing finalizers from ManagedClusterAddOn ${ns}/${name}..."
+      oc patch managedclusteraddon "$name" -n "$ns" \
+        --type=merge -p '{"metadata":{"finalizers":null}}' 2>/dev/null || true
+    done < <(oc get managedclusteraddon --all-namespaces -o json 2>/dev/null |
+      jq -r '.items[] | select(.metadata.deletionTimestamp != null) | "\(.metadata.namespace)/\(.metadata.name)"')
+  else
+    log_warn "jq not available — skipping addon finalizer cleanup; MCE deletion may stall"
+  fi
 fi
 
-wait_for_deletion mce multiclusterengine "" 120
+if oc get mce --ignore-not-found &>/dev/null 2>&1; then
+  wait_for_deletion mce multiclusterengine "" 120
+fi
 
 # If the klusterlet operator is already gone (e.g. forced teardown path), the
 # Klusterlet finalizer will never clear on its own — strip it so the agent
 # namespaces are not left stuck in Terminating.
-if command -v jq &>/dev/null; then
-  while IFS= read -r name; do
-    [[ -z $name ]] && continue
-    log_info "  Removing finalizers from Klusterlet ${name}..."
-    oc patch klusterlet "$name" \
-      --type=merge -p '{"metadata":{"finalizers":null}}' 2>/dev/null || true
-  done < <(oc get klusterlet -o json 2>/dev/null |
-    jq -r '.items[] | select(.metadata.deletionTimestamp != null) | .metadata.name')
+if oc get klusterlet --ignore-not-found &>/dev/null 2>&1; then
+  if command -v jq &>/dev/null; then
+    while IFS= read -r name; do
+      [[ -z $name ]] && continue
+      log_info "  Removing finalizers from Klusterlet ${name}..."
+      oc patch klusterlet "$name" \
+        --type=merge -p '{"metadata":{"finalizers":null}}' 2>/dev/null || true
+    done < <(oc get klusterlet -o json 2>/dev/null |
+      jq -r '.items[] | select(.metadata.deletionTimestamp != null) | .metadata.name')
+  fi
 fi
 
 # MultiClusterHub finalizer can get stuck if the webhook is gone.
