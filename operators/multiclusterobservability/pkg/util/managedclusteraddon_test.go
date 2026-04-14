@@ -287,7 +287,95 @@ func TestManagedClusterAddonSpecHashUpdatedWhenADCChanges(t *testing.T) {
 		t.Fatal("Expected updated hash to differ from original")
 	}
 
-	// Simulate that the MCA's SpecHash is now stale (empty it to trigger re-init)
+	// Reconcile again with a stale but non-empty MCA SpecHash.
+	secondAddon, err := CreateManagedClusterAddonCR(context.Background(), c, namespace, "testKey", "value")
+	if err != nil {
+		t.Fatalf("Failed on re-init call: (%v)", err)
+	}
+
+	if len(secondAddon.Status.ConfigReferences) == 0 {
+		t.Fatal("Expected ConfigReferences after re-init, got empty slice")
+	}
+	if secondAddon.Status.ConfigReferences[0].DesiredConfig.SpecHash != updatedHash {
+		t.Fatalf("Expected updated specHash %q, got: %q",
+			updatedHash, secondAddon.Status.ConfigReferences[0].DesiredConfig.SpecHash)
+	}
+}
+
+func TestManagedClusterAddonSpecHashUpdatedWhenADCChangesAndStoredHashEmpty(t *testing.T) {
+	s := scheme.Scheme
+	addonv1alpha1.AddToScheme(s)
+
+	adc := &addonv1alpha1.AddOnDeploymentConfig{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-config",
+			Namespace: "test-ns",
+		},
+		Spec: addonv1alpha1.AddOnDeploymentConfigSpec{
+			CustomizedVariables: []addonv1alpha1.CustomizedVariable{
+				{Name: "key1", Value: "value1"},
+			},
+		},
+	}
+
+	originalHash, err := addonframeworkutils.GetAddOnDeploymentConfigSpecHash(adc)
+	if err != nil {
+		t.Fatalf("Failed to compute original spec hash: (%v)", err)
+	}
+
+	cma := &addonv1alpha1.ClusterManagementAddOn{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: ObservabilityController,
+		},
+		Spec: addonv1alpha1.ClusterManagementAddOnSpec{
+			SupportedConfigs: []addonv1alpha1.ConfigMeta{
+				{
+					ConfigGroupResource: addonv1alpha1.ConfigGroupResource{
+						Group:    AddonGroup,
+						Resource: AddonDeploymentConfigResource,
+					},
+					DefaultConfig: &addonv1alpha1.ConfigReferent{
+						Name:      "test-config",
+						Namespace: "test-ns",
+					},
+				},
+			},
+		},
+	}
+
+	c := fake.NewClientBuilder().
+		WithObjects(cma, adc).
+		WithStatusSubresource(&addonv1alpha1.ManagedClusterAddOn{}).
+		Build()
+
+	firstAddon, err := CreateManagedClusterAddonCR(context.Background(), c, namespace, "testKey", "value")
+	if err != nil {
+		t.Fatalf("Failed to create managedclusteraddon: (%v)", err)
+	}
+
+	if len(firstAddon.Status.ConfigReferences) == 0 {
+		t.Fatal("Expected ConfigReferences to be initialized, got empty slice")
+	}
+	if firstAddon.Status.ConfigReferences[0].DesiredConfig.SpecHash != originalHash {
+		t.Fatalf("Expected specHash %q, got: %q", originalHash, firstAddon.Status.ConfigReferences[0].DesiredConfig.SpecHash)
+	}
+
+	// Modify the ADC spec.
+	adc.Spec.CustomizedVariables = append(adc.Spec.CustomizedVariables,
+		addonv1alpha1.CustomizedVariable{Name: "key2", Value: "value2"})
+	if err := c.Update(context.Background(), adc); err != nil {
+		t.Fatalf("Failed to update ADC: (%v)", err)
+	}
+
+	updatedHash, err := addonframeworkutils.GetAddOnDeploymentConfigSpecHash(adc)
+	if err != nil {
+		t.Fatalf("Failed to compute updated spec hash: (%v)", err)
+	}
+	if updatedHash == originalHash {
+		t.Fatal("Expected updated hash to differ from original")
+	}
+
+	// Simulate that the MCA's SpecHash is now stale and empty.
 	firstAddon.Status.ConfigReferences[0].DesiredConfig.SpecHash = ""
 	if err := c.Status().Update(context.Background(), firstAddon); err != nil {
 		t.Fatalf("Failed to clear specHash: (%v)", err)

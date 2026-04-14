@@ -91,6 +91,7 @@ func CreateManagedClusterAddonCR(ctx context.Context, c client.Client, namespace
 //  3. Either:
 //     a. MCA's ConfigReferences don't have an entry for AddonDeploymentConfig (needs initialization)
 //     b. OR the existing ConfigReferent doesn't match CMA's defaultConfig (needs update)
+//     c. OR the existing SpecHash is empty or stale (needs refresh)
 func needsConfigReferencesInitialization(ctx context.Context, c client.Client, mca *addonv1alpha1.ManagedClusterAddOn) (bool, error) {
 	// If MCA has explicit Spec.Configs, it's not using CMA defaultConfig
 	if len(mca.Spec.Configs) > 0 {
@@ -148,6 +149,17 @@ func needsConfigReferencesInitialization(ctx context.Context, c client.Client, m
 			if configRef.DesiredConfig.SpecHash == "" {
 				log.Info("MCA ConfigReferences SpecHash is empty, needs initialization",
 					"name", mca.Name, "namespace", mca.Namespace)
+				return true, nil
+			}
+			currentSpecHash, err := computeADCSpecHash(ctx, c, cmaDefaultConfig.Namespace, cmaDefaultConfig.Name)
+			if err != nil {
+				return false, fmt.Errorf("failed to compute AddOnDeploymentConfig spec hash: %w", err)
+			}
+			if configRef.DesiredConfig.SpecHash != currentSpecHash {
+				log.Info("MCA ConfigReferences SpecHash is stale, needs refresh",
+					"name", mca.Name, "namespace", mca.Namespace,
+					"storedSpecHash", configRef.DesiredConfig.SpecHash,
+					"currentSpecHash", currentSpecHash)
 				return true, nil
 			}
 			return false, nil
