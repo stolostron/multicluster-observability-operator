@@ -245,7 +245,7 @@ func TestStartStatusUpdate(t *testing.T) {
 		).
 		Build()
 
-	StartStatusUpdate(cl, mco)
+	StartStatusUpdate(cl)
 
 	requeueStatusUpdate <- struct{}{}
 	time.Sleep(3 * time.Second)

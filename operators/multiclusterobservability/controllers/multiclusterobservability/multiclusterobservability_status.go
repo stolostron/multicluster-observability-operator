@@ -28,88 +28,96 @@ const (
 )
 
 var (
-	stopStatusUpdate              = make(chan struct{})
-	stopCheckReady                = make(chan struct{})
-	requeueStatusUpdate           = make(chan struct{})
-	updateStatusIsRunnning        = false
-	muUpdateStatusIsRunnning      sync.Mutex
-	updateReadyStatusIsRunnning   = false
-	muUpdateReadyStatusIsRunnning sync.Mutex
+	stopStatusUpdate             = make(chan struct{}, 1)
+	stopCheckReady               = make(chan struct{}, 1)
+	requeueStatusUpdate          = make(chan struct{}, 1)
+	updateStatusIsRunning        = false
+	muUpdateStatusIsRunning      sync.Mutex
+	updateReadyStatusIsRunning   = false
+	muUpdateReadyStatusIsRunning sync.Mutex
 )
 
 // Start goroutines to update MCO status
-func StartStatusUpdate(c client.Client, instance *mcov1beta2.MultiClusterObservability) {
-	muUpdateStatusIsRunnning.Lock()
-	if updateStatusIsRunnning {
-		muUpdateStatusIsRunnning.Unlock()
-		return
-	}
-	updateStatusIsRunnning = true
-	muUpdateStatusIsRunnning.Unlock()
+func StartStatusUpdate(c client.Client) {
+	muUpdateStatusIsRunning.Lock()
+	if !updateStatusIsRunning {
+		updateStatusIsRunning = true
+		go func() {
+			for {
+				select {
+				case <-stopStatusUpdate:
+					muUpdateStatusIsRunning.Lock()
+					updateStatusIsRunning = false
+					muUpdateStatusIsRunning.Unlock()
+					select {
+					case stopCheckReady <- struct{}{}:
+					default:
+					}
+					log.V(1).Info("status update goroutine is stopped.")
+					return
+				case <-requeueStatusUpdate:
+					log.V(1).Info("status update goroutine is triggered.")
+					updateStatus(c)
 
-	// init the stop ready check channel
-	stopCheckReady = make(chan struct{})
+					mcoList := &mcov1beta2.MultiClusterObservabilityList{}
+					err := c.List(context.Background(), mcoList)
 
-	go func() {
-		for {
-			select {
-			case <-stopStatusUpdate:
-				muUpdateStatusIsRunnning.Lock()
-				updateStatusIsRunnning = false
-				muUpdateStatusIsRunnning.Unlock()
-				close(stopCheckReady)
-				log.V(1).Info("status update goroutine is stopped.")
-				return
-			case <-requeueStatusUpdate:
-				log.V(1).Info("status update goroutine is triggered.")
-				updateStatus(c)
-				muUpdateReadyStatusIsRunnning.Lock()
-				if updateReadyStatusIsRunnning && checkReadyStatus(c, instance) {
-					log.V(1).Info("send singal to stop status check ready goroutine because MCO status is ready")
-					stopCheckReady <- struct{}{}
-				}
-				muUpdateReadyStatusIsRunnning.Unlock()
-			}
-		}
-	}()
-
-	muUpdateReadyStatusIsRunnning.Lock()
-	if updateReadyStatusIsRunnning {
-		muUpdateReadyStatusIsRunnning.Unlock()
-		return
-	}
-	updateReadyStatusIsRunnning = true
-	muUpdateReadyStatusIsRunnning.Unlock()
-
-	go func() {
-		for {
-			select {
-			case <-stopCheckReady:
-				muUpdateReadyStatusIsRunnning.Lock()
-				updateReadyStatusIsRunnning = false
-				muUpdateReadyStatusIsRunnning.Unlock()
-				log.V(1).Info("check status ready goroutine is stopped.")
-				return
-			case <-time.After(2 * time.Second):
-				log.V(1).Info("check status ready goroutine is triggered.")
-				if checkReadyStatus(c, instance) {
-					requeueStatusUpdate <- struct{}{}
+					muUpdateReadyStatusIsRunning.Lock()
+					if updateReadyStatusIsRunning && err == nil && len(mcoList.Items) == 1 && checkReadyStatus(c, &mcoList.Items[0]) {
+						log.V(1).Info("send singal to stop status check ready goroutine because MCO status is ready")
+						select {
+						case stopCheckReady <- struct{}{}:
+						default:
+						}
+					}
+					muUpdateReadyStatusIsRunning.Unlock()
 				}
 			}
-		}
-	}()
+		}()
+	}
+	muUpdateStatusIsRunning.Unlock()
+
+	muUpdateReadyStatusIsRunning.Lock()
+	if !updateReadyStatusIsRunning {
+		updateReadyStatusIsRunning = true
+		go func() {
+			for {
+				select {
+				case <-stopCheckReady:
+					muUpdateReadyStatusIsRunning.Lock()
+					updateReadyStatusIsRunning = false
+					muUpdateReadyStatusIsRunning.Unlock()
+					log.V(1).Info("check status ready goroutine is stopped.")
+					return
+				case <-time.After(2 * time.Second):
+					log.V(1).Info("check status ready goroutine is triggered.")
+
+					mcoList := &mcov1beta2.MultiClusterObservabilityList{}
+					err := c.List(context.Background(), mcoList)
+
+					if err == nil && len(mcoList.Items) == 1 && checkReadyStatus(c, &mcoList.Items[0]) {
+						select {
+						case requeueStatusUpdate <- struct{}{}:
+						default:
+						}
+					}
+				}
+			}
+		}()
+	}
+	muUpdateReadyStatusIsRunning.Unlock()
 }
 
 // updateStatus override UpdateStatus interface
 func updateStatus(c client.Client) {
-	instance := &mcov1beta2.MultiClusterObservability{}
-	err := c.Get(context.TODO(), types.NamespacedName{
-		Name: config.GetMonitoringCRName(),
-	}, instance)
-	if err != nil {
-		log.Error(err, fmt.Sprintf("Failed to get existing mco %s", instance.Name))
+	mcoList := &mcov1beta2.MultiClusterObservabilityList{}
+	err := c.List(context.Background(), mcoList)
+	if err != nil || len(mcoList.Items) != 1 {
+		log.Error(err, "Failed to list MCO or no single instance exists")
 		return
 	}
+	instance := &mcoList.Items[0]
+
 	oldStatus := instance.Status
 	newStatus := oldStatus.DeepCopy()
 	updateInstallStatus(&newStatus.Conditions)
@@ -119,7 +127,7 @@ func updateStatus(c client.Client) {
 	fillupStatus(&newStatus.Conditions)
 	instance.Status.Conditions = newStatus.Conditions
 	if !reflect.DeepEqual(newStatus.Conditions, oldStatus.Conditions) {
-		err := c.Status().Update(context.TODO(), instance)
+		err := c.Status().Update(context.Background(), instance)
 		if err != nil {
 			log.Error(err, fmt.Sprintf("failed to update status of mco %s", instance.Name))
 			return

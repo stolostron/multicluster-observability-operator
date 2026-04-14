@@ -156,7 +156,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	}
 
 	// start to update mco status
-	StartStatusUpdate(r.Client, instance)
+	StartStatusUpdate(r.Client)
 
 	ingressCtlCrdExists := r.CRDMap[config.IngressControllerCRD]
 	if _, ok := os.LookupEnv("UNIT_TEST"); !ok {
@@ -231,9 +231,11 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 
 	// handle storagesize changes
 	result, err := r.HandleStorageSizeChange(instance)
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("error during storage size change handling: %w", err)
+	}
 	if result != nil {
-		// If err is non-nil, wrap it. fmt.Errorf with %w handles nil err gracefully (returns nil).
-		return *result, fmt.Errorf("error during storage size change handling: %w", err)
+		return *result, nil
 	}
 
 	// set operand names to cover the upgrade case since we have name changed in new release
@@ -431,7 +433,10 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	}
 
 	// update status
-	requeueStatusUpdate <- struct{}{}
+	select {
+	case requeueStatusUpdate <- struct{}{}:
+	default:
+	}
 
 	return ctrl.Result{}, nil
 }
@@ -462,7 +467,10 @@ func (r *MultiClusterObservabilityReconciler) initFinalization(ctx context.Conte
 		log.Info("Finalizer removed from mco resource")
 
 		// stop update status routine
-		stopStatusUpdate <- struct{}{}
+		select {
+		case stopStatusUpdate <- struct{}{}:
+		default:
+		}
 
 		return true, nil
 	}
