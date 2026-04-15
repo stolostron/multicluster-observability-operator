@@ -817,9 +817,11 @@ func TestGetMCOASupportedCRDNames(t *testing.T) {
 		"instrumentations.opentelemetry.io",
 		"prometheusagents.monitoring.rhobs",
 		"scrapeconfigs.monitoring.rhobs",
+		"prometheusrules.monitoring.rhobs",
 	}
 
 	result := GetMCOASupportedCRDNames()
+
 	assert.ElementsMatch(t, expected, result)
 }
 
