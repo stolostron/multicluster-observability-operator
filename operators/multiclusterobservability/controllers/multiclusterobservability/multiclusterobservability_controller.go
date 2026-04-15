@@ -247,7 +247,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	// Check if right-sizing is delegated to MCOA via MCO CR annotation.
 	rightSizingDelegated := util.IsRightSizingDelegated(instance)
 
-	obsAPIURL, err := config.GetObsAPIExternalURL(ctx, r.Client, config.GetDefaultNamespace())
+	obsAPIURL, err := config.GetObsAPIExternalURL(ctx, r.Client, config.ObsAPIGateway, config.GetDefaultNamespace())
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to get the Observatorium API URL: %w", err) // Already wrapped
 	}
