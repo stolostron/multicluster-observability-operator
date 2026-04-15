@@ -467,7 +467,7 @@ func pemEncode(cert []byte, key []byte) (*bytes.Buffer, *bytes.Buffer) {
 
 func getHosts(c client.Client, ingressCtlCrdExists bool) ([]string, error) {
 	hosts := []string{config.GetObsAPISvc(config.GetOperandName(config.Observatorium))}
-	hosts = append(hosts, config.GetObsAPISvc("mcoa-" + config.GetOperandName(config.Observatorium)))
+	hosts = append(hosts, config.GetObsAPISvc("mcoa-"+config.GetOperandName(config.Observatorium)))
 
 	customHostURL, err := config.GetObsAPIExternalURL(context.TODO(), c, config.ObsAPIGateway, config.GetDefaultNamespace())
 	if err != nil {
