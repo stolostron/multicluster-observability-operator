@@ -241,6 +241,7 @@ const (
 	InstrumentationCRDName        = "instrumentations.opentelemetry.io"
 	PrometheusAgentCRDName        = "prometheusagents.monitoring.rhobs"
 	ScrapeConfigCRDName           = "scrapeconfigs.monitoring.rhobs"
+	PrometheusRuleCRDName         = "prometheusrules.monitoring.rhobs"
 )
 
 var mcoaSupportedCRDs = map[string]string{
@@ -249,6 +250,7 @@ var mcoaSupportedCRDs = map[string]string{
 	InstrumentationCRDName:        "v1alpha1",
 	PrometheusAgentCRDName:        "v1alpha1",
 	ScrapeConfigCRDName:           "v1alpha1",
+	PrometheusRuleCRDName:         "v1",
 }
 
 // ObjectStorgeConf is used to Unmarshal from bytes to do validation.

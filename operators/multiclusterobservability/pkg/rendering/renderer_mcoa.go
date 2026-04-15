@@ -159,8 +159,12 @@ func (r *MCORenderer) renderMCOADeployment(
 		}
 	}
 
-	if err := mergo.Merge(&obj.Spec.Template.Spec.Containers[0], patchContainer, mergo.WithOverride); err != nil {
-		return nil, err
+	if len(obj.Spec.Template.Spec.Containers) > 0 {
+		if err := mergo.Merge(&obj.Spec.Template.Spec.Containers[0], patchContainer, mergo.WithOverride); err != nil {
+			return nil, err
+		}
+	} else {
+		return nil, fmt.Errorf("no containers found in the addon-manager deployment template")
 	}
 
 	uObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)

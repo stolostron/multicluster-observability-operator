@@ -330,7 +330,7 @@ func TestUpdateMCOAStatus(t *testing.T) {
 				Type:    reasonMCOADegraded,
 				Status:  metav1.ConditionTrue,
 				Reason:  reasonMCOADegraded,
-				Message: "MultiCluster-Observability-Addon degraded because the following CRDs are not installed on the hub: clusterlogforwarders.observability.openshift.io(v1), instrumentations.opentelemetry.io(v1alpha1), opentelemetrycollectors.opentelemetry.io(v1beta1)",
+				Message: "MultiCluster-Observability-Addon degraded because the following CRDs are not installed on the hub: clusterlogforwarders.observability.openshift.io(v1), instrumentations.opentelemetry.io(v1alpha1), opentelemetrycollectors.opentelemetry.io(v1beta1), prometheusagents.monitoring.rhobs(v1alpha1), prometheusrules.monitoring.rhobs(v1), scrapeconfigs.monitoring.rhobs(v1alpha1)",
 			},
 		},
 		{
@@ -367,7 +367,7 @@ func TestUpdateMCOAStatus(t *testing.T) {
 				Type:    reasonMCOADegraded,
 				Status:  metav1.ConditionTrue,
 				Reason:  reasonMCOADegraded,
-				Message: "MultiCluster-Observability-Addon degraded because the following CRDs are not installed on the hub: instrumentations.opentelemetry.io(v1alpha1), opentelemetrycollectors.opentelemetry.io(v1beta1)",
+				Message: "MultiCluster-Observability-Addon degraded because the following CRDs are not installed on the hub: instrumentations.opentelemetry.io(v1alpha1), opentelemetrycollectors.opentelemetry.io(v1beta1), prometheusagents.monitoring.rhobs(v1alpha1), prometheusrules.monitoring.rhobs(v1), scrapeconfigs.monitoring.rhobs(v1alpha1)",
 			},
 		},
 		{

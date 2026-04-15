@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -314,6 +315,7 @@ outer:
 		return
 	}
 
+	sort.Strings(missing)
 	mcoaDegraded := newMCOADegradedCondition(missing)
 	setStatusCondition(conds, *mcoaDegraded)
 }
