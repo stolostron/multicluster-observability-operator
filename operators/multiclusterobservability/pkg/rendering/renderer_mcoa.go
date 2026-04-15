@@ -307,6 +307,7 @@ func (r *MCORenderer) renderAddonDeploymentConfig(
 			if r.rendererOptions == nil {
 				return nil, fmt.Errorf("rendererOptions is nil")
 			}
+
 			metricsHubHostname := r.rendererOptions.MCOAOptions.MetricsHubHostname
 			metricsHubAlertmanagerHostname := r.rendererOptions.MCOAOptions.MetricsHubAlertmanagerHostname
 			if metricsHubHostname == "" || metricsHubAlertmanagerHostname == "" {

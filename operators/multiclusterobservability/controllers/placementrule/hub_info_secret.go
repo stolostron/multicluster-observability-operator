@@ -30,7 +30,7 @@ func generateHubInfoSecret(client client.Client, obsNamespace string,
 
 	if crdMap[config.IngressControllerCRD] {
 		var err error
-		obsAPIURL, err := config.GetObsAPIExternalURL(context.TODO(), client, obsNamespace)
+		obsAPIURL, err := config.GetObsAPIExternalURL(context.TODO(), client, config.McoaObsAPIGateway, obsNamespace)
 		if err != nil {
 			log.Error(err, "Failed to get the host for Observatorium API host URL")
 			return nil, err
