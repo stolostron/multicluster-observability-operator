@@ -288,10 +288,11 @@ func (r *MCORenderer) renderAddonDeploymentConfig(
 			appendCustomVar(aodc, nameMetricsAlertManagerHostname, metricsHubAlertmanagerHostname)
 		}
 
-		u.Object, err = runtime.DefaultUnstructuredConverter.ToUnstructured(aodc)
+		renderedSpec, err := runtime.DefaultUnstructuredConverter.ToUnstructured(&aodc.Spec)
 		if err != nil {
 			return nil, err
 		}
+		u.Object["spec"] = renderedSpec
 	}
 
 	cLabels := u.GetLabels()
