@@ -78,6 +78,12 @@ func (r *AnalyticsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			return ctrl.Result{}, nil // not our responsibility (e.g., upgrade from older version)
 		}
 		reqLogger.Info("rs - MCO is terminating, cleaning up right-sizing resources")
+		// Best-effort: set ADC RS keys to "disabled" before cleanup.
+		// This prevents MCOA ResourceCreator from recreating Placements during
+		// the race window between RS cleanup and CMA deletion.
+		if err := r.syncRightSizingStateToADC(ctx, instance, false, reqLogger); err != nil {
+			reqLogger.Error(err, "rs - failed to sync disabled state to ADC during termination, continuing with cleanup")
+		}
 		if err := rightsizingctrl.CleanupRightSizingResources(ctx, r.Client, instance); err != nil {
 			return ctrl.Result{}, fmt.Errorf("rs - failed to cleanup right-sizing resources: %w", err)
 		}
