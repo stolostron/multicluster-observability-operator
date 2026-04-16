@@ -16,6 +16,7 @@ import (
 	"slices"
 	"strings"
 
+	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -455,6 +456,40 @@ func CheckOBAComponents(opt TestOptions) error {
 	}
 
 	return nil
+}
+
+func CheckMCOStatusCondition(ctx context.Context, opt TestOptions, expectedType string, expectedStatus metav1.ConditionStatus, expectedReason string) error {
+	clientDynamic := NewKubeClientDynamic(
+		opt.HubCluster.ClusterServerURL,
+		opt.KubeConfig,
+		opt.HubCluster.KubeContext)
+
+	u, err := clientDynamic.Resource(NewMCOGVRV1BETA2()).Get(ctx, MCO_CR_NAME, metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to get MCO CR: %w", err)
+	}
+
+	mco := &mcov1beta2.MultiClusterObservability{}
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, mco)
+	if err != nil {
+		return fmt.Errorf("failed to convert unstructured to MCO: %w", err)
+	}
+
+	for _, condition := range mco.Status.Conditions {
+		if condition.Type == expectedType {
+			if condition.Status == expectedStatus {
+				if expectedReason == "" || condition.Reason == expectedReason {
+					return nil
+				}
+				return fmt.Errorf("condition %s has status %s but reason %s (expected %s)",
+					expectedType, condition.Status, condition.Reason, expectedReason)
+			}
+			return fmt.Errorf("condition %s has status %s (expected %s)",
+				expectedType, condition.Status, expectedStatus)
+		}
+	}
+
+	return fmt.Errorf("condition %s not found in MCO status", expectedType)
 }
 
 func CheckMCOComponents(opt TestOptions) error {

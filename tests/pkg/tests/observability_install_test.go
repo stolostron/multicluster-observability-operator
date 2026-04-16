@@ -157,7 +157,7 @@ func installMCO() {
 	}()
 	By("Waiting for MCO ready status")
 	Eventually(func() error {
-		err = utils.CheckMCOComponents(testOptions)
+		err = utils.CheckMCOStatusCondition(context.Background(), testOptions, "Ready", metav1.ConditionTrue, "Ready")
 		if err != nil {
 			testFailed = true
 			mcoTestFailed = true
