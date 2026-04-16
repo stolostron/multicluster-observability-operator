@@ -115,6 +115,7 @@ func (r *StatusReconciler) SetupWithManager(mgr ctrl.Manager) error {
 // Reconcile evaluates the current state of operands and updates the MCO status subresource.
 func (r *StatusReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	reqLogger := r.Log.WithValues("Request.Namespace", req.Namespace, "Request.Name", req.Name)
+	reqLogger.Info("Reconciling MultiClusterObservability status")
 
 	instance := &mcov1beta2.MultiClusterObservability{}
 	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
