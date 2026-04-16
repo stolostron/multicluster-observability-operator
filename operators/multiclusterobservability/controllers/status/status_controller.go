@@ -79,6 +79,11 @@ func (r *StatusReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			}
 		}
 
+		r.Log.V(2).Info("Triggering status reconcile",
+			"triggerType", fmt.Sprintf("%T", obj),
+			"triggerName", obj.GetName(),
+			"triggerNamespace", obj.GetNamespace())
+
 		return []reconcile.Request{
 			{NamespacedName: types.NamespacedName{
 				Name: instance.GetName(),
@@ -104,18 +109,17 @@ func (r *StatusReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	return ctrl.NewControllerManagedBy(mgr).
 		Named("multiclusterobservability-status").
-		For(&mcov1beta2.MultiClusterObservability{}).
-		Watches(&appsv1.Deployment{}, handler.EnqueueRequestsFromMapFunc(mapToMCO), builder.WithPredicates(workloadPredicate)).
-		Watches(&appsv1.StatefulSet{}, handler.EnqueueRequestsFromMapFunc(mapToMCO), builder.WithPredicates(workloadPredicate)).
-		Watches(&corev1.Secret{}, handler.EnqueueRequestsFromMapFunc(mapToMCO), builder.WithPredicates(nsPredicate)).
-		Watches(&apiextensionsv1.CustomResourceDefinition{}, handler.EnqueueRequestsFromMapFunc(mapToMCO), builder.WithPredicates(crdPredicate)).
+		For(&mcov1beta2.MultiClusterObservability{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		Watches(&appsv1.Deployment{}, handler.EnqueueRequestsFromMapFunc(mapToMCO), builder.WithPredicates(workloadPredicate, predicate.ResourceVersionChangedPredicate{})).
+		Watches(&appsv1.StatefulSet{}, handler.EnqueueRequestsFromMapFunc(mapToMCO), builder.WithPredicates(workloadPredicate, predicate.ResourceVersionChangedPredicate{})).
+		Watches(&corev1.Secret{}, handler.EnqueueRequestsFromMapFunc(mapToMCO), builder.WithPredicates(nsPredicate, predicate.ResourceVersionChangedPredicate{})).
+		Watches(&apiextensionsv1.CustomResourceDefinition{}, handler.EnqueueRequestsFromMapFunc(mapToMCO), builder.WithPredicates(crdPredicate, predicate.ResourceVersionChangedPredicate{})).
 		Complete(r)
 }
 
 // Reconcile evaluates the current state of operands and updates the MCO status subresource.
 func (r *StatusReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	reqLogger := r.Log.WithValues("Request.Namespace", req.Namespace, "Request.Name", req.Name)
-	reqLogger.Info("Reconciling MultiClusterObservability status")
 
 	instance := &mcov1beta2.MultiClusterObservability{}
 	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
@@ -137,7 +141,8 @@ func (r *StatusReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	sortConditions(newStatus.Conditions)
 
 	if !reflect.DeepEqual(newStatus.Conditions, oldStatus.Conditions) {
-		reqLogger.Info("Updating MCO status conditions")
+		changedConditions := getConditionChanges(oldStatus.Conditions, newStatus.Conditions)
+		reqLogger.Info("Updating MCO status conditions", "changes", changedConditions)
 		instance.Status.Conditions = newStatus.Conditions
 		err := r.Status().Update(ctx, instance)
 		if err != nil {
@@ -146,6 +151,41 @@ func (r *StatusReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	}
 
 	return ctrl.Result{}, nil
+}
+
+func getConditionChanges(oldConds, newConds []mcoshared.Condition) []string {
+	var changes []string
+
+	oldMap := make(map[string]mcoshared.Condition, len(oldConds))
+	for _, c := range oldConds {
+		oldMap[c.Type] = c
+	}
+
+	newMap := make(map[string]mcoshared.Condition, len(newConds))
+	for _, c := range newConds {
+		newMap[c.Type] = c
+	}
+
+	for _, newCond := range newConds {
+		oldCond, exists := oldMap[newCond.Type]
+		if !exists {
+			changes = append(changes, fmt.Sprintf("Added: %s (Status: %s, Reason: %s)", newCond.Type, newCond.Status, newCond.Reason))
+		} else if oldCond.Status != newCond.Status || oldCond.Reason != newCond.Reason || oldCond.Message != newCond.Message {
+			msgIndicator := ""
+			if oldCond.Message != newCond.Message && oldCond.Status == newCond.Status && oldCond.Reason == newCond.Reason {
+				msgIndicator = " [Message updated]"
+			}
+			changes = append(changes, fmt.Sprintf("Modified: %s (Status: %s->%s, Reason: %s->%s%s)", newCond.Type, oldCond.Status, newCond.Status, oldCond.Reason, newCond.Reason, msgIndicator))
+		}
+	}
+
+	for _, oldCond := range oldConds {
+		if _, exists := newMap[oldCond.Type]; !exists {
+			changes = append(changes, fmt.Sprintf("Removed: %s", oldCond.Type))
+		}
+	}
+
+	return changes
 }
 
 func (r *StatusReconciler) updateStatus(ctx context.Context, instance *mcov1beta2.MultiClusterObservability, conditions *[]mcoshared.Condition) {

@@ -164,6 +164,59 @@ func TestFindStatusCondition(t *testing.T) {
 	assert.Nil(t, found)
 }
 
+func TestGetConditionChanges(t *testing.T) {
+	tests := []struct {
+		name     string
+		oldConds []mcoshared.Condition
+		newConds []mcoshared.Condition
+		expected []string
+	}{
+		{
+			name:     "no-changes",
+			oldConds: []mcoshared.Condition{{Type: "A", Status: "True", Reason: "R1", Message: "M1"}},
+			newConds: []mcoshared.Condition{{Type: "A", Status: "True", Reason: "R1", Message: "M1"}},
+			expected: nil,
+		},
+		{
+			name:     "added-condition",
+			oldConds: []mcoshared.Condition{{Type: "A", Status: "True"}},
+			newConds: []mcoshared.Condition{{Type: "A", Status: "True"}, {Type: "B", Status: "False", Reason: "R2"}},
+			expected: []string{"Added: B (Status: False, Reason: R2)"},
+		},
+		{
+			name:     "removed-condition",
+			oldConds: []mcoshared.Condition{{Type: "A", Status: "True"}, {Type: "B", Status: "False"}},
+			newConds: []mcoshared.Condition{{Type: "A", Status: "True"}},
+			expected: []string{"Removed: B"},
+		},
+		{
+			name:     "modified-status",
+			oldConds: []mcoshared.Condition{{Type: "A", Status: "True"}},
+			newConds: []mcoshared.Condition{{Type: "A", Status: "False"}},
+			expected: []string{"Modified: A (Status: True->False, Reason: ->)"},
+		},
+		{
+			name:     "modified-reason",
+			oldConds: []mcoshared.Condition{{Type: "A", Status: "True", Reason: "OldReason"}},
+			newConds: []mcoshared.Condition{{Type: "A", Status: "True", Reason: "NewReason"}},
+			expected: []string{"Modified: A (Status: True->True, Reason: OldReason->NewReason)"},
+		},
+		{
+			name:     "modified-message",
+			oldConds: []mcoshared.Condition{{Type: "A", Status: "True", Message: "OldMsg"}},
+			newConds: []mcoshared.Condition{{Type: "A", Status: "True", Message: "NewMsg"}},
+			expected: []string{"Modified: A (Status: True->True, Reason: -> [Message updated])"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			changes := getConditionChanges(tt.oldConds, tt.newConds)
+			assert.ElementsMatch(t, tt.expected, changes)
+		})
+	}
+}
+
 func TestReconcileStatus(t *testing.T) {
 	mcoconfig.SetMonitoringCRName("observability")
 	mco := &mcov1beta2.MultiClusterObservability{
