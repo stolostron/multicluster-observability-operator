@@ -512,6 +512,7 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 	mcoaCRDPred := GetMCOACRDPredicateFunc()
 
 	ctrBuilder := ctrl.NewControllerManagedBy(mgr).
+		Named("multiclusterobservability").
 		// Watch for changes to primary resource MultiClusterObservability with predicate
 		For(&mcov1beta2.MultiClusterObservability{}, builder.WithPredicates(mcoPred)).
 		// Watch for changes to secondary resource Deployment and requeue the owner MultiClusterObservability

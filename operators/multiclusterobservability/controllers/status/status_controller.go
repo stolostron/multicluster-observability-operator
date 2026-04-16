@@ -103,6 +103,7 @@ func (r *StatusReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	})
 
 	return ctrl.NewControllerManagedBy(mgr).
+		Named("multiclusterobservability-status").
 		For(&mcov1beta2.MultiClusterObservability{}).
 		Watches(&appsv1.Deployment{}, handler.EnqueueRequestsFromMapFunc(mapToMCO), builder.WithPredicates(workloadPredicate)).
 		Watches(&appsv1.StatefulSet{}, handler.EnqueueRequestsFromMapFunc(mapToMCO), builder.WithPredicates(workloadPredicate)).
