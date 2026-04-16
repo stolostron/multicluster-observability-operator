@@ -7,6 +7,7 @@ package rendering
 import (
 	"fmt"
 	"maps"
+	"net/url"
 
 	"github.com/imdario/mergo"
 	obv1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
@@ -37,6 +38,9 @@ const (
 	nameMetricsHubHostname            = "metricsHubHostname"
 	nameMetricsAlertManagerHostname   = "metricsAlertManagerHostname"
 	namePLatformMetricsUI             = "platformMetricsUI"
+
+	grafanaMCOAHomeDashboardID = "89eaec849a6e4837a619fb0540c22b13"
+	grafanaLink                = "/d/" + grafanaMCOAHomeDashboardID + "/acm-clusters-overview"
 )
 
 type MCOARendererOptions struct {
@@ -183,9 +187,23 @@ func (r *MCORenderer) renderClusterManagementAddOn(
 	}
 	u := &unstructured.Unstructured{Object: m}
 
-	// NOTE: No Grafana launch-link annotation here. The observability-controller CMA
-	// (created in pkg/util/clustermanagementaddon.go) owns the single Grafana link.
-	// Adding one here causes duplicate "Grafana" entries in the ACM console.
+	// Add grafana link annotation
+	host, err := mcoconfig.GetRouteHost(r.kubeClient, mcoconfig.GrafanaRouteName, mcoconfig.GetDefaultNamespace())
+	if err != nil {
+		return nil, fmt.Errorf("failed to get host route: %w", err)
+	}
+	grafanaUrl := url.URL{
+		Scheme: "https",
+		Host:   host,
+		Path:   grafanaLink,
+	}
+	annotations := maps.Clone(u.GetAnnotations())
+	if annotations == nil {
+		annotations = make(map[string]string)
+	}
+	annotations["console.open-cluster-management.io/launch-link"] = grafanaUrl.String()
+	annotations["console.open-cluster-management.io/launch-link-text"] = "Grafana"
+	u.SetAnnotations(annotations)
 
 	cLabels := u.GetLabels()
 	if cLabels == nil {
