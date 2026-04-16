@@ -122,6 +122,12 @@ func (r *StatusReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
+	// Do not reconcile objects if this instance of mco is labeled "paused"
+	if config.IsPaused(instance.GetAnnotations()) {
+		reqLogger.Info("MCO status reconciliation is paused. Nothing more to do.")
+		return ctrl.Result{}, nil
+	}
+
 	oldStatus := instance.Status.DeepCopy()
 	newStatus := instance.Status.DeepCopy()
 
