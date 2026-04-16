@@ -510,7 +510,7 @@ func (d *Deployer) updateScrapeConfig(ctx context.Context, desiredObj, runtimeOb
 		desiredLabels = make(map[string]string)
 	}
 	maps.Copy(desiredLabels, desiredSC.Labels)
-	
+
 	// Set the merged labels on the unstructured object to preserve the original apiVersion
 	// We MUST patch using the unstructured object (desiredObj) rather than the typed object (desiredSC).
 	// The typed object (monitoringv1alpha1.ScrapeConfig) comes from the prometheus-operator package,
