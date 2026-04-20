@@ -910,6 +910,7 @@ func TestGetMCHVersions(t *testing.T) {
 		})
 	}
 }
+
 func TestGetGrafanaQueryTimeout(t *testing.T) {
 	tests := []struct {
 		name     string
