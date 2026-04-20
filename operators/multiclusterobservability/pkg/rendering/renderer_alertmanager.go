@@ -137,11 +137,13 @@ func (r *MCORenderer) renderAlertManagerStatefulSet(res *resource.Resource, name
 		return nil, fmt.Errorf("failed to get OAuth image for alertmanager")
 	}
 	oauthProxyContainer.ImagePullPolicy = imagePullPolicy
+	oauthProxyContainer.Args = util.AppendOauthProxyTLSArgs(oauthProxyContainer.Args, r.tlsProfile)
 
 	if ok, image := mcoconfig.ReplaceImage(r.cr.Annotations, mcoconfig.DefaultImgRepository+"/"+mcoconfig.KubeRBACProxyImgName, mcoconfig.KubeRBACProxyKey); ok {
 		kubeRbacProxyContainer.Image = image
 	}
 	kubeRbacProxyContainer.ImagePullPolicy = imagePullPolicy
+	kubeRbacProxyContainer.Args = util.AppendKubeRBACProxyTLSArgs(kubeRbacProxyContainer.Args, r.tlsProfile)
 
 	// replace the volumeClaimTemplate
 	dep.Spec.VolumeClaimTemplates[0].Spec.StorageClassName = &r.cr.Spec.StorageConfig.StorageClass
