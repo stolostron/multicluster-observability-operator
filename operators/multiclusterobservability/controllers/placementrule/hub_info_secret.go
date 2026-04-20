@@ -52,12 +52,15 @@ func generateHubInfoSecret(client client.Client, obsNamespace string,
 				log.Error(err, "Failed to get obs api url")
 				return nil, err
 			}
-			alertmanagerEndpoint = obsAPIURL.JoinPath("/api/alertmanager/v2").String()
+			alertmanagerEndpoint = obsAPIURL.JoinPath("/api/alertmanager/v2", config.GetDefaultTenantName()).String()
 		}
 
-		alertmanagerRouterCA, err = config.GetAlertmanagerRouterCA(client)
+		// The observatorium-api Route uses TLS passthrough, so the spoke must trust the
+		// observability server CA (which signed the obs-api server cert), not the
+		// OpenShift ingress router CA.
+		alertmanagerRouterCA, err = config.GetObsAPIServerCA(client)
 		if err != nil {
-			log.Error(err, "Failed to CA of openshift Route")
+			log.Error(err, "Failed to get observability server CA")
 			return nil, err
 		}
 	} else {
@@ -68,12 +71,12 @@ func generateHubInfoSecret(client client.Client, obsNamespace string,
 		if !config.IsAlertingDisabled() {
 			//alertmanagerEndpoint = config.AlertmanagerServiceName + "." + config.GetDefaultNamespace() + ".svc.cluster.local:9095"
 			alertmanagerEndpoint = config.GetOperandNamePrefix() + "observatorium-api." +
-				config.GetDefaultNamespace() + ".svc.cluster.local:8080/api/alertmanager/v2"
+				config.GetDefaultNamespace() + ".svc.cluster.local:8080/api/alertmanager/v2/" + config.GetDefaultTenantName()
 		}
 		var err error
-		alertmanagerRouterCA, err = config.GetAlertmanagerCA(client)
+		alertmanagerRouterCA, err = config.GetObsAPIServerCA(client)
 		if err != nil {
-			log.Error(err, "Failed to CA of the Alertmanager")
+			log.Error(err, "Failed to get observability server CA")
 			return nil, err
 		}
 	}

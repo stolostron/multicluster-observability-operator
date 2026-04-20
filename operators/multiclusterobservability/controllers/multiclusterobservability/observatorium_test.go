@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"reflect"
 	"testing"
 
@@ -902,81 +903,112 @@ func TestReconcileAlertmanagerEndpointsConfigMap(t *testing.T) {
 		}
 	}
 
+	podRef := func(name string) *corev1.ObjectReference {
+		return &corev1.ObjectReference{Kind: "Pod", Name: name}
+	}
+	amFQDN := func(pod string) string {
+		return fmt.Sprintf("%s.alertmanager-operated.%s.svc.cluster.local", pod, targetNamespace)
+	}
+
 	tests := []struct {
 		name           string
 		existingCM     *corev1.ConfigMap
 		endpointSlices []*discoveryv1.EndpointSlice
-		wantAddresses  []string
+		wantEndpoints  []alertmanagerEndpoint
 	}{
 		{
 			name:          "creates ConfigMap with no EndpointSlices",
-			wantAddresses: []string{},
+			wantEndpoints: []alertmanagerEndpoint{},
 		},
 		{
 			name: "creates ConfigMap from ready endpoints",
 			endpointSlices: []*discoveryv1.EndpointSlice{
 				newEndpointSlice("am-slice-1",
 					[]discoveryv1.Endpoint{
-						{Addresses: []string{"10.0.0.1"}, Conditions: discoveryv1.EndpointConditions{Ready: ptr.To(true)}},
-						{Addresses: []string{"10.0.0.2"}, Conditions: discoveryv1.EndpointConditions{Ready: ptr.To(true)}},
+						{Addresses: []string{"10.0.0.1"}, Conditions: discoveryv1.EndpointConditions{Ready: ptr.To(true)}, TargetRef: podRef("observability-alertmanager-0")},
+						{Addresses: []string{"10.0.0.2"}, Conditions: discoveryv1.EndpointConditions{Ready: ptr.To(true)}, TargetRef: podRef("observability-alertmanager-1")},
 					},
 					[]discoveryv1.EndpointPort{
-						{Port: ptr.To(int32(9093)), Protocol: &tcpProtocol},
+						{Port: ptr.To(int32(9095)), Protocol: &tcpProtocol},
 					},
 				),
 			},
-			wantAddresses: []string{"10.0.0.1:9093", "10.0.0.2:9093"},
+			wantEndpoints: []alertmanagerEndpoint{
+				{Name: "observability-alertmanager-0", URL: fmt.Sprintf("https://%s:9095", amFQDN("observability-alertmanager-0"))},
+				{Name: "observability-alertmanager-1", URL: fmt.Sprintf("https://%s:9095", amFQDN("observability-alertmanager-1"))},
+			},
 		},
 		{
 			name: "skips not-ready endpoints",
 			endpointSlices: []*discoveryv1.EndpointSlice{
 				newEndpointSlice("am-slice-2",
 					[]discoveryv1.Endpoint{
-						{Addresses: []string{"10.0.0.1"}, Conditions: discoveryv1.EndpointConditions{Ready: ptr.To(true)}},
-						{Addresses: []string{"10.0.0.2"}, Conditions: discoveryv1.EndpointConditions{Ready: ptr.To(false)}},
+						{Addresses: []string{"10.0.0.1"}, Conditions: discoveryv1.EndpointConditions{Ready: ptr.To(true)}, TargetRef: podRef("observability-alertmanager-0")},
+						{Addresses: []string{"10.0.0.2"}, Conditions: discoveryv1.EndpointConditions{Ready: ptr.To(false)}, TargetRef: podRef("observability-alertmanager-1")},
 					},
 					[]discoveryv1.EndpointPort{
-						{Port: ptr.To(int32(9093)), Protocol: &tcpProtocol},
+						{Port: ptr.To(int32(9095)), Protocol: &tcpProtocol},
 					},
 				),
 			},
-			wantAddresses: []string{"10.0.0.1:9093"},
+			wantEndpoints: []alertmanagerEndpoint{
+				{Name: "observability-alertmanager-0", URL: fmt.Sprintf("https://%s:9095", amFQDN("observability-alertmanager-0"))},
+			},
 		},
 		{
 			name: "includes endpoints with nil Ready condition",
 			endpointSlices: []*discoveryv1.EndpointSlice{
 				newEndpointSlice("am-slice-3",
 					[]discoveryv1.Endpoint{
-						{Addresses: []string{"10.0.0.5"}, Conditions: discoveryv1.EndpointConditions{Ready: nil}},
+						{Addresses: []string{"10.0.0.5"}, Conditions: discoveryv1.EndpointConditions{Ready: nil}, TargetRef: podRef("observability-alertmanager-0")},
 					},
 					[]discoveryv1.EndpointPort{
-						{Port: ptr.To(int32(9093)), Protocol: &tcpProtocol},
+						{Port: ptr.To(int32(9095)), Protocol: &tcpProtocol},
 					},
 				),
 			},
-			wantAddresses: []string{"10.0.0.5:9093"},
+			wantEndpoints: []alertmanagerEndpoint{
+				{Name: "observability-alertmanager-0", URL: fmt.Sprintf("https://%s:9095", amFQDN("observability-alertmanager-0"))},
+			},
 		},
 		{
-			name: "aggregates across multiple EndpointSlices and sorts",
+			name: "skips endpoints without TargetRef",
 			endpointSlices: []*discoveryv1.EndpointSlice{
-				newEndpointSlice("am-slice-a",
-					[]discoveryv1.Endpoint{
-						{Addresses: []string{"10.0.0.3"}, Conditions: discoveryv1.EndpointConditions{Ready: ptr.To(true)}},
-					},
-					[]discoveryv1.EndpointPort{
-						{Port: ptr.To(int32(9093)), Protocol: &tcpProtocol},
-					},
-				),
-				newEndpointSlice("am-slice-b",
+				newEndpointSlice("am-slice-noref",
 					[]discoveryv1.Endpoint{
 						{Addresses: []string{"10.0.0.1"}, Conditions: discoveryv1.EndpointConditions{Ready: ptr.To(true)}},
 					},
 					[]discoveryv1.EndpointPort{
-						{Port: ptr.To(int32(9093)), Protocol: &tcpProtocol},
+						{Port: ptr.To(int32(9095)), Protocol: &tcpProtocol},
 					},
 				),
 			},
-			wantAddresses: []string{"10.0.0.1:9093", "10.0.0.3:9093"},
+			wantEndpoints: []alertmanagerEndpoint{},
+		},
+		{
+			name: "aggregates across multiple EndpointSlices and sorts by pod name",
+			endpointSlices: []*discoveryv1.EndpointSlice{
+				newEndpointSlice("am-slice-a",
+					[]discoveryv1.Endpoint{
+						{Addresses: []string{"10.0.0.3"}, Conditions: discoveryv1.EndpointConditions{Ready: ptr.To(true)}, TargetRef: podRef("observability-alertmanager-1")},
+					},
+					[]discoveryv1.EndpointPort{
+						{Port: ptr.To(int32(9095)), Protocol: &tcpProtocol},
+					},
+				),
+				newEndpointSlice("am-slice-b",
+					[]discoveryv1.Endpoint{
+						{Addresses: []string{"10.0.0.1"}, Conditions: discoveryv1.EndpointConditions{Ready: ptr.To(true)}, TargetRef: podRef("observability-alertmanager-0")},
+					},
+					[]discoveryv1.EndpointPort{
+						{Port: ptr.To(int32(9095)), Protocol: &tcpProtocol},
+					},
+				),
+			},
+			wantEndpoints: []alertmanagerEndpoint{
+				{Name: "observability-alertmanager-0", URL: fmt.Sprintf("https://%s:9095", amFQDN("observability-alertmanager-0"))},
+				{Name: "observability-alertmanager-1", URL: fmt.Sprintf("https://%s:9095", amFQDN("observability-alertmanager-1"))},
+			},
 		},
 		{
 			name: "updates existing ConfigMap when data changes",
@@ -986,25 +1018,29 @@ func TestReconcileAlertmanagerEndpointsConfigMap(t *testing.T) {
 					Namespace: targetNamespace,
 				},
 				Data: map[string]string{
-					alertmanagerEndpointsKey: "- old-stale-address:9093\n",
+					alertmanagerEndpointsKey: "- name: old\n  url: http://old-stale-address:9093\n",
 				},
 			},
 			endpointSlices: []*discoveryv1.EndpointSlice{
 				newEndpointSlice("am-slice-upd",
 					[]discoveryv1.Endpoint{
-						{Addresses: []string{"10.0.1.1"}, Conditions: discoveryv1.EndpointConditions{Ready: ptr.To(true)}},
+						{Addresses: []string{"10.0.1.1"}, Conditions: discoveryv1.EndpointConditions{Ready: ptr.To(true)}, TargetRef: podRef("observability-alertmanager-0")},
 					},
 					[]discoveryv1.EndpointPort{
-						{Port: ptr.To(int32(9093)), Protocol: &tcpProtocol},
+						{Port: ptr.To(int32(9095)), Protocol: &tcpProtocol},
 					},
 				),
 			},
-			wantAddresses: []string{"10.0.1.1:9093"},
+			wantEndpoints: []alertmanagerEndpoint{
+				{Name: "observability-alertmanager-0", URL: fmt.Sprintf("https://%s:9095", amFQDN("observability-alertmanager-0"))},
+			},
 		},
 		{
 			name: "no-op when existing ConfigMap already matches",
 			existingCM: func() *corev1.ConfigMap {
-				data, _ := yaml.Marshal([]string{"10.0.2.1:9093"})
+				data, _ := yaml.Marshal([]alertmanagerEndpoint{
+					{Name: "observability-alertmanager-0", URL: fmt.Sprintf("https://%s:9095", amFQDN("observability-alertmanager-0"))},
+				})
 				return &corev1.ConfigMap{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      alertmanagerEndpointsConfigMapName,
@@ -1018,14 +1054,16 @@ func TestReconcileAlertmanagerEndpointsConfigMap(t *testing.T) {
 			endpointSlices: []*discoveryv1.EndpointSlice{
 				newEndpointSlice("am-slice-noop",
 					[]discoveryv1.Endpoint{
-						{Addresses: []string{"10.0.2.1"}, Conditions: discoveryv1.EndpointConditions{Ready: ptr.To(true)}},
+						{Addresses: []string{"10.0.2.1"}, Conditions: discoveryv1.EndpointConditions{Ready: ptr.To(true)}, TargetRef: podRef("observability-alertmanager-0")},
 					},
 					[]discoveryv1.EndpointPort{
-						{Port: ptr.To(int32(9093)), Protocol: &tcpProtocol},
+						{Port: ptr.To(int32(9095)), Protocol: &tcpProtocol},
 					},
 				),
 			},
-			wantAddresses: []string{"10.0.2.1:9093"},
+			wantEndpoints: []alertmanagerEndpoint{
+				{Name: "observability-alertmanager-0", URL: fmt.Sprintf("https://%s:9095", amFQDN("observability-alertmanager-0"))},
+			},
 		},
 	}
 
@@ -1061,13 +1099,13 @@ func TestReconcileAlertmanagerEndpointsConfigMap(t *testing.T) {
 				t.Fatalf("failed to get ConfigMap: %v", err)
 			}
 
-			var got []string
+			var got []alertmanagerEndpoint
 			if err := yaml.Unmarshal([]byte(cm.Data[alertmanagerEndpointsKey]), &got); err != nil {
 				t.Fatalf("failed to unmarshal ConfigMap data: %v", err)
 			}
 
-			if !reflect.DeepEqual(got, tc.wantAddresses) {
-				t.Errorf("addresses mismatch\n  got:  %v\n  want: %v", got, tc.wantAddresses)
+			if !reflect.DeepEqual(got, tc.wantEndpoints) {
+				t.Errorf("endpoints mismatch\n  got:  %v\n  want: %v", got, tc.wantEndpoints)
 			}
 		})
 	}

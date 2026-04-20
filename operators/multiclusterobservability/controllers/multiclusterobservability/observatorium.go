@@ -13,6 +13,7 @@ import (
 	"path"
 	"reflect"
 	"slices"
+	"sort"
 	"time"
 
 	routev1 "github.com/openshift/api/route/v1"
@@ -404,6 +405,7 @@ func newAPIRBAC() obsv1alpha1.APIRBAC {
 				Name: writeOnlyRoleName,
 				Resources: []string{
 					"metrics",
+					"alertmanager",
 				},
 				Permissions: []obsv1alpha1.Permission{
 					obsv1alpha1.Write,
@@ -608,9 +610,14 @@ func newAPISpec(c client.Client, mco *mcov1beta2.MultiClusterObservability) (obs
 	apiSpec.ExtraVolumeMounts = []obsv1alpha1.VolumeMount{
 		{
 			Type:      obsv1alpha1.VolumeMountTypeConfigMap,
-			MountPath: "/etc/observatorium/" + alertmanagerEndpointsKey,
+			MountPath: "/etc/observatorium/alertmanager-endpoints",
 			Name:      alertmanagerEndpointsConfigMapName,
-			Key:       alertmanagerEndpointsKey,
+		},
+		{
+			Type:      obsv1alpha1.VolumeMountTypeConfigMap,
+			MountPath: "/etc/observatorium/alertmanager/service-ca.crt",
+			Name:      mcoconfig.AlertmanagersDefaultCaBundleName,
+			Key:       mcoconfig.AlertmanagersDefaultCaBundleKey,
 		},
 	}
 	return apiSpec, nil
@@ -724,12 +731,6 @@ func newRuleSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string) o
 			MountPath: mcoconfig.AlertmanagersDefaultCaBundleMountPath,
 			Name:      mcoconfig.AlertmanagersDefaultCaBundleName,
 			Key:       mcoconfig.AlertmanagersDefaultCaBundleKey,
-		},
-		{
-			Type:      obsv1alpha1.VolumeMountTypeSecret,
-			MountPath: mcoconfig.ThanosRuleServerCACertMountPath,
-			Name:      mcoconfig.ServerCACerts,
-			Key:       "ca.crt",
 		},
 	}
 
@@ -1066,6 +1067,11 @@ func addBackupLabel(c client.Client, name string, backupS *v1.Secret) error {
 	return nil
 }
 
+type alertmanagerEndpoint struct {
+	Name string `yaml:"name"`
+	URL  string `yaml:"url"`
+}
+
 func reconcileAlertmanagerEndpointsConfigMap(ctx context.Context, c client.Client) error {
 	endpointSliceList := &discoveryv1.EndpointSliceList{}
 	if err := c.List(ctx, endpointSliceList,
@@ -1075,25 +1081,34 @@ func reconcileAlertmanagerEndpointsConfigMap(ctx context.Context, c client.Clien
 		return fmt.Errorf("failed to list alertmanager EndpointSlices: %w", err)
 	}
 
-	// there may be a better way to handle addresses here...
-	var addresses []string
+	ns := mcoconfig.GetDefaultNamespace()
+	var endpoints []alertmanagerEndpoint
 	for _, eps := range endpointSliceList.Items {
 		for _, endpoint := range eps.Endpoints {
 			if endpoint.Conditions.Ready != nil && !*endpoint.Conditions.Ready {
 				continue
 			}
-			for _, addr := range endpoint.Addresses {
-				for _, port := range eps.Ports {
-					if port.Port != nil {
-						addresses = append(addresses, fmt.Sprintf("%s:%d", addr, *port.Port))
-					}
+			if endpoint.TargetRef == nil {
+				continue
+			}
+			podName := endpoint.TargetRef.Name
+			for _, port := range eps.Ports {
+				if port.Port != nil {
+					// Pod DNS is governed by the StatefulSet's serviceName (alertmanager-operated), not the client-facing headless service.
+					fqdn := fmt.Sprintf("%s.alertmanager-operated.%s.svc.cluster.local", podName, ns)
+					endpoints = append(endpoints, alertmanagerEndpoint{
+						Name: podName,
+						URL:  fmt.Sprintf("https://%s:%d", fqdn, *port.Port),
+					})
 				}
 			}
 		}
 	}
-	slices.Sort(addresses)
+	sort.Slice(endpoints, func(i, j int) bool {
+		return endpoints[i].Name < endpoints[j].Name
+	})
 
-	amYaml, err := yaml.Marshal(addresses)
+	amYaml, err := yaml.Marshal(endpoints)
 	if err != nil {
 		return fmt.Errorf("failed to marshal alertmanager endpoints: %w", err)
 	}
