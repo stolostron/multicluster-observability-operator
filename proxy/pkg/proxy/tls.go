@@ -46,8 +46,9 @@ type reloadingTransport struct {
 
 // newReloadingTransport creates a new transport that can reload its TLS configuration.
 func newReloadingTransport(opts *TLSOptions) (*reloadingTransport, error) {
-	if opts.ProxyTimeout == 0 {
-		opts.ProxyTimeout = 300 * time.Second
+	proxyTimeout := opts.ProxyTimeout
+	if proxyTimeout == 0 {
+		proxyTimeout = 300 * time.Second
 	}
 	transport := &reloadingTransport{
 		opts:      opts,
@@ -59,7 +60,7 @@ func newReloadingTransport(opts *TLSOptions) (*reloadingTransport, error) {
 				KeepAlive: 300 * time.Second,
 			}).Dial,
 			TLSHandshakeTimeout:   30 * time.Second,
-			ResponseHeaderTimeout: opts.ProxyTimeout,
+			ResponseHeaderTimeout: proxyTimeout,
 		},
 	}
 

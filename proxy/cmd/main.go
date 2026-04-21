@@ -67,6 +67,10 @@ func run() error {
 
 	_ = flagset.Parse(os.Args[1:])
 
+	if cfg.proxyTimeout <= 0 {
+		return fmt.Errorf("--proxy-timeout must be positive, got: %v", cfg.proxyTimeout)
+	}
+
 	// Kubeconfig flag
 	flagset.StringVar(&cfg.kubeconfigLocation, "kubeconfig", "",
 		"Path to a kubeconfig file. If unset, in-cluster configuration will be used")
