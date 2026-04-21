@@ -6,6 +6,7 @@ FROM brew.registry.redhat.io/rh-osbs/openshift-golang-builder:rhel_9_1.25 AS bui
 WORKDIR /workspace
 # copy go tests into build image
 COPY go.sum go.mod ./
+COPY ./operators ./operators
 COPY ./tests ./tests
 
 # compile go tests in build image
