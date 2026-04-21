@@ -159,8 +159,12 @@ func (r *MCORenderer) renderMCOADeployment(
 		}
 	}
 
-	if err := mergo.Merge(&obj.Spec.Template.Spec.Containers[0], patchContainer, mergo.WithOverride); err != nil {
-		return nil, err
+	if len(obj.Spec.Template.Spec.Containers) > 0 {
+		if err := mergo.Merge(&obj.Spec.Template.Spec.Containers[0], patchContainer, mergo.WithOverride); err != nil {
+			return nil, err
+		}
+	} else {
+		return nil, fmt.Errorf("no containers found in the addon-manager deployment template")
 	}
 
 	uObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
@@ -284,10 +288,11 @@ func (r *MCORenderer) renderAddonDeploymentConfig(
 			appendCustomVar(aodc, nameMetricsAlertManagerHostname, metricsHubAlertmanagerHostname)
 		}
 
-		u.Object, err = runtime.DefaultUnstructuredConverter.ToUnstructured(aodc)
+		renderedSpec, err := runtime.DefaultUnstructuredConverter.ToUnstructured(&aodc.Spec)
 		if err != nil {
 			return nil, err
 		}
+		u.Object["spec"] = renderedSpec
 	}
 
 	cLabels := u.GetLabels()
