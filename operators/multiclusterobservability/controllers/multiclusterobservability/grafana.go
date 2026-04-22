@@ -8,7 +8,10 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"math"
 	"reflect"
+	"strconv"
+	"time"
 
 	oauthv1 "github.com/openshift/api/oauth/v1"
 	routev1 "github.com/openshift/api/route/v1"
@@ -78,11 +81,26 @@ type SecureJsonData struct {
 // GenerateGrafanaDataSource is used to generate the GrafanaDatasource as a secret.
 // the GrafanaDatasource points to observatorium api gateway service.
 func GenerateGrafanaDataSource(
+	ctx context.Context,
 	c client.Client,
 	scheme *runtime.Scheme,
 	mco *mcov1beta2.MultiClusterObservability,
 ) (*ctrl.Result, error) {
 	DynamicTimeInterval := min(mco.Spec.ObservabilityAddonSpec.Interval, 30)
+	queryTimeout := config.GetGrafanaQueryTimeout(mco)
+	// Robustly convert duration string to seconds string
+	duration, err := time.ParseDuration(queryTimeout)
+	if err != nil {
+		return &ctrl.Result{}, fmt.Errorf("failed to parse query timeout duration %s: %w", queryTimeout, err)
+	}
+
+	var secs int
+	if duration < time.Second {
+		secs = 1
+	} else {
+		secs = int(math.Ceil(duration.Seconds()))
+	}
+	queryTimeoutSec := strconv.Itoa(secs)
 
 	grafanaDatasources, err := yaml.Marshal(GrafanaDatasources{
 		APIVersion: 1,
@@ -99,7 +117,7 @@ func GenerateGrafanaDataSource(
 				),
 				UID: "000000001",
 				JSONData: &JsonData{
-					Timeout:               "300",
+					Timeout:               queryTimeoutSec,
 					CustomQueryParameters: "max_source_resolution=auto",
 					TimeInterval:          fmt.Sprintf("%ds", mco.Spec.ObservabilityAddonSpec.Interval),
 					ForwardHeaders:        []string{"X-Forwarded-Access-Token"},
@@ -117,7 +135,7 @@ func GenerateGrafanaDataSource(
 				),
 				UID: "000000002",
 				JSONData: &JsonData{
-					Timeout:               "300",
+					Timeout:               queryTimeoutSec,
 					CustomQueryParameters: "max_source_resolution=auto",
 					TimeInterval:          fmt.Sprintf("%ds", DynamicTimeInterval),
 					ForwardHeaders:        []string{"X-Forwarded-Access-Token"},
@@ -148,7 +166,7 @@ func GenerateGrafanaDataSource(
 	// Check if this already exists
 	grafanaDSFound := &corev1.Secret{}
 	err = c.Get(
-		context.TODO(),
+		ctx,
 		types.NamespacedName{
 			Name:      dsSecret.Name,
 			Namespace: dsSecret.Namespace,
@@ -162,7 +180,7 @@ func GenerateGrafanaDataSource(
 			"dsSecret.Name", dsSecret.Name,
 		)
 
-		err = c.Create(context.TODO(), dsSecret)
+		err = c.Create(ctx, dsSecret)
 		if err != nil {
 			return &ctrl.Result{}, err
 		}
@@ -176,7 +194,7 @@ func GenerateGrafanaDataSource(
 		!bytes.Equal(grafanaDSFound.Data[datasourceKey], dsSecret.Data[datasourceKey])) ||
 		grafanaDSFound.Data[datasourceKey] == nil {
 		log.Info("Updating grafana datasource secret")
-		err = c.Update(context.TODO(), dsSecret)
+		err = c.Update(ctx, dsSecret)
 		if err != nil {
 			log.Error(err, "Failed to update grafana datasource secret")
 			return &ctrl.Result{}, err
@@ -192,15 +210,18 @@ func GenerateGrafanaDataSource(
 }
 
 func GenerateGrafanaRoute(
+	ctx context.Context,
 	c client.Client, scheme *runtime.Scheme,
 	mco *mcov1beta2.MultiClusterObservability,
 ) (*ctrl.Result, error) {
+	queryTimeout := config.GetGrafanaQueryTimeout(mco)
+
 	grafanaRoute := &routev1.Route{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      config.GrafanaRouteName,
 			Namespace: config.GetDefaultNamespace(),
 			Annotations: map[string]string{
-				haProxyRouterTimeoutKey: defaultHaProxyRouterTimeout,
+				haProxyRouterTimeoutKey: queryTimeout,
 			},
 		},
 		Spec: routev1.RouteSpec{
@@ -225,7 +246,7 @@ func GenerateGrafanaRoute(
 
 	found := &routev1.Route{}
 	err := c.Get(
-		context.TODO(),
+		ctx,
 		types.NamespacedName{Name: grafanaRoute.Name, Namespace: grafanaRoute.Namespace},
 		found,
 	)
@@ -237,48 +258,50 @@ func GenerateGrafanaRoute(
 			"grafanaRoute.Name",
 			grafanaRoute.Name,
 		)
-		err = c.Create(context.TODO(), grafanaRoute)
+		err = c.Create(ctx, grafanaRoute)
 		if err != nil {
 			return &ctrl.Result{}, err
 		}
 		return nil, nil
+	} else if err != nil {
+		return &ctrl.Result{}, err
 	}
 
-	// if no annotations are set, set the default timeout
+	updated := false
 	if found.Annotations == nil {
 		found.Annotations = map[string]string{}
-		found.Annotations[haProxyRouterTimeoutKey] = defaultHaProxyRouterTimeout
 	}
-
-	// if some annotations are set, but the timeout is not set, set the default timeout
-	// otherwise, use the existing timeout which allows for custom timeouts.
-	// we do not want to overwrite other labels that may be set.
-	if _, ok := found.Annotations[haProxyRouterTimeoutKey]; !ok {
-		found.Annotations[haProxyRouterTimeoutKey] = defaultHaProxyRouterTimeout
+	if found.Annotations[haProxyRouterTimeoutKey] != queryTimeout {
+		found.Annotations[haProxyRouterTimeoutKey] = queryTimeout
+		updated = true
 	}
 
 	if !reflect.DeepEqual(found.Spec, grafanaRoute.Spec) {
 		found.Spec = grafanaRoute.Spec
+		updated = true
 	}
 
-	err = c.Update(context.TODO(), found)
-	if err != nil {
-		log.Error(
-			err,
-			"failed update for Grafana Route",
-			"grafanaRoute.Name",
-			grafanaRoute.Name,
-		)
-		return &ctrl.Result{}, err
+	if updated {
+		err = c.Update(ctx, found)
+		if err != nil {
+			log.Error(
+				err,
+				"failed update for Grafana Route",
+				"grafanaRoute.Name",
+				grafanaRoute.Name,
+			)
+			return &ctrl.Result{}, err
+		}
 	}
 	return nil, nil
 }
 
 func GenerateGrafanaOauthClient(
+	ctx context.Context,
 	c client.Client, scheme *runtime.Scheme,
 	mco *mcov1beta2.MultiClusterObservability,
 ) (*ctrl.Result, error) {
-	host, err := config.GetRouteHost(c, config.GrafanaRouteName, config.GetDefaultNamespace())
+	host, err := config.GetRouteHost(ctx, c, config.GrafanaRouteName, config.GetDefaultNamespace())
 	if err != nil {
 		return nil, err
 	}
@@ -298,7 +321,7 @@ func GenerateGrafanaOauthClient(
 
 	found := &oauthv1.OAuthClient{}
 	err = c.Get(
-		context.TODO(),
+		ctx,
 		types.NamespacedName{Name: config.GrafanaOauthClientName},
 		found,
 	)
@@ -308,7 +331,7 @@ func GenerateGrafanaOauthClient(
 			"GrafanaOauthClientName",
 			config.GrafanaOauthClientName,
 		)
-		err = c.Create(context.TODO(), oauthClient)
+		err = c.Create(ctx, oauthClient)
 		if err != nil {
 			return &ctrl.Result{}, err
 		}

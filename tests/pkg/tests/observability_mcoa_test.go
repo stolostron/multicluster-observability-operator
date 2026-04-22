@@ -120,6 +120,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 					Expect(utils.CreateScrapeConfig(testOptions, customScrapeConfigCR, "platform-metrics-collector", []string{fmt.Sprintf(`{__name__="%s"}`, customMetricName)})).NotTo(HaveOccurred())
 					Expect(
 						utils.AddConfigToPlacementInClusterManagementAddon(
+							ctx,
 							testOptions,
 							utils.MCOA_CLUSTER_MANAGEMENT_ADDON_NAME,
 							globalPlacementName,
@@ -146,6 +147,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 				By("Deleting the custom ScrapeConfig", func() {
 					Expect(
 						utils.RemoveConfigFromPlacementInClusterManagementAddon(
+							ctx,
 							testOptions,
 							utils.MCOA_CLUSTER_MANAGEMENT_ADDON_NAME,
 							globalPlacementName,
@@ -158,7 +160,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 				})
 			})
 
-			It("should allow adding prometheus rules", func() {
+			It("should allow adding prometheus rules", func(ctx context.Context) {
 				ruleName := "test-prom-rule"
 				ruleMetricName := "test_platform_metric_from_rule"
 				scrapeConfigName := "test-prom-rule-metric"
@@ -166,6 +168,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 					Expect(utils.CreatePrometheusRule(testOptions, ruleName, utils.MCO_NAMESPACE, "platform-metrics-collector", ruleMetricName, "")).NotTo(HaveOccurred())
 					Expect(
 						utils.AddConfigToPlacementInClusterManagementAddon(
+							ctx,
 							testOptions,
 							utils.MCOA_CLUSTER_MANAGEMENT_ADDON_NAME,
 							globalPlacementName,
@@ -180,6 +183,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 					Expect(utils.CreateScrapeConfig(testOptions, scrapeConfigName, "platform-metrics-collector", []string{fmt.Sprintf(`{__name__="%s"}`, ruleMetricName)})).NotTo(HaveOccurred())
 					Expect(
 						utils.AddConfigToPlacementInClusterManagementAddon(
+							ctx,
 							testOptions,
 							utils.MCOA_CLUSTER_MANAGEMENT_ADDON_NAME,
 							globalPlacementName,
@@ -205,6 +209,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 				By("Deleting the PrometheusRule", func() {
 					Expect(
 						utils.RemoveConfigFromPlacementInClusterManagementAddon(
+							ctx,
 							testOptions,
 							utils.MCOA_CLUSTER_MANAGEMENT_ADDON_NAME,
 							globalPlacementName,
@@ -219,6 +224,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 				By("Deleting the custom ScrapeConfig", func() {
 					Expect(
 						utils.RemoveConfigFromPlacementInClusterManagementAddon(
+							ctx,
 							testOptions,
 							utils.MCOA_CLUSTER_MANAGEMENT_ADDON_NAME,
 							globalPlacementName,
@@ -269,6 +275,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 					Expect(utils.CreatePrometheusRule(testOptions, ruleName, utils.MCO_NAMESPACE, "user-workload-metrics-collector", ruleMetricName, "default")).NotTo(HaveOccurred())
 					Expect(
 						utils.AddConfigToPlacementInClusterManagementAddon(
+							ctx,
 							testOptions,
 							utils.MCOA_CLUSTER_MANAGEMENT_ADDON_NAME,
 							globalPlacementName,
@@ -283,6 +290,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 					Expect(utils.CreateScrapeConfig(testOptions, scrapeConfigName, "user-workload-metrics-collector", []string{fmt.Sprintf(`{__name__="%s"}`, ruleMetricName)})).NotTo(HaveOccurred())
 					Expect(
 						utils.AddConfigToPlacementInClusterManagementAddon(
+							ctx,
 							testOptions,
 							utils.MCOA_CLUSTER_MANAGEMENT_ADDON_NAME,
 							globalPlacementName,
@@ -313,6 +321,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 				By("Deleting the custom ScrapeConfig", func() {
 					Expect(
 						utils.RemoveConfigFromPlacementInClusterManagementAddon(
+							ctx,
 							testOptions,
 							utils.MCOA_CLUSTER_MANAGEMENT_ADDON_NAME,
 							globalPlacementName,
@@ -327,6 +336,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 				By("Deleting the PrometheusRule", func() {
 					Expect(
 						utils.RemoveConfigFromPlacementInClusterManagementAddon(
+							ctx,
 							testOptions,
 							utils.MCOA_CLUSTER_MANAGEMENT_ADDON_NAME,
 							globalPlacementName,

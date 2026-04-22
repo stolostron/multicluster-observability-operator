@@ -5,7 +5,6 @@
 package rendering
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -312,7 +311,7 @@ func renderTemplates(t *testing.T, kubeClient client.Client, mco *mcov1beta2.Mul
 	config.ReadImageManifestConfigMap(kubeClient, "v1")
 
 	imageClient := &fakeimagev1client.FakeImageV1{Fake: &(fakeimageclient.NewSimpleClientset().Fake)}
-	_, err = imageClient.ImageStreams(config.OauthProxyImageStreamNamespace).Create(context.Background(),
+	_, err = imageClient.ImageStreams(config.OauthProxyImageStreamNamespace).Create(t.Context(),
 		&imagev1.ImageStream{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      config.OauthProxyImageStreamName,
@@ -339,7 +338,7 @@ func renderTemplates(t *testing.T, kubeClient client.Client, mco *mcov1beta2.Mul
 	// load and render alertmanager templates
 	alertTemplates, err := templates.GetOrLoadAlertManagerTemplates(templatesutil.GetTemplateRenderer())
 	assert.NoError(t, err)
-	alertResources, err := renderer.renderAlertManagerTemplates(alertTemplates, "namespace", map[string]string{"test": "test"})
+	alertResources, err := renderer.renderAlertManagerTemplates(t.Context(), alertTemplates, "namespace", map[string]string{"test": "test"})
 	assert.NoError(t, err)
 
 	return alertResources

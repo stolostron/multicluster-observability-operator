@@ -43,7 +43,7 @@ func TestClusterManagmentAddon(t *testing.T) {
 		t.Fatalf("Failed to create clustermanagementaddon twice: (%v)", err)
 	}
 	addon := &addonv1alpha1.ClusterManagementAddOn{}
-	err = c.Get(context.TODO(),
+	err = c.Get(context.Background(),
 		types.NamespacedName{
 			Name: ObservabilityController,
 		},
@@ -68,7 +68,7 @@ func TestClusterManagmentAddon(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to delete clustermanagementaddon: (%v)", err)
 	}
-	err = c.Get(context.TODO(),
+	err = c.Get(context.Background(),
 		types.NamespacedName{
 			Name: ObservabilityController,
 		},
@@ -80,7 +80,7 @@ func TestClusterManagmentAddon(t *testing.T) {
 
 	// Test upgrade scenario: Create a CMA with the old lifecycle annotation
 	// The test expects the annotation to be removed during reconciliation.
-	clusterManagementAddon, err := newClusterManagementAddon(c)
+	clusterManagementAddon, err := newClusterManagementAddon(context.Background(), c)
 	if err != nil {
 		t.Fatalf("Failed to create new clustermanagementaddon: (%v)", err)
 	}
@@ -91,7 +91,7 @@ func TestClusterManagmentAddon(t *testing.T) {
 	}
 	clusterManagementAddon.ObjectMeta.Annotations[addonv1alpha1.AddonLifecycleAnnotationKey] = addonv1alpha1.AddonLifecycleSelfManageAnnotationValue
 
-	if err := c.Create(context.TODO(), clusterManagementAddon); err != nil {
+	if err := c.Create(context.Background(), clusterManagementAddon); err != nil {
 		t.Fatalf("Failed to create clustermanagementaddon: (%v)", err)
 	}
 
@@ -102,7 +102,7 @@ func TestClusterManagmentAddon(t *testing.T) {
 	}
 
 	// Retrieve the updated object
-	err = c.Get(context.TODO(),
+	err = c.Get(context.Background(),
 		types.NamespacedName{
 			Name: ObservabilityController,
 		},

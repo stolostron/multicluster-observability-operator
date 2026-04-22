@@ -817,9 +817,11 @@ func TestGetMCOASupportedCRDNames(t *testing.T) {
 		"instrumentations.opentelemetry.io",
 		"prometheusagents.monitoring.rhobs",
 		"scrapeconfigs.monitoring.rhobs",
+		"prometheusrules.monitoring.rhobs",
 	}
 
 	result := GetMCOASupportedCRDNames()
+
 	assert.ElementsMatch(t, expected, result)
 }
 
@@ -904,6 +906,55 @@ func TestGetMCHVersions(t *testing.T) {
 			}
 			if gotDesired != tt.wantDesired {
 				t.Errorf("GetMCHVersions() gotDesired = %v, want %v", gotDesired, tt.wantDesired)
+			}
+		})
+	}
+}
+
+func TestGetGrafanaQueryTimeout(t *testing.T) {
+	tests := []struct {
+		name     string
+		mco      *mcov1beta2.MultiClusterObservability
+		expected string
+	}{
+		{
+			name: "Nil AdvancedConfig",
+			mco: &mcov1beta2.MultiClusterObservability{
+				Spec: mcov1beta2.MultiClusterObservabilitySpec{
+					AdvancedConfig: nil,
+				},
+			},
+			expected: "300s",
+		},
+		{
+			name: "Empty QueryTimeout",
+			mco: &mcov1beta2.MultiClusterObservability{
+				Spec: mcov1beta2.MultiClusterObservabilitySpec{
+					AdvancedConfig: &mcov1beta2.AdvancedConfig{
+						QueryTimeout: "",
+					},
+				},
+			},
+			expected: "300s",
+		},
+		{
+			name: "Custom QueryTimeout",
+			mco: &mcov1beta2.MultiClusterObservability{
+				Spec: mcov1beta2.MultiClusterObservabilitySpec{
+					AdvancedConfig: &mcov1beta2.AdvancedConfig{
+						QueryTimeout: "5m",
+					},
+				},
+			},
+			expected: "5m",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := GetGrafanaQueryTimeout(tt.mco)
+			if result != tt.expected {
+				t.Errorf("expected %s, got %s", tt.expected, result)
 			}
 		})
 	}

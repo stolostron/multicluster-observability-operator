@@ -506,12 +506,22 @@ func (d *Deployer) updateScrapeConfig(ctx context.Context, desiredObj, runtimeOb
 
 	// Merge labels
 	desiredLabels := maps.Clone(runtimeSC.GetLabels())
+	if desiredLabels == nil {
+		desiredLabels = make(map[string]string)
+	}
 	maps.Copy(desiredLabels, desiredSC.Labels)
-	desiredSC.Labels = desiredLabels
 
-	if !equality.Semantic.DeepDerivative(desiredSC.Spec, runtimeSC.Spec) || !maps.Equal(desiredSC.Labels, runtimeSC.Labels) {
+	// Set the merged labels on the unstructured object to preserve the original apiVersion
+	// We MUST patch using the unstructured object (desiredObj) rather than the typed object (desiredSC).
+	// The typed object (monitoringv1alpha1.ScrapeConfig) comes from the prometheus-operator package,
+	// which registers its scheme as 'monitoring.coreos.com/v1alpha1'.
+	// Using the typed object would cause the controller-runtime client to issue a patch to the wrong API group,
+	// resulting in a NoMatchError because our templates use the 'monitoring.rhobs/v1alpha1' API group.
+	desiredObj.SetLabels(desiredLabels)
+
+	if !equality.Semantic.DeepDerivative(desiredSC.Spec, runtimeSC.Spec) || !maps.Equal(desiredLabels, runtimeSC.Labels) {
 		logUpdateInfo(runtimeObj)
-		return d.client.Patch(ctx, desiredSC, client.Apply, client.ForceOwnership, client.FieldOwner(mcoconfig.GetMonitoringCRName()))
+		return d.client.Patch(ctx, desiredObj, client.Apply, client.ForceOwnership, client.FieldOwner(mcoconfig.GetMonitoringCRName()))
 	}
 
 	return nil

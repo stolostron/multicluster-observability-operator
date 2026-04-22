@@ -5,6 +5,7 @@
 package rendering
 
 import (
+	"context"
 	"strconv"
 
 	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
@@ -28,7 +29,7 @@ func (r *MCORenderer) newThanosRenderer() {
 	}
 }
 
-func (r *MCORenderer) renderThanosTemplates(templates []*resource.Resource,
+func (r *MCORenderer) renderThanosTemplates(ctx context.Context, templates []*resource.Resource,
 	namespace string, labels map[string]string,
 ) ([]*unstructured.Unstructured, error) {
 	uobjs := []*unstructured.Unstructured{}
@@ -42,7 +43,7 @@ func (r *MCORenderer) renderThanosTemplates(templates []*resource.Resource,
 			uobjs = append(uobjs, &unstructured.Unstructured{Object: m})
 			continue
 		}
-		uobj, err := render(template.DeepCopy(), namespace, labels)
+		uobj, err := render(ctx, template.DeepCopy(), namespace, labels)
 		if err != nil {
 			return []*unstructured.Unstructured{}, err
 		}
@@ -55,10 +56,10 @@ func (r *MCORenderer) renderThanosTemplates(templates []*resource.Resource,
 	return uobjs, nil
 }
 
-func (r *MCORenderer) RenderThanosConfig(res *resource.Resource,
+func (r *MCORenderer) RenderThanosConfig(ctx context.Context, res *resource.Resource,
 	namespace string, labels map[string]string,
 ) (*unstructured.Unstructured, error) {
-	u, err := r.renderer.RenderNamespace(res, namespace, labels)
+	u, err := r.renderer.RenderNamespace(ctx, res, namespace, labels)
 	if err != nil {
 		return nil, err
 	}

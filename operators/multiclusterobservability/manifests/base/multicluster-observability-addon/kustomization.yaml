@@ -6,6 +6,7 @@ resources:
 - deployment.yaml
 - service_account.yaml
 - monitoring.rhobs_prometheusagents.yaml
+- monitoring.rhobs_prometheusrules.yaml
 - monitoring.rhobs_scrapeconfigs.yaml
 - observability.openshift.io_clusterlogforwarders.yaml
 - opentelemetry.io_instrumentations.yaml

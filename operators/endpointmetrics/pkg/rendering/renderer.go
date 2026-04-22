@@ -68,7 +68,7 @@ func Render(
 	if err != nil {
 		return nil, err
 	}
-	resources, err := r.RenderTemplates(genericTemplates, namespace, map[string]string{})
+	resources, err := r.RenderTemplates(ctx, genericTemplates, namespace, map[string]string{})
 	if err != nil {
 		return nil, err
 	}

@@ -5,6 +5,7 @@
 package rendering
 
 import (
+	"context"
 	"fmt"
 	"maps"
 	"net/url"
@@ -64,11 +65,12 @@ func (r *MCORenderer) newMCOARenderer() {
 
 // renderMCOADeployment renders the MCOA addon manager deployment with image overrides and node placement.
 func (r *MCORenderer) renderMCOADeployment(
+	ctx context.Context,
 	res *resource.Resource,
 	namespace string,
 	labels map[string]string,
 ) (*unstructured.Unstructured, error) {
-	u, err := r.renderer.RenderNamespace(res, namespace, labels)
+	u, err := r.renderer.RenderNamespace(ctx, res, namespace, labels)
 	if err != nil {
 		return nil, err
 	}
@@ -163,8 +165,12 @@ func (r *MCORenderer) renderMCOADeployment(
 		}
 	}
 
-	if err := mergo.Merge(&obj.Spec.Template.Spec.Containers[0], patchContainer, mergo.WithOverride); err != nil {
-		return nil, err
+	if len(obj.Spec.Template.Spec.Containers) > 0 {
+		if err := mergo.Merge(&obj.Spec.Template.Spec.Containers[0], patchContainer, mergo.WithOverride); err != nil {
+			return nil, err
+		}
+	} else {
+		return nil, fmt.Errorf("no containers found in the addon-manager deployment template")
 	}
 
 	uObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
@@ -177,6 +183,7 @@ func (r *MCORenderer) renderMCOADeployment(
 
 // renderClusterManagementAddOn renders the CMA resource with addon lifecycle annotations.
 func (r *MCORenderer) renderClusterManagementAddOn(
+	ctx context.Context,
 	res *resource.Resource,
 	namespace string,
 	labels map[string]string,
@@ -188,7 +195,7 @@ func (r *MCORenderer) renderClusterManagementAddOn(
 	u := &unstructured.Unstructured{Object: m}
 
 	// Add grafana link annotation
-	host, err := mcoconfig.GetRouteHost(r.kubeClient, mcoconfig.GrafanaRouteName, mcoconfig.GetDefaultNamespace())
+	host, err := mcoconfig.GetRouteHost(ctx, r.kubeClient, mcoconfig.GrafanaRouteName, mcoconfig.GetDefaultNamespace())
 	if err != nil {
 		return nil, fmt.Errorf("failed to get host route: %w", err)
 	}
@@ -217,11 +224,12 @@ func (r *MCORenderer) renderClusterManagementAddOn(
 
 // renderAddonDeploymentConfig renders the ADC with platform metrics, right-sizing, and incident detection variables.
 func (r *MCORenderer) renderAddonDeploymentConfig(
+	ctx context.Context,
 	res *resource.Resource,
 	namespace string,
 	labels map[string]string,
 ) (*unstructured.Unstructured, error) {
-	u, err := r.renderer.RenderNamespace(res, namespace, labels)
+	u, err := r.renderer.RenderNamespace(ctx, res, namespace, labels)
 	if err != nil {
 		return nil, err
 	}
@@ -304,10 +312,11 @@ func (r *MCORenderer) renderAddonDeploymentConfig(
 			appendCustomVar(aodc, nameMetricsAlertManagerHostname, metricsHubAlertmanagerHostname)
 		}
 
-		u.Object, err = runtime.DefaultUnstructuredConverter.ToUnstructured(aodc)
+		renderedSpec, err := runtime.DefaultUnstructuredConverter.ToUnstructured(&aodc.Spec)
 		if err != nil {
 			return nil, err
 		}
+		u.Object["spec"] = renderedSpec
 	}
 
 	cLabels := u.GetLabels()
@@ -322,6 +331,7 @@ func (r *MCORenderer) renderAddonDeploymentConfig(
 
 // renderMCOATemplates renders MCOA templates, applying per-kind render functions and filtering as needed.
 func (r *MCORenderer) renderMCOATemplates(
+	ctx context.Context,
 	templates []*resource.Resource,
 	namespace string,
 	labels map[string]string,
@@ -346,7 +356,7 @@ func (r *MCORenderer) renderMCOATemplates(
 			uobjs = append(uobjs, &unstructured.Unstructured{Object: m})
 			continue
 		}
-		uobj, err := render(template.DeepCopy(), namespace, labels)
+		uobj, err := render(ctx, template.DeepCopy(), namespace, labels)
 		if err != nil {
 			return []*unstructured.Unstructured{}, err
 		}

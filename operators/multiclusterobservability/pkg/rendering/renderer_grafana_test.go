@@ -5,7 +5,6 @@
 package rendering
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -36,7 +35,7 @@ func TestRenderGrafana(t *testing.T) {
 	require.NoError(t, err)
 
 	imageClient := &fakeimagev1client.FakeImageV1{Fake: &(fakeimageclient.NewSimpleClientset().Fake)}
-	_, err = imageClient.ImageStreams(config.OauthProxyImageStreamNamespace).Create(context.Background(),
+	_, err = imageClient.ImageStreams(config.OauthProxyImageStreamNamespace).Create(t.Context(),
 		&imagev1.ImageStream{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      config.OauthProxyImageStreamName,
@@ -170,7 +169,7 @@ func TestRenderGrafana(t *testing.T) {
 
 			mcoRenderer.newGranfanaRenderer()
 			namespace := "myns"
-			grafanaResources, err := mcoRenderer.renderGrafanaTemplates(grafanaTemplates, namespace, nil)
+			grafanaResources, err := mcoRenderer.renderGrafanaTemplates(t.Context(), grafanaTemplates, namespace, nil)
 			require.NoError(t, err)
 			for _, r := range grafanaResources {
 				if r.GetKind() == "ClusterRole" {

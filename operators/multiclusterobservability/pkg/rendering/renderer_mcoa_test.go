@@ -73,7 +73,7 @@ func TestRenderMCOADeployment(t *testing.T) {
 
 	renderer := &MCORenderer{cr: mco}
 
-	uobj, err := renderer.renderMCOADeployment(dp, "test", map[string]string{"key": "value"})
+	uobj, err := renderer.renderMCOADeployment(t.Context(), dp, "test", map[string]string{"key": "value"})
 	assert.NoError(t, err)
 	assert.NotNil(t, uobj)
 
@@ -112,7 +112,7 @@ func TestRenderMCOADeployment(t *testing.T) {
 			},
 		},
 	}
-	uobj, err = renderer.renderMCOADeployment(dp, "test", map[string]string{"key": "value"})
+	uobj, err = renderer.renderMCOADeployment(t.Context(), dp, "test", map[string]string{"key": "value"})
 	assert.NoError(t, err)
 	err = runtime.DefaultUnstructuredConverter.FromUnstructured(uobj.Object, got)
 	assert.NoError(t, err)
@@ -204,7 +204,7 @@ func TestRenderAddonDeploymentConfig(t *testing.T) {
 		},
 	}}
 
-	uobj, err := renderer.renderAddonDeploymentConfig(aodc, "test", map[string]string{"key": "value"})
+	uobj, err := renderer.renderAddonDeploymentConfig(t.Context(), aodc, "test", map[string]string{"key": "value"})
 	assert.NoError(t, err)
 	assert.NotNil(t, uobj)
 
@@ -459,7 +459,7 @@ func TestRenderMCOATemplates(t *testing.T) {
 				},
 			}
 
-			uobjs, err := renderer.renderMCOATemplates(mcoaTemplates, "test", map[string]string{"key": "value"})
+			uobjs, err := renderer.renderMCOATemplates(t.Context(), mcoaTemplates, "test", map[string]string{"key": "value"})
 			assert.NoError(t, err)
 			assert.NotNil(t, uobjs)
 

@@ -47,6 +47,7 @@ func getGrafanaHttpClient(opt TestOptions) (*http.Client, string, bool, error) {
 
 	if !isKind {
 		tr := &http.Transport{
+			Proxy: http.ProxyFromEnvironment,
 			// #nosec G402 -- Used in test.
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 		}
