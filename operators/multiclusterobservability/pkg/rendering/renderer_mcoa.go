@@ -369,6 +369,16 @@ func (r *MCORenderer) renderMCOATemplates(
 	return uobjs, nil
 }
 
+// rightSizingEnabled returns true if at least one right-sizing feature
+// (namespace or virtualization) is enabled in the MCO CR spec.
+func rightSizingEnabled(cr *obv1beta2.MultiClusterObservability) bool {
+	if cr.Spec.Capabilities == nil || cr.Spec.Capabilities.Platform == nil {
+		return false
+	}
+	return cr.Spec.Capabilities.Platform.Analytics.NamespaceRightSizingRecommendation.Enabled ||
+		cr.Spec.Capabilities.Platform.Analytics.VirtualizationRightSizingRecommendation.Enabled
+}
+
 // MCOAEnabled returns true if any non-right-sizing MCOA capability is enabled.
 // Right-sizing alone does NOT trigger MCOA deployment — it requires the MCO CR
 // delegation annotation to be set for MCOA-based right-sizing.
