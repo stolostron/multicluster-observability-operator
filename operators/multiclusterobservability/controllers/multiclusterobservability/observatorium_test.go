@@ -964,3 +964,149 @@ func TestNewRuleSpec(t *testing.T) {
 		})
 	}
 }
+
+func TestNewReceiversSpec(t *testing.T) {
+	tests := []struct {
+		name         string
+		mcoaEnabled  bool
+		hasContainer bool
+		expectedArgs []string
+	}{
+		{
+			name:         "MCOA disabled, no custom containers",
+			mcoaEnabled:  false,
+			hasContainer: false,
+			expectedArgs: nil,
+		},
+		{
+			name:         "MCOA enabled, no custom containers",
+			mcoaEnabled:  true,
+			hasContainer: false,
+			expectedArgs: []string{"--tsdb.out-of-order.time-window=1h"},
+		},
+		{
+			name:         "MCOA enabled, with custom containers",
+			mcoaEnabled:  true,
+			hasContainer: true,
+			expectedArgs: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mco := &mcov1beta2.MultiClusterObservability{
+				Spec: mcov1beta2.MultiClusterObservabilitySpec{
+					InstanceSize: mcoconfig.Default,
+					StorageConfig: &mcov1beta2.StorageConfig{
+						ReceiveStorageSize: "1Gi",
+					},
+				},
+			}
+
+			if tt.mcoaEnabled {
+				mco.Spec.Capabilities = &mcov1beta2.CapabilitiesSpec{
+					Platform: &mcov1beta2.PlatformCapabilitiesSpec{
+						Metrics: mcov1beta2.PlatformMetricsSpec{
+							Default: mcov1beta2.PlatformMetricsDefaultSpec{
+								Enabled: true,
+							},
+						},
+					},
+				}
+			}
+
+			if tt.hasContainer {
+				mco.Spec.AdvancedConfig = &mcov1beta2.AdvancedConfig{
+					Receive: &mcov1beta2.ReceiveSpec{
+						Containers: []corev1.Container{{Name: "test"}},
+					},
+				}
+			}
+
+			receiveSpec := newReceiversSpec(mco, "test-sc")
+
+			if len(receiveSpec.Args) != len(tt.expectedArgs) {
+				t.Fatalf("expected %d args, got %d", len(tt.expectedArgs), len(receiveSpec.Args))
+			}
+
+			for i, expectedArg := range tt.expectedArgs {
+				if receiveSpec.Args[i] != expectedArg {
+					t.Errorf("expected arg %s at index %d, got %s", expectedArg, i, receiveSpec.Args[i])
+				}
+			}
+		})
+	}
+}
+
+func TestNewCompactSpec(t *testing.T) {
+	tests := []struct {
+		name         string
+		mcoaEnabled  bool
+		hasContainer bool
+		expectedArgs []string
+	}{
+		{
+			name:         "MCOA disabled, no custom containers",
+			mcoaEnabled:  false,
+			hasContainer: false,
+			expectedArgs: nil,
+		},
+		{
+			name:         "MCOA enabled, no custom containers",
+			mcoaEnabled:  true,
+			hasContainer: false,
+			expectedArgs: []string{"--compact.enable-vertical-compaction"},
+		},
+		{
+			name:         "MCOA enabled, with custom containers",
+			mcoaEnabled:  true,
+			hasContainer: true,
+			expectedArgs: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mco := &mcov1beta2.MultiClusterObservability{
+				Spec: mcov1beta2.MultiClusterObservabilitySpec{
+					InstanceSize: mcoconfig.Default,
+					StorageConfig: &mcov1beta2.StorageConfig{
+						CompactStorageSize: "1Gi",
+					},
+				},
+			}
+
+			if tt.mcoaEnabled {
+				mco.Spec.Capabilities = &mcov1beta2.CapabilitiesSpec{
+					Platform: &mcov1beta2.PlatformCapabilitiesSpec{
+						Metrics: mcov1beta2.PlatformMetricsSpec{
+							Default: mcov1beta2.PlatformMetricsDefaultSpec{
+								Enabled: true,
+							},
+						},
+					},
+				}
+			}
+
+			if tt.hasContainer {
+				mco.Spec.AdvancedConfig = &mcov1beta2.AdvancedConfig{
+					Compact: &mcov1beta2.CompactSpec{
+						Containers: []corev1.Container{{Name: "test"}},
+					},
+				}
+			}
+
+			compactSpec := newCompactSpec(mco, "test-sc")
+
+			if len(compactSpec.Args) != len(tt.expectedArgs) {
+				t.Fatalf("expected %d args, got %d", len(tt.expectedArgs), len(compactSpec.Args))
+			}
+
+			for i, expectedArg := range tt.expectedArgs {
+				if compactSpec.Args[i] != expectedArg {
+					t.Errorf("expected arg %s at index %d, got %s", expectedArg, i, compactSpec.Args[i])
+				}
+			}
+		})
+	}
+}
