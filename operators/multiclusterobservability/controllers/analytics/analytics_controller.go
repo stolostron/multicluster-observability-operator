@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"slices"
+	"time"
 
 	"github.com/go-logr/logr"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
@@ -45,6 +46,7 @@ type AnalyticsReconciler struct {
 	Log          logr.Logger
 	Scheme       *runtime.Scheme
 	wasDelegated bool
+	cleanupAt    time.Time
 }
 
 // +kubebuilder:rbac:groups=observability.open-cluster-management.io,resources=multiclusterobservabilities,verbs=get;list;watch;create;update;patch;delete
@@ -72,18 +74,47 @@ func (r *AnalyticsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	instance := mcoList.Items[0].DeepCopy()
 
-	// Handle deletion: clean up RS resources and remove our finalizer
+	// Handle deletion: clean up RS resources and remove our finalizer.
+	// Uses a stabilization window to let MCOA process the "disabled" ADC state
+	// before MCO sweeps up remaining resources.
 	if instance.GetDeletionTimestamp() != nil {
 		if !slices.Contains(instance.GetFinalizers(), analyticsFinalizer) {
 			return ctrl.Result{}, nil // not our responsibility (e.g., upgrade from older version)
 		}
-		reqLogger.Info("rs - MCO is terminating, cleaning up right-sizing resources")
-		// Best-effort: set ADC RS keys to "disabled" before cleanup.
-		// This prevents MCOA ResourceCreator from recreating Placements during
-		// the race window between RS cleanup and CMA deletion.
-		if err := r.syncRightSizingStateToADC(ctx, instance, false, reqLogger); err != nil {
-			reqLogger.Error(err, "rs - failed to sync disabled state to ADC during termination, continuing with cleanup")
+
+		const stabilizationWindow = 10 * time.Second
+
+		// Phase 1: Sync ADC to "disabled" and start the stabilization window.
+		// This gives MCOA time to see "disabled" and clean up its own resources
+		// (Placements, ConfigMaps) before we do our cleanup in Phase 2.
+		if r.cleanupAt.IsZero() {
+			reqLogger.Info("rs - MCO terminating, syncing disabled state to ADC before cleanup")
+			if err := r.syncRightSizingStateToADC(ctx, instance, false, reqLogger); err != nil {
+				reqLogger.Error(err, "rs - failed to sync disabled state to ADC, continuing with cleanup")
+			}
+			r.cleanupAt = time.Now()
+			return ctrl.Result{RequeueAfter: stabilizationWindow}, nil
 		}
+
+		// Block any reconcile that arrives before the stabilization window elapses.
+		// ConfigMap watches and other events can trigger early reconciles.
+		if elapsed := time.Since(r.cleanupAt); elapsed < stabilizationWindow {
+			remaining := stabilizationWindow - elapsed
+			reqLogger.Info("rs - waiting for stabilization window", "remaining", remaining.Round(time.Second))
+			return ctrl.Result{RequeueAfter: remaining}, nil
+		}
+
+		// Phase 2: Stabilization window elapsed. Clean up and remove finalizer.
+		reqLogger.Info("rs - stabilization complete, cleaning up right-sizing resources")
+
+		// Re-sync "disabled" to ADC before cleanup. Phase 1's sync may have been
+		// overwritten by the main controller's deployer, which renders ADC with the
+		// CR's actual RS state before it sees the deletion timestamp. By Phase 2,
+		// the main controller has processed the deletion and stopped deploying.
+		if err := r.syncRightSizingStateToADC(ctx, instance, false, reqLogger); err != nil {
+			reqLogger.Error(err, "rs - failed to re-sync disabled state before cleanup, ADC may already be deleted")
+		}
+
 		if err := rightsizingctrl.CleanupRightSizingResources(ctx, r.Client, instance); err != nil {
 			return ctrl.Result{}, fmt.Errorf("rs - failed to cleanup right-sizing resources: %w", err)
 		}
@@ -95,6 +126,11 @@ func (r *AnalyticsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		reqLogger.Info("rs - Analytics finalizer removed after RS cleanup")
 		return ctrl.Result{}, nil
 	}
+
+	// Reset stabilization window from a previous deletion cycle (e.g., MCO reinstalled
+	// without restarting the operator pod). Without this, a stale cleanupAt from a
+	// prior delete would skip Phase 1 on the next delete.
+	r.cleanupAt = time.Time{}
 
 	// Normal path: ensure our finalizer is present
 	if !slices.Contains(instance.GetFinalizers(), analyticsFinalizer) {

@@ -7,6 +7,7 @@ package analytics
 import (
 	"context"
 	"testing"
+	"time"
 
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	rsnamespace "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/analytics/rightsizing/rs-namespace"
@@ -279,6 +280,15 @@ func TestAnalyticsReconciler_DeletionCleansUp(t *testing.T) {
 	require.NoError(t, err)
 
 	r := &AnalyticsReconciler{Client: c, Scheme: scheme}
+
+	// Phase 1: sync disabled state to ADC and start stabilization window
+	_, err = r.Reconcile(context.TODO(), ctrl.Request{})
+	require.NoError(t, err)
+
+	// Simulate stabilization window elapsed
+	r.cleanupAt = time.Now().Add(-20 * time.Second)
+
+	// Phase 2: re-sync disabled, cleanup resources, remove finalizer
 	_, err = r.Reconcile(context.TODO(), ctrl.Request{})
 	require.NoError(t, err)
 
