@@ -33,7 +33,7 @@ func TestRender(t *testing.T) {
 
 	mchcr := &mcov1beta2.MultiClusterObservability{
 		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterObservability"},
-		ObjectMeta: metav1.ObjectMeta{Namespace: "test", Name: "test"},
+		ObjectMeta: metav1.ObjectMeta{Name: "test"},
 		Spec: mcov1beta2.MultiClusterObservabilitySpec{
 			ImagePullPolicy: "IfNotPresent",
 			ImagePullSecret: "test",
