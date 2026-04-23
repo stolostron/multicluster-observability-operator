@@ -5,6 +5,7 @@
 package rendering
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -42,10 +43,12 @@ func (r *MCORenderer) newGranfanaRenderer() {
 	}
 }
 
-func (r *MCORenderer) renderGrafanaDeployments(res *resource.Resource,
+func (r *MCORenderer) renderGrafanaDeployments(
+	ctx context.Context,
+	res *resource.Resource,
 	namespace string, labels map[string]string,
 ) (*unstructured.Unstructured, error) {
-	u, err := r.renderer.RenderDeployments(res, namespace, labels)
+	u, err := r.renderer.RenderDeployments(ctx, res, namespace, labels)
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +102,9 @@ func (r *MCORenderer) renderGrafanaDeployments(res *resource.Resource,
 	return &unstructured.Unstructured{Object: unstructuredObj}, nil
 }
 
-func (r *MCORenderer) renderGrafanaTemplates(templates []*resource.Resource,
+func (r *MCORenderer) renderGrafanaTemplates(
+	ctx context.Context,
+	templates []*resource.Resource,
 	namespace string, labels map[string]string,
 ) ([]*unstructured.Unstructured, error) {
 	uobjs := []*unstructured.Unstructured{}
@@ -150,7 +155,7 @@ func (r *MCORenderer) renderGrafanaTemplates(templates []*resource.Resource,
 			uobjs = append(uobjs, &unstructured.Unstructured{Object: m})
 			continue
 		}
-		uobj, err := render(template, namespace, labels)
+		uobj, err := render(ctx, template, namespace, labels)
 		if err != nil {
 			return []*unstructured.Unstructured{}, err
 		}

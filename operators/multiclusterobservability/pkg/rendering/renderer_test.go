@@ -5,7 +5,6 @@
 package rendering
 
 import (
-	"context"
 	"os"
 	"path"
 	"testing"
@@ -65,7 +64,7 @@ func TestRender(t *testing.T) {
 	kubeClient := fake.NewClientBuilder().WithObjects(clientCa).Build()
 
 	imageClient := &fakeimagev1client.FakeImageV1{Fake: &(fakeimageclient.NewSimpleClientset().Fake)}
-	_, err = imageClient.ImageStreams(config.OauthProxyImageStreamNamespace).Create(context.Background(),
+	_, err = imageClient.ImageStreams(config.OauthProxyImageStreamNamespace).Create(t.Context(),
 		&imagev1.ImageStream{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      config.OauthProxyImageStreamName,
@@ -88,7 +87,7 @@ func TestRender(t *testing.T) {
 	}
 
 	renderer := NewMCORenderer(mchcr, kubeClient, imageClient)
-	_, err = renderer.Render()
+	_, err = renderer.Render(t.Context())
 	if err != nil {
 		t.Fatalf("failed to render MultiClusterObservability: %v", err)
 	}
@@ -96,7 +95,7 @@ func TestRender(t *testing.T) {
 
 func TestGetOauthProxyFromImageStreams(t *testing.T) {
 	imageClient := &fakeimagev1client.FakeImageV1{Fake: &(fakeimageclient.NewSimpleClientset().Fake)}
-	_, err := imageClient.ImageStreams(config.OauthProxyImageStreamNamespace).Create(context.Background(),
+	_, err := imageClient.ImageStreams(config.OauthProxyImageStreamNamespace).Create(t.Context(),
 		&imagev1.ImageStream{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      config.OauthProxyImageStreamName,
