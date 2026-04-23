@@ -20,6 +20,8 @@ spec:
     - '{__name__="descheduler:nodepressure:cpu:avg1m"}'
     - '{__name__="kube_node_labels"}'
     - '{__name__="kube_node_role"}'
+    - '{__name__="kube_pod_labels",label_vm_kubevirt_io_name!=""}'
+    - '{__name__="kube_pod_resource_request",resource="memory"}'
     - '{__name__="kubevirt_hco_system_health_status"}'
     - '{__name__="kubevirt_hyperconverged_operator_health_status"}'
     - '{__name__="kubevirt_vm_cpu_usage_seconds_total"}'
@@ -36,6 +38,7 @@ spec:
     - '{__name__="kubevirt_vmi_filesystem_capacity_bytes"}'
     - '{__name__="kubevirt_vmi_filesystem_used_bytes"}'
     - '{__name__="kubevirt_vmi_info"}'
+    - '{__name__="kubevirt_vmi_launcher_memory_overhead_bytes"}'
     - '{__name__="kubevirt_vmi_memory_available_bytes"}'
     - '{__name__="kubevirt_vmi_memory_swap_in_traffic_bytes"}'
     - '{__name__="kubevirt_vmi_memory_swap_out_traffic_bytes"}'
@@ -59,7 +62,16 @@ spec:
     - '{__name__="kubevirt_vmsnapshot_succeeded_timestamp_seconds"}'
     - '{__name__="node_cpu_seconds_total"}'
     - '{__name__="node_memory_MemTotal_bytes"}'
+    - '{__name__="node_memory_SwapFree_bytes"}'
+    - '{__name__="node_memory_SwapTotal_bytes"}'
+    - '{__name__="node_pressure_memory_waiting_seconds_total"}'
     - '{__name__="machine_cpu_cores"}'
+    - '{__name__="container_memory_rss",id="/system.slice"}'
   metricRelabelings:
+  - sourceLabels: [__name__, id]
+    regex: container_memory_rss;(/system\.slice)
+    targetLabel: cgroup_id
+    replacement: "$1"
+    action: replace
   - action: labeldrop
     regex: managed_cluster|id
