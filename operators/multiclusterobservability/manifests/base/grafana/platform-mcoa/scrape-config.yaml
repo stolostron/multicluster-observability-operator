@@ -14,7 +14,6 @@ spec:
   params:
     match[]:
     - '{__name__=":node_memory_MemAvailable_bytes:sum"}'
-    - '{__name__="accelerator_card_info"}'
     - '{__name__="acm_label_names"}' # metrics generated on the hub by MCE, needed for Grafana
     - '{__name__="acm_managed_cluster_labels"}' # metrics generated on the hub by MCE, needed for Grafana
     - '{__name__="active_streams_lease:grpc_server_handled_total:sum"}'
@@ -78,6 +77,7 @@ spec:
     - '{__name__="namespace_pod:container_network_transmit_packets_dropped_total:sum"}'
     - '{__name__="namespace_workload_pod:kube_pod_owner:relabel:avg"}'
     - '{__name__="namespace_workload_pod:kube_pod_owner:relabel"}'
+    - '{__name__="node_accelerator_card_info"}'
     - '{__name__="node_cpu_seconds_total:mode_idle:avg_rate5m"}'
     - '{__name__="node_filesystem_avail_bytes"}'
     - '{__name__="node_filesystem_size_bytes"}'
