@@ -6,6 +6,7 @@ package config
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -25,7 +26,7 @@ import (
 	obsv1alpha1 "github.com/stolostron/observatorium-operator/api/v1alpha1"
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
@@ -244,14 +245,18 @@ const (
 	PrometheusRuleCRDName         = "prometheusrules.monitoring.rhobs"
 )
 
-var mcoaSupportedCRDs = map[string]string{
-	ClusterLogForwarderCRDName:    "v1",
-	OpenTelemetryCollectorCRDName: "v1beta1",
-	InstrumentationCRDName:        "v1alpha1",
-	PrometheusAgentCRDName:        "v1alpha1",
-	ScrapeConfigCRDName:           "v1alpha1",
-	PrometheusRuleCRDName:         "v1",
-}
+var (
+	ErrMultipleMCOInstances = errors.New("more than one MultiClusterObservability CR exists")
+	ErrMCONotFound          = errors.New("MultiClusterObservability CR not found")
+	mcoaSupportedCRDs       = map[string]string{
+		ClusterLogForwarderCRDName:    "v1",
+		OpenTelemetryCollectorCRDName: "v1beta1",
+		InstrumentationCRDName:        "v1alpha1",
+		PrometheusAgentCRDName:        "v1alpha1",
+		ScrapeConfigCRDName:           "v1alpha1",
+		PrometheusRuleCRDName:         "v1",
+	}
+)
 
 // ObjectStorgeConf is used to Unmarshal from bytes to do validation.
 type ObjectStorgeConf struct {
@@ -301,6 +306,31 @@ func GetCrLabelKey() string {
 // GetClusterNameLabelKey returns the key for the injected label.
 func GetClusterNameLabelKey() string {
 	return clusterNameLabelKey
+}
+
+// GetExpectedDeploymentNames returns the list of expected deployment names.
+func GetExpectedDeploymentNames() []string {
+	return []string{
+		GetOperandNamePrefix() + Grafana,
+		GetOperandNamePrefix() + ObservatoriumAPI,
+		GetOperandNamePrefix() + ThanosQuery,
+		GetOperandNamePrefix() + ThanosQueryFrontend,
+		GetOperandNamePrefix() + ThanosReceiveController,
+		GetOperandNamePrefix() + ObservatoriumOperator,
+		GetOperandNamePrefix() + RBACQueryProxy,
+	}
+}
+
+// GetExpectedStatefulSetNames returns the list of expected statefulset names.
+func GetExpectedStatefulSetNames() []string {
+	return []string{
+		GetOperandNamePrefix() + Alertmanager,
+		GetOperandNamePrefix() + ThanosCompact,
+		GetOperandNamePrefix() + ThanosReceive,
+		GetOperandNamePrefix() + ThanosRule,
+		GetOperandNamePrefix() + ThanosStoreMemcached,
+		GetOperandNamePrefix() + ThanosStoreShard + "-0",
+	}
 }
 
 func GetImageManifestConfigMapName() string {
@@ -406,7 +436,7 @@ func GetObsAPIExternalURL(ctx context.Context, client client.Client, namespace s
 		types.NamespacedName{
 			Name: GetMonitoringCRName(),
 		}, mco)
-	if err != nil && !errors.IsNotFound(err) {
+	if err != nil && !apierrors.IsNotFound(err) {
 		return nil, err
 	}
 	advancedConfig := mco.Spec.AdvancedConfig
@@ -429,7 +459,7 @@ func GetRouteHost(ctx context.Context, client client.Client, name string, namesp
 	found := &routev1.Route{}
 
 	err := client.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, found)
-	if err != nil && errors.IsNotFound(err) {
+	if err != nil && apierrors.IsNotFound(err) {
 		// if the router is not created yet, fallback to get host
 		// from the domain of ingresscontroller
 		domain, err := getDomainForIngressController(
@@ -463,7 +493,7 @@ func GetAlertmanagerURL(ctx context.Context, client client.Client, namespace str
 		types.NamespacedName{
 			Name: GetMonitoringCRName(),
 		}, mco)
-	if err != nil && !errors.IsNotFound(err) {
+	if err != nil && !apierrors.IsNotFound(err) {
 		return nil, err
 	}
 	advancedConfig := mco.Spec.AdvancedConfig
@@ -477,7 +507,7 @@ func GetAlertmanagerURL(ctx context.Context, client client.Client, namespace str
 
 	found := &routev1.Route{}
 	err = client.Get(ctx, types.NamespacedName{Name: AlertmanagerRouteName, Namespace: namespace}, found)
-	if err != nil && errors.IsNotFound(err) {
+	if err != nil && apierrors.IsNotFound(err) {
 		// if the alertmanager router is not created yet, fallback to get host from the domain of ingresscontroller
 		domain, err := getDomainForIngressController(
 			ctx,
@@ -888,7 +918,7 @@ func GetOauthProxyImage(imageClient imagev1client.ImageV1Interface) (bool, strin
 		oauthImageStream, err := imageClient.ImageStreams(OauthProxyImageStreamNamespace).
 			Get(context.TODO(), OauthProxyImageStreamName, v1.GetOptions{})
 		if err != nil {
-			if !errors.IsNotFound(err) {
+			if !apierrors.IsNotFound(err) {
 				return false, ""
 			}
 			// do not expect error = IsNotFound in OCP environment.
@@ -1025,4 +1055,22 @@ func GetMCHVersions(u *unstructured.Unstructured) (currentVersion, desiredVersio
 		log.V(1).Info("Failed to extract desiredVersion from MCH", "error", err)
 	}
 	return currentVersion, desiredVersion
+}
+
+// GetMCOInstance fetches the singleton MultiClusterObservability instance.
+func GetMCOInstance(ctx context.Context, c client.Client) (*observabilityv1beta2.MultiClusterObservability, error) {
+	mcoList := &observabilityv1beta2.MultiClusterObservabilityList{}
+	err := c.List(ctx, mcoList)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list MultiClusterObservability custom resources: %w", err)
+	}
+	if len(mcoList.Items) > 1 {
+		return nil, ErrMultipleMCOInstances
+	}
+	if len(mcoList.Items) == 0 {
+		return nil, ErrMCONotFound
+	}
+
+	instance := mcoList.Items[0].DeepCopy()
+	return instance, nil
 }

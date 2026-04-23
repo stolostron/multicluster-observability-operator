@@ -6,7 +6,7 @@ package multiclusterobservability
 
 import (
 	"context"
-	cerr "errors"
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -136,27 +136,21 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	}
 
 	// Fetch the MultiClusterObservability instance
-	mcoList := &mcov1beta2.MultiClusterObservabilityList{}
-	err := r.Client.List(ctx, mcoList)
+	instance, err := config.GetMCOInstance(ctx, r.Client)
 	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to list MultiClusterObservability custom resources: %w", err)
-	}
-	if len(mcoList.Items) > 1 {
-		reqLogger.Info("more than one MultiClusterObservability CR exists, only one should exist")
-		return ctrl.Result{}, nil
-	}
-	if len(mcoList.Items) == 0 {
-		reqLogger.Info("no MultiClusterObservability CR exists, nothing to do")
-		return ctrl.Result{}, nil
+		if errors.Is(err, config.ErrMultipleMCOInstances) {
+			reqLogger.Error(err, "System in inconsistent state")
+			return ctrl.Result{}, nil
+		}
+		if errors.Is(err, config.ErrMCONotFound) {
+			return ctrl.Result{}, nil
+		}
+		return ctrl.Result{}, fmt.Errorf("failed to fetch MCO instance: %w", err)
 	}
 
-	instance := mcoList.Items[0].DeepCopy()
 	if config.GetMonitoringCRName() != instance.GetName() {
 		config.SetMonitoringCRName(instance.GetName())
 	}
-
-	// start to update mco status
-	StartStatusUpdate(r.Client, instance)
 
 	ingressCtlCrdExists := r.CRDMap[config.IngressControllerCRD]
 	if _, ok := os.LookupEnv("UNIT_TEST"); !ok {
@@ -430,9 +424,6 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		isLegacyResourceRemoved = true
 	}
 
-	// update status
-	requeueStatusUpdate <- struct{}{}
-
 	return ctrl.Result{}, nil
 }
 
@@ -460,9 +451,6 @@ func (r *MultiClusterObservabilityReconciler) initFinalization(ctx context.Conte
 			return false, err
 		}
 		log.Info("Finalizer removed from mco resource")
-
-		// stop update status routine
-		stopStatusUpdate <- struct{}{}
 
 		return true, nil
 	}
@@ -524,6 +512,7 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 	mcoaCRDPred := GetMCOACRDPredicateFunc()
 
 	ctrBuilder := ctrl.NewControllerManagedBy(mgr).
+		Named("multiclusterobservability").
 		// Watch for changes to primary resource MultiClusterObservability with predicate
 		For(&mcov1beta2.MultiClusterObservability{}, builder.WithPredicates(mcoPred)).
 		// Watch for changes to secondary resource Deployment and requeue the owner MultiClusterObservability
@@ -787,19 +776,19 @@ func GenerateAlertmanagerRoute(
 		log.Info("BYO CA/Certificate found for the Route of Alertmanager, will using BYO CA/certificate for the Route of Alertmanager")
 		amRouteCA, ok := amRouteBYOCaSrt.Data["tls.crt"]
 		if !ok {
-			return &ctrl.Result{}, cerr.New("invalid BYO CA for the Route of Alertmanager")
+			return &ctrl.Result{}, errors.New("invalid BYO CA for the Route of Alertmanager")
 		}
 		amGateway.Spec.TLS.CACertificate = string(amRouteCA)
 
 		amRouteCert, ok := amRouteBYOCertSrt.Data["tls.crt"]
 		if !ok {
-			return &ctrl.Result{}, cerr.New("invalid BYO Certificate for the Route of Alertmanager")
+			return &ctrl.Result{}, errors.New("invalid BYO Certificate for the Route of Alertmanager")
 		}
 		amGateway.Spec.TLS.Certificate = string(amRouteCert)
 
 		amRouteCertKey, ok := amRouteBYOCertSrt.Data["tls.key"]
 		if !ok {
-			return &ctrl.Result{}, cerr.New("invalid BYO Certificate Key for the Route of Alertmanager")
+			return &ctrl.Result{}, errors.New("invalid BYO Certificate Key for the Route of Alertmanager")
 		}
 		amGateway.Spec.TLS.Key = string(amRouteCertKey)
 	}
@@ -882,19 +871,19 @@ func GenerateProxyRoute(
 		log.Info("BYO CA/Certificate found for the Route of Proxy, will using BYO CA/certificate for the Route of Proxy")
 		proxyRouteCA, ok := proxyRouteBYOCaSrt.Data["tls.crt"]
 		if !ok {
-			return &ctrl.Result{}, cerr.New("invalid BYO CA for the Route of Proxy")
+			return &ctrl.Result{}, errors.New("invalid BYO CA for the Route of Proxy")
 		}
 		proxyGateway.Spec.TLS.CACertificate = string(proxyRouteCA)
 
 		proxyRouteCert, ok := proxyRouteBYOCertSrt.Data["tls.crt"]
 		if !ok {
-			return &ctrl.Result{}, cerr.New("invalid BYO Certificate for the Route of Proxy")
+			return &ctrl.Result{}, errors.New("invalid BYO Certificate for the Route of Proxy")
 		}
 		proxyGateway.Spec.TLS.Certificate = string(proxyRouteCert)
 
 		proxyRouteCertKey, ok := proxyRouteBYOCertSrt.Data["tls.key"]
 		if !ok {
-			return &ctrl.Result{}, cerr.New("invalid BYO Certificate Key for the Route of Proxy")
+			return &ctrl.Result{}, errors.New("invalid BYO Certificate Key for the Route of Proxy")
 		}
 		proxyGateway.Spec.TLS.Key = string(proxyRouteCertKey)
 	}
