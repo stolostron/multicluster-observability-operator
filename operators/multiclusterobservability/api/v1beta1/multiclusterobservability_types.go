@@ -82,8 +82,7 @@ type MultiClusterObservabilitySpec struct {
 	// +kubebuilder:default:="30d"
 	RetentionResolution1h string `json:"retentionResolution1h,omitempty"`
 
-	// Storage configuration for Observability StatefulSets and object storage.
-	// Supports any S3-compatible object store (AWS S3, MinIO, Ceph). Required.
+	// S3 storage configuration for Observability StatefulSets and object storage.
 	// +required
 	StorageConfig *StorageConfigObject `json:"storageConfigObject,omitempty"`
 

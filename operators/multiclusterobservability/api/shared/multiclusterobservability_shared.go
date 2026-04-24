@@ -32,14 +32,13 @@ func (u URL) URL() (*url.URL, error) {
 
 // ObservabilityAddonSpec is the spec of observability addon.
 type ObservabilityAddonSpec struct {
-	// When false, the managed cluster addon stops pushing metrics to the hub,
-	// reducing storage usage but disabling per-cluster dashboards.
+	// When false, the managed cluster addon stops pushing metrics to the hub.
 	// +optional
 	// +kubebuilder:default:=true
 	EnableMetrics bool `json:"enableMetrics"`
 
 	// Interval in seconds at which the observability addon on each managed cluster
-	// pushes metrics to the hub. Default: 300.
+	// pushes metrics to the hub.
 	// +optional
 	// +kubebuilder:default:=300
 	// +kubebuilder:validation:Minimum=15
@@ -82,7 +81,7 @@ type PreConfiguredStorage struct {
 	// +optional
 	TLSSecretMountPath string `json:"tlsSecretMountPath,omitempty"`
 	// When true, mounts a projected service account token into Thanos pods.
-	// Enable this for cloud-provider IAM integration instead of static credentials. Default is false.
+	// Enable this for cloud-provider IAM integration instead of static credentials.
 	// +optional
 	ServiceAccountProjection bool `json:"serviceAccountProjection,omitempty"`
 }
