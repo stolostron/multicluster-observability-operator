@@ -84,15 +84,14 @@ spec:
                 properties:
                   enableMetrics:
                     default: true
-                    description: |-
-                      When false, the managed cluster addon stops pushing metrics to the hub,
-                      reducing storage usage but disabling per-cluster dashboards.
+                    description: When false, the managed cluster addon stops pushing
+                      metrics to the hub.
                     type: boolean
                   interval:
                     default: 300
                     description: |-
                       Interval in seconds at which the observability addon on each managed cluster
-                      pushes metrics to the hub. Default: 300.
+                      pushes metrics to the hub.
                     format: int32
                     maximum: 3600
                     minimum: 15
@@ -192,9 +191,8 @@ spec:
                   Format: duration string, e.g. '5d'. Raw data has the highest storage cost per day retained.
                 type: string
               storageConfigObject:
-                description: |-
-                  Storage configuration for Observability StatefulSets and object storage.
-                  Supports any S3-compatible object store (AWS S3, MinIO, Ceph). Required.
+                description: S3 storage configuration for Observability StatefulSets
+                  and object storage.
                 properties:
                   metricObjectStorage:
                     description: |-
@@ -213,7 +211,7 @@ spec:
                       serviceAccountProjection:
                         description: |-
                           When true, mounts a projected service account token into Thanos pods.
-                          Enable this for cloud-provider IAM integration instead of static credentials. Default is false.
+                          Enable this for cloud-provider IAM integration instead of static credentials.
                         type: boolean
                       tlsSecretMountPath:
                         description: |-
@@ -10918,15 +10916,14 @@ spec:
                 properties:
                   enableMetrics:
                     default: true
-                    description: |-
-                      When false, the managed cluster addon stops pushing metrics to the hub,
-                      reducing storage usage but disabling per-cluster dashboards.
+                    description: When false, the managed cluster addon stops pushing
+                      metrics to the hub.
                     type: boolean
                   interval:
                     default: 300
                     description: |-
                       Interval in seconds at which the observability addon on each managed cluster
-                      pushes metrics to the hub. Default: 300.
+                      pushes metrics to the hub.
                     format: int32
                     maximum: 3600
                     minimum: 15
@@ -11034,7 +11031,7 @@ spec:
                       serviceAccountProjection:
                         description: |-
                           When true, mounts a projected service account token into Thanos pods.
-                          Enable this for cloud-provider IAM integration instead of static credentials. Default is false.
+                          Enable this for cloud-provider IAM integration instead of static credentials.
                         type: boolean
                       tlsSecretMountPath:
                         description: |-
@@ -11087,7 +11084,7 @@ spec:
                         serviceAccountProjection:
                           description: |-
                             When true, mounts a projected service account token into Thanos pods.
-                            Enable this for cloud-provider IAM integration instead of static credentials. Default is false.
+                            Enable this for cloud-provider IAM integration instead of static credentials.
                           type: boolean
                         tlsSecretMountPath:
                           description: |-
