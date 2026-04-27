@@ -607,6 +607,20 @@ func newAPISpec(c client.Client, mco *mcov1beta2.MultiClusterObservability) (obs
 			}
 		}
 	}
+	requiredConfigMaps := []string{
+		alertmanagerEndpointsConfigMapName,
+		mcoconfig.AlertmanagersDefaultCaBundleName,
+	}
+	for _, cmName := range requiredConfigMaps {
+		cm := &v1.ConfigMap{}
+		if err := c.Get(context.TODO(), types.NamespacedName{
+			Name:      cmName,
+			Namespace: mcoconfig.GetDefaultNamespace(),
+		}, cm); err != nil {
+			return apiSpec, fmt.Errorf("required ConfigMap %s not found: %w", cmName, err)
+		}
+	}
+
 	apiSpec.ExtraVolumeMounts = []obsv1alpha1.VolumeMount{
 		{
 			Type:      obsv1alpha1.VolumeMountTypeConfigMap,
