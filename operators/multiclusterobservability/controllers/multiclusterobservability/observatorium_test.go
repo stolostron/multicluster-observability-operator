@@ -8,7 +8,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -21,14 +20,12 @@ import (
 	observatoriumv1alpha1 "github.com/stolostron/observatorium-operator/api/v1alpha1"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
-	discoveryv1 "k8s.io/api/discovery/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -38,13 +35,6 @@ var storageClassName = ""
 func requiredAlertmanagerConfigMaps() []runtime.Object {
 	ns := mcoconfig.GetDefaultNamespace()
 	return []runtime.Object{
-		&corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      alertmanagerEndpointsConfigMapName,
-				Namespace: ns,
-			},
-			Data: map[string]string{alertmanagerEndpointsKey: "[]"},
-		},
 		&corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      mcoconfig.AlertmanagersDefaultCaBundleName,
@@ -72,25 +62,12 @@ func TestNewAPISpecMissingConfigMaps(t *testing.T) {
 		wantErr string
 	}{
 		{
-			name:    "missing both ConfigMaps",
+			name:    "missing CA bundle ConfigMap",
 			objs:    nil,
-			wantErr: alertmanagerEndpointsConfigMapName,
-		},
-		{
-			name: "missing CA bundle ConfigMap",
-			objs: []runtime.Object{
-				&corev1.ConfigMap{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      alertmanagerEndpointsConfigMapName,
-						Namespace: mcoconfig.GetDefaultNamespace(),
-					},
-					Data: map[string]string{alertmanagerEndpointsKey: "[]"},
-				},
-			},
 			wantErr: mcoconfig.AlertmanagersDefaultCaBundleName,
 		},
 		{
-			name:    "both ConfigMaps present",
+			name:    "CA bundle ConfigMap present",
 			objs:    requiredAlertmanagerConfigMaps(),
 			wantErr: "",
 		},
@@ -113,6 +90,36 @@ func TestNewAPISpecMissingConfigMaps(t *testing.T) {
 				t.Errorf("expected error to mention %q, got: %v", tt.wantErr, err)
 			}
 		})
+	}
+}
+
+func TestNewRuleSpecUsesStaticAlertmanagerConfigFile(t *testing.T) {
+	mco := &mcov1beta2.MultiClusterObservability{
+		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterObservability"},
+		ObjectMeta: metav1.ObjectMeta{Name: "test"},
+		Spec: mcov1beta2.MultiClusterObservabilitySpec{
+			StorageConfig: &mcov1beta2.StorageConfig{
+				MetricObjectStorage: &mcoshared.PreConfiguredStorage{Key: "key", Name: "name"},
+				RuleStorageSize:     "1Gi",
+			},
+			ObservabilityAddonSpec: &mcoshared.ObservabilityAddonSpec{
+				EnableMetrics: true,
+				Interval:      300,
+			},
+		},
+	}
+	rule := newRuleSpec(mco, "")
+	if rule.AlertmanagerConfigFile.Name != mcoconfig.AlertmanagersDefaultConfigMapName ||
+		rule.AlertmanagerConfigFile.Key != mcoconfig.AlertmanagersDefaultConfigFileKey {
+		t.Errorf("AlertmanagerConfigFile = %#v, want Name=%q Key=%q",
+			rule.AlertmanagerConfigFile,
+			mcoconfig.AlertmanagersDefaultConfigMapName,
+			mcoconfig.AlertmanagersDefaultConfigFileKey)
+	}
+	if len(rule.ExtraVolumeMounts) != 1 ||
+		rule.ExtraVolumeMounts[0].Name != mcoconfig.AlertmanagersDefaultCaBundleName ||
+		rule.ExtraVolumeMounts[0].Key != mcoconfig.AlertmanagersDefaultCaBundleKey {
+		t.Errorf("ExtraVolumeMounts for alertmanager CA = %#v", rule.ExtraVolumeMounts)
 	}
 }
 
@@ -975,232 +982,6 @@ func TestGenerateAPIGatewayRoute(t *testing.T) {
 			}
 			if !reflect.DeepEqual(list.Items[0].Spec, tt.want.Spec) {
 				t.Fatalf("Expected route spec: %v, got %v", tt.want.Spec, list.Items[0].Spec)
-			}
-		})
-	}
-}
-
-func TestReconcileAlertmanagerEndpointsConfigMap(t *testing.T) {
-	ctx := context.Background()
-	targetNamespace := mcoconfig.GetDefaultNamespace()
-	tcpProtocol := corev1.ProtocolTCP
-
-	newEndpointSlice := func(name string, endpoints []discoveryv1.Endpoint, ports []discoveryv1.EndpointPort) *discoveryv1.EndpointSlice {
-		return &discoveryv1.EndpointSlice{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      name,
-				Namespace: targetNamespace,
-				Labels:    map[string]string{"kubernetes.io/service-name": mcoconfig.AlertmanagerServiceName},
-			},
-			AddressType: discoveryv1.AddressTypeIPv4,
-			Endpoints:   endpoints,
-			Ports:       ports,
-		}
-	}
-
-	podRef := func(name string) *corev1.ObjectReference {
-		return &corev1.ObjectReference{Kind: "Pod", Name: name}
-	}
-	amFQDN := func(pod string) string {
-		return fmt.Sprintf("%s.alertmanager-operated.%s.svc.cluster.local", pod, targetNamespace)
-	}
-
-	tests := []struct {
-		name           string
-		existingCM     *corev1.ConfigMap
-		endpointSlices []*discoveryv1.EndpointSlice
-		wantEndpoints  []alertmanagerEndpoint
-	}{
-		{
-			name:          "creates ConfigMap with no EndpointSlices",
-			wantEndpoints: []alertmanagerEndpoint{},
-		},
-		{
-			name: "creates ConfigMap from ready endpoints",
-			endpointSlices: []*discoveryv1.EndpointSlice{
-				newEndpointSlice("am-slice-1",
-					[]discoveryv1.Endpoint{
-						{Addresses: []string{"10.0.0.1"}, Conditions: discoveryv1.EndpointConditions{Ready: ptr.To(true)}, TargetRef: podRef("observability-alertmanager-0")},
-						{Addresses: []string{"10.0.0.2"}, Conditions: discoveryv1.EndpointConditions{Ready: ptr.To(true)}, TargetRef: podRef("observability-alertmanager-1")},
-					},
-					[]discoveryv1.EndpointPort{
-						{Port: ptr.To(int32(9095)), Protocol: &tcpProtocol},
-					},
-				),
-			},
-			wantEndpoints: []alertmanagerEndpoint{
-				{Name: "observability-alertmanager-0", URL: fmt.Sprintf("https://%s:9095", amFQDN("observability-alertmanager-0"))},
-				{Name: "observability-alertmanager-1", URL: fmt.Sprintf("https://%s:9095", amFQDN("observability-alertmanager-1"))},
-			},
-		},
-		{
-			name: "skips not-ready endpoints",
-			endpointSlices: []*discoveryv1.EndpointSlice{
-				newEndpointSlice("am-slice-2",
-					[]discoveryv1.Endpoint{
-						{Addresses: []string{"10.0.0.1"}, Conditions: discoveryv1.EndpointConditions{Ready: ptr.To(true)}, TargetRef: podRef("observability-alertmanager-0")},
-						{Addresses: []string{"10.0.0.2"}, Conditions: discoveryv1.EndpointConditions{Ready: ptr.To(false)}, TargetRef: podRef("observability-alertmanager-1")},
-					},
-					[]discoveryv1.EndpointPort{
-						{Port: ptr.To(int32(9095)), Protocol: &tcpProtocol},
-					},
-				),
-			},
-			wantEndpoints: []alertmanagerEndpoint{
-				{Name: "observability-alertmanager-0", URL: fmt.Sprintf("https://%s:9095", amFQDN("observability-alertmanager-0"))},
-			},
-		},
-		{
-			name: "includes endpoints with nil Ready condition",
-			endpointSlices: []*discoveryv1.EndpointSlice{
-				newEndpointSlice("am-slice-3",
-					[]discoveryv1.Endpoint{
-						{Addresses: []string{"10.0.0.5"}, Conditions: discoveryv1.EndpointConditions{Ready: nil}, TargetRef: podRef("observability-alertmanager-0")},
-					},
-					[]discoveryv1.EndpointPort{
-						{Port: ptr.To(int32(9095)), Protocol: &tcpProtocol},
-					},
-				),
-			},
-			wantEndpoints: []alertmanagerEndpoint{
-				{Name: "observability-alertmanager-0", URL: fmt.Sprintf("https://%s:9095", amFQDN("observability-alertmanager-0"))},
-			},
-		},
-		{
-			name: "skips endpoints without TargetRef",
-			endpointSlices: []*discoveryv1.EndpointSlice{
-				newEndpointSlice("am-slice-noref",
-					[]discoveryv1.Endpoint{
-						{Addresses: []string{"10.0.0.1"}, Conditions: discoveryv1.EndpointConditions{Ready: ptr.To(true)}},
-					},
-					[]discoveryv1.EndpointPort{
-						{Port: ptr.To(int32(9095)), Protocol: &tcpProtocol},
-					},
-				),
-			},
-			wantEndpoints: []alertmanagerEndpoint{},
-		},
-		{
-			name: "aggregates across multiple EndpointSlices and sorts by pod name",
-			endpointSlices: []*discoveryv1.EndpointSlice{
-				newEndpointSlice("am-slice-a",
-					[]discoveryv1.Endpoint{
-						{Addresses: []string{"10.0.0.3"}, Conditions: discoveryv1.EndpointConditions{Ready: ptr.To(true)}, TargetRef: podRef("observability-alertmanager-1")},
-					},
-					[]discoveryv1.EndpointPort{
-						{Port: ptr.To(int32(9095)), Protocol: &tcpProtocol},
-					},
-				),
-				newEndpointSlice("am-slice-b",
-					[]discoveryv1.Endpoint{
-						{Addresses: []string{"10.0.0.1"}, Conditions: discoveryv1.EndpointConditions{Ready: ptr.To(true)}, TargetRef: podRef("observability-alertmanager-0")},
-					},
-					[]discoveryv1.EndpointPort{
-						{Port: ptr.To(int32(9095)), Protocol: &tcpProtocol},
-					},
-				),
-			},
-			wantEndpoints: []alertmanagerEndpoint{
-				{Name: "observability-alertmanager-0", URL: fmt.Sprintf("https://%s:9095", amFQDN("observability-alertmanager-0"))},
-				{Name: "observability-alertmanager-1", URL: fmt.Sprintf("https://%s:9095", amFQDN("observability-alertmanager-1"))},
-			},
-		},
-		{
-			name: "updates existing ConfigMap when data changes",
-			existingCM: &corev1.ConfigMap{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      alertmanagerEndpointsConfigMapName,
-					Namespace: targetNamespace,
-				},
-				Data: map[string]string{
-					alertmanagerEndpointsKey: "- name: old\n  url: http://old-stale-address:9093\n",
-				},
-			},
-			endpointSlices: []*discoveryv1.EndpointSlice{
-				newEndpointSlice("am-slice-upd",
-					[]discoveryv1.Endpoint{
-						{Addresses: []string{"10.0.1.1"}, Conditions: discoveryv1.EndpointConditions{Ready: ptr.To(true)}, TargetRef: podRef("observability-alertmanager-0")},
-					},
-					[]discoveryv1.EndpointPort{
-						{Port: ptr.To(int32(9095)), Protocol: &tcpProtocol},
-					},
-				),
-			},
-			wantEndpoints: []alertmanagerEndpoint{
-				{Name: "observability-alertmanager-0", URL: fmt.Sprintf("https://%s:9095", amFQDN("observability-alertmanager-0"))},
-			},
-		},
-		{
-			name: "no-op when existing ConfigMap already matches",
-			existingCM: func() *corev1.ConfigMap {
-				data, _ := yaml.Marshal([]alertmanagerEndpoint{
-					{Name: "observability-alertmanager-0", URL: fmt.Sprintf("https://%s:9095", amFQDN("observability-alertmanager-0"))},
-				})
-				return &corev1.ConfigMap{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      alertmanagerEndpointsConfigMapName,
-						Namespace: targetNamespace,
-					},
-					Data: map[string]string{
-						alertmanagerEndpointsKey: string(data),
-					},
-				}
-			}(),
-			endpointSlices: []*discoveryv1.EndpointSlice{
-				newEndpointSlice("am-slice-noop",
-					[]discoveryv1.Endpoint{
-						{Addresses: []string{"10.0.2.1"}, Conditions: discoveryv1.EndpointConditions{Ready: ptr.To(true)}, TargetRef: podRef("observability-alertmanager-0")},
-					},
-					[]discoveryv1.EndpointPort{
-						{Port: ptr.To(int32(9095)), Protocol: &tcpProtocol},
-					},
-				),
-			},
-			wantEndpoints: []alertmanagerEndpoint{
-				{Name: "observability-alertmanager-0", URL: fmt.Sprintf("https://%s:9095", amFQDN("observability-alertmanager-0"))},
-			},
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			s := runtime.NewScheme()
-			scheme.AddToScheme(s)
-			discoveryv1.AddToScheme(s)
-
-			builder := fake.NewClientBuilder().WithScheme(s)
-
-			var objs []client.Object
-			for _, eps := range tc.endpointSlices {
-				objs = append(objs, eps)
-			}
-			if tc.existingCM != nil {
-				objs = append(objs, tc.existingCM)
-			}
-			if len(objs) > 0 {
-				builder = builder.WithObjects(objs...)
-			}
-			cl := builder.Build()
-
-			if err := reconcileAlertmanagerEndpointsConfigMap(ctx, cl); err != nil {
-				t.Fatalf("reconcileAlertmanagerEndpointsConfigMap() returned error: %v", err)
-			}
-
-			cm := &corev1.ConfigMap{}
-			if err := cl.Get(ctx, types.NamespacedName{
-				Name:      alertmanagerEndpointsConfigMapName,
-				Namespace: targetNamespace,
-			}, cm); err != nil {
-				t.Fatalf("failed to get ConfigMap: %v", err)
-			}
-
-			var got []alertmanagerEndpoint
-			if err := yaml.Unmarshal([]byte(cm.Data[alertmanagerEndpointsKey]), &got); err != nil {
-				t.Fatalf("failed to unmarshal ConfigMap data: %v", err)
-			}
-
-			if !reflect.DeepEqual(got, tc.wantEndpoints) {
-				t.Errorf("endpoints mismatch\n  got:  %v\n  want: %v", got, tc.wantEndpoints)
 			}
 		})
 	}
