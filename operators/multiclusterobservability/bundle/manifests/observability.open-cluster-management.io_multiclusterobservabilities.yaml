@@ -58,8 +58,7 @@ spec:
           metadata:
             type: object
           spec:
-            description: MultiClusterObservabilitySpec defines the desired state of
-              MultiClusterObservability.
+            description: Configuration for the hub-side Observability stack.
             properties:
               availabilityConfig:
                 default: High
@@ -78,16 +77,22 @@ spec:
                 type: boolean
               imagePullPolicy:
                 default: IfNotPresent
-                description: Pull policy of the MultiClusterObservability images
+                description: |-
+                  Pull policy of the MultiClusterObservability images.
+                  One of: Always, Never, IfNotPresent. Defaults to IfNotPresent.
                 type: string
               imagePullSecret:
                 default: multiclusterhub-operator-pull-secret
-                description: Pull secret of the MultiClusterObservability images
+                description: |-
+                  Name of an existing Secret of type kubernetes.io/dockerconfigjson in the same namespace
+                  used for pulling MultiClusterObservability images.
                 type: string
               nodeSelector:
                 additionalProperties:
                   type: string
-                description: Spec of NodeSelector
+                description: |-
+                  Node labels used to schedule all Observability workloads.
+                  Pods are only placed on nodes matching all specified labels.
                 type: object
               observabilityAddonSpec:
                 description: |-
@@ -96,13 +101,14 @@ spec:
                 properties:
                   enableMetrics:
                     default: true
-                    description: EnableMetrics indicates the observability addon push
-                      metrics to hub server.
+                    description: When false, the managed cluster addon stops pushing
+                      metrics to the hub.
                     type: boolean
                   interval:
                     default: 300
-                    description: Interval for the observability addon push metrics
-                      to hub server.
+                    description: |-
+                      Interval in seconds at which the observability addon on each managed cluster
+                      pushes metrics to the hub.
                     format: int32
                     maximum: 3600
                     minimum: 15
@@ -185,23 +191,31 @@ spec:
                 type: object
               retentionResolution1h:
                 default: 30d
-                description: How long to retain samples of resolution 2 (1 hour) in
-                  bucket.
+                description: |-
+                  How long to retain 1-hour downsampled (resolution 2) samples in object storage.
+                  Format: duration string, e.g. '365d'.
                 type: string
               retentionResolution5m:
                 default: 14d
-                description: How long to retain samples of resolution 1 (5 minutes)
-                  in bucket.
+                description: |-
+                  How long to retain 5-minute downsampled (resolution 1) samples in object storage.
+                  Format: duration string, e.g. '14d'.
                 type: string
               retentionResolutionRaw:
                 default: 5d
-                description: How long to retain raw samples in a bucket.
+                description: |-
+                  How long to retain raw samples in a bucket.
+                  Format: duration string, e.g. '5d'. Raw data has the highest storage cost per day retained.
                 type: string
               storageConfigObject:
-                description: Specifies the storage to be used by Observability
+                description: S3 storage configuration for Observability StatefulSets
+                  and object storage.
                 properties:
                   metricObjectStorage:
-                    description: Object store config secret for metrics
+                    description: |-
+                      Reference to a Secret containing the Thanos object storage configuration.
+                      The secret must use the Thanos storage config format (YAML).
+                      See spec.storageConfigObject.metricObjectStorage.key.
                     properties:
                       key:
                         description: |-
@@ -212,16 +226,19 @@ spec:
                         description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names'
                         type: string
                       serviceAccountProjection:
-                        description: serviceAccountProjection indicates whether mount
-                          service account token to thanos pods. Default is false.
+                        description: |-
+                          When true, mounts a projected service account token into Thanos pods.
+                          Enable this for cloud-provider IAM integration instead of static credentials.
                         type: boolean
                       tlsSecretMountPath:
-                        description: TLS secret mount path for the custom certificate
-                          for the object store
+                        description: |-
+                          Filesystem path where the custom TLS certificate is mounted inside Thanos pods.
+                          Only relevant when tlsSecretName is set.
                         type: string
                       tlsSecretName:
-                        description: TLS secret contains the custom certificate for
-                          the object store
+                        description: |-
+                          Name of a Secret containing a custom CA certificate for the object store endpoint.
+                          Required when the object store uses a self-signed certificate or a private CA not trusted by the system root store.
                         type: string
                     required:
                     - key
@@ -235,9 +252,9 @@ spec:
                     type: string
                   statefulSetStorageClass:
                     default: gp2
-                    description: "\tSpecify the storageClass Stateful Sets. This storage
-                      class will also\nbe used for Object Storage if MetricObjectStorage
-                      was configured for\nthe system to create the storage."
+                    description: |-
+                      StorageClass used by Observability StatefulSets (Thanos store, ruler, compactor, receiver)
+                      and, when no object storage is configured, the object storage PVC.
                     type: string
                 required:
                 - metricObjectStorage
@@ -286,11 +303,13 @@ spec:
             - storageConfigObject
             type: object
           status:
-            description: MultiClusterObservabilityStatus defines the observed state
-              of MultiClusterObservability.
+            description: Observed state of the MultiClusterObservability installation,
+              including component health and addon status.
             properties:
               conditions:
-                description: Represents the status of each deployment
+                description: |-
+                  Conditions describing the current state of the MultiClusterObservability installation.
+                  Condition types include: Ready, Installing, Failed, MetricsDisabled, MultiClusterObservabilityAddonDegraded.
                 items:
                   description: |-
                     Condition is from metav1.Condition.
@@ -10912,13 +10931,14 @@ spec:
                 properties:
                   enableMetrics:
                     default: true
-                    description: EnableMetrics indicates the observability addon push
-                      metrics to hub server.
+                    description: When false, the managed cluster addon stops pushing
+                      metrics to the hub.
                     type: boolean
                   interval:
                     default: 300
-                    description: Interval for the observability addon push metrics
-                      to hub server.
+                    description: |-
+                      Interval in seconds at which the observability addon on each managed cluster
+                      pushes metrics to the hub.
                     format: int32
                     maximum: 3600
                     minimum: 15
@@ -11024,16 +11044,19 @@ spec:
                         description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names'
                         type: string
                       serviceAccountProjection:
-                        description: serviceAccountProjection indicates whether mount
-                          service account token to thanos pods. Default is false.
+                        description: |-
+                          When true, mounts a projected service account token into Thanos pods.
+                          Enable this for cloud-provider IAM integration instead of static credentials.
                         type: boolean
                       tlsSecretMountPath:
-                        description: TLS secret mount path for the custom certificate
-                          for the object store
+                        description: |-
+                          Filesystem path where the custom TLS certificate is mounted inside Thanos pods.
+                          Only relevant when tlsSecretName is set.
                         type: string
                       tlsSecretName:
-                        description: TLS secret contains the custom certificate for
-                          the object store
+                        description: |-
+                          Name of a Secret containing a custom CA certificate for the object store endpoint.
+                          Required when the object store uses a self-signed certificate or a private CA not trusted by the system root store.
                         type: string
                     required:
                     - key
@@ -11074,17 +11097,19 @@ spec:
                           description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names'
                           type: string
                         serviceAccountProjection:
-                          description: serviceAccountProjection indicates whether
-                            mount service account token to thanos pods. Default is
-                            false.
+                          description: |-
+                            When true, mounts a projected service account token into Thanos pods.
+                            Enable this for cloud-provider IAM integration instead of static credentials.
                           type: boolean
                         tlsSecretMountPath:
-                          description: TLS secret mount path for the custom certificate
-                            for the object store
+                          description: |-
+                            Filesystem path where the custom TLS certificate is mounted inside Thanos pods.
+                            Only relevant when tlsSecretName is set.
                           type: string
                         tlsSecretName:
-                          description: TLS secret contains the custom certificate
-                            for the object store
+                          description: |-
+                            Name of a Secret containing a custom CA certificate for the object store endpoint.
+                            Required when the object store uses a self-signed certificate or a private CA not trusted by the system root store.
                           type: string
                       required:
                       - key

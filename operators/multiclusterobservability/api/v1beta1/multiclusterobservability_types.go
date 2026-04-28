@@ -23,7 +23,7 @@ const (
 	HAHigh AvailabilityType = "High"
 )
 
-// MultiClusterObservabilitySpec defines the desired state of MultiClusterObservability.
+// Configuration for the hub-side Observability stack.
 type MultiClusterObservabilitySpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
@@ -43,17 +43,20 @@ type MultiClusterObservabilitySpec struct {
 	// +kubebuilder:default:=false
 	EnableDownSampling bool `json:"enableDownSampling"`
 
-	// Pull policy of the MultiClusterObservability images
+	// Pull policy of the MultiClusterObservability images.
+	// One of: Always, Never, IfNotPresent. Defaults to IfNotPresent.
 	// +optional
 	// +kubebuilder:default:=IfNotPresent
 	ImagePullPolicy corev1.PullPolicy `json:"imagePullPolicy,omitempty"`
 
-	// Pull secret of the MultiClusterObservability images
+	// Name of an existing Secret of type kubernetes.io/dockerconfigjson in the same namespace
+	// used for pulling MultiClusterObservability images.
 	// +optional
 	// +kubebuilder:default:=multiclusterhub-operator-pull-secret
 	ImagePullSecret string `json:"imagePullSecret,omitempty"`
 
-	// Spec of NodeSelector
+	// Node labels used to schedule all Observability workloads.
+	// Pods are only placed on nodes matching all specified labels.
 	// +optional
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
 
@@ -62,21 +65,24 @@ type MultiClusterObservabilitySpec struct {
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
 
 	// How long to retain raw samples in a bucket.
+	// Format: duration string, e.g. '5d'. Raw data has the highest storage cost per day retained.
 	// +optional
 	// +kubebuilder:default:="5d"
 	RetentionResolutionRaw string `json:"retentionResolutionRaw,omitempty"`
 
-	// How long to retain samples of resolution 1 (5 minutes) in bucket.
+	// How long to retain 5-minute downsampled (resolution 1) samples in object storage.
+	// Format: duration string, e.g. '14d'.
 	// +optional
 	// +kubebuilder:default:="14d"
 	RetentionResolution5m string `json:"retentionResolution5m,omitempty"`
 
-	// How long to retain samples of resolution 2 (1 hour) in bucket.
+	// How long to retain 1-hour downsampled (resolution 2) samples in object storage.
+	// Format: duration string, e.g. '365d'.
 	// +optional
 	// +kubebuilder:default:="30d"
 	RetentionResolution1h string `json:"retentionResolution1h,omitempty"`
 
-	// Specifies the storage to be used by Observability
+	// S3 storage configuration for Observability StatefulSets and object storage.
 	// +required
 	StorageConfig *StorageConfigObject `json:"storageConfigObject,omitempty"`
 
@@ -88,29 +94,32 @@ type MultiClusterObservabilitySpec struct {
 
 // StorageConfigObject is the spec of object storage.
 type StorageConfigObject struct {
-	// Object store config secret for metrics
+	// Reference to a Secret containing the Thanos object storage configuration.
+	// The secret must use the Thanos storage config format (YAML).
+	// See spec.storageConfigObject.metricObjectStorage.key.
 	// +required
 	MetricObjectStorage *observabilityshared.PreConfiguredStorage `json:"metricObjectStorage,omitempty"`
+
 	// The amount of storage applied to the Observability stateful sets, i.e.
 	// Thanos store, Rule, compact and receiver.
 	// +optional
 	// +kubebuilder:default:="10Gi"
 	StatefulSetSize string `json:"statefulSetSize,omitempty"`
 
-	// 	Specify the storageClass Stateful Sets. This storage class will also
-	// be used for Object Storage if MetricObjectStorage was configured for
-	// the system to create the storage.
+	// StorageClass used by Observability StatefulSets (Thanos store, ruler, compactor, receiver)
+	// and, when no object storage is configured, the object storage PVC.
 	// +optional
 	// +kubebuilder:default:=gp2
 	StatefulSetStorageClass string `json:"statefulSetStorageClass,omitempty"`
 }
 
-// MultiClusterObservabilityStatus defines the observed state of MultiClusterObservability.
+// Observed state of the MultiClusterObservability installation, including component health and addon status.
 type MultiClusterObservabilityStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	// Represents the status of each deployment
+	// Conditions describing the current state of the MultiClusterObservability installation.
+	// Condition types include: Ready, Installing, Failed, MetricsDisabled, MultiClusterObservabilityAddonDegraded.
 	// +optional
 	Conditions []observabilityshared.Condition `json:"conditions,omitempty"`
 }

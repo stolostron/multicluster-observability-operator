@@ -32,12 +32,13 @@ func (u URL) URL() (*url.URL, error) {
 
 // ObservabilityAddonSpec is the spec of observability addon.
 type ObservabilityAddonSpec struct {
-	// EnableMetrics indicates the observability addon push metrics to hub server.
+	// When false, the managed cluster addon stops pushing metrics to the hub.
 	// +optional
 	// +kubebuilder:default:=true
 	EnableMetrics bool `json:"enableMetrics"`
 
-	// Interval for the observability addon push metrics to hub server.
+	// Interval in seconds at which the observability addon on each managed cluster
+	// pushes metrics to the hub.
 	// +optional
 	// +kubebuilder:default:=300
 	// +kubebuilder:validation:Minimum=15
@@ -71,13 +72,16 @@ type PreConfiguredStorage struct {
 	// Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
 	// +required
 	Name string `json:"name"`
-	// TLS secret contains the custom certificate for the object store
+	// Name of a Secret containing a custom CA certificate for the object store endpoint.
+	// Required when the object store uses a self-signed certificate or a private CA not trusted by the system root store.
 	// +optional
 	TLSSecretName string `json:"tlsSecretName,omitempty"`
-	// TLS secret mount path for the custom certificate for the object store
+	// Filesystem path where the custom TLS certificate is mounted inside Thanos pods.
+	// Only relevant when tlsSecretName is set.
 	// +optional
 	TLSSecretMountPath string `json:"tlsSecretMountPath,omitempty"`
-	// serviceAccountProjection indicates whether mount service account token to thanos pods. Default is false.
+	// When true, mounts a projected service account token into Thanos pods.
+	// Enable this for cloud-provider IAM integration instead of static credentials.
 	// +optional
 	ServiceAccountProjection bool `json:"serviceAccountProjection,omitempty"`
 }
