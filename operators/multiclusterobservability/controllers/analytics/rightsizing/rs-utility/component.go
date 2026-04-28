@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 
+	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	corev1 "k8s.io/api/core/v1"
@@ -44,6 +45,7 @@ type ComponentConfig struct {
 	PlacementName            string
 	PlacementBindingName     string
 	PrometheusRulePolicyName string
+	PrometheusRuleName       string
 	DefaultNamespace         string
 	GetDefaultConfigFunc     func() map[string]string
 	ApplyChangesFunc         func(context.Context, client.Client, RSNamespaceConfigMapData) error
@@ -181,6 +183,11 @@ func CleanupComponentResources(
 		resourcesToDelete = append(resourcesToDelete,
 			&corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: componentConfig.ConfigMapName, Namespace: config.GetDefaultNamespace()}},
 		)
+		if componentConfig.PrometheusRuleName != "" {
+			resourcesToDelete = append(resourcesToDelete,
+				&monitoringv1.PrometheusRule{ObjectMeta: metav1.ObjectMeta{Name: componentConfig.PrometheusRuleName, Namespace: MonitoringNamespace}},
+			)
+		}
 	}
 
 	// Delete related resources, collecting errors so all deletes are attempted

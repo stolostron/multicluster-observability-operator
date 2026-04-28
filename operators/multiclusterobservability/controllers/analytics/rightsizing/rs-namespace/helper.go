@@ -32,6 +32,7 @@ var (
 		PlacementName:            PlacementName,
 		PlacementBindingName:     PlacementBindingName,
 		PrometheusRulePolicyName: PrometheusRulePolicyName,
+		PrometheusRuleName:       PrometheusRuleName,
 		DefaultNamespace:         rsutility.DefaultNamespace,
 		GetDefaultConfigFunc:     GetDefaultRSNamespaceConfig,
 		ApplyChangesFunc:         ApplyRSNamespaceConfigMapChanges,

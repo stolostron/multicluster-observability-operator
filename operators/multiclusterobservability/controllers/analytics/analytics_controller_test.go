@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	rsnamespace "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/analytics/rightsizing/rs-namespace"
 	rsutility "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/analytics/rightsizing/rs-utility"
@@ -34,6 +35,7 @@ func setupTestScheme(t *testing.T) *runtime.Scheme {
 	require.NoError(t, clusterv1beta1.AddToScheme(scheme))
 	require.NoError(t, policyv1.AddToScheme(scheme))
 	require.NoError(t, addonv1alpha1.AddToScheme(scheme))
+	require.NoError(t, monitoringv1.AddToScheme(scheme))
 	return scheme
 }
 
