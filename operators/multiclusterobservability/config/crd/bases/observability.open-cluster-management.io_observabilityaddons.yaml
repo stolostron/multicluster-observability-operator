@@ -43,13 +43,14 @@ spec:
             properties:
               enableMetrics:
                 default: true
-                description: EnableMetrics indicates the observability addon push
-                  metrics to hub server.
+                description: When false, the managed cluster addon stops pushing metrics
+                  to the hub.
                 type: boolean
               interval:
                 default: 300
-                description: Interval for the observability addon push metrics to
-                  hub server.
+                description: |-
+                  Interval in seconds at which the observability addon on each managed cluster
+                  pushes metrics to the hub.
                 format: int32
                 maximum: 3600
                 minimum: 15
