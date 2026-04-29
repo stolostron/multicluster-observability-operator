@@ -409,10 +409,6 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		return ctrl.Result{}, fmt.Errorf("failed to create observability certs: %w", err)
 	}
 
-	if err := reconcileAlertmanagerEndpointsConfigMap(ctx, r.Client); err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to reconcile alertmanager endpoints ConfigMap: %w", err)
-	}
-
 	// create an Observatorium CR
 	result, err = GenerateObservatoriumCR(r.Client, r.Scheme, instance)
 	if result != nil {

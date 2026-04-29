@@ -13,7 +13,6 @@ import (
 	"path"
 	"reflect"
 	"slices"
-	"sort"
 	"time"
 
 	routev1 "github.com/openshift/api/route/v1"
@@ -604,6 +603,14 @@ func newAPISpec(c client.Client, mco *mcov1beta2.MultiClusterObservability) (obs
 			}
 		}
 	}
+
+	urls, err := alertmanagerMetricsEndpointURLs(context.TODO(), c)
+	if err != nil {
+		return apiSpec, err
+	}
+	if len(urls) > 0 {
+		apiSpec.MetricsAlertmanagerEndpoints = urls
+	}
 	requiredConfigMaps := []string{
 		mcoconfig.AlertmanagersDefaultCaBundleName,
 	}
@@ -1072,23 +1079,22 @@ func addBackupLabel(c client.Client, name string, backupS *v1.Secret) error {
 	return nil
 }
 
-type alertmanagerEndpoint struct {
-	Name string `yaml:"name"`
-	URL  string `yaml:"url"`
-}
+// type alertmanagerEndpoint struct {
+// 	URL string `yaml:"url"`
+// }
 
-// TODO, change such that we are creating a configmap,and instead just collecting a list of endpoints
-func reconcileAlertmanagerEndpointsConfigMap(ctx context.Context, c client.Client) error {
+// TODO reconcile with this. Now what to do when # of alertmanagers changes? Ah alas I have no clue
+func alertmanagerMetricsEndpointURLs(ctx context.Context, c client.Client) ([]string, error) {
 	endpointSliceList := &discoveryv1.EndpointSliceList{}
 	if err := c.List(ctx, endpointSliceList,
 		client.InNamespace(mcoconfig.GetDefaultNamespace()),
 		client.MatchingLabels{"kubernetes.io/service-name": mcoconfig.AlertmanagerServiceName},
 	); err != nil {
-		return fmt.Errorf("failed to list alertmanager EndpointSlices: %w", err)
+		return nil, fmt.Errorf("failed to list alertmanager EndpointSlices: %w", err)
 	}
 
 	ns := mcoconfig.GetDefaultNamespace()
-	var endpoints []alertmanagerEndpoint
+	var endpoints []string
 	for _, eps := range endpointSliceList.Items {
 		for _, endpoint := range eps.Endpoints {
 			if endpoint.Conditions.Ready != nil && !*endpoint.Conditions.Ready {
@@ -1102,17 +1108,11 @@ func reconcileAlertmanagerEndpointsConfigMap(ctx context.Context, c client.Clien
 				if port.Port != nil {
 					// Pod DNS is governed by the StatefulSet's serviceName (alertmanager-operated), not the client-facing headless service.
 					fqdn := fmt.Sprintf("%s.alertmanager-operated.%s.svc.cluster.local", podName, ns)
-					endpoints = append(endpoints, alertmanagerEndpoint{
-						Name: podName,
-						URL:  fmt.Sprintf("https://%s:%d", fqdn, *port.Port),
-					})
+					endpoints = append(endpoints, fmt.Sprintf("https://%s:%d", fqdn, *port.Port))
 				}
 			}
 		}
 	}
-	sort.Slice(endpoints, func(i, j int) bool {
-		return endpoints[i].Name < endpoints[j].Name
-	})
 
-	return nil
+	return endpoints, nil
 }
