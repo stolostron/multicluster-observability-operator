@@ -196,6 +196,21 @@ func GetManagedClusters(opt TestOptions) ([]*clusterv1.ManagedCluster, error) {
 	return ret, nil
 }
 
+// GetHubClusterName queries the ManagedCluster API and returns the name of the hub cluster
+// (identified by the "local-cluster=true" label). Falls back to "local-cluster" if not found.
+func GetHubClusterName(opt TestOptions) (string, error) {
+	clusters, err := ListManagedClusters(opt)
+	if err != nil {
+		return "", fmt.Errorf("failed to list managed clusters: %w", err)
+	}
+	for _, c := range clusters {
+		if c.IsLocalCluster {
+			return c.Name, nil
+		}
+	}
+	return "local-cluster", nil
+}
+
 func GetAvailableManagedClusters(opt TestOptions) ([]*clusterv1.ManagedCluster, error) {
 	clusters, err := GetManagedClusters(opt)
 	if err != nil {
