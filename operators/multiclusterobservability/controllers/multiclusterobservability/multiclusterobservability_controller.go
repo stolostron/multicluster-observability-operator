@@ -218,14 +218,8 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to get storage class: %w", err)
 	}
-	if instance.Spec.StorageConfig.StorageClass != storageClassSelected {
-		instance.Spec.StorageConfig.StorageClass = storageClassSelected
-		if err := r.Client.Update(ctx, instance); err != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to persist resolved storage class to MCO CR: %w", err)
-		}
-		log.Info("Persisted resolved storage class to MCO CR", "storageClass", storageClassSelected)
-		return ctrl.Result{Requeue: true}, nil
-	}
+	// Set in-memory for rendering; persisted to the CR at the end of reconciliation.
+	instance.Spec.StorageConfig.StorageClass = storageClassSelected
 
 	// handle storagesize changes
 	result, err := r.HandleStorageSizeChange(ctx, instance)
@@ -395,7 +389,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	}
 
 	// create an Observatorium CR
-	result, err = GenerateObservatoriumCR(r.Client, r.Scheme, instance)
+	result, err = GenerateObservatoriumCR(ctx, r.Client, r.Scheme, instance)
 	if result != nil {
 		return *result, fmt.Errorf("failed to generate the observatorium CR: %w", err)
 	}
@@ -425,6 +419,12 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 			return ctrl.Result{}, fmt.Errorf("failed to delete ServiceMonitor in openshift-monitoring namespace: %w", err)
 		}
 		isLegacyResourceRemoved = true
+	}
+
+	// Persist the resolved storage class to the CR so it is visible in the spec.
+	// This is done at the end to avoid an early requeue before workloads are rendered.
+	if err := r.persistStorageClass(ctx, storageClassSelected); err != nil {
+		return ctrl.Result{}, err
 	}
 
 	return ctrl.Result{}, nil
@@ -502,6 +502,27 @@ func getStorageClass(ctx context.Context, mco *mcov1beta2.MultiClusterObservabil
 		storageClassSelected = storageClassDefault
 	}
 	return storageClassSelected, nil
+}
+
+// persistStorageClass updates the MCO CR's storageClass field if it differs from what's currently persisted.
+func (r *MultiClusterObservabilityReconciler) persistStorageClass(
+	ctx context.Context,
+	storageClass string,
+) error {
+	// Re-fetch to avoid conflict with stale resourceVersion
+	current, err := config.GetMCOInstance(ctx, r.Client)
+	if err != nil {
+		return fmt.Errorf("failed to fetch MCO instance for storage class update: %w", err)
+	}
+	if current.Spec.StorageConfig.StorageClass == storageClass {
+		return nil
+	}
+	current.Spec.StorageConfig.StorageClass = storageClass
+	if err := r.Client.Update(ctx, current); err != nil {
+		return fmt.Errorf("failed to persist resolved storage class to MCO CR: %w", err)
+	}
+	log.Info("Persisted resolved storage class to MCO CR", "storageClass", storageClass)
+	return nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
