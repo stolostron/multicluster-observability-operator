@@ -401,7 +401,7 @@ var _ = Describe("", func() {
 					}
 				}
 				return false
-			}).Should(BeTrue())
+			}, EventuallyTimeoutMinute*2, EventuallyIntervalSecond*10).Should(BeTrue())
 
 			mcoRes, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).
 				Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
