@@ -114,8 +114,13 @@ spec:
         cpu: 10m
         memory: 100Mi
   storageConfig:
+    alertmanagerStorageSize: 1Gi
+    compactStorageSize: 1Gi
     metricObjectStorage:
       key: thanos.yaml
       name: thanos-object-storage
       tlsSecretMountPath: /etc/minio/certs
       tlsSecretName: minio-tls-secret
+    receiveStorageSize: 1Gi
+    ruleStorageSize: 1Gi
+    storeStorageSize: 1Gi
