@@ -87,7 +87,6 @@ type MultiClusterObservabilityReconciler struct {
 	RESTMapper             meta.RESTMapper
 	ImageClient            imagev1client.ImageV1Interface
 	LastStorageConfig      *mcov1beta2.StorageConfig
-	DefaultStorageClassSet bool
 }
 
 // +kubebuilder:rbac:groups=observability.open-cluster-management.io,resources=multiclusterobservabilities,verbs=get;list;watch;create;update;patch;delete
@@ -422,13 +421,6 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		isLegacyResourceRemoved = true
 	}
 
-	// Persist the resolved storage class to the CR so it is visible in the spec.
-	// This is done only once and at the end to avoid an early requeue before workloads are rendered.
-	if err := r.persistStorageClass(ctx, storageClassSelected); err != nil && !r.DefaultStorageClassSet {
-		r.DefaultStorageClassSet = true
-		return ctrl.Result{}, err
-	}
-
 	return ctrl.Result{}, nil
 }
 
@@ -504,27 +496,6 @@ func getStorageClass(ctx context.Context, mco *mcov1beta2.MultiClusterObservabil
 		storageClassSelected = storageClassDefault
 	}
 	return storageClassSelected, nil
-}
-
-// persistStorageClass updates the MCO CR's storageClass field if it differs from what's currently persisted.
-func (r *MultiClusterObservabilityReconciler) persistStorageClass(
-	ctx context.Context,
-	storageClass string,
-) error {
-	// Re-fetch to avoid conflict with stale resourceVersion
-	current, err := config.GetMCOInstance(ctx, r.Client)
-	if err != nil {
-		return fmt.Errorf("failed to fetch MCO instance for storage class update: %w", err)
-	}
-	if current.Spec.StorageConfig.StorageClass == storageClass {
-		return nil
-	}
-	current.Spec.StorageConfig.StorageClass = storageClass
-	if err := r.Client.Update(ctx, current); err != nil {
-		return fmt.Errorf("failed to persist resolved storage class to MCO CR: %w", err)
-	}
-	log.Info("Persisted resolved storage class to MCO CR", "storageClass", storageClass)
-	return nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
