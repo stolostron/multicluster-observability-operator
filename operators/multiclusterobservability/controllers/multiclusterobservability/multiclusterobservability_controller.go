@@ -78,15 +78,16 @@ var (
 
 // MultiClusterObservabilityReconciler reconciles a MultiClusterObservability object
 type MultiClusterObservabilityReconciler struct {
-	Manager           manager.Manager
-	Client            client.Client
-	Log               logr.Logger
-	Scheme            *runtime.Scheme
-	CRDMap            map[string]bool
-	APIReader         client.Reader
-	RESTMapper        meta.RESTMapper
-	ImageClient       imagev1client.ImageV1Interface
-	LastStorageConfig *mcov1beta2.StorageConfig
+	Manager                manager.Manager
+	Client                 client.Client
+	Log                    logr.Logger
+	Scheme                 *runtime.Scheme
+	CRDMap                 map[string]bool
+	APIReader              client.Reader
+	RESTMapper             meta.RESTMapper
+	ImageClient            imagev1client.ImageV1Interface
+	LastStorageConfig      *mcov1beta2.StorageConfig
+	DefaultStorageClassSet bool
 }
 
 // +kubebuilder:rbac:groups=observability.open-cluster-management.io,resources=multiclusterobservabilities,verbs=get;list;watch;create;update;patch;delete
@@ -422,8 +423,9 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	}
 
 	// Persist the resolved storage class to the CR so it is visible in the spec.
-	// This is done at the end to avoid an early requeue before workloads are rendered.
-	if err := r.persistStorageClass(ctx, storageClassSelected); err != nil {
+	// This is done only once and at the end to avoid an early requeue before workloads are rendered.
+	if err := r.persistStorageClass(ctx, storageClassSelected); err != nil && !r.DefaultStorageClassSet {
+		r.DefaultStorageClassSet = true
 		return ctrl.Result{}, err
 	}
 
