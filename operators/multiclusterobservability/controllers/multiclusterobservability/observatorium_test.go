@@ -9,7 +9,6 @@ import (
 	"context"
 	"errors"
 	"reflect"
-	"strings"
 	"testing"
 
 	routev1 "github.com/openshift/api/route/v1"
@@ -31,97 +30,6 @@ import (
 )
 
 var storageClassName = ""
-
-func requiredAlertmanagerConfigMaps() []runtime.Object {
-	ns := mcoconfig.GetDefaultNamespace()
-	return []runtime.Object{
-		&corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      mcoconfig.AlertmanagersDefaultCaBundleName,
-				Namespace: ns,
-			},
-			Data: map[string]string{mcoconfig.AlertmanagersDefaultCaBundleKey: "fake-ca"},
-		},
-	}
-}
-
-func TestNewAPISpecMissingConfigMaps(t *testing.T) {
-	mco := &mcov1beta2.MultiClusterObservability{
-		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterObservability"},
-		ObjectMeta: metav1.ObjectMeta{Name: "test"},
-		Spec: mcov1beta2.MultiClusterObservabilitySpec{
-			StorageConfig: &mcov1beta2.StorageConfig{
-				MetricObjectStorage: &mcoshared.PreConfiguredStorage{Key: "key", Name: "name"},
-			},
-		},
-	}
-
-	tests := []struct {
-		name    string
-		objs    []runtime.Object
-		wantErr string
-	}{
-		{
-			name:    "missing CA bundle ConfigMap",
-			objs:    nil,
-			wantErr: mcoconfig.AlertmanagersDefaultCaBundleName,
-		},
-		{
-			name:    "CA bundle ConfigMap present",
-			objs:    requiredAlertmanagerConfigMaps(),
-			wantErr: "",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			cl := fake.NewClientBuilder().WithRuntimeObjects(tt.objs...).Build()
-			_, err := newAPISpec(cl, mco)
-			if tt.wantErr == "" {
-				if err != nil {
-					t.Errorf("expected no error, got: %v", err)
-				}
-				return
-			}
-			if err == nil {
-				t.Fatalf("expected error containing %q, got nil", tt.wantErr)
-			}
-			if !strings.Contains(err.Error(), tt.wantErr) {
-				t.Errorf("expected error to mention %q, got: %v", tt.wantErr, err)
-			}
-		})
-	}
-}
-
-func TestNewRuleSpecUsesStaticAlertmanagerConfigFile(t *testing.T) {
-	mco := &mcov1beta2.MultiClusterObservability{
-		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterObservability"},
-		ObjectMeta: metav1.ObjectMeta{Name: "test"},
-		Spec: mcov1beta2.MultiClusterObservabilitySpec{
-			StorageConfig: &mcov1beta2.StorageConfig{
-				MetricObjectStorage: &mcoshared.PreConfiguredStorage{Key: "key", Name: "name"},
-				RuleStorageSize:     "1Gi",
-			},
-			ObservabilityAddonSpec: &mcoshared.ObservabilityAddonSpec{
-				EnableMetrics: true,
-				Interval:      300,
-			},
-		},
-	}
-	rule := newRuleSpec(mco, "")
-	if rule.AlertmanagerConfigFile.Name != mcoconfig.AlertmanagersDefaultConfigMapName ||
-		rule.AlertmanagerConfigFile.Key != mcoconfig.AlertmanagersDefaultConfigFileKey {
-		t.Errorf("AlertmanagerConfigFile = %#v, want Name=%q Key=%q",
-			rule.AlertmanagerConfigFile,
-			mcoconfig.AlertmanagersDefaultConfigMapName,
-			mcoconfig.AlertmanagersDefaultConfigFileKey)
-	}
-	if len(rule.ExtraVolumeMounts) != 1 ||
-		rule.ExtraVolumeMounts[0].Name != mcoconfig.AlertmanagersDefaultCaBundleName ||
-		rule.ExtraVolumeMounts[0].Key != mcoconfig.AlertmanagersDefaultCaBundleKey {
-		t.Errorf("ExtraVolumeMounts for alertmanager CA = %#v", rule.ExtraVolumeMounts)
-	}
-}
 
 func TestNewVolumeClaimTemplate(t *testing.T) {
 	vct := newVolumeClaimTemplate("10Gi", "test")
@@ -186,7 +94,6 @@ func TestNewDefaultObservatoriumSpec(t *testing.T) {
 	observatoriumv1alpha1.SchemeBuilder.AddToScheme(s)
 
 	objs := []runtime.Object{mco, writeStorageS}
-	objs = append(objs, requiredAlertmanagerConfigMaps()...)
 	// Create a fake client to mock API calls.
 	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
 
@@ -285,7 +192,6 @@ func TestNewDefaultObservatoriumSpecWithTShirtSize(t *testing.T) {
 	observatoriumv1alpha1.SchemeBuilder.AddToScheme(s)
 
 	objs := []runtime.Object{mco, writeStorageS}
-	objs = append(objs, requiredAlertmanagerConfigMaps()...)
 	// Create a fake client to mock API calls.
 	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
 
@@ -363,8 +269,7 @@ func TestUpdateObservatoriumCR(t *testing.T) {
 
 	// Create a fake client to mock API calls.
 	// This should have no extra objects beyond the CMO CRD.
-	noConfigObjs := append([]runtime.Object{mco}, requiredAlertmanagerConfigMaps()...)
-	noConfigCl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(noConfigObjs...).Build()
+	noConfigCl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(mco).Build()
 	mcoconfig.SetOperandNames(noConfigCl)
 
 	_, err := GenerateObservatoriumCR(noConfigCl, s, mco)
@@ -388,9 +293,7 @@ func TestUpdateObservatoriumCR(t *testing.T) {
 	}
 
 	// Create a fake client to mock API calls.
-	allObjs := append(objs, requiredAlertmanagerConfigMaps()...)
-	allObjs = append(allObjs, createdObservatoriumCR)
-	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(allObjs...).Build()
+	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(append(objs, createdObservatoriumCR)...).Build()
 	mcoconfig.SetOperandNames(cl)
 
 	_, err = GenerateObservatoriumCR(cl, s, mco)
@@ -457,8 +360,7 @@ func TestTShirtSizeUpdateObservatoriumCR(t *testing.T) {
 
 	// Create a fake client to mock API calls.
 	// This should have no extra objects beyond the CMO CRD.
-	tshirtObjs := append([]runtime.Object{mco}, requiredAlertmanagerConfigMaps()...)
-	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(tshirtObjs...).Build()
+	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(mco).Build()
 	mcoconfig.SetOperandNames(cl)
 
 	_, err := GenerateObservatoriumCR(cl, s, mco)
@@ -567,7 +469,6 @@ func TestNoUpdateObservatoriumCR(t *testing.T) {
 			},
 		},
 	}...)
-	objs = append(objs, requiredAlertmanagerConfigMaps()...)
 
 	// Create a fake client to mock API calls.
 	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
@@ -864,15 +765,9 @@ func TestObservatoriumCustomArgs(t *testing.T) {
 		},
 	}
 
-	s := runtime.NewScheme()
-	scheme.AddToScheme(s)
-	mcov1beta2.SchemeBuilder.AddToScheme(s)
-	observatoriumv1alpha1.SchemeBuilder.AddToScheme(s)
-
 	objs := []runtime.Object{mco, writeStorageS}
-	objs = append(objs, requiredAlertmanagerConfigMaps()...)
 	// Create a fake client to mock API calls.
-	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
+	cl := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 
 	obs, _ := newDefaultObservatoriumSpec(cl, mco, storageClassName, "")
 	if !reflect.DeepEqual(obs.Thanos.Receivers.Containers[0].Args, receiveTestArgs) {
@@ -1214,4 +1109,107 @@ func TestNewCompactSpec(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestNewObservatoriumSpecMetricsAlertmanagerEndpoints(t *testing.T) {
+	caBundleCM := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      mcoconfig.AlertmanagersDefaultCaBundleName,
+			Namespace: mcoconfig.GetDefaultNamespace(),
+		},
+		Data: map[string]string{
+			mcoconfig.AlertmanagersDefaultCaBundleKey: "dummy-ca",
+		},
+	}
+
+	buildObs := func(t *testing.T, mco *mcov1beta2.MultiClusterObservability) *observatoriumv1alpha1.ObservatoriumSpec {
+		t.Helper()
+		writeStorageS := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "write_name",
+				Namespace: mcoconfig.GetDefaultNamespace(),
+			},
+			Type: "Opaque",
+			Data: map[string][]byte{
+				"write_key": []byte(`url: http://remotewrite/endpoint`),
+			},
+		}
+		s := runtime.NewScheme()
+		scheme.AddToScheme(s)
+		mcov1beta2.SchemeBuilder.AddToScheme(s)
+		observatoriumv1alpha1.SchemeBuilder.AddToScheme(s)
+		objs := []runtime.Object{mco, writeStorageS, caBundleCM}
+		cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
+		obs, err := newDefaultObservatoriumSpec(cl, mco, storageClassName, "")
+		if err != nil {
+			t.Fatalf("newDefaultObservatoriumSpec: %v", err)
+		}
+		return obs
+	}
+
+	baseMCO := func() *mcov1beta2.MultiClusterObservability {
+		return &mcov1beta2.MultiClusterObservability{
+			TypeMeta: metav1.TypeMeta{Kind: "MultiClusterObservability"},
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "test",
+				Annotations: map[string]string{
+					mcoconfig.AnnotationKeyImageRepository: "quay.io:443/acm-d",
+					mcoconfig.AnnotationKeyImageTagSuffix:  "tag",
+				},
+			},
+			Spec: mcov1beta2.MultiClusterObservabilitySpec{
+				StorageConfig: &mcov1beta2.StorageConfig{
+					MetricObjectStorage: &mcoshared.PreConfiguredStorage{
+						Key:           "key",
+						Name:          "name",
+						TLSSecretName: "secret",
+					},
+					WriteStorage: []*mcoshared.PreConfiguredStorage{
+						{Key: "write_key", Name: "write_name"},
+					},
+					StorageClass:            storageClassName,
+					AlertmanagerStorageSize: "1Gi",
+					CompactStorageSize:      "1Gi",
+					RuleStorageSize:         "1Gi",
+					ReceiveStorageSize:      "1Gi",
+					StoreStorageSize:        "1Gi",
+				},
+				ObservabilityAddonSpec: &mcoshared.ObservabilityAddonSpec{
+					EnableMetrics: true,
+					Interval:      300,
+				},
+			},
+		}
+	}
+
+	t.Run("default sizing produces DNS endpoints per alertmanager replica", func(t *testing.T) {
+		mco := baseMCO()
+		obs := buildObs(t, mco)
+		want := []string{
+			"observability-alertmanager-0.alertmanager-operated.open-cluster-management-observability.svc:9095",
+			"observability-alertmanager-1.alertmanager-operated.open-cluster-management-observability.svc:9095",
+			"observability-alertmanager-2.alertmanager-operated.open-cluster-management-observability.svc:9095",
+		}
+		if !reflect.DeepEqual(obs.API.MetricsAlertmanagerEndpoints, want) {
+			t.Errorf("MetricsAlertmanagerEndpoints = %#v, want %#v", obs.API.MetricsAlertmanagerEndpoints, want)
+		}
+	})
+	var amReplicas int32 = 5
+	t.Run("advanced alertmanager replicas extends metrics endpoints", func(t *testing.T) {
+		mco := baseMCO()
+		mco.Spec.AdvancedConfig = &mcov1beta2.AdvancedConfig{
+			Alertmanager: &mcov1beta2.AlertmanagerSpec{
+				CommonSpec: mcov1beta2.CommonSpec{
+					Replicas: &amReplicas,
+				},
+			},
+		}
+		obs := buildObs(t, mco)
+		if got := len(obs.API.MetricsAlertmanagerEndpoints); got != int(amReplicas) {
+			t.Fatalf("len(MetricsAlertmanagerEndpoints) = %d, want %d", got, int(amReplicas))
+		}
+		if obs.API.MetricsAlertmanagerEndpoints[4] != "observability-alertmanager-4.alertmanager-operated.open-cluster-management-observability.svc:9095" {
+			t.Errorf("last endpoint = %q", obs.API.MetricsAlertmanagerEndpoints[4])
+		}
+	})
 }

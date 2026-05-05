@@ -13,6 +13,7 @@ import (
 	"path"
 	"reflect"
 	"slices"
+	"strconv"
 	"time"
 
 	routev1 "github.com/openshift/api/route/v1"
@@ -26,7 +27,6 @@ import (
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
-	discoveryv1 "k8s.io/api/discovery/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -604,8 +604,12 @@ func newAPISpec(c client.Client, mco *mcov1beta2.MultiClusterObservability) (obs
 		}
 	}
 
-	urls, err := alertmanagerMetricsEndpointURLs(context.TODO(), c)
+	// if we're using the dns names, then all we need is the number of replicas
+	amReplicas := mcoconfig.GetReplicas(mcoconfig.Alertmanager, mco.Spec.InstanceSize, mco.Spec.AdvancedConfig)
+
+	urls, err := alertmanagerMetricsEndpointURLs(amReplicas)
 	if err != nil {
+		log.Error(err, "failed to compute alertmanager metrics endpoint URLs")
 		return apiSpec, err
 	}
 	if len(urls) > 0 {
@@ -1079,40 +1083,17 @@ func addBackupLabel(c client.Client, name string, backupS *v1.Secret) error {
 	return nil
 }
 
-// type alertmanagerEndpoint struct {
-// 	URL string `yaml:"url"`
-// }
+func alertmanagerMetricsEndpointURLs(amReplicas *int32) ([]string, error) {
 
-// TODO reconcile with this. Now what to do when # of alertmanagers changes? Ah alas I have no clue
-func alertmanagerMetricsEndpointURLs(ctx context.Context, c client.Client) ([]string, error) {
-	endpointSliceList := &discoveryv1.EndpointSliceList{}
-	if err := c.List(ctx, endpointSliceList,
-		client.InNamespace(mcoconfig.GetDefaultNamespace()),
-		client.MatchingLabels{"kubernetes.io/service-name": mcoconfig.AlertmanagerServiceName},
-	); err != nil {
-		return nil, fmt.Errorf("failed to list alertmanager EndpointSlices: %w", err)
-	}
-
-	ns := mcoconfig.GetDefaultNamespace()
-	var endpoints []string
-	for _, eps := range endpointSliceList.Items {
-		for _, endpoint := range eps.Endpoints {
-			if endpoint.Conditions.Ready != nil && !*endpoint.Conditions.Ready {
-				continue
-			}
-			if endpoint.TargetRef == nil {
-				continue
-			}
-			podName := endpoint.TargetRef.Name
-			for _, port := range eps.Ports {
-				if port.Port != nil {
-					// Pod DNS is governed by the StatefulSet's serviceName (alertmanager-operated), not the client-facing headless service.
-					fqdn := fmt.Sprintf("%s.alertmanager-operated.%s.svc.cluster.local", podName, ns)
-					endpoints = append(endpoints, fmt.Sprintf("https://%s:%d", fqdn, *port.Port))
-				}
-			}
+	addr := []string{}
+	if amReplicas != nil {
+		for i := range *amReplicas {
+			addr = append(addr, "https://observability-alertmanager-"+strconv.Itoa(int(i))+
+				".alertmanager-operated.open-cluster-management-observability.svc:9095")
 		}
+	} else {
+		return addr, fmt.Errorf("alertmanager replicas not set")
 	}
 
-	return endpoints, nil
+	return addr, nil
 }
