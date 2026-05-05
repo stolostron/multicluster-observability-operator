@@ -27,7 +27,7 @@ func GetMCOPredicateFunc() predicate.Funcs {
 			checkStorageChanged(e.ObjectOld.(*mcov1beta2.MultiClusterObservability).Spec.StorageConfig,
 				e.ObjectNew.(*mcov1beta2.MultiClusterObservability).Spec.StorageConfig)
 			config.SetMonitoringCRName(e.ObjectNew.GetName())
-			return e.ObjectOld.GetResourceVersion() != e.ObjectNew.GetResourceVersion()
+			return e.ObjectOld.GetGeneration() != e.ObjectNew.GetGeneration()
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
 			return !e.DeleteStateUnknown
