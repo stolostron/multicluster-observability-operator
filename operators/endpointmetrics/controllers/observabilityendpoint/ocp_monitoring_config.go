@@ -906,6 +906,9 @@ func isOldManagedConfig(amc cmomanifests.AdditionalAlertmanagerConfig, hubInfo *
 		switch amc.TLSConfig.CA.Name {
 		case hubAmRouterCASecretName, hubAmRouterCASecretName + "-" + clusterDomainName:
 			return true
+		// only for fanout change / should there be a feature flag?
+		case hubAmRouterCASecretName + "-" + hubInfo.HubClusterID:
+			return true
 		}
 	}
 	return false
