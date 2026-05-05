@@ -247,6 +247,9 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	}
 	disableMCOACMAORender := !apierrors.IsNotFound(err)
 
+	// Check if right-sizing is delegated to MCOA via MCO CR annotation.
+	rightSizingDelegated := util.IsRightSizingDelegated(instance)
+
 	obsAPIURL, err := config.GetObsAPIExternalURL(ctx, r.Client, config.GetDefaultNamespace())
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to get the Observatorium API URL: %w", err) // Already wrapped
@@ -270,6 +273,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 			DisableCMAORender:              disableMCOACMAORender,
 			MetricsHubHostname:             obsAPIURL.Host,
 			MetricsHubAlertmanagerHostname: alertmanagerURL.Host,
+			RightSizingDelegated:           rightSizingDelegated,
 		},
 	}
 
@@ -331,7 +335,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		}
 	}
 
-	if !rendering.MCOAEnabled(instance) {
+	if !rendering.MCOAEnabled(instance) && !rightSizingDelegated {
 		namespace, labels := renderer.NamespaceAndLabels()
 		toDelete, err := renderer.MCOAResources(ctx, namespace, labels)
 		if err != nil {
@@ -341,6 +345,18 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 			resNS := res.GetNamespace()
 			if err := deployer.Undeploy(ctx, res, instance); err != nil {
 				return ctrl.Result{}, fmt.Errorf("failed to undeploy %s %s/%s: %w", res.GetKind(), resNS, res.GetName(), err)
+			}
+		}
+
+		// Explicitly delete the CMA so the addon framework cleans up ManagedClusterAddons
+		// and ManifestWorks on spokes. MCOAResources() skips CMA when DisableCMAORender
+		// is set (to preserve user annotations during normal operation), but during cleanup
+		// we must remove it to trigger the full addon lifecycle teardown.
+		cma := &addonv1alpha1.ClusterManagementAddOn{}
+		if err := r.Client.Get(ctx, types.NamespacedName{Name: config.MultiClusterObservabilityAddon}, cma); err == nil {
+			reqLogger.Info("Deleting ClusterManagementAddOn for MCOA cleanup", "name", config.MultiClusterObservabilityAddon)
+			if err := r.Client.Delete(ctx, cma); err != nil && !apierrors.IsNotFound(err) {
+				return ctrl.Result{}, fmt.Errorf("failed to delete ClusterManagementAddOn %s: %w", config.MultiClusterObservabilityAddon, err)
 			}
 		}
 	}
@@ -427,6 +443,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	return ctrl.Result{}, nil
 }
 
+// initFinalization handles MCO deletion by cleaning up resources across namespaces and removing the finalizer.
 func (r *MultiClusterObservabilityReconciler) initFinalization(ctx context.Context, mco *mcov1beta2.MultiClusterObservability) (bool, error) {
 	if mco.GetDeletionTimestamp() != nil && slices.Contains(mco.GetFinalizers(), resFinalizer) {
 		// Signal termination before cleanup so other controllers (analytics, placementrule)
@@ -477,6 +494,7 @@ func (r *MultiClusterObservabilityReconciler) initFinalization(ctx context.Conte
 	return false, nil
 }
 
+// getStorageClass resolves the storage class to use for MCO persistent volumes.
 func getStorageClass(mco *mcov1beta2.MultiClusterObservability, cl client.Client) (string, error) {
 	storageClassSelected := mco.Spec.StorageConfig.StorageClass
 	// for the test, the reader is just nil
@@ -611,6 +629,7 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 	return ctrBuilder.Complete(r)
 }
 
+// checkStorageChanged detects storage configuration changes between old and new MCO specs.
 func checkStorageChanged(mcoOldConfig, mcoNewConfig *mcov1beta2.StorageConfig) {
 	if mcoOldConfig.AlertmanagerStorageSize != mcoNewConfig.AlertmanagerStorageSize {
 		isAlertmanagerStorageSizeChanged = true
@@ -698,6 +717,7 @@ func (r *MultiClusterObservabilityReconciler) HandleStorageSizeChange(
 	return nil, nil
 }
 
+// updateStorageSizeChange updates PVC sizes for matching persistent volume claims.
 func updateStorageSizeChange(c client.Client, matchLabels map[string]string, storageSize string) error {
 	pvcList, err := commonutil.GetPVCList(c, config.GetDefaultNamespace(), matchLabels)
 	if err != nil {
@@ -968,6 +988,7 @@ func cleanUpClusterScopedResources(
 	return nil
 }
 
+// ensureOpenShiftNamespaceLabel ensures the MCO namespace has the required OpenShift labels.
 func (r *MultiClusterObservabilityReconciler) ensureOpenShiftNamespaceLabel(ctx context.Context,
 	m *mcov1beta2.MultiClusterObservability,
 ) (reconcile.Result, error) {
@@ -1003,6 +1024,7 @@ func (r *MultiClusterObservabilityReconciler) ensureOpenShiftNamespaceLabel(ctx 
 	return reconcile.Result{}, nil
 }
 
+// deleteSpecificPrometheusRule removes the MCO-managed PrometheusRule from openshift-monitoring.
 func (r *MultiClusterObservabilityReconciler) deleteSpecificPrometheusRule(ctx context.Context) error {
 	promRule := &monitoringv1.PrometheusRule{}
 	err := r.Client.Get(ctx, client.ObjectKey{
@@ -1024,6 +1046,7 @@ func (r *MultiClusterObservabilityReconciler) deleteSpecificPrometheusRule(ctx c
 	return nil
 }
 
+// deleteServiceMonitorInOpenshiftMonitoringNamespace removes MCO-managed ServiceMonitors from openshift-monitoring.
 func (r *MultiClusterObservabilityReconciler) deleteServiceMonitorInOpenshiftMonitoringNamespace(ctx context.Context) error {
 	serviceMonitorList := &monitoringv1.ServiceMonitorList{}
 	err := r.Client.List(ctx, serviceMonitorList, client.InNamespace("openshift-monitoring"))
@@ -1045,6 +1068,7 @@ func (r *MultiClusterObservabilityReconciler) deleteServiceMonitorInOpenshiftMon
 	return nil
 }
 
+// newMCOACRDEventHandler creates an event handler that maps MCOA CRD events to MCO reconcile requests.
 func newMCOACRDEventHandler(c client.Client) handler.EventHandler {
 	return handler.EnqueueRequestsFromMapFunc(
 		func(ctx context.Context, obj client.Object) []reconcile.Request {
