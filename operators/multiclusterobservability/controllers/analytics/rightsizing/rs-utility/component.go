@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 
+	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	corev1 "k8s.io/api/core/v1"
@@ -44,6 +45,7 @@ type ComponentConfig struct {
 	PlacementName            string
 	PlacementBindingName     string
 	PrometheusRulePolicyName string
+	PrometheusRuleName       string
 	DefaultNamespace         string
 	GetDefaultConfigFunc     func() map[string]string
 	ApplyChangesFunc         func(context.Context, client.Client, RSNamespaceConfigMapData) error
@@ -108,6 +110,9 @@ func HandleComponentRightSizing(
 		return nil
 	}
 
+	// Detect fresh enable (first time, or re-enable after delegation cleanup reset)
+	freshEnable := !state.Enabled
+
 	// Set the flag if namespaceBindingUpdated
 	namespaceBindingUpdated := state.Namespace != newBinding && state.Enabled
 
@@ -123,10 +128,12 @@ func HandleComponentRightSizing(
 		return err
 	}
 
-	if namespaceBindingUpdated {
-		// Clean up resources except config map to update NamespaceBinding
-		if err := CleanupComponentResources(ctx, c, componentConfig, existingNamespace, true); err != nil {
-			return fmt.Errorf("rs - failed to cleanup %s resources after namespace binding update: %w", componentConfig.ComponentType, err)
+	if namespaceBindingUpdated || freshEnable {
+		if namespaceBindingUpdated {
+			// Clean up resources except config map to update NamespaceBinding
+			if err := CleanupComponentResources(ctx, c, componentConfig, existingNamespace, true); err != nil {
+				return fmt.Errorf("rs - failed to cleanup %s resources after namespace binding update: %w", componentConfig.ComponentType, err)
+			}
 		}
 
 		// Get configmap
@@ -141,7 +148,7 @@ func HandleComponentRightSizing(
 			return fmt.Errorf("rs - failed to extract config data: %w", err)
 		}
 
-		// If NamespaceBinding has been updated apply the Policy Placement Placementbinding again
+		// Apply the Policy, Placement, PlacementBinding
 		if err := componentConfig.ApplyChangesFunc(ctx, c, configData); err != nil {
 			return fmt.Errorf("rs - failed to apply configmap changes: %w", err)
 		}
@@ -151,7 +158,8 @@ func HandleComponentRightSizing(
 	return nil
 }
 
-// CleanupComponentResources cleans up the resources created for any component type
+// CleanupComponentResources cleans up the resources created for any component type.
+// NotFound errors are ignored; any other delete failure is returned immediately.
 func CleanupComponentResources(
 	ctx context.Context,
 	c client.Client,
@@ -169,13 +177,17 @@ func CleanupComponentResources(
 	}
 
 	if bindingUpdated {
-		// If NamespaceBinding has been updated delete only common resources
 		resourcesToDelete = commonResources
 	} else {
 		resourcesToDelete = append(resourcesToDelete, commonResources...)
 		resourcesToDelete = append(resourcesToDelete,
 			&corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: componentConfig.ConfigMapName, Namespace: config.GetDefaultNamespace()}},
 		)
+		if componentConfig.PrometheusRuleName != "" {
+			resourcesToDelete = append(resourcesToDelete,
+				&monitoringv1.PrometheusRule{ObjectMeta: metav1.ObjectMeta{Name: componentConfig.PrometheusRuleName, Namespace: MonitoringNamespace}},
+			)
+		}
 	}
 
 	// Delete related resources, collecting errors so all deletes are attempted
