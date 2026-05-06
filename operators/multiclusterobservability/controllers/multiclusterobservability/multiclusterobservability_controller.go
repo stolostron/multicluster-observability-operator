@@ -78,15 +78,15 @@ var (
 
 // MultiClusterObservabilityReconciler reconciles a MultiClusterObservability object
 type MultiClusterObservabilityReconciler struct {
-	Manager                manager.Manager
-	Client                 client.Client
-	Log                    logr.Logger
-	Scheme                 *runtime.Scheme
-	CRDMap                 map[string]bool
-	APIReader              client.Reader
-	RESTMapper             meta.RESTMapper
-	ImageClient            imagev1client.ImageV1Interface
-	LastStorageConfig      *mcov1beta2.StorageConfig
+	Manager           manager.Manager
+	Client            client.Client
+	Log               logr.Logger
+	Scheme            *runtime.Scheme
+	CRDMap            map[string]bool
+	APIReader         client.Reader
+	RESTMapper        meta.RESTMapper
+	ImageClient       imagev1client.ImageV1Interface
+	LastStorageConfig *mcov1beta2.StorageConfig
 }
 
 // +kubebuilder:rbac:groups=observability.open-cluster-management.io,resources=multiclusterobservabilities,verbs=get;list;watch;create;update;patch;delete
