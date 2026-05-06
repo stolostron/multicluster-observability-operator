@@ -187,8 +187,17 @@ func (d *Deployer) updateSecret(ctx context.Context, desiredObj, runtimeObj *uns
 		return err
 	}
 
-	if desiredSecret.Data == nil ||
-		!equality.Semantic.DeepDerivative(desiredSecret.Data, runtimeSecret.Data) {
+	// Handle StringData by converting it to Data for comparison
+	if len(desiredSecret.StringData) > 0 {
+		if desiredSecret.Data == nil {
+			desiredSecret.Data = make(map[string][]byte)
+		}
+		for k, v := range desiredSecret.StringData {
+			desiredSecret.Data[k] = []byte(v)
+		}
+	}
+
+	if !equality.Semantic.DeepDerivative(desiredSecret.Data, runtimeSecret.Data) {
 		logUpdateInfo(desiredObj)
 		return d.client.Update(ctx, desiredSecret)
 	}
