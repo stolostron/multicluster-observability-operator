@@ -11,7 +11,6 @@ import (
 	"maps"
 	"strings"
 
-	"github.com/google/go-cmp/cmp"
 	prometheusv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	monitoringv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
@@ -133,7 +132,6 @@ func (d *Deployer) updateDeployment(ctx context.Context, desiredObj, runtimeObj 
 	if !equality.Semantic.DeepDerivative(desiredObj.Object["spec"], runtimeObj.Object["spec"]) ||
 		!isMapSubset(runtimeObj.GetLabels(), desiredObj.GetLabels()) ||
 		!isMapSubset(runtimeObj.GetAnnotations(), desiredObj.GetAnnotations()) {
-		log.Info("Deployment update required", "name", desiredDeploy.Name, "diff", cmp.Diff(runtimeObj.Object["spec"], desiredObj.Object["spec"]))
 		logUpdateInfo(runtimeObj)
 		return d.client.Update(ctx, desiredDeploy)
 	}
@@ -204,8 +202,7 @@ func (d *Deployer) updateSecret(ctx context.Context, desiredObj, runtimeObj *uns
 	// Handle StringData by converting it to Data for comparison.
 	// This prevents an infinite loop where the operator constantly tries to update secrets
 	// defined with StringData because the Kube API converts it to Data on the server side,
-	// causing DeepDerivative(nil, runtime.Data) to return true (if ignoring nil) but
-	// historically forcing an update here.
+	// causing DeepDerivative(nil, runtime.Data) to return true (if ignoring nil).
 	if len(desiredSecret.StringData) > 0 {
 		if desiredSecret.Data == nil {
 			desiredSecret.Data = make(map[string][]byte)
