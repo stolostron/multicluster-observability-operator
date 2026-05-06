@@ -119,7 +119,7 @@ func (d *Deployer) Deploy(ctx context.Context, obj *unstructured.Unstructured) e
 }
 
 func (d *Deployer) updateDeployment(ctx context.Context, desiredObj, runtimeObj *unstructured.Unstructured) error {
-	desiredDeploy, _, err := unstructuredPairToTyped[appsv1.Deployment](desiredObj, runtimeObj)
+	desiredDeploy, runtimeDeploy, err := unstructuredPairToTyped[appsv1.Deployment](desiredObj, runtimeObj)
 	if err != nil {
 		return err
 	}
@@ -133,6 +133,7 @@ func (d *Deployer) updateDeployment(ctx context.Context, desiredObj, runtimeObj 
 		!isMapSubset(runtimeObj.GetLabels(), desiredObj.GetLabels()) ||
 		!isMapSubset(runtimeObj.GetAnnotations(), desiredObj.GetAnnotations()) {
 		logUpdateInfo(runtimeObj)
+		desiredDeploy.ResourceVersion = runtimeDeploy.ResourceVersion
 		return d.client.Update(ctx, desiredDeploy)
 	}
 
@@ -150,8 +151,7 @@ func (d *Deployer) updateStatefulSet(ctx context.Context, desiredObj, runtimeObj
 		!isMapSubset(runtimeObj.GetLabels(), desiredObj.GetLabels()) ||
 		!isMapSubset(runtimeObj.GetAnnotations(), desiredObj.GetAnnotations()) {
 		logUpdateInfo(runtimeObj)
-		runtimeSTS.Spec.Replicas = desiredSTS.Spec.Replicas
-		runtimeSTS.Spec.Template = desiredSTS.Spec.Template
+		runtimeSTS.Spec = desiredSTS.Spec
 		return d.client.Update(ctx, runtimeSTS)
 	}
 
@@ -170,6 +170,7 @@ func (d *Deployer) updateService(ctx context.Context, desiredObj, runtimeObj *un
 		!isMapSubset(runtimeObj.GetAnnotations(), desiredObj.GetAnnotations()) {
 		desiredService.ResourceVersion = runtimeService.ResourceVersion
 		desiredService.Spec.ClusterIP = runtimeService.Spec.ClusterIP
+		desiredService.Spec.ClusterIPs = runtimeService.Spec.ClusterIPs
 		logUpdateInfo(runtimeObj)
 		return d.client.Update(ctx, desiredService)
 	}
@@ -212,8 +213,11 @@ func (d *Deployer) updateSecret(ctx context.Context, desiredObj, runtimeObj *uns
 		}
 	}
 
+	// Changes to Secret.Type are not handled here (they typically require delete/recreate),
+	// so only Data is compared.
 	if !equality.Semantic.DeepDerivative(desiredSecret.Data, runtimeSecret.Data) {
 		logUpdateInfo(desiredObj)
+		desiredSecret.ResourceVersion = runtimeSecret.ResourceVersion
 		return d.client.Update(ctx, desiredSecret)
 	}
 	return nil
