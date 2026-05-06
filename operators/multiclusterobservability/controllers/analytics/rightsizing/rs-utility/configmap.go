@@ -9,7 +9,9 @@ import (
 	"fmt"
 	"reflect"
 
+	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -84,6 +86,17 @@ func GetRSConfigMapPredicateFunc(ctx context.Context, c client.Client, configMap
 	log.Info("rs - watch for ConfigMap events set up started")
 
 	processConfigMap := func(cm *corev1.ConfigMap) bool {
+		// Skip policy creation when RS is delegated to MCOA.
+		// Without this check, the predicate side-effect creates MCO policies
+		// even when the analytics controller detects delegation and returns early.
+		mcoList := &mcov1beta2.MultiClusterObservabilityList{}
+		if err := c.List(ctx, mcoList); err == nil && len(mcoList.Items) > 0 {
+			if util.IsRightSizingDelegated(&mcoList.Items[0]) {
+				log.Info("rs - skipping ConfigMap policy side-effect, delegated to MCOA")
+				return true
+			}
+		}
+
 		configData, err := GetRSConfigData(cm)
 		if err != nil {
 			log.Error(err, "rs - failed to extract config data")
