@@ -123,16 +123,19 @@ var _ = Describe("", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			spec := mcoSC.Object["spec"].(map[string]any)
-			scInCR := spec["storageConfig"].(map[string]any)["storageClass"].(string)
+			storageConfig, _ := spec["storageConfig"].(map[string]any)
+			scInCR, _ := storageConfig["storageClass"].(string)
 
-			scList, _ := hubClient.StorageV1().StorageClasses().List(context.TODO(), metav1.ListOptions{})
+			scList, err := hubClient.StorageV1().StorageClasses().List(context.TODO(), metav1.ListOptions{})
+			Expect(err).NotTo(HaveOccurred())
+
 			scMatch := false
 			defaultSC := ""
 			for _, sc := range scList.Items {
 				if sc.Annotations["storageclass.kubernetes.io/is-default-class"] == trueStr {
 					defaultSC = sc.Name
 				}
-				if sc.Name == scInCR {
+				if scInCR != "" && sc.Name == scInCR {
 					scMatch = true
 				}
 			}
