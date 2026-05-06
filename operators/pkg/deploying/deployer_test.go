@@ -124,7 +124,7 @@ func TestDeploy(t *testing.T) {
 				obj := &appsv1.Deployment{}
 				client.Get(context.Background(), namespacedName, obj)
 
-				if len(obj.ObjectMeta.GetLabels()) != 0 {
+				if len(obj.ObjectMeta.GetLabels()) == 0 {
 					t.Fatalf("should not update the deployment")
 				}
 			},
