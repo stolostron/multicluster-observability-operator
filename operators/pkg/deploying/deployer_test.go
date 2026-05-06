@@ -85,7 +85,7 @@ func TestDeploy(t *testing.T) {
 			},
 		},
 		{
-			name: "create and no update the deployment",
+			name: "create and update the deployment with labels",
 			createObj: &appsv1.Deployment{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "apps/v1",
@@ -125,7 +125,7 @@ func TestDeploy(t *testing.T) {
 				client.Get(context.Background(), namespacedName, obj)
 
 				if len(obj.ObjectMeta.GetLabels()) == 0 {
-					t.Fatalf("should not update the deployment")
+					t.Fatalf("deployment was not updated; expected labels to be present")
 				}
 			},
 		},
@@ -297,6 +297,92 @@ func TestDeploy(t *testing.T) {
 				if len(obj.Data) == 0 {
 					t.Fatalf("fail to update the secret")
 				}
+			},
+		},
+		{
+			name: "secret defined with StringData that matches runtime Data does not trigger update loop",
+			createObj: &corev1.Secret{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "v1",
+					Kind:       "Secret",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-secret-stringdata-no-update",
+					Namespace: "ns2",
+				},
+				Data: map[string][]byte{
+					"key": []byte("value"),
+				},
+			},
+			updateObj: &corev1.Secret{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "v1",
+					Kind:       "Secret",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:            "test-secret-stringdata-no-update",
+					Namespace:       "ns2",
+					ResourceVersion: "1",
+				},
+				StringData: map[string]string{
+					"key": "value",
+				},
+			},
+			validateResults: func(client client.Client) {
+				namespacedName := types.NamespacedName{
+					Name:      "test-secret-stringdata-no-update",
+					Namespace: "ns2",
+				}
+				obj := &corev1.Secret{}
+				client.Get(context.Background(), namespacedName, obj)
+
+				if obj.ResourceVersion != "1" {
+					t.Fatalf("secret should not have been updated; expected ResourceVersion 1, got %s", obj.ResourceVersion)
+				}
+			},
+		},
+		{
+			name: "secret defined with StringData that differs triggers update",
+			createObj: &corev1.Secret{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "v1",
+					Kind:       "Secret",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-secret-stringdata-update",
+					Namespace: "ns2",
+				},
+				Data: map[string][]byte{
+					"key": []byte("old-value"),
+				},
+			},
+			updateObj: &corev1.Secret{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "v1",
+					Kind:       "Secret",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:            "test-secret-stringdata-update",
+					Namespace:       "ns2",
+					ResourceVersion: "1",
+				},
+				StringData: map[string]string{
+					"key": "new-value",
+				},
+			},
+			validateResults: func(client client.Client) {
+				namespacedName := types.NamespacedName{
+					Name:      "test-secret-stringdata-update",
+					Namespace: "ns2",
+				}
+				obj := &corev1.Secret{}
+				client.Get(context.Background(), namespacedName, obj)
+
+				if string(obj.Data["key"]) != "new-value" {
+					t.Fatalf("secret was not updated; expected value 'new-value', got %s", string(obj.Data["key"]))
+				}
+				// In fake client, ResourceVersion might not increment automatically on Update if not configured,
+				// but it should at least match the updated data.
 			},
 		},
 		{
