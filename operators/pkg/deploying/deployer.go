@@ -11,6 +11,7 @@ import (
 	"maps"
 	"strings"
 
+	"github.com/google/go-cmp/cmp"
 	prometheusv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	monitoringv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
@@ -119,12 +120,20 @@ func (d *Deployer) Deploy(ctx context.Context, obj *unstructured.Unstructured) e
 }
 
 func (d *Deployer) updateDeployment(ctx context.Context, desiredObj, runtimeObj *unstructured.Unstructured) error {
-	desiredDeploy, runtimeDepoly, err := unstructuredPairToTyped[appsv1.Deployment](desiredObj, runtimeObj)
+	desiredDeploy, _, err := unstructuredPairToTyped[appsv1.Deployment](desiredObj, runtimeObj)
 	if err != nil {
 		return err
 	}
 
-	if !equality.Semantic.DeepDerivative(desiredDeploy.Spec, runtimeDepoly.Spec) {
+	// Compare using unstructured maps for the Spec field.
+	// Typed Go structs zero-initialize missing fields (e.g., timeoutSeconds: 0),
+	// which causes DeepDerivative to fail against cluster-side defaults (e.g., timeoutSeconds: 1).
+	// Unstructured maps preserve the "missing key" state, allowing DeepDerivative to correctly
+	// ignore defaulted fields that aren't explicitly set in our manifest.
+	if !equality.Semantic.DeepDerivative(desiredObj.Object["spec"], runtimeObj.Object["spec"]) ||
+		!isMapSubset(runtimeObj.GetLabels(), desiredObj.GetLabels()) ||
+		!isMapSubset(runtimeObj.GetAnnotations(), desiredObj.GetAnnotations()) {
+		log.Info("Deployment update required", "name", desiredDeploy.Name, "diff", cmp.Diff(runtimeObj.Object["spec"], desiredObj.Object["spec"]))
 		logUpdateInfo(runtimeObj)
 		return d.client.Update(ctx, desiredDeploy)
 	}
@@ -133,17 +142,19 @@ func (d *Deployer) updateDeployment(ctx context.Context, desiredObj, runtimeObj 
 }
 
 func (d *Deployer) updateStatefulSet(ctx context.Context, desiredObj, runtimeObj *unstructured.Unstructured) error {
-	desiredDepoly, runtimeDepoly, err := unstructuredPairToTyped[appsv1.StatefulSet](desiredObj, runtimeObj)
+	desiredSTS, runtimeSTS, err := unstructuredPairToTyped[appsv1.StatefulSet](desiredObj, runtimeObj)
 	if err != nil {
 		return err
 	}
 
-	if !equality.Semantic.DeepDerivative(desiredDepoly.Spec.Template, runtimeDepoly.Spec.Template) ||
-		!equality.Semantic.DeepDerivative(desiredDepoly.Spec.Replicas, runtimeDepoly.Spec.Replicas) {
+	// Use unstructured Spec comparison to avoid Go zero-value conflicts with cluster defaults.
+	if !equality.Semantic.DeepDerivative(desiredObj.Object["spec"], runtimeObj.Object["spec"]) ||
+		!isMapSubset(runtimeObj.GetLabels(), desiredObj.GetLabels()) ||
+		!isMapSubset(runtimeObj.GetAnnotations(), desiredObj.GetAnnotations()) {
 		logUpdateInfo(runtimeObj)
-		runtimeDepoly.Spec.Replicas = desiredDepoly.Spec.Replicas
-		runtimeDepoly.Spec.Template = desiredDepoly.Spec.Template
-		return d.client.Update(ctx, runtimeDepoly)
+		runtimeSTS.Spec.Replicas = desiredSTS.Spec.Replicas
+		runtimeSTS.Spec.Template = desiredSTS.Spec.Template
+		return d.client.Update(ctx, runtimeSTS)
 	}
 
 	return nil
@@ -155,7 +166,10 @@ func (d *Deployer) updateService(ctx context.Context, desiredObj, runtimeObj *un
 		return err
 	}
 
-	if !equality.Semantic.DeepDerivative(desiredService.Spec, runtimeService.Spec) {
+	// Use unstructured Spec comparison to avoid Go zero-value conflicts with cluster defaults.
+	if !equality.Semantic.DeepDerivative(desiredObj.Object["spec"], runtimeObj.Object["spec"]) ||
+		!isMapSubset(runtimeObj.GetLabels(), desiredObj.GetLabels()) ||
+		!isMapSubset(runtimeObj.GetAnnotations(), desiredObj.GetAnnotations()) {
 		desiredService.ResourceVersion = runtimeService.ResourceVersion
 		desiredService.Spec.ClusterIP = runtimeService.Spec.ClusterIP
 		logUpdateInfo(runtimeObj)
@@ -187,7 +201,11 @@ func (d *Deployer) updateSecret(ctx context.Context, desiredObj, runtimeObj *uns
 		return err
 	}
 
-	// Handle StringData by converting it to Data for comparison
+	// Handle StringData by converting it to Data for comparison.
+	// This prevents an infinite loop where the operator constantly tries to update secrets
+	// defined with StringData because the Kube API converts it to Data on the server side,
+	// causing DeepDerivative(nil, runtime.Data) to return true (if ignoring nil) but
+	// historically forcing an update here.
 	if len(desiredSecret.StringData) > 0 {
 		if desiredSecret.Data == nil {
 			desiredSecret.Data = make(map[string][]byte)
