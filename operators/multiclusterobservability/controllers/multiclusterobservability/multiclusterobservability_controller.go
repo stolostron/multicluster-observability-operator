@@ -218,8 +218,6 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to get storage class: %w", err)
 	}
-	// Set in-memory for rendering; persisted to the CR at the end of reconciliation.
-	instance.Spec.StorageConfig.StorageClass = storageClassSelected
 
 	// handle storagesize changes
 	result, err := r.HandleStorageSizeChange(ctx, instance)
@@ -233,6 +231,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to set operand names: %w", err)
 	}
+	instance.Spec.StorageConfig.StorageClass = storageClassSelected
 
 	// Disable rendering the MCOA ClusterManagementAddOn resource if already exists
 	mcoaCMAO := &addonv1alpha1.ClusterManagementAddOn{}
