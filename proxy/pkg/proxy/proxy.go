@@ -17,6 +17,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/cache"
 	proxyconfig "github.com/stolostron/multicluster-observability-operator/proxy/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/health"
@@ -166,8 +167,8 @@ func (p *Proxy) preCheckRequest(req *http.Request) error {
 		userName, _ = p.userProjectInfo.GetUserName(token)
 	}
 
+	// If username is still missing, try to fetch it from the API.
 	var c client.Client
-	// If username is still missing, fetch it from the API.
 	if userName == "" {
 		var err error
 		c, err = p.getKubeClientWithTokenFunc(token)
@@ -175,13 +176,23 @@ func (p *Proxy) preCheckRequest(req *http.Request) error {
 			return fmt.Errorf("failed to get kube client: %w", err)
 		}
 
-		userName, err = util.GetUserName(req.Context(), c)
+		userName, _ = util.GetUserName(req.Context(), c)
+	}
+	// If username is still missing, final attempt to get a UID from the JWT
+	if userName == "" {
+		parsedToken, _, err := jwt.NewParser().ParseUnverified(token, jwt.MapClaims{})
 		if err != nil {
-			return fmt.Errorf("failed to get user name: %w", err)
+			return fmt.Errorf("unable to parse jwt to get username: %w", err)
 		}
-		if userName == "" {
-			return errors.New("failed to find user name")
+
+		userName, err = parsedToken.Claims.GetSubject()
+		if err != nil {
+			return fmt.Errorf("failed to get subject from jwt: %w", err)
 		}
+	}
+
+	if userName == "" {
+		return errors.New("failed to find user name")
 	}
 	req.Header.Set("X-Forwarded-User", userName)
 
