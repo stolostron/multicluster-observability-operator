@@ -18,6 +18,7 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -168,6 +169,159 @@ func TestDeploy(t *testing.T) {
 
 				if *obj.Spec.Replicas != 2 {
 					t.Fatalf("fail to update the statefulset")
+				}
+			},
+		},
+		{
+			// volumeClaimTemplates are immutable; storage-size changes are handled by
+			// HandleStorageSizeChange (PVC resize + STS delete/recreate). The deployer must
+			// NOT attempt to update volumeClaimTemplates itself to avoid API rejections.
+			name: "statefulset volumeClaimTemplates change does not trigger update",
+			createObj: &appsv1.StatefulSet{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "apps/v1",
+					Kind:       "StatefulSet",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-sts-pvc",
+					Namespace: "ns1",
+				},
+				Spec: appsv1.StatefulSetSpec{
+					Replicas: &replicas1,
+					VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+						{ObjectMeta: metav1.ObjectMeta{Name: "data"}, Spec: corev1.PersistentVolumeClaimSpec{
+							Resources: corev1.VolumeResourceRequirements{
+								Requests: corev1.ResourceList{
+									corev1.ResourceStorage: func() resource.Quantity {
+										q, _ := resource.ParseQuantity("10Gi")
+										return q
+									}(),
+								},
+							},
+						}},
+					},
+				},
+			},
+			updateObj: &appsv1.StatefulSet{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "apps/v1",
+					Kind:       "StatefulSet",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:            "test-sts-pvc",
+					Namespace:       "ns1",
+					ResourceVersion: "1",
+				},
+				// Only replicas changed; VolumeClaimTemplates storage size changed to 3Gi
+				// (simulating what MCO desires after alertmanagerStorageSize update).
+				Spec: appsv1.StatefulSetSpec{
+					Replicas: &replicas1,
+					VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+						{ObjectMeta: metav1.ObjectMeta{Name: "data"}, Spec: corev1.PersistentVolumeClaimSpec{
+							Resources: corev1.VolumeResourceRequirements{
+								Requests: corev1.ResourceList{
+									corev1.ResourceStorage: func() resource.Quantity {
+										q, _ := resource.ParseQuantity("3Gi")
+										return q
+									}(),
+								},
+							},
+						}},
+					},
+				},
+			},
+			validateResults: func(client client.Client) {
+				namespacedName := types.NamespacedName{Name: "test-sts-pvc", Namespace: "ns1"}
+				obj := &appsv1.StatefulSet{}
+				client.Get(context.Background(), namespacedName, obj)
+				// The deployer must NOT have updated the VolumeClaimTemplates;
+				// the original 10Gi value must remain (storage resize is done externally).
+				got := obj.Spec.VolumeClaimTemplates[0].Spec.Resources.Requests[corev1.ResourceStorage]
+				expected, _ := resource.ParseQuantity("10Gi")
+				if !got.Equal(expected) {
+					t.Fatalf("deployer must not update volumeClaimTemplates; got %s, want 10Gi", got.String())
+				}
+			},
+		},
+		{
+			name: "statefulset update merges desired labels into runtime (preserves user labels)",
+			createObj: &appsv1.StatefulSet{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "apps/v1",
+					Kind:       "StatefulSet",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-sts-labels",
+					Namespace: "ns1",
+					Labels:    map[string]string{"user-label": "user-value"},
+				},
+				Spec: appsv1.StatefulSetSpec{Replicas: &replicas1},
+			},
+			updateObj: &appsv1.StatefulSet{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "apps/v1",
+					Kind:       "StatefulSet",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:            "test-sts-labels",
+					Namespace:       "ns1",
+					ResourceVersion: "1",
+					// Desired state has an MCO-managed label but NOT the user label.
+					Labels: map[string]string{"mco-label": "mco-value"},
+				},
+				Spec: appsv1.StatefulSetSpec{Replicas: &replicas2},
+			},
+			validateResults: func(client client.Client) {
+				namespacedName := types.NamespacedName{Name: "test-sts-labels", Namespace: "ns1"}
+				obj := &appsv1.StatefulSet{}
+				client.Get(context.Background(), namespacedName, obj)
+				labels := obj.GetLabels()
+				if labels["mco-label"] != "mco-value" {
+					t.Fatalf("desired mco-label not applied; labels: %v", labels)
+				}
+				if labels["user-label"] != "user-value" {
+					t.Fatalf("user-label was removed; labels: %v", labels)
+				}
+			},
+		},
+		{
+			name: "deployment update merges desired labels into runtime (preserves user labels)",
+			createObj: &appsv1.Deployment{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "apps/v1",
+					Kind:       "Deployment",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-deploy-labels",
+					Namespace: "ns1",
+					Labels:    map[string]string{"user-label": "user-value"},
+				},
+				Spec: appsv1.DeploymentSpec{Replicas: &replicas1},
+			},
+			updateObj: &appsv1.Deployment{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "apps/v1",
+					Kind:       "Deployment",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:            "test-deploy-labels",
+					Namespace:       "ns1",
+					ResourceVersion: "1",
+					// Desired state has an MCO-managed label but NOT the user label.
+					Labels: map[string]string{"mco-label": "mco-value"},
+				},
+				Spec: appsv1.DeploymentSpec{Replicas: &replicas2},
+			},
+			validateResults: func(client client.Client) {
+				namespacedName := types.NamespacedName{Name: "test-deploy-labels", Namespace: "ns1"}
+				obj := &appsv1.Deployment{}
+				client.Get(context.Background(), namespacedName, obj)
+				labels := obj.GetLabels()
+				if labels["mco-label"] != "mco-value" {
+					t.Fatalf("desired mco-label not applied; labels: %v", labels)
+				}
+				if labels["user-label"] != "user-value" {
+					t.Fatalf("user-label was removed; labels: %v", labels)
 				}
 			},
 		},

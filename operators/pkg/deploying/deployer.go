@@ -133,6 +133,11 @@ func (d *Deployer) updateDeployment(ctx context.Context, desiredObj, runtimeObj 
 		!isMapSubset(runtimeObj.GetLabels(), desiredObj.GetLabels()) ||
 		!isMapSubset(runtimeObj.GetAnnotations(), desiredObj.GetAnnotations()) {
 		logUpdateInfo(runtimeObj)
+		// Merge desired labels/annotations into runtime to preserve user-added entries.
+		desiredDeploy.Labels, desiredDeploy.Annotations = mergeMetadata(
+			runtimeDeploy.Labels, runtimeDeploy.Annotations,
+			desiredDeploy.Labels, desiredDeploy.Annotations,
+		)
 		desiredDeploy.ResourceVersion = runtimeDeploy.ResourceVersion
 		return d.client.Update(ctx, desiredDeploy)
 	}
@@ -146,12 +151,30 @@ func (d *Deployer) updateStatefulSet(ctx context.Context, desiredObj, runtimeObj
 		return err
 	}
 
-	// Use unstructured Spec comparison to avoid Go zero-value conflicts with cluster defaults.
-	if !equality.Semantic.DeepDerivative(desiredObj.Object["spec"], runtimeObj.Object["spec"]) ||
+	// volumeClaimTemplates is immutable in StatefulSets; storage-size changes are handled
+	// separately by HandleStorageSizeChange (PVC resize + STS delete/recreate). Exclude it
+	// from the comparison to avoid triggering an Update that Kubernetes will reject or silently ignore.
+	desiredSpec := maps.Clone(desiredObj.Object["spec"].(map[string]any))
+	runtimeSpec := maps.Clone(runtimeObj.Object["spec"].(map[string]any))
+	delete(desiredSpec, "volumeClaimTemplates")
+	delete(runtimeSpec, "volumeClaimTemplates")
+
+	if !equality.Semantic.DeepDerivative(desiredSpec, runtimeSpec) ||
 		!isMapSubset(runtimeObj.GetLabels(), desiredObj.GetLabels()) ||
 		!isMapSubset(runtimeObj.GetAnnotations(), desiredObj.GetAnnotations()) {
 		logUpdateInfo(runtimeObj)
-		runtimeSTS.Spec = desiredSTS.Spec
+		// Merge desired labels/annotations into runtime to preserve user-added entries.
+		runtimeSTS.Labels, runtimeSTS.Annotations = mergeMetadata(
+			runtimeSTS.Labels, runtimeSTS.Annotations,
+			desiredSTS.Labels, desiredSTS.Annotations,
+		)
+		// Only update the mutable Spec fields; volumeClaimTemplates is immutable.
+		runtimeSTS.Spec.Replicas = desiredSTS.Spec.Replicas
+		runtimeSTS.Spec.Template = desiredSTS.Spec.Template
+		runtimeSTS.Spec.UpdateStrategy = desiredSTS.Spec.UpdateStrategy
+		runtimeSTS.Spec.MinReadySeconds = desiredSTS.Spec.MinReadySeconds
+		runtimeSTS.Spec.PersistentVolumeClaimRetentionPolicy = desiredSTS.Spec.PersistentVolumeClaimRetentionPolicy
+		runtimeSTS.Spec.Ordinals = desiredSTS.Spec.Ordinals
 		return d.client.Update(ctx, runtimeSTS)
 	}
 
@@ -628,4 +651,22 @@ func isControllerOwner(ownerRefs []metav1.OwnerReference, obj client.Object) boo
 	}
 
 	return false
+}
+
+// mergeMetadata returns merged label and annotation maps where desired values override
+// runtime values on conflict, but runtime-only entries (user additions) are preserved.
+func mergeMetadata(runtimeLabels, runtimeAnnotations, desiredLabels, desiredAnnotations map[string]string) (map[string]string, map[string]string) {
+	merged := maps.Clone(runtimeLabels)
+	if merged == nil {
+		merged = make(map[string]string)
+	}
+	maps.Copy(merged, desiredLabels)
+
+	mergedAnnotations := maps.Clone(runtimeAnnotations)
+	if mergedAnnotations == nil {
+		mergedAnnotations = make(map[string]string)
+	}
+	maps.Copy(mergedAnnotations, desiredAnnotations)
+
+	return merged, mergedAnnotations
 }
