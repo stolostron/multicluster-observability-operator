@@ -749,17 +749,24 @@ func updateStorageSizeChange(ctx context.Context, c client.Client, matchLabels m
 	}
 
 	// update pvc directly
+	newSize := resource.MustParse(storageSize)
 	for index, pvc := range pvcList {
-		if !pvc.Spec.Resources.Requests.Storage().Equal(resource.MustParse(storageSize)) {
-			pvcList[index].Spec.Resources.Requests = corev1.ResourceList{
-				corev1.ResourceStorage: resource.MustParse(storageSize),
-			}
-			err := c.Update(ctx, &pvcList[index])
-			if err != nil {
-				return err
-			}
-			log.Info("Update storage size for PVC", "pvc", pvc.Name)
+		if pvc.Spec.Resources.Requests.Storage().Equal(newSize) {
+			continue
 		}
+		if currentCap := pvc.Status.Capacity.Storage(); currentCap != nil && newSize.Cmp(*currentCap) < 0 {
+			log.Info("Skipping PVC storage shrink: Kubernetes does not support reducing PVC size",
+				"pvc", pvc.Name, "currentCapacity", currentCap.String(), "requestedSize", storageSize)
+			continue
+		}
+		pvcList[index].Spec.Resources.Requests = corev1.ResourceList{
+			corev1.ResourceStorage: newSize,
+		}
+		err := c.Update(ctx, &pvcList[index])
+		if err != nil {
+			return err
+		}
+		log.Info("Update storage size for PVC", "pvc", pvc.Name)
 	}
 	// update sts
 	for index, sts := range stsList {
