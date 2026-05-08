@@ -7,10 +7,8 @@ package observabilityendpoint
 import (
 	"context"
 	"fmt"
-	"maps"
 	"net/url"
 	"reflect"
-	"slices"
 	"strings"
 
 	cmomanifests "github.com/openshift/cluster-monitoring-operator/pkg/manifests"
@@ -423,6 +421,7 @@ func createOrUpdateClusterMonitoringConfig(
 		}
 	}
 
+	// TODO check if this is still needed
 	// create the hub-alertmanager-router-ca secret if it doesn't exist or update it if needed
 	if err := createHubAmRouterCASecret(ctx, hubInfo, client, targetNamespace); err != nil {
 		return false, fmt.Errorf("failed to create or update the hub-alertmanager-router-ca secret: %w", err)
@@ -433,16 +432,9 @@ func createOrUpdateClusterMonitoringConfig(
 		return false, fmt.Errorf("failed to create or update the alertmanager accessor token secret: %w", err)
 	}
 
-	// Copy mTLS secrets (client cert + server CA) to the monitoring namespace so Prometheus can reference them
-	log.Info("copying mTLS secrets for alert forwarding",
-		"sourceNamespace", namespace,
-		"targetNamespace", targetNamespace,
-		"installProm", installProm,
-		"secrets", []string{mtlsCertName, mtlsCaName},
-	)
 	for _, name := range []string{mtlsCertName, mtlsCaName} {
 		log.Info("attempting to copy mTLS secret", "secret", name, "from", namespace, "to", targetNamespace)
-		if err := createMtlsSecretInNamespace(ctx, client, namespace, targetNamespace, name); err != nil {
+		if err := createMtlsSecretInNamespace(ctx, client, namespace, targetNamespace, name, hubInfo); err != nil {
 			log.Error(err, "failed to copy mTLS secret", "secret", name, "from", namespace, "to", targetNamespace)
 			return false, fmt.Errorf("failed to copy mTLS secret %s to %s: %w", name, targetNamespace, err)
 		}
@@ -461,7 +453,7 @@ func createOrUpdateClusterMonitoringConfig(
 		}
 		// why are we iterating of each cert here?
 		for _, name := range []string{mtlsCertName, mtlsCaName} {
-			if err := createMtlsSecretInNamespace(ctx, client, namespace, operatorconfig.OCPUserWorkloadMonitoringNamespace, name); err != nil {
+			if err := createMtlsSecretInNamespace(ctx, client, namespace, operatorconfig.OCPUserWorkloadMonitoringNamespace, name, hubInfo); err != nil {
 				return false, fmt.Errorf("failed to copy mTLS secret %s to UWM namespace: %w", name, err)
 			}
 		}
@@ -1005,44 +997,38 @@ func RevertUserWorkloadMonitoringConfig(ctx context.Context, client client.Clien
 	return client.Update(ctx, found)
 }
 
-func keysOf(m map[string][]byte) []string {
-	return slices.Sorted(maps.Keys(m))
-}
-
-func createMtlsSecretInNamespace(ctx context.Context, c client.Client, sourceNamespace, targetNamespace, secretName string) error {
-	log.Info("reading source mTLS secret", "secret", secretName, "namespace", sourceNamespace)
+func createMtlsSecretInNamespace(ctx context.Context, c client.Client, sourceNamespace, targetNamespace, secretName string, hubInfo *operatorconfig.HubInfo) error {
 	source := &corev1.Secret{}
 	if err := c.Get(ctx, types.NamespacedName{Name: secretName, Namespace: sourceNamespace}, source); err != nil {
 		return fmt.Errorf("failed to get %s/%s: %w", sourceNamespace, secretName, err)
 	}
-	log.Info("source mTLS secret found", "secret", secretName, "namespace", sourceNamespace, "dataKeys", keysOf(source.Data))
+	secretNameID := secretName + "-" + hubInfo.HubClusterID
 
 	desired := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      secretName,
+			Name:      secretNameID,
 			Namespace: targetNamespace,
 		},
 		Data: source.Data,
 	}
 	found := &corev1.Secret{}
-	err := c.Get(ctx, types.NamespacedName{Name: secretName, Namespace: targetNamespace}, found)
+	err := c.Get(ctx, types.NamespacedName{Name: secretNameID, Namespace: targetNamespace}, found)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			log.Info(fmt.Sprintf("creating %s/%s secret", targetNamespace, secretName))
+			log.Info(fmt.Sprintf("creating %s/%s secret", targetNamespace, secretNameID))
 			if createErr := c.Create(ctx, desired); createErr != nil {
-				log.Error(createErr, "failed to create mTLS secret in target namespace", "secret", secretName, "namespace", targetNamespace)
+				log.Error(createErr, "failed to create mTLS secret in target namespace", "secret", secretNameID, "namespace", targetNamespace)
 				return createErr
 			}
-			log.Info("created mTLS secret in target namespace", "secret", secretName, "namespace", targetNamespace)
+			log.Info("created mTLS secret in target namespace", "secret", secretNameID, "namespace", targetNamespace)
 			return nil
 		}
-		return fmt.Errorf("failed to check %s/%s: %w", targetNamespace, secretName, err)
+		return fmt.Errorf("failed to check %s/%s: %w", targetNamespace, secretNameID, err)
 	}
 	if reflect.DeepEqual(found.Data, source.Data) {
-		log.Info("mTLS secret already up to date", "secret", secretName, "namespace", targetNamespace)
+		log.Info("mTLS secret already up to date", "secret", secretNameID, "namespace", targetNamespace)
 		return nil
 	}
 	found.Data = source.Data
-	log.Info(fmt.Sprintf("updating %s/%s secret", targetNamespace, secretName))
 	return c.Update(ctx, found)
 }
