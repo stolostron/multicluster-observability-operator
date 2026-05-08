@@ -14,6 +14,7 @@ import (
 	rsutility "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/analytics/rightsizing/rs-utility"
 	rsvirtualization "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/analytics/rightsizing/rs-virtualization"
 	rsworkload "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/analytics/rightsizing/rs-workload"
+	rsgpu "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/analytics/rightsizing/rs-gpu"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
@@ -44,6 +45,11 @@ func CreateRightSizingComponent(
 		return fmt.Errorf("failed to handle workload right-sizing: %w", err)
 	}
 
+	// Handle GPU right-sizing (separate policy)
+	if err := rsgpu.HandleRightSizing(ctx, c, mco); err != nil {
+		return fmt.Errorf("failed to handle gpu right-sizing: %w", err)
+	}
+
 	log.Info("rs - create component task completed")
 	return nil
 }
@@ -68,6 +74,7 @@ func CleanupRightSizingResources(ctx context.Context, c client.Client, mco *mcov
 	nsNamespace := getNamespaceBinding(mco, rsutility.ComponentTypeNamespace)
 	virtNamespace := getNamespaceBinding(mco, rsutility.ComponentTypeVirtualization)
 	wlNamespace := getNamespaceBinding(mco, rsutility.ComponentTypeWorkload)
+	gpuNamespace := getNamespaceBinding(mco, rsutility.ComponentTypeGPU)
 	if err := rsnamespace.CleanupRSNamespaceResources(ctx, c, nsNamespace, false); err != nil {
 		errs = append(errs, err)
 	}
@@ -75,6 +82,9 @@ func CleanupRightSizingResources(ctx context.Context, c client.Client, mco *mcov
 		errs = append(errs, err)
 	}
 	if err := rsworkload.CleanupRSWorkloadResources(ctx, c, wlNamespace, false); err != nil {
+		errs = append(errs, err)
+	}
+	if err := rsgpu.CleanupRSGPUResources(ctx, c, gpuNamespace, false); err != nil {
 		errs = append(errs, err)
 	}
 
@@ -110,6 +120,11 @@ func GetWorkloadRSConfigMapPredicateFunc(ctx context.Context, c client.Client) p
 	return rsworkload.GetWorkloadRSConfigMapPredicateFunc(ctx, c)
 }
 
+// GetGPURSConfigMapPredicateFunc returns predicate for GPU right-sizing ConfigMap
+func GetGPURSConfigMapPredicateFunc(ctx context.Context, c client.Client) predicate.Funcs {
+	return rsgpu.GetGPURSConfigMapPredicateFunc(ctx, c)
+}
+
 // CleanupPolicyResourcesForDelegation cleans up Policy-based right-sizing resources when delegating to MCOA.
 // ConfigMaps are PRESERVED because MCOA owns them in the same namespace (open-cluster-management-observability).
 // Only Policy, Placement, and PlacementBinding resources are cleaned up.
@@ -124,9 +139,11 @@ func CleanupPolicyResourcesForDelegation(
 	nsNamespace := resolveNamespaceBinding(mco, rsutility.ComponentTypeNamespace)
 	virtNamespace := resolveNamespaceBinding(mco, rsutility.ComponentTypeVirtualization)
 	wlNamespace := resolveNamespaceBinding(mco, rsutility.ComponentTypeWorkload)
+	gpuNamespace := resolveNamespaceBinding(mco, rsutility.ComponentTypeGPU)
 
 	log.Info("rs - cleaning up Policy resources for MCOA delegation (preserving ConfigMaps for MCOA)",
-		"nsNamespace", nsNamespace, "virtNamespace", virtNamespace, "wlNamespace", wlNamespace)
+		"nsNamespace", nsNamespace, "virtNamespace", virtNamespace,
+		"wlNamespace", wlNamespace, "gpuNamespace", gpuNamespace)
 
 	if err := rsnamespace.CleanupRSNamespaceResources(ctx, c, nsNamespace, true); err != nil {
 		return fmt.Errorf("namespace right-sizing cleanup: %w", err)
@@ -137,10 +154,14 @@ func CleanupPolicyResourcesForDelegation(
 	if err := rsworkload.CleanupRSWorkloadResources(ctx, c, wlNamespace, true); err != nil {
 		return fmt.Errorf("workload right-sizing cleanup: %w", err)
 	}
+	if err := rsgpu.CleanupRSGPUResources(ctx, c, gpuNamespace, true); err != nil {
+		return fmt.Errorf("gpu right-sizing cleanup: %w", err)
+	}
 
 	rsnamespace.ComponentState.Enabled = false
 	rsvirtualization.ComponentState.Enabled = false
 	rsworkload.ComponentState.Enabled = false
+	rsgpu.ComponentState.Enabled = false
 
 	log.Info("rs - Policy cleanup for MCOA delegation completed")
 	return nil

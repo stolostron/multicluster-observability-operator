@@ -165,6 +165,12 @@ type PlatformAnalyticsSpec struct {
 	// +optional
 	// +kubebuilder:validation:Optional
 	WorkloadPodRightSizingRecommendation PlatformRightSizingRecommendationSpec `json:"workloadPodRightSizingRecommendation,omitempty"`
+
+	// Feature to enable GPU utilization right-sizing metrics for the Analytics.
+	//
+	// +optional
+	// +kubebuilder:validation:Optional
+	GPURightSizingRecommendation PlatformRightSizingRecommendationSpec `json:"gpuRightSizingRecommendation,omitempty"`
 }
 
 type PlatformIncidentDetectionSpec struct {
