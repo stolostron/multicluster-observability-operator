@@ -16,6 +16,7 @@ import (
 	rightsizingctrl "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/analytics/rightsizing"
 	rsnamespace "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/analytics/rightsizing/rs-namespace"
 	rsvirtualization "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/analytics/rightsizing/rs-virtualization"
+	rsworkload "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/analytics/rightsizing/rs-workload"
 	mcoctrl "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/multiclusterobservability"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
@@ -280,11 +281,13 @@ func (r *AnalyticsReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	mcoPred := mcoctrl.GetMCOPredicateFunc()
 	cmNamespaceRSPred := rightsizingctrl.GetNamespaceRSConfigMapPredicateFunc(ctx, c)
 	cmVirtualizationRSPred := rightsizingctrl.GetVirtualizationRSConfigMapPredicateFunc(ctx, c)
+	cmWorkloadRSPred := rightsizingctrl.GetWorkloadRSConfigMapPredicateFunc(ctx, c)
 	return ctrl.NewControllerManagedBy(mgr).
 		Named("rightsizing").
 		For(&mcov1beta2.MultiClusterObservability{}, builder.WithPredicates(mcoPred)).
 		Watches(&corev1.ConfigMap{}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(cmNamespaceRSPred)).
 		Watches(&corev1.ConfigMap{}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(cmVirtualizationRSPred)).
+		Watches(&corev1.ConfigMap{}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(cmWorkloadRSPred)).
 		Complete(r)
 }
 
@@ -384,6 +387,7 @@ func (r *AnalyticsReconciler) hasPolicyResourcesToCleanup(ctx context.Context) (
 	}{
 		{rsnamespace.PrometheusRulePolicyName, rsnamespace.ComponentState.Namespace},
 		{rsvirtualization.PrometheusRulePolicyName, rsvirtualization.ComponentState.Namespace},
+		{rsworkload.PrometheusRulePolicyName, rsworkload.ComponentState.Namespace},
 	}
 
 	for _, check := range checks {

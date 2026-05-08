@@ -13,6 +13,7 @@ import (
 	rsnamespace "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/analytics/rightsizing/rs-namespace"
 	rsutility "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/analytics/rightsizing/rs-utility"
 	rsvirtualization "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/analytics/rightsizing/rs-virtualization"
+	rsworkload "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/analytics/rightsizing/rs-workload"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
@@ -38,6 +39,11 @@ func CreateRightSizingComponent(
 		return fmt.Errorf("failed to handle virtualization right-sizing: %w", err)
 	}
 
+	// Handle workload+pod right-sizing (separate policy)
+	if err := rsworkload.HandleRightSizing(ctx, c, mco); err != nil {
+		return fmt.Errorf("failed to handle workload right-sizing: %w", err)
+	}
+
 	log.Info("rs - create component task completed")
 	return nil
 }
@@ -61,10 +67,14 @@ func CleanupRightSizingResources(ctx context.Context, c client.Client, mco *mcov
 	// Name-based fallback: catches old unlabeled resources (upgrade path)
 	nsNamespace := getNamespaceBinding(mco, rsutility.ComponentTypeNamespace)
 	virtNamespace := getNamespaceBinding(mco, rsutility.ComponentTypeVirtualization)
+	wlNamespace := getNamespaceBinding(mco, rsutility.ComponentTypeWorkload)
 	if err := rsnamespace.CleanupRSNamespaceResources(ctx, c, nsNamespace, false); err != nil {
 		errs = append(errs, err)
 	}
 	if err := rsvirtualization.CleanupRSVirtualizationResources(ctx, c, virtNamespace, false); err != nil {
+		errs = append(errs, err)
+	}
+	if err := rsworkload.CleanupRSWorkloadResources(ctx, c, wlNamespace, false); err != nil {
 		errs = append(errs, err)
 	}
 
@@ -95,6 +105,11 @@ func GetVirtualizationRSConfigMapPredicateFunc(ctx context.Context, c client.Cli
 	return rsvirtualization.GetVirtualizationRSConfigMapPredicateFunc(ctx, c)
 }
 
+// GetWorkloadRSConfigMapPredicateFunc returns predicate for workload right-sizing ConfigMap
+func GetWorkloadRSConfigMapPredicateFunc(ctx context.Context, c client.Client) predicate.Funcs {
+	return rsworkload.GetWorkloadRSConfigMapPredicateFunc(ctx, c)
+}
+
 // CleanupPolicyResourcesForDelegation cleans up Policy-based right-sizing resources when delegating to MCOA.
 // ConfigMaps are PRESERVED because MCOA owns them in the same namespace (open-cluster-management-observability).
 // Only Policy, Placement, and PlacementBinding resources are cleaned up.
@@ -108,9 +123,10 @@ func CleanupPolicyResourcesForDelegation(
 ) error {
 	nsNamespace := resolveNamespaceBinding(mco, rsutility.ComponentTypeNamespace)
 	virtNamespace := resolveNamespaceBinding(mco, rsutility.ComponentTypeVirtualization)
+	wlNamespace := resolveNamespaceBinding(mco, rsutility.ComponentTypeWorkload)
 
 	log.Info("rs - cleaning up Policy resources for MCOA delegation (preserving ConfigMaps for MCOA)",
-		"nsNamespace", nsNamespace, "virtNamespace", virtNamespace)
+		"nsNamespace", nsNamespace, "virtNamespace", virtNamespace, "wlNamespace", wlNamespace)
 
 	if err := rsnamespace.CleanupRSNamespaceResources(ctx, c, nsNamespace, true); err != nil {
 		return fmt.Errorf("namespace right-sizing cleanup: %w", err)
@@ -118,11 +134,13 @@ func CleanupPolicyResourcesForDelegation(
 	if err := rsvirtualization.CleanupRSVirtualizationResources(ctx, c, virtNamespace, true); err != nil {
 		return fmt.Errorf("virtualization right-sizing cleanup: %w", err)
 	}
+	if err := rsworkload.CleanupRSWorkloadResources(ctx, c, wlNamespace, true); err != nil {
+		return fmt.Errorf("workload right-sizing cleanup: %w", err)
+	}
 
-	// Reset component state so next MCO-mode reconcile treats it as fresh enable
-	// and recreates Policy/Placement/PlacementBinding resources.
 	rsnamespace.ComponentState.Enabled = false
 	rsvirtualization.ComponentState.Enabled = false
+	rsworkload.ComponentState.Enabled = false
 
 	log.Info("rs - Policy cleanup for MCOA delegation completed")
 	return nil

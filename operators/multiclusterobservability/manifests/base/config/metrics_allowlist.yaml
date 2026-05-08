@@ -21,6 +21,22 @@ data:
       - acm_rs:cluster:memory_request
       - acm_rs:cluster:memory_usage
       - acm_rs:cluster:memory_recommendation
+      - acm_rs:pod:cpu_request
+      - acm_rs:pod:cpu_limit
+      - acm_rs:pod:cpu_usage
+      - acm_rs:pod:cpu_recommendation
+      - acm_rs:pod:memory_request
+      - acm_rs:pod:memory_limit
+      - acm_rs:pod:memory_usage
+      - acm_rs:pod:memory_recommendation
+      - acm_rs:workload:cpu_request
+      - acm_rs:workload:cpu_limit
+      - acm_rs:workload:cpu_usage
+      - acm_rs:workload:cpu_recommendation
+      - acm_rs:workload:memory_request
+      - acm_rs:workload:memory_limit
+      - acm_rs:workload:memory_usage
+      - acm_rs:workload:memory_recommendation
       - acm_rs_vm:namespace:cpu_request
       - acm_rs_vm:namespace:cpu_usage
       - acm_rs_vm:namespace:cpu_recommendation
