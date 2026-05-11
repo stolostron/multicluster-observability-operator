@@ -44,17 +44,6 @@ func GeneratePrometheusRuleWithMapping(
 		}
 	}
 
-	ruleWithLabels := func(record, expr string) monitoringv1.Rule {
-		return monitoringv1.Rule{
-			Record: record,
-			Expr:   intstr.FromString(expr),
-			Labels: map[string]string{
-				"profile":     "Max OverAll",
-				"aggregation": "1d",
-			},
-		}
-	}
-
 	groups := []monitoringv1.RuleGroup{
 		{
 			Name:     "acm-right-sizing-gpu-namespace-5m.rules",
@@ -69,12 +58,12 @@ func GeneratePrometheusRuleWithMapping(
 		{
 			Name:     "acm-right-sizing-gpu-namespace-1d.rules",
 			Interval: &duration1h,
-			Rules:    buildGPUNamespaceRules1d(configData, ruleWithLabels),
+			Rules:    buildGPUNamespaceRules1d(configData),
 		},
 		{
 			Name:     "acm-right-sizing-gpu-workload-1d.rules",
 			Interval: &duration1h,
-			Rules:    buildGPUWorkloadPodRules1d(configData, ruleWithLabels),
+			Rules:    buildGPUWorkloadPodRules1d(configData),
 		},
 		{
 			Name:     "acm-right-sizing-gpu-cluster-5m.rules",
@@ -84,7 +73,7 @@ func GeneratePrometheusRuleWithMapping(
 		{
 			Name:     "acm-right-sizing-gpu-cluster-1d.rules",
 			Interval: &duration1h,
-			Rules:    buildGPUClusterRules1d(configData, ruleWithLabels),
+			Rules:    buildGPUClusterRules1d(configData),
 		},
 	}
 
@@ -472,73 +461,65 @@ func buildGPUWorkloadPodRules5m(
 	return rules
 }
 
-func buildGPUNamespaceRules1d(
-	configData rsutility.RSNamespaceConfigMapData,
-	ruleWithLabels func(string, string) monitoringv1.Rule,
-) []monitoringv1.Rule {
-	rp := configData.PrometheusRuleConfig.RecommendationPercentage
-	return []monitoringv1.Rule{
-		ruleWithLabels("acm_rs:namespace:gpu_request", `max_over_time(acm_rs:namespace:gpu_request:5m[1d])`),
-		ruleWithLabels("acm_rs:namespace:gpu_usage", `max_over_time(acm_rs:namespace:gpu_usage:5m[1d])`),
-		ruleWithLabels(
-			"acm_rs:namespace:gpu_recommendation",
-			fmt.Sprintf(`max_over_time(acm_rs:namespace:gpu_usage:5m[1d]) * (%d/100)`, rp),
-		),
-		ruleWithLabels("acm_rs:namespace:gpu_memory_used", `max_over_time(acm_rs:namespace:gpu_memory_used:5m[1d])`),
-		ruleWithLabels(
-			"acm_rs:namespace:gpu_memory_recommendation",
-			fmt.Sprintf(`max_over_time(acm_rs:namespace:gpu_memory_used:5m[1d]) * (%d/100)`, rp),
-		),
-		ruleWithLabels("acm_rs:namespace:gpu_memory_total", `max_over_time(acm_rs:namespace:gpu_memory_total:5m[1d])`),
-		ruleWithLabels("acm_rs:namespace:gpu_power_usage_watts", `max_over_time(acm_rs:namespace:gpu_power_usage_watts:5m[1d])`),
-		ruleWithLabels("acm_rs:namespace:gpu_temperature_celsius", `max_over_time(acm_rs:namespace:gpu_temperature_celsius:5m[1d])`),
-		ruleWithLabels("acm_rs:namespace:gpu_sm_clock_hertz", `max_over_time(acm_rs:namespace:gpu_sm_clock_hertz:5m[1d])`),
-		ruleWithLabels("acm_rs:namespace:gpu_memory_clock_hertz", `max_over_time(acm_rs:namespace:gpu_memory_clock_hertz:5m[1d])`),
-		ruleWithLabels("acm_rs:namespace:gpu_type", `max_over_time(acm_rs:namespace:gpu_type:5m[1d])`),
+func buildGPUNamespaceRules1d(configData rsutility.RSNamespaceConfigMapData) []monitoringv1.Rule {
+	rp := rsutility.NormalizeRecommendationPercentage(configData.PrometheusRuleConfig.RecommendationPercentage)
+	const metricsPerProfile = 11
+	rules := make([]monitoringv1.Rule, 0, metricsPerProfile*len(rsutility.RecommendationProfiles))
+	for _, profile := range rsutility.RecommendationProfiles {
+		rules = append(rules,
+			rsutility.RuleWithProfile("acm_rs:namespace:gpu_request", profile.AggExpr("acm_rs:namespace:gpu_request:5m"), profile.Name),
+			rsutility.RuleWithProfile("acm_rs:namespace:gpu_usage", profile.AggExpr("acm_rs:namespace:gpu_usage:5m"), profile.Name),
+			rsutility.RuleWithProfile("acm_rs:namespace:gpu_recommendation",
+				rsutility.BuildProfiledRecommendationExpr("acm_rs:namespace:gpu_usage:5m", rp, profile), profile.Name),
+			rsutility.RuleWithProfile("acm_rs:namespace:gpu_memory_used", profile.AggExpr("acm_rs:namespace:gpu_memory_used:5m"), profile.Name),
+			rsutility.RuleWithProfile("acm_rs:namespace:gpu_memory_recommendation",
+				rsutility.BuildProfiledRecommendationExpr("acm_rs:namespace:gpu_memory_used:5m", rp, profile), profile.Name),
+			rsutility.RuleWithProfile("acm_rs:namespace:gpu_memory_total", profile.AggExpr("acm_rs:namespace:gpu_memory_total:5m"), profile.Name),
+			rsutility.RuleWithProfile("acm_rs:namespace:gpu_power_usage_watts", profile.AggExpr("acm_rs:namespace:gpu_power_usage_watts:5m"), profile.Name),
+			rsutility.RuleWithProfile("acm_rs:namespace:gpu_temperature_celsius", profile.AggExpr("acm_rs:namespace:gpu_temperature_celsius:5m"), profile.Name),
+			rsutility.RuleWithProfile("acm_rs:namespace:gpu_sm_clock_hertz", profile.AggExpr("acm_rs:namespace:gpu_sm_clock_hertz:5m"), profile.Name),
+			rsutility.RuleWithProfile("acm_rs:namespace:gpu_memory_clock_hertz", profile.AggExpr("acm_rs:namespace:gpu_memory_clock_hertz:5m"), profile.Name),
+			rsutility.RuleWithProfile("acm_rs:namespace:gpu_type", profile.AggExpr("acm_rs:namespace:gpu_type:5m"), profile.Name),
+		)
 	}
+	return rules
 }
 
-func buildGPUWorkloadPodRules1d(
-	configData rsutility.RSNamespaceConfigMapData,
-	ruleWithLabels func(string, string) monitoringv1.Rule,
-) []monitoringv1.Rule {
-	rp := configData.PrometheusRuleConfig.RecommendationPercentage
-	return []monitoringv1.Rule{
-		// pod
-		ruleWithLabels("acm_rs:pod:gpu_request", `max_over_time(acm_rs:pod:gpu_request:5m[1d])`),
-		ruleWithLabels("acm_rs:pod:gpu_usage", `max_over_time(acm_rs:pod:gpu_usage:5m[1d])`),
-		ruleWithLabels(
-			"acm_rs:pod:gpu_recommendation",
-			fmt.Sprintf(`max_over_time(acm_rs:pod:gpu_usage:5m[1d]) * (%d/100)`, rp),
-		),
-		ruleWithLabels("acm_rs:pod:gpu_memory_used", `max_over_time(acm_rs:pod:gpu_memory_used:5m[1d])`),
-		ruleWithLabels(
-			"acm_rs:pod:gpu_memory_recommendation",
-			fmt.Sprintf(`max_over_time(acm_rs:pod:gpu_memory_used:5m[1d]) * (%d/100)`, rp),
-		),
-		ruleWithLabels("acm_rs:pod:gpu_memory_total", `max_over_time(acm_rs:pod:gpu_memory_total:5m[1d])`),
-		ruleWithLabels("acm_rs:pod:gpu_power_usage_watts", `max_over_time(acm_rs:pod:gpu_power_usage_watts:5m[1d])`),
-		ruleWithLabels("acm_rs:pod:gpu_temperature_celsius", `max_over_time(acm_rs:pod:gpu_temperature_celsius:5m[1d])`),
-		ruleWithLabels("acm_rs:pod:gpu_sm_clock_hertz", `max_over_time(acm_rs:pod:gpu_sm_clock_hertz:5m[1d])`),
-		ruleWithLabels("acm_rs:pod:gpu_memory_clock_hertz", `max_over_time(acm_rs:pod:gpu_memory_clock_hertz:5m[1d])`),
-		// workload
-		ruleWithLabels("acm_rs:workload:gpu_request", `max_over_time(acm_rs:workload:gpu_request:5m[1d])`),
-		ruleWithLabels("acm_rs:workload:gpu_usage", `max_over_time(acm_rs:workload:gpu_usage:5m[1d])`),
-		ruleWithLabels(
-			"acm_rs:workload:gpu_recommendation",
-			fmt.Sprintf(`max_over_time(acm_rs:workload:gpu_usage:5m[1d]) * (%d/100)`, rp),
-		),
-		ruleWithLabels("acm_rs:workload:gpu_memory_used", `max_over_time(acm_rs:workload:gpu_memory_used:5m[1d])`),
-		ruleWithLabels(
-			"acm_rs:workload:gpu_memory_recommendation",
-			fmt.Sprintf(`max_over_time(acm_rs:workload:gpu_memory_used:5m[1d]) * (%d/100)`, rp),
-		),
-		ruleWithLabels("acm_rs:workload:gpu_memory_total", `max_over_time(acm_rs:workload:gpu_memory_total:5m[1d])`),
-		ruleWithLabels("acm_rs:workload:gpu_power_usage_watts", `max_over_time(acm_rs:workload:gpu_power_usage_watts:5m[1d])`),
-		ruleWithLabels("acm_rs:workload:gpu_temperature_celsius", `max_over_time(acm_rs:workload:gpu_temperature_celsius:5m[1d])`),
-		ruleWithLabels("acm_rs:workload:gpu_sm_clock_hertz", `max_over_time(acm_rs:workload:gpu_sm_clock_hertz:5m[1d])`),
-		ruleWithLabels("acm_rs:workload:gpu_memory_clock_hertz", `max_over_time(acm_rs:workload:gpu_memory_clock_hertz:5m[1d])`),
+func buildGPUWorkloadPodRules1d(configData rsutility.RSNamespaceConfigMapData) []monitoringv1.Rule {
+	rp := rsutility.NormalizeRecommendationPercentage(configData.PrometheusRuleConfig.RecommendationPercentage)
+	const metricsPerProfile = 20 // 10 pod + 10 workload
+	rules := make([]monitoringv1.Rule, 0, metricsPerProfile*len(rsutility.RecommendationProfiles))
+	for _, profile := range rsutility.RecommendationProfiles {
+		rules = append(rules,
+			// pod
+			rsutility.RuleWithProfile("acm_rs:pod:gpu_request", profile.AggExpr("acm_rs:pod:gpu_request:5m"), profile.Name),
+			rsutility.RuleWithProfile("acm_rs:pod:gpu_usage", profile.AggExpr("acm_rs:pod:gpu_usage:5m"), profile.Name),
+			rsutility.RuleWithProfile("acm_rs:pod:gpu_recommendation",
+				rsutility.BuildProfiledRecommendationExpr("acm_rs:pod:gpu_usage:5m", rp, profile), profile.Name),
+			rsutility.RuleWithProfile("acm_rs:pod:gpu_memory_used", profile.AggExpr("acm_rs:pod:gpu_memory_used:5m"), profile.Name),
+			rsutility.RuleWithProfile("acm_rs:pod:gpu_memory_recommendation",
+				rsutility.BuildProfiledRecommendationExpr("acm_rs:pod:gpu_memory_used:5m", rp, profile), profile.Name),
+			rsutility.RuleWithProfile("acm_rs:pod:gpu_memory_total", profile.AggExpr("acm_rs:pod:gpu_memory_total:5m"), profile.Name),
+			rsutility.RuleWithProfile("acm_rs:pod:gpu_power_usage_watts", profile.AggExpr("acm_rs:pod:gpu_power_usage_watts:5m"), profile.Name),
+			rsutility.RuleWithProfile("acm_rs:pod:gpu_temperature_celsius", profile.AggExpr("acm_rs:pod:gpu_temperature_celsius:5m"), profile.Name),
+			rsutility.RuleWithProfile("acm_rs:pod:gpu_sm_clock_hertz", profile.AggExpr("acm_rs:pod:gpu_sm_clock_hertz:5m"), profile.Name),
+			rsutility.RuleWithProfile("acm_rs:pod:gpu_memory_clock_hertz", profile.AggExpr("acm_rs:pod:gpu_memory_clock_hertz:5m"), profile.Name),
+			// workload
+			rsutility.RuleWithProfile("acm_rs:workload:gpu_request", profile.AggExpr("acm_rs:workload:gpu_request:5m"), profile.Name),
+			rsutility.RuleWithProfile("acm_rs:workload:gpu_usage", profile.AggExpr("acm_rs:workload:gpu_usage:5m"), profile.Name),
+			rsutility.RuleWithProfile("acm_rs:workload:gpu_recommendation",
+				rsutility.BuildProfiledRecommendationExpr("acm_rs:workload:gpu_usage:5m", rp, profile), profile.Name),
+			rsutility.RuleWithProfile("acm_rs:workload:gpu_memory_used", profile.AggExpr("acm_rs:workload:gpu_memory_used:5m"), profile.Name),
+			rsutility.RuleWithProfile("acm_rs:workload:gpu_memory_recommendation",
+				rsutility.BuildProfiledRecommendationExpr("acm_rs:workload:gpu_memory_used:5m", rp, profile), profile.Name),
+			rsutility.RuleWithProfile("acm_rs:workload:gpu_memory_total", profile.AggExpr("acm_rs:workload:gpu_memory_total:5m"), profile.Name),
+			rsutility.RuleWithProfile("acm_rs:workload:gpu_power_usage_watts", profile.AggExpr("acm_rs:workload:gpu_power_usage_watts:5m"), profile.Name),
+			rsutility.RuleWithProfile("acm_rs:workload:gpu_temperature_celsius", profile.AggExpr("acm_rs:workload:gpu_temperature_celsius:5m"), profile.Name),
+			rsutility.RuleWithProfile("acm_rs:workload:gpu_sm_clock_hertz", profile.AggExpr("acm_rs:workload:gpu_sm_clock_hertz:5m"), profile.Name),
+			rsutility.RuleWithProfile("acm_rs:workload:gpu_memory_clock_hertz", profile.AggExpr("acm_rs:workload:gpu_memory_clock_hertz:5m"), profile.Name),
+		)
 	}
+	return rules
 }
 
 func buildGPUClusterRules5m(
@@ -605,27 +586,25 @@ func buildGPUClusterRules5m(
 	}
 }
 
-func buildGPUClusterRules1d(
-	configData rsutility.RSNamespaceConfigMapData,
-	ruleWithLabels func(string, string) monitoringv1.Rule,
-) []monitoringv1.Rule {
-	rp := configData.PrometheusRuleConfig.RecommendationPercentage
-	return []monitoringv1.Rule{
-		ruleWithLabels("acm_rs:cluster:gpu_request", `max_over_time(acm_rs:cluster:gpu_request:5m[1d])`),
-		ruleWithLabels("acm_rs:cluster:gpu_usage", `max_over_time(acm_rs:cluster:gpu_usage:5m[1d])`),
-		ruleWithLabels(
-			"acm_rs:cluster:gpu_recommendation",
-			fmt.Sprintf(`max_over_time(acm_rs:cluster:gpu_usage:5m[1d]) * (%d/100)`, rp),
-		),
-		ruleWithLabels("acm_rs:cluster:gpu_memory_used", `max_over_time(acm_rs:cluster:gpu_memory_used:5m[1d])`),
-		ruleWithLabels(
-			"acm_rs:cluster:gpu_memory_recommendation",
-			fmt.Sprintf(`max_over_time(acm_rs:cluster:gpu_memory_used:5m[1d]) * (%d/100)`, rp),
-		),
-		ruleWithLabels("acm_rs:cluster:gpu_memory_total", `max_over_time(acm_rs:cluster:gpu_memory_total:5m[1d])`),
-		ruleWithLabels("acm_rs:cluster:gpu_power_usage_watts", `max_over_time(acm_rs:cluster:gpu_power_usage_watts:5m[1d])`),
-		ruleWithLabels("acm_rs:cluster:gpu_temperature_celsius", `max_over_time(acm_rs:cluster:gpu_temperature_celsius:5m[1d])`),
-		ruleWithLabels("acm_rs:cluster:gpu_sm_clock_hertz", `max_over_time(acm_rs:cluster:gpu_sm_clock_hertz:5m[1d])`),
-		ruleWithLabels("acm_rs:cluster:gpu_memory_clock_hertz", `max_over_time(acm_rs:cluster:gpu_memory_clock_hertz:5m[1d])`),
+func buildGPUClusterRules1d(configData rsutility.RSNamespaceConfigMapData) []monitoringv1.Rule {
+	rp := rsutility.NormalizeRecommendationPercentage(configData.PrometheusRuleConfig.RecommendationPercentage)
+	const metricsPerProfile = 10
+	rules := make([]monitoringv1.Rule, 0, metricsPerProfile*len(rsutility.RecommendationProfiles))
+	for _, profile := range rsutility.RecommendationProfiles {
+		rules = append(rules,
+			rsutility.RuleWithProfile("acm_rs:cluster:gpu_request", profile.AggExpr("acm_rs:cluster:gpu_request:5m"), profile.Name),
+			rsutility.RuleWithProfile("acm_rs:cluster:gpu_usage", profile.AggExpr("acm_rs:cluster:gpu_usage:5m"), profile.Name),
+			rsutility.RuleWithProfile("acm_rs:cluster:gpu_recommendation",
+				rsutility.BuildProfiledRecommendationExpr("acm_rs:cluster:gpu_usage:5m", rp, profile), profile.Name),
+			rsutility.RuleWithProfile("acm_rs:cluster:gpu_memory_used", profile.AggExpr("acm_rs:cluster:gpu_memory_used:5m"), profile.Name),
+			rsutility.RuleWithProfile("acm_rs:cluster:gpu_memory_recommendation",
+				rsutility.BuildProfiledRecommendationExpr("acm_rs:cluster:gpu_memory_used:5m", rp, profile), profile.Name),
+			rsutility.RuleWithProfile("acm_rs:cluster:gpu_memory_total", profile.AggExpr("acm_rs:cluster:gpu_memory_total:5m"), profile.Name),
+			rsutility.RuleWithProfile("acm_rs:cluster:gpu_power_usage_watts", profile.AggExpr("acm_rs:cluster:gpu_power_usage_watts:5m"), profile.Name),
+			rsutility.RuleWithProfile("acm_rs:cluster:gpu_temperature_celsius", profile.AggExpr("acm_rs:cluster:gpu_temperature_celsius:5m"), profile.Name),
+			rsutility.RuleWithProfile("acm_rs:cluster:gpu_sm_clock_hertz", profile.AggExpr("acm_rs:cluster:gpu_sm_clock_hertz:5m"), profile.Name),
+			rsutility.RuleWithProfile("acm_rs:cluster:gpu_memory_clock_hertz", profile.AggExpr("acm_rs:cluster:gpu_memory_clock_hertz:5m"), profile.Name),
+		)
 	}
+	return rules
 }
