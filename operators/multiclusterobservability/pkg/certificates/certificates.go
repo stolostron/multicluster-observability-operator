@@ -486,7 +486,7 @@ func getHosts(c client.Client, ingressCtlCrdExists bool) ([]string, error) {
 			return nil, err
 		}
 		// Sometimes these two are the same, so we avoid the duplication.
-		if customHost == "" || url != customHost {
+		if url != "" && (customHost == "" || url != customHost) {
 			hosts = append(hosts, url)
 		}
 	}

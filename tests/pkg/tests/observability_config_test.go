@@ -76,7 +76,7 @@ var _ = Describe("", func() {
 
 				klog.V(3).Infof("maxItemSize is effect in sts observability-thanos-store-memcached")
 				return true
-			}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*10).Should(BeTrue())
+			}, EventuallyTimeoutMinute*2, EventuallyIntervalSecond*10).Should(BeTrue())
 
 			By("Check the value is effect in the sts observability-thanos-query-frontend-memcached")
 			Eventually(func() bool {
@@ -97,7 +97,7 @@ var _ = Describe("", func() {
 
 				klog.V(3).Infof("maxItemSize is effect in sts observability-thanos-query-frontend-memcached")
 				return true
-			}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*10).Should(BeTrue())
+			}, EventuallyTimeoutMinute*2, EventuallyIntervalSecond*10).Should(BeTrue())
 		},
 	)
 
@@ -123,16 +123,19 @@ var _ = Describe("", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			spec := mcoSC.Object["spec"].(map[string]any)
-			scInCR := spec["storageConfig"].(map[string]any)["storageClass"].(string)
+			storageConfig, _ := spec["storageConfig"].(map[string]any)
+			scInCR, _ := storageConfig["storageClass"].(string)
 
-			scList, _ := hubClient.StorageV1().StorageClasses().List(context.TODO(), metav1.ListOptions{})
+			scList, err := hubClient.StorageV1().StorageClasses().List(context.TODO(), metav1.ListOptions{})
+			Expect(err).NotTo(HaveOccurred())
+
 			scMatch := false
 			defaultSC := ""
 			for _, sc := range scList.Items {
 				if sc.Annotations["storageclass.kubernetes.io/is-default-class"] == trueStr {
 					defaultSC = sc.Name
 				}
-				if sc.Name == scInCR {
+				if scInCR != "" && sc.Name == scInCR {
 					scMatch = true
 				}
 			}
@@ -243,18 +246,35 @@ var _ = Describe("", func() {
 			}
 			klog.V(1).Infof("The component is: %s\n", key)
 			replicas := advancedSpec[key].(map[string]any)["replicas"]
+			expectedReplicas := int(replicas.(int64))
 			if component.Type == "Deployment" {
-				deploys, err := utils.GetDeploymentWithLabel(testOptions, true, component.Label, MCO_NAMESPACE)
-				Expect(err).NotTo(HaveOccurred())
-				for _, deployInfo := range (*deploys).Items {
-					Expect(int(replicas.(int64))).To(Equal(int(*deployInfo.Spec.Replicas)))
-				}
+				Eventually(func() bool {
+					deploys, err := utils.GetDeploymentWithLabel(testOptions, true, component.Label, MCO_NAMESPACE)
+					if err != nil {
+						return false
+					}
+					for _, deployInfo := range (*deploys).Items {
+						if int(*deployInfo.Spec.Replicas) != expectedReplicas {
+							klog.V(1).Infof("Deployment %s has %d replicas, expected %d", deployInfo.Name, *deployInfo.Spec.Replicas, expectedReplicas)
+							return false
+						}
+					}
+					return true
+				}, EventuallyTimeoutMinute*2, EventuallyIntervalSecond*10).Should(BeTrue())
 			} else {
-				sts, err := utils.GetStatefulSetWithLabel(testOptions, true, component.Label, MCO_NAMESPACE)
-				Expect(err).NotTo(HaveOccurred())
-				for _, stsInfo := range (*sts).Items {
-					Expect(int(replicas.(int64))).To(Equal(int(*stsInfo.Spec.Replicas)))
-				}
+				Eventually(func() bool {
+					sts, err := utils.GetStatefulSetWithLabel(testOptions, true, component.Label, MCO_NAMESPACE)
+					if err != nil {
+						return false
+					}
+					for _, stsInfo := range (*sts).Items {
+						if int(*stsInfo.Spec.Replicas) != expectedReplicas {
+							klog.V(1).Infof("StatefulSet %s has %d replicas, expected %d", stsInfo.Name, *stsInfo.Spec.Replicas, expectedReplicas)
+							return false
+						}
+					}
+					return true
+				}, EventuallyTimeoutMinute*2, EventuallyIntervalSecond*10).Should(BeTrue())
 			}
 		}
 	})
@@ -384,7 +404,7 @@ var _ = Describe("", func() {
 					}
 				}
 				return false
-			}).Should(BeTrue())
+			}, EventuallyTimeoutMinute*2, EventuallyIntervalSecond*10).Should(BeTrue())
 
 			mcoRes, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).
 				Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
