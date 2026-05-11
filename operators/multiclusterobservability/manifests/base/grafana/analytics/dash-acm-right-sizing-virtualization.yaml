@@ -2695,8 +2695,8 @@ data:
           },
           {
             "current": {
-              "text": "Max OverAll",
-              "value": "Max OverAll"
+              "text": "P95",
+              "value": "P95"
             },
             "datasource": {
               "type": "prometheus",
