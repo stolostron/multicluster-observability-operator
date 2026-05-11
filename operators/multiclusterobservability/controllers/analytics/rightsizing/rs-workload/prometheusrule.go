@@ -45,17 +45,6 @@ func GeneratePrometheusRuleWithFeatures(
 		}
 	}
 
-	ruleWithLabels := func(record, expr string) monitoringv1.Rule {
-		return monitoringv1.Rule{
-			Record: record,
-			Expr:   intstr.FromString(expr),
-			Labels: map[string]string{
-				"profile":     "Max OverAll",
-				"aggregation": "1d",
-			},
-		}
-	}
-
 	groups := []monitoringv1.RuleGroup{
 		{
 			Name:     "acm-right-sizing-workload-5m.rules",
@@ -65,7 +54,7 @@ func GeneratePrometheusRuleWithFeatures(
 		{
 			Name:     "acm-right-sizing-workload-1d.rules",
 			Interval: &duration1d,
-			Rules:    buildWorkloadRules1d(configData, ruleWithLabels, workloadsEnabled, podsEnabled),
+			Rules:    buildWorkloadRules1d(configData, workloadsEnabled, podsEnabled),
 		},
 	}
 
@@ -342,49 +331,50 @@ func buildWorkloadRules5m(
 
 func buildWorkloadRules1d(
 	configData rsutility.RSNamespaceConfigMapData,
-	ruleWithLabels func(string, string) monitoringv1.Rule,
 	workloadsEnabled bool,
 	podsEnabled bool,
 ) []monitoringv1.Rule {
-	rp := configData.PrometheusRuleConfig.RecommendationPercentage
-	rules := []monitoringv1.Rule{}
-
+	rp := rsutility.NormalizeRecommendationPercentage(configData.PrometheusRuleConfig.RecommendationPercentage)
+	const podMetrics, workloadMetrics = 8, 8
+	capacity := 0
 	if podsEnabled {
-		rules = append(rules,
-			ruleWithLabels("acm_rs:pod:cpu_request", `max_over_time(acm_rs:pod:cpu_request:5m[1d])`),
-			ruleWithLabels("acm_rs:pod:cpu_limit", `max_over_time(acm_rs:pod:cpu_limit:5m[1d])`),
-			ruleWithLabels("acm_rs:pod:cpu_usage", `max_over_time(acm_rs:pod:cpu_usage:5m[1d])`),
-			ruleWithLabels(
-				"acm_rs:pod:cpu_recommendation",
-				fmt.Sprintf(`max_over_time(acm_rs:pod:cpu_usage:5m[1d]) * (%d/100)`, rp),
-			),
-			ruleWithLabels("acm_rs:pod:memory_request", `max_over_time(acm_rs:pod:memory_request:5m[1d])`),
-			ruleWithLabels("acm_rs:pod:memory_limit", `max_over_time(acm_rs:pod:memory_limit:5m[1d])`),
-			ruleWithLabels("acm_rs:pod:memory_usage", `max_over_time(acm_rs:pod:memory_usage:5m[1d])`),
-			ruleWithLabels(
-				"acm_rs:pod:memory_recommendation",
-				fmt.Sprintf(`max_over_time(acm_rs:pod:memory_usage:5m[1d]) * (%d/100)`, rp),
-			),
-		)
+		capacity += podMetrics
 	}
-
 	if workloadsEnabled {
-		rules = append(rules,
-			ruleWithLabels("acm_rs:workload:cpu_request", `max_over_time(acm_rs:workload:cpu_request:5m[1d])`),
-			ruleWithLabels("acm_rs:workload:cpu_limit", `max_over_time(acm_rs:workload:cpu_limit:5m[1d])`),
-			ruleWithLabels("acm_rs:workload:cpu_usage", `max_over_time(acm_rs:workload:cpu_usage:5m[1d])`),
-			ruleWithLabels(
-				"acm_rs:workload:cpu_recommendation",
-				fmt.Sprintf(`max_over_time(acm_rs:workload:cpu_usage:5m[1d]) * (%d/100)`, rp),
-			),
-			ruleWithLabels("acm_rs:workload:memory_request", `max_over_time(acm_rs:workload:memory_request:5m[1d])`),
-			ruleWithLabels("acm_rs:workload:memory_limit", `max_over_time(acm_rs:workload:memory_limit:5m[1d])`),
-			ruleWithLabels("acm_rs:workload:memory_usage", `max_over_time(acm_rs:workload:memory_usage:5m[1d])`),
-			ruleWithLabels(
-				"acm_rs:workload:memory_recommendation",
-				fmt.Sprintf(`max_over_time(acm_rs:workload:memory_usage:5m[1d]) * (%d/100)`, rp),
-			),
-		)
+		capacity += workloadMetrics
+	}
+	rules := make([]monitoringv1.Rule, 0, capacity*len(rsutility.RecommendationProfiles))
+
+	for _, profile := range rsutility.RecommendationProfiles {
+		if podsEnabled {
+			rules = append(rules,
+				rsutility.RuleWithProfile("acm_rs:pod:cpu_request", profile.AggExpr("acm_rs:pod:cpu_request:5m"), profile.Name),
+				rsutility.RuleWithProfile("acm_rs:pod:cpu_limit", profile.AggExpr("acm_rs:pod:cpu_limit:5m"), profile.Name),
+				rsutility.RuleWithProfile("acm_rs:pod:cpu_usage", profile.AggExpr("acm_rs:pod:cpu_usage:5m"), profile.Name),
+				rsutility.RuleWithProfile("acm_rs:pod:cpu_recommendation",
+					rsutility.BuildProfiledRecommendationExpr("acm_rs:pod:cpu_usage:5m", rp, profile), profile.Name),
+				rsutility.RuleWithProfile("acm_rs:pod:memory_request", profile.AggExpr("acm_rs:pod:memory_request:5m"), profile.Name),
+				rsutility.RuleWithProfile("acm_rs:pod:memory_limit", profile.AggExpr("acm_rs:pod:memory_limit:5m"), profile.Name),
+				rsutility.RuleWithProfile("acm_rs:pod:memory_usage", profile.AggExpr("acm_rs:pod:memory_usage:5m"), profile.Name),
+				rsutility.RuleWithProfile("acm_rs:pod:memory_recommendation",
+					rsutility.BuildProfiledRecommendationExpr("acm_rs:pod:memory_usage:5m", rp, profile), profile.Name),
+			)
+		}
+
+		if workloadsEnabled {
+			rules = append(rules,
+				rsutility.RuleWithProfile("acm_rs:workload:cpu_request", profile.AggExpr("acm_rs:workload:cpu_request:5m"), profile.Name),
+				rsutility.RuleWithProfile("acm_rs:workload:cpu_limit", profile.AggExpr("acm_rs:workload:cpu_limit:5m"), profile.Name),
+				rsutility.RuleWithProfile("acm_rs:workload:cpu_usage", profile.AggExpr("acm_rs:workload:cpu_usage:5m"), profile.Name),
+				rsutility.RuleWithProfile("acm_rs:workload:cpu_recommendation",
+					rsutility.BuildProfiledRecommendationExpr("acm_rs:workload:cpu_usage:5m", rp, profile), profile.Name),
+				rsutility.RuleWithProfile("acm_rs:workload:memory_request", profile.AggExpr("acm_rs:workload:memory_request:5m"), profile.Name),
+				rsutility.RuleWithProfile("acm_rs:workload:memory_limit", profile.AggExpr("acm_rs:workload:memory_limit:5m"), profile.Name),
+				rsutility.RuleWithProfile("acm_rs:workload:memory_usage", profile.AggExpr("acm_rs:workload:memory_usage:5m"), profile.Name),
+				rsutility.RuleWithProfile("acm_rs:workload:memory_recommendation",
+					rsutility.BuildProfiledRecommendationExpr("acm_rs:workload:memory_usage:5m", rp, profile), profile.Name),
+			)
+		}
 	}
 
 	return rules

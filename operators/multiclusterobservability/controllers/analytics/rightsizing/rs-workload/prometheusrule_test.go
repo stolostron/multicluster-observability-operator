@@ -62,7 +62,9 @@ func TestGeneratePrometheusRule_IncludesLimitRules(t *testing.T) {
 	}
 	recordNames1d := make(map[string]string)
 	for _, r := range rule.Spec.Groups[1].Rules {
-		recordNames1d[r.Record] = r.Expr.String()
+		if _, exists := recordNames1d[r.Record]; !exists {
+			recordNames1d[r.Record] = r.Expr.String()
+		}
 	}
 
 	for _, name := range []string{
@@ -88,6 +90,78 @@ func TestGeneratePrometheusRule_IncludesLimitRules(t *testing.T) {
 	}
 }
 
+func TestGeneratePrometheusRule_AllProfilesGenerated(t *testing.T) {
+	config := rsutility.RSNamespaceConfigMapData{
+		PrometheusRuleConfig: rsutility.RSPrometheusRuleConfig{
+			NamespaceFilterCriteria: struct {
+				InclusionCriteria []string "yaml:\"inclusionCriteria\""
+				ExclusionCriteria []string "yaml:\"exclusionCriteria\""
+			}{
+				ExclusionCriteria: []string{"openshift.*"},
+			},
+			RecommendationPercentage: 110,
+		},
+	}
+
+	rule, err := GeneratePrometheusRuleWithFeatures(config, true, true)
+	assert.NoError(t, err)
+
+	rules1d := rule.Spec.Groups[1]
+	assert.Equal(t, "acm-right-sizing-workload-1d.rules", rules1d.Name)
+	// 8 pod metrics + 8 workload metrics = 16 per profile × 4 profiles = 64
+	assert.Len(t, rules1d.Rules, 16*len(rsutility.RecommendationProfiles))
+
+	profileSeen := map[string]bool{}
+	for _, r := range rules1d.Rules {
+		profileSeen[r.Labels["profile"]] = true
+	}
+	for _, p := range rsutility.RecommendationProfiles {
+		assert.True(t, profileSeen[p.Name], "missing profile %s in workload 1d rules", p.Name)
+	}
+
+	for _, r := range rules1d.Rules {
+		if r.Record != "acm_rs:workload:cpu_recommendation" {
+			continue
+		}
+		switch r.Labels["profile"] {
+		case "Max OverAll":
+			assert.Contains(t, r.Expr.String(), "max_over_time(")
+		case "P99":
+			assert.Contains(t, r.Expr.String(), "quantile_over_time(0.99,")
+		case "P95":
+			assert.Contains(t, r.Expr.String(), "quantile_over_time(0.95,")
+		case "Avg":
+			assert.Contains(t, r.Expr.String(), "avg_over_time(")
+		}
+		assert.Contains(t, r.Expr.String(), "(110/100)")
+	}
+}
+
+func TestGeneratePrometheusRule_RPZeroNormalized(t *testing.T) {
+	config := rsutility.RSNamespaceConfigMapData{
+		PrometheusRuleConfig: rsutility.RSPrometheusRuleConfig{
+			NamespaceFilterCriteria: struct {
+				InclusionCriteria []string "yaml:\"inclusionCriteria\""
+				ExclusionCriteria []string "yaml:\"exclusionCriteria\""
+			}{
+				ExclusionCriteria: []string{"openshift.*"},
+			},
+			RecommendationPercentage: 0,
+		},
+	}
+
+	rule, err := GeneratePrometheusRuleWithFeatures(config, true, true)
+	assert.NoError(t, err)
+
+	for _, r := range rule.Spec.Groups[1].Rules {
+		if r.Record == "acm_rs:workload:cpu_recommendation" {
+			assert.Contains(t, r.Expr.String(), "(110/100)")
+			return
+		}
+	}
+	t.Fatal("workload cpu_recommendation rule not found")
+}
+
 func TestGeneratePrometheusRule_PodsOnlyIncludesLimitRules(t *testing.T) {
 	config := rsutility.RSNamespaceConfigMapData{
 		PrometheusRuleConfig: rsutility.RSPrometheusRuleConfig{
@@ -108,7 +182,7 @@ func TestGeneratePrometheusRule_PodsOnlyIncludesLimitRules(t *testing.T) {
 	for _, r := range rule.Spec.Groups[0].Rules {
 		recordNames5m[r.Record] = true
 	}
-	recordNames1d := make(map[string]bool)
+	recordNames1d := map[string]bool{}
 	for _, r := range rule.Spec.Groups[1].Rules {
 		recordNames1d[r.Record] = true
 	}
