@@ -85,6 +85,7 @@ func hashObservatoriumCRConfig(cl client.Client) (string, error) {
 
 // GenerateObservatoriumCR returns Observatorium cr defined in MultiClusterObservability
 func GenerateObservatoriumCR(
+	ctx context.Context,
 	cl client.Client, scheme *runtime.Scheme,
 	mco *mcov1beta2.MultiClusterObservability,
 ) (*ctrl.Result, error) {
@@ -98,17 +99,16 @@ func GenerateObservatoriumCR(
 		obsCRConfigHashLabelName: hash,
 	}
 
-	storageClassSelected, err := getStorageClass(mco, cl)
-	if err != nil {
-		return &ctrl.Result{}, fmt.Errorf("failed to get the storage class: %w", err)
-	}
-
 	// fetch TLS secret mount path from the object store secret
 	tlsSecretMountPath, err := getTLSSecretMountPath(cl, mco.Spec.StorageConfig.MetricObjectStorage)
 	if err != nil {
 		return &ctrl.Result{}, fmt.Errorf("failed to get the tls secret mount path: %w", err)
 	}
 
+	storageClassSelected, err := getStorageClass(ctx, mco, cl)
+	if err != nil {
+		return &ctrl.Result{}, fmt.Errorf("failed to get the storage class: %w", err)
+	}
 	log.Info("storageClassSelected", "storageClassSelected", storageClassSelected)
 
 	obsSpec, err := newDefaultObservatoriumSpec(cl, mco, storageClassSelected, tlsSecretMountPath)

@@ -5,6 +5,7 @@
 package multiclusterobservability
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -35,6 +36,7 @@ import (
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	storev1 "k8s.io/api/storage/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -361,6 +363,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	addonv1alpha1.AddToScheme(s)
 	migrationv1alpha1.SchemeBuilder.AddToScheme(s)
 	operatorv1.AddToScheme(s)
+	storev1.AddToScheme(s)
 
 	svc := createObservatoriumAPIService(name, namespace)
 	serverCACerts := newTestCert(config.ServerCACerts, namespace)
@@ -384,11 +387,12 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 		},
 	}
 	alertManagerRoute := newAlertManagerRoute()
+	gp2StorageClass := newStorageClass("gp2", true)
 
 	objs := []runtime.Object{
 		mco, svc, serverCACerts, clientCACerts, proxyRouteBYOCACerts, grafanaCert, serverCert,
 		testAmRouteBYOCaSecret, testAmRouteBYOCertSecret, proxyRouteBYOCert, clustermgmtAddon, extensionApiserverAuthenticationCM,
-		alertManagerRoute,
+		alertManagerRoute, gp2StorageClass,
 	}
 	// Create a fake client to mock API calls.
 	cl := fake.NewClientBuilder().
@@ -401,7 +405,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 		).
 		Build()
 
-		// Create fake imagestream client
+	// Create fake imagestream client
 	imageClient := &fakeimagev1client.FakeImageV1{Fake: &(fakeimageclient.NewSimpleClientset().Fake)}
 	_, err := imageClient.ImageStreams(config.OauthProxyImageStreamNamespace).Create(t.Context(),
 		&imagev1.ImageStream{
@@ -847,6 +851,7 @@ func TestImageReplaceForMCO(t *testing.T) {
 	addonv1alpha1.AddToScheme(s)
 	migrationv1alpha1.SchemeBuilder.AddToScheme(s)
 	operatorv1.AddToScheme(s)
+	storev1.AddToScheme(s)
 
 	observatoriumAPIsvc := createObservatoriumAPIService(name, namespace)
 	serverCACerts := newTestCert(config.ServerCACerts, namespace)
@@ -871,11 +876,12 @@ func TestImageReplaceForMCO(t *testing.T) {
 	}
 
 	alertManagerRoute := newAlertManagerRoute()
+	gp2StorageClass := newStorageClass("gp2", true)
 
 	objs := []runtime.Object{
 		mco, observatoriumAPIsvc, serverCACerts, clientCACerts, grafanaCert, serverCert,
 		testMCHInstance, imageManifestsCM, testAmRouteBYOCaSecret, testAmRouteBYOCertSecret, clustermgmtAddon, extensionApiserverAuthenticationCM,
-		alertManagerRoute,
+		alertManagerRoute, gp2StorageClass,
 	}
 	// Create a fake client to mock API calls.
 	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
@@ -1130,9 +1136,14 @@ func TestHandleStorageSizeChange(t *testing.T) {
 		createPersistentVolumeClaim(mco.Name, config.GetDefaultNamespace(), "test"),
 	}
 	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
-	r := &MultiClusterObservabilityReconciler{Client: c, Scheme: s}
-	isAlertmanagerStorageSizeChanged = true
-	r.HandleStorageSizeChange(mco)
+	r := &MultiClusterObservabilityReconciler{
+		Client: c,
+		Scheme: s,
+		LastStorageConfig: &mcov1beta2.StorageConfig{
+			AlertmanagerStorageSize: "1Gi",
+		},
+	}
+	r.HandleStorageSizeChange(context.TODO(), mco)
 
 	pvc := &corev1.PersistentVolumeClaim{}
 	err := c.Get(t.Context(), types.NamespacedName{
@@ -1147,6 +1158,170 @@ func TestHandleStorageSizeChange(t *testing.T) {
 	} else {
 		t.Errorf("update pvc failed: %v", err)
 	}
+}
+
+func TestGetStorageClass(t *testing.T) {
+	s := scheme.Scheme
+	mcov1beta2.SchemeBuilder.AddToScheme(s)
+	storev1.SchemeBuilder.AddToScheme(s)
+
+	tests := []struct {
+		name           string
+		mcoSC          string
+		storageClasses []runtime.Object
+		expectedSC     string
+	}{
+		{
+			name:  "configured SC exists on cluster",
+			mcoSC: "fast-storage",
+			storageClasses: []runtime.Object{
+				&storev1.StorageClass{
+					ObjectMeta: metav1.ObjectMeta{Name: "fast-storage"},
+				},
+				&storev1.StorageClass{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:        "standard",
+						Annotations: map[string]string{"storageclass.kubernetes.io/is-default-class": "true"},
+					},
+				},
+			},
+			expectedSC: "fast-storage",
+		},
+		{
+			name:  "configured SC does not exist, falls back to cluster default",
+			mcoSC: "gp2",
+			storageClasses: []runtime.Object{
+				&storev1.StorageClass{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:        "standard",
+						Annotations: map[string]string{"storageclass.kubernetes.io/is-default-class": "true"},
+					},
+				},
+			},
+			expectedSC: "standard",
+		},
+		{
+			name:           "empty SC and no cluster default",
+			mcoSC:          "",
+			storageClasses: []runtime.Object{},
+			expectedSC:     "",
+		},
+		{
+			name:  "empty SC resolves to cluster default",
+			mcoSC: "",
+			storageClasses: []runtime.Object{
+				&storev1.StorageClass{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:        "gp3",
+						Annotations: map[string]string{"storageclass.kubernetes.io/is-default-class": "true"},
+					},
+				},
+			},
+			expectedSC: "gp3",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mco := &mcov1beta2.MultiClusterObservability{
+				Spec: mcov1beta2.MultiClusterObservabilitySpec{
+					StorageConfig: &mcov1beta2.StorageConfig{
+						StorageClass: tt.mcoSC,
+					},
+				},
+			}
+			objs := append([]runtime.Object{mco}, tt.storageClasses...)
+			c := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
+			got, err := getStorageClass(context.TODO(), mco, c)
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expectedSC, got)
+		})
+	}
+}
+
+func TestHandleStorageClassChange(t *testing.T) {
+	s := scheme.Scheme
+	mcov1beta2.SchemeBuilder.AddToScheme(s)
+
+	mco := &mcov1beta2.MultiClusterObservability{
+		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterObservability"},
+		ObjectMeta: metav1.ObjectMeta{Name: "test"},
+		Spec: mcov1beta2.MultiClusterObservabilitySpec{
+			StorageConfig: &mcov1beta2.StorageConfig{
+				MetricObjectStorage: &mcoshared.PreConfiguredStorage{
+					Key:  "test",
+					Name: "test",
+				},
+				StorageClass:            "gp3",
+				AlertmanagerStorageSize: "1Gi",
+			},
+		},
+	}
+
+	receiveSts := &appsv1.StatefulSet{
+		TypeMeta: metav1.TypeMeta{APIVersion: "apps/v1", Kind: "StatefulSet"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "thanos-receive-default",
+			Namespace: config.GetDefaultNamespace(),
+			Labels: map[string]string{
+				"app.kubernetes.io/instance": mco.GetName(),
+				"app.kubernetes.io/name":     "thanos-receive",
+			},
+		},
+	}
+
+	storageName := "gp2"
+	receivePVC := &corev1.PersistentVolumeClaim{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "data-thanos-receive-default-0",
+			Namespace: config.GetDefaultNamespace(),
+			Labels: map[string]string{
+				"app.kubernetes.io/instance": mco.GetName(),
+				"app.kubernetes.io/name":     "thanos-receive",
+			},
+		},
+		Spec: corev1.PersistentVolumeClaimSpec{
+			AccessModes:      []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
+			StorageClassName: &storageName,
+			Resources: corev1.VolumeResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceStorage: resource.MustParse("1Gi"),
+				},
+			},
+		},
+	}
+
+	objs := []runtime.Object{mco, receiveSts, receivePVC}
+	c := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
+	r := &MultiClusterObservabilityReconciler{
+		Client: c,
+		Scheme: s,
+		LastStorageConfig: &mcov1beta2.StorageConfig{
+			StorageClass:            "gp2",
+			AlertmanagerStorageSize: "1Gi",
+		},
+	}
+
+	// HandleStorageSizeChange detects storage class changed from gp2 -> gp3
+	result, err := r.HandleStorageSizeChange(context.TODO(), mco)
+	assert.NoError(t, err)
+	assert.Nil(t, result)
+
+	// Verify the StatefulSet was deleted
+	sts := &appsv1.StatefulSet{}
+	err = c.Get(context.TODO(), types.NamespacedName{
+		Name:      "thanos-receive-default",
+		Namespace: config.GetDefaultNamespace(),
+	}, sts)
+	assert.True(t, errors.IsNotFound(err), "StatefulSet should have been deleted")
+
+	// Verify the PVC was deleted
+	pvc := &corev1.PersistentVolumeClaim{}
+	err = c.Get(context.TODO(), types.NamespacedName{
+		Name:      "data-thanos-receive-default-0",
+		Namespace: config.GetDefaultNamespace(),
+	}, pvc)
+	assert.True(t, errors.IsNotFound(err), "PVC should have been deleted")
 }
 
 func createStatefulSet(name, namespace, statefulSetName string) *appsv1.StatefulSet {
@@ -1203,6 +1378,21 @@ func newMultiClusterObservability() *mcov1beta2.MultiClusterObservability {
 			},
 		},
 	}
+}
+
+func newStorageClass(name string, isDefault bool) *storev1.StorageClass {
+	sc := &storev1.StorageClass{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+		},
+		Provisioner: "kubernetes.io/no-provisioner",
+	}
+	if isDefault {
+		sc.Annotations = map[string]string{
+			"storageclass.kubernetes.io/is-default-class": "true",
+		}
+	}
+	return sc
 }
 
 func createNamespaceInstance(name string) *corev1.Namespace {

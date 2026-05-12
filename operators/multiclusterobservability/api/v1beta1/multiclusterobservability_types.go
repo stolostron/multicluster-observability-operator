@@ -109,7 +109,6 @@ type StorageConfigObject struct {
 	// StorageClass used by Observability StatefulSets (Thanos store, ruler, compactor, receiver)
 	// and, when no object storage is configured, the object storage PVC.
 	// +optional
-	// +kubebuilder:default:=gp2
 	StatefulSetStorageClass string `json:"statefulSetStorageClass,omitempty"`
 }
 

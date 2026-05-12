@@ -251,7 +251,6 @@ spec:
                       Thanos store, Rule, compact and receiver.
                     type: string
                   statefulSetStorageClass:
-                    default: gp2
                     description: |-
                       StorageClass used by Observability StatefulSets (Thanos store, ruler, compactor, receiver)
                       and, when no object storage is configured, the object storage PVC.
@@ -11073,7 +11072,6 @@ spec:
                       sets,
                     type: string
                   storageClass:
-                    default: gp2
                     description: |-
                       Specify the storageClass Stateful Sets. This storage class will also
                       be used for Object Storage if MetricObjectStorage was configured for
