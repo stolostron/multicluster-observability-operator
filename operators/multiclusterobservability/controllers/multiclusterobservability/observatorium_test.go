@@ -272,7 +272,7 @@ func TestUpdateObservatoriumCR(t *testing.T) {
 	noConfigCl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(mco).Build()
 	mcoconfig.SetOperandNames(noConfigCl)
 
-	_, err := GenerateObservatoriumCR(noConfigCl, s, mco)
+	_, err := GenerateObservatoriumCR(context.TODO(), noConfigCl, s, mco)
 	if err != nil {
 		t.Errorf("Failed to create observatorium due to %v", err)
 	}
@@ -296,7 +296,7 @@ func TestUpdateObservatoriumCR(t *testing.T) {
 	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(append(objs, createdObservatoriumCR)...).Build()
 	mcoconfig.SetOperandNames(cl)
 
-	_, err = GenerateObservatoriumCR(cl, s, mco)
+	_, err = GenerateObservatoriumCR(context.TODO(), cl, s, mco)
 	if err != nil {
 		t.Errorf("Failed to update observatorium due to %v", err)
 	}
@@ -363,7 +363,7 @@ func TestTShirtSizeUpdateObservatoriumCR(t *testing.T) {
 	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(mco).Build()
 	mcoconfig.SetOperandNames(cl)
 
-	_, err := GenerateObservatoriumCR(cl, s, mco)
+	_, err := GenerateObservatoriumCR(context.TODO(), cl, s, mco)
 	if err != nil {
 		t.Errorf("Failed to create observatorium due to %v", err)
 	}
@@ -382,7 +382,7 @@ func TestTShirtSizeUpdateObservatoriumCR(t *testing.T) {
 	}
 
 	mco.Spec.InstanceSize = mcoconfig.TwoXLarge
-	_, err = GenerateObservatoriumCR(cl, s, mco)
+	_, err = GenerateObservatoriumCR(context.TODO(), cl, s, mco)
 	if err != nil {
 		t.Errorf("Failed to update observatorium due to %v", err)
 	}
@@ -474,7 +474,7 @@ func TestNoUpdateObservatoriumCR(t *testing.T) {
 	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
 	mcoconfig.SetOperandNames(cl)
 
-	_, err := GenerateObservatoriumCR(cl, s, mco)
+	_, err := GenerateObservatoriumCR(context.TODO(), cl, s, mco)
 	if err != nil {
 		t.Errorf("Failed to create observatorium due to %v", err)
 	}
@@ -507,7 +507,7 @@ func TestNoUpdateObservatoriumCR(t *testing.T) {
 		t.Errorf("%v should be equal to %v", string(oldSpecBytes), string(newSpecBytes))
 	}
 
-	_, err = GenerateObservatoriumCR(cl, s, mco)
+	_, err = GenerateObservatoriumCR(context.TODO(), cl, s, mco)
 	if err != nil {
 		t.Errorf("Failed to update observatorium due to %v", err)
 	}
