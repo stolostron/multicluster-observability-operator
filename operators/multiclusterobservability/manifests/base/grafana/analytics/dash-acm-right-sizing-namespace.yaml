@@ -953,9 +953,10 @@ data:
               }
             },
             {
-              "id": "seriesToColumns",
+              "id": "joinByField",
               "options": {
-                "byField": "namespace"
+                "byField": "namespace",
+                "mode": "outer"
               }
             },
             {
@@ -1879,9 +1880,10 @@ data:
               }
             },
             {
-              "id": "seriesToColumns",
+              "id": "joinByField",
               "options": {
-                "byField": "namespace"
+                "byField": "namespace",
+                "mode": "outer"
               }
             },
             {

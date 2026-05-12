@@ -52,7 +52,8 @@ data:
             "fieldConfig": {
               "defaults": {
                 "color": {
-                  "mode": "thresholds"
+                  "fixedColor": "#0066cc",
+                  "mode": "fixed"
                 },
                 "mappings": [
                   {
@@ -71,7 +72,7 @@ data:
                   "mode": "absolute",
                   "steps": [
                     {
-                      "color": "green",
+                      "color": "#0066cc",
                       "value": 0
                     }
                   ]
@@ -245,7 +246,7 @@ data:
             "fieldConfig": {
               "defaults": {
                 "color": {
-                  "fixedColor": "#808080",
+                  "fixedColor": "#0066cc",
                   "mode": "fixed"
                 },
                 "mappings": [
@@ -336,7 +337,7 @@ data:
           "fieldConfig": {
             "defaults": {
                 "color": {
-                  "fixedColor": "#808080",
+                  "fixedColor": "#0066cc",
                   "mode": "fixed"
                 },
                 "mappings": [
@@ -427,8 +428,7 @@ data:
             "fieldConfig": {
               "defaults": {
                 "color": {
-                  "fixedColor": "#808080",
-                  "mode": "fixed"
+                  "mode": "thresholds"
                 },
                 "mappings": [],
                 "max": 1,
@@ -437,12 +437,16 @@ data:
                   "mode": "absolute",
                   "steps": [
                     {
-                      "color": "green",
-                      "value": 0
+                      "color": "#E02F44",
+                      "value": null
                     },
                     {
-                      "color": "red",
-                      "value": 80
+                      "color": "#73BF69",
+                      "value": 0.8
+                    },
+                    {
+                      "color": "#E0B400",
+                      "value": 1.0
                     }
                   ]
                 },
@@ -846,9 +850,10 @@ data:
                 }
               },
               {
-                "id": "seriesToColumns",
+                "id": "joinByField",
                 "options": {
-                  "byField": "namespace"
+                  "byField": "namespace",
+                  "mode": "outer"
                 }
               },
               {
@@ -888,7 +893,8 @@ data:
             "fieldConfig": {
               "defaults": {
                 "color": {
-                  "mode": "thresholds"
+                  "fixedColor": "#0066cc",
+                  "mode": "fixed"
                 },
                 "mappings": [
                   {
@@ -907,7 +913,7 @@ data:
                   "mode": "absolute",
                   "steps": [
                     {
-                      "color": "green",
+                      "color": "#0066cc",
                       "value": 0
                     }
                   ]
@@ -1081,7 +1087,7 @@ data:
             "fieldConfig": {
               "defaults": {
                 "color": {
-                  "fixedColor": "#808080",
+                  "fixedColor": "#0066cc",
                   "mode": "fixed"
                 },
                 "mappings": [
@@ -1171,7 +1177,7 @@ data:
             "fieldConfig": {
               "defaults": {
                 "color": {
-                  "fixedColor": "#808080",
+                  "fixedColor": "#0066cc",
                   "mode": "fixed"
                 },
                 "mappings": [
@@ -1262,8 +1268,7 @@ data:
             "fieldConfig": {
               "defaults": {
                 "color": {
-                  "fixedColor": "#808080",
-                  "mode": "fixed"
+                  "mode": "thresholds"
                 },
                 "mappings": [],
                 "max": 1,
@@ -1272,12 +1277,16 @@ data:
                   "mode": "absolute",
                   "steps": [
                     {
-                      "color": "green",
-                      "value": 0
+                      "color": "#E02F44",
+                      "value": null
                     },
                     {
-                      "color": "red",
-                      "value": 80
+                      "color": "#73BF69",
+                      "value": 0.8
+                    },
+                    {
+                      "color": "#E0B400",
+                      "value": 1.0
                     }
                   ]
                 },
@@ -1681,9 +1690,10 @@ data:
               }
             },
             {
-              "id": "seriesToColumns",
+              "id": "joinByField",
               "options": {
-                "byField": "namespace"
+                "byField": "namespace",
+                "mode": "outer"
               }
             },
             {
@@ -2007,9 +2017,10 @@ data:
                 }
               },
               {
-                "id": "seriesToColumns",
+                "id": "joinByField",
                 "options": {
-                  "byField": "namespace"
+                  "byField": "namespace",
+                  "mode": "outer"
                 }
               },
               {
@@ -2303,7 +2314,7 @@ data:
                   "uid": "${datasource}"
                 },
                 "exemplar": true,
-                "expr": "max_over_time(acm_rs:workload:gpu_usage{cluster=\"$cluster\", namespace=~\"$namespace\", profile=\"$profile\"}[$days:]) / max_over_time(acm_rs:workload:gpu_request{cluster=\"$cluster\", namespace=~\"$namespace\", profile=\"$profile\"}[$days:])",
+                "expr": "max_over_time((sum by (workload, namespace) (acm_rs:workload:gpu_usage{cluster=\"$cluster\", namespace=~\"$namespace\", profile=\"$profile\"}))[$days:]) / max_over_time((sum by (workload, namespace) (acm_rs:workload:gpu_request{cluster=\"$cluster\", namespace=~\"$namespace\", profile=\"$profile\"}))[$days:])",
               "format": "table",
               "instant": true,
                 "interval": "",
@@ -2316,7 +2327,7 @@ data:
                 "uid": "${datasource}"
               },
                 "exemplar": true,
-                "expr": "max_over_time(acm_rs:workload:gpu_usage{cluster=\"$cluster\", namespace=~\"$namespace\", profile=\"$profile\"}[$days:])",
+                "expr": "max_over_time((sum by (workload, namespace) (acm_rs:workload:gpu_usage{cluster=\"$cluster\", namespace=~\"$namespace\", profile=\"$profile\"}))[$days:])",
               "format": "table",
                 "hide": false,
               "instant": true,
@@ -2330,7 +2341,7 @@ data:
                 "uid": "${datasource}"
               },
                 "exemplar": true,
-                "expr": "max_over_time(acm_rs:workload:gpu_request{cluster=\"$cluster\", namespace=~\"$namespace\", profile=\"$profile\"}[$days:])",
+                "expr": "max_over_time((sum by (workload, namespace) (acm_rs:workload:gpu_request{cluster=\"$cluster\", namespace=~\"$namespace\", profile=\"$profile\"}))[$days:])",
               "format": "table",
                 "hide": false,
               "instant": true,
@@ -2344,7 +2355,7 @@ data:
                 "uid": "${datasource}"
               },
                 "exemplar": true,
-                "expr": "max_over_time(acm_rs:workload:gpu_recommendation{cluster=\"$cluster\", namespace=~\"$namespace\", profile=\"$profile\"}[$days:])",
+                "expr": "max_over_time((sum by (workload, namespace) (acm_rs:workload:gpu_recommendation{cluster=\"$cluster\", namespace=~\"$namespace\", profile=\"$profile\"}))[$days:])",
               "format": "table",
                 "hide": false,
               "instant": true,
@@ -2358,7 +2369,7 @@ data:
                 "uid": "${datasource}"
               },
                 "exemplar": true,
-                "expr": "max_over_time(acm_rs:workload:gpu_memory_used{cluster=\"$cluster\", namespace=~\"$namespace\", profile=\"$profile\"}[$days:])",
+                "expr": "max_over_time((sum by (workload, namespace) (acm_rs:workload:gpu_memory_used{cluster=\"$cluster\", namespace=~\"$namespace\", profile=\"$profile\"}))[$days:])",
               "format": "table",
                 "hide": false,
               "instant": true,
@@ -2372,7 +2383,7 @@ data:
                 "uid": "${datasource}"
               },
                 "exemplar": true,
-                "expr": "max_over_time(acm_rs:workload:gpu_memory_total{cluster=\"$cluster\", namespace=~\"$namespace\", profile=\"$profile\"}[$days:])",
+                "expr": "max_over_time((sum by (workload, namespace) (acm_rs:workload:gpu_memory_total{cluster=\"$cluster\", namespace=~\"$namespace\", profile=\"$profile\"}))[$days:])",
               "format": "table",
                 "hide": false,
               "instant": true,
@@ -2386,7 +2397,7 @@ data:
                   "uid": "${datasource}"
                 },
                 "exemplar": true,
-                "expr": "max_over_time(acm_rs:workload:gpu_memory_recommendation{cluster=\"$cluster\", namespace=~\"$namespace\", profile=\"$profile\"}[$days:])",
+                "expr": "max_over_time((sum by (workload, namespace) (acm_rs:workload:gpu_memory_recommendation{cluster=\"$cluster\", namespace=~\"$namespace\", profile=\"$profile\"}))[$days:])",
                 "format": "table",
                 "hide": false,
                 "instant": true,
@@ -2403,22 +2414,21 @@ data:
                 "include": {
                   "names": [
                     "workload",
+                    "namespace",
                     "Value #A",
                     "Value #B",
                     "Value #C",
                     "Value #D",
                     "Value #E",
                     "Value #F",
-                      "Value #G"
+                    "Value #G"
                   ]
                 }
               }
             },
             {
-              "id": "seriesToColumns",
-              "options": {
-                "byField": "workload"
-              }
+              "id": "merge",
+              "options": {}
             },
             {
                 "id": "sortBy",
@@ -2711,7 +2721,7 @@ data:
                 "uid": "${datasource}"
               },
                 "exemplar": true,
-                "expr": "max_over_time(acm_rs:pod:gpu_usage{cluster=\"$cluster\", namespace=~\"$namespace\", workload_type=~\"$workload_type\", workload=~\"$workload\", profile=\"$profile\"}[$days:]) / max_over_time(acm_rs:pod:gpu_request{cluster=\"$cluster\", namespace=~\"$namespace\", workload_type=~\"$workload_type\", workload=~\"$workload\", profile=\"$profile\"}[$days:])",
+                "expr": "max_over_time((sum by (pod, namespace, workload, workload_type) (acm_rs:pod:gpu_usage{cluster=\"$cluster\", namespace=~\"$namespace\", workload_type=~\"$workload_type\", workload=~\"$workload\", profile=\"$profile\"}))[$days:]) / max_over_time((sum by (pod, namespace, workload, workload_type) (acm_rs:pod:gpu_request{cluster=\"$cluster\", namespace=~\"$namespace\", workload_type=~\"$workload_type\", workload=~\"$workload\", profile=\"$profile\"}))[$days:])",
               "format": "table",
               "instant": true,
                 "interval": "",
@@ -2724,7 +2734,7 @@ data:
                 "uid": "${datasource}"
               },
                 "exemplar": true,
-                "expr": "max_over_time(acm_rs:pod:gpu_usage{cluster=\"$cluster\", namespace=~\"$namespace\", workload_type=~\"$workload_type\", workload=~\"$workload\", profile=\"$profile\"}[$days:])",
+                "expr": "max_over_time((sum by (pod, namespace, workload, workload_type) (acm_rs:pod:gpu_usage{cluster=\"$cluster\", namespace=~\"$namespace\", workload_type=~\"$workload_type\", workload=~\"$workload\", profile=\"$profile\"}))[$days:])",
               "format": "table",
                 "hide": false,
               "instant": true,
@@ -2738,7 +2748,7 @@ data:
                 "uid": "${datasource}"
               },
                 "exemplar": true,
-                "expr": "max_over_time(acm_rs:pod:gpu_request{cluster=\"$cluster\", namespace=~\"$namespace\", workload_type=~\"$workload_type\", workload=~\"$workload\", profile=\"$profile\"}[$days:])",
+                "expr": "max_over_time((sum by (pod, namespace, workload, workload_type) (acm_rs:pod:gpu_request{cluster=\"$cluster\", namespace=~\"$namespace\", workload_type=~\"$workload_type\", workload=~\"$workload\", profile=\"$profile\"}))[$days:])",
               "format": "table",
                 "hide": false,
               "instant": true,
@@ -2752,7 +2762,7 @@ data:
                 "uid": "${datasource}"
               },
                 "exemplar": true,
-                "expr": "max_over_time(acm_rs:pod:gpu_recommendation{cluster=\"$cluster\", namespace=~\"$namespace\", workload_type=~\"$workload_type\", workload=~\"$workload\", profile=\"$profile\"}[$days:])",
+                "expr": "max_over_time((sum by (pod, namespace, workload, workload_type) (acm_rs:pod:gpu_recommendation{cluster=\"$cluster\", namespace=~\"$namespace\", workload_type=~\"$workload_type\", workload=~\"$workload\", profile=\"$profile\"}))[$days:])",
               "format": "table",
                 "hide": false,
               "instant": true,
@@ -2766,7 +2776,7 @@ data:
                 "uid": "${datasource}"
               },
                 "exemplar": true,
-                "expr": "max_over_time(acm_rs:pod:gpu_memory_used{cluster=\"$cluster\", namespace=~\"$namespace\", workload_type=~\"$workload_type\", workload=~\"$workload\", profile=\"$profile\"}[$days:])",
+                "expr": "max_over_time((sum by (pod, namespace, workload, workload_type) (acm_rs:pod:gpu_memory_used{cluster=\"$cluster\", namespace=~\"$namespace\", workload_type=~\"$workload_type\", workload=~\"$workload\", profile=\"$profile\"}))[$days:])",
               "format": "table",
                 "hide": false,
               "instant": true,
@@ -2780,7 +2790,7 @@ data:
                 "uid": "${datasource}"
               },
                 "exemplar": true,
-                "expr": "max_over_time(acm_rs:pod:gpu_memory_total{cluster=\"$cluster\", namespace=~\"$namespace\", workload_type=~\"$workload_type\", workload=~\"$workload\", profile=\"$profile\"}[$days:])",
+                "expr": "max_over_time((sum by (pod, namespace, workload, workload_type) (acm_rs:pod:gpu_memory_total{cluster=\"$cluster\", namespace=~\"$namespace\", workload_type=~\"$workload_type\", workload=~\"$workload\", profile=\"$profile\"}))[$days:])",
               "format": "table",
                 "hide": false,
               "instant": true,
@@ -2794,7 +2804,7 @@ data:
                 "uid": "${datasource}"
               },
                 "exemplar": true,
-                "expr": "max_over_time(acm_rs:pod:gpu_memory_recommendation{cluster=\"$cluster\", namespace=~\"$namespace\", workload_type=~\"$workload_type\", workload=~\"$workload\", profile=\"$profile\"}[$days:])",
+                "expr": "max_over_time((sum by (pod, namespace, workload, workload_type) (acm_rs:pod:gpu_memory_recommendation{cluster=\"$cluster\", namespace=~\"$namespace\", workload_type=~\"$workload_type\", workload=~\"$workload\", profile=\"$profile\"}))[$days:])",
               "format": "table",
                 "hide": false,
               "instant": true,
@@ -2811,22 +2821,23 @@ data:
                 "include": {
                   "names": [
                     "pod",
+                    "namespace",
+                    "workload",
+                    "workload_type",
                     "Value #A",
                     "Value #B",
                     "Value #C",
                     "Value #D",
                     "Value #E",
                     "Value #F",
-                      "Value #G"
+                    "Value #G"
                   ]
                 }
               }
             },
             {
-              "id": "seriesToColumns",
-              "options": {
-                "byField": "pod"
-              }
+              "id": "merge",
+              "options": {}
             },
             {
                 "id": "sortBy",

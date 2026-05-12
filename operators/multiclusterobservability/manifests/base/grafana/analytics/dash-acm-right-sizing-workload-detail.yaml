@@ -58,14 +58,15 @@ data:
           "fieldConfig": {
             "defaults": {
               "color": {
-                "mode": "thresholds"
+                "fixedColor": "#0066cc",
+                "mode": "fixed"
               },
               "mappings": [],
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
+                    "color": "#0066cc",
                     "value": null
                   }
                 ]
@@ -122,7 +123,7 @@ data:
           "fieldConfig": {
             "defaults": {
               "color": {
-                "fixedColor": "text",
+                "fixedColor": "#0066cc",
                 "mode": "fixed"
               },
               "mappings": [],
@@ -130,7 +131,7 @@ data:
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "text",
+                    "color": "#0066cc",
                     "value": null
                   }
                 ]
@@ -187,7 +188,7 @@ data:
           "fieldConfig": {
             "defaults": {
               "color": {
-                "fixedColor": "text",
+                "fixedColor": "#0066cc",
                 "mode": "fixed"
               },
               "mappings": [],
@@ -195,7 +196,7 @@ data:
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "text",
+                    "color": "#0066cc",
                     "value": null
                   }
                 ]
@@ -259,16 +260,16 @@ data:
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
+                    "color": "#E02F44",
                     "value": null
                   },
                   {
-                    "color": "yellow",
-                    "value": 0.7
+                    "color": "#73BF69",
+                    "value": 0.8
                   },
                   {
-                    "color": "red",
-                    "value": 1
+                    "color": "#E0B400",
+                    "value": 1.0
                   }
                 ]
               },
@@ -642,14 +643,15 @@ data:
           "fieldConfig": {
             "defaults": {
               "color": {
-                "mode": "thresholds"
+                "fixedColor": "#0066cc",
+                "mode": "fixed"
               },
               "mappings": [],
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
+                    "color": "#0066cc",
                     "value": null
                   }
                 ]
@@ -706,7 +708,7 @@ data:
           "fieldConfig": {
             "defaults": {
               "color": {
-                "fixedColor": "text",
+                "fixedColor": "#0066cc",
                 "mode": "fixed"
               },
               "mappings": [],
@@ -714,7 +716,7 @@ data:
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "text",
+                    "color": "#0066cc",
                     "value": null
                   }
                 ]
@@ -771,7 +773,7 @@ data:
           "fieldConfig": {
             "defaults": {
               "color": {
-                "fixedColor": "text",
+                "fixedColor": "#0066cc",
                 "mode": "fixed"
               },
               "mappings": [],
@@ -779,7 +781,7 @@ data:
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "text",
+                    "color": "#0066cc",
                     "value": null
                   }
                 ]
@@ -843,16 +845,16 @@ data:
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
+                    "color": "#E02F44",
                     "value": null
                   },
                   {
-                    "color": "yellow",
-                    "value": 0.7
+                    "color": "#73BF69",
+                    "value": 0.8
                   },
                   {
-                    "color": "red",
-                    "value": 1
+                    "color": "#E0B400",
+                    "value": 1.0
                   }
                 ]
               },

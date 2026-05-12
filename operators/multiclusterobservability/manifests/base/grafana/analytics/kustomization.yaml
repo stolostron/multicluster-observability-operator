@@ -5,6 +5,5 @@ resources:
 - dash-acm-right-sizing-virtualization-underestimation.yaml
 - dash-acm-right-sizing-workloads-pods.yaml
 - dash-acm-right-sizing-workload-detail.yaml
-- dash-acm-right-sizing-pods.yaml
 - dash-acm-gpu-utilization.yaml
 - scrape-config.yaml
