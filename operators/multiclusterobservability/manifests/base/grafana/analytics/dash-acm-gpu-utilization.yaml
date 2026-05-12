@@ -2409,6 +2409,10 @@ data:
             "title": "Workload GPU Quota",
           "transformations": [
             {
+              "id": "merge",
+              "options": {}
+            },
+            {
               "id": "filterFieldsByName",
               "options": {
                 "include": {
@@ -2425,10 +2429,6 @@ data:
                   ]
                 }
               }
-            },
-            {
-              "id": "merge",
-              "options": {}
             },
             {
                 "id": "sortBy",
@@ -2816,6 +2816,10 @@ data:
             "title": "Pod GPU Quota",
           "transformations": [
             {
+              "id": "merge",
+              "options": {}
+            },
+            {
               "id": "filterFieldsByName",
               "options": {
                 "include": {
@@ -2834,10 +2838,6 @@ data:
                   ]
                 }
               }
-            },
-            {
-              "id": "merge",
-              "options": {}
             },
             {
                 "id": "sortBy",

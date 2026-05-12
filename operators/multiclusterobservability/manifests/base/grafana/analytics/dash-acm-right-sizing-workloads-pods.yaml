@@ -397,6 +397,10 @@ data:
           "title": "Workload CPU Table",
           "transformations": [
             {
+              "id": "merge",
+              "options": {}
+            },
+            {
               "id": "filterFieldsByName",
               "options": {
                 "include": {
@@ -412,10 +416,6 @@ data:
                   ]
                 }
               }
-            },
-            {
-              "id": "merge",
-              "options": {}
             },
             {
               "id": "sortBy",
@@ -826,6 +826,10 @@ data:
           "title": "Workload Memory Table",
           "transformations": [
             {
+              "id": "merge",
+              "options": {}
+            },
+            {
               "id": "filterFieldsByName",
               "options": {
                 "include": {
@@ -841,10 +845,6 @@ data:
                   ]
                 }
               }
-            },
-            {
-              "id": "merge",
-              "options": {}
             },
             {
               "id": "sortBy",
@@ -1175,6 +1175,10 @@ data:
           "title": "Pod CPU Table",
           "transformations": [
             {
+              "id": "merge",
+              "options": {}
+            },
+            {
               "id": "filterFieldsByName",
               "options": {
                 "include": {
@@ -1191,10 +1195,6 @@ data:
                   ]
                 }
               }
-            },
-            {
-              "id": "merge",
-              "options": {}
             },
             {
               "id": "sortBy",
@@ -1514,6 +1514,10 @@ data:
           "title": "Pod Memory Table",
           "transformations": [
             {
+              "id": "merge",
+              "options": {}
+            },
+            {
               "id": "filterFieldsByName",
               "options": {
                 "include": {
@@ -1530,10 +1534,6 @@ data:
                   ]
                 }
               }
-            },
-            {
-              "id": "merge",
-              "options": {}
             },
             {
               "id": "sortBy",
