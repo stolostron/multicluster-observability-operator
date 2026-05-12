@@ -65,7 +65,8 @@ data:
           "fieldConfig": {
             "defaults": {
               "color": {
-                "mode": "thresholds"
+                "fixedColor": "#0066cc",
+                "mode": "fixed"
               },
               "mappings": [
                 {
@@ -84,7 +85,7 @@ data:
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
+                    "color": "#0066cc",
                     "value": null
                   }
                 ]
@@ -255,7 +256,7 @@ data:
           "fieldConfig": {
             "defaults": {
               "color": {
-                "fixedColor": "#808080",
+                "fixedColor": "#0066cc",
                 "mode": "fixed"
               },
               "mappings": [
@@ -275,7 +276,7 @@ data:
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
+                    "color": "#0066cc",
                     "value": null
                   }
                 ]
@@ -346,7 +347,7 @@ data:
           "fieldConfig": {
             "defaults": {
               "color": {
-                "fixedColor": "#808080",
+                "fixedColor": "#0066cc",
                 "mode": "fixed"
               },
               "mappings": [
@@ -366,7 +367,7 @@ data:
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
+                    "color": "#0066cc",
                     "value": null
                   }
                 ]
@@ -437,8 +438,7 @@ data:
           "fieldConfig": {
             "defaults": {
               "color": {
-                "fixedColor": "#808080",
-                "mode": "fixed"
+                "mode": "thresholds"
               },
               "mappings": [
                 {
@@ -458,12 +458,16 @@ data:
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
+                    "color": "#E02F44",
                     "value": null
                   },
                   {
-                    "color": "red",
-                    "value": 80
+                    "color": "#73BF69",
+                    "value": 0.8
+                  },
+                  {
+                    "color": "#E0B400",
+                    "value": 1.0
                   }
                 ]
               },
@@ -998,7 +1002,8 @@ data:
           "fieldConfig": {
             "defaults": {
               "color": {
-                "mode": "thresholds"
+                "fixedColor": "#0066cc",
+                "mode": "fixed"
               },
               "mappings": [
                 {
@@ -1017,7 +1022,7 @@ data:
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
+                    "color": "#0066cc",
                     "value": null
                   }
                 ]
@@ -1186,7 +1191,7 @@ data:
           "fieldConfig": {
             "defaults": {
               "color": {
-                "fixedColor": "#808080",
+                "fixedColor": "#0066cc",
                 "mode": "fixed"
               },
               "mappings": [
@@ -1206,7 +1211,7 @@ data:
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
+                    "color": "#0066cc",
                     "value": null
                   }
                 ]
@@ -1276,7 +1281,7 @@ data:
           "fieldConfig": {
             "defaults": {
               "color": {
-                "fixedColor": "#808080",
+                "fixedColor": "#0066cc",
                 "mode": "fixed"
               },
               "mappings": [
@@ -1296,7 +1301,7 @@ data:
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
+                    "color": "#0066cc",
                     "value": null
                   }
                 ]
@@ -1366,7 +1371,7 @@ data:
           "fieldConfig": {
             "defaults": {
               "color": {
-                "mode": "fixed"
+                "mode": "thresholds"
               },
               "mappings": [],
               "max": 1,
@@ -1375,12 +1380,16 @@ data:
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
+                    "color": "#E02F44",
                     "value": null
                   },
                   {
-                    "color": "red",
-                    "value": 80
+                    "color": "#73BF69",
+                    "value": 0.8
+                  },
+                  {
+                    "color": "#E0B400",
+                    "value": 1.0
                   }
                 ]
               },
