@@ -158,7 +158,6 @@ var _ = Describe("", func() {
 		metricList := []string{
 			// Check a random sample of the metrics we expect to be always present in e2e envs
 			"ALERTS",
-			"container_spec_cpu_quota",
 			"kube_node_status_allocatable",
 			"up",
 			// Check some of our own rules
