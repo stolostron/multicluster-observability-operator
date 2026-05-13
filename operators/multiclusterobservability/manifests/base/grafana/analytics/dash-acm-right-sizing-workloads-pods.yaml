@@ -79,7 +79,7 @@ data:
                   "mode": "off"
                 }
               },
-              "decimals": 2,
+              "decimals": 5,
               "mappings": [],
               "thresholds": {
                 "mode": "absolute",
@@ -197,7 +197,7 @@ data:
                   },
                   {
                     "id": "decimals",
-                    "value": 2
+                    "value": 5
                   }
                 ]
               },
@@ -217,7 +217,7 @@ data:
                   },
                   {
                     "id": "decimals",
-                    "value": 2
+                    "value": 5
                   }
                 ]
               },
@@ -237,7 +237,7 @@ data:
                   },
                   {
                     "id": "decimals",
-                    "value": 2
+                    "value": 5
                   }
                 ]
               },
@@ -257,7 +257,7 @@ data:
                   },
                   {
                     "id": "decimals",
-                    "value": 2
+                    "value": 5
                   }
                 ]
               },
@@ -277,7 +277,7 @@ data:
                   },
                   {
                     "id": "decimals",
-                    "value": 2
+                    "value": 5
                   }
                 ]
               },
@@ -957,7 +957,7 @@ data:
                   },
                   {
                     "id": "decimals",
-                    "value": 2
+                    "value": 5
                   }
                 ]
               },
@@ -977,7 +977,7 @@ data:
                   },
                   {
                     "id": "decimals",
-                    "value": 2
+                    "value": 5
                   }
                 ]
               },
@@ -997,7 +997,7 @@ data:
                   },
                   {
                     "id": "decimals",
-                    "value": 2
+                    "value": 5
                   }
                 ]
               },
@@ -1017,7 +1017,7 @@ data:
                   },
                   {
                     "id": "decimals",
-                    "value": 2
+                    "value": 5
                   }
                 ]
               },
@@ -1037,7 +1037,7 @@ data:
                   },
                   {
                     "id": "decimals",
-                    "value": 2
+                    "value": 5
                   }
                 ]
               },
