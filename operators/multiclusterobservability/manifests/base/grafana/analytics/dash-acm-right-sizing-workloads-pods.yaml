@@ -125,7 +125,7 @@ data:
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "topk(20,\nsum by (workload, namespace) (acm_rs:workload:cpu_usage{cluster=\"$cluster\", namespace=~\"$namespace\", workload_type=~\"$workload_type\", profile=\"$profile\"})\n/\nsum by (workload, namespace) (acm_rs:workload:cpu_request{cluster=\"$cluster\", namespace=~\"$namespace\", workload_type=~\"$workload_type\", profile=\"$profile\"})\n)",
+              "expr": "topk(20,\nsum by (workload, namespace) (acm_rs:workload:cpu_usage{cluster=\"$cluster\", namespace=~\"$namespace\", workload_type=~\"$workload_type\", profile=\"$profile\"})\n/\nclamp_min(sum by (workload, namespace) (acm_rs:workload:cpu_request{cluster=\"$cluster\", namespace=~\"$namespace\", workload_type=~\"$workload_type\", profile=\"$profile\"}), 1e-9)\n)",
               "format": "time_series",
               "instant": false,
               "legendFormat": "{{workload}} ({{namespace}})",
@@ -344,7 +344,7 @@ data:
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "max_over_time(\n  (sum by (workload, namespace, workload_type) (acm_rs:workload:cpu_usage{cluster=\"$cluster\", namespace=~\"$namespace\", workload_type=~\"$workload_type\", profile=\"$profile\"}))[$days:]\n)\n/\nmax_over_time(\n  (sum by (workload, namespace, workload_type) (acm_rs:workload:cpu_request{cluster=\"$cluster\", namespace=~\"$namespace\", workload_type=~\"$workload_type\", profile=\"$profile\"}))[$days:]\n)",
+              "expr": "max_over_time(\n  (sum by (workload, namespace, workload_type) (acm_rs:workload:cpu_usage{cluster=\"$cluster\", namespace=~\"$namespace\", workload_type=~\"$workload_type\", profile=\"$profile\"}))[$days:]\n)\n/\nclamp_min(\n  max_over_time(\n    (sum by (workload, namespace, workload_type) (acm_rs:workload:cpu_request{cluster=\"$cluster\", namespace=~\"$namespace\", workload_type=~\"$workload_type\", profile=\"$profile\"}))[$days:]\n  )\n, 1e-9)",
               "format": "table",
               "instant": true,
               "refId": "A"
@@ -554,7 +554,7 @@ data:
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "topk(20,\nsum by (workload, namespace) (acm_rs:workload:memory_usage{cluster=\"$cluster\", namespace=~\"$namespace\", workload_type=~\"$workload_type\", profile=\"$profile\"})\n/\nsum by (workload, namespace) (acm_rs:workload:memory_request{cluster=\"$cluster\", namespace=~\"$namespace\", workload_type=~\"$workload_type\", profile=\"$profile\"})\n)",
+              "expr": "topk(20,\nsum by (workload, namespace) (acm_rs:workload:memory_usage{cluster=\"$cluster\", namespace=~\"$namespace\", workload_type=~\"$workload_type\", profile=\"$profile\"})\n/\nclamp_min(sum by (workload, namespace) (acm_rs:workload:memory_request{cluster=\"$cluster\", namespace=~\"$namespace\", workload_type=~\"$workload_type\", profile=\"$profile\"}), 1e-9)\n)",
               "format": "time_series",
               "instant": false,
               "legendFormat": "{{workload}} ({{namespace}})",
@@ -773,7 +773,7 @@ data:
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "max_over_time(\n  (sum by (workload, namespace, workload_type) (acm_rs:workload:memory_usage{cluster=\"$cluster\", namespace=~\"$namespace\", workload_type=~\"$workload_type\", profile=\"$profile\"}))[$days:]\n)\n/\nmax_over_time(\n  (sum by (workload, namespace, workload_type) (acm_rs:workload:memory_request{cluster=\"$cluster\", namespace=~\"$namespace\", workload_type=~\"$workload_type\", profile=\"$profile\"}))[$days:]\n)",
+              "expr": "max_over_time(\n  (sum by (workload, namespace, workload_type) (acm_rs:workload:memory_usage{cluster=\"$cluster\", namespace=~\"$namespace\", workload_type=~\"$workload_type\", profile=\"$profile\"}))[$days:]\n)\n/\nclamp_min(\n  max_over_time(\n    (sum by (workload, namespace, workload_type) (acm_rs:workload:memory_request{cluster=\"$cluster\", namespace=~\"$namespace\", workload_type=~\"$workload_type\", profile=\"$profile\"}))[$days:]\n  )\n, 1e-9)",
               "format": "table",
               "instant": true,
               "refId": "A"
@@ -1122,7 +1122,7 @@ data:
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "max_over_time(\n  (sum by (pod, namespace, workload, workload_type) (acm_rs:pod:cpu_usage{cluster=\"$cluster\", namespace=~\"$namespace\", workload_type=~\"$workload_type\", workload=~\"$workload\", profile=\"$profile\"}))[$days:]\n)\n/\nmax_over_time(\n  (sum by (pod, namespace, workload, workload_type) (acm_rs:pod:cpu_request{cluster=\"$cluster\", namespace=~\"$namespace\", workload_type=~\"$workload_type\", workload=~\"$workload\", profile=\"$profile\"}))[$days:]\n)",
+              "expr": "max_over_time(\n  (sum by (pod, namespace, workload, workload_type) (acm_rs:pod:cpu_usage{cluster=\"$cluster\", namespace=~\"$namespace\", workload_type=~\"$workload_type\", workload=~\"$workload\", profile=\"$profile\"}))[$days:]\n)\n/\nclamp_min(\n  max_over_time(\n    (sum by (pod, namespace, workload, workload_type) (acm_rs:pod:cpu_request{cluster=\"$cluster\", namespace=~\"$namespace\", workload_type=~\"$workload_type\", workload=~\"$workload\", profile=\"$profile\"}))[$days:]\n  )\n, 1e-9)",
               "format": "table",
               "instant": true,
               "refId": "A"
@@ -1461,7 +1461,7 @@ data:
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "max_over_time(\n  (sum by (pod, namespace, workload, workload_type) (acm_rs:pod:memory_usage{cluster=\"$cluster\", namespace=~\"$namespace\", workload_type=~\"$workload_type\", workload=~\"$workload\", profile=\"$profile\"}))[$days:]\n)\n/\nmax_over_time(\n  (sum by (pod, namespace, workload, workload_type) (acm_rs:pod:memory_request{cluster=\"$cluster\", namespace=~\"$namespace\", workload_type=~\"$workload_type\", workload=~\"$workload\", profile=\"$profile\"}))[$days:]\n)",
+              "expr": "max_over_time(\n  (sum by (pod, namespace, workload, workload_type) (acm_rs:pod:memory_usage{cluster=\"$cluster\", namespace=~\"$namespace\", workload_type=~\"$workload_type\", workload=~\"$workload\", profile=\"$profile\"}))[$days:]\n)\n/\nclamp_min(\n  max_over_time(\n    (sum by (pod, namespace, workload, workload_type) (acm_rs:pod:memory_request{cluster=\"$cluster\", namespace=~\"$namespace\", workload_type=~\"$workload_type\", workload=~\"$workload\", profile=\"$profile\"}))[$days:]\n  )\n, 1e-9)",
               "format": "table",
               "instant": true,
               "refId": "A"

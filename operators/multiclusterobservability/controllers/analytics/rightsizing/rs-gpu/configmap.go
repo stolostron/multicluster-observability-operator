@@ -41,7 +41,9 @@ func ApplyRSGPUConfigMapChanges(ctx context.Context, c client.Client, configData
 	workloadOrPodEnabled := false
 	enabled := false
 	mcoList := &mcov1beta2.MultiClusterObservabilityList{}
-	if err := c.List(ctx, mcoList); err == nil && len(mcoList.Items) > 0 {
+	if err := c.List(ctx, mcoList); err != nil {
+		log.Error(err, "rs - failed to list MCO resources, defaulting GPU right-sizing to disabled")
+	} else if len(mcoList.Items) > 0 {
 		mco := mcoList.Items[0]
 		if mco.Spec.Capabilities != nil && mco.Spec.Capabilities.Platform != nil {
 			workloadOrPodEnabled = mco.Spec.Capabilities.Platform.Analytics.WorkloadPodRightSizingRecommendation.Enabled

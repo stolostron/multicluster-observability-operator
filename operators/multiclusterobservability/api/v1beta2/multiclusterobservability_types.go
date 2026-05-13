@@ -189,7 +189,7 @@ type PlatformRightSizingRecommendationSpec struct {
 	Enabled bool `json:"enabled,omitempty"`
 
 	// NamespaceBinding defines the namespace where all the required resources are created.
-	// The default namespace is `open-cluster-management-global-set
+	// The default namespace is `open-cluster-management-global-set`.
 	//
 	// +optional
 	// +kubebuilder:validation:Optional

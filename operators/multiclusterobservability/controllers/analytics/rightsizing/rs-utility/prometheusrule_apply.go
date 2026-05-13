@@ -25,6 +25,9 @@ func ApplyPrometheusRule(ctx context.Context, c client.Client, desired monitorin
 			return fmt.Errorf("rs - failed to get prometheusrule %s/%s: %w", desired.Namespace, desired.Name, err)
 		}
 		if err := c.Create(ctx, &desired); err != nil {
+			if apierrors.IsAlreadyExists(err) {
+				return ApplyPrometheusRule(ctx, c, desired)
+			}
 			return fmt.Errorf("rs - failed to create prometheusrule %s/%s: %w", desired.Namespace, desired.Name, err)
 		}
 		log.Info("rs - created prometheusrule on hub", "namespace", desired.Namespace, "name", desired.Name)

@@ -309,7 +309,7 @@ data:
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "max by (cluster, profile, namespace, workload, workload_type)(\n  max_over_time(\n    acm_rs:workload:cpu_usage{cluster=\"$cluster\", profile=\"$profile\", namespace=\"$namespace\", workload=\"$workload\", workload_type=\"$workload_type\"}\n  [$days:])\n  /\n  max_over_time(\n    acm_rs:workload:cpu_request{cluster=\"$cluster\", profile=\"$profile\", namespace=\"$namespace\", workload=\"$workload\", workload_type=\"$workload_type\"}\n  [$days:])\n)",
+              "expr": "max by (cluster, profile, namespace, workload, workload_type)(\n  max_over_time(\n    acm_rs:workload:cpu_usage{cluster=\"$cluster\", profile=\"$profile\", namespace=\"$namespace\", workload=\"$workload\", workload_type=\"$workload_type\"}\n  [$days:])\n  /\n  clamp_min(\n    max_over_time(\n      acm_rs:workload:cpu_request{cluster=\"$cluster\", profile=\"$profile\", namespace=\"$namespace\", workload=\"$workload\", workload_type=\"$workload_type\"}\n    [$days:])\n  , 1e-9)\n)",
               "instant": true,
               "refId": "A"
             }
@@ -894,7 +894,7 @@ data:
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "max by (cluster, profile, namespace, workload, workload_type)(\n  max_over_time(\n    acm_rs:workload:memory_usage{cluster=\"$cluster\", profile=\"$profile\", namespace=\"$namespace\", workload=\"$workload\", workload_type=\"$workload_type\"}\n  [$days:])\n  /\n  max_over_time(\n    acm_rs:workload:memory_request{cluster=\"$cluster\", profile=\"$profile\", namespace=\"$namespace\", workload=\"$workload\", workload_type=\"$workload_type\"}\n  [$days:])\n)",
+              "expr": "max by (cluster, profile, namespace, workload, workload_type)(\n  max_over_time(\n    acm_rs:workload:memory_usage{cluster=\"$cluster\", profile=\"$profile\", namespace=\"$namespace\", workload=\"$workload\", workload_type=\"$workload_type\"}\n  [$days:])\n  /\n  clamp_min(\n    max_over_time(\n      acm_rs:workload:memory_request{cluster=\"$cluster\", profile=\"$profile\", namespace=\"$namespace\", workload=\"$workload\", workload_type=\"$workload_type\"}\n    [$days:])\n  , 1e-9)\n)",
               "instant": true,
               "refId": "A"
             }

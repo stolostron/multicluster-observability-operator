@@ -10744,7 +10744,7 @@ spec:
                               namespaceBinding:
                                 description: |-
                                   NamespaceBinding defines the namespace where all the required resources are created.
-                                  The default namespace is `open-cluster-management-global-set
+                                  The default namespace is `open-cluster-management-global-set`.
                                 type: string
                             type: object
                           incidentDetection:
@@ -10769,7 +10769,7 @@ spec:
                               namespaceBinding:
                                 description: |-
                                   NamespaceBinding defines the namespace where all the required resources are created.
-                                  The default namespace is `open-cluster-management-global-set
+                                  The default namespace is `open-cluster-management-global-set`.
                                 type: string
                             type: object
                           virtualizationRightSizingRecommendation:
@@ -10783,7 +10783,7 @@ spec:
                               namespaceBinding:
                                 description: |-
                                   NamespaceBinding defines the namespace where all the required resources are created.
-                                  The default namespace is `open-cluster-management-global-set
+                                  The default namespace is `open-cluster-management-global-set`.
                                 type: string
                             type: object
                           workloadPodRightSizingRecommendation:
@@ -10798,7 +10798,7 @@ spec:
                               namespaceBinding:
                                 description: |-
                                   NamespaceBinding defines the namespace where all the required resources are created.
-                                  The default namespace is `open-cluster-management-global-set
+                                  The default namespace is `open-cluster-management-global-set`.
                                 type: string
                             type: object
                         type: object
