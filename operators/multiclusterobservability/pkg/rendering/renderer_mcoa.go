@@ -42,6 +42,9 @@ const (
 
 	grafanaMCOAHomeDashboardID = "89eaec849a6e4837a619fb0540c22b13"
 	grafanaLink                = "/d/" + grafanaMCOAHomeDashboardID + "/acm-clusters-overview"
+
+	// GrafanaMCOADashboardPath is the MCOA Grafana dashboard URL path for the CMA launch-link annotation.
+	GrafanaMCOADashboardPath = grafanaLink
 )
 
 type MCOARendererOptions struct {
@@ -181,7 +184,8 @@ func (r *MCORenderer) renderMCOADeployment(
 	return &unstructured.Unstructured{Object: uObj}, nil
 }
 
-// renderClusterManagementAddOn renders the CMA resource with addon lifecycle annotations.
+// renderClusterManagementAddOn renders the MCOA ClusterManagementAddOn resource with labels
+// and conditionally adds the Grafana launch-link annotation when platform metrics are enabled.
 func (r *MCORenderer) renderClusterManagementAddOn(
 	ctx context.Context,
 	res *resource.Resource,
@@ -194,22 +198,27 @@ func (r *MCORenderer) renderClusterManagementAddOn(
 	}
 	u := &unstructured.Unstructured{Object: m}
 
-	// Add grafana link annotation
-	host, err := mcoconfig.GetRouteHost(ctx, r.kubeClient, mcoconfig.GrafanaRouteName, mcoconfig.GetDefaultNamespace())
-	if err != nil {
-		return nil, fmt.Errorf("failed to get host route: %w", err)
-	}
-	grafanaUrl := url.URL{
-		Scheme: "https",
-		Host:   host,
-		Path:   grafanaLink,
-	}
 	annotations := maps.Clone(u.GetAnnotations())
 	if annotations == nil {
 		annotations = make(map[string]string)
 	}
-	annotations["console.open-cluster-management.io/launch-link"] = grafanaUrl.String()
-	annotations["console.open-cluster-management.io/launch-link-text"] = "Grafana"
+
+	// Only add the Grafana link when platform metrics are enabled via MCOA.
+	// When MCOA is activated only for right-sizing (without platform metrics),
+	// the legacy "observability-controller" CMA already provides the Grafana link.
+	if MCOAPlatformMetricsEnabled(r.cr) {
+		host, err := mcoconfig.GetRouteHost(ctx, r.kubeClient, mcoconfig.GrafanaRouteName, mcoconfig.GetDefaultNamespace())
+		if err != nil {
+			return nil, fmt.Errorf("failed to get host route: %w", err)
+		}
+		grafanaUrl := url.URL{
+			Scheme: "https",
+			Host:   host,
+			Path:   grafanaLink,
+		}
+		annotations["console.open-cluster-management.io/launch-link"] = grafanaUrl.String()
+		annotations["console.open-cluster-management.io/launch-link-text"] = "Grafana"
+	}
 	u.SetAnnotations(annotations)
 
 	cLabels := u.GetLabels()
