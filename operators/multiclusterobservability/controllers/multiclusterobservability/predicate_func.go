@@ -24,7 +24,11 @@ func GetMCOPredicateFunc() predicate.Funcs {
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			config.SetMonitoringCRName(e.ObjectNew.GetName())
-			return e.ObjectOld.GetGeneration() != e.ObjectNew.GetGeneration()
+			if e.ObjectOld.GetGeneration() != e.ObjectNew.GetGeneration() {
+				return true
+			}
+			// Annotation changes (e.g., right-sizing delegation, mco-pause) don't increment generation.
+			return !reflect.DeepEqual(e.ObjectOld.GetAnnotations(), e.ObjectNew.GetAnnotations())
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
 			return !e.DeleteStateUnknown
