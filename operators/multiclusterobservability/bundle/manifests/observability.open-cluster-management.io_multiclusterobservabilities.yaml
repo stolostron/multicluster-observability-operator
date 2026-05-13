@@ -10733,6 +10733,20 @@ spec:
                         description: Analytics provides the configuration for the
                           analytics features
                         properties:
+                          gpuRightSizingRecommendation:
+                            description: Feature to enable GPU utilization right-sizing
+                              metrics for the Analytics.
+                            properties:
+                              enabled:
+                                description: Enabled defines a flag to enable/disable
+                                  the right-sizing feature for the Analytics.
+                                type: boolean
+                              namespaceBinding:
+                                description: |-
+                                  NamespaceBinding defines the namespace where all the required resources are created.
+                                  The default namespace is `open-cluster-management-global-set
+                                type: string
+                            type: object
                           incidentDetection:
                             description: |-
                               Incident detecion defines the configuration spec for the incident detection
@@ -10761,6 +10775,21 @@ spec:
                           virtualizationRightSizingRecommendation:
                             description: Feature to enable virtualization right-sizing
                               recommendation capabilities for the Analytics.
+                            properties:
+                              enabled:
+                                description: Enabled defines a flag to enable/disable
+                                  the right-sizing feature for the Analytics.
+                                type: boolean
+                              namespaceBinding:
+                                description: |-
+                                  NamespaceBinding defines the namespace where all the required resources are created.
+                                  The default namespace is `open-cluster-management-global-set
+                                type: string
+                            type: object
+                          workloadPodRightSizingRecommendation:
+                            description: |-
+                              Feature to enable workload + pod right-sizing recommendation capabilities for the Analytics.
+                              When enabled, MCO will create a single policy/PrometheusRule for both workload and pod series.
                             properties:
                               enabled:
                                 description: Enabled defines a flag to enable/disable
