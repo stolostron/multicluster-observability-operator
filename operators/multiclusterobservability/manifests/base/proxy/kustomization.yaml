@@ -3,6 +3,5 @@ resources:
 - cluster-role.yaml
 - cookie-secret.yaml
 - deployment.yaml
-- ingress.yaml
 - service-account.yaml
 - service.yaml
