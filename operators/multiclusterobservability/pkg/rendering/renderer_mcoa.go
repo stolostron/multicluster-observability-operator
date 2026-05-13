@@ -211,13 +211,16 @@ func (r *MCORenderer) renderClusterManagementAddOn(
 		if err != nil {
 			return nil, fmt.Errorf("failed to get host route: %w", err)
 		}
+		if host == "" {
+			return nil, fmt.Errorf("grafana route host is empty, cannot construct launch link")
+		}
 		grafanaUrl := url.URL{
 			Scheme: "https",
 			Host:   host,
 			Path:   grafanaLink,
 		}
-		annotations["console.open-cluster-management.io/launch-link"] = grafanaUrl.String()
-		annotations["console.open-cluster-management.io/launch-link-text"] = "Grafana"
+		annotations[mcoutil.GrafanaLaunchLinkKey] = grafanaUrl.String()
+		annotations[mcoutil.GrafanaLaunchLinkTextKey] = "Grafana"
 	}
 	u.SetAnnotations(annotations)
 

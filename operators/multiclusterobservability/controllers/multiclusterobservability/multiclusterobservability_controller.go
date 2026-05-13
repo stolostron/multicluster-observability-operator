@@ -1138,11 +1138,6 @@ func newMCOACRDEventHandler(c client.Client) handler.EventHandler {
 	)
 }
 
-const (
-	grafanaLaunchLinkKey     = "console.open-cluster-management.io/launch-link"
-	grafanaLaunchLinkTextKey = "console.open-cluster-management.io/launch-link-text"
-)
-
 // syncMCOACMAGrafanaLink ensures the MCOA ClusterManagementAddOn's Grafana launch-link
 // annotation is present only when platform metrics are enabled via MCOA. This runs
 // independently of the render pipeline because DisableCMAORender skips re-rendering
@@ -1154,7 +1149,7 @@ func syncMCOACMAGrafanaLink(
 	cmao *addonv1alpha1.ClusterManagementAddOn,
 ) error {
 	annotations := cmao.GetAnnotations()
-	_, hasLink := annotations[grafanaLaunchLinkKey]
+	_, hasLink := annotations[util.GrafanaLaunchLinkKey]
 	metricsEnabled := rendering.MCOAPlatformMetricsEnabled(mco)
 
 	if metricsEnabled && !hasLink {
@@ -1163,7 +1158,7 @@ func syncMCOACMAGrafanaLink(
 			return fmt.Errorf("failed to get Grafana route host: %w", err)
 		}
 		if host == "" {
-			return fmt.Errorf("Grafana route host is empty, cannot construct launch link")
+			return fmt.Errorf("grafana route host is empty, cannot construct launch link")
 		}
 		grafanaURL := url.URL{
 			Scheme: "https",
@@ -1173,15 +1168,15 @@ func syncMCOACMAGrafanaLink(
 		if annotations == nil {
 			annotations = make(map[string]string)
 		}
-		annotations[grafanaLaunchLinkKey] = grafanaURL.String()
-		annotations[grafanaLaunchLinkTextKey] = "Grafana"
+		annotations[util.GrafanaLaunchLinkKey] = grafanaURL.String()
+		annotations[util.GrafanaLaunchLinkTextKey] = "Grafana"
 		cmao.SetAnnotations(annotations)
 		return c.Update(ctx, cmao)
 	}
 
 	if !metricsEnabled && hasLink {
-		delete(annotations, grafanaLaunchLinkKey)
-		delete(annotations, grafanaLaunchLinkTextKey)
+		delete(annotations, util.GrafanaLaunchLinkKey)
+		delete(annotations, util.GrafanaLaunchLinkTextKey)
 		cmao.SetAnnotations(annotations)
 		return c.Update(ctx, cmao)
 	}
