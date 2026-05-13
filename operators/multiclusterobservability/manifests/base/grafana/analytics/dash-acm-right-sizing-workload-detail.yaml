@@ -274,7 +274,7 @@ data:
                 ]
               },
               "unit": "percentunit",
-              "decimals": 5
+              "decimals": 2
             },
             "overrides": []
           },
@@ -360,7 +360,7 @@ data:
                 ]
               },
               "unit": "short",
-              "decimals": 5
+              "decimals": 2
             },
             "overrides": [
               {
@@ -560,7 +560,7 @@ data:
                 ]
               },
               "unit": "short",
-              "decimals": 5
+              "decimals": 2
             },
             "overrides": []
           },
