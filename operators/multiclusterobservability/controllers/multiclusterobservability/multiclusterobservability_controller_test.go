@@ -32,6 +32,7 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering/templates"
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/deploying"
 	observatoriumv1alpha1 "github.com/stolostron/observatorium-operator/api/v1alpha1"
 	"github.com/stretchr/testify/assert"
@@ -1773,6 +1774,9 @@ func TestDeleteVestigialProxyIngress(t *testing.T) {
 	}
 }
 
+// TestSyncMCOACMAGrafanaLink verifies that syncMCOACMAGrafanaLink correctly adds,
+// removes, or leaves unchanged the Grafana launch-link annotation on the MCOA CMA
+// based on whether platform metrics collection is enabled.
 func TestSyncMCOACMAGrafanaLink(t *testing.T) {
 	s := runtime.NewScheme()
 	assert.NoError(t, routev1.AddToScheme(s))
@@ -1849,8 +1853,8 @@ func TestSyncMCOACMAGrafanaLink(t *testing.T) {
 			}
 			if tt.existingLink {
 				cmao.Annotations = map[string]string{
-					grafanaLaunchLinkKey:     "https://grafana.old.example.com/d/old-dashboard/overview",
-					grafanaLaunchLinkTextKey: "Grafana",
+					util.GrafanaLaunchLinkKey:     "https://grafana.old.example.com/d/old-dashboard/overview",
+					util.GrafanaLaunchLinkTextKey: "Grafana",
 				}
 			}
 
@@ -1863,12 +1867,17 @@ func TestSyncMCOACMAGrafanaLink(t *testing.T) {
 			err = c.Get(t.Context(), types.NamespacedName{Name: config.MultiClusterObservabilityAddon}, updated)
 			assert.NoError(t, err)
 
-			_, hasLink := updated.Annotations[grafanaLaunchLinkKey]
+			_, hasLink := updated.Annotations[util.GrafanaLaunchLinkKey]
 			assert.Equal(t, tt.expectLinkAfter, hasLink, "Grafana link presence mismatch")
 
 			if tt.expectLinkAfter && tt.expectUpdate {
-				assert.Contains(t, updated.Annotations[grafanaLaunchLinkKey], "grafana.apps.test.example.com")
-				assert.Equal(t, "Grafana", updated.Annotations[grafanaLaunchLinkTextKey])
+				assert.Contains(t, updated.Annotations[util.GrafanaLaunchLinkKey], "grafana.apps.test.example.com")
+				assert.Equal(t, "Grafana", updated.Annotations[util.GrafanaLaunchLinkTextKey])
+			}
+
+			if tt.expectLinkAfter && !tt.expectUpdate && tt.existingLink {
+				assert.Equal(t, "https://grafana.old.example.com/d/old-dashboard/overview",
+					updated.Annotations[util.GrafanaLaunchLinkKey])
 			}
 		})
 	}

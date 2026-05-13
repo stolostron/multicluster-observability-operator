@@ -21,7 +21,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/utils/ptr"
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -483,6 +482,8 @@ func TestRenderMCOATemplates(t *testing.T) {
 	}
 }
 
+// TestRenderClusterManagementAddOn verifies that the Grafana launch-link annotation
+// is set only when platform metrics are enabled via MCOA capabilities.
 func TestRenderClusterManagementAddOn(t *testing.T) {
 	wd, err := os.Getwd()
 	assert.NoError(t, err)
@@ -514,7 +515,6 @@ func TestRenderClusterManagementAddOn(t *testing.T) {
 
 	s := runtime.NewScheme()
 	assert.NoError(t, routev1.AddToScheme(s))
-	s.AddKnownTypes(schema.GroupVersion{Group: "route.openshift.io", Version: "v1"}, &routev1.Route{})
 
 	tests := []struct {
 		name           string
@@ -576,6 +576,8 @@ func TestRenderClusterManagementAddOn(t *testing.T) {
 	}
 }
 
+// TestRenderClusterManagementAddOnNilCapabilities verifies that a nil Capabilities
+// spec does not attempt a Grafana route lookup and produces no launch-link annotation.
 func TestRenderClusterManagementAddOnNilCapabilities(t *testing.T) {
 	wd, err := os.Getwd()
 	assert.NoError(t, err)
@@ -598,6 +600,7 @@ func TestRenderClusterManagementAddOnNilCapabilities(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: "multicluster-observability"},
 	}
 
+	// kubeClient intentionally nil: with nil Capabilities, no route fetch should occur
 	renderer := &MCORenderer{cr: mco}
 	uobj, err := renderer.renderClusterManagementAddOn(t.Context(), cmaTemplate.DeepCopy(), "test", map[string]string{"key": "value"})
 	assert.NoError(t, err)
