@@ -1186,9 +1186,9 @@ func TestNewObservatoriumSpecMetricsAlertmanagerEndpoints(t *testing.T) {
 		mco := baseMCO()
 		obs := buildObs(t, mco)
 		want := []string{
-			"observability-alertmanager-0.alertmanager-operated.open-cluster-management-observability.svc:9095",
-			"observability-alertmanager-1.alertmanager-operated.open-cluster-management-observability.svc:9095",
-			"observability-alertmanager-2.alertmanager-operated.open-cluster-management-observability.svc:9095",
+			"https://observability-alertmanager-0.alertmanager-operated.open-cluster-management-observability.svc:9095",
+			"https://observability-alertmanager-1.alertmanager-operated.open-cluster-management-observability.svc:9095",
+			"https://observability-alertmanager-2.alertmanager-operated.open-cluster-management-observability.svc:9095",
 		}
 		if !reflect.DeepEqual(obs.API.MetricsAlertmanagerEndpoints, want) {
 			t.Errorf("MetricsAlertmanagerEndpoints = %#v, want %#v", obs.API.MetricsAlertmanagerEndpoints, want)
@@ -1208,7 +1208,7 @@ func TestNewObservatoriumSpecMetricsAlertmanagerEndpoints(t *testing.T) {
 		if got := len(obs.API.MetricsAlertmanagerEndpoints); got != int(amReplicas) {
 			t.Fatalf("len(MetricsAlertmanagerEndpoints) = %d, want %d", got, int(amReplicas))
 		}
-		if obs.API.MetricsAlertmanagerEndpoints[4] != "observability-alertmanager-4.alertmanager-operated.open-cluster-management-observability.svc:9095" {
+		if obs.API.MetricsAlertmanagerEndpoints[4] != "https://observability-alertmanager-4.alertmanager-operated.open-cluster-management-observability.svc:9095" {
 			t.Errorf("last endpoint = %q", obs.API.MetricsAlertmanagerEndpoints[4])
 		}
 	})

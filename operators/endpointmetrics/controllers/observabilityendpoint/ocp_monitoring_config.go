@@ -304,7 +304,16 @@ func cleanUpOldAMSecrets(ctx context.Context, client client.Client, targetNamesp
 	return nil
 }
 
+func mTLSMonitoringSecretName(secretName string, hubInfo *operatorconfig.HubInfo) string {
+	if hubInfo == nil || hubInfo.HubClusterID == "" {
+		return secretName
+	}
+	return secretName + "-" + hubInfo.HubClusterID
+}
+
 func newAdditionalAlertmanagerConfig(hubInfo *operatorconfig.HubInfo) cmomanifests.AdditionalAlertmanagerConfig {
+	mtlsCARef := mTLSMonitoringSecretName(mtlsCaName, hubInfo)
+	mtlsCertRef := mTLSMonitoringSecretName(mtlsCertName, hubInfo)
 	config := cmomanifests.AdditionalAlertmanagerConfig{
 		Scheme:     "https",
 		PathPrefix: "/",
@@ -312,19 +321,19 @@ func newAdditionalAlertmanagerConfig(hubInfo *operatorconfig.HubInfo) cmomanifes
 		TLSConfig: cmomanifests.TLSConfig{
 			CA: &corev1.SecretKeySelector{
 				LocalObjectReference: corev1.LocalObjectReference{
-					Name: mtlsCaName,
+					Name: mtlsCARef,
 				},
 				Key: "ca.crt",
 			},
 			Cert: &corev1.SecretKeySelector{
 				LocalObjectReference: corev1.LocalObjectReference{
-					Name: mtlsCertName,
+					Name: mtlsCertRef,
 				},
 				Key: "tls.crt",
 			},
 			Key: &corev1.SecretKeySelector{
 				LocalObjectReference: corev1.LocalObjectReference{
-					Name: mtlsCertName,
+					Name: mtlsCertRef,
 				},
 				Key: "tls.key",
 			},
@@ -421,7 +430,6 @@ func createOrUpdateClusterMonitoringConfig(
 		}
 	}
 
-	// TODO check if this is still needed
 	// create the hub-alertmanager-router-ca secret if it doesn't exist or update it if needed
 	if err := createHubAmRouterCASecret(ctx, hubInfo, client, targetNamespace); err != nil {
 		return false, fmt.Errorf("failed to create or update the hub-alertmanager-router-ca secret: %w", err)
@@ -885,6 +893,9 @@ func isManaged(amc cmomanifests.AdditionalAlertmanagerConfig, hubInfo *operatorc
 	if hubInfo == nil && strings.Contains(amc.TLSConfig.CA.Name, hubAmRouterCASecretName) {
 		return true
 	}
+	if hubInfo != nil && hubInfo.HubClusterID != "" && amc.TLSConfig.CA.Name == mtlsCaName+"-"+hubInfo.HubClusterID {
+		return true
+	}
 	if amc.TLSConfig.CA.Name == mtlsCaName {
 		return true
 	}
@@ -1002,31 +1013,31 @@ func createMtlsSecretInNamespace(ctx context.Context, c client.Client, sourceNam
 	if err := c.Get(ctx, types.NamespacedName{Name: secretName, Namespace: sourceNamespace}, source); err != nil {
 		return fmt.Errorf("failed to get %s/%s: %w", sourceNamespace, secretName, err)
 	}
-	secretNameID := secretName + "-" + hubInfo.HubClusterID
+	mtlsSecretName := mTLSMonitoringSecretName(secretName, hubInfo)
 
 	desired := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      secretNameID,
+			Name:      mtlsSecretName,
 			Namespace: targetNamespace,
 		},
 		Data: source.Data,
 	}
 	found := &corev1.Secret{}
-	err := c.Get(ctx, types.NamespacedName{Name: secretNameID, Namespace: targetNamespace}, found)
+	err := c.Get(ctx, types.NamespacedName{Name: mtlsSecretName, Namespace: targetNamespace}, found)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			log.Info(fmt.Sprintf("creating %s/%s secret", targetNamespace, secretNameID))
+			log.Info("creating mTLS secret in target namespace", "secret", mtlsSecretName, "namespace", targetNamespace)
 			if createErr := c.Create(ctx, desired); createErr != nil {
-				log.Error(createErr, "failed to create mTLS secret in target namespace", "secret", secretNameID, "namespace", targetNamespace)
+				log.Error(createErr, "failed to create mTLS secret in target namespace", "secret", mtlsSecretName, "namespace", targetNamespace)
 				return createErr
 			}
-			log.Info("created mTLS secret in target namespace", "secret", secretNameID, "namespace", targetNamespace)
+			log.Info("created mTLS secret in target namespace", "secret", mtlsSecretName, "namespace", targetNamespace)
 			return nil
 		}
-		return fmt.Errorf("failed to check %s/%s: %w", targetNamespace, secretNameID, err)
+		return fmt.Errorf("failed to check %s/%s: %w", targetNamespace, mtlsSecretName, err)
 	}
 	if reflect.DeepEqual(found.Data, source.Data) {
-		log.Info("mTLS secret already up to date", "secret", secretNameID, "namespace", targetNamespace)
+		log.Info("mTLS secret already up to date", "secret", mtlsSecretName, "namespace", targetNamespace)
 		return nil
 	}
 	found.Data = source.Data
