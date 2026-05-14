@@ -174,7 +174,7 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 	}
 	rendering.Images = imagesCM.Data
 
-	if r.IsHubMetricsCollector && isHypershift {
+	if isHypershift {
 		updatedHCs, err := hypershift.ReconcileHostedClustersServiceMonitors(ctx, r.Client)
 		if err != nil {
 			r.Logger.Error(err, "Failed to create ServiceMonitors for hypershift")
