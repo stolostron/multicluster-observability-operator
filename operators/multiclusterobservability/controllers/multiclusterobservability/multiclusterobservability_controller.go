@@ -35,6 +35,7 @@ import (
 	observatoriumv1alpha1 "github.com/stolostron/observatorium-operator/api/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	storev1 "k8s.io/api/storage/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -432,6 +433,10 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		// Delete ServiceMonitor from openshft-monitoring namespace
 		if err := r.deleteServiceMonitorInOpenshiftMonitoringNamespace(ctx); err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to delete ServiceMonitor in openshift-monitoring namespace: %w", err)
+		}
+		// The rbac-query-proxy Ingress is no longer rendered; clean up any leftover from prior versions.
+		if err := r.deleteVestigialProxyIngress(ctx); err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to delete vestigial rbac-query-proxy-ingress: %w", err)
 		}
 		isLegacyResourceRemoved = true
 	}
@@ -1066,6 +1071,27 @@ func (r *MultiClusterObservabilityReconciler) deleteSpecificPrometheusRule(ctx c
 		log.Info("Deleted PrometheusRule from openshift-monitoring namespace")
 	} else if !apierrors.IsNotFound(err) {
 		log.Error(err, "Failed to fetch PrometheusRule")
+		return err
+	}
+
+	return nil
+}
+
+// deleteVestigialProxyIngress removes the rbac-query-proxy-ingress Ingress that is no longer
+// rendered. The proxy is served via Route; the Ingress targeted the deprecated management-ingress
+// controller and causes admission failures on clusters with the AWS Load Balancer Controller.
+func (r *MultiClusterObservabilityReconciler) deleteVestigialProxyIngress(ctx context.Context) error {
+	ingress := &networkingv1.Ingress{}
+	err := r.Client.Get(ctx, client.ObjectKey{
+		Name:      "rbac-query-proxy-ingress",
+		Namespace: config.GetDefaultNamespace(),
+	}, ingress)
+	if err == nil {
+		if err := r.Client.Delete(ctx, ingress); err != nil && !apierrors.IsNotFound(err) {
+			return err
+		}
+		log.Info("Deleted vestigial rbac-query-proxy-ingress Ingress")
+	} else if !apierrors.IsNotFound(err) {
 		return err
 	}
 
