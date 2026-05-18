@@ -261,7 +261,6 @@ func GetOBAResources(oba *mcoshared.ObservabilityAddonSpec, tshirtSize observabi
 	memoryRequests := MetricsCollectorMemoryRequest[tshirtSize]
 	memoryLimits := MetricsCollectorMemoryLimits
 	resourceReq := &corev1.ResourceRequirements{}
-
 	if oba.Resources != nil {
 		if len(oba.Resources.Requests) != 0 {
 			if oba.Resources.Requests.Cpu().String() != "0" {
@@ -297,6 +296,10 @@ func GetOBAResources(oba *mcoshared.ObservabilityAddonSpec, tshirtSize observabi
 	}
 	resourceReq.Limits = limits
 	resourceReq.Requests = requests
+	print(resourceReq)
+	print("RESOURCE REQ for spoke check")
+	print(resourceReq.Requests)
+	print(resourceReq.Limits)
 
 	return resourceReq
 }
