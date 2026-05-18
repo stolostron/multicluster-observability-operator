@@ -12,9 +12,10 @@ const (
 	// RightSizingCapableAnnotation on the MCO CR indicates MCOA can handle right-sizing.
 	RightSizingCapableAnnotation = "observability.open-cluster-management.io/right-sizing-capable"
 
-	// Right-sizing ADC key names — must match KeyPlatform* constants in MCOA repo.
+	// Right-sizing ADC key names — must match Key* constants in MCOA repo.
 	ADCKeyPlatformNamespaceRightSizing      = "platformNamespaceRightSizing"
 	ADCKeyPlatformVirtualizationRightSizing = "platformVirtualizationRightSizing"
+	ADCKeyRightSizingDelegated              = "rightSizingDelegated"
 )
 
 // IsRightSizingDelegated checks if the MCO CR has the right-sizing delegation
