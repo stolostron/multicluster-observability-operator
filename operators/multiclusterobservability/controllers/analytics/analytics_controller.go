@@ -377,7 +377,7 @@ func (r *AnalyticsReconciler) syncRightSizingStateToADC(ctx context.Context, ins
 				"delegated", delegatedValue, "namespace", nsValue, "virtualization", virtValue)
 		} else {
 			reqLogger.V(1).Info("rs - syncing disabled state to ADC (MCO takes over)",
-				"delegated", delegatedValue)
+				"delegated", delegatedValue, "namespace", nsValue, "virtualization", virtValue)
 		}
 		if err := r.Client.Update(ctx, adc); err != nil {
 			return fmt.Errorf("failed to update AddOnDeploymentConfig: %w", err)
