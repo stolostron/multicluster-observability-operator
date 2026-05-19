@@ -220,7 +220,7 @@ spec:
         expr: sum without (managed_cluster_id) (label_replace((sum without (clusterID) (label_replace((sum(policyreport_info * on (managed_cluster_id) group_left (cluster) label_replace(acm_managed_cluster_labels, "cluster", "$1", "name", "(.*)")) by (cluster, category, clusterID, managed_cluster_id, policy, severity) > 0),"hub_cluster_id", "$1", "clusterID", "(.*)"))),"clusterID", "$1", "managed_cluster_id", "(.*)"))
         for: 1m
         labels:
-          severity: "{{ $labels.severity }}"
+          severity: critical
   - name: acm-metrics-collector-federation-alerts
     rules:
       - alert: MetricsCollectorNotIngestingSamples
