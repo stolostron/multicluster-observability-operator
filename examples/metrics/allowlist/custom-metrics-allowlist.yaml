@@ -10,4 +10,4 @@ data:
       - -cluster_version_payload # this default metric is not being collected from your managed clusters
       - -instance:node_num_cpu:sum # this default metric is not being collected from your managed clusters
     matches:
-      - -__name__="go_goroutines",job="apiserver" # this default metric is not being collected from your managed clusters
+      - -__name__="go_goroutines",service="kubernetes" # this default metric is not being collected from your managed clusters
