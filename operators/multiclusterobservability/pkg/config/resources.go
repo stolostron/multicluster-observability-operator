@@ -261,7 +261,18 @@ func GetOBAResources(oba *mcoshared.ObservabilityAddonSpec, tshirtSize observabi
 	memoryRequests := MetricsCollectorMemoryRequest[tshirtSize]
 	memoryLimits := MetricsCollectorMemoryLimits
 	resourceReq := &corev1.ResourceRequirements{}
+	requests := corev1.ResourceList{}
+	limits := corev1.ResourceList{}
 	if oba.Resources != nil {
+		resourceReq = oba.Resources.DeepCopy()
+		requests = resourceReq.Requests
+		limits = resourceReq.Limits
+		if requests == nil {
+			requests = corev1.ResourceList{}
+		}
+		if limits == nil {
+			limits = corev1.ResourceList{}
+		}
 		if len(oba.Resources.Requests) != 0 {
 			if oba.Resources.Requests.Cpu().String() != "0" {
 				cpuRequests = oba.Resources.Requests.Cpu().String()
@@ -279,9 +290,6 @@ func GetOBAResources(oba *mcoshared.ObservabilityAddonSpec, tshirtSize observabi
 			}
 		}
 	}
-
-	requests := corev1.ResourceList{}
-	limits := corev1.ResourceList{}
 	if cpuRequests != "" {
 		requests[corev1.ResourceName(corev1.ResourceCPU)] = resource.MustParse(cpuRequests)
 	}
@@ -296,10 +304,6 @@ func GetOBAResources(oba *mcoshared.ObservabilityAddonSpec, tshirtSize observabi
 	}
 	resourceReq.Limits = limits
 	resourceReq.Requests = requests
-	print(resourceReq)
-	print("RESOURCE REQ for spoke check")
-	print(resourceReq.Requests)
-	print(resourceReq.Limits)
 
 	return resourceReq
 }
