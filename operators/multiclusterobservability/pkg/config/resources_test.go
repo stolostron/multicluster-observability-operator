@@ -363,7 +363,25 @@ func TestGetOBAResources(t *testing.T) {
 			},
 		},
 		{
-			name:          "Pass Through Recourse Requests For Fields Other Than CPU And Memory",
+			name:          "pass through requests for fields other than CPU and memory",
+			componentName: ObservatoriumAPI,
+			raw: &mcoshared.ObservabilityAddonSpec{
+				Resources: &corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceEphemeralStorage: resource.MustParse("1Ki"),
+					},
+				},
+			},
+			result: func(resources corev1.ResourceRequirements) bool {
+				return resources.Requests.Cpu().String() == MetricsCollectorCPURequest[Default] &&
+					resources.Requests.Memory().String() == MetricsCollectorMemoryRequest[Default] &&
+					resources.Limits.Cpu().String() == "0" &&
+					resources.Limits.Memory().String() == "0" &&
+					resources.Requests.StorageEphemeral().String() == "1Ki"
+			},
+		},
+		{
+			name:          "pass through limits for fields other than CPU and memory",
 			componentName: ObservatoriumAPI,
 			raw: &mcoshared.ObservabilityAddonSpec{
 				Resources: &corev1.ResourceRequirements{
@@ -380,6 +398,7 @@ func TestGetOBAResources(t *testing.T) {
 					resources.Limits.StorageEphemeral().String() == "1Ki"
 			},
 		},
+
 		{
 			name:          "no resources defined",
 			componentName: ObservatoriumAPI,
