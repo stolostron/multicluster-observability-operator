@@ -129,7 +129,9 @@ data:
       - kube_pod_container_resource_requests_cpu_cores
       - kube_pod_container_resource_requests_memory_bytes
       - kube_pod_info
+      - kube_pod_labels
       - kube_pod_owner
+      - kube_pod_resource_request
       - kube_resourcequota
       - kubelet_running_container_count
       - kubelet_runtime_operations
@@ -152,6 +154,7 @@ data:
       - kubevirt_vmi_filesystem_capacity_bytes
       - kubevirt_vmi_filesystem_used_bytes
       - kubevirt_vmi_info
+      - kubevirt_vmi_launcher_memory_overhead_bytes
       - kubevirt_vmi_memory_available_bytes
       - kubevirt_vmi_memory_cached_bytes
       - kubevirt_vmi_memory_swap_in_traffic_bytes
@@ -206,12 +209,14 @@ data:
       - node_filesystem_size_bytes
       - node_memory_MemAvailable_bytes
       - node_memory_MemTotal_bytes
-      - node_memory_MemTotal_bytes
+      - node_memory_SwapFree_bytes
+      - node_memory_SwapTotal_bytes
       - node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate
       - node_namespace_pod_container:container_cpu_usage_seconds_total:sum_rate5m
       - node_netstat_Tcp_OutSegs
       - node_netstat_Tcp_RetransSegs
       - node_netstat_TcpExt_TCPSynRetrans
+      - node_pressure_memory_waiting_seconds_total
       - policy:policy_governance_info:propagated_count
       - policy:policy_governance_info:propagated_noncompliant_count
       - policyreport_info
@@ -228,6 +233,7 @@ data:
       - __name__="process_resident_memory_bytes",job=~"apiserver|etcd"
       - __name__="container_memory_cache",container!=""
       - __name__="container_memory_rss",container!=""
+      - __name__="container_memory_rss",id="/system.slice"
       - __name__="container_memory_swap",container!=""
       - __name__="container_memory_working_set_bytes",container!=""
     renames:
