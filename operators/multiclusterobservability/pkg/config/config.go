@@ -38,7 +38,8 @@ import (
 const (
 	crLabelKey                        = "observability.open-cluster-management.io/name"
 	clusterNameLabelKey               = "cluster"
-	obsAPIGateway                     = "observatorium-api"
+	ObsAPIGateway                     = "observatorium-api"
+	McoaObsAPIGateway                 = "mcoa-observatorium-api"
 	infrastructureConfigName          = "cluster"
 	defaultMCONamespace               = "open-cluster-management"
 	defaultNamespace                  = "open-cluster-management-observability"
@@ -427,12 +428,12 @@ func GetDefaultTenantName() string {
 // GetObsAPIRouteHost is used to Route's host for Observatorium API. This doesn't take into consideration
 // the `advanced.customObservabilityHubURL` configuration.
 func GetObsAPIRouteHost(ctx context.Context, client client.Client, namespace string) (string, error) {
-	return GetRouteHost(ctx, client, obsAPIGateway, namespace)
+	return GetRouteHost(ctx, client, ObsAPIGateway, namespace)
 }
 
 // GetObsAPIExternalURL is used to get the frontend URL that should be used to reach the Observatorium API instance.
 // This takes into consideration the `advanced.customObservabilityHubURL` configuration.
-func GetObsAPIExternalURL(ctx context.Context, client client.Client, namespace string) (*url.URL, error) {
+func GetObsAPIExternalURL(ctx context.Context, client client.Client, obsapi string, namespace string) (*url.URL, error) {
 	mco := &observabilityv1beta2.MultiClusterObservability{}
 	err := client.Get(ctx,
 		types.NamespacedName{
@@ -450,7 +451,7 @@ func GetObsAPIExternalURL(ctx context.Context, client client.Client, namespace s
 		}
 		return obsURL, nil
 	}
-	routeHost, err := GetRouteHost(ctx, client, obsAPIGateway, namespace)
+	routeHost, err := GetRouteHost(ctx, client, obsapi, namespace)
 	if err != nil {
 		return nil, err
 	}
