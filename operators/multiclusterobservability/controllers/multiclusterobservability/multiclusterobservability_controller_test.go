@@ -31,6 +31,7 @@ import (
 	mcostatusctrl "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/status"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering/templates"
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
 	observatoriumv1alpha1 "github.com/stolostron/observatorium-operator/api/v1alpha1"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
@@ -1553,5 +1554,114 @@ func newAlertManagerRoute() *routev1.Route {
 		Spec: routev1.RouteSpec{
 			Host: "alert.manager",
 		},
+	}
+}
+
+// TestSyncMCOACMAGrafanaLink verifies that syncMCOACMAGrafanaLink correctly adds,
+// removes, or leaves unchanged the Grafana launch-link annotation on the MCOA CMA
+// based on whether platform metrics collection is enabled.
+func TestSyncMCOACMAGrafanaLink(t *testing.T) {
+	s := runtime.NewScheme()
+	assert.NoError(t, routev1.AddToScheme(s))
+	assert.NoError(t, addonv1alpha1.AddToScheme(s))
+
+	grafanaRoute := &routev1.Route{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      config.GrafanaRouteName,
+			Namespace: config.GetDefaultNamespace(),
+		},
+		Spec: routev1.RouteSpec{
+			Host: "grafana.apps.test.example.com",
+		},
+	}
+
+	tests := []struct {
+		name            string
+		metricsEnabled  bool
+		existingLink    bool
+		expectUpdate    bool
+		expectLinkAfter bool
+	}{
+		{
+			name:            "Platform metrics ON, link absent - should add link",
+			metricsEnabled:  true,
+			existingLink:    false,
+			expectUpdate:    true,
+			expectLinkAfter: true,
+		},
+		{
+			name:            "Platform metrics OFF, link present - should remove link",
+			metricsEnabled:  false,
+			existingLink:    true,
+			expectUpdate:    true,
+			expectLinkAfter: false,
+		},
+		{
+			name:            "Platform metrics ON, link present - no-op",
+			metricsEnabled:  true,
+			existingLink:    true,
+			expectUpdate:    false,
+			expectLinkAfter: true,
+		},
+		{
+			name:            "Platform metrics OFF, link absent - no-op",
+			metricsEnabled:  false,
+			existingLink:    false,
+			expectUpdate:    false,
+			expectLinkAfter: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mco := &mcov1beta2.MultiClusterObservability{
+				ObjectMeta: metav1.ObjectMeta{Name: "test-mco"},
+			}
+			if tt.metricsEnabled {
+				mco.Spec.Capabilities = &mcov1beta2.CapabilitiesSpec{
+					Platform: &mcov1beta2.PlatformCapabilitiesSpec{
+						Metrics: mcov1beta2.PlatformMetricsSpec{
+							Default: mcov1beta2.PlatformMetricsDefaultSpec{
+								Enabled: true,
+							},
+						},
+					},
+				}
+			}
+
+			cmao := &addonv1alpha1.ClusterManagementAddOn{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: config.MultiClusterObservabilityAddon,
+				},
+			}
+			if tt.existingLink {
+				cmao.Annotations = map[string]string{
+					util.GrafanaLaunchLinkKey:     "https://grafana.old.example.com/d/old-dashboard/overview",
+					util.GrafanaLaunchLinkTextKey: "Grafana",
+				}
+			}
+
+			c := fake.NewClientBuilder().WithScheme(s).WithObjects(cmao, grafanaRoute).Build()
+
+			err := syncMCOACMAGrafanaLink(t.Context(), c, mco, cmao)
+			assert.NoError(t, err)
+
+			updated := &addonv1alpha1.ClusterManagementAddOn{}
+			err = c.Get(t.Context(), types.NamespacedName{Name: config.MultiClusterObservabilityAddon}, updated)
+			assert.NoError(t, err)
+
+			_, hasLink := updated.Annotations[util.GrafanaLaunchLinkKey]
+			assert.Equal(t, tt.expectLinkAfter, hasLink, "Grafana link presence mismatch")
+
+			if tt.expectLinkAfter && tt.expectUpdate {
+				assert.Contains(t, updated.Annotations[util.GrafanaLaunchLinkKey], "grafana.apps.test.example.com")
+				assert.Equal(t, "Grafana", updated.Annotations[util.GrafanaLaunchLinkTextKey])
+			}
+
+			if tt.expectLinkAfter && !tt.expectUpdate && tt.existingLink {
+				assert.Equal(t, "https://grafana.old.example.com/d/old-dashboard/overview",
+					updated.Annotations[util.GrafanaLaunchLinkKey])
+			}
+		})
 	}
 }

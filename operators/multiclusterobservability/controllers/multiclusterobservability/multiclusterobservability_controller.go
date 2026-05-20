@@ -243,6 +243,15 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	}
 	disableMCOACMAORender := !apierrors.IsNotFound(err)
 
+	// Sync Grafana link annotations on existing MCOA CMA independently of the render pipeline.
+	// DisableCMAORender prevents re-rendering the CMA, so annotation changes from toggling
+	// platform metrics would not propagate through Render()/Deploy().
+	if disableMCOACMAORender {
+		if err := syncMCOACMAGrafanaLink(ctx, r.Client, instance, mcoaCMAO); err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to sync MCOA CMA Grafana link: %w", err)
+		}
+	}
+
 	// Check if right-sizing is delegated to MCOA via MCO CR annotation.
 	rightSizingDelegated := util.IsRightSizingDelegated(instance)
 
@@ -1127,4 +1136,50 @@ func newMCOACRDEventHandler(c client.Client) handler.EventHandler {
 			return reqs
 		},
 	)
+}
+
+// syncMCOACMAGrafanaLink ensures the MCOA ClusterManagementAddOn's Grafana launch-link
+// annotation is present only when platform metrics are enabled via MCOA. This runs
+// independently of the render pipeline because DisableCMAORender skips re-rendering
+// the CMA once it exists.
+func syncMCOACMAGrafanaLink(
+	ctx context.Context,
+	c client.Client,
+	mco *mcov1beta2.MultiClusterObservability,
+	cmao *addonv1alpha1.ClusterManagementAddOn,
+) error {
+	annotations := cmao.GetAnnotations()
+	_, hasLink := annotations[util.GrafanaLaunchLinkKey]
+	metricsEnabled := rendering.MCOAPlatformMetricsEnabled(mco)
+
+	if metricsEnabled && !hasLink {
+		host, err := config.GetRouteHost(ctx, c, config.GrafanaRouteName, config.GetDefaultNamespace())
+		if err != nil {
+			return fmt.Errorf("failed to get Grafana route host: %w", err)
+		}
+		if host == "" {
+			return fmt.Errorf("grafana route host is empty, cannot construct launch link")
+		}
+		grafanaURL := url.URL{
+			Scheme: "https",
+			Host:   host,
+			Path:   rendering.GrafanaMCOADashboardPath,
+		}
+		if annotations == nil {
+			annotations = make(map[string]string)
+		}
+		annotations[util.GrafanaLaunchLinkKey] = grafanaURL.String()
+		annotations[util.GrafanaLaunchLinkTextKey] = "Grafana"
+		cmao.SetAnnotations(annotations)
+		return c.Update(ctx, cmao)
+	}
+
+	if !metricsEnabled && hasLink {
+		delete(annotations, util.GrafanaLaunchLinkKey)
+		delete(annotations, util.GrafanaLaunchLinkTextKey)
+		cmao.SetAnnotations(annotations)
+		return c.Update(ctx, cmao)
+	}
+
+	return nil
 }
