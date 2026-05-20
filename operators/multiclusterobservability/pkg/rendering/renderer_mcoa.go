@@ -266,6 +266,11 @@ func (r *MCORenderer) renderAddonDeploymentConfig(
 			// Right-sizing ADC variables: when MCOA manages RS (delegated),
 			// sync actual CR state. Otherwise set "disabled" so MCOA doesn't deploy RS.
 			delegated := r.rendererOptions != nil && r.rendererOptions.MCOAOptions.RightSizingDelegated
+			if delegated {
+				appendCustomVar(aodc, mcoutil.ADCKeyRightSizingDelegated, "true")
+			} else {
+				appendCustomVar(aodc, mcoutil.ADCKeyRightSizingDelegated, "false")
+			}
 			if delegated && cs.Platform.Analytics.NamespaceRightSizingRecommendation.Enabled {
 				appendCustomVar(aodc, mcoutil.ADCKeyPlatformNamespaceRightSizing, "enabled")
 			} else {
