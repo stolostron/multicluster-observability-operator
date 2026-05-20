@@ -50,7 +50,7 @@ func CheckManagedClusterAddonStatus(opt TestOptions, name string) {
 func GetAvailableClustersFromAPI(opt TestOptions, includeHub bool) ([]Cluster, error) {
 	availableManagedClusters, err := GetAvailableManagedClusters(opt)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get available managed clusters from API: %w", err)
 	}
 
 	clusterList := make([]Cluster, 0, len(availableManagedClusters))
