@@ -41,17 +41,6 @@ func GeneratePrometheusRule(configData rsutility.RSNamespaceConfigMapData) (moni
 		}
 	}
 
-	ruleWithLabels := func(record, expr string) monitoringv1.Rule {
-		return monitoringv1.Rule{
-			Record: record,
-			Expr:   intstr.FromString(expr),
-			Labels: map[string]string{
-				"profile":     "Max OverAll",
-				"aggregation": "1d",
-			},
-		}
-	}
-
 	return monitoringv1.PrometheusRule{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      PrometheusRuleName,
@@ -71,7 +60,7 @@ func GeneratePrometheusRule(configData rsutility.RSNamespaceConfigMapData) (moni
 				{
 					Name:     "acm-right-sizing-namespace-1d.rules",
 					Interval: &duration1d,
-					Rules:    buildNamespaceRules1d(configData, ruleWithLabels),
+					Rules:    buildNamespaceRules1d(configData),
 				},
 				{
 					Name:     "acm-right-sizing-cluster-5m.rule",
@@ -81,7 +70,7 @@ func GeneratePrometheusRule(configData rsutility.RSNamespaceConfigMapData) (moni
 				{
 					Name:     "acm-right-sizing-cluster-1d.rule",
 					Interval: &duration1d,
-					Rules:    buildClusterRules1d(configData, ruleWithLabels),
+					Rules:    buildClusterRules1d(configData),
 				},
 			},
 		},
@@ -143,33 +132,25 @@ func buildNamespaceRules5m(
 	}
 }
 
-func buildNamespaceRules1d(
-	configData rsutility.RSNamespaceConfigMapData,
-	ruleWithLabels func(string, string) monitoringv1.Rule,
-) []monitoringv1.Rule {
-	rp := configData.PrometheusRuleConfig.RecommendationPercentage
-	return []monitoringv1.Rule{
-		ruleWithLabels("acm_rs:namespace:cpu_request_hard", `max_over_time(acm_rs:namespace:cpu_request_hard:5m[1d])`),
-		ruleWithLabels("acm_rs:namespace:cpu_request", `max_over_time(acm_rs:namespace:cpu_request:5m[1d])`),
-		ruleWithLabels("acm_rs:namespace:cpu_usage", `max_over_time(acm_rs:namespace:cpu_usage:5m[1d])`),
-		ruleWithLabels(
-			"acm_rs:namespace:cpu_recommendation",
-			fmt.Sprintf(
-				`max_over_time(acm_rs:namespace:cpu_usage:5m[1d]) * (%d/100)`,
-				rp,
-			),
-		),
-		ruleWithLabels("acm_rs:namespace:memory_request_hard", `max_over_time(acm_rs:namespace:memory_request_hard:5m[1d])`),
-		ruleWithLabels("acm_rs:namespace:memory_request", `max_over_time(acm_rs:namespace:memory_request:5m[1d])`),
-		ruleWithLabels("acm_rs:namespace:memory_usage", `max_over_time(acm_rs:namespace:memory_usage:5m[1d])`),
-		ruleWithLabels(
-			"acm_rs:namespace:memory_recommendation",
-			fmt.Sprintf(
-				`max_over_time(acm_rs:namespace:memory_usage:5m[1d]) * (%d/100)`,
-				rp,
-			),
-		),
+func buildNamespaceRules1d(configData rsutility.RSNamespaceConfigMapData) []monitoringv1.Rule {
+	rp := rsutility.NormalizeRecommendationPercentage(configData.PrometheusRuleConfig.RecommendationPercentage)
+	const metricsPerProfile = 8
+	rules := make([]monitoringv1.Rule, 0, metricsPerProfile*len(rsutility.RecommendationProfiles))
+	for _, profile := range rsutility.RecommendationProfiles {
+		rules = append(rules,
+			rsutility.RuleWithProfile("acm_rs:namespace:cpu_request_hard", profile.AggExpr("acm_rs:namespace:cpu_request_hard:5m"), profile.Name),
+			rsutility.RuleWithProfile("acm_rs:namespace:cpu_request", profile.AggExpr("acm_rs:namespace:cpu_request:5m"), profile.Name),
+			rsutility.RuleWithProfile("acm_rs:namespace:cpu_usage", profile.AggExpr("acm_rs:namespace:cpu_usage:5m"), profile.Name),
+			rsutility.RuleWithProfile("acm_rs:namespace:cpu_recommendation",
+				rsutility.BuildProfiledRecommendationExpr("acm_rs:namespace:cpu_usage:5m", rp, profile), profile.Name),
+			rsutility.RuleWithProfile("acm_rs:namespace:memory_request_hard", profile.AggExpr("acm_rs:namespace:memory_request_hard:5m"), profile.Name),
+			rsutility.RuleWithProfile("acm_rs:namespace:memory_request", profile.AggExpr("acm_rs:namespace:memory_request:5m"), profile.Name),
+			rsutility.RuleWithProfile("acm_rs:namespace:memory_usage", profile.AggExpr("acm_rs:namespace:memory_usage:5m"), profile.Name),
+			rsutility.RuleWithProfile("acm_rs:namespace:memory_recommendation",
+				rsutility.BuildProfiledRecommendationExpr("acm_rs:namespace:memory_usage:5m", rp, profile), profile.Name),
+		)
 	}
+	return rules
 }
 
 func buildClusterRules5m(
@@ -227,31 +208,23 @@ func buildClusterRules5m(
 	}
 }
 
-func buildClusterRules1d(
-	configData rsutility.RSNamespaceConfigMapData,
-	ruleWithLabels func(string, string) monitoringv1.Rule,
-) []monitoringv1.Rule {
-	rp := configData.PrometheusRuleConfig.RecommendationPercentage
-	return []monitoringv1.Rule{
-		ruleWithLabels("acm_rs:cluster:cpu_request_hard", `max_over_time(acm_rs:cluster:cpu_request_hard:5m[1d])`),
-		ruleWithLabels("acm_rs:cluster:cpu_request", `max_over_time(acm_rs:cluster:cpu_request:5m[1d])`),
-		ruleWithLabels("acm_rs:cluster:cpu_usage", `max_over_time(acm_rs:cluster:cpu_usage:5m[1d])`),
-		ruleWithLabels(
-			"acm_rs:cluster:cpu_recommendation",
-			fmt.Sprintf(
-				`max_over_time(acm_rs:cluster:cpu_usage:5m[1d]) * (%d/100)`,
-				rp,
-			),
-		),
-		ruleWithLabels("acm_rs:cluster:memory_request_hard", `max_over_time(acm_rs:cluster:memory_request_hard:5m[1d])`),
-		ruleWithLabels("acm_rs:cluster:memory_request", `max_over_time(acm_rs:cluster:memory_request:5m[1d])`),
-		ruleWithLabels("acm_rs:cluster:memory_usage", `max_over_time(acm_rs:cluster:memory_usage:5m[1d])`),
-		ruleWithLabels(
-			"acm_rs:cluster:memory_recommendation",
-			fmt.Sprintf(
-				`max_over_time(acm_rs:cluster:memory_usage:5m[1d]) * (%d/100)`,
-				rp,
-			),
-		),
+func buildClusterRules1d(configData rsutility.RSNamespaceConfigMapData) []monitoringv1.Rule {
+	rp := rsutility.NormalizeRecommendationPercentage(configData.PrometheusRuleConfig.RecommendationPercentage)
+	const metricsPerProfile = 8
+	rules := make([]monitoringv1.Rule, 0, metricsPerProfile*len(rsutility.RecommendationProfiles))
+	for _, profile := range rsutility.RecommendationProfiles {
+		rules = append(rules,
+			rsutility.RuleWithProfile("acm_rs:cluster:cpu_request_hard", profile.AggExpr("acm_rs:cluster:cpu_request_hard:5m"), profile.Name),
+			rsutility.RuleWithProfile("acm_rs:cluster:cpu_request", profile.AggExpr("acm_rs:cluster:cpu_request:5m"), profile.Name),
+			rsutility.RuleWithProfile("acm_rs:cluster:cpu_usage", profile.AggExpr("acm_rs:cluster:cpu_usage:5m"), profile.Name),
+			rsutility.RuleWithProfile("acm_rs:cluster:cpu_recommendation",
+				rsutility.BuildProfiledRecommendationExpr("acm_rs:cluster:cpu_usage:5m", rp, profile), profile.Name),
+			rsutility.RuleWithProfile("acm_rs:cluster:memory_request_hard", profile.AggExpr("acm_rs:cluster:memory_request_hard:5m"), profile.Name),
+			rsutility.RuleWithProfile("acm_rs:cluster:memory_request", profile.AggExpr("acm_rs:cluster:memory_request:5m"), profile.Name),
+			rsutility.RuleWithProfile("acm_rs:cluster:memory_usage", profile.AggExpr("acm_rs:cluster:memory_usage:5m"), profile.Name),
+			rsutility.RuleWithProfile("acm_rs:cluster:memory_recommendation",
+				rsutility.BuildProfiledRecommendationExpr("acm_rs:cluster:memory_usage:5m", rp, profile), profile.Name),
+		)
 	}
+	return rules
 }

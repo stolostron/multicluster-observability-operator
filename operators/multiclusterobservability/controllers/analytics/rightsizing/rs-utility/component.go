@@ -27,6 +27,10 @@ type ComponentType string
 const (
 	ComponentTypeNamespace      ComponentType = "namespace"
 	ComponentTypeVirtualization ComponentType = "virtualization"
+	// ComponentTypeWorkload manages workload + pod right-sizing policies (single policy, feature-gated by the
+	// workloadPodRightSizingRecommendation flag).
+	ComponentTypeWorkload ComponentType = "workload"
+	ComponentTypeGPU      ComponentType = "gpu"
 
 	// RSManagedByLabel is applied to all RS resources for label-based discovery during cleanup.
 	RSManagedByLabel = "observability.open-cluster-management.io/managed-by"
@@ -72,6 +76,12 @@ func GetComponentConfig(mco *mcov1beta2.MultiClusterObservability, componentType
 		enabled := mco.Spec.Capabilities.Platform.Analytics.VirtualizationRightSizingRecommendation.Enabled
 		binding := mco.Spec.Capabilities.Platform.Analytics.VirtualizationRightSizingRecommendation.NamespaceBinding
 		return enabled, binding, nil
+	case ComponentTypeWorkload:
+		combined := mco.Spec.Capabilities.Platform.Analytics.WorkloadPodRightSizingRecommendation
+		return combined.Enabled, combined.NamespaceBinding, nil
+	case ComponentTypeGPU:
+		gpu := mco.Spec.Capabilities.Platform.Analytics.GPURightSizingRecommendation
+		return gpu.Enabled, gpu.NamespaceBinding, nil
 	default:
 		return false, "", fmt.Errorf("unknown component type: %s", componentType)
 	}
