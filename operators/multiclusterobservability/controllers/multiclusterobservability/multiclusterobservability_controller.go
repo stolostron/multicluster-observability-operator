@@ -35,7 +35,6 @@ import (
 	observatoriumv1alpha1 "github.com/stolostron/observatorium-operator/api/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	discoveryv1 "k8s.io/api/discovery/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	storev1 "k8s.io/api/storage/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -530,7 +529,6 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 	secretPred := GetAlertManagerSecretPredicateFunc()
 	namespacePred := GetNamespacePredicateFunc()
 	mcoaCRDPred := GetMCOACRDPredicateFunc()
-	alertmanagerConfigPred := GetAlertmanagerConfigPredicateFunc()
 
 	ctrBuilder := ctrl.NewControllerManagedBy(mgr).
 		Named("multiclusterobservability").
@@ -575,15 +573,7 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 				}
 				return nil
 			}), builder.WithPredicates(predicate.ResourceVersionChangedPredicate{})).
-		Watches(&apiextensionsv1.CustomResourceDefinition{}, newMCOACRDEventHandler(c), builder.WithPredicates(mcoaCRDPred)).
-		Watches(&discoveryv1.EndpointSlice{}, handler.EnqueueRequestsFromMapFunc(
-			func(ctx context.Context, obj client.Object) []reconcile.Request {
-				return []reconcile.Request{
-					{NamespacedName: types.NamespacedName{
-						Name: config.GetMonitoringCRName(),
-					}},
-				}
-			}), builder.WithPredicates(alertmanagerConfigPred))
+		Watches(&apiextensionsv1.CustomResourceDefinition{}, newMCOACRDEventHandler(c), builder.WithPredicates(mcoaCRDPred))
 
 	if _, err := mgr.GetRESTMapper().KindFor(schema.GroupVersionResource{
 		Group:    "image.openshift.io",

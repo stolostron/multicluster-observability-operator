@@ -612,30 +612,30 @@ func newAPISpec(c client.Client, mco *mcov1beta2.MultiClusterObservability) (obs
 		log.Error(err, "failed to compute alertmanager metrics endpoint URLs")
 		return apiSpec, err
 	}
+
 	if len(urls) > 0 {
 		apiSpec.MetricsAlertmanagerEndpoints = urls
-	}
-	requiredConfigMaps := []string{
-		mcoconfig.AlertmanagersDefaultCaBundleName,
-	}
-	for _, cmName := range requiredConfigMaps {
+		// Only need alertmanager CA if alertmanager endpoints is non-empty check for configmap
 		cm := &v1.ConfigMap{}
+		cmName := mcoconfig.AlertmanagersDefaultCaBundleName
 		if err := c.Get(context.TODO(), types.NamespacedName{
 			Name:      cmName,
 			Namespace: mcoconfig.GetDefaultNamespace(),
 		}, cm); err != nil {
-			return apiSpec, fmt.Errorf("required ConfigMap %s not found: %w", cmName, err)
+			log.Error(err, "failed to load ConfigMap", "name", cmName, "namespace", mcoconfig.GetDefaultNamespace())
+		}
+
+		// not needed if len(urls) == 0
+		apiSpec.ExtraVolumeMounts = []obsv1alpha1.VolumeMount{
+			{
+				Type:      obsv1alpha1.VolumeMountTypeConfigMap,
+				MountPath: "/etc/observatorium/alertmanager/service-ca.crt",
+				Name:      mcoconfig.AlertmanagersDefaultCaBundleName,
+				Key:       mcoconfig.AlertmanagersDefaultCaBundleKey,
+			},
 		}
 	}
 
-	apiSpec.ExtraVolumeMounts = []obsv1alpha1.VolumeMount{
-		{
-			Type:      obsv1alpha1.VolumeMountTypeConfigMap,
-			MountPath: "/etc/observatorium/alertmanager/service-ca.crt",
-			Name:      mcoconfig.AlertmanagersDefaultCaBundleName,
-			Key:       mcoconfig.AlertmanagersDefaultCaBundleKey,
-		},
-	}
 	return apiSpec, nil
 }
 
@@ -1088,8 +1088,10 @@ func alertmanagerMetricsEndpointURLs(amReplicas *int32) ([]string, error) {
 	addr := []string{}
 	if amReplicas != nil {
 		for i := range *amReplicas {
-			addr = append(addr, "https://observability-alertmanager-"+strconv.Itoa(int(i))+
-				".alertmanager-operated.open-cluster-management-observability.svc:9095")
+			addr = append(addr, "https://"+mcoconfig.GetOperandName(mcoconfig.Alertmanager)+"-"+
+				strconv.Itoa(int(i))+
+				".alertmanager-operated."+
+				mcoconfig.GetDefaultNamespace()+".svc:9095")
 		}
 	} else {
 		return addr, fmt.Errorf("alertmanager replicas not set")
