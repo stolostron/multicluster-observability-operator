@@ -298,9 +298,11 @@ func (r *AnalyticsReconciler) syncRightSizingStateToADC(ctx context.Context, ins
 	)
 
 	// Determine target values based on mode
+	delegatedValue := "false"
 	nsValue := valueDisabled
 	virtValue := valueDisabled
 	if delegatingToMCOA {
+		delegatedValue = "true"
 		// When delegating to MCOA, sync the MCO CR's actual right-sizing state
 		if instance.Spec.Capabilities != nil && instance.Spec.Capabilities.Platform != nil {
 			if instance.Spec.Capabilities.Platform.Analytics.NamespaceRightSizingRecommendation.Enabled {
@@ -326,11 +328,17 @@ func (r *AnalyticsReconciler) syncRightSizingStateToADC(ctx context.Context, ins
 	}
 
 	// Single-pass: find indices and track if update needed
-	nsIdx, virtIdx := -1, -1
+	delegatedIdx, nsIdx, virtIdx := -1, -1, -1
 	needsUpdate := false
 
 	for i, cv := range adc.Spec.CustomizedVariables {
 		switch cv.Name {
+		case util.ADCKeyRightSizingDelegated:
+			delegatedIdx = i
+			if cv.Value != delegatedValue {
+				adc.Spec.CustomizedVariables[i].Value = delegatedValue
+				needsUpdate = true
+			}
 		case util.ADCKeyPlatformNamespaceRightSizing:
 			nsIdx = i
 			if cv.Value != nsValue {
@@ -347,6 +355,11 @@ func (r *AnalyticsReconciler) syncRightSizingStateToADC(ctx context.Context, ins
 	}
 
 	// Append if not found
+	if delegatedIdx == -1 {
+		adc.Spec.CustomizedVariables = append(adc.Spec.CustomizedVariables,
+			addonv1alpha1.CustomizedVariable{Name: util.ADCKeyRightSizingDelegated, Value: delegatedValue})
+		needsUpdate = true
+	}
 	if nsIdx == -1 {
 		adc.Spec.CustomizedVariables = append(adc.Spec.CustomizedVariables,
 			addonv1alpha1.CustomizedVariable{Name: util.ADCKeyPlatformNamespaceRightSizing, Value: nsValue})
@@ -361,9 +374,10 @@ func (r *AnalyticsReconciler) syncRightSizingStateToADC(ctx context.Context, ins
 	if needsUpdate {
 		if delegatingToMCOA {
 			reqLogger.Info("rs - syncing right-sizing state to ADC for MCOA delegation",
-				"namespace", nsValue, "virtualization", virtValue)
+				"delegated", delegatedValue, "namespace", nsValue, "virtualization", virtValue)
 		} else {
-			reqLogger.V(1).Info("rs - syncing disabled state to ADC (MCO takes over)")
+			reqLogger.V(1).Info("rs - syncing disabled state to ADC (MCO takes over)",
+				"delegated", delegatedValue, "namespace", nsValue, "virtualization", virtValue)
 		}
 		if err := r.Client.Update(ctx, adc); err != nil {
 			return fmt.Errorf("failed to update AddOnDeploymentConfig: %w", err)

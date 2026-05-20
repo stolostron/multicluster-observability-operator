@@ -364,8 +364,12 @@ func TestSyncRightSizingStateToADC_DelegatingEnabled(t *testing.T) {
 	}, updated)
 	require.NoError(t, err)
 
+	foundDelegated := false
 	for _, cv := range updated.Spec.CustomizedVariables {
 		switch cv.Name {
+		case util.ADCKeyRightSizingDelegated:
+			foundDelegated = true
+			require.Equal(t, "true", cv.Value)
 		case util.ADCKeyPlatformNamespaceRightSizing:
 			require.Equal(t, "enabled", cv.Value)
 		case util.ADCKeyPlatformVirtualizationRightSizing:
@@ -373,6 +377,7 @@ func TestSyncRightSizingStateToADC_DelegatingEnabled(t *testing.T) {
 			require.Equal(t, "disabled", cv.Value)
 		}
 	}
+	require.True(t, foundDelegated, "missing customized variable %q", util.ADCKeyRightSizingDelegated)
 }
 
 func TestSyncRightSizingStateToADC_MCOManaging(t *testing.T) {
@@ -402,14 +407,19 @@ func TestSyncRightSizingStateToADC_MCOManaging(t *testing.T) {
 	}, updated)
 	require.NoError(t, err)
 
+	foundDelegated := false
 	for _, cv := range updated.Spec.CustomizedVariables {
 		switch cv.Name {
+		case util.ADCKeyRightSizingDelegated:
+			foundDelegated = true
+			require.Equal(t, "false", cv.Value)
 		case util.ADCKeyPlatformNamespaceRightSizing:
 			require.Equal(t, "disabled", cv.Value)
 		case util.ADCKeyPlatformVirtualizationRightSizing:
 			require.Equal(t, "disabled", cv.Value)
 		}
 	}
+	require.True(t, foundDelegated, "missing customized variable %q", util.ADCKeyRightSizingDelegated)
 }
 
 func TestSyncRightSizingStateToADC_BothEnabled(t *testing.T) {
@@ -442,14 +452,19 @@ func TestSyncRightSizingStateToADC_BothEnabled(t *testing.T) {
 	}, updated)
 	require.NoError(t, err)
 
+	foundDelegated := false
 	for _, cv := range updated.Spec.CustomizedVariables {
 		switch cv.Name {
+		case util.ADCKeyRightSizingDelegated:
+			foundDelegated = true
+			require.Equal(t, "true", cv.Value)
 		case util.ADCKeyPlatformNamespaceRightSizing:
 			require.Equal(t, "enabled", cv.Value)
 		case util.ADCKeyPlatformVirtualizationRightSizing:
 			require.Equal(t, "enabled", cv.Value)
 		}
 	}
+	require.True(t, foundDelegated, "missing customized variable %q", util.ADCKeyRightSizingDelegated)
 }
 
 func TestSyncRightSizingStateToADC_ADCNotFound(t *testing.T) {
@@ -476,6 +491,7 @@ func TestSyncRightSizingStateToADC_NoUpdateWhenValuesMatch(t *testing.T) {
 		},
 		Spec: addonv1alpha1.AddOnDeploymentConfigSpec{
 			CustomizedVariables: []addonv1alpha1.CustomizedVariable{
+				{Name: util.ADCKeyRightSizingDelegated, Value: "true"},
 				{Name: util.ADCKeyPlatformNamespaceRightSizing, Value: "enabled"},
 				{Name: util.ADCKeyPlatformVirtualizationRightSizing, Value: "disabled"},
 			},
@@ -496,14 +512,19 @@ func TestSyncRightSizingStateToADC_NoUpdateWhenValuesMatch(t *testing.T) {
 	}, updated)
 	require.NoError(t, err)
 
+	foundDelegated := false
 	for _, cv := range updated.Spec.CustomizedVariables {
 		switch cv.Name {
+		case util.ADCKeyRightSizingDelegated:
+			foundDelegated = true
+			require.Equal(t, "true", cv.Value)
 		case util.ADCKeyPlatformNamespaceRightSizing:
 			require.Equal(t, "enabled", cv.Value)
 		case util.ADCKeyPlatformVirtualizationRightSizing:
 			require.Equal(t, "disabled", cv.Value)
 		}
 	}
+	require.True(t, foundDelegated, "missing customized variable %q", util.ADCKeyRightSizingDelegated)
 }
 
 func TestWasDelegated_EventOnlyOnTransition(t *testing.T) {
