@@ -37,12 +37,8 @@ func generateHubInfoSecret(client client.Client, obsNamespace string,
 		}
 		obsAPIHost = obsAPIURL.Host
 
+		// if alerting is disabled, do not set alertmanagerEndpoint
 		if !config.IsAlertingDisabled() {
-			obsAPIURL, err := config.GetObsAPIExternalURL(context.TODO(), client, obsNamespace)
-			if err != nil {
-				log.Error(err, "Failed to get obs api url")
-				return nil, err
-			}
 			alertmanagerEndpoint = obsAPIURL.JoinPath("/api/alertmanager/v2", config.GetDefaultTenantName()).String()
 		}
 
@@ -60,7 +56,6 @@ func generateHubInfoSecret(client client.Client, obsNamespace string,
 		obsAPIHost = config.GetOperandNamePrefix() + "observatorium-api" + "." + config.GetDefaultNamespace() + ".svc.cluster.local:8080"
 		// if alerting is disabled, do not set alertmanagerEndpoint
 		if !config.IsAlertingDisabled() {
-			//alertmanagerEndpoint = config.AlertmanagerServiceName + "." + config.GetDefaultNamespace() + ".svc.cluster.local:9095"
 			alertmanagerEndpoint = config.GetOperandNamePrefix() + "observatorium-api." +
 				config.GetDefaultNamespace() + ".svc.cluster.local:8080/api/alertmanager/v2/" + config.GetDefaultTenantName()
 		}

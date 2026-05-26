@@ -78,7 +78,6 @@ func (r *MCORenderer) RenderThanosConfig(ctx context.Context, res *resource.Reso
 		}
 		addr := []string{}
 		replicas := mcoconfig.GetReplicas(mcoconfig.Alertmanager, r.cr.Spec.InstanceSize, r.cr.Spec.AdvancedConfig)
-
 		for i := range *replicas {
 			addr = append(addr, "observability-alertmanager-"+strconv.Itoa(int(i))+
 				".alertmanager-operated.open-cluster-management-observability.svc:9095")

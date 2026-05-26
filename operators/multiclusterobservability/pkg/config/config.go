@@ -103,7 +103,6 @@ const (
 	AlertmanagersDefaultCaBundleMountPath = "/etc/thanos/configmaps/alertmanager-ca-bundle"
 	AlertmanagersDefaultCaBundleName      = "alertmanager-ca-bundle"
 	AlertmanagersDefaultCaBundleKey       = "service-ca.crt"
-	ThanosRuleServerCACertMountPath       = "/etc/thanos/secrets/server-ca-certs"
 
 	AllowlistCustomConfigMapName              = "observability-metrics-custom-allowlist"
 	ManagedClusterLabelAllowListConfigMapName = "observability-managed-cluster-label-allowlist"
