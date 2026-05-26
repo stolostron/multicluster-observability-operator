@@ -37,15 +37,6 @@ func generateHubInfoSecret(client client.Client, obsNamespace string,
 		}
 		obsAPIHost = obsAPIURL.Host
 
-		// if alerting is disabled, do not set alertmanagerEndpoint
-		// if !config.IsAlertingDisabled() {
-		// 	alertmanagerURL, err := config.GetAlertmanagerURL(context.TODO(), client, obsNamespace)
-		// 	if err != nil {
-		// 		log.Error(err, "Failed to get alertmanager endpoint")
-		// 		return nil, err
-		// 	}
-		// 	alertmanagerEndpoint = alertmanagerURL.String()
-		// }
 		if !config.IsAlertingDisabled() {
 			obsAPIURL, err := config.GetObsAPIExternalURL(context.TODO(), client, obsNamespace)
 			if err != nil {

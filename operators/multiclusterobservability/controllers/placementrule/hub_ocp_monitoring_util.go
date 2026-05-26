@@ -24,6 +24,7 @@ import (
 
 const ( // #nosec G101 -- Not a hardcoded credential.
 	hubAmRouterCASecretName        = "hub-alertmanager-router-ca"
+	mtlsCaName                     = "observability-managed-cluster-certs"
 	clusterMonitoringConfigName    = "cluster-monitoring-config"
 	clusterMonitoringConfigDataKey = "config.yaml"
 	endpointMonitoringOperatorMgr  = "endpoint-monitoring-operator"
@@ -116,6 +117,9 @@ func RevertHubClusterMonitoringConfig(ctx context.Context, client client.Client)
 		for _, v := range foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs {
 			managed := false
 			if v.TLSConfig.CA != nil {
+				if v.TLSConfig.CA.Name == mtlsCaName+"-"+hubInfo.HubClusterID {
+					managed = true
+				}
 				if v.TLSConfig.CA.Name == hubAmRouterCASecretName+"-"+hubInfo.HubClusterID {
 					managed = true
 				}

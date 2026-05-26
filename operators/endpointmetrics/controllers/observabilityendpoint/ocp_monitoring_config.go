@@ -28,7 +28,6 @@ const (
 	hubAmAccessorSecretName        = "observability-alertmanager-accessor" // #nosec G101 -- Not a hardcoded credential.
 	hubAmAccessorSecretKey         = "token"                               // #nosec G101 -- Not a hardcoded credential.
 	hubAmRouterCASecretName        = "hub-alertmanager-router-ca"
-	hubAmRouterCASecretKey         = "service-ca.crt"
 	clusterMonitoringConfigName    = "cluster-monitoring-config"
 	clusterMonitoringRevertedName  = "cluster-monitoring-reverted"
 	clusterMonitoringConfigDataKey = "config.yaml"
@@ -140,52 +139,6 @@ func unsetConfigReverted(ctx context.Context, client client.Client, ns string) e
 	return nil
 }
 
-// createHubAmRouterCASecret creates the secret that contains CA of the Hub's Alertmanager Route.
-func createHubAmRouterCASecret(
-	ctx context.Context,
-	hubInfo *operatorconfig.HubInfo,
-	client client.Client,
-	targetNamespace string,
-) error {
-	hubAmRouterSecret := hubAmRouterCASecretName + "-" + hubInfo.HubClusterID
-	hubAmRouterCA := hubInfo.AlertmanagerRouterCA
-	dataMap := map[string][]byte{hubAmRouterCASecretKey: []byte(hubAmRouterCA)}
-	hubAmRouterCASecret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      hubAmRouterSecret,
-			Namespace: targetNamespace,
-		},
-		Data: dataMap,
-	}
-
-	found := &corev1.Secret{}
-	err := client.Get(ctx, types.NamespacedName{Name: hubAmRouterSecret, Namespace: targetNamespace}, found)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			log.Info(fmt.Sprintf("creating %s/%s secret", targetNamespace, hubAmRouterSecret))
-			err = client.Create(ctx, hubAmRouterCASecret)
-			if err != nil {
-				return fmt.Errorf("failed to create %s/%s secret: %w", targetNamespace, hubAmRouterSecret, err)
-			}
-			return nil
-		} else {
-			return fmt.Errorf("failed to check the %s/%s secret: %w", targetNamespace, hubAmRouterSecret, err)
-		}
-	}
-
-	if equality.Semantic.DeepEqual(found.Data, dataMap) {
-		return nil
-	}
-
-	log.Info(fmt.Sprintf("updating %s/%s secret", targetNamespace, hubAmRouterSecret))
-	err = client.Update(ctx, hubAmRouterCASecret)
-	if err != nil {
-		return fmt.Errorf("failed to update the %s/%s secret: %w", targetNamespace, hubAmRouterSecret, err)
-	}
-
-	return err
-}
-
 // createHubAmAccessorTokenSecret creates the secret that contains access token of the Hub's Alertmanager.
 func createHubAmAccessorTokenSecret(ctx context.Context, client client.Client, namespace, targetNamespace string, hubInfo *operatorconfig.HubInfo) error {
 	amAccessorToken, err := getAmAccessorToken(ctx, client, namespace)
@@ -287,6 +240,9 @@ func cleanUpOldAMSecrets(ctx context.Context, client client.Client, targetNamesp
 		deleteSecret(hubAmAccessorSecretName+"-"+clusterDomain, targetNamespace)
 		deleteSecret(hubAmRouterCASecretName+"-"+clusterDomain, targetNamespace)
 	}
+	if hubInfo != nil && hubInfo.HubClusterID != "" {
+		deleteSecret(hubAmRouterCASecretName+"-"+hubInfo.HubClusterID, targetNamespace)
+	}
 
 	if uwlNsExists {
 		ns := operatorconfig.OCPUserWorkloadMonitoringNamespace
@@ -296,6 +252,9 @@ func cleanUpOldAMSecrets(ctx context.Context, client client.Client, targetNamesp
 			deleteSecret(hubAmAccessorSecretName+"-"+clusterDomain, ns)
 			deleteSecret(hubAmRouterCASecretName+"-"+clusterDomain, ns)
 		}
+		if hubInfo != nil && hubInfo.HubClusterID != "" {
+			deleteSecret(hubAmRouterCASecretName+"-"+hubInfo.HubClusterID, ns)
+		}
 	}
 
 	if len(errs) > 0 {
@@ -304,7 +263,7 @@ func cleanUpOldAMSecrets(ctx context.Context, client client.Client, targetNamesp
 	return nil
 }
 
-func mTLSMonitoringSecretName(secretName string, hubInfo *operatorconfig.HubInfo) string {
+func appendHubClusterID(secretName string, hubInfo *operatorconfig.HubInfo) string {
 	if hubInfo == nil || hubInfo.HubClusterID == "" {
 		return secretName
 	}
@@ -312,8 +271,8 @@ func mTLSMonitoringSecretName(secretName string, hubInfo *operatorconfig.HubInfo
 }
 
 func newAdditionalAlertmanagerConfig(hubInfo *operatorconfig.HubInfo) cmomanifests.AdditionalAlertmanagerConfig {
-	mtlsCARef := mTLSMonitoringSecretName(mtlsCaName, hubInfo)
-	mtlsCertRef := mTLSMonitoringSecretName(mtlsCertName, hubInfo)
+	mtlsCARef := appendHubClusterID(mtlsCaName, hubInfo)
+	mtlsCertRef := appendHubClusterID(mtlsCertName, hubInfo)
 	config := cmomanifests.AdditionalAlertmanagerConfig{
 		Scheme:     "https",
 		PathPrefix: "/",
@@ -430,36 +389,24 @@ func createOrUpdateClusterMonitoringConfig(
 		}
 	}
 
-	// create the hub-alertmanager-router-ca secret if it doesn't exist or update it if needed
-	if err := createHubAmRouterCASecret(ctx, hubInfo, client, targetNamespace); err != nil {
-		return false, fmt.Errorf("failed to create or update the hub-alertmanager-router-ca secret: %w", err)
-	}
-
 	// create the observability-alertmanager-accessor secret if it doesn't exist or update it if needed
 	if err := createHubAmAccessorTokenSecret(ctx, client, namespace, targetNamespace, hubInfo); err != nil {
 		return false, fmt.Errorf("failed to create or update the alertmanager accessor token secret: %w", err)
 	}
 
 	for _, name := range []string{mtlsCertName, mtlsCaName} {
-		log.Info("attempting to copy mTLS secret", "secret", name, "from", namespace, "to", targetNamespace)
 		if err := createMtlsSecretInNamespace(ctx, client, namespace, targetNamespace, name, hubInfo); err != nil {
-			log.Error(err, "failed to copy mTLS secret", "secret", name, "from", namespace, "to", targetNamespace)
 			return false, fmt.Errorf("failed to copy mTLS secret %s to %s: %w", name, targetNamespace, err)
 		}
-		log.Info("successfully copied mTLS secret", "secret", name, "to", targetNamespace)
 	}
 
 	// Create secrets for user workload monitoring if namespace exists
 	// Create Router CA and Accessor Token secrets in the UWM namespace even when alert forwarding is disabled,
 	// so an external policy can configure UWM alert forwarding later if needed.
 	if nsExists {
-		if err := createHubAmRouterCASecret(ctx, hubInfo, client, operatorconfig.OCPUserWorkloadMonitoringNamespace); err != nil {
-			return false, fmt.Errorf("failed to create or update hub-alertmanager-router-ca in UWM namespace: %w", err)
-		}
 		if err := createHubAmAccessorTokenSecret(ctx, client, namespace, operatorconfig.OCPUserWorkloadMonitoringNamespace, hubInfo); err != nil {
 			return false, fmt.Errorf("failed to create or update alertmanager accessor token in UWM namespace: %w", err)
 		}
-		// why are we iterating of each cert here?
 		for _, name := range []string{mtlsCertName, mtlsCaName} {
 			if err := createMtlsSecretInNamespace(ctx, client, namespace, operatorconfig.OCPUserWorkloadMonitoringNamespace, name, hubInfo); err != nil {
 				return false, fmt.Errorf("failed to copy mTLS secret %s to UWM namespace: %w", name, err)
@@ -884,19 +831,14 @@ func inManagedFields(cm *corev1.ConfigMap) bool {
 
 // isManaged checks if the additional alertmanager config is managed by ACM
 func isManaged(amc cmomanifests.AdditionalAlertmanagerConfig, hubInfo *operatorconfig.HubInfo) bool {
-	if amc.TLSConfig.CA == nil {
-		return false
-	}
-	if hubInfo != nil && amc.TLSConfig.CA.Name == hubAmRouterCASecretName+"-"+hubInfo.HubClusterID {
+	if hubInfo != nil && amc.TLSConfig.CA != nil && amc.TLSConfig.CA.Name == hubAmRouterCASecretName+"-"+hubInfo.HubClusterID {
 		return true
-	}
-	if hubInfo == nil && strings.Contains(amc.TLSConfig.CA.Name, hubAmRouterCASecretName) {
+	} else if hubInfo == nil && amc.TLSConfig.CA != nil && strings.Contains(amc.TLSConfig.CA.Name, hubAmRouterCASecretName) {
+		// This is only for the CMO cleanup script to clean up old configs
 		return true
-	}
-	if hubInfo != nil && hubInfo.HubClusterID != "" && amc.TLSConfig.CA.Name == mtlsCaName+"-"+hubInfo.HubClusterID {
+	} else if hubInfo != nil && amc.TLSConfig.CA != nil && amc.TLSConfig.CA.Name == mtlsCaName+"-"+hubInfo.HubClusterID {
 		return true
-	}
-	if amc.TLSConfig.CA.Name == mtlsCaName {
+	} else if hubInfo == nil && amc.TLSConfig.CA != nil && strings.Contains(amc.TLSConfig.CA.Name, mtlsCaName) {
 		return true
 	}
 	return false
@@ -909,7 +851,7 @@ func isOldManagedConfig(amc cmomanifests.AdditionalAlertmanagerConfig, hubInfo *
 		switch amc.TLSConfig.CA.Name {
 		case hubAmRouterCASecretName, hubAmRouterCASecretName + "-" + clusterDomainName:
 			return true
-		// only for fanout change / should there be a feature flag?
+		// check if managed by ACM with old secret prior to alertmanager fanout change
 		case hubAmRouterCASecretName + "-" + hubInfo.HubClusterID:
 			return true
 		}
@@ -1013,7 +955,7 @@ func createMtlsSecretInNamespace(ctx context.Context, c client.Client, sourceNam
 	if err := c.Get(ctx, types.NamespacedName{Name: secretName, Namespace: sourceNamespace}, source); err != nil {
 		return fmt.Errorf("failed to get %s/%s: %w", sourceNamespace, secretName, err)
 	}
-	mtlsSecretName := mTLSMonitoringSecretName(secretName, hubInfo)
+	mtlsSecretName := appendHubClusterID(secretName, hubInfo)
 
 	desired := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{

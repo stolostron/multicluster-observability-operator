@@ -84,13 +84,6 @@ func (r *MCORenderer) RenderThanosConfig(ctx context.Context, res *resource.Reso
 				".alertmanager-operated.open-cluster-management-observability.svc:9095")
 		}
 		alertingConfig.Alertmanagers[0].EndpointsConfig.StaticAddresses = addr
-		// alertingConfig.Alertmanagers[0].EndpointsConfig.PathPrefix = "/api/alertmanager/v2"
-		// alertingConfig.Alertmanagers[0].EndpointsConfig.Scheme = "https"
-		// alertingConfig.Alertmanagers[0].HTTPClientConfig = clientconfig.HTTPClientConfig{
-		// 	TLSConfig: clientconfig.TLSConfig{
-		// 		CAFile: mcoconfig.ThanosRuleServerCACertMountPath + "/ca.crt",
-		// 	},
-		// }
 		updateConfig, err := yaml.Marshal(alertingConfig)
 		if err != nil {
 			log.Error(err, "Failed to marshal data")
