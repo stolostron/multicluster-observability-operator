@@ -1,0 +1,14 @@
+resources:
+- cluster-role.yaml
+- cluster-role-binding.yaml
+- service-account.yaml
+- config.yaml
+- deployment.yaml
+- service.yaml
+- alerts
+- hcp
+- hcp-mcoa
+- platform
+- platform-mcoa
+- ocp311
+- virtualization

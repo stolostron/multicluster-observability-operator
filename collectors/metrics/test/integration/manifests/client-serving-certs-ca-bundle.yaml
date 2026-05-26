@@ -1,0 +1,9 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: client-serving-certs-ca-bundle
+  namespace: open-cluster-management-observability
+  annotations:
+    service.beta.openshift.io/inject-cabundle: 'true'
+data:
+  service-ca.crt: ""

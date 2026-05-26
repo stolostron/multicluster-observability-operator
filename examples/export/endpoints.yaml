@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: victoriametrics
+  namespace: open-cluster-management-observability
+type: Opaque
+stringData:
+  ep.yaml: |
+    url: http://victoriametrics:8428/api/v1/write
+    http_client_config:
+      basic_auth:
+        username: test
+        password: test

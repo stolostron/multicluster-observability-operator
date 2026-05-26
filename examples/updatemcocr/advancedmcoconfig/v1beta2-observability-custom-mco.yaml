@@ -1,0 +1,159 @@
+apiVersion: observability.open-cluster-management.io/v1beta2
+kind: MultiClusterObservability
+metadata:
+  name: observability
+  annotations:
+spec:
+  advanced:
+    retentionConfig:
+      blockDuration: 3h
+      deleteDelay: 50h
+      retentionInLocal: 5d
+      retentionResolution1h: 31d
+      retentionResolution5m: 15d
+      retentionResolutionRaw: 6d
+    observatoriumAPI:
+      resources:
+        limits:
+          cpu: 1
+          memory: 1Gi
+      replicas: 3
+    queryFrontend:
+      resources:
+        limits:
+          cpu: 1
+          memory: 1Gi
+      replicas: 3
+    query:
+      resources:
+        limits:
+          cpu: 1
+          memory: 1Gi
+      replicas: 3
+      serviceAccountAnnotations:
+        test.com/role-arn: 's3_role'
+    compact:
+      resources:
+        limits:
+          cpu: 1
+          memory: 2Gi
+      serviceAccountAnnotations:
+        test.com/role-arn: 's3_role'
+      containers:
+        - name: thanos-compact
+          args:
+            - compact
+            - --wait
+            - --log.level=debug
+            - --log.format=logfmt
+            - --objstore.config=$(OBJSTORE_CONFIG)
+            - --data-dir=/var/thanos/compact
+            - --debug.accept-malformed-index
+            - --retention.resolution-raw=6d
+            - --retention.resolution-5m=15d
+            - --retention.resolution-1h=31d
+            - --delete-delay=50h
+            - --compact.concurrency=1
+            - --downsample.concurrency=1
+            - --deduplication.replica-label=replica
+    receive:
+      resources:
+        limits:
+          cpu: 1
+          memory: 4Gi
+      replicas: 3
+      serviceAccountAnnotations:
+        test.com/role-arn: 's3_role'
+    rule:
+      resources:
+        limits:
+          cpu: 1
+          memory: 1Gi
+      replicas: 3
+      serviceAccountAnnotations:
+        test.com/role-arn: 's3_role'
+      containers:
+        - name: thanos-rule
+          args:
+            - rule
+            - --log.level=debug
+            - --log.format=logfmt
+            - --grpc-address=0.0.0.0:10901
+            - --http-address=0.0.0.0:10902
+            - --objstore.config=$(OBJSTORE_CONFIG)
+            - --data-dir=/var/thanos/rule
+            - --label=rule_replica="$(NAME)"
+            - --alert.label-drop=rule_replica
+            - --tsdb.retention=5d
+            - --tsdb.block-duration=3h
+            - --query=dnssrv+_http._tcp.observability-thanos-query.open-cluster-management-observability.svc.cluster.local
+            - --alertmanagers.config-file=/etc/thanos/config/thanos-ruler-config/config.yaml
+            - --rule-file=/etc/thanos/rules/thanos-ruler-default-rules/default_rules.yaml
+    store:
+      resources:
+        limits:
+          cpu: 1
+          memory: 2Gi
+      replicas: 3
+      serviceAccountAnnotations:
+        test.com/role-arn: 's3_role'
+    storeMemcached:
+      resources:
+        limits:
+          cpu: 1
+          memory: 2Gi
+      replicas: 2
+      memoryLimitMb: 4096
+      maxItemSize: 10m
+      connectionLimit: 2048
+    queryFrontendMemcached:
+      resources:
+        limits:
+          cpu: 1
+          memory: 2Gi
+      replicas: 3
+      memoryLimitMb: 4096
+      maxItemSize: 10m
+      connectionLimit: 2048
+    grafana:
+      replicas: 3
+      resources:
+        limits:
+          cpu: 1
+          memory: 1Gi
+    alertmanager:
+      replicas: 3
+      resources:
+        limits:
+          cpu: 100m
+          memory: 400Mi
+    rbacQueryProxy:
+      replicas: 3
+      resources:
+        limits:
+          cpu: 50m
+          memory: 200Mi
+  nodeSelector:
+    kubernetes.io/os: linux
+  observabilityAddonSpec:
+    scrapeSizeLimitBytes: 1073741824
+    enableMetrics: true
+    workers: 1
+    interval: 300
+    resources:
+      limits:
+        cpu: 200m
+        memory: 700Mi
+      requests:
+        cpu: 10m
+        memory: 100Mi
+  storageConfig:
+    alertmanagerStorageSize: 1Gi
+    compactStorageSize: 1Gi
+    metricObjectStorage:
+      key: thanos.yaml
+      name: thanos-object-storage
+    receiveStorageSize: 1Gi
+    ruleStorageSize: 1Gi
+    storageClass: gp2
+    storeStorageSize: 1Gi

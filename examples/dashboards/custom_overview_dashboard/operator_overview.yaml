@@ -1,0 +1,239 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: grafana-dashboard-custom-operator-overview
+  namespace: open-cluster-management-observability
+  labels:
+    grafana-custom-dashboard: 'true'
+data:
+  operator-overview.json: |-
+    {
+      "annotations": {
+        "list": [
+          {
+            "builtIn": 1,
+            "datasource": "-- Grafana --",
+            "enable": true,
+            "hide": true,
+            "iconColor": "rgba(0, 211, 255, 1)",
+            "name": "Annotations & Alerts",
+            "target": {
+              "limit": 100,
+              "matchAny": false,
+              "tags": [],
+              "type": "dashboard"
+            },
+            "type": "dashboard"
+          }
+        ]
+      },
+      "editable": true,
+      "gnetId": null,
+      "graphTooltip": 0,
+      "id": 30,
+      "iteration": 1684767089901,
+      "links": [],
+      "panels": [
+        {
+          "datasource": null,
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "links": [
+                {
+                  "targetBlank": true,
+                  "title": "",
+                  "url": "${console}/k8s/cluster/config.openshift.io~v1~ClusterOperator/${__field.labels.name}"
+                }
+              ],
+              "mappings": [
+                {
+                  "options": {
+                    "1": {
+                      "color": "green",
+                      "index": 0,
+                      "text": "Available"
+                    },
+                    "2": {
+                      "color": "yellow",
+                      "index": 1,
+                      "text": "Progressing"
+                    },
+                    "3": {
+                      "color": "green",
+                      "index": 2,
+                      "text": "Progressing and Available"
+                    },
+                    "4": {
+                      "color": "red",
+                      "index": 3,
+                      "text": "Degraded"
+                    },
+                    "5": {
+                      "color": "orange",
+                      "index": 4,
+                      "text": "Degraded but Available"
+                    },
+                    "6": {
+                      "color": "orange",
+                      "index": 5,
+                      "text": "Degraded but Progressing"
+                    }
+                  },
+                  "type": "value"
+                }
+              ],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "green",
+                    "value": 1
+                  },
+                  {
+                    "color": "#EAB839",
+                    "value": 2
+                  },
+                  {
+                    "color": "red",
+                    "value": 4
+                  }
+                ]
+              },
+              "unit": "none"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 15,
+            "w": 24,
+            "x": 0,
+            "y": 0
+          },
+          "id": 13,
+          "links": [
+            {
+              "targetBlank": true,
+              "title": "Cluster Operators",
+              "url": "https://console-openshift-console.apps.${cluster}.xxxx.fr/settings/cluster/clusteroperators"
+            }
+          ],
+          "options": {
+            "colorMode": "background",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "last"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "text": {
+              "valueSize": 10
+            },
+            "textMode": "name"
+          },
+          "pluginVersion": "8.5.20",
+          "targets": [
+            {
+              "exemplar": true,
+              "expr": "sum(4 * cluster_operator_conditions{condition=\"Degraded\", cluster=\"$cluster\"}) by (name) + sum(2 * cluster_operator_conditions{condition=\"Progressing\", cluster=\"$cluster\"}) by (name) + sum(1 * cluster_operator_conditions{condition=\"Available\", cluster=\"$cluster\"}) by (name)",
+              "format": "time_series",
+              "instant": true,
+              "interval": "",
+              "legendFormat": "{{ name }}",
+              "refId": "A"
+            }
+          ],
+          "title": "Operator status",
+          "transformations": [],
+          "type": "stat"
+        }
+      ],
+      "refresh": "10s",
+      "schemaVersion": 30,
+      "style": "dark",
+      "tags": [],
+      "templating": {
+        "list": [
+          {
+            "allValue": null,
+            "current": {
+              "selected": false,
+              "text": "local-cluster",
+              "value": "local-cluster"
+            },
+            "datasource": null,
+            "definition": "cluster_version{cluster=~\".*\", type=\"current\"}",
+            "description": null,
+            "error": null,
+            "hide": 0,
+            "includeAll": false,
+            "label": "Cluster",
+            "multi": false,
+            "name": "cluster",
+            "options": [],
+            "query": {
+              "query": "cluster_version{cluster=~\".*\", type=\"current\"}",
+              "refId": "StandardVariableQuery"
+            },
+            "refresh": 1,
+            "regex": "/.*{cluster=\"([^\"]*).*/",
+            "skipUrlSync": false,
+            "sort": 1,
+            "tagValuesQuery": "",
+            "tagsQuery": "",
+            "type": "query",
+            "useTags": false
+          },
+          {
+            "allValue": null,
+            "current": {
+              "isNone": true,
+              "selected": false,
+              "text": "None",
+              "value": ""
+            },
+            "datasource": null,
+            "definition": "console_url{url=~\".*\", cluster=\"$cluster\"}",
+            "description": null,
+            "error": null,
+            "hide": 0,
+            "includeAll": false,
+            "label": null,
+            "multi": false,
+            "name": "console",
+            "options": [],
+            "query": {
+              "query": "console_url{url=~\".*\", cluster=\"$cluster\"}",
+              "refId": "StandardVariableQuery"
+            },
+            "refresh": 1,
+            "regex": "/.*url=\"([^\"]*).*/",
+            "skipUrlSync": false,
+            "sort": 0,
+            "tagValuesQuery": "",
+            "tagsQuery": "",
+            "type": "query",
+            "useTags": false
+          }
+        ]
+      },
+      "time": {
+        "from": "now-6h",
+        "to": "now"
+      },
+      "timepicker": {},
+      "timezone": "",
+      "title": "Cluster - Operators",
+      "uid": "m3qSlJu7k",
+      "version": 1
+    }

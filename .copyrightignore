@@ -1,0 +1,15 @@
+#file extensions to ignore
+.copyrightignore
+.yml
+.yaml
+.properties
+# directories to ingore
+operator-sdk/*
+build-harness/*
+build-harness-extensions/*
+node_modules
+public
+test-output
+vendor
+vbh
+zz_generated.deepcopy.go

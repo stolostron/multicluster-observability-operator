@@ -1,0 +1,4 @@
+commonLabels:
+  alertname: NodeOutOfMemory
+resources:
+- thanos-ruler-custom-rules-valid.yaml

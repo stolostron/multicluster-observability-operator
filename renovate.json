@@ -1,0 +1,7 @@
+{
+  "extends": [
+    "github>konflux-ci/mintmaker//config/renovate/renovate.json"
+  ],
+  "baseBranches": ["main", "/^release-\\d+\\.\\d+/"],
+  "autoApprove": true
+}

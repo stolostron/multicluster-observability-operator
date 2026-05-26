@@ -1,0 +1,9 @@
+resources:
+- cluster-role-binding.yaml
+- cluster-role.yaml
+- cookie-secret.yaml
+- deployment.yaml
+- ingress.yaml
+- prob-cmd-configmap.yaml
+- service-account.yaml
+- service.yaml

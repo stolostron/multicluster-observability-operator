@@ -1,0 +1,4 @@
+resources:
+- emo_role.yaml
+- emo_rolebinding.yaml
+- emo_serviceaccount.yaml

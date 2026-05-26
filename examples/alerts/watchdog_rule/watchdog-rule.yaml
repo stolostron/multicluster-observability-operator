@@ -1,0 +1,22 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: watchdog-rules
+  namespace: open-cluster-management-addon-observability
+spec:
+  groups:
+  - name: watchdog-rules
+    rules:
+    - alert: Watchdog
+      annotations:
+        description: |
+          This is an alert meant to ensure that the entire alerting pipeline is functional.
+          This alert is always firing, therefore it should always be firing in Alertmanager
+          and always fire against a receiver. There are integrations with various notification
+          mechanisms that send a notification when this alert is not firing. For example the
+          "DeadMansSnitch" integration in PagerDuty.
+        summary: An alert that should always be firing to certify that Alertmanager
+          is working properly.
+      expr: vector(1)
+      labels:
+        severity: none

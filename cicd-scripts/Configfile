@@ -1,0 +1,30 @@
+ifdef GIT
+IMAGE_VERSION :=$(shell git rev-parse --short HEAD)
+VCS_URL ?=$(shell git config --get remote.origin.url)
+endif
+
+IMAGE_NAME =$(shell cat COMPONENT_NAME)
+IMAGE_DISPLAY_NAME =Multicluster Monitoring Operator
+ARCH = $(shell uname -m)
+ifeq ($(ARCH), x86_64)
+	IMAGE_NAME_ARCH =$(IMAGE_NAME)-amd64
+else
+	IMAGE_NAME_ARCH =$(IMAGE_NAME)-$(ARCH)
+endif
+IMAGE_MAINTAINER =acm-contact@redhat.com
+IMAGE_VENDOR =Red Hat
+IMAGE_DESCRIPTION =Multicluster Monitoring Services
+IMAGE_SUMMARY =$(IMAGE_DESCRIPTION)
+IMAGE_OPENSHIFT_TAGS =Multicluster Monitoring
+
+DOCKER_BUILD_OPTS=--build-arg "VCS_REF=$(SEMVERSION)" \
+	--build-arg "VCS_URL=$(VCS_URL)" \
+	--build-arg "IMAGE_NAME=$(IMAGE_NAME)" \
+	--build-arg "IMAGE_DISPLAY_NAME=$(IMAGE_DISPLAY_NAME)" \
+	--build-arg "IMAGE_NAME_ARCH=$(IMAGE_NAME_ARCH)" \
+	--build-arg "IMAGE_MAINTAINER=$(IMAGE_MAINTAINER)" \
+	--build-arg "IMAGE_VENDOR=$(IMAGE_VENDOR)" \
+	--build-arg "IMAGE_VERSION=$(IMAGE_VERSION)" \
+	--build-arg "IMAGE_DESCRIPTION=$(IMAGE_DESCRIPTION)" \
+	--build-arg "IMAGE_SUMMARY=$(IMAGE_SUMMARY)" \
+	--build-arg "IMAGE_OPENSHIFT_TAGS=$(IMAGE_OPENSHIFT_TAGS)"

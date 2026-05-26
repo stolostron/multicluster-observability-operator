@@ -1,0 +1,13 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: observability-metrics-custom-allowlist
+  namespace: open-cluster-management-observability
+data:
+  metrics_list.yaml: |
+    names:
+      - node_memory_Active_bytes # this custom metric is being collected from your managed clusters
+      - -cluster_version_payload # this default metric is not being collected from your managed clusters
+      - -instance:node_num_cpu:sum # this default metric is not being collected from your managed clusters
+    matches:
+      - -__name__="go_goroutines",job="apiserver" # this default metric is not being collected from your managed clusters

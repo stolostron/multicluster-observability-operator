@@ -1,0 +1,18 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: thanos-ruler-custom-rules
+  namespace: open-cluster-management-observability
+data:
+  custom_rules.yaml: |
+    groups:
+    - name: node-health
+      rules:
+      - alert: NodeOutOfMemory
+        expr: instance:node_memory_utilisation:ratio * 100 > 0
+        for: 1m
+        labels:
+          instance: "{{ $labels.instance }}"
+          cluster: "{{ $labels.cluster }}"
+          clusterID: "{{ $labels.clusterID }}"
+          severity: warning

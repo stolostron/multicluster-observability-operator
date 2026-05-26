@@ -1,0 +1,18 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: sample-dashboard
+  namespace: open-cluster-management-observability
+  labels:
+    grafana-custom-dashboard: "true"
+data:
+  sample.yaml: |
+    {
+      "id": "e2e",
+      "uid": null,
+      "title": "Update Sample Dashboard for E2E",
+      "tags": [ "test" ],
+      "timezone": "browser",
+      "schemaVersion": 16,
+      "version": 1
+      }

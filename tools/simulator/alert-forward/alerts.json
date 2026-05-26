@@ -1,0 +1,18 @@
+[
+    {
+        "annotations": {
+            "description": "just for testing\n",
+            "summary": "An alert that is for testing."
+        },
+        "receivers": [
+            {
+                "name": "test"
+            }
+        ],
+        "labels": {
+            "alertname": "test",
+            "cluster": "testCluster",
+            "severity": "none"
+        }
+    }
+]

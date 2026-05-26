@@ -1,0 +1,35 @@
+# https://github.com/prometheus-community/helm-charts/blob/main/charts/kube-prometheus-stack/templates/prometheus/rules-1.14/node.rules.yaml
+
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: node-rules
+  namespace: open-cluster-management-addon-observability
+spec:
+  groups:
+  - name: node.rules
+    rules:
+    - expr: |
+        topk by(namespace, pod) (1,
+          max by (node, namespace, pod) (
+            label_replace(kube_pod_info{job="kube-state-metrics",node!=""}, "pod", "$1", "pod", "(.*)")
+        ))
+      record: 'node_namespace_pod:kube_pod_info:'
+    - expr: |
+        count by (cluster, node) (sum by (node, cpu) (
+          node_cpu_seconds_total{job="node-exporter"}
+        * on (namespace, pod) group_left(node)
+          topk by(namespace, pod) (1, node_namespace_pod:kube_pod_info:)
+        ))
+      record: node:node_num_cpu:sum
+    - expr: |
+        sum(
+          node_memory_MemAvailable_bytes{job="node-exporter"} or
+          (
+            node_memory_Buffers_bytes{job="node-exporter"} +
+            node_memory_Cached_bytes{job="node-exporter"} +
+            node_memory_MemFree_bytes{job="node-exporter"} +
+            node_memory_Slab_bytes{job="node-exporter"}
+          )
+        ) by (cluster)
+      record: :node_memory_MemAvailable_bytes:sum

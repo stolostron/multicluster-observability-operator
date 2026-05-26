@@ -1,0 +1,14 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: endpoint-observability-operator-crd-hostedclusters-read
+rules:
+  - verbs:
+      - get
+      - list
+    apiGroups:
+      - apiextensions.k8s.io
+      - hypershift.openshift.io
+    resources:
+      - customresourcedefinitions
+      - hostedclusters

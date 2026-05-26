@@ -1,0 +1,8 @@
+# The following patch enables the ocp service serving certificate for webhook service.
+apiVersion: v1
+kind: Service
+metadata:
+  name: multicluster-observability-webhook-service
+  namespace: open-cluster-management
+  annotations:
+    service.beta.openshift.io/serving-cert-secret-name: multicluster-observability-operator-webhook-server-cert

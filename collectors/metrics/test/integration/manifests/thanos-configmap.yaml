@@ -1,0 +1,7 @@
+apiVersion: v1
+data:
+  hashrings.json: '[{"hashring":"default","endpoints":["0.0.0.0:10901"]}]'
+kind: ConfigMap
+metadata:
+  name: observability-observatorium-thanos-receive-controller-tenants-generated
+  namespace: open-cluster-management-observability

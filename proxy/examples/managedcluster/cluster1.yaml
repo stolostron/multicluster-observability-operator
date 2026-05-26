@@ -1,0 +1,9 @@
+apiVersion: cluster.open-cluster-management.io/v1
+kind: ManagedCluster
+metadata:
+  name: cluster1
+spec:
+  hubAcceptsClient: true
+  managedClusterClientConfigs:
+  - caBundle: cluster1
+    url: https://cluster1.com

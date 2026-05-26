@@ -1,0 +1,10 @@
+# TYPE instance:node_num_cpu:sum untyped
+instance:node_num_cpu:sum{container="kube-rbac-proxy",endpoint="https",instance="ip-10-0-132-126.ec2.internal",job="node-exporter",namespace="openshift-monitoring",pod="node-exporter-7mpbv",service="node-exporter",prometheus="openshift-monitoring/k8s",prometheus_replica="prometheus-k8s-0"} 16 1624345682542
+# TYPE instance:node_vmstat_pgmajfault:rate1m untyped
+instance:node_vmstat_pgmajfault:rate1m{container="kube-rbac-proxy",endpoint="https",instance="ip-10-0-132-126.ec2.internal",job="node-exporter",namespace="openshift-monitoring",pod="node-exporter-7mpbv",service="node-exporter",prometheus="openshift-monitoring/k8s",prometheus_replica="prometheus-k8s-0"} 0 1624345682542
+# TYPE instance_device:node_disk_io_time_seconds:rate1m untyped
+instance_device:node_disk_io_time_seconds:rate1m{container="kube-rbac-proxy",device="nvme0n1",endpoint="https",instance="ip-10-0-132-126.ec2.internal",job="node-exporter",namespace="openshift-monitoring",pod="node-exporter-7mpbv",service="node-exporter",prometheus="openshift-monitoring/k8s",prometheus_replica="prometheus-k8s-0"} 0.017999999999998788 1624345682542
+# TYPE instance_device:node_disk_io_time_weighted_seconds:rate1m untyped
+instance_device:node_disk_io_time_weighted_seconds:rate1m{container="kube-rbac-proxy",device="nvme0n1",endpoint="https",instance="ip-10-0-132-126.ec2.internal",job="node-exporter",namespace="openshift-monitoring",pod="node-exporter-7mpbv",service="node-exporter",prometheus="openshift-monitoring/k8s",prometheus_replica="prometheus-k8s-0"} 0.05104444444444501 1624345682542
+# TYPE kube_daemonset_status_desired_number_scheduled untyped
+kube_daemonset_status_desired_number_scheduled{container="kube-rbac-proxy-main",daemonset="machine-api-termination-handler",endpoint="https-main",job="kube-state-metrics",namespace="openshift-machine-api",service="kube-state-metrics",instance="",prometheus="openshift-monitoring/k8s",prometheus_replica="prometheus-k8s-0"} 0 1624345642196

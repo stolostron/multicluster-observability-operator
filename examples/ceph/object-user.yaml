@@ -1,0 +1,8 @@
+apiVersion: ceph.rook.io/v1
+kind: CephObjectStoreUser
+metadata:
+  name: object
+  namespace: rook-ceph
+spec:
+  store: object
+  displayName: s3-user3

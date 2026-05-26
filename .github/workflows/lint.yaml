@@ -1,0 +1,36 @@
+name: lint & check bundle
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "*"
+  pull_request:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    name: Formatters + Linters (Static Analysis) for Go
+    env:
+      GOBIN: /tmp/.bin
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 1.23.x
+          cache-dependency-path: "**/*.sum"
+
+      - name: Linting, Formatting & vetting
+        run: make lint
+
+      - name: Make bundle
+        run: make bundle
+
+      # We exclude the dockerfile as we have manually modified that to use a different user.
+      # In addition we exclude createdAt changes in the CSV file that happen on each make bundle.
+      - name: check diff
+        run: "git diff -I '^    createdAt: ' --exit-code -- . ':(exclude)operators/multiclusterobservability/bundle.Dockerfile'"
