@@ -249,8 +249,8 @@ func TestHandleComponentRightSizing_FreshEnableAfterDelegation(t *testing.T) {
 	assert.True(t, state.Enabled)
 	assert.Equal(t, "custom-ns", state.Namespace)
 
-	// Verify ApplyChangesFunc was called (freshEnable path)
-	assert.True(t, applyChangesCalled, "ApplyChangesFunc should be called on fresh enable after delegation reset")
+	// Verify ApplyChangesFunc was called
+	assert.True(t, applyChangesCalled, "ApplyChangesFunc should be called after delegation reset")
 }
 
 func TestCleanupComponentResources_WithConfigMap(t *testing.T) {
