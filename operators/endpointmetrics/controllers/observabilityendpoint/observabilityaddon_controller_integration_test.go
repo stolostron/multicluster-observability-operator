@@ -95,7 +95,7 @@ alertmanager-endpoint: "http://test-alertamanger-endpoint"
 		},
 		&corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      hubAmAccessorSecretName,
+				Name:      HubAmAccessorSecretName,
 				Namespace: namespace,
 			},
 			Immutable:  nil,
@@ -161,10 +161,10 @@ alertmanager-endpoint: "http://test-alertamanger-endpoint"
 		return true, err
 	})
 	assert.NoError(t, err)
-	assert.NotEmpty(t, cm.Data[clusterMonitoringConfigDataKey])
+	assert.NotEmpty(t, cm.Data[ClusterMonitoringConfigDataKey])
 
 	foundClusterMonitoringConfiguration := &cmomanifests.ClusterMonitoringConfiguration{}
-	err = yaml2.Unmarshal([]byte(cm.Data[clusterMonitoringConfigDataKey]), foundClusterMonitoringConfiguration)
+	err = yaml2.Unmarshal([]byte(cm.Data[ClusterMonitoringConfigDataKey]), foundClusterMonitoringConfiguration)
 	assert.NoError(t, err)
 
 	assert.Len(t, foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs, 1)
@@ -175,7 +175,7 @@ alertmanager-endpoint: "http://test-alertamanger-endpoint"
 
 	b, err := yaml2.Marshal(foundClusterMonitoringConfiguration)
 	assert.NoError(t, err)
-	cm.Data[clusterMonitoringConfigDataKey] = string(b)
+	cm.Data[ClusterMonitoringConfigDataKey] = string(b)
 	err = k8sClient.Update(context.Background(), cm)
 	assert.NoError(t, err)
 
@@ -188,7 +188,7 @@ alertmanager-endpoint: "http://test-alertamanger-endpoint"
 		}
 
 		foundUpdatedClusterMonitoringConfiguration := &cmomanifests.ClusterMonitoringConfiguration{}
-		err = yaml2.Unmarshal([]byte(updated.Data[clusterMonitoringConfigDataKey]), foundUpdatedClusterMonitoringConfiguration)
+		err = yaml2.Unmarshal([]byte(updated.Data[ClusterMonitoringConfigDataKey]), foundUpdatedClusterMonitoringConfiguration)
 		if err != nil {
 			return false, nil
 		}

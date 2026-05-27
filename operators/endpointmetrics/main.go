@@ -5,6 +5,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
@@ -18,6 +19,7 @@ import (
 	ocinfrav1 "github.com/openshift/api/config/v1"
 	hyperv1 "github.com/openshift/hypershift/api/hypershift/v1beta1"
 	prometheusv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/controllers/mcoa"
 	obsepctl "github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/controllers/observabilityendpoint"
 	statusctl "github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/controllers/status"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/openshift"
@@ -38,6 +40,7 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	ctrlwebhook "sigs.k8s.io/controller-runtime/pkg/webhook"
@@ -67,6 +70,154 @@ func printVersion() {
 
 func main() {
 	printVersion()
+
+	cmd := "legacy"
+	if len(os.Args) > 1 {
+		cmd = os.Args[1]
+	}
+
+	switch cmd {
+	case "mcoa":
+		runMCOA(os.Args[2:])
+	case "legacy":
+		runLegacy(os.Args[2:])
+	case "cleanup":
+		runCleanup(os.Args[2:])
+	default:
+		// default to legacy for backward compatibility if argument is just a flag
+		runLegacy(os.Args[1:])
+	}
+}
+
+func runCleanup(args []string) {
+	setupLog.Info("Starting MCOA cleanup")
+	fs := flag.NewFlagSet("cleanup", flag.ExitOnError)
+	var hubClusterID string
+
+	fs.StringVar(&hubClusterID, "hub-cluster-id", "", "The ID of the Hub cluster to clean up.")
+	klog.InitFlags(fs)
+	_ = fs.Parse(args)
+
+	if hubClusterID == "" {
+		setupLog.Error(fmt.Errorf("hub-cluster-id flag not set"), "unable to perform cleanup")
+		os.Exit(1)
+	}
+
+	cfg := ctrl.GetConfigOrDie()
+	cl, err := client.New(cfg, client.Options{Scheme: scheme})
+	if err != nil {
+		setupLog.Error(err, "unable to create client for cleanup")
+		os.Exit(1)
+	}
+
+	hubInfo := &operatorconfig.HubInfo{
+		HubClusterID: hubClusterID,
+	}
+
+	ctx := context.Background()
+	var errs []error
+
+	setupLog.Info("Reverting Platform monitoring configuration")
+	if err := obsepctl.RevertClusterMonitoringConfig(ctx, cl, hubInfo); err != nil {
+		setupLog.Error(err, "failed to revert platform monitoring config")
+		errs = append(errs, err)
+	}
+
+	setupLog.Info("Reverting User Workload monitoring configuration")
+	if err := obsepctl.RevertUserWorkloadMonitoringConfig(ctx, cl, hubInfo); err != nil {
+		setupLog.Error(err, "failed to revert user workload monitoring config")
+		errs = append(errs, err)
+	}
+
+	if len(errs) > 0 {
+		setupLog.Error(fmt.Errorf("cleanup failed with %d errors", len(errs)), "best-effort cleanup incomplete")
+		os.Exit(1)
+	}
+
+	setupLog.Info("Cleanup completed successfully")
+}
+
+func runMCOA(args []string) {
+	setupLog.Info("Starting MCOA mode")
+	fs := flag.NewFlagSet("mcoa", flag.ExitOnError)
+	var metricsAddr string
+	var enableLeaderElection bool
+	var probeAddr string
+	var hubAmURL string
+	var hubClusterID string
+
+	fs.StringVar(&metricsAddr, "metrics-bind-address", ":8383", "The address the metric endpoint binds to.")
+	fs.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
+	fs.BoolVar(&enableLeaderElection, "leader-elect", false,
+		"Enable leader election for controller manager. "+
+			"Enabling this will ensure there is only one active controller manager.")
+	fs.StringVar(&hubAmURL, "hub-alertmanager-url", "", "The URL of the Hub's Alertmanager.")
+	fs.StringVar(&hubClusterID, "hub-cluster-id", "", "The ID of the Hub cluster.")
+
+	klog.InitFlags(fs)
+	_ = fs.Parse(args)
+
+	ctrl.SetLogger(klog.NewKlogr())
+
+	namespace := os.Getenv("NAMESPACE")
+	if namespace == "" {
+		namespace = os.Getenv("WATCH_NAMESPACE")
+	}
+	if namespace == "" {
+		setupLog.Error(fmt.Errorf("NAMESPACE environment variable not set"), "unable to start manager")
+		os.Exit(1)
+	}
+
+	if hubClusterID == "" {
+		setupLog.Error(fmt.Errorf("hub-cluster-id flag not set"), "unable to start manager")
+		os.Exit(1)
+	}
+
+	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+		Scheme:                 scheme,
+		Metrics:                server.Options{BindAddress: metricsAddr},
+		HealthProbeBindAddress: probeAddr,
+		LeaderElection:         enableLeaderElection,
+		LeaderElectionID:       "mcoa-cmo-config.open-cluster-management.io",
+		Cache:                  mcoa.GetCacheOptions(),
+		WebhookServer:          ctrlwebhook.NewServer(ctrlwebhook.Options{Port: 9443}),
+	})
+	if err != nil {
+		setupLog.Error(err, "unable to start manager")
+		os.Exit(1)
+	}
+
+	hubInfo := &operatorconfig.HubInfo{
+		AlertmanagerEndpoint: hubAmURL,
+		HubClusterID:         hubClusterID,
+	}
+
+	if err = mcoa.NewMCOAAgentReconciler(
+		mgr.GetClient(),
+		ctrl.Log.WithName("controllers").WithName("MCOA-Agent"),
+		mgr.GetScheme(),
+		mgr.GetEventRecorderFor("mcoa-agent-controller"),
+		namespace,
+		hubInfo,
+	).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "MCOA-Agent")
+		os.Exit(1)
+	}
+
+	if err := mgr.AddHealthzCheck("health", healthz.Ping); err != nil {
+		setupLog.Error(err, "unable to set up health check")
+		os.Exit(1)
+	}
+
+	setupLog.Info("starting mcoa manager")
+	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
+		setupLog.Error(err, "problem running manager")
+		os.Exit(1)
+	}
+}
+
+func runLegacy(args []string) {
+	setupLog.Info("Starting legacy mode")
 	var metricsAddr string
 	var enableLeaderElection bool
 	var probeAddr string
@@ -77,7 +228,7 @@ func main() {
 			"Enabling this will ensure there is only one active controller manager.")
 
 	klog.InitFlags(flag.CommandLine)
-	flag.Parse()
+	_ = flag.CommandLine.Parse(args)
 
 	ctrl.SetLogger(klog.NewKlogr())
 

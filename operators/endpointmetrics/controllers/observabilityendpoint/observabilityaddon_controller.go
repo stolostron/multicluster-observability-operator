@@ -570,7 +570,7 @@ func (r *ObservabilityAddonReconciler) SetupWithManager(mgr ctrl.Manager) error 
 		Watches(
 			&corev1.Secret{},
 			&handler.EnqueueRequestForObject{},
-			builder.WithPredicates(getPred(hubAmAccessorSecretName, r.Namespace, true, true, false)),
+			builder.WithPredicates(getPred(HubAmAccessorSecretName, r.Namespace, true, true, false)),
 		).
 		Watches(
 			&corev1.ConfigMap{},
@@ -600,12 +600,12 @@ func (r *ObservabilityAddonReconciler) SetupWithManager(mgr ctrl.Manager) error 
 		Watches(
 			&corev1.ConfigMap{},
 			&handler.EnqueueRequestForObject{},
-			builder.WithPredicates(configMapDataChangedPredicate(clusterMonitoringConfigName, promNamespace)),
+			builder.WithPredicates(ConfigMapDataChangedPredicate(clusterMonitoringConfigName, promNamespace)),
 		).
 		Watches(
 			&corev1.ConfigMap{},
 			&handler.EnqueueRequestForObject{},
-			builder.WithPredicates(configMapDataChangedPredicate(
+			builder.WithPredicates(ConfigMapDataChangedPredicate(
 				operatorconfig.OCPUserWorkloadMonitoringConfigMap,
 				operatorconfig.OCPUserWorkloadMonitoringNamespace)),
 		).

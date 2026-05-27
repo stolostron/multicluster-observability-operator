@@ -26,13 +26,13 @@ import (
 )
 
 const (
-	hubAmAccessorSecretName        = "observability-alertmanager-accessor" // #nosec G101 -- Not a hardcoded credential.
+	HubAmAccessorSecretName        = "observability-alertmanager-accessor" // #nosec G101 -- Not a hardcoded credential.
 	hubAmAccessorSecretKey         = "token"                               // #nosec G101 -- Not a hardcoded credential.
-	hubAmRouterCASecretName        = "hub-alertmanager-router-ca"
+	HubAmRouterCASecretName        = "hub-alertmanager-router-ca"
 	clusterMonitoringConfigName    = "cluster-monitoring-config"
 	clusterMonitoringRevertedName  = "cluster-monitoring-reverted"
-	clusterMonitoringConfigDataKey = "config.yaml"
-	endpointMonitoringOperatorMgr  = "endpoint-monitoring-operator"
+	ClusterMonitoringConfigDataKey = "config.yaml"
+	EndpointMonitoringOperatorMgr  = "endpoint-monitoring-operator"
 )
 
 var (
@@ -144,10 +144,10 @@ func unsetConfigReverted(ctx context.Context, client client.Client, ns string) e
 func createHubAmAccessorTokenSecret(ctx context.Context, client client.Client, namespace, targetNamespace string, hubInfo *operatorconfig.HubInfo) error {
 	amAccessorToken, err := getAmAccessorToken(ctx, client, namespace)
 	if err != nil {
-		return fmt.Errorf("fail to get %s/%s secret: %w", namespace, hubAmAccessorSecretName, err)
+		return fmt.Errorf("fail to get %s/%s secret: %w", namespace, HubAmAccessorSecretName, err)
 	}
 
-	hubAmAccessorSecret := appendHubClusterID(hubAmAccessorSecretName, hubInfo)
+	hubAmAccessorSecret := AppendHubClusterID(HubAmAccessorSecretName, hubInfo)
 	dataMap := map[string][]byte{hubAmAccessorSecretKey: []byte(amAccessorToken)}
 	hubAmAccessorTokenSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -192,7 +192,7 @@ func createHubAmAccessorTokenSecret(ctx context.Context, client client.Client, n
 func getAmAccessorToken(ctx context.Context, client client.Client, ns string) (string, error) {
 	amAccessorSecret := &corev1.Secret{}
 	if err := client.Get(ctx, types.NamespacedName{
-		Name:      hubAmAccessorSecretName,
+		Name:      HubAmAccessorSecretName,
 		Namespace: ns,
 	}, amAccessorSecret); err != nil {
 		return "", err
@@ -200,7 +200,7 @@ func getAmAccessorToken(ctx context.Context, client client.Client, ns string) (s
 
 	amAccessorToken := amAccessorSecret.Data[hubAmAccessorSecretKey]
 	if amAccessorToken == nil {
-		return "", fmt.Errorf("no token in secret %s", hubAmAccessorSecretName)
+		return "", fmt.Errorf("no token in secret %s", HubAmAccessorSecretName)
 	}
 
 	return string(amAccessorToken), nil
@@ -234,27 +234,27 @@ func cleanUpOldAMSecrets(ctx context.Context, client client.Client, targetNamesp
 	if !installProm {
 		// we do not cleanup in *KS scenario as those secrets reside in the addon namespace and not openshift-monitoring
 		// and are referenced for creating AM accessor token secret
-		deleteSecret(hubAmAccessorSecretName, targetNamespace)
-		deleteSecret(hubAmRouterCASecretName, targetNamespace)
+		deleteSecret(HubAmAccessorSecretName, targetNamespace)
+		deleteSecret(HubAmRouterCASecretName, targetNamespace)
 	}
 	if clusterDomain != "" {
-		deleteSecret(hubAmAccessorSecretName+"-"+clusterDomain, targetNamespace)
-		deleteSecret(hubAmRouterCASecretName+"-"+clusterDomain, targetNamespace)
+		deleteSecret(HubAmAccessorSecretName+"-"+clusterDomain, targetNamespace)
+		deleteSecret(HubAmRouterCASecretName+"-"+clusterDomain, targetNamespace)
 	}
 	if hubInfo != nil && hubInfo.HubClusterID != "" {
-		deleteSecret(appendHubClusterID(hubAmRouterCASecretName, hubInfo), targetNamespace)
+		deleteSecret(AppendHubClusterID(HubAmRouterCASecretName, hubInfo), targetNamespace)
 	}
 
 	if uwlNsExists {
 		ns := operatorconfig.OCPUserWorkloadMonitoringNamespace
-		deleteSecret(hubAmAccessorSecretName, ns)
-		deleteSecret(hubAmRouterCASecretName, ns)
+		deleteSecret(HubAmAccessorSecretName, ns)
+		deleteSecret(HubAmRouterCASecretName, ns)
 		if clusterDomain != "" {
-			deleteSecret(hubAmAccessorSecretName+"-"+clusterDomain, ns)
-			deleteSecret(hubAmRouterCASecretName+"-"+clusterDomain, ns)
+			deleteSecret(HubAmAccessorSecretName+"-"+clusterDomain, ns)
+			deleteSecret(HubAmRouterCASecretName+"-"+clusterDomain, ns)
 		}
 		if hubInfo != nil && hubInfo.HubClusterID != "" {
-			deleteSecret(appendHubClusterID(hubAmRouterCASecretName, hubInfo), ns)
+			deleteSecret(AppendHubClusterID(HubAmRouterCASecretName, hubInfo), ns)
 		}
 	}
 
@@ -264,7 +264,7 @@ func cleanUpOldAMSecrets(ctx context.Context, client client.Client, targetNamesp
 	return nil
 }
 
-func appendHubClusterID(secretName string, hubInfo *operatorconfig.HubInfo) string {
+func AppendHubClusterID(secretName string, hubInfo *operatorconfig.HubInfo) string {
 	if hubInfo == nil || hubInfo.HubClusterID == "" {
 		return secretName
 	}
@@ -272,8 +272,8 @@ func appendHubClusterID(secretName string, hubInfo *operatorconfig.HubInfo) stri
 }
 
 func newAdditionalAlertmanagerConfig(hubInfo *operatorconfig.HubInfo) cmomanifests.AdditionalAlertmanagerConfig {
-	amMtlsCARef := appendHubClusterID(amMtlsCaName, hubInfo)
-	amMtlsCertRef := appendHubClusterID(amMtlsCertName, hubInfo)
+	amMtlsCARef := AppendHubClusterID(amMtlsCaName, hubInfo)
+	amMtlsCertRef := AppendHubClusterID(amMtlsCertName, hubInfo)
 	config := cmomanifests.AdditionalAlertmanagerConfig{
 		Scheme:     "https",
 		PathPrefix: "/",
@@ -301,7 +301,7 @@ func newAdditionalAlertmanagerConfig(hubInfo *operatorconfig.HubInfo) cmomanifes
 		},
 		BearerToken: &corev1.SecretKeySelector{
 			LocalObjectReference: corev1.LocalObjectReference{
-				Name: appendHubClusterID(hubAmAccessorSecretName, hubInfo),
+				Name: AppendHubClusterID(HubAmAccessorSecretName, hubInfo),
 			},
 			Key: hubAmAccessorSecretKey,
 		},
@@ -447,7 +447,7 @@ func createOrUpdateClusterMonitoringConfig(
 		return false, unset(ctx, client, namespace)
 	}
 
-	updated, err := createOrUpdateCMOConfig(ctx, client, clusterID, hubInfo, namespace)
+	updated, err := CreateOrUpdateCMOConfig(ctx, client, clusterID, hubInfo, namespace)
 	if err != nil {
 		return false, err
 	}
@@ -465,7 +465,7 @@ func createOrUpdateClusterMonitoringConfig(
 	if nsExists {
 		if uwmEnabled {
 			// UWL is enabled, create or update the config
-			if err := createOrUpdateUserWorkloadMonitoringConfig(ctx, client, hubInfo); err != nil {
+			if err := CreateOrUpdateUserWorkloadMonitoringConfig(ctx, client, hubInfo); err != nil {
 				return updated, fmt.Errorf("failed to create or update user workload monitoring config: %w", err)
 			}
 		} else {
@@ -496,11 +496,11 @@ func RevertClusterMonitoringConfig(ctx context.Context, client client.Client, hu
 
 	log.Info("checking if cluster monitoring config needs revert", "name", clusterMonitoringConfigName)
 	found = found.DeepCopy()
-	if !inManagedFields(found) {
+	if !InManagedFields(found) {
 		return nil
 	}
 
-	foundClusterMonitoringConfigurationYAML, ok := hasClusterMonitoringConfigData(found)
+	foundClusterMonitoringConfigurationYAML, ok := HasClusterMonitoringConfigData(found)
 	if !ok {
 		return nil
 	}
@@ -528,7 +528,7 @@ func RevertClusterMonitoringConfig(ctx context.Context, client client.Client, hu
 	if foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs != nil {
 		copiedAlertmanagerConfigs := make([]cmomanifests.AdditionalAlertmanagerConfig, 0)
 		for _, v := range foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs {
-			if !isManaged(v, hubInfo) {
+			if !IsManaged(v, hubInfo) {
 				copiedAlertmanagerConfigs = append(copiedAlertmanagerConfigs, v)
 			}
 		}
@@ -557,12 +557,12 @@ func RevertClusterMonitoringConfig(ctx context.Context, client client.Client, hu
 		return fmt.Errorf("failed to marshal the cluster monitoring config: %w", err)
 	}
 
-	found.Data[clusterMonitoringConfigDataKey] = string(updatedClusterMonitoringConfigurationYAMLBytes)
+	found.Data[ClusterMonitoringConfigDataKey] = string(updatedClusterMonitoringConfigurationYAMLBytes)
 	return updateClusterMonitoringConfig(ctx, client, found)
 }
 
-// createOrUpdateCMOConfig encapsulates logic to create or update the cluster-monitoring-config configmap.
-func createOrUpdateCMOConfig(
+// CreateOrUpdateCMOConfig encapsulates logic to create or update the cluster-monitoring-config configmap.
+func CreateOrUpdateCMOConfig(
 	ctx context.Context,
 	client client.Client,
 	clusterID string,
@@ -597,7 +597,7 @@ func createOrUpdateCMOConfig(
 					Name:      clusterMonitoringConfigName,
 					Namespace: promNamespace,
 				},
-				Data: map[string]string{clusterMonitoringConfigDataKey: string(yamlBytes)},
+				Data: map[string]string{ClusterMonitoringConfigDataKey: string(yamlBytes)},
 			}
 			log.Info("cluster monitoring configmap not found, trying to create it", "name", clusterMonitoringConfigName)
 			return true, createCMOConfigMapAndUnset(ctx, client, newCM, namespace)
@@ -605,9 +605,9 @@ func createOrUpdateCMOConfig(
 		return false, fmt.Errorf("failed to check configmap %s: %w", clusterMonitoringConfigName, err)
 	}
 
-	currentYAML, ok := hasClusterMonitoringConfigData(found)
+	currentYAML, ok := HasClusterMonitoringConfigData(found)
 	if !ok {
-		found.Data[clusterMonitoringConfigDataKey] = string(yamlBytes)
+		found.Data[ClusterMonitoringConfigDataKey] = string(yamlBytes)
 		return true, updateClusterMonitoringConfigAndUnset(ctx, client, found, namespace)
 	}
 
@@ -632,7 +632,7 @@ func createOrUpdateCMOConfig(
 		existing := false
 		var index int
 		for i, cfg := range updatedCMOCfg.PrometheusK8sConfig.AlertmanagerConfigs {
-			if isManaged(cfg, hubInfo) {
+			if IsManaged(cfg, hubInfo) {
 				existing = true
 				index = i
 				break
@@ -668,12 +668,12 @@ func createOrUpdateCMOConfig(
 		return false, nil
 	}
 
-	found.Data[clusterMonitoringConfigDataKey] = string(updatedYAML)
+	found.Data[ClusterMonitoringConfigDataKey] = string(updatedYAML)
 	return true, updateClusterMonitoringConfigAndUnset(ctx, client, found, namespace)
 }
 
-// createOrUpdateUserWorkloadMonitoringConfig creates/updates the user-workload-monitoring-config configmap
-func createOrUpdateUserWorkloadMonitoringConfig(
+// CreateOrUpdateUserWorkloadMonitoringConfig creates/updates the user-workload-monitoring-config configmap
+func CreateOrUpdateUserWorkloadMonitoringConfig(
 	ctx context.Context,
 	client client.Client,
 	hubInfo *operatorconfig.HubInfo,
@@ -734,7 +734,7 @@ func createOrUpdateUserWorkloadMonitoringConfig(
 		exists := false
 		var index int
 		for i, cfg := range parsed.Prometheus.AlertmanagerConfigs {
-			if isManaged(cfg, hubInfo) {
+			if IsManaged(cfg, hubInfo) {
 				exists = true
 				index = i
 				break
@@ -816,10 +816,10 @@ func unset(ctx context.Context, client client.Client, ns string) error {
 	return err
 }
 
-// inManagedFields checks if the configmap has had a CRUD operation by endpoint-monitoring-operator
-func inManagedFields(cm *corev1.ConfigMap) bool {
+// InManagedFields checks if the configmap has had a CRUD operation by endpoint-monitoring-operator
+func InManagedFields(cm *corev1.ConfigMap) bool {
 	for _, field := range cm.GetManagedFields() {
-		if field.Manager == endpointMonitoringOperatorMgr {
+		if field.Manager == EndpointMonitoringOperatorMgr {
 			return true
 		}
 	}
@@ -831,22 +831,22 @@ func inManagedFields(cm *corev1.ConfigMap) bool {
 	return false
 }
 
-// isManaged checks if the additional alertmanager config is managed by ACM
-func isManaged(amc cmomanifests.AdditionalAlertmanagerConfig, hubInfo *operatorconfig.HubInfo) bool {
+// IsManaged checks if the additional alertmanager config is managed by ACM
+func IsManaged(amc cmomanifests.AdditionalAlertmanagerConfig, hubInfo *operatorconfig.HubInfo) bool {
 	if amc.TLSConfig.CA == nil {
 		return false
 	}
 	caName := amc.TLSConfig.CA.Name
 	if hubInfo != nil {
 		switch caName {
-		case hubAmRouterCASecretName + "-" + hubInfo.HubClusterID,
+		case HubAmRouterCASecretName + "-" + hubInfo.HubClusterID,
 			amMtlsCaName + "-" + hubInfo.HubClusterID:
 			return true
 		default:
 			return false
 		}
 	}
-	return strings.Contains(caName, hubAmRouterCASecretName) ||
+	return strings.Contains(caName, HubAmRouterCASecretName) ||
 		strings.Contains(caName, amMtlsCaName)
 }
 
@@ -855,26 +855,26 @@ func isOldManagedConfig(amc cmomanifests.AdditionalAlertmanagerConfig, hubInfo *
 	if hubInfo != nil && amc.TLSConfig.CA != nil {
 		clusterDomainName := config.GetClusterName(hubInfo.ObservatoriumAPIEndpoint)
 		switch amc.TLSConfig.CA.Name {
-		case hubAmRouterCASecretName, hubAmRouterCASecretName + "-" + clusterDomainName:
+		case HubAmRouterCASecretName, HubAmRouterCASecretName + "-" + clusterDomainName:
 			return true
 		// check if managed by ACM with old secret prior to alertmanager fanout change
-		case hubAmRouterCASecretName + "-" + hubInfo.HubClusterID:
+		case HubAmRouterCASecretName + "-" + hubInfo.HubClusterID:
 			return true
 		}
 	}
 	return false
 }
 
-// hasClusterMonitoringConfigData checks if the configmap has the required key and logs if not
-func hasClusterMonitoringConfigData(cm *corev1.ConfigMap) (string, bool) {
-	data, ok := cm.Data[clusterMonitoringConfigDataKey]
+// HasClusterMonitoringConfigData checks if the configmap has the required key and logs if not
+func HasClusterMonitoringConfigData(cm *corev1.ConfigMap) (string, bool) {
+	data, ok := cm.Data[ClusterMonitoringConfigDataKey]
 	if !ok {
 		log.Info(
 			"configmap doesn't contain required key",
 			"name",
 			clusterMonitoringConfigName,
 			"key",
-			clusterMonitoringConfigDataKey,
+			ClusterMonitoringConfigDataKey,
 		)
 	}
 	return data, ok
@@ -900,7 +900,7 @@ func RevertUserWorkloadMonitoringConfig(ctx context.Context, client client.Clien
 
 	log.Info("checking if user workload monitoring config needs revert", "name", operatorconfig.OCPUserWorkloadMonitoringConfigMap)
 	found = found.DeepCopy()
-	if !inManagedFields(found) {
+	if !InManagedFields(found) {
 		return nil
 	}
 
@@ -923,7 +923,7 @@ func RevertUserWorkloadMonitoringConfig(ctx context.Context, client client.Clien
 	if parsed.Prometheus.AlertmanagerConfigs != nil {
 		copiedAlertmanagerConfigs := make([]cmomanifests.AdditionalAlertmanagerConfig, 0)
 		for _, v := range parsed.Prometheus.AlertmanagerConfigs {
-			if !isManaged(v, hubInfo) {
+			if !IsManaged(v, hubInfo) {
 				copiedAlertmanagerConfigs = append(copiedAlertmanagerConfigs, v)
 			}
 		}
@@ -962,7 +962,7 @@ func createMtlsSecretInNamespace(ctx context.Context, c client.Client, sourceNam
 		return fmt.Errorf("failed to get source secret %s/%s: %w", sourceNamespace, secretName, err)
 	}
 
-	targetName := appendHubClusterID(secretRename, hubInfo)
+	targetName := AppendHubClusterID(secretRename, hubInfo)
 	target := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      targetName,

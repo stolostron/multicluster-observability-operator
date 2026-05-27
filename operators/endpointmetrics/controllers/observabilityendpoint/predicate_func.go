@@ -10,8 +10,9 @@ import (
 	"strings"
 
 	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
-	v1 "k8s.io/api/apps/v1"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
@@ -45,8 +46,8 @@ func getPred(name string, namespace string,
 				switch {
 				case strings.HasPrefix(fmt.Sprint(e.ObjectNew), "&Deployment") ||
 					e.ObjectNew.GetObjectKind().GroupVersionKind().Kind == "Deployment":
-					if !reflect.DeepEqual(e.ObjectNew.(*v1.Deployment).Spec.Template.Spec,
-						e.ObjectOld.(*v1.Deployment).Spec.Template.Spec) {
+					if !reflect.DeepEqual(e.ObjectNew.(*appsv1.Deployment).Spec.Template.Spec,
+						e.ObjectOld.(*appsv1.Deployment).Spec.Template.Spec) {
 						return true
 					}
 				case e.ObjectNew.GetName() == obAddonName ||
@@ -77,28 +78,44 @@ func getPred(name string, namespace string,
 	}
 }
 
-func configMapDataChangedPredicate(name, namespace string) predicate.Funcs {
+// DataChangedPredicate builder for resources where we only care about Data changes (ConfigMaps, Secrets).
+func DataChangedPredicate[T client.Object](name, namespace string, getData func(T) any) predicate.Funcs {
 	return predicate.Funcs{
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			oldCM, okOld := e.ObjectOld.(*corev1.ConfigMap)
-			newCM, okNew := e.ObjectNew.(*corev1.ConfigMap)
-			if !okOld || !okNew {
+			oldObj, okOld := e.ObjectOld.(T)
+			newObj, okNew := e.ObjectNew.(T)
+			// Ensure objects are non-nil to avoid panics on method calls (GetName, GetNamespace)
+			if !okOld || !okNew || reflect.ValueOf(oldObj).IsNil() || reflect.ValueOf(newObj).IsNil() {
 				return false
 			}
 
-			if newCM.Name != name || newCM.Namespace != namespace {
+			if (name != "" && newObj.GetName() != name) || (namespace != "" && newObj.GetNamespace() != namespace) {
 				return false
 			}
 
-			return !reflect.DeepEqual(oldCM.Data, newCM.Data)
+			return !reflect.DeepEqual(getData(oldObj), getData(newObj))
 		},
 		CreateFunc: func(e event.CreateEvent) bool {
-			cm, ok := e.Object.(*corev1.ConfigMap)
-			return ok && cm.Name == name && cm.Namespace == namespace
+			obj, ok := e.Object.(T)
+			return ok && !reflect.ValueOf(obj).IsNil() && (name == "" || obj.GetName() == name) && (namespace == "" || obj.GetNamespace() == namespace)
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
-			cm, ok := e.Object.(*corev1.ConfigMap)
-			return ok && cm.Name == name && cm.Namespace == namespace
+			obj, ok := e.Object.(T)
+			return ok && !reflect.ValueOf(obj).IsNil() && (name == "" || obj.GetName() == name) && (namespace == "" || obj.GetNamespace() == namespace)
 		},
 	}
+}
+
+// ConfigMapDataChangedPredicate returns a predicate that filters for ConfigMap data changes.
+func ConfigMapDataChangedPredicate(name, namespace string) predicate.Funcs {
+	return DataChangedPredicate(name, namespace, func(cm *corev1.ConfigMap) any {
+		return cm.Data
+	})
+}
+
+// SecretDataChangedPredicate returns a predicate that filters for Secret data changes.
+func SecretDataChangedPredicate(name, namespace string) predicate.Funcs {
+	return DataChangedPredicate(name, namespace, func(s *corev1.Secret) any {
+		return s.Data
+	})
 }

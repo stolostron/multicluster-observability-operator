@@ -94,7 +94,7 @@ func newHubInfoSecret(data []byte, ns string) *corev1.Secret {
 func newAMAccessorSecret(ns string, val string) *corev1.Secret {
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      hubAmAccessorSecretName,
+			Name:      HubAmAccessorSecretName,
 			Namespace: ns,
 		},
 		Data: map[string][]byte{
@@ -116,7 +116,7 @@ func newClusterMonitoringConfigCM(configDataStr string, mgr string) *corev1.Conf
 			},
 		},
 		Data: map[string]string{
-			clusterMonitoringConfigDataKey: configDataStr,
+			ClusterMonitoringConfigDataKey: configDataStr,
 		},
 	}
 }

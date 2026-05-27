@@ -163,3 +163,182 @@ func TestPredFunc(t *testing.T) {
 		})
 	}
 }
+
+func TestConfigMapDataChangedPredicate(t *testing.T) {
+	name := "test-cm"
+	namespace := "test-ns"
+
+	tests := []struct {
+		name      string
+		predName  string
+		predNS    string
+		oldCM     *v1.ConfigMap
+		newCM     *v1.ConfigMap
+		expUpdate bool
+		expCreate bool
+		expDelete bool
+	}{
+		{
+			name:     "Wildcard - Data changed",
+			predName: "",
+			predNS:   "",
+			oldCM: &v1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
+				Data:       map[string]string{"foo": "bar"},
+			},
+			newCM: &v1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
+				Data:       map[string]string{"foo": "baz"},
+			},
+			expUpdate: true,
+			expCreate: true,
+			expDelete: true,
+		},
+		{
+			name:     "Wildcard - Data unchanged",
+			predName: "",
+			predNS:   "",
+			oldCM: &v1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
+				Data:       map[string]string{"foo": "bar"},
+			},
+			newCM: &v1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
+				Data:       map[string]string{"foo": "bar"},
+			},
+			expUpdate: false,
+			expCreate: true,
+			expDelete: true,
+		},
+		{
+			name:     "Specific match - Name mismatch",
+			predName: "other-cm",
+			predNS:   namespace,
+			oldCM: &v1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
+			},
+			newCM: &v1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
+				Data:       map[string]string{"foo": "bar"},
+			},
+			expUpdate: false,
+			expCreate: false,
+			expDelete: false,
+		},
+		{
+			name:     "Specific match - Namespace mismatch",
+			predName: name,
+			predNS:   "other-ns",
+			oldCM: &v1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
+			},
+			newCM: &v1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
+				Data:       map[string]string{"foo": "bar"},
+			},
+			expUpdate: false,
+			expCreate: false,
+			expDelete: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			pred := ConfigMapDataChangedPredicate(tt.predName, tt.predNS)
+
+			ce := event.CreateEvent{Object: tt.newCM}
+			if pred.CreateFunc(ce) != tt.expCreate {
+				t.Errorf("CreateFunc expected %v", tt.expCreate)
+			}
+
+			de := event.DeleteEvent{Object: tt.newCM}
+			if pred.DeleteFunc(de) != tt.expDelete {
+				t.Errorf("DeleteFunc expected %v", tt.expDelete)
+			}
+
+			ue := event.UpdateEvent{ObjectOld: tt.oldCM, ObjectNew: tt.newCM}
+			if pred.UpdateFunc(ue) != tt.expUpdate {
+				t.Errorf("UpdateFunc expected %v", tt.expUpdate)
+			}
+		})
+	}
+}
+
+func TestSecretDataChangedPredicate(t *testing.T) {
+	name := "test-secret"
+	namespace := "test-ns"
+
+	tests := []struct {
+		name      string
+		predName  string
+		predNS    string
+		oldSrt    *v1.Secret
+		newSrt    *v1.Secret
+		expUpdate bool
+		expCreate bool
+		expDelete bool
+	}{
+		{
+			name:     "Wildcard - Data changed",
+			predName: "",
+			predNS:   "",
+			oldSrt: &v1.Secret{
+				ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
+				Data:       map[string][]byte{"token": []byte("old")},
+			},
+			newSrt: &v1.Secret{
+				ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
+				Data:       map[string][]byte{"token": []byte("new")},
+			},
+			expUpdate: true,
+			expCreate: true,
+			expDelete: true,
+		},
+		{
+			name:     "Specific match - Name match",
+			predName: name,
+			predNS:   namespace,
+			oldSrt: &v1.Secret{
+				ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
+			},
+			newSrt: &v1.Secret{
+				ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
+				Data:       map[string][]byte{"token": []byte("new")},
+			},
+			expUpdate: true,
+			expCreate: true,
+			expDelete: true,
+		},
+		{
+			name:      "Type mismatch",
+			predName:  "",
+			predNS:    "",
+			oldSrt:    &v1.Secret{},
+			newSrt:    nil, // This should trigger the !ok check
+			expUpdate: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			pred := SecretDataChangedPredicate(tt.predName, tt.predNS)
+
+			if tt.newSrt != nil {
+				ce := event.CreateEvent{Object: tt.newSrt}
+				if pred.CreateFunc(ce) != tt.expCreate {
+					t.Errorf("CreateFunc expected %v", tt.expCreate)
+				}
+
+				de := event.DeleteEvent{Object: tt.newSrt}
+				if pred.DeleteFunc(de) != tt.expDelete {
+					t.Errorf("DeleteFunc expected %v", tt.expDelete)
+				}
+			}
+
+			ue := event.UpdateEvent{ObjectOld: tt.oldSrt, ObjectNew: tt.newSrt}
+			if pred.UpdateFunc(ue) != tt.expUpdate {
+				t.Errorf("UpdateFunc expected %v", tt.expUpdate)
+			}
+		})
+	}
+}
