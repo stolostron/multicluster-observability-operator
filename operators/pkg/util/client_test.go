@@ -43,18 +43,18 @@ func TestCreateClient(t *testing.T) {
 
 	_, err = GetOrCreateCRDClient()
 	if (!inCluster && err == nil) || (inCluster && err != nil) {
-		t.Fatalf(errMsg)
+		t.Fatalf("%s", errMsg)
 	}
 	_, err = GetOrCreatePromClient()
 	if (!inCluster && err == nil) || (inCluster && err != nil) {
-		t.Fatalf(errMsg)
+		t.Fatalf("%s", errMsg)
 	}
 	_, err = GetOrCreateKubeClient()
 	if (!inCluster && err == nil) || (inCluster && err != nil) {
-		t.Fatalf(errMsg)
+		t.Fatalf("%s", errMsg)
 	}
 	_, err = GetOrCreateOCPClient()
 	if (!inCluster && err == nil) || (inCluster && err != nil) {
-		t.Fatalf(errMsg)
+		t.Fatalf("%s", errMsg)
 	}
 }
