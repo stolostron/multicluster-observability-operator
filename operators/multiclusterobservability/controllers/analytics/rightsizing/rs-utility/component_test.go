@@ -253,6 +253,94 @@ func TestHandleComponentRightSizing_FreshEnableAfterDelegation(t *testing.T) {
 	assert.True(t, applyChangesCalled, "ApplyChangesFunc should be called after delegation reset")
 }
 
+func TestHandleComponentRightSizing_NamespaceBindingChange(t *testing.T) {
+	scheme := setupComponentTestScheme(t)
+	mco := newTestMCOForComponent(ComponentTypeNamespace, "new-ns", true)
+
+	applyChangesCalled := false
+	trackingApplyFunc := func(ctx context.Context, c client.Client, configData RSNamespaceConfigMapData) error {
+		applyChangesCalled = true
+		return nil
+	}
+
+	componentConfig := ComponentConfig{
+		ComponentType:            ComponentTypeNamespace,
+		ConfigMapName:            "test-config",
+		PlacementName:            "test-placement",
+		PlacementBindingName:     "test-binding",
+		PrometheusRulePolicyName: "test-policy",
+		DefaultNamespace:         "default-ns",
+		GetDefaultConfigFunc:     mockGetDefaultConfigFunc,
+		ApplyChangesFunc:         trackingApplyFunc,
+	}
+
+	// Simulate already-enabled state with a different namespace
+	state := &ComponentState{
+		Namespace: "old-ns",
+		Enabled:   true,
+	}
+
+	// Pre-create resources in the old namespace that should be cleaned up
+	oldPlacement := &clusterv1beta1.Placement{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-placement",
+			Namespace: "old-ns",
+		},
+	}
+	oldBinding := &policyv1.PlacementBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-binding",
+			Namespace: "old-ns",
+		},
+	}
+	oldPolicy := &policyv1.Policy{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-policy",
+			Namespace: "old-ns",
+		},
+	}
+
+	existingCM := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-config",
+			Namespace: "open-cluster-management-observability",
+		},
+		Data: mockGetDefaultConfigFunc(),
+	}
+
+	client := fake.NewClientBuilder().
+		WithScheme(scheme).
+		WithObjects(mco, existingCM, oldPlacement, oldBinding, oldPolicy).
+		Build()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	err := HandleComponentRightSizing(ctx, client, mco, componentConfig, state)
+	require.NoError(t, err)
+
+	// Verify state updated to new namespace
+	assert.True(t, state.Enabled)
+	assert.Equal(t, "new-ns", state.Namespace)
+
+	// Verify ApplyChangesFunc was called
+	assert.True(t, applyChangesCalled, "ApplyChangesFunc should be called after namespace binding change")
+
+	// Verify old namespace resources were cleaned up
+	err = client.Get(ctx, types.NamespacedName{Name: "test-placement", Namespace: "old-ns"}, &clusterv1beta1.Placement{})
+	assert.True(t, errors.IsNotFound(err), "old placement should be deleted")
+
+	err = client.Get(ctx, types.NamespacedName{Name: "test-binding", Namespace: "old-ns"}, &policyv1.PlacementBinding{})
+	assert.True(t, errors.IsNotFound(err), "old placement binding should be deleted")
+
+	err = client.Get(ctx, types.NamespacedName{Name: "test-policy", Namespace: "old-ns"}, &policyv1.Policy{})
+	assert.True(t, errors.IsNotFound(err), "old policy should be deleted")
+
+	// Verify ConfigMap was NOT deleted (bindingUpdated=true preserves it)
+	err = client.Get(ctx, types.NamespacedName{Name: "test-config", Namespace: "open-cluster-management-observability"}, &corev1.ConfigMap{})
+	assert.NoError(t, err, "ConfigMap should be preserved during namespace binding change")
+}
+
 func TestCleanupComponentResources_WithConfigMap(t *testing.T) {
 	scheme := setupComponentTestScheme(t)
 
