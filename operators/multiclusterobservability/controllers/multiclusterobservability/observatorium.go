@@ -622,7 +622,8 @@ func newAPISpec(c client.Client, mco *mcov1beta2.MultiClusterObservability) (obs
 			Name:      cmName,
 			Namespace: mcoconfig.GetDefaultNamespace(),
 		}, cm); err != nil {
-			log.Error(err, "failed to load ConfigMap", "name", cmName, "namespace", mcoconfig.GetDefaultNamespace())
+			log.Error(err, "failed to load alertmanager CA", "name", cmName, "namespace", mcoconfig.GetDefaultNamespace())
+			return apiSpec, err
 		}
 
 		// not needed if len(urls) == 0

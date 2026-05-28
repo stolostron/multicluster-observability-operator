@@ -1140,6 +1140,9 @@ func TestNewObservatoriumSpecMetricsAlertmanagerEndpoints(t *testing.T) {
 		observatoriumv1alpha1.SchemeBuilder.AddToScheme(s)
 		objs := []runtime.Object{mco, writeStorageS, caBundleCM}
 		cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
+		if err := mcoconfig.SetOperandNames(cl); err != nil {
+			t.Fatalf("SetOperandNames: %v", err)
+		}
 		obs, err := newDefaultObservatoriumSpec(cl, mco, storageClassName, "")
 		if err != nil {
 			t.Fatalf("newDefaultObservatoriumSpec: %v", err)

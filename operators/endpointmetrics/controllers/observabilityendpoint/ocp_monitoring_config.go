@@ -959,10 +959,13 @@ func createMtlsSecretInNamespace(ctx context.Context, c client.Client, sourceNam
 
 	desired := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      mtlsSecretName,
-			Namespace: targetNamespace,
+			Name:        mtlsSecretName,
+			Namespace:   targetNamespace,
+			Labels:      source.Labels,
+			Annotations: source.Annotations,
 		},
-		Data: source.Data,
+		Type: source.Type,
+		Data: source.DeepCopy().Data,
 	}
 	found := &corev1.Secret{}
 	err := c.Get(ctx, types.NamespacedName{Name: mtlsSecretName, Namespace: targetNamespace}, found)
