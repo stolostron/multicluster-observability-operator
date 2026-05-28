@@ -366,6 +366,19 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		}
 	}
 
+	if !rendering.MCOAEnabled(instance) && !rightSizingDelegated {
+		namespace, labels := renderer.NamespaceAndLabels()
+		toDelete, err := renderer.MCOAResources(ctx, namespace, labels)
+		if err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to list MCOA resources for deletion in namespace %s: %w", namespace, err)
+		}
+		for _, res := range toDelete {
+			resNS := res.GetNamespace()
+			if err := deployer.Undeploy(ctx, res, instance); err != nil {
+				return ctrl.Result{}, fmt.Errorf("failed to undeploy %s %s/%s: %w", res.GetKind(), resNS, res.GetName(), err)
+			}
+		}
+
 	// Explicitly delete the CMA so the addon framework cleans up ManagedClusterAddons
 	// and ManifestWorks on spokes. MCOAResources() skips CMA when DisableCMAORender
 	// is set (to preserve user annotations during normal operation), but during cleanup
