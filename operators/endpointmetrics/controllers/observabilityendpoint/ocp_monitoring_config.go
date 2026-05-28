@@ -142,12 +142,22 @@ func unsetConfigReverted(ctx context.Context, client client.Client, ns string) e
 
 // createHubAmAccessorTokenSecret creates the secret that contains access token of the Hub's Alertmanager.
 func createHubAmAccessorTokenSecret(ctx context.Context, client client.Client, namespace, targetNamespace string, hubInfo *operatorconfig.HubInfo) error {
+	hubAmAccessorSecret := AppendHubClusterID(HubAmAccessorSecretName, hubInfo)
+	found := &corev1.Secret{}
+	targetErr := client.Get(ctx, types.NamespacedName{Name: hubAmAccessorSecret, Namespace: targetNamespace}, found)
+
 	amAccessorToken, err := getAmAccessorToken(ctx, client, namespace)
 	if err != nil {
+		// If the source secret is missing but the target already exists, we skip the sync.
+		// This avoids reconcile failures during MCOA transition where legacy source secrets
+		// might be removed before or during the bridge agent's operation.
+		if targetErr == nil {
+			log.Info("target accessor secret already exists and source secret is missing, skipping sync", "target", targetNamespace+"/"+hubAmAccessorSecret, "source_ns", namespace)
+			return nil
+		}
 		return fmt.Errorf("fail to get %s/%s secret: %w", namespace, HubAmAccessorSecretName, err)
 	}
 
-	hubAmAccessorSecret := AppendHubClusterID(HubAmAccessorSecretName, hubInfo)
 	dataMap := map[string][]byte{hubAmAccessorSecretKey: []byte(amAccessorToken)}
 	hubAmAccessorTokenSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -157,10 +167,8 @@ func createHubAmAccessorTokenSecret(ctx context.Context, client client.Client, n
 		Data: dataMap,
 	}
 
-	found := &corev1.Secret{}
-	err = client.Get(ctx, types.NamespacedName{Name: hubAmAccessorSecret, Namespace: targetNamespace}, found)
-	if err != nil {
-		if errors.IsNotFound(err) {
+	if targetErr != nil {
+		if errors.IsNotFound(targetErr) {
 			err = client.Create(ctx, hubAmAccessorTokenSecret)
 			if err != nil {
 				log.Error(err, "failed to create the observability-alertmanager-accessor secret")
@@ -169,12 +177,12 @@ func createHubAmAccessorTokenSecret(ctx context.Context, client client.Client, n
 			log.Info("the observability-alertmanager-accessor secret is created")
 			return nil
 		} else {
-			log.Error(err, "failed to check the observability-alertmanager-accessor secret")
-			return err
+			log.Error(targetErr, "failed to check the observability-alertmanager-accessor secret")
+			return targetErr
 		}
 	}
 
-	if reflect.DeepEqual(found.Data, dataMap) {
+	if equality.Semantic.DeepEqual(found.Data, dataMap) {
 		log.Info("no change for the observability-alertmanager-accessor secret")
 		return nil
 	} else {
@@ -212,7 +220,7 @@ func cleanUpOldAMSecrets(ctx context.Context, client client.Client, targetNamesp
 	if hubInfo != nil && hubInfo.ObservatoriumAPIEndpoint != "" {
 		clusterDomain = config.GetClusterName(hubInfo.ObservatoriumAPIEndpoint)
 	} else {
-		log.Info("hubInfo or ObservatoriumAPIEndpoint missing; skipping cluster-domain-specific secret deletions")
+		log.V(1).Info("hubInfo or ObservatoriumAPIEndpoint missing; skipping cluster-domain-specific secret deletions")
 	}
 
 	deleteSecret := func(name string, namespace string) {
@@ -852,7 +860,9 @@ func IsManaged(amc cmomanifests.AdditionalAlertmanagerConfig, hubInfo *operatorc
 
 // isOldManagedConfig checks if the additional alertmanager config is managed by ACM with old secret names prior to Global Hub changes
 func isOldManagedConfig(amc cmomanifests.AdditionalAlertmanagerConfig, hubInfo *operatorconfig.HubInfo) bool {
-	if hubInfo != nil && amc.TLSConfig.CA != nil {
+	// In MCOA mode, ObservatoriumAPIEndpoint is not provided, so we skip the domain-based lookup
+	// to avoid unnecessary error logging from GetClusterName.
+	if hubInfo != nil && hubInfo.ObservatoriumAPIEndpoint != "" && amc.TLSConfig.CA != nil {
 		clusterDomainName := config.GetClusterName(hubInfo.ObservatoriumAPIEndpoint)
 		switch amc.TLSConfig.CA.Name {
 		case HubAmRouterCASecretName, HubAmRouterCASecretName + "-" + clusterDomainName:
