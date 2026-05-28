@@ -149,7 +149,7 @@ spec:
               - name: version
                 value: "$(steps.pick-version.results.version)"
               - name: instanceType
-                value: "m5.2xlarge"
+                value: "m5.xlarge"
               - name: timeout
                 value: "40m"
     - name: mco-install
