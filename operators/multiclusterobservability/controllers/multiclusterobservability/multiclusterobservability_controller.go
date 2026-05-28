@@ -390,6 +390,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 				return ctrl.Result{}, fmt.Errorf("failed to delete ClusterManagementAddOn %s: %w", config.MultiClusterObservabilityAddon, err)
 			}
 		}
+	}
 
 	_, err = r.ensureOpenShiftNamespaceLabel(ctx, instance)
 	if err != nil {
