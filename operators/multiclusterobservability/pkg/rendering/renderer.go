@@ -5,6 +5,8 @@
 package rendering
 
 import (
+	"context"
+
 	imagev1client "github.com/openshift/client-go/image/clientset/versioned/typed/image/v1"
 	obv1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
@@ -191,6 +193,21 @@ func (r *MCORenderer) MCOAResources(namespace string, labels map[string]string) 
 	return mcoaResources, nil
 }
 
+// MCOAGrafanaResources renders the MCOA addon templates into unstructured resources.
+func (r *MCORenderer) MCOAGrafanaResources(ctx context.Context, namespace string, labels map[string]string) ([]*unstructured.Unstructured, error) {
+	grafanaTemplates, err := templates.GetOrLoadGrafanaTemplates(templatesutil.GetTemplateRenderer())
+	if err != nil {
+		return nil, err
+	}
+	mcoaGrafanaResources, err := r.RenderGrafanaMCOATemplatesForRemoval(ctx, grafanaTemplates, namespace, labels)
+	if err != nil {
+		return nil, err
+	}
+
+	return mcoaGrafanaResources, nil
+}
+
+// HasImagestream checks if the cluster supports OpenShift ImageStream resources
 func (r *MCORenderer) HasImagestream() bool {
 	dcl := discovery.NewDiscoveryClient(r.imageClient.RESTClient())
 
