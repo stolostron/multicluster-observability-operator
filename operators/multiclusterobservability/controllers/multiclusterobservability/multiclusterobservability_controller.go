@@ -379,17 +379,17 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 			}
 		}
 
-	// Explicitly delete the CMA so the addon framework cleans up ManagedClusterAddons
-	// and ManifestWorks on spokes. MCOAResources() skips CMA when DisableCMAORender
-	// is set (to preserve user annotations during normal operation), but during cleanup
-	// we must remove it to trigger the full addon lifecycle teardown.
-	cma := &addonv1alpha1.ClusterManagementAddOn{}
-	if err := r.Client.Get(ctx, types.NamespacedName{Name: config.MultiClusterObservabilityAddon}, cma); err == nil {
-		reqLogger.Info("Deleting ClusterManagementAddOn for MCOA cleanup", "name", config.MultiClusterObservabilityAddon)
-		if err := r.Client.Delete(ctx, cma); err != nil && !apierrors.IsNotFound(err) {
-			return ctrl.Result{}, fmt.Errorf("failed to delete ClusterManagementAddOn %s: %w", config.MultiClusterObservabilityAddon, err)
+		// Explicitly delete the CMA so the addon framework cleans up ManagedClusterAddons
+		// and ManifestWorks on spokes. MCOAResources() skips CMA when DisableCMAORender
+		// is set (to preserve user annotations during normal operation), but during cleanup
+		// we must remove it to trigger the full addon lifecycle teardown.
+		cma := &addonv1alpha1.ClusterManagementAddOn{}
+		if err := r.Client.Get(ctx, types.NamespacedName{Name: config.MultiClusterObservabilityAddon}, cma); err == nil {
+			reqLogger.Info("Deleting ClusterManagementAddOn for MCOA cleanup", "name", config.MultiClusterObservabilityAddon)
+			if err := r.Client.Delete(ctx, cma); err != nil && !apierrors.IsNotFound(err) {
+				return ctrl.Result{}, fmt.Errorf("failed to delete ClusterManagementAddOn %s: %w", config.MultiClusterObservabilityAddon, err)
+			}
 		}
-	}
 
 	_, err = r.ensureOpenShiftNamespaceLabel(ctx, instance)
 	if err != nil {
