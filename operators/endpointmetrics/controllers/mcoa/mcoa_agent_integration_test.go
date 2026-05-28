@@ -118,6 +118,7 @@ func TestMCOAAgentIntegration(t *testing.T) {
 		mgr.GetScheme(),
 		mgr.GetEventRecorderFor("mcoa-agent-test"),
 		namespace,
+		"test-cluster-id",
 		hubInfo,
 	)
 	err = reconciler.SetupWithManager(mgr)

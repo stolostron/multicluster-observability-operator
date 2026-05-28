@@ -128,19 +128,8 @@ func TestMCOAAgentReconciler_Reconcile(t *testing.T) {
 			existingObjs: []client.Object{},
 		},
 		{
-			name: "Cluster ID failure - Error returned",
-			req: ctrl.Request{
-				NamespacedName: types.NamespacedName{
-					Name:      operatorconfig.OCPClusterMonitoringConfigMapName,
-					Namespace: operatorconfig.OCPClusterMonitoringNamespace,
-				},
-			},
-			hubInfo:       hubInfo,
-			existingObjs:  []client.Object{amAccessorSecret}, // Missing ClusterVersion
-			expectedError: true,
-		},
-		{
 			name: "AlertmanagerEndpoint empty - Revert path",
+
 			req: ctrl.Request{
 				NamespacedName: types.NamespacedName{
 					Name:      operatorconfig.OCPClusterMonitoringConfigMapName,
@@ -173,7 +162,7 @@ func TestMCOAAgentReconciler_Reconcile(t *testing.T) {
 			// Capture initial metric value
 			initialMetric := testutil.ToFloat64(cmoConfigConflictsTotal)
 
-			r := NewMCOAAgentReconciler(c, ctrl.Log.WithName("test"), s, recorder, namespace, tt.hubInfo)
+			r := NewMCOAAgentReconciler(c, ctrl.Log.WithName("test"), s, recorder, namespace, clusterID, tt.hubInfo)
 
 			_, err := r.Reconcile(context.Background(), tt.req)
 

@@ -13,7 +13,6 @@ import (
 	cmomanifests "github.com/openshift/cluster-monitoring-operator/pkg/manifests"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/controllers/observabilityendpoint"
-	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -45,6 +44,7 @@ type cmoConfigReconciler struct {
 	Log       logr.Logger
 	Recorder  record.EventRecorder
 	Namespace string
+	ClusterID string
 	HubInfo   *operatorconfig.HubInfo
 }
 
@@ -73,15 +73,10 @@ func (r *cmoConfigReconciler) reconcile(ctx context.Context, req client.ObjectKe
 		}
 	}
 
-	clusterID, err := mcoconfig.GetClusterID(ctx, r.Client)
-	if err != nil {
-		return fmt.Errorf("failed to get cluster id: %w", err)
-	}
-
 	_, err = observabilityendpoint.CreateOrUpdateCMOConfig(
 		ctx,
 		r.Client,
-		clusterID,
+		r.ClusterID,
 		r.HubInfo,
 		"", // Pass empty namespace to skip legacy revert-marker logic
 	)

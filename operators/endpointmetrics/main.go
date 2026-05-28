@@ -92,14 +92,14 @@ func main() {
 func runCleanup(args []string) {
 	setupLog.Info("Starting MCOA cleanup")
 	fs := flag.NewFlagSet("cleanup", flag.ExitOnError)
-	var hubClusterID string
+	var hubID string
 
-	fs.StringVar(&hubClusterID, "hub-cluster-id", "", "The ID of the Hub cluster to clean up.")
+	fs.StringVar(&hubID, "hub-id", "", "The ID of the Hub cluster to clean up.")
 	klog.InitFlags(fs)
 	_ = fs.Parse(args)
 
-	if hubClusterID == "" {
-		setupLog.Error(fmt.Errorf("hub-cluster-id flag not set"), "unable to perform cleanup")
+	if hubID == "" {
+		setupLog.Error(fmt.Errorf("hub-id flag not set"), "unable to perform cleanup")
 		os.Exit(1)
 	}
 
@@ -111,7 +111,7 @@ func runCleanup(args []string) {
 	}
 
 	hubInfo := &operatorconfig.HubInfo{
-		HubClusterID: hubClusterID,
+		HubClusterID: hubID,
 	}
 
 	ctx := context.Background()
@@ -144,7 +144,9 @@ func runMCOA(args []string) {
 	var enableLeaderElection bool
 	var probeAddr string
 	var hubAmURL string
-	var hubClusterID string
+	var hubID string
+	var clusterID string
+	var namespace string
 
 	fs.StringVar(&metricsAddr, "metrics-bind-address", ":8383", "The address the metric endpoint binds to.")
 	fs.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
@@ -152,24 +154,22 @@ func runMCOA(args []string) {
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
 	fs.StringVar(&hubAmURL, "hub-alertmanager-url", "", "The URL of the Hub's Alertmanager.")
-	fs.StringVar(&hubClusterID, "hub-cluster-id", "", "The ID of the Hub cluster.")
+	fs.StringVar(&hubID, "hub-id", "", "The ID of the Hub cluster.")
+	fs.StringVar(&clusterID, "cluster-id", "", "The ID of the managed cluster.")
+	fs.StringVar(&namespace, "namespace", "", "The namespace the operator is running in.")
 
 	klog.InitFlags(fs)
 	_ = fs.Parse(args)
 
 	ctrl.SetLogger(klog.NewKlogr())
 
-	namespace := os.Getenv("NAMESPACE")
 	if namespace == "" {
-		namespace = os.Getenv("WATCH_NAMESPACE")
-	}
-	if namespace == "" {
-		setupLog.Error(fmt.Errorf("NAMESPACE environment variable not set"), "unable to start manager")
+		setupLog.Error(fmt.Errorf("namespace flag not set"), "unable to start manager")
 		os.Exit(1)
 	}
 
-	if hubClusterID == "" {
-		setupLog.Error(fmt.Errorf("hub-cluster-id flag not set"), "unable to start manager")
+	if hubID == "" {
+		setupLog.Error(fmt.Errorf("hub-id flag not set"), "unable to start manager")
 		os.Exit(1)
 	}
 
@@ -189,7 +189,7 @@ func runMCOA(args []string) {
 
 	hubInfo := &operatorconfig.HubInfo{
 		AlertmanagerEndpoint: hubAmURL,
-		HubClusterID:         hubClusterID,
+		HubClusterID:         hubID,
 	}
 
 	if err = mcoa.NewMCOAAgentReconciler(
@@ -198,6 +198,7 @@ func runMCOA(args []string) {
 		mgr.GetScheme(),
 		mgr.GetEventRecorderFor("mcoa-agent-controller"),
 		namespace,
+		clusterID,
 		hubInfo,
 	).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "MCOA-Agent")

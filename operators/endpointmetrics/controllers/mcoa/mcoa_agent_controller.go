@@ -28,13 +28,22 @@ type MCOAAgentReconciler struct {
 	Scheme    *runtime.Scheme
 	Recorder  record.EventRecorder
 	Namespace string
+	ClusterID string
 	HubInfo   *operatorconfig.HubInfo
 
 	cmoReconciler *cmoConfigReconciler
 }
 
 // NewMCOAAgentReconciler creates a new MCOAAgentReconciler and initializes its sub-reconcilers.
-func NewMCOAAgentReconciler(client client.Client, log logr.Logger, scheme *runtime.Scheme, recorder record.EventRecorder, namespace string, hubInfo *operatorconfig.HubInfo) *MCOAAgentReconciler {
+func NewMCOAAgentReconciler(
+	client client.Client,
+	log logr.Logger,
+	scheme *runtime.Scheme,
+	recorder record.EventRecorder,
+	namespace string,
+	clusterID string,
+	hubInfo *operatorconfig.HubInfo,
+) *MCOAAgentReconciler {
 	registerMetrics()
 	return &MCOAAgentReconciler{
 		Client:    client,
@@ -42,12 +51,14 @@ func NewMCOAAgentReconciler(client client.Client, log logr.Logger, scheme *runti
 		Scheme:    scheme,
 		Recorder:  recorder,
 		Namespace: namespace,
+		ClusterID: clusterID,
 		HubInfo:   hubInfo,
 		cmoReconciler: &cmoConfigReconciler{
 			Client:    client,
 			Log:       log.WithName("CMO"),
 			Recorder:  recorder,
 			Namespace: namespace,
+			ClusterID: clusterID,
 			HubInfo:   hubInfo,
 		},
 	}
