@@ -232,19 +232,19 @@ spec:
               curl -sL "https://raw.githubusercontent.com/open-cluster-management-io/clusteradm/main/install.sh" | bash
 
               echo "=== Cloning MCO repository at PR revision ==="
-              GIT_URL=$(echo "${SNAPSHOT}" | jq -r '.components[] | select(.name == "multicluster-observability-operator-acm-217") | .source.git.url')
-              GIT_REVISION=$(echo "${SNAPSHOT}" | jq -r '.components[] | select(.name == "multicluster-observability-operator-acm-217") | .source.git.revision')
+              GIT_URL=$(echo "${SNAPSHOT}" | jq -r '[.components[] | select(.name | test("^multicluster-observability-operator-acm-"))] | .[0].source.git.url')
+              GIT_REVISION=$(echo "${SNAPSHOT}" | jq -r '[.components[] | select(.name | test("^multicluster-observability-operator-acm-"))] | .[0].source.git.revision')
               echo "Source: ${GIT_URL} @ ${GIT_REVISION}"
               git clone "${GIT_URL}" /tmp/mco
               cd /tmp/mco
               git checkout "${GIT_REVISION}"
 
               echo "=== Extracting component images from SNAPSHOT ==="
-              export MULTICLUSTER_OBSERVABILITY_OPERATOR_IMAGE_REF=$(echo "${SNAPSHOT}" | jq -r '.components[] | select(.name == "multicluster-observability-operator-acm-217") | .containerImage')
-              export ENDPOINT_MONITORING_OPERATOR_IMAGE_REF=$(echo "${SNAPSHOT}" | jq -r '.components[] | select(.name == "endpoint-monitoring-operator-acm-217") | .containerImage')
-              export METRICS_COLLECTOR_IMAGE_REF=$(echo "${SNAPSHOT}" | jq -r '.components[] | select(.name == "metrics-collector-acm-217") | .containerImage')
-              export RBAC_QUERY_PROXY_IMAGE_REF=$(echo "${SNAPSHOT}" | jq -r '.components[] | select(.name == "rbac-query-proxy-acm-217") | .containerImage')
-              export GRAFANA_DASHBOARD_LOADER_IMAGE_REF=$(echo "${SNAPSHOT}" | jq -r '.components[] | select(.name == "grafana-dashboard-loader-acm-217") | .containerImage')
+              export MULTICLUSTER_OBSERVABILITY_OPERATOR_IMAGE_REF=$(echo "${SNAPSHOT}" | jq -r '[.components[] | select(.name | test("^multicluster-observability-operator-acm-"))] | .[0].containerImage')
+              export ENDPOINT_MONITORING_OPERATOR_IMAGE_REF=$(echo "${SNAPSHOT}" | jq -r '[.components[] | select(.name | test("^endpoint-monitoring-operator-acm-"))] | .[0].containerImage')
+              export METRICS_COLLECTOR_IMAGE_REF=$(echo "${SNAPSHOT}" | jq -r '[.components[] | select(.name | test("^metrics-collector-acm-"))] | .[0].containerImage')
+              export RBAC_QUERY_PROXY_IMAGE_REF=$(echo "${SNAPSHOT}" | jq -r '[.components[] | select(.name | test("^rbac-query-proxy-acm-"))] | .[0].containerImage')
+              export GRAFANA_DASHBOARD_LOADER_IMAGE_REF=$(echo "${SNAPSHOT}" | jq -r '[.components[] | select(.name | test("^grafana-dashboard-loader-acm-"))] | .[0].containerImage')
 
               echo "MCO operator image: ${MULTICLUSTER_OBSERVABILITY_OPERATOR_IMAGE_REF}"
               echo "Endpoint monitoring image: ${ENDPOINT_MONITORING_OPERATOR_IMAGE_REF}"
@@ -366,19 +366,19 @@ spec:
               go version
 
               echo "=== Cloning MCO repository at PR revision ==="
-              GIT_URL=$(echo "${SNAPSHOT}" | jq -r '.components[] | select(.name == "multicluster-observability-operator-acm-217") | .source.git.url')
-              GIT_REVISION=$(echo "${SNAPSHOT}" | jq -r '.components[] | select(.name == "multicluster-observability-operator-acm-217") | .source.git.revision')
+              GIT_URL=$(echo "${SNAPSHOT}" | jq -r '[.components[] | select(.name | test("^multicluster-observability-operator-acm-"))] | .[0].source.git.url')
+              GIT_REVISION=$(echo "${SNAPSHOT}" | jq -r '[.components[] | select(.name | test("^multicluster-observability-operator-acm-"))] | .[0].source.git.revision')
               echo "Source: ${GIT_URL} @ ${GIT_REVISION}"
               git clone "${GIT_URL}" /tmp/mco
               cd /tmp/mco
               git checkout "${GIT_REVISION}"
 
               echo "=== Extracting component images from SNAPSHOT ==="
-              export MULTICLUSTER_OBSERVABILITY_OPERATOR_IMAGE_REF=$(echo "${SNAPSHOT}" | jq -r '.components[] | select(.name == "multicluster-observability-operator-acm-217") | .containerImage')
-              export ENDPOINT_MONITORING_OPERATOR_IMAGE_REF=$(echo "${SNAPSHOT}" | jq -r '.components[] | select(.name == "endpoint-monitoring-operator-acm-217") | .containerImage')
-              export METRICS_COLLECTOR_IMAGE_REF=$(echo "${SNAPSHOT}" | jq -r '.components[] | select(.name == "metrics-collector-acm-217") | .containerImage')
-              export RBAC_QUERY_PROXY_IMAGE_REF=$(echo "${SNAPSHOT}" | jq -r '.components[] | select(.name == "rbac-query-proxy-acm-217") | .containerImage')
-              export GRAFANA_DASHBOARD_LOADER_IMAGE_REF=$(echo "${SNAPSHOT}" | jq -r '.components[] | select(.name == "grafana-dashboard-loader-acm-217") | .containerImage')
+              export MULTICLUSTER_OBSERVABILITY_OPERATOR_IMAGE_REF=$(echo "${SNAPSHOT}" | jq -r '[.components[] | select(.name | test("^multicluster-observability-operator-acm-"))] | .[0].containerImage')
+              export ENDPOINT_MONITORING_OPERATOR_IMAGE_REF=$(echo "${SNAPSHOT}" | jq -r '[.components[] | select(.name | test("^endpoint-monitoring-operator-acm-"))] | .[0].containerImage')
+              export METRICS_COLLECTOR_IMAGE_REF=$(echo "${SNAPSHOT}" | jq -r '[.components[] | select(.name | test("^metrics-collector-acm-"))] | .[0].containerImage')
+              export RBAC_QUERY_PROXY_IMAGE_REF=$(echo "${SNAPSHOT}" | jq -r '[.components[] | select(.name | test("^rbac-query-proxy-acm-"))] | .[0].containerImage')
+              export GRAFANA_DASHBOARD_LOADER_IMAGE_REF=$(echo "${SNAPSHOT}" | jq -r '[.components[] | select(.name | test("^grafana-dashboard-loader-acm-"))] | .[0].containerImage')
 
               echo "=== Setting up SHARED_DIR with cluster kubeconfigs ==="
               export SHARED_DIR=/tmp/shared
