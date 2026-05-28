@@ -1085,7 +1085,6 @@ func addBackupLabel(c client.Client, name string, backupS *v1.Secret) error {
 }
 
 func alertmanagerMetricsEndpointURLs(amReplicas *int32) ([]string, error) {
-
 	addr := []string{}
 	if amReplicas != nil {
 		for i := range *amReplicas {

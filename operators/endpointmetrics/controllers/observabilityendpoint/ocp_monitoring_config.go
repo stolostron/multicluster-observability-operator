@@ -146,7 +146,7 @@ func createHubAmAccessorTokenSecret(ctx context.Context, client client.Client, n
 		return fmt.Errorf("fail to get %s/%s secret: %w", namespace, hubAmAccessorSecretName, err)
 	}
 
-	hubAmAccessorSecret := hubAmAccessorSecretName + "-" + hubInfo.HubClusterID
+	hubAmAccessorSecret := appendHubClusterID(hubAmAccessorSecretName, hubInfo)
 	dataMap := map[string][]byte{hubAmAccessorSecretKey: []byte(amAccessorToken)}
 	hubAmAccessorTokenSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -300,7 +300,7 @@ func newAdditionalAlertmanagerConfig(hubInfo *operatorconfig.HubInfo) cmomanifes
 		},
 		BearerToken: &corev1.SecretKeySelector{
 			LocalObjectReference: corev1.LocalObjectReference{
-				Name: hubAmAccessorSecretName + "-" + hubInfo.HubClusterID,
+				Name: appendHubClusterID(hubAmAccessorSecretName, hubInfo),
 			},
 			Key: hubAmAccessorSecretKey,
 		},
@@ -831,17 +831,21 @@ func inManagedFields(cm *corev1.ConfigMap) bool {
 
 // isManaged checks if the additional alertmanager config is managed by ACM
 func isManaged(amc cmomanifests.AdditionalAlertmanagerConfig, hubInfo *operatorconfig.HubInfo) bool {
-	if hubInfo != nil && amc.TLSConfig.CA != nil && amc.TLSConfig.CA.Name == hubAmRouterCASecretName+"-"+hubInfo.HubClusterID {
-		return true
-	} else if hubInfo == nil && amc.TLSConfig.CA != nil && strings.Contains(amc.TLSConfig.CA.Name, hubAmRouterCASecretName) {
-		// This is only for the CMO cleanup script to clean up old configs
-		return true
-	} else if hubInfo != nil && amc.TLSConfig.CA != nil && amc.TLSConfig.CA.Name == mtlsCaName+"-"+hubInfo.HubClusterID {
-		return true
-	} else if hubInfo == nil && amc.TLSConfig.CA != nil && strings.Contains(amc.TLSConfig.CA.Name, mtlsCaName) {
-		return true
+	if amc.TLSConfig.CA == nil {
+		return false
 	}
-	return false
+	caName := amc.TLSConfig.CA.Name
+	if hubInfo != nil {
+		switch caName {
+		case hubAmRouterCASecretName + "-" + hubInfo.HubClusterID,
+			mtlsCaName + "-" + hubInfo.HubClusterID:
+			return true
+		default:
+			return false
+		}
+	}
+	return strings.Contains(caName, hubAmRouterCASecretName) ||
+		strings.Contains(caName, mtlsCaName)
 }
 
 // isOldManagedConfig checks if the additional alertmanager config is managed by ACM with old secret names prior to Global Hub changes

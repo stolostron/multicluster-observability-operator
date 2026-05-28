@@ -31,6 +31,18 @@ import (
 
 var storageClassName = ""
 
+func alertmanagerCABundleConfigMap() *corev1.ConfigMap {
+	return &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      mcoconfig.AlertmanagersDefaultCaBundleName,
+			Namespace: mcoconfig.GetDefaultNamespace(),
+		},
+		Data: map[string]string{
+			mcoconfig.AlertmanagersDefaultCaBundleKey: "dummy-ca",
+		},
+	}
+}
+
 func TestNewVolumeClaimTemplate(t *testing.T) {
 	vct := newVolumeClaimTemplate("10Gi", "test")
 	if vct.Spec.AccessModes[0] != corev1.ReadWriteOnce ||
@@ -93,7 +105,7 @@ func TestNewDefaultObservatoriumSpec(t *testing.T) {
 	mcov1beta2.SchemeBuilder.AddToScheme(s)
 	observatoriumv1alpha1.SchemeBuilder.AddToScheme(s)
 
-	objs := []runtime.Object{mco, writeStorageS}
+	objs := []runtime.Object{mco, writeStorageS, alertmanagerCABundleConfigMap()}
 	// Create a fake client to mock API calls.
 	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
 
@@ -191,7 +203,7 @@ func TestNewDefaultObservatoriumSpecWithTShirtSize(t *testing.T) {
 	mcov1beta2.SchemeBuilder.AddToScheme(s)
 	observatoriumv1alpha1.SchemeBuilder.AddToScheme(s)
 
-	objs := []runtime.Object{mco, writeStorageS}
+	objs := []runtime.Object{mco, writeStorageS, alertmanagerCABundleConfigMap()}
 	// Create a fake client to mock API calls.
 	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
 
@@ -265,11 +277,12 @@ func TestUpdateObservatoriumCR(t *testing.T) {
 				"config.yaml": "test",
 			},
 		},
+		alertmanagerCABundleConfigMap(),
 	}...)
 
 	// Create a fake client to mock API calls.
 	// This should have no extra objects beyond the CMO CRD.
-	noConfigCl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(mco).Build()
+	noConfigCl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(mco, alertmanagerCABundleConfigMap()).Build()
 	mcoconfig.SetOperandNames(noConfigCl)
 
 	_, err := GenerateObservatoriumCR(noConfigCl, s, mco)
@@ -360,7 +373,7 @@ func TestTShirtSizeUpdateObservatoriumCR(t *testing.T) {
 
 	// Create a fake client to mock API calls.
 	// This should have no extra objects beyond the CMO CRD.
-	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(mco).Build()
+	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(mco, alertmanagerCABundleConfigMap()).Build()
 	mcoconfig.SetOperandNames(cl)
 
 	_, err := GenerateObservatoriumCR(cl, s, mco)
@@ -468,6 +481,7 @@ func TestNoUpdateObservatoriumCR(t *testing.T) {
 				"config.yaml": "test",
 			},
 		},
+		alertmanagerCABundleConfigMap(),
 	}...)
 
 	// Create a fake client to mock API calls.
@@ -765,7 +779,7 @@ func TestObservatoriumCustomArgs(t *testing.T) {
 		},
 	}
 
-	objs := []runtime.Object{mco, writeStorageS}
+	objs := []runtime.Object{mco, writeStorageS, alertmanagerCABundleConfigMap()}
 	// Create a fake client to mock API calls.
 	cl := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 
@@ -1112,16 +1126,6 @@ func TestNewCompactSpec(t *testing.T) {
 }
 
 func TestNewObservatoriumSpecMetricsAlertmanagerEndpoints(t *testing.T) {
-	caBundleCM := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      mcoconfig.AlertmanagersDefaultCaBundleName,
-			Namespace: mcoconfig.GetDefaultNamespace(),
-		},
-		Data: map[string]string{
-			mcoconfig.AlertmanagersDefaultCaBundleKey: "dummy-ca",
-		},
-	}
-
 	buildObs := func(t *testing.T, mco *mcov1beta2.MultiClusterObservability) *observatoriumv1alpha1.ObservatoriumSpec {
 		t.Helper()
 		writeStorageS := &corev1.Secret{
@@ -1138,7 +1142,7 @@ func TestNewObservatoriumSpecMetricsAlertmanagerEndpoints(t *testing.T) {
 		scheme.AddToScheme(s)
 		mcov1beta2.SchemeBuilder.AddToScheme(s)
 		observatoriumv1alpha1.SchemeBuilder.AddToScheme(s)
-		objs := []runtime.Object{mco, writeStorageS, caBundleCM}
+		objs := []runtime.Object{mco, writeStorageS, alertmanagerCABundleConfigMap()}
 		cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
 		if err := mcoconfig.SetOperandNames(cl); err != nil {
 			t.Fatalf("SetOperandNames: %v", err)
