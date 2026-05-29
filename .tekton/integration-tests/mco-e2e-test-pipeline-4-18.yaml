@@ -263,7 +263,14 @@ spec:
               echo "Hub API server: ${HUB_API}"
 
               # Get bootstrap token from the hub
-              JOIN_CMD=$(clusteradm get token --use-bootstrap-token 2>/dev/null | grep -o 'clusteradm join.*')
+              echo "=== clusteradm get token output ==="
+              clusteradm get token --use-bootstrap-token | tee /tmp/clusteradm-token.out
+              JOIN_CMD=$(grep -o 'clusteradm join.*' /tmp/clusteradm-token.out || true)
+              if [[ -z "${JOIN_CMD}" ]]; then
+                echo "ERROR: Failed to extract join command from clusteradm output"
+                cat /tmp/clusteradm-token.out
+                exit 1
+              fi
               echo "Join command: ${JOIN_CMD}"
 
               # Join the managed cluster to the hub
