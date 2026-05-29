@@ -158,6 +158,19 @@ type PlatformAnalyticsSpec struct {
 	// +optional
 	// +kubebuilder:validation:Optional
 	VirtualizationRightSizingRecommendation PlatformRightSizingRecommendationSpec `json:"virtualizationRightSizingRecommendation,omitempty"`
+
+	// Feature to enable workload + pod right-sizing recommendation capabilities for the Analytics.
+	// When enabled, MCO will create a single policy/PrometheusRule for both workload and pod series.
+	//
+	// +optional
+	// +kubebuilder:validation:Optional
+	WorkloadPodRightSizingRecommendation PlatformRightSizingRecommendationSpec `json:"workloadPodRightSizingRecommendation,omitempty"`
+
+	// Feature to enable GPU utilization right-sizing metrics for the Analytics.
+	//
+	// +optional
+	// +kubebuilder:validation:Optional
+	GPURightSizingRecommendation PlatformRightSizingRecommendationSpec `json:"gpuRightSizingRecommendation,omitempty"`
 }
 
 type PlatformIncidentDetectionSpec struct {
@@ -176,7 +189,7 @@ type PlatformRightSizingRecommendationSpec struct {
 	Enabled bool `json:"enabled,omitempty"`
 
 	// NamespaceBinding defines the namespace where all the required resources are created.
-	// The default namespace is `open-cluster-management-global-set
+	// The default namespace is `open-cluster-management-global-set`.
 	//
 	// +optional
 	// +kubebuilder:validation:Optional

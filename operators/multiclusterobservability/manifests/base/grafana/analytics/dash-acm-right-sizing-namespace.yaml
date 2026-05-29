@@ -611,7 +611,13 @@ data:
                   },
                   {
                     "id": "links",
-                    "value": []
+                    "value": [
+                      {
+                        "targetBlank": false,
+                        "title": "Show Workload & Pod level details",
+                        "url": "/d/acmRSWorkPod/acm-right-sizing-workloads-pods?${__url_time_range}&var-datasource=$datasource&var-cluster=$cluster&var-profile=$profile&var-days=$days&var-namespace=${__data.fields.namespace}"
+                      }
+                    ]
                   },
                   {
                     "id": "unit",
@@ -947,9 +953,10 @@ data:
               }
             },
             {
-              "id": "seriesToColumns",
+              "id": "joinByField",
               "options": {
-                "byField": "namespace"
+                "byField": "namespace",
+                "mode": "outer"
               }
             },
             {
@@ -1531,7 +1538,13 @@ data:
                   },
                   {
                     "id": "links",
-                    "value": []
+                    "value": [
+                      {
+                        "targetBlank": false,
+                        "title": "Show Workload & Pod level details",
+                        "url": "/d/acmRSWorkPod/acm-right-sizing-workloads-pods?${__url_time_range}&var-datasource=$datasource&var-cluster=$cluster&var-profile=$profile&var-days=$days&var-namespace=${__data.fields.namespace}"
+                      }
+                    ]
                   },
                   {
                     "id": "unit",
@@ -1867,9 +1880,10 @@ data:
               }
             },
             {
-              "id": "seriesToColumns",
+              "id": "joinByField",
               "options": {
-                "byField": "namespace"
+                "byField": "namespace",
+                "mode": "outer"
               }
             },
             {
@@ -1942,8 +1956,8 @@ data:
           {
             "current": {
               "selected": false,
-              "text": "Max OverAll",
-              "value": "Max OverAll"
+              "text": "P95",
+              "value": "P95"
             },
             "datasource": {
               "type": "prometheus",

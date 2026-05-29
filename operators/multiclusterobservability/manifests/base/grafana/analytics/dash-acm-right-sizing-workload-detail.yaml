@@ -1,0 +1,1387 @@
+apiVersion: v1
+data:
+  workload-detail.json: |-
+    {
+      "annotations": {
+        "list": [
+          {
+            "builtIn": 1,
+            "datasource": {
+              "type": "datasource",
+              "uid": "grafana"
+            },
+            "enable": true,
+            "hide": true,
+            "iconColor": "rgba(0, 211, 255, 1)",
+            "name": "Annotations & Alerts",
+            "type": "dashboard"
+          }
+        ]
+      },
+      "editable": true,
+      "fiscalYearStartMonth": 0,
+      "graphTooltip": 0,
+      "id": 0,
+      "links": [
+        {
+          "asDropdown": false,
+          "icon": "arrow-left",
+          "includeVars": true,
+          "keepTime": true,
+          "tags": [],
+          "targetBlank": false,
+          "title": "Back to Overview",
+          "tooltip": "Back to Workloads & Pods Overview",
+          "type": "link",
+          "url": "/d/acmRSWorkPod/acm-right-sizing-workloads-pods"
+        }
+      ],
+      "panels": [
+        {
+          "collapsed": false,
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 0
+          },
+          "id": 1,
+          "panels": [],
+          "title": "CPU",
+          "type": "row"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "fixedColor": "#0066cc",
+                "mode": "fixed"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "#0066cc",
+                    "value": null
+                  }
+                ]
+              },
+              "unit": "short",
+              "decimals": 5
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 5,
+            "x": 0,
+            "y": 1
+          },
+          "id": 10,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "12.2.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "expr": "max by (cluster, profile, namespace, workload, workload_type)(\n  max_over_time(\n    acm_rs:workload:cpu_recommendation{cluster=\"$cluster\", profile=\"$profile\", namespace=\"$namespace\", workload=\"$workload\", workload_type=\"$workload_type\"}\n  [$days:])\n)",
+              "instant": true,
+              "refId": "A"
+            }
+          ],
+          "title": "CPU Recommendation",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "fixedColor": "#0066cc",
+                "mode": "fixed"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "#0066cc",
+                    "value": null
+                  }
+                ]
+              },
+              "unit": "short",
+              "decimals": 5
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 5,
+            "x": 0,
+            "y": 4
+          },
+          "id": 11,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "12.2.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "expr": "max by (cluster, profile, namespace, workload, workload_type)(\n  max_over_time(\n    acm_rs:workload:cpu_usage{cluster=\"$cluster\", profile=\"$profile\", namespace=\"$namespace\", workload=\"$workload\", workload_type=\"$workload_type\"}\n  [$days:])\n)",
+              "instant": true,
+              "refId": "A"
+            }
+          ],
+          "title": "CPU Usage",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "fixedColor": "#0066cc",
+                "mode": "fixed"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "#0066cc",
+                    "value": null
+                  }
+                ]
+              },
+              "unit": "short",
+              "decimals": 5
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 5,
+            "x": 0,
+            "y": 7
+          },
+          "id": 12,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "12.2.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "expr": "max by (cluster, profile, namespace, workload, workload_type)(\n  max_over_time(\n    acm_rs:workload:cpu_request{cluster=\"$cluster\", profile=\"$profile\", namespace=\"$namespace\", workload=\"$workload\", workload_type=\"$workload_type\"}\n  [$days:])\n)",
+              "instant": true,
+              "refId": "A"
+            }
+          ],
+          "title": "CPU Request",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "#E02F44",
+                    "value": null
+                  },
+                  {
+                    "color": "#73BF69",
+                    "value": 0.8
+                  },
+                  {
+                    "color": "#E0B400",
+                    "value": 1.0
+                  }
+                ]
+              },
+              "unit": "percentunit",
+              "decimals": 2
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 5,
+            "x": 0,
+            "y": 10
+          },
+          "id": 13,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "12.2.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "expr": "max by (cluster, profile, namespace, workload, workload_type)(\n  max_over_time(\n    acm_rs:workload:cpu_usage{cluster=\"$cluster\", profile=\"$profile\", namespace=\"$namespace\", workload=\"$workload\", workload_type=\"$workload_type\"}\n  [$days:])\n  /\n  clamp_min(\n    max_over_time(\n      acm_rs:workload:cpu_request{cluster=\"$cluster\", profile=\"$profile\", namespace=\"$namespace\", workload=\"$workload\", workload_type=\"$workload_type\"}\n    [$days:])\n  , 1e-9)\n)",
+              "instant": true,
+              "refId": "A"
+            }
+          ],
+          "title": "CPU Utilization",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "CPU Cores",
+                "axisPlacement": "auto",
+                "drawStyle": "line",
+                "fillOpacity": 20,
+                "gradientMode": "none",
+                "lineInterpolation": "smooth",
+                "lineWidth": 2,
+                "pointSize": 5,
+                "showPoints": "auto",
+                "spanNulls": true,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              },
+              "unit": "short",
+              "decimals": 2
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Recommendation"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "green",
+                      "mode": "fixed"
+                    }
+                  },
+                  {
+                    "id": "custom.lineStyle",
+                    "value": {
+                      "dash": [
+                        10,
+                        10
+                      ],
+                      "fill": "dash"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Request"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "orange",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Limit"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "red",
+                      "mode": "fixed"
+                    }
+                  },
+                  {
+                    "id": "custom.lineStyle",
+                    "value": {
+                      "dash": [
+                        4,
+                        4
+                      ],
+                      "fill": "dash"
+                    }
+                  },
+                  {
+                    "id": "custom.fillOpacity",
+                    "value": 0
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Usage"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "blue",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 12,
+            "w": 19,
+            "x": 5,
+            "y": 1
+          },
+          "id": 20,
+          "options": {
+            "legend": {
+              "calcs": [
+                "mean",
+                "max"
+              ],
+              "displayMode": "table",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "pluginVersion": "12.2.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "expr": "acm_rs:workload:cpu_usage{cluster=\"$cluster\", profile=\"$profile\", namespace=\"$namespace\", workload=\"$workload\", workload_type=\"$workload_type\"}",
+              "legendFormat": "Usage",
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "expr": "acm_rs:workload:cpu_request{cluster=\"$cluster\", profile=\"$profile\", namespace=\"$namespace\", workload=\"$workload\", workload_type=\"$workload_type\"}",
+              "legendFormat": "Request",
+              "refId": "B"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "expr": "acm_rs:workload:cpu_limit{cluster=\"$cluster\", profile=\"$profile\", namespace=\"$namespace\", workload=\"$workload\", workload_type=\"$workload_type\"}",
+              "legendFormat": "Limit",
+              "refId": "C"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "expr": "acm_rs:workload:cpu_recommendation{cluster=\"$cluster\", profile=\"$profile\", namespace=\"$namespace\", workload=\"$workload\", workload_type=\"$workload_type\"}",
+              "legendFormat": "Recommendation",
+              "refId": "D"
+            }
+          ],
+          "title": "CPU Over Time - Workload",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "CPU Cores",
+                "axisPlacement": "auto",
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "gradientMode": "none",
+                "lineInterpolation": "smooth",
+                "lineWidth": 1,
+                "pointSize": 4,
+                "showPoints": "auto",
+                "spanNulls": true,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              },
+              "unit": "short",
+              "decimals": 2
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 10,
+            "w": 24,
+            "x": 0,
+            "y": 13
+          },
+          "id": 21,
+          "options": {
+            "legend": {
+              "calcs": [
+                "mean",
+                "max"
+              ],
+              "displayMode": "table",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "pluginVersion": "12.2.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "expr": "acm_rs:pod:cpu_usage{cluster=\"$cluster\", profile=\"$profile\", namespace=\"$namespace\", workload=\"$workload\", workload_type=\"$workload_type\"}",
+              "legendFormat": "{{pod}} Usage",
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "expr": "acm_rs:pod:cpu_request{cluster=\"$cluster\", profile=\"$profile\", namespace=\"$namespace\", workload=\"$workload\", workload_type=\"$workload_type\"}",
+              "legendFormat": "{{pod}} Request",
+              "refId": "B"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "expr": "acm_rs:pod:cpu_recommendation{cluster=\"$cluster\", profile=\"$profile\", namespace=\"$namespace\", workload=\"$workload\", workload_type=\"$workload_type\"}",
+              "legendFormat": "{{pod}} Recommendation",
+              "refId": "C"
+            }
+          ],
+          "title": "CPU Over Time - Pods",
+          "type": "timeseries"
+        },
+        {
+          "collapsed": false,
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 23
+          },
+          "id": 2,
+          "panels": [],
+          "title": "Memory",
+          "type": "row"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "fixedColor": "#0066cc",
+                "mode": "fixed"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "#0066cc",
+                    "value": null
+                  }
+                ]
+              },
+              "unit": "bytes",
+              "decimals": 1
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 5,
+            "x": 0,
+            "y": 24
+          },
+          "id": 30,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "12.2.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "expr": "max by (cluster, profile, namespace, workload, workload_type)(\n  max_over_time(\n    acm_rs:workload:memory_recommendation{cluster=\"$cluster\", profile=\"$profile\", namespace=\"$namespace\", workload=\"$workload\", workload_type=\"$workload_type\"}\n  [$days:])\n)",
+              "instant": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Memory Recommendation",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "fixedColor": "#0066cc",
+                "mode": "fixed"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "#0066cc",
+                    "value": null
+                  }
+                ]
+              },
+              "unit": "bytes",
+              "decimals": 1
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 5,
+            "x": 0,
+            "y": 27
+          },
+          "id": 31,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "12.2.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "expr": "max by (cluster, profile, namespace, workload, workload_type)(\n  max_over_time(\n    acm_rs:workload:memory_usage{cluster=\"$cluster\", profile=\"$profile\", namespace=\"$namespace\", workload=\"$workload\", workload_type=\"$workload_type\"}\n  [$days:])\n)",
+              "instant": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Memory Usage",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "fixedColor": "#0066cc",
+                "mode": "fixed"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "#0066cc",
+                    "value": null
+                  }
+                ]
+              },
+              "unit": "bytes",
+              "decimals": 1
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 5,
+            "x": 0,
+            "y": 30
+          },
+          "id": 32,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "12.2.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "expr": "max by (cluster, profile, namespace, workload, workload_type)(\n  max_over_time(\n    acm_rs:workload:memory_request{cluster=\"$cluster\", profile=\"$profile\", namespace=\"$namespace\", workload=\"$workload\", workload_type=\"$workload_type\"}\n  [$days:])\n)",
+              "instant": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Memory Request",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "#E02F44",
+                    "value": null
+                  },
+                  {
+                    "color": "#73BF69",
+                    "value": 0.8
+                  },
+                  {
+                    "color": "#E0B400",
+                    "value": 1.0
+                  }
+                ]
+              },
+              "unit": "percentunit",
+              "decimals": 1
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 5,
+            "x": 0,
+            "y": 33
+          },
+          "id": 33,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "12.2.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "expr": "max by (cluster, profile, namespace, workload, workload_type)(\n  max_over_time(\n    acm_rs:workload:memory_usage{cluster=\"$cluster\", profile=\"$profile\", namespace=\"$namespace\", workload=\"$workload\", workload_type=\"$workload_type\"}\n  [$days:])\n  /\n  clamp_min(\n    max_over_time(\n      acm_rs:workload:memory_request{cluster=\"$cluster\", profile=\"$profile\", namespace=\"$namespace\", workload=\"$workload\", workload_type=\"$workload_type\"}\n    [$days:])\n  , 1e-9)\n)",
+              "instant": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Memory Utilization",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "Memory",
+                "axisPlacement": "auto",
+                "drawStyle": "line",
+                "fillOpacity": 20,
+                "gradientMode": "none",
+                "lineInterpolation": "smooth",
+                "lineWidth": 2,
+                "pointSize": 5,
+                "showPoints": "auto",
+                "spanNulls": true,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              },
+              "unit": "bytes",
+              "decimals": 2
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Recommendation"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "green",
+                      "mode": "fixed"
+                    }
+                  },
+                  {
+                    "id": "custom.lineStyle",
+                    "value": {
+                      "dash": [
+                        10,
+                        10
+                      ],
+                      "fill": "dash"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Request"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "orange",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Limit"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "red",
+                      "mode": "fixed"
+                    }
+                  },
+                  {
+                    "id": "custom.lineStyle",
+                    "value": {
+                      "dash": [
+                        4,
+                        4
+                      ],
+                      "fill": "dash"
+                    }
+                  },
+                  {
+                    "id": "custom.fillOpacity",
+                    "value": 0
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Usage"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "blue",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 12,
+            "w": 19,
+            "x": 5,
+            "y": 24
+          },
+          "id": 40,
+          "options": {
+            "legend": {
+              "calcs": [
+                "mean",
+                "max"
+              ],
+              "displayMode": "table",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "pluginVersion": "12.2.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "expr": "acm_rs:workload:memory_usage{cluster=\"$cluster\", profile=\"$profile\", namespace=\"$namespace\", workload=\"$workload\", workload_type=\"$workload_type\"}",
+              "legendFormat": "Usage",
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "expr": "acm_rs:workload:memory_request{cluster=\"$cluster\", profile=\"$profile\", namespace=\"$namespace\", workload=\"$workload\", workload_type=\"$workload_type\"}",
+              "legendFormat": "Request",
+              "refId": "B"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "expr": "acm_rs:workload:memory_limit{cluster=\"$cluster\", profile=\"$profile\", namespace=\"$namespace\", workload=\"$workload\", workload_type=\"$workload_type\"}",
+              "legendFormat": "Limit",
+              "refId": "C"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "expr": "acm_rs:workload:memory_recommendation{cluster=\"$cluster\", profile=\"$profile\", namespace=\"$namespace\", workload=\"$workload\", workload_type=\"$workload_type\"}",
+              "legendFormat": "Recommendation",
+              "refId": "D"
+            }
+          ],
+          "title": "Memory Over Time - Workload",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "Memory",
+                "axisPlacement": "auto",
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "gradientMode": "none",
+                "lineInterpolation": "smooth",
+                "lineWidth": 1,
+                "pointSize": 4,
+                "showPoints": "auto",
+                "spanNulls": true,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              },
+              "unit": "bytes",
+              "decimals": 2
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 10,
+            "w": 24,
+            "x": 0,
+            "y": 36
+          },
+          "id": 41,
+          "options": {
+            "legend": {
+              "calcs": [
+                "mean",
+                "max"
+              ],
+              "displayMode": "table",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "pluginVersion": "12.2.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "expr": "acm_rs:pod:memory_usage{cluster=\"$cluster\", profile=\"$profile\", namespace=\"$namespace\", workload=\"$workload\", workload_type=\"$workload_type\"}",
+              "legendFormat": "{{pod}} Usage",
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "expr": "acm_rs:pod:memory_request{cluster=\"$cluster\", profile=\"$profile\", namespace=\"$namespace\", workload=\"$workload\", workload_type=\"$workload_type\"}",
+              "legendFormat": "{{pod}} Request",
+              "refId": "B"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "expr": "acm_rs:pod:memory_recommendation{cluster=\"$cluster\", profile=\"$profile\", namespace=\"$namespace\", workload=\"$workload\", workload_type=\"$workload_type\"}",
+              "legendFormat": "{{pod}} Recommendation",
+              "refId": "C"
+            }
+          ],
+          "title": "Memory Over Time - Pods",
+          "type": "timeseries"
+        }
+      ],
+      "preload": false,
+      "refresh": "1m",
+      "schemaVersion": 42,
+      "tags": [
+        "ACM",
+        "Right-Sizing"
+      ],
+      "templating": {
+        "list": [
+          {
+            "current": {
+              "text": "Observatorium",
+              "value": "000000001"
+            },
+            "hide": 2,
+            "includeAll": false,
+            "name": "datasource",
+            "options": [],
+            "query": "prometheus",
+            "refresh": 1,
+            "type": "datasource"
+          },
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "${datasource}"
+            },
+            "definition": "label_values({__name__=~\"acm_rs:workload:(cpu_request|cpu_usage|memory_request|memory_usage)\"},cluster)",
+            "includeAll": false,
+            "label": "Cluster",
+            "name": "cluster",
+            "query": {
+              "query": "label_values({__name__=~\"acm_rs:workload:(cpu_request|cpu_usage|memory_request|memory_usage)\"},cluster)",
+              "refId": "StandardVariableQuery"
+            },
+            "refresh": 2,
+            "sort": 1,
+            "type": "query"
+          },
+          {
+            "current": {
+              "text": "P95",
+              "value": "P95"
+            },
+            "datasource": {
+              "type": "prometheus",
+              "uid": "${datasource}"
+            },
+            "definition": "label_values({__name__=~\"acm_rs:workload:(cpu_request|cpu_usage|memory_request|memory_usage)\",cluster=\"$cluster\"},profile)",
+            "includeAll": false,
+            "label": "Profile",
+            "name": "profile",
+            "query": {
+              "query": "label_values({__name__=~\"acm_rs:workload:(cpu_request|cpu_usage|memory_request|memory_usage)\",cluster=\"$cluster\"},profile)",
+              "refId": "StandardVariableQuery"
+            },
+            "refresh": 2,
+            "sort": 1,
+            "type": "query"
+          },
+          {
+            "current": {
+              "text": "10d",
+              "value": "10d"
+            },
+            "includeAll": false,
+            "label": "Aggregation",
+            "name": "days",
+            "options": [
+              {
+                "selected": false,
+                "text": "1d",
+                "value": "1d"
+              },
+              {
+                "selected": false,
+                "text": "2d",
+                "value": "2d"
+              },
+              {
+                "selected": false,
+                "text": "5d",
+                "value": "5d"
+              },
+              {
+                "selected": true,
+                "text": "10d",
+                "value": "10d"
+              },
+              {
+                "selected": false,
+                "text": "30d",
+                "value": "30d"
+              },
+              {
+                "selected": false,
+                "text": "60d",
+                "value": "60d"
+              },
+              {
+                "selected": false,
+                "text": "90d",
+                "value": "90d"
+              }
+            ],
+            "query": "1d, 2d, 5d, 10d, 30d, 60d, 90d",
+            "type": "custom"
+          },
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "${datasource}"
+            },
+            "definition": "label_values({__name__=~\"acm_rs:workload:(cpu_request|cpu_usage|memory_request|memory_usage)\",cluster=\"$cluster\",profile=\"$profile\"},namespace)",
+            "includeAll": false,
+            "label": "Namespace",
+            "name": "namespace",
+            "query": {
+              "query": "label_values({__name__=~\"acm_rs:workload:(cpu_request|cpu_usage|memory_request|memory_usage)\",cluster=\"$cluster\",profile=\"$profile\"},namespace)",
+              "refId": "StandardVariableQuery"
+            },
+            "refresh": 2,
+            "sort": 1,
+            "type": "query"
+          },
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "${datasource}"
+            },
+            "definition": "label_values(acm_rs:workload:cpu_usage{cluster=\"$cluster\",profile=\"$profile\",namespace=\"$namespace\"},workload)",
+            "includeAll": false,
+            "label": "Workload",
+            "name": "workload",
+            "query": {
+              "query": "label_values(acm_rs:workload:cpu_usage{cluster=\"$cluster\",profile=\"$profile\",namespace=\"$namespace\"},workload)",
+              "refId": "StandardVariableQuery"
+            },
+            "refresh": 2,
+            "sort": 1,
+            "type": "query"
+          },
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "${datasource}"
+            },
+            "definition": "label_values(acm_rs:workload:cpu_usage{cluster=\"$cluster\",profile=\"$profile\",namespace=\"$namespace\",workload=\"$workload\"},workload_type)",
+            "includeAll": false,
+            "label": "Type",
+            "name": "workload_type",
+            "query": {
+              "query": "label_values(acm_rs:workload:cpu_usage{cluster=\"$cluster\",profile=\"$profile\",namespace=\"$namespace\",workload=\"$workload\"},workload_type)",
+              "refId": "StandardVariableQuery"
+            },
+            "refresh": 2,
+            "sort": 1,
+            "type": "query"
+          }
+        ]
+      },
+      "time": {
+        "from": "now-7d",
+        "to": "now"
+      },
+      "timepicker": {},
+      "timezone": "",
+      "title": "ACM Right-Sizing Workload Detail",
+      "uid": "acmRSWorkDetail",
+      "version": 1
+    }
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-acm-right-sizing-workload-detail
+  namespace: open-cluster-management-observability
+  annotations:
+    observability.open-cluster-management.io/dashboard-folder: "RightSizing Recommendation"
