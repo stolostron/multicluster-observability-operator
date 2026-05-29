@@ -30,9 +30,12 @@ import (
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	mcostatusctrl "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/status"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering/templates"
+	"github.com/stolostron/multicluster-observability-operator/operators/pkg/deploying"
 	observatoriumv1alpha1 "github.com/stolostron/observatorium-operator/api/v1alpha1"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -1469,6 +1472,110 @@ func TestServiceMonitorRemovedFromOpenshiftMonitoringNamespace(t *testing.T) {
 	err := r.deleteServiceMonitorInOpenshiftMonitoringNamespace(t.Context())
 	if err != nil {
 		t.Fatalf("Failed to delete ServiceMonitor: (%v)", err)
+	}
+}
+
+func TestUndeployMCOAGrafanaResources(t *testing.T) {
+	defer setupTest(t)()
+
+	namespace := config.GetDefaultNamespace()
+	mcoName := "monitoring"
+	mcoUID := types.UID("mco-uid-test")
+
+	mco := &mcov1beta2.MultiClusterObservability{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: mcov1beta2.GroupVersion.String(),
+			Kind:       "MultiClusterObservability",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: mcoName,
+			UID:  mcoUID,
+		},
+	}
+	mcoWithPlatformMetrics := &mcov1beta2.MultiClusterObservability{
+		TypeMeta:   mco.TypeMeta,
+		ObjectMeta: mco.ObjectMeta,
+		Spec: mcov1beta2.MultiClusterObservabilitySpec{
+			Capabilities: &mcov1beta2.CapabilitiesSpec{
+				Platform: &mcov1beta2.PlatformCapabilitiesSpec{
+					Metrics: mcov1beta2.PlatformMetricsSpec{
+						Default: mcov1beta2.PlatformMetricsDefaultSpec{
+							Enabled: true,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	s := runtime.NewScheme()
+	scheme.AddToScheme(s)
+	mcov1beta2.AddToScheme(s)
+	monitoringv1.AddToScheme(s)
+
+	controllerRef := metav1.NewControllerRef(mco, mcov1beta2.GroupVersion.WithKind("MultiClusterObservability"))
+	scrapeConfig := &unstructured.Unstructured{}
+	scrapeConfig.SetAPIVersion("monitoring.rhobs/v1alpha1")
+	scrapeConfig.SetKind("ScrapeConfig")
+	scrapeConfig.SetName("platform-metrics")
+	scrapeConfig.SetNamespace(namespace)
+	scrapeConfig.SetOwnerReferences([]metav1.OwnerReference{*controllerRef})
+	promRule := &monitoringv1.PrometheusRule{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            "platform-rules-default",
+			Namespace:       namespace,
+			OwnerReferences: []metav1.OwnerReference{*controllerRef},
+		},
+	}
+
+	tests := []struct {
+		name           string
+		mco            *mcov1beta2.MultiClusterObservability
+		existingObjs   []runtime.Object
+		expectDeletion bool
+	}{
+		{
+			name:           "undeploys MCOA Grafana resources when platform metrics disabled",
+			mco:            mco,
+			existingObjs:   []runtime.Object{mco, scrapeConfig, promRule},
+			expectDeletion: true,
+		},
+		{
+			name:           "skips undeploy when platform metrics enabled",
+			mco:            mcoWithPlatformMetrics,
+			existingObjs:   []runtime.Object{mcoWithPlatformMetrics, scrapeConfig, promRule},
+			expectDeletion: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(tt.existingObjs...).Build()
+			r := &MultiClusterObservabilityReconciler{Client: c, Scheme: s}
+			renderer := rendering.NewMCORenderer(tt.mco, c, nil)
+			deployer := deploying.NewDeployer(c, tt.mco.Name)
+
+			err := r.undeployMCOAGrafanaResources(t.Context(), tt.mco, renderer, deployer)
+			require.NoError(t, err)
+
+			gotScrapeConfig := &unstructured.Unstructured{}
+			gotScrapeConfig.SetAPIVersion("monitoring.rhobs/v1alpha1")
+			gotScrapeConfig.SetKind("ScrapeConfig")
+			err = c.Get(t.Context(), types.NamespacedName{Name: "platform-metrics", Namespace: namespace}, gotScrapeConfig)
+			if tt.expectDeletion {
+				assert.True(t, errors.IsNotFound(err), "ScrapeConfig should have been deleted")
+			} else {
+				require.NoError(t, err, "ScrapeConfig should still exist")
+			}
+
+			gotPromRule := &monitoringv1.PrometheusRule{}
+			err = c.Get(t.Context(), types.NamespacedName{Name: "platform-rules-default", Namespace: namespace}, gotPromRule)
+			if tt.expectDeletion {
+				assert.True(t, errors.IsNotFound(err), "PrometheusRule should have been deleted")
+			} else {
+				require.NoError(t, err, "PrometheusRule should still exist")
+			}
+		})
 	}
 }
 
