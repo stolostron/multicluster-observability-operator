@@ -1036,7 +1036,8 @@ func newCompactSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string
 			compactSpec.Args = append(compactSpec.Args, "--web.disable")
 		}
 	}
-	if mco.Spec.AdvancedConfig != nil && mco.Spec.AdvancedConfig.Compact != nil && mco.Spec.AdvancedConfig.Compact.Debug != nil && mco.Spec.AdvancedConfig.Compact.Debug.BlockMetaFetchConcurrency != nil {
+	if mco.Spec.AdvancedConfig != nil && mco.Spec.AdvancedConfig.Compact != nil && mco.Spec.AdvancedConfig.Compact.Debug != nil &&
+		mco.Spec.AdvancedConfig.Compact.Debug.BlockMetaFetchConcurrency != nil {
 		compactSpec.Args = append(compactSpec.Args, fmt.Sprintf("--block-meta-fetch-concurrency=%d", *mco.Spec.AdvancedConfig.Compact.Debug.BlockMetaFetchConcurrency))
 	}
 	if mco.Spec.AdvancedConfig != nil && mco.Spec.AdvancedConfig.Compact != nil && mco.Spec.AdvancedConfig.Compact.Debug != nil && mco.Spec.AdvancedConfig.Compact.Debug.DownsampleConcurrency != nil {
