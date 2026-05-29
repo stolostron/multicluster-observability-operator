@@ -332,18 +332,8 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		}
 	}
 
-	if !rendering.MCOAPlatformMetricsEnabled(instance) {
-		namespace, labels := renderer.NamespaceAndLabels()
-		toDelete, err := renderer.MCOAGrafanaResources(ctx, namespace, labels)
-		if err != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to list MCOA Grafana resources for deletion in namespace %s: %w", namespace, err)
-		}
-		for _, res := range toDelete {
-			resNS := res.GetNamespace()
-			if err := deployer.Undeploy(ctx, res, instance); err != nil {
-				return ctrl.Result{}, fmt.Errorf("failed to undeploy %s %s/%s: %w", res.GetKind(), resNS, res.GetName(), err)
-			}
-		}
+	if err := r.undeployMCOAGrafanaResources(ctx, instance, renderer, deployer); err != nil {
+		return ctrl.Result{}, err
 	}
 
 	if !rendering.MCOAEnabled(instance) && !rightSizingDelegated {
@@ -1085,6 +1075,32 @@ func (r *MultiClusterObservabilityReconciler) deleteSpecificPrometheusRule(ctx c
 	} else if !apierrors.IsNotFound(err) {
 		log.Error(err, "Failed to fetch PrometheusRule")
 		return err
+	}
+
+	return nil
+}
+
+// undeployMCOAGrafanaResources removes MCOA Grafana resources when platform metrics collection is disabled.
+func (r *MultiClusterObservabilityReconciler) undeployMCOAGrafanaResources(
+	ctx context.Context,
+	instance *mcov1beta2.MultiClusterObservability,
+	renderer *rendering.MCORenderer,
+	deployer *deploying.Deployer,
+) error {
+	if rendering.MCOAPlatformMetricsEnabled(instance) {
+		return nil
+	}
+
+	namespace, labels := renderer.NamespaceAndLabels()
+	toDelete, err := renderer.MCOAGrafanaResources(ctx, namespace, labels)
+	if err != nil {
+		return fmt.Errorf("failed to list MCOA Grafana resources for deletion in namespace %s: %w", namespace, err)
+	}
+	for _, res := range toDelete {
+		resNS := res.GetNamespace()
+		if err := deployer.Undeploy(ctx, res, instance); err != nil {
+			return fmt.Errorf("failed to undeploy %s %s/%s: %w", res.GetKind(), resNS, res.GetName(), err)
+		}
 	}
 
 	return nil
