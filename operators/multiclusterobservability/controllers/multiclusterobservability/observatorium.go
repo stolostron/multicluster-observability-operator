@@ -609,7 +609,6 @@ func newAPISpec(c client.Client, mco *mcov1beta2.MultiClusterObservability) (obs
 
 	urls, err := alertmanagerMetricsEndpointURLs(amReplicas)
 	if err != nil {
-		log.Error(err, "failed to compute alertmanager metrics endpoint URLs")
 		return apiSpec, err
 	}
 
@@ -622,7 +621,6 @@ func newAPISpec(c client.Client, mco *mcov1beta2.MultiClusterObservability) (obs
 			Name:      cmName,
 			Namespace: mcoconfig.GetDefaultNamespace(),
 		}, cm); err != nil {
-			log.Error(err, "failed to load alertmanager CA", "name", cmName, "namespace", mcoconfig.GetDefaultNamespace())
 			return apiSpec, err
 		}
 

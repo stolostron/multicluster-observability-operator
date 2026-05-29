@@ -74,13 +74,13 @@ prometheusK8s:
       ServerName: ""
       ca:
         key: ca.crt
-        name: observability-managed-cluster-certs-1a9af6dc0801433cb28a200af81
+        name: obs-alertmanager-mtls-ca-1a9af6dc0801433cb28a200af81
       cert:
         key: tls.crt
-        name: observability-controller-open-cluster-management.io-observability-signer-client-cert-1a9af6dc0801433cb28a200af81
+        name: obs-alertmanager-mtls-cert-1a9af6dc0801433cb28a200af81
       key:
         key: tls.key
-        name: observability-controller-open-cluster-management.io-observability-signer-client-cert-1a9af6dc0801433cb28a200af81
+        name: obs-alertmanager-mtls-cert-1a9af6dc0801433cb28a200af81
       insecureSkipVerify: false`
 
 	clusterMonitoringConfigDataYamlCleanupGH = `
@@ -420,12 +420,12 @@ func testCreateOrUpdateClusterMonitoringConfig(t *testing.T, hubInfo *operatorco
 	}
 
 	containsOCMAlertmanagerConfig := false
-	mtlsCARef := appendHubClusterID(mtlsCaName, hubInfo)
-	mtlsCertRef := appendHubClusterID(mtlsCertName, hubInfo)
+	amMtlsCARef := appendHubClusterID(amMtlsCaName, hubInfo)
+	amMtlsCertRef := appendHubClusterID(amMtlsCertName, hubInfo)
 	for _, v := range foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs {
-		if v.TLSConfig.CA != nil && v.TLSConfig.CA.Name == mtlsCARef &&
-			v.TLSConfig.Cert != nil && v.TLSConfig.Cert.Name == mtlsCertRef &&
-			v.TLSConfig.Key != nil && v.TLSConfig.Key.Name == mtlsCertRef {
+		if v.TLSConfig.CA != nil && v.TLSConfig.CA.Name == amMtlsCARef &&
+			v.TLSConfig.Cert != nil && v.TLSConfig.Cert.Name == amMtlsCertRef &&
+			v.TLSConfig.Key != nil && v.TLSConfig.Key.Name == amMtlsCertRef {
 			containsOCMAlertmanagerConfig = true
 		}
 	}
@@ -460,20 +460,20 @@ func testCreateOrUpdateClusterMonitoringConfig(t *testing.T, hubInfo *operatorco
 
 	foundMtlsCASecret := &corev1.Secret{}
 	err = c.Get(ctx, types.NamespacedName{
-		Name:      mtlsCARef,
+		Name:      amMtlsCARef,
 		Namespace: promNamespace,
 	}, foundMtlsCASecret)
 	if err != nil {
-		t.Fatalf("the secret %s should not be deleted", mtlsCARef)
+		t.Fatalf("the secret %s should not be deleted", amMtlsCARef)
 	}
 
 	foundMtlsCertSecret := &corev1.Secret{}
 	err = c.Get(ctx, types.NamespacedName{
-		Name:      mtlsCertRef,
+		Name:      amMtlsCertRef,
 		Namespace: promNamespace,
 	}, foundMtlsCertSecret)
 	if err != nil {
-		t.Fatalf("the secret %s should not be deleted", mtlsCertRef)
+		t.Fatalf("the secret %s should not be deleted", amMtlsCertRef)
 	}
 
 	err = RevertClusterMonitoringConfig(ctx, c, hubInfo)
@@ -636,12 +636,12 @@ func testCreateOrUpdateUserWorkloadMonitoringConfig(t *testing.T, hubInfo *opera
 	}
 
 	containsOCMAlertmanagerConfig := false
-	mtlsCARef := appendHubClusterID(mtlsCaName, hubInfo)
-	mtlsCertRef := appendHubClusterID(mtlsCertName, hubInfo)
+	amMtlsCARef := appendHubClusterID(amMtlsCaName, hubInfo)
+	amMtlsCertRef := appendHubClusterID(amMtlsCertName, hubInfo)
 	for _, v := range foundUserWorkloadConfiguration.Prometheus.AlertmanagerConfigs {
-		if v.TLSConfig.CA != nil && v.TLSConfig.CA.Name == mtlsCARef &&
-			v.TLSConfig.Cert != nil && v.TLSConfig.Cert.Name == mtlsCertRef &&
-			v.TLSConfig.Key != nil && v.TLSConfig.Key.Name == mtlsCertRef {
+		if v.TLSConfig.CA != nil && v.TLSConfig.CA.Name == amMtlsCARef &&
+			v.TLSConfig.Cert != nil && v.TLSConfig.Cert.Name == amMtlsCertRef &&
+			v.TLSConfig.Key != nil && v.TLSConfig.Key.Name == amMtlsCertRef {
 			containsOCMAlertmanagerConfig = true
 		}
 	}
@@ -795,12 +795,12 @@ prometheus:
 	}
 
 	containsOCMAlertmanagerConfig := false
-	mtlsCARef := appendHubClusterID(mtlsCaName, hubInfo)
-	mtlsCertRef := appendHubClusterID(mtlsCertName, hubInfo)
+	amMtlsCARef := appendHubClusterID(amMtlsCaName, hubInfo)
+	amMtlsCertRef := appendHubClusterID(amMtlsCertName, hubInfo)
 	for _, v := range foundUserWorkloadConfiguration.Prometheus.AlertmanagerConfigs {
-		if v.TLSConfig.CA != nil && v.TLSConfig.CA.Name == mtlsCARef &&
-			v.TLSConfig.Cert != nil && v.TLSConfig.Cert.Name == mtlsCertRef &&
-			v.TLSConfig.Key != nil && v.TLSConfig.Key.Name == mtlsCertRef {
+		if v.TLSConfig.CA != nil && v.TLSConfig.CA.Name == amMtlsCARef &&
+			v.TLSConfig.Cert != nil && v.TLSConfig.Cert.Name == amMtlsCertRef &&
+			v.TLSConfig.Key != nil && v.TLSConfig.Key.Name == amMtlsCertRef {
 			containsOCMAlertmanagerConfig = true
 		}
 	}
@@ -926,12 +926,12 @@ prometheus:
 	}
 
 	containsOCMAlertmanagerConfig := false
-	mtlsCARef := appendHubClusterID(mtlsCaName, hubInfo)
-	mtlsCertRef := appendHubClusterID(mtlsCertName, hubInfo)
+	amMtlsCARef := appendHubClusterID(amMtlsCaName, hubInfo)
+	amMtlsCertRef := appendHubClusterID(amMtlsCertName, hubInfo)
 	for _, v := range foundUserWorkloadConfiguration.Prometheus.AlertmanagerConfigs {
-		if v.TLSConfig.CA != nil && v.TLSConfig.CA.Name == mtlsCARef &&
-			v.TLSConfig.Cert != nil && v.TLSConfig.Cert.Name == mtlsCertRef &&
-			v.TLSConfig.Key != nil && v.TLSConfig.Key.Name == mtlsCertRef {
+		if v.TLSConfig.CA != nil && v.TLSConfig.CA.Name == amMtlsCARef &&
+			v.TLSConfig.Cert != nil && v.TLSConfig.Cert.Name == amMtlsCertRef &&
+			v.TLSConfig.Key != nil && v.TLSConfig.Key.Name == amMtlsCertRef {
 			containsOCMAlertmanagerConfig = true
 		}
 	}
@@ -1047,8 +1047,8 @@ userWorkloadEnabled: false
 			if parsed.Prometheus != nil && parsed.Prometheus.AlertmanagerConfigs != nil {
 				for _, config := range parsed.Prometheus.AlertmanagerConfigs {
 					if config.TLSConfig.CA != nil &&
-						(config.TLSConfig.CA.Name == mtlsCaName ||
-							config.TLSConfig.CA.Name == appendHubClusterID(mtlsCaName, hubInfo)) {
+						(config.TLSConfig.CA.Name == amMtlsCaName ||
+							config.TLSConfig.CA.Name == appendHubClusterID(amMtlsCaName, hubInfo)) {
 						t.Fatalf("UWL configmap still contains ACM alertmanager configuration when it should be cleaned up")
 					}
 				}
@@ -1162,7 +1162,7 @@ enableUserWorkload: true
 	}
 
 	// Verify that the ACM alertmanager configuration is present by checking for the mTLS CA secret
-	if !strings.Contains(configYAML, appendHubClusterID(mtlsCaName, hubInfo)) {
+	if !strings.Contains(configYAML, appendHubClusterID(amMtlsCaName, hubInfo)) {
 		t.Fatalf("UWL configmap should contain ACM alertmanager configuration with mTLS CA secret reference")
 	}
 
@@ -1219,13 +1219,13 @@ prometheusK8s:
     tlsConfig:
       ca:
         key: ca.crt
-        name: observability-managed-cluster-certs-1a9af6dc0801433cb28a200af81
+        name: obs-alertmanager-mtls-ca-1a9af6dc0801433cb28a200af81
       cert:
         key: tls.crt
-        name: observability-controller-open-cluster-management.io-observability-signer-client-cert-1a9af6dc0801433cb28a200af81
+        name: obs-alertmanager-mtls-cert-1a9af6dc0801433cb28a200af81
       key:
         key: tls.key
-        name: observability-controller-open-cluster-management.io-observability-signer-client-cert-1a9af6dc0801433cb28a200af81
+        name: obs-alertmanager-mtls-cert-1a9af6dc0801433cb28a200af81
       insecureSkipVerify: false
 `
 
@@ -1265,10 +1265,10 @@ prometheusK8s:
 	if len(amCfgs) != 1 {
 		t.Fatalf("expected exactly 1 additionalAlertmanagerConfig after dedupe, got %d", len(amCfgs))
 	}
-	if amCfgs[0].TLSConfig.CA == nil || amCfgs[0].TLSConfig.CA.Name != appendHubClusterID(mtlsCaName, hubInfo) {
-		t.Fatalf("expected single mTLS ACM alertmanager config (CA %q), got %#v", appendHubClusterID(mtlsCaName, hubInfo), amCfgs[0].TLSConfig.CA)
+	if amCfgs[0].TLSConfig.CA == nil || amCfgs[0].TLSConfig.CA.Name != appendHubClusterID(amMtlsCaName, hubInfo) {
+		t.Fatalf("expected single mTLS ACM alertmanager config (CA %q), got %#v", appendHubClusterID(amMtlsCaName, hubInfo), amCfgs[0].TLSConfig.CA)
 	}
-	if amCfgs[0].TLSConfig.Cert == nil || amCfgs[0].TLSConfig.Cert.Name != appendHubClusterID(mtlsCertName, hubInfo) {
+	if amCfgs[0].TLSConfig.Cert == nil || amCfgs[0].TLSConfig.Cert.Name != appendHubClusterID(amMtlsCertName, hubInfo) {
 		t.Fatalf("expected mTLS client cert on deduped config, got cert ref %#v", amCfgs[0].TLSConfig.Cert)
 	}
 }

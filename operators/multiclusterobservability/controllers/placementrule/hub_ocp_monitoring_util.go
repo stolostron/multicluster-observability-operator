@@ -25,6 +25,7 @@ import (
 const ( // #nosec G101 -- Not a hardcoded credential.
 	hubAmRouterCASecretName        = "hub-alertmanager-router-ca"
 	mtlsCaName                     = "observability-managed-cluster-certs"
+	amMtlsCaName                   = "obs-alertmanager-mtls-ca"
 	clusterMonitoringConfigName    = "cluster-monitoring-config"
 	clusterMonitoringConfigDataKey = "config.yaml"
 	endpointMonitoringOperatorMgr  = "endpoint-monitoring-operator"
@@ -116,8 +117,9 @@ func RevertHubClusterMonitoringConfig(ctx context.Context, client client.Client)
 		copiedAlertmanagerConfigs := make([]cmomanifests.AdditionalAlertmanagerConfig, 0)
 		for _, v := range foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs {
 			if v.TLSConfig == (cmomanifests.TLSConfig{}) ||
-				((v.TLSConfig.CA != nil && v.TLSConfig.CA.Name != hubAmRouterCASecretName+"-"+hubInfo.HubClusterID) &&
-					v.TLSConfig.CA.Name != mtlsCaName+"-"+hubInfo.HubClusterID) {
+				(v.TLSConfig.CA != nil &&
+					v.TLSConfig.CA.Name != hubAmRouterCASecretName+"-"+hubInfo.HubClusterID &&
+					v.TLSConfig.CA.Name != amMtlsCaName+"-"+hubInfo.HubClusterID) {
 				copiedAlertmanagerConfigs = append(copiedAlertmanagerConfigs, v)
 			}
 		}
