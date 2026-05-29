@@ -25,6 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -1083,8 +1084,8 @@ func TestNewCompactSpec(t *testing.T) {
 			debug: &mcov1beta2.CompactDebugSpec{
 				LogLevel:                  "debug",
 				WaitInterval:              "5m",
-				BlockMetaFetchConcurrency: "64",
-				DownsampleConcurrency:     "4",
+				BlockMetaFetchConcurrency: ptr.To(int32(64)),
+				DownsampleConcurrency:     ptr.To(int32(4)),
 			},
 			expectedArgs: []string{
 				"--log.level=debug",
@@ -1099,7 +1100,7 @@ func TestNewCompactSpec(t *testing.T) {
 			name: "compact debug with wait interval above 5m adds web disable",
 			debug: &mcov1beta2.CompactDebugSpec{
 				WaitInterval:              "10m",
-				BlockMetaFetchConcurrency: "32",
+				BlockMetaFetchConcurrency: ptr.To(int32(32)),
 			},
 			expectedArgs: []string{
 				"--wait-interval=10m",

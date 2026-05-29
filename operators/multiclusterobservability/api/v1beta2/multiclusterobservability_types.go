@@ -525,10 +525,10 @@ type CompactDebugSpec struct {
 	WaitInterval string `json:"waitInterval,omitempty"`
 	// BlockMetaFetchConcurrency is the number of concurrent requests to fetch block metadata.
 	// +optional
-	BlockMetaFetchConcurrency string `json:"blockMetaFetchConcurrency,omitempty"`
+	BlockMetaFetchConcurrency *int32 `json:"blockMetaFetchConcurrency,omitempty"`
 	// DownsampleConcurrency is the number of goroutines to use when downsampling blocks.
 	// +optional
-	DownsampleConcurrency string `json:"downsampleConcurrency,omitempty"`
+	DownsampleConcurrency *int32 `json:"downsampleConcurrency,omitempty"`
 }
 
 // CacheConfig is the spec of memcached.
