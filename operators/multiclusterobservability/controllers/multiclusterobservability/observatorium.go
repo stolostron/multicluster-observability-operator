@@ -1032,9 +1032,7 @@ func newCompactSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string
 		duration, err := time.ParseDuration(mco.Spec.AdvancedConfig.Compact.Debug.WaitInterval)
 		if err != nil {
 			log.Error(err, "Failed to parse wait interval", "waitInterval", mco.Spec.AdvancedConfig.Compact.Debug.WaitInterval)
-			return compactSpec
-		}
-		if duration > 5*time.Minute {
+		} else if duration > 5*time.Minute {
 			compactSpec.Args = append(compactSpec.Args, "--web.disable")
 		}
 	}
