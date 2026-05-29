@@ -1057,6 +1057,7 @@ func TestNewCompactSpec(t *testing.T) {
 		name         string
 		mcoaEnabled  bool
 		hasContainer bool
+		debug        *mcov1beta2.CompactDebugSpec
 		expectedArgs []string
 	}{
 		{
@@ -1076,6 +1077,48 @@ func TestNewCompactSpec(t *testing.T) {
 			mcoaEnabled:  true,
 			hasContainer: true,
 			expectedArgs: nil,
+		},
+		{
+			name: "compact debug with all fields at default wait interval",
+			debug: &mcov1beta2.CompactDebugSpec{
+				LogLevel:                  "debug",
+				WaitInterval:              "5m",
+				BlockMetaFetchConcurrency: "64",
+				DownsampleConcurrency:     "4",
+			},
+			expectedArgs: []string{
+				"--log.level=debug",
+				"--wait-interval=5m",
+				"--compact.cleanup-interval=5m",
+				"--compact.progress-interval=5m",
+				"--block-meta-fetch-concurrency=64",
+				"--downsample-concurrency=4",
+			},
+		},
+		{
+			name: "compact debug with wait interval above 5m adds web disable",
+			debug: &mcov1beta2.CompactDebugSpec{
+				WaitInterval:              "10m",
+				BlockMetaFetchConcurrency: "32",
+			},
+			expectedArgs: []string{
+				"--wait-interval=10m",
+				"--compact.cleanup-interval=10m",
+				"--compact.progress-interval=10m",
+				"--web.disable",
+				"--block-meta-fetch-concurrency=32",
+			},
+		},
+		{
+			name:        "MCOA enabled with compact debug",
+			mcoaEnabled: true,
+			debug: &mcov1beta2.CompactDebugSpec{
+				LogLevel: "info",
+			},
+			expectedArgs: []string{
+				"--compact.enable-vertical-compaction",
+				"--log.level=info",
+			},
 		},
 	}
 
@@ -1102,18 +1145,22 @@ func TestNewCompactSpec(t *testing.T) {
 				}
 			}
 
-			if tt.hasContainer {
+			if tt.hasContainer || tt.debug != nil {
 				mco.Spec.AdvancedConfig = &mcov1beta2.AdvancedConfig{
-					Compact: &mcov1beta2.CompactSpec{
-						Containers: []corev1.Container{{Name: "test"}},
-					},
+					Compact: &mcov1beta2.CompactSpec{},
+				}
+				if tt.hasContainer {
+					mco.Spec.AdvancedConfig.Compact.Containers = []corev1.Container{{Name: "test"}}
+				}
+				if tt.debug != nil {
+					mco.Spec.AdvancedConfig.Compact.Debug = tt.debug
 				}
 			}
 
 			compactSpec := newCompactSpec(mco, "test-sc")
 
 			if len(compactSpec.Args) != len(tt.expectedArgs) {
-				t.Fatalf("expected %d args, got %d", len(tt.expectedArgs), len(compactSpec.Args))
+				t.Fatalf("expected %d args, got %d: %v", len(tt.expectedArgs), len(compactSpec.Args), compactSpec.Args)
 			}
 
 			for i, expectedArg := range tt.expectedArgs {
