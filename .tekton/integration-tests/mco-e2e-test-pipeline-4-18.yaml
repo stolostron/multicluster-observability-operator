@@ -230,8 +230,6 @@ spec:
               curl -sL "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.4.3/kustomize_v5.4.3_linux_amd64.tar.gz" | tar -xz -C /usr/local/bin/
               chmod +x /usr/local/bin/kustomize
 
-              echo "=== Installing clusteradm ==="
-              curl -sL "https://raw.githubusercontent.com/open-cluster-management-io/clusteradm/main/install.sh" | bash
 
               echo "=== Cloning MCO repository at PR revision ==="
               GIT_URL=$(echo "${SNAPSHOT}" | jq -r '[.components[] | select(.name | test("^multicluster-observability-operator-acm-"))] | .[0].source.git.url')
@@ -259,29 +257,31 @@ spec:
               ./cicd-scripts/setup-e2e-tests.sh
 
               echo "=== Importing managed cluster into hub ==="
-              HUB_API=$(kubectl config view -o jsonpath='{.clusters[0].cluster.server}')
-              echo "Hub API server: ${HUB_API}"
+              kubectl create namespace managed --dry-run=client -o yaml | kubectl apply -f -
 
-              # Get bootstrap token from the hub
-              echo "=== clusteradm get token output ==="
-              clusteradm get token --use-bootstrap-token | tee /tmp/clusteradm-token.out
-              JOIN_CMD=$(grep -o 'clusteradm join.*' /tmp/clusteradm-token.out || true)
-              if [[ -z "${JOIN_CMD}" ]]; then
-                echo "ERROR: Failed to extract join command from clusteradm output"
-                cat /tmp/clusteradm-token.out
-                exit 1
-              fi
-              echo "Join command: ${JOIN_CMD}"
+              cat <<MCEOF | kubectl apply -f -
+              apiVersion: cluster.open-cluster-management.io/v1
+              kind: ManagedCluster
+              metadata:
+                name: managed
+                labels:
+                  cloud: auto-detect
+                  vendor: auto-detect
+              spec:
+                hubAcceptsClient: true
+              MCEOF
 
-              # Join the managed cluster to the hub
-              KUBECONFIG="${MANAGED_KUBECONFIG}" ${JOIN_CMD} --cluster-name managed --wait --force-internal-endpoint-lookup
+              kubectl create secret generic auto-import-secret \
+                -n managed \
+                --from-file=kubeconfig="${MANAGED_KUBECONFIG}" \
+                --dry-run=client -o yaml | kubectl apply -f -
 
-              # Accept the managed cluster on the hub
-              KUBECONFIG="${KUBECONFIG}" clusteradm accept --clusters managed --wait 30
+              kubectl wait managedcluster managed \
+                --for=condition=ManagedClusterConditionAvailable=True \
+                --timeout=300s
 
               echo "=== Verifying managed cluster registration ==="
               kubectl get managedcluster
-              kubectl wait --for=condition=ManagedClusterConditionAvailable managedcluster/managed --timeout=300s
 
               echo "=== MCO installation complete ==="
     - name: mco-e2e-tests
