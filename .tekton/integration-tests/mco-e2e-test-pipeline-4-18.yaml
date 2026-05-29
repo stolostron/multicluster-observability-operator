@@ -213,8 +213,6 @@ spec:
                 value: "/credentials/$(steps.get-hub-kubeconfig.results.kubeconfig)"
               - name: MANAGED_KUBECONFIG
                 value: "/credentials/$(steps.get-managed-kubeconfig.results.kubeconfig)"
-              - name: PULL_BASE_REF
-                value: main
             volumeMounts:
               - name: credentials
                 mountPath: /credentials
@@ -224,14 +222,7 @@ spec:
               set -exo pipefail
 
               echo "=== Installing dependencies ==="
-              dnf -y install jq git make golang which
-
-              echo "=== Installing kustomize ==="
-              curl -sL "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.4.3/kustomize_v5.4.3_linux_amd64.tar.gz" | tar -xz -C /usr/local/bin/
-              chmod +x /usr/local/bin/kustomize
-
-              echo "=== Installing clusteradm ==="
-              curl -sL "https://raw.githubusercontent.com/open-cluster-management-io/clusteradm/main/install.sh" | bash
+              dnf -y install jq git gettext
 
               echo "=== Cloning MCO repository at PR revision ==="
               GIT_URL=$(echo "${SNAPSHOT}" | jq -r '[.components[] | select(.name | test("^multicluster-observability-operator-acm-"))] | .[0].source.git.url')
@@ -254,35 +245,39 @@ spec:
               echo "RBAC query proxy image: ${RBAC_QUERY_PROXY_IMAGE_REF}"
               echo "Grafana dashboard loader image: ${GRAFANA_DASHBOARD_LOADER_IMAGE_REF}"
 
-              echo "=== Running setup-e2e-tests.sh (OCM + MCO on hub) ==="
-              export SED=sed
-              ./cicd-scripts/setup-e2e-tests.sh
+              echo "=== Installing ACM via OLM ==="
+              export ACM_VERSION=2.16
+              ./dev-scripts/setup-upstream-catalog.sh
 
               echo "=== Importing managed cluster into hub ==="
+              oc create namespace managed --dry-run=client -o yaml | oc apply -f -
 
-              # Create bootstrap token on the hub (deploy-hub doesn't create one)
-              clusteradm init --use-bootstrap-token --wait
+              cat <<MCEOF | oc apply -f -
+              apiVersion: cluster.open-cluster-management.io/v1
+              kind: ManagedCluster
+              metadata:
+                name: managed
+                labels:
+                  cloud: auto-detect
+                  vendor: auto-detect
+              spec:
+                hubAcceptsClient: true
+              MCEOF
 
-              # Get bootstrap token from the hub
-              echo "=== clusteradm get token output ==="
-              clusteradm get token --use-bootstrap-token | tee /tmp/clusteradm-token.out
-              JOIN_CMD=$(grep -o 'clusteradm join.*' /tmp/clusteradm-token.out || true)
-              if [[ -z "${JOIN_CMD}" ]]; then
-                echo "ERROR: Failed to extract join command from clusteradm output"
-                cat /tmp/clusteradm-token.out
-                exit 1
-              fi
-              echo "Join command: ${JOIN_CMD}"
+              oc create secret generic auto-import-secret \
+                -n managed \
+                --from-file=kubeconfig="${MANAGED_KUBECONFIG}" \
+                --dry-run=client -o yaml | oc apply -f -
 
-              # Join the managed cluster to the hub
-              KUBECONFIG="${MANAGED_KUBECONFIG}" ${JOIN_CMD} --cluster-name managed --wait --force-internal-endpoint-lookup
-
-              # Accept the managed cluster on the hub
-              KUBECONFIG="${KUBECONFIG}" clusteradm accept --clusters managed --wait 30
+              oc wait managedcluster managed \
+                --for=condition=ManagedClusterConditionAvailable=True \
+                --timeout=300s
 
               echo "=== Verifying managed cluster registration ==="
-              kubectl get managedcluster
-              kubectl wait --for=condition=ManagedClusterConditionAvailable managedcluster/managed --timeout=300s
+              oc get managedcluster
+
+              echo "=== Deploying observability ==="
+              ./dev-scripts/setup-observability.sh
 
               echo "=== MCO installation complete ==="
     - name: mco-e2e-tests
