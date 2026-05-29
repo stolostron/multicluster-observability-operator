@@ -260,6 +260,9 @@ spec:
 
               echo "=== Importing managed cluster into hub ==="
 
+              # Create bootstrap token on the hub (deploy-hub doesn't create one)
+              clusteradm init --use-bootstrap-token --wait
+
               # Get bootstrap token from the hub
               echo "=== clusteradm get token output ==="
               clusteradm get token --use-bootstrap-token | tee /tmp/clusteradm-token.out
