@@ -213,6 +213,8 @@ spec:
                 value: "/credentials/$(steps.get-hub-kubeconfig.results.kubeconfig)"
               - name: MANAGED_KUBECONFIG
                 value: "/credentials/$(steps.get-managed-kubeconfig.results.kubeconfig)"
+              - name: PULL_BASE_REF
+                value: main
             volumeMounts:
               - name: credentials
                 mountPath: /credentials
