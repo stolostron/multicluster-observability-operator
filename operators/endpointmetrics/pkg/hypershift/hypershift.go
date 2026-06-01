@@ -25,6 +25,8 @@ const (
 	AcmApiServerSmName = "acm-kube-apiserver"
 	EtcdSmName         = "etcd"
 	ApiServerSmName    = "kube-apiserver"
+
+	HostedClusterCRDName = "hostedclusters.hypershift.openshift.io"
 )
 
 // ReconcileHostedClustersServiceMonitors reconciles ServiceMonitors for hypershift hosted clusters
@@ -102,7 +104,7 @@ func IsHypershiftCluster() (bool, error) {
 		return false, fmt.Errorf("failed to get/create CRD client: %w", err)
 	}
 
-	isHypershift, err = operatorutil.CheckCRDExist(crdClient, "hostedclusters.hypershift.openshift.io")
+	isHypershift, err = operatorutil.CheckCRDExist(crdClient, HostedClusterCRDName)
 	if err != nil {
 		return false, fmt.Errorf("failed to check if the CRD hostedclusters.hypershift.openshift.io exists: %w", err)
 	}
