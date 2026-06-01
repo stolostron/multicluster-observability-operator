@@ -35,9 +35,9 @@ func GetRightSizingConfigData(cm *corev1.ConfigMap) (rsutility.RSNamespaceConfig
 	return rsutility.GetRSConfigData(cm)
 }
 
-// Gets the namesapce rightsizing predicate function
-func GetNamespaceRSConfigMapPredicateFunc(ctx context.Context, c client.Client) predicate.Funcs {
-	return rsutility.GetRSConfigMapPredicateFunc(ctx, c, ConfigMapName, ApplyRSNamespaceConfigMapChanges)
+// GetNamespaceRSConfigMapPredicateFunc returns the namespace right-sizing ConfigMap predicate.
+func GetNamespaceRSConfigMapPredicateFunc() predicate.Funcs {
+	return rsutility.GetRSConfigMapPredicateFunc(ConfigMapName)
 }
 
 // ApplyRSNamespaceConfigMapChanges updates PrometheusRule, Policy, Placement based on configmap changes

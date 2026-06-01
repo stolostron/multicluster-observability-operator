@@ -34,8 +34,8 @@ func GetRightSizingVirtualizationConfigData(cm *corev1.ConfigMap) (rsutility.RSN
 	return rsutility.GetRSConfigData(cm)
 }
 
-func GetVirtualizationRSConfigMapPredicateFunc(ctx context.Context, c client.Client) predicate.Funcs {
-	return rsutility.GetRSConfigMapPredicateFunc(ctx, c, ConfigMapName, ApplyRSVirtualizationConfigMapChanges)
+func GetVirtualizationRSConfigMapPredicateFunc() predicate.Funcs {
+	return rsutility.GetRSConfigMapPredicateFunc(ConfigMapName)
 }
 
 func ApplyRSVirtualizationConfigMapChanges(ctx context.Context, c client.Client, configData rsutility.RSNamespaceConfigMapData) error {

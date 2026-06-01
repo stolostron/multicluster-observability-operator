@@ -140,7 +140,7 @@ func (r *AnalyticsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			return ctrl.Result{}, fmt.Errorf("rs - failed to add analytics finalizer: %w", err)
 		}
 		reqLogger.Info("rs - Analytics finalizer added to MCO CR")
-		return ctrl.Result{}, nil // watch-triggered reconcile picks up updated finalizers
+		return ctrl.Result{Requeue: true}, nil
 	}
 
 	// Do not reconcile objects if this instance of mch is labeled "paused"
@@ -274,12 +274,9 @@ func (r *AnalyticsReconciler) ensureRightSizingDefaults(ctx context.Context, ins
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *AnalyticsReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	c := mgr.GetClient()
-	ctx := context.Background()
-
 	mcoPred := mcoctrl.GetMCOPredicateFunc()
-	cmNamespaceRSPred := rightsizingctrl.GetNamespaceRSConfigMapPredicateFunc(ctx, c)
-	cmVirtualizationRSPred := rightsizingctrl.GetVirtualizationRSConfigMapPredicateFunc(ctx, c)
+	cmNamespaceRSPred := rightsizingctrl.GetNamespaceRSConfigMapPredicateFunc()
+	cmVirtualizationRSPred := rightsizingctrl.GetVirtualizationRSConfigMapPredicateFunc()
 	return ctrl.NewControllerManagedBy(mgr).
 		Named("rightsizing").
 		For(&mcov1beta2.MultiClusterObservability{}, builder.WithPredicates(mcoPred)).
