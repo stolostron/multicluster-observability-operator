@@ -199,8 +199,8 @@ func (r *MCORenderer) MCOAResources(ctx context.Context, namespace string, label
 	return mcoaResources, nil
 }
 
-// MCOAGrafanaResources renders the MCOA addon templates into unstructured resources.
-func (r *MCORenderer) MCOAGrafanaResources(ctx context.Context, namespace string, labels map[string]string) ([]*unstructured.Unstructured, error) {
+// MCOAGrafanaResourcesForRemoval renders the MCOA addon grafana templates into unstructured resources for removal.
+func (r *MCORenderer) MCOAGrafanaResourcesForRemoval(ctx context.Context, namespace string, labels map[string]string) ([]*unstructured.Unstructured, error) {
 	grafanaTemplates, err := templates.GetOrLoadGrafanaTemplates(templatesutil.GetTemplateRenderer())
 	if err != nil {
 		return nil, err
