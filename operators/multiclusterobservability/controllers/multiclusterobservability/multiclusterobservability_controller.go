@@ -1089,7 +1089,6 @@ func (r *MultiClusterObservabilityReconciler) undeployMCOAGrafanaResources(
 	renderer *rendering.MCORenderer,
 	deployer *deploying.Deployer,
 ) error {
-
 	namespace, labels := renderer.NamespaceAndLabels()
 	toDelete, err := renderer.MCOAGrafanaResourcesForRemoval(ctx, namespace, labels)
 	if err != nil {
