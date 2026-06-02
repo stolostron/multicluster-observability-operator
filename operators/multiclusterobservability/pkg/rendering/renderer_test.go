@@ -127,7 +127,7 @@ func TestGetOauthProxyFromImageStreams(t *testing.T) {
 	assert.Equal(t, "quay.io/openshift-release-dev/ocp-v4.0-art-dev", oauthProxyImage)
 }
 
-func TestMCOAGrafanaResources(t *testing.T) {
+func TestMCOAGrafanaResourcesForRemoval(t *testing.T) {
 	wd, err := os.Getwd()
 	require.NoError(t, err)
 	templatesPath := path.Join(path.Dir(path.Dir(wd)), "manifests")
@@ -181,7 +181,7 @@ func TestMCOAGrafanaResources(t *testing.T) {
 			renderer := NewMCORenderer(&tc.mco, kubeClient, nil)
 
 			namespace := "myns"
-			resources, err := renderer.MCOAGrafanaResources(t.Context(), namespace, nil)
+			resources, err := renderer.MCOAGrafanaResourcesForRemoval(t.Context(), namespace, nil)
 			require.NoError(t, err)
 			for _, resource := range resources {
 				assert.Equal(t, namespace, resource.GetNamespace(),

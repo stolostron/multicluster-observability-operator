@@ -365,6 +365,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 			}
 		}
 	}
+
 	if !rendering.MCOAPlatformMetricsEnabled(instance) {
 		if err := r.undeployMCOAGrafanaResources(ctx, instance, renderer, deployer); err != nil {
 			return ctrl.Result{}, err
@@ -1086,12 +1087,9 @@ func (r *MultiClusterObservabilityReconciler) undeployMCOAGrafanaResources(
 	renderer *rendering.MCORenderer,
 	deployer *deploying.Deployer,
 ) error {
-	if rendering.MCOAPlatformMetricsEnabled(instance) {
-		return nil
-	}
 
 	namespace, labels := renderer.NamespaceAndLabels()
-	toDelete, err := renderer.MCOAGrafanaResources(ctx, namespace, labels)
+	toDelete, err := renderer.MCOAGrafanaResourcesForRemoval(ctx, namespace, labels)
 	if err != nil {
 		return fmt.Errorf("failed to list MCOA Grafana resources for deletion in namespace %s: %w", namespace, err)
 	}
