@@ -176,7 +176,7 @@ func Render(
 					},
 					Key: "alertmanager.yaml",
 				}
-				spec.Secrets = []string{"hub-alertmanager-router-ca" + "-" + hubInfo.HubClusterID, "observability-alertmanager-accessor" + "-" + hubInfo.HubClusterID}
+				spec.Secrets = []string{"obs-alertmanager-mtls-ca" + "-" + hubInfo.HubClusterID, "obs-alertmanager-mtls-cert" + "-" + hubInfo.HubClusterID, "observability-alertmanager-accessor" + "-" + hubInfo.HubClusterID}
 			}
 
 			unstructuredObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
