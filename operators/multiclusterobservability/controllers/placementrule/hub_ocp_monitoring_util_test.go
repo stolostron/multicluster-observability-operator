@@ -56,7 +56,7 @@ func TestRevertHubClusterMonitoringConfig(t *testing.T) {
 						TLSConfig: cmomanifests.TLSConfig{
 							CA: &corev1.SecretKeySelector{
 								LocalObjectReference: corev1.LocalObjectReference{
-									Name: hubAmRouterCASecretName + "-" + hubInfo.HubClusterID,
+									Name: amMtlsCaName + "-" + hubInfo.HubClusterID,
 								},
 							},
 						},

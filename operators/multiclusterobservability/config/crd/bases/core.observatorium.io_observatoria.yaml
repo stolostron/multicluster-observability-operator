@@ -973,12 +973,41 @@ spec:
                     required:
                     - endpointsConfigSecret
                     type: object
+                  extraVolumeMounts:
+                    description: ExtraVolumeMounts
+                    items:
+                      properties:
+                        key:
+                          description: File name for the mount
+                          type: string
+                        mountPath:
+                          description: Volume mount path in the pod
+                          type: string
+                        name:
+                          description: Resource name for the volume mount source
+                          type: string
+                        type:
+                          description: Voume mount type, configMap or secret
+                          type: string
+                      required:
+                      - key
+                      - mountPath
+                      - name
+                      - type
+                      type: object
+                    type: array
                   image:
                     description: API image
                     type: string
                   imagePullPolicy:
                     description: API image pull policy
                     type: string
+                  metricsAlertmanagerEndpoints:
+                    description: MetricsAlertmanagerEndpoints are passed to observatorium-api
+                      as repeated --metrics.alertmanager.endpoint flags.
+                    items:
+                      type: string
+                    type: array
                   rbac:
                     description: RBAC is an RBAC configuration for the Observatorium
                       API.

@@ -204,6 +204,20 @@ alertmanager-router-ca: |
 				Namespace: "test-ns",
 			},
 		},
+		&corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      mtlsCertName,
+				Namespace: testNamespace,
+			},
+			Data: map[string][]byte{"tls.crt": []byte("test-cert"), "tls.key": []byte("test-key")},
+		},
+		&corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      mtlsCaName,
+				Namespace: testNamespace,
+			},
+			Data: map[string][]byte{"ca.crt": []byte("test-ca")},
+		},
 	}
 
 	s := runtime.NewScheme()
