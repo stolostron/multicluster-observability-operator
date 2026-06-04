@@ -6,6 +6,8 @@ package rendering
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"strconv"
 
@@ -143,6 +145,18 @@ func (r *MCORenderer) renderAlertManagerStatefulSet(ctx context.Context, res *re
 	}
 	kubeRbacProxyContainer.ImagePullPolicy = imagePullPolicy
 
+	// Compute hash of the client CA to trigger a rolling restart when the CA rotates.
+	// kube-rbac-proxy reads --client-ca-file only at startup; without this, a CA
+	// rotation leaves the pod using a stale CA until manually restarted (ACM-34653).
+	caHash, err := r.getClientCAHash(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to compute client CA hash: %w", err)
+	}
+	if dep.Spec.Template.Annotations == nil {
+		dep.Spec.Template.Annotations = map[string]string{}
+	}
+	dep.Spec.Template.Annotations["observability.open-cluster-management.io/client-ca-hash"] = caHash
+
 	// replace the volumeClaimTemplate
 	dep.Spec.VolumeClaimTemplates[0].Spec.StorageClassName = &r.cr.Spec.StorageConfig.StorageClass
 	dep.Spec.VolumeClaimTemplates[0].Spec.Resources.Requests[corev1.ResourceStorage] = apiresource.MustParse(r.cr.Spec.StorageConfig.AlertmanagerStorageSize)
@@ -153,6 +167,25 @@ func (r *MCORenderer) renderAlertManagerStatefulSet(ctx context.Context, res *re
 	}
 
 	return &unstructured.Unstructured{Object: unstructuredObj}, nil
+}
+
+func (r *MCORenderer) getClientCAHash(ctx context.Context) (string, error) {
+	namespacedName := types.NamespacedName{
+		Name:      "extension-apiserver-authentication",
+		Namespace: "kube-system",
+	}
+	sourceConfigMap := &corev1.ConfigMap{}
+	if err := r.kubeClient.Get(ctx, namespacedName, sourceConfigMap); err != nil {
+		return "", fmt.Errorf("error fetching extension-apiserver-authentication ConfigMap: %w", err)
+	}
+
+	caData, exists := sourceConfigMap.Data["client-ca-file"]
+	if !exists || len(caData) == 0 {
+		return "", fmt.Errorf("client-ca-file not found or empty in extension-apiserver-authentication ConfigMap")
+	}
+
+	hash := sha256.Sum256([]byte(caData))
+	return hex.EncodeToString(hash[:]), nil
 }
 
 func (r *MCORenderer) renderAlertManagerSecret(ctx context.Context, res *resource.Resource,
