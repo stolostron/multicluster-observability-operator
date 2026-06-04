@@ -1093,7 +1093,7 @@ func TestNewCompactSpec(t *testing.T) {
 				"--compact.cleanup-interval=5m",
 				"--compact.progress-interval=5m",
 				"--block-meta-fetch-concurrency=64",
-				"--downsample-concurrency=4",
+				"--downsample.concurrency=4",
 			},
 		},
 		{
