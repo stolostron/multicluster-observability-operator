@@ -959,6 +959,10 @@ func RevertUserWorkloadMonitoringConfig(ctx context.Context, client client.Clien
 func createMtlsSecretInNamespace(ctx context.Context, c client.Client, sourceNamespace, targetNamespace, secretName string, secretRename string, hubInfo *operatorconfig.HubInfo) error {
 	source := &corev1.Secret{}
 	if err := c.Get(ctx, types.NamespacedName{Name: secretName, Namespace: sourceNamespace}, source); err != nil {
+		if errors.IsNotFound(err) {
+			log.Info("mTLS secret not found", "name", secretName, "namespace", sourceNamespace)
+			return nil
+		}
 		return fmt.Errorf("failed to get source secret %s/%s: %w", sourceNamespace, secretName, err)
 	}
 
