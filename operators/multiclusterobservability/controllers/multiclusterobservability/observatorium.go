@@ -1041,7 +1041,7 @@ func newCompactSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string
 		compactSpec.Args = append(compactSpec.Args, fmt.Sprintf("--block-meta-fetch-concurrency=%d", *mco.Spec.AdvancedConfig.Compact.Debug.BlockMetaFetchConcurrency))
 	}
 	if mco.Spec.AdvancedConfig != nil && mco.Spec.AdvancedConfig.Compact != nil && mco.Spec.AdvancedConfig.Compact.Debug != nil && mco.Spec.AdvancedConfig.Compact.Debug.DownsampleConcurrency != nil {
-		compactSpec.Args = append(compactSpec.Args, fmt.Sprintf("--downsample-concurrency=%d", *mco.Spec.AdvancedConfig.Compact.Debug.DownsampleConcurrency))
+		compactSpec.Args = append(compactSpec.Args, fmt.Sprintf("--downsample.concurrency=%d", *mco.Spec.AdvancedConfig.Compact.Debug.DownsampleConcurrency))
 	}
 
 	compactSpec.VolumeClaimTemplate = newVolumeClaimTemplate(
