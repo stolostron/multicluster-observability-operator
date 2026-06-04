@@ -35,8 +35,10 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	kubescheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
+	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/config"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
@@ -50,7 +52,7 @@ var (
 	restCfgHub   *rest.Config
 )
 
-func TestCMOConfigWatching(t *testing.T) {
+func TestIntegrationCMOConfigWatching(t *testing.T) {
 	namespace := "test-cmo-config"
 
 	scheme := createBaseScheme()
@@ -70,6 +72,7 @@ func TestCMOConfigWatching(t *testing.T) {
 		newImagesCM(namespace),
 		newHubInfoSecret([]byte(`
 endpoint: "http://test-endpoint"
+hub-cluster-id: "test-hub-cluster"
 alertmanager-endpoint: "http://test-alertamanger-endpoint"
 alertmanager-router-ca: |
     -----BEGIN CERTIFICATE-----
@@ -114,6 +117,9 @@ alertmanager-router-ca: |
 	mgr, err := ctrl.NewManager(testEnvHub.Config, ctrl.Options{
 		Scheme:  k8sClient.Scheme(),
 		Metrics: metricsserver.Options{BindAddress: "0"}, // Avoids port conflict with the default port 8080
+		Controller: config.Controller{
+			SkipNameValidation: ptr.To(true),
+		},
 	})
 	assert.NoError(t, err)
 
@@ -231,6 +237,9 @@ func TestIntegrationReconcileHypershift(t *testing.T) {
 	mgr, err := ctrl.NewManager(testEnvHub.Config, ctrl.Options{
 		Scheme:  k8sClient.Scheme(),
 		Metrics: metricsserver.Options{BindAddress: "0"}, // Avoids port conflict with the default port 8080
+		Controller: config.Controller{
+			SkipNameValidation: ptr.To(true),
+		},
 	})
 	assert.NoError(t, err)
 
