@@ -23,6 +23,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
@@ -1652,4 +1653,166 @@ func TestAddOnDeploymentConfig_Migration(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestDeployCRD(t *testing.T) {
+	scheme := runtime.NewScheme()
+	apiextensionsv1.AddToScheme(scheme)
+
+	mcoSupportedCRDName := "scrapeconfigs.monitoring.rhobs"
+	nonMcoSupportedCRDName := "test-unsupported.crd.example.com"
+
+	tests := []struct {
+		name                 string
+		crdName              string
+		existingCRD          *apiextensionsv1.CustomResourceDefinition
+		expectApplyOnCreate  bool
+		expectCreateOnCreate bool
+		expectForceOwnership bool
+	}{
+		{
+			name:                 "create MCOA-supported CRD - uses SSA Apply",
+			crdName:              mcoSupportedCRDName,
+			existingCRD:          nil,
+			expectApplyOnCreate:  true,
+			expectCreateOnCreate: false,
+		},
+		{
+			name:                 "create non-MCOA CRD - uses standard Create",
+			crdName:              nonMcoSupportedCRDName,
+			existingCRD:          nil,
+			expectApplyOnCreate:  false,
+			expectCreateOnCreate: true,
+		},
+		{
+			name:    "update MCOA CRD with MCO controller owner - forces ownership",
+			crdName: mcoSupportedCRDName,
+			existingCRD: &apiextensionsv1.CustomResourceDefinition{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "apiextensions.k8s.io/v1",
+					Kind:       "CustomResourceDefinition",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name: mcoSupportedCRDName,
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion: "observability.open-cluster-management.io/v1beta2",
+							Kind:       "MultiClusterObservability",
+							Name:       "observability",
+							UID:        "mco-uid-123",
+							Controller: toPtrBool(true),
+						},
+					},
+				},
+				Spec: apiextensionsv1.CustomResourceDefinitionSpec{
+					Group: "monitoring.rhobs",
+					Names: apiextensionsv1.CustomResourceDefinitionNames{
+						Plural: "scrapeconfigs",
+					},
+				},
+			},
+			expectForceOwnership: true,
+		},
+		{
+			name:    "update MCOA CRD without MCO controller owner - does not force ownership",
+			crdName: mcoSupportedCRDName,
+			existingCRD: &apiextensionsv1.CustomResourceDefinition{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "apiextensions.k8s.io/v1",
+					Kind:       "CustomResourceDefinition",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name: mcoSupportedCRDName,
+				},
+				Spec: apiextensionsv1.CustomResourceDefinitionSpec{
+					Group: "monitoring.rhobs",
+					Names: apiextensionsv1.CustomResourceDefinitionNames{
+						Plural: "scrapeconfigs",
+					},
+				},
+			},
+			expectForceOwnership: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var applyCalled bool
+			var createCalled bool
+			var forceOwnershipCalled bool
+
+			initObjs := []client.Object{}
+			if tt.existingCRD != nil {
+				initObjs = append(initObjs, tt.existingCRD)
+			}
+
+			fakeClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(initObjs...).WithInterceptorFuncs(interceptor.Funcs{
+				Create: func(ctx context.Context, clientww client.WithWatch, obj client.Object, opts ...client.CreateOption) error {
+					if obj.GetObjectKind().GroupVersionKind().Kind == "CustomResourceDefinition" {
+						createCalled = true
+					}
+					return clientww.Create(ctx, obj, opts...)
+				},
+				Patch: func(ctx context.Context, clientww client.WithWatch, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
+					if obj.GetObjectKind().GroupVersionKind().Kind == "CustomResourceDefinition" && patch == client.Apply {
+						applyCalled = true
+						for _, o := range opts {
+							if o == client.ForceOwnership {
+								forceOwnershipCalled = true
+							}
+						}
+						// Workaround for fake client not supporting client.Apply
+						key := client.ObjectKeyFromObject(obj)
+						existing := obj.DeepCopyObject().(client.Object)
+						if err := clientww.Get(ctx, key, existing); errors.IsNotFound(err) {
+							return clientww.Create(ctx, obj)
+						}
+						return clientww.Patch(ctx, obj, client.Merge, opts...)
+					}
+					return clientww.Patch(ctx, obj, patch, opts...)
+				},
+			}).Build()
+
+			deployer := NewDeployer(fakeClient, "observability")
+
+			desiredCRD := &apiextensionsv1.CustomResourceDefinition{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "apiextensions.k8s.io/v1",
+					Kind:       "CustomResourceDefinition",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name: tt.crdName,
+				},
+				Spec: apiextensionsv1.CustomResourceDefinitionSpec{
+					Group: "monitoring.rhobs",
+					Names: apiextensionsv1.CustomResourceDefinitionNames{
+						Plural: "scrapeconfigs",
+					},
+					Versions: []apiextensionsv1.CustomResourceDefinitionVersion{
+						{
+							Name: "v1alpha1",
+						},
+					},
+				},
+			}
+
+			desiredObjUns, err := runtime.DefaultUnstructuredConverter.ToUnstructured(desiredCRD)
+			assert.NoError(t, err)
+
+			err = deployer.Deploy(context.Background(), &unstructured.Unstructured{Object: desiredObjUns})
+			assert.NoError(t, err)
+
+			if tt.existingCRD == nil {
+				assert.Equal(t, tt.expectApplyOnCreate, applyCalled, "expectApplyOnCreate mismatch")
+				assert.Equal(t, tt.expectCreateOnCreate, createCalled, "expectCreateOnCreate mismatch")
+			} else {
+				assert.True(t, applyCalled, "expect apply to be called during update")
+				assert.Equal(t, tt.expectForceOwnership, forceOwnershipCalled, "expectForceOwnership mismatch")
+			}
+		})
+	}
+}
+
+func toPtrBool(b bool) *bool {
+	return &b
 }
