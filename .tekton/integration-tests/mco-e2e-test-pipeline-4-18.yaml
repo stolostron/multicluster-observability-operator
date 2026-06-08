@@ -74,7 +74,7 @@ spec:
                   value: stepactions/eaas-get-latest-openshift-version-by-prefix/0.1/eaas-get-latest-openshift-version-by-prefix.yaml
             params:
               - name: prefix
-                value: "4.18."
+                value: "4.21."
           - name: create-cluster
             ref:
               resolver: git
@@ -132,7 +132,7 @@ spec:
                   value: stepactions/eaas-get-latest-openshift-version-by-prefix/0.1/eaas-get-latest-openshift-version-by-prefix.yaml
             params:
               - name: prefix
-                value: "4.18."
+                value: "4.21."
           - name: create-cluster
             ref:
               resolver: git
@@ -289,7 +289,14 @@ spec:
               oc get managedcluster
 
               echo "=== Deploying observability ==="
-              ./dev-scripts/setup-observability.sh
+              ./dev-scripts/setup-observability.sh || {
+                echo "=== MCO deployment failed — debugging ==="
+                oc get pods -n open-cluster-management -o wide
+                oc get pods -n open-cluster-management-observability -o wide
+                oc describe pods -n open-cluster-management -l name=multicluster-observability-operator
+                oc get multiclusterobservability observability -o yaml
+                exit 1
+              }
 
               echo "=== Verifying MCO is using Konflux images ==="
               oc get deploy multicluster-observability-operator -n open-cluster-management -o jsonpath='{.spec.template.spec.containers[*].image}' && echo
