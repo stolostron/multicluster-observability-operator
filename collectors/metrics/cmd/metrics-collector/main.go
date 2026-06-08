@@ -344,11 +344,9 @@ func (o *Options) Run() error {
 	wg := &sync.WaitGroup{}
 
 	// Execute the recording rule worker's `Run` func.
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		recordingRuleWorker.Run(ctx)
-	}()
+	})
 
 	// Execute the shard workers' `Run` func.
 	for i, shardWorker := range shardWorkers {
@@ -374,26 +372,22 @@ func (o *Options) Run() error {
 		}
 
 		// Run the HTTP server.
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			if err := s.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 				logger.Log(o.Logger, logger.Error, "msg", "server exited unexpectedly", "err", err)
 				stop()
 			}
-		}()
+		})
 
 		// Handle HTTP server shutdown.
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			<-ctx.Done()
 			shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
 			defer shutdownCancel()
 			if err := s.Shutdown(shutdownCtx); err != nil {
 				logger.Log(o.Logger, logger.Error, "msg", "failed to close listener", "err", err)
 			}
-		}()
+		})
 	}
 
 	// Run the simulation agent.
