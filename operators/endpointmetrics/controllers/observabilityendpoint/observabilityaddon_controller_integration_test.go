@@ -110,6 +110,9 @@ alertmanager-router-ca: |
 			},
 		},
 	}
+	for _, obj := range newMtlsTestSecrets(namespace) {
+		resourcesDeps = append(resourcesDeps, obj.(client.Object))
+	}
 	if err := createResources(k8sClient, resourcesDeps...); err != nil {
 		t.Fatalf("Failed to create resources: %v", err)
 	}
@@ -159,6 +162,7 @@ alertmanager-router-ca: |
 		return true, err
 	})
 	assert.NoError(t, err)
+	assert.NotEmpty(t, cm.Data[clusterMonitoringConfigDataKey])
 
 	foundClusterMonitoringConfiguration := &cmomanifests.ClusterMonitoringConfiguration{}
 	err = yaml2.Unmarshal([]byte(cm.Data[clusterMonitoringConfigDataKey]), foundClusterMonitoringConfiguration)
