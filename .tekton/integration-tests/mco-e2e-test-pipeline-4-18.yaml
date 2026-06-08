@@ -249,6 +249,18 @@ spec:
               export ACM_VERSION=2.16
               ./dev-scripts/setup-upstream-catalog.sh
 
+              echo "=== Applying Konflux image overrides ==="
+              export MCO_IMAGE="${MULTICLUSTER_OBSERVABILITY_OPERATOR_IMAGE_REF}"
+              export ENDPOINT_IMAGE="${ENDPOINT_MONITORING_OPERATOR_IMAGE_REF}"
+              export METRICS_COLLECTOR_IMAGE="${METRICS_COLLECTOR_IMAGE_REF}"
+              export RBAC_QUERY_PROXY_IMAGE="${RBAC_QUERY_PROXY_IMAGE_REF}"
+              export GRAFANA_DASHBOARD_LOADER_IMAGE="${GRAFANA_DASHBOARD_LOADER_IMAGE_REF}"
+              ./dev-scripts/image-override.sh
+
+              echo "=== Verifying image overrides ==="
+              oc get configmap image-override -n open-cluster-management -o yaml
+              oc get multiclusterhub multiclusterhub -n open-cluster-management -o jsonpath='{.metadata.annotations}' | jq .
+
               echo "=== Importing managed cluster into hub ==="
               oc create namespace managed --dry-run=client -o yaml | oc apply -f -
 
@@ -278,6 +290,11 @@ spec:
 
               echo "=== Deploying observability ==="
               ./dev-scripts/setup-observability.sh
+
+              echo "=== Verifying MCO is using Konflux images ==="
+              oc get deploy multicluster-observability-operator -n open-cluster-management -o jsonpath='{.spec.template.spec.containers[*].image}' && echo
+              oc get pods -n open-cluster-management -l name=multicluster-observability-operator -o jsonpath='{range .items[*]}{.spec.containers[*].image}{"\n"}{end}'
+              oc get pods -n open-cluster-management-observability -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.spec.containers[*].image}{"\n"}{end}'
 
               echo "=== MCO installation complete ==="
     - name: mco-e2e-tests
