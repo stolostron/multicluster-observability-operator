@@ -5,6 +5,8 @@
 package rendering
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -70,6 +72,12 @@ func TestAlertManagerRenderer(t *testing.T) {
 	// clientCa configmap must be filled with the client-ca-file data
 	clientCaData := getResource[*corev1.ConfigMap](alertResources, "alertmanager-clientca-metric")
 	assert.Equal(t, clientCa.Data["client-ca-file"], clientCaData.Data["client-ca-file"])
+
+	// StatefulSet pod template must have the client CA hash annotation
+	sts := getResource[*appsv1.StatefulSet](alertResources, "")
+	caHashAnnotation := sts.Spec.Template.Annotations["observability.open-cluster-management.io/client-ca-hash"]
+	expectedHash := sha256.Sum256([]byte(clientCa.Data["client-ca-file"]))
+	assert.Equal(t, hex.EncodeToString(expectedHash[:]), caHashAnnotation)
 
 	// container images must be replaced with the ones from the mch-image-manifest configmap
 	for _, obj := range alertResources {
@@ -282,6 +290,36 @@ func TestAlertManagerRendererMCOConfig(t *testing.T) {
 			tc.expect(t, sts)
 		})
 	}
+}
+
+func TestAlertManagerClientCAHashRotation(t *testing.T) {
+	makeCA := func(data string) *corev1.ConfigMap {
+		return &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "extension-apiserver-authentication",
+				Namespace: "kube-system",
+			},
+			Data: map[string]string{
+				"client-ca-file": data,
+			},
+		}
+	}
+
+	client1 := fake.NewClientBuilder().WithObjects(makeCA("old-ca-bundle")).Build()
+	client2 := fake.NewClientBuilder().WithObjects(makeCA("new-ca-bundle")).Build()
+
+	resources1 := renderTemplates(t, client1, makeBaseMco())
+	resources2 := renderTemplates(t, client2, makeBaseMco())
+
+	sts1 := getResource[*appsv1.StatefulSet](resources1, "")
+	sts2 := getResource[*appsv1.StatefulSet](resources2, "")
+
+	hash1 := sts1.Spec.Template.Annotations["observability.open-cluster-management.io/client-ca-hash"]
+	hash2 := sts2.Spec.Template.Annotations["observability.open-cluster-management.io/client-ca-hash"]
+
+	assert.NotEmpty(t, hash1)
+	assert.NotEmpty(t, hash2)
+	assert.NotEqual(t, hash1, hash2, "hash must change when CA data changes")
 }
 
 func makeBaseMco() *mcov1beta2.MultiClusterObservability {
