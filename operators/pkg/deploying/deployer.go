@@ -91,6 +91,10 @@ func (d *Deployer) Deploy(ctx context.Context, obj *unstructured.Unstructured) e
 	if err != nil {
 		if errors.IsNotFound(err) {
 			log.Info("Create", "Kind", obj.GroupVersionKind(), "Name", obj.GetName())
+			if obj.GetKind() == "CustomResourceDefinition" && mcoconfig.GetMCOASupportedCRDVersion(obj.GetName()) != "" {
+				log.Info("Creating MCOA CRD with SSA", "name", obj.GetName())
+				return d.client.Patch(ctx, obj, client.Apply, client.FieldOwner(mcoconfig.GetMonitoringCRName()))
+			}
 			return d.client.Create(ctx, obj)
 		}
 		return err
@@ -274,6 +278,17 @@ func (d *Deployer) updateClusterRoleBinding(ctx context.Context, desiredObj, run
 	return nil
 }
 
+func hasMCOControllerOwner(ownerRefs []metav1.OwnerReference) bool {
+	for _, ownerRef := range ownerRefs {
+		if ownerRef.Kind == "MultiClusterObservability" &&
+			strings.HasPrefix(ownerRef.APIVersion, "observability.open-cluster-management.io/") &&
+			ownerRef.Controller != nil && *ownerRef.Controller {
+			return true
+		}
+	}
+	return false
+}
+
 func (d *Deployer) updateCRD(ctx context.Context, desiredObj, runtimeObj *unstructured.Unstructured) error {
 	desiredCRD, runtimeCRD, err := unstructuredPairToTyped[apiextensionsv1.CustomResourceDefinition](desiredObj, runtimeObj)
 	if err != nil {
@@ -286,7 +301,14 @@ func (d *Deployer) updateCRD(ctx context.Context, desiredObj, runtimeObj *unstru
 		logUpdateInfo(runtimeObj)
 		if mcoconfig.GetMCOASupportedCRDVersion(desiredCRD.Name) != "" {
 			log.V(1).Info("Applying MCOA CRD with SSA", "name", desiredCRD.Name)
-			err := d.client.Patch(ctx, desiredObj, client.Apply, client.FieldOwner(mcoconfig.GetMonitoringCRName()))
+			patchOpts := []client.PatchOption{
+				client.FieldOwner(mcoconfig.GetMonitoringCRName()),
+			}
+			if hasMCOControllerOwner(runtimeCRD.GetOwnerReferences()) {
+				log.V(1).Info("Forcing ownership on MCO-controlled CRD", "name", desiredCRD.Name)
+				patchOpts = append(patchOpts, client.ForceOwnership)
+			}
+			err := d.client.Patch(ctx, desiredObj, client.Apply, patchOpts...)
 			if err != nil {
 				if errors.IsConflict(err) {
 					log.V(1).Info("Conflict applying MCOA CRD, likely managed by another operator, skipping update", "name", desiredCRD.Name, "error", err.Error())
