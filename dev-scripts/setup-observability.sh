@@ -45,7 +45,7 @@ oc apply -f "${MANIFESTS}/storage/thanos-storage-secret.yaml"
 log_info "Deploying MultiClusterObservability CR..."
 oc apply -f "${MANIFESTS}/observability/multiclusterobservability-cr.yaml"
 
-wait_for_mco_ready 600
+wait_for_mco_ready 900
 
 MINIO_ROUTE=$(oc get route minio -n "${MCO_NS}" -o jsonpath='{.spec.host}' 2>/dev/null || true)
 log_info "Setup complete!"
