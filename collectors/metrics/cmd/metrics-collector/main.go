@@ -402,11 +402,9 @@ func (o *Options) Run() error {
 		if err != nil {
 			return fmt.Errorf("failed to configure collect rule evaluator: %w", err)
 		}
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			evaluator.Run(ctx)
-		}()
+		})
 	}
 
 	wg.Wait()
@@ -767,11 +765,9 @@ func runMultiWorkers(ctx context.Context, wg *sync.WaitGroup, o *Options, cfg *f
 			return fmt.Errorf("failed to configure metrics collector: %w", err)
 		}
 
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			forwardWorker.Run(ctx)
-		}()
+		})
 	}
 	return nil
 }
