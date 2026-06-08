@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	cmomanifests "github.com/openshift/cluster-monitoring-operator/pkg/manifests"
-	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
@@ -73,15 +72,9 @@ prometheusK8s:
     tlsConfig:
       ServerName: ""
       ca:
-        key: ca.crt
-        name: obs-alertmanager-mtls-ca-1a9af6dc0801433cb28a200af81
-      cert:
-        key: tls.crt
-        name: obs-alertmanager-mtls-cert-1a9af6dc0801433cb28a200af81
-      key:
-        key: tls.key
-        name: obs-alertmanager-mtls-cert-1a9af6dc0801433cb28a200af81
-      insecureSkipVerify: false`
+        key: service-ca.crt
+        name: hub-alertmanager-router-ca
+      insecureSkipVerify: true`
 
 	clusterMonitoringConfigDataYamlCleanupGH = `
 prometheusK8s:
@@ -115,46 +108,8 @@ prometheusK8s:
       ca:
         key: service-ca.crt
         name: hub-alertmanager-router-ca
-      insecureSkipVerify: true
-  - apiVersion: v2
-    bearerToken:
-      key: token
-      name: foo
-    pathPrefix: /
-    scheme: https
-    staticConfigs:
-    - test-host.com
-    tlsConfig:
-      ServerName: ""
-      ca:
-        key: service-ca.crt
-        name: hub-alertmanager-router-ca-1a9af6dc0801433cb28a200af81
       insecureSkipVerify: true`
 )
-
-func newMtlsTestSecrets(namespace string) []runtime.Object {
-	return []runtime.Object{
-		&corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      mtlsCertName,
-				Namespace: namespace,
-			},
-			Data: map[string][]byte{
-				"tls.crt": []byte("test-client-cert"),
-				"tls.key": []byte("test-client-key"),
-			},
-		},
-		&corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      mtlsCaName,
-				Namespace: namespace,
-			},
-			Data: map[string][]byte{
-				"ca.crt": []byte("test-server-ca"),
-			},
-		},
-	}
-}
 
 func TestClusterMonitoringConfig(t *testing.T) {
 	testNamespace := "test-ns"
@@ -234,7 +189,6 @@ prometheusK8s:
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			objs := []runtime.Object{hubInfoObj, amAccessSrt}
-			objs = append(objs, newMtlsTestSecrets(testNamespace)...)
 			if tt.ClusterMonitoringConfigCMExist {
 				objs = append(objs, newClusterMonitoringConfigCM(tt.ClusterMonitoringConfigDataYaml, tt.Manager))
 			}
@@ -254,9 +208,7 @@ func TestClusterMonitoringConfigUnchanged(t *testing.T) {
 		HubClusterID:             "1a9af6dc0801433cb28a200af81",
 	}
 	cmoCfg := newClusterMonitoringConfigCM(clusterMonitoringConfigDataYaml, endpointMonitoringOperatorMgr)
-	objs := []runtime.Object{newHubInfoSecret([]byte(hubInfoYAML), testNamespace), cmoCfg, amAccessSrt}
-	objs = append(objs, newMtlsTestSecrets(testNamespace)...)
-	client := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
+	client := fake.NewClientBuilder().WithRuntimeObjects(newHubInfoSecret([]byte(hubInfoYAML), testNamespace), cmoCfg, amAccessSrt).Build()
 	wasUpdated, err := createOrUpdateClusterMonitoringConfig(context.Background(), hubInfo, testClusterID, client, false, testNamespace)
 	if err != nil {
 		t.Fatalf("Failed to create or update the cluster-monitoring-config configmap: (%v)", err)
@@ -306,7 +258,6 @@ func TestClusterMonitoringConfigAlertsDisabled(t *testing.T) {
 	//   cluster-monitoring-config should be removed
 	cmc := newClusterMonitoringConfigCM(clusterMonitoringConfigDataYaml, "endpoint-monitoring-operator")
 	objs := []runtime.Object{hubInfoObj, amAccessSrt, cmc}
-	objs = append(objs, newMtlsTestSecrets(testNamespace)...)
 	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 
 	// Scenario 3:
@@ -420,17 +371,34 @@ func testCreateOrUpdateClusterMonitoringConfig(t *testing.T, hubInfo *operatorco
 	}
 
 	containsOCMAlertmanagerConfig := false
-	amMtlsCARef := appendHubClusterID(amMtlsCaName, hubInfo)
-	amMtlsCertRef := appendHubClusterID(amMtlsCertName, hubInfo)
 	for _, v := range foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs {
-		if v.TLSConfig.CA != nil && v.TLSConfig.CA.Name == amMtlsCARef &&
-			v.TLSConfig.Cert != nil && v.TLSConfig.Cert.Name == amMtlsCertRef &&
-			v.TLSConfig.Key != nil && v.TLSConfig.Key.Name == amMtlsCertRef {
+		if v.TLSConfig != (cmomanifests.TLSConfig{}) &&
+			v.TLSConfig.CA != nil &&
+			v.TLSConfig.CA.LocalObjectReference != (corev1.LocalObjectReference{}) &&
+			v.TLSConfig.CA.LocalObjectReference.Name == hubAmRouterCASecretName+"-"+hubInfo.HubClusterID &&
+			v.BearerToken != nil &&
+			v.BearerToken.LocalObjectReference != (corev1.LocalObjectReference{}) &&
+			v.BearerToken.LocalObjectReference.Name == hubAmAccessorSecretName+"-"+hubInfo.HubClusterID {
 			containsOCMAlertmanagerConfig = true
+			foundHubAmAccessorSecret := &corev1.Secret{}
+			err = c.Get(ctx, types.NamespacedName{
+				Name:      v.BearerToken.LocalObjectReference.Name,
+				Namespace: promNamespace,
+			}, foundHubAmAccessorSecret)
+			if err != nil {
+				t.Fatalf("failed to check the observability-alertmanager-accessor secret %s: %v", clusterMonitoringConfigName, err)
+			}
+			foundAmAccessorToken, ok := foundHubAmAccessorSecret.Data[hubAmAccessorSecretKey]
+			if !ok {
+				t.Fatalf("no key %s found in the observability-alertmanager-accessor secret", hubAmAccessorSecretKey)
+			}
+			if string(foundAmAccessorToken) != tokenValue {
+				t.Fatalf("incorrect token found in the observability-alertmanager-accessor secret, got token: %s, expected value %s", foundAmAccessorToken, tokenValue)
+			}
 		}
 	}
 
-	if !containsOCMAlertmanagerConfig {
+	if containsOCMAlertmanagerConfig == false {
 		t.Fatalf("no AlertmanagerConfig for OCM in ClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs: %v", foundClusterMonitoringConfiguration)
 	}
 
@@ -458,22 +426,13 @@ func testCreateOrUpdateClusterMonitoringConfig(t *testing.T, hubInfo *operatorco
 		t.Fatalf("the secret %s should not be deleted", hubAmAccessorSecretName+"-"+hubInfo.HubClusterID)
 	}
 
-	foundMtlsCASecret := &corev1.Secret{}
+	foundHubAmRouterCASecret := &corev1.Secret{}
 	err = c.Get(ctx, types.NamespacedName{
-		Name:      amMtlsCARef,
+		Name:      hubAmRouterCASecretName + "-" + hubInfo.HubClusterID,
 		Namespace: promNamespace,
-	}, foundMtlsCASecret)
+	}, foundHubAmRouterCASecret)
 	if err != nil {
-		t.Fatalf("the secret %s should not be deleted", amMtlsCARef)
-	}
-
-	foundMtlsCertSecret := &corev1.Secret{}
-	err = c.Get(ctx, types.NamespacedName{
-		Name:      amMtlsCertRef,
-		Namespace: promNamespace,
-	}, foundMtlsCertSecret)
-	if err != nil {
-		t.Fatalf("the secret %s should not be deleted", amMtlsCertRef)
+		t.Fatalf("the secret %s should not be deleted", hubAmRouterCASecretName+"-"+hubInfo.HubClusterID)
 	}
 
 	err = RevertClusterMonitoringConfig(ctx, c, hubInfo)
@@ -558,6 +517,17 @@ prometheus:
 	tokenValue := "test-token"
 	amAccessSrt := newAMAccessorSecret(testNamespace, tokenValue)
 
+	// Create router CA secret in the user workload monitoring namespace
+	routerCASecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      hubAmRouterCASecretName + "-" + hubInfo.HubClusterID,
+			Namespace: uwlTestNamespace,
+		},
+		Data: map[string][]byte{
+			"service-ca.crt": []byte("test-ca-crt"),
+		},
+	}
+
 	uwlAccessSrt := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      hubAmAccessorSecretName + "-" + hubInfo.HubClusterID,
@@ -570,7 +540,7 @@ prometheus:
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			objs := []runtime.Object{hubInfoObj, amAccessSrt, uwlAccessSrt}
+			objs := []runtime.Object{hubInfoObj, amAccessSrt, uwlAccessSrt, routerCASecret}
 			if tt.UserWorkloadMonitoringConfigCMExist {
 				objs = append(objs, newUserWorkloadMonitoringConfigCM(tt.UserWorkloadMonitoringConfigDataYaml, tt.Manager))
 			}
@@ -636,17 +606,34 @@ func testCreateOrUpdateUserWorkloadMonitoringConfig(t *testing.T, hubInfo *opera
 	}
 
 	containsOCMAlertmanagerConfig := false
-	amMtlsCARef := appendHubClusterID(amMtlsCaName, hubInfo)
-	amMtlsCertRef := appendHubClusterID(amMtlsCertName, hubInfo)
 	for _, v := range foundUserWorkloadConfiguration.Prometheus.AlertmanagerConfigs {
-		if v.TLSConfig.CA != nil && v.TLSConfig.CA.Name == amMtlsCARef &&
-			v.TLSConfig.Cert != nil && v.TLSConfig.Cert.Name == amMtlsCertRef &&
-			v.TLSConfig.Key != nil && v.TLSConfig.Key.Name == amMtlsCertRef {
+		if v.TLSConfig != (cmomanifests.TLSConfig{}) &&
+			v.TLSConfig.CA != nil &&
+			v.TLSConfig.CA.LocalObjectReference != (corev1.LocalObjectReference{}) &&
+			v.TLSConfig.CA.LocalObjectReference.Name == hubAmRouterCASecretName+"-"+hubInfo.HubClusterID &&
+			v.BearerToken != nil &&
+			v.BearerToken.LocalObjectReference != (corev1.LocalObjectReference{}) &&
+			v.BearerToken.LocalObjectReference.Name == hubAmAccessorSecretName+"-"+hubInfo.HubClusterID {
 			containsOCMAlertmanagerConfig = true
+			foundHubAmAccessorSecret := &corev1.Secret{}
+			err = c.Get(ctx, types.NamespacedName{
+				Name:      v.BearerToken.LocalObjectReference.Name,
+				Namespace: operatorconfig.OCPUserWorkloadMonitoringNamespace,
+			}, foundHubAmAccessorSecret)
+			if err != nil {
+				t.Fatalf("failed to check the observability-alertmanager-accessor secret %s: %v", operatorconfig.OCPUserWorkloadMonitoringConfigMap, err)
+			}
+			foundAmAccessorToken, ok := foundHubAmAccessorSecret.Data[hubAmAccessorSecretKey]
+			if !ok {
+				t.Fatalf("no key %s found in the observability-alertmanager-accessor secret", hubAmAccessorSecretKey)
+			}
+			if string(foundAmAccessorToken) != tokenValue {
+				t.Fatalf("incorrect token found in the observability-alertmanager-accessor secret, got token: %s, expected value %s", foundAmAccessorToken, tokenValue)
+			}
 		}
 	}
 
-	if !containsOCMAlertmanagerConfig {
+	if containsOCMAlertmanagerConfig == false {
 		t.Fatalf("no AlertmanagerConfig for OCM in UserWorkloadConfiguration.Prometheus.AlertmanagerConfigs: %v", foundUserWorkloadConfiguration)
 	}
 
@@ -674,6 +661,15 @@ func testCreateOrUpdateUserWorkloadMonitoringConfig(t *testing.T, hubInfo *opera
 		t.Fatalf("the secret %s should not be deleted", hubAmAccessorSecretName+"-"+hubInfo.HubClusterID)
 	}
 
+	foundHubAmRouterCASecret := &corev1.Secret{}
+	err = c.Get(ctx, types.NamespacedName{
+		Name:      hubAmRouterCASecretName + "-" + hubInfo.HubClusterID,
+		Namespace: operatorconfig.OCPUserWorkloadMonitoringNamespace,
+	}, foundHubAmRouterCASecret)
+	if err != nil {
+		t.Fatalf("the secret %s should not be deleted", hubAmRouterCASecretName+"-"+hubInfo.HubClusterID)
+	}
+
 	err = RevertUserWorkloadMonitoringConfig(ctx, c, hubInfo)
 	if err != nil {
 		t.Fatalf("Run into error when try to revert user-workload-monitoring-config configmap twice: (%v)", err)
@@ -693,6 +689,17 @@ func TestUserWorkloadMonitoringConfigAlertsDisabled(t *testing.T) {
 	hubInfoObj := newHubInfoSecret([]byte(hubInfoYAMLAlertsDisabled), testNamespace)
 	amAccessSrt := newAMAccessorSecret(testNamespace, "test-token")
 
+	// Create router CA secret in the user workload monitoring namespace
+	routerCASecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      hubAmRouterCASecretName,
+			Namespace: testNamespace,
+		},
+		Data: map[string][]byte{
+			"service-ca.crt": []byte("test-ca-crt"),
+		},
+	}
+
 	// Create user-workload-monitoring-config configmap with "manager: endpoint-monitoring-operator"
 	uwmConfig := newUserWorkloadMonitoringConfigCM(`
 prometheus:
@@ -708,7 +715,7 @@ prometheus:
     tlsConfig:
       insecureSkipVerify: true`, "endpoint-monitoring-operator")
 
-	objs := []runtime.Object{hubInfoObj, amAccessSrt, uwmConfig}
+	objs := []runtime.Object{hubInfoObj, amAccessSrt, routerCASecret, uwmConfig}
 	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 
 	// Test disabling alert forwarding
@@ -795,12 +802,11 @@ prometheus:
 	}
 
 	containsOCMAlertmanagerConfig := false
-	amMtlsCARef := appendHubClusterID(amMtlsCaName, hubInfo)
-	amMtlsCertRef := appendHubClusterID(amMtlsCertName, hubInfo)
 	for _, v := range foundUserWorkloadConfiguration.Prometheus.AlertmanagerConfigs {
-		if v.TLSConfig.CA != nil && v.TLSConfig.CA.Name == amMtlsCARef &&
-			v.TLSConfig.Cert != nil && v.TLSConfig.Cert.Name == amMtlsCertRef &&
-			v.TLSConfig.Key != nil && v.TLSConfig.Key.Name == amMtlsCertRef {
+		if v.TLSConfig != (cmomanifests.TLSConfig{}) &&
+			v.TLSConfig.CA != nil &&
+			v.TLSConfig.CA.LocalObjectReference != (corev1.LocalObjectReference{}) &&
+			v.TLSConfig.CA.LocalObjectReference.Name == hubAmRouterCASecretName+"-"+hubInfo.HubClusterID {
 			containsOCMAlertmanagerConfig = true
 		}
 	}
@@ -824,6 +830,17 @@ func TestUserWorkloadMonitoringConfigUWMAlertsDisabled(t *testing.T) {
 	hubInfoObj := newHubInfoSecret([]byte(hubInfoYAMLUWMAlertsDisabled), testNamespace)
 	amAccessSrt := newAMAccessorSecret(testNamespace, "test-token")
 
+	// Create router CA secret in the user workload monitoring namespace
+	routerCASecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      hubAmRouterCASecretName + "-" + hubInfo.HubClusterID,
+			Namespace: testNamespace,
+		},
+		Data: map[string][]byte{
+			"service-ca.crt": []byte("test-ca-crt"),
+		},
+	}
+
 	// Create user-workload-monitoring-config configmap with "manager: endpoint-monitoring-operator"
 	uwmConfig := newUserWorkloadMonitoringConfigCM(`
 prometheus:
@@ -839,7 +856,7 @@ prometheus:
     tlsConfig:
       insecureSkipVerify: true`, "endpoint-monitoring-operator")
 
-	objs := []runtime.Object{hubInfoObj, amAccessSrt, uwmConfig}
+	objs := []runtime.Object{hubInfoObj, amAccessSrt, routerCASecret, uwmConfig}
 	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 
 	// Test with UWM alerting disabled
@@ -926,12 +943,11 @@ prometheus:
 	}
 
 	containsOCMAlertmanagerConfig := false
-	amMtlsCARef := appendHubClusterID(amMtlsCaName, hubInfo)
-	amMtlsCertRef := appendHubClusterID(amMtlsCertName, hubInfo)
 	for _, v := range foundUserWorkloadConfiguration.Prometheus.AlertmanagerConfigs {
-		if v.TLSConfig.CA != nil && v.TLSConfig.CA.Name == amMtlsCARef &&
-			v.TLSConfig.Cert != nil && v.TLSConfig.Cert.Name == amMtlsCertRef &&
-			v.TLSConfig.Key != nil && v.TLSConfig.Key.Name == amMtlsCertRef {
+		if v.TLSConfig != (cmomanifests.TLSConfig{}) &&
+			v.TLSConfig.CA != nil &&
+			v.TLSConfig.CA.LocalObjectReference != (corev1.LocalObjectReference{}) &&
+			v.TLSConfig.CA.LocalObjectReference.Name == hubAmRouterCASecretName+"-"+hubInfo.HubClusterID {
 			containsOCMAlertmanagerConfig = true
 		}
 	}
@@ -1019,7 +1035,6 @@ userWorkloadEnabled: false
 
 	// Create fake client with all objects
 	objs := []runtime.Object{uwlNamespace, uwlConfigMap, cmoConfigMap, alertmanagerAccessorSecret}
-	objs = append(objs, newMtlsTestSecrets("test-ns")...)
 	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 
 	// Call the function that should handle UWL monitoring configuration
@@ -1037,6 +1052,7 @@ userWorkloadEnabled: false
 	}, foundUWLConfigMap)
 
 	if err == nil {
+		// If configmap still exists, check if it's been cleaned up (no ACM alertmanager config)
 		configYAML, ok := foundUWLConfigMap.Data["config.yaml"]
 		if ok {
 			parsed := &cmomanifests.UserWorkloadConfiguration{}
@@ -1044,11 +1060,10 @@ userWorkloadEnabled: false
 				t.Fatalf("Failed to unmarshal UWL config: %v", err)
 			}
 
+			// Check if the configmap still contains ACM alertmanager configuration
 			if parsed.Prometheus != nil && parsed.Prometheus.AlertmanagerConfigs != nil {
 				for _, config := range parsed.Prometheus.AlertmanagerConfigs {
-					if config.TLSConfig.CA != nil &&
-						(config.TLSConfig.CA.Name == amMtlsCaName ||
-							config.TLSConfig.CA.Name == appendHubClusterID(amMtlsCaName, hubInfo)) {
+					if config.TLSConfig.CA != nil && config.TLSConfig.CA.LocalObjectReference.Name == hubAmRouterCASecretName+"-"+hubInfo.HubClusterID {
 						t.Fatalf("UWL configmap still contains ACM alertmanager configuration when it should be cleaned up")
 					}
 				}
@@ -1114,7 +1129,6 @@ enableUserWorkload: true
 
 	// Create fake client with all objects
 	objs := []runtime.Object{uwlNamespace, cmoConfigMap, alertmanagerAccessorSecret}
-	objs = append(objs, newMtlsTestSecrets("test-ns")...)
 	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 
 	// Reset the revert state to ensure clean test environment
@@ -1161,9 +1175,10 @@ enableUserWorkload: true
 		t.Fatalf("UWL configmap should contain additionalAlertmanagerConfigs")
 	}
 
-	// Verify that the ACM alertmanager configuration is present by checking for the mTLS CA secret
-	if !strings.Contains(configYAML, appendHubClusterID(amMtlsCaName, hubInfo)) {
-		t.Fatalf("UWL configmap should contain ACM alertmanager configuration with mTLS CA secret reference")
+	// Verify that the ACM alertmanager configuration is present by checking for the CA secret
+	// The configuration should reference the hub alertmanager router CA secret
+	if !strings.Contains(configYAML, hubAmRouterCASecretName+"-"+hubInfo.HubClusterID) {
+		t.Fatalf("UWL configmap should contain ACM alertmanager configuration with CA secret reference")
 	}
 
 	// Verify that the namespace still exists
@@ -1171,105 +1186,6 @@ enableUserWorkload: true
 	err = c.Get(ctx, types.NamespacedName{Name: operatorconfig.OCPUserWorkloadMonitoringNamespace}, foundNamespace)
 	if err != nil {
 		t.Fatalf("UWL namespace should still exist: %v", err)
-	}
-}
-
-// When two stanzas target the same hub Alertmanager URL with different TLS (legacy router CA vs mTLS),
-// reconcile must leave a single fresh ACM stanza, not both.
-func TestClusterMonitoringConfigDedupeMultipleAdditionalAlertmanagers(t *testing.T) {
-	AMSecretCleanupDone = false
-	AMSecretCleanupDoneUWL = false
-	testNamespace := "test-ns"
-	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&zap.Options{Development: true})))
-
-	hubInfo := &operatorconfig.HubInfo{
-		ClusterName:              "test-cluster",
-		ObservatoriumAPIEndpoint: "http://test-endpoint",
-		AlertmanagerEndpoint:     "https://test-alertmanager.example.com/api/alertmanager/v2/default",
-		HubClusterID:             "1a9af6dc0801433cb28a200af81",
-	}
-
-	// Same staticConfigs + pathPrefix as hubInfo.AlertmanagerEndpoint; only TLS material differs.
-	diffYAML := `
-prometheusK8s:
-  externalLabels:
-    managed_cluster: kind-cluster-id
-  additionalAlertManagerConfigs:
-  - apiVersion: v2
-    bearerToken:
-      key: token
-      name: observability-alertmanager-accessor-1a9af6dc0801433cb28a200af81
-    pathPrefix: /api/alertmanager/v2/default
-    scheme: https
-    staticConfigs:
-    - test-alertmanager.example.com
-    tlsConfig:
-      ca:
-        key: service-ca.crt
-        name: hub-alertmanager-router-ca
-      insecureSkipVerify: true
-  - apiVersion: v2
-    bearerToken:
-      key: token
-      name: observability-alertmanager-accessor-1a9af6dc0801433cb28a200af81
-    pathPrefix: /api/alertmanager/v2/default
-    scheme: https
-    staticConfigs:
-    - test-alertmanager.example.com
-    tlsConfig:
-      ca:
-        key: ca.crt
-        name: obs-alertmanager-mtls-ca-1a9af6dc0801433cb28a200af81
-      cert:
-        key: tls.crt
-        name: obs-alertmanager-mtls-cert-1a9af6dc0801433cb28a200af81
-      key:
-        key: tls.key
-        name: obs-alertmanager-mtls-cert-1a9af6dc0801433cb28a200af81
-      insecureSkipVerify: false
-`
-
-	amAccessSrt := newAMAccessorSecret(testNamespace, "test-token")
-	cmoCfg := newClusterMonitoringConfigCM(diffYAML, endpointMonitoringOperatorMgr)
-	objs := []runtime.Object{cmoCfg, amAccessSrt}
-	objs = append(objs, newMtlsTestSecrets(testNamespace)...)
-	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
-
-	wasUpdated, err := createOrUpdateClusterMonitoringConfig(context.Background(), hubInfo, testClusterID, c, false, testNamespace)
-	if err != nil {
-		t.Fatalf("createOrUpdateClusterMonitoringConfig: %v", err)
-	}
-	assert.True(t, wasUpdated)
-
-	found := &corev1.ConfigMap{}
-	err = c.Get(context.Background(), types.NamespacedName{Name: clusterMonitoringConfigName, Namespace: promNamespace}, found)
-	if err != nil {
-		t.Fatalf("get configmap: %v", err)
-	}
-	yamlStr, ok := found.Data[clusterMonitoringConfigDataKey]
-	if !ok {
-		t.Fatalf("configmap missing %s", clusterMonitoringConfigDataKey)
-	}
-	foundJSON, err := yamltool.YAMLToJSON([]byte(yamlStr))
-	if err != nil {
-		t.Fatalf("YAMLToJSON: %v", err)
-	}
-	parsed := &cmomanifests.ClusterMonitoringConfiguration{}
-	if err := json.Unmarshal(foundJSON, parsed); err != nil {
-		t.Fatalf("unmarshal cluster monitoring config: %v", err)
-	}
-	if parsed.PrometheusK8sConfig == nil || len(parsed.PrometheusK8sConfig.AlertmanagerConfigs) == 0 {
-		t.Fatalf("expected prometheusK8s.alertmanagerConfigs, got %#v", parsed.PrometheusK8sConfig)
-	}
-	amCfgs := parsed.PrometheusK8sConfig.AlertmanagerConfigs
-	if len(amCfgs) != 1 {
-		t.Fatalf("expected exactly 1 additionalAlertmanagerConfig after dedupe, got %d", len(amCfgs))
-	}
-	if amCfgs[0].TLSConfig.CA == nil || amCfgs[0].TLSConfig.CA.Name != appendHubClusterID(amMtlsCaName, hubInfo) {
-		t.Fatalf("expected single mTLS ACM alertmanager config (CA %q), got %#v", appendHubClusterID(amMtlsCaName, hubInfo), amCfgs[0].TLSConfig.CA)
-	}
-	if amCfgs[0].TLSConfig.Cert == nil || amCfgs[0].TLSConfig.Cert.Name != appendHubClusterID(amMtlsCertName, hubInfo) {
-		t.Fatalf("expected mTLS client cert on deduped config, got cert ref %#v", amCfgs[0].TLSConfig.Cert)
 	}
 }
 
@@ -1285,9 +1201,7 @@ func TestClusterMonitoringCleanupGlobalHub(t *testing.T) {
 		HubClusterID:             "1a9af6dc0801433cb28a200af81",
 	}
 	cmoCfg := newClusterMonitoringConfigCM(clusterMonitoringConfigDataYamlCleanupGH, endpointMonitoringOperatorMgr)
-	ghObjs := []runtime.Object{newHubInfoSecret([]byte(hubInfoYAML), testNamespace), cmoCfg, amAccessSrt}
-	ghObjs = append(ghObjs, newMtlsTestSecrets(testNamespace)...)
-	client := fake.NewClientBuilder().WithRuntimeObjects(ghObjs...).Build()
+	client := fake.NewClientBuilder().WithRuntimeObjects(newHubInfoSecret([]byte(hubInfoYAML), testNamespace), cmoCfg, amAccessSrt).Build()
 	wasUpdated, err := createOrUpdateClusterMonitoringConfig(context.Background(), hubInfo, testClusterID, client, false, testNamespace)
 	if err != nil {
 		t.Fatalf("Failed to create or update the cluster-monitoring-config configmap: (%v)", err)
@@ -1300,8 +1214,7 @@ func TestClusterMonitoringCleanupGlobalHub(t *testing.T) {
 		t.Fatalf("failed to check configmap %s: %v", clusterMonitoringConfigName, err)
 	}
 
-	// After reconcile, legacy hub-alertmanager-router-ca stanzas must be gone (including
-	// unsuffixed, cluster-domain-suffixed, and HubClusterID-suffixed names — see isOldManagedConfig).
+	// check that in the cmoCfgBeforeUpdare hub-alertmanager-router-ca is removed
 	foundClusterMonitoringConfigurationYAML, ok := hasClusterMonitoringConfigData(cmoCfgBeforeUpdate)
 	if !ok {
 		t.Fatalf("configmap: %s doesn't contain key: config.yaml", clusterMonitoringConfigName)
@@ -1317,19 +1230,14 @@ func TestClusterMonitoringCleanupGlobalHub(t *testing.T) {
 		t.Fatalf("failed to marshal the cluster monitoring config: %v:\n%s\n", err, foundClusterMonitoringConfigurationJSON)
 	}
 
-	clusterDomain := mcoconfig.GetClusterName(hubInfo.ObservatoriumAPIEndpoint)
 	if foundClusterMonitoringConfiguration.PrometheusK8sConfig != nil &&
 		foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs != nil {
 		for _, v := range foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs {
-			if v.TLSConfig.CA == nil {
-				continue
-			}
-			name := v.TLSConfig.CA.Name
-			switch name {
-			case hubAmRouterCASecretName,
-				hubAmRouterCASecretName + "-" + clusterDomain,
-				hubAmRouterCASecretName + "-" + hubInfo.HubClusterID:
-				t.Fatalf("%q secret reference should be removed from the cluster-monitoring-config configmap (legacy router CA)", name)
+			if v.TLSConfig != (cmomanifests.TLSConfig{}) &&
+				v.TLSConfig.CA != nil &&
+				v.TLSConfig.CA.LocalObjectReference != (corev1.LocalObjectReference{}) &&
+				v.TLSConfig.CA.LocalObjectReference.Name == hubAmRouterCASecretName || v.TLSConfig.CA.LocalObjectReference.Name == hubAmRouterCASecretName+"-"+"12345" {
+				t.Fatalf("%s secret reference should be removed from the cluster-monitoring-config configmap", v.TLSConfig.CA.LocalObjectReference.Name)
 			}
 		}
 	}

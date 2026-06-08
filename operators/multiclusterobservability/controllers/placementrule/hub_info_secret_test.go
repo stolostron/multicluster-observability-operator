@@ -28,7 +28,6 @@ const (
 	routerBYOCert    = "test-cert"
 	routerBYOCertKey = "test-key"
 	routerDefaultCA  = "test-ca"
-	obsServerCA      = "test-obs-server-ca"
 )
 
 func newTestObsApiRoute() *routev1.Route {
@@ -149,22 +148,6 @@ func newTestAmDefaultCA() *corev1.ConfigMap {
 	}
 }
 
-func newTestObsServerCASecret() *corev1.Secret {
-	return &corev1.Secret{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Secret",
-			APIVersion: "v1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      config.ServerCACerts,
-			Namespace: mcoNamespace,
-		},
-		Data: map[string][]byte{
-			"tls.crt": []byte(obsServerCA),
-		},
-	}
-}
-
 func newMultiClusterObservability() *mcov1beta2.MultiClusterObservability {
 	return &mcov1beta2.MultiClusterObservability{
 		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterObservability"},
@@ -191,7 +174,6 @@ func TestNewSecret(t *testing.T) {
 		newTestAlertmanagerRoute(),
 		newTestIngressController(),
 		newTestRouteCASecret(),
-		newTestObsServerCASecret(),
 		mco,
 	}
 	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
@@ -209,12 +191,11 @@ func TestNewSecret(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to unmarshal data in hub info secret (%v)", err)
 	}
-	expectedAlertmanagerEndpoint := "https://" + routeHost + "/api/alertmanager/v2/default"
 	if !strings.HasPrefix(hub.ObservatoriumAPIEndpoint, "https://observatorium-api-open-cluster-management-observability.apps.test-host") ||
-		hub.AlertmanagerEndpoint != expectedAlertmanagerEndpoint || hub.AlertmanagerRouterCA != obsServerCA || hub.HubClusterID != "1a9af6dc0801433cb28a200af81" {
+		hub.AlertmanagerEndpoint != "https://"+routeHost || hub.AlertmanagerRouterCA != routerCA || hub.HubClusterID != "1a9af6dc0801433cb28a200af81" {
 		t.Fatalf(
 			"Wrong content in hub info secret: \ngot: "+hub.ObservatoriumAPIEndpoint+" "+hub.AlertmanagerEndpoint+" "+hub.AlertmanagerRouterCA,
-			clusterName+" "+expectedAlertmanagerEndpoint+" "+obsServerCA,
+			clusterName+" "+"https://test-host"+" "+"test-host"+" "+routerCA,
 		)
 	}
 
@@ -293,11 +274,10 @@ func TestNewSecret(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to unmarshal data in hub info secret (%v)", err)
 	}
-	if !strings.HasPrefix(hub.ObservatoriumAPIEndpoint, "https://custom-obs:8080") ||
-		hub.AlertmanagerEndpoint != "https://custom-obs:8080/api/alertmanager/v2/default" || hub.AlertmanagerRouterCA != obsServerCA {
+	if !strings.HasPrefix(hub.ObservatoriumAPIEndpoint, "https://custom-obs:8080") || !strings.HasPrefix(hub.AlertmanagerEndpoint, "https://custom-am") || hub.AlertmanagerRouterCA != routerCA {
 		t.Fatalf(
 			"Wrong content in hub info secret: \ngot: "+hub.ObservatoriumAPIEndpoint+" "+hub.AlertmanagerEndpoint+" "+hub.AlertmanagerRouterCA,
-			clusterName+" "+"https://custom-obs:8080/api/alertmanager/v2/default"+" "+obsServerCA,
+			clusterName+" "+"https://custom-obs"+" "+"custom-obs"+" "+routerCA,
 		)
 	}
 }
@@ -306,7 +286,7 @@ func TestNewBYOSecret(t *testing.T) {
 	initSchema(t)
 
 	mco := newMultiClusterObservability()
-	objs := []runtime.Object{newTestObsApiRoute(), newTestAlertmanagerRoute(), newTestAmRouteBYOCA(), newTestAmRouteBYOCert(), newTestObsServerCASecret()}
+	objs := []runtime.Object{newTestObsApiRoute(), newTestAlertmanagerRoute(), newTestAmRouteBYOCA(), newTestAmRouteBYOCert()}
 	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 
 	crdMap := map[string]bool{config.IngressControllerCRD: true}
@@ -322,12 +302,11 @@ func TestNewBYOSecret(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to unmarshal data in hub info secret (%v)", err)
 	}
-	expectedAlertmanagerEndpoint := "https://" + routeHost + "/api/alertmanager/v2/default"
 	if !strings.HasPrefix(hub.ObservatoriumAPIEndpoint, "https://observatorium-api-open-cluster-management-observability.apps.test-host") ||
-		hub.AlertmanagerEndpoint != expectedAlertmanagerEndpoint || hub.AlertmanagerRouterCA != obsServerCA {
+		hub.AlertmanagerEndpoint != "https://"+routeHost || hub.AlertmanagerRouterCA != routerBYOCA {
 		t.Fatalf(
 			"Wrong content in hub info secret: \ngot: "+hub.ObservatoriumAPIEndpoint+" "+hub.AlertmanagerEndpoint+" "+hub.AlertmanagerRouterCA,
-			clusterName+" "+expectedAlertmanagerEndpoint+" "+obsServerCA,
+			clusterName+" "+"https://test-host"+" "+"test-host"+" "+routerBYOCA,
 		)
 	}
 }

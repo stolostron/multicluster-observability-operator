@@ -13,7 +13,6 @@ import (
 	"path"
 	"reflect"
 	"slices"
-	"strconv"
 	"time"
 
 	routev1 "github.com/openshift/api/route/v1"
@@ -401,7 +400,6 @@ func newAPIRBAC() obsv1alpha1.APIRBAC {
 				Name: writeOnlyRoleName,
 				Resources: []string{
 					"metrics",
-					"alertmanager",
 				},
 				Permissions: []obsv1alpha1.Permission{
 					obsv1alpha1.Write,
@@ -603,38 +601,6 @@ func newAPISpec(c client.Client, mco *mcov1beta2.MultiClusterObservability) (obs
 			}
 		}
 	}
-
-	// if we're using the dns names, then all we need is the number of replicas
-	amReplicas := mcoconfig.GetReplicas(mcoconfig.Alertmanager, mco.Spec.InstanceSize, mco.Spec.AdvancedConfig)
-
-	urls, err := alertmanagerMetricsEndpointURLs(amReplicas)
-	if err != nil {
-		return apiSpec, err
-	}
-
-	if len(urls) > 0 {
-		apiSpec.MetricsAlertmanagerEndpoints = urls
-		// Only need alertmanager CA if alertmanager endpoints is non-empty check for configmap
-		cm := &v1.ConfigMap{}
-		cmName := mcoconfig.AlertmanagersDefaultCaBundleName
-		if err := c.Get(context.TODO(), types.NamespacedName{
-			Name:      cmName,
-			Namespace: mcoconfig.GetDefaultNamespace(),
-		}, cm); err != nil {
-			return apiSpec, err
-		}
-
-		// not needed if len(urls) == 0
-		apiSpec.ExtraVolumeMounts = []obsv1alpha1.VolumeMount{
-			{
-				Type:      obsv1alpha1.VolumeMountTypeConfigMap,
-				MountPath: "/etc/observatorium/alertmanager/service-ca.crt",
-				Name:      mcoconfig.AlertmanagersDefaultCaBundleName,
-				Key:       mcoconfig.AlertmanagersDefaultCaBundleKey,
-			},
-		}
-	}
-
 	return apiSpec, nil
 }
 
@@ -1080,20 +1046,4 @@ func addBackupLabel(c client.Client, name string, backupS *v1.Secret) error {
 		}
 	}
 	return nil
-}
-
-func alertmanagerMetricsEndpointURLs(amReplicas *int32) ([]string, error) {
-	addr := []string{}
-	if amReplicas != nil {
-		for i := range *amReplicas {
-			addr = append(addr, "https://"+mcoconfig.GetOperandName(mcoconfig.Alertmanager)+"-"+
-				strconv.Itoa(int(i))+
-				".alertmanager-operated."+
-				mcoconfig.GetDefaultNamespace()+".svc:9095")
-		}
-	} else {
-		return addr, fmt.Errorf("alertmanager replicas not set")
-	}
-
-	return addr, nil
 }

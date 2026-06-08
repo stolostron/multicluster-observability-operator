@@ -176,11 +176,7 @@ func Render(
 					},
 					Key: "alertmanager.yaml",
 				}
-				spec.Secrets = []string{
-					"obs-alertmanager-mtls-ca" + "-" + hubInfo.HubClusterID,
-					"obs-alertmanager-mtls-cert" + "-" + hubInfo.HubClusterID,
-					"observability-alertmanager-accessor" + "-" + hubInfo.HubClusterID,
-				}
+				spec.Secrets = []string{"hub-alertmanager-router-ca" + "-" + hubInfo.HubClusterID, "observability-alertmanager-accessor" + "-" + hubInfo.HubClusterID}
 			}
 
 			unstructuredObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
@@ -261,20 +257,10 @@ func Render(
 			// replace the hub alertmanager address. Address will be set to null when alerts are disabled
 			hubAmEp := strings.TrimPrefix(hubInfo.AlertmanagerEndpoint, "https://")
 			amConfig = strings.ReplaceAll(amConfig, "_ALERTMANAGER_ENDPOINT_", hubAmEp)
-			if hubInfo.HubClusterID != "" {
-				hubIDSuffix := "-" + hubInfo.HubClusterID
-				amConfig = strings.ReplaceAll(amConfig, "credentials_file: /etc/prometheus/secrets/observability-alertmanager-accessor/token",
-					fmt.Sprintf("credentials_file: /etc/prometheus/secrets/observability-alertmanager-accessor%s/token", hubIDSuffix))
-				amConfig = strings.ReplaceAll(amConfig, "ca_file: /etc/prometheus/secrets/obs-alertmanager-mtls-ca/ca.crt",
-					fmt.Sprintf("ca_file: /etc/prometheus/secrets/obs-alertmanager-mtls-ca%s/ca.crt", hubIDSuffix))
-				amConfig = strings.ReplaceAll(amConfig, "cert_file: /etc/prometheus/secrets/obs-alertmanager-mtls-cert/tls.crt",
-					fmt.Sprintf("cert_file: /etc/prometheus/secrets/obs-alertmanager-mtls-cert%s/tls.crt", hubIDSuffix))
-				amConfig = strings.ReplaceAll(amConfig, "key_file: /etc/prometheus/secrets/obs-alertmanager-mtls-cert/tls.key",
-					fmt.Sprintf("key_file: /etc/prometheus/secrets/obs-alertmanager-mtls-cert%s/tls.key", hubIDSuffix))
-				// Legacy template path prior to mTLS alertmanager fanout.
-				amConfig = strings.ReplaceAll(amConfig, "ca_file: /etc/prometheus/secrets/hub-alertmanager-router-ca/service-ca.crt",
-					fmt.Sprintf("ca_file: /etc/prometheus/secrets/obs-alertmanager-mtls-ca%s/ca.crt", hubIDSuffix))
-			}
+			amConfig = strings.ReplaceAll(amConfig, "credentials_file: /etc/prometheus/secrets/observability-alertmanager-accessor/token",
+				fmt.Sprintf("credentials_file: /etc/prometheus/secrets/observability-alertmanager-accessor-%s/token", hubInfo.HubClusterID))
+			amConfig = strings.ReplaceAll(amConfig, "ca_file: /etc/prometheus/secrets/hub-alertmanager-router-ca/service-ca.crt",
+				fmt.Sprintf("ca_file: /etc/prometheus/secrets/hub-alertmanager-router-ca-%s/service-ca.crt", hubInfo.HubClusterID))
 			s.StringData["alertmanager.yaml"] = amConfig
 
 			unstructuredObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)

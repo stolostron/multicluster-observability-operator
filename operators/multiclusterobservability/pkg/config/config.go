@@ -601,22 +601,6 @@ func GetAlertmanagerCA(client client.Client) (string, error) {
 	return amCAConfigmap.Data["service-ca.crt"], nil
 }
 
-// GetObsAPIServerCA returns the CA that signed the observatorium-api server certificate.
-// The observatorium-api Route uses TLS passthrough, so the pod presents a cert signed by
-// the observability server CA rather than the OpenShift ingress CA.
-func GetObsAPIServerCA(client client.Client) (string, error) {
-	serverCASecret := &corev1.Secret{}
-	err := client.Get(
-		context.TODO(),
-		types.NamespacedName{Name: ServerCACerts, Namespace: GetDefaultNamespace()},
-		serverCASecret,
-	)
-	if err != nil {
-		return "", fmt.Errorf("failed to get observability server CA secret %s: %w", ServerCACerts, err)
-	}
-	return string(serverCASecret.Data["tls.crt"]), nil
-}
-
 func GetDefaultNamespace() string {
 	return defaultNamespace
 }

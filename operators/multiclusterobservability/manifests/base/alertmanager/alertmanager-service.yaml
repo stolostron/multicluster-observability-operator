@@ -15,5 +15,8 @@ spec:
   selector:
     alertmanager: observability
     app: multicluster-observability-alertmanager
+  sessionAffinity: ClientIP
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 10800
   type: ClusterIP
-  clusterIP: None

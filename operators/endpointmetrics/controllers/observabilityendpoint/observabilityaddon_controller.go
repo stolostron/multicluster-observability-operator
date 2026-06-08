@@ -51,8 +51,6 @@ const (
 	openShiftClusterMonitoringlabel = "openshift.io/cluster-monitoring"
 	mtlsCertName                    = "observability-controller-open-cluster-management.io-observability-signer-client-cert"
 	mtlsCaName                      = "observability-managed-cluster-certs"
-	amMtlsCertName                  = "obs-alertmanager-mtls-cert"
-	amMtlsCaName                    = "obs-alertmanager-mtls-ca"
 	metricsCollectorName            = "metrics-collector-deployment"
 	uwlMetricsCollectorName         = "uwl-metrics-collector-deployment"
 	uwlNamespace                    = "openshift-user-workload-monitoring"
