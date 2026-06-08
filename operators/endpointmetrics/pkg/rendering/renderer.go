@@ -7,6 +7,7 @@ package rendering
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -260,7 +261,17 @@ func Render(
 			}
 			// replace the hub alertmanager address. Address will be set to null when alerts are disabled
 			hubAmEp := strings.TrimPrefix(hubInfo.AlertmanagerEndpoint, "https://")
-			amConfig = strings.ReplaceAll(amConfig, "_ALERTMANAGER_ENDPOINT_", hubAmEp)
+			amURL, err := url.Parse("https://" + hubAmEp)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse alertmanager endpoint %q: %w", hubInfo.AlertmanagerEndpoint, err)
+			}
+			amHost := amURL.Host
+			amPath := amURL.Path
+			if amPath == "" {
+				amPath = "/"
+			}
+			amConfig = strings.ReplaceAll(amConfig, "_ALERTMANAGER_ENDPOINT_", amHost)
+			amConfig = strings.ReplaceAll(amConfig, "_PATH_PREFIX_", amPath)
 			if hubInfo.HubClusterID != "" {
 				hubIDSuffix := "-" + hubInfo.HubClusterID
 				amConfig = strings.ReplaceAll(amConfig, "credentials_file: /etc/prometheus/secrets/observability-alertmanager-accessor/token",
