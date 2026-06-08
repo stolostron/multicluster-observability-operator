@@ -147,7 +147,7 @@ func createHubAmAccessorTokenSecret(ctx context.Context, client client.Client, n
 		return fmt.Errorf("fail to get %s/%s secret: %w", namespace, hubAmAccessorSecretName, err)
 	}
 
-	hubAmAccessorSecret := appendHubClusterID(hubAmAccessorSecretName, hubInfo)
+	hubAmAccessorSecret := hubInfo.AppendHubClusterID(hubAmAccessorSecretName)
 	dataMap := map[string][]byte{hubAmAccessorSecretKey: []byte(amAccessorToken)}
 	hubAmAccessorTokenSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -242,7 +242,7 @@ func cleanUpOldAMSecrets(ctx context.Context, client client.Client, targetNamesp
 		deleteSecret(hubAmRouterCASecretName+"-"+clusterDomain, targetNamespace)
 	}
 	if hubInfo != nil && hubInfo.HubClusterID != "" {
-		deleteSecret(appendHubClusterID(hubAmRouterCASecretName, hubInfo), targetNamespace)
+		deleteSecret(hubInfo.AppendHubClusterID(hubAmRouterCASecretName), targetNamespace)
 	}
 
 	if uwlNsExists {
@@ -254,7 +254,7 @@ func cleanUpOldAMSecrets(ctx context.Context, client client.Client, targetNamesp
 			deleteSecret(hubAmRouterCASecretName+"-"+clusterDomain, ns)
 		}
 		if hubInfo != nil && hubInfo.HubClusterID != "" {
-			deleteSecret(appendHubClusterID(hubAmRouterCASecretName, hubInfo), ns)
+			deleteSecret(hubInfo.AppendHubClusterID(hubAmRouterCASecretName), ns)
 		}
 	}
 
@@ -264,16 +264,9 @@ func cleanUpOldAMSecrets(ctx context.Context, client client.Client, targetNamesp
 	return nil
 }
 
-func appendHubClusterID(secretName string, hubInfo *operatorconfig.HubInfo) string {
-	if hubInfo == nil || hubInfo.HubClusterID == "" {
-		return secretName
-	}
-	return secretName + "-" + hubInfo.HubClusterID
-}
-
 func newAdditionalAlertmanagerConfig(hubInfo *operatorconfig.HubInfo) cmomanifests.AdditionalAlertmanagerConfig {
-	amMtlsCARef := appendHubClusterID(amMtlsCaName, hubInfo)
-	amMtlsCertRef := appendHubClusterID(amMtlsCertName, hubInfo)
+	amMtlsCARef := hubInfo.AppendHubClusterID(amMtlsCaName)
+	amMtlsCertRef := hubInfo.AppendHubClusterID(amMtlsCertName)
 	config := cmomanifests.AdditionalAlertmanagerConfig{
 		Scheme:     "https",
 		PathPrefix: "/",
@@ -301,7 +294,7 @@ func newAdditionalAlertmanagerConfig(hubInfo *operatorconfig.HubInfo) cmomanifes
 		},
 		BearerToken: &corev1.SecretKeySelector{
 			LocalObjectReference: corev1.LocalObjectReference{
-				Name: appendHubClusterID(hubAmAccessorSecretName, hubInfo),
+				Name: hubInfo.AppendHubClusterID(hubAmAccessorSecretName),
 			},
 			Key: hubAmAccessorSecretKey,
 		},
@@ -962,7 +955,7 @@ func createMtlsSecretInNamespace(ctx context.Context, c client.Client, sourceNam
 		return fmt.Errorf("failed to get source secret %s/%s: %w", sourceNamespace, secretName, err)
 	}
 
-	targetName := appendHubClusterID(secretRename, hubInfo)
+	targetName := hubInfo.AppendHubClusterID(secretRename)
 	target := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      targetName,
