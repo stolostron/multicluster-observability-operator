@@ -1,0 +1,30 @@
+# Rendered by setup-upstream-catalog.sh via envsubst.
+#
+# Required variables:
+#   ACM_VERSION   e.g. 2.16 — sets the OLM subscription channel
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: open-cluster-management
+---
+apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata:
+  name: default
+  namespace: open-cluster-management
+spec:
+  targetNamespaces:
+    - open-cluster-management
+---
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: acm-sub
+  namespace: open-cluster-management
+spec:
+  channel: release-${ACM_VERSION}
+  installPlanApproval: Automatic
+  name: advanced-cluster-management
+  source: redhat-operators
+  sourceNamespace: openshift-marketplace
