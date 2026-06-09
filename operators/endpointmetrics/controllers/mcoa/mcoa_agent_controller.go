@@ -13,12 +13,10 @@ import (
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	ctrlbuilder "sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
 )
 
 // MCOAAgentReconciler reconciles the MCOA components on the managed cluster.
@@ -101,39 +99,5 @@ func (r *MCOAAgentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		// Watch ConfigMaps we manage across multiple namespaces.
 		// The cache FieldSelectors already limit this to exactly the CMs we need.
 		For(&corev1.ConfigMap{}, ctrlbuilder.WithPredicates(observabilityendpoint.ConfigMapDataChangedPredicate("", ""))).
-		Watches(
-			&corev1.Secret{},
-			handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, obj client.Object) []ctrl.Request {
-				hubAmAccessorSecret := observabilityendpoint.AppendHubClusterID(observabilityendpoint.HubAmAccessorSecretName, r.HubInfo)
-				hubAmRouterCASecret := observabilityendpoint.AppendHubClusterID(observabilityendpoint.HubAmRouterCASecretName, r.HubInfo)
-
-				if obj.GetName() != hubAmAccessorSecret && obj.GetName() != hubAmRouterCASecret {
-					return nil
-				}
-
-				var requests []ctrl.Request
-				// Monitoring stacks in OpenShift are namespace-scoped for secrets.
-				// We only trigger the ConfigMap in the same namespace as the secret.
-				switch obj.GetNamespace() {
-				case operatorconfig.OCPClusterMonitoringNamespace:
-					requests = append(requests, ctrl.Request{
-						NamespacedName: types.NamespacedName{
-							Name:      operatorconfig.OCPClusterMonitoringConfigMapName,
-							Namespace: operatorconfig.OCPClusterMonitoringNamespace,
-						},
-					})
-				case operatorconfig.OCPUserWorkloadMonitoringNamespace:
-					requests = append(requests, ctrl.Request{
-						NamespacedName: types.NamespacedName{
-							Name:      operatorconfig.OCPUserWorkloadMonitoringConfigMap,
-							Namespace: operatorconfig.OCPUserWorkloadMonitoringNamespace,
-						},
-					})
-				}
-				return requests
-			}),
-			// Only react to secrets in the namespaces we monitor
-			ctrlbuilder.WithPredicates(observabilityendpoint.SecretDataChangedPredicate("", "")),
-		).
 		Complete(r)
 }

@@ -288,24 +288,12 @@ func AppendHubClusterID(secretName string, hubInfo *operatorconfig.HubInfo) stri
 	return secretName + "-" + hubInfo.HubClusterID
 }
 
-func newAdditionalAlertmanagerConfig(hubInfo *operatorconfig.HubInfo, caSecret string, certSecret string, omitBearerToken bool) cmomanifests.AdditionalAlertmanagerConfig {
-	amMtlsCARef := caSecret
-	if amMtlsCARef == "" {
-		amMtlsCARef = AppendHubClusterID(amMtlsCaName, hubInfo)
-	}
-	amMtlsCertRef := certSecret
-	if amMtlsCertRef == "" {
-		amMtlsCertRef = AppendHubClusterID(amMtlsCertName, hubInfo)
-	}
-
-	var bearerToken *corev1.SecretKeySelector
-	if !omitBearerToken {
-		bearerToken = &corev1.SecretKeySelector{
-			LocalObjectReference: corev1.LocalObjectReference{
-				Name: AppendHubClusterID(HubAmAccessorSecretName, hubInfo),
-			},
-			Key: hubAmAccessorSecretKey,
-		}
+func newAdditionalAlertmanagerConfig(alertmanagerEndpoint string, caSecret string, certSecret string, accessorSecret string) cmomanifests.AdditionalAlertmanagerConfig {
+	bearerToken := &corev1.SecretKeySelector{
+		LocalObjectReference: corev1.LocalObjectReference{
+			Name: accessorSecret,
+		},
+		Key: hubAmAccessorSecretKey,
 	}
 
 	config := cmomanifests.AdditionalAlertmanagerConfig{
@@ -315,19 +303,19 @@ func newAdditionalAlertmanagerConfig(hubInfo *operatorconfig.HubInfo, caSecret s
 		TLSConfig: cmomanifests.TLSConfig{
 			CA: &corev1.SecretKeySelector{
 				LocalObjectReference: corev1.LocalObjectReference{
-					Name: amMtlsCARef,
+					Name: caSecret,
 				},
 				Key: "ca.crt",
 			},
 			Cert: &corev1.SecretKeySelector{
 				LocalObjectReference: corev1.LocalObjectReference{
-					Name: amMtlsCertRef,
+					Name: certSecret,
 				},
 				Key: "tls.crt",
 			},
 			Key: &corev1.SecretKeySelector{
 				LocalObjectReference: corev1.LocalObjectReference{
-					Name: amMtlsCertRef,
+					Name: certSecret,
 				},
 				Key: "tls.key",
 			},
@@ -336,9 +324,9 @@ func newAdditionalAlertmanagerConfig(hubInfo *operatorconfig.HubInfo, caSecret s
 		BearerToken:   bearerToken,
 		StaticConfigs: []string{},
 	}
-	amURL, err := url.Parse(hubInfo.AlertmanagerEndpoint)
+	amURL, err := url.Parse(alertmanagerEndpoint)
 	if err != nil {
-		log.Error(err, "failed to parse alertmanager endpoint. ignoring it", "endpoint", hubInfo.AlertmanagerEndpoint)
+		log.Error(err, "failed to parse alertmanager endpoint. ignoring it", "endpoint", alertmanagerEndpoint)
 		return config
 	}
 
@@ -476,7 +464,7 @@ func createOrUpdateClusterMonitoringConfig(
 		return false, unset(ctx, client, namespace)
 	}
 
-	updated, err := CreateOrUpdateCMOConfig(ctx, client, clusterID, hubInfo, "", "", false, namespace)
+	updated, err := CreateOrUpdateCMOConfig(ctx, client, clusterID, hubInfo, "", "", "", namespace)
 	if err != nil {
 		return false, err
 	}
@@ -494,7 +482,7 @@ func createOrUpdateClusterMonitoringConfig(
 	if nsExists {
 		if uwmEnabled {
 			// UWL is enabled, create or update the config
-			if err := CreateOrUpdateUserWorkloadMonitoringConfig(ctx, client, hubInfo, "", "", false); err != nil {
+			if err := CreateOrUpdateUserWorkloadMonitoringConfig(ctx, client, hubInfo, "", "", ""); err != nil {
 				return updated, fmt.Errorf("failed to create or update user workload monitoring config: %w", err)
 			}
 		} else {
@@ -557,7 +545,7 @@ func RevertClusterMonitoringConfig(ctx context.Context, client client.Client, hu
 	if foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs != nil {
 		copiedAlertmanagerConfigs := make([]cmomanifests.AdditionalAlertmanagerConfig, 0)
 		for _, v := range foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs {
-			if !IsManaged(v, hubInfo) {
+			if !IsManaged(v, hubInfo, "") {
 				copiedAlertmanagerConfigs = append(copiedAlertmanagerConfigs, v)
 			}
 		}
@@ -598,11 +586,25 @@ func CreateOrUpdateCMOConfig(
 	hubInfo *operatorconfig.HubInfo,
 	caSecret string,
 	certSecret string,
-	omitBearerToken bool,
+	accessorSecret string,
 	namespace string,
 ) (bool, error) {
+	amMtlsCARef := caSecret
+	if amMtlsCARef == "" {
+		amMtlsCARef = AppendHubClusterID(amMtlsCaName, hubInfo)
+	}
+	amMtlsCertRef := certSecret
+	if amMtlsCertRef == "" {
+		amMtlsCertRef = AppendHubClusterID(amMtlsCertName, hubInfo)
+	}
+
+	amAccessorRef := accessorSecret
+	if amAccessorRef == "" {
+		amAccessorRef = AppendHubClusterID(HubAmAccessorSecretName, hubInfo)
+	}
+
 	newExternalLabels := map[string]string{operatorconfig.ClusterLabelKeyForAlerts: clusterID}
-	newAlertmanagerConfigs := []cmomanifests.AdditionalAlertmanagerConfig{newAdditionalAlertmanagerConfig(hubInfo, caSecret, certSecret, omitBearerToken)}
+	newAlertmanagerConfigs := []cmomanifests.AdditionalAlertmanagerConfig{newAdditionalAlertmanagerConfig(hubInfo.AlertmanagerEndpoint, amMtlsCARef, amMtlsCertRef, amAccessorRef)}
 	newPmK8sConfig := &cmomanifests.PrometheusK8sConfig{
 		ExternalLabels:      newExternalLabels,
 		AlertmanagerConfigs: newAlertmanagerConfigs,
@@ -664,18 +666,18 @@ func CreateOrUpdateCMOConfig(
 		existing := false
 		var index int
 		for i, cfg := range updatedCMOCfg.PrometheusK8sConfig.AlertmanagerConfigs {
-			if IsManaged(cfg, hubInfo) {
+			if IsManaged(cfg, hubInfo, caSecret) {
 				existing = true
 				index = i
 				break
 			}
 		}
 		if existing {
-			updatedCMOCfg.PrometheusK8sConfig.AlertmanagerConfigs[index] = newAdditionalAlertmanagerConfig(hubInfo, caSecret, certSecret, omitBearerToken)
+			updatedCMOCfg.PrometheusK8sConfig.AlertmanagerConfigs[index] = newAdditionalAlertmanagerConfig(hubInfo.AlertmanagerEndpoint, amMtlsCARef, amMtlsCertRef, amAccessorRef)
 		} else {
 			updatedCMOCfg.PrometheusK8sConfig.AlertmanagerConfigs = append(
 				updatedCMOCfg.PrometheusK8sConfig.AlertmanagerConfigs,
-				newAdditionalAlertmanagerConfig(hubInfo, caSecret, certSecret, omitBearerToken),
+				newAdditionalAlertmanagerConfig(hubInfo.AlertmanagerEndpoint, amMtlsCARef, amMtlsCertRef, amAccessorRef),
 			)
 		}
 
@@ -714,7 +716,7 @@ func CreateOrUpdateUserWorkloadMonitoringConfig(
 	hubInfo *operatorconfig.HubInfo,
 	caSecret string,
 	certSecret string,
-	omitBearerToken bool,
+	accessorSecret string,
 ) error {
 	// handle the case when alert forwarding is disabled globally or UWM alerting is disabled specifically
 	if hubInfo.AlertmanagerEndpoint == "" || hubInfo.UWMAlertingDisabled {
@@ -722,8 +724,22 @@ func CreateOrUpdateUserWorkloadMonitoringConfig(
 		return RevertUserWorkloadMonitoringConfig(ctx, client, hubInfo)
 	}
 
+	amMtlsCARef := caSecret
+	if amMtlsCARef == "" {
+		amMtlsCARef = AppendHubClusterID(amMtlsCaName, hubInfo)
+	}
+	amMtlsCertRef := certSecret
+	if amMtlsCertRef == "" {
+		amMtlsCertRef = AppendHubClusterID(amMtlsCertName, hubInfo)
+	}
+
+	amAccessorRef := accessorSecret
+	if amAccessorRef == "" {
+		amAccessorRef = AppendHubClusterID(HubAmAccessorSecretName, hubInfo)
+	}
+
 	alertCfg := cmomanifests.PrometheusRestrictedConfig{
-		AlertmanagerConfigs: []cmomanifests.AdditionalAlertmanagerConfig{newAdditionalAlertmanagerConfig(hubInfo, caSecret, certSecret, omitBearerToken)},
+		AlertmanagerConfigs: []cmomanifests.AdditionalAlertmanagerConfig{newAdditionalAlertmanagerConfig(hubInfo.AlertmanagerEndpoint, amMtlsCARef, amMtlsCertRef, amAccessorRef)},
 	}
 	newCfg := cmomanifests.UserWorkloadConfiguration{
 		Prometheus: &alertCfg,
@@ -772,16 +788,19 @@ func CreateOrUpdateUserWorkloadMonitoringConfig(
 		exists := false
 		var index int
 		for i, cfg := range parsed.Prometheus.AlertmanagerConfigs {
-			if IsManaged(cfg, hubInfo) {
+			if IsManaged(cfg, hubInfo, caSecret) {
 				exists = true
 				index = i
 				break
 			}
 		}
 		if !exists {
-			parsed.Prometheus.AlertmanagerConfigs = append(parsed.Prometheus.AlertmanagerConfigs, newAdditionalAlertmanagerConfig(hubInfo, caSecret, certSecret, omitBearerToken))
+			parsed.Prometheus.AlertmanagerConfigs = append(
+				parsed.Prometheus.AlertmanagerConfigs,
+				newAdditionalAlertmanagerConfig(hubInfo.AlertmanagerEndpoint, amMtlsCARef, amMtlsCertRef, amAccessorRef),
+			)
 		} else {
-			parsed.Prometheus.AlertmanagerConfigs[index] = newAdditionalAlertmanagerConfig(hubInfo, caSecret, certSecret, omitBearerToken)
+			parsed.Prometheus.AlertmanagerConfigs[index] = newAdditionalAlertmanagerConfig(hubInfo.AlertmanagerEndpoint, amMtlsCARef, amMtlsCertRef, amAccessorRef)
 		}
 
 		// remove am configs from previous versions if any prior to Global Hub Changes (ACM 2.15.0)
@@ -873,11 +892,16 @@ func InManagedFields(cm *corev1.ConfigMap) bool {
 }
 
 // IsManaged checks if the additional alertmanager config is managed by ACM
-func IsManaged(amc cmomanifests.AdditionalAlertmanagerConfig, hubInfo *operatorconfig.HubInfo) bool {
+func IsManaged(amc cmomanifests.AdditionalAlertmanagerConfig, hubInfo *operatorconfig.HubInfo, caSecret string) bool {
 	if amc.TLSConfig.CA == nil {
 		return false
 	}
 	caName := amc.TLSConfig.CA.Name
+
+	if caSecret != "" && caName == caSecret {
+		return true
+	}
+
 	if hubInfo != nil {
 		switch caName {
 		case HubAmRouterCASecretName + "-" + hubInfo.HubClusterID,
@@ -966,7 +990,7 @@ func RevertUserWorkloadMonitoringConfig(ctx context.Context, client client.Clien
 	if parsed.Prometheus.AlertmanagerConfigs != nil {
 		copiedAlertmanagerConfigs := make([]cmomanifests.AdditionalAlertmanagerConfig, 0)
 		for _, v := range parsed.Prometheus.AlertmanagerConfigs {
-			if !IsManaged(v, hubInfo) {
+			if !IsManaged(v, hubInfo, "") {
 				copiedAlertmanagerConfigs = append(copiedAlertmanagerConfigs, v)
 			}
 		}

@@ -161,7 +161,6 @@ func runMCOA(args []string) {
 	var enableLeaderElection bool
 	var probeAddr string
 	var hubAmURL string
-	var hubID string
 	var clusterID string
 	var namespace string
 	var hubAmCASecret string
@@ -174,7 +173,6 @@ func runMCOA(args []string) {
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
 	fs.StringVar(&hubAmURL, "hub-alertmanager-url", "", "The URL of the Hub's Alertmanager.")
-	fs.StringVar(&hubID, "hub-id", "", "The ID of the Hub cluster.")
 	fs.StringVar(&clusterID, "cluster-id", "", "The ID of the managed cluster.")
 	fs.StringVar(&namespace, "namespace", "", "The namespace the operator is running in.")
 	fs.StringVar(&hubAmCASecret, "hub-alertmanager-ca-secret", "", "The name of the CA secret for the Hub's Alertmanager.")
@@ -191,8 +189,18 @@ func runMCOA(args []string) {
 		os.Exit(1)
 	}
 
-	if hubID == "" {
-		setupLog.Error(fmt.Errorf("hub-id flag not set"), "unable to start manager")
+	if hubAmCASecret == "" {
+		setupLog.Error(fmt.Errorf("hub-alertmanager-ca-secret flag not set"), "unable to start manager")
+		os.Exit(1)
+	}
+
+	if hubAmCertSecret == "" {
+		setupLog.Error(fmt.Errorf("hub-alertmanager-cert-secret flag not set"), "unable to start manager")
+		os.Exit(1)
+	}
+
+	if hubAmAccessorSecret == "" {
+		setupLog.Error(fmt.Errorf("hub-alertmanager-accessor-secret flag not set"), "unable to start manager")
 		os.Exit(1)
 	}
 
@@ -212,7 +220,6 @@ func runMCOA(args []string) {
 
 	hubInfo := &operatorconfig.HubInfo{
 		AlertmanagerEndpoint: hubAmURL,
-		HubClusterID:         hubID,
 	}
 
 	if err = mcoa.NewMCOAAgentReconciler(

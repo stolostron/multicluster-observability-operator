@@ -173,7 +173,18 @@ func TestMCOAAgentReconciler_Reconcile(t *testing.T) {
 			// Capture initial metric value
 			initialMetric := testutil.ToFloat64(cmoConfigConflictsTotal)
 
-			r := NewMCOAAgentReconciler(c, ctrl.Log.WithName("test"), s, recorder, namespace, clusterID, tt.hubInfo, "", "", "")
+			r := NewMCOAAgentReconciler(
+				c,
+				ctrl.Log.WithName("test"),
+				s,
+				recorder,
+				namespace,
+				clusterID,
+				tt.hubInfo,
+				"hub-alertmanager-router-ca",
+				"obs-alertmanager-mtls-cert",
+				"observability-alertmanager-accessor",
+			)
 
 			_, err := r.Reconcile(context.Background(), tt.req)
 

@@ -120,9 +120,9 @@ func TestMCOAAgentIntegration(t *testing.T) {
 		namespace,
 		"test-cluster-id",
 		hubInfo,
-		"",
-		"",
-		"",
+		"hub-alertmanager-router-ca",
+		"obs-alertmanager-mtls-cert",
+		"observability-alertmanager-accessor",
 	)
 	err = reconciler.SetupWithManager(mgr)
 	require.NoError(t, err)

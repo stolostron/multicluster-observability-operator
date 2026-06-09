@@ -76,22 +76,6 @@ func (r *cmoConfigReconciler) reconcile(ctx context.Context, req client.ObjectKe
 		}
 	}
 
-	accessorSecret := r.AccessorSecret
-	if accessorSecret == "" {
-		accessorSecret = observabilityendpoint.HubAmAccessorSecretName
-	}
-
-	if err := observabilityendpoint.CreateHubAmAccessorTokenSecret(
-		ctx,
-		r.Client,
-		accessorSecret,
-		r.Namespace,
-		operatorconfig.OCPClusterMonitoringNamespace,
-		r.HubInfo,
-	); err != nil {
-		return fmt.Errorf("failed to create or update the alertmanager accessor token secret: %w", err)
-	}
-
 	_, err = observabilityendpoint.CreateOrUpdateCMOConfig(
 		ctx,
 		r.Client,
@@ -99,37 +83,21 @@ func (r *cmoConfigReconciler) reconcile(ctx context.Context, req client.ObjectKe
 		r.HubInfo,
 		r.CASecret,
 		r.CertSecret,
-		false, // omitBearerToken
-		"",    // Pass empty namespace to skip legacy revert-marker logic
+		r.AccessorSecret,
+		"", // Pass empty namespace to skip legacy revert-marker logic
 	)
 
 	return err
 }
 
 func (r *cmoConfigReconciler) reconcileUWLConfig(ctx context.Context) error {
-	accessorSecret := r.AccessorSecret
-	if accessorSecret == "" {
-		accessorSecret = observabilityendpoint.HubAmAccessorSecretName
-	}
-
-	if err := observabilityendpoint.CreateHubAmAccessorTokenSecret(
-		ctx,
-		r.Client,
-		accessorSecret,
-		r.Namespace,
-		operatorconfig.OCPUserWorkloadMonitoringNamespace,
-		r.HubInfo,
-	); err != nil {
-		return fmt.Errorf("failed to create or update alertmanager accessor token in UWM namespace: %w", err)
-	}
-
 	if err := observabilityendpoint.CreateOrUpdateUserWorkloadMonitoringConfig(
 		ctx,
 		r.Client,
 		r.HubInfo,
 		r.CASecret,
 		r.CertSecret,
-		false, // omitBearerToken
+		r.AccessorSecret,
 	); err != nil {
 		return fmt.Errorf("failed to create or update user workload monitoring config: %w", err)
 	}
@@ -159,7 +127,7 @@ func (r *cmoConfigReconciler) detectConflict(cm *corev1.ConfigMap, hubInfo *oper
 
 	foundManaged := false
 	for _, amc := range parsed.PrometheusK8sConfig.AlertmanagerConfigs {
-		if observabilityendpoint.IsManaged(amc, hubInfo) {
+		if observabilityendpoint.IsManaged(amc, hubInfo, r.CASecret) {
 			foundManaged = true
 			break
 		}

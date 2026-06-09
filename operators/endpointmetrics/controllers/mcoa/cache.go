@@ -13,7 +13,7 @@ import (
 )
 
 // GetCacheOptions returns the surgical cache options for the MCOA bridge agent.
-// It whitelists only the specific ConfigMaps and Secrets required for Alertmanager configuration injection.
+// It whitelists only the specific ConfigMaps required for Alertmanager configuration injection.
 func GetCacheOptions() cache.Options {
 	return cache.Options{
 		ByObject: map[client.Object]cache.ByObject{
@@ -25,12 +25,6 @@ func GetCacheOptions() cache.Options {
 					operatorconfig.OCPUserWorkloadMonitoringNamespace: {
 						FieldSelector: fields.OneTermEqualSelector("metadata.name", operatorconfig.OCPUserWorkloadMonitoringConfigMap),
 					},
-				},
-			},
-			&corev1.Secret{}: {
-				Namespaces: map[string]cache.Config{
-					operatorconfig.OCPClusterMonitoringNamespace:      {},
-					operatorconfig.OCPUserWorkloadMonitoringNamespace: {},
 				},
 			},
 		},

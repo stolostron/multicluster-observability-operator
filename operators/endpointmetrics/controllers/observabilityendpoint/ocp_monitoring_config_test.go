@@ -599,7 +599,7 @@ func newUserWorkloadMonitoringConfigCM(configDataStr string, mgr string) *corev1
 
 func testCreateOrUpdateUserWorkloadMonitoringConfig(t *testing.T, hubInfo *operatorconfig.HubInfo, c client.Client, expectedCMDelete bool, tokenValue string) {
 	ctx := context.TODO()
-	err := CreateOrUpdateUserWorkloadMonitoringConfig(ctx, c, hubInfo, "", "", false)
+	err := CreateOrUpdateUserWorkloadMonitoringConfig(ctx, c, hubInfo, "", "", "")
 	if err != nil {
 		t.Fatalf("Failed to create or update the user-workload-monitoring-config configmap: (%v)", err)
 	}
@@ -712,7 +712,7 @@ prometheus:
 	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 
 	// Test disabling alert forwarding
-	err = CreateOrUpdateUserWorkloadMonitoringConfig(ctx, c, hubInfo, "", "", false)
+	err = CreateOrUpdateUserWorkloadMonitoringConfig(ctx, c, hubInfo, "", "", "")
 	if err != nil {
 		t.Fatalf("Failed to create or update the user-workload-monitoring-config configmap: (%v)", err)
 	}
@@ -757,7 +757,7 @@ prometheus:
 		t.Fatalf("Failed to unmarshal hubInfo: (%v)", err)
 	}
 
-	err = CreateOrUpdateUserWorkloadMonitoringConfig(ctx, c, hubInfo, "", "", false)
+	err = CreateOrUpdateUserWorkloadMonitoringConfig(ctx, c, hubInfo, "", "", "")
 	if err != nil {
 		t.Fatalf("Failed to create or update the user-workload-monitoring-config configmap: (%v)", err)
 	}
@@ -843,7 +843,7 @@ prometheus:
 	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 
 	// Test with UWM alerting disabled
-	err = CreateOrUpdateUserWorkloadMonitoringConfig(ctx, c, hubInfo, "", "", false)
+	err = CreateOrUpdateUserWorkloadMonitoringConfig(ctx, c, hubInfo, "", "", "")
 	if err != nil {
 		t.Fatalf("Failed to create or update the user-workload-monitoring-config configmap: (%v)", err)
 	}
@@ -888,7 +888,7 @@ prometheus:
 		t.Fatalf("Failed to unmarshal hubInfo: (%v)", err)
 	}
 
-	err = CreateOrUpdateUserWorkloadMonitoringConfig(ctx, c, hubInfo, "", "", false)
+	err = CreateOrUpdateUserWorkloadMonitoringConfig(ctx, c, hubInfo, "", "", "")
 	if err != nil {
 		t.Fatalf("Failed to create or update the user-workload-monitoring-config configmap: (%v)", err)
 	}
