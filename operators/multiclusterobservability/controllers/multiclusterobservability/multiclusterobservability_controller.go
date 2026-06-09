@@ -1096,6 +1096,13 @@ func (r *MultiClusterObservabilityReconciler) undeployMCOAGrafanaResources(
 	for _, res := range toDelete {
 		resNS := res.GetNamespace()
 		if err := deployer.Undeploy(ctx, res, instance); err != nil {
+			if meta.IsNoMatchError(err) {
+				kind := res.GetKind()
+				if kind == monitoringv1.PrometheusRuleKind || kind == monitoringv1alpha1.ScrapeConfigsKind {
+					log.Info("CRD not available on MCO, skipping cleanup", "Kind", kind)
+					continue
+				}
+			}
 			return fmt.Errorf("failed to undeploy %s %s/%s: %w", res.GetKind(), resNS, res.GetName(), err)
 		}
 	}
