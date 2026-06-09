@@ -264,11 +264,27 @@ spec:
               ./dev-scripts/image-override.sh
 
               echo "=== Waiting for MCO operator rollout after image override ==="
-              oc rollout status deployment/multicluster-observability-operator \
-                -n open-cluster-management --timeout=300s || true
-              oc wait pod -n open-cluster-management \
-                -l name=multicluster-observability-operator \
-                --for=condition=Ready --timeout=300s
+              # MCH needs time to process the annotation and update the deployment.
+              # Poll until exactly 1 MCO pod is Running (rollout complete).
+              TIMEOUT=300
+              ELAPSED=0
+              while true; do
+                RUNNING=$(oc get pods -n open-cluster-management \
+                  -l name=multicluster-observability-operator \
+                  --field-selector=status.phase=Running --no-headers 2>/dev/null | wc -l | tr -d ' ')
+                if [[ "$RUNNING" -eq 1 ]]; then
+                  echo "MCO operator rollout complete (1 Running pod)"
+                  break
+                fi
+                if [[ "$ELAPSED" -ge "$TIMEOUT" ]]; then
+                  echo "WARNING: Timed out waiting for MCO rollout ($RUNNING Running pods)"
+                  oc get pods -n open-cluster-management -l name=multicluster-observability-operator -o wide
+                  break
+                fi
+                echo "Waiting for MCO rollout... ($RUNNING Running pods, ${ELAPSED}s elapsed)"
+                sleep 15
+                ELAPSED=$((ELAPSED + 15))
+              done
 
               echo "=== Verifying image overrides ==="
               oc get configmap image-override -n open-cluster-management -o yaml
