@@ -68,24 +68,41 @@ func printVersion() {
 	setupLog.Info(fmt.Sprintf("Go OS/Arch: %s/%s", runtime.GOOS, runtime.GOARCH))
 }
 
+var (
+	mcoaRunner    = runMCOA
+	legacyRunner  = runLegacy
+	cleanupRunner = runCleanup
+)
+
 func main() {
 	printVersion()
+	execute(os.Args)
+}
 
+func execute(args []string) {
 	cmd := "legacy"
-	if len(os.Args) > 1 {
-		cmd = os.Args[1]
+	if len(args) > 1 {
+		cmd = args[1]
 	}
 
 	switch cmd {
 	case "mcoa":
-		runMCOA(os.Args[2:])
+		// len(args) >= 2 is guaranteed since args[1] matches "mcoa"
+		mcoaRunner(args[2:])
 	case "legacy":
-		runLegacy(os.Args[2:])
+		// Guard against len(args) == 1 (no arguments) defaulting to legacy mode
+		subArgs := []string{}
+		if len(args) > 2 {
+			subArgs = args[2:]
+		}
+		legacyRunner(subArgs)
 	case "cleanup":
-		runCleanup(os.Args[2:])
+		// len(args) >= 2 is guaranteed since args[1] matches "cleanup"
+		cleanupRunner(args[2:])
 	default:
 		// default to legacy for backward compatibility if argument is just a flag
-		runLegacy(os.Args[1:])
+		// len(args) >= 2 is guaranteed since len(args) > 1 and it did not match subcommands above
+		legacyRunner(args[1:])
 	}
 }
 
