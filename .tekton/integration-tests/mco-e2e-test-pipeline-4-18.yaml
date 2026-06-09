@@ -268,6 +268,13 @@ spec:
               export GRAFANA_DASHBOARD_LOADER_IMAGE="${GRAFANA_DASHBOARD_LOADER_IMAGE_REF}"
               ./dev-scripts/image-override.sh
 
+              echo "=== Waiting for MCO operator rollout after image override ==="
+              oc rollout status deployment/multicluster-observability-operator \
+                -n open-cluster-management --timeout=300s || true
+              oc wait pod -n open-cluster-management \
+                -l name=multicluster-observability-operator \
+                --for=condition=Ready --timeout=300s
+
               echo "=== Verifying image overrides ==="
               oc get configmap image-override -n open-cluster-management -o yaml
               oc get multiclusterhub multiclusterhub -n open-cluster-management -o jsonpath='{.metadata.annotations}' | jq .
