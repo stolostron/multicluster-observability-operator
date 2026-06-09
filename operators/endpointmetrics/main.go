@@ -164,6 +164,9 @@ func runMCOA(args []string) {
 	var hubID string
 	var clusterID string
 	var namespace string
+	var hubAmCASecret string
+	var hubAmCertSecret string
+	var hubAmAccessorSecret string
 
 	fs.StringVar(&metricsAddr, "metrics-bind-address", ":8383", "The address the metric endpoint binds to.")
 	fs.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
@@ -174,6 +177,9 @@ func runMCOA(args []string) {
 	fs.StringVar(&hubID, "hub-id", "", "The ID of the Hub cluster.")
 	fs.StringVar(&clusterID, "cluster-id", "", "The ID of the managed cluster.")
 	fs.StringVar(&namespace, "namespace", "", "The namespace the operator is running in.")
+	fs.StringVar(&hubAmCASecret, "hub-alertmanager-ca-secret", "", "The name of the CA secret for the Hub's Alertmanager.")
+	fs.StringVar(&hubAmCertSecret, "hub-alertmanager-cert-secret", "", "The name of the TLS cert/key secret for the Hub's Alertmanager.")
+	fs.StringVar(&hubAmAccessorSecret, "hub-alertmanager-accessor-secret", "", "The name of the accessor token secret for the Hub's Alertmanager.")
 
 	klog.InitFlags(fs)
 	_ = fs.Parse(args)
@@ -217,6 +223,9 @@ func runMCOA(args []string) {
 		namespace,
 		clusterID,
 		hubInfo,
+		hubAmCASecret,
+		hubAmCertSecret,
+		hubAmAccessorSecret,
 	).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "MCOA-Agent")
 		os.Exit(1)

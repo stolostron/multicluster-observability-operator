@@ -41,11 +41,14 @@ func registerMetrics() {
 // cmoConfigReconciler handles the reconciliation of the Cluster Monitoring Operator configuration.
 type cmoConfigReconciler struct {
 	client.Client
-	Log       logr.Logger
-	Recorder  record.EventRecorder
-	Namespace string
-	ClusterID string
-	HubInfo   *operatorconfig.HubInfo
+	Log            logr.Logger
+	Recorder       record.EventRecorder
+	Namespace      string
+	ClusterID      string
+	HubInfo        *operatorconfig.HubInfo
+	CASecret       string
+	CertSecret     string
+	AccessorSecret string
 }
 
 func (r *cmoConfigReconciler) reconcile(ctx context.Context, req client.ObjectKey) error {
@@ -73,22 +76,60 @@ func (r *cmoConfigReconciler) reconcile(ctx context.Context, req client.ObjectKe
 		}
 	}
 
+	accessorSecret := r.AccessorSecret
+	if accessorSecret == "" {
+		accessorSecret = observabilityendpoint.HubAmAccessorSecretName
+	}
+
+	if err := observabilityendpoint.CreateHubAmAccessorTokenSecret(
+		ctx,
+		r.Client,
+		accessorSecret,
+		r.Namespace,
+		operatorconfig.OCPClusterMonitoringNamespace,
+		r.HubInfo,
+	); err != nil {
+		return fmt.Errorf("failed to create or update the alertmanager accessor token secret: %w", err)
+	}
+
 	_, err = observabilityendpoint.CreateOrUpdateCMOConfig(
 		ctx,
 		r.Client,
 		r.ClusterID,
 		r.HubInfo,
-		"", // Pass empty namespace to skip legacy revert-marker logic
+		r.CASecret,
+		r.CertSecret,
+		false, // omitBearerToken
+		"",    // Pass empty namespace to skip legacy revert-marker logic
 	)
 
 	return err
 }
 
 func (r *cmoConfigReconciler) reconcileUWLConfig(ctx context.Context) error {
+	accessorSecret := r.AccessorSecret
+	if accessorSecret == "" {
+		accessorSecret = observabilityendpoint.HubAmAccessorSecretName
+	}
+
+	if err := observabilityendpoint.CreateHubAmAccessorTokenSecret(
+		ctx,
+		r.Client,
+		accessorSecret,
+		r.Namespace,
+		operatorconfig.OCPUserWorkloadMonitoringNamespace,
+		r.HubInfo,
+	); err != nil {
+		return fmt.Errorf("failed to create or update alertmanager accessor token in UWM namespace: %w", err)
+	}
+
 	if err := observabilityendpoint.CreateOrUpdateUserWorkloadMonitoringConfig(
 		ctx,
 		r.Client,
 		r.HubInfo,
+		r.CASecret,
+		r.CertSecret,
+		false, // omitBearerToken
 	); err != nil {
 		return fmt.Errorf("failed to create or update user workload monitoring config: %w", err)
 	}

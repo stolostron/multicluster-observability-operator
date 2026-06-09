@@ -48,6 +48,16 @@ func TestMCOAAgentReconciler_Reconcile(t *testing.T) {
 		},
 	}
 
+	sourceAmAccessorSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      observabilityendpoint.HubAmAccessorSecretName,
+			Namespace: namespace,
+		},
+		Data: map[string][]byte{
+			"token": []byte("test-token"),
+		},
+	}
+
 	clusterVersion := &ocinfrav1.ClusterVersion{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "version",
@@ -75,7 +85,7 @@ func TestMCOAAgentReconciler_Reconcile(t *testing.T) {
 				},
 			},
 			hubInfo:      hubInfo,
-			existingObjs: []client.Object{amAccessorSecret, clusterVersion},
+			existingObjs: []client.Object{amAccessorSecret, sourceAmAccessorSecret, clusterVersion},
 		},
 		{
 			name: "CMO Config Conflict - Metric incremented and event emitted",
@@ -88,6 +98,7 @@ func TestMCOAAgentReconciler_Reconcile(t *testing.T) {
 			hubInfo: hubInfo,
 			existingObjs: []client.Object{
 				amAccessorSecret,
+				sourceAmAccessorSecret,
 				clusterVersion,
 				&corev1.ConfigMap{
 					ObjectMeta: metav1.ObjectMeta{
@@ -114,7 +125,7 @@ func TestMCOAAgentReconciler_Reconcile(t *testing.T) {
 				},
 			},
 			hubInfo:      hubInfo,
-			existingObjs: []client.Object{amAccessorSecret, clusterVersion},
+			existingObjs: []client.Object{amAccessorSecret, sourceAmAccessorSecret, clusterVersion},
 		},
 		{
 			name: "Ignored resource - No action",
@@ -162,7 +173,7 @@ func TestMCOAAgentReconciler_Reconcile(t *testing.T) {
 			// Capture initial metric value
 			initialMetric := testutil.ToFloat64(cmoConfigConflictsTotal)
 
-			r := NewMCOAAgentReconciler(c, ctrl.Log.WithName("test"), s, recorder, namespace, clusterID, tt.hubInfo)
+			r := NewMCOAAgentReconciler(c, ctrl.Log.WithName("test"), s, recorder, namespace, clusterID, tt.hubInfo, "", "", "")
 
 			_, err := r.Reconcile(context.Background(), tt.req)
 

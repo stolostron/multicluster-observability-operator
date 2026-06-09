@@ -24,12 +24,15 @@ import (
 // MCOAAgentReconciler reconciles the MCOA components on the managed cluster.
 type MCOAAgentReconciler struct {
 	client.Client
-	Log       logr.Logger
-	Scheme    *runtime.Scheme
-	Recorder  record.EventRecorder
-	Namespace string
-	ClusterID string
-	HubInfo   *operatorconfig.HubInfo
+	Log            logr.Logger
+	Scheme         *runtime.Scheme
+	Recorder       record.EventRecorder
+	Namespace      string
+	ClusterID      string
+	HubInfo        *operatorconfig.HubInfo
+	CASecret       string
+	CertSecret     string
+	AccessorSecret string
 
 	cmoReconciler *cmoConfigReconciler
 }
@@ -43,23 +46,32 @@ func NewMCOAAgentReconciler(
 	namespace string,
 	clusterID string,
 	hubInfo *operatorconfig.HubInfo,
+	caSecret string,
+	certSecret string,
+	accessorSecret string,
 ) *MCOAAgentReconciler {
 	registerMetrics()
 	return &MCOAAgentReconciler{
-		Client:    client,
-		Log:       log,
-		Scheme:    scheme,
-		Recorder:  recorder,
-		Namespace: namespace,
-		ClusterID: clusterID,
-		HubInfo:   hubInfo,
+		Client:         client,
+		Log:            log,
+		Scheme:         scheme,
+		Recorder:       recorder,
+		Namespace:      namespace,
+		ClusterID:      clusterID,
+		HubInfo:        hubInfo,
+		CASecret:       caSecret,
+		CertSecret:     certSecret,
+		AccessorSecret: accessorSecret,
 		cmoReconciler: &cmoConfigReconciler{
-			Client:    client,
-			Log:       log.WithName("CMO"),
-			Recorder:  recorder,
-			Namespace: namespace,
-			ClusterID: clusterID,
-			HubInfo:   hubInfo,
+			Client:         client,
+			Log:            log.WithName("CMO"),
+			Recorder:       recorder,
+			Namespace:      namespace,
+			ClusterID:      clusterID,
+			HubInfo:        hubInfo,
+			CASecret:       caSecret,
+			CertSecret:     certSecret,
+			AccessorSecret: accessorSecret,
 		},
 	}
 }

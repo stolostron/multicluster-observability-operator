@@ -149,13 +149,13 @@ func unsetConfigReverted(ctx context.Context, client client.Client, ns string) e
 	return nil
 }
 
-// createHubAmAccessorTokenSecret creates the secret that contains access token of the Hub's Alertmanager.
-func createHubAmAccessorTokenSecret(ctx context.Context, client client.Client, namespace, targetNamespace string, hubInfo *operatorconfig.HubInfo) error {
+// CreateHubAmAccessorTokenSecret creates the secret that contains access token of the Hub's Alertmanager.
+func CreateHubAmAccessorTokenSecret(ctx context.Context, client client.Client, sourceName, namespace, targetNamespace string, hubInfo *operatorconfig.HubInfo) error {
 	hubAmAccessorSecret := AppendHubClusterID(HubAmAccessorSecretName, hubInfo)
 	found := &corev1.Secret{}
 	targetErr := client.Get(ctx, types.NamespacedName{Name: hubAmAccessorSecret, Namespace: targetNamespace}, found)
 
-	amAccessorToken, err := getAmAccessorToken(ctx, client, namespace)
+	amAccessorToken, err := getAmAccessorToken(ctx, client, sourceName, namespace)
 	if err != nil {
 		// If the source secret is missing but the target already exists, we skip the sync.
 		// This avoids reconcile failures during MCOA transition where legacy source secrets
@@ -164,7 +164,7 @@ func createHubAmAccessorTokenSecret(ctx context.Context, client client.Client, n
 			log.Info("target accessor secret already exists and source secret is missing, skipping sync", "target", targetNamespace+"/"+hubAmAccessorSecret, "source_ns", namespace)
 			return nil
 		}
-		return fmt.Errorf("fail to get %s/%s secret: %w", namespace, HubAmAccessorSecretName, err)
+		return fmt.Errorf("fail to get %s/%s secret: %w", namespace, sourceName, err)
 	}
 
 	dataMap := map[string][]byte{hubAmAccessorSecretKey: []byte(amAccessorToken)}
@@ -205,11 +205,11 @@ func createHubAmAccessorTokenSecret(ctx context.Context, client client.Client, n
 	}
 }
 
-// getAmAccessorToken retrieves the alertmanager access token from observability-alertmanager-accessor secret.
-func getAmAccessorToken(ctx context.Context, client client.Client, ns string) (string, error) {
+// getAmAccessorToken retrieves the alertmanager access token from source secret.
+func getAmAccessorToken(ctx context.Context, client client.Client, sourceName, ns string) (string, error) {
 	amAccessorSecret := &corev1.Secret{}
 	if err := client.Get(ctx, types.NamespacedName{
-		Name:      HubAmAccessorSecretName,
+		Name:      sourceName,
 		Namespace: ns,
 	}, amAccessorSecret); err != nil {
 		return "", err
@@ -217,7 +217,7 @@ func getAmAccessorToken(ctx context.Context, client client.Client, ns string) (s
 
 	amAccessorToken := amAccessorSecret.Data[hubAmAccessorSecretKey]
 	if amAccessorToken == nil {
-		return "", fmt.Errorf("no token in secret %s", HubAmAccessorSecretName)
+		return "", fmt.Errorf("no token in secret %s", sourceName)
 	}
 
 	return string(amAccessorToken), nil
@@ -288,9 +288,26 @@ func AppendHubClusterID(secretName string, hubInfo *operatorconfig.HubInfo) stri
 	return secretName + "-" + hubInfo.HubClusterID
 }
 
-func newAdditionalAlertmanagerConfig(hubInfo *operatorconfig.HubInfo) cmomanifests.AdditionalAlertmanagerConfig {
-	amMtlsCARef := AppendHubClusterID(amMtlsCaName, hubInfo)
-	amMtlsCertRef := AppendHubClusterID(amMtlsCertName, hubInfo)
+func newAdditionalAlertmanagerConfig(hubInfo *operatorconfig.HubInfo, caSecret string, certSecret string, omitBearerToken bool) cmomanifests.AdditionalAlertmanagerConfig {
+	amMtlsCARef := caSecret
+	if amMtlsCARef == "" {
+		amMtlsCARef = AppendHubClusterID(amMtlsCaName, hubInfo)
+	}
+	amMtlsCertRef := certSecret
+	if amMtlsCertRef == "" {
+		amMtlsCertRef = AppendHubClusterID(amMtlsCertName, hubInfo)
+	}
+
+	var bearerToken *corev1.SecretKeySelector
+	if !omitBearerToken {
+		bearerToken = &corev1.SecretKeySelector{
+			LocalObjectReference: corev1.LocalObjectReference{
+				Name: AppendHubClusterID(HubAmAccessorSecretName, hubInfo),
+			},
+			Key: hubAmAccessorSecretKey,
+		}
+	}
+
 	config := cmomanifests.AdditionalAlertmanagerConfig{
 		Scheme:     "https",
 		PathPrefix: "/",
@@ -316,12 +333,7 @@ func newAdditionalAlertmanagerConfig(hubInfo *operatorconfig.HubInfo) cmomanifes
 			},
 			InsecureSkipVerify: false,
 		},
-		BearerToken: &corev1.SecretKeySelector{
-			LocalObjectReference: corev1.LocalObjectReference{
-				Name: AppendHubClusterID(HubAmAccessorSecretName, hubInfo),
-			},
-			Key: hubAmAccessorSecretKey,
-		},
+		BearerToken:   bearerToken,
 		StaticConfigs: []string{},
 	}
 	amURL, err := url.Parse(hubInfo.AlertmanagerEndpoint)
@@ -408,13 +420,13 @@ func createOrUpdateClusterMonitoringConfig(
 	}
 
 	// create the observability-alertmanager-accessor secret if it doesn't exist or update it if needed
-	if err := createHubAmAccessorTokenSecret(ctx, client, namespace, targetNamespace, hubInfo); err != nil {
+	if err := CreateHubAmAccessorTokenSecret(ctx, client, HubAmAccessorSecretName, namespace, targetNamespace, hubInfo); err != nil {
 		return false, fmt.Errorf("failed to create or update the alertmanager accessor token secret: %w", err)
 	}
 
 	mtlsRename := map[string]string{mtlsCertName: amMtlsCertName, mtlsCaName: amMtlsCaName}
 	for name, rename := range mtlsRename {
-		if err := createMtlsSecretInNamespace(ctx, client, namespace, targetNamespace, name, rename, hubInfo); err != nil {
+		if err := CreateMtlsSecretInNamespace(ctx, client, namespace, targetNamespace, name, rename, hubInfo); err != nil {
 			return false, fmt.Errorf("failed to copy mTLS secret %s to %s: %w", name, targetNamespace, err)
 		}
 	}
@@ -423,11 +435,11 @@ func createOrUpdateClusterMonitoringConfig(
 	// Create Router CA and Accessor Token secrets in the UWM namespace even when alert forwarding is disabled,
 	// so an external policy can configure UWM alert forwarding later if needed.
 	if nsExists {
-		if err := createHubAmAccessorTokenSecret(ctx, client, namespace, operatorconfig.OCPUserWorkloadMonitoringNamespace, hubInfo); err != nil {
+		if err := CreateHubAmAccessorTokenSecret(ctx, client, HubAmAccessorSecretName, namespace, operatorconfig.OCPUserWorkloadMonitoringNamespace, hubInfo); err != nil {
 			return false, fmt.Errorf("failed to create or update alertmanager accessor token in UWM namespace: %w", err)
 		}
 		for name, rename := range mtlsRename {
-			if err := createMtlsSecretInNamespace(ctx, client, namespace, operatorconfig.OCPUserWorkloadMonitoringNamespace, name, rename, hubInfo); err != nil {
+			if err := CreateMtlsSecretInNamespace(ctx, client, namespace, operatorconfig.OCPUserWorkloadMonitoringNamespace, name, rename, hubInfo); err != nil {
 				return false, fmt.Errorf("failed to copy mTLS secret %s to UWM namespace: %w", name, err)
 			}
 		}
@@ -464,7 +476,7 @@ func createOrUpdateClusterMonitoringConfig(
 		return false, unset(ctx, client, namespace)
 	}
 
-	updated, err := CreateOrUpdateCMOConfig(ctx, client, clusterID, hubInfo, namespace)
+	updated, err := CreateOrUpdateCMOConfig(ctx, client, clusterID, hubInfo, "", "", false, namespace)
 	if err != nil {
 		return false, err
 	}
@@ -482,7 +494,7 @@ func createOrUpdateClusterMonitoringConfig(
 	if nsExists {
 		if uwmEnabled {
 			// UWL is enabled, create or update the config
-			if err := CreateOrUpdateUserWorkloadMonitoringConfig(ctx, client, hubInfo); err != nil {
+			if err := CreateOrUpdateUserWorkloadMonitoringConfig(ctx, client, hubInfo, "", "", false); err != nil {
 				return updated, fmt.Errorf("failed to create or update user workload monitoring config: %w", err)
 			}
 		} else {
@@ -584,10 +596,13 @@ func CreateOrUpdateCMOConfig(
 	client client.Client,
 	clusterID string,
 	hubInfo *operatorconfig.HubInfo,
+	caSecret string,
+	certSecret string,
+	omitBearerToken bool,
 	namespace string,
 ) (bool, error) {
 	newExternalLabels := map[string]string{operatorconfig.ClusterLabelKeyForAlerts: clusterID}
-	newAlertmanagerConfigs := []cmomanifests.AdditionalAlertmanagerConfig{newAdditionalAlertmanagerConfig(hubInfo)}
+	newAlertmanagerConfigs := []cmomanifests.AdditionalAlertmanagerConfig{newAdditionalAlertmanagerConfig(hubInfo, caSecret, certSecret, omitBearerToken)}
 	newPmK8sConfig := &cmomanifests.PrometheusK8sConfig{
 		ExternalLabels:      newExternalLabels,
 		AlertmanagerConfigs: newAlertmanagerConfigs,
@@ -656,9 +671,12 @@ func CreateOrUpdateCMOConfig(
 			}
 		}
 		if existing {
-			updatedCMOCfg.PrometheusK8sConfig.AlertmanagerConfigs[index] = newAdditionalAlertmanagerConfig(hubInfo)
+			updatedCMOCfg.PrometheusK8sConfig.AlertmanagerConfigs[index] = newAdditionalAlertmanagerConfig(hubInfo, caSecret, certSecret, omitBearerToken)
 		} else {
-			updatedCMOCfg.PrometheusK8sConfig.AlertmanagerConfigs = append(updatedCMOCfg.PrometheusK8sConfig.AlertmanagerConfigs, newAdditionalAlertmanagerConfig(hubInfo))
+			updatedCMOCfg.PrometheusK8sConfig.AlertmanagerConfigs = append(
+				updatedCMOCfg.PrometheusK8sConfig.AlertmanagerConfigs,
+				newAdditionalAlertmanagerConfig(hubInfo, caSecret, certSecret, omitBearerToken),
+			)
 		}
 
 		// remove am configs from previous versions if any prior to Global Hub Changes (ACM 2.15.0)
@@ -694,6 +712,9 @@ func CreateOrUpdateUserWorkloadMonitoringConfig(
 	ctx context.Context,
 	client client.Client,
 	hubInfo *operatorconfig.HubInfo,
+	caSecret string,
+	certSecret string,
+	omitBearerToken bool,
 ) error {
 	// handle the case when alert forwarding is disabled globally or UWM alerting is disabled specifically
 	if hubInfo.AlertmanagerEndpoint == "" || hubInfo.UWMAlertingDisabled {
@@ -702,7 +723,7 @@ func CreateOrUpdateUserWorkloadMonitoringConfig(
 	}
 
 	alertCfg := cmomanifests.PrometheusRestrictedConfig{
-		AlertmanagerConfigs: []cmomanifests.AdditionalAlertmanagerConfig{newAdditionalAlertmanagerConfig(hubInfo)},
+		AlertmanagerConfigs: []cmomanifests.AdditionalAlertmanagerConfig{newAdditionalAlertmanagerConfig(hubInfo, caSecret, certSecret, omitBearerToken)},
 	}
 	newCfg := cmomanifests.UserWorkloadConfiguration{
 		Prometheus: &alertCfg,
@@ -758,9 +779,9 @@ func CreateOrUpdateUserWorkloadMonitoringConfig(
 			}
 		}
 		if !exists {
-			parsed.Prometheus.AlertmanagerConfigs = append(parsed.Prometheus.AlertmanagerConfigs, newAdditionalAlertmanagerConfig(hubInfo))
+			parsed.Prometheus.AlertmanagerConfigs = append(parsed.Prometheus.AlertmanagerConfigs, newAdditionalAlertmanagerConfig(hubInfo, caSecret, certSecret, omitBearerToken))
 		} else {
-			parsed.Prometheus.AlertmanagerConfigs[index] = newAdditionalAlertmanagerConfig(hubInfo)
+			parsed.Prometheus.AlertmanagerConfigs[index] = newAdditionalAlertmanagerConfig(hubInfo, caSecret, certSecret, omitBearerToken)
 		}
 
 		// remove am configs from previous versions if any prior to Global Hub Changes (ACM 2.15.0)
@@ -978,7 +999,7 @@ func RevertUserWorkloadMonitoringConfig(ctx context.Context, client client.Clien
 	return client.Update(ctx, found)
 }
 
-func createMtlsSecretInNamespace(ctx context.Context, c client.Client, sourceNamespace, targetNamespace, secretName string, secretRename string, hubInfo *operatorconfig.HubInfo) error {
+func CreateMtlsSecretInNamespace(ctx context.Context, c client.Client, sourceNamespace, targetNamespace, secretName string, secretRename string, hubInfo *operatorconfig.HubInfo) error {
 	source := &corev1.Secret{}
 	if err := c.Get(ctx, types.NamespacedName{Name: secretName, Namespace: sourceNamespace}, source); err != nil {
 		return fmt.Errorf("failed to get source secret %s/%s: %w", sourceNamespace, secretName, err)
