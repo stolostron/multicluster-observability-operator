@@ -265,23 +265,25 @@ spec:
 
               echo "=== Waiting for MCO operator rollout after image override ==="
               # MCH needs time to process the annotation and update the deployment.
-              # Poll until exactly 1 MCO pod is Running (rollout complete).
+              # Poll until exactly 1 total MCO pod exists (old terminating pod gone).
+              # The e2e test checks total pod count, not just Running, so we must
+              # wait for the old pod to fully terminate.
               TIMEOUT=300
               ELAPSED=0
               while true; do
-                RUNNING=$(oc get pods -n open-cluster-management \
+                TOTAL=$(oc get pods -n open-cluster-management \
                   -l name=multicluster-observability-operator \
-                  --field-selector=status.phase=Running --no-headers 2>/dev/null | wc -l | tr -d ' ')
-                if [[ "$RUNNING" -eq 1 ]]; then
-                  echo "MCO operator rollout complete (1 Running pod)"
+                  --no-headers 2>/dev/null | wc -l | tr -d ' ')
+                if [[ "$TOTAL" -eq 1 ]]; then
+                  echo "MCO operator rollout complete (1 total pod)"
                   break
                 fi
                 if [[ "$ELAPSED" -ge "$TIMEOUT" ]]; then
-                  echo "WARNING: Timed out waiting for MCO rollout ($RUNNING Running pods)"
+                  echo "WARNING: Timed out waiting for MCO rollout ($TOTAL total pods)"
                   oc get pods -n open-cluster-management -l name=multicluster-observability-operator -o wide
                   break
                 fi
-                echo "Waiting for MCO rollout... ($RUNNING Running pods, ${ELAPSED}s elapsed)"
+                echo "Waiting for MCO rollout... ($TOTAL total pods, ${ELAPSED}s elapsed)"
                 sleep 15
                 ELAPSED=$((ELAPSED + 15))
               done
