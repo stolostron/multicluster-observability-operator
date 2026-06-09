@@ -53,7 +53,7 @@ resolve_registry() { echo "${1:-${REGISTRY}}"; }
 # "tag" is the tag or digest suffix (e.g. "v2.17" or "sha256:abc123").
 parse_image_ref() {
   local ref="$1" repo tag name remote
-  if [[ "$ref" == *"@"* ]]; then
+  if [[ $ref == *"@"* ]]; then
     repo="${ref%%@*}"
     tag="${ref#*@}"
   else
