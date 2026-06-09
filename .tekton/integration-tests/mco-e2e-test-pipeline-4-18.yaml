@@ -244,28 +244,23 @@ spec:
                 echo "${repo}:${rev}"
               }
 
-              export MULTICLUSTER_OBSERVABILITY_OPERATOR_IMAGE_REF=$(snapshot_tag_ref "multicluster-observability-operator")
-              export ENDPOINT_MONITORING_OPERATOR_IMAGE_REF=$(snapshot_tag_ref "endpoint-monitoring-operator")
-              export METRICS_COLLECTOR_IMAGE_REF=$(snapshot_tag_ref "metrics-collector")
-              export RBAC_QUERY_PROXY_IMAGE_REF=$(snapshot_tag_ref "rbac-query-proxy")
-              export GRAFANA_DASHBOARD_LOADER_IMAGE_REF=$(snapshot_tag_ref "grafana-dashboard-loader")
+              export MCO_IMAGE=$(snapshot_tag_ref "multicluster-observability-operator")
+              export ENDPOINT_IMAGE=$(snapshot_tag_ref "endpoint-monitoring-operator")
+              export METRICS_COLLECTOR_IMAGE=$(snapshot_tag_ref "metrics-collector")
+              export RBAC_QUERY_PROXY_IMAGE=$(snapshot_tag_ref "rbac-query-proxy")
+              export GRAFANA_DASHBOARD_LOADER_IMAGE=$(snapshot_tag_ref "grafana-dashboard-loader")
 
-              echo "MCO operator image: ${MULTICLUSTER_OBSERVABILITY_OPERATOR_IMAGE_REF}"
-              echo "Endpoint monitoring image: ${ENDPOINT_MONITORING_OPERATOR_IMAGE_REF}"
-              echo "Metrics collector image: ${METRICS_COLLECTOR_IMAGE_REF}"
-              echo "RBAC query proxy image: ${RBAC_QUERY_PROXY_IMAGE_REF}"
-              echo "Grafana dashboard loader image: ${GRAFANA_DASHBOARD_LOADER_IMAGE_REF}"
+              echo "MCO operator image: ${MCO_IMAGE}"
+              echo "Endpoint monitoring image: ${ENDPOINT_IMAGE}"
+              echo "Metrics collector image: ${METRICS_COLLECTOR_IMAGE}"
+              echo "RBAC query proxy image: ${RBAC_QUERY_PROXY_IMAGE}"
+              echo "Grafana dashboard loader image: ${GRAFANA_DASHBOARD_LOADER_IMAGE}"
 
               echo "=== Installing ACM via OLM ==="
               export ACM_VERSION=2.16
               ./dev-scripts/setup-upstream-catalog.sh
 
               echo "=== Applying Konflux image overrides ==="
-              export MCO_IMAGE="${MULTICLUSTER_OBSERVABILITY_OPERATOR_IMAGE_REF}"
-              export ENDPOINT_IMAGE="${ENDPOINT_MONITORING_OPERATOR_IMAGE_REF}"
-              export METRICS_COLLECTOR_IMAGE="${METRICS_COLLECTOR_IMAGE_REF}"
-              export RBAC_QUERY_PROXY_IMAGE="${RBAC_QUERY_PROXY_IMAGE_REF}"
-              export GRAFANA_DASHBOARD_LOADER_IMAGE="${GRAFANA_DASHBOARD_LOADER_IMAGE_REF}"
               ./dev-scripts/image-override.sh
 
               echo "=== Waiting for MCO operator rollout after image override ==="
