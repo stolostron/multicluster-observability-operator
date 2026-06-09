@@ -42,10 +42,12 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
@@ -55,6 +57,7 @@ import (
 	clusterv1beta1 "open-cluster-management.io/api/cluster/v1beta1"
 	policyv1 "open-cluster-management.io/governance-policy-propagator/api/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
@@ -1345,6 +1348,60 @@ func TestUndeployMCOAGrafanaResources(t *testing.T) {
 			}
 		})
 	}
+}
+
+// noMatchScrapeConfigClient simulates production apiserver behavior when the
+// scrapeconfigs.monitoring.rhobs CRD is not installed. This is not about the Go
+// scheme: monitoring/v1 is registered for PrometheusRule, but MCO ScrapeConfigs
+// use monitoring.rhobs/v1alpha1 (a separate API group). The fake client cannot
+// reproduce NoMatch on its own—it returns NotFound for missing unstructured
+// objects—so this wrapper injects the error the real cluster returns.
+type noMatchScrapeConfigClient struct {
+	client.Client
+}
+
+func (c *noMatchScrapeConfigClient) Get(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
+	if u, ok := obj.(*unstructured.Unstructured); ok {
+		gvk := u.GroupVersionKind()
+		if gvk.Group == "monitoring.rhobs" && gvk.Kind == "ScrapeConfig" {
+			return &meta.NoKindMatchError{
+				GroupKind:        schema.GroupKind{Group: gvk.Group, Kind: gvk.Kind},
+				SearchedVersions: []string{gvk.Version},
+			}
+		}
+	}
+	return c.Client.Get(ctx, key, obj, opts...)
+}
+
+// TestUndeployMCOAGrafanaResourcesSkipsMissingScrapeConfigCRD verifies cleanup
+// continues when the ScrapeConfig CRD is absent (legacy install without MCOA).
+func TestUndeployMCOAGrafanaResourcesSkipsMissingScrapeConfigCRD(t *testing.T) {
+	defer setupTest(t)()
+
+	mco := &mcov1beta2.MultiClusterObservability{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: mcov1beta2.GroupVersion.String(),
+			Kind:       "MultiClusterObservability",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "monitoring",
+		},
+	}
+
+	s := runtime.NewScheme()
+	scheme.AddToScheme(s)
+	mcov1beta2.AddToScheme(s)
+	monitoringv1.AddToScheme(s)
+
+	baseClient := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(mco).Build()
+	c := &noMatchScrapeConfigClient{Client: baseClient}
+
+	r := &MultiClusterObservabilityReconciler{Client: c, Scheme: s}
+	renderer := rendering.NewMCORenderer(mco, c, nil)
+	deployer := deploying.NewDeployer(c, mco.Name)
+
+	err := r.undeployMCOAGrafanaResources(t.Context(), mco, renderer, deployer)
+	require.NoError(t, err)
 }
 
 func TestNewMCOACRDEventHandler(t *testing.T) {
