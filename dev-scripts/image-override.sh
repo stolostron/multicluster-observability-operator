@@ -46,10 +46,24 @@ resolve_tag() { echo "${1:-${REPO_TAG}}"; }
 # Returns the component registry if set, else falls back to global REGISTRY.
 resolve_registry() { echo "${1:-${REGISTRY}}"; }
 
-# parse_image_ref <full-ref>  →  prints "<remote> <tag>"
-# Callers must supply a ref with an explicit tag (name:tag). A bare ref without
-# a tag (e.g. registry:5000/image) will split on the port instead of the tag.
-parse_image_ref() { echo "${1%:*}" "${1##*:}"; }
+# parse_image_ref <full-ref>  →  prints "<remote> <name> <tag>"
+# Handles tag refs (registry/path/name:tag) and digest refs (registry/path/name@sha256:hash).
+# "remote" is the registry path (before the last path component).
+# "name" is the repository name (last path component, stripped of tag/digest).
+# "tag" is the tag or digest suffix (e.g. "v2.17" or "sha256:abc123").
+parse_image_ref() {
+  local ref="$1" repo tag name remote
+  if [[ "$ref" == *"@"* ]]; then
+    repo="${ref%%@*}"
+    tag="${ref#*@}"
+  else
+    repo="${ref%:*}"
+    tag="${ref##*:}"
+  fi
+  name="${repo##*/}"
+  remote="${repo%/*}"
+  echo "$remote" "$name" "$tag"
+}
 
 # format_entry <image-name> <key> <remote> <tag>  →  prints JSON object
 format_entry() {
@@ -60,13 +74,13 @@ format_entry() {
 # Prints a JSON entry using the global REGISTRY and REPO_TAG fallback, or nothing.
 add_repo_component() {
   local image_name="$1" key="$2" image_var="$3" tag_var="$4"
-  local image_val="${!image_var:-}" tag_val tag_resolved r t
+  local image_val="${!image_var:-}" tag_val tag_resolved r n t
   tag_val="${!tag_var:-}"
   tag_resolved="$(resolve_tag "$tag_val")"
 
   if [[ -n $image_val ]]; then
-    read -r r t <<<"$(parse_image_ref "$image_val")"
-    format_entry "$image_name" "$key" "$r" "$t"
+    read -r r n t <<<"$(parse_image_ref "$image_val")"
+    format_entry "$n" "$key" "$r" "$t"
   elif [[ -n $tag_resolved ]]; then
     format_entry "$image_name" "$key" "$REGISTRY" "$tag_resolved"
   fi
@@ -76,11 +90,11 @@ add_repo_component() {
 # Prints a JSON entry using per-component registry (falls back to global), or nothing.
 add_external_component() {
   local image_name="$1" key="$2" image_var="$3" tag_var="$4" registry_var="$5"
-  local image_val="${!image_var:-}" tag_val="${!tag_var:-}" registry_val="${!registry_var:-}" r t
+  local image_val="${!image_var:-}" tag_val="${!tag_var:-}" registry_val="${!registry_var:-}" r n t
 
   if [[ -n $image_val ]]; then
-    read -r r t <<<"$(parse_image_ref "$image_val")"
-    format_entry "$image_name" "$key" "$r" "$t"
+    read -r r n t <<<"$(parse_image_ref "$image_val")"
+    format_entry "$n" "$key" "$r" "$t"
   elif [[ -n $tag_val ]]; then
     format_entry "$image_name" "$key" "$(resolve_registry "$registry_val")" "$tag_val"
   fi
