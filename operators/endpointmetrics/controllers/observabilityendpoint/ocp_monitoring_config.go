@@ -46,6 +46,9 @@ var (
 // initializes clusterMonitoringConfigReverted based on the presence of clusterMonitoringRevertedName
 // configmap in openshift-monitoring namespace.
 func initPersistedRevertState(ctx context.Context, client client.Client, ns string) error {
+	if ns == "" {
+		return nil
+	}
 	if !persistedRevertStateRead {
 		// check if reverted configmap is present
 		found := &corev1.ConfigMap{}
@@ -73,6 +76,9 @@ func initPersistedRevertState(ctx context.Context, client client.Client, ns stri
 
 func isRevertedAlready(ctx context.Context, client client.Client, ns string) (bool, error) {
 	log.Info("in isRevertedAlready")
+	if ns == "" {
+		return false, nil
+	}
 	err := initPersistedRevertState(ctx, client, ns)
 	if err != nil {
 		log.Info("isRevertedAlready: error from initPersistedRevertState", "error:", err.Error())
@@ -84,6 +90,9 @@ func isRevertedAlready(ctx context.Context, client client.Client, ns string) (bo
 }
 
 func setConfigReverted(ctx context.Context, client client.Client, ns string) error {
+	if ns == "" {
+		return nil
+	}
 	err := initPersistedRevertState(ctx, client, ns)
 	if err != nil {
 		return err
@@ -816,6 +825,9 @@ func updateClusterMonitoringConfigAndUnset(ctx context.Context, client client.Cl
 
 // unset config reverted flag after successfully updating cluster-monitoring-config
 func unset(ctx context.Context, client client.Client, ns string) error {
+	if ns == "" {
+		return nil
+	}
 	// if reverted before, reset so we can revert again
 	revertedAlready, err := isRevertedAlready(ctx, client, ns)
 	if err == nil && revertedAlready {
