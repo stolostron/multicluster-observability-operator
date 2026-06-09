@@ -233,11 +233,22 @@ spec:
               git checkout "${GIT_REVISION}"
 
               echo "=== Extracting component images from SNAPSHOT ==="
-              export MULTICLUSTER_OBSERVABILITY_OPERATOR_IMAGE_REF=$(echo "${SNAPSHOT}" | jq -r '[.components[] | select(.name | test("^multicluster-observability-operator-acm-"))] | .[0].containerImage')
-              export ENDPOINT_MONITORING_OPERATOR_IMAGE_REF=$(echo "${SNAPSHOT}" | jq -r '[.components[] | select(.name | test("^endpoint-monitoring-operator-acm-"))] | .[0].containerImage')
-              export METRICS_COLLECTOR_IMAGE_REF=$(echo "${SNAPSHOT}" | jq -r '[.components[] | select(.name | test("^metrics-collector-acm-"))] | .[0].containerImage')
-              export RBAC_QUERY_PROXY_IMAGE_REF=$(echo "${SNAPSHOT}" | jq -r '[.components[] | select(.name | test("^rbac-query-proxy-acm-"))] | .[0].containerImage')
-              export GRAFANA_DASHBOARD_LOADER_IMAGE_REF=$(echo "${SNAPSHOT}" | jq -r '[.components[] | select(.name | test("^grafana-dashboard-loader-acm-"))] | .[0].containerImage')
+              # Build tag-based refs (repo:git-sha) instead of digest refs (repo@sha256:hash).
+              # MCH constructs images as image-remote/image-name:image-tag — the colon-based
+              # join cannot produce @sha256: digest references.
+              snapshot_tag_ref() {
+                local component="$1"
+                local obj=$(echo "${SNAPSHOT}" | jq -r "[.components[] | select(.name | test(\"^${component}-acm-\"))] | .[0]")
+                local repo=$(echo "$obj" | jq -r '.containerImage | split("@")[0]')
+                local rev=$(echo "$obj" | jq -r '.source.git.revision')
+                echo "${repo}:${rev}"
+              }
+
+              export MULTICLUSTER_OBSERVABILITY_OPERATOR_IMAGE_REF=$(snapshot_tag_ref "multicluster-observability-operator")
+              export ENDPOINT_MONITORING_OPERATOR_IMAGE_REF=$(snapshot_tag_ref "endpoint-monitoring-operator")
+              export METRICS_COLLECTOR_IMAGE_REF=$(snapshot_tag_ref "metrics-collector")
+              export RBAC_QUERY_PROXY_IMAGE_REF=$(snapshot_tag_ref "rbac-query-proxy")
+              export GRAFANA_DASHBOARD_LOADER_IMAGE_REF=$(snapshot_tag_ref "grafana-dashboard-loader")
 
               echo "MCO operator image: ${MULTICLUSTER_OBSERVABILITY_OPERATOR_IMAGE_REF}"
               echo "Endpoint monitoring image: ${ENDPOINT_MONITORING_OPERATOR_IMAGE_REF}"
