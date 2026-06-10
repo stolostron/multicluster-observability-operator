@@ -107,18 +107,9 @@ var _ = Describe("", func() {
 		},
 	)
 
-	It("@BVT - [P1][Sev1][observability][Integration] Should access alert via alertmanager route (route/g0)", func() {
+	It("@BVT - [P1][Sev1][observability][Integration] Should access alert via observatorium-api alertmanager route (route/g0)", func() {
 		Eventually(func() error {
-			cloudProvider := strings.ToLower(os.Getenv("CLOUD_PROVIDER"))
-			substring1 := "rosa"
-			substring2 := "hcp"
-
-			if strings.Contains(cloudProvider, substring1) && strings.Contains(cloudProvider, substring2) {
-				Skip("skip on rosa-hcp")
-			}
-
-			query := "/api/v2/alerts"
-			url := "https://alertmanager-open-cluster-management-observability.apps." + testOptions.HubCluster.BaseDomain + query
+			url := "https://observatorium-api-open-cluster-management-observability.apps." + testOptions.HubCluster.BaseDomain + "/api/alertmanager/v2/default/api/v2/alerts"
 			alertJson := `
 			[
 				{
@@ -149,7 +140,7 @@ var _ = Describe("", func() {
 				return err
 			}
 
-			caCrt, err := utils.GetRouterCA(hubClient)
+			caCrt, err := utils.GetObsAPIServerCA(hubClient)
 			Expect(err).NotTo(HaveOccurred())
 			pool := x509.NewCertPool()
 			pool.AppendCertsFromPEM(caCrt)
