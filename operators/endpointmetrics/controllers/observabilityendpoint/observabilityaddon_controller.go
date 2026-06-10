@@ -361,6 +361,17 @@ func (r *ObservabilityAddonReconciler) initFinalization(
 			return false, err
 		}
 
+		// revert the mTLS CA configurations as well (mirroring the two-pass behavior in cmo-config-revert)
+		mtlsCASecret := AppendHubClusterID(HubAmMtlsCASecretName, hubInfo.HubClusterID)
+		err = RevertClusterMonitoringConfig(ctx, r.Client, mtlsCASecret)
+		if err != nil {
+			return false, err
+		}
+		err = RevertUserWorkloadMonitoringConfig(ctx, r.Client, mtlsCASecret)
+		if err != nil {
+			return false, err
+		}
+
 		if isHypershift {
 			err = hypershift.DeleteServiceMonitors(ctx, r.Client)
 			if err != nil {

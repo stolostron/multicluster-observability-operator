@@ -6,8 +6,10 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
+	"net/url"
 	"os"
 	"runtime"
 	"strconv"
@@ -107,7 +109,16 @@ func execute(args []string) {
 }
 
 func runCleanup(args []string) {
+	ctrl.SetLogger(klog.NewKlogr())
 	setupLog.Info("Starting MCOA cleanup")
+	if err := doCleanup(args); err != nil {
+		setupLog.Error(err, "best-effort cleanup incomplete")
+		os.Exit(1)
+	}
+	setupLog.Info("Cleanup completed successfully")
+}
+
+func doCleanup(args []string) error {
 	fs := flag.NewFlagSet("cleanup", flag.ExitOnError)
 	var hubID string
 
@@ -116,22 +127,22 @@ func runCleanup(args []string) {
 	_ = fs.Parse(args)
 
 	if hubID == "" {
-		setupLog.Error(fmt.Errorf("hub-id flag not set"), "unable to perform cleanup")
-		os.Exit(1)
+		return fmt.Errorf("hub-id flag not set")
 	}
 
 	cfg := ctrl.GetConfigOrDie()
 	cl, err := client.New(cfg, client.Options{Scheme: scheme})
 	if err != nil {
-		setupLog.Error(err, "unable to create client for cleanup")
-		os.Exit(1)
+		return fmt.Errorf("unable to create client for cleanup: %w", err)
 	}
 
 	hubInfo := &operatorconfig.HubInfo{
 		HubClusterID: hubID,
 	}
 
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
 	var errs []error
 
 	caSecret := obsepctl.AppendHubClusterID(obsepctl.HubAmRouterCASecretName, hubInfo.HubClusterID)
@@ -142,18 +153,22 @@ func runCleanup(args []string) {
 		errs = append(errs, err)
 	}
 
-	setupLog.Info("Reverting User Workload monitoring configuration")
-	if err := obsepctl.RevertUserWorkloadMonitoringConfig(ctx, cl, caSecret); err != nil {
-		setupLog.Error(err, "failed to revert user workload monitoring config")
-		errs = append(errs, err)
+	if ctx.Err() != nil {
+		setupLog.Error(ctx.Err(), "cleanup context canceled or timed out, aborting remaining steps")
+		errs = append(errs, ctx.Err())
+	} else {
+		setupLog.Info("Reverting User Workload monitoring configuration")
+		if err := obsepctl.RevertUserWorkloadMonitoringConfig(ctx, cl, caSecret); err != nil {
+			setupLog.Error(err, "failed to revert user workload monitoring config")
+			errs = append(errs, err)
+		}
 	}
 
 	if len(errs) > 0 {
-		setupLog.Error(fmt.Errorf("cleanup failed with %d errors", len(errs)), "best-effort cleanup incomplete")
-		os.Exit(1)
+		return fmt.Errorf("cleanup failed: %w", errors.Join(errs...))
 	}
 
-	setupLog.Info("Cleanup completed successfully")
+	return nil
 }
 
 func runMCOA(args []string) {
@@ -193,19 +208,32 @@ func runMCOA(args []string) {
 		os.Exit(1)
 	}
 
-	if hubAmCASecret == "" {
-		setupLog.Error(fmt.Errorf("hub-alertmanager-ca-secret flag not set"), "unable to start manager")
-		os.Exit(1)
-	}
+	if hubAmURL != "" {
+		parsedURL, err := url.Parse(hubAmURL)
+		if err != nil || parsedURL.Scheme == "" || parsedURL.Host == "" {
+			setupLog.Error(fmt.Errorf("invalid hub-alertmanager-url %q: must be a valid absolute URL", hubAmURL), "unable to start manager")
+			os.Exit(1)
+		}
 
-	if hubAmCertSecret == "" {
-		setupLog.Error(fmt.Errorf("hub-alertmanager-cert-secret flag not set"), "unable to start manager")
-		os.Exit(1)
-	}
+		if clusterID == "" {
+			setupLog.Error(fmt.Errorf("cluster-id flag not set"), "unable to start manager")
+			os.Exit(1)
+		}
 
-	if hubAmAccessorSecret == "" {
-		setupLog.Error(fmt.Errorf("hub-alertmanager-accessor-secret flag not set"), "unable to start manager")
-		os.Exit(1)
+		if hubAmCASecret == "" {
+			setupLog.Error(fmt.Errorf("hub-alertmanager-ca-secret flag not set"), "unable to start manager")
+			os.Exit(1)
+		}
+
+		if hubAmCertSecret == "" {
+			setupLog.Error(fmt.Errorf("hub-alertmanager-cert-secret flag not set"), "unable to start manager")
+			os.Exit(1)
+		}
+
+		if hubAmAccessorSecret == "" {
+			setupLog.Error(fmt.Errorf("hub-alertmanager-accessor-secret flag not set"), "unable to start manager")
+			os.Exit(1)
+		}
 	}
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
@@ -252,6 +280,7 @@ func runMCOA(args []string) {
 }
 
 func runLegacy(args []string) {
+	ctrl.SetLogger(klog.NewKlogr())
 	setupLog.Info("Starting legacy mode")
 	var metricsAddr string
 	var enableLeaderElection bool
@@ -264,8 +293,6 @@ func runLegacy(args []string) {
 
 	klog.InitFlags(flag.CommandLine)
 	_ = flag.CommandLine.Parse(args)
-
-	ctrl.SetLogger(klog.NewKlogr())
 
 	namespaceSelector := fmt.Sprintf("metadata.namespace==%s", os.Getenv("WATCH_NAMESPACE"))
 	gvkLabelMap := map[schema.GroupVersionKind][]filteredcache.Selector{
