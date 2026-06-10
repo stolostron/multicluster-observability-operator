@@ -479,26 +479,6 @@ var _ = Describe("", func() {
 	It(
 		"ACM-34594: Observability: Verify Thanos Compact debug tuning in MCO CR - [P2][Sev2][Observability][Integration]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release (config/g0)",
 		func() {
-			By("Applying initial MCO config without custom compact containers")
-			mcoPath := ""
-			if os.Getenv("IS_CANARY_ENV") != trueStr {
-				mcoPath = "../../../examples/updatemcocr/initialmcoconfig/custom-certs"
-			} else {
-				mcoPath = "../../../examples/updatemcocr/initialmcoconfig"
-			}
-
-			yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: mcoPath})
-			Expect(err).ToNot(HaveOccurred())
-			Expect(
-				utils.ApplyRetryOnConflict(
-					testOptions.HubCluster.ClusterServerURL,
-					testOptions.KubeConfig,
-					testOptions.HubCluster.KubeContext,
-					yamlB,
-				)).NotTo(HaveOccurred())
-
-			time.Sleep(60 * time.Second)
-
 			By("Updating MCO CR with compact debug settings")
 			mcoRes, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).
 				Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
@@ -594,19 +574,6 @@ var _ = Describe("", func() {
 				}
 				return nil
 			}, EventuallyTimeoutMinute*2, EventuallyIntervalSecond*10).Should(Succeed())
-
-			By("Revert MCO back to initial config")
-			yamlB, err = kustomize.Render(kustomize.Options{KustomizationPath: mcoPath})
-			Expect(err).ToNot(HaveOccurred())
-			Expect(
-				utils.ApplyRetryOnConflict(
-					testOptions.HubCluster.ClusterServerURL,
-					testOptions.KubeConfig,
-					testOptions.HubCluster.KubeContext,
-					yamlB,
-				)).NotTo(HaveOccurred())
-
-			time.Sleep(60 * time.Second)
 		},
 	)
 
