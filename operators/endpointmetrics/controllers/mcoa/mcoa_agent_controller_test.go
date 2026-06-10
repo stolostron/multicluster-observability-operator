@@ -6,7 +6,6 @@ package mcoa
 
 import (
 	"context"
-	"strings"
 	"testing"
 
 	ocinfrav1 "github.com/openshift/api/config/v1"
@@ -16,6 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -33,14 +33,12 @@ func TestMCOAAgentReconciler_Reconcile(t *testing.T) {
 
 	namespace := "test-ns"
 	clusterID := "test-cluster-id"
-	hubInfo := &operatorconfig.HubInfo{
-		AlertmanagerEndpoint: "https://hub-am.example.com",
-		HubClusterID:         "hub-id",
-	}
+	alertmanagerEndpoint := "https://hub-am.example.com"
+	hubClusterID := "hub-id"
 
 	amAccessorSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      observabilityendpoint.AppendHubClusterID(observabilityendpoint.HubAmAccessorSecretName, hubInfo),
+			Name:      observabilityendpoint.AppendHubClusterID(observabilityendpoint.HubAmAccessorSecretName, hubClusterID),
 			Namespace: operatorconfig.OCPClusterMonitoringNamespace,
 		},
 		Data: map[string][]byte{
@@ -68,13 +66,16 @@ func TestMCOAAgentReconciler_Reconcile(t *testing.T) {
 	}
 
 	tests := []struct {
-		name           string
-		req            ctrl.Request
-		hubInfo        *operatorconfig.HubInfo
-		existingObjs   []client.Object
-		expectedMetric float64
-		expectedEvent  bool
-		expectedError  bool
+		name                      string
+		req                       ctrl.Request
+		alertmanagerEndpoint      string
+		hubClusterID              string
+		existingObjs              []client.Object
+		expectedMetric            float64
+		expectedEvent             bool
+		expectedError             bool
+		disableUWLAlertForwarding bool
+		validate                  func(t *testing.T, c client.Client)
 	}{
 		{
 			name: "CMO ConfigMap missing - Successful create",
@@ -84,8 +85,18 @@ func TestMCOAAgentReconciler_Reconcile(t *testing.T) {
 					Namespace: operatorconfig.OCPClusterMonitoringNamespace,
 				},
 			},
-			hubInfo:      hubInfo,
-			existingObjs: []client.Object{amAccessorSecret, sourceAmAccessorSecret, clusterVersion},
+			alertmanagerEndpoint: alertmanagerEndpoint,
+			hubClusterID:         hubClusterID,
+			existingObjs:         []client.Object{amAccessorSecret, sourceAmAccessorSecret, clusterVersion},
+			validate: func(t *testing.T, c client.Client) {
+				found := &corev1.ConfigMap{}
+				err := c.Get(context.Background(), types.NamespacedName{
+					Name:      operatorconfig.OCPClusterMonitoringConfigMapName,
+					Namespace: operatorconfig.OCPClusterMonitoringNamespace,
+				}, found)
+				require.NoError(t, err)
+				assert.Contains(t, found.Data[observabilityendpoint.ClusterMonitoringConfigDataKey], "hub-am.example.com")
+			},
 		},
 		{
 			name: "CMO Config Conflict - Metric incremented and event emitted",
@@ -95,7 +106,8 @@ func TestMCOAAgentReconciler_Reconcile(t *testing.T) {
 					Namespace: operatorconfig.OCPClusterMonitoringNamespace,
 				},
 			},
-			hubInfo: hubInfo,
+			alertmanagerEndpoint: alertmanagerEndpoint,
+			hubClusterID:         hubClusterID,
 			existingObjs: []client.Object{
 				amAccessorSecret,
 				sourceAmAccessorSecret,
@@ -115,6 +127,15 @@ func TestMCOAAgentReconciler_Reconcile(t *testing.T) {
 			},
 			expectedMetric: 1.0,
 			expectedEvent:  true,
+			validate: func(t *testing.T, c client.Client) {
+				found := &corev1.ConfigMap{}
+				err := c.Get(context.Background(), types.NamespacedName{
+					Name:      operatorconfig.OCPClusterMonitoringConfigMapName,
+					Namespace: operatorconfig.OCPClusterMonitoringNamespace,
+				}, found)
+				require.NoError(t, err)
+				assert.Contains(t, found.Data[observabilityendpoint.ClusterMonitoringConfigDataKey], "hub-am.example.com")
+			},
 		},
 		{
 			name: "UWL ConfigMap missing - Successful create",
@@ -124,8 +145,18 @@ func TestMCOAAgentReconciler_Reconcile(t *testing.T) {
 					Namespace: operatorconfig.OCPUserWorkloadMonitoringNamespace,
 				},
 			},
-			hubInfo:      hubInfo,
-			existingObjs: []client.Object{amAccessorSecret, sourceAmAccessorSecret, clusterVersion},
+			alertmanagerEndpoint: alertmanagerEndpoint,
+			hubClusterID:         hubClusterID,
+			existingObjs:         []client.Object{amAccessorSecret, sourceAmAccessorSecret, clusterVersion},
+			validate: func(t *testing.T, c client.Client) {
+				found := &corev1.ConfigMap{}
+				err := c.Get(context.Background(), types.NamespacedName{
+					Name:      operatorconfig.OCPUserWorkloadMonitoringConfigMap,
+					Namespace: operatorconfig.OCPUserWorkloadMonitoringNamespace,
+				}, found)
+				require.NoError(t, err)
+				assert.Contains(t, found.Data["config.yaml"], "hub-am.example.com")
+			},
 		},
 		{
 			name: "Ignored resource - No action",
@@ -135,19 +166,28 @@ func TestMCOAAgentReconciler_Reconcile(t *testing.T) {
 					Namespace: "some-other-ns",
 				},
 			},
-			hubInfo:      hubInfo,
-			existingObjs: []client.Object{},
+			alertmanagerEndpoint: alertmanagerEndpoint,
+			hubClusterID:         hubClusterID,
+			existingObjs:         []client.Object{},
+			validate: func(t *testing.T, c client.Client) {
+				found := &corev1.ConfigMap{}
+				err := c.Get(context.Background(), types.NamespacedName{
+					Name:      "some-other-cm",
+					Namespace: "some-other-ns",
+				}, found)
+				assert.True(t, apierrors.IsNotFound(err))
+			},
 		},
 		{
 			name: "AlertmanagerEndpoint empty - Revert path",
-
 			req: ctrl.Request{
 				NamespacedName: types.NamespacedName{
 					Name:      operatorconfig.OCPClusterMonitoringConfigMapName,
 					Namespace: operatorconfig.OCPClusterMonitoringNamespace,
 				},
 			},
-			hubInfo: &operatorconfig.HubInfo{AlertmanagerEndpoint: "", HubClusterID: "hub-id"},
+			alertmanagerEndpoint: "",
+			hubClusterID:         "hub-id",
 			existingObjs: []client.Object{
 				&corev1.ConfigMap{
 					ObjectMeta: metav1.ObjectMeta{
@@ -162,6 +202,39 @@ func TestMCOAAgentReconciler_Reconcile(t *testing.T) {
 					},
 				},
 			},
+			validate: func(t *testing.T, c client.Client) {
+				found := &corev1.ConfigMap{}
+				err := c.Get(context.Background(), types.NamespacedName{
+					Name:      operatorconfig.OCPClusterMonitoringConfigMapName,
+					Namespace: operatorconfig.OCPClusterMonitoringNamespace,
+				}, found)
+				if err == nil {
+					assert.NotContains(t, found.Data[observabilityendpoint.ClusterMonitoringConfigDataKey], "hub.com")
+				}
+			},
+		},
+		{
+			name: "UWL ConfigMap - UWL alert forwarding disabled",
+			req: ctrl.Request{
+				NamespacedName: types.NamespacedName{
+					Name:      operatorconfig.OCPUserWorkloadMonitoringConfigMap,
+					Namespace: operatorconfig.OCPUserWorkloadMonitoringNamespace,
+				},
+			},
+			alertmanagerEndpoint:      alertmanagerEndpoint,
+			hubClusterID:              hubClusterID,
+			existingObjs:              []client.Object{amAccessorSecret, sourceAmAccessorSecret, clusterVersion},
+			disableUWLAlertForwarding: true,
+			validate: func(t *testing.T, c client.Client) {
+				found := &corev1.ConfigMap{}
+				err := c.Get(context.Background(), types.NamespacedName{
+					Name:      operatorconfig.OCPUserWorkloadMonitoringConfigMap,
+					Namespace: operatorconfig.OCPUserWorkloadMonitoringNamespace,
+				}, found)
+				if err == nil {
+					assert.NotContains(t, found.Data["config.yaml"], "hub.com")
+				}
+			},
 		},
 	}
 
@@ -173,6 +246,8 @@ func TestMCOAAgentReconciler_Reconcile(t *testing.T) {
 			// Capture initial metric value
 			initialMetric := testutil.ToFloat64(cmoConfigConflictsTotal)
 
+			caSecretName := observabilityendpoint.AppendHubClusterID(observabilityendpoint.HubAmRouterCASecretName, tt.hubClusterID)
+
 			r := NewMCOAAgentReconciler(
 				c,
 				ctrl.Log.WithName("test"),
@@ -180,10 +255,11 @@ func TestMCOAAgentReconciler_Reconcile(t *testing.T) {
 				recorder,
 				namespace,
 				clusterID,
-				tt.hubInfo,
-				"hub-alertmanager-router-ca",
+				tt.alertmanagerEndpoint,
+				caSecretName,
 				"obs-alertmanager-mtls-cert",
 				"observability-alertmanager-accessor",
+				!tt.disableUWLAlertForwarding,
 			)
 
 			_, err := r.Reconcile(context.Background(), tt.req)
@@ -207,23 +283,9 @@ func TestMCOAAgentReconciler_Reconcile(t *testing.T) {
 				}
 			}
 
-			// Verify object creation/update for CMO/UWL
-			if !tt.expectedError {
-				found := &corev1.ConfigMap{}
-				err := c.Get(context.Background(), tt.req.NamespacedName, found)
-				if tt.hubInfo.AlertmanagerEndpoint != "" {
-					if tt.req.Name == operatorconfig.OCPClusterMonitoringConfigMapName || tt.req.Name == operatorconfig.OCPUserWorkloadMonitoringConfigMap {
-						require.NoError(t, err)
-						// staticConfigs contains the host only
-						host := strings.TrimPrefix(tt.hubInfo.AlertmanagerEndpoint, "https://")
-						assert.Contains(t, found.Data[observabilityendpoint.ClusterMonitoringConfigDataKey], host)
-					}
-				} else if tt.req.Name == operatorconfig.OCPClusterMonitoringConfigMapName {
-					// Revert path
-					if err == nil {
-						assert.NotContains(t, found.Data[observabilityendpoint.ClusterMonitoringConfigDataKey], "hub.com")
-					}
-				}
+			// Run custom explicit validations
+			if tt.validate != nil {
+				tt.validate(t, c)
 			}
 		})
 	}

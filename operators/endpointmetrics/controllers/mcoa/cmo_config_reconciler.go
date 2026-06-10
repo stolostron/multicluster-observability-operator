@@ -9,14 +9,11 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/go-logr/logr"
 	cmomanifests "github.com/openshift/cluster-monitoring-operator/pkg/manifests"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/controllers/observabilityendpoint"
-	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 	"sigs.k8s.io/yaml"
@@ -38,24 +35,11 @@ func registerMetrics() {
 	})
 }
 
-// cmoConfigReconciler handles the reconciliation of the Cluster Monitoring Operator configuration.
-type cmoConfigReconciler struct {
-	client.Client
-	Log            logr.Logger
-	Recorder       record.EventRecorder
-	Namespace      string
-	ClusterID      string
-	HubInfo        *operatorconfig.HubInfo
-	CASecret       string
-	CertSecret     string
-	AccessorSecret string
-}
-
-func (r *cmoConfigReconciler) reconcile(ctx context.Context, req client.ObjectKey) error {
+func (r *MCOAAgentReconciler) reconcileCMO(ctx context.Context, req client.ObjectKey) error {
 	// If Alertmanager forwarding is disabled, we ensure our config is removed.
-	if r.HubInfo.AlertmanagerEndpoint == "" {
+	if r.AlertmanagerEndpoint == "" {
 		r.Log.Info("Alertmanager endpoint is empty, ensuring Hub configuration is removed")
-		return observabilityendpoint.RevertClusterMonitoringConfig(ctx, r.Client, r.HubInfo)
+		return observabilityendpoint.RevertClusterMonitoringConfig(ctx, r.Client, r.CASecret)
 	}
 
 	cm := &corev1.ConfigMap{}
@@ -69,7 +53,7 @@ func (r *cmoConfigReconciler) reconcile(ctx context.Context, req client.ObjectKe
 
 	// We trigger a repair if the config is missing or corrupted.
 	if cm != nil {
-		if r.detectConflict(cm, r.HubInfo) {
+		if r.detectConflict(cm) {
 			cmoConfigConflictsTotal.Inc()
 			r.Recorder.Event(cm, corev1.EventTypeWarning, "ConfigConflict", "Detected external mutation overwriting Alertmanager configuration. Re-applying Hub Alertmanager config.")
 			r.Log.Info("Detected conflict in CMO ConfigMap, re-applying configuration", "name", cm.Name, "namespace", cm.Namespace)
@@ -80,7 +64,7 @@ func (r *cmoConfigReconciler) reconcile(ctx context.Context, req client.ObjectKe
 		ctx,
 		r.Client,
 		r.ClusterID,
-		r.HubInfo,
+		r.AlertmanagerEndpoint,
 		r.CASecret,
 		r.CertSecret,
 		r.AccessorSecret,
@@ -90,11 +74,12 @@ func (r *cmoConfigReconciler) reconcile(ctx context.Context, req client.ObjectKe
 	return err
 }
 
-func (r *cmoConfigReconciler) reconcileUWLConfig(ctx context.Context) error {
+func (r *MCOAAgentReconciler) reconcileUWLConfig(ctx context.Context) error {
 	if err := observabilityendpoint.CreateOrUpdateUserWorkloadMonitoringConfig(
 		ctx,
 		r.Client,
-		r.HubInfo,
+		r.AlertmanagerEndpoint,
+		!r.EnableUWLAlertForwarding, // uwmAlertingDisabled
 		r.CASecret,
 		r.CertSecret,
 		r.AccessorSecret,
@@ -104,7 +89,7 @@ func (r *cmoConfigReconciler) reconcileUWLConfig(ctx context.Context) error {
 	return nil
 }
 
-func (r *cmoConfigReconciler) detectConflict(cm *corev1.ConfigMap, hubInfo *operatorconfig.HubInfo) bool {
+func (r *MCOAAgentReconciler) detectConflict(cm *corev1.ConfigMap) bool {
 	// If ACM didn't create/update this config, we don't treat it as a conflict yet.
 	if !observabilityendpoint.InManagedFields(cm) {
 		return false
@@ -127,7 +112,7 @@ func (r *cmoConfigReconciler) detectConflict(cm *corev1.ConfigMap, hubInfo *oper
 
 	foundManaged := false
 	for _, amc := range parsed.PrometheusK8sConfig.AlertmanagerConfigs {
-		if observabilityendpoint.IsManaged(amc, hubInfo, r.CASecret) {
+		if observabilityendpoint.IsManaged(amc, r.CASecret) {
 			foundManaged = true
 			break
 		}

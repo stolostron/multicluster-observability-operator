@@ -52,7 +52,7 @@ const (
 	mtlsCertName                    = "observability-controller-open-cluster-management.io-observability-signer-client-cert"
 	mtlsCaName                      = "observability-managed-cluster-certs"
 	amMtlsCertName                  = "obs-alertmanager-mtls-cert"
-	amMtlsCaName                    = "obs-alertmanager-mtls-ca"
+	amMtlsCaName                    = HubAmMtlsCASecretName
 	metricsCollectorName            = "metrics-collector-deployment"
 	uwlMetricsCollectorName         = "uwl-metrics-collector-deployment"
 	uwlNamespace                    = "openshift-user-workload-monitoring"
@@ -349,13 +349,14 @@ func (r *ObservabilityAddonReconciler) initFinalization(
 		}
 
 		// revert the change to cluster monitoring stack
-		err := RevertClusterMonitoringConfig(ctx, r.Client, hubInfo)
+		caSecret := AppendHubClusterID(HubAmRouterCASecretName, hubInfo.HubClusterID)
+		err := RevertClusterMonitoringConfig(ctx, r.Client, caSecret)
 		if err != nil {
 			return false, err
 		}
 
 		// revert the change to user workload monitoring stack
-		err = RevertUserWorkloadMonitoringConfig(ctx, r.Client, hubInfo)
+		err = RevertUserWorkloadMonitoringConfig(ctx, r.Client, caSecret)
 		if err != nil {
 			return false, err
 		}

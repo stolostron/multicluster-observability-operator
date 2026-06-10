@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -92,7 +93,7 @@ func readCRDFiles(crdPaths ...string) []*apiextensionsv1.CustomResourceDefinitio
 }
 
 func TestMCOAAgentIntegration(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 60*time.Second)
 	defer cancel()
 
 	s := runtime.NewScheme()
@@ -112,6 +113,11 @@ func TestMCOAAgentIntegration(t *testing.T) {
 	})
 	require.NoError(t, err)
 
+	caSecretName := "hub-alertmanager-router-ca"
+	if hubInfo.HubClusterID != "" {
+		caSecretName = "hub-alertmanager-router-ca-" + hubInfo.HubClusterID
+	}
+
 	reconciler := NewMCOAAgentReconciler(
 		mgr.GetClient(),
 		mgr.GetLogger(),
@@ -119,10 +125,11 @@ func TestMCOAAgentIntegration(t *testing.T) {
 		mgr.GetEventRecorderFor("mcoa-agent-test"),
 		namespace,
 		"test-cluster-id",
-		hubInfo,
-		"hub-alertmanager-router-ca",
+		hubInfo.AlertmanagerEndpoint,
+		caSecretName,
 		"obs-alertmanager-mtls-cert",
 		"observability-alertmanager-accessor",
+		true,
 	)
 	err = reconciler.SetupWithManager(mgr)
 	require.NoError(t, err)
@@ -147,14 +154,14 @@ func TestMCOAAgentIntegration(t *testing.T) {
 		},
 		&corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      observabilityendpoint.AppendHubClusterID(observabilityendpoint.HubAmAccessorSecretName, hubInfo),
+				Name:      observabilityendpoint.AppendHubClusterID(observabilityendpoint.HubAmAccessorSecretName, hubInfo.HubClusterID),
 				Namespace: operatorconfig.OCPClusterMonitoringNamespace,
 			},
 			Data: map[string][]byte{"token": []byte("test-token")},
 		},
 		&corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      observabilityendpoint.AppendHubClusterID(observabilityendpoint.HubAmRouterCASecretName, hubInfo),
+				Name:      observabilityendpoint.AppendHubClusterID(observabilityendpoint.HubAmRouterCASecretName, hubInfo.HubClusterID),
 				Namespace: operatorconfig.OCPClusterMonitoringNamespace,
 			},
 			Data: map[string][]byte{"service-ca.crt": []byte("test-ca")},
@@ -179,5 +186,127 @@ func TestMCOAAgentIntegration(t *testing.T) {
 		err = k8sClient.Get(ctx, types.NamespacedName{Name: unmanagedName, Namespace: operatorconfig.OCPClusterMonitoringNamespace}, found)
 		require.Error(t, err)
 		require.True(t, apierrors.IsNotFound(err))
+	})
+
+	t.Run("Reconcile CMO Config: Managed ConfigMap is successfully populated with Alertmanager configuration", func(t *testing.T) {
+		cmoCM := &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      operatorconfig.OCPClusterMonitoringConfigMapName,
+				Namespace: operatorconfig.OCPClusterMonitoringNamespace,
+			},
+			Data: map[string]string{
+				observabilityendpoint.ClusterMonitoringConfigDataKey: "prometheusK8s: {}",
+			},
+		}
+		require.NoError(t, directClient.Create(ctx, cmoCM, client.FieldOwner(observabilityendpoint.EndpointMonitoringOperatorMgr)))
+
+		// Wait for the reconciler to populate our Alertmanager configs
+		require.Eventually(t, func() bool {
+			found := &corev1.ConfigMap{}
+			err := directClient.Get(ctx, types.NamespacedName{
+				Name:      operatorconfig.OCPClusterMonitoringConfigMapName,
+				Namespace: operatorconfig.OCPClusterMonitoringNamespace,
+			}, found)
+			if err != nil {
+				return false
+			}
+			data := found.Data[observabilityendpoint.ClusterMonitoringConfigDataKey]
+			return strings.Contains(data, "hub-alertmanager-router-ca-hub-id") && strings.Contains(data, "hub-am.example.com")
+		}, 5*time.Second, 100*time.Millisecond)
+	})
+
+	t.Run("Reconcile Revert path: Empty AlertmanagerEndpoint cleanly reverts the Alertmanager configuration", func(t *testing.T) {
+		// Disable alert forwarding on the active reconciler
+		reconciler.AlertmanagerEndpoint = ""
+
+		// Trigger reconcile by updating the CMO ConfigMap
+		found := &corev1.ConfigMap{}
+		require.NoError(t, directClient.Get(ctx, types.NamespacedName{
+			Name:      operatorconfig.OCPClusterMonitoringConfigMapName,
+			Namespace: operatorconfig.OCPClusterMonitoringNamespace,
+		}, found))
+		found.Data["trigger"] = "reconcile"
+		require.NoError(t, directClient.Update(ctx, found, client.FieldOwner(observabilityendpoint.EndpointMonitoringOperatorMgr)))
+
+		// Wait for the reconciler to clean up our Alertmanager configs (or cleanly delete the empty ConfigMap)
+		require.Eventually(t, func() bool {
+			foundCM := &corev1.ConfigMap{}
+			err := directClient.Get(ctx, types.NamespacedName{
+				Name:      operatorconfig.OCPClusterMonitoringConfigMapName,
+				Namespace: operatorconfig.OCPClusterMonitoringNamespace,
+			}, foundCM)
+			if apierrors.IsNotFound(err) {
+				return true
+			}
+			if err != nil {
+				fmt.Printf("Get ConfigMap error: %v\n", err)
+				return false
+			}
+			data := foundCM.Data[observabilityendpoint.ClusterMonitoringConfigDataKey]
+			return !strings.Contains(data, "hub-alertmanager-router-ca-hub-id") && !strings.Contains(data, "hub-am.example.com")
+		}, 5*time.Second, 100*time.Millisecond)
+	})
+
+	t.Run("Reconcile UWL Config: Managed ConfigMap is successfully populated with Alertmanager configuration", func(t *testing.T) {
+		// Set AlertmanagerEndpoint and EnableUWLAlertForwarding back to active state
+		reconciler.AlertmanagerEndpoint = "https://hub-am.example.com"
+		reconciler.EnableUWLAlertForwarding = true
+
+		uwlCM := &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      operatorconfig.OCPUserWorkloadMonitoringConfigMap,
+				Namespace: operatorconfig.OCPUserWorkloadMonitoringNamespace,
+			},
+			Data: map[string]string{
+				"config.yaml": "prometheus: {}",
+			},
+		}
+		require.NoError(t, directClient.Create(ctx, uwlCM, client.FieldOwner(observabilityendpoint.EndpointMonitoringOperatorMgr)))
+
+		// Wait for the reconciler to populate our Alertmanager configs in UWL ConfigMap
+		require.Eventually(t, func() bool {
+			found := &corev1.ConfigMap{}
+			err := directClient.Get(ctx, types.NamespacedName{
+				Name:      operatorconfig.OCPUserWorkloadMonitoringConfigMap,
+				Namespace: operatorconfig.OCPUserWorkloadMonitoringNamespace,
+			}, found)
+			if err != nil {
+				return false
+			}
+			data := found.Data["config.yaml"]
+			return strings.Contains(data, "hub-alertmanager-router-ca-hub-id") && strings.Contains(data, "hub-am.example.com")
+		}, 5*time.Second, 100*time.Millisecond)
+	})
+
+	t.Run("Reconcile UWL Revert path: Disabled EnableUWLAlertForwarding cleanly reverts the Alertmanager configuration", func(t *testing.T) {
+		// Disable UWL alert forwarding on the active reconciler
+		reconciler.EnableUWLAlertForwarding = false
+
+		// Trigger reconcile by updating the UWL ConfigMap
+		found := &corev1.ConfigMap{}
+		require.NoError(t, directClient.Get(ctx, types.NamespacedName{
+			Name:      operatorconfig.OCPUserWorkloadMonitoringConfigMap,
+			Namespace: operatorconfig.OCPUserWorkloadMonitoringNamespace,
+		}, found))
+		found.Data["trigger"] = "reconcile"
+		require.NoError(t, directClient.Update(ctx, found, client.FieldOwner(observabilityendpoint.EndpointMonitoringOperatorMgr)))
+
+		// Wait for the reconciler to clean up our Alertmanager configs from UWL ConfigMap
+		require.Eventually(t, func() bool {
+			foundCM := &corev1.ConfigMap{}
+			err := directClient.Get(ctx, types.NamespacedName{
+				Name:      operatorconfig.OCPUserWorkloadMonitoringConfigMap,
+				Namespace: operatorconfig.OCPUserWorkloadMonitoringNamespace,
+			}, foundCM)
+			if apierrors.IsNotFound(err) {
+				return true
+			}
+			if err != nil {
+				fmt.Printf("Get ConfigMap error: %v\n", err)
+				return false
+			}
+			data := foundCM.Data["config.yaml"]
+			return !strings.Contains(data, "hub-alertmanager-router-ca-hub-id") && !strings.Contains(data, "hub-am.example.com")
+		}, 5*time.Second, 100*time.Millisecond)
 	})
 }

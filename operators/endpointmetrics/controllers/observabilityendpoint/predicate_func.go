@@ -52,8 +52,10 @@ func getPred(name string, namespace string,
 					}
 				case e.ObjectNew.GetName() == obAddonName ||
 					e.ObjectNew.GetObjectKind().GroupVersionKind().Kind == "ObservabilityAddon":
-					if !reflect.DeepEqual(e.ObjectNew.(*oav1beta1.ObservabilityAddon).Spec,
-						e.ObjectOld.(*oav1beta1.ObservabilityAddon).Spec) {
+					specChanged := !reflect.DeepEqual(e.ObjectNew.(*oav1beta1.ObservabilityAddon).Spec,
+						e.ObjectOld.(*oav1beta1.ObservabilityAddon).Spec)
+					delChanged := e.ObjectNew.GetDeletionTimestamp() != e.ObjectOld.GetDeletionTimestamp()
+					if specChanged || delChanged {
 						return true
 					}
 				default:

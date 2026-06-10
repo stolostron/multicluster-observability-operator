@@ -22,20 +22,19 @@ import (
 // MCOAAgentReconciler reconciles the MCOA components on the managed cluster.
 type MCOAAgentReconciler struct {
 	client.Client
-	Log            logr.Logger
-	Scheme         *runtime.Scheme
-	Recorder       record.EventRecorder
-	Namespace      string
-	ClusterID      string
-	HubInfo        *operatorconfig.HubInfo
-	CASecret       string
-	CertSecret     string
-	AccessorSecret string
-
-	cmoReconciler *cmoConfigReconciler
+	Log                      logr.Logger
+	Scheme                   *runtime.Scheme
+	Recorder                 record.EventRecorder
+	Namespace                string
+	ClusterID                string
+	AlertmanagerEndpoint     string
+	CASecret                 string
+	CertSecret               string
+	AccessorSecret           string
+	EnableUWLAlertForwarding bool
 }
 
-// NewMCOAAgentReconciler creates a new MCOAAgentReconciler and initializes its sub-reconcilers.
+// NewMCOAAgentReconciler creates a new MCOAAgentReconciler.
 func NewMCOAAgentReconciler(
 	client client.Client,
 	log logr.Logger,
@@ -43,34 +42,25 @@ func NewMCOAAgentReconciler(
 	recorder record.EventRecorder,
 	namespace string,
 	clusterID string,
-	hubInfo *operatorconfig.HubInfo,
+	alertmanagerEndpoint string,
 	caSecret string,
 	certSecret string,
 	accessorSecret string,
+	enableUWLAlertForwarding bool,
 ) *MCOAAgentReconciler {
 	registerMetrics()
 	return &MCOAAgentReconciler{
-		Client:         client,
-		Log:            log,
-		Scheme:         scheme,
-		Recorder:       recorder,
-		Namespace:      namespace,
-		ClusterID:      clusterID,
-		HubInfo:        hubInfo,
-		CASecret:       caSecret,
-		CertSecret:     certSecret,
-		AccessorSecret: accessorSecret,
-		cmoReconciler: &cmoConfigReconciler{
-			Client:         client,
-			Log:            log.WithName("CMO"),
-			Recorder:       recorder,
-			Namespace:      namespace,
-			ClusterID:      clusterID,
-			HubInfo:        hubInfo,
-			CASecret:       caSecret,
-			CertSecret:     certSecret,
-			AccessorSecret: accessorSecret,
-		},
+		Client:                   client,
+		Log:                      log,
+		Scheme:                   scheme,
+		Recorder:                 recorder,
+		Namespace:                namespace,
+		ClusterID:                clusterID,
+		AlertmanagerEndpoint:     alertmanagerEndpoint,
+		CASecret:                 caSecret,
+		CertSecret:               certSecret,
+		AccessorSecret:           accessorSecret,
+		EnableUWLAlertForwarding: enableUWLAlertForwarding,
 	}
 }
 
@@ -79,11 +69,11 @@ func (r *MCOAAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	switch {
 	case req.Name == operatorconfig.OCPClusterMonitoringConfigMapName && req.Namespace == operatorconfig.OCPClusterMonitoringNamespace:
-		if err := r.cmoReconciler.reconcile(ctx, req.NamespacedName); err != nil {
+		if err := r.reconcileCMO(ctx, req.NamespacedName); err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to reconcile CMO config: %w", err)
 		}
 	case req.Name == operatorconfig.OCPUserWorkloadMonitoringConfigMap && req.Namespace == operatorconfig.OCPUserWorkloadMonitoringNamespace:
-		if err := r.cmoReconciler.reconcileUWLConfig(ctx); err != nil {
+		if err := r.reconcileUWLConfig(ctx); err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to reconcile UWL config: %w", err)
 		}
 	default:

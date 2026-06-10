@@ -9,7 +9,6 @@ import (
 
 	cmomanifests "github.com/openshift/cluster-monitoring-operator/pkg/manifests"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/controllers/observabilityendpoint"
-	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -19,9 +18,6 @@ import (
 
 func TestCMOConfigReconciler_detectConflict(t *testing.T) {
 	t.Parallel()
-	hubInfo := &operatorconfig.HubInfo{
-		HubClusterID: "hub-id",
-	}
 
 	validCfg := cmomanifests.ClusterMonitoringConfiguration{
 		PrometheusK8sConfig: &cmomanifests.PrometheusK8sConfig{
@@ -107,10 +103,11 @@ func TestCMOConfigReconciler_detectConflict(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := &cmoConfigReconciler{
-				Log: ctrl.Log.WithName("test"),
+			r := &MCOAAgentReconciler{
+				Log:      ctrl.Log.WithName("test"),
+				CASecret: "hub-alertmanager-router-ca-hub-id", // Match the validCfg Name exactly
 			}
-			assert.Equal(t, tt.expected, r.detectConflict(tt.cm, hubInfo))
+			assert.Equal(t, tt.expected, r.detectConflict(tt.cm))
 		})
 	}
 }

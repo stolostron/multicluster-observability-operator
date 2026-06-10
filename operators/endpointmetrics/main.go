@@ -134,14 +134,16 @@ func runCleanup(args []string) {
 	ctx := context.Background()
 	var errs []error
 
+	caSecret := obsepctl.AppendHubClusterID(obsepctl.HubAmRouterCASecretName, hubInfo.HubClusterID)
+
 	setupLog.Info("Reverting Platform monitoring configuration")
-	if err := obsepctl.RevertClusterMonitoringConfig(ctx, cl, hubInfo); err != nil {
+	if err := obsepctl.RevertClusterMonitoringConfig(ctx, cl, caSecret); err != nil {
 		setupLog.Error(err, "failed to revert platform monitoring config")
 		errs = append(errs, err)
 	}
 
 	setupLog.Info("Reverting User Workload monitoring configuration")
-	if err := obsepctl.RevertUserWorkloadMonitoringConfig(ctx, cl, hubInfo); err != nil {
+	if err := obsepctl.RevertUserWorkloadMonitoringConfig(ctx, cl, caSecret); err != nil {
 		setupLog.Error(err, "failed to revert user workload monitoring config")
 		errs = append(errs, err)
 	}
@@ -166,6 +168,7 @@ func runMCOA(args []string) {
 	var hubAmCASecret string
 	var hubAmCertSecret string
 	var hubAmAccessorSecret string
+	var enableUWLAlertForwarding bool
 
 	fs.StringVar(&metricsAddr, "metrics-bind-address", ":8383", "The address the metric endpoint binds to.")
 	fs.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
@@ -178,6 +181,7 @@ func runMCOA(args []string) {
 	fs.StringVar(&hubAmCASecret, "hub-alertmanager-ca-secret", "", "The name of the CA secret for the Hub's Alertmanager.")
 	fs.StringVar(&hubAmCertSecret, "hub-alertmanager-cert-secret", "", "The name of the TLS cert/key secret for the Hub's Alertmanager.")
 	fs.StringVar(&hubAmAccessorSecret, "hub-alertmanager-accessor-secret", "", "The name of the accessor token secret for the Hub's Alertmanager.")
+	fs.BoolVar(&enableUWLAlertForwarding, "enable-uwl-alert-forwarding", true, "Enable or disable forwarding of user workload monitoring alerts.")
 
 	klog.InitFlags(fs)
 	_ = fs.Parse(args)
@@ -218,10 +222,6 @@ func runMCOA(args []string) {
 		os.Exit(1)
 	}
 
-	hubInfo := &operatorconfig.HubInfo{
-		AlertmanagerEndpoint: hubAmURL,
-	}
-
 	if err = mcoa.NewMCOAAgentReconciler(
 		mgr.GetClient(),
 		ctrl.Log.WithName("controllers").WithName("MCOA-Agent"),
@@ -229,10 +229,11 @@ func runMCOA(args []string) {
 		mgr.GetEventRecorderFor("mcoa-agent-controller"),
 		namespace,
 		clusterID,
-		hubInfo,
+		hubAmURL,
 		hubAmCASecret,
 		hubAmCertSecret,
 		hubAmAccessorSecret,
+		enableUWLAlertForwarding,
 	).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "MCOA-Agent")
 		os.Exit(1)
