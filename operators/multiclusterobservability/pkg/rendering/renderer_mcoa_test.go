@@ -12,6 +12,7 @@ import (
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering/templates"
+	mcoutil "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
 	templatesutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering/templates"
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
@@ -72,7 +73,7 @@ func TestRenderMCOADeployment(t *testing.T) {
 
 	renderer := &MCORenderer{cr: mco}
 
-	uobj, err := renderer.renderMCOADeployment(dp, "test", map[string]string{"key": "value"})
+	uobj, err := renderer.renderMCOADeployment(t.Context(), dp, "test", map[string]string{"key": "value"})
 	assert.NoError(t, err)
 	assert.NotNil(t, uobj)
 
@@ -111,7 +112,7 @@ func TestRenderMCOADeployment(t *testing.T) {
 			},
 		},
 	}
-	uobj, err = renderer.renderMCOADeployment(dp, "test", map[string]string{"key": "value"})
+	uobj, err = renderer.renderMCOADeployment(t.Context(), dp, "test", map[string]string{"key": "value"})
 	assert.NoError(t, err)
 	err = runtime.DefaultUnstructuredConverter.FromUnstructured(uobj.Object, got)
 	assert.NoError(t, err)
@@ -203,7 +204,7 @@ func TestRenderAddonDeploymentConfig(t *testing.T) {
 		},
 	}}
 
-	uobj, err := renderer.renderAddonDeploymentConfig(aodc, "test", map[string]string{"key": "value"})
+	uobj, err := renderer.renderAddonDeploymentConfig(t.Context(), aodc, "test", map[string]string{"key": "value"})
 	assert.NoError(t, err)
 	assert.NotNil(t, uobj)
 
@@ -216,7 +217,7 @@ func TestRenderAddonDeploymentConfig(t *testing.T) {
 	instrV1alpha1 := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.InstrumentationCRDName)
 	promV1alpha1 := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.PrometheusAgentCRDName)
 
-	assert.Len(t, got.Spec.CustomizedVariables, 10)
+	assert.Len(t, got.Spec.CustomizedVariables, 13)
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1alpha1.CustomizedVariable{Name: namePlatformLogsCollection, Value: clfV1})
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1alpha1.CustomizedVariable{Name: namePlatformIncidentDetection, Value: uipluginsCRDFQDN})
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1alpha1.CustomizedVariable{Name: nameUserWorkloadLogsCollection, Value: clfV1})
@@ -227,6 +228,9 @@ func TestRenderAddonDeploymentConfig(t *testing.T) {
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1alpha1.CustomizedVariable{Name: nameMetricsHubHostname, Value: "observability-hub"})
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1alpha1.CustomizedVariable{Name: nameMetricsAlertManagerHostname, Value: "alertmanager-hub"})
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1alpha1.CustomizedVariable{Name: namePLatformMetricsUI, Value: uipluginsCRDFQDN})
+	assert.Contains(t, got.Spec.CustomizedVariables, addonv1alpha1.CustomizedVariable{Name: mcoutil.ADCKeyRightSizingDelegated, Value: "false"})
+	assert.Contains(t, got.Spec.CustomizedVariables, addonv1alpha1.CustomizedVariable{Name: mcoutil.ADCKeyPlatformNamespaceRightSizing, Value: "disabled"})
+	assert.Contains(t, got.Spec.CustomizedVariables, addonv1alpha1.CustomizedVariable{Name: mcoutil.ADCKeyPlatformVirtualizationRightSizing, Value: "disabled"})
 }
 
 func TestMCOAEnabled(t *testing.T) {
@@ -455,7 +459,7 @@ func TestRenderMCOATemplates(t *testing.T) {
 				},
 			}
 
-			uobjs, err := renderer.renderMCOATemplates(mcoaTemplates, "test", map[string]string{"key": "value"})
+			uobjs, err := renderer.renderMCOATemplates(t.Context(), mcoaTemplates, "test", map[string]string{"key": "value"})
 			assert.NoError(t, err)
 			assert.NotNil(t, uobjs)
 

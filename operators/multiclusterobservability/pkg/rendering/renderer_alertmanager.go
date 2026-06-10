@@ -6,6 +6,8 @@ package rendering
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"strconv"
 
@@ -39,8 +41,8 @@ func (r *MCORenderer) newAlertManagerRenderer() {
 	}
 }
 
-func (r *MCORenderer) renderAlertManagerStatefulSet(res *resource.Resource, namespace string, labels map[string]string) (*unstructured.Unstructured, error) {
-	u, err := r.renderer.RenderNamespace(res, namespace, labels)
+func (r *MCORenderer) renderAlertManagerStatefulSet(ctx context.Context, res *resource.Resource, namespace string, labels map[string]string) (*unstructured.Unstructured, error) {
+	u, err := r.renderer.RenderNamespace(ctx, res, namespace, labels)
 	if err != nil {
 		return nil, err
 	}
@@ -143,6 +145,18 @@ func (r *MCORenderer) renderAlertManagerStatefulSet(res *resource.Resource, name
 	}
 	kubeRbacProxyContainer.ImagePullPolicy = imagePullPolicy
 
+	// Compute hash of the client CA to trigger a rolling restart when the CA rotates.
+	// kube-rbac-proxy reads --client-ca-file only at startup; without this, a CA
+	// rotation leaves the pod using a stale CA until manually restarted (ACM-34653).
+	caHash, err := r.getClientCAHash(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to compute client CA hash: %w", err)
+	}
+	if dep.Spec.Template.Annotations == nil {
+		dep.Spec.Template.Annotations = map[string]string{}
+	}
+	dep.Spec.Template.Annotations["observability.open-cluster-management.io/client-ca-hash"] = caHash
+
 	// replace the volumeClaimTemplate
 	dep.Spec.VolumeClaimTemplates[0].Spec.StorageClassName = &r.cr.Spec.StorageConfig.StorageClass
 	dep.Spec.VolumeClaimTemplates[0].Spec.Resources.Requests[corev1.ResourceStorage] = apiresource.MustParse(r.cr.Spec.StorageConfig.AlertmanagerStorageSize)
@@ -155,10 +169,29 @@ func (r *MCORenderer) renderAlertManagerStatefulSet(res *resource.Resource, name
 	return &unstructured.Unstructured{Object: unstructuredObj}, nil
 }
 
-func (r *MCORenderer) renderAlertManagerSecret(res *resource.Resource,
+func (r *MCORenderer) getClientCAHash(ctx context.Context) (string, error) {
+	namespacedName := types.NamespacedName{
+		Name:      "extension-apiserver-authentication",
+		Namespace: "kube-system",
+	}
+	sourceConfigMap := &corev1.ConfigMap{}
+	if err := r.kubeClient.Get(ctx, namespacedName, sourceConfigMap); err != nil {
+		return "", fmt.Errorf("error fetching extension-apiserver-authentication ConfigMap: %w", err)
+	}
+
+	caData, exists := sourceConfigMap.Data["client-ca-file"]
+	if !exists || len(caData) == 0 {
+		return "", fmt.Errorf("client-ca-file not found or empty in extension-apiserver-authentication ConfigMap")
+	}
+
+	hash := sha256.Sum256([]byte(caData))
+	return hex.EncodeToString(hash[:]), nil
+}
+
+func (r *MCORenderer) renderAlertManagerSecret(ctx context.Context, res *resource.Resource,
 	namespace string, labels map[string]string,
 ) (*unstructured.Unstructured, error) {
-	u, err := r.renderer.RenderNamespace(res, namespace, labels)
+	u, err := r.renderer.RenderNamespace(ctx, res, namespace, labels)
 	if err != nil {
 		return nil, err
 	}
@@ -185,10 +218,10 @@ func (r *MCORenderer) renderAlertManagerSecret(res *resource.Resource,
 	return u, nil
 }
 
-func (r *MCORenderer) renderAlertManagerConfigMap(res *resource.Resource,
+func (r *MCORenderer) renderAlertManagerConfigMap(ctx context.Context, res *resource.Resource,
 	namespace string, labels map[string]string,
 ) (*unstructured.Unstructured, error) {
-	u, err := r.renderer.RenderNamespace(res, namespace, labels)
+	u, err := r.renderer.RenderNamespace(ctx, res, namespace, labels)
 	if err != nil {
 		return nil, err
 	}
@@ -206,7 +239,7 @@ func (r *MCORenderer) renderAlertManagerConfigMap(res *resource.Resource,
 			Namespace: "kube-system",
 		}
 		sourceConfigMap := &corev1.ConfigMap{}
-		err = r.kubeClient.Get(context.Background(), namespacedName, sourceConfigMap)
+		err = r.kubeClient.Get(ctx, namespacedName, sourceConfigMap)
 		if err != nil {
 			return nil, fmt.Errorf("error fetching source ConfigMap: %w", err)
 		}
@@ -235,7 +268,7 @@ func (r *MCORenderer) renderAlertManagerConfigMap(res *resource.Resource,
 	return u, nil
 }
 
-func (r *MCORenderer) renderAlertManagerTemplates(templates []*resource.Resource,
+func (r *MCORenderer) renderAlertManagerTemplates(ctx context.Context, templates []*resource.Resource,
 	namespace string, labels map[string]string,
 ) ([]*unstructured.Unstructured, error) {
 	uobjs := []*unstructured.Unstructured{}
@@ -249,7 +282,7 @@ func (r *MCORenderer) renderAlertManagerTemplates(templates []*resource.Resource
 			uobjs = append(uobjs, &unstructured.Unstructured{Object: m})
 			continue
 		}
-		uobj, err := render(template.DeepCopy(), namespace, labels)
+		uobj, err := render(ctx, template.DeepCopy(), namespace, labels)
 		if err != nil {
 			return []*unstructured.Unstructured{}, err
 		}

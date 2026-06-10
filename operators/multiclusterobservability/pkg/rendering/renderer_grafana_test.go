@@ -5,7 +5,6 @@
 package rendering
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -36,7 +35,7 @@ func TestRenderGrafana(t *testing.T) {
 	require.NoError(t, err)
 
 	imageClient := &fakeimagev1client.FakeImageV1{Fake: &(fakeimageclient.NewSimpleClientset().Fake)}
-	_, err = imageClient.ImageStreams(config.OauthProxyImageStreamNamespace).Create(context.Background(),
+	_, err = imageClient.ImageStreams(config.OauthProxyImageStreamNamespace).Create(t.Context(),
 		&imagev1.ImageStream{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      config.OauthProxyImageStreamName,
@@ -170,7 +169,7 @@ func TestRenderGrafana(t *testing.T) {
 
 			mcoRenderer.newGranfanaRenderer()
 			namespace := "myns"
-			grafanaResources, err := mcoRenderer.renderGrafanaTemplates(grafanaTemplates, namespace, nil)
+			grafanaResources, err := mcoRenderer.renderGrafanaTemplates(t.Context(), grafanaTemplates, namespace, nil)
 			require.NoError(t, err)
 			for _, r := range grafanaResources {
 				if r.GetKind() == "ClusterRole" {
@@ -180,6 +179,78 @@ func TestRenderGrafana(t *testing.T) {
 			}
 
 			tc.expect(t, grafanaResources)
+		})
+	}
+}
+
+func TestRenderGrafanaMCOATemplatesForRemoval(t *testing.T) {
+	wd, err := os.Getwd()
+	require.NoError(t, err)
+	templatesPath := filepath.Join(wd, "..", "..", "manifests")
+	tmplRenderer := templatesutil.NewTemplateRenderer(templatesPath)
+	grafanaTemplates, err := templates.GetOrLoadGrafanaTemplates(tmplRenderer)
+	require.NoError(t, err)
+
+	testCases := map[string]struct {
+		mco    obv1beta2.MultiClusterObservability
+		expect func(*testing.T, []*unstructured.Unstructured)
+	}{
+		"MCOA for metrics is enabled": {
+			mco: obv1beta2.MultiClusterObservability{
+				Spec: obv1beta2.MultiClusterObservabilitySpec{
+					Capabilities: &obv1beta2.CapabilitiesSpec{
+						Platform: &obv1beta2.PlatformCapabilitiesSpec{
+							Metrics: obv1beta2.PlatformMetricsSpec{
+								Default: obv1beta2.PlatformMetricsDefaultSpec{
+									Enabled: true,
+								},
+							},
+						},
+					},
+				},
+			},
+			expect: func(t *testing.T, resources []*unstructured.Unstructured) {
+				assert.Empty(t, resources)
+			},
+		},
+		"MCOA for metrics is disabled": {
+			mco: obv1beta2.MultiClusterObservability{},
+			expect: func(t *testing.T, resources []*unstructured.Unstructured) {
+				assert.NotEmpty(t, resources)
+
+				allowedKinds := []string{"ScrapeConfig", "PrometheusRule"}
+				kindCounts := map[string]int{}
+				for _, resource := range resources {
+					kind := resource.GetKind()
+					assert.Contains(t, allowedKinds, kind)
+					kindCounts[kind]++
+				}
+
+				assert.Equal(t, 7, kindCounts["ScrapeConfig"])
+				assert.Equal(t, 3, kindCounts["PrometheusRule"])
+			},
+		},
+	}
+
+	for tcName, tc := range testCases {
+		t.Run(tcName, func(t *testing.T) {
+			mcoRenderer := &MCORenderer{
+				renderer: rendererutil.NewRenderer(),
+				cr:       &tc.mco,
+			}
+			mcoRenderer.newGranfanaRenderer()
+
+			namespace := "myns"
+			resources, err := mcoRenderer.RenderGrafanaMCOATemplatesForRemoval(
+				t.Context(), grafanaTemplates, namespace, nil,
+			)
+			require.NoError(t, err)
+			for _, resource := range resources {
+				assert.Equal(t, namespace, resource.GetNamespace(),
+					fmt.Sprintf("resource %s/%s", resource.GetKind(), resource.GetName()))
+			}
+
+			tc.expect(t, resources)
 		})
 	}
 }

@@ -5,7 +5,7 @@
 package rendering
 
 import (
-	"context"
+	"fmt"
 	"os"
 	"path"
 	"testing"
@@ -18,8 +18,10 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	templatesutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering/templates"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
@@ -34,7 +36,7 @@ func TestRender(t *testing.T) {
 
 	mchcr := &mcov1beta2.MultiClusterObservability{
 		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterObservability"},
-		ObjectMeta: metav1.ObjectMeta{Namespace: "test", Name: "test"},
+		ObjectMeta: metav1.ObjectMeta{Name: "test"},
 		Spec: mcov1beta2.MultiClusterObservabilitySpec{
 			ImagePullPolicy: "IfNotPresent",
 			ImagePullSecret: "test",
@@ -65,7 +67,7 @@ func TestRender(t *testing.T) {
 	kubeClient := fake.NewClientBuilder().WithObjects(clientCa).Build()
 
 	imageClient := &fakeimagev1client.FakeImageV1{Fake: &(fakeimageclient.NewSimpleClientset().Fake)}
-	_, err = imageClient.ImageStreams(config.OauthProxyImageStreamNamespace).Create(context.Background(),
+	_, err = imageClient.ImageStreams(config.OauthProxyImageStreamNamespace).Create(t.Context(),
 		&imagev1.ImageStream{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      config.OauthProxyImageStreamName,
@@ -88,7 +90,7 @@ func TestRender(t *testing.T) {
 	}
 
 	renderer := NewMCORenderer(mchcr, kubeClient, imageClient)
-	_, err = renderer.Render()
+	_, err = renderer.Render(t.Context())
 	if err != nil {
 		t.Fatalf("failed to render MultiClusterObservability: %v", err)
 	}
@@ -96,7 +98,7 @@ func TestRender(t *testing.T) {
 
 func TestGetOauthProxyFromImageStreams(t *testing.T) {
 	imageClient := &fakeimagev1client.FakeImageV1{Fake: &(fakeimageclient.NewSimpleClientset().Fake)}
-	_, err := imageClient.ImageStreams(config.OauthProxyImageStreamNamespace).Create(context.Background(),
+	_, err := imageClient.ImageStreams(config.OauthProxyImageStreamNamespace).Create(t.Context(),
 		&imagev1.ImageStream{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      config.OauthProxyImageStreamName,
@@ -122,4 +124,70 @@ func TestGetOauthProxyFromImageStreams(t *testing.T) {
 		t.Fatal("Failed to get oauth proxy image")
 	}
 	assert.Equal(t, "quay.io/openshift-release-dev/ocp-v4.0-art-dev", oauthProxyImage)
+}
+
+func TestMCOAGrafanaResourcesForRemoval(t *testing.T) {
+	wd, err := os.Getwd()
+	require.NoError(t, err)
+	templatesPath := path.Join(path.Dir(path.Dir(wd)), "manifests")
+	t.Setenv(templatesutil.TemplatesPathEnvVar, templatesPath)
+
+	kubeClient := fake.NewClientBuilder().Build()
+
+	testCases := map[string]struct {
+		mco    mcov1beta2.MultiClusterObservability
+		expect func(*testing.T, []*unstructured.Unstructured)
+	}{
+		"MCOA for metrics is enabled": {
+			mco: mcov1beta2.MultiClusterObservability{
+				Spec: mcov1beta2.MultiClusterObservabilitySpec{
+					Capabilities: &mcov1beta2.CapabilitiesSpec{
+						Platform: &mcov1beta2.PlatformCapabilitiesSpec{
+							Metrics: mcov1beta2.PlatformMetricsSpec{
+								Default: mcov1beta2.PlatformMetricsDefaultSpec{
+									Enabled: true,
+								},
+							},
+						},
+					},
+				},
+			},
+			expect: func(t *testing.T, resources []*unstructured.Unstructured) {
+				assert.Empty(t, resources)
+			},
+		},
+		"MCOA for metrics is disabled": {
+			mco: mcov1beta2.MultiClusterObservability{},
+			expect: func(t *testing.T, resources []*unstructured.Unstructured) {
+				assert.NotEmpty(t, resources)
+
+				allowedKinds := []string{"ScrapeConfig", "PrometheusRule"}
+				kindCounts := map[string]int{}
+				for _, resource := range resources {
+					kind := resource.GetKind()
+					assert.Contains(t, allowedKinds, kind)
+					kindCounts[kind]++
+				}
+
+				assert.Equal(t, 7, kindCounts["ScrapeConfig"])
+				assert.Equal(t, 3, kindCounts["PrometheusRule"])
+			},
+		},
+	}
+
+	for tcName, tc := range testCases {
+		t.Run(tcName, func(t *testing.T) {
+			renderer := NewMCORenderer(&tc.mco, kubeClient, nil)
+
+			namespace := "myns"
+			resources, err := renderer.MCOAGrafanaResourcesForRemoval(t.Context(), namespace, nil)
+			require.NoError(t, err)
+			for _, resource := range resources {
+				assert.Equal(t, namespace, resource.GetNamespace(),
+					fmt.Sprintf("resource %s/%s", resource.GetKind(), resource.GetName()))
+			}
+
+			tc.expect(t, resources)
+		})
+	}
 }

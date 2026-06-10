@@ -6,10 +6,12 @@ package rightsizing
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	rsnamespace "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/analytics/rightsizing/rs-namespace"
+	rsutility "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/analytics/rightsizing/rs-utility"
 	rsvirtualization "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/analytics/rightsizing/rs-virtualization"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -18,6 +20,7 @@ import (
 
 var log = logf.Log.WithName("analytics")
 
+// CreateRightSizingComponent reconciles namespace and virtualization right-sizing resources based on the MCO spec.
 func CreateRightSizingComponent(
 	ctx context.Context,
 	c client.Client,
@@ -39,12 +42,98 @@ func CreateRightSizingComponent(
 	return nil
 }
 
+// CleanupRightSizingResources cleans up all right-sizing resources (Policies, Placements, PlacementBindings, ConfigMaps).
+// It uses a hybrid approach:
+//  1. Label-based cleanup: discovers RS resources across all namespaces using the managed-by label.
+//     This handles cases where NamespaceBinding was changed before deletion.
+//  2. Name-based fallback: cleans up resources by well-known names in the spec namespace.
+//     This handles upgrade scenarios where existing resources don't have labels yet.
+func CleanupRightSizingResources(ctx context.Context, c client.Client, mco *mcov1beta2.MultiClusterObservability) error {
+	log.Info("rs - cleaning up all right-sizing resources")
+
+	var errs []error
+
+	// Label-based cleanup: catches resources in any namespace
+	if err := rsutility.CleanupRSResourcesByLabel(ctx, c); err != nil {
+		errs = append(errs, err)
+	}
+
+	// Name-based fallback: catches old unlabeled resources (upgrade path)
+	nsNamespace := getNamespaceBinding(mco, rsutility.ComponentTypeNamespace)
+	virtNamespace := getNamespaceBinding(mco, rsutility.ComponentTypeVirtualization)
+	if err := rsnamespace.CleanupRSNamespaceResources(ctx, c, nsNamespace, false); err != nil {
+		errs = append(errs, err)
+	}
+	if err := rsvirtualization.CleanupRSVirtualizationResources(ctx, c, virtNamespace, false); err != nil {
+		errs = append(errs, err)
+	}
+
+	return errors.Join(errs...)
+}
+
+// getNamespaceBinding extracts the namespace binding from MCO spec for a given component type.
+// Falls back to the default namespace if not configured.
+func getNamespaceBinding(mco *mcov1beta2.MultiClusterObservability, componentType rsutility.ComponentType) string {
+	_, binding, err := rsutility.GetComponentConfig(mco, componentType)
+	if err != nil {
+		log.V(1).Info("rs - falling back to default namespace", "component", componentType, "error", err)
+		return rsutility.DefaultNamespace
+	}
+	if binding == "" {
+		return rsutility.DefaultNamespace
+	}
+	return binding
+}
+
 // GetNamespaceRSConfigMapPredicateFunc returns predicate for namespace right-sizing ConfigMap
-func GetNamespaceRSConfigMapPredicateFunc(ctx context.Context, c client.Client) predicate.Funcs {
-	return rsnamespace.GetNamespaceRSConfigMapPredicateFunc(ctx, c)
+func GetNamespaceRSConfigMapPredicateFunc() predicate.Funcs {
+	return rsnamespace.GetNamespaceRSConfigMapPredicateFunc()
 }
 
 // GetVirtualizationRSConfigMapPredicateFunc returns predicate for virtualization right-sizing ConfigMap
-func GetVirtualizationRSConfigMapPredicateFunc(ctx context.Context, c client.Client) predicate.Funcs {
-	return rsvirtualization.GetVirtualizationRSConfigMapPredicateFunc(ctx, c)
+func GetVirtualizationRSConfigMapPredicateFunc() predicate.Funcs {
+	return rsvirtualization.GetVirtualizationRSConfigMapPredicateFunc()
+}
+
+// CleanupPolicyResourcesForDelegation cleans up Policy-based right-sizing resources when delegating to MCOA.
+// ConfigMaps are PRESERVED because MCOA owns them in the same namespace (open-cluster-management-observability).
+// Only Policy, Placement, and PlacementBinding resources are cleaned up.
+//
+// Namespaces are derived from the MCO CR rather than process-local ComponentState,
+// which may be stale after a controller restart where MCOA mode was already active.
+func CleanupPolicyResourcesForDelegation(
+	ctx context.Context,
+	c client.Client,
+	mco *mcov1beta2.MultiClusterObservability,
+) error {
+	nsNamespace := resolveNamespaceBinding(mco, rsutility.ComponentTypeNamespace)
+	virtNamespace := resolveNamespaceBinding(mco, rsutility.ComponentTypeVirtualization)
+
+	log.Info("rs - cleaning up Policy resources for MCOA delegation (preserving ConfigMaps for MCOA)",
+		"nsNamespace", nsNamespace, "virtNamespace", virtNamespace)
+
+	if err := rsnamespace.CleanupRSNamespaceResources(ctx, c, nsNamespace, true); err != nil {
+		return fmt.Errorf("namespace right-sizing cleanup: %w", err)
+	}
+	if err := rsvirtualization.CleanupRSVirtualizationResources(ctx, c, virtNamespace, true); err != nil {
+		return fmt.Errorf("virtualization right-sizing cleanup: %w", err)
+	}
+
+	// Reset component state so next MCO-mode reconcile treats it as fresh enable
+	// and recreates Policy/Placement/PlacementBinding resources.
+	rsnamespace.ComponentState.Enabled = false
+	rsvirtualization.ComponentState.Enabled = false
+
+	log.Info("rs - Policy cleanup for MCOA delegation completed")
+	return nil
+}
+
+// resolveNamespaceBinding reads the NamespaceBinding for a component type from the
+// MCO CR and falls back to the default namespace when the field is absent or empty.
+func resolveNamespaceBinding(mco *mcov1beta2.MultiClusterObservability, ct rsutility.ComponentType) string {
+	_, binding, _ := rsutility.GetComponentConfig(mco, ct)
+	if binding == "" {
+		return rsutility.DefaultNamespace
+	}
+	return binding
 }

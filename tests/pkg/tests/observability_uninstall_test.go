@@ -37,6 +37,14 @@ func uninstallMCO() {
 	err := utils.UninstallMCO(testOptions)
 	Expect(err).ToNot(HaveOccurred())
 
+	// Verify right-sizing resources are cleaned up during MCO deletion.
+	// Acts as a safety net: if right-sizing tests are skipped or their teardown fails,
+	// these resources must still be cleaned up by the MCO finalizer.
+	By("Verifying right-sizing resources are cleaned up after MCO deletion")
+	Eventually(func() error {
+		return utils.VerifyRSResourcesCleanedUp(context.TODO(), dynClient)
+	}, EventuallyTimeoutMinute*2, EventuallyIntervalSecond*5).Should(Succeed())
+
 	By("Waiting for delete all MCO components")
 	Eventually(func() error {
 		podList, _ := hubClient.CoreV1().Pods(MCO_NAMESPACE).List(context.TODO(), metav1.ListOptions{})

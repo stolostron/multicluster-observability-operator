@@ -6,7 +6,6 @@ data:
   metrics_list.yaml: |
     names:
       - :node_memory_MemAvailable_bytes:sum
-      - accelerator_card_info
       - acm_managed_cluster_labels
       - acm_rs:namespace:cpu_request_hard
       - acm_rs:namespace:cpu_request
@@ -199,6 +198,7 @@ data:
       - namespace_workload_pod:kube_pod_owner:relabel
       - namespace:container_memory_usage_bytes:sum
       - namespace:kube_pod_container_resource_requests_cpu_cores:sum
+      - node_accelerator_card_info
       - node_cpu_seconds_total
       - node_cpu_seconds_total
       - node_filesystem_avail_bytes

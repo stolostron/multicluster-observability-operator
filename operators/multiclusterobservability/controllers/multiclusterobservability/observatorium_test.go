@@ -31,6 +31,18 @@ import (
 
 var storageClassName = ""
 
+func alertmanagerCABundleConfigMap() *corev1.ConfigMap {
+	return &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      mcoconfig.AlertmanagersDefaultCaBundleName,
+			Namespace: mcoconfig.GetDefaultNamespace(),
+		},
+		Data: map[string]string{
+			mcoconfig.AlertmanagersDefaultCaBundleKey: "dummy-ca",
+		},
+	}
+}
+
 func TestNewVolumeClaimTemplate(t *testing.T) {
 	vct := newVolumeClaimTemplate("10Gi", "test")
 	if vct.Spec.AccessModes[0] != corev1.ReadWriteOnce ||
@@ -93,7 +105,7 @@ func TestNewDefaultObservatoriumSpec(t *testing.T) {
 	mcov1beta2.SchemeBuilder.AddToScheme(s)
 	observatoriumv1alpha1.SchemeBuilder.AddToScheme(s)
 
-	objs := []runtime.Object{mco, writeStorageS}
+	objs := []runtime.Object{mco, writeStorageS, alertmanagerCABundleConfigMap()}
 	// Create a fake client to mock API calls.
 	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
 
@@ -191,7 +203,7 @@ func TestNewDefaultObservatoriumSpecWithTShirtSize(t *testing.T) {
 	mcov1beta2.SchemeBuilder.AddToScheme(s)
 	observatoriumv1alpha1.SchemeBuilder.AddToScheme(s)
 
-	objs := []runtime.Object{mco, writeStorageS}
+	objs := []runtime.Object{mco, writeStorageS, alertmanagerCABundleConfigMap()}
 	// Create a fake client to mock API calls.
 	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
 
@@ -265,14 +277,15 @@ func TestUpdateObservatoriumCR(t *testing.T) {
 				"config.yaml": "test",
 			},
 		},
+		alertmanagerCABundleConfigMap(),
 	}...)
 
 	// Create a fake client to mock API calls.
 	// This should have no extra objects beyond the CMO CRD.
-	noConfigCl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(mco).Build()
+	noConfigCl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(mco, alertmanagerCABundleConfigMap()).Build()
 	mcoconfig.SetOperandNames(noConfigCl)
 
-	_, err := GenerateObservatoriumCR(noConfigCl, s, mco)
+	_, err := GenerateObservatoriumCR(context.TODO(), noConfigCl, s, mco)
 	if err != nil {
 		t.Errorf("Failed to create observatorium due to %v", err)
 	}
@@ -296,7 +309,7 @@ func TestUpdateObservatoriumCR(t *testing.T) {
 	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(append(objs, createdObservatoriumCR)...).Build()
 	mcoconfig.SetOperandNames(cl)
 
-	_, err = GenerateObservatoriumCR(cl, s, mco)
+	_, err = GenerateObservatoriumCR(context.TODO(), cl, s, mco)
 	if err != nil {
 		t.Errorf("Failed to update observatorium due to %v", err)
 	}
@@ -360,10 +373,10 @@ func TestTShirtSizeUpdateObservatoriumCR(t *testing.T) {
 
 	// Create a fake client to mock API calls.
 	// This should have no extra objects beyond the CMO CRD.
-	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(mco).Build()
+	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(mco, alertmanagerCABundleConfigMap()).Build()
 	mcoconfig.SetOperandNames(cl)
 
-	_, err := GenerateObservatoriumCR(cl, s, mco)
+	_, err := GenerateObservatoriumCR(context.TODO(), cl, s, mco)
 	if err != nil {
 		t.Errorf("Failed to create observatorium due to %v", err)
 	}
@@ -382,7 +395,7 @@ func TestTShirtSizeUpdateObservatoriumCR(t *testing.T) {
 	}
 
 	mco.Spec.InstanceSize = mcoconfig.TwoXLarge
-	_, err = GenerateObservatoriumCR(cl, s, mco)
+	_, err = GenerateObservatoriumCR(context.TODO(), cl, s, mco)
 	if err != nil {
 		t.Errorf("Failed to update observatorium due to %v", err)
 	}
@@ -468,13 +481,14 @@ func TestNoUpdateObservatoriumCR(t *testing.T) {
 				"config.yaml": "test",
 			},
 		},
+		alertmanagerCABundleConfigMap(),
 	}...)
 
 	// Create a fake client to mock API calls.
 	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
 	mcoconfig.SetOperandNames(cl)
 
-	_, err := GenerateObservatoriumCR(cl, s, mco)
+	_, err := GenerateObservatoriumCR(context.TODO(), cl, s, mco)
 	if err != nil {
 		t.Errorf("Failed to create observatorium due to %v", err)
 	}
@@ -507,7 +521,7 @@ func TestNoUpdateObservatoriumCR(t *testing.T) {
 		t.Errorf("%v should be equal to %v", string(oldSpecBytes), string(newSpecBytes))
 	}
 
-	_, err = GenerateObservatoriumCR(cl, s, mco)
+	_, err = GenerateObservatoriumCR(context.TODO(), cl, s, mco)
 	if err != nil {
 		t.Errorf("Failed to update observatorium due to %v", err)
 	}
@@ -765,7 +779,7 @@ func TestObservatoriumCustomArgs(t *testing.T) {
 		},
 	}
 
-	objs := []runtime.Object{mco, writeStorageS}
+	objs := []runtime.Object{mco, writeStorageS, alertmanagerCABundleConfigMap()}
 	// Create a fake client to mock API calls.
 	cl := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 
@@ -963,4 +977,246 @@ func TestNewRuleSpec(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestNewReceiversSpec(t *testing.T) {
+	tests := []struct {
+		name         string
+		mcoaEnabled  bool
+		hasContainer bool
+		expectedArgs []string
+	}{
+		{
+			name:         "MCOA disabled, no custom containers",
+			mcoaEnabled:  false,
+			hasContainer: false,
+			expectedArgs: nil,
+		},
+		{
+			name:         "MCOA enabled, no custom containers",
+			mcoaEnabled:  true,
+			hasContainer: false,
+			expectedArgs: []string{"--tsdb.out-of-order.time-window=1h"},
+		},
+		{
+			name:         "MCOA enabled, with custom containers",
+			mcoaEnabled:  true,
+			hasContainer: true,
+			expectedArgs: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mco := &mcov1beta2.MultiClusterObservability{
+				Spec: mcov1beta2.MultiClusterObservabilitySpec{
+					InstanceSize: mcoconfig.Default,
+					StorageConfig: &mcov1beta2.StorageConfig{
+						ReceiveStorageSize: "1Gi",
+					},
+				},
+			}
+
+			if tt.mcoaEnabled {
+				mco.Spec.Capabilities = &mcov1beta2.CapabilitiesSpec{
+					Platform: &mcov1beta2.PlatformCapabilitiesSpec{
+						Metrics: mcov1beta2.PlatformMetricsSpec{
+							Default: mcov1beta2.PlatformMetricsDefaultSpec{
+								Enabled: true,
+							},
+						},
+					},
+				}
+			}
+
+			if tt.hasContainer {
+				mco.Spec.AdvancedConfig = &mcov1beta2.AdvancedConfig{
+					Receive: &mcov1beta2.ReceiveSpec{
+						Containers: []corev1.Container{{Name: "test"}},
+					},
+				}
+			}
+
+			receiveSpec := newReceiversSpec(mco, "test-sc")
+
+			if len(receiveSpec.Args) != len(tt.expectedArgs) {
+				t.Fatalf("expected %d args, got %d", len(tt.expectedArgs), len(receiveSpec.Args))
+			}
+
+			for i, expectedArg := range tt.expectedArgs {
+				if receiveSpec.Args[i] != expectedArg {
+					t.Errorf("expected arg %s at index %d, got %s", expectedArg, i, receiveSpec.Args[i])
+				}
+			}
+		})
+	}
+}
+
+func TestNewCompactSpec(t *testing.T) {
+	tests := []struct {
+		name         string
+		mcoaEnabled  bool
+		hasContainer bool
+		expectedArgs []string
+	}{
+		{
+			name:         "MCOA disabled, no custom containers",
+			mcoaEnabled:  false,
+			hasContainer: false,
+			expectedArgs: nil,
+		},
+		{
+			name:         "MCOA enabled, no custom containers",
+			mcoaEnabled:  true,
+			hasContainer: false,
+			expectedArgs: []string{"--compact.enable-vertical-compaction"},
+		},
+		{
+			name:         "MCOA enabled, with custom containers",
+			mcoaEnabled:  true,
+			hasContainer: true,
+			expectedArgs: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mco := &mcov1beta2.MultiClusterObservability{
+				Spec: mcov1beta2.MultiClusterObservabilitySpec{
+					InstanceSize: mcoconfig.Default,
+					StorageConfig: &mcov1beta2.StorageConfig{
+						CompactStorageSize: "1Gi",
+					},
+				},
+			}
+
+			if tt.mcoaEnabled {
+				mco.Spec.Capabilities = &mcov1beta2.CapabilitiesSpec{
+					Platform: &mcov1beta2.PlatformCapabilitiesSpec{
+						Metrics: mcov1beta2.PlatformMetricsSpec{
+							Default: mcov1beta2.PlatformMetricsDefaultSpec{
+								Enabled: true,
+							},
+						},
+					},
+				}
+			}
+
+			if tt.hasContainer {
+				mco.Spec.AdvancedConfig = &mcov1beta2.AdvancedConfig{
+					Compact: &mcov1beta2.CompactSpec{
+						Containers: []corev1.Container{{Name: "test"}},
+					},
+				}
+			}
+
+			compactSpec := newCompactSpec(mco, "test-sc")
+
+			if len(compactSpec.Args) != len(tt.expectedArgs) {
+				t.Fatalf("expected %d args, got %d", len(tt.expectedArgs), len(compactSpec.Args))
+			}
+
+			for i, expectedArg := range tt.expectedArgs {
+				if compactSpec.Args[i] != expectedArg {
+					t.Errorf("expected arg %s at index %d, got %s", expectedArg, i, compactSpec.Args[i])
+				}
+			}
+		})
+	}
+}
+
+func TestNewObservatoriumSpecMetricsAlertmanagerEndpoints(t *testing.T) {
+	buildObs := func(t *testing.T, mco *mcov1beta2.MultiClusterObservability) *observatoriumv1alpha1.ObservatoriumSpec {
+		t.Helper()
+		writeStorageS := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "write_name",
+				Namespace: mcoconfig.GetDefaultNamespace(),
+			},
+			Type: "Opaque",
+			Data: map[string][]byte{
+				"write_key": []byte(`url: http://remotewrite/endpoint`),
+			},
+		}
+		s := runtime.NewScheme()
+		scheme.AddToScheme(s)
+		mcov1beta2.SchemeBuilder.AddToScheme(s)
+		observatoriumv1alpha1.SchemeBuilder.AddToScheme(s)
+		objs := []runtime.Object{mco, writeStorageS, alertmanagerCABundleConfigMap()}
+		cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
+		if err := mcoconfig.SetOperandNames(cl); err != nil {
+			t.Fatalf("SetOperandNames: %v", err)
+		}
+		obs, err := newDefaultObservatoriumSpec(cl, mco, storageClassName, "")
+		if err != nil {
+			t.Fatalf("newDefaultObservatoriumSpec: %v", err)
+		}
+		return obs
+	}
+
+	baseMCO := func() *mcov1beta2.MultiClusterObservability {
+		return &mcov1beta2.MultiClusterObservability{
+			TypeMeta: metav1.TypeMeta{Kind: "MultiClusterObservability"},
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "test",
+				Annotations: map[string]string{
+					mcoconfig.AnnotationKeyImageRepository: "quay.io:443/acm-d",
+					mcoconfig.AnnotationKeyImageTagSuffix:  "tag",
+				},
+			},
+			Spec: mcov1beta2.MultiClusterObservabilitySpec{
+				StorageConfig: &mcov1beta2.StorageConfig{
+					MetricObjectStorage: &mcoshared.PreConfiguredStorage{
+						Key:           "key",
+						Name:          "name",
+						TLSSecretName: "secret",
+					},
+					WriteStorage: []*mcoshared.PreConfiguredStorage{
+						{Key: "write_key", Name: "write_name"},
+					},
+					StorageClass:            storageClassName,
+					AlertmanagerStorageSize: "1Gi",
+					CompactStorageSize:      "1Gi",
+					RuleStorageSize:         "1Gi",
+					ReceiveStorageSize:      "1Gi",
+					StoreStorageSize:        "1Gi",
+				},
+				ObservabilityAddonSpec: &mcoshared.ObservabilityAddonSpec{
+					EnableMetrics: true,
+					Interval:      300,
+				},
+			},
+		}
+	}
+
+	t.Run("default sizing produces DNS endpoints per alertmanager replica", func(t *testing.T) {
+		mco := baseMCO()
+		obs := buildObs(t, mco)
+		want := []string{
+			"https://observability-alertmanager-0.alertmanager-operated.open-cluster-management-observability.svc:9095",
+			"https://observability-alertmanager-1.alertmanager-operated.open-cluster-management-observability.svc:9095",
+			"https://observability-alertmanager-2.alertmanager-operated.open-cluster-management-observability.svc:9095",
+		}
+		if !reflect.DeepEqual(obs.API.MetricsAlertmanagerEndpoints, want) {
+			t.Errorf("MetricsAlertmanagerEndpoints = %#v, want %#v", obs.API.MetricsAlertmanagerEndpoints, want)
+		}
+	})
+	var amReplicas int32 = 5
+	t.Run("advanced alertmanager replicas extends metrics endpoints", func(t *testing.T) {
+		mco := baseMCO()
+		mco.Spec.AdvancedConfig = &mcov1beta2.AdvancedConfig{
+			Alertmanager: &mcov1beta2.AlertmanagerSpec{
+				CommonSpec: mcov1beta2.CommonSpec{
+					Replicas: &amReplicas,
+				},
+			},
+		}
+		obs := buildObs(t, mco)
+		if got := len(obs.API.MetricsAlertmanagerEndpoints); got != int(amReplicas) {
+			t.Fatalf("len(MetricsAlertmanagerEndpoints) = %d, want %d", got, int(amReplicas))
+		}
+		if obs.API.MetricsAlertmanagerEndpoints[4] != "https://observability-alertmanager-4.alertmanager-operated.open-cluster-management-observability.svc:9095" {
+			t.Errorf("last endpoint = %q", obs.API.MetricsAlertmanagerEndpoints[4])
+		}
+	})
 }

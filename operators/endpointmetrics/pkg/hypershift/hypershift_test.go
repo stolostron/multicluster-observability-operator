@@ -109,35 +109,56 @@ func TestHypershiftServiceMonitors(t *testing.T) {
 	promv1.AddToScheme(scheme)
 
 	testCases := map[string]struct {
-		getClient   func() client.Client
-		expectError bool
-		expectSMs   bool
+		getClient          func() client.Client
+		expectError        bool
+		expectEtcdSMs      bool
+		expectApiServerSMs bool
 	}{
 		"no hyperfhift cluster": {
-			getClient:   func() client.Client { return fake.NewClientBuilder().WithScheme(scheme).Build() },
-			expectError: false,
-			expectSMs:   false,
+			getClient:          func() client.Client { return fake.NewClientBuilder().WithScheme(scheme).Build() },
+			expectError:        false,
+			expectEtcdSMs:      false,
+			expectApiServerSMs: false,
 		},
-		"original hypershift sm is missing": {
+		"original hypershift sm are missing": {
 			getClient: func() client.Client {
 				return fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(hCluster).Build()
 			},
-			expectError: true,
-			expectSMs:   false,
+			expectError:        false,
+			expectEtcdSMs:      false,
+			expectApiServerSMs: false,
+		},
+		"only original etcd sm exists": {
+			getClient: func() client.Client {
+				return fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(hCluster, hypershiftEtcdSM).Build()
+			},
+			expectError:        false,
+			expectEtcdSMs:      true,
+			expectApiServerSMs: false,
+		},
+		"only original apiserver sm exists": {
+			getClient: func() client.Client {
+				return fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(hCluster, hypershiftApiServerSM).Build()
+			},
+			expectError:        false,
+			expectEtcdSMs:      false,
+			expectApiServerSMs: true,
 		},
 		"create": {
 			getClient: func() client.Client {
 				return fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(hCluster, hypershiftEtcdSM, hypershiftApiServerSM).Build()
 			},
-			expectError: false,
-			expectSMs:   true,
+			expectError:        false,
+			expectEtcdSMs:      true,
+			expectApiServerSMs: true,
 		},
 		"update": {
 			getClient: func() client.Client {
 				return fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(hCluster, etcdSm, hypershiftEtcdSM, hypershiftApiServerSM).Build()
 			},
-			expectError: false,
-			expectSMs:   true,
+			expectError:        false,
+			expectEtcdSMs:      true,
+			expectApiServerSMs: true,
 		},
 	}
 
@@ -168,34 +189,35 @@ func TestHypershiftServiceMonitors(t *testing.T) {
 			}
 			assert.NoError(t, err)
 
-			if !tc.expectSMs {
-				assert.Equal(t, 0, hostedClustersReconciled, "expected 0 hosted cluster reconciled")
-				return
+			if tc.expectEtcdSMs || tc.expectApiServerSMs {
+				assert.Equal(t, 1, hostedClustersReconciled, "expected 1 hosted cluster reconciled")
 			}
-
-			assert.Equal(t, 1, hostedClustersReconciled, "expected 1 hosted cluster reconciled")
 
 			// check etcd and kube-apiserver ServiceMonitors are created
 			sm := &promv1.ServiceMonitor{}
-			err = client.Get(context.Background(), types.NamespacedName{
-				Name:      hypershift.AcmEtcdSmName,
-				Namespace: fmt.Sprintf("%s-%s", hosteClusterNamespace, hostedClusterName),
-			}, sm)
-			assert.NoError(t, err)
-			assert.Equal(t, hypershiftEtcdSM.Spec.Endpoints[0].TLSConfig, sm.Spec.Endpoints[0].TLSConfig)
-			assert.Equal(t, hypershiftEtcdSM.Spec.Selector, sm.Spec.Selector)
-			assert.Equal(t, hypershiftEtcdSM.Spec.NamespaceSelector, sm.Spec.NamespaceSelector)
-			checkRelabelConfigs(t, sm)
+			if tc.expectEtcdSMs {
+				err = client.Get(context.Background(), types.NamespacedName{
+					Name:      hypershift.AcmEtcdSmName,
+					Namespace: fmt.Sprintf("%s-%s", hosteClusterNamespace, hostedClusterName),
+				}, sm)
+				assert.NoError(t, err)
+				assert.Equal(t, hypershiftEtcdSM.Spec.Endpoints[0].TLSConfig, sm.Spec.Endpoints[0].TLSConfig)
+				assert.Equal(t, hypershiftEtcdSM.Spec.Selector, sm.Spec.Selector)
+				assert.Equal(t, hypershiftEtcdSM.Spec.NamespaceSelector, sm.Spec.NamespaceSelector)
+				checkRelabelConfigs(t, sm)
+			}
 
-			err = client.Get(context.Background(), types.NamespacedName{
-				Name:      hypershift.AcmApiServerSmName,
-				Namespace: fmt.Sprintf("%s-%s", hosteClusterNamespace, hostedClusterName),
-			}, sm)
-			assert.NoError(t, err)
-			assert.Equal(t, hypershiftApiServerSM.Spec.Endpoints[0].TLSConfig, sm.Spec.Endpoints[0].TLSConfig)
-			assert.Equal(t, hypershiftApiServerSM.Spec.Selector, sm.Spec.Selector)
-			assert.Equal(t, hypershiftApiServerSM.Spec.NamespaceSelector, sm.Spec.NamespaceSelector)
-			checkRelabelConfigs(t, sm)
+			if tc.expectApiServerSMs {
+				err = client.Get(context.Background(), types.NamespacedName{
+					Name:      hypershift.AcmApiServerSmName,
+					Namespace: fmt.Sprintf("%s-%s", hosteClusterNamespace, hostedClusterName),
+				}, sm)
+				assert.NoError(t, err)
+				assert.Equal(t, hypershiftApiServerSM.Spec.Endpoints[0].TLSConfig, sm.Spec.Endpoints[0].TLSConfig)
+				assert.Equal(t, hypershiftApiServerSM.Spec.Selector, sm.Spec.Selector)
+				assert.Equal(t, hypershiftApiServerSM.Spec.NamespaceSelector, sm.Spec.NamespaceSelector)
+				checkRelabelConfigs(t, sm)
+			}
 		})
 	}
 }

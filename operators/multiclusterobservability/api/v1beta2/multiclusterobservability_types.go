@@ -360,6 +360,13 @@ type AdvancedConfig struct {
 	// For the alertmanager that runs in the hub this setting has no effect.
 	// +optional
 	CustomAlertmanagerHubURL observabilityshared.URL `json:"customAlertmanagerHubURL,omitempty"`
+	// QueryTimeout is the timeout for queries executed in Grafana.
+	// It is applied to the read path components from Grafana.
+	// Default is 300s.
+	// +optional
+	// +kubebuilder:validation:Pattern=`^([0-9]+(\.[0-9]+)?(ms|s|m|h))+$`
+	// +kubebuilder:default="300s"
+	QueryTimeout string `json:"queryTimeout,omitempty"`
 	// The spec of the data retention configurations
 	// +optional
 	RetentionConfig *RetentionConfig `json:"retentionConfig,omitempty"`
@@ -568,7 +575,6 @@ type StorageConfig struct {
 	// be used for Object Storage if MetricObjectStorage was configured for
 	// the system to create the storage.
 	// +optional
-	// +kubebuilder:default:=gp2
 	StorageClass string `json:"storageClass,omitempty"`
 	// The amount of storage applied to alertmanager stateful sets,
 	// +optional

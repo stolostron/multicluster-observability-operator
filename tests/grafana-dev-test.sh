@@ -34,6 +34,12 @@ wait_for_condition() {
   fail "Timeout waiting for $desc after $max_attempts attempts"
 }
 
+cleanup() {
+  log "Cleaning up Grafana dev environment"
+  ./setup-grafana-dev.sh --clean || log "Warning: Failed to clean up Grafana dev environment"
+}
+trap cleanup EXIT
+
 # Ensure working directory
 BASE_DIR="$(cd "$(dirname "$0")/.." && pwd -P)"
 cd "$BASE_DIR/tools" || fail "Failed to change to tools directory"
@@ -53,7 +59,7 @@ POD_NAME=$(kubectl get pods -n "$OBS_NAMESPACE" -l "$GRAFANA_POD_LABEL" \
 log "Creating test user"
 create_test_user_cmd="
   kubectl -n \"$OBS_NAMESPACE\" exec \"$POD_NAME\" -c grafana-dashboard-loader -- /usr/bin/curl \
-    -XPOST -s \
+    -XPOST -fsS \
     -H \"Content-Type: application/json\" \
     -H \"X-Forwarded-User: WHAT_YOU_ARE_DOING_IS_VOIDING_SUPPORT_0000000000000000000000000000000000000000000000000000000000000000\" \
     -d '{ \"name\":\"$TEST_USER\", \"email\":\"$TEST_USER\", \"login\":\"$TEST_USER\", \"password\":\"$TEST_USER\" }' \
@@ -63,24 +69,20 @@ create_test_user_cmd="
 wait_for_condition \
   "$create_test_user_cmd" \
   "Creating test user" \
-  10 \
-  2
+  30 \
+  5
 
 # Switch to admin and generate dashboard
 wait_for_condition \
   "./switch-to-grafana-admin.sh \"$TEST_USER\"" \
   "switching to Grafana admin" \
-  10 \
-  2
+  30 \
+  5
 
 wait_for_condition \
   "./generate-dashboard-configmap-yaml.sh -f 'Alerts' 'Alert Analysis'" \
   "generating dashboard configmap" \
-  10 \
-  2
-
-# Cleanup
-log "Cleaning up Grafana dev environment"
-./setup-grafana-dev.sh --clean || fail "Failed to clean up Grafana dev environment"
+  30 \
+  5
 
 log "Script completed successfully"

@@ -5,6 +5,7 @@
 package rendering
 
 import (
+	"context"
 	"fmt"
 	"maps"
 	"net/url"
@@ -12,6 +13,7 @@ import (
 	"github.com/imdario/mergo"
 	obv1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	mcoutil "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
 	rendererutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -46,8 +48,10 @@ type MCOARendererOptions struct {
 	DisableCMAORender              bool
 	MetricsHubHostname             string
 	MetricsHubAlertmanagerHostname string
+	RightSizingDelegated           bool
 }
 
+// newMCOARenderer initializes the MCOA template rendering functions.
 func (r *MCORenderer) newMCOARenderer() {
 	r.renderMCOAFns = map[string]rendererutil.RenderFn{
 		"AddOnDeploymentConfig":  r.renderAddonDeploymentConfig,
@@ -59,12 +63,14 @@ func (r *MCORenderer) newMCOARenderer() {
 	}
 }
 
+// renderMCOADeployment renders the MCOA addon manager deployment with image overrides and node placement.
 func (r *MCORenderer) renderMCOADeployment(
+	ctx context.Context,
 	res *resource.Resource,
 	namespace string,
 	labels map[string]string,
 ) (*unstructured.Unstructured, error) {
-	u, err := r.renderer.RenderNamespace(res, namespace, labels)
+	u, err := r.renderer.RenderNamespace(ctx, res, namespace, labels)
 	if err != nil {
 		return nil, err
 	}
@@ -159,8 +165,12 @@ func (r *MCORenderer) renderMCOADeployment(
 		}
 	}
 
-	if err := mergo.Merge(&obj.Spec.Template.Spec.Containers[0], patchContainer, mergo.WithOverride); err != nil {
-		return nil, err
+	if len(obj.Spec.Template.Spec.Containers) > 0 {
+		if err := mergo.Merge(&obj.Spec.Template.Spec.Containers[0], patchContainer, mergo.WithOverride); err != nil {
+			return nil, err
+		}
+	} else {
+		return nil, fmt.Errorf("no containers found in the addon-manager deployment template")
 	}
 
 	uObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
@@ -171,7 +181,9 @@ func (r *MCORenderer) renderMCOADeployment(
 	return &unstructured.Unstructured{Object: uObj}, nil
 }
 
+// renderClusterManagementAddOn renders the CMA resource with addon lifecycle annotations.
 func (r *MCORenderer) renderClusterManagementAddOn(
+	ctx context.Context,
 	res *resource.Resource,
 	namespace string,
 	labels map[string]string,
@@ -183,7 +195,7 @@ func (r *MCORenderer) renderClusterManagementAddOn(
 	u := &unstructured.Unstructured{Object: m}
 
 	// Add grafana link annotation
-	host, err := mcoconfig.GetRouteHost(r.kubeClient, mcoconfig.GrafanaRouteName, mcoconfig.GetDefaultNamespace())
+	host, err := mcoconfig.GetRouteHost(ctx, r.kubeClient, mcoconfig.GrafanaRouteName, mcoconfig.GetDefaultNamespace())
 	if err != nil {
 		return nil, fmt.Errorf("failed to get host route: %w", err)
 	}
@@ -210,12 +222,14 @@ func (r *MCORenderer) renderClusterManagementAddOn(
 	return u, nil
 }
 
+// renderAddonDeploymentConfig renders the ADC with platform metrics, right-sizing, and incident detection variables.
 func (r *MCORenderer) renderAddonDeploymentConfig(
+	ctx context.Context,
 	res *resource.Resource,
 	namespace string,
 	labels map[string]string,
 ) (*unstructured.Unstructured, error) {
-	u, err := r.renderer.RenderNamespace(res, namespace, labels)
+	u, err := r.renderer.RenderNamespace(ctx, res, namespace, labels)
 	if err != nil {
 		return nil, err
 	}
@@ -247,6 +261,25 @@ func (r *MCORenderer) renderAddonDeploymentConfig(
 			}
 			if cs.Platform.Analytics.IncidentDetection.Enabled {
 				appendCustomVar(aodc, namePlatformIncidentDetection, uipluginsCRDFQDN)
+			}
+
+			// Right-sizing ADC variables: when MCOA manages RS (delegated),
+			// sync actual CR state. Otherwise set "disabled" so MCOA doesn't deploy RS.
+			delegated := r.rendererOptions != nil && r.rendererOptions.MCOAOptions.RightSizingDelegated
+			if delegated {
+				appendCustomVar(aodc, mcoutil.ADCKeyRightSizingDelegated, "true")
+			} else {
+				appendCustomVar(aodc, mcoutil.ADCKeyRightSizingDelegated, "false")
+			}
+			if delegated && cs.Platform.Analytics.NamespaceRightSizingRecommendation.Enabled {
+				appendCustomVar(aodc, mcoutil.ADCKeyPlatformNamespaceRightSizing, "enabled")
+			} else {
+				appendCustomVar(aodc, mcoutil.ADCKeyPlatformNamespaceRightSizing, "disabled")
+			}
+			if delegated && cs.Platform.Analytics.VirtualizationRightSizingRecommendation.Enabled {
+				appendCustomVar(aodc, mcoutil.ADCKeyPlatformVirtualizationRightSizing, "enabled")
+			} else {
+				appendCustomVar(aodc, mcoutil.ADCKeyPlatformVirtualizationRightSizing, "disabled")
 			}
 		}
 
@@ -284,10 +317,11 @@ func (r *MCORenderer) renderAddonDeploymentConfig(
 			appendCustomVar(aodc, nameMetricsAlertManagerHostname, metricsHubAlertmanagerHostname)
 		}
 
-		u.Object, err = runtime.DefaultUnstructuredConverter.ToUnstructured(aodc)
+		renderedSpec, err := runtime.DefaultUnstructuredConverter.ToUnstructured(&aodc.Spec)
 		if err != nil {
 			return nil, err
 		}
+		u.Object["spec"] = renderedSpec
 	}
 
 	cLabels := u.GetLabels()
@@ -300,18 +334,20 @@ func (r *MCORenderer) renderAddonDeploymentConfig(
 	return u, nil
 }
 
+// renderMCOATemplates renders MCOA templates, applying per-kind render functions and filtering as needed.
 func (r *MCORenderer) renderMCOATemplates(
+	ctx context.Context,
 	templates []*resource.Resource,
 	namespace string,
 	labels map[string]string,
 ) ([]*unstructured.Unstructured, error) {
 	uobjs := []*unstructured.Unstructured{}
 	for _, template := range templates {
-		// Skip rendering the ClusterManagementAddOn resource if,
-		// MCOA is enabled && the MCOA redering options disable it.
-		// The goal is for MCO to create this resource but then allow
-		// users to manage it.
-		if MCOAEnabled(r.cr) && template.GetKind() == cmaoKind &&
+		// Skip rendering the ClusterManagementAddOn resource if it already exists.
+		// MCO creates this resource on first deploy, then allows users to manage it.
+		// No MCOAEnabled guard needed here — the caller (Render/MCOAResources) already
+		// gates entry via MCOAEnabled || rightSizingDelegated.
+		if template.GetKind() == cmaoKind &&
 			r.rendererOptions != nil && r.rendererOptions.MCOAOptions.DisableCMAORender {
 			continue
 		}
@@ -325,7 +361,7 @@ func (r *MCORenderer) renderMCOATemplates(
 			uobjs = append(uobjs, &unstructured.Unstructured{Object: m})
 			continue
 		}
-		uobj, err := render(template.DeepCopy(), namespace, labels)
+		uobj, err := render(ctx, template.DeepCopy(), namespace, labels)
 		if err != nil {
 			return []*unstructured.Unstructured{}, err
 		}
@@ -338,6 +374,19 @@ func (r *MCORenderer) renderMCOATemplates(
 	return uobjs, nil
 }
 
+// rightSizingEnabled returns true if at least one right-sizing feature
+// (namespace or virtualization) is enabled in the MCO CR spec.
+func rightSizingEnabled(cr *obv1beta2.MultiClusterObservability) bool {
+	if cr.Spec.Capabilities == nil || cr.Spec.Capabilities.Platform == nil {
+		return false
+	}
+	return cr.Spec.Capabilities.Platform.Analytics.NamespaceRightSizingRecommendation.Enabled ||
+		cr.Spec.Capabilities.Platform.Analytics.VirtualizationRightSizingRecommendation.Enabled
+}
+
+// MCOAEnabled returns true if any non-right-sizing MCOA capability is enabled.
+// Right-sizing alone does NOT trigger MCOA deployment — it requires the MCO CR
+// delegation annotation to be set for MCOA-based right-sizing.
 func MCOAEnabled(cr *obv1beta2.MultiClusterObservability) bool {
 	if cr.Spec.Capabilities == nil {
 		return false
@@ -358,6 +407,7 @@ func MCOAEnabled(cr *obv1beta2.MultiClusterObservability) bool {
 	return mcoaEnabled
 }
 
+// MCOAPlatformMetricsEnabled checks if platform metrics collection is enabled in the MCO CR capabilities.
 func MCOAPlatformMetricsEnabled(cr *obv1beta2.MultiClusterObservability) bool {
 	if cr.Spec.Capabilities == nil {
 		return false

@@ -127,7 +127,23 @@ func TestGetMCOPredicateFunc(t *testing.T) {
 
 	updateEvent := event.UpdateEvent{ObjectOld: mcoObj, ObjectNew: mcoObj}
 	if mcoPred.Update(updateEvent) {
-		t.Error("mco Update function should return false when resource version is unchanged")
+		t.Error("mco Update function should return false when generation and annotations are unchanged")
+	}
+
+	// Annotation change should trigger reconciliation (e.g., right-sizing delegation)
+	mcoObjWithAnnotation := mcoObj.DeepCopy()
+	mcoObjWithAnnotation.Annotations = map[string]string{
+		"observability.open-cluster-management.io/right-sizing-capable": "true",
+	}
+	annotationUpdateEvent := event.UpdateEvent{ObjectOld: mcoObj, ObjectNew: mcoObjWithAnnotation}
+	if !mcoPred.Update(annotationUpdateEvent) {
+		t.Error("mco Update function should return true when annotations change")
+	}
+
+	// Removing annotation should also trigger
+	annotationRemoveEvent := event.UpdateEvent{ObjectOld: mcoObjWithAnnotation, ObjectNew: mcoObj}
+	if !mcoPred.Update(annotationRemoveEvent) {
+		t.Error("mco Update function should return true when annotations are removed")
 	}
 
 	deleteEvent := event.DeleteEvent{Object: mcoObj}

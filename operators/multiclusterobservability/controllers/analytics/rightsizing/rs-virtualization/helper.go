@@ -32,6 +32,7 @@ var (
 		PlacementName:            PlacementName,
 		PlacementBindingName:     PlacementBindingName,
 		PrometheusRulePolicyName: PrometheusRulePolicyName,
+		PrometheusRuleName:       PrometheusRuleName,
 		DefaultNamespace:         rsutility.DefaultNamespace,
 		GetDefaultConfigFunc:     GetDefaultRSVirtualizationConfig,
 		ApplyChangesFunc:         ApplyRSVirtualizationConfigMapChanges,
@@ -64,7 +65,7 @@ func GetRightSizingVirtualizationConfig(mco *mcov1beta2.MultiClusterObservabilit
 }
 
 // CleanupRSVirtualizationResources cleans up the resources created for virtualization right-sizing
-func CleanupRSVirtualizationResources(ctx context.Context, c client.Client, namespace string, bindingUpdated bool) {
+func CleanupRSVirtualizationResources(ctx context.Context, c client.Client, namespace string, bindingUpdated bool) error {
 	log.V(1).Info("rs - cleaning up virtualization resources if exist")
-	rsutility.CleanupComponentResources(ctx, c, componentConfig, namespace, bindingUpdated)
+	return rsutility.CleanupComponentResources(ctx, c, componentConfig, namespace, bindingUpdated)
 }

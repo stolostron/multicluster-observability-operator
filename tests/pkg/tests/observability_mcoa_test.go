@@ -7,6 +7,7 @@ package tests
 import (
 	"context"
 	"fmt"
+	"slices"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -113,6 +114,35 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 				}, 300, 2).Should(Not(HaveOccurred()))
 			})
 
+			It("should configure hub Thanos components with the correct CLI arguments", func() {
+				By("Checking Thanos Receive arguments for out-of-order flag", func() {
+					Eventually(func() error {
+						stsInfo, err := utils.GetStatefulSet(testOptions, true, "observability-thanos-receive-default", utils.MCO_NAMESPACE)
+						if err != nil {
+							return err
+						}
+						args := stsInfo.Spec.Template.Spec.Containers[0].Args
+						if !slices.Contains(args, "--tsdb.out-of-order.time-window=1h") {
+							return fmt.Errorf("expected out-of-order flag not found in thanos-receive args: %v", args)
+						}
+						return nil
+					}, 60, 2).Should(Not(HaveOccurred()))
+				})
+
+				By("Checking Thanos Compact arguments for vertical-compaction flag", func() {
+					Eventually(func() error {
+						stsInfo, err := utils.GetStatefulSet(testOptions, true, "observability-thanos-compact", utils.MCO_NAMESPACE)
+						if err != nil {
+							return err
+						}
+						args := stsInfo.Spec.Template.Spec.Containers[0].Args
+						if !slices.Contains(args, "--compact.enable-vertical-compaction") {
+							return fmt.Errorf("expected vertical-compaction flag not found in thanos-compact args: %v", args)
+						}
+						return nil
+					}, 60, 2).Should(Not(HaveOccurred()))
+				})
+			})
 			It("should allow updating the metrics list", SpecTimeout(10*time.Minute), func(ctx context.Context) {
 				customMetricName := "go_memstats_alloc_bytes"
 				customScrapeConfigCR := "test-custom-metric"
@@ -120,6 +150,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 					Expect(utils.CreateScrapeConfig(testOptions, customScrapeConfigCR, "platform-metrics-collector", []string{fmt.Sprintf(`{__name__="%s"}`, customMetricName)})).NotTo(HaveOccurred())
 					Expect(
 						utils.AddConfigToPlacementInClusterManagementAddon(
+							ctx,
 							testOptions,
 							utils.MCOA_CLUSTER_MANAGEMENT_ADDON_NAME,
 							globalPlacementName,
@@ -146,6 +177,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 				By("Deleting the custom ScrapeConfig", func() {
 					Expect(
 						utils.RemoveConfigFromPlacementInClusterManagementAddon(
+							ctx,
 							testOptions,
 							utils.MCOA_CLUSTER_MANAGEMENT_ADDON_NAME,
 							globalPlacementName,
@@ -158,7 +190,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 				})
 			})
 
-			It("should allow adding prometheus rules", func() {
+			It("should allow adding prometheus rules", func(ctx context.Context) {
 				ruleName := "test-prom-rule"
 				ruleMetricName := "test_platform_metric_from_rule"
 				scrapeConfigName := "test-prom-rule-metric"
@@ -166,6 +198,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 					Expect(utils.CreatePrometheusRule(testOptions, ruleName, utils.MCO_NAMESPACE, "platform-metrics-collector", ruleMetricName, "")).NotTo(HaveOccurred())
 					Expect(
 						utils.AddConfigToPlacementInClusterManagementAddon(
+							ctx,
 							testOptions,
 							utils.MCOA_CLUSTER_MANAGEMENT_ADDON_NAME,
 							globalPlacementName,
@@ -180,6 +213,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 					Expect(utils.CreateScrapeConfig(testOptions, scrapeConfigName, "platform-metrics-collector", []string{fmt.Sprintf(`{__name__="%s"}`, ruleMetricName)})).NotTo(HaveOccurred())
 					Expect(
 						utils.AddConfigToPlacementInClusterManagementAddon(
+							ctx,
 							testOptions,
 							utils.MCOA_CLUSTER_MANAGEMENT_ADDON_NAME,
 							globalPlacementName,
@@ -205,6 +239,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 				By("Deleting the PrometheusRule", func() {
 					Expect(
 						utils.RemoveConfigFromPlacementInClusterManagementAddon(
+							ctx,
 							testOptions,
 							utils.MCOA_CLUSTER_MANAGEMENT_ADDON_NAME,
 							globalPlacementName,
@@ -219,6 +254,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 				By("Deleting the custom ScrapeConfig", func() {
 					Expect(
 						utils.RemoveConfigFromPlacementInClusterManagementAddon(
+							ctx,
 							testOptions,
 							utils.MCOA_CLUSTER_MANAGEMENT_ADDON_NAME,
 							globalPlacementName,
@@ -269,6 +305,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 					Expect(utils.CreatePrometheusRule(testOptions, ruleName, utils.MCO_NAMESPACE, "user-workload-metrics-collector", ruleMetricName, "default")).NotTo(HaveOccurred())
 					Expect(
 						utils.AddConfigToPlacementInClusterManagementAddon(
+							ctx,
 							testOptions,
 							utils.MCOA_CLUSTER_MANAGEMENT_ADDON_NAME,
 							globalPlacementName,
@@ -283,6 +320,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 					Expect(utils.CreateScrapeConfig(testOptions, scrapeConfigName, "user-workload-metrics-collector", []string{fmt.Sprintf(`{__name__="%s"}`, ruleMetricName)})).NotTo(HaveOccurred())
 					Expect(
 						utils.AddConfigToPlacementInClusterManagementAddon(
+							ctx,
 							testOptions,
 							utils.MCOA_CLUSTER_MANAGEMENT_ADDON_NAME,
 							globalPlacementName,
@@ -313,6 +351,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 				By("Deleting the custom ScrapeConfig", func() {
 					Expect(
 						utils.RemoveConfigFromPlacementInClusterManagementAddon(
+							ctx,
 							testOptions,
 							utils.MCOA_CLUSTER_MANAGEMENT_ADDON_NAME,
 							globalPlacementName,
@@ -327,6 +366,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 				By("Deleting the PrometheusRule", func() {
 					Expect(
 						utils.RemoveConfigFromPlacementInClusterManagementAddon(
+							ctx,
 							testOptions,
 							utils.MCOA_CLUSTER_MANAGEMENT_ADDON_NAME,
 							globalPlacementName,

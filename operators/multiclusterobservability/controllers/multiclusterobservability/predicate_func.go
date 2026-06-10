@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"reflect"
 
-	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -24,10 +23,12 @@ func GetMCOPredicateFunc() predicate.Funcs {
 			return true
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			checkStorageChanged(e.ObjectOld.(*mcov1beta2.MultiClusterObservability).Spec.StorageConfig,
-				e.ObjectNew.(*mcov1beta2.MultiClusterObservability).Spec.StorageConfig)
 			config.SetMonitoringCRName(e.ObjectNew.GetName())
-			return e.ObjectOld.GetResourceVersion() != e.ObjectNew.GetResourceVersion()
+			if e.ObjectOld.GetGeneration() != e.ObjectNew.GetGeneration() {
+				return true
+			}
+			// Annotation changes (e.g., right-sizing delegation, mco-pause) don't increment generation.
+			return !reflect.DeepEqual(e.ObjectOld.GetAnnotations(), e.ObjectNew.GetAnnotations())
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
 			return !e.DeleteStateUnknown

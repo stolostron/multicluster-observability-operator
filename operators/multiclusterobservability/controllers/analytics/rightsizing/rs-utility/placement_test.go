@@ -19,8 +19,16 @@ import (
 func TestGetDefaultRSPlacement(t *testing.T) {
 	placement := GetDefaultRSPlacement()
 
-	assert.Empty(t, placement.Spec.Predicates)
+	assert.Len(t, placement.Spec.Predicates, 1)
 	assert.Len(t, placement.Spec.Tolerations, 2)
+
+	// Verify the vendor=OpenShift cluster selector
+	predicate := placement.Spec.Predicates[0]
+	matchExprs := predicate.RequiredClusterSelector.LabelSelector.MatchExpressions
+	assert.Len(t, matchExprs, 1)
+	assert.Equal(t, "vendor", matchExprs[0].Key)
+	assert.Equal(t, metav1.LabelSelectorOpIn, matchExprs[0].Operator)
+	assert.Equal(t, []string{"OpenShift"}, matchExprs[0].Values)
 
 	// Check tolerations
 	tolerations := placement.Spec.Tolerations

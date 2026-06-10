@@ -6,7 +6,7 @@ package multiclusterobservability
 
 import (
 	"context"
-	cerr "errors"
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -35,6 +35,7 @@ import (
 	observatoriumv1alpha1 "github.com/stolostron/observatorium-operator/api/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	storev1 "k8s.io/api/storage/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -71,26 +72,22 @@ const (
 )
 
 var (
-	log                              = logf.Log.WithName("controller_multiclustermonitoring")
-	isAlertmanagerStorageSizeChanged = false
-	isCompactStorageSizeChanged      = false
-	isRuleStorageSizeChanged         = false
-	isReceiveStorageSizeChanged      = false
-	isStoreStorageSizeChanged        = false
-	isLegacyResourceRemoved          = false
-	lastLogTime                      = time.Now()
+	log                     = logf.Log.WithName("controller_multiclustermonitoring")
+	isLegacyResourceRemoved = false
+	lastLogTime             = time.Now()
 )
 
 // MultiClusterObservabilityReconciler reconciles a MultiClusterObservability object
 type MultiClusterObservabilityReconciler struct {
-	Manager     manager.Manager
-	Client      client.Client
-	Log         logr.Logger
-	Scheme      *runtime.Scheme
-	CRDMap      map[string]bool
-	APIReader   client.Reader
-	RESTMapper  meta.RESTMapper
-	ImageClient imagev1client.ImageV1Interface
+	Manager           manager.Manager
+	Client            client.Client
+	Log               logr.Logger
+	Scheme            *runtime.Scheme
+	CRDMap            map[string]bool
+	APIReader         client.Reader
+	RESTMapper        meta.RESTMapper
+	ImageClient       imagev1client.ImageV1Interface
+	LastStorageConfig *mcov1beta2.StorageConfig
 }
 
 // +kubebuilder:rbac:groups=observability.open-cluster-management.io,resources=multiclusterobservabilities,verbs=get;list;watch;create;update;patch;delete
@@ -136,27 +133,21 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	}
 
 	// Fetch the MultiClusterObservability instance
-	mcoList := &mcov1beta2.MultiClusterObservabilityList{}
-	err := r.Client.List(ctx, mcoList)
+	instance, err := config.GetMCOInstance(ctx, r.Client)
 	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to list MultiClusterObservability custom resources: %w", err)
-	}
-	if len(mcoList.Items) > 1 {
-		reqLogger.Info("more than one MultiClusterObservability CR exists, only one should exist")
-		return ctrl.Result{}, nil
-	}
-	if len(mcoList.Items) == 0 {
-		reqLogger.Info("no MultiClusterObservability CR exists, nothing to do")
-		return ctrl.Result{}, nil
+		if errors.Is(err, config.ErrMultipleMCOInstances) {
+			reqLogger.Error(err, "System in inconsistent state")
+			return ctrl.Result{}, nil
+		}
+		if errors.Is(err, config.ErrMCONotFound) {
+			return ctrl.Result{}, nil
+		}
+		return ctrl.Result{}, fmt.Errorf("failed to fetch MCO instance: %w", err)
 	}
 
-	instance := mcoList.Items[0].DeepCopy()
 	if config.GetMonitoringCRName() != instance.GetName() {
 		config.SetMonitoringCRName(instance.GetName())
 	}
-
-	// start to update mco status
-	StartStatusUpdate(r.Client, instance)
 
 	ingressCtlCrdExists := r.CRDMap[config.IngressControllerCRD]
 	if _, ok := os.LookupEnv("UNIT_TEST"); !ok {
@@ -173,13 +164,15 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	}
 
 	// Init finalizers
-	operatorconfig.IsMCOTerminating, err = r.initFinalization(ctx, instance)
+	terminating, err := r.initFinalization(ctx, instance)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to initialize finalization: %w", err)
-	} else if operatorconfig.IsMCOTerminating {
+	}
+	if terminating {
 		reqLogger.Info("MCO instance is in Terminating status, skip the reconcile")
 		return ctrl.Result{}, nil
 	}
+	operatorconfig.IsMCOTerminating.Store(false)
 
 	// check if the MCH CRD exists
 	mchCrdExists := r.CRDMap[config.MCHCrdName]
@@ -222,13 +215,13 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		}
 	}
 
-	storageClassSelected, err := getStorageClass(instance, r.Client)
+	storageClassSelected, err := getStorageClass(ctx, instance, r.Client)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to get storage class: %w", err)
 	}
 
 	// handle storagesize changes
-	result, err := r.HandleStorageSizeChange(instance)
+	result, err := r.HandleStorageSizeChange(ctx, instance)
 	if result != nil {
 		// If err is non-nil, wrap it. fmt.Errorf with %w handles nil err gracefully (returns nil).
 		return *result, fmt.Errorf("error during storage size change handling: %w", err)
@@ -250,6 +243,9 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		}
 	}
 	disableMCOACMAORender := !apierrors.IsNotFound(err)
+
+	// Check if right-sizing is delegated to MCOA via MCO CR annotation.
+	rightSizingDelegated := util.IsRightSizingDelegated(instance)
 
 	obsAPIURL, err := config.GetObsAPIExternalURL(ctx, r.Client, config.GetDefaultNamespace())
 	if err != nil {
@@ -274,12 +270,13 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 			DisableCMAORender:              disableMCOACMAORender,
 			MetricsHubHostname:             obsAPIURL.Host,
 			MetricsHubAlertmanagerHostname: alertmanagerURL.Host,
+			RightSizingDelegated:           rightSizingDelegated,
 		},
 	}
 
 	// Render the templates with a specified CR
 	renderer := rendering.NewMCORenderer(instance, r.Client, r.ImageClient).WithRendererOptions(rendererOptions)
-	toDeploy, err := renderer.Render()
+	toDeploy, err := renderer.Render(ctx)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to render MCO templates for %s/%s: %w", instance.GetNamespace(), instance.GetName(), err)
 	}
@@ -334,10 +331,15 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 			return ctrl.Result{}, fmt.Errorf("failed to deploy %s %s/%s: %w", res.GetKind(), resNS, res.GetName(), err)
 		}
 	}
+	if !rendering.MCOAPlatformMetricsEnabled(instance) {
+		if err := r.undeployMCOAGrafanaResources(ctx, instance, renderer, deployer); err != nil {
+			return ctrl.Result{}, err
+		}
+	}
 
-	if !rendering.MCOAEnabled(instance) {
+	if !rendering.MCOAEnabled(instance) && !rightSizingDelegated {
 		namespace, labels := renderer.NamespaceAndLabels()
-		toDelete, err := renderer.MCOAResources(namespace, labels)
+		toDelete, err := renderer.MCOAResources(ctx, namespace, labels)
 		if err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to list MCOA resources for deletion in namespace %s: %w", namespace, err)
 		}
@@ -345,6 +347,18 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 			resNS := res.GetNamespace()
 			if err := deployer.Undeploy(ctx, res, instance); err != nil {
 				return ctrl.Result{}, fmt.Errorf("failed to undeploy %s %s/%s: %w", res.GetKind(), resNS, res.GetName(), err)
+			}
+		}
+
+		// Explicitly delete the CMA so the addon framework cleans up ManagedClusterAddons
+		// and ManifestWorks on spokes. MCOAResources() skips CMA when DisableCMAORender
+		// is set (to preserve user annotations during normal operation), but during cleanup
+		// we must remove it to trigger the full addon lifecycle teardown.
+		cma := &addonv1alpha1.ClusterManagementAddOn{}
+		if err := r.Client.Get(ctx, types.NamespacedName{Name: config.MultiClusterObservabilityAddon}, cma); err == nil {
+			reqLogger.Info("Deleting ClusterManagementAddOn for MCOA cleanup", "name", config.MultiClusterObservabilityAddon)
+			if err := r.Client.Delete(ctx, cma); err != nil && !apierrors.IsNotFound(err) {
+				return ctrl.Result{}, fmt.Errorf("failed to delete ClusterManagementAddOn %s: %w", config.MultiClusterObservabilityAddon, err)
 			}
 		}
 	}
@@ -379,11 +393,11 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		}
 
 		// expose grafana through route
-		result, err = GenerateGrafanaRoute(r.Client, r.Scheme, instance)
+		result, err = GenerateGrafanaRoute(ctx, r.Client, r.Scheme, instance)
 		if result != nil {
 			return *result, fmt.Errorf("failed to generate Grafana route: %w", err)
 		}
-		result, err = GenerateGrafanaOauthClient(r.Client, r.Scheme, instance)
+		result, err = GenerateGrafanaOauthClient(ctx, r.Client, r.Scheme, instance)
 		if result != nil {
 			return *result, fmt.Errorf("failed to generate Grafana OAuth client: %w", err)
 		}
@@ -396,13 +410,13 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	}
 
 	// create an Observatorium CR
-	result, err = GenerateObservatoriumCR(r.Client, r.Scheme, instance)
+	result, err = GenerateObservatoriumCR(ctx, r.Client, r.Scheme, instance)
 	if result != nil {
 		return *result, fmt.Errorf("failed to generate the observatorium CR: %w", err)
 	}
 
 	// generate grafana datasource to point to observatorium api gateway
-	result, err = GenerateGrafanaDataSource(r.Client, r.Scheme, instance)
+	result, err = GenerateGrafanaDataSource(ctx, r.Client, r.Scheme, instance)
 	if result != nil {
 		return *result, fmt.Errorf("failed to generate Grafana data source: %w", err)
 	}
@@ -425,21 +439,26 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		if err := r.deleteServiceMonitorInOpenshiftMonitoringNamespace(ctx); err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to delete ServiceMonitor in openshift-monitoring namespace: %w", err)
 		}
+		// The rbac-query-proxy Ingress is no longer rendered; clean up any leftover from prior versions.
+		if err := r.deleteVestigialProxyIngress(ctx); err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to delete vestigial rbac-query-proxy-ingress: %w", err)
+		}
 		isLegacyResourceRemoved = true
 	}
-
-	// update status
-	requeueStatusUpdate <- struct{}{}
 
 	return ctrl.Result{}, nil
 }
 
+// initFinalization handles MCO deletion by cleaning up resources across namespaces and removing the finalizer.
 func (r *MultiClusterObservabilityReconciler) initFinalization(ctx context.Context, mco *mcov1beta2.MultiClusterObservability) (bool, error) {
 	if mco.GetDeletionTimestamp() != nil && slices.Contains(mco.GetFinalizers(), resFinalizer) {
+		// Signal termination before cleanup so other controllers (analytics, placementrule)
+		// stop reconciling and don't recreate resources being deleted.
+		operatorconfig.IsMCOTerminating.Store(true)
+
 		log.Info("To delete resources across namespaces")
 		// clean up the cluster resources, eg. clusterrole, clusterrolebinding, etc
-		operatorconfig.IsMCOTerminating = true
-		if err := cleanUpClusterScopedResources(r, mco); err != nil {
+		if err := cleanUpClusterScopedResources(ctx, r, mco); err != nil {
 			log.Error(err, "Failed to remove cluster scoped resources")
 			return false, err
 		}
@@ -456,11 +475,16 @@ func (r *MultiClusterObservabilityReconciler) initFinalization(ctx context.Conte
 		}
 		log.Info("Finalizer removed from mco resource")
 
-		// stop update status routine
-		stopStatusUpdate <- struct{}{}
-
 		return true, nil
 	}
+
+	// Do not add finalizer to an object being deleted.
+	// After MCO removes resFinalizer, the CR may survive if the analytics
+	// finalizer is still present. Without this guard, we'd re-add resFinalizer.
+	if mco.GetDeletionTimestamp() != nil {
+		return true, nil
+	}
+
 	if !slices.Contains(mco.GetFinalizers(), resFinalizer) {
 		// Use Patch instead of Update to avoid serializing zero-value structs
 		mcoCopy := mco.DeepCopy()
@@ -476,11 +500,11 @@ func (r *MultiClusterObservabilityReconciler) initFinalization(ctx context.Conte
 	return false, nil
 }
 
-func getStorageClass(mco *mcov1beta2.MultiClusterObservability, cl client.Client) (string, error) {
+func getStorageClass(ctx context.Context, mco *mcov1beta2.MultiClusterObservability, cl client.Client) (string, error) {
 	storageClassSelected := mco.Spec.StorageConfig.StorageClass
 	// for the test, the reader is just nil
 	storageClassList := &storev1.StorageClassList{}
-	err := cl.List(context.TODO(), storageClassList, &client.ListOptions{})
+	err := cl.List(ctx, storageClassList, &client.ListOptions{})
 	if err != nil {
 		return "", err
 	}
@@ -511,6 +535,7 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 	mcoaCRDPred := GetMCOACRDPredicateFunc()
 
 	ctrBuilder := ctrl.NewControllerManagedBy(mgr).
+		Named("multiclusterobservability").
 		// Watch for changes to primary resource MultiClusterObservability with predicate
 		For(&mcov1beta2.MultiClusterObservability{}, builder.WithPredicates(mcoPred)).
 		// Watch for changes to secondary resource Deployment and requeue the owner MultiClusterObservability
@@ -609,94 +634,120 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 	return ctrBuilder.Complete(r)
 }
 
-func checkStorageChanged(mcoOldConfig, mcoNewConfig *mcov1beta2.StorageConfig) {
-	if mcoOldConfig.AlertmanagerStorageSize != mcoNewConfig.AlertmanagerStorageSize {
-		isAlertmanagerStorageSizeChanged = true
-	}
-	if mcoOldConfig.CompactStorageSize != mcoNewConfig.CompactStorageSize {
-		isCompactStorageSizeChanged = true
-	}
-	if mcoOldConfig.RuleStorageSize != mcoNewConfig.RuleStorageSize {
-		isRuleStorageSizeChanged = true
-	}
-	if mcoOldConfig.ReceiveStorageSize != mcoNewConfig.ReceiveStorageSize {
-		isReceiveStorageSizeChanged = true
-	}
-	if mcoOldConfig.StoreStorageSize != mcoNewConfig.StoreStorageSize {
-		isStoreStorageSizeChanged = true
-	}
-}
-
-// HandleStorageSizeChange is used to deal with the storagesize change in CR
-// 1. Directly changed the StatefulSet pvc's size on the pvc itself for
-// 2. Removed StatefulSet and
-// wait for operator to re-create the StatefulSet with the correct size on the claim
+// HandleStorageSizeChange compares the current storage config against the last known config
+// and handles any changes:
+// 1. For storage size changes: updates PVC sizes directly and deletes StatefulSets for re-creation
+// 2. For storage class changes: deletes StatefulSets and PVCs for re-creation with the new class
 func (r *MultiClusterObservabilityReconciler) HandleStorageSizeChange(
+	ctx context.Context,
 	mco *mcov1beta2.MultiClusterObservability,
 ) (*reconcile.Result, error) {
-	if isAlertmanagerStorageSizeChanged {
-		isAlertmanagerStorageSizeChanged = false
-		err := updateStorageSizeChange(r.Client,
+	currentConfig := mco.Spec.StorageConfig
+	lastConfig := r.LastStorageConfig
+
+	// On first reconcile there is no previous config to compare against
+	if lastConfig == nil {
+		r.LastStorageConfig = currentConfig.DeepCopy()
+		return nil, nil
+	}
+
+	if lastConfig.AlertmanagerStorageSize != currentConfig.AlertmanagerStorageSize {
+		err := updateStorageSizeChange(ctx, r.Client,
 			map[string]string{
 				"observability.open-cluster-management.io/name": mco.GetName(),
 				"alertmanager": "observability",
-			}, mco.Spec.StorageConfig.AlertmanagerStorageSize)
+			}, currentConfig.AlertmanagerStorageSize)
 		if err != nil {
 			return &reconcile.Result{}, err
 		}
 	}
 
-	if isReceiveStorageSizeChanged {
-		isReceiveStorageSizeChanged = false
-		err := updateStorageSizeChange(r.Client,
+	if lastConfig.ReceiveStorageSize != currentConfig.ReceiveStorageSize {
+		err := updateStorageSizeChange(ctx, r.Client,
 			map[string]string{
 				"app.kubernetes.io/instance": mco.GetName(),
 				"app.kubernetes.io/name":     "thanos-receive",
-			}, mco.Spec.StorageConfig.ReceiveStorageSize)
+			}, currentConfig.ReceiveStorageSize)
 		if err != nil {
 			return &reconcile.Result{}, err
 		}
 	}
 
-	if isCompactStorageSizeChanged {
-		isCompactStorageSizeChanged = false
-		err := updateStorageSizeChange(r.Client,
+	if lastConfig.CompactStorageSize != currentConfig.CompactStorageSize {
+		err := updateStorageSizeChange(ctx, r.Client,
 			map[string]string{
 				"app.kubernetes.io/instance": mco.GetName(),
 				"app.kubernetes.io/name":     "thanos-compact",
-			}, mco.Spec.StorageConfig.CompactStorageSize)
+			}, currentConfig.CompactStorageSize)
 		if err != nil {
 			return &reconcile.Result{}, err
 		}
 	}
 
-	if isRuleStorageSizeChanged {
-		isRuleStorageSizeChanged = false
-		err := updateStorageSizeChange(r.Client,
+	if lastConfig.RuleStorageSize != currentConfig.RuleStorageSize {
+		err := updateStorageSizeChange(ctx, r.Client,
 			map[string]string{
 				"app.kubernetes.io/instance": mco.GetName(),
 				"app.kubernetes.io/name":     "thanos-rule",
-			}, mco.Spec.StorageConfig.RuleStorageSize)
+			}, currentConfig.RuleStorageSize)
 		if err != nil {
 			return &reconcile.Result{}, err
 		}
 	}
 
-	if isStoreStorageSizeChanged {
-		isStoreStorageSizeChanged = false
-		err := updateStorageSizeChange(r.Client,
+	if lastConfig.StoreStorageSize != currentConfig.StoreStorageSize {
+		err := updateStorageSizeChange(ctx, r.Client,
 			map[string]string{
 				"app.kubernetes.io/instance": mco.GetName(),
 				"app.kubernetes.io/name":     "thanos-store",
-			}, mco.Spec.StorageConfig.StoreStorageSize)
+			}, currentConfig.StoreStorageSize)
 		if err != nil {
 			return &reconcile.Result{}, err
 		}
 	}
+
+	if lastConfig.StorageClass != currentConfig.StorageClass {
+		for _, component := range []map[string]string{
+			{"observability.open-cluster-management.io/name": mco.GetName(), "alertmanager": "observability"},
+			{"app.kubernetes.io/instance": mco.GetName(), "app.kubernetes.io/name": "thanos-receive"},
+			{"app.kubernetes.io/instance": mco.GetName(), "app.kubernetes.io/name": "thanos-compact"},
+			{"app.kubernetes.io/instance": mco.GetName(), "app.kubernetes.io/name": "thanos-rule"},
+			{"app.kubernetes.io/instance": mco.GetName(), "app.kubernetes.io/name": "thanos-store"},
+		} {
+			if err := deleteStatefulSetsAndPVCs(ctx, r.Client, component); err != nil {
+				return &reconcile.Result{}, err
+			}
+		}
+	}
+	r.LastStorageConfig = currentConfig.DeepCopy()
 	return nil, nil
 }
 
-func updateStorageSizeChange(c client.Client, matchLabels map[string]string, storageSize string) error {
+func deleteStatefulSetsAndPVCs(ctx context.Context, c client.Client, matchLabels map[string]string) error {
+	stsList, err := commonutil.GetStatefulSetList(c, config.GetDefaultNamespace(), matchLabels)
+	if err != nil {
+		return err
+	}
+	for index, sts := range stsList {
+		if err := c.Delete(ctx, &stsList[index]); err != nil && !apierrors.IsNotFound(err) {
+			return err
+		}
+		log.Info("Deleted StatefulSet due to storage class change", "sts", sts.Name)
+	}
+	pvcList, err := commonutil.GetPVCList(c, config.GetDefaultNamespace(), matchLabels)
+	if err != nil {
+		return err
+	}
+	for index, pvc := range pvcList {
+		if err := c.Delete(ctx, &pvcList[index]); err != nil && !apierrors.IsNotFound(err) {
+			return err
+		}
+		log.Info("Deleted PVC due to storage class change", "pvc", pvc.Name)
+	}
+	return nil
+}
+
+func updateStorageSizeChange(ctx context.Context, c client.Client, matchLabels map[string]string, storageSize string) error {
 	pvcList, err := commonutil.GetPVCList(c, config.GetDefaultNamespace(), matchLabels)
 	if err != nil {
 		return err
@@ -708,21 +759,28 @@ func updateStorageSizeChange(c client.Client, matchLabels map[string]string, sto
 	}
 
 	// update pvc directly
+	newSize := resource.MustParse(storageSize)
 	for index, pvc := range pvcList {
-		if !pvc.Spec.Resources.Requests.Storage().Equal(resource.MustParse(storageSize)) {
-			pvcList[index].Spec.Resources.Requests = corev1.ResourceList{
-				corev1.ResourceStorage: resource.MustParse(storageSize),
-			}
-			err := c.Update(context.TODO(), &pvcList[index])
-			if err != nil {
-				return err
-			}
-			log.Info("Update storage size for PVC", "pvc", pvc.Name)
+		if pvc.Spec.Resources.Requests.Storage().Equal(newSize) {
+			continue
 		}
+		if currentCap := pvc.Status.Capacity.Storage(); currentCap != nil && newSize.Cmp(*currentCap) < 0 {
+			log.Info("Skipping PVC storage shrink: Kubernetes does not support reducing PVC size",
+				"pvc", pvc.Name, "currentCapacity", currentCap.String(), "requestedSize", storageSize)
+			continue
+		}
+		pvcList[index].Spec.Resources.Requests = corev1.ResourceList{
+			corev1.ResourceStorage: newSize,
+		}
+		err := c.Update(ctx, &pvcList[index])
+		if err != nil {
+			return err
+		}
+		log.Info("Update storage size for PVC", "pvc", pvc.Name)
 	}
 	// update sts
 	for index, sts := range stsList {
-		err := c.Delete(context.TODO(), &stsList[index], &client.DeleteOptions{})
+		err := c.Delete(ctx, &stsList[index], &client.DeleteOptions{})
 		if err != nil && !apierrors.IsNotFound(err) {
 			return err
 		}
@@ -774,19 +832,19 @@ func GenerateAlertmanagerRoute(
 		log.Info("BYO CA/Certificate found for the Route of Alertmanager, will using BYO CA/certificate for the Route of Alertmanager")
 		amRouteCA, ok := amRouteBYOCaSrt.Data["tls.crt"]
 		if !ok {
-			return &ctrl.Result{}, cerr.New("invalid BYO CA for the Route of Alertmanager")
+			return &ctrl.Result{}, errors.New("invalid BYO CA for the Route of Alertmanager")
 		}
 		amGateway.Spec.TLS.CACertificate = string(amRouteCA)
 
 		amRouteCert, ok := amRouteBYOCertSrt.Data["tls.crt"]
 		if !ok {
-			return &ctrl.Result{}, cerr.New("invalid BYO Certificate for the Route of Alertmanager")
+			return &ctrl.Result{}, errors.New("invalid BYO Certificate for the Route of Alertmanager")
 		}
 		amGateway.Spec.TLS.Certificate = string(amRouteCert)
 
 		amRouteCertKey, ok := amRouteBYOCertSrt.Data["tls.key"]
 		if !ok {
-			return &ctrl.Result{}, cerr.New("invalid BYO Certificate Key for the Route of Alertmanager")
+			return &ctrl.Result{}, errors.New("invalid BYO Certificate Key for the Route of Alertmanager")
 		}
 		amGateway.Spec.TLS.Key = string(amRouteCertKey)
 	}
@@ -869,19 +927,19 @@ func GenerateProxyRoute(
 		log.Info("BYO CA/Certificate found for the Route of Proxy, will using BYO CA/certificate for the Route of Proxy")
 		proxyRouteCA, ok := proxyRouteBYOCaSrt.Data["tls.crt"]
 		if !ok {
-			return &ctrl.Result{}, cerr.New("invalid BYO CA for the Route of Proxy")
+			return &ctrl.Result{}, errors.New("invalid BYO CA for the Route of Proxy")
 		}
 		proxyGateway.Spec.TLS.CACertificate = string(proxyRouteCA)
 
 		proxyRouteCert, ok := proxyRouteBYOCertSrt.Data["tls.crt"]
 		if !ok {
-			return &ctrl.Result{}, cerr.New("invalid BYO Certificate for the Route of Proxy")
+			return &ctrl.Result{}, errors.New("invalid BYO Certificate for the Route of Proxy")
 		}
 		proxyGateway.Spec.TLS.Certificate = string(proxyRouteCert)
 
 		proxyRouteCertKey, ok := proxyRouteBYOCertSrt.Data["tls.key"]
 		if !ok {
-			return &ctrl.Result{}, cerr.New("invalid BYO Certificate Key for the Route of Proxy")
+			return &ctrl.Result{}, errors.New("invalid BYO Certificate Key for the Route of Proxy")
 		}
 		proxyGateway.Spec.TLS.Key = string(proxyRouteCertKey)
 	}
@@ -925,6 +983,7 @@ func GenerateProxyRoute(
 // cleanUpClusterScopedResources delete the cluster scoped resources created by the MCO operator
 // The cluster scoped resources need to be deleted manually because they don't have ownerrefenence set as the MCO CR
 func cleanUpClusterScopedResources(
+	ctx context.Context,
 	r *MultiClusterObservabilityReconciler,
 	mco *mcov1beta2.MultiClusterObservability,
 ) error {
@@ -934,24 +993,24 @@ func cleanUpClusterScopedResources(
 	}
 
 	clusterRoleList := &rbacv1.ClusterRoleList{}
-	err := r.Client.List(context.TODO(), clusterRoleList, listOpts...)
+	err := r.Client.List(ctx, clusterRoleList, listOpts...)
 	if err != nil {
 		return err
 	}
 	for idx := range clusterRoleList.Items {
-		err := r.Client.Delete(context.TODO(), &clusterRoleList.Items[idx], &client.DeleteOptions{})
+		err := r.Client.Delete(ctx, &clusterRoleList.Items[idx], &client.DeleteOptions{})
 		if err != nil {
 			return err
 		}
 	}
 
 	clusterRoleBindingList := &rbacv1.ClusterRoleBindingList{}
-	err = r.Client.List(context.TODO(), clusterRoleBindingList, listOpts...)
+	err = r.Client.List(ctx, clusterRoleBindingList, listOpts...)
 	if err != nil {
 		return err
 	}
 	for idx := range clusterRoleBindingList.Items {
-		err := r.Client.Delete(context.TODO(), &clusterRoleBindingList.Items[idx], &client.DeleteOptions{})
+		err := r.Client.Delete(ctx, &clusterRoleBindingList.Items[idx], &client.DeleteOptions{})
 		if err != nil {
 			return err
 		}
@@ -959,12 +1018,13 @@ func cleanUpClusterScopedResources(
 
 	ingressCtlCrdExists := r.CRDMap[config.IngressControllerCRD]
 	if ingressCtlCrdExists {
-		return DeleteGrafanaOauthClient(r.Client)
+		return DeleteGrafanaOauthClient(ctx, r.Client)
 	}
 
 	return nil
 }
 
+// ensureOpenShiftNamespaceLabel ensures the MCO namespace has the required OpenShift labels.
 func (r *MultiClusterObservabilityReconciler) ensureOpenShiftNamespaceLabel(ctx context.Context,
 	m *mcov1beta2.MultiClusterObservability,
 ) (reconcile.Result, error) {
@@ -1000,6 +1060,7 @@ func (r *MultiClusterObservabilityReconciler) ensureOpenShiftNamespaceLabel(ctx 
 	return reconcile.Result{}, nil
 }
 
+// deleteSpecificPrometheusRule removes the MCO-managed PrometheusRule from openshift-monitoring.
 func (r *MultiClusterObservabilityReconciler) deleteSpecificPrometheusRule(ctx context.Context) error {
 	promRule := &monitoringv1.PrometheusRule{}
 	err := r.Client.Get(ctx, client.ObjectKey{
@@ -1021,6 +1082,57 @@ func (r *MultiClusterObservabilityReconciler) deleteSpecificPrometheusRule(ctx c
 	return nil
 }
 
+// undeployMCOAGrafanaResources removes MCOA Grafana resources when platform metrics collection is disabled.
+func (r *MultiClusterObservabilityReconciler) undeployMCOAGrafanaResources(
+	ctx context.Context,
+	instance *mcov1beta2.MultiClusterObservability,
+	renderer *rendering.MCORenderer,
+	deployer *deploying.Deployer,
+) error {
+	namespace, labels := renderer.NamespaceAndLabels()
+	toDelete, err := renderer.MCOAGrafanaResourcesForRemoval(ctx, namespace, labels)
+	if err != nil {
+		return fmt.Errorf("failed to list MCOA Grafana resources for deletion in namespace %s: %w", namespace, err)
+	}
+	for _, res := range toDelete {
+		resNS := res.GetNamespace()
+		if err := deployer.Undeploy(ctx, res, instance); err != nil {
+			if meta.IsNoMatchError(err) {
+				kind := res.GetKind()
+				if kind == monitoringv1.PrometheusRuleKind || kind == monitoringv1alpha1.ScrapeConfigsKind {
+					log.Info("CRD not available on MCO, skipping cleanup", "Kind", kind)
+					continue
+				}
+			}
+			return fmt.Errorf("failed to undeploy %s %s/%s: %w", res.GetKind(), resNS, res.GetName(), err)
+		}
+	}
+
+	return nil
+}
+
+// deleteVestigialProxyIngress removes the rbac-query-proxy-ingress Ingress that is no longer
+// rendered. The proxy is served via Route; the Ingress targeted the deprecated management-ingress
+// controller and causes admission failures on clusters with the AWS Load Balancer Controller.
+func (r *MultiClusterObservabilityReconciler) deleteVestigialProxyIngress(ctx context.Context) error {
+	ingress := &networkingv1.Ingress{}
+	err := r.Client.Get(ctx, client.ObjectKey{
+		Name:      "rbac-query-proxy-ingress",
+		Namespace: config.GetDefaultNamespace(),
+	}, ingress)
+	if err == nil {
+		if err := r.Client.Delete(ctx, ingress); err != nil && !apierrors.IsNotFound(err) {
+			return err
+		}
+		log.Info("Deleted vestigial rbac-query-proxy-ingress Ingress")
+	} else if !apierrors.IsNotFound(err) {
+		return err
+	}
+
+	return nil
+}
+
+// deleteServiceMonitorInOpenshiftMonitoringNamespace removes MCO-managed ServiceMonitors from openshift-monitoring.
 func (r *MultiClusterObservabilityReconciler) deleteServiceMonitorInOpenshiftMonitoringNamespace(ctx context.Context) error {
 	serviceMonitorList := &monitoringv1.ServiceMonitorList{}
 	err := r.Client.List(ctx, serviceMonitorList, client.InNamespace("openshift-monitoring"))
@@ -1042,6 +1154,7 @@ func (r *MultiClusterObservabilityReconciler) deleteServiceMonitorInOpenshiftMon
 	return nil
 }
 
+// newMCOACRDEventHandler creates an event handler that maps MCOA CRD events to MCO reconcile requests.
 func newMCOACRDEventHandler(c client.Client) handler.EventHandler {
 	return handler.EnqueueRequestsFromMapFunc(
 		func(ctx context.Context, obj client.Object) []reconcile.Request {

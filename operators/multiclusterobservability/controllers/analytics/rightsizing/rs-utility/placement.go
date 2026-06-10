@@ -7,6 +7,7 @@ package rsutility
 import (
 	"context"
 	"fmt"
+	"maps"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -15,11 +16,27 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// GetDefaultRSPlacement creates a default placement configuration for right-sizing
+// GetDefaultRSPlacement creates a default placement configuration for right-sizing.
+// Only OpenShift clusters are targeted because the policies enforce PrometheusRules
+// in openshift-monitoring, which does not exist on non-OpenShift distributions (e.g. AKS).
 func GetDefaultRSPlacement() clusterv1beta1.Placement {
 	return clusterv1beta1.Placement{
 		Spec: clusterv1beta1.PlacementSpec{
-			Predicates: []clusterv1beta1.ClusterPredicate{},
+			Predicates: []clusterv1beta1.ClusterPredicate{
+				{
+					RequiredClusterSelector: clusterv1beta1.ClusterSelector{
+						LabelSelector: metav1.LabelSelector{
+							MatchExpressions: []metav1.LabelSelectorRequirement{
+								{
+									Key:      "vendor",
+									Operator: metav1.LabelSelectorOpIn,
+									Values:   []string{"OpenShift"},
+								},
+							},
+						},
+					},
+				},
+			},
 			Tolerations: []clusterv1beta1.Toleration{
 				{
 					Key:      "cluster.open-cluster-management.io/unreachable",
@@ -40,6 +57,7 @@ func CreateUpdateRSPlacement(ctx context.Context, c client.Client, placementName
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      placementName,
 			Namespace: namespace,
+			Labels:    RSLabels(),
 		},
 	}
 	key := types.NamespacedName{
@@ -68,6 +86,10 @@ func CreateUpdateRSPlacement(ctx context.Context, c client.Client, placementName
 	}
 
 	// Update existing placement
+	if placement.Labels == nil {
+		placement.Labels = map[string]string{}
+	}
+	maps.Copy(placement.Labels, RSLabels())
 	placement.Spec = placementConfig.Spec
 	if err := c.Update(ctx, placement); err != nil {
 		return fmt.Errorf("rs - failed to update placement: %w", err)

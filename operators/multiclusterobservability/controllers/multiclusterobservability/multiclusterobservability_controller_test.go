@@ -28,19 +28,27 @@ import (
 	mcoshared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
 	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
+	mcostatusctrl "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/status"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering/templates"
+	"github.com/stolostron/multicluster-observability-operator/operators/pkg/deploying"
 	observatoriumv1alpha1 "github.com/stolostron/observatorium-operator/api/v1alpha1"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
+	storev1 "k8s.io/api/storage/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
@@ -50,6 +58,7 @@ import (
 	clusterv1beta1 "open-cluster-management.io/api/cluster/v1beta1"
 	policyv1 "open-cluster-management.io/governance-policy-propagator/api/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
@@ -262,6 +271,7 @@ func createFailedStatefulSet(name, namespace, statefulSetName string) *appsv1.St
 		},
 		Status: appsv1.StatefulSetStatus{
 			ReadyReplicas: 0,
+			Replicas:      1,
 		},
 	}
 }
@@ -306,6 +316,7 @@ func createFailedDeployment(name, namespace string) *appsv1.Deployment {
 		},
 		Status: appsv1.DeploymentStatus{
 			ReadyReplicas: 0,
+			Replicas:      1,
 		},
 	}
 }
@@ -359,6 +370,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	addonv1alpha1.AddToScheme(s)
 	migrationv1alpha1.SchemeBuilder.AddToScheme(s)
 	operatorv1.AddToScheme(s)
+	storev1.AddToScheme(s)
 
 	svc := createObservatoriumAPIService(name, namespace)
 	serverCACerts := newTestCert(config.ServerCACerts, namespace)
@@ -382,11 +394,12 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 		},
 	}
 	alertManagerRoute := newAlertManagerRoute()
+	gp2StorageClass := newStorageClass("gp2", true)
 
 	objs := []runtime.Object{
 		mco, svc, serverCACerts, clientCACerts, proxyRouteBYOCACerts, grafanaCert, serverCert,
 		testAmRouteBYOCaSecret, testAmRouteBYOCertSecret, proxyRouteBYOCert, clustermgmtAddon, extensionApiserverAuthenticationCM,
-		alertManagerRoute,
+		alertManagerRoute, gp2StorageClass,
 	}
 	// Create a fake client to mock API calls.
 	cl := fake.NewClientBuilder().
@@ -399,9 +412,9 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 		).
 		Build()
 
-		// Create fake imagestream client
+	// Create fake imagestream client
 	imageClient := &fakeimagev1client.FakeImageV1{Fake: &(fakeimageclient.NewSimpleClientset().Fake)}
-	_, err := imageClient.ImageStreams(config.OauthProxyImageStreamNamespace).Create(context.Background(),
+	_, err := imageClient.ImageStreams(config.OauthProxyImageStreamNamespace).Create(t.Context(),
 		&imagev1.ImageStream{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      config.OauthProxyImageStreamName,
@@ -424,7 +437,16 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	}
 
 	// Create a ReconcileMemcached object with the scheme and fake client.
-	r := &MultiClusterObservabilityReconciler{Client: cl, Scheme: s, CRDMap: map[string]bool{config.IngressControllerCRD: true}, ImageClient: imageClient}
+	r := &MultiClusterObservabilityReconciler{
+		Client:      cl,
+		Scheme:      s,
+		CRDMap:      map[string]bool{config.IngressControllerCRD: true},
+		ImageClient: imageClient,
+	}
+	sr := &mcostatusctrl.StatusReconciler{
+		Client: cl,
+		Log:    log,
+	}
 	config.SetMonitoringCRName(name)
 	// Mock request to simulate Reconcile() being called on an event for a
 	// watched resource .
@@ -436,16 +458,16 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 
 	// Create empty client. The test secret specified in MCO is not yet created.
 	t.Log("Reconcile empty client")
-	_, err = r.Reconcile(context.TODO(), req)
+	_, err = r.Reconcile(t.Context(), req)
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)
 	}
 	// wait for update status
-	time.Sleep(1 * time.Second)
+	_, _ = sr.Reconcile(t.Context(), req)
 
 	// verify openshiftcluster monitoring label is set to true in namespace
 	updatedNS := &corev1.Namespace{}
-	err = cl.Get(context.TODO(), types.NamespacedName{
+	err = cl.Get(t.Context(), types.NamespacedName{
 		Name: namespace,
 	}, updatedNS)
 	if err != nil {
@@ -456,18 +478,18 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	}
 
 	updatedMCO := &mcov1beta2.MultiClusterObservability{}
-	err = cl.Get(context.TODO(), req.NamespacedName, updatedMCO)
+	err = cl.Get(t.Context(), req.NamespacedName, updatedMCO)
 	if err != nil {
 		t.Fatalf("Failed to get MultiClusterObservability: (%v)", err)
 	}
 
-	status := findStatusCondition(updatedMCO.Status.Conditions, "Failed")
-	if status == nil || status.Reason != "ObjectStorageSecretNotFound" {
-		t.Errorf("Failed to get correct MCO status, expect Failed")
+	status := mcostatusctrl.FindStatusCondition(updatedMCO.Status.Conditions, mcostatusctrl.ConditionTypeFailed)
+	if status == nil || status.Reason != mcostatusctrl.ReasonObjectStorageNotFound {
+		t.Errorf("Failed to get correct MCO status, expect Failed with ReasonObjectStorageNotFound")
 	}
 
 	amRoute := &routev1.Route{}
-	err = cl.Get(context.TODO(), types.NamespacedName{
+	err = cl.Get(t.Context(), types.NamespacedName{
 		Name:      config.AlertmanagerRouteName,
 		Namespace: namespace,
 	}, amRoute)
@@ -481,7 +503,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 		t.Fatalf("incorrect certificate for alertmanager's route")
 	}
 
-	err = cl.Create(context.TODO(), createSecret("test", "test", namespace))
+	err = cl.Create(t.Context(), createSecret("test", "test", namespace))
 	if err != nil {
 		t.Fatalf("Failed to create secret: (%v)", err)
 	}
@@ -495,15 +517,15 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	}
 
 	t.Log("---- Reconcile secret, verify backup label ---- ")
-	_, err = r.Reconcile(context.TODO(), req2)
+	_, err = r.Reconcile(t.Context(), req2)
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)
 	}
 	// wait for update status
-	time.Sleep(1 * time.Second)
+	_, _ = sr.Reconcile(t.Context(), req)
 
 	updatedObjectStoreSecret := &corev1.Secret{}
-	err = r.Client.Get(context.TODO(), req2.NamespacedName, updatedObjectStoreSecret)
+	err = r.Client.Get(t.Context(), req2.NamespacedName, updatedObjectStoreSecret)
 	if err != nil {
 		t.Fatalf("backup Failed to get ObjectStore secret (%v)", err)
 	}
@@ -513,7 +535,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	}
 
 	// backup label test for Configmap
-	err = cl.Create(context.TODO(), &corev1.ConfigMap{
+	err = cl.Create(t.Context(), &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      config.AlertRuleCustomConfigMapName,
 			Namespace: namespace,
@@ -531,15 +553,15 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	}
 
 	t.Log("---- Reconcile configmap, verify backup label ---- ")
-	_, err = r.Reconcile(context.TODO(), req2)
+	_, err = r.Reconcile(t.Context(), req2)
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)
 	}
 	// wait for update status
-	time.Sleep(1 * time.Second)
+	_, _ = sr.Reconcile(t.Context(), req)
 
 	updatedConfigmap := &corev1.ConfigMap{}
-	err = r.Client.Get(context.TODO(), req2.NamespacedName, updatedConfigmap)
+	err = r.Client.Get(t.Context(), req2.NamespacedName, updatedConfigmap)
 	if err != nil {
 		t.Fatalf("backup Failed to get configmap (%v)", err)
 	}
@@ -549,126 +571,125 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	}
 
 	updatedMCO = &mcov1beta2.MultiClusterObservability{}
-	err = r.Client.Get(context.TODO(), req.NamespacedName, updatedMCO)
+	err = r.Client.Get(t.Context(), req.NamespacedName, updatedMCO)
 	if err != nil {
 		t.Fatalf("Failed to get MultiClusterObservability: (%v)", err)
 	}
-	status = findStatusCondition(updatedMCO.Status.Conditions, "Failed")
-	if status == nil || status.Reason != "DeploymentNotFound" {
-		t.Errorf("Failed to get correct MCO status, expect Failed")
+	status = mcostatusctrl.FindStatusCondition(updatedMCO.Status.Conditions, mcostatusctrl.ConditionTypeFailed)
+	if status == nil || status.Reason != mcostatusctrl.ReasonDeploymentNotFound {
+		t.Errorf("Failed to get correct MCO status, expect Failed with ReasonDeploymentNotFound")
 	}
-	expectedDeploymentNames := getExpectedDeploymentNames()
+	expectedDeploymentNames := config.GetExpectedDeploymentNames()
 	for _, deployName := range expectedDeploymentNames {
 		deploy := createReadyDeployment(deployName, namespace)
-		err = cl.Get(context.TODO(), types.NamespacedName{Name: deploy.Name, Namespace: deploy.Namespace}, deploy)
+		err = cl.Get(t.Context(), types.NamespacedName{Name: deploy.Name, Namespace: deploy.Namespace}, deploy)
 		if errors.IsNotFound(err) {
-			t.Log(err)
-			err = cl.Create(context.TODO(), deploy)
+			err = cl.Create(t.Context(), deploy)
 			if err != nil {
 				t.Fatalf("Failed to create deployment %s: %v", deployName, err)
 			}
 		}
 	}
 
-	_, err = r.Reconcile(context.TODO(), req)
+	_, err = r.Reconcile(t.Context(), req)
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)
 	}
 	// wait for update status
-	time.Sleep(1 * time.Second)
+	_, _ = sr.Reconcile(t.Context(), req)
 
 	updatedMCO = &mcov1beta2.MultiClusterObservability{}
-	err = r.Client.Get(context.TODO(), req.NamespacedName, updatedMCO)
+	err = r.Client.Get(t.Context(), req.NamespacedName, updatedMCO)
 	if err != nil {
 		t.Fatalf("Failed to get MultiClusterObservability: (%v)", err)
 	}
-	status = findStatusCondition(updatedMCO.Status.Conditions, "Failed")
-	if status == nil || status.Reason != "StatefulSetNotFound" {
-		t.Errorf("Failed to get correct MCO status, expect Failed")
+	status = mcostatusctrl.FindStatusCondition(updatedMCO.Status.Conditions, mcostatusctrl.ConditionTypeFailed)
+	if status == nil || status.Reason != mcostatusctrl.ReasonStatefulSetNotFound {
+		t.Errorf("Failed to get correct MCO status, expect Failed with ReasonStatefulSetNotFound")
 	}
 
-	expectedStatefulSetNames := getExpectedStatefulSetNames()
+	expectedStatefulSetNames := config.GetExpectedStatefulSetNames()
 	for _, statefulName := range expectedStatefulSetNames {
 		deploy := createReadyStatefulSet(name, namespace, statefulName)
-		err = cl.Get(context.TODO(), types.NamespacedName{Name: deploy.Name, Namespace: deploy.Namespace}, deploy)
+		err = cl.Get(t.Context(), types.NamespacedName{Name: deploy.Name, Namespace: deploy.Namespace}, deploy)
 		if errors.IsNotFound(err) {
-			err = cl.Create(context.TODO(), deploy)
+			err = cl.Create(t.Context(), deploy)
 			if err != nil {
 				t.Fatalf("Failed to create stateful set %s: %v", statefulName, err)
 			}
 		}
 	}
 
-	result, err := r.Reconcile(context.TODO(), req)
+	result, err := r.Reconcile(t.Context(), req)
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)
 	}
 
 	if result.Requeue {
-		_, err = r.Reconcile(context.TODO(), req)
+		_, err = r.Reconcile(t.Context(), req)
 		if err != nil {
 			t.Fatalf("reconcile: (%v)", err)
 		}
 	}
 	// wait for update status
-	time.Sleep(1 * time.Second)
+	_, _ = sr.Reconcile(t.Context(), req)
 
 	updatedMCO = &mcov1beta2.MultiClusterObservability{}
-	err = r.Client.Get(context.TODO(), req.NamespacedName, updatedMCO)
+	err = r.Client.Get(t.Context(), req.NamespacedName, updatedMCO)
 	if err != nil {
 		t.Fatalf("Failed to get MultiClusterObservability: (%v)", err)
 	}
 
-	status = findStatusCondition(updatedMCO.Status.Conditions, "Ready")
-	if status == nil || status.Reason != "Ready" {
+	status = mcostatusctrl.FindStatusCondition(updatedMCO.Status.Conditions, mcostatusctrl.ConditionTypeReady)
+	if status == nil || status.Reason != mcostatusctrl.ConditionTypeReady {
 		t.Errorf("Failed to get correct MCO status, expect Ready")
 	}
 
-	status = findStatusCondition(updatedMCO.Status.Conditions, "MetricsDisabled")
-	if status == nil || status.Reason != "MetricsDisabled" {
+	status = mcostatusctrl.FindStatusCondition(updatedMCO.Status.Conditions, mcostatusctrl.ConditionTypeMetricsDisabled)
+	if status == nil || status.Reason != mcostatusctrl.ConditionTypeMetricsDisabled {
 		t.Errorf("Failed to get correct MCO status, expect MetricsDisabled")
 	}
 
 	// test MetricsDisabled status
-	err = cl.Delete(context.TODO(), mco)
+	err = cl.Delete(t.Context(), mco)
 	if err != nil {
 		t.Fatalf("Failed to delete mco: (%v)", err)
 	}
 	// reconcile to make sure the finalizer of the mco cr is deleted
-	_, err = r.Reconcile(context.TODO(), req)
+	_, err = r.Reconcile(t.Context(), req)
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)
 	}
 
 	// wait for the stop status update channel is closed
-	time.Sleep(1 * time.Second)
+	_, _ = sr.Reconcile(t.Context(), req)
 
 	mco.Spec.ObservabilityAddonSpec.EnableMetrics = true
 	mco.ObjectMeta.ResourceVersion = ""
-	err = cl.Create(context.TODO(), mco)
+	err = cl.Create(t.Context(), mco)
 	if err != nil {
 		t.Fatalf("Failed to create mco: (%v)", err)
 	}
-	_, err = r.Reconcile(context.TODO(), req)
+	_, err = r.Reconcile(t.Context(), req)
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)
 	}
 	// wait for update status
-	time.Sleep(1 * time.Second)
+	_, _ = sr.Reconcile(t.Context(), req)
 
 	updatedMCO = &mcov1beta2.MultiClusterObservability{}
-	err = r.Client.Get(context.TODO(), req.NamespacedName, updatedMCO)
+	err = r.Client.Get(t.Context(), req.NamespacedName, updatedMCO)
 	if err != nil {
 		t.Fatalf("Failed to get MultiClusterObservability: (%v)", err)
 	}
 
-	status = findStatusCondition(updatedMCO.Status.Conditions, "MetricsDisabled")
+	status = mcostatusctrl.FindStatusCondition(updatedMCO.Status.Conditions, mcostatusctrl.ConditionTypeMetricsDisabled)
 	if status != nil {
 		t.Errorf("Should have not MetricsDisabled status")
 	}
 
 	// test StatefulSetNotReady status
-	err = cl.Delete(context.TODO(), createReadyStatefulSet(
+	err = cl.Delete(t.Context(), createReadyStatefulSet(
 		name,
 		namespace,
 		config.GetOperandNamePrefix()+"alertmanager"))
@@ -679,38 +700,38 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 		name,
 		namespace,
 		config.GetOperandNamePrefix()+"alertmanager")
-	err = cl.Create(context.TODO(), failedAlertManager)
+	err = cl.Create(t.Context(), failedAlertManager)
 	if err != nil {
 		t.Fatalf("Failed to create alertmanager: (%v)", err)
 	}
-	_, err = r.Reconcile(context.TODO(), req)
+	_, err = r.Reconcile(t.Context(), req)
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)
 	}
 	// wait for update status
-	time.Sleep(1 * time.Second)
+	_, _ = sr.Reconcile(t.Context(), req)
 
 	updatedMCO = &mcov1beta2.MultiClusterObservability{}
-	err = r.Client.Get(context.TODO(), req.NamespacedName, updatedMCO)
+	err = r.Client.Get(t.Context(), req.NamespacedName, updatedMCO)
 	if err != nil {
 		t.Fatalf("Failed to get MultiClusterObservability: (%v)", err)
 	}
 
-	status = findStatusCondition(updatedMCO.Status.Conditions, "Ready")
-	if status == nil || status.Reason != "Ready" {
-		t.Errorf("Failed to get correct MCO status, expect Ready")
+	status = mcostatusctrl.FindStatusCondition(updatedMCO.Status.Conditions, mcostatusctrl.ConditionTypeFailed)
+	if status == nil || status.Reason != mcostatusctrl.ReasonStatefulSetNotReady {
+		t.Errorf("Failed to get correct MCO status, expect Failed with ReasonStatefulSetNotReady, got %v", status)
 	}
 
 	// test DeploymentNotReady status
-	err = cl.Delete(context.TODO(), createReadyDeployment(config.GetOperandNamePrefix()+"rbac-query-proxy", namespace))
+	err = cl.Delete(t.Context(), createReadyDeployment(config.GetOperandNamePrefix()+"rbac-query-proxy", namespace))
 	if err != nil {
 		t.Fatalf("Failed to delete rbac-query-proxy: (%v)", err)
 	}
-	err = cl.Delete(context.TODO(), failedAlertManager)
+	err = cl.Delete(t.Context(), failedAlertManager)
 	if err != nil {
 		t.Fatalf("Failed to delete alertmanager: (%v)", err)
 	}
-	err = cl.Create(context.TODO(), createReadyStatefulSet(
+	err = cl.Create(t.Context(), createReadyStatefulSet(
 		name,
 		namespace,
 		config.GetOperandNamePrefix()+"alertmanager"))
@@ -718,41 +739,41 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 		t.Fatalf("Failed to delete alertmanager: (%v)", err)
 	}
 
-	failedRbacProxy := createFailedDeployment("rbac-query-proxy", namespace)
-	err = cl.Create(context.TODO(), failedRbacProxy)
+	failedRbacProxy := createFailedDeployment(config.GetOperandNamePrefix()+config.RBACQueryProxy, namespace)
+	err = cl.Create(t.Context(), failedRbacProxy)
 	if err != nil {
 		t.Fatalf("Failed to create rbac-query-proxy: (%v)", err)
 	}
-	_, err = r.Reconcile(context.TODO(), req)
+	_, err = r.Reconcile(t.Context(), req)
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)
 	}
 	// wait for update status
-	time.Sleep(1 * time.Second)
+	_, _ = sr.Reconcile(t.Context(), req)
 
 	updatedMCO = &mcov1beta2.MultiClusterObservability{}
-	err = r.Client.Get(context.TODO(), req.NamespacedName, updatedMCO)
+	err = r.Client.Get(t.Context(), req.NamespacedName, updatedMCO)
 	if err != nil {
 		t.Fatalf("Failed to get MultiClusterObservability: (%v)", err)
 	}
 
-	status = findStatusCondition(updatedMCO.Status.Conditions, "Ready")
-	if status == nil || status.Reason != "Ready" {
-		t.Errorf("Failed to get correct MCO status, expect Ready")
+	status = mcostatusctrl.FindStatusCondition(updatedMCO.Status.Conditions, mcostatusctrl.ConditionTypeFailed)
+	if status == nil || status.Reason != mcostatusctrl.ReasonDeploymentNotReady {
+		t.Errorf("Failed to get correct MCO status, expect Failed with ReasonDeploymentNotReady, got %v", status)
 	}
 
 	// Test finalizer
 	mco.ObjectMeta.Finalizers = []string{resFinalizer, "test-finalizerr"}
 	mco.ObjectMeta.ResourceVersion = updatedMCO.ObjectMeta.ResourceVersion
-	err = cl.Update(context.TODO(), mco)
+	err = cl.Update(t.Context(), mco)
 	if err != nil {
 		t.Fatalf("Failed to update MultiClusterObservability: (%v)", err)
 	}
-	err = cl.Delete(context.TODO(), mco)
+	err = cl.Delete(t.Context(), mco)
 	if err != nil {
 		t.Fatalf("Failed to delete MultiClusterObservability: (%v)", err)
 	}
-	_, err = r.Reconcile(context.TODO(), req)
+	_, err = r.Reconcile(t.Context(), req)
 	if err != nil {
 		t.Fatalf("reconcile for finalizer: (%v)", err)
 	}
@@ -770,14 +791,18 @@ func TestInitFinalizationAddsResFinalizer(t *testing.T) {
 	}
 
 	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(mco).Build()
-	r := &MultiClusterObservabilityReconciler{Client: cl, Scheme: s, CRDMap: map[string]bool{}}
+	r := &MultiClusterObservabilityReconciler{
+		Client: cl,
+		Scheme: s,
+		CRDMap: map[string]bool{},
+	}
 
-	terminating, err := r.initFinalization(context.TODO(), mco)
+	terminating, err := r.initFinalization(t.Context(), mco)
 	assert.NoError(t, err)
 	assert.False(t, terminating)
 
 	updated := &mcov1beta2.MultiClusterObservability{}
-	err = cl.Get(context.TODO(), types.NamespacedName{Name: "test"}, updated)
+	err = cl.Get(t.Context(), types.NamespacedName{Name: "test"}, updated)
 	assert.NoError(t, err)
 	assert.Contains(t, updated.Finalizers, resFinalizer)
 	assert.NotContains(t, updated.Finalizers, certFinalizer)
@@ -833,6 +858,7 @@ func TestImageReplaceForMCO(t *testing.T) {
 	addonv1alpha1.AddToScheme(s)
 	migrationv1alpha1.SchemeBuilder.AddToScheme(s)
 	operatorv1.AddToScheme(s)
+	storev1.AddToScheme(s)
 
 	observatoriumAPIsvc := createObservatoriumAPIService(name, namespace)
 	serverCACerts := newTestCert(config.ServerCACerts, namespace)
@@ -857,18 +883,19 @@ func TestImageReplaceForMCO(t *testing.T) {
 	}
 
 	alertManagerRoute := newAlertManagerRoute()
+	gp2StorageClass := newStorageClass("gp2", true)
 
 	objs := []runtime.Object{
 		mco, observatoriumAPIsvc, serverCACerts, clientCACerts, grafanaCert, serverCert,
 		testMCHInstance, imageManifestsCM, testAmRouteBYOCaSecret, testAmRouteBYOCertSecret, clustermgmtAddon, extensionApiserverAuthenticationCM,
-		alertManagerRoute,
+		alertManagerRoute, gp2StorageClass,
 	}
 	// Create a fake client to mock API calls.
 	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
 
 	// Create fake imagestream client
 	imageClient := &fakeimagev1client.FakeImageV1{Fake: &(fakeimageclient.NewSimpleClientset().Fake)}
-	_, err := imageClient.ImageStreams(config.OauthProxyImageStreamNamespace).Create(context.Background(),
+	_, err := imageClient.ImageStreams(config.OauthProxyImageStreamNamespace).Create(t.Context(),
 		&imagev1.ImageStream{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      config.OauthProxyImageStreamName,
@@ -891,7 +918,16 @@ func TestImageReplaceForMCO(t *testing.T) {
 	}
 
 	// Create a ReconcileMemcached object with the scheme and fake client.
-	r := &MultiClusterObservabilityReconciler{Client: cl, Scheme: s, CRDMap: map[string]bool{config.MCHCrdName: true, config.IngressControllerCRD: true}, ImageClient: imageClient}
+	r := &MultiClusterObservabilityReconciler{
+		Client:      cl,
+		Scheme:      s,
+		CRDMap:      map[string]bool{config.MCHCrdName: true, config.IngressControllerCRD: true},
+		ImageClient: imageClient,
+	}
+	sr := &mcostatusctrl.StatusReconciler{
+		Client: cl,
+		Log:    log,
+	}
 	config.SetMonitoringCRName(name)
 
 	// Mock request to simulate Reconcile() being called on an event for a watched resource .
@@ -906,13 +942,13 @@ func TestImageReplaceForMCO(t *testing.T) {
 	config.SetImageManifests(testImagemanifestsMap)
 
 	// trigger another reconcile for MCH update event
-	_, err = r.Reconcile(context.TODO(), req)
+	_, err = r.Reconcile(t.Context(), req)
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)
 	}
 
 	// wait for update status
-	time.Sleep(1 * time.Second)
+	_, _ = sr.Reconcile(t.Context(), req)
 
 	expectedDeploymentNames := []string{
 		config.GetOperandNamePrefix() + config.Grafana,
@@ -921,7 +957,7 @@ func TestImageReplaceForMCO(t *testing.T) {
 	}
 	for _, deployName := range expectedDeploymentNames {
 		deploy := &appsv1.Deployment{}
-		err = cl.Get(context.TODO(), types.NamespacedName{
+		err = cl.Get(t.Context(), types.NamespacedName{
 			Name:      deployName,
 			Namespace: namespace,
 		}, deploy)
@@ -960,7 +996,7 @@ func TestImageReplaceForMCO(t *testing.T) {
 	}
 	for _, statefulName := range expectedStatefulSetNames {
 		sts := &appsv1.StatefulSet{}
-		err = cl.Get(context.TODO(), types.NamespacedName{
+		err = cl.Get(t.Context(), types.NamespacedName{
 			Name:      statefulName,
 			Namespace: namespace,
 		}, sts)
@@ -988,10 +1024,8 @@ func TestImageReplaceForMCO(t *testing.T) {
 		}
 	}
 
-	// stop update status routine
-	stopStatusUpdate <- struct{}{}
 	// wait for update status
-	time.Sleep(1 * time.Second)
+	_, _ = sr.Reconcile(t.Context(), req)
 }
 
 func createSecret(key, name, namespace string) *corev1.Secret {
@@ -1021,9 +1055,10 @@ func createSecret(key, name, namespace string) *corev1.Secret {
 }
 
 func TestCheckObjStorageStatus(t *testing.T) {
+	name := "monitoring"
 	mco := &mcov1beta2.MultiClusterObservability{
 		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterObservability"},
-		ObjectMeta: metav1.ObjectMeta{Name: "test"},
+		ObjectMeta: metav1.ObjectMeta{Name: name},
 		Spec: mcov1beta2.MultiClusterObservabilitySpec{
 			StorageConfig: &mcov1beta2.StorageConfig{
 				MetricObjectStorage: &mcoshared.PreConfiguredStorage{
@@ -1037,33 +1072,52 @@ func TestCheckObjStorageStatus(t *testing.T) {
 	s := scheme.Scheme
 	mcov1beta2.SchemeBuilder.AddToScheme(s)
 	objs := []runtime.Object{mco}
-	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
-	mcoCondition := checkObjStorageStatus(c, mco)
-	if mcoCondition == nil {
-		t.Errorf("check s3 conf failed: got %v, expected non-nil", mcoCondition)
+	c := fake.NewClientBuilder().
+		WithScheme(s).
+		WithRuntimeObjects(objs...).
+		WithStatusSubresource(&mcov1beta2.MultiClusterObservability{}).
+		Build()
+	sr := &mcostatusctrl.StatusReconciler{
+		Client: c,
+		Log:    ctrl.Log.WithName("test"),
+	}
+	req := reconcile.Request{
+		NamespacedName: types.NamespacedName{Name: name},
 	}
 
-	err := c.Create(context.TODO(), createSecret("test", "test", config.GetDefaultNamespace()))
-	if err != nil {
-		t.Fatalf("Failed to create secret: (%v)", err)
+	// 1. Initial State: Secret missing
+	_, err := sr.Reconcile(t.Context(), req)
+	assert.NoError(t, err)
+	_ = c.Get(t.Context(), req.NamespacedName, mco)
+	failed := mcostatusctrl.FindStatusCondition(mco.Status.Conditions, mcostatusctrl.ConditionTypeFailed)
+	assert.NotNil(t, failed)
+	assert.Equal(t, mcostatusctrl.ReasonObjectStorageNotFound, failed.Reason)
+
+	// 2. Secret created: Should transition out of failure (or at least different reason)
+	err = c.Create(t.Context(), createSecret("test", "test", config.GetDefaultNamespace()))
+	assert.NoError(t, err)
+
+	_, err = sr.Reconcile(t.Context(), req)
+	assert.NoError(t, err)
+	_ = c.Get(t.Context(), req.NamespacedName, mco)
+	failed = mcostatusctrl.FindStatusCondition(mco.Status.Conditions, mcostatusctrl.ConditionTypeFailed)
+	// Might still be failed due to missing deployments, but shouldn't be ReasonObjectStorageNotFound
+	if failed != nil {
+		assert.NotEqual(t, mcostatusctrl.ReasonObjectStorageNotFound, failed.Reason)
 	}
 
-	mcoCondition = checkObjStorageStatus(c, mco)
-	if mcoCondition != nil {
-		t.Errorf("check s3 conf failed: got %v, expected nil", mcoCondition)
-	}
-
+	// 3. Update secret to be invalid
 	updateSecret := createSecret("error", "test", config.GetDefaultNamespace())
 	updateSecret.ObjectMeta.ResourceVersion = "1"
-	err = c.Update(context.TODO(), updateSecret)
-	if err != nil {
-		t.Fatalf("Failed to update secret: (%v)", err)
-	}
+	err = c.Update(t.Context(), updateSecret)
+	assert.NoError(t, err)
 
-	mcoCondition = checkObjStorageStatus(c, mco)
-	if mcoCondition == nil {
-		t.Errorf("check s3 conf failed: got %v, expected no-nil", mcoCondition)
-	}
+	_, err = sr.Reconcile(t.Context(), req)
+	assert.NoError(t, err)
+	_ = c.Get(t.Context(), req.NamespacedName, mco)
+	failed = mcostatusctrl.FindStatusCondition(mco.Status.Conditions, mcostatusctrl.ConditionTypeFailed)
+	assert.NotNil(t, failed)
+	assert.Equal(t, mcostatusctrl.ReasonObjectStorageInvalid, failed.Reason)
 }
 
 func TestHandleStorageSizeChange(t *testing.T) {
@@ -1089,12 +1143,17 @@ func TestHandleStorageSizeChange(t *testing.T) {
 		createPersistentVolumeClaim(mco.Name, config.GetDefaultNamespace(), "test"),
 	}
 	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
-	r := &MultiClusterObservabilityReconciler{Client: c, Scheme: s}
-	isAlertmanagerStorageSizeChanged = true
-	r.HandleStorageSizeChange(mco)
+	r := &MultiClusterObservabilityReconciler{
+		Client: c,
+		Scheme: s,
+		LastStorageConfig: &mcov1beta2.StorageConfig{
+			AlertmanagerStorageSize: "1Gi",
+		},
+	}
+	r.HandleStorageSizeChange(context.TODO(), mco)
 
 	pvc := &corev1.PersistentVolumeClaim{}
-	err := c.Get(context.TODO(), types.NamespacedName{
+	err := c.Get(t.Context(), types.NamespacedName{
 		Name:      "test",
 		Namespace: config.GetDefaultNamespace(),
 	}, pvc)
@@ -1106,6 +1165,170 @@ func TestHandleStorageSizeChange(t *testing.T) {
 	} else {
 		t.Errorf("update pvc failed: %v", err)
 	}
+}
+
+func TestGetStorageClass(t *testing.T) {
+	s := scheme.Scheme
+	mcov1beta2.SchemeBuilder.AddToScheme(s)
+	storev1.SchemeBuilder.AddToScheme(s)
+
+	tests := []struct {
+		name           string
+		mcoSC          string
+		storageClasses []runtime.Object
+		expectedSC     string
+	}{
+		{
+			name:  "configured SC exists on cluster",
+			mcoSC: "fast-storage",
+			storageClasses: []runtime.Object{
+				&storev1.StorageClass{
+					ObjectMeta: metav1.ObjectMeta{Name: "fast-storage"},
+				},
+				&storev1.StorageClass{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:        "standard",
+						Annotations: map[string]string{"storageclass.kubernetes.io/is-default-class": "true"},
+					},
+				},
+			},
+			expectedSC: "fast-storage",
+		},
+		{
+			name:  "configured SC does not exist, falls back to cluster default",
+			mcoSC: "gp2",
+			storageClasses: []runtime.Object{
+				&storev1.StorageClass{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:        "standard",
+						Annotations: map[string]string{"storageclass.kubernetes.io/is-default-class": "true"},
+					},
+				},
+			},
+			expectedSC: "standard",
+		},
+		{
+			name:           "empty SC and no cluster default",
+			mcoSC:          "",
+			storageClasses: []runtime.Object{},
+			expectedSC:     "",
+		},
+		{
+			name:  "empty SC resolves to cluster default",
+			mcoSC: "",
+			storageClasses: []runtime.Object{
+				&storev1.StorageClass{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:        "gp3",
+						Annotations: map[string]string{"storageclass.kubernetes.io/is-default-class": "true"},
+					},
+				},
+			},
+			expectedSC: "gp3",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mco := &mcov1beta2.MultiClusterObservability{
+				Spec: mcov1beta2.MultiClusterObservabilitySpec{
+					StorageConfig: &mcov1beta2.StorageConfig{
+						StorageClass: tt.mcoSC,
+					},
+				},
+			}
+			objs := append([]runtime.Object{mco}, tt.storageClasses...)
+			c := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
+			got, err := getStorageClass(context.TODO(), mco, c)
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expectedSC, got)
+		})
+	}
+}
+
+func TestHandleStorageClassChange(t *testing.T) {
+	s := scheme.Scheme
+	mcov1beta2.SchemeBuilder.AddToScheme(s)
+
+	mco := &mcov1beta2.MultiClusterObservability{
+		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterObservability"},
+		ObjectMeta: metav1.ObjectMeta{Name: "test"},
+		Spec: mcov1beta2.MultiClusterObservabilitySpec{
+			StorageConfig: &mcov1beta2.StorageConfig{
+				MetricObjectStorage: &mcoshared.PreConfiguredStorage{
+					Key:  "test",
+					Name: "test",
+				},
+				StorageClass:            "gp3",
+				AlertmanagerStorageSize: "1Gi",
+			},
+		},
+	}
+
+	receiveSts := &appsv1.StatefulSet{
+		TypeMeta: metav1.TypeMeta{APIVersion: "apps/v1", Kind: "StatefulSet"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "thanos-receive-default",
+			Namespace: config.GetDefaultNamespace(),
+			Labels: map[string]string{
+				"app.kubernetes.io/instance": mco.GetName(),
+				"app.kubernetes.io/name":     "thanos-receive",
+			},
+		},
+	}
+
+	storageName := "gp2"
+	receivePVC := &corev1.PersistentVolumeClaim{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "data-thanos-receive-default-0",
+			Namespace: config.GetDefaultNamespace(),
+			Labels: map[string]string{
+				"app.kubernetes.io/instance": mco.GetName(),
+				"app.kubernetes.io/name":     "thanos-receive",
+			},
+		},
+		Spec: corev1.PersistentVolumeClaimSpec{
+			AccessModes:      []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
+			StorageClassName: &storageName,
+			Resources: corev1.VolumeResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceStorage: resource.MustParse("1Gi"),
+				},
+			},
+		},
+	}
+
+	objs := []runtime.Object{mco, receiveSts, receivePVC}
+	c := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
+	r := &MultiClusterObservabilityReconciler{
+		Client: c,
+		Scheme: s,
+		LastStorageConfig: &mcov1beta2.StorageConfig{
+			StorageClass:            "gp2",
+			AlertmanagerStorageSize: "1Gi",
+		},
+	}
+
+	// HandleStorageSizeChange detects storage class changed from gp2 -> gp3
+	result, err := r.HandleStorageSizeChange(context.TODO(), mco)
+	assert.NoError(t, err)
+	assert.Nil(t, result)
+
+	// Verify the StatefulSet was deleted
+	sts := &appsv1.StatefulSet{}
+	err = c.Get(context.TODO(), types.NamespacedName{
+		Name:      "thanos-receive-default",
+		Namespace: config.GetDefaultNamespace(),
+	}, sts)
+	assert.True(t, errors.IsNotFound(err), "StatefulSet should have been deleted")
+
+	// Verify the PVC was deleted
+	pvc := &corev1.PersistentVolumeClaim{}
+	err = c.Get(context.TODO(), types.NamespacedName{
+		Name:      "data-thanos-receive-default-0",
+		Namespace: config.GetDefaultNamespace(),
+	}, pvc)
+	assert.True(t, errors.IsNotFound(err), "PVC should have been deleted")
 }
 
 func createStatefulSet(name, namespace, statefulSetName string) *appsv1.StatefulSet {
@@ -1164,6 +1387,21 @@ func newMultiClusterObservability() *mcov1beta2.MultiClusterObservability {
 	}
 }
 
+func newStorageClass(name string, isDefault bool) *storev1.StorageClass {
+	sc := &storev1.StorageClass{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+		},
+		Provisioner: "kubernetes.io/no-provisioner",
+	}
+	if isDefault {
+		sc.Annotations = map[string]string{
+			"storageclass.kubernetes.io/is-default-class": "true",
+		}
+	}
+	return sc
+}
+
 func createNamespaceInstance(name string) *corev1.Namespace {
 	return &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
@@ -1209,7 +1447,7 @@ func TestPrometheusRulesRemovedFromOpenshiftMonitoringNamespace(t *testing.T) {
 	objs := []runtime.Object{promRule}
 	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 	r := &MultiClusterObservabilityReconciler{Client: c, Scheme: s}
-	err := r.deleteSpecificPrometheusRule(context.TODO())
+	err := r.deleteSpecificPrometheusRule(t.Context())
 	if err != nil {
 		t.Fatalf("Failed to delete PrometheusRule: (%v)", err)
 	}
@@ -1234,10 +1472,168 @@ func TestServiceMonitorRemovedFromOpenshiftMonitoringNamespace(t *testing.T) {
 	objs := []runtime.Object{sm}
 	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 	r := &MultiClusterObservabilityReconciler{Client: c, Scheme: s}
-	err := r.deleteServiceMonitorInOpenshiftMonitoringNamespace(context.TODO())
+	err := r.deleteServiceMonitorInOpenshiftMonitoringNamespace(t.Context())
 	if err != nil {
 		t.Fatalf("Failed to delete ServiceMonitor: (%v)", err)
 	}
+}
+
+func TestUndeployMCOAGrafanaResources(t *testing.T) {
+	defer setupTest(t)()
+
+	namespace := config.GetDefaultNamespace()
+	mcoName := "monitoring"
+	mcoUID := types.UID("mco-uid-test")
+
+	mco := &mcov1beta2.MultiClusterObservability{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: mcov1beta2.GroupVersion.String(),
+			Kind:       "MultiClusterObservability",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: mcoName,
+			UID:  mcoUID,
+		},
+	}
+	mcoWithPlatformMetrics := &mcov1beta2.MultiClusterObservability{
+		TypeMeta:   mco.TypeMeta,
+		ObjectMeta: mco.ObjectMeta,
+		Spec: mcov1beta2.MultiClusterObservabilitySpec{
+			Capabilities: &mcov1beta2.CapabilitiesSpec{
+				Platform: &mcov1beta2.PlatformCapabilitiesSpec{
+					Metrics: mcov1beta2.PlatformMetricsSpec{
+						Default: mcov1beta2.PlatformMetricsDefaultSpec{
+							Enabled: true,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	s := runtime.NewScheme()
+	scheme.AddToScheme(s)
+	mcov1beta2.AddToScheme(s)
+	monitoringv1.AddToScheme(s)
+
+	controllerRef := metav1.NewControllerRef(mco, mcov1beta2.GroupVersion.WithKind("MultiClusterObservability"))
+	scrapeConfig := &unstructured.Unstructured{}
+	scrapeConfig.SetAPIVersion("monitoring.rhobs/v1alpha1")
+	scrapeConfig.SetKind("ScrapeConfig")
+	scrapeConfig.SetName("platform-metrics")
+	scrapeConfig.SetNamespace(namespace)
+	scrapeConfig.SetOwnerReferences([]metav1.OwnerReference{*controllerRef})
+	promRule := &monitoringv1.PrometheusRule{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            "platform-rules-default",
+			Namespace:       namespace,
+			OwnerReferences: []metav1.OwnerReference{*controllerRef},
+		},
+	}
+
+	tests := []struct {
+		name           string
+		mco            *mcov1beta2.MultiClusterObservability
+		existingObjs   []runtime.Object
+		expectDeletion bool
+	}{
+		{
+			name:           "undeploys MCOA Grafana resources when platform metrics disabled",
+			mco:            mco,
+			existingObjs:   []runtime.Object{mco, scrapeConfig, promRule},
+			expectDeletion: true,
+		},
+		{
+			name:           "skips undeploy when platform metrics enabled",
+			mco:            mcoWithPlatformMetrics,
+			existingObjs:   []runtime.Object{mcoWithPlatformMetrics, scrapeConfig, promRule},
+			expectDeletion: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(tt.existingObjs...).Build()
+			r := &MultiClusterObservabilityReconciler{Client: c, Scheme: s}
+			renderer := rendering.NewMCORenderer(tt.mco, c, nil)
+			deployer := deploying.NewDeployer(c, tt.mco.Name)
+
+			err := r.undeployMCOAGrafanaResources(t.Context(), tt.mco, renderer, deployer)
+			require.NoError(t, err)
+
+			gotScrapeConfig := &unstructured.Unstructured{}
+			gotScrapeConfig.SetAPIVersion("monitoring.rhobs/v1alpha1")
+			gotScrapeConfig.SetKind("ScrapeConfig")
+			err = c.Get(t.Context(), types.NamespacedName{Name: "platform-metrics", Namespace: namespace}, gotScrapeConfig)
+			if tt.expectDeletion {
+				assert.True(t, errors.IsNotFound(err), "ScrapeConfig should have been deleted")
+			} else {
+				require.NoError(t, err, "ScrapeConfig should still exist")
+			}
+
+			gotPromRule := &monitoringv1.PrometheusRule{}
+			err = c.Get(t.Context(), types.NamespacedName{Name: "platform-rules-default", Namespace: namespace}, gotPromRule)
+			if tt.expectDeletion {
+				assert.True(t, errors.IsNotFound(err), "PrometheusRule should have been deleted")
+			} else {
+				require.NoError(t, err, "PrometheusRule should still exist")
+			}
+		})
+	}
+}
+
+// noMatchScrapeConfigClient simulates production apiserver behavior when the
+// scrapeconfigs.monitoring.rhobs CRD is not installed. This is not about the Go
+// scheme: monitoring/v1 is registered for PrometheusRule, but MCO ScrapeConfigs
+// use monitoring.rhobs/v1alpha1 (a separate API group). The fake client cannot
+// reproduce NoMatch on its own—it returns NotFound for missing unstructured
+// objects—so this wrapper injects the error the real cluster returns.
+type noMatchScrapeConfigClient struct {
+	client.Client
+}
+
+func (c *noMatchScrapeConfigClient) Get(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
+	if u, ok := obj.(*unstructured.Unstructured); ok {
+		gvk := u.GroupVersionKind()
+		if gvk.Group == "monitoring.rhobs" && gvk.Kind == "ScrapeConfig" {
+			return &meta.NoKindMatchError{
+				GroupKind:        schema.GroupKind{Group: gvk.Group, Kind: gvk.Kind},
+				SearchedVersions: []string{gvk.Version},
+			}
+		}
+	}
+	return c.Client.Get(ctx, key, obj, opts...)
+}
+
+// TestUndeployMCOAGrafanaResourcesSkipsMissingScrapeConfigCRD verifies cleanup
+// continues when the ScrapeConfig CRD is absent (legacy install without MCOA).
+func TestUndeployMCOAGrafanaResourcesSkipsMissingScrapeConfigCRD(t *testing.T) {
+	defer setupTest(t)()
+
+	mco := &mcov1beta2.MultiClusterObservability{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: mcov1beta2.GroupVersion.String(),
+			Kind:       "MultiClusterObservability",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "monitoring",
+		},
+	}
+
+	s := runtime.NewScheme()
+	scheme.AddToScheme(s)
+	mcov1beta2.AddToScheme(s)
+	monitoringv1.AddToScheme(s)
+
+	baseClient := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(mco).Build()
+	c := &noMatchScrapeConfigClient{Client: baseClient}
+
+	r := &MultiClusterObservabilityReconciler{Client: c, Scheme: s}
+	renderer := rendering.NewMCORenderer(mco, c, nil)
+	deployer := deploying.NewDeployer(c, mco.Name)
+
+	err := r.undeployMCOAGrafanaResources(t.Context(), mco, renderer, deployer)
+	require.NoError(t, err)
 }
 
 func TestNewMCOACRDEventHandler(t *testing.T) {
@@ -1299,7 +1695,7 @@ func TestNewMCOACRDEventHandler(t *testing.T) {
 				workqueue.DefaultTypedControllerRateLimiter[reconcile.Request](),
 				workqueue.TypedRateLimitingQueueConfig[reconcile.Request]{Name: "testQueue"},
 			)
-			handler.Create(context.TODO(), createEvent, queue)
+			handler.Create(t.Context(), createEvent, queue)
 
 			reqs := []reconcile.Request{}
 			for queue.Len() > 0 {
@@ -1322,5 +1718,57 @@ func newAlertManagerRoute() *routev1.Route {
 		Spec: routev1.RouteSpec{
 			Host: "alert.manager",
 		},
+	}
+}
+
+func TestDeleteVestigialProxyIngress(t *testing.T) {
+	s := scheme.Scheme
+
+	tests := []struct {
+		name           string
+		existingObjs   []runtime.Object
+		expectDeletion bool
+	}{
+		{
+			name: "deletes existing ingress",
+			existingObjs: []runtime.Object{
+				&networkingv1.Ingress{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "rbac-query-proxy-ingress",
+						Namespace: config.GetDefaultNamespace(),
+					},
+				},
+			},
+			expectDeletion: true,
+		},
+		{
+			name:           "no-op when ingress does not exist",
+			existingObjs:   []runtime.Object{},
+			expectDeletion: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(tt.existingObjs...).Build()
+			r := &MultiClusterObservabilityReconciler{Client: c, Scheme: s}
+
+			err := r.deleteVestigialProxyIngress(t.Context())
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			ingress := &networkingv1.Ingress{}
+			err = c.Get(t.Context(), types.NamespacedName{
+				Name:      "rbac-query-proxy-ingress",
+				Namespace: config.GetDefaultNamespace(),
+			}, ingress)
+
+			if tt.expectDeletion {
+				assert.True(t, errors.IsNotFound(err), "ingress should have been deleted")
+			} else {
+				assert.True(t, errors.IsNotFound(err), "ingress should not exist")
+			}
+		})
 	}
 }

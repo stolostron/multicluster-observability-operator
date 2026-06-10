@@ -8,10 +8,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"slices"
 
 	"github.com/go-logr/logr"
+	prometheusv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/collector"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/hypershift"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/openshift"
@@ -51,6 +51,8 @@ const (
 	openShiftClusterMonitoringlabel = "openshift.io/cluster-monitoring"
 	mtlsCertName                    = "observability-controller-open-cluster-management.io-observability-signer-client-cert"
 	mtlsCaName                      = "observability-managed-cluster-certs"
+	amMtlsCertName                  = "obs-alertmanager-mtls-cert"
+	amMtlsCaName                    = "obs-alertmanager-mtls-ca"
 	metricsCollectorName            = "metrics-collector-deployment"
 	uwlMetricsCollectorName         = "uwl-metrics-collector-deployment"
 	uwlNamespace                    = "openshift-user-workload-monitoring"
@@ -86,18 +88,15 @@ type ObservabilityAddonReconciler struct {
 func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	r.Logger.Info("Reconciling", "Request", req.String())
 
-	isHypershift := true
-	if os.Getenv("UNIT_TEST") != "true" {
-		var err error
-		isHypershift, err = hypershift.IsHypershiftCluster()
-		if err != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to check if the cluster is hypershift: %w", err)
-		}
+	var err error
+	isHypershift, err := hypershift.IsHypershiftCluster()
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to check if the cluster is hypershift: %w", err)
 	}
 
 	// retrieve the hubInfo
 	hubSecret := &corev1.Secret{}
-	err := r.Client.Get(
+	err = r.Client.Get(
 		ctx,
 		types.NamespacedName{Name: operatorconfig.HubInfoSecretName, Namespace: r.Namespace},
 		hubSecret,
@@ -174,7 +173,7 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 	}
 	rendering.Images = imagesCM.Data
 
-	if r.IsHubMetricsCollector && isHypershift {
+	if isHypershift {
 		updatedHCs, err := hypershift.ReconcileHostedClustersServiceMonitors(ctx, r.Client)
 		if err != nil {
 			r.Logger.Error(err, "Failed to create ServiceMonitors for hypershift")
@@ -538,6 +537,18 @@ func (r *ObservabilityAddonReconciler) SetupWithManager(mgr ctrl.Manager) error 
 		).Watches(&rbacv1.ClusterRoleBinding{},
 			&handler.EnqueueRequestForObject{},
 			builder.WithPredicates(getPred(openshift.HubClusterRoleBindingName, "", false, true, true)))
+	}
+
+	if isHypershift, err := hypershift.IsHypershiftCluster(); err == nil && isHypershift {
+		ctrlBuilder = ctrlBuilder.Watches(
+			&prometheusv1.ServiceMonitor{},
+			&handler.EnqueueRequestForObject{},
+			builder.WithPredicates(getPred(hypershift.EtcdSmName, "", true, false, false)),
+		).Watches(
+			&prometheusv1.ServiceMonitor{},
+			&handler.EnqueueRequestForObject{},
+			builder.WithPredicates(getPred(hypershift.ApiServerSmName, "", true, false, false)),
+		)
 	}
 
 	return ctrlBuilder.

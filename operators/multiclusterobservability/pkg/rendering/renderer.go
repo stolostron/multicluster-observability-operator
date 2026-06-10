@@ -5,6 +5,8 @@
 package rendering
 
 import (
+	"context"
+
 	imagev1client "github.com/openshift/client-go/image/clientset/versioned/typed/image/v1"
 	obv1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
@@ -40,6 +42,7 @@ type MCORenderer struct {
 	renderMCOAFns         map[string]rendererutil.RenderFn
 }
 
+// NewMCORenderer creates a new MCO renderer with all sub-renderers initialized.
 func NewMCORenderer(multipleClusterMonitoring *obv1beta2.MultiClusterObservability, kubeClient client.Client, imageClient imagev1client.ImageV1Interface) *MCORenderer {
 	mcoRenderer := &MCORenderer{
 		renderer:    rendererutil.NewRenderer(),
@@ -55,19 +58,21 @@ func NewMCORenderer(multipleClusterMonitoring *obv1beta2.MultiClusterObservabili
 	return mcoRenderer
 }
 
+// WithRendererOptions sets the renderer options and returns the renderer for chaining.
 func (r *MCORenderer) WithRendererOptions(options *RendererOptions) *MCORenderer {
 	r.rendererOptions = options
 	return r
 }
 
-func (r *MCORenderer) Render() ([]*unstructured.Unstructured, error) {
+// Render loads and renders all MCO templates into unstructured Kubernetes resources.
+func (r *MCORenderer) Render(ctx context.Context) ([]*unstructured.Unstructured, error) {
 	// load and render generic templates
 	genericTemplates, err := templates.GetOrLoadGenericTemplates(templatesutil.GetTemplateRenderer())
 	if err != nil {
 		return nil, err
 	}
 	namespace, labels := r.NamespaceAndLabels()
-	resources, err := r.renderer.RenderTemplates(genericTemplates, namespace, labels)
+	resources, err := r.renderer.RenderTemplates(ctx, genericTemplates, namespace, labels)
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +82,7 @@ func (r *MCORenderer) Render() ([]*unstructured.Unstructured, error) {
 	if err != nil {
 		return nil, err
 	}
-	grafanaResources, err := r.renderGrafanaTemplates(grafanaTemplates, namespace, labels)
+	grafanaResources, err := r.renderGrafanaTemplates(ctx, grafanaTemplates, namespace, labels)
 	if err != nil {
 		return nil, err
 	}
@@ -88,7 +93,7 @@ func (r *MCORenderer) Render() ([]*unstructured.Unstructured, error) {
 	if err != nil {
 		return nil, err
 	}
-	alertResources, err := r.renderAlertManagerTemplates(alertTemplates, namespace, labels)
+	alertResources, err := r.renderAlertManagerTemplates(ctx, alertTemplates, namespace, labels)
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +104,7 @@ func (r *MCORenderer) Render() ([]*unstructured.Unstructured, error) {
 	if err != nil {
 		return nil, err
 	}
-	thanosResources, err := r.renderThanosTemplates(thanosTemplates, namespace, labels)
+	thanosResources, err := r.renderThanosTemplates(ctx, thanosTemplates, namespace, labels)
 	if err != nil {
 		return nil, err
 	}
@@ -110,15 +115,16 @@ func (r *MCORenderer) Render() ([]*unstructured.Unstructured, error) {
 	if err != nil {
 		return nil, err
 	}
-	proxyResources, err := r.renderProxyTemplates(proxyTemplates, namespace, labels)
+	proxyResources, err := r.renderProxyTemplates(ctx, proxyTemplates, namespace, labels)
 	if err != nil {
 		return nil, err
 	}
 	resources = append(resources, proxyResources...)
 
-	// load and render multicluster-observability-addon templates if capabilities is enabled
-	if MCOAEnabled(r.cr) {
-		mcoaResources, err := r.MCOAResources(namespace, labels)
+	// load and render multicluster-observability-addon templates
+	rightSizingDelegated := r.rendererOptions != nil && r.rendererOptions.MCOAOptions.RightSizingDelegated && rightSizingEnabled(r.cr)
+	if MCOAEnabled(r.cr) || rightSizingDelegated {
+		mcoaResources, err := r.MCOAResources(ctx, namespace, labels)
 		if err != nil {
 			return nil, err
 		}
@@ -170,6 +176,7 @@ func (r *MCORenderer) Render() ([]*unstructured.Unstructured, error) {
 	return resources, nil
 }
 
+// NamespaceAndLabels returns the default MCO namespace and CR labels.
 func (r *MCORenderer) NamespaceAndLabels() (string, map[string]string) {
 	namespace := mcoconfig.GetDefaultNamespace()
 	labels := map[string]string{
@@ -178,12 +185,13 @@ func (r *MCORenderer) NamespaceAndLabels() (string, map[string]string) {
 	return namespace, labels
 }
 
-func (r *MCORenderer) MCOAResources(namespace string, labels map[string]string) ([]*unstructured.Unstructured, error) {
+// MCOAResources renders the MCOA addon templates into unstructured resources.
+func (r *MCORenderer) MCOAResources(ctx context.Context, namespace string, labels map[string]string) ([]*unstructured.Unstructured, error) {
 	mcoaTemplates, err := templates.GetOrLoadMCOATemplates(templatesutil.GetTemplateRenderer())
 	if err != nil {
 		return nil, err
 	}
-	mcoaResources, err := r.renderMCOATemplates(mcoaTemplates, namespace, labels)
+	mcoaResources, err := r.renderMCOATemplates(ctx, mcoaTemplates, namespace, labels)
 	if err != nil {
 		return nil, err
 	}
@@ -191,6 +199,21 @@ func (r *MCORenderer) MCOAResources(namespace string, labels map[string]string) 
 	return mcoaResources, nil
 }
 
+// MCOAGrafanaResourcesForRemoval renders the MCOA addon grafana templates into unstructured resources for removal.
+func (r *MCORenderer) MCOAGrafanaResourcesForRemoval(ctx context.Context, namespace string, labels map[string]string) ([]*unstructured.Unstructured, error) {
+	grafanaTemplates, err := templates.GetOrLoadGrafanaTemplates(templatesutil.GetTemplateRenderer())
+	if err != nil {
+		return nil, err
+	}
+	mcoaGrafanaResources, err := r.RenderGrafanaMCOATemplatesForRemoval(ctx, grafanaTemplates, namespace, labels)
+	if err != nil {
+		return nil, err
+	}
+
+	return mcoaGrafanaResources, nil
+}
+
+// HasImagestream checks if the cluster supports OpenShift ImageStream resources.
 func (r *MCORenderer) HasImagestream() bool {
 	dcl := discovery.NewDiscoveryClient(r.imageClient.RESTClient())
 

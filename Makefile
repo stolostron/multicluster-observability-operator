@@ -154,8 +154,12 @@ integration-test-operators: ## Run operators integration tests.
 integration-test-proxy: ## Run proxy integration tests.
 	go test -tags=integration ./proxy/...
 
+.PHONY: integration-test-loaders
+integration-test-loaders: ## Run loaders integration tests.
+	go test -tags=integration ./loaders/...
+
 .PHONY: integration-test
-integration-test: integration-test-operators integration-test-proxy ## Run all integration tests.
+integration-test: integration-test-operators integration-test-proxy integration-test-loaders ## Run all integration tests.
 
 .PHONY: e2e-tests
 e2e-tests: tools ## Run E2E tests.

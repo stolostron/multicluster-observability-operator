@@ -3,6 +3,7 @@ FROM registry.ci.openshift.org/stolostron/builder:go1.25-linux AS builder
 WORKDIR /workspace
 # copy go tests into build image
 COPY go.sum go.mod ./
+COPY ./operators ./operators
 COPY ./tests ./tests
 
 # compile go tests in build image

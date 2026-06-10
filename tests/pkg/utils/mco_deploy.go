@@ -13,8 +13,10 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"slices"
 	"strings"
 
+	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -34,12 +36,14 @@ const (
 	MCO_NAMESPACE                 = "open-cluster-management-observability"
 	MCO_ADDON_NAMESPACE           = "open-cluster-management-addon-observability"
 	MCO_AGENT_ADDON_NAMESPACE     = "open-cluster-management-agent-addon"
+	MCO_GLOBAL_SET_NAMESPACE      = "open-cluster-management-global-set"
 	MCO_PULL_SECRET_NAME          = "multiclusterhub-operator-pull-secret"
 	OBJ_SECRET_NAME               = "thanos-object-storage" // #nosec G101 -- Not a hardcoded credential.
 	MCO_GROUP                     = "observability.open-cluster-management.io"
 	OCM_WORK_GROUP                = "work.open-cluster-management.io"
 	OCM_CLUSTER_GROUP             = "cluster.open-cluster-management.io"
 	OCM_ADDON_GROUP               = "addon.open-cluster-management.io"
+	OCM_POLICY_GROUP              = "policy.open-cluster-management.io"
 )
 
 func NewMCOGVRV1BETA2() schema.GroupVersionResource {
@@ -128,6 +132,98 @@ func NewScrapeConfigGVR() schema.GroupVersionResource {
 		Version:  "v1alpha1",
 		Resource: "scrapeconfigs",
 	}
+}
+
+// NewPolicyGVR returns the GVR for OCM Policy resources.
+func NewPolicyGVR() schema.GroupVersionResource {
+	return schema.GroupVersionResource{
+		Group:    OCM_POLICY_GROUP,
+		Version:  "v1",
+		Resource: "policies",
+	}
+}
+
+// NewPlacementGVR returns the GVR for OCM Placement resources.
+func NewPlacementGVR() schema.GroupVersionResource {
+	return schema.GroupVersionResource{
+		Group:    OCM_CLUSTER_GROUP,
+		Version:  "v1beta1",
+		Resource: "placements",
+	}
+}
+
+// NewPlacementBindingGVR returns the GVR for OCM PlacementBinding resources.
+func NewPlacementBindingGVR() schema.GroupVersionResource {
+	return schema.GroupVersionResource{
+		Group:    OCM_POLICY_GROUP,
+		Version:  "v1",
+		Resource: "placementbindings",
+	}
+}
+
+// VerifyRSResourcesCleanedUp checks that all right-sizing resources have been deleted.
+// Uses both label-based discovery (catches resources in any namespace) and name-based
+// checks (catches old unlabeled resources) to ensure nothing is left behind.
+func VerifyRSResourcesCleanedUp(ctx context.Context, dynClient dynamic.Interface) error {
+	configMapGVR := schema.GroupVersionResource{Group: "", Version: "v1", Resource: "configmaps"}
+
+	var remaining []string
+
+	// Label-based check: find RS resources in any namespace by managed-by label
+	rsLabel := "observability.open-cluster-management.io/managed-by=analytics-rightsizing"
+	labeledGVRs := []schema.GroupVersionResource{
+		NewPolicyGVR(),
+		NewPlacementGVR(),
+		NewPlacementBindingGVR(),
+		configMapGVR,
+	}
+	for _, gvr := range labeledGVRs {
+		list, err := dynClient.Resource(gvr).Namespace("").List(ctx, metav1.ListOptions{LabelSelector: rsLabel})
+		if err == nil {
+			for _, item := range list.Items {
+				remaining = append(remaining, fmt.Sprintf("%s/%s (labeled)", item.GetNamespace(), item.GetName()))
+			}
+			continue
+		}
+		// Ignore NotFound (CRD may not exist), but fail on transient API/RBAC errors
+		if !k8serrors.IsNotFound(err) {
+			return fmt.Errorf("error listing %s for right-sizing cleanup verification: %w", gvr.Resource, err)
+		}
+	}
+
+	// Name-based fallback: check well-known names in default namespaces (upgrade path)
+	rsResources := []struct {
+		gvr       schema.GroupVersionResource
+		name      string
+		namespace string
+	}{
+		{NewPolicyGVR(), "rs-prom-rules-policy", MCO_GLOBAL_SET_NAMESPACE},
+		{NewPolicyGVR(), "rs-virt-prom-rules-policy", MCO_GLOBAL_SET_NAMESPACE},
+		{NewPlacementGVR(), "rs-placement", MCO_GLOBAL_SET_NAMESPACE},
+		{NewPlacementGVR(), "rs-virt-placement", MCO_GLOBAL_SET_NAMESPACE},
+		{NewPlacementBindingGVR(), "rs-policyset-binding", MCO_GLOBAL_SET_NAMESPACE},
+		{NewPlacementBindingGVR(), "rs-virt-policyset-binding", MCO_GLOBAL_SET_NAMESPACE},
+		{configMapGVR, "rs-namespace-config", MCO_NAMESPACE},
+		{configMapGVR, "rs-virt-config", MCO_NAMESPACE},
+	}
+
+	for _, r := range rsResources {
+		_, err := dynClient.Resource(r.gvr).Namespace(r.namespace).Get(ctx, r.name, metav1.GetOptions{})
+		if err == nil {
+			entry := fmt.Sprintf("%s/%s", r.namespace, r.name)
+			// Avoid duplicates from label-based check
+			if !slices.Contains(remaining, entry+" (labeled)") {
+				remaining = append(remaining, entry)
+			}
+		} else if !k8serrors.IsNotFound(err) {
+			return fmt.Errorf("error checking resource %s/%s: %w", r.namespace, r.name, err)
+		}
+	}
+
+	if len(remaining) > 0 {
+		return fmt.Errorf("right-sizing resources still exist: %v", remaining)
+	}
+	return nil
 }
 
 func GetAllMCOPods(opt TestOptions) ([]corev1.Pod, error) {
@@ -360,6 +456,40 @@ func CheckOBAComponents(opt TestOptions) error {
 	}
 
 	return nil
+}
+
+func CheckMCOStatusCondition(ctx context.Context, opt TestOptions, expectedType string, expectedStatus metav1.ConditionStatus, expectedReason string) error {
+	clientDynamic := NewKubeClientDynamic(
+		opt.HubCluster.ClusterServerURL,
+		opt.KubeConfig,
+		opt.HubCluster.KubeContext)
+
+	u, err := clientDynamic.Resource(NewMCOGVRV1BETA2()).Get(ctx, MCO_CR_NAME, metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to get MCO CR: %w", err)
+	}
+
+	mco := &mcov1beta2.MultiClusterObservability{}
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, mco)
+	if err != nil {
+		return fmt.Errorf("failed to convert unstructured to MCO: %w", err)
+	}
+
+	for _, condition := range mco.Status.Conditions {
+		if condition.Type == expectedType {
+			if condition.Status == expectedStatus {
+				if expectedReason == "" || condition.Reason == expectedReason {
+					return nil
+				}
+				return fmt.Errorf("condition %s has status %s but reason %s (expected %s)",
+					expectedType, condition.Status, condition.Reason, expectedReason)
+			}
+			return fmt.Errorf("condition %s has status %s (expected %s)",
+				expectedType, condition.Status, expectedStatus)
+		}
+	}
+
+	return fmt.Errorf("condition %s not found in MCO status", expectedType)
 }
 
 func CheckMCOComponents(opt TestOptions) error {

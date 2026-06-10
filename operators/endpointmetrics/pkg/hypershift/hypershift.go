@@ -7,6 +7,7 @@ package hypershift
 import (
 	"context"
 	"fmt"
+	"os"
 	"reflect"
 	"strings"
 
@@ -32,8 +33,6 @@ const (
 // For each hosted cluster, it adds a ServiceMonitor for etcd and kube-apiserver
 // so that metrics are scraped by the user workload cluster's prometheus
 // with relevant labels added for ACM.
-// No watcher is set on hypershift CRDs. Adding the CRDs after the controller is started
-// will not trigger the reconcile function. The controller must be restarted to watch the new CRDs.
 func ReconcileHostedClustersServiceMonitors(ctx context.Context, c client.Client) (int, error) {
 	hostedClusters := &hyperv1.HostedClusterList{}
 	if err := c.List(ctx, hostedClusters, &client.ListOptions{}); err != nil {
@@ -42,27 +41,34 @@ func ReconcileHostedClustersServiceMonitors(ctx context.Context, c client.Client
 
 	reconciledHCsCount := 0
 	for _, cluster := range hostedClusters.Items {
+		reconciledSMsCount := 0
 		namespace := fmt.Sprintf("%s-%s", cluster.Namespace, cluster.Name)
 
 		etcdSMDesired, err := getEtcdServiceMonitor(ctx, c, namespace, cluster.Spec.ClusterID, cluster.Name)
-		if err != nil {
+		// In case hypershift's etcd ServiceMonitor is not created yet,
+		// we can skip this cluster and wait for the next reconciliation loop
+		if err == nil {
+			if err := createOrUpdateSM(ctx, c, etcdSMDesired); err != nil {
+				return reconciledHCsCount, fmt.Errorf("failed to create/update etcd ServiceMonitor %s/%s: %w", etcdSMDesired.GetNamespace(), etcdSMDesired.GetName(), err)
+			}
+			reconciledSMsCount++
+		} else if !errors.IsNotFound(err) {
 			return reconciledHCsCount, fmt.Errorf("failed to get etcd ServiceMonitor: %w", err)
 		}
 
-		if err := createOrUpdateSM(ctx, c, etcdSMDesired); err != nil {
-			return reconciledHCsCount, fmt.Errorf("failed to create/update etcd ServiceMonitor %s/%s: %w", etcdSMDesired.GetNamespace(), etcdSMDesired.GetName(), err)
-		}
-
 		apiServerSMDesired, err := getKubeServiceMonitor(ctx, c, namespace, cluster.Spec.ClusterID, cluster.Name)
-		if err != nil {
-			return reconciledHCsCount, fmt.Errorf("failed to get kube-apiserver ServiceMonitor: %w", err)
+		if err == nil {
+			if err := createOrUpdateSM(ctx, c, apiServerSMDesired); err != nil {
+				return reconciledHCsCount, fmt.Errorf("failed to create/update api-server ServiceMonitor %s/%s: %w", apiServerSMDesired.GetNamespace(), apiServerSMDesired.GetName(), err)
+			}
+			reconciledSMsCount++
+		} else if !errors.IsNotFound(err) {
+			return reconciledHCsCount, fmt.Errorf("failed to get api-server ServiceMonitor: %w", err)
 		}
 
-		if err := createOrUpdateSM(ctx, c, apiServerSMDesired); err != nil {
-			return reconciledHCsCount, fmt.Errorf("failed to create/update api-server ServiceMonitor %s/%s: %w", apiServerSMDesired.GetNamespace(), apiServerSMDesired.GetName(), err)
+		if reconciledSMsCount > 0 {
+			reconciledHCsCount++
 		}
-
-		reconciledHCsCount++
 	}
 
 	return reconciledHCsCount, nil
@@ -96,15 +102,17 @@ func HostedClusterNamespace(cluster *hyperv1.HostedCluster) string {
 }
 
 func IsHypershiftCluster() (bool, error) {
-	var isHypershift bool
-	crdClient, err := operatorutil.GetOrCreateCRDClient()
-	if err != nil {
-		return false, fmt.Errorf("failed to get/create CRD client: %w", err)
-	}
+	isHypershift := true
+	if os.Getenv("UNIT_TEST") != "true" {
+		crdClient, err := operatorutil.GetOrCreateCRDClient()
+		if err != nil {
+			return false, fmt.Errorf("failed to get/create CRD client: %w", err)
+		}
 
-	isHypershift, err = operatorutil.CheckCRDExist(crdClient, "hostedclusters.hypershift.openshift.io")
-	if err != nil {
-		return false, fmt.Errorf("failed to check if the CRD hostedclusters.hypershift.openshift.io exists: %w", err)
+		isHypershift, err = operatorutil.CheckCRDExist(crdClient, "hostedclusters.hypershift.openshift.io")
+		if err != nil {
+			return false, fmt.Errorf("failed to check if the CRD hostedclusters.hypershift.openshift.io exists: %w", err)
+		}
 	}
 
 	return isHypershift, nil

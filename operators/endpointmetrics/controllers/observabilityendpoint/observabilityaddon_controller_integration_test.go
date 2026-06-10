@@ -20,7 +20,6 @@ import (
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/hypershift"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/util"
-	observabilityshared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
 	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/stretchr/testify/assert"
@@ -35,8 +34,10 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	kubescheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
+	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/config"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
@@ -50,7 +51,11 @@ var (
 	restCfgHub   *rest.Config
 )
 
-func TestCMOConfigWatching(t *testing.T) {
+const (
+	obAddonNs = "open-cluster-management-addon-observability"
+)
+
+func TestIntegrationCMOConfigWatching(t *testing.T) {
 	namespace := "test-cmo-config"
 
 	scheme := createBaseScheme()
@@ -70,11 +75,8 @@ func TestCMOConfigWatching(t *testing.T) {
 		newImagesCM(namespace),
 		newHubInfoSecret([]byte(`
 endpoint: "http://test-endpoint"
+hub-cluster-id: "test-hub-cluster"
 alertmanager-endpoint: "http://test-alertamanger-endpoint"
-alertmanager-router-ca: |
-    -----BEGIN CERTIFICATE-----
-    xxxxxxxxxxxxxxxxxxxxxxxxxxx
-    -----END CERTIFICATE-----
 `), namespace),
 		&corev1.Service{
 			ObjectMeta: metav1.ObjectMeta{
@@ -107,6 +109,9 @@ alertmanager-router-ca: |
 			},
 		},
 	}
+	for _, obj := range newMtlsTestSecrets(namespace) {
+		resourcesDeps = append(resourcesDeps, obj.(client.Object))
+	}
 	if err := createResources(k8sClient, resourcesDeps...); err != nil {
 		t.Fatalf("Failed to create resources: %v", err)
 	}
@@ -114,6 +119,9 @@ alertmanager-router-ca: |
 	mgr, err := ctrl.NewManager(testEnvHub.Config, ctrl.Options{
 		Scheme:  k8sClient.Scheme(),
 		Metrics: metricsserver.Options{BindAddress: "0"}, // Avoids port conflict with the default port 8080
+		Controller: config.Controller{
+			SkipNameValidation: ptr.To(true),
+		},
 	})
 	assert.NoError(t, err)
 
@@ -153,6 +161,7 @@ alertmanager-router-ca: |
 		return true, err
 	})
 	assert.NoError(t, err)
+	assert.NotEmpty(t, cm.Data[clusterMonitoringConfigDataKey])
 
 	foundClusterMonitoringConfiguration := &cmomanifests.ClusterMonitoringConfiguration{}
 	err = yaml2.Unmarshal([]byte(cm.Data[clusterMonitoringConfigDataKey]), foundClusterMonitoringConfiguration)
@@ -197,12 +206,15 @@ alertmanager-router-ca: |
 	assert.NoError(t, err)
 }
 
-// TestIntegrationReconcileHypershift tests the reconcile function for hypershift CRDs.
-func TestIntegrationReconcileHypershift(t *testing.T) {
+// TestIntegrationReconcileHypershiftOnHub tests the reconcile function for hypershift CRDs on a Hub cluster.
+func TestIntegrationReconcileHypershiftOnHub(t *testing.T) {
 	testNamespace := "test-ns"
 
 	scheme := createBaseScheme()
-	hyperv1.AddToScheme(scheme)
+	err := hyperv1.AddToScheme(scheme)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	k8sClient, err := client.New(restCfgHub, client.Options{Scheme: scheme})
 	if err != nil {
@@ -212,17 +224,17 @@ func TestIntegrationReconcileHypershift(t *testing.T) {
 	setupCommonHubResources(t, k8sClient, testNamespace)
 	defer tearDownCommonHubResources(t, k8sClient, testNamespace)
 
-	hostedClusterNs := "hosted-cluster-ns"
-	hostedClusterName := "myhostedcluster"
-	hostedCluster := newHostedCluster(hostedClusterName, hostedClusterNs)
+	hostedClustersNs := "hosted-clusters-ns"
+	preStartHostedClusterName := "myhostedcluster-0"
+	preStartHostedCluster := newHostedCluster(preStartHostedClusterName, hostedClustersNs)
 
 	// Create resources required for the hypershift case
 	resourcesDeps := []client.Object{
-		makeNamespace(hostedClusterNs),
-		makeNamespace(hypershift.HostedClusterNamespace(hostedCluster)),
-		hostedCluster,
-		newServiceMonitor(hypershift.EtcdSmName, hypershift.HostedClusterNamespace(hostedCluster)),
-		newServiceMonitor(hypershift.ApiServerSmName, hypershift.HostedClusterNamespace(hostedCluster)),
+		makeNamespace(hostedClustersNs),
+		makeNamespace(hypershift.HostedClusterNamespace(preStartHostedCluster)),
+		preStartHostedCluster,
+		newServiceMonitor(hypershift.EtcdSmName, hypershift.HostedClusterNamespace(preStartHostedCluster)),
+		newServiceMonitor(hypershift.ApiServerSmName, hypershift.HostedClusterNamespace(preStartHostedCluster)),
 	}
 	if err := createResources(k8sClient, resourcesDeps...); err != nil {
 		t.Fatalf("Failed to create resources: %v", err)
@@ -231,6 +243,9 @@ func TestIntegrationReconcileHypershift(t *testing.T) {
 	mgr, err := ctrl.NewManager(testEnvHub.Config, ctrl.Options{
 		Scheme:  k8sClient.Scheme(),
 		Metrics: metricsserver.Options{BindAddress: "0"}, // Avoids port conflict with the default port 8080
+		Controller: config.Controller{
+			SkipNameValidation: ptr.To(true),
+		},
 	})
 	assert.NoError(t, err)
 
@@ -260,10 +275,186 @@ func TestIntegrationReconcileHypershift(t *testing.T) {
 		assert.NoError(t, err)
 	}()
 
-	// Hypershift service monitors must be created
+	// ACM service monitors must be created for existing HCP
 	err = wait.Poll(1*time.Second, 5*time.Second, func() (bool, error) {
 		hypershiftEtcdSm := &promv1.ServiceMonitor{}
-		err := k8sClient.Get(context.Background(), types.NamespacedName{Namespace: hostedClusterNs + "-" + hostedClusterName, Name: hypershift.AcmEtcdSmName}, hypershiftEtcdSm)
+		err := k8sClient.Get(context.Background(), types.NamespacedName{Namespace: hostedClustersNs + "-" + preStartHostedClusterName, Name: hypershift.AcmEtcdSmName}, hypershiftEtcdSm)
+		if err != nil && errors.IsNotFound(err) {
+			return false, nil
+		}
+
+		hypershiftApiServerSm := &promv1.ServiceMonitor{}
+		err = k8sClient.Get(context.Background(), types.NamespacedName{Namespace: hostedClustersNs + "-" + preStartHostedClusterName, Name: hypershift.AcmApiServerSmName}, hypershiftApiServerSm)
+		if err != nil && errors.IsNotFound(err) {
+			return false, nil
+		}
+
+		return true, err
+	})
+	assert.NoError(t, err)
+
+	runtimeHostedClusterName := "myhostedcluster-1"
+	runtimeHostedCluster := newHostedCluster(runtimeHostedClusterName, hostedClustersNs)
+
+	resourcesDeps = []client.Object{
+		makeNamespace(hypershift.HostedClusterNamespace(runtimeHostedCluster)),
+		runtimeHostedCluster,
+		newServiceMonitor(hypershift.EtcdSmName, hypershift.HostedClusterNamespace(runtimeHostedCluster)),
+		newServiceMonitor(hypershift.ApiServerSmName, hypershift.HostedClusterNamespace(runtimeHostedCluster)),
+	}
+
+	if err := createResources(k8sClient, resourcesDeps...); err != nil {
+		t.Fatalf("Failed to create resources: %v", err)
+	}
+
+	// OBA Reconciler should watch new HostedClusters and create SM consequently
+	err = wait.Poll(1*time.Second, 5*time.Second, func() (bool, error) {
+		hypershiftEtcdSm := &promv1.ServiceMonitor{}
+		err := k8sClient.Get(context.Background(), types.NamespacedName{Namespace: hostedClustersNs + "-" + runtimeHostedClusterName, Name: hypershift.AcmEtcdSmName}, hypershiftEtcdSm)
+		if err != nil && errors.IsNotFound(err) {
+			return false, nil
+		}
+
+		hypershiftApiServerSm := &promv1.ServiceMonitor{}
+		err = k8sClient.Get(context.Background(), types.NamespacedName{Namespace: hostedClustersNs + "-" + runtimeHostedClusterName, Name: hypershift.AcmApiServerSmName}, hypershiftApiServerSm)
+		if err != nil && errors.IsNotFound(err) {
+			return false, nil
+		}
+
+		return true, err
+	})
+	assert.NoError(t, err)
+}
+
+// TestIntegrationReconcileHypershiftOnSpoke tests the reconcile function for hypershift CRDs on a spoke cluster.
+func TestIntegrationReconcileHypershiftOnSpoke(t *testing.T) {
+	mcNamespace := "test-mc-hub-ns"
+
+	scheme := createBaseScheme()
+	err := hyperv1.AddToScheme(scheme)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Setup spoke cluster resources
+	k8sClient, err := client.New(restCfgSpoke, client.Options{Scheme: scheme})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	setupCommonSpokeResources(t, k8sClient)
+	defer tearDownCommonSpokeResources(t, k8sClient)
+
+	hostedClustersNs := "hosted-clusters-ns"
+	preStartHostedClusterName := "myhostedcluster-0"
+	preStartHostedCluster := newHostedCluster(preStartHostedClusterName, hostedClustersNs)
+
+	// Create resources required for the hypershift case
+	resourcesDeps := []client.Object{
+		makeNamespace(hostedClustersNs),
+		makeNamespace(hypershift.HostedClusterNamespace(preStartHostedCluster)),
+		preStartHostedCluster,
+		newServiceMonitor(hypershift.EtcdSmName, hypershift.HostedClusterNamespace(preStartHostedCluster)),
+		newServiceMonitor(hypershift.ApiServerSmName, hypershift.HostedClusterNamespace(preStartHostedCluster)),
+		newObservabilityAddon(obAddonName, obAddonNs),
+	}
+
+	if err := createResources(k8sClient, resourcesDeps...); err != nil {
+		t.Fatalf("Failed to create resources: %v", err)
+	}
+
+	// Setup hub cluster resources using a separate envtest API server
+	hubClient, err := client.New(restCfgHub, client.Options{Scheme: scheme})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	hubClientWithReload, err := util.NewReloadableHubClientWithReloadFunc(func() (client.Client, error) {
+		return hubClient, nil
+	})
+	assert.NoError(t, err)
+
+	resourcesDeps = []client.Object{
+		makeNamespace(mcNamespace),
+		newObservabilityAddon(obAddonName, mcNamespace),
+	}
+	if err := createResources(hubClient, resourcesDeps...); err != nil {
+		t.Fatalf("Failed to create hub resources: %v", err)
+	}
+
+	mgr, err := ctrl.NewManager(testEnvSpoke.Config, ctrl.Options{
+		Scheme:  k8sClient.Scheme(),
+		Metrics: metricsserver.Options{BindAddress: "0"},
+		Controller: config.Controller{
+			SkipNameValidation: ptr.To(true),
+		},
+	})
+	assert.NoError(t, err)
+
+	reconciler := ObservabilityAddonReconciler{
+		Client:                k8sClient,
+		HubClient:             hubClientWithReload,
+		IsHubMetricsCollector: false,
+		Scheme:                scheme,
+		Namespace:             obAddonNs,
+		HubNamespace:          mcNamespace,
+		ServiceAccountName:    "endpoint-monitoring-operator",
+		InstallPrometheus:     false,
+	}
+
+	err = reconciler.SetupWithManager(mgr)
+	assert.NoError(t, err)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go func() {
+		err = mgr.Start(ctx)
+		assert.NoError(t, err)
+	}()
+
+	// ACM service monitors must be created for existing HCP
+	err = wait.Poll(1*time.Second, 5*time.Second, func() (bool, error) {
+		hypershiftEtcdSm := &promv1.ServiceMonitor{}
+		err := k8sClient.Get(context.Background(), types.NamespacedName{Namespace: hostedClustersNs + "-" + preStartHostedClusterName, Name: hypershift.AcmEtcdSmName}, hypershiftEtcdSm)
+		if err != nil && errors.IsNotFound(err) {
+			return false, nil
+		}
+
+		hypershiftApiServerSm := &promv1.ServiceMonitor{}
+		err = k8sClient.Get(context.Background(), types.NamespacedName{Namespace: hostedClustersNs + "-" + preStartHostedClusterName, Name: hypershift.AcmApiServerSmName}, hypershiftApiServerSm)
+		if err != nil && errors.IsNotFound(err) {
+			return false, nil
+		}
+
+		return true, err
+	})
+	assert.NoError(t, err)
+
+	runtimeHostedClusterName := "myhostedcluster-1"
+	runtimeHostedCluster := newHostedCluster(runtimeHostedClusterName, hostedClustersNs)
+
+	resourcesDeps = []client.Object{
+		makeNamespace(hypershift.HostedClusterNamespace(runtimeHostedCluster)),
+		runtimeHostedCluster,
+		newServiceMonitor(hypershift.EtcdSmName, hypershift.HostedClusterNamespace(runtimeHostedCluster)),
+		newServiceMonitor(hypershift.ApiServerSmName, hypershift.HostedClusterNamespace(runtimeHostedCluster)),
+	}
+
+	if err := createResources(k8sClient, resourcesDeps...); err != nil {
+		t.Fatalf("Failed to create resources: %v", err)
+	}
+
+	// OBA Reconciler should watch new HostedClusters and create SM consequently
+	err = wait.Poll(1*time.Second, 5*time.Second, func() (bool, error) {
+		hypershiftEtcdSm := &promv1.ServiceMonitor{}
+		err := k8sClient.Get(context.Background(), types.NamespacedName{Namespace: hostedClustersNs + "-" + runtimeHostedClusterName, Name: hypershift.AcmEtcdSmName}, hypershiftEtcdSm)
+		if err != nil && errors.IsNotFound(err) {
+			return false, nil
+		}
+
+		hypershiftApiServerSm := &promv1.ServiceMonitor{}
+		err = k8sClient.Get(context.Background(), types.NamespacedName{Namespace: hostedClustersNs + "-" + runtimeHostedClusterName, Name: hypershift.AcmApiServerSmName}, hypershiftApiServerSm)
 		if err != nil && errors.IsNotFound(err) {
 			return false, nil
 		}
@@ -282,6 +473,7 @@ func TestMain(m *testing.M) {
 	rootPath := filepath.Join("..", "..", "..")
 	spokeCrds := readCRDFiles(
 		filepath.Join(rootPath, "multiclusterobservability", "config", "crd", "bases", "observability.open-cluster-management.io_observabilityaddons.yaml"),
+		filepath.Join(rootPath, "endpointmetrics", "manifests", "prometheus", "crd", "servicemonitor_crd_0_53_1.yaml"),
 	)
 	testEnvSpoke = &envtest.Environment{
 		CRDDirectoryPaths:       []string{filepath.Join("testdata", "crd"), filepath.Join("..", "..", "config", "crd", "bases")},
@@ -297,7 +489,6 @@ func TestMain(m *testing.M) {
 
 	hubCRDs := readCRDFiles(
 		filepath.Join(rootPath, "multiclusterobservability", "config", "crd", "bases", "observability.open-cluster-management.io_multiclusterobservabilities.yaml"),
-		filepath.Join(rootPath, "endpointmetrics", "manifests", "prometheus", "crd", "servicemonitor_crd_0_53_1.yaml"),
 	)
 	hubCRDs = append(hubCRDs, spokeCrds...)
 
@@ -363,9 +554,9 @@ func tearDownCommonHubResources(t *testing.T, k8sClient client.Client, ns string
 func setupCommonSpokeResources(t *testing.T, k8sClient client.Client) {
 	// Create resources required for the observability addon controller
 	resourcesDeps := []client.Object{
-		makeNamespace("open-cluster-management-addon-observability"),
-		newHubInfoSecret([]byte{}, "open-cluster-management-addon-observability"),
-		newImagesCM("open-cluster-management-addon-observability"),
+		makeNamespace(obAddonNs),
+		newHubInfoSecret([]byte{}, obAddonNs),
+		newImagesCM(obAddonNs),
 	}
 	if err := createResources(k8sClient, resourcesDeps...); err != nil {
 		t.Fatalf("Failed to create resources: %v", err)
@@ -375,7 +566,7 @@ func setupCommonSpokeResources(t *testing.T, k8sClient client.Client) {
 func tearDownCommonSpokeResources(t *testing.T, k8sClient client.Client) {
 	// Delete resources required for the observability addon controller
 	resourcesDeps := []client.Object{
-		makeNamespace("open-cluster-management-addon-observability"),
+		makeNamespace(obAddonNs),
 	}
 	for _, resource := range resourcesDeps {
 		if err := k8sClient.Delete(context.Background(), resource); err != nil {
@@ -422,18 +613,6 @@ func createResources(client client.Client, resources ...client.Object) error {
 		}
 	}
 	return nil
-}
-
-func newObservabilityAddonBis(name, ns string) *oav1beta1.ObservabilityAddon {
-	return &oav1beta1.ObservabilityAddon{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: ns,
-		},
-		Spec: observabilityshared.ObservabilityAddonSpec{
-			EnableMetrics: true,
-		},
-	}
 }
 
 func newHostedCluster(name, ns string) *hyperv1.HostedCluster {

@@ -817,9 +817,11 @@ func TestGetMCOASupportedCRDNames(t *testing.T) {
 		"instrumentations.opentelemetry.io",
 		"prometheusagents.monitoring.rhobs",
 		"scrapeconfigs.monitoring.rhobs",
+		"prometheusrules.monitoring.rhobs",
 	}
 
 	result := GetMCOASupportedCRDNames()
+
 	assert.ElementsMatch(t, expected, result)
 }
 
@@ -904,6 +906,122 @@ func TestGetMCHVersions(t *testing.T) {
 			}
 			if gotDesired != tt.wantDesired {
 				t.Errorf("GetMCHVersions() gotDesired = %v, want %v", gotDesired, tt.wantDesired)
+			}
+		})
+	}
+}
+
+func TestGetGrafanaQueryTimeout(t *testing.T) {
+	tests := []struct {
+		name     string
+		mco      *mcov1beta2.MultiClusterObservability
+		expected string
+	}{
+		{
+			name: "Nil AdvancedConfig",
+			mco: &mcov1beta2.MultiClusterObservability{
+				Spec: mcov1beta2.MultiClusterObservabilitySpec{
+					AdvancedConfig: nil,
+				},
+			},
+			expected: "300s",
+		},
+		{
+			name: "Empty QueryTimeout",
+			mco: &mcov1beta2.MultiClusterObservability{
+				Spec: mcov1beta2.MultiClusterObservabilitySpec{
+					AdvancedConfig: &mcov1beta2.AdvancedConfig{
+						QueryTimeout: "",
+					},
+				},
+			},
+			expected: "300s",
+		},
+		{
+			name: "Custom QueryTimeout",
+			mco: &mcov1beta2.MultiClusterObservability{
+				Spec: mcov1beta2.MultiClusterObservabilitySpec{
+					AdvancedConfig: &mcov1beta2.AdvancedConfig{
+						QueryTimeout: "5m",
+					},
+				},
+			},
+			expected: "5m",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := GetGrafanaQueryTimeout(tt.mco)
+			if result != tt.expected {
+				t.Errorf("expected %s, got %s", tt.expected, result)
+			}
+		})
+	}
+}
+
+func TestGetMCOInstance(t *testing.T) {
+	s := runtime.NewScheme()
+	mcov1beta2.SchemeBuilder.AddToScheme(s)
+
+	tests := []struct {
+		name          string
+		existingObjs  []runtime.Object
+		expectedFound bool
+		expectedError bool
+	}{
+		{
+			name:          "no instances",
+			existingObjs:  []runtime.Object{},
+			expectedFound: false,
+			expectedError: true,
+		},
+		{
+			name: "singleton instance",
+			existingObjs: []runtime.Object{
+				&mcov1beta2.MultiClusterObservability{
+					ObjectMeta: metav1.ObjectMeta{Name: "monitoring"},
+				},
+			},
+			expectedFound: true,
+			expectedError: false,
+		},
+		{
+			name: "multiple instances",
+			existingObjs: []runtime.Object{
+				&mcov1beta2.MultiClusterObservability{
+					ObjectMeta: metav1.ObjectMeta{Name: "m1"},
+				},
+				&mcov1beta2.MultiClusterObservability{
+					ObjectMeta: metav1.ObjectMeta{Name: "m2"},
+				},
+			},
+			expectedFound: false,
+			expectedError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(tt.existingObjs...).Build()
+			instance, err := GetMCOInstance(t.Context(), cl)
+
+			if tt.expectedError {
+				assert.Error(t, err)
+				if tt.name == "no instances" {
+					assert.ErrorIs(t, err, ErrMCONotFound)
+				} else {
+					assert.ErrorIs(t, err, ErrMultipleMCOInstances)
+				}
+			} else {
+				assert.NoError(t, err)
+			}
+
+			if tt.expectedFound {
+				assert.NotNil(t, instance)
+				assert.Equal(t, "monitoring", instance.Name)
+			} else {
+				assert.Nil(t, instance)
 			}
 		})
 	}

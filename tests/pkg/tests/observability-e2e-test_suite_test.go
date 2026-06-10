@@ -49,11 +49,12 @@ const (
 	charset             = "abcdefghijklmnopqrstuvwxyz" +
 		"0123456789"
 
-	MCO_CR_NAME         = "observability"
-	MCO_NAMESPACE       = "open-cluster-management-observability"
-	MCO_ADDON_NAMESPACE = "open-cluster-management-addon-observability"
-	MCO_LABEL           = "name=multicluster-observability-operator"
-	MCO_LABEL_OWNER     = "owner=multicluster-observability-operator"
+	MCO_CR_NAME              = "observability"
+	MCO_NAMESPACE            = "open-cluster-management-observability"
+	MCO_ADDON_NAMESPACE      = "open-cluster-management-addon-observability"
+	MCO_GLOBAL_SET_NAMESPACE = "open-cluster-management-global-set"
+	MCO_LABEL                = "name=multicluster-observability-operator"
+	MCO_LABEL_OWNER          = "owner=multicluster-observability-operator"
 
 	ALERTMANAGER_LABEL      = "app=multicluster-observability-alertmanager"
 	GRAFANA_LABEL           = "app=multicluster-observability-grafana"
@@ -113,12 +114,14 @@ func init() {
 		"results.xml",
 		"Provide the path to where the junit results will be printed.",
 	)
-	flag.StringVar(
-		&kubeconfig,
-		"kubeconfig",
-		"",
-		"Location of the kubeconfig to use; defaults to KUBECONFIG if not set",
-	)
+	if flag.Lookup("kubeconfig") == nil {
+		flag.StringVar(
+			&kubeconfig,
+			"kubeconfig",
+			"",
+			"Location of the kubeconfig to use; defaults to KUBECONFIG if not set",
+		)
+	}
 	flag.StringVar(
 		&optionsFile,
 		"options",
@@ -219,7 +222,11 @@ func initVars() {
 
 	if testOptions.KubeConfig == "" {
 		if kubeconfig == "" {
-			kubeconfig = os.Getenv("KUBECONFIG")
+			if f := flag.Lookup("kubeconfig"); f != nil && f.Value.String() != "" {
+				kubeconfig = f.Value.String()
+			} else {
+				kubeconfig = os.Getenv("KUBECONFIG")
+			}
 		}
 		testOptions.KubeConfig = kubeconfig
 	}
@@ -265,9 +272,12 @@ func initVars() {
 	if testOptions.HubCluster.Password != "" {
 		kubeadminCredential = testOptions.HubCluster.Password
 	}
-	if testOptions.HubCluster.Name == "" {
-		testOptions.HubCluster.Name = "local-cluster"
+	hubName, err := utils.GetHubClusterName(testOptions)
+	if err != nil {
+		klog.Warningf("Failed to resolve hub managed cluster name, using default: %v", err)
+		hubName = "local-cluster"
 	}
+	testOptions.HubCluster.Name = hubName
 
 	if testOptions.ManagedClusters != nil && len(testOptions.ManagedClusters) > 0 {
 		for i, mc := range testOptions.ManagedClusters {
