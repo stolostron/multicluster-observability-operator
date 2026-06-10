@@ -381,26 +381,10 @@ var _ = Describe("", func() {
 	It(
 		"RHACM4K-3457: Observability: Verify managed cluster alert would be forward to hub alert manager - Should have alert named Watchdog forwarded to alertmanager [P2][Sev2][Observability][Integration]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e (alertforward/g0)",
 		func() {
-			cloudProvider := strings.ToLower(os.Getenv("CLOUD_PROVIDER"))
-			substring1 := "rosa"
-			substring2 := "hcp"
-
-			var amURL *url.URL
-
-			if strings.Contains(cloudProvider, substring1) && strings.Contains(cloudProvider, substring2) {
-				Skip("skip on rosa-hcp")
-				amURL = &url.URL{
-					Scheme: "https",
-					Host:   "alertmanager-open-cluster-management-observability.apps.rosa." + testOptions.HubCluster.BaseDomain,
-					Path:   "/api/v2/alerts",
-				}
-
-			} else {
-				amURL = &url.URL{
-					Scheme: "https",
-					Host:   "alertmanager-open-cluster-management-observability.apps." + testOptions.HubCluster.BaseDomain,
-					Path:   "/api/v2/alerts",
-				}
+			amURL := &url.URL{
+				Scheme: "https",
+				Host:   "observatorium-api-open-cluster-management-observability.apps." + testOptions.HubCluster.BaseDomain,
+				Path:   "/api/alertmanager/v2/default/api/v2/alerts",
 			}
 			// Watchdog is an alert that is installed by default on OCP clusters by the in-cluster monitoring stack
 			// It thus exists by default on the hub and openshift spokes, and is always activated.
@@ -408,7 +392,7 @@ var _ = Describe("", func() {
 			q.Set("filter", "alertname=Watchdog")
 			amURL.RawQuery = q.Encode()
 
-			caCrt, err := utils.GetRouterCA(hubClient)
+			caCrt, err := utils.GetObsAPIServerCA(hubClient)
 			Expect(err).NotTo(HaveOccurred())
 			pool := x509.NewCertPool()
 			pool.AppendCertsFromPEM(caCrt)
@@ -534,32 +518,16 @@ var _ = Describe("", func() {
 			Skip("Skipping test when there are no spokes")
 		}
 
-		cloudProvider := strings.ToLower(os.Getenv("CLOUD_PROVIDER"))
-		substring1 := "rosa"
-		substring2 := "hcp"
-
-		var amURL *url.URL
-
-		if strings.Contains(cloudProvider, substring1) && strings.Contains(cloudProvider, substring2) {
-			Skip("skip on rosa-hcp")
-			amURL = &url.URL{
-				Scheme: "https",
-				Host:   "alertmanager-open-cluster-management-observability.apps.rosa." + testOptions.HubCluster.BaseDomain,
-				Path:   "/api/v2/alerts",
-			}
-
-		} else {
-			amURL = &url.URL{
-				Scheme: "https",
-				Host:   "alertmanager-open-cluster-management-observability.apps." + testOptions.HubCluster.BaseDomain,
-				Path:   "/api/v2/alerts",
-			}
+		amURL := &url.URL{
+			Scheme: "https",
+			Host:   "observatorium-api-open-cluster-management-observability.apps." + testOptions.HubCluster.BaseDomain,
+			Path:   "/api/alertmanager/v2/default/api/v2/alerts",
 		}
 		q := amURL.Query()
 		q.Set("filter", "alertname=Watchdog")
 		amURL.RawQuery = q.Encode()
 
-		caCrt, err := utils.GetRouterCA(hubClient)
+		caCrt, err := utils.GetObsAPIServerCA(hubClient)
 		Expect(err).NotTo(HaveOccurred())
 		pool := x509.NewCertPool()
 		pool.AppendCertsFromPEM(caCrt)

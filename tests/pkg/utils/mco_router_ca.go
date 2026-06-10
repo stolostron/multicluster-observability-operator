@@ -32,3 +32,17 @@ func GetRouterCA(cli kubernetes.Interface) ([]byte, error) {
 	}
 	return caCrt, fmt.Errorf("failed to get tls.crt from %s secret", RouterCertsSecretName)
 }
+
+func GetObsAPIServerCA(cli kubernetes.Interface) ([]byte, error) {
+	secret, err := cli.CoreV1().
+		Secrets(MCO_NAMESPACE).
+		Get(context.TODO(), ServerCACerts, metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get observability server CA secret %s: %w", ServerCACerts, err)
+	}
+	caCrt, ok := secret.Data["tls.crt"]
+	if !ok {
+		return nil, fmt.Errorf("tls.crt not found in %s secret", ServerCACerts)
+	}
+	return caCrt, nil
+}
