@@ -48,19 +48,20 @@ resolve_registry() { echo "${1:-${REGISTRY}}"; }
 
 # parse_image_ref <full-ref>  →  prints "<remote> <name> <tag>"
 # Handles tag refs (registry/path/name:tag) and digest refs (registry/path/name@sha256:hash).
-# "remote" is the registry path (before the last path component).
-# "name" is the repository name (last path component, stripped of tag/digest).
-# "tag" is the tag or digest suffix (e.g. "v2.17" or "sha256:abc123").
+# For digest refs, the algorithm (e.g. "sha256") is appended to name with "@" so that
+# MCH's "image-remote/image-name:image-tag" reconstruction produces a valid digest ref.
 parse_image_ref() {
   local ref="$1" repo tag name remote
   if [[ $ref == *"@"* ]]; then
     repo="${ref%%@*}"
-    tag="${ref#*@}"
+    local digest="${ref#*@}"
+    name="${repo##*/}@${digest%%:*}"
+    tag="${digest#*:}"
   else
     repo="${ref%:*}"
     tag="${ref##*:}"
+    name="${repo##*/}"
   fi
-  name="${repo##*/}"
   remote="${repo%/*}"
   echo "$remote" "$name" "$tag"
 }

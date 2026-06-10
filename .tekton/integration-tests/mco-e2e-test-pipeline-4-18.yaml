@@ -233,22 +233,15 @@ spec:
               git checkout "${GIT_REVISION}"
 
               echo "=== Extracting component images from SNAPSHOT ==="
-              # Build tag-based refs (repo:git-sha) instead of digest refs (repo@sha256:hash).
-              # MCH constructs images as image-remote/image-name:image-tag — the colon-based
-              # join cannot produce @sha256: digest references.
-              snapshot_tag_ref() {
-                local component="$1"
-                local obj=$(echo "${SNAPSHOT}" | jq -r "[.components[] | select(.name | test(\"^${component}-acm-\"))] | .[0]")
-                local repo=$(echo "$obj" | jq -r '.containerImage | split("@")[0]')
-                local rev=$(echo "$obj" | jq -r '.source.git.revision')
-                echo "${repo}:${rev}"
+              snapshot_image() {
+                echo "${SNAPSHOT}" | jq -r "[.components[] | select(.name | test(\"^${1}-acm-\"))] | .[0].containerImage"
               }
 
-              export MCO_IMAGE=$(snapshot_tag_ref "multicluster-observability-operator")
-              export ENDPOINT_IMAGE=$(snapshot_tag_ref "endpoint-monitoring-operator")
-              export METRICS_COLLECTOR_IMAGE=$(snapshot_tag_ref "metrics-collector")
-              export RBAC_QUERY_PROXY_IMAGE=$(snapshot_tag_ref "rbac-query-proxy")
-              export GRAFANA_DASHBOARD_LOADER_IMAGE=$(snapshot_tag_ref "grafana-dashboard-loader")
+              export MCO_IMAGE=$(snapshot_image "multicluster-observability-operator")
+              export ENDPOINT_IMAGE=$(snapshot_image "endpoint-monitoring-operator")
+              export METRICS_COLLECTOR_IMAGE=$(snapshot_image "metrics-collector")
+              export RBAC_QUERY_PROXY_IMAGE=$(snapshot_image "rbac-query-proxy")
+              export GRAFANA_DASHBOARD_LOADER_IMAGE=$(snapshot_image "grafana-dashboard-loader")
 
               echo "MCO operator image: ${MCO_IMAGE}"
               echo "Endpoint monitoring image: ${ENDPOINT_IMAGE}"
@@ -263,19 +256,15 @@ spec:
               echo "=== Applying Konflux image overrides ==="
               ./dev-scripts/image-override.sh
 
-              echo "=== Waiting for MCO operator rollout after image override ==="
-              # Two-phase wait:
-              # 1. Wait for MCH to update the deployment image (confirms annotation processed)
-              # 2. Wait for rollout to complete (old pod terminated)
-              EXPECTED_IMAGE="${MCO_IMAGE}"
+              echo "=== Waiting for MCO operator rollout ==="
               TIMEOUT=600
               ELAPSED=0
-              echo "Waiting for deployment image to update to: ${EXPECTED_IMAGE}"
+              echo "Waiting for deployment image to update to: ${MCO_IMAGE}"
               while true; do
                 CURRENT_IMAGE=$(oc get deploy multicluster-observability-operator \
                   -n open-cluster-management \
                   -o jsonpath='{.spec.template.spec.containers[0].image}' 2>/dev/null || echo "")
-                if [[ "$CURRENT_IMAGE" == "$EXPECTED_IMAGE" ]]; then
+                if [[ "$CURRENT_IMAGE" == "$MCO_IMAGE" ]]; then
                   echo "Deployment image updated, waiting for rollout..."
                   oc rollout status deploy/multicluster-observability-operator \
                     -n open-cluster-management --timeout=300s || true
@@ -283,7 +272,7 @@ spec:
                 fi
                 if [[ "$ELAPSED" -ge "$TIMEOUT" ]]; then
                   echo "WARNING: Timed out waiting for deployment image update"
-                  echo "Expected: ${EXPECTED_IMAGE}"
+                  echo "Expected: ${MCO_IMAGE}"
                   echo "Current:  ${CURRENT_IMAGE}"
                   oc get pods -n open-cluster-management -l name=multicluster-observability-operator -o wide
                   break
@@ -294,10 +283,6 @@ spec:
               done
               echo "MCO pods after rollout:"
               oc get pods -n open-cluster-management -l name=multicluster-observability-operator -o wide
-
-              echo "=== Verifying image overrides ==="
-              oc get configmap image-override -n open-cluster-management -o yaml
-              oc get multiclusterhub multiclusterhub -n open-cluster-management -o jsonpath='{.metadata.annotations}' | jq .
 
               echo "=== Importing managed cluster into hub ==="
               oc create namespace managed --dry-run=client -o yaml | oc apply -f -
