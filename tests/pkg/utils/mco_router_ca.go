@@ -14,9 +14,9 @@ import (
 )
 
 const (
-	RouterCertsSecretName      = "router-certs-default"
-	DefaultIngressCertName     = "default-ingress-cert"
-	IngressSecretsNamespace    = "openshift-ingress"
+	RouterCertsSecretName   = "router-certs-default"
+	DefaultIngressCertName  = "default-ingress-cert"
+	IngressSecretsNamespace = "openshift-ingress"
 )
 
 func GetRouterCA(cli kubernetes.Interface) ([]byte, error) {
