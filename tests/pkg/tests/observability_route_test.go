@@ -69,7 +69,6 @@ var _ = Describe("", func() {
 				pool := x509.NewCertPool()
 				pool.AppendCertsFromPEM(caCrt)
 				tr := &http.Transport{
-					Proxy:           http.ProxyFromEnvironment,
 					TLSClientConfig: &tls.Config{RootCAs: pool},
 				}
 
@@ -107,9 +106,18 @@ var _ = Describe("", func() {
 		},
 	)
 
-	It("@BVT - [P1][Sev1][observability][Integration] Should access alert via observatorium-api alertmanager route (route/g0)", func() {
+	It("@BVT - [P1][Sev1][observability][Integration] Should access alert via alertmanager route (route/g0)", func() {
 		Eventually(func() error {
-			url := "https://observatorium-api-open-cluster-management-observability.apps." + testOptions.HubCluster.BaseDomain + "/api/alertmanager/v2/default/api/v2/alerts"
+			cloudProvider := strings.ToLower(os.Getenv("CLOUD_PROVIDER"))
+			substring1 := "rosa"
+			substring2 := "hcp"
+
+			if strings.Contains(cloudProvider, substring1) && strings.Contains(cloudProvider, substring2) {
+				Skip("skip on rosa-hcp")
+			}
+
+			query := "/api/v2/alerts"
+			url := "https://alertmanager-open-cluster-management-observability.apps." + testOptions.HubCluster.BaseDomain + query
 			alertJson := `
 			[
 				{
@@ -140,22 +148,19 @@ var _ = Describe("", func() {
 				return err
 			}
 
-			caCrt, err := utils.GetObsAPIServerCA(hubClient)
+			caCrt, err := utils.GetRouterCA(hubClient)
 			Expect(err).NotTo(HaveOccurred())
 			pool := x509.NewCertPool()
 			pool.AppendCertsFromPEM(caCrt)
+			tr := &http.Transport{
+				TLSClientConfig: &tls.Config{RootCAs: pool},
+			}
 
-			clientCert, err := utils.GetObsAPIClientCert(hubClient)
-			Expect(err).NotTo(HaveOccurred())
-
-			client := &http.Client{
-				Transport: &http.Transport{
-					Proxy: http.ProxyFromEnvironment,
-					TLSClientConfig: &tls.Config{
-						RootCAs:      pool,
-						Certificates: []tls.Certificate{clientCert},
-					},
-				},
+			client := &http.Client{}
+			if os.Getenv("IS_KIND_ENV") != trueStr {
+				client.Transport = tr
+				BearerToken, err = utils.FetchBearerToken(testOptions)
+				alertPostReq.Header.Set("Authorization", "Bearer "+BearerToken)
 			}
 			if !alertCreated {
 				resp, err := client.Do(alertPostReq)
@@ -180,6 +185,11 @@ var _ = Describe("", func() {
 
 			if err != nil {
 				return err
+			}
+
+			if os.Getenv("IS_KIND_ENV") != trueStr {
+				BearerToken, err = utils.FetchBearerToken(testOptions)
+				alertGetReq.Header.Set("Authorization", "Bearer "+BearerToken)
 			}
 
 			resp, err := client.Do(alertGetReq)
