@@ -7,10 +7,10 @@ package mcoa
 import (
 	"context"
 	"fmt"
-	"sync"
 
 	cmomanifests "github.com/openshift/cluster-monitoring-operator/pkg/manifests"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/controllers/observabilityendpoint"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -19,21 +19,12 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-var (
-	cmoConfigConflictsTotal = prometheus.NewCounter(
-		prometheus.CounterOpts{
-			Name: "mcoa_cmo_config_conflicts_total",
-			Help: "Total number of conflicts detected in the cluster-monitoring-config ConfigMap.",
-		},
-	)
-	registerMetricsOnce sync.Once
+var cmoConfigConflictsTotal = promauto.With(metrics.Registry).NewCounter(
+	prometheus.CounterOpts{
+		Name: "mcoa_cmo_config_conflicts_total",
+		Help: "Total number of conflicts detected in the cluster-monitoring-config ConfigMap.",
+	},
 )
-
-func registerMetrics() {
-	registerMetricsOnce.Do(func() {
-		metrics.Registry.MustRegister(cmoConfigConflictsTotal)
-	})
-}
 
 func (r *MCOAAgentReconciler) reconcileCMO(ctx context.Context, req client.ObjectKey) error {
 	// If Alertmanager forwarding is disabled, we ensure our config is removed.

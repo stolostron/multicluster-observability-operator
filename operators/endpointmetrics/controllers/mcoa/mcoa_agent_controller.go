@@ -48,7 +48,6 @@ func NewMCOAAgentReconciler(
 	accessorSecret string,
 	enableUWLAlertForwarding bool,
 ) *MCOAAgentReconciler {
-	registerMetrics()
 	return &MCOAAgentReconciler{
 		Client:                   client,
 		Log:                      log,
