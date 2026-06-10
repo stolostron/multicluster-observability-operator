@@ -264,29 +264,36 @@ spec:
               ./dev-scripts/image-override.sh
 
               echo "=== Waiting for MCO operator rollout after image override ==="
-              # MCH needs time to process the annotation and update the deployment.
-              # Poll until exactly 1 total MCO pod exists (old terminating pod gone).
-              # The e2e test checks total pod count, not just Running, so we must
-              # wait for the old pod to fully terminate.
-              TIMEOUT=300
+              # Two-phase wait:
+              # 1. Wait for MCH to update the deployment image (confirms annotation processed)
+              # 2. Wait for rollout to complete (old pod terminated)
+              EXPECTED_IMAGE="${MCO_IMAGE}"
+              TIMEOUT=600
               ELAPSED=0
+              echo "Waiting for deployment image to update to: ${EXPECTED_IMAGE}"
               while true; do
-                TOTAL=$(oc get pods -n open-cluster-management \
-                  -l name=multicluster-observability-operator \
-                  --no-headers 2>/dev/null | wc -l | tr -d ' ')
-                if [[ "$TOTAL" -eq 1 ]]; then
-                  echo "MCO operator rollout complete (1 total pod)"
+                CURRENT_IMAGE=$(oc get deploy multicluster-observability-operator \
+                  -n open-cluster-management \
+                  -o jsonpath='{.spec.template.spec.containers[0].image}' 2>/dev/null || echo "")
+                if [[ "$CURRENT_IMAGE" == "$EXPECTED_IMAGE" ]]; then
+                  echo "Deployment image updated, waiting for rollout..."
+                  oc rollout status deploy/multicluster-observability-operator \
+                    -n open-cluster-management --timeout=300s || true
                   break
                 fi
                 if [[ "$ELAPSED" -ge "$TIMEOUT" ]]; then
-                  echo "WARNING: Timed out waiting for MCO rollout ($TOTAL total pods)"
+                  echo "WARNING: Timed out waiting for deployment image update"
+                  echo "Expected: ${EXPECTED_IMAGE}"
+                  echo "Current:  ${CURRENT_IMAGE}"
                   oc get pods -n open-cluster-management -l name=multicluster-observability-operator -o wide
                   break
                 fi
-                echo "Waiting for MCO rollout... ($TOTAL total pods, ${ELAPSED}s elapsed)"
+                echo "Waiting for MCH to process image override... (${ELAPSED}s elapsed)"
                 sleep 15
                 ELAPSED=$((ELAPSED + 15))
               done
+              echo "MCO pods after rollout:"
+              oc get pods -n open-cluster-management -l name=multicluster-observability-operator -o wide
 
               echo "=== Verifying image overrides ==="
               oc get configmap image-override -n open-cluster-management -o yaml
