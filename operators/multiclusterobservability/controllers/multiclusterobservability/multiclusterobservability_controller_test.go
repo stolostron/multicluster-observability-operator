@@ -30,9 +30,12 @@ import (
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	mcostatusctrl "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/status"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering/templates"
+	"github.com/stolostron/multicluster-observability-operator/operators/pkg/deploying"
 	observatoriumv1alpha1 "github.com/stolostron/observatorium-operator/api/v1alpha1"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -40,10 +43,12 @@ import (
 	storev1 "k8s.io/api/storage/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
@@ -53,6 +58,7 @@ import (
 	clusterv1beta1 "open-cluster-management.io/api/cluster/v1beta1"
 	policyv1 "open-cluster-management.io/governance-policy-propagator/api/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
@@ -1470,6 +1476,164 @@ func TestServiceMonitorRemovedFromOpenshiftMonitoringNamespace(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to delete ServiceMonitor: (%v)", err)
 	}
+}
+
+func TestUndeployMCOAGrafanaResources(t *testing.T) {
+	defer setupTest(t)()
+
+	namespace := config.GetDefaultNamespace()
+	mcoName := "monitoring"
+	mcoUID := types.UID("mco-uid-test")
+
+	mco := &mcov1beta2.MultiClusterObservability{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: mcov1beta2.GroupVersion.String(),
+			Kind:       "MultiClusterObservability",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: mcoName,
+			UID:  mcoUID,
+		},
+	}
+	mcoWithPlatformMetrics := &mcov1beta2.MultiClusterObservability{
+		TypeMeta:   mco.TypeMeta,
+		ObjectMeta: mco.ObjectMeta,
+		Spec: mcov1beta2.MultiClusterObservabilitySpec{
+			Capabilities: &mcov1beta2.CapabilitiesSpec{
+				Platform: &mcov1beta2.PlatformCapabilitiesSpec{
+					Metrics: mcov1beta2.PlatformMetricsSpec{
+						Default: mcov1beta2.PlatformMetricsDefaultSpec{
+							Enabled: true,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	s := runtime.NewScheme()
+	scheme.AddToScheme(s)
+	mcov1beta2.AddToScheme(s)
+	monitoringv1.AddToScheme(s)
+
+	controllerRef := metav1.NewControllerRef(mco, mcov1beta2.GroupVersion.WithKind("MultiClusterObservability"))
+	scrapeConfig := &unstructured.Unstructured{}
+	scrapeConfig.SetAPIVersion("monitoring.rhobs/v1alpha1")
+	scrapeConfig.SetKind("ScrapeConfig")
+	scrapeConfig.SetName("platform-metrics")
+	scrapeConfig.SetNamespace(namespace)
+	scrapeConfig.SetOwnerReferences([]metav1.OwnerReference{*controllerRef})
+	promRule := &monitoringv1.PrometheusRule{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            "platform-rules-default",
+			Namespace:       namespace,
+			OwnerReferences: []metav1.OwnerReference{*controllerRef},
+		},
+	}
+
+	tests := []struct {
+		name           string
+		mco            *mcov1beta2.MultiClusterObservability
+		existingObjs   []runtime.Object
+		expectDeletion bool
+	}{
+		{
+			name:           "undeploys MCOA Grafana resources when platform metrics disabled",
+			mco:            mco,
+			existingObjs:   []runtime.Object{mco, scrapeConfig, promRule},
+			expectDeletion: true,
+		},
+		{
+			name:           "skips undeploy when platform metrics enabled",
+			mco:            mcoWithPlatformMetrics,
+			existingObjs:   []runtime.Object{mcoWithPlatformMetrics, scrapeConfig, promRule},
+			expectDeletion: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(tt.existingObjs...).Build()
+			r := &MultiClusterObservabilityReconciler{Client: c, Scheme: s}
+			renderer := rendering.NewMCORenderer(tt.mco, c, nil)
+			deployer := deploying.NewDeployer(c, tt.mco.Name)
+
+			err := r.undeployMCOAGrafanaResources(t.Context(), tt.mco, renderer, deployer)
+			require.NoError(t, err)
+
+			gotScrapeConfig := &unstructured.Unstructured{}
+			gotScrapeConfig.SetAPIVersion("monitoring.rhobs/v1alpha1")
+			gotScrapeConfig.SetKind("ScrapeConfig")
+			err = c.Get(t.Context(), types.NamespacedName{Name: "platform-metrics", Namespace: namespace}, gotScrapeConfig)
+			if tt.expectDeletion {
+				assert.True(t, errors.IsNotFound(err), "ScrapeConfig should have been deleted")
+			} else {
+				require.NoError(t, err, "ScrapeConfig should still exist")
+			}
+
+			gotPromRule := &monitoringv1.PrometheusRule{}
+			err = c.Get(t.Context(), types.NamespacedName{Name: "platform-rules-default", Namespace: namespace}, gotPromRule)
+			if tt.expectDeletion {
+				assert.True(t, errors.IsNotFound(err), "PrometheusRule should have been deleted")
+			} else {
+				require.NoError(t, err, "PrometheusRule should still exist")
+			}
+		})
+	}
+}
+
+// noMatchScrapeConfigClient simulates production apiserver behavior when the
+// scrapeconfigs.monitoring.rhobs CRD is not installed. This is not about the Go
+// scheme: monitoring/v1 is registered for PrometheusRule, but MCO ScrapeConfigs
+// use monitoring.rhobs/v1alpha1 (a separate API group). The fake client cannot
+// reproduce NoMatch on its own—it returns NotFound for missing unstructured
+// objects—so this wrapper injects the error the real cluster returns.
+type noMatchScrapeConfigClient struct {
+	client.Client
+}
+
+func (c *noMatchScrapeConfigClient) Get(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
+	if u, ok := obj.(*unstructured.Unstructured); ok {
+		gvk := u.GroupVersionKind()
+		if gvk.Group == "monitoring.rhobs" && gvk.Kind == "ScrapeConfig" {
+			return &meta.NoKindMatchError{
+				GroupKind:        schema.GroupKind{Group: gvk.Group, Kind: gvk.Kind},
+				SearchedVersions: []string{gvk.Version},
+			}
+		}
+	}
+	return c.Client.Get(ctx, key, obj, opts...)
+}
+
+// TestUndeployMCOAGrafanaResourcesSkipsMissingScrapeConfigCRD verifies cleanup
+// continues when the ScrapeConfig CRD is absent (legacy install without MCOA).
+func TestUndeployMCOAGrafanaResourcesSkipsMissingScrapeConfigCRD(t *testing.T) {
+	defer setupTest(t)()
+
+	mco := &mcov1beta2.MultiClusterObservability{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: mcov1beta2.GroupVersion.String(),
+			Kind:       "MultiClusterObservability",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "monitoring",
+		},
+	}
+
+	s := runtime.NewScheme()
+	scheme.AddToScheme(s)
+	mcov1beta2.AddToScheme(s)
+	monitoringv1.AddToScheme(s)
+
+	baseClient := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(mco).Build()
+	c := &noMatchScrapeConfigClient{Client: baseClient}
+
+	r := &MultiClusterObservabilityReconciler{Client: c, Scheme: s}
+	renderer := rendering.NewMCORenderer(mco, c, nil)
+	deployer := deploying.NewDeployer(c, mco.Name)
+
+	err := r.undeployMCOAGrafanaResources(t.Context(), mco, renderer, deployer)
+	require.NoError(t, err)
 }
 
 func TestNewMCOACRDEventHandler(t *testing.T) {
