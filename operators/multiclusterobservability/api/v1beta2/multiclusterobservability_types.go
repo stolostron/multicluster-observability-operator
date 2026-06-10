@@ -517,6 +517,7 @@ type CompactSpec struct {
 type CompactDebugSpec struct {
 	// LogLevel for the compactor (e.g., debug, info, warn, error).
 	// +optional
+	// +kubebuilder:validation:Enum=debug;info;warn;error
 	LogLevel string `json:"logLevel,omitempty"`
 	// WaitInterval is the time to wait between compaction cycles.
 	// Setting this will also synchronize --compact.cleanup-interval and --compact.progress-interval.
@@ -525,9 +526,11 @@ type CompactDebugSpec struct {
 	WaitInterval string `json:"waitInterval,omitempty"`
 	// BlockMetaFetchConcurrency is the number of concurrent requests to fetch block metadata.
 	// +optional
+	// +kubebuilder:validation:Minimum=0
 	BlockMetaFetchConcurrency *int32 `json:"blockMetaFetchConcurrency,omitempty"`
 	// DownsampleConcurrency is the number of goroutines to use when downsampling blocks.
 	// +optional
+	// +kubebuilder:validation:Minimum=0
 	DownsampleConcurrency *int32 `json:"downsampleConcurrency,omitempty"`
 }
 
