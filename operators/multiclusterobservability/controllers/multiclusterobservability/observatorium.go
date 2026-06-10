@@ -1016,25 +1016,21 @@ func newCompactSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string
 	if rendering.MCOAEnabled(mco) && (mco.Spec.AdvancedConfig == nil || mco.Spec.AdvancedConfig.Compact == nil || mco.Spec.AdvancedConfig.Compact.Containers == nil) {
 		compactSpec.Args = []string{"--compact.enable-vertical-compaction"}
 	}
-	if mco.Spec.AdvancedConfig != nil && mco.Spec.AdvancedConfig.Compact != nil && mco.Spec.AdvancedConfig.Compact.Debug != nil && mco.Spec.AdvancedConfig.Compact.Debug.LogLevel != "" {
-		compactSpec.Args = append(compactSpec.Args, "--log.level="+mco.Spec.AdvancedConfig.Compact.Debug.LogLevel)
-	}
-	if mco.Spec.AdvancedConfig != nil && mco.Spec.AdvancedConfig.Compact != nil && mco.Spec.AdvancedConfig.Compact.Debug != nil && mco.Spec.AdvancedConfig.Compact.Debug.WaitInterval != "" {
-		compactSpec.Args = append(compactSpec.Args, "--wait-interval="+mco.Spec.AdvancedConfig.Compact.Debug.WaitInterval)
-	}
-	if mco.Spec.AdvancedConfig != nil && mco.Spec.AdvancedConfig.Compact != nil && mco.Spec.AdvancedConfig.Compact.Debug != nil && mco.Spec.AdvancedConfig.Compact.Debug.WaitInterval != "" {
-		compactSpec.Args = append(compactSpec.Args, "--compact.cleanup-interval="+mco.Spec.AdvancedConfig.Compact.Debug.WaitInterval)
-	}
-	if mco.Spec.AdvancedConfig != nil && mco.Spec.AdvancedConfig.Compact != nil && mco.Spec.AdvancedConfig.Compact.Debug != nil && mco.Spec.AdvancedConfig.Compact.Debug.WaitInterval != "" {
-		compactSpec.Args = append(compactSpec.Args, "--compact.progress-interval="+mco.Spec.AdvancedConfig.Compact.Debug.WaitInterval)
-	}
 	if mco.Spec.AdvancedConfig != nil && mco.Spec.AdvancedConfig.Compact != nil && mco.Spec.AdvancedConfig.Compact.Debug != nil && mco.Spec.AdvancedConfig.Compact.Debug.WaitInterval != "" {
 		duration, err := time.ParseDuration(mco.Spec.AdvancedConfig.Compact.Debug.WaitInterval)
 		if err != nil {
 			log.Error(err, "Failed to parse wait interval", "waitInterval", mco.Spec.AdvancedConfig.Compact.Debug.WaitInterval)
-		} else if duration > 5*time.Minute {
-			compactSpec.Args = append(compactSpec.Args, "--web.disable")
+		} else {
+			compactSpec.Args = append(compactSpec.Args, "--wait-interval="+mco.Spec.AdvancedConfig.Compact.Debug.WaitInterval)
+			compactSpec.Args = append(compactSpec.Args, "--compact.cleanup-interval="+mco.Spec.AdvancedConfig.Compact.Debug.WaitInterval)
+			compactSpec.Args = append(compactSpec.Args, "--compact.progress-interval="+mco.Spec.AdvancedConfig.Compact.Debug.WaitInterval)
+			if duration > 5*time.Minute {
+				compactSpec.Args = append(compactSpec.Args, "--web.disable")
+			}
 		}
+	}
+	if mco.Spec.AdvancedConfig != nil && mco.Spec.AdvancedConfig.Compact != nil && mco.Spec.AdvancedConfig.Compact.Debug != nil && mco.Spec.AdvancedConfig.Compact.Debug.LogLevel != "" {
+		compactSpec.Args = append(compactSpec.Args, "--log.level="+mco.Spec.AdvancedConfig.Compact.Debug.LogLevel)
 	}
 	if mco.Spec.AdvancedConfig != nil && mco.Spec.AdvancedConfig.Compact != nil && mco.Spec.AdvancedConfig.Compact.Debug != nil &&
 		mco.Spec.AdvancedConfig.Compact.Debug.BlockMetaFetchConcurrency != nil {

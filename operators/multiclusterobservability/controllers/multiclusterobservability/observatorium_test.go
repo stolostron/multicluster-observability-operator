@@ -1088,10 +1088,10 @@ func TestNewCompactSpec(t *testing.T) {
 				DownsampleConcurrency:     ptr.To(int32(4)),
 			},
 			expectedArgs: []string{
-				"--log.level=debug",
 				"--wait-interval=5m",
 				"--compact.cleanup-interval=5m",
 				"--compact.progress-interval=5m",
+				"--log.level=debug",
 				"--block-meta-fetch-concurrency=64",
 				"--downsample.concurrency=4",
 			},
