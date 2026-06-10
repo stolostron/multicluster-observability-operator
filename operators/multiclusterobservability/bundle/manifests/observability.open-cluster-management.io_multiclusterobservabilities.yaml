@@ -2033,15 +2033,22 @@ spec:
                             description: BlockMetaFetchConcurrency is the number of
                               concurrent requests to fetch block metadata.
                             format: int32
+                            minimum: 0
                             type: integer
                           downsampleConcurrency:
                             description: DownsampleConcurrency is the number of goroutines
                               to use when downsampling blocks.
                             format: int32
+                            minimum: 0
                             type: integer
                           logLevel:
                             description: LogLevel for the compactor (e.g., debug,
                               info, warn, error).
+                            enum:
+                            - debug
+                            - info
+                            - warn
+                            - error
                             type: string
                           waitInterval:
                             description: |-
