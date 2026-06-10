@@ -9,6 +9,8 @@ import (
 	"crypto/tls"
 	"fmt"
 
+	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
+	goyaml "gopkg.in/yaml.v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
@@ -16,6 +18,9 @@ import (
 
 const (
 	RouterCertsSecretName = "router-certs-default"
+	amMtlsCertPrefix      = "obs-alertmanager-mtls-cert-"
+	amMtlsCAPrefix        = "obs-alertmanager-mtls-ca-"
+	promNamespace         = "openshift-monitoring"
 )
 
 func GetRouterCA(cli kubernetes.Interface) ([]byte, error) {
@@ -34,30 +39,57 @@ func GetRouterCA(cli kubernetes.Interface) ([]byte, error) {
 	return caCrt, fmt.Errorf("failed to get tls.crt from %s secret", RouterCertsSecretName)
 }
 
-func GetObsAPIServerCA(cli kubernetes.Interface) ([]byte, error) {
+func GetHubClusterID(cli kubernetes.Interface) (string, error) {
 	secret, err := cli.CoreV1().
 		Secrets(MCO_NAMESPACE).
-		Get(context.TODO(), ServerCACerts, metav1.GetOptions{})
+		Get(context.TODO(), operatorconfig.HubInfoSecretName, metav1.GetOptions{})
 	if err != nil {
-		return nil, fmt.Errorf("failed to get observability server CA secret %s: %w", ServerCACerts, err)
+		return "", fmt.Errorf("failed to get %s secret: %w", operatorconfig.HubInfoSecretName, err)
 	}
-	caCrt, ok := secret.Data["tls.crt"]
+	hubInfo := &operatorconfig.HubInfo{}
+	if err := goyaml.Unmarshal(secret.Data[operatorconfig.HubInfoSecretKey], hubInfo); err != nil {
+		return "", fmt.Errorf("failed to unmarshal hub info: %w", err)
+	}
+	if hubInfo.HubClusterID == "" {
+		return "", fmt.Errorf("hub-cluster-id is empty in %s", operatorconfig.HubInfoSecretName)
+	}
+	return hubInfo.HubClusterID, nil
+}
+
+func GetObsAPIServerCA(cli kubernetes.Interface) ([]byte, error) {
+	clusterID, err := GetHubClusterID(cli)
+	if err != nil {
+		return nil, err
+	}
+	secretName := amMtlsCAPrefix + clusterID
+	secret, err := cli.CoreV1().
+		Secrets(promNamespace).
+		Get(context.TODO(), secretName, metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get server CA secret %s/%s: %w", promNamespace, secretName, err)
+	}
+	caCrt, ok := secret.Data["ca.crt"]
 	if !ok {
-		return nil, fmt.Errorf("tls.crt not found in %s secret", ServerCACerts)
+		return nil, fmt.Errorf("ca.crt not found in %s/%s secret", promNamespace, secretName)
 	}
 	return caCrt, nil
 }
 
 func GetObsAPIClientCert(cli kubernetes.Interface) (tls.Certificate, error) {
-	secret, err := cli.CoreV1().
-		Secrets(MCO_NAMESPACE).
-		Get(context.TODO(), GrafanaCerts, metav1.GetOptions{})
+	clusterID, err := GetHubClusterID(cli)
 	if err != nil {
-		return tls.Certificate{}, fmt.Errorf("failed to get client cert secret %s: %w", GrafanaCerts, err)
+		return tls.Certificate{}, err
+	}
+	secretName := amMtlsCertPrefix + clusterID
+	secret, err := cli.CoreV1().
+		Secrets(promNamespace).
+		Get(context.TODO(), secretName, metav1.GetOptions{})
+	if err != nil {
+		return tls.Certificate{}, fmt.Errorf("failed to get client cert secret %s/%s: %w", promNamespace, secretName, err)
 	}
 	cert, err := tls.X509KeyPair(secret.Data["tls.crt"], secret.Data["tls.key"])
 	if err != nil {
-		return tls.Certificate{}, fmt.Errorf("failed to parse client cert from %s: %w", GrafanaCerts, err)
+		return tls.Certificate{}, fmt.Errorf("failed to parse client cert from %s/%s: %w", promNamespace, secretName, err)
 	}
 	return cert, nil
 }
