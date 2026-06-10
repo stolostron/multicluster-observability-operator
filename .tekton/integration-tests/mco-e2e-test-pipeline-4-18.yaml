@@ -321,6 +321,13 @@ spec:
                 exit 1
               }
 
+              echo "=== Checking cluster ingress and router certs ==="
+              oc get infrastructure cluster -o jsonpath='{.status.controlPlaneTopology}' && echo
+              oc get ingresscontroller default -n openshift-ingress-operator -o yaml || true
+              oc get pods -n openshift-ingress -o wide || true
+              oc get secrets -n openshift-ingress || true
+              oc get secret router-certs-default -n openshift-ingress -o jsonpath='{.data.tls\.crt}' | base64 -d | openssl x509 -noout -subject -issuer 2>/dev/null || echo "router-certs-default not found"
+
               echo "=== Verifying MCO is using Konflux images ==="
               oc get deploy multicluster-observability-operator -n open-cluster-management -o jsonpath='{.spec.template.spec.containers[*].image}' && echo
               oc get pods -n open-cluster-management -l name=multicluster-observability-operator -o jsonpath='{range .items[*]}{.spec.containers[*].image}{"\n"}{end}'
