@@ -6,6 +6,7 @@ package utils
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -55,4 +56,18 @@ func GetObsAPIServerCA(cli kubernetes.Interface) ([]byte, error) {
 		return nil, fmt.Errorf("tls.crt not found in %s secret", ServerCACerts)
 	}
 	return caCrt, nil
+}
+
+func GetObsAPIClientCert(cli kubernetes.Interface) (tls.Certificate, error) {
+	secret, err := cli.CoreV1().
+		Secrets(MCO_NAMESPACE).
+		Get(context.TODO(), GrafanaCerts, metav1.GetOptions{})
+	if err != nil {
+		return tls.Certificate{}, fmt.Errorf("failed to get client cert secret %s: %w", GrafanaCerts, err)
+	}
+	cert, err := tls.X509KeyPair(secret.Data["tls.crt"], secret.Data["tls.key"])
+	if err != nil {
+		return tls.Certificate{}, fmt.Errorf("failed to parse client cert from %s: %w", GrafanaCerts, err)
+	}
+	return cert, nil
 }

@@ -13,7 +13,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"os"
 	"slices"
 	"strings"
 
@@ -397,23 +396,21 @@ var _ = Describe("", func() {
 			pool := x509.NewCertPool()
 			pool.AppendCertsFromPEM(caCrt)
 
+			clientCert, err := utils.GetObsAPIClientCert(hubClient)
+			Expect(err).NotTo(HaveOccurred())
+
 			client := &http.Client{
 				Transport: &http.Transport{
-					Proxy:           http.ProxyFromEnvironment,
-					TLSClientConfig: &tls.Config{RootCAs: pool},
+					Proxy: http.ProxyFromEnvironment,
+					TLSClientConfig: &tls.Config{
+						RootCAs:      pool,
+						Certificates: []tls.Certificate{clientCert},
+					},
 				},
 			}
 
 			alertGetReq, err := http.NewRequest("GET", amURL.String(), nil)
 			Expect(err).NotTo(HaveOccurred())
-
-			if os.Getenv("IS_KIND_ENV") != trueStr {
-				if BearerToken == "" {
-					BearerToken, err = utils.FetchBearerToken(testOptions)
-					Expect(err).NotTo(HaveOccurred())
-				}
-				alertGetReq.Header.Set("Authorization", "Bearer "+BearerToken)
-			}
 
 			expectedOCPClusterIDs, err := utils.ListAvailableOCPManagedClusterIDs(testOptions)
 			Expect(err).NotTo(HaveOccurred())
@@ -533,23 +530,21 @@ var _ = Describe("", func() {
 		pool := x509.NewCertPool()
 		pool.AppendCertsFromPEM(caCrt)
 
+		clientCert, err := utils.GetObsAPIClientCert(hubClient)
+		Expect(err).NotTo(HaveOccurred())
+
 		client := &http.Client{
 			Transport: &http.Transport{
-				Proxy:           http.ProxyFromEnvironment,
-				TLSClientConfig: &tls.Config{RootCAs: pool},
+				Proxy: http.ProxyFromEnvironment,
+				TLSClientConfig: &tls.Config{
+					RootCAs:      pool,
+					Certificates: []tls.Certificate{clientCert},
+				},
 			},
 		}
 
 		alertGetReq, err := http.NewRequest("GET", amURL.String(), nil)
 		Expect(err).NotTo(HaveOccurred())
-
-		if os.Getenv("IS_KIND_ENV") != "true" {
-			if BearerToken == "" {
-				BearerToken, err = utils.FetchBearerToken(testOptions)
-				Expect(err).NotTo(HaveOccurred())
-			}
-			alertGetReq.Header.Set("Authorization", "Bearer "+BearerToken)
-		}
 
 		expectedKSClusterNames, err := utils.ListAvailableKSManagedClusterNames(testOptions)
 		Expect(err).NotTo(HaveOccurred())
