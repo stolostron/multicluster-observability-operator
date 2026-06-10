@@ -144,17 +144,20 @@ var _ = Describe("", func() {
 			Expect(err).NotTo(HaveOccurred())
 			pool := x509.NewCertPool()
 			pool.AppendCertsFromPEM(caCrt)
-			tr := &http.Transport{
-				Proxy:           http.ProxyFromEnvironment,
-				TLSClientConfig: &tls.Config{RootCAs: pool},
+
+			clientCert, err := utils.GetObsAPIClientCert(hubClient)
+			Expect(err).NotTo(HaveOccurred())
+
+			client := &http.Client{
+				Transport: &http.Transport{
+					Proxy: http.ProxyFromEnvironment,
+					TLSClientConfig: &tls.Config{
+						RootCAs:      pool,
+						Certificates: []tls.Certificate{clientCert},
+					},
+				},
 			}
 
-			client := &http.Client{}
-			if os.Getenv("IS_KIND_ENV") != trueStr {
-				client.Transport = tr
-				BearerToken, err = utils.FetchBearerToken(testOptions)
-				alertPostReq.Header.Set("Authorization", "Bearer "+BearerToken)
-			}
 			if !alertCreated {
 				resp, err := client.Do(alertPostReq)
 				if err != nil {
@@ -178,11 +181,6 @@ var _ = Describe("", func() {
 
 			if err != nil {
 				return err
-			}
-
-			if os.Getenv("IS_KIND_ENV") != trueStr {
-				BearerToken, err = utils.FetchBearerToken(testOptions)
-				alertGetReq.Header.Set("Authorization", "Bearer "+BearerToken)
 			}
 
 			resp, err := client.Do(alertGetReq)
