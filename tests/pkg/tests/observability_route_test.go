@@ -6,6 +6,7 @@ package tests
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
@@ -19,6 +20,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/utils"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
 )
 
@@ -168,6 +170,28 @@ var _ = Describe("", func() {
 			}
 
 			if !alertCreated {
+				// Debug: check if obs-api has alertmanager endpoints configured
+				pods, podErr := hubClient.CoreV1().Pods("open-cluster-management-observability").List(context.TODO(), metav1.ListOptions{
+					LabelSelector: "app.kubernetes.io/name=observatorium-api",
+				})
+				if podErr != nil {
+					klog.Warningf("failed to list obs-api pods: %v", podErr)
+				} else if len(pods.Items) > 0 {
+					args := pods.Items[0].Spec.Containers[0].Args
+					hasAMEndpoint := false
+					for _, arg := range args {
+						if strings.Contains(arg, "alertmanager") {
+							klog.Infof("obs-api arg: %s", arg)
+							hasAMEndpoint = true
+						}
+					}
+					if !hasAMEndpoint {
+						klog.Warningf("obs-api pod has NO alertmanager endpoint flags configured")
+					}
+				} else {
+					klog.Warningf("no obs-api pods found")
+				}
+
 				resp, err := mtlsClient.Do(alertPostReq)
 				if err != nil {
 					return err
@@ -175,9 +199,10 @@ var _ = Describe("", func() {
 				defer resp.Body.Close()
 
 				if resp.StatusCode != http.StatusOK {
-					klog.Errorf("resp: %+v\n", resp)
-					klog.Errorf("err: %+v\n", err)
-					return errors.New("Failed to create alert via observatorium-api route")
+					body, _ := io.ReadAll(resp.Body)
+					klog.Errorf("POST alert failed: status=%d, body=%s", resp.StatusCode, string(body))
+					klog.Errorf("POST URL: %s", obsURL)
+					return fmt.Errorf("failed to create alert via observatorium-api route: status %d, body: %s", resp.StatusCode, string(body))
 				}
 			}
 
