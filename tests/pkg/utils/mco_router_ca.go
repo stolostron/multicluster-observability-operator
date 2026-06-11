@@ -47,7 +47,11 @@ func GetHubClusterID(cli kubernetes.Interface) (string, error) {
 		return "", fmt.Errorf("failed to get %s secret: %w", operatorconfig.HubInfoSecretName, err)
 	}
 	hubInfo := &operatorconfig.HubInfo{}
-	if err := goyaml.Unmarshal(secret.Data[operatorconfig.HubInfoSecretKey], hubInfo); err != nil {
+	payload, ok := secret.Data[operatorconfig.HubInfoSecretKey]
+	if !ok {
+		return "", fmt.Errorf("key %q not found in %s", operatorconfig.HubInfoSecretKey, operatorconfig.HubInfoSecretName)
+	}
+	if err := goyaml.Unmarshal(payload, hubInfo); err != nil {
 		return "", fmt.Errorf("failed to unmarshal hub info: %w", err)
 	}
 	if hubInfo.HubClusterID == "" {
