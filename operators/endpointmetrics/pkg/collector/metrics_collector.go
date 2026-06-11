@@ -529,7 +529,12 @@ func (m *MetricsCollector) ensureAlertingRule(ctx context.Context, isUWL bool) e
 			m.Log.Info("Updating PrometheusRule", "name", name, "namespace", m.Namespace)
 
 			foundPromRule.Spec = desiredPromRule.Spec
-			foundPromRule.Labels = desiredPromRule.Labels
+			mergedLabels := maps.Clone(foundPromRule.Labels)
+			if mergedLabels == nil {
+				mergedLabels = make(map[string]string)
+			}
+			maps.Copy(mergedLabels, desiredPromRule.Labels)
+			foundPromRule.Labels = mergedLabels
 			foundPromRule.OwnerReferences = desiredPromRule.OwnerReferences
 			if err := m.Client.Update(ctx, foundPromRule); err != nil {
 				return fmt.Errorf("failed to update PrometheusRule %s/%s: %w", m.Namespace, name, err)

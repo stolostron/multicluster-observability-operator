@@ -371,8 +371,6 @@ func (d *Deployer) updatePrometheusRule(ctx context.Context, desiredObj, runtime
 	}
 
 	return d.client.Update(ctx, desiredPrometheusRule)
-
-	return nil
 }
 
 func (d *Deployer) updateIngress(ctx context.Context, desiredObj, runtimeObj *unstructured.Unstructured) error {
