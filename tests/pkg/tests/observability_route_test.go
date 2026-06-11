@@ -136,7 +136,7 @@ var _ = Describe("", func() {
 			 ]
 			`
 			alertPostReq, err := http.NewRequest(
-				"Post",
+				"POST",
 				obsURL,
 				bytes.NewBuffer([]byte(alertJson)))
 			alertPostReq.Header.Set("Content-Type", "application/json; charset=UTF-8")
