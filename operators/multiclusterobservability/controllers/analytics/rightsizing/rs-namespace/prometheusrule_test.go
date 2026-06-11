@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	rsutility "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/analytics/rightsizing/rs-utility"
+	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -33,6 +34,7 @@ func TestGeneratePrometheusRule_InclusionOnly(t *testing.T) {
 	rule, err := GeneratePrometheusRule(config)
 	assert.NoError(t, err)
 	assert.Equal(t, PrometheusRuleName, rule.Name)
+	assert.Equal(t, operatorconfig.GetACMPrometheusRuleLabels(), rule.Labels)
 	assert.Len(t, rule.Spec.Groups, 4)
 	assert.Contains(t, rule.Spec.Groups[0].Rules[0].Expr.String(), `namespace=~"ns-a|ns-b"`)
 	assert.Contains(t, rule.Spec.Groups[0].Rules[0].Expr.String(), `label_env=~"prod"`)

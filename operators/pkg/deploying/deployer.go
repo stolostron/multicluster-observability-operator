@@ -349,25 +349,28 @@ func (d *Deployer) updatePrometheusRule(ctx context.Context, desiredObj, runtime
 		return err
 	}
 
-	// Use ssa if MCOA
-	if mcoconfig.MultiClusterObservabilityAddon == desiredPrometheusRule.Labels["app.kubernetes.io/part-of"] {
-		// Merge labels
-		desiredLabels := maps.Clone(runtimePrometheusRule.GetLabels())
-		maps.Copy(desiredLabels, desiredPrometheusRule.Labels)
-		desiredPrometheusRule.Labels = desiredLabels
+	useSSA := mcoconfig.MultiClusterObservabilityAddon == desiredPrometheusRule.Labels["app.kubernetes.io/part-of"]
+	desiredPrometheusRule.Labels, _ = mergeMetadata(
+		runtimePrometheusRule.Labels, nil,
+		desiredPrometheusRule.Labels, nil,
+	)
 
-		if !equality.Semantic.DeepDerivative(desiredPrometheusRule.Spec, runtimePrometheusRule.Spec) || !maps.Equal(desiredPrometheusRule.Labels, runtimePrometheusRule.Labels) {
-			logUpdateInfo(runtimeObj)
-			return d.client.Patch(ctx, desiredPrometheusRule, client.Apply, client.ForceOwnership, client.FieldOwner(mcoconfig.GetMonitoringCRName()))
-		}
-	} else if !equality.Semantic.DeepDerivative(desiredPrometheusRule.Spec, runtimePrometheusRule.Spec) {
-		logUpdateInfo(runtimeObj)
-		if desiredPrometheusRule.ResourceVersion != runtimePrometheusRule.ResourceVersion {
-			desiredPrometheusRule.ResourceVersion = runtimePrometheusRule.ResourceVersion
-		}
-
-		return d.client.Update(ctx, desiredPrometheusRule)
+	specChanged := !equality.Semantic.DeepDerivative(desiredPrometheusRule.Spec, runtimePrometheusRule.Spec)
+	labelsChanged := !maps.Equal(desiredPrometheusRule.Labels, runtimePrometheusRule.Labels)
+	if !specChanged && !labelsChanged {
+		return nil
 	}
+
+	logUpdateInfo(runtimeObj)
+	if useSSA {
+		return d.client.Patch(ctx, desiredPrometheusRule, client.Apply, client.ForceOwnership, client.FieldOwner(mcoconfig.GetMonitoringCRName()))
+	}
+
+	if desiredPrometheusRule.ResourceVersion != runtimePrometheusRule.ResourceVersion {
+		desiredPrometheusRule.ResourceVersion = runtimePrometheusRule.ResourceVersion
+	}
+
+	return d.client.Update(ctx, desiredPrometheusRule)
 
 	return nil
 }
