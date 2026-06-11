@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -144,14 +145,19 @@ var _ = Describe("", func() {
 
 			// POST via obs-api with mTLS (hub collector cert — writeOnly RBAC)
 			obsCaCrt, err := utils.GetObsAPIServerCA(hubClient)
-			Expect(err).NotTo(HaveOccurred())
+			if err != nil {
+				return fmt.Errorf("GetObsAPIServerCA: %w", err)
+			}
 			obsPool := x509.NewCertPool()
 			obsPool.AppendCertsFromPEM(obsCaCrt)
 
 			clientCert, err := utils.GetObsAPIClientCert(hubClient)
-			Expect(err).NotTo(HaveOccurred())
+			if err != nil {
+				return fmt.Errorf("GetObsAPIClientCert: %w", err)
+			}
 
 			mtlsClient := &http.Client{
+				Timeout: 5 * time.Second,
 				Transport: &http.Transport{
 					Proxy: http.ProxyFromEnvironment,
 					TLSClientConfig: &tls.Config{
@@ -185,11 +191,14 @@ var _ = Describe("", func() {
 			}
 
 			routerCaCrt, err := utils.GetRouterCA(hubClient)
-			Expect(err).NotTo(HaveOccurred())
+			if err != nil {
+				return fmt.Errorf("GetRouterCA: %w", err)
+			}
 			routerPool := x509.NewCertPool()
 			routerPool.AppendCertsFromPEM(routerCaCrt)
 
 			bearerClient := &http.Client{
+				Timeout: 5 * time.Second,
 				Transport: &http.Transport{
 					Proxy:           http.ProxyFromEnvironment,
 					TLSClientConfig: &tls.Config{RootCAs: routerPool},
