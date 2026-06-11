@@ -69,6 +69,7 @@ var _ = Describe("", func() {
 				pool := x509.NewCertPool()
 				pool.AppendCertsFromPEM(caCrt)
 				tr := &http.Transport{
+					Proxy:           http.ProxyFromEnvironment,
 					TLSClientConfig: &tls.Config{RootCAs: pool},
 				}
 
@@ -153,6 +154,7 @@ var _ = Describe("", func() {
 			pool := x509.NewCertPool()
 			pool.AppendCertsFromPEM(caCrt)
 			tr := &http.Transport{
+				Proxy:           http.ProxyFromEnvironment,
 				TLSClientConfig: &tls.Config{RootCAs: pool},
 			}
 
