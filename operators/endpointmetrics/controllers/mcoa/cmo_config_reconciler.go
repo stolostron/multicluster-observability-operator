@@ -59,7 +59,7 @@ func (r *MCOAAgentReconciler) reconcileCMO(ctx context.Context, req client.Objec
 		r.CASecret,
 		r.CertSecret,
 		r.AccessorSecret,
-		"", // Pass empty namespace to skip legacy revert-marker logic
+		"", // Pass empty namespace since MCOA handles cleanup dynamically in the reconciler and bypasses legacy persistent configmap markers.
 	)
 
 	return err

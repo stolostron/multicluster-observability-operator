@@ -43,6 +43,9 @@ var (
 
 // initializes clusterMonitoringConfigReverted based on the presence of clusterMonitoringRevertedName
 // configmap in openshift-monitoring namespace.
+// Note: In MCOA, cleanup/reverting is handled dynamically via the controller loop rather than a static
+// cleanup command or persistent revert-state configmaps. We set the namespace param to empty ("")
+// in MCOA mode to skip this legacy state tracker logic.
 func initPersistedRevertState(ctx context.Context, client client.Client, ns string) error {
 	if ns == "" {
 		return nil

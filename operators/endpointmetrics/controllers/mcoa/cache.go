@@ -12,7 +12,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// GetCacheOptions returns the surgical cache options for the MCOA bridge agent.
+// GetCacheOptions returns the cache options for the MCOA controller.
 // It whitelists only the specific ConfigMaps required for Alertmanager configuration injection.
 func GetCacheOptions() cache.Options {
 	return cache.Options{

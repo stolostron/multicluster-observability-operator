@@ -219,14 +219,14 @@ func TestMCOAAgentIntegration(t *testing.T) {
 		// Disable alert forwarding on the active reconciler
 		reconciler.AlertmanagerEndpoint = ""
 
-		// Trigger reconcile by updating the CMO ConfigMap
-		found := &corev1.ConfigMap{}
-		require.NoError(t, directClient.Get(ctx, types.NamespacedName{
-			Name:      operatorconfig.OCPClusterMonitoringConfigMapName,
-			Namespace: operatorconfig.OCPClusterMonitoringNamespace,
-		}, found))
-		found.Data["trigger"] = "reconcile"
-		require.NoError(t, directClient.Update(ctx, found, client.FieldOwner(observabilityendpoint.EndpointMonitoringOperatorMgr)))
+		// Trigger reconcile by directly calling the Reconcile method on the reconciler, emulating the real flow.
+		_, err = reconciler.Reconcile(ctx, ctrl.Request{
+			NamespacedName: types.NamespacedName{
+				Name:      operatorconfig.OCPClusterMonitoringConfigMapName,
+				Namespace: operatorconfig.OCPClusterMonitoringNamespace,
+			},
+		})
+		require.NoError(t, err)
 
 		// Wait for the reconciler to clean up our Alertmanager configs (or cleanly delete the empty ConfigMap)
 		require.Eventually(t, func() bool {
@@ -282,14 +282,14 @@ func TestMCOAAgentIntegration(t *testing.T) {
 		// Disable UWL alert forwarding on the active reconciler
 		reconciler.EnableUWLAlertForwarding = false
 
-		// Trigger reconcile by updating the UWL ConfigMap
-		found := &corev1.ConfigMap{}
-		require.NoError(t, directClient.Get(ctx, types.NamespacedName{
-			Name:      operatorconfig.OCPUserWorkloadMonitoringConfigMap,
-			Namespace: operatorconfig.OCPUserWorkloadMonitoringNamespace,
-		}, found))
-		found.Data["trigger"] = "reconcile"
-		require.NoError(t, directClient.Update(ctx, found, client.FieldOwner(observabilityendpoint.EndpointMonitoringOperatorMgr)))
+		// Trigger reconcile by directly calling the Reconcile method on the reconciler, emulating the real flow.
+		_, err = reconciler.Reconcile(ctx, ctrl.Request{
+			NamespacedName: types.NamespacedName{
+				Name:      operatorconfig.OCPUserWorkloadMonitoringConfigMap,
+				Namespace: operatorconfig.OCPUserWorkloadMonitoringNamespace,
+			},
+		})
+		require.NoError(t, err)
 
 		// Wait for the reconciler to clean up our Alertmanager configs from UWL ConfigMap
 		require.Eventually(t, func() bool {

@@ -71,9 +71,9 @@ func printVersion() {
 }
 
 var (
-	mcoaRunner    = runMCOA
-	legacyRunner  = runLegacy
-	cleanupRunner = runCleanup
+	mcoaRunner     = runMCOA
+	standardRunner = runStandard
+	cleanupRunner  = runCleanup
 )
 
 func main() {
@@ -82,7 +82,7 @@ func main() {
 }
 
 func execute(args []string) {
-	cmd := "legacy"
+	cmd := "standard"
 	if len(args) > 1 {
 		cmd = args[1]
 	}
@@ -91,20 +91,20 @@ func execute(args []string) {
 	case "mcoa":
 		// len(args) >= 2 is guaranteed since args[1] matches "mcoa"
 		mcoaRunner(args[2:])
-	case "legacy":
-		// Guard against len(args) == 1 (no arguments) defaulting to legacy mode
+	case "standard", "legacy":
+		// Guard against len(args) == 1 (no arguments) defaulting to standard mode
 		subArgs := []string{}
 		if len(args) > 2 {
 			subArgs = args[2:]
 		}
-		legacyRunner(subArgs)
+		standardRunner(subArgs)
 	case "cleanup":
 		// len(args) >= 2 is guaranteed since args[1] matches "cleanup"
 		cleanupRunner(args[2:])
 	default:
-		// default to legacy for backward compatibility if argument is just a flag
+		// default to standard for backward compatibility if argument is just a flag
 		// len(args) >= 2 is guaranteed since len(args) > 1 and it did not match subcommands above
-		legacyRunner(args[1:])
+		standardRunner(args[1:])
 	}
 }
 
@@ -124,6 +124,7 @@ func doCleanup(args []string) error {
 
 	fs.StringVar(&hubID, "hub-id", "", "The ID of the Hub cluster to clean up.")
 	klog.InitFlags(fs)
+	// Parse will exit on error due to flag.ExitOnError, so we can ignore the error return value.
 	_ = fs.Parse(args)
 
 	if hubID == "" {
@@ -146,22 +147,48 @@ func doCleanup(args []string) error {
 	var errs []error
 
 	caSecret := obsepctl.AppendHubClusterID(obsepctl.HubAmRouterCASecretName, hubInfo.HubClusterID)
+	mtlsCASecret := obsepctl.AppendHubClusterID(obsepctl.HubAmMtlsCASecretName, hubInfo.HubClusterID)
 
-	setupLog.Info("Reverting Platform monitoring configuration")
+	setupLog.Info("Reverting Platform monitoring configuration (Router CA)")
 	if err := obsepctl.RevertClusterMonitoringConfig(ctx, cl, caSecret); err != nil {
-		setupLog.Error(err, "failed to revert platform monitoring config")
+		setupLog.Error(err, "failed to revert platform monitoring config (Router CA)")
 		errs = append(errs, err)
 	}
 
 	if ctx.Err() != nil {
 		setupLog.Error(ctx.Err(), "cleanup context canceled or timed out, aborting remaining steps")
 		errs = append(errs, ctx.Err())
-	} else {
-		setupLog.Info("Reverting User Workload monitoring configuration")
-		if err := obsepctl.RevertUserWorkloadMonitoringConfig(ctx, cl, caSecret); err != nil {
-			setupLog.Error(err, "failed to revert user workload monitoring config")
-			errs = append(errs, err)
-		}
+		return fmt.Errorf("cleanup failed: %w", errors.Join(errs...))
+	}
+
+	setupLog.Info("Reverting User Workload monitoring configuration (Router CA)")
+	if err := obsepctl.RevertUserWorkloadMonitoringConfig(ctx, cl, caSecret); err != nil {
+		setupLog.Error(err, "failed to revert user workload monitoring config (Router CA)")
+		errs = append(errs, err)
+	}
+
+	if ctx.Err() != nil {
+		setupLog.Error(ctx.Err(), "cleanup context canceled or timed out, aborting remaining steps")
+		errs = append(errs, ctx.Err())
+		return fmt.Errorf("cleanup failed: %w", errors.Join(errs...))
+	}
+
+	setupLog.Info("Reverting Platform monitoring configuration (mTLS CA)")
+	if err := obsepctl.RevertClusterMonitoringConfig(ctx, cl, mtlsCASecret); err != nil {
+		setupLog.Error(err, "failed to revert platform monitoring config (mTLS CA)")
+		errs = append(errs, err)
+	}
+
+	if ctx.Err() != nil {
+		setupLog.Error(ctx.Err(), "cleanup context canceled or timed out, aborting remaining steps")
+		errs = append(errs, ctx.Err())
+		return fmt.Errorf("cleanup failed: %w", errors.Join(errs...))
+	}
+
+	setupLog.Info("Reverting User Workload monitoring configuration (mTLS CA)")
+	if err := obsepctl.RevertUserWorkloadMonitoringConfig(ctx, cl, mtlsCASecret); err != nil {
+		setupLog.Error(err, "failed to revert user workload monitoring config (mTLS CA)")
+		errs = append(errs, err)
 	}
 
 	if len(errs) > 0 {
@@ -199,6 +226,7 @@ func runMCOA(args []string) {
 	fs.BoolVar(&enableUWLAlertForwarding, "enable-uwl-alert-forwarding", true, "Enable or disable forwarding of user workload monitoring alerts.")
 
 	klog.InitFlags(fs)
+	// Parse will exit on error due to flag.ExitOnError, so we can ignore the error return value.
 	_ = fs.Parse(args)
 
 	ctrl.SetLogger(klog.NewKlogr())
@@ -252,9 +280,9 @@ func runMCOA(args []string) {
 
 	if err = mcoa.NewMCOAAgentReconciler(
 		mgr.GetClient(),
-		ctrl.Log.WithName("controllers").WithName("MCOA-Agent"),
+		ctrl.Log.WithName("controllers").WithName("mcoa-endpoint-controller"),
 		mgr.GetScheme(),
-		mgr.GetEventRecorderFor("mcoa-agent-controller"),
+		mgr.GetEventRecorderFor("mcoa-endpoint-controller"),
 		namespace,
 		clusterID,
 		hubAmURL,
@@ -263,7 +291,7 @@ func runMCOA(args []string) {
 		hubAmAccessorSecret,
 		enableUWLAlertForwarding,
 	).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "MCOA-Agent")
+		setupLog.Error(err, "unable to create controller", "controller", "mcoa-endpoint-controller")
 		os.Exit(1)
 	}
 
@@ -279,9 +307,9 @@ func runMCOA(args []string) {
 	}
 }
 
-func runLegacy(args []string) {
+func runStandard(args []string) {
 	ctrl.SetLogger(klog.NewKlogr())
-	setupLog.Info("Starting legacy mode")
+	setupLog.Info("Starting standard mode")
 	var metricsAddr string
 	var enableLeaderElection bool
 	var probeAddr string
@@ -292,6 +320,7 @@ func runLegacy(args []string) {
 			"Enabling this will ensure there is only one active controller manager.")
 
 	klog.InitFlags(flag.CommandLine)
+	// flag.CommandLine is configured to exit on error (flag.ExitOnError), so we can ignore the error return value.
 	_ = flag.CommandLine.Parse(args)
 
 	namespaceSelector := fmt.Sprintf("metadata.namespace==%s", os.Getenv("WATCH_NAMESPACE"))

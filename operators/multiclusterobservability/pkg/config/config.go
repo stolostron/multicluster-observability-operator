@@ -1013,7 +1013,7 @@ func GetTrimmedClusterID(c client.Client) (string, error) {
 }
 
 func GetClusterName(obsApiURL string) string {
-	// In MCOA mode or other minimalist bridge modes, the obsApiURL (Thanos Receive endpoint)
+	// In MCOA mode, the obsApiURL (Thanos Receive endpoint)
 	// might not be provided because the agent doesn't need to perform legacy metric labeling.
 	// We return early to avoid unnecessary error logging from URL parsing or hostname splitting.
 	if obsApiURL == "" {

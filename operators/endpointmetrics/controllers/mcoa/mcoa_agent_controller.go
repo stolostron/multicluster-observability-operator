@@ -64,7 +64,7 @@ func NewMCOAAgentReconciler(
 }
 
 func (r *MCOAAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	r.Log.Info("Reconciling MCOA Agent", "name", req.Name, "namespace", req.Namespace)
+	r.Log.V(1).Info("Reconciling MCOA Agent", "name", req.Name, "namespace", req.Namespace)
 
 	switch {
 	case req.Name == operatorconfig.OCPClusterMonitoringConfigMapName && req.Namespace == operatorconfig.OCPClusterMonitoringNamespace:

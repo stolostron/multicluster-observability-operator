@@ -24,6 +24,7 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/util"
 	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
+	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -340,6 +341,140 @@ alertmanager-router-ca: |
 		}
 		data := foundCM.Data[ClusterMonitoringConfigDataKey]
 		fmt.Printf("Found ConfigMap Data: %s\n", data)
+		return !strings.Contains(data, "obs-alertmanager-mtls-ca") && !strings.Contains(data, "test-alertamanger-endpoint")
+	}, time.Minute, 1*time.Second)
+}
+
+// TestIntegrationCMOConfigDisableAlertForwarding tests that updating the hub-info secret to have an empty
+// alertmanager-endpoint correctly triggers reconciliation and reverts the Alertmanager configuration.
+func TestIntegrationCMOConfigDisableAlertForwarding(t *testing.T) {
+	namespace := "test-cmo-disable"
+
+	scheme := createBaseScheme()
+
+	k8sClient, err := client.New(restCfgHub, client.Options{Scheme: scheme})
+	require.NoError(t, err)
+
+	defer func() {
+		_ = k8sClient.Delete(t.Context(), makeNamespace(namespace))
+	}()
+
+	// Create resources needed for reconciliation
+	resourcesDeps := []client.Object{
+		makeNamespace(promNamespace),
+		makeNamespace(namespace),
+		newImagesCM(namespace),
+		&ocinfrav1.ClusterVersion{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "version",
+			},
+		},
+		&corev1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "prometheus-k8s",
+				Namespace: "openshift-monitoring",
+			},
+			Spec: corev1.ServiceSpec{
+				Ports: []corev1.ServicePort{
+					{
+						Name: "web",
+						Port: 9090,
+					},
+				},
+			},
+		},
+		newHubInfoSecret([]byte(`
+endpoint: "http://test-endpoint"
+hub-cluster-id: "test-hub-cluster"
+alertmanager-endpoint: "http://test-alertamanger-endpoint"
+alertmanager-router-ca: |
+    -----BEGIN CERTIFICATE-----
+    xxxxxxxxxxxxxxxxxxxxxxxxxxx
+    -----END CERTIFICATE-----
+`), namespace),
+		&corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      HubAmAccessorSecretName,
+				Namespace: namespace,
+			},
+			StringData: map[string]string{hubAmAccessorSecretKey: "lol"},
+		},
+		&oav1beta1.ObservabilityAddon{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "observability-addon",
+				Namespace: namespace,
+			},
+		},
+	}
+	for _, obj := range newMtlsTestSecrets(namespace) {
+		resourcesDeps = append(resourcesDeps, obj.(client.Object))
+	}
+	require.NoError(t, createResources(k8sClient, resourcesDeps...))
+
+	mgr, err := ctrl.NewManager(testEnvHub.Config, ctrl.Options{
+		Scheme:  k8sClient.Scheme(),
+		Metrics: metricsserver.Options{BindAddress: "0"},
+		Controller: config.Controller{
+			SkipNameValidation: ptr.To(true),
+		},
+	})
+	require.NoError(t, err)
+
+	hubClientWithReload, err := util.NewReloadableHubClientWithReloadFunc(func() (client.Client, error) {
+		return k8sClient, nil
+	})
+	require.NoError(t, err)
+
+	reconciler := ObservabilityAddonReconciler{
+		Client:                k8sClient,
+		HubClient:             hubClientWithReload,
+		IsHubMetricsCollector: false,
+		Scheme:                scheme,
+		Namespace:             namespace,
+		HubNamespace:          namespace,
+		ServiceAccountName:    "endpoint-monitoring-operator",
+		InstallPrometheus:     false,
+	}
+	require.NoError(t, reconciler.SetupWithManager(mgr))
+
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+
+	go func() {
+		require.NoError(t, mgr.Start(ctx))
+	}()
+
+	// 1. Wait for Alertmanager config to be populated on start
+	cm := &corev1.ConfigMap{}
+	assert.Eventually(t, func() bool {
+		err := k8sClient.Get(ctx, types.NamespacedName{Namespace: promNamespace, Name: clusterMonitoringConfigName}, cm)
+		return err == nil && cm.Data != nil && cm.Data[ClusterMonitoringConfigDataKey] != ""
+	}, time.Minute, 1*time.Second)
+
+	// 2. Now emulate disabling alert forwarding by updating the hub-info secret to have empty alertmanager-endpoint
+	hubInfoSecret := &corev1.Secret{}
+	require.NoError(t, k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: operatorconfig.HubInfoSecretName}, hubInfoSecret))
+
+	updatedHubInfoBytes := []byte(`
+endpoint: "http://test-endpoint"
+hub-cluster-id: "test-hub-cluster"
+alertmanager-endpoint: ""
+`)
+	hubInfoSecret.Data[operatorconfig.HubInfoSecretKey] = updatedHubInfoBytes
+	require.NoError(t, k8sClient.Update(ctx, hubInfoSecret))
+
+	// 3. Wait for the controller to react, reconcile, and cleanly delete/revert the CMO ConfigMap
+	assert.Eventually(t, func() bool {
+		foundCM := &corev1.ConfigMap{}
+		err := k8sClient.Get(ctx, types.NamespacedName{Namespace: promNamespace, Name: clusterMonitoringConfigName}, foundCM)
+		if errors.IsNotFound(err) {
+			return true
+		}
+		if err != nil {
+			fmt.Printf("Revert CMO ConfigMap Get error: %v\n", err)
+			return false
+		}
+		data := foundCM.Data[ClusterMonitoringConfigDataKey]
 		return !strings.Contains(data, "obs-alertmanager-mtls-ca") && !strings.Contains(data, "test-alertamanger-endpoint")
 	}, time.Minute, 1*time.Second)
 }

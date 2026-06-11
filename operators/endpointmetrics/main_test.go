@@ -10,48 +10,60 @@ import (
 )
 
 func TestExecute(t *testing.T) {
-	// NOTE: This test mutates package-level global runner variables (mcoaRunner, legacyRunner, cleanupRunner).
+	// NOTE: This test mutates package-level global runner variables (mcoaRunner, standardRunner, cleanupRunner).
 	// To prevent data races and ensure test isolation, do NOT use t.Parallel() here or in any other
 	// tests in this package that modify these globals.
 
 	// Save original runners
 	origMcoa := mcoaRunner
-	origLegacy := legacyRunner
+	origStandard := standardRunner
 	origCleanup := cleanupRunner
 	defer func() {
 		mcoaRunner = origMcoa
-		legacyRunner = origLegacy
+		standardRunner = origStandard
 		cleanupRunner = origCleanup
 	}()
 
 	tests := []struct {
 		name         string
 		args         []string
-		expectedCmd  string // "mcoa", "legacy", "cleanup"
+		expectedCmd  string // "mcoa", "standard", "cleanup"
 		expectedArgs []string
 	}{
 		{
 			name:         "no args",
 			args:         []string{"./endpointmetrics"},
-			expectedCmd:  "legacy",
+			expectedCmd:  "standard",
 			expectedArgs: []string{},
+		},
+		{
+			name:         "standard with no flags",
+			args:         []string{"./endpointmetrics", "standard"},
+			expectedCmd:  "standard",
+			expectedArgs: []string{},
+		},
+		{
+			name:         "standard with flags",
+			args:         []string{"./endpointmetrics", "standard", "--metrics-bind-address=:8080"},
+			expectedCmd:  "standard",
+			expectedArgs: []string{"--metrics-bind-address=:8080"},
 		},
 		{
 			name:         "legacy with no flags",
 			args:         []string{"./endpointmetrics", "legacy"},
-			expectedCmd:  "legacy",
+			expectedCmd:  "standard",
 			expectedArgs: []string{},
 		},
 		{
 			name:         "legacy with flags",
 			args:         []string{"./endpointmetrics", "legacy", "--metrics-bind-address=:8080"},
-			expectedCmd:  "legacy",
+			expectedCmd:  "standard",
 			expectedArgs: []string{"--metrics-bind-address=:8080"},
 		},
 		{
-			name:         "only flags default to legacy",
+			name:         "only flags default to standard",
 			args:         []string{"./endpointmetrics", "--metrics-bind-address=:8080"},
-			expectedCmd:  "legacy",
+			expectedCmd:  "standard",
 			expectedArgs: []string{"--metrics-bind-address=:8080"},
 		},
 		{
@@ -77,8 +89,8 @@ func TestExecute(t *testing.T) {
 				calledCmd = "mcoa"
 				calledArgs = args
 			}
-			legacyRunner = func(args []string) {
-				calledCmd = "legacy"
+			standardRunner = func(args []string) {
+				calledCmd = "standard"
 				calledArgs = args
 			}
 			cleanupRunner = func(args []string) {
