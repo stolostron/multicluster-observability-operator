@@ -62,7 +62,7 @@ const (
 
 var (
 	log                               = logf.Log.WithName("controller_placementrule")
-	clusterAddon                      = &addonv1alpha1.ClusterManagementAddOn{}
+	clusterAddon                      = &addonv1beta1.ClusterManagementAddOn{}
 	defaultAddonDeploymentConfig      = &addonv1beta1.AddOnDeploymentConfig{}
 	isplacementControllerRunnning     = false
 	managedClustersHaveReconciledOnce bool // Ensures that all managedClusters are reconciled once on MCO reboot
@@ -656,25 +656,23 @@ func setDefaultDeploymentConfigVar(ctx context.Context, c client.Client) error {
 	//   but the default config is not present in the manifest or it is not found
 	//   (i.e. was deleted or there's a typo).
 	defaultAddonDeploymentConfig = &addonv1beta1.AddOnDeploymentConfig{}
-	for _, config := range clusterAddon.Spec.SupportedConfigs {
+	for _, config := range clusterAddon.Spec.DefaultConfigs {
 		if config.Group == util.AddonGroup &&
 			config.Resource == util.AddonDeploymentConfigResource {
-			if config.DefaultConfig != nil {
-				addonConfig := &addonv1beta1.AddOnDeploymentConfig{}
-				err := c.Get(ctx,
-					types.NamespacedName{
-						Name:      config.DefaultConfig.Name,
-						Namespace: config.DefaultConfig.Namespace,
-					},
-					addonConfig,
-				)
-				if err != nil {
-					return fmt.Errorf("failed to get default config: %w", err)
-				}
-				log.Info("Setting the default AddonDeploymentConfig variable for current addon")
-				defaultAddonDeploymentConfig = addonConfig
-				break
+			addonConfig := &addonv1beta1.AddOnDeploymentConfig{}
+			err := c.Get(ctx,
+				types.NamespacedName{
+					Name:      config.Name,
+					Namespace: config.Namespace,
+				},
+				addonConfig,
+			)
+			if err != nil {
+				return fmt.Errorf("failed to get default config: %w", err)
 			}
+			log.Info("Setting the default AddonDeploymentConfig variable for current addon")
+			defaultAddonDeploymentConfig = addonConfig
+			break
 		}
 	}
 

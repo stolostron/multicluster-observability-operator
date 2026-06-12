@@ -585,7 +585,7 @@ func TestObservabilityAddonController(t *testing.T) {
 func newManagedClusterAddon() *addonv1alpha1.ManagedClusterAddOn {
 	return &addonv1alpha1.ManagedClusterAddOn{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: addonv1alpha1.SchemeGroupVersion.String(),
+			APIVersion: addonv1alpha1.GroupVersion.String(),
 			Kind:       "ManagedClusterAddOn",
 		},
 		ObjectMeta: metav1.ObjectMeta{
