@@ -24,10 +24,10 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
+	addonv1beta1 "open-cluster-management.io/api/addon/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 )
 
 var (
@@ -1031,17 +1031,17 @@ func TestDeploy(t *testing.T) {
 		},
 		{
 			name: "create and update AddOnDeploymentConfig: one variable to two",
-			createObj: &addonv1alpha1.AddOnDeploymentConfig{
+			createObj: &addonv1beta1.AddOnDeploymentConfig{
 				TypeMeta: metav1.TypeMeta{
-					APIVersion: "addon.open-cluster-management.io/v1alpha1",
+					APIVersion: "addon.open-cluster-management.io/v1beta1",
 					Kind:       "AddOnDeploymentConfig",
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-aodc",
 					Namespace: "ns1",
 				},
-				Spec: addonv1alpha1.AddOnDeploymentConfigSpec{
-					CustomizedVariables: []addonv1alpha1.CustomizedVariable{
+				Spec: addonv1beta1.AddOnDeploymentConfigSpec{
+					CustomizedVariables: []addonv1beta1.CustomizedVariable{
 						{
 							Name:  "test",
 							Value: "value",
@@ -1049,9 +1049,9 @@ func TestDeploy(t *testing.T) {
 					},
 				},
 			},
-			updateObj: &addonv1alpha1.AddOnDeploymentConfig{
+			updateObj: &addonv1beta1.AddOnDeploymentConfig{
 				TypeMeta: metav1.TypeMeta{
-					APIVersion: "addon.open-cluster-management.io/v1alpha1",
+					APIVersion: "addon.open-cluster-management.io/v1beta1",
 					Kind:       "AddOnDeploymentConfig",
 				},
 				ObjectMeta: metav1.ObjectMeta{
@@ -1059,8 +1059,8 @@ func TestDeploy(t *testing.T) {
 					Namespace:       "ns1",
 					ResourceVersion: "1",
 				},
-				Spec: addonv1alpha1.AddOnDeploymentConfigSpec{
-					CustomizedVariables: []addonv1alpha1.CustomizedVariable{
+				Spec: addonv1beta1.AddOnDeploymentConfigSpec{
+					CustomizedVariables: []addonv1beta1.CustomizedVariable{
 						{
 							Name:  "test",
 							Value: "value",
@@ -1077,7 +1077,7 @@ func TestDeploy(t *testing.T) {
 					Name:      "test-aodc",
 					Namespace: "ns1",
 				}
-				obj := &addonv1alpha1.AddOnDeploymentConfig{}
+				obj := &addonv1beta1.AddOnDeploymentConfig{}
 				client.Get(context.Background(), namespacedName, obj)
 
 				if len(obj.Spec.CustomizedVariables) != 2 {
@@ -1087,17 +1087,17 @@ func TestDeploy(t *testing.T) {
 		},
 		{
 			name: "create and update AddOnDeploymentConfig: modify variable value",
-			createObj: &addonv1alpha1.AddOnDeploymentConfig{
+			createObj: &addonv1beta1.AddOnDeploymentConfig{
 				TypeMeta: metav1.TypeMeta{
-					APIVersion: "addon.open-cluster-management.io/v1alpha1",
+					APIVersion: "addon.open-cluster-management.io/v1beta1",
 					Kind:       "AddOnDeploymentConfig",
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-aodc-modify",
 					Namespace: "ns1",
 				},
-				Spec: addonv1alpha1.AddOnDeploymentConfigSpec{
-					CustomizedVariables: []addonv1alpha1.CustomizedVariable{
+				Spec: addonv1beta1.AddOnDeploymentConfigSpec{
+					CustomizedVariables: []addonv1beta1.CustomizedVariable{
 						{
 							Name:  "test",
 							Value: "value",
@@ -1105,9 +1105,9 @@ func TestDeploy(t *testing.T) {
 					},
 				},
 			},
-			updateObj: &addonv1alpha1.AddOnDeploymentConfig{
+			updateObj: &addonv1beta1.AddOnDeploymentConfig{
 				TypeMeta: metav1.TypeMeta{
-					APIVersion: "addon.open-cluster-management.io/v1alpha1",
+					APIVersion: "addon.open-cluster-management.io/v1beta1",
 					Kind:       "AddOnDeploymentConfig",
 				},
 				ObjectMeta: metav1.ObjectMeta{
@@ -1115,8 +1115,8 @@ func TestDeploy(t *testing.T) {
 					Namespace:       "ns1",
 					ResourceVersion: "1",
 				},
-				Spec: addonv1alpha1.AddOnDeploymentConfigSpec{
-					CustomizedVariables: []addonv1alpha1.CustomizedVariable{
+				Spec: addonv1beta1.AddOnDeploymentConfigSpec{
+					CustomizedVariables: []addonv1beta1.CustomizedVariable{
 						{
 							Name:  "test",
 							Value: "newValue",
@@ -1129,7 +1129,7 @@ func TestDeploy(t *testing.T) {
 					Name:      "test-aodc-modify",
 					Namespace: "ns1",
 				}
-				obj := &addonv1alpha1.AddOnDeploymentConfig{}
+				obj := &addonv1beta1.AddOnDeploymentConfig{}
 				client.Get(context.Background(), namespacedName, obj)
 
 				if len(obj.Spec.CustomizedVariables) != 1 {
@@ -1299,21 +1299,7 @@ func TestDeploy(t *testing.T) {
 	prometheusv1.AddToScheme(scheme)
 	networkingv1.AddToScheme(scheme)
 	addonv1alpha1.AddToScheme(scheme)
-	fakeClient := fake.NewClientBuilder().WithScheme(scheme).WithInterceptorFuncs(interceptor.Funcs{
-		Patch: func(ctx context.Context, clientww client.WithWatch, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
-			if patch == client.Apply {
-				// Check if exists
-				key := client.ObjectKeyFromObject(obj)
-				existing := obj.DeepCopyObject().(client.Object)
-				if err := clientww.Get(ctx, key, existing); errors.IsNotFound(err) {
-					// It's a Create
-					return clientww.Create(ctx, obj)
-				}
-				return clientww.Patch(ctx, obj, client.Merge, opts...)
-			}
-			return clientww.Patch(ctx, obj, patch, opts...)
-		},
-	}).Build()
+	fakeClient := fake.NewClientBuilder().WithScheme(scheme).Build()
 
 	deployer := NewDeployer(fakeClient, "test-owner")
 
@@ -1536,10 +1522,12 @@ func TestUndeploy(t *testing.T) {
 func TestAddOnDeploymentConfig_Migration(t *testing.T) {
 	scheme := runtime.NewScheme()
 	addonv1alpha1.AddToScheme(scheme)
+	addonv1beta1.AddToScheme(scheme)
 
 	tests := []struct {
-		name            string
-		manager         string
+		name    string
+		manager string
+		// Whether the original manager should be removed from managed fields
 		shouldBeRemoved bool
 	}{
 		{
@@ -1562,9 +1550,9 @@ func TestAddOnDeploymentConfig_Migration(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Legacy Object Setup
-			legacyAODC := &addonv1alpha1.AddOnDeploymentConfig{
+			legacyAODC := &addonv1beta1.AddOnDeploymentConfig{
 				TypeMeta: metav1.TypeMeta{
-					APIVersion: "addon.open-cluster-management.io/v1alpha1",
+					APIVersion: "addon.open-cluster-management.io/v1beta1",
 					Kind:       "AddOnDeploymentConfig",
 				},
 				ObjectMeta: metav1.ObjectMeta{
@@ -1572,51 +1560,38 @@ func TestAddOnDeploymentConfig_Migration(t *testing.T) {
 					Namespace: "ns1",
 					ManagedFields: []metav1.ManagedFieldsEntry{
 						{
-							Manager:   tt.manager,
-							Operation: metav1.ManagedFieldsOperationUpdate,
-							FieldsV1:  &metav1.FieldsV1{Raw: []byte(`{"f:spec":{"f:customizedVariables":{}}}`)},
+							Manager:    tt.manager,
+							Operation:  metav1.ManagedFieldsOperationUpdate,
+							APIVersion: "addon.open-cluster-management.io/v1beta1",
+							FieldsV1:   &metav1.FieldsV1{Raw: []byte(`{"f:spec":{"f:customizedVariables":{}}}`)},
+							FieldsType: "FieldsV1",
 						},
 					},
 				},
-				Spec: addonv1alpha1.AddOnDeploymentConfigSpec{
-					CustomizedVariables: []addonv1alpha1.CustomizedVariable{
+				Spec: addonv1beta1.AddOnDeploymentConfigSpec{
+					CustomizedVariables: []addonv1beta1.CustomizedVariable{
 						{Name: "old", Value: "val"},
 					},
 				},
 			}
 
 			// Fake Client with Interceptor to simulate Apply
-			fakeClient := fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(legacyAODC).WithInterceptorFuncs(interceptor.Funcs{
-				Patch: func(ctx context.Context, clientww client.WithWatch, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
-					if patch == client.Apply {
-						// Check if exists
-						key := client.ObjectKeyFromObject(obj)
-						existing := obj.DeepCopyObject().(client.Object)
-						if err := clientww.Get(ctx, key, existing); errors.IsNotFound(err) {
-							return clientww.Create(ctx, obj)
-						}
-						// If not found, return create.
-						// Else merge.
-						return clientww.Patch(ctx, obj, client.Merge, opts...)
-					}
-					return clientww.Patch(ctx, obj, patch, opts...)
-				},
-			}).Build()
+			fakeClient := fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(legacyAODC).Build()
 
 			deployer := NewDeployer(fakeClient, "test-owner")
 
 			// Desired Object (Clean Spec)
-			desiredAODC := &addonv1alpha1.AddOnDeploymentConfig{
+			desiredAODC := &addonv1beta1.AddOnDeploymentConfig{
 				TypeMeta: metav1.TypeMeta{
-					APIVersion: "addon.open-cluster-management.io/v1alpha1",
+					APIVersion: "addon.open-cluster-management.io/v1beta1",
 					Kind:       "AddOnDeploymentConfig",
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-aodc-migration-" + strings.ReplaceAll(tt.name, " ", "-"),
 					Namespace: "ns1",
 				},
-				Spec: addonv1alpha1.AddOnDeploymentConfigSpec{
-					CustomizedVariables: []addonv1alpha1.CustomizedVariable{
+				Spec: addonv1beta1.AddOnDeploymentConfigSpec{
+					CustomizedVariables: []addonv1beta1.CustomizedVariable{
 						{Name: "new", Value: "val"},
 					},
 				},
@@ -1627,7 +1602,7 @@ func TestAddOnDeploymentConfig_Migration(t *testing.T) {
 			assert.NoError(t, err)
 
 			// Verify Migration (Update was called, clearing legacy fields)
-			found := &addonv1alpha1.AddOnDeploymentConfig{}
+			found := &addonv1beta1.AddOnDeploymentConfig{}
 			err = fakeClient.Get(context.Background(), types.NamespacedName{Name: "test-aodc-migration-" + strings.ReplaceAll(tt.name, " ", "-"), Namespace: "ns1"}, found)
 			assert.NoError(t, err)
 

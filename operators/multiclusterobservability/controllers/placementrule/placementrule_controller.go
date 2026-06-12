@@ -37,6 +37,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/util/retry"
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
+	addonv1beta1 "open-cluster-management.io/api/addon/v1beta1"
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
 	workv1 "open-cluster-management.io/api/work/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -61,8 +62,8 @@ const (
 
 var (
 	log                               = logf.Log.WithName("controller_placementrule")
-	clusterAddon                      = &addonv1alpha1.ClusterManagementAddOn{}
-	defaultAddonDeploymentConfig      = &addonv1alpha1.AddOnDeploymentConfig{}
+	clusterAddon                      = &addonv1beta1.ClusterManagementAddOn{}
+	defaultAddonDeploymentConfig      = &addonv1beta1.AddOnDeploymentConfig{}
 	isplacementControllerRunnning     = false
 	managedClustersHaveReconciledOnce bool // Ensures that all managedClusters are reconciled once on MCO reboot
 )
@@ -654,26 +655,24 @@ func setDefaultDeploymentConfigVar(ctx context.Context, c client.Client) error {
 	// - There is something in `Spec.SupportedConfigs`, the group and resource are correct,
 	//   but the default config is not present in the manifest or it is not found
 	//   (i.e. was deleted or there's a typo).
-	defaultAddonDeploymentConfig = &addonv1alpha1.AddOnDeploymentConfig{}
-	for _, config := range clusterAddon.Spec.SupportedConfigs {
+	defaultAddonDeploymentConfig = &addonv1beta1.AddOnDeploymentConfig{}
+	for _, config := range clusterAddon.Spec.DefaultConfigs {
 		if config.Group == util.AddonGroup &&
 			config.Resource == util.AddonDeploymentConfigResource {
-			if config.DefaultConfig != nil {
-				addonConfig := &addonv1alpha1.AddOnDeploymentConfig{}
-				err := c.Get(ctx,
-					types.NamespacedName{
-						Name:      config.DefaultConfig.Name,
-						Namespace: config.DefaultConfig.Namespace,
-					},
-					addonConfig,
-				)
-				if err != nil {
-					return fmt.Errorf("failed to get default config: %w", err)
-				}
-				log.Info("Setting the default AddonDeploymentConfig variable for current addon")
-				defaultAddonDeploymentConfig = addonConfig
-				break
+			addonConfig := &addonv1beta1.AddOnDeploymentConfig{}
+			err := c.Get(ctx,
+				types.NamespacedName{
+					Name:      config.Name,
+					Namespace: config.Namespace,
+				},
+				addonConfig,
+			)
+			if err != nil {
+				return fmt.Errorf("failed to get default config: %w", err)
 			}
+			log.Info("Setting the default AddonDeploymentConfig variable for current addon")
+			defaultAddonDeploymentConfig = addonConfig
+			break
 		}
 	}
 
@@ -723,7 +722,7 @@ func deleteGlobalResource(ctx context.Context, c client.Client) error {
 // - the observability addon in the namespace
 // - the role bindings for system groups
 // - the managedClusterAddon named "observability-controller"
-func createManagedClusterRes(ctx context.Context, c client.Client, mco *mcov1beta2.MultiClusterObservability, name string, namespace string) (*addonv1alpha1.AddOnDeploymentConfig, error) {
+func createManagedClusterRes(ctx context.Context, c client.Client, mco *mcov1beta2.MultiClusterObservability, name string, namespace string) (*addonv1beta1.AddOnDeploymentConfig, error) {
 	if err := createObsAddon(mco, c, namespace); err != nil {
 		return nil, fmt.Errorf("failed to create observabilityaddon: %w", err)
 	}
@@ -737,7 +736,7 @@ func createManagedClusterRes(ctx context.Context, c client.Client, mco *mcov1bet
 		return nil, fmt.Errorf("failed to create ManagedClusterAddon: %w", err)
 	}
 
-	addonConfig := &addonv1alpha1.AddOnDeploymentConfig{}
+	addonConfig := &addonv1beta1.AddOnDeploymentConfig{}
 	isCustomConfig := false
 	for _, config := range addon.Spec.Configs {
 		if config.Group == util.AddonGroup &&
@@ -1154,7 +1153,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	addOnDeploymentConfigGroupKind := schema.GroupKind{Group: addonv1alpha1.GroupVersion.Group, Kind: "AddOnDeploymentConfig"}
 	if _, err := r.RESTMapper.RESTMapping(addOnDeploymentConfigGroupKind, addonv1alpha1.GroupVersion.Version); err == nil {
 		ctrBuilder = ctrBuilder.Watches(
-			&addonv1alpha1.AddOnDeploymentConfig{},
+			&addonv1beta1.AddOnDeploymentConfig{},
 			handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, obj client.Object) []reconcile.Request {
 				return []reconcile.Request{
 					{NamespacedName: types.NamespacedName{

@@ -51,8 +51,8 @@ func Start(c client.Client, ingressCtlCrdExists bool) {
 		log.Error(err, "Failed to init addon manager")
 		os.Exit(1)
 	}
-	agent := &ObservabilityAgent{client: c}
-	err = addonMgr.AddAgent(agent)
+	obsAgent := &ObservabilityAgent{client: c}
+	err = addonMgr.AddAgent(obsAgent)
 	if err != nil {
 		log.Error(err, "Failed to add agent for addon manager")
 		os.Exit(1)

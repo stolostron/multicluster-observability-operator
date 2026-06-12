@@ -27,7 +27,7 @@ import (
 func TestReportStatus(t *testing.T) {
 	s := scheme.Scheme
 	assert.NoError(t, oav1beta1.AddToScheme(s))
-	assert.NoError(t, addonv1alpha1.AddToScheme(s))
+	assert.NoError(t, addonv1alpha1.Install(s))
 	assert.NoError(t, mcov1beta2.AddToScheme(s))
 
 	type updateParams struct {

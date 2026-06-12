@@ -13,6 +13,7 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
+	addonv1beta1 "open-cluster-management.io/api/addon/v1beta1"
 	workv1 "open-cluster-management.io/api/work/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -29,25 +30,25 @@ func getClusterMgmtAddonPredFunc() predicate.Funcs {
 				return false
 			}
 
-			oldCMA := e.ObjectOld.(*addonv1alpha1.ClusterManagementAddOn)
-			newCMA := e.ObjectNew.(*addonv1alpha1.ClusterManagementAddOn)
+			oldCMA := e.ObjectOld.(*addonv1beta1.ClusterManagementAddOn)
+			newCMA := e.ObjectNew.(*addonv1beta1.ClusterManagementAddOn)
 
 			// Check if spec.supportedConfigs[].defaultConfig changed
-			oldDefault := &addonv1alpha1.ConfigReferent{}
-			newDefault := &addonv1alpha1.ConfigReferent{}
-			for _, config := range oldCMA.Spec.SupportedConfigs {
+			oldDefault := addonv1beta1.ConfigReferent{}
+			newDefault := addonv1beta1.ConfigReferent{}
+			for _, config := range oldCMA.Spec.DefaultConfigs {
 				if config.Group == util.AddonGroup &&
 					config.Resource == util.AddonDeploymentConfigResource {
-					oldDefault = config.DefaultConfig
+					oldDefault = config.ConfigReferent
 				}
 			}
-			for _, config := range newCMA.Spec.SupportedConfigs {
+			for _, config := range newCMA.Spec.DefaultConfigs {
 				if config.Group == util.AddonGroup &&
 					config.Resource == util.AddonDeploymentConfigResource {
-					newDefault = config.DefaultConfig
+					newDefault = config.ConfigReferent
 				}
 			}
-			if !reflect.DeepEqual(oldDefault, newDefault) {
+			if oldDefault != newDefault {
 				return true
 			}
 
@@ -75,7 +76,7 @@ func findAddonDeploymentConfigReference(configRefs []addonv1alpha1.ConfigReferen
 }
 
 // findAddonDeploymentDefaultConfigReference finds the AddOnDeploymentConfig reference in CMA defaultConfigReferences.
-func findAddonDeploymentDefaultConfigReference(configRefs []addonv1alpha1.DefaultConfigReference) *addonv1alpha1.DefaultConfigReference {
+func findAddonDeploymentDefaultConfigReference(configRefs []addonv1beta1.DefaultConfigReference) *addonv1beta1.DefaultConfigReference {
 	for i := range configRefs {
 		if configRefs[i].Group == util.AddonGroup &&
 			configRefs[i].Resource == util.AddonDeploymentConfigResource {
