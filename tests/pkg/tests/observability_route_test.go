@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -107,18 +108,11 @@ var _ = Describe("", func() {
 		},
 	)
 
-	It("@BVT - [P1][Sev1][observability][Integration] Should access alert via alertmanager route (route/g0)", func() {
+	It("@BVT - [P1][Sev1][observability][Integration] Should create alert via observatorium-api and read via alertmanager route (route/g0)", func() {
 		Eventually(func() error {
-			cloudProvider := strings.ToLower(os.Getenv("CLOUD_PROVIDER"))
-			substring1 := "rosa"
-			substring2 := "hcp"
+			obsURL := "https://observatorium-api-open-cluster-management-observability.apps." + testOptions.HubCluster.BaseDomain + "/api/alertmanager/v2/default/api/v2/alerts"
+			amURL := "https://alertmanager-open-cluster-management-observability.apps." + testOptions.HubCluster.BaseDomain + "/api/v2/alerts"
 
-			if strings.Contains(cloudProvider, substring1) && strings.Contains(cloudProvider, substring2) {
-				Skip("skip on rosa-hcp")
-			}
-
-			query := "/api/v2/alerts"
-			url := "https://alertmanager-open-cluster-management-observability.apps." + testOptions.HubCluster.BaseDomain + query
 			alertJson := `
 			[
 				{
@@ -140,32 +134,46 @@ var _ = Describe("", func() {
 			 ]
 			`
 			alertPostReq, err := http.NewRequest(
-				"Post",
-				url,
+				"POST",
+				obsURL,
 				bytes.NewBuffer([]byte(alertJson)))
 			alertPostReq.Header.Set("Content-Type", "application/json; charset=UTF-8")
-			klog.V(5).Infof("request URL: %s\n", url)
+			klog.V(5).Infof("POST request URL: %s\n", obsURL)
 			if err != nil {
 				return err
 			}
 
-			caCrt, err := utils.GetRouterCA(hubClient)
-			Expect(err).NotTo(HaveOccurred())
-			pool := x509.NewCertPool()
-			pool.AppendCertsFromPEM(caCrt)
-			tr := &http.Transport{
-				Proxy:           http.ProxyFromEnvironment,
-				TLSClientConfig: &tls.Config{RootCAs: pool},
+			// POST via obs-api with mTLS (hub collector cert — writeOnly RBAC)
+			obsCaCrt, err := utils.GetObsAPIServerCA(hubClient)
+			if err != nil {
+				return fmt.Errorf("GetObsAPIServerCA: %w", err)
+			}
+			obsPool := x509.NewCertPool()
+			obsPool.AppendCertsFromPEM(obsCaCrt)
+
+			clientCert, err := utils.GetObsAPIClientCert(hubClient)
+			if err != nil {
+				return fmt.Errorf("GetObsAPIClientCert: %w", err)
 			}
 
-			client := &http.Client{}
-			if os.Getenv("IS_KIND_ENV") != trueStr {
-				client.Transport = tr
-				BearerToken, err = utils.FetchBearerToken(testOptions)
-				alertPostReq.Header.Set("Authorization", "Bearer "+BearerToken)
+			mtlsClient := &http.Client{
+				Timeout: 5 * time.Second,
+				Transport: &http.Transport{
+					Proxy: http.ProxyFromEnvironment,
+					TLSClientConfig: &tls.Config{
+						RootCAs:      obsPool,
+						Certificates: []tls.Certificate{clientCert},
+					},
+				},
 			}
+
 			if !alertCreated {
-				resp, err := client.Do(alertPostReq)
+				if os.Getenv("IS_KIND_ENV") != trueStr {
+					BearerToken, err = utils.FetchBearerToken(testOptions)
+					alertPostReq.Header.Set("Authorization", "Bearer "+BearerToken)
+				}
+
+				resp, err := mtlsClient.Do(alertPostReq)
 				if err != nil {
 					return err
 				}
@@ -174,19 +182,32 @@ var _ = Describe("", func() {
 				if resp.StatusCode != http.StatusOK {
 					klog.Errorf("resp: %+v\n", resp)
 					klog.Errorf("err: %+v\n", err)
-					return errors.New("Failed to create alert via alertmanager route")
+					return errors.New("Failed to create alert via observatorium-api route")
 				}
 			}
 
 			alertCreated = true
-			alertGetReq, err := http.NewRequest(
-				"GET",
-				url,
-				nil)
-			klog.V(5).Infof("request URL: %s\n", url)
 
+			// GET via alertmanager route with bearer token (readOnly path)
+			alertGetReq, err := http.NewRequest("GET", amURL, nil)
+			klog.V(5).Infof("GET request URL: %s\n", amURL)
 			if err != nil {
 				return err
+			}
+
+			routerCaCrt, err := utils.GetRouterCA(hubClient)
+			if err != nil {
+				return fmt.Errorf("GetRouterCA: %w", err)
+			}
+			routerPool := x509.NewCertPool()
+			routerPool.AppendCertsFromPEM(routerCaCrt)
+
+			bearerClient := &http.Client{
+				Timeout: 5 * time.Second,
+				Transport: &http.Transport{
+					Proxy:           http.ProxyFromEnvironment,
+					TLSClientConfig: &tls.Config{RootCAs: routerPool},
+				},
 			}
 
 			if os.Getenv("IS_KIND_ENV") != trueStr {
@@ -194,7 +215,7 @@ var _ = Describe("", func() {
 				alertGetReq.Header.Set("Authorization", "Bearer "+BearerToken)
 			}
 
-			resp, err := client.Do(alertGetReq)
+			resp, err := bearerClient.Do(alertGetReq)
 			if err != nil {
 				return err
 			}
