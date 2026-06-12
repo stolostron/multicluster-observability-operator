@@ -19,6 +19,7 @@ import (
 	"k8s.io/client-go/util/retry"
 	addonframeworkutils "open-cluster-management.io/addon-framework/pkg/utils"
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
+	addonapiv1beta1 "open-cluster-management.io/api/addon/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
@@ -357,7 +358,7 @@ func initializeConfigReferencesFromCMA(
 // computeADCSpecHash fetches the AddOnDeploymentConfig and computes its spec hash using
 // the same algorithm as the addon-framework to ensure consistency.
 func computeADCSpecHash(ctx context.Context, c client.Client, namespace, name string) (string, error) {
-	adc := &addonv1alpha1.AddOnDeploymentConfig{}
+	adc := &addonapiv1beta1.AddOnDeploymentConfig{}
 	if err := c.Get(ctx, types.NamespacedName{Namespace: namespace, Name: name}, adc); err != nil {
 		return "", fmt.Errorf("failed to get AddOnDeploymentConfig %s/%s: %w", namespace, name, err)
 	}

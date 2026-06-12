@@ -14,6 +14,7 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	addonframeworkutils "open-cluster-management.io/addon-framework/pkg/utils"
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
+	addonv1beta1 "open-cluster-management.io/api/addon/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
@@ -24,7 +25,7 @@ const (
 
 func TestManagedClusterAddon(t *testing.T) {
 	s := scheme.Scheme
-	addonv1alpha1.AddToScheme(s)
+	addonv1beta1.AddToScheme(s)
 	c := fake.NewClientBuilder().WithStatusSubresource(&addonv1alpha1.ManagedClusterAddOn{}).Build()
 	_, err := CreateManagedClusterAddonCR(context.Background(), c, namespace, "testKey", "value")
 	if err != nil {
@@ -45,15 +46,15 @@ func TestManagedClusterAddon(t *testing.T) {
 
 func TestManagedClusterAddonStatusNotUpdatedOnSubsequentCalls(t *testing.T) {
 	s := scheme.Scheme
-	addonv1alpha1.AddToScheme(s)
+	addonv1beta1.AddToScheme(s)
 
-	adc := &addonv1alpha1.AddOnDeploymentConfig{
+	adc := &addonv1beta1.AddOnDeploymentConfig{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-adc",
 			Namespace: "test-ns",
 		},
-		Spec: addonv1alpha1.AddOnDeploymentConfigSpec{
-			CustomizedVariables: []addonv1alpha1.CustomizedVariable{
+		Spec: addonv1beta1.AddOnDeploymentConfigSpec{
+			CustomizedVariables: []addonv1beta1.CustomizedVariable{
 				{Name: "key1", Value: "value1"},
 			},
 		},
@@ -139,13 +140,13 @@ func TestManagedClusterAddonConfigReferencesInitializedWhenCMADefaultConfigAdded
 	}
 
 	// Second: Create CMA with defaultConfig AND the referenced ADC
-	adc := &addonv1alpha1.AddOnDeploymentConfig{
+	adc := &addonv1beta1.AddOnDeploymentConfig{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-config",
 			Namespace: "test-ns",
 		},
-		Spec: addonv1alpha1.AddOnDeploymentConfigSpec{
-			CustomizedVariables: []addonv1alpha1.CustomizedVariable{
+		Spec: addonv1beta1.AddOnDeploymentConfigSpec{
+			CustomizedVariables: []addonv1beta1.CustomizedVariable{
 				{Name: "platform", Value: "enabled"},
 			},
 		},
@@ -218,13 +219,13 @@ func TestManagedClusterAddonSpecHashUpdatedWhenADCChanges(t *testing.T) {
 	s := scheme.Scheme
 	addonv1alpha1.AddToScheme(s)
 
-	adc := &addonv1alpha1.AddOnDeploymentConfig{
+	adc := &addonv1beta1.AddOnDeploymentConfig{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-config",
 			Namespace: "test-ns",
 		},
-		Spec: addonv1alpha1.AddOnDeploymentConfigSpec{
-			CustomizedVariables: []addonv1alpha1.CustomizedVariable{
+		Spec: addonv1beta1.AddOnDeploymentConfigSpec{
+			CustomizedVariables: []addonv1beta1.CustomizedVariable{
 				{Name: "key1", Value: "value1"},
 			},
 		},
@@ -274,7 +275,7 @@ func TestManagedClusterAddonSpecHashUpdatedWhenADCChanges(t *testing.T) {
 
 	// Modify the ADC spec
 	adc.Spec.CustomizedVariables = append(adc.Spec.CustomizedVariables,
-		addonv1alpha1.CustomizedVariable{Name: "key2", Value: "value2"})
+		addonv1beta1.CustomizedVariable{Name: "key2", Value: "value2"})
 	if err := c.Update(context.Background(), adc); err != nil {
 		t.Fatalf("Failed to update ADC: (%v)", err)
 	}
@@ -306,13 +307,13 @@ func TestManagedClusterAddonSpecHashUpdatedWhenADCChangesAndStoredHashEmpty(t *t
 	s := scheme.Scheme
 	addonv1alpha1.AddToScheme(s)
 
-	adc := &addonv1alpha1.AddOnDeploymentConfig{
+	adc := &addonv1beta1.AddOnDeploymentConfig{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-config",
 			Namespace: "test-ns",
 		},
-		Spec: addonv1alpha1.AddOnDeploymentConfigSpec{
-			CustomizedVariables: []addonv1alpha1.CustomizedVariable{
+		Spec: addonv1beta1.AddOnDeploymentConfigSpec{
+			CustomizedVariables: []addonv1beta1.CustomizedVariable{
 				{Name: "key1", Value: "value1"},
 			},
 		},
@@ -362,7 +363,7 @@ func TestManagedClusterAddonSpecHashUpdatedWhenADCChangesAndStoredHashEmpty(t *t
 
 	// Modify the ADC spec.
 	adc.Spec.CustomizedVariables = append(adc.Spec.CustomizedVariables,
-		addonv1alpha1.CustomizedVariable{Name: "key2", Value: "value2"})
+		addonv1beta1.CustomizedVariable{Name: "key2", Value: "value2"})
 	if err := c.Update(context.Background(), adc); err != nil {
 		t.Fatalf("Failed to update ADC: (%v)", err)
 	}

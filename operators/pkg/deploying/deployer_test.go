@@ -1587,22 +1587,7 @@ func TestAddOnDeploymentConfig_Migration(t *testing.T) {
 			}
 
 			// Fake Client with Interceptor to simulate Apply
-			fakeClient := fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(legacyAODC).WithInterceptorFuncs(interceptor.Funcs{
-				Patch: func(ctx context.Context, clientww client.WithWatch, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
-					if patch == client.Apply {
-						// Check if exists
-						key := client.ObjectKeyFromObject(obj)
-						existing := obj.DeepCopyObject().(client.Object)
-						if err := clientww.Get(ctx, key, existing); errors.IsNotFound(err) {
-							return clientww.Create(ctx, obj)
-						}
-						// If not found, return create.
-						// Else merge.
-						return clientww.Patch(ctx, obj, client.Merge, opts...)
-					}
-					return clientww.Patch(ctx, obj, patch, opts...)
-				},
-			}).Build()
+			fakeClient := fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(legacyAODC).Build()
 
 			deployer := NewDeployer(fakeClient, "test-owner")
 

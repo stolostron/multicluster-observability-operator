@@ -117,7 +117,12 @@ func TestMCOAAgentReconciler_Reconcile(t *testing.T) {
 						Name:      operatorconfig.OCPClusterMonitoringConfigMapName,
 						Namespace: operatorconfig.OCPClusterMonitoringNamespace,
 						ManagedFields: []metav1.ManagedFieldsEntry{
-							{Manager: observabilityendpoint.EndpointMonitoringOperatorMgr},
+							{
+								Manager:    observabilityendpoint.EndpointMonitoringOperatorMgr,
+								Operation:  metav1.ManagedFieldsOperationUpdate,
+								APIVersion: "v1",
+								FieldsType: "FieldsV1",
+							},
 						},
 					},
 					Data: map[string]string{
@@ -194,7 +199,12 @@ func TestMCOAAgentReconciler_Reconcile(t *testing.T) {
 						Name:      operatorconfig.OCPClusterMonitoringConfigMapName,
 						Namespace: operatorconfig.OCPClusterMonitoringNamespace,
 						ManagedFields: []metav1.ManagedFieldsEntry{
-							{Manager: observabilityendpoint.EndpointMonitoringOperatorMgr},
+							{
+								Manager:    observabilityendpoint.EndpointMonitoringOperatorMgr,
+								Operation:  metav1.ManagedFieldsOperationUpdate,
+								APIVersion: "v1",
+								FieldsType: "FieldsV1",
+							},
 						},
 					},
 					Data: map[string]string{
@@ -240,7 +250,7 @@ func TestMCOAAgentReconciler_Reconcile(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := fake.NewClientBuilder().WithScheme(s).WithObjects(tt.existingObjs...).Build()
+			c := fake.NewClientBuilder().WithScheme(s).WithObjects(tt.existingObjs...).WithReturnManagedFields().Build()
 			recorder := record.NewFakeRecorder(10)
 
 			// Capture initial metric value

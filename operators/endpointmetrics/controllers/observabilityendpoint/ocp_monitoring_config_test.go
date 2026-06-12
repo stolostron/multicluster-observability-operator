@@ -537,8 +537,10 @@ func newUserWorkloadMonitoringConfigCM(configDataStr string, mgr string) *corev1
 			Namespace: operatorconfig.OCPUserWorkloadMonitoringNamespace,
 			ManagedFields: []metav1.ManagedFieldsEntry{
 				{
-					Manager:   mgr,
-					Operation: metav1.ManagedFieldsOperationUpdate,
+					Manager:    mgr,
+					Operation:  metav1.ManagedFieldsOperationUpdate,
+					APIVersion: "v1",
+					FieldsType: "FieldsV1",
 				},
 			},
 		},

@@ -85,12 +85,6 @@ func TestClusterManagmentAddon(t *testing.T) {
 		t.Fatalf("Failed to create new clustermanagementaddon: (%v)", err)
 	}
 
-	// Manually add the now defunct annotation before creating the object
-	if clusterManagementAddon.ObjectMeta.Annotations == nil {
-		clusterManagementAddon.ObjectMeta.Annotations = map[string]string{}
-	}
-	clusterManagementAddon.ObjectMeta.Annotations[addonv1alpha1.AddonLifecycleAnnotationKey] = addonv1alpha1.AddonLifecycleSelfManageAnnotationValue
-
 	if err := c.Create(context.Background(), clusterManagementAddon); err != nil {
 		t.Fatalf("Failed to create clustermanagementaddon: (%v)", err)
 	}

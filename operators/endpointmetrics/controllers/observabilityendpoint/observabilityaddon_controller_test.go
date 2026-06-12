@@ -110,8 +110,10 @@ func newClusterMonitoringConfigCM(configDataStr string, mgr string) *corev1.Conf
 			Namespace: promNamespace,
 			ManagedFields: []metav1.ManagedFieldsEntry{
 				{
-					Manager:   mgr,
-					Operation: metav1.ManagedFieldsOperationUpdate,
+					Manager:    mgr,
+					Operation:  metav1.ManagedFieldsOperationUpdate,
+					APIVersion: "v1",
+					FieldsType: "FieldsV1",
 				},
 			},
 		},
