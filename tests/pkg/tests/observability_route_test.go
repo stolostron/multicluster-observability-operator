@@ -168,6 +168,11 @@ var _ = Describe("", func() {
 			}
 
 			if !alertCreated {
+				if os.Getenv("IS_KIND_ENV") != trueStr {
+					BearerToken, err = utils.FetchBearerToken(testOptions)
+					alertPostReq.Header.Set("Authorization", "Bearer "+BearerToken)
+				}
+
 				resp, err := mtlsClient.Do(alertPostReq)
 				if err != nil {
 					return err
