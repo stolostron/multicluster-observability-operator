@@ -7,6 +7,7 @@ package collector
 import (
 	"context"
 	"fmt"
+	"maps"
 	"regexp"
 	"sort"
 	"strconv"
@@ -462,6 +463,7 @@ func (m *MetricsCollector) ensureAlertingRule(ctx context.Context, isUWL bool) e
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: m.Namespace,
+			Labels:    operatorconfig.GetACMPrometheusRuleLabels(),
 		},
 		Spec: monitoringv1.PrometheusRuleSpec{
 			Groups: []monitoringv1.RuleGroup{
@@ -521,10 +523,18 @@ func (m *MetricsCollector) ensureAlertingRule(ctx context.Context, isUWL bool) e
 			return fmt.Errorf("failed to get PrometheusRule %s/%s: %w", m.Namespace, name, err)
 		}
 
-		if !equality.Semantic.DeepDerivative(desiredPromRule.Spec, foundPromRule.Spec) || !metav1.IsControlledBy(foundPromRule, m.Owner) {
+		if !equality.Semantic.DeepDerivative(desiredPromRule.Spec, foundPromRule.Spec) ||
+			!metav1.IsControlledBy(foundPromRule, m.Owner) ||
+			!maps.Equal(desiredPromRule.Labels, foundPromRule.Labels) {
 			m.Log.Info("Updating PrometheusRule", "name", name, "namespace", m.Namespace)
 
 			foundPromRule.Spec = desiredPromRule.Spec
+			mergedLabels := maps.Clone(foundPromRule.Labels)
+			if mergedLabels == nil {
+				mergedLabels = make(map[string]string)
+			}
+			maps.Copy(mergedLabels, desiredPromRule.Labels)
+			foundPromRule.Labels = mergedLabels
 			foundPromRule.OwnerReferences = desiredPromRule.OwnerReferences
 			if err := m.Client.Update(ctx, foundPromRule); err != nil {
 				return fmt.Errorf("failed to update PrometheusRule %s/%s: %w", m.Namespace, name, err)

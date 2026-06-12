@@ -9,6 +9,7 @@ import (
 
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	rsutility "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/analytics/rightsizing/rs-utility"
+	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
@@ -56,6 +57,7 @@ func GeneratePrometheusRule(configData rsutility.RSNamespaceConfigMapData) (moni
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      PrometheusRuleName,
 			Namespace: rsutility.MonitoringNamespace,
+			Labels:    operatorconfig.GetACMPrometheusRuleLabels(),
 		},
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "PrometheusRule",
