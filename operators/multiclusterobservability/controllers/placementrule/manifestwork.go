@@ -40,6 +40,7 @@ import (
 	"k8s.io/client-go/util/retry"
 	"k8s.io/utils/ptr"
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
+	addonv1beta1 "open-cluster-management.io/api/addon/v1beta1"
 	workv1 "open-cluster-management.io/api/work/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -395,7 +396,7 @@ func createManifestWorks(
 	crdWork *workv1.Manifest,
 	dep *appsv1.Deployment,
 	hubInfo *corev1.Secret,
-	addonConfig *addonv1alpha1.AddOnDeploymentConfig,
+	addonConfig *addonv1beta1.AddOnDeploymentConfig,
 	installProm bool,
 ) (*workv1.ManifestWork, error) {
 	work := newManifestwork(clusterNamespace+workNameSuffix, clusterNamespace)
