@@ -420,8 +420,8 @@ func testCreateOrUpdateClusterMonitoringConfig(t *testing.T, hubInfo *operatorco
 	}
 
 	containsOCMAlertmanagerConfig := false
-	amMtlsCARef := appendHubClusterID(amMtlsCaName, hubInfo)
-	amMtlsCertRef := appendHubClusterID(amMtlsCertName, hubInfo)
+	amMtlsCARef := hubInfo.AppendHubClusterID(amMtlsCaName)
+	amMtlsCertRef := hubInfo.AppendHubClusterID(amMtlsCertName)
 	for _, v := range foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs {
 		if v.TLSConfig.CA != nil && v.TLSConfig.CA.Name == amMtlsCARef &&
 			v.TLSConfig.Cert != nil && v.TLSConfig.Cert.Name == amMtlsCertRef &&
@@ -636,8 +636,8 @@ func testCreateOrUpdateUserWorkloadMonitoringConfig(t *testing.T, hubInfo *opera
 	}
 
 	containsOCMAlertmanagerConfig := false
-	amMtlsCARef := appendHubClusterID(amMtlsCaName, hubInfo)
-	amMtlsCertRef := appendHubClusterID(amMtlsCertName, hubInfo)
+	amMtlsCARef := hubInfo.AppendHubClusterID(amMtlsCaName)
+	amMtlsCertRef := hubInfo.AppendHubClusterID(amMtlsCertName)
 	for _, v := range foundUserWorkloadConfiguration.Prometheus.AlertmanagerConfigs {
 		if v.TLSConfig.CA != nil && v.TLSConfig.CA.Name == amMtlsCARef &&
 			v.TLSConfig.Cert != nil && v.TLSConfig.Cert.Name == amMtlsCertRef &&
@@ -795,8 +795,8 @@ prometheus:
 	}
 
 	containsOCMAlertmanagerConfig := false
-	amMtlsCARef := appendHubClusterID(amMtlsCaName, hubInfo)
-	amMtlsCertRef := appendHubClusterID(amMtlsCertName, hubInfo)
+	amMtlsCARef := hubInfo.AppendHubClusterID(amMtlsCaName)
+	amMtlsCertRef := hubInfo.AppendHubClusterID(amMtlsCertName)
 	for _, v := range foundUserWorkloadConfiguration.Prometheus.AlertmanagerConfigs {
 		if v.TLSConfig.CA != nil && v.TLSConfig.CA.Name == amMtlsCARef &&
 			v.TLSConfig.Cert != nil && v.TLSConfig.Cert.Name == amMtlsCertRef &&
@@ -926,8 +926,8 @@ prometheus:
 	}
 
 	containsOCMAlertmanagerConfig := false
-	amMtlsCARef := appendHubClusterID(amMtlsCaName, hubInfo)
-	amMtlsCertRef := appendHubClusterID(amMtlsCertName, hubInfo)
+	amMtlsCARef := hubInfo.AppendHubClusterID(amMtlsCaName)
+	amMtlsCertRef := hubInfo.AppendHubClusterID(amMtlsCertName)
 	for _, v := range foundUserWorkloadConfiguration.Prometheus.AlertmanagerConfigs {
 		if v.TLSConfig.CA != nil && v.TLSConfig.CA.Name == amMtlsCARef &&
 			v.TLSConfig.Cert != nil && v.TLSConfig.Cert.Name == amMtlsCertRef &&
@@ -1048,7 +1048,7 @@ userWorkloadEnabled: false
 				for _, config := range parsed.Prometheus.AlertmanagerConfigs {
 					if config.TLSConfig.CA != nil &&
 						(config.TLSConfig.CA.Name == amMtlsCaName ||
-							config.TLSConfig.CA.Name == appendHubClusterID(amMtlsCaName, hubInfo)) {
+							config.TLSConfig.CA.Name == hubInfo.AppendHubClusterID(amMtlsCaName)) {
 						t.Fatalf("UWL configmap still contains ACM alertmanager configuration when it should be cleaned up")
 					}
 				}
@@ -1162,7 +1162,7 @@ enableUserWorkload: true
 	}
 
 	// Verify that the ACM alertmanager configuration is present by checking for the mTLS CA secret
-	if !strings.Contains(configYAML, appendHubClusterID(amMtlsCaName, hubInfo)) {
+	if !strings.Contains(configYAML, hubInfo.AppendHubClusterID(amMtlsCaName)) {
 		t.Fatalf("UWL configmap should contain ACM alertmanager configuration with mTLS CA secret reference")
 	}
 
@@ -1265,10 +1265,10 @@ prometheusK8s:
 	if len(amCfgs) != 1 {
 		t.Fatalf("expected exactly 1 additionalAlertmanagerConfig after dedupe, got %d", len(amCfgs))
 	}
-	if amCfgs[0].TLSConfig.CA == nil || amCfgs[0].TLSConfig.CA.Name != appendHubClusterID(amMtlsCaName, hubInfo) {
-		t.Fatalf("expected single mTLS ACM alertmanager config (CA %q), got %#v", appendHubClusterID(amMtlsCaName, hubInfo), amCfgs[0].TLSConfig.CA)
+	if amCfgs[0].TLSConfig.CA == nil || amCfgs[0].TLSConfig.CA.Name != hubInfo.AppendHubClusterID(amMtlsCaName) {
+		t.Fatalf("expected single mTLS ACM alertmanager config (CA %q), got %#v", hubInfo.AppendHubClusterID(amMtlsCaName), amCfgs[0].TLSConfig.CA)
 	}
-	if amCfgs[0].TLSConfig.Cert == nil || amCfgs[0].TLSConfig.Cert.Name != appendHubClusterID(amMtlsCertName, hubInfo) {
+	if amCfgs[0].TLSConfig.Cert == nil || amCfgs[0].TLSConfig.Cert.Name != hubInfo.AppendHubClusterID(amMtlsCertName) {
 		t.Fatalf("expected mTLS client cert on deduped config, got cert ref %#v", amCfgs[0].TLSConfig.Cert)
 	}
 }

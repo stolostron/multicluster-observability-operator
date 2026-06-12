@@ -178,9 +178,9 @@ func Render(
 					Key: "alertmanager.yaml",
 				}
 				spec.Secrets = []string{
-					"obs-alertmanager-mtls-ca" + "-" + hubInfo.HubClusterID,
-					"obs-alertmanager-mtls-cert" + "-" + hubInfo.HubClusterID,
-					"observability-alertmanager-accessor" + "-" + hubInfo.HubClusterID,
+					hubInfo.AppendHubClusterID("obs-alertmanager-mtls-ca"),
+					hubInfo.AppendHubClusterID("obs-alertmanager-mtls-cert"),
+					hubInfo.AppendHubClusterID("observability-alertmanager-accessor"),
 				}
 			}
 
