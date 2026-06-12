@@ -27,6 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
+	addonv1beta1 "open-cluster-management.io/api/addon/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
@@ -462,7 +463,7 @@ func (d *Deployer) applyAddOnDeploymentConfig(
 	ctx context.Context,
 	desiredObj *unstructured.Unstructured,
 ) error {
-	desiredAODC := &addonv1alpha1.AddOnDeploymentConfig{}
+	desiredAODC := &addonv1beta1.AddOnDeploymentConfig{}
 	if err := unstructuredToType(desiredObj, desiredAODC); err != nil {
 		return fmt.Errorf("failed to convert desiredObj %s/%s/%s: %w", desiredObj.GetKind(), desiredObj.GetNamespace(), desiredObj.GetName(), err)
 	}
@@ -479,7 +480,7 @@ func (d *Deployer) applyAddOnDeploymentConfig(
 		return err
 	}
 
-	runtimeAODC := &addonv1alpha1.AddOnDeploymentConfig{}
+	runtimeAODC := &addonv1beta1.AddOnDeploymentConfig{}
 	if err := unstructuredToType(runtimeObj, runtimeAODC); err != nil {
 		return fmt.Errorf("failed to convert runtimeObj %s/%s/%s: %w", runtimeObj.GetKind(), runtimeObj.GetNamespace(), runtimeObj.GetName(), err)
 	}

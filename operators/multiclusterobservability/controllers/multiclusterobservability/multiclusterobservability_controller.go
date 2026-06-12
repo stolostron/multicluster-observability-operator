@@ -49,6 +49,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
+	addonv1beta1 "open-cluster-management.io/api/addon/v1beta1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -551,7 +552,7 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 		// Watch for changes to secondary Observatorium CR and requeue the owner MultiClusterObservability
 		Owns(&observatoriumv1alpha1.Observatorium{}).
 		// Watch for changes to secondary AddOnDeploymentConfig CR and requeue the owner MultiClusterObservability
-		Owns(&addonv1alpha1.AddOnDeploymentConfig{}).
+		Owns(&addonv1beta1.AddOnDeploymentConfig{}).
 		// Watch for changes to secondary ClusterManagementAddOn CR and requeue the owner MultiClusterObservability
 		Owns(&addonv1alpha1.ClusterManagementAddOn{}).
 		// Watch for changes to secondary PrometheusRule CR and requeue the owner MultiClusterObservability
