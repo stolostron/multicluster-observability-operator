@@ -476,6 +476,107 @@ var _ = Describe("", func() {
 		},
 	)
 
+	It(
+		"ACM-34594: Observability: Verify Thanos Compact debug tuning in MCO CR - [P2][Sev2][Observability][Integration]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release (config/g0)",
+		func() {
+			By("Updating MCO CR with compact debug settings")
+			mcoRes, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).
+				Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+			Expect(err).NotTo(HaveOccurred())
+
+			spec := mcoRes.Object["spec"].(map[string]any)
+			advancedSpec, ok := spec["advanced"].(map[string]any)
+			if !ok {
+				Skip("Skip the case since the MCO CR did not have advanced spec configured")
+			}
+			compactSpec, ok := advancedSpec["compact"].(map[string]any)
+			if !ok {
+				compactSpec = map[string]any{}
+				advancedSpec["compact"] = compactSpec
+			}
+			compactSpec["debug"] = map[string]any{
+				"logLevel":                  "debug",
+				"waitInterval":              "5m",
+				"blockMetaFetchConcurrency": int64(64),
+				"downsampleConcurrency":     int64(4),
+			}
+
+			_, err = dynClient.Resource(utils.NewMCOGVRV1BETA2()).
+				Update(context.TODO(), mcoRes, metav1.UpdateOptions{})
+			Expect(err).NotTo(HaveOccurred())
+
+			expectedCompactDebugArgs := []string{
+				"--log.level=debug",
+				"--wait-interval=5m",
+				"--compact.cleanup-interval=5m",
+				"--compact.progress-interval=5m",
+				"--block-meta-fetch-concurrency=64",
+				"--downsample.concurrency=4",
+			}
+
+			By("Checking compact debug args are applied to observability-thanos-compact")
+			Eventually(func() error {
+				sts, err := utils.GetStatefulSetWithLabel(testOptions, true, THANOS_COMPACT_LABEL, MCO_NAMESPACE)
+				if err != nil {
+					return err
+				}
+				if len(sts.Items) == 0 {
+					return fmt.Errorf("no thanos-compact statefulset found")
+				}
+				args := sts.Items[0].Spec.Template.Spec.Containers[0].Args
+				for _, expectedArg := range expectedCompactDebugArgs {
+					if !slices.Contains(args, expectedArg) {
+						return fmt.Errorf("expected arg %q not found in thanos-compact args: %v", expectedArg, args)
+					}
+				}
+				if slices.Contains(args, "--web.disable") {
+					return fmt.Errorf("did not expect --web.disable for 5m wait interval, args: %v", args)
+				}
+				return nil
+			}, EventuallyTimeoutMinute*2, EventuallyIntervalSecond*10).Should(Succeed())
+
+			By("Updating wait interval above 5m adds web disable flag")
+			mcoRes, err = dynClient.Resource(utils.NewMCOGVRV1BETA2()).
+				Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+			Expect(err).NotTo(HaveOccurred())
+
+			spec = mcoRes.Object["spec"].(map[string]any)
+			advancedSpec = spec["advanced"].(map[string]any)
+			compactSpec = advancedSpec["compact"].(map[string]any)
+			compactSpec["debug"] = map[string]any{
+				"waitInterval":              "10m",
+				"blockMetaFetchConcurrency": int64(32),
+			}
+
+			_, err = dynClient.Resource(utils.NewMCOGVRV1BETA2()).
+				Update(context.TODO(), mcoRes, metav1.UpdateOptions{})
+			Expect(err).NotTo(HaveOccurred())
+
+			Eventually(func() error {
+				sts, err := utils.GetStatefulSetWithLabel(testOptions, true, THANOS_COMPACT_LABEL, MCO_NAMESPACE)
+				if err != nil {
+					return err
+				}
+				if len(sts.Items) == 0 {
+					return fmt.Errorf("no thanos-compact statefulset found")
+				}
+				args := sts.Items[0].Spec.Template.Spec.Containers[0].Args
+				for _, expectedArg := range []string{
+					"--wait-interval=10m",
+					"--compact.cleanup-interval=10m",
+					"--compact.progress-interval=10m",
+					"--web.disable",
+					"--block-meta-fetch-concurrency=32",
+				} {
+					if !slices.Contains(args, expectedArg) {
+						return fmt.Errorf("expected arg %q not found in thanos-compact args: %v", expectedArg, args)
+					}
+				}
+				return nil
+			}, EventuallyTimeoutMinute*2, EventuallyIntervalSecond*10).Should(Succeed())
+		},
+	)
+
 	JustAfterEach(func() {
 		Expect(utils.IntegrityChecking(testOptions)).NotTo(HaveOccurred())
 	})

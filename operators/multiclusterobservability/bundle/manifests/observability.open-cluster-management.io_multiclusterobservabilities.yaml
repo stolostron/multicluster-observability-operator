@@ -2025,6 +2025,38 @@ spec:
                           - name
                           type: object
                         type: array
+                      debug:
+                        description: Debug defines the configuration for debugging
+                          and tuning the compactor.
+                        properties:
+                          blockMetaFetchConcurrency:
+                            description: BlockMetaFetchConcurrency is the number of
+                              concurrent requests to fetch block metadata.
+                            format: int32
+                            minimum: 0
+                            type: integer
+                          downsampleConcurrency:
+                            description: DownsampleConcurrency is the number of goroutines
+                              to use when downsampling blocks.
+                            format: int32
+                            minimum: 0
+                            type: integer
+                          logLevel:
+                            description: LogLevel for the compactor (e.g., debug,
+                              info, warn, error).
+                            enum:
+                            - debug
+                            - info
+                            - warn
+                            - error
+                            type: string
+                          waitInterval:
+                            description: |-
+                              WaitInterval is the time to wait between compaction cycles.
+                              Setting this will also synchronize --compact.cleanup-interval and --compact.progress-interval.
+                            pattern: ^([0-9]+(\.[0-9]+)?(ms|s|m|h))+$
+                            type: string
+                        type: object
                       resources:
                         description: Compute Resources required by the compact.
                         properties:
