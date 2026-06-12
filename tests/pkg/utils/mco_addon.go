@@ -44,30 +44,28 @@ func CheckManagedClusterAddonStatus(opt TestOptions, name string) {
 	}, 300, 5).Should(gomega.Not(gomega.HaveOccurred()))
 }
 
-// GetAvailableManagedClustersAsClusters returns a list of available managed clusters.
-// The hub cluster is not included in the list.
-func GetAvailableManagedClustersAsClusters(opt TestOptions) ([]Cluster, error) {
+// GetAvailableClustersFromAPI returns available managed clusters discovered from the ManagedCluster API.
+// When includeHub is false, the hub cluster (local-cluster=true) is excluded.
+// Connection info from opt.ManagedClusters is enriched when available.
+func GetAvailableClustersFromAPI(opt TestOptions, includeHub bool) ([]Cluster, error) {
 	availableManagedClusters, err := GetAvailableManagedClusters(opt)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get available managed clusters from API: %w", err)
 	}
 
-	var clusterList []Cluster
-	for _, managedCluster := range availableManagedClusters {
-		if IsHubCluster(managedCluster) {
+	clusterList := make([]Cluster, 0, len(availableManagedClusters))
+	for _, mc := range availableManagedClusters {
+		if !includeHub && IsHubCluster(mc) {
 			continue
 		}
-
-		var cluster Cluster
+		cluster := Cluster{Name: mc.Name}
 		for _, c := range opt.ManagedClusters {
-			if c.Name == managedCluster.Name {
+			if c.Name == mc.Name {
 				cluster = c
 				break
 			}
 		}
-		if cluster.Name != "" {
-			clusterList = append(clusterList, cluster)
-		}
+		clusterList = append(clusterList, cluster)
 	}
 	return clusterList, nil
 }
