@@ -5,8 +5,11 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"flag"
 	"fmt"
+	"net/url"
 	"os"
 	"runtime"
 	"strconv"
@@ -18,6 +21,7 @@ import (
 	ocinfrav1 "github.com/openshift/api/config/v1"
 	hyperv1 "github.com/openshift/hypershift/api/hypershift/v1beta1"
 	prometheusv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/controllers/mcoa"
 	obsepctl "github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/controllers/observabilityendpoint"
 	statusctl "github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/controllers/status"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/openshift"
@@ -38,6 +42,7 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	ctrlwebhook "sigs.k8s.io/controller-runtime/pkg/webhook"
@@ -65,8 +70,246 @@ func printVersion() {
 	setupLog.Info(fmt.Sprintf("Go OS/Arch: %s/%s", runtime.GOOS, runtime.GOARCH))
 }
 
+var (
+	mcoaRunner     = runMCOA
+	standardRunner = runStandard
+	cleanupRunner  = runCleanup
+)
+
 func main() {
 	printVersion()
+	execute(os.Args)
+}
+
+func execute(args []string) {
+	cmd := "standard"
+	if len(args) > 1 {
+		cmd = args[1]
+	}
+
+	switch cmd {
+	case "mcoa":
+		// len(args) >= 2 is guaranteed since args[1] matches "mcoa"
+		mcoaRunner(args[2:])
+	case "standard", "legacy":
+		// Guard against len(args) == 1 (no arguments) defaulting to standard mode
+		subArgs := []string{}
+		if len(args) > 2 {
+			subArgs = args[2:]
+		}
+		standardRunner(subArgs)
+	case "cleanup":
+		// len(args) >= 2 is guaranteed since args[1] matches "cleanup"
+		cleanupRunner(args[2:])
+	default:
+		// default to standard for backward compatibility if argument is just a flag
+		// len(args) >= 2 is guaranteed since len(args) > 1 and it did not match subcommands above
+		standardRunner(args[1:])
+	}
+}
+
+func runCleanup(args []string) {
+	ctrl.SetLogger(klog.NewKlogr())
+	setupLog.Info("Starting MCOA cleanup")
+	if err := doCleanup(args); err != nil {
+		setupLog.Error(err, "best-effort cleanup incomplete")
+		os.Exit(1)
+	}
+	setupLog.Info("Cleanup completed successfully")
+}
+
+func doCleanup(args []string) error {
+	fs := flag.NewFlagSet("cleanup", flag.ExitOnError)
+	var hubID string
+
+	fs.StringVar(&hubID, "hub-id", "", "The ID of the Hub cluster to clean up.")
+	klog.InitFlags(fs)
+	// Parse will exit on error due to flag.ExitOnError, so we can ignore the error return value.
+	_ = fs.Parse(args)
+
+	if hubID == "" {
+		return fmt.Errorf("hub-id flag not set")
+	}
+
+	cfg := ctrl.GetConfigOrDie()
+	cl, err := client.New(cfg, client.Options{Scheme: scheme})
+	if err != nil {
+		return fmt.Errorf("unable to create client for cleanup: %w", err)
+	}
+
+	hubInfo := &operatorconfig.HubInfo{
+		HubClusterID: hubID,
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	var errs []error
+
+	caSecret := obsepctl.AppendHubClusterID(obsepctl.HubAmRouterCASecretName, hubInfo.HubClusterID)
+	mtlsCASecret := obsepctl.AppendHubClusterID(obsepctl.HubAmMtlsCASecretName, hubInfo.HubClusterID)
+
+	setupLog.Info("Reverting Platform monitoring configuration (Router CA)")
+	if err := obsepctl.RevertClusterMonitoringConfig(ctx, cl, caSecret); err != nil {
+		setupLog.Error(err, "failed to revert platform monitoring config (Router CA)")
+		errs = append(errs, err)
+	}
+
+	if ctx.Err() != nil {
+		setupLog.Error(ctx.Err(), "cleanup context canceled or timed out, aborting remaining steps")
+		errs = append(errs, ctx.Err())
+		return fmt.Errorf("cleanup failed: %w", errors.Join(errs...))
+	}
+
+	setupLog.Info("Reverting User Workload monitoring configuration (Router CA)")
+	if err := obsepctl.RevertUserWorkloadMonitoringConfig(ctx, cl, caSecret); err != nil {
+		setupLog.Error(err, "failed to revert user workload monitoring config (Router CA)")
+		errs = append(errs, err)
+	}
+
+	if ctx.Err() != nil {
+		setupLog.Error(ctx.Err(), "cleanup context canceled or timed out, aborting remaining steps")
+		errs = append(errs, ctx.Err())
+		return fmt.Errorf("cleanup failed: %w", errors.Join(errs...))
+	}
+
+	setupLog.Info("Reverting Platform monitoring configuration (mTLS CA)")
+	if err := obsepctl.RevertClusterMonitoringConfig(ctx, cl, mtlsCASecret); err != nil {
+		setupLog.Error(err, "failed to revert platform monitoring config (mTLS CA)")
+		errs = append(errs, err)
+	}
+
+	if ctx.Err() != nil {
+		setupLog.Error(ctx.Err(), "cleanup context canceled or timed out, aborting remaining steps")
+		errs = append(errs, ctx.Err())
+		return fmt.Errorf("cleanup failed: %w", errors.Join(errs...))
+	}
+
+	setupLog.Info("Reverting User Workload monitoring configuration (mTLS CA)")
+	if err := obsepctl.RevertUserWorkloadMonitoringConfig(ctx, cl, mtlsCASecret); err != nil {
+		setupLog.Error(err, "failed to revert user workload monitoring config (mTLS CA)")
+		errs = append(errs, err)
+	}
+
+	if len(errs) > 0 {
+		return fmt.Errorf("cleanup failed: %w", errors.Join(errs...))
+	}
+
+	return nil
+}
+
+func runMCOA(args []string) {
+	setupLog.Info("Starting MCOA mode")
+	fs := flag.NewFlagSet("mcoa", flag.ExitOnError)
+	var metricsAddr string
+	var enableLeaderElection bool
+	var probeAddr string
+	var hubAmURL string
+	var clusterID string
+	var namespace string
+	var hubAmCASecret string
+	var hubAmCertSecret string
+	var hubAmAccessorSecret string
+	var enableUWLAlertForwarding bool
+
+	fs.StringVar(&metricsAddr, "metrics-bind-address", ":8383", "The address the metric endpoint binds to.")
+	fs.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
+	fs.BoolVar(&enableLeaderElection, "leader-elect", false,
+		"Enable leader election for controller manager. "+
+			"Enabling this will ensure there is only one active controller manager.")
+	fs.StringVar(&hubAmURL, "hub-alertmanager-url", "", "The URL of the Hub's Alertmanager.")
+	fs.StringVar(&clusterID, "cluster-id", "", "The ID of the managed cluster.")
+	fs.StringVar(&namespace, "namespace", "", "The namespace the operator is running in.")
+	fs.StringVar(&hubAmCASecret, "hub-alertmanager-ca-secret", "", "The name of the CA secret for the Hub's Alertmanager.")
+	fs.StringVar(&hubAmCertSecret, "hub-alertmanager-cert-secret", "", "The name of the TLS cert/key secret for the Hub's Alertmanager.")
+	fs.StringVar(&hubAmAccessorSecret, "hub-alertmanager-accessor-secret", "", "The name of the accessor token secret for the Hub's Alertmanager.")
+	fs.BoolVar(&enableUWLAlertForwarding, "enable-uwl-alert-forwarding", true, "Enable or disable forwarding of user workload monitoring alerts.")
+
+	klog.InitFlags(fs)
+	// Parse will exit on error due to flag.ExitOnError, so we can ignore the error return value.
+	_ = fs.Parse(args)
+
+	ctrl.SetLogger(klog.NewKlogr())
+
+	if namespace == "" {
+		setupLog.Error(fmt.Errorf("namespace flag not set"), "unable to start manager")
+		os.Exit(1)
+	}
+
+	if hubAmURL != "" {
+		parsedURL, err := url.Parse(hubAmURL)
+		if err != nil || parsedURL.Scheme == "" || parsedURL.Host == "" {
+			setupLog.Error(fmt.Errorf("invalid hub-alertmanager-url %q: must be a valid absolute URL", hubAmURL), "unable to start manager")
+			os.Exit(1)
+		}
+
+		if clusterID == "" {
+			setupLog.Error(fmt.Errorf("cluster-id flag not set"), "unable to start manager")
+			os.Exit(1)
+		}
+
+		if hubAmCASecret == "" {
+			setupLog.Error(fmt.Errorf("hub-alertmanager-ca-secret flag not set"), "unable to start manager")
+			os.Exit(1)
+		}
+
+		if hubAmCertSecret == "" {
+			setupLog.Error(fmt.Errorf("hub-alertmanager-cert-secret flag not set"), "unable to start manager")
+			os.Exit(1)
+		}
+
+		if hubAmAccessorSecret == "" {
+			setupLog.Error(fmt.Errorf("hub-alertmanager-accessor-secret flag not set"), "unable to start manager")
+			os.Exit(1)
+		}
+	}
+
+	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+		Scheme:                 scheme,
+		Metrics:                server.Options{BindAddress: metricsAddr},
+		HealthProbeBindAddress: probeAddr,
+		LeaderElection:         enableLeaderElection,
+		LeaderElectionID:       "mcoa-cmo-config.open-cluster-management.io",
+		Cache:                  mcoa.GetCacheOptions(),
+		WebhookServer:          ctrlwebhook.NewServer(ctrlwebhook.Options{Port: 9443}),
+	})
+	if err != nil {
+		setupLog.Error(err, "unable to start manager")
+		os.Exit(1)
+	}
+
+	if err = mcoa.NewMCOAAgentReconciler(
+		mgr.GetClient(),
+		ctrl.Log.WithName("controllers").WithName("mcoa-endpoint-controller"),
+		mgr.GetScheme(),
+		mgr.GetEventRecorderFor("mcoa-endpoint-controller"),
+		namespace,
+		clusterID,
+		hubAmURL,
+		hubAmCASecret,
+		hubAmCertSecret,
+		hubAmAccessorSecret,
+		enableUWLAlertForwarding,
+	).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "mcoa-endpoint-controller")
+		os.Exit(1)
+	}
+
+	if err := mgr.AddHealthzCheck("health", healthz.Ping); err != nil {
+		setupLog.Error(err, "unable to set up health check")
+		os.Exit(1)
+	}
+
+	setupLog.Info("starting mcoa manager")
+	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
+		setupLog.Error(err, "problem running manager")
+		os.Exit(1)
+	}
+}
+
+func runStandard(args []string) {
+	ctrl.SetLogger(klog.NewKlogr())
+	setupLog.Info("Starting standard mode")
 	var metricsAddr string
 	var enableLeaderElection bool
 	var probeAddr string
@@ -77,9 +320,8 @@ func main() {
 			"Enabling this will ensure there is only one active controller manager.")
 
 	klog.InitFlags(flag.CommandLine)
-	flag.Parse()
-
-	ctrl.SetLogger(klog.NewKlogr())
+	// flag.CommandLine is configured to exit on error (flag.ExitOnError), so we can ignore the error return value.
+	_ = flag.CommandLine.Parse(args)
 
 	namespaceSelector := fmt.Sprintf("metadata.namespace==%s", os.Getenv("WATCH_NAMESPACE"))
 	gvkLabelMap := map[schema.GroupVersionKind][]filteredcache.Selector{

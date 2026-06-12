@@ -11,6 +11,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -22,7 +24,9 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/util"
 	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
+	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -59,7 +63,6 @@ func TestIntegrationCMOConfigWatching(t *testing.T) {
 	namespace := "test-cmo-config"
 
 	scheme := createBaseScheme()
-	ocinfrav1.AddToScheme(scheme)
 
 	k8sClient, err := client.New(restCfgHub, client.Options{Scheme: scheme})
 	if err != nil {
@@ -95,7 +98,7 @@ alertmanager-endpoint: "http://test-alertamanger-endpoint"
 		},
 		&corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      hubAmAccessorSecretName,
+				Name:      HubAmAccessorSecretName,
 				Namespace: namespace,
 			},
 			Immutable:  nil,
@@ -143,7 +146,7 @@ alertmanager-endpoint: "http://test-alertamanger-endpoint"
 	err = reconciler.SetupWithManager(mgr)
 	assert.NoError(t, err)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
 	go func() {
@@ -152,19 +155,13 @@ alertmanager-endpoint: "http://test-alertamanger-endpoint"
 	}()
 
 	cm := &corev1.ConfigMap{}
-	err = wait.Poll(1*time.Second, time.Minute, func() (bool, error) {
-		err := k8sClient.Get(context.Background(), types.NamespacedName{Namespace: promNamespace, Name: clusterMonitoringConfigName}, cm)
-		if err != nil && errors.IsNotFound(err) {
-			return false, nil
-		}
-
-		return true, err
-	})
-	assert.NoError(t, err)
-	assert.NotEmpty(t, cm.Data[clusterMonitoringConfigDataKey])
+	assert.Eventually(t, func() bool {
+		err := k8sClient.Get(ctx, types.NamespacedName{Namespace: promNamespace, Name: clusterMonitoringConfigName}, cm)
+		return err == nil && cm.Data != nil && cm.Data[ClusterMonitoringConfigDataKey] != ""
+	}, time.Minute, 1*time.Second)
 
 	foundClusterMonitoringConfiguration := &cmomanifests.ClusterMonitoringConfiguration{}
-	err = yaml2.Unmarshal([]byte(cm.Data[clusterMonitoringConfigDataKey]), foundClusterMonitoringConfiguration)
+	err = yaml2.Unmarshal([]byte(cm.Data[ClusterMonitoringConfigDataKey]), foundClusterMonitoringConfiguration)
 	assert.NoError(t, err)
 
 	assert.Len(t, foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs, 1)
@@ -175,35 +172,311 @@ alertmanager-endpoint: "http://test-alertamanger-endpoint"
 
 	b, err := yaml2.Marshal(foundClusterMonitoringConfiguration)
 	assert.NoError(t, err)
-	cm.Data[clusterMonitoringConfigDataKey] = string(b)
-	err = k8sClient.Update(context.Background(), cm)
+	cm.Data[ClusterMonitoringConfigDataKey] = string(b)
+	err = k8sClient.Update(ctx, cm)
 	assert.NoError(t, err)
 
 	// repeat the test and expect a partial revert
-	err = wait.Poll(1*time.Second, time.Minute, func() (bool, error) {
+	assert.Eventually(t, func() bool {
 		updated := &corev1.ConfigMap{}
-		err := k8sClient.Get(context.Background(), types.NamespacedName{Namespace: promNamespace, Name: clusterMonitoringConfigName}, updated)
-		if err != nil && errors.IsNotFound(err) {
-			return false, nil
+		err := k8sClient.Get(ctx, types.NamespacedName{Namespace: promNamespace, Name: clusterMonitoringConfigName}, updated)
+		if err != nil {
+			return false
 		}
 
 		foundUpdatedClusterMonitoringConfiguration := &cmomanifests.ClusterMonitoringConfiguration{}
-		err = yaml2.Unmarshal([]byte(updated.Data[clusterMonitoringConfigDataKey]), foundUpdatedClusterMonitoringConfiguration)
+		err = yaml2.Unmarshal([]byte(updated.Data[ClusterMonitoringConfigDataKey]), foundUpdatedClusterMonitoringConfiguration)
 		if err != nil {
-			return false, nil
+			return false
+		}
+
+		if foundUpdatedClusterMonitoringConfiguration.PrometheusK8sConfig == nil ||
+			len(foundUpdatedClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs) == 0 {
+			return false
 		}
 
 		if foundUpdatedClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs[0].Scheme != "https" {
-			return false, nil
+			return false
 		}
 
 		if foundUpdatedClusterMonitoringConfiguration.PrometheusK8sConfig.Retention != "infinity-and-beyond" {
-			return false, nil
+			return false
 		}
 
-		return true, err
+		return true
+	}, time.Minute, 1*time.Second)
+}
+
+// TestIntegrationCMOConfigRevertOnDeletion tests that the finalizer cleanly reverts the CMO ConfigMap on addon deletion.
+func TestIntegrationCMOConfigRevertOnDeletion(t *testing.T) {
+	namespace := "test-cmo-revert"
+
+	scheme := createBaseScheme()
+
+	k8sClient, err := client.New(restCfgHub, client.Options{Scheme: scheme})
+	require.NoError(t, err)
+
+	defer func() {
+		_ = k8sClient.Delete(t.Context(), makeNamespace(namespace))
+	}()
+
+	// Create resources needed for reconciliation
+	resourcesDeps := []client.Object{
+		makeNamespace(promNamespace),
+		makeNamespace(namespace),
+		newImagesCM(namespace),
+		&ocinfrav1.ClusterVersion{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "version",
+			},
+		},
+		&corev1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "prometheus-k8s",
+				Namespace: "openshift-monitoring",
+			},
+			Spec: corev1.ServiceSpec{
+				Ports: []corev1.ServicePort{
+					{
+						Name: "web",
+						Port: 9090,
+					},
+				},
+			},
+		},
+		newHubInfoSecret([]byte(`
+endpoint: "http://test-endpoint"
+hub-cluster-id: "test-hub-cluster"
+alertmanager-endpoint: "http://test-alertamanger-endpoint"
+alertmanager-router-ca: |
+    -----BEGIN CERTIFICATE-----
+    xxxxxxxxxxxxxxxxxxxxxxxxxxx
+    -----END CERTIFICATE-----
+`), namespace),
+		&corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      HubAmAccessorSecretName,
+				Namespace: namespace,
+			},
+			StringData: map[string]string{hubAmAccessorSecretKey: "lol"},
+		},
+		&oav1beta1.ObservabilityAddon{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "observability-addon",
+				Namespace: namespace,
+			},
+		},
+	}
+	for _, obj := range newMtlsTestSecrets(namespace) {
+		resourcesDeps = append(resourcesDeps, obj.(client.Object))
+	}
+	require.NoError(t, createResources(k8sClient, resourcesDeps...))
+
+	mgr, err := ctrl.NewManager(testEnvHub.Config, ctrl.Options{
+		Scheme:  k8sClient.Scheme(),
+		Metrics: metricsserver.Options{BindAddress: "0"},
+		Controller: config.Controller{
+			SkipNameValidation: ptr.To(true),
+		},
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
+
+	hubClientWithReload, err := util.NewReloadableHubClientWithReloadFunc(func() (client.Client, error) {
+		return k8sClient, nil
+	})
+	require.NoError(t, err)
+
+	reconciler := ObservabilityAddonReconciler{
+		Client:                k8sClient,
+		HubClient:             hubClientWithReload,
+		IsHubMetricsCollector: false,
+		Scheme:                scheme,
+		Namespace:             namespace,
+		HubNamespace:          namespace,
+		ServiceAccountName:    "endpoint-monitoring-operator",
+		InstallPrometheus:     false,
+	}
+	require.NoError(t, reconciler.SetupWithManager(mgr))
+
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+
+	go func() {
+		require.NoError(t, mgr.Start(ctx))
+	}()
+
+	// 1. Wait for Alertmanager config to be populated on start
+	cm := &corev1.ConfigMap{}
+	assert.Eventually(t, func() bool {
+		err := k8sClient.Get(ctx, types.NamespacedName{Namespace: promNamespace, Name: clusterMonitoringConfigName}, cm)
+		return err == nil && cm.Data != nil && cm.Data[ClusterMonitoringConfigDataKey] != ""
+	}, time.Minute, 1*time.Second)
+
+	// 2. Wait for finalizer to be present on the addon
+	assert.Eventually(t, func() bool {
+		foundAddon := &oav1beta1.ObservabilityAddon{}
+		err := k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: "observability-addon"}, foundAddon)
+		return err == nil && slices.Contains(foundAddon.GetFinalizers(), "observability.open-cluster-management.io/addon-cleanup")
+	}, time.Minute, 1*time.Second)
+
+	// Now delete the ObservabilityAddon (this triggers the finalizer)
+	addon := &oav1beta1.ObservabilityAddon{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "observability-addon",
+			Namespace: namespace,
+		},
+	}
+	require.NoError(t, k8sClient.Delete(ctx, addon))
+
+	// 3. Wait for the finalizer to run and cleanly delete/revert the CMO ConfigMap
+	assert.Eventually(t, func() bool {
+		foundCM := &corev1.ConfigMap{}
+		err := k8sClient.Get(ctx, types.NamespacedName{Namespace: promNamespace, Name: clusterMonitoringConfigName}, foundCM)
+		if errors.IsNotFound(err) {
+			return true
+		}
+		if err != nil {
+			fmt.Printf("Revert CMO ConfigMap Get error: %v\n", err)
+			return false
+		}
+		data := foundCM.Data[ClusterMonitoringConfigDataKey]
+		fmt.Printf("Found ConfigMap Data: %s\n", data)
+		return !strings.Contains(data, "obs-alertmanager-mtls-ca") && !strings.Contains(data, "test-alertamanger-endpoint")
+	}, time.Minute, 1*time.Second)
+}
+
+// TestIntegrationCMOConfigDisableAlertForwarding tests that updating the hub-info secret to have an empty
+// alertmanager-endpoint correctly triggers reconciliation and reverts the Alertmanager configuration.
+func TestIntegrationCMOConfigDisableAlertForwarding(t *testing.T) {
+	namespace := "test-cmo-disable"
+
+	scheme := createBaseScheme()
+
+	k8sClient, err := client.New(restCfgHub, client.Options{Scheme: scheme})
+	require.NoError(t, err)
+
+	defer func() {
+		_ = k8sClient.Delete(t.Context(), makeNamespace(namespace))
+	}()
+
+	// Create resources needed for reconciliation
+	resourcesDeps := []client.Object{
+		makeNamespace(promNamespace),
+		makeNamespace(namespace),
+		newImagesCM(namespace),
+		&ocinfrav1.ClusterVersion{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "version",
+			},
+		},
+		&corev1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "prometheus-k8s",
+				Namespace: "openshift-monitoring",
+			},
+			Spec: corev1.ServiceSpec{
+				Ports: []corev1.ServicePort{
+					{
+						Name: "web",
+						Port: 9090,
+					},
+				},
+			},
+		},
+		newHubInfoSecret([]byte(`
+endpoint: "http://test-endpoint"
+hub-cluster-id: "test-hub-cluster"
+alertmanager-endpoint: "http://test-alertamanger-endpoint"
+alertmanager-router-ca: |
+    -----BEGIN CERTIFICATE-----
+    xxxxxxxxxxxxxxxxxxxxxxxxxxx
+    -----END CERTIFICATE-----
+`), namespace),
+		&corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      HubAmAccessorSecretName,
+				Namespace: namespace,
+			},
+			StringData: map[string]string{hubAmAccessorSecretKey: "lol"},
+		},
+		&oav1beta1.ObservabilityAddon{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "observability-addon",
+				Namespace: namespace,
+			},
+		},
+	}
+	for _, obj := range newMtlsTestSecrets(namespace) {
+		resourcesDeps = append(resourcesDeps, obj.(client.Object))
+	}
+	require.NoError(t, createResources(k8sClient, resourcesDeps...))
+
+	mgr, err := ctrl.NewManager(testEnvHub.Config, ctrl.Options{
+		Scheme:  k8sClient.Scheme(),
+		Metrics: metricsserver.Options{BindAddress: "0"},
+		Controller: config.Controller{
+			SkipNameValidation: ptr.To(true),
+		},
+	})
+	require.NoError(t, err)
+
+	hubClientWithReload, err := util.NewReloadableHubClientWithReloadFunc(func() (client.Client, error) {
+		return k8sClient, nil
+	})
+	require.NoError(t, err)
+
+	reconciler := ObservabilityAddonReconciler{
+		Client:                k8sClient,
+		HubClient:             hubClientWithReload,
+		IsHubMetricsCollector: false,
+		Scheme:                scheme,
+		Namespace:             namespace,
+		HubNamespace:          namespace,
+		ServiceAccountName:    "endpoint-monitoring-operator",
+		InstallPrometheus:     false,
+	}
+	require.NoError(t, reconciler.SetupWithManager(mgr))
+
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+
+	go func() {
+		require.NoError(t, mgr.Start(ctx))
+	}()
+
+	// 1. Wait for Alertmanager config to be populated on start
+	cm := &corev1.ConfigMap{}
+	assert.Eventually(t, func() bool {
+		err := k8sClient.Get(ctx, types.NamespacedName{Namespace: promNamespace, Name: clusterMonitoringConfigName}, cm)
+		return err == nil && cm.Data != nil && cm.Data[ClusterMonitoringConfigDataKey] != ""
+	}, time.Minute, 1*time.Second)
+
+	// 2. Now emulate disabling alert forwarding by updating the hub-info secret to have empty alertmanager-endpoint
+	hubInfoSecret := &corev1.Secret{}
+	require.NoError(t, k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: operatorconfig.HubInfoSecretName}, hubInfoSecret))
+
+	updatedHubInfoBytes := []byte(`
+endpoint: "http://test-endpoint"
+hub-cluster-id: "test-hub-cluster"
+alertmanager-endpoint: ""
+`)
+	hubInfoSecret.Data[operatorconfig.HubInfoSecretKey] = updatedHubInfoBytes
+	require.NoError(t, k8sClient.Update(ctx, hubInfoSecret))
+
+	// 3. Wait for the controller to react, reconcile, and cleanly delete/revert the CMO ConfigMap
+	assert.Eventually(t, func() bool {
+		foundCM := &corev1.ConfigMap{}
+		err := k8sClient.Get(ctx, types.NamespacedName{Namespace: promNamespace, Name: clusterMonitoringConfigName}, foundCM)
+		if errors.IsNotFound(err) {
+			return true
+		}
+		if err != nil {
+			fmt.Printf("Revert CMO ConfigMap Get error: %v\n", err)
+			return false
+		}
+		data := foundCM.Data[ClusterMonitoringConfigDataKey]
+		return !strings.Contains(data, "obs-alertmanager-mtls-ca") && !strings.Contains(data, "test-alertamanger-endpoint")
+	}, time.Minute, 1*time.Second)
 }
 
 // TestIntegrationReconcileHypershiftOnHub tests the reconcile function for hypershift CRDs on a Hub cluster.
@@ -211,10 +484,6 @@ func TestIntegrationReconcileHypershiftOnHub(t *testing.T) {
 	testNamespace := "test-ns"
 
 	scheme := createBaseScheme()
-	err := hyperv1.AddToScheme(scheme)
-	if err != nil {
-		t.Fatal(err)
-	}
 
 	k8sClient, err := client.New(restCfgHub, client.Options{Scheme: scheme})
 	if err != nil {
@@ -267,7 +536,7 @@ func TestIntegrationReconcileHypershiftOnHub(t *testing.T) {
 	err = reconciler.SetupWithManager(mgr)
 	assert.NoError(t, err)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
 	go func() {
@@ -331,10 +600,6 @@ func TestIntegrationReconcileHypershiftOnSpoke(t *testing.T) {
 	mcNamespace := "test-mc-hub-ns"
 
 	scheme := createBaseScheme()
-	err := hyperv1.AddToScheme(scheme)
-	if err != nil {
-		t.Fatal(err)
-	}
 
 	// Setup spoke cluster resources
 	k8sClient, err := client.New(restCfgSpoke, client.Options{Scheme: scheme})
@@ -489,6 +754,8 @@ func TestMain(m *testing.M) {
 
 	hubCRDs := readCRDFiles(
 		filepath.Join(rootPath, "multiclusterobservability", "config", "crd", "bases", "observability.open-cluster-management.io_multiclusterobservabilities.yaml"),
+		filepath.Join(rootPath, "endpointmetrics", "manifests", "prometheus", "crd", "servicemonitor_crd_0_53_1.yaml"),
+		filepath.Join(rootPath, "endpointmetrics", "manifests", "prometheus", "crd", "prometheusrule_crd_0_53_1.yaml"),
 	)
 	hubCRDs = append(hubCRDs, spokeCrds...)
 
@@ -524,6 +791,8 @@ func createBaseScheme() *runtime.Scheme {
 	promv1.AddToScheme(scheme)
 	oav1beta1.AddToScheme(scheme)
 	mcov1beta2.AddToScheme(scheme)
+	ocinfrav1.AddToScheme(scheme)
+	hyperv1.AddToScheme(scheme)
 	return scheme
 }
 
@@ -569,7 +838,7 @@ func tearDownCommonSpokeResources(t *testing.T, k8sClient client.Client) {
 		makeNamespace(obAddonNs),
 	}
 	for _, resource := range resourcesDeps {
-		if err := k8sClient.Delete(context.Background(), resource); err != nil {
+		if err := k8sClient.Delete(t.Context(), resource); err != nil {
 			t.Fatalf("Failed to delete resource: %v", err)
 		}
 	}
@@ -608,7 +877,7 @@ func makeNamespace(name string) *corev1.Namespace {
 // createResources creates the given resources in the cluster.
 func createResources(client client.Client, resources ...client.Object) error {
 	for _, resource := range resources {
-		if err := client.Create(context.Background(), resource); err != nil {
+		if err := client.Create(context.Background(), resource); err != nil && !errors.IsAlreadyExists(err) {
 			return err
 		}
 	}
@@ -652,33 +921,6 @@ func newServiceMonitor(name, namespace string) *promv1.ServiceMonitor {
 			},
 			Selector:          metav1.LabelSelector{},
 			NamespaceSelector: promv1.NamespaceSelector{},
-		},
-	}
-}
-
-func newMicroshiftVersionCM(namespace string) *corev1.ConfigMap {
-	return &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "microshift-version",
-			Namespace: namespace,
-		},
-		Data: map[string]string{
-			"version": "v4.15.15",
-		},
-	}
-}
-
-func newMetricsAllowlistCM(namespace string) *corev1.ConfigMap {
-	return &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "observability-metrics-allowlist",
-			Namespace: namespace,
-		},
-		Data: map[string]string{
-			"metrics_list.yaml": `
-names:
-  - apiserver_watch_events_sizes_bucket
-`,
 		},
 	}
 }
