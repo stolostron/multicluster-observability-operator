@@ -68,8 +68,8 @@ func init() {
 	utilruntime.Must(observabilityv1beta2.AddToScheme(scheme))
 	utilruntime.Must(observatoriumAPIs.AddToScheme(scheme))
 	utilruntime.Must(prometheusv1.AddToScheme(scheme))
-	utilruntime.Must(addonv1alpha1.AddToScheme(scheme))
-	utilruntime.Must(addonv1beta1.AddToScheme(scheme))
+	utilruntime.Must(addonv1alpha1.Install(scheme))
+	utilruntime.Must(addonv1beta1.Install(scheme))
 	utilruntime.Must(imagev1.AddToScheme(scheme))
 	utilruntime.Must(apiextensionsv1.AddToScheme(scheme))
 	utilruntime.Must(monitoringv1alpha1.AddToScheme(scheme))
@@ -121,17 +121,17 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := workv1.AddToScheme(scheme); err != nil {
+	if err := workv1.Install(scheme); err != nil {
 		setupLog.Error(err, "")
 		os.Exit(1)
 	}
 
-	if err := clusterv1.AddToScheme(scheme); err != nil {
+	if err := clusterv1.Install(scheme); err != nil {
 		setupLog.Error(err, "")
 		os.Exit(1)
 	}
 
-	if err := clusterv1beta1.AddToScheme(scheme); err != nil {
+	if err := clusterv1beta1.Install(scheme); err != nil {
 		setupLog.Error(err, "")
 		os.Exit(1)
 	}
@@ -159,7 +159,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := addonv1alpha1.AddToScheme(scheme); err != nil {
+	if err := addonv1alpha1.Install(scheme); err != nil {
 		setupLog.Error(err, "")
 		os.Exit(1)
 	}
@@ -188,16 +188,16 @@ func main() {
 		appsv1.SchemeGroupVersion.WithKind("StatefulSet"): {
 			{FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace())},
 		},
-		workv1.SchemeGroupVersion.WithKind("ManifestWork"): {
+		workv1.SchemeGroupVersion.WithKind("ManifestWork"): { //nolint:staticcheck
 			{LabelSelector: "owner==multicluster-observability-operator"},
 		},
-		clusterv1.SchemeGroupVersion.WithKind("ManagedCluster"): {
+		clusterv1.SchemeGroupVersion.WithKind("ManagedCluster"): { //nolint:staticcheck
 			{LabelSelector: "vendor!=auto-detect,observability!=disabled"},
 		},
-		addonv1alpha1.SchemeGroupVersion.WithKind("ClusterManagementAddOn"): {
+		addonv1alpha1.SchemeGroupVersion.WithKind("ClusterManagementAddOn"): { //nolint:staticcheck
 			{FieldSelector: fmt.Sprintf("metadata.name=%s", util.ObservabilityController)},
 		},
-		addonv1alpha1.SchemeGroupVersion.WithKind("ManagedClusterAddOn"): {
+		addonv1alpha1.SchemeGroupVersion.WithKind("ManagedClusterAddOn"): { //nolint:staticcheck
 			{FieldSelector: fmt.Sprintf("metadata.name=%s", config.ManagedClusterAddonName)},
 		},
 	}
@@ -230,7 +230,7 @@ func main() {
 	}
 
 	// Add filter for ManagedClusterAddOn to reduce the cache size when the managedclusters scale.
-	gvkLabelsMap[addonv1alpha1.SchemeGroupVersion.WithKind("ManagedClusterAddOn")] = []filteredcache.Selector{
+	gvkLabelsMap[addonv1alpha1.SchemeGroupVersion.WithKind("ManagedClusterAddOn")] = []filteredcache.Selector{ //nolint:staticcheck
 		{LabelSelector: "owner==multicluster-observability-operator"},
 	}
 

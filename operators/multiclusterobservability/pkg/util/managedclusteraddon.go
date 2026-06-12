@@ -176,7 +176,7 @@ func needsConfigReferencesInitialization(ctx context.Context, c client.Client, m
 func createManagedClusterAddOn(ctx context.Context, c client.Client, namespace, labelKey, labelValue string) (*addonv1alpha1.ManagedClusterAddOn, error) {
 	newManagedClusterAddon := &addonv1alpha1.ManagedClusterAddOn{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: addonv1alpha1.SchemeGroupVersion.String(),
+			APIVersion: addonv1alpha1.GroupVersion.String(),
 			Kind:       "ManagedClusterAddOn",
 		},
 		ObjectMeta: metav1.ObjectMeta{

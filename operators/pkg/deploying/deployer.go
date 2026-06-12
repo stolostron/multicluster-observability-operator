@@ -287,7 +287,7 @@ func (d *Deployer) updateCRD(ctx context.Context, desiredObj, runtimeObj *unstru
 		logUpdateInfo(runtimeObj)
 		if mcoconfig.GetMCOASupportedCRDVersion(desiredCRD.Name) != "" {
 			log.V(1).Info("Applying MCOA CRD with SSA", "name", desiredCRD.Name)
-			err := d.client.Patch(ctx, desiredObj, client.Apply, client.FieldOwner(mcoconfig.GetMonitoringCRName()))
+			err := d.client.Apply(ctx, client.ApplyConfigurationFromUnstructured(desiredObj), client.FieldOwner(mcoconfig.GetMonitoringCRName()))
 			if err != nil {
 				if errors.IsConflict(err) {
 					log.V(1).Info("Conflict applying MCOA CRD, likely managed by another operator, skipping update", "name", desiredCRD.Name, "error", err.Error())
@@ -357,9 +357,11 @@ func (d *Deployer) updatePrometheusRule(ctx context.Context, desiredObj, runtime
 		maps.Copy(desiredLabels, desiredPrometheusRule.Labels)
 		desiredPrometheusRule.Labels = desiredLabels
 
+		desiredObj.SetLabels(desiredLabels)
+
 		if !equality.Semantic.DeepDerivative(desiredPrometheusRule.Spec, runtimePrometheusRule.Spec) || !maps.Equal(desiredPrometheusRule.Labels, runtimePrometheusRule.Labels) {
 			logUpdateInfo(runtimeObj)
-			return d.client.Patch(ctx, desiredPrometheusRule, client.Apply, client.ForceOwnership, client.FieldOwner(mcoconfig.GetMonitoringCRName()))
+			return d.client.Apply(ctx, client.ApplyConfigurationFromUnstructured(desiredObj), client.ForceOwnership, client.FieldOwner(mcoconfig.GetMonitoringCRName()))
 		}
 	} else if !equality.Semantic.DeepDerivative(desiredPrometheusRule.Spec, runtimePrometheusRule.Spec) {
 		logUpdateInfo(runtimeObj)
@@ -475,7 +477,7 @@ func (d *Deployer) applyAddOnDeploymentConfig(
 	if err != nil {
 		if errors.IsNotFound(err) {
 			log.Info("Apply (Create)", "kind", desiredObj.GroupVersionKind().Kind, "kindVersion", desiredObj.GroupVersionKind().Version, "name", desiredObj.GetName())
-			return d.client.Patch(ctx, desiredAODC, client.Apply, client.ForceOwnership, client.FieldOwner(d.fieldOwner))
+			return d.client.Apply(ctx, client.ApplyConfigurationFromUnstructured(desiredObj), client.ForceOwnership, client.FieldOwner(d.fieldOwner))
 		}
 		return err
 	}
@@ -527,7 +529,7 @@ func (d *Deployer) applyAddOnDeploymentConfig(
 	}
 
 	log.Info("Apply", "kind", desiredObj.GroupVersionKind().Kind, "kindVersion", desiredObj.GroupVersionKind().Version, "name", desiredObj.GetName())
-	return d.client.Patch(ctx, desiredAODC, client.Apply, client.ForceOwnership, client.FieldOwner(d.fieldOwner))
+	return d.client.Apply(ctx, client.ApplyConfigurationFromUnstructured(desiredObj), client.ForceOwnership, client.FieldOwner(d.fieldOwner))
 }
 
 func (d *Deployer) updateClusterManagementAddOn(
@@ -573,7 +575,7 @@ func (d *Deployer) updateScrapeConfig(ctx context.Context, desiredObj, runtimeOb
 
 	if !equality.Semantic.DeepDerivative(desiredSC.Spec, runtimeSC.Spec) || !maps.Equal(desiredLabels, runtimeSC.Labels) {
 		logUpdateInfo(runtimeObj)
-		return d.client.Patch(ctx, desiredObj, client.Apply, client.ForceOwnership, client.FieldOwner(mcoconfig.GetMonitoringCRName()))
+		return d.client.Apply(ctx, client.ApplyConfigurationFromUnstructured(desiredObj), client.ForceOwnership, client.FieldOwner(d.fieldOwner))
 	}
 
 	return nil
