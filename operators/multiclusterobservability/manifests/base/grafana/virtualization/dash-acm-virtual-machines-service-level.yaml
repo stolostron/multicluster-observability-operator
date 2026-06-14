@@ -756,7 +756,8 @@ data:
                   "pod": true,
                   "receive": true,
                   "service": true,
-                  "tenant_id": true
+                  "tenant_id": true,
+                  "Value #I": true
                 },
                 "indexByName": {
                   "Time": 0,
@@ -829,7 +830,7 @@ data:
               ]
             },
             "datasource": null,
-            "definition": "label_values(kubevirt_vm_running_status_last_transition_timestamp_seconds, cluster)",
+            "definition": "label_values(kubevirt_vm_info, cluster)",
             "description": null,
             "error": null,
             "hide": 0,
@@ -839,7 +840,7 @@ data:
             "name": "cluster",
             "options": [],
             "query": {
-              "query": "label_values(kubevirt_vm_running_status_last_transition_timestamp_seconds, cluster)",
+              "query": "label_values(kubevirt_vm_info, cluster)",
               "refId": "StandardVariableQuery"
             },
             "refresh": 2,
