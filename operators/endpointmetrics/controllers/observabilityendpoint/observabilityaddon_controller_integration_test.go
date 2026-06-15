@@ -102,15 +102,26 @@ alertmanager-endpoint: "http://test-alertamanger-endpoint"
 			Data:       nil,
 			StringData: map[string]string{hubAmAccessorSecretKey: "lol"},
 		},
+		&corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      mtlsCertName,
+				Namespace: namespace,
+			},
+			Data: map[string][]byte{"tls.crt": []byte("test-cert"), "tls.key": []byte("test-key")},
+		},
+		&corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      mtlsCaName,
+				Namespace: namespace,
+			},
+			Data: map[string][]byte{"ca.crt": []byte("test-ca")},
+		},
 		&oav1beta1.ObservabilityAddon{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "observability-addon",
 				Namespace: namespace,
 			},
 		},
-	}
-	for _, obj := range newMtlsTestSecrets(namespace) {
-		resourcesDeps = append(resourcesDeps, obj.(client.Object))
 	}
 	if err := createResources(k8sClient, resourcesDeps...); err != nil {
 		t.Fatalf("Failed to create resources: %v", err)
