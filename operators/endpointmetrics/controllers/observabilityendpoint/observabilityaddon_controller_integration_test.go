@@ -123,9 +123,6 @@ alertmanager-endpoint: "http://test-alertamanger-endpoint"
 			},
 		},
 	}
-	for _, obj := range newMtlsTestSecrets(namespace) {
-		resourcesDeps = append(resourcesDeps, obj.(client.Object))
-	}
 	if err := createResources(k8sClient, resourcesDeps...); err != nil {
 		t.Fatalf("Failed to create resources: %v", err)
 	}
