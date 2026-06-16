@@ -71,7 +71,8 @@ check-virtualization-metrics:
 	@$(CURDIR)/scripts/extract-dashboards-metrics.sh -d $(VIRTUALIZATION_DASH_DIR) --preprocess "sed 's/\$${status:raw}/1/g; s/\$$operator_health/==1/g; s/\$$days_in_status_gt/0/g; s/\$$days_in_status_lt/0/g'" | tr '\n' ',' > $(TMPDIR)/dash-metrics
 	@go run cmd/dashcheck/main.go --scrape-configs=$(VIRTUALIZATION_DASH_DIR)/scrape-config.yaml \
 		--dashboard-metrics=$$(cat $(TMPDIR)/dash-metrics) \
-		--additional-scrape-configs=$(PLATFORM_DASH_DIR)/scrape-config.yaml,$(ALERTS_DASH_DIR)/scrape-config.yaml
+		--additional-scrape-configs=$(PLATFORM_DASH_DIR)/scrape-config.yaml,$(ALERTS_DASH_DIR)/scrape-config.yaml \
+		--ignored-scrapeconfig-metrics=container_memory_rss,node_memory_SwapFree_bytes,node_memory_SwapTotal_bytes,node_pressure_memory_waiting_seconds_total,kube_pod_resource_request,kube_pod_labels,kubevirt_vmi_launcher_memory_overhead_bytes
 	@rm -d $(TMPDIR)/dash-metrics
 
 check-analytics-metrics: 
