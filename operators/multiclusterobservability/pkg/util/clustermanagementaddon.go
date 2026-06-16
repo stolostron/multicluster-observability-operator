@@ -100,7 +100,7 @@ func newClusterManagementAddon(ctx context.Context, c client.Client) (*addonv1al
 	}
 	return &addonv1alpha1.ClusterManagementAddOn{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: addonv1alpha1.SchemeGroupVersion.String(),
+			APIVersion: addonv1alpha1.GroupVersion.String(),
 			Kind:       "ClusterManagementAddOn",
 		},
 		ObjectMeta: metav1.ObjectMeta{

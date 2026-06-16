@@ -11,6 +11,7 @@ import (
 
 	prometheusv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
+	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
@@ -29,6 +30,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 )
 
 var (
@@ -1728,23 +1730,19 @@ func TestDeployCRD(t *testing.T) {
 					}
 					return clientww.Create(ctx, obj, opts...)
 				},
-				Patch: func(ctx context.Context, clientww client.WithWatch, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
-					if obj.GetObjectKind().GroupVersionKind().Kind == "CustomResourceDefinition" && patch == client.Apply {
+				Apply: func(ctx context.Context, clientww client.WithWatch, obj runtime.ApplyConfiguration, opts ...client.ApplyOption) error {
+					type hasKind interface{ GetKind() string }
+					if u, ok := obj.(hasKind); ok && u.GetKind() == "CustomResourceDefinition" {
 						applyCalled = true
+						var applyOpts client.ApplyOptions
 						for _, o := range opts {
-							if o == client.ForceOwnership {
-								forceOwnershipCalled = true
-							}
+							o.ApplyToApply(&applyOpts)
 						}
-						// Workaround for fake client not supporting client.Apply
-						key := client.ObjectKeyFromObject(obj)
-						existing := obj.DeepCopyObject().(client.Object)
-						if err := clientww.Get(ctx, key, existing); errors.IsNotFound(err) {
-							return clientww.Create(ctx, obj)
+						if applyOpts.Force != nil && *applyOpts.Force {
+							forceOwnershipCalled = true
 						}
-						return clientww.Patch(ctx, obj, client.Merge, opts...)
 					}
-					return clientww.Patch(ctx, obj, patch, opts...)
+					return clientww.Apply(ctx, obj, opts...)
 				},
 			}).Build()
 
@@ -1774,6 +1772,7 @@ func TestDeployCRD(t *testing.T) {
 			desiredObjUns, err := runtime.DefaultUnstructuredConverter.ToUnstructured(desiredCRD)
 			assert.NoError(t, err)
 
+			mcoconfig.SetMonitoringCRName("test-mco")
 			err = deployer.Deploy(context.Background(), &unstructured.Unstructured{Object: desiredObjUns})
 			assert.NoError(t, err)
 

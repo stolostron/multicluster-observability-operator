@@ -46,7 +46,10 @@ func (r *MCOAAgentReconciler) reconcileCMO(ctx context.Context, req client.Objec
 	if cm != nil {
 		if r.detectConflict(cm) {
 			cmoConfigConflictsTotal.Inc()
-			r.Recorder.Event(cm, corev1.EventTypeWarning, "ConfigConflict", "Detected external mutation overwriting Alertmanager configuration. Re-applying Hub Alertmanager config.")
+			r.Recorder.Eventf(
+				cm, nil, corev1.EventTypeWarning, "ConfigConflict", "ConfigReapply",
+				"Detected external mutation overwriting Alertmanager configuration. Re-applying Hub Alertmanager config.",
+			)
 			r.Log.Info("Detected conflict in CMO ConfigMap, re-applying configuration", "name", cm.Name, "namespace", cm.Namespace)
 		}
 	}
