@@ -217,7 +217,7 @@ require (
 	sigs.k8s.io/structured-merge-diff/v6 v6.4.0 // indirect
 )
 
-// Stolostron fork of the controller-filtered-cache upgraded to k8s libs up to 0.29.x and Go up to 1.21.
-replace github.com/IBM/controller-filtered-cache => github.com/guidonguido/controller-filtered-cache v0.0.0-20260608161508-acbada478534
+// Stolostron fork of the controller-filtered-cache upgraded to k8s libs up to v0.35.x and Go up to v1.25.
+replace github.com/IBM/controller-filtered-cache => github.com/stolostron/controller-filtered-cache v0.0.0-20260616160842-d4400ae7d765
 
 replace github.com/brancz/locutus => github.com/stolostron/locutus v0.0.0-20250206205144-9e42fd1bc0a2

@@ -249,8 +249,6 @@ github.com/grafana/regexp v0.0.0-20240518133315-a468a5bfb3bc h1:GN2Lv3MGO7AS6PrR
 github.com/grafana/regexp v0.0.0-20240518133315-a468a5bfb3bc/go.mod h1:+JKpmjMGhpgPL+rXZ5nsZieVzvarn86asRlBg4uNGnk=
 github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.2 h1:sGm2vDRFUrQJO/Veii4h4zG2vvqG6uWNkBHSTqXOZk0=
 github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.2/go.mod h1:wd1YpapPLivG6nQgbf7ZkG1hhSOXDhhn4MLTknx2aAc=
-github.com/guidonguido/controller-filtered-cache v0.0.0-20260608161508-acbada478534 h1:pUyeodOLxMyRsWAAoJzBQ+2rIdJuVtzGyvl34tCtOzg=
-github.com/guidonguido/controller-filtered-cache v0.0.0-20260608161508-acbada478534/go.mod h1:qIo6KMBjYrFz91UpeLg+XNF0uukjrzgVfdf1EAX7Xf0=
 github.com/hashicorp/consul/api v1.32.0 h1:5wp5u780Gri7c4OedGEPzmlUEzi0g2KyiPphSr6zjVg=
 github.com/hashicorp/consul/api v1.32.0/go.mod h1:Z8YgY0eVPukT/17ejW+l+C7zJmKwgPHtjU1q16v/Y40=
 github.com/hashicorp/cronexpr v1.1.2 h1:wG/ZYIKT+RT3QkOdgYc+xsKWVRgnxJ1OJtjjy84fJ9A=
@@ -426,6 +424,8 @@ github.com/spf13/pflag v1.0.10 h1:4EBh2KAYBwaONj6b2Ye1GiHfwjqyROoF4RwYO+vPwFk=
 github.com/spf13/pflag v1.0.10/go.mod h1:McXfInJRrz4CZXVZOBLb0bTZqETkiAhM9Iw0y3An2Bg=
 github.com/stackitcloud/stackit-sdk-go/core v0.17.2 h1:jPyn+i8rkp2hM80+hOg0B/1EVRbMt778Tr5RWyK1m2E=
 github.com/stackitcloud/stackit-sdk-go/core v0.17.2/go.mod h1:8KIw3czdNJ9sdil9QQimxjR6vHjeINFrRv0iZ67wfn0=
+github.com/stolostron/controller-filtered-cache v0.0.0-20260616160842-d4400ae7d765 h1:DZyt9YH6G/1atrFOQNn7xPcw1Op+9lRlkg72qWNcwdg=
+github.com/stolostron/controller-filtered-cache v0.0.0-20260616160842-d4400ae7d765/go.mod h1:qIo6KMBjYrFz91UpeLg+XNF0uukjrzgVfdf1EAX7Xf0=
 github.com/stolostron/kubernetes-dependency-watches v0.10.2 h1:b8g3Wye6igeRrrSQwXGr4Ch4zTY4uouzHlDARw8/m7w=
 github.com/stolostron/kubernetes-dependency-watches v0.10.2/go.mod h1:pV1b/PwVNG4a5tzBcqxhUpMjjo5nY0gUb6ieu6sGH6o=
 github.com/stolostron/locutus v0.0.0-20250206205144-9e42fd1bc0a2 h1:ylP11oTJB5wCogd4ruz8fhP412xN1oxqjc2+GbuugJg=
