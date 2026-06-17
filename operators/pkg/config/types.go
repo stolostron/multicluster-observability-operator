@@ -21,6 +21,13 @@ type HubInfo struct {
 	HubClusterID             string `yaml:"hub-cluster-id"`
 }
 
+func (h *HubInfo) AppendHubClusterID(base string) string {
+	if h == nil || h.HubClusterID == "" {
+		return base
+	}
+	return base + "-" + h.HubClusterID
+}
+
 type RecordingRule struct {
 	Record string `yaml:"record"`
 	Expr   string `yaml:"expr"`
