@@ -17,6 +17,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/klog/v2"
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
+	addonv1beta1 "open-cluster-management.io/api/addon/v1beta1"
 )
 
 // retryOnConflict provides exponential backoff retry logic for update operations
@@ -198,7 +199,7 @@ func GetClusterManagementAddOnSpecHash(opt TestOptions) (string, error) {
 		return "", fmt.Errorf("failed to get clustermanagementaddon: %w", err)
 	}
 
-	addon := &addonv1alpha1.ClusterManagementAddOn{}
+	addon := &addonv1beta1.ClusterManagementAddOn{}
 	err = runtime.DefaultUnstructuredConverter.FromUnstructured(cma.Object, addon)
 	if err != nil {
 		return "", fmt.Errorf("failed to convert unstructured to addon: %w", err)

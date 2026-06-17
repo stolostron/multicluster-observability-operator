@@ -585,7 +585,7 @@ func TestObservabilityAddonController(t *testing.T) {
 func newManagedClusterAddon() *addonv1alpha1.ManagedClusterAddOn {
 	return &addonv1alpha1.ManagedClusterAddOn{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: addonv1alpha1.SchemeGroupVersion.String(),
+			APIVersion: addonv1alpha1.GroupVersion.String(),
 			Kind:       "ManagedClusterAddOn",
 		},
 		ObjectMeta: metav1.ObjectMeta{
@@ -609,23 +609,23 @@ func newManagedClusterAddon() *addonv1alpha1.ManagedClusterAddOn {
 	}
 }
 
-func newClusterMgmtAddon() *addonv1alpha1.ClusterManagementAddOn {
-	return &addonv1alpha1.ClusterManagementAddOn{
+func newClusterMgmtAddon() *addonv1beta1.ClusterManagementAddOn {
+	return &addonv1beta1.ClusterManagementAddOn{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: addonv1alpha1.SchemeGroupVersion.String(),
+			APIVersion: addonv1beta1.SchemeGroupVersion.String(),
 			Kind:       "ClusterManagementAddOn",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "observability-controller",
 		},
-		Spec: addonv1alpha1.ClusterManagementAddOnSpec{
-			SupportedConfigs: []addonv1alpha1.ConfigMeta{
+		Spec: addonv1beta1.ClusterManagementAddOnSpec{
+			DefaultConfigs: []addonv1beta1.AddOnConfig{
 				{
-					ConfigGroupResource: addonv1alpha1.ConfigGroupResource{
+					ConfigGroupResource: addonv1beta1.ConfigGroupResource{
 						Group:    operatorutil.AddonGroup,
 						Resource: operatorutil.AddonDeploymentConfigResource,
 					},
-					DefaultConfig: &addonv1alpha1.ConfigReferent{
+					ConfigReferent: addonv1beta1.ConfigReferent{
 						Namespace: namespace,
 						Name:      defaultAddonConfigName,
 					},

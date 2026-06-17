@@ -15,12 +15,14 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
+	addonv1beta1 "open-cluster-management.io/api/addon/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func TestClusterManagmentAddon(t *testing.T) {
 	s := scheme.Scheme
 	addonv1alpha1.AddToScheme(s)
+	addonv1beta1.Install(s)
 	routev1.AddToScheme(s)
 
 	consoleRoute := &routev1.Route{
@@ -42,7 +44,7 @@ func TestClusterManagmentAddon(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create clustermanagementaddon twice: (%v)", err)
 	}
-	addon := &addonv1alpha1.ClusterManagementAddOn{}
+	addon := &addonv1beta1.ClusterManagementAddOn{}
 	err = c.Get(context.Background(),
 		types.NamespacedName{
 			Name: ObservabilityController,
@@ -111,18 +113,9 @@ func TestClusterManagmentAddon(t *testing.T) {
 		t.Fatalf("Addon lifecycle annotation was not removed as expected")
 	}
 
-	// Verify SupportedConfigs exists but has no DefaultConfig (backward compatible)
-	if len(addon.Spec.SupportedConfigs) == 0 {
-		t.Fatalf("No SupportedConfigs found in clustermanagementaddon")
-	}
-	for _, cfg := range addon.Spec.SupportedConfigs {
-		if cfg.ConfigGroupResource.Group == AddonGroup &&
-			cfg.ConfigGroupResource.Resource == AddonDeploymentConfigResource {
-			if cfg.DefaultConfig != nil {
-				t.Fatalf("Unexpected DefaultConfig found - should be nil for backward compatibility")
-			}
-			break
-		}
+	// Verify DefaultConfigs is empty (legacy CMA does not reference an ADC)
+	if len(addon.Spec.DefaultConfigs) != 0 {
+		t.Fatalf("Expected empty DefaultConfigs, got %d entries", len(addon.Spec.DefaultConfigs))
 	}
 
 	// delete it again for good measure

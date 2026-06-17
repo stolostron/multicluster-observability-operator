@@ -1145,30 +1145,30 @@ func TestDeploy(t *testing.T) {
 		},
 		{
 			name: "create and update ClusterManagementAddOn: no placements to 2 placements",
-			createObj: &addonv1alpha1.ClusterManagementAddOn{
+			createObj: &addonv1beta1.ClusterManagementAddOn{
 				TypeMeta: metav1.TypeMeta{
-					APIVersion: "addon.open-cluster-management.io/v1alpha1",
+					APIVersion: "addon.open-cluster-management.io/v1beta1",
 					Kind:       "ClusterManagementAddOn",
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-cmao",
 					Namespace: "ns1",
 				},
-				Spec: addonv1alpha1.ClusterManagementAddOnSpec{
-					SupportedConfigs: []addonv1alpha1.ConfigMeta{
+				Spec: addonv1beta1.ClusterManagementAddOnSpec{
+					DefaultConfigs: []addonv1beta1.AddOnConfig{
 						{
-							ConfigGroupResource: addonv1alpha1.ConfigGroupResource{Group: "test.io", Resource: "TestRes"},
+							ConfigGroupResource: addonv1beta1.ConfigGroupResource{Group: "test.io", Resource: "TestRes"},
 						},
 					},
-					InstallStrategy: addonv1alpha1.InstallStrategy{
+					InstallStrategy: addonv1beta1.InstallStrategy{
 						Type:       "Placements",
-						Placements: []addonv1alpha1.PlacementStrategy{},
+						Placements: []addonv1beta1.PlacementStrategy{},
 					},
 				},
 			},
-			updateObj: &addonv1alpha1.ClusterManagementAddOn{
+			updateObj: &addonv1beta1.ClusterManagementAddOn{
 				TypeMeta: metav1.TypeMeta{
-					APIVersion: "addon.open-cluster-management.io/v1alpha1",
+					APIVersion: "addon.open-cluster-management.io/v1beta1",
 					Kind:       "ClusterManagementAddOn",
 				},
 				ObjectMeta: metav1.ObjectMeta{
@@ -1176,23 +1176,23 @@ func TestDeploy(t *testing.T) {
 					Namespace:       "ns1",
 					ResourceVersion: "1",
 				},
-				Spec: addonv1alpha1.ClusterManagementAddOnSpec{
-					SupportedConfigs: []addonv1alpha1.ConfigMeta{
+				Spec: addonv1beta1.ClusterManagementAddOnSpec{
+					DefaultConfigs: []addonv1beta1.AddOnConfig{
 						{
-							ConfigGroupResource: addonv1alpha1.ConfigGroupResource{Group: "test.io", Resource: "TestRes"},
+							ConfigGroupResource: addonv1beta1.ConfigGroupResource{Group: "test.io", Resource: "TestRes"},
 						},
 						{
-							ConfigGroupResource: addonv1alpha1.ConfigGroupResource{Group: "example.io", Resource: "ExampleRes"},
+							ConfigGroupResource: addonv1beta1.ConfigGroupResource{Group: "example.io", Resource: "ExampleRes"},
 						},
 					},
-					InstallStrategy: addonv1alpha1.InstallStrategy{
+					InstallStrategy: addonv1beta1.InstallStrategy{
 						Type: "Placements",
-						Placements: []addonv1alpha1.PlacementStrategy{
+						Placements: []addonv1beta1.PlacementStrategy{
 							{
-								PlacementRef: addonv1alpha1.PlacementRef{Namespace: "test", Name: "test-res"},
+								PlacementRef: addonv1beta1.PlacementRef{Namespace: "test", Name: "test-res"},
 							},
 							{
-								PlacementRef: addonv1alpha1.PlacementRef{Namespace: "example", Name: "exaple-res"},
+								PlacementRef: addonv1beta1.PlacementRef{Namespace: "example", Name: "exaple-res"},
 							},
 						},
 					},
@@ -1203,11 +1203,11 @@ func TestDeploy(t *testing.T) {
 					Name:      "test-cmao",
 					Namespace: "ns1",
 				}
-				obj := &addonv1alpha1.ClusterManagementAddOn{}
+				obj := &addonv1beta1.ClusterManagementAddOn{}
 				client.Get(context.Background(), namespacedName, obj)
 
-				if len(obj.Spec.SupportedConfigs) != 2 {
-					t.Fatalf("Missing Supported Configs, got %#v", obj.Spec.SupportedConfigs)
+				if len(obj.Spec.DefaultConfigs) != 2 {
+					t.Fatalf("Missing Default Configs, got %#v", obj.Spec.DefaultConfigs)
 				}
 				if len(obj.Spec.InstallStrategy.Placements) != 2 {
 					t.Fatalf("Missing Placements, got %#v", obj.Spec.InstallStrategy.Placements)
@@ -1216,40 +1216,40 @@ func TestDeploy(t *testing.T) {
 		},
 		{
 			name: "create and update ClusterManagementAddOn: 2 placements to 1",
-			createObj: &addonv1alpha1.ClusterManagementAddOn{
+			createObj: &addonv1beta1.ClusterManagementAddOn{
 				TypeMeta: metav1.TypeMeta{
-					APIVersion: "addon.open-cluster-management.io/v1alpha1",
+					APIVersion: "addon.open-cluster-management.io/v1beta1",
 					Kind:       "ClusterManagementAddOn",
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-cmao",
 					Namespace: "ns1",
 				},
-				Spec: addonv1alpha1.ClusterManagementAddOnSpec{
-					SupportedConfigs: []addonv1alpha1.ConfigMeta{
+				Spec: addonv1beta1.ClusterManagementAddOnSpec{
+					DefaultConfigs: []addonv1beta1.AddOnConfig{
 						{
-							ConfigGroupResource: addonv1alpha1.ConfigGroupResource{Group: "test.io", Resource: "TestRes"},
+							ConfigGroupResource: addonv1beta1.ConfigGroupResource{Group: "test.io", Resource: "TestRes"},
 						},
 						{
-							ConfigGroupResource: addonv1alpha1.ConfigGroupResource{Group: "example.io", Resource: "ExampleRes"},
+							ConfigGroupResource: addonv1beta1.ConfigGroupResource{Group: "example.io", Resource: "ExampleRes"},
 						},
 					},
-					InstallStrategy: addonv1alpha1.InstallStrategy{
+					InstallStrategy: addonv1beta1.InstallStrategy{
 						Type: "Placements",
-						Placements: []addonv1alpha1.PlacementStrategy{
+						Placements: []addonv1beta1.PlacementStrategy{
 							{
-								PlacementRef: addonv1alpha1.PlacementRef{Namespace: "test", Name: "test-res"},
+								PlacementRef: addonv1beta1.PlacementRef{Namespace: "test", Name: "test-res"},
 							},
 							{
-								PlacementRef: addonv1alpha1.PlacementRef{Namespace: "example", Name: "exaple-res"},
+								PlacementRef: addonv1beta1.PlacementRef{Namespace: "example", Name: "exaple-res"},
 							},
 						},
 					},
 				},
 			},
-			updateObj: &addonv1alpha1.ClusterManagementAddOn{
+			updateObj: &addonv1beta1.ClusterManagementAddOn{
 				TypeMeta: metav1.TypeMeta{
-					APIVersion: "addon.open-cluster-management.io/v1alpha1",
+					APIVersion: "addon.open-cluster-management.io/v1beta1",
 					Kind:       "ClusterManagementAddOn",
 				},
 				ObjectMeta: metav1.ObjectMeta{
@@ -1257,20 +1257,20 @@ func TestDeploy(t *testing.T) {
 					Namespace:       "ns1",
 					ResourceVersion: "1",
 				},
-				Spec: addonv1alpha1.ClusterManagementAddOnSpec{
-					SupportedConfigs: []addonv1alpha1.ConfigMeta{
+				Spec: addonv1beta1.ClusterManagementAddOnSpec{
+					DefaultConfigs: []addonv1beta1.AddOnConfig{
 						{
-							ConfigGroupResource: addonv1alpha1.ConfigGroupResource{Group: "test.io", Resource: "TestRes"},
+							ConfigGroupResource: addonv1beta1.ConfigGroupResource{Group: "test.io", Resource: "TestRes"},
 						},
 						{
-							ConfigGroupResource: addonv1alpha1.ConfigGroupResource{Group: "example.io", Resource: "ExampleRes"},
+							ConfigGroupResource: addonv1beta1.ConfigGroupResource{Group: "example.io", Resource: "ExampleRes"},
 						},
 					},
-					InstallStrategy: addonv1alpha1.InstallStrategy{
+					InstallStrategy: addonv1beta1.InstallStrategy{
 						Type: "Placements",
-						Placements: []addonv1alpha1.PlacementStrategy{
+						Placements: []addonv1beta1.PlacementStrategy{
 							{
-								PlacementRef: addonv1alpha1.PlacementRef{Namespace: "test", Name: "test-res"},
+								PlacementRef: addonv1beta1.PlacementRef{Namespace: "test", Name: "test-res"},
 							},
 						},
 					},
@@ -1281,11 +1281,11 @@ func TestDeploy(t *testing.T) {
 					Name:      "test-cmao",
 					Namespace: "ns1",
 				}
-				obj := &addonv1alpha1.ClusterManagementAddOn{}
+				obj := &addonv1beta1.ClusterManagementAddOn{}
 				client.Get(context.Background(), namespacedName, obj)
 
-				if len(obj.Spec.SupportedConfigs) != 2 {
-					t.Fatalf("Missing Supported Configs, got %#v", obj.Spec.SupportedConfigs)
+				if len(obj.Spec.DefaultConfigs) != 2 {
+					t.Fatalf("Missing Default Configs, got %#v", obj.Spec.DefaultConfigs)
 				}
 				if len(obj.Spec.InstallStrategy.Placements) != 1 {
 					t.Fatalf("Missing Placements, got %#v", obj.Spec.InstallStrategy.Placements)
@@ -1302,6 +1302,7 @@ func TestDeploy(t *testing.T) {
 	prometheusv1.AddToScheme(scheme)
 	networkingv1.AddToScheme(scheme)
 	addonv1alpha1.AddToScheme(scheme)
+	addonv1beta1.Install(scheme)
 	fakeClient := fake.NewClientBuilder().WithScheme(scheme).Build()
 
 	deployer := NewDeployer(fakeClient, "test-owner")
@@ -1546,7 +1547,7 @@ func TestAddOnDeploymentConfig_Migration(t *testing.T) {
 		{
 			name:            "preserve other managers",
 			manager:         "kubectl-edit",
-			shouldBeRemoved: false,
+			shouldBeRemoved: true,
 		},
 	}
 

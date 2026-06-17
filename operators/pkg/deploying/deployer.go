@@ -26,7 +26,6 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	addonv1beta1 "open-cluster-management.io/api/addon/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -558,7 +557,7 @@ func (d *Deployer) updateClusterManagementAddOn(
 	ctx context.Context,
 	desiredObj, runtimeObj *unstructured.Unstructured,
 ) error {
-	desiredCMAO, runtimeCMAO, err := unstructuredPairToTyped[addonv1alpha1.ClusterManagementAddOn](desiredObj, runtimeObj)
+	desiredCMAO, runtimeCMAO, err := unstructuredPairToTyped[addonv1beta1.ClusterManagementAddOn](desiredObj, runtimeObj)
 	if err != nil {
 		return err
 	}

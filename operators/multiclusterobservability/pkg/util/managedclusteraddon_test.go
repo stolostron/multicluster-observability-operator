@@ -65,18 +65,18 @@ func TestManagedClusterAddonStatusNotUpdatedOnSubsequentCalls(t *testing.T) {
 		t.Fatalf("Failed to compute expected spec hash: (%v)", err)
 	}
 
-	cma := &addonv1alpha1.ClusterManagementAddOn{
+	cma := &addonv1beta1.ClusterManagementAddOn{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: ObservabilityController,
 		},
-		Spec: addonv1alpha1.ClusterManagementAddOnSpec{
-			SupportedConfigs: []addonv1alpha1.ConfigMeta{
+		Spec: addonv1beta1.ClusterManagementAddOnSpec{
+			DefaultConfigs: []addonv1beta1.AddOnConfig{
 				{
-					ConfigGroupResource: addonv1alpha1.ConfigGroupResource{
+					ConfigGroupResource: addonv1beta1.ConfigGroupResource{
 						Group:    AddonGroup,
 						Resource: AddonDeploymentConfigResource,
 					},
-					DefaultConfig: &addonv1alpha1.ConfigReferent{
+					ConfigReferent: addonv1beta1.ConfigReferent{
 						Name:      "test-adc",
 						Namespace: "test-ns",
 					},
@@ -126,7 +126,7 @@ func TestManagedClusterAddonConfigReferencesInitializedWhenCMADefaultConfigAdded
 	addonv1alpha1.AddToScheme(s)
 	c := fake.NewClientBuilder().
 		WithStatusSubresource(&addonv1alpha1.ManagedClusterAddOn{}).
-		WithStatusSubresource(&addonv1alpha1.ClusterManagementAddOn{}).
+		WithStatusSubresource(&addonv1beta1.ClusterManagementAddOn{}).
 		Build()
 
 	// First: Create MCA without any CMA (no defaultConfig available)
@@ -160,18 +160,18 @@ func TestManagedClusterAddonConfigReferencesInitializedWhenCMADefaultConfigAdded
 		t.Fatalf("Failed to compute expected spec hash: (%v)", err)
 	}
 
-	cma := &addonv1alpha1.ClusterManagementAddOn{
+	cma := &addonv1beta1.ClusterManagementAddOn{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: ObservabilityController,
 		},
-		Spec: addonv1alpha1.ClusterManagementAddOnSpec{
-			SupportedConfigs: []addonv1alpha1.ConfigMeta{
+		Spec: addonv1beta1.ClusterManagementAddOnSpec{
+			DefaultConfigs: []addonv1beta1.AddOnConfig{
 				{
-					ConfigGroupResource: addonv1alpha1.ConfigGroupResource{
+					ConfigGroupResource: addonv1beta1.ConfigGroupResource{
 						Group:    AddonGroup,
 						Resource: AddonDeploymentConfigResource,
 					},
-					DefaultConfig: &addonv1alpha1.ConfigReferent{
+					ConfigReferent: addonv1beta1.ConfigReferent{
 						Name:      "test-config",
 						Namespace: "test-ns",
 					},
@@ -236,18 +236,18 @@ func TestManagedClusterAddonSpecHashUpdatedWhenADCChanges(t *testing.T) {
 		t.Fatalf("Failed to compute original spec hash: (%v)", err)
 	}
 
-	cma := &addonv1alpha1.ClusterManagementAddOn{
+	cma := &addonv1beta1.ClusterManagementAddOn{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: ObservabilityController,
 		},
-		Spec: addonv1alpha1.ClusterManagementAddOnSpec{
-			SupportedConfigs: []addonv1alpha1.ConfigMeta{
+		Spec: addonv1beta1.ClusterManagementAddOnSpec{
+			DefaultConfigs: []addonv1beta1.AddOnConfig{
 				{
-					ConfigGroupResource: addonv1alpha1.ConfigGroupResource{
+					ConfigGroupResource: addonv1beta1.ConfigGroupResource{
 						Group:    AddonGroup,
 						Resource: AddonDeploymentConfigResource,
 					},
-					DefaultConfig: &addonv1alpha1.ConfigReferent{
+					ConfigReferent: addonv1beta1.ConfigReferent{
 						Name:      "test-config",
 						Namespace: "test-ns",
 					},
@@ -324,18 +324,18 @@ func TestManagedClusterAddonSpecHashUpdatedWhenADCChangesAndStoredHashEmpty(t *t
 		t.Fatalf("Failed to compute original spec hash: (%v)", err)
 	}
 
-	cma := &addonv1alpha1.ClusterManagementAddOn{
+	cma := &addonv1beta1.ClusterManagementAddOn{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: ObservabilityController,
 		},
-		Spec: addonv1alpha1.ClusterManagementAddOnSpec{
-			SupportedConfigs: []addonv1alpha1.ConfigMeta{
+		Spec: addonv1beta1.ClusterManagementAddOnSpec{
+			DefaultConfigs: []addonv1beta1.AddOnConfig{
 				{
-					ConfigGroupResource: addonv1alpha1.ConfigGroupResource{
+					ConfigGroupResource: addonv1beta1.ConfigGroupResource{
 						Group:    AddonGroup,
 						Resource: AddonDeploymentConfigResource,
 					},
-					DefaultConfig: &addonv1alpha1.ConfigReferent{
+					ConfigReferent: addonv1beta1.ConfigReferent{
 						Name:      "test-config",
 						Namespace: "test-ns",
 					},
