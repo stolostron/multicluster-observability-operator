@@ -52,7 +52,7 @@ const (
 	mtlsCertName                    = "observability-controller-open-cluster-management.io-observability-signer-client-cert"
 	mtlsCaName                      = "observability-managed-cluster-certs"
 	amMtlsCertName                  = "obs-alertmanager-mtls-cert"
-	amMtlsCaName                    = "obs-alertmanager-mtls-ca"
+	amMtlsCaName                    = HubAmMtlsCASecretName
 	metricsCollectorName            = "metrics-collector-deployment"
 	uwlMetricsCollectorName         = "uwl-metrics-collector-deployment"
 	uwlNamespace                    = "openshift-user-workload-monitoring"
@@ -349,13 +349,25 @@ func (r *ObservabilityAddonReconciler) initFinalization(
 		}
 
 		// revert the change to cluster monitoring stack
-		err := RevertClusterMonitoringConfig(ctx, r.Client, hubInfo)
+		caSecret := AppendHubClusterID(HubAmRouterCASecretName, hubInfo.HubClusterID)
+		err := RevertClusterMonitoringConfig(ctx, r.Client, caSecret)
 		if err != nil {
 			return false, err
 		}
 
 		// revert the change to user workload monitoring stack
-		err = RevertUserWorkloadMonitoringConfig(ctx, r.Client, hubInfo)
+		err = RevertUserWorkloadMonitoringConfig(ctx, r.Client, caSecret)
+		if err != nil {
+			return false, err
+		}
+
+		// revert the mTLS CA configurations as well (mirroring the two-pass behavior in cmo-config-revert)
+		mtlsCASecret := AppendHubClusterID(HubAmMtlsCASecretName, hubInfo.HubClusterID)
+		err = RevertClusterMonitoringConfig(ctx, r.Client, mtlsCASecret)
+		if err != nil {
+			return false, err
+		}
+		err = RevertUserWorkloadMonitoringConfig(ctx, r.Client, mtlsCASecret)
 		if err != nil {
 			return false, err
 		}
@@ -570,7 +582,7 @@ func (r *ObservabilityAddonReconciler) SetupWithManager(mgr ctrl.Manager) error 
 		Watches(
 			&corev1.Secret{},
 			&handler.EnqueueRequestForObject{},
-			builder.WithPredicates(getPred(hubAmAccessorSecretName, r.Namespace, true, true, false)),
+			builder.WithPredicates(getPred(HubAmAccessorSecretName, r.Namespace, true, true, false)),
 		).
 		Watches(
 			&corev1.ConfigMap{},
@@ -600,12 +612,12 @@ func (r *ObservabilityAddonReconciler) SetupWithManager(mgr ctrl.Manager) error 
 		Watches(
 			&corev1.ConfigMap{},
 			&handler.EnqueueRequestForObject{},
-			builder.WithPredicates(configMapDataChangedPredicate(clusterMonitoringConfigName, promNamespace)),
+			builder.WithPredicates(ConfigMapDataChangedPredicate(clusterMonitoringConfigName, promNamespace)),
 		).
 		Watches(
 			&corev1.ConfigMap{},
 			&handler.EnqueueRequestForObject{},
-			builder.WithPredicates(configMapDataChangedPredicate(
+			builder.WithPredicates(ConfigMapDataChangedPredicate(
 				operatorconfig.OCPUserWorkloadMonitoringConfigMap,
 				operatorconfig.OCPUserWorkloadMonitoringNamespace)),
 		).
