@@ -11,3 +11,4 @@ data:
     node_exporter: "quay.io/stolostron/node-exporter:2.5.0-SNAPSHOT-2022-02-03-20-02-33"
     kube_rbac_proxy: "quay.io/stolostron/kube-rbac-proxy:2.5.0-SNAPSHOT-2022-02-03-20-02-33"
     metrics_collector: "quay.io/stolostron/metrics-collector:2.5.0-SNAPSHOT-2022-02-03-20-02-33"
+    endpoint_monitoring_operator: "quay.io/stolostron/endpoint-monitoring-operator:2.5.0-SNAPSHOT-2022-02-03-20-02-33"
