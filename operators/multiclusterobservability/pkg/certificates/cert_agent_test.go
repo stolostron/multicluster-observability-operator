@@ -74,8 +74,6 @@ func TestCertAgent(t *testing.T) {
 		Groups: []string{
 			"system:open-cluster-management:cluster:test:addon:observability-controller",
 			"system:open-cluster-management:addon:observability-controller",
-			// TODO(guidonguido): check if system:authenticated group is actually expected
-			// "system:authenticated". It has been removed in addon-framework v1.3.0
 			caHashOrgUnit,
 		},
 	}

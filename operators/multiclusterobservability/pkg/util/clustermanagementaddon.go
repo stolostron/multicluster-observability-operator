@@ -13,7 +13,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	addonv1beta1 "open-cluster-management.io/api/addon/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -50,17 +49,6 @@ func CreateClusterManagementAddon(ctx context.Context, c client.Client) (
 			return clusterManagementAddon, nil
 		}
 		return nil, fmt.Errorf("cannot create observability-controller clustermanagementaddon: %w", err)
-	}
-
-	// Remove addon.open-cluster-management.io/lifecycle annotation if present.
-	if found.Annotations != nil {
-		if _, exists := found.Annotations[addonv1alpha1.AddonLifecycleAnnotationKey]; exists {
-			delete(found.Annotations, addonv1alpha1.AddonLifecycleAnnotationKey)
-			log.Info("Removing addon.open-cluster-management.io/lifecycle annotation from observability-controller clustermanagementaddon")
-			if err := c.Update(ctx, found); err != nil {
-				return nil, fmt.Errorf("failed to update clustermanagementaddon: %w", err)
-			}
-		}
 	}
 
 	return found, nil

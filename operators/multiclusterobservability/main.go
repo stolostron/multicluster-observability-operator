@@ -183,16 +183,17 @@ func main() {
 		appsv1.SchemeGroupVersion.WithKind("StatefulSet"): {
 			{FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace())},
 		},
-		workv1.SchemeGroupVersion.WithKind("ManifestWork"): { //nolint:staticcheck
+
+		workv1.SchemeGroupVersion.WithKind("ManifestWork"): { //nolint:staticcheck // SA1019 SchemeGroupVersion is deprecated but metav1.GroupVersion lacks WithKind().
 			{LabelSelector: "owner==multicluster-observability-operator"},
 		},
-		clusterv1.SchemeGroupVersion.WithKind("ManagedCluster"): { //nolint:staticcheck
+		clusterv1.SchemeGroupVersion.WithKind("ManagedCluster"): { //nolint:staticcheck // SA1019 SchemeGroupVersion is deprecated but metav1.GroupVersion lacks WithKind().
 			{LabelSelector: "vendor!=auto-detect,observability!=disabled"},
 		},
-		addonv1beta1.SchemeGroupVersion.WithKind("ClusterManagementAddOn"): { //nolint:staticcheck
+		addonv1beta1.SchemeGroupVersion.WithKind("ClusterManagementAddOn"): { //nolint:staticcheck // SA1019 SchemeGroupVersion is deprecated but metav1.GroupVersion lacks WithKind().
 			{FieldSelector: fmt.Sprintf("metadata.name=%s", util.ObservabilityController)},
 		},
-		addonv1alpha1.SchemeGroupVersion.WithKind("ManagedClusterAddOn"): { //nolint:staticcheck
+		addonv1alpha1.SchemeGroupVersion.WithKind("ManagedClusterAddOn"): { //nolint:staticcheck // SA1019 SchemeGroupVersion is deprecated but metav1.GroupVersion lacks WithKind().
 			{FieldSelector: fmt.Sprintf("metadata.name=%s", config.ManagedClusterAddonName)},
 		},
 	}
@@ -225,7 +226,7 @@ func main() {
 	}
 
 	// Add filter for ManagedClusterAddOn to reduce the cache size when the managedclusters scale.
-	gvkLabelsMap[addonv1alpha1.SchemeGroupVersion.WithKind("ManagedClusterAddOn")] = []filteredcache.Selector{ //nolint:staticcheck
+	gvkLabelsMap[addonv1alpha1.SchemeGroupVersion.WithKind("ManagedClusterAddOn")] = []filteredcache.Selector{ //nolint:staticcheck // SA1019 SchemeGroupVersion is deprecated but metav1.GroupVersion lacks WithKind().
 		{LabelSelector: "owner==multicluster-observability-operator"},
 	}
 
