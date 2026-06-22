@@ -60,12 +60,16 @@ func (r *MCORenderer) renderProxyDeployment(ctx context.Context, res *resource.R
 	imagePullPolicy := mcoconfig.GetImagePullPolicy(r.cr.Spec)
 	spec.Containers[0].ImagePullPolicy = imagePullPolicy
 	args0 := spec.Containers[0].Args
+	obsName := mcoconfig.GetOperandName(mcoconfig.Observatorium)
+	if MCOAPlatformMetricsEnabled(r.cr) {
+		obsName = "mcoa-" + obsName
+	}
 	for idx := range args0 {
 		args0[idx] = strings.Replace(args0[idx], "{{MCO_NAMESPACE}}", mcoconfig.GetDefaultNamespace(), 1)
 		args0[idx] = strings.Replace(
 			args0[idx],
 			"{{OBSERVATORIUM_NAME}}",
-			"mcoa-observability",
+			obsName,
 			1,
 		)
 	}

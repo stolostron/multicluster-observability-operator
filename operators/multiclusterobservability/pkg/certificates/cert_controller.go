@@ -233,7 +233,7 @@ func onUpdate(c client.Client, ingressCtlCrdExists bool) func(oldObj, newObj any
 				case grafanaCerts:
 					err = createCertSecret(c, nil, nil, true, grafanaCerts, false, grafanaCertificateCN, nil, nil, nil)
 				case serverCerts:
-					hosts, err = getHosts(c, ingressCtlCrdExists)
+					hosts, err = getHosts(c, nil, ingressCtlCrdExists)
 					if err == nil {
 						err = createCertSecret(c, nil, nil, true, serverCerts, true, serverCertificateCN, nil, hosts, nil)
 					}

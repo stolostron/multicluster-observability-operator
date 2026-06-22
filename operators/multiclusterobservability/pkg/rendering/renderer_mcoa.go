@@ -410,7 +410,7 @@ func MCOAEnabled(cr *obv1beta2.MultiClusterObservability) bool {
 
 // MCOAPlatformMetricsEnabled checks if platform metrics collection is enabled in the MCO CR capabilities.
 func MCOAPlatformMetricsEnabled(cr *obv1beta2.MultiClusterObservability) bool {
-	if cr.Spec.Capabilities == nil {
+	if cr == nil || cr.Spec.Capabilities == nil {
 		return false
 	}
 

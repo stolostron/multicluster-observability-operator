@@ -21,6 +21,7 @@ import (
 
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering"
 	mcoutil "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	certificatesv1 "k8s.io/api/certificates/v1"
@@ -69,7 +70,7 @@ func CreateObservabilityCerts(
 	if err != nil {
 		return err
 	}
-	hosts, err := getHosts(c, ingressCtlCrdExists)
+	hosts, err := getHosts(c, mco, ingressCtlCrdExists)
 	if err != nil {
 		return err
 	}
@@ -465,28 +466,28 @@ func pemEncode(cert []byte, key []byte) (*bytes.Buffer, *bytes.Buffer) {
 	return certPEM, keyPEM
 }
 
-func getHosts(c client.Client, ingressCtlCrdExists bool) ([]string, error) {
+func getHosts(c client.Client, mco *mcov1beta2.MultiClusterObservability, ingressCtlCrdExists bool) ([]string, error) {
 	hosts := []string{config.GetObsAPISvc(config.GetOperandName(config.Observatorium))}
-	hosts = append(hosts, config.GetObsAPISvc("mcoa-"+config.GetOperandName(config.Observatorium)))
 
 	customHostURL, err := config.GetObsAPIExternalURL(context.TODO(), c, config.ObsAPIGateway, config.GetDefaultNamespace())
 	if err != nil {
 		return nil, err
 	}
-	// The config.GetObsAPIExternalURL call is already doing URL parsing under the hood to ensure it's valid,
-	// so we don't need to check the error of url.Parse again.
 	customHost := customHostURL.Hostname()
 	if customHost != "" {
 		hosts = append(hosts, customHost)
 	}
-	// MCOA
-	mcoaCustomHostURL, err := config.GetObsAPIExternalURL(context.TODO(), c, config.McoaObsAPIGateway, config.GetDefaultNamespace())
-	if err != nil {
-		return nil, err
-	}
-	mcoaCustomHost := mcoaCustomHostURL.Hostname()
-	if mcoaCustomHost != "" {
-		hosts = append(hosts, mcoaCustomHost)
+
+	if rendering.MCOAPlatformMetricsEnabled(mco) {
+		hosts = append(hosts, config.GetObsAPISvc("mcoa-"+config.GetOperandName(config.Observatorium)))
+		mcoaCustomHostURL, err := config.GetObsAPIExternalURL(context.TODO(), c, config.McoaObsAPIGateway, config.GetDefaultNamespace())
+		if err != nil {
+			return nil, err
+		}
+		mcoaCustomHost := mcoaCustomHostURL.Hostname()
+		if mcoaCustomHost != "" {
+			hosts = append(hosts, mcoaCustomHost)
+		}
 	}
 
 	if ingressCtlCrdExists {
