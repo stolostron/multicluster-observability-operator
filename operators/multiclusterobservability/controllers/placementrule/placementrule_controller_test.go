@@ -32,7 +32,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
-	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	addonv1beta1 "open-cluster-management.io/api/addon/v1beta1"
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
 	workv1 "open-cluster-management.io/api/work/v1"
@@ -74,9 +73,6 @@ func initSchema(t *testing.T) {
 	}
 	if err := workv1.AddToScheme(s); err != nil {
 		t.Fatalf("Unable to add workv1 scheme: (%v)", err)
-	}
-	if err := addonv1alpha1.AddToScheme(s); err != nil {
-		t.Fatalf("Unable to add addonv1alpha1 scheme: (%v)", err)
 	}
 	if err := addonv1beta1.AddToScheme(s); err != nil {
 		t.Fatalf("Unable to add addonv1beta1 scheme: (%v)", err)
@@ -152,8 +148,7 @@ func setupTest(t *testing.T) {
 
 func TestObservabilityAddonController(t *testing.T) {
 	s := scheme.Scheme
-	addonv1alpha1.AddToScheme(s)
-	addonv1beta1.AddToScheme(s)
+	addonv1beta1.Install(s)
 	initSchema(t)
 	config.SetMonitoringCRName(mcoName)
 	mco := newTestMCO()
@@ -166,7 +161,7 @@ func TestObservabilityAddonController(t *testing.T) {
 	c := fake.
 		NewClientBuilder().
 		WithStatusSubresource(
-			&addonv1alpha1.ManagedClusterAddOn{},
+			&addonv1beta1.ManagedClusterAddOn{},
 			&mcov1beta2.MultiClusterObservability{},
 			&mcov1beta1.ObservabilityAddon{},
 		).
@@ -582,24 +577,24 @@ func TestObservabilityAddonController(t *testing.T) {
 	}
 }
 
-func newManagedClusterAddon() *addonv1alpha1.ManagedClusterAddOn {
-	return &addonv1alpha1.ManagedClusterAddOn{
+func newManagedClusterAddon() *addonv1beta1.ManagedClusterAddOn {
+	return &addonv1beta1.ManagedClusterAddOn{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: addonv1alpha1.GroupVersion.String(),
+			APIVersion: addonv1beta1.GroupVersion.String(),
 			Kind:       "ManagedClusterAddOn",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "observability-controller",
 			Namespace: namespace,
 		},
-		Spec: addonv1alpha1.ManagedClusterAddOnSpec{
-			Configs: []addonv1alpha1.AddOnConfig{
+		Spec: addonv1beta1.ManagedClusterAddOnSpec{
+			Configs: []addonv1beta1.AddOnConfig{
 				{
-					ConfigGroupResource: addonv1alpha1.ConfigGroupResource{
+					ConfigGroupResource: addonv1beta1.ConfigGroupResource{
 						Group:    operatorutil.AddonGroup,
 						Resource: operatorutil.AddonDeploymentConfigResource,
 					},
-					ConfigReferent: addonv1alpha1.ConfigReferent{
+					ConfigReferent: addonv1beta1.ConfigReferent{
 						Namespace: namespace,
 						Name:      addonConfigName,
 					},

@@ -21,7 +21,6 @@ import (
 
 func TestClusterManagmentAddon(t *testing.T) {
 	s := scheme.Scheme
-	addonv1alpha1.AddToScheme(s)
 	addonv1beta1.Install(s)
 	routev1.AddToScheme(s)
 

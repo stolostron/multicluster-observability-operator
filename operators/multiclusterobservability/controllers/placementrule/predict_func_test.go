@@ -12,7 +12,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
-	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	addonv1beta1 "open-cluster-management.io/api/addon/v1beta1"
 	workv1 "open-cluster-management.io/api/work/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -173,18 +172,14 @@ func TestGetMgClusterAddonPredFunc_StatusChanges(t *testing.T) {
 	}
 
 	// Test: Status change with configReferences should trigger reconcile
-	newAddon.Status.ConfigReferences = []addonv1alpha1.ConfigReference{
+	newAddon.Status.ConfigReferences = []addonv1beta1.ConfigReference{
 		{
-			ConfigGroupResource: addonv1alpha1.ConfigGroupResource{
+			ConfigGroupResource: addonv1beta1.ConfigGroupResource{
 				Group:    operatorutil.AddonGroup,
 				Resource: operatorutil.AddonDeploymentConfigResource,
 			},
-			ConfigReferent: addonv1alpha1.ConfigReferent{
-				Name:      "test-config",
-				Namespace: "test-ns",
-			},
-			DesiredConfig: &addonv1alpha1.ConfigSpecHash{
-				ConfigReferent: addonv1alpha1.ConfigReferent{
+			DesiredConfig: &addonv1beta1.ConfigSpecHash{
+				ConfigReferent: addonv1beta1.ConfigReferent{
 					Name:      "test-config",
 					Namespace: "test-ns",
 				},

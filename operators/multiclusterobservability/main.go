@@ -39,7 +39,6 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/klog/v2"
-	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	addonv1beta1 "open-cluster-management.io/api/addon/v1beta1"
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
 	clusterv1beta1 "open-cluster-management.io/api/cluster/v1beta1"
@@ -68,7 +67,6 @@ func init() {
 	utilruntime.Must(observabilityv1beta2.AddToScheme(scheme))
 	utilruntime.Must(observatoriumAPIs.AddToScheme(scheme))
 	utilruntime.Must(prometheusv1.AddToScheme(scheme))
-	utilruntime.Must(addonv1alpha1.Install(scheme))
 	utilruntime.Must(addonv1beta1.Install(scheme))
 	utilruntime.Must(imagev1.AddToScheme(scheme))
 	utilruntime.Must(apiextensionsv1.AddToScheme(scheme))
@@ -193,7 +191,7 @@ func main() {
 		addonv1beta1.SchemeGroupVersion.WithKind("ClusterManagementAddOn"): { //nolint:staticcheck // SA1019 SchemeGroupVersion is deprecated but metav1.GroupVersion lacks WithKind().
 			{FieldSelector: fmt.Sprintf("metadata.name=%s", util.ObservabilityController)},
 		},
-		addonv1alpha1.SchemeGroupVersion.WithKind("ManagedClusterAddOn"): { //nolint:staticcheck // SA1019 SchemeGroupVersion is deprecated but metav1.GroupVersion lacks WithKind().
+		addonv1beta1.SchemeGroupVersion.WithKind("ManagedClusterAddOn"): { //nolint:staticcheck // SA1019 SchemeGroupVersion is deprecated but metav1.GroupVersion lacks WithKind().
 			{FieldSelector: fmt.Sprintf("metadata.name=%s", config.ManagedClusterAddonName)},
 		},
 	}
@@ -226,7 +224,7 @@ func main() {
 	}
 
 	// Add filter for ManagedClusterAddOn to reduce the cache size when the managedclusters scale.
-	gvkLabelsMap[addonv1alpha1.SchemeGroupVersion.WithKind("ManagedClusterAddOn")] = []filteredcache.Selector{ //nolint:staticcheck // SA1019 SchemeGroupVersion is deprecated but metav1.GroupVersion lacks WithKind().
+	gvkLabelsMap[addonv1beta1.SchemeGroupVersion.WithKind("ManagedClusterAddOn")] = []filteredcache.Selector{ //nolint:staticcheck // SA1019 SchemeGroupVersion is deprecated but metav1.GroupVersion lacks WithKind().
 		{LabelSelector: "owner==multicluster-observability-operator"},
 	}
 

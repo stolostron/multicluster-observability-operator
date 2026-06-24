@@ -89,7 +89,7 @@ func NewMCOClusterManagementAddonsGVR() schema.GroupVersionResource {
 func NewMCOManagedClusterAddonsGVR() schema.GroupVersionResource {
 	return schema.GroupVersionResource{
 		Group:    OCM_ADDON_GROUP,
-		Version:  "v1alpha1",
+		Version:  "v1beta1",
 		Resource: "managedclusteraddons",
 	}
 }

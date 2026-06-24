@@ -30,7 +30,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	kubescheme "k8s.io/client-go/kubernetes/scheme"
-	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -224,7 +223,6 @@ alertmanager-router-ca: |
 
 	s := runtime.NewScheme()
 	kubescheme.AddToScheme(s)
-	addonv1alpha1.AddToScheme(s)
 	oav1beta1.AddToScheme(s)
 	ocinfrav1.AddToScheme(s)
 	hyperv1.AddToScheme(s)

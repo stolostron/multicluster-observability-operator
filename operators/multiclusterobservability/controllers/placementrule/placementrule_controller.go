@@ -36,7 +36,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/util/retry"
-	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	addonv1beta1 "open-cluster-management.io/api/addon/v1beta1"
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
 	workv1 "open-cluster-management.io/api/work/v1"
@@ -246,7 +245,7 @@ func (r *PlacementRuleReconciler) cleanOrphanResources(ctx context.Context, req 
 		return false, fmt.Errorf("failed to list owned manifestwork resources: %w", err)
 	}
 
-	managedclusteraddonList := &addonv1alpha1.ManagedClusterAddOnList{}
+	managedclusteraddonList := &addonv1beta1.ManagedClusterAddOnList{}
 	if err := r.Client.List(ctx, managedclusteraddonList, opts); err != nil {
 		return false, fmt.Errorf("failed to list owned managedclusteraddon resources: %w", err)
 	}
@@ -766,7 +765,7 @@ func createManagedClusterRes(ctx context.Context, c client.Client, mco *mcov1bet
 }
 
 func deleteManagedClusterAddOn(c client.Client, namespace string) error {
-	managedclusteraddon := &addonv1alpha1.ManagedClusterAddOn{
+	managedclusteraddon := &addonv1beta1.ManagedClusterAddOn{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      config.ManagedClusterAddonName,
 			Namespace: namespace,
@@ -1152,8 +1151,8 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Watches(&corev1.ServiceAccount{}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(amAccessorSAPred))
 
 	// watch for AddOnDeploymentConfig
-	addOnDeploymentConfigGroupKind := schema.GroupKind{Group: addonv1alpha1.GroupVersion.Group, Kind: "AddOnDeploymentConfig"}
-	if _, err := r.RESTMapper.RESTMapping(addOnDeploymentConfigGroupKind, addonv1alpha1.GroupVersion.Version); err == nil {
+	addOnDeploymentConfigGroupKind := schema.GroupKind{Group: addonv1beta1.GroupVersion.Group, Kind: "AddOnDeploymentConfig"}
+	if _, err := r.RESTMapper.RESTMapping(addOnDeploymentConfigGroupKind, addonv1beta1.GroupVersion.Version); err == nil {
 		ctrBuilder = ctrBuilder.Watches(
 			&addonv1beta1.AddOnDeploymentConfig{},
 			handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, obj client.Object) []reconcile.Request {
@@ -1177,8 +1176,8 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		)
 	}
 
-	clusterMgmtGroupKind := schema.GroupKind{Group: addonv1alpha1.GroupVersion.Group, Kind: "ClusterManagementAddOn"}
-	if _, err := r.RESTMapper.RESTMapping(clusterMgmtGroupKind, addonv1alpha1.GroupVersion.Version); err == nil {
+	clusterMgmtGroupKind := schema.GroupKind{Group: addonv1beta1.GroupVersion.Group, Kind: "ClusterManagementAddOn"}
+	if _, err := r.RESTMapper.RESTMapping(clusterMgmtGroupKind, addonv1beta1.GroupVersion.Version); err == nil {
 		clusterMgmtPred := getClusterMgmtAddonPredFunc()
 
 		// secondary watch for clustermanagementaddon
@@ -1195,13 +1194,13 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		)
 	}
 
-	mgClusterGroupKind := schema.GroupKind{Group: addonv1alpha1.GroupVersion.Group, Kind: "ManagedClusterAddOn"}
-	if _, err := r.RESTMapper.RESTMapping(mgClusterGroupKind, addonv1alpha1.GroupVersion.Version); err == nil {
+	mgClusterGroupKind := schema.GroupKind{Group: addonv1beta1.GroupVersion.Group, Kind: "ManagedClusterAddOn"}
+	if _, err := r.RESTMapper.RESTMapping(mgClusterGroupKind, addonv1beta1.GroupVersion.Version); err == nil {
 		mgClusterGroupKindPred := getMgClusterAddonPredFunc()
 
 		// secondary watch for managedclusteraddon
 		ctrBuilder = ctrBuilder.Watches(
-			&addonv1alpha1.ManagedClusterAddOn{},
+			&addonv1beta1.ManagedClusterAddOn{},
 			&handler.EnqueueRequestForObject{},
 			builder.WithPredicates(mgClusterGroupKindPred),
 		)

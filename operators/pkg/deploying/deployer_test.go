@@ -25,7 +25,6 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	addonv1beta1 "open-cluster-management.io/api/addon/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
@@ -1301,7 +1300,6 @@ func TestDeploy(t *testing.T) {
 	rbacv1.AddToScheme(scheme)
 	prometheusv1.AddToScheme(scheme)
 	networkingv1.AddToScheme(scheme)
-	addonv1alpha1.AddToScheme(scheme)
 	addonv1beta1.Install(scheme)
 	fakeClient := fake.NewClientBuilder().WithScheme(scheme).Build()
 
@@ -1525,7 +1523,6 @@ func TestUndeploy(t *testing.T) {
 
 func TestAddOnDeploymentConfig_Migration(t *testing.T) {
 	scheme := runtime.NewScheme()
-	addonv1alpha1.AddToScheme(scheme)
 	addonv1beta1.AddToScheme(scheme)
 
 	tests := []struct {

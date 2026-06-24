@@ -21,7 +21,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	addonv1beta1 "open-cluster-management.io/api/addon/v1beta1"
 	clusterv1beta1 "open-cluster-management.io/api/cluster/v1beta1"
 	policyv1 "open-cluster-management.io/governance-policy-propagator/api/v1"
@@ -35,7 +34,6 @@ func setupTestScheme(t *testing.T) *runtime.Scheme {
 	require.NoError(t, mcov1beta2.AddToScheme(scheme))
 	require.NoError(t, clusterv1beta1.AddToScheme(scheme))
 	require.NoError(t, policyv1.AddToScheme(scheme))
-	require.NoError(t, addonv1alpha1.AddToScheme(scheme))
 	require.NoError(t, addonv1beta1.AddToScheme(scheme))
 	require.NoError(t, monitoringv1.AddToScheme(scheme))
 	return scheme

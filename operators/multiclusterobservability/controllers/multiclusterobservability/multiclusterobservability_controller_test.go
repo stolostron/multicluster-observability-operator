@@ -53,7 +53,6 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"k8s.io/client-go/util/workqueue"
-	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	addonv1beta1 "open-cluster-management.io/api/addon/v1beta1"
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
 	clusterv1beta1 "open-cluster-management.io/api/cluster/v1beta1"
@@ -211,23 +210,23 @@ func createObservatoriumAPIService(name, namespace string) *corev1.Service {
 	}
 }
 
-func newClusterManagementAddon() *addonv1alpha1.ClusterManagementAddOn {
-	return &addonv1alpha1.ClusterManagementAddOn{
+func newClusterManagementAddon() *addonv1beta1.ClusterManagementAddOn {
+	return &addonv1beta1.ClusterManagementAddOn{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: addonv1alpha1.SchemeGroupVersion.String(),
+			APIVersion: addonv1beta1.SchemeGroupVersion.String(),
 			Kind:       "ClusterManagementAddOn",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "ObservabilityController",
 		},
-		Spec: addonv1alpha1.ClusterManagementAddOnSpec{
-			AddOnMeta: addonv1alpha1.AddOnMeta{
+		Spec: addonv1beta1.ClusterManagementAddOnSpec{
+			AddOnMeta: addonv1beta1.AddOnMeta{
 				DisplayName: "ObservabilityController",
 				Description: "ObservabilityController Description",
 			},
-			SupportedConfigs: []addonv1alpha1.ConfigMeta{
+			DefaultConfigs: []addonv1beta1.AddOnConfig{
 				{
-					ConfigGroupResource: addonv1alpha1.ConfigGroupResource{
+					ConfigGroupResource: addonv1beta1.ConfigGroupResource{
 						Group:    "observability.open-cluster-management.io",
 						Resource: "observabilityaddons",
 					},
@@ -368,7 +367,6 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	clusterv1.AddToScheme(s)
 	clusterv1beta1.AddToScheme(s)
 	policyv1.AddToScheme(s)
-	addonv1alpha1.AddToScheme(s)
 	addonv1beta1.Install(s)
 	migrationv1alpha1.SchemeBuilder.AddToScheme(s)
 	operatorv1.AddToScheme(s)
@@ -408,7 +406,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 		WithScheme(s).
 		WithRuntimeObjects(objs...).
 		WithStatusSubresource(
-			&addonv1alpha1.ManagedClusterAddOn{},
+			&addonv1beta1.ManagedClusterAddOn{},
 			&mcov1beta2.MultiClusterObservability{},
 			&oav1beta1.ObservabilityAddon{},
 		).
@@ -857,7 +855,6 @@ func TestImageReplaceForMCO(t *testing.T) {
 	oauthv1.AddToScheme(s)
 	clusterv1.AddToScheme(s)
 	policyv1.AddToScheme(s)
-	addonv1alpha1.AddToScheme(s)
 	addonv1beta1.Install(s)
 	migrationv1alpha1.SchemeBuilder.AddToScheme(s)
 	operatorv1.AddToScheme(s)
