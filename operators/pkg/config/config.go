@@ -66,3 +66,18 @@ const (
 	DefaultClusterType = ""
 	SnoClusterType     = "SNO"
 )
+
+const (
+	ACMPrometheusRulePartOfLabelKey      = "app.kubernetes.io/part-of"
+	ACMPrometheusRuleManagedByLabelKey   = "app.kubernetes.io/managed-by"
+	ACMPrometheusRulePartOfLabelValue    = "multicluster-observability-addon"
+	ACMPrometheusRuleManagedByLabelValue = "multicluster-observability-operator"
+)
+
+// GetACMPrometheusRuleLabels returns metadata labels applied to PrometheusRules shipped by ACM observability.
+func GetACMPrometheusRuleLabels() map[string]string {
+	return map[string]string{
+		ACMPrometheusRulePartOfLabelKey:    ACMPrometheusRulePartOfLabelValue,
+		ACMPrometheusRuleManagedByLabelKey: ACMPrometheusRuleManagedByLabelValue,
+	}
+}

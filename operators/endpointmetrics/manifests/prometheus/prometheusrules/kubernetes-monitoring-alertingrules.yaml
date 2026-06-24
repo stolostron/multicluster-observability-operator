@@ -3,6 +3,9 @@ kind: PrometheusRule
 metadata:
   name: kubernetes-monitoring-alertingrules
   namespace: open-cluster-management-addon-observability
+  labels:
+    app.kubernetes.io/part-of: multicluster-observability-addon
+    app.kubernetes.io/managed-by: multicluster-observability-operator
 spec:
   groups:
   - name: kube-state-metrics
