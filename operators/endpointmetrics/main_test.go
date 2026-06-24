@@ -74,9 +74,9 @@ func TestExecute(t *testing.T) {
 		},
 		{
 			name:         "cleanup with flags",
-			args:         []string{"./endpointmetrics", "cleanup", "--hub-id=456"},
+			args:         []string{"./endpointmetrics", "cleanup", "--hub-alertmanager-ca-secret=obs-alertmanager-mtls-ca"},
 			expectedCmd:  "cleanup",
-			expectedArgs: []string{"--hub-id=456"},
+			expectedArgs: []string{"--hub-alertmanager-ca-secret=obs-alertmanager-mtls-ca"},
 		},
 	}
 
