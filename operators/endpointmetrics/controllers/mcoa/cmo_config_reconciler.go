@@ -30,7 +30,7 @@ func (r *MCOAAgentReconciler) reconcileCMO(ctx context.Context, req client.Objec
 	// If Alertmanager forwarding is disabled, we ensure our config is removed.
 	if r.AlertmanagerEndpoint == "" {
 		r.Log.Info("Alertmanager endpoint is empty, ensuring Hub configuration is removed")
-		return observabilityendpoint.RevertClusterMonitoringConfig(ctx, r.Client, r.CASecret)
+		return observabilityendpoint.RevertClusterMonitoringConfig(ctx, r.Client, r.CASecret, r.ClusterName)
 	}
 
 	cm := &corev1.ConfigMap{}
@@ -58,6 +58,7 @@ func (r *MCOAAgentReconciler) reconcileCMO(ctx context.Context, req client.Objec
 		ctx,
 		r.Client,
 		r.ClusterID,
+		r.ClusterName,
 		r.AlertmanagerEndpoint,
 		r.CASecret,
 		r.CertSecret,

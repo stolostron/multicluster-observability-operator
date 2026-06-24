@@ -33,6 +33,7 @@ func TestMCOAAgentReconciler_Reconcile(t *testing.T) {
 
 	namespace := "test-ns"
 	clusterID := "test-cluster-id"
+	clusterName := "test-cluster-name"
 	alertmanagerEndpoint := "https://hub-am.example.com"
 	hubClusterID := "hub-id"
 
@@ -96,6 +97,7 @@ func TestMCOAAgentReconciler_Reconcile(t *testing.T) {
 				}, found)
 				require.NoError(t, err)
 				assert.Contains(t, found.Data[observabilityendpoint.ClusterMonitoringConfigDataKey], "hub-am.example.com")
+				assert.Contains(t, found.Data[observabilityendpoint.ClusterMonitoringConfigDataKey], "managed_cluster_name: test-cluster-name")
 			},
 		},
 		{
@@ -140,6 +142,7 @@ func TestMCOAAgentReconciler_Reconcile(t *testing.T) {
 				}, found)
 				require.NoError(t, err)
 				assert.Contains(t, found.Data[observabilityendpoint.ClusterMonitoringConfigDataKey], "hub-am.example.com")
+				assert.Contains(t, found.Data[observabilityendpoint.ClusterMonitoringConfigDataKey], "managed_cluster_name: test-cluster-name")
 			},
 		},
 		{
@@ -265,6 +268,7 @@ func TestMCOAAgentReconciler_Reconcile(t *testing.T) {
 				recorder,
 				namespace,
 				clusterID,
+				clusterName,
 				tt.alertmanagerEndpoint,
 				caSecretName,
 				"obs-alertmanager-mtls-cert",

@@ -379,7 +379,7 @@ func createOrUpdateClusterMonitoringConfig(
 		}
 		if !revertedAlready {
 			caSecret := AppendHubClusterID(amMtlsCaName, hubInfo.HubClusterID)
-			if err = RevertClusterMonitoringConfig(ctx, client, caSecret); err != nil {
+			if err = RevertClusterMonitoringConfig(ctx, client, caSecret, ""); err != nil {
 				return false, err
 			}
 			if nsExists {
@@ -409,6 +409,7 @@ func createOrUpdateClusterMonitoringConfig(
 		ctx,
 		client,
 		clusterID,
+		"", // Pass empty string to avoid setting managed_cluster_name for legacy collector to prevent issues with global hub
 		hubInfo.AlertmanagerEndpoint,
 		caSecret,
 		certSecret,
@@ -456,7 +457,7 @@ func createOrUpdateClusterMonitoringConfig(
 
 // RevertClusterMonitoringConfig reverts the configmap cluster-monitoring-config and relevant resources
 // (observability-alertmanager-accessor and hub-alertmanager-router-ca) for the openshift cluster monitoring stack.
-func RevertClusterMonitoringConfig(ctx context.Context, client client.Client, caSecret string) error {
+func RevertClusterMonitoringConfig(ctx context.Context, client client.Client, caSecret string, clusterName string) error {
 	log.Info("RevertClusterMonitoringConfig called")
 
 	found := &corev1.ConfigMap{}
@@ -493,6 +494,9 @@ func RevertClusterMonitoringConfig(ctx context.Context, client client.Client, ca
 	// check if externalLabels exists
 	if foundClusterMonitoringConfiguration.PrometheusK8sConfig.ExternalLabels != nil {
 		delete(foundClusterMonitoringConfiguration.PrometheusK8sConfig.ExternalLabels, operatorconfig.ClusterLabelKeyForAlerts)
+		if clusterName != "" {
+			delete(foundClusterMonitoringConfiguration.PrometheusK8sConfig.ExternalLabels, operatorconfig.ClusterNameLabelKeyForAlerts)
+		}
 
 		if len(foundClusterMonitoringConfiguration.PrometheusK8sConfig.ExternalLabels) == 0 {
 			foundClusterMonitoringConfiguration.PrometheusK8sConfig.ExternalLabels = nil
@@ -541,13 +545,19 @@ func CreateOrUpdateCMOConfig(
 	ctx context.Context,
 	client client.Client,
 	clusterID string,
+	clusterName string,
 	alertmanagerEndpoint string,
 	caSecret string,
 	certSecret string,
 	accessorSecret string,
 	namespace string,
 ) (bool, error) {
-	newExternalLabels := map[string]string{operatorconfig.ClusterLabelKeyForAlerts: clusterID}
+	newExternalLabels := map[string]string{
+		operatorconfig.ClusterLabelKeyForAlerts: clusterID,
+	}
+	if clusterName != "" {
+		newExternalLabels[operatorconfig.ClusterNameLabelKeyForAlerts] = clusterName
+	}
 	newAlertmanagerConfigs := []cmomanifests.AdditionalAlertmanagerConfig{newAdditionalAlertmanagerConfig(alertmanagerEndpoint, caSecret, certSecret, accessorSecret)}
 	newPmK8sConfig := &cmomanifests.PrometheusK8sConfig{
 		ExternalLabels:      newExternalLabels,
@@ -603,6 +613,11 @@ func CreateOrUpdateCMOConfig(
 		// check and set externalLabels
 		if updatedCMOCfg.PrometheusK8sConfig.ExternalLabels != nil {
 			updatedCMOCfg.PrometheusK8sConfig.ExternalLabels[operatorconfig.ClusterLabelKeyForAlerts] = clusterID
+			if clusterName != "" {
+				updatedCMOCfg.PrometheusK8sConfig.ExternalLabels[operatorconfig.ClusterNameLabelKeyForAlerts] = clusterName
+			} else {
+				delete(updatedCMOCfg.PrometheusK8sConfig.ExternalLabels, operatorconfig.ClusterNameLabelKeyForAlerts)
+			}
 		} else {
 			updatedCMOCfg.PrometheusK8sConfig.ExternalLabels = newExternalLabels
 		}

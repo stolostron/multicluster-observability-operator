@@ -21,4 +21,4 @@ spec:
     - '{__name__="mce_hs_addon_total_hosted_control_planes_gauge"}'
   metricRelabelings:
   - action: labeldrop
-    regex: managed_cluster|id
+    regex: managed_cluster|managed_cluster_name|id

@@ -18,7 +18,7 @@ spec:
       - '{__name__=~"kube_node_info|kube_pod_info"}'
   metricRelabelings:
     - action: labeldrop
-      regex: prometheus_replica|managed_cluster|id
+      regex: prometheus_replica|managed_cluster|managed_cluster_name|id
   staticConfigs:
     - targets:
         # localhost:8090 is the in-pod proxy that provides federation access to

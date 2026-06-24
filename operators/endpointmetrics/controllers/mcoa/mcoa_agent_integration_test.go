@@ -125,6 +125,7 @@ func TestMCOAAgentIntegration(t *testing.T) {
 		mgr.GetEventRecorder("mcoa-agent-test"),
 		namespace,
 		"test-cluster-id",
+		"test-cluster-name",
 		hubInfo.AlertmanagerEndpoint,
 		caSecretName,
 		"obs-alertmanager-mtls-cert",
@@ -211,7 +212,9 @@ func TestMCOAAgentIntegration(t *testing.T) {
 				return false
 			}
 			data := found.Data[observabilityendpoint.ClusterMonitoringConfigDataKey]
-			return strings.Contains(data, "hub-alertmanager-router-ca-hub-id") && strings.Contains(data, "hub-am.example.com")
+			return strings.Contains(data, "hub-alertmanager-router-ca-hub-id") &&
+				strings.Contains(data, "hub-am.example.com") &&
+				strings.Contains(data, "managed_cluster_name: test-cluster-name")
 		}, 5*time.Second, 100*time.Millisecond)
 	})
 

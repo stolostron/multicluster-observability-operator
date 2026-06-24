@@ -325,6 +325,10 @@ func TestClusterMonitoringConfigAlertsDisabled(t *testing.T) {
 			t.Fatalf("label %s not set to %s", operatorconfig.ClusterLabelKeyForAlerts, testClusterID)
 		}
 
+		if _, ok := foundClusterMonitoringConfiguration.PrometheusK8sConfig.ExternalLabels[operatorconfig.ClusterNameLabelKeyForAlerts]; ok {
+			t.Fatalf("label %s should not be set for legacy collector", operatorconfig.ClusterNameLabelKeyForAlerts)
+		}
+
 		if foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs == nil {
 			t.Fatalf("AlertmanagerConfigs is nil after reenabling alerts")
 		}
@@ -385,7 +389,7 @@ func testCreateOrUpdateClusterMonitoringConfig(t *testing.T, hubInfo *operatorco
 		t.Fatalf("no AlertmanagerConfig for OCM in ClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs: %v", foundClusterMonitoringConfiguration)
 	}
 
-	err = RevertClusterMonitoringConfig(ctx, c, amMtlsCARef)
+	err = RevertClusterMonitoringConfig(ctx, c, amMtlsCARef, "")
 	if err != nil {
 		t.Fatalf("Failed to revert cluster-monitoring-config configmap: (%v)", err)
 	}
@@ -427,7 +431,7 @@ func testCreateOrUpdateClusterMonitoringConfig(t *testing.T, hubInfo *operatorco
 		t.Fatalf("the secret %s should not be deleted", amMtlsCertRef)
 	}
 
-	err = RevertClusterMonitoringConfig(ctx, c, amMtlsCARef)
+	err = RevertClusterMonitoringConfig(ctx, c, amMtlsCARef, "")
 	if err != nil {
 		t.Fatalf("Run into error when try to revert cluster-monitoring-config configmap twice: (%v)", err)
 	}

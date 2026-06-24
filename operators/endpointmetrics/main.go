@@ -150,7 +150,7 @@ func doCleanup(args []string) error {
 	mtlsCASecret := obsepctl.AppendHubClusterID(obsepctl.HubAmMtlsCASecretName, hubInfo.HubClusterID)
 
 	setupLog.Info("Reverting Platform monitoring configuration (Router CA)")
-	if err := obsepctl.RevertClusterMonitoringConfig(ctx, cl, caSecret); err != nil {
+	if err := obsepctl.RevertClusterMonitoringConfig(ctx, cl, caSecret, ""); err != nil {
 		setupLog.Error(err, "failed to revert platform monitoring config (Router CA)")
 		errs = append(errs, err)
 	}
@@ -174,7 +174,7 @@ func doCleanup(args []string) error {
 	}
 
 	setupLog.Info("Reverting Platform monitoring configuration (mTLS CA)")
-	if err := obsepctl.RevertClusterMonitoringConfig(ctx, cl, mtlsCASecret); err != nil {
+	if err := obsepctl.RevertClusterMonitoringConfig(ctx, cl, mtlsCASecret, ""); err != nil {
 		setupLog.Error(err, "failed to revert platform monitoring config (mTLS CA)")
 		errs = append(errs, err)
 	}
@@ -206,6 +206,7 @@ func runMCOA(args []string) {
 	var probeAddr string
 	var hubAmURL string
 	var clusterID string
+	var clusterName string
 	var namespace string
 	var hubAmCASecret string
 	var hubAmCertSecret string
@@ -219,6 +220,7 @@ func runMCOA(args []string) {
 			"Enabling this will ensure there is only one active controller manager.")
 	fs.StringVar(&hubAmURL, "hub-alertmanager-url", "", "The URL of the Hub's Alertmanager.")
 	fs.StringVar(&clusterID, "cluster-id", "", "The ID of the managed cluster.")
+	fs.StringVar(&clusterName, "cluster-name", "", "The name of the managed cluster.")
 	fs.StringVar(&namespace, "namespace", "", "The namespace the operator is running in.")
 	fs.StringVar(&hubAmCASecret, "hub-alertmanager-ca-secret", "", "The name of the CA secret for the Hub's Alertmanager.")
 	fs.StringVar(&hubAmCertSecret, "hub-alertmanager-cert-secret", "", "The name of the TLS cert/key secret for the Hub's Alertmanager.")
@@ -245,6 +247,11 @@ func runMCOA(args []string) {
 
 		if clusterID == "" {
 			setupLog.Error(fmt.Errorf("cluster-id flag not set"), "unable to start manager")
+			os.Exit(1)
+		}
+
+		if clusterName == "" {
+			setupLog.Error(fmt.Errorf("cluster-name flag not set"), "unable to start manager")
 			os.Exit(1)
 		}
 
@@ -285,6 +292,7 @@ func runMCOA(args []string) {
 		mgr.GetEventRecorder("mcoa-endpoint-controller"),
 		namespace,
 		clusterID,
+		clusterName,
 		hubAmURL,
 		hubAmCASecret,
 		hubAmCertSecret,
