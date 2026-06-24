@@ -105,7 +105,7 @@ data:
           "targets": [
             {
               "exemplar": true,
-              "expr": "label_replace(sum by (status)(label_replace(kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=\"$cluster\",namespace=\"$namespace\",name=\"$name\"}>0,\"status\", \"Running\", \"\", \"\") or label_replace(kubevirt_vm_non_running_status_last_transition_timestamp_seconds{cluster=\"$cluster\",namespace=\"$namespace\",name=\"$name\"}>0,\"status\", \"Stopped\", \"\", \"\") or label_replace(kubevirt_vm_error_status_last_transition_timestamp_seconds{cluster=\"$cluster\",namespace=\"$namespace\",name=\"$name\"}>0,\"status\", \"Error\", \"\", \"\") or label_replace(kubevirt_vm_starting_status_last_transition_timestamp_seconds{cluster=\"$cluster\",namespace=\"$namespace\",name=\"$name\"}>0,\"status\", \"Starting\", \"\", \"\") or label_replace(kubevirt_vm_migrating_status_last_transition_timestamp_seconds{cluster=\"$cluster\",namespace=\"$namespace\",name=\"$name\"}>0,\"status\", \"Migrating\", \"\", \"\") ), \"Field\", \"Status\", \"name\", \".*\")",
+              "expr": "label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(kubevirt_vm_info{cluster=\"$cluster\",namespace=\"$namespace\",name=\"$name\"}>0, \"status\", \"$1\", \"status_group\", \"(.*)\"), \"status\", \"Stopped\", \"status\", \"non_running\"), \"status\", \"Running\", \"status\", \"running\"), \"status\", \"Error\", \"status\", \"error\"), \"status\", \"Starting\", \"status\", \"starting\"), \"status\", \"Migrating\", \"status\", \"migrating\"), \"Field\", \"Status\", \"status\", \".*\")",
               "format": "table",
               "instant": true,
               "interval": "",
@@ -295,7 +295,7 @@ data:
         },
         {
           "datasource": null,
-          "description": "This panel displays the VM memory usage Percentage. The memory usage is calculated as the allocated memory minus unused and cached memory. The data is based on the most recent metrics collected.",
+          "description": "This panel displays the VM memory usage Percentage. The memory usage is based on the `kubevirt_vmi_memory_used_bytes` metric. The data is based on the most recent metrics collected.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -369,7 +369,7 @@ data:
           "targets": [
             {
               "exemplar": true,
-              "expr": "(sum by (name) (\nkubevirt_vmi_memory_available_bytes{cluster=~\"$cluster\",namespace=\"$namespace\", name=\"$name\"} - kubevirt_vmi_memory_unused_bytes{cluster=~\"$cluster\",namespace=\"$namespace\", name=\"$name\"} -kubevirt_vmi_memory_cached_bytes{cluster=~\"$cluster\",namespace=\"$namespace\", name=\"$name\"}))\n/\n(sum by (name)(kubevirt_vm_resource_requests{cluster=\"$cluster\", namespace=\"$namespace\", name=\"$name\", resource=\"memory\"}))",
+              "expr": "(sum by (name) (\nkubevirt_vmi_memory_used_bytes{cluster=~\"$cluster\",namespace=\"$namespace\", name=\"$name\"}))\n/\n(sum by (name)(kubevirt_vm_resource_requests{cluster=\"$cluster\", namespace=\"$namespace\", name=\"$name\", resource=\"memory\"}))",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -536,7 +536,7 @@ data:
           "targets": [
             {
               "exemplar": true,
-              "expr": "label_replace(sum by (name)(kubevirt_vm_cpu_usage_seconds_total or kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=\"$cluster\", namespace=\"$namespace\",name=\"$name\"}), \"Field\", \"Name\", \"name\", \".*\")",
+              "expr": "label_replace(sum by (name)(kubevirt_vm_cpu_usage_seconds_total{cluster=\"$cluster\", namespace=\"$namespace\",name=\"$name\"} or kubevirt_vm_info{cluster=\"$cluster\", namespace=\"$namespace\",name=\"$name\"}), \"Field\", \"Name\", \"name\", \".*\")",
               "format": "table",
               "hide": true,
               "instant": true,
@@ -546,7 +546,7 @@ data:
             },
             {
               "exemplar": true,
-              "expr": "label_replace(sum by (status)(label_replace(kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=\"$cluster\",namespace=\"$namespace\",name=\"$name\"}>0,\"status\", \"Running\", \"\", \"\") or label_replace(kubevirt_vm_non_running_status_last_transition_timestamp_seconds{cluster=\"$cluster\",namespace=\"$namespace\",name=\"$name\"}>0,\"status\", \"Stopped\", \"\", \"\") or label_replace(kubevirt_vm_error_status_last_transition_timestamp_seconds{cluster=\"$cluster\",namespace=\"$namespace\",name=\"$name\"}>0,\"status\", \"Error\", \"\", \"\") or label_replace(kubevirt_vm_starting_status_last_transition_timestamp_seconds{cluster=\"$cluster\",namespace=\"$namespace\",name=\"$name\"}>0,\"status\", \"Starting\", \"\", \"\") or label_replace(kubevirt_vm_migrating_status_last_transition_timestamp_seconds{cluster=\"$cluster\",namespace=\"$namespace\",name=\"$name\"}>0,\"status\", \"Migrating\", \"\", \"\") ), \"Field\", \"Status\", \"name\", \".*\")",
+              "expr": "label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(kubevirt_vm_info{cluster=\"$cluster\",namespace=\"$namespace\",name=\"$name\"}>0, \"status\", \"$1\", \"status_group\", \"(.*)\"), \"status\", \"Stopped\", \"status\", \"non_running\"), \"status\", \"Running\", \"status\", \"running\"), \"status\", \"Error\", \"status\", \"error\"), \"status\", \"Starting\", \"status\", \"starting\"), \"status\", \"Migrating\", \"status\", \"migrating\"), \"Field\", \"Status\", \"status\", \".*\")",
               "format": "table",
               "hide": true,
               "instant": true,
@@ -793,7 +793,7 @@ data:
           "targets": [
             {
               "exemplar": true,
-              "expr": "label_replace(sum by (namespace)(kubevirt_vm_cpu_usage_seconds_total or kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=\"$cluster\", namespace=\"$namespace\",name=\"$name\"}), \"Field\", \"Namespace\", \"name\", \".*\")",
+              "expr": "label_replace(sum by (namespace)(kubevirt_vm_cpu_usage_seconds_total{cluster=\"$cluster\", namespace=\"$namespace\",name=\"$name\"} or kubevirt_vm_info{cluster=\"$cluster\", namespace=\"$namespace\",name=\"$name\"}), \"Field\", \"Namespace\", \"name\", \".*\")",
               "format": "table",
               "hide": true,
               "instant": true,
@@ -1730,7 +1730,7 @@ data:
           "panels": [
             {
               "datasource": "Observatorium-Dynamic",
-              "description": "This panel displays the VM memory usage. The memory usage is calculated as the allocated memory minus unused and cached memory. The data is based on the most recent metrics collected.",
+              "description": "This panel displays the VM memory usage over the selected time range. The memory usage is based on the `kubevirt_vmi_memory_used_bytes` metric.",
               "fieldConfig": {
                 "defaults": {
                   "color": {
@@ -1804,7 +1804,7 @@ data:
               "targets": [
                 {
                   "exemplar": true,
-                  "expr": "sum by (name) (\nkubevirt_vmi_memory_available_bytes{cluster=~\"$cluster\",namespace=\"$namespace\", name=\"$name\"} - kubevirt_vmi_memory_unused_bytes{cluster=~\"$cluster\",namespace=\"$namespace\", name=\"$name\"} -kubevirt_vmi_memory_cached_bytes{cluster=~\"$cluster\",namespace=\"$namespace\", name=\"$name\"})",
+                  "expr": "sum by (name) (\nkubevirt_vmi_memory_used_bytes{cluster=~\"$cluster\",namespace=\"$namespace\", name=\"$name\"})",
                   "hide": false,
                   "instant": false,
                   "interval": "",
@@ -1817,7 +1817,7 @@ data:
             },
             {
               "datasource": "Observatorium-Dynamic",
-              "description": "This panel displays the VM memory usage Percentage. The memory usage is calculated as the allocated memory minus unused and cached memory. The data is based on the most recent metrics collected.",
+              "description": "This panel displays the VM memory usage as a percentage over the selected time range. The memory usage is based on the `kubevirt_vmi_memory_used_bytes` metric divided by requested memory.",
               "fieldConfig": {
                 "defaults": {
                   "color": {
@@ -1891,7 +1891,7 @@ data:
               "targets": [
                 {
                   "exemplar": true,
-                  "expr": "(sum by (name) (\nkubevirt_vmi_memory_available_bytes{cluster=~\"$cluster\",namespace=\"$namespace\", name=\"$name\"} - kubevirt_vmi_memory_unused_bytes{cluster=~\"$cluster\",namespace=\"$namespace\", name=\"$name\"} -kubevirt_vmi_memory_cached_bytes{cluster=~\"$cluster\",namespace=\"$namespace\", name=\"$name\"}))/\n(sum by (name)(kubevirt_vm_resource_requests{cluster=~\"$cluster\",namespace=\"$namespace\", name=\"$name\",resource=\"memory\"}))",
+                  "expr": "(sum by (name) (\nkubevirt_vmi_memory_used_bytes{cluster=~\"$cluster\",namespace=\"$namespace\", name=\"$name\"}))/\n(sum by (name)(kubevirt_vm_resource_requests{cluster=~\"$cluster\",namespace=\"$namespace\", name=\"$name\",resource=\"memory\"}))",
                   "hide": false,
                   "instant": false,
                   "interval": "",

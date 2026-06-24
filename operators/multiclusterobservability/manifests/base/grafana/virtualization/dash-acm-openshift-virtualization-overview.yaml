@@ -89,7 +89,7 @@ data:
           "targets": [
             {
               "exemplar": true,
-              "expr": "count (\nlabel_replace(sum by (name, openshiftVersion) (acm_managed_cluster_labels{name=~\"$cluster\"}), \"cluster\", \"$1\", \"name\", \"(.*)\") + \non(cluster) group_left()(kubevirt_hyperconverged_operator_health_status{cluster=~\"$cluster\"}*0)\n)",
+              "expr": "count (\nlabel_replace(sum by (name, openshiftVersion) (acm_managed_cluster_labels{name=~\"$cluster\"}), \"cluster\", \"$1\", \"name\", \"(.*)\") + \non(cluster) group_left()(max by (cluster)(kubevirt_hyperconverged_operator_health_status{cluster=~\"$cluster\"}*0))\n)",
               "interval": "",
               "legendFormat": "",
               "refId": "A"
@@ -146,7 +146,7 @@ data:
           "targets": [
             {
               "exemplar": true,
-              "expr": "count(kubevirt_hyperconverged_operator_health_status{cluster=~\"$cluster\"} == 2) or vector(0)",
+              "expr": "count(max by (cluster)(kubevirt_hyperconverged_operator_health_status{cluster=~\"$cluster\"}) == 2) or vector(0)",
               "instant": false,
               "interval": "",
               "legendFormat": "",
@@ -578,7 +578,7 @@ data:
           "targets": [
             {
               "exemplar": true,
-              "expr": "count(kubevirt_hyperconverged_operator_health_status{cluster=~\"$cluster\"} == 1) or vector(0)",
+              "expr": "count(max by (cluster)(kubevirt_hyperconverged_operator_health_status{cluster=~\"$cluster\"}) == 1) or vector(0)",
               "interval": "",
               "legendFormat": "",
               "refId": "A"
@@ -901,7 +901,7 @@ data:
           "targets": [
             {
               "exemplar": true,
-              "expr": "count by (openshiftVersion)(\nlabel_replace(sum by (name, openshiftVersion) (acm_managed_cluster_labels{name=~\"$cluster\"}), \"cluster\", \"$1\", \"name\", \"(.*)\") + \non(cluster) group_left()(kubevirt_hyperconverged_operator_health_status{cluster=~\"$cluster\"}*0)\n)",
+              "expr": "count by (openshiftVersion)(\nlabel_replace(sum by (name, openshiftVersion) (acm_managed_cluster_labels{name=~\"$cluster\"}), \"cluster\", \"$1\", \"name\", \"(.*)\") + \non(cluster) group_left()(max by (cluster)(kubevirt_hyperconverged_operator_health_status{cluster=~\"$cluster\"}*0))\n)",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -911,7 +911,7 @@ data:
             },
             {
               "exemplar": true,
-              "expr": "count by (openshiftVersion)(count by (cluster, openshiftVersion)(\nlabel_replace(sum by (name, openshiftVersion) (acm_managed_cluster_labels{name=~\"$cluster\"}), \"cluster\", \"$1\", \"name\", \"(.*)\") + \non(cluster) group_left()(kubevirt_hyperconverged_operator_health_status*0)\n)) \n/ (count by (openshiftVersion)(\nlabel_replace(sum by (name, openshiftVersion) (acm_managed_cluster_labels{name=~\"$cluster\"}), \"cluster\", \"$1\", \"name\", \"(.*)\") + \non(cluster) group_left()(kubevirt_hyperconverged_operator_health_status{cluster=~\"$cluster\"}*0)\n))",
+              "expr": "count by (openshiftVersion)(count by (cluster, openshiftVersion)(\nlabel_replace(sum by (name, openshiftVersion) (acm_managed_cluster_labels{name=~\"$cluster\"}), \"cluster\", \"$1\", \"name\", \"(.*)\") + \non(cluster) group_left()(max by (cluster)(kubevirt_hyperconverged_operator_health_status*0))\n)) \n/ scalar(count(count by (cluster, openshiftVersion)(\nlabel_replace(sum by (name, openshiftVersion) (acm_managed_cluster_labels{name=~\"$cluster\"}), \"cluster\", \"$1\", \"name\", \"(.*)\") + \non(cluster) group_left()(max by (cluster)(kubevirt_hyperconverged_operator_health_status{cluster=~\"$cluster\"}*0))\n)))",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -1100,7 +1100,7 @@ data:
               "targets": [
                 {
                   "exemplar": true,
-                  "expr": "(sum(kubevirt_hyperconverged_operator_health_status{cluster=~\"$cluster\"}$operator_health) by (cluster))",
+                  "expr": "max by (cluster)(kubevirt_hyperconverged_operator_health_status{cluster=~\"$cluster\"}$operator_health)",
                   "format": "table",
                   "hide": false,
                   "instant": true,
@@ -1312,7 +1312,7 @@ data:
               "targets": [
                 {
                   "exemplar": true,
-                  "expr": "sum by (os)(sum by (cluster, os)(label_replace(kubevirt_vmi_info{cluster=~\"$cluster\", guest_os_name!=\"\", phase=\"running\"}, \"os\", \"$1\", \"guest_os_name\", \"(.*)\")\n+ on (cluster, namespace, name) group_left()(0*(kubevirt_vm_info{cluster=~\"$cluster\", status_group=\"running\"}>0))))",
+                  "expr": "sum by (os)(max by (cluster, namespace, name, os)(label_replace(kubevirt_vmi_info{cluster=~\"$cluster\", guest_os_name!=\"\", phase=\"running\"}, \"os\", \"$1\", \"guest_os_name\", \"(.*)\")\n+ on (cluster, namespace, name) group_left()(0*(kubevirt_vm_info{cluster=~\"$cluster\", status_group=\"running\"}>0))))",
                   "format": "table",
                   "hide": false,
                   "instant": true,
@@ -1322,7 +1322,7 @@ data:
                 },
                 {
                   "exemplar": true,
-                  "expr": "sum by (os)(sum by (cluster, os)(label_replace(kubevirt_vmi_info{cluster=~\"$cluster\", guest_os_name=\"\", phase=\"running\"}, \"os\", \"unknown\", \"guest_os_name\", \"\")\n+ on (cluster, namespace, name) group_left()(0*(kubevirt_vm_info{cluster=~\"$cluster\", status_group=\"running\"}>0))))",
+                  "expr": "sum by (os)(max by (cluster, namespace, name, os)(label_replace(kubevirt_vmi_info{cluster=~\"$cluster\", guest_os_name=\"\", phase=\"running\"}, \"os\", \"unknown\", \"guest_os_name\", \"\")\n+ on (cluster, namespace, name) group_left()(0*(kubevirt_vm_info{cluster=~\"$cluster\", status_group=\"running\"}>0)))\nunless on (cluster, namespace, name)\nmax by (cluster, namespace, name)(kubevirt_vmi_info{cluster=~\"$cluster\", guest_os_name!=\"\", phase=\"running\"}))",
                   "format": "table",
                   "hide": false,
                   "instant": true,
@@ -2012,7 +2012,7 @@ data:
               "targets": [
                 {
                   "exemplar": true,
-                  "expr": "topk(20, sum by (cluster)(\n  kubevirt_vmi_memory_available_bytes{cluster=~\"$cluster\"} -\n  kubevirt_vmi_memory_unused_bytes{cluster=~\"$cluster\"} -\n  kubevirt_vmi_memory_cached_bytes{cluster=~\"$cluster\"}\n  )\n)",
+                  "expr": "topk(20, sum by (cluster)(\n  kubevirt_vmi_memory_used_bytes{cluster=~\"$cluster\"}\n  )\n)",
                   "hide": false,
                   "interval": "",
                   "legendFormat": "{{cluster}}",
@@ -2096,7 +2096,7 @@ data:
               "targets": [
                 {
                   "exemplar": true,
-                  "expr": "topk(20,(\n  sum by (cluster) (\n    kubevirt_vmi_memory_available_bytes{cluster=~\"$cluster\"} -        \n    kubevirt_vmi_memory_unused_bytes{cluster=~\"$cluster\"} - \n    kubevirt_vmi_memory_cached_bytes{cluster=~\"$cluster\"}\n  )\n  /\n  (sum by (cluster)(label_replace(node_memory_MemTotal_bytes{cluster=~\"$cluster\"}, \"node\", \"$1\", \"instance\", \"(.*)\")))\n )\n)",
+                  "expr": "topk(20,(\n  sum by (cluster) (\n    kubevirt_vmi_memory_used_bytes{cluster=~\"$cluster\"}\n  )\n  /\n  (sum by (cluster)(label_replace(node_memory_MemTotal_bytes{cluster=~\"$cluster\"}, \"node\", \"$1\", \"instance\", \"(.*)\")))\n )\n)",
                   "hide": false,
                   "interval": "",
                   "legendFormat": "{{cluster}}",
