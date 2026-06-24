@@ -6,6 +6,7 @@ package observabilityendpoint
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"slices"
 	"testing"
@@ -136,6 +137,29 @@ func newImagesCM(ns string) *corev1.ConfigMap {
 	}
 }
 
+func newHC(name, ns string) *hyperv1.HostedCluster {
+	return &hyperv1.HostedCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: ns,
+		},
+		Spec: hyperv1.HostedClusterSpec{},
+	}
+}
+
+func newSM(name, ns string) *promv1.ServiceMonitor {
+	return &promv1.ServiceMonitor{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: ns,
+		},
+		Spec: promv1.ServiceMonitorSpec{
+			Endpoints: []promv1.Endpoint{{Port: "metrics"}},
+			Selector:  metav1.LabelSelector{MatchLabels: map[string]string{"app": name}},
+		},
+	}
+}
+
 func init() {
 	os.Setenv("UNIT_TEST", "true")
 }
@@ -152,6 +176,7 @@ alertmanager-router-ca: |
 
 	testNamespace := "test-ns"
 	testHubNamespace := "test-hub-ns"
+	testHcNamespace := "test-hc-clusters"
 	hubObjs := []runtime.Object{}
 	hubInfo := newHubInfoSecret(hubInfoData, testNamespace)
 	amAccessSrt := newAMAccessorSecret(testNamespace, "test-token")
@@ -294,6 +319,51 @@ alertmanager-router-ca: |
 	}
 	if !slices.Contains(foundOba.Finalizers, obsAddonFinalizer) {
 		t.Fatal("Finalizer not set in observabilityAddon")
+	}
+
+	// test reconcile service monitors if hosted clusters exist
+	hcName := "testHc"
+	hc := newHC(hcName, testHcNamespace)
+	err = c.Create(ctx, hc)
+	if err != nil {
+		t.Fatalf("failed to create hosted cluster to install: (%v)", err)
+	}
+	smNamespce := fmt.Sprintf("%s-%s", hc.Namespace, hc.Name)
+	origEtcdSM := newSM("etcd", smNamespce)
+	err = c.Create(ctx, origEtcdSM)
+	if err != nil {
+		t.Fatalf("failed to create etcd service monitor to install: (%v)", err)
+	}
+	origKubeApiSM := newSM("kube-apiserver", smNamespce)
+	err = c.Create(ctx, origKubeApiSM)
+	if err != nil {
+		t.Fatalf("failed to create kube-apiserver service monitor to install: (%v)", err)
+	}
+	req = ctrl.Request{
+		NamespacedName: types.NamespacedName{
+			Name:      "install",
+			Namespace: testNamespace,
+		},
+	}
+	_, err = r.Reconcile(ctx, req)
+	if err != nil {
+		t.Fatalf("reconcile: (%v)", err)
+	}
+	acmEtcdSM := &promv1.ServiceMonitor{}
+	err = c.Get(ctx, types.NamespacedName{
+		Name:      "acm-etcd",
+		Namespace: smNamespce,
+	}, acmEtcdSM)
+	if err != nil {
+		t.Fatalf("ACM etcd ServiceMonitor not created: (%v)", err)
+	}
+	acmApiSM := &promv1.ServiceMonitor{}
+	err = c.Get(ctx, types.NamespacedName{
+		Name:      "acm-kube-apiserver",
+		Namespace: smNamespce,
+	}, acmApiSM)
+	if err != nil {
+		t.Fatalf("ACM kube-apiserver ServiceMonitor not created: (%v)", err)
 	}
 
 	// test reconcile metrics collector deployment updated if cert secret updated
