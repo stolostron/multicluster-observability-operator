@@ -5,3 +5,5 @@ go 1.25.0
 replace golang.org/x/tools => golang.org/x/tools v0.33.0
 
 require sigs.k8s.io/controller-tools v0.14.0 // cmd/controller-gen
+
+require golang.org/x/sync v0.21.0 // indirect
