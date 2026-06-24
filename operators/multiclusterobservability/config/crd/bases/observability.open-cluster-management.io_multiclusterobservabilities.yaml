@@ -5631,8 +5631,9 @@ spec:
                   queryTimeout:
                     default: 300s
                     description: |-
-                      QueryTimeout is the timeout for queries executed in Grafana.
-                      It is applied to the read path components from Grafana.
+                      QueryTimeout is the timeout for queries and reads through the observability gateway.
+                      It is applied to Grafana datasources, HAProxy route, rbac-query-proxy,
+                      and the observatorium-api server read timeout.
                       Default is 300s.
                     pattern: ^([0-9]+(\.[0-9]+)?(ms|s|m|h))+$
                     type: string
@@ -10658,6 +10659,15 @@ spec:
                             type: object
                         type: object
                     type: object
+                  writeTimeout:
+                    default: 720s
+                    description: |-
+                      WriteTimeout is the timeout for signal ingestion (metrics, logs, traces)
+                      through the observatorium-api gateway. Controls the server write timeout
+                      for the response path. Increase for large payloads over high-latency networks.
+                      Default is 720s.
+                    pattern: ^([0-9]+(\.[0-9]+)?(ms|s|m|h))+$
+                    type: string
                 type: object
               capabilities:
                 description: |-

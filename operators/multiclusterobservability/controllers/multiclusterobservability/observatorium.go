@@ -530,6 +530,22 @@ func newAPISpec(c client.Client, mco *mcov1beta2.MultiClusterObservability) (obs
 	}
 	apiSpec.ImagePullPolicy = mcoconfig.GetImagePullPolicy(mco.Spec)
 	apiSpec.ServiceMonitor = true
+	if mco.Spec.AdvancedConfig != nil {
+		if mco.Spec.AdvancedConfig.QueryTimeout != "" {
+			if _, err := time.ParseDuration(mco.Spec.AdvancedConfig.QueryTimeout); err != nil {
+				log.Error(err, "Invalid queryTimeout, skipping", "value", mco.Spec.AdvancedConfig.QueryTimeout)
+			} else {
+				apiSpec.QueryTimeout = mco.Spec.AdvancedConfig.QueryTimeout
+			}
+		}
+		if mco.Spec.AdvancedConfig.WriteTimeout != "" {
+			if _, err := time.ParseDuration(mco.Spec.AdvancedConfig.WriteTimeout); err != nil {
+				log.Error(err, "Invalid writeTimeout, skipping", "value", mco.Spec.AdvancedConfig.WriteTimeout)
+			} else {
+				apiSpec.WriteTimeout = mco.Spec.AdvancedConfig.WriteTimeout
+			}
+		}
+	}
 	if mco.Spec.StorageConfig.WriteStorage != nil {
 		var eps []mcoutil.RemoteWriteEndpointWithSecret
 		var mountSecrets []string

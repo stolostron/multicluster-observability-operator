@@ -577,6 +577,130 @@ var _ = Describe("", func() {
 		},
 	)
 
+	It(
+		"ACM-34806: Observability: Verify configurable API gateway timeouts in MCO CR - [P2][Sev2][Observability][Integration] @e2e (config/g0)",
+		func() {
+			By("Verifying default state: Observatorium CR has no timeout fields")
+			Eventually(func() error {
+				cr, err := dynClient.Resource(utils.NewMCOMObservatoriumGVR()).
+					Namespace(MCO_NAMESPACE).
+					Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+				if err != nil {
+					return err
+				}
+				specMap, ok := cr.Object["spec"].(map[string]any)
+				if !ok {
+					return fmt.Errorf("spec not found or not a map")
+				}
+				apiSpec, ok := specMap["api"].(map[string]any)
+				if !ok {
+					return fmt.Errorf("spec.api not found or not a map")
+				}
+				if _, ok := apiSpec["queryTimeout"]; ok {
+					return fmt.Errorf("queryTimeout should not be set on Observatorium CR by default")
+				}
+				if _, ok := apiSpec["writeTimeout"]; ok {
+					return fmt.Errorf("writeTimeout should not be set on Observatorium CR by default")
+				}
+				return nil
+			}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*10).Should(Succeed())
+
+			By("Verifying default state: observatorium-api deployment has default timeout args")
+			Eventually(func() error {
+				deps, err := utils.GetDeploymentWithLabel(testOptions, true, OBSERVATORIUM_API_LABEL, MCO_NAMESPACE)
+				if err != nil {
+					return err
+				}
+				if len(deps.Items) == 0 {
+					return fmt.Errorf("no observatorium-api deployment found")
+				}
+				args := deps.Items[0].Spec.Template.Spec.Containers[0].Args
+				if !slices.Contains(args, "--server.read-timeout=5m") {
+					return fmt.Errorf("expected default --server.read-timeout=5m not found in args: %v", args)
+				}
+				if !slices.Contains(args, "--server.write-timeout=12m") {
+					return fmt.Errorf("expected default --server.write-timeout=12m not found in args: %v", args)
+				}
+				return nil
+			}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*10).Should(Succeed())
+
+			By("Setting both queryTimeout and writeTimeout in MCO CR")
+			mcoRes, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).
+				Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+			Expect(err).NotTo(HaveOccurred())
+
+			spec := mcoRes.Object["spec"].(map[string]any)
+			advancedSpec, ok := spec["advanced"].(map[string]any)
+			if !ok {
+				Skip("Skip the case since the MCO CR did not have advanced spec configured")
+			}
+			advancedSpec["queryTimeout"] = "10m"
+			advancedSpec["writeTimeout"] = "15m"
+
+			_, err = dynClient.Resource(utils.NewMCOGVRV1BETA2()).
+				Update(context.TODO(), mcoRes, metav1.UpdateOptions{})
+			Expect(err).NotTo(HaveOccurred())
+
+			By("Checking Observatorium CR carries both timeout values")
+			Eventually(func() error {
+				cr, err := dynClient.Resource(utils.NewMCOMObservatoriumGVR()).
+					Namespace(MCO_NAMESPACE).
+					Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+				if err != nil {
+					return err
+				}
+				specMap, ok := cr.Object["spec"].(map[string]any)
+				if !ok {
+					return fmt.Errorf("spec not found or not a map")
+				}
+				apiSpec, ok := specMap["api"].(map[string]any)
+				if !ok {
+					return fmt.Errorf("spec.api not found or not a map")
+				}
+				if qt, _ := apiSpec["queryTimeout"].(string); qt != "10m" {
+					return fmt.Errorf("Observatorium CR queryTimeout = %q, want %q", qt, "10m")
+				}
+				if wt, _ := apiSpec["writeTimeout"].(string); wt != "15m" {
+					return fmt.Errorf("Observatorium CR writeTimeout = %q, want %q", wt, "15m")
+				}
+				return nil
+			}, EventuallyTimeoutMinute*2, EventuallyIntervalSecond*10).Should(Succeed())
+
+			By("Checking observatorium-api deployment has updated timeout args")
+			Eventually(func() error {
+				deps, err := utils.GetDeploymentWithLabel(testOptions, true, OBSERVATORIUM_API_LABEL, MCO_NAMESPACE)
+				if err != nil {
+					return err
+				}
+				if len(deps.Items) == 0 {
+					return fmt.Errorf("no observatorium-api deployment found")
+				}
+				args := deps.Items[0].Spec.Template.Spec.Containers[0].Args
+				if !slices.Contains(args, "--server.read-timeout=10m") {
+					return fmt.Errorf("expected --server.read-timeout=10m not found in args: %v", args)
+				}
+				if !slices.Contains(args, "--server.write-timeout=15m") {
+					return fmt.Errorf("expected --server.write-timeout=15m not found in args: %v", args)
+				}
+				return nil
+			}, EventuallyTimeoutMinute*2, EventuallyIntervalSecond*10).Should(Succeed())
+
+			By("Reverting MCO CR timeouts to defaults")
+			mcoRes, err = dynClient.Resource(utils.NewMCOGVRV1BETA2()).
+				Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+			Expect(err).NotTo(HaveOccurred())
+
+			spec = mcoRes.Object["spec"].(map[string]any)
+			advancedSpec = spec["advanced"].(map[string]any)
+			delete(advancedSpec, "queryTimeout")
+			delete(advancedSpec, "writeTimeout")
+
+			_, err = dynClient.Resource(utils.NewMCOGVRV1BETA2()).
+				Update(context.TODO(), mcoRes, metav1.UpdateOptions{})
+			Expect(err).NotTo(HaveOccurred())
+		},
+	)
+
 	JustAfterEach(func() {
 		Expect(utils.IntegrityChecking(testOptions)).NotTo(HaveOccurred())
 	})
