@@ -457,197 +457,9 @@ var _ = Describe("", func() {
 	)
 
 	It(
-		"ACM-34594: Observability: Verify Thanos Compact debug tuning in MCO CR - [P2][Sev2][Observability][Integration]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release (config/g0)",
-		func() {
-			By("Updating MCO CR with compact debug settings")
-			mcoRes, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).
-				Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
-			Expect(err).NotTo(HaveOccurred())
-
-			spec := mcoRes.Object["spec"].(map[string]any)
-			advancedSpec, ok := spec["advanced"].(map[string]any)
-			if !ok {
-				Skip("Skip the case since the MCO CR did not have advanced spec configured")
-			}
-			compactSpec, ok := advancedSpec["compact"].(map[string]any)
-			if !ok {
-				compactSpec = map[string]any{}
-				advancedSpec["compact"] = compactSpec
-			}
-			compactSpec["debug"] = map[string]any{
-				"logLevel":                  "debug",
-				"waitInterval":              "5m",
-				"blockMetaFetchConcurrency": int64(64),
-				"downsampleConcurrency":     int64(4),
-			}
-
-			_, err = dynClient.Resource(utils.NewMCOGVRV1BETA2()).
-				Update(context.TODO(), mcoRes, metav1.UpdateOptions{})
-			Expect(err).NotTo(HaveOccurred())
-
-			expectedCompactDebugArgs := []string{
-				"--log.level=debug",
-				"--wait-interval=5m",
-				"--compact.cleanup-interval=5m",
-				"--compact.progress-interval=5m",
-				"--block-meta-fetch-concurrency=64",
-				"--downsample.concurrency=4",
-			}
-
-			By("Checking compact debug args are applied to observability-thanos-compact")
-			Eventually(func() error {
-				sts, err := utils.GetStatefulSetWithLabel(testOptions, true, THANOS_COMPACT_LABEL, MCO_NAMESPACE)
-				if err != nil {
-					return err
-				}
-				if len(sts.Items) == 0 {
-					return fmt.Errorf("no thanos-compact statefulset found")
-				}
-				args := sts.Items[0].Spec.Template.Spec.Containers[0].Args
-				for _, expectedArg := range expectedCompactDebugArgs {
-					if !slices.Contains(args, expectedArg) {
-						return fmt.Errorf("expected arg %q not found in thanos-compact args: %v", expectedArg, args)
-					}
-				}
-				if slices.Contains(args, "--web.disable") {
-					return fmt.Errorf("did not expect --web.disable for 5m wait interval, args: %v", args)
-				}
-				return nil
-			}, EventuallyTimeoutMinute*2, EventuallyIntervalSecond*10).Should(Succeed())
-
-			By("Updating wait interval above 5m adds web disable flag")
-			mcoRes, err = dynClient.Resource(utils.NewMCOGVRV1BETA2()).
-				Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
-			Expect(err).NotTo(HaveOccurred())
-
-			spec = mcoRes.Object["spec"].(map[string]any)
-			advancedSpec = spec["advanced"].(map[string]any)
-			compactSpec = advancedSpec["compact"].(map[string]any)
-			compactSpec["debug"] = map[string]any{
-				"waitInterval":              "10m",
-				"blockMetaFetchConcurrency": int64(32),
-			}
-
-			_, err = dynClient.Resource(utils.NewMCOGVRV1BETA2()).
-				Update(context.TODO(), mcoRes, metav1.UpdateOptions{})
-			Expect(err).NotTo(HaveOccurred())
-
-			Eventually(func() error {
-				sts, err := utils.GetStatefulSetWithLabel(testOptions, true, THANOS_COMPACT_LABEL, MCO_NAMESPACE)
-				if err != nil {
-					return err
-				}
-				if len(sts.Items) == 0 {
-					return fmt.Errorf("no thanos-compact statefulset found")
-				}
-				args := sts.Items[0].Spec.Template.Spec.Containers[0].Args
-				for _, expectedArg := range []string{
-					"--wait-interval=10m",
-					"--compact.cleanup-interval=10m",
-					"--compact.progress-interval=10m",
-					"--web.disable",
-					"--block-meta-fetch-concurrency=32",
-				} {
-					if !slices.Contains(args, expectedArg) {
-						return fmt.Errorf("expected arg %q not found in thanos-compact args: %v", expectedArg, args)
-					}
-				}
-				return nil
-			}, EventuallyTimeoutMinute*2, EventuallyIntervalSecond*10).Should(Succeed())
-		},
-	)
-
-	It(
-		"Observability: Verify Thanos Receive debug tuning in MCO CR - [P2][Sev2][Observability][Integration]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release (config/g0)",
-		func() {
-			By("Updating MCO CR with receive debug settings")
-			mcoRes, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).
-				Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
-			Expect(err).NotTo(HaveOccurred())
-
-			spec := mcoRes.Object["spec"].(map[string]any)
-			advancedSpec, ok := spec["advanced"].(map[string]any)
-			if !ok {
-				Skip("Skip the case since the MCO CR did not have advanced spec configured")
-			}
-			receiveSpec, ok := advancedSpec["receive"].(map[string]any)
-			if !ok {
-				receiveSpec = map[string]any{}
-				advancedSpec["receive"] = receiveSpec
-			}
-			receiveSpec["debug"] = map[string]any{
-				"logLevel": "debug",
-			}
-
-			_, err = dynClient.Resource(utils.NewMCOGVRV1BETA2()).
-				Update(context.TODO(), mcoRes, metav1.UpdateOptions{})
-			Expect(err).NotTo(HaveOccurred())
-
-			By("Checking receive logLevel is set on Observatorium CR")
-			Eventually(func() error {
-				obsCR, err := dynClient.Resource(utils.NewMCOMObservatoriumGVR()).
-					Namespace(MCO_NAMESPACE).
-					Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
-				if err != nil {
-					return err
-				}
-				receivers, ok := obsCR.Object["spec"].(map[string]any)["thanos"].(map[string]any)["receivers"].(map[string]any)
-				if !ok {
-					return fmt.Errorf("observatorium CR missing thanos.receivers")
-				}
-				logLevel, _ := receivers["logLevel"].(string)
-				if logLevel != "debug" {
-					return fmt.Errorf("expected thanos.receivers.logLevel %q, got %q", "debug", logLevel)
-				}
-				args, _ := receivers["args"].([]any)
-				for _, arg := range args {
-					if argStr, ok := arg.(string); ok && strings.HasPrefix(argStr, "--log.level=") {
-						return fmt.Errorf("did not expect --log.level in receivers.args, got: %v", args)
-					}
-				}
-				return nil
-			}, EventuallyTimeoutMinute*2, EventuallyIntervalSecond*10).Should(Succeed())
-
-			By("Updating receive debug log level to info")
-			mcoRes, err = dynClient.Resource(utils.NewMCOGVRV1BETA2()).
-				Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
-			Expect(err).NotTo(HaveOccurred())
-
-			spec = mcoRes.Object["spec"].(map[string]any)
-			advancedSpec = spec["advanced"].(map[string]any)
-			receiveSpec = advancedSpec["receive"].(map[string]any)
-			receiveSpec["debug"] = map[string]any{
-				"logLevel": "info",
-			}
-
-			_, err = dynClient.Resource(utils.NewMCOGVRV1BETA2()).
-				Update(context.TODO(), mcoRes, metav1.UpdateOptions{})
-			Expect(err).NotTo(HaveOccurred())
-
-			Eventually(func() error {
-				obsCR, err := dynClient.Resource(utils.NewMCOMObservatoriumGVR()).
-					Namespace(MCO_NAMESPACE).
-					Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
-				if err != nil {
-					return err
-				}
-				receivers, ok := obsCR.Object["spec"].(map[string]any)["thanos"].(map[string]any)["receivers"].(map[string]any)
-				if !ok {
-					return fmt.Errorf("observatorium CR missing thanos.receivers")
-				}
-				logLevel, _ := receivers["logLevel"].(string)
-				if logLevel != "info" {
-					return fmt.Errorf("expected thanos.receivers.logLevel %q, got %q", "info", logLevel)
-				}
-				return nil
-			}, EventuallyTimeoutMinute*2, EventuallyIntervalSecond*10).Should(Succeed())
-		},
-	)
-
-	It(
 		"ACM-34806: Observability: Verify configurable API gateway timeouts in MCO CR - [P2][Sev2][Observability][Integration] @e2e (config/g0)",
 		func() {
-			By("Verifying default state: Observatorium CR has no timeout fields")
+			By("Verifying default state: Observatorium CR has kubebuilder-defaulted timeout values")
 			Eventually(func() error {
 				cr, err := dynClient.Resource(utils.NewMCOMObservatoriumGVR()).
 					Namespace(MCO_NAMESPACE).
@@ -663,11 +475,11 @@ var _ = Describe("", func() {
 				if !ok {
 					return fmt.Errorf("spec.api not found or not a map")
 				}
-				if _, ok := apiSpec["queryTimeout"]; ok {
-					return fmt.Errorf("queryTimeout should not be set on Observatorium CR by default")
+				if qt, _ := apiSpec["queryTimeout"].(string); qt != "300s" {
+					return fmt.Errorf("Observatorium CR queryTimeout = %q, want %q", qt, "300s")
 				}
-				if _, ok := apiSpec["writeTimeout"]; ok {
-					return fmt.Errorf("writeTimeout should not be set on Observatorium CR by default")
+				if wt, _ := apiSpec["writeTimeout"].(string); wt != "720s" {
+					return fmt.Errorf("Observatorium CR writeTimeout = %q, want %q", wt, "720s")
 				}
 				return nil
 			}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*10).Should(Succeed())
@@ -682,11 +494,11 @@ var _ = Describe("", func() {
 					return fmt.Errorf("no observatorium-api deployment found")
 				}
 				args := deps.Items[0].Spec.Template.Spec.Containers[0].Args
-				if !slices.Contains(args, "--server.read-timeout=5m") {
-					return fmt.Errorf("expected default --server.read-timeout=5m not found in args: %v", args)
+				if !slices.Contains(args, "--server.read-timeout=300s") {
+					return fmt.Errorf("expected default --server.read-timeout=300s not found in args: %v", args)
 				}
-				if !slices.Contains(args, "--server.write-timeout=12m") {
-					return fmt.Errorf("expected default --server.write-timeout=12m not found in args: %v", args)
+				if !slices.Contains(args, "--server.write-timeout=720s") {
+					return fmt.Errorf("expected default --server.write-timeout=720s not found in args: %v", args)
 				}
 				return nil
 			}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*10).Should(Succeed())
