@@ -16,7 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/klog/v2"
-	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
+	addonv1beta1 "open-cluster-management.io/api/addon/v1beta1"
 )
 
 // retryOnConflict provides exponential backoff retry logic for update operations
@@ -61,7 +61,7 @@ func CheckOBAStatus(opt TestOptions, namespace string) error {
 		return fmt.Errorf("failed to get ManagedClusterAddOn: %w", err)
 	}
 
-	mca := &addonv1alpha1.ManagedClusterAddOn{}
+	mca := &addonv1beta1.ManagedClusterAddOn{}
 	err = runtime.DefaultUnstructuredConverter.FromUnstructured(mcaObj.Object, mca)
 	if err != nil {
 		return fmt.Errorf("failed to convert unstructured to ManagedClusterAddOn: %w", err)
@@ -80,7 +80,7 @@ func CheckOBAStatus(opt TestOptions, namespace string) error {
 	}
 
 	// ObservabilityAddon uses custom StatusCondition type, but FromUnstructured handles it
-	oba := &addonv1alpha1.ManagedClusterAddOn{}
+	oba := &addonv1beta1.ManagedClusterAddOn{}
 	err = runtime.DefaultUnstructuredConverter.FromUnstructured(obaObj.Object, oba)
 	if err != nil {
 		return fmt.Errorf("failed to convert unstructured to ObservabilityAddon: %w", err)
@@ -167,7 +167,7 @@ func GetManagedClusterAddOnSpecHash(opt TestOptions, namespace string) (string, 
 		return "", fmt.Errorf("failed to get managedclusteraddon: %w", err)
 	}
 
-	addon := &addonv1alpha1.ManagedClusterAddOn{}
+	addon := &addonv1beta1.ManagedClusterAddOn{}
 	err = runtime.DefaultUnstructuredConverter.FromUnstructured(mca.Object, addon)
 	if err != nil {
 		return "", fmt.Errorf("failed to convert unstructured to addon: %w", err)
@@ -198,7 +198,7 @@ func GetClusterManagementAddOnSpecHash(opt TestOptions) (string, error) {
 		return "", fmt.Errorf("failed to get clustermanagementaddon: %w", err)
 	}
 
-	addon := &addonv1alpha1.ClusterManagementAddOn{}
+	addon := &addonv1beta1.ClusterManagementAddOn{}
 	err = runtime.DefaultUnstructuredConverter.FromUnstructured(cma.Object, addon)
 	if err != nil {
 		return "", fmt.Errorf("failed to convert unstructured to addon: %w", err)
@@ -348,7 +348,7 @@ func CreateClusterSpecificAddOnDeploymentConfig(
 	configObj := &unstructured.Unstructured{
 		Object: config,
 	}
-	configObj.SetAPIVersion("addon.open-cluster-management.io/v1alpha1")
+	configObj.SetAPIVersion("addon.open-cluster-management.io/v1beta1")
 	configObj.SetKind("AddOnDeploymentConfig")
 	configObj.SetName(name)
 	configObj.SetNamespace(namespace)

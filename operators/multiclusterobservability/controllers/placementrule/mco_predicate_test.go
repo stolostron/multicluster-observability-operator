@@ -12,7 +12,7 @@ import (
 	"gopkg.in/yaml.v2"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
-	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
+	addonv1beta1 "open-cluster-management.io/api/addon/v1beta1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -22,7 +22,7 @@ import (
 func TestMCOPredFunc(t *testing.T) {
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&zap.Options{Development: true})))
 	s := scheme.Scheme
-	addonv1alpha1.AddToScheme(s)
+	addonv1beta1.Install(s)
 	initSchema(t)
 	config.SetMonitoringCRName(mcoName)
 	mco := newTestMCO()

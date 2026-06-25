@@ -1016,6 +1016,29 @@ func newCompactSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string
 	if rendering.MCOAEnabled(mco) && (mco.Spec.AdvancedConfig == nil || mco.Spec.AdvancedConfig.Compact == nil || mco.Spec.AdvancedConfig.Compact.Containers == nil) {
 		compactSpec.Args = []string{"--compact.enable-vertical-compaction"}
 	}
+	if mco.Spec.AdvancedConfig != nil && mco.Spec.AdvancedConfig.Compact != nil && mco.Spec.AdvancedConfig.Compact.Debug != nil && mco.Spec.AdvancedConfig.Compact.Debug.WaitInterval != "" {
+		duration, err := time.ParseDuration(mco.Spec.AdvancedConfig.Compact.Debug.WaitInterval)
+		if err != nil {
+			log.Error(err, "Failed to parse wait interval", "waitInterval", mco.Spec.AdvancedConfig.Compact.Debug.WaitInterval)
+		} else {
+			compactSpec.Args = append(compactSpec.Args, "--wait-interval="+mco.Spec.AdvancedConfig.Compact.Debug.WaitInterval)
+			compactSpec.Args = append(compactSpec.Args, "--compact.cleanup-interval="+mco.Spec.AdvancedConfig.Compact.Debug.WaitInterval)
+			compactSpec.Args = append(compactSpec.Args, "--compact.progress-interval="+mco.Spec.AdvancedConfig.Compact.Debug.WaitInterval)
+			if duration > 5*time.Minute {
+				compactSpec.Args = append(compactSpec.Args, "--web.disable")
+			}
+		}
+	}
+	if mco.Spec.AdvancedConfig != nil && mco.Spec.AdvancedConfig.Compact != nil && mco.Spec.AdvancedConfig.Compact.Debug != nil && mco.Spec.AdvancedConfig.Compact.Debug.LogLevel != "" {
+		compactSpec.Args = append(compactSpec.Args, "--log.level="+mco.Spec.AdvancedConfig.Compact.Debug.LogLevel)
+	}
+	if mco.Spec.AdvancedConfig != nil && mco.Spec.AdvancedConfig.Compact != nil && mco.Spec.AdvancedConfig.Compact.Debug != nil &&
+		mco.Spec.AdvancedConfig.Compact.Debug.BlockMetaFetchConcurrency != nil {
+		compactSpec.Args = append(compactSpec.Args, fmt.Sprintf("--block-meta-fetch-concurrency=%d", *mco.Spec.AdvancedConfig.Compact.Debug.BlockMetaFetchConcurrency))
+	}
+	if mco.Spec.AdvancedConfig != nil && mco.Spec.AdvancedConfig.Compact != nil && mco.Spec.AdvancedConfig.Compact.Debug != nil && mco.Spec.AdvancedConfig.Compact.Debug.DownsampleConcurrency != nil {
+		compactSpec.Args = append(compactSpec.Args, fmt.Sprintf("--downsample.concurrency=%d", *mco.Spec.AdvancedConfig.Compact.Debug.DownsampleConcurrency))
+	}
 
 	compactSpec.VolumeClaimTemplate = newVolumeClaimTemplate(
 		mco.Spec.StorageConfig.CompactStorageSize,

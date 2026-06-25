@@ -5,6 +5,7 @@
 package certificates
 
 import (
+	"context"
 	"testing"
 
 	certificatesv1 "k8s.io/api/certificates/v1"
@@ -17,6 +18,7 @@ const (
 )
 
 func TestApprove(t *testing.T) {
+	ctx := context.Background()
 	cluster := &clusterv1.ManagedCluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: clusterName,
@@ -27,7 +29,7 @@ func TestApprove(t *testing.T) {
 			Username: "system:open-cluster-management:" + clusterName,
 		},
 	}
-	if !approve(cluster, nil, csr) {
+	if !approve(ctx, cluster, nil, csr) {
 		t.Fatal("csr not approved automatically")
 	}
 	illCsr := &certificatesv1.CertificateSigningRequest{
@@ -35,7 +37,7 @@ func TestApprove(t *testing.T) {
 			Username: "illegal",
 		},
 	}
-	if approve(cluster, nil, illCsr) {
+	if approve(ctx, cluster, nil, illCsr) {
 		t.Fatal("illegal csr approved automatically")
 	}
 }

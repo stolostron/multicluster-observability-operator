@@ -12,7 +12,7 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	appsv1 "k8s.io/api/apps/v1"
-	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
+	addonv1beta1 "open-cluster-management.io/api/addon/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
@@ -78,8 +78,8 @@ func GetAddOnDeploymentConfigPredicates() predicate.Funcs {
 			return true
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			newObj := e.ObjectNew.(*addonv1alpha1.AddOnDeploymentConfig)
-			oldObj := e.ObjectOld.(*addonv1alpha1.AddOnDeploymentConfig)
+			newObj := e.ObjectNew.(*addonv1beta1.AddOnDeploymentConfig)
+			oldObj := e.ObjectOld.(*addonv1beta1.AddOnDeploymentConfig)
 			if reflect.DeepEqual(newObj.Spec, oldObj.Spec) {
 				return false
 			}

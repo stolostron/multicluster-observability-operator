@@ -30,6 +30,9 @@ jobs:
       - name: Make bundle
         run: make bundle
 
+      - name: Regenerate deepcopy
+        run: make -C operators/multiclusterobservability generate
+
       # We exclude the dockerfile as we have manually modified that to use a different user.
       # In addition we exclude createdAt changes in the CSV file that happen on each make bundle.
       - name: check diff

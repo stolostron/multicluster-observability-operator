@@ -32,7 +32,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
-	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
+	addonv1beta1 "open-cluster-management.io/api/addon/v1beta1"
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
 	workv1 "open-cluster-management.io/api/work/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -74,8 +74,8 @@ func initSchema(t *testing.T) {
 	if err := workv1.AddToScheme(s); err != nil {
 		t.Fatalf("Unable to add workv1 scheme: (%v)", err)
 	}
-	if err := addonv1alpha1.AddToScheme(s); err != nil {
-		t.Fatalf("Unable to add addonv1alpha1 scheme: (%v)", err)
+	if err := addonv1beta1.AddToScheme(s); err != nil {
+		t.Fatalf("Unable to add addonv1beta1 scheme: (%v)", err)
 	}
 }
 
@@ -148,7 +148,7 @@ func setupTest(t *testing.T) {
 
 func TestObservabilityAddonController(t *testing.T) {
 	s := scheme.Scheme
-	addonv1alpha1.AddToScheme(s)
+	addonv1beta1.Install(s)
 	initSchema(t)
 	config.SetMonitoringCRName(mcoName)
 	mco := newTestMCO()
@@ -161,7 +161,7 @@ func TestObservabilityAddonController(t *testing.T) {
 	c := fake.
 		NewClientBuilder().
 		WithStatusSubresource(
-			&addonv1alpha1.ManagedClusterAddOn{},
+			&addonv1beta1.ManagedClusterAddOn{},
 			&mcov1beta2.MultiClusterObservability{},
 			&mcov1beta1.ObservabilityAddon{},
 		).
@@ -241,19 +241,19 @@ func TestObservabilityAddonController(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)
 	}
-	foundAddonDeploymentConfig := &addonv1alpha1.AddOnDeploymentConfig{}
+	foundAddonDeploymentConfig := &addonv1beta1.AddOnDeploymentConfig{}
 	err = c.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: defaultAddonConfigName}, foundAddonDeploymentConfig)
 	if err != nil {
 		t.Fatalf("Failed to get addondeploymentconfig %s: (%v)", name, err)
 	}
 
 	// Change proxyconfig in addondeploymentconfig
-	foundAddonDeploymentConfig.Spec.ProxyConfig = addonv1alpha1.ProxyConfig{
+	foundAddonDeploymentConfig.Spec.ProxyConfig = addonv1beta1.ProxyConfig{
 		HTTPProxy:  "http://test1.com",
 		HTTPSProxy: "https://test1.com",
 		NoProxy:    "test.com",
 	}
-	foundAddonDeploymentConfig.Spec.NodePlacement = &addonv1alpha1.NodePlacement{
+	foundAddonDeploymentConfig.Spec.NodePlacement = &addonv1beta1.NodePlacement{
 		NodeSelector: map[string]string{
 			"test": "test",
 		},
@@ -577,24 +577,24 @@ func TestObservabilityAddonController(t *testing.T) {
 	}
 }
 
-func newManagedClusterAddon() *addonv1alpha1.ManagedClusterAddOn {
-	return &addonv1alpha1.ManagedClusterAddOn{
+func newManagedClusterAddon() *addonv1beta1.ManagedClusterAddOn {
+	return &addonv1beta1.ManagedClusterAddOn{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: addonv1alpha1.SchemeGroupVersion.String(),
+			APIVersion: addonv1beta1.GroupVersion.String(),
 			Kind:       "ManagedClusterAddOn",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "observability-controller",
 			Namespace: namespace,
 		},
-		Spec: addonv1alpha1.ManagedClusterAddOnSpec{
-			Configs: []addonv1alpha1.AddOnConfig{
+		Spec: addonv1beta1.ManagedClusterAddOnSpec{
+			Configs: []addonv1beta1.AddOnConfig{
 				{
-					ConfigGroupResource: addonv1alpha1.ConfigGroupResource{
+					ConfigGroupResource: addonv1beta1.ConfigGroupResource{
 						Group:    operatorutil.AddonGroup,
 						Resource: operatorutil.AddonDeploymentConfigResource,
 					},
-					ConfigReferent: addonv1alpha1.ConfigReferent{
+					ConfigReferent: addonv1beta1.ConfigReferent{
 						Namespace: namespace,
 						Name:      addonConfigName,
 					},
@@ -604,23 +604,23 @@ func newManagedClusterAddon() *addonv1alpha1.ManagedClusterAddOn {
 	}
 }
 
-func newClusterMgmtAddon() *addonv1alpha1.ClusterManagementAddOn {
-	return &addonv1alpha1.ClusterManagementAddOn{
+func newClusterMgmtAddon() *addonv1beta1.ClusterManagementAddOn {
+	return &addonv1beta1.ClusterManagementAddOn{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: addonv1alpha1.SchemeGroupVersion.String(),
+			APIVersion: addonv1beta1.SchemeGroupVersion.String(),
 			Kind:       "ClusterManagementAddOn",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "observability-controller",
 		},
-		Spec: addonv1alpha1.ClusterManagementAddOnSpec{
-			SupportedConfigs: []addonv1alpha1.ConfigMeta{
+		Spec: addonv1beta1.ClusterManagementAddOnSpec{
+			DefaultConfigs: []addonv1beta1.AddOnConfig{
 				{
-					ConfigGroupResource: addonv1alpha1.ConfigGroupResource{
+					ConfigGroupResource: addonv1beta1.ConfigGroupResource{
 						Group:    operatorutil.AddonGroup,
 						Resource: operatorutil.AddonDeploymentConfigResource,
 					},
-					DefaultConfig: &addonv1alpha1.ConfigReferent{
+					ConfigReferent: addonv1beta1.ConfigReferent{
 						Namespace: namespace,
 						Name:      defaultAddonConfigName,
 					},
@@ -630,23 +630,23 @@ func newClusterMgmtAddon() *addonv1alpha1.ClusterManagementAddOn {
 	}
 }
 
-func newAddonDeploymentConfig(name, namespace string) *addonv1alpha1.AddOnDeploymentConfig {
-	return &addonv1alpha1.AddOnDeploymentConfig{
+func newAddonDeploymentConfig(name, namespace string) *addonv1beta1.AddOnDeploymentConfig {
+	return &addonv1beta1.AddOnDeploymentConfig{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: addonv1alpha1.SchemeGroupVersion.String(),
+			APIVersion: addonv1beta1.SchemeGroupVersion.String(),
 			Kind:       "AddonDeploymentConfig",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
 		},
-		Spec: addonv1alpha1.AddOnDeploymentConfigSpec{
-			NodePlacement: &addonv1alpha1.NodePlacement{
+		Spec: addonv1beta1.AddOnDeploymentConfigSpec{
+			NodePlacement: &addonv1beta1.NodePlacement{
 				NodeSelector: map[string]string{
 					"kubernetes.io/os": "linux",
 				},
 			},
-			ProxyConfig: addonv1alpha1.ProxyConfig{
+			ProxyConfig: addonv1beta1.ProxyConfig{
 				HTTPProxy:  "http://foo.com",
 				HTTPSProxy: "https://foo.com",
 				NoProxy:    "bar.com",

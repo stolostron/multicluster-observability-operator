@@ -11,19 +11,21 @@ import (
 
 	prometheusv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
+	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
+	addonv1beta1 "open-cluster-management.io/api/addon/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -1031,17 +1033,17 @@ func TestDeploy(t *testing.T) {
 		},
 		{
 			name: "create and update AddOnDeploymentConfig: one variable to two",
-			createObj: &addonv1alpha1.AddOnDeploymentConfig{
+			createObj: &addonv1beta1.AddOnDeploymentConfig{
 				TypeMeta: metav1.TypeMeta{
-					APIVersion: "addon.open-cluster-management.io/v1alpha1",
+					APIVersion: "addon.open-cluster-management.io/v1beta1",
 					Kind:       "AddOnDeploymentConfig",
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-aodc",
 					Namespace: "ns1",
 				},
-				Spec: addonv1alpha1.AddOnDeploymentConfigSpec{
-					CustomizedVariables: []addonv1alpha1.CustomizedVariable{
+				Spec: addonv1beta1.AddOnDeploymentConfigSpec{
+					CustomizedVariables: []addonv1beta1.CustomizedVariable{
 						{
 							Name:  "test",
 							Value: "value",
@@ -1049,9 +1051,9 @@ func TestDeploy(t *testing.T) {
 					},
 				},
 			},
-			updateObj: &addonv1alpha1.AddOnDeploymentConfig{
+			updateObj: &addonv1beta1.AddOnDeploymentConfig{
 				TypeMeta: metav1.TypeMeta{
-					APIVersion: "addon.open-cluster-management.io/v1alpha1",
+					APIVersion: "addon.open-cluster-management.io/v1beta1",
 					Kind:       "AddOnDeploymentConfig",
 				},
 				ObjectMeta: metav1.ObjectMeta{
@@ -1059,8 +1061,8 @@ func TestDeploy(t *testing.T) {
 					Namespace:       "ns1",
 					ResourceVersion: "1",
 				},
-				Spec: addonv1alpha1.AddOnDeploymentConfigSpec{
-					CustomizedVariables: []addonv1alpha1.CustomizedVariable{
+				Spec: addonv1beta1.AddOnDeploymentConfigSpec{
+					CustomizedVariables: []addonv1beta1.CustomizedVariable{
 						{
 							Name:  "test",
 							Value: "value",
@@ -1077,7 +1079,7 @@ func TestDeploy(t *testing.T) {
 					Name:      "test-aodc",
 					Namespace: "ns1",
 				}
-				obj := &addonv1alpha1.AddOnDeploymentConfig{}
+				obj := &addonv1beta1.AddOnDeploymentConfig{}
 				client.Get(context.Background(), namespacedName, obj)
 
 				if len(obj.Spec.CustomizedVariables) != 2 {
@@ -1087,17 +1089,17 @@ func TestDeploy(t *testing.T) {
 		},
 		{
 			name: "create and update AddOnDeploymentConfig: modify variable value",
-			createObj: &addonv1alpha1.AddOnDeploymentConfig{
+			createObj: &addonv1beta1.AddOnDeploymentConfig{
 				TypeMeta: metav1.TypeMeta{
-					APIVersion: "addon.open-cluster-management.io/v1alpha1",
+					APIVersion: "addon.open-cluster-management.io/v1beta1",
 					Kind:       "AddOnDeploymentConfig",
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-aodc-modify",
 					Namespace: "ns1",
 				},
-				Spec: addonv1alpha1.AddOnDeploymentConfigSpec{
-					CustomizedVariables: []addonv1alpha1.CustomizedVariable{
+				Spec: addonv1beta1.AddOnDeploymentConfigSpec{
+					CustomizedVariables: []addonv1beta1.CustomizedVariable{
 						{
 							Name:  "test",
 							Value: "value",
@@ -1105,9 +1107,9 @@ func TestDeploy(t *testing.T) {
 					},
 				},
 			},
-			updateObj: &addonv1alpha1.AddOnDeploymentConfig{
+			updateObj: &addonv1beta1.AddOnDeploymentConfig{
 				TypeMeta: metav1.TypeMeta{
-					APIVersion: "addon.open-cluster-management.io/v1alpha1",
+					APIVersion: "addon.open-cluster-management.io/v1beta1",
 					Kind:       "AddOnDeploymentConfig",
 				},
 				ObjectMeta: metav1.ObjectMeta{
@@ -1115,8 +1117,8 @@ func TestDeploy(t *testing.T) {
 					Namespace:       "ns1",
 					ResourceVersion: "1",
 				},
-				Spec: addonv1alpha1.AddOnDeploymentConfigSpec{
-					CustomizedVariables: []addonv1alpha1.CustomizedVariable{
+				Spec: addonv1beta1.AddOnDeploymentConfigSpec{
+					CustomizedVariables: []addonv1beta1.CustomizedVariable{
 						{
 							Name:  "test",
 							Value: "newValue",
@@ -1129,7 +1131,7 @@ func TestDeploy(t *testing.T) {
 					Name:      "test-aodc-modify",
 					Namespace: "ns1",
 				}
-				obj := &addonv1alpha1.AddOnDeploymentConfig{}
+				obj := &addonv1beta1.AddOnDeploymentConfig{}
 				client.Get(context.Background(), namespacedName, obj)
 
 				if len(obj.Spec.CustomizedVariables) != 1 {
@@ -1142,30 +1144,30 @@ func TestDeploy(t *testing.T) {
 		},
 		{
 			name: "create and update ClusterManagementAddOn: no placements to 2 placements",
-			createObj: &addonv1alpha1.ClusterManagementAddOn{
+			createObj: &addonv1beta1.ClusterManagementAddOn{
 				TypeMeta: metav1.TypeMeta{
-					APIVersion: "addon.open-cluster-management.io/v1alpha1",
+					APIVersion: "addon.open-cluster-management.io/v1beta1",
 					Kind:       "ClusterManagementAddOn",
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-cmao",
 					Namespace: "ns1",
 				},
-				Spec: addonv1alpha1.ClusterManagementAddOnSpec{
-					SupportedConfigs: []addonv1alpha1.ConfigMeta{
+				Spec: addonv1beta1.ClusterManagementAddOnSpec{
+					DefaultConfigs: []addonv1beta1.AddOnConfig{
 						{
-							ConfigGroupResource: addonv1alpha1.ConfigGroupResource{Group: "test.io", Resource: "TestRes"},
+							ConfigGroupResource: addonv1beta1.ConfigGroupResource{Group: "test.io", Resource: "TestRes"},
 						},
 					},
-					InstallStrategy: addonv1alpha1.InstallStrategy{
+					InstallStrategy: addonv1beta1.InstallStrategy{
 						Type:       "Placements",
-						Placements: []addonv1alpha1.PlacementStrategy{},
+						Placements: []addonv1beta1.PlacementStrategy{},
 					},
 				},
 			},
-			updateObj: &addonv1alpha1.ClusterManagementAddOn{
+			updateObj: &addonv1beta1.ClusterManagementAddOn{
 				TypeMeta: metav1.TypeMeta{
-					APIVersion: "addon.open-cluster-management.io/v1alpha1",
+					APIVersion: "addon.open-cluster-management.io/v1beta1",
 					Kind:       "ClusterManagementAddOn",
 				},
 				ObjectMeta: metav1.ObjectMeta{
@@ -1173,23 +1175,23 @@ func TestDeploy(t *testing.T) {
 					Namespace:       "ns1",
 					ResourceVersion: "1",
 				},
-				Spec: addonv1alpha1.ClusterManagementAddOnSpec{
-					SupportedConfigs: []addonv1alpha1.ConfigMeta{
+				Spec: addonv1beta1.ClusterManagementAddOnSpec{
+					DefaultConfigs: []addonv1beta1.AddOnConfig{
 						{
-							ConfigGroupResource: addonv1alpha1.ConfigGroupResource{Group: "test.io", Resource: "TestRes"},
+							ConfigGroupResource: addonv1beta1.ConfigGroupResource{Group: "test.io", Resource: "TestRes"},
 						},
 						{
-							ConfigGroupResource: addonv1alpha1.ConfigGroupResource{Group: "example.io", Resource: "ExampleRes"},
+							ConfigGroupResource: addonv1beta1.ConfigGroupResource{Group: "example.io", Resource: "ExampleRes"},
 						},
 					},
-					InstallStrategy: addonv1alpha1.InstallStrategy{
+					InstallStrategy: addonv1beta1.InstallStrategy{
 						Type: "Placements",
-						Placements: []addonv1alpha1.PlacementStrategy{
+						Placements: []addonv1beta1.PlacementStrategy{
 							{
-								PlacementRef: addonv1alpha1.PlacementRef{Namespace: "test", Name: "test-res"},
+								PlacementRef: addonv1beta1.PlacementRef{Namespace: "test", Name: "test-res"},
 							},
 							{
-								PlacementRef: addonv1alpha1.PlacementRef{Namespace: "example", Name: "exaple-res"},
+								PlacementRef: addonv1beta1.PlacementRef{Namespace: "example", Name: "exaple-res"},
 							},
 						},
 					},
@@ -1200,11 +1202,11 @@ func TestDeploy(t *testing.T) {
 					Name:      "test-cmao",
 					Namespace: "ns1",
 				}
-				obj := &addonv1alpha1.ClusterManagementAddOn{}
+				obj := &addonv1beta1.ClusterManagementAddOn{}
 				client.Get(context.Background(), namespacedName, obj)
 
-				if len(obj.Spec.SupportedConfigs) != 2 {
-					t.Fatalf("Missing Supported Configs, got %#v", obj.Spec.SupportedConfigs)
+				if len(obj.Spec.DefaultConfigs) != 2 {
+					t.Fatalf("Missing Default Configs, got %#v", obj.Spec.DefaultConfigs)
 				}
 				if len(obj.Spec.InstallStrategy.Placements) != 2 {
 					t.Fatalf("Missing Placements, got %#v", obj.Spec.InstallStrategy.Placements)
@@ -1213,40 +1215,40 @@ func TestDeploy(t *testing.T) {
 		},
 		{
 			name: "create and update ClusterManagementAddOn: 2 placements to 1",
-			createObj: &addonv1alpha1.ClusterManagementAddOn{
+			createObj: &addonv1beta1.ClusterManagementAddOn{
 				TypeMeta: metav1.TypeMeta{
-					APIVersion: "addon.open-cluster-management.io/v1alpha1",
+					APIVersion: "addon.open-cluster-management.io/v1beta1",
 					Kind:       "ClusterManagementAddOn",
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-cmao",
 					Namespace: "ns1",
 				},
-				Spec: addonv1alpha1.ClusterManagementAddOnSpec{
-					SupportedConfigs: []addonv1alpha1.ConfigMeta{
+				Spec: addonv1beta1.ClusterManagementAddOnSpec{
+					DefaultConfigs: []addonv1beta1.AddOnConfig{
 						{
-							ConfigGroupResource: addonv1alpha1.ConfigGroupResource{Group: "test.io", Resource: "TestRes"},
+							ConfigGroupResource: addonv1beta1.ConfigGroupResource{Group: "test.io", Resource: "TestRes"},
 						},
 						{
-							ConfigGroupResource: addonv1alpha1.ConfigGroupResource{Group: "example.io", Resource: "ExampleRes"},
+							ConfigGroupResource: addonv1beta1.ConfigGroupResource{Group: "example.io", Resource: "ExampleRes"},
 						},
 					},
-					InstallStrategy: addonv1alpha1.InstallStrategy{
+					InstallStrategy: addonv1beta1.InstallStrategy{
 						Type: "Placements",
-						Placements: []addonv1alpha1.PlacementStrategy{
+						Placements: []addonv1beta1.PlacementStrategy{
 							{
-								PlacementRef: addonv1alpha1.PlacementRef{Namespace: "test", Name: "test-res"},
+								PlacementRef: addonv1beta1.PlacementRef{Namespace: "test", Name: "test-res"},
 							},
 							{
-								PlacementRef: addonv1alpha1.PlacementRef{Namespace: "example", Name: "exaple-res"},
+								PlacementRef: addonv1beta1.PlacementRef{Namespace: "example", Name: "exaple-res"},
 							},
 						},
 					},
 				},
 			},
-			updateObj: &addonv1alpha1.ClusterManagementAddOn{
+			updateObj: &addonv1beta1.ClusterManagementAddOn{
 				TypeMeta: metav1.TypeMeta{
-					APIVersion: "addon.open-cluster-management.io/v1alpha1",
+					APIVersion: "addon.open-cluster-management.io/v1beta1",
 					Kind:       "ClusterManagementAddOn",
 				},
 				ObjectMeta: metav1.ObjectMeta{
@@ -1254,20 +1256,20 @@ func TestDeploy(t *testing.T) {
 					Namespace:       "ns1",
 					ResourceVersion: "1",
 				},
-				Spec: addonv1alpha1.ClusterManagementAddOnSpec{
-					SupportedConfigs: []addonv1alpha1.ConfigMeta{
+				Spec: addonv1beta1.ClusterManagementAddOnSpec{
+					DefaultConfigs: []addonv1beta1.AddOnConfig{
 						{
-							ConfigGroupResource: addonv1alpha1.ConfigGroupResource{Group: "test.io", Resource: "TestRes"},
+							ConfigGroupResource: addonv1beta1.ConfigGroupResource{Group: "test.io", Resource: "TestRes"},
 						},
 						{
-							ConfigGroupResource: addonv1alpha1.ConfigGroupResource{Group: "example.io", Resource: "ExampleRes"},
+							ConfigGroupResource: addonv1beta1.ConfigGroupResource{Group: "example.io", Resource: "ExampleRes"},
 						},
 					},
-					InstallStrategy: addonv1alpha1.InstallStrategy{
+					InstallStrategy: addonv1beta1.InstallStrategy{
 						Type: "Placements",
-						Placements: []addonv1alpha1.PlacementStrategy{
+						Placements: []addonv1beta1.PlacementStrategy{
 							{
-								PlacementRef: addonv1alpha1.PlacementRef{Namespace: "test", Name: "test-res"},
+								PlacementRef: addonv1beta1.PlacementRef{Namespace: "test", Name: "test-res"},
 							},
 						},
 					},
@@ -1278,11 +1280,11 @@ func TestDeploy(t *testing.T) {
 					Name:      "test-cmao",
 					Namespace: "ns1",
 				}
-				obj := &addonv1alpha1.ClusterManagementAddOn{}
+				obj := &addonv1beta1.ClusterManagementAddOn{}
 				client.Get(context.Background(), namespacedName, obj)
 
-				if len(obj.Spec.SupportedConfigs) != 2 {
-					t.Fatalf("Missing Supported Configs, got %#v", obj.Spec.SupportedConfigs)
+				if len(obj.Spec.DefaultConfigs) != 2 {
+					t.Fatalf("Missing Default Configs, got %#v", obj.Spec.DefaultConfigs)
 				}
 				if len(obj.Spec.InstallStrategy.Placements) != 1 {
 					t.Fatalf("Missing Placements, got %#v", obj.Spec.InstallStrategy.Placements)
@@ -1298,22 +1300,8 @@ func TestDeploy(t *testing.T) {
 	rbacv1.AddToScheme(scheme)
 	prometheusv1.AddToScheme(scheme)
 	networkingv1.AddToScheme(scheme)
-	addonv1alpha1.AddToScheme(scheme)
-	fakeClient := fake.NewClientBuilder().WithScheme(scheme).WithInterceptorFuncs(interceptor.Funcs{
-		Patch: func(ctx context.Context, clientww client.WithWatch, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
-			if patch == client.Apply {
-				// Check if exists
-				key := client.ObjectKeyFromObject(obj)
-				existing := obj.DeepCopyObject().(client.Object)
-				if err := clientww.Get(ctx, key, existing); errors.IsNotFound(err) {
-					// It's a Create
-					return clientww.Create(ctx, obj)
-				}
-				return clientww.Patch(ctx, obj, client.Merge, opts...)
-			}
-			return clientww.Patch(ctx, obj, patch, opts...)
-		},
-	}).Build()
+	addonv1beta1.Install(scheme)
+	fakeClient := fake.NewClientBuilder().WithScheme(scheme).Build()
 
 	deployer := NewDeployer(fakeClient, "test-owner")
 
@@ -1535,11 +1523,12 @@ func TestUndeploy(t *testing.T) {
 
 func TestAddOnDeploymentConfig_Migration(t *testing.T) {
 	scheme := runtime.NewScheme()
-	addonv1alpha1.AddToScheme(scheme)
+	addonv1beta1.AddToScheme(scheme)
 
 	tests := []struct {
-		name            string
-		manager         string
+		name    string
+		manager string
+		// Whether the original manager should be removed from managed fields
 		shouldBeRemoved bool
 	}{
 		{
@@ -1555,16 +1544,16 @@ func TestAddOnDeploymentConfig_Migration(t *testing.T) {
 		{
 			name:            "preserve other managers",
 			manager:         "kubectl-edit",
-			shouldBeRemoved: false,
+			shouldBeRemoved: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Legacy Object Setup
-			legacyAODC := &addonv1alpha1.AddOnDeploymentConfig{
+			legacyAODC := &addonv1beta1.AddOnDeploymentConfig{
 				TypeMeta: metav1.TypeMeta{
-					APIVersion: "addon.open-cluster-management.io/v1alpha1",
+					APIVersion: "addon.open-cluster-management.io/v1beta1",
 					Kind:       "AddOnDeploymentConfig",
 				},
 				ObjectMeta: metav1.ObjectMeta{
@@ -1572,51 +1561,38 @@ func TestAddOnDeploymentConfig_Migration(t *testing.T) {
 					Namespace: "ns1",
 					ManagedFields: []metav1.ManagedFieldsEntry{
 						{
-							Manager:   tt.manager,
-							Operation: metav1.ManagedFieldsOperationUpdate,
-							FieldsV1:  &metav1.FieldsV1{Raw: []byte(`{"f:spec":{"f:customizedVariables":{}}}`)},
+							Manager:    tt.manager,
+							Operation:  metav1.ManagedFieldsOperationUpdate,
+							APIVersion: "addon.open-cluster-management.io/v1beta1",
+							FieldsV1:   &metav1.FieldsV1{Raw: []byte(`{"f:spec":{"f:customizedVariables":{}}}`)},
+							FieldsType: "FieldsV1",
 						},
 					},
 				},
-				Spec: addonv1alpha1.AddOnDeploymentConfigSpec{
-					CustomizedVariables: []addonv1alpha1.CustomizedVariable{
+				Spec: addonv1beta1.AddOnDeploymentConfigSpec{
+					CustomizedVariables: []addonv1beta1.CustomizedVariable{
 						{Name: "old", Value: "val"},
 					},
 				},
 			}
 
 			// Fake Client with Interceptor to simulate Apply
-			fakeClient := fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(legacyAODC).WithInterceptorFuncs(interceptor.Funcs{
-				Patch: func(ctx context.Context, clientww client.WithWatch, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
-					if patch == client.Apply {
-						// Check if exists
-						key := client.ObjectKeyFromObject(obj)
-						existing := obj.DeepCopyObject().(client.Object)
-						if err := clientww.Get(ctx, key, existing); errors.IsNotFound(err) {
-							return clientww.Create(ctx, obj)
-						}
-						// If not found, return create.
-						// Else merge.
-						return clientww.Patch(ctx, obj, client.Merge, opts...)
-					}
-					return clientww.Patch(ctx, obj, patch, opts...)
-				},
-			}).Build()
+			fakeClient := fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(legacyAODC).Build()
 
 			deployer := NewDeployer(fakeClient, "test-owner")
 
 			// Desired Object (Clean Spec)
-			desiredAODC := &addonv1alpha1.AddOnDeploymentConfig{
+			desiredAODC := &addonv1beta1.AddOnDeploymentConfig{
 				TypeMeta: metav1.TypeMeta{
-					APIVersion: "addon.open-cluster-management.io/v1alpha1",
+					APIVersion: "addon.open-cluster-management.io/v1beta1",
 					Kind:       "AddOnDeploymentConfig",
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-aodc-migration-" + strings.ReplaceAll(tt.name, " ", "-"),
 					Namespace: "ns1",
 				},
-				Spec: addonv1alpha1.AddOnDeploymentConfigSpec{
-					CustomizedVariables: []addonv1alpha1.CustomizedVariable{
+				Spec: addonv1beta1.AddOnDeploymentConfigSpec{
+					CustomizedVariables: []addonv1beta1.CustomizedVariable{
 						{Name: "new", Value: "val"},
 					},
 				},
@@ -1627,7 +1603,7 @@ func TestAddOnDeploymentConfig_Migration(t *testing.T) {
 			assert.NoError(t, err)
 
 			// Verify Migration (Update was called, clearing legacy fields)
-			found := &addonv1alpha1.AddOnDeploymentConfig{}
+			found := &addonv1beta1.AddOnDeploymentConfig{}
 			err = fakeClient.Get(context.Background(), types.NamespacedName{Name: "test-aodc-migration-" + strings.ReplaceAll(tt.name, " ", "-"), Namespace: "ns1"}, found)
 			assert.NoError(t, err)
 
@@ -1652,4 +1628,163 @@ func TestAddOnDeploymentConfig_Migration(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestDeployCRD(t *testing.T) {
+	scheme := runtime.NewScheme()
+	apiextensionsv1.AddToScheme(scheme)
+
+	mcoSupportedCRDName := "scrapeconfigs.monitoring.rhobs"
+	nonMcoSupportedCRDName := "test-unsupported.crd.example.com"
+
+	tests := []struct {
+		name                 string
+		crdName              string
+		existingCRD          *apiextensionsv1.CustomResourceDefinition
+		expectApplyOnCreate  bool
+		expectCreateOnCreate bool
+		expectForceOwnership bool
+	}{
+		{
+			name:                 "create MCOA-supported CRD - uses SSA Apply",
+			crdName:              mcoSupportedCRDName,
+			existingCRD:          nil,
+			expectApplyOnCreate:  true,
+			expectCreateOnCreate: false,
+		},
+		{
+			name:                 "create non-MCOA CRD - uses standard Create",
+			crdName:              nonMcoSupportedCRDName,
+			existingCRD:          nil,
+			expectApplyOnCreate:  false,
+			expectCreateOnCreate: true,
+		},
+		{
+			name:    "update MCOA CRD with MCO controller owner - forces ownership",
+			crdName: mcoSupportedCRDName,
+			existingCRD: &apiextensionsv1.CustomResourceDefinition{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "apiextensions.k8s.io/v1",
+					Kind:       "CustomResourceDefinition",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name: mcoSupportedCRDName,
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion: "observability.open-cluster-management.io/v1beta2",
+							Kind:       "MultiClusterObservability",
+							Name:       "observability",
+							UID:        "mco-uid-123",
+							Controller: toPtrBool(true),
+						},
+					},
+				},
+				Spec: apiextensionsv1.CustomResourceDefinitionSpec{
+					Group: "monitoring.rhobs",
+					Names: apiextensionsv1.CustomResourceDefinitionNames{
+						Plural: "scrapeconfigs",
+					},
+				},
+			},
+			expectForceOwnership: true,
+		},
+		{
+			name:    "update MCOA CRD without MCO controller owner - does not force ownership",
+			crdName: mcoSupportedCRDName,
+			existingCRD: &apiextensionsv1.CustomResourceDefinition{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "apiextensions.k8s.io/v1",
+					Kind:       "CustomResourceDefinition",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name: mcoSupportedCRDName,
+				},
+				Spec: apiextensionsv1.CustomResourceDefinitionSpec{
+					Group: "monitoring.rhobs",
+					Names: apiextensionsv1.CustomResourceDefinitionNames{
+						Plural: "scrapeconfigs",
+					},
+				},
+			},
+			expectForceOwnership: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var applyCalled bool
+			var createCalled bool
+			var forceOwnershipCalled bool
+
+			initObjs := []client.Object{}
+			if tt.existingCRD != nil {
+				initObjs = append(initObjs, tt.existingCRD)
+			}
+
+			fakeClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(initObjs...).WithInterceptorFuncs(interceptor.Funcs{
+				Create: func(ctx context.Context, clientww client.WithWatch, obj client.Object, opts ...client.CreateOption) error {
+					if obj.GetObjectKind().GroupVersionKind().Kind == "CustomResourceDefinition" {
+						createCalled = true
+					}
+					return clientww.Create(ctx, obj, opts...)
+				},
+				Apply: func(ctx context.Context, clientww client.WithWatch, obj runtime.ApplyConfiguration, opts ...client.ApplyOption) error {
+					type hasKind interface{ GetKind() string }
+					if u, ok := obj.(hasKind); ok && u.GetKind() == "CustomResourceDefinition" {
+						applyCalled = true
+						var applyOpts client.ApplyOptions
+						for _, o := range opts {
+							o.ApplyToApply(&applyOpts)
+						}
+						if applyOpts.Force != nil && *applyOpts.Force {
+							forceOwnershipCalled = true
+						}
+					}
+					return clientww.Apply(ctx, obj, opts...)
+				},
+			}).Build()
+
+			deployer := NewDeployer(fakeClient, "observability")
+
+			desiredCRD := &apiextensionsv1.CustomResourceDefinition{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "apiextensions.k8s.io/v1",
+					Kind:       "CustomResourceDefinition",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name: tt.crdName,
+				},
+				Spec: apiextensionsv1.CustomResourceDefinitionSpec{
+					Group: "monitoring.rhobs",
+					Names: apiextensionsv1.CustomResourceDefinitionNames{
+						Plural: "scrapeconfigs",
+					},
+					Versions: []apiextensionsv1.CustomResourceDefinitionVersion{
+						{
+							Name: "v1alpha1",
+						},
+					},
+				},
+			}
+
+			desiredObjUns, err := runtime.DefaultUnstructuredConverter.ToUnstructured(desiredCRD)
+			assert.NoError(t, err)
+
+			mcoconfig.SetMonitoringCRName("test-mco")
+			err = deployer.Deploy(context.Background(), &unstructured.Unstructured{Object: desiredObjUns})
+			assert.NoError(t, err)
+
+			if tt.existingCRD == nil {
+				assert.Equal(t, tt.expectApplyOnCreate, applyCalled, "expectApplyOnCreate mismatch")
+				assert.Equal(t, tt.expectCreateOnCreate, createCalled, "expectCreateOnCreate mismatch")
+			} else {
+				assert.True(t, applyCalled, "expect apply to be called during update")
+				assert.Equal(t, tt.expectForceOwnership, forceOwnershipCalled, "expectForceOwnership mismatch")
+			}
+		})
+	}
+}
+
+func toPtrBool(b bool) *bool {
+	return &b
 }

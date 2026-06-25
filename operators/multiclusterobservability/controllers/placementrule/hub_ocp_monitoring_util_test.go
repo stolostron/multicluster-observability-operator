@@ -82,7 +82,10 @@ func TestRevertHubClusterMonitoringConfig(t *testing.T) {
 				Namespace: promNamespace,
 				ManagedFields: []metav1.ManagedFieldsEntry{
 					{
-						Manager: endpointMonitoringOperatorMgr,
+						Manager:    endpointMonitoringOperatorMgr,
+						Operation:  metav1.ManagedFieldsOperationUpdate,
+						APIVersion: "v1",
+						FieldsType: "FieldsV1",
 					},
 				},
 			},
@@ -92,7 +95,7 @@ func TestRevertHubClusterMonitoringConfig(t *testing.T) {
 		}
 
 		// Create fake client
-		client := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(hubInfoSecret, cm).Build()
+		client := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(hubInfoSecret, cm).WithReturnManagedFields().Build()
 
 		// Call RevertHubClusterMonitoringConfig
 		err := RevertHubClusterMonitoringConfig(context.TODO(), client)
@@ -134,7 +137,10 @@ func TestRevertHubClusterMonitoringConfig(t *testing.T) {
 				Namespace: promNamespace,
 				ManagedFields: []metav1.ManagedFieldsEntry{
 					{
-						Manager: "some-other-manager",
+						Manager:    "some-other-manager",
+						Operation:  metav1.ManagedFieldsOperationUpdate,
+						APIVersion: "v1",
+						FieldsType: "FieldsV1",
 					},
 				},
 			},
