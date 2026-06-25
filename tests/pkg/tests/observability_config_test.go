@@ -580,7 +580,7 @@ var _ = Describe("", func() {
 	It(
 		"ACM-34806: Observability: Verify configurable API gateway timeouts in MCO CR - [P2][Sev2][Observability][Integration] @e2e (config/g0)",
 		func() {
-			By("Verifying default state: Observatorium CR has no timeout fields")
+			By("Verifying default state: Observatorium CR has kubebuilder-defaulted timeout values")
 			Eventually(func() error {
 				cr, err := dynClient.Resource(utils.NewMCOMObservatoriumGVR()).
 					Namespace(MCO_NAMESPACE).
@@ -596,11 +596,11 @@ var _ = Describe("", func() {
 				if !ok {
 					return fmt.Errorf("spec.api not found or not a map")
 				}
-				if _, ok := apiSpec["queryTimeout"]; ok {
-					return fmt.Errorf("queryTimeout should not be set on Observatorium CR by default")
+				if qt, _ := apiSpec["queryTimeout"].(string); qt != "300s" {
+					return fmt.Errorf("Observatorium CR queryTimeout = %q, want %q", qt, "300s")
 				}
-				if _, ok := apiSpec["writeTimeout"]; ok {
-					return fmt.Errorf("writeTimeout should not be set on Observatorium CR by default")
+				if wt, _ := apiSpec["writeTimeout"].(string); wt != "720s" {
+					return fmt.Errorf("Observatorium CR writeTimeout = %q, want %q", wt, "720s")
 				}
 				return nil
 			}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*10).Should(Succeed())
@@ -615,11 +615,11 @@ var _ = Describe("", func() {
 					return fmt.Errorf("no observatorium-api deployment found")
 				}
 				args := deps.Items[0].Spec.Template.Spec.Containers[0].Args
-				if !slices.Contains(args, "--server.read-timeout=5m") {
-					return fmt.Errorf("expected default --server.read-timeout=5m not found in args: %v", args)
+				if !slices.Contains(args, "--server.read-timeout=300s") {
+					return fmt.Errorf("expected default --server.read-timeout=300s not found in args: %v", args)
 				}
-				if !slices.Contains(args, "--server.write-timeout=12m") {
-					return fmt.Errorf("expected default --server.write-timeout=12m not found in args: %v", args)
+				if !slices.Contains(args, "--server.write-timeout=720s") {
+					return fmt.Errorf("expected default --server.write-timeout=720s not found in args: %v", args)
 				}
 				return nil
 			}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*10).Should(Succeed())
