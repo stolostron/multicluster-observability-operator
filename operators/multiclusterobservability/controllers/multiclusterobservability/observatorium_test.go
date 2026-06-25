@@ -1127,7 +1127,7 @@ func buildObsSpec(t *testing.T, mco *mcov1beta2.MultiClusterObservability) *obse
 	scheme.AddToScheme(s)
 	mcov1beta2.SchemeBuilder.AddToScheme(s)
 	observatoriumv1alpha1.SchemeBuilder.AddToScheme(s)
-	objs := []runtime.Object{mco, writeStorageS, alertmanagerCABundleConfigMap()}
+	objs := []runtime.Object{mco, writeStorageS}
 	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
 	if err := mcoconfig.SetOperandNames(cl); err != nil {
 		t.Fatalf("SetOperandNames: %v", err)
@@ -1172,39 +1172,6 @@ func newBaseMCO() *mcov1beta2.MultiClusterObservability {
 			},
 		},
 	}
-}
-
-func TestNewObservatoriumSpecMetricsAlertmanagerEndpoints(t *testing.T) {
-	t.Run("default sizing produces DNS endpoints per alertmanager replica", func(t *testing.T) {
-		mco := newBaseMCO()
-		obs := buildObsSpec(t, mco)
-		want := []string{
-			"https://observability-alertmanager-0.alertmanager-operated.open-cluster-management-observability.svc:9095",
-			"https://observability-alertmanager-1.alertmanager-operated.open-cluster-management-observability.svc:9095",
-			"https://observability-alertmanager-2.alertmanager-operated.open-cluster-management-observability.svc:9095",
-		}
-		if !reflect.DeepEqual(obs.API.MetricsAlertmanagerEndpoints, want) {
-			t.Errorf("MetricsAlertmanagerEndpoints = %#v, want %#v", obs.API.MetricsAlertmanagerEndpoints, want)
-		}
-	})
-	var amReplicas int32 = 5
-	t.Run("advanced alertmanager replicas extends metrics endpoints", func(t *testing.T) {
-		mco := newBaseMCO()
-		mco.Spec.AdvancedConfig = &mcov1beta2.AdvancedConfig{
-			Alertmanager: &mcov1beta2.AlertmanagerSpec{
-				CommonSpec: mcov1beta2.CommonSpec{
-					Replicas: &amReplicas,
-				},
-			},
-		}
-		obs := buildObsSpec(t, mco)
-		if got := len(obs.API.MetricsAlertmanagerEndpoints); got != int(amReplicas) {
-			t.Fatalf("len(MetricsAlertmanagerEndpoints) = %d, want %d", got, int(amReplicas))
-		}
-		if obs.API.MetricsAlertmanagerEndpoints[4] != "https://observability-alertmanager-4.alertmanager-operated.open-cluster-management-observability.svc:9095" {
-			t.Errorf("last endpoint = %q", obs.API.MetricsAlertmanagerEndpoints[4])
-		}
-	})
 }
 
 func TestNewObservatoriumSpecAPITimeouts(t *testing.T) {

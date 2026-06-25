@@ -368,7 +368,7 @@ type AdvancedConfig struct {
 	// +kubebuilder:validation:Pattern=`^([0-9]+(\.[0-9]+)?(ms|s|m|h))+$`
 	// +kubebuilder:default="300s"
 	QueryTimeout string `json:"queryTimeout,omitempty"`
-	// WriteTimeout is the timeout for signal ingestion (metrics, logs, traces)
+	// WriteTimeout is the timeout for metrics ingestion
 	// through the observatorium-api gateway. Controls the server write timeout
 	// for the response path. Increase for large payloads over high-latency networks.
 	// Default is 720s.
