@@ -13,7 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	addonframeworkutils "open-cluster-management.io/addon-framework/pkg/utils"
-	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
+	addonv1beta1 "open-cluster-management.io/api/addon/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
@@ -24,13 +24,13 @@ const (
 
 func TestManagedClusterAddon(t *testing.T) {
 	s := scheme.Scheme
-	addonv1alpha1.AddToScheme(s)
-	c := fake.NewClientBuilder().WithStatusSubresource(&addonv1alpha1.ManagedClusterAddOn{}).Build()
+	addonv1beta1.AddToScheme(s)
+	c := fake.NewClientBuilder().WithStatusSubresource(&addonv1beta1.ManagedClusterAddOn{}).Build()
 	_, err := CreateManagedClusterAddonCR(context.Background(), c, namespace, "testKey", "value")
 	if err != nil {
 		t.Fatalf("Failed to create managedclusteraddon: (%v)", err)
 	}
-	addon := &addonv1alpha1.ManagedClusterAddOn{}
+	addon := &addonv1beta1.ManagedClusterAddOn{}
 	err = c.Get(context.TODO(),
 		types.NamespacedName{
 			Name:      config.ManagedClusterAddonName,
@@ -45,15 +45,15 @@ func TestManagedClusterAddon(t *testing.T) {
 
 func TestManagedClusterAddonStatusNotUpdatedOnSubsequentCalls(t *testing.T) {
 	s := scheme.Scheme
-	addonv1alpha1.AddToScheme(s)
+	addonv1beta1.AddToScheme(s)
 
-	adc := &addonv1alpha1.AddOnDeploymentConfig{
+	adc := &addonv1beta1.AddOnDeploymentConfig{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-adc",
 			Namespace: "test-ns",
 		},
-		Spec: addonv1alpha1.AddOnDeploymentConfigSpec{
-			CustomizedVariables: []addonv1alpha1.CustomizedVariable{
+		Spec: addonv1beta1.AddOnDeploymentConfigSpec{
+			CustomizedVariables: []addonv1beta1.CustomizedVariable{
 				{Name: "key1", Value: "value1"},
 			},
 		},
@@ -64,18 +64,18 @@ func TestManagedClusterAddonStatusNotUpdatedOnSubsequentCalls(t *testing.T) {
 		t.Fatalf("Failed to compute expected spec hash: (%v)", err)
 	}
 
-	cma := &addonv1alpha1.ClusterManagementAddOn{
+	cma := &addonv1beta1.ClusterManagementAddOn{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: ObservabilityController,
 		},
-		Spec: addonv1alpha1.ClusterManagementAddOnSpec{
-			SupportedConfigs: []addonv1alpha1.ConfigMeta{
+		Spec: addonv1beta1.ClusterManagementAddOnSpec{
+			DefaultConfigs: []addonv1beta1.AddOnConfig{
 				{
-					ConfigGroupResource: addonv1alpha1.ConfigGroupResource{
+					ConfigGroupResource: addonv1beta1.ConfigGroupResource{
 						Group:    AddonGroup,
 						Resource: AddonDeploymentConfigResource,
 					},
-					DefaultConfig: &addonv1alpha1.ConfigReferent{
+					ConfigReferent: addonv1beta1.ConfigReferent{
 						Name:      "test-adc",
 						Namespace: "test-ns",
 					},
@@ -86,7 +86,7 @@ func TestManagedClusterAddonStatusNotUpdatedOnSubsequentCalls(t *testing.T) {
 
 	c := fake.NewClientBuilder().
 		WithObjects(cma, adc).
-		WithStatusSubresource(&addonv1alpha1.ManagedClusterAddOn{}).
+		WithStatusSubresource(&addonv1beta1.ManagedClusterAddOn{}).
 		Build()
 
 	firstAddon, err := CreateManagedClusterAddonCR(context.Background(), c, namespace, "testKey", "value")
@@ -122,10 +122,11 @@ func TestManagedClusterAddonStatusNotUpdatedOnSubsequentCalls(t *testing.T) {
 
 func TestManagedClusterAddonConfigReferencesInitializedWhenCMADefaultConfigAdded(t *testing.T) {
 	s := scheme.Scheme
-	addonv1alpha1.AddToScheme(s)
+	addonv1beta1.Install(s)
+
 	c := fake.NewClientBuilder().
-		WithStatusSubresource(&addonv1alpha1.ManagedClusterAddOn{}).
-		WithStatusSubresource(&addonv1alpha1.ClusterManagementAddOn{}).
+		WithStatusSubresource(&addonv1beta1.ManagedClusterAddOn{}).
+		WithStatusSubresource(&addonv1beta1.ClusterManagementAddOn{}).
 		Build()
 
 	// First: Create MCA without any CMA (no defaultConfig available)
@@ -139,13 +140,13 @@ func TestManagedClusterAddonConfigReferencesInitializedWhenCMADefaultConfigAdded
 	}
 
 	// Second: Create CMA with defaultConfig AND the referenced ADC
-	adc := &addonv1alpha1.AddOnDeploymentConfig{
+	adc := &addonv1beta1.AddOnDeploymentConfig{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-config",
 			Namespace: "test-ns",
 		},
-		Spec: addonv1alpha1.AddOnDeploymentConfigSpec{
-			CustomizedVariables: []addonv1alpha1.CustomizedVariable{
+		Spec: addonv1beta1.AddOnDeploymentConfigSpec{
+			CustomizedVariables: []addonv1beta1.CustomizedVariable{
 				{Name: "platform", Value: "enabled"},
 			},
 		},
@@ -159,18 +160,18 @@ func TestManagedClusterAddonConfigReferencesInitializedWhenCMADefaultConfigAdded
 		t.Fatalf("Failed to compute expected spec hash: (%v)", err)
 	}
 
-	cma := &addonv1alpha1.ClusterManagementAddOn{
+	cma := &addonv1beta1.ClusterManagementAddOn{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: ObservabilityController,
 		},
-		Spec: addonv1alpha1.ClusterManagementAddOnSpec{
-			SupportedConfigs: []addonv1alpha1.ConfigMeta{
+		Spec: addonv1beta1.ClusterManagementAddOnSpec{
+			DefaultConfigs: []addonv1beta1.AddOnConfig{
 				{
-					ConfigGroupResource: addonv1alpha1.ConfigGroupResource{
+					ConfigGroupResource: addonv1beta1.ConfigGroupResource{
 						Group:    AddonGroup,
 						Resource: AddonDeploymentConfigResource,
 					},
-					DefaultConfig: &addonv1alpha1.ConfigReferent{
+					ConfigReferent: addonv1beta1.ConfigReferent{
 						Name:      "test-config",
 						Namespace: "test-ns",
 					},
@@ -191,8 +192,8 @@ func TestManagedClusterAddonConfigReferencesInitializedWhenCMADefaultConfigAdded
 	if len(secondAddon.Status.ConfigReferences) != 1 {
 		t.Fatalf("Expected 1 ConfigReference after CMA defaultConfig added, got: %d", len(secondAddon.Status.ConfigReferences))
 	}
-	if secondAddon.Status.ConfigReferences[0].ConfigReferent.Name != "test-config" {
-		t.Fatalf("Expected config name 'test-config', got: %s", secondAddon.Status.ConfigReferences[0].ConfigReferent.Name)
+	if secondAddon.Status.ConfigReferences[0].DesiredConfig.ConfigReferent.Name != "test-config" {
+		t.Fatalf("Expected config name 'test-config', got: %s", secondAddon.Status.ConfigReferences[0].DesiredConfig.ConfigReferent.Name)
 	}
 	if secondAddon.Status.ConfigReferences[0].DesiredConfig.SpecHash != expectedHash {
 		t.Fatalf("Expected specHash %q, got: %q",
@@ -216,15 +217,15 @@ func TestManagedClusterAddonConfigReferencesInitializedWhenCMADefaultConfigAdded
 
 func TestManagedClusterAddonSpecHashUpdatedWhenADCChanges(t *testing.T) {
 	s := scheme.Scheme
-	addonv1alpha1.AddToScheme(s)
+	addonv1beta1.Install(s)
 
-	adc := &addonv1alpha1.AddOnDeploymentConfig{
+	adc := &addonv1beta1.AddOnDeploymentConfig{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-config",
 			Namespace: "test-ns",
 		},
-		Spec: addonv1alpha1.AddOnDeploymentConfigSpec{
-			CustomizedVariables: []addonv1alpha1.CustomizedVariable{
+		Spec: addonv1beta1.AddOnDeploymentConfigSpec{
+			CustomizedVariables: []addonv1beta1.CustomizedVariable{
 				{Name: "key1", Value: "value1"},
 			},
 		},
@@ -235,18 +236,18 @@ func TestManagedClusterAddonSpecHashUpdatedWhenADCChanges(t *testing.T) {
 		t.Fatalf("Failed to compute original spec hash: (%v)", err)
 	}
 
-	cma := &addonv1alpha1.ClusterManagementAddOn{
+	cma := &addonv1beta1.ClusterManagementAddOn{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: ObservabilityController,
 		},
-		Spec: addonv1alpha1.ClusterManagementAddOnSpec{
-			SupportedConfigs: []addonv1alpha1.ConfigMeta{
+		Spec: addonv1beta1.ClusterManagementAddOnSpec{
+			DefaultConfigs: []addonv1beta1.AddOnConfig{
 				{
-					ConfigGroupResource: addonv1alpha1.ConfigGroupResource{
+					ConfigGroupResource: addonv1beta1.ConfigGroupResource{
 						Group:    AddonGroup,
 						Resource: AddonDeploymentConfigResource,
 					},
-					DefaultConfig: &addonv1alpha1.ConfigReferent{
+					ConfigReferent: addonv1beta1.ConfigReferent{
 						Name:      "test-config",
 						Namespace: "test-ns",
 					},
@@ -257,7 +258,7 @@ func TestManagedClusterAddonSpecHashUpdatedWhenADCChanges(t *testing.T) {
 
 	c := fake.NewClientBuilder().
 		WithObjects(cma, adc).
-		WithStatusSubresource(&addonv1alpha1.ManagedClusterAddOn{}).
+		WithStatusSubresource(&addonv1beta1.ManagedClusterAddOn{}).
 		Build()
 
 	firstAddon, err := CreateManagedClusterAddonCR(context.Background(), c, namespace, "testKey", "value")
@@ -274,7 +275,7 @@ func TestManagedClusterAddonSpecHashUpdatedWhenADCChanges(t *testing.T) {
 
 	// Modify the ADC spec
 	adc.Spec.CustomizedVariables = append(adc.Spec.CustomizedVariables,
-		addonv1alpha1.CustomizedVariable{Name: "key2", Value: "value2"})
+		addonv1beta1.CustomizedVariable{Name: "key2", Value: "value2"})
 	if err := c.Update(context.Background(), adc); err != nil {
 		t.Fatalf("Failed to update ADC: (%v)", err)
 	}
@@ -304,15 +305,15 @@ func TestManagedClusterAddonSpecHashUpdatedWhenADCChanges(t *testing.T) {
 
 func TestManagedClusterAddonSpecHashUpdatedWhenADCChangesAndStoredHashEmpty(t *testing.T) {
 	s := scheme.Scheme
-	addonv1alpha1.AddToScheme(s)
+	addonv1beta1.Install(s)
 
-	adc := &addonv1alpha1.AddOnDeploymentConfig{
+	adc := &addonv1beta1.AddOnDeploymentConfig{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-config",
 			Namespace: "test-ns",
 		},
-		Spec: addonv1alpha1.AddOnDeploymentConfigSpec{
-			CustomizedVariables: []addonv1alpha1.CustomizedVariable{
+		Spec: addonv1beta1.AddOnDeploymentConfigSpec{
+			CustomizedVariables: []addonv1beta1.CustomizedVariable{
 				{Name: "key1", Value: "value1"},
 			},
 		},
@@ -323,18 +324,18 @@ func TestManagedClusterAddonSpecHashUpdatedWhenADCChangesAndStoredHashEmpty(t *t
 		t.Fatalf("Failed to compute original spec hash: (%v)", err)
 	}
 
-	cma := &addonv1alpha1.ClusterManagementAddOn{
+	cma := &addonv1beta1.ClusterManagementAddOn{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: ObservabilityController,
 		},
-		Spec: addonv1alpha1.ClusterManagementAddOnSpec{
-			SupportedConfigs: []addonv1alpha1.ConfigMeta{
+		Spec: addonv1beta1.ClusterManagementAddOnSpec{
+			DefaultConfigs: []addonv1beta1.AddOnConfig{
 				{
-					ConfigGroupResource: addonv1alpha1.ConfigGroupResource{
+					ConfigGroupResource: addonv1beta1.ConfigGroupResource{
 						Group:    AddonGroup,
 						Resource: AddonDeploymentConfigResource,
 					},
-					DefaultConfig: &addonv1alpha1.ConfigReferent{
+					ConfigReferent: addonv1beta1.ConfigReferent{
 						Name:      "test-config",
 						Namespace: "test-ns",
 					},
@@ -345,7 +346,7 @@ func TestManagedClusterAddonSpecHashUpdatedWhenADCChangesAndStoredHashEmpty(t *t
 
 	c := fake.NewClientBuilder().
 		WithObjects(cma, adc).
-		WithStatusSubresource(&addonv1alpha1.ManagedClusterAddOn{}).
+		WithStatusSubresource(&addonv1beta1.ManagedClusterAddOn{}).
 		Build()
 
 	firstAddon, err := CreateManagedClusterAddonCR(context.Background(), c, namespace, "testKey", "value")
@@ -362,7 +363,7 @@ func TestManagedClusterAddonSpecHashUpdatedWhenADCChangesAndStoredHashEmpty(t *t
 
 	// Modify the ADC spec.
 	adc.Spec.CustomizedVariables = append(adc.Spec.CustomizedVariables,
-		addonv1alpha1.CustomizedVariable{Name: "key2", Value: "value2"})
+		addonv1beta1.CustomizedVariable{Name: "key2", Value: "value2"})
 	if err := c.Update(context.Background(), adc); err != nil {
 		t.Fatalf("Failed to update ADC: (%v)", err)
 	}

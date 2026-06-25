@@ -122,7 +122,7 @@ func TestMCOAAgentIntegration(t *testing.T) {
 		mgr.GetClient(),
 		mgr.GetLogger(),
 		mgr.GetScheme(),
-		mgr.GetEventRecorderFor("mcoa-agent-test"),
+		mgr.GetEventRecorder("mcoa-agent-test"),
 		namespace,
 		"test-cluster-id",
 		hubInfo.AlertmanagerEndpoint,

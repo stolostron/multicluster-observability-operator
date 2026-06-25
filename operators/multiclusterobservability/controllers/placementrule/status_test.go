@@ -17,7 +17,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
+	addonv1beta1 "open-cluster-management.io/api/addon/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
@@ -109,16 +109,16 @@ func TestUpdateAddonStatus(t *testing.T) {
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
 			scheme := runtime.NewScheme()
-			addonv1alpha1.AddToScheme(scheme)
+			addonv1beta1.Install(scheme)
 			mcov1beta1.AddToScheme(scheme)
 			mcov1beta2.AddToScheme(scheme)
 
-			clusterAddon := &addonv1alpha1.ManagedClusterAddOn{
+			clusterAddon := &addonv1beta1.ManagedClusterAddOn{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      config.ManagedClusterAddonName,
 					Namespace: namespace,
 				},
-				Status: addonv1alpha1.ManagedClusterAddOnStatus{
+				Status: addonv1beta1.ManagedClusterAddOnStatus{
 					Conditions: tc.currentClusterAddonConditions,
 				},
 			}
@@ -127,7 +127,7 @@ func TestUpdateAddonStatus(t *testing.T) {
 				WithScheme(scheme).
 				WithRuntimeObjects(clusterAddon).
 				WithStatusSubresource(
-					&addonv1alpha1.ManagedClusterAddOn{},
+					&addonv1beta1.ManagedClusterAddOn{},
 					&mcov1beta2.MultiClusterObservability{},
 					&mcov1beta1.ObservabilityAddon{},
 				).
@@ -147,7 +147,7 @@ func TestUpdateAddonStatus(t *testing.T) {
 				},
 			}
 
-			foundClusterAddon := &addonv1alpha1.ManagedClusterAddOn{}
+			foundClusterAddon := &addonv1beta1.ManagedClusterAddOn{}
 			if err := c.Get(context.Background(), types.NamespacedName{
 				Name:      config.ManagedClusterAddonName,
 				Namespace: namespace,

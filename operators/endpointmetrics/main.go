@@ -282,7 +282,7 @@ func runMCOA(args []string) {
 		mgr.GetClient(),
 		ctrl.Log.WithName("controllers").WithName("mcoa-endpoint-controller"),
 		mgr.GetScheme(),
-		mgr.GetEventRecorderFor("mcoa-endpoint-controller"),
+		mgr.GetEventRecorder("mcoa-endpoint-controller"),
 		namespace,
 		clusterID,
 		hubAmURL,
