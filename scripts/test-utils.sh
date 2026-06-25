@@ -21,7 +21,7 @@ get_latest_acm_snapshot() {
   # z version 1-2 digits
   # -SNAPSHOT
   MATCH=$SNAPSHOT_RELEASE".\d{1,2}-SNAPSHOT"
-  LATEST_SNAPSHOT=$(curl -s "https://quay.io/api/v1/repository/stolostron/multicluster-observability-operator/tag/?filter_tag_name=like:$SNAPSHOT_RELEASE&limit=100" | jq --arg MATCH "$MATCH" '.tags[] | select(.name | match($MATCH; "i")  ).name' | sort -r --version-sort | head -n 1)
+  LATEST_SNAPSHOT=$(curl -s "https://quay.io/api/v1/repository/stolostron/acm-custom-registry/tag/?filter_tag_name=like:$SNAPSHOT_RELEASE&limit=100" | jq --arg MATCH "$MATCH" '.tags[] | select(.name | match($MATCH; "i")  ).name' | sort -r --version-sort | head -n 1)
 
   # trim the leading and tailing quotes
   LATEST_SNAPSHOT="${LATEST_SNAPSHOT#\"}"
