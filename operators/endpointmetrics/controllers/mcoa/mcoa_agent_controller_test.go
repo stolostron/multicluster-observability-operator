@@ -97,7 +97,12 @@ func TestMCOAAgentReconciler_Reconcile(t *testing.T) {
 				}, found)
 				require.NoError(t, err)
 				assert.Contains(t, found.Data[observabilityendpoint.ClusterMonitoringConfigDataKey], "hub-am.example.com")
-				assert.Contains(t, found.Data[observabilityendpoint.ClusterMonitoringConfigDataKey], "managed_cluster_name: test-cluster-name")
+				assert.Contains(
+					t,
+					found.Data[observabilityendpoint.ClusterMonitoringConfigDataKey],
+					"managed_cluster_name: test-cluster-name",
+					"MCOA alert config must include the human-readable managed_cluster_name external label under the successful create path",
+				)
 			},
 		},
 		{
@@ -142,7 +147,12 @@ func TestMCOAAgentReconciler_Reconcile(t *testing.T) {
 				}, found)
 				require.NoError(t, err)
 				assert.Contains(t, found.Data[observabilityendpoint.ClusterMonitoringConfigDataKey], "hub-am.example.com")
-				assert.Contains(t, found.Data[observabilityendpoint.ClusterMonitoringConfigDataKey], "managed_cluster_name: test-cluster-name")
+				assert.Contains(
+					t,
+					found.Data[observabilityendpoint.ClusterMonitoringConfigDataKey],
+					"managed_cluster_name: test-cluster-name",
+					"Conflict path reconciliation must re-apply the human-readable managed_cluster_name external label",
+				)
 			},
 		},
 		{

@@ -635,8 +635,18 @@ func SetMCOACapabilities(opt TestOptions, platformMetrics, userWorkloadMetrics b
 		if err := unstructured.SetNestedField(mco.Object, platformMetrics, "spec", "capabilities", "platform", "metrics", "default", "enabled"); err != nil {
 			return err
 		}
+		if !platformMetrics {
+			if err := unstructured.SetNestedField(mco.Object, false, "spec", "capabilities", "platform", "metrics", "alerts", "enabled"); err != nil {
+				return err
+			}
+		}
 		if err := unstructured.SetNestedField(mco.Object, userWorkloadMetrics, "spec", "capabilities", "userWorkloads", "metrics", "default", "enabled"); err != nil {
 			return err
+		}
+		if !userWorkloadMetrics {
+			if err := unstructured.SetNestedField(mco.Object, false, "spec", "capabilities", "userWorkloads", "metrics", "alerts", "enabled"); err != nil {
+				return err
+			}
 		}
 
 		_, updateErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Update(context.TODO(), mco, metav1.UpdateOptions{})

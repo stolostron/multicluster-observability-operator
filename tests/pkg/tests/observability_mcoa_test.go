@@ -22,6 +22,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/prometheus/alertmanager/api/v2/models"
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/utils"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
@@ -505,13 +506,14 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 					pool.AppendCertsFromPEM(caCrt)
 
 					client := &http.Client{
+						Timeout: 30 * time.Second,
 						Transport: &http.Transport{
 							Proxy:           http.ProxyFromEnvironment,
 							TLSClientConfig: &tls.Config{RootCAs: pool},
 						},
 					}
 
-					alertGetReq, err := http.NewRequest("GET", amURL.String(), nil)
+					alertGetReq, err := http.NewRequestWithContext(ctx, "GET", amURL.String(), nil)
 					if err != nil {
 						return err
 					}
@@ -589,6 +591,9 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 					Eventually(func() error {
 						cm, err := hubClient.CoreV1().ConfigMaps(namespace).Get(context.TODO(), configMapName, metav1.GetOptions{})
 						if err != nil {
+							if apierrors.IsNotFound(err) {
+								return nil
+							}
 							return err
 						}
 						configContent := cm.Data["config.yaml"]
@@ -606,8 +611,10 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 					Eventually(func() error {
 						cm, err := hubClient.CoreV1().ConfigMaps(namespace).Get(context.TODO(), configMapName, metav1.GetOptions{})
 						if err != nil {
-							// It is acceptable if the configmap doesn't exist
-							return nil
+							if apierrors.IsNotFound(err) {
+								return nil
+							}
+							return err
 						}
 						configContent := cm.Data["config.yaml"]
 						if strings.Contains(configContent, "additionalAlertmanagerConfigs:") {
@@ -621,6 +628,23 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 					Expect(utils.SetMCOAAlertForwardingCapabilities(testOptions, true, true)).NotTo(HaveOccurred())
 				})
 
+				By("Waiting for additional alert forwarding config to be recreated", func() {
+					namespace := "openshift-monitoring"
+					configMapName := "cluster-monitoring-config"
+
+					Eventually(func() error {
+						cm, err := hubClient.CoreV1().ConfigMaps(namespace).Get(context.TODO(), configMapName, metav1.GetOptions{})
+						if err != nil {
+							return err
+						}
+						configContent := cm.Data["config.yaml"]
+						if !strings.Contains(configContent, "additionalAlertmanagerConfigs:") {
+							return fmt.Errorf("ConfigMap does not contain additionalAlertmanagerConfigs yet")
+						}
+						return nil
+					}, 120, 5).Should(Succeed())
+				})
+
 				By("Disabling MCOA capabilities entirely", func() {
 					Expect(utils.SetMCOACapabilities(testOptions, false, false)).NotTo(HaveOccurred())
 				})
@@ -632,6 +656,9 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 					Eventually(func() error {
 						cm, err := hubClient.CoreV1().ConfigMaps(namespace).Get(context.TODO(), configMapName, metav1.GetOptions{})
 						if err != nil {
+							if apierrors.IsNotFound(err) {
+								return nil
+							}
 							return err
 						}
 						configContent := cm.Data["config.yaml"]
@@ -649,8 +676,10 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 					Eventually(func() error {
 						cm, err := hubClient.CoreV1().ConfigMaps(namespace).Get(context.TODO(), configMapName, metav1.GetOptions{})
 						if err != nil {
-							// It is acceptable if the configmap doesn't exist
-							return nil
+							if apierrors.IsNotFound(err) {
+								return nil
+							}
+							return err
 						}
 						configContent := cm.Data["config.yaml"]
 						if strings.Contains(configContent, "additionalAlertmanagerConfigs:") {
