@@ -36,6 +36,7 @@ import (
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -1320,5 +1321,57 @@ func newAlertManagerRoute() *routev1.Route {
 		Spec: routev1.RouteSpec{
 			Host: "alert.manager",
 		},
+	}
+}
+
+func TestDeleteVestigialProxyIngress(t *testing.T) {
+	s := scheme.Scheme
+
+	tests := []struct {
+		name           string
+		existingObjs   []runtime.Object
+		expectDeletion bool
+	}{
+		{
+			name: "deletes existing ingress",
+			existingObjs: []runtime.Object{
+				&networkingv1.Ingress{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "rbac-query-proxy-ingress",
+						Namespace: config.GetDefaultNamespace(),
+					},
+				},
+			},
+			expectDeletion: true,
+		},
+		{
+			name:           "no-op when ingress does not exist",
+			existingObjs:   []runtime.Object{},
+			expectDeletion: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(tt.existingObjs...).Build()
+			r := &MultiClusterObservabilityReconciler{Client: c, Scheme: s}
+
+			err := r.deleteVestigialProxyIngress(t.Context())
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			ingress := &networkingv1.Ingress{}
+			err = c.Get(t.Context(), types.NamespacedName{
+				Name:      "rbac-query-proxy-ingress",
+				Namespace: config.GetDefaultNamespace(),
+			}, ingress)
+
+			if tt.expectDeletion {
+				assert.True(t, errors.IsNotFound(err), "ingress should have been deleted")
+			} else {
+				assert.True(t, errors.IsNotFound(err), "ingress should not exist")
+			}
+		})
 	}
 }
