@@ -14,6 +14,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
+	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	addonv1beta1 "open-cluster-management.io/api/addon/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -60,8 +61,8 @@ func TestClusterManagmentAddon(t *testing.T) {
 		}
 	}
 
-	if _, found := addon.ObjectMeta.Annotations[addonv1beta1.AddonLifecycleAnnotationKey]; found {
-		t.Fatalf("unexpected lifecycle annotation found: %s", addon.ObjectMeta.Annotations[addonv1beta1.AddonLifecycleAnnotationKey])
+	if _, found := addon.ObjectMeta.Annotations[addonv1alpha1.AddonLifecycleAnnotationKey]; found {
+		t.Fatalf("unexpected lifecycle annotation found: %s", addon.ObjectMeta.Annotations[addonv1alpha1.AddonLifecycleAnnotationKey])
 	}
 
 	err = DeleteClusterManagementAddon(context.Background(), c)
@@ -107,7 +108,7 @@ func TestClusterManagmentAddon(t *testing.T) {
 	}
 
 	// Verify the annotation has been removed
-	if _, found := addon.ObjectMeta.Annotations[addonv1beta1.AddonLifecycleAnnotationKey]; found {
+	if _, found := addon.ObjectMeta.Annotations[addonv1alpha1.AddonLifecycleAnnotationKey]; found {
 		t.Fatalf("Addon lifecycle annotation was not removed as expected")
 	}
 
