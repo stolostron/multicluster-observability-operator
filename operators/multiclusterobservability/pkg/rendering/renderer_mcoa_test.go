@@ -226,9 +226,9 @@ func TestRenderAddonDeploymentConfig(t *testing.T) {
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1beta1.CustomizedVariable{Name: nameUserWorkloadTracesCollection, Value: otelV1beta1})
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1beta1.CustomizedVariable{Name: nameUserWorkloadInstrumentation, Value: instrV1alpha1})
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1beta1.CustomizedVariable{Name: namePlatformMetricsCollection, Value: promV1alpha1})
-	assert.Contains(t, got.Spec.CustomizedVariables, addonv1alpha1.CustomizedVariable{Name: namePlatformMetricsAlerts, Value: "disabled"})
+	assert.Contains(t, got.Spec.CustomizedVariables, addonv1beta1.CustomizedVariable{Name: namePlatformMetricsAlerts, Value: "disabled"})
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1beta1.CustomizedVariable{Name: nameUserWorkloadMetricsCollection, Value: promV1alpha1})
-	assert.Contains(t, got.Spec.CustomizedVariables, addonv1alpha1.CustomizedVariable{Name: nameUserWorkloadMetricsAlerts, Value: "disabled"})
+	assert.Contains(t, got.Spec.CustomizedVariables, addonv1beta1.CustomizedVariable{Name: nameUserWorkloadMetricsAlerts, Value: "disabled"})
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1beta1.CustomizedVariable{Name: nameMetricsHubHostname, Value: "observability-hub"})
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1beta1.CustomizedVariable{Name: nameMetricsAlertManagerHostname, Value: "alertmanager-hub"})
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1beta1.CustomizedVariable{Name: namePLatformMetricsUI, Value: uipluginsCRDFQDN})
@@ -296,12 +296,12 @@ func TestRenderAddonDeploymentConfig_AlertsEnabled(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, uobj)
 
-	got := &addonv1alpha1.AddOnDeploymentConfig{}
+	got := &addonv1beta1.AddOnDeploymentConfig{}
 	err = runtime.DefaultUnstructuredConverter.FromUnstructured(uobj.Object, got)
 	assert.NoError(t, err)
 
-	assert.Contains(t, got.Spec.CustomizedVariables, addonv1alpha1.CustomizedVariable{Name: namePlatformMetricsAlerts, Value: "enabled"})
-	assert.Contains(t, got.Spec.CustomizedVariables, addonv1alpha1.CustomizedVariable{Name: nameUserWorkloadMetricsAlerts, Value: "enabled"})
+	assert.Contains(t, got.Spec.CustomizedVariables, addonv1beta1.CustomizedVariable{Name: namePlatformMetricsAlerts, Value: "enabled"})
+	assert.Contains(t, got.Spec.CustomizedVariables, addonv1beta1.CustomizedVariable{Name: nameUserWorkloadMetricsAlerts, Value: "enabled"})
 }
 
 func TestMCOAEnabled(t *testing.T) {
