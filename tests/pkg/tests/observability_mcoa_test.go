@@ -6,13 +6,24 @@ package tests
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
+	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
+	"net/url"
+	"os"
 	"slices"
+	"strings"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/prometheus/alertmanager/api/v2/models"
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/utils"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 )
 
 const (
@@ -434,6 +445,223 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 	// 		})
 	// 	})
 	// })
+
+	Context(
+		"when alert forwarding is enabled for MCOA [P1][Sev1][Observability][Stable]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release @pre-upgrade (mcoa_alerts/g0)",
+		func() {
+			var hubClient kubernetes.Interface
+
+			BeforeAll(func() {
+				hubClient = utils.NewKubeClient(
+					testOptions.HubCluster.ClusterServerURL,
+					testOptions.KubeConfig,
+					testOptions.HubCluster.KubeContext)
+
+				By("Enabling user workload monitoring on all openshift managed clusters", func() {
+					Expect(utils.EnableUWLMonitoringOnManagedClusters(testOptions, accessibleOCPClusters)).NotTo(HaveOccurred())
+				})
+			})
+
+			It("should allow enabling and forwarding alerts to the hub", SpecTimeout(10*time.Minute), func(ctx SpecContext) {
+				By("Enabling platform and user workload metrics with alert forwarding for MCOA", func() {
+					Expect(utils.SetMCOAAllCapabilities(testOptions, true, true, true, true)).NotTo(HaveOccurred())
+				})
+
+				By("Configuring the platform and user workload scrape intervals to 30s", func() {
+					Eventually(func() error {
+						return utils.UpdatePrometheusAgentScrapeInterval(testOptions, "platform-metrics-collector", "30s")
+					}, 120, 2).Should(Not(HaveOccurred()))
+					Eventually(func() error {
+						return utils.UpdatePrometheusAgentScrapeInterval(testOptions, "user-workload-metrics-collector", "30s")
+					}, 120, 2).Should(Not(HaveOccurred()))
+				})
+
+				By("Checking Watchdog alerts are forwarded to the hub when alert forwarding is enabled")
+				Eventually(func() error {
+					var amURL *url.URL
+					cloudProvider := strings.ToLower(os.Getenv("CLOUD_PROVIDER"))
+					if strings.Contains(cloudProvider, "rosa") && strings.Contains(cloudProvider, "hcp") {
+						amURL = &url.URL{
+							Scheme: "https",
+							Host:   "alertmanager-open-cluster-management-observability.apps.rosa." + testOptions.HubCluster.BaseDomain,
+							Path:   "/api/v2/alerts",
+						}
+					} else {
+						amURL = &url.URL{
+							Scheme: "https",
+							Host:   "alertmanager-open-cluster-management-observability.apps." + testOptions.HubCluster.BaseDomain,
+							Path:   "/api/v2/alerts",
+						}
+					}
+					q := amURL.Query()
+					q.Set("filter", "alertname=Watchdog")
+					amURL.RawQuery = q.Encode()
+
+					caCrt, err := utils.GetRouterCA(hubClient)
+					if err != nil {
+						return err
+					}
+					pool := x509.NewCertPool()
+					pool.AppendCertsFromPEM(caCrt)
+
+					client := &http.Client{
+						Transport: &http.Transport{
+							Proxy:           http.ProxyFromEnvironment,
+							TLSClientConfig: &tls.Config{RootCAs: pool},
+						},
+					}
+
+					alertGetReq, err := http.NewRequest("GET", amURL.String(), nil)
+					if err != nil {
+						return err
+					}
+
+					if os.Getenv("IS_KIND_ENV") != "true" {
+						if BearerToken == "" {
+							BearerToken, err = utils.FetchBearerToken(testOptions)
+							if err != nil {
+								return err
+							}
+						}
+						alertGetReq.Header.Set("Authorization", "Bearer "+BearerToken)
+					}
+
+					resp, err := client.Do(alertGetReq)
+					if err != nil {
+						return err
+					}
+					defer resp.Body.Close()
+
+					if resp.StatusCode != http.StatusOK {
+						return fmt.Errorf("failed to get alerts via alertmanager route: HTTP %d", resp.StatusCode)
+					}
+
+					alertResult, err := io.ReadAll(resp.Body)
+					if err != nil {
+						return err
+					}
+
+					postableAlerts := models.PostableAlerts{}
+					if err := json.Unmarshal(alertResult, &postableAlerts); err != nil {
+						return err
+					}
+
+					clusterIDsInAlerts := []string{}
+					for _, alt := range postableAlerts {
+						if alt.Labels != nil {
+							labelSets := map[string]string(alt.Labels)
+							clusterID := labelSets["managed_cluster"]
+							if clusterID != "" {
+								clusterIDsInAlerts = append(clusterIDsInAlerts, clusterID)
+							}
+						}
+					}
+
+					expectedOCPClusterIDs, err := utils.ListAvailableOCPManagedClusterIDs(testOptions)
+					if err != nil {
+						return err
+					}
+
+					missingClusters := []string{}
+					for _, expectedID := range expectedOCPClusterIDs {
+						if !slices.Contains(clusterIDsInAlerts, expectedID) {
+							missingClusters = append(missingClusters, expectedID)
+						}
+					}
+
+					if len(missingClusters) > 0 {
+						return fmt.Errorf("Watchdog alerts are still missing from these clusters: %q. Found clusters: %q", missingClusters, clusterIDsInAlerts)
+					}
+
+					return nil
+				}, 600, 10).Should(Not(HaveOccurred()))
+			})
+
+			It("should stop forwarding alerts and clean up config when alert forwarding or MCOA is disabled", SpecTimeout(10*time.Minute), func(ctx SpecContext) {
+				By("Disabling alert forwarding for MCOA", func() {
+					Expect(utils.SetMCOAAlertForwardingCapabilities(testOptions, false, false)).NotTo(HaveOccurred())
+				})
+
+				By("Checking that CMO ConfigMap is cleaned of additional alert forwarding config on disable", func() {
+					namespace := "openshift-monitoring"
+					configMapName := "cluster-monitoring-config"
+
+					Eventually(func() error {
+						cm, err := hubClient.CoreV1().ConfigMaps(namespace).Get(context.TODO(), configMapName, metav1.GetOptions{})
+						if err != nil {
+							return err
+						}
+						configContent := cm.Data["config.yaml"]
+						if strings.Contains(configContent, "additionalAlertmanagerConfigs:") {
+							return fmt.Errorf("ConfigMap still contains additionalAlertmanagerConfigs")
+						}
+						return nil
+					}, 120, 5).Should(Succeed())
+				})
+
+				By("Checking that UWL ConfigMap is cleaned of additional alert forwarding config on disable", func() {
+					namespace := "openshift-user-workload-monitoring"
+					configMapName := "user-workload-monitoring-config"
+
+					Eventually(func() error {
+						cm, err := hubClient.CoreV1().ConfigMaps(namespace).Get(context.TODO(), configMapName, metav1.GetOptions{})
+						if err != nil {
+							// It is acceptable if the configmap doesn't exist
+							return nil
+						}
+						configContent := cm.Data["config.yaml"]
+						if strings.Contains(configContent, "additionalAlertmanagerConfigs:") {
+							return fmt.Errorf("UWL ConfigMap still contains additionalAlertmanagerConfigs")
+						}
+						return nil
+					}, 120, 5).Should(Succeed())
+				})
+
+				By("Configuring alert forwarding back to enabled first", func() {
+					Expect(utils.SetMCOAAlertForwardingCapabilities(testOptions, true, true)).NotTo(HaveOccurred())
+				})
+
+				By("Disabling MCOA capabilities entirely", func() {
+					Expect(utils.SetMCOACapabilities(testOptions, false, false)).NotTo(HaveOccurred())
+				})
+
+				By("Checking that CMO ConfigMap is cleaned of additional alert forwarding config when addon is disabled", func() {
+					namespace := "openshift-monitoring"
+					configMapName := "cluster-monitoring-config"
+
+					Eventually(func() error {
+						cm, err := hubClient.CoreV1().ConfigMaps(namespace).Get(context.TODO(), configMapName, metav1.GetOptions{})
+						if err != nil {
+							return err
+						}
+						configContent := cm.Data["config.yaml"]
+						if strings.Contains(configContent, "additionalAlertmanagerConfigs:") {
+							return fmt.Errorf("ConfigMap still contains additionalAlertmanagerConfigs")
+						}
+						return nil
+					}, 120, 5).Should(Succeed())
+				})
+
+				By("Checking that UWL ConfigMap is cleaned of additional alert forwarding config when addon is disabled", func() {
+					namespace := "openshift-user-workload-monitoring"
+					configMapName := "user-workload-monitoring-config"
+
+					Eventually(func() error {
+						cm, err := hubClient.CoreV1().ConfigMaps(namespace).Get(context.TODO(), configMapName, metav1.GetOptions{})
+						if err != nil {
+							// It is acceptable if the configmap doesn't exist
+							return nil
+						}
+						configContent := cm.Data["config.yaml"]
+						if strings.Contains(configContent, "additionalAlertmanagerConfigs:") {
+							return fmt.Errorf("UWL ConfigMap still contains additionalAlertmanagerConfigs")
+						}
+						return nil
+					}, 120, 5).Should(Succeed())
+				})
+			})
+		},
+	)
 
 	JustAfterEach(func() {
 		Expect(utils.IntegrityChecking(testOptions)).NotTo(HaveOccurred())
