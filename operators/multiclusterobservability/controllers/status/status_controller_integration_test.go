@@ -32,7 +32,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	kubescheme "k8s.io/client-go/kubernetes/scheme"
-	addonv1beta1 "open-cluster-management.io/api/addon/v1beta1"
+	addonapiv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -49,7 +49,7 @@ func createBaseScheme(t *testing.T) *runtime.Scheme {
 	require.NoError(t, promv1.AddToScheme(scheme))
 	require.NoError(t, promv1alpha1.AddToScheme(scheme))
 	require.NoError(t, routev1.AddToScheme(scheme))
-	require.NoError(t, addonv1beta1.Install(scheme))
+	require.NoError(t, addonapiv1alpha1.AddToScheme(scheme))
 	require.NoError(t, operatorv1.AddToScheme(scheme))
 
 	return scheme

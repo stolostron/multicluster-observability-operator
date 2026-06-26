@@ -5,7 +5,6 @@
 package certificates
 
 import (
-	"context"
 	"crypto/sha256"
 	"fmt"
 	"testing"
@@ -16,14 +15,12 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"open-cluster-management.io/addon-framework/pkg/agent"
-	addonv1beta1 "open-cluster-management.io/api/addon/v1beta1"
+	"open-cluster-management.io/api/addon/v1alpha1"
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func TestCertAgent(t *testing.T) {
-	ctx := context.Background()
 	cert, key, err := NewSigningCertKeyPair("testing-mco", 365*24*time.Hour)
 	if err != nil {
 		t.Fatal(err)
@@ -44,21 +41,21 @@ func TestCertAgent(t *testing.T) {
 	scheme.AddKnownTypes(corev1.SchemeGroupVersion, &corev1.Secret{})
 	client := fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(caSecret).Build()
 
-	obsAgent := &ObservabilityAgent{client: client}
-	obsAgent.Manifests(ctx, nil, nil)
-	options := obsAgent.GetAgentAddonOptions()
+	agent := &ObservabilityAgent{client: client}
+	agent.Manifests(nil, nil)
+	options := agent.GetAgentAddonOptions()
 	cluster := &clusterv1.ManagedCluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: clusterName,
 		},
 	}
-	addon := &addonv1beta1.ManagedClusterAddOn{
+	addon := &v1alpha1.ManagedClusterAddOn{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "observability-controller",
 			Namespace: clusterName,
 		},
 	}
-	configs, err := options.Registration.Configurations(ctx, cluster, addon)
+	configs, err := options.Registration.CSRConfigurations(cluster, addon)
 	if err != nil {
 		t.Fatalf("Failed to get CSR configurations: %v", err)
 	}
@@ -69,21 +66,27 @@ func TestCertAgent(t *testing.T) {
 
 	caHashOrgUnit := fmt.Sprintf("ca-hash-%x", sha256.Sum256(cert))
 
-	kubeAPISignerExpectedRegConfig := &agent.KubeClientRegistration{
-		User: "system:open-cluster-management:cluster:test:addon:observability-controller:agent:observability",
-		Groups: []string{
-			"system:open-cluster-management:cluster:test:addon:observability-controller",
-			"system:open-cluster-management:addon:observability-controller",
-			caHashOrgUnit,
+	kubeAPISignerExpectedRegConfig := v1alpha1.RegistrationConfig{
+		SignerName: "kubernetes.io/kube-apiserver-client",
+		Subject: v1alpha1.Subject{
+			User: "system:open-cluster-management:cluster:test:addon:observability-controller:agent:observability",
+			Groups: []string{
+				"system:open-cluster-management:cluster:test:addon:observability-controller",
+				"system:open-cluster-management:addon:observability-controller",
+				"system:authenticated",
+			},
+			OrganizationUnits: []string{caHashOrgUnit},
 		},
 	}
-	assert.Equal(t, configs[0], kubeAPISignerExpectedRegConfig)
+	assert.Contains(t, configs, kubeAPISignerExpectedRegConfig)
 
-	obsSignerExpectedRegConfig := &agent.CustomSignerRegistration{
-		SignerName:        "open-cluster-management.io/observability-signer",
-		User:              "managed-cluster-observability",
-		Groups:            nil,
-		OrganizationUnits: []string{"acm", caHashOrgUnit},
+	obsSignerExpectedRegConfig := v1alpha1.RegistrationConfig{
+		SignerName: "open-cluster-management.io/observability-signer",
+		Subject: v1alpha1.Subject{
+			User:              "managed-cluster-observability",
+			Groups:            nil,
+			OrganizationUnits: []string{"acm", caHashOrgUnit},
+		},
 	}
-	assert.Equal(t, configs[1], obsSignerExpectedRegConfig)
+	assert.Contains(t, configs, obsSignerExpectedRegConfig)
 }

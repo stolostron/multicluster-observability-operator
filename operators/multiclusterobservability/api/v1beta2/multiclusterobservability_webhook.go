@@ -17,8 +17,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/client-go/kubernetes"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
@@ -28,10 +28,6 @@ import (
 var multiclusterobservabilitylog = logf.Log.WithName("multiclusterobservability-resource")
 
 var kubeClient kubernetes.Interface
-
-type mcoValidator struct {
-	client.Client
-}
 
 const (
 	// defaultNamespace is the default namespace for MultiClusterObservability resources
@@ -54,28 +50,31 @@ type storageBackendConfig struct {
 }
 
 func (mco *MultiClusterObservability) SetupWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy(mgr, mco).
-		WithValidator(&mcoValidator{Client: mgr.GetClient()}).
+	return ctrl.NewWebhookManagedBy(mgr).
+		WithValidator(&MultiClusterObservability{}).
+		For(mco).
 		Complete()
 }
 
 // +kubebuilder:webhook:path=/validate-observability-open-cluster-management-io-v1beta2-multiclusterobservability,mutating=false,failurePolicy=fail,sideEffects=None,groups=observability.open-cluster-management.io,resources=multiclusterobservabilities,verbs=create;update,versions=v1beta2,name=vmulticlusterobservability.observability.open-cluster-management.io,admissionReviewVersions={v1}
 
+var _ webhook.CustomValidator = &MultiClusterObservability{}
+
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-func (v *mcoValidator) ValidateCreate(ctx context.Context, obj *MultiClusterObservability) (admission.Warnings, error) {
-	multiclusterobservabilitylog.Info("validate create", "name", obj.Name)
-	return nil, obj.validateMultiClusterObservability(nil)
+func (mco *MultiClusterObservability) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
+	multiclusterobservabilitylog.Info("validate create", "name", mco.Name)
+	return nil, mco.validateMultiClusterObservability(nil)
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
-func (v *mcoValidator) ValidateUpdate(ctx context.Context, oldObj, newObj *MultiClusterObservability) (admission.Warnings, error) {
-	multiclusterobservabilitylog.Info("validate update", "name", newObj.Name)
-	return nil, newObj.validateMultiClusterObservability(oldObj)
+func (mco *MultiClusterObservability) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
+	multiclusterobservabilitylog.Info("validate update", "name", mco.Name)
+	return nil, mco.validateMultiClusterObservability(oldObj)
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
-func (v *mcoValidator) ValidateDelete(ctx context.Context, obj *MultiClusterObservability) (admission.Warnings, error) {
-	multiclusterobservabilitylog.Info("validate delete", "name", obj.Name)
+func (mco *MultiClusterObservability) ValidateDelete(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
+	multiclusterobservabilitylog.Info("validate delete", "name", mco.Name)
 
 	// no validation logic upon object delete.
 	return nil, nil

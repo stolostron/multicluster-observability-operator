@@ -19,7 +19,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	addonv1beta1 "open-cluster-management.io/api/addon/v1beta1"
+	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
@@ -30,7 +30,7 @@ func TestObsAddonCR(t *testing.T) {
 	c := fake.NewClientBuilder().
 		WithRuntimeObjects(objs...).
 		WithStatusSubresource(
-			&addonv1beta1.ManagedClusterAddOn{},
+			&addonv1alpha1.ManagedClusterAddOn{},
 			&mcov1beta2.MultiClusterObservability{},
 			&mcov1beta1.ObservabilityAddon{},
 		).

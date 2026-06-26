@@ -12,7 +12,7 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	addonv1beta1 "open-cluster-management.io/api/addon/v1beta1"
+	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	workv1 "open-cluster-management.io/api/work/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -29,25 +29,25 @@ func getClusterMgmtAddonPredFunc() predicate.Funcs {
 				return false
 			}
 
-			oldCMA := e.ObjectOld.(*addonv1beta1.ClusterManagementAddOn)
-			newCMA := e.ObjectNew.(*addonv1beta1.ClusterManagementAddOn)
+			oldCMA := e.ObjectOld.(*addonv1alpha1.ClusterManagementAddOn)
+			newCMA := e.ObjectNew.(*addonv1alpha1.ClusterManagementAddOn)
 
 			// Check if spec.supportedConfigs[].defaultConfig changed
-			oldDefault := addonv1beta1.ConfigReferent{}
-			newDefault := addonv1beta1.ConfigReferent{}
-			for _, config := range oldCMA.Spec.DefaultConfigs {
+			oldDefault := &addonv1alpha1.ConfigReferent{}
+			newDefault := &addonv1alpha1.ConfigReferent{}
+			for _, config := range oldCMA.Spec.SupportedConfigs {
 				if config.Group == util.AddonGroup &&
 					config.Resource == util.AddonDeploymentConfigResource {
-					oldDefault = config.ConfigReferent
+					oldDefault = config.DefaultConfig
 				}
 			}
-			for _, config := range newCMA.Spec.DefaultConfigs {
+			for _, config := range newCMA.Spec.SupportedConfigs {
 				if config.Group == util.AddonGroup &&
 					config.Resource == util.AddonDeploymentConfigResource {
-					newDefault = config.ConfigReferent
+					newDefault = config.DefaultConfig
 				}
 			}
-			if oldDefault != newDefault {
+			if !reflect.DeepEqual(oldDefault, newDefault) {
 				return true
 			}
 
@@ -64,7 +64,7 @@ func getClusterMgmtAddonPredFunc() predicate.Funcs {
 }
 
 // findAddonDeploymentConfigReference finds the AddOnDeploymentConfig reference in MCA configReferences.
-func findAddonDeploymentConfigReference(configRefs []addonv1beta1.ConfigReference) *addonv1beta1.ConfigReference {
+func findAddonDeploymentConfigReference(configRefs []addonv1alpha1.ConfigReference) *addonv1alpha1.ConfigReference {
 	for i := range configRefs {
 		if configRefs[i].Group == util.AddonGroup &&
 			configRefs[i].Resource == util.AddonDeploymentConfigResource {
@@ -75,7 +75,7 @@ func findAddonDeploymentConfigReference(configRefs []addonv1beta1.ConfigReferenc
 }
 
 // findAddonDeploymentDefaultConfigReference finds the AddOnDeploymentConfig reference in CMA defaultConfigReferences.
-func findAddonDeploymentDefaultConfigReference(configRefs []addonv1beta1.DefaultConfigReference) *addonv1beta1.DefaultConfigReference {
+func findAddonDeploymentDefaultConfigReference(configRefs []addonv1alpha1.DefaultConfigReference) *addonv1alpha1.DefaultConfigReference {
 	for i := range configRefs {
 		if configRefs[i].Group == util.AddonGroup &&
 			configRefs[i].Resource == util.AddonDeploymentConfigResource {
@@ -95,12 +95,12 @@ func getMgClusterAddonPredFunc() predicate.Funcs {
 				return false
 			}
 
-			oldMCA := e.ObjectOld.(*addonv1beta1.ManagedClusterAddOn)
-			newMCA := e.ObjectNew.(*addonv1beta1.ManagedClusterAddOn)
+			oldMCA := e.ObjectOld.(*addonv1alpha1.ManagedClusterAddOn)
+			newMCA := e.ObjectNew.(*addonv1alpha1.ManagedClusterAddOn)
 
 			// Check if spec.configs changed
-			oldConfig := addonv1beta1.ConfigReferent{}
-			newConfig := addonv1beta1.ConfigReferent{}
+			oldConfig := addonv1alpha1.ConfigReferent{}
+			newConfig := addonv1alpha1.ConfigReferent{}
 			for _, config := range oldMCA.Spec.Configs {
 				if config.Group == util.AddonGroup &&
 					config.Resource == util.AddonDeploymentConfigResource {

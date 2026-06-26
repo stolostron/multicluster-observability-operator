@@ -19,7 +19,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/client-go/tools/events"
+	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -117,12 +117,7 @@ func TestMCOAAgentReconciler_Reconcile(t *testing.T) {
 						Name:      operatorconfig.OCPClusterMonitoringConfigMapName,
 						Namespace: operatorconfig.OCPClusterMonitoringNamespace,
 						ManagedFields: []metav1.ManagedFieldsEntry{
-							{
-								Manager:    observabilityendpoint.EndpointMonitoringOperatorMgr,
-								Operation:  metav1.ManagedFieldsOperationUpdate,
-								APIVersion: "v1",
-								FieldsType: "FieldsV1",
-							},
+							{Manager: observabilityendpoint.EndpointMonitoringOperatorMgr},
 						},
 					},
 					Data: map[string]string{
@@ -199,12 +194,7 @@ func TestMCOAAgentReconciler_Reconcile(t *testing.T) {
 						Name:      operatorconfig.OCPClusterMonitoringConfigMapName,
 						Namespace: operatorconfig.OCPClusterMonitoringNamespace,
 						ManagedFields: []metav1.ManagedFieldsEntry{
-							{
-								Manager:    observabilityendpoint.EndpointMonitoringOperatorMgr,
-								Operation:  metav1.ManagedFieldsOperationUpdate,
-								APIVersion: "v1",
-								FieldsType: "FieldsV1",
-							},
+							{Manager: observabilityendpoint.EndpointMonitoringOperatorMgr},
 						},
 					},
 					Data: map[string]string{
@@ -250,8 +240,8 @@ func TestMCOAAgentReconciler_Reconcile(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := fake.NewClientBuilder().WithScheme(s).WithObjects(tt.existingObjs...).WithReturnManagedFields().Build()
-			recorder := events.NewFakeRecorder(10)
+			c := fake.NewClientBuilder().WithScheme(s).WithObjects(tt.existingObjs...).Build()
+			recorder := record.NewFakeRecorder(10)
 
 			// Capture initial metric value
 			initialMetric := testutil.ToFloat64(cmoConfigConflictsTotal)

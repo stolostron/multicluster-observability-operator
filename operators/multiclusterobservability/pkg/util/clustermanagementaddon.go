@@ -13,7 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	addonv1beta1 "open-cluster-management.io/api/addon/v1beta1"
+	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -31,14 +31,14 @@ type clusterManagementAddOnSpec struct {
 }
 
 func CreateClusterManagementAddon(ctx context.Context, c client.Client) (
-	*addonv1beta1.ClusterManagementAddOn, error,
+	*addonv1alpha1.ClusterManagementAddOn, error,
 ) {
 	clusterManagementAddon, err := newClusterManagementAddon(ctx, c)
 	if err != nil {
 		return nil, err
 	}
 
-	found := &addonv1beta1.ClusterManagementAddOn{}
+	found := &addonv1alpha1.ClusterManagementAddOn{}
 	err = c.Get(ctx, types.NamespacedName{Name: ObservabilityController}, found)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -51,11 +51,22 @@ func CreateClusterManagementAddon(ctx context.Context, c client.Client) (
 		return nil, fmt.Errorf("cannot create observability-controller clustermanagementaddon: %w", err)
 	}
 
+	// Remove addon.open-cluster-management.io/lifecycle annotation if present.
+	if found.Annotations != nil {
+		if _, exists := found.Annotations[addonv1alpha1.AddonLifecycleAnnotationKey]; exists {
+			delete(found.Annotations, addonv1alpha1.AddonLifecycleAnnotationKey)
+			log.Info("Removing addon.open-cluster-management.io/lifecycle annotation from observability-controller clustermanagementaddon")
+			if err := c.Update(ctx, found); err != nil {
+				return nil, fmt.Errorf("failed to update clustermanagementaddon: %w", err)
+			}
+		}
+	}
+
 	return found, nil
 }
 
 func DeleteClusterManagementAddon(ctx context.Context, client client.Client) error {
-	clustermanagementaddon := &addonv1beta1.ClusterManagementAddOn{
+	clustermanagementaddon := &addonv1alpha1.ClusterManagementAddOn{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: ObservabilityController,
 		},
@@ -72,7 +83,7 @@ func DeleteClusterManagementAddon(ctx context.Context, client client.Client) err
 	return nil
 }
 
-func newClusterManagementAddon(ctx context.Context, c client.Client) (*addonv1beta1.ClusterManagementAddOn, error) {
+func newClusterManagementAddon(ctx context.Context, c client.Client) (*addonv1alpha1.ClusterManagementAddOn, error) {
 	host, err := config.GetRouteHost(ctx, c, config.GrafanaRouteName, config.GetDefaultNamespace())
 	if err != nil {
 		return nil, fmt.Errorf("failed to get host route: %w", err)
@@ -87,9 +98,9 @@ func newClusterManagementAddon(ctx context.Context, c client.Client) (*addonv1be
 		Description: "Manages Observability components.",
 		CRDName:     "observabilityaddons.observability.open-cluster-management.io",
 	}
-	return &addonv1beta1.ClusterManagementAddOn{
+	return &addonv1alpha1.ClusterManagementAddOn{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: addonv1beta1.GroupVersion.String(),
+			APIVersion: addonv1alpha1.SchemeGroupVersion.String(),
 			Kind:       "ClusterManagementAddOn",
 		},
 		ObjectMeta: metav1.ObjectMeta{
@@ -99,13 +110,21 @@ func newClusterManagementAddon(ctx context.Context, c client.Client) (*addonv1be
 				"console.open-cluster-management.io/launch-link-text": "Grafana",
 			},
 		},
-		Spec: addonv1beta1.ClusterManagementAddOnSpec{
-			AddOnMeta: addonv1beta1.AddOnMeta{
+		Spec: addonv1alpha1.ClusterManagementAddOnSpec{
+			AddOnMeta: addonv1alpha1.AddOnMeta{
 				DisplayName: clusterManagementAddOnSpec.DisplayName,
 				Description: clusterManagementAddOnSpec.Description,
 			},
-			InstallStrategy: addonv1beta1.InstallStrategy{
-				Type: addonv1beta1.AddonInstallStrategyManual,
+			InstallStrategy: addonv1alpha1.InstallStrategy{
+				Type: addonv1alpha1.AddonInstallStrategyManual,
+			},
+			SupportedConfigs: []addonv1alpha1.ConfigMeta{
+				{
+					ConfigGroupResource: addonv1alpha1.ConfigGroupResource{
+						Group:    AddonGroup,
+						Resource: AddonDeploymentConfigResource,
+					},
+				},
 			},
 		},
 	}, nil

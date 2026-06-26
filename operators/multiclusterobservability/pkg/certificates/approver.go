@@ -5,15 +5,14 @@
 package certificates
 
 import (
-	"context"
 	"strings"
 
 	certificatesv1 "k8s.io/api/certificates/v1"
-	addonapiv1beta1 "open-cluster-management.io/api/addon/v1beta1"
+	addonapiv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
 )
 
-func approve(ctx context.Context, cluster *clusterv1.ManagedCluster, addon *addonapiv1beta1.ManagedClusterAddOn,
+func approve(cluster *clusterv1.ManagedCluster, addon *addonapiv1alpha1.ManagedClusterAddOn,
 	csr *certificatesv1.CertificateSigningRequest,
 ) bool {
 	if strings.HasPrefix(csr.Spec.Username, "system:open-cluster-management:"+cluster.Name) {

@@ -16,7 +16,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/retry"
-	addonv1beta1 "open-cluster-management.io/api/addon/v1beta1"
+	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -31,7 +31,7 @@ func updateAddonStatus(ctx context.Context, c client.Client, addonList mcov1beta
 		obsAddonConditions := filterStandardConditions(convertConditionsToMeta(addon.Status.Conditions))
 		isUpdated := false
 		retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-			managedclusteraddon := &addonv1beta1.ManagedClusterAddOn{}
+			managedclusteraddon := &addonv1alpha1.ManagedClusterAddOn{}
 			err := c.Get(ctx, types.NamespacedName{
 				Name:      config.ManagedClusterAddonName,
 				Namespace: addon.Namespace,

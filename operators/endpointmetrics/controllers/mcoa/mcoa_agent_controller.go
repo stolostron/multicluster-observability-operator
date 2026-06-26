@@ -13,7 +13,7 @@ import (
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/tools/events"
+	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	ctrlbuilder "sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -24,7 +24,7 @@ type MCOAAgentReconciler struct {
 	client.Client
 	Log                      logr.Logger
 	Scheme                   *runtime.Scheme
-	Recorder                 events.EventRecorder
+	Recorder                 record.EventRecorder
 	Namespace                string
 	ClusterID                string
 	AlertmanagerEndpoint     string
@@ -39,7 +39,7 @@ func NewMCOAAgentReconciler(
 	client client.Client,
 	log logr.Logger,
 	scheme *runtime.Scheme,
-	recorder events.EventRecorder,
+	recorder record.EventRecorder,
 	namespace string,
 	clusterID string,
 	alertmanagerEndpoint string,

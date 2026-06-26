@@ -48,7 +48,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	addonv1beta1 "open-cluster-management.io/api/addon/v1beta1"
+	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -235,7 +235,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	instance.Spec.StorageConfig.StorageClass = storageClassSelected
 
 	// Disable rendering the MCOA ClusterManagementAddOn resource if already exists
-	mcoaCMAO := &addonv1beta1.ClusterManagementAddOn{}
+	mcoaCMAO := &addonv1alpha1.ClusterManagementAddOn{}
 	err = r.Client.Get(ctx, types.NamespacedName{Name: config.MultiClusterObservabilityAddon}, mcoaCMAO)
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
@@ -354,7 +354,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		// and ManifestWorks on spokes. MCOAResources() skips CMA when DisableCMAORender
 		// is set (to preserve user annotations during normal operation), but during cleanup
 		// we must remove it to trigger the full addon lifecycle teardown.
-		cma := &addonv1beta1.ClusterManagementAddOn{}
+		cma := &addonv1alpha1.ClusterManagementAddOn{}
 		if err := r.Client.Get(ctx, types.NamespacedName{Name: config.MultiClusterObservabilityAddon}, cma); err == nil {
 			reqLogger.Info("Deleting ClusterManagementAddOn for MCOA cleanup", "name", config.MultiClusterObservabilityAddon)
 			if err := r.Client.Delete(ctx, cma); err != nil && !apierrors.IsNotFound(err) {
@@ -551,9 +551,9 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 		// Watch for changes to secondary Observatorium CR and requeue the owner MultiClusterObservability
 		Owns(&observatoriumv1alpha1.Observatorium{}).
 		// Watch for changes to secondary AddOnDeploymentConfig CR and requeue the owner MultiClusterObservability
-		Owns(&addonv1beta1.AddOnDeploymentConfig{}).
+		Owns(&addonv1alpha1.AddOnDeploymentConfig{}).
 		// Watch for changes to secondary ClusterManagementAddOn CR and requeue the owner MultiClusterObservability
-		Owns(&addonv1beta1.ClusterManagementAddOn{}).
+		Owns(&addonv1alpha1.ClusterManagementAddOn{}).
 		// Watch for changes to secondary PrometheusRule CR and requeue the owner MultiClusterObservability
 		Owns(&monitoringv1.PrometheusRule{}).
 

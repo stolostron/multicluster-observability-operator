@@ -12,7 +12,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
-	addonv1beta1 "open-cluster-management.io/api/addon/v1beta1"
+	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	workv1 "open-cluster-management.io/api/work/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -48,7 +48,7 @@ func TestGetClusterMgmtAddonPredFunc(t *testing.T) {
 		t.Fatal("reconcile triggered for clustermanagementaddon update event when no supportedConfigs updated")
 	}
 
-	newAddon.Spec.DefaultConfigs[0].ConfigReferent.Name = "update_name"
+	newAddon.Spec.SupportedConfigs[0].DefaultConfig.Name = "update_name"
 	ue = event.UpdateEvent{
 		ObjectOld: newClusterMgmtAddon(),
 		ObjectNew: newAddon,
@@ -74,14 +74,14 @@ func TestGetClusterMgmtAddonPredFunc_StatusChanges(t *testing.T) {
 	}
 
 	// Test: Status change with defaultConfigReferences should trigger reconcile
-	newAddon.Status.DefaultConfigReferences = []addonv1beta1.DefaultConfigReference{
+	newAddon.Status.DefaultConfigReferences = []addonv1alpha1.DefaultConfigReference{
 		{
-			ConfigGroupResource: addonv1beta1.ConfigGroupResource{
+			ConfigGroupResource: addonv1alpha1.ConfigGroupResource{
 				Group:    operatorutil.AddonGroup,
 				Resource: operatorutil.AddonDeploymentConfigResource,
 			},
-			DesiredConfig: &addonv1beta1.ConfigSpecHash{
-				ConfigReferent: addonv1beta1.ConfigReferent{
+			DesiredConfig: &addonv1alpha1.ConfigSpecHash{
+				ConfigReferent: addonv1alpha1.ConfigReferent{
 					Name:      "test-config",
 					Namespace: "test-ns",
 				},
@@ -172,14 +172,18 @@ func TestGetMgClusterAddonPredFunc_StatusChanges(t *testing.T) {
 	}
 
 	// Test: Status change with configReferences should trigger reconcile
-	newAddon.Status.ConfigReferences = []addonv1beta1.ConfigReference{
+	newAddon.Status.ConfigReferences = []addonv1alpha1.ConfigReference{
 		{
-			ConfigGroupResource: addonv1beta1.ConfigGroupResource{
+			ConfigGroupResource: addonv1alpha1.ConfigGroupResource{
 				Group:    operatorutil.AddonGroup,
 				Resource: operatorutil.AddonDeploymentConfigResource,
 			},
-			DesiredConfig: &addonv1beta1.ConfigSpecHash{
-				ConfigReferent: addonv1beta1.ConfigReferent{
+			ConfigReferent: addonv1alpha1.ConfigReferent{
+				Name:      "test-config",
+				Namespace: "test-ns",
+			},
+			DesiredConfig: &addonv1alpha1.ConfigSpecHash{
+				ConfigReferent: addonv1alpha1.ConfigReferent{
 					Name:      "test-config",
 					Namespace: "test-ns",
 				},

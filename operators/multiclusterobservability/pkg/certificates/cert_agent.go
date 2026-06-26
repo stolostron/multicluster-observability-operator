@@ -5,7 +5,6 @@
 package certificates
 
 import (
-	"context"
 	"crypto/sha256"
 	"fmt"
 
@@ -13,7 +12,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"open-cluster-management.io/addon-framework/pkg/agent"
-	addonv1beta1 "open-cluster-management.io/api/addon/v1beta1"
+	addonapiv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -28,18 +27,16 @@ type ObservabilityAgent struct {
 }
 
 func (o *ObservabilityAgent) Manifests(
-	ctx context.Context,
 	cluster *clusterv1.ManagedCluster,
-	addon *addonv1beta1.ManagedClusterAddOn,
+	addon *addonapiv1alpha1.ManagedClusterAddOn,
 ) ([]runtime.Object, error) {
 	return nil, nil
 }
 
 func (o *ObservabilityAgent) GetAgentAddonOptions() agent.AgentAddonOptions {
 	signAdaptor := func(
-		ctx context.Context,
 		cluster *clusterv1.ManagedCluster,
-		addon *addonv1beta1.ManagedClusterAddOn,
+		addon *addonapiv1alpha1.ManagedClusterAddOn,
 		csr *certificatesv1.CertificateSigningRequest,
 	) ([]byte, error) {
 		res, err := Sign(o.client, csr)
@@ -52,12 +49,11 @@ func (o *ObservabilityAgent) GetAgentAddonOptions() agent.AgentAddonOptions {
 	return agent.AgentAddonOptions{
 		AddonName: addonName,
 		Registration: &agent.RegistrationOption{
-			Configurations:  observabilitySignerConfigurations(o.client),
-			CSRApproveCheck: approve,
+			CSRConfigurations: observabilitySignerConfigurations(o.client),
+			CSRApproveCheck:   approve,
 			PermissionConfig: func(
-				ctx context.Context,
 				cluster *clusterv1.ManagedCluster,
-				addon *addonv1beta1.ManagedClusterAddOn,
+				addon *addonapiv1alpha1.ManagedClusterAddOn,
 			) error {
 				return nil
 			},
@@ -75,19 +71,20 @@ func (o *ObservabilityAgent) GetAgentAddonOptions() agent.AgentAddonOptions {
 
 func observabilitySignerConfigurations(
 	client client.Client,
-) func(context.Context, *clusterv1.ManagedCluster, *addonv1beta1.ManagedClusterAddOn) ([]agent.RegistrationConfig, error) {
+) func(*clusterv1.ManagedCluster, *addonapiv1alpha1.ManagedClusterAddOn) ([]addonapiv1alpha1.RegistrationConfig, error) {
 	return func(
-		ctx context.Context,
 		cluster *clusterv1.ManagedCluster,
-		addon *addonv1beta1.ManagedClusterAddOn,
-	) ([]agent.RegistrationConfig, error) {
-		observabilityConfig := &agent.CustomSignerRegistration{
-			SignerName:        "open-cluster-management.io/observability-signer",
-			User:              "managed-cluster-observability",
-			OrganizationUnits: []string{"acm"},
+		addon *addonapiv1alpha1.ManagedClusterAddOn,
+	) ([]addonapiv1alpha1.RegistrationConfig, error) {
+		observabilityConfig := addonapiv1alpha1.RegistrationConfig{
+			SignerName: "open-cluster-management.io/observability-signer",
+			Subject: addonapiv1alpha1.Subject{
+				User:              "managed-cluster-observability",
+				OrganizationUnits: []string{"acm"},
+			},
 		}
 
-		kubeClientConfigs, err := agent.KubeClientSignerConfigurations(addonName, agentName)(ctx, cluster, addon)
+		kubeClientConfigs, err := agent.KubeClientSignerConfigurations(addonName, agentName)(cluster, addon)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get kube client signer configurations: %w", err)
 		}
@@ -98,12 +95,10 @@ func observabilitySignerConfigurations(
 		if caErr == nil {
 			caHashStamp := fmt.Sprintf("ca-hash-%x", sha256.Sum256(caCertBytes))
 			for i := range registrationConfigs {
-				switch c := registrationConfigs[i].(type) {
-				case *agent.KubeClientRegistration:
-					c.Groups = append(c.Groups, caHashStamp)
-				case *agent.CustomSignerRegistration:
-					c.OrganizationUnits = append(c.OrganizationUnits, caHashStamp)
-				}
+				registrationConfigs[i].Subject.OrganizationUnits = append(
+					registrationConfigs[i].Subject.OrganizationUnits,
+					caHashStamp,
+				)
 			}
 		}
 

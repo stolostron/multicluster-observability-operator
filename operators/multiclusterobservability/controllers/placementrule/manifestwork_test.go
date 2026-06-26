@@ -29,7 +29,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
-	addonv1beta1 "open-cluster-management.io/api/addon/v1beta1"
+	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
 	workv1 "open-cluster-management.io/api/work/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -322,6 +322,10 @@ func newCluster(name string, annotation map[string]string) *clusterv1.ManagedClu
 
 func newPullSecret(name, namespace string, data []byte) *corev1.Secret {
 	return &corev1.Secret{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Secret",
+			APIVersion: "v1",
+		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
@@ -399,13 +403,13 @@ func TestManifestWork(t *testing.T) {
 		t.Fatalf("Failed to generate hubInfo secret: (%v)", err)
 	}
 
-	addonConfig := &addonv1beta1.AddOnDeploymentConfig{
+	addonConfig := &addonv1alpha1.AddOnDeploymentConfig{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "AddOnDeploymentConfig",
-			APIVersion: "v1beta1",
+			APIVersion: "v1alpha1",
 		},
-		Spec: addonv1beta1.AddOnDeploymentConfigSpec{
-			NodePlacement: &addonv1beta1.NodePlacement{
+		Spec: addonv1alpha1.AddOnDeploymentConfigSpec{
+			NodePlacement: &addonv1alpha1.NodePlacement{
 				NodeSelector: map[string]string{
 					"kubernetes.io/os": "linux",
 				},
@@ -417,7 +421,7 @@ func TestManifestWork(t *testing.T) {
 					},
 				},
 			},
-			ProxyConfig: addonv1beta1.ProxyConfig{
+			ProxyConfig: addonv1alpha1.ProxyConfig{
 				HTTPProxy:  "http://foo.com",
 				HTTPSProxy: "https://foo.com",
 				NoProxy:    "bar.com",

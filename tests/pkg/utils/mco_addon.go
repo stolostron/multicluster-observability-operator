@@ -13,7 +13,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/klog/v2"
-	addonv1beta1 "open-cluster-management.io/api/addon/v1beta1"
+	addonapiv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 )
 
 func CheckManagedClusterAddonStatus(opt TestOptions, name string) {
@@ -72,14 +72,14 @@ func GetAvailableManagedClustersAsClusters(opt TestOptions) ([]Cluster, error) {
 	return clusterList, nil
 }
 
-func GetManagedClusterAddon(opt TestOptions, name, namespace string) (*addonv1beta1.ManagedClusterAddOn, error) {
+func GetManagedClusterAddon(opt TestOptions, name, namespace string) (*addonapiv1alpha1.ManagedClusterAddOn, error) {
 	clientDynamic := GetKubeClientDynamic(opt, true)
 	obj, err := clientDynamic.Resource(NewMCOManagedClusterAddonsGVR()).Namespace(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get ManagedClusterAddon %s/%s: %w", namespace, name, err)
 	}
 
-	mca := &addonv1beta1.ManagedClusterAddOn{}
+	mca := &addonapiv1alpha1.ManagedClusterAddOn{}
 	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(obj.Object, mca); err != nil {
 		return nil, fmt.Errorf("failed to convert Unstructured to ManagedClusterAddon: %w", err)
 	}

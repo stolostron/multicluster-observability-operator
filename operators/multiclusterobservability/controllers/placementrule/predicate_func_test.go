@@ -9,7 +9,7 @@ import (
 	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	addonv1beta1 "open-cluster-management.io/api/addon/v1beta1"
+	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 )
@@ -289,7 +289,7 @@ func TestAddOnDeploymentConfigPredicate(t *testing.T) {
 			expectedUpdate: true,
 			updateEvent: func() event.UpdateEvent {
 				newDefaultAddonDeploymentConfig := defaultAddonDeploymentConfig.DeepCopy()
-				newDefaultAddonDeploymentConfig.Spec.NodePlacement = &addonv1beta1.NodePlacement{
+				newDefaultAddonDeploymentConfig.Spec.NodePlacement = &addonv1alpha1.NodePlacement{
 					NodeSelector: map[string]string{"foo": "bar"},
 				}
 				return event.UpdateEvent{
@@ -333,13 +333,13 @@ func TestAddOnDeploymentConfigPredicate(t *testing.T) {
 		},
 	}
 
-	defaultAddonDeploymentConfig = &addonv1beta1.AddOnDeploymentConfig{
+	defaultAddonDeploymentConfig = &addonv1alpha1.AddOnDeploymentConfig{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
 		},
-		Spec: addonv1beta1.AddOnDeploymentConfigSpec{
-			ProxyConfig: addonv1beta1.ProxyConfig{
+		Spec: addonv1alpha1.AddOnDeploymentConfigSpec{
+			ProxyConfig: addonv1alpha1.ProxyConfig{
 				HTTPProxy:  "http://foo.com",
 				HTTPSProxy: "https://foo.com",
 				NoProxy:    "bar.com",

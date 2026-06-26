@@ -19,7 +19,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
-	addonv1beta1 "open-cluster-management.io/api/addon/v1beta1"
+	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -27,7 +27,7 @@ import (
 func TestReportStatus(t *testing.T) {
 	s := scheme.Scheme
 	assert.NoError(t, oav1beta1.AddToScheme(s))
-	assert.NoError(t, addonv1beta1.Install(s))
+	assert.NoError(t, addonv1alpha1.AddToScheme(s))
 	assert.NoError(t, mcov1beta2.AddToScheme(s))
 
 	type updateParams struct {

@@ -39,7 +39,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/utils/ptr"
-	addonv1beta1 "open-cluster-management.io/api/addon/v1beta1"
+	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	workv1 "open-cluster-management.io/api/work/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -121,7 +121,7 @@ func newManifestwork(name string, namespace string) *workv1.ManifestWork {
 			Labels: map[string]string{
 				ownerLabelKey: ownerLabelValue,
 				// Add label expected by OCM to retrieve manifestWork belonging to the addon and update its status
-				addonv1beta1.AddonLabelKey: config.ManagedClusterAddonName,
+				addonv1alpha1.AddonLabelKey: config.ManagedClusterAddonName,
 			},
 			Annotations: map[string]string{
 				// Add the postpone delete annotation for manifestwork so that the observabilityaddon can be
@@ -145,7 +145,7 @@ func newManifestwork(name string, namespace string) *workv1.ManifestWork {
 // Returns the annotation key-value map, or nil if no configs are present.
 func getConfigSpecHashAnnotation(ctx context.Context, c client.Client, namespace string) (map[string]string, error) {
 	// Get the ManagedClusterAddOn for this cluster
-	mca := &addonv1beta1.ManagedClusterAddOn{}
+	mca := &addonv1alpha1.ManagedClusterAddOn{}
 	err := c.Get(ctx, types.NamespacedName{
 		Name:      config.ManagedClusterAddonName,
 		Namespace: namespace,
@@ -395,7 +395,7 @@ func createManifestWorks(
 	crdWork *workv1.Manifest,
 	dep *appsv1.Deployment,
 	hubInfo *corev1.Secret,
-	addonConfig *addonv1beta1.AddOnDeploymentConfig,
+	addonConfig *addonv1alpha1.AddOnDeploymentConfig,
 	installProm bool,
 ) (*workv1.ManifestWork, error) {
 	work := newManifestwork(clusterNamespace+workNameSuffix, clusterNamespace)
