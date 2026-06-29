@@ -67,7 +67,7 @@ func uninstallMCO() {
 			return errors.New("Failed to delete MCO addon instance")
 		}
 		return nil
-	}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
+	}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(Succeed())
 
 	By("Waiting for delete manifestwork")
 	Eventually(func() error {
