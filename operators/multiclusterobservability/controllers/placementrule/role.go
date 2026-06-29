@@ -59,7 +59,7 @@ func createClusterRole(c client.Client) error {
 	found := &rbacv1.ClusterRole{}
 	err := c.Get(context.TODO(), types.NamespacedName{Name: mcoRoleName}, found)
 	if err != nil && errors.IsNotFound(err) {
-		log.Info("Creating mco clusterRole")
+		log.Info("TEST Creating mco clusterRole")
 		err = c.Create(context.TODO(), role)
 		if err != nil {
 			log.Error(err, "Failed to create endpoint-observability-mco-role clusterRole")
