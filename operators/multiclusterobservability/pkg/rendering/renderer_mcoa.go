@@ -20,7 +20,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
-	addonapiv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
+	addonv1beta1 "open-cluster-management.io/api/addon/v1beta1"
 	"sigs.k8s.io/kustomize/api/resource"
 )
 
@@ -235,15 +235,15 @@ func (r *MCORenderer) renderAddonDeploymentConfig(
 	}
 
 	if cs := r.cr.Spec.Capabilities; cs != nil {
-		aodc := &addonapiv1alpha1.AddOnDeploymentConfig{}
+		aodc := &addonv1beta1.AddOnDeploymentConfig{}
 		if err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, aodc); err != nil {
 			return nil, err
 		}
 
-		appendCustomVar := func(aodc *addonapiv1alpha1.AddOnDeploymentConfig, name, value string) {
+		appendCustomVar := func(aodc *addonv1beta1.AddOnDeploymentConfig, name, value string) {
 			aodc.Spec.CustomizedVariables = append(
 				aodc.Spec.CustomizedVariables,
-				addonapiv1alpha1.CustomizedVariable{Name: name, Value: value},
+				addonv1beta1.CustomizedVariable{Name: name, Value: value},
 			)
 		}
 

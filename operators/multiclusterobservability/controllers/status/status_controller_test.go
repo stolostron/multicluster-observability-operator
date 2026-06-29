@@ -23,7 +23,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
-	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -239,7 +238,6 @@ func TestReconcileStatus(t *testing.T) {
 	s := runtime.NewScheme()
 	scheme.AddToScheme(s)
 	mcov1beta2.SchemeBuilder.AddToScheme(s)
-	addonv1alpha1.AddToScheme(s)
 	oav1beta1.AddToScheme(s)
 
 	cl := fake.NewClientBuilder().

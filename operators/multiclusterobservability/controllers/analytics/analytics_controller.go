@@ -25,7 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
+	addonv1beta1 "open-cluster-management.io/api/addon/v1beta1"
 	policyv1 "open-cluster-management.io/governance-policy-propagator/api/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -311,7 +311,7 @@ func (r *AnalyticsReconciler) syncRightSizingStateToADC(ctx context.Context, ins
 		}
 	}
 
-	adc := &addonv1alpha1.AddOnDeploymentConfig{}
+	adc := &addonv1beta1.AddOnDeploymentConfig{}
 	err := r.Client.Get(ctx, types.NamespacedName{
 		Name:      config.MultiClusterObservabilityAddon,
 		Namespace: config.GetDefaultNamespace(),
@@ -354,17 +354,17 @@ func (r *AnalyticsReconciler) syncRightSizingStateToADC(ctx context.Context, ins
 	// Append if not found
 	if delegatedIdx == -1 {
 		adc.Spec.CustomizedVariables = append(adc.Spec.CustomizedVariables,
-			addonv1alpha1.CustomizedVariable{Name: util.ADCKeyRightSizingDelegated, Value: delegatedValue})
+			addonv1beta1.CustomizedVariable{Name: util.ADCKeyRightSizingDelegated, Value: delegatedValue})
 		needsUpdate = true
 	}
 	if nsIdx == -1 {
 		adc.Spec.CustomizedVariables = append(adc.Spec.CustomizedVariables,
-			addonv1alpha1.CustomizedVariable{Name: util.ADCKeyPlatformNamespaceRightSizing, Value: nsValue})
+			addonv1beta1.CustomizedVariable{Name: util.ADCKeyPlatformNamespaceRightSizing, Value: nsValue})
 		needsUpdate = true
 	}
 	if virtIdx == -1 {
 		adc.Spec.CustomizedVariables = append(adc.Spec.CustomizedVariables,
-			addonv1alpha1.CustomizedVariable{Name: util.ADCKeyPlatformVirtualizationRightSizing, Value: virtValue})
+			addonv1beta1.CustomizedVariable{Name: util.ADCKeyPlatformVirtualizationRightSizing, Value: virtValue})
 		needsUpdate = true
 	}
 

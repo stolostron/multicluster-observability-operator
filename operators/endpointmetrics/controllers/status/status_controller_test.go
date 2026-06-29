@@ -26,7 +26,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
-	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
+	addonv1beta1 "open-cluster-management.io/api/addon/v1beta1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -460,14 +460,14 @@ func TestStatusController_UpdateSpokeAddon(t *testing.T) {
 
 func newClient(objs ...runtime.Object) client.Client {
 	s := scheme.Scheme
-	addonv1alpha1.AddToScheme(s)
+	addonv1beta1.Install(s)
 	oav1beta1.AddToScheme(s)
 
 	return fake.NewClientBuilder().
 		WithScheme(s).
 		WithRuntimeObjects(objs...).
 		WithStatusSubresource(
-			&addonv1alpha1.ManagedClusterAddOn{},
+			&addonv1beta1.ManagedClusterAddOn{},
 			&oav1beta1.MultiClusterObservability{},
 			&oav1beta1.ObservabilityAddon{},
 		).
