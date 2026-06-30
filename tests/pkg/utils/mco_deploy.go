@@ -953,6 +953,10 @@ func UninstallMCO(opt TestOptions) error {
 		return deleteMCOErr
 	}
 
+	return nil
+}
+
+func RemoveObjectStorageSecret(opt TestOptions) error {
 	clientKube := NewKubeClient(
 		opt.HubCluster.ClusterServerURL,
 		opt.KubeConfig,

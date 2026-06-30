@@ -54,6 +54,10 @@ func uninstallMCO() {
 		return nil
 	}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
 
+	By("Delete Object Storage Secret")
+	err = utils.RemoveObjectStorageSecret(testOptions)
+	Expect(err).ToNot(HaveOccurred())
+
 	By("Waiting for delete MCO addon instance")
 	Eventually(func() error {
 		name := MCO_CR_NAME + "-addon"
