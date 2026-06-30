@@ -70,6 +70,12 @@ func (v *mcoValidator) ValidateCreate(ctx context.Context, obj *MultiClusterObse
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
 func (v *mcoValidator) ValidateUpdate(ctx context.Context, oldObj, newObj *MultiClusterObservability) (admission.Warnings, error) {
 	multiclusterobservabilitylog.Info("validate update", "name", newObj.Name)
+
+	if newObj.GetDeletionTimestamp() != nil {
+		multiclusterobservabilitylog.Info("skip update validation during deletion", "name", newObj.Name)
+		return nil, nil
+	}
+
 	return nil, newObj.validateMultiClusterObservability(oldObj)
 }
 
