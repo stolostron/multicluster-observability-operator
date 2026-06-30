@@ -2804,9 +2804,7 @@ data:
         "from": "now-7d",
         "to": "now"
       },
-      "timepicker": {
-        "hidden": true
-      },
+      "timepicker": {},
       "timezone": "",
       "title": "ACM Right-Sizing OpenShift Virtualization",
       "uid": "bnqQIPySEProdkhgafkOpenshiftVirt",
