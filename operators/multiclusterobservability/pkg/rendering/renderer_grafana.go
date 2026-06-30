@@ -50,8 +50,7 @@ func (r *MCORenderer) renderGrafanaDeployments(res *resource.Resource,
 	spec := &dep.Spec.Template.Spec
 	imagePullPolicy := config.GetImagePullPolicy(r.cr.Spec)
 
-	spec.Containers[0].Image = config.DefaultImgRepository + "/" + config.GrafanaImgKey +
-		":" + config.DefaultImgTagSuffix
+	spec.Containers[0].Image = "quay.io/redhat-user-workloads/crt-redhat-acm-tenant/release-acm-211/grafana-acm-211:on-pr-953ec88e9cec22b73416334ff6443c73860da90d"
 	found, image := config.ReplaceImage(r.cr.Annotations, spec.Containers[0].Image, config.GrafanaImgKey)
 	if found {
 		spec.Containers[0].Image = image
