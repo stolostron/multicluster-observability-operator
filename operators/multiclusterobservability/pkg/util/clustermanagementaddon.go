@@ -21,6 +21,8 @@ const (
 	ObservabilityController       = "observability-controller" // #nosec G101 -- Not a hardcoded credential.
 	AddonGroup                    = "addon.open-cluster-management.io"
 	AddonDeploymentConfigResource = "addondeploymentconfigs"
+	GrafanaLaunchLinkKey          = "console.open-cluster-management.io/launch-link"
+	GrafanaLaunchLinkTextKey      = "console.open-cluster-management.io/launch-link-text"
 	grafanaLink                   = "/d/2b679d600f3b9e7676a7c5ac3643d448/acm-clusters-overview"
 )
 
@@ -95,8 +97,8 @@ func newClusterManagementAddon(ctx context.Context, c client.Client) (*addonv1be
 		ObjectMeta: metav1.ObjectMeta{
 			Name: ObservabilityController,
 			Annotations: map[string]string{
-				"console.open-cluster-management.io/launch-link":      grafanaUrl.String(),
-				"console.open-cluster-management.io/launch-link-text": "Grafana",
+				GrafanaLaunchLinkKey:     grafanaUrl.String(),
+				GrafanaLaunchLinkTextKey: "Grafana",
 			},
 		},
 		Spec: addonv1beta1.ClusterManagementAddOnSpec{
