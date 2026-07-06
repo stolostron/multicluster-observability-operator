@@ -598,7 +598,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 						}
 						configContent := cm.Data["config.yaml"]
 						if strings.Contains(configContent, "additionalAlertmanagerConfigs:") {
-							return fmt.Errorf("ConfigMap still contains additionalAlertmanagerConfigs")
+							return fmt.Errorf("ConfigMap still contains additionalAlertmanagerConfigs: %s", configContent)
 						}
 						return nil
 					}, 120, 5).Should(Succeed())
@@ -618,7 +618,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 						}
 						configContent := cm.Data["config.yaml"]
 						if strings.Contains(configContent, "additionalAlertmanagerConfigs:") {
-							return fmt.Errorf("UWL ConfigMap still contains additionalAlertmanagerConfigs")
+							return fmt.Errorf("UWL ConfigMap still contains additionalAlertmanagerConfigs: %s", configContent)
 						}
 						return nil
 					}, 120, 5).Should(Succeed())
@@ -639,7 +639,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 						}
 						configContent := cm.Data["config.yaml"]
 						if !strings.Contains(configContent, "additionalAlertmanagerConfigs:") {
-							return fmt.Errorf("ConfigMap does not contain additionalAlertmanagerConfigs yet")
+							return fmt.Errorf("ConfigMap does not contain additionalAlertmanagerConfigs yet: %s", configContent)
 						}
 						return nil
 					}, 120, 5).Should(Succeed())
@@ -663,7 +663,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 						}
 						configContent := cm.Data["config.yaml"]
 						if strings.Contains(configContent, "additionalAlertmanagerConfigs:") {
-							return fmt.Errorf("ConfigMap still contains additionalAlertmanagerConfigs")
+							return fmt.Errorf("ConfigMap still contains additionalAlertmanagerConfigs: %s", configContent)
 						}
 						return nil
 					}, 120, 5).Should(Succeed())
@@ -683,7 +683,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 						}
 						configContent := cm.Data["config.yaml"]
 						if strings.Contains(configContent, "additionalAlertmanagerConfigs:") {
-							return fmt.Errorf("UWL ConfigMap still contains additionalAlertmanagerConfigs")
+							return fmt.Errorf("UWL ConfigMap still contains additionalAlertmanagerConfigs: %s", configContent)
 						}
 						return nil
 					}, 120, 5).Should(Succeed())
