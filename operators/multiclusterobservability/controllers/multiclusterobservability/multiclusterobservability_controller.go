@@ -359,8 +359,9 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 			reqLogger.Info("Deleting ClusterManagementAddOn for MCOA cleanup", "name", config.MultiClusterObservabilityAddon)
 			if err := r.Client.Delete(ctx, cma); err != nil && !apierrors.IsNotFound(err) {
 				return ctrl.Result{}, fmt.Errorf("failed to delete ClusterManagementAddOn %s: %w", config.MultiClusterObservabilityAddon, err)
-			}
 		}
+		}
+	}
 
 	_, err = r.ensureOpenShiftNamespaceLabel(ctx, instance)
 	if err != nil {
