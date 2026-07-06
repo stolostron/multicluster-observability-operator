@@ -353,20 +353,6 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	}
 
 	if !rendering.MCOAPlatformMetricsEnabled(instance) {
-		namespace, labels := renderer.NamespaceAndLabels()
-		toDelete, err := renderer.MCOAGrafanaResources(ctx, namespace, labels)
-		if err != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to list MCOA Grafana resources for deletion in namespace %s: %w", namespace, err)
-		}
-		for _, res := range toDelete {
-			resNS := res.GetNamespace()
-			if err := deployer.Undeploy(ctx, res, instance); err != nil {
-				return ctrl.Result{}, fmt.Errorf("failed to undeploy %s %s/%s: %w", res.GetKind(), resNS, res.GetName(), err)
-			}
-		}
-	}
-
-	if !rendering.MCOAPlatformMetricsEnabled(instance) {
 		if err := r.undeployMCOAGrafanaResources(ctx, instance, renderer, deployer); err != nil {
 			return ctrl.Result{}, err
 		}
