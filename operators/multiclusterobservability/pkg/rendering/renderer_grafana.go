@@ -164,7 +164,6 @@ func (r *MCORenderer) renderGrafanaTemplates(templates []*resource.Resource,
 }
 
 func (r *MCORenderer) RenderGrafanaMCOATemplatesForRemoval(
-	ctx context.Context,
 	templates []*resource.Resource,
 	namespace string, labels map[string]string,
 ) ([]*unstructured.Unstructured, error) {
@@ -188,7 +187,7 @@ func (r *MCORenderer) RenderGrafanaMCOATemplatesForRemoval(
 			uobjs = append(uobjs, &unstructured.Unstructured{Object: m})
 			continue
 		}
-		uobj, err := render(ctx, template, namespace, labels)
+		uobj, err := render(template, namespace, labels)
 		if err != nil {
 			return []*unstructured.Unstructured{}, err
 		}
