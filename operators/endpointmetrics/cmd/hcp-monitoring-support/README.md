@@ -6,7 +6,7 @@ This tool provides a support exception for monitoring Hosted Control Planes (HCP
 
 - **Architecture Compatibility**: This tool is **only supported** when using the legacy **metrics-collector** architecture. It is NOT compatible with the new **MCOA** (Multi-Cluster Observability Addon) architecture.
 - **Native Support Versions**: 
-  - **metrics-collector**: This feature (automatic monitoring of Hosted Clusters on managed clusters) is natively supported starting from version **2.17**.
+  - **metrics-collector**: This feature (automatic monitoring of Hosted Clusters on managed clusters) is natively supported starting from versions **2.17.1** and **2.16.3**.
   - **MCOA**: Native support for this feature is planned for version **5.0**.
 
 ## Prerequisites
