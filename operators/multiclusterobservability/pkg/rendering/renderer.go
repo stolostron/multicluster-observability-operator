@@ -5,8 +5,6 @@
 package rendering
 
 import (
-	"context"
-
 	imagev1client "github.com/openshift/client-go/image/clientset/versioned/typed/image/v1"
 	obv1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
@@ -194,12 +192,12 @@ func (r *MCORenderer) MCOAResources(namespace string, labels map[string]string) 
 }
 
 // MCOAGrafanaResourcesForRemoval renders the MCOA addon grafana templates into unstructured resources for removal.
-func (r *MCORenderer) MCOAGrafanaResourcesForRemoval(ctx context.Context, namespace string, labels map[string]string) ([]*unstructured.Unstructured, error) {
+func (r *MCORenderer) MCOAGrafanaResourcesForRemoval(namespace string, labels map[string]string) ([]*unstructured.Unstructured, error) {
 	grafanaTemplates, err := templates.GetOrLoadGrafanaTemplates(templatesutil.GetTemplateRenderer())
 	if err != nil {
 		return nil, err
 	}
-	mcoaGrafanaResources, err := r.RenderGrafanaMCOATemplatesForRemoval(ctx, grafanaTemplates, namespace, labels)
+	mcoaGrafanaResources, err := r.RenderGrafanaMCOATemplatesForRemoval(grafanaTemplates, namespace, labels)
 	if err != nil {
 		return nil, err
 	}

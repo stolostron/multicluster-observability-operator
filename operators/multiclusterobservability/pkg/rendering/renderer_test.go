@@ -181,7 +181,7 @@ func TestMCOAGrafanaResourcesForRemoval(t *testing.T) {
 			renderer := NewMCORenderer(&tc.mco, kubeClient, nil)
 
 			namespace := "myns"
-			resources, err := renderer.MCOAGrafanaResourcesForRemoval(t.Context(), namespace, nil)
+			resources, err := renderer.MCOAGrafanaResourcesForRemoval(namespace, nil)
 			require.NoError(t, err)
 			for _, resource := range resources {
 				assert.Equal(t, namespace, resource.GetNamespace(),

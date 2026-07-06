@@ -242,9 +242,7 @@ func TestRenderGrafanaMCOATemplatesForRemoval(t *testing.T) {
 			mcoRenderer.newGranfanaRenderer()
 
 			namespace := "myns"
-			resources, err := mcoRenderer.RenderGrafanaMCOATemplatesForRemoval(
-				t.Context(), grafanaTemplates, namespace, nil,
-			)
+			resources, err := mcoRenderer.RenderGrafanaMCOATemplatesForRemoval(grafanaTemplates, namespace, nil)
 			require.NoError(t, err)
 			for _, resource := range resources {
 				assert.Equal(t, namespace, resource.GetNamespace(),
