@@ -458,8 +458,18 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 					testOptions.KubeConfig,
 					testOptions.HubCluster.KubeContext)
 
+				By("Disabling legacy alert forwarding to avoid interference with MCOA CMO configuration", func() {
+					Expect(utils.SetLegacyAlertForwardingDisabled(testOptions, true)).NotTo(HaveOccurred())
+				})
+
 				By("Enabling user workload monitoring on all openshift managed clusters", func() {
 					Expect(utils.EnableUWLMonitoringOnManagedClusters(testOptions, accessibleOCPClusters)).NotTo(HaveOccurred())
+				})
+			})
+
+			AfterAll(func() {
+				By("Re-enabling legacy alert forwarding after MCOA alert forwarding tests", func() {
+					Expect(utils.SetLegacyAlertForwardingDisabled(testOptions, false)).NotTo(HaveOccurred())
 				})
 			})
 

@@ -472,9 +472,6 @@ func RevertClusterMonitoringConfig(ctx context.Context, client client.Client, ca
 
 	log.Info("checking if cluster monitoring config needs revert", "name", clusterMonitoringConfigName)
 	found = found.DeepCopy()
-	if !InManagedFields(found) {
-		return nil
-	}
 
 	foundClusterMonitoringConfigurationYAML, ok := HasClusterMonitoringConfigData(found)
 	if !ok {
@@ -886,9 +883,6 @@ func RevertUserWorkloadMonitoringConfig(ctx context.Context, client client.Clien
 
 	log.Info("checking if user workload monitoring config needs revert", "name", operatorconfig.OCPUserWorkloadMonitoringConfigMap)
 	found = found.DeepCopy()
-	if !InManagedFields(found) {
-		return nil
-	}
 
 	existingYAML, ok := found.Data["config.yaml"]
 	if !ok {

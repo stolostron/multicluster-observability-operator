@@ -620,6 +620,39 @@ func ModifyMCOCR(opt TestOptions) error {
 	return nil
 }
 
+// SetLegacyAlertForwardingDisabled sets or clears the mco-disable-alerting annotation on the MCO CR.
+// When disabled is true the legacy endpoint-observability-operator stops configuring CMO alert
+// forwarding, which prevents it from interfering with MCOA-managed alert forwarding tests.
+func SetLegacyAlertForwardingDisabled(opt TestOptions, disabled bool) error {
+	clientDynamic := NewKubeClientDynamic(
+		opt.HubCluster.ClusterServerURL,
+		opt.KubeConfig,
+		opt.HubCluster.KubeContext)
+
+	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		mco, getErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+		if getErr != nil {
+			return getErr
+		}
+
+		annotations, _, _ := unstructured.NestedStringMap(mco.Object, "metadata", "annotations")
+		if annotations == nil {
+			annotations = map[string]string{}
+		}
+		if disabled {
+			annotations["mco-disable-alerting"] = "true"
+		} else {
+			delete(annotations, "mco-disable-alerting")
+		}
+		if err := unstructured.SetNestedStringMap(mco.Object, annotations, "metadata", "annotations"); err != nil {
+			return err
+		}
+
+		_, updateErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Update(context.TODO(), mco, metav1.UpdateOptions{})
+		return updateErr
+	})
+}
+
 func SetMCOACapabilities(opt TestOptions, platformMetrics, userWorkloadMetrics bool) error {
 	clientDynamic := NewKubeClientDynamic(
 		opt.HubCluster.ClusterServerURL,
