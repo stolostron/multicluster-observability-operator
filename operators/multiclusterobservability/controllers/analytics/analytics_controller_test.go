@@ -15,6 +15,7 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -231,9 +232,22 @@ func TestAnalyticsReconciler_DeletionCleansUp(t *testing.T) {
 		},
 	}
 
+	// Pre-create labeled RS resources so Phase 2 cleanup is verified to actually delete them.
+	rsLabels := map[string]string{"observability.open-cluster-management.io/managed-by": "analytics-rightsizing"}
+	rsPlacement := &clusterv1beta1.Placement{
+		ObjectMeta: metav1.ObjectMeta{Name: "rs-placement", Labels: rsLabels},
+	}
+	rsCM := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "rs-namespace-config",
+			Namespace: config.GetDefaultNamespace(),
+			Labels:    rsLabels,
+		},
+	}
+
 	c := fake.NewClientBuilder().
 		WithScheme(scheme).
-		WithObjects(mco, adc).
+		WithObjects(mco, adc, rsPlacement, rsCM).
 		Build()
 
 	// Delete the object to set DeletionTimestamp (finalizers prevent actual removal)
@@ -275,6 +289,12 @@ func TestAnalyticsReconciler_DeletionCleansUp(t *testing.T) {
 	require.NoError(t, err)
 	require.NotContains(t, updated.GetFinalizers(), analyticsFinalizer)
 	require.Contains(t, updated.GetFinalizers(), "observability.open-cluster-management.io/res-cleanup")
+
+	// Verify labeled RS resources were cleaned up by Phase 2
+	err = c.Get(context.TODO(), types.NamespacedName{Name: "rs-placement"}, &clusterv1beta1.Placement{})
+	require.True(t, apierrors.IsNotFound(err), "RS Placement should have been deleted in Phase 2 cleanup")
+	err = c.Get(context.TODO(), types.NamespacedName{Name: "rs-namespace-config", Namespace: config.GetDefaultNamespace()}, &corev1.ConfigMap{})
+	require.True(t, apierrors.IsNotFound(err), "RS ConfigMap should have been deleted in full cleanup (not migration)")
 }
 
 // TestAnalyticsReconciler_DeletionBlocksMidWindow verifies that reconciles arriving
@@ -583,12 +603,12 @@ func TestReconcile_MigrationRunsOnce(t *testing.T) {
 	// Verify legacy Policy was deleted.
 	deletedPolicy := &policyv1.Policy{}
 	err = c.Get(context.TODO(), types.NamespacedName{Name: "rs-prom-rules-policy", Namespace: "open-cluster-management-global-set"}, deletedPolicy)
-	require.True(t, err != nil, "legacy Policy should have been deleted by migration")
+	require.True(t, apierrors.IsNotFound(err), "legacy Policy should have been deleted by migration")
 
 	// Verify legacy PlacementBinding was deleted.
 	deletedPB := &policyv1.PlacementBinding{}
 	err = c.Get(context.TODO(), types.NamespacedName{Name: "rs-policyset-binding", Namespace: "open-cluster-management-global-set"}, deletedPB)
-	require.True(t, err != nil, "legacy PlacementBinding should have been deleted by migration")
+	require.True(t, apierrors.IsNotFound(err), "legacy PlacementBinding should have been deleted by migration")
 
 	// Second reconcile: migrationDone already true, gate is bypassed (no-op).
 	_, err = r.Reconcile(context.TODO(), ctrl.Request{})

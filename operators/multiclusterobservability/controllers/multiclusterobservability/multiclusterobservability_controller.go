@@ -258,9 +258,6 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		}
 	}
 
-	// In ACM 5.0 GA, right-sizing is always delegated to MCOA (ManifestWork-based).
-	rightSizingDelegated := true
-
 	obsAPIURL, err := config.GetObsAPIExternalURL(ctx, r.Client, config.GetDefaultNamespace())
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to get the Observatorium API URL: %w", err) // Already wrapped
@@ -269,9 +266,8 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	// Build render options
 	rendererOptions := &rendering.RendererOptions{
 		MCOAOptions: rendering.MCOARendererOptions{
-			DisableCMAORender:    disableMCOACMAORender,
-			MetricsHubHostname:   obsAPIURL.Host,
-			RightSizingDelegated: rightSizingDelegated,
+			DisableCMAORender:  disableMCOACMAORender,
+			MetricsHubHostname: obsAPIURL.Host,
 		},
 	}
 
