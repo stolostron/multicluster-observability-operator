@@ -49,6 +49,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	addonv1beta1 "open-cluster-management.io/api/addon/v1beta1"
+	workv1 "open-cluster-management.io/api/work/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -63,7 +64,8 @@ import (
 const (
 	resFinalizer = "observability.open-cluster-management.io/res-cleanup"
 	// deprecated one.
-	certFinalizer = "observability.open-cluster-management.io/cert-cleanup"
+	certFinalizer              = "observability.open-cluster-management.io/cert-cleanup"
+	mcoaCleanupRequeueInterval = 5 * time.Second
 )
 
 const (
@@ -164,11 +166,14 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	}
 
 	// Init finalizers
-	terminating, err := r.initFinalization(ctx, instance)
+	finalizationResult, err := r.initFinalization(ctx, instance)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to initialize finalization: %w", err)
 	}
-	if terminating {
+	if finalizationResult != (ctrl.Result{}) {
+		return finalizationResult, nil
+	}
+	if instance.GetDeletionTimestamp() != nil {
 		reqLogger.Info("MCO instance is in Terminating status, skip the reconcile")
 		return ctrl.Result{}, nil
 	}
@@ -347,6 +352,25 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	}
 
 	if !rendering.MCOAEnabled(instance) && !rightSizingDelegated {
+		// Explicitly delete the CMA so the addon framework cleans up ManagedClusterAddons
+		// and ManifestWorks on spokes. MCOAResources() skips CMA when DisableCMAORender
+		// is set (to preserve user annotations during normal operation), but during cleanup
+		// we must remove it to trigger the full addon lifecycle teardown.
+		if err := r.deleteMCOACMA(ctx); err != nil {
+			return ctrl.Result{}, err
+		}
+
+		// Wait for ManifestWorks to be cleaned up before undeploying other MCOA hub resources
+		// (including the addon-manager deployment).
+		hasWorks, err := r.hasMCOAManifestWorks(ctx)
+		if err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to check for remaining ManifestWorks during MCOA cleanup: %w", err)
+		}
+		if hasWorks {
+			reqLogger.Info("Waiting for MCOA ManifestWorks to be deleted")
+			return ctrl.Result{RequeueAfter: mcoaCleanupRequeueInterval}, nil
+		}
+
 		namespace, labels := renderer.NamespaceAndLabels()
 		toDelete, err := renderer.MCOAResources(ctx, namespace, labels)
 		if err != nil {
@@ -356,18 +380,6 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 			resNS := res.GetNamespace()
 			if err := deployer.Undeploy(ctx, res, instance); err != nil {
 				return ctrl.Result{}, fmt.Errorf("failed to undeploy %s %s/%s: %w", res.GetKind(), resNS, res.GetName(), err)
-			}
-		}
-
-		// Explicitly delete the CMA so the addon framework cleans up ManagedClusterAddons
-		// and ManifestWorks on spokes. MCOAResources() skips CMA when DisableCMAORender
-		// is set (to preserve user annotations during normal operation), but during cleanup
-		// we must remove it to trigger the full addon lifecycle teardown.
-		cma := &addonv1beta1.ClusterManagementAddOn{}
-		if err := r.Client.Get(ctx, types.NamespacedName{Name: config.MultiClusterObservabilityAddon}, cma); err == nil {
-			reqLogger.Info("Deleting ClusterManagementAddOn for MCOA cleanup", "name", config.MultiClusterObservabilityAddon)
-			if err := r.Client.Delete(ctx, cma); err != nil && !apierrors.IsNotFound(err) {
-				return ctrl.Result{}, fmt.Errorf("failed to delete ClusterManagementAddOn %s: %w", config.MultiClusterObservabilityAddon, err)
 			}
 		}
 	}
@@ -459,17 +471,33 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 }
 
 // initFinalization handles MCO deletion by cleaning up resources across namespaces and removing the finalizer.
-func (r *MultiClusterObservabilityReconciler) initFinalization(ctx context.Context, mco *mcov1beta2.MultiClusterObservability) (bool, error) {
+func (r *MultiClusterObservabilityReconciler) initFinalization(ctx context.Context, mco *mcov1beta2.MultiClusterObservability) (ctrl.Result, error) {
 	if mco.GetDeletionTimestamp() != nil && slices.Contains(mco.GetFinalizers(), resFinalizer) {
 		// Signal termination before cleanup so other controllers (analytics, placementrule)
 		// stop reconciling and don't recreate resources being deleted.
 		operatorconfig.IsMCOTerminating.Store(true)
 
+		// Explicitly delete the CMA so the addon framework cleans up ManagedClusterAddons
+		// and ManifestWorks on spokes before we proceed with deleting other resources.
+		if err := r.deleteMCOACMA(ctx); err != nil {
+			return ctrl.Result{}, err
+		}
+
+		// Wait for ManifestWorks to be cleaned up before removing cluster scoped resources
+		// and deleting the finalizer, keeping the addon-manager deployment alive.
+		hasWorks, err := r.hasMCOAManifestWorks(ctx)
+		if err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to check for remaining ManifestWorks during finalization: %w", err)
+		}
+		if hasWorks {
+			log.Info("Waiting for MCOA ManifestWorks to be deleted during finalization")
+			return ctrl.Result{RequeueAfter: mcoaCleanupRequeueInterval}, nil
+		}
+
 		log.Info("To delete resources across namespaces")
 		// clean up the cluster resources, eg. clusterrole, clusterrolebinding, etc
 		if err := cleanUpClusterScopedResources(ctx, r, mco); err != nil {
-			log.Error(err, "Failed to remove cluster scoped resources")
-			return false, err
+			return ctrl.Result{}, fmt.Errorf("failed to remove cluster scoped resources: %w", err)
 		}
 		// clean up operand names
 		config.CleanUpOperandNames()
@@ -477,21 +505,20 @@ func (r *MultiClusterObservabilityReconciler) initFinalization(ctx context.Conte
 		// Use Patch instead of Update to avoid serializing zero-value structs
 		mcoCopy := mco.DeepCopy()
 		mco.SetFinalizers(commonutil.Remove(mco.GetFinalizers(), resFinalizer))
-		err := r.Client.Patch(ctx, mco, client.MergeFrom(mcoCopy))
+		err = r.Client.Patch(ctx, mco, client.MergeFrom(mcoCopy))
 		if err != nil {
-			log.Error(err, "Failed to remove finalizer from mco resource")
-			return false, err
+			return ctrl.Result{}, fmt.Errorf("failed to remove finalizer from mco resource: %w", err)
 		}
 		log.Info("Finalizer removed from mco resource")
 
-		return true, nil
+		return ctrl.Result{}, nil
 	}
 
 	// Do not add finalizer to an object being deleted.
 	// After MCO removes resFinalizer, the CR may survive if the analytics
 	// finalizer is still present. Without this guard, we'd re-add resFinalizer.
 	if mco.GetDeletionTimestamp() != nil {
-		return true, nil
+		return ctrl.Result{}, nil
 	}
 
 	if !slices.Contains(mco.GetFinalizers(), resFinalizer) {
@@ -502,11 +529,11 @@ func (r *MultiClusterObservabilityReconciler) initFinalization(ctx context.Conte
 		err := r.Client.Patch(ctx, mco, client.MergeFrom(mcoCopy))
 		if err != nil {
 			log.Error(err, "Failed to add finalizer to mco resource")
-			return false, err
+			return ctrl.Result{}, err
 		}
 		log.Info("Finalizer added to mco resource")
 	}
-	return false, nil
+	return ctrl.Result{}, nil
 }
 
 func getStorageClass(ctx context.Context, mco *mcov1beta2.MultiClusterObservability, cl client.Client) (string, error) {
@@ -1242,4 +1269,37 @@ func syncMCOACMAGrafanaLink(
 	}
 
 	return nil
+}
+
+// deleteMCOACMA deletes the ClusterManagementAddOn for MCOA, triggering the addon framework
+// to clean up ManagedClusterAddons and ManifestWorks.
+func (r *MultiClusterObservabilityReconciler) deleteMCOACMA(ctx context.Context) error {
+	cma := &addonv1beta1.ClusterManagementAddOn{}
+	err := r.Client.Get(ctx, types.NamespacedName{Name: config.MultiClusterObservabilityAddon}, cma)
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil
+		}
+		return fmt.Errorf("failed to get ClusterManagementAddOn %s: %w", config.MultiClusterObservabilityAddon, err)
+	}
+
+	log.Info("Deleting ClusterManagementAddOn for MCOA cleanup", "name", config.MultiClusterObservabilityAddon)
+	if err := r.Client.Delete(ctx, cma); err != nil && !apierrors.IsNotFound(err) {
+		return fmt.Errorf("failed to delete ClusterManagementAddOn %s: %w", config.MultiClusterObservabilityAddon, err)
+	}
+	return nil
+}
+
+// hasMCOAManifestWorks checks if there are any remaining ManifestWorks for the MCOA addon on the hub.
+func (r *MultiClusterObservabilityReconciler) hasMCOAManifestWorks(ctx context.Context) (bool, error) {
+	workList := &workv1.ManifestWorkList{}
+	opts := []client.ListOption{
+		client.MatchingLabels{
+			addonv1beta1.AddonLabelKey: config.MultiClusterObservabilityAddon,
+		},
+	}
+	if err := r.Client.List(ctx, workList, opts...); err != nil {
+		return false, fmt.Errorf("failed to list ManifestWorks: %w", err)
+	}
+	return len(workList.Items) > 0, nil
 }
