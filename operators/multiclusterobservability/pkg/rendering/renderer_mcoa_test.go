@@ -230,7 +230,7 @@ func TestRenderAddonDeploymentConfig(t *testing.T) {
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1beta1.CustomizedVariable{Name: nameUserWorkloadMetricsAlerts, Value: "disabled"})
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1beta1.CustomizedVariable{Name: nameMetricsHubHostname, Value: "observability-hub"})
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1beta1.CustomizedVariable{Name: namePLatformMetricsUI, Value: uipluginsCRDFQDN})
-	assert.Contains(t, got.Spec.CustomizedVariables, addonv1beta1.CustomizedVariable{Name: mcoutil.ADCKeyRightSizingDelegated, Value: "false"})
+	assert.Contains(t, got.Spec.CustomizedVariables, addonv1beta1.CustomizedVariable{Name: mcoutil.ADCKeyRightSizingDelegated, Value: "true"})
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1beta1.CustomizedVariable{Name: mcoutil.ADCKeyPlatformNamespaceRightSizing, Value: "disabled"})
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1beta1.CustomizedVariable{Name: mcoutil.ADCKeyPlatformVirtualizationRightSizing, Value: "disabled"})
 }

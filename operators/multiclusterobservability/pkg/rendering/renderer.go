@@ -122,7 +122,7 @@ func (r *MCORenderer) Render(ctx context.Context) ([]*unstructured.Unstructured,
 	resources = append(resources, proxyResources...)
 
 	// load and render multicluster-observability-addon templates
-	rightSizingDelegated := r.rendererOptions != nil && r.rendererOptions.MCOAOptions.RightSizingDelegated && rightSizingEnabled(r.cr)
+	rightSizingDelegated := r.rendererOptions != nil && r.rendererOptions.MCOAOptions.RightSizingDelegated && RightSizingEnabled(r.cr)
 	if MCOAEnabled(r.cr) || rightSizingDelegated {
 		mcoaResources, err := r.MCOAResources(ctx, namespace, labels)
 		if err != nil {

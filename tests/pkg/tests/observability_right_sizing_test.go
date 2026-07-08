@@ -17,7 +17,10 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/dynamic"
+	addonapiv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	"sigs.k8s.io/yaml"
 )
 
@@ -524,5 +527,205 @@ var _ = Describe("RHACM4K-58751: Enable and teardown virtualization right-sizing
 				Get(context.TODO(), "acm-rs-virt-prometheus-rules", metav1.GetOptions{})
 			return apierrors.IsNotFound(err)
 		}, 2*time.Minute, 10*time.Second).Should(BeTrue(), "acm-rs-virt-prometheus-rules should be deleted")
+	})
+})
+
+// getADCCustomVar extracts a customized variable value from an AddOnDeploymentConfig.
+func getADCCustomVar(dynClient dynamic.Interface, adcName, namespace, varName string) (string, error) {
+	adcGVR := utils.NewMCOAddOnDeploymentConfigGVR()
+	obj, err := dynClient.Resource(adcGVR).Namespace(namespace).
+		Get(context.TODO(), adcName, metav1.GetOptions{})
+	if err != nil {
+		return "", fmt.Errorf("failed to get ADC %s/%s: %w", namespace, adcName, err)
+	}
+
+	adc := &addonapiv1alpha1.AddOnDeploymentConfig{}
+	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(obj.Object, adc); err != nil {
+		return "", fmt.Errorf("failed to convert ADC: %w", err)
+	}
+
+	for _, v := range adc.Spec.CustomizedVariables {
+		if v.Name == varName {
+			return v.Value, nil
+		}
+	}
+	return "", fmt.Errorf("variable %q not found in ADC %s/%s", varName, namespace, adcName)
+}
+
+var _ = Describe("MCOA right-sizing delegation via annotation (rightsizing/g2)", Ordered, func() {
+	const (
+		rightSizingAnnotation = "observability.open-cluster-management.io/right-sizing-capable"
+		adcName               = "multicluster-observability-addon"
+		adcNamespace          = MCO_NAMESPACE
+		nsRSKey               = "platformNamespaceRightSizing"
+		virtRSKey             = "platformVirtualizationRightSizing"
+	)
+
+	var (
+		mcoGVR    = utils.NewMCOGVRV1BETA2()
+		policyGVR = schema.GroupVersionResource{Group: "policy.open-cluster-management.io", Version: "v1", Resource: "policies"}
+	)
+
+	BeforeAll(func() {
+		if hubClient == nil {
+			hubClient = utils.NewKubeClient(
+				testOptions.HubCluster.ClusterServerURL,
+				testOptions.KubeConfig,
+				testOptions.HubCluster.KubeContext,
+			)
+		}
+		if dynClient == nil {
+			dynClient = utils.NewKubeClientDynamic(
+				testOptions.HubCluster.ClusterServerURL,
+				testOptions.KubeConfig,
+				testOptions.HubCluster.KubeContext,
+			)
+		}
+
+		By("Ensuring both RS features are enabled in MCO CR")
+		Eventually(func() error {
+			mco, err := dynClient.Resource(mcoGVR).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+			if err != nil {
+				return err
+			}
+			if err := unstructured.SetNestedField(mco.Object, true,
+				"spec", "capabilities", "platform", "analytics", "namespaceRightSizingRecommendation", "enabled"); err != nil {
+				return err
+			}
+			if err := unstructured.SetNestedField(mco.Object, true,
+				"spec", "capabilities", "platform", "analytics", "virtualizationRightSizingRecommendation", "enabled"); err != nil {
+				return err
+			}
+			_, err = dynClient.Resource(mcoGVR).Update(context.TODO(), mco, metav1.UpdateOptions{})
+			return err
+		}, 2*time.Minute, 10*time.Second).Should(Succeed())
+
+		By("Verifying MCO-mode Policy resources exist before delegation")
+		Eventually(func() error {
+			_, err := dynClient.Resource(policyGVR).
+				Namespace(MCO_GLOBAL_SET_NAMESPACE).
+				Get(context.TODO(), "rs-prom-rules-policy", metav1.GetOptions{})
+			return err
+		}, 3*time.Minute, 10*time.Second).Should(Succeed(), "rs-prom-rules-policy should exist in MCO mode")
+	})
+
+	Context("when the right-sizing delegation annotation is set on MCO CR", func() {
+		BeforeAll(func() {
+			By("Setting the right-sizing-capable annotation on MCO CR (annotation-only change)")
+			Eventually(func() error {
+				mco, err := dynClient.Resource(mcoGVR).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+				if err != nil {
+					return err
+				}
+				annotations := mco.GetAnnotations()
+				if annotations == nil {
+					annotations = map[string]string{}
+				}
+				annotations[rightSizingAnnotation] = "v1"
+				mco.SetAnnotations(annotations)
+				_, err = dynClient.Resource(mcoGVR).Update(context.TODO(), mco, metav1.UpdateOptions{})
+				return err
+			}, 2*time.Minute, 10*time.Second).Should(Succeed())
+		})
+
+		It("Should set ADC right-sizing variables to 'enabled'", func() {
+			Eventually(func() error {
+				nsVal, err := getADCCustomVar(dynClient, adcName, adcNamespace, nsRSKey)
+				if err != nil {
+					return err
+				}
+				if nsVal != "enabled" {
+					return fmt.Errorf("expected ADC %s=%q, got %q", nsRSKey, "enabled", nsVal)
+				}
+				virtVal, err := getADCCustomVar(dynClient, adcName, adcNamespace, virtRSKey)
+				if err != nil {
+					return err
+				}
+				if virtVal != "enabled" {
+					return fmt.Errorf("expected ADC %s=%q, got %q", virtRSKey, "enabled", virtVal)
+				}
+				return nil
+			}, 3*time.Minute, 10*time.Second).Should(Succeed())
+		})
+
+		It("Should clean up MCO-mode Policy resources", func() {
+			Eventually(func() bool {
+				_, err := dynClient.Resource(policyGVR).
+					Namespace(MCO_GLOBAL_SET_NAMESPACE).
+					Get(context.TODO(), "rs-prom-rules-policy", metav1.GetOptions{})
+				return apierrors.IsNotFound(err)
+			}, 3*time.Minute, 10*time.Second).Should(BeTrue(), "rs-prom-rules-policy should be deleted after delegation")
+
+			Eventually(func() bool {
+				_, err := dynClient.Resource(policyGVR).
+					Namespace(MCO_GLOBAL_SET_NAMESPACE).
+					Get(context.TODO(), "rs-virt-prom-rules-policy", metav1.GetOptions{})
+				return apierrors.IsNotFound(err)
+			}, 3*time.Minute, 10*time.Second).Should(BeTrue(), "rs-virt-prom-rules-policy should be deleted after delegation")
+		})
+	})
+
+	Context("when the right-sizing delegation annotation is removed from MCO CR", func() {
+		BeforeAll(func() {
+			By("Removing the right-sizing-capable annotation from MCO CR")
+			Eventually(func() error {
+				mco, err := dynClient.Resource(mcoGVR).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+				if err != nil {
+					return err
+				}
+				annotations := mco.GetAnnotations()
+				delete(annotations, rightSizingAnnotation)
+				mco.SetAnnotations(annotations)
+				_, err = dynClient.Resource(mcoGVR).Update(context.TODO(), mco, metav1.UpdateOptions{})
+				return err
+			}, 2*time.Minute, 10*time.Second).Should(Succeed())
+		})
+
+		It("Should revert ADC right-sizing variables to 'disabled'", func() {
+			Eventually(func() error {
+				nsVal, err := getADCCustomVar(dynClient, adcName, adcNamespace, nsRSKey)
+				if err != nil {
+					return err
+				}
+				if nsVal != "disabled" {
+					return fmt.Errorf("expected ADC %s=%q, got %q", nsRSKey, "disabled", nsVal)
+				}
+				virtVal, err := getADCCustomVar(dynClient, adcName, adcNamespace, virtRSKey)
+				if err != nil {
+					return err
+				}
+				if virtVal != "disabled" {
+					return fmt.Errorf("expected ADC %s=%q, got %q", virtRSKey, "disabled", virtVal)
+				}
+				return nil
+			}, 3*time.Minute, 10*time.Second).Should(Succeed())
+		})
+
+		It("Should recreate MCO-mode Policy resources", func() {
+			Eventually(func() error {
+				_, err := dynClient.Resource(policyGVR).
+					Namespace(MCO_GLOBAL_SET_NAMESPACE).
+					Get(context.TODO(), "rs-prom-rules-policy", metav1.GetOptions{})
+				return err
+			}, 3*time.Minute, 10*time.Second).Should(Succeed(), "rs-prom-rules-policy should be recreated after un-delegation")
+		})
+	})
+
+	AfterAll(func() {
+		By("Ensuring the delegation annotation is removed (cleanup)")
+		Eventually(func() error {
+			mco, err := dynClient.Resource(mcoGVR).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+			if err != nil {
+				return err
+			}
+			annotations := mco.GetAnnotations()
+			if _, exists := annotations[rightSizingAnnotation]; exists {
+				delete(annotations, rightSizingAnnotation)
+				mco.SetAnnotations(annotations)
+				_, err = dynClient.Resource(mcoGVR).Update(context.TODO(), mco, metav1.UpdateOptions{})
+				return err
+			}
+			return nil
+		}, 2*time.Minute, 10*time.Second).Should(Succeed())
 	})
 })

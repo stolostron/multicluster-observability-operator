@@ -11,9 +11,6 @@ import (
 
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
-	rsnamespace "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/analytics/rightsizing/rs-namespace"
-	rsutility "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/analytics/rightsizing/rs-utility"
-	rsvirtualization "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/analytics/rightsizing/rs-virtualization"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
 	"github.com/stretchr/testify/require"
@@ -98,7 +95,7 @@ func TestEnsureRightSizingDefaultsAddsMissingFlags(t *testing.T) {
 		WithObjects(mco).
 		Build()
 
-	r := &AnalyticsReconciler{Client: c, Scheme: scheme}
+	r := &AnalyticsReconciler{Client: c}
 	updated, err := r.ensureRightSizingDefaults(context.TODO(), mco.DeepCopy(), log)
 	require.NoError(t, err)
 	require.NotNil(t, updated.Spec.Capabilities)
@@ -120,50 +117,12 @@ func TestAnalyticsReconciler_FeatureEnabled(t *testing.T) {
 
 	mco := newTestMCO("custom-ns", true, false)
 
-	// minimal required configmaps for RS paths used by analytics controller
-	namespaceRSConfigMap := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      rsnamespace.ConfigMapName,
-			Namespace: rsutility.DefaultNamespace,
-		},
-		Data: map[string]string{
-			"config.yaml": `
-                prometheusRuleConfig:
-                namespaceFilterCriteria:
-                    inclusionCriteria: ["ns1"]
-                    exclusionCriteria: []
-                labelFilterCriteria: []
-                recommendationPercentage: 110
-                placementConfiguration:
-                predicates: []
-            `,
-		},
-	}
-	virtualizationRSConfigMap := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      rsvirtualization.ConfigMapName,
-			Namespace: rsutility.DefaultNamespace,
-		},
-		Data: map[string]string{
-			"config.yaml": `
-                prometheusRuleConfig:
-                namespaceFilterCriteria:
-                    inclusionCriteria: ["ns1"]
-                    exclusionCriteria: []
-                labelFilterCriteria: []
-                recommendationPercentage: 110
-                placementConfiguration:
-                predicates: []
-            `,
-		},
-	}
-
 	c := fake.NewClientBuilder().
 		WithScheme(scheme).
-		WithObjects(mco, namespaceRSConfigMap, virtualizationRSConfigMap).
+		WithObjects(mco).
 		Build()
 
-	r := &AnalyticsReconciler{Client: c, Scheme: scheme}
+	r := &AnalyticsReconciler{Client: c}
 	_, err := r.Reconcile(context.TODO(), ctrl.Request{})
 	require.NoError(t, err)
 }
@@ -173,28 +132,12 @@ func TestAnalyticsReconciler_FeatureDisabled(t *testing.T) {
 
 	mco := newTestMCO("", false, false)
 
-	// Provide RS configmaps so reconcile doesn't fail even if defaulting enables flags.
-	namespaceRSConfigMap := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      rsnamespace.ConfigMapName,
-			Namespace: rsutility.DefaultNamespace,
-		},
-		Data: map[string]string{"config.yaml": "test: true"},
-	}
-	virtualizationRSConfigMap := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      rsvirtualization.ConfigMapName,
-			Namespace: rsutility.DefaultNamespace,
-		},
-		Data: map[string]string{"config.yaml": "test: true"},
-	}
-
 	c := fake.NewClientBuilder().
 		WithScheme(scheme).
-		WithObjects(mco, namespaceRSConfigMap, virtualizationRSConfigMap).
+		WithObjects(mco).
 		Build()
 
-	r := &AnalyticsReconciler{Client: c, Scheme: scheme}
+	r := &AnalyticsReconciler{Client: c}
 	_, err := r.Reconcile(context.TODO(), ctrl.Request{})
 	require.NoError(t, err)
 }
@@ -209,7 +152,7 @@ func TestAnalyticsReconciler_PausedAnnotation(t *testing.T) {
 		WithObjects(mco).
 		Build()
 
-	r := &AnalyticsReconciler{Client: c, Scheme: scheme}
+	r := &AnalyticsReconciler{Client: c}
 	_, err := r.Reconcile(context.TODO(), ctrl.Request{})
 	require.NoError(t, err)
 }
@@ -238,7 +181,7 @@ func TestAnalyticsReconciler_AddsFinalizer(t *testing.T) {
 		WithObjects(mco).
 		Build()
 
-	r := &AnalyticsReconciler{Client: c, Scheme: scheme}
+	r := &AnalyticsReconciler{Client: c}
 	_, err := r.Reconcile(context.TODO(), ctrl.Request{})
 	require.NoError(t, err)
 
@@ -281,7 +224,7 @@ func TestAnalyticsReconciler_DeletionCleansUp(t *testing.T) {
 	err := c.Delete(context.TODO(), mco)
 	require.NoError(t, err)
 
-	r := &AnalyticsReconciler{Client: c, Scheme: scheme}
+	r := &AnalyticsReconciler{Client: c}
 
 	// Phase 1: sync disabled state to ADC and start stabilization window
 	_, err = r.Reconcile(context.TODO(), ctrl.Request{})
@@ -321,7 +264,7 @@ func TestAnalyticsReconciler_DeletionSkipsWithoutFinalizer(t *testing.T) {
 	err := c.Delete(context.TODO(), mco)
 	require.NoError(t, err)
 
-	r := &AnalyticsReconciler{Client: c, Scheme: scheme}
+	r := &AnalyticsReconciler{Client: c}
 	_, err = r.Reconcile(context.TODO(), ctrl.Request{})
 	require.NoError(t, err)
 
@@ -351,7 +294,7 @@ func TestSyncRightSizingStateToADC_DelegatingEnabled(t *testing.T) {
 	}
 
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(mco, adc).Build()
-	r := &AnalyticsReconciler{Client: c, Scheme: scheme}
+	r := &AnalyticsReconciler{Client: c}
 
 	err := r.syncRightSizingStateToADC(context.TODO(), mco, true, log)
 	require.NoError(t, err)
@@ -380,48 +323,6 @@ func TestSyncRightSizingStateToADC_DelegatingEnabled(t *testing.T) {
 	require.True(t, foundDelegated, "missing customized variable %q", util.ADCKeyRightSizingDelegated)
 }
 
-func TestSyncRightSizingStateToADC_MCOManaging(t *testing.T) {
-	scheme := setupTestScheme(t)
-	mco := newTestMCO("", true, false)
-
-	// Create ADC without RS keys
-	adc := &addonv1beta1.AddOnDeploymentConfig{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      config.MultiClusterObservabilityAddon,
-			Namespace: "open-cluster-management-observability",
-		},
-		Spec: addonv1beta1.AddOnDeploymentConfigSpec{},
-	}
-
-	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(mco, adc).Build()
-	r := &AnalyticsReconciler{Client: c, Scheme: scheme}
-
-	// MCO managing (not delegating) → should force "disabled"
-	err := r.syncRightSizingStateToADC(context.TODO(), mco, false, log)
-	require.NoError(t, err)
-
-	updated := &addonv1beta1.AddOnDeploymentConfig{}
-	err = c.Get(context.TODO(), types.NamespacedName{
-		Name:      config.MultiClusterObservabilityAddon,
-		Namespace: "open-cluster-management-observability",
-	}, updated)
-	require.NoError(t, err)
-
-	foundDelegated := false
-	for _, cv := range updated.Spec.CustomizedVariables {
-		switch cv.Name {
-		case util.ADCKeyRightSizingDelegated:
-			foundDelegated = true
-			require.Equal(t, "false", cv.Value)
-		case util.ADCKeyPlatformNamespaceRightSizing:
-			require.Equal(t, "disabled", cv.Value)
-		case util.ADCKeyPlatformVirtualizationRightSizing:
-			require.Equal(t, "disabled", cv.Value)
-		}
-	}
-	require.True(t, foundDelegated, "missing customized variable %q", util.ADCKeyRightSizingDelegated)
-}
-
 func TestSyncRightSizingStateToADC_BothEnabled(t *testing.T) {
 	scheme := setupTestScheme(t)
 	mco := newTestMCOWithBothRS(true, true)
@@ -440,7 +341,7 @@ func TestSyncRightSizingStateToADC_BothEnabled(t *testing.T) {
 	}
 
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(mco, adc).Build()
-	r := &AnalyticsReconciler{Client: c, Scheme: scheme}
+	r := &AnalyticsReconciler{Client: c}
 
 	err := r.syncRightSizingStateToADC(context.TODO(), mco, true, log)
 	require.NoError(t, err)
@@ -473,7 +374,7 @@ func TestSyncRightSizingStateToADC_ADCNotFound(t *testing.T) {
 
 	// No ADC created — should return nil (not an error)
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(mco).Build()
-	r := &AnalyticsReconciler{Client: c, Scheme: scheme}
+	r := &AnalyticsReconciler{Client: c}
 
 	err := r.syncRightSizingStateToADC(context.TODO(), mco, true, log)
 	require.NoError(t, err)
@@ -499,7 +400,7 @@ func TestSyncRightSizingStateToADC_NoUpdateWhenValuesMatch(t *testing.T) {
 	}
 
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(mco, adc).Build()
-	r := &AnalyticsReconciler{Client: c, Scheme: scheme}
+	r := &AnalyticsReconciler{Client: c}
 
 	err := r.syncRightSizingStateToADC(context.TODO(), mco, true, log)
 	require.NoError(t, err)
@@ -527,55 +428,94 @@ func TestSyncRightSizingStateToADC_NoUpdateWhenValuesMatch(t *testing.T) {
 	require.True(t, foundDelegated, "missing customized variable %q", util.ADCKeyRightSizingDelegated)
 }
 
-func TestWasDelegated_EventOnlyOnTransition(t *testing.T) {
+func TestSyncRightSizingStateToADC_DeletionForcesDisabled(t *testing.T) {
 	scheme := setupTestScheme(t)
-	mco := newTestMCO("", true, false)
-	mco.Annotations = map[string]string{
-		util.RightSizingCapableAnnotation: "v1",
-	}
+	// MCO CR with both RS features enabled — deletion path must override to "disabled".
+	mco := newTestMCOWithBothRS(true, true)
 
-	namespaceRSConfigMap := &corev1.ConfigMap{
+	// Pre-create ADC with "enabled" values simulating an active MCOA deployment.
+	adc := &addonv1beta1.AddOnDeploymentConfig{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      rsnamespace.ConfigMapName,
-			Namespace: rsutility.DefaultNamespace,
+			Name:      config.MultiClusterObservabilityAddon,
+			Namespace: "open-cluster-management-observability",
 		},
-		Data: map[string]string{"config.yaml": "test: true"},
+		Spec: addonv1beta1.AddOnDeploymentConfigSpec{
+			CustomizedVariables: []addonv1beta1.CustomizedVariable{
+				{Name: util.ADCKeyRightSizingDelegated, Value: "true"},
+				{Name: util.ADCKeyPlatformNamespaceRightSizing, Value: "enabled"},
+				{Name: util.ADCKeyPlatformVirtualizationRightSizing, Value: "enabled"},
+			},
+		},
 	}
-	virtualizationRSConfigMap := &corev1.ConfigMap{
+
+	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(mco, adc).Build()
+	r := &AnalyticsReconciler{Client: c}
+
+	// Deletion path: delegatingToMCOA=false must force all RS vars to disabled.
+	err := r.syncRightSizingStateToADC(context.TODO(), mco, false, log)
+	require.NoError(t, err)
+
+	updated := &addonv1beta1.AddOnDeploymentConfig{}
+	err = c.Get(context.TODO(), types.NamespacedName{
+		Name:      config.MultiClusterObservabilityAddon,
+		Namespace: "open-cluster-management-observability",
+	}, updated)
+	require.NoError(t, err)
+
+	for _, cv := range updated.Spec.CustomizedVariables {
+		switch cv.Name {
+		case util.ADCKeyRightSizingDelegated:
+			require.Equal(t, "false", cv.Value, "deletion must set delegated=false")
+		case util.ADCKeyPlatformNamespaceRightSizing:
+			require.Equal(t, "disabled", cv.Value, "deletion must set namespace RS to disabled")
+		case util.ADCKeyPlatformVirtualizationRightSizing:
+			require.Equal(t, "disabled", cv.Value, "deletion must set virt RS to disabled")
+		}
+	}
+}
+
+func TestReconcile_MigrationRunsOnce(t *testing.T) {
+	scheme := setupTestScheme(t)
+	mco := newTestMCO("open-cluster-management-global-set", true, false)
+
+	// Pre-create labeled legacy Policy and PlacementBinding to verify they are actually deleted.
+	rsLabels := map[string]string{"observability.open-cluster-management.io/managed-by": "analytics-rightsizing"}
+	legacyPolicy := &policyv1.Policy{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      rsvirtualization.ConfigMapName,
-			Namespace: rsutility.DefaultNamespace,
+			Name:      "rs-prom-rules-policy",
+			Namespace: "open-cluster-management-global-set",
+			Labels:    rsLabels,
 		},
-		Data: map[string]string{"config.yaml": "test: true"},
+	}
+	legacyPB := &policyv1.PlacementBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "rs-policyset-binding",
+			Namespace: "open-cluster-management-global-set",
+			Labels:    rsLabels,
+		},
 	}
 
-	c := fake.NewClientBuilder().WithScheme(scheme).
-		WithObjects(mco, namespaceRSConfigMap, virtualizationRSConfigMap).
-		Build()
+	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(mco, legacyPolicy, legacyPB).Build()
+	r := &AnalyticsReconciler{Client: c}
 
-	r := &AnalyticsReconciler{Client: c, Scheme: scheme}
-
-	// First reconcile: wasDelegated starts false, should transition to true
-	require.False(t, r.wasDelegated)
+	// First reconcile: migrationDone starts false, should run cleanup and transition to true.
+	require.False(t, r.migrationDone)
 	_, err := r.Reconcile(context.TODO(), ctrl.Request{})
 	require.NoError(t, err)
-	require.True(t, r.wasDelegated, "wasDelegated should be true after first delegated reconcile")
+	require.True(t, r.migrationDone, "migrationDone should be true after first reconcile")
 
-	// Second reconcile: wasDelegated already true, no transition
+	// Verify legacy Policy was deleted.
+	deletedPolicy := &policyv1.Policy{}
+	err = c.Get(context.TODO(), types.NamespacedName{Name: "rs-prom-rules-policy", Namespace: "open-cluster-management-global-set"}, deletedPolicy)
+	require.True(t, err != nil, "legacy Policy should have been deleted by migration")
+
+	// Verify legacy PlacementBinding was deleted.
+	deletedPB := &policyv1.PlacementBinding{}
+	err = c.Get(context.TODO(), types.NamespacedName{Name: "rs-policyset-binding", Namespace: "open-cluster-management-global-set"}, deletedPB)
+	require.True(t, err != nil, "legacy PlacementBinding should have been deleted by migration")
+
+	// Second reconcile: migrationDone already true, gate is bypassed (no-op).
 	_, err = r.Reconcile(context.TODO(), ctrl.Request{})
 	require.NoError(t, err)
-	require.True(t, r.wasDelegated, "wasDelegated should remain true on subsequent reconciles")
-
-	// Remove delegation annotation → MCO mode
-	// Re-fetch to get latest resourceVersion (ensureRightSizingDefaults patches MCO)
-	freshMCO := &mcov1beta2.MultiClusterObservability{}
-	err = c.Get(context.TODO(), types.NamespacedName{Name: "observability"}, freshMCO)
-	require.NoError(t, err)
-	freshMCO.Annotations = nil
-	err = c.Update(context.TODO(), freshMCO)
-	require.NoError(t, err)
-
-	_, err = r.Reconcile(context.TODO(), ctrl.Request{})
-	require.NoError(t, err)
-	require.False(t, r.wasDelegated, "wasDelegated should reset to false when delegation removed")
+	require.True(t, r.migrationDone, "migrationDone should remain true on subsequent reconciles")
 }

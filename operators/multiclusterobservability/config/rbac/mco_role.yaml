@@ -403,6 +403,13 @@ rules:
   - list
   - watch
 - apiGroups:
+  - cluster.open-cluster-management.io
+  resources:
+  - placements
+  verbs:
+  - list
+  - delete
+- apiGroups:
   - policy.open-cluster-management.io
   resources:
   - policies
@@ -410,18 +417,4 @@ rules:
   verbs:
   - get
   - list
-  - create
-  - update
-  - watch
-  - delete
-- apiGroups:
-  - cluster.open-cluster-management.io
-  resources:
-  - placements
-  verbs:
-  - get
-  - list
-  - create
-  - update
-  - watch
   - delete
