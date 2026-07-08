@@ -215,9 +215,25 @@ func TestAnalyticsReconciler_DeletionCleansUp(t *testing.T) {
 		},
 	}
 
+	// Pre-create ADC with "enabled" state (simulates steady-state before MCO deletion).
+	// Phase 1 must flip these to "disabled" so MCOA stops deploying PrometheusRules.
+	adc := &addonv1beta1.AddOnDeploymentConfig{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      config.MultiClusterObservabilityAddon,
+			Namespace: config.GetDefaultNamespace(),
+		},
+		Spec: addonv1beta1.AddOnDeploymentConfigSpec{
+			CustomizedVariables: []addonv1beta1.CustomizedVariable{
+				{Name: util.ADCKeyRightSizingDelegated, Value: "true"},
+				{Name: util.ADCKeyPlatformNamespaceRightSizing, Value: "enabled"},
+				{Name: util.ADCKeyPlatformVirtualizationRightSizing, Value: "enabled"},
+			},
+		},
+	}
+
 	c := fake.NewClientBuilder().
 		WithScheme(scheme).
-		WithObjects(mco).
+		WithObjects(mco, adc).
 		Build()
 
 	// Delete the object to set DeletionTimestamp (finalizers prevent actual removal)
@@ -227,11 +243,27 @@ func TestAnalyticsReconciler_DeletionCleansUp(t *testing.T) {
 	r := &AnalyticsReconciler{Client: c}
 
 	// Phase 1: sync disabled state to ADC and start stabilization window
-	_, err = r.Reconcile(context.TODO(), ctrl.Request{})
+	result, err := r.Reconcile(context.TODO(), ctrl.Request{})
 	require.NoError(t, err)
+	require.Equal(t, analyticsStabilizationWindow, result.RequeueAfter)
+	require.False(t, r.cleanupAt.IsZero(), "cleanupAt must be set after Phase 1")
+
+	// Verify ADC was flipped to disabled after Phase 1
+	updatedADC := &addonv1beta1.AddOnDeploymentConfig{}
+	require.NoError(t, c.Get(context.TODO(), types.NamespacedName{
+		Name:      config.MultiClusterObservabilityAddon,
+		Namespace: config.GetDefaultNamespace(),
+	}, updatedADC))
+	adcVars := make(map[string]string)
+	for _, cv := range updatedADC.Spec.CustomizedVariables {
+		adcVars[cv.Name] = cv.Value
+	}
+	require.Equal(t, "false", adcVars[util.ADCKeyRightSizingDelegated])
+	require.Equal(t, "disabled", adcVars[util.ADCKeyPlatformNamespaceRightSizing])
+	require.Equal(t, "disabled", adcVars[util.ADCKeyPlatformVirtualizationRightSizing])
 
 	// Simulate stabilization window elapsed
-	r.cleanupAt = time.Now().Add(-20 * time.Second)
+	r.cleanupAt = time.Now().Add(-(analyticsStabilizationWindow + time.Second))
 
 	// Phase 2: re-sync disabled, cleanup resources, remove finalizer
 	_, err = r.Reconcile(context.TODO(), ctrl.Request{})
@@ -243,6 +275,50 @@ func TestAnalyticsReconciler_DeletionCleansUp(t *testing.T) {
 	require.NoError(t, err)
 	require.NotContains(t, updated.GetFinalizers(), analyticsFinalizer)
 	require.Contains(t, updated.GetFinalizers(), "observability.open-cluster-management.io/res-cleanup")
+}
+
+// TestAnalyticsReconciler_DeletionBlocksMidWindow verifies that reconciles arriving
+// before the stabilization window elapses are blocked (returning a non-zero RequeueAfter)
+// and do not remove the analytics finalizer prematurely.
+func TestAnalyticsReconciler_DeletionBlocksMidWindow(t *testing.T) {
+	scheme := setupTestScheme(t)
+
+	mco := &mcov1beta2.MultiClusterObservability{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:       "observability",
+			Finalizers: []string{"observability.open-cluster-management.io/res-cleanup", analyticsFinalizer},
+		},
+	}
+	adc := &addonv1beta1.AddOnDeploymentConfig{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      config.MultiClusterObservabilityAddon,
+			Namespace: config.GetDefaultNamespace(),
+		},
+	}
+
+	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(mco, adc).Build()
+	require.NoError(t, c.Delete(context.TODO(), mco))
+
+	r := &AnalyticsReconciler{Client: c}
+
+	// Phase 1: starts stabilization window
+	result1, err := r.Reconcile(context.TODO(), ctrl.Request{})
+	require.NoError(t, err)
+	require.Equal(t, analyticsStabilizationWindow, result1.RequeueAfter)
+	require.False(t, r.cleanupAt.IsZero())
+
+	// Simulate a mid-window early reconcile: set cleanupAt to 1ms ago so elapsed=1ms,
+	// well within the window. 9.999s of buffer means the test can't flap.
+	r.cleanupAt = time.Now().Add(-time.Millisecond)
+	result2, err := r.Reconcile(context.TODO(), ctrl.Request{})
+	require.NoError(t, err)
+	require.Greater(t, result2.RequeueAfter, time.Duration(0), "mid-window reconcile must requeue")
+	require.Less(t, result2.RequeueAfter, analyticsStabilizationWindow, "requeue must be less than full window")
+
+	// Analytics finalizer must still be present — Phase 2 must not have run.
+	live := &mcov1beta2.MultiClusterObservability{}
+	require.NoError(t, c.Get(context.TODO(), types.NamespacedName{Name: "observability"}, live))
+	require.Contains(t, live.GetFinalizers(), analyticsFinalizer, "finalizer must not be removed mid-window")
 }
 
 func TestAnalyticsReconciler_DeletionSkipsWithoutFinalizer(t *testing.T) {

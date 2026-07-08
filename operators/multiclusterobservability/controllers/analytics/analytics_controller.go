@@ -34,7 +34,14 @@ var mcoGVK = mcov1beta2.GroupVersion.WithKind("MultiClusterObservability")
 
 const analyticsFinalizer = "observability.open-cluster-management.io/analytics-cleanup"
 
-// AnalyticsReconciler reconciles a MultiClusterObservability object
+// analyticsStabilizationWindow is the minimum time between Phase 1 (sync ADC disabled)
+// and Phase 2 (cleanup + remove finalizer). It gives MCOA time to see "disabled" and
+// tear down its own resources before MCO sweeps up remaining RS objects.
+const analyticsStabilizationWindow = 10 * time.Second
+
+// AnalyticsReconciler reconciles a MultiClusterObservability object.
+// Must run under leader election — migrationDone and cleanupAt are in-memory state
+// that would not be consistent across replicas.
 type AnalyticsReconciler struct {
 	Client        client.Client
 	migrationDone bool
@@ -73,24 +80,22 @@ func (r *AnalyticsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			return ctrl.Result{}, nil // not our responsibility (e.g., upgrade from older version)
 		}
 
-		const stabilizationWindow = 10 * time.Second
-
 		// Phase 1: Sync ADC to "disabled" and start the stabilization window.
 		// This gives MCOA time to see "disabled" and clean up its own resources
 		// (Placements, ConfigMaps) before we do our cleanup in Phase 2.
 		if r.cleanupAt.IsZero() {
 			reqLogger.Info("rs - MCO terminating, syncing disabled state to ADC before cleanup")
 			if err := r.syncRightSizingStateToADC(ctx, instance, false, reqLogger); err != nil {
-				reqLogger.Error(err, "rs - failed to sync disabled state to ADC, continuing with cleanup")
+				reqLogger.Error(err, "rs - failed to sync disabled state to ADC, starting stabilization window")
 			}
 			r.cleanupAt = time.Now()
-			return ctrl.Result{RequeueAfter: stabilizationWindow}, nil
+			return ctrl.Result{RequeueAfter: analyticsStabilizationWindow}, nil
 		}
 
 		// Block any reconcile that arrives before the stabilization window elapses.
 		// ConfigMap watches and other events can trigger early reconciles.
-		if elapsed := time.Since(r.cleanupAt); elapsed < stabilizationWindow {
-			remaining := stabilizationWindow - elapsed
+		if elapsed := time.Since(r.cleanupAt); elapsed < analyticsStabilizationWindow {
+			remaining := analyticsStabilizationWindow - elapsed
 			reqLogger.Info("rs - waiting for stabilization window", "remaining", remaining.Round(time.Second))
 			return ctrl.Result{RequeueAfter: remaining}, nil
 		}
