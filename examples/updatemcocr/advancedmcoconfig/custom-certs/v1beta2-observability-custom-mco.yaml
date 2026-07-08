@@ -155,6 +155,6 @@ spec:
       name: thanos-object-storage
       tlsSecretMountPath: /etc/minio/certs
       tlsSecretName: minio-tls-secret
-    receiveStorageSize: 1Gi
+    receiveStorageSize: 10Gi
     ruleStorageSize: 1Gi
     storeStorageSize: 1Gi
