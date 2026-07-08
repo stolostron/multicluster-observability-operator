@@ -23,6 +23,7 @@ var log = logf.Log.WithName("analytics")
 func CleanupRightSizingResources(ctx context.Context, c client.Client, mco *mcov1beta2.MultiClusterObservability) error {
 	log.Info("rs - cleaning up all right-sizing resources")
 
+	// Error only occurs for unknown component types, which can't happen with compile-time constants.
 	_, nsNS, _ := rsutility.GetComponentConfig(mco, rsutility.ComponentTypeNamespace)
 	if nsNS == "" {
 		nsNS = rsutility.DefaultNamespace
@@ -42,6 +43,7 @@ func CleanupRightSizingResources(ctx context.Context, c client.Client, mco *mcov
 // ConfigMaps are PRESERVED because MCOA reuses them for per-cluster configuration.
 // Uses a two-pass approach: label-based (2.17 resources) + name-based (potentially unlabeled 2.16 resources).
 func CleanupLegacyPolicyResources(ctx context.Context, c client.Client, mco *mcov1beta2.MultiClusterObservability) error {
+	// Error only occurs for unknown component types, which can't happen with compile-time constants.
 	_, nsNS, _ := rsutility.GetComponentConfig(mco, rsutility.ComponentTypeNamespace)
 	if nsNS == "" {
 		nsNS = rsutility.DefaultNamespace
