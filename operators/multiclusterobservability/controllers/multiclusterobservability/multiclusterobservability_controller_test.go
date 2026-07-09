@@ -1888,8 +1888,7 @@ func TestSyncMCOACMAGrafanaLink(t *testing.T) {
 }
 
 func TestMCOAWaitForManifestWorks(t *testing.T) {
-	s := runtime.NewScheme()
-	_ = scheme.AddToScheme(s)
+	s := scheme.Scheme
 	_ = routev1.AddToScheme(s)
 	_ = mcov1beta2.SchemeBuilder.AddToScheme(s)
 	addonv1beta1.Install(s)
@@ -1906,7 +1905,7 @@ func TestMCOAWaitForManifestWorks(t *testing.T) {
 	}
 
 	t.Run("hasMCOAManifestWorks helper", func(t *testing.T) {
-		clientWithWork := fake.NewClientBuilder().WithScheme(s).WithObjects(mw).Build()
+		clientWithWork := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(mw).Build()
 		r1 := &MultiClusterObservabilityReconciler{
 			Client: clientWithWork,
 			Scheme: s,
@@ -1927,7 +1926,11 @@ func TestMCOAWaitForManifestWorks(t *testing.T) {
 
 	t.Run("initFinalization delay", func(t *testing.T) {
 		now := metav1.Now()
-		mcoToDelete := &mcov1beta2.MultiClusterObservability{
+		mcoToDelete1 := &mcov1beta2.MultiClusterObservability{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "MultiClusterObservability",
+				APIVersion: "observability.open-cluster-management.io/v1beta2",
+			},
 			ObjectMeta: metav1.ObjectMeta{
 				Name:              "test-mco",
 				Finalizers:        []string{resFinalizer},
@@ -1935,24 +1938,42 @@ func TestMCOAWaitForManifestWorks(t *testing.T) {
 			},
 		}
 
-		clientWithWork := fake.NewClientBuilder().WithScheme(s).WithObjects(mw, mcoToDelete).Build()
+		clientWithWork := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(mw, mcoToDelete1).Build()
 		r1 := &MultiClusterObservabilityReconciler{
 			Client: clientWithWork,
 			Scheme: s,
 		}
-		res, err := r1.initFinalization(t.Context(), mcoToDelete)
+		res, err := r1.initFinalization(t.Context(), mcoToDelete1)
 		assert.NoError(t, err)
 		assert.Equal(t, mcoaCleanupRequeueInterval, res.RequeueAfter)
-		assert.Contains(t, mcoToDelete.Finalizers, resFinalizer) // Finalizer should not be removed
+		assert.Contains(t, mcoToDelete1.Finalizers, resFinalizer) // Finalizer should not be removed
 
-		clientEmpty := fake.NewClientBuilder().WithScheme(s).WithObjects(mcoToDelete).Build()
+		mcoToDelete2 := &mcov1beta2.MultiClusterObservability{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "MultiClusterObservability",
+				APIVersion: "observability.open-cluster-management.io/v1beta2",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:              "test-mco",
+				Finalizers:        []string{resFinalizer},
+				DeletionTimestamp: &now,
+			},
+		}
+
+		clientEmpty := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(mcoToDelete2).Build()
 		r2 := &MultiClusterObservabilityReconciler{
 			Client: clientEmpty,
 			Scheme: s,
 		}
-		res, err = r2.initFinalization(t.Context(), mcoToDelete)
+		res, err = r2.initFinalization(t.Context(), mcoToDelete2)
 		assert.NoError(t, err)
 		assert.Zero(t, res.RequeueAfter)
-		assert.NotContains(t, mcoToDelete.Finalizers, resFinalizer) // Finalizer should be removed
+
+		// Assert on the API-side state by fetching it from the client.
+		// Since DeletionTimestamp was set and the final finalizer was removed,
+		// the resource should be completely deleted (not found) from the client database.
+		fetchedMCO := &mcov1beta2.MultiClusterObservability{}
+		err = r2.Client.Get(t.Context(), types.NamespacedName{Name: mcoToDelete2.Name}, fetchedMCO)
+		assert.True(t, errors.IsNotFound(err)) // The object is successfully garbage collected on the API-side
 	})
 }
