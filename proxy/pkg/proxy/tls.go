@@ -7,6 +7,7 @@ package proxy
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"fmt"
 	"net"
 	"net/http"
 	"os"
@@ -184,7 +185,17 @@ func (t *reloadingTransport) reloadTLSConfig() error {
 	caCertPool := x509.NewCertPool()
 	caCertPool.AppendCertsFromPEM(caCert)
 
-	newTLSConfig := &tls.Config{
+	minVersion, err := k8sapiflag.TLSVersion(t.opts.MinTLSVersion)
+	if err != nil {
+		return fmt.Errorf("TLS version invalid: %w", err)
+	}
+
+	cipherSuiteIDs, err := k8sapiflag.TLSCipherSuites(t.opts.CipherSuites)
+	if err != nil {
+		return fmt.Errorf("failed to convert TLS cipher suite name to ID: %w", err)
+	}
+
+	newTLSConfig := &tls.Config{ //nolint:gosec // TLS min version must be configured at runtime by the cluster TLS security profile
 		Certificates: []tls.Certificate{cert},
 		RootCAs:      caCertPool,
 		MinVersion:   tls.VersionTLS12,

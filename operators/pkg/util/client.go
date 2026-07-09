@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 
+	ocinfrav1 "github.com/openshift/api/config/v1"
 	ocpClientSet "github.com/openshift/client-go/config/clientset/versioned"
 	promClientSet "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned"
 	appsv1 "k8s.io/api/apps/v1"
@@ -15,6 +16,7 @@ import (
 	crdClientSet "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -26,10 +28,11 @@ const ConfigErrorMessage = "Failed to create the config"
 var log = logf.Log.WithName("util")
 
 var (
-	kubeClient kubernetes.Interface
-	crdClient  crdClientSet.Interface
-	ocpClient  ocpClientSet.Interface
-	promClient promClientSet.Interface
+	kubeClient      kubernetes.Interface
+	crdClient       crdClientSet.Interface
+	ocpClient       ocpClientSet.Interface
+	promClient      promClientSet.Interface
+	ocpConfigClient client.Client
 )
 
 // GetOrCreateKubeClient gets existing kubeclient or creates new one if it doesn't exist.
@@ -118,6 +121,30 @@ func GetOrCreatePromClient() (promClientSet.Interface, error) {
 	}
 
 	return promClient, err
+}
+
+// GetOrCreateOCPConfigCRClient creates a controller-runtime client for OCP Cluster resources.
+func GetOrCreateOCPConfigCRClient() (client.Client, error) {
+	if ocpConfigClient != nil {
+		return ocpConfigClient, nil
+	}
+
+	config, err := clientcmd.BuildConfigFromFlags("", "")
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", ConfigErrorMessage, err)
+	}
+
+	scheme := runtime.NewScheme()
+	if err := ocinfrav1.AddToScheme(scheme); err != nil {
+		return nil, fmt.Errorf("failed to add config.openshift.io/v1 to scheme: %w", err)
+	}
+
+	ocpConfigClient, err = client.New(config, client.Options{Scheme: scheme})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create OCP config controller-runtime client: %w", err)
+	}
+
+	return ocpConfigClient, nil
 }
 
 func CheckCRDExist(crdClient crdClientSet.Interface, crdName string) (bool, error) {
