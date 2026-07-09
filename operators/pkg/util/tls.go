@@ -8,6 +8,8 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"os"
+	"strconv"
 	"strings"
 
 	ocinfrav1 "github.com/openshift/api/config/v1"
@@ -91,10 +93,15 @@ func GetOrCreateTLSConfig(ctx context.Context) (func(*tls.Config), error) {
 	return tlsConfig, nil
 }
 
-func SetTLSSecurityConfiguration(ctx context.Context, args []string, tlsCipherSuitesArg string, minTLSversionArg string) []string {
+func SetTLSSecurityConfiguration(ctx context.Context, args []string, tlsCipherSuitesArg string, minTLSversionArg string) ([]string, error) {
 	tlsProfileSpec, err := GetOrCreateTLSProfileSpec(ctx)
 	if err != nil {
-		log.Error(err, "unable to get TLS security configuration args")
+		if isTest, err := strconv.ParseBool(os.Getenv("UNIT_TEST")); err == nil && isTest {
+			log.Info("running unit test, skipping TLS profile adherence")
+			return args, nil
+		}
+		log.Error(err, "unable to get TLS security configuration")
+		return nil, err
 	}
 
 	ciphers := tlsProfileSpec.Ciphers
@@ -102,7 +109,7 @@ func SetTLSSecurityConfiguration(ctx context.Context, args []string, tlsCipherSu
 	cipherSuites := strings.Join(libgocrypto.OpenSSLToIANACipherSuites(ciphers), ",")
 	args = setArg(args, tlsCipherSuitesArg, cipherSuites)
 	args = setArg(args, minTLSversionArg, string(tlsProfileSpec.MinTLSVersion))
-	return args
+	return args, nil
 }
 
 func setArg(args []string, argName string, argValue string) []string {

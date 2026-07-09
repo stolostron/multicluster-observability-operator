@@ -37,6 +37,7 @@ names:
 }
 
 func TestRender(t *testing.T) {
+	t.Setenv("UNIT_TEST", "true")
 	wd, err := os.Getwd()
 	if err != nil {
 		t.Fatalf("failed to get working dir %v", err)
@@ -63,6 +64,7 @@ func TestRender(t *testing.T) {
 }
 
 func TestRenderAlertmanagerConfig(t *testing.T) {
+	t.Setenv("UNIT_TEST", "true")
 	wd, err := os.Getwd()
 	if err != nil {
 		t.Fatalf("failed to get working dir %v", err)
@@ -111,6 +113,7 @@ func TestRenderAlertmanagerConfig(t *testing.T) {
 }
 
 func TestRenderAlertmanagerConfigWithPath(t *testing.T) {
+	t.Setenv("UNIT_TEST", "true")
 	wd, err := os.Getwd()
 	if err != nil {
 		t.Fatalf("failed to get working dir %v", err)

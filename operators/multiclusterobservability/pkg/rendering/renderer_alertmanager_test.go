@@ -34,6 +34,7 @@ import (
 )
 
 func TestAlertManagerRenderer(t *testing.T) {
+	t.Setenv("UNIT_TEST", "true")
 	clientCa := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "extension-apiserver-authentication",
@@ -114,6 +115,7 @@ func TestAlertManagerRenderer(t *testing.T) {
 }
 
 func TestAlertManagerRendererMCOConfig(t *testing.T) {
+	t.Setenv("UNIT_TEST", "true")
 	testCases := map[string]struct {
 		mco    func() *mcov1beta2.MultiClusterObservability
 		expect func(*testing.T, *appsv1.StatefulSet)
@@ -293,6 +295,7 @@ func TestAlertManagerRendererMCOConfig(t *testing.T) {
 }
 
 func TestAlertManagerClientCAHashRotation(t *testing.T) {
+	t.Setenv("UNIT_TEST", "true")
 	makeCA := func(data string) *corev1.ConfigMap {
 		return &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{

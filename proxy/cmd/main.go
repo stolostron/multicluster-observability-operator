@@ -38,6 +38,8 @@ type proxyConf struct {
 	tlsCaFile          string
 	tlsCertFile        string
 	tlsKeyFile         string
+	tlsMinVersion      string
+	tlsCipherSuites    []string
 	proxyTimeout       time.Duration
 }
 
@@ -63,6 +65,13 @@ func run() error {
 	flagset.StringVar(&cfg.tlsCaFile, "tls-ca-file", "/var/rbac_proxy/ca/ca.crt", "The path to the CA certificate file for connecting to the downstream server.")
 	flagset.StringVar(&cfg.tlsCertFile, "tls-cert-file", "/var/rbac_proxy/certs/tls.crt", "The path to the client certificate file for connecting to the downstream server.")
 	flagset.StringVar(&cfg.tlsKeyFile, "tls-key-file", "/var/rbac_proxy/certs/tls.key", "The path to the client key file for connecting to the downstream server.")
+	flagset.StringVar(&cfg.tlsMinVersion, "tls-min-version", "VersionTLS12", "Minimum TLS version supported. Value must match version names from https://golang.org/pkg/crypto/tls/#pkg-constants.")
+	flagset.StringSliceVar(
+		&cfg.tlsCipherSuites,
+		"tls-cipher-suites",
+		nil,
+		"Comma-separated list of cipher suites for the server. Values are from tls package constants (https://golang.org/pkg/crypto/tls/#pkg-constants). If omitted, the default Go cipher suites will be used",
+	)
 	flagset.DurationVar(&cfg.proxyTimeout, "proxy-timeout", 5*time.Minute, "The timeout for the proxy to wait for the downstream server response.")
 
 	_ = flagset.Parse(os.Args[1:])
@@ -116,6 +125,8 @@ func run() error {
 		CertFile:        cfg.tlsCertFile,
 		PollingInterval: 15 * time.Second,
 		ProxyTimeout:    cfg.proxyTimeout,
+		MinTLSVersion:   cfg.tlsMinVersion,
+		CipherSuites:    cfg.tlsCipherSuites,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to set tls transport: %w", err)

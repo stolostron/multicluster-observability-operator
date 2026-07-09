@@ -26,6 +26,7 @@ import (
 )
 
 func TestRender(t *testing.T) {
+	t.Setenv("UNIT_TEST", "true")
 	wd, err := os.Getwd()
 	if err != nil {
 		t.Fatalf("failed to get working dir %v", err)

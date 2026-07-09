@@ -7,6 +7,7 @@ package util
 import (
 	"context"
 	"crypto/tls"
+	"strings"
 	"testing"
 
 	configv1 "github.com/openshift/api/config/v1"
@@ -335,17 +336,18 @@ func TestSetTLSSecurityConfiguration(t *testing.T) {
 			defer resetTLSState()
 			setFakeClient(newAPIServerWithProfile(tt.tlsSecProfile, tt.adherence))
 
-			result := SetTLSSecurityConfiguration(context.Background(), tt.initialArgs, "--tls-cipher-suites=", "--tls-min-version=")
+			result, err := SetTLSSecurityConfiguration(context.Background(), tt.initialArgs, "--tls-cipher-suites=", "--tls-min-version=")
+			require.NoError(t, err)
 
 			assert.Contains(t, result[0], "--foo=bar")
 
 			var foundVersion, foundCiphers bool
 			for _, arg := range result {
-				if len(arg) > len("--tls-min-version=") && arg[:len("--tls-min-version=")] == "--tls-min-version=" {
+				if strings.Contains(arg, "--tls-min-version=") && len(arg) > len("--tls-min-version=") {
 					assert.Equal(t, "--tls-min-version="+tt.wantVersion, arg)
 					foundVersion = true
 				}
-				if len(arg) > len("--tls-cipher-suites=") && arg[:len("--tls-cipher-suites=")] == "--tls-cipher-suites=" {
+				if strings.Contains(arg, "--tls-cipher-suites=") && len(arg) > len("--tls-cipher-suites=") {
 					foundCiphers = true
 					if tt.wantCiphers {
 						assert.NotEqual(t, "--tls-cipher-suites=", arg, "cipher suites should not be empty")
