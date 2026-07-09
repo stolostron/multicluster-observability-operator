@@ -54,6 +54,7 @@ type GrafanaDatasource struct {
 	Type              string          `yaml:"type,omitempty"`
 	URL               string          `yaml:"url,omitempty"`
 	Version           int             `yaml:"version,omitempty"`
+	UID               string          `yaml:"uid,omitempty"`
 	JSONData          *JsonData       `yaml:"jsonData,omitempty"`
 	SecureJSONData    *SecureJsonData `yaml:"secureJsonData,omitempty"`
 }
@@ -62,10 +63,11 @@ type JsonData struct {
 	TLSAuth   bool `yaml:"tlsAuth,omitempty"`
 	TLSAuthCA bool `yaml:"tlsAuthWithCACert,omitempty"`
 	// Timeout is the request timeout in seconds for an HTTP datasource.
-	Timeout               string `yaml:"timeout,omitempty"`
-	HttpMethod            string `yaml:"httpMethod,omitempty"`
-	TimeInterval          string `yaml:"timeInterval,omitempty"`
-	CustomQueryParameters string `yaml:"customQueryParameters,omitempty"`
+	Timeout               string   `yaml:"timeout,omitempty"`
+	HttpMethod            string   `yaml:"httpMethod,omitempty"`
+	TimeInterval          string   `yaml:"timeInterval,omitempty"`
+	CustomQueryParameters string   `yaml:"customQueryParameters,omitempty"`
+	ForwardHeaders        []string `yaml:"forwardHeaders,omitempty"`
 }
 
 type SecureJsonData struct {
@@ -100,10 +102,12 @@ func GenerateGrafanaDataSource(
 					config.ProxyServiceName,
 					config.GetDefaultNamespace(),
 				),
+				UID: "000000001",
 				JSONData: &JsonData{
 					Timeout:               "300",
 					CustomQueryParameters: "max_source_resolution=auto",
 					TimeInterval:          fmt.Sprintf("%ds", mco.Spec.ObservabilityAddonSpec.Interval),
+					ForwardHeaders:        []string{"X-Forwarded-Access-Token"},
 				},
 			},
 			{
@@ -116,10 +120,12 @@ func GenerateGrafanaDataSource(
 					config.ProxyServiceName,
 					config.GetDefaultNamespace(),
 				),
+				UID: "000000002",
 				JSONData: &JsonData{
 					Timeout:               "300",
 					CustomQueryParameters: "max_source_resolution=auto",
 					TimeInterval:          fmt.Sprintf("%ds", DynamicTimeInterval),
+					ForwardHeaders:        []string{"X-Forwarded-Access-Token"},
 				},
 			},
 		},

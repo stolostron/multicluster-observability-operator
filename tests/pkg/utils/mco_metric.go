@@ -60,7 +60,7 @@ func (r GrafanaResponse) String() string {
 
 func QueryGrafana(opt TestOptions, query string) (*GrafanaResponse, error) {
 	grafanaConsoleURL := GetGrafanaURL(opt)
-	path := "/api/datasources/proxy/1/api/v1/query?"
+	path := "/api/datasources/proxy/uid/000000001/api/v1/query?"
 	queryParams := url.PathEscape(fmt.Sprintf("query=%s", query))
 	req, err := http.NewRequest(
 		"GET",

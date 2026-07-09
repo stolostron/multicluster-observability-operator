@@ -45,6 +45,9 @@ spec:
           image: quay.io/stolostron/grafana:2.4.0-SNAPSHOT-2021-09-23-07-02-14
           imagePullPolicy: IfNotPresent
           name: grafana
+          env:
+            - name: SQLITE_TMPDIR
+              value: /var/lib/grafana # SQLITE needs write permissions to a temp dir. Letting the default /tmp fails as the root filesystem is read-only.
           ports:
             - containerPort: 3001
               name: http
