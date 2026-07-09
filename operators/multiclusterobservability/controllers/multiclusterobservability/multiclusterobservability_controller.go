@@ -331,6 +331,11 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 			return ctrl.Result{}, fmt.Errorf("failed to deploy %s %s/%s: %w", res.GetKind(), resNS, res.GetName(), err)
 		}
 	}
+	if !rendering.MCOAPlatformMetricsEnabled(instance) {
+		if err := r.undeployMCOAGrafanaResources(ctx, instance, renderer, deployer); err != nil {
+			return ctrl.Result{}, err
+		}
+	}
 
 	if !rendering.MCOAEnabled(instance) && !rightSizingDelegated {
 		namespace, labels := renderer.NamespaceAndLabels()
@@ -1072,6 +1077,35 @@ func (r *MultiClusterObservabilityReconciler) deleteSpecificPrometheusRule(ctx c
 	} else if !apierrors.IsNotFound(err) {
 		log.Error(err, "Failed to fetch PrometheusRule")
 		return err
+	}
+
+	return nil
+}
+
+// undeployMCOAGrafanaResources removes MCOA Grafana resources when platform metrics collection is disabled.
+func (r *MultiClusterObservabilityReconciler) undeployMCOAGrafanaResources(
+	ctx context.Context,
+	instance *mcov1beta2.MultiClusterObservability,
+	renderer *rendering.MCORenderer,
+	deployer *deploying.Deployer,
+) error {
+	namespace, labels := renderer.NamespaceAndLabels()
+	toDelete, err := renderer.MCOAGrafanaResourcesForRemoval(ctx, namespace, labels)
+	if err != nil {
+		return fmt.Errorf("failed to list MCOA Grafana resources for deletion in namespace %s: %w", namespace, err)
+	}
+	for _, res := range toDelete {
+		resNS := res.GetNamespace()
+		if err := deployer.Undeploy(ctx, res, instance); err != nil {
+			if meta.IsNoMatchError(err) {
+				kind := res.GetKind()
+				if kind == monitoringv1.PrometheusRuleKind || kind == monitoringv1alpha1.ScrapeConfigsKind {
+					log.Info("CRD not available on MCO, skipping cleanup", "Kind", kind)
+					continue
+				}
+			}
+			return fmt.Errorf("failed to undeploy %s %s/%s: %w", res.GetKind(), resNS, res.GetName(), err)
+		}
 	}
 
 	return nil
