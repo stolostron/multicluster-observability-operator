@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	routev1 "github.com/openshift/api/route/v1"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering/templates"
@@ -22,6 +23,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/ptr"
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	kustomizeres "sigs.k8s.io/kustomize/api/resource"
 )
 
@@ -478,4 +480,130 @@ func TestRenderMCOATemplates(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestRenderClusterManagementAddOn verifies that the Grafana launch-link annotation
+// is set only when platform metrics are enabled via MCOA capabilities.
+func TestRenderClusterManagementAddOn(t *testing.T) {
+	wd, err := os.Getwd()
+	assert.NoError(t, err)
+	templatesPath := filepath.Join(wd, "..", "..", "manifests")
+	t.Setenv(templatesutil.TemplatesPathEnvVar, templatesPath)
+
+	tmplRenderer := templatesutil.NewTemplateRenderer(templatesPath)
+	mcoaTemplates, err := templates.GetOrLoadMCOATemplates(tmplRenderer)
+	assert.NoError(t, err)
+
+	var cmaTemplate *kustomizeres.Resource
+	for _, template := range mcoaTemplates {
+		if template.GetKind() == "ClusterManagementAddOn" {
+			cmaTemplate = template.DeepCopy()
+			break
+		}
+	}
+	assert.NotNil(t, cmaTemplate, "ClusterManagementAddOn template not found")
+
+	grafanaRoute := &routev1.Route{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      mcoconfig.GrafanaRouteName,
+			Namespace: mcoconfig.GetDefaultNamespace(),
+		},
+		Spec: routev1.RouteSpec{
+			Host: "grafana.apps.test-cluster.example.com",
+		},
+	}
+
+	s := runtime.NewScheme()
+	assert.NoError(t, routev1.AddToScheme(s))
+
+	tests := []struct {
+		name           string
+		metricsEnabled bool
+		expectLink     bool
+	}{
+		{
+			name:           "Platform metrics enabled - should have Grafana link",
+			metricsEnabled: true,
+			expectLink:     true,
+		},
+		{
+			name:           "Platform metrics disabled - should not have Grafana link",
+			metricsEnabled: false,
+			expectLink:     false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mco := &mcov1beta2.MultiClusterObservability{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "multicluster-observability",
+				},
+			}
+			if tt.metricsEnabled {
+				mco.Spec.Capabilities = &mcov1beta2.CapabilitiesSpec{
+					Platform: &mcov1beta2.PlatformCapabilitiesSpec{
+						Metrics: mcov1beta2.PlatformMetricsSpec{
+							Default: mcov1beta2.PlatformMetricsDefaultSpec{
+								Enabled: true,
+							},
+						},
+					},
+				}
+			}
+
+			fakeClient := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(grafanaRoute).Build()
+			renderer := &MCORenderer{cr: mco, kubeClient: fakeClient}
+
+			uobj, err := renderer.renderClusterManagementAddOn(t.Context(), cmaTemplate.DeepCopy(), "test", map[string]string{"key": "value"})
+			assert.NoError(t, err)
+			assert.NotNil(t, uobj)
+
+			annotations := uobj.GetAnnotations()
+			if tt.expectLink {
+				assert.Contains(t, annotations, "console.open-cluster-management.io/launch-link")
+				assert.Equal(t, "Grafana", annotations["console.open-cluster-management.io/launch-link-text"])
+				assert.Contains(t, annotations["console.open-cluster-management.io/launch-link"], "grafana.apps.test-cluster.example.com")
+				assert.Contains(t, annotations["console.open-cluster-management.io/launch-link"], grafanaMCOAHomeDashboardID)
+			} else {
+				assert.NotContains(t, annotations, "console.open-cluster-management.io/launch-link")
+				assert.NotContains(t, annotations, "console.open-cluster-management.io/launch-link-text")
+			}
+
+			// Labels should always be set regardless of metrics
+			assert.Contains(t, uobj.GetLabels(), "key")
+		})
+	}
+}
+
+// TestRenderClusterManagementAddOnNilCapabilities verifies that a nil Capabilities
+// spec does not attempt a Grafana route lookup and produces no launch-link annotation.
+func TestRenderClusterManagementAddOnNilCapabilities(t *testing.T) {
+	wd, err := os.Getwd()
+	assert.NoError(t, err)
+	templatesPath := filepath.Join(wd, "..", "..", "manifests")
+	t.Setenv(templatesutil.TemplatesPathEnvVar, templatesPath)
+
+	tmplRenderer := templatesutil.NewTemplateRenderer(templatesPath)
+	mcoaTemplates, err := templates.GetOrLoadMCOATemplates(tmplRenderer)
+	assert.NoError(t, err)
+
+	var cmaTemplate *kustomizeres.Resource
+	for _, template := range mcoaTemplates {
+		if template.GetKind() == "ClusterManagementAddOn" {
+			cmaTemplate = template.DeepCopy()
+			break
+		}
+	}
+
+	mco := &mcov1beta2.MultiClusterObservability{
+		ObjectMeta: metav1.ObjectMeta{Name: "multicluster-observability"},
+	}
+
+	// kubeClient intentionally nil: with nil Capabilities, no route fetch should occur
+	renderer := &MCORenderer{cr: mco}
+	uobj, err := renderer.renderClusterManagementAddOn(t.Context(), cmaTemplate.DeepCopy(), "test", map[string]string{"key": "value"})
+	assert.NoError(t, err)
+	assert.NotNil(t, uobj)
+	assert.NotContains(t, uobj.GetAnnotations(), "console.open-cluster-management.io/launch-link")
 }
