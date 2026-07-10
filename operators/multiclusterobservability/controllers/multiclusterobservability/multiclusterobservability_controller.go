@@ -266,25 +266,12 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		return ctrl.Result{}, fmt.Errorf("failed to get the Observatorium API URL: %w", err) // Already wrapped
 	}
 
-	alertmanagerURL, err := config.GetAlertmanagerURL(ctx, r.Client, config.GetDefaultNamespace())
-	if err != nil {
-		// IngressController CRD is not available in non-OCP env (Kind), so we need to handle the error
-		// otherwise it breaks everything
-		if meta.IsNoMatchError(err) {
-			reqLogger.Error(err, "Cannot get AlertManager URL, IngressController CRD not found. Continuing without it.")
-			alertmanagerURL = &url.URL{}
-		} else {
-			return ctrl.Result{}, fmt.Errorf("failed to get the AlertManager API URL: %w", err)
-		}
-	}
-
 	// Build render options
 	rendererOptions := &rendering.RendererOptions{
 		MCOAOptions: rendering.MCOARendererOptions{
-			DisableCMAORender:              disableMCOACMAORender,
-			MetricsHubHostname:             obsAPIURL.Host,
-			MetricsHubAlertmanagerHostname: alertmanagerURL.Host,
-			RightSizingDelegated:           rightSizingDelegated,
+			DisableCMAORender:    disableMCOACMAORender,
+			MetricsHubHostname:   obsAPIURL.Host,
+			RightSizingDelegated: rightSizingDelegated,
 		},
 	}
 

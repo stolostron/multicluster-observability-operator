@@ -49,10 +49,9 @@ const (
 )
 
 type MCOARendererOptions struct {
-	DisableCMAORender              bool
-	MetricsHubHostname             string
-	MetricsHubAlertmanagerHostname string
-	RightSizingDelegated           bool
+	DisableCMAORender    bool
+	MetricsHubHostname   string
+	RightSizingDelegated bool
 }
 
 // newMCOARenderer initializes the MCOA template rendering functions.

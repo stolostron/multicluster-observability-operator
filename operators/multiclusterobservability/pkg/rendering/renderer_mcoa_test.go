@@ -201,8 +201,7 @@ func TestRenderAddonDeploymentConfig(t *testing.T) {
 
 	renderer := &MCORenderer{cr: mco, rendererOptions: &RendererOptions{
 		MCOAOptions: MCOARendererOptions{
-			MetricsHubHostname:             "observability-hub",
-			MetricsHubAlertmanagerHostname: "alertmanager-hub",
+			MetricsHubHostname: "observability-hub",
 		},
 	}}
 
@@ -286,8 +285,7 @@ func TestRenderAddonDeploymentConfig_AlertsEnabled(t *testing.T) {
 
 	renderer := &MCORenderer{cr: mco, rendererOptions: &RendererOptions{
 		MCOAOptions: MCOARendererOptions{
-			MetricsHubHostname:             "observability-hub",
-			MetricsHubAlertmanagerHostname: "alertmanager-hub",
+			MetricsHubHostname: "observability-hub",
 		},
 	}}
 

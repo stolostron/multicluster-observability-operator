@@ -59,7 +59,7 @@ func LogFailingTestStandardDebugInfo(opt TestOptions, isMCOA bool) {
 	if isMCOA {
 		CheckDeploymentsInNamespace(hubClient, MCO_AGENT_ADDON_NAMESPACE)
 		CheckStatefulSetsInNamespace(hubClient, MCO_AGENT_ADDON_NAMESPACE)
-		CheckPodsInNamespace(hubClient, MCO_AGENT_ADDON_NAMESPACE, []string{"observability-monitoring-cleanup"}, map[string]string{})
+		CheckPodsInNamespace(hubClient, MCO_AGENT_ADDON_NAMESPACE, []string{"endpoint-monitoring-operator", "observability-monitoring-cleanup"}, map[string]string{})
 	}
 
 	for _, mc := range opt.ManagedClusters {
