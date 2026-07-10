@@ -383,9 +383,6 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	// byo case for proxy
 	proxyRouteBYOCACerts := newTestCert(config.ProxyRouteBYOCAName, namespace)
 	proxyRouteBYOCert := newTestCert(config.ProxyRouteBYOCERTName, namespace)
-	// byo case for the alertmanager route
-	testAmRouteBYOCaSecret := newTestCert(config.AlertmanagerRouteBYOCAName, namespace)
-	testAmRouteBYOCertSecret := newTestCert(config.AlertmanagerRouteBYOCERTName, namespace)
 	clustermgmtAddon := newClusterManagementAddon()
 	extensionApiserverAuthenticationCM := &corev1.ConfigMap{ // required by alertmanager
 		ObjectMeta: metav1.ObjectMeta{
@@ -401,7 +398,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 
 	objs := []runtime.Object{
 		mco, svc, serverCACerts, clientCACerts, proxyRouteBYOCACerts, grafanaCert, serverCert,
-		testAmRouteBYOCaSecret, testAmRouteBYOCertSecret, proxyRouteBYOCert, clustermgmtAddon, extensionApiserverAuthenticationCM,
+		proxyRouteBYOCert, clustermgmtAddon, extensionApiserverAuthenticationCM,
 		alertManagerRoute, gp2StorageClass,
 	}
 	// Create a fake client to mock API calls.
@@ -498,12 +495,6 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	}, amRoute)
 	if err != nil {
 		t.Fatalf("Failed to get alertmanager's route: (%v)", err)
-	}
-	// check the BYO certificate for alertmanager's route
-	if amRoute.Spec.TLS.CACertificate != string(testAmRouteBYOCaSecret.Data["tls.crt"]) ||
-		amRoute.Spec.TLS.Certificate != string(testAmRouteBYOCertSecret.Data["tls.crt"]) ||
-		amRoute.Spec.TLS.Key != string(testAmRouteBYOCertSecret.Data["tls.key"]) {
-		t.Fatalf("incorrect certificate for alertmanager's route")
 	}
 
 	err = cl.Create(t.Context(), createSecret("test", "test", namespace))
@@ -872,9 +863,6 @@ func TestImageReplaceForMCO(t *testing.T) {
 	// create the image manifest configmap
 	testMCHInstance := newMCHInstanceWithVersion(config.GetMCONamespace(), version)
 	imageManifestsCM := newTestImageManifestsConfigMap(config.GetMCONamespace(), version)
-	// byo case for the alertmanager route
-	testAmRouteBYOCaSecret := newTestCert(config.AlertmanagerRouteBYOCAName, namespace)
-	testAmRouteBYOCertSecret := newTestCert(config.AlertmanagerRouteBYOCERTName, namespace)
 	clustermgmtAddon := newClusterManagementAddon()
 	extensionApiserverAuthenticationCM := &corev1.ConfigMap{ // required by alertmanager
 		ObjectMeta: metav1.ObjectMeta{
@@ -891,7 +879,7 @@ func TestImageReplaceForMCO(t *testing.T) {
 
 	objs := []runtime.Object{
 		mco, observatoriumAPIsvc, serverCACerts, clientCACerts, grafanaCert, serverCert,
-		testMCHInstance, imageManifestsCM, testAmRouteBYOCaSecret, testAmRouteBYOCertSecret, clustermgmtAddon, extensionApiserverAuthenticationCM,
+		testMCHInstance, imageManifestsCM, clustermgmtAddon, extensionApiserverAuthenticationCM,
 		alertManagerRoute, gp2StorageClass,
 	}
 	// Create a fake client to mock API calls.

@@ -98,41 +98,6 @@ func newTestRouteCASecret() *corev1.Secret {
 	}
 }
 
-func newTestAmRouteBYOCA() *corev1.Secret {
-	configYamlMap := map[string][]byte{}
-	configYamlMap["tls.crt"] = []byte(routerBYOCA)
-
-	return &corev1.Secret{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Secret",
-			APIVersion: "v1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      config.AlertmanagerRouteBYOCAName,
-			Namespace: mcoNamespace,
-		},
-		Data: configYamlMap,
-	}
-}
-
-func newTestAmRouteBYOCert() *corev1.Secret {
-	configYamlMap := map[string][]byte{}
-	configYamlMap["tls.crt"] = []byte(routerBYOCert)
-	configYamlMap["tls.key"] = []byte(routerBYOCertKey)
-
-	return &corev1.Secret{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Secret",
-			APIVersion: "v1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      config.AlertmanagerRouteBYOCERTName,
-			Namespace: mcoNamespace,
-		},
-		Data: configYamlMap,
-	}
-}
-
 func newTestAmDefaultCA() *corev1.ConfigMap {
 	configYamlMap := map[string]string{"service-ca.crt": routerDefaultCA}
 
@@ -306,7 +271,7 @@ func TestNewBYOSecret(t *testing.T) {
 	initSchema(t)
 
 	mco := newMultiClusterObservability()
-	objs := []runtime.Object{newTestObsApiRoute(), newTestAlertmanagerRoute(), newTestAmRouteBYOCA(), newTestAmRouteBYOCert(), newTestObsServerCASecret()}
+	objs := []runtime.Object{newTestObsApiRoute(), newTestObsServerCASecret()}
 	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 
 	crdMap := map[string]bool{config.IngressControllerCRD: true}

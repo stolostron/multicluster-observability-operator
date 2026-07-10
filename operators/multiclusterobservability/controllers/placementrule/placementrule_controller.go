@@ -1050,34 +1050,6 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		},
 	}
 
-	amRouterCertSecretPred := predicate.Funcs{
-		CreateFunc: func(e event.CreateEvent) bool {
-			if e.Object.GetNamespace() == config.GetDefaultNamespace() &&
-				(e.Object.GetName() == config.AlertmanagerRouteBYOCAName ||
-					e.Object.GetName() == config.AlertmanagerRouteBYOCERTName) {
-				return updateHubInfoSecret(c, r.CRDMap)
-			}
-			return false
-		},
-		UpdateFunc: func(e event.UpdateEvent) bool {
-			if e.ObjectNew.GetNamespace() == config.GetDefaultNamespace() &&
-				e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() &&
-				(e.ObjectNew.GetName() == config.AlertmanagerRouteBYOCAName ||
-					e.ObjectNew.GetName() == config.AlertmanagerRouteBYOCERTName) {
-				return updateHubInfoSecret(c, r.CRDMap)
-			}
-			return false
-		},
-		DeleteFunc: func(e event.DeleteEvent) bool {
-			if e.Object.GetNamespace() == config.GetDefaultNamespace() &&
-				(e.Object.GetName() == config.AlertmanagerRouteBYOCAName ||
-					e.Object.GetName() == config.AlertmanagerRouteBYOCERTName) {
-				return updateHubInfoSecret(c, r.CRDMap)
-			}
-			return false
-		},
-	}
-
 	routeCASecretPred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 			if (e.Object.GetNamespace() == config.OpenshiftIngressOperatorNamespace &&
@@ -1224,9 +1196,6 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		if ingressCtlCrdExists {
 			// secondary watch for default ingresscontroller
 			ctrBuilder = ctrBuilder.Watches(&operatorv1.IngressController{}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(ingressControllerPred)).
-
-				// secondary watch for alertmanager route byo cert secrets
-				Watches(&corev1.Secret{}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(amRouterCertSecretPred)).
 
 				// secondary watch for openshift route ca secret
 				Watches(&corev1.Secret{}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(routeCASecretPred))

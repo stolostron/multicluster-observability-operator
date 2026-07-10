@@ -375,11 +375,6 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	// in the testing env, the service can be accessed via service name, we assume that
 	// in testing env, the local-cluster is the only allowed managedcluster
 	if ingressCtlCrdExists {
-		// expose alertmanager through route
-		result, err = GenerateAlertmanagerRoute(r.Client, r.Scheme, instance)
-		if result != nil {
-			return *result, fmt.Errorf("failed to generate Alertmanager route: %w", err)
-		}
 
 		// expose observatorium api gateway
 		result, err = GenerateAPIGatewayRoute(ctx, r.Client, r.Scheme, instance)
@@ -539,7 +534,6 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 
 	mcoPred := GetMCOPredicateFunc()
 	cmPred := GetConfigMapPredicateFunc()
-	secretPred := GetAlertManagerSecretPredicateFunc()
 	namespacePred := GetNamespacePredicateFunc()
 	mcoaCRDPred := GetMCOACRDPredicateFunc()
 
@@ -568,8 +562,6 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 
 		// Watch the configmap for thanos-ruler-custom-rules update
 		Watches(&corev1.ConfigMap{}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(cmPred)).
-		// Watch the secret for deleting event of alertmanager-config
-		Watches(&corev1.Secret{}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(secretPred)).
 		// Watch the namespace for changes
 		Watches(&corev1.Namespace{}, &handler.EnqueueRequestForObject{},
 			builder.WithPredicates(namespacePred)).
@@ -796,102 +788,6 @@ func updateStorageSizeChange(ctx context.Context, c client.Client, matchLabels m
 		log.Info("Successfully delete sts due to storage size changed", "sts", sts.Name)
 	}
 	return nil
-}
-
-// GenerateAlertmanagerRoute create route for Alertmanager endpoint
-func GenerateAlertmanagerRoute(
-	runclient client.Client, scheme *runtime.Scheme,
-	mco *mcov1beta2.MultiClusterObservability,
-) (*ctrl.Result, error) {
-	amGateway := &routev1.Route{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      config.AlertmanagerRouteName,
-			Namespace: config.GetDefaultNamespace(),
-		},
-		Spec: routev1.RouteSpec{
-			Path: "/api/v2",
-			Port: &routev1.RoutePort{
-				TargetPort: intstr.FromString("oauth-proxy"),
-			},
-			To: routev1.RouteTargetReference{
-				Kind: "Service",
-				Name: config.AlertmanagerServiceName,
-			},
-			TLS: &routev1.TLSConfig{
-				Termination:                   routev1.TLSTerminationReencrypt,
-				InsecureEdgeTerminationPolicy: routev1.InsecureEdgeTerminationPolicyRedirect,
-			},
-		},
-	}
-
-	amRouteBYOCaSrt := &corev1.Secret{}
-	amRouteBYOCertSrt := &corev1.Secret{}
-	err1 := runclient.Get(
-		context.TODO(),
-		types.NamespacedName{Name: config.AlertmanagerRouteBYOCAName, Namespace: config.GetDefaultNamespace()},
-		amRouteBYOCaSrt,
-	)
-	err2 := runclient.Get(
-		context.TODO(),
-		types.NamespacedName{Name: config.AlertmanagerRouteBYOCERTName, Namespace: config.GetDefaultNamespace()},
-		amRouteBYOCertSrt,
-	)
-
-	if err1 == nil && err2 == nil {
-		log.Info("BYO CA/Certificate found for the Route of Alertmanager, will using BYO CA/certificate for the Route of Alertmanager")
-		amRouteCA, ok := amRouteBYOCaSrt.Data["tls.crt"]
-		if !ok {
-			return &ctrl.Result{}, errors.New("invalid BYO CA for the Route of Alertmanager")
-		}
-		amGateway.Spec.TLS.CACertificate = string(amRouteCA)
-
-		amRouteCert, ok := amRouteBYOCertSrt.Data["tls.crt"]
-		if !ok {
-			return &ctrl.Result{}, errors.New("invalid BYO Certificate for the Route of Alertmanager")
-		}
-		amGateway.Spec.TLS.Certificate = string(amRouteCert)
-
-		amRouteCertKey, ok := amRouteBYOCertSrt.Data["tls.key"]
-		if !ok {
-			return &ctrl.Result{}, errors.New("invalid BYO Certificate Key for the Route of Alertmanager")
-		}
-		amGateway.Spec.TLS.Key = string(amRouteCertKey)
-	}
-
-	// Set MultiClusterObservability instance as the owner and controller
-	if err := controllerutil.SetControllerReference(mco, amGateway, scheme); err != nil {
-		return &ctrl.Result{}, err
-	}
-
-	found := &routev1.Route{}
-	err := runclient.Get(
-		context.TODO(),
-		types.NamespacedName{Name: amGateway.Name, Namespace: amGateway.Namespace},
-		found,
-	)
-	if err != nil && apierrors.IsNotFound(err) {
-		log.Info(
-			"Creating a new route to expose alertmanager",
-			"amGateway.Namespace",
-			amGateway.Namespace,
-			"amGateway.Name",
-			amGateway.Name,
-		)
-		err = runclient.Create(context.TODO(), amGateway)
-		if err != nil {
-			return &ctrl.Result{}, err
-		}
-		return nil, nil
-	}
-	if !reflect.DeepEqual(found.Spec.TLS, amGateway.Spec.TLS) {
-		log.Info("Found update for the TLS configuration of the Alertmanager Route, try to update the Route")
-		amGateway.ResourceVersion = found.ResourceVersion
-		err = runclient.Update(context.TODO(), amGateway)
-		if err != nil {
-			return &ctrl.Result{}, err
-		}
-	}
-	return nil, nil
 }
 
 // GenerateProxyRoute create route for Proxy endpoint

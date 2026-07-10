@@ -87,8 +87,6 @@ const (
 	AlertmanagerAccessorSecretName = "observability-alertmanager-accessor" // #nosec G101 -- Not a hardcoded credential.
 	AlertmanagerServiceName        = "alertmanager"
 	AlertmanagerRouteName          = "alertmanager"
-	AlertmanagerRouteBYOCAName     = "alertmanager-byo-ca"
-	AlertmanagerRouteBYOCERTName   = "alertmanager-byo-cert"
 
 	AlertRuleDefaultConfigMapName    = "thanos-ruler-default-rules"
 	AlertRuleDefaultFileKey          = "default_rules.yaml"
@@ -288,12 +286,10 @@ var (
 		AlertRuleCustomConfigMapName:              ResourceTypeConfigMap,
 		ManagedClusterLabelAllowListConfigMapName: ResourceTypeConfigMap,
 
-		AlertmanagerConfigName:       ResourceTypeSecret,
-		AlertmanagerRouteBYOCAName:   ResourceTypeSecret,
-		AlertmanagerRouteBYOCERTName: ResourceTypeSecret,
-		ProxyRouteBYOCAName:          ResourceTypeSecret,
-		ProxyRouteBYOCERTName:        ResourceTypeSecret,
-		DefaultImagePullSecret:       ResourceTypeSecret,
+		AlertmanagerConfigName: ResourceTypeSecret,
+		ProxyRouteBYOCAName:    ResourceTypeSecret,
+		ProxyRouteBYOCERTName:  ResourceTypeSecret,
+		DefaultImagePullSecret: ResourceTypeSecret,
 	}
 
 	multicloudConsoleRouteHost = ""
@@ -539,52 +535,6 @@ func getDomainForIngressController(ctx context.Context, client client.Client, na
 		return "", fmt.Errorf("no domain found in the ingressOperator: %s/%s", namespace, name)
 	}
 	return domain, nil
-}
-
-// GetAlertmanagerRouterCA is used to get the CA of openshift Route.
-func GetAlertmanagerRouterCA(client client.Client) (string, error) {
-	amRouteBYOCaSrt := &corev1.Secret{}
-	amRouteBYOCertSrt := &corev1.Secret{}
-	err1 := client.Get(
-		context.TODO(),
-		types.NamespacedName{Name: AlertmanagerRouteBYOCAName, Namespace: GetDefaultNamespace()},
-		amRouteBYOCaSrt,
-	)
-	err2 := client.Get(
-		context.TODO(),
-		types.NamespacedName{Name: AlertmanagerRouteBYOCERTName, Namespace: GetDefaultNamespace()},
-		amRouteBYOCertSrt,
-	)
-	if err1 == nil && err2 == nil {
-		return string(amRouteBYOCaSrt.Data["tls.crt"]), nil
-	}
-
-	ingressOperator := &operatorv1.IngressController{}
-	err := client.Get(
-		context.TODO(),
-		types.NamespacedName{Name: OpenshiftIngressOperatorCRName, Namespace: OpenshiftIngressOperatorNamespace},
-		ingressOperator,
-	)
-	if err != nil {
-		return "", err
-	}
-
-	routerCASrtName := OpenshiftIngressDefaultCertName
-	// check if custom default certificate is provided or not
-	if ingressOperator.Spec.DefaultCertificate != nil {
-		routerCASrtName = ingressOperator.Spec.DefaultCertificate.Name
-	}
-
-	routerCASecret := &corev1.Secret{}
-	err = client.Get(
-		context.TODO(),
-		types.NamespacedName{Name: routerCASrtName, Namespace: OpenshiftIngressNamespace},
-		routerCASecret,
-	)
-	if err != nil {
-		return "", err
-	}
-	return string(routerCASecret.Data["tls.crt"]), nil
 }
 
 // GetAlertmanagerCA is used to get the CA of Alertmanager.
