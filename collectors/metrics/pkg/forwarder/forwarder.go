@@ -112,7 +112,9 @@ func (cfg Config) CreateFromClient(
 
 	if len(cfg.FromClientConfig.CAFile) > 0 {
 		if fromTransport.TLSClientConfig == nil {
+			// nosemgrep: go-tls-bypass - client-side TLS fallback when no TLS config is provided.
 			fromTransport.TLSClientConfig = &tls.Config{
+				// nosemgrep: go-crypto-tls-version - client-side TLS.
 				MinVersion: tls.VersionTLS12,
 			}
 		}
@@ -134,7 +136,9 @@ func (cfg Config) CreateFromClient(
 		fromTransport.TLSClientConfig.RootCAs = pool
 	} else if fromTransport.TLSClientConfig == nil {
 		// #nosec G402 -- Only used if no TLS config is provided.
+		// nosemgrep: go-tls-bypass - client-side TLS fallback when no TLS config is provided.
 		fromTransport.TLSClientConfig = &tls.Config{
+			// nosemgrep: go-crypto-tls-version - client-side TLS.
 			MinVersion:         tls.VersionTLS12,
 			InsecureSkipVerify: true,
 		}
@@ -183,7 +187,9 @@ func (cfg Config) CreateToClient(
 		}
 	} else if toTransport.TLSClientConfig == nil {
 		// #nosec G402 -- Only used if no TLS config is provided.
+		// nosemgrep: go-tls-bypass - client-side TLS fallback when no TLS config is provided.
 		toTransport.TLSClientConfig = &tls.Config{
+			// nosemgrep: go-crypto-tls-version - client-side TLS.
 			MinVersion:         tls.VersionTLS12,
 			InsecureSkipVerify: true,
 		}

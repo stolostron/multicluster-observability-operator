@@ -11,7 +11,7 @@ on:
 jobs:
   lint:
     runs-on: ubuntu-latest
-    name: Formatters + Linters (Static Analysis) for Go
+    name: Formatters + Linters + TLS Compliance Semgrep (Static Analysis) for Go
     env:
       GOBIN: /tmp/.bin
     steps:
@@ -37,3 +37,32 @@ jobs:
       # In addition we exclude createdAt changes in the CSV file that happen on each make bundle.
       - name: check diff
         run: "git diff -I '^    createdAt: ' --exit-code -- . ':(exclude)operators/multiclusterobservability/bundle.Dockerfile'"
+
+      - name: Install Semgrep
+        run: pip install semgrep==1.168.0
+
+      - name: Clone argus-observe-rules
+        run: git clone --depth 1 https://github.com/smith-xyz/argus-observe-rules.git /tmp/argus-observe-rules && git -C /tmp/argus-observe-rules checkout b85a9f57b02d0202e7cf62a77fd110a26718b3aa
+
+      - name: Semgrep TLS compliance scan
+        run: |
+          semgrep \
+            --config /tmp/argus-observe-rules/rules/languages/go/crypto/go-crypto-tls-version.yml \
+            --config /tmp/argus-observe-rules/rules/languages/go/crypto/go-crypto-cipher-suites.yml \
+            --config /tmp/argus-observe-rules/rules/languages/go/crypto/go-crypto-tls-cipher-suites.yml \
+            --config /tmp/argus-observe-rules/rules/languages/go/runtime-security/go-tls-version-override.yml \
+            --config /tmp/argus-observe-rules/rules/languages/go/runtime-security/go-tls-bypass.yml \
+            --config /tmp/argus-observe-rules/rules/languages/go/runtime-security/go-http-server-tls-override.yml \
+            --config /tmp/argus-observe-rules/rules/languages/go/runtime-security/go-http-client-tls-override.yml \
+            --config /tmp/argus-observe-rules/rules/languages/go/runtime-security/go-grpc-tls-credential-override.yml \
+            --config /tmp/argus-observe-rules/rules/languages/go/runtime-security/go-kubernetes-client-tls-override.yml \
+            --config /tmp/argus-observe-rules/rules/languages/go/runtime-security/go-certificate-validation-override.yml \
+            --exclude='vendor' --exclude='*_test.go' \
+            --error --severity WARNING --severity ERROR \
+            .
+
+      - name: TLS Config Lint
+        uses: sebrandon1/tls-config-lint@v1
+        with:
+          severity-threshold: high
+          languages: go
