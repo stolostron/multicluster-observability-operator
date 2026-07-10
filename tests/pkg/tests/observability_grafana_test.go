@@ -117,7 +117,7 @@ var _ = Describe("Observability: Grafana Connectivity", func() {
 
 	AfterEach(func() {
 		if CurrentSpecReport().Failed() {
-			utils.LogFailingTestStandardDebugInfo(testOptions)
+			utils.LogFailingTestStandardDebugInfo(testOptions, false)
 			// Force logs for Grafana pods
 			utils.CheckPodsInNamespace(hubClient, MCO_NAMESPACE, []string{"observability-grafana"}, map[string]string{
 				"app": "multicluster-observability-grafana",

@@ -703,14 +703,12 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 	)
 
 	JustAfterEach(func() {
-		Expect(utils.IntegrityChecking(testOptions)).NotTo(HaveOccurred())
-	})
-
-	AfterEach(func() {
 		if CurrentSpecReport().Failed() {
-			utils.LogFailingTestStandardDebugInfo(testOptions)
+			utils.LogFailingTestStandardDebugInfo(testOptions, true)
 		}
 		testFailed = testFailed || CurrentSpecReport().Failed()
+
+		Expect(utils.IntegrityChecking(testOptions)).NotTo(HaveOccurred())
 	})
 
 	AfterAll(func() {

@@ -27,7 +27,7 @@ import (
 // It scans workloads and pods from hub and managed clusters observability namespaces.
 // It also prints MCO and OBA objects.
 // If a workload or pod is not running, it prints the resource spec, status, events and logs if appropriate.
-func LogFailingTestStandardDebugInfo(opt TestOptions) {
+func LogFailingTestStandardDebugInfo(opt TestOptions, isMCOA bool) {
 	klog.V(1).Infof("Test failed, printing debug info. TestOptions: %+v", opt)
 
 	// Print MCO object
@@ -56,9 +56,11 @@ func LogFailingTestStandardDebugInfo(opt TestOptions) {
 	printSecretsInNamespace(hubClient, MCO_NAMESPACE)
 	LogManagedClusters(hubDynClient)
 
-	CheckDeploymentsInNamespace(hubClient, MCO_AGENT_ADDON_NAMESPACE)
-	CheckStatefulSetsInNamespace(hubClient, MCO_AGENT_ADDON_NAMESPACE)
-	CheckPodsInNamespace(hubClient, MCO_AGENT_ADDON_NAMESPACE, []string{}, map[string]string{})
+	if isMCOA {
+		CheckDeploymentsInNamespace(hubClient, MCO_AGENT_ADDON_NAMESPACE)
+		CheckStatefulSetsInNamespace(hubClient, MCO_AGENT_ADDON_NAMESPACE)
+		CheckPodsInNamespace(hubClient, MCO_AGENT_ADDON_NAMESPACE, []string{"observability-monitoring-cleanup"}, map[string]string{})
+	}
 
 	for _, mc := range opt.ManagedClusters {
 		if mc.Name == "local-cluster" {
