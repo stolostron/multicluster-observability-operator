@@ -16,6 +16,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
@@ -60,6 +61,8 @@ func LogFailingTestStandardDebugInfo(opt TestOptions, isMCOA bool) {
 		CheckDeploymentsInNamespace(hubClient, MCO_AGENT_ADDON_NAMESPACE)
 		CheckStatefulSetsInNamespace(hubClient, MCO_AGENT_ADDON_NAMESPACE)
 		CheckPodsInNamespace(hubClient, MCO_AGENT_ADDON_NAMESPACE, []string{"endpoint-monitoring-operator", "observability-monitoring-cleanup"}, map[string]string{})
+		printAddonDeploymentConfigs(hubDynClient, MCO_NAMESPACE)
+		printManifestWorks(hubDynClient)
 	}
 
 	for _, mc := range opt.ManagedClusters {
@@ -534,4 +537,63 @@ func printSecretsInNamespace(client kubernetes.Interface, ns string) {
 			age)
 	}
 	_ = writer.Flush()
+}
+
+func printAddonDeploymentConfigs(client dynamic.Interface, ns string) {
+	gvr := NewMCOAddOnDeploymentConfigGVR()
+	objs, err := client.Resource(gvr).Namespace(ns).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		klog.Errorf("failed to list AddOnDeploymentConfigs in namespace %s: %v", ns, err)
+		return
+	}
+
+	if len(objs.Items) == 0 {
+		klog.V(1).Infof("No AddOnDeploymentConfigs found in namespace %s", ns)
+		return
+	}
+
+	var adcInfo strings.Builder
+	adcInfo.WriteString(fmt.Sprintf(">>>>>>>>>> AddOnDeploymentConfigs in namespace %s >>>>>>>>>>\n", ns))
+	for _, obj := range objs.Items {
+		obj.SetManagedFields(nil)
+		adcInfo.WriteString(ToCompactJSON(obj.Object, "", 0, 3) + "\n")
+	}
+	adcInfo.WriteString(fmt.Sprintf("<<<<<<<<<< AddOnDeploymentConfigs in namespace %s <<<<<<<<<<", ns))
+	klog.Info(adcInfo.String())
+}
+
+func printManifestWorks(client dynamic.Interface) {
+	gvr := NewOCMManifestworksGVR()
+	objs, err := client.Resource(gvr).Namespace("").List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		klog.Errorf("failed to list ManifestWorks: %v", err)
+		return
+	}
+
+	var filtered []unstructured.Unstructured
+	for _, obj := range objs.Items {
+		name := obj.GetName()
+		labels := obj.GetLabels()
+		isLegacy := (name == "endpoint-observability-work")
+		isMCOA := strings.Contains(name, "multicluster-observability-addon") ||
+			(labels != nil && labels["addon.open-cluster-management.io/addon-name"] == "multicluster-observability-addon")
+
+		if isLegacy || isMCOA {
+			obj.SetManagedFields(nil)
+			filtered = append(filtered, obj)
+		}
+	}
+
+	if len(filtered) == 0 {
+		klog.V(1).Info("No observability ManifestWorks found")
+		return
+	}
+
+	var mwInfo strings.Builder
+	mwInfo.WriteString(">>>>>>>>>> Observability ManifestWorks >>>>>>>>>>\n")
+	for _, obj := range filtered {
+		mwInfo.WriteString(ToCompactJSON(obj.Object, "", 0, 3) + "\n")
+	}
+	mwInfo.WriteString("<<<<<<<<<< Observability ManifestWorks <<<<<<<<<<")
+	klog.Info(mwInfo.String())
 }
