@@ -85,8 +85,6 @@ const (
 
 	AlertmanagerAccessorSAName     = "observability-alertmanager-accessor"
 	AlertmanagerAccessorSecretName = "observability-alertmanager-accessor" // #nosec G101 -- Not a hardcoded credential.
-	AlertmanagerServiceName        = "alertmanager"
-	AlertmanagerRouteName          = "alertmanager"
 
 	AlertRuleDefaultConfigMapName    = "thanos-ruler-default-rules"
 	AlertRuleDefaultFileKey          = "default_rules.yaml"
@@ -482,45 +480,6 @@ func GetMCONamespace() string {
 		podNamespace = defaultMCONamespace
 	}
 	return podNamespace
-}
-
-// GetAlertmanagerURL is used to get the URL for alertmanager.
-func GetAlertmanagerURL(ctx context.Context, client client.Client, namespace string) (*url.URL, error) {
-	mco := &observabilityv1beta2.MultiClusterObservability{}
-	err := client.Get(ctx,
-		types.NamespacedName{
-			Name: GetMonitoringCRName(),
-		}, mco)
-	if err != nil && !apierrors.IsNotFound(err) {
-		return nil, err
-	}
-	advancedConfig := mco.Spec.AdvancedConfig
-	if advancedConfig != nil && advancedConfig.CustomAlertmanagerHubURL != "" {
-		err := advancedConfig.CustomAlertmanagerHubURL.Validate()
-		if err != nil {
-			return nil, err
-		}
-		return advancedConfig.CustomAlertmanagerHubURL.URL()
-	}
-
-	found := &routev1.Route{}
-	err = client.Get(ctx, types.NamespacedName{Name: AlertmanagerRouteName, Namespace: namespace}, found)
-	if err != nil && apierrors.IsNotFound(err) {
-		// if the alertmanager router is not created yet, fallback to get host from the domain of ingresscontroller
-		domain, err := getDomainForIngressController(
-			ctx,
-			client,
-			OpenshiftIngressOperatorCRName,
-			OpenshiftIngressOperatorNamespace,
-		)
-		if err != nil {
-			return nil, err
-		}
-		return url.Parse(fmt.Sprintf("%s://%s-%s.%s", schemeHttps, AlertmanagerRouteName, namespace, domain))
-	} else if err != nil {
-		return nil, err
-	}
-	return url.Parse(fmt.Sprintf("%s://%s", schemeHttps, found.Spec.Host))
 }
 
 // getDomainForIngressController get the domain for the given ingresscontroller instance.

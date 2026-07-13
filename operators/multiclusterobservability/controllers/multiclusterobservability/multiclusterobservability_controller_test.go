@@ -393,13 +393,12 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 			"client-ca-file": "test",
 		},
 	}
-	alertManagerRoute := newAlertManagerRoute()
 	gp2StorageClass := newStorageClass("gp2", true)
 
 	objs := []runtime.Object{
 		mco, svc, serverCACerts, clientCACerts, proxyRouteBYOCACerts, grafanaCert, serverCert,
 		proxyRouteBYOCert, clustermgmtAddon, extensionApiserverAuthenticationCM,
-		alertManagerRoute, gp2StorageClass,
+		gp2StorageClass,
 	}
 	// Create a fake client to mock API calls.
 	cl := fake.NewClientBuilder().
@@ -486,15 +485,6 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	status := mcostatusctrl.FindStatusCondition(updatedMCO.Status.Conditions, mcostatusctrl.ConditionTypeFailed)
 	if status == nil || status.Reason != mcostatusctrl.ReasonObjectStorageNotFound {
 		t.Errorf("Failed to get correct MCO status, expect Failed with ReasonObjectStorageNotFound")
-	}
-
-	amRoute := &routev1.Route{}
-	err = cl.Get(t.Context(), types.NamespacedName{
-		Name:      config.AlertmanagerRouteName,
-		Namespace: namespace,
-	}, amRoute)
-	if err != nil {
-		t.Fatalf("Failed to get alertmanager's route: (%v)", err)
 	}
 
 	err = cl.Create(t.Context(), createSecret("test", "test", namespace))
@@ -874,13 +864,12 @@ func TestImageReplaceForMCO(t *testing.T) {
 		},
 	}
 
-	alertManagerRoute := newAlertManagerRoute()
 	gp2StorageClass := newStorageClass("gp2", true)
 
 	objs := []runtime.Object{
 		mco, observatoriumAPIsvc, serverCACerts, clientCACerts, grafanaCert, serverCert,
 		testMCHInstance, imageManifestsCM, clustermgmtAddon, extensionApiserverAuthenticationCM,
-		alertManagerRoute, gp2StorageClass,
+		gp2StorageClass,
 	}
 	// Create a fake client to mock API calls.
 	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
@@ -1662,18 +1651,6 @@ func TestNewMCOACRDEventHandler(t *testing.T) {
 
 			assert.Equal(t, tt.expectedReqs, reqs)
 		})
-	}
-}
-
-func newAlertManagerRoute() *routev1.Route {
-	return &routev1.Route{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "alertmanager",
-			Namespace: config.GetDefaultNamespace(),
-		},
-		Spec: routev1.RouteSpec{
-			Host: "alert.manager",
-		},
 	}
 }
 

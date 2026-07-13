@@ -47,22 +47,6 @@ func newTestObsApiRoute() *routev1.Route {
 	}
 }
 
-func newTestAlertmanagerRoute() *routev1.Route {
-	return &routev1.Route{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Route",
-			APIVersion: "v1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      config.AlertmanagerRouteName,
-			Namespace: mcoNamespace,
-		},
-		Spec: routev1.RouteSpec{
-			Host: routeHost,
-		},
-	}
-}
-
 func newTestIngressController() *operatorv1.IngressController {
 	return &operatorv1.IngressController{
 		TypeMeta: metav1.TypeMeta{
@@ -153,7 +137,6 @@ func TestNewSecret(t *testing.T) {
 	config.SetMonitoringCRName(mco.Name)
 	objs := []runtime.Object{
 		newTestObsApiRoute(),
-		newTestAlertmanagerRoute(),
 		newTestIngressController(),
 		newTestRouteCASecret(),
 		newTestObsServerCASecret(),
@@ -243,7 +226,6 @@ func TestNewSecret(t *testing.T) {
 
 	mco.Spec.AdvancedConfig = &mcov1beta2.AdvancedConfig{
 		CustomObservabilityHubURL: "https://custom-obs:8080",
-		CustomAlertmanagerHubURL:  "https://custom-am",
 	}
 	c = fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 	hubInfo, err = generateHubInfoSecret(c, mcoNamespace, namespace, crdMap, config.IsUWMAlertingDisabledInSpec(mco))

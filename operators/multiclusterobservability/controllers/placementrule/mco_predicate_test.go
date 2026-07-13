@@ -31,7 +31,7 @@ func TestMCOPredFunc(t *testing.T) {
 
 	objs := []runtime.Object{
 		pull, newConsoleRoute(), newTestObsApiRoute(),
-		newTestAlertmanagerRoute(), newTestIngressController(), newTestRouteCASecret(),
+		newTestIngressController(), newTestRouteCASecret(),
 		newCASecret(), newCertSecret(mcoNamespace), NewMetricsAllowListCM(),
 		NewAmAccessorSA(), newTestAmDefaultCA(), newManagedClusterAddon(),
 	}
