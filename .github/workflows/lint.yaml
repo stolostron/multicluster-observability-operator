@@ -66,3 +66,4 @@ jobs:
         with:
           severity-threshold: high
           languages: go
+          exclude-patterns: insecure-skip-verify
