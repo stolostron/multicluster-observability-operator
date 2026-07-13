@@ -157,7 +157,7 @@ var _ = Describe("", Ordered, func() {
 
 		os.Unsetenv("USER_TOKEN")
 		if CurrentSpecReport().Failed() {
-			utils.LogFailingTestStandardDebugInfo(testOptions)
+			utils.LogFailingTestStandardDebugInfo(testOptions, false)
 		}
 		testFailed = testFailed || CurrentSpecReport().Failed()
 	})

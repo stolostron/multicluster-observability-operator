@@ -120,15 +120,17 @@ func runCleanup(args []string) {
 
 func doCleanup(args []string) error {
 	fs := flag.NewFlagSet("cleanup", flag.ExitOnError)
-	var hubID string
+	var clusterName string
+	var hubAmCASecret string
 
-	fs.StringVar(&hubID, "hub-id", "", "The ID of the Hub cluster to clean up.")
+	fs.StringVar(&clusterName, "cluster-name", "", "The name of the managed cluster to clean up (optional).")
+	fs.StringVar(&hubAmCASecret, "hub-alertmanager-ca-secret", "", "The name of the CA secret for the Hub's Alertmanager to clean up.")
 	klog.InitFlags(fs)
 	// Parse will exit on error due to flag.ExitOnError, so we can ignore the error return value.
 	_ = fs.Parse(args)
 
-	if hubID == "" {
-		return fmt.Errorf("hub-id flag not set")
+	if hubAmCASecret == "" {
+		return fmt.Errorf("hub-alertmanager-ca-secret flag not set")
 	}
 
 	cfg := ctrl.GetConfigOrDie()
@@ -137,21 +139,14 @@ func doCleanup(args []string) error {
 		return fmt.Errorf("unable to create client for cleanup: %w", err)
 	}
 
-	hubInfo := &operatorconfig.HubInfo{
-		HubClusterID: hubID,
-	}
-
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
 	var errs []error
 
-	caSecret := obsepctl.AppendHubClusterID(obsepctl.HubAmRouterCASecretName, hubInfo.HubClusterID)
-	mtlsCASecret := obsepctl.AppendHubClusterID(obsepctl.HubAmMtlsCASecretName, hubInfo.HubClusterID)
-
-	setupLog.Info("Reverting Platform monitoring configuration (Router CA)")
-	if err := obsepctl.RevertClusterMonitoringConfig(ctx, cl, caSecret); err != nil {
-		setupLog.Error(err, "failed to revert platform monitoring config (Router CA)")
+	setupLog.Info("Reverting Platform monitoring configuration", "caSecret", hubAmCASecret)
+	if err := obsepctl.RevertClusterMonitoringConfig(ctx, cl, hubAmCASecret, clusterName); err != nil {
+		setupLog.Error(err, "failed to revert platform monitoring config")
 		errs = append(errs, err)
 	}
 
@@ -161,33 +156,9 @@ func doCleanup(args []string) error {
 		return fmt.Errorf("cleanup failed: %w", errors.Join(errs...))
 	}
 
-	setupLog.Info("Reverting User Workload monitoring configuration (Router CA)")
-	if err := obsepctl.RevertUserWorkloadMonitoringConfig(ctx, cl, caSecret); err != nil {
-		setupLog.Error(err, "failed to revert user workload monitoring config (Router CA)")
-		errs = append(errs, err)
-	}
-
-	if ctx.Err() != nil {
-		setupLog.Error(ctx.Err(), "cleanup context canceled or timed out, aborting remaining steps")
-		errs = append(errs, ctx.Err())
-		return fmt.Errorf("cleanup failed: %w", errors.Join(errs...))
-	}
-
-	setupLog.Info("Reverting Platform monitoring configuration (mTLS CA)")
-	if err := obsepctl.RevertClusterMonitoringConfig(ctx, cl, mtlsCASecret); err != nil {
-		setupLog.Error(err, "failed to revert platform monitoring config (mTLS CA)")
-		errs = append(errs, err)
-	}
-
-	if ctx.Err() != nil {
-		setupLog.Error(ctx.Err(), "cleanup context canceled or timed out, aborting remaining steps")
-		errs = append(errs, ctx.Err())
-		return fmt.Errorf("cleanup failed: %w", errors.Join(errs...))
-	}
-
-	setupLog.Info("Reverting User Workload monitoring configuration (mTLS CA)")
-	if err := obsepctl.RevertUserWorkloadMonitoringConfig(ctx, cl, mtlsCASecret); err != nil {
-		setupLog.Error(err, "failed to revert user workload monitoring config (mTLS CA)")
+	setupLog.Info("Reverting User Workload monitoring configuration", "caSecret", hubAmCASecret)
+	if err := obsepctl.RevertUserWorkloadMonitoringConfig(ctx, cl, hubAmCASecret); err != nil {
+		setupLog.Error(err, "failed to revert user workload monitoring config")
 		errs = append(errs, err)
 	}
 
@@ -206,6 +177,7 @@ func runMCOA(args []string) {
 	var probeAddr string
 	var hubAmURL string
 	var clusterID string
+	var clusterName string
 	var namespace string
 	var hubAmCASecret string
 	var hubAmCertSecret string
@@ -219,8 +191,14 @@ func runMCOA(args []string) {
 			"Enabling this will ensure there is only one active controller manager.")
 	fs.StringVar(&hubAmURL, "hub-alertmanager-url", "", "The URL of the Hub's Alertmanager.")
 	fs.StringVar(&clusterID, "cluster-id", "", "The ID of the managed cluster.")
+	fs.StringVar(&clusterName, "cluster-name", "", "The name of the managed cluster.")
 	fs.StringVar(&namespace, "namespace", "", "The namespace the operator is running in.")
-	fs.StringVar(&hubAmCASecret, "hub-alertmanager-ca-secret", "", "The name of the CA secret for the Hub's Alertmanager.")
+	fs.StringVar(
+		&hubAmCASecret,
+		"hub-alertmanager-ca-secret",
+		"",
+		"The name of the CA secret for the Hub's Alertmanager. This flag is required even when alert forwarding is disabled with MCOA to correctly revert the cluster-monitoring-config ConfigMap.",
+	)
 	fs.StringVar(&hubAmCertSecret, "hub-alertmanager-cert-secret", "", "The name of the TLS cert/key secret for the Hub's Alertmanager.")
 	fs.StringVar(&hubAmAccessorSecret, "hub-alertmanager-accessor-secret", "", "The name of the accessor token secret for the Hub's Alertmanager.")
 	fs.BoolVar(&enableUWLAlertForwarding, "enable-uwl-alert-forwarding", true, "Enable or disable forwarding of user workload monitoring alerts.")
@@ -245,6 +223,11 @@ func runMCOA(args []string) {
 
 		if clusterID == "" {
 			setupLog.Error(fmt.Errorf("cluster-id flag not set"), "unable to start manager")
+			os.Exit(1)
+		}
+
+		if clusterName == "" {
+			setupLog.Error(fmt.Errorf("cluster-name flag not set"), "unable to start manager")
 			os.Exit(1)
 		}
 
@@ -285,6 +268,7 @@ func runMCOA(args []string) {
 		mgr.GetEventRecorder("mcoa-endpoint-controller"),
 		namespace,
 		clusterID,
+		clusterName,
 		hubAmURL,
 		hubAmCASecret,
 		hubAmCertSecret,

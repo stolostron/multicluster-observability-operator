@@ -74,4 +74,4 @@ spec:
     replacement: "$1"
     action: replace
   - action: labeldrop
-    regex: managed_cluster|id
+    regex: managed_cluster|managed_cluster_name|id

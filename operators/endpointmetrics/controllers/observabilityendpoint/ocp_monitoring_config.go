@@ -379,7 +379,7 @@ func createOrUpdateClusterMonitoringConfig(
 		}
 		if !revertedAlready {
 			caSecret := AppendHubClusterID(amMtlsCaName, hubInfo.HubClusterID)
-			if err = RevertClusterMonitoringConfig(ctx, client, caSecret); err != nil {
+			if err = RevertClusterMonitoringConfig(ctx, client, caSecret, ""); err != nil {
 				return false, err
 			}
 			if nsExists {
@@ -409,6 +409,7 @@ func createOrUpdateClusterMonitoringConfig(
 		ctx,
 		client,
 		clusterID,
+		"", // Pass empty string to avoid setting managed_cluster_name for legacy collector to prevent issues with global hub
 		hubInfo.AlertmanagerEndpoint,
 		caSecret,
 		certSecret,
@@ -456,7 +457,7 @@ func createOrUpdateClusterMonitoringConfig(
 
 // RevertClusterMonitoringConfig reverts the configmap cluster-monitoring-config and relevant resources
 // (observability-alertmanager-accessor and hub-alertmanager-router-ca) for the openshift cluster monitoring stack.
-func RevertClusterMonitoringConfig(ctx context.Context, client client.Client, caSecret string) error {
+func RevertClusterMonitoringConfig(ctx context.Context, client client.Client, caSecret string, clusterName string) error {
 	log.Info("RevertClusterMonitoringConfig called")
 
 	found := &corev1.ConfigMap{}
@@ -471,9 +472,6 @@ func RevertClusterMonitoringConfig(ctx context.Context, client client.Client, ca
 
 	log.Info("checking if cluster monitoring config needs revert", "name", clusterMonitoringConfigName)
 	found = found.DeepCopy()
-	if !InManagedFields(found) {
-		return nil
-	}
 
 	foundClusterMonitoringConfigurationYAML, ok := HasClusterMonitoringConfigData(found)
 	if !ok {
@@ -493,6 +491,9 @@ func RevertClusterMonitoringConfig(ctx context.Context, client client.Client, ca
 	// check if externalLabels exists
 	if foundClusterMonitoringConfiguration.PrometheusK8sConfig.ExternalLabels != nil {
 		delete(foundClusterMonitoringConfiguration.PrometheusK8sConfig.ExternalLabels, operatorconfig.ClusterLabelKeyForAlerts)
+		if clusterName != "" {
+			delete(foundClusterMonitoringConfiguration.PrometheusK8sConfig.ExternalLabels, operatorconfig.ClusterNameLabelKeyForAlerts)
+		}
 
 		if len(foundClusterMonitoringConfiguration.PrometheusK8sConfig.ExternalLabels) == 0 {
 			foundClusterMonitoringConfiguration.PrometheusK8sConfig.ExternalLabels = nil
@@ -541,13 +542,19 @@ func CreateOrUpdateCMOConfig(
 	ctx context.Context,
 	client client.Client,
 	clusterID string,
+	clusterName string,
 	alertmanagerEndpoint string,
 	caSecret string,
 	certSecret string,
 	accessorSecret string,
 	namespace string,
 ) (bool, error) {
-	newExternalLabels := map[string]string{operatorconfig.ClusterLabelKeyForAlerts: clusterID}
+	newExternalLabels := map[string]string{
+		operatorconfig.ClusterLabelKeyForAlerts: clusterID,
+	}
+	if clusterName != "" {
+		newExternalLabels[operatorconfig.ClusterNameLabelKeyForAlerts] = clusterName
+	}
 	newAlertmanagerConfigs := []cmomanifests.AdditionalAlertmanagerConfig{newAdditionalAlertmanagerConfig(alertmanagerEndpoint, caSecret, certSecret, accessorSecret)}
 	newPmK8sConfig := &cmomanifests.PrometheusK8sConfig{
 		ExternalLabels:      newExternalLabels,
@@ -603,6 +610,11 @@ func CreateOrUpdateCMOConfig(
 		// check and set externalLabels
 		if updatedCMOCfg.PrometheusK8sConfig.ExternalLabels != nil {
 			updatedCMOCfg.PrometheusK8sConfig.ExternalLabels[operatorconfig.ClusterLabelKeyForAlerts] = clusterID
+			if clusterName != "" {
+				updatedCMOCfg.PrometheusK8sConfig.ExternalLabels[operatorconfig.ClusterNameLabelKeyForAlerts] = clusterName
+			} else {
+				delete(updatedCMOCfg.PrometheusK8sConfig.ExternalLabels, operatorconfig.ClusterNameLabelKeyForAlerts)
+			}
 		} else {
 			updatedCMOCfg.PrometheusK8sConfig.ExternalLabels = newExternalLabels
 		}
@@ -777,21 +789,6 @@ func unset(ctx context.Context, c client.Client, ns string) error {
 	return err
 }
 
-// InManagedFields checks if the configmap has had a CRUD operation by endpoint-monitoring-operator
-func InManagedFields(cm *corev1.ConfigMap) bool {
-	for _, field := range cm.GetManagedFields() {
-		if field.Manager == EndpointMonitoringOperatorMgr {
-			return true
-		}
-	}
-	log.Info(
-		"endpoint-monitoring-operator is not a manager of configmap",
-		"name",
-		clusterMonitoringConfigName,
-	)
-	return false
-}
-
 // IsManaged checks if the additional alertmanager config is managed by ACM.
 //
 // This checks both the exact caSecret name and any matching legacy names with the same suffix.
@@ -871,9 +868,6 @@ func RevertUserWorkloadMonitoringConfig(ctx context.Context, client client.Clien
 
 	log.Info("checking if user workload monitoring config needs revert", "name", operatorconfig.OCPUserWorkloadMonitoringConfigMap)
 	found = found.DeepCopy()
-	if !InManagedFields(found) {
-		return nil
-	}
 
 	existingYAML, ok := found.Data["config.yaml"]
 	if !ok {

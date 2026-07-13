@@ -165,6 +165,17 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		// Don't return right away from here because the above cleanup is not complete and it requires
 		// call to cleanOrphanResources for manifest works.
 	} else {
+		// Only deploy the legacy resources if there are no MCOA ManifestWorks remaining.
+		// This avoids both addon versions being deployed/running at the same time and fighting over CMO.
+		hasWorks, err := r.hasMCOAManifestWorks(ctx)
+		if err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to check for remaining MCOA ManifestWorks: %w", err)
+		}
+		if hasWorks {
+			reqLogger.Info("Waiting for MCOA ManifestWorks to be deleted before deploying legacy addon resources, requeuing")
+			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+		}
+
 		reqLogger.Info("Creating all addon resources")
 		opts := &client.ListOptions{
 			LabelSelector: labels.SelectorFromSet(map[string]string{ownerLabelKey: ownerLabelValue}),
@@ -1345,6 +1356,20 @@ func mcoaForMetricsIsEnabled(mco *mcov1beta2.MultiClusterObservability) bool {
 	}
 
 	return false
+}
+
+// hasMCOAManifestWorks checks if there are any remaining ManifestWorks for the MCOA addon on the hub.
+func (r *PlacementRuleReconciler) hasMCOAManifestWorks(ctx context.Context) (bool, error) {
+	workList := &workv1.ManifestWorkList{}
+	opts := []client.ListOption{
+		client.MatchingLabels{
+			addonv1beta1.AddonLabelKey: config.MultiClusterObservabilityAddon,
+		},
+	}
+	if err := r.Client.List(ctx, workList, opts...); err != nil {
+		return false, fmt.Errorf("failed to list ManifestWorks: %w", err)
+	}
+	return len(workList.Items) > 0, nil
 }
 
 // isCustomIngressCertificate checks if the given secret name is referenced by the IngressController

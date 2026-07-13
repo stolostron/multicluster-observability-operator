@@ -214,7 +214,7 @@ var _ = Describe("", func() {
 
 	AfterEach(func() {
 		if CurrentSpecReport().Failed() {
-			utils.LogFailingTestStandardDebugInfo(testOptions)
+			utils.LogFailingTestStandardDebugInfo(testOptions, false)
 		}
 		namespace = MCO_ADDON_NAMESPACE
 		testFailed = testFailed || CurrentSpecReport().Failed()

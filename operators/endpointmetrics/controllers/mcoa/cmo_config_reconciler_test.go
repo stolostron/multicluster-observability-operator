@@ -42,12 +42,12 @@ func TestCMOConfigReconciler_detectConflict(t *testing.T) {
 		expected bool
 	}{
 		{
-			name:     "Not managed yet",
+			name:     "Empty ConfigMap (conflict)",
 			cm:       &corev1.ConfigMap{},
-			expected: false,
+			expected: true,
 		},
 		{
-			name: "Managed but missing data",
+			name: "Missing data (conflict)",
 			cm: &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
 					ManagedFields: []metav1.ManagedFieldsEntry{
@@ -58,7 +58,7 @@ func TestCMOConfigReconciler_detectConflict(t *testing.T) {
 			expected: true,
 		},
 		{
-			name: "Managed and correct config",
+			name: "Correct config",
 			cm: &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
 					ManagedFields: []metav1.ManagedFieldsEntry{
@@ -72,7 +72,7 @@ func TestCMOConfigReconciler_detectConflict(t *testing.T) {
 			expected: false,
 		},
 		{
-			name: "Managed and incorrect config (conflict)",
+			name: "Incorrect config (conflict)",
 			cm: &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
 					ManagedFields: []metav1.ManagedFieldsEntry{
@@ -86,7 +86,7 @@ func TestCMOConfigReconciler_detectConflict(t *testing.T) {
 			expected: true,
 		},
 		{
-			name: "Managed and corrupted YAML",
+			name: "Corrupted YAML (conflict)",
 			cm: &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
 					ManagedFields: []metav1.ManagedFieldsEntry{

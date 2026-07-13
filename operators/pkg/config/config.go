@@ -14,7 +14,8 @@ const (
 	AnnotationSkipCreation          = "skip-creation-if-exist"
 	ObservabilityAddonName          = "observability-addon"
 
-	ClusterLabelKeyForAlerts = "managed_cluster"
+	ClusterLabelKeyForAlerts     = "managed_cluster"
+	ClusterNameLabelKeyForAlerts = "managed_cluster_name"
 
 	CollectorImage               = "COLLECTOR_IMAGE"
 	InstallPrometheus            = "INSTALL_PROM"

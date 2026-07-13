@@ -201,8 +201,7 @@ func TestRenderAddonDeploymentConfig(t *testing.T) {
 
 	renderer := &MCORenderer{cr: mco, rendererOptions: &RendererOptions{
 		MCOAOptions: MCOARendererOptions{
-			MetricsHubHostname:             "observability-hub",
-			MetricsHubAlertmanagerHostname: "alertmanager-hub",
+			MetricsHubHostname: "observability-hub",
 		},
 	}}
 
@@ -219,20 +218,87 @@ func TestRenderAddonDeploymentConfig(t *testing.T) {
 	instrV1alpha1 := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.InstrumentationCRDName)
 	promV1alpha1 := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.PrometheusAgentCRDName)
 
-	assert.Len(t, got.Spec.CustomizedVariables, 13)
+	assert.Len(t, got.Spec.CustomizedVariables, 14)
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1beta1.CustomizedVariable{Name: nameUserWorkloadLogsCollection, Value: clfV1})
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1beta1.CustomizedVariable{Name: namePlatformIncidentDetection, Value: uipluginsCRDFQDN})
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1beta1.CustomizedVariable{Name: namePlatformLogsCollection, Value: clfV1})
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1beta1.CustomizedVariable{Name: nameUserWorkloadTracesCollection, Value: otelV1beta1})
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1beta1.CustomizedVariable{Name: nameUserWorkloadInstrumentation, Value: instrV1alpha1})
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1beta1.CustomizedVariable{Name: namePlatformMetricsCollection, Value: promV1alpha1})
+	assert.Contains(t, got.Spec.CustomizedVariables, addonv1beta1.CustomizedVariable{Name: namePlatformMetricsAlerts, Value: "disabled"})
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1beta1.CustomizedVariable{Name: nameUserWorkloadMetricsCollection, Value: promV1alpha1})
+	assert.Contains(t, got.Spec.CustomizedVariables, addonv1beta1.CustomizedVariable{Name: nameUserWorkloadMetricsAlerts, Value: "disabled"})
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1beta1.CustomizedVariable{Name: nameMetricsHubHostname, Value: "observability-hub"})
-	assert.Contains(t, got.Spec.CustomizedVariables, addonv1beta1.CustomizedVariable{Name: nameMetricsAlertManagerHostname, Value: "alertmanager-hub"})
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1beta1.CustomizedVariable{Name: namePLatformMetricsUI, Value: uipluginsCRDFQDN})
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1beta1.CustomizedVariable{Name: mcoutil.ADCKeyRightSizingDelegated, Value: "false"})
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1beta1.CustomizedVariable{Name: mcoutil.ADCKeyPlatformNamespaceRightSizing, Value: "disabled"})
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1beta1.CustomizedVariable{Name: mcoutil.ADCKeyPlatformVirtualizationRightSizing, Value: "disabled"})
+}
+
+func TestRenderAddonDeploymentConfig_AlertsEnabled(t *testing.T) {
+	wd, err := os.Getwd()
+	assert.NoError(t, err)
+	templatesPath := filepath.Join(wd, "..", "..", "manifests")
+	t.Setenv(templatesutil.TemplatesPathEnvVar, templatesPath)
+
+	tmplRenderer := templatesutil.NewTemplateRenderer(templatesPath)
+	mcoaTemplates, err := templates.GetOrLoadMCOATemplates(tmplRenderer)
+	assert.NoError(t, err)
+
+	var aodc *kustomizeres.Resource
+	for _, template := range mcoaTemplates {
+		if template.GetKind() == "AddOnDeploymentConfig" {
+			aodc = template.DeepCopy()
+			break
+		}
+	}
+
+	mco := &mcov1beta2.MultiClusterObservability{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "multicluster-observability",
+		},
+		Spec: mcov1beta2.MultiClusterObservabilitySpec{
+			Capabilities: &mcov1beta2.CapabilitiesSpec{
+				Platform: &mcov1beta2.PlatformCapabilitiesSpec{
+					Metrics: mcov1beta2.PlatformMetricsSpec{
+						Default: mcov1beta2.PlatformMetricsDefaultSpec{
+							Enabled: true,
+						},
+						Alerts: mcov1beta2.MetricsAlertsSpec{
+							Enabled: true,
+						},
+					},
+				},
+				UserWorkloads: &mcov1beta2.UserWorkloadCapabilitiesSpec{
+					Metrics: mcov1beta2.UserWorkloadMetricsSpec{
+						Default: mcov1beta2.UserWorkloadMetricsDefaultSpec{
+							Enabled: true,
+						},
+						Alerts: mcov1beta2.MetricsAlertsSpec{
+							Enabled: true,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	renderer := &MCORenderer{cr: mco, rendererOptions: &RendererOptions{
+		MCOAOptions: MCOARendererOptions{
+			MetricsHubHostname: "observability-hub",
+		},
+	}}
+
+	uobj, err := renderer.renderAddonDeploymentConfig(t.Context(), aodc, "test", map[string]string{"key": "value"})
+	assert.NoError(t, err)
+	assert.NotNil(t, uobj)
+
+	got := &addonv1beta1.AddOnDeploymentConfig{}
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(uobj.Object, got)
+	assert.NoError(t, err)
+
+	assert.Contains(t, got.Spec.CustomizedVariables, addonv1beta1.CustomizedVariable{Name: namePlatformMetricsAlerts, Value: "enabled"})
+	assert.Contains(t, got.Spec.CustomizedVariables, addonv1beta1.CustomizedVariable{Name: nameUserWorkloadMetricsAlerts, Value: "enabled"})
 }
 
 func TestMCOAEnabled(t *testing.T) {

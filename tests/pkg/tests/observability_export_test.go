@@ -126,7 +126,7 @@ var _ = Describe("", func() {
 
 	JustAfterEach(func() {
 		if CurrentSpecReport().Failed() {
-			utils.LogFailingTestStandardDebugInfo(testOptions)
+			utils.LogFailingTestStandardDebugInfo(testOptions, false)
 		}
 		testFailed = testFailed || CurrentGinkgoTestDescription().Failed
 	})

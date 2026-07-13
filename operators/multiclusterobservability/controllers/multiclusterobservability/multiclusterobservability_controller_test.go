@@ -57,6 +57,7 @@ import (
 	addonv1beta1 "open-cluster-management.io/api/addon/v1beta1"
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
 	clusterv1beta1 "open-cluster-management.io/api/cluster/v1beta1"
+	workv1 "open-cluster-management.io/api/work/v1"
 	policyv1 "open-cluster-management.io/governance-policy-propagator/api/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -359,19 +360,20 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 
 	// Register operator types with the runtime scheme.
 	s := runtime.NewScheme()
-	scheme.AddToScheme(s)
-	mcov1beta2.SchemeBuilder.AddToScheme(s)
-	oav1beta1.AddToScheme(s)
-	observatoriumv1alpha1.AddToScheme(s)
-	routev1.AddToScheme(s)
-	oauthv1.AddToScheme(s)
-	clusterv1.AddToScheme(s)
-	clusterv1beta1.AddToScheme(s)
-	policyv1.AddToScheme(s)
-	addonv1beta1.Install(s)
-	migrationv1alpha1.SchemeBuilder.AddToScheme(s)
-	operatorv1.AddToScheme(s)
-	storev1.AddToScheme(s)
+	require.NoError(t, scheme.AddToScheme(s))
+	require.NoError(t, mcov1beta2.SchemeBuilder.AddToScheme(s))
+	require.NoError(t, oav1beta1.AddToScheme(s))
+	require.NoError(t, observatoriumv1alpha1.AddToScheme(s))
+	require.NoError(t, routev1.Install(s))
+	require.NoError(t, oauthv1.AddToScheme(s))
+	require.NoError(t, clusterv1.Install(s))
+	require.NoError(t, clusterv1beta1.Install(s))
+	require.NoError(t, policyv1.AddToScheme(s))
+	require.NoError(t, addonv1beta1.Install(s))
+	require.NoError(t, workv1.Install(s))
+	require.NoError(t, migrationv1alpha1.SchemeBuilder.AddToScheme(s))
+	require.NoError(t, operatorv1.AddToScheme(s))
+	require.NoError(t, storev1.AddToScheme(s))
 
 	svc := createObservatoriumAPIService(name, namespace)
 	serverCACerts := newTestCert(config.ServerCACerts, namespace)
@@ -782,7 +784,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 
 func TestInitFinalizationAddsResFinalizer(t *testing.T) {
 	s := scheme.Scheme
-	mcov1beta2.SchemeBuilder.AddToScheme(s)
+	require.NoError(t, mcov1beta2.SchemeBuilder.AddToScheme(s))
 
 	mco := &mcov1beta2.MultiClusterObservability{
 		ObjectMeta: metav1.ObjectMeta{
@@ -798,9 +800,9 @@ func TestInitFinalizationAddsResFinalizer(t *testing.T) {
 		CRDMap: map[string]bool{},
 	}
 
-	terminating, err := r.initFinalization(t.Context(), mco)
+	res, err := r.initFinalization(t.Context(), mco)
 	assert.NoError(t, err)
-	assert.False(t, terminating)
+	assert.Zero(t, res)
 
 	updated := &mcov1beta2.MultiClusterObservability{}
 	err = cl.Get(t.Context(), types.NamespacedName{Name: "test"}, updated)
@@ -849,17 +851,18 @@ func TestImageReplaceForMCO(t *testing.T) {
 
 	// Register operator types with the runtime scheme.
 	s := runtime.NewScheme()
-	scheme.AddToScheme(s)
-	mcov1beta2.SchemeBuilder.AddToScheme(s)
-	observatoriumv1alpha1.AddToScheme(s)
-	routev1.AddToScheme(s)
-	oauthv1.AddToScheme(s)
-	clusterv1.AddToScheme(s)
-	policyv1.AddToScheme(s)
-	addonv1beta1.Install(s)
-	migrationv1alpha1.SchemeBuilder.AddToScheme(s)
-	operatorv1.AddToScheme(s)
-	storev1.AddToScheme(s)
+	require.NoError(t, scheme.AddToScheme(s))
+	require.NoError(t, mcov1beta2.SchemeBuilder.AddToScheme(s))
+	require.NoError(t, observatoriumv1alpha1.AddToScheme(s))
+	require.NoError(t, routev1.Install(s))
+	require.NoError(t, oauthv1.AddToScheme(s))
+	require.NoError(t, clusterv1.Install(s))
+	require.NoError(t, policyv1.AddToScheme(s))
+	require.NoError(t, addonv1beta1.Install(s))
+	require.NoError(t, workv1.Install(s))
+	require.NoError(t, migrationv1alpha1.SchemeBuilder.AddToScheme(s))
+	require.NoError(t, operatorv1.AddToScheme(s))
+	require.NoError(t, storev1.AddToScheme(s))
 
 	observatoriumAPIsvc := createObservatoriumAPIService(name, namespace)
 	serverCACerts := newTestCert(config.ServerCACerts, namespace)
@@ -1071,7 +1074,7 @@ func TestCheckObjStorageStatus(t *testing.T) {
 	}
 
 	s := scheme.Scheme
-	mcov1beta2.SchemeBuilder.AddToScheme(s)
+	require.NoError(t, mcov1beta2.SchemeBuilder.AddToScheme(s))
 	objs := []runtime.Object{mco}
 	c := fake.NewClientBuilder().
 		WithScheme(s).
@@ -1137,7 +1140,7 @@ func TestHandleStorageSizeChange(t *testing.T) {
 	}
 
 	s := scheme.Scheme
-	mcov1beta2.SchemeBuilder.AddToScheme(s)
+	require.NoError(t, mcov1beta2.SchemeBuilder.AddToScheme(s))
 	objs := []runtime.Object{
 		mco,
 		createStatefulSet(mco.Name, config.GetDefaultNamespace(), "test"),
@@ -1170,8 +1173,8 @@ func TestHandleStorageSizeChange(t *testing.T) {
 
 func TestGetStorageClass(t *testing.T) {
 	s := scheme.Scheme
-	mcov1beta2.SchemeBuilder.AddToScheme(s)
-	storev1.SchemeBuilder.AddToScheme(s)
+	require.NoError(t, mcov1beta2.SchemeBuilder.AddToScheme(s))
+	require.NoError(t, storev1.SchemeBuilder.AddToScheme(s))
 
 	tests := []struct {
 		name           string
@@ -1249,7 +1252,7 @@ func TestGetStorageClass(t *testing.T) {
 
 func TestHandleStorageClassChange(t *testing.T) {
 	s := scheme.Scheme
-	mcov1beta2.SchemeBuilder.AddToScheme(s)
+	require.NoError(t, mcov1beta2.SchemeBuilder.AddToScheme(s))
 
 	mco := &mcov1beta2.MultiClusterObservability{
 		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterObservability"},
@@ -1372,22 +1375,6 @@ func createPersistentVolumeClaim(name, namespace, pvcName string) *corev1.Persis
 	}
 }
 
-func newMultiClusterObservability() *mcov1beta2.MultiClusterObservability {
-	return &mcov1beta2.MultiClusterObservability{
-		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterObservability"},
-		ObjectMeta: metav1.ObjectMeta{Name: "test"},
-		Spec: mcov1beta2.MultiClusterObservabilitySpec{
-			StorageConfig: &mcov1beta2.StorageConfig{
-				MetricObjectStorage: &mcoshared.PreConfiguredStorage{
-					Key:  "test",
-					Name: "test",
-				},
-				AlertmanagerStorageSize: "2Gi",
-			},
-		},
-	}
-}
-
 func newStorageClass(name string, isDefault bool) *storev1.StorageClass {
 	sc := &storev1.StorageClass{
 		ObjectMeta: metav1.ObjectMeta{
@@ -1401,26 +1388,6 @@ func newStorageClass(name string, isDefault bool) *storev1.StorageClass {
 		}
 	}
 	return sc
-}
-
-func createNamespaceInstance(name string) *corev1.Namespace {
-	return &corev1.Namespace{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: name,
-			Labels: map[string]string{
-				"openshift.io/cluster-monitoring": "true",
-			},
-		},
-	}
-}
-
-func createAlertManagerConfigMap(name string) *corev1.ConfigMap {
-	return &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: config.GetDefaultNamespace(),
-		},
-	}
 }
 
 func TestPrometheusRulesRemovedFromOpenshiftMonitoringNamespace(t *testing.T) {
@@ -1444,7 +1411,7 @@ func TestPrometheusRulesRemovedFromOpenshiftMonitoringNamespace(t *testing.T) {
 		},
 	}
 	s := scheme.Scheme
-	monitoringv1.SchemeBuilder.AddToScheme(s)
+	require.NoError(t, monitoringv1.SchemeBuilder.AddToScheme(s))
 	objs := []runtime.Object{promRule}
 	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 	r := &MultiClusterObservabilityReconciler{Client: c, Scheme: s}
@@ -1469,7 +1436,7 @@ func TestServiceMonitorRemovedFromOpenshiftMonitoringNamespace(t *testing.T) {
 		},
 	}
 	s := scheme.Scheme
-	monitoringv1.AddToScheme(s)
+	require.NoError(t, monitoringv1.AddToScheme(s))
 	objs := []runtime.Object{sm}
 	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 	r := &MultiClusterObservabilityReconciler{Client: c, Scheme: s}
@@ -1513,9 +1480,9 @@ func TestUndeployMCOAGrafanaResources(t *testing.T) {
 	}
 
 	s := runtime.NewScheme()
-	scheme.AddToScheme(s)
-	mcov1beta2.AddToScheme(s)
-	monitoringv1.AddToScheme(s)
+	require.NoError(t, scheme.AddToScheme(s))
+	require.NoError(t, mcov1beta2.AddToScheme(s))
+	require.NoError(t, monitoringv1.AddToScheme(s))
 
 	controllerRef := metav1.NewControllerRef(mco, mcov1beta2.GroupVersion.WithKind("MultiClusterObservability"))
 	scrapeConfig := &unstructured.Unstructured{}
@@ -1622,9 +1589,9 @@ func TestUndeployMCOAGrafanaResourcesSkipsMissingScrapeConfigCRD(t *testing.T) {
 	}
 
 	s := runtime.NewScheme()
-	scheme.AddToScheme(s)
-	mcov1beta2.AddToScheme(s)
-	monitoringv1.AddToScheme(s)
+	require.NoError(t, scheme.AddToScheme(s))
+	require.NoError(t, mcov1beta2.AddToScheme(s))
+	require.NoError(t, monitoringv1.AddToScheme(s))
 
 	baseClient := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(mco).Build()
 	c := &noMatchScrapeConfigClient{Client: baseClient}
@@ -1640,8 +1607,8 @@ func TestUndeployMCOAGrafanaResourcesSkipsMissingScrapeConfigCRD(t *testing.T) {
 func TestNewMCOACRDEventHandler(t *testing.T) {
 	// Register the necessary schemes
 	s := runtime.NewScheme()
-	scheme.AddToScheme(s)
-	mcov1beta2.AddToScheme(s)
+	require.NoError(t, scheme.AddToScheme(s))
+	require.NoError(t, mcov1beta2.AddToScheme(s))
 
 	existingObjs := []runtime.Object{
 		&mcov1beta2.MultiClusterObservability{
@@ -1779,8 +1746,9 @@ func TestDeleteVestigialProxyIngress(t *testing.T) {
 // based on whether platform metrics collection is enabled.
 func TestSyncMCOACMAGrafanaLink(t *testing.T) {
 	s := runtime.NewScheme()
-	assert.NoError(t, routev1.AddToScheme(s))
-	addonv1beta1.Install(s)
+	require.NoError(t, routev1.Install(s))
+	require.NoError(t, addonv1beta1.Install(s))
+	require.NoError(t, workv1.Install(s))
 
 	grafanaRoute := &routev1.Route{
 		ObjectMeta: metav1.ObjectMeta{
@@ -1881,4 +1849,95 @@ func TestSyncMCOACMAGrafanaLink(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestMCOAWaitForManifestWorks(t *testing.T) {
+	s := scheme.Scheme
+	require.NoError(t, routev1.Install(s))
+	require.NoError(t, workv1.Install(s))
+	require.NoError(t, addonv1beta1.Install(s))
+	require.NoError(t, mcov1beta2.SchemeBuilder.AddToScheme(s))
+
+	mw := &workv1.ManifestWork{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-mw",
+			Namespace: "test-ns",
+			Labels: map[string]string{
+				addonv1beta1.AddonLabelKey: config.MultiClusterObservabilityAddon,
+			},
+		},
+	}
+
+	t.Run("hasMCOAManifestWorks helper", func(t *testing.T) {
+		clientWithWork := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(mw).Build()
+		r1 := &MultiClusterObservabilityReconciler{
+			Client: clientWithWork,
+			Scheme: s,
+		}
+		hasWorks, err := r1.hasMCOAManifestWorks(t.Context())
+		assert.NoError(t, err)
+		assert.True(t, hasWorks)
+
+		clientEmpty := fake.NewClientBuilder().WithScheme(s).Build()
+		r2 := &MultiClusterObservabilityReconciler{
+			Client: clientEmpty,
+			Scheme: s,
+		}
+		hasWorks, err = r2.hasMCOAManifestWorks(t.Context())
+		assert.NoError(t, err)
+		assert.False(t, hasWorks)
+	})
+
+	t.Run("initFinalization delay", func(t *testing.T) {
+		now := metav1.Now()
+		mcoToDelete1 := &mcov1beta2.MultiClusterObservability{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "MultiClusterObservability",
+				APIVersion: "observability.open-cluster-management.io/v1beta2",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:              "test-mco",
+				Finalizers:        []string{resFinalizer},
+				DeletionTimestamp: &now,
+			},
+		}
+
+		clientWithWork := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(mw, mcoToDelete1).Build()
+		r1 := &MultiClusterObservabilityReconciler{
+			Client: clientWithWork,
+			Scheme: s,
+		}
+		res, err := r1.initFinalization(t.Context(), mcoToDelete1)
+		assert.NoError(t, err)
+		assert.Equal(t, mcoaCleanupRequeueInterval, res.RequeueAfter)
+		assert.Contains(t, mcoToDelete1.Finalizers, resFinalizer) // Finalizer should not be removed
+
+		mcoToDelete2 := &mcov1beta2.MultiClusterObservability{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "MultiClusterObservability",
+				APIVersion: "observability.open-cluster-management.io/v1beta2",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:              "test-mco",
+				Finalizers:        []string{resFinalizer},
+				DeletionTimestamp: &now,
+			},
+		}
+
+		clientEmpty := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(mcoToDelete2).Build()
+		r2 := &MultiClusterObservabilityReconciler{
+			Client: clientEmpty,
+			Scheme: s,
+		}
+		res, err = r2.initFinalization(t.Context(), mcoToDelete2)
+		assert.NoError(t, err)
+		assert.Zero(t, res.RequeueAfter)
+
+		// Assert on the API-side state by fetching it from the client.
+		// Since DeletionTimestamp was set and the final finalizer was removed,
+		// the resource should be completely deleted (not found) from the client database.
+		fetchedMCO := &mcov1beta2.MultiClusterObservability{}
+		err = r2.Client.Get(t.Context(), types.NamespacedName{Name: mcoToDelete2.Name}, fetchedMCO)
+		assert.True(t, errors.IsNotFound(err)) // The object is successfully garbage collected on the API-side
+	})
 }

@@ -26,6 +26,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer/yaml"
 	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/util/retry"
 	"k8s.io/klog/v2"
 )
 
@@ -619,25 +620,125 @@ func ModifyMCOCR(opt TestOptions) error {
 	return nil
 }
 
+// SetLegacyAlertForwardingDisabled sets or clears the mco-disable-alerting annotation on the MCO CR.
+// When disabled is true the legacy endpoint-observability-operator stops configuring CMO alert
+// forwarding, which prevents it from interfering with MCOA-managed alert forwarding tests.
+func SetLegacyAlertForwardingDisabled(opt TestOptions, disabled bool) error {
+	clientDynamic := NewKubeClientDynamic(
+		opt.HubCluster.ClusterServerURL,
+		opt.KubeConfig,
+		opt.HubCluster.KubeContext)
+
+	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		mco, getErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+		if getErr != nil {
+			return getErr
+		}
+
+		annotations, _, _ := unstructured.NestedStringMap(mco.Object, "metadata", "annotations")
+		if annotations == nil {
+			annotations = map[string]string{}
+		}
+		if disabled {
+			annotations["mco-disable-alerting"] = "true"
+		} else {
+			delete(annotations, "mco-disable-alerting")
+		}
+		if err := unstructured.SetNestedStringMap(mco.Object, annotations, "metadata", "annotations"); err != nil {
+			return err
+		}
+
+		_, updateErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Update(context.TODO(), mco, metav1.UpdateOptions{})
+		return updateErr
+	})
+}
+
 func SetMCOACapabilities(opt TestOptions, platformMetrics, userWorkloadMetrics bool) error {
 	clientDynamic := NewKubeClientDynamic(
 		opt.HubCluster.ClusterServerURL,
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext)
-	mco, getErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
-	if getErr != nil {
-		return getErr
-	}
 
-	if err := unstructured.SetNestedField(mco.Object, platformMetrics, "spec", "capabilities", "platform", "metrics", "default", "enabled"); err != nil {
-		return err
-	}
-	if err := unstructured.SetNestedField(mco.Object, userWorkloadMetrics, "spec", "capabilities", "userWorkloads", "metrics", "default", "enabled"); err != nil {
-		return err
-	}
+	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		mco, getErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+		if getErr != nil {
+			return getErr
+		}
 
-	_, updateErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Update(context.TODO(), mco, metav1.UpdateOptions{})
-	return updateErr
+		if err := unstructured.SetNestedField(mco.Object, platformMetrics, "spec", "capabilities", "platform", "metrics", "default", "enabled"); err != nil {
+			return err
+		}
+		if !platformMetrics {
+			if err := unstructured.SetNestedField(mco.Object, false, "spec", "capabilities", "platform", "metrics", "alerts", "enabled"); err != nil {
+				return err
+			}
+		}
+		if err := unstructured.SetNestedField(mco.Object, userWorkloadMetrics, "spec", "capabilities", "userWorkloads", "metrics", "default", "enabled"); err != nil {
+			return err
+		}
+		if !userWorkloadMetrics {
+			if err := unstructured.SetNestedField(mco.Object, false, "spec", "capabilities", "userWorkloads", "metrics", "alerts", "enabled"); err != nil {
+				return err
+			}
+		}
+
+		_, updateErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Update(context.TODO(), mco, metav1.UpdateOptions{})
+		return updateErr
+	})
+}
+
+func SetMCOAAlertForwardingCapabilities(opt TestOptions, platformAlerts, userWorkloadAlerts bool) error {
+	clientDynamic := NewKubeClientDynamic(
+		opt.HubCluster.ClusterServerURL,
+		opt.KubeConfig,
+		opt.HubCluster.KubeContext)
+
+	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		mco, getErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+		if getErr != nil {
+			return getErr
+		}
+
+		if err := unstructured.SetNestedField(mco.Object, platformAlerts, "spec", "capabilities", "platform", "metrics", "alerts", "enabled"); err != nil {
+			return err
+		}
+		if err := unstructured.SetNestedField(mco.Object, userWorkloadAlerts, "spec", "capabilities", "userWorkloads", "metrics", "alerts", "enabled"); err != nil {
+			return err
+		}
+
+		_, updateErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Update(context.TODO(), mco, metav1.UpdateOptions{})
+		return updateErr
+	})
+}
+
+func SetMCOAAllCapabilities(opt TestOptions, platformMetrics, platformAlerts, userWorkloadMetrics, userWorkloadAlerts bool) error {
+	clientDynamic := NewKubeClientDynamic(
+		opt.HubCluster.ClusterServerURL,
+		opt.KubeConfig,
+		opt.HubCluster.KubeContext)
+
+	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		mco, getErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+		if getErr != nil {
+			return getErr
+		}
+
+		if err := unstructured.SetNestedField(mco.Object, platformMetrics, "spec", "capabilities", "platform", "metrics", "default", "enabled"); err != nil {
+			return err
+		}
+		if err := unstructured.SetNestedField(mco.Object, platformAlerts, "spec", "capabilities", "platform", "metrics", "alerts", "enabled"); err != nil {
+			return err
+		}
+		if err := unstructured.SetNestedField(mco.Object, userWorkloadMetrics, "spec", "capabilities", "userWorkloads", "metrics", "default", "enabled"); err != nil {
+			return err
+		}
+		if err := unstructured.SetNestedField(mco.Object, userWorkloadAlerts, "spec", "capabilities", "userWorkloads", "metrics", "alerts", "enabled"); err != nil {
+			return err
+		}
+
+		_, updateErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Update(context.TODO(), mco, metav1.UpdateOptions{})
+		return updateErr
+	})
 }
 
 func CheckAdvRetentionConfig(opt TestOptions) (bool, error) {

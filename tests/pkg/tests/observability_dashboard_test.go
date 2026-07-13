@@ -410,7 +410,7 @@ var _ = Describe("Observability: Dashboard Lifecycle", func() {
 
 	AfterEach(func() {
 		if CurrentSpecReport().Failed() {
-			utils.LogFailingTestStandardDebugInfo(testOptions)
+			utils.LogFailingTestStandardDebugInfo(testOptions, false)
 			// Force logs for Grafana pods
 			hubClient := utils.NewKubeClient(
 				testOptions.HubCluster.ClusterServerURL,

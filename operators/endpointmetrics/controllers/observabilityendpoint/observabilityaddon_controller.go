@@ -350,7 +350,7 @@ func (r *ObservabilityAddonReconciler) initFinalization(
 
 		// revert the change to cluster monitoring stack
 		caSecret := AppendHubClusterID(HubAmRouterCASecretName, hubInfo.HubClusterID)
-		err := RevertClusterMonitoringConfig(ctx, r.Client, caSecret)
+		err := RevertClusterMonitoringConfig(ctx, r.Client, caSecret, "")
 		if err != nil {
 			return false, err
 		}
@@ -363,7 +363,7 @@ func (r *ObservabilityAddonReconciler) initFinalization(
 
 		// revert the mTLS CA configurations as well (mirroring the two-pass behavior in cmo-config-revert)
 		mtlsCASecret := AppendHubClusterID(HubAmMtlsCASecretName, hubInfo.HubClusterID)
-		err = RevertClusterMonitoringConfig(ctx, r.Client, mtlsCASecret)
+		err = RevertClusterMonitoringConfig(ctx, r.Client, mtlsCASecret, "")
 		if err != nil {
 			return false, err
 		}

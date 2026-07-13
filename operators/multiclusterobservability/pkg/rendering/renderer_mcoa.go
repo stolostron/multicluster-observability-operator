@@ -32,12 +32,13 @@ const (
 	namePlatformIncidentDetection     = "platformIncidentDetection"
 	uipluginsCRDFQDN                  = "uiplugins.v1alpha1.observability.openshift.io"
 	namePlatformMetricsCollection     = "platformMetricsCollection"
+	namePlatformMetricsAlerts         = "platformMetricsAlerts"
 	nameUserWorkloadLogsCollection    = "userWorkloadLogsCollection"
 	nameUserWorkloadTracesCollection  = "userWorkloadTracesCollection"
 	nameUserWorkloadInstrumentation   = "userWorkloadInstrumentation"
 	nameUserWorkloadMetricsCollection = "userWorkloadMetricsCollection"
+	nameUserWorkloadMetricsAlerts     = "userWorkloadMetricsAlerts"
 	nameMetricsHubHostname            = "metricsHubHostname"
-	nameMetricsAlertManagerHostname   = "metricsAlertManagerHostname"
 	namePLatformMetricsUI             = "platformMetricsUI"
 
 	grafanaMCOAHomeDashboardID = "89eaec849a6e4837a619fb0540c22b13"
@@ -48,10 +49,9 @@ const (
 )
 
 type MCOARendererOptions struct {
-	DisableCMAORender              bool
-	MetricsHubHostname             string
-	MetricsHubAlertmanagerHostname string
-	RightSizingDelegated           bool
+	DisableCMAORender    bool
+	MetricsHubHostname   string
+	RightSizingDelegated bool
 }
 
 // newMCOARenderer initializes the MCOA template rendering functions.
@@ -270,6 +270,11 @@ func (r *MCORenderer) renderAddonDeploymentConfig(
 				if cs.Platform.Metrics.UI.Enabled {
 					appendCustomVar(aodc, namePLatformMetricsUI, uipluginsCRDFQDN)
 				}
+				if cs.Platform.Metrics.Alerts.Enabled {
+					appendCustomVar(aodc, namePlatformMetricsAlerts, "enabled")
+				} else {
+					appendCustomVar(aodc, namePlatformMetricsAlerts, "disabled")
+				}
 			}
 			if cs.Platform.Analytics.IncidentDetection.Enabled {
 				appendCustomVar(aodc, namePlatformIncidentDetection, uipluginsCRDFQDN)
@@ -303,6 +308,11 @@ func (r *MCORenderer) renderAddonDeploymentConfig(
 			if cs.UserWorkloads.Metrics.Default.Enabled {
 				fqdn := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.PrometheusAgentCRDName)
 				appendCustomVar(aodc, nameUserWorkloadMetricsCollection, fqdn)
+				if cs.UserWorkloads.Metrics.Alerts.Enabled {
+					appendCustomVar(aodc, nameUserWorkloadMetricsAlerts, "enabled")
+				} else {
+					appendCustomVar(aodc, nameUserWorkloadMetricsAlerts, "disabled")
+				}
 			}
 			if cs.UserWorkloads.Traces.Collection.Collector.Enabled {
 				fqdn := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.OpenTelemetryCollectorCRDName)
@@ -320,13 +330,11 @@ func (r *MCORenderer) renderAddonDeploymentConfig(
 				return nil, fmt.Errorf("rendererOptions is nil")
 			}
 			metricsHubHostname := r.rendererOptions.MCOAOptions.MetricsHubHostname
-			metricsHubAlertmanagerHostname := r.rendererOptions.MCOAOptions.MetricsHubAlertmanagerHostname
-			if metricsHubHostname == "" || metricsHubAlertmanagerHostname == "" {
-				return nil, fmt.Errorf("MetricsHubHostname (%q) and MetricsHubAlertmanagerHostname (%q) are required when metrics collection is enabled",
-					metricsHubHostname, metricsHubAlertmanagerHostname)
+			if metricsHubHostname == "" {
+				return nil, fmt.Errorf("MetricsHubHostname (%q) is required when metrics collection is enabled",
+					metricsHubHostname)
 			}
 			appendCustomVar(aodc, nameMetricsHubHostname, metricsHubHostname)
-			appendCustomVar(aodc, nameMetricsAlertManagerHostname, metricsHubAlertmanagerHostname)
 		}
 
 		renderedSpec, err := runtime.DefaultUnstructuredConverter.ToUnstructured(&aodc.Spec)

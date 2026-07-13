@@ -97,6 +97,15 @@ type PlatformLogsSpec struct {
 	Collection PlatformLogsCollectionSpec `json:"collection,omitempty"`
 }
 
+// MetricsAlertsSpec defines the spec for the addon to forward alerts.
+type MetricsAlertsSpec struct {
+	// Enabled defines a flag to enable/disable the metrics alerts forwarding.
+	//
+	// +optional
+	// +kubebuilder:validation:Optional
+	Enabled bool `json:"enabled,omitempty"`
+}
+
 // PlatformMetricsSpec defines the spec for the addon to collect, forward and store metrics
 // from fleet managed clusters.
 type PlatformMetricsSpec struct {
@@ -112,6 +121,11 @@ type PlatformMetricsSpec struct {
 	// +optional
 	// +kubebuilder:validation:Optional
 	UI UIConfig `json:"ui,omitempty"`
+	// Alerts defines the spec for the addon to forward alerts from fleet managed clusters.
+	//
+	// +optional
+	// +kubebuilder:validation:Optional
+	Alerts MetricsAlertsSpec `json:"alerts,omitempty"`
 }
 
 // PlatformCapabilitiesSpec defines the observability capabilities managed by the addon
@@ -233,6 +247,11 @@ type UserWorkloadMetricsSpec struct {
 	// +optional
 	// +kubebuilder:validation:Optional
 	Default UserWorkloadMetricsDefaultSpec `json:"default,omitempty"`
+	// Alerts defines the spec for the addon to forward alerts from user workloads hosted on fleet managed clusters.
+	//
+	// +optional
+	// +kubebuilder:validation:Optional
+	Alerts MetricsAlertsSpec `json:"alerts,omitempty"`
 }
 
 // OpenTelemetryCollectorSpec defines the spec for the addon to collect and forward observability signals

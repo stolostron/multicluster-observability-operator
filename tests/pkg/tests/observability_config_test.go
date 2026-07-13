@@ -583,7 +583,7 @@ var _ = Describe("", func() {
 
 	AfterEach(func() {
 		if CurrentSpecReport().Failed() {
-			utils.LogFailingTestStandardDebugInfo(testOptions)
+			utils.LogFailingTestStandardDebugInfo(testOptions, false)
 		}
 		testFailed = testFailed || CurrentSpecReport().Failed()
 	})

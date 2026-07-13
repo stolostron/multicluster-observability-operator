@@ -27,6 +27,7 @@ type MCOAAgentReconciler struct {
 	Recorder                 events.EventRecorder
 	Namespace                string
 	ClusterID                string
+	ClusterName              string
 	AlertmanagerEndpoint     string
 	CASecret                 string
 	CertSecret               string
@@ -42,6 +43,7 @@ func NewMCOAAgentReconciler(
 	recorder events.EventRecorder,
 	namespace string,
 	clusterID string,
+	clusterName string,
 	alertmanagerEndpoint string,
 	caSecret string,
 	certSecret string,
@@ -55,6 +57,7 @@ func NewMCOAAgentReconciler(
 		Recorder:                 recorder,
 		Namespace:                namespace,
 		ClusterID:                clusterID,
+		ClusterName:              clusterName,
 		AlertmanagerEndpoint:     alertmanagerEndpoint,
 		CASecret:                 caSecret,
 		CertSecret:               certSecret,

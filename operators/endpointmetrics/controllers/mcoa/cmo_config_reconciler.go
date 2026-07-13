@@ -30,7 +30,7 @@ func (r *MCOAAgentReconciler) reconcileCMO(ctx context.Context, req client.Objec
 	// If Alertmanager forwarding is disabled, we ensure our config is removed.
 	if r.AlertmanagerEndpoint == "" {
 		r.Log.Info("Alertmanager endpoint is empty, ensuring Hub configuration is removed")
-		return observabilityendpoint.RevertClusterMonitoringConfig(ctx, r.Client, r.CASecret)
+		return observabilityendpoint.RevertClusterMonitoringConfig(ctx, r.Client, r.CASecret, r.ClusterName)
 	}
 
 	cm := &corev1.ConfigMap{}
@@ -58,6 +58,7 @@ func (r *MCOAAgentReconciler) reconcileCMO(ctx context.Context, req client.Objec
 		ctx,
 		r.Client,
 		r.ClusterID,
+		r.ClusterName,
 		r.AlertmanagerEndpoint,
 		r.CASecret,
 		r.CertSecret,
@@ -84,11 +85,6 @@ func (r *MCOAAgentReconciler) reconcileUWLConfig(ctx context.Context) error {
 }
 
 func (r *MCOAAgentReconciler) detectConflict(cm *corev1.ConfigMap) bool {
-	// If ACM didn't create/update this config, we don't treat it as a conflict yet.
-	if !observabilityendpoint.InManagedFields(cm) {
-		return false
-	}
-
 	configYAML, ok := observabilityendpoint.HasClusterMonitoringConfigData(cm)
 	if !ok {
 		return true
