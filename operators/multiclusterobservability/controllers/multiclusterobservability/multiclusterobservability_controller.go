@@ -343,19 +343,12 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		// and ManifestWorks on spokes. MCOAResources() skips CMA when DisableCMAORender
 		// is set (to preserve user annotations during normal operation), but during cleanup
 		// we must remove it to trigger the full addon lifecycle teardown.
-		if err := r.deleteMCOACMA(ctx); err != nil {
+		requeue, res, err := r.cleanupMCOAManifestWorks(ctx, reqLogger)
+		if err != nil {
 			return ctrl.Result{}, err
 		}
-
-		// Wait for ManifestWorks to be cleaned up before undeploying other MCOA hub resources
-		// (including the addon-manager deployment).
-		hasWorks, err := r.hasMCOAManifestWorks(ctx)
-		if err != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to check for remaining ManifestWorks during MCOA cleanup: %w", err)
-		}
-		if hasWorks {
-			reqLogger.Info("Waiting for MCOA ManifestWorks to be deleted")
-			return ctrl.Result{RequeueAfter: mcoaCleanupRequeueInterval}, nil
+		if requeue {
+			return res, nil
 		}
 
 		namespace, labels := renderer.NamespaceAndLabels()
@@ -466,19 +459,12 @@ func (r *MultiClusterObservabilityReconciler) initFinalization(ctx context.Conte
 
 		// Explicitly delete the CMA so the addon framework cleans up ManagedClusterAddons
 		// and ManifestWorks on spokes before we proceed with deleting other resources.
-		if err := r.deleteMCOACMA(ctx); err != nil {
+		requeue, res, err := r.cleanupMCOAManifestWorks(ctx, log)
+		if err != nil {
 			return ctrl.Result{}, err
 		}
-
-		// Wait for ManifestWorks to be cleaned up before removing cluster scoped resources
-		// and deleting the finalizer, keeping the addon-manager deployment alive.
-		hasWorks, err := r.hasMCOAManifestWorks(ctx)
-		if err != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to check for remaining ManifestWorks during finalization: %w", err)
-		}
-		if hasWorks {
-			log.Info("Waiting for MCOA ManifestWorks to be deleted during finalization")
-			return ctrl.Result{RequeueAfter: mcoaCleanupRequeueInterval}, nil
+		if requeue {
+			return res, nil
 		}
 
 		log.Info("To delete resources across namespaces")
@@ -1289,4 +1275,23 @@ func (r *MultiClusterObservabilityReconciler) hasMCOAManifestWorks(ctx context.C
 		return false, fmt.Errorf("failed to list ManifestWorks: %w", err)
 	}
 	return len(workList.Items) > 0, nil
+}
+
+// cleanupMCOAManifestWorks deletes the ClusterManagementAddOn (CMA) and waits for its ManifestWorks to be cleaned up.
+// It returns a boolean indicating whether reconciliation should be requeued, and any error encountered.
+func (r *MultiClusterObservabilityReconciler) cleanupMCOAManifestWorks(ctx context.Context, logger logr.Logger) (bool, ctrl.Result, error) {
+	if err := r.deleteMCOACMA(ctx); err != nil {
+		return false, ctrl.Result{}, err
+	}
+
+	hasWorks, err := r.hasMCOAManifestWorks(ctx)
+	if err != nil {
+		return false, ctrl.Result{}, fmt.Errorf("failed to check for remaining ManifestWorks during MCOA cleanup: %w", err)
+	}
+	if hasWorks {
+		logger.Info("Waiting for MCOA ManifestWorks to be deleted")
+		return true, ctrl.Result{RequeueAfter: mcoaCleanupRequeueInterval}, nil
+	}
+
+	return false, ctrl.Result{}, nil
 }
