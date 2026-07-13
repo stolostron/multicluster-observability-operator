@@ -789,21 +789,6 @@ func unset(ctx context.Context, c client.Client, ns string) error {
 	return err
 }
 
-// InManagedFields checks if the configmap has had a CRUD operation by endpoint-monitoring-operator
-func InManagedFields(cm *corev1.ConfigMap) bool {
-	for _, field := range cm.GetManagedFields() {
-		if field.Manager == EndpointMonitoringOperatorMgr {
-			return true
-		}
-	}
-	log.Info(
-		"endpoint-monitoring-operator is not a manager of configmap",
-		"name",
-		clusterMonitoringConfigName,
-	)
-	return false
-}
-
 // IsManaged checks if the additional alertmanager config is managed by ACM.
 //
 // This checks both the exact caSecret name and any matching legacy names with the same suffix.

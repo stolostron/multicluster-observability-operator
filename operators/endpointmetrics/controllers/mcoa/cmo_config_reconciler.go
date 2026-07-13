@@ -85,11 +85,6 @@ func (r *MCOAAgentReconciler) reconcileUWLConfig(ctx context.Context) error {
 }
 
 func (r *MCOAAgentReconciler) detectConflict(cm *corev1.ConfigMap) bool {
-	// If ACM didn't create/update this config, we don't treat it as a conflict yet.
-	if !observabilityendpoint.InManagedFields(cm) {
-		return false
-	}
-
 	configYAML, ok := observabilityendpoint.HasClusterMonitoringConfigData(cm)
 	if !ok {
 		return true
