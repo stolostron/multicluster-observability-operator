@@ -16,6 +16,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/klog/v2"
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
 )
 
@@ -31,7 +32,7 @@ var openshiftLabelSelector = labels.SelectorFromValidatedSet(map[string]string{
 
 type ClustersInfo struct {
 	Name           string
-	isLocalCluster bool
+	IsLocalCluster bool
 }
 
 func UpdateObservabilityFromManagedCluster(opt TestOptions, enableObservability bool) error {
@@ -76,13 +77,13 @@ func ListManagedClusters(opt TestOptions) ([]ClustersInfo, error) {
 
 		status, ok := obj.Object["status"].(map[string]any)
 		if !ok {
-			// No status found, skip this cluster
+			klog.Infof("Skip cluster %s: no status found", name)
 			continue
 		}
 
 		conditions, ok := status["conditions"].([]any)
 		if !ok {
-			// No conditions found, skip this cluster
+			klog.Infof("Skip cluster %s: no conditions found", name)
 			continue
 		}
 
@@ -100,10 +101,13 @@ func ListManagedClusters(opt TestOptions) ([]ClustersInfo, error) {
 
 		// Only add clusters with ManagedClusterConditionAvailable status == True
 		if available {
+			klog.Infof("Add cluster %s to the list", name)
 			clusters = append(clusters, ClustersInfo{
 				Name:           name,
-				isLocalCluster: metadata["labels"].(map[string]any)["local-cluster"] == "true",
+				IsLocalCluster: metadata["labels"].(map[string]any)["local-cluster"] == "true",
 			})
+		} else {
+			klog.Infof("Skip cluster %s: ManagedClusterConditionAvailable is not True", name)
 		}
 	}
 
