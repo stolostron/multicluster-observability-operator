@@ -375,7 +375,6 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	// in the testing env, the service can be accessed via service name, we assume that
 	// in testing env, the local-cluster is the only allowed managedcluster
 	if ingressCtlCrdExists {
-
 		// expose observatorium api gateway
 		result, err = GenerateAPIGatewayRoute(ctx, r.Client, r.Scheme, instance)
 		if result != nil {
