@@ -360,20 +360,20 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 
 	// Register operator types with the runtime scheme.
 	s := runtime.NewScheme()
-	scheme.AddToScheme(s)
-	mcov1beta2.SchemeBuilder.AddToScheme(s)
-	oav1beta1.AddToScheme(s)
-	observatoriumv1alpha1.AddToScheme(s)
-	routev1.AddToScheme(s)
-	oauthv1.AddToScheme(s)
-	clusterv1.AddToScheme(s)
-	clusterv1beta1.AddToScheme(s)
-	policyv1.AddToScheme(s)
-	addonv1beta1.Install(s)
-	_ = workv1.AddToScheme(s)
-	migrationv1alpha1.SchemeBuilder.AddToScheme(s)
-	operatorv1.AddToScheme(s)
-	storev1.AddToScheme(s)
+	require.NoError(t, scheme.AddToScheme(s))
+	require.NoError(t, mcov1beta2.SchemeBuilder.AddToScheme(s))
+	require.NoError(t, oav1beta1.AddToScheme(s))
+	require.NoError(t, observatoriumv1alpha1.AddToScheme(s))
+	require.NoError(t, routev1.Install(s))
+	require.NoError(t, oauthv1.AddToScheme(s))
+	require.NoError(t, clusterv1.Install(s))
+	require.NoError(t, clusterv1beta1.Install(s))
+	require.NoError(t, policyv1.AddToScheme(s))
+	require.NoError(t, addonv1beta1.Install(s))
+	require.NoError(t, workv1.Install(s))
+	require.NoError(t, migrationv1alpha1.SchemeBuilder.AddToScheme(s))
+	require.NoError(t, operatorv1.AddToScheme(s))
+	require.NoError(t, storev1.AddToScheme(s))
 
 	svc := createObservatoriumAPIService(name, namespace)
 	serverCACerts := newTestCert(config.ServerCACerts, namespace)
@@ -784,7 +784,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 
 func TestInitFinalizationAddsResFinalizer(t *testing.T) {
 	s := scheme.Scheme
-	mcov1beta2.SchemeBuilder.AddToScheme(s)
+	require.NoError(t, mcov1beta2.SchemeBuilder.AddToScheme(s))
 
 	mco := &mcov1beta2.MultiClusterObservability{
 		ObjectMeta: metav1.ObjectMeta{
@@ -851,18 +851,18 @@ func TestImageReplaceForMCO(t *testing.T) {
 
 	// Register operator types with the runtime scheme.
 	s := runtime.NewScheme()
-	scheme.AddToScheme(s)
-	mcov1beta2.SchemeBuilder.AddToScheme(s)
-	observatoriumv1alpha1.AddToScheme(s)
-	routev1.AddToScheme(s)
-	oauthv1.AddToScheme(s)
-	clusterv1.AddToScheme(s)
-	policyv1.AddToScheme(s)
-	addonv1beta1.Install(s)
-	_ = workv1.AddToScheme(s)
-	migrationv1alpha1.SchemeBuilder.AddToScheme(s)
-	operatorv1.AddToScheme(s)
-	storev1.AddToScheme(s)
+	require.NoError(t, scheme.AddToScheme(s))
+	require.NoError(t, mcov1beta2.SchemeBuilder.AddToScheme(s))
+	require.NoError(t, observatoriumv1alpha1.AddToScheme(s))
+	require.NoError(t, routev1.Install(s))
+	require.NoError(t, oauthv1.AddToScheme(s))
+	require.NoError(t, clusterv1.Install(s))
+	require.NoError(t, policyv1.AddToScheme(s))
+	require.NoError(t, addonv1beta1.Install(s))
+	require.NoError(t, workv1.Install(s))
+	require.NoError(t, migrationv1alpha1.SchemeBuilder.AddToScheme(s))
+	require.NoError(t, operatorv1.AddToScheme(s))
+	require.NoError(t, storev1.AddToScheme(s))
 
 	observatoriumAPIsvc := createObservatoriumAPIService(name, namespace)
 	serverCACerts := newTestCert(config.ServerCACerts, namespace)
@@ -1074,7 +1074,7 @@ func TestCheckObjStorageStatus(t *testing.T) {
 	}
 
 	s := scheme.Scheme
-	mcov1beta2.SchemeBuilder.AddToScheme(s)
+	require.NoError(t, mcov1beta2.SchemeBuilder.AddToScheme(s))
 	objs := []runtime.Object{mco}
 	c := fake.NewClientBuilder().
 		WithScheme(s).
@@ -1140,7 +1140,7 @@ func TestHandleStorageSizeChange(t *testing.T) {
 	}
 
 	s := scheme.Scheme
-	mcov1beta2.SchemeBuilder.AddToScheme(s)
+	require.NoError(t, mcov1beta2.SchemeBuilder.AddToScheme(s))
 	objs := []runtime.Object{
 		mco,
 		createStatefulSet(mco.Name, config.GetDefaultNamespace(), "test"),
@@ -1173,8 +1173,8 @@ func TestHandleStorageSizeChange(t *testing.T) {
 
 func TestGetStorageClass(t *testing.T) {
 	s := scheme.Scheme
-	mcov1beta2.SchemeBuilder.AddToScheme(s)
-	storev1.SchemeBuilder.AddToScheme(s)
+	require.NoError(t, mcov1beta2.SchemeBuilder.AddToScheme(s))
+	require.NoError(t, storev1.SchemeBuilder.AddToScheme(s))
 
 	tests := []struct {
 		name           string
@@ -1252,7 +1252,7 @@ func TestGetStorageClass(t *testing.T) {
 
 func TestHandleStorageClassChange(t *testing.T) {
 	s := scheme.Scheme
-	mcov1beta2.SchemeBuilder.AddToScheme(s)
+	require.NoError(t, mcov1beta2.SchemeBuilder.AddToScheme(s))
 
 	mco := &mcov1beta2.MultiClusterObservability{
 		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterObservability"},
@@ -1375,22 +1375,6 @@ func createPersistentVolumeClaim(name, namespace, pvcName string) *corev1.Persis
 	}
 }
 
-func newMultiClusterObservability() *mcov1beta2.MultiClusterObservability {
-	return &mcov1beta2.MultiClusterObservability{
-		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterObservability"},
-		ObjectMeta: metav1.ObjectMeta{Name: "test"},
-		Spec: mcov1beta2.MultiClusterObservabilitySpec{
-			StorageConfig: &mcov1beta2.StorageConfig{
-				MetricObjectStorage: &mcoshared.PreConfiguredStorage{
-					Key:  "test",
-					Name: "test",
-				},
-				AlertmanagerStorageSize: "2Gi",
-			},
-		},
-	}
-}
-
 func newStorageClass(name string, isDefault bool) *storev1.StorageClass {
 	sc := &storev1.StorageClass{
 		ObjectMeta: metav1.ObjectMeta{
@@ -1404,26 +1388,6 @@ func newStorageClass(name string, isDefault bool) *storev1.StorageClass {
 		}
 	}
 	return sc
-}
-
-func createNamespaceInstance(name string) *corev1.Namespace {
-	return &corev1.Namespace{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: name,
-			Labels: map[string]string{
-				"openshift.io/cluster-monitoring": "true",
-			},
-		},
-	}
-}
-
-func createAlertManagerConfigMap(name string) *corev1.ConfigMap {
-	return &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: config.GetDefaultNamespace(),
-		},
-	}
 }
 
 func TestPrometheusRulesRemovedFromOpenshiftMonitoringNamespace(t *testing.T) {
@@ -1447,7 +1411,7 @@ func TestPrometheusRulesRemovedFromOpenshiftMonitoringNamespace(t *testing.T) {
 		},
 	}
 	s := scheme.Scheme
-	monitoringv1.SchemeBuilder.AddToScheme(s)
+	require.NoError(t, monitoringv1.SchemeBuilder.AddToScheme(s))
 	objs := []runtime.Object{promRule}
 	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 	r := &MultiClusterObservabilityReconciler{Client: c, Scheme: s}
@@ -1472,7 +1436,7 @@ func TestServiceMonitorRemovedFromOpenshiftMonitoringNamespace(t *testing.T) {
 		},
 	}
 	s := scheme.Scheme
-	monitoringv1.AddToScheme(s)
+	require.NoError(t, monitoringv1.AddToScheme(s))
 	objs := []runtime.Object{sm}
 	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 	r := &MultiClusterObservabilityReconciler{Client: c, Scheme: s}
@@ -1516,9 +1480,9 @@ func TestUndeployMCOAGrafanaResources(t *testing.T) {
 	}
 
 	s := runtime.NewScheme()
-	scheme.AddToScheme(s)
-	mcov1beta2.AddToScheme(s)
-	monitoringv1.AddToScheme(s)
+	require.NoError(t, scheme.AddToScheme(s))
+	require.NoError(t, mcov1beta2.AddToScheme(s))
+	require.NoError(t, monitoringv1.AddToScheme(s))
 
 	controllerRef := metav1.NewControllerRef(mco, mcov1beta2.GroupVersion.WithKind("MultiClusterObservability"))
 	scrapeConfig := &unstructured.Unstructured{}
@@ -1625,9 +1589,9 @@ func TestUndeployMCOAGrafanaResourcesSkipsMissingScrapeConfigCRD(t *testing.T) {
 	}
 
 	s := runtime.NewScheme()
-	scheme.AddToScheme(s)
-	mcov1beta2.AddToScheme(s)
-	monitoringv1.AddToScheme(s)
+	require.NoError(t, scheme.AddToScheme(s))
+	require.NoError(t, mcov1beta2.AddToScheme(s))
+	require.NoError(t, monitoringv1.AddToScheme(s))
 
 	baseClient := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(mco).Build()
 	c := &noMatchScrapeConfigClient{Client: baseClient}
@@ -1643,8 +1607,8 @@ func TestUndeployMCOAGrafanaResourcesSkipsMissingScrapeConfigCRD(t *testing.T) {
 func TestNewMCOACRDEventHandler(t *testing.T) {
 	// Register the necessary schemes
 	s := runtime.NewScheme()
-	scheme.AddToScheme(s)
-	mcov1beta2.AddToScheme(s)
+	require.NoError(t, scheme.AddToScheme(s))
+	require.NoError(t, mcov1beta2.AddToScheme(s))
 
 	existingObjs := []runtime.Object{
 		&mcov1beta2.MultiClusterObservability{
@@ -1782,9 +1746,9 @@ func TestDeleteVestigialProxyIngress(t *testing.T) {
 // based on whether platform metrics collection is enabled.
 func TestSyncMCOACMAGrafanaLink(t *testing.T) {
 	s := runtime.NewScheme()
-	assert.NoError(t, routev1.AddToScheme(s))
-	addonv1beta1.Install(s)
-	_ = workv1.AddToScheme(s)
+	require.NoError(t, routev1.Install(s))
+	require.NoError(t, addonv1beta1.Install(s))
+	require.NoError(t, workv1.Install(s))
 
 	grafanaRoute := &routev1.Route{
 		ObjectMeta: metav1.ObjectMeta{
@@ -1889,10 +1853,10 @@ func TestSyncMCOACMAGrafanaLink(t *testing.T) {
 
 func TestMCOAWaitForManifestWorks(t *testing.T) {
 	s := scheme.Scheme
-	_ = routev1.AddToScheme(s)
-	_ = mcov1beta2.SchemeBuilder.AddToScheme(s)
-	addonv1beta1.Install(s)
-	_ = workv1.AddToScheme(s)
+	require.NoError(t, routev1.Install(s))
+	require.NoError(t, workv1.Install(s))
+	require.NoError(t, addonv1beta1.Install(s))
+	require.NoError(t, mcov1beta2.SchemeBuilder.AddToScheme(s))
 
 	mw := &workv1.ManifestWork{
 		ObjectMeta: metav1.ObjectMeta{
