@@ -164,6 +164,12 @@ func doCleanup(args []string) error {
 		errs = append(errs, err)
 	}
 
+	setupLog.Info("Cleaning up OBO CRDs")
+	if err := mcoa.CleanUpCRDs(ctx, cl); err != nil {
+		setupLog.Error(err, "failed to clean up OBO CRDs")
+		errs = append(errs, err)
+	}
+
 	if len(errs) > 0 {
 		return fmt.Errorf("cleanup failed: %w", errors.Join(errs...))
 	}
@@ -216,6 +222,8 @@ func runMCOA(args []string) {
 		setupLog.Error(err, "Failed to create the CRD client")
 		os.Exit(1)
 	}
+
+	ctx := ctrl.SetupSignalHandler()
 
 	if namespace == "" {
 		setupLog.Error(fmt.Errorf("namespace flag not set"), "unable to start manager")
@@ -284,6 +292,21 @@ func runMCOA(args []string) {
 		os.Exit(1)
 	}
 
+	cl, err := client.New(mgr.GetConfig(), client.Options{Scheme: scheme})
+	if err != nil {
+		setupLog.Error(err, "unable to create direct client for CRD deployment")
+		os.Exit(1)
+	}
+
+	crdCtx, crdCancel := context.WithTimeout(ctx, 2*time.Minute)
+	setupLog.Info("Deploying OBO CRDs")
+	err = mcoa.DeployCRDs(crdCtx, cl)
+	crdCancel()
+	if err != nil {
+		setupLog.Error(err, "failed to deploy OBO CRDs")
+		os.Exit(1)
+	}
+
 	if err = mcoa.NewMCOAAgentReconciler(
 		mgr.GetClient(),
 		ctrl.Log.WithName("controllers").WithName("mcoa-endpoint-controller"),
@@ -336,7 +359,6 @@ func runMCOA(args []string) {
 
 	setupLog.Info("starting mcoa manager")
 	if err := mgr.Start(ctx); err != nil {
-		cancel()
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
 	}

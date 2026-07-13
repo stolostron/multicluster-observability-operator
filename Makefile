@@ -127,11 +127,15 @@ go-lint: $(GOLANGCI_LINT) ## Run the golangci linter
 check-metrics:
 	@$(MAKE) -C cicd-scripts/metrics check-metrics
 
+.PHONY: download-crds
+download-crds: ## Download OBO CRDs.
+	@./tools/download-rhobs-crds.sh
+
 .PHONY: unit-tests ## Run all unit tests.
 unit-tests: unit-tests-operators unit-tests-loaders unit-tests-proxy unit-tests-collectors
 
 .PHONY: unit-tests-operators
-unit-tests-operators:  ## Run operators unit tests only.
+unit-tests-operators: download-crds ## Run operators unit tests only.
 	go test -race ${VERBOSE} `go list ./operators/... | $(GREP) -v test`
 
 .PHONY: unit-tests-loaders
