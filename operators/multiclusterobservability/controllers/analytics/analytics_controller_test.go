@@ -17,6 +17,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	addonv1beta1 "open-cluster-management.io/api/addon/v1beta1"
@@ -111,6 +112,36 @@ func TestEnsureRightSizingDefaultsAddsMissingFlags(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, persisted.Spec.Capabilities.Platform.Analytics.NamespaceRightSizingRecommendation.Enabled)
 	require.True(t, persisted.Spec.Capabilities.Platform.Analytics.VirtualizationRightSizingRecommendation.Enabled)
+}
+
+func TestEnsureRightSizingDefaultsPreservesExistingValue(t *testing.T) {
+	scheme := setupTestScheme(t)
+
+	// Use unstructured object so namespace RS has enabled=true explicitly
+	// and virtualization RS is truly absent (not Go's zero-value false).
+	mco := &unstructured.Unstructured{}
+	mco.SetGroupVersionKind(mcoGVK)
+	mco.SetName("observability")
+	require.NoError(t, unstructured.SetNestedField(mco.Object, true,
+		"spec", "capabilities", "platform", "analytics", "namespaceRightSizingRecommendation", "enabled"))
+	// Deliberately do NOT set virtualizationRightSizingRecommendation — it's absent
+
+	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(mco).Build()
+
+	// Create a typed instance to pass to ensureRightSizingDefaults
+	typedMCO := &mcov1beta2.MultiClusterObservability{}
+	require.NoError(t, c.Get(context.TODO(), types.NamespacedName{Name: "observability"}, typedMCO))
+
+	r := &AnalyticsReconciler{Client: c}
+	updated, err := r.ensureRightSizingDefaults(context.TODO(), typedMCO, log)
+	require.NoError(t, err)
+
+	// Namespace RS must stay true (explicitly set by user)
+	require.True(t, updated.Spec.Capabilities.Platform.Analytics.NamespaceRightSizingRecommendation.Enabled,
+		"existing true value must be preserved")
+	// Virtualization RS must default to true (was absent)
+	require.True(t, updated.Spec.Capabilities.Platform.Analytics.VirtualizationRightSizingRecommendation.Enabled,
+		"absent field must default to true")
 }
 
 func TestAnalyticsReconciler_FeatureEnabled(t *testing.T) {
