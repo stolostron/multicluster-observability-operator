@@ -242,8 +242,9 @@ func main() {
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme: scheme,
 		Metrics: server.Options{
-			BindAddress: fmt.Sprintf("%s:%d", metricsHost, metricsPort),
-			TLSOpts:     []func(*tls.Config){tlsConfig},
+			BindAddress:   fmt.Sprintf("%s:%d", metricsHost, metricsPort),
+			TLSOpts:       []func(*tls.Config){tlsConfig},
+			SecureServing: true,
 		},
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,

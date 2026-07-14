@@ -403,8 +403,9 @@ func runStandard(args []string) {
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme: scheme,
 		Metrics: server.Options{
-			BindAddress: metricsAddr,
-			TLSOpts:     []func(*tls.Config){tlsConfig},
+			BindAddress:   metricsAddr,
+			TLSOpts:       []func(*tls.Config){tlsConfig},
+			SecureServing: true,
 		},
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
