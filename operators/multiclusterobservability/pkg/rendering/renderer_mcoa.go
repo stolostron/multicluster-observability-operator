@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"maps"
 	"net/url"
+
 	"github.com/imdario/mergo"
 	obv1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"

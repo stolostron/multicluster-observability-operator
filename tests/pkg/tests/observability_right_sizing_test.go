@@ -596,7 +596,7 @@ var _ = Describe("Always-MCOA right-sizing: ADC reflects CR spec state (rightsiz
 		}, 2*time.Minute, 10*time.Second).Should(Succeed())
 	})
 
-	Context("when both RS features are enabled", func() {
+	Context("when both RS features are enabled", Ordered, func() {
 		It("Should always set rightSizingDelegated to 'true'", func() {
 			Eventually(func() error {
 				val, err := getADCCustomVar(dynClient, adcName, adcNamespace, delegatedKey)
@@ -640,7 +640,7 @@ var _ = Describe("Always-MCOA right-sizing: ADC reflects CR spec state (rightsiz
 		})
 	})
 
-	Context("when namespace RS is disabled but virtualization RS remains enabled", func() {
+	Context("when namespace RS is disabled but virtualization RS remains enabled", Ordered, func() {
 		BeforeAll(func() {
 			By("Disabling only namespace right-sizing")
 			Eventually(func() error {
@@ -691,7 +691,7 @@ var _ = Describe("Always-MCOA right-sizing: ADC reflects CR spec state (rightsiz
 		})
 	})
 
-	Context("when both RS features are disabled", func() {
+	Context("when both RS features are disabled", Ordered, func() {
 		BeforeAll(func() {
 			By("Disabling both right-sizing features")
 			Eventually(func() error {
