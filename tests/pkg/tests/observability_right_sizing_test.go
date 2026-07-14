@@ -28,7 +28,6 @@ var _ = Describe("Right-sizing: defaults are enabled on fresh install", Ordered,
 	mcoGVR := utils.NewMCOGVRV1BETA2()
 
 	BeforeAll(func() {
-		// initialize clients once (if not already)
 		if hubClient == nil {
 			hubClient = utils.NewKubeClient(
 				testOptions.HubCluster.ClusterServerURL,
@@ -53,7 +52,6 @@ var _ = Describe("Right-sizing: defaults are enabled on fresh install", Ordered,
 				return err
 			}
 
-			// Ensure the analytics map exists but the enabled flags are absent.
 			_ = unstructured.SetNestedMap(mco.Object, map[string]any{}, "spec", "capabilities", "platform", "analytics")
 			unstructured.RemoveNestedField(mco.Object, "spec", "capabilities", "platform", "analytics", "namespaceRightSizingRecommendation", "enabled")
 			unstructured.RemoveNestedField(mco.Object, "spec", "capabilities", "platform", "analytics", "virtualizationRightSizingRecommendation", "enabled")
@@ -100,7 +98,6 @@ var _ = Describe("RHACM4K-55205: Enable and teardown namespace right-sizing reco
 	)
 
 	BeforeAll(func() {
-		// initialize clients once
 		hubClient = utils.NewKubeClient(
 			testOptions.HubCluster.ClusterServerURL,
 			testOptions.KubeConfig,
@@ -145,37 +142,35 @@ var _ = Describe("RHACM4K-55205: Enable and teardown namespace right-sizing reco
 				Update(context.TODO(), mco, metav1.UpdateOptions{})
 			return err
 		}, 2*time.Minute, 10*time.Second).Should(Succeed())
+	})
 
-		By("Forcing an update to the rs-namespace-config ConfigMap to trigger policy/placement reconciliation")
+	It("Should set ADC right-sizing delegation to 'true' and namespace RS to 'enabled'", func() {
 		Eventually(func() error {
-			cm, err := dynClient.Resource(configMapGVR).
-				Namespace("open-cluster-management-observability").
-				Get(context.TODO(), "rs-namespace-config", metav1.GetOptions{})
+			delegated, err := getADCCustomVar(dynClient, "multicluster-observability-addon", MCO_NAMESPACE, "rightSizingDelegated")
 			if err != nil {
 				return err
 			}
-			data, ok := cm.Object["data"].(map[string]any)
-			if !ok || data == nil {
-				data = map[string]any{}
+			if delegated != "true" {
+				return fmt.Errorf("expected ADC rightSizingDelegated=%q, got %q", "true", delegated)
 			}
-			// Add a harmless marker key to change .data and trigger the ConfigMap predicate.
-			data["e2e-trigger"] = fmt.Sprintf("g0-%d", time.Now().UnixNano())
-			cm.Object["data"] = data
-			_, err = dynClient.Resource(configMapGVR).
-				Namespace("open-cluster-management-observability").
-				Update(context.TODO(), cm, metav1.UpdateOptions{})
-			return err
-		}, 2*time.Minute, 10*time.Second).Should(Succeed())
+			nsVal, err := getADCCustomVar(dynClient, "multicluster-observability-addon", MCO_NAMESPACE, "platformNamespaceRightSizing")
+			if err != nil {
+				return err
+			}
+			if nsVal != "enabled" {
+				return fmt.Errorf("expected ADC platformNamespaceRightSizing=%q, got %q", "enabled", nsVal)
+			}
+			return nil
+		}, 3*time.Minute, 10*time.Second).Should(Succeed())
 	})
 
-	// Verify resources are created
-	It("Should find the rs-prom-rules-policy in the hub cluster namespace 'open-cluster-management-global-set'", func() {
-		Eventually(func() error {
+	It("Should NOT create any Policy resources (always-MCOA mode)", func() {
+		Consistently(func() bool {
 			_, err := dynClient.Resource(policyGVR).
 				Namespace("open-cluster-management-global-set").
 				Get(context.TODO(), "rs-prom-rules-policy", metav1.GetOptions{})
-			return err
-		}, 2*time.Minute, 10*time.Second).Should(Succeed())
+			return apierrors.IsNotFound(err)
+		}, 30*time.Second, 5*time.Second).Should(BeTrue(), "rs-prom-rules-policy should NOT exist in always-MCOA mode")
 	})
 
 	It("Should create the ConfigMap 'rs-namespace-config' in namespace 'open-cluster-management-observability'", func() {
@@ -258,11 +253,9 @@ var _ = Describe("RHACM4K-55205: Enable and teardown namespace right-sizing reco
 		)
 	})
 
-	// Teardown in AfterAll
 	AfterAll(func() {
 		By("Disabling namespace right-sizing recommendation and cleaning up resources")
 
-		// Disable the feature
 		Eventually(func() error {
 			mco, err := dynClient.Resource(mcoGVR).
 				Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
@@ -281,13 +274,17 @@ var _ = Describe("RHACM4K-55205: Enable and teardown namespace right-sizing reco
 			return err
 		}, 2*time.Minute, 10*time.Second).Should(Succeed())
 
-		// Verify resources are removed
-		Eventually(func() bool {
-			_, err := dynClient.Resource(policyGVR).
-				Namespace("open-cluster-management-global-set").
-				Get(context.TODO(), "rs-prom-rules-policy", metav1.GetOptions{})
-			return apierrors.IsNotFound(err)
-		}, 2*time.Minute, 10*time.Second).Should(BeTrue(), "rs-prom-rules-policy should be deleted")
+		By("Verifying ADC reflects disabled state")
+		Eventually(func() error {
+			nsVal, err := getADCCustomVar(dynClient, "multicluster-observability-addon", MCO_NAMESPACE, "platformNamespaceRightSizing")
+			if err != nil {
+				return err
+			}
+			if nsVal != "disabled" {
+				return fmt.Errorf("expected ADC platformNamespaceRightSizing=%q, got %q", "disabled", nsVal)
+			}
+			return nil
+		}, 3*time.Minute, 10*time.Second).Should(Succeed())
 
 		Eventually(func() bool {
 			_, err := dynClient.Resource(configMapGVR).
@@ -314,7 +311,6 @@ var _ = Describe("RHACM4K-58751: Enable and teardown virtualization right-sizing
 	)
 
 	BeforeAll(func() {
-		// initialize clients once (if not already)
 		if hubClient == nil {
 			hubClient = utils.NewKubeClient(
 				testOptions.HubCluster.ClusterServerURL,
@@ -363,36 +359,35 @@ var _ = Describe("RHACM4K-58751: Enable and teardown virtualization right-sizing
 				Update(context.TODO(), mco, metav1.UpdateOptions{})
 			return err
 		}, 2*time.Minute, 10*time.Second).Should(Succeed())
+	})
 
-		By("Forcing an update to the rs-virt-config ConfigMap to trigger policy/placement reconciliation")
+	It("Should set ADC right-sizing delegation to 'true' and virtualization RS to 'enabled'", func() {
 		Eventually(func() error {
-			cm, err := dynClient.Resource(configMapGVR).
-				Namespace("open-cluster-management-observability").
-				Get(context.TODO(), "rs-virt-config", metav1.GetOptions{})
+			delegated, err := getADCCustomVar(dynClient, "multicluster-observability-addon", MCO_NAMESPACE, "rightSizingDelegated")
 			if err != nil {
 				return err
 			}
-			data, ok := cm.Object["data"].(map[string]any)
-			if !ok || data == nil {
-				data = map[string]any{}
+			if delegated != "true" {
+				return fmt.Errorf("expected ADC rightSizingDelegated=%q, got %q", "true", delegated)
 			}
-			data["e2e-trigger"] = fmt.Sprintf("g1-%d", time.Now().UnixNano())
-			cm.Object["data"] = data
-			_, err = dynClient.Resource(configMapGVR).
-				Namespace("open-cluster-management-observability").
-				Update(context.TODO(), cm, metav1.UpdateOptions{})
-			return err
-		}, 2*time.Minute, 10*time.Second).Should(Succeed())
+			virtVal, err := getADCCustomVar(dynClient, "multicluster-observability-addon", MCO_NAMESPACE, "platformVirtualizationRightSizing")
+			if err != nil {
+				return err
+			}
+			if virtVal != "enabled" {
+				return fmt.Errorf("expected ADC platformVirtualizationRightSizing=%q, got %q", "enabled", virtVal)
+			}
+			return nil
+		}, 3*time.Minute, 10*time.Second).Should(Succeed())
 	})
 
-	// Verify resources are created
-	It("Should find the rs-virt-prom-rules-policy in the hub cluster namespace 'open-cluster-management-global-set'", func() {
-		Eventually(func() error {
+	It("Should NOT create any Policy resources (always-MCOA mode)", func() {
+		Consistently(func() bool {
 			_, err := dynClient.Resource(policyGVR).
 				Namespace("open-cluster-management-global-set").
 				Get(context.TODO(), "rs-virt-prom-rules-policy", metav1.GetOptions{})
-			return err
-		}, 2*time.Minute, 10*time.Second).Should(Succeed())
+			return apierrors.IsNotFound(err)
+		}, 30*time.Second, 5*time.Second).Should(BeTrue(), "rs-virt-prom-rules-policy should NOT exist in always-MCOA mode")
 	})
 
 	It("Should create the ConfigMap 'rs-virt-config' in namespace 'open-cluster-management-observability'", func() {
@@ -438,7 +433,6 @@ var _ = Describe("RHACM4K-58751: Enable and teardown virtualization right-sizing
 			}
 
 			expected := []string{
-				// namespace-level VM metrics
 				"acm_rs_vm:namespace:cpu_request",
 				"acm_rs_vm:namespace:cpu_usage",
 				"acm_rs_vm:namespace:cpu_recommendation",
@@ -446,7 +440,6 @@ var _ = Describe("RHACM4K-58751: Enable and teardown virtualization right-sizing
 				"acm_rs_vm:namespace:memory_usage",
 				"acm_rs_vm:namespace:memory_recommendation",
 				"kubevirt_vm_running_status_last_transition_timestamp_seconds",
-				// cluster-level VM metrics
 				"acm_rs_vm:cluster:cpu_request",
 				"acm_rs_vm:cluster:cpu_usage",
 				"acm_rs_vm:cluster:cpu_recommendation",
@@ -483,11 +476,9 @@ var _ = Describe("RHACM4K-58751: Enable and teardown virtualization right-sizing
 		)
 	})
 
-	// Teardown in AfterAll
 	AfterAll(func() {
 		By("Disabling virtualization right-sizing recommendation and cleaning up resources")
 
-		// Disable the feature
 		Eventually(func() error {
 			mco, err := dynClient.Resource(mcoGVR).
 				Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
@@ -506,13 +497,17 @@ var _ = Describe("RHACM4K-58751: Enable and teardown virtualization right-sizing
 			return err
 		}, 2*time.Minute, 10*time.Second).Should(Succeed())
 
-		// Verify resources are removed
-		Eventually(func() bool {
-			_, err := dynClient.Resource(policyGVR).
-				Namespace("open-cluster-management-global-set").
-				Get(context.TODO(), "rs-virt-prom-rules-policy", metav1.GetOptions{})
-			return apierrors.IsNotFound(err)
-		}, 2*time.Minute, 10*time.Second).Should(BeTrue(), "rs-virt-prom-rules-policy should be deleted")
+		By("Verifying ADC reflects disabled state")
+		Eventually(func() error {
+			virtVal, err := getADCCustomVar(dynClient, "multicluster-observability-addon", MCO_NAMESPACE, "platformVirtualizationRightSizing")
+			if err != nil {
+				return err
+			}
+			if virtVal != "disabled" {
+				return fmt.Errorf("expected ADC platformVirtualizationRightSizing=%q, got %q", "disabled", virtVal)
+			}
+			return nil
+		}, 3*time.Minute, 10*time.Second).Should(Succeed())
 
 		Eventually(func() bool {
 			_, err := dynClient.Resource(configMapGVR).
@@ -552,13 +547,13 @@ func getADCCustomVar(dynClient dynamic.Interface, adcName, namespace, varName st
 	return "", fmt.Errorf("variable %q not found in ADC %s/%s", varName, namespace, adcName)
 }
 
-var _ = Describe("MCOA right-sizing delegation via annotation (rightsizing/g2)", Ordered, func() {
+var _ = Describe("Always-MCOA right-sizing: ADC reflects CR spec state (rightsizing/g2)", Ordered, func() {
 	const (
-		rightSizingAnnotation = "observability.open-cluster-management.io/right-sizing-capable"
-		adcName               = "multicluster-observability-addon"
-		adcNamespace          = MCO_NAMESPACE
-		nsRSKey               = "platformNamespaceRightSizing"
-		virtRSKey             = "platformVirtualizationRightSizing"
+		adcName      = "multicluster-observability-addon"
+		adcNamespace = MCO_NAMESPACE
+		nsRSKey      = "platformNamespaceRightSizing"
+		virtRSKey    = "platformVirtualizationRightSizing"
+		delegatedKey = "rightSizingDelegated"
 	)
 
 	var (
@@ -582,7 +577,7 @@ var _ = Describe("MCOA right-sizing delegation via annotation (rightsizing/g2)",
 			)
 		}
 
-		By("Ensuring both RS features are enabled in MCO CR")
+		By("Enabling both RS features in MCO CR")
 		Eventually(func() error {
 			mco, err := dynClient.Resource(mcoGVR).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
 			if err != nil {
@@ -599,36 +594,23 @@ var _ = Describe("MCOA right-sizing delegation via annotation (rightsizing/g2)",
 			_, err = dynClient.Resource(mcoGVR).Update(context.TODO(), mco, metav1.UpdateOptions{})
 			return err
 		}, 2*time.Minute, 10*time.Second).Should(Succeed())
-
-		By("Verifying MCO-mode Policy resources exist before delegation")
-		Eventually(func() error {
-			_, err := dynClient.Resource(policyGVR).
-				Namespace(MCO_GLOBAL_SET_NAMESPACE).
-				Get(context.TODO(), "rs-prom-rules-policy", metav1.GetOptions{})
-			return err
-		}, 3*time.Minute, 10*time.Second).Should(Succeed(), "rs-prom-rules-policy should exist in MCO mode")
 	})
 
-	Context("when the right-sizing delegation annotation is set on MCO CR", func() {
-		BeforeAll(func() {
-			By("Setting the right-sizing-capable annotation on MCO CR (annotation-only change)")
+	Context("when both RS features are enabled", func() {
+		It("Should always set rightSizingDelegated to 'true'", func() {
 			Eventually(func() error {
-				mco, err := dynClient.Resource(mcoGVR).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+				val, err := getADCCustomVar(dynClient, adcName, adcNamespace, delegatedKey)
 				if err != nil {
 					return err
 				}
-				annotations := mco.GetAnnotations()
-				if annotations == nil {
-					annotations = map[string]string{}
+				if val != "true" {
+					return fmt.Errorf("expected ADC %s=%q, got %q", delegatedKey, "true", val)
 				}
-				annotations[rightSizingAnnotation] = "v1"
-				mco.SetAnnotations(annotations)
-				_, err = dynClient.Resource(mcoGVR).Update(context.TODO(), mco, metav1.UpdateOptions{})
-				return err
-			}, 2*time.Minute, 10*time.Second).Should(Succeed())
+				return nil
+			}, 3*time.Minute, 10*time.Second).Should(Succeed())
 		})
 
-		It("Should set ADC right-sizing variables to 'enabled'", func() {
+		It("Should set both ADC RS variables to 'enabled'", func() {
 			Eventually(func() error {
 				nsVal, err := getADCCustomVar(dynClient, adcName, adcNamespace, nsRSKey)
 				if err != nil {
@@ -648,40 +630,89 @@ var _ = Describe("MCOA right-sizing delegation via annotation (rightsizing/g2)",
 			}, 3*time.Minute, 10*time.Second).Should(Succeed())
 		})
 
-		It("Should clean up MCO-mode Policy resources", func() {
-			Eventually(func() bool {
+		It("Should NOT create any Policy resources", func() {
+			Consistently(func() bool {
 				_, err := dynClient.Resource(policyGVR).
 					Namespace(MCO_GLOBAL_SET_NAMESPACE).
 					Get(context.TODO(), "rs-prom-rules-policy", metav1.GetOptions{})
 				return apierrors.IsNotFound(err)
-			}, 3*time.Minute, 10*time.Second).Should(BeTrue(), "rs-prom-rules-policy should be deleted after delegation")
-
-			Eventually(func() bool {
-				_, err := dynClient.Resource(policyGVR).
-					Namespace(MCO_GLOBAL_SET_NAMESPACE).
-					Get(context.TODO(), "rs-virt-prom-rules-policy", metav1.GetOptions{})
-				return apierrors.IsNotFound(err)
-			}, 3*time.Minute, 10*time.Second).Should(BeTrue(), "rs-virt-prom-rules-policy should be deleted after delegation")
+			}, 30*time.Second, 5*time.Second).Should(BeTrue(), "rs-prom-rules-policy should NOT exist")
 		})
 	})
 
-	Context("when the right-sizing delegation annotation is removed from MCO CR", func() {
+	Context("when namespace RS is disabled but virtualization RS remains enabled", func() {
 		BeforeAll(func() {
-			By("Removing the right-sizing-capable annotation from MCO CR")
+			By("Disabling only namespace right-sizing")
 			Eventually(func() error {
 				mco, err := dynClient.Resource(mcoGVR).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
 				if err != nil {
 					return err
 				}
-				annotations := mco.GetAnnotations()
-				delete(annotations, rightSizingAnnotation)
-				mco.SetAnnotations(annotations)
+				if err := unstructured.SetNestedField(mco.Object, false,
+					"spec", "capabilities", "platform", "analytics", "namespaceRightSizingRecommendation", "enabled"); err != nil {
+					return err
+				}
 				_, err = dynClient.Resource(mcoGVR).Update(context.TODO(), mco, metav1.UpdateOptions{})
 				return err
 			}, 2*time.Minute, 10*time.Second).Should(Succeed())
 		})
 
-		It("Should revert ADC right-sizing variables to 'disabled'", func() {
+		It("Should set namespace RS to 'disabled' and keep virtualization RS 'enabled'", func() {
+			Eventually(func() error {
+				nsVal, err := getADCCustomVar(dynClient, adcName, adcNamespace, nsRSKey)
+				if err != nil {
+					return err
+				}
+				if nsVal != "disabled" {
+					return fmt.Errorf("expected ADC %s=%q, got %q", nsRSKey, "disabled", nsVal)
+				}
+				virtVal, err := getADCCustomVar(dynClient, adcName, adcNamespace, virtRSKey)
+				if err != nil {
+					return err
+				}
+				if virtVal != "enabled" {
+					return fmt.Errorf("expected ADC %s=%q, got %q", virtRSKey, "enabled", virtVal)
+				}
+				return nil
+			}, 3*time.Minute, 10*time.Second).Should(Succeed())
+		})
+
+		It("Should keep rightSizingDelegated as 'true' regardless of individual feature state", func() {
+			Eventually(func() error {
+				val, err := getADCCustomVar(dynClient, adcName, adcNamespace, delegatedKey)
+				if err != nil {
+					return err
+				}
+				if val != "true" {
+					return fmt.Errorf("expected ADC %s=%q, got %q", delegatedKey, "true", val)
+				}
+				return nil
+			}, 2*time.Minute, 10*time.Second).Should(Succeed())
+		})
+	})
+
+	Context("when both RS features are disabled", func() {
+		BeforeAll(func() {
+			By("Disabling both right-sizing features")
+			Eventually(func() error {
+				mco, err := dynClient.Resource(mcoGVR).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+				if err != nil {
+					return err
+				}
+				if err := unstructured.SetNestedField(mco.Object, false,
+					"spec", "capabilities", "platform", "analytics", "namespaceRightSizingRecommendation", "enabled"); err != nil {
+					return err
+				}
+				if err := unstructured.SetNestedField(mco.Object, false,
+					"spec", "capabilities", "platform", "analytics", "virtualizationRightSizingRecommendation", "enabled"); err != nil {
+					return err
+				}
+				_, err = dynClient.Resource(mcoGVR).Update(context.TODO(), mco, metav1.UpdateOptions{})
+				return err
+			}, 2*time.Minute, 10*time.Second).Should(Succeed())
+		})
+
+		It("Should set both ADC RS variables to 'disabled'", func() {
 			Eventually(func() error {
 				nsVal, err := getADCCustomVar(dynClient, adcName, adcNamespace, nsRSKey)
 				if err != nil {
@@ -701,31 +732,37 @@ var _ = Describe("MCOA right-sizing delegation via annotation (rightsizing/g2)",
 			}, 3*time.Minute, 10*time.Second).Should(Succeed())
 		})
 
-		It("Should recreate MCO-mode Policy resources", func() {
+		It("Should keep rightSizingDelegated as 'true' even when both features are disabled", func() {
 			Eventually(func() error {
-				_, err := dynClient.Resource(policyGVR).
-					Namespace(MCO_GLOBAL_SET_NAMESPACE).
-					Get(context.TODO(), "rs-prom-rules-policy", metav1.GetOptions{})
-				return err
-			}, 3*time.Minute, 10*time.Second).Should(Succeed(), "rs-prom-rules-policy should be recreated after un-delegation")
+				val, err := getADCCustomVar(dynClient, adcName, adcNamespace, delegatedKey)
+				if err != nil {
+					return err
+				}
+				if val != "true" {
+					return fmt.Errorf("expected ADC %s=%q, got %q", delegatedKey, "true", val)
+				}
+				return nil
+			}, 2*time.Minute, 10*time.Second).Should(Succeed())
 		})
 	})
 
 	AfterAll(func() {
-		By("Ensuring the delegation annotation is removed (cleanup)")
+		By("Re-enabling both RS features (restore to defaults)")
 		Eventually(func() error {
 			mco, err := dynClient.Resource(mcoGVR).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
 			if err != nil {
 				return err
 			}
-			annotations := mco.GetAnnotations()
-			if _, exists := annotations[rightSizingAnnotation]; exists {
-				delete(annotations, rightSizingAnnotation)
-				mco.SetAnnotations(annotations)
-				_, err = dynClient.Resource(mcoGVR).Update(context.TODO(), mco, metav1.UpdateOptions{})
+			if err := unstructured.SetNestedField(mco.Object, true,
+				"spec", "capabilities", "platform", "analytics", "namespaceRightSizingRecommendation", "enabled"); err != nil {
 				return err
 			}
-			return nil
+			if err := unstructured.SetNestedField(mco.Object, true,
+				"spec", "capabilities", "platform", "analytics", "virtualizationRightSizingRecommendation", "enabled"); err != nil {
+				return err
+			}
+			_, err = dynClient.Resource(mcoGVR).Update(context.TODO(), mco, metav1.UpdateOptions{})
+			return err
 		}, 2*time.Minute, 10*time.Second).Should(Succeed())
 	})
 })
