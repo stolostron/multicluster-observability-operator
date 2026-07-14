@@ -10,4 +10,3 @@ const (
 	ADCKeyPlatformVirtualizationRightSizing = "platformVirtualizationRightSizing"
 	ADCKeyRightSizingDelegated              = "rightSizingDelegated"
 )
-

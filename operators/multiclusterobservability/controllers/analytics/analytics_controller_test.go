@@ -371,6 +371,41 @@ func TestAnalyticsReconciler_DeletionSkipsWithoutFinalizer(t *testing.T) {
 	require.Contains(t, updated.GetFinalizers(), "other-finalizer")
 }
 
+func TestReconcile_MigrationSetsFlag(t *testing.T) {
+	scheme := setupTestScheme(t)
+	mco := newTestMCOWithBothRS(true, true)
+	mco.Finalizers = []string{analyticsFinalizer}
+
+	adc := &addonv1beta1.AddOnDeploymentConfig{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      config.MultiClusterObservabilityAddon,
+			Namespace: config.GetDefaultNamespace(),
+		},
+	}
+
+	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(mco, adc).Build()
+	r := &AnalyticsReconciler{Client: c}
+
+	require.False(t, r.migrationDone)
+	_, err := r.Reconcile(context.TODO(), ctrl.Request{})
+	require.NoError(t, err)
+	require.True(t, r.migrationDone, "migrationDone should be true after first successful reconcile")
+
+	// Verify ADC was synced with delegation enabled
+	updatedADC := &addonv1beta1.AddOnDeploymentConfig{}
+	require.NoError(t, c.Get(context.TODO(), types.NamespacedName{
+		Name:      config.MultiClusterObservabilityAddon,
+		Namespace: config.GetDefaultNamespace(),
+	}, updatedADC))
+	adcVars := make(map[string]string)
+	for _, cv := range updatedADC.Spec.CustomizedVariables {
+		adcVars[cv.Name] = cv.Value
+	}
+	require.Equal(t, "true", adcVars[util.ADCKeyRightSizingDelegated])
+	require.Equal(t, "enabled", adcVars[util.ADCKeyPlatformNamespaceRightSizing])
+	require.Equal(t, "enabled", adcVars[util.ADCKeyPlatformVirtualizationRightSizing])
+}
+
 func TestSyncRightSizingStateToADC_DelegatingEnabled(t *testing.T) {
 	scheme := setupTestScheme(t)
 	mco := newTestMCO("", true, false)

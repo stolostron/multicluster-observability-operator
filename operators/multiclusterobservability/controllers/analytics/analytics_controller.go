@@ -219,12 +219,19 @@ func (r *AnalyticsReconciler) ensureRightSizingDefaults(ctx context.Context, ins
 		}
 		reqLogger.Info("Defaulted analytics right-sizing flags to true (fresh install)")
 
-		// Refresh typed instance so downstream logic sees updated flags.
-		refreshed := &mcov1beta2.MultiClusterObservability{}
-		if err := r.Client.Get(ctx, key, refreshed); err != nil {
-			reqLogger.Error(err, "Failed to refresh MCO after patching defaults, using stale instance")
-		} else {
-			instance = refreshed.DeepCopy()
+		// Apply defaults directly to the in-memory instance so downstream callers
+		// see updated values even if the informer cache is stale.
+		if instance.Spec.Capabilities == nil {
+			instance.Spec.Capabilities = &mcov1beta2.CapabilitiesSpec{}
+		}
+		if instance.Spec.Capabilities.Platform == nil {
+			instance.Spec.Capabilities.Platform = &mcov1beta2.PlatformCapabilitiesSpec{}
+		}
+		if !nsFound {
+			instance.Spec.Capabilities.Platform.Analytics.NamespaceRightSizingRecommendation.Enabled = true
+		}
+		if !virtFound {
+			instance.Spec.Capabilities.Platform.Analytics.VirtualizationRightSizingRecommendation.Enabled = true
 		}
 	}
 	return instance, nil
@@ -337,5 +344,3 @@ func (r *AnalyticsReconciler) syncRightSizingStateToADC(ctx context.Context, ins
 
 	return nil
 }
-
-

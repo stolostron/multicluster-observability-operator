@@ -32,12 +32,12 @@ const (
 
 	// Legacy resource names from pre-GA Policy-based installations.
 	// Used by CleanupLegacyPolicyResourcesByName for unlabeled 2.16 resources.
-	legacyNSPolicyName          = "rs-prom-rules-policy"
-	legacyNSPlacementName       = "rs-placement"
+	legacyNSPolicyName           = "rs-prom-rules-policy"
+	legacyNSPlacementName        = "rs-placement"
 	legacyNSPlacementBindingName = "rs-policyset-binding"
 
-	legacyVirtPolicyName          = "rs-virt-prom-rules-policy"
-	legacyVirtPlacementName       = "rs-virt-placement"
+	legacyVirtPolicyName           = "rs-virt-prom-rules-policy"
+	legacyVirtPlacementName        = "rs-virt-placement"
 	legacyVirtPlacementBindingName = "rs-virt-policyset-binding"
 )
 
@@ -79,7 +79,8 @@ func CleanupRSResourcesByLabel(ctx context.Context, c client.Client) error {
 	} else {
 		for i := range policyList.Items {
 			if err := c.Delete(ctx, &policyList.Items[i]); err != nil && !apierrors.IsNotFound(err) {
-				errs = append(errs, err)
+				errs = append(errs, fmt.Errorf("rs - failed to delete Policy %s/%s: %w",
+					policyList.Items[i].Namespace, policyList.Items[i].Name, err))
 			}
 		}
 	}
@@ -93,7 +94,8 @@ func CleanupRSResourcesByLabel(ctx context.Context, c client.Client) error {
 	} else {
 		for i := range pbList.Items {
 			if err := c.Delete(ctx, &pbList.Items[i]); err != nil && !apierrors.IsNotFound(err) {
-				errs = append(errs, err)
+				errs = append(errs, fmt.Errorf("rs - failed to delete PlacementBinding %s/%s: %w",
+					pbList.Items[i].Namespace, pbList.Items[i].Name, err))
 			}
 		}
 	}
@@ -107,7 +109,8 @@ func CleanupRSResourcesByLabel(ctx context.Context, c client.Client) error {
 	} else {
 		for i := range placementList.Items {
 			if err := c.Delete(ctx, &placementList.Items[i]); err != nil && !apierrors.IsNotFound(err) {
-				errs = append(errs, err)
+				errs = append(errs, fmt.Errorf("rs - failed to delete Placement %s/%s: %w",
+					placementList.Items[i].Namespace, placementList.Items[i].Name, err))
 			}
 		}
 	}
@@ -121,7 +124,8 @@ func CleanupRSResourcesByLabel(ctx context.Context, c client.Client) error {
 	} else {
 		for i := range cmList.Items {
 			if err := c.Delete(ctx, &cmList.Items[i]); err != nil && !apierrors.IsNotFound(err) {
-				errs = append(errs, err)
+				errs = append(errs, fmt.Errorf("rs - failed to delete ConfigMap %s/%s: %w",
+					cmList.Items[i].Namespace, cmList.Items[i].Name, err))
 			}
 		}
 	}
@@ -147,7 +151,8 @@ func CleanupLegacyPolicyResourcesByLabel(ctx context.Context, c client.Client) e
 	} else {
 		for i := range policyList.Items {
 			if err := c.Delete(ctx, &policyList.Items[i]); err != nil && !apierrors.IsNotFound(err) {
-				errs = append(errs, err)
+				errs = append(errs, fmt.Errorf("rs - failed to delete legacy Policy %s/%s: %w",
+					policyList.Items[i].Namespace, policyList.Items[i].Name, err))
 			} else if err == nil {
 				log.Info("rs - deleted legacy Policy", "name", policyList.Items[i].Name, "namespace", policyList.Items[i].Namespace)
 			}
@@ -163,7 +168,8 @@ func CleanupLegacyPolicyResourcesByLabel(ctx context.Context, c client.Client) e
 	} else {
 		for i := range pbList.Items {
 			if err := c.Delete(ctx, &pbList.Items[i]); err != nil && !apierrors.IsNotFound(err) {
-				errs = append(errs, err)
+				errs = append(errs, fmt.Errorf("rs - failed to delete legacy PlacementBinding %s/%s: %w",
+					pbList.Items[i].Namespace, pbList.Items[i].Name, err))
 			} else if err == nil {
 				log.Info("rs - deleted legacy PlacementBinding", "name", pbList.Items[i].Name, "namespace", pbList.Items[i].Namespace)
 			}
@@ -179,7 +185,8 @@ func CleanupLegacyPolicyResourcesByLabel(ctx context.Context, c client.Client) e
 	} else {
 		for i := range placementList.Items {
 			if err := c.Delete(ctx, &placementList.Items[i]); err != nil && !apierrors.IsNotFound(err) {
-				errs = append(errs, err)
+				errs = append(errs, fmt.Errorf("rs - failed to delete legacy Placement %s/%s: %w",
+					placementList.Items[i].Namespace, placementList.Items[i].Name, err))
 			} else if err == nil {
 				log.Info("rs - deleted legacy Placement", "name", placementList.Items[i].Name, "namespace", placementList.Items[i].Namespace)
 			}
