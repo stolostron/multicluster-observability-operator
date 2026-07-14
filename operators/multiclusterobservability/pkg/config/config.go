@@ -85,6 +85,8 @@ const (
 
 	AlertmanagerAccessorSAName     = "observability-alertmanager-accessor"
 	AlertmanagerAccessorSecretName = "observability-alertmanager-accessor" // #nosec G101 -- Not a hardcoded credential.
+	AlertmanagerServiceName          = "alertmanager"
+	AlertmanagerRouteName            = "alertmanager"
 
 	AlertRuleDefaultConfigMapName    = "thanos-ruler-default-rules"
 	AlertRuleDefaultFileKey          = "default_rules.yaml"
