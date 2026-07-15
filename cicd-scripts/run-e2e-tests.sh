@@ -12,9 +12,6 @@ ROOTDIR="$(
 
 SED_COMMAND=(sed -i -e)
 
-# customize the images for testing
-export MULTICLUSTER_OBSERVABILITY_ADDON_IMAGE_REF="quay.io/rhobs/multicluster-observability-addon:latest"
-export OBO_PROMETHEUS_OPERATOR_IMAGE_REF="quay.io/rhobs/obo-prometheus-operator:v0.82.1-rhobs1"
 ${ROOTDIR}/cicd-scripts/customize-mco.sh
 GINKGO_FOCUS="$(cat /tmp/ginkgo_focus)"
 
