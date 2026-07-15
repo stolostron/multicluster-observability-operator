@@ -63,7 +63,6 @@ envsubst <"${MANIFESTS}/catalogsource.yaml" | oc apply -f -
 
 log_info "Propagating acm-d-pull-secret to operand namespaces for image pulls..."
 WORK_DIR=$(mktemp -d)
-trap 'rm -rf "$WORK_DIR"' EXIT
 oc get secret acm-d-pull-secret -n openshift-marketplace -o jsonpath='{.data.\.dockerconfigjson}' |
   base64 -d >"${WORK_DIR}/acm-d-pull-secret.json"
 for ns in "${ACM_NS}" multicluster-engine; do
@@ -71,8 +70,34 @@ for ns in "${ACM_NS}" multicluster-engine; do
     --from-file=.dockerconfigjson="${WORK_DIR}/acm-d-pull-secret.json" \
     --type=kubernetes.io/dockerconfigjson \
     --dry-run=client -o yaml | oc apply -f -
-  oc secrets link default acm-d-pull-secret -n "${ns}" --for=pull
 done
+
+# OLM-installed operators run under CSV-created service accounts, not
+# "default", and new ones keep appearing as MCH deploys more components
+# throughout the install. Continuously link acm-d-pull-secret to every SA
+# in the operand namespaces for the rest of this script's run — kubelet
+# re-resolves a pod's pull credentials from its SA on each retry, so
+# already-crash-looping pods self-heal once their SA gets linked, with no
+# need to delete/recreate them.
+LINKED_SA_FILE=$(mktemp)
+link_pull_secret_to_all_service_accounts() {
+  while true; do
+    for ns in "${ACM_NS}" multicluster-engine; do
+      for sa in $(oc get sa -n "${ns}" -o jsonpath='{.items[*].metadata.name}' 2>/dev/null); do
+        if ! grep -qx "${ns}/${sa}" "${LINKED_SA_FILE}" 2>/dev/null; then
+          if oc secrets link "${sa}" acm-d-pull-secret -n "${ns}" --for=pull 2>/dev/null; then
+            echo "${ns}/${sa}" >>"${LINKED_SA_FILE}"
+            log_info "Linked acm-d-pull-secret to serviceaccount ${ns}/${sa}"
+          fi
+        fi
+      done
+    done
+    sleep 10
+  done
+}
+link_pull_secret_to_all_service_accounts &
+LINK_SA_PID=$!
+trap 'kill "${LINK_SA_PID}" 2>/dev/null || true; rm -rf "$WORK_DIR" "$LINKED_SA_FILE"' EXIT
 
 log_info "Waiting for ACM CSV to appear in ${ACM_NS}..."
 # The subscription triggers an InstallPlan; wait for the CRD that signals ACM is installed.
