@@ -4,6 +4,7 @@ metadata:
   name: multiclusterhub
   namespace: open-cluster-management
 spec:
+  imagePullSecret: acm-d-pull-secret
   overrides:
     components:
     - name: grc

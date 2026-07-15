@@ -63,6 +63,7 @@ envsubst <"${MANIFESTS}/catalogsource.yaml" | oc apply -f -
 
 log_info "Propagating acm-d-pull-secret to operand namespaces for image pulls..."
 WORK_DIR=$(mktemp -d)
+trap 'rm -rf "$WORK_DIR"' EXIT
 oc get secret acm-d-pull-secret -n openshift-marketplace -o jsonpath='{.data.\.dockerconfigjson}' |
   base64 -d >"${WORK_DIR}/acm-d-pull-secret.json"
 for ns in "${ACM_NS}" multicluster-engine; do
@@ -71,42 +72,6 @@ for ns in "${ACM_NS}" multicluster-engine; do
     --type=kubernetes.io/dockerconfigjson \
     --dry-run=client -o yaml | oc apply -f -
 done
-
-# OLM-installed operators run under CSV-created service accounts, not
-# "default", and new ones keep appearing as MCH deploys more components
-# throughout the install. Continuously link acm-d-pull-secret to every SA
-# in the operand namespaces for the rest of this script's run.
-#
-# A pod's spec.imagePullSecrets is populated once, by an admission
-# controller, at the moment the pod is *created* — copied from whatever
-# the SA's imagePullSecrets were at that instant. Linking the secret to
-# the SA afterward does nothing for pods that already exist (kubelet does
-# not re-resolve credentials from the SA on retry), so after linking a
-# newly-seen SA we also delete any pods already running under it, forcing
-# their ReplicaSet/Deployment to recreate them with the secret attached.
-LINKED_SA_FILE=$(mktemp)
-link_pull_secret_to_all_service_accounts() {
-  while true; do
-    for ns in "${ACM_NS}" multicluster-engine; do
-      for sa in $(oc get sa -n "${ns}" -o jsonpath='{.items[*].metadata.name}' 2>/dev/null); do
-        if ! grep -qx "${ns}/${sa}" "${LINKED_SA_FILE}" 2>/dev/null; then
-          if oc secrets link "${sa}" acm-d-pull-secret -n "${ns}" --for=pull 2>/dev/null; then
-            echo "${ns}/${sa}" >>"${LINKED_SA_FILE}"
-            log_info "Linked acm-d-pull-secret to serviceaccount ${ns}/${sa}"
-            for pod in $(oc get pods -n "${ns}" -o jsonpath="{range .items[?(@.spec.serviceAccountName=='${sa}')]}{.metadata.name}{'\n'}{end}" 2>/dev/null); do
-              log_info "Deleting pod ${ns}/${pod} to pick up newly-linked pull secret"
-              oc delete pod "${pod}" -n "${ns}" --ignore-not-found 2>/dev/null || true
-            done
-          fi
-        fi
-      done
-    done
-    sleep 10
-  done
-}
-link_pull_secret_to_all_service_accounts &
-LINK_SA_PID=$!
-trap 'kill "${LINK_SA_PID}" 2>/dev/null || true; rm -rf "$WORK_DIR" "$LINKED_SA_FILE"' EXIT
 
 log_info "Waiting for ACM CSV to appear in ${ACM_NS}..."
 # The subscription triggers an InstallPlan; wait for the CRD that signals ACM is installed.
@@ -128,6 +93,21 @@ wait_for_resource crd multiclusterhubs.operator.open-cluster-management.io "" 60
   exit 1
 }
 
+# multiclusterhub-operator's own Deployment is created by OLM from the CSV,
+# before any MultiClusterHub CR exists, so the CR's spec.imagePullSecret
+# (which only propagates to components MCH creates afterward) can't reach
+# it. Patch its pod template directly with imagePullSecrets instead —
+# unlike linking a secret to its service account, this sets the field on
+# the pod spec itself and doesn't depend on admission-time SA lookups, and
+# patching the template triggers Kubernetes to roll out fresh pods with it
+# automatically, even if earlier pods already exist and are failing.
+log_info "Waiting for multiclusterhub-operator Deployment to exist..."
+until oc get deployment multiclusterhub-operator -n "${ACM_NS}" &>/dev/null; do sleep 5; done
+
+log_info "Patching multiclusterhub-operator Deployment with acm-d-pull-secret..."
+oc patch deployment multiclusterhub-operator -n "${ACM_NS}" --type=json \
+  -p='[{"op": "add", "path": "/spec/template/spec/imagePullSecrets", "value": [{"name": "acm-d-pull-secret"}]}]'
+
 log_info "Waiting for MultiClusterHub operator webhook to be ready..."
 until oc get pod -n "${ACM_NS}" -l name=multiclusterhub-operator --no-headers 2>/dev/null | grep -q .; do sleep 5; done
 oc wait pod -n "${ACM_NS}" -l name=multiclusterhub-operator \
@@ -135,6 +115,11 @@ oc wait pod -n "${ACM_NS}" -l name=multiclusterhub-operator \
   log_error "=== multiclusterhub-operator did not become Ready — dumping debug info ==="
   echo "--- Pod status ---"
   oc get pods -n "${ACM_NS}" -l name=multiclusterhub-operator -o wide
+  echo "--- Pod imagePullSecrets (verifying the Deployment patch actually applied) ---"
+  oc get pods -n "${ACM_NS}" -l name=multiclusterhub-operator \
+    -o jsonpath='{range .items[*]}{.metadata.name}{"  imagePullSecrets="}{.spec.imagePullSecrets}{"\n"}{end}'
+  oc get deployment multiclusterhub-operator -n "${ACM_NS}" \
+    -o jsonpath='deployment imagePullSecrets={.spec.template.spec.imagePullSecrets}{"\n"}'
   echo "--- Pod description (image, container statuses, events) ---"
   oc describe pods -n "${ACM_NS}" -l name=multiclusterhub-operator
   echo "--- Container logs (current) ---"
