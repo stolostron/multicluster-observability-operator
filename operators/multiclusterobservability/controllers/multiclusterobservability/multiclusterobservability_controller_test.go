@@ -383,9 +383,6 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	// byo case for proxy
 	proxyRouteBYOCACerts := newTestCert(config.ProxyRouteBYOCAName, namespace)
 	proxyRouteBYOCert := newTestCert(config.ProxyRouteBYOCERTName, namespace)
-	// byo case for the alertmanager route
-	testAmRouteBYOCaSecret := newTestCert(config.AlertmanagerRouteBYOCAName, namespace)
-	testAmRouteBYOCertSecret := newTestCert(config.AlertmanagerRouteBYOCERTName, namespace)
 	clustermgmtAddon := newClusterManagementAddon()
 	extensionApiserverAuthenticationCM := &corev1.ConfigMap{ // required by alertmanager
 		ObjectMeta: metav1.ObjectMeta{
@@ -396,13 +393,12 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 			"client-ca-file": "test",
 		},
 	}
-	alertManagerRoute := newAlertManagerRoute()
 	gp2StorageClass := newStorageClass("gp2", true)
 
 	objs := []runtime.Object{
 		mco, svc, serverCACerts, clientCACerts, proxyRouteBYOCACerts, grafanaCert, serverCert,
-		testAmRouteBYOCaSecret, testAmRouteBYOCertSecret, proxyRouteBYOCert, clustermgmtAddon, extensionApiserverAuthenticationCM,
-		alertManagerRoute, gp2StorageClass,
+		proxyRouteBYOCert, clustermgmtAddon, extensionApiserverAuthenticationCM,
+		gp2StorageClass,
 	}
 	// Create a fake client to mock API calls.
 	cl := fake.NewClientBuilder().
@@ -489,21 +485,6 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	status := mcostatusctrl.FindStatusCondition(updatedMCO.Status.Conditions, mcostatusctrl.ConditionTypeFailed)
 	if status == nil || status.Reason != mcostatusctrl.ReasonObjectStorageNotFound {
 		t.Errorf("Failed to get correct MCO status, expect Failed with ReasonObjectStorageNotFound")
-	}
-
-	amRoute := &routev1.Route{}
-	err = cl.Get(t.Context(), types.NamespacedName{
-		Name:      config.AlertmanagerRouteName,
-		Namespace: namespace,
-	}, amRoute)
-	if err != nil {
-		t.Fatalf("Failed to get alertmanager's route: (%v)", err)
-	}
-	// check the BYO certificate for alertmanager's route
-	if amRoute.Spec.TLS.CACertificate != string(testAmRouteBYOCaSecret.Data["tls.crt"]) ||
-		amRoute.Spec.TLS.Certificate != string(testAmRouteBYOCertSecret.Data["tls.crt"]) ||
-		amRoute.Spec.TLS.Key != string(testAmRouteBYOCertSecret.Data["tls.key"]) {
-		t.Fatalf("incorrect certificate for alertmanager's route")
 	}
 
 	err = cl.Create(t.Context(), createSecret("test", "test", namespace))
@@ -872,9 +853,6 @@ func TestImageReplaceForMCO(t *testing.T) {
 	// create the image manifest configmap
 	testMCHInstance := newMCHInstanceWithVersion(config.GetMCONamespace(), version)
 	imageManifestsCM := newTestImageManifestsConfigMap(config.GetMCONamespace(), version)
-	// byo case for the alertmanager route
-	testAmRouteBYOCaSecret := newTestCert(config.AlertmanagerRouteBYOCAName, namespace)
-	testAmRouteBYOCertSecret := newTestCert(config.AlertmanagerRouteBYOCERTName, namespace)
 	clustermgmtAddon := newClusterManagementAddon()
 	extensionApiserverAuthenticationCM := &corev1.ConfigMap{ // required by alertmanager
 		ObjectMeta: metav1.ObjectMeta{
@@ -886,13 +864,12 @@ func TestImageReplaceForMCO(t *testing.T) {
 		},
 	}
 
-	alertManagerRoute := newAlertManagerRoute()
 	gp2StorageClass := newStorageClass("gp2", true)
 
 	objs := []runtime.Object{
 		mco, observatoriumAPIsvc, serverCACerts, clientCACerts, grafanaCert, serverCert,
-		testMCHInstance, imageManifestsCM, testAmRouteBYOCaSecret, testAmRouteBYOCertSecret, clustermgmtAddon, extensionApiserverAuthenticationCM,
-		alertManagerRoute, gp2StorageClass,
+		testMCHInstance, imageManifestsCM, clustermgmtAddon, extensionApiserverAuthenticationCM,
+		gp2StorageClass,
 	}
 	// Create a fake client to mock API calls.
 	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
@@ -1674,18 +1651,6 @@ func TestNewMCOACRDEventHandler(t *testing.T) {
 
 			assert.Equal(t, tt.expectedReqs, reqs)
 		})
-	}
-}
-
-func newAlertManagerRoute() *routev1.Route {
-	return &routev1.Route{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "alertmanager",
-			Namespace: config.GetDefaultNamespace(),
-		},
-		Spec: routev1.RouteSpec{
-			Host: "alert.manager",
-		},
 	}
 }
 
