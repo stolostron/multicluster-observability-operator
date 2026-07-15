@@ -299,7 +299,7 @@ func TestMCOAAgentIntegration(t *testing.T) {
 			if err := directClient.Get(ctx, types.NamespacedName{Name: target}, restored); err != nil {
 				return false
 			}
-			return restored.Labels[managedByLabelKey] == managedByLabelValue
+			return restored.Labels[ManagedByLabelKey] == ManagedByLabelValue
 		}, 10*time.Second, 100*time.Millisecond, "CRD %s was not restored after deletion", target)
 	})
 
