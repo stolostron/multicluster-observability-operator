@@ -75,10 +75,15 @@ done
 # OLM-installed operators run under CSV-created service accounts, not
 # "default", and new ones keep appearing as MCH deploys more components
 # throughout the install. Continuously link acm-d-pull-secret to every SA
-# in the operand namespaces for the rest of this script's run — kubelet
-# re-resolves a pod's pull credentials from its SA on each retry, so
-# already-crash-looping pods self-heal once their SA gets linked, with no
-# need to delete/recreate them.
+# in the operand namespaces for the rest of this script's run.
+#
+# A pod's spec.imagePullSecrets is populated once, by an admission
+# controller, at the moment the pod is *created* — copied from whatever
+# the SA's imagePullSecrets were at that instant. Linking the secret to
+# the SA afterward does nothing for pods that already exist (kubelet does
+# not re-resolve credentials from the SA on retry), so after linking a
+# newly-seen SA we also delete any pods already running under it, forcing
+# their ReplicaSet/Deployment to recreate them with the secret attached.
 LINKED_SA_FILE=$(mktemp)
 link_pull_secret_to_all_service_accounts() {
   while true; do
@@ -88,6 +93,10 @@ link_pull_secret_to_all_service_accounts() {
           if oc secrets link "${sa}" acm-d-pull-secret -n "${ns}" --for=pull 2>/dev/null; then
             echo "${ns}/${sa}" >>"${LINKED_SA_FILE}"
             log_info "Linked acm-d-pull-secret to serviceaccount ${ns}/${sa}"
+            for pod in $(oc get pods -n "${ns}" -o jsonpath="{range .items[?(@.spec.serviceAccountName=='${sa}')]}{.metadata.name}{'\n'}{end}" 2>/dev/null); do
+              log_info "Deleting pod ${ns}/${pod} to pick up newly-linked pull secret"
+              oc delete pod "${pod}" -n "${ns}" --ignore-not-found 2>/dev/null || true
+            done
           fi
         fi
       done
