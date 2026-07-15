@@ -97,7 +97,20 @@ wait_for_resource crd multiclusterhubs.operator.open-cluster-management.io "" 60
 log_info "Waiting for MultiClusterHub operator webhook to be ready..."
 until oc get pod -n "${ACM_NS}" -l name=multiclusterhub-operator --no-headers 2>/dev/null | grep -q .; do sleep 5; done
 oc wait pod -n "${ACM_NS}" -l name=multiclusterhub-operator \
-  --for=condition=Ready --timeout=300s
+  --for=condition=Ready --timeout=300s || {
+  log_error "=== multiclusterhub-operator did not become Ready — dumping debug info ==="
+  echo "--- Pod status ---"
+  oc get pods -n "${ACM_NS}" -l name=multiclusterhub-operator -o wide
+  echo "--- Pod description (image, container statuses, events) ---"
+  oc describe pods -n "${ACM_NS}" -l name=multiclusterhub-operator
+  echo "--- Container logs (current) ---"
+  oc logs -n "${ACM_NS}" -l name=multiclusterhub-operator --all-containers --tail=100 || true
+  echo "--- Container logs (previous, if crash-looping) ---"
+  oc logs -n "${ACM_NS}" -l name=multiclusterhub-operator --all-containers --tail=100 --previous || true
+  echo "--- Recent events in ${ACM_NS} ---"
+  oc get events -n "${ACM_NS}" --sort-by='.lastTimestamp' | tail -30
+  exit 1
+}
 
 log_info "Creating MultiClusterHub CR..."
 oc apply -f "${SCRIPT_DIR}/manifests/acm/multiclusterhub-cr.yaml"
