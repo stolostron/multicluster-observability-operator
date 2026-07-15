@@ -23,6 +23,15 @@ spec:
     - name: namespace
       description: 'Namespace for MCO observability components'
       default: 'open-cluster-management-observability'
+    - name: ACM_VERSION
+      description: 'ACM release version for downstream dev catalog channel'
+      default: '5.0'
+    - name: MCE_VERSION
+      description: 'MCE release version for downstream dev catalog channel'
+      default: '5.0'
+    - name: DEBUG_DUMP_CREDENTIALS
+      description: 'When "true", print hub/managed cluster kubeconfigs and admin passwords to the pipeline logs for manual debugging. Clusters are destroyed when the run ends (or after 2h), so this is the only window to grab them.'
+      default: 'false'
   tasks:
     - name: eaas-provision-space
       taskRef:
@@ -98,7 +107,14 @@ spec:
                 value: |
                   - source: registry.redhat.io/rhacm2
                     mirrors:
+                      - quay.io:443/acm-d
                       - quay.io/redhat-user-workloads/crt-redhat-acm-tenant
+                  - source: registry.redhat.io/multicluster-engine
+                    mirrors:
+                      - quay.io:443/acm-d
+                  - source: registry.access.redhat.com/openshift4/ose-oauth-proxy
+                    mirrors:
+                      - registry.redhat.io/openshift4/ose-oauth-proxy
     - name: provision-managed
       runAfter:
         - eaas-provision-space
@@ -153,7 +169,7 @@ spec:
               - name: timeout
                 value: "40m"
     - name: mco-install
-      description: Install OCM hub/spoke core, MCO operator, and import managed cluster
+      description: Install ACM via downstream dev catalog, MCO operator, and import managed cluster
       runAfter:
         - provision-hub
         - provision-managed
@@ -162,10 +178,22 @@ spec:
           value: $(params.SNAPSHOT)
         - name: namespace
           value: "$(params.namespace)"
+        - name: ACM_VERSION
+          value: "$(params.ACM_VERSION)"
+        - name: MCE_VERSION
+          value: "$(params.MCE_VERSION)"
+        - name: DEBUG_DUMP_CREDENTIALS
+          value: "$(params.DEBUG_DUMP_CREDENTIALS)"
       taskSpec:
         params:
           - name: SNAPSHOT
           - name: namespace
+            type: string
+          - name: ACM_VERSION
+            type: string
+          - name: MCE_VERSION
+            type: string
+          - name: DEBUG_DUMP_CREDENTIALS
             type: string
         volumes:
           - name: credentials
@@ -188,6 +216,25 @@ spec:
                 value: "$(tasks.provision-hub.results.clusterName)"
               - name: credentials
                 value: credentials
+          - name: copy-pull-secret
+            ref:
+              resolver: git
+              params:
+                - name: url
+                  value: https://github.com/konflux-ci/build-definitions.git
+                - name: revision
+                  value: main
+                - name: pathInRepo
+                  value: stepactions/eaas-copy-secrets-to-ephemeral-cluster/0.1/eaas-copy-secrets-to-ephemeral-cluster.yaml
+            params:
+              - name: credentials
+                value: credentials
+              - name: kubeconfig
+                value: "$(steps.get-hub-kubeconfig.results.kubeconfig)"
+              - name: namespace
+                value: openshift-marketplace
+              - name: labelSelector
+                value: "konflux-copy=acm-d-pull-secret"
           - name: get-managed-kubeconfig
             ref:
               resolver: git
@@ -205,6 +252,66 @@ spec:
                 value: "$(tasks.provision-managed.results.clusterName)"
               - name: credentials
                 value: credentials
+          - name: dump-credentials
+            env:
+              - name: DEBUG_DUMP_CREDENTIALS
+                value: "$(params.DEBUG_DUMP_CREDENTIALS)"
+              - name: HUB_API_SERVER_URL
+                value: "$(steps.get-hub-kubeconfig.results.apiServerURL)"
+              - name: HUB_CONSOLE_URL
+                value: "$(steps.get-hub-kubeconfig.results.consoleURL)"
+              - name: HUB_USERNAME
+                value: "$(steps.get-hub-kubeconfig.results.username)"
+              - name: HUB_PASSWORD_PATH
+                value: "$(steps.get-hub-kubeconfig.results.passwordPath)"
+              - name: HUB_KUBECONFIG_PATH
+                value: "$(steps.get-hub-kubeconfig.results.kubeconfig)"
+              - name: MANAGED_API_SERVER_URL
+                value: "$(steps.get-managed-kubeconfig.results.apiServerURL)"
+              - name: MANAGED_CONSOLE_URL
+                value: "$(steps.get-managed-kubeconfig.results.consoleURL)"
+              - name: MANAGED_USERNAME
+                value: "$(steps.get-managed-kubeconfig.results.username)"
+              - name: MANAGED_PASSWORD_PATH
+                value: "$(steps.get-managed-kubeconfig.results.passwordPath)"
+              - name: MANAGED_KUBECONFIG_PATH
+                value: "$(steps.get-managed-kubeconfig.results.kubeconfig)"
+            volumeMounts:
+              - name: credentials
+                mountPath: /credentials
+            image: registry.redhat.io/openshift4/ose-cli:latest
+            script: |
+              #!/usr/bin/env bash
+              set -euo pipefail
+
+              if [[ "${DEBUG_DUMP_CREDENTIALS}" != "true" ]]; then
+                echo "DEBUG_DUMP_CREDENTIALS is not 'true' — skipping credential dump."
+                exit 0
+              fi
+
+              echo "############################################################"
+              echo "# WARNING: cluster admin credentials follow. Ephemeral      #"
+              echo "# clusters are destroyed when this run ends (or after 2h)   #"
+              echo "# — copy what you need now.                                 #"
+              echo "############################################################"
+
+              echo "=== HUB CLUSTER ==="
+              echo "API Server:  ${HUB_API_SERVER_URL}"
+              echo "Console:     ${HUB_CONSOLE_URL}"
+              echo "Username:    ${HUB_USERNAME}"
+              echo "--- HUB password ---"
+              cat "/credentials/${HUB_PASSWORD_PATH}"; echo
+              echo "--- HUB kubeconfig (base64 — decode with: base64 -d) ---"
+              base64 -w0 "/credentials/${HUB_KUBECONFIG_PATH}"; echo
+
+              echo "=== MANAGED CLUSTER ==="
+              echo "API Server:  ${MANAGED_API_SERVER_URL}"
+              echo "Console:     ${MANAGED_CONSOLE_URL}"
+              echo "Username:    ${MANAGED_USERNAME}"
+              echo "--- MANAGED password ---"
+              cat "/credentials/${MANAGED_PASSWORD_PATH}"; echo
+              echo "--- MANAGED kubeconfig (base64 — decode with: base64 -d) ---"
+              base64 -w0 "/credentials/${MANAGED_KUBECONFIG_PATH}"; echo
           - name: install
             env:
               - name: SNAPSHOT
@@ -213,6 +320,10 @@ spec:
                 value: "/credentials/$(steps.get-hub-kubeconfig.results.kubeconfig)"
               - name: MANAGED_KUBECONFIG
                 value: "/credentials/$(steps.get-managed-kubeconfig.results.kubeconfig)"
+              - name: ACM_VERSION
+                value: $(params.ACM_VERSION)
+              - name: MCE_VERSION
+                value: $(params.MCE_VERSION)
             volumeMounts:
               - name: credentials
                 mountPath: /credentials
@@ -249,9 +360,11 @@ spec:
               echo "RBAC query proxy image: ${RBAC_QUERY_PROXY_IMAGE}"
               echo "Grafana dashboard loader image: ${GRAFANA_DASHBOARD_LOADER_IMAGE}"
 
-              echo "=== Installing ACM via OLM ==="
-              export ACM_VERSION=2.16
-              ./dev-scripts/setup-upstream-catalog.sh
+              echo "=== Injecting quay.io:443 pull credentials ==="
+              ./dev-scripts/add-pull-secret.sh
+
+              echo "=== Installing ACM via downstream dev catalog ==="
+              ./dev-scripts/setup-downstream-catalog.sh
 
               echo "=== Applying Konflux image overrides ==="
               ./dev-scripts/image-override.sh
