@@ -14,6 +14,7 @@ import (
 	"os"
 	"runtime"
 	"strconv"
+	"sync"
 	"time"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
@@ -141,34 +142,49 @@ func doCleanup(args []string) error {
 		return fmt.Errorf("unable to create client for cleanup: %w", err)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Second)
 	defer cancel()
 
+	var wg sync.WaitGroup
+	var mu sync.Mutex
 	var errs []error
 
-	setupLog.Info("Reverting Platform monitoring configuration", "caSecret", hubAmCASecret)
-	if err := obsepctl.RevertClusterMonitoringConfig(ctx, cl, hubAmCASecret, clusterName); err != nil {
-		setupLog.Error(err, "failed to revert platform monitoring config")
+	addErr := func(err error) {
+		mu.Lock()
 		errs = append(errs, err)
+		mu.Unlock()
 	}
 
-	if ctx.Err() != nil {
-		setupLog.Error(ctx.Err(), "cleanup context canceled or timed out, aborting remaining steps")
-		errs = append(errs, ctx.Err())
-		return fmt.Errorf("cleanup failed: %w", errors.Join(errs...))
-	}
+	wg.Add(3)
 
-	setupLog.Info("Reverting User Workload monitoring configuration", "caSecret", hubAmCASecret)
-	if err := obsepctl.RevertUserWorkloadMonitoringConfig(ctx, cl, hubAmCASecret); err != nil {
-		setupLog.Error(err, "failed to revert user workload monitoring config")
-		errs = append(errs, err)
-	}
+	go func() {
+		defer wg.Done()
+		setupLog.Info("Reverting Platform monitoring configuration", "caSecret", hubAmCASecret)
+		if err := obsepctl.RevertClusterMonitoringConfig(ctx, cl, hubAmCASecret, clusterName); err != nil {
+			setupLog.Error(err, "failed to revert platform monitoring config")
+			addErr(err)
+		}
+	}()
 
-	setupLog.Info("Cleaning up OBO CRDs")
-	if err := mcoa.CleanUpCRDs(ctx, cl); err != nil {
-		setupLog.Error(err, "failed to clean up OBO CRDs")
-		errs = append(errs, err)
-	}
+	go func() {
+		defer wg.Done()
+		setupLog.Info("Reverting User Workload monitoring configuration", "caSecret", hubAmCASecret)
+		if err := obsepctl.RevertUserWorkloadMonitoringConfig(ctx, cl, hubAmCASecret); err != nil {
+			setupLog.Error(err, "failed to revert user workload monitoring config")
+			addErr(err)
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		setupLog.Info("Cleaning up OBO CRDs")
+		if err := mcoa.CleanUpCRDs(ctx, cl); err != nil {
+			setupLog.Error(err, "failed to clean up OBO CRDs")
+			addErr(err)
+		}
+	}()
+
+	wg.Wait()
 
 	if len(errs) > 0 {
 		return fmt.Errorf("cleanup failed: %w", errors.Join(errs...))

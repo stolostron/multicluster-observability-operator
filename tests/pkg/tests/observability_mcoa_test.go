@@ -721,7 +721,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 			By("Checking that OBO/COO CRDs are deleted from managed clusters when addon is disabled", func() {
 				expectedCRDs := mcoa.GetManagedCRDNames()
 				for _, cluster := range accessibleOCPClusters {
-					clientAPIExtension := utils.NewKubeClientAPIExtension(cluster.ClusterServerURL, testOptions.KubeConfig, cluster.KubeContext)
+					clientAPIExtension := utils.NewKubeClientAPIExtension(cluster.ClusterServerURL, cluster.KubeConfig, cluster.KubeContext)
 					clientAPIExtensionV1 := clientAPIExtension.ApiextensionsV1()
 					Eventually(func() error {
 						for _, crd := range expectedCRDs {
