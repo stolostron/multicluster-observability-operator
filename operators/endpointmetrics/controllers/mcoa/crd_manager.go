@@ -9,6 +9,7 @@ import (
 	"embed"
 	"fmt"
 	"path/filepath"
+	"slices"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -22,8 +23,8 @@ import (
 var embeddedCRDs embed.FS
 
 const (
-	managedByLabelKey   = "app.kubernetes.io/managed-by"
-	managedByLabelValue = "mcoa-endpoint-operator"
+	ManagedByLabelKey   = "app.kubernetes.io/managed-by"
+	ManagedByLabelValue = "mcoa-endpoint-operator"
 )
 
 var crdLog = ctrl.Log.WithName("crd-manager")
@@ -48,6 +49,17 @@ func init() {
 func isManagedCRDName(name string) bool {
 	_, ok := managedCRDNames[name]
 	return ok
+}
+
+// GetManagedCRDNames returns a sorted slice of all CustomResourceDefinition names managed by MCOA,
+// derived dynamically from the embedded files.
+func GetManagedCRDNames() []string {
+	names := make([]string, 0, len(managedCRDNames))
+	for name := range managedCRDNames {
+		names = append(names, name)
+	}
+	slices.Sort(names)
+	return names
 }
 
 // loadEmbeddedCRDs reads and unmarshals the OBO CRDs from the embedded filesystem.
@@ -79,7 +91,7 @@ func loadEmbeddedCRDs() ([]*unstructured.Unstructured, error) {
 		if labels == nil {
 			labels = make(map[string]string)
 		}
-		labels[managedByLabelKey] = managedByLabelValue
+		labels[ManagedByLabelKey] = ManagedByLabelValue
 		obj.SetLabels(labels)
 
 		crds = append(crds, obj)
@@ -90,7 +102,7 @@ func loadEmbeddedCRDs() ([]*unstructured.Unstructured, error) {
 // isManagedByUs checks if the CRD possesses our ownership tracking label.
 func isManagedByUs(obj *unstructured.Unstructured) bool {
 	labels := obj.GetLabels()
-	return labels != nil && labels[managedByLabelKey] == managedByLabelValue
+	return labels != nil && labels[ManagedByLabelKey] == ManagedByLabelValue
 }
 
 // DeployCRDs checks if the monitoring.rhobs CRDs exist.
@@ -110,7 +122,7 @@ func DeployCRDs(ctx context.Context, c client.Client) error {
 		if err != nil {
 			if errors.IsNotFound(err) {
 				// Server-side apply without forcing ownership
-				if err := c.Apply(ctx, client.ApplyConfigurationFromUnstructured(obj), client.FieldOwner(managedByLabelValue)); err != nil {
+				if err := c.Apply(ctx, client.ApplyConfigurationFromUnstructured(obj), client.FieldOwner(ManagedByLabelValue)); err != nil {
 					return fmt.Errorf("failed to server-side apply CRD %s: %w", obj.GetName(), err)
 				}
 			} else {
@@ -120,7 +132,7 @@ func DeployCRDs(ctx context.Context, c client.Client) error {
 			// CRD exists. Check if it is managed by us before attempting an upgrade.
 			if isManagedByUs(found) {
 				// Unconditionally apply with ForceOwnership to progress schemas safely
-				if err := c.Apply(ctx, client.ApplyConfigurationFromUnstructured(obj), client.FieldOwner(managedByLabelValue), client.ForceOwnership); err != nil {
+				if err := c.Apply(ctx, client.ApplyConfigurationFromUnstructured(obj), client.FieldOwner(ManagedByLabelValue), client.ForceOwnership); err != nil {
 					return fmt.Errorf("failed to update managed CRD %s via server-side apply: %w", obj.GetName(), err)
 				}
 			} else {

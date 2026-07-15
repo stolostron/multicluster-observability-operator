@@ -7,6 +7,7 @@ package mcoa
 import (
 	"context"
 	"fmt"
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -22,7 +23,7 @@ import (
 func TestIsManagedCRDName(t *testing.T) {
 	t.Parallel()
 
-	managed := []string{
+	expected := []string{
 		"podmonitors.monitoring.rhobs",
 		"probes.monitoring.rhobs",
 		"prometheusagents.monitoring.rhobs",
@@ -31,7 +32,12 @@ func TestIsManagedCRDName(t *testing.T) {
 		"scrapeconfigs.monitoring.rhobs",
 		"servicemonitors.monitoring.rhobs",
 	}
-	for _, name := range managed {
+	actual := GetManagedCRDNames()
+	slices.Sort(expected)
+	slices.Sort(actual)
+	assert.Equal(t, expected, actual, "GetManagedCRDNames must return exactly the expected set of managed CRDs")
+
+	for _, name := range actual {
 		assert.True(t, isManagedCRDName(name), "expected %q to be a managed CRD name", name)
 	}
 
@@ -43,15 +49,7 @@ func TestIsManagedCRDName(t *testing.T) {
 
 func TestDeployAndCleanUpCRDs(t *testing.T) {
 	scheme := runtime.NewScheme()
-	expectedCRDs := []string{
-		"podmonitors.monitoring.rhobs",
-		"probes.monitoring.rhobs",
-		"prometheusagents.monitoring.rhobs",
-		"prometheuses.monitoring.rhobs",
-		"prometheusrules.monitoring.rhobs",
-		"scrapeconfigs.monitoring.rhobs",
-		"servicemonitors.monitoring.rhobs",
-	}
+	expectedCRDs := GetManagedCRDNames()
 
 	crdGVK := schema.GroupVersionKind{
 		Group:   "apiextensions.k8s.io",
@@ -82,7 +80,7 @@ func TestDeployAndCleanUpCRDs(t *testing.T) {
 		existingCRD := &unstructured.Unstructured{}
 		existingCRD.SetGroupVersionKind(crdGVK)
 		existingCRD.SetName("podmonitors.monitoring.rhobs")
-		existingCRD.SetLabels(map[string]string{managedByLabelKey: "something-else"})
+		existingCRD.SetLabels(map[string]string{ManagedByLabelKey: "something-else"})
 
 		cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(existingCRD).Build()
 		ctx := context.Background()
@@ -95,7 +93,7 @@ func TestDeployAndCleanUpCRDs(t *testing.T) {
 		crd.SetGroupVersionKind(crdGVK)
 		err = cl.Get(ctx, types.NamespacedName{Name: "podmonitors.monitoring.rhobs"}, crd)
 		assert.NoError(t, err)
-		assert.Equal(t, "something-else", crd.GetLabels()[managedByLabelKey])
+		assert.Equal(t, "something-else", crd.GetLabels()[ManagedByLabelKey])
 	})
 
 	t.Run("Upgrade existing managed CRD on subsequent deployments", func(t *testing.T) {
@@ -104,7 +102,7 @@ func TestDeployAndCleanUpCRDs(t *testing.T) {
 		existingCRD := &unstructured.Unstructured{}
 		existingCRD.SetGroupVersionKind(crdGVK)
 		existingCRD.SetName("probes.monitoring.rhobs")
-		existingCRD.SetLabels(map[string]string{managedByLabelKey: managedByLabelValue})
+		existingCRD.SetLabels(map[string]string{ManagedByLabelKey: ManagedByLabelValue})
 		existingCRD.SetAnnotations(map[string]string{"test-drift": "drifted"})
 
 		cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(existingCRD).Build()
@@ -127,12 +125,12 @@ func TestDeployAndCleanUpCRDs(t *testing.T) {
 		managedCRD := &unstructured.Unstructured{}
 		managedCRD.SetGroupVersionKind(crdGVK)
 		managedCRD.SetName("probes.monitoring.rhobs")
-		managedCRD.SetLabels(map[string]string{managedByLabelKey: managedByLabelValue})
+		managedCRD.SetLabels(map[string]string{ManagedByLabelKey: ManagedByLabelValue})
 
 		otherCRD := &unstructured.Unstructured{}
 		otherCRD.SetGroupVersionKind(crdGVK)
 		otherCRD.SetName("podmonitors.monitoring.rhobs")
-		otherCRD.SetLabels(map[string]string{managedByLabelKey: "other-operator"})
+		otherCRD.SetLabels(map[string]string{ManagedByLabelKey: "other-operator"})
 
 		cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(managedCRD, otherCRD).Build()
 		ctx := context.Background()
@@ -182,7 +180,7 @@ func TestDeployAndCleanUpCRDs(t *testing.T) {
 		existingCRD := &unstructured.Unstructured{}
 		existingCRD.SetGroupVersionKind(crdGVK)
 		existingCRD.SetName("probes.monitoring.rhobs")
-		existingCRD.SetLabels(map[string]string{managedByLabelKey: managedByLabelValue})
+		existingCRD.SetLabels(map[string]string{ManagedByLabelKey: ManagedByLabelValue})
 
 		cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(existingCRD).WithInterceptorFuncs(interceptor.Funcs{
 			Apply: func(ctx context.Context, clientww client.WithWatch, obj runtime.ApplyConfiguration, opts ...client.ApplyOption) error {
@@ -217,7 +215,7 @@ func TestDeployAndCleanUpCRDs(t *testing.T) {
 		managedCRD := &unstructured.Unstructured{}
 		managedCRD.SetGroupVersionKind(crdGVK)
 		managedCRD.SetName("probes.monitoring.rhobs")
-		managedCRD.SetLabels(map[string]string{managedByLabelKey: managedByLabelValue})
+		managedCRD.SetLabels(map[string]string{ManagedByLabelKey: ManagedByLabelValue})
 
 		cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(managedCRD).WithInterceptorFuncs(interceptor.Funcs{
 			Delete: func(ctx context.Context, clientww client.WithWatch, obj client.Object, opts ...client.DeleteOption) error {

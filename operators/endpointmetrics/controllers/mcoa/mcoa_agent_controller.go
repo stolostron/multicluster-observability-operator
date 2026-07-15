@@ -87,7 +87,9 @@ func (r *MCOAAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, nil
 
 	case isManagedCRDName(req.Name) && req.Namespace == "":
-		// A watched OBO CRD was deleted. Re-apply all managed CRDs immediately.
+		// The predicate already filters by name; the empty-namespace guard here
+		// disambiguates from any future watch source that might use the same name
+		// with a namespace (e.g. a ConfigMap named like a CRD).
 		r.Log.Info("OBO CRD event, re-applying all managed CRDs", "crd", req.Name)
 		if err := DeployCRDs(ctx, r.Client); err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to restore OBO CRDs after event on %s: %w", req.Name, err)
