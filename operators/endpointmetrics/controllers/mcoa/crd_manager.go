@@ -28,6 +28,28 @@ const (
 
 var crdLog = ctrl.Log.WithName("crd-manager")
 
+// managedCRDNames is the set of CRD names we own, derived from the embedded files at
+// init time. Used to filter watch events without re-reading the embedded FS on every call.
+var managedCRDNames map[string]struct{}
+
+func init() {
+	crds, err := loadEmbeddedCRDs()
+	if err != nil {
+		// Embedded files are compiled into the binary; a parse failure means a corrupt build.
+		panic(fmt.Sprintf("failed to initialize managed CRD name set: %v", err))
+	}
+	managedCRDNames = make(map[string]struct{}, len(crds))
+	for _, crd := range crds {
+		managedCRDNames[crd.GetName()] = struct{}{}
+	}
+}
+
+// isManagedCRDName reports whether name belongs to an OBO CRD owned by this operator.
+func isManagedCRDName(name string) bool {
+	_, ok := managedCRDNames[name]
+	return ok
+}
+
 // loadEmbeddedCRDs reads and unmarshals the OBO CRDs from the embedded filesystem.
 func loadEmbeddedCRDs() ([]*unstructured.Unstructured, error) {
 	entries, err := embeddedCRDs.ReadDir("crds")

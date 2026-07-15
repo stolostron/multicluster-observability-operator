@@ -19,6 +19,28 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 )
 
+func TestIsManagedCRDName(t *testing.T) {
+	t.Parallel()
+
+	managed := []string{
+		"podmonitors.monitoring.rhobs",
+		"probes.monitoring.rhobs",
+		"prometheusagents.monitoring.rhobs",
+		"prometheuses.monitoring.rhobs",
+		"prometheusrules.monitoring.rhobs",
+		"scrapeconfigs.monitoring.rhobs",
+		"servicemonitors.monitoring.rhobs",
+	}
+	for _, name := range managed {
+		assert.True(t, isManagedCRDName(name), "expected %q to be a managed CRD name", name)
+	}
+
+	notManaged := []string{"", "podmonitors.monitoring.coreos.com", "unknown", "prometheusagents"}
+	for _, name := range notManaged {
+		assert.False(t, isManagedCRDName(name), "expected %q not to be a managed CRD name", name)
+	}
+}
+
 func TestDeployAndCleanUpCRDs(t *testing.T) {
 	scheme := runtime.NewScheme()
 	expectedCRDs := []string{
