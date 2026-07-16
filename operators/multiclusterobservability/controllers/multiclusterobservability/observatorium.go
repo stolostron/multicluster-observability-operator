@@ -682,7 +682,7 @@ func newReceiversSpec(
 
 	if mco.Spec.AdvancedConfig != nil && mco.Spec.AdvancedConfig.Receive != nil &&
 		mco.Spec.AdvancedConfig.Receive.Debug != nil && mco.Spec.AdvancedConfig.Receive.Debug.LogLevel != "" {
-		receSpec.Args = append(receSpec.Args, "--log.level="+mco.Spec.AdvancedConfig.Receive.Debug.LogLevel)
+		receSpec.LogLevel = mco.Spec.AdvancedConfig.Receive.Debug.LogLevel
 	}
 	return receSpec
 }

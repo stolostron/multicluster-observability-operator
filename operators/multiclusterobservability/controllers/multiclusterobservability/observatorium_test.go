@@ -982,11 +982,12 @@ func TestNewRuleSpec(t *testing.T) {
 
 func TestNewReceiversSpec(t *testing.T) {
 	tests := []struct {
-		name         string
-		mcoaEnabled  bool
-		hasContainer bool
-		debug        *mcov1beta2.ReceiveDebugSpec
-		expectedArgs []string
+		name              string
+		mcoaEnabled       bool
+		hasContainer      bool
+		debug             *mcov1beta2.ReceiveDebugSpec
+		expectedArgs      []string
+		expectedLogLevel  string
 	}{
 		{
 			name:         "MCOA disabled, no custom containers",
@@ -1011,23 +1012,25 @@ func TestNewReceiversSpec(t *testing.T) {
 			debug: &mcov1beta2.ReceiveDebugSpec{
 				LogLevel: "debug",
 			},
-			expectedArgs: []string{"--log.level=debug"},
+			expectedArgs:     nil,
+			expectedLogLevel: "debug",
 		},
 		{
-			name: "MCOA enabled with receive debug log level",
+			name:        "MCOA enabled with receive debug log level",
 			mcoaEnabled: true,
 			debug: &mcov1beta2.ReceiveDebugSpec{
 				LogLevel: "info",
 			},
 			expectedArgs: []string{
 				"--tsdb.out-of-order.time-window=1h",
-				"--log.level=info",
 			},
+			expectedLogLevel: "info",
 		},
 		{
-			name:         "receive debug with empty log level",
-			debug:        &mcov1beta2.ReceiveDebugSpec{},
-			expectedArgs: nil,
+			name:             "receive debug with empty log level",
+			debug:            &mcov1beta2.ReceiveDebugSpec{},
+			expectedArgs:     nil,
+			expectedLogLevel: "",
 		},
 	}
 
@@ -1078,6 +1081,10 @@ func TestNewReceiversSpec(t *testing.T) {
 				if receiveSpec.Args[i] != expectedArg {
 					t.Errorf("expected arg %s at index %d, got %s", expectedArg, i, receiveSpec.Args[i])
 				}
+			}
+
+			if receiveSpec.LogLevel != tt.expectedLogLevel {
+				t.Errorf("expected logLevel %q, got %q", tt.expectedLogLevel, receiveSpec.LogLevel)
 			}
 		})
 	}

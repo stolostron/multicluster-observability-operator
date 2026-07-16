@@ -577,6 +577,93 @@ var _ = Describe("", func() {
 		},
 	)
 
+	It(
+		"Observability: Verify Thanos Receive debug tuning in MCO CR - [P2][Sev2][Observability][Integration]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release (config/g0)",
+		func() {
+			By("Updating MCO CR with receive debug settings")
+			mcoRes, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).
+				Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+			Expect(err).NotTo(HaveOccurred())
+
+			spec := mcoRes.Object["spec"].(map[string]any)
+			advancedSpec, ok := spec["advanced"].(map[string]any)
+			if !ok {
+				Skip("Skip the case since the MCO CR did not have advanced spec configured")
+			}
+			receiveSpec, ok := advancedSpec["receive"].(map[string]any)
+			if !ok {
+				receiveSpec = map[string]any{}
+				advancedSpec["receive"] = receiveSpec
+			}
+			receiveSpec["receive"] = map[string]any{
+				"logLevel": "debug",
+			}
+
+			_, err = dynClient.Resource(utils.NewMCOGVRV1BETA2()).
+				Update(context.TODO(), mcoRes, metav1.UpdateOptions{})
+			Expect(err).NotTo(HaveOccurred())
+
+			By("Checking receive logLevel is set on Observatorium CR")
+			Eventually(func() error {
+				obsCR, err := dynClient.Resource(utils.NewMCOMObservatoriumGVR()).
+					Namespace(MCO_NAMESPACE).
+					Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+				if err != nil {
+					return err
+				}
+				receivers, ok := obsCR.Object["spec"].(map[string]any)["thanos"].(map[string]any)["receivers"].(map[string]any)
+				if !ok {
+					return fmt.Errorf("observatorium CR missing thanos.receivers")
+				}
+				logLevel, _ := receivers["logLevel"].(string)
+				if logLevel != "debug" {
+					return fmt.Errorf("expected thanos.receivers.logLevel %q, got %q", "debug", logLevel)
+				}
+				args, _ := receivers["args"].([]any)
+				for _, arg := range args {
+					if argStr, ok := arg.(string); ok && strings.HasPrefix(argStr, "--log.level=") {
+						return fmt.Errorf("did not expect --log.level in receivers.args, got: %v", args)
+					}
+				}
+				return nil
+			}, EventuallyTimeoutMinute*2, EventuallyIntervalSecond*10).Should(Succeed())
+
+			By("Updating receive debug log level to info")
+			mcoRes, err = dynClient.Resource(utils.NewMCOGVRV1BETA2()).
+				Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+			Expect(err).NotTo(HaveOccurred())
+
+			spec = mcoRes.Object["spec"].(map[string]any)
+			advancedSpec = spec["advanced"].(map[string]any)
+			receiveSpec = advancedSpec["receive"].(map[string]any)
+			receiveSpec["receive"] = map[string]any{
+				"logLevel": "info",
+			}
+
+			_, err = dynClient.Resource(utils.NewMCOGVRV1BETA2()).
+				Update(context.TODO(), mcoRes, metav1.UpdateOptions{})
+			Expect(err).NotTo(HaveOccurred())
+
+			Eventually(func() error {
+				obsCR, err := dynClient.Resource(utils.NewMCOMObservatoriumGVR()).
+					Namespace(MCO_NAMESPACE).
+					Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+				if err != nil {
+					return err
+				}
+				receivers, ok := obsCR.Object["spec"].(map[string]any)["thanos"].(map[string]any)["receivers"].(map[string]any)
+				if !ok {
+					return fmt.Errorf("observatorium CR missing thanos.receivers")
+				}
+				logLevel, _ := receivers["logLevel"].(string)
+				if logLevel != "info" {
+					return fmt.Errorf("expected thanos.receivers.logLevel %q, got %q", "info", logLevel)
+				}
+				return nil
+			}, EventuallyTimeoutMinute*2, EventuallyIntervalSecond*10).Should(Succeed())
+		},
+	)
+
 	JustAfterEach(func() {
 		Expect(utils.IntegrityChecking(testOptions)).NotTo(HaveOccurred())
 	})

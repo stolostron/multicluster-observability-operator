@@ -558,7 +558,7 @@ type CompactDebugSpec struct {
 }
 
 type ReceiveDebugSpec struct {
-	// LogLevel for the reciever (e.g., debug, info, warn, error).
+	// LogLevel for the receiver (e.g., debug, info, warn, error).
 	// +optional
 	// +kubebuilder:validation:Enum=debug;info;warn;error
 	LogLevel string `json:"logLevel,omitempty"`

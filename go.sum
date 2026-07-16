@@ -430,8 +430,8 @@ github.com/stolostron/kubernetes-dependency-watches v0.10.2 h1:b8g3Wye6igeRrrSQw
 github.com/stolostron/kubernetes-dependency-watches v0.10.2/go.mod h1:pV1b/PwVNG4a5tzBcqxhUpMjjo5nY0gUb6ieu6sGH6o=
 github.com/stolostron/locutus v0.0.0-20250206205144-9e42fd1bc0a2 h1:ylP11oTJB5wCogd4ruz8fhP412xN1oxqjc2+GbuugJg=
 github.com/stolostron/locutus v0.0.0-20250206205144-9e42fd1bc0a2/go.mod h1:/vWrwexkfG8FKRfV694BBe6u1Vf37rB8nDsvgF8xPa0=
-github.com/stolostron/observatorium-operator v0.0.0-20260528153725-489e8da35ad2 h1:JeDmvIo6pkQ9g1TLpeqT9yZQN1bbrarVRIpAulZ7fc4=
-github.com/stolostron/observatorium-operator v0.0.0-20260528153725-489e8da35ad2/go.mod h1:ZDh8f7Fj7GzUR5BXqH9FMmJwelVOnC+mUF9qt5BandI=
+github.com/stolostron/observatorium-operator v0.0.0-20260715135030-1d202794235d h1:32BcTOruwBGXw9dP6haJ4LUtw2QDID8Vuf1LyyCCYNw=
+github.com/stolostron/observatorium-operator v0.0.0-20260715135030-1d202794235d/go.mod h1:Q9aBjH9hH3VeSNJjuOnx8yUP6GkvoXrJ+RlDoC9Lr4E=
 github.com/stolostron/rbac-api-utils v0.0.0-20240404212618-7f57fc664256 h1:BeTUZoAkKzPKSH0sG4a9PaakKHuJ0h9Cks9joBn3Ns8=
 github.com/stolostron/rbac-api-utils v0.0.0-20240404212618-7f57fc664256/go.mod h1:zYGYkVgY+sL501na1x5RDCKMrHD+JAwb6oRFU8e9XlU=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=

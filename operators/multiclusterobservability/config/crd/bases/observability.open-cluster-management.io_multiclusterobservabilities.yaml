@@ -7251,7 +7251,7 @@ spec:
                           and tuning the receiver.
                         properties:
                           logLevel:
-                            description: LogLevel for the reciever (e.g., debug, info,
+                            description: LogLevel for the receiver (e.g., debug, info,
                               warn, error).
                             enum:
                             - debug
