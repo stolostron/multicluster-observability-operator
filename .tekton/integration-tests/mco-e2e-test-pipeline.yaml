@@ -168,6 +168,18 @@ spec:
                 value: "m5.xlarge"
               - name: timeout
                 value: "40m"
+              - name: imageContentSources
+                value: |
+                  - source: registry.redhat.io/rhacm2
+                    mirrors:
+                      - quay.io:443/acm-d
+                      - quay.io/redhat-user-workloads/crt-redhat-acm-tenant
+                  - source: registry.redhat.io/multicluster-engine
+                    mirrors:
+                      - quay.io:443/acm-d
+                  - source: registry.access.redhat.com/openshift4/ose-oauth-proxy
+                    mirrors:
+                      - registry.redhat.io/openshift4/ose-oauth-proxy
     - name: mco-install
       description: Install ACM via downstream dev catalog, MCO operator, and import managed cluster
       runAfter:
@@ -252,6 +264,25 @@ spec:
                 value: "$(tasks.provision-managed.results.clusterName)"
               - name: credentials
                 value: credentials
+          - name: copy-pull-secret-to-managed
+            ref:
+              resolver: git
+              params:
+                - name: url
+                  value: https://github.com/konflux-ci/build-definitions.git
+                - name: revision
+                  value: main
+                - name: pathInRepo
+                  value: stepactions/eaas-copy-secrets-to-ephemeral-cluster/0.1/eaas-copy-secrets-to-ephemeral-cluster.yaml
+            params:
+              - name: credentials
+                value: credentials
+              - name: kubeconfig
+                value: "$(steps.get-managed-kubeconfig.results.kubeconfig)"
+              - name: namespace
+                value: open-cluster-management-agent
+              - name: labelSelector
+                value: "konflux-copy=acm-d-pull-secret"
           - name: dump-credentials
             env:
               - name: DEBUG_DUMP_CREDENTIALS
