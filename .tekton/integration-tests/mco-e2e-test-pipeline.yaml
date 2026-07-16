@@ -265,24 +265,39 @@ spec:
               - name: credentials
                 value: credentials
           - name: copy-pull-secret-to-managed
-            ref:
-              resolver: git
-              params:
-                - name: url
-                  value: https://github.com/konflux-ci/build-definitions.git
-                - name: revision
-                  value: main
-                - name: pathInRepo
-                  value: stepactions/eaas-copy-secrets-to-ephemeral-cluster/0.1/eaas-copy-secrets-to-ephemeral-cluster.yaml
-            params:
+            env:
+              - name: HUB_KUBECONFIG
+                value: "/credentials/$(steps.get-hub-kubeconfig.results.kubeconfig)"
+              - name: MANAGED_KUBECONFIG
+                value: "/credentials/$(steps.get-managed-kubeconfig.results.kubeconfig)"
+            volumeMounts:
               - name: credentials
-                value: credentials
-              - name: kubeconfig
-                value: "$(steps.get-managed-kubeconfig.results.kubeconfig)"
-              - name: namespace
-                value: open-cluster-management-agent
-              - name: labelSelector
-                value: "konflux-copy=acm-d-pull-secret"
+                mountPath: /credentials
+            image: registry.redhat.io/openshift4/ose-cli:latest
+            script: |
+              #!/usr/bin/env bash
+              set -exo pipefail
+
+              # Get the pull secret from the hub cluster
+              oc --kubeconfig="${HUB_KUBECONFIG}" get secret acm-mco-konflux-e2e \
+                -n openshift-marketplace -o json | \
+                jq 'del(.metadata.namespace,.metadata.uid,.metadata.resourceVersion,.metadata.creationTimestamp)' \
+                > /tmp/acm-pull-secret-full.json
+
+              # Copy it to the managed cluster's openshift-config namespace
+              oc --kubeconfig="${MANAGED_KUBECONFIG}" apply -n openshift-config -f /tmp/acm-pull-secret-full.json
+
+              # Merge it into the managed cluster's global pull secret
+              oc --kubeconfig="${MANAGED_KUBECONFIG}" get secret pull-secret -n openshift-config -o json | \
+                jq -r '.data.".dockerconfigjson"' | base64 -d > /tmp/global-pull-secret.json
+
+              oc --kubeconfig="${MANAGED_KUBECONFIG}" get secret acm-mco-konflux-e2e -n openshift-config -o json | \
+                jq -r '.data.".dockerconfigjson"' | base64 -d > /tmp/acm-pull-secret.json
+
+              jq -s '.[0] * .[1]' /tmp/global-pull-secret.json /tmp/acm-pull-secret.json > /tmp/merged-pull-secret.json
+
+              oc --kubeconfig="${MANAGED_KUBECONFIG}" set data secret/pull-secret \
+                -n openshift-config --from-file=.dockerconfigjson=/tmp/merged-pull-secret.json
           - name: dump-credentials
             env:
               - name: DEBUG_DUMP_CREDENTIALS
