@@ -1173,73 +1173,73 @@ func TestNewCompactSpec(t *testing.T) {
 	}
 }
 
+func buildObsSpec(t *testing.T, mco *mcov1beta2.MultiClusterObservability) *observatoriumv1alpha1.ObservatoriumSpec {
+	t.Helper()
+	writeStorageS := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "write_name",
+			Namespace: mcoconfig.GetDefaultNamespace(),
+		},
+		Type: "Opaque",
+		Data: map[string][]byte{
+			"write_key": []byte(`url: http://remotewrite/endpoint`),
+		},
+	}
+	s := runtime.NewScheme()
+	scheme.AddToScheme(s)
+	mcov1beta2.SchemeBuilder.AddToScheme(s)
+	observatoriumv1alpha1.SchemeBuilder.AddToScheme(s)
+	objs := []runtime.Object{mco, writeStorageS, alertmanagerCABundleConfigMap()}
+	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
+	if err := mcoconfig.SetOperandNames(cl); err != nil {
+		t.Fatalf("SetOperandNames: %v", err)
+	}
+	obs, err := newDefaultObservatoriumSpec(cl, mco, storageClassName, "")
+	if err != nil {
+		t.Fatalf("newDefaultObservatoriumSpec: %v", err)
+	}
+	return obs
+}
+
+func newBaseMCO() *mcov1beta2.MultiClusterObservability {
+	return &mcov1beta2.MultiClusterObservability{
+		TypeMeta: metav1.TypeMeta{Kind: "MultiClusterObservability"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test",
+			Annotations: map[string]string{
+				mcoconfig.AnnotationKeyImageRepository: "quay.io:443/acm-d",
+				mcoconfig.AnnotationKeyImageTagSuffix:  "tag",
+			},
+		},
+		Spec: mcov1beta2.MultiClusterObservabilitySpec{
+			StorageConfig: &mcov1beta2.StorageConfig{
+				MetricObjectStorage: &mcoshared.PreConfiguredStorage{
+					Key:           "key",
+					Name:          "name",
+					TLSSecretName: "secret",
+				},
+				WriteStorage: []*mcoshared.PreConfiguredStorage{
+					{Key: "write_key", Name: "write_name"},
+				},
+				StorageClass:            storageClassName,
+				AlertmanagerStorageSize: "1Gi",
+				CompactStorageSize:      "1Gi",
+				RuleStorageSize:         "1Gi",
+				ReceiveStorageSize:      "1Gi",
+				StoreStorageSize:        "1Gi",
+			},
+			ObservabilityAddonSpec: &mcoshared.ObservabilityAddonSpec{
+				EnableMetrics: true,
+				Interval:      300,
+			},
+		},
+	}
+}
+
 func TestNewObservatoriumSpecMetricsAlertmanagerEndpoints(t *testing.T) {
-	buildObs := func(t *testing.T, mco *mcov1beta2.MultiClusterObservability) *observatoriumv1alpha1.ObservatoriumSpec {
-		t.Helper()
-		writeStorageS := &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "write_name",
-				Namespace: mcoconfig.GetDefaultNamespace(),
-			},
-			Type: "Opaque",
-			Data: map[string][]byte{
-				"write_key": []byte(`url: http://remotewrite/endpoint`),
-			},
-		}
-		s := runtime.NewScheme()
-		scheme.AddToScheme(s)
-		mcov1beta2.SchemeBuilder.AddToScheme(s)
-		observatoriumv1alpha1.SchemeBuilder.AddToScheme(s)
-		objs := []runtime.Object{mco, writeStorageS, alertmanagerCABundleConfigMap()}
-		cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
-		if err := mcoconfig.SetOperandNames(cl); err != nil {
-			t.Fatalf("SetOperandNames: %v", err)
-		}
-		obs, err := newDefaultObservatoriumSpec(cl, mco, storageClassName, "")
-		if err != nil {
-			t.Fatalf("newDefaultObservatoriumSpec: %v", err)
-		}
-		return obs
-	}
-
-	baseMCO := func() *mcov1beta2.MultiClusterObservability {
-		return &mcov1beta2.MultiClusterObservability{
-			TypeMeta: metav1.TypeMeta{Kind: "MultiClusterObservability"},
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "test",
-				Annotations: map[string]string{
-					mcoconfig.AnnotationKeyImageRepository: "quay.io:443/acm-d",
-					mcoconfig.AnnotationKeyImageTagSuffix:  "tag",
-				},
-			},
-			Spec: mcov1beta2.MultiClusterObservabilitySpec{
-				StorageConfig: &mcov1beta2.StorageConfig{
-					MetricObjectStorage: &mcoshared.PreConfiguredStorage{
-						Key:           "key",
-						Name:          "name",
-						TLSSecretName: "secret",
-					},
-					WriteStorage: []*mcoshared.PreConfiguredStorage{
-						{Key: "write_key", Name: "write_name"},
-					},
-					StorageClass:            storageClassName,
-					AlertmanagerStorageSize: "1Gi",
-					CompactStorageSize:      "1Gi",
-					RuleStorageSize:         "1Gi",
-					ReceiveStorageSize:      "1Gi",
-					StoreStorageSize:        "1Gi",
-				},
-				ObservabilityAddonSpec: &mcoshared.ObservabilityAddonSpec{
-					EnableMetrics: true,
-					Interval:      300,
-				},
-			},
-		}
-	}
-
 	t.Run("default sizing produces DNS endpoints per alertmanager replica", func(t *testing.T) {
-		mco := baseMCO()
-		obs := buildObs(t, mco)
+		mco := newBaseMCO()
+		obs := buildObsSpec(t, mco)
 		want := []string{
 			"https://observability-alertmanager-0.alertmanager-operated.open-cluster-management-observability.svc:9095",
 			"https://observability-alertmanager-1.alertmanager-operated.open-cluster-management-observability.svc:9095",
@@ -1251,7 +1251,7 @@ func TestNewObservatoriumSpecMetricsAlertmanagerEndpoints(t *testing.T) {
 	})
 	var amReplicas int32 = 5
 	t.Run("advanced alertmanager replicas extends metrics endpoints", func(t *testing.T) {
-		mco := baseMCO()
+		mco := newBaseMCO()
 		mco.Spec.AdvancedConfig = &mcov1beta2.AdvancedConfig{
 			Alertmanager: &mcov1beta2.AlertmanagerSpec{
 				CommonSpec: mcov1beta2.CommonSpec{
@@ -1259,12 +1259,55 @@ func TestNewObservatoriumSpecMetricsAlertmanagerEndpoints(t *testing.T) {
 				},
 			},
 		}
-		obs := buildObs(t, mco)
+		obs := buildObsSpec(t, mco)
 		if got := len(obs.API.MetricsAlertmanagerEndpoints); got != int(amReplicas) {
 			t.Fatalf("len(MetricsAlertmanagerEndpoints) = %d, want %d", got, int(amReplicas))
 		}
 		if obs.API.MetricsAlertmanagerEndpoints[4] != "https://observability-alertmanager-4.alertmanager-operated.open-cluster-management-observability.svc:9095" {
 			t.Errorf("last endpoint = %q", obs.API.MetricsAlertmanagerEndpoints[4])
+		}
+	})
+}
+
+func TestNewObservatoriumSpecAPITimeouts(t *testing.T) {
+	t.Run("no advanced config leaves timeouts empty for jsonnet defaults", func(t *testing.T) {
+		mco := newBaseMCO()
+		obs := buildObsSpec(t, mco)
+		if obs.API.QueryTimeout != "" {
+			t.Errorf("QueryTimeout = %q, want empty", obs.API.QueryTimeout)
+		}
+		if obs.API.WriteTimeout != "" {
+			t.Errorf("WriteTimeout = %q, want empty", obs.API.WriteTimeout)
+		}
+	})
+
+	t.Run("both timeouts propagate from advanced config", func(t *testing.T) {
+		mco := newBaseMCO()
+		mco.Spec.AdvancedConfig = &mcov1beta2.AdvancedConfig{
+			QueryTimeout: "10m",
+			WriteTimeout: "15m",
+		}
+		obs := buildObsSpec(t, mco)
+		if obs.API.QueryTimeout != "10m" {
+			t.Errorf("QueryTimeout = %q, want %q", obs.API.QueryTimeout, "10m")
+		}
+		if obs.API.WriteTimeout != "15m" {
+			t.Errorf("WriteTimeout = %q, want %q", obs.API.WriteTimeout, "15m")
+		}
+	})
+
+	t.Run("invalid duration values are skipped", func(t *testing.T) {
+		mco := newBaseMCO()
+		mco.Spec.AdvancedConfig = &mcov1beta2.AdvancedConfig{
+			QueryTimeout: "invalid",
+			WriteTimeout: "5min",
+		}
+		obs := buildObsSpec(t, mco)
+		if obs.API.QueryTimeout != "" {
+			t.Errorf("QueryTimeout = %q, want empty for invalid input", obs.API.QueryTimeout)
+		}
+		if obs.API.WriteTimeout != "" {
+			t.Errorf("WriteTimeout = %q, want empty for invalid input", obs.API.WriteTimeout)
 		}
 	})
 }

@@ -379,13 +379,22 @@ type AdvancedConfig struct {
 	// For the alertmanager that runs in the hub this setting has no effect.
 	// +optional
 	CustomAlertmanagerHubURL observabilityshared.URL `json:"customAlertmanagerHubURL,omitempty"`
-	// QueryTimeout is the timeout for queries executed in Grafana.
-	// It is applied to the read path components from Grafana.
+	// QueryTimeout is the timeout for queries and reads through the observability gateway.
+	// It is applied to Grafana datasources, HAProxy route, rbac-query-proxy,
+	// and the observatorium-api server read timeout.
 	// Default is 300s.
 	// +optional
 	// +kubebuilder:validation:Pattern=`^([0-9]+(\.[0-9]+)?(ms|s|m|h))+$`
 	// +kubebuilder:default="300s"
 	QueryTimeout string `json:"queryTimeout,omitempty"`
+	// WriteTimeout is the timeout for metrics ingestion
+	// through the observatorium-api gateway. Controls the server write timeout
+	// for the response path. Increase for large payloads over high-latency networks.
+	// Default is 720s.
+	// +optional
+	// +kubebuilder:validation:Pattern=`^([0-9]+(\.[0-9]+)?(ms|s|m|h))+$`
+	// +kubebuilder:default="720s"
+	WriteTimeout string `json:"writeTimeout,omitempty"`
 	// The spec of the data retention configurations
 	// +optional
 	RetentionConfig *RetentionConfig `json:"retentionConfig,omitempty"`
