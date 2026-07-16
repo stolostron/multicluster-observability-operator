@@ -278,6 +278,9 @@ spec:
               #!/usr/bin/env bash
               set -exo pipefail
 
+              # Install jq
+              dnf -y install jq
+
               # Get the pull secret from the hub cluster
               oc --kubeconfig="${HUB_KUBECONFIG}" get secret acm-mco-konflux-e2e \
                 -n openshift-marketplace -o json | \
