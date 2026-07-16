@@ -419,7 +419,23 @@ spec:
 
               oc wait managedcluster managed \
                 --for=condition=ManagedClusterConditionAvailable=True \
-                --timeout=300s
+                --timeout=300s || {
+                echo "=== managedcluster did not become Available — dumping debug info ==="
+                echo "--- ManagedCluster status (hub) ---"
+                oc get managedcluster managed -o yaml
+                echo "--- Pods in managed namespace (hub) ---"
+                oc get pods -n managed -o wide
+                echo "--- Import controller logs (hub) ---"
+                oc logs -n multicluster-engine -l app=managedcluster-import-controller-v2 --tail=200 || true
+                echo "--- Events in managed namespace (hub) ---"
+                oc get events -n managed --sort-by='.lastTimestamp' | tail -40
+                echo "--- Klusterlet agent pods on the managed cluster itself ---"
+                oc --kubeconfig="${MANAGED_KUBECONFIG}" get pods -n open-cluster-management-agent -o wide || true
+                oc --kubeconfig="${MANAGED_KUBECONFIG}" get pods -n open-cluster-management-agent-addon -o wide || true
+                echo "--- Klusterlet resource on the managed cluster itself ---"
+                oc --kubeconfig="${MANAGED_KUBECONFIG}" get klusterlet -o yaml || true
+                exit 1
+              }
 
               echo "=== Verifying managed cluster registration ==="
               oc get managedcluster

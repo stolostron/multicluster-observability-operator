@@ -106,6 +106,22 @@ oc wait pod -n "${ACM_NS}" -l name=multiclusterhub-operator \
 log_info "Creating MultiClusterHub CR..."
 oc apply -f "${SCRIPT_DIR}/manifests/acm/multiclusterhub-cr.yaml"
 
-wait_for_mch_running 900
+wait_for_mch_running 900 || {
+  log_error "=== MultiClusterHub did not reach Running — dumping debug info ==="
+  echo "--- MultiClusterHub component status ---"
+  oc get multiclusterhub multiclusterhub -n "${ACM_NS}" -o json |
+    jq '.status.components // {} | to_entries[] | select(.value.type != "Available" or .value.status != "True")' \
+    2>/dev/null || oc describe multiclusterhub multiclusterhub -n "${ACM_NS}"
+  echo "--- All pods in ${ACM_NS} and multicluster-engine not Running/Completed ---"
+  oc get pods -n "${ACM_NS}" -o wide | awk 'NR==1 || $3!="Running"'
+  oc get pods -n multicluster-engine -o wide | awk 'NR==1 || $3!="Running"'
+  echo "--- Deployments not fully available in ${ACM_NS} and multicluster-engine ---"
+  oc get deployments -n "${ACM_NS}" -o wide
+  oc get deployments -n multicluster-engine -o wide
+  echo "--- Recent events in ${ACM_NS} and multicluster-engine ---"
+  oc get events -n "${ACM_NS}" --sort-by='.lastTimestamp' | tail -40
+  oc get events -n multicluster-engine --sort-by='.lastTimestamp' | tail -40
+  exit 1
+}
 
 log_info "ACM is installed and running. Next step: run setup-observability.sh"
