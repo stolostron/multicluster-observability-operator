@@ -1,25 +1,32 @@
 #!/usr/bin/env bash
-# Makes quay.io:443/acm-d pull credentials available to the cluster, and
-# always ends up with an acm-d-pull-secret in openshift-marketplace so that
-# CatalogSource.spec.secrets can reference it unconditionally regardless of
-# which path below ran.
+# Makes quay.io:443/acm-d pull credentials available to the cluster.
 #
-# Local usage (standard OCP cluster — also patches the global node pull
-# secret, so every node can pull mirrored operand images too):
+# Local usage (standard OCP cluster — patches the global node pull secret
+# directly; this persists normally on non-HyperShift clusters):
 #   QUAY_USER=rh-ee-you QUAY_TOKEN=<token> ./add-pull-secret.sh
 #
 # Konflux CI usage: these are HyperShift-hosted ephemeral clusters, whose
 # openshift-config/pull-secret is continuously reconciled from the
 # HostedCluster's spec on the management cluster — direct edits get
-# silently reverted within seconds, so we skip the global patch entirely.
+# silently reverted within seconds. Per-pod/SA/Deployment-level secrets
+# don't help either: mirror-redirected pulls (e.g. registry.redhat.io ->
+# quay.io:443/acm-d via imageContentSources) are resolved by CRI-O at the
+# node level and only ever consult the node's own credential file,
+# regardless of what's attached to the pod. Proven empirically — a pod
+# with acm-d-pull-secret correctly set in its own imagePullSecrets still
+# got "unauthorized" pulling a mirrored image.
+#
+# Instead, use HyperShift's "Global Pull Secret" feature: creating
+# additional-pull-secret in kube-system is a dedicated, sanctioned
+# extension point (unlike openshift-config/pull-secret) that the Hosted
+# Cluster Config Operator merges into global-pull-secret and syncs to
+# every eligible node's kubelet config via the global-pull-secret-syncer
+# DaemonSet — no management-cluster access needed.
+# https://hypershift.pages.dev/how-to/aws/global-pull-secret/
+#
 # The pipeline's eaas-copy-secrets-to-ephemeral-cluster step already copies
 # acm-mco-konflux-e2e from the Konflux tenant namespace into
-# openshift-marketplace on this cluster before this script runs; we just
-# re-key its "quay.io" auth to also cover "quay.io:443" (the exact host the
-# acm-d mirror/catalog images use) and republish it as acm-d-pull-secret.
-# setup-downstream-catalog.sh separately propagates acm-d-pull-secret to
-# operand namespaces via 'oc secrets link ... --for=pull' once those
-# namespaces exist.
+# openshift-marketplace on this cluster before this script runs.
 #   ./add-pull-secret.sh   # no args needed in Konflux CI
 
 set -euo pipefail
@@ -79,5 +86,35 @@ oc create secret generic acm-d-pull-secret -n openshift-marketplace \
   --from-file=.dockerconfigjson="${WORK_DIR}/pull-secret.json" \
   --type=kubernetes.io/dockerconfigjson \
   --dry-run=client -o yaml | oc apply -f -
+
+if [[ $COPIED_SECRET_FOUND -eq 1 ]]; then
+  log_info "Creating additional-pull-secret in kube-system (HyperShift Global Pull Secret feature)..."
+  oc create secret generic additional-pull-secret -n kube-system \
+    --from-file=.dockerconfigjson="${WORK_DIR}/pull-secret.json" \
+    --type=kubernetes.io/dockerconfigjson \
+    --dry-run=client -o yaml | oc apply -f -
+
+  # The sync DaemonSet's node label is only auto-applied for AWS/Azure
+  # "Replace" NodePools, not "InPlace" ones. Label nodes ourselves in case
+  # this cluster's NodePool doesn't get it automatically — best-effort,
+  # since forcing this on an InPlace NodePool isn't an officially
+  # documented combination.
+  oc label nodes --all hypershift.openshift.io/nodepool-globalps-enabled=true --overwrite 2>/dev/null || true
+
+  log_info "Waiting for HCCO to merge additional-pull-secret into global-pull-secret..."
+  GLOBAL_SECRET_FOUND=0
+  for _ in $(seq 1 30); do
+    if oc get secret global-pull-secret -n kube-system &>/dev/null; then
+      GLOBAL_SECRET_FOUND=1
+      break
+    fi
+    sleep 10
+  done
+  if [[ $GLOBAL_SECRET_FOUND -eq 1 ]]; then
+    log_info "global-pull-secret created; global-pull-secret-syncer will sync it to eligible nodes."
+  else
+    log_warn "global-pull-secret did not appear after 5 minutes — HCCO may not have processed additional-pull-secret yet."
+  fi
+fi
 
 log_info "Done."
