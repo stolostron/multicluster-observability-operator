@@ -90,50 +90,6 @@ func GetConfigMapPredicateFunc() predicate.Funcs {
 	}
 }
 
-func GetAlertManagerSecretPredicateFunc() predicate.Funcs {
-	return predicate.Funcs{
-		CreateFunc: func(e event.CreateEvent) bool {
-			if e.Object.GetNamespace() == config.GetDefaultNamespace() {
-				if e.Object.GetName() == config.AlertmanagerRouteBYOCAName ||
-					e.Object.GetName() == config.AlertmanagerRouteBYOCERTName {
-					return true
-				} else if _, ok := e.Object.GetLabels()[config.BackupLabelName]; ok {
-					// resource already has backup label
-					return false
-				} else if _, ok := config.BackupResourceMap[e.Object.GetName()]; ok {
-					// resource's backup label must be checked
-					return true
-				}
-			}
-			return false
-		},
-		UpdateFunc: func(e event.UpdateEvent) bool {
-			if e.ObjectNew.GetNamespace() == config.GetDefaultNamespace() {
-				if e.ObjectNew.GetName() == config.AlertmanagerRouteBYOCAName ||
-					e.ObjectNew.GetName() == config.AlertmanagerRouteBYOCERTName {
-					return true
-				} else if _, ok := e.ObjectNew.GetLabels()[config.BackupLabelName]; ok {
-					// resource already has backup label
-					return false
-				} else if _, ok := config.BackupResourceMap[e.ObjectNew.GetName()]; ok {
-					// resource's backup label must be checked
-					return true
-				}
-			}
-			return false
-		},
-		DeleteFunc: func(e event.DeleteEvent) bool {
-			if e.Object.GetNamespace() == config.GetDefaultNamespace() &&
-				(e.Object.GetName() == config.AlertmanagerRouteBYOCAName ||
-					e.Object.GetName() == config.AlertmanagerRouteBYOCERTName ||
-					e.Object.GetName() == config.AlertmanagerConfigName) {
-				return true
-			}
-			return false
-		},
-	}
-}
-
 // GetMCHPredicateFunc requires a *unstructured.Unstructured watch source.
 func GetMCHPredicateFunc(c client.Client) predicate.Funcs {
 	return predicate.Funcs{

@@ -71,7 +71,6 @@ func TestIntegrationMCO_HubRules(t *testing.T) {
 		newStorageSecret(storageSecretName, hubNamespace, storageSecretKey),
 		newObservatoriumApiRoute(hubNamespace),
 		newMCO(hubNamespace, storageSecretName, storageSecretKey),
-		newAlertManagerRoute(),
 	}
 	err = createResources(k8sHubClient, resources...)
 	require.NoError(t, err)
@@ -241,21 +240,6 @@ func newMCO(ns, storageSecretName, storageSecretKey string) *mcov1beta2.MultiClu
 					},
 				},
 			},
-		},
-	}
-}
-
-func newAlertManagerRoute() *routev1.Route {
-	return &routev1.Route{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "alertmanager",
-			Namespace: config.GetDefaultNamespace(),
-		},
-		Spec: routev1.RouteSpec{
-			To: routev1.RouteTargetReference{
-				Name: "alertmanager",
-			},
-			Host: "alert.manager",
 		},
 	}
 }

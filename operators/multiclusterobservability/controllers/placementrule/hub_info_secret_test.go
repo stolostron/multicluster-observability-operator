@@ -47,22 +47,6 @@ func newTestObsApiRoute() *routev1.Route {
 	}
 }
 
-func newTestAlertmanagerRoute() *routev1.Route {
-	return &routev1.Route{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Route",
-			APIVersion: "v1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      config.AlertmanagerRouteName,
-			Namespace: mcoNamespace,
-		},
-		Spec: routev1.RouteSpec{
-			Host: routeHost,
-		},
-	}
-}
-
 func newTestIngressController() *operatorv1.IngressController {
 	return &operatorv1.IngressController{
 		TypeMeta: metav1.TypeMeta{
@@ -93,41 +77,6 @@ func newTestRouteCASecret() *corev1.Secret {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "custom-certs-default",
 			Namespace: config.OpenshiftIngressNamespace,
-		},
-		Data: configYamlMap,
-	}
-}
-
-func newTestAmRouteBYOCA() *corev1.Secret {
-	configYamlMap := map[string][]byte{}
-	configYamlMap["tls.crt"] = []byte(routerBYOCA)
-
-	return &corev1.Secret{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Secret",
-			APIVersion: "v1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      config.AlertmanagerRouteBYOCAName,
-			Namespace: mcoNamespace,
-		},
-		Data: configYamlMap,
-	}
-}
-
-func newTestAmRouteBYOCert() *corev1.Secret {
-	configYamlMap := map[string][]byte{}
-	configYamlMap["tls.crt"] = []byte(routerBYOCert)
-	configYamlMap["tls.key"] = []byte(routerBYOCertKey)
-
-	return &corev1.Secret{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Secret",
-			APIVersion: "v1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      config.AlertmanagerRouteBYOCERTName,
-			Namespace: mcoNamespace,
 		},
 		Data: configYamlMap,
 	}
@@ -188,7 +137,6 @@ func TestNewSecret(t *testing.T) {
 	config.SetMonitoringCRName(mco.Name)
 	objs := []runtime.Object{
 		newTestObsApiRoute(),
-		newTestAlertmanagerRoute(),
 		newTestIngressController(),
 		newTestRouteCASecret(),
 		newTestObsServerCASecret(),
@@ -278,7 +226,6 @@ func TestNewSecret(t *testing.T) {
 
 	mco.Spec.AdvancedConfig = &mcov1beta2.AdvancedConfig{
 		CustomObservabilityHubURL: "https://custom-obs:8080",
-		CustomAlertmanagerHubURL:  "https://custom-am",
 	}
 	c = fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 	hubInfo, err = generateHubInfoSecret(c, mcoNamespace, namespace, crdMap, config.IsUWMAlertingDisabledInSpec(mco))
@@ -306,7 +253,7 @@ func TestNewBYOSecret(t *testing.T) {
 	initSchema(t)
 
 	mco := newMultiClusterObservability()
-	objs := []runtime.Object{newTestObsApiRoute(), newTestAlertmanagerRoute(), newTestAmRouteBYOCA(), newTestAmRouteBYOCert(), newTestObsServerCASecret()}
+	objs := []runtime.Object{newTestObsApiRoute(), newTestObsServerCASecret()}
 	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 
 	crdMap := map[string]bool{config.IngressControllerCRD: true}

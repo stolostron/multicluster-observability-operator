@@ -154,7 +154,7 @@ func TestObservabilityAddonController(t *testing.T) {
 	mco := newTestMCO()
 	pull := newTestPullSecret()
 	objs := []runtime.Object{
-		mco, pull, newConsoleRoute(), newTestObsApiRoute(), newTestAlertmanagerRoute(), newTestIngressController(), newTestRouteCASecret(), newCASecret(), newCertSecret(mcoNamespace), NewMetricsAllowListCM(),
+		mco, pull, newConsoleRoute(), newTestObsApiRoute(), newTestIngressController(), newTestRouteCASecret(), newCASecret(), newCertSecret(mcoNamespace), NewMetricsAllowListCM(),
 		NewAmAccessorSA(), newClusterMgmtAddon(),
 		newAddonDeploymentConfig(defaultAddonConfigName, namespace), newAddonDeploymentConfig(addonConfigName, namespace),
 	}

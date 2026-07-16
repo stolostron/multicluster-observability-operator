@@ -350,7 +350,6 @@ func TestGetAllowList(t *testing.T) {
 func getRuntimeObjects() []runtime.Object {
 	return []runtime.Object{
 		newTestObsApiRoute(),
-		newTestAlertmanagerRoute(),
 		newTestIngressController(),
 		newTestRouteCASecret(),
 		newCASecret(),
