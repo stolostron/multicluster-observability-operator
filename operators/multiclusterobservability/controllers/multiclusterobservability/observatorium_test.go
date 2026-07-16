@@ -982,12 +982,12 @@ func TestNewRuleSpec(t *testing.T) {
 
 func TestNewReceiversSpec(t *testing.T) {
 	tests := []struct {
-		name              string
-		mcoaEnabled       bool
-		hasContainer      bool
-		debug             *mcov1beta2.ReceiveDebugSpec
-		expectedArgs      []string
-		expectedLogLevel  string
+		name             string
+		mcoaEnabled      bool
+		hasContainer     bool
+		debug            *mcov1beta2.ReceiveDebugSpec
+		expectedArgs     []string
+		expectedLogLevel string
 	}{
 		{
 			name:         "MCOA disabled, no custom containers",
