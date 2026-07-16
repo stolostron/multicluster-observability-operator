@@ -985,6 +985,7 @@ func TestNewReceiversSpec(t *testing.T) {
 		name         string
 		mcoaEnabled  bool
 		hasContainer bool
+		debug        *mcov1beta2.ReceiveDebugSpec
 		expectedArgs []string
 	}{
 		{
@@ -1003,6 +1004,29 @@ func TestNewReceiversSpec(t *testing.T) {
 			name:         "MCOA enabled, with custom containers",
 			mcoaEnabled:  true,
 			hasContainer: true,
+			expectedArgs: nil,
+		},
+		{
+			name: "receive debug with log level",
+			debug: &mcov1beta2.ReceiveDebugSpec{
+				LogLevel: "debug",
+			},
+			expectedArgs: []string{"--log.level=debug"},
+		},
+		{
+			name: "MCOA enabled with receive debug log level",
+			mcoaEnabled: true,
+			debug: &mcov1beta2.ReceiveDebugSpec{
+				LogLevel: "info",
+			},
+			expectedArgs: []string{
+				"--tsdb.out-of-order.time-window=1h",
+				"--log.level=info",
+			},
+		},
+		{
+			name:         "receive debug with empty log level",
+			debug:        &mcov1beta2.ReceiveDebugSpec{},
 			expectedArgs: nil,
 		},
 	}
@@ -1030,18 +1054,24 @@ func TestNewReceiversSpec(t *testing.T) {
 				}
 			}
 
-			if tt.hasContainer {
-				mco.Spec.AdvancedConfig = &mcov1beta2.AdvancedConfig{
-					Receive: &mcov1beta2.ReceiveSpec{
-						Containers: []corev1.Container{{Name: "test"}},
-					},
+			if tt.hasContainer || tt.debug != nil {
+				if mco.Spec.AdvancedConfig == nil {
+					mco.Spec.AdvancedConfig = &mcov1beta2.AdvancedConfig{
+						Receive: &mcov1beta2.ReceiveSpec{},
+					}
+				}
+				if tt.hasContainer {
+					mco.Spec.AdvancedConfig.Receive.Containers = []corev1.Container{{Name: "test"}}
+				}
+				if tt.debug != nil {
+					mco.Spec.AdvancedConfig.Receive.Debug = tt.debug
 				}
 			}
 
 			receiveSpec := newReceiversSpec(mco, "test-sc")
 
 			if len(receiveSpec.Args) != len(tt.expectedArgs) {
-				t.Fatalf("expected %d args, got %d", len(tt.expectedArgs), len(receiveSpec.Args))
+				t.Fatalf("expected %d args, got %d: %v", len(tt.expectedArgs), len(receiveSpec.Args), receiveSpec.Args)
 			}
 
 			for i, expectedArg := range tt.expectedArgs {
