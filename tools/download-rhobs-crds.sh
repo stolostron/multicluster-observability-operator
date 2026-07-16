@@ -29,9 +29,24 @@ CRDS=(
   "monitoring.rhobs_servicemonitors.yaml"
 )
 
+# Create a temporary directory for staging downloads
+TMP_DIR=$(mktemp -d)
+cleanup() {
+  rm -rf "${TMP_DIR}"
+}
+trap cleanup EXIT
+
 for crd in "${CRDS[@]}"; do
   echo "Downloading ${crd}..."
-  curl -sSL -f "${BASE_URL}/${crd}" -o "${OUT_DIR}/${crd}"
+  if ! curl -sSL -f "${BASE_URL}/${crd}" -o "${TMP_DIR}/${crd}"; then
+    echo "Error: Failed to download ${crd} from ${BASE_URL}/${crd}" >&2
+    exit 1
+  fi
+done
+
+# Copy staged CRDs to target directory on success
+for crd in "${CRDS[@]}"; do
+  cp "${TMP_DIR}/${crd}" "${OUT_DIR}/${crd}"
 done
 
 echo "OBO CRDs downloaded successfully to ${OUT_DIR}"

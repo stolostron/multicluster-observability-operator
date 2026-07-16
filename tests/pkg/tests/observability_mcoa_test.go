@@ -725,7 +725,9 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 					clientAPIExtensionV1 := clientAPIExtension.ApiextensionsV1()
 					Eventually(func() error {
 						for _, crd := range expectedCRDs {
-							crdObj, err := clientAPIExtensionV1.CustomResourceDefinitions().Get(context.TODO(), crd, metav1.GetOptions{})
+							getRequestCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+							crdObj, err := clientAPIExtensionV1.CustomResourceDefinitions().Get(getRequestCtx, crd, metav1.GetOptions{})
+							cancel()
 							if err != nil {
 								if apierrors.IsNotFound(err) {
 									continue

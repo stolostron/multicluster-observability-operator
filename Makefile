@@ -135,7 +135,7 @@ download-crds: ## Download OBO CRDs.
 unit-tests: unit-tests-operators unit-tests-loaders unit-tests-proxy unit-tests-collectors
 
 .PHONY: unit-tests-operators
-unit-tests-operators: download-crds ## Run operators unit tests only.
+unit-tests-operators: ## Run operators unit tests only.
 	go test -race ${VERBOSE} `go list ./operators/... | $(GREP) -v test`
 
 .PHONY: unit-tests-loaders

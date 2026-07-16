@@ -117,6 +117,9 @@ func (r *MCOAAgentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			&handler.EnqueueRequestForObject{},
 			ctrlbuilder.WithPredicates(predicate.Funcs{
 				DeleteFunc: func(e event.DeleteEvent) bool {
+					if e.Object == nil {
+						return false
+					}
 					return isManagedCRDName(e.Object.GetName())
 				},
 				CreateFunc:  func(_ event.CreateEvent) bool { return false },

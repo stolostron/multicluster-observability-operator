@@ -161,8 +161,7 @@ func doCleanup(args []string) error {
 		defer wg.Done()
 		setupLog.Info("Reverting Platform monitoring configuration", "caSecret", hubAmCASecret)
 		if err := obsepctl.RevertClusterMonitoringConfig(ctx, cl, hubAmCASecret, clusterName); err != nil {
-			setupLog.Error(err, "failed to revert platform monitoring config")
-			addErr(err)
+			addErr(fmt.Errorf("failed to revert platform monitoring config: %w", err))
 		}
 	}()
 
@@ -170,8 +169,7 @@ func doCleanup(args []string) error {
 		defer wg.Done()
 		setupLog.Info("Reverting User Workload monitoring configuration", "caSecret", hubAmCASecret)
 		if err := obsepctl.RevertUserWorkloadMonitoringConfig(ctx, cl, hubAmCASecret); err != nil {
-			setupLog.Error(err, "failed to revert user workload monitoring config")
-			addErr(err)
+			addErr(fmt.Errorf("failed to revert user workload monitoring config: %w", err))
 		}
 	}()
 
@@ -179,8 +177,7 @@ func doCleanup(args []string) error {
 		defer wg.Done()
 		setupLog.Info("Cleaning up OBO CRDs")
 		if err := mcoa.CleanUpCRDs(ctx, cl); err != nil {
-			setupLog.Error(err, "failed to clean up OBO CRDs")
-			addErr(err)
+			addErr(fmt.Errorf("failed to clean up OBO CRDs: %w", err))
 		}
 	}()
 

@@ -6,7 +6,7 @@ package mcoa
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"testing"
 
 	ocinfrav1 "github.com/openshift/api/config/v1"
@@ -252,7 +252,7 @@ func TestMCOAAgentReconciler_Reconcile(t *testing.T) {
 			expectedError:        true,
 			clientInterceptors: interceptor.Funcs{
 				Get: func(_ context.Context, _ client.WithWatch, _ types.NamespacedName, _ client.Object, _ ...client.GetOption) error {
-					return fmt.Errorf("injected API error")
+					return errors.New("injected API error")
 				},
 			},
 		},

@@ -12,8 +12,10 @@ import (
 	"slices"
 
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/util/retry"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/yaml"
@@ -108,6 +110,7 @@ func isManagedByUs(obj *unstructured.Unstructured) bool {
 // DeployCRDs checks if the monitoring.rhobs CRDs exist.
 // If they do not exist, it applies them using Server-Side Apply (SSA) with our label.
 // If they exist and are managed by us, it upgrades their schema using Server-Side Apply with ForceOwnership.
+// This is protected by retry-on-conflict logic to ensure ownership is validated against a fresh read.
 func DeployCRDs(ctx context.Context, c client.Client) error {
 	crds, err := loadEmbeddedCRDs()
 	if err != nil {
@@ -115,20 +118,21 @@ func DeployCRDs(ctx context.Context, c client.Client) error {
 	}
 
 	for _, obj := range crds {
-		// Check if CRD already exists
-		found := &unstructured.Unstructured{}
-		found.SetGroupVersionKind(obj.GroupVersionKind())
-		err = c.Get(ctx, types.NamespacedName{Name: obj.GetName()}, found)
-		if err != nil {
-			if errors.IsNotFound(err) {
-				// Server-side apply without forcing ownership
-				if err := c.Apply(ctx, client.ApplyConfigurationFromUnstructured(obj), client.FieldOwner(ManagedByLabelValue)); err != nil {
-					return fmt.Errorf("failed to server-side apply CRD %s: %w", obj.GetName(), err)
+		err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+			found := &unstructured.Unstructured{}
+			found.SetGroupVersionKind(obj.GroupVersionKind())
+			err := c.Get(ctx, types.NamespacedName{Name: obj.GetName()}, found)
+			if err != nil {
+				if errors.IsNotFound(err) {
+					// Server-side apply without forcing ownership
+					if err := c.Apply(ctx, client.ApplyConfigurationFromUnstructured(obj), client.FieldOwner(ManagedByLabelValue)); err != nil {
+						return fmt.Errorf("failed to server-side apply CRD %s: %w", obj.GetName(), err)
+					}
+					return nil
 				}
-			} else {
 				return fmt.Errorf("failed to check existence of CRD %s: %w", obj.GetName(), err)
 			}
-		} else {
+
 			// CRD exists. Check if it is managed by us before attempting an upgrade.
 			if isManagedByUs(found) {
 				// Unconditionally apply with ForceOwnership to progress schemas safely
@@ -138,6 +142,10 @@ func DeployCRDs(ctx context.Context, c client.Client) error {
 			} else {
 				crdLog.Info("Skipped deploying CRD because it is managed by another actor", "name", obj.GetName())
 			}
+			return nil
+		})
+		if err != nil {
+			return err
 		}
 	}
 
@@ -146,6 +154,7 @@ func DeployCRDs(ctx context.Context, c client.Client) error {
 
 // CleanUpCRDs retrieves the monitoring.rhobs CRDs and deletes them
 // if they have the mcoa-endpoint-operator management label.
+// This is protected by retry-on-conflict logic and UID/ResourceVersion preconditions.
 func CleanUpCRDs(ctx context.Context, c client.Client) error {
 	crds, err := loadEmbeddedCRDs()
 	if err != nil {
@@ -153,20 +162,32 @@ func CleanUpCRDs(ctx context.Context, c client.Client) error {
 	}
 
 	for _, obj := range crds {
-		found := &unstructured.Unstructured{}
-		found.SetGroupVersionKind(obj.GroupVersionKind())
-		err = c.Get(ctx, types.NamespacedName{Name: obj.GetName()}, found)
-		if err != nil {
-			if errors.IsNotFound(err) {
-				continue
+		err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+			found := &unstructured.Unstructured{}
+			found.SetGroupVersionKind(obj.GroupVersionKind())
+			err := c.Get(ctx, types.NamespacedName{Name: obj.GetName()}, found)
+			if err != nil {
+				if errors.IsNotFound(err) {
+					return nil
+				}
+				return fmt.Errorf("failed to fetch CRD %s for cleanup: %w", obj.GetName(), err)
 			}
-			return fmt.Errorf("failed to fetch CRD %s for cleanup: %w", obj.GetName(), err)
-		}
 
-		if isManagedByUs(found) {
-			if err := c.Delete(ctx, found); err != nil {
-				return fmt.Errorf("failed to delete managed CRD %s: %w", found.GetName(), err)
+			if isManagedByUs(found) {
+				uid := found.GetUID()
+				resourceVersion := found.GetResourceVersion()
+				preconditions := metav1.Preconditions{
+					UID:             &uid,
+					ResourceVersion: &resourceVersion,
+				}
+				if err := c.Delete(ctx, found, &client.DeleteOptions{Preconditions: &preconditions}); err != nil {
+					return fmt.Errorf("failed to delete managed CRD %s: %w", found.GetName(), err)
+				}
 			}
+			return nil
+		})
+		if err != nil {
+			return err
 		}
 	}
 

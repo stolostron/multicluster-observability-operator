@@ -58,7 +58,6 @@ func TestDeployAndCleanUpCRDs(t *testing.T) {
 	}
 
 	t.Run("Deploy CRDs when they do not exist", func(t *testing.T) {
-		t.Parallel()
 		cl := fake.NewClientBuilder().WithScheme(scheme).Build()
 		ctx := context.Background()
 
@@ -75,7 +74,6 @@ func TestDeployAndCleanUpCRDs(t *testing.T) {
 	})
 
 	t.Run("Deploy CRDs when they already exist but managed by someone else", func(t *testing.T) {
-		t.Parallel()
 		// Populate client with a CRD having an outside label
 		existingCRD := &unstructured.Unstructured{}
 		existingCRD.SetGroupVersionKind(crdGVK)
@@ -97,19 +95,44 @@ func TestDeployAndCleanUpCRDs(t *testing.T) {
 	})
 
 	t.Run("Upgrade existing managed CRD on subsequent deployments", func(t *testing.T) {
-		t.Parallel()
 		// Populate client with a CRD we manage
 		existingCRD := &unstructured.Unstructured{}
 		existingCRD.SetGroupVersionKind(crdGVK)
 		existingCRD.SetName("probes.monitoring.rhobs")
 		existingCRD.SetLabels(map[string]string{ManagedByLabelKey: ManagedByLabelValue})
-		existingCRD.SetAnnotations(map[string]string{"test-drift": "drifted"})
 
-		cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(existingCRD).Build()
+		// Seed a nested schema field with a drifted value
+		versions := []interface{}{
+			map[string]interface{}{
+				"name": "v1",
+				"schema": map[string]interface{}{
+					"openAPIV3Schema": map[string]interface{}{
+						"type":        "object",
+						"description": "drifted schema description",
+					},
+				},
+			},
+		}
+		unstructured.SetNestedSlice(existingCRD.Object, versions, "spec", "versions")
+		var observedForceApply bool
+		cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(existingCRD).WithInterceptorFuncs(interceptor.Funcs{
+			Apply: func(ctx context.Context, cl client.WithWatch, obj runtime.ApplyConfiguration, opts ...client.ApplyOption) error {
+				var applyOpts client.ApplyOptions
+				for _, opt := range opts {
+					opt.ApplyToApply(&applyOpts)
+				}
+				if applyOpts.Force != nil && *applyOpts.Force {
+					observedForceApply = true
+				}
+				return cl.Apply(ctx, obj, opts...)
+			},
+		}).Build()
 		ctx := context.Background()
 
 		err := DeployCRDs(ctx, cl)
 		assert.NoError(t, err)
+
+		assert.True(t, observedForceApply, "Apply should use ForceOwnership when updating existing managed CRDs")
 
 		// Check that the CRD is successfully applied and preserved our ownership
 		crd := &unstructured.Unstructured{}
@@ -117,10 +140,26 @@ func TestDeployAndCleanUpCRDs(t *testing.T) {
 		err = cl.Get(ctx, types.NamespacedName{Name: "probes.monitoring.rhobs"}, crd)
 		assert.NoError(t, err)
 		assert.True(t, isManagedByUs(crd))
+
+		// Check description is restored to the embedded schema and is not "drifted schema description"
+		restoredVersions, found, err := unstructured.NestedSlice(crd.Object, "spec", "versions")
+		assert.NoError(t, err)
+		assert.True(t, found)
+		assert.NotEmpty(t, restoredVersions)
+		if len(restoredVersions) > 0 {
+			v := restoredVersions[0].(map[string]interface{})
+			schemaMap, ok := v["schema"].(map[string]interface{})
+			if ok {
+				openAPIMap, ok := schemaMap["openAPIV3Schema"].(map[string]interface{})
+				if ok {
+					desc := openAPIMap["description"]
+					assert.NotEqual(t, "drifted schema description", desc)
+				}
+			}
+		}
 	})
 
 	t.Run("Cleanup deletes only the CRDs managed by us", func(t *testing.T) {
-		t.Parallel()
 		// Populate fake client: one managed, one non-managed
 		managedCRD := &unstructured.Unstructured{}
 		managedCRD.SetGroupVersionKind(crdGVK)
@@ -150,7 +189,6 @@ func TestDeployAndCleanUpCRDs(t *testing.T) {
 	})
 
 	t.Run("DeployCRDs handles Get error gracefully", func(t *testing.T) {
-		t.Parallel()
 		cl := fake.NewClientBuilder().WithScheme(scheme).WithInterceptorFuncs(interceptor.Funcs{
 			Get: func(ctx context.Context, clientww client.WithWatch, key types.NamespacedName, obj client.Object, opts ...client.GetOption) error {
 				return fmt.Errorf("injected get error")
@@ -163,7 +201,6 @@ func TestDeployAndCleanUpCRDs(t *testing.T) {
 	})
 
 	t.Run("DeployCRDs handles Apply error on initial create", func(t *testing.T) {
-		t.Parallel()
 		cl := fake.NewClientBuilder().WithScheme(scheme).WithInterceptorFuncs(interceptor.Funcs{
 			Apply: func(ctx context.Context, clientww client.WithWatch, obj runtime.ApplyConfiguration, opts ...client.ApplyOption) error {
 				return fmt.Errorf("injected create apply error")
@@ -176,7 +213,6 @@ func TestDeployAndCleanUpCRDs(t *testing.T) {
 	})
 
 	t.Run("DeployCRDs handles Apply error on managed upgrade", func(t *testing.T) {
-		t.Parallel()
 		existingCRD := &unstructured.Unstructured{}
 		existingCRD.SetGroupVersionKind(crdGVK)
 		existingCRD.SetName("probes.monitoring.rhobs")
@@ -198,7 +234,6 @@ func TestDeployAndCleanUpCRDs(t *testing.T) {
 	})
 
 	t.Run("CleanUpCRDs handles Get error", func(t *testing.T) {
-		t.Parallel()
 		cl := fake.NewClientBuilder().WithScheme(scheme).WithInterceptorFuncs(interceptor.Funcs{
 			Get: func(ctx context.Context, clientww client.WithWatch, key types.NamespacedName, obj client.Object, opts ...client.GetOption) error {
 				return fmt.Errorf("injected cleanup get error")
@@ -211,7 +246,6 @@ func TestDeployAndCleanUpCRDs(t *testing.T) {
 	})
 
 	t.Run("CleanUpCRDs handles Delete error", func(t *testing.T) {
-		t.Parallel()
 		managedCRD := &unstructured.Unstructured{}
 		managedCRD.SetGroupVersionKind(crdGVK)
 		managedCRD.SetName("probes.monitoring.rhobs")
