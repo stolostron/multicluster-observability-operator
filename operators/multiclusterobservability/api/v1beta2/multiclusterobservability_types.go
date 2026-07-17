@@ -481,7 +481,7 @@ type ReceiveSpec struct {
 
 	// Debug defines the configuration for debugging and tuning the receiver.
 	// +optional
-	Debug *ReceiveDebugSpec `json:"receive,omitempty"`
+	Debug *ReceiveDebugSpec `json:"debug,omitempty"`
 
 	CommonSpec `json:",inline"`
 }

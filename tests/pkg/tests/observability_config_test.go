@@ -595,7 +595,7 @@ var _ = Describe("", func() {
 				receiveSpec = map[string]any{}
 				advancedSpec["receive"] = receiveSpec
 			}
-			receiveSpec["receive"] = map[string]any{
+			receiveSpec["debug"] = map[string]any{
 				"logLevel": "debug",
 			}
 
@@ -636,7 +636,7 @@ var _ = Describe("", func() {
 			spec = mcoRes.Object["spec"].(map[string]any)
 			advancedSpec = spec["advanced"].(map[string]any)
 			receiveSpec = advancedSpec["receive"].(map[string]any)
-			receiveSpec["receive"] = map[string]any{
+			receiveSpec["debug"] = map[string]any{
 				"logLevel": "info",
 			}
 
