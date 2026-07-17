@@ -479,6 +479,10 @@ type ReceiveSpec struct {
 	// +optional
 	Containers []corev1.Container `json:"containers,omitempty"`
 
+	// Debug defines the configuration for debugging and tuning the receiver.
+	// +optional
+	Debug *ReceiveDebugSpec `json:"debug,omitempty"`
+
 	CommonSpec `json:",inline"`
 }
 
@@ -551,6 +555,13 @@ type CompactDebugSpec struct {
 	// +optional
 	// +kubebuilder:validation:Minimum=0
 	DownsampleConcurrency *int32 `json:"downsampleConcurrency,omitempty"`
+}
+
+type ReceiveDebugSpec struct {
+	// LogLevel for the receiver (e.g., debug, info, warn, error).
+	// +optional
+	// +kubebuilder:validation:Enum=debug;info;warn;error
+	LogLevel string `json:"logLevel,omitempty"`
 }
 
 // CacheConfig is the spec of memcached.
