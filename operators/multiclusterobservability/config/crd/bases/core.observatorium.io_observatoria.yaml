@@ -1008,6 +1008,14 @@ spec:
                     items:
                       type: string
                     type: array
+                  queryTimeout:
+                    description: |-
+                      QueryTimeout is the maximum duration for reading the entire request
+                      including the body. Applied to Go HTTP server's ReadTimeout.
+                      Controls the read/query path through the API gateway.
+                      Must be a valid duration string (e.g., "5m", "300s").
+                      Default: "5m"
+                    type: string
                   rbac:
                     description: RBAC is an RBAC configuration for the Observatorium
                       API.
@@ -1233,6 +1241,14 @@ spec:
                     type: object
                   version:
                     description: Version describes the version of API to use.
+                    type: string
+                  writeTimeout:
+                    description: |-
+                      WriteTimeout is the maximum duration for writing the response.
+                      Applied to Go HTTP server's WriteTimeout.
+                      Controls the write/ingest path through the API gateway.
+                      Must be a valid duration string (e.g., "5m", "12m").
+                      Default: "12m"
                     type: string
                 required:
                 - rbac
@@ -8250,6 +8266,10 @@ spec:
                           - name
                           type: object
                         type: array
+                      logLevel:
+                        description: LogLevel sets the log verbosity for the Thanos
+                          Receive component.
+                        type: string
                       replicas:
                         description: Number of Receiver replicas.
                         format: int32
