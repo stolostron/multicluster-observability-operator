@@ -100,7 +100,7 @@ spec:
               - name: version
                 value: "$(steps.pick-version.results.version)"
               - name: instanceType
-                value: "m5.2xlarge"
+                value: "m6g.2xlarge"
               - name: timeout
                 value: "40m"
               - name: imageContentSources
@@ -165,7 +165,7 @@ spec:
               - name: version
                 value: "$(steps.pick-version.results.version)"
               - name: instanceType
-                value: "m5.xlarge"
+                value: "m6g.xlarge"
               - name: timeout
                 value: "40m"
               - name: imageContentSources
