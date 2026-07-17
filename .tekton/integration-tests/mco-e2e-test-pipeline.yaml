@@ -276,12 +276,12 @@ spec:
             image: registry.redhat.io/openshift4/ose-cli:latest
             script: |
               #!/usr/bin/env bash
-              set -exo pipefail
+              set -euo pipefail
 
-              echo "=== Setting up pull secret for managed cluster using HyperShift Global Pull Secret ==="
+              echo "Setting up pull secret for managed cluster..."
 
               # Install jq
-              dnf -y install jq
+              dnf -y install jq >/dev/null 2>&1
 
               # Extract quay.io credentials from hub cluster's acm-mco-konflux-e2e secret
               QUAY_AUTH=$(oc --kubeconfig="${HUB_KUBECONFIG}" get secret acm-mco-konflux-e2e \
@@ -299,24 +299,21 @@ spec:
                 > /tmp/pull-secret.json
 
               # Create additional-pull-secret in kube-system (HyperShift Global Pull Secret feature)
-              echo "Creating additional-pull-secret in kube-system..."
               oc --kubeconfig="${MANAGED_KUBECONFIG}" create secret generic additional-pull-secret \
                 -n kube-system \
                 --from-file=.dockerconfigjson=/tmp/pull-secret.json \
                 --type=kubernetes.io/dockerconfigjson \
                 --dry-run=client -o yaml | \
-                oc --kubeconfig="${MANAGED_KUBECONFIG}" apply -f -
+                oc --kubeconfig="${MANAGED_KUBECONFIG}" apply -f - >/dev/null
 
               # Label nodes to enable global-pull-secret sync
-              echo "Labeling nodes for global-pull-secret sync..."
               oc --kubeconfig="${MANAGED_KUBECONFIG}" label nodes --all \
                 hypershift.openshift.io/nodepool-globalps-enabled=true --overwrite 2>/dev/null || true
 
               # Wait for HCCO to create global-pull-secret
-              echo "Waiting for global-pull-secret to be created by HCCO..."
               for i in $(seq 1 30); do
                 if oc --kubeconfig="${MANAGED_KUBECONFIG}" get secret global-pull-secret -n kube-system &>/dev/null; then
-                  echo "global-pull-secret created successfully"
+                  echo "Pull secret configured successfully"
                   break
                 fi
                 if [[ $i -eq 30 ]]; then
@@ -324,8 +321,6 @@ spec:
                 fi
                 sleep 10
               done
-
-              echo "Done. global-pull-secret-syncer will sync credentials to nodes."
           - name: dump-credentials
             env:
               - name: DEBUG_DUMP_CREDENTIALS
@@ -404,20 +399,20 @@ spec:
             image: registry.redhat.io/openshift4/ose-cli:latest
             script: |
               #!/usr/bin/env bash
-              set -exo pipefail
+              set -euo pipefail
 
-              echo "=== Installing dependencies ==="
-              dnf -y install jq git gettext
+              echo "Installing dependencies..."
+              dnf -y install jq git gettext >/dev/null 2>&1
 
-              echo "=== Cloning MCO repository at PR revision ==="
+              echo "Cloning MCO repository..."
               GIT_URL=$(echo "${SNAPSHOT}" | jq -r '[.components[] | select(.name | test("^multicluster-observability-operator-acm-"))] | .[0].source.git.url')
               GIT_REVISION=$(echo "${SNAPSHOT}" | jq -r '[.components[] | select(.name | test("^multicluster-observability-operator-acm-"))] | .[0].source.git.revision')
               echo "Source: ${GIT_URL} @ ${GIT_REVISION}"
-              git clone "${GIT_URL}" /tmp/mco
+              git clone -q "${GIT_URL}" /tmp/mco
               cd /tmp/mco
-              git checkout "${GIT_REVISION}"
+              git checkout -q "${GIT_REVISION}"
 
-              echo "=== Extracting component images from SNAPSHOT ==="
+              echo "Extracting component images from SNAPSHOT..."
               snapshot_image() {
                 echo "${SNAPSHOT}" | jq -r "[.components[] | select(.name | test(\"^${1}-acm-\"))] | .[0].containerImage"
               }
@@ -434,44 +429,39 @@ spec:
               echo "RBAC query proxy image: ${RBAC_QUERY_PROXY_IMAGE}"
               echo "Grafana dashboard loader image: ${GRAFANA_DASHBOARD_LOADER_IMAGE}"
 
-              echo "=== Injecting quay.io:443 pull credentials ==="
+              echo "Setting up pull secrets..."
               ./dev-scripts/add-pull-secret.sh
 
-              echo "=== Installing ACM via downstream dev catalog ==="
+              echo "Installing ACM via downstream catalog..."
               ./dev-scripts/setup-downstream-catalog.sh
 
-              echo "=== Applying Konflux image overrides ==="
+              echo "Applying Konflux image overrides..."
               ./dev-scripts/image-override.sh
 
-              echo "=== Waiting for MCO operator rollout ==="
+              echo "Waiting for MCO operator rollout..."
               TIMEOUT=600
               ELAPSED=0
-              echo "Waiting for deployment image to update to: ${MCO_IMAGE}"
               while true; do
                 CURRENT_IMAGE=$(oc get deploy multicluster-observability-operator \
                   -n open-cluster-management \
                   -o jsonpath='{.spec.template.spec.containers[0].image}' 2>/dev/null || echo "")
                 if [[ "$CURRENT_IMAGE" == "$MCO_IMAGE" ]]; then
-                  echo "Deployment image updated, waiting for rollout..."
                   oc rollout status deploy/multicluster-observability-operator \
-                    -n open-cluster-management --timeout=300s || true
+                    -n open-cluster-management --timeout=300s >/dev/null 2>&1 || true
                   break
                 fi
                 if [[ "$ELAPSED" -ge "$TIMEOUT" ]]; then
-                  echo "WARNING: Timed out waiting for deployment image update"
+                  echo "ERROR: Timed out waiting for deployment image update"
                   echo "Expected: ${MCO_IMAGE}"
                   echo "Current:  ${CURRENT_IMAGE}"
                   oc get pods -n open-cluster-management -l name=multicluster-observability-operator -o wide
-                  break
+                  exit 1
                 fi
-                echo "Waiting for MCH to process image override... (${ELAPSED}s elapsed)"
                 sleep 15
                 ELAPSED=$((ELAPSED + 15))
               done
-              echo "MCO pods after rollout:"
-              oc get pods -n open-cluster-management -l name=multicluster-observability-operator -o wide
 
-              echo "=== Importing managed cluster into hub ==="
+              echo "Importing managed cluster..."
               oc create namespace managed --dry-run=client -o yaml | oc apply -f -
 
               cat <<MCEOF | oc apply -f -
@@ -494,40 +484,23 @@ spec:
               oc wait managedcluster managed \
                 --for=condition=ManagedClusterConditionAvailable=True \
                 --timeout=300s || {
-                echo "=== managedcluster did not become Available — dumping debug info ==="
-                echo "--- ManagedCluster status (hub) ---"
+                echo "ERROR: Managed cluster did not become Available"
+                echo "ManagedCluster status:"
                 oc get managedcluster managed -o yaml
-                echo "--- Pods in managed namespace (hub) ---"
-                oc get pods -n managed -o wide
-                echo "--- Import controller logs (hub) ---"
-                oc logs -n multicluster-engine -l app=managedcluster-import-controller-v2 --tail=200 || true
-                echo "--- Events in managed namespace (hub) ---"
-                oc get events -n managed --sort-by='.lastTimestamp' | tail -40
-                echo "--- Klusterlet agent pods on the managed cluster itself ---"
+                echo "Klusterlet pods on managed cluster:"
                 oc --kubeconfig="${MANAGED_KUBECONFIG}" get pods -n open-cluster-management-agent -o wide || true
-                oc --kubeconfig="${MANAGED_KUBECONFIG}" get pods -n open-cluster-management-agent-addon -o wide || true
-                echo "--- Klusterlet resource on the managed cluster itself ---"
-                oc --kubeconfig="${MANAGED_KUBECONFIG}" get klusterlet -o yaml || true
                 exit 1
               }
 
-              echo "=== Verifying managed cluster registration ==="
-              oc get managedcluster
-
-              echo "=== Deploying observability ==="
+              echo "Deploying observability..."
               ./dev-scripts/setup-observability.sh || {
-                echo "=== MCO deployment failed — debugging ==="
-                oc get pods -n open-cluster-management -o wide
+                echo "ERROR: MCO deployment failed"
                 oc get pods -n open-cluster-management-observability -o wide
-                oc describe pods -n open-cluster-management -l name=multicluster-observability-operator
                 oc get multiclusterobservability observability -o yaml
                 exit 1
               }
 
-              echo "=== Verifying MCO is using Konflux images ==="
-              oc get deploy multicluster-observability-operator -n open-cluster-management -o jsonpath='{.spec.template.spec.containers[*].image}' && echo
-
-              echo "=== MCO installation complete ==="
+              echo "MCO installation complete"
     - name: mco-e2e-tests
       description: Run MCO Ginkgo e2e test suite using existing run-e2e-tests.sh
       runAfter:
@@ -601,13 +574,13 @@ spec:
             image: registry.redhat.io/openshift4/ose-cli:latest
             script: |
               #!/usr/bin/env bash
-              set -exo pipefail
+              set -euo pipefail
 
-              echo "=== Installing dependencies ==="
-              dnf -y install jq vim unzip git make wget
+              echo "Installing dependencies..."
+              dnf -y install jq vim unzip git make wget >/dev/null 2>&1
 
-              echo "=== Installing Go ==="
-              curl -Lo /go.tar.gz https://go.dev/dl/go1.24.9.linux-amd64.tar.gz
+              echo "Installing Go..."
+              curl -sLo /go.tar.gz https://go.dev/dl/go1.24.9.linux-amd64.tar.gz
               tar -C /usr/local -xzf /go.tar.gz
               export PATH=$PATH:/usr/local/go/bin
               export GOPATH=/tmp/go
@@ -616,30 +589,28 @@ spec:
               export PATH=$PATH:/tmp/go/bin
               mkdir -p /tmp/go/bin $GOCACHE
               chmod -R 777 /tmp/go/bin $GOPATH $GOCACHE
-              go version
 
-              echo "=== Cloning MCO repository at PR revision ==="
+              echo "Cloning MCO repository..."
               GIT_URL=$(echo "${SNAPSHOT}" | jq -r '[.components[] | select(.name | test("^multicluster-observability-operator-acm-"))] | .[0].source.git.url')
               GIT_REVISION=$(echo "${SNAPSHOT}" | jq -r '[.components[] | select(.name | test("^multicluster-observability-operator-acm-"))] | .[0].source.git.revision')
               echo "Source: ${GIT_URL} @ ${GIT_REVISION}"
-              git clone "${GIT_URL}" /tmp/mco
+              git clone -q "${GIT_URL}" /tmp/mco
               cd /tmp/mco
-              git checkout "${GIT_REVISION}"
+              git checkout -q "${GIT_REVISION}"
 
-              echo "=== Extracting component images from SNAPSHOT ==="
+              echo "Setting up test environment..."
               export MULTICLUSTER_OBSERVABILITY_OPERATOR_IMAGE_REF=$(echo "${SNAPSHOT}" | jq -r '[.components[] | select(.name | test("^multicluster-observability-operator-acm-"))] | .[0].containerImage')
               export ENDPOINT_MONITORING_OPERATOR_IMAGE_REF=$(echo "${SNAPSHOT}" | jq -r '[.components[] | select(.name | test("^endpoint-monitoring-operator-acm-"))] | .[0].containerImage')
               export METRICS_COLLECTOR_IMAGE_REF=$(echo "${SNAPSHOT}" | jq -r '[.components[] | select(.name | test("^metrics-collector-acm-"))] | .[0].containerImage')
               export RBAC_QUERY_PROXY_IMAGE_REF=$(echo "${SNAPSHOT}" | jq -r '[.components[] | select(.name | test("^rbac-query-proxy-acm-"))] | .[0].containerImage')
               export GRAFANA_DASHBOARD_LOADER_IMAGE_REF=$(echo "${SNAPSHOT}" | jq -r '[.components[] | select(.name | test("^grafana-dashboard-loader-acm-"))] | .[0].containerImage')
 
-              echo "=== Setting up SHARED_DIR with cluster kubeconfigs ==="
               export SHARED_DIR=/tmp/shared
               mkdir -p "${SHARED_DIR}"
               cp "${KUBECONFIG}" "${SHARED_DIR}/hub-1.kc"
               cp "${MANAGED_KUBECONFIG}" "${SHARED_DIR}/managed-1.kc"
 
-              echo "=== Running run-e2e-tests.sh ==="
+              echo "Running e2e tests..."
               ./cicd-scripts/run-e2e-tests.sh
 
-              echo "=== All e2e tests passed ==="
+              echo "E2e tests completed"
