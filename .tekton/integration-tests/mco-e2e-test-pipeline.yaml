@@ -20,9 +20,6 @@ spec:
     - name: test-name
       description: 'The name of the test corresponding to a defined Konflux integration test.'
       default: 'mco-e2e-tests'
-    - name: namespace
-      description: 'Namespace for MCO observability components'
-      default: 'open-cluster-management-observability'
     - name: ACM_VERSION
       description: 'ACM release version for downstream dev catalog channel'
       default: '5.0'
@@ -30,7 +27,7 @@ spec:
       description: 'MCE release version for downstream dev catalog channel'
       default: '5.0'
     - name: DEBUG_DUMP_CREDENTIALS
-      description: 'When "true", print hub/managed cluster kubeconfigs and admin passwords to the pipeline logs for manual debugging. Clusters are destroyed when the run ends (or after 2h), so this is the only window to grab them.'
+      description: 'When "true", print hub/managed cluster kubeconfigs and admin passwords to the pipeline logs for manual debugging. ⚠️ SECURITY: Pipeline logs may be accessible to unauthorized users. Only enable for ephemeral test failures where clusters are destroyed within 2h.'
       default: 'false'
   tasks:
     - name: eaas-provision-space
@@ -188,8 +185,6 @@ spec:
       params:
         - name: SNAPSHOT
           value: $(params.SNAPSHOT)
-        - name: namespace
-          value: "$(params.namespace)"
         - name: ACM_VERSION
           value: "$(params.ACM_VERSION)"
         - name: MCE_VERSION
@@ -199,8 +194,6 @@ spec:
       taskSpec:
         params:
           - name: SNAPSHOT
-          - name: namespace
-            type: string
           - name: ACM_VERSION
             type: string
           - name: MCE_VERSION
@@ -307,8 +300,11 @@ spec:
                 oc --kubeconfig="${MANAGED_KUBECONFIG}" apply -f - >/dev/null
 
               # Label nodes to enable global-pull-secret sync
-              oc --kubeconfig="${MANAGED_KUBECONFIG}" label nodes --all \
-                hypershift.openshift.io/nodepool-globalps-enabled=true --overwrite 2>/dev/null || true
+              if ! oc --kubeconfig="${MANAGED_KUBECONFIG}" label nodes --all \
+                hypershift.openshift.io/nodepool-globalps-enabled=true --overwrite; then
+                echo "ERROR: Failed to enable global pull-secret synchronization"
+                exit 1
+              fi
 
               # Wait for HCCO to create global-pull-secret
               for i in $(seq 1 30); do
@@ -317,7 +313,8 @@ spec:
                   break
                 fi
                 if [[ $i -eq 30 ]]; then
-                  echo "WARNING: global-pull-secret did not appear after 5 minutes"
+                  echo "ERROR: global-pull-secret did not appear after 5 minutes"
+                  exit 1
                 fi
                 sleep 10
               done
@@ -446,8 +443,13 @@ spec:
                   -n open-cluster-management \
                   -o jsonpath='{.spec.template.spec.containers[0].image}' 2>/dev/null || echo "")
                 if [[ "$CURRENT_IMAGE" == "$MCO_IMAGE" ]]; then
-                  oc rollout status deploy/multicluster-observability-operator \
-                    -n open-cluster-management --timeout=300s >/dev/null 2>&1 || true
+                  if ! oc rollout status deploy/multicluster-observability-operator \
+                    -n open-cluster-management --timeout=300s; then
+                    echo "ERROR: MCO operator rollout failed"
+                    oc get pods -n open-cluster-management \
+                      -l name=multicluster-observability-operator -o wide
+                    exit 1
+                  fi
                   break
                 fi
                 if [[ "$ELAPSED" -ge "$TIMEOUT" ]]; then
@@ -508,13 +510,9 @@ spec:
       params:
         - name: SNAPSHOT
           value: $(params.SNAPSHOT)
-        - name: namespace
-          value: "$(params.namespace)"
       taskSpec:
         params:
           - name: SNAPSHOT
-          - name: namespace
-            type: string
         volumes:
           - name: credentials
             emptyDir: {}
