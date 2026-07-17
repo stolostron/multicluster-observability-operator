@@ -66,18 +66,18 @@ log_info "Waiting for ACM CSV to appear in ${ACM_NS}..."
 wait_for_resource crd multiclusterhubs.operator.open-cluster-management.io "" 600 || {
   log_error "=== ACM CSV did not appear — dumping catalog/subscription debug info ==="
   echo "--- CatalogSource status ---"
-  oc get catalogsource -n openshift-marketplace -o wide
-  oc describe catalogsource acm-custom-registry multiclusterengine-catalog -n openshift-marketplace
+  oc get catalogsource -n openshift-marketplace -o wide || true
+  oc describe catalogsource acm-custom-registry multiclusterengine-catalog -n openshift-marketplace || true
   echo "--- Catalog/registry pods ---"
-  oc get pods -n openshift-marketplace -o wide
-  oc describe pods -n openshift-marketplace -l olm.catalogSource=acm-custom-registry
-  oc describe pods -n openshift-marketplace -l olm.catalogSource=multiclusterengine-catalog
+  oc get pods -n openshift-marketplace -o wide || true
+  oc describe pods -n openshift-marketplace -l olm.catalogSource=acm-custom-registry || true
+  oc describe pods -n openshift-marketplace -l olm.catalogSource=multiclusterengine-catalog || true
   echo "--- Subscriptions and InstallPlans ---"
-  oc get subscription,installplan -n "${ACM_NS}" -o wide
-  oc describe subscription acm-sub -n "${ACM_NS}"
+  oc get subscription,installplan -n "${ACM_NS}" -o wide || true
+  oc describe subscription acm-sub -n "${ACM_NS}" || true
   echo "--- Recent events in openshift-marketplace and ${ACM_NS} ---"
-  oc get events -n openshift-marketplace --sort-by='.lastTimestamp' | tail -30
-  oc get events -n "${ACM_NS}" --sort-by='.lastTimestamp' | tail -30
+  oc get events -n openshift-marketplace --sort-by='.lastTimestamp' | tail -30 || true
+  oc get events -n "${ACM_NS}" --sort-by='.lastTimestamp' | tail -30 || true
   exit 1
 }
 
@@ -87,19 +87,19 @@ oc wait pod -n "${ACM_NS}" -l name=multiclusterhub-operator \
   --for=condition=Ready --timeout=300s || {
   log_error "=== multiclusterhub-operator did not become Ready — dumping debug info ==="
   echo "--- Pod status ---"
-  oc get pods -n "${ACM_NS}" -l name=multiclusterhub-operator -o wide
+  oc get pods -n "${ACM_NS}" -l name=multiclusterhub-operator -o wide || true
   echo "--- global-pull-secret / syncer state (HyperShift Global Pull Secret feature) ---"
-  oc get secret global-pull-secret -n kube-system 2>&1 | head -1
-  oc get daemonset global-pull-secret-syncer -n kube-system -o wide 2>&1
-  oc get pods -n kube-system -l name=global-pull-secret-syncer -o wide 2>&1
+  oc get secret global-pull-secret -n kube-system 2>&1 | head -1 || true
+  oc get daemonset global-pull-secret-syncer -n kube-system -o wide 2>&1 || true
+  oc get pods -n kube-system -l name=global-pull-secret-syncer -o wide 2>&1 || true
   echo "--- Pod description (image, container statuses, events) ---"
-  oc describe pods -n "${ACM_NS}" -l name=multiclusterhub-operator
+  oc describe pods -n "${ACM_NS}" -l name=multiclusterhub-operator || true
   echo "--- Container logs (current) ---"
   oc logs -n "${ACM_NS}" -l name=multiclusterhub-operator --all-containers --tail=100 || true
   echo "--- Container logs (previous, if crash-looping) ---"
   oc logs -n "${ACM_NS}" -l name=multiclusterhub-operator --all-containers --tail=100 --previous || true
   echo "--- Recent events in ${ACM_NS} ---"
-  oc get events -n "${ACM_NS}" --sort-by='.lastTimestamp' | tail -30
+  oc get events -n "${ACM_NS}" --sort-by='.lastTimestamp' | tail -30 || true
   exit 1
 }
 
@@ -109,18 +109,18 @@ oc apply -f "${SCRIPT_DIR}/manifests/acm/multiclusterhub-cr.yaml"
 wait_for_mch_running 900 || {
   log_error "=== MultiClusterHub did not reach Running — dumping debug info ==="
   echo "--- MultiClusterHub component status ---"
-  oc get multiclusterhub multiclusterhub -n "${ACM_NS}" -o json |
-    jq '.status.components // {} | to_entries[] | select(.value.type != "Available" or .value.status != "True")' \
-    2>/dev/null || oc describe multiclusterhub multiclusterhub -n "${ACM_NS}"
+  oc get multiclusterhub multiclusterhub -n "${ACM_NS}" -o json 2>/dev/null |
+    jq '.status.components // {} | to_entries[] | select(.value.type != "Available" or .value.status != "True")' 2>/dev/null ||
+    oc describe multiclusterhub multiclusterhub -n "${ACM_NS}" || true
   echo "--- All pods in ${ACM_NS} and multicluster-engine not Running/Completed ---"
-  oc get pods -n "${ACM_NS}" -o wide | awk 'NR==1 || $3!="Running"'
-  oc get pods -n multicluster-engine -o wide | awk 'NR==1 || $3!="Running"'
+  oc get pods -n "${ACM_NS}" -o wide 2>/dev/null | awk 'NR==1 || $3!="Running"' || true
+  oc get pods -n multicluster-engine -o wide 2>/dev/null | awk 'NR==1 || $3!="Running"' || true
   echo "--- Deployments not fully available in ${ACM_NS} and multicluster-engine ---"
-  oc get deployments -n "${ACM_NS}" -o wide
-  oc get deployments -n multicluster-engine -o wide
+  oc get deployments -n "${ACM_NS}" -o wide || true
+  oc get deployments -n multicluster-engine -o wide || true
   echo "--- Recent events in ${ACM_NS} and multicluster-engine ---"
-  oc get events -n "${ACM_NS}" --sort-by='.lastTimestamp' | tail -40
-  oc get events -n multicluster-engine --sort-by='.lastTimestamp' | tail -40
+  oc get events -n "${ACM_NS}" --sort-by='.lastTimestamp' 2>/dev/null | tail -40 || true
+  oc get events -n multicluster-engine --sort-by='.lastTimestamp' 2>/dev/null | tail -40 || true
   exit 1
 }
 

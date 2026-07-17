@@ -102,18 +102,26 @@ if [[ $COPIED_SECRET_FOUND -eq 1 ]]; then
   oc label nodes --all hypershift.openshift.io/nodepool-globalps-enabled=true --overwrite 2>/dev/null || true
 
   log_info "Waiting for HCCO to merge additional-pull-secret into global-pull-secret..."
-  GLOBAL_SECRET_FOUND=0
+  QUAY_AUTH_PROPAGATED=0
   for _ in $(seq 1 30); do
     if oc get secret global-pull-secret -n kube-system &>/dev/null; then
-      GLOBAL_SECRET_FOUND=1
-      break
+      # Verify QUAY_AUTH is actually present in the merged secret, not just that the secret exists
+      MERGED_AUTH=$(oc get secret global-pull-secret -n kube-system \
+        -o jsonpath='{.data.\.dockerconfigjson}' 2>/dev/null | \
+        base64 -d 2>/dev/null | \
+        jq -r '.auths["quay.io:443"].auth // .auths["quay.io"].auth // empty' 2>/dev/null || true)
+      if [[ -n "$MERGED_AUTH" && "$MERGED_AUTH" == "$QUAY_AUTH" ]]; then
+        QUAY_AUTH_PROPAGATED=1
+        break
+      fi
     fi
     sleep 10
   done
-  if [[ $GLOBAL_SECRET_FOUND -eq 1 ]]; then
-    log_info "global-pull-secret created; global-pull-secret-syncer will sync it to eligible nodes."
+  if [[ $QUAY_AUTH_PROPAGATED -eq 1 ]]; then
+    log_info "QUAY_AUTH successfully propagated to global-pull-secret; global-pull-secret-syncer will sync it to eligible nodes."
   else
-    log_warn "global-pull-secret did not appear after 5 minutes — HCCO may not have processed additional-pull-secret yet."
+    log_error "QUAY_AUTH did not appear in global-pull-secret after 5 minutes — HCCO failed to merge additional-pull-secret."
+    exit 1
   fi
 fi
 
