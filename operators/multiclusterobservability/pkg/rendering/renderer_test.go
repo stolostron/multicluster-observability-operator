@@ -17,6 +17,7 @@ import (
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	templatesutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering/templates"
+	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util/tlstesting"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -26,7 +27,20 @@ import (
 )
 
 func TestRender(t *testing.T) {
-	t.Setenv("UNIT_TEST", "true")
+	clientCa := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "extension-apiserver-authentication",
+			Namespace: "kube-system",
+		},
+		Data: map[string]string{
+			"client-ca-file": "test",
+		},
+	}
+	kubeClient := tlstesting.NewFakeTLSClientBuilder().
+		WithScheme(corev1.AddToScheme).
+		WithObjects(clientCa).
+		Build(t)
+
 	wd, err := os.Getwd()
 	if err != nil {
 		t.Fatalf("failed to get working dir %v", err)
@@ -55,17 +69,6 @@ func TestRender(t *testing.T) {
 			},
 		},
 	}
-
-	clientCa := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "extension-apiserver-authentication",
-			Namespace: "kube-system",
-		},
-		Data: map[string]string{
-			"client-ca-file": "test",
-		},
-	}
-	kubeClient := fake.NewClientBuilder().WithObjects(clientCa).Build()
 
 	imageClient := &fakeimagev1client.FakeImageV1{Fake: &(fakeimageclient.NewSimpleClientset().Fake)}
 	_, err = imageClient.ImageStreams(config.OauthProxyImageStreamNamespace).Create(t.Context(),

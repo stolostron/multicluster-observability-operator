@@ -35,16 +35,6 @@ func newAPIServerWithProfile(profile *configv1.TLSSecurityProfile, adherence con
 	}
 }
 
-// resetTLSState clears package-level cached vars
-// used by the utility functions
-func resetTLSState() {
-	tlsProfileSpec = nil
-	tlsConfig = nil
-	tlsClientFunc = func() (client.Client, error) {
-		return GetOrCreateOCPConfigCRClient()
-	}
-}
-
 func setFakeClient(objs ...client.Object) {
 	c := fake.NewClientBuilder().WithScheme(newTestScheme()).WithObjects(objs...).Build()
 	tlsClientFunc = func() (client.Client, error) {
@@ -128,7 +118,7 @@ func TestGetOrCreateTLSProfileSpec(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			defer resetTLSState()
+			defer ResetTLSState()
 			setFakeClient(newAPIServerWithProfile(tt.tlsSecProfile, tt.adherence))
 			spec, err := GetOrCreateTLSProfileSpec(context.Background())
 			require.NoError(t, err)
@@ -138,7 +128,7 @@ func TestGetOrCreateTLSProfileSpec(t *testing.T) {
 }
 
 func TestGetOrCreateTLSProfileSpec_NotFound(t *testing.T) {
-	defer resetTLSState()
+	defer ResetTLSState()
 	setFakeClient()
 
 	spec, err := GetOrCreateTLSProfileSpec(context.Background())
@@ -147,7 +137,7 @@ func TestGetOrCreateTLSProfileSpec_NotFound(t *testing.T) {
 }
 
 func TestGetOrCreateTLSProfileSpec_Caching(t *testing.T) {
-	defer resetTLSState()
+	defer ResetTLSState()
 	setFakeClient(newAPIServerWithProfile(
 		&configv1.TLSSecurityProfile{Type: configv1.TLSProfileModernType},
 		configv1.TLSAdherencePolicyStrictAllComponents,
@@ -221,7 +211,7 @@ func TestGetOrCreateTLSConfig(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			defer resetTLSState()
+			defer ResetTLSState()
 			setFakeClient(newAPIServerWithProfile(tt.tlsSecProfile, tt.adherence))
 
 			tlsCfgFn, err := GetOrCreateTLSConfig(context.Background())
@@ -242,7 +232,7 @@ func TestGetOrCreateTLSConfig(t *testing.T) {
 }
 
 func TestGetOrCreateTLSConfig_NotFound(t *testing.T) {
-	defer resetTLSState()
+	defer ResetTLSState()
 	setFakeClient()
 
 	tlsCfgFn, err := GetOrCreateTLSConfig(context.Background())
@@ -255,7 +245,7 @@ func TestGetOrCreateTLSConfig_NotFound(t *testing.T) {
 }
 
 func TestGetOrCreateTLSConfig_Caching(t *testing.T) {
-	defer resetTLSState()
+	defer ResetTLSState()
 	setFakeClient(newAPIServerWithProfile(
 		&configv1.TLSSecurityProfile{Type: configv1.TLSProfileIntermediateType},
 		configv1.TLSAdherencePolicyStrictAllComponents,
@@ -333,7 +323,7 @@ func TestSetTLSSecurityConfiguration(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			defer resetTLSState()
+			defer ResetTLSState()
 			setFakeClient(newAPIServerWithProfile(tt.tlsSecProfile, tt.adherence))
 
 			result, err := SetTLSSecurityConfiguration(context.Background(), tt.initialArgs, "--tls-cipher-suites=", "--tls-min-version=")

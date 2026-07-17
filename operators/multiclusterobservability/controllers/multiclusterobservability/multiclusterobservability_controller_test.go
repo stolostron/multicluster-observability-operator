@@ -34,6 +34,7 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering/templates"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/deploying"
+	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util/tlstesting"
 	observatoriumv1alpha1 "github.com/stolostron/observatorium-operator/api/v1alpha1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -330,6 +331,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	)
 
 	defer setupTest(t)()
+	tlstesting.NewFakeTLSClientBuilder().Build(t)
 	// A MultiClusterObservability object with metadata and spec.
 	mco := &mcov1beta2.MultiClusterObservability{
 		TypeMeta: metav1.TypeMeta{Kind: "MultiClusterObservability"},
@@ -823,6 +825,7 @@ func TestImageReplaceForMCO(t *testing.T) {
 	)
 
 	defer setupTest(t)()
+	tlstesting.NewFakeTLSClientBuilder().Build(t)
 
 	// A MultiClusterObservability object with metadata and spec.
 	mco := &mcov1beta2.MultiClusterObservability{

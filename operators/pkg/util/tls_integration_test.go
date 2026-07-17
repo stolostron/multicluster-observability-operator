@@ -70,7 +70,7 @@ type profileChange struct {
 }
 
 func TestIntegrationSecurityProfileWatcherOnProfileChange(t *testing.T) {
-	defer resetTLSState()
+	defer ResetTLSState()
 
 	k8sClient, err := client.New(restCfg, client.Options{Scheme: testScheme})
 	require.NoError(t, err)

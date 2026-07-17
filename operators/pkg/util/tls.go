@@ -8,8 +8,6 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"os"
-	"strconv"
 	"strings"
 
 	ocinfrav1 "github.com/openshift/api/config/v1"
@@ -22,9 +20,7 @@ var (
 	tlsProfileSpec *ocinfrav1.TLSProfileSpec
 	tlsConfig      func(*tls.Config)
 	// Override in tests to inject a fake client.
-	tlsClientFunc = func() (client.Client, error) { //nolint:gocritic // intentional lambda for test injection
-		return GetOrCreateOCPConfigCRClient()
-	}
+	tlsClientFunc = GetOrCreateOCPConfigCRClient
 )
 
 // GetOrCreateTLSProfileSpec retrieves spec.tlsSecurityProfile
@@ -96,10 +92,6 @@ func GetOrCreateTLSConfig(ctx context.Context) (func(*tls.Config), error) {
 func SetTLSSecurityConfiguration(ctx context.Context, args []string, tlsCipherSuitesArg string, minTLSversionArg string) ([]string, error) {
 	tlsProfileSpec, err := GetOrCreateTLSProfileSpec(ctx)
 	if err != nil {
-		if isTest, err := strconv.ParseBool(os.Getenv("UNIT_TEST")); err == nil && isTest {
-			log.Info("running unit test, skipping TLS profile adherence")
-			return args, nil
-		}
 		log.Error(err, "unable to get TLS security configuration")
 		return nil, err
 	}
@@ -110,6 +102,16 @@ func SetTLSSecurityConfiguration(ctx context.Context, args []string, tlsCipherSu
 	args = setArg(args, tlsCipherSuitesArg, cipherSuites)
 	args = setArg(args, minTLSversionArg, string(tlsProfileSpec.MinTLSVersion))
 	return args, nil
+}
+
+func SetTLSClientFunc(fn func() (client.Client, error)) {
+	tlsClientFunc = fn
+}
+
+func ResetTLSState() {
+	tlsProfileSpec = nil
+	tlsConfig = nil
+	tlsClientFunc = GetOrCreateOCPConfigCRClient
 }
 
 func setArg(args []string, argName string, argValue string) []string {

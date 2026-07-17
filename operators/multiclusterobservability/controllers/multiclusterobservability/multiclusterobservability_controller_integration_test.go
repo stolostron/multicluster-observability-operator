@@ -25,6 +25,7 @@ import (
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/multiclusterobservability"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	tlsutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 	observatoriumAPIs "github.com/stolostron/observatorium-operator/api/v1alpha1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -62,6 +63,9 @@ func TestIntegrationMCO_HubRules(t *testing.T) {
 	// Set hub client and resources
 	k8sHubClient, err := client.New(restCfgHub, client.Options{Scheme: scheme})
 	require.NoError(t, err)
+
+	tlsutil.SetTLSClientFunc(func() (client.Client, error) { return k8sHubClient, nil })
+	t.Cleanup(tlsutil.ResetTLSState)
 
 	storageSecretName := "storage-secret"
 	storageSecretKey := "storage-key"
