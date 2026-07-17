@@ -46,9 +46,10 @@ func TestAlertManagerRenderer(t *testing.T) {
 	}
 
 	containerNameToMchKey := map[string]string{
-		"alertmanager":    "prometheus_alertmanager",
-		"config-reloader": "configmap_reloader",
-		"kube-rbac-proxy": "kube_rbac_proxy",
+		"alertmanager":        "prometheus_alertmanager",
+		"config-reloader":     "configmap_reloader",
+		"kube-rbac-proxy":     "kube_rbac_proxy",
+		"kube-rbac-proxy-web": "kube_rbac_proxy",
 	}
 	mchImageManifest := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
@@ -89,11 +90,6 @@ func TestAlertManagerRenderer(t *testing.T) {
 			sts := &appsv1.StatefulSet{}
 			runtime.DefaultUnstructuredConverter.FromUnstructured(obj.Object, sts)
 			for _, container := range sts.Spec.Template.Spec.Containers {
-				// oauth-proxy container is not in the mch-image-manifest configmap
-				// we use image-streams to get image for oauth-proxy
-				if container.Name == "alertmanager-proxy" {
-					continue
-				}
 				assert.Equal(t, mchImageManifest.Data[containerNameToMchKey[container.Name]], container.Image)
 			}
 		}
@@ -112,9 +108,9 @@ func TestAlertManagerRenderer(t *testing.T) {
 		assert.Equal(t, "namespace", obj.GetNamespace(), fmt.Sprintf("kind: %s, name: %s", obj.GetKind(), obj.GetName()))
 	}
 
-	// alertmanager-proxy must have the secret value generated
-	proxy := getResource[*corev1.Secret](alertResources, "alertmanager-proxy")
-	assert.True(t, len(proxy.Data["session_secret"]) > 0)
+	// alertmanager-kube-rbac-proxy-web secret must be created with authorization config
+	proxyWeb := getResource[*corev1.Secret](alertResources, "alertmanager-kube-rbac-proxy-web")
+	assert.Contains(t, proxyWeb.StringData["config.yaml"], "alertmanagers")
 }
 
 func TestAlertManagerRendererMCOConfig(t *testing.T) {

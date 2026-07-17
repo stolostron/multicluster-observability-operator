@@ -809,7 +809,7 @@ func GenerateAlertmanagerRoute(
 		Spec: routev1.RouteSpec{
 			Path: "/api/v2",
 			Port: &routev1.RoutePort{
-				TargetPort: intstr.FromString("oauth-proxy"),
+				TargetPort: intstr.FromString("web"),
 			},
 			To: routev1.RouteTargetReference{
 				Kind: "Service",

@@ -1,0 +1,10 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: observability-alertmanager-edit
+  namespace: open-cluster-management-observability
+rules:
+- apiGroups: ["monitoring.coreos.com"]
+  resources: ["alertmanagers/api"] 
+  resourceNames: ["observability"] 
+  verbs: ["*"] 

@@ -990,13 +990,12 @@ func TestImageReplaceForMCO(t *testing.T) {
 		for _, container := range sts.Spec.Template.Spec.Containers {
 			imageKey := strings.ReplaceAll(container.Name, "-", "_")
 			switch container.Name {
-			case "oauth-proxy", "alertmanager-proxy":
-				// TODO: add oauth-proxy image to image manifests
-				continue
 			case "alertmanager":
 				imageKey = "prometheus_alertmanager"
 			case "config-reloader":
 				imageKey = "configmap_reloader"
+			case "kube-rbac-proxy-web":
+				imageKey = "kube_rbac_proxy"
 			}
 			imageValue, exists := testImagemanifestsMap[imageKey]
 			if !exists {
