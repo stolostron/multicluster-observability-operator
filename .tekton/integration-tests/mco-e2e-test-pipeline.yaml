@@ -278,29 +278,54 @@ spec:
               #!/usr/bin/env bash
               set -exo pipefail
 
+              echo "=== Setting up pull secret for managed cluster using HyperShift Global Pull Secret ==="
+
               # Install jq
               dnf -y install jq
 
-              # Get the pull secret from the hub cluster
-              oc --kubeconfig="${HUB_KUBECONFIG}" get secret acm-mco-konflux-e2e \
-                -n openshift-marketplace -o json | \
-                jq 'del(.metadata.namespace,.metadata.uid,.metadata.resourceVersion,.metadata.creationTimestamp)' \
-                > /tmp/acm-pull-secret-full.json
+              # Extract quay.io credentials from hub cluster's acm-mco-konflux-e2e secret
+              QUAY_AUTH=$(oc --kubeconfig="${HUB_KUBECONFIG}" get secret acm-mco-konflux-e2e \
+                -n openshift-marketplace -o jsonpath='{.data.\.dockerconfigjson}' | \
+                base64 -d | jq -r '.auths["quay.io:443"].auth // .auths["quay.io"].auth // empty')
 
-              # Copy it to the managed cluster's openshift-config namespace
-              oc --kubeconfig="${MANAGED_KUBECONFIG}" apply -n openshift-config -f /tmp/acm-pull-secret-full.json
+              if [[ -z "$QUAY_AUTH" ]]; then
+                echo "ERROR: No quay.io auth found in acm-mco-konflux-e2e secret"
+                exit 1
+              fi
 
-              # Merge it into the managed cluster's global pull secret
-              oc --kubeconfig="${MANAGED_KUBECONFIG}" get secret pull-secret -n openshift-config -o json | \
-                jq -r '.data.".dockerconfigjson"' | base64 -d > /tmp/global-pull-secret.json
+              # Create pull secret with only quay.io credentials
+              jq -n --arg auth "${QUAY_AUTH}" \
+                '{"auths": {"quay.io:443": {"auth": $auth, "email": ""}}}' \
+                > /tmp/pull-secret.json
 
-              oc --kubeconfig="${MANAGED_KUBECONFIG}" get secret acm-mco-konflux-e2e -n openshift-config -o json | \
-                jq -r '.data.".dockerconfigjson"' | base64 -d > /tmp/acm-pull-secret.json
+              # Create additional-pull-secret in kube-system (HyperShift Global Pull Secret feature)
+              echo "Creating additional-pull-secret in kube-system..."
+              oc --kubeconfig="${MANAGED_KUBECONFIG}" create secret generic additional-pull-secret \
+                -n kube-system \
+                --from-file=.dockerconfigjson=/tmp/pull-secret.json \
+                --type=kubernetes.io/dockerconfigjson \
+                --dry-run=client -o yaml | \
+                oc --kubeconfig="${MANAGED_KUBECONFIG}" apply -f -
 
-              jq -s '.[0] * .[1]' /tmp/global-pull-secret.json /tmp/acm-pull-secret.json > /tmp/merged-pull-secret.json
+              # Label nodes to enable global-pull-secret sync
+              echo "Labeling nodes for global-pull-secret sync..."
+              oc --kubeconfig="${MANAGED_KUBECONFIG}" label nodes --all \
+                hypershift.openshift.io/nodepool-globalps-enabled=true --overwrite 2>/dev/null || true
 
-              oc --kubeconfig="${MANAGED_KUBECONFIG}" set data secret/pull-secret \
-                -n openshift-config --from-file=.dockerconfigjson=/tmp/merged-pull-secret.json
+              # Wait for HCCO to create global-pull-secret
+              echo "Waiting for global-pull-secret to be created by HCCO..."
+              for i in $(seq 1 30); do
+                if oc --kubeconfig="${MANAGED_KUBECONFIG}" get secret global-pull-secret -n kube-system &>/dev/null; then
+                  echo "global-pull-secret created successfully"
+                  break
+                fi
+                if [[ $i -eq 30 ]]; then
+                  echo "WARNING: global-pull-secret did not appear after 5 minutes"
+                fi
+                sleep 10
+              done
+
+              echo "Done. global-pull-secret-syncer will sync credentials to nodes."
           - name: dump-credentials
             env:
               - name: DEBUG_DUMP_CREDENTIALS
