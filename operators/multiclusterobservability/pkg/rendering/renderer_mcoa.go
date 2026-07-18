@@ -329,6 +329,7 @@ func (r *MCORenderer) renderAddonDeploymentConfig(
 			if r.rendererOptions == nil {
 				return nil, fmt.Errorf("rendererOptions is nil")
 			}
+
 			metricsHubHostname := r.rendererOptions.MCOAOptions.MetricsHubHostname
 			if metricsHubHostname == "" {
 				return nil, fmt.Errorf("MetricsHubHostname (%q) is required when metrics collection is enabled",

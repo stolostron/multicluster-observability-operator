@@ -65,7 +65,7 @@ func (r *MCORenderer) renderProxyDeployment(ctx context.Context, res *resource.R
 		args0[idx] = strings.Replace(
 			args0[idx],
 			"{{OBSERVATORIUM_NAME}}",
-			mcoconfig.GetOperandName(mcoconfig.Observatorium),
+			"mcoa-observability",
 			1,
 		)
 	}

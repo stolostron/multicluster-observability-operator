@@ -261,7 +261,7 @@ func TestGetClusterIDFailed(t *testing.T) {
 func TestGetObsAPIRouteHost(t *testing.T) {
 	route := &routev1.Route{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      obsAPIGateway,
+			Name:      ObsAPIGateway,
 			Namespace: "test",
 		},
 		Spec: routev1.RouteSpec{
@@ -315,7 +315,7 @@ func TestGetObsAPIRouteHost(t *testing.T) {
 func TestGetObsAPIExternalHost(t *testing.T) {
 	route := &routev1.Route{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      obsAPIGateway,
+			Name:      ObsAPIGateway,
 			Namespace: "test",
 		},
 		Spec: routev1.RouteSpec{
@@ -327,13 +327,13 @@ func TestGetObsAPIExternalHost(t *testing.T) {
 	scheme.AddKnownTypes(mcov1beta2.GroupVersion, &mcov1beta2.MultiClusterObservability{})
 	client := fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(route).Build()
 
-	obsAPIURL, err := GetObsAPIExternalURL(context.TODO(), client, "default")
+	obsAPIURL, err := GetObsAPIExternalURL(context.TODO(), client, ObsAPIGateway, "default")
 	assert.NoError(t, err)
 	if obsAPIURL.String() == apiServerURL {
 		t.Errorf("Should not get route host in default namespace")
 	}
 
-	obsAPIURL, err = GetObsAPIExternalURL(context.TODO(), client, "test")
+	obsAPIURL, err = GetObsAPIExternalURL(context.TODO(), client, ObsAPIGateway, "test")
 	assert.NoError(t, err)
 	if obsAPIURL.String() != apiServerURL {
 		t.Errorf("Observatorium api (%v) is not the expected (%v)", obsAPIURL, apiServerURL)
@@ -352,7 +352,7 @@ func TestGetObsAPIExternalHost(t *testing.T) {
 		},
 	}
 	client = fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(route, mco).Build()
-	obsAPIURL, err = GetObsAPIExternalURL(context.TODO(), client, "test")
+	obsAPIURL, err = GetObsAPIExternalURL(context.TODO(), client, ObsAPIGateway, "test")
 	assert.NoError(t, err)
 	if obsAPIURL.String() != expectedURL {
 		t.Errorf("Observatorium api (%v) is not the expected (%v)", obsAPIURL, expectedURL)
@@ -360,7 +360,7 @@ func TestGetObsAPIExternalHost(t *testing.T) {
 
 	mco.Spec.AdvancedConfig.CustomObservabilityHubURL = "httpa://foob ar.c"
 	client = fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(route, mco).Build()
-	_, err = GetObsAPIExternalURL(context.TODO(), client, "test")
+	_, err = GetObsAPIExternalURL(context.TODO(), client, ObsAPIGateway, "test")
 	if err == nil {
 		t.Errorf("expected error when parsing URL '%v', but got none", mco.Spec.AdvancedConfig.CustomObservabilityHubURL)
 	}
