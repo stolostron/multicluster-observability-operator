@@ -182,13 +182,17 @@ var _ = Describe("RHACM4K-55205: Enable and teardown namespace right-sizing reco
 		}, 2*time.Minute, 10*time.Second).Should(Succeed())
 	})
 
+	// Timeout is 5 minutes because the preceding "defaults" test removes RS fields,
+	// triggering MCOA teardown. ensureRightSizingDefaults re-enables RS, but the full
+	// rebuild chain (CMA → addon-manager → MCA → ManifestWork → work-agent → PrometheusRule)
+	// takes 3-5 minutes.
 	It("Should find the PrometheusRule 'acm-rs-namespace-prometheus-rules' in namespace 'openshift-monitoring'", func() {
 		Eventually(func() error {
 			_, err := dynClient.Resource(prGVR).
 				Namespace("openshift-monitoring").
 				Get(context.TODO(), "acm-rs-namespace-prometheus-rules", metav1.GetOptions{})
 			return err
-		}, 2*time.Minute, 10*time.Second).Should(Succeed())
+		}, 5*time.Minute, 10*time.Second).Should(Succeed())
 	})
 
 	It("Should validate the 'observability-metrics-allowlist' ConfigMap in namespace 'open-cluster-management-observability'", func() {

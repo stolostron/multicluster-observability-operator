@@ -360,7 +360,7 @@ func (r *MCORenderer) renderMCOATemplates(
 		// Skip rendering the ClusterManagementAddOn resource if it already exists.
 		// MCO creates this resource on first deploy, then allows users to manage it.
 		// No MCOAEnabled guard needed here — the caller (Render/MCOAResources) already
-		// gates entry via MCOAEnabled || rightSizingDelegated.
+		// gates entry via MCOAEnabled || RightSizingEnabled.
 		if template.GetKind() == cmaoKind &&
 			r.rendererOptions != nil && r.rendererOptions.MCOAOptions.DisableCMAORender {
 			continue

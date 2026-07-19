@@ -492,7 +492,6 @@ spec:
           - policies
           - placementbindings
           verbs:
-          - get
           - list
           - delete
         - apiGroups:
