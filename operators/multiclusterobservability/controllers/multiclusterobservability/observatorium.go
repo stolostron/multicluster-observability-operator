@@ -679,6 +679,11 @@ func newReceiversSpec(
 	if rendering.MCOAEnabled(mco) && (mco.Spec.AdvancedConfig == nil || mco.Spec.AdvancedConfig.Receive == nil || mco.Spec.AdvancedConfig.Receive.Containers == nil) {
 		receSpec.Args = []string{"--tsdb.out-of-order.time-window=1h"}
 	}
+
+	if mco.Spec.AdvancedConfig != nil && mco.Spec.AdvancedConfig.Receive != nil &&
+		mco.Spec.AdvancedConfig.Receive.Debug != nil && mco.Spec.AdvancedConfig.Receive.Debug.LogLevel != "" {
+		receSpec.LogLevel = mco.Spec.AdvancedConfig.Receive.Debug.LogLevel
+	}
 	return receSpec
 }
 

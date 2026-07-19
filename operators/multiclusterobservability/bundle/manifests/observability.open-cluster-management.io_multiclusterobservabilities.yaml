@@ -7261,6 +7261,20 @@ spec:
                           - name
                           type: object
                         type: array
+                      debug:
+                        description: Debug defines the configuration for debugging
+                          and tuning the receiver.
+                        properties:
+                          logLevel:
+                            description: LogLevel for the receiver (e.g., debug, info,
+                              warn, error).
+                            enum:
+                            - debug
+                            - info
+                            - warn
+                            - error
+                            type: string
+                        type: object
                       replicas:
                         description: Replicas for this component.
                         format: int32
