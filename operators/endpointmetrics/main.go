@@ -23,6 +23,7 @@ import (
 	ocinfrav1 "github.com/openshift/api/config/v1"
 	tlsutil "github.com/openshift/controller-runtime-common/pkg/tls"
 	hyperv1 "github.com/openshift/hypershift/api/hypershift/v1beta1"
+	libgocrypto "github.com/openshift/library-go/pkg/crypto"
 	prometheusv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/controllers/mcoa"
 	obsepctl "github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/controllers/observabilityendpoint"
@@ -351,13 +352,31 @@ func runMCOA(args []string) {
 		if err != nil {
 			setupLog.Info("unable to get TLS profile spec, skipping SecurityProfileWatcher", "error", err)
 		} else {
+			adherencePolicy, err := operatorsutil.FetchTLSAdherencePolicy(ctx)
+			if err != nil {
+				setupLog.Info("unable to get TLS adherence policy, defaulting to NoOpinion", "error", err)
+			}
 			if err = (&tlsutil.SecurityProfileWatcher{
-				Client:                mgr.GetClient(),
-				InitialTLSProfileSpec: *tlsProfileSpec,
+				Client:                    mgr.GetClient(),
+				InitialTLSProfileSpec:     *tlsProfileSpec,
+				InitialTLSAdherencePolicy: adherencePolicy,
 				OnProfileChange: func(ctx context.Context, oldTLSProfileSpec, newTLSProfileSpec ocinfrav1.TLSProfileSpec) {
+					if !libgocrypto.ShouldHonorClusterTLSProfile(adherencePolicy) {
+						setupLog.Info("TLS profile changed but adherence policy does not require honoring it, skipping restart",
+							"adherencePolicy", adherencePolicy,
+						)
+						return
+					}
 					setupLog.Info("TLS profile changed, shutting the manager down to reload",
 						"oldProfile", oldTLSProfileSpec,
 						"newProfile", newTLSProfileSpec,
+					)
+					cancel()
+				},
+				OnAdherencePolicyChange: func(ctx context.Context, oldPolicy, newPolicy ocinfrav1.TLSAdherencePolicy) {
+					setupLog.Info("TLS adherence policy changed, shutting the manager down to reload",
+						"oldPolicy", oldPolicy,
+						"newPolicy", newPolicy,
 					)
 					cancel()
 				},
@@ -527,13 +546,31 @@ func runStandard(args []string) {
 		if err != nil {
 			setupLog.Info("unable get TLS profile spec, skipping SecurityProfileWatcher", "error", err)
 		} else {
+			adherencePolicy, err := operatorsutil.FetchTLSAdherencePolicy(ctx)
+			if err != nil {
+				setupLog.Info("unable to get TLS adherence policy, defaulting to NoOpinion", "error", err)
+			}
 			if err = (&tlsutil.SecurityProfileWatcher{
-				Client:                mgr.GetClient(),
-				InitialTLSProfileSpec: *tlsProfileSpec,
+				Client:                    mgr.GetClient(),
+				InitialTLSProfileSpec:     *tlsProfileSpec,
+				InitialTLSAdherencePolicy: adherencePolicy,
 				OnProfileChange: func(ctx context.Context, oldTLSProfileSpec, newTLSProfileSpec ocinfrav1.TLSProfileSpec) {
+					if !libgocrypto.ShouldHonorClusterTLSProfile(adherencePolicy) {
+						setupLog.Info("TLS profile changed but adherence policy does not require honoring it, skipping restart",
+							"adherencePolicy", adherencePolicy,
+						)
+						return
+					}
 					setupLog.Info("TLS profile changed, shutting the manager down to reload",
 						"oldProfile", oldTLSProfileSpec,
 						"newProfile", newTLSProfileSpec,
+					)
+					cancel()
+				},
+				OnAdherencePolicyChange: func(ctx context.Context, oldPolicy, newPolicy ocinfrav1.TLSAdherencePolicy) {
+					setupLog.Info("TLS adherence policy changed, shutting the manager down to reload",
+						"oldPolicy", oldPolicy,
+						"newPolicy", newPolicy,
 					)
 					cancel()
 				},

@@ -127,6 +127,47 @@ func TestGetOrCreateTLSProfileSpec(t *testing.T) {
 	}
 }
 
+func TestFetchTLSAdherencePolicy(t *testing.T) {
+	tests := []struct {
+		name       string
+		adherence  configv1.TLSAdherencePolicy
+		wantPolicy configv1.TLSAdherencePolicy
+	}{
+		{
+			name:       "returns StrictAllComponents",
+			adherence:  configv1.TLSAdherencePolicyStrictAllComponents,
+			wantPolicy: configv1.TLSAdherencePolicyStrictAllComponents,
+		},
+		{
+			name:       "returns NoOpinion when empty",
+			adherence:  configv1.TLSAdherencePolicyNoOpinion,
+			wantPolicy: configv1.TLSAdherencePolicyNoOpinion,
+		},
+		{
+			name:       "returns LegacyAdheringComponentsOnly",
+			adherence:  configv1.TLSAdherencePolicyLegacyAdheringComponentsOnly,
+			wantPolicy: configv1.TLSAdherencePolicyLegacyAdheringComponentsOnly,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			defer ResetTLSState()
+			setFakeClient(newAPIServerWithProfile(nil, tt.adherence))
+			policy, err := FetchTLSAdherencePolicy(context.Background())
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantPolicy, policy)
+		})
+	}
+}
+
+func TestFetchTLSAdherencePolicy_NotFound(t *testing.T) {
+	defer ResetTLSState()
+	setFakeClient()
+
+	_, err := FetchTLSAdherencePolicy(context.Background())
+	require.Error(t, err, "should return error when APIServer is not found")
+}
+
 func TestGetOrCreateTLSProfileSpec_NotFound(t *testing.T) {
 	defer ResetTLSState()
 	setFakeClient()
