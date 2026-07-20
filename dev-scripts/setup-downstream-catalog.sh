@@ -61,6 +61,19 @@ log_info "Applying CatalogSources and Subscriptions for ACM ${ACM_VERSION} / MCE
 export ACM_VERSION MCE_VERSION
 envsubst <"${MANIFESTS}/catalogsource.yaml" | oc apply -f -
 
+log_info "Propagating acm-d-pull-secret to operand namespaces for image pulls..."
+WORK_DIR=$(mktemp -d)
+trap 'rm -rf "$WORK_DIR"' EXIT
+oc get secret acm-d-pull-secret -n openshift-marketplace -o jsonpath='{.data.\.dockerconfigjson}' |
+  base64 -d >"${WORK_DIR}/acm-d-pull-secret.json"
+for ns in "${ACM_NS}" multicluster-engine; do
+  oc create secret generic acm-d-pull-secret -n "${ns}" \
+    --from-file=.dockerconfigjson="${WORK_DIR}/acm-d-pull-secret.json" \
+    --type=kubernetes.io/dockerconfigjson \
+    --dry-run=client -o yaml | oc apply -f -
+  oc secrets link default acm-d-pull-secret -n "${ns}" --for=pull || true
+done
+
 log_info "Waiting for ACM CSV to appear in ${ACM_NS}..."
 # The subscription triggers an InstallPlan; wait for the CRD that signals ACM is installed.
 wait_for_resource crd multiclusterhubs.operator.open-cluster-management.io "" 600 || {
