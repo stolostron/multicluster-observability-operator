@@ -5,6 +5,7 @@
 package main
 
 import (
+	"context"
 	"crypto/tls"
 	"flag"
 	"fmt"
@@ -17,6 +18,7 @@ import (
 	operatorv1 "github.com/openshift/api/operator/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	imagev1client "github.com/openshift/client-go/image/clientset/versioned/typed/image/v1"
+	tlsutil "github.com/openshift/controller-runtime-common/pkg/tls"
 	prometheusv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	monitoringv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	observabilityv1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
@@ -27,6 +29,7 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/webhook"
+	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	operatorsutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 	observatoriumAPIs "github.com/stolostron/observatorium-operator/api/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
@@ -228,9 +231,21 @@ func main() {
 		{LabelSelector: "owner==multicluster-observability-operator"},
 	}
 
+	ctx, cancel := context.WithCancel(ctrl.SetupSignalHandler())
+
+	tlsConfig, err := operatorsutil.GetOrCreateTLSConfig(ctx)
+	if err != nil {
+		setupLog.Error(err, "unable to get OCP TLS config or default")
+		os.Exit(1)
+	}
+
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-		Scheme:                 scheme,
-		Metrics:                server.Options{BindAddress: fmt.Sprintf("%s:%d", metricsHost, metricsPort)},
+		Scheme: scheme,
+		Metrics: server.Options{
+			BindAddress:   fmt.Sprintf("%s:%d", metricsHost, metricsPort),
+			TLSOpts:       []func(*tls.Config){tlsConfig},
+			SecureServing: true,
+		},
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "b9d51391.open-cluster-management.io",
@@ -238,9 +253,7 @@ func main() {
 		WebhookServer: ctrlwebhook.NewServer(ctrlwebhook.Options{
 			Port: webhookPort,
 			TLSOpts: []func(*tls.Config){
-				func(t *tls.Config) {
-					t.MinVersion = tls.VersionTLS12
-				},
+				tlsConfig,
 			},
 		}),
 	})
@@ -320,6 +333,7 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "Analytics")
 		os.Exit(1)
 	}
+
 	// +kubebuilder:scaffold:builder
 
 	if err := mgr.AddHealthzCheck("health", healthz.Ping); err != nil {
@@ -359,9 +373,37 @@ func main() {
 		os.Exit(1)
 	}
 
+	apiServerCrdExists, err := operatorsutil.CheckCRDExist(crdClient, operatorconfig.OCPApiServerCrdName)
+	if err != nil {
+		setupLog.Error(err, "Failed to check if OCP API server CRD exists", "CRD", operatorconfig.OCPApiServerCrdName)
+		os.Exit(1)
+	}
+	if apiServerCrdExists {
+		tlsProfileSpec, err := operatorsutil.GetOrCreateTLSProfileSpec(ctx)
+		if err != nil {
+			setupLog.Info("unable to get TLS profile spec, skipping SecurityProfileWatcher", "error", err)
+		} else {
+			if err = (&tlsutil.SecurityProfileWatcher{
+				Client:                mgr.GetClient(),
+				InitialTLSProfileSpec: *tlsProfileSpec,
+				OnProfileChange: func(ctx context.Context, oldTLSProfileSpec, newTLSProfileSpec ocinfrav1.TLSProfileSpec) {
+					setupLog.Info("TLS profile changed, shutting the manager down to reload",
+						"oldProfile", oldTLSProfileSpec,
+						"newProfile", newTLSProfileSpec,
+					)
+					cancel()
+				},
+			}).SetupWithManager(mgr); err != nil {
+				setupLog.Error(err, "unable to create TLS security profile watcher")
+			}
+		}
+	}
+
 	setupLog.Info("starting manager")
-	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
+	if err := mgr.Start(ctx); err != nil {
+		cancel()
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
 	}
+	cancel()
 }

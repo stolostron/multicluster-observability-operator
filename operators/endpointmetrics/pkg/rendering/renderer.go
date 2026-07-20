@@ -101,6 +101,17 @@ func Render(
 			spec.ImagePullSecrets = []corev1.LocalObjectReference{
 				{Name: os.Getenv(operatorconfig.PullSecret)},
 			}
+			args, err := util.SetTLSSecurityConfiguration(ctx, spec.Containers[1].Args, "--tls-cipher-suites=", "--tls-min-version=")
+			if err != nil {
+				return nil, fmt.Errorf("kube-state-metrics kube-rbac-proxy-main TLS config: %w", err)
+			}
+			spec.Containers[1].Args = args
+
+			args, err = util.SetTLSSecurityConfiguration(ctx, spec.Containers[2].Args, "--tls-cipher-suites=", "--tls-min-version=")
+			if err != nil {
+				return nil, fmt.Errorf("kube-state-metrics kube-rbac-proxy-self TLS config: %w", err)
+			}
+			spec.Containers[2].Args = args
 
 			// Add user number to ensure non root user
 			// Do nothing on microshift as it is restricted by the restricted SCC
@@ -183,6 +194,11 @@ func Render(
 					"observability-alertmanager-accessor" + "-" + hubInfo.HubClusterID,
 				}
 			}
+			args, err := util.SetTLSSecurityConfiguration(ctx, spec.Containers[0].Args, "--tls-cipher-suites=", "--tls-min-version=")
+			if err != nil {
+				return nil, fmt.Errorf("prometheus-k8s kube-rbac-proxy TLS config: %w", err)
+			}
+			spec.Containers[0].Args = args
 
 			unstructuredObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
 			if err != nil {
@@ -203,6 +219,11 @@ func Render(
 			spec.ImagePullSecrets = []corev1.LocalObjectReference{
 				{Name: os.Getenv(operatorconfig.PullSecret)},
 			}
+			args, err := util.SetTLSSecurityConfiguration(ctx, spec.Containers[1].Args, "--tls-cipher-suites=", "--tls-min-version=")
+			if err != nil {
+				return nil, fmt.Errorf("node-exporter kube-rbac-proxy TLS config: %w", err)
+			}
+			spec.Containers[1].Args = args
 
 			unstructuredObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
 			if err != nil {

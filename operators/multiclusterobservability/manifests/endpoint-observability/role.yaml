@@ -81,6 +81,7 @@ rules:
   resources:
   - clusterversions
   - infrastructures
+  - apiservers
   verbs:
   - list
   - watch

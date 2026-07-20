@@ -41,6 +41,7 @@ const (
 	OCPClusterMonitoringPrometheusService = "prometheus-k8s"
 	OCPUserWorkloadMonitoringNamespace    = "openshift-user-workload-monitoring"
 	OCPUserWorkloadMonitoringConfigMap    = "user-workload-monitoring-config"
+	OCPApiServerCrdName                   = "apiservers.config.openshift.io"
 )
 
 const (

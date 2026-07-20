@@ -139,11 +139,18 @@ func (r *MCORenderer) renderAlertManagerStatefulSet(ctx context.Context, res *re
 		return nil, fmt.Errorf("failed to get OAuth image for alertmanager")
 	}
 	oauthProxyContainer.ImagePullPolicy = imagePullPolicy
+	// TODO(guidonguido): oauth-proxy upstream doesn't support --tls-cipher-suites/--tls-min-version flags
+	// oauthProxyContainer.Args = util.SetTLSSecurityConfiguration(ctx, oauthProxyContainer.Args, "--tls-cipher-suites=", "--tls-min-version=")
 
 	if ok, image := mcoconfig.ReplaceImage(r.cr.Annotations, mcoconfig.DefaultImgRepository+"/"+mcoconfig.KubeRBACProxyImgName, mcoconfig.KubeRBACProxyKey); ok {
 		kubeRbacProxyContainer.Image = image
 	}
 	kubeRbacProxyContainer.ImagePullPolicy = imagePullPolicy
+	args, err := util.SetTLSSecurityConfiguration(ctx, kubeRbacProxyContainer.Args, "--tls-cipher-suites=", "--tls-min-version=")
+	if err != nil {
+		return nil, err
+	}
+	kubeRbacProxyContainer.Args = args
 
 	// Compute hash of the client CA to trigger a rolling restart when the CA rotates.
 	// kube-rbac-proxy reads --client-ca-file only at startup; without this, a CA
