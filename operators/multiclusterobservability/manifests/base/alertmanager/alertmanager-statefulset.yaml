@@ -120,6 +120,10 @@ spec:
         - containerPort: 9095
           name: web
           protocol: TCP
+        resources:
+          requests:
+            cpu: 2m
+            memory: 20Mi
         volumeMounts:
         - mountPath: /etc/tls/private
           name: tls-secret
