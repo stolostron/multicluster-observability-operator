@@ -42,7 +42,7 @@ jobs:
         run: pip install semgrep==1.168.0
 
       - name: Clone argus-observe-rules
-        run: git clone --depth 1 https://github.com/smith-xyz/argus-observe-rules.git /tmp/argus-observe-rules && git -C /tmp/argus-observe-rules checkout b85a9f57b02d0202e7cf62a77fd110a26718b3aa
+        run: git clone --depth 1 https://github.com/smith-xyz/argus-observe-rules.git /tmp/argus-observe-rules && git -C /tmp/argus-observe-rules checkout main
 
       - name: Semgrep TLS compliance scan
         run: |
