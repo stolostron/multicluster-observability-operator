@@ -146,10 +146,16 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 
 	// Clean spokes addon resources (except the hub collector) if metrics are disabled.
 	metricsAreDisabled := mco.Spec.ObservabilityAddonSpec != nil && !mco.Spec.ObservabilityAddonSpec.EnableMetrics
-	if mcoIsNotFound || metricsAreDisabled || mcoaForMetricsIsEnabled(mco) {
+	mcoaMetricsEnabled := mcoaForMetricsIsEnabled(mco)
+	if mcoIsNotFound || metricsAreDisabled || mcoaMetricsEnabled {
 		reqLogger.Info("Cleaning all spokes resources", "mcoIsNotFound", mcoIsNotFound, "metricsAreDisabled",
-			metricsAreDisabled, "mcoaIsEnabled", mcoaForMetricsIsEnabled(mco))
-		if requeue, err := r.cleanSpokesAddonResources(ctx); err != nil {
+			metricsAreDisabled, "mcoaIsEnabled", mcoaMetricsEnabled)
+		// When MCOA takes over metrics collection, preserve the legacy
+		// "observability-controller" ClusterManagementAddOn so that external
+		// consumers (e.g. Fleet Virtualization) that look up this name to
+		// determine whether observability is installed continue to find it.
+		preserveLegacyCMA := mcoaMetricsEnabled
+		if requeue, err := r.cleanSpokesAddonResources(ctx, preserveLegacyCMA); err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to clean all resources: %w", err)
 		} else if requeue {
 			return ctrl.Result{RequeueAfter: 30 * time.Second}, nil
@@ -160,6 +166,14 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 			}
 			// Also clear the amAccessorToken global var, to ensure it's not re-used on re-deploys
 			amAccessorTokenSecret = nil
+		}
+		// When MCOA is enabled, ensure the legacy CMA exists for backward
+		// compatibility. This covers fresh MCOA installs where the legacy
+		// path never ran.
+		if mcoaMetricsEnabled {
+			if _, err := util.CreateClusterManagementAddon(ctx, r.Client); err != nil {
+				return ctrl.Result{}, fmt.Errorf("failed to ensure backward-compatible legacy ClusterManagementAddon for MCOA: %w", err)
+			}
 		}
 
 		// Don't return right away from here because the above cleanup is not complete and it requires
@@ -385,7 +399,7 @@ func (r *PlacementRuleReconciler) waitForImageList(reqLogger logr.Logger) bool {
 	return false
 }
 
-func (r *PlacementRuleReconciler) cleanSpokesAddonResources(ctx context.Context) (bool, error) {
+func (r *PlacementRuleReconciler) cleanSpokesAddonResources(ctx context.Context, preserveLegacyCMA bool) (bool, error) {
 	opts := &client.ListOptions{LabelSelector: labels.SelectorFromSet(map[string]string{ownerLabelKey: ownerLabelValue})}
 	obsAddonList := &mcov1beta1.ObservabilityAddonList{}
 	if err := r.Client.List(ctx, obsAddonList, opts); err != nil {
@@ -421,7 +435,7 @@ func (r *PlacementRuleReconciler) cleanSpokesAddonResources(ctx context.Context)
 	}
 
 	if len(workList.Items) == 0 {
-		if err := deleteGlobalResource(ctx, r.Client); err != nil {
+		if err := deleteGlobalResource(ctx, r.Client, preserveLegacyCMA); err != nil {
 			return false, fmt.Errorf("failed to delete global resources: %w", err)
 		}
 	}
@@ -713,7 +727,7 @@ func deleteAllObsAddons(
 	return requeue, nil
 }
 
-func deleteGlobalResource(ctx context.Context, c client.Client) error {
+func deleteGlobalResource(ctx context.Context, c client.Client, preserveLegacyCMA bool) error {
 	err := deleteClusterRole(ctx, c)
 	if err != nil {
 		return err
@@ -722,10 +736,10 @@ func deleteGlobalResource(ctx context.Context, c client.Client) error {
 	if err != nil {
 		return err
 	}
-	// delete ClusterManagementAddon
-	err = util.DeleteClusterManagementAddon(ctx, c)
-	if err != nil {
-		return err
+	if !preserveLegacyCMA {
+		if err := util.DeleteClusterManagementAddon(ctx, c); err != nil {
+			return fmt.Errorf("failed to delete legacy ClusterManagementAddon: %w", err)
+		}
 	}
 	return nil
 }

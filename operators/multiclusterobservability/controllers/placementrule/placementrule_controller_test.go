@@ -577,6 +577,81 @@ func TestObservabilityAddonController(t *testing.T) {
 	}
 }
 
+func TestDeleteGlobalResourcePreservesLegacyCMA(t *testing.T) {
+	initSchema(t)
+
+	cma := newClusterMgmtAddon()
+	c := fake.NewClientBuilder().WithRuntimeObjects(cma).Build()
+
+	err := deleteGlobalResource(context.TODO(), c, true)
+	assert.NoError(t, err)
+
+	found := &addonv1beta1.ClusterManagementAddOn{}
+	err = c.Get(context.TODO(), types.NamespacedName{Name: operatorutil.ObservabilityController}, found)
+	assert.NoError(t, err, "Legacy observability-controller CMA should be preserved when preserveLegacyCMA is true")
+}
+
+func TestDeleteGlobalResourceDeletesCMAWhenNotPreserved(t *testing.T) {
+	initSchema(t)
+
+	cma := newClusterMgmtAddon()
+	c := fake.NewClientBuilder().WithRuntimeObjects(cma).Build()
+
+	err := deleteGlobalResource(context.TODO(), c, false)
+	assert.NoError(t, err)
+
+	found := &addonv1beta1.ClusterManagementAddOn{}
+	err = c.Get(context.TODO(), types.NamespacedName{Name: operatorutil.ObservabilityController}, found)
+	assert.True(t, errors.IsNotFound(err), "Legacy observability-controller CMA should be deleted when preserveLegacyCMA is false")
+}
+
+func TestLegacyCMADeletedWhenMetricsDisabled(t *testing.T) {
+	initSchema(t)
+	config.SetMonitoringCRName(mcoName)
+	setupTest(t)
+
+	mco := newTestMCO()
+	mco.Spec.ObservabilityAddonSpec.EnableMetrics = false
+	objs := []runtime.Object{
+		mco, newTestPullSecret(), newConsoleRoute(), newTestObsApiRoute(),
+		newTestIngressController(), newTestRouteCASecret(),
+		newCASecret(), newCertSecret(mcoNamespace), NewMetricsAllowListCM(),
+		NewAmAccessorSA(), newClusterMgmtAddon(),
+		newAddonDeploymentConfig(defaultAddonConfigName, namespace),
+		newAddonDeploymentConfig(addonConfigName, namespace),
+	}
+	c := fake.
+		NewClientBuilder().
+		WithStatusSubresource(
+			&addonv1beta1.ManagedClusterAddOn{},
+			&mcov1beta2.MultiClusterObservability{},
+			&mcov1beta1.ObservabilityAddon{},
+		).
+		WithRuntimeObjects(objs...).
+		Build()
+	kubeClient := newMockKubeClient()
+	r := &PlacementRuleReconciler{
+		Client:     c,
+		Scheme:     scheme.Scheme,
+		CRDMap:     map[string]bool{config.IngressControllerCRD: true},
+		KubeClient: kubeClient,
+	}
+
+	req := ctrl.Request{
+		NamespacedName: types.NamespacedName{
+			Name:      config.GetDefaultCRName(),
+			Namespace: mcoNamespace,
+		},
+	}
+
+	_, err := r.Reconcile(context.TODO(), req)
+	assert.NoError(t, err)
+
+	cma := &addonv1beta1.ClusterManagementAddOn{}
+	err = c.Get(context.TODO(), types.NamespacedName{Name: operatorutil.ObservabilityController}, cma)
+	assert.True(t, errors.IsNotFound(err), "Legacy observability-controller CMA should be deleted when metrics are disabled")
+}
+
 func newManagedClusterAddon() *addonv1beta1.ManagedClusterAddOn {
 	return &addonv1beta1.ManagedClusterAddOn{
 		TypeMeta: metav1.TypeMeta{
