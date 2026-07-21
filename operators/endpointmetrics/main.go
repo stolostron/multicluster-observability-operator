@@ -14,6 +14,7 @@ import (
 	"os"
 	"runtime"
 	"strconv"
+	"sync"
 	"time"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
@@ -141,28 +142,46 @@ func doCleanup(args []string) error {
 		return fmt.Errorf("unable to create client for cleanup: %w", err)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Second)
 	defer cancel()
 
+	var wg sync.WaitGroup
+	var mu sync.Mutex
 	var errs []error
 
-	setupLog.Info("Reverting Platform monitoring configuration", "caSecret", hubAmCASecret)
-	if err := obsepctl.RevertClusterMonitoringConfig(ctx, cl, hubAmCASecret, clusterName); err != nil {
-		setupLog.Error(err, "failed to revert platform monitoring config")
+	addErr := func(err error) {
+		mu.Lock()
 		errs = append(errs, err)
+		mu.Unlock()
 	}
 
-	if ctx.Err() != nil {
-		setupLog.Error(ctx.Err(), "cleanup context canceled or timed out, aborting remaining steps")
-		errs = append(errs, ctx.Err())
-		return fmt.Errorf("cleanup failed: %w", errors.Join(errs...))
-	}
+	wg.Add(3)
 
-	setupLog.Info("Reverting User Workload monitoring configuration", "caSecret", hubAmCASecret)
-	if err := obsepctl.RevertUserWorkloadMonitoringConfig(ctx, cl, hubAmCASecret); err != nil {
-		setupLog.Error(err, "failed to revert user workload monitoring config")
-		errs = append(errs, err)
-	}
+	go func() {
+		defer wg.Done()
+		setupLog.Info("Reverting Platform monitoring configuration", "caSecret", hubAmCASecret)
+		if err := obsepctl.RevertClusterMonitoringConfig(ctx, cl, hubAmCASecret, clusterName); err != nil {
+			addErr(fmt.Errorf("failed to revert platform monitoring config: %w", err))
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		setupLog.Info("Reverting User Workload monitoring configuration", "caSecret", hubAmCASecret)
+		if err := obsepctl.RevertUserWorkloadMonitoringConfig(ctx, cl, hubAmCASecret); err != nil {
+			addErr(fmt.Errorf("failed to revert user workload monitoring config: %w", err))
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		setupLog.Info("Cleaning up OBO CRDs")
+		if err := mcoa.CleanUpCRDs(ctx, cl); err != nil {
+			addErr(fmt.Errorf("failed to clean up OBO CRDs: %w", err))
+		}
+	}()
+
+	wg.Wait()
 
 	if len(errs) > 0 {
 		return fmt.Errorf("cleanup failed: %w", errors.Join(errs...))
@@ -284,6 +303,21 @@ func runMCOA(args []string) {
 		os.Exit(1)
 	}
 
+	cl, err := client.New(mgr.GetConfig(), client.Options{Scheme: scheme})
+	if err != nil {
+		setupLog.Error(err, "unable to create direct client for CRD deployment")
+		os.Exit(1)
+	}
+
+	crdCtx, crdCancel := context.WithTimeout(ctx, 2*time.Minute)
+	setupLog.Info("Deploying OBO CRDs")
+	err = mcoa.DeployCRDs(crdCtx, cl)
+	crdCancel()
+	if err != nil {
+		setupLog.Error(err, "failed to deploy OBO CRDs")
+		os.Exit(1)
+	}
+
 	if err = mcoa.NewMCOAAgentReconciler(
 		mgr.GetClient(),
 		ctrl.Log.WithName("controllers").WithName("mcoa-endpoint-controller"),
@@ -336,7 +370,6 @@ func runMCOA(args []string) {
 
 	setupLog.Info("starting mcoa manager")
 	if err := mgr.Start(ctx); err != nil {
-		cancel()
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
 	}
