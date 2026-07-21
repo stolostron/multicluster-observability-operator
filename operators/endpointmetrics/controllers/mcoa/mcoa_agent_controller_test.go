@@ -19,9 +19,9 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/events"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -32,8 +32,12 @@ import (
 func TestMCOAAgentReconciler_Reconcile(t *testing.T) {
 	t.Parallel()
 
-	s := scheme.Scheme
-	_ = ocinfrav1.AddToScheme(s)
+	s := runtime.NewScheme()
+	require.NoError(t, corev1.AddToScheme(s))
+	require.NoError(t, ocinfrav1.AddToScheme(s))
+
+	// Register ScrapeConfig for the custom monitoring.rhobs/v1alpha1 API Group
+	addRhobsToScheme(t, s)
 
 	namespace := "test-ns"
 	clusterID := "test-cluster-id"
@@ -138,7 +142,7 @@ func TestMCOAAgentReconciler_Reconcile(t *testing.T) {
 						},
 					},
 					Data: map[string]string{
-						observabilityendpoint.ClusterMonitoringConfigDataKey: "prometheusK8s: {}",
+						observabilityendpoint.ClusterMonitoringConfigDataKey: "prometheusK8s:\n  additionalAlertmanagerConfigs:\n  - scheme: https\n    staticConfigs:\n    - old-hub.com",
 					},
 				},
 			},
@@ -178,7 +182,7 @@ func TestMCOAAgentReconciler_Reconcile(t *testing.T) {
 					Namespace: operatorconfig.OCPUserWorkloadMonitoringNamespace,
 				}, found)
 				require.NoError(t, err)
-				assert.Contains(t, found.Data["config.yaml"], "hub-am.example.com")
+				assert.Contains(t, found.Data[uwlMonitoringConfigDataKey], "hub-am.example.com")
 			},
 		},
 		{
@@ -292,7 +296,7 @@ func TestMCOAAgentReconciler_Reconcile(t *testing.T) {
 					Namespace: operatorconfig.OCPUserWorkloadMonitoringNamespace,
 				}, found)
 				if err == nil {
-					assert.NotContains(t, found.Data["config.yaml"], "hub.com")
+					assert.NotContains(t, found.Data[uwlMonitoringConfigDataKey], "hub.com")
 				}
 			},
 		},

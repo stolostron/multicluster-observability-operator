@@ -7,8 +7,10 @@ package mcoa
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/go-logr/logr"
+	prometheusv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/controllers/observabilityendpoint"
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	corev1 "k8s.io/api/core/v1"
@@ -21,6 +23,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 // MCOAAgentReconciler reconciles the MCOA components on the managed cluster.
@@ -32,11 +35,17 @@ type MCOAAgentReconciler struct {
 	Namespace                string
 	ClusterID                string
 	ClusterName              string
-	AlertmanagerEndpoint     string
+	hubEndpoint              string
 	CASecret                 string
 	CertSecret               string
 	AccessorSecret           string
-	EnableUWLAlertForwarding bool
+	enableUWLAlertForwarding bool
+
+	// mu synchronizes concurrent access to hubEndpoint and enableUWLAlertForwarding.
+	// These fields can be dynamically updated at runtime by the addon controller's Watch
+	// events when alert forwarding settings are updated.
+	// ClusterID and ClusterName are set once during operator startup and remain immutable.
+	mu sync.RWMutex
 }
 
 // NewMCOAAgentReconciler creates a new MCOAAgentReconciler.
@@ -62,11 +71,11 @@ func NewMCOAAgentReconciler(
 		Namespace:                namespace,
 		ClusterID:                clusterID,
 		ClusterName:              clusterName,
-		AlertmanagerEndpoint:     alertmanagerEndpoint,
+		hubEndpoint:              alertmanagerEndpoint,
 		CASecret:                 caSecret,
 		CertSecret:               certSecret,
 		AccessorSecret:           accessorSecret,
-		EnableUWLAlertForwarding: enableUWLAlertForwarding,
+		enableUWLAlertForwarding: enableUWLAlertForwarding,
 	}
 }
 
@@ -75,13 +84,12 @@ func (r *MCOAAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	switch {
 	case req.Name == operatorconfig.OCPClusterMonitoringConfigMapName && req.Namespace == operatorconfig.OCPClusterMonitoringNamespace:
-		if err := r.reconcileCMO(ctx, req.NamespacedName); err != nil {
+		if err := r.ReconcileCMOPlatformConfig(ctx); err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to reconcile CMO config: %w", err)
 		}
 		return ctrl.Result{}, nil
-
 	case req.Name == operatorconfig.OCPUserWorkloadMonitoringConfigMap && req.Namespace == operatorconfig.OCPUserWorkloadMonitoringNamespace:
-		if err := r.reconcileUWLConfig(ctx); err != nil {
+		if err := r.ReconcileCMOUWLConfig(ctx); err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to reconcile UWL config: %w", err)
 		}
 		return ctrl.Result{}, nil
@@ -127,5 +135,52 @@ func (r *MCOAAgentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				GenericFunc: func(_ event.GenericEvent) bool { return false },
 			}),
 		).
+		Watches(
+			&prometheusv1alpha1.ScrapeConfig{},
+			handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, obj client.Object) []reconcile.Request {
+				if obj.GetNamespace() != r.Namespace {
+					return nil
+				}
+				labels := obj.GetLabels()
+				if labels == nil {
+					return nil
+				}
+				comp := labels[labelKeyComponent]
+				switch comp {
+				case platformMetricsCollectorRawComponent:
+					return []reconcile.Request{
+						{
+							NamespacedName: client.ObjectKey{
+								Name:      operatorconfig.OCPClusterMonitoringConfigMapName,
+								Namespace: operatorconfig.OCPClusterMonitoringNamespace,
+							},
+						},
+					}
+				case userWorkloadMetricsCollectorRawComponent:
+					return []reconcile.Request{
+						{
+							NamespacedName: client.ObjectKey{
+								Name:      operatorconfig.OCPUserWorkloadMonitoringConfigMap,
+								Namespace: operatorconfig.OCPUserWorkloadMonitoringNamespace,
+							},
+						},
+					}
+				}
+				return nil
+			}),
+		).
 		Complete(r)
+}
+
+func (r *MCOAAgentReconciler) AlertConfig() (endpoint string, enableUWL bool) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return r.hubEndpoint, r.enableUWLAlertForwarding
+}
+
+func (r *MCOAAgentReconciler) SetAlertConfig(endpoint string, enableUWL bool) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.hubEndpoint = endpoint
+	r.enableUWLAlertForwarding = enableUWL
 }
