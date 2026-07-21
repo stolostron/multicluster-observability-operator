@@ -288,14 +288,15 @@ func TestCMOConfigReconciler_reconcileConfigMutation(t *testing.T) {
 	clPlatform := fake.NewClientBuilder().WithScheme(s).WithObjects(cmPlatform).Build()
 
 	rPlatform := &MCOAAgentReconciler{
-		Client:      clPlatform,
-		Log:         ctrl.Log.WithName("test-controller"),
-		Namespace:   namespace,
-		ClusterID:   "new-cluster-id",
-		ClusterName: "new-cluster-name",
-		HubEndpoint: "https://new-hub.com",
-		CASecret:    "test-ca-secret",
-		CertSecret:  "test-cert-secret",
+		Client:                        clPlatform,
+		Log:                           ctrl.Log.WithName("test-controller"),
+		Namespace:                     namespace,
+		ClusterID:                     "new-cluster-id",
+		ClusterName:                   "new-cluster-name",
+		HubEndpoint:                   "https://new-hub.com",
+		CASecret:                      "test-ca-secret",
+		CertSecret:                    "test-cert-secret",
+		EnablePlatformAlertForwarding: true,
 	}
 
 	err = rPlatform.ReconcileCMOPlatformConfig(ctx)

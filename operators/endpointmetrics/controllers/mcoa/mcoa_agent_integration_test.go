@@ -136,7 +136,8 @@ func TestMCOAAgentIntegration(t *testing.T) {
 		caSecretName,
 		"obs-alertmanager-mtls-cert",
 		"observability-alertmanager-accessor",
-		true,
+		true, // enablePlatformAlertForwarding
+		true, // enableUWLAlertForwarding
 	)
 	err = reconciler.SetupWithManager(mgr)
 	require.NoError(t, err)
@@ -258,7 +259,8 @@ func TestMCOAAgentIntegration(t *testing.T) {
 			caSecretName,
 			"obs-alertmanager-mtls-cert",
 			"observability-alertmanager-accessor",
-			false,
+			false, // enablePlatformAlertForwarding
+			false, // enableUWLAlertForwarding
 		)
 
 		// Trigger reconcile by directly calling the Reconcile method on this private reconciler
@@ -351,6 +353,7 @@ func TestMCOAAgentIntegration(t *testing.T) {
 			caSecretName,
 			"obs-alertmanager-mtls-cert",
 			"observability-alertmanager-accessor",
+			true,  // enablePlatformAlertForwarding
 			false, // disabled UWL alert forwarding
 		)
 

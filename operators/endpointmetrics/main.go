@@ -165,6 +165,7 @@ func doCleanup(args []string) error {
 		hubAmCASecret,
 		"",
 		"",
+		false, // false forces Platform Alertmanager config removal
 		false, // false forces UWL Alertmanager config removal
 	)
 
@@ -219,13 +220,14 @@ func runMCOA(args []string) {
 	var metricsAddr string
 	var enableLeaderElection bool
 	var probeAddr string
-	var hubAmURL string
+	var hubEndpointURL string
 	var clusterID string
 	var clusterName string
 	var namespace string
 	var hubAmCASecret string
 	var hubAmCertSecret string
 	var hubAmAccessorSecret string
+	var enablePlatformAlertForwarding bool
 	var enableUWLAlertForwarding bool
 
 	fs.StringVar(&metricsAddr, "metrics-bind-address", ":8383", "The address the metric endpoint binds to.")
@@ -233,7 +235,7 @@ func runMCOA(args []string) {
 	fs.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
-	fs.StringVar(&hubAmURL, "hub-alertmanager-url", "", "The URL of the Hub's Alertmanager.")
+	fs.StringVar(&hubEndpointURL, "hub-endpoint-url", "", "The base URL of the Hub Gateway.")
 	fs.StringVar(&clusterID, "cluster-id", "", "The ID of the managed cluster.")
 	fs.StringVar(&clusterName, "cluster-name", "", "The name of the managed cluster.")
 	fs.StringVar(&namespace, "namespace", "", "The namespace the operator is running in.")
@@ -245,6 +247,7 @@ func runMCOA(args []string) {
 	)
 	fs.StringVar(&hubAmCertSecret, "hub-alertmanager-cert-secret", "", "The name of the TLS cert/key secret for the Hub's Alertmanager.")
 	fs.StringVar(&hubAmAccessorSecret, "hub-alertmanager-accessor-secret", "", "The name of the accessor token secret for the Hub's Alertmanager.")
+	fs.BoolVar(&enablePlatformAlertForwarding, "enable-platform-alert-forwarding", false, "Enable or disable forwarding of platform monitoring alerts.")
 	fs.BoolVar(&enableUWLAlertForwarding, "enable-uwl-alert-forwarding", true, "Enable or disable forwarding of user workload monitoring alerts.")
 
 	klog.InitFlags(fs)
@@ -264,37 +267,40 @@ func runMCOA(args []string) {
 		os.Exit(1)
 	}
 
-	if hubAmURL != "" {
-		parsedURL, err := url.Parse(hubAmURL)
-		if err != nil || parsedURL.Scheme == "" || parsedURL.Host == "" {
-			setupLog.Error(fmt.Errorf("invalid hub-alertmanager-url %q: must be a valid absolute URL", hubAmURL), "unable to start manager")
-			os.Exit(1)
-		}
+	if hubEndpointURL == "" {
+		setupLog.Error(fmt.Errorf("hub-endpoint-url flag not set"), "unable to start manager")
+		os.Exit(1)
+	}
 
-		if clusterID == "" {
-			setupLog.Error(fmt.Errorf("cluster-id flag not set"), "unable to start manager")
-			os.Exit(1)
-		}
+	parsedURL, err := url.Parse(hubEndpointURL)
+	if err != nil || parsedURL.Scheme == "" || parsedURL.Host == "" {
+		setupLog.Error(fmt.Errorf("invalid hub-endpoint-url %q: must be a valid absolute URL", hubEndpointURL), "unable to start manager")
+		os.Exit(1)
+	}
 
-		if clusterName == "" {
-			setupLog.Error(fmt.Errorf("cluster-name flag not set"), "unable to start manager")
-			os.Exit(1)
-		}
+	if clusterID == "" {
+		setupLog.Error(fmt.Errorf("cluster-id flag not set"), "unable to start manager")
+		os.Exit(1)
+	}
 
-		if hubAmCASecret == "" {
-			setupLog.Error(fmt.Errorf("hub-alertmanager-ca-secret flag not set"), "unable to start manager")
-			os.Exit(1)
-		}
+	if clusterName == "" {
+		setupLog.Error(fmt.Errorf("cluster-name flag not set"), "unable to start manager")
+		os.Exit(1)
+	}
 
-		if hubAmCertSecret == "" {
-			setupLog.Error(fmt.Errorf("hub-alertmanager-cert-secret flag not set"), "unable to start manager")
-			os.Exit(1)
-		}
+	if hubAmCASecret == "" {
+		setupLog.Error(fmt.Errorf("hub-alertmanager-ca-secret flag not set"), "unable to start manager")
+		os.Exit(1)
+	}
 
-		if hubAmAccessorSecret == "" {
-			setupLog.Error(fmt.Errorf("hub-alertmanager-accessor-secret flag not set"), "unable to start manager")
-			os.Exit(1)
-		}
+	if hubAmCertSecret == "" {
+		setupLog.Error(fmt.Errorf("hub-alertmanager-cert-secret flag not set"), "unable to start manager")
+		os.Exit(1)
+	}
+
+	if hubAmAccessorSecret == "" {
+		setupLog.Error(fmt.Errorf("hub-alertmanager-accessor-secret flag not set"), "unable to start manager")
+		os.Exit(1)
 	}
 
 	ctx, cancel := context.WithCancel(ctrl.SetupSignalHandler())
@@ -349,10 +355,11 @@ func runMCOA(args []string) {
 		namespace,
 		clusterID,
 		clusterName,
-		hubAmURL,
+		hubEndpointURL,
 		hubAmCASecret,
 		hubAmCertSecret,
 		hubAmAccessorSecret,
+		enablePlatformAlertForwarding,
 		enableUWLAlertForwarding,
 	).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "mcoa-endpoint-controller")
