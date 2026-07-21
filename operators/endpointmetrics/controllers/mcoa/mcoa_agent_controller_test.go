@@ -308,6 +308,7 @@ func TestMCOAAgentReconciler_Reconcile(t *testing.T) {
 				caSecretName,
 				"obs-alertmanager-mtls-cert",
 				"observability-alertmanager-accessor",
+				tt.alertmanagerEndpoint != "",
 				!tt.disableUWLAlertForwarding,
 			)
 

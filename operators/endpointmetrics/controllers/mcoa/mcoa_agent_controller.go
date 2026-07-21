@@ -28,17 +28,18 @@ import (
 // MCOAAgentReconciler reconciles the MCOA components on the managed cluster.
 type MCOAAgentReconciler struct {
 	client.Client
-	Log                      logr.Logger
-	Scheme                   *runtime.Scheme
-	Recorder                 events.EventRecorder
-	Namespace                string
-	ClusterID                string
-	ClusterName              string
-	HubEndpoint              string
-	CASecret                 string
-	CertSecret               string
-	AccessorSecret           string
-	EnableUWLAlertForwarding bool
+	Log                           logr.Logger
+	Scheme                        *runtime.Scheme
+	Recorder                      events.EventRecorder
+	Namespace                     string
+	ClusterID                     string
+	ClusterName                   string
+	HubEndpoint                   string
+	CASecret                      string
+	CertSecret                    string
+	AccessorSecret                string
+	EnablePlatformAlertForwarding bool
+	EnableUWLAlertForwarding      bool
 }
 
 // NewMCOAAgentReconciler creates a new MCOAAgentReconciler.
@@ -54,21 +55,23 @@ func NewMCOAAgentReconciler(
 	caSecret string,
 	certSecret string,
 	accessorSecret string,
+	enablePlatformAlertForwarding bool,
 	enableUWLAlertForwarding bool,
 ) *MCOAAgentReconciler {
 	return &MCOAAgentReconciler{
-		Client:                   client,
-		Log:                      log,
-		Scheme:                   scheme,
-		Recorder:                 recorder,
-		Namespace:                namespace,
-		ClusterID:                clusterID,
-		ClusterName:              clusterName,
-		HubEndpoint:              alertmanagerEndpoint,
-		CASecret:                 caSecret,
-		CertSecret:               certSecret,
-		AccessorSecret:           accessorSecret,
-		EnableUWLAlertForwarding: enableUWLAlertForwarding,
+		Client:                        client,
+		Log:                           log,
+		Scheme:                        scheme,
+		Recorder:                      recorder,
+		Namespace:                     namespace,
+		ClusterID:                     clusterID,
+		ClusterName:                   clusterName,
+		HubEndpoint:                   alertmanagerEndpoint,
+		CASecret:                      caSecret,
+		CertSecret:                    certSecret,
+		AccessorSecret:                accessorSecret,
+		EnablePlatformAlertForwarding: enablePlatformAlertForwarding,
+		EnableUWLAlertForwarding:      enableUWLAlertForwarding,
 	}
 }
 

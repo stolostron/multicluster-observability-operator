@@ -97,8 +97,7 @@ func (r *MCOAAgentReconciler) ReconcileCMOPlatformConfig(ctx context.Context) er
 		}
 
 		// 2. Reconcile Alertmanager Configurations
-		enableAm := (endpoint != "")
-		cleanAm, modifiedAm := r.reconcileAlertmanagerConfigs(parsed.PrometheusK8sConfig.AlertmanagerConfigs, endpoint, enableAm)
+		cleanAm, modifiedAm := r.reconcileAlertmanagerConfigs(parsed.PrometheusK8sConfig.AlertmanagerConfigs, endpoint, r.EnablePlatformAlertForwarding)
 		if modifiedAm {
 			parsed.PrometheusK8sConfig.AlertmanagerConfigs = cleanAm
 			modified = true
