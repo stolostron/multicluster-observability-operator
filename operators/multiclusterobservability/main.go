@@ -187,15 +187,18 @@ func main() {
 
 		workv1.SchemeGroupVersion.WithKind("ManifestWork"): { //nolint:staticcheck // SA1019 SchemeGroupVersion is deprecated but metav1.GroupVersion lacks WithKind().
 			{LabelSelector: "owner==multicluster-observability-operator"},
+			{LabelSelector: fmt.Sprintf("%s==%s", addonv1beta1.AddonLabelKey, config.MultiClusterObservabilityAddon)},
 		},
 		clusterv1.SchemeGroupVersion.WithKind("ManagedCluster"): { //nolint:staticcheck // SA1019 SchemeGroupVersion is deprecated but metav1.GroupVersion lacks WithKind().
 			{LabelSelector: "vendor!=auto-detect,observability!=disabled"},
 		},
-		addonv1beta1.SchemeGroupVersion.WithKind("ClusterManagementAddOn"): { //nolint:staticcheck // SA1019 SchemeGroupVersion is deprecated but metav1.GroupVersion lacks WithKind().
+		schema.GroupVersion{Group: addonv1beta1.GroupVersion.Group, Version: addonv1beta1.GroupVersion.Version}.WithKind("ClusterManagementAddOn"): {
 			{FieldSelector: fmt.Sprintf("metadata.name=%s", util.ObservabilityController)},
 		},
-		addonv1beta1.SchemeGroupVersion.WithKind("ManagedClusterAddOn"): { //nolint:staticcheck // SA1019 SchemeGroupVersion is deprecated but metav1.GroupVersion lacks WithKind().
+		schema.GroupVersion{Group: addonv1beta1.GroupVersion.Group, Version: addonv1beta1.GroupVersion.Version}.WithKind("ManagedClusterAddOn"): {
 			{FieldSelector: fmt.Sprintf("metadata.name=%s", config.ManagedClusterAddonName)},
+			{FieldSelector: fmt.Sprintf("metadata.name=%s", config.MultiClusterObservabilityAddon)},
+			{LabelSelector: "owner==multicluster-observability-operator"},
 		},
 	}
 
@@ -223,11 +226,6 @@ func main() {
 		{LabelSelector: "owner==multicluster-observability-operator"},
 	}
 	gvkLabelsMap[rbacv1.SchemeGroupVersion.WithKind("RoleBinding")] = []filteredcache.Selector{
-		{LabelSelector: "owner==multicluster-observability-operator"},
-	}
-
-	// Add filter for ManagedClusterAddOn to reduce the cache size when the managedclusters scale.
-	gvkLabelsMap[addonv1beta1.SchemeGroupVersion.WithKind("ManagedClusterAddOn")] = []filteredcache.Selector{ //nolint:staticcheck // SA1019 SchemeGroupVersion is deprecated but metav1.GroupVersion lacks WithKind().
 		{LabelSelector: "owner==multicluster-observability-operator"},
 	}
 
@@ -309,7 +307,6 @@ func main() {
 		Log:         ctrl.Log.WithName("controllers").WithName("MultiClusterObservability"),
 		Scheme:      mgr.GetScheme(),
 		CRDMap:      crdMaps,
-		APIReader:   mgr.GetAPIReader(),
 		RESTMapper:  mgr.GetRESTMapper(),
 		ImageClient: imageClient,
 	}).SetupWithManager(mgr); err != nil {

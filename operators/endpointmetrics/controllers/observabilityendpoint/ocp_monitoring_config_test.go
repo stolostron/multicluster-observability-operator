@@ -1350,6 +1350,24 @@ func TestIsManaged(t *testing.T) {
 			caSecret: "obs-alertmanager-mtls-ca-",
 			expected: false,
 		},
+		{
+			name:     "MCOA hub-mtls-ca entry recognized by standard mode (MCOA to standard transition)",
+			caName:   "hub-mtls-ca-AAAA",
+			caSecret: "obs-alertmanager-mtls-ca-AAAA",
+			expected: true,
+		},
+		{
+			name:     "Standard obs-alertmanager entry recognized by MCOA mode",
+			caName:   "obs-alertmanager-mtls-ca-AAAA",
+			caSecret: "hub-mtls-ca-AAAA",
+			expected: true,
+		},
+		{
+			name:     "MCOA hub-mtls-ca exact match",
+			caName:   "hub-mtls-ca-AAAA",
+			caSecret: "hub-mtls-ca-AAAA",
+			expected: true,
+		},
 	}
 
 	for _, tt := range tests {

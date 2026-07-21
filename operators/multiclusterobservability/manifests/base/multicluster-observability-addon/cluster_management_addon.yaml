@@ -36,6 +36,10 @@ spec:
       resource: scrapeconfigs
     - group: monitoring.coreos.com
       resource: prometheusrules
+    - group: monitoring.rhobs
+      resource: scrapeconfigs
+    - group: monitoring.rhobs
+      resource: prometheusrules
   installStrategy:
     type: Placements
     placements:

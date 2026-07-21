@@ -1824,6 +1824,7 @@ func TestMCOAWaitForManifestWorks(t *testing.T) {
 	require.NoError(t, routev1.Install(s))
 	require.NoError(t, workv1.Install(s))
 	require.NoError(t, addonv1beta1.Install(s))
+	require.NoError(t, clusterv1.Install(s))
 	require.NoError(t, mcov1beta2.SchemeBuilder.AddToScheme(s))
 
 	mw := &workv1.ManifestWork{
@@ -1834,6 +1835,15 @@ func TestMCOAWaitForManifestWorks(t *testing.T) {
 				addonv1beta1.AddonLabelKey: config.MultiClusterObservabilityAddon,
 			},
 		},
+		Spec: workv1.ManifestWorkSpec{
+			Workload: workv1.ManifestsTemplate{
+				Manifests: []workv1.Manifest{
+					{RawExtension: runtime.RawExtension{
+						Raw: []byte(`{"apiVersion":"monitoring.rhobs/v1","kind":"PrometheusAgent","metadata":{"name":"test"}}`),
+					}},
+				},
+			},
+		},
 	}
 
 	t.Run("hasMCOAManifestWorks helper", func(t *testing.T) {
@@ -1842,18 +1852,18 @@ func TestMCOAWaitForManifestWorks(t *testing.T) {
 			Client: clientWithWork,
 			Scheme: s,
 		}
-		hasWorks, err := r1.hasMCOAManifestWorks(t.Context())
+		blocking, err := r1.hasMCOAManifestWorks(t.Context())
 		assert.NoError(t, err)
-		assert.True(t, hasWorks)
+		assert.Contains(t, blocking, "test-ns")
 
 		clientEmpty := fake.NewClientBuilder().WithScheme(s).Build()
 		r2 := &MultiClusterObservabilityReconciler{
 			Client: clientEmpty,
 			Scheme: s,
 		}
-		hasWorks, err = r2.hasMCOAManifestWorks(t.Context())
+		blocking, err = r2.hasMCOAManifestWorks(t.Context())
 		assert.NoError(t, err)
-		assert.False(t, hasWorks)
+		assert.Empty(t, blocking)
 	})
 
 	t.Run("initFinalization delay", func(t *testing.T) {
