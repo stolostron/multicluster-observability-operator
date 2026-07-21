@@ -132,14 +132,6 @@ func TestMCOAAgentReconciler_Reconcile(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      operatorconfig.OCPClusterMonitoringConfigMapName,
 						Namespace: operatorconfig.OCPClusterMonitoringNamespace,
-						ManagedFields: []metav1.ManagedFieldsEntry{
-							{
-								Manager:    observabilityendpoint.EndpointMonitoringOperatorMgr,
-								Operation:  metav1.ManagedFieldsOperationUpdate,
-								APIVersion: "v1",
-								FieldsType: "FieldsV1",
-							},
-						},
 					},
 					Data: map[string]string{
 						observabilityendpoint.ClusterMonitoringConfigDataKey: "prometheusK8s:\n  additionalAlertmanagerConfigs:\n  - scheme: https\n    staticConfigs:\n    - old-hub.com",
@@ -220,14 +212,6 @@ func TestMCOAAgentReconciler_Reconcile(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      operatorconfig.OCPClusterMonitoringConfigMapName,
 						Namespace: operatorconfig.OCPClusterMonitoringNamespace,
-						ManagedFields: []metav1.ManagedFieldsEntry{
-							{
-								Manager:    observabilityendpoint.EndpointMonitoringOperatorMgr,
-								Operation:  metav1.ManagedFieldsOperationUpdate,
-								APIVersion: "v1",
-								FieldsType: "FieldsV1",
-							},
-						},
 					},
 					Data: map[string]string{
 						observabilityendpoint.ClusterMonitoringConfigDataKey: "prometheusK8s: { additionalAlertmanagerConfigs: [ { scheme: https, tlsConfig: { ca: { name: hub-alertmanager-router-ca-hub-id } }, staticConfigs: [ hub.com ] } ] }",
@@ -308,7 +292,7 @@ func TestMCOAAgentReconciler_Reconcile(t *testing.T) {
 			recorder := events.NewFakeRecorder(10)
 
 			// Capture initial metric value
-			initialMetric := testutil.ToFloat64(cmoConfigConflictsTotal)
+			initialMetric := testutil.ToFloat64(cmoConfigReconcilesTotal)
 
 			caSecretName := observabilityendpoint.AppendHubClusterID(observabilityendpoint.HubAmRouterCASecretName, tt.hubClusterID)
 
@@ -337,7 +321,7 @@ func TestMCOAAgentReconciler_Reconcile(t *testing.T) {
 			assert.Zero(t, result.RequeueAfter, "reconciler must not schedule a periodic requeue — the CRD watch handles healing")
 
 			if tt.expectedMetric > 0 {
-				assert.Equal(t, initialMetric+tt.expectedMetric, testutil.ToFloat64(cmoConfigConflictsTotal))
+				assert.Equal(t, initialMetric+tt.expectedMetric, testutil.ToFloat64(cmoConfigReconcilesTotal))
 			}
 
 			if tt.expectedEvent {

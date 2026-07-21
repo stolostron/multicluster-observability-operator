@@ -16,6 +16,7 @@ import (
 	"time"
 
 	ocinfrav1 "github.com/openshift/api/config/v1"
+	prometheusv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/controllers/observabilityendpoint"
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	"github.com/stretchr/testify/require"
@@ -36,8 +37,10 @@ import (
 )
 
 var (
-	testEnv *envtest.Environment
-	cfg     *rest.Config
+	testEnv   *envtest.Environment
+	cfg       *rest.Config
+	s         = runtime.NewScheme()
+	namespace = "test-mcoa-agent-integration"
 )
 
 func TestMain(m *testing.M) {
@@ -93,10 +96,9 @@ func readCRDFiles(crdPaths ...string) []*apiextensionsv1.CustomResourceDefinitio
 }
 
 func TestMCOAAgentIntegration(t *testing.T) {
-	ctx, cancel := context.WithTimeout(t.Context(), 60*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
-	s := runtime.NewScheme()
 	require.NoError(t, kubescheme.AddToScheme(s))
 	require.NoError(t, ocinfrav1.AddToScheme(s))
 	require.NoError(t, apiextensionsv1.AddToScheme(s))
@@ -104,7 +106,6 @@ func TestMCOAAgentIntegration(t *testing.T) {
 	// Register ScrapeConfig for the custom monitoring.rhobs/v1alpha1 API Group
 	addRhobsToScheme(t, s)
 
-	namespace := "test-mcoa-agent"
 	hubInfo := &operatorconfig.HubInfo{
 		AlertmanagerEndpoint: "https://hub-am.example.com",
 		HubClusterID:         "hub-id",
@@ -122,6 +123,7 @@ func TestMCOAAgentIntegration(t *testing.T) {
 		caSecretName = "hub-alertmanager-router-ca-" + hubInfo.HubClusterID
 	}
 
+	// Default active production-like reconciler configuration
 	reconciler := NewMCOAAgentReconciler(
 		mgr.GetClient(),
 		mgr.GetLogger(),
@@ -243,11 +245,24 @@ func TestMCOAAgentIntegration(t *testing.T) {
 	})
 
 	t.Run("Reconcile Revert path: Empty AlertmanagerEndpoint cleanly reverts the Alertmanager configuration", func(t *testing.T) {
-		// Disable alert forwarding on the active reconciler
-		reconciler.SetAlertConfig("", false)
+		// Instantiate a brand-new, private local reconciler with alert forwarding disabled (HubEndpoint = "") to simulate config update
+		revertReconciler := NewMCOAAgentReconciler(
+			directClient,
+			mgr.GetLogger(),
+			mgr.GetScheme(),
+			mgr.GetEventRecorder("mcoa-agent-test"),
+			namespace,
+			"test-cluster-id",
+			"test-cluster-name",
+			"", // empty HubEndpoint disables forwarding
+			caSecretName,
+			"obs-alertmanager-mtls-cert",
+			"observability-alertmanager-accessor",
+			false,
+		)
 
-		// Trigger reconcile by directly calling the Reconcile method on the reconciler, emulating the real flow.
-		_, err = reconciler.Reconcile(ctx, ctrl.Request{
+		// Trigger reconcile by directly calling the Reconcile method on this private reconciler
+		_, err = revertReconciler.Reconcile(ctx, ctrl.Request{
 			NamespacedName: types.NamespacedName{
 				Name:      operatorconfig.OCPClusterMonitoringConfigMapName,
 				Namespace: operatorconfig.OCPClusterMonitoringNamespace,
@@ -255,7 +270,7 @@ func TestMCOAAgentIntegration(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		// Wait for the reconciler to clean up our Alertmanager configs (or cleanly delete the empty ConfigMap)
+		// Wait for the reconciler to clean up our Alertmanager configs
 		require.Eventually(t, func() bool {
 			foundCM := &corev1.ConfigMap{}
 			err := directClient.Get(ctx, types.NamespacedName{
@@ -275,9 +290,6 @@ func TestMCOAAgentIntegration(t *testing.T) {
 	})
 
 	t.Run("Reconcile UWL Config: Managed ConfigMap is successfully populated with Alertmanager configuration", func(t *testing.T) {
-		// Set AlertmanagerEndpoint and EnableUWLAlertForwarding back to active state
-		reconciler.SetAlertConfig("https://hub-am.example.com", true)
-
 		uwlCM := &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      operatorconfig.OCPUserWorkloadMonitoringConfigMap,
@@ -326,11 +338,24 @@ func TestMCOAAgentIntegration(t *testing.T) {
 	})
 
 	t.Run("Reconcile UWL Revert path: Disabled EnableUWLAlertForwarding cleanly reverts the Alertmanager configuration", func(t *testing.T) {
-		// Disable UWL alert forwarding on the active reconciler
-		reconciler.SetAlertConfig("https://hub-am.example.com", false)
+		// Instantiate a brand-new, private local reconciler with UWL alert forwarding disabled to simulate config update
+		revertReconciler := NewMCOAAgentReconciler(
+			directClient,
+			mgr.GetLogger(),
+			mgr.GetScheme(),
+			mgr.GetEventRecorder("mcoa-agent-test"),
+			namespace,
+			"test-cluster-id",
+			"test-cluster-name",
+			"https://hub-am.example.com",
+			caSecretName,
+			"obs-alertmanager-mtls-cert",
+			"observability-alertmanager-accessor",
+			false, // disabled UWL alert forwarding
+		)
 
-		// Trigger reconcile by directly calling the Reconcile method on the reconciler, emulating the real flow.
-		_, err = reconciler.Reconcile(ctx, ctrl.Request{
+		// Trigger reconcile by directly calling the Reconcile method on this private reconciler
+		_, err = revertReconciler.Reconcile(ctx, ctrl.Request{
 			NamespacedName: types.NamespacedName{
 				Name:      operatorconfig.OCPUserWorkloadMonitoringConfigMap,
 				Namespace: operatorconfig.OCPUserWorkloadMonitoringNamespace,
@@ -358,9 +383,6 @@ func TestMCOAAgentIntegration(t *testing.T) {
 	})
 
 	t.Run("Reconcile Raw Metrics ScrapeConfig: updates CMO and UWL with transpiled RemoteWrite", func(t *testing.T) {
-		// Reset active config states
-		reconciler.SetAlertConfig("https://hub-am.example.com", true)
-
 		// Create a platform-metrics-collector-raw ScrapeConfig
 		scPlatform := newRawScrapeConfig("test-raw-platform", namespace, platformMetricsCollectorRawComponent)
 		require.NoError(t, directClient.Create(ctx, scPlatform))
@@ -401,6 +423,54 @@ func TestMCOAAgentIntegration(t *testing.T) {
 				strings.Contains(data, "tlsConfig") &&
 				strings.Contains(data, "writeRelabelConfigs") &&
 				strings.Contains(data, "up")
+		}, 5*time.Second, 100*time.Millisecond)
+	})
+
+	t.Run("Reconcile Raw Metrics ScrapeConfig Deletion: cleanly removes transpiled RemoteWrite from ConfigMap", func(t *testing.T) {
+		// Fetch the platform ScrapeConfig we created in the previous subtest
+		scPlatform := &prometheusv1alpha1.ScrapeConfig{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-raw-platform",
+				Namespace: namespace,
+			},
+		}
+		require.NoError(t, directClient.Delete(ctx, scPlatform))
+
+		// Wait for raw platform metrics RemoteWrite to be cleanly removed from CMO ConfigMap
+		require.Eventually(t, func() bool {
+			found := &corev1.ConfigMap{}
+			err := directClient.Get(ctx, types.NamespacedName{
+				Name:      operatorconfig.OCPClusterMonitoringConfigMapName,
+				Namespace: operatorconfig.OCPClusterMonitoringNamespace,
+			}, found)
+			if err != nil {
+				return false
+			}
+			data := found.Data[observabilityendpoint.ClusterMonitoringConfigDataKey]
+			return !strings.Contains(data, "/api/metrics/v1/default/api/v1/receive")
+		}, 5*time.Second, 100*time.Millisecond)
+
+		// Fetch the UWL ScrapeConfig we created in the previous subtest
+		scUWL := &prometheusv1alpha1.ScrapeConfig{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-raw-uwl",
+				Namespace: namespace,
+			},
+		}
+		require.NoError(t, directClient.Delete(ctx, scUWL))
+
+		// Wait for raw UWL metrics RemoteWrite to be cleanly removed from UWL ConfigMap
+		require.Eventually(t, func() bool {
+			found := &corev1.ConfigMap{}
+			err := directClient.Get(ctx, types.NamespacedName{
+				Name:      operatorconfig.OCPUserWorkloadMonitoringConfigMap,
+				Namespace: operatorconfig.OCPUserWorkloadMonitoringNamespace,
+			}, found)
+			if err != nil {
+				return false
+			}
+			data := found.Data[uwlMonitoringConfigDataKey]
+			return !strings.Contains(data, "/api/metrics/v1/default/api/v1/receive")
 		}, 5*time.Second, 100*time.Millisecond)
 	})
 }
