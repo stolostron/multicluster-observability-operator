@@ -236,8 +236,6 @@ func runMCOA(args []string) {
 		os.Exit(1)
 	}
 
-	ctx := ctrl.SetupSignalHandler()
-
 	if namespace == "" {
 		setupLog.Error(fmt.Errorf("namespace flag not set"), "unable to start manager")
 		os.Exit(1)
