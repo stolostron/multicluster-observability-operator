@@ -24,6 +24,7 @@ import (
 	tlsutil "github.com/openshift/controller-runtime-common/pkg/tls"
 	hyperv1 "github.com/openshift/hypershift/api/hypershift/v1beta1"
 	prometheusv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	prometheusv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/controllers/mcoa"
 	obsepctl "github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/controllers/observabilityendpoint"
 	statusctl "github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/controllers/status"
@@ -38,6 +39,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -64,6 +66,11 @@ func init() {
 	utilruntime.Must(prometheusv1.AddToScheme(scheme))
 	utilruntime.Must(hyperv1.AddToScheme(scheme))
 	utilruntime.Must(apiextensionsv1.AddToScheme(scheme))
+
+	// Register ScrapeConfig for the custom monitoring.rhobs/v1alpha1 API Group used by MCOA on spoke clusters
+	rhobsGroupVersion := schema.GroupVersion{Group: "monitoring.rhobs", Version: "v1alpha1"}
+	scheme.AddKnownTypes(rhobsGroupVersion, &prometheusv1alpha1.ScrapeConfig{}, &prometheusv1alpha1.ScrapeConfigList{})
+	metav1.AddToGroupVersion(scheme, rhobsGroupVersion)
 	// +kubebuilder:scaffold:scheme
 }
 
@@ -145,6 +152,22 @@ func doCleanup(args []string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Second)
 	defer cancel()
 
+	// Use the clean MCOA reconciler for single-pass revert
+	r := mcoa.NewMCOAAgentReconciler(
+		cl,
+		setupLog,
+		scheme,
+		noOpRecorder{},
+		"", // empty namespace ensures listing raw scrapeConfigs returns empty
+		"",
+		clusterName,
+		"", // empty alertmanager endpoint forces Alertmanager config removal
+		hubAmCASecret,
+		"",
+		"",
+		false, // false forces UWL Alertmanager config removal
+	)
+
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 	var errs []error
@@ -160,7 +183,7 @@ func doCleanup(args []string) error {
 	go func() {
 		defer wg.Done()
 		setupLog.Info("Reverting Platform monitoring configuration", "caSecret", hubAmCASecret)
-		if err := obsepctl.RevertClusterMonitoringConfig(ctx, cl, hubAmCASecret, clusterName); err != nil {
+		if err := r.ReconcileCMOPlatformConfig(ctx); err != nil {
 			addErr(fmt.Errorf("failed to revert platform monitoring config: %w", err))
 		}
 	}()
@@ -168,7 +191,7 @@ func doCleanup(args []string) error {
 	go func() {
 		defer wg.Done()
 		setupLog.Info("Reverting User Workload monitoring configuration", "caSecret", hubAmCASecret)
-		if err := obsepctl.RevertUserWorkloadMonitoringConfig(ctx, cl, hubAmCASecret); err != nil {
+		if err := r.ReconcileCMOUWLConfig(ctx); err != nil {
 			addErr(fmt.Errorf("failed to revert user workload monitoring config: %w", err))
 		}
 	}()
@@ -554,4 +577,9 @@ func runStandard(args []string) {
 		os.Exit(1)
 	}
 	cancel()
+}
+
+type noOpRecorder struct{}
+
+func (noOpRecorder) Eventf(regarding k8sruntime.Object, related k8sruntime.Object, eventtype, reason, action, note string, args ...any) {
 }

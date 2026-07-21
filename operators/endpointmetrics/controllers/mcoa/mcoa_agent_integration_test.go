@@ -101,6 +101,9 @@ func TestMCOAAgentIntegration(t *testing.T) {
 	require.NoError(t, ocinfrav1.AddToScheme(s))
 	require.NoError(t, apiextensionsv1.AddToScheme(s))
 
+	// Register ScrapeConfig for the custom monitoring.rhobs/v1alpha1 API Group
+	addRhobsToScheme(t, s)
+
 	namespace := "test-mcoa-agent"
 	hubInfo := &operatorconfig.HubInfo{
 		AlertmanagerEndpoint: "https://hub-am.example.com",
@@ -136,6 +139,27 @@ func TestMCOAAgentIntegration(t *testing.T) {
 	err = reconciler.SetupWithManager(mgr)
 	require.NoError(t, err)
 
+	directClient, err := client.New(cfg, client.Options{Scheme: s})
+	require.NoError(t, err)
+
+	// Deploy standard OBO CRDs first to ensure watched types exist before manager start
+	require.NoError(t, DeployCRDs(ctx, directClient))
+
+	// Wait for ScrapeConfig CRD to be fully established on the API server
+	require.Eventually(t, func() bool {
+		crd := &apiextensionsv1.CustomResourceDefinition{}
+		err := directClient.Get(ctx, types.NamespacedName{Name: "scrapeconfigs.monitoring.rhobs"}, crd)
+		if err != nil {
+			return false
+		}
+		for _, cond := range crd.Status.Conditions {
+			if cond.Type == apiextensionsv1.Established && cond.Status == apiextensionsv1.ConditionTrue {
+				return true
+			}
+		}
+		return false
+	}, 10*time.Second, 100*time.Millisecond)
+
 	go func() {
 		if err := mgr.Start(ctx); err != nil {
 			fmt.Printf("Manager failed: %v\n", err)
@@ -143,11 +167,10 @@ func TestMCOAAgentIntegration(t *testing.T) {
 	}()
 
 	k8sClient := mgr.GetClient()
-	directClient, err := client.New(cfg, client.Options{Scheme: s})
-	require.NoError(t, err)
 
 	// Setup required platform resources
 	setupResources := []client.Object{
+		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}},
 		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: operatorconfig.OCPClusterMonitoringNamespace}},
 		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: operatorconfig.OCPUserWorkloadMonitoringNamespace}},
 		&ocinfrav1.ClusterVersion{
@@ -221,7 +244,7 @@ func TestMCOAAgentIntegration(t *testing.T) {
 
 	t.Run("Reconcile Revert path: Empty AlertmanagerEndpoint cleanly reverts the Alertmanager configuration", func(t *testing.T) {
 		// Disable alert forwarding on the active reconciler
-		reconciler.AlertmanagerEndpoint = ""
+		reconciler.SetAlertConfig("", false)
 
 		// Trigger reconcile by directly calling the Reconcile method on the reconciler, emulating the real flow.
 		_, err = reconciler.Reconcile(ctx, ctrl.Request{
@@ -253,8 +276,7 @@ func TestMCOAAgentIntegration(t *testing.T) {
 
 	t.Run("Reconcile UWL Config: Managed ConfigMap is successfully populated with Alertmanager configuration", func(t *testing.T) {
 		// Set AlertmanagerEndpoint and EnableUWLAlertForwarding back to active state
-		reconciler.AlertmanagerEndpoint = "https://hub-am.example.com"
-		reconciler.EnableUWLAlertForwarding = true
+		reconciler.SetAlertConfig("https://hub-am.example.com", true)
 
 		uwlCM := &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
@@ -262,7 +284,7 @@ func TestMCOAAgentIntegration(t *testing.T) {
 				Namespace: operatorconfig.OCPUserWorkloadMonitoringNamespace,
 			},
 			Data: map[string]string{
-				"config.yaml": "prometheus: {}",
+				uwlMonitoringConfigDataKey: defaultUWLConfigYAML,
 			},
 		}
 		require.NoError(t, directClient.Create(ctx, uwlCM, client.FieldOwner(observabilityendpoint.EndpointMonitoringOperatorMgr)))
@@ -277,7 +299,7 @@ func TestMCOAAgentIntegration(t *testing.T) {
 			if err != nil {
 				return false
 			}
-			data := found.Data["config.yaml"]
+			data := found.Data[uwlMonitoringConfigDataKey]
 			return strings.Contains(data, "hub-alertmanager-router-ca-hub-id") && strings.Contains(data, "hub-am.example.com")
 		}, 5*time.Second, 100*time.Millisecond)
 	})
@@ -305,7 +327,7 @@ func TestMCOAAgentIntegration(t *testing.T) {
 
 	t.Run("Reconcile UWL Revert path: Disabled EnableUWLAlertForwarding cleanly reverts the Alertmanager configuration", func(t *testing.T) {
 		// Disable UWL alert forwarding on the active reconciler
-		reconciler.EnableUWLAlertForwarding = false
+		reconciler.SetAlertConfig("https://hub-am.example.com", false)
 
 		// Trigger reconcile by directly calling the Reconcile method on the reconciler, emulating the real flow.
 		_, err = reconciler.Reconcile(ctx, ctrl.Request{
@@ -330,8 +352,55 @@ func TestMCOAAgentIntegration(t *testing.T) {
 				fmt.Printf("Get ConfigMap error: %v\n", err)
 				return false
 			}
-			data := foundCM.Data["config.yaml"]
+			data := foundCM.Data[uwlMonitoringConfigDataKey]
 			return !strings.Contains(data, "hub-alertmanager-router-ca-hub-id") && !strings.Contains(data, "hub-am.example.com")
+		}, 5*time.Second, 100*time.Millisecond)
+	})
+
+	t.Run("Reconcile Raw Metrics ScrapeConfig: updates CMO and UWL with transpiled RemoteWrite", func(t *testing.T) {
+		// Reset active config states
+		reconciler.SetAlertConfig("https://hub-am.example.com", true)
+
+		// Create a platform-metrics-collector-raw ScrapeConfig
+		scPlatform := newRawScrapeConfig("test-raw-platform", namespace, platformMetricsCollectorRawComponent)
+		require.NoError(t, directClient.Create(ctx, scPlatform))
+
+		// Wait for raw platform metrics RemoteWrite injection in CMO ConfigMap
+		require.Eventually(t, func() bool {
+			found := &corev1.ConfigMap{}
+			err := directClient.Get(ctx, types.NamespacedName{
+				Name:      operatorconfig.OCPClusterMonitoringConfigMapName,
+				Namespace: operatorconfig.OCPClusterMonitoringNamespace,
+			}, found)
+			if err != nil {
+				return false
+			}
+			data := found.Data[observabilityendpoint.ClusterMonitoringConfigDataKey]
+			return strings.Contains(data, "https://hub-am.example.com/api/metrics/v1/default/api/v1/receive") &&
+				strings.Contains(data, "tlsConfig") &&
+				strings.Contains(data, "writeRelabelConfigs") &&
+				strings.Contains(data, "up")
+		}, 5*time.Second, 100*time.Millisecond)
+
+		// Create a user-workload-metrics-collector-raw ScrapeConfig
+		scUWL := newRawScrapeConfig("test-raw-uwl", namespace, userWorkloadMetricsCollectorRawComponent)
+		require.NoError(t, directClient.Create(ctx, scUWL))
+
+		// Wait for raw UWL metrics RemoteWrite injection in UWL ConfigMap
+		require.Eventually(t, func() bool {
+			found := &corev1.ConfigMap{}
+			err := directClient.Get(ctx, types.NamespacedName{
+				Name:      operatorconfig.OCPUserWorkloadMonitoringConfigMap,
+				Namespace: operatorconfig.OCPUserWorkloadMonitoringNamespace,
+			}, found)
+			if err != nil {
+				return false
+			}
+			data := found.Data[uwlMonitoringConfigDataKey]
+			return strings.Contains(data, "https://hub-am.example.com/api/metrics/v1/default/api/v1/receive") &&
+				strings.Contains(data, "tlsConfig") &&
+				strings.Contains(data, "writeRelabelConfigs") &&
+				strings.Contains(data, "up")
 		}, 5*time.Second, 100*time.Millisecond)
 	})
 }
