@@ -7,7 +7,6 @@ package mcoa
 import (
 	"context"
 	"fmt"
-	"sync"
 
 	"github.com/go-logr/logr"
 	prometheusv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
@@ -35,17 +34,11 @@ type MCOAAgentReconciler struct {
 	Namespace                string
 	ClusterID                string
 	ClusterName              string
-	hubEndpoint              string
+	HubEndpoint              string
 	CASecret                 string
 	CertSecret               string
 	AccessorSecret           string
-	enableUWLAlertForwarding bool
-
-	// mu synchronizes concurrent access to hubEndpoint and enableUWLAlertForwarding.
-	// These fields can be dynamically updated at runtime by the addon controller's Watch
-	// events when alert forwarding settings are updated.
-	// ClusterID and ClusterName are set once during operator startup and remain immutable.
-	mu sync.RWMutex
+	EnableUWLAlertForwarding bool
 }
 
 // NewMCOAAgentReconciler creates a new MCOAAgentReconciler.
@@ -71,11 +64,11 @@ func NewMCOAAgentReconciler(
 		Namespace:                namespace,
 		ClusterID:                clusterID,
 		ClusterName:              clusterName,
-		hubEndpoint:              alertmanagerEndpoint,
+		HubEndpoint:              alertmanagerEndpoint,
 		CASecret:                 caSecret,
 		CertSecret:               certSecret,
 		AccessorSecret:           accessorSecret,
-		enableUWLAlertForwarding: enableUWLAlertForwarding,
+		EnableUWLAlertForwarding: enableUWLAlertForwarding,
 	}
 }
 
@@ -170,17 +163,4 @@ func (r *MCOAAgentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			}),
 		).
 		Complete(r)
-}
-
-func (r *MCOAAgentReconciler) AlertConfig() (endpoint string, enableUWL bool) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-	return r.hubEndpoint, r.enableUWLAlertForwarding
-}
-
-func (r *MCOAAgentReconciler) SetAlertConfig(endpoint string, enableUWL bool) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	r.hubEndpoint = endpoint
-	r.enableUWLAlertForwarding = enableUWL
 }
