@@ -1338,6 +1338,12 @@ func mcoaForMetricsIsEnabled(mco *mcov1beta2.MultiClusterObservability) bool {
 // PrometheusAgent is the definitive metrics marker: it is always present when MCOA
 // platform metrics collection is active, always absent when disabled, and never
 // produced by right-sizing.
+//
+// Note: We MUST use APIReader (strongly consistent, direct etcd read) instead of the cached Client.
+// This is because main.go configures a "filteredcache" for ManifestWorks with the selector
+// "owner==multicluster-observability-operator". MCOA ManifestWorks are created by the OCM
+// addon framework and do not carry this owner label, meaning they are completely hidden
+// and filtered out of the memory cache. Using Client.List would always return 0.
 func (r *PlacementRuleReconciler) hasMCOAMetricsManifestWorks(ctx context.Context) (bool, error) {
 	workList := &workv1.ManifestWorkList{}
 	opts := []client.ListOption{
