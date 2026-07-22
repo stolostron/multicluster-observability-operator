@@ -1228,6 +1228,11 @@ func (r *MultiClusterObservabilityReconciler) deleteMCOACMA(ctx context.Context)
 }
 
 // hasMCOAManifestWorks checks if there are any remaining ManifestWorks for the MCOA addon on the hub.
+// Note: We MUST use APIReader (strongly consistent, direct etcd read) instead of the cached Client.
+// This is because main.go configures a "filteredcache" for ManifestWorks with the selector
+// "owner==multicluster-observability-operator". MCOA ManifestWorks are created by the OCM
+// addon framework and do not carry this owner label, meaning they are completely hidden
+// and filtered out of the memory cache. Using Client.List would always return 0.
 func (r *MultiClusterObservabilityReconciler) hasMCOAManifestWorks(ctx context.Context) (bool, error) {
 	workList := &workv1.ManifestWorkList{}
 	opts := []client.ListOption{
@@ -1235,7 +1240,7 @@ func (r *MultiClusterObservabilityReconciler) hasMCOAManifestWorks(ctx context.C
 			addonv1beta1.AddonLabelKey: config.MultiClusterObservabilityAddon,
 		},
 	}
-	if err := r.Client.List(ctx, workList, opts...); err != nil {
+	if err := r.APIReader.List(ctx, workList, opts...); err != nil {
 		return false, fmt.Errorf("failed to list ManifestWorks: %w", err)
 	}
 	return len(workList.Items) > 0, nil

@@ -70,6 +70,7 @@ var (
 // PlacementRuleReconciler reconciles a PlacementRule object
 type PlacementRuleReconciler struct {
 	Client     client.Client
+	APIReader  client.Reader
 	Log        logr.Logger
 	Scheme     *runtime.Scheme
 	CRDMap     map[string]bool
@@ -1276,6 +1277,7 @@ func StartPlacementController(mgr manager.Manager, crdMap map[string]bool) error
 
 	if err := (&PlacementRuleReconciler{
 		Client:     mgr.GetClient(),
+		APIReader:  mgr.GetAPIReader(),
 		Log:        ctrl.Log.WithName("controllers").WithName("PlacementRule"),
 		Scheme:     mgr.GetScheme(),
 		CRDMap:     crdMap,
@@ -1335,7 +1337,7 @@ func (r *PlacementRuleReconciler) hasMCOAManifestWorks(ctx context.Context) (boo
 			addonv1beta1.AddonLabelKey: config.MultiClusterObservabilityAddon,
 		},
 	}
-	if err := r.Client.List(ctx, workList, opts...); err != nil {
+	if err := r.APIReader.List(ctx, workList, opts...); err != nil {
 		return false, fmt.Errorf("failed to list ManifestWorks: %w", err)
 	}
 	return len(workList.Items) > 0, nil
