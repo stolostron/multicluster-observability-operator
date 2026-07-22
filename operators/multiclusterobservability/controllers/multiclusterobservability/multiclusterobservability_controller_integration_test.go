@@ -94,7 +94,6 @@ func TestIntegrationMCO_HubRules(t *testing.T) {
 		Log:         ctrl.Log.WithName("controllers").WithName("MultiClusterObservability"),
 		Scheme:      scheme,
 		CRDMap:      nil,
-		APIReader:   nil,
 		RESTMapper:  mgr.GetRESTMapper(),
 		ImageClient: imageClient,
 	}

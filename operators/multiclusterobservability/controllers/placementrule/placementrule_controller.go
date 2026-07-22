@@ -70,7 +70,6 @@ var (
 // PlacementRuleReconciler reconciles a PlacementRule object
 type PlacementRuleReconciler struct {
 	Client     client.Client
-	APIReader  client.Reader
 	Log        logr.Logger
 	Scheme     *runtime.Scheme
 	CRDMap     map[string]bool
@@ -168,12 +167,17 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	} else {
 		// Only deploy the legacy resources if there are no MCOA ManifestWorks remaining.
 		// This avoids both addon versions being deployed/running at the same time and fighting over CMO.
-		hasWorks, err := r.hasMCOAManifestWorks(ctx)
+		blockingClusters, err := r.hasMCOAManifestWorks(ctx)
 		if err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to check for remaining MCOA ManifestWorks: %w", err)
 		}
-		if hasWorks {
-			reqLogger.Info("Waiting for MCOA ManifestWorks to be deleted before deploying legacy addon resources, requeuing")
+		if len(blockingClusters) > 0 {
+			logClusters := blockingClusters
+			if len(logClusters) > 10 {
+				logClusters = logClusters[:10:10]
+				logClusters = append(logClusters, fmt.Sprintf("...and %d more", len(blockingClusters)-10))
+			}
+			reqLogger.Info("Waiting for MCOA ManifestWorks to be deleted before deploying legacy addon resources, requeuing", "blockingClusters", logClusters)
 			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 		}
 
@@ -1277,7 +1281,6 @@ func StartPlacementController(mgr manager.Manager, crdMap map[string]bool) error
 
 	if err := (&PlacementRuleReconciler{
 		Client:     mgr.GetClient(),
-		APIReader:  mgr.GetAPIReader(),
 		Log:        ctrl.Log.WithName("controllers").WithName("PlacementRule"),
 		Scheme:     mgr.GetScheme(),
 		CRDMap:     crdMap,
@@ -1329,23 +1332,10 @@ func mcoaForMetricsIsEnabled(mco *mcov1beta2.MultiClusterObservability) bool {
 	return false
 }
 
-// hasMCOAManifestWorks checks if there are any remaining ManifestWorks for the MCOA addon on the hub.
-// Note: We MUST use APIReader (strongly consistent, direct etcd read) instead of the cached Client.
-// This is because main.go configures a "filteredcache" for ManifestWorks with the selector
-// "owner==multicluster-observability-operator". MCOA ManifestWorks are created by the OCM
-// addon framework and do not carry this owner label, meaning they are completely hidden
-// and filtered out of the memory cache. Using Client.List would always return 0.
-func (r *PlacementRuleReconciler) hasMCOAManifestWorks(ctx context.Context) (bool, error) {
-	workList := &workv1.ManifestWorkList{}
-	opts := []client.ListOption{
-		client.MatchingLabels{
-			addonv1beta1.AddonLabelKey: config.MultiClusterObservabilityAddon,
-		},
-	}
-	if err := r.APIReader.List(ctx, workList, opts...); err != nil {
-		return false, fmt.Errorf("failed to list ManifestWorks: %w", err)
-	}
-	return len(workList.Items) > 0, nil
+// hasMCOAManifestWorks checks if there are any remaining ManifestWorks for the MCOA addon on the hub,
+// and returns a list of namespaces where ManifestWorks are blocking the deletion.
+func (r *PlacementRuleReconciler) hasMCOAManifestWorks(ctx context.Context) ([]string, error) {
+	return util.HasMCOAManifestWorks(ctx, r.Client)
 }
 
 // isCustomIngressCertificate checks if the given secret name is referenced by the IngressController
