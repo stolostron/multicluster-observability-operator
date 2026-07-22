@@ -19,7 +19,7 @@ import (
 	"k8s.io/utils/ptr"
 )
 
-func Transpile(scrapeConfig *monitoringv1alpha1.ScrapeConfig, agent *monitoringv1alpha1.PrometheusAgent) (*monitoringv1.RemoteWriteSpec, error) {
+func Transpile(scrapeConfig *monitoringv1alpha1.ScrapeConfig, agent *monitoringv1alpha1.PrometheusAgent) ([]*monitoringv1.RemoteWriteSpec, error) {
 	if scrapeConfig == nil {
 		return nil, nil
 	}
@@ -162,55 +162,55 @@ func Transpile(scrapeConfig *monitoringv1alpha1.ScrapeConfig, agent *monitoringv
 		relabelConfigs = append(relabelConfigs, *cfg.DeepCopy())
 	}
 
-	spec := &monitoringv1.RemoteWriteSpec{
-		WriteRelabelConfigs: relabelConfigs,
+	if agent == nil || len(agent.Spec.RemoteWrite) == 0 {
+		baseSpec := &monitoringv1.RemoteWriteSpec{
+			WriteRelabelConfigs: relabelConfigs,
+		}
+		return []*monitoringv1.RemoteWriteSpec{baseSpec}, nil
 	}
 
-	// 7. Extract queueConfig and tlsConfig from agent if provided (safely deep-copied)
-	if agent != nil && len(agent.Spec.RemoteWrite) > 0 {
-		var standardRw *monitoringv1.RemoteWriteSpec
-		for i := range agent.Spec.RemoteWrite {
-			if agent.Spec.RemoteWrite[i].Name != nil && *agent.Spec.RemoteWrite[i].Name == "acm-observability" {
-				standardRw = &agent.Spec.RemoteWrite[i]
-				break
-			}
+	var specs []*monitoringv1.RemoteWriteSpec
+	for _, agentRw := range agent.Spec.RemoteWrite {
+		spec := &monitoringv1.RemoteWriteSpec{
+			WriteRelabelConfigs: slices.Clone(relabelConfigs),
 		}
 
-		if standardRw == nil {
-			standardRw = &agent.Spec.RemoteWrite[0]
-		}
+		spec.URL = agentRw.URL
 
-		spec.URL = standardRw.URL
-
-		if standardRw.RemoteTimeout != nil {
-			spec.RemoteTimeout = ptr.To(*standardRw.RemoteTimeout)
+		if agentRw.RemoteTimeout != nil {
+			spec.RemoteTimeout = ptr.To(*agentRw.RemoteTimeout)
 		}
-		if standardRw.BasicAuth != nil {
-			spec.BasicAuth = standardRw.BasicAuth.DeepCopy()
+		if agentRw.BasicAuth != nil {
+			spec.BasicAuth = agentRw.BasicAuth.DeepCopy()
 		}
-		if standardRw.Authorization != nil {
-			spec.Authorization = standardRw.Authorization.DeepCopy()
+		if agentRw.Authorization != nil {
+			spec.Authorization = agentRw.Authorization.DeepCopy()
 		}
-		if standardRw.OAuth2 != nil {
-			spec.OAuth2 = standardRw.OAuth2.DeepCopy()
+		if agentRw.OAuth2 != nil {
+			spec.OAuth2 = agentRw.OAuth2.DeepCopy()
 		}
-		if standardRw.QueueConfig != nil {
-			spec.QueueConfig = standardRw.QueueConfig.DeepCopy()
+		if agentRw.QueueConfig != nil {
+			spec.QueueConfig = agentRw.QueueConfig.DeepCopy()
 		}
-		if standardRw.TLSConfig != nil {
-			spec.TLSConfig = standardRw.TLSConfig.DeepCopy()
+		if agentRw.TLSConfig != nil {
+			spec.TLSConfig = agentRw.TLSConfig.DeepCopy()
 		}
-		if standardRw.ProxyURL != nil {
-			spec.ProxyURL = ptr.To(*standardRw.ProxyURL)
+		if agentRw.ProxyURL != nil {
+			spec.ProxyURL = ptr.To(*agentRw.ProxyURL)
 		}
-		if standardRw.NoProxy != nil {
-			spec.NoProxy = ptr.To(*standardRw.NoProxy)
+		if agentRw.NoProxy != nil {
+			spec.NoProxy = ptr.To(*agentRw.NoProxy)
 		}
-		if standardRw.Headers != nil {
+		if agentRw.Headers != nil {
 			spec.Headers = make(map[string]string)
-			maps.Copy(spec.Headers, standardRw.Headers)
+			maps.Copy(spec.Headers, agentRw.Headers)
 		}
+		if agentRw.Name != nil {
+			spec.Name = ptr.To(*agentRw.Name)
+		}
+
+		specs = append(specs, spec)
 	}
 
-	return spec, nil
+	return specs, nil
 }

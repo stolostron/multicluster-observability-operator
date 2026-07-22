@@ -444,7 +444,7 @@ func TestMCOAAgentIntegration(t *testing.T) {
 			if parsed.PrometheusK8sConfig == nil || len(parsed.PrometheusK8sConfig.RemoteWrite) != 1 {
 				return false
 			}
-			return parsed.PrometheusK8sConfig.RemoteWrite[0].Name == "mcoa-raw-test-raw-platform"
+			return strings.HasPrefix(parsed.PrometheusK8sConfig.RemoteWrite[0].Name, "mcoa-raw-test-raw-platform")
 		}, 5*time.Second, 100*time.Millisecond)
 
 		// Create a user-workload-metrics-collector-raw ScrapeConfig
@@ -474,7 +474,7 @@ func TestMCOAAgentIntegration(t *testing.T) {
 			if parsed.Prometheus == nil || len(parsed.Prometheus.RemoteWrite) != 1 {
 				return false
 			}
-			return parsed.Prometheus.RemoteWrite[0].Name == "mcoa-raw-test-raw-uwl"
+			return strings.HasPrefix(parsed.Prometheus.RemoteWrite[0].Name, "mcoa-raw-test-raw-uwl")
 		}, 5*time.Second, 100*time.Millisecond)
 	})
 
