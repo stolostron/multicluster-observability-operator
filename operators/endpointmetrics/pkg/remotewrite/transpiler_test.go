@@ -438,4 +438,3 @@ func TestTranspile_MultipleRemoteWrites(t *testing.T) {
 		t.Errorf("Second spec missing relabel configs")
 	}
 }
-
