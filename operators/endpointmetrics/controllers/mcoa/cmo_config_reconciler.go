@@ -10,6 +10,7 @@ import (
 	"maps"
 	"net/url"
 	"slices"
+	"strings"
 
 	cmomanifests "github.com/openshift/cluster-monitoring-operator/pkg/manifests"
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
@@ -35,6 +36,9 @@ const (
 
 	// labelKeyComponent is the standard metadata label key for Kubernetes component discovery
 	labelKeyComponent = "app.kubernetes.io/component"
+
+	// mcoaRawNamePrefix is the unique name prefix assigned to MCOA raw metrics RemoteWrites
+	mcoaRawNamePrefix = "mcoa-raw-"
 
 	// Package-level constants for load-bearing component labels
 	platformMetricsCollectorRawComponent     = "platform-metrics-collector-raw"
@@ -428,6 +432,9 @@ func (r *MCOAAgentReconciler) reconcileRemoteWrites(
 				continue
 			}
 
+			name := mcoaRawNamePrefix + sc.Name
+			rwSpecTranspiled.Name = &name
+
 			cleanRemoteWrite = append(cleanRemoteWrite, toCMORemoteWrite(rwSpecTranspiled))
 		}
 	}
@@ -437,7 +444,7 @@ func (r *MCOAAgentReconciler) reconcileRemoteWrites(
 func (r *MCOAAgentReconciler) filterRemoteWrites(rws []cmomanifests.RemoteWriteSpec) []cmomanifests.RemoteWriteSpec {
 	clone := slices.Clone(rws)
 	return slices.DeleteFunc(clone, func(rw cmomanifests.RemoteWriteSpec) bool {
-		return r.CASecret != "" && rw.TLSConfig != nil && rw.TLSConfig.CA.Secret != nil && rw.TLSConfig.CA.Secret.Name == r.CASecret
+		return strings.HasPrefix(rw.Name, mcoaRawNamePrefix)
 	})
 }
 

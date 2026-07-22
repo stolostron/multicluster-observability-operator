@@ -16,6 +16,7 @@ import (
 	"time"
 
 	ocinfrav1 "github.com/openshift/api/config/v1"
+	cmomanifests "github.com/openshift/cluster-monitoring-operator/pkg/manifests"
 	prometheusv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/controllers/observabilityendpoint"
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
@@ -34,6 +35,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	yamltool "sigs.k8s.io/yaml"
 )
 
 var (
@@ -419,7 +421,7 @@ func TestMCOAAgentIntegration(t *testing.T) {
 		scPlatform := newRawScrapeConfig("test-raw-platform", namespace, platformMetricsCollectorRawComponent)
 		require.NoError(t, directClient.Create(ctx, scPlatform))
 
-		// Wait for raw platform metrics RemoteWrite injection in CMO ConfigMap
+		// Wait for raw platform metrics RemoteWrite injection in CMO ConfigMap and assert exactly one spec with correct name exists
 		require.Eventually(t, func() bool {
 			found := &corev1.ConfigMap{}
 			err := directClient.Get(ctx, types.NamespacedName{
@@ -430,17 +432,26 @@ func TestMCOAAgentIntegration(t *testing.T) {
 				return false
 			}
 			data := found.Data[observabilityendpoint.ClusterMonitoringConfigDataKey]
-			return strings.Contains(data, "https://hub-am.example.com") &&
-				strings.Contains(data, "tlsConfig") &&
-				strings.Contains(data, "writeRelabelConfigs") &&
-				strings.Contains(data, "up")
+			if !strings.Contains(data, "https://hub-am.example.com") {
+				return false
+			}
+
+			// Parse and assert exact length to prevent regression of duplication bugs
+			parsed := &cmomanifests.ClusterMonitoringConfiguration{}
+			if err := yamltool.Unmarshal([]byte(data), parsed); err != nil {
+				return false
+			}
+			if parsed.PrometheusK8sConfig == nil || len(parsed.PrometheusK8sConfig.RemoteWrite) != 1 {
+				return false
+			}
+			return parsed.PrometheusK8sConfig.RemoteWrite[0].Name == "mcoa-raw-test-raw-platform"
 		}, 5*time.Second, 100*time.Millisecond)
 
 		// Create a user-workload-metrics-collector-raw ScrapeConfig
 		scUWL := newRawScrapeConfig("test-raw-uwl", namespace, userWorkloadMetricsCollectorRawComponent)
 		require.NoError(t, directClient.Create(ctx, scUWL))
 
-		// Wait for raw UWL metrics RemoteWrite injection in UWL ConfigMap
+		// Wait for raw UWL metrics RemoteWrite injection in UWL ConfigMap and assert exactly one spec with correct name exists
 		require.Eventually(t, func() bool {
 			found := &corev1.ConfigMap{}
 			err := directClient.Get(ctx, types.NamespacedName{
@@ -451,10 +462,19 @@ func TestMCOAAgentIntegration(t *testing.T) {
 				return false
 			}
 			data := found.Data[uwlMonitoringConfigDataKey]
-			return strings.Contains(data, "https://hub-am.example.com") &&
-				strings.Contains(data, "tlsConfig") &&
-				strings.Contains(data, "writeRelabelConfigs") &&
-				strings.Contains(data, "up")
+			if !strings.Contains(data, "https://hub-am.example.com") {
+				return false
+			}
+
+			// Parse and assert exact length to prevent regression of duplication bugs
+			parsed := &cmomanifests.UserWorkloadConfiguration{}
+			if err := yamltool.Unmarshal([]byte(data), parsed); err != nil {
+				return false
+			}
+			if parsed.Prometheus == nil || len(parsed.Prometheus.RemoteWrite) != 1 {
+				return false
+			}
+			return parsed.Prometheus.RemoteWrite[0].Name == "mcoa-raw-test-raw-uwl"
 		}, 5*time.Second, 100*time.Millisecond)
 	})
 
