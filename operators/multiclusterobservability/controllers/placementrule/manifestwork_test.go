@@ -7,6 +7,7 @@ package placementrule
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -21,13 +22,14 @@ import (
 	"gopkg.in/yaml.v2"
 	authv1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	kubefake "k8s.io/client-go/kubernetes/fake"
+	"k8s.io/client-go/kubernetes/scheme"
 	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	addonv1beta1 "open-cluster-management.io/api/addon/v1beta1"
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
@@ -659,7 +661,7 @@ func TestManifestWork(t *testing.T) {
 		t.Fatalf("Failed to delete manifestworks: (%v)", err)
 	}
 	err = c.Get(context.TODO(), types.NamespacedName{Name: namespace + workNameSuffix, Namespace: namespace}, found)
-	if err == nil || !errors.IsNotFound(err) {
+	if err == nil || !k8serrors.IsNotFound(err) {
 		t.Fatalf("Manifestwork not deleted: (%v)", err)
 	}
 
@@ -1036,5 +1038,28 @@ func TestShouldUpdateManifestWork(t *testing.T) {
 					tt.description, result, tt.shouldUpdate, tt.foundAnno, tt.desiredAnno)
 			}
 		})
+	}
+}
+
+func TestCreateManifestwork_Terminating(t *testing.T) {
+	s := scheme.Scheme
+	_ = workv1.Install(s)
+
+	now := metav1.Now()
+	mw := &workv1.ManifestWork{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:              "test-work",
+			Namespace:         "test-ns",
+			DeletionTimestamp: &now,
+			Finalizers:        []string{"test-finalizer"},
+		},
+	}
+
+	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(mw).Build()
+
+	// Call createManifestwork (it tries to check if the manifestwork already exists and is terminating)
+	err := createManifestwork(context.Background(), cl, mw)
+	if !errors.Is(err, ErrManifestWorkTerminating) {
+		t.Fatalf("Expected ErrManifestWorkTerminating, got %v", err)
 	}
 }
