@@ -352,6 +352,12 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		}
 	}
 
+	if !rendering.MCOAPlatformMetricsEnabled(instance) {
+		if err := r.undeployMCOAGrafanaResources(ctx, instance, renderer, deployer); err != nil {
+			return ctrl.Result{}, err
+		}
+	}
+
 	_, err = r.ensureOpenShiftNamespaceLabel(ctx, instance)
 	if err != nil {
 		r.Log.Error(err, "Failed to add to %s label to namespace: %s", config.OpenShiftClusterMonitoringlabel,
@@ -1034,6 +1040,38 @@ func (r *MultiClusterObservabilityReconciler) deleteSpecificPrometheusRule(ctx c
 	return nil
 }
 
+// undeployMCOAGrafanaResources removes MCOA Grafana resources when platform metrics collection is disabled.
+func (r *MultiClusterObservabilityReconciler) undeployMCOAGrafanaResources(
+	ctx context.Context,
+	instance *mcov1beta2.MultiClusterObservability,
+	renderer *rendering.MCORenderer,
+	deployer *deploying.Deployer,
+) error {
+	namespace, labels := renderer.NamespaceAndLabels()
+	toDelete, err := renderer.MCOAGrafanaResourcesForRemoval(namespace, labels)
+	if err != nil {
+		return fmt.Errorf("failed to list MCOA Grafana resources for deletion in namespace %s: %w", namespace, err)
+	}
+	for _, res := range toDelete {
+		resNS := res.GetNamespace()
+		if err := deployer.Undeploy(ctx, res, instance); err != nil {
+			if meta.IsNoMatchError(err) {
+				kind := res.GetKind()
+				if kind == monitoringv1.PrometheusRuleKind || kind == monitoringv1alpha1.ScrapeConfigsKind {
+					log.Info("CRD not available on MCO, skipping cleanup", "Kind", kind)
+					continue
+				}
+			}
+			return fmt.Errorf("failed to undeploy %s %s/%s: %w", res.GetKind(), resNS, res.GetName(), err)
+		}
+	}
+
+	return nil
+}
+
+// deleteVestigialProxyIngress removes the rbac-query-proxy-ingress Ingress that is no longer
+// rendered. The proxy is served via Route; the Ingress targeted the deprecated management-ingress
+// controller and causes admission failures on clusters with the AWS Load Balancer Controller.
 func (r *MultiClusterObservabilityReconciler) deleteVestigialProxyIngress(ctx context.Context) error {
 	ingress := &networkingv1.Ingress{}
 	err := r.Client.Get(ctx, client.ObjectKey{

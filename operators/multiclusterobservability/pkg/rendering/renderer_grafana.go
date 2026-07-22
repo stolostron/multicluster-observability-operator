@@ -163,6 +163,43 @@ func (r *MCORenderer) renderGrafanaTemplates(templates []*resource.Resource,
 	return uobjs, nil
 }
 
+func (r *MCORenderer) RenderGrafanaMCOATemplatesForRemoval(
+	templates []*resource.Resource,
+	namespace string, labels map[string]string,
+) ([]*unstructured.Unstructured, error) {
+	if MCOAPlatformMetricsEnabled(r.cr) {
+		return []*unstructured.Unstructured{}, nil
+	}
+	uobjs := []*unstructured.Unstructured{}
+
+	for _, template := range templates {
+		// Only render resource kinds that are specific to MCOA.
+		if !isMCOASpecificResourceKind(template) {
+			continue
+		}
+
+		render, ok := r.renderGrafanaFns[template.GetKind()]
+		if !ok {
+			m, err := template.Map()
+			if err != nil {
+				return []*unstructured.Unstructured{}, err
+			}
+			uobjs = append(uobjs, &unstructured.Unstructured{Object: m})
+			continue
+		}
+		uobj, err := render(template, namespace, labels)
+		if err != nil {
+			return []*unstructured.Unstructured{}, err
+		}
+		if uobj == nil {
+			continue
+		}
+		uobjs = append(uobjs, uobj)
+	}
+
+	return uobjs, nil
+}
+
 // isMCOASpecificResourceType returns true if the resource is a scrape config or a Prometheus rule
 func isMCOASpecificResourceKind(res *resource.Resource) bool {
 	kind := res.GetKind()

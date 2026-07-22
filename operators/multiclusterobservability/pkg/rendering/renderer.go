@@ -191,6 +191,21 @@ func (r *MCORenderer) MCOAResources(namespace string, labels map[string]string) 
 	return mcoaResources, nil
 }
 
+// MCOAGrafanaResourcesForRemoval renders the MCOA addon grafana templates into unstructured resources for removal.
+func (r *MCORenderer) MCOAGrafanaResourcesForRemoval(namespace string, labels map[string]string) ([]*unstructured.Unstructured, error) {
+	grafanaTemplates, err := templates.GetOrLoadGrafanaTemplates(templatesutil.GetTemplateRenderer())
+	if err != nil {
+		return nil, err
+	}
+	mcoaGrafanaResources, err := r.RenderGrafanaMCOATemplatesForRemoval(grafanaTemplates, namespace, labels)
+	if err != nil {
+		return nil, err
+	}
+
+	return mcoaGrafanaResources, nil
+}
+
+// HasImagestream checks if the cluster supports OpenShift ImageStream resources
 func (r *MCORenderer) HasImagestream() bool {
 	dcl := discovery.NewDiscoveryClient(r.imageClient.RESTClient())
 
