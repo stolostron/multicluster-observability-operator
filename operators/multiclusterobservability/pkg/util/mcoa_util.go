@@ -45,14 +45,15 @@ func IsMCOAEnabled(mco *mcov1beta2.MultiClusterObservability) bool {
 // and returns a sorted list of namespaces where ManifestWorks are blocking the deletion.
 func HasMCOAManifestWorks(ctx context.Context, c client.Client) ([]string, error) {
 	addonList := &addonv1beta1.ManagedClusterAddOnList{}
-	if err := c.List(ctx, addonList, client.MatchingLabels{
-		addonv1beta1.AddonLabelKey: config.MultiClusterObservabilityAddon,
-	}); err != nil {
+	if err := c.List(ctx, addonList); err != nil {
 		return nil, fmt.Errorf("failed to list ManagedClusterAddOns: %w", err)
 	}
 
 	ignoredNamespaces := make(map[string]struct{})
 	for _, addon := range addonList.Items {
+		if addon.Name != config.MultiClusterObservabilityAddon {
+			continue
+		}
 		isAvailable := false
 		for _, cond := range addon.Status.Conditions {
 			if cond.Type == "Available" && cond.Status == metav1.ConditionTrue {

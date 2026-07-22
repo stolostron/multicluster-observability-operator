@@ -180,6 +180,9 @@ func TestMCOAAgentIntegration(t *testing.T) {
 		}
 	}()
 
+	// Wait for cache to be fully synced and started before executing any cached client queries
+	require.True(t, mgr.GetCache().WaitForCacheSync(ctx), "Failed to sync cache before running tests")
+
 	k8sClient := mgr.GetClient()
 
 	// Setup required platform resources
