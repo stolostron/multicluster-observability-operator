@@ -304,11 +304,12 @@ func TestMCOAAgentReconciler_Reconcile(t *testing.T) {
 				namespace,
 				clusterID,
 				clusterName,
-				tt.alertmanagerEndpoint,
+				tt.alertmanagerEndpoint, // HubRemoteWriteURL
+				tt.alertmanagerEndpoint, // HubAlertmanagerURL
 				caSecretName,
 				"obs-alertmanager-mtls-cert",
 				"observability-alertmanager-accessor",
-				tt.alertmanagerEndpoint != "",
+				tt.alertmanagerEndpoint != "", // enablePlatformAlertForwarding
 				!tt.disableUWLAlertForwarding,
 			)
 

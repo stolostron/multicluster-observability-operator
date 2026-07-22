@@ -34,7 +34,8 @@ type MCOAAgentReconciler struct {
 	Namespace                     string
 	ClusterID                     string
 	ClusterName                   string
-	HubEndpoint                   string
+	HubRemoteWriteURL             string
+	HubAlertmanagerURL            string
 	CASecret                      string
 	CertSecret                    string
 	AccessorSecret                string
@@ -51,7 +52,8 @@ func NewMCOAAgentReconciler(
 	namespace string,
 	clusterID string,
 	clusterName string,
-	alertmanagerEndpoint string,
+	hubRemoteWriteURL string,
+	hubAlertmanagerURL string,
 	caSecret string,
 	certSecret string,
 	accessorSecret string,
@@ -66,7 +68,8 @@ func NewMCOAAgentReconciler(
 		Namespace:                     namespace,
 		ClusterID:                     clusterID,
 		ClusterName:                   clusterName,
-		HubEndpoint:                   alertmanagerEndpoint,
+		HubRemoteWriteURL:             hubRemoteWriteURL,
+		HubAlertmanagerURL:            hubAlertmanagerURL,
 		CASecret:                      caSecret,
 		CertSecret:                    certSecret,
 		AccessorSecret:                accessorSecret,

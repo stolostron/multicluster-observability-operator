@@ -132,7 +132,8 @@ func TestMCOAAgentIntegration(t *testing.T) {
 		namespace,
 		"test-cluster-id",
 		"test-cluster-name",
-		hubInfo.AlertmanagerEndpoint,
+		hubInfo.AlertmanagerEndpoint, // HubRemoteWriteURL
+		hubInfo.AlertmanagerEndpoint, // HubAlertmanagerURL
 		caSecretName,
 		"obs-alertmanager-mtls-cert",
 		"observability-alertmanager-accessor",
@@ -246,7 +247,7 @@ func TestMCOAAgentIntegration(t *testing.T) {
 	})
 
 	t.Run("Reconcile Revert path: Empty AlertmanagerEndpoint cleanly reverts the Alertmanager configuration", func(t *testing.T) {
-		// Instantiate a brand-new, private local reconciler with alert forwarding disabled (HubEndpoint = "") to simulate config update
+		// Instantiate a brand-new, private local reconciler with alert forwarding disabled (HubAlertmanagerURL = "") to simulate config update
 		revertReconciler := NewMCOAAgentReconciler(
 			directClient,
 			mgr.GetLogger(),
@@ -255,7 +256,8 @@ func TestMCOAAgentIntegration(t *testing.T) {
 			namespace,
 			"test-cluster-id",
 			"test-cluster-name",
-			"", // empty HubEndpoint disables forwarding
+			"https://hub-am.example.com", // HubRemoteWriteURL remains active
+			"",                           // empty HubAlertmanagerURL disables forwarding
 			caSecretName,
 			"obs-alertmanager-mtls-cert",
 			"observability-alertmanager-accessor",
@@ -349,7 +351,8 @@ func TestMCOAAgentIntegration(t *testing.T) {
 			namespace,
 			"test-cluster-id",
 			"test-cluster-name",
-			"https://hub-am.example.com",
+			"https://hub-am.example.com", // HubRemoteWriteURL
+			"https://hub-am.example.com", // HubAlertmanagerURL
 			caSecretName,
 			"obs-alertmanager-mtls-cert",
 			"observability-alertmanager-accessor",

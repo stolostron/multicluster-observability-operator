@@ -173,12 +173,14 @@ func TestCMOConfigReconciler_reconcileRawMetrics(t *testing.T) {
 	clPlatform := fake.NewClientBuilder().WithScheme(s).WithObjects(scPlatform, cmPlatform).Build()
 
 	rPlatform := &MCOAAgentReconciler{
-		Client:      clPlatform,
-		Log:         ctrl.Log.WithName("test-controller"),
-		Namespace:   namespace,
-		HubEndpoint: "https://hub-am.example.com",
-		CASecret:    "test-ca-secret",
-		CertSecret:  "test-cert-secret",
+		Client:                        clPlatform,
+		Log:                           ctrl.Log.WithName("test-controller"),
+		Namespace:                     namespace,
+		HubRemoteWriteURL:             "https://hub-am.example.com",
+		HubAlertmanagerURL:            "https://hub-am.example.com",
+		CASecret:                      "test-ca-secret",
+		CertSecret:                    "test-cert-secret",
+		EnablePlatformAlertForwarding: true,
 	}
 
 	err := rPlatform.ReconcileCMOPlatformConfig(ctx)
@@ -213,12 +215,14 @@ func TestCMOConfigReconciler_reconcileRawMetrics(t *testing.T) {
 	clUWL := fake.NewClientBuilder().WithScheme(s).WithObjects(scUWL, cmUWL).Build()
 
 	rUWL := &MCOAAgentReconciler{
-		Client:      clUWL,
-		Log:         ctrl.Log.WithName("test-controller"),
-		Namespace:   namespace,
-		HubEndpoint: "https://hub-am.example.com",
-		CASecret:    "test-ca-secret",
-		CertSecret:  "test-cert-secret",
+		Client:                   clUWL,
+		Log:                      ctrl.Log.WithName("test-controller"),
+		Namespace:                namespace,
+		HubRemoteWriteURL:        "https://hub-am.example.com",
+		HubAlertmanagerURL:       "https://hub-am.example.com",
+		CASecret:                 "test-ca-secret",
+		CertSecret:               "test-cert-secret",
+		EnableUWLAlertForwarding: true,
 	}
 
 	err = rUWL.ReconcileCMOUWLConfig(ctx)
@@ -293,7 +297,8 @@ func TestCMOConfigReconciler_reconcileConfigMutation(t *testing.T) {
 		Namespace:                     namespace,
 		ClusterID:                     "new-cluster-id",
 		ClusterName:                   "new-cluster-name",
-		HubEndpoint:                   "https://new-hub.com",
+		HubRemoteWriteURL:             "https://new-hub.com",
+		HubAlertmanagerURL:            "https://new-hub.com",
 		CASecret:                      "test-ca-secret",
 		CertSecret:                    "test-cert-secret",
 		EnablePlatformAlertForwarding: true,
