@@ -7,6 +7,7 @@ package mcoa
 import (
 	"context"
 	"errors"
+	"slices"
 	"testing"
 
 	ocinfrav1 "github.com/openshift/api/config/v1"
@@ -288,13 +289,20 @@ func TestMCOAAgentReconciler_Reconcile(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := fake.NewClientBuilder().WithScheme(s).WithObjects(tt.existingObjs...).WithReturnManagedFields().WithInterceptorFuncs(tt.clientInterceptors).Build()
+			caSecretName := observabilityendpoint.AppendHubClusterID(observabilityendpoint.HubAmRouterCASecretName, tt.hubClusterID)
+
+			existingObjs := slices.Clone(tt.existingObjs)
+			if tt.alertmanagerEndpoint != "" {
+				agentPlatform := newTestPrometheusAgent("test-agent-platform", namespace, platformMetricsCollectorComponent, tt.alertmanagerEndpoint, "", "")
+				agentUWL := newTestPrometheusAgent("test-agent-uwl", namespace, userWorkloadMetricsCollectorComponent, tt.alertmanagerEndpoint, "", "")
+				existingObjs = append(existingObjs, agentPlatform, agentUWL)
+			}
+
+			c := fake.NewClientBuilder().WithScheme(s).WithObjects(existingObjs...).WithReturnManagedFields().WithInterceptorFuncs(tt.clientInterceptors).Build()
 			recorder := events.NewFakeRecorder(10)
 
 			// Capture initial metric value
 			initialMetric := testutil.ToFloat64(cmoConfigReconcilesTotal)
-
-			caSecretName := observabilityendpoint.AppendHubClusterID(observabilityendpoint.HubAmRouterCASecretName, tt.hubClusterID)
 
 			r := NewMCOAAgentReconciler(
 				c,
@@ -304,7 +312,6 @@ func TestMCOAAgentReconciler_Reconcile(t *testing.T) {
 				namespace,
 				clusterID,
 				clusterName,
-				tt.alertmanagerEndpoint, // HubRemoteWriteURL
 				tt.alertmanagerEndpoint, // HubAlertmanagerURL
 				caSecretName,
 				"obs-alertmanager-mtls-cert",
