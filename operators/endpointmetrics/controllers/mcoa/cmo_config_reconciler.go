@@ -421,21 +421,28 @@ func (r *MCOAAgentReconciler) reconcileRemoteWrites(
 
 	if agent != nil && len(scrapeConfigs) > 0 {
 		for _, sc := range scrapeConfigs {
-			rwSpecTranspiled, err := remotewrite.Transpile(&sc, agent)
+			rwSpecsTranspiled, err := remotewrite.Transpile(&sc, agent)
 			if err != nil {
 				// Log the error at Info level and skip to prevent a single malformed ScrapeConfig
 				// from blocking the deployment of other valid scrape configurations on the spoke.
 				r.Log.Info("Skipping malformed scrape config during remote write transpilation", "name", sc.Name, "error", err)
 				continue
 			}
-			if rwSpecTranspiled == nil {
-				continue
+
+			for i, rwSpec := range rwSpecsTranspiled {
+				if rwSpec == nil {
+					continue
+				}
+
+				suffix := fmt.Sprintf("%d", i)
+				if rwSpec.Name != nil {
+					suffix = *rwSpec.Name
+				}
+				name := mcoaRawNamePrefix + sc.Name + "-" + suffix
+				rwSpec.Name = &name
+
+				cleanRemoteWrite = append(cleanRemoteWrite, toCMORemoteWrite(rwSpec))
 			}
-
-			name := mcoaRawNamePrefix + sc.Name
-			rwSpecTranspiled.Name = &name
-
-			cleanRemoteWrite = append(cleanRemoteWrite, toCMORemoteWrite(rwSpecTranspiled))
 		}
 	}
 	return cleanRemoteWrite
@@ -484,9 +491,45 @@ func toCMORemoteWrite(rw *monitoringv1.RemoteWriteSpec) cmomanifests.RemoteWrite
 	}
 
 	if rw.TLSConfig != nil {
-		// CAFile, CertFile, KeyFile from TLSConfig are intentionally omitted:
-		// cmomanifests.SafeTLSConfig supports only secret-reference TLS.
+		// CAFile, CertFile, KeyFile from TLSConfig are intentionally omitted in standard Copy,
+		// but since cmomanifests.SafeTLSConfig supports only secret-reference TLS, we dynamically
+		// extract both the secret names (directories) and key names (filenames) from these path
+		// fields to reconstruct valid secret references dynamically.
 		spec.TLSConfig = rw.TLSConfig.SafeTLSConfig.DeepCopy()
+
+		caSecretName, caKeyName := extractSecretAndKey(rw.TLSConfig.CAFile)
+		if caSecretName != "" {
+			spec.TLSConfig.CA = monitoringv1.SecretOrConfigMap{
+				Secret: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: caSecretName,
+					},
+					Key: caKeyName,
+				},
+			}
+		}
+
+		certSecretName, certKeyName := extractSecretAndKey(rw.TLSConfig.CertFile)
+		if certSecretName != "" {
+			spec.TLSConfig.Cert = monitoringv1.SecretOrConfigMap{
+				Secret: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: certSecretName,
+					},
+					Key: certKeyName,
+				},
+			}
+		}
+
+		keySecretName, keyName := extractSecretAndKey(rw.TLSConfig.KeyFile)
+		if keySecretName != "" {
+			spec.TLSConfig.KeySecret = &corev1.SecretKeySelector{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: keySecretName,
+				},
+				Key: keyName,
+			}
+		}
 	}
 
 	if rw.QueueConfig != nil {
@@ -498,6 +541,19 @@ func toCMORemoteWrite(rw *monitoringv1.RemoteWriteSpec) cmomanifests.RemoteWrite
 	}
 
 	return spec
+}
+
+func extractSecretAndKey(path string) (string, string) {
+	if path == "" {
+		return "", ""
+	}
+	parts := strings.Split(path, "/")
+	if len(parts) >= 2 {
+		secretName := parts[len(parts)-2]
+		keyName := parts[len(parts)-1]
+		return secretName, keyName
+	}
+	return "", ""
 }
 
 func (r *MCOAAgentReconciler) createConfigMap(ctx context.Context, cm *corev1.ConfigMap, dataKey, updatedYAML string) error {

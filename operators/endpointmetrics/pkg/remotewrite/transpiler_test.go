@@ -96,12 +96,16 @@ func TestTranspile(t *testing.T) {
 		},
 	}
 
-	got, err := Transpile(scrapeConfig, agent)
+	gotList, err := Transpile(scrapeConfig, agent)
 	if err != nil {
 		t.Fatalf("Transpile returned error: %v", err)
 	}
+	if len(gotList) != 1 {
+		t.Fatalf("Expected exactly 1 transpiled spec, got %d", len(gotList))
+	}
+	got := gotList[0]
 	if got == nil {
-		t.Fatalf("Transpile returned nil")
+		t.Fatalf("Transpile returned nil spec")
 	}
 
 	// Verify QueueConfig and TLSConfig were copied
@@ -225,10 +229,14 @@ func TestNegationBugAndNoMetricNameSelectors(t *testing.T) {
 		},
 	}
 
-	got, err := Transpile(scrapeConfig, nil)
+	gotList, err := Transpile(scrapeConfig, nil)
 	if err != nil {
 		t.Fatalf("Transpile returned error: %v", err)
 	}
+	if len(gotList) != 1 {
+		t.Fatalf("Expected exactly 1 transpiled spec, got %d", len(gotList))
+	}
+	got := gotList[0]
 
 	promCfgs := convertToPromRelabel(got.WriteRelabelConfigs)
 
@@ -344,10 +352,14 @@ func TestSharedPointerCacheIsolation(t *testing.T) {
 		},
 	}
 
-	got, err := Transpile(scrapeConfig, originalAgent)
+	gotList, err := Transpile(scrapeConfig, originalAgent)
 	if err != nil {
 		t.Fatalf("Transpile returned error: %v", err)
 	}
+	if len(gotList) != 1 {
+		t.Fatalf("Expected exactly 1 transpiled spec, got %d", len(gotList))
+	}
+	got := gotList[0]
 
 	// Downstream mutation of the generated RemoteWriteSpec pointers/maps
 	got.QueueConfig.MaxShards = 99
@@ -374,3 +386,56 @@ func TestSharedPointerCacheIsolation(t *testing.T) {
 		t.Errorf("Memory leak/aliasing detected! Original agent Headers map was mutated")
 	}
 }
+
+func TestTranspile_MultipleRemoteWrites(t *testing.T) {
+	scrapeConfig := &monitoringv1alpha1.ScrapeConfig{
+		Spec: monitoringv1alpha1.ScrapeConfigSpec{
+			Params: map[string][]string{
+				"match[]": {"up"},
+			},
+		},
+	}
+
+	agent := &monitoringv1alpha1.PrometheusAgent{
+		Spec: monitoringv1alpha1.PrometheusAgentSpec{
+			CommonPrometheusFields: monitoringv1.CommonPrometheusFields{
+				RemoteWrite: []monitoringv1.RemoteWriteSpec{
+					{
+						Name: ptr.To("primary-hub"),
+						URL:  "https://hub-primary.example.com",
+					},
+					{
+						Name: ptr.To("secondary-hub"),
+						URL:  "https://hub-secondary.example.com",
+					},
+				},
+			},
+		},
+	}
+
+	gotList, err := Transpile(scrapeConfig, agent)
+	if err != nil {
+		t.Fatalf("Transpile returned error: %v", err)
+	}
+
+	if len(gotList) != 2 {
+		t.Fatalf("Expected exactly 2 transpiled specs, got %d", len(gotList))
+	}
+
+	// Verify both specs are populated and preserve their respective properties
+	if gotList[0].Name == nil || *gotList[0].Name != "primary-hub" || gotList[0].URL != "https://hub-primary.example.com" {
+		t.Errorf("First spec incorrect: name=%v, url=%s", gotList[0].Name, gotList[0].URL)
+	}
+	if gotList[1].Name == nil || *gotList[1].Name != "secondary-hub" || gotList[1].URL != "https://hub-secondary.example.com" {
+		t.Errorf("Second spec incorrect: name=%v, url=%s", gotList[1].Name, gotList[1].URL)
+	}
+
+	// Verify both specs successfully receive the transpiled relabel configurations
+	if len(gotList[0].WriteRelabelConfigs) == 0 {
+		t.Errorf("First spec missing relabel configs")
+	}
+	if len(gotList[1].WriteRelabelConfigs) == 0 {
+		t.Errorf("Second spec missing relabel configs")
+	}
+}
+

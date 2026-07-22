@@ -361,3 +361,33 @@ func TestCMOConfigReconciler_reconcileConfigMutation(t *testing.T) {
 	assert.NotContains(t, platformYAML, "old-cluster-name")
 	assert.NotContains(t, platformYAML, "old-hub.com")
 }
+
+func TestToCMORemoteWrite_ReconstructsTLSSecrets(t *testing.T) {
+	rw := &monitoringv1.RemoteWriteSpec{
+		URL: "https://hub.example.com",
+		TLSConfig: &monitoringv1.TLSConfig{
+			SafeTLSConfig: monitoringv1.SafeTLSConfig{
+				CA:   monitoringv1.SecretOrConfigMap{},
+				Cert: monitoringv1.SecretOrConfigMap{},
+			},
+			CAFile:   "/etc/prometheus/secrets/obs-alertmanager-mtls-ca-465e377c1ecd4cc29c7/custom-ca.pem",
+			CertFile: "/etc/prometheus/secrets/obs-alertmanager-mtls-cert-465e377c1ecd4cc29c7/custom-cert.pem",
+			KeyFile:  "/etc/prometheus/secrets/obs-alertmanager-mtls-cert-465e377c1ecd4cc29c7/custom-key.pem",
+		},
+	}
+
+	cmoRW := toCMORemoteWrite(rw)
+
+	assert.NotNil(t, cmoRW.TLSConfig)
+	assert.NotNil(t, cmoRW.TLSConfig.CA.Secret)
+	assert.Equal(t, "obs-alertmanager-mtls-ca-465e377c1ecd4cc29c7", cmoRW.TLSConfig.CA.Secret.Name)
+	assert.Equal(t, "custom-ca.pem", cmoRW.TLSConfig.CA.Secret.Key)
+
+	assert.NotNil(t, cmoRW.TLSConfig.Cert.Secret)
+	assert.Equal(t, "obs-alertmanager-mtls-cert-465e377c1ecd4cc29c7", cmoRW.TLSConfig.Cert.Secret.Name)
+	assert.Equal(t, "custom-cert.pem", cmoRW.TLSConfig.Cert.Secret.Key)
+
+	assert.NotNil(t, cmoRW.TLSConfig.KeySecret)
+	assert.Equal(t, "obs-alertmanager-mtls-cert-465e377c1ecd4cc29c7", cmoRW.TLSConfig.KeySecret.Name)
+	assert.Equal(t, "custom-key.pem", cmoRW.TLSConfig.KeySecret.Key)
+}
