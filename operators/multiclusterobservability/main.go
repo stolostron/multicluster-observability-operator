@@ -191,10 +191,10 @@ func main() {
 		clusterv1.SchemeGroupVersion.WithKind("ManagedCluster"): { //nolint:staticcheck // SA1019 SchemeGroupVersion is deprecated but metav1.GroupVersion lacks WithKind().
 			{LabelSelector: "vendor!=auto-detect,observability!=disabled"},
 		},
-		addonv1beta1.SchemeGroupVersion.WithKind("ClusterManagementAddOn"): { //nolint:staticcheck // SA1019 SchemeGroupVersion is deprecated but metav1.GroupVersion lacks WithKind().
+		schema.GroupVersion{Group: addonv1beta1.GroupVersion.Group, Version: addonv1beta1.GroupVersion.Version}.WithKind("ClusterManagementAddOn"): {
 			{FieldSelector: fmt.Sprintf("metadata.name=%s", util.ObservabilityController)},
 		},
-		addonv1beta1.SchemeGroupVersion.WithKind("ManagedClusterAddOn"): { //nolint:staticcheck // SA1019 SchemeGroupVersion is deprecated but metav1.GroupVersion lacks WithKind().
+		schema.GroupVersion{Group: addonv1beta1.GroupVersion.Group, Version: addonv1beta1.GroupVersion.Version}.WithKind("ManagedClusterAddOn"): {
 			{FieldSelector: fmt.Sprintf("metadata.name=%s", config.ManagedClusterAddonName)},
 		},
 	}
@@ -227,7 +227,7 @@ func main() {
 	}
 
 	// Add filter for ManagedClusterAddOn to reduce the cache size when the managedclusters scale.
-	gvkLabelsMap[addonv1beta1.SchemeGroupVersion.WithKind("ManagedClusterAddOn")] = []filteredcache.Selector{ //nolint:staticcheck // SA1019 SchemeGroupVersion is deprecated but metav1.GroupVersion lacks WithKind().
+	gvkLabelsMap[schema.GroupVersion{Group: addonv1beta1.GroupVersion.Group, Version: addonv1beta1.GroupVersion.Version}.WithKind("ManagedClusterAddOn")] = []filteredcache.Selector{
 		{LabelSelector: "owner==multicluster-observability-operator"},
 	}
 
