@@ -14,11 +14,10 @@ import (
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	rendererutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering"
 	templatesutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering/templates"
+	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util/tlstesting"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func getAllowlistCM(ns string) *corev1.ConfigMap {
@@ -37,6 +36,10 @@ names:
 }
 
 func TestRender(t *testing.T) {
+	c := tlstesting.NewFakeTLSClientBuilder().
+		WithScheme(corev1.AddToScheme).
+		WithObjects(getAllowlistCM("test-ns")).
+		Build(t)
 	wd, err := os.Getwd()
 	if err != nil {
 		t.Fatalf("failed to get working dir %v", err)
@@ -52,7 +55,6 @@ func TestRender(t *testing.T) {
 		AlertmanagerEndpoint:     "testing.com",
 		AlertmanagerRouterCA:     "testing",
 	}
-	c := fake.NewClientBuilder().WithRuntimeObjects([]runtime.Object{getAllowlistCM("test-ns")}...).Build()
 
 	objs, err := Render(context.Background(), renderer, c, hubInfo, "test-ns")
 	if err != nil {
@@ -63,6 +65,10 @@ func TestRender(t *testing.T) {
 }
 
 func TestRenderAlertmanagerConfig(t *testing.T) {
+	c := tlstesting.NewFakeTLSClientBuilder().
+		WithScheme(corev1.AddToScheme).
+		WithObjects(getAllowlistCM("test-ns")).
+		Build(t)
 	wd, err := os.Getwd()
 	if err != nil {
 		t.Fatalf("failed to get working dir %v", err)
@@ -78,7 +84,6 @@ func TestRenderAlertmanagerConfig(t *testing.T) {
 		AlertmanagerEndpoint:     "testing.com",
 		HubClusterID:             hubClusterID,
 	}
-	c := fake.NewClientBuilder().WithRuntimeObjects([]runtime.Object{getAllowlistCM("test-ns")}...).Build()
 
 	objs, err := Render(context.Background(), rendererutil.NewRenderer(), c, hubInfo, "test-ns")
 	if err != nil {
@@ -111,6 +116,10 @@ func TestRenderAlertmanagerConfig(t *testing.T) {
 }
 
 func TestRenderAlertmanagerConfigWithPath(t *testing.T) {
+	c := tlstesting.NewFakeTLSClientBuilder().
+		WithScheme(corev1.AddToScheme).
+		WithObjects(getAllowlistCM("test-ns")).
+		Build(t)
 	wd, err := os.Getwd()
 	if err != nil {
 		t.Fatalf("failed to get working dir %v", err)
@@ -127,7 +136,6 @@ func TestRenderAlertmanagerConfigWithPath(t *testing.T) {
 		AlertmanagerRouterCA:     "testing",
 		HubClusterID:             hubClusterID,
 	}
-	c := fake.NewClientBuilder().WithRuntimeObjects([]runtime.Object{getAllowlistCM("test-ns")}...).Build()
 
 	objs, err := Render(context.Background(), rendererutil.NewRenderer(), c, hubInfo, "test-ns")
 	if err != nil {

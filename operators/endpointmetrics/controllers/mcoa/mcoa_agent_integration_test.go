@@ -99,6 +99,7 @@ func TestMCOAAgentIntegration(t *testing.T) {
 	s := runtime.NewScheme()
 	require.NoError(t, kubescheme.AddToScheme(s))
 	require.NoError(t, ocinfrav1.AddToScheme(s))
+	require.NoError(t, apiextensionsv1.AddToScheme(s))
 
 	namespace := "test-mcoa-agent"
 	hubInfo := &operatorconfig.HubInfo{
@@ -279,6 +280,27 @@ func TestMCOAAgentIntegration(t *testing.T) {
 			data := found.Data["config.yaml"]
 			return strings.Contains(data, "hub-alertmanager-router-ca-hub-id") && strings.Contains(data, "hub-am.example.com")
 		}, 5*time.Second, 100*time.Millisecond)
+	})
+
+	t.Run("CRD watch: deleting an OBO CRD triggers immediate restoration via the metadata-only watch", func(t *testing.T) {
+		// Install the OBO CRDs so the watch has something to react to.
+		require.NoError(t, DeployCRDs(ctx, directClient))
+
+		target := "prometheusagents.monitoring.rhobs"
+
+		crd := &apiextensionsv1.CustomResourceDefinition{}
+		require.NoError(t, directClient.Get(ctx, types.NamespacedName{Name: target}, crd))
+
+		// Delete it — the WatchesMetadata watch must fire and call DeployCRDs within seconds.
+		require.NoError(t, directClient.Delete(ctx, crd))
+
+		require.Eventually(t, func() bool {
+			restored := &apiextensionsv1.CustomResourceDefinition{}
+			if err := directClient.Get(ctx, types.NamespacedName{Name: target}, restored); err != nil {
+				return false
+			}
+			return restored.Labels[ManagedByLabelKey] == ManagedByLabelValue
+		}, 10*time.Second, 100*time.Millisecond, "CRD %s was not restored after deletion", target)
 	})
 
 	t.Run("Reconcile UWL Revert path: Disabled EnableUWLAlertForwarding cleanly reverts the Alertmanager configuration", func(t *testing.T) {

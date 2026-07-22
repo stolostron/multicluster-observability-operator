@@ -19,7 +19,9 @@ require (
 	github.com/openshift/api v0.0.0-20260325070019-86893981287e
 	github.com/openshift/client-go v0.0.0-20260320040014-4b5fc2cdad98
 	github.com/openshift/cluster-monitoring-operator v0.1.1-0.20251021084408-d3eba7e97d65
+	github.com/openshift/controller-runtime-common v0.0.0-20260428152732-64ee174f5e2e
 	github.com/openshift/hypershift/api v0.0.0-20241119231618-9aca80837541
+	github.com/openshift/library-go v0.0.0-20260318142011-72bf34f474bc
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.82.0
 	github.com/prometheus-operator/prometheus-operator/pkg/client v0.82.0
 	github.com/prometheus/alertmanager v0.28.1
@@ -38,6 +40,7 @@ require (
 	k8s.io/apiextensions-apiserver v0.35.5
 	k8s.io/apimachinery v0.35.5
 	k8s.io/client-go v0.35.5
+	k8s.io/component-base v0.35.5
 	k8s.io/klog/v2 v2.140.0
 	k8s.io/kubectl v0.35.2
 	k8s.io/utils v0.0.0-20260319190234-28399d86e0b5
@@ -149,7 +152,6 @@ require (
 	github.com/oklog/ulid v1.3.1 // indirect
 	github.com/oklog/ulid/v2 v2.1.1 // indirect
 	github.com/opencontainers/image-spec v1.1.1 // indirect
-	github.com/openshift/library-go v0.0.0-20260213153706-03f1709971c5 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/pelletier/go-toml v1.9.5 // indirect
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c // indirect
@@ -205,9 +207,8 @@ require (
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/apiserver v0.35.5 // indirect
-	k8s.io/component-base v0.35.5 // indirect
 	k8s.io/klog v1.0.0 // indirect
-	k8s.io/kube-aggregator v0.34.1 // indirect
+	k8s.io/kube-aggregator v0.35.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20260414162039-ec9c827d403f // indirect
 	open-cluster-management.io/sdk-go v1.3.0 // indirect
 	sigs.k8s.io/json v0.0.0-20250730193827-2d320260d730 // indirect

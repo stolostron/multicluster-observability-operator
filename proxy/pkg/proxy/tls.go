@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
+	k8sapiflag "k8s.io/component-base/cli/flag"
 	"k8s.io/klog/v2"
 )
 
@@ -29,6 +30,9 @@ type TLSOptions struct {
 	PollingInterval time.Duration
 	// ProxyTimeout specifies the response header timeout for the proxy.
 	ProxyTimeout time.Duration
+
+	MinTLSVersion string
+	CipherSuites  []string
 }
 
 // reloadingTransport wraps http.Transport to allow for safe, concurrent reloading of TLS configuration.
@@ -184,10 +188,23 @@ func (t *reloadingTransport) reloadTLSConfig() error {
 	caCertPool := x509.NewCertPool()
 	caCertPool.AppendCertsFromPEM(caCert)
 
-	newTLSConfig := &tls.Config{
+	minVersion, err := k8sapiflag.TLSVersion(t.opts.MinTLSVersion)
+	if err != nil {
+		klog.Errorf("TLS version invalid: %v", err)
+		return err
+	}
+
+	cipherSuiteIDs, err := k8sapiflag.TLSCipherSuites(t.opts.CipherSuites)
+	if err != nil {
+		klog.Errorf("failed to convert TLS cipher suite name to ID: %v", err)
+		return err
+	}
+
+	newTLSConfig := &tls.Config{ //nolint:gosec // TLS min version must be configured at runtime by the cluster TLS security profile
 		Certificates: []tls.Certificate{cert},
 		RootCAs:      caCertPool,
-		MinVersion:   tls.VersionTLS12,
+		MinVersion:   minVersion,
+		CipherSuites: cipherSuiteIDs,
 	}
 
 	t.mutex.Lock()

@@ -6,6 +6,7 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"flag"
 	"fmt"
@@ -13,12 +14,14 @@ import (
 	"os"
 	"runtime"
 	"strconv"
+	"sync"
 	"time"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
 	"github.com/IBM/controller-filtered-cache/filteredcache"
 	ocinfrav1 "github.com/openshift/api/config/v1"
+	tlsutil "github.com/openshift/controller-runtime-common/pkg/tls"
 	hyperv1 "github.com/openshift/hypershift/api/hypershift/v1beta1"
 	prometheusv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/controllers/mcoa"
@@ -139,28 +142,46 @@ func doCleanup(args []string) error {
 		return fmt.Errorf("unable to create client for cleanup: %w", err)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Second)
 	defer cancel()
 
+	var wg sync.WaitGroup
+	var mu sync.Mutex
 	var errs []error
 
-	setupLog.Info("Reverting Platform monitoring configuration", "caSecret", hubAmCASecret)
-	if err := obsepctl.RevertClusterMonitoringConfig(ctx, cl, hubAmCASecret, clusterName); err != nil {
-		setupLog.Error(err, "failed to revert platform monitoring config")
+	addErr := func(err error) {
+		mu.Lock()
 		errs = append(errs, err)
+		mu.Unlock()
 	}
 
-	if ctx.Err() != nil {
-		setupLog.Error(ctx.Err(), "cleanup context canceled or timed out, aborting remaining steps")
-		errs = append(errs, ctx.Err())
-		return fmt.Errorf("cleanup failed: %w", errors.Join(errs...))
-	}
+	wg.Add(3)
 
-	setupLog.Info("Reverting User Workload monitoring configuration", "caSecret", hubAmCASecret)
-	if err := obsepctl.RevertUserWorkloadMonitoringConfig(ctx, cl, hubAmCASecret); err != nil {
-		setupLog.Error(err, "failed to revert user workload monitoring config")
-		errs = append(errs, err)
-	}
+	go func() {
+		defer wg.Done()
+		setupLog.Info("Reverting Platform monitoring configuration", "caSecret", hubAmCASecret)
+		if err := obsepctl.RevertClusterMonitoringConfig(ctx, cl, hubAmCASecret, clusterName); err != nil {
+			addErr(fmt.Errorf("failed to revert platform monitoring config: %w", err))
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		setupLog.Info("Reverting User Workload monitoring configuration", "caSecret", hubAmCASecret)
+		if err := obsepctl.RevertUserWorkloadMonitoringConfig(ctx, cl, hubAmCASecret); err != nil {
+			addErr(fmt.Errorf("failed to revert user workload monitoring config: %w", err))
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		setupLog.Info("Cleaning up OBO CRDs")
+		if err := mcoa.CleanUpCRDs(ctx, cl); err != nil {
+			addErr(fmt.Errorf("failed to clean up OBO CRDs: %w", err))
+		}
+	}()
+
+	wg.Wait()
 
 	if len(errs) > 0 {
 		return fmt.Errorf("cleanup failed: %w", errors.Join(errs...))
@@ -209,6 +230,12 @@ func runMCOA(args []string) {
 
 	ctrl.SetLogger(klog.NewKlogr())
 
+	crdClient, err := operatorsutil.GetOrCreateCRDClient()
+	if err != nil {
+		setupLog.Error(err, "Failed to create the CRD client")
+		os.Exit(1)
+	}
+
 	if namespace == "" {
 		setupLog.Error(fmt.Errorf("namespace flag not set"), "unable to start manager")
 		os.Exit(1)
@@ -247,17 +274,47 @@ func runMCOA(args []string) {
 		}
 	}
 
+	ctx, cancel := context.WithCancel(ctrl.SetupSignalHandler())
+
+	tlsConfig, err := operatorsutil.GetOrCreateTLSConfig(ctx)
+	if err != nil {
+		setupLog.Error(err, "unable to get OCP TLS config")
+		os.Exit(1)
+	}
+
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-		Scheme:                 scheme,
-		Metrics:                server.Options{BindAddress: metricsAddr},
+		Scheme: scheme,
+		Metrics: server.Options{
+			BindAddress:   metricsAddr,
+			TLSOpts:       []func(*tls.Config){tlsConfig},
+			SecureServing: true,
+		},
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "mcoa-cmo-config.open-cluster-management.io",
 		Cache:                  mcoa.GetCacheOptions(),
-		WebhookServer:          ctrlwebhook.NewServer(ctrlwebhook.Options{Port: 9443}),
+		WebhookServer: ctrlwebhook.NewServer(ctrlwebhook.Options{
+			Port:    9443,
+			TLSOpts: []func(*tls.Config){tlsConfig},
+		}),
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
+		os.Exit(1)
+	}
+
+	cl, err := client.New(mgr.GetConfig(), client.Options{Scheme: scheme})
+	if err != nil {
+		setupLog.Error(err, "unable to create direct client for CRD deployment")
+		os.Exit(1)
+	}
+
+	crdCtx, crdCancel := context.WithTimeout(ctx, 2*time.Minute)
+	setupLog.Info("Deploying OBO CRDs")
+	err = mcoa.DeployCRDs(crdCtx, cl)
+	crdCancel()
+	if err != nil {
+		setupLog.Error(err, "failed to deploy OBO CRDs")
 		os.Exit(1)
 	}
 
@@ -284,11 +341,39 @@ func runMCOA(args []string) {
 		os.Exit(1)
 	}
 
+	apiServerCrdExists, err := operatorsutil.CheckCRDExist(crdClient, operatorconfig.OCPApiServerCrdName)
+	if err != nil {
+		setupLog.Error(err, "")
+		os.Exit(1)
+	}
+	if apiServerCrdExists {
+		tlsProfileSpec, err := operatorsutil.GetOrCreateTLSProfileSpec(ctx)
+		if err != nil {
+			setupLog.Info("unable to get TLS profile spec, skipping SecurityProfileWatcher", "error", err)
+		} else {
+			if err = (&tlsutil.SecurityProfileWatcher{
+				Client:                mgr.GetClient(),
+				InitialTLSProfileSpec: *tlsProfileSpec,
+				OnProfileChange: func(ctx context.Context, oldTLSProfileSpec, newTLSProfileSpec ocinfrav1.TLSProfileSpec) {
+					setupLog.Info("TLS profile changed, shutting the manager down to reload",
+						"oldProfile", oldTLSProfileSpec,
+						"newProfile", newTLSProfileSpec,
+					)
+					cancel()
+				},
+			}).SetupWithManager(mgr); err != nil {
+				setupLog.Error(err, "unable to create TLS security profile watcher")
+				os.Exit(1)
+			}
+		}
+	}
+
 	setupLog.Info("starting mcoa manager")
-	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
+	if err := mgr.Start(ctx); err != nil {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
 	}
+	cancel()
 }
 
 func runStandard(args []string) {
@@ -306,6 +391,12 @@ func runStandard(args []string) {
 	klog.InitFlags(flag.CommandLine)
 	// flag.CommandLine is configured to exit on error (flag.ExitOnError), so we can ignore the error return value.
 	_ = flag.CommandLine.Parse(args)
+
+	crdClient, err := operatorsutil.GetOrCreateCRDClient()
+	if err != nil {
+		setupLog.Error(err, "Failed to create the CRD client")
+		os.Exit(1)
+	}
 
 	namespaceSelector := fmt.Sprintf("metadata.namespace==%s", os.Getenv("WATCH_NAMESPACE"))
 	gvkLabelMap := map[schema.GroupVersionKind][]filteredcache.Selector{
@@ -334,14 +425,29 @@ func runStandard(args []string) {
 		}
 	}
 
+	ctx, cancel := context.WithCancel(ctrl.SetupSignalHandler())
+
+	tlsConfig, err := operatorsutil.GetOrCreateTLSConfig(ctx)
+	if err != nil {
+		setupLog.Error(err, "unable to get OCP TLS config or default")
+		os.Exit(1)
+	}
+
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-		Scheme:                 scheme,
-		Metrics:                server.Options{BindAddress: metricsAddr},
+		Scheme: scheme,
+		Metrics: server.Options{
+			BindAddress:   metricsAddr,
+			TLSOpts:       []func(*tls.Config){tlsConfig},
+			SecureServing: true,
+		},
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "7c30ca38.open-cluster-management.io",
 		NewCache:               filteredcache.NewEnhancedFilteredCacheBuilder(gvkLabelMap),
-		WebhookServer:          ctrlwebhook.NewServer(ctrlwebhook.Options{Port: 9443}),
+		WebhookServer: ctrlwebhook.NewServer(ctrlwebhook.Options{
+			Port:    9443,
+			TLSOpts: []func(*tls.Config){tlsConfig},
+		}),
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
@@ -411,12 +517,41 @@ func runStandard(args []string) {
 		os.Exit(1)
 	}
 
+	apiServerCrdExists, err := operatorsutil.CheckCRDExist(crdClient, operatorconfig.OCPApiServerCrdName)
+	if err != nil {
+		setupLog.Error(err, "")
+		os.Exit(1)
+	}
+	if apiServerCrdExists {
+		tlsProfileSpec, err := operatorsutil.GetOrCreateTLSProfileSpec(ctx)
+		if err != nil {
+			setupLog.Info("unable get TLS profile spec, skipping SecurityProfileWatcher", "error", err)
+		} else {
+			if err = (&tlsutil.SecurityProfileWatcher{
+				Client:                mgr.GetClient(),
+				InitialTLSProfileSpec: *tlsProfileSpec,
+				OnProfileChange: func(ctx context.Context, oldTLSProfileSpec, newTLSProfileSpec ocinfrav1.TLSProfileSpec) {
+					setupLog.Info("TLS profile changed, shutting the manager down to reload",
+						"oldProfile", oldTLSProfileSpec,
+						"newProfile", newTLSProfileSpec,
+					)
+					cancel()
+				},
+			}).SetupWithManager(mgr); err != nil {
+				setupLog.Error(err, "unable to create TLS security profile watcher")
+				os.Exit(1)
+			}
+		}
+	}
+
 	// start lease
 	util.StartLease()
 
 	setupLog.Info("starting manager")
-	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
+	if err := mgr.Start(ctx); err != nil {
+		cancel()
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
 	}
+	cancel()
 }

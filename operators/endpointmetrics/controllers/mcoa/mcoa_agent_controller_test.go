@@ -6,6 +6,7 @@ package mcoa
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	ocinfrav1 "github.com/openshift/api/config/v1"
@@ -17,12 +18,15 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/events"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 )
 
 func TestMCOAAgentReconciler_Reconcile(t *testing.T) {
@@ -72,6 +76,7 @@ func TestMCOAAgentReconciler_Reconcile(t *testing.T) {
 		alertmanagerEndpoint      string
 		hubClusterID              string
 		existingObjs              []client.Object
+		clientInterceptors        interceptor.Funcs
 		expectedMetric            float64
 		expectedEvent             bool
 		expectedError             bool
@@ -177,7 +182,7 @@ func TestMCOAAgentReconciler_Reconcile(t *testing.T) {
 			},
 		},
 		{
-			name: "Ignored resource - No action",
+			name: "Ignored resource - No action and no requeue",
 			req: ctrl.Request{
 				NamespacedName: types.NamespacedName{
 					Name:      "some-other-cm",
@@ -237,6 +242,38 @@ func TestMCOAAgentReconciler_Reconcile(t *testing.T) {
 			},
 		},
 		{
+			name: "CRD deletion event - DeployCRDs failure propagates as error",
+			req: ctrl.Request{
+				NamespacedName: types.NamespacedName{Name: "prometheusagents.monitoring.rhobs"},
+			},
+			alertmanagerEndpoint: alertmanagerEndpoint,
+			hubClusterID:         hubClusterID,
+			existingObjs:         []client.Object{},
+			expectedError:        true,
+			clientInterceptors: interceptor.Funcs{
+				Get: func(_ context.Context, _ client.WithWatch, _ types.NamespacedName, _ client.Object, _ ...client.GetOption) error {
+					return errors.New("injected API error")
+				},
+			},
+		},
+		{
+			name: "CRD deletion event - immediately re-applies all managed CRDs",
+			req: ctrl.Request{
+				// CRDs are cluster-scoped: no namespace.
+				NamespacedName: types.NamespacedName{Name: "prometheusagents.monitoring.rhobs"},
+			},
+			alertmanagerEndpoint: alertmanagerEndpoint,
+			hubClusterID:         hubClusterID,
+			existingObjs:         []client.Object{},
+			validate: func(t *testing.T, c client.Client) {
+				crd := &unstructured.Unstructured{}
+				crd.SetGroupVersionKind(schema.GroupVersionKind{Group: "apiextensions.k8s.io", Version: "v1", Kind: "CustomResourceDefinition"})
+				err := c.Get(context.Background(), types.NamespacedName{Name: "prometheusagents.monitoring.rhobs"}, crd)
+				require.NoError(t, err)
+				assert.True(t, isManagedByUs(crd), "restored CRD must carry the mcoa ownership label")
+			},
+		},
+		{
 			name: "UWL ConfigMap - UWL alert forwarding disabled",
 			req: ctrl.Request{
 				NamespacedName: types.NamespacedName{
@@ -263,7 +300,7 @@ func TestMCOAAgentReconciler_Reconcile(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := fake.NewClientBuilder().WithScheme(s).WithObjects(tt.existingObjs...).WithReturnManagedFields().Build()
+			c := fake.NewClientBuilder().WithScheme(s).WithObjects(tt.existingObjs...).WithReturnManagedFields().WithInterceptorFuncs(tt.clientInterceptors).Build()
 			recorder := events.NewFakeRecorder(10)
 
 			// Capture initial metric value
@@ -286,13 +323,14 @@ func TestMCOAAgentReconciler_Reconcile(t *testing.T) {
 				!tt.disableUWLAlertForwarding,
 			)
 
-			_, err := r.Reconcile(context.Background(), tt.req)
+			result, err := r.Reconcile(context.Background(), tt.req)
 
 			if tt.expectedError {
 				assert.Error(t, err)
 			} else {
 				assert.NoError(t, err)
 			}
+			assert.Zero(t, result.RequeueAfter, "reconciler must not schedule a periodic requeue — the CRD watch handles healing")
 
 			if tt.expectedMetric > 0 {
 				assert.Equal(t, initialMetric+tt.expectedMetric, testutil.ToFloat64(cmoConfigConflictsTotal))

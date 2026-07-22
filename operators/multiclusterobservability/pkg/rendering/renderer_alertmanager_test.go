@@ -22,6 +22,7 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering/templates"
 	templatesutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering/templates"
+	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util/tlstesting"
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -65,7 +66,10 @@ func TestAlertManagerRenderer(t *testing.T) {
 		},
 	}
 
-	kubeClient := fake.NewClientBuilder().WithObjects(clientCa, mchImageManifest).Build()
+	kubeClient := tlstesting.NewFakeTLSClientBuilder().
+		WithScheme(corev1.AddToScheme).
+		WithObjects(clientCa, mchImageManifest).
+		Build(t)
 
 	alertResources := renderTemplates(t, kubeClient, makeBaseMco())
 
@@ -282,7 +286,10 @@ func TestAlertManagerRendererMCOConfig(t *testing.T) {
 					"client-ca-file": "test",
 				},
 			}
-			kubeClient := fake.NewClientBuilder().WithObjects(clientCa).Build()
+			kubeClient := tlstesting.NewFakeTLSClientBuilder().
+				WithScheme(corev1.AddToScheme).
+				WithObjects(clientCa).
+				Build(t)
 
 			alertResources := renderTemplates(t, kubeClient, tc.mco())
 
@@ -293,6 +300,7 @@ func TestAlertManagerRendererMCOConfig(t *testing.T) {
 }
 
 func TestAlertManagerClientCAHashRotation(t *testing.T) {
+	tlstesting.NewFakeTLSClientBuilder().Build(t)
 	makeCA := func(data string) *corev1.ConfigMap {
 		return &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
