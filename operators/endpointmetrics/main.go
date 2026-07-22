@@ -161,7 +161,7 @@ func doCleanup(args []string) error {
 		setupLog,
 		scheme,
 		noOpRecorder{},
-		"", // empty namespace ensures listing raw scrapeConfigs returns empty
+		"mcoa-cleanup-dummy-namespace", // non-empty dummy namespace ensures we find NO agents or scrapeConfigs, triggering unconditional label cleanup
 		"",
 		clusterName,
 		"", // empty hubAlertmanagerURL forces Alertmanager config removal

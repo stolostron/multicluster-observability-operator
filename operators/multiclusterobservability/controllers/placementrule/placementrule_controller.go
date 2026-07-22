@@ -1330,6 +1330,11 @@ func mcoaForMetricsIsEnabled(mco *mcov1beta2.MultiClusterObservability) bool {
 }
 
 // hasMCOAManifestWorks checks if there are any remaining ManifestWorks for the MCOA addon on the hub.
+// Note: We MUST use APIReader (strongly consistent, direct etcd read) instead of the cached Client.
+// This is because main.go configures a "filteredcache" for ManifestWorks with the selector
+// "owner==multicluster-observability-operator". MCOA ManifestWorks are created by the OCM
+// addon framework and do not carry this owner label, meaning they are completely hidden
+// and filtered out of the memory cache. Using Client.List would always return 0.
 func (r *PlacementRuleReconciler) hasMCOAManifestWorks(ctx context.Context) (bool, error) {
 	workList := &workv1.ManifestWorkList{}
 	opts := []client.ListOption{
