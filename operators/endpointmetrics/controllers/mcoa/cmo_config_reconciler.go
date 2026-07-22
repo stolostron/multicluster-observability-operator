@@ -60,7 +60,8 @@ var uwlConfigReconcilesTotal = promauto.With(metrics.Registry).NewCounter(
 )
 
 func (r *MCOAAgentReconciler) ReconcileCMOPlatformConfig(ctx context.Context) error {
-	endpoint := r.HubEndpoint
+	remoteWriteURL := r.HubRemoteWriteURL
+	alertmanagerURL := r.HubAlertmanagerURL
 
 	scrapeConfigs, err := r.listScrapeConfigsByComponent(ctx, platformMetricsCollectorRawComponent)
 	if err != nil {
@@ -72,7 +73,7 @@ func (r *MCOAAgentReconciler) ReconcileCMOPlatformConfig(ctx context.Context) er
 		Namespace: operatorconfig.OCPClusterMonitoringNamespace,
 	}
 
-	cm, isCreate, err := r.fetchCMOConfigMap(ctx, cmoKey, endpoint, len(scrapeConfigs))
+	cm, isCreate, err := r.fetchCMOConfigMap(ctx, cmoKey, remoteWriteURL, alertmanagerURL, len(scrapeConfigs))
 	if err != nil || cm == nil {
 		return err
 	}
@@ -86,24 +87,24 @@ func (r *MCOAAgentReconciler) ReconcileCMOPlatformConfig(ctx context.Context) er
 	modified := isCreate
 
 	// Ensure PrometheusK8sConfig is initialized if we are deploying configurations
-	if endpoint != "" && parsed.PrometheusK8sConfig == nil {
+	if (remoteWriteURL != "" || alertmanagerURL != "") && parsed.PrometheusK8sConfig == nil {
 		parsed.PrometheusK8sConfig = &cmomanifests.PrometheusK8sConfig{}
 	}
 
 	if parsed.PrometheusK8sConfig != nil {
 		// 1. Reconcile External Labels
-		if r.reconcileExternalLabels(parsed.PrometheusK8sConfig, endpoint) {
+		if r.reconcileExternalLabels(parsed.PrometheusK8sConfig, remoteWriteURL) {
 			modified = true
 		}
 
 		// 2. Reconcile Alertmanager Configurations
-		cleanAm, modifiedAm := r.reconcileAlertmanagerConfigs(parsed.PrometheusK8sConfig.AlertmanagerConfigs, endpoint, r.EnablePlatformAlertForwarding)
+		cleanAm, modifiedAm := r.reconcileAlertmanagerConfigs(parsed.PrometheusK8sConfig.AlertmanagerConfigs, alertmanagerURL, r.EnablePlatformAlertForwarding)
 		if modifiedAm {
 			parsed.PrometheusK8sConfig.AlertmanagerConfigs = cleanAm
 			modified = true
 
 			// Emit event if we had to update/overwrite Alertmanager configs in an existing ConfigMap
-			if !isCreate && endpoint != "" {
+			if !isCreate && alertmanagerURL != "" {
 				if r.Recorder != nil {
 					r.Recorder.Eventf(
 						cm, nil, corev1.EventTypeWarning, "ConfigConflict", "ConfigReapply",
@@ -116,7 +117,7 @@ func (r *MCOAAgentReconciler) ReconcileCMOPlatformConfig(ctx context.Context) er
 
 		// 3. Reconcile Remote Writes
 		existingRemoteWrites := parsed.PrometheusK8sConfig.RemoteWrite
-		cleanRemoteWrite, err := r.reconcileRemoteWrites(existingRemoteWrites, scrapeConfigs, endpoint)
+		cleanRemoteWrite, err := r.reconcileRemoteWrites(existingRemoteWrites, scrapeConfigs, remoteWriteURL)
 		if err != nil {
 			return err
 		}
@@ -150,8 +151,8 @@ func (r *MCOAAgentReconciler) ReconcileCMOPlatformConfig(ctx context.Context) er
 }
 
 func (r *MCOAAgentReconciler) ReconcileCMOUWLConfig(ctx context.Context) error {
-	endpoint := r.HubEndpoint
-	enableUWL := r.EnableUWLAlertForwarding
+	remoteWriteURL := r.HubRemoteWriteURL
+	alertmanagerURL := r.HubAlertmanagerURL
 
 	scrapeConfigs, err := r.listScrapeConfigsByComponent(ctx, userWorkloadMetricsCollectorRawComponent)
 	if err != nil {
@@ -168,7 +169,7 @@ func (r *MCOAAgentReconciler) ReconcileCMOUWLConfig(ctx context.Context) error {
 		if !errors.IsNotFound(err) {
 			return fmt.Errorf("failed to get UWL configmap: %w", err)
 		}
-		if (endpoint == "" || !enableUWL) && len(scrapeConfigs) == 0 {
+		if (remoteWriteURL == "" && (alertmanagerURL == "" || !r.EnableUWLAlertForwarding)) && len(scrapeConfigs) == 0 {
 			return nil
 		}
 		isCreate = true
@@ -196,7 +197,7 @@ func (r *MCOAAgentReconciler) ReconcileCMOUWLConfig(ctx context.Context) error {
 	if parsed.Prometheus != nil {
 		existingAM = parsed.Prometheus.AlertmanagerConfigs
 	}
-	cleanAm, modifiedAm := r.reconcileAlertmanagerConfigs(existingAM, endpoint, enableUWL)
+	cleanAm, modifiedAm := r.reconcileAlertmanagerConfigs(existingAM, alertmanagerURL, r.EnableUWLAlertForwarding)
 	if modifiedAm {
 		if parsed.Prometheus == nil {
 			parsed.Prometheus = &cmomanifests.PrometheusRestrictedConfig{}
@@ -211,7 +212,7 @@ func (r *MCOAAgentReconciler) ReconcileCMOUWLConfig(ctx context.Context) error {
 		existingRemoteWrites = parsed.Prometheus.RemoteWrite
 	}
 
-	cleanRemoteWrite, err := r.reconcileRemoteWrites(existingRemoteWrites, scrapeConfigs, endpoint)
+	cleanRemoteWrite, err := r.reconcileRemoteWrites(existingRemoteWrites, scrapeConfigs, remoteWriteURL)
 	if err != nil {
 		return err
 	}
@@ -247,14 +248,14 @@ func (r *MCOAAgentReconciler) ReconcileCMOUWLConfig(ctx context.Context) error {
 	return err
 }
 
-func (r *MCOAAgentReconciler) fetchCMOConfigMap(ctx context.Context, key client.ObjectKey, endpoint string, numScrapeConfigs int) (*corev1.ConfigMap, bool, error) {
+func (r *MCOAAgentReconciler) fetchCMOConfigMap(ctx context.Context, key client.ObjectKey, remoteWriteURL, alertmanagerURL string, numScrapeConfigs int) (*corev1.ConfigMap, bool, error) {
 	cm := &corev1.ConfigMap{}
 	err := r.Get(ctx, key, cm)
 	if err != nil {
 		if !errors.IsNotFound(err) {
 			return nil, false, fmt.Errorf("failed to get CMO configmap %s/%s: %w", key.Namespace, key.Name, err)
 		}
-		if endpoint == "" && numScrapeConfigs == 0 {
+		if remoteWriteURL == "" && alertmanagerURL == "" && numScrapeConfigs == 0 {
 			return nil, false, nil
 		}
 		return &corev1.ConfigMap{

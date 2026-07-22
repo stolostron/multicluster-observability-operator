@@ -161,7 +161,8 @@ func doCleanup(args []string) error {
 		"", // empty namespace ensures listing raw scrapeConfigs returns empty
 		"",
 		clusterName,
-		"", // empty alertmanager endpoint forces Alertmanager config removal
+		"", // empty hubRemoteWriteURL forces remote write removal
+		"", // empty hubAlertmanagerURL forces Alertmanager config removal
 		hubAmCASecret,
 		"",
 		"",
@@ -220,7 +221,8 @@ func runMCOA(args []string) {
 	var metricsAddr string
 	var enableLeaderElection bool
 	var probeAddr string
-	var hubEndpointURL string
+	var hubRemoteWriteURL string
+	var hubAmURL string
 	var clusterID string
 	var clusterName string
 	var namespace string
@@ -235,7 +237,8 @@ func runMCOA(args []string) {
 	fs.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
-	fs.StringVar(&hubEndpointURL, "hub-endpoint-url", "", "The base URL of the Hub Gateway.")
+	fs.StringVar(&hubRemoteWriteURL, "hub-remote-write-url", "", "The Remote Write URL of the Hub Gateway.")
+	fs.StringVar(&hubAmURL, "hub-alertmanager-url", "", "The URL of the Hub's Alertmanager.")
 	fs.StringVar(&clusterID, "cluster-id", "", "The ID of the managed cluster.")
 	fs.StringVar(&clusterName, "cluster-name", "", "The name of the managed cluster.")
 	fs.StringVar(&namespace, "namespace", "", "The namespace the operator is running in.")
@@ -267,15 +270,28 @@ func runMCOA(args []string) {
 		os.Exit(1)
 	}
 
-	if hubEndpointURL == "" {
-		setupLog.Error(fmt.Errorf("hub-endpoint-url flag not set"), "unable to start manager")
+	if hubRemoteWriteURL == "" {
+		setupLog.Error(fmt.Errorf("hub-remote-write-url flag not set"), "unable to start manager")
 		os.Exit(1)
 	}
 
-	parsedURL, err := url.Parse(hubEndpointURL)
-	if err != nil || parsedURL.Scheme == "" || parsedURL.Host == "" {
-		setupLog.Error(fmt.Errorf("invalid hub-endpoint-url %q: must be a valid absolute URL", hubEndpointURL), "unable to start manager")
+	parsedRWURL, err := url.Parse(hubRemoteWriteURL)
+	if err != nil || parsedRWURL.Scheme == "" || parsedRWURL.Host == "" {
+		setupLog.Error(fmt.Errorf("invalid hub-remote-write-url %q: must be a valid absolute URL", hubRemoteWriteURL), "unable to start manager")
 		os.Exit(1)
+	}
+
+	if (enablePlatformAlertForwarding || enableUWLAlertForwarding) && hubAmURL == "" {
+		setupLog.Error(fmt.Errorf("hub-alertmanager-url flag must be set when platform or user workload alert forwarding is enabled"), "unable to start manager")
+		os.Exit(1)
+	}
+
+	if hubAmURL != "" {
+		parsedAmURL, err := url.Parse(hubAmURL)
+		if err != nil || parsedAmURL.Scheme == "" || parsedAmURL.Host == "" {
+			setupLog.Error(fmt.Errorf("invalid hub-alertmanager-url %q: must be a valid absolute URL", hubAmURL), "unable to start manager")
+			os.Exit(1)
+		}
 	}
 
 	if clusterID == "" {
@@ -355,7 +371,8 @@ func runMCOA(args []string) {
 		namespace,
 		clusterID,
 		clusterName,
-		hubEndpointURL,
+		hubRemoteWriteURL,
+		hubAmURL,
 		hubAmCASecret,
 		hubAmCertSecret,
 		hubAmAccessorSecret,
