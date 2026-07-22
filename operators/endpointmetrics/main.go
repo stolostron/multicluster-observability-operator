@@ -67,9 +67,12 @@ func init() {
 	utilruntime.Must(hyperv1.AddToScheme(scheme))
 	utilruntime.Must(apiextensionsv1.AddToScheme(scheme))
 
-	// Register ScrapeConfig for the custom monitoring.rhobs/v1alpha1 API Group used by MCOA on spoke clusters
+	// Register ScrapeConfig and PrometheusAgent for the custom monitoring.rhobs/v1alpha1 API Group used by MCOA on spoke clusters
 	rhobsGroupVersion := schema.GroupVersion{Group: "monitoring.rhobs", Version: "v1alpha1"}
-	scheme.AddKnownTypes(rhobsGroupVersion, &prometheusv1alpha1.ScrapeConfig{}, &prometheusv1alpha1.ScrapeConfigList{})
+	scheme.AddKnownTypes(rhobsGroupVersion,
+		&prometheusv1alpha1.ScrapeConfig{}, &prometheusv1alpha1.ScrapeConfigList{},
+		&prometheusv1alpha1.PrometheusAgent{}, &prometheusv1alpha1.PrometheusAgentList{},
+	)
 	metav1.AddToGroupVersion(scheme, rhobsGroupVersion)
 	// +kubebuilder:scaffold:scheme
 }
@@ -161,7 +164,6 @@ func doCleanup(args []string) error {
 		"", // empty namespace ensures listing raw scrapeConfigs returns empty
 		"",
 		clusterName,
-		"", // empty hubRemoteWriteURL forces remote write removal
 		"", // empty hubAlertmanagerURL forces Alertmanager config removal
 		hubAmCASecret,
 		"",
@@ -221,7 +223,6 @@ func runMCOA(args []string) {
 	var metricsAddr string
 	var enableLeaderElection bool
 	var probeAddr string
-	var hubRemoteWriteURL string
 	var hubAmURL string
 	var clusterID string
 	var clusterName string
@@ -237,7 +238,6 @@ func runMCOA(args []string) {
 	fs.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
-	fs.StringVar(&hubRemoteWriteURL, "hub-remote-write-url", "", "The Remote Write URL of the Hub Gateway.")
 	fs.StringVar(&hubAmURL, "hub-alertmanager-url", "", "The URL of the Hub's Alertmanager.")
 	fs.StringVar(&clusterID, "cluster-id", "", "The ID of the managed cluster.")
 	fs.StringVar(&clusterName, "cluster-name", "", "The name of the managed cluster.")
@@ -251,7 +251,7 @@ func runMCOA(args []string) {
 	fs.StringVar(&hubAmCertSecret, "hub-alertmanager-cert-secret", "", "The name of the TLS cert/key secret for the Hub's Alertmanager.")
 	fs.StringVar(&hubAmAccessorSecret, "hub-alertmanager-accessor-secret", "", "The name of the accessor token secret for the Hub's Alertmanager.")
 	fs.BoolVar(&enablePlatformAlertForwarding, "enable-platform-alert-forwarding", false, "Enable or disable forwarding of platform monitoring alerts.")
-	fs.BoolVar(&enableUWLAlertForwarding, "enable-uwl-alert-forwarding", true, "Enable or disable forwarding of user workload monitoring alerts.")
+	fs.BoolVar(&enableUWLAlertForwarding, "enable-uwl-alert-forwarding", false, "Enable or disable forwarding of user workload monitoring alerts.")
 
 	klog.InitFlags(fs)
 	// Parse will exit on error due to flag.ExitOnError, so we can ignore the error return value.
@@ -267,17 +267,6 @@ func runMCOA(args []string) {
 
 	if namespace == "" {
 		setupLog.Error(fmt.Errorf("namespace flag not set"), "unable to start manager")
-		os.Exit(1)
-	}
-
-	if hubRemoteWriteURL == "" {
-		setupLog.Error(fmt.Errorf("hub-remote-write-url flag not set"), "unable to start manager")
-		os.Exit(1)
-	}
-
-	parsedRWURL, err := url.Parse(hubRemoteWriteURL)
-	if err != nil || parsedRWURL.Scheme == "" || parsedRWURL.Host == "" {
-		setupLog.Error(fmt.Errorf("invalid hub-remote-write-url %q: must be a valid absolute URL", hubRemoteWriteURL), "unable to start manager")
 		os.Exit(1)
 	}
 
@@ -371,7 +360,6 @@ func runMCOA(args []string) {
 		namespace,
 		clusterID,
 		clusterName,
-		hubRemoteWriteURL,
 		hubAmURL,
 		hubAmCASecret,
 		hubAmCertSecret,

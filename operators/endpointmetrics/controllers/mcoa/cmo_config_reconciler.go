@@ -7,9 +7,9 @@ package mcoa
 import (
 	"context"
 	"fmt"
+	"maps"
 	"net/url"
 	"slices"
-	"strings"
 
 	cmomanifests "github.com/openshift/cluster-monitoring-operator/pkg/manifests"
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
@@ -22,8 +22,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 	"sigs.k8s.io/yaml"
@@ -39,6 +39,8 @@ const (
 	// Package-level constants for load-bearing component labels
 	platformMetricsCollectorRawComponent     = "platform-metrics-collector-raw"
 	userWorkloadMetricsCollectorRawComponent = "user-workload-metrics-collector-raw"
+	platformMetricsCollectorComponent        = "platform-metrics-collector"
+	userWorkloadMetricsCollectorComponent    = "user-workload-metrics-collector"
 
 	// Default bootstrap YAML templates to avoid magic strings
 	defaultCMOConfigYAML = "prometheusK8s: {}"
@@ -60,10 +62,15 @@ var uwlConfigReconcilesTotal = promauto.With(metrics.Registry).NewCounter(
 )
 
 func (r *MCOAAgentReconciler) ReconcileCMOPlatformConfig(ctx context.Context) error {
-	remoteWriteURL := r.HubRemoteWriteURL
 	alertmanagerURL := r.HubAlertmanagerURL
 
 	scrapeConfigs, err := r.listScrapeConfigsByComponent(ctx, platformMetricsCollectorRawComponent)
+	if err != nil {
+		return err
+	}
+
+	// Fetch PrometheusAgent dynamically to read remoteWrite config
+	agent, err := r.fetchPrometheusAgentByComponent(ctx, platformMetricsCollectorComponent)
 	if err != nil {
 		return err
 	}
@@ -73,7 +80,7 @@ func (r *MCOAAgentReconciler) ReconcileCMOPlatformConfig(ctx context.Context) er
 		Namespace: operatorconfig.OCPClusterMonitoringNamespace,
 	}
 
-	cm, isCreate, err := r.fetchCMOConfigMap(ctx, cmoKey, remoteWriteURL, alertmanagerURL, len(scrapeConfigs))
+	cm, isCreate, err := r.fetchCMOConfigMap(ctx, cmoKey, agent, alertmanagerURL, len(scrapeConfigs))
 	if err != nil || cm == nil {
 		return err
 	}
@@ -87,13 +94,13 @@ func (r *MCOAAgentReconciler) ReconcileCMOPlatformConfig(ctx context.Context) er
 	modified := isCreate
 
 	// Ensure PrometheusK8sConfig is initialized if we are deploying configurations
-	if (remoteWriteURL != "" || alertmanagerURL != "") && parsed.PrometheusK8sConfig == nil {
+	if (agent != nil || alertmanagerURL != "") && parsed.PrometheusK8sConfig == nil {
 		parsed.PrometheusK8sConfig = &cmomanifests.PrometheusK8sConfig{}
 	}
 
 	if parsed.PrometheusK8sConfig != nil {
 		// 1. Reconcile External Labels
-		if r.reconcileExternalLabels(parsed.PrometheusK8sConfig, remoteWriteURL) {
+		if r.reconcileExternalLabels(parsed.PrometheusK8sConfig, agent != nil) {
 			modified = true
 		}
 
@@ -117,10 +124,7 @@ func (r *MCOAAgentReconciler) ReconcileCMOPlatformConfig(ctx context.Context) er
 
 		// 3. Reconcile Remote Writes
 		existingRemoteWrites := parsed.PrometheusK8sConfig.RemoteWrite
-		cleanRemoteWrite, err := r.reconcileRemoteWrites(existingRemoteWrites, scrapeConfigs, remoteWriteURL)
-		if err != nil {
-			return err
-		}
+		cleanRemoteWrite := r.reconcileRemoteWrites(existingRemoteWrites, scrapeConfigs, agent)
 		if !equality.Semantic.DeepEqual(cleanRemoteWrite, existingRemoteWrites) {
 			parsed.PrometheusK8sConfig.RemoteWrite = cleanRemoteWrite
 			modified = true
@@ -151,10 +155,15 @@ func (r *MCOAAgentReconciler) ReconcileCMOPlatformConfig(ctx context.Context) er
 }
 
 func (r *MCOAAgentReconciler) ReconcileCMOUWLConfig(ctx context.Context) error {
-	remoteWriteURL := r.HubRemoteWriteURL
 	alertmanagerURL := r.HubAlertmanagerURL
 
 	scrapeConfigs, err := r.listScrapeConfigsByComponent(ctx, userWorkloadMetricsCollectorRawComponent)
+	if err != nil {
+		return err
+	}
+
+	// Fetch PrometheusAgent dynamically
+	agent, err := r.fetchPrometheusAgentByComponent(ctx, userWorkloadMetricsCollectorComponent)
 	if err != nil {
 		return err
 	}
@@ -169,7 +178,7 @@ func (r *MCOAAgentReconciler) ReconcileCMOUWLConfig(ctx context.Context) error {
 		if !errors.IsNotFound(err) {
 			return fmt.Errorf("failed to get UWL configmap: %w", err)
 		}
-		if (remoteWriteURL == "" && (alertmanagerURL == "" || !r.EnableUWLAlertForwarding)) && len(scrapeConfigs) == 0 {
+		if (agent == nil && (alertmanagerURL == "" || !r.EnableUWLAlertForwarding)) && len(scrapeConfigs) == 0 {
 			return nil
 		}
 		isCreate = true
@@ -212,10 +221,7 @@ func (r *MCOAAgentReconciler) ReconcileCMOUWLConfig(ctx context.Context) error {
 		existingRemoteWrites = parsed.Prometheus.RemoteWrite
 	}
 
-	cleanRemoteWrite, err := r.reconcileRemoteWrites(existingRemoteWrites, scrapeConfigs, remoteWriteURL)
-	if err != nil {
-		return err
-	}
+	cleanRemoteWrite := r.reconcileRemoteWrites(existingRemoteWrites, scrapeConfigs, agent)
 
 	if !equality.Semantic.DeepEqual(cleanRemoteWrite, existingRemoteWrites) {
 		if parsed.Prometheus == nil {
@@ -248,14 +254,20 @@ func (r *MCOAAgentReconciler) ReconcileCMOUWLConfig(ctx context.Context) error {
 	return err
 }
 
-func (r *MCOAAgentReconciler) fetchCMOConfigMap(ctx context.Context, key client.ObjectKey, remoteWriteURL, alertmanagerURL string, numScrapeConfigs int) (*corev1.ConfigMap, bool, error) {
+func (r *MCOAAgentReconciler) fetchCMOConfigMap(
+	ctx context.Context,
+	key client.ObjectKey,
+	agent *prometheusv1alpha1.PrometheusAgent,
+	alertmanagerURL string,
+	numScrapeConfigs int,
+) (*corev1.ConfigMap, bool, error) {
 	cm := &corev1.ConfigMap{}
 	err := r.Get(ctx, key, cm)
 	if err != nil {
 		if !errors.IsNotFound(err) {
 			return nil, false, fmt.Errorf("failed to get CMO configmap %s/%s: %w", key.Namespace, key.Name, err)
 		}
-		if remoteWriteURL == "" && alertmanagerURL == "" && numScrapeConfigs == 0 {
+		if agent == nil && alertmanagerURL == "" && numScrapeConfigs == 0 {
 			return nil, false, nil
 		}
 		return &corev1.ConfigMap{
@@ -271,9 +283,12 @@ func (r *MCOAAgentReconciler) fetchCMOConfigMap(ctx context.Context, key client.
 	return cm, false, nil
 }
 
-func (r *MCOAAgentReconciler) reconcileExternalLabels(cfg *cmomanifests.PrometheusK8sConfig, endpoint string) bool {
-	if endpoint == "" {
-		if cfg == nil || cfg.ExternalLabels == nil {
+func (r *MCOAAgentReconciler) reconcileExternalLabels(cfg *cmomanifests.PrometheusK8sConfig, hasAgent bool) bool {
+	if cfg == nil {
+		return false
+	}
+	if !hasAgent {
+		if cfg.ExternalLabels == nil {
 			return false
 		}
 		modified := false
@@ -358,7 +373,7 @@ func (r *MCOAAgentReconciler) newAdditionalAlertmanagerConfig(endpoint string) c
 
 	u, err := url.Parse(endpoint)
 	if err != nil {
-		r.Log.Info("failed to parse alertmanager endpoint, falling back to raw value", "endpoint", endpoint, "error", err.Error())
+		r.Log.Info("failed to parse alertmanager endpoint, falling back to raw value", "endpoint", endpoint, "error", err)
 		config.StaticConfigs = []string{endpoint}
 		return config
 	}
@@ -396,33 +411,27 @@ func (r *MCOAAgentReconciler) listScrapeConfigsByComponent(ctx context.Context, 
 func (r *MCOAAgentReconciler) reconcileRemoteWrites(
 	existing []cmomanifests.RemoteWriteSpec,
 	scrapeConfigs []prometheusv1alpha1.ScrapeConfig,
-	endpoint string,
-) ([]cmomanifests.RemoteWriteSpec, error) {
+	agent *prometheusv1alpha1.PrometheusAgent,
+) []cmomanifests.RemoteWriteSpec {
 	cleanRemoteWrite := r.filterRemoteWrites(existing)
 
-	if endpoint != "" && len(scrapeConfigs) > 0 {
-		rwURL, err := r.buildRemoteWriteURL(endpoint)
-		if err != nil {
-			return nil, err
-		}
-
+	if agent != nil && len(scrapeConfigs) > 0 {
 		for _, sc := range scrapeConfigs {
-			rwSpecTranspiled, err := remotewrite.Transpile(&sc, nil)
+			rwSpecTranspiled, err := remotewrite.Transpile(&sc, agent)
 			if err != nil {
 				// Log the error at Info level and skip to prevent a single malformed ScrapeConfig
 				// from blocking the deployment of other valid scrape configurations on the spoke.
-				r.Log.Info("Skipping malformed scrape config during remote write transpilation", "name", sc.Name, "error", err.Error())
+				r.Log.Info("Skipping malformed scrape config during remote write transpilation", "name", sc.Name, "error", err)
 				continue
 			}
 			if rwSpecTranspiled == nil {
 				continue
 			}
 
-			rwSpec := r.buildRemoteWriteSpec(rwURL, rwSpecTranspiled.WriteRelabelConfigs)
-			cleanRemoteWrite = append(cleanRemoteWrite, rwSpec)
+			cleanRemoteWrite = append(cleanRemoteWrite, toCMORemoteWrite(rwSpecTranspiled))
 		}
 	}
-	return cleanRemoteWrite, nil
+	return cleanRemoteWrite
 }
 
 func (r *MCOAAgentReconciler) filterRemoteWrites(rws []cmomanifests.RemoteWriteSpec) []cmomanifests.RemoteWriteSpec {
@@ -432,50 +441,56 @@ func (r *MCOAAgentReconciler) filterRemoteWrites(rws []cmomanifests.RemoteWriteS
 	})
 }
 
-func (r *MCOAAgentReconciler) buildRemoteWriteSpec(rwURL string, writeRelabelConfigs []monitoringv1.RelabelConfig) cmomanifests.RemoteWriteSpec {
-	return cmomanifests.RemoteWriteSpec{
-		URL: rwURL,
-		TLSConfig: &monitoringv1.SafeTLSConfig{
-			CA: monitoringv1.SecretOrConfigMap{
-				Secret: &corev1.SecretKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: r.CASecret,
-					},
-					Key: "ca.crt",
-				},
-			},
-			Cert: monitoringv1.SecretOrConfigMap{
-				Secret: &corev1.SecretKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: r.CertSecret,
-					},
-					Key: "tls.crt",
-				},
-			},
-			KeySecret: &corev1.SecretKeySelector{
-				LocalObjectReference: corev1.LocalObjectReference{
-					Name: r.CertSecret,
-				},
-				Key: "tls.key",
-			},
-			InsecureSkipVerify: ptr.To(false),
-		},
-		WriteRelabelConfigs: writeRelabelConfigs,
+func toCMORemoteWrite(rw *monitoringv1.RemoteWriteSpec) cmomanifests.RemoteWriteSpec {
+	if rw == nil {
+		return cmomanifests.RemoteWriteSpec{}
 	}
-}
+	spec := cmomanifests.RemoteWriteSpec{
+		URL:                 rw.URL,
+		WriteRelabelConfigs: rw.WriteRelabelConfigs,
+		Headers:             maps.Clone(rw.Headers),
+	}
 
-func (r *MCOAAgentReconciler) buildRemoteWriteURL(endpoint string) (string, error) {
-	if !strings.HasPrefix(endpoint, "https://") && !strings.HasPrefix(endpoint, "http://") {
-		endpoint = "https://" + endpoint
+	if rw.Name != nil {
+		spec.Name = *rw.Name
 	}
-	u, err := url.Parse(endpoint)
-	if err != nil {
-		return "", fmt.Errorf("failed to parse endpoint %q for remote write URL: %w", endpoint, err)
+
+	if rw.RemoteTimeout != nil {
+		spec.RemoteTimeout = string(*rw.RemoteTimeout)
 	}
-	if !strings.HasSuffix(u.Path, operatorconfig.ObservatoriumAPIRemoteWritePath) {
-		u = u.JoinPath(operatorconfig.ObservatoriumAPIRemoteWritePath)
+
+	if rw.BasicAuth != nil {
+		spec.BasicAuth = rw.BasicAuth.DeepCopy()
 	}
-	return u.String(), nil
+
+	if rw.Authorization != nil {
+		spec.Authorization = &monitoringv1.SafeAuthorization{
+			Type: rw.Authorization.Type,
+		}
+		if rw.Authorization.Credentials != nil {
+			spec.Authorization.Credentials = rw.Authorization.Credentials.DeepCopy()
+		}
+	}
+
+	if rw.OAuth2 != nil {
+		spec.OAuth2 = rw.OAuth2.DeepCopy()
+	}
+
+	if rw.TLSConfig != nil {
+		// CAFile, CertFile, KeyFile from TLSConfig are intentionally omitted:
+		// cmomanifests.SafeTLSConfig supports only secret-reference TLS.
+		spec.TLSConfig = rw.TLSConfig.SafeTLSConfig.DeepCopy()
+	}
+
+	if rw.QueueConfig != nil {
+		spec.QueueConfig = rw.QueueConfig.DeepCopy()
+	}
+
+	if rw.ProxyURL != nil {
+		spec.ProxyURL = *rw.ProxyURL
+	}
+
+	return spec
 }
 
 func (r *MCOAAgentReconciler) createConfigMap(ctx context.Context, cm *corev1.ConfigMap, dataKey, updatedYAML string) error {
@@ -500,4 +515,31 @@ func (r *MCOAAgentReconciler) updateConfigMap(ctx context.Context, cm *corev1.Co
 		return fmt.Errorf("failed to update ConfigMap %s/%s: %w", cm.Namespace, cm.Name, err)
 	}
 	return nil
+}
+
+// fetchPrometheusAgentByComponent lists PrometheusAgents by component label and returns
+// the first match. Returns (nil, nil) when zero agents exist or the CRD is not yet registered.
+func (r *MCOAAgentReconciler) fetchPrometheusAgentByComponent(
+	ctx context.Context, component string,
+) (*prometheusv1alpha1.PrometheusAgent, error) {
+	list := &prometheusv1alpha1.PrometheusAgentList{}
+	if err := r.List(ctx, list,
+		client.InNamespace(r.Namespace),
+		client.MatchingLabels{labelKeyComponent: component},
+	); err != nil {
+		if meta.IsNoMatchError(err) {
+			r.Log.V(1).Info("PrometheusAgent CRD not registered yet, skipping", "component", component, "error", err)
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to list PrometheusAgents for component %s: %w", component, err)
+	}
+	if len(list.Items) == 0 {
+		r.Log.V(1).Info("No PrometheusAgent found matching component label", "component", component, "namespace", r.Namespace)
+		return nil, nil
+	}
+	if len(list.Items) > 1 {
+		r.Log.Info("Multiple PrometheusAgents found matching component label, using the first one",
+			"component", component, "count", len(list.Items), "namespace", r.Namespace)
+	}
+	return &list.Items[0], nil
 }

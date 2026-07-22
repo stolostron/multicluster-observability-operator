@@ -19,6 +19,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -69,24 +70,60 @@ func TestCMOConfigReconciler_reconcileRemoteWrites(t *testing.T) {
 		CertSecret: "test-cert-secret",
 	}
 
+	agent := &prometheusv1alpha1.PrometheusAgent{
+		Spec: prometheusv1alpha1.PrometheusAgentSpec{
+			CommonPrometheusFields: monitoringv1.CommonPrometheusFields{
+				RemoteWrite: []monitoringv1.RemoteWriteSpec{
+					{
+						Name: ptr.To("acm-observability"),
+						URL:  "https://hub-am.example.com",
+						TLSConfig: &monitoringv1.TLSConfig{
+							SafeTLSConfig: monitoringv1.SafeTLSConfig{
+								CA: monitoringv1.SecretOrConfigMap{
+									Secret: &corev1.SecretKeySelector{
+										LocalObjectReference: corev1.LocalObjectReference{
+											Name: "test-ca-secret",
+										},
+										Key: "ca.crt",
+									},
+								},
+								Cert: monitoringv1.SecretOrConfigMap{
+									Secret: &corev1.SecretKeySelector{
+										LocalObjectReference: corev1.LocalObjectReference{
+											Name: "test-cert-secret",
+										},
+										Key: "tls.crt",
+									},
+								},
+								KeySecret: &corev1.SecretKeySelector{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "test-cert-secret",
+									},
+									Key: "tls.key",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
 	// Case 1: Empty scrape configs returns empty/clean remote write list
-	configs, err := r.reconcileRemoteWrites(nil, nil, "https://hub-am.example.com")
-	require.NoError(t, err)
+	configs := r.reconcileRemoteWrites(nil, nil, agent)
 	assert.Empty(t, configs)
 
-	// Case 2: Endpoint empty returns empty/clean remote write list even if scrape configs are present
+	// Case 2: Agent empty returns empty/clean remote write list even if scrape configs are present
 	sc := newRawScrapeConfig("test-sc", "test-ns", platformMetricsCollectorRawComponent)
-	configs, err = r.reconcileRemoteWrites(nil, []prometheusv1alpha1.ScrapeConfig{*sc}, "")
-	require.NoError(t, err)
+	configs = r.reconcileRemoteWrites(nil, []prometheusv1alpha1.ScrapeConfig{*sc}, nil)
 	assert.Empty(t, configs)
 
 	// Case 3: Endpoint and ScrapeConfigs present -> transpiles correctly
-	configs, err = r.reconcileRemoteWrites(nil, []prometheusv1alpha1.ScrapeConfig{*sc}, "https://hub-am.example.com")
-	require.NoError(t, err)
+	configs = r.reconcileRemoteWrites(nil, []prometheusv1alpha1.ScrapeConfig{*sc}, agent)
 	require.Len(t, configs, 1)
 
 	rw := configs[0]
-	assert.Equal(t, "https://hub-am.example.com/api/metrics/v1/default/api/v1/receive", rw.URL)
+	assert.Equal(t, "https://hub-am.example.com", rw.URL)
 
 	// Assert TLS Config
 	require.NotNil(t, rw.TLSConfig)
@@ -120,8 +157,7 @@ func TestCMOConfigReconciler_reconcileRemoteWrites(t *testing.T) {
 		},
 	}
 
-	configs, err = r.reconcileRemoteWrites(nil, []prometheusv1alpha1.ScrapeConfig{*scComplex}, "https://hub-am.example.com")
-	require.NoError(t, err)
+	configs = r.reconcileRemoteWrites(nil, []prometheusv1alpha1.ScrapeConfig{*scComplex}, agent)
 	require.Len(t, configs, 1)
 
 	rwComplex := configs[0]
@@ -157,6 +193,9 @@ func TestCMOConfigReconciler_reconcileRawMetrics(t *testing.T) {
 	ctx := context.Background()
 	namespace := "test-namespace"
 
+	agentPlatform := newTestPrometheusAgent("test-agent-platform", namespace, platformMetricsCollectorComponent, "https://hub-am.example.com", "", "")
+	agentUWL := newTestPrometheusAgent("test-agent-uwl", namespace, userWorkloadMetricsCollectorComponent, "https://hub-am.example.com", "", "")
+
 	// 1. Reconcile Platform (CMO) raw metrics RemoteWrite
 	scPlatform := newRawScrapeConfig("test-raw-scrape-platform", namespace, platformMetricsCollectorRawComponent)
 
@@ -170,13 +209,12 @@ func TestCMOConfigReconciler_reconcileRawMetrics(t *testing.T) {
 		},
 	}
 
-	clPlatform := fake.NewClientBuilder().WithScheme(s).WithObjects(scPlatform, cmPlatform).Build()
+	clPlatform := fake.NewClientBuilder().WithScheme(s).WithObjects(scPlatform, cmPlatform, agentPlatform).Build()
 
 	rPlatform := &MCOAAgentReconciler{
 		Client:                        clPlatform,
 		Log:                           ctrl.Log.WithName("test-controller"),
 		Namespace:                     namespace,
-		HubRemoteWriteURL:             "https://hub-am.example.com",
 		HubAlertmanagerURL:            "https://hub-am.example.com",
 		CASecret:                      "test-ca-secret",
 		CertSecret:                    "test-cert-secret",
@@ -194,7 +232,7 @@ func TestCMOConfigReconciler_reconcileRawMetrics(t *testing.T) {
 	require.NoError(t, err)
 
 	platformYAML := updatedCMPlatform.Data[observabilityendpoint.ClusterMonitoringConfigDataKey]
-	assert.Contains(t, platformYAML, "https://hub-am.example.com/api/metrics/v1/default/api/v1/receive")
+	assert.Contains(t, platformYAML, "https://hub-am.example.com")
 	assert.Contains(t, platformYAML, "test-ca-secret")
 	assert.Contains(t, platformYAML, "test-cert-secret")
 	assert.Contains(t, platformYAML, "up")
@@ -212,13 +250,12 @@ func TestCMOConfigReconciler_reconcileRawMetrics(t *testing.T) {
 		},
 	}
 
-	clUWL := fake.NewClientBuilder().WithScheme(s).WithObjects(scUWL, cmUWL).Build()
+	clUWL := fake.NewClientBuilder().WithScheme(s).WithObjects(scUWL, cmUWL, agentUWL).Build()
 
 	rUWL := &MCOAAgentReconciler{
 		Client:                   clUWL,
 		Log:                      ctrl.Log.WithName("test-controller"),
 		Namespace:                namespace,
-		HubRemoteWriteURL:        "https://hub-am.example.com",
 		HubAlertmanagerURL:       "https://hub-am.example.com",
 		CASecret:                 "test-ca-secret",
 		CertSecret:               "test-cert-secret",
@@ -236,7 +273,7 @@ func TestCMOConfigReconciler_reconcileRawMetrics(t *testing.T) {
 	require.NoError(t, err)
 
 	uwlYAML := updatedCMUWL.Data[uwlMonitoringConfigDataKey]
-	assert.Contains(t, uwlYAML, "https://hub-am.example.com/api/metrics/v1/default/api/v1/receive")
+	assert.Contains(t, uwlYAML, "https://hub-am.example.com")
 	assert.Contains(t, uwlYAML, "test-ca-secret")
 	assert.Contains(t, uwlYAML, "test-cert-secret")
 	assert.Contains(t, uwlYAML, "up")
@@ -289,7 +326,9 @@ func TestCMOConfigReconciler_reconcileConfigMutation(t *testing.T) {
 		},
 	}
 
-	clPlatform := fake.NewClientBuilder().WithScheme(s).WithObjects(cmPlatform).Build()
+	agent := newTestPrometheusAgent("test-agent", namespace, platformMetricsCollectorComponent, "https://new-hub.com", "", "")
+
+	clPlatform := fake.NewClientBuilder().WithScheme(s).WithObjects(cmPlatform, agent).Build()
 
 	rPlatform := &MCOAAgentReconciler{
 		Client:                        clPlatform,
@@ -297,7 +336,6 @@ func TestCMOConfigReconciler_reconcileConfigMutation(t *testing.T) {
 		Namespace:                     namespace,
 		ClusterID:                     "new-cluster-id",
 		ClusterName:                   "new-cluster-name",
-		HubRemoteWriteURL:             "https://new-hub.com",
 		HubAlertmanagerURL:            "https://new-hub.com",
 		CASecret:                      "test-ca-secret",
 		CertSecret:                    "test-cert-secret",

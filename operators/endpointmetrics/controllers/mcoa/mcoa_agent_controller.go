@@ -34,7 +34,6 @@ type MCOAAgentReconciler struct {
 	Namespace                     string
 	ClusterID                     string
 	ClusterName                   string
-	HubRemoteWriteURL             string
 	HubAlertmanagerURL            string
 	CASecret                      string
 	CertSecret                    string
@@ -52,7 +51,6 @@ func NewMCOAAgentReconciler(
 	namespace string,
 	clusterID string,
 	clusterName string,
-	hubRemoteWriteURL string,
 	hubAlertmanagerURL string,
 	caSecret string,
 	certSecret string,
@@ -68,7 +66,6 @@ func NewMCOAAgentReconciler(
 		Namespace:                     namespace,
 		ClusterID:                     clusterID,
 		ClusterName:                   clusterName,
-		HubRemoteWriteURL:             hubRemoteWriteURL,
 		HubAlertmanagerURL:            hubAlertmanagerURL,
 		CASecret:                      caSecret,
 		CertSecret:                    certSecret,
@@ -136,37 +133,53 @@ func (r *MCOAAgentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		).
 		Watches(
 			&prometheusv1alpha1.ScrapeConfig{},
-			handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, obj client.Object) []reconcile.Request {
-				if obj.GetNamespace() != r.Namespace {
-					return nil
-				}
-				labels := obj.GetLabels()
-				if labels == nil {
-					return nil
-				}
-				comp := labels[labelKeyComponent]
-				switch comp {
-				case platformMetricsCollectorRawComponent:
-					return []reconcile.Request{
-						{
-							NamespacedName: client.ObjectKey{
-								Name:      operatorconfig.OCPClusterMonitoringConfigMapName,
-								Namespace: operatorconfig.OCPClusterMonitoringNamespace,
-							},
-						},
-					}
-				case userWorkloadMetricsCollectorRawComponent:
-					return []reconcile.Request{
-						{
-							NamespacedName: client.ObjectKey{
-								Name:      operatorconfig.OCPUserWorkloadMonitoringConfigMap,
-								Namespace: operatorconfig.OCPUserWorkloadMonitoringNamespace,
-							},
-						},
-					}
-				}
-				return nil
-			}),
+			handler.EnqueueRequestsFromMapFunc(r.mapComponentLabelToRequests(
+				platformMetricsCollectorRawComponent,
+				userWorkloadMetricsCollectorRawComponent,
+			)),
+		).
+		Watches(
+			&prometheusv1alpha1.PrometheusAgent{},
+			handler.EnqueueRequestsFromMapFunc(r.mapComponentLabelToRequests(
+				platformMetricsCollectorComponent,
+				userWorkloadMetricsCollectorComponent,
+			)),
 		).
 		Complete(r)
+}
+
+func (r *MCOAAgentReconciler) mapComponentLabelToRequests(
+	platformComp, uwlComp string,
+) handler.MapFunc {
+	return func(ctx context.Context, obj client.Object) []reconcile.Request {
+		if obj.GetNamespace() != r.Namespace {
+			return nil
+		}
+		labels := obj.GetLabels()
+		if labels == nil {
+			return nil
+		}
+		comp := labels[labelKeyComponent]
+		switch comp {
+		case platformComp:
+			return []reconcile.Request{
+				{
+					NamespacedName: client.ObjectKey{
+						Name:      operatorconfig.OCPClusterMonitoringConfigMapName,
+						Namespace: operatorconfig.OCPClusterMonitoringNamespace,
+					},
+				},
+			}
+		case uwlComp:
+			return []reconcile.Request{
+				{
+					NamespacedName: client.ObjectKey{
+						Name:      operatorconfig.OCPUserWorkloadMonitoringConfigMap,
+						Namespace: operatorconfig.OCPUserWorkloadMonitoringNamespace,
+					},
+				},
+			}
+		}
+		return nil
+	}
 }

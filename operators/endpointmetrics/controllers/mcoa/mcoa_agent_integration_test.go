@@ -51,6 +51,8 @@ func TestMain(m *testing.M) {
 
 	cvCRD := readCRDFiles(
 		filepath.Join("..", "observabilityendpoint", "testdata", "crd", "clusterversions-crd.yaml"),
+		filepath.Join("crds", "monitoring.rhobs_scrapeconfigs.yaml"),
+		filepath.Join("crds", "monitoring.rhobs_prometheusagents.yaml"),
 	)
 
 	testEnv = &envtest.Environment{
@@ -132,7 +134,6 @@ func TestMCOAAgentIntegration(t *testing.T) {
 		namespace,
 		"test-cluster-id",
 		"test-cluster-name",
-		hubInfo.AlertmanagerEndpoint, // HubRemoteWriteURL
 		hubInfo.AlertmanagerEndpoint, // HubAlertmanagerURL
 		caSecretName,
 		"obs-alertmanager-mtls-cert",
@@ -149,19 +150,26 @@ func TestMCOAAgentIntegration(t *testing.T) {
 	// Deploy standard OBO CRDs first to ensure watched types exist before manager start
 	require.NoError(t, DeployCRDs(ctx, directClient))
 
-	// Wait for ScrapeConfig CRD to be fully established on the API server
+	// Wait for CRDs to be fully established on the API server
 	require.Eventually(t, func() bool {
-		crd := &apiextensionsv1.CustomResourceDefinition{}
-		err := directClient.Get(ctx, types.NamespacedName{Name: "scrapeconfigs.monitoring.rhobs"}, crd)
-		if err != nil {
-			return false
-		}
-		for _, cond := range crd.Status.Conditions {
-			if cond.Type == apiextensionsv1.Established && cond.Status == apiextensionsv1.ConditionTrue {
-				return true
+		for _, name := range []string{"scrapeconfigs.monitoring.rhobs", "prometheusagents.monitoring.rhobs"} {
+			crd := &apiextensionsv1.CustomResourceDefinition{}
+			err := directClient.Get(ctx, types.NamespacedName{Name: name}, crd)
+			if err != nil {
+				return false
+			}
+			established := false
+			for _, cond := range crd.Status.Conditions {
+				if cond.Type == apiextensionsv1.Established && cond.Status == apiextensionsv1.ConditionTrue {
+					established = true
+					break
+				}
+			}
+			if !established {
+				return false
 			}
 		}
-		return false
+		return true
 	}, 10*time.Second, 100*time.Millisecond)
 
 	go func() {
@@ -195,6 +203,8 @@ func TestMCOAAgentIntegration(t *testing.T) {
 			},
 			Data: map[string][]byte{"service-ca.crt": []byte("test-ca")},
 		},
+		newTestPrometheusAgent("test-agent-platform", namespace, platformMetricsCollectorComponent, "https://hub-am.example.com", caSecretName, "test-cert-secret"),
+		newTestPrometheusAgent("test-agent-uwl", namespace, userWorkloadMetricsCollectorComponent, "https://hub-am.example.com", caSecretName, "test-cert-secret"),
 	}
 	for _, obj := range setupResources {
 		err = directClient.Create(ctx, obj)
@@ -227,7 +237,20 @@ func TestMCOAAgentIntegration(t *testing.T) {
 				observabilityendpoint.ClusterMonitoringConfigDataKey: "prometheusK8s: {}",
 			},
 		}
-		require.NoError(t, directClient.Create(ctx, cmoCM, client.FieldOwner(observabilityendpoint.EndpointMonitoringOperatorMgr)))
+		err := directClient.Create(ctx, cmoCM, client.FieldOwner(observabilityendpoint.EndpointMonitoringOperatorMgr))
+		if apierrors.IsAlreadyExists(err) {
+			existing := &corev1.ConfigMap{}
+			require.NoError(t, directClient.Get(ctx, types.NamespacedName{
+				Name:      operatorconfig.OCPClusterMonitoringConfigMapName,
+				Namespace: operatorconfig.OCPClusterMonitoringNamespace,
+			}, existing))
+			existing.Data = map[string]string{
+				observabilityendpoint.ClusterMonitoringConfigDataKey: "prometheusK8s: {}",
+			}
+			require.NoError(t, directClient.Update(ctx, existing))
+		} else {
+			require.NoError(t, err)
+		}
 
 		// Wait for the reconciler to populate our Alertmanager configs
 		require.Eventually(t, func() bool {
@@ -256,8 +279,7 @@ func TestMCOAAgentIntegration(t *testing.T) {
 			namespace,
 			"test-cluster-id",
 			"test-cluster-name",
-			"https://hub-am.example.com", // HubRemoteWriteURL remains active
-			"",                           // empty HubAlertmanagerURL disables forwarding
+			"", // empty HubAlertmanagerURL disables forwarding
 			caSecretName,
 			"obs-alertmanager-mtls-cert",
 			"observability-alertmanager-accessor",
@@ -303,7 +325,20 @@ func TestMCOAAgentIntegration(t *testing.T) {
 				uwlMonitoringConfigDataKey: defaultUWLConfigYAML,
 			},
 		}
-		require.NoError(t, directClient.Create(ctx, uwlCM, client.FieldOwner(observabilityendpoint.EndpointMonitoringOperatorMgr)))
+		err := directClient.Create(ctx, uwlCM, client.FieldOwner(observabilityendpoint.EndpointMonitoringOperatorMgr))
+		if apierrors.IsAlreadyExists(err) {
+			existing := &corev1.ConfigMap{}
+			require.NoError(t, directClient.Get(ctx, types.NamespacedName{
+				Name:      operatorconfig.OCPUserWorkloadMonitoringConfigMap,
+				Namespace: operatorconfig.OCPUserWorkloadMonitoringNamespace,
+			}, existing))
+			existing.Data = map[string]string{
+				uwlMonitoringConfigDataKey: defaultUWLConfigYAML,
+			}
+			require.NoError(t, directClient.Update(ctx, existing))
+		} else {
+			require.NoError(t, err)
+		}
 
 		// Wait for the reconciler to populate our Alertmanager configs in UWL ConfigMap
 		require.Eventually(t, func() bool {
@@ -351,7 +386,6 @@ func TestMCOAAgentIntegration(t *testing.T) {
 			namespace,
 			"test-cluster-id",
 			"test-cluster-name",
-			"https://hub-am.example.com", // HubRemoteWriteURL
 			"https://hub-am.example.com", // HubAlertmanagerURL
 			caSecretName,
 			"obs-alertmanager-mtls-cert",
@@ -389,6 +423,19 @@ func TestMCOAAgentIntegration(t *testing.T) {
 	})
 
 	t.Run("Reconcile Raw Metrics ScrapeConfig: updates CMO and UWL with transpiled RemoteWrite", func(t *testing.T) {
+		// Re-create the mock PrometheusAgents if they were wiped out by the CRD deletion test
+		agentPlatform := newTestPrometheusAgent("test-agent-platform", namespace, platformMetricsCollectorComponent, "https://hub-am.example.com", caSecretName, "test-cert-secret")
+		err := directClient.Create(ctx, agentPlatform)
+		if err != nil && !apierrors.IsAlreadyExists(err) {
+			require.NoError(t, err)
+		}
+
+		agentUWL := newTestPrometheusAgent("test-agent-uwl", namespace, userWorkloadMetricsCollectorComponent, "https://hub-am.example.com", caSecretName, "test-cert-secret")
+		err = directClient.Create(ctx, agentUWL)
+		if err != nil && !apierrors.IsAlreadyExists(err) {
+			require.NoError(t, err)
+		}
+
 		// Create a platform-metrics-collector-raw ScrapeConfig
 		scPlatform := newRawScrapeConfig("test-raw-platform", namespace, platformMetricsCollectorRawComponent)
 		require.NoError(t, directClient.Create(ctx, scPlatform))
@@ -404,7 +451,7 @@ func TestMCOAAgentIntegration(t *testing.T) {
 				return false
 			}
 			data := found.Data[observabilityendpoint.ClusterMonitoringConfigDataKey]
-			return strings.Contains(data, "https://hub-am.example.com/api/metrics/v1/default/api/v1/receive") &&
+			return strings.Contains(data, "https://hub-am.example.com") &&
 				strings.Contains(data, "tlsConfig") &&
 				strings.Contains(data, "writeRelabelConfigs") &&
 				strings.Contains(data, "up")
@@ -425,7 +472,7 @@ func TestMCOAAgentIntegration(t *testing.T) {
 				return false
 			}
 			data := found.Data[uwlMonitoringConfigDataKey]
-			return strings.Contains(data, "https://hub-am.example.com/api/metrics/v1/default/api/v1/receive") &&
+			return strings.Contains(data, "https://hub-am.example.com") &&
 				strings.Contains(data, "tlsConfig") &&
 				strings.Contains(data, "writeRelabelConfigs") &&
 				strings.Contains(data, "up")
@@ -453,7 +500,7 @@ func TestMCOAAgentIntegration(t *testing.T) {
 				return false
 			}
 			data := found.Data[observabilityendpoint.ClusterMonitoringConfigDataKey]
-			return !strings.Contains(data, "/api/metrics/v1/default/api/v1/receive")
+			return !strings.Contains(data, "test-cert-secret")
 		}, 5*time.Second, 100*time.Millisecond)
 
 		// Fetch the UWL ScrapeConfig we created in the previous subtest
@@ -476,7 +523,7 @@ func TestMCOAAgentIntegration(t *testing.T) {
 				return false
 			}
 			data := found.Data[uwlMonitoringConfigDataKey]
-			return !strings.Contains(data, "/api/metrics/v1/default/api/v1/receive")
+			return !strings.Contains(data, "test-cert-secret")
 		}, 5*time.Second, 100*time.Millisecond)
 	})
 }
