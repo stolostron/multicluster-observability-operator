@@ -643,8 +643,12 @@ func createAllRelatedRes(
 				return createManifestwork(ctx, c, manifestWork)
 			})
 			if retryErr != nil {
-				allErrors = append(allErrors, fmt.Errorf("failed to create manifestwork: %w", retryErr))
-				log.Error(retryErr, "Failed to create manifestwork")
+				if errors.Is(retryErr, ErrManifestWorkTerminating) {
+					log.Info("ManifestWork is currently terminating, skipping and waiting for deletion event watch to trigger recreate", "namespace", namespace, "name", manifestWork.Name)
+				} else {
+					allErrors = append(allErrors, fmt.Errorf("failed to create manifestwork: %w", retryErr))
+					log.Error(retryErr, "Failed to create manifestwork")
+				}
 				continue
 			}
 		}

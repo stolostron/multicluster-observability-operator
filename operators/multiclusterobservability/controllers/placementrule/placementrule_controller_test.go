@@ -26,7 +26,7 @@ import (
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -229,7 +229,7 @@ func TestObservabilityAddonController(t *testing.T) {
 	}
 
 	err = c.Get(context.TODO(), types.NamespacedName{Name: namespace2 + workNameSuffix, Namespace: namespace2}, found)
-	if err == nil || !errors.IsNotFound(err) {
+	if err == nil || !k8serrors.IsNotFound(err) {
 		t.Fatalf("Failed to delete manifestwork for cluster2: (%v)", err)
 	}
 
