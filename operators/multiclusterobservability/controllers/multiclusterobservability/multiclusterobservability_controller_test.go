@@ -1842,18 +1842,18 @@ func TestMCOAWaitForManifestWorks(t *testing.T) {
 			Client: clientWithWork,
 			Scheme: s,
 		}
-		hasWorks, err := r1.hasMCOAManifestWorks(t.Context())
+		blocking, err := r1.hasMCOAManifestWorks(t.Context())
 		assert.NoError(t, err)
-		assert.True(t, hasWorks)
+		assert.Contains(t, blocking, "test-ns")
 
 		clientEmpty := fake.NewClientBuilder().WithScheme(s).Build()
 		r2 := &MultiClusterObservabilityReconciler{
 			Client: clientEmpty,
 			Scheme: s,
 		}
-		hasWorks, err = r2.hasMCOAManifestWorks(t.Context())
+		blocking, err = r2.hasMCOAManifestWorks(t.Context())
 		assert.NoError(t, err)
-		assert.False(t, hasWorks)
+		assert.Empty(t, blocking)
 	})
 
 	t.Run("initFinalization delay", func(t *testing.T) {
