@@ -8,13 +8,14 @@ import (
 	"context"
 	"testing"
 
-	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 	addonv1beta1 "open-cluster-management.io/api/addon/v1beta1"
 	workv1 "open-cluster-management.io/api/work/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 )
 
 func TestHasMCOAManifestWorks(t *testing.T) {
@@ -32,13 +33,12 @@ func TestHasMCOAManifestWorks(t *testing.T) {
 				},
 			},
 		}
+		// In production, ManagedClusterAddOn resources do not necessarily carry labels.
+		// We explicitly leave it unlabeled to simulate this.
 		addon := &addonv1beta1.ManagedClusterAddOn{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      config.MultiClusterObservabilityAddon,
 				Namespace: "healthy-cluster",
-				Labels: map[string]string{
-					addonv1beta1.AddonLabelKey: config.MultiClusterObservabilityAddon,
-				},
 			},
 			Status: addonv1beta1.ManagedClusterAddOnStatus{
 				Conditions: []metav1.Condition{
@@ -66,13 +66,12 @@ func TestHasMCOAManifestWorks(t *testing.T) {
 				},
 			},
 		}
+		// In production, ManagedClusterAddOn resources do not necessarily carry labels.
+		// We explicitly leave it unlabeled to simulate this.
 		addon := &addonv1beta1.ManagedClusterAddOn{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      config.MultiClusterObservabilityAddon,
 				Namespace: "offline-cluster",
-				Labels: map[string]string{
-					addonv1beta1.AddonLabelKey: config.MultiClusterObservabilityAddon,
-				},
 			},
 			Status: addonv1beta1.ManagedClusterAddOnStatus{
 				Conditions: []metav1.Condition{
