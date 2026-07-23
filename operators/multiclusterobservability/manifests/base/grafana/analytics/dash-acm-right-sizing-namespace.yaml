@@ -244,7 +244,7 @@ data:
               "refId": "A"
             }
           ],
-          "title": "CPU Utilization of Top Namespaces",
+          "title": "CPU Usage to Request Ratio of Top Namespaces",
           "type": "timeseries"
         },
         {
@@ -1175,7 +1175,7 @@ data:
               "refId": "A"
             }
           ],
-          "title": "Memory Utilization of Top Namespaces",
+          "title": "Memory Usage to Request Ratio of Top Namespaces",
           "type": "timeseries"
         },
         {
