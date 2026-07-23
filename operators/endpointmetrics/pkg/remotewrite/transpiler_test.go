@@ -437,4 +437,16 @@ func TestTranspile_MultipleRemoteWrites(t *testing.T) {
 	if len(gotList[1].WriteRelabelConfigs) == 0 {
 		t.Errorf("Second spec missing relabel configs")
 	}
+
+	// Verify deep copy isolation: mutating pointers/slices in gotList[0] must not affect gotList[1]
+	origReplacement := *gotList[1].WriteRelabelConfigs[0].Replacement
+	gotList[0].WriteRelabelConfigs[0].Replacement = ptr.To("MUTATED")
+	gotList[0].WriteRelabelConfigs[0].SourceLabels[0] = "MUTATED"
+
+	if *gotList[1].WriteRelabelConfigs[0].Replacement != origReplacement {
+		t.Errorf("Shared pointer leakage: second spec's replacement was mutated to %q", *gotList[1].WriteRelabelConfigs[0].Replacement)
+	}
+	if string(gotList[1].WriteRelabelConfigs[0].SourceLabels[0]) == "MUTATED" {
+		t.Errorf("Shared slice leakage: second spec's source label was mutated")
+	}
 }

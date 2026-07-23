@@ -171,8 +171,13 @@ func Transpile(scrapeConfig *monitoringv1alpha1.ScrapeConfig, agent *monitoringv
 
 	var specs []*monitoringv1.RemoteWriteSpec
 	for _, agentRw := range agent.Spec.RemoteWrite {
+		relabelConfigsCopy := make([]monitoringv1.RelabelConfig, len(relabelConfigs))
+		for i, cfg := range relabelConfigs {
+			cfg.DeepCopyInto(&relabelConfigsCopy[i])
+		}
+
 		spec := &monitoringv1.RemoteWriteSpec{
-			WriteRelabelConfigs: slices.Clone(relabelConfigs),
+			WriteRelabelConfigs: relabelConfigsCopy,
 		}
 
 		spec.URL = agentRw.URL
