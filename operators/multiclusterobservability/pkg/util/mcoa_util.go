@@ -11,8 +11,9 @@ import (
 
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
 	addonv1beta1 "open-cluster-management.io/api/addon/v1beta1"
+	clusterv1 "open-cluster-management.io/api/cluster/v1"
 	workv1 "open-cluster-management.io/api/work/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -44,27 +45,18 @@ func IsMCOAEnabled(mco *mcov1beta2.MultiClusterObservability) bool {
 // HasMCOAManifestWorks checks for remaining ManifestWorks for the MCOA addon on the hub,
 // and returns a sorted list of namespaces where ManifestWorks are blocking the deletion.
 func HasMCOAManifestWorks(ctx context.Context, c client.Client) ([]string, error) {
-	addonList := &addonv1beta1.ManagedClusterAddOnList{}
-	if err := c.List(ctx, addonList); err != nil {
-		return nil, fmt.Errorf("failed to list ManagedClusterAddOns: %w", err)
+	clusterList := &clusterv1.ManagedClusterList{}
+	if err := c.List(ctx, clusterList); err != nil {
+		return nil, fmt.Errorf("failed to list ManagedClusters: %w", err)
 	}
 
 	ignoredNamespaces := make(map[string]struct{})
-	for _, addon := range addonList.Items {
-		if addon.Name != config.MultiClusterObservabilityAddon {
-			continue
-		}
-		isAvailable := false
-		for _, cond := range addon.Status.Conditions {
-			if cond.Type == "Available" && cond.Status == metav1.ConditionTrue {
-				isAvailable = true
-				break
-			}
-		}
-		// If the ManagedClusterAddOn exists on the Hub but is NOT available (stalled, offline, etc.),
+	for _, mc := range clusterList.Items {
+		isAvailable := meta.IsStatusConditionTrue(mc.Status.Conditions, clusterv1.ManagedClusterConditionAvailable)
+		// If the ManagedCluster exists on the Hub but is NOT available (stalled, offline, etc.),
 		// we ignore its ManifestWorks to prevent disconnected spokes from hanging the cleanup process.
 		if !isAvailable {
-			ignoredNamespaces[addon.Namespace] = struct{}{}
+			ignoredNamespaces[mc.Name] = struct{}{}
 		}
 	}
 
