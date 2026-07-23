@@ -1824,6 +1824,7 @@ func TestMCOAWaitForManifestWorks(t *testing.T) {
 	require.NoError(t, routev1.Install(s))
 	require.NoError(t, workv1.Install(s))
 	require.NoError(t, addonv1beta1.Install(s))
+	require.NoError(t, clusterv1.Install(s))
 	require.NoError(t, mcov1beta2.SchemeBuilder.AddToScheme(s))
 
 	mw := &workv1.ManifestWork{
