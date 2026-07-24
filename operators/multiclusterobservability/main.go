@@ -327,6 +327,7 @@ func main() {
 
 	if err = (&analytics.AnalyticsReconciler{
 		Client: mgr.GetClient(),
+		Log:    ctrl.Log.WithName("controllers").WithName("Analytics"),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Analytics")
 		os.Exit(1)

@@ -25,10 +25,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
-
-var log = logf.Log.WithName("controller_rightsizing")
 
 var mcoGVK = mcov1beta2.GroupVersion.WithKind("MultiClusterObservability")
 
@@ -44,6 +41,7 @@ const analyticsStabilizationWindow = 10 * time.Second
 // that would not be consistent across replicas.
 type AnalyticsReconciler struct {
 	Client        client.Client
+	Log           logr.Logger
 	migrationDone bool
 	cleanupAt     time.Time
 }
@@ -57,7 +55,7 @@ func (r *AnalyticsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	// TODO: Future enhancement - Add status subresource to track right-sizing state
 	// and configuration details via: kubectl get mco -o jsonpath='{.status.rightSizing}'
 
-	reqLogger := log.WithValues("Request.Namespace", req.Namespace, "Request.Name", req.Name)
+	reqLogger := r.Log.WithValues("Request.Namespace", req.Namespace, "Request.Name", req.Name)
 	reqLogger.Info("Reconciling RightSizing")
 
 	// Fetch the MultiClusterObservability instance

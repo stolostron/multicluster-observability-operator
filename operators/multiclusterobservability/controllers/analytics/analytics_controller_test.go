@@ -97,8 +97,8 @@ func TestEnsureRightSizingDefaultsAddsMissingFlags(t *testing.T) {
 		WithObjects(mco).
 		Build()
 
-	r := &AnalyticsReconciler{Client: c}
-	updated, err := r.ensureRightSizingDefaults(context.TODO(), mco.DeepCopy(), log)
+	r := &AnalyticsReconciler{Client: c, Log: ctrl.Log.WithName("test")}
+	updated, err := r.ensureRightSizingDefaults(context.TODO(), mco.DeepCopy(), ctrl.Log.WithName("test"))
 	require.NoError(t, err)
 	require.NotNil(t, updated.Spec.Capabilities)
 	require.NotNil(t, updated.Spec.Capabilities.Platform)
@@ -132,8 +132,8 @@ func TestEnsureRightSizingDefaultsPreservesExistingValue(t *testing.T) {
 	typedMCO := &mcov1beta2.MultiClusterObservability{}
 	require.NoError(t, c.Get(context.TODO(), types.NamespacedName{Name: "observability"}, typedMCO))
 
-	r := &AnalyticsReconciler{Client: c}
-	updated, err := r.ensureRightSizingDefaults(context.TODO(), typedMCO, log)
+	r := &AnalyticsReconciler{Client: c, Log: ctrl.Log.WithName("test")}
+	updated, err := r.ensureRightSizingDefaults(context.TODO(), typedMCO, ctrl.Log.WithName("test"))
 	require.NoError(t, err)
 
 	// Namespace RS must stay true (explicitly set by user)
@@ -154,7 +154,7 @@ func TestAnalyticsReconciler_FeatureEnabled(t *testing.T) {
 		WithObjects(mco).
 		Build()
 
-	r := &AnalyticsReconciler{Client: c}
+	r := &AnalyticsReconciler{Client: c, Log: ctrl.Log.WithName("test")}
 	_, err := r.Reconcile(context.TODO(), ctrl.Request{})
 	require.NoError(t, err)
 }
@@ -169,7 +169,7 @@ func TestAnalyticsReconciler_FeatureDisabled(t *testing.T) {
 		WithObjects(mco).
 		Build()
 
-	r := &AnalyticsReconciler{Client: c}
+	r := &AnalyticsReconciler{Client: c, Log: ctrl.Log.WithName("test")}
 	_, err := r.Reconcile(context.TODO(), ctrl.Request{})
 	require.NoError(t, err)
 }
@@ -184,7 +184,7 @@ func TestAnalyticsReconciler_PausedAnnotation(t *testing.T) {
 		WithObjects(mco).
 		Build()
 
-	r := &AnalyticsReconciler{Client: c}
+	r := &AnalyticsReconciler{Client: c, Log: ctrl.Log.WithName("test")}
 	_, err := r.Reconcile(context.TODO(), ctrl.Request{})
 	require.NoError(t, err)
 }
@@ -213,7 +213,7 @@ func TestAnalyticsReconciler_AddsFinalizer(t *testing.T) {
 		WithObjects(mco).
 		Build()
 
-	r := &AnalyticsReconciler{Client: c}
+	r := &AnalyticsReconciler{Client: c, Log: ctrl.Log.WithName("test")}
 	_, err := r.Reconcile(context.TODO(), ctrl.Request{})
 	require.NoError(t, err)
 
@@ -285,7 +285,7 @@ func TestAnalyticsReconciler_DeletionCleansUp(t *testing.T) {
 	err := c.Delete(context.TODO(), mco)
 	require.NoError(t, err)
 
-	r := &AnalyticsReconciler{Client: c}
+	r := &AnalyticsReconciler{Client: c, Log: ctrl.Log.WithName("test")}
 
 	// Phase 1: sync disabled state to ADC and start stabilization window
 	result, err := r.Reconcile(context.TODO(), ctrl.Request{})
@@ -350,7 +350,7 @@ func TestAnalyticsReconciler_DeletionBlocksMidWindow(t *testing.T) {
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(mco, adc).Build()
 	require.NoError(t, c.Delete(context.TODO(), mco))
 
-	r := &AnalyticsReconciler{Client: c}
+	r := &AnalyticsReconciler{Client: c, Log: ctrl.Log.WithName("test")}
 
 	// Phase 1: starts stabilization window
 	result1, err := r.Reconcile(context.TODO(), ctrl.Request{})
@@ -391,7 +391,7 @@ func TestAnalyticsReconciler_DeletionSkipsWithoutFinalizer(t *testing.T) {
 	err := c.Delete(context.TODO(), mco)
 	require.NoError(t, err)
 
-	r := &AnalyticsReconciler{Client: c}
+	r := &AnalyticsReconciler{Client: c, Log: ctrl.Log.WithName("test")}
 	_, err = r.Reconcile(context.TODO(), ctrl.Request{})
 	require.NoError(t, err)
 
@@ -415,7 +415,7 @@ func TestReconcile_MigrationSetsFlag(t *testing.T) {
 	}
 
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(mco, adc).Build()
-	r := &AnalyticsReconciler{Client: c}
+	r := &AnalyticsReconciler{Client: c, Log: ctrl.Log.WithName("test")}
 
 	require.False(t, r.migrationDone)
 	_, err := r.Reconcile(context.TODO(), ctrl.Request{})
@@ -456,9 +456,9 @@ func TestSyncRightSizingStateToADC_DelegatingEnabled(t *testing.T) {
 	}
 
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(mco, adc).Build()
-	r := &AnalyticsReconciler{Client: c}
+	r := &AnalyticsReconciler{Client: c, Log: ctrl.Log.WithName("test")}
 
-	err := r.syncRightSizingStateToADC(context.TODO(), mco, true, log)
+	err := r.syncRightSizingStateToADC(context.TODO(), mco, true, ctrl.Log.WithName("test"))
 	require.NoError(t, err)
 
 	// Verify ADC was updated to "enabled"
@@ -503,9 +503,9 @@ func TestSyncRightSizingStateToADC_BothEnabled(t *testing.T) {
 	}
 
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(mco, adc).Build()
-	r := &AnalyticsReconciler{Client: c}
+	r := &AnalyticsReconciler{Client: c, Log: ctrl.Log.WithName("test")}
 
-	err := r.syncRightSizingStateToADC(context.TODO(), mco, true, log)
+	err := r.syncRightSizingStateToADC(context.TODO(), mco, true, ctrl.Log.WithName("test"))
 	require.NoError(t, err)
 
 	updated := &addonv1beta1.AddOnDeploymentConfig{}
@@ -536,9 +536,9 @@ func TestSyncRightSizingStateToADC_ADCNotFound(t *testing.T) {
 
 	// No ADC created — should return nil (not an error)
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(mco).Build()
-	r := &AnalyticsReconciler{Client: c}
+	r := &AnalyticsReconciler{Client: c, Log: ctrl.Log.WithName("test")}
 
-	err := r.syncRightSizingStateToADC(context.TODO(), mco, true, log)
+	err := r.syncRightSizingStateToADC(context.TODO(), mco, true, ctrl.Log.WithName("test"))
 	require.NoError(t, err)
 }
 
@@ -562,9 +562,9 @@ func TestSyncRightSizingStateToADC_NoUpdateWhenValuesMatch(t *testing.T) {
 	}
 
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(mco, adc).Build()
-	r := &AnalyticsReconciler{Client: c}
+	r := &AnalyticsReconciler{Client: c, Log: ctrl.Log.WithName("test")}
 
-	err := r.syncRightSizingStateToADC(context.TODO(), mco, true, log)
+	err := r.syncRightSizingStateToADC(context.TODO(), mco, true, ctrl.Log.WithName("test"))
 	require.NoError(t, err)
 
 	// Verify values unchanged
@@ -611,10 +611,10 @@ func TestSyncRightSizingStateToADC_DeletionForcesDisabled(t *testing.T) {
 	}
 
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(mco, adc).Build()
-	r := &AnalyticsReconciler{Client: c}
+	r := &AnalyticsReconciler{Client: c, Log: ctrl.Log.WithName("test")}
 
 	// Deletion path: delegatingToMCOA=false must force all RS vars to disabled.
-	err := r.syncRightSizingStateToADC(context.TODO(), mco, false, log)
+	err := r.syncRightSizingStateToADC(context.TODO(), mco, false, ctrl.Log.WithName("test"))
 	require.NoError(t, err)
 
 	updated := &addonv1beta1.AddOnDeploymentConfig{}
@@ -658,7 +658,7 @@ func TestReconcile_MigrationRunsOnce(t *testing.T) {
 	}
 
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(mco, legacyPolicy, legacyPB).Build()
-	r := &AnalyticsReconciler{Client: c}
+	r := &AnalyticsReconciler{Client: c, Log: ctrl.Log.WithName("test")}
 
 	// First reconcile: migrationDone starts false, should run cleanup and transition to true.
 	require.False(t, r.migrationDone)
