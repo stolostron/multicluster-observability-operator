@@ -7,3 +7,6 @@ resources:
 - role.yaml
 - role_binding.yaml
 - service_account.yaml
+- networkpolicy-endpoint-operator.yaml
+- networkpolicy-metrics-collector.yaml
+- networkpolicy-uwl-metrics-collector.yaml

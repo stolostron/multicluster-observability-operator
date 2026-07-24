@@ -12,6 +12,7 @@ import (
 	mcov1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
@@ -61,6 +62,7 @@ func GetK8sObjWithVersion(kind, version string) runtime.Object {
 		"CustomResourceDefinitionv1beta1": &apiextensionsv1beta1.CustomResourceDefinition{},
 		"ObservabilityAddon":              &mcov1beta1.ObservabilityAddon{},
 		"Prometheus":                      &prometheusv1.Prometheus{},
+		"NetworkPolicy":                   &networkingv1.NetworkPolicy{},
 	}
 	if kind == "CustomResourceDefinition" {
 		kind += version

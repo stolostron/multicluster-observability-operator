@@ -1,0 +1,18 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: metrics-collector
+  # namespace set by loadTemplates → spokeNameSpace
+spec:
+  podSelector:
+    matchLabels:
+      component: metrics-collector
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - ports:
+        - protocol: TCP
+          port: 8080
+  egress:
+    - {}

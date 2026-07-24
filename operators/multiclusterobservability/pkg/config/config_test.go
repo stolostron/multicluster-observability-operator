@@ -859,6 +859,123 @@ func TestGetMCHVersions(t *testing.T) {
 	}
 }
 
+func TestIsNetworkPoliciesEnabled(t *testing.T) {
+	tests := []struct {
+		name string
+		u    *unstructured.Unstructured
+		want bool
+	}{
+		{
+			name: "nil unstructured",
+			u:    nil,
+			want: false,
+		},
+		{
+			name: "networkPolicies enabled",
+			u: &unstructured.Unstructured{Object: map[string]interface{}{
+				"spec": map[string]interface{}{
+					"networkPolicies": map[string]interface{}{
+						"enabled": true,
+					},
+				},
+			}},
+			want: true,
+		},
+		{
+			name: "networkPolicies disabled",
+			u: &unstructured.Unstructured{Object: map[string]interface{}{
+				"spec": map[string]interface{}{
+					"networkPolicies": map[string]interface{}{
+						"enabled": false,
+					},
+				},
+			}},
+			want: false,
+		},
+		{
+			name: "networkPolicies absent",
+			u: &unstructured.Unstructured{Object: map[string]interface{}{
+				"spec": map[string]interface{}{},
+			}},
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := IsNetworkPoliciesEnabled(tt.u)
+			if got != tt.want {
+				t.Errorf("IsNetworkPoliciesEnabled() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func helperMCHWithNetworkPolicies(namespace string, enabled bool) *unstructured.Unstructured {
+	return &unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"apiVersion": MCHGroup + "/" + MCHVersion,
+			"kind":       MCHKind,
+			"metadata": map[string]interface{}{
+				"name":      "multiclusterhub",
+				"namespace": namespace,
+			},
+			"spec": map[string]interface{}{
+				"networkPolicies": map[string]interface{}{
+					"enabled": enabled,
+				},
+			},
+		},
+	}
+}
+
+func TestGetNetworkPoliciesEnabled(t *testing.T) {
+	ns := GetMCONamespace()
+	tests := []struct {
+		name    string
+		client  client.Client
+		want    bool
+		wantErr bool
+	}{
+		{
+			name:    "no MultiClusterHub found",
+			client:  fake.NewClientBuilder().Build(),
+			want:    false,
+			wantErr: false,
+		},
+		{
+			name: "networkPolicies enabled",
+			client: fake.NewClientBuilder().WithObjects(
+				helperMCHWithNetworkPolicies(ns, true),
+			).Build(),
+			want:    true,
+			wantErr: false,
+		},
+		{
+			name: "networkPolicies disabled",
+			client: fake.NewClientBuilder().WithObjects(
+				helperMCHWithNetworkPolicies(ns, false),
+			).Build(),
+			want:    false,
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := GetNetworkPoliciesEnabled(t.Context(), tt.client)
+			if tt.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+			if got != tt.want {
+				t.Errorf("GetNetworkPoliciesEnabled() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestGetGrafanaQueryTimeout(t *testing.T) {
 	tests := []struct {
 		name     string

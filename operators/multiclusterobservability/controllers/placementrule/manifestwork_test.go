@@ -1063,3 +1063,77 @@ func TestCreateManifestwork_Terminating(t *testing.T) {
 		t.Fatalf("Expected ErrManifestWorkTerminating, got %v", err)
 	}
 }
+
+func mchWithNetworkPolicies(namespace string, enabled bool) *unstructured.Unstructured {
+	return &unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"apiVersion": config.MCHGroup + "/" + config.MCHVersion,
+			"kind":       config.MCHKind,
+			"metadata": map[string]interface{}{
+				"name":      "multiclusterhub",
+				"namespace": namespace,
+			},
+			"spec": map[string]interface{}{
+				"networkPolicies": map[string]interface{}{
+					"enabled": enabled,
+				},
+			},
+		},
+	}
+}
+
+func countNetworkPolicyManifests(works []workv1.Manifest) int {
+	count := 0
+	for _, w := range works {
+		if isNetworkPolicyManifest(w.RawExtension) {
+			count++
+		}
+	}
+	return count
+}
+
+func TestGenerateGlobalManifestResourcesNetworkPolicies(t *testing.T) {
+	initSchema(t)
+	setupTest(t)
+
+	const expectedNetworkPolicies = 3 // endpoint-operator, metrics-collector, uwl-metrics-collector
+
+	tests := []struct {
+		name        string
+		npEnabled   bool
+		wantNPCount int
+	}{
+		{
+			name:        "networkPolicies enabled includes NetworkPolicy manifests",
+			npEnabled:   true,
+			wantNPCount: expectedNetworkPolicies,
+		},
+		{
+			name:        "networkPolicies disabled omits NetworkPolicy manifests",
+			npEnabled:   false,
+			wantNPCount: 0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rawExtensionList = nil
+			obsAddonCRDv1 = nil
+			obsAddonCRDv1beta1 = nil
+
+			objs := append(getRuntimeObjects(), mchWithNetworkPolicies(config.GetMCONamespace(), tt.npEnabled))
+			c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
+			mockKubeClient := newMockKubeClient()
+
+			works, _, err := generateGlobalManifestResources(context.Background(), c, newTestMCO(), mockKubeClient)
+			if err != nil {
+				t.Fatalf("generateGlobalManifestResources: %v", err)
+			}
+
+			got := countNetworkPolicyManifests(works)
+			if got != tt.wantNPCount {
+				t.Errorf("NetworkPolicy manifests = %d, want %d (total works=%d)", got, tt.wantNPCount, len(works))
+			}
+		})
+	}
+}

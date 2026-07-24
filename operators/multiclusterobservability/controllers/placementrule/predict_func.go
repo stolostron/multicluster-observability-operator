@@ -217,6 +217,15 @@ func getMchPred(c client.Client) predicate.Funcs {
 					config.SetCachedImageManifestData(currentData)
 					return true
 				}
+
+				uOld, ok := e.ObjectOld.(*unstructured.Unstructured)
+				if !ok {
+					return false
+				}
+				// Rebuild ManifestWorks when MCH networkPolicies.enabled flips.
+				if config.IsNetworkPoliciesEnabled(uOld) != config.IsNetworkPoliciesEnabled(uNew) {
+					return true
+				}
 				return false
 			}
 			return false
