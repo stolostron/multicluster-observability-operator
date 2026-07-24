@@ -272,12 +272,9 @@ func initVars() {
 	if testOptions.HubCluster.Password != "" {
 		kubeadminCredential = testOptions.HubCluster.Password
 	}
-	hubName, err := utils.GetHubClusterName(testOptions)
-	if err != nil {
-		klog.Warningf("Failed to resolve hub managed cluster name, using default: %v", err)
-		hubName = "local-cluster"
+	if testOptions.HubCluster.Name == "" {
+		testOptions.HubCluster.Name = "local-cluster"
 	}
-	testOptions.HubCluster.Name = hubName
 
 	if testOptions.ManagedClusters != nil && len(testOptions.ManagedClusters) > 0 {
 		for i, mc := range testOptions.ManagedClusters {

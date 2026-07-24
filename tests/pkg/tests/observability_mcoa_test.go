@@ -46,15 +46,24 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 	// var ocpClustersWithHub []utils.Cluster
 
 	BeforeAll(func() {
-		By("Getting available managed clusters")
+		By("Getting all available managed clusters from the API")
 		var err error
-		managedClusters, err = utils.GetAvailableManagedClustersAsClusters(testOptions)
+		managedClustersWithHub, err = utils.GetAvailableClustersFromAPI(testOptions, true)
 		Expect(err).ToNot(HaveOccurred())
-		clusterNames := []string{}
+
+		hubClusterName, err := utils.GetHubClusterName(testOptions)
+		Expect(err).ToNot(HaveOccurred())
+
+		managedClusters = make([]utils.Cluster, 0, len(managedClustersWithHub))
+		for _, c := range managedClustersWithHub {
+			if c.Name != hubClusterName {
+				managedClusters = append(managedClusters, c)
+			}
+		}
+		clusterNames := make([]string, 0, len(managedClusters))
 		for _, cluster := range managedClusters {
 			clusterNames = append(clusterNames, cluster.Name)
 		}
-		managedClustersWithHub = append(managedClusters, testOptions.HubCluster)
 		By(fmt.Sprintf("Running tests against the following managed clusters (excluding the hub): %v", clusterNames))
 
 		By("Getting available OCP managed clusters")
