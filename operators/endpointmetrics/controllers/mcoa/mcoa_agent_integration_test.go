@@ -33,9 +33,12 @@ import (
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/config"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	yamltool "sigs.k8s.io/yaml"
+	"k8s.io/utils/ptr"
 )
 
 var (
@@ -174,8 +177,11 @@ func TestMCOAAgentIntegration(t *testing.T) {
 		return true
 	}, 10*time.Second, 100*time.Millisecond)
 
+	mgrCtx, mgrCancel := context.WithCancel(ctx)
+	mgrStopped := make(chan struct{})
 	go func() {
-		if err := mgr.Start(ctx); err != nil {
+		defer close(mgrStopped)
+		if err := mgr.Start(mgrCtx); err != nil && mgrCtx.Err() == nil {
 			fmt.Printf("Manager failed: %v\n", err)
 		}
 	}()
@@ -274,49 +280,6 @@ func TestMCOAAgentIntegration(t *testing.T) {
 		}, 5*time.Second, 100*time.Millisecond)
 	})
 
-	t.Run("Reconcile Revert path: Empty AlertmanagerEndpoint cleanly reverts the Alertmanager configuration", func(t *testing.T) {
-		// Instantiate a brand-new, private local reconciler with alert forwarding disabled (HubAlertmanagerURL = "") to simulate config update
-		revertReconciler := NewMCOAAgentReconciler(
-			directClient,
-			mgr.GetLogger(),
-			mgr.GetScheme(),
-			mgr.GetEventRecorder("mcoa-agent-test"),
-			namespace,
-			"test-cluster-id",
-			"test-cluster-name",
-			"", // empty HubAlertmanagerURL disables forwarding
-			caSecretName,
-			"obs-alertmanager-mtls-cert",
-			"observability-alertmanager-accessor",
-			false, // enablePlatformAlertForwarding
-			false, // enableUWLAlertForwarding
-		)
-
-		// Trigger reconcile by directly calling the Reconcile method on this private reconciler
-		_, err = revertReconciler.Reconcile(ctx, ctrl.Request{
-			NamespacedName: types.NamespacedName{
-				Name:      operatorconfig.OCPClusterMonitoringConfigMapName,
-				Namespace: operatorconfig.OCPClusterMonitoringNamespace,
-			},
-		})
-		require.NoError(t, err)
-
-		// The revert reconcile is synchronous (directClient.Update commits immediately), so assert
-		// the state right after Reconcile returns rather than using require.Eventually, which would
-		// race with the background manager re-applying the config.
-		foundCM := &corev1.ConfigMap{}
-		err = directClient.Get(ctx, types.NamespacedName{
-			Name:      operatorconfig.OCPClusterMonitoringConfigMapName,
-			Namespace: operatorconfig.OCPClusterMonitoringNamespace,
-		}, foundCM)
-		if !apierrors.IsNotFound(err) {
-			require.NoError(t, err)
-			data := foundCM.Data[observabilityendpoint.ClusterMonitoringConfigDataKey]
-			require.False(t, strings.Contains(data, "hub-alertmanager-router-ca-hub-id"), "expected AM CA secret to be removed from CMO CM after revert")
-			require.False(t, strings.Contains(data, "hub-am.example.com"), "expected AM URL to be removed from CMO CM after revert")
-		}
-	})
-
 	t.Run("Reconcile UWL Config: Managed ConfigMap is successfully populated with Alertmanager configuration", func(t *testing.T) {
 		uwlCM := &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
@@ -357,7 +320,64 @@ func TestMCOAAgentIntegration(t *testing.T) {
 		}, 5*time.Second, 100*time.Millisecond)
 	})
 
+	// Stop the background manager before the revert tests so it cannot interfere
+	// with the direct Reconcile calls and the state assertions that follow.
+	mgrCancel()
+	<-mgrStopped
+
+	t.Run("Reconcile Revert path: Empty AlertmanagerEndpoint cleanly reverts the Alertmanager configuration", func(t *testing.T) {
+		// Instantiate a brand-new, private local reconciler with alert forwarding disabled (HubAlertmanagerURL = "") to simulate config update
+		revertReconciler := NewMCOAAgentReconciler(
+			directClient,
+			mgr.GetLogger(),
+			mgr.GetScheme(),
+			mgr.GetEventRecorder("mcoa-agent-test"),
+			namespace,
+			"test-cluster-id",
+			"test-cluster-name",
+			"", // empty HubAlertmanagerURL disables forwarding
+			caSecretName,
+			"obs-alertmanager-mtls-cert",
+			"observability-alertmanager-accessor",
+			false, // enablePlatformAlertForwarding
+			false, // enableUWLAlertForwarding
+		)
+
+		// Trigger reconcile by directly calling the Reconcile method on this private reconciler
+		_, err = revertReconciler.Reconcile(ctx, ctrl.Request{
+			NamespacedName: types.NamespacedName{
+				Name:      operatorconfig.OCPClusterMonitoringConfigMapName,
+				Namespace: operatorconfig.OCPClusterMonitoringNamespace,
+			},
+		})
+		require.NoError(t, err)
+
+		foundCM := &corev1.ConfigMap{}
+		err = directClient.Get(ctx, types.NamespacedName{
+			Name:      operatorconfig.OCPClusterMonitoringConfigMapName,
+			Namespace: operatorconfig.OCPClusterMonitoringNamespace,
+		}, foundCM)
+		if !apierrors.IsNotFound(err) {
+			require.NoError(t, err)
+			data := foundCM.Data[observabilityendpoint.ClusterMonitoringConfigDataKey]
+			require.False(t, strings.Contains(data, "hub-alertmanager-router-ca-hub-id"), "expected AM CA secret to be removed from CMO CM after revert")
+			require.False(t, strings.Contains(data, "hub-am.example.com"), "expected AM URL to be removed from CMO CM after revert")
+		}
+	})
+
 	t.Run("Reconcile UWL Revert path: Disabled EnableUWLAlertForwarding cleanly reverts the Alertmanager configuration", func(t *testing.T) {
+		// Pre-condition: the UWL CM must still carry the AM config at this point.
+		// This proves that the CMO revert above only touched cluster-monitoring-config
+		// and did not accidentally clean user-workload-monitoring-config as well.
+		preCM := &corev1.ConfigMap{}
+		require.NoError(t, directClient.Get(ctx, types.NamespacedName{
+			Name:      operatorconfig.OCPUserWorkloadMonitoringConfigMap,
+			Namespace: operatorconfig.OCPUserWorkloadMonitoringNamespace,
+		}, preCM))
+		preData := preCM.Data[uwlMonitoringConfigDataKey]
+		require.True(t, strings.Contains(preData, "hub-alertmanager-router-ca-hub-id"), "pre-condition: UWL CM should still have AM config before the revert")
+		require.True(t, strings.Contains(preData, "hub-am.example.com"), "pre-condition: UWL CM should still have AM config before the revert")
+
 		// Instantiate a brand-new, private local reconciler with UWL alert forwarding disabled to simulate config update
 		revertReconciler := NewMCOAAgentReconciler(
 			directClient,
@@ -384,9 +404,6 @@ func TestMCOAAgentIntegration(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		// The revert reconcile is synchronous (directClient.Update commits immediately), so assert
-		// the state right after Reconcile returns rather than using require.Eventually, which would
-		// race with the background manager re-applying the config.
 		foundCM := &corev1.ConfigMap{}
 		err = directClient.Get(ctx, types.NamespacedName{
 			Name:      operatorconfig.OCPUserWorkloadMonitoringConfigMap,
@@ -399,6 +416,40 @@ func TestMCOAAgentIntegration(t *testing.T) {
 			require.False(t, strings.Contains(data, "hub-am.example.com"), "expected AM URL to be removed from UWL CM after revert")
 		}
 	})
+
+	// Restart with a fresh manager for the remaining tests. A controller-runtime manager
+	// cannot be restarted after it is stopped, so we create a new instance.
+	// Disable the metrics server to avoid a port conflict with the first manager.
+	mgr2, err := ctrl.NewManager(cfg, ctrl.Options{
+		Scheme:  s,
+		Cache:   GetCacheOptions(),
+		Metrics: metricsserver.Options{BindAddress: "0"},
+		// Controller name "configmap" is already registered in the process-global metrics
+		// registry by the first manager; skip re-registration validation.
+		Controller: config.Controller{SkipNameValidation: ptr.To(true)},
+	})
+	require.NoError(t, err)
+	require.NoError(t, NewMCOAAgentReconciler(
+		mgr2.GetClient(),
+		mgr2.GetLogger(),
+		mgr2.GetScheme(),
+		mgr2.GetEventRecorder("mcoa-agent-test"),
+		namespace,
+		"test-cluster-id",
+		"test-cluster-name",
+		hubInfo.AlertmanagerEndpoint,
+		caSecretName,
+		"obs-alertmanager-mtls-cert",
+		"observability-alertmanager-accessor",
+		true, // enablePlatformAlertForwarding
+		true, // enableUWLAlertForwarding
+	).SetupWithManager(mgr2))
+	go func() {
+		if err := mgr2.Start(ctx); err != nil && ctx.Err() == nil {
+			fmt.Printf("Manager2 failed: %v\n", err)
+		}
+	}()
+	require.True(t, mgr2.GetCache().WaitForCacheSync(ctx), "Failed to sync cache for manager2")
 
 	t.Run("Reconcile Raw Metrics ScrapeConfig: updates CMO and UWL with transpiled RemoteWrite", func(t *testing.T) {
 		// Re-create the mock PrometheusAgents if they were wiped out by the CRD deletion test
