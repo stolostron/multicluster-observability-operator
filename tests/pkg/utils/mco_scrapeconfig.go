@@ -6,6 +6,7 @@ package utils
 
 import (
 	"context"
+	"fmt"
 	"maps"
 
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -43,16 +44,20 @@ func CreateScrapeConfig(opt TestOptions, name, componentLabel string, matchParam
 	_, err := clientDynamic.Resource(NewScrapeConfigGVR()).Namespace(MCO_NAMESPACE).Create(context.TODO(), scrapeConfig, metav1.CreateOptions{})
 	if err != nil {
 		if errors.IsAlreadyExists(err) {
-			existing, err := clientDynamic.Resource(NewScrapeConfigGVR()).Namespace(MCO_NAMESPACE).Get(context.TODO(), name, metav1.GetOptions{})
-			if err != nil {
-				return err
+			existing, errGet := clientDynamic.Resource(NewScrapeConfigGVR()).Namespace(MCO_NAMESPACE).Get(context.TODO(), name, metav1.GetOptions{})
+			if errGet != nil {
+				return fmt.Errorf("failed to get ScrapeConfig %s/%s: %w", MCO_NAMESPACE, name, errGet)
 			}
 			scrapeConfig.SetResourceVersion(existing.GetResourceVersion())
-			_, err = clientDynamic.Resource(NewScrapeConfigGVR()).Namespace(MCO_NAMESPACE).Update(context.TODO(), scrapeConfig, metav1.UpdateOptions{})
-			return err
+			_, errUpdate := clientDynamic.Resource(NewScrapeConfigGVR()).Namespace(MCO_NAMESPACE).Update(context.TODO(), scrapeConfig, metav1.UpdateOptions{})
+			if errUpdate != nil {
+				return fmt.Errorf("failed to update ScrapeConfig %s/%s: %w", MCO_NAMESPACE, name, errUpdate)
+			}
+			return nil
 		}
+		return fmt.Errorf("failed to create ScrapeConfig %s/%s: %w", MCO_NAMESPACE, name, err)
 	}
-	return err
+	return nil
 }
 
 func DeleteScrapeConfig(opt TestOptions, name string) error {
@@ -98,9 +103,9 @@ func CreateScrapeConfigWithAnnotations(ctx context.Context, opt TestOptions, nam
 	_, err := clientDynamic.Resource(NewScrapeConfigGVR()).Namespace(MCO_NAMESPACE).Create(ctx, scrapeConfig, metav1.CreateOptions{})
 	if err != nil {
 		if errors.IsAlreadyExists(err) {
-			existing, err := clientDynamic.Resource(NewScrapeConfigGVR()).Namespace(MCO_NAMESPACE).Get(ctx, name, metav1.GetOptions{})
-			if err != nil {
-				return err
+			existing, errGet := clientDynamic.Resource(NewScrapeConfigGVR()).Namespace(MCO_NAMESPACE).Get(ctx, name, metav1.GetOptions{})
+			if errGet != nil {
+				return fmt.Errorf("failed to get ScrapeConfig %s/%s: %w", MCO_NAMESPACE, name, errGet)
 			}
 			scrapeConfig.SetResourceVersion(existing.GetResourceVersion())
 			if annotations != nil {
@@ -111,9 +116,13 @@ func CreateScrapeConfigWithAnnotations(ctx context.Context, opt TestOptions, nam
 				maps.Copy(existingAnnotations, annotations)
 				scrapeConfig.SetAnnotations(existingAnnotations)
 			}
-			_, err = clientDynamic.Resource(NewScrapeConfigGVR()).Namespace(MCO_NAMESPACE).Update(ctx, scrapeConfig, metav1.UpdateOptions{})
-			return err
+			_, errUpdate := clientDynamic.Resource(NewScrapeConfigGVR()).Namespace(MCO_NAMESPACE).Update(ctx, scrapeConfig, metav1.UpdateOptions{})
+			if errUpdate != nil {
+				return fmt.Errorf("failed to update ScrapeConfig %s/%s: %w", MCO_NAMESPACE, name, errUpdate)
+			}
+			return nil
 		}
+		return fmt.Errorf("failed to create ScrapeConfig %s/%s: %w", MCO_NAMESPACE, name, err)
 	}
-	return err
+	return nil
 }

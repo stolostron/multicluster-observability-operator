@@ -6,6 +6,7 @@ package utils
 
 import (
 	"context"
+	"fmt"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -58,16 +59,20 @@ func CreateMonitoringStack(ctx context.Context, opt TestOptions, cluster Cluster
 	_, err := clientDynamic.Resource(NewMonitoringStackGVR()).Namespace(namespace).Create(ctx, ms, metav1.CreateOptions{})
 	if err != nil {
 		if errors.IsAlreadyExists(err) {
-			existing, err := clientDynamic.Resource(NewMonitoringStackGVR()).Namespace(namespace).Get(ctx, name, metav1.GetOptions{})
-			if err != nil {
-				return err
+			existing, errGet := clientDynamic.Resource(NewMonitoringStackGVR()).Namespace(namespace).Get(ctx, name, metav1.GetOptions{})
+			if errGet != nil {
+				return fmt.Errorf("failed to get MonitoringStack %s/%s: %w", namespace, name, errGet)
 			}
 			existing.Object["spec"] = ms.Object["spec"]
-			_, err = clientDynamic.Resource(NewMonitoringStackGVR()).Namespace(namespace).Update(ctx, existing, metav1.UpdateOptions{})
-			return err
+			_, errUpdate := clientDynamic.Resource(NewMonitoringStackGVR()).Namespace(namespace).Update(ctx, existing, metav1.UpdateOptions{})
+			if errUpdate != nil {
+				return fmt.Errorf("failed to update MonitoringStack %s/%s: %w", namespace, name, errUpdate)
+			}
+			return nil
 		}
+		return fmt.Errorf("failed to create MonitoringStack %s/%s: %w", namespace, name, err)
 	}
-	return err
+	return nil
 }
 
 func DeleteMonitoringStack(ctx context.Context, opt TestOptions, cluster Cluster, name, namespace string) error {
@@ -80,5 +85,8 @@ func DeleteMonitoringStack(ctx context.Context, opt TestOptions, cluster Cluster
 	if err != nil && errors.IsNotFound(err) {
 		return nil
 	}
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to delete MonitoringStack %s/%s: %w", namespace, name, err)
+	}
+	return nil
 }

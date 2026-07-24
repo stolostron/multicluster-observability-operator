@@ -159,7 +159,7 @@ func waitForConfigHashPopulated(ctx context.Context, opt TestOptions, addonName 
 				Get(ctx, addonName, metav1.GetOptions{})
 			if err != nil {
 				if isTransientAddonError(err) {
-					klog.V(1).Infof("Transient error getting ManagedClusterAddon %s/%s, retrying: %v", cluster.Name, addonName, err)
+					klog.V(1).InfoS("Transient error getting ManagedClusterAddon, retrying", "cluster", cluster.Name, "addon", addonName, "err", err)
 					return false, nil // transient, retry
 				}
 				return false, fmt.Errorf("failed to get ManagedClusterAddon %s/%s: %w", cluster.Name, addonName, err)
