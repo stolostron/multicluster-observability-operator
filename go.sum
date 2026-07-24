@@ -428,8 +428,6 @@ github.com/stackitcloud/stackit-sdk-go/core v0.17.2 h1:jPyn+i8rkp2hM80+hOg0B/1EV
 github.com/stackitcloud/stackit-sdk-go/core v0.17.2/go.mod h1:8KIw3czdNJ9sdil9QQimxjR6vHjeINFrRv0iZ67wfn0=
 github.com/stolostron/controller-filtered-cache v0.0.0-20260616160842-d4400ae7d765 h1:DZyt9YH6G/1atrFOQNn7xPcw1Op+9lRlkg72qWNcwdg=
 github.com/stolostron/controller-filtered-cache v0.0.0-20260616160842-d4400ae7d765/go.mod h1:qIo6KMBjYrFz91UpeLg+XNF0uukjrzgVfdf1EAX7Xf0=
-github.com/stolostron/kubernetes-dependency-watches v0.10.2 h1:b8g3Wye6igeRrrSQwXGr4Ch4zTY4uouzHlDARw8/m7w=
-github.com/stolostron/kubernetes-dependency-watches v0.10.2/go.mod h1:pV1b/PwVNG4a5tzBcqxhUpMjjo5nY0gUb6ieu6sGH6o=
 github.com/stolostron/locutus v0.0.0-20250206205144-9e42fd1bc0a2 h1:ylP11oTJB5wCogd4ruz8fhP412xN1oxqjc2+GbuugJg=
 github.com/stolostron/locutus v0.0.0-20250206205144-9e42fd1bc0a2/go.mod h1:/vWrwexkfG8FKRfV694BBe6u1Vf37rB8nDsvgF8xPa0=
 github.com/stolostron/observatorium-operator v0.0.0-20260715135030-1d202794235d h1:32BcTOruwBGXw9dP6haJ4LUtw2QDID8Vuf1LyyCCYNw=
@@ -685,8 +683,6 @@ open-cluster-management.io/addon-framework v1.3.0 h1:rqW8Dl2Gcbac+8C4mQhOtbbmXb+
 open-cluster-management.io/addon-framework v1.3.0/go.mod h1:UP3lXnEKduMF+6CTPJKzsIahrO6Hd55MSPhDYo1OwaM=
 open-cluster-management.io/api v1.3.0 h1:Q3miH38BE3N5+PesHQ0kcFi5nhX5350m7OJWapZcVqY=
 open-cluster-management.io/api v1.3.0/go.mod h1:t0DsBv4gjIo9ojd7GYfA2tcEMpNf0h5Ix68pFDXwNSk=
-open-cluster-management.io/config-policy-controller v0.16.0 h1:hIrgTvJXYRuYZ+Gph4EPq+8heQKczWlCSSctGQVi6OI=
-open-cluster-management.io/config-policy-controller v0.16.0/go.mod h1:NEl+/esHnMIbRRwndgBqzILqL+nro2mbrcDowZHSMZk=
 open-cluster-management.io/governance-policy-propagator v0.19.0 h1:5tVCsUvuRkc0XlUNopuGWGw9UDXDXTqA8z8TNA6721k=
 open-cluster-management.io/governance-policy-propagator v0.19.0/go.mod h1:pUxqI48imtKD44BWRGG8TlMg3//nbPahO0S1SNwpukA=
 open-cluster-management.io/sdk-go v1.3.0 h1:03VnnN3c10FwWnsSl9+apevKadLUw1hrKIu91JHL364=

@@ -258,9 +258,6 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		}
 	}
 
-	// Check if right-sizing is delegated to MCOA via MCO CR annotation.
-	rightSizingDelegated := util.IsRightSizingDelegated(instance)
-
 	obsAPIURL, err := config.GetObsAPIExternalURL(ctx, r.Client, config.GetDefaultNamespace())
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to get the Observatorium API URL: %w", err) // Already wrapped
@@ -269,9 +266,8 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	// Build render options
 	rendererOptions := &rendering.RendererOptions{
 		MCOAOptions: rendering.MCOARendererOptions{
-			DisableCMAORender:    disableMCOACMAORender,
-			MetricsHubHostname:   obsAPIURL.Host,
-			RightSizingDelegated: rightSizingDelegated,
+			DisableCMAORender:  disableMCOACMAORender,
+			MetricsHubHostname: obsAPIURL.Host,
 		},
 	}
 
@@ -338,7 +334,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		}
 	}
 
-	if !rendering.MCOAEnabled(instance) && !rightSizingDelegated {
+	if !rendering.MCOAEnabled(instance) && !rendering.RightSizingEnabled(instance) {
 		// Explicitly delete the CMA so the addon framework cleans up ManagedClusterAddons
 		// and ManifestWorks on spokes. MCOAResources() skips CMA when DisableCMAORender
 		// is set (to preserve user annotations during normal operation), but during cleanup

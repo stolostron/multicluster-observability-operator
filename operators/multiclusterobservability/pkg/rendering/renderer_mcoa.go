@@ -27,6 +27,12 @@ import (
 const (
 	cmaoKind = "ClusterManagementAddOn"
 
+	grafanaMCOAHomeDashboardID = "89eaec849a6e4837a619fb0540c22b13"
+	grafanaLink                = "/d/" + grafanaMCOAHomeDashboardID + "/acm-clusters-overview"
+
+	// GrafanaMCOADashboardPath is the MCOA Grafana dashboard URL path for the CMA launch-link annotation.
+	GrafanaMCOADashboardPath = grafanaLink
+
 	// AODC CustomizedVariable Names
 	namePlatformLogsCollection        = "platformLogsCollection"
 	namePlatformIncidentDetection     = "platformIncidentDetection"
@@ -40,18 +46,11 @@ const (
 	nameUserWorkloadMetricsAlerts     = "userWorkloadMetricsAlerts"
 	nameMetricsHubHostname            = "metricsHubHostname"
 	namePLatformMetricsUI             = "platformMetricsUI"
-
-	grafanaMCOAHomeDashboardID = "89eaec849a6e4837a619fb0540c22b13"
-	grafanaLink                = "/d/" + grafanaMCOAHomeDashboardID + "/acm-clusters-overview"
-
-	// GrafanaMCOADashboardPath is the MCOA Grafana dashboard URL path for the CMA launch-link annotation.
-	GrafanaMCOADashboardPath = grafanaLink
 )
 
 type MCOARendererOptions struct {
-	DisableCMAORender    bool
-	MetricsHubHostname   string
-	RightSizingDelegated bool
+	DisableCMAORender  bool
+	MetricsHubHostname string
 }
 
 // newMCOARenderer initializes the MCOA template rendering functions.
@@ -280,20 +279,15 @@ func (r *MCORenderer) renderAddonDeploymentConfig(
 				appendCustomVar(aodc, namePlatformIncidentDetection, uipluginsCRDFQDN)
 			}
 
-			// Right-sizing ADC variables: when MCOA manages RS (delegated),
-			// sync actual CR state. Otherwise set "disabled" so MCOA doesn't deploy RS.
-			delegated := r.rendererOptions != nil && r.rendererOptions.MCOAOptions.RightSizingDelegated
-			if delegated {
-				appendCustomVar(aodc, mcoutil.ADCKeyRightSizingDelegated, "true")
-			} else {
-				appendCustomVar(aodc, mcoutil.ADCKeyRightSizingDelegated, "false")
-			}
-			if delegated && cs.Platform.Analytics.NamespaceRightSizingRecommendation.Enabled {
+			// In ACM 5.0 GA, right-sizing is always MCOA-managed. Sync the CR's
+			// actual enabled/disabled spec state so MCOA knows what to deploy.
+			appendCustomVar(aodc, mcoutil.ADCKeyRightSizingDelegated, "true")
+			if cs.Platform.Analytics.NamespaceRightSizingRecommendation.Enabled {
 				appendCustomVar(aodc, mcoutil.ADCKeyPlatformNamespaceRightSizing, "enabled")
 			} else {
 				appendCustomVar(aodc, mcoutil.ADCKeyPlatformNamespaceRightSizing, "disabled")
 			}
-			if delegated && cs.Platform.Analytics.VirtualizationRightSizingRecommendation.Enabled {
+			if cs.Platform.Analytics.VirtualizationRightSizingRecommendation.Enabled {
 				appendCustomVar(aodc, mcoutil.ADCKeyPlatformVirtualizationRightSizing, "enabled")
 			} else {
 				appendCustomVar(aodc, mcoutil.ADCKeyPlatformVirtualizationRightSizing, "disabled")
@@ -366,7 +360,7 @@ func (r *MCORenderer) renderMCOATemplates(
 		// Skip rendering the ClusterManagementAddOn resource if it already exists.
 		// MCO creates this resource on first deploy, then allows users to manage it.
 		// No MCOAEnabled guard needed here — the caller (Render/MCOAResources) already
-		// gates entry via MCOAEnabled || rightSizingDelegated.
+		// gates entry via MCOAEnabled || RightSizingEnabled.
 		if template.GetKind() == cmaoKind &&
 			r.rendererOptions != nil && r.rendererOptions.MCOAOptions.DisableCMAORender {
 			continue
@@ -394,9 +388,9 @@ func (r *MCORenderer) renderMCOATemplates(
 	return uobjs, nil
 }
 
-// rightSizingEnabled returns true if at least one right-sizing feature
+// RightSizingEnabled returns true if at least one right-sizing feature
 // (namespace or virtualization) is enabled in the MCO CR spec.
-func rightSizingEnabled(cr *obv1beta2.MultiClusterObservability) bool {
+func RightSizingEnabled(cr *obv1beta2.MultiClusterObservability) bool {
 	if cr.Spec.Capabilities == nil || cr.Spec.Capabilities.Platform == nil {
 		return false
 	}
@@ -405,8 +399,8 @@ func rightSizingEnabled(cr *obv1beta2.MultiClusterObservability) bool {
 }
 
 // MCOAEnabled returns true if any non-right-sizing MCOA capability is enabled.
-// Right-sizing alone does NOT trigger MCOA deployment — it requires the MCO CR
-// delegation annotation to be set for MCOA-based right-sizing.
+// In ACM 5.0 GA, right-sizing is always MCOA-based — use RightSizingEnabled
+// separately to check whether the RS feature itself is active.
 func MCOAEnabled(cr *obv1beta2.MultiClusterObservability) bool {
 	if cr.Spec.Capabilities == nil {
 		return false
@@ -432,10 +426,8 @@ func MCOAPlatformMetricsEnabled(cr *obv1beta2.MultiClusterObservability) bool {
 	if cr.Spec.Capabilities == nil {
 		return false
 	}
-
 	if cr.Spec.Capabilities.Platform != nil && cr.Spec.Capabilities.Platform.Metrics.Default.Enabled {
 		return true
 	}
-
 	return false
 }

@@ -492,22 +492,14 @@ spec:
           - policies
           - placementbindings
           verbs:
-          - get
           - list
-          - create
-          - update
-          - watch
           - delete
         - apiGroups:
           - cluster.open-cluster-management.io
           resources:
           - placements
           verbs:
-          - get
           - list
-          - create
-          - update
-          - watch
           - delete
         serviceAccountName: multicluster-observability-operator
       deployments:
