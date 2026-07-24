@@ -127,6 +127,14 @@ func NewPrometheusRuleGVR() schema.GroupVersionResource {
 	}
 }
 
+func NewMCOAPrometheusRuleGVR() schema.GroupVersionResource {
+	return schema.GroupVersionResource{
+		Group:    "monitoring.rhobs",
+		Version:  "v1",
+		Resource: "prometheusrules",
+	}
+}
+
 func NewScrapeConfigGVR() schema.GroupVersionResource {
 	return schema.GroupVersionResource{
 		Group:    "monitoring.rhobs",

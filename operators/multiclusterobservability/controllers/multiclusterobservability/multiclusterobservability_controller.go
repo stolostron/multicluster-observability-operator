@@ -49,7 +49,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	addonv1beta1 "open-cluster-management.io/api/addon/v1beta1"
-	workv1 "open-cluster-management.io/api/work/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -86,7 +85,6 @@ type MultiClusterObservabilityReconciler struct {
 	Log               logr.Logger
 	Scheme            *runtime.Scheme
 	CRDMap            map[string]bool
-	APIReader         client.Reader
 	RESTMapper        meta.RESTMapper
 	ImageClient       imagev1client.ImageV1Interface
 	LastStorageConfig *mcov1beta2.StorageConfig
@@ -1228,17 +1226,8 @@ func (r *MultiClusterObservabilityReconciler) deleteMCOACMA(ctx context.Context)
 }
 
 // hasMCOAManifestWorks checks if there are any remaining ManifestWorks for the MCOA addon on the hub.
-func (r *MultiClusterObservabilityReconciler) hasMCOAManifestWorks(ctx context.Context) (bool, error) {
-	workList := &workv1.ManifestWorkList{}
-	opts := []client.ListOption{
-		client.MatchingLabels{
-			addonv1beta1.AddonLabelKey: config.MultiClusterObservabilityAddon,
-		},
-	}
-	if err := r.Client.List(ctx, workList, opts...); err != nil {
-		return false, fmt.Errorf("failed to list ManifestWorks: %w", err)
-	}
-	return len(workList.Items) > 0, nil
+func (r *MultiClusterObservabilityReconciler) hasMCOAManifestWorks(ctx context.Context) ([]string, error) {
+	return util.HasMCOAManifestWorks(ctx, r.Client)
 }
 
 // cleanupMCOAManifestWorks deletes the ClusterManagementAddOn (CMA) and waits for its ManifestWorks to be cleaned up.
@@ -1248,12 +1237,17 @@ func (r *MultiClusterObservabilityReconciler) cleanupMCOAManifestWorks(ctx conte
 		return false, ctrl.Result{}, err
 	}
 
-	hasWorks, err := r.hasMCOAManifestWorks(ctx)
+	blockingClusters, err := r.hasMCOAManifestWorks(ctx)
 	if err != nil {
 		return false, ctrl.Result{}, fmt.Errorf("failed to check for remaining ManifestWorks during MCOA cleanup: %w", err)
 	}
-	if hasWorks {
-		logger.Info("Waiting for MCOA ManifestWorks to be deleted")
+	if len(blockingClusters) > 0 {
+		logClusters := blockingClusters
+		if len(logClusters) > 10 {
+			logClusters = logClusters[:10:10]
+			logClusters = append(logClusters, fmt.Sprintf("...and %d more", len(blockingClusters)-10))
+		}
+		logger.Info("Waiting for MCOA ManifestWorks to be deleted", "blockingClusters", logClusters)
 		return true, ctrl.Result{RequeueAfter: mcoaCleanupRequeueInterval}, nil
 	}
 

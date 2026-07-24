@@ -5,7 +5,17 @@
 package util
 
 import (
+	"context"
+	"fmt"
+	"slices"
+
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	"k8s.io/apimachinery/pkg/api/meta"
+	addonv1beta1 "open-cluster-management.io/api/addon/v1beta1"
+	clusterv1 "open-cluster-management.io/api/cluster/v1"
+	workv1 "open-cluster-management.io/api/work/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // IsMCOAEnabled returns true if any MCOA capability is enabled.
@@ -30,4 +40,52 @@ func IsMCOAEnabled(mco *mcov1beta2.MultiClusterObservability) bool {
 	}
 
 	return false
+}
+
+// HasMCOAManifestWorks checks for remaining ManifestWorks for the MCOA addon on the hub,
+// and returns a sorted list of namespaces where ManifestWorks are blocking the deletion.
+func HasMCOAManifestWorks(ctx context.Context, c client.Client) ([]string, error) {
+	clusterList := &clusterv1.ManagedClusterList{}
+	if err := c.List(ctx, clusterList); err != nil {
+		return nil, fmt.Errorf("failed to list ManagedClusters: %w", err)
+	}
+
+	ignoredNamespaces := make(map[string]struct{})
+	for _, mc := range clusterList.Items {
+		isAvailable := meta.IsStatusConditionTrue(mc.Status.Conditions, clusterv1.ManagedClusterConditionAvailable)
+		// If the ManagedCluster exists on the Hub but is NOT available (stalled, offline, etc.),
+		// we ignore its ManifestWorks to prevent disconnected spokes from hanging the cleanup process.
+		if !isAvailable {
+			ignoredNamespaces[mc.Name] = struct{}{}
+		}
+	}
+
+	workList := &workv1.ManifestWorkList{}
+	opts := []client.ListOption{
+		client.MatchingLabels{
+			addonv1beta1.AddonLabelKey: config.MultiClusterObservabilityAddon,
+		},
+	}
+	if err := c.List(ctx, workList, opts...); err != nil {
+		return nil, fmt.Errorf("failed to list ManifestWorks: %w", err)
+	}
+
+	blockingMap := make(map[string]struct{})
+	for _, work := range workList.Items {
+		if _, ignored := ignoredNamespaces[work.Namespace]; !ignored {
+			blockingMap[work.Namespace] = struct{}{}
+		}
+	}
+
+	if len(blockingMap) == 0 {
+		return nil, nil
+	}
+
+	blockingNamespaces := make([]string, 0, len(blockingMap))
+	for ns := range blockingMap {
+		blockingNamespaces = append(blockingNamespaces, ns)
+	}
+	slices.Sort(blockingNamespaces)
+
+	return blockingNamespaces, nil
 }

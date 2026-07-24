@@ -9,6 +9,7 @@ import (
 	"fmt"
 
 	"github.com/go-logr/logr"
+	prometheusv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/controllers/observabilityendpoint"
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	corev1 "k8s.io/api/core/v1"
@@ -21,22 +22,24 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 // MCOAAgentReconciler reconciles the MCOA components on the managed cluster.
 type MCOAAgentReconciler struct {
 	client.Client
-	Log                      logr.Logger
-	Scheme                   *runtime.Scheme
-	Recorder                 events.EventRecorder
-	Namespace                string
-	ClusterID                string
-	ClusterName              string
-	AlertmanagerEndpoint     string
-	CASecret                 string
-	CertSecret               string
-	AccessorSecret           string
-	EnableUWLAlertForwarding bool
+	Log                           logr.Logger
+	Scheme                        *runtime.Scheme
+	Recorder                      events.EventRecorder
+	Namespace                     string
+	ClusterID                     string
+	ClusterName                   string
+	HubAlertmanagerURL            string
+	CASecret                      string
+	CertSecret                    string
+	AccessorSecret                string
+	EnablePlatformAlertForwarding bool
+	EnableUWLAlertForwarding      bool
 }
 
 // NewMCOAAgentReconciler creates a new MCOAAgentReconciler.
@@ -48,25 +51,27 @@ func NewMCOAAgentReconciler(
 	namespace string,
 	clusterID string,
 	clusterName string,
-	alertmanagerEndpoint string,
+	hubAlertmanagerURL string,
 	caSecret string,
 	certSecret string,
 	accessorSecret string,
+	enablePlatformAlertForwarding bool,
 	enableUWLAlertForwarding bool,
 ) *MCOAAgentReconciler {
 	return &MCOAAgentReconciler{
-		Client:                   client,
-		Log:                      log,
-		Scheme:                   scheme,
-		Recorder:                 recorder,
-		Namespace:                namespace,
-		ClusterID:                clusterID,
-		ClusterName:              clusterName,
-		AlertmanagerEndpoint:     alertmanagerEndpoint,
-		CASecret:                 caSecret,
-		CertSecret:               certSecret,
-		AccessorSecret:           accessorSecret,
-		EnableUWLAlertForwarding: enableUWLAlertForwarding,
+		Client:                        client,
+		Log:                           log,
+		Scheme:                        scheme,
+		Recorder:                      recorder,
+		Namespace:                     namespace,
+		ClusterID:                     clusterID,
+		ClusterName:                   clusterName,
+		HubAlertmanagerURL:            hubAlertmanagerURL,
+		CASecret:                      caSecret,
+		CertSecret:                    certSecret,
+		AccessorSecret:                accessorSecret,
+		EnablePlatformAlertForwarding: enablePlatformAlertForwarding,
+		EnableUWLAlertForwarding:      enableUWLAlertForwarding,
 	}
 }
 
@@ -75,13 +80,12 @@ func (r *MCOAAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	switch {
 	case req.Name == operatorconfig.OCPClusterMonitoringConfigMapName && req.Namespace == operatorconfig.OCPClusterMonitoringNamespace:
-		if err := r.reconcileCMO(ctx, req.NamespacedName); err != nil {
+		if err := r.ReconcileCMOPlatformConfig(ctx); err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to reconcile CMO config: %w", err)
 		}
 		return ctrl.Result{}, nil
-
 	case req.Name == operatorconfig.OCPUserWorkloadMonitoringConfigMap && req.Namespace == operatorconfig.OCPUserWorkloadMonitoringNamespace:
-		if err := r.reconcileUWLConfig(ctx); err != nil {
+		if err := r.ReconcileCMOUWLConfig(ctx); err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to reconcile UWL config: %w", err)
 		}
 		return ctrl.Result{}, nil
@@ -127,5 +131,55 @@ func (r *MCOAAgentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				GenericFunc: func(_ event.GenericEvent) bool { return false },
 			}),
 		).
+		Watches(
+			&prometheusv1alpha1.ScrapeConfig{},
+			handler.EnqueueRequestsFromMapFunc(r.mapComponentLabelToRequests(
+				platformMetricsCollectorRawComponent,
+				userWorkloadMetricsCollectorRawComponent,
+			)),
+		).
+		Watches(
+			&prometheusv1alpha1.PrometheusAgent{},
+			handler.EnqueueRequestsFromMapFunc(r.mapComponentLabelToRequests(
+				platformMetricsCollectorComponent,
+				userWorkloadMetricsCollectorComponent,
+			)),
+		).
 		Complete(r)
+}
+
+func (r *MCOAAgentReconciler) mapComponentLabelToRequests(
+	platformComp, uwlComp string,
+) handler.MapFunc {
+	return func(ctx context.Context, obj client.Object) []reconcile.Request {
+		if obj.GetNamespace() != r.Namespace {
+			return nil
+		}
+		labels := obj.GetLabels()
+		if labels == nil {
+			return nil
+		}
+		comp := labels[labelKeyComponent]
+		switch comp {
+		case platformComp:
+			return []reconcile.Request{
+				{
+					NamespacedName: client.ObjectKey{
+						Name:      operatorconfig.OCPClusterMonitoringConfigMapName,
+						Namespace: operatorconfig.OCPClusterMonitoringNamespace,
+					},
+				},
+			}
+		case uwlComp:
+			return []reconcile.Request{
+				{
+					NamespacedName: client.ObjectKey{
+						Name:      operatorconfig.OCPUserWorkloadMonitoringConfigMap,
+						Namespace: operatorconfig.OCPUserWorkloadMonitoringNamespace,
+					},
+				},
+			}
+		}
+		return nil
+	}
 }

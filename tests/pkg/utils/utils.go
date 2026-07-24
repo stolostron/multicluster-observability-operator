@@ -199,33 +199,50 @@ func LoadConfig(url, kubeconfig, ctx string) (*rest.Config, error) {
 	if kubeconfig == "" {
 		kubeconfig = os.Getenv("KUBECONFIG")
 	}
+	var config *rest.Config
+	var err error
 	// If we have an explicit indication of where the kubernetes config lives, read that.
 	if kubeconfig != "" {
 		if ctx == "" {
-			return clientcmd.BuildConfigFromFlags(url, kubeconfig)
+			config, err = clientcmd.BuildConfigFromFlags(url, kubeconfig)
+			if err != nil {
+				err = fmt.Errorf("failed to build config from flags: %w", err)
+			}
 		} else {
-			return clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
+			config, err = clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
 				&clientcmd.ClientConfigLoadingRules{ExplicitPath: kubeconfig},
 				&clientcmd.ConfigOverrides{
 					CurrentContext: ctx,
 				}).ClientConfig()
 		}
-	}
-	// If not, try the in-cluster config.
-	if c, err := rest.InClusterConfig(); err == nil {
-		return c, nil
-	}
-	// If no in-cluster config, try the default location in the user's home directory.
-	if usr, err := user.Current(); err == nil {
-		klog.V(5).Infof("clientcmd.BuildConfigFromFlags for url %s using %s\n",
-			url,
-			filepath.Join(usr.HomeDir, ".kube", "config"))
-		if c, err := clientcmd.BuildConfigFromFlags(url, filepath.Join(usr.HomeDir, ".kube", "config")); err == nil {
-			return c, nil
+	} else if c, errInCluster := rest.InClusterConfig(); errInCluster == nil {
+		// If not, try the in-cluster config.
+		config = c
+	} else {
+		usr, errUser := user.Current()
+		if errUser != nil {
+			err = fmt.Errorf("failed to get current user: %w", errUser)
+		} else {
+			// If no in-cluster config, try the default location in the user's home directory.
+			klog.V(5).Infof("clientcmd.BuildConfigFromFlags for url %s using %s\n",
+				url,
+				filepath.Join(usr.HomeDir, ".kube", "config"))
+			config, err = clientcmd.BuildConfigFromFlags(url, filepath.Join(usr.HomeDir, ".kube", "config"))
+			if err != nil {
+				err = fmt.Errorf("failed to build config from flags: %w", err)
+			}
 		}
 	}
 
-	return nil, errors.New("could not create a valid kubeconfig")
+	if err != nil || config == nil {
+		if err != nil {
+			return nil, err
+		}
+		return nil, errors.New("could not create a valid kubeconfig")
+	}
+
+	config.QPS = -1
+	return config, nil
 }
 
 func ApplyRetryOnConflict(url string, kubeconfig string, ctx string, yamlB []byte) error {

@@ -24,6 +24,7 @@ import (
 	tlsutil "github.com/openshift/controller-runtime-common/pkg/tls"
 	hyperv1 "github.com/openshift/hypershift/api/hypershift/v1beta1"
 	prometheusv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	prometheusv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/controllers/mcoa"
 	obsepctl "github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/controllers/observabilityendpoint"
 	statusctl "github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/controllers/status"
@@ -38,6 +39,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -64,6 +66,14 @@ func init() {
 	utilruntime.Must(prometheusv1.AddToScheme(scheme))
 	utilruntime.Must(hyperv1.AddToScheme(scheme))
 	utilruntime.Must(apiextensionsv1.AddToScheme(scheme))
+
+	// Register ScrapeConfig and PrometheusAgent for the custom monitoring.rhobs/v1alpha1 API Group used by MCOA on spoke clusters
+	rhobsGroupVersion := schema.GroupVersion{Group: "monitoring.rhobs", Version: "v1alpha1"}
+	scheme.AddKnownTypes(rhobsGroupVersion,
+		&prometheusv1alpha1.ScrapeConfig{}, &prometheusv1alpha1.ScrapeConfigList{},
+		&prometheusv1alpha1.PrometheusAgent{}, &prometheusv1alpha1.PrometheusAgentList{},
+	)
+	metav1.AddToGroupVersion(scheme, rhobsGroupVersion)
 	// +kubebuilder:scaffold:scheme
 }
 
@@ -145,6 +155,23 @@ func doCleanup(args []string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Second)
 	defer cancel()
 
+	// Use the clean MCOA reconciler for single-pass revert
+	r := mcoa.NewMCOAAgentReconciler(
+		cl,
+		setupLog,
+		scheme,
+		noOpRecorder{},
+		"mcoa-cleanup-dummy-namespace", // non-empty dummy namespace ensures we find NO agents or scrapeConfigs, triggering unconditional label cleanup
+		"",
+		clusterName,
+		"", // empty hubAlertmanagerURL forces Alertmanager config removal
+		hubAmCASecret,
+		"",
+		"",
+		false, // false forces Platform Alertmanager config removal
+		false, // false forces UWL Alertmanager config removal
+	)
+
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 	var errs []error
@@ -160,7 +187,7 @@ func doCleanup(args []string) error {
 	go func() {
 		defer wg.Done()
 		setupLog.Info("Reverting Platform monitoring configuration", "caSecret", hubAmCASecret)
-		if err := obsepctl.RevertClusterMonitoringConfig(ctx, cl, hubAmCASecret, clusterName); err != nil {
+		if err := r.ReconcileCMOPlatformConfig(ctx); err != nil {
 			addErr(fmt.Errorf("failed to revert platform monitoring config: %w", err))
 		}
 	}()
@@ -168,7 +195,7 @@ func doCleanup(args []string) error {
 	go func() {
 		defer wg.Done()
 		setupLog.Info("Reverting User Workload monitoring configuration", "caSecret", hubAmCASecret)
-		if err := obsepctl.RevertUserWorkloadMonitoringConfig(ctx, cl, hubAmCASecret); err != nil {
+		if err := r.ReconcileCMOUWLConfig(ctx); err != nil {
 			addErr(fmt.Errorf("failed to revert user workload monitoring config: %w", err))
 		}
 	}()
@@ -203,6 +230,7 @@ func runMCOA(args []string) {
 	var hubAmCASecret string
 	var hubAmCertSecret string
 	var hubAmAccessorSecret string
+	var enablePlatformAlertForwarding bool
 	var enableUWLAlertForwarding bool
 
 	fs.StringVar(&metricsAddr, "metrics-bind-address", ":8383", "The address the metric endpoint binds to.")
@@ -222,7 +250,8 @@ func runMCOA(args []string) {
 	)
 	fs.StringVar(&hubAmCertSecret, "hub-alertmanager-cert-secret", "", "The name of the TLS cert/key secret for the Hub's Alertmanager.")
 	fs.StringVar(&hubAmAccessorSecret, "hub-alertmanager-accessor-secret", "", "The name of the accessor token secret for the Hub's Alertmanager.")
-	fs.BoolVar(&enableUWLAlertForwarding, "enable-uwl-alert-forwarding", true, "Enable or disable forwarding of user workload monitoring alerts.")
+	fs.BoolVar(&enablePlatformAlertForwarding, "enable-platform-alert-forwarding", false, "Enable or disable forwarding of platform monitoring alerts.")
+	fs.BoolVar(&enableUWLAlertForwarding, "enable-uwl-alert-forwarding", false, "Enable or disable forwarding of user workload monitoring alerts.")
 
 	klog.InitFlags(fs)
 	// Parse will exit on error due to flag.ExitOnError, so we can ignore the error return value.
@@ -241,37 +270,42 @@ func runMCOA(args []string) {
 		os.Exit(1)
 	}
 
+	if (enablePlatformAlertForwarding || enableUWLAlertForwarding) && hubAmURL == "" {
+		setupLog.Error(fmt.Errorf("hub-alertmanager-url flag must be set when platform or user workload alert forwarding is enabled"), "unable to start manager")
+		os.Exit(1)
+	}
+
 	if hubAmURL != "" {
-		parsedURL, err := url.Parse(hubAmURL)
-		if err != nil || parsedURL.Scheme == "" || parsedURL.Host == "" {
+		parsedAmURL, err := url.Parse(hubAmURL)
+		if err != nil || parsedAmURL.Scheme == "" || parsedAmURL.Host == "" {
 			setupLog.Error(fmt.Errorf("invalid hub-alertmanager-url %q: must be a valid absolute URL", hubAmURL), "unable to start manager")
 			os.Exit(1)
 		}
+	}
 
-		if clusterID == "" {
-			setupLog.Error(fmt.Errorf("cluster-id flag not set"), "unable to start manager")
-			os.Exit(1)
-		}
+	if clusterID == "" {
+		setupLog.Error(fmt.Errorf("cluster-id flag not set"), "unable to start manager")
+		os.Exit(1)
+	}
 
-		if clusterName == "" {
-			setupLog.Error(fmt.Errorf("cluster-name flag not set"), "unable to start manager")
-			os.Exit(1)
-		}
+	if clusterName == "" {
+		setupLog.Error(fmt.Errorf("cluster-name flag not set"), "unable to start manager")
+		os.Exit(1)
+	}
 
-		if hubAmCASecret == "" {
-			setupLog.Error(fmt.Errorf("hub-alertmanager-ca-secret flag not set"), "unable to start manager")
-			os.Exit(1)
-		}
+	if hubAmCASecret == "" {
+		setupLog.Error(fmt.Errorf("hub-alertmanager-ca-secret flag not set"), "unable to start manager")
+		os.Exit(1)
+	}
 
-		if hubAmCertSecret == "" {
-			setupLog.Error(fmt.Errorf("hub-alertmanager-cert-secret flag not set"), "unable to start manager")
-			os.Exit(1)
-		}
+	if hubAmCertSecret == "" {
+		setupLog.Error(fmt.Errorf("hub-alertmanager-cert-secret flag not set"), "unable to start manager")
+		os.Exit(1)
+	}
 
-		if hubAmAccessorSecret == "" {
-			setupLog.Error(fmt.Errorf("hub-alertmanager-accessor-secret flag not set"), "unable to start manager")
-			os.Exit(1)
-		}
+	if hubAmAccessorSecret == "" {
+		setupLog.Error(fmt.Errorf("hub-alertmanager-accessor-secret flag not set"), "unable to start manager")
+		os.Exit(1)
 	}
 
 	ctx, cancel := context.WithCancel(ctrl.SetupSignalHandler())
@@ -330,6 +364,7 @@ func runMCOA(args []string) {
 		hubAmCASecret,
 		hubAmCertSecret,
 		hubAmAccessorSecret,
+		enablePlatformAlertForwarding,
 		enableUWLAlertForwarding,
 	).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "mcoa-endpoint-controller")
@@ -554,4 +589,9 @@ func runStandard(args []string) {
 		os.Exit(1)
 	}
 	cancel()
+}
+
+type noOpRecorder struct{}
+
+func (noOpRecorder) Eventf(regarding k8sruntime.Object, related k8sruntime.Object, eventtype, reason, action, note string, args ...any) {
 }
