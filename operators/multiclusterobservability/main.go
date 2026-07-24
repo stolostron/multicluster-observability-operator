@@ -19,6 +19,7 @@ import (
 	routev1 "github.com/openshift/api/route/v1"
 	imagev1client "github.com/openshift/client-go/image/clientset/versioned/typed/image/v1"
 	tlsutil "github.com/openshift/controller-runtime-common/pkg/tls"
+	libgocrypto "github.com/openshift/library-go/pkg/crypto"
 	prometheusv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	monitoringv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	observabilityv1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
@@ -383,13 +384,31 @@ func main() {
 		if err != nil {
 			setupLog.Info("unable to get TLS profile spec, skipping SecurityProfileWatcher", "error", err)
 		} else {
+			adherencePolicy, err := operatorsutil.FetchTLSAdherencePolicy(ctx)
+			if err != nil {
+				setupLog.Info("unable to get TLS adherence policy, defaulting to NoOpinion", "error", err)
+			}
 			if err = (&tlsutil.SecurityProfileWatcher{
-				Client:                mgr.GetClient(),
-				InitialTLSProfileSpec: *tlsProfileSpec,
+				Client:                    mgr.GetClient(),
+				InitialTLSProfileSpec:     *tlsProfileSpec,
+				InitialTLSAdherencePolicy: adherencePolicy,
 				OnProfileChange: func(ctx context.Context, oldTLSProfileSpec, newTLSProfileSpec ocinfrav1.TLSProfileSpec) {
+					if !libgocrypto.ShouldHonorClusterTLSProfile(adherencePolicy) {
+						setupLog.Info("TLS profile changed but adherence policy does not require honoring it, skipping restart",
+							"adherencePolicy", adherencePolicy,
+						)
+						return
+					}
 					setupLog.Info("TLS profile changed, shutting the manager down to reload",
 						"oldProfile", oldTLSProfileSpec,
 						"newProfile", newTLSProfileSpec,
+					)
+					cancel()
+				},
+				OnAdherencePolicyChange: func(ctx context.Context, oldPolicy, newPolicy ocinfrav1.TLSAdherencePolicy) {
+					setupLog.Info("TLS adherence policy changed, shutting the manager down to reload",
+						"oldPolicy", oldPolicy,
+						"newPolicy", newPolicy,
 					)
 					cancel()
 				},

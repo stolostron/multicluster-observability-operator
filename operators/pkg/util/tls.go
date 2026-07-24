@@ -104,6 +104,24 @@ func SetTLSSecurityConfiguration(ctx context.Context, args []string, tlsCipherSu
 	return args, nil
 }
 
+// FetchTLSAdherencePolicy retrieves the current TLS adherence policy from the
+// OCP APIServer resource. Unlike GetOrCreateTLSProfileSpec, the result is NOT
+// cached because the policy can change at runtime and the SecurityProfileWatcher
+// callback needs the live value.
+func FetchTLSAdherencePolicy(ctx context.Context) (ocinfrav1.TLSAdherencePolicy, error) {
+	c, err := tlsClientFunc()
+	if err != nil {
+		return "", fmt.Errorf("unable to create client for API server: %w", err)
+	}
+
+	tap, err := tlsutil.FetchAPIServerTLSAdherencePolicy(ctx, c)
+	if err != nil {
+		return "", fmt.Errorf("unable to get TLS adherence policy: %w", err)
+	}
+
+	return tap, nil
+}
+
 func SetTLSClientFunc(fn func() (client.Client, error)) {
 	tlsClientFunc = fn
 }
