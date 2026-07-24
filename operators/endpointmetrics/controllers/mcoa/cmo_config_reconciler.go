@@ -103,8 +103,9 @@ func (r *MCOAAgentReconciler) ReconcileCMOPlatformConfig(ctx context.Context) er
 	}
 
 	if parsed.PrometheusK8sConfig != nil {
-		// 1. Reconcile External Labels
-		if r.reconcileExternalLabels(parsed.PrometheusK8sConfig, agent != nil) {
+		// 1. Reconcile External Labels (only when alert forwarding is enabled)
+		hasAlertForwarding := alertmanagerURL != "" && r.EnablePlatformAlertForwarding
+		if r.reconcileExternalLabels(parsed.PrometheusK8sConfig, hasAlertForwarding) {
 			modified = true
 		}
 
@@ -287,11 +288,11 @@ func (r *MCOAAgentReconciler) fetchCMOConfigMap(
 	return cm, false, nil
 }
 
-func (r *MCOAAgentReconciler) reconcileExternalLabels(cfg *cmomanifests.PrometheusK8sConfig, hasAgent bool) bool {
+func (r *MCOAAgentReconciler) reconcileExternalLabels(cfg *cmomanifests.PrometheusK8sConfig, retainLabels bool) bool {
 	if cfg == nil {
 		return false
 	}
-	if !hasAgent {
+	if !retainLabels {
 		if cfg.ExternalLabels == nil {
 			return false
 		}
@@ -453,6 +454,9 @@ func (r *MCOAAgentReconciler) reconcileRemoteWrites(
 	cleanRemoteWrite := r.filterRemoteWrites(existing)
 
 	if agent != nil && len(scrapeConfigs) > 0 {
+		slices.SortFunc(scrapeConfigs, func(a, b prometheusv1alpha1.ScrapeConfig) int {
+			return strings.Compare(a.Name, b.Name)
+		})
 		for _, sc := range scrapeConfigs {
 			rwSpecsTranspiled, err := remotewrite.Transpile(&sc, agent)
 			if err != nil {

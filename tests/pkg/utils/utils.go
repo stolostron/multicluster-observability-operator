@@ -205,6 +205,9 @@ func LoadConfig(url, kubeconfig, ctx string) (*rest.Config, error) {
 	if kubeconfig != "" {
 		if ctx == "" {
 			config, err = clientcmd.BuildConfigFromFlags(url, kubeconfig)
+			if err != nil {
+				err = fmt.Errorf("failed to build config from flags: %w", err)
+			}
 		} else {
 			config, err = clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
 				&clientcmd.ClientConfigLoadingRules{ExplicitPath: kubeconfig},
@@ -215,12 +218,20 @@ func LoadConfig(url, kubeconfig, ctx string) (*rest.Config, error) {
 	} else if c, errInCluster := rest.InClusterConfig(); errInCluster == nil {
 		// If not, try the in-cluster config.
 		config = c
-	} else if usr, errUser := user.Current(); errUser == nil {
-		// If no in-cluster config, try the default location in the user's home directory.
-		klog.V(5).Infof("clientcmd.BuildConfigFromFlags for url %s using %s\n",
-			url,
-			filepath.Join(usr.HomeDir, ".kube", "config"))
-		config, err = clientcmd.BuildConfigFromFlags(url, filepath.Join(usr.HomeDir, ".kube", "config"))
+	} else {
+		usr, errUser := user.Current()
+		if errUser != nil {
+			err = fmt.Errorf("failed to get current user: %w", errUser)
+		} else {
+			// If no in-cluster config, try the default location in the user's home directory.
+			klog.V(5).Infof("clientcmd.BuildConfigFromFlags for url %s using %s\n",
+				url,
+				filepath.Join(usr.HomeDir, ".kube", "config"))
+			config, err = clientcmd.BuildConfigFromFlags(url, filepath.Join(usr.HomeDir, ".kube", "config"))
+			if err != nil {
+				err = fmt.Errorf("failed to build config from flags: %w", err)
+			}
+		}
 	}
 
 	if err != nil || config == nil {

@@ -6,8 +6,8 @@ package utils
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -158,12 +158,7 @@ func waitForConfigHashPopulated(ctx context.Context, opt TestOptions, addonName 
 				Namespace(cluster.Name).
 				Get(ctx, addonName, metav1.GetOptions{})
 			if err != nil {
-				if apierrors.IsNotFound(err) ||
-					apierrors.IsTimeout(err) ||
-					apierrors.IsServerTimeout(err) ||
-					apierrors.IsTooManyRequests(err) ||
-					strings.Contains(err.Error(), "rate limiter") ||
-					strings.Contains(err.Error(), "deadline exceeded") {
+				if isTransientAddonError(err) {
 					klog.V(1).Infof("Transient error getting ManagedClusterAddon %s/%s, retrying: %v", cluster.Name, addonName, err)
 					return false, nil // transient, retry
 				}
@@ -215,6 +210,17 @@ func waitForConfigHashPopulated(ctx context.Context, opt TestOptions, addonName 
 
 		return true, nil
 	})
+}
+
+func isTransientAddonError(err error) bool {
+	if err == nil {
+		return false
+	}
+	return apierrors.IsNotFound(err) ||
+		apierrors.IsTimeout(err) ||
+		apierrors.IsServerTimeout(err) ||
+		apierrors.IsTooManyRequests(err) ||
+		errors.Is(err, context.DeadlineExceeded)
 }
 
 func RemoveConfigFromPlacementInClusterManagementAddon(

@@ -462,3 +462,149 @@ func TestToCMORemoteWrite_ReconstructsTLSSecrets(t *testing.T) {
 	assert.Equal(t, "obs-alertmanager-mtls-cert-465e377c1ecd4cc29c7", cmoRW.TLSConfig.KeySecret.Name)
 	assert.Equal(t, "custom-key.pem", cmoRW.TLSConfig.KeySecret.Key)
 }
+
+func TestCMOConfigReconciler_reconcileRemoteWrites_Sorting(t *testing.T) {
+	t.Parallel()
+
+	r := &MCOAAgentReconciler{
+		Log:        ctrl.Log.WithName("test"),
+		CASecret:   "test-ca-secret",
+		CertSecret: "test-cert-secret",
+	}
+
+	agent := &prometheusv1alpha1.PrometheusAgent{
+		Spec: prometheusv1alpha1.PrometheusAgentSpec{
+			CommonPrometheusFields: monitoringv1.CommonPrometheusFields{
+				RemoteWrite: []monitoringv1.RemoteWriteSpec{
+					{
+						Name: ptr.To("acm-observability"),
+						URL:  "https://hub-am.example.com",
+					},
+				},
+			},
+		},
+	}
+
+	// Create scrape configs in non-sorted name order: "z-sc", "a-sc", "m-sc"
+	scZ := newRawScrapeConfig("z-sc", "test-ns", platformMetricsCollectorRawComponent)
+	scA := newRawScrapeConfig("a-sc", "test-ns", platformMetricsCollectorRawComponent)
+	scM := newRawScrapeConfig("m-sc", "test-ns", platformMetricsCollectorRawComponent)
+
+	// Case 1: passing them as [scZ, scA, scM]
+	configs1 := r.reconcileRemoteWrites(nil, []prometheusv1alpha1.ScrapeConfig{*scZ, *scA, *scM}, agent)
+	require.Len(t, configs1, 3)
+
+	// Since they are sorted by Name ("a-sc", "m-sc", "z-sc"), the resulting RemoteWrites must be in that exact name order
+	assert.Contains(t, configs1[0].Name, "a-sc")
+	assert.Contains(t, configs1[1].Name, "m-sc")
+	assert.Contains(t, configs1[2].Name, "z-sc")
+
+	// Case 2: passing them in a different order [scA, scM, scZ] should produce the EXACT same ordered slice
+	configs2 := r.reconcileRemoteWrites(nil, []prometheusv1alpha1.ScrapeConfig{*scA, *scM, *scZ}, agent)
+	require.Len(t, configs2, 3)
+	assert.Equal(t, configs1, configs2)
+}
+
+func TestCMOConfigReconciler_reconcileExternalLabels(t *testing.T) {
+	t.Parallel()
+
+	r := &MCOAAgentReconciler{
+		Log:         ctrl.Log.WithName("test"),
+		ClusterID:   "my-cluster-id",
+		ClusterName: "my-cluster-name",
+	}
+
+	// Case 1: neither agent present nor forwarding enabled -> remove external labels
+	cfg1 := &cmomanifests.PrometheusK8sConfig{
+		ExternalLabels: map[string]string{
+			operatorconfig.ClusterLabelKeyForAlerts:     "old-id",
+			operatorconfig.ClusterNameLabelKeyForAlerts: "old-name",
+		},
+	}
+	modified := r.reconcileExternalLabels(cfg1, false)
+	assert.True(t, modified)
+	assert.Empty(t, cfg1.ExternalLabels)
+
+	// Case 2: forwarding enabled with NO agent (retainLabels = true) -> preserve and reconcile external labels
+	cfg2 := &cmomanifests.PrometheusK8sConfig{
+		ExternalLabels: map[string]string{
+			operatorconfig.ClusterLabelKeyForAlerts:     "old-id",
+			operatorconfig.ClusterNameLabelKeyForAlerts: "old-name",
+		},
+	}
+	modified = r.reconcileExternalLabels(cfg2, true)
+	assert.True(t, modified)
+	assert.Equal(t, "my-cluster-id", cfg2.ExternalLabels[operatorconfig.ClusterLabelKeyForAlerts])
+	assert.Equal(t, "my-cluster-name", cfg2.ExternalLabels[operatorconfig.ClusterNameLabelKeyForAlerts])
+
+	// Case 3: forwarding enabled with NO agent, labels already correct -> no modification
+	cfg3 := &cmomanifests.PrometheusK8sConfig{
+		ExternalLabels: map[string]string{
+			operatorconfig.ClusterLabelKeyForAlerts:     "my-cluster-id",
+			operatorconfig.ClusterNameLabelKeyForAlerts: "my-cluster-name",
+		},
+	}
+	modified = r.reconcileExternalLabels(cfg3, true)
+	assert.False(t, modified)
+}
+
+func TestCMOConfigReconciler_reconcileExternalLabels_DisabledForwarding(t *testing.T) {
+	s := runtime.NewScheme()
+	require.NoError(t, corev1.AddToScheme(s))
+	addRhobsToScheme(t, s)
+
+	ctx := context.Background()
+	namespace := "test-namespace"
+
+	// Existing config map containing old externalLabels
+	oldCfg := cmomanifests.ClusterMonitoringConfiguration{
+		PrometheusK8sConfig: &cmomanifests.PrometheusK8sConfig{
+			ExternalLabels: map[string]string{
+				operatorconfig.ClusterLabelKeyForAlerts:     "my-cluster-id",
+				operatorconfig.ClusterNameLabelKeyForAlerts: "my-cluster-name",
+			},
+		},
+	}
+	oldYAML, err := yaml.Marshal(oldCfg)
+	require.NoError(t, err)
+
+	cmPlatform := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      operatorconfig.OCPClusterMonitoringConfigMapName,
+			Namespace: operatorconfig.OCPClusterMonitoringNamespace,
+		},
+		Data: map[string]string{
+			observabilityendpoint.ClusterMonitoringConfigDataKey: string(oldYAML),
+		},
+	}
+
+	clPlatform := fake.NewClientBuilder().WithScheme(s).WithObjects(cmPlatform).Build()
+
+	// Platform alert forwarding disabled (EnablePlatformAlertForwarding: false)
+	rPlatform := &MCOAAgentReconciler{
+		Client:                        clPlatform,
+		Log:                           ctrl.Log.WithName("test-controller"),
+		Namespace:                     namespace,
+		ClusterID:                     "my-cluster-id",
+		ClusterName:                   "my-cluster-name",
+		HubAlertmanagerURL:            "https://new-hub.com",
+		CASecret:                      "test-ca-secret",
+		CertSecret:                    "test-cert-secret",
+		EnablePlatformAlertForwarding: false,
+	}
+
+	err = rPlatform.ReconcileCMOPlatformConfig(ctx)
+	require.NoError(t, err)
+
+	updatedCMPlatform := &corev1.ConfigMap{}
+	err = clPlatform.Get(ctx, client.ObjectKey{
+		Name:      operatorconfig.OCPClusterMonitoringConfigMapName,
+		Namespace: operatorconfig.OCPClusterMonitoringNamespace,
+	}, updatedCMPlatform)
+	require.NoError(t, err)
+
+	platformYAML := updatedCMPlatform.Data[observabilityendpoint.ClusterMonitoringConfigDataKey]
+	// Since alert forwarding was disabled, external labels must be removed!
+	assert.NotContains(t, platformYAML, "my-cluster-id")
+	assert.NotContains(t, platformYAML, "my-cluster-name")
+}
