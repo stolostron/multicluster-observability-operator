@@ -301,23 +301,20 @@ func TestMCOAAgentIntegration(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		// Wait for the reconciler to clean up our Alertmanager configs
-		require.Eventually(t, func() bool {
-			foundCM := &corev1.ConfigMap{}
-			err := directClient.Get(ctx, types.NamespacedName{
-				Name:      operatorconfig.OCPClusterMonitoringConfigMapName,
-				Namespace: operatorconfig.OCPClusterMonitoringNamespace,
-			}, foundCM)
-			if apierrors.IsNotFound(err) {
-				return true
-			}
-			if err != nil {
-				fmt.Printf("Get ConfigMap error: %v\n", err)
-				return false
-			}
+		// The revert reconcile is synchronous (directClient.Update commits immediately), so assert
+		// the state right after Reconcile returns rather than using require.Eventually, which would
+		// race with the background manager re-applying the config.
+		foundCM := &corev1.ConfigMap{}
+		err = directClient.Get(ctx, types.NamespacedName{
+			Name:      operatorconfig.OCPClusterMonitoringConfigMapName,
+			Namespace: operatorconfig.OCPClusterMonitoringNamespace,
+		}, foundCM)
+		if !apierrors.IsNotFound(err) {
+			require.NoError(t, err)
 			data := foundCM.Data[observabilityendpoint.ClusterMonitoringConfigDataKey]
-			return !strings.Contains(data, "hub-alertmanager-router-ca-hub-id") && !strings.Contains(data, "hub-am.example.com")
-		}, 5*time.Second, 100*time.Millisecond)
+			require.False(t, strings.Contains(data, "hub-alertmanager-router-ca-hub-id"), "expected AM CA secret to be removed from CMO CM after revert")
+			require.False(t, strings.Contains(data, "hub-am.example.com"), "expected AM URL to be removed from CMO CM after revert")
+		}
 	})
 
 	t.Run("Reconcile UWL Config: Managed ConfigMap is successfully populated with Alertmanager configuration", func(t *testing.T) {
@@ -387,23 +384,20 @@ func TestMCOAAgentIntegration(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		// Wait for the reconciler to clean up our Alertmanager configs from UWL ConfigMap
-		require.Eventually(t, func() bool {
-			foundCM := &corev1.ConfigMap{}
-			err := directClient.Get(ctx, types.NamespacedName{
-				Name:      operatorconfig.OCPUserWorkloadMonitoringConfigMap,
-				Namespace: operatorconfig.OCPUserWorkloadMonitoringNamespace,
-			}, foundCM)
-			if apierrors.IsNotFound(err) {
-				return true
-			}
-			if err != nil {
-				fmt.Printf("Get ConfigMap error: %v\n", err)
-				return false
-			}
+		// The revert reconcile is synchronous (directClient.Update commits immediately), so assert
+		// the state right after Reconcile returns rather than using require.Eventually, which would
+		// race with the background manager re-applying the config.
+		foundCM := &corev1.ConfigMap{}
+		err = directClient.Get(ctx, types.NamespacedName{
+			Name:      operatorconfig.OCPUserWorkloadMonitoringConfigMap,
+			Namespace: operatorconfig.OCPUserWorkloadMonitoringNamespace,
+		}, foundCM)
+		if !apierrors.IsNotFound(err) {
+			require.NoError(t, err)
 			data := foundCM.Data[uwlMonitoringConfigDataKey]
-			return !strings.Contains(data, "hub-alertmanager-router-ca-hub-id") && !strings.Contains(data, "hub-am.example.com")
-		}, 5*time.Second, 100*time.Millisecond)
+			require.False(t, strings.Contains(data, "hub-alertmanager-router-ca-hub-id"), "expected AM CA secret to be removed from UWL CM after revert")
+			require.False(t, strings.Contains(data, "hub-am.example.com"), "expected AM URL to be removed from UWL CM after revert")
+		}
 	})
 
 	t.Run("Reconcile Raw Metrics ScrapeConfig: updates CMO and UWL with transpiled RemoteWrite", func(t *testing.T) {
