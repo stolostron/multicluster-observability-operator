@@ -1,0 +1,39 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: thanos-store-memcached
+  namespace: open-cluster-management-observability
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: store-cache
+      app.kubernetes.io/instance: observability
+      app.kubernetes.io/name: memcached
+      app.kubernetes.io/part-of: observatorium
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: openshift-monitoring
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
+              app.kubernetes.io/part-of: openshift-monitoring
+      ports:
+        - port: 9150
+          protocol: TCP
+    # connection from thanos-store to memcached
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: object-store-gateway
+              app.kubernetes.io/instance: observability
+              app.kubernetes.io/part-of: observatorium
+          ports:
+            - port: 11211
+              protocol: TCP
+  egress: []
+  policyTypes:
+    - Ingress
+    - Egress

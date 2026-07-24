@@ -1,0 +1,18 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: observability-observatorium-operator
+  namespace: open-cluster-management-observability
+spec:
+  podSelector:
+    matchLabels:
+      control-plane: observatorium-operator
+      observability.open-cluster-management.io/name: observability
+  ingress: []
+  # needs api-server access
+  egress:
+    - {}
+  policyTypes:
+    - Ingress
+    - Egress

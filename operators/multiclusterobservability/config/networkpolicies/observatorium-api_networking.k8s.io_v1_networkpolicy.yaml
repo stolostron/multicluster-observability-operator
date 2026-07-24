@@ -1,0 +1,22 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: observatorium-api
+  namespace: open-cluster-management-observability
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: observatorium-api
+  ingress:
+    - ports:
+        - port: 8081
+          protocol: TCP
+        - port: 8080
+          protocol: TCP
+  # Egress to arbitary location is needed for external remote-write
+  egress:
+    - {}
+  policyTypes:
+    - Ingress
+    - Egress

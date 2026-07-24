@@ -1,0 +1,35 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: alertmanager
+  namespace: open-cluster-management-observability
+spec:
+  podSelector:
+    matchLabels:
+      app: multicluster-observability-alertmanager
+  ingress:
+    # alertmanager mesh restricted to only alertmanager pods
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: open-cluster-management-observability
+          podSelector:
+            matchLabels:
+              app: multicluster-observability-alertmanager
+      ports:
+        - port: 9094
+          protocol: TCP
+        - port: 9094
+          protocol: UDP
+    - ports:
+        - protocol: TCP
+          port: 9095
+        - protocol: TCP
+          port: 9096
+  # egress to arbitary notification locations
+  egress:
+    - {}
+  policyTypes:
+    - Ingress
+    - Egress

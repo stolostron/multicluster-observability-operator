@@ -212,7 +212,13 @@ bundle: manifests $(KUSTOMIZE) $(OPERATOR_SDK) ## Generate bundle manifests and 
 	rm -f ./bundle/manifests/multicluster-observability-operator-manager-role_rbac.authorization.k8s.io_v1_clusterrole.yaml
 	rm -f ./bundle/manifests/multicluster-observability-operator-manager-rolebinding_rbac.authorization.k8s.io_v1_clusterrolebinding.yaml
 	rm -f ./bundle/manifests/multicluster-observability-operator_v1_serviceaccount.yaml
+	## See comment further down
+	rm -rf ./bundle/manifests/*networkpolicy.yaml
 	$(OPERATOR_SDK) bundle validate ./bundle
+	# NOTE these are copied AFTER validate because our version of operator SDK is unable to accept network policies
+	# further, due being on kubebuilder go/v3 we cannot upgrade operator-sdk
+	# TODO: Migrate to go/v4, upgrade operator-sdk and then move this before the validation step
+	cp config/networkpolicies/* ./bundle/manifests
 
 .PHONY: bundle-build
 bundle-build: ## Build the bundle image.

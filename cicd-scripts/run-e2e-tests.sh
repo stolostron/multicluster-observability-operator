@@ -48,6 +48,13 @@ else
   kubectl apply -f ${ROOTDIR}/operators/multiclusterobservability/config/crd/bases --server-side=true --force-conflicts
 fi
 
+# apply network policies in case they changed
+# to make sure we do not cause breakage
+if [[ -z ${IS_KIND_ENV} ]]; then
+  oc create namespace open-cluster-management-observability
+  oc apply -f ${ROOTDIR}/operators/multiclusterobservability/config/networkpolicies
+fi
+
 OPTIONSFILE=${ROOTDIR}/tests/resources/options.yaml
 # remove the options file if it exists
 rm -f ${OPTIONSFILE}

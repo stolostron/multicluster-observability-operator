@@ -1,0 +1,29 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: rbac-query-proxy
+  namespace: open-cluster-management-observability
+spec:
+  podSelector:
+    matchLabels:
+      app: rbac-query-proxy
+      observability.open-cluster-management.io/name: observability
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: multicluster-observability-grafana
+        # for perses
+        - podSelector:
+            matchLabels:
+              app: console
+              component: ui
+      ports:
+        - port: 8080
+          protocol: TCP
+    - ports:
+        - port: 8443
+          protocol: TCP
+  policyTypes:
+    - Ingress
