@@ -7,6 +7,7 @@ package utils
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -160,7 +161,10 @@ func waitForConfigHashPopulated(ctx context.Context, opt TestOptions, addonName 
 				if apierrors.IsNotFound(err) ||
 					apierrors.IsTimeout(err) ||
 					apierrors.IsServerTimeout(err) ||
-					apierrors.IsTooManyRequests(err) {
+					apierrors.IsTooManyRequests(err) ||
+					strings.Contains(err.Error(), "rate limiter") ||
+					strings.Contains(err.Error(), "deadline exceeded") {
+					klog.V(1).Infof("Transient error getting ManagedClusterAddon %s/%s, retrying: %v", cluster.Name, addonName, err)
 					return false, nil // transient, retry
 				}
 				return false, fmt.Errorf("failed to get ManagedClusterAddon %s/%s: %w", cluster.Name, addonName, err)
