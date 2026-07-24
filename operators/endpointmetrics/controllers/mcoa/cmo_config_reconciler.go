@@ -84,7 +84,7 @@ func (r *MCOAAgentReconciler) ReconcileCMOPlatformConfig(ctx context.Context) er
 		Namespace: operatorconfig.OCPClusterMonitoringNamespace,
 	}
 
-	cm, isCreate, err := r.fetchCMOConfigMap(ctx, cmoKey, agent, alertmanagerURL, len(scrapeConfigs))
+	cm, isCreate, err := r.fetchCMOConfigMap(ctx, cmoKey, agent, alertmanagerURL, len(scrapeConfigs), r.EnablePlatformAlertForwarding)
 	if err != nil || cm == nil {
 		return err
 	}
@@ -265,6 +265,7 @@ func (r *MCOAAgentReconciler) fetchCMOConfigMap(
 	agent *prometheusv1alpha1.PrometheusAgent,
 	alertmanagerURL string,
 	numScrapeConfigs int,
+	enablePlatformAlertForwarding bool,
 ) (*corev1.ConfigMap, bool, error) {
 	cm := &corev1.ConfigMap{}
 	err := r.Get(ctx, key, cm)
@@ -272,7 +273,7 @@ func (r *MCOAAgentReconciler) fetchCMOConfigMap(
 		if !errors.IsNotFound(err) {
 			return nil, false, fmt.Errorf("failed to get CMO configmap %s/%s: %w", key.Namespace, key.Name, err)
 		}
-		if agent == nil && alertmanagerURL == "" && numScrapeConfigs == 0 {
+		if agent == nil && (alertmanagerURL == "" || !enablePlatformAlertForwarding) && numScrapeConfigs == 0 {
 			return nil, false, nil
 		}
 		return &corev1.ConfigMap{
@@ -468,6 +469,9 @@ func (r *MCOAAgentReconciler) reconcileRemoteWrites(
 
 			for i, rwSpec := range rwSpecsTranspiled {
 				if rwSpec == nil {
+					continue
+				}
+				if rwSpec.URL == "" {
 					continue
 				}
 

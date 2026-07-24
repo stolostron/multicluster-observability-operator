@@ -252,6 +252,27 @@ func TestCMOConfigReconciler_reconcileRemoteWrites(t *testing.T) {
 	assert.Equal(t, "replace", strings.ToLower(firstCustomRelabel.Action))
 	assert.Equal(t, "job", firstCustomRelabel.TargetLabel)
 	assert.Equal(t, "exported_job", string(firstCustomRelabel.SourceLabels[0]))
+
+	// Case 5: Agent has a RemoteWrite with empty URL -> skips it
+	agentWithEmptyURL := &prometheusv1alpha1.PrometheusAgent{
+		Spec: prometheusv1alpha1.PrometheusAgentSpec{
+			CommonPrometheusFields: monitoringv1.CommonPrometheusFields{
+				RemoteWrite: []monitoringv1.RemoteWriteSpec{
+					{
+						Name: ptr.To("empty-url-write"),
+						URL:  "",
+					},
+					{
+						Name: ptr.To("valid-url-write"),
+						URL:  "https://valid-hub.com",
+					},
+				},
+			},
+		},
+	}
+	configsWithEmptyURL := r.reconcileRemoteWrites(nil, []prometheusv1alpha1.ScrapeConfig{*sc}, agentWithEmptyURL)
+	require.Len(t, configsWithEmptyURL, 1)
+	assert.Equal(t, "https://valid-hub.com", configsWithEmptyURL[0].URL)
 }
 
 func TestCMOConfigReconciler_reconcileRawMetrics(t *testing.T) {
@@ -607,4 +628,48 @@ func TestCMOConfigReconciler_reconcileExternalLabels_DisabledForwarding(t *testi
 	// Since alert forwarding was disabled, external labels must be removed!
 	assert.NotContains(t, platformYAML, "my-cluster-id")
 	assert.NotContains(t, platformYAML, "my-cluster-name")
+}
+
+func TestCMOConfigReconciler_fetchCMOConfigMap_Gating(t *testing.T) {
+	t.Parallel()
+
+	s := runtime.NewScheme()
+	require.NoError(t, corev1.AddToScheme(s))
+	cl := fake.NewClientBuilder().WithScheme(s).Build()
+
+	r := &MCOAAgentReconciler{
+		Client: cl,
+		Log:    ctrl.Log.WithName("test"),
+	}
+
+	key := client.ObjectKey{
+		Name:      "test-cm",
+		Namespace: "test-ns",
+	}
+
+	// Case 1: missing CM, but agent, alertmanagerURL, numScrapeConfigs are all empty -> return nil (do not materialize)
+	cm, isCreate, err := r.fetchCMOConfigMap(context.TODO(), key, nil, "", 0, false)
+	require.NoError(t, err)
+	assert.False(t, isCreate)
+	assert.Nil(t, cm)
+
+	// Case 2: missing CM, agent is present -> return initialized CM
+	agent := &prometheusv1alpha1.PrometheusAgent{}
+	cm, isCreate, err = r.fetchCMOConfigMap(context.TODO(), key, agent, "", 0, false)
+	require.NoError(t, err)
+	assert.True(t, isCreate)
+	assert.NotNil(t, cm)
+	assert.Equal(t, "test-cm", cm.Name)
+
+	// Case 3: missing CM, alertmanagerURL is set but forwarding is disabled -> return nil (do not materialize)
+	cm, isCreate, err = r.fetchCMOConfigMap(context.TODO(), key, nil, "https://hub.com", 0, false)
+	require.NoError(t, err)
+	assert.False(t, isCreate)
+	assert.Nil(t, cm)
+
+	// Case 4: missing CM, alertmanagerURL is set and forwarding is enabled -> return initialized CM
+	cm, isCreate, err = r.fetchCMOConfigMap(context.TODO(), key, nil, "https://hub.com", 0, true)
+	require.NoError(t, err)
+	assert.True(t, isCreate)
+	assert.NotNil(t, cm)
 }

@@ -6,6 +6,7 @@ package utils
 
 import (
 	"context"
+	"fmt"
 
 	prometheusv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -58,7 +59,7 @@ func createPrometheusRuleGeneric(ctx context.Context, opt TestOptions, name, nam
 
 	ruleMap, err := runtime.DefaultUnstructuredConverter.ToUnstructured(rule)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to convert PrometheusRule %s/%s: %w", namespace, name, err)
 	}
 
 	ruleUnstructured := &unstructured.Unstructured{Object: ruleMap}
@@ -66,16 +67,20 @@ func createPrometheusRuleGeneric(ctx context.Context, opt TestOptions, name, nam
 	_, err = clientDynamic.Resource(gvr).Namespace(namespace).Create(ctx, ruleUnstructured, metav1.CreateOptions{})
 	if err != nil {
 		if errors.IsAlreadyExists(err) {
-			existing, err := clientDynamic.Resource(gvr).Namespace(namespace).Get(ctx, name, metav1.GetOptions{})
-			if err != nil {
-				return err
+			existing, errGet := clientDynamic.Resource(gvr).Namespace(namespace).Get(ctx, name, metav1.GetOptions{})
+			if errGet != nil {
+				return fmt.Errorf("failed to get PrometheusRule %s/%s: %w", namespace, name, errGet)
 			}
 			existing.Object["spec"] = ruleUnstructured.Object["spec"]
-			_, err = clientDynamic.Resource(gvr).Namespace(namespace).Update(ctx, existing, metav1.UpdateOptions{})
-			return err
+			_, errUpdate := clientDynamic.Resource(gvr).Namespace(namespace).Update(ctx, existing, metav1.UpdateOptions{})
+			if errUpdate != nil {
+				return fmt.Errorf("failed to update PrometheusRule %s/%s: %w", namespace, name, errUpdate)
+			}
+			return nil
 		}
+		return fmt.Errorf("failed to create PrometheusRule %s/%s: %w", namespace, name, err)
 	}
-	return err
+	return nil
 }
 
 func CreatePrometheusRule(ctx context.Context, opt TestOptions, name, namespace, componentLabel, metricName, targetNamespace string) error {
@@ -88,7 +93,14 @@ func DeletePrometheusRule(ctx context.Context, opt TestOptions, name, namespace 
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext)
 
-	return clientDynamic.Resource(NewPrometheusRuleGVR()).Namespace(namespace).Delete(ctx, name, metav1.DeleteOptions{})
+	err := clientDynamic.Resource(NewPrometheusRuleGVR()).Namespace(namespace).Delete(ctx, name, metav1.DeleteOptions{})
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return nil
+		}
+		return fmt.Errorf("failed to delete PrometheusRule %s/%s: %w", namespace, name, err)
+	}
+	return nil
 }
 
 func CreateMCOAPrometheusRule(ctx context.Context, opt TestOptions, name, namespace, componentLabel, metricName, targetNamespace string) error {
@@ -101,5 +113,12 @@ func DeleteMCOAPrometheusRule(ctx context.Context, opt TestOptions, name, namesp
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext)
 
-	return clientDynamic.Resource(NewMCOAPrometheusRuleGVR()).Namespace(namespace).Delete(ctx, name, metav1.DeleteOptions{})
+	err := clientDynamic.Resource(NewMCOAPrometheusRuleGVR()).Namespace(namespace).Delete(ctx, name, metav1.DeleteOptions{})
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return nil
+		}
+		return fmt.Errorf("failed to delete MCOA PrometheusRule %s/%s: %w", namespace, name, err)
+	}
+	return nil
 }
