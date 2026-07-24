@@ -61,6 +61,77 @@ func TestCMOConfigReconciler_reconcileAlertmanagerConfigs(t *testing.T) {
 	assert.Equal(t, "observability-alertmanager-accessor-465e377c1ecd4cc29c7", am.BearerToken.Name)
 }
 
+// TestCMOConfigReconciler_reconcileAlertmanagerConfigs_RenamedCASecret tests that when the
+// hub renames the CA secret prefix across upgrades (e.g. obs-alertmanager-mtls-ca → hub-mtls-ca),
+// the old configmap entry is still recognized as owned and removed when forwarding is disabled.
+func TestCMOConfigReconciler_reconcileAlertmanagerConfigs_RenamedCASecret(t *testing.T) {
+	t.Parallel()
+
+	const hubID = "465e377c1ecd4cc29c7"
+	// Simulate a hub that renamed the CA secret from "obs-alertmanager-mtls-ca-<hubID>"
+	// to "hub-mtls-ca-<hubID>" across an upgrade.
+	r := &MCOAAgentReconciler{
+		Log:            ctrl.Log.WithName("test"),
+		CASecret:       "hub-mtls-ca-" + hubID,   // new prefix after hub rename
+		CertSecret:     "hub-mtls-cert-" + hubID, // new prefix after hub rename
+		AccessorSecret: "observability-alertmanager-accessor-" + hubID,
+	}
+
+	// Existing config was written with the old CA name (before the hub renamed it).
+	oldCfg := cmomanifests.AdditionalAlertmanagerConfig{
+		Scheme:     "https",
+		APIVersion: "v2",
+		TLSConfig: cmomanifests.TLSConfig{
+			CA: &corev1.SecretKeySelector{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: "obs-alertmanager-mtls-ca-" + hubID,
+				},
+				Key: "ca.crt",
+			},
+		},
+	}
+
+	// With UWL alert forwarding disabled, the old entry must be removed even though
+	// its CA name doesn't exactly match r.CASecret.
+	endpoint := "https://observatorium-api.example.com"
+	configs, modified := r.reconcileAlertmanagerConfigs([]cmomanifests.AdditionalAlertmanagerConfig{oldCfg}, endpoint, false)
+	require.True(t, modified, "should be modified: old entry must be cleaned up")
+	assert.Empty(t, configs, "old alertmanager config with renamed CA should be removed")
+}
+
+// TestCMOConfigReconciler_reconcileAlertmanagerConfigs_OrderStable verifies that a reorder
+// of existing entries by another controller is not treated as a content change.
+func TestCMOConfigReconciler_reconcileAlertmanagerConfigs_OrderStable(t *testing.T) {
+	t.Parallel()
+
+	r := &MCOAAgentReconciler{
+		Log:            ctrl.Log.WithName("test"),
+		CASecret:       "obs-alertmanager-mtls-ca-hub1",
+		CertSecret:     "obs-alertmanager-mtls-cert-hub1",
+		AccessorSecret: "observability-alertmanager-accessor-hub1",
+	}
+
+	endpoint := "https://our-am.example.com"
+
+	// Produce the canonical entry for our hub so the test doesn't hard-code field values.
+	canonical, _ := r.reconcileAlertmanagerConfigs(nil, endpoint, true)
+	require.Len(t, canonical, 1)
+	ourEntry := canonical[0]
+
+	externalEntry := cmomanifests.AdditionalAlertmanagerConfig{
+		Scheme:        "http",
+		APIVersion:    "v2",
+		StaticConfigs: []string{"external-am.example.com"},
+	}
+
+	// Another controller stored them in reversed order.
+	existing := []cmomanifests.AdditionalAlertmanagerConfig{externalEntry, ourEntry}
+
+	// Forwarding still enabled: content is unchanged, only order differs.
+	_, modified := r.reconcileAlertmanagerConfigs(existing, endpoint, true)
+	assert.False(t, modified, "reorder by another controller must not trigger an update")
+}
+
 func TestCMOConfigReconciler_reconcileRemoteWrites(t *testing.T) {
 	t.Parallel()
 

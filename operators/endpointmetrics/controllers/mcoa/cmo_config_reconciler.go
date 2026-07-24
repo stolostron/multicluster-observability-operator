@@ -338,7 +338,24 @@ func (r *MCOAAgentReconciler) reconcileAlertmanagerConfigs(
 	if endpoint != "" && enable {
 		cleaned = append(cleaned, r.newAdditionalAlertmanagerConfig(endpoint))
 	}
-	return cleaned, !equality.Semantic.DeepEqual(cleaned, existing)
+	sortAlertmanagerConfigs(cleaned)
+	sortedExisting := slices.Clone(existing)
+	sortAlertmanagerConfigs(sortedExisting)
+	return cleaned, !equality.Semantic.DeepEqual(cleaned, sortedExisting)
+}
+
+// sortAlertmanagerConfigs sorts in-place so that order differences introduced by other
+// controllers don't trigger spurious reconcile updates.
+func sortAlertmanagerConfigs(configs []cmomanifests.AdditionalAlertmanagerConfig) {
+	slices.SortFunc(configs, func(a, b cmomanifests.AdditionalAlertmanagerConfig) int {
+		if cmp := slices.Compare(a.StaticConfigs, b.StaticConfigs); cmp != 0 {
+			return cmp
+		}
+		if cmp := strings.Compare(a.Scheme, b.Scheme); cmp != 0 {
+			return cmp
+		}
+		return strings.Compare(a.PathPrefix, b.PathPrefix)
+	})
 }
 
 func (r *MCOAAgentReconciler) newAdditionalAlertmanagerConfig(endpoint string) cmomanifests.AdditionalAlertmanagerConfig {
@@ -395,7 +412,23 @@ func (r *MCOAAgentReconciler) newAdditionalAlertmanagerConfig(endpoint string) c
 }
 
 func (r *MCOAAgentReconciler) isOwnedAlertmanagerConfig(am cmomanifests.AdditionalAlertmanagerConfig) bool {
-	return r.CASecret != "" && am.TLSConfig.CA != nil && am.TLSConfig.CA.Name == r.CASecret
+	if r.CASecret == "" || am.TLSConfig.CA == nil {
+		return false
+	}
+	if am.TLSConfig.CA.Name == r.CASecret {
+		return true
+	}
+	// Suffix-based fallback: the hub may rename the CA secret prefix across upgrades while
+	// keeping the hub-ID suffix (e.g. "-465e377c…") stable. The accessor secret has a stable
+	// base name, so stripping it from r.AccessorSecret yields the hub-ID suffix we can match on.
+	// This also makes MCOA e2e tests more resilient: if the legacy stack leaves behind an entry
+	// with a different CA prefix (e.g. obs-alertmanager-mtls-ca-<hubID>), MCOA can still
+	// identify and clean it up rather than leaving a stale forwarding config.
+	hubIDSuffix := strings.TrimPrefix(r.AccessorSecret, observabilityendpoint.HubAmAccessorSecretName)
+	if len(hubIDSuffix) <= 1 {
+		return false
+	}
+	return strings.HasSuffix(am.TLSConfig.CA.Name, hubIDSuffix)
 }
 
 func (r *MCOAAgentReconciler) listScrapeConfigsByComponent(ctx context.Context, component string) ([]prometheusv1alpha1.ScrapeConfig, error) {
