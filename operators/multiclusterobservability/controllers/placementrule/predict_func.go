@@ -194,45 +194,41 @@ func getMchPred(c client.Client) predicate.Funcs {
 				log.V(1).Info("MCH predicate received unexpected type in Update", "type", fmt.Sprintf("%T", e.ObjectNew))
 				return false
 			}
-			uOld, ok := e.ObjectOld.(*unstructured.Unstructured)
-			if !ok {
-				log.V(1).Info("MCH predicate received unexpected type in Update", "type", fmt.Sprintf("%T", e.ObjectOld))
-				return false
-			}
-
-			if e.ObjectNew.GetNamespace() != config.GetMCONamespace() ||
-				e.ObjectNew.GetResourceVersion() == e.ObjectOld.GetResourceVersion() {
-				return false
-			}
-
-			if config.IsNetworkPoliciesEnabled(uOld) != config.IsNetworkPoliciesEnabled(uNew) {
-				return true
-			}
-
-			// don't reconcile during upgrade (except on network policies)
 			currentVersion, desiredVersion := config.GetMCHVersions(uNew)
-			if currentVersion == "" || desiredVersion != currentVersion {
-				return false
-			}
+			if e.ObjectNew.GetNamespace() == config.GetMCONamespace() &&
+				e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() {
+				uOld, ok := e.ObjectOld.(*unstructured.Unstructured)
+				if !ok {
+					log.V(1).Info("MCH predicate received unexpected type in Update", "type", fmt.Sprintf("%T", e.ObjectOld))
+					return false
+				}
 
-			currentData, _, err := config.ReadImageManifestConfigMap(
-				c,
-				currentVersion,
-			)
-			if err != nil {
-				log.Error(err, "Failed to read image manifest ConfigMap")
-				return false
-			}
+				if config.IsNetworkPoliciesEnabled(uOld) != config.IsNetworkPoliciesEnabled(uNew) {
+					return true
+				}
 
-			previousData, exists := config.GetCachedImageManifestData()
-			if !exists {
-				config.SetCachedImageManifestData(currentData)
-				return true
-			}
-			// reconcile on different image
-			if !reflect.DeepEqual(currentData, previousData) {
-				config.SetCachedImageManifestData(currentData)
-				return true
+				if currentVersion != "" && desiredVersion == currentVersion {
+					currentData, _, err := config.ReadImageManifestConfigMap(
+						c,
+						currentVersion,
+					)
+					if err != nil {
+						log.Error(err, "Failed to read image manifest ConfigMap")
+						return false
+					}
+
+					previousData, exists := config.GetCachedImageManifestData()
+					if !exists {
+						config.SetCachedImageManifestData(currentData)
+						return true
+					}
+					// reconcile on different image
+					if !reflect.DeepEqual(currentData, previousData) {
+						config.SetCachedImageManifestData(currentData)
+						return true
+					}
+					return false
+				}
 			}
 			return false
 		},
