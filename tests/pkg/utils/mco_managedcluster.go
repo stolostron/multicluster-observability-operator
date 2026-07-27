@@ -221,3 +221,17 @@ func GetAvailableManagedClusters(opt TestOptions) ([]*clusterv1.ManagedCluster, 
 		return !meta.IsStatusConditionTrue(e.Status.Conditions, "ManagedClusterConditionAvailable")
 	}), nil
 }
+
+// check spoke exists (excluding local-cluster)
+func HasManagedClusters(opt TestOptions) bool {
+	clusters, err := ListManagedClusters(opt)
+	if err != nil {
+		return false
+	}
+	for _, c := range clusters {
+		if c.Name != "" && !c.IsLocalCluster {
+			return true
+		}
+	}
+	return false
+}

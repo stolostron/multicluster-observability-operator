@@ -9,16 +9,19 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 var (
 	replicas1 int32 = 1
 	replicas2 int32 = 2
+	tcpProto        = corev1.ProtocolTCP
 )
 
 func TestCompareObject(t *testing.T) {
@@ -353,6 +356,83 @@ func TestCompareObject(t *testing.T) {
 					},
 					Spec: apiextensionsv1.CustomResourceDefinitionSpec{
 						Group: "group2",
+					},
+				},
+			},
+		},
+		{
+			name: "Compare NetworkPolicy",
+			rawObj1: runtime.RawExtension{
+				Object: &networkingv1.NetworkPolicy{
+					TypeMeta: metav1.TypeMeta{
+						APIVersion: "networking.k8s.io/v1",
+						Kind:       "NetworkPolicy",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "metrics-collector",
+						Namespace: "open-cluster-management-addon-observability",
+					},
+					Spec: networkingv1.NetworkPolicySpec{
+						PodSelector: metav1.LabelSelector{
+							MatchLabels: map[string]string{"component": "metrics-collector"},
+						},
+						PolicyTypes: []networkingv1.PolicyType{
+							networkingv1.PolicyTypeIngress,
+							networkingv1.PolicyTypeEgress,
+						},
+						Ingress: []networkingv1.NetworkPolicyIngressRule{{
+							Ports: []networkingv1.NetworkPolicyPort{{
+								Protocol: &tcpProto,
+								Port:     &intstr.IntOrString{Type: intstr.Int, IntVal: 8080},
+							}},
+						}},
+						Egress: []networkingv1.NetworkPolicyEgressRule{{}},
+					},
+				},
+			},
+			rawObj2: runtime.RawExtension{
+				Object: &networkingv1.NetworkPolicy{
+					TypeMeta: metav1.TypeMeta{
+						APIVersion: "networking.k8s.io/v1",
+						Kind:       "NetworkPolicy",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "other-policy",
+						Namespace: "open-cluster-management-addon-observability",
+					},
+					Spec: networkingv1.NetworkPolicySpec{
+						PodSelector: metav1.LabelSelector{
+							MatchLabels: map[string]string{"component": "metrics-collector"},
+						},
+					},
+				},
+			},
+			rawObj3: runtime.RawExtension{
+				Object: &networkingv1.NetworkPolicy{
+					TypeMeta: metav1.TypeMeta{
+						APIVersion: "networking.k8s.io/v1",
+						Kind:       "NetworkPolicy",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "metrics-collector",
+						Namespace: "open-cluster-management-addon-observability",
+					},
+					Spec: networkingv1.NetworkPolicySpec{
+						PodSelector: metav1.LabelSelector{
+							MatchLabels: map[string]string{"component": "metrics-collector"},
+						},
+						PolicyTypes: []networkingv1.PolicyType{
+							networkingv1.PolicyTypeIngress,
+							networkingv1.PolicyTypeEgress,
+						},
+						// different ingress port
+						Ingress: []networkingv1.NetworkPolicyIngressRule{{
+							Ports: []networkingv1.NetworkPolicyPort{{
+								Protocol: &tcpProto,
+								Port:     &intstr.IntOrString{Type: intstr.Int, IntVal: 9090},
+							}},
+						}},
+						Egress: []networkingv1.NetworkPolicyEgressRule{{}},
 					},
 				},
 			},

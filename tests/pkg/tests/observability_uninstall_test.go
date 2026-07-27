@@ -30,6 +30,19 @@ func uninstallMCO() {
 		testOptions.KubeConfig,
 		testOptions.HubCluster.KubeContext)
 
+	if npEnabledMch {
+		By("Disabling MCH networkPolicies")
+		Expect(utils.SetNetworkPoliciesEnabled(testOptions, false)).NotTo(HaveOccurred())
+
+		if utils.HasManagedClusters(testOptions) {
+			By("Verifying NetworkPolicies are removed from the managed cluster")
+			Eventually(func() error {
+				return utils.CheckSpokeNetworkPolicies(testOptions, false)
+			}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*10).Should(Succeed())
+		}
+		npEnabledMch = false
+	}
+
 	By("Deleting the MCO testing RBAC resources")
 	Expect(utils.DeleteMCOTestingRBAC(testOptions)).NotTo(HaveOccurred())
 
