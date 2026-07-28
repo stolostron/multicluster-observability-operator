@@ -1031,7 +1031,7 @@ func GetNetworkPoliciesEnabled(ctx context.Context, c client.Client) (bool, erro
 	mchList.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   MCHGroup,
 		Version: MCHVersion,
-		Kind:    MCHKind + "List",
+		Kind:    MCHKind,
 	})
 	if err := c.List(ctx, mchList, client.InNamespace(GetMCONamespace())); err != nil {
 		if apierrors.IsNotFound(err) {

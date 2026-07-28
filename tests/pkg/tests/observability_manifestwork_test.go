@@ -137,10 +137,7 @@ var _ = Describe("", func() {
 		if os.Getenv("IS_KIND_ENV") == trueStr {
 			Skip("Skip network policy validation on kind")
 		}
-		if !npEnabledMch {
-			Skip("Skip network policy validation because MCH networkPolicies is not enabled")
-		}
-		if !utils.HasManagedClusters(testOptions) {
+		if utils.HasManagedClusters(testOptions) {
 			Skip("Skip network policy validation because no non-local managed cluster found")
 		}
 

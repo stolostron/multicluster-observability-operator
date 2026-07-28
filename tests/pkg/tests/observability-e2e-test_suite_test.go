@@ -42,7 +42,6 @@ var (
 	hubManagedClusterName        = "local-cluster"
 	namespace                    = MCO_ADDON_NAMESPACE
 	isHub                        = false
-	npEnabledMch                 = false
 )
 
 const (

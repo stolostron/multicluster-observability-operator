@@ -215,16 +215,4 @@ func installMCO() {
 		return nil
 	}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*10).Should(Succeed())
 
-	// Checking on KIND would require different networkPolicies, skip local-cluster
-	// don't error in test suite if networkPolicies missing, just proceed without
-	if os.Getenv("IS_KIND_ENV") != "true" {
-		By("Enabling MCH networkPolicies (skip if unsupported)")
-		err = utils.SetNetworkPoliciesEnabled(testOptions, true)
-		if err != nil {
-			klog.Warningf("Skipping setting MCH networkPolicies: %v", err)
-			npEnabledMch = false
-		} else {
-			npEnabledMch = true
-		}
-	}
 }
