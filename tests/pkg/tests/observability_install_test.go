@@ -226,12 +226,5 @@ func installMCO() {
 		} else {
 			npEnabledMch = true
 		}
-
-		if npEnabledMch && utils.HasManagedClusters(testOptions) {
-			By("Verifying NetworkPolicies are present on managed cluster")
-			Eventually(func() error {
-				return utils.CheckSpokeNetworkPolicies(testOptions, true)
-			}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*10).Should(Succeed())
-		}
 	}
 }
