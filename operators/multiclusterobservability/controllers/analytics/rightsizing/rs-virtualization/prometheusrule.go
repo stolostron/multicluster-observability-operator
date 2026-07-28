@@ -107,7 +107,7 @@ func buildNamespaceRules5m(
 		rule(
 			"acm_rs_vm:namespace:memory_request:5m",
 			fmt.Sprintf(
-				`max_over_time(sum (
+				`max_over_time(max (
 				  kubevirt_vm_resource_requests{%s, resource="memory"}
 				) by (name,namespace)[5m:])`,
 				nsFilter,
@@ -184,9 +184,11 @@ func buildClusterRules5m(
 		rule(
 			"acm_rs_vm:cluster:memory_request:5m",
 			fmt.Sprintf(
-				`max_over_time(sum (
-				  kubevirt_vm_resource_requests{%s, resource="memory"}
-				) by (cluster)[5m:])`,
+				`max_over_time(sum by (cluster) (
+				  max by (name, namespace, cluster) (
+				    kubevirt_vm_resource_requests{%s, resource="memory"}
+				  )
+				)[5m:])`,
 				nsFilter,
 			),
 		),
