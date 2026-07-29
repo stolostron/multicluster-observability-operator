@@ -117,7 +117,7 @@ func (r *StatusReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		return res, nil
 	}
 
-	return ctrl.Result{}, nil
+	return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
 }
 
 func (s *StatusReconciler) updateSpokeAddon(ctx context.Context) (ctrl.Result, error) {
@@ -182,7 +182,7 @@ func (s *StatusReconciler) updateHubAddon(ctx context.Context) (ctrl.Result, err
 	retryErr := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 		// Fetch the ObservabilityAddon instance in local cluster
 		obsAddon := &oav1beta1.ObservabilityAddon{}
-		if err != s.Client.Get(ctx, types.NamespacedName{Name: s.ObsAddonName, Namespace: s.Namespace}, obsAddon) {
+		if err := s.Client.Get(ctx, types.NamespacedName{Name: s.ObsAddonName, Namespace: s.Namespace}, obsAddon); err != nil {
 			return err
 		}
 
@@ -198,6 +198,14 @@ func (s *StatusReconciler) updateHubAddon(ctx context.Context) (ctrl.Result, err
 		return s.HubClient.Status().Update(ctx, updatedAddon)
 	})
 	if retryErr != nil {
+		if isAuthOrConnectionErr(retryErr) {
+			var reloadErr error
+			if s.HubClient, reloadErr = s.HubClient.Reload(); reloadErr != nil {
+				return ctrl.Result{}, reconcile.TerminalError(fmt.Errorf("failed to reload the hub client: %w", reloadErr))
+			}
+			return ctrl.Result{}, fmt.Errorf("failed to update status in hub cluster, reloaded hub client: %w", retryErr)
+		}
+
 		if util.IsTransientClientErr(retryErr) || errors.IsConflict(retryErr) {
 			s.Logger.Info("Retryable error while updating status, request will be retried.", "error", retryErr)
 			return s.requeueWithOptionalDelay(retryErr)
