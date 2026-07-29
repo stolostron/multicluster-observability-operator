@@ -86,11 +86,11 @@ func getNamespaceBinding(mco *mcov1beta2.MultiClusterObservability, componentTyp
 }
 
 // GetNamespaceRSConfigMapPredicateFunc returns predicate for namespace right-sizing ConfigMap
-func GetNamespaceRSConfigMapPredicateFunc(ctx context.Context, c client.Client) predicate.Funcs {
-	return rsnamespace.GetNamespaceRSConfigMapPredicateFunc(ctx, c)
+func GetNamespaceRSConfigMapPredicateFunc() predicate.Funcs {
+	return rsnamespace.GetNamespaceRSConfigMapPredicateFunc()
 }
 
 // GetVirtualizationRSConfigMapPredicateFunc returns predicate for virtualization right-sizing ConfigMap
-func GetVirtualizationRSConfigMapPredicateFunc(ctx context.Context, c client.Client) predicate.Funcs {
-	return rsvirtualization.GetVirtualizationRSConfigMapPredicateFunc(ctx, c)
+func GetVirtualizationRSConfigMapPredicateFunc() predicate.Funcs {
+	return rsvirtualization.GetVirtualizationRSConfigMapPredicateFunc()
 }
