@@ -128,23 +128,23 @@ func HandleComponentRightSizing(
 		if err := CleanupComponentResources(ctx, c, componentConfig, existingNamespace, true); err != nil {
 			return fmt.Errorf("rs - failed to cleanup %s resources after namespace binding update: %w", componentConfig.ComponentType, err)
 		}
+	}
 
-		// Get configmap
-		cm := &corev1.ConfigMap{}
-		if err := c.Get(ctx, client.ObjectKey{Name: componentConfig.ConfigMapName, Namespace: config.GetDefaultNamespace()}, cm); err != nil {
-			return fmt.Errorf("rs - failed to get existing configmap: %w", err)
-		}
+	// Get configmap
+	cm := &corev1.ConfigMap{}
+	if err := c.Get(ctx, client.ObjectKey{Name: componentConfig.ConfigMapName, Namespace: config.GetDefaultNamespace()}, cm); err != nil {
+		return fmt.Errorf("rs - failed to get existing configmap: %w", err)
+	}
 
-		// Get configmap data into specified structure
-		configData, err := GetRSConfigData(cm)
-		if err != nil {
-			return fmt.Errorf("rs - failed to extract config data: %w", err)
-		}
+	// Get configmap data into specified structure
+	configData, err := GetRSConfigData(cm)
+	if err != nil {
+		return fmt.Errorf("rs - failed to extract config data: %w", err)
+	}
 
-		// If NamespaceBinding has been updated apply the Policy Placement Placementbinding again
-		if err := componentConfig.ApplyChangesFunc(ctx, c, configData); err != nil {
-			return fmt.Errorf("rs - failed to apply configmap changes: %w", err)
-		}
+	// Apply the Policy, Placement, PlacementBinding
+	if err := componentConfig.ApplyChangesFunc(ctx, c, configData); err != nil {
+		return fmt.Errorf("rs - failed to apply configmap changes: %w", err)
 	}
 
 	log.Info("rs - create component task completed", "component", componentConfig.ComponentType)
