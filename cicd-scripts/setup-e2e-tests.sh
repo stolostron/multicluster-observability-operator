@@ -35,7 +35,7 @@ LATEST_MCE_SNAPSHOT=${LATEST_MCE_SNAPSHOT:-$(get_latest_mce_snapshot)}
 deploy_hub_spoke_core() {
   cd ${ROOTDIR}
 
-  export OCM_BRANCH=main
+  export OCM_BRANCH=backplane-2.11
   export OPERATOR_IMAGE_NAME=quay.io/stolostron/registration-operator:$LATEST_MCE_SNAPSHOT
   export REGISTRATION_IMAGE=quay.io/stolostron/registration:$LATEST_MCE_SNAPSHOT
   export WORK_IMAGE=quay.io/stolostron/work:$LATEST_MCE_SNAPSHOT
