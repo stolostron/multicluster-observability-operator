@@ -71,7 +71,7 @@ spec:
           #TODO: add link to ACM documentation link to description
           message: ACM Thanos Compact {{$labels.job}} in {{$labels.namespace}} has not uploaded anything for 24 hours.
           summary: ACM Thanos Compact has not uploaded anything for last 24 hours.
-        expr: (time() - max by (namespace, job) (max_over_time(acm_thanos_objstore_bucket_last_successful_upload_time{job="observability-thanos-compact"}[24h] offset 6h))) / 60 / 60 > 24
+        expr: (time() - max by (namespace, job) (max_over_time(acm_thanos_objstore_bucket_last_successful_upload_time{job="observability-thanos-compact"}[24h]))) / 60 / 60 > 24
         labels:
           namespace: open-cluster-management-observability
           severity: warning
