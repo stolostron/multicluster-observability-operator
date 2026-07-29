@@ -122,6 +122,20 @@ func FetchTLSAdherencePolicy(ctx context.Context) (ocinfrav1.TLSAdherencePolicy,
 	return tap, nil
 }
 
+func GetTLSSecurityConfiguration(ctx context.Context) (minTLSVersion, cipherSuites string, err error) {
+	tlsProfileSpec, err := GetOrCreateTLSProfileSpec(ctx)
+	if err != nil {
+		log.Error(err, "unable to get TLS security configuration")
+		return "", "", err
+	}
+
+	ciphers := tlsProfileSpec.Ciphers
+
+	cipherSuites = strings.Join(libgocrypto.OpenSSLToIANACipherSuites(ciphers), ",")
+	minTLSVersion = string(tlsProfileSpec.MinTLSVersion)
+	return
+}
+
 func SetTLSClientFunc(fn func() (client.Client, error)) {
 	tlsClientFunc = fn
 }

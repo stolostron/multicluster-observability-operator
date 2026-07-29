@@ -390,3 +390,53 @@ func TestSetTLSSecurityConfiguration(t *testing.T) {
 		})
 	}
 }
+
+func TestGetTLSSecurityConfiguration(t *testing.T) {
+	strict := configv1.TLSAdherencePolicyStrictAllComponents
+
+	tests := []struct {
+		name          string
+		tlsSecProfile *configv1.TLSSecurityProfile
+		adherence     configv1.TLSAdherencePolicy
+		wantVersion   string
+	}{
+		{
+			name: "strict + intermediate returns TLS 1.2 and ciphers",
+			tlsSecProfile: &configv1.TLSSecurityProfile{
+				Type: configv1.TLSProfileIntermediateType,
+			},
+			adherence:   strict,
+			wantVersion: string(configv1.VersionTLS12),
+		},
+		{
+			name: "strict + modern returns TLS 1.3 and ciphers",
+			tlsSecProfile: &configv1.TLSSecurityProfile{
+				Type: configv1.TLSProfileModernType,
+			},
+			adherence:   strict,
+			wantVersion: string(configv1.VersionTLS13),
+		},
+		{
+			name: "NoOpinion adherence defaults to intermediate",
+			tlsSecProfile: &configv1.TLSSecurityProfile{
+				Type: configv1.TLSProfileModernType,
+			},
+			adherence:   configv1.TLSAdherencePolicyNoOpinion,
+			wantVersion: string(configv1.VersionTLS12),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			defer ResetTLSState()
+			setFakeClient(newAPIServerWithProfile(tt.tlsSecProfile, tt.adherence))
+
+			minVersion, cipherSuites, err := GetTLSSecurityConfiguration(context.Background())
+			require.NoError(t, err)
+
+			assert.Equal(t, tt.wantVersion, minVersion)
+
+			assert.NotEmpty(t, cipherSuites, "cipher suites should not be empty")
+			assert.True(t, strings.Contains(cipherSuites, ","), "cipher suites should be comma-separated")
+		})
+	}
+}

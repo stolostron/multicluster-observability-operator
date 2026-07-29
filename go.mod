@@ -31,7 +31,7 @@ require (
 	github.com/prometheus/prometheus v0.305.0
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
-	github.com/stolostron/observatorium-operator v0.0.0-20260715135030-1d202794235d
+	github.com/stolostron/observatorium-operator v0.0.0-20260729143203-5f77fcaf4e2f
 	github.com/stolostron/rbac-api-utils v0.0.0-20240404212618-7f57fc664256
 	github.com/stretchr/testify v1.11.1
 	github.com/thanos-io/thanos v0.39.2
