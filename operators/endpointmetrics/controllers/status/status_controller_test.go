@@ -56,13 +56,13 @@ func TestStatusController_HubNominalCase(t *testing.T) {
 		Logger:       logr.Discard(),
 	}
 
-	// no status difference triggers no update
+	// no status difference triggers no update, but periodic resync is scheduled
 	resp, err := statusReconciler.Reconcile(context.Background(), ctrl.Request{})
 	if err != nil {
 		t.Fatalf("Failed to reconcile: %v", err)
 	}
-	if !resp.IsZero() {
-		t.Fatalf("Expected no requeue")
+	if resp.RequeueAfter != 5*time.Minute {
+		t.Fatalf("Expected periodic resync with RequeueAfter=5m, got %v", resp.RequeueAfter)
 	}
 	if custumHubClient.UpdateCallsCount() > 0 {
 		t.Fatalf("Expected no update")
@@ -82,8 +82,8 @@ func TestStatusController_HubNominalCase(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to reconcile: %v", err)
 	}
-	if !resp.IsZero() {
-		t.Fatalf("Expected no requeue")
+	if resp.RequeueAfter != 5*time.Minute {
+		t.Fatalf("Expected periodic resync with RequeueAfter=5m, got %v", resp.RequeueAfter)
 	}
 	if custumHubClient.UpdateCallsCount() != 1 {
 		t.Fatalf("Expected update")
@@ -114,7 +114,12 @@ func TestStatusController_UpdateHubAddonFailures(t *testing.T) {
 	hubOba := newObservabilityAddon(addonName, addonHubNamespace)
 	var updateErr error
 	hubClientWithConflict := newClientWithUpdateError(newClient(hubOba), updateErr, nil)
-	reloadableHubClient, err := util.NewReloadableHubClientWithReloadFunc(func() (client.Client, error) { return hubClientWithConflict, nil })
+
+	var reloadCount int
+	reloadableHubClient, err := util.NewReloadableHubClientWithReloadFunc(func() (client.Client, error) {
+		reloadCount++
+		return hubClientWithConflict, nil
+	})
 	if err != nil {
 		t.Fatalf("Failed to create reloadable hub client: %v", err)
 	}
@@ -134,6 +139,7 @@ func TestStatusController_UpdateHubAddonFailures(t *testing.T) {
 		requeueAfterVal int
 		updateCallsMin  int
 		updateCallsMax  int
+		reloadExpected  bool
 	}{
 		"Conflict": {
 			updateErr:      apiErrors.NewConflict(schema.GroupResource{Group: oav1beta1.GroupVersion.Group, Resource: "FakeResource"}, addonName, fmt.Errorf("fake conflict")),
@@ -167,6 +173,13 @@ func TestStatusController_UpdateHubAddonFailures(t *testing.T) {
 			},
 			requeue:        true,
 			updateCallsMax: 1,
+			reloadExpected: true,
+		},
+		"Unauthorized should reload and requeue": {
+			updateErr:      apiErrors.NewUnauthorized("unauthorized"),
+			requeue:        true,
+			updateCallsMax: 1,
+			reloadExpected: true,
 		},
 	}
 
@@ -174,6 +187,7 @@ func TestStatusController_UpdateHubAddonFailures(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			hubClientWithConflict.UpdateError = tc.updateErr
 			hubClientWithConflict.Reset()
+			reloadCount = 0
 			resp, err := statusReconciler.Reconcile(context.Background(), ctrl.Request{})
 			isTerminalErr := errors.Is(err, reconcile.TerminalError(nil))
 			if tc.terminalErr != isTerminalErr {
@@ -193,6 +207,12 @@ func TestStatusController_UpdateHubAddonFailures(t *testing.T) {
 			}
 			if tc.updateCallsMax > 0 && hubClientWithConflict.UpdateCallsCount() > tc.updateCallsMax {
 				t.Fatalf("Expected update retry at most %d times, got %d", tc.updateCallsMax, hubClientWithConflict.UpdateCallsCount())
+			}
+			if tc.reloadExpected && reloadCount == 0 {
+				t.Fatalf("Expected hub client reload but got none")
+			}
+			if !tc.reloadExpected && reloadCount > 0 {
+				t.Fatalf("Unexpected hub client reload: got %d", reloadCount)
 			}
 		})
 	}
@@ -411,7 +431,7 @@ func TestStatusController_UpdateSpokeAddon(t *testing.T) {
 
 			resp, err := statusReconciler.Reconcile(context.Background(), ctrl.Request{})
 			assert.NoError(t, err)
-			assert.True(t, resp.IsZero())
+			assert.Equal(t, 5*time.Minute, resp.RequeueAfter)
 
 			newSpokeOba := &oav1beta1.ObservabilityAddon{}
 			err = spokeClient.Get(context.Background(), types.NamespacedName{Name: addonName, Namespace: addonNamespace}, newSpokeOba)
