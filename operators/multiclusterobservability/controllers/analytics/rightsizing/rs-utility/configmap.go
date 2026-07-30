@@ -9,9 +9,7 @@ import (
 	"fmt"
 	"reflect"
 
-	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
-	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -81,61 +79,26 @@ func GetRSConfigData(cm *corev1.ConfigMap) (RSNamespaceConfigMapData, error) {
 	return configData, nil
 }
 
-// GetRSConfigMapPredicateFunc returns a predicate function for watching ConfigMap events
-func GetRSConfigMapPredicateFunc(ctx context.Context, c client.Client, configMapName string, applyChangesFunc func(context.Context, client.Client, RSNamespaceConfigMapData) error) predicate.Funcs {
-	log.Info("rs - watch for ConfigMap events set up started")
-
-	processConfigMap := func(cm *corev1.ConfigMap) bool {
-		// Skip policy creation when RS is delegated to MCOA.
-		// Without this check, the predicate side-effect creates MCO policies
-		// even when the analytics controller detects delegation and returns early.
-		mcoList := &mcov1beta2.MultiClusterObservabilityList{}
-		if err := c.List(ctx, mcoList); err == nil && len(mcoList.Items) > 0 {
-			if util.IsRightSizingDelegated(&mcoList.Items[0]) {
-				log.Info("rs - skipping ConfigMap policy side-effect, delegated to MCOA")
-				return true
-			}
-		}
-
-		configData, err := GetRSConfigData(cm)
-		if err != nil {
-			log.Error(err, "rs - failed to extract config data")
-			return false
-		}
-
-		// Apply changes based on the config map
-		if err := applyChangesFunc(ctx, c, configData); err != nil {
-			log.Error(err, "rs - failed to apply configmap changes")
-			return false
-		}
-		return true
-	}
-
+// GetRSConfigMapPredicateFunc returns a predicate that filters ConfigMap watch
+// events to only the named RS ConfigMap with actual data changes.
+func GetRSConfigMapPredicateFunc(configMapName string) predicate.Funcs {
 	return predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
-			if e.Object.GetName() == configMapName && e.Object.GetNamespace() == config.GetDefaultNamespace() {
-				if cm, ok := e.Object.(*corev1.ConfigMap); ok {
-					return processConfigMap(cm)
-				}
-			}
-			return true
+			return e.Object.GetName() == configMapName && e.Object.GetNamespace() == config.GetDefaultNamespace()
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			if e.ObjectNew.GetName() != configMapName || e.ObjectNew.GetNamespace() != config.GetDefaultNamespace() {
-				return true
+				return false
 			}
 
-			// Check if the ConfigMap `Data` has changed before proceeding
 			oldCM, oldOK := e.ObjectOld.(*corev1.ConfigMap)
 			newCM, newOK := e.ObjectNew.(*corev1.ConfigMap)
-
 			if oldOK && newOK && reflect.DeepEqual(oldCM.Data, newCM.Data) {
-				log.V(1).Info("rs - no changes detected in configmap data, skipping update")
-				return true
+				return false
 			}
-
-			log.V(1).Info("rs - configmap data has changed, processing update")
-			return processConfigMap(newCM)
+			return true
 		},
+		DeleteFunc:  func(e event.DeleteEvent) bool { return false },
+		GenericFunc: func(e event.GenericEvent) bool { return false },
 	}
 }
