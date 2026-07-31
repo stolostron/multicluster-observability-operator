@@ -11,14 +11,13 @@ spec:
       observability.open-cluster-management.io/name: observability
   ingress:
     - from:
+        # for perses
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: openshift-cluster-observability-operator
         - podSelector:
             matchLabels:
               app: multicluster-observability-grafana
-        # for perses
-        - podSelector:
-            matchLabels:
-              app: console
-              component: ui
       ports:
         - port: 8080
           protocol: TCP
