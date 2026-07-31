@@ -7,14 +7,11 @@ package rsutility
 import (
 	"context"
 	"testing"
-	"time"
 
-	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -24,434 +21,187 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-func setupComponentTestScheme(t *testing.T) *runtime.Scheme {
+func setupRSUtilityScheme(t *testing.T) *runtime.Scheme {
+	t.Helper()
 	scheme := runtime.NewScheme()
 	require.NoError(t, corev1.AddToScheme(scheme))
-	require.NoError(t, mcov1beta2.AddToScheme(scheme))
-	require.NoError(t, policyv1.AddToScheme(scheme))
 	require.NoError(t, clusterv1beta1.AddToScheme(scheme))
-	require.NoError(t, monitoringv1.AddToScheme(scheme))
+	require.NoError(t, policyv1.AddToScheme(scheme))
 	return scheme
 }
 
-func newTestMCOForComponent(componentType ComponentType, binding string, enabled bool) *mcov1beta2.MultiClusterObservability {
-	mco := &mcov1beta2.MultiClusterObservability{
-		ObjectMeta: metav1.ObjectMeta{Name: "observability"},
-		Spec: mcov1beta2.MultiClusterObservabilitySpec{
-			Capabilities: &mcov1beta2.CapabilitiesSpec{
-				Platform: &mcov1beta2.PlatformCapabilitiesSpec{
-					Analytics: mcov1beta2.PlatformAnalyticsSpec{},
+func rsLabeledMeta(name, namespace string) metav1.ObjectMeta {
+	return metav1.ObjectMeta{
+		Name:      name,
+		Namespace: namespace,
+		Labels:    map[string]string{RSManagedByLabel: RSManagedByValue},
+	}
+}
+
+func TestGetComponentConfig(t *testing.T) {
+	tests := []struct {
+		name          string
+		mco           *mcov1beta2.MultiClusterObservability
+		componentType ComponentType
+		wantEnabled   bool
+		wantBinding   string
+		wantErr       bool
+	}{
+		{
+			name: "namespace enabled with binding",
+			mco: &mcov1beta2.MultiClusterObservability{
+				Spec: mcov1beta2.MultiClusterObservabilitySpec{
+					Capabilities: &mcov1beta2.CapabilitiesSpec{
+						Platform: &mcov1beta2.PlatformCapabilitiesSpec{
+							Analytics: mcov1beta2.PlatformAnalyticsSpec{
+								NamespaceRightSizingRecommendation: mcov1beta2.PlatformRightSizingRecommendationSpec{
+									Enabled:          true,
+									NamespaceBinding: "custom-ns",
+								},
+							},
+						},
+					},
 				},
 			},
+			componentType: ComponentTypeNamespace,
+			wantEnabled:   true,
+			wantBinding:   "custom-ns",
+		},
+		{
+			name: "virtualization disabled no binding",
+			mco: &mcov1beta2.MultiClusterObservability{
+				Spec: mcov1beta2.MultiClusterObservabilitySpec{
+					Capabilities: &mcov1beta2.CapabilitiesSpec{
+						Platform: &mcov1beta2.PlatformCapabilitiesSpec{},
+					},
+				},
+			},
+			componentType: ComponentTypeVirtualization,
+			wantEnabled:   false,
+			wantBinding:   "",
+		},
+		{
+			name:          "nil capabilities returns false",
+			mco:           &mcov1beta2.MultiClusterObservability{},
+			componentType: ComponentTypeNamespace,
+			wantEnabled:   false,
+			wantBinding:   "",
+		},
+		{
+			name: "unknown component type returns error",
+			mco: &mcov1beta2.MultiClusterObservability{
+				Spec: mcov1beta2.MultiClusterObservabilitySpec{
+					Capabilities: &mcov1beta2.CapabilitiesSpec{
+						Platform: &mcov1beta2.PlatformCapabilitiesSpec{},
+					},
+				},
+			},
+			componentType: ComponentType("unknown"),
+			wantErr:       true,
 		},
 	}
 
-	switch componentType {
-	case ComponentTypeNamespace:
-		mco.Spec.Capabilities.Platform.Analytics.NamespaceRightSizingRecommendation = mcov1beta2.PlatformRightSizingRecommendationSpec{
-			Enabled:          enabled,
-			NamespaceBinding: binding,
-		}
-	case ComponentTypeVirtualization:
-		mco.Spec.Capabilities.Platform.Analytics.VirtualizationRightSizingRecommendation = mcov1beta2.PlatformRightSizingRecommendationSpec{
-			Enabled:          enabled,
-			NamespaceBinding: binding,
-		}
-	}
-
-	return mco
-}
-
-func mockApplyChangesFunc(ctx context.Context, c client.Client, configData RSNamespaceConfigMapData) error {
-	return nil
-}
-
-func mockGetDefaultConfigFunc() map[string]string {
-	return map[string]string{
-		"prometheusRuleConfig": `namespaceFilterCriteria:
-  exclusionCriteria:
-    - "openshift.*"
-recommendationPercentage: 110
-`,
-		"placementConfiguration": `spec:
-  predicates: []
-`,
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			enabled, binding, err := GetComponentConfig(tt.mco, tt.componentType)
+			if tt.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tt.wantEnabled, enabled)
+			require.Equal(t, tt.wantBinding, binding)
+		})
 	}
 }
 
-func TestGetComponentConfig_Namespace(t *testing.T) {
-	mco := newTestMCOForComponent(ComponentTypeNamespace, "custom-namespace", true)
+func TestCleanupLegacyPolicyResourcesByName(t *testing.T) {
+	scheme := setupRSUtilityScheme(t)
 
-	enabled, binding, err := GetComponentConfig(mco, ComponentTypeNamespace)
-	require.NoError(t, err)
-	assert.True(t, enabled)
-	assert.Equal(t, "custom-namespace", binding)
+	nsNS := "ns-namespace"
+	virtNS := "virt-namespace"
+
+	// Pre-create the well-known legacy resources in both namespaces
+	objects := []client.Object{
+		&policyv1.Policy{ObjectMeta: metav1.ObjectMeta{Name: legacyNSPolicyName, Namespace: nsNS}},
+		&policyv1.PlacementBinding{ObjectMeta: metav1.ObjectMeta{Name: legacyNSPlacementBindingName, Namespace: nsNS}},
+		&clusterv1beta1.Placement{ObjectMeta: metav1.ObjectMeta{Name: legacyNSPlacementName, Namespace: nsNS}},
+		&policyv1.Policy{ObjectMeta: metav1.ObjectMeta{Name: legacyVirtPolicyName, Namespace: virtNS}},
+		&policyv1.PlacementBinding{ObjectMeta: metav1.ObjectMeta{Name: legacyVirtPlacementBindingName, Namespace: virtNS}},
+		&clusterv1beta1.Placement{ObjectMeta: metav1.ObjectMeta{Name: legacyVirtPlacementName, Namespace: virtNS}},
+	}
+	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(objects...).Build()
+
+	require.NoError(t, CleanupLegacyPolicyResourcesByName(context.TODO(), c, nsNS, virtNS))
+
+	// All 6 resources must be deleted
+	for _, obj := range objects {
+		key := types.NamespacedName{Name: obj.GetName(), Namespace: obj.GetNamespace()}
+		err := c.Get(context.TODO(), key, obj.DeepCopyObject().(client.Object))
+		require.True(t, apierrors.IsNotFound(err), "%s %s/%s should be deleted", obj.GetObjectKind().GroupVersionKind().Kind, key.Namespace, key.Name)
+	}
 }
 
-func TestGetComponentConfig_Virtualization(t *testing.T) {
-	mco := newTestMCOForComponent(ComponentTypeVirtualization, "virt-namespace", false)
+func TestCleanupLegacyPolicyResourcesByName_NotFoundIsIgnored(t *testing.T) {
+	scheme := setupRSUtilityScheme(t)
+	c := fake.NewClientBuilder().WithScheme(scheme).Build()
 
-	enabled, binding, err := GetComponentConfig(mco, ComponentTypeVirtualization)
-	require.NoError(t, err)
-	assert.False(t, enabled)
-	assert.Equal(t, "virt-namespace", binding)
+	// No resources exist — should succeed without error
+	require.NoError(t, CleanupLegacyPolicyResourcesByName(context.TODO(), c, "ns1", "ns2"))
 }
 
-func TestGetComponentConfig_PlatformNotConfigured(t *testing.T) {
-	mco := &mcov1beta2.MultiClusterObservability{
-		ObjectMeta: metav1.ObjectMeta{Name: "observability"},
-		Spec:       mcov1beta2.MultiClusterObservabilitySpec{},
-	}
+// TestCleanupLegacyPolicyResourcesByLabel_PreservesConfigMap verifies that the migration
+// path deletes Policy/PlacementBinding/Placement resources but keeps ConfigMaps intact.
+// ConfigMaps are preserved because MCOA reuses them for per-cluster configuration.
+func TestCleanupLegacyPolicyResourcesByLabel_PreservesConfigMap(t *testing.T) {
+	scheme := setupRSUtilityScheme(t)
 
-	enabled, binding, err := GetComponentConfig(mco, ComponentTypeNamespace)
-	require.NoError(t, err)
-	assert.False(t, enabled)
-	assert.Empty(t, binding)
+	ns := DefaultNamespace
+	policy := &policyv1.Policy{ObjectMeta: rsLabeledMeta("rs-prom-rules-policy", ns)}
+	pb := &policyv1.PlacementBinding{ObjectMeta: rsLabeledMeta("rs-policyset-binding", ns)}
+	placement := &clusterv1beta1.Placement{ObjectMeta: rsLabeledMeta("rs-placement", "")}
+	cm := &corev1.ConfigMap{ObjectMeta: rsLabeledMeta("rs-namespace-config", ns)}
+
+	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(policy, pb, placement, cm).Build()
+
+	require.NoError(t, CleanupLegacyPolicyResourcesByLabel(context.TODO(), c))
+
+	// Policy, PlacementBinding, Placement must be deleted.
+	err := c.Get(context.TODO(), types.NamespacedName{Name: policy.Name, Namespace: ns}, &policyv1.Policy{})
+	require.True(t, apierrors.IsNotFound(err), "Policy must be deleted by legacy cleanup")
+
+	err = c.Get(context.TODO(), types.NamespacedName{Name: pb.Name, Namespace: ns}, &policyv1.PlacementBinding{})
+	require.True(t, apierrors.IsNotFound(err), "PlacementBinding must be deleted by legacy cleanup")
+
+	err = c.Get(context.TODO(), types.NamespacedName{Name: placement.Name}, &clusterv1beta1.Placement{})
+	require.True(t, apierrors.IsNotFound(err), "Placement must be deleted by legacy cleanup")
+
+	// ConfigMap must be preserved — MCOA reuses it.
+	err = c.Get(context.TODO(), types.NamespacedName{Name: cm.Name, Namespace: ns}, &corev1.ConfigMap{})
+	require.NoError(t, err, "ConfigMap must NOT be deleted by legacy cleanup (MCOA reuses it)")
 }
 
-func TestGetComponentConfig_UnknownType(t *testing.T) {
-	mco := newTestMCOForComponent(ComponentTypeNamespace, "test", true)
+// TestCleanupRSResourcesByLabel_DeletesConfigMap verifies that full MCO deletion cleanup
+// removes ConfigMaps in addition to Policy/PlacementBinding/Placement resources.
+func TestCleanupRSResourcesByLabel_DeletesConfigMap(t *testing.T) {
+	scheme := setupRSUtilityScheme(t)
 
-	_, _, err := GetComponentConfig(mco, ComponentType("unknown"))
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "unknown component type")
-}
+	ns := DefaultNamespace
+	policy := &policyv1.Policy{ObjectMeta: rsLabeledMeta("rs-prom-rules-policy", ns)}
+	placement := &clusterv1beta1.Placement{ObjectMeta: rsLabeledMeta("rs-placement", "")}
+	cm := &corev1.ConfigMap{ObjectMeta: rsLabeledMeta("rs-namespace-config", ns)}
 
-func TestHandleComponentRightSizing_FeatureDisabled(t *testing.T) {
-	scheme := setupComponentTestScheme(t)
-	mco := newTestMCOForComponent(ComponentTypeNamespace, "", false)
+	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(policy, placement, cm).Build()
 
-	componentConfig := ComponentConfig{
-		ComponentType:            ComponentTypeNamespace,
-		ConfigMapName:            "test-config",
-		PlacementName:            "test-placement",
-		PlacementBindingName:     "test-binding",
-		PrometheusRulePolicyName: "test-policy",
-		DefaultNamespace:         "default-ns",
-		GetDefaultConfigFunc:     mockGetDefaultConfigFunc,
-		ApplyChangesFunc:         mockApplyChangesFunc,
-	}
+	require.NoError(t, CleanupRSResourcesByLabel(context.TODO(), c))
 
-	state := &ComponentState{
-		Namespace: "old-namespace",
-		Enabled:   true,
-	}
+	// All resources including ConfigMap must be deleted.
+	err := c.Get(context.TODO(), types.NamespacedName{Name: policy.Name, Namespace: ns}, &policyv1.Policy{})
+	require.True(t, apierrors.IsNotFound(err), "Policy must be deleted by full RS cleanup")
 
-	client := fake.NewClientBuilder().
-		WithScheme(scheme).
-		WithObjects(mco).
-		Build()
+	err = c.Get(context.TODO(), types.NamespacedName{Name: placement.Name}, &clusterv1beta1.Placement{})
+	require.True(t, apierrors.IsNotFound(err), "Placement must be deleted by full RS cleanup")
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	err := HandleComponentRightSizing(ctx, client, mco, componentConfig, state)
-	require.NoError(t, err)
-
-	// Verify state changes
-	assert.Equal(t, "default-ns", state.Namespace)
-	assert.False(t, state.Enabled)
-}
-
-func TestHandleComponentRightSizing_FeatureEnabled(t *testing.T) {
-	scheme := setupComponentTestScheme(t)
-	mco := newTestMCOForComponent(ComponentTypeNamespace, "custom-ns", true)
-
-	componentConfig := ComponentConfig{
-		ComponentType:            ComponentTypeNamespace,
-		ConfigMapName:            "test-config",
-		PlacementName:            "test-placement",
-		PlacementBindingName:     "test-binding",
-		PrometheusRulePolicyName: "test-policy",
-		DefaultNamespace:         "default-ns",
-		GetDefaultConfigFunc:     mockGetDefaultConfigFunc,
-		ApplyChangesFunc:         mockApplyChangesFunc,
-	}
-
-	state := &ComponentState{
-		Namespace: "default-ns",
-		Enabled:   false,
-	}
-
-	client := fake.NewClientBuilder().
-		WithScheme(scheme).
-		WithObjects(mco).
-		Build()
-
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	err := HandleComponentRightSizing(ctx, client, mco, componentConfig, state)
-	require.NoError(t, err)
-
-	// Verify state changes
-	assert.Equal(t, "custom-ns", state.Namespace)
-	assert.True(t, state.Enabled)
-
-	// Verify ConfigMap was created
-	cm := &corev1.ConfigMap{}
-	err = client.Get(ctx, types.NamespacedName{
-		Name:      "test-config",
-		Namespace: "open-cluster-management-observability",
-	}, cm)
-	require.NoError(t, err)
-	assert.Contains(t, cm.Data, "prometheusRuleConfig")
-}
-
-func TestHandleComponentRightSizing_FreshEnableAfterDelegation(t *testing.T) {
-	scheme := setupComponentTestScheme(t)
-	mco := newTestMCOForComponent(ComponentTypeNamespace, "custom-ns", true)
-
-	applyChangesCalled := false
-	trackingApplyFunc := func(ctx context.Context, c client.Client, configData RSNamespaceConfigMapData) error {
-		applyChangesCalled = true
-		return nil
-	}
-
-	componentConfig := ComponentConfig{
-		ComponentType:            ComponentTypeNamespace,
-		ConfigMapName:            "test-config",
-		PlacementName:            "test-placement",
-		PlacementBindingName:     "test-binding",
-		PrometheusRulePolicyName: "test-policy",
-		DefaultNamespace:         "default-ns",
-		GetDefaultConfigFunc:     mockGetDefaultConfigFunc,
-		ApplyChangesFunc:         trackingApplyFunc,
-	}
-
-	// Simulate state after delegation cleanup reset (Change 1)
-	state := &ComponentState{
-		Namespace: "custom-ns",
-		Enabled:   false, // Reset by CleanupPolicyResourcesForDelegation
-	}
-
-	// Pre-create ConfigMap with valid data (as would exist from prior MCOA usage)
-	existingCM := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-config",
-			Namespace: "open-cluster-management-observability",
-		},
-		Data: mockGetDefaultConfigFunc(),
-	}
-
-	client := fake.NewClientBuilder().
-		WithScheme(scheme).
-		WithObjects(mco, existingCM).
-		Build()
-
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	err := HandleComponentRightSizing(ctx, client, mco, componentConfig, state)
-	require.NoError(t, err)
-
-	// Verify state
-	assert.True(t, state.Enabled)
-	assert.Equal(t, "custom-ns", state.Namespace)
-
-	// Verify ApplyChangesFunc was called
-	assert.True(t, applyChangesCalled, "ApplyChangesFunc should be called after delegation reset")
-}
-
-func TestHandleComponentRightSizing_NamespaceBindingChange(t *testing.T) {
-	scheme := setupComponentTestScheme(t)
-	mco := newTestMCOForComponent(ComponentTypeNamespace, "new-ns", true)
-
-	applyChangesCalled := false
-	trackingApplyFunc := func(ctx context.Context, c client.Client, configData RSNamespaceConfigMapData) error {
-		applyChangesCalled = true
-		return nil
-	}
-
-	componentConfig := ComponentConfig{
-		ComponentType:            ComponentTypeNamespace,
-		ConfigMapName:            "test-config",
-		PlacementName:            "test-placement",
-		PlacementBindingName:     "test-binding",
-		PrometheusRulePolicyName: "test-policy",
-		DefaultNamespace:         "default-ns",
-		GetDefaultConfigFunc:     mockGetDefaultConfigFunc,
-		ApplyChangesFunc:         trackingApplyFunc,
-	}
-
-	// Simulate already-enabled state with a different namespace
-	state := &ComponentState{
-		Namespace: "old-ns",
-		Enabled:   true,
-	}
-
-	// Pre-create resources in the old namespace that should be cleaned up
-	oldPlacement := &clusterv1beta1.Placement{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-placement",
-			Namespace: "old-ns",
-		},
-	}
-	oldBinding := &policyv1.PlacementBinding{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-binding",
-			Namespace: "old-ns",
-		},
-	}
-	oldPolicy := &policyv1.Policy{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-policy",
-			Namespace: "old-ns",
-		},
-	}
-
-	existingCM := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-config",
-			Namespace: "open-cluster-management-observability",
-		},
-		Data: mockGetDefaultConfigFunc(),
-	}
-
-	client := fake.NewClientBuilder().
-		WithScheme(scheme).
-		WithObjects(mco, existingCM, oldPlacement, oldBinding, oldPolicy).
-		Build()
-
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	err := HandleComponentRightSizing(ctx, client, mco, componentConfig, state)
-	require.NoError(t, err)
-
-	// Verify state updated to new namespace
-	assert.True(t, state.Enabled)
-	assert.Equal(t, "new-ns", state.Namespace)
-
-	// Verify ApplyChangesFunc was called
-	assert.True(t, applyChangesCalled, "ApplyChangesFunc should be called after namespace binding change")
-
-	// Verify old namespace resources were cleaned up
-	err = client.Get(ctx, types.NamespacedName{Name: "test-placement", Namespace: "old-ns"}, &clusterv1beta1.Placement{})
-	assert.True(t, errors.IsNotFound(err), "old placement should be deleted")
-
-	err = client.Get(ctx, types.NamespacedName{Name: "test-binding", Namespace: "old-ns"}, &policyv1.PlacementBinding{})
-	assert.True(t, errors.IsNotFound(err), "old placement binding should be deleted")
-
-	err = client.Get(ctx, types.NamespacedName{Name: "test-policy", Namespace: "old-ns"}, &policyv1.Policy{})
-	assert.True(t, errors.IsNotFound(err), "old policy should be deleted")
-
-	// Verify ConfigMap was NOT deleted (bindingUpdated=true preserves it)
-	err = client.Get(ctx, types.NamespacedName{Name: "test-config", Namespace: "open-cluster-management-observability"}, &corev1.ConfigMap{})
-	assert.NoError(t, err, "ConfigMap should be preserved during namespace binding change")
-}
-
-func TestCleanupComponentResources_WithConfigMap(t *testing.T) {
-	scheme := setupComponentTestScheme(t)
-
-	componentConfig := ComponentConfig{
-		ComponentType:            ComponentTypeNamespace,
-		ConfigMapName:            "test-config",
-		PlacementName:            "test-placement",
-		PlacementBindingName:     "test-binding",
-		PrometheusRulePolicyName: "test-policy",
-		DefaultNamespace:         "test-ns",
-	}
-
-	// Create resources to be cleaned up
-	configMap := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-config",
-			Namespace: "open-cluster-management-observability",
-		},
-	}
-
-	placement := &clusterv1beta1.Placement{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-placement",
-			Namespace: "test-ns",
-		},
-	}
-
-	placementBinding := &policyv1.PlacementBinding{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-binding",
-			Namespace: "test-ns",
-		},
-	}
-
-	policy := &policyv1.Policy{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-policy",
-			Namespace: "test-ns",
-		},
-	}
-
-	client := fake.NewClientBuilder().
-		WithScheme(scheme).
-		WithObjects(configMap, placement, placementBinding, policy).
-		Build()
-
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	// Test cleanup with bindingUpdated=false (should delete all resources including configmap)
-	err := CleanupComponentResources(ctx, client, componentConfig, "test-ns", false)
-	assert.NoError(t, err)
-
-	// Verify all resources were deleted
-	err = client.Get(ctx, types.NamespacedName{Name: "test-config", Namespace: "open-cluster-management-observability"}, &corev1.ConfigMap{})
-	assert.True(t, errors.IsNotFound(err))
-
-	err = client.Get(ctx, types.NamespacedName{Name: "test-placement", Namespace: "test-ns"}, &clusterv1beta1.Placement{})
-	assert.True(t, errors.IsNotFound(err))
-
-	err = client.Get(ctx, types.NamespacedName{Name: "test-binding", Namespace: "test-ns"}, &policyv1.PlacementBinding{})
-	assert.True(t, errors.IsNotFound(err))
-
-	err = client.Get(ctx, types.NamespacedName{Name: "test-policy", Namespace: "test-ns"}, &policyv1.Policy{})
-	assert.True(t, errors.IsNotFound(err))
-}
-
-func TestCleanupComponentResources_WithoutConfigMap(t *testing.T) {
-	scheme := setupComponentTestScheme(t)
-
-	componentConfig := ComponentConfig{
-		ComponentType:            ComponentTypeVirtualization,
-		ConfigMapName:            "test-config",
-		PlacementName:            "test-placement",
-		PlacementBindingName:     "test-binding",
-		PrometheusRulePolicyName: "test-policy",
-		DefaultNamespace:         "test-ns",
-	}
-
-	// Create resources to be cleaned up
-	configMap := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-config",
-			Namespace: "open-cluster-management-observability",
-		},
-	}
-
-	placement := &clusterv1beta1.Placement{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-placement",
-			Namespace: "test-ns",
-		},
-	}
-
-	client := fake.NewClientBuilder().
-		WithScheme(scheme).
-		WithObjects(configMap, placement).
-		Build()
-
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	// Test cleanup with bindingUpdated=true (should not delete configmap)
-	err := CleanupComponentResources(ctx, client, componentConfig, "test-ns", true)
-	assert.NoError(t, err)
-
-	// Verify configmap was not deleted
-	err = client.Get(ctx, types.NamespacedName{Name: "test-config", Namespace: "open-cluster-management-observability"}, &corev1.ConfigMap{})
-	assert.NoError(t, err) // ConfigMap should still exist
-
-	// Verify other resources were deleted
-	err = client.Get(ctx, types.NamespacedName{Name: "test-placement", Namespace: "test-ns"}, &clusterv1beta1.Placement{})
-	assert.True(t, errors.IsNotFound(err))
+	err = c.Get(context.TODO(), types.NamespacedName{Name: cm.Name, Namespace: ns}, &corev1.ConfigMap{})
+	require.True(t, apierrors.IsNotFound(err), "ConfigMap must be deleted by full RS cleanup (MCO CR gone)")
 }

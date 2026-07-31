@@ -4,6 +4,13 @@ metadata:
   name: observability
   annotations:
 spec:
+  capabilities:
+    platform:
+      analytics:
+        namespaceRightSizingRecommendation:
+          enabled: false
+        virtualizationRightSizingRecommendation:
+          enabled: false
   advanced:
     retentionConfig:
       blockDuration: 3h

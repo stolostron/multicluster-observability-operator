@@ -4,27 +4,9 @@
 
 package util
 
-import (
-	obv1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
-)
-
 const (
-	// RightSizingCapableAnnotation on the MCO CR indicates MCOA can handle right-sizing.
-	RightSizingCapableAnnotation = "observability.open-cluster-management.io/right-sizing-capable"
-
 	// Right-sizing ADC key names — must match Key* constants in MCOA repo.
 	ADCKeyPlatformNamespaceRightSizing      = "platformNamespaceRightSizing"
 	ADCKeyPlatformVirtualizationRightSizing = "platformVirtualizationRightSizing"
 	ADCKeyRightSizingDelegated              = "rightSizingDelegated"
 )
-
-// IsRightSizingDelegated checks if the MCO CR has the right-sizing delegation
-// annotation. When true, MCOA handles right-sizing via ManifestWork instead of
-// MCO's Policy-based approach.
-func IsRightSizingDelegated(cr *obv1beta2.MultiClusterObservability) bool {
-	if cr.Annotations == nil {
-		return false
-	}
-	_, exists := cr.Annotations[RightSizingCapableAnnotation]
-	return exists
-}

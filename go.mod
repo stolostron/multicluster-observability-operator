@@ -46,7 +46,6 @@ require (
 	k8s.io/utils v0.0.0-20260319190234-28399d86e0b5
 	open-cluster-management.io/addon-framework v1.3.0
 	open-cluster-management.io/api v1.3.0
-	open-cluster-management.io/config-policy-controller v0.16.0
 	open-cluster-management.io/governance-policy-propagator v0.19.0
 	sigs.k8s.io/controller-runtime v0.23.3
 	sigs.k8s.io/kube-storage-version-migrator v0.0.6-0.20230721195810-5c8923c5ff96
@@ -161,7 +160,6 @@ require (
 	github.com/prometheus/procfs v0.20.1 // indirect
 	github.com/prometheus/sigv4 v0.2.0 // indirect
 	github.com/sergi/go-diff v1.3.2-0.20230802210424-5b0b94c5c0d3 // indirect
-	github.com/stolostron/kubernetes-dependency-watches v0.10.2 // indirect
 	github.com/tjhop/slog-gokit v0.1.4 // indirect
 	github.com/uber/jaeger-client-go v2.30.0+incompatible // indirect
 	github.com/uber/jaeger-lib v2.4.1+incompatible // indirect

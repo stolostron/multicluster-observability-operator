@@ -653,6 +653,17 @@ func SetLegacyAlertForwardingDisabled(opt TestOptions, disabled bool) error {
 	})
 }
 
+// setRSEnabled sets both right-sizing feature flags on the MCO CR.
+// In ACM 5.0, RS keeps the MCOA stack alive independently of metrics capabilities.
+func setRSEnabled(mco *unstructured.Unstructured, enabled bool) error {
+	if err := unstructured.SetNestedField(mco.Object, enabled,
+		"spec", "capabilities", "platform", "analytics", "namespaceRightSizingRecommendation", "enabled"); err != nil {
+		return err
+	}
+	return unstructured.SetNestedField(mco.Object, enabled,
+		"spec", "capabilities", "platform", "analytics", "virtualizationRightSizingRecommendation", "enabled")
+}
+
 func SetMCOACapabilities(opt TestOptions, platformMetrics, userWorkloadMetrics bool) error {
 	clientDynamic := NewKubeClientDynamic(
 		opt.HubCluster.ClusterServerURL,
@@ -680,6 +691,12 @@ func SetMCOACapabilities(opt TestOptions, platformMetrics, userWorkloadMetrics b
 			if err := unstructured.SetNestedField(mco.Object, false, "spec", "capabilities", "userWorkloads", "metrics", "alerts", "enabled"); err != nil {
 				return err
 			}
+		}
+
+		// In ACM 5.0, right-sizing keeps the MCOA stack alive even when metrics are disabled.
+		// Sync RS state: disable when fully disabling MCOA, re-enable when restoring capabilities.
+		if err := setRSEnabled(mco, platformMetrics || userWorkloadMetrics); err != nil {
+			return err
 		}
 
 		_, updateErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Update(context.TODO(), mco, metav1.UpdateOptions{})
@@ -733,6 +750,13 @@ func SetMCOAAllCapabilities(opt TestOptions, platformMetrics, platformAlerts, us
 			return err
 		}
 		if err := unstructured.SetNestedField(mco.Object, userWorkloadAlerts, "spec", "capabilities", "userWorkloads", "metrics", "alerts", "enabled"); err != nil {
+			return err
+		}
+
+		// In ACM 5.0, right-sizing keeps the MCOA stack alive even when metrics are disabled.
+		// Sync RS state: disable when fully disabling MCOA, re-enable when restoring capabilities.
+		// Only metrics (not alerts) independently keep MCOA alive per MCOAEnabled().
+		if err := setRSEnabled(mco, platformMetrics || userWorkloadMetrics); err != nil {
 			return err
 		}
 
@@ -839,18 +863,25 @@ func ModifyMCOAddonSpecMetrics(opt TestOptions, enable bool) error {
 		opt.HubCluster.ClusterServerURL,
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext)
-	mco, getErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
-	if getErr != nil {
-		return getErr
-	}
 
-	observabilityAddonSpec := mco.Object["spec"].(map[string]any)["observabilityAddonSpec"].(map[string]any)
-	observabilityAddonSpec["enableMetrics"] = enable
-	_, updateErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Update(context.TODO(), mco, metav1.UpdateOptions{})
-	if updateErr != nil {
+	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		mco, getErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+		if getErr != nil {
+			return getErr
+		}
+
+		observabilityAddonSpec := mco.Object["spec"].(map[string]any)["observabilityAddonSpec"].(map[string]any)
+		observabilityAddonSpec["enableMetrics"] = enable
+
+		// In ACM 5.0, RS keeps MCOA alive independently. Sync RS to match metrics state
+		// so legacy addon tests can run without MCOA ManifestWorks blocking deployment.
+		if err := setRSEnabled(mco, enable); err != nil {
+			return err
+		}
+
+		_, updateErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Update(context.TODO(), mco, metav1.UpdateOptions{})
 		return updateErr
-	}
-	return nil
+	})
 }
 
 func ModifyMCOAddonSpecInterval(opt TestOptions, interval int64) error {
