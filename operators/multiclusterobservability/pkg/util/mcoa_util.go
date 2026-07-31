@@ -6,6 +6,7 @@ package util
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"slices"
 
@@ -42,8 +43,17 @@ func IsMCOAEnabled(mco *mcov1beta2.MultiClusterObservability) bool {
 	return false
 }
 
-// HasMCOAManifestWorks checks for remaining ManifestWorks for the MCOA addon on the hub,
-// and returns a sorted list of namespaces where ManifestWorks are blocking the deletion.
+// HasMCOAManifestWorks checks for remaining MCOA ManifestWorks that contain metrics-specific
+// resources (PrometheusAgent), and returns a sorted list of namespaces where such ManifestWorks
+// are blocking the legacy addon deployment.
+//
+// RS-only ManifestWorks (containing only PrometheusRules) are safe to coexist with the legacy
+// addon and are not included. PrometheusAgent is the definitive metrics marker: it is always
+// present when MCOA platform metrics collection is active, always absent when disabled, and
+// never produced by right-sizing.
+//
+// ManifestWorks on unavailable ManagedClusters are ignored to prevent disconnected spokes from
+// hanging the cleanup process.
 func HasMCOAManifestWorks(ctx context.Context, c client.Client) ([]string, error) {
 	clusterList := &clusterv1.ManagedClusterList{}
 	if err := c.List(ctx, clusterList); err != nil {
@@ -53,8 +63,6 @@ func HasMCOAManifestWorks(ctx context.Context, c client.Client) ([]string, error
 	ignoredNamespaces := make(map[string]struct{})
 	for _, mc := range clusterList.Items {
 		isAvailable := meta.IsStatusConditionTrue(mc.Status.Conditions, clusterv1.ManagedClusterConditionAvailable)
-		// If the ManagedCluster exists on the Hub but is NOT available (stalled, offline, etc.),
-		// we ignore its ManifestWorks to prevent disconnected spokes from hanging the cleanup process.
 		if !isAvailable {
 			ignoredNamespaces[mc.Name] = struct{}{}
 		}
@@ -72,7 +80,10 @@ func HasMCOAManifestWorks(ctx context.Context, c client.Client) ([]string, error
 
 	blockingMap := make(map[string]struct{})
 	for _, work := range workList.Items {
-		if _, ignored := ignoredNamespaces[work.Namespace]; !ignored {
+		if _, ignored := ignoredNamespaces[work.Namespace]; ignored {
+			continue
+		}
+		if containsPrometheusAgent(work) {
 			blockingMap[work.Namespace] = struct{}{}
 		}
 	}
@@ -88,4 +99,20 @@ func HasMCOAManifestWorks(ctx context.Context, c client.Client) ([]string, error
 	slices.Sort(blockingNamespaces)
 
 	return blockingNamespaces, nil
+}
+
+// containsPrometheusAgent returns true if any manifest in the work has Kind "PrometheusAgent".
+func containsPrometheusAgent(work workv1.ManifestWork) bool {
+	for _, manifest := range work.Spec.Workload.Manifests {
+		var partial struct {
+			Kind string `json:"kind"`
+		}
+		if err := json.Unmarshal(manifest.Raw, &partial); err != nil {
+			continue
+		}
+		if partial.Kind == "PrometheusAgent" {
+			return true
+		}
+	}
+	return false
 }

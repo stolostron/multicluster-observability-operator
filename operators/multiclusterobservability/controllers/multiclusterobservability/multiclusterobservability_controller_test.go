@@ -1835,6 +1835,15 @@ func TestMCOAWaitForManifestWorks(t *testing.T) {
 				addonv1beta1.AddonLabelKey: config.MultiClusterObservabilityAddon,
 			},
 		},
+		Spec: workv1.ManifestWorkSpec{
+			Workload: workv1.ManifestsTemplate{
+				Manifests: []workv1.Manifest{
+					{RawExtension: runtime.RawExtension{
+						Raw: []byte(`{"apiVersion":"monitoring.rhobs/v1","kind":"PrometheusAgent","metadata":{"name":"test"}}`),
+					}},
+				},
+			},
+		},
 	}
 
 	t.Run("hasMCOAManifestWorks helper", func(t *testing.T) {
