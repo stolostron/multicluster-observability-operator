@@ -61,6 +61,8 @@ data:
             )
             unless on(cluster, clusterID) (
               cluster:metrics_received:heartbeat
+              or
+              label_replace(cluster:metrics_received:heartbeat, "clusterID", "$1", "cluster", "(.*)")
             )
           for: 15m
           labels:
