@@ -17,8 +17,9 @@ source ./scripts/test-utils.sh
 LATEST_SNAPSHOT=${LATEST_SNAPSHOT:-$(get_latest_acm_snapshot)}
 
 # customize the images for testing
-export MULTICLUSTER_OBSERVABILITY_ADDON_IMAGE_REF="quay.io:443/acm-d/acm-multicluster-observability-addon-rhel9:$VERSION-dev"
+export MULTICLUSTER_OBSERVABILITY_ADDON_IMAGE_REF="quay.io/stolostron/multicluster-observability-addon:5.1.0-PR540-8d202412eae9e5d8cf34b3ea7ddd515aada00f67"
 export OBO_PROMETHEUS_OPERATOR_IMAGE_REF="quay.io:443/acm-d/obo-prometheus-rhel9-operator:$VERSION-dev"
+export GRAFANA_IMAGE_REF="quay.io/stolostron/grafana:5.0.0-SNAPSHOT-2026-07-30-13-04-29"
 
 if [[ -n ${IS_KIND_ENV} ]]; then
   source ./tests/run-in-kind/env.sh
@@ -56,6 +57,10 @@ update_mco_cr() {
   if [[ -n ${MULTICLUSTER_OBSERVABILITY_ADDON_IMAGE_REF} ]]; then
     "${SED_COMMAND[@]}" "/annotations.*/a \ \ \ \ mco-multicluster_observability_addon-image: ${MULTICLUSTER_OBSERVABILITY_ADDON_IMAGE_REF}" ${ROOTDIR}/examples/mco/e2e/v1beta2/observability.yaml
     "${SED_COMMAND[@]}" "/annotations.*/a \ \ \ \ mco-multicluster_observability_addon-image: ${MULTICLUSTER_OBSERVABILITY_ADDON_IMAGE_REF}" ${ROOTDIR}/examples/mco/e2e/v1beta2/*/observability.yaml
+  fi
+  if [[ -n ${GRAFANA_IMAGE_REF} ]]; then
+    "${SED_COMMAND[@]}" "/annotations.*/a \ \ \ \ mco-grafana-image: ${GRAFANA_IMAGE_REF}" ${ROOTDIR}/examples/mco/e2e/v1beta2/observability.yaml
+    "${SED_COMMAND[@]}" "/annotations.*/a \ \ \ \ mco-grafana-image: ${GRAFANA_IMAGE_REF}" ${ROOTDIR}/examples/mco/e2e/v1beta2/*/observability.yaml
   fi
   if [[ -n ${OBO_PROMETHEUS_OPERATOR_IMAGE_REF} ]]; then
     "${SED_COMMAND[@]}" "/annotations.*/a \ \ \ \ mco-obo_prometheus_rhel9_operator-image: ${OBO_PROMETHEUS_OPERATOR_IMAGE_REF}" ${ROOTDIR}/examples/mco/e2e/v1beta2/observability.yaml
