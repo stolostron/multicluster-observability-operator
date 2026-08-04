@@ -65,7 +65,7 @@ func (m *mockGrafanaClient) DeleteDashboard(ctx context.Context, uid string) err
 	return m.deleteDashErr
 }
 
-func (m *mockGrafanaClient) CreateOrUpdateDashboard(ctx context.Context, dashboard map[string]any, folderID int64) (int64, error) {
+func (m *mockGrafanaClient) CreateOrUpdateDashboard(ctx context.Context, dashboard map[string]any, folderUID string) (int64, error) {
 	m.createDashCalled++
 	m.lastDashboard = dashboard
 	if m.createErrFunc != nil {
