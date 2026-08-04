@@ -96,13 +96,9 @@ func SetTLSSecurityConfiguration(ctx context.Context, args []string, tlsCipherSu
 		return nil, err
 	}
 
-	ciphers := tlsProfileSpec.Ciphers
-
-	// If TLS v1.3 is supported, we need to remove the TLS v1.3 ciphers from the list of ciphers to be passed to the operator
-	// because go's crypto/tls package does not allow setting TLS v1.3 ciphers.
-	if tlsProfileSpec.MinTLSVersion != ocinfrav1.VersionTLS13 {
-		cipherSuites := strings.Join(libgocrypto.OpenSSLToIANACipherSuites(ciphers), ",")
-		args = setArg(args, tlsCipherSuitesArg, cipherSuites)
+	ianaCiphers := filterConfigurableCiphers(libgocrypto.OpenSSLToIANACipherSuites(tlsProfileSpec.Ciphers))
+	if len(ianaCiphers) > 0 {
+		args = setArg(args, tlsCipherSuitesArg, strings.Join(ianaCiphers, ","))
 	}
 	args = setArg(args, minTLSversionArg, string(tlsProfileSpec.MinTLSVersion))
 	return args, nil
@@ -133,11 +129,8 @@ func GetTLSSecurityConfiguration(ctx context.Context) (minTLSVersion, cipherSuit
 		return "", "", err
 	}
 
-	ciphers := tlsProfileSpec.Ciphers
-
-	if tlsProfileSpec.MinTLSVersion != ocinfrav1.VersionTLS13 {
-		cipherSuites = strings.Join(libgocrypto.OpenSSLToIANACipherSuites(ciphers), ",")
-	}
+	ianaCiphers := filterConfigurableCiphers(libgocrypto.OpenSSLToIANACipherSuites(tlsProfileSpec.Ciphers))
+	cipherSuites = strings.Join(ianaCiphers, ",")
 	minTLSVersion = string(tlsProfileSpec.MinTLSVersion)
 	return
 }
@@ -165,4 +158,28 @@ func setArg(args []string, argName string, argValue string) []string {
 		args = append(args, argName+argValue)
 	}
 	return args
+}
+
+func filterConfigurableCiphers(ianaCiphers []string) []string {
+	configurable := make(map[string]struct{})
+	for _, cs := range append(tls.CipherSuites(), tls.InsecureCipherSuites()...) {
+		tls13Only := true
+		for _, v := range cs.SupportedVersions {
+			if v != tls.VersionTLS13 {
+				tls13Only = false
+				break
+			}
+		}
+		if !tls13Only {
+			configurable[cs.Name] = struct{}{}
+		}
+	}
+
+	var filtered []string
+	for _, c := range ianaCiphers {
+		if _, ok := configurable[c]; ok {
+			filtered = append(filtered, c)
+		}
+	}
+	return filtered
 }
