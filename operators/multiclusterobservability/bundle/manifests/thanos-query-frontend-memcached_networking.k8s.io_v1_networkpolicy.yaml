@@ -31,9 +31,9 @@ spec:
               app.kubernetes.io/name: thanos-query-frontend
               app.kubernetes.io/instance: observability
               app.kubernetes.io/part-of: observatorium
-          ports:
-            - port: 11211
-              protocol: TCP
+      ports:
+        - port: 11211
+          protocol: TCP
   egress: []
   policyTypes:
     - Ingress

@@ -30,9 +30,9 @@ spec:
               app.kubernetes.io/component: object-store-gateway
               app.kubernetes.io/instance: observability
               app.kubernetes.io/part-of: observatorium
-          ports:
-            - port: 11211
-              protocol: TCP
+      ports:
+        - port: 11211
+          protocol: TCP
   egress: []
   policyTypes:
     - Ingress

@@ -10,8 +10,9 @@ spec:
       app.kubernetes.io/name: thanos-query-frontend
       app.kubernetes.io/part-of: observatorium
   ingress:
-    - port: 9090
-      protocol: TCP
+    - ports:
+        - port: 9090
+          protocol: TCP
   # needs to talk to queriers
   egress:
     - {}

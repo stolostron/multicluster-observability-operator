@@ -11,8 +11,9 @@ spec:
       app.kubernetes.io/part-of: observatorium
   ingress:
     # http, usually hit by in-cluster prometheus for scraping /metrics endpoint
-    - port: 10902
-      protocol: TCP
+    - ports:
+        - port: 10902
+          protocol: TCP
     # queries via thanos-query/other receivers, limit by ns
     - from:
         - namespaceSelector:

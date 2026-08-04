@@ -9,8 +9,9 @@ spec:
     matchLabels:
       app.kubernetes.io/name: thanos-compact
   ingress:
-    - port: 10902
-      protocol: TCP
+    - ports:
+        - port: 10902
+          protocol: TCP
   egress:
     - {}
   policyTypes:
