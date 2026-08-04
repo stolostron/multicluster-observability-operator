@@ -98,8 +98,12 @@ func SetTLSSecurityConfiguration(ctx context.Context, args []string, tlsCipherSu
 
 	ciphers := tlsProfileSpec.Ciphers
 
-	cipherSuites := strings.Join(libgocrypto.OpenSSLToIANACipherSuites(ciphers), ",")
-	args = setArg(args, tlsCipherSuitesArg, cipherSuites)
+	// If TLS v1.3 is supported, we need to remove the TLS v1.3 ciphers from the list of ciphers to be passed to the operator
+	// because go's crypto/tls package does not allow setting TLS v1.3 ciphers.
+	if tlsProfileSpec.MinTLSVersion != ocinfrav1.VersionTLS13 {
+		cipherSuites := strings.Join(libgocrypto.OpenSSLToIANACipherSuites(ciphers), ",")
+		args = setArg(args, tlsCipherSuitesArg, cipherSuites)
+	}
 	args = setArg(args, minTLSversionArg, string(tlsProfileSpec.MinTLSVersion))
 	return args, nil
 }
@@ -131,7 +135,9 @@ func GetTLSSecurityConfiguration(ctx context.Context) (minTLSVersion, cipherSuit
 
 	ciphers := tlsProfileSpec.Ciphers
 
-	cipherSuites = strings.Join(libgocrypto.OpenSSLToIANACipherSuites(ciphers), ",")
+	if tlsProfileSpec.MinTLSVersion != ocinfrav1.VersionTLS13 {
+		cipherSuites = strings.Join(libgocrypto.OpenSSLToIANACipherSuites(ciphers), ",")
+	}
 	minTLSVersion = string(tlsProfileSpec.MinTLSVersion)
 	return
 }

@@ -54,6 +54,13 @@ const (
 	endpointsRestartLabel = "endpoints/time-restarted"
 )
 
+var ocpToThanosMinVersion = map[string]string{
+	"VersionTLS10": "1.0",
+	"VersionTLS11": "1.1",
+	"VersionTLS12": "1.2",
+	"VersionTLS13": "1.3",
+}
+
 // Fetch contents of the secret: observability-observatorium-api.
 // Fetch contents of the configmap: observability-observatorium-api.
 // Concatenate all of the above and hash their contents.
@@ -907,6 +914,8 @@ func newThanosSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string,
 	}
 	thanosSpec.ImagePullPolicy = mcoconfig.GetImagePullPolicy(mco.Spec)
 
+	// --grpc-server-tls-min-version flag expects a string value of TLS version, e.g. "1.2", "1.3"
+	tlsProfileSpec.MinVersion = ocpToThanosMinVersion[tlsProfileSpec.MinVersion]
 	thanosSpec.TLSProfile = tlsProfileSpec
 
 	return thanosSpec

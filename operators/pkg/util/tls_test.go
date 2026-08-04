@@ -380,13 +380,14 @@ func TestSetTLSSecurityConfiguration(t *testing.T) {
 				}
 				if strings.Contains(arg, "--tls-cipher-suites=") && len(arg) > len("--tls-cipher-suites=") {
 					foundCiphers = true
-					if tt.wantCiphers {
-						assert.NotEqual(t, "--tls-cipher-suites=", arg, "cipher suites should not be empty")
-					}
 				}
 			}
 			assert.True(t, foundVersion, "should contain --tls-min-version flag")
-			assert.True(t, foundCiphers, "should contain --tls-cipher-suites flag")
+			if tt.wantCiphers {
+				assert.True(t, foundCiphers, "should contain --tls-cipher-suites flag")
+			} else {
+				assert.False(t, foundCiphers, "should not contain --tls-cipher-suites args")
+			}
 		})
 	}
 }
@@ -399,6 +400,7 @@ func TestGetTLSSecurityConfiguration(t *testing.T) {
 		tlsSecProfile *configv1.TLSSecurityProfile
 		adherence     configv1.TLSAdherencePolicy
 		wantVersion   string
+		wantCiphers   bool
 	}{
 		{
 			name: "strict + intermediate returns TLS 1.2 and ciphers",
@@ -407,14 +409,16 @@ func TestGetTLSSecurityConfiguration(t *testing.T) {
 			},
 			adherence:   strict,
 			wantVersion: string(configv1.VersionTLS12),
+			wantCiphers: true,
 		},
 		{
-			name: "strict + modern returns TLS 1.3 and ciphers",
+			name: "strict + modern returns TLS 1.3 with empty ciphers",
 			tlsSecProfile: &configv1.TLSSecurityProfile{
 				Type: configv1.TLSProfileModernType,
 			},
 			adherence:   strict,
 			wantVersion: string(configv1.VersionTLS13),
+			wantCiphers: false,
 		},
 		{
 			name: "NoOpinion adherence defaults to intermediate",
@@ -423,6 +427,7 @@ func TestGetTLSSecurityConfiguration(t *testing.T) {
 			},
 			adherence:   configv1.TLSAdherencePolicyNoOpinion,
 			wantVersion: string(configv1.VersionTLS12),
+			wantCiphers: true,
 		},
 	}
 	for _, tt := range tests {
@@ -435,8 +440,12 @@ func TestGetTLSSecurityConfiguration(t *testing.T) {
 
 			assert.Equal(t, tt.wantVersion, minVersion)
 
-			assert.NotEmpty(t, cipherSuites, "cipher suites should not be empty")
-			assert.True(t, strings.Contains(cipherSuites, ","), "cipher suites should be comma-separated")
+			if tt.wantCiphers {
+				assert.NotEmpty(t, cipherSuites, "cipher suites should not be empty")
+				assert.True(t, strings.Contains(cipherSuites, ","), "cipher suites should be comma-separated")
+			} else {
+				assert.Empty(t, cipherSuites, "TLS 1.3 cipher suites should be omitted")
+			}
 		})
 	}
 }
