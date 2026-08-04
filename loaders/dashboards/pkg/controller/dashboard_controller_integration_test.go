@@ -144,18 +144,28 @@ func TestIntegrationGrafanaDashboardController(t *testing.T) {
 			dash, _ := body["dashboard"].(map[string]any)
 			uid := dash["uid"].(string)
 
-			// Grafana 13+ uses folderUid instead of folderId
-			var folderID int64
+			// Grafana 13+ uses folderUid (opaque string) instead of folderId (int64)
+			// The mock needs to preserve the UID as-is and look up the corresponding folder
+			responsePayload := map[string]any{"id": 100, "uid": uid, "status": "success"}
 			if folderUidStr, ok := body["folderUid"].(string); ok && folderUidStr != "" {
-				// Parse UID like "uid-100" to get numeric ID
-				fmt.Sscanf(folderUidStr, "uid-%d", &folderID)
+				// Find the folder ID by UID for internal tracking
+				var folderID int64
+				for id := range folders {
+					expectedUID := fmt.Sprintf("uid-%d", id)
+					if expectedUID == folderUidStr {
+						folderID = id
+						break
+					}
+				}
+				dash["folderId"] = folderID
+				dash["folderUid"] = folderUidStr
+				responsePayload["folderUid"] = folderUidStr
 			} else if fid, ok := body["folderId"].(float64); ok {
-				// Fallback for legacy folderId
-				folderID = int64(fid)
+				// Legacy folderId fallback (should not be used by new code)
+				dash["folderId"] = int64(fid)
 			}
-			dash["folderId"] = folderID
 			dashboards[uid] = dash
-			json.NewEncoder(w).Encode(map[string]any{"id": 100, "uid": uid, "status": "success"})
+			json.NewEncoder(w).Encode(responsePayload)
 			return
 		}
 
