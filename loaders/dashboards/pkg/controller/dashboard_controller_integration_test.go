@@ -143,7 +143,16 @@ func TestIntegrationGrafanaDashboardController(t *testing.T) {
 			json.NewDecoder(r.Body).Decode(&body)
 			dash, _ := body["dashboard"].(map[string]any)
 			uid := dash["uid"].(string)
-			folderID := int64(body["folderId"].(float64))
+
+			// Grafana 13+ uses folderUid instead of folderId
+			var folderID int64
+			if folderUidStr, ok := body["folderUid"].(string); ok && folderUidStr != "" {
+				// Parse UID like "uid-100" to get numeric ID
+				fmt.Sscanf(folderUidStr, "uid-%d", &folderID)
+			} else if fid, ok := body["folderId"].(float64); ok {
+				// Fallback for legacy folderId
+				folderID = int64(fid)
+			}
 			dash["folderId"] = folderID
 			dashboards[uid] = dash
 			json.NewEncoder(w).Encode(map[string]any{"id": 100, "uid": uid, "status": "success"})
