@@ -10,6 +10,9 @@ spec:
   policyTypes:
     - Ingress
     - Egress
-  ingress: [] # deny all ingress
+  ingress: 
+    - ports:
+        - protocol: TCP
+          port: 8383 # metrics
   egress:
-    - {} # allow all egress
+    - {}
