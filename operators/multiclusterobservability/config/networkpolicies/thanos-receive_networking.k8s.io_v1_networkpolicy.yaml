@@ -13,18 +13,14 @@ spec:
     # http, usually hit by in-cluster prometheus for scraping /metrics endpoint
     - port: 10902
       protocol: TCP
-    # queries via thanos-query/other receivers
+    # queries via thanos-query/other receivers, limit by ns
     - from:
-        - podSelector:
+        - namespaceSelector:
             matchLabels:
-              app.kubernetes.io/instance: observability
-              app.kubernetes.io/name: thanos-receive
-              app.kubernetes.io/part-of: observatorium
-        - podSelector:
+              kubernetes.io/metadata.name: open-cluster-management-observability
+        - namespaceSelector:
             matchLabels:
-              app.kubernetes.io/instance: observability
-              app.kubernetes.io/name: thanos-query
-              app.kubernetes.io/part-of: observatorium
+              kubernetes.io/metadata.name: openshift-monitoring
       ports:
         - port: 10901
           protocol: TCP

@@ -12,7 +12,17 @@ spec:
   ingress:
     - port: 9090
       protocol: TCP
-  # need to talk to recievers, store, rule?
+    # gprc
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: open-cluster-management-observability
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: openshift-monitoring
+      ports:
+        - port: 10901
+          protocol: TCP
   egress:
     - {}
   policyTypes:

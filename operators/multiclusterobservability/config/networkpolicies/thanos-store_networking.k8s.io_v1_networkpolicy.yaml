@@ -13,7 +13,7 @@ spec:
       app.kubernetes.io/part-of: observatorium
   ingress:
     - ports:
-        # http (not sure if any components might talk to it)
+        # http metrics
         - port: 10902
           protocol: TCP
     # from queriers over grpc
@@ -23,9 +23,9 @@ spec:
               app.kubernetes.io/instance: observability
               app.kubernetes.io/name: thanos-query
               app.kubernetes.io/part-of: observatorium
-          ports:
-            - port: 10901
-              protocol: TCP
+      ports:
+        - port: 10901
+          protocol: TCP
   # egress out to S3
   egress:
     - {}

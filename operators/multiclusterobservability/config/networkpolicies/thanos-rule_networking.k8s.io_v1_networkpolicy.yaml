@@ -14,12 +14,21 @@ spec:
         # configmap reloader, prometheus metrics
         - port: 9533
           protocol: TCP
-        # gprc
-        - port: 10901
-          protocol: TCP
         # http
         - port: 10902
           protocol: TCP
+    # gprc
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: open-cluster-management-observability
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: openshift-monitoring
+      ports:
+        - port: 10901
+          protocol: TCP
+
   # for S3
   egress:
     - {}
