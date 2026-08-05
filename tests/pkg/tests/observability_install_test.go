@@ -214,5 +214,4 @@ func installMCO() {
 		}
 		return nil
 	}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*10).Should(Succeed())
-
 }

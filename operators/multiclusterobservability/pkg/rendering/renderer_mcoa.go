@@ -366,11 +366,6 @@ func (r *MCORenderer) renderMCOATemplates(
 			continue
 		}
 
-		if template.GetKind() == "NetworkPolicy" &&
-			r.rendererOptions != nil && !r.rendererOptions.MCOAOptions.NetworkPoliciesEnabled {
-			continue
-		}
-
 		render, ok := r.renderMCOAFns[template.GetKind()]
 		if !ok {
 			m, err := template.Map()
