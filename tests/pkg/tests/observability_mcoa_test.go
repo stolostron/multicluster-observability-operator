@@ -25,6 +25,7 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/utils"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -208,7 +209,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 				ruleMetricName := "test_platform_metric_from_rule"
 				scrapeConfigName := "test-prom-rule-metric"
 				By("Creating a new PrometheusRule on the hub", func() {
-					Expect(utils.CreatePrometheusRule(testOptions, ruleName, utils.MCO_NAMESPACE, "platform-metrics-collector", ruleMetricName, "")).NotTo(HaveOccurred())
+					Expect(utils.CreatePrometheusRule(ctx, testOptions, ruleName, utils.MCO_NAMESPACE, "platform-metrics-collector", ruleMetricName, "")).NotTo(HaveOccurred())
 					Expect(
 						utils.AddConfigToPlacementInClusterManagementAddon(
 							ctx,
@@ -261,7 +262,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 							utils.MCO_NAMESPACE,
 						),
 					).NotTo(HaveOccurred())
-					Expect(utils.DeletePrometheusRule(testOptions, ruleName, utils.MCO_NAMESPACE)).NotTo(HaveOccurred())
+					Expect(utils.DeletePrometheusRule(ctx, testOptions, ruleName, utils.MCO_NAMESPACE)).NotTo(HaveOccurred())
 				})
 
 				By("Deleting the custom ScrapeConfig", func() {
@@ -315,7 +316,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 				scrapeConfigName := "test-uwl-prom-rule-metric"
 
 				By("Creating a new PrometheusRule on the hub", func() {
-					Expect(utils.CreatePrometheusRule(testOptions, ruleName, utils.MCO_NAMESPACE, "user-workload-metrics-collector", ruleMetricName, "default")).NotTo(HaveOccurred())
+					Expect(utils.CreatePrometheusRule(ctx, testOptions, ruleName, utils.MCO_NAMESPACE, "user-workload-metrics-collector", ruleMetricName, "default")).NotTo(HaveOccurred())
 					Expect(
 						utils.AddConfigToPlacementInClusterManagementAddon(
 							ctx,
@@ -388,7 +389,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 							utils.MCO_NAMESPACE,
 						),
 					).NotTo(HaveOccurred())
-					Expect(utils.DeletePrometheusRule(testOptions, ruleName, utils.MCO_NAMESPACE)).NotTo(HaveOccurred())
+					Expect(utils.DeletePrometheusRule(ctx, testOptions, ruleName, utils.MCO_NAMESPACE)).NotTo(HaveOccurred())
 				})
 			})
 		},
@@ -698,6 +699,450 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 						}
 						return nil
 					}, 120, 5).Should(Succeed())
+				})
+			})
+		},
+	)
+
+	Context(
+		"when raw resolution (DDR) is enabled for MCOA [P1][Sev1][Observability][Stable]@ocpInterop (mcoa_ddr/g0)",
+		func() {
+			var hubClient kubernetes.Interface
+			cooMonitoringStackNamespace := "default"
+			cooMonitoringStackName := "test-monitoring-stack"
+
+			BeforeAll(func(ctx SpecContext) {
+				hubClient = utils.NewKubeClient(
+					testOptions.HubCluster.ClusterServerURL,
+					testOptions.KubeConfig,
+					testOptions.HubCluster.KubeContext)
+
+				By("Enabling user workload monitoring on all openshift managed clusters", func() {
+					Expect(utils.EnableUWLMonitoringOnManagedClusters(testOptions, accessibleOCPClusters)).NotTo(HaveOccurred())
+				})
+
+				// This part is to be reenabled once raw metrics collection for COO is working
+				// onlyTheHub := []utils.Cluster{testOptions.HubCluster}
+				// By("Installing COO on the hub", func() {
+				// 	Expect(utils.CreateCOOSubscription(onlyTheHub)).NotTo(HaveOccurred())
+				// 	DeferCleanup(func(ctx SpecContext) {
+				// 		utils.DeleteCOOSubscription(onlyTheHub)
+				// 		Expect(utils.DeleteMonitoringCRDs(testOptions, onlyTheHub)).NotTo(HaveOccurred())
+				// 	})
+				// 	// Wait for COO to be running
+				// 	utils.CheckCOODeployment(onlyTheHub)
+				// })
+
+				// By("Creating a dummy MonitoringStack on the Hub as a target", func() {
+				// 	Expect(utils.CreateMonitoringStack(ctx, testOptions, testOptions.HubCluster, cooMonitoringStackName, cooMonitoringStackNamespace)).NotTo(HaveOccurred())
+				// 	DeferCleanup(func(ctx SpecContext) {
+				// 		Expect(utils.DeleteMonitoringStack(ctx, testOptions, testOptions.HubCluster, cooMonitoringStackName, cooMonitoringStackNamespace)).NotTo(HaveOccurred())
+				// 	})
+				// })
+
+				By("Enabling platform and user workload metrics for MCOA", func() {
+					Expect(utils.SetMCOACapabilities(testOptions, true, true)).NotTo(HaveOccurred())
+				})
+
+				By("Configuring the platform and user workload scrape intervals to 30s", func() {
+					Eventually(func() error {
+						return utils.UpdatePrometheusAgentScrapeInterval(testOptions, "platform-metrics-collector", "30s")
+					}, 120, 2).Should(Not(HaveOccurred()))
+					Eventually(func() error {
+						return utils.UpdatePrometheusAgentScrapeInterval(testOptions, "user-workload-metrics-collector", "30s")
+					}, 120, 2).Should(Not(HaveOccurred()))
+				})
+			})
+
+			It("should allow enabling and forwarding raw metrics for platform and uwl directly to the hub via remote write", SpecTimeout(15*time.Minute), func(ctx SpecContext) {
+				platformMetricName := "go_memstats_alloc_bytes"
+				uwlRuleName := "test-uwl-prom-rule"
+				uwlMetricName := "test_uwl_metric_from_rule"
+
+				platformScrapeConfigCR := "test-raw-platform-config"
+				uwlScrapeConfigCR := "test-raw-uwl-config"
+
+				By("Creating a new PrometheusRule on the hub for UWL", func() {
+					Expect(utils.CreatePrometheusRule(ctx, testOptions, uwlRuleName, utils.MCO_NAMESPACE, "user-workload-metrics-collector", uwlMetricName, "default")).NotTo(HaveOccurred())
+					Expect(
+						utils.AddConfigToPlacementInClusterManagementAddon(
+							ctx,
+							testOptions,
+							utils.MCOA_CLUSTER_MANAGEMENT_ADDON_NAME,
+							globalPlacementName,
+							utils.NewPrometheusRuleGVR(),
+							uwlRuleName,
+							utils.MCO_NAMESPACE,
+						),
+					).NotTo(HaveOccurred())
+					DeferCleanup(func(ctx SpecContext) {
+						_ = utils.RemoveConfigFromPlacementInClusterManagementAddon(
+							ctx,
+							testOptions,
+							utils.MCOA_CLUSTER_MANAGEMENT_ADDON_NAME,
+							globalPlacementName,
+							utils.NewPrometheusRuleGVR(),
+							uwlRuleName,
+							utils.MCO_NAMESPACE,
+						)
+						_ = utils.DeletePrometheusRule(ctx, testOptions, uwlRuleName, utils.MCO_NAMESPACE)
+					})
+				})
+
+				By("Creating raw ScrapeConfig for Platform", func() {
+					annotations := map[string]string{
+						"observability.open-cluster-management.io/resolution-strategy": "raw",
+					}
+					Expect(
+						utils.CreateScrapeConfigWithAnnotations(
+							ctx,
+							testOptions,
+							platformScrapeConfigCR,
+							"platform-metrics-collector",
+							[]string{fmt.Sprintf(`{__name__="%s"}`, platformMetricName)},
+							annotations,
+						),
+					).NotTo(HaveOccurred())
+					Expect(
+						utils.AddConfigToPlacementInClusterManagementAddon(
+							ctx,
+							testOptions,
+							utils.MCOA_CLUSTER_MANAGEMENT_ADDON_NAME,
+							globalPlacementName,
+							utils.NewScrapeConfigGVR(),
+							platformScrapeConfigCR,
+							utils.MCO_NAMESPACE,
+						),
+					).NotTo(HaveOccurred())
+					DeferCleanup(func(ctx SpecContext) {
+						_ = utils.RemoveConfigFromPlacementInClusterManagementAddon(
+							ctx,
+							testOptions,
+							utils.MCOA_CLUSTER_MANAGEMENT_ADDON_NAME,
+							globalPlacementName,
+							utils.NewScrapeConfigGVR(),
+							platformScrapeConfigCR,
+							utils.MCO_NAMESPACE,
+						)
+						_ = utils.DeleteScrapeConfig(testOptions, platformScrapeConfigCR)
+					})
+				})
+
+				By("Creating raw ScrapeConfig for User Workload", func() {
+					annotations := map[string]string{
+						"observability.open-cluster-management.io/resolution-strategy": "raw",
+					}
+					Expect(
+						utils.CreateScrapeConfigWithAnnotations(
+							ctx,
+							testOptions,
+							uwlScrapeConfigCR,
+							"user-workload-metrics-collector",
+							[]string{fmt.Sprintf(`{__name__="%s"}`, uwlMetricName)},
+							annotations,
+						),
+					).NotTo(HaveOccurred())
+					Expect(
+						utils.AddConfigToPlacementInClusterManagementAddon(
+							ctx,
+							testOptions,
+							utils.MCOA_CLUSTER_MANAGEMENT_ADDON_NAME,
+							globalPlacementName,
+							utils.NewScrapeConfigGVR(),
+							uwlScrapeConfigCR,
+							utils.MCO_NAMESPACE,
+						),
+					).NotTo(HaveOccurred())
+					DeferCleanup(func(ctx SpecContext) {
+						_ = utils.RemoveConfigFromPlacementInClusterManagementAddon(
+							ctx,
+							testOptions,
+							utils.MCOA_CLUSTER_MANAGEMENT_ADDON_NAME,
+							globalPlacementName,
+							utils.NewScrapeConfigGVR(),
+							uwlScrapeConfigCR,
+							utils.MCO_NAMESPACE,
+						)
+						_ = utils.DeleteScrapeConfig(testOptions, uwlScrapeConfigCR)
+					})
+				})
+
+				By("Checking that CMO ConfigMap is updated with raw platform metrics remoteWrite config on managed clusters", func() {
+					namespace := "openshift-monitoring"
+					configMapName := "cluster-monitoring-config"
+
+					Eventually(func() error {
+						cm, err := hubClient.CoreV1().ConfigMaps(namespace).Get(ctx, configMapName, metav1.GetOptions{})
+						if err != nil {
+							return err
+						}
+						configContent := cm.Data["config.yaml"]
+						if !strings.Contains(configContent, "mcoa-raw-") {
+							return fmt.Errorf("ConfigMap does not contain mcoa-raw RemoteWrite configuration: %s", configContent)
+						}
+						return nil
+					}, 120, 5).Should(Succeed())
+				})
+
+				By("Checking that UWL ConfigMap is updated with raw uwl metrics remoteWrite config on managed clusters", func() {
+					namespace := "openshift-user-workload-monitoring"
+					configMapName := "user-workload-monitoring-config"
+
+					Eventually(func() error {
+						cm, err := hubClient.CoreV1().ConfigMaps(namespace).Get(ctx, configMapName, metav1.GetOptions{})
+						if err != nil {
+							return err
+						}
+						configContent := cm.Data["config.yaml"]
+						if !strings.Contains(configContent, "mcoa-raw-") {
+							return fmt.Errorf("UWL ConfigMap does not contain mcoa-raw RemoteWrite configuration: %s", configContent)
+						}
+						return nil
+					}, 120, 5).Should(Succeed())
+				})
+
+				By("Verifying the platform raw metric is queryable on the hub", func() {
+					Eventually(func() error {
+						res, err := utils.QueryGrafana(testOptions, platformMetricName)
+						if err != nil {
+							return err
+						}
+						if len(res.Data.Result) == 0 {
+							return fmt.Errorf("No results found for metric %q", platformMetricName)
+						}
+						return nil
+					}, 300, 5).Should(Not(HaveOccurred()))
+				})
+
+				By("Verifying the uwl raw metric is queryable on the hub", func() {
+					Eventually(func() error {
+						res, err := utils.QueryGrafana(testOptions, uwlMetricName)
+						if err != nil {
+							return err
+						}
+						if len(res.Data.Result) == 0 {
+							return fmt.Errorf("No results found for metric %q", uwlMetricName)
+						}
+						return nil
+					}, 300, 5).Should(Not(HaveOccurred()))
+				})
+
+				By("Cleaning up Platform raw configuration", func() {
+					Expect(
+						utils.RemoveConfigFromPlacementInClusterManagementAddon(
+							ctx,
+							testOptions,
+							utils.MCOA_CLUSTER_MANAGEMENT_ADDON_NAME,
+							globalPlacementName,
+							utils.NewScrapeConfigGVR(),
+							platformScrapeConfigCR,
+							utils.MCO_NAMESPACE,
+						),
+					).NotTo(HaveOccurred())
+					Expect(utils.DeleteScrapeConfig(testOptions, platformScrapeConfigCR)).NotTo(HaveOccurred())
+				})
+
+				By("Cleaning up UWL raw configuration", func() {
+					Expect(
+						utils.RemoveConfigFromPlacementInClusterManagementAddon(
+							ctx,
+							testOptions,
+							utils.MCOA_CLUSTER_MANAGEMENT_ADDON_NAME,
+							globalPlacementName,
+							utils.NewScrapeConfigGVR(),
+							uwlScrapeConfigCR,
+							utils.MCO_NAMESPACE,
+						),
+					).NotTo(HaveOccurred())
+					Expect(utils.DeleteScrapeConfig(testOptions, uwlScrapeConfigCR)).NotTo(HaveOccurred())
+				})
+
+				By("Cleaning up UWL PrometheusRule", func() {
+					Expect(
+						utils.RemoveConfigFromPlacementInClusterManagementAddon(
+							ctx,
+							testOptions,
+							utils.MCOA_CLUSTER_MANAGEMENT_ADDON_NAME,
+							globalPlacementName,
+							utils.NewPrometheusRuleGVR(),
+							uwlRuleName,
+							utils.MCO_NAMESPACE,
+						),
+					).NotTo(HaveOccurred())
+					Expect(utils.DeletePrometheusRule(ctx, testOptions, uwlRuleName, utils.MCO_NAMESPACE)).NotTo(HaveOccurred())
+				})
+
+				By("Checking that CMO ConfigMap is cleaned up of raw platform metrics remoteWrite config on managed clusters", func() {
+					namespace := "openshift-monitoring"
+					configMapName := "cluster-monitoring-config"
+
+					Eventually(func() error {
+						cm, err := hubClient.CoreV1().ConfigMaps(namespace).Get(ctx, configMapName, metav1.GetOptions{})
+						if err != nil {
+							return err
+						}
+						configContent := cm.Data["config.yaml"]
+						if strings.Contains(configContent, "mcoa-raw-") {
+							return fmt.Errorf("ConfigMap still contains mcoa-raw RemoteWrite configuration: %s", configContent)
+						}
+						return nil
+					}, 120, 5).Should(Succeed())
+				})
+
+				By("Checking that UWL ConfigMap is cleaned up of raw uwl metrics remoteWrite config on managed clusters", func() {
+					namespace := "openshift-user-workload-monitoring"
+					configMapName := "user-workload-monitoring-config"
+
+					Eventually(func() error {
+						cm, err := hubClient.CoreV1().ConfigMaps(namespace).Get(ctx, configMapName, metav1.GetOptions{})
+						if err != nil {
+							return err
+						}
+						configContent := cm.Data["config.yaml"]
+						if strings.Contains(configContent, "mcoa-raw-") {
+							return fmt.Errorf("UWL ConfigMap still contains mcoa-raw RemoteWrite configuration: %s", configContent)
+						}
+						return nil
+					}, 120, 5).Should(Succeed())
+				})
+			})
+
+			It("should allow enabling and forwarding raw metrics for coo directly to the hub via remote write", SpecTimeout(15*time.Minute), func(ctx SpecContext) {
+				Skip("Skipping COO raw metrics verification")
+
+				cooRuleName := "test-coo-prom-rule"
+				cooMetricName := "test_coo_metric_from_rule"
+				cooScrapeConfigCR := "test-raw-coo-config"
+
+				By("Creating a new PrometheusRule on the hub for COO", func() {
+					Expect(
+						utils.CreateMCOAPrometheusRule(ctx, testOptions, cooRuleName, utils.MCO_NAMESPACE, "user-workload-metrics-collector", cooMetricName, cooMonitoringStackNamespace),
+					).NotTo(HaveOccurred())
+					Expect(
+						utils.AddConfigToPlacementInClusterManagementAddon(
+							ctx,
+							testOptions,
+							utils.MCOA_CLUSTER_MANAGEMENT_ADDON_NAME,
+							globalPlacementName,
+							utils.NewMCOAPrometheusRuleGVR(),
+							cooRuleName,
+							utils.MCO_NAMESPACE,
+						),
+					).NotTo(HaveOccurred())
+					DeferCleanup(func(ctx SpecContext) {
+						_ = utils.RemoveConfigFromPlacementInClusterManagementAddon(
+							ctx,
+							testOptions,
+							utils.MCOA_CLUSTER_MANAGEMENT_ADDON_NAME,
+							globalPlacementName,
+							utils.NewMCOAPrometheusRuleGVR(),
+							cooRuleName,
+							utils.MCO_NAMESPACE,
+						)
+						_ = utils.DeleteMCOAPrometheusRule(ctx, testOptions, cooRuleName, utils.MCO_NAMESPACE)
+					})
+				})
+
+				By("Creating raw ScrapeConfig for COO MonitoringStack", func() {
+					annotations := map[string]string{
+						"observability.open-cluster-management.io/resolution-strategy":   "raw",
+						"observability.open-cluster-management.io/coo-monitoring-stacks": fmt.Sprintf("%s/%s", cooMonitoringStackNamespace, cooMonitoringStackName),
+					}
+					Expect(
+						utils.CreateScrapeConfigWithAnnotations(
+							ctx,
+							testOptions,
+							cooScrapeConfigCR,
+							"user-workload-metrics-collector",
+							[]string{fmt.Sprintf(`{__name__="%s"}`, cooMetricName)},
+							annotations,
+						),
+					).NotTo(HaveOccurred())
+					Expect(
+						utils.AddConfigToPlacementInClusterManagementAddon(
+							ctx,
+							testOptions,
+							utils.MCOA_CLUSTER_MANAGEMENT_ADDON_NAME,
+							globalPlacementName,
+							utils.NewScrapeConfigGVR(),
+							cooScrapeConfigCR,
+							utils.MCO_NAMESPACE,
+						),
+					).NotTo(HaveOccurred())
+					DeferCleanup(func(ctx SpecContext) {
+						_ = utils.RemoveConfigFromPlacementInClusterManagementAddon(
+							ctx,
+							testOptions,
+							utils.MCOA_CLUSTER_MANAGEMENT_ADDON_NAME,
+							globalPlacementName,
+							utils.NewScrapeConfigGVR(),
+							cooScrapeConfigCR,
+							utils.MCO_NAMESPACE,
+						)
+						_ = utils.DeleteScrapeConfig(testOptions, cooScrapeConfigCR)
+					})
+				})
+
+				By("Checking that COO MonitoringStack is updated with raw coo metrics remoteWrite config on the hub", func() {
+					clientDynamic := utils.NewKubeClientDynamic(
+						testOptions.HubCluster.ClusterServerURL,
+						testOptions.KubeConfig,
+						testOptions.HubCluster.KubeContext)
+
+					Eventually(func() error {
+						ms, err := clientDynamic.Resource(utils.NewMonitoringStackGVR()).Namespace(cooMonitoringStackNamespace).Get(ctx, cooMonitoringStackName, metav1.GetOptions{})
+						if err != nil {
+							return err
+						}
+
+						spec, exists, err := unstructured.NestedMap(ms.Object, "spec")
+						if err != nil {
+							return fmt.Errorf("failed to retrieve spec map: %w", err)
+						}
+						if !exists {
+							return fmt.Errorf("spec field missing on MonitoringStack")
+						}
+
+						prometheusConfig, exists := spec["prometheusConfig"].(map[string]any)
+						if !exists {
+							return fmt.Errorf("prometheusConfig missing in MonitoringStack spec")
+						}
+
+						remoteWrite, exists := prometheusConfig["remoteWrite"].([]any)
+						if !exists || len(remoteWrite) == 0 {
+							return fmt.Errorf("remoteWrite missing or empty in MonitoringStack spec: %v", prometheusConfig)
+						}
+
+						return nil
+					}, 120, 5).Should(Succeed())
+				})
+
+				By("Verifying the coo raw metric is queryable on the hub", func() {
+					Eventually(func() error {
+						res, err := utils.QueryGrafana(testOptions, cooMetricName)
+						if err != nil {
+							return err
+						}
+						if len(res.Data.Result) == 0 {
+							return fmt.Errorf("No results found for metric %q", cooMetricName)
+						}
+						return nil
+					}, 300, 5).Should(Not(HaveOccurred()))
+				})
+
+				By("Cleaning up COO raw configuration", func() {
+					Expect(
+						utils.RemoveConfigFromPlacementInClusterManagementAddon(
+							ctx,
+							testOptions,
+							utils.MCOA_CLUSTER_MANAGEMENT_ADDON_NAME,
+							globalPlacementName,
+							utils.NewScrapeConfigGVR(),
+							cooScrapeConfigCR,
+							utils.MCO_NAMESPACE,
+						),
+					).NotTo(HaveOccurred())
+					Expect(utils.DeleteScrapeConfig(testOptions, cooScrapeConfigCR)).NotTo(HaveOccurred())
 				})
 			})
 		},

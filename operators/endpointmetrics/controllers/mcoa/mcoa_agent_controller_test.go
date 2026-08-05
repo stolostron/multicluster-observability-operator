@@ -7,6 +7,7 @@ package mcoa
 import (
 	"context"
 	"errors"
+	"slices"
 	"testing"
 
 	ocinfrav1 "github.com/openshift/api/config/v1"
@@ -19,9 +20,9 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/events"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -32,8 +33,12 @@ import (
 func TestMCOAAgentReconciler_Reconcile(t *testing.T) {
 	t.Parallel()
 
-	s := scheme.Scheme
-	_ = ocinfrav1.AddToScheme(s)
+	s := runtime.NewScheme()
+	require.NoError(t, corev1.AddToScheme(s))
+	require.NoError(t, ocinfrav1.AddToScheme(s))
+
+	// Register ScrapeConfig for the custom monitoring.rhobs/v1alpha1 API Group
+	addRhobsToScheme(t, s)
 
 	namespace := "test-ns"
 	clusterID := "test-cluster-id"
@@ -128,17 +133,9 @@ func TestMCOAAgentReconciler_Reconcile(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      operatorconfig.OCPClusterMonitoringConfigMapName,
 						Namespace: operatorconfig.OCPClusterMonitoringNamespace,
-						ManagedFields: []metav1.ManagedFieldsEntry{
-							{
-								Manager:    observabilityendpoint.EndpointMonitoringOperatorMgr,
-								Operation:  metav1.ManagedFieldsOperationUpdate,
-								APIVersion: "v1",
-								FieldsType: "FieldsV1",
-							},
-						},
 					},
 					Data: map[string]string{
-						observabilityendpoint.ClusterMonitoringConfigDataKey: "prometheusK8s: {}",
+						observabilityendpoint.ClusterMonitoringConfigDataKey: "prometheusK8s:\n  additionalAlertmanagerConfigs:\n  - scheme: https\n    staticConfigs:\n    - old-hub.com",
 					},
 				},
 			},
@@ -178,7 +175,7 @@ func TestMCOAAgentReconciler_Reconcile(t *testing.T) {
 					Namespace: operatorconfig.OCPUserWorkloadMonitoringNamespace,
 				}, found)
 				require.NoError(t, err)
-				assert.Contains(t, found.Data["config.yaml"], "hub-am.example.com")
+				assert.Contains(t, found.Data[uwlMonitoringConfigDataKey], "hub-am.example.com")
 			},
 		},
 		{
@@ -216,14 +213,6 @@ func TestMCOAAgentReconciler_Reconcile(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      operatorconfig.OCPClusterMonitoringConfigMapName,
 						Namespace: operatorconfig.OCPClusterMonitoringNamespace,
-						ManagedFields: []metav1.ManagedFieldsEntry{
-							{
-								Manager:    observabilityendpoint.EndpointMonitoringOperatorMgr,
-								Operation:  metav1.ManagedFieldsOperationUpdate,
-								APIVersion: "v1",
-								FieldsType: "FieldsV1",
-							},
-						},
 					},
 					Data: map[string]string{
 						observabilityendpoint.ClusterMonitoringConfigDataKey: "prometheusK8s: { additionalAlertmanagerConfigs: [ { scheme: https, tlsConfig: { ca: { name: hub-alertmanager-router-ca-hub-id } }, staticConfigs: [ hub.com ] } ] }",
@@ -292,7 +281,7 @@ func TestMCOAAgentReconciler_Reconcile(t *testing.T) {
 					Namespace: operatorconfig.OCPUserWorkloadMonitoringNamespace,
 				}, found)
 				if err == nil {
-					assert.NotContains(t, found.Data["config.yaml"], "hub.com")
+					assert.NotContains(t, found.Data[uwlMonitoringConfigDataKey], "hub.com")
 				}
 			},
 		},
@@ -300,13 +289,20 @@ func TestMCOAAgentReconciler_Reconcile(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := fake.NewClientBuilder().WithScheme(s).WithObjects(tt.existingObjs...).WithReturnManagedFields().WithInterceptorFuncs(tt.clientInterceptors).Build()
+			caSecretName := observabilityendpoint.AppendHubClusterID(observabilityendpoint.HubAmRouterCASecretName, tt.hubClusterID)
+
+			existingObjs := slices.Clone(tt.existingObjs)
+			if tt.alertmanagerEndpoint != "" {
+				agentPlatform := newTestPrometheusAgent("test-agent-platform", namespace, platformMetricsCollectorComponent, tt.alertmanagerEndpoint, "", "")
+				agentUWL := newTestPrometheusAgent("test-agent-uwl", namespace, userWorkloadMetricsCollectorComponent, tt.alertmanagerEndpoint, "", "")
+				existingObjs = append(existingObjs, agentPlatform, agentUWL)
+			}
+
+			c := fake.NewClientBuilder().WithScheme(s).WithObjects(existingObjs...).WithReturnManagedFields().WithInterceptorFuncs(tt.clientInterceptors).Build()
 			recorder := events.NewFakeRecorder(10)
 
 			// Capture initial metric value
-			initialMetric := testutil.ToFloat64(cmoConfigConflictsTotal)
-
-			caSecretName := observabilityendpoint.AppendHubClusterID(observabilityendpoint.HubAmRouterCASecretName, tt.hubClusterID)
+			initialMetric := testutil.ToFloat64(cmoConfigReconcilesTotal)
 
 			r := NewMCOAAgentReconciler(
 				c,
@@ -316,10 +312,11 @@ func TestMCOAAgentReconciler_Reconcile(t *testing.T) {
 				namespace,
 				clusterID,
 				clusterName,
-				tt.alertmanagerEndpoint,
+				tt.alertmanagerEndpoint, // HubAlertmanagerURL
 				caSecretName,
 				"obs-alertmanager-mtls-cert",
 				"observability-alertmanager-accessor",
+				tt.alertmanagerEndpoint != "", // enablePlatformAlertForwarding
 				!tt.disableUWLAlertForwarding,
 			)
 
@@ -333,7 +330,7 @@ func TestMCOAAgentReconciler_Reconcile(t *testing.T) {
 			assert.Zero(t, result.RequeueAfter, "reconciler must not schedule a periodic requeue — the CRD watch handles healing")
 
 			if tt.expectedMetric > 0 {
-				assert.Equal(t, initialMetric+tt.expectedMetric, testutil.ToFloat64(cmoConfigConflictsTotal))
+				assert.Equal(t, initialMetric+tt.expectedMetric, testutil.ToFloat64(cmoConfigReconcilesTotal))
 			}
 
 			if tt.expectedEvent {

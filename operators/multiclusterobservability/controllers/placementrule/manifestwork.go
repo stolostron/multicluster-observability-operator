@@ -223,6 +223,8 @@ func removePostponeDeleteAnnotationForManifestwork(c client.Client, namespace st
 	})
 }
 
+var ErrManifestWorkTerminating = errors.New("existing manifestwork is terminating, skip and reconcile later")
+
 func createManifestwork(ctx context.Context, c client.Client, work *workv1.ManifestWork) error {
 	if work.Namespace == config.GetDefaultNamespace() {
 		return nil
@@ -246,7 +248,7 @@ func createManifestwork(ctx context.Context, c client.Client, work *workv1.Manif
 
 	if found.GetDeletionTimestamp() != nil {
 		log.Info("Existing manifestwork is terminating, skip and reconcile later")
-		return errors.New("existing manifestwork is terminating, skip and reconcile later")
+		return ErrManifestWorkTerminating
 	}
 
 	if !shouldUpdateManifestWork(work, found) {

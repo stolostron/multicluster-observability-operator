@@ -29,6 +29,7 @@ const (
 	hubAmAccessorSecretKey         = "token"                               // #nosec G101 -- Not a hardcoded credential.
 	HubAmRouterCASecretName        = "hub-alertmanager-router-ca"
 	HubAmMtlsCASecretName          = "obs-alertmanager-mtls-ca"
+	HubMtlsCASecretName            = "hub-mtls-ca" // #nosec G101 -- Not a hardcoded credential.
 	clusterMonitoringConfigName    = "cluster-monitoring-config"
 	clusterMonitoringRevertedName  = "cluster-monitoring-reverted"
 	ClusterMonitoringConfigDataKey = "config.yaml"
@@ -816,15 +817,18 @@ func IsManaged(amc cmomanifests.AdditionalAlertmanagerConfig, caSecret string) b
 	// Suffix extraction and legacy upgrade matching:
 	// Extract the suffix (e.g. "-<hub-id>") from the expected caSecret.
 	var suffix string
-	if strings.HasPrefix(caSecret, amMtlsCaName+"-") {
+	switch {
+	case strings.HasPrefix(caSecret, amMtlsCaName+"-"):
 		suffix = strings.TrimPrefix(caSecret, amMtlsCaName)
-	} else if strings.HasPrefix(caSecret, HubAmRouterCASecretName+"-") {
+	case strings.HasPrefix(caSecret, HubAmRouterCASecretName+"-"):
 		suffix = strings.TrimPrefix(caSecret, HubAmRouterCASecretName)
+	case strings.HasPrefix(caSecret, HubMtlsCASecretName+"-"):
+		suffix = strings.TrimPrefix(caSecret, HubMtlsCASecretName)
 	}
 
 	// Ensure we found a valid, non-empty suffix (e.g. "-12345", meaning length > 1) before matching.
 	if len(suffix) > 1 {
-		isOurBase := strings.HasPrefix(caName, HubAmRouterCASecretName+"-") || strings.HasPrefix(caName, amMtlsCaName+"-")
+		isOurBase := strings.HasPrefix(caName, HubAmRouterCASecretName+"-") || strings.HasPrefix(caName, amMtlsCaName+"-") || strings.HasPrefix(caName, HubMtlsCASecretName+"-")
 		if isOurBase && strings.HasSuffix(caName, suffix) {
 			return true
 		}

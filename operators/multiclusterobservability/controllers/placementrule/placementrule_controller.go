@@ -6,7 +6,6 @@ package placementrule
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -169,12 +168,17 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		// Block legacy addon deployment while MCOA is still actively managing metrics collection.
 		// RS-only ManifestWorks (PrometheusRules) are safe to coexist with the legacy addon
 		// and do not trigger this guard — only PrometheusAgent presence indicates active metrics.
-		hasMetricsWorks, err := r.hasMCOAMetricsManifestWorks(ctx)
+		blockingClusters, err := r.hasMCOAMetricsManifestWorks(ctx)
 		if err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to check for MCOA metrics ManifestWorks: %w", err)
 		}
-		if hasMetricsWorks {
-			reqLogger.Info("MCOA metrics ManifestWorks still active, waiting before deploying legacy addon resources")
+		if len(blockingClusters) > 0 {
+			logClusters := blockingClusters
+			if len(logClusters) > 10 {
+				logClusters = logClusters[:10:10]
+				logClusters = append(logClusters, fmt.Sprintf("...and %d more", len(blockingClusters)-10))
+			}
+			reqLogger.Info("MCOA metrics ManifestWorks still active, waiting before deploying legacy addon resources", "blockingClusters", logClusters)
 			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 		}
 
@@ -640,8 +644,12 @@ func createAllRelatedRes(
 				return createManifestwork(ctx, c, manifestWork)
 			})
 			if retryErr != nil {
-				allErrors = append(allErrors, fmt.Errorf("failed to create manifestwork: %w", retryErr))
-				log.Error(retryErr, "Failed to create manifestwork")
+				if errors.Is(retryErr, ErrManifestWorkTerminating) {
+					log.Info("ManifestWork is currently terminating, skipping and waiting for deletion event watch to trigger recreate", "namespace", namespace, "name", manifestWork.Name)
+				} else {
+					allErrors = append(allErrors, fmt.Errorf("failed to create manifestwork: %w", retryErr))
+					log.Error(retryErr, "Failed to create manifestwork")
+				}
 				continue
 			}
 		}
@@ -1336,31 +1344,8 @@ func mcoaForMetricsIsEnabled(mco *mcov1beta2.MultiClusterObservability) bool {
 // PrometheusAgent is the definitive metrics marker: it is always present when MCOA
 // platform metrics collection is active, always absent when disabled, and never
 // produced by right-sizing.
-func (r *PlacementRuleReconciler) hasMCOAMetricsManifestWorks(ctx context.Context) (bool, error) {
-	workList := &workv1.ManifestWorkList{}
-	opts := []client.ListOption{
-		client.MatchingLabels{
-			addonv1beta1.AddonLabelKey: config.MultiClusterObservabilityAddon,
-		},
-	}
-	if err := r.Client.List(ctx, workList, opts...); err != nil {
-		return false, fmt.Errorf("failed to list ManifestWorks: %w", err)
-	}
-
-	for i := range workList.Items {
-		for _, manifest := range workList.Items[i].Spec.Workload.Manifests {
-			var meta struct {
-				Kind string `json:"kind"`
-			}
-			if err := json.Unmarshal(manifest.Raw, &meta); err != nil {
-				continue
-			}
-			if meta.Kind == "PrometheusAgent" {
-				return true, nil
-			}
-		}
-	}
-	return false, nil
+func (r *PlacementRuleReconciler) hasMCOAMetricsManifestWorks(ctx context.Context) ([]string, error) {
+	return util.HasMCOAManifestWorks(ctx, r.Client)
 }
 
 // isCustomIngressCertificate checks if the given secret name is referenced by the IngressController

@@ -65,7 +65,7 @@ func (m *mockGrafanaClient) DeleteDashboard(ctx context.Context, uid string) err
 	return m.deleteDashErr
 }
 
-func (m *mockGrafanaClient) CreateOrUpdateDashboard(ctx context.Context, dashboard map[string]any, folderID int64) (int64, error) {
+func (m *mockGrafanaClient) CreateOrUpdateDashboard(ctx context.Context, dashboard map[string]any, folderUID string) (int64, error) {
 	m.createDashCalled++
 	m.lastDashboard = dashboard
 	if m.createErrFunc != nil {
@@ -360,15 +360,15 @@ func TestIsDesiredDashboardConfigmap(t *testing.T) {
 	}
 }
 
-func TestFindCustomFolderID(t *testing.T) {
+func TestFindCustomFolderUID(t *testing.T) {
 	c, mock := newTestController(t, "default")
-	mock.folders = []grafanaFolder{{ID: 1, Title: "Custom"}}
+	mock.folders = []grafanaFolder{{ID: 1, UID: "test-uid", Title: "Custom"}}
 
-	if c.findCustomFolderID(t.Context(), "Custom") != 1 {
-		t.Error("expected 1")
+	if c.findCustomFolderUID(t.Context(), "Custom") != "test-uid" {
+		t.Error("expected test-uid")
 	}
-	if c.findCustomFolderID(t.Context(), "Unknown") != 0 {
-		t.Error("expected 0")
+	if c.findCustomFolderUID(t.Context(), "Unknown") != "" {
+		t.Error("expected empty string")
 	}
 }
 
@@ -563,9 +563,9 @@ func TestCreateCustomFolder_PermissionsRetry(t *testing.T) {
 	c, mock := newTestController(t, "default")
 	mock.permResp = false // Force permission failure
 
-	id := c.createCustomFolder(ctx, "RetryFolder")
-	if id != 0 {
-		t.Errorf("expected 0 ID, got %v", id)
+	uid := c.createCustomFolder(ctx, "RetryFolder")
+	if uid != "" {
+		t.Errorf("expected empty UID, got %v", uid)
 	}
 	if mock.deleteFolderCalled["test"] != 1 {
 		t.Error("expected folder deletion on permission failure")
