@@ -178,8 +178,18 @@ func filterConfigurableCiphers(ianaCiphers []string) []string {
 	var filtered []string
 	for _, c := range ianaCiphers {
 		if _, ok := configurable[c]; ok {
-			filtered = append(filtered, c)
+			filtered = append(filtered, normalizeCipherName(c))
 		}
 	}
 	return filtered
+}
+
+// normalizeCipherName strips the _SHA256 suffix that Go 1.22+ appends to
+// CHACHA20_POLY1305 cipher names so they match the shorter form accepted by
+// k8s.io/component-base/cli/flag.TLSCipherSuites() across all versions.
+func normalizeCipherName(name string) string {
+	if strings.HasSuffix(name, "CHACHA20_POLY1305_SHA256") {
+		return strings.TrimSuffix(name, "_SHA256")
+	}
+	return name
 }
