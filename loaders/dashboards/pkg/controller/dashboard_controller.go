@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/http"
 	"net/url"
 	"os"
 	"strings"
@@ -450,40 +449,40 @@ func (c *GrafanaDashboardController) cleanupOrphanDashboards(ctx context.Context
 	return nil
 }
 
-func (c *GrafanaDashboardController) findCustomFolderID(ctx context.Context, folderTitle string) int64 {
+func (c *GrafanaDashboardController) findCustomFolderUID(ctx context.Context, folderTitle string) string {
 	folders, err := c.grafana.ListFolders(ctx)
 	if err != nil {
 		klog.ErrorS(err, "failed to list folders")
-		return 0
+		return ""
 	}
 
 	for _, folder := range folders {
 		if folder.Title == folderTitle {
-			return folder.ID
+			return folder.UID
 		}
 	}
-	return 0
+	return ""
 }
 
-func (c *GrafanaDashboardController) createCustomFolder(ctx context.Context, folderTitle string) int64 {
-	folderID := c.findCustomFolderID(ctx, folderTitle)
-	if folderID != 0 {
-		return folderID
+func (c *GrafanaDashboardController) createCustomFolder(ctx context.Context, folderTitle string) string {
+	folderUID := c.findCustomFolderUID(ctx, folderTitle)
+	if folderUID != "" {
+		return folderUID
 	}
 
 	folder, err := c.grafana.CreateFolder(ctx, folderTitle)
 	if err != nil {
 		// Handle race condition
-		if retryID := c.findCustomFolderID(ctx, folderTitle); retryID != 0 {
-			return retryID
+		if retryUID := c.findCustomFolderUID(ctx, folderTitle); retryUID != "" {
+			return retryUID
 		}
 		klog.ErrorS(err, "failed to create custom folder", "folderTitle", folderTitle)
-		return 0
+		return ""
 	}
 
 	select {
 	case <-ctx.Done():
-		return 0
+		return ""
 	case <-time.After(folderCreationDelay):
 	}
 
@@ -491,40 +490,49 @@ func (c *GrafanaDashboardController) createCustomFolder(ctx context.Context, fol
 	hasPerm, err := c.grafana.HasPermissions(ctx, folder.UID)
 	if err != nil {
 		klog.ErrorS(err, "failed to check folder permissions", "folderTitle", folderTitle)
-		return 0
+		return ""
 	}
 	if !hasPerm {
 		klog.InfoS("failed to set permissions for folder. Deleting folder and retrying later.", "folderTitle", folderTitle)
 		select {
 		case <-ctx.Done():
-			return 0
+			return ""
 		case <-time.After(permissionsRetryDelay):
 		}
 
 		if err := c.grafana.DeleteFolder(ctx, folder.UID); err != nil {
 			klog.ErrorS(err, "failed to delete folder during retry", "folderUID", folder.UID)
 		}
-		return 0
+		return ""
 	}
 
-	return folder.ID
+	return folder.UID
 }
 
 func (c *GrafanaDashboardController) cleanupFolderIfEmpty(ctx context.Context, folderTitle string) error {
 	if folderTitle == "" {
 		return nil
 	}
-	folderID := c.findCustomFolderID(ctx, folderTitle)
-	if folderID == 0 {
+	folderUID := c.findCustomFolderUID(ctx, folderTitle)
+	if folderUID == "" {
 		return nil
 	}
-	folder, err := c.grafana.GetFolderByID(ctx, folderID)
+	// For Grafana 13+, we use UID-based lookup. If GetFolderByUID doesn't exist,
+	// we can list folders and find by UID
+	folders, err := c.grafana.ListFolders(ctx)
 	if err != nil {
-		var gErr *GrafanaError
-		if errors.As(err, &gErr) && gErr.Status == http.StatusNotFound {
-			return nil // Folder already gone, nothing to clean
+		return fmt.Errorf("failed to list folders for cleanup check: %w", err)
+	}
+
+	var folder *grafanaFolder
+	for _, f := range folders {
+		if f.UID == folderUID {
+			folder = &f
+			break
 		}
-		return fmt.Errorf("failed to check folder status in Grafana: %w", err)
+	}
+	if folder == nil {
+		return nil // Folder already gone, nothing to clean
 	}
 
 	// Check if the folder is empty. Grafana's search index is eventually consistent,
@@ -611,12 +619,12 @@ func (c *GrafanaDashboardController) updateDashboard(ctx context.Context, newObj
 	}
 	defer c.unlockReconcile()
 
-	var folderID int64
+	var folderUID string
 	folderTitle := getDashboardCustomFolderTitle(newObj)
 	if folderTitle != "" {
-		folderID = c.createCustomFolder(ctx, folderTitle)
-		if folderID == 0 {
-			return errors.New("failed to get folder id")
+		folderUID = c.createCustomFolder(ctx, folderTitle)
+		if folderUID == "" {
+			return errors.New("failed to get folder uid")
 		}
 	}
 
@@ -661,7 +669,7 @@ func (c *GrafanaDashboardController) updateDashboard(ctx context.Context, newObj
 		dashboard["uid"] = uid
 		delete(dashboard, "id")
 
-		id, err := c.grafana.CreateOrUpdateDashboard(ctx, dashboard, folderID)
+		id, err := c.grafana.CreateOrUpdateDashboard(ctx, dashboard, folderUID)
 		if err != nil {
 			var gErr *GrafanaError
 			if errors.As(err, &gErr) {

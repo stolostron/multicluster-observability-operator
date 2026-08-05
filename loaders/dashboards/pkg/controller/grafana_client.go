@@ -85,7 +85,7 @@ type grafanaFolder struct {
 type GrafanaClient interface {
 	ListAllDashboards(ctx context.Context) ([]grafanaDashboard, error)
 	DeleteDashboard(ctx context.Context, uid string) error
-	CreateOrUpdateDashboard(ctx context.Context, dashboard map[string]any, folderID int64) (int64, error)
+	CreateOrUpdateDashboard(ctx context.Context, dashboard map[string]any, folderUID string) (int64, error)
 	SetHomeDashboard(ctx context.Context, id int64) error
 
 	ListFolders(ctx context.Context) ([]grafanaFolder, error)
@@ -124,14 +124,17 @@ func (g *grafanaClient) DeleteDashboard(ctx context.Context, uid string) error {
 	return nil
 }
 
-func (g *grafanaClient) CreateOrUpdateDashboard(ctx context.Context, dashboard map[string]any, folderID int64) (int64, error) {
+func (g *grafanaClient) CreateOrUpdateDashboard(ctx context.Context, dashboard map[string]any, folderUID string) (int64, error) {
 	data := map[string]any{
-		"folderId": folderID,
 		// We always overwrite to enforce the "Stateless Exclusive Ownership" model.
 		// Kubernetes is the absolute source of truth; any manual changes in the
 		// Grafana UI are intentionally disregarded and overwritten.
 		"overwrite": true,
 		"dashboard": dashboard,
+	}
+	// Only set folderUid if non-empty (Grafana 13+ uses folderUid instead of folderId)
+	if folderUID != "" {
+		data["folderUid"] = folderUID
 	}
 	b, err := json.Marshal(data)
 	if err != nil {

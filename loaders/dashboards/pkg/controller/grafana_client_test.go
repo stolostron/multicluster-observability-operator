@@ -81,7 +81,7 @@ func TestGrafanaClient(t *testing.T) {
 			defer ts.Close()
 
 			client := &grafanaClient{uri: ts.URL}
-			_, err := client.CreateOrUpdateDashboard(ctx, map[string]any{}, 0)
+			_, err := client.CreateOrUpdateDashboard(ctx, map[string]any{}, "")
 			if err == nil {
 				t.Fatal("expected error")
 			}
@@ -99,7 +99,7 @@ func TestGrafanaClient(t *testing.T) {
 			defer ts.Close()
 
 			client := &grafanaClient{uri: ts.URL}
-			_, err := client.CreateOrUpdateDashboard(ctx, map[string]any{}, 0)
+			_, err := client.CreateOrUpdateDashboard(ctx, map[string]any{}, "")
 			if err == nil {
 				t.Fatal("expected error")
 			}
