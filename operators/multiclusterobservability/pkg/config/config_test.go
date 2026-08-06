@@ -18,9 +18,11 @@ import (
 	observatoriumv1alpha1 "github.com/stolostron/observatorium-operator/api/v1alpha1"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -929,6 +931,26 @@ func helperMCHWithNetworkPolicies(namespace string, enabled bool) *unstructured.
 	}
 }
 
+// noMatchMCHClient returns NoKindMatchError when listing MultiClusterHub, matching a
+// cluster where the MCH CRD is not installed (e.g. kind e2e). The fake client cannot
+// reproduce NoMatch on its own—it returns an empty list for missing kinds.
+type noMatchMCHClient struct {
+	client.Client
+}
+
+func (c *noMatchMCHClient) List(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error {
+	if u, ok := list.(*unstructured.UnstructuredList); ok {
+		gvk := u.GroupVersionKind()
+		if gvk.Group == MCHGroup && (gvk.Kind == MCHKind || gvk.Kind == MCHKind+"List") {
+			return &meta.NoKindMatchError{
+				GroupKind:        schema.GroupKind{Group: gvk.Group, Kind: MCHKind},
+				SearchedVersions: []string{MCHVersion},
+			}
+		}
+	}
+	return c.Client.List(ctx, list, opts...)
+}
+
 func TestGetNetworkPoliciesEnabled(t *testing.T) {
 	ns := GetMCONamespace()
 	tests := []struct {
@@ -940,6 +962,14 @@ func TestGetNetworkPoliciesEnabled(t *testing.T) {
 		{
 			name:    "no MultiClusterHub found",
 			client:  fake.NewClientBuilder().Build(),
+			want:    false,
+			wantErr: false,
+		},
+		{
+			name: "MultiClusterHub CRD not installed",
+			client: &noMatchMCHClient{
+				Client: fake.NewClientBuilder().Build(),
+			},
 			want:    false,
 			wantErr: false,
 		},

@@ -27,6 +27,7 @@ import (
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -1026,6 +1027,8 @@ func IsNetworkPoliciesEnabled(u *unstructured.Unstructured) bool {
 
 // GetNetworkPoliciesEnabled lists the MultiClusterHub in the MCO namespace and returns
 // whether network policies are enabled.
+// When the MultiClusterHub CRD is absent (e.g. kind e2e), treat network policies as disabled
+// so ManifestWork creation is not blocked.
 func GetNetworkPoliciesEnabled(ctx context.Context, c client.Client) (bool, error) {
 	mchList := &unstructured.UnstructuredList{}
 	mchList.SetGroupVersionKind(schema.GroupVersionKind{
@@ -1034,7 +1037,8 @@ func GetNetworkPoliciesEnabled(ctx context.Context, c client.Client) (bool, erro
 		Kind:    MCHKind,
 	})
 	if err := c.List(ctx, mchList, client.InNamespace(GetMCONamespace())); err != nil {
-		if apierrors.IsNotFound(err) {
+		// NotFound: MCH instance missing. NoMatch: MCH CRD not installed (kind / non-ACM).
+		if apierrors.IsNotFound(err) || meta.IsNoMatchError(err) {
 			return false, nil
 		}
 		return false, fmt.Errorf("failed to list MultiClusterHub: %w", err)
