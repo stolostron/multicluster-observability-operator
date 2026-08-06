@@ -1,0 +1,19 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: grafana
+  namespace: open-cluster-management-observability
+spec:
+  podSelector:
+    matchLabels:
+      app: multicluster-observability-grafana
+  ingress:
+    - ports:
+        - protocol: TCP
+          port: 9443
+  egress:
+    - {}
+  policyTypes:
+    - Ingress
+    - Egress

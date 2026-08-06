@@ -1,0 +1,44 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: thanos-receive
+  namespace: open-cluster-management-observability
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: thanos-receive
+      app.kubernetes.io/part-of: observatorium
+  ingress:
+    # http, usually hit by in-cluster prometheus for scraping /metrics endpoint
+    - ports:
+        - port: 10902
+          protocol: TCP
+    # queries via thanos-query/other receivers, limit by ns
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: open-cluster-management-observability
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: openshift-monitoring
+      ports:
+        - port: 10901
+          protocol: TCP
+    # remote write via obs-api
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: api
+              app.kubernetes.io/instance: observability
+              app.kubernetes.io/name: observatorium-api
+              app.kubernetes.io/part-of: observatorium
+      ports:
+        - port: 19291
+          protocol: TCP
+  # For S3
+  egress:
+    - {}
+  policyTypes:
+    - Ingress
+    - Egress
