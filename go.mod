@@ -10,8 +10,8 @@ replace (
 
 	// CVE-2026-42151: Azure AD OAuth client_secret exposed via config API.
 	// Upstream fix is in v0.311.3 but requires incompatible API changes.
-	// This replace points to katekeiroz-dev/prometheus with the fix cherry-picked onto v0.55.1.
-	github.com/prometheus/prometheus => github.com/katekeiroz-dev/prometheus v0.0.0-20260805153507-383a8f4f8330
+	// Fix cherry-picked onto stolostron/prometheus branch cve-2026-42151/v0.55.1 — do not delete branch.
+	github.com/prometheus/prometheus => github.com/stolostron/prometheus v0.0.0-20260805153507-383a8f4f8330
 	sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.19.7
 )
 
