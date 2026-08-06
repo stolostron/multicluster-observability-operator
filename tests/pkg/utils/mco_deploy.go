@@ -773,6 +773,40 @@ func SetMCOAAllCapabilities(opt TestOptions, platformMetrics, platformAlerts, us
 	})
 }
 
+func SetNetworkPoliciesEnabled(opt TestOptions, enabled bool) error {
+	clientDynamic := NewKubeClientDynamic(
+		opt.HubCluster.ClusterServerURL,
+		opt.KubeConfig,
+		opt.HubCluster.KubeContext)
+
+	mchList, err := clientDynamic.Resource(NewOCMMultiClusterHubGVR()).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to list MultiClusterHub: %w", err)
+	}
+	if len(mchList.Items) == 0 {
+		return errors.New("no MultiClusterHub found in cluster")
+	}
+	mchName := mchList.Items[0].GetName()
+	mchNs := mchList.Items[0].GetNamespace()
+
+	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		mch, err := clientDynamic.Resource(NewOCMMultiClusterHubGVR()).
+			Namespace(mchNs).
+			Get(context.TODO(), mchName, metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+
+		if err := unstructured.SetNestedField(mch.Object, enabled, "spec", "networkPolicies", "enabled"); err != nil {
+			return err
+		}
+		_, err = clientDynamic.Resource(NewOCMMultiClusterHubGVR()).
+			Namespace(mchNs).
+			Update(context.TODO(), mch, metav1.UpdateOptions{})
+		return err
+	})
+}
+
 func CheckAdvRetentionConfig(opt TestOptions) (bool, error) {
 	clientDynamic := NewKubeClientDynamic(
 		opt.HubCluster.ClusterServerURL,

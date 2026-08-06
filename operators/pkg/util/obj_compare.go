@@ -12,6 +12,7 @@ import (
 	mcov1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
@@ -36,6 +37,7 @@ var compFns = map[string]compFn{
 	"CustomResourceDefinitionv1":      compareCRDv1,
 	"CustomResourceDefinitionv1beta1": compareCRDv1beta1,
 	"ObservabilityAddon":              compareObsAddon,
+	"NetworkPolicy":                   compareNetworkPolicies,
 }
 
 func GetK8sObj(kind string) runtime.Object {
@@ -61,6 +63,7 @@ func GetK8sObjWithVersion(kind, version string) runtime.Object {
 		"CustomResourceDefinitionv1beta1": &apiextensionsv1beta1.CustomResourceDefinition{},
 		"ObservabilityAddon":              &mcov1beta1.ObservabilityAddon{},
 		"Prometheus":                      &prometheusv1.Prometheus{},
+		"NetworkPolicy":                   &networkingv1.NetworkPolicy{},
 	}
 	if kind == "CustomResourceDefinition" {
 		kind += version
@@ -259,6 +262,20 @@ func compareObsAddon(obj1 runtime.Object, obj2 runtime.Object) bool {
 	}
 	if !equality.Semantic.DeepEqual(addon1.Spec, addon2.Spec) {
 		log.Info("Find updated spec for ObservabilityAddon", "ObservabilityAddon", addon1.Name)
+		return false
+	}
+	return true
+}
+
+func compareNetworkPolicies(obj1 runtime.Object, obj2 runtime.Object) bool {
+	np1 := obj1.(*networkingv1.NetworkPolicy)
+	np2 := obj2.(*networkingv1.NetworkPolicy)
+	if np1.Name != np2.Name || np1.Namespace != np2.Namespace {
+		log.Info("Find updated name/namespace for NetworkPolicy", "NetworkPolicy", np1.Name)
+		return false
+	}
+	if !equality.Semantic.DeepEqual(np1.Spec, np2.Spec) {
+		log.Info("Find updated spec for NetworkPolicy", "NetworkPolicy", np1.Name)
 		return false
 	}
 	return true

@@ -18,9 +18,11 @@ import (
 	observatoriumv1alpha1 "github.com/stolostron/observatorium-operator/api/v1alpha1"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -854,6 +856,151 @@ func TestGetMCHVersions(t *testing.T) {
 			}
 			if gotDesired != tt.wantDesired {
 				t.Errorf("GetMCHVersions() gotDesired = %v, want %v", gotDesired, tt.wantDesired)
+			}
+		})
+	}
+}
+
+func TestIsNetworkPoliciesEnabled(t *testing.T) {
+	tests := []struct {
+		name string
+		u    *unstructured.Unstructured
+		want bool
+	}{
+		{
+			name: "nil unstructured",
+			u:    nil,
+			want: false,
+		},
+		{
+			name: "networkPolicies enabled",
+			u: &unstructured.Unstructured{Object: map[string]interface{}{
+				"spec": map[string]interface{}{
+					"networkPolicies": map[string]interface{}{
+						"enabled": true,
+					},
+				},
+			}},
+			want: true,
+		},
+		{
+			name: "networkPolicies disabled",
+			u: &unstructured.Unstructured{Object: map[string]interface{}{
+				"spec": map[string]interface{}{
+					"networkPolicies": map[string]interface{}{
+						"enabled": false,
+					},
+				},
+			}},
+			want: false,
+		},
+		{
+			name: "networkPolicies absent",
+			u: &unstructured.Unstructured{Object: map[string]interface{}{
+				"spec": map[string]interface{}{},
+			}},
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := IsNetworkPoliciesEnabled(tt.u)
+			if got != tt.want {
+				t.Errorf("IsNetworkPoliciesEnabled() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func helperMCHWithNetworkPolicies(namespace string, enabled bool) *unstructured.Unstructured {
+	return &unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"apiVersion": MCHGroup + "/" + MCHVersion,
+			"kind":       MCHKind,
+			"metadata": map[string]interface{}{
+				"name":      "multiclusterhub",
+				"namespace": namespace,
+			},
+			"spec": map[string]interface{}{
+				"networkPolicies": map[string]interface{}{
+					"enabled": enabled,
+				},
+			},
+		},
+	}
+}
+
+// noMatchMCHClient returns NoKindMatchError when listing MultiClusterHub, matching a
+// cluster where the MCH CRD is not installed (e.g. kind e2e). The fake client cannot
+// reproduce NoMatch on its own—it returns an empty list for missing kinds.
+type noMatchMCHClient struct {
+	client.Client
+}
+
+func (c *noMatchMCHClient) List(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error {
+	if u, ok := list.(*unstructured.UnstructuredList); ok {
+		gvk := u.GroupVersionKind()
+		if gvk.Group == MCHGroup && (gvk.Kind == MCHKind || gvk.Kind == MCHKind+"List") {
+			return &meta.NoKindMatchError{
+				GroupKind:        schema.GroupKind{Group: gvk.Group, Kind: MCHKind},
+				SearchedVersions: []string{MCHVersion},
+			}
+		}
+	}
+	return c.Client.List(ctx, list, opts...)
+}
+
+func TestGetNetworkPoliciesEnabled(t *testing.T) {
+	ns := GetMCONamespace()
+	tests := []struct {
+		name    string
+		client  client.Client
+		want    bool
+		wantErr bool
+	}{
+		{
+			name:    "no MultiClusterHub found",
+			client:  fake.NewClientBuilder().Build(),
+			want:    false,
+			wantErr: false,
+		},
+		{
+			name: "MultiClusterHub CRD not installed",
+			client: &noMatchMCHClient{
+				Client: fake.NewClientBuilder().Build(),
+			},
+			want:    false,
+			wantErr: false,
+		},
+		{
+			name: "networkPolicies enabled",
+			client: fake.NewClientBuilder().WithObjects(
+				helperMCHWithNetworkPolicies(ns, true),
+			).Build(),
+			want:    true,
+			wantErr: false,
+		},
+		{
+			name: "networkPolicies disabled",
+			client: fake.NewClientBuilder().WithObjects(
+				helperMCHWithNetworkPolicies(ns, false),
+			).Build(),
+			want:    false,
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := GetNetworkPoliciesEnabled(t.Context(), tt.client)
+			if tt.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+			if got != tt.want {
+				t.Errorf("GetNetworkPoliciesEnabled() = %v, want %v", got, tt.want)
 			}
 		})
 	}

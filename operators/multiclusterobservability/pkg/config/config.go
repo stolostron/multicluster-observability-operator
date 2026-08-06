@@ -27,8 +27,10 @@ import (
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -1008,4 +1010,41 @@ func GetMCOInstance(ctx context.Context, c client.Client) (*observabilityv1beta2
 
 	instance := mcoList.Items[0].DeepCopy()
 	return instance, nil
+}
+
+// IsNetworkPoliciesEnabled reports whether MCH/MCE has spec.networkPolicies.enabled set.
+func IsNetworkPoliciesEnabled(u *unstructured.Unstructured) bool {
+	if u == nil {
+		return false
+	}
+	enabled, found, err := unstructured.NestedBool(
+		u.Object, "spec", "networkPolicies", "enabled")
+	if err != nil || !found {
+		return false
+	}
+	return enabled
+}
+
+// GetNetworkPoliciesEnabled lists the MultiClusterHub in the MCO namespace and returns
+// whether network policies are enabled.
+// When the MultiClusterHub CRD is absent (e.g. kind e2e), treat network policies as disabled
+// so ManifestWork creation is not blocked.
+func GetNetworkPoliciesEnabled(ctx context.Context, c client.Client) (bool, error) {
+	mchList := &unstructured.UnstructuredList{}
+	mchList.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   MCHGroup,
+		Version: MCHVersion,
+		Kind:    MCHKind,
+	})
+	if err := c.List(ctx, mchList, client.InNamespace(GetMCONamespace())); err != nil {
+		// NotFound: MCH instance missing. NoMatch: MCH CRD not installed (kind / non-ACM).
+		if apierrors.IsNotFound(err) || meta.IsNoMatchError(err) {
+			return false, nil
+		}
+		return false, fmt.Errorf("failed to list MultiClusterHub: %w", err)
+	}
+	if len(mchList.Items) == 0 {
+		return false, nil
+	}
+	return IsNetworkPoliciesEnabled(&mchList.Items[0]), nil
 }

@@ -332,4 +332,98 @@ func TestGetMchPred(t *testing.T) {
 	if pred.UpdateFunc(ue) {
 		t.Fatal("reconcile triggered for mch update event")
 	}
+
+	// check UpdateFunc true on networkPolicies change
+	oldNP := &unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"apiVersion": config.MCHGroup + "/" + config.MCHVersion,
+			"kind":       config.MCHKind,
+			"metadata": map[string]interface{}{
+				"name":            "mch",
+				"namespace":       config.GetMCONamespace(),
+				"resourceVersion": "1",
+			},
+			"spec": map[string]interface{}{
+				"networkPolicies": map[string]interface{}{
+					"enabled": false,
+				},
+			},
+			"status": map[string]interface{}{
+				"currentVersion": "1.0",
+				"desiredVersion": "1.0",
+			},
+		},
+	}
+	newNP := oldNP.DeepCopy()
+	newNP.SetResourceVersion("2")
+	if err := unstructured.SetNestedField(newNP.Object, true, "spec", "networkPolicies", "enabled"); err != nil {
+		t.Fatalf("failed to set networkPolicies.enabled: %v", err)
+	}
+	ue = event.UpdateEvent{
+		ObjectOld: oldNP,
+		ObjectNew: newNP,
+	}
+	if !pred.UpdateFunc(ue) {
+		t.Fatal("reconcile not triggered when networkPolicies.enabled flips")
+	}
+
+	oldNPUpgrade := &unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"apiVersion": config.MCHGroup + "/" + config.MCHVersion,
+			"kind":       config.MCHKind,
+			"metadata": map[string]interface{}{
+				"name":            "mch",
+				"namespace":       config.GetMCONamespace(),
+				"resourceVersion": "1",
+			},
+			"spec": map[string]interface{}{
+				"networkPolicies": map[string]interface{}{
+					"enabled": false,
+				},
+			},
+			"status": map[string]interface{}{
+				"currentVersion": "1.0",
+				"desiredVersion": "2.0", // current != desired
+			},
+		},
+	}
+	newNPUpgrade := &unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"apiVersion": config.MCHGroup + "/" + config.MCHVersion,
+			"kind":       config.MCHKind,
+			"metadata": map[string]interface{}{
+				"name":            "mch",
+				"namespace":       config.GetMCONamespace(),
+				"resourceVersion": "2",
+			},
+			"spec": map[string]interface{}{
+				"networkPolicies": map[string]interface{}{
+					"enabled": true,
+				},
+			},
+			"status": map[string]interface{}{
+				"currentVersion": "1.0",
+				"desiredVersion": "2.0",
+			},
+		},
+	}
+	ue = event.UpdateEvent{
+		ObjectOld: oldNPUpgrade,
+		ObjectNew: newNPUpgrade,
+	}
+	if !pred.UpdateFunc(ue) {
+		t.Fatal("reconcile not triggered when networkPolicies.enabled flips during MCH upgrade")
+	}
+
+	sameNP := newNPUpgrade.DeepCopy()
+	if err := unstructured.SetNestedField(sameNP.Object, false, "spec", "networkPolicies", "enabled"); err != nil {
+		t.Fatalf("failed to set networkPolicies.enabled: %v", err)
+	}
+	ue = event.UpdateEvent{
+		ObjectOld: oldNPUpgrade,
+		ObjectNew: sameNP,
+	}
+	if pred.UpdateFunc(ue) {
+		t.Fatal("reconcile triggered during MCH upgrade without networkPolicies change")
+	}
 }

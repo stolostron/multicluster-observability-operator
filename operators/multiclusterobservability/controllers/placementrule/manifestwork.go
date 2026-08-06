@@ -353,6 +353,12 @@ func generateGlobalManifestResources(ctx context.Context, c client.Client, mco *
 		}
 	}
 
+	// inject network policies
+	npEnabled, err := config.GetNetworkPoliciesEnabled(ctx, c)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	// inject the alertmanager accessor bearer token secret
 	amAccessorTokenSecret, err = generateAmAccessorTokenSecret(c, kubeClient)
 	if err != nil {
@@ -374,6 +380,9 @@ func generateGlobalManifestResources(ctx context.Context, c client.Client, mco *
 		Object: obsAddonCRDv1,
 	}}
 	for _, raw := range rawExtensionList {
+		if !npEnabled && isNetworkPolicyManifest(raw) {
+			continue
+		}
 		works = append(works, workv1.Manifest{RawExtension: raw})
 	}
 
@@ -1179,4 +1188,16 @@ func logSizeErrorDetails(str string, work *workv1.ManifestWork) {
 		}
 		log.Info("size of manifest", keyVal...)
 	}
+}
+
+func isNetworkPolicyManifest(raw runtime.RawExtension) bool {
+	if raw.Object != nil {
+		return raw.Object.GetObjectKind().GroupVersionKind().Kind == "NetworkPolicy"
+	}
+	// fallback if only Raw bytes set
+	u := &unstructured.Unstructured{}
+	if err := u.UnmarshalJSON(raw.Raw); err != nil {
+		return false
+	}
+	return u.GetKind() == "NetworkPolicy"
 }

@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -131,6 +132,20 @@ var _ = Describe("", func() {
 			}
 		},
 	)
+
+	It("[Stable] Should create spoke NetworkPolicies when MCH networkPolicies is enabled", func() {
+		if os.Getenv("IS_KIND_ENV") == trueStr {
+			Skip("Skip network policy validation on kind")
+		}
+		if utils.HasManagedClusters(testOptions) {
+			Skip("Skip network policy validation because no non-local managed cluster found")
+		}
+
+		By("Verifying NetworkPolicies are present on managed cluster")
+		Eventually(func() error {
+			return utils.CheckSpokeNetworkPolicies(testOptions, true)
+		}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*10).Should(Succeed())
+	})
 
 	JustAfterEach(func() {
 		Expect(utils.IntegrityChecking(testOptions)).NotTo(HaveOccurred())
