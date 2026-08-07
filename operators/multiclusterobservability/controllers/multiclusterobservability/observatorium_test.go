@@ -1241,7 +1241,7 @@ func buildObsSpec(t *testing.T, mco *mcov1beta2.MultiClusterObservability) *obse
 	if err := mcoconfig.SetOperandNames(cl); err != nil {
 		t.Fatalf("SetOperandNames: %v", err)
 	}
-	obs, err := newDefaultObservatoriumSpec(cl, mco, storageClassName, "")
+	obs, err := newDefaultObservatoriumSpec(cl, mco, storageClassName, "", observatoriumv1alpha1.TLSProfileSpec{})
 	if err != nil {
 		t.Fatalf("newDefaultObservatoriumSpec: %v", err)
 	}
