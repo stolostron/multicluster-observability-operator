@@ -16,6 +16,8 @@ import (
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	mcoutil "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
+	tlsutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
+	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util/tlstesting"
 	observatoriumv1alpha1 "github.com/stolostron/observatorium-operator/api/v1alpha1"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
@@ -110,13 +112,13 @@ func TestNewDefaultObservatoriumSpec(t *testing.T) {
 	// Create a fake client to mock API calls.
 	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
 
-	obs, _ := newDefaultObservatoriumSpec(cl, mco, storageClassName, "")
+	obs, _ := newDefaultObservatoriumSpec(cl, mco, storageClassName, "", observatoriumv1alpha1.TLSProfileSpec{})
 
 	receiversStorage := obs.Thanos.Receivers.VolumeClaimTemplate.Spec.Resources.Requests["storage"]
 	ruleStorage := obs.Thanos.Rule.VolumeClaimTemplate.Spec.Resources.Requests["storage"]
 	storeStorage := obs.Thanos.Store.VolumeClaimTemplate.Spec.Resources.Requests["storage"]
 	compactStorage := obs.Thanos.Compact.VolumeClaimTemplate.Spec.Resources.Requests["storage"]
-	obs, _ = newDefaultObservatoriumSpec(cl, mco, storageClassName, "")
+	obs, _ = newDefaultObservatoriumSpec(cl, mco, storageClassName, "", observatoriumv1alpha1.TLSProfileSpec{})
 	if *obs.Thanos.Receivers.VolumeClaimTemplate.Spec.StorageClassName != storageClassName ||
 		*obs.Thanos.Rule.VolumeClaimTemplate.Spec.StorageClassName != storageClassName ||
 		*obs.Thanos.Store.VolumeClaimTemplate.Spec.StorageClassName != storageClassName ||
@@ -208,7 +210,7 @@ func TestNewDefaultObservatoriumSpecWithTShirtSize(t *testing.T) {
 	// Create a fake client to mock API calls.
 	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
 
-	obs, err := newDefaultObservatoriumSpec(cl, mco, storageClassName, "")
+	obs, err := newDefaultObservatoriumSpec(cl, mco, storageClassName, "", observatoriumv1alpha1.TLSProfileSpec{})
 	if err != nil {
 		t.Errorf("failed to create obs spec")
 	}
@@ -285,6 +287,7 @@ func TestUpdateObservatoriumCR(t *testing.T) {
 	// This should have no extra objects beyond the CMO CRD.
 	noConfigCl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(mco, alertmanagerCABundleConfigMap()).Build()
 	mcoconfig.SetOperandNames(noConfigCl)
+	tlstesting.NewFakeTLSClientBuilder().Build(t)
 
 	_, err := GenerateObservatoriumCR(context.TODO(), noConfigCl, s, mco)
 	if err != nil {
@@ -376,6 +379,7 @@ func TestTShirtSizeUpdateObservatoriumCR(t *testing.T) {
 	// This should have no extra objects beyond the CMO CRD.
 	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(mco, alertmanagerCABundleConfigMap()).Build()
 	mcoconfig.SetOperandNames(cl)
+	tlstesting.NewFakeTLSClientBuilder().Build(t)
 
 	_, err := GenerateObservatoriumCR(context.TODO(), cl, s, mco)
 	if err != nil {
@@ -489,6 +493,8 @@ func TestNoUpdateObservatoriumCR(t *testing.T) {
 	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
 	mcoconfig.SetOperandNames(cl)
 
+	tlstesting.NewFakeTLSClientBuilder().Build(t)
+
 	_, err := GenerateObservatoriumCR(context.TODO(), cl, s, mco)
 	if err != nil {
 		t.Errorf("Failed to create observatorium due to %v", err)
@@ -515,7 +521,11 @@ func TestNoUpdateObservatoriumCR(t *testing.T) {
 	}
 
 	oldSpecBytes, _ := yaml.Marshal(createdObservatoriumCR.Spec)
-	newSpec, _ := newDefaultObservatoriumSpec(cl, mco, storageClassName, "")
+	tlsMinVersion, tlsCipherSuites, _ := tlsutil.GetTLSSecurityConfiguration(context.TODO())
+	newSpec, _ := newDefaultObservatoriumSpec(cl, mco, storageClassName, "", observatoriumv1alpha1.TLSProfileSpec{
+		CipherSuites: tlsCipherSuites,
+		MinVersion:   tlsMinVersion,
+	})
 	newSpecBytes, _ := yaml.Marshal(newSpec)
 
 	if res := bytes.Compare(newSpecBytes, oldSpecBytes); res != 0 {
@@ -784,7 +794,7 @@ func TestObservatoriumCustomArgs(t *testing.T) {
 	// Create a fake client to mock API calls.
 	cl := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 
-	obs, _ := newDefaultObservatoriumSpec(cl, mco, storageClassName, "")
+	obs, _ := newDefaultObservatoriumSpec(cl, mco, storageClassName, "", observatoriumv1alpha1.TLSProfileSpec{})
 	if !reflect.DeepEqual(obs.Thanos.Receivers.Containers[0].Args, receiveTestArgs) {
 		t.Errorf("Failed to propagate custom args to Receive Observatorium spec")
 	}
@@ -1232,7 +1242,7 @@ func TestNewObservatoriumSpecMetricsAlertmanagerEndpoints(t *testing.T) {
 		if err := mcoconfig.SetOperandNames(cl); err != nil {
 			t.Fatalf("SetOperandNames: %v", err)
 		}
-		obs, err := newDefaultObservatoriumSpec(cl, mco, storageClassName, "")
+		obs, err := newDefaultObservatoriumSpec(cl, mco, storageClassName, "", observatoriumv1alpha1.TLSProfileSpec{})
 		if err != nil {
 			t.Fatalf("newDefaultObservatoriumSpec: %v", err)
 		}

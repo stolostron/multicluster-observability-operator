@@ -1224,9 +1224,13 @@ spec:
                         type: string
                       certKey:
                         type: string
+                      cipherSuites:
+                        type: string
                       configMapName:
                         type: string
                       keyKey:
+                        type: string
+                      minVersion:
                         type: string
                       reloadInterval:
                         type: string
@@ -12322,6 +12326,15 @@ spec:
                         type: object
                     required:
                     - volumeClaimTemplate
+                    type: object
+                  tlsProfile:
+                    description: TLSProfile configures TLS cipher suites and minimum
+                      version for all Thanos component servers.
+                    properties:
+                      cipherSuites:
+                        type: string
+                      minVersion:
+                        type: string
                     type: object
                   version:
                     description: Version of Thanos image to be deployed.

@@ -96,10 +96,10 @@ func SetTLSSecurityConfiguration(ctx context.Context, args []string, tlsCipherSu
 		return nil, err
 	}
 
-	ciphers := tlsProfileSpec.Ciphers
-
-	cipherSuites := strings.Join(libgocrypto.OpenSSLToIANACipherSuites(ciphers), ",")
-	args = setArg(args, tlsCipherSuitesArg, cipherSuites)
+	ianaCiphers := filterConfigurableCiphers(libgocrypto.OpenSSLToIANACipherSuites(tlsProfileSpec.Ciphers))
+	if len(ianaCiphers) > 0 {
+		args = setArg(args, tlsCipherSuitesArg, strings.Join(ianaCiphers, ","))
+	}
 	args = setArg(args, minTLSversionArg, string(tlsProfileSpec.MinTLSVersion))
 	return args, nil
 }
@@ -120,6 +120,19 @@ func FetchTLSAdherencePolicy(ctx context.Context) (ocinfrav1.TLSAdherencePolicy,
 	}
 
 	return tap, nil
+}
+
+func GetTLSSecurityConfiguration(ctx context.Context) (minTLSVersion, cipherSuites string, err error) {
+	tlsProfileSpec, err := GetOrCreateTLSProfileSpec(ctx)
+	if err != nil {
+		log.Error(err, "unable to get TLS security configuration")
+		return "", "", err
+	}
+
+	ianaCiphers := filterConfigurableCiphers(libgocrypto.OpenSSLToIANACipherSuites(tlsProfileSpec.Ciphers))
+	cipherSuites = strings.Join(ianaCiphers, ",")
+	minTLSVersion = string(tlsProfileSpec.MinTLSVersion)
+	return
 }
 
 func SetTLSClientFunc(fn func() (client.Client, error)) {
@@ -145,4 +158,38 @@ func setArg(args []string, argName string, argValue string) []string {
 		args = append(args, argName+argValue)
 	}
 	return args
+}
+
+func filterConfigurableCiphers(ianaCiphers []string) []string {
+	configurable := make(map[string]struct{})
+	for _, cs := range append(tls.CipherSuites(), tls.InsecureCipherSuites()...) {
+		tls13Only := true
+		for _, v := range cs.SupportedVersions {
+			if v != tls.VersionTLS13 {
+				tls13Only = false
+				break
+			}
+		}
+		if !tls13Only {
+			configurable[cs.Name] = struct{}{}
+		}
+	}
+
+	var filtered []string
+	for _, c := range ianaCiphers {
+		if _, ok := configurable[c]; ok {
+			filtered = append(filtered, normalizeCipherName(c))
+		}
+	}
+	return filtered
+}
+
+// normalizeCipherName strips the _SHA256 suffix that Go 1.22+ appends to
+// CHACHA20_POLY1305 cipher names so they match the shorter form accepted by
+// k8s.io/component-base/cli/flag.TLSCipherSuites() across all versions.
+func normalizeCipherName(name string) string {
+	if strings.HasSuffix(name, "CHACHA20_POLY1305_SHA256") {
+		return strings.TrimSuffix(name, "_SHA256")
+	}
+	return name
 }

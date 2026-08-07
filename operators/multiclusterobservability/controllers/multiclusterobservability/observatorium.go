@@ -54,6 +54,13 @@ const (
 	endpointsRestartLabel = "endpoints/time-restarted"
 )
 
+var ocpToThanosMinVersion = map[string]string{
+	"VersionTLS10": "1.0",
+	"VersionTLS11": "1.1",
+	"VersionTLS12": "1.2",
+	"VersionTLS13": "1.3",
+}
+
 // Fetch contents of the secret: observability-observatorium-api.
 // Fetch contents of the configmap: observability-observatorium-api.
 // Concatenate all of the above and hash their contents.
@@ -106,13 +113,22 @@ func GenerateObservatoriumCR(
 		return &ctrl.Result{}, fmt.Errorf("failed to get the tls secret mount path: %w", err)
 	}
 
+	tlsMinVersion, tlsCipherSuites, err := util.GetTLSSecurityConfiguration(ctx)
+	if err != nil {
+		return &ctrl.Result{}, fmt.Errorf("failed to get the tls cipher suites: %w", err)
+	}
+	tlsProfileSpec := obsv1alpha1.TLSProfileSpec{
+		CipherSuites: tlsCipherSuites,
+		MinVersion:   tlsMinVersion,
+	}
+
 	storageClassSelected, err := getStorageClass(ctx, mco, cl)
 	if err != nil {
 		return &ctrl.Result{}, fmt.Errorf("failed to get the storage class: %w", err)
 	}
 	log.Info("storageClassSelected", "storageClassSelected", storageClassSelected)
 
-	obsSpec, err := newDefaultObservatoriumSpec(cl, mco, storageClassSelected, tlsSecretMountPath)
+	obsSpec, err := newDefaultObservatoriumSpec(cl, mco, storageClassSelected, tlsSecretMountPath, tlsProfileSpec)
 	if err != nil {
 		return &ctrl.Result{}, fmt.Errorf("failed to generate the observatorium spec: %w", err)
 	}
@@ -333,18 +349,24 @@ func GenerateAPIGatewayRoute(
 	return nil, nil
 }
 
-func newDefaultObservatoriumSpec(cl client.Client, mco *mcov1beta2.MultiClusterObservability, scSelected string, tlsSecretMountPath string) (*obsv1alpha1.ObservatoriumSpec, error) {
+func newDefaultObservatoriumSpec(
+	cl client.Client,
+	mco *mcov1beta2.MultiClusterObservability,
+	scSelected string,
+	tlsSecretMountPath string,
+	tlsProfileSpec obsv1alpha1.TLSProfileSpec,
+) (*obsv1alpha1.ObservatoriumSpec, error) {
 	obs := &obsv1alpha1.ObservatoriumSpec{}
 	obs.SecurityContext = &v1.SecurityContext{}
 	obs.PullSecret = mcoconfig.GetImagePullSecret(mco.Spec)
 	obs.NodeSelector = mco.Spec.NodeSelector
 	obs.Tolerations = mco.Spec.Tolerations
-	obsApi, err := newAPISpec(cl, mco)
+	obsApi, err := newAPISpec(cl, mco, tlsProfileSpec)
 	if err != nil {
 		return obs, err
 	}
 	obs.API = obsApi
-	obs.Thanos = newThanosSpec(mco, scSelected)
+	obs.Thanos = newThanosSpec(mco, scSelected, tlsProfileSpec)
 	if util.ProxyEnvVarsAreSet() {
 		obs.EnvVars = newEnvVars()
 	}
@@ -453,13 +475,14 @@ func newAPITenants() []obsv1alpha1.APITenant {
 	}
 }
 
-func newAPITLS() obsv1alpha1.TLS {
+func newAPITLS(tlsProfileSpec obsv1alpha1.TLSProfileSpec) obsv1alpha1.TLS {
 	return obsv1alpha1.TLS{
-		SecretName: mcoconfig.ServerCerts,
-		CertKey:    "tls.crt",
-		KeyKey:     "tls.key",
-		CAKey:      "ca.crt",
-		ServerName: mcoconfig.ServerCertCN,
+		SecretName:     mcoconfig.ServerCerts,
+		CertKey:        "tls.crt",
+		KeyKey:         "tls.key",
+		CAKey:          "ca.crt",
+		ServerName:     mcoconfig.ServerCertCN,
+		TLSProfileSpec: tlsProfileSpec,
 	}
 }
 
@@ -512,11 +535,11 @@ func applyEndpointsSecret(c client.Client, eps []mcoutil.RemoteWriteEndpointWith
 	return nil
 }
 
-func newAPISpec(c client.Client, mco *mcov1beta2.MultiClusterObservability) (obsv1alpha1.APISpec, error) {
+func newAPISpec(c client.Client, mco *mcov1beta2.MultiClusterObservability, tlsProfileSpec obsv1alpha1.TLSProfileSpec) (obsv1alpha1.APISpec, error) {
 	apiSpec := obsv1alpha1.APISpec{}
 	apiSpec.RBAC = newAPIRBAC()
 	apiSpec.Tenants = newAPITenants()
-	apiSpec.TLS = newAPITLS()
+	apiSpec.TLS = newAPITLS(tlsProfileSpec)
 	apiSpec.Replicas = mcoconfig.GetReplicas(mcoconfig.ObservatoriumAPI, mco.Spec.InstanceSize, mco.Spec.AdvancedConfig)
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
 		apiSpec.Resources = mcoconfig.GetResources(mcoconfig.ObservatoriumAPI, mco.Spec.InstanceSize, mco.Spec.AdvancedConfig)
@@ -872,7 +895,7 @@ func newMemCacheSpec(component string, mco *mcov1beta2.MultiClusterObservability
 	return memCacheSpec
 }
 
-func newThanosSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string) obsv1alpha1.ThanosSpec {
+func newThanosSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string, tlsProfileSpec obsv1alpha1.TLSProfileSpec) obsv1alpha1.ThanosSpec {
 	thanosSpec := obsv1alpha1.ThanosSpec{}
 	thanosSpec.Image = mcoconfig.DefaultImgRepository + "/" + mcoconfig.ThanosImgName +
 		":" + mcoconfig.DefaultImgTagSuffix
@@ -890,6 +913,11 @@ func newThanosSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string)
 		thanosSpec.Image = image
 	}
 	thanosSpec.ImagePullPolicy = mcoconfig.GetImagePullPolicy(mco.Spec)
+
+	// --grpc-server-tls-min-version flag expects a string value of TLS version, e.g. "1.2", "1.3"
+	tlsProfileSpec.MinVersion = ocpToThanosMinVersion[tlsProfileSpec.MinVersion]
+	thanosSpec.TLSProfile = tlsProfileSpec
+
 	return thanosSpec
 }
 
