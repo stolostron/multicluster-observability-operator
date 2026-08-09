@@ -192,7 +192,6 @@ replace (
 	github.com/prometheus-community/prom-label-proxy/injectproxy => github.com/prometheus-community/prom-label-proxy/injectproxy v0.6.0
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring => github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.53.1
 	github.com/prometheus/common => github.com/prometheus/common v0.53.0
-	github.com/prometheus/prometheus => github.com/prometheus/prometheus v0.51.1-0.20240325140356-78c0fd2f4d75
 	k8s.io/api => k8s.io/api v0.29.0
 	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.29.0
 	k8s.io/apimachinery => k8s.io/apimachinery v0.29.2
@@ -214,3 +213,10 @@ replace github.com/openshift/library-go => github.com/openshift/library-go v0.0.
 
 // Stolostron fork of the controller-filtered-cache upgraded to k8s libs up to 0.29.x and Go up to 1.21.
 replace github.com/IBM/controller-filtered-cache => github.com/stolostron/controller-filtered-cache v0.0.0-20240605101128-e033f9b9a990
+
+// CVE-2026-42151: Azure AD OAuth client_secret exposed via config API.
+// Direct upgrade to the patched v0.311.3/v0.305.3 line is not feasible on
+// release-2.11 due to incompatible API changes. Fix cherry-picked onto
+// stolostron/prometheus base commit 78c0fd2f4d75 (the version already used
+// on this branch) — do not delete branch cve-2026-42151/v0.51.1-20240325.
+replace github.com/prometheus/prometheus => github.com/katekeiroz-dev/prometheus v1.8.2-0.20260809205240-e1bde220dac8
