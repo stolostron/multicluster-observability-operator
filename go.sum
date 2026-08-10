@@ -1347,8 +1347,6 @@ github.com/jtolds/gls v4.20.0+incompatible/go.mod h1:QJZ7F/aHp+rZTRtaJ1ow/lLfFfV
 github.com/julienschmidt/httprouter v1.3.0/go.mod h1:JR6WtHb+2LUe8TCKY3cZOxFyyO8IZAc4RVcycCCAKdM=
 github.com/jung-kurt/gofpdf v1.0.0/go.mod h1:7Id9E/uU8ce6rXgefFLlgrJj/GYY22cpxn+r32jIOes=
 github.com/jung-kurt/gofpdf v1.0.3-0.20190309125859-24315acbbda5/go.mod h1:7Id9E/uU8ce6rXgefFLlgrJj/GYY22cpxn+r32jIOes=
-github.com/katekeiroz-dev/prometheus v1.8.2-0.20260809205240-e1bde220dac8 h1:nJKJRaIdpuU5odpeSc8fYOS4O63tIV6nrwgKnXaF0Ns=
-github.com/katekeiroz-dev/prometheus v1.8.2-0.20260809205240-e1bde220dac8/go.mod h1:FguQG8pCICrSpHA2pwizwV5FxGNTUBSZED/wMoZwVfY=
 github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51/go.mod h1:CzGEWj7cYgsdH8dAjBGEr58BoE7ScuLd+fwFZ44+/x8=
 github.com/kisielk/errcheck v1.1.0/go.mod h1:EZBBE59ingxPouuu3KfxchcWSUPOHkagtvWXihfKN4Q=
 github.com/kisielk/errcheck v1.2.0/go.mod h1:/BMXB+zMLi60iA8Vv6Ksmxu/1UDYcXs4uQLJ+jE2L00=
@@ -1682,6 +1680,8 @@ github.com/stolostron/multiclusterhub-operator v0.0.0-20240507130539-00cf6ee9f65
 github.com/stolostron/multiclusterhub-operator v0.0.0-20240507130539-00cf6ee9f650/go.mod h1:fVXNVgAb4lcyAurs9qi3UG5bkpRCO2hYmEkj9s9++MY=
 github.com/stolostron/observatorium-operator v0.0.0-20240521155951-b4302d25bd18 h1:E/PNsOae69+k4zpbKfXQYrI14fEQSKPjv+yP8eSHOV4=
 github.com/stolostron/observatorium-operator v0.0.0-20240521155951-b4302d25bd18/go.mod h1:fFyJt9/dkQ1/4NxiW4CjH4lj7brxGlkA4SscxoLfzYY=
+github.com/stolostron/prometheus v1.8.2-0.20260809205240-e1bde220dac8 h1:pioFJrqJ3Gfhkpo9k7EFYEkBJ6Xy1LpHImLRzxhgp+I=
+github.com/stolostron/prometheus v1.8.2-0.20260809205240-e1bde220dac8/go.mod h1:FguQG8pCICrSpHA2pwizwV5FxGNTUBSZED/wMoZwVfY=
 github.com/stolostron/rbac-api-utils v0.0.0-20240404212618-7f57fc664256 h1:BeTUZoAkKzPKSH0sG4a9PaakKHuJ0h9Cks9joBn3Ns8=
 github.com/stolostron/rbac-api-utils v0.0.0-20240404212618-7f57fc664256/go.mod h1:zYGYkVgY+sL501na1x5RDCKMrHD+JAwb6oRFU8e9XlU=
 github.com/streadway/amqp v0.0.0-20190404075320-75d898a42a94/go.mod h1:AZpEONHx3DKn8O/DFsRAY58/XVQiIPMTMB1SddzLXVw=

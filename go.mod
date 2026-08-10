@@ -219,4 +219,4 @@ replace github.com/IBM/controller-filtered-cache => github.com/stolostron/contro
 // release-2.11 due to incompatible API changes. Fix cherry-picked onto
 // stolostron/prometheus base commit 78c0fd2f4d75 (the version already used
 // on this branch) — do not delete branch cve-2026-42151/v0.51.1-20240325.
-replace github.com/prometheus/prometheus => github.com/katekeiroz-dev/prometheus v1.8.2-0.20260809205240-e1bde220dac8
+replace github.com/prometheus/prometheus => github.com/stolostron/prometheus v1.8.2-0.20260809205240-e1bde220dac8
