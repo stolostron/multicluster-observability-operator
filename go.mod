@@ -11,9 +11,8 @@ replace (
 	github.com/openshift/library-go => github.com/openshift/library-go v0.0.0-20241106000323-9fcf3125a28e
 
 	// CVE-2026-42151: Azure AD OAuth client_secret exposed via config API.
-	// Upstream fix is in v0.311.3 but requires incompatible API changes.
-	// Fix cherry-picked onto stolostron/prometheus branch cve-2026-42151/v0.55.1 — do not delete branch.
-	github.com/prometheus/prometheus => github.com/stolostron/prometheus v0.0.0-20260805153507-383a8f4f8330
+	// stolostron release-2.14 commit 882a9e6500b4
+	github.com/prometheus/prometheus => github.com/stolostron/prometheus v1.8.2-0.20260807141503-882a9e6500b4
 	sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.19.7
 )
 
