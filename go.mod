@@ -209,8 +209,7 @@ require (
 replace github.com/IBM/controller-filtered-cache => github.com/stolostron/controller-filtered-cache v0.0.0-20240605101128-e033f9b9a990
 
 // CVE-2026-42151: Azure AD OAuth client_secret exposed via config API.
-// Upstream fix is in v0.311.3 but requires incompatible API changes.
-// Fix cherry-picked onto stolostron/prometheus branch cve-2026-42151/v0.52.1 — do not delete branch.
-replace github.com/prometheus/prometheus => github.com/stolostron/prometheus v0.0.0-20260806143927-7a17163b4eb4
+// stolostron release-2.13 commit 82aa3b09cb50
+replace github.com/prometheus/prometheus => github.com/stolostron/prometheus v1.8.2-0.20260807141503-82aa3b09cb50
 
 replace github.com/prometheus/common => github.com/prometheus/common v0.53.0
