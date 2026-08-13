@@ -673,3 +673,56 @@ func TestRenderClusterManagementAddOnNilCapabilities(t *testing.T) {
 	assert.NotNil(t, uobj)
 	assert.NotContains(t, uobj.GetAnnotations(), "console.open-cluster-management.io/launch-link")
 }
+
+func TestRightSizingConfigured(t *testing.T) {
+	crWithRSEnabled := &mcov1beta2.MultiClusterObservability{
+		Spec: mcov1beta2.MultiClusterObservabilitySpec{
+			Capabilities: &mcov1beta2.CapabilitiesSpec{
+				Platform: &mcov1beta2.PlatformCapabilitiesSpec{},
+			},
+		},
+	}
+	crWithRSEnabled.Spec.Capabilities.Platform.Analytics.NamespaceRightSizingRecommendation.Enabled = true
+
+	tests := []struct {
+		name     string
+		cr       *mcov1beta2.MultiClusterObservability
+		expected bool
+	}{
+		{
+			name:     "capabilities not set",
+			cr:       &mcov1beta2.MultiClusterObservability{},
+			expected: false,
+		},
+		{
+			name: "capabilities set without platform",
+			cr: &mcov1beta2.MultiClusterObservability{
+				Spec: mcov1beta2.MultiClusterObservabilitySpec{
+					Capabilities: &mcov1beta2.CapabilitiesSpec{},
+				},
+			},
+			expected: false,
+		},
+		{
+			name: "platform set with all features disabled",
+			cr: &mcov1beta2.MultiClusterObservability{
+				Spec: mcov1beta2.MultiClusterObservabilitySpec{
+					Capabilities: &mcov1beta2.CapabilitiesSpec{
+						Platform: &mcov1beta2.PlatformCapabilitiesSpec{},
+					},
+				},
+			},
+			expected: true,
+		},
+		{
+			name:     "platform set with namespace right-sizing enabled",
+			cr:       crWithRSEnabled,
+			expected: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, RightSizingConfigured(tt.cr))
+		})
+	}
+}
