@@ -55,6 +55,7 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"k8s.io/client-go/util/workqueue"
+	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	addonv1beta1 "open-cluster-management.io/api/addon/v1beta1"
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
 	clusterv1beta1 "open-cluster-management.io/api/cluster/v1beta1"
@@ -1918,4 +1919,188 @@ func TestMCOAWaitForManifestWorks(t *testing.T) {
 		err = r2.Client.Get(t.Context(), types.NamespacedName{Name: mcoToDelete2.Name}, fetchedMCO)
 		assert.True(t, errors.IsNotFound(err)) // The object is successfully garbage collected on the API-side
 	})
+}
+
+// TestMCOACleanupADCPreservation drives the full Reconcile into the MCOA cleanup
+// block (entered when !MCOAEnabled && !RightSizingEnabled) and verifies the fate
+// of the AddOnDeploymentConfig:
+//   - When right-sizing has been configured (Capabilities.Platform != nil) but all
+//     features are disabled, the ADC must SURVIVE cleanup so the analytics
+//     controller can sync its RS variables to "disabled" (e2e rightsizing/g2
+//     "Should set both ADC RS variables to 'disabled'").
+//   - When capabilities were never configured, the ADC is undeployed with the
+//     rest of the MCOA resources (fresh-install cleanup unchanged).
+func TestMCOACleanupADCPreservation(t *testing.T) {
+	var (
+		name      = "monitoring"
+		namespace = config.GetDefaultNamespace()
+		mcoUID    = types.UID("mco-uid-adc-cleanup-test")
+	)
+
+	newMCO := func(caps *mcov1beta2.CapabilitiesSpec) *mcov1beta2.MultiClusterObservability {
+		return &mcov1beta2.MultiClusterObservability{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: mcov1beta2.GroupVersion.String(),
+				Kind:       "MultiClusterObservability",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name: name,
+				UID:  mcoUID,
+			},
+			Spec: mcov1beta2.MultiClusterObservabilitySpec{
+				Capabilities: caps,
+				StorageConfig: &mcov1beta2.StorageConfig{
+					MetricObjectStorage: &mcoshared.PreConfiguredStorage{
+						Key:  "test",
+						Name: "test",
+					},
+					StorageClass:            "gp2",
+					AlertmanagerStorageSize: "1Gi",
+					CompactStorageSize:      "1Gi",
+					RuleStorageSize:         "1Gi",
+					ReceiveStorageSize:      "1Gi",
+					StoreStorageSize:        "1Gi",
+				},
+				ObservabilityAddonSpec: &mcoshared.ObservabilityAddonSpec{
+					EnableMetrics: false,
+				},
+			},
+		}
+	}
+
+	tests := []struct {
+		name         string
+		capabilities *mcov1beta2.CapabilitiesSpec
+		expectADC    bool
+	}{
+		{
+			name: "ADC preserved when right-sizing configured but both features disabled",
+			// Platform != nil => RightSizingConfigured == true; every feature false
+			// => MCOAEnabled == false && RightSizingEnabled == false => cleanup runs.
+			capabilities: &mcov1beta2.CapabilitiesSpec{
+				Platform: &mcov1beta2.PlatformCapabilitiesSpec{},
+			},
+			expectADC: true,
+		},
+		{
+			name:         "ADC undeployed when capabilities never configured",
+			capabilities: nil,
+			expectADC:    false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			defer setupTest(t)()
+			tlstesting.NewFakeTLSClientBuilder().Build(t)
+
+			mco := newMCO(tt.capabilities)
+
+			// Seed the ADC exactly as the operator deploys it: rendered from
+			// manifests/base/multicluster-observability-addon (v1alpha1 GVK) and
+			// controller-owned by the MCO CR (SetControllerReference in Reconcile).
+			adc := &unstructured.Unstructured{}
+			adc.SetAPIVersion(addonv1alpha1.SchemeGroupVersion.String())
+			adc.SetKind("AddOnDeploymentConfig")
+			adc.SetName(config.MultiClusterObservabilityAddon)
+			adc.SetNamespace(namespace)
+			controllerRef := metav1.NewControllerRef(mco, mcov1beta2.GroupVersion.WithKind("MultiClusterObservability"))
+			adc.SetOwnerReferences([]metav1.OwnerReference{*controllerRef})
+
+			s := runtime.NewScheme()
+			require.NoError(t, scheme.AddToScheme(s))
+			require.NoError(t, mcov1beta2.SchemeBuilder.AddToScheme(s))
+			require.NoError(t, oav1beta1.AddToScheme(s))
+			require.NoError(t, observatoriumv1alpha1.AddToScheme(s))
+			require.NoError(t, routev1.Install(s))
+			require.NoError(t, oauthv1.AddToScheme(s))
+			require.NoError(t, clusterv1.Install(s))
+			require.NoError(t, clusterv1beta1.Install(s))
+			require.NoError(t, policyv1.AddToScheme(s))
+			require.NoError(t, addonv1beta1.Install(s))
+			require.NoError(t, addonv1alpha1.Install(s))
+			require.NoError(t, workv1.Install(s))
+			require.NoError(t, migrationv1alpha1.SchemeBuilder.AddToScheme(s))
+			require.NoError(t, operatorv1.AddToScheme(s))
+			require.NoError(t, storev1.AddToScheme(s))
+
+			objs := []runtime.Object{
+				mco, adc,
+				createObservatoriumAPIService(name, namespace),
+				newTestCert(config.ServerCACerts, namespace),
+				newTestCert(config.ClientCACerts, namespace),
+				newTestCert(config.GrafanaCerts, namespace),
+				newTestCert(config.ServerCerts, namespace),
+				newTestCert(config.ProxyRouteBYOCAName, namespace),
+				newTestCert(config.ProxyRouteBYOCERTName, namespace),
+				newClusterManagementAddon(),
+				&corev1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "extension-apiserver-authentication",
+						Namespace: "kube-system",
+					},
+					Data: map[string]string{"client-ca-file": "test"},
+				},
+				newStorageClass("gp2", true),
+			}
+
+			cl := fake.NewClientBuilder().
+				WithScheme(s).
+				WithRuntimeObjects(objs...).
+				WithStatusSubresource(
+					&addonv1beta1.ManagedClusterAddOn{},
+					&mcov1beta2.MultiClusterObservability{},
+					&oav1beta1.ObservabilityAddon{},
+				).
+				Build()
+
+			imageClient := &fakeimagev1client.FakeImageV1{Fake: &(fakeimageclient.NewSimpleClientset().Fake)}
+			_, err := imageClient.ImageStreams(config.OauthProxyImageStreamNamespace).Create(t.Context(),
+				&imagev1.ImageStream{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      config.OauthProxyImageStreamName,
+						Namespace: config.OauthProxyImageStreamNamespace,
+					},
+					Spec: imagev1.ImageStreamSpec{
+						Tags: []imagev1.TagReference{
+							{
+								Name: "v4.4",
+								From: &corev1.ObjectReference{
+									Kind: "DockerImage",
+									Name: "quay.io/openshift-release-dev/ocp-v4.0-art-dev",
+								},
+							},
+						},
+					},
+				}, metav1.CreateOptions{})
+			require.NoError(t, err)
+
+			r := &MultiClusterObservabilityReconciler{
+				Client:      cl,
+				Scheme:      s,
+				CRDMap:      map[string]bool{config.IngressControllerCRD: true},
+				ImageClient: imageClient,
+			}
+			config.SetMonitoringCRName(name)
+			req := ctrl.Request{NamespacedName: types.NamespacedName{Name: name}}
+
+			_, err = r.Reconcile(t.Context(), req)
+			require.NoError(t, err)
+
+			got := &unstructured.Unstructured{}
+			got.SetAPIVersion(addonv1alpha1.SchemeGroupVersion.String())
+			got.SetKind("AddOnDeploymentConfig")
+			err = cl.Get(t.Context(), types.NamespacedName{
+				Name:      config.MultiClusterObservabilityAddon,
+				Namespace: namespace,
+			}, got)
+			if tt.expectADC {
+				require.NoError(t, err,
+					"AddOnDeploymentConfig must survive MCOA cleanup when right-sizing is configured but disabled")
+			} else {
+				assert.True(t, errors.IsNotFound(err),
+					"AddOnDeploymentConfig should be undeployed when capabilities were never configured")
+			}
+		})
+	}
 }

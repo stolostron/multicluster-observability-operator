@@ -421,6 +421,23 @@ func MCOAEnabled(cr *obv1beta2.MultiClusterObservability) bool {
 	return mcoaEnabled
 }
 
+// RightSizingConfigured returns true when the platform capabilities block exists in
+// the MCO CR spec (Capabilities.Platform != nil), even if every right-sizing feature
+// under it is disabled. It distinguishes "right-sizing was configured but disabled"
+// from "right-sizing was never configured", so MCOA cleanup can preserve the
+// AddOnDeploymentConfig: the ADC must survive carrying the RS variables as explicit
+// "disabled" values, because MCOA auto-enables right-sizing when the variables are
+// absent — deleting the ADC would fail open.
+//
+// Note: the analytics controller's ensureRightSizingDefaults patches the RS fields
+// into the CR spec whenever they are absent, so on a running hub this is effectively
+// always true. Removing spec.capabilities entirely makes it transiently false (the
+// ADC is undeployed with the rest of the MCOA resources), after which the defaulting
+// re-enables right-sizing and the render path recreates the ADC.
+func RightSizingConfigured(cr *obv1beta2.MultiClusterObservability) bool {
+	return cr.Spec.Capabilities != nil && cr.Spec.Capabilities.Platform != nil
+}
+
 // MCOAPlatformMetricsEnabled checks if platform metrics collection is enabled in the MCO CR capabilities.
 func MCOAPlatformMetricsEnabled(cr *obv1beta2.MultiClusterObservability) bool {
 	if cr.Spec.Capabilities == nil {
