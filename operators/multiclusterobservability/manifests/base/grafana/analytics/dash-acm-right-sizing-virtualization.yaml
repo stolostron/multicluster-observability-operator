@@ -92,7 +92,7 @@ data:
                 "uid": "${datasource}"
               },
               "exemplar": true,
-              "expr": "sum(floor((max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:cpu_request{cluster=\"$cluster\", namespace=~\"$namespace\"}\n+ on(cluster, namespace, name) group_left(_blah)(0 * max by (cluster, namespace, name) (kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=\"$cluster\", namespace=~\"$namespace\"} > 0))\n)[$days:])-\nmax_over_time(sum by (name, namespace) (acm_rs_vm:namespace:cpu_recommendation{cluster=\"$cluster\", namespace=~\"$namespace\"}\n+ on(cluster, namespace, name) group_left(_blah)(0 * max by (cluster, namespace, name) (kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=\"$cluster\", namespace=~\"$namespace\"} > 0))\n)[$days:])))>0)",
+              "expr": "sum(\n(floor(max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:cpu_request{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"})[$days:])-\nmax_over_time(sum by (name, namespace) (acm_rs_vm:namespace:cpu_recommendation{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"})[$days:])) > 0)\nand on (name, namespace) (max by (name, namespace) (kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=\"$cluster\", namespace=~\"$namespace\"} > 0) > 0)\n)",
               "format": "table",
               "instant": true,
               "interval": "",
@@ -165,7 +165,7 @@ data:
                 "uid": "${datasource}"
               },
               "exemplar": true,
-              "expr": "sum(floor((max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:cpu_request{cluster=\"$cluster\", namespace=~\"$namespace\"}\n+ on(cluster, namespace, name) group_left(_blah)(0 * max by (cluster, namespace, name) (kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=\"$cluster\", namespace=~\"$namespace\"} > 0))\n)[$days:])-\nmax_over_time(sum by (name, namespace) (acm_rs_vm:namespace:cpu_recommendation{cluster=\"$cluster\", namespace=~\"$namespace\"}\n+ on(cluster, namespace, name) group_left(_blah)(0 * max by (cluster, namespace, name) (kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=\"$cluster\", namespace=~\"$namespace\"} > 0))\n)[$days:])))<0) * (-1)",
+              "expr": "sum(\n(floor(max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:cpu_request{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"})[$days:])-\nmax_over_time(sum by (name, namespace) (acm_rs_vm:namespace:cpu_recommendation{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"})[$days:])) < 0) * (-1)\nand on (name, namespace) (max by (name, namespace) (kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=\"$cluster\", namespace=~\"$namespace\"} > 0) > 0)\n)",
               "format": "table",
               "instant": true,
               "interval": "",
@@ -238,7 +238,7 @@ data:
                 "uid": "${datasource}"
               },
               "exemplar": true,
-              "expr": "sum(floor((max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:memory_request{cluster=\"$cluster\", namespace=~\"$namespace\"}\n+ on(cluster, namespace, name) group_left(_blah)(0 * max by (cluster, namespace, name) (kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=\"$cluster\", namespace=~\"$namespace\"} > 0))\n)[$days:]) / 1073741824)-\n(max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:memory_recommendation{cluster=\"$cluster\", namespace=~\"$namespace\"}\n+ on(cluster, namespace, name) group_left(_blah)(0 * max by (cluster, namespace, name) (kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=\"$cluster\", namespace=~\"$namespace\"} > 0))\n)[$days:]) / 1073741824))>0)",
+              "expr": "sum(\n(floor((max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:memory_request{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"})[$days:]) / 1073741824)-\n(max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:memory_recommendation{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"})[$days:]) / 1073741824)) > 0)\nand on (name, namespace) (max by (name, namespace) (kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=\"$cluster\", namespace=~\"$namespace\"} > 0) > 0)\n)",
               "format": "table",
               "instant": true,
               "interval": "",
@@ -311,7 +311,7 @@ data:
                 "uid": "${datasource}"
               },
               "exemplar": true,
-              "expr": "sum(floor((max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:memory_request{cluster=\"$cluster\", namespace=~\"$namespace\"}\n+ on(cluster, namespace, name) group_left(_blah)(0 * max by (cluster, namespace, name) (kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=\"$cluster\", namespace=~\"$namespace\"} > 0))\n)[$days:]) / 1073741824)-\n(max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:memory_recommendation{cluster=\"$cluster\", namespace=~\"$namespace\"}\n+ on(cluster, namespace, name) group_left(_blah)(0 * max by (cluster, namespace, name) (kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=\"$cluster\", namespace=~\"$namespace\"} > 0))\n)[$days:]) / 1073741824))<0) * (-1)",
+              "expr": "sum(\n(floor((max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:memory_request{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"})[$days:]) / 1073741824)-\n(max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:memory_recommendation{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"})[$days:]) / 1073741824)) < 0) * (-1)\nand on (name, namespace) (max by (name, namespace) (kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=\"$cluster\", namespace=~\"$namespace\"} > 0) > 0)\n)",
               "format": "time_series",
               "instant": true,
               "interval": "",
