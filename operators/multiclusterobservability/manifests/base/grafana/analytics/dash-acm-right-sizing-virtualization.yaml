@@ -847,7 +847,7 @@ data:
                 "uid": "${datasource}"
               },
               "exemplar": true,
-              "expr": "label_join(\n  max by (name, namespace) (max_over_time(((kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=\"$cluster\", namespace=~\"$namespace\"} > 0) * 1000)[$days:])),\n  \"name_namespace\", \"-\", \"name\", \"namespace\"\n)",
+              "expr": "label_join(\n  max by (name, namespace) ((kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=\"$cluster\", namespace=~\"$namespace\"} > 0) * 1000),\n  \"name_namespace\", \"-\", \"name\", \"namespace\"\n)",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -1464,7 +1464,7 @@ data:
                 "uid": "${datasource}"
               },
               "exemplar": true,
-              "expr": "label_join(\n  max by (name, namespace) (max_over_time(((kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=\"$cluster\", namespace=~\"$namespace\"} > 0) * 1000)[$days:])),\n  \"name_namespace\", \"-\", \"name\", \"namespace\"\n)",
+              "expr": "label_join(\n  max by (name, namespace) ((kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=\"$cluster\", namespace=~\"$namespace\"} > 0) * 1000),\n  \"name_namespace\", \"-\", \"name\", \"namespace\"\n)",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -2004,7 +2004,7 @@ data:
                 "uid": "${datasource}"
               },
               "exemplar": true,
-              "expr": "label_join(\n  max by (name, namespace) (max_over_time(((kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=\"$cluster\", namespace=~\"$namespace\"} > 0) * 1000)[$days:])),\n  \"name_namespace\", \"-\", \"name\", \"namespace\"\n)",
+              "expr": "label_join(\n  max by (name, namespace) ((kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=\"$cluster\", namespace=~\"$namespace\"} > 0) * 1000),\n  \"name_namespace\", \"-\", \"name\", \"namespace\"\n)",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -2542,7 +2542,7 @@ data:
                 "uid": "${datasource}"
               },
               "exemplar": true,
-              "expr": "label_join(\n  max by (name, namespace) (max_over_time(((kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=\"$cluster\", namespace=~\"$namespace\"} > 0) * 1000)[$days:])),\n  \"name_namespace\", \"-\", \"name\", \"namespace\"\n)",
+              "expr": "label_join(\n  max by (name, namespace) ((kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=\"$cluster\", namespace=~\"$namespace\"} > 0) * 1000),\n  \"name_namespace\", \"-\", \"name\", \"namespace\"\n)",
               "format": "table",
               "hide": false,
               "instant": true,
