@@ -45,7 +45,7 @@ deploy_hub_spoke_core() {
     export OCM_BRANCH="main"
   else
     VERSION=$(awk -F '.' '{ print $1"."$2 }' <"${ROOTDIR}/COMPONENT_VERSION")
-    export OCM_BRANCH="release-${VERSION}"
+    export OCM_BRANCH="backplane-${VERSION}"
   fi
   export OPERATOR_IMAGE_NAME=quay.io/stolostron/registration-operator:$LATEST_MCE_SNAPSHOT
   export REGISTRATION_IMAGE=quay.io/stolostron/registration:$LATEST_MCE_SNAPSHOT

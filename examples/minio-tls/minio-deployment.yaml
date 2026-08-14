@@ -23,11 +23,11 @@ spec:
         - -c
         - mkdir -p /storage/thanos && /usr/bin/minio server --certs-dir /etc/minio/certs /storage
         env:
-        - name: MINIO_ACCESS_KEY
+        - name: MINIO_ROOT_USER
           value: minio
-        - name: MINIO_SECRET_KEY
+        - name: MINIO_ROOT_PASSWORD
           value: minio123
-        image:  quay.io/minio/minio:RELEASE.2021-08-25T00-41-18Z
+        image:  quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z-cpuv1
         name: minio
         ports:
         - containerPort: 9000
