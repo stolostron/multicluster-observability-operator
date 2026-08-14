@@ -8,7 +8,6 @@ import (
 	"context"
 	"fmt"
 	"maps"
-	"reflect"
 	"slices"
 	"strings"
 
@@ -73,10 +72,6 @@ func (r *MCOAAgentReconciler) ReconcileHyperShift(ctx context.Context) error {
 	}
 	if len(apiserverScrapeConfigs) == 0 {
 		r.Log.V(1).Info("no apiserver HCP scrape configs found", "namespace", r.Namespace, "component", apiserverHcpComponentLabel)
-	}
-
-	if err := r.reconcileHCPScrapeConfigFederationFilters(ctx, append(etcdScrapeConfigs, apiserverScrapeConfigs...)); err != nil {
-		return fmt.Errorf("failed to reconcile HCP scrape config federation filters: %w", err)
 	}
 
 	etcdRules, err := r.listPrometheusRulesByComponent(ctx, etcdHcpComponentLabel)
@@ -146,53 +141,6 @@ func (r *MCOAAgentReconciler) ReconcileHyperShift(ctx context.Context) error {
 
 func isHypershiftReconcileRequest(req ctrl.Request) bool {
 	return req.Name == hypershiftReconcileTriggerName && req.Namespace == ""
-}
-
-// reconcileHCPScrapeConfigFederationFilters ensures HCP ScrapeConfigs only federate metrics
-// scraped via acm-etcd/acm-kube-apiserver ServiceMonitors, not Hypershift's native ServiceMonitors.
-func (r *MCOAAgentReconciler) reconcileHCPScrapeConfigFederationFilters(ctx context.Context, scrapeConfigs []prometheusv1alpha1.ScrapeConfig) error {
-	if len(scrapeConfigs) == 0 {
-		return nil
-	}
-	if r.ClusterID == "" {
-		r.Log.Info("cluster ID is empty, skipping HCP scrape config federation filter reconciliation")
-		return nil
-	}
-
-	filters := []promv1.RelabelConfig{
-		{
-			SourceLabels: []promv1.LabelName{clusterIDMetricLabel},
-			Regex:        ".+",
-			Action:       "keep",
-		},
-		{
-			SourceLabels: []promv1.LabelName{managementClusterIDMetricLabel},
-			Regex:        r.ClusterID,
-			Action:       "keep",
-		},
-	}
-
-	isHCPScrapeConfigFederationFilter := func(cfg promv1.RelabelConfig) bool {
-		return cfg.Action == "keep" && len(cfg.SourceLabels) == 1 &&
-			(cfg.SourceLabels[0] == clusterIDMetricLabel ||
-				cfg.SourceLabels[0] == managementClusterIDMetricLabel)
-	}
-
-	for _, sc := range scrapeConfigs {
-		desired := sc.DeepCopy()
-		desired.Spec.MetricRelabelConfigs = slices.DeleteFunc(desired.Spec.MetricRelabelConfigs, isHCPScrapeConfigFederationFilter)
-		desired.Spec.MetricRelabelConfigs = append(desired.Spec.MetricRelabelConfigs, filters...)
-
-		if reflect.DeepEqual(sc.Spec.MetricRelabelConfigs, desired.Spec.MetricRelabelConfigs) {
-			continue
-		}
-
-		if err := r.Update(ctx, desired, &client.UpdateOptions{}); err != nil {
-			return fmt.Errorf("failed to update scrape config %s/%s: %w", sc.Namespace, sc.Name, err)
-		}
-	}
-
-	return nil
 }
 
 func (r *MCOAAgentReconciler) listPrometheusRulesByComponent(ctx context.Context, component string) ([]promv1.PrometheusRule, error) {

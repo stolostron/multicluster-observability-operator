@@ -95,12 +95,7 @@ func TestReconcileHyperShift(t *testing.T) {
 
 	updatedEtcdSC := &prometheusv1alpha1.ScrapeConfig{}
 	require.NoError(t, c.Get(context.Background(), types.NamespacedName{Namespace: namespace, Name: etcdScrapeConfig.Name}, updatedEtcdSC))
-	require.Len(t, updatedEtcdSC.Spec.MetricRelabelConfigs, 2)
-	assert.Equal(t, "keep", updatedEtcdSC.Spec.MetricRelabelConfigs[0].Action)
-	assert.Equal(t, promv1.LabelName(clusterIDMetricLabel), updatedEtcdSC.Spec.MetricRelabelConfigs[0].SourceLabels[0])
-	assert.Equal(t, ".+", updatedEtcdSC.Spec.MetricRelabelConfigs[0].Regex)
-	assert.Equal(t, promv1.LabelName(managementClusterIDMetricLabel), updatedEtcdSC.Spec.MetricRelabelConfigs[1].SourceLabels[0])
-	assert.Equal(t, "spoke-id", updatedEtcdSC.Spec.MetricRelabelConfigs[1].Regex)
+	assert.Empty(t, updatedEtcdSC.Spec.MetricRelabelConfigs)
 }
 
 func TestReconcileHostedClustersServiceMonitorsFromMCOAConfig_Nominal(t *testing.T) {
