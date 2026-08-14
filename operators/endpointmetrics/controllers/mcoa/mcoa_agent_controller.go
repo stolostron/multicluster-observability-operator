@@ -116,7 +116,7 @@ func (r *MCOAAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *MCOAAgentReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewControllerManagedBy(mgr).
+	builder := ctrl.NewControllerManagedBy(mgr).
 		// Watch ConfigMaps we manage across multiple namespaces.
 		// The cache FieldSelectors already limit this to exactly the CMs we need.
 		For(&corev1.ConfigMap{}, ctrlbuilder.WithPredicates(observabilityendpoint.ConfigMapDataChangedPredicate("", ""))).
@@ -158,8 +158,14 @@ func (r *MCOAAgentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				UpdateFunc:  func(_ event.UpdateEvent) bool { return false },
 				GenericFunc: func(_ event.GenericEvent) bool { return false },
 			}),
-		).
-		Watches(
+		)
+
+	isHypershift, err := hypershift.IsHypershiftCluster()
+	if err != nil {
+		return fmt.Errorf("failed to check if the cluster is hypershift: %w", err)
+	}
+	if isHypershift {
+		builder = builder.Watches(
 			&hyperv1.HostedCluster{},
 			handler.EnqueueRequestsFromMapFunc(r.enqueueHypershiftReconcile()),
 			ctrlbuilder.WithPredicates(predicate.Funcs{
@@ -175,8 +181,12 @@ func (r *MCOAAgentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				},
 				GenericFunc: func(_ event.GenericEvent) bool { return false },
 			}),
-		).
-		Complete(r)
+		)
+	} else {
+		r.Log.Info("Hypershift CRD not present, skipping HostedCluster watch registration")
+	}
+
+	return builder.Complete(r)
 }
 
 func (r *MCOAAgentReconciler) mapComponentLabelToRequests() handler.MapFunc {

@@ -51,6 +51,9 @@ var (
 )
 
 func TestMain(m *testing.M) {
+	// Skip IsHypershiftCluster CRD check.
+	os.Setenv("UNIT_TEST", "true")
+
 	opts := zap.Options{
 		Development: true,
 	}
