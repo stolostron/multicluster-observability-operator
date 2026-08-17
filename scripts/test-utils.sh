@@ -48,8 +48,8 @@ get_latest_mce_snapshot() {
   # matches:
   # version number (i.e 2.11)
   # z version 1-2 digits
-  # -SNAPSHOT
-  MATCH=$SNAPSHOT_RELEASE".\d{1,2}-SNAPSHOT"
+  # -BACKPLANE
+  MATCH=$SNAPSHOT_RELEASE".\d{1,2}-BACKPLANE"
   LATEST_SNAPSHOT=$(curl -s "https://quay.io/api/v1/repository/stolostron/registration/tag/?filter_tag_name=like:$SNAPSHOT_RELEASE&limit=100" | jq --arg MATCH "$MATCH" '.tags[] | select(.name | match($MATCH; "i")  ).name' | sort -r --version-sort | head -n 1)
 
   # trim the leading and tailing quotes
