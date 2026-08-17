@@ -75,6 +75,10 @@ deploy_hub_spoke_core() {
   fi
   ${SED_COMMAND} "s~clusterName: cluster1$~clusterName: ${MANAGED_CLUSTER}~g" ./_repo_ocm/deploy/klusterlet/config/samples/operator_open-cluster-management_klusterlets.cr.yaml
 
+  ${SED_COMMAND} '/--image-pull-secret-name/d' ./_repo_ocm/deploy/cluster-manager/chart/cluster-manager/templates/operator.yaml
+  ${SED_COMMAND} 's/imagePullSecrets:.*//g' ./_repo_ocm/deploy/cluster-manager/chart/cluster-manager/templates/operator.yaml
+  ${SED_COMMAND} 's/imagePullSecrets:.*//g' ./_repo_ocm/deploy/cluster-manager/chart/cluster-manager/templates/service_account.yaml
+
   make deploy-hub deploy-spoke-operator apply-spoke-cr -C ./_repo_ocm
 
   # wait until hub and spoke are ready
