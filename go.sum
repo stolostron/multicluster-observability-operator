@@ -480,8 +480,6 @@ github.com/prometheus/procfs v0.1.3/go.mod h1:lV6e/gmhEcM9IjHGsFOCxxuZ+z1YqCvr4O
 github.com/prometheus/procfs v0.6.0/go.mod h1:cz+aTbrPOrUb4q7XlbU9ygM+/jj0fzG6c1xBZuNvfVA=
 github.com/prometheus/procfs v0.16.1 h1:hZ15bTNuirocR6u0JZ6BAHHmwS1p8B4P6MRqxtzMyRg=
 github.com/prometheus/procfs v0.16.1/go.mod h1:teAbpZRB1iIAJYREa1LsoWUXykVXA1KlTmWl8x/U+Is=
-github.com/prometheus/prometheus v0.55.1 h1:+NM9V/h4A+wRkOyQzGewzgPPgq/iX2LUQoISNvmjZmI=
-github.com/prometheus/prometheus v0.55.1/go.mod h1:GGS7QlWKCqCbcEzWsVahYIfQwiGhcExkarHyLJTsv6I=
 github.com/redis/go-redis/v9 v9.7.3 h1:YpPyAayJV+XErNsatSElgRZZVCwXX9QzkKYNvO7x0wM=
 github.com/redis/go-redis/v9 v9.7.3/go.mod h1:bGUrSggJ9X9GUmZpZNEOQKaANxSGgOEBRltRTZHSvrA=
 github.com/rogpeppe/go-internal v1.3.0/go.mod h1:M8bDsm7K2OlrFYOpmOWEs/qY81heoFRclV5y23lUDJ4=
@@ -513,6 +511,8 @@ github.com/stolostron/multiclusterhub-operator v0.0.0-20240626140553-4f1ed6be3b8
 github.com/stolostron/multiclusterhub-operator v0.0.0-20240626140553-4f1ed6be3b84/go.mod h1:fVXNVgAb4lcyAurs9qi3UG5bkpRCO2hYmEkj9s9++MY=
 github.com/stolostron/observatorium-operator v0.0.0-20250924055856-a17f072986da h1:Ocy5cAFQQVbBtlb5G2HWExAYiHfyBfOFuCFrI0mtnLc=
 github.com/stolostron/observatorium-operator v0.0.0-20250924055856-a17f072986da/go.mod h1:ZDh8f7Fj7GzUR5BXqH9FMmJwelVOnC+mUF9qt5BandI=
+github.com/stolostron/prometheus v0.0.0-20260805153507-383a8f4f8330 h1:JTtm2wgflYAeQKQnE4VsEratAzUtGqlGfa3NnuL5O8g=
+github.com/stolostron/prometheus v0.0.0-20260805153507-383a8f4f8330/go.mod h1:GGS7QlWKCqCbcEzWsVahYIfQwiGhcExkarHyLJTsv6I=
 github.com/stolostron/rbac-api-utils v0.0.0-20240404212618-7f57fc664256 h1:BeTUZoAkKzPKSH0sG4a9PaakKHuJ0h9Cks9joBn3Ns8=
 github.com/stolostron/rbac-api-utils v0.0.0-20240404212618-7f57fc664256/go.mod h1:zYGYkVgY+sL501na1x5RDCKMrHD+JAwb6oRFU8e9XlU=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
