@@ -409,6 +409,7 @@ rules:
   - placementbindings
   verbs:
   - list
+  - watch
   - delete
 - apiGroups:
   - cluster.open-cluster-management.io
@@ -416,4 +417,5 @@ rules:
   - placements
   verbs:
   - list
+  - watch
   - delete
