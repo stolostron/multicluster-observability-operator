@@ -10,7 +10,7 @@ COPY ./operators ./operators
 COPY ./tests ./tests
 
 # compile go tests in build image
-RUN GOFLAGS="" go install github.com/onsi/ginkgo/v2/ginkgo@v2.29.0 && go mod vendor && ginkgo build ./tests/pkg/tests/
+RUN go build -o /go/bin/ginkgo github.com/onsi/ginkgo/v2/ginkgo && ginkgo build ./tests/pkg/tests/
 
 # create new docker image to hold built artifacts
 FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
