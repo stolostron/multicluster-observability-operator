@@ -79,6 +79,12 @@ deploy_hub_spoke_core() {
   ${SED_COMMAND} 's/imagePullSecrets:.*//g' ./_repo_ocm/deploy/cluster-manager/chart/cluster-manager/templates/operator.yaml
   ${SED_COMMAND} 's/imagePullSecrets:.*//g' ./_repo_ocm/deploy/cluster-manager/chart/cluster-manager/templates/service_account.yaml
 
+  # SED_COMMAND uses `sed -i-e`, which leaves *-e backup files next to the originals.
+  # Helm renders every file under templates/, so those backups would emit a second
+  # cluster-manager Deployment and ServiceAccount and the install would fail with
+  # "already exists". Drop them before running the chart.
+  rm -f ./_repo_ocm/deploy/cluster-manager/chart/cluster-manager/templates/*-e
+
   make deploy-hub deploy-spoke-operator apply-spoke-cr -C ./_repo_ocm
 
   # wait until hub and spoke are ready
