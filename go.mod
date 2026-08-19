@@ -9,6 +9,10 @@ replace (
 	github.com/openshift/api => github.com/openshift/api v0.0.0-20241001152557-e415140e5d5f
 	github.com/openshift/client-go => github.com/openshift/client-go v0.0.0-20241001162912-da6d55e4611f
 	github.com/openshift/library-go => github.com/openshift/library-go v0.0.0-20241106000323-9fcf3125a28e
+
+	// CVE-2026-42151: Azure AD OAuth client_secret exposed via config API.
+	// stolostron release-2.14 commit 882a9e6500b4
+	github.com/prometheus/prometheus => github.com/stolostron/prometheus v1.8.2-0.20260807141503-882a9e6500b4
 	sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.19.7
 )
 
