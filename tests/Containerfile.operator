@@ -16,7 +16,7 @@ RUN curl -sSL https://mirror.openshift.com/pub/openshift-v4/clients/ocp/stable-4
     | tar -xz -C /usr/local/bin oc kubectl
 
 # create new docker image to hold built artifacts
-FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
+FROM registry.redhat.io/ubi9/ubi-minimal-pqc:latest
 
 # pre-create directories and set permissions
 RUN mkdir -p /resources /results /workspace/.kube && \
