@@ -45,7 +45,7 @@ deploy_hub_spoke_core() {
     export OCM_BRANCH="main"
   else
     VERSION=$(awk -F '.' '{ print $1"."$2 }' <"${ROOTDIR}/COMPONENT_VERSION")
-    export OCM_BRANCH="release-${VERSION}"
+    export OCM_BRANCH="backplane-${VERSION}"
   fi
   export OPERATOR_IMAGE_NAME=quay.io/stolostron/registration-operator:$LATEST_MCE_SNAPSHOT
   export REGISTRATION_IMAGE=quay.io/stolostron/registration:$LATEST_MCE_SNAPSHOT
@@ -74,6 +74,16 @@ deploy_hub_spoke_core() {
     fi
   fi
   ${SED_COMMAND} "s~clusterName: cluster1$~clusterName: ${MANAGED_CLUSTER}~g" ./_repo_ocm/deploy/klusterlet/config/samples/operator_open-cluster-management_klusterlets.cr.yaml
+
+  ${SED_COMMAND} '/--image-pull-secret-name/d' ./_repo_ocm/deploy/cluster-manager/chart/cluster-manager/templates/operator.yaml
+  ${SED_COMMAND} 's/imagePullSecrets:.*//g' ./_repo_ocm/deploy/cluster-manager/chart/cluster-manager/templates/operator.yaml
+  ${SED_COMMAND} 's/imagePullSecrets:.*//g' ./_repo_ocm/deploy/cluster-manager/chart/cluster-manager/templates/service_account.yaml
+
+  # SED_COMMAND uses `sed -i-e`, which leaves *-e backup files next to the originals.
+  # Helm renders every file under templates/, so those backups would emit a second
+  # cluster-manager Deployment and ServiceAccount and the install would fail with
+  # "already exists". Drop them before running the chart.
+  rm -f ./_repo_ocm/deploy/cluster-manager/chart/cluster-manager/templates/*-e
 
   make deploy-hub deploy-spoke-operator apply-spoke-cr -C ./_repo_ocm
 
