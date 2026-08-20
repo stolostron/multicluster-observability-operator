@@ -164,7 +164,7 @@ func TestCleanupLegacyPolicyResourcesByLabel_PreservesConfigMap(t *testing.T) {
 
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(policy, pb, placement, cm).Build()
 
-	require.NoError(t, CleanupLegacyPolicyResourcesByLabel(context.TODO(), c))
+	require.NoError(t, CleanupLegacyPolicyResourcesByLabel(context.TODO(), c, c))
 
 	// Policy, PlacementBinding, Placement must be deleted.
 	err := c.Get(context.TODO(), types.NamespacedName{Name: policy.Name, Namespace: ns}, &policyv1.Policy{})
@@ -193,7 +193,7 @@ func TestCleanupRSResourcesByLabel_DeletesConfigMap(t *testing.T) {
 
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(policy, placement, cm).Build()
 
-	require.NoError(t, CleanupRSResourcesByLabel(context.TODO(), c))
+	require.NoError(t, CleanupRSResourcesByLabel(context.TODO(), c, c))
 
 	// All resources including ConfigMap must be deleted.
 	err := c.Get(context.TODO(), types.NamespacedName{Name: policy.Name, Namespace: ns}, &policyv1.Policy{})

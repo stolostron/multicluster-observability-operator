@@ -41,6 +41,7 @@ const analyticsStabilizationWindow = 10 * time.Second
 // that would not be consistent across replicas.
 type AnalyticsReconciler struct {
 	Client        client.Client
+	APIReader     client.Reader
 	Log           logr.Logger
 	migrationDone bool
 	cleanupAt     time.Time
@@ -109,7 +110,7 @@ func (r *AnalyticsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			reqLogger.Error(err, "rs - failed to re-sync disabled state before cleanup, ADC may already be deleted")
 		}
 
-		if err := rightsizingctrl.CleanupRightSizingResources(ctx, r.Client, instance); err != nil {
+		if err := rightsizingctrl.CleanupRightSizingResources(ctx, r.Client, r.APIReader, instance); err != nil {
 			return ctrl.Result{}, fmt.Errorf("rs - failed to cleanup right-sizing resources: %w", err)
 		}
 		instanceCopy := instance.DeepCopy()
@@ -151,12 +152,12 @@ func (r *AnalyticsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	// In ACM 5.0 GA, MCOA (ManifestWork-based) is the only right-sizing deployment model.
 	// Run one-time migration on first reconcile to remove any legacy Policy resources
-	// left from a pre-GA (Policy-based) installation. ConfigMaps are preserved because
+	// left from a pre-GA (Policy-based) installations. ConfigMaps are preserved because
 	// MCOA reuses them for per-cluster configuration.
 	reqLogger.Info("rs - right-sizing handled by MCOA (ManifestWork-based)")
 	if !r.migrationDone {
 		reqLogger.Info("rs - running one-time legacy Policy resource cleanup for upgrade migration")
-		if err := rightsizingctrl.CleanupLegacyPolicyResources(ctx, r.Client, instance); err != nil {
+		if err := rightsizingctrl.CleanupLegacyPolicyResources(ctx, r.Client, r.APIReader, instance); err != nil {
 			return ctrl.Result{}, fmt.Errorf("rs - failed to cleanup legacy Policy resources: %w", err)
 		}
 		r.migrationDone = true

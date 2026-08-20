@@ -681,3 +681,28 @@ func TestReconcile_MigrationRunsOnce(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, r.migrationDone, "migrationDone should remain true on subsequent reconciles")
 }
+
+func TestReconcile_MigrationWithAPIReader(t *testing.T) {
+	scheme := setupTestScheme(t)
+	mco := newTestMCO("open-cluster-management-global-set", true, false)
+
+	rsLabels := map[string]string{"observability.open-cluster-management.io/managed-by": "analytics-rightsizing"}
+	legacyPolicy := &policyv1.Policy{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "rs-prom-rules-policy",
+			Namespace: "open-cluster-management-global-set",
+			Labels:    rsLabels,
+		},
+	}
+
+	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(mco, legacyPolicy).Build()
+	r := &AnalyticsReconciler{Client: c, APIReader: c, Log: ctrl.Log.WithName("test")}
+
+	_, err := r.Reconcile(context.TODO(), ctrl.Request{})
+	require.NoError(t, err)
+	require.True(t, r.migrationDone)
+
+	deletedPolicy := &policyv1.Policy{}
+	err = c.Get(context.TODO(), types.NamespacedName{Name: "rs-prom-rules-policy", Namespace: "open-cluster-management-global-set"}, deletedPolicy)
+	require.True(t, apierrors.IsNotFound(err), "legacy Policy should have been deleted by migration via APIReader")
+}

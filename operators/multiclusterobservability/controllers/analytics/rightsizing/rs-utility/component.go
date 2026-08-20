@@ -64,15 +64,20 @@ func GetComponentConfig(mco *mcov1beta2.MultiClusterObservability, componentType
 // CleanupRSResourcesByLabel deletes all right-sizing resources across namespaces using the managed-by label.
 // This catches resources that may have been created in a different namespace due to NamespaceBinding changes.
 // ConfigMaps are included — use this only in full deletion (MCO CR deleted).
-func CleanupRSResourcesByLabel(ctx context.Context, c client.Client) error {
+// apiReader is used for List calls to avoid starting Informer watches on Policy, PlacementBinding, and Placement resources, which the operator does not have watch permissions for.
+func CleanupRSResourcesByLabel(ctx context.Context, c client.Client, apiReader client.Reader) error {
 	log.Info("rs - label-based cleanup of all right-sizing resources")
 	labelSelector := client.MatchingLabels{RSManagedByLabel: RSManagedByValue}
+
+	if apiReader == nil {
+		apiReader = c
+	}
 
 	var errs []error
 
 	// Clean up Policies
 	policyList := &policyv1.PolicyList{}
-	if err := c.List(ctx, policyList, labelSelector); err != nil {
+	if err := apiReader.List(ctx, policyList, labelSelector); err != nil {
 		if !meta.IsNoMatchError(err) {
 			errs = append(errs, fmt.Errorf("rs - failed to list policies: %w", err))
 		}
@@ -87,7 +92,7 @@ func CleanupRSResourcesByLabel(ctx context.Context, c client.Client) error {
 
 	// Clean up PlacementBindings
 	pbList := &policyv1.PlacementBindingList{}
-	if err := c.List(ctx, pbList, labelSelector); err != nil {
+	if err := apiReader.List(ctx, pbList, labelSelector); err != nil {
 		if !meta.IsNoMatchError(err) {
 			errs = append(errs, fmt.Errorf("rs - failed to list placementbindings: %w", err))
 		}
@@ -102,7 +107,7 @@ func CleanupRSResourcesByLabel(ctx context.Context, c client.Client) error {
 
 	// Clean up Placements
 	placementList := &clusterv1beta1.PlacementList{}
-	if err := c.List(ctx, placementList, labelSelector); err != nil {
+	if err := apiReader.List(ctx, placementList, labelSelector); err != nil {
 		if !meta.IsNoMatchError(err) {
 			errs = append(errs, fmt.Errorf("rs - failed to list placements: %w", err))
 		}
@@ -117,7 +122,7 @@ func CleanupRSResourcesByLabel(ctx context.Context, c client.Client) error {
 
 	// Clean up ConfigMaps
 	cmList := &corev1.ConfigMapList{}
-	if err := c.List(ctx, cmList, labelSelector); err != nil {
+	if err := apiReader.List(ctx, cmList, labelSelector); err != nil {
 		if !meta.IsNoMatchError(err) {
 			errs = append(errs, fmt.Errorf("rs - failed to list configmaps: %w", err))
 		}
@@ -136,15 +141,20 @@ func CleanupRSResourcesByLabel(ctx context.Context, c client.Client) error {
 // CleanupLegacyPolicyResourcesByLabel deletes labeled Policy, PlacementBinding, and Placement
 // resources created by pre-GA (Policy-based) installations. ConfigMaps are NOT deleted because
 // MCOA reuses them for per-cluster configuration.
-func CleanupLegacyPolicyResourcesByLabel(ctx context.Context, c client.Client) error {
+// apiReader is used for List calls to avoid starting Informer watches on Policy, PlacementBinding, and Placement resources, which the operator does not have watch permissions for.
+func CleanupLegacyPolicyResourcesByLabel(ctx context.Context, c client.Client, apiReader client.Reader) error {
 	log.Info("rs - label-based cleanup of legacy Policy resources (preserving ConfigMaps)")
 	labelSelector := client.MatchingLabels{RSManagedByLabel: RSManagedByValue}
+
+	if apiReader == nil {
+		apiReader = c
+	}
 
 	var errs []error
 
 	// Clean up Policies
 	policyList := &policyv1.PolicyList{}
-	if err := c.List(ctx, policyList, labelSelector); err != nil {
+	if err := apiReader.List(ctx, policyList, labelSelector); err != nil {
 		if !meta.IsNoMatchError(err) {
 			errs = append(errs, fmt.Errorf("rs - failed to list policies: %w", err))
 		}
@@ -161,7 +171,7 @@ func CleanupLegacyPolicyResourcesByLabel(ctx context.Context, c client.Client) e
 
 	// Clean up PlacementBindings
 	pbList := &policyv1.PlacementBindingList{}
-	if err := c.List(ctx, pbList, labelSelector); err != nil {
+	if err := apiReader.List(ctx, pbList, labelSelector); err != nil {
 		if !meta.IsNoMatchError(err) {
 			errs = append(errs, fmt.Errorf("rs - failed to list placementbindings: %w", err))
 		}
@@ -178,7 +188,7 @@ func CleanupLegacyPolicyResourcesByLabel(ctx context.Context, c client.Client) e
 
 	// Clean up Placements
 	placementList := &clusterv1beta1.PlacementList{}
-	if err := c.List(ctx, placementList, labelSelector); err != nil {
+	if err := apiReader.List(ctx, placementList, labelSelector); err != nil {
 		if !meta.IsNoMatchError(err) {
 			errs = append(errs, fmt.Errorf("rs - failed to list placements: %w", err))
 		}
