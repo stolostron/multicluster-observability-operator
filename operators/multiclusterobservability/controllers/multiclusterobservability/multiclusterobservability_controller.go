@@ -351,6 +351,15 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 			return ctrl.Result{}, fmt.Errorf("failed to list MCOA resources for deletion in namespace %s: %w", namespace, err)
 		}
 		for _, res := range toDelete {
+			// Keep the AddOnDeploymentConfig when right-sizing has been configured
+			// (even with all RS features disabled): the analytics controller syncs its
+			// RS variables to explicit "disabled" values (MCOA auto-enables right-sizing
+			// when the variables are absent, so deleting the ADC would fail open), and
+			// the ADC is GC'd with the MCO CR via its ownerReference. Never-configured
+			// installs (Capabilities.Platform == nil) still get full cleanup.
+			if res.GetKind() == "AddOnDeploymentConfig" && rendering.RightSizingConfigured(instance) {
+				continue
+			}
 			resNS := res.GetNamespace()
 			if err := deployer.Undeploy(ctx, res, instance); err != nil {
 				return ctrl.Result{}, fmt.Errorf("failed to undeploy %s %s/%s: %w", res.GetKind(), resNS, res.GetName(), err)
