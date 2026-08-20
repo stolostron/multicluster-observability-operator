@@ -16,7 +16,7 @@ RUN CGO_ENABLED=1 GOFLAGS="" go build -a -installsuffix cgo -o bin/manager opera
 # 3. Update 'cpe' label with correct RHEL version (::el9 → ::el10)
 # 4. Verify destination repository exists in registry.redhat.io
 # 5. Run 'make verify-containerfile-labels' to check consistency
-FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
+FROM registry.redhat.io/ubi9/ubi-minimal-pqc:latest
 
 ARG VCS_REF
 ARG VCS_URL
