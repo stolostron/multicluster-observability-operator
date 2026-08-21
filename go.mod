@@ -63,7 +63,7 @@ require (
 	github.com/AzureAD/microsoft-authentication-library-for-go v1.2.2 // indirect
 	github.com/alecthomas/units v0.0.0-20231202071711-9a357b53e9c9 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
-	github.com/aws/aws-sdk-go v1.51.17 // indirect
+	github.com/aws/aws-sdk-go v1.51.25 // indirect
 	github.com/bboreham/go-loser v0.0.0-20230920113527-fcc2c21820a3 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/blang/semver v3.5.1+incompatible // indirect
@@ -86,13 +86,13 @@ require (
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-logr/zapr v1.3.0 // indirect
 	github.com/go-openapi/analysis v0.22.2 // indirect
-	github.com/go-openapi/errors v0.21.1 // indirect
+	github.com/go-openapi/errors v0.22.0 // indirect
 	github.com/go-openapi/jsonpointer v0.21.0 // indirect
 	github.com/go-openapi/jsonreference v0.21.0 // indirect
 	github.com/go-openapi/loads v0.21.5 // indirect
 	github.com/go-openapi/runtime v0.27.1 // indirect
 	github.com/go-openapi/spec v0.20.14 // indirect
-	github.com/go-openapi/strfmt v0.22.2 // indirect
+	github.com/go-openapi/strfmt v0.23.0 // indirect
 	github.com/go-openapi/swag v0.23.0 // indirect
 	github.com/go-openapi/validate v0.23.0 // indirect
 	github.com/gobuffalo/flect v1.0.2 // indirect
@@ -112,11 +112,11 @@ require (
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/jpillora/backoff v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
-	github.com/klauspost/compress v1.17.7 // indirect
+	github.com/klauspost/compress v1.17.8 // indirect
 	github.com/kylelemons/godebug v1.1.0 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/metalmatze/signal v0.0.0-20210307161603-1c9aa721a97a // indirect
-	github.com/miekg/dns v1.1.58 // indirect
+	github.com/miekg/dns v1.1.59 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
@@ -146,11 +146,11 @@ require (
 	go.opentelemetry.io/contrib/propagators/b3 v1.13.0 // indirect
 	go.opentelemetry.io/contrib/propagators/jaeger v1.13.0 // indirect
 	go.opentelemetry.io/contrib/propagators/ot v1.13.0 // indirect
-	go.opentelemetry.io/otel v1.24.0 // indirect
+	go.opentelemetry.io/otel v1.25.0 // indirect
 	go.opentelemetry.io/otel/bridge/opentracing v1.21.0 // indirect
-	go.opentelemetry.io/otel/metric v1.24.0 // indirect
-	go.opentelemetry.io/otel/sdk v1.24.0 // indirect
-	go.opentelemetry.io/otel/trace v1.24.0 // indirect
+	go.opentelemetry.io/otel/metric v1.25.0 // indirect
+	go.opentelemetry.io/otel/sdk v1.25.0 // indirect
+	go.opentelemetry.io/otel/trace v1.25.0 // indirect
 	go.starlark.net v0.0.0-20230525235612-a134d8f9ddca // indirect
 	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/goleak v1.3.0 // indirect
@@ -166,8 +166,8 @@ require (
 	golang.org/x/time v0.5.0 // indirect
 	golang.org/x/tools v0.44.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.4.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20240401170217-c3f982113cda // indirect
-	google.golang.org/grpc v1.63.0 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20240415180920-8c6c420018be // indirect
+	google.golang.org/grpc v1.63.2 // indirect
 	google.golang.org/protobuf v1.33.0 // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.12.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
@@ -192,7 +192,6 @@ replace (
 	github.com/prometheus-community/prom-label-proxy/injectproxy => github.com/prometheus-community/prom-label-proxy/injectproxy v0.6.0
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring => github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.53.1
 	github.com/prometheus/common => github.com/prometheus/common v0.53.0
-	github.com/prometheus/prometheus => github.com/prometheus/prometheus v0.51.1-0.20240325140356-78c0fd2f4d75
 	k8s.io/api => k8s.io/api v0.29.0
 	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.29.0
 	k8s.io/apimachinery => k8s.io/apimachinery v0.29.2
@@ -214,3 +213,7 @@ replace github.com/openshift/library-go => github.com/openshift/library-go v0.0.
 
 // Stolostron fork of the controller-filtered-cache upgraded to k8s libs up to 0.29.x and Go up to 1.21.
 replace github.com/IBM/controller-filtered-cache => github.com/stolostron/controller-filtered-cache v0.0.0-20240605101128-e033f9b9a990
+
+// CVE-2026-42151: Azure AD OAuth client_secret exposed via config API.
+// stolostron release-2.11 commit 7136a2f
+replace github.com/prometheus/prometheus => github.com/stolostron/prometheus v1.8.2-0.20260810124822-7136a2f9595c
