@@ -26,6 +26,8 @@ func generateHubInfoSecret(client client.Client, obsNamespace string,
 ) (*corev1.Secret, error) {
 	var obsAPIHost string
 	alertmanagerEndpoint := ""
+	var hubAlertsForwardingHost string
+	var hubAlertsForwardingPath string
 	var alertmanagerRouterCA string
 
 	if crdMap[config.IngressControllerCRD] {
@@ -37,9 +39,12 @@ func generateHubInfoSecret(client client.Client, obsNamespace string,
 		}
 		obsAPIHost = obsAPIURL.Host
 
+		hubAlertsForwardingPath = "/api/alertmanager/v2/" + config.GetDefaultTenantName()
+		hubAlertsForwardingHost = obsAPIURL.Host
+
 		// if alerting is disabled, do not set alertmanagerEndpoint
 		if !config.IsAlertingDisabled() {
-			alertmanagerEndpoint = obsAPIURL.JoinPath("/api/alertmanager/v2", config.GetDefaultTenantName()).String()
+			alertmanagerEndpoint = obsAPIURL.JoinPath(hubAlertsForwardingPath).String()
 		}
 
 		// The observatorium-api Route uses TLS passthrough, so the spoke must trust the
@@ -54,10 +59,13 @@ func generateHubInfoSecret(client client.Client, obsNamespace string,
 		// for KinD support, the managedcluster and hub cluster are assumed in the same cluster, the observatorium-api
 		// will be accessed through k8s service FQDN + port
 		obsAPIHost = config.GetOperandNamePrefix() + "observatorium-api" + "." + config.GetDefaultNamespace() + ".svc.cluster.local:8080"
+
+		hubAlertsForwardingHost = config.GetOperandNamePrefix() + "observatorium-api." + config.GetDefaultNamespace() + ".svc.cluster.local:8080"
+		hubAlertsForwardingPath = "/api/alertmanager/v2/" + config.GetDefaultTenantName()
+
 		// if alerting is disabled, do not set alertmanagerEndpoint
 		if !config.IsAlertingDisabled() {
-			alertmanagerEndpoint = config.GetOperandNamePrefix() + "observatorium-api." +
-				config.GetDefaultNamespace() + ".svc.cluster.local:8080/api/alertmanager/v2/" + config.GetDefaultTenantName()
+			alertmanagerEndpoint = "http://" + hubAlertsForwardingHost + hubAlertsForwardingPath
 		}
 		var err error
 		alertmanagerRouterCA, err = config.GetObsAPIServerCA(client)
@@ -100,6 +108,8 @@ func generateHubInfoSecret(client client.Client, obsNamespace string,
 	hubInfo := &operatorconfig.HubInfo{
 		ObservatoriumAPIEndpoint: obsApiURL.String(),
 		AlertmanagerEndpoint:     alertmanagerEndpoint,
+		HubAlertsForwardingHost:  hubAlertsForwardingHost,
+		HubAlertsForwardingPath:  hubAlertsForwardingPath,
 		AlertmanagerRouterCA:     alertmanagerRouterCA,
 		UWMAlertingDisabled:      isUWMAlertingDisabled,
 		HubClusterID:             trimmedClusterID,
