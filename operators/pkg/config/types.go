@@ -19,6 +19,10 @@ type HubInfo struct {
 	AlertmanagerRouterCA     string `yaml:"alertmanager-router-ca"`
 	UWMAlertingDisabled      bool   `yaml:"uwm-alerting-disabled"`
 	HubClusterID             string `yaml:"hub-cluster-id"`
+	// HubAlertsForwardingHost and HubAlertsForwardingPath provide persistent data for forwarding alerts to the hub,
+	// even when MCO's alerting is disabled. For custom stacks that override custom monitoring config.
+	HubAlertsForwardingHost string `yaml:"hub-alerts-forwarding-host"`
+	HubAlertsForwardingPath string `yaml:"hub-alerts-forwarding-path"`
 }
 
 type RecordingRule struct {
