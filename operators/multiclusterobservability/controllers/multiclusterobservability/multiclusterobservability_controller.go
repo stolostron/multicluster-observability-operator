@@ -62,7 +62,7 @@ const (
 )
 
 const (
-	infoAddingBackupLabel  = "adding backup label"
+	infoAddingBackupLabel  = "test adding backup label"
 	errorAddingBackupLabel = "failed to add backup label"
 )
 
