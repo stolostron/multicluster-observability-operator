@@ -122,13 +122,11 @@ func (r *MCOAAgentReconciler) ReconcileCMOPlatformConfig(ctx context.Context) er
 		}
 
 		// 2. Reconcile External Labels
-		// Check if any alert forwarding stanza for this hub exists (either MCOA's or legacy's).
-		// If so, retain external labels (_id, cluster). If no alert forwarding exists for this hub,
-		// clean up external labels.
-		hasHubAlertmanager := slices.ContainsFunc(parsed.PrometheusK8sConfig.AlertmanagerConfigs, func(am cmomanifests.AdditionalAlertmanagerConfig) bool {
-			return r.isOwnedAlertmanagerConfig(am, true)
-		})
-		if r.reconcileExternalLabels(parsed.PrometheusK8sConfig, hasHubAlertmanager) {
+		// If MCOA alert forwarding is enabled, ensure MCOA external labels are present.
+		// If MCOA alert forwarding was just disabled (MCOA config removed), clean up MCOA external labels once.
+		// If forwarding is disabled and no MCOA config was removed, do not touch external labels
+		// (allows legacy operator and user-defined policies to manage labels without interference).
+		if r.reconcileExternalLabels(parsed.PrometheusK8sConfig, modifiedAm) {
 			modified = true
 		}
 
@@ -294,13 +292,16 @@ func (r *MCOAAgentReconciler) fetchCMOConfigMap(
 	return cm, false, nil
 }
 
-func (r *MCOAAgentReconciler) reconcileExternalLabels(cfg *cmomanifests.PrometheusK8sConfig, retainLabels bool) bool {
+func (r *MCOAAgentReconciler) reconcileExternalLabels(cfg *cmomanifests.PrometheusK8sConfig, amRemoved bool) bool {
 	if cfg == nil {
 		return false
 	}
-	if !retainLabels {
-		// When no alert forwarding configurations for this hub exist, clean up external labels.
-		if cfg.ExternalLabels == nil {
+	if !r.EnablePlatformAlertForwarding {
+		// When MCOA alert forwarding is disabled:
+		// Only clean up external labels if MCOA's Alertmanager configuration was just stripped during this reconcile.
+		// If no MCOA Alertmanager configuration was removed (amRemoved == false), do not touch external labels
+		// to allow coexistence with legacy operators and user-defined policies.
+		if !amRemoved || cfg.ExternalLabels == nil {
 			return false
 		}
 		modified := false
@@ -318,6 +319,7 @@ func (r *MCOAAgentReconciler) reconcileExternalLabels(cfg *cmomanifests.Promethe
 		return modified
 	}
 
+	// When MCOA alert forwarding is ENABLED:
 	modified := false
 	if cfg.ExternalLabels == nil {
 		cfg.ExternalLabels = make(map[string]string)
