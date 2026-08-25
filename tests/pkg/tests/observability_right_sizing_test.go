@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"slices"
 	"strings"
 	"time"
@@ -795,9 +796,14 @@ var _ = Describe("Always-MCOA right-sizing: ADC reflects CR spec state (rightsiz
 	})
 })
 
+// staleGrafanaProfileRef matches leftover Grafana interpolations of the old
+// "profile" variable ($profile or ${profile}) without matching $cpu_profile /
+// $memory_profile.
+var staleGrafanaProfileRef = regexp.MustCompile(`\$\{profile(?::[^}]*)?\}|\$profile([^a-zA-Z0-9_]|$)`)
+
 // validateDashboardProfileVars fetches a Grafana dashboard ConfigMap and verifies that
 // the embedded JSON contains cpu_profile and memory_profile template variables,
-// with no stale "$profile" references.
+// with no stale $profile or ${profile} references.
 func validateDashboardProfileVars(dynClient dynamic.Interface, cmName string) error {
 	configMapGVR := schema.GroupVersionResource{Group: "", Version: "v1", Resource: "configmaps"}
 	cm, err := dynClient.Resource(configMapGVR).
@@ -808,7 +814,10 @@ func validateDashboardProfileVars(dynClient dynamic.Interface, cmName string) er
 	}
 
 	data, found, err := unstructured.NestedStringMap(cm.Object, "data")
-	if err != nil || !found {
+	if err != nil {
+		return fmt.Errorf("read ConfigMap %s data: %w", cmName, err)
+	}
+	if !found {
 		return fmt.Errorf("ConfigMap %s has no data field", cmName)
 	}
 
@@ -843,8 +852,8 @@ func validateDashboardProfileVars(dynClient dynamic.Interface, cmName string) er
 			return fmt.Errorf("dashboard %s/%s still has stale 'profile' variable (should be split into cpu_profile/memory_profile)", cmName, key)
 		}
 
-		if strings.Contains(dashJSON, `"$profile"`) {
-			return fmt.Errorf("dashboard %s/%s still references \"$profile\" in queries", cmName, key)
+		if stale := staleGrafanaProfileRef.FindString(dashJSON); stale != "" {
+			return fmt.Errorf("dashboard %s/%s still references %q in queries", cmName, key, stale)
 		}
 	}
 
