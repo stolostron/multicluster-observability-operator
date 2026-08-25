@@ -597,43 +597,62 @@ func TestCMOConfigReconciler_reconcileRemoteWrites_Sorting(t *testing.T) {
 func TestCMOConfigReconciler_reconcileExternalLabels(t *testing.T) {
 	t.Parallel()
 
-	r := &MCOAAgentReconciler{
-		Log:         ctrl.Log.WithName("test"),
-		ClusterID:   "my-cluster-id",
-		ClusterName: "my-cluster-name",
+	rDisabled := &MCOAAgentReconciler{
+		Log:                           ctrl.Log.WithName("test"),
+		ClusterID:                     "my-cluster-id",
+		ClusterName:                   "my-cluster-name",
+		EnablePlatformAlertForwarding: false,
 	}
 
-	// Case 1: no hub alertmanager present (retainLabels = false) -> remove external labels
+	// Case 1: disabled forwarding, amRemoved = true -> remove external labels
 	cfg1 := &cmomanifests.PrometheusK8sConfig{
 		ExternalLabels: map[string]string{
 			operatorconfig.ClusterLabelKeyForAlerts:     "old-id",
 			operatorconfig.ClusterNameLabelKeyForAlerts: "old-name",
 		},
 	}
-	modified := r.reconcileExternalLabels(cfg1, false)
-	assert.True(t, modified, "external labels must be removed when no hub alertmanager is present")
+	modified := rDisabled.reconcileExternalLabels(cfg1, true)
+	assert.True(t, modified, "external labels must be removed when am was removed")
 	assert.Empty(t, cfg1.ExternalLabels)
 
-	// Case 2: forwarding enabled / hub alertmanager present (retainLabels = true) -> preserve and reconcile external labels
+	// Case 2: disabled forwarding, amRemoved = false -> do not touch external labels
 	cfg2 := &cmomanifests.PrometheusK8sConfig{
+		ExternalLabels: map[string]string{
+			operatorconfig.ClusterLabelKeyForAlerts:     "user-or-legacy-id",
+			operatorconfig.ClusterNameLabelKeyForAlerts: "user-or-legacy-name",
+		},
+	}
+	modified = rDisabled.reconcileExternalLabels(cfg2, false)
+	assert.False(t, modified, "must not modify external labels when am was not removed")
+	assert.Equal(t, "user-or-legacy-id", cfg2.ExternalLabels[operatorconfig.ClusterLabelKeyForAlerts])
+	assert.Equal(t, "user-or-legacy-name", cfg2.ExternalLabels[operatorconfig.ClusterNameLabelKeyForAlerts])
+
+	// Case 3: enabled forwarding -> enforce cluster ID and cluster name
+	rEnabled := &MCOAAgentReconciler{
+		Log:                           ctrl.Log.WithName("test"),
+		ClusterID:                     "my-cluster-id",
+		ClusterName:                   "my-cluster-name",
+		EnablePlatformAlertForwarding: true,
+	}
+	cfg3 := &cmomanifests.PrometheusK8sConfig{
 		ExternalLabels: map[string]string{
 			operatorconfig.ClusterLabelKeyForAlerts:     "old-id",
 			operatorconfig.ClusterNameLabelKeyForAlerts: "old-name",
 		},
 	}
-	modified = r.reconcileExternalLabels(cfg2, true)
+	modified = rEnabled.reconcileExternalLabels(cfg3, false)
 	assert.True(t, modified)
-	assert.Equal(t, "my-cluster-id", cfg2.ExternalLabels[operatorconfig.ClusterLabelKeyForAlerts])
-	assert.Equal(t, "my-cluster-name", cfg2.ExternalLabels[operatorconfig.ClusterNameLabelKeyForAlerts])
+	assert.Equal(t, "my-cluster-id", cfg3.ExternalLabels[operatorconfig.ClusterLabelKeyForAlerts])
+	assert.Equal(t, "my-cluster-name", cfg3.ExternalLabels[operatorconfig.ClusterNameLabelKeyForAlerts])
 
-	// Case 3: forwarding enabled / hub alertmanager present, labels already correct -> no modification
-	cfg3 := &cmomanifests.PrometheusK8sConfig{
+	// Case 4: enabled forwarding, labels already correct -> no modification
+	cfg4 := &cmomanifests.PrometheusK8sConfig{
 		ExternalLabels: map[string]string{
 			operatorconfig.ClusterLabelKeyForAlerts:     "my-cluster-id",
 			operatorconfig.ClusterNameLabelKeyForAlerts: "my-cluster-name",
 		},
 	}
-	modified = r.reconcileExternalLabels(cfg3, true)
+	modified = rEnabled.reconcileExternalLabels(cfg4, false)
 	assert.False(t, modified)
 }
 
@@ -646,8 +665,8 @@ func TestCMOConfigReconciler_reconcileExternalLabels_DisabledForwarding(t *testi
 	namespace := "test-namespace"
 	const hubID = "465e377c1ecd4cc29c7"
 
-	// Sub-test 1: Coexistence - Legacy alertmanager config is present, MCOA alert forwarding disabled
-	// External labels must be retained to avoid breaking legacy alert forwarding.
+	// Sub-test 1: Coexistence - Legacy alertmanager config is present, MCOA alert forwarding disabled (no MCOA config stripped)
+	// External labels must be retained without modification by MCOA.
 	t.Run("Coexistence_LegacyAlertmanagerPresent_RetainsLabels", func(t *testing.T) {
 		cfgWithLegacy := cmomanifests.ClusterMonitoringConfiguration{
 			PrometheusK8sConfig: &cmomanifests.PrometheusK8sConfig{
@@ -709,23 +728,37 @@ func TestCMOConfigReconciler_reconcileExternalLabels_DisabledForwarding(t *testi
 		require.NoError(t, err)
 
 		platformYAML := updatedCM.Data[observabilityendpoint.ClusterMonitoringConfigDataKey]
-		// Legacy Alertmanager config is still active, so external labels must NOT be stripped
+		// Legacy Alertmanager config is active and no MCOA config was removed, so external labels must NOT be stripped by MCOA
 		assert.Contains(t, platformYAML, "my-cluster-id")
 		assert.Contains(t, platformYAML, "my-cluster-name")
 	})
 
-	// Sub-test 2: Complete cleanup - No alertmanager config for hub present, MCOA alert forwarding disabled
-	// External labels must be cleaned up.
-	t.Run("Cleanup_NoHubAlertmanagerPresent_CleansLabels", func(t *testing.T) {
-		cfgWithoutAm := cmomanifests.ClusterMonitoringConfiguration{
+	// Sub-test 2: Complete cleanup - MCOA alertmanager config was present and gets stripped
+	// External labels must be cleaned up on transition.
+	t.Run("Cleanup_MCOAAlertmanagerPresent_CleansLabelsOnDisable", func(t *testing.T) {
+		cfgWithMcoa := cmomanifests.ClusterMonitoringConfiguration{
 			PrometheusK8sConfig: &cmomanifests.PrometheusK8sConfig{
 				ExternalLabels: map[string]string{
 					operatorconfig.ClusterLabelKeyForAlerts:     "my-cluster-id",
 					operatorconfig.ClusterNameLabelKeyForAlerts: "my-cluster-name",
 				},
+				AlertmanagerConfigs: []cmomanifests.AdditionalAlertmanagerConfig{
+					{
+						Scheme:     "https",
+						APIVersion: "v2",
+						TLSConfig: cmomanifests.TLSConfig{
+							CA: &corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "hub-mtls-ca-" + hubID,
+								},
+								Key: "ca.crt",
+							},
+						},
+					},
+				},
 			},
 		}
-		rawYAML, err := yaml.Marshal(cfgWithoutAm)
+		rawYAML, err := yaml.Marshal(cfgWithMcoa)
 		require.NoError(t, err)
 
 		cmPlatform := &corev1.ConfigMap{
@@ -763,7 +796,7 @@ func TestCMOConfigReconciler_reconcileExternalLabels_DisabledForwarding(t *testi
 		require.NoError(t, err)
 
 		platformYAML := updatedCM.Data[observabilityendpoint.ClusterMonitoringConfigDataKey]
-		// No Alertmanager config is active, so external labels must be cleaned up
+		// MCOA Alertmanager config was removed and no other hub AM config exists, so external labels must be cleaned up
 		assert.NotContains(t, platformYAML, "my-cluster-id")
 		assert.NotContains(t, platformYAML, "my-cluster-name")
 	})
