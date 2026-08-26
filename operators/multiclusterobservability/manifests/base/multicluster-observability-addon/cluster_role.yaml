@@ -63,11 +63,6 @@
     - apiGroups: [""]
       resources: ["secrets"]
       verbs: ["get", "list", "watch"]
-    # The addon will need to pull subscriptions to know if certain operators
-    # are installed in the hub cluster
-    - apiGroups: ["operators.coreos.com"]
-      resources: ["subscriptions"]
-      verbs: ["get", "list", "watch"]
     # Roles for addon to perform logging specific actions
     - apiGroups: ["observability.openshift.io"]
       resources: ["clusterlogforwarders"]
@@ -110,5 +105,19 @@
     # Role for addon to perform thanos operator specific actions
     - apiGroups: ["monitoring.thanos.io"]
       resources: ["thanosreceives", "thanosqueries", "thanoscompacts", "thanosstores", "thanosrulers"]
+      verbs: ["get", "list", "watch", "create", "update", "delete", "patch"]
+    # Hub-only resources managed directly by HubResourceReconciler
+    - apiGroups: [""]
+      resources: ["namespaces"]
+      verbs: ["get", "list", "watch", "create", "update", "delete", "patch"]
+    - apiGroups: ["perses.dev"]
+      resources: ["persesdashboards", "persesdatasources"]
+      verbs: ["get", "list", "watch", "create", "update", "delete", "patch"]
+    - apiGroups: ["observability.openshift.io"]
+      resources: ["uiplugins"]
+      verbs: ["get", "list", "watch", "create", "update", "delete", "patch"]
+    # Hub COO operator lifecycle managed by HubResourceReconciler
+    - apiGroups: ["operators.coreos.com"]
+      resources: ["subscriptions", "operatorgroups"]
       verbs: ["get", "list", "watch", "create", "update", "delete", "patch"]
 
