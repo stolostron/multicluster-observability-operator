@@ -321,8 +321,7 @@ func runMCOA(args []string) {
 		Scheme: scheme,
 		Metrics: server.Options{
 			BindAddress:   metricsAddr,
-			TLSOpts:       []func(*tls.Config){tlsConfig},
-			SecureServing: true,
+			SecureServing: false,
 		},
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
