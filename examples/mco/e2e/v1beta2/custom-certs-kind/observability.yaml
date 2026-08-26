@@ -123,5 +123,4 @@ spec:
       tlsSecretName: minio-tls-secret
     receiveStorageSize: 1Gi
     ruleStorageSize: 1Gi
-    storageClass: gp2
     storeStorageSize: 1Gi
