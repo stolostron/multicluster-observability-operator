@@ -6,7 +6,7 @@ FROM brew.registry.redhat.io/rh-osbs/openshift-golang-builder:rhel_9_1.26 AS bui
 RUN GOBIN=/usr/local/bin go install github.com/brancz/gojsontoyaml@latest
 
 
-FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
+FROM registry.redhat.io/ubi9/ubi-minimal-pqc:latest
 RUN mkdir /metrics-extractor
 RUN mkdir /ocp-tools
 RUN microdnf install wget -y \
