@@ -159,10 +159,11 @@ func TestNewSecret(t *testing.T) {
 	}
 	expectedAlertmanagerEndpoint := "https://" + routeHost + "/api/alertmanager/v2/default"
 	if !strings.HasPrefix(hub.ObservatoriumAPIEndpoint, "https://observatorium-api-open-cluster-management-observability.apps.test-host") ||
-		hub.AlertmanagerEndpoint != expectedAlertmanagerEndpoint || hub.AlertmanagerRouterCA != obsServerCA || hub.HubClusterID != "1a9af6dc0801433cb28a200af81" {
+		hub.AlertmanagerEndpoint != expectedAlertmanagerEndpoint || hub.HubAlertsForwardingRoute != expectedAlertmanagerEndpoint ||
+		hub.AlertmanagerRouterCA != obsServerCA || hub.HubClusterID != "1a9af6dc0801433cb28a200af81" {
 		t.Fatalf(
-			"Wrong content in hub info secret: \ngot: "+hub.ObservatoriumAPIEndpoint+" "+hub.AlertmanagerEndpoint+" "+hub.AlertmanagerRouterCA,
-			clusterName+" "+expectedAlertmanagerEndpoint+" "+obsServerCA,
+			"Wrong content in hub info secret: \ngot: "+hub.ObservatoriumAPIEndpoint+" "+hub.AlertmanagerEndpoint+" "+hub.HubAlertsForwardingRoute+" "+hub.AlertmanagerRouterCA,
+			clusterName+" "+expectedAlertmanagerEndpoint+" "+expectedAlertmanagerEndpoint+" "+obsServerCA,
 		)
 	}
 
@@ -241,10 +242,12 @@ func TestNewSecret(t *testing.T) {
 		t.Fatalf("Failed to unmarshal data in hub info secret (%v)", err)
 	}
 	if !strings.HasPrefix(hub.ObservatoriumAPIEndpoint, "https://custom-obs:8080") ||
-		hub.AlertmanagerEndpoint != "https://custom-obs:8080/api/alertmanager/v2/default" || hub.AlertmanagerRouterCA != obsServerCA {
+		hub.AlertmanagerEndpoint != "https://custom-obs:8080/api/alertmanager/v2/default" ||
+		hub.HubAlertsForwardingRoute != "https://custom-obs:8080/api/alertmanager/v2/default" ||
+		hub.AlertmanagerRouterCA != obsServerCA {
 		t.Fatalf(
-			"Wrong content in hub info secret: \ngot: "+hub.ObservatoriumAPIEndpoint+" "+hub.AlertmanagerEndpoint+" "+hub.AlertmanagerRouterCA,
-			clusterName+" "+"https://custom-obs:8080/api/alertmanager/v2/default"+" "+obsServerCA,
+			"Wrong content in hub info secret: \ngot: "+hub.ObservatoriumAPIEndpoint+" "+hub.AlertmanagerEndpoint+" "+hub.HubAlertsForwardingRoute+" "+hub.AlertmanagerRouterCA,
+			clusterName+" "+"https://custom-obs:8080/api/alertmanager/v2/default"+" "+"https://custom-obs:8080/api/alertmanager/v2/default"+" "+obsServerCA,
 		)
 	}
 }
@@ -271,10 +274,11 @@ func TestNewBYOSecret(t *testing.T) {
 	}
 	expectedAlertmanagerEndpoint := "https://" + routeHost + "/api/alertmanager/v2/default"
 	if !strings.HasPrefix(hub.ObservatoriumAPIEndpoint, "https://observatorium-api-open-cluster-management-observability.apps.test-host") ||
-		hub.AlertmanagerEndpoint != expectedAlertmanagerEndpoint || hub.AlertmanagerRouterCA != obsServerCA {
+		hub.AlertmanagerEndpoint != expectedAlertmanagerEndpoint || hub.HubAlertsForwardingRoute != expectedAlertmanagerEndpoint ||
+		hub.AlertmanagerRouterCA != obsServerCA {
 		t.Fatalf(
-			"Wrong content in hub info secret: \ngot: "+hub.ObservatoriumAPIEndpoint+" "+hub.AlertmanagerEndpoint+" "+hub.AlertmanagerRouterCA,
-			clusterName+" "+expectedAlertmanagerEndpoint+" "+obsServerCA,
+			"Wrong content in hub info secret: \ngot: "+hub.ObservatoriumAPIEndpoint+" "+hub.AlertmanagerEndpoint+" "+hub.HubAlertsForwardingRoute+" "+hub.AlertmanagerRouterCA,
+			clusterName+" "+expectedAlertmanagerEndpoint+" "+expectedAlertmanagerEndpoint+" "+obsServerCA,
 		)
 	}
 }
