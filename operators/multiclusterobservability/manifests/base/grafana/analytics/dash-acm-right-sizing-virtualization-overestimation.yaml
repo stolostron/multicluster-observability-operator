@@ -32,8 +32,8 @@ data:
         {
           "asDropdown": false,
           "icon": "dashboard",
-          "includeVars": false,
-          "keepTime": false,
+          "includeVars": true,
+          "keepTime": true,
           "tags": [],
           "targetBlank": false,
           "title": "Back to Main Dashboard",
