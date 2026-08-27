@@ -235,6 +235,14 @@ func initVars() {
 	substring1 := "rosa"
 	substring2 := "hcp"
 	substring3 := "rhov" // Format of rhov api url is https://<baseDomain>:6443
+
+	if testOptions.HubCluster.ClusterServerURL != "" {
+		if err := utils.ValidateClusterServerURL(testOptions.HubCluster.ClusterServerURL); err != nil {
+			klog.Warningf("Provided hub clusterServerURL %q is invalid (%v), clearing it to fall back to baseDomain heuristics", testOptions.HubCluster.ClusterServerURL, err)
+			testOptions.HubCluster.ClusterServerURL = ""
+		}
+	}
+
 	if testOptions.HubCluster.BaseDomain != "" {
 		baseDomain = testOptions.HubCluster.BaseDomain
 		if testOptions.HubCluster.ClusterServerURL == "" {
@@ -258,11 +266,11 @@ func initVars() {
 	} else {
 		Expect(baseDomain).NotTo(BeEmpty(), "The `baseDomain` is required.")
 		testOptions.HubCluster.BaseDomain = baseDomain
-		testOptions.HubCluster.ClusterServerURL = fmt.Sprintf("https://api.%s:6443", baseDomain)
-		if strings.Contains(cloudProvider, substring1) && strings.Contains(cloudProvider, substring2) {
-			testOptions.HubCluster.ClusterServerURL = fmt.Sprintf("https://api.%s:443", baseDomain)
-		} else {
+		if testOptions.HubCluster.ClusterServerURL == "" {
 			testOptions.HubCluster.ClusterServerURL = fmt.Sprintf("https://api.%s:6443", baseDomain)
+			if strings.Contains(cloudProvider, substring1) && strings.Contains(cloudProvider, substring2) {
+				testOptions.HubCluster.ClusterServerURL = fmt.Sprintf("https://api.%s:443", baseDomain)
+			}
 		}
 	}
 
@@ -281,7 +289,13 @@ func initVars() {
 
 	if testOptions.ManagedClusters != nil && len(testOptions.ManagedClusters) > 0 {
 		for i, mc := range testOptions.ManagedClusters {
-			if mc.ClusterServerURL == "" {
+			if mc.ClusterServerURL != "" {
+				if err := utils.ValidateClusterServerURL(mc.ClusterServerURL); err != nil {
+					klog.Warningf("Provided managed cluster %s clusterServerURL %q is invalid (%v), clearing it to fall back to baseDomain heuristics", mc.Name, mc.ClusterServerURL, err)
+					testOptions.ManagedClusters[i].ClusterServerURL = ""
+				}
+			}
+			if testOptions.ManagedClusters[i].ClusterServerURL == "" {
 				testOptions.ManagedClusters[i].ClusterServerURL = fmt.Sprintf("https://api.%s:6443", mc.BaseDomain)
 			}
 			if mc.KubeConfig == "" {
