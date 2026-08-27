@@ -4,6 +4,42 @@
 
 package utils
 
+import (
+	"errors"
+	"fmt"
+	"net/url"
+	"strconv"
+)
+
+// ValidateClusterServerURL ensures that a clusterServerURL contains a valid scheme, host, and optional port.
+func ValidateClusterServerURL(rawURL string) error {
+	if rawURL == "" {
+		return errors.New("clusterServerURL cannot be empty")
+	}
+
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return fmt.Errorf("failed to parse clusterServerURL %q: %w", rawURL, err)
+	}
+
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return fmt.Errorf("invalid clusterServerURL %q: scheme must be 'http' or 'https', got %q", rawURL, u.Scheme)
+	}
+
+	if u.Hostname() == "" {
+		return fmt.Errorf("invalid clusterServerURL %q: missing host/domain", rawURL)
+	}
+
+	if portStr := u.Port(); portStr != "" {
+		port, err := strconv.Atoi(portStr)
+		if err != nil || port < 1 || port > 65535 {
+			return fmt.Errorf("invalid clusterServerURL %q: port %q is out of range (1-65535)", rawURL, portStr)
+		}
+	}
+
+	return nil
+}
+
 type TestOptionsContainer struct {
 	Options TestOptions `yaml:"options"`
 }
