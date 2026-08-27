@@ -9,11 +9,11 @@ require (
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32
 	github.com/go-co-op/gocron v1.37.0
 	github.com/go-kit/log v0.2.1
-	github.com/go-logr/logr v1.4.1
+	github.com/go-logr/logr v1.4.3
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/protobuf v1.5.4
 	github.com/golang/snappy v0.0.4
-	github.com/google/go-cmp v0.6.0
+	github.com/google/go-cmp v0.7.0
 	github.com/hashicorp/go-version v1.6.0
 	github.com/oklog/run v1.1.0
 	github.com/onsi/ginkgo v1.16.5
@@ -35,7 +35,7 @@ require (
 	github.com/stolostron/multiclusterhub-operator v0.0.0-20240507130539-00cf6ee9f650
 	github.com/stolostron/observatorium-operator v0.0.0-20240521155951-b4302d25bd18
 	github.com/stolostron/rbac-api-utils v0.0.0-20240404212618-7f57fc664256
-	github.com/stretchr/testify v1.9.0
+	github.com/stretchr/testify v1.11.1
 	github.com/thanos-io/thanos v0.35.0
 	go.uber.org/zap v1.27.0
 	golang.org/x/exp v0.0.0-20240325151524-a685a6edb6d8
@@ -141,16 +141,17 @@ require (
 	github.com/zmap/zcrypto v0.0.0-20230310154051-c8b263fd8300 // indirect
 	github.com/zmap/zlint/v3 v3.5.0 // indirect
 	go.mongodb.org/mongo-driver v1.14.0 // indirect
+	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/contrib/propagators/autoprop v0.38.0 // indirect
 	go.opentelemetry.io/contrib/propagators/aws v1.13.0 // indirect
 	go.opentelemetry.io/contrib/propagators/b3 v1.13.0 // indirect
 	go.opentelemetry.io/contrib/propagators/jaeger v1.13.0 // indirect
 	go.opentelemetry.io/contrib/propagators/ot v1.13.0 // indirect
-	go.opentelemetry.io/otel v1.25.0 // indirect
+	go.opentelemetry.io/otel v1.44.0 // indirect
 	go.opentelemetry.io/otel/bridge/opentracing v1.21.0 // indirect
-	go.opentelemetry.io/otel/metric v1.25.0 // indirect
-	go.opentelemetry.io/otel/sdk v1.25.0 // indirect
-	go.opentelemetry.io/otel/trace v1.25.0 // indirect
+	go.opentelemetry.io/otel/metric v1.44.0 // indirect
+	go.opentelemetry.io/otel/sdk v1.44.0 // indirect
+	go.opentelemetry.io/otel/trace v1.44.0 // indirect
 	go.starlark.net v0.0.0-20230525235612-a134d8f9ddca // indirect
 	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/goleak v1.3.0 // indirect
