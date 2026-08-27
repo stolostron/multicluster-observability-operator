@@ -46,6 +46,9 @@ const (
 	nameUserWorkloadMetricsAlerts     = "userWorkloadMetricsAlerts"
 	nameMetricsHubHostname            = "metricsHubHostname"
 	namePLatformMetricsUI             = "platformMetricsUI"
+	nameCOOCatalogSource              = "cooCatalogSource"
+	nameCOOCatalogSourceNamespace     = "cooCatalogSourceNamespace"
+	defaultCOOCatalogSourceNamespace  = "openshift-marketplace"
 )
 
 type MCOARendererOptions struct {
@@ -329,6 +332,15 @@ func (r *MCORenderer) renderAddonDeploymentConfig(
 					metricsHubHostname)
 			}
 			appendCustomVar(aodc, nameMetricsHubHostname, metricsHubHostname)
+		}
+
+		if cs.CatalogSource != nil && cs.CatalogSource.Name != "" {
+			appendCustomVar(aodc, nameCOOCatalogSource, cs.CatalogSource.Name)
+			namespace := cs.CatalogSource.Namespace
+			if namespace == "" {
+				namespace = defaultCOOCatalogSourceNamespace
+			}
+			appendCustomVar(aodc, nameCOOCatalogSourceNamespace, namespace)
 		}
 
 		renderedSpec, err := runtime.DefaultUnstructuredConverter.ToUnstructured(&aodc.Spec)
