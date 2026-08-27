@@ -129,4 +129,3 @@ func TestDefaultClusterServerURL(t *testing.T) {
 		})
 	}
 }
-
