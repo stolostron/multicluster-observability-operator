@@ -26,7 +26,8 @@ pipeline {
         password(name:'AWS_SECRET_ACCESS_KEY', defaultValue: '', description: 'AWS secret access key')
         string(name:'SKIP_INSTALL_STEP', defaultValue: 'false', description: 'Skip Observability installation')
         string(name:'SKIP_UNINSTALL_STEP', defaultValue: 'true', description: 'Skip Observability uninstallation')
-        string(name:'TAGGING', defaultValue: '', description: 'with tagging value to run the specific test cases')
+        string(name:'TAGGING', defaultValue: '', description: 'Comma-separated list of Ginkgo tags to run (uses --focus)')
+        string(name:'SKIP_TAGGING', defaultValue: '', description: 'Comma-separated list of Ginkgo tags to skip (uses --skip)')
         string(name:'USE_MINIO', defaultValue: 'false', description: 'If no AWS S3 bucket, you could use minio as object storage to instead')
     }
     environment {
@@ -62,6 +63,7 @@ pipeline {
                 export SKIP_INSTALL_STEP="${params.SKIP_INSTALL_STEP}"
                 export SKIP_UNINSTALL_STEP="${params.SKIP_UNINSTALL_STEP}"
                 export TAGGING="${params.TAGGING}"
+                export SKIP_TAGGING="${params.SKIP_TAGGING}"
                 export USE_MINIO="${params.USE_MINIO}"
                 export IS_CANARY_ENV=true
                 
@@ -103,11 +105,30 @@ pipeline {
                     /usr/local/bin/yq e -i '.options.clusters[0].kubeconfig="'"\$MAKUBECONFIG"'"' resources/options.yaml
                     fi
                     cat resources/options.yaml
+
+                    ginkgo_args=("ginkgo")
                     if [[ -n "${params.TAGGING}" ]]; then
-                    ginkgo --focus="\$TAGGING" -v pkg/tests/ -- -options=../../resources/options.yaml -v=5
-                    else
-                    ginkgo -v pkg/tests/ -- -options=../../resources/options.yaml -v=5
+                    IFS=',' read -ra tags <<< "${params.TAGGING}"
+                    for tag in "${tags[@]}"; do
+                        trimmed_tag=$(echo $tag)
+                        if [[ -n "$trimmed_tag" ]]; then
+                            ginkgo_args+=(--focus "${trimmed_tag}")
+                        fi
+                    done
                     fi
+
+                    if [[ -n "${params.SKIP_TAGGING}" ]]; then
+                    IFS=',' read -ra skips <<< "${params.SKIP_TAGGING}"
+                    for skip in "${skips[@]}"; do
+                        trimmed_skip=$(echo $skip)
+                        if [[ -n "$trimmed_skip" ]]; then
+                            ginkgo_args+=(--skip "${trimmed_skip}")
+                        fi
+                    done
+                    fi
+
+                    ginkgo_args+=(-v pkg/tests/ -- -options=../../resources/options.yaml -v=5)
+                    "${ginkgo_args[@]}"
                 fi
                 """
             }
