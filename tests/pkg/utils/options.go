@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net/url"
 	"strconv"
+	"strings"
 )
 
 // ValidateClusterServerURL ensures that a clusterServerURL contains a valid scheme, host, and optional port.
@@ -38,6 +39,21 @@ func ValidateClusterServerURL(rawURL string) error {
 	}
 
 	return nil
+}
+
+// DefaultClusterServerURL resolves the default cluster API URL from baseDomain and cloudProvider heuristics.
+func DefaultClusterServerURL(baseDomain, cloudProvider string) string {
+	cloudProvider = strings.ToLower(cloudProvider)
+	substring1 := "rosa"
+	substring2 := "hcp"
+	substring3 := "rhov" // Format of rhov api url is https://<baseDomain>:6443
+
+	if strings.Contains(cloudProvider, substring1) && strings.Contains(cloudProvider, substring2) {
+		return fmt.Sprintf("https://api.%s:443", baseDomain)
+	} else if strings.Contains(cloudProvider, substring3) {
+		return fmt.Sprintf("https://%s:6443", baseDomain)
+	}
+	return fmt.Sprintf("https://api.%s:6443", baseDomain)
 }
 
 type TestOptionsContainer struct {

@@ -80,3 +80,53 @@ func TestValidateClusterServerURL(t *testing.T) {
 		})
 	}
 }
+
+func TestDefaultClusterServerURL(t *testing.T) {
+	tests := []struct {
+		name          string
+		baseDomain    string
+		cloudProvider string
+		want          string
+	}{
+		{
+			name:          "rosa hcp lowercase",
+			baseDomain:    "example.com",
+			cloudProvider: "rosa-hcp",
+			want:          "https://api.example.com:443",
+		},
+		{
+			name:          "rosa hcp mixed case",
+			baseDomain:    "example.com",
+			cloudProvider: "ROSA_HCP",
+			want:          "https://api.example.com:443",
+		},
+		{
+			name:          "rhov provider",
+			baseDomain:    "apps.rhov.example.com",
+			cloudProvider: "rhov",
+			want:          "https://apps.rhov.example.com:6443",
+		},
+		{
+			name:          "standard aws provider",
+			baseDomain:    "example.com",
+			cloudProvider: "aws",
+			want:          "https://api.example.com:6443",
+		},
+		{
+			name:          "empty cloud provider default",
+			baseDomain:    "example.com",
+			cloudProvider: "",
+			want:          "https://api.example.com:6443",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := DefaultClusterServerURL(tt.baseDomain, tt.cloudProvider)
+			if got != tt.want {
+				t.Errorf("DefaultClusterServerURL(%q, %q) = %q, want %q", tt.baseDomain, tt.cloudProvider, got, tt.want)
+			}
+		})
+	}
+}
+
