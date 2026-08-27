@@ -232,9 +232,6 @@ func initVars() {
 	}
 
 	cloudProvider := strings.ToLower(os.Getenv("CLOUD_PROVIDER"))
-	substring1 := "rosa"
-	substring2 := "hcp"
-	substring3 := "rhov" // Format of rhov api url is https://<baseDomain>:6443
 
 	if testOptions.HubCluster.ClusterServerURL != "" {
 		if err := utils.ValidateClusterServerURL(testOptions.HubCluster.ClusterServerURL); err != nil {
@@ -246,31 +243,13 @@ func initVars() {
 	if testOptions.HubCluster.BaseDomain != "" {
 		baseDomain = testOptions.HubCluster.BaseDomain
 		if testOptions.HubCluster.ClusterServerURL == "" {
-			if strings.Contains(cloudProvider, substring1) && strings.Contains(cloudProvider, substring2) {
-				testOptions.HubCluster.ClusterServerURL = fmt.Sprintf(
-					"https://api.%s:443",
-					testOptions.HubCluster.BaseDomain,
-				)
-			} else if strings.Contains(cloudProvider, substring3) {
-				testOptions.HubCluster.ClusterServerURL = fmt.Sprintf(
-					"https://%s:6443",
-					testOptions.HubCluster.BaseDomain,
-				)
-			} else {
-				testOptions.HubCluster.ClusterServerURL = fmt.Sprintf(
-					"https://api.%s:6443",
-					testOptions.HubCluster.BaseDomain,
-				)
-			}
+			testOptions.HubCluster.ClusterServerURL = utils.DefaultClusterServerURL(testOptions.HubCluster.BaseDomain, cloudProvider)
 		}
 	} else {
 		Expect(baseDomain).NotTo(BeEmpty(), "The `baseDomain` is required.")
 		testOptions.HubCluster.BaseDomain = baseDomain
 		if testOptions.HubCluster.ClusterServerURL == "" {
-			testOptions.HubCluster.ClusterServerURL = fmt.Sprintf("https://api.%s:6443", baseDomain)
-			if strings.Contains(cloudProvider, substring1) && strings.Contains(cloudProvider, substring2) {
-				testOptions.HubCluster.ClusterServerURL = fmt.Sprintf("https://api.%s:443", baseDomain)
-			}
+			testOptions.HubCluster.ClusterServerURL = utils.DefaultClusterServerURL(baseDomain, cloudProvider)
 		}
 	}
 
@@ -296,7 +275,7 @@ func initVars() {
 				}
 			}
 			if testOptions.ManagedClusters[i].ClusterServerURL == "" {
-				testOptions.ManagedClusters[i].ClusterServerURL = fmt.Sprintf("https://api.%s:6443", mc.BaseDomain)
+				testOptions.ManagedClusters[i].ClusterServerURL = utils.DefaultClusterServerURL(mc.BaseDomain, cloudProvider)
 			}
 			if mc.KubeConfig == "" {
 				testOptions.ManagedClusters[i].KubeConfig = os.Getenv("IMPORT_KUBECONFIG")
