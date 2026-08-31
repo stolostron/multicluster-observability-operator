@@ -9,12 +9,16 @@ import (
 	"fmt"
 
 	"github.com/go-logr/logr"
+	hyperv1 "github.com/openshift/hypershift/api/hypershift/v1beta1"
+	prometheusv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	prometheusv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/controllers/observabilityendpoint"
+	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/hypershift"
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/events"
 	ctrl "sigs.k8s.io/controller-runtime"
 	ctrlbuilder "sigs.k8s.io/controller-runtime/pkg/builder"
@@ -89,7 +93,11 @@ func (r *MCOAAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			return ctrl.Result{}, fmt.Errorf("failed to reconcile UWL config: %w", err)
 		}
 		return ctrl.Result{}, nil
-
+	case isHypershiftReconcileRequest(req):
+		if err := r.ReconcileHyperShift(ctx); err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to reconcile HyperShift: %w", err)
+		}
+		return ctrl.Result{}, nil
 	case isManagedCRDName(req.Name) && req.Namespace == "":
 		// The predicate already filters by name; the empty-namespace guard here
 		// disambiguates from any future watch source that might use the same name
@@ -108,7 +116,7 @@ func (r *MCOAAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *MCOAAgentReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewControllerManagedBy(mgr).
+	builder := ctrl.NewControllerManagedBy(mgr).
 		// Watch ConfigMaps we manage across multiple namespaces.
 		// The cache FieldSelectors already limit this to exactly the CMs we need.
 		For(&corev1.ConfigMap{}, ctrlbuilder.WithPredicates(observabilityendpoint.ConfigMapDataChangedPredicate("", ""))).
@@ -133,53 +141,81 @@ func (r *MCOAAgentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		).
 		Watches(
 			&prometheusv1alpha1.ScrapeConfig{},
-			handler.EnqueueRequestsFromMapFunc(r.mapComponentLabelToRequests(
-				platformMetricsCollectorRawComponent,
-				userWorkloadMetricsCollectorRawComponent,
-			)),
+			handler.EnqueueRequestsFromMapFunc(r.mapComponentLabelToRequests()),
 		).
 		Watches(
 			&prometheusv1alpha1.PrometheusAgent{},
-			handler.EnqueueRequestsFromMapFunc(r.mapComponentLabelToRequests(
-				platformMetricsCollectorComponent,
-				userWorkloadMetricsCollectorComponent,
-			)),
+			handler.EnqueueRequestsFromMapFunc(r.mapComponentLabelToRequests()),
 		).
-		Complete(r)
+		Watches(
+			&prometheusv1.ServiceMonitor{},
+			handler.EnqueueRequestsFromMapFunc(r.enqueueHypershiftReconcile()),
+			ctrlbuilder.WithPredicates(predicate.Funcs{
+				CreateFunc: func(e event.CreateEvent) bool {
+					return e.Object.GetName() == hypershift.EtcdSmName || e.Object.GetName() == hypershift.ApiServerSmName
+				},
+				DeleteFunc:  func(_ event.DeleteEvent) bool { return false },
+				UpdateFunc:  func(_ event.UpdateEvent) bool { return false },
+				GenericFunc: func(_ event.GenericEvent) bool { return false },
+			}),
+		)
+
+	isHypershift, err := hypershift.IsHypershiftCluster()
+	if err != nil {
+		return fmt.Errorf("failed to check if the cluster is hypershift: %w", err)
+	}
+	if isHypershift {
+		builder = builder.Watches(
+			&hyperv1.HostedCluster{},
+			handler.EnqueueRequestsFromMapFunc(r.enqueueHypershiftReconcile()),
+			ctrlbuilder.WithPredicates(predicate.Funcs{
+				CreateFunc: func(_ event.CreateEvent) bool { return true },
+				DeleteFunc: func(_ event.DeleteEvent) bool { return true },
+				UpdateFunc: func(e event.UpdateEvent) bool {
+					oldHC, okOld := e.ObjectOld.(*hyperv1.HostedCluster)
+					newHC, okNew := e.ObjectNew.(*hyperv1.HostedCluster)
+					if !okOld || !okNew {
+						return false
+					}
+					return newHC.Spec.ClusterID != oldHC.Spec.ClusterID
+				},
+				GenericFunc: func(_ event.GenericEvent) bool { return false },
+			}),
+		)
+	} else {
+		r.Log.Info("Hypershift CRD not present, skipping HostedCluster watch registration")
+	}
+
+	return builder.Complete(r)
 }
 
-func (r *MCOAAgentReconciler) mapComponentLabelToRequests(
-	platformComp, uwlComp string,
-) handler.MapFunc {
-	return func(ctx context.Context, obj client.Object) []reconcile.Request {
+func (r *MCOAAgentReconciler) mapComponentLabelToRequests() handler.MapFunc {
+	return func(_ context.Context, obj client.Object) []reconcile.Request {
 		if obj.GetNamespace() != r.Namespace {
 			return nil
 		}
-		labels := obj.GetLabels()
-		if labels == nil {
+		comp := obj.GetLabels()[labelKeyComponent]
+		switch comp {
+		case platformMetricsCollectorRawComponent:
+			return []reconcile.Request{{NamespacedName: types.NamespacedName{
+				Name:      operatorconfig.OCPClusterMonitoringConfigMapName,
+				Namespace: operatorconfig.OCPClusterMonitoringNamespace,
+			}}}
+		case userWorkloadMetricsCollectorRawComponent:
+			return []reconcile.Request{{NamespacedName: types.NamespacedName{
+				Name:      operatorconfig.OCPUserWorkloadMonitoringConfigMap,
+				Namespace: operatorconfig.OCPUserWorkloadMonitoringNamespace,
+			}}}
+		case etcdHcpComponentLabel, apiserverHcpComponentLabel:
+			return r.enqueueHypershiftReconcile()(context.Background(), obj)
+		default:
 			return nil
 		}
-		comp := labels[labelKeyComponent]
-		switch comp {
-		case platformComp:
-			return []reconcile.Request{
-				{
-					NamespacedName: client.ObjectKey{
-						Name:      operatorconfig.OCPClusterMonitoringConfigMapName,
-						Namespace: operatorconfig.OCPClusterMonitoringNamespace,
-					},
-				},
-			}
-		case uwlComp:
-			return []reconcile.Request{
-				{
-					NamespacedName: client.ObjectKey{
-						Name:      operatorconfig.OCPUserWorkloadMonitoringConfigMap,
-						Namespace: operatorconfig.OCPUserWorkloadMonitoringNamespace,
-					},
-				},
-			}
-		}
-		return nil
+	}
+}
+
+func (r *MCOAAgentReconciler) enqueueHypershiftReconcile() handler.MapFunc {
+	return func(context.Context, client.Object) []reconcile.Request {
+		return []reconcile.Request{{NamespacedName: types.NamespacedName{Name: hypershiftReconcileTriggerName}}}
 	}
 }
