@@ -97,10 +97,16 @@ pipeline {
                     cp resources/options.yaml.template resources/options.yaml
                     /usr/local/bin/yq e -i '.options.hub.name="'"\$HUB_CLUSTER_NAME"'"' resources/options.yaml
                     /usr/local/bin/yq e -i '.options.hub.baseDomain="'"\$BASE_DOMAIN"'"' resources/options.yaml
-                    if [[ -n "$MANAGED_CLUSTER_NAME" ]]; then
-                    /usr/local/bin/yq e -i '.options.clusters[0].name="'"\$MANAGED_CLUSTER_NAME"'"' resources/options.yaml
-                    /usr/local/bin/yq e -i '.options.clusters[0].baseDomain="'"\$MANAGED_CLUSTER_BASE_DOMAIN"'"' resources/options.yaml
-                    /usr/local/bin/yq e -i '.options.clusters[0].kubeconfig="'"\$MAKUBECONFIG"'"' resources/options.yaml
+                    if [[ -n "\$OC_HUB_CLUSTER_API_URL" ]]; then
+                      /usr/local/bin/yq e -i '.options.hub.clusterServerURL="'"\$OC_HUB_CLUSTER_API_URL"'"' resources/options.yaml
+                    fi
+                    if [[ -n "\$MANAGED_CLUSTER_NAME" ]]; then
+                      /usr/local/bin/yq e -i '.options.clusters[0].name="'"\$MANAGED_CLUSTER_NAME"'"' resources/options.yaml
+                      /usr/local/bin/yq e -i '.options.clusters[0].baseDomain="'"\$MANAGED_CLUSTER_BASE_DOMAIN"'"' resources/options.yaml
+                      /usr/local/bin/yq e -i '.options.clusters[0].kubeconfig="'"\$MAKUBECONFIG"'"' resources/options.yaml
+                      if [[ -n "\$MANAGED_CLUSTER_API_URL" ]]; then
+                        /usr/local/bin/yq e -i '.options.clusters[0].clusterServerURL="'"\$MANAGED_CLUSTER_API_URL"'"' resources/options.yaml
+                      fi
                     fi
                     cat resources/options.yaml
                     if [[ -n "${params.TAGGING}" ]]; then
