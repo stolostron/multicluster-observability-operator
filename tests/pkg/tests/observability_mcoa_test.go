@@ -901,7 +901,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 					}, 120, 5).Should(Succeed())
 				})
 
-				By("Verifying the platform raw metric is queryable on the hub", func() {
+				By("Verifying the platform raw metric is queryable on the hub with cluster identification labels", func() {
 					Eventually(func() error {
 						res, err := utils.QueryGrafana(testOptions, platformMetricName)
 						if err != nil {
@@ -910,11 +910,13 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 						if len(res.Data.Result) == 0 {
 							return fmt.Errorf("No results found for metric %q", platformMetricName)
 						}
-						return nil
+						// Verify cluster label is stamped — raw ScrapeConfigs must preserve WriteRelabelConfigs
+						// carrying cluster/clusterID assignments from the PrometheusAgent remoteWrite entries.
+						return res.CheckMetricFromAllClusters(managedClustersWithHub)
 					}, 300, 5).Should(Not(HaveOccurred()))
 				})
 
-				By("Verifying the uwl raw metric is queryable on the hub", func() {
+				By("Verifying the uwl raw metric is queryable on the hub with cluster identification labels", func() {
 					Eventually(func() error {
 						res, err := utils.QueryGrafana(testOptions, uwlMetricName)
 						if err != nil {
@@ -923,7 +925,9 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 						if len(res.Data.Result) == 0 {
 							return fmt.Errorf("No results found for metric %q", uwlMetricName)
 						}
-						return nil
+						// Verify cluster label is stamped — raw ScrapeConfigs must preserve WriteRelabelConfigs
+						// carrying cluster/clusterID assignments from the PrometheusAgent remoteWrite entries.
+						return res.CheckMetricFromAllClusters(accessibleOCPClusters)
 					}, 300, 5).Should(Not(HaveOccurred()))
 				})
 
