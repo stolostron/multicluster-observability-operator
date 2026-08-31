@@ -15,8 +15,47 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/kustomize"
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/utils"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
 )
+
+// mcoOperatorCrashLoopThreshold is how many container restarts we tolerate before
+// declaring the operator permanently broken. A few initial restarts are expected while
+// dependent resources (secrets, CRDs) finish being created.
+const mcoOperatorCrashLoopThreshold = 5
+
+// stopIfCrashLooping returns a StopTrying error when any pod in the observability
+// namespace or the MCO operator pod has exceeded the restart threshold, causing Gomega
+// to abort the Eventually immediately instead of waiting for the full install timeout.
+// Transient list errors are ignored so the caller keeps retrying.
+func stopIfCrashLooping(ctx context.Context, hubClient kubernetes.Interface) error {
+	checks := []struct {
+		namespace     string
+		labelSelector string
+	}{
+		// All stack components (Thanos, Alertmanager, Grafana, …)
+		{MCO_NAMESPACE, ""},
+		// MCO operator itself runs in a different namespace
+		{"", MCO_LABEL},
+	}
+	for _, c := range checks {
+		pods, err := hubClient.CoreV1().Pods(c.namespace).List(ctx, metav1.ListOptions{LabelSelector: c.labelSelector})
+		if err != nil {
+			continue
+		}
+		for _, pod := range pods.Items {
+			for _, cs := range pod.Status.ContainerStatuses {
+				if cs.RestartCount > mcoOperatorCrashLoopThreshold {
+					return StopTrying(fmt.Sprintf(
+						"pod %s container %s has restarted %d times, aborting install wait",
+						pod.Name, cs.Name, cs.RestartCount,
+					))
+				}
+			}
+		}
+	}
+	return nil
+}
 
 func installMCO() {
 	if os.Getenv("SKIP_INSTALL_STEP") == trueStr {
@@ -157,6 +196,9 @@ func installMCO() {
 	}()
 	By("Waiting for MCO ready status")
 	Eventually(func() error {
+		if err := stopIfCrashLooping(context.Background(), hubClient); err != nil {
+			return err
+		}
 		err = utils.CheckMCOStatusCondition(context.Background(), testOptions, "Ready", metav1.ConditionTrue, "Ready")
 		if err != nil {
 			testFailed = true
@@ -167,7 +209,7 @@ func installMCO() {
 		testFailed = false
 		mcoTestFailed = false
 		return nil
-	}, EventuallyTimeoutMinute*15, EventuallyIntervalSecond*20).Should(Succeed())
+	}, EventuallyTimeoutMinute*30, EventuallyIntervalSecond*20).Should(Succeed())
 
 	obaTestFailed := false
 	defer func() {
@@ -180,6 +222,9 @@ func installMCO() {
 	}()
 	By("Check endpoint-operator and metrics-collector pods are ready")
 	Eventually(func() error {
+		if err := stopIfCrashLooping(context.Background(), hubClient); err != nil {
+			return err
+		}
 		err = utils.CheckAllOBAsEnabled(testOptions)
 		if err != nil {
 			obaTestFailed = true
@@ -190,7 +235,7 @@ func installMCO() {
 		obaTestFailed = false
 		testFailed = false
 		return nil
-	}, EventuallyTimeoutMinute*15, EventuallyIntervalSecond*20).Should(Succeed())
+	}, EventuallyTimeoutMinute*30, EventuallyIntervalSecond*20).Should(Succeed())
 
 	By("Check clustermanagementaddon CR is created")
 	Eventually(func() error {
