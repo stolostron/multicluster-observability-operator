@@ -103,13 +103,7 @@ func (r *MCOAAgentReconciler) ReconcileCMOPlatformConfig(ctx context.Context) er
 	}
 
 	if parsed.PrometheusK8sConfig != nil {
-		// 1. Reconcile External Labels (only when alert forwarding is enabled)
-		hasAlertForwarding := alertmanagerURL != "" && r.EnablePlatformAlertForwarding
-		if r.reconcileExternalLabels(parsed.PrometheusK8sConfig, hasAlertForwarding) {
-			modified = true
-		}
-
-		// 2. Reconcile Alertmanager Configurations
+		// 1. Reconcile Alertmanager Configurations
 		cleanAm, modifiedAm := r.reconcileAlertmanagerConfigs(parsed.PrometheusK8sConfig.AlertmanagerConfigs, alertmanagerURL, r.EnablePlatformAlertForwarding)
 		if modifiedAm {
 			parsed.PrometheusK8sConfig.AlertmanagerConfigs = cleanAm
@@ -125,6 +119,15 @@ func (r *MCOAAgentReconciler) ReconcileCMOPlatformConfig(ctx context.Context) er
 				}
 				r.Log.Info("Detected conflict in Alertmanager configuration, re-applying", "name", cm.Name, "namespace", cm.Namespace)
 			}
+		}
+
+		// 2. Reconcile External Labels
+		// If MCOA alert forwarding is enabled, ensure MCOA external labels are present.
+		// If MCOA alert forwarding was just disabled (MCOA config removed), clean up MCOA external labels once.
+		// If forwarding is disabled and no MCOA config was removed, do not touch external labels
+		// (allows legacy operator and user-defined policies to manage labels without interference).
+		if r.reconcileExternalLabels(parsed.PrometheusK8sConfig, modifiedAm) {
+			modified = true
 		}
 
 		// 3. Reconcile Remote Writes
@@ -289,12 +292,16 @@ func (r *MCOAAgentReconciler) fetchCMOConfigMap(
 	return cm, false, nil
 }
 
-func (r *MCOAAgentReconciler) reconcileExternalLabels(cfg *cmomanifests.PrometheusK8sConfig, retainLabels bool) bool {
+func (r *MCOAAgentReconciler) reconcileExternalLabels(cfg *cmomanifests.PrometheusK8sConfig, amRemoved bool) bool {
 	if cfg == nil {
 		return false
 	}
-	if !retainLabels {
-		if cfg.ExternalLabels == nil {
+	if !r.EnablePlatformAlertForwarding {
+		// When MCOA alert forwarding is disabled:
+		// Only clean up external labels if MCOA's Alertmanager configuration was just stripped during this reconcile.
+		// If no MCOA Alertmanager configuration was removed (amRemoved == false), do not touch external labels
+		// to allow coexistence with legacy operators and user-defined policies.
+		if !amRemoved || cfg.ExternalLabels == nil {
 			return false
 		}
 		modified := false
@@ -306,9 +313,13 @@ func (r *MCOAAgentReconciler) reconcileExternalLabels(cfg *cmomanifests.Promethe
 			delete(cfg.ExternalLabels, operatorconfig.ClusterNameLabelKeyForAlerts)
 			modified = true
 		}
+		if len(cfg.ExternalLabels) == 0 && modified {
+			cfg.ExternalLabels = nil
+		}
 		return modified
 	}
 
+	// When MCOA alert forwarding is ENABLED:
 	modified := false
 	if cfg.ExternalLabels == nil {
 		cfg.ExternalLabels = make(map[string]string)
@@ -336,8 +347,17 @@ func (r *MCOAAgentReconciler) reconcileAlertmanagerConfigs(
 	endpoint string,
 	enable bool,
 ) ([]cmomanifests.AdditionalAlertmanagerConfig, bool) {
-	cleaned := slices.DeleteFunc(slices.Clone(existing), r.isOwnedAlertmanagerConfig)
-	if endpoint != "" && enable {
+	shouldEnable := endpoint != "" && enable
+
+	// When enabling alert forwarding, perform aggressive cleanup (matching all hub-ID suffixes)
+	// to clean up legacy stanzas during transition. When disabling, only clean MCOA's exact CA secret
+	// so that concurrently running legacy endpoint operators are not interfered with.
+	filterFunc := func(am cmomanifests.AdditionalAlertmanagerConfig) bool {
+		return r.isOwnedAlertmanagerConfig(am, shouldEnable)
+	}
+
+	cleaned := slices.DeleteFunc(slices.Clone(existing), filterFunc)
+	if shouldEnable {
 		cleaned = append(cleaned, r.newAdditionalAlertmanagerConfig(endpoint))
 	}
 	sortAlertmanagerConfigs(cleaned)
@@ -413,24 +433,30 @@ func (r *MCOAAgentReconciler) newAdditionalAlertmanagerConfig(endpoint string) c
 	return config
 }
 
-func (r *MCOAAgentReconciler) isOwnedAlertmanagerConfig(am cmomanifests.AdditionalAlertmanagerConfig) bool {
+func (r *MCOAAgentReconciler) isOwnedAlertmanagerConfig(am cmomanifests.AdditionalAlertmanagerConfig, aggressiveClean bool) bool {
 	if r.CASecret == "" || am.TLSConfig.CA == nil {
 		return false
 	}
+	// Exact match: always match MCOA's own CA secret (e.g. hub-mtls-ca-<hubID>).
 	if am.TLSConfig.CA.Name == r.CASecret {
 		return true
 	}
-	// Suffix-based fallback: the hub may rename the CA secret prefix across upgrades while
-	// keeping the hub-ID suffix (e.g. "-465e377c…") stable. The accessor secret has a stable
-	// base name, so stripping it from r.AccessorSecret yields the hub-ID suffix we can match on.
-	// This also makes MCOA e2e tests more resilient: if the legacy stack leaves behind an entry
-	// with a different CA prefix (e.g. obs-alertmanager-mtls-ca-<hubID>), MCOA can still
-	// identify and clean it up rather than leaving a stale forwarding config.
-	hubIDSuffix := strings.TrimPrefix(r.AccessorSecret, observabilityendpoint.HubAmAccessorSecretName)
-	if len(hubIDSuffix) <= 1 {
-		return false
+	// Suffix-based matching for transition/migration:
+	// When MCOA is actively enabling alert forwarding (aggressiveClean == true), we also match
+	// any Alertmanager stanza whose CA secret ends with the hub-ID suffix (e.g. obs-alertmanager-mtls-ca-<hubID>
+	// or hub-alertmanager-router-ca-<hubID>). This ensures that legacy stanzas left behind by
+	// previous operator versions or imperfect uninstallers are cleanly replaced by MCOA's configuration.
+	//
+	// However, when MCOA alert forwarding is disabled (aggressiveClean == false), we do NOT use suffix
+	// matching. This allows the legacy endpoint operator to manage its own alert forwarding stanzas
+	// without MCOA stripping them during coexistence (e.g., when MCOA is only deployed for Right-Sizing).
+	if aggressiveClean {
+		hubIDSuffix := strings.TrimPrefix(r.AccessorSecret, observabilityendpoint.HubAmAccessorSecretName)
+		if len(hubIDSuffix) > 1 && strings.HasSuffix(am.TLSConfig.CA.Name, hubIDSuffix) {
+			return true
+		}
 	}
-	return strings.HasSuffix(am.TLSConfig.CA.Name, hubIDSuffix)
+	return false
 }
 
 func (r *MCOAAgentReconciler) listScrapeConfigsByComponent(ctx context.Context, component string) ([]prometheusv1alpha1.ScrapeConfig, error) {
