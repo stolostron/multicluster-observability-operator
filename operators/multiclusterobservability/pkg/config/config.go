@@ -256,9 +256,6 @@ const (
 	// LokiOperatorPackageName is the OLM package/Subscription name for Loki Operator.
 	LokiOperatorPackageName = "loki-operator"
 
-	// LokiOperatorChannel is the default subscription channel used when installing Loki Operator.
-	LokiOperatorChannel = "stable-6.3"
-
 	// LokiOperatorCatalogSource and LokiOperatorCatalogSourceNamespace point at the default
 	// Red Hat operator catalog.
 	LokiOperatorCatalogSource          = "redhat-operators"

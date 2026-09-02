@@ -39,10 +39,16 @@ func TestBuildLokiOperatorResources(t *testing.T) {
 	require.Equal(t, mcoconfig.LokiOperatorPackageName, sub.GetName())
 	require.Equal(t, mcoconfig.LokiOperatorNamespace, sub.GetNamespace())
 
-	channel, found, err := unstructured.NestedString(sub.Object, "spec", "channel")
+	// channel is deliberately left unset so OLM tracks the package's default channel; see the
+	// comment in BuildLokiOperatorResources for why.
+	_, found, err := unstructured.NestedString(sub.Object, "spec", "channel")
+	require.NoError(t, err)
+	require.False(t, found)
+
+	name, found, err := unstructured.NestedString(sub.Object, "spec", "name")
 	require.NoError(t, err)
 	require.True(t, found)
-	require.Equal(t, mcoconfig.LokiOperatorChannel, channel)
+	require.Equal(t, mcoconfig.LokiOperatorPackageName, name)
 }
 
 func TestEnsureLokiOperatorInstalled(t *testing.T) {

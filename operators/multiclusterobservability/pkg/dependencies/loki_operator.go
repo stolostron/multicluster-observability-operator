@@ -55,7 +55,11 @@ func BuildLokiOperatorResources() []client.Object {
 	sub.SetName(mcoconfig.LokiOperatorPackageName)
 	sub.SetNamespace(mcoconfig.LokiOperatorNamespace)
 	sub.Object["spec"] = map[string]any{
-		"channel":             mcoconfig.LokiOperatorChannel,
+		// channel is deliberately omitted: it's an optional field on the Subscription CRD, and
+		// leaving it unset tells OLM to track the package's current default channel. Loki
+		// Operator's channels are versioned (e.g. stable-6.3, stable-6.5, ...) and old ones get
+		// dropped from the catalog over time, so hardcoding one here would eventually resolve to
+		// nothing (ConstraintsNotSatisfiable) and silently stop installing.
 		"name":                mcoconfig.LokiOperatorPackageName,
 		"source":              mcoconfig.LokiOperatorCatalogSource,
 		"sourceNamespace":     mcoconfig.LokiOperatorCatalogSourceNamespace,
