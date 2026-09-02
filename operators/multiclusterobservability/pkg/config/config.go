@@ -247,6 +247,28 @@ const (
 	PrometheusRuleCRDName         = "prometheusrules.monitoring.rhobs"
 )
 
+const (
+	// LokiOperatorNamespace is the namespace Loki Operator is installed into via OLM. Loki
+	// Operator is a global (cluster-scoped) operator, so it follows the same convention as
+	// other Red Hat cluster-scoped operators and lives in openshift-operators-redhat.
+	LokiOperatorNamespace = "openshift-operators-redhat"
+
+	// LokiOperatorPackageName is the OLM package/Subscription name for Loki Operator.
+	LokiOperatorPackageName = "loki-operator"
+
+	// LokiOperatorChannel is the default subscription channel used when installing Loki Operator.
+	LokiOperatorChannel = "stable-6.3"
+
+	// LokiOperatorCatalogSource and LokiOperatorCatalogSourceNamespace point at the default
+	// Red Hat operator catalog.
+	LokiOperatorCatalogSource          = "redhat-operators"
+	LokiOperatorCatalogSourceNamespace = "openshift-marketplace"
+
+	// LokiStackCRDName is the CustomResourceDefinition Loki Operator registers once installed.
+	// MCO waits for this CRD to exist before assuming Loki Operator is ready.
+	LokiStackCRDName = "lokistacks.loki.grafana.com"
+)
+
 var (
 	ErrMultipleMCOInstances = errors.New("more than one MultiClusterObservability CR exists")
 	ErrMCONotFound          = errors.New("MultiClusterObservability CR not found")

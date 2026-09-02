@@ -26,6 +26,7 @@ import (
 	placementctrl "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/placementrule"
 	certctrl "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/certificates"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/dependencies"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering"
 	smctrl "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/servicemonitor"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
@@ -65,6 +66,10 @@ const (
 	// deprecated one.
 	certFinalizer              = "observability.open-cluster-management.io/cert-cleanup"
 	mcoaCleanupRequeueInterval = 5 * time.Second
+	// lokiOperatorRequeueInterval controls how often we recheck for the LokiStack CRD while
+	// waiting for Loki Operator's OLM install to complete. TODO: replace this polling with an
+	// event-driven trigger (e.g. a dedicated CRD watch) once the approach is finalized.
+	lokiOperatorRequeueInterval = 10 * time.Second
 )
 
 const (
@@ -259,6 +264,34 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	obsAPIURL, err := config.GetObsAPIExternalURL(ctx, r.Client, config.GetDefaultNamespace())
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to get the Observatorium API URL: %w", err) // Already wrapped
+	}
+
+	// MCOA's platform log collection capability relies on Loki Operator's LokiStack CRD as the
+	// default log store. Only install Loki Operator ourselves when MCOA is enabled and that
+	// capability is enabled; otherwise leave any existing/manual Loki Operator install alone.
+	// (platformLogsEnabled already implies MCOAEnabled, but we check both explicitly for clarity.)
+	//
+	// If the CRD isn't present yet, requeue immediately rather than rendering/deploying anything
+	// else this pass, and keep requeuing every reconcile until it appears (OLM's install of Loki
+	// Operator is asynchronous and can take a while). This is deliberately simple polling for
+	// now, rather than an event-driven trigger, to keep the change safe/easy to reason about;
+	// can be optimized later.
+	platformLogsEnabled := instance.Spec.Capabilities != nil &&
+		instance.Spec.Capabilities.Platform != nil &&
+		instance.Spec.Capabilities.Platform.Logs.Collection.Enabled
+	if rendering.MCOAEnabled(instance) && platformLogsEnabled {
+		lokiStackCRD := &apiextensionsv1.CustomResourceDefinition{}
+		err = r.Client.Get(ctx, types.NamespacedName{Name: config.LokiStackCRDName}, lokiStackCRD)
+		if err != nil && !apierrors.IsNotFound(err) {
+			return ctrl.Result{}, fmt.Errorf("failed to check for LokiStack CRD %s: %w", config.LokiStackCRDName, err)
+		}
+		if apierrors.IsNotFound(err) {
+			reqLogger.Info("LokiStack CRD not found, installing Loki Operator", "crd", config.LokiStackCRDName)
+			if err := dependencies.EnsureLokiOperatorInstalled(ctx, r.Client); err != nil {
+				return ctrl.Result{}, fmt.Errorf("failed to install Loki Operator: %w", err)
+			}
+			return ctrl.Result{RequeueAfter: lokiOperatorRequeueInterval}, nil
+		}
 	}
 
 	// Build render options
