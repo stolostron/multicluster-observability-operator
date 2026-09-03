@@ -25,8 +25,9 @@ import (
 const mcoOperatorCrashLoopThreshold = 5
 
 // stopIfCrashLooping returns a StopTrying error when any pod in the observability
-// namespace or the MCO operator pod has exceeded the restart threshold, causing Gomega
-// to abort the Eventually immediately instead of waiting for the full install timeout.
+// namespace or the MCO operator pod has exceeded the restart threshold and is not ready
+// or terminated with success, causing Gomega to abort the Eventually immediately instead
+// of waiting for the full install timeout.
 // Kubernetes API errors are returned so the caller's Eventually retries the full check.
 func stopIfCrashLooping(ctx context.Context, hubClient kubernetes.Interface) error {
 	checks := []struct {
@@ -44,7 +45,23 @@ func stopIfCrashLooping(ctx context.Context, hubClient kubernetes.Interface) err
 			return fmt.Errorf("listing pods in namespace %q with selector %q: %w", c.namespace, c.labelSelector, err)
 		}
 		for _, pod := range pods.Items {
-			for _, cs := range append(pod.Status.InitContainerStatuses, pod.Status.ContainerStatuses...) {
+			for _, cs := range pod.Status.InitContainerStatuses {
+				// Skip containers that completed successfully or are currently ready.
+				if (cs.State.Terminated != nil && cs.State.Terminated.ExitCode == 0) || cs.Ready {
+					continue
+				}
+				if cs.RestartCount > mcoOperatorCrashLoopThreshold {
+					return StopTrying(fmt.Sprintf(
+						"pod %s init container %s has restarted %d times, aborting install wait",
+						pod.Name, cs.Name, cs.RestartCount,
+					))
+				}
+			}
+			for _, cs := range pod.Status.ContainerStatuses {
+				// Skip containers that completed successfully or are currently ready.
+				if (cs.State.Terminated != nil && cs.State.Terminated.ExitCode == 0) || cs.Ready {
+					continue
+				}
 				if cs.RestartCount > mcoOperatorCrashLoopThreshold {
 					return StopTrying(fmt.Sprintf(
 						"pod %s container %s has restarted %d times, aborting install wait",

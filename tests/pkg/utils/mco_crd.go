@@ -16,12 +16,12 @@ import (
 	"k8s.io/klog/v2"
 )
 
-func DeleteMonitoringCRDs(opt TestOptions, clusters []Cluster) error {
+func DeleteMonitoringCRDs(ctx context.Context, clusters []Cluster) error {
 	for _, cluster := range clusters {
 		apiExtensionsClient := NewKubeClientAPIExtension(cluster.ClusterServerURL, cluster.KubeConfig, cluster.KubeContext)
 		dynClient := GetKubeClientDynamicWithCluster(cluster)
 
-		crds, err := apiExtensionsClient.ApiextensionsV1().CustomResourceDefinitions().List(context.TODO(), metav1.ListOptions{})
+		crds, err := apiExtensionsClient.ApiextensionsV1().CustomResourceDefinitions().List(ctx, metav1.ListOptions{})
 		if err != nil {
 			return err
 		}
@@ -51,29 +51,31 @@ func DeleteMonitoringCRDs(opt TestOptions, clusters []Cluster) error {
 
 			// Delete all instances explicitly so that GC does not block CRD deletion.
 			// metav1.NamespaceAll ("") works for both namespaced and cluster-scoped resources.
-			instances, listErr := dynClient.Resource(gvr).Namespace(metav1.NamespaceAll).List(context.TODO(), metav1.ListOptions{})
-			if listErr != nil && !errors.IsNotFound(listErr) {
-				klog.Warningf("Failed to list instances of %s on cluster %s: %v", crd.Name, cluster.Name, listErr)
+			instances, listErr := dynClient.Resource(gvr).Namespace(metav1.NamespaceAll).List(ctx, metav1.ListOptions{})
+			if listErr != nil {
+				if !errors.IsNotFound(listErr) {
+					klog.Warningf("Failed to list instances of %s on cluster %s: %v", crd.Name, cluster.Name, listErr)
+				}
 			} else if instances != nil {
 				for i := range instances.Items {
 					inst := &instances.Items[i]
-					klog.Infof("Deleting %s/%s on cluster %s", crd.Name, inst.GetName(), cluster.Name)
-					delErr := dynClient.Resource(gvr).Namespace(inst.GetNamespace()).Delete(context.TODO(), inst.GetName(), metav1.DeleteOptions{})
+					klog.InfoS("Deleting CRD instance", "crd", crd.Name, "instance", inst.GetName(), "cluster", cluster.Name)
+					delErr := dynClient.Resource(gvr).Namespace(inst.GetNamespace()).Delete(ctx, inst.GetName(), metav1.DeleteOptions{})
 					if delErr != nil && !errors.IsNotFound(delErr) {
 						klog.Warningf("Failed to delete %s/%s on cluster %s: %v", crd.Name, inst.GetName(), cluster.Name, delErr)
 					}
 				}
 			}
 
-			klog.Infof("Deleting CRD %s on cluster %s", crd.Name, cluster.Name)
-			if err := apiExtensionsClient.ApiextensionsV1().CustomResourceDefinitions().Delete(context.TODO(), crd.Name, metav1.DeleteOptions{}); err != nil && !errors.IsNotFound(err) {
+			klog.InfoS("Deleting CRD", "crd", crd.Name, "cluster", cluster.Name)
+			if err := apiExtensionsClient.ApiextensionsV1().CustomResourceDefinitions().Delete(ctx, crd.Name, metav1.DeleteOptions{}); err != nil && !errors.IsNotFound(err) {
 				return err
 			}
 		}
 
 		// Wait for all monitoring.rhobs CRDs to be removed.
-		err = wait.PollUntilContextTimeout(context.Background(), 5*time.Second, 3*time.Minute, true, func(ctx context.Context) (bool, error) {
-			remaining, listErr := apiExtensionsClient.ApiextensionsV1().CustomResourceDefinitions().List(ctx, metav1.ListOptions{})
+		err = wait.PollUntilContextTimeout(ctx, 5*time.Second, 3*time.Minute, true, func(pollCtx context.Context) (bool, error) {
+			remaining, listErr := apiExtensionsClient.ApiextensionsV1().CustomResourceDefinitions().List(pollCtx, metav1.ListOptions{})
 			if listErr != nil {
 				klog.Warningf("Error listing CRDs on cluster %s: %v", cluster.Name, listErr)
 				return false, nil
