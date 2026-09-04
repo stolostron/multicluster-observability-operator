@@ -431,3 +431,15 @@ rules:
   - list
   - watch
   - delete
+# Needed to install Loki Operator (OperatorGroup + Subscription) via OLM when MCOA platform
+# log collection is enabled and its LokiStack CRD isn't already present on the hub.
+- apiGroups:
+  - operators.coreos.com
+  resources:
+  - operatorgroups
+  - subscriptions
+  verbs:
+  - create
+  - get
+  - list
+  - watch
