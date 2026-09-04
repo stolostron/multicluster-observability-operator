@@ -7,8 +7,11 @@ package utils
 import (
 	"context"
 	"fmt"
+	"maps"
+	"slices"
 	"time"
 
+	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/controllers/mcoa"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -26,9 +29,28 @@ func DeleteMonitoringCRDs(ctx context.Context, clusters []Cluster) error {
 			return err
 		}
 
+		crdsToDelete := make(map[string]bool)
 		for _, crd := range crds.Items {
-			if crd.Spec.Group != "monitoring.rhobs" {
+			if crd.Spec.Group == "monitoring.rhobs" {
+				crdsToDelete[crd.Name] = true
+			}
+		}
+		// Also ensure all known MCOA managed CRDs are included
+		for _, name := range mcoa.GetManagedCRDNames() {
+			crdsToDelete[name] = true
+		}
+
+		crdNames := slices.Collect(maps.Keys(crdsToDelete))
+		slices.Sort(crdNames)
+
+		for _, crdName := range crdNames {
+			crd, getErr := apiExtensionsClient.ApiextensionsV1().CustomResourceDefinitions().Get(ctx, crdName, metav1.GetOptions{})
+			if errors.IsNotFound(getErr) {
+				delete(crdsToDelete, crdName)
 				continue
+			}
+			if getErr != nil {
+				return getErr
 			}
 
 			// Find the storage version to build a valid GVR.
@@ -39,30 +61,28 @@ func DeleteMonitoringCRDs(ctx context.Context, clusters []Cluster) error {
 					break
 				}
 			}
-			if version == "" {
-				continue
-			}
-
-			gvr := schema.GroupVersionResource{
-				Group:    crd.Spec.Group,
-				Version:  version,
-				Resource: crd.Spec.Names.Plural,
-			}
-
-			// Delete all instances explicitly so that GC does not block CRD deletion.
-			// metav1.NamespaceAll ("") works for both namespaced and cluster-scoped resources.
-			instances, listErr := dynClient.Resource(gvr).Namespace(metav1.NamespaceAll).List(ctx, metav1.ListOptions{})
-			if listErr != nil {
-				if !errors.IsNotFound(listErr) {
-					klog.Warningf("Failed to list instances of %s on cluster %s: %v", crd.Name, cluster.Name, listErr)
+			if version != "" {
+				gvr := schema.GroupVersionResource{
+					Group:    crd.Spec.Group,
+					Version:  version,
+					Resource: crd.Spec.Names.Plural,
 				}
-			} else if instances != nil {
-				for i := range instances.Items {
-					inst := &instances.Items[i]
-					klog.InfoS("Deleting CRD instance", "crd", crd.Name, "instance", inst.GetName(), "cluster", cluster.Name)
-					delErr := dynClient.Resource(gvr).Namespace(inst.GetNamespace()).Delete(ctx, inst.GetName(), metav1.DeleteOptions{})
-					if delErr != nil && !errors.IsNotFound(delErr) {
-						klog.Warningf("Failed to delete %s/%s on cluster %s: %v", crd.Name, inst.GetName(), cluster.Name, delErr)
+
+				// Delete all instances explicitly so that GC does not block CRD deletion.
+				// metav1.NamespaceAll ("") works for both namespaced and cluster-scoped resources.
+				instances, listErr := dynClient.Resource(gvr).Namespace(metav1.NamespaceAll).List(ctx, metav1.ListOptions{})
+				if listErr != nil {
+					if !errors.IsNotFound(listErr) {
+						klog.Warningf("Failed to list instances of %s on cluster %s: %v", crd.Name, cluster.Name, listErr)
+					}
+				} else if instances != nil {
+					for i := range instances.Items {
+						inst := &instances.Items[i]
+						klog.InfoS("Deleting CRD instance", "crd", crd.Name, "instance", inst.GetName(), "cluster", cluster.Name)
+						delErr := dynClient.Resource(gvr).Namespace(inst.GetNamespace()).Delete(ctx, inst.GetName(), metav1.DeleteOptions{})
+						if delErr != nil && !errors.IsNotFound(delErr) {
+							klog.Warningf("Failed to delete %s/%s on cluster %s: %v", crd.Name, inst.GetName(), cluster.Name, delErr)
+						}
 					}
 				}
 			}
@@ -73,19 +93,28 @@ func DeleteMonitoringCRDs(ctx context.Context, clusters []Cluster) error {
 			}
 		}
 
-		// Wait for all monitoring.rhobs CRDs to be removed.
-		err = wait.PollUntilContextTimeout(ctx, 5*time.Second, 3*time.Minute, true, func(pollCtx context.Context) (bool, error) {
-			remaining, listErr := apiExtensionsClient.ApiextensionsV1().CustomResourceDefinitions().List(pollCtx, metav1.ListOptions{})
-			if listErr != nil {
-				klog.Warningf("Error listing CRDs on cluster %s: %v", cluster.Name, listErr)
-				return false, nil
-			}
-			for _, crd := range remaining.Items {
-				if crd.Spec.Group == "monitoring.rhobs" {
+		if len(crdsToDelete) == 0 {
+			continue
+		}
+
+		// Wait for all deleted monitoring.rhobs CRDs to be removed using targeted Get calls.
+		err = wait.PollUntilContextTimeout(ctx, 5*time.Second, 3*time.Minute, true, func(_ context.Context) (bool, error) {
+			for crdName := range crdsToDelete {
+				reqCtx, reqCancel := context.WithTimeout(context.Background(), 10*time.Second)
+				_, getErr := apiExtensionsClient.ApiextensionsV1().CustomResourceDefinitions().Get(reqCtx, crdName, metav1.GetOptions{})
+				reqCancel()
+
+				if getErr == nil {
 					return false, nil
 				}
+				if !errors.IsNotFound(getErr) {
+					klog.Warningf("Error checking CRD %s on cluster %s: %v", crdName, cluster.Name, getErr)
+					return false, nil
+				}
+				// The CRD is deleted, remove it so we don't query it again on future iterations
+				delete(crdsToDelete, crdName)
 			}
-			return true, nil
+			return len(crdsToDelete) == 0, nil
 		})
 		if err != nil {
 			return fmt.Errorf("timed out waiting for monitoring.rhobs CRDs to be deleted on cluster %s: %w", cluster.Name, err)
