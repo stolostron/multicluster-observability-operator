@@ -6,8 +6,11 @@ package tests
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"regexp"
 	"slices"
+	"strings"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -257,6 +260,12 @@ var _ = Describe("RHACM4K-55205: Enable and teardown namespace right-sizing reco
 		)
 	})
 
+	It("Should have cpu_profile and memory_profile variables in the namespace Grafana dashboard", func() {
+		Eventually(func() error {
+			return validateDashboardProfileVars(dynClient, "grafana-dashboard-acm-right-sizing-namespaces")
+		}, 2*time.Minute, 10*time.Second).Should(Succeed())
+	})
+
 	AfterAll(func() {
 		By("Disabling namespace right-sizing recommendation and cleaning up resources")
 
@@ -478,6 +487,22 @@ var _ = Describe("RHACM4K-58751: Enable and teardown virtualization right-sizing
 		}, 2*time.Minute, 10*time.Second).Should(Succeed(),
 			"Expected virtualization dashboard ConfigMaps to exist in namespace 'open-cluster-management-observability'",
 		)
+	})
+
+	It("Should have cpu_profile and memory_profile variables in all virtualization Grafana dashboards", func() {
+		dashboardCMs := []string{
+			"grafana-dashboard-acm-right-sizing-virt-main",
+			"grafana-dashboard-acm-right-sizing-virt-overestimation",
+			"grafana-dashboard-acm-right-sizing-virt-underestimation",
+		}
+		Eventually(func() error {
+			for _, name := range dashboardCMs {
+				if err := validateDashboardProfileVars(dynClient, name); err != nil {
+					return fmt.Errorf("dashboard %s: %w", name, err)
+				}
+			}
+			return nil
+		}, 2*time.Minute, 10*time.Second).Should(Succeed())
 	})
 
 	AfterAll(func() {
@@ -770,3 +795,67 @@ var _ = Describe("Always-MCOA right-sizing: ADC reflects CR spec state (rightsiz
 		}, 2*time.Minute, 10*time.Second).Should(Succeed())
 	})
 })
+
+// staleGrafanaProfileRef matches leftover Grafana interpolations of the old
+// "profile" variable ($profile or ${profile}) without matching $cpu_profile /
+// $memory_profile.
+var staleGrafanaProfileRef = regexp.MustCompile(`\$\{profile(?::[^}]*)?\}|\$profile([^a-zA-Z0-9_]|$)`)
+
+// validateDashboardProfileVars fetches a Grafana dashboard ConfigMap and verifies that
+// the embedded JSON contains cpu_profile and memory_profile template variables,
+// with no stale $profile or ${profile} references.
+func validateDashboardProfileVars(dynClient dynamic.Interface, cmName string) error {
+	configMapGVR := schema.GroupVersionResource{Group: "", Version: "v1", Resource: "configmaps"}
+	cm, err := dynClient.Resource(configMapGVR).
+		Namespace("open-cluster-management-observability").
+		Get(context.TODO(), cmName, metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to get ConfigMap %s: %w", cmName, err)
+	}
+
+	data, found, err := unstructured.NestedStringMap(cm.Object, "data")
+	if err != nil {
+		return fmt.Errorf("read ConfigMap %s data: %w", cmName, err)
+	}
+	if !found {
+		return fmt.Errorf("ConfigMap %s has no data field", cmName)
+	}
+
+	for key, dashJSON := range data {
+		if !strings.HasSuffix(key, ".json") {
+			continue
+		}
+
+		var dashboard struct {
+			Templating struct {
+				List []struct {
+					Name string `json:"name"`
+				} `json:"list"`
+			} `json:"templating"`
+		}
+		if err := json.Unmarshal([]byte(dashJSON), &dashboard); err != nil {
+			return fmt.Errorf("failed to parse dashboard JSON in %s/%s: %w", cmName, key, err)
+		}
+
+		varNames := make(map[string]bool)
+		for _, v := range dashboard.Templating.List {
+			varNames[v.Name] = true
+		}
+
+		if !varNames["cpu_profile"] {
+			return fmt.Errorf("dashboard %s/%s missing cpu_profile variable", cmName, key)
+		}
+		if !varNames["memory_profile"] {
+			return fmt.Errorf("dashboard %s/%s missing memory_profile variable", cmName, key)
+		}
+		if varNames["profile"] {
+			return fmt.Errorf("dashboard %s/%s still has stale 'profile' variable (should be split into cpu_profile/memory_profile)", cmName, key)
+		}
+
+		if stale := staleGrafanaProfileRef.FindString(dashJSON); stale != "" {
+			return fmt.Errorf("dashboard %s/%s still references %q in queries", cmName, key, stale)
+		}
+	}
+
+	return nil
+}
