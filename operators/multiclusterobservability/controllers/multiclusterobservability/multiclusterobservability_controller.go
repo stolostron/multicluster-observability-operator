@@ -66,10 +66,11 @@ const (
 	// deprecated one.
 	certFinalizer              = "observability.open-cluster-management.io/cert-cleanup"
 	mcoaCleanupRequeueInterval = 5 * time.Second
-	// lokiOperatorRequeueInterval controls how often we recheck for the LokiStack CRD while
-	// waiting for Loki Operator's OLM install to complete. TODO: replace this polling with an
-	// event-driven trigger (e.g. a dedicated CRD watch) once the approach is finalized.
-	lokiOperatorRequeueInterval = 10 * time.Second
+	// dependencyOperatorRequeueInterval controls how often we recheck for a dependency
+	// operator's CRD (e.g. LokiStack, cert-manager's Certificate) while waiting for its OLM
+	// install to complete. TODO: replace this polling with an event-driven trigger (e.g. a
+	// dedicated CRD watch) once the approach is finalized.
+	dependencyOperatorRequeueInterval = 10 * time.Second
 )
 
 const (
@@ -267,15 +268,16 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	}
 
 	// MCOA's platform log collection capability relies on Loki Operator's LokiStack CRD as the
-	// default log store. Only install Loki Operator ourselves when MCOA is enabled and that
-	// capability is enabled; otherwise leave any existing/manual Loki Operator install alone.
+	// default log store, and on cert-manager's Certificate/Issuer/ClusterIssuer CRDs to issue
+	// the mTLS certs used for log collection/storage. Only install these ourselves when MCOA is
+	// enabled and that capability is enabled; otherwise leave any existing/manual install alone.
 	// (platformLogsEnabled already implies MCOAEnabled, but we check both explicitly for clarity.)
 	//
-	// If the CRD isn't present yet, requeue immediately rather than rendering/deploying anything
-	// else this pass, and keep requeuing every reconcile until it appears (OLM's install of Loki
-	// Operator is asynchronous and can take a while). This is deliberately simple polling for
-	// now, rather than an event-driven trigger, to keep the change safe/easy to reason about;
-	// can be optimized later.
+	// If a CRD isn't present yet, requeue immediately rather than rendering/deploying anything
+	// else this pass, and keep requeuing every reconcile until it appears (OLM installs are
+	// asynchronous and can take a while). This is deliberately simple polling for now, rather
+	// than an event-driven trigger, to keep the change safe/easy to reason about; can be
+	// optimized later.
 	platformLogsEnabled := instance.Spec.Capabilities != nil &&
 		instance.Spec.Capabilities.Platform != nil &&
 		instance.Spec.Capabilities.Platform.Logs.Collection.Enabled
@@ -290,7 +292,20 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 			if err := dependencies.EnsureLokiOperatorInstalled(ctx, r.Client); err != nil {
 				return ctrl.Result{}, fmt.Errorf("failed to install Loki Operator: %w", err)
 			}
-			return ctrl.Result{RequeueAfter: lokiOperatorRequeueInterval}, nil
+			return ctrl.Result{RequeueAfter: dependencyOperatorRequeueInterval}, nil
+		}
+
+		certManagerCRD := &apiextensionsv1.CustomResourceDefinition{}
+		err = r.Client.Get(ctx, types.NamespacedName{Name: config.CertManagerCertificateCRDName}, certManagerCRD)
+		if err != nil && !apierrors.IsNotFound(err) {
+			return ctrl.Result{}, fmt.Errorf("failed to check for cert-manager Certificate CRD %s: %w", config.CertManagerCertificateCRDName, err)
+		}
+		if apierrors.IsNotFound(err) {
+			reqLogger.Info("cert-manager Certificate CRD not found, installing cert-manager Operator", "crd", config.CertManagerCertificateCRDName)
+			if err := dependencies.EnsureCertManagerOperatorInstalled(ctx, r.Client); err != nil {
+				return ctrl.Result{}, fmt.Errorf("failed to install cert-manager Operator: %w", err)
+			}
+			return ctrl.Result{RequeueAfter: dependencyOperatorRequeueInterval}, nil
 		}
 	}
 
