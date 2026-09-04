@@ -72,6 +72,9 @@
     - apiGroups: ["observability.openshift.io"]
       resources: ["clusterlogforwarders"]
       verbs: ["get", "list", "watch"]
+    - apiGroups: ["loki.grafana.com"]
+      resources: ["lokistacks"]
+      verbs: ["get", "list", "watch"]
     # Role for addon to perform opentelemetry specific actions
     - apiGroups: ["opentelemetry.io"]
       resources: ["opentelemetrycollectors", "instrumentations"]
