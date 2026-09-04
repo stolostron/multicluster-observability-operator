@@ -85,6 +85,8 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 			// Wait for the MCOA manager to go away so endpoint-operator CRD self-heal
 			// is less likely to race with the explicit CRD cleanup below.
 			utils.CheckDeploymentAvailability(testOptions.HubCluster, mcoaManagerDeploymentName, utils.MCO_NAMESPACE, false)
+			utils.CheckClusterManagementAddonDeleted(testOptions, utils.MCOA_CLUSTER_MANAGEMENT_ADDON_NAME)
+			utils.CheckManagedClusterAddonDeleted(testOptions, utils.MCOA_CLUSTER_MANAGEMENT_ADDON_NAME)
 		})
 		By("Deleting COO subscription if it exists and CRDs", func() {
 			Expect(utils.DeleteCOOSubscription(accessibleOCPClusters)).NotTo(HaveOccurred())
