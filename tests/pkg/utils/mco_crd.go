@@ -57,8 +57,10 @@ func DeleteMonitoringCRDs(opt TestOptions, clusters []Cluster) error {
 				}
 				// Endpoint operator CRD self-heal (PR #2566) recreates OBO CRDs while the
 				// operator pod is still running. That is expected on the hub / local-cluster
-				// and must not fail e2e setup/teardown.
-				if crd.Labels[mcoaEndpointManagedByLabelKey] == mcoaEndpointManagedByLabelValue {
+				// and must not fail e2e setup/teardown. Only accept a fully restored CRD
+				// (not one still terminating from the delete we just issued).
+				if crd.DeletionTimestamp == nil &&
+					crd.Labels[mcoaEndpointManagedByLabelKey] == mcoaEndpointManagedByLabelValue {
 					klog.Infof("CRD %s was restored by endpoint operator on cluster %s; treating cleanup as successful", crdName, cluster.Name)
 					return true, nil
 				}
