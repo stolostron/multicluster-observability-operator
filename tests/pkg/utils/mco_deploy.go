@@ -773,6 +773,28 @@ func SetMCOAAllCapabilities(opt TestOptions, platformMetrics, platformAlerts, us
 	})
 }
 
+// ResetMCOACapabilities completely removes the spec.capabilities block from the MCO CR,
+// ensuring that other capabilities (such as analytics/right-sizing, logs, or traces)
+// do not linger and keep MCOA or the addon manager alive.
+func ResetMCOACapabilities(opt TestOptions) error {
+	clientDynamic := NewKubeClientDynamic(
+		opt.HubCluster.ClusterServerURL,
+		opt.KubeConfig,
+		opt.HubCluster.KubeContext)
+
+	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		mco, getErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+		if getErr != nil {
+			return getErr
+		}
+
+		unstructured.RemoveNestedField(mco.Object, "spec", "capabilities")
+
+		_, updateErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Update(context.TODO(), mco, metav1.UpdateOptions{})
+		return updateErr
+	})
+}
+
 func SetNetworkPoliciesEnabled(opt TestOptions, enabled bool) error {
 	clientDynamic := NewKubeClientDynamic(
 		opt.HubCluster.ClusterServerURL,
