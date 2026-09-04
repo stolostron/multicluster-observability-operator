@@ -773,9 +773,10 @@ func SetMCOAAllCapabilities(opt TestOptions, platformMetrics, platformAlerts, us
 	})
 }
 
-// ResetMCOACapabilities completely removes the spec.capabilities block from the MCO CR,
-// ensuring that other capabilities (such as analytics/right-sizing, logs, or traces)
-// do not linger and keep MCOA or the addon manager alive.
+// ResetMCOACapabilities explicitly disables all MCOA capabilities (metrics, alerts,
+// right-sizing/analytics, logs, and traces) in the MCO CR.
+// Setting right-sizing flags to false rather than removing them prevents
+// the analytics controller from re-defaulting them to true (fresh-install behavior).
 func ResetMCOACapabilities(opt TestOptions) error {
 	clientDynamic := NewKubeClientDynamic(
 		opt.HubCluster.ClusterServerURL,
@@ -788,7 +789,36 @@ func ResetMCOACapabilities(opt TestOptions) error {
 			return getErr
 		}
 
-		unstructured.RemoveNestedField(mco.Object, "spec", "capabilities")
+		if err := setRSEnabled(mco, false); err != nil {
+			return err
+		}
+		if err := unstructured.SetNestedField(mco.Object, false, "spec", "capabilities", "platform", "metrics", "default", "enabled"); err != nil {
+			return err
+		}
+		if err := unstructured.SetNestedField(mco.Object, false, "spec", "capabilities", "platform", "metrics", "alerts", "enabled"); err != nil {
+			return err
+		}
+		if err := unstructured.SetNestedField(mco.Object, false, "spec", "capabilities", "platform", "logs", "collection", "enabled"); err != nil {
+			return err
+		}
+		if err := unstructured.SetNestedField(mco.Object, false, "spec", "capabilities", "platform", "analytics", "incidentDetection", "enabled"); err != nil {
+			return err
+		}
+		if err := unstructured.SetNestedField(mco.Object, false, "spec", "capabilities", "userWorkloads", "metrics", "default", "enabled"); err != nil {
+			return err
+		}
+		if err := unstructured.SetNestedField(mco.Object, false, "spec", "capabilities", "userWorkloads", "metrics", "alerts", "enabled"); err != nil {
+			return err
+		}
+		if err := unstructured.SetNestedField(mco.Object, false, "spec", "capabilities", "userWorkloads", "traces", "collection", "collector", "enabled"); err != nil {
+			return err
+		}
+		if err := unstructured.SetNestedField(mco.Object, false, "spec", "capabilities", "userWorkloads", "traces", "collection", "instrumentation", "enabled"); err != nil {
+			return err
+		}
+		if err := unstructured.SetNestedField(mco.Object, false, "spec", "capabilities", "userWorkloads", "logs", "collection", "clusterLogForwarder", "enabled"); err != nil {
+			return err
+		}
 
 		_, updateErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Update(context.TODO(), mco, metav1.UpdateOptions{})
 		return updateErr

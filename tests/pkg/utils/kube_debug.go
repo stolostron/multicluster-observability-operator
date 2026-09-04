@@ -580,6 +580,7 @@ func printManifestWorks(client dynamic.Interface) {
 
 		if isLegacy || isMCOA {
 			obj.SetManagedFields(nil)
+			unstructured.RemoveNestedField(obj.Object, "spec", "workload")
 			filtered = append(filtered, obj)
 		}
 	}

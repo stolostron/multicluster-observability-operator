@@ -83,6 +83,11 @@ func DeleteMonitoringCRDs(ctx context.Context, clusters []Cluster) error {
 						if delErr != nil && !errors.IsNotFound(delErr) {
 							klog.Warningf("Failed to delete %s/%s on cluster %s: %v", crd.Name, inst.GetName(), cluster.Name, delErr)
 						}
+						// Clear finalizers if present so stuck instances don't block CRD deletion.
+						if len(inst.GetFinalizers()) > 0 {
+							inst.SetFinalizers(nil)
+							_, _ = dynClient.Resource(gvr).Namespace(inst.GetNamespace()).Update(ctx, inst, metav1.UpdateOptions{})
+						}
 					}
 				}
 			}
@@ -105,19 +110,21 @@ func DeleteMonitoringCRDs(ctx context.Context, clusters []Cluster) error {
 				reqCancel()
 
 				if getErr == nil {
-					return false, nil
+					continue
 				}
-				if !errors.IsNotFound(getErr) {
-					klog.Warningf("Error checking CRD %s on cluster %s: %v", crdName, cluster.Name, getErr)
-					return false, nil
+				if errors.IsNotFound(getErr) {
+					// The CRD is deleted, remove it so we don't query it again on future iterations
+					delete(crdsToDelete, crdName)
+					continue
 				}
-				// The CRD is deleted, remove it so we don't query it again on future iterations
-				delete(crdsToDelete, crdName)
+				klog.Warningf("Error checking CRD %s on cluster %s: %v", crdName, cluster.Name, getErr)
 			}
 			return len(crdsToDelete) == 0, nil
 		})
 		if err != nil {
-			return fmt.Errorf("timed out waiting for monitoring.rhobs CRDs to be deleted on cluster %s: %w", cluster.Name, err)
+			remaining := slices.Collect(maps.Keys(crdsToDelete))
+			slices.Sort(remaining)
+			return fmt.Errorf("timed out waiting for monitoring.rhobs CRDs %v to be deleted on cluster %s: %w", remaining, cluster.Name, err)
 		}
 	}
 
