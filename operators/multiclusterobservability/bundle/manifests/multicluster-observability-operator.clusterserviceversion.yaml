@@ -49,7 +49,7 @@ metadata:
         }
       ]
     capabilities: Basic Install
-    createdAt: "2026-08-25T16:00:30Z"
+    createdAt: "2026-09-02T13:10:40Z"
     operators.operatorframework.io/builder: operator-sdk-unknown
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
   name: multicluster-observability-operator.v0.1.0
@@ -515,6 +515,16 @@ spec:
           - list
           - watch
           - delete
+        - apiGroups:
+          - operators.coreos.com
+          resources:
+          - operatorgroups
+          - subscriptions
+          verbs:
+          - create
+          - get
+          - list
+          - watch
         serviceAccountName: multicluster-observability-operator
       deployments:
       - label:
