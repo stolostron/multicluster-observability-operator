@@ -266,6 +266,28 @@ const (
 	LokiStackCRDName = "lokistacks.loki.grafana.com"
 )
 
+const (
+	// CertManagerOperatorNamespace is the namespace the cert-manager Operator for Red Hat
+	// OpenShift is installed into via OLM. It's a global (cluster-scoped) operator, so it
+	// follows the same convention as other Red Hat cluster-scoped operators.
+	CertManagerOperatorNamespace = "cert-manager-operator"
+
+	// CertManagerOperatorPackageName is the OLM package/Subscription name for the cert-manager
+	// Operator for Red Hat OpenShift.
+	CertManagerOperatorPackageName = "openshift-cert-manager-operator"
+
+	// CertManagerOperatorCatalogSource and CertManagerOperatorCatalogSourceNamespace point at
+	// the default Red Hat operator catalog.
+	CertManagerOperatorCatalogSource          = "redhat-operators"
+	CertManagerOperatorCatalogSourceNamespace = "openshift-marketplace"
+
+	// CertManagerCertificateCRDName is one of the CustomResourceDefinitions the cert-manager
+	// Operator registers once installed. MCO waits for this CRD to exist before assuming
+	// cert-manager is ready. MCOA's logging default stack uses cert-manager Certificate/
+	// Issuer/ClusterIssuer CRs to issue mTLS certs for log collection/storage.
+	CertManagerCertificateCRDName = "certificates.cert-manager.io"
+)
+
 var (
 	ErrMultipleMCOInstances = errors.New("more than one MultiClusterObservability CR exists")
 	ErrMCONotFound          = errors.New("MultiClusterObservability CR not found")
