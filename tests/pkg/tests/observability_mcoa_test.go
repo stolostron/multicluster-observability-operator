@@ -46,7 +46,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 	var accessibleOCPClusters []utils.Cluster
 	// var ocpClustersWithHub []utils.Cluster
 
-	BeforeAll(func() {
+	BeforeAll(func(ctx context.Context) {
 		By("Getting available managed clusters")
 		var err error
 		managedClusters, err = utils.GetAvailableManagedClustersAsClusters(testOptions)
@@ -80,12 +80,15 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 		By(fmt.Sprintf("Running tests against the following OCP managed clusters with API access: %v", accessibleOCPClusterNames))
 
 		By("Disabling MCOA", func() {
-			Expect(utils.SetMCOACapabilities(testOptions, false, false)).NotTo(HaveOccurred())
+			Expect(utils.ResetMCOACapabilities(testOptions)).NotTo(HaveOccurred())
 			utils.CheckStatefulSetAvailabilityOnClusters(managedClustersWithHub, platformPrometheusAgentStatefulSetName, utils.MCO_AGENT_ADDON_NAMESPACE, false)
+			utils.CheckDeploymentAvailability(testOptions.HubCluster, mcoaManagerDeploymentName, utils.MCO_NAMESPACE, false)
+			utils.CheckClusterManagementAddonDeleted(testOptions, utils.MCOA_CLUSTER_MANAGEMENT_ADDON_NAME)
+			utils.CheckManagedClusterAddonDeleted(testOptions, utils.MCOA_CLUSTER_MANAGEMENT_ADDON_NAME)
 		})
 		By("Deleting COO subscription if it exists and CRDs", func() {
-			utils.DeleteCOOSubscription(accessibleOCPClusters)
-			Expect(utils.DeleteMonitoringCRDs(testOptions, accessibleOCPClusters)).NotTo(HaveOccurred())
+			Expect(utils.DeleteCOOSubscription(accessibleOCPClusters)).NotTo(HaveOccurred())
+			Expect(utils.DeleteMonitoringCRDs(ctx, accessibleOCPClusters)).NotTo(HaveOccurred())
 		})
 	})
 
@@ -444,7 +447,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 	// 		})
 	// 		By("Deleting COO subscription", func() {
 	// 			utils.DeleteCOOSubscription(onlyTheHub)
-	// 			Expect(utils.DeleteMonitoringCRDs(testOptions, onlyTheHub)).NotTo(HaveOccurred())
+	// 			Expect(utils.DeleteMonitoringCRDs(context.Background(), onlyTheHub)).NotTo(HaveOccurred())
 	// 		})
 	// 	})
 	// })
@@ -727,7 +730,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 				// 	Expect(utils.CreateCOOSubscription(onlyTheHub)).NotTo(HaveOccurred())
 				// 	DeferCleanup(func(ctx SpecContext) {
 				// 		utils.DeleteCOOSubscription(onlyTheHub)
-				// 		Expect(utils.DeleteMonitoringCRDs(testOptions, onlyTheHub)).NotTo(HaveOccurred())
+				// 		Expect(utils.DeleteMonitoringCRDs(ctx, onlyTheHub)).NotTo(HaveOccurred())
 				// 	})
 				// 	// Wait for COO to be running
 				// 	utils.CheckCOODeployment(onlyTheHub)
@@ -1163,7 +1166,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 
 	AfterAll(func() {
 		By("Disabling MCOA", func() {
-			Expect(utils.SetMCOACapabilities(testOptions, false, false)).NotTo(HaveOccurred())
+			Expect(utils.ResetMCOACapabilities(testOptions)).NotTo(HaveOccurred())
 			utils.CheckStatefulSetAvailabilityOnClusters(managedClustersWithHub, platformPrometheusAgentStatefulSetName, utils.MCO_AGENT_ADDON_NAMESPACE, false)
 			utils.CheckDeploymentAvailability(testOptions.HubCluster, mcoaManagerDeploymentName, utils.MCO_NAMESPACE, false)
 
