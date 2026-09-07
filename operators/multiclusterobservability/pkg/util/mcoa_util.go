@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"slices"
 
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
@@ -60,13 +61,7 @@ func HasMCOAManifestWorks(ctx context.Context, c client.Client) ([]string, error
 		return nil, fmt.Errorf("failed to list ManagedClusters: %w", err)
 	}
 
-	ignoredNamespaces := make(map[string]struct{})
-	for _, mc := range clusterList.Items {
-		isAvailable := meta.IsStatusConditionTrue(mc.Status.Conditions, clusterv1.ManagedClusterConditionAvailable)
-		if !isAvailable {
-			ignoredNamespaces[mc.Name] = struct{}{}
-		}
-	}
+	ignoredNamespaces := getUnavailableClusterNamespaces(clusterList)
 
 	workList := &workv1.ManifestWorkList{}
 	opts := []client.ListOption{
@@ -92,10 +87,7 @@ func HasMCOAManifestWorks(ctx context.Context, c client.Client) ([]string, error
 		return nil, nil
 	}
 
-	blockingNamespaces := make([]string, 0, len(blockingMap))
-	for ns := range blockingMap {
-		blockingNamespaces = append(blockingNamespaces, ns)
-	}
+	blockingNamespaces := slices.Collect(maps.Keys(blockingMap))
 	slices.Sort(blockingNamespaces)
 
 	return blockingNamespaces, nil
@@ -115,4 +107,79 @@ func containsPrometheusAgent(work workv1.ManifestWork) bool {
 		}
 	}
 	return false
+}
+
+// getUnavailableClusterNamespaces returns a set of cluster namespaces where the ManagedCluster
+// is currently not available/connected.
+func getUnavailableClusterNamespaces(clusterList *clusterv1.ManagedClusterList) map[string]struct{} {
+	ignored := make(map[string]struct{})
+	for _, mc := range clusterList.Items {
+		isAvailable := meta.IsStatusConditionTrue(mc.Status.Conditions, clusterv1.ManagedClusterConditionAvailable)
+		if !isAvailable {
+			ignored[mc.Name] = struct{}{}
+		}
+	}
+	return ignored
+}
+
+// HasRemainingMCOAResources checks for ANY remaining MCOA ManifestWorks or ManagedClusterAddOns
+// on available ManagedClusters.
+//
+// Unlike HasMCOAManifestWorks (which only checks for PrometheusAgent to coordinate legacy
+// metrics collector transitions), this function checks for ANY remaining MCOA ManifestWorks
+// or ManagedClusterAddOns. It is used during MCOA teardown to ensure the MCOA manager
+// deployment is not undeployed prematurely while spokes are still cleaning up resources.
+//
+// Resources on unavailable ManagedClusters are ignored to prevent disconnected spokes
+// from hanging the cleanup process.
+func HasRemainingMCOAResources(ctx context.Context, c client.Client) ([]string, error) {
+	clusterList := &clusterv1.ManagedClusterList{}
+	if err := c.List(ctx, clusterList); err != nil {
+		return nil, fmt.Errorf("failed to list ManagedClusters: %w", err)
+	}
+
+	ignoredNamespaces := getUnavailableClusterNamespaces(clusterList)
+
+	blockingMap := make(map[string]struct{})
+
+	workList := &workv1.ManifestWorkList{}
+	opts := []client.ListOption{
+		client.MatchingLabels{
+			addonv1beta1.AddonLabelKey: config.MultiClusterObservabilityAddon,
+		},
+	}
+	if err := c.List(ctx, workList, opts...); err != nil {
+		return nil, fmt.Errorf("failed to list ManifestWorks: %w", err)
+	}
+
+	for _, work := range workList.Items {
+		if _, ignored := ignoredNamespaces[work.Namespace]; ignored {
+			continue
+		}
+		blockingMap[work.Namespace] = struct{}{}
+	}
+
+	mcaList := &addonv1beta1.ManagedClusterAddOnList{}
+	if err := c.List(ctx, mcaList); err != nil {
+		return nil, fmt.Errorf("failed to list ManagedClusterAddOns: %w", err)
+	}
+
+	for _, mca := range mcaList.Items {
+		if mca.Name != config.MultiClusterObservabilityAddon {
+			continue
+		}
+		if _, ignored := ignoredNamespaces[mca.Namespace]; ignored {
+			continue
+		}
+		blockingMap[mca.Namespace] = struct{}{}
+	}
+
+	if len(blockingMap) == 0 {
+		return nil, nil
+	}
+
+	blockingNamespaces := slices.Collect(maps.Keys(blockingMap))
+	slices.Sort(blockingNamespaces)
+
+	return blockingNamespaces, nil
 }
