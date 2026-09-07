@@ -92,7 +92,7 @@ data:
                 "uid": "${datasource}"
               },
               "exemplar": true,
-              "expr": "sum(\n(floor(max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:cpu_request{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"})[$days:])-\nmax_over_time(sum by (name, namespace) (acm_rs_vm:namespace:cpu_recommendation{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"})[$days:])) > 0)\nand on (name, namespace) (max by (name, namespace) (kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=\"$cluster\", namespace=~\"$namespace\"} > 0) > 0)\n)",
+              "expr": "sum(\n(floor(max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:cpu_request{cluster=\"$cluster\", profile=\"$cpu_profile\", namespace=~\"$namespace\"})[$days:])-\nmax_over_time(sum by (name, namespace) (acm_rs_vm:namespace:cpu_recommendation{cluster=\"$cluster\", profile=\"$cpu_profile\", namespace=~\"$namespace\"})[$days:])) > 0)\nand on (name, namespace) (max by (name, namespace) (kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=\"$cluster\", namespace=~\"$namespace\"} > 0) > 0)\n)",
               "format": "table",
               "instant": true,
               "interval": "",
@@ -165,7 +165,7 @@ data:
                 "uid": "${datasource}"
               },
               "exemplar": true,
-              "expr": "sum(\n(floor(max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:cpu_request{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"})[$days:])-\nmax_over_time(sum by (name, namespace) (acm_rs_vm:namespace:cpu_recommendation{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"})[$days:])) < 0) * (-1)\nand on (name, namespace) (max by (name, namespace) (kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=\"$cluster\", namespace=~\"$namespace\"} > 0) > 0)\n)",
+              "expr": "sum(\n(floor(max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:cpu_request{cluster=\"$cluster\", profile=\"$cpu_profile\", namespace=~\"$namespace\"})[$days:])-\nmax_over_time(sum by (name, namespace) (acm_rs_vm:namespace:cpu_recommendation{cluster=\"$cluster\", profile=\"$cpu_profile\", namespace=~\"$namespace\"})[$days:])) < 0) * (-1)\nand on (name, namespace) (max by (name, namespace) (kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=\"$cluster\", namespace=~\"$namespace\"} > 0) > 0)\n)",
               "format": "table",
               "instant": true,
               "interval": "",
@@ -238,7 +238,7 @@ data:
                 "uid": "${datasource}"
               },
               "exemplar": true,
-              "expr": "sum(\n(floor((max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:memory_request{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"})[$days:]) / 1073741824)-\n(max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:memory_recommendation{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"})[$days:]) / 1073741824)) > 0)\nand on (name, namespace) (max by (name, namespace) (kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=\"$cluster\", namespace=~\"$namespace\"} > 0) > 0)\n)",
+              "expr": "sum(\n(floor((max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:memory_request{cluster=\"$cluster\", profile=\"$memory_profile\", namespace=~\"$namespace\"})[$days:]) / 1073741824)-\n(max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:memory_recommendation{cluster=\"$cluster\", profile=\"$memory_profile\", namespace=~\"$namespace\"})[$days:]) / 1073741824)) > 0)\nand on (name, namespace) (max by (name, namespace) (kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=\"$cluster\", namespace=~\"$namespace\"} > 0) > 0)\n)",
               "format": "table",
               "instant": true,
               "interval": "",
@@ -311,7 +311,7 @@ data:
                 "uid": "${datasource}"
               },
               "exemplar": true,
-              "expr": "sum(\n(floor((max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:memory_request{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"})[$days:]) / 1073741824)-\n(max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:memory_recommendation{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"})[$days:]) / 1073741824)) < 0) * (-1)\nand on (name, namespace) (max by (name, namespace) (kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=\"$cluster\", namespace=~\"$namespace\"} > 0) > 0)\n)",
+              "expr": "sum(\n(floor((max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:memory_request{cluster=\"$cluster\", profile=\"$memory_profile\", namespace=~\"$namespace\"})[$days:]) / 1073741824)-\n(max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:memory_recommendation{cluster=\"$cluster\", profile=\"$memory_profile\", namespace=~\"$namespace\"})[$days:]) / 1073741824)) < 0) * (-1)\nand on (name, namespace) (max by (name, namespace) (kubevirt_vm_running_status_last_transition_timestamp_seconds{cluster=\"$cluster\", namespace=~\"$namespace\"} > 0) > 0)\n)",
               "format": "time_series",
               "instant": true,
               "interval": "",
@@ -425,7 +425,7 @@ data:
                       {
                         "targetBlank": false,
                         "title": "Show VM or Pod level details",
-                        "url": "/d/bnqQIPySEProdkhgafkdekgfOver/acm-right-sizing-openshift-virtualization-vm-dashboard-overestimation?${__url_time_range}&var-datasource=$datasource&var-cluster=$cluster&var-namespace=${__data.fields.namespace}&var-vm=${__data.fields.name}&var-days=$days"
+                        "url": "/d/bnqQIPySEProdkhgafkdekgfOver/acm-right-sizing-openshift-virtualization-vm-dashboard-overestimation?${__url_time_range}&var-datasource=$datasource&var-cluster=$cluster&var-namespace=${__data.fields.namespace}&var-vm=${__data.fields.name}&var-days=$days&var-cpu_profile=$cpu_profile&var-memory_profile=$memory_profile"
                       }
                     ]
                   },
@@ -555,7 +555,7 @@ data:
                       {
                         "targetBlank": false,
                         "title": "Show VM or Pod level Details",
-                        "url": "/d/bnqQIPySEProdkhgafkdekgfOver/acm-right-sizing-openshift-virtualization-vm-dashboard-overestimation?${__url_time_range}&var-datasource=$datasource&var-cluster=$cluster&var-namespace=${__data.fields.namespace}&var-vm=${__data.fields.name}&var-days=$days"
+                        "url": "/d/bnqQIPySEProdkhgafkdekgfOver/acm-right-sizing-openshift-virtualization-vm-dashboard-overestimation?${__url_time_range}&var-datasource=$datasource&var-cluster=$cluster&var-namespace=${__data.fields.namespace}&var-vm=${__data.fields.name}&var-days=$days&var-cpu_profile=$cpu_profile&var-memory_profile=$memory_profile"
                       }
                     ]
                   },
@@ -764,7 +764,7 @@ data:
                 "uid": "${datasource}"
               },
               "exemplar": true,
-              "expr": "label_join(\n    (\n        max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:cpu_usage{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"})[$days:]) / max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:cpu_request{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"})[$days:])\n    ) > 0,\n  \"name_namespace\", \"-\", \"name\", \"namespace\"\n)",
+              "expr": "label_join(\n    (\n        max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:cpu_usage{cluster=\"$cluster\", profile=\"$cpu_profile\", namespace=~\"$namespace\"})[$days:]) / max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:cpu_request{cluster=\"$cluster\", profile=\"$cpu_profile\", namespace=~\"$namespace\"})[$days:])\n    ) > 0,\n  \"name_namespace\", \"-\", \"name\", \"namespace\"\n)",
               "format": "table",
               "instant": true,
               "interval": "",
@@ -777,7 +777,7 @@ data:
                 "uid": "${datasource}"
               },
               "exemplar": true,
-              "expr": "label_join(\n    (max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:cpu_usage{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"})[$days:])),\n    \"name_namespace\", \"-\", \"name\", \"namespace\"\n)",
+              "expr": "label_join(\n    (max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:cpu_usage{cluster=\"$cluster\", profile=\"$cpu_profile\", namespace=~\"$namespace\"})[$days:])),\n    \"name_namespace\", \"-\", \"name\", \"namespace\"\n)",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -791,7 +791,7 @@ data:
                 "uid": "${datasource}"
               },
               "exemplar": true,
-              "expr": "label_join(\n    max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:cpu_request{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"})[$days:]),\n    \"name_namespace\", \"-\", \"name\", \"namespace\"\n)",
+              "expr": "label_join(\n    max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:cpu_request{cluster=\"$cluster\", profile=\"$cpu_profile\", namespace=~\"$namespace\"})[$days:]),\n    \"name_namespace\", \"-\", \"name\", \"namespace\"\n)",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -805,7 +805,7 @@ data:
                 "uid": "${datasource}"
               },
               "exemplar": true,
-              "expr": "label_join(\n    ceil(max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:cpu_recommendation{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"})[$days:])),\n    \"name_namespace\", \"-\", \"name\", \"namespace\"\n)",
+              "expr": "label_join(\n    ceil(max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:cpu_recommendation{cluster=\"$cluster\", profile=\"$cpu_profile\", namespace=~\"$namespace\"})[$days:])),\n    \"name_namespace\", \"-\", \"name\", \"namespace\"\n)",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -819,7 +819,7 @@ data:
                 "uid": "${datasource}"
               },
               "exemplar": true,
-              "expr": "label_join(\n  (\n    acm_rs_vm:namespace:cpu_usage{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"} + on(name, namespace) acm_rs_vm:namespace:cpu_request{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"}\n  ),\n  \"name_namespace\", \"-\", \"name\", \"namespace\"\n)",
+              "expr": "label_join(\n  (\n    acm_rs_vm:namespace:cpu_usage{cluster=\"$cluster\", profile=\"$cpu_profile\", namespace=~\"$namespace\"} + on(name, namespace) acm_rs_vm:namespace:cpu_request{cluster=\"$cluster\", profile=\"$cpu_profile\", namespace=~\"$namespace\"}\n  ),\n  \"name_namespace\", \"-\", \"name\", \"namespace\"\n)",
               "format": "table",
               "hide": false,
               "instant": false,
@@ -833,7 +833,7 @@ data:
                 "uid": "${datasource}"
               },
               "exemplar": true,
-              "expr": "label_join(\n    (\n        floor(max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:cpu_request{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"})[$days:])-\n        max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:cpu_recommendation{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"})[$days:]))\n    ),\n    \"name_namespace\", \"-\", \"name\", \"namespace\"\n)",
+              "expr": "label_join(\n    (\n        floor(max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:cpu_request{cluster=\"$cluster\", profile=\"$cpu_profile\", namespace=~\"$namespace\"})[$days:])-\n        max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:cpu_recommendation{cluster=\"$cluster\", profile=\"$cpu_profile\", namespace=~\"$namespace\"})[$days:]))\n    ),\n    \"name_namespace\", \"-\", \"name\", \"namespace\"\n)",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -1045,7 +1045,7 @@ data:
                       {
                         "targetBlank": false,
                         "title": "Show VM or Pod level details",
-                        "url": "/d/bnqQIPySEProdkekgfunderestimated/acm-right-sizing-openshift-virtualization-vm-dashboard-underestimated?${__url_time_range}&var-datasource=$datasource&var-cluster=$cluster&var-namespace=${__data.fields.namespace}&var-vm=${__data.fields.name}&var-days=$days"
+                        "url": "/d/bnqQIPySEProdkekgfunderestimated/acm-right-sizing-openshift-virtualization-vm-dashboard-underestimated?${__url_time_range}&var-datasource=$datasource&var-cluster=$cluster&var-namespace=${__data.fields.namespace}&var-vm=${__data.fields.name}&var-days=$days&var-cpu_profile=$cpu_profile&var-memory_profile=$memory_profile"
                       }
                     ]
                   },
@@ -1175,7 +1175,7 @@ data:
                       {
                         "targetBlank": false,
                         "title": "Shoe VM or Pod level Details",
-                        "url": "/d/bnqQIPySEProdkekgfunderestimated/acm-right-sizing-openshift-virtualization-vm-dashboard-underestimated?${__url_time_range}&var-datasource=$datasource&var-cluster=$cluster&var-namespace=${__data.fields.namespace}&var-vm=${__data.fields.name}&var-days=$days"
+                        "url": "/d/bnqQIPySEProdkekgfunderestimated/acm-right-sizing-openshift-virtualization-vm-dashboard-underestimated?${__url_time_range}&var-datasource=$datasource&var-cluster=$cluster&var-namespace=${__data.fields.namespace}&var-vm=${__data.fields.name}&var-days=$days&var-cpu_profile=$cpu_profile&var-memory_profile=$memory_profile"
                       }
                     ]
                   },
@@ -1381,7 +1381,7 @@ data:
                 "uid": "${datasource}"
               },
               "exemplar": true,
-              "expr": "label_join(\n    (\n        max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:cpu_usage{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"})[$days:]) / max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:cpu_request{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"})[$days:])\n    ) > 0, \n    \"name_namespace\", \"-\", \"name\", \"namespace\"\n)",
+              "expr": "label_join(\n    (\n        max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:cpu_usage{cluster=\"$cluster\", profile=\"$cpu_profile\", namespace=~\"$namespace\"})[$days:]) / max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:cpu_request{cluster=\"$cluster\", profile=\"$cpu_profile\", namespace=~\"$namespace\"})[$days:])\n    ) > 0, \n    \"name_namespace\", \"-\", \"name\", \"namespace\"\n)",
               "format": "table",
               "instant": true,
               "interval": "",
@@ -1394,7 +1394,7 @@ data:
                 "uid": "${datasource}"
               },
               "exemplar": true,
-              "expr": "label_join(\n    max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:cpu_usage{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"})[$days:]), \n    \"name_namespace\", \"-\", \"name\", \"namespace\"\n)",
+              "expr": "label_join(\n    max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:cpu_usage{cluster=\"$cluster\", profile=\"$cpu_profile\", namespace=~\"$namespace\"})[$days:]), \n    \"name_namespace\", \"-\", \"name\", \"namespace\"\n)",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -1408,7 +1408,7 @@ data:
                 "uid": "${datasource}"
               },
               "exemplar": true,
-              "expr": "label_join(\n    max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:cpu_request{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"})[$days:]),\n    \"name_namespace\", \"-\", \"name\", \"namespace\"\n)",
+              "expr": "label_join(\n    max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:cpu_request{cluster=\"$cluster\", profile=\"$cpu_profile\", namespace=~\"$namespace\"})[$days:]),\n    \"name_namespace\", \"-\", \"name\", \"namespace\"\n)",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -1422,7 +1422,7 @@ data:
                 "uid": "${datasource}"
               },
               "exemplar": true,
-              "expr": "label_join(\n    ceil(max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:cpu_recommendation{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"})[$days:])),\n    \"name_namespace\", \"-\", \"name\", \"namespace\"\n)",
+              "expr": "label_join(\n    ceil(max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:cpu_recommendation{cluster=\"$cluster\", profile=\"$cpu_profile\", namespace=~\"$namespace\"})[$days:])),\n    \"name_namespace\", \"-\", \"name\", \"namespace\"\n)",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -1436,7 +1436,7 @@ data:
                 "uid": "${datasource}"
               },
               "exemplar": true,
-              "expr": "label_join(\n  (\n    acm_rs_vm:namespace:cpu_usage{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"} + on(name, namespace) acm_rs_vm:namespace:cpu_request{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"}\n  ),\n  \"name_namespace\", \"-\", \"name\", \"namespace\"\n)",
+              "expr": "label_join(\n  (\n    acm_rs_vm:namespace:cpu_usage{cluster=\"$cluster\", profile=\"$cpu_profile\", namespace=~\"$namespace\"} + on(name, namespace) acm_rs_vm:namespace:cpu_request{cluster=\"$cluster\", profile=\"$cpu_profile\", namespace=~\"$namespace\"}\n  ),\n  \"name_namespace\", \"-\", \"name\", \"namespace\"\n)",
               "format": "table",
               "hide": false,
               "instant": false,
@@ -1450,7 +1450,7 @@ data:
                 "uid": "${datasource}"
               },
               "exemplar": true,
-              "expr": "label_join(\n    (floor(max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:cpu_request{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"})[$days:])- max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:cpu_recommendation{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"})[$days:])) * (-1)),\n    \"name_namespace\", \"-\", \"name\", \"namespace\"\n)",
+              "expr": "label_join(\n    (floor(max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:cpu_request{cluster=\"$cluster\", profile=\"$cpu_profile\", namespace=~\"$namespace\"})[$days:])- max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:cpu_recommendation{cluster=\"$cluster\", profile=\"$cpu_profile\", namespace=~\"$namespace\"})[$days:])) * (-1)),\n    \"name_namespace\", \"-\", \"name\", \"namespace\"\n)",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -1666,7 +1666,7 @@ data:
                       {
                         "targetBlank": false,
                         "title": "Show VM or Pod level Details",
-                        "url": "/d/bnqQIPySEProdkhgafkdekgfOver/acm-right-sizing-openshift-virtualization-vm-dashboard-overestimation?${__url_time_range}&var-datasource=$datasource&var-cluster=$cluster&var-namespace=${__data.fields.namespace}&var-vm=${__data.fields.name}&var-days=$days"
+                        "url": "/d/bnqQIPySEProdkhgafkdekgfOver/acm-right-sizing-openshift-virtualization-vm-dashboard-overestimation?${__url_time_range}&var-datasource=$datasource&var-cluster=$cluster&var-namespace=${__data.fields.namespace}&var-vm=${__data.fields.name}&var-days=$days&var-cpu_profile=$cpu_profile&var-memory_profile=$memory_profile"
                       }
                     ]
                   },
@@ -1796,7 +1796,7 @@ data:
                       {
                         "targetBlank": false,
                         "title": "Show VM or Pod level Details",
-                        "url": "/d/bnqQIPySEProdkhgafkdekgfOver/acm-right-sizing-openshift-virtualization-vm-dashboard-overestimation?${__url_time_range}&var-datasource=$datasource&var-cluster=$cluster&var-namespace=${__data.fields.namespace}&var-vm=${__data.fields.name}&var-days=$days"
+                        "url": "/d/bnqQIPySEProdkhgafkdekgfOver/acm-right-sizing-openshift-virtualization-vm-dashboard-overestimation?${__url_time_range}&var-datasource=$datasource&var-cluster=$cluster&var-namespace=${__data.fields.namespace}&var-vm=${__data.fields.name}&var-days=$days&var-cpu_profile=$cpu_profile&var-memory_profile=$memory_profile"
                       }
                     ]
                   }
@@ -1921,7 +1921,7 @@ data:
                 "uid": "${datasource}"
               },
               "exemplar": true,
-              "expr": "label_join(\n    max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:memory_usage{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"})[$days:]) / max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:memory_request{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"})[$days:]),\n    \"name_namespace\", \"-\", \"name\", \"namespace\"\n)",
+              "expr": "label_join(\n    max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:memory_usage{cluster=\"$cluster\", profile=\"$memory_profile\", namespace=~\"$namespace\"})[$days:]) / max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:memory_request{cluster=\"$cluster\", profile=\"$memory_profile\", namespace=~\"$namespace\"})[$days:]),\n    \"name_namespace\", \"-\", \"name\", \"namespace\"\n)",
               "format": "table",
               "instant": true,
               "interval": "",
@@ -1934,7 +1934,7 @@ data:
                 "uid": "${datasource}"
               },
               "exemplar": true,
-              "expr": "label_join(\n    (max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:memory_usage{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"})[$days:]) /1073741824),\n    \"name_namespace\", \"-\", \"name\", \"namespace\"\n)",
+              "expr": "label_join(\n    (max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:memory_usage{cluster=\"$cluster\", profile=\"$memory_profile\", namespace=~\"$namespace\"})[$days:]) /1073741824),\n    \"name_namespace\", \"-\", \"name\", \"namespace\"\n)",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -1948,7 +1948,7 @@ data:
                 "uid": "${datasource}"
               },
               "exemplar": true,
-              "expr": "label_join(\n    (max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:memory_request{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"})[$days:])/1073741824),\n    \"name_namespace\", \"-\", \"name\", \"namespace\"\n)",
+              "expr": "label_join(\n    (max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:memory_request{cluster=\"$cluster\", profile=\"$memory_profile\", namespace=~\"$namespace\"})[$days:])/1073741824),\n    \"name_namespace\", \"-\", \"name\", \"namespace\"\n)",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -1962,7 +1962,7 @@ data:
                 "uid": "${datasource}"
               },
               "exemplar": true,
-              "expr": "label_join(\n    (ceil(max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:memory_recommendation{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"})[$days:])/ 1073741824)),\n    \"name_namespace\", \"-\", \"name\", \"namespace\"\n)",
+              "expr": "label_join(\n    (ceil(max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:memory_recommendation{cluster=\"$cluster\", profile=\"$memory_profile\", namespace=~\"$namespace\"})[$days:])/ 1073741824)),\n    \"name_namespace\", \"-\", \"name\", \"namespace\"\n)",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -1976,7 +1976,7 @@ data:
                 "uid": "${datasource}"
               },
               "exemplar": true,
-              "expr": "label_join(\n  (\n    acm_rs_vm:namespace:memory_usage{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"} + on(name, namespace) acm_rs_vm:namespace:memory_request{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"}\n  ),\n  \"name_namespace\", \"-\", \"name\", \"namespace\"\n)",
+              "expr": "label_join(\n  (\n    acm_rs_vm:namespace:memory_usage{cluster=\"$cluster\", profile=\"$memory_profile\", namespace=~\"$namespace\"} + on(name, namespace) acm_rs_vm:namespace:memory_request{cluster=\"$cluster\", profile=\"$memory_profile\", namespace=~\"$namespace\"}\n  ),\n  \"name_namespace\", \"-\", \"name\", \"namespace\"\n)",
               "format": "table",
               "hide": false,
               "instant": false,
@@ -1990,7 +1990,7 @@ data:
                 "uid": "${datasource}"
               },
               "exemplar": true,
-              "expr": "label_join(\n    (floor((max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:memory_request{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"})[$days:])) / 1073741824 - (max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:memory_recommendation{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"})[$days:])) / 1073741824)),\n    \"name_namespace\", \"-\", \"name\", \"namespace\"\n)",
+              "expr": "label_join(\n    (floor((max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:memory_request{cluster=\"$cluster\", profile=\"$memory_profile\", namespace=~\"$namespace\"})[$days:])) / 1073741824 - (max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:memory_recommendation{cluster=\"$cluster\", profile=\"$memory_profile\", namespace=~\"$namespace\"})[$days:])) / 1073741824)),\n    \"name_namespace\", \"-\", \"name\", \"namespace\"\n)",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -2192,7 +2192,7 @@ data:
                       {
                         "targetBlank": false,
                         "title": "Show VM or Pod level Details",
-                        "url": "/d/bnqQIPySEProdkekgfunderestimated/acm-right-sizing-openshift-virtualization-vm-dashboard-underestimated?${__url_time_range}&var-datasource=$datasource&var-cluster=$cluster&var-namespace=${__data.fields.namespace}&var-vm=${__data.fields.name}&var-days=$days"
+                        "url": "/d/bnqQIPySEProdkekgfunderestimated/acm-right-sizing-openshift-virtualization-vm-dashboard-underestimated?${__url_time_range}&var-datasource=$datasource&var-cluster=$cluster&var-namespace=${__data.fields.namespace}&var-vm=${__data.fields.name}&var-days=$days&var-cpu_profile=$cpu_profile&var-memory_profile=$memory_profile"
                       }
                     ]
                   },
@@ -2322,7 +2322,7 @@ data:
                       {
                         "targetBlank": false,
                         "title": "Show VM or Pod level Details",
-                        "url": "/d/bnqQIPySEProdkekgfunderestimated/acm-right-sizing-openshift-virtualization-vm-dashboard-underestimated?${__url_time_range}&var-datasource=$datasource&var-cluster=$cluster&var-namespace=${__data.fields.namespace}&var-vm=${__data.fields.name}&var-days=$days"
+                        "url": "/d/bnqQIPySEProdkekgfunderestimated/acm-right-sizing-openshift-virtualization-vm-dashboard-underestimated?${__url_time_range}&var-datasource=$datasource&var-cluster=$cluster&var-namespace=${__data.fields.namespace}&var-vm=${__data.fields.name}&var-days=$days&var-cpu_profile=$cpu_profile&var-memory_profile=$memory_profile"
                       }
                     ]
                   }
@@ -2459,7 +2459,7 @@ data:
                 "uid": "${datasource}"
               },
               "exemplar": true,
-              "expr": "label_join(\n    (max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:memory_usage{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"})[$days:]) / max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:memory_request{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"})[$days:])),\n    \"name_namespace\", \"-\", \"name\", \"namespace\"\n)",
+              "expr": "label_join(\n    (max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:memory_usage{cluster=\"$cluster\", profile=\"$memory_profile\", namespace=~\"$namespace\"})[$days:]) / max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:memory_request{cluster=\"$cluster\", profile=\"$memory_profile\", namespace=~\"$namespace\"})[$days:])),\n    \"name_namespace\", \"-\", \"name\", \"namespace\"\n)",
               "format": "table",
               "instant": true,
               "interval": "",
@@ -2472,7 +2472,7 @@ data:
                 "uid": "${datasource}"
               },
               "exemplar": true,
-              "expr": "label_join(\n    (max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:memory_usage{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"})[$days:])/ 1073741824),\n    \"name_namespace\", \"-\", \"name\", \"namespace\"\n)",
+              "expr": "label_join(\n    (max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:memory_usage{cluster=\"$cluster\", profile=\"$memory_profile\", namespace=~\"$namespace\"})[$days:])/ 1073741824),\n    \"name_namespace\", \"-\", \"name\", \"namespace\"\n)",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -2486,7 +2486,7 @@ data:
                 "uid": "${datasource}"
               },
               "exemplar": true,
-              "expr": "label_join(\n    (max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:memory_request{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"})[$days:])/ 1073741824),\n    \"name_namespace\", \"-\", \"name\", \"namespace\"\n)",
+              "expr": "label_join(\n    (max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:memory_request{cluster=\"$cluster\", profile=\"$memory_profile\", namespace=~\"$namespace\"})[$days:])/ 1073741824),\n    \"name_namespace\", \"-\", \"name\", \"namespace\"\n)",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -2500,7 +2500,7 @@ data:
                 "uid": "${datasource}"
               },
               "exemplar": true,
-              "expr": "label_join(\n    (ceil(max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:memory_recommendation{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"})[$days:])/ 1073741824)),\n    \"name_namespace\", \"-\", \"name\", \"namespace\"\n)",
+              "expr": "label_join(\n    (ceil(max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:memory_recommendation{cluster=\"$cluster\", profile=\"$memory_profile\", namespace=~\"$namespace\"})[$days:])/ 1073741824)),\n    \"name_namespace\", \"-\", \"name\", \"namespace\"\n)",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -2514,7 +2514,7 @@ data:
                 "uid": "${datasource}"
               },
               "exemplar": true,
-              "expr": "label_join(\n  (\n    acm_rs_vm:namespace:memory_usage{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"} + on(name, namespace) acm_rs_vm:namespace:memory_request{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"}\n  ),\n  \"name_namespace\", \"-\", \"name\", \"namespace\"\n)",
+              "expr": "label_join(\n  (\n    acm_rs_vm:namespace:memory_usage{cluster=\"$cluster\", profile=\"$memory_profile\", namespace=~\"$namespace\"} + on(name, namespace) acm_rs_vm:namespace:memory_request{cluster=\"$cluster\", profile=\"$memory_profile\", namespace=~\"$namespace\"}\n  ),\n  \"name_namespace\", \"-\", \"name\", \"namespace\"\n)",
               "format": "table",
               "hide": false,
               "instant": false,
@@ -2528,7 +2528,7 @@ data:
                 "uid": "${datasource}"
               },
               "exemplar": true,
-              "expr": "label_join(\n    (floor((max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:memory_request{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"})[$days:])) / 1073741824 - (max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:memory_recommendation{cluster=\"$cluster\", profile=\"$profile\", namespace=~\"$namespace\"})[$days:])) / 1073741824)* (-1)),\n    \"name_namespace\", \"-\", \"name\", \"namespace\"\n)",
+              "expr": "label_join(\n    (floor((max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:memory_request{cluster=\"$cluster\", profile=\"$memory_profile\", namespace=~\"$namespace\"})[$days:])) / 1073741824 - (max_over_time(sum by (name, namespace) (acm_rs_vm:namespace:memory_recommendation{cluster=\"$cluster\", profile=\"$memory_profile\", namespace=~\"$namespace\"})[$days:])) / 1073741824)* (-1)),\n    \"name_namespace\", \"-\", \"name\", \"namespace\"\n)",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -2702,14 +2702,38 @@ data:
               "type": "prometheus",
               "uid": "${datasource}"
             },
-            "definition": "label_values({__name__=~\"acm_rs_vm:namespace:(cpu_request|cpu_usage|memory_request|memory_usage)\",cluster=\"$cluster\"},profile)",
-            "description": "Profile Variable",
+            "definition": "label_values(acm_rs_vm:namespace:cpu_usage{cluster=\"$cluster\"},profile)",
+            "description": "CPU Profile Variable",
             "includeAll": false,
-            "label": "Profile",
-            "name": "profile",
+            "label": "CPU Profile",
+            "name": "cpu_profile",
             "options": [],
             "query": {
-              "query": "label_values({__name__=~\"acm_rs_vm:namespace:(cpu_request|cpu_usage|memory_request|memory_usage)\",cluster=\"$cluster\"},profile)",
+              "query": "label_values(acm_rs_vm:namespace:cpu_usage{cluster=\"$cluster\"},profile)",
+              "refId": "StandardVariableQuery"
+            },
+            "refresh": 2,
+            "regex": "",
+            "sort": 1,
+            "type": "query"
+          },
+          {
+            "current": {
+              "text": "Max OverAll",
+              "value": "Max OverAll"
+            },
+            "datasource": {
+              "type": "prometheus",
+              "uid": "${datasource}"
+            },
+            "definition": "label_values(acm_rs_vm:namespace:memory_usage{cluster=\"$cluster\"},profile)",
+            "description": "Memory Profile Variable",
+            "includeAll": false,
+            "label": "Memory Profile",
+            "name": "memory_profile",
+            "options": [],
+            "query": {
+              "query": "label_values(acm_rs_vm:namespace:memory_usage{cluster=\"$cluster\"},profile)",
               "refId": "StandardVariableQuery"
             },
             "refresh": 2,
@@ -2782,7 +2806,7 @@ data:
               "type": "prometheus",
               "uid": "${datasource}"
             },
-            "definition": "label_values({__name__=~\"acm_rs_vm:namespace:(cpu_request|cpu_usage|memory_request|memory_usage)\",cluster=\"$cluster\",profile=\"$profile\"},namespace)",
+            "definition": "label_values({__name__=~\"acm_rs_vm:namespace:(cpu_request|cpu_usage|memory_request|memory_usage)\",cluster=\"$cluster\",profile=\"$cpu_profile\"},namespace)",
             "description": "Namespace Variable",
             "includeAll": true,
             "label": "Namespace",
@@ -2790,7 +2814,7 @@ data:
             "name": "namespace",
             "options": [],
             "query": {
-              "query": "label_values({__name__=~\"acm_rs_vm:namespace:(cpu_request|cpu_usage|memory_request|memory_usage)\",cluster=\"$cluster\",profile=\"$profile\"},namespace)",
+              "query": "label_values({__name__=~\"acm_rs_vm:namespace:(cpu_request|cpu_usage|memory_request|memory_usage)\",cluster=\"$cluster\",profile=\"$cpu_profile\"},namespace)",
               "refId": "StandardVariableQuery"
             },
             "refresh": 2,

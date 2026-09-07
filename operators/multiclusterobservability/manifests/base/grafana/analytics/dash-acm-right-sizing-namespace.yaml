@@ -127,7 +127,7 @@ data:
                 "uid": "${datasource}"
               },
               "exemplar": true,
-              "expr": "max_over_time(sum by (cluster)(acm_rs:cluster:cpu_recommendation{cluster=\"$cluster\", profile=\"$profile\"})[$days:])",
+              "expr": "max_over_time(sum by (cluster)(acm_rs:cluster:cpu_recommendation{cluster=\"$cluster\", profile=\"$cpu_profile\"})[$days:])",
               "instant": true,
               "interval": "",
               "legendFormat": "",
@@ -237,7 +237,7 @@ data:
                 "uid": "${datasource}"
               },
               "exemplar": true,
-              "expr": "topk(20,\nsum by (namespace) (acm_rs:namespace:cpu_usage{cluster=\"$cluster\", profile=\"$profile\"})\n/\nsum by (namespace) (acm_rs:namespace:cpu_request{cluster=\"$cluster\", profile=\"$profile\"})\n)",
+              "expr": "topk(20,\nsum by (namespace) (acm_rs:namespace:cpu_usage{cluster=\"$cluster\", profile=\"$cpu_profile\"})\n/\nsum by (namespace) (acm_rs:namespace:cpu_request{cluster=\"$cluster\", profile=\"$cpu_profile\"})\n)",
               "format": "time_series",
               "instant": false,
               "interval": "",
@@ -318,7 +318,7 @@ data:
                 "uid": "${datasource}"
               },
               "exemplar": true,
-              "expr": "max_over_time(sum by (cluster)(acm_rs:cluster:cpu_usage{cluster=\"$cluster\", profile=\"$profile\"})[$days:])",
+              "expr": "max_over_time(sum by (cluster)(acm_rs:cluster:cpu_usage{cluster=\"$cluster\", profile=\"$cpu_profile\"})[$days:])",
               "instant": true,
               "interval": "",
               "legendFormat": "",
@@ -409,7 +409,7 @@ data:
                 "uid": "${datasource}"
               },
               "exemplar": true,
-              "expr": "max_over_time(sum by (cluster)(acm_rs:cluster:cpu_request{cluster=\"$cluster\", profile=\"$profile\"})[$days:])",
+              "expr": "max_over_time(sum by (cluster)(acm_rs:cluster:cpu_request{cluster=\"$cluster\", profile=\"$cpu_profile\"})[$days:])",
               "instant": true,
               "interval": "",
               "legendFormat": "",
@@ -508,7 +508,7 @@ data:
                 "uid": "${datasource}"
               },
               "exemplar": true,
-              "expr": "max_over_time(sum by (cluster)(acm_rs:cluster:cpu_usage{cluster=\"$cluster\", profile=\"$profile\"})[$days:]) / max_over_time(sum by (cluster)(acm_rs:cluster:cpu_request{cluster=\"$cluster\", profile=\"$profile\"})[$days:])",
+              "expr": "max_over_time(sum by (cluster)(acm_rs:cluster:cpu_usage{cluster=\"$cluster\", profile=\"$cpu_profile\"})[$days:]) / max_over_time(sum by (cluster)(acm_rs:cluster:cpu_request{cluster=\"$cluster\", profile=\"$cpu_profile\"})[$days:])",
               "instant": true,
               "interval": "",
               "legendFormat": "",
@@ -862,7 +862,7 @@ data:
                 "uid": "${datasource}"
               },
               "exemplar": true,
-              "expr": "max_over_time(sum by (namespace) (acm_rs:namespace:cpu_usage{cluster=\"$cluster\", profile=\"$profile\"})[$days:]) / max_over_time(sum by (namespace) (acm_rs:namespace:cpu_request{cluster=\"$cluster\", profile=\"$profile\"})[$days:])",
+              "expr": "max_over_time(sum by (namespace) (acm_rs:namespace:cpu_usage{cluster=\"$cluster\", profile=\"$cpu_profile\"})[$days:]) / max_over_time(sum by (namespace) (acm_rs:namespace:cpu_request{cluster=\"$cluster\", profile=\"$cpu_profile\"})[$days:])",
               "format": "table",
               "instant": true,
               "interval": "",
@@ -875,7 +875,7 @@ data:
                 "uid": "${datasource}"
               },
               "exemplar": true,
-              "expr": "max_over_time(sum by (namespace) (acm_rs:namespace:cpu_usage{cluster=\"$cluster\", profile=\"$profile\"})[$days:]) ",
+              "expr": "max_over_time(sum by (namespace) (acm_rs:namespace:cpu_usage{cluster=\"$cluster\", profile=\"$cpu_profile\"})[$days:]) ",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -889,7 +889,7 @@ data:
                 "uid": "${datasource}"
               },
               "exemplar": true,
-              "expr": "max_over_time(sum by (namespace) (acm_rs:namespace:cpu_request{cluster=\"$cluster\", profile=\"$profile\"})[$days:])",
+              "expr": "max_over_time(sum by (namespace) (acm_rs:namespace:cpu_request{cluster=\"$cluster\", profile=\"$cpu_profile\"})[$days:])",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -904,7 +904,7 @@ data:
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "max_over_time(sum by (namespace) (acm_rs:namespace:cpu_recommendation{cluster=\"$cluster\", profile=\"$profile\"})[$days:])",
+              "expr": "max_over_time(sum by (namespace) (acm_rs:namespace:cpu_recommendation{cluster=\"$cluster\", profile=\"$cpu_profile\"})[$days:])",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -919,7 +919,7 @@ data:
               },
               "editorMode": "code",
               "exemplar": false,
-              "expr": "max_over_time(sum by (namespace) (acm_rs:namespace:cpu_request_hard{cluster=\"$cluster\", profile=\"$profile\"})[$days:])",
+              "expr": "max_over_time(sum by (namespace) (acm_rs:namespace:cpu_request_hard{cluster=\"$cluster\", profile=\"$cpu_profile\"})[$days:])",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -1064,7 +1064,7 @@ data:
                 "uid": "${datasource}"
               },
               "exemplar": true,
-              "expr": "max_over_time(sum by (cluster)(acm_rs:cluster:memory_recommendation{cluster=\"$cluster\", profile=\"$profile\"})[$days:])",
+              "expr": "max_over_time(sum by (cluster)(acm_rs:cluster:memory_recommendation{cluster=\"$cluster\", profile=\"$memory_profile\"})[$days:])",
               "instant": true,
               "interval": "",
               "legendFormat": "",
@@ -1172,7 +1172,7 @@ data:
                 "uid": "${datasource}"
               },
               "exemplar": true,
-              "expr": "topk(20,\nsum by (namespace) (acm_rs:namespace:memory_usage{cluster=\"$cluster\", profile=\"$profile\"})\n/\nsum by (namespace) (acm_rs:namespace:memory_request{cluster=\"$cluster\", profile=\"$profile\"})\n)",
+              "expr": "topk(20,\nsum by (namespace) (acm_rs:namespace:memory_usage{cluster=\"$cluster\", profile=\"$memory_profile\"})\n/\nsum by (namespace) (acm_rs:namespace:memory_request{cluster=\"$cluster\", profile=\"$memory_profile\"})\n)",
               "format": "time_series",
               "instant": false,
               "interval": "",
@@ -1253,7 +1253,7 @@ data:
                 "uid": "${datasource}"
               },
               "exemplar": true,
-              "expr": "max_over_time(sum by (cluster)(acm_rs:cluster:memory_usage{cluster=\"$cluster\", profile=\"$profile\"})[$days:])",
+              "expr": "max_over_time(sum by (cluster)(acm_rs:cluster:memory_usage{cluster=\"$cluster\", profile=\"$memory_profile\"})[$days:])",
               "instant": true,
               "interval": "",
               "legendFormat": "",
@@ -1343,7 +1343,7 @@ data:
                 "uid": "${datasource}"
               },
               "exemplar": true,
-              "expr": "max_over_time(sum by (cluster)(acm_rs:cluster:memory_request{cluster=\"$cluster\", profile=\"$profile\"})[$days:])",
+              "expr": "max_over_time(sum by (cluster)(acm_rs:cluster:memory_request{cluster=\"$cluster\", profile=\"$memory_profile\"})[$days:])",
               "instant": true,
               "interval": "",
               "legendFormat": "",
@@ -1430,7 +1430,7 @@ data:
                 "uid": "${datasource}"
               },
               "exemplar": true,
-              "expr": "max_over_time(sum by (cluster)(acm_rs:cluster:memory_usage{cluster=\"$cluster\", profile=\"$profile\"})[$days:]) / max_over_time(sum by (cluster)(acm_rs:cluster:memory_request{cluster=\"$cluster\", profile=\"$profile\"})[$days:])",
+              "expr": "max_over_time(sum by (cluster)(acm_rs:cluster:memory_usage{cluster=\"$cluster\", profile=\"$memory_profile\"})[$days:]) / max_over_time(sum by (cluster)(acm_rs:cluster:memory_request{cluster=\"$cluster\", profile=\"$memory_profile\"})[$days:])",
               "instant": true,
               "interval": "",
               "legendFormat": "",
@@ -1782,7 +1782,7 @@ data:
                 "uid": "${datasource}"
               },
               "exemplar": true,
-              "expr": "max_over_time(sum by (namespace) (acm_rs:namespace:memory_usage{cluster=\"$cluster\", profile=\"$profile\"})[$days:]) / max_over_time(sum by (namespace) (acm_rs:namespace:memory_request{cluster=\"$cluster\", profile=\"$profile\"})[$days:])",
+              "expr": "max_over_time(sum by (namespace) (acm_rs:namespace:memory_usage{cluster=\"$cluster\", profile=\"$memory_profile\"})[$days:]) / max_over_time(sum by (namespace) (acm_rs:namespace:memory_request{cluster=\"$cluster\", profile=\"$memory_profile\"})[$days:])",
               "format": "table",
               "instant": true,
               "interval": "",
@@ -1795,7 +1795,7 @@ data:
                 "uid": "${datasource}"
               },
               "exemplar": true,
-              "expr": "max_over_time(sum by (namespace) (acm_rs:namespace:memory_usage{cluster=\"$cluster\", profile=\"$profile\"})[$days:])",
+              "expr": "max_over_time(sum by (namespace) (acm_rs:namespace:memory_usage{cluster=\"$cluster\", profile=\"$memory_profile\"})[$days:])",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -1809,7 +1809,7 @@ data:
                 "uid": "${datasource}"
               },
               "exemplar": true,
-              "expr": "max_over_time(sum by (namespace) (acm_rs:namespace:memory_request{cluster=\"$cluster\", profile=\"$profile\"})[$days:])",
+              "expr": "max_over_time(sum by (namespace) (acm_rs:namespace:memory_request{cluster=\"$cluster\", profile=\"$memory_profile\"})[$days:])",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -1824,7 +1824,7 @@ data:
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "max_over_time(sum by (namespace) (acm_rs:namespace:memory_recommendation{cluster=\"$cluster\", profile=\"$profile\"})[$days:])",
+              "expr": "max_over_time(sum by (namespace) (acm_rs:namespace:memory_recommendation{cluster=\"$cluster\", profile=\"$memory_profile\"})[$days:])",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -1839,7 +1839,7 @@ data:
               },
               "editorMode": "code",
               "exemplar": false,
-              "expr": "max_over_time(sum by (namespace) (acm_rs:namespace:memory_request_hard{cluster=\"$cluster\", profile=\"$profile\"})[$days:])",
+              "expr": "max_over_time(sum by (namespace) (acm_rs:namespace:memory_request_hard{cluster=\"$cluster\", profile=\"$memory_profile\"})[$days:])",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -1949,15 +1949,42 @@ data:
               "type": "prometheus",
               "uid": "${datasource}"
             },
-            "definition": "label_values({__name__=~\"acm_rs:namespace:(cpu_request|cpu_usage|memory_request|memory_usage)\",cluster=\"$cluster\"},profile)",
+            "definition": "label_values(acm_rs:namespace:cpu_usage{cluster=\"$cluster\"},profile)",
             "hide": 0,
             "includeAll": false,
-            "label": "Profile",
+            "label": "CPU Profile",
             "multi": false,
-            "name": "profile",
+            "name": "cpu_profile",
             "options": [],
             "query": {
-              "query": "label_values({__name__=~\"acm_rs:namespace:(cpu_request|cpu_usage|memory_request|memory_usage)\",cluster=\"$cluster\"},profile)",
+              "query": "label_values(acm_rs:namespace:cpu_usage{cluster=\"$cluster\"},profile)",
+              "refId": "StandardVariableQuery"
+            },
+            "refresh": 2,
+            "regex": "",
+            "skipUrlSync": false,
+            "sort": 1,
+            "type": "query"
+          },
+          {
+            "current": {
+              "selected": false,
+              "text": "Max OverAll",
+              "value": "Max OverAll"
+            },
+            "datasource": {
+              "type": "prometheus",
+              "uid": "${datasource}"
+            },
+            "definition": "label_values(acm_rs:namespace:memory_usage{cluster=\"$cluster\"},profile)",
+            "hide": 0,
+            "includeAll": false,
+            "label": "Memory Profile",
+            "multi": false,
+            "name": "memory_profile",
+            "options": [],
+            "query": {
+              "query": "label_values(acm_rs:namespace:memory_usage{cluster=\"$cluster\"},profile)",
               "refId": "StandardVariableQuery"
             },
             "refresh": 2,

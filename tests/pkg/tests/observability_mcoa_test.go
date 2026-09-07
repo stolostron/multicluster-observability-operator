@@ -82,6 +82,9 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 		By("Disabling MCOA", func() {
 			Expect(utils.SetMCOACapabilities(testOptions, false, false)).NotTo(HaveOccurred())
 			utils.CheckStatefulSetAvailabilityOnClusters(managedClustersWithHub, platformPrometheusAgentStatefulSetName, utils.MCO_AGENT_ADDON_NAMESPACE, false)
+			// Wait for the MCOA manager to go away so endpoint-operator CRD self-heal
+			// is less likely to race with the explicit CRD cleanup below.
+			utils.CheckDeploymentAvailability(testOptions.HubCluster, mcoaManagerDeploymentName, utils.MCO_NAMESPACE, false)
 		})
 		By("Deleting COO subscription if it exists and CRDs", func() {
 			utils.DeleteCOOSubscription(accessibleOCPClusters)
