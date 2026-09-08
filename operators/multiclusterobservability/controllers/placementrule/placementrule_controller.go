@@ -571,11 +571,6 @@ func createAllRelatedRes(
 			continue
 		}
 
-		log.Info("Reconciling managed cluster resources",
-			"cluster", managedCluster,
-			"openshiftVersion", openshiftVersion,
-			"triggered_by", request.Name,
-			"in_namespace", request.Namespace)
 		var installProm bool
 		namespace := managedCluster
 		switch openshiftVersion {
@@ -587,6 +582,12 @@ func createAllRelatedRes(
 			}
 			namespace = config.GetDefaultNamespace()
 		}
+
+		log.Info("Reconciling managed cluster resources",
+			"cluster", managedCluster,
+			"openshiftVersion", openshiftVersion,
+			"triggered_by", request.Name,
+			"in_namespace", namespace)
 
 		addonDeployCfg, err := createManagedClusterRes(ctx, c, mco, managedCluster, namespace)
 		if err != nil {
