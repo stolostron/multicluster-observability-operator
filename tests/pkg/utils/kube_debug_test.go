@@ -18,6 +18,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
 	kubefake "k8s.io/client-go/kubernetes/fake"
@@ -673,14 +674,160 @@ func TestLogManagedClusterAddOns(t *testing.T) {
 		},
 	}
 
+	mcaMismatching := unstructured.Unstructured{
+		Object: map[string]any{
+			"apiVersion": "addon.open-cluster-management.io/v1beta1",
+			"kind":       "ManagedClusterAddOn",
+			"metadata": map[string]any{
+				"name":              "multicluster-observability-addon",
+				"namespace":         "local-cluster",
+				"deletionTimestamp": now.Format(time.RFC3339),
+				"finalizers": []any{
+					"addon.open-cluster-management.io/addon-pre-delete",
+				},
+			},
+			"status": map[string]any{
+				"conditions": []any{
+					map[string]any{
+						"type":    "Progressing",
+						"status":  "True",
+						"reason":  "Progressing",
+						"message": "progressing... mca and work configs mismatch",
+					},
+					map[string]any{
+						"type":    "ManifestApplied",
+						"status":  "False",
+						"reason":  "AddonManifestAppliedFailed",
+						"message": "failed to apply the manifests of addon",
+					},
+					map[string]any{
+						"type":    "Available",
+						"status":  "Unknown",
+						"reason":  "NoProbeResult",
+						"message": "Probe results are not returned",
+					},
+					map[string]any{
+						"type":    "HookManifestCompleted",
+						"status":  "False",
+						"reason":  "HookManifestIsNotCompleted",
+						"message": "hook manifestWork addon-multicluster-observability-addon-pre-delete is not completed.",
+					},
+				},
+				"configReferences": []any{
+					map[string]any{
+						"group":    "addon.open-cluster-management.io",
+						"resource": "addondeploymentconfigs",
+						"desiredConfig": map[string]any{
+							"name":      "multicluster-observability-addon",
+							"namespace": "open-cluster-management-observability",
+							"specHash":  "dcce13790009ad6fae8113d6d4c63a0b4233408726095cf6199d60e76ef3090a",
+						},
+						"lastAppliedConfig": map[string]any{
+							"name":      "multicluster-observability-addon",
+							"namespace": "open-cluster-management-observability",
+							"specHash":  "78c764d7a531cf7ed54a2fc134bc54ab91eb4771ddef3018c09fdcb88fd8ef58",
+						},
+					},
+					map[string]any{
+						"group":    "monitoring.rhobs",
+						"resource": "scrapeconfigs",
+						"desiredConfig": map[string]any{
+							"name":      "platform-metrics",
+							"namespace": "open-cluster-management-observability",
+							"specHash":  "",
+						},
+						"lastAppliedConfig": map[string]any{
+							"name":      "platform-metrics",
+							"namespace": "open-cluster-management-observability",
+							"specHash":  "0fe88872cc9af84e3079c3a6445851c0d34bb8f3a1f77cc8accaa4bbc48befc0",
+						},
+					},
+					map[string]any{
+						"group":    "monitoring.rhobs",
+						"resource": "prometheusagents",
+						"desiredConfig": map[string]any{
+							"name":      "mcoa-default-platform-metrics-collector-global-default",
+							"namespace": "open-cluster-management-observability",
+							"specHash":  "f84fc6cbdb348fe97c05c9447fc91568ac9066f7922410951956ab751654cba2",
+						},
+						"lastAppliedConfig": map[string]any{
+							"name":      "mcoa-default-platform-metrics-collector-global-default",
+							"namespace": "open-cluster-management-observability",
+							"specHash":  "f84fc6cbdb348fe97c05c9447fc91568ac9066f7922410951956ab751654cba2",
+						},
+					},
+					map[string]any{
+						"group":    "custom.io",
+						"resource": "unnamedconfigs",
+						"desiredConfig": map[string]any{
+							"specHash": "abcdef1234567890",
+						},
+					},
+				},
+			},
+		},
+	}
+
 	client := &mockDynamicClient{
 		itemsByGVR: map[schema.GroupVersionResource][]unstructured.Unstructured{
-			gvr: {mcaHealthy, mcaTerminating, mcaOther},
+			gvr: {mcaHealthy, mcaTerminating, mcaMismatching, mcaOther},
 		},
 	}
 
 	// Verify executing LogManagedClusterAddOns runs cleanly without error or panic
 	LogManagedClusterAddOns(client)
+
+	// Verify detailed formatting of formatManagedClusterAddOns
+	output := formatManagedClusterAddOns([]unstructured.Unstructured{mcaHealthy, mcaMismatching})
+	if !strings.Contains(output, "CONFIGS") {
+		t.Error("expected table header to include CONFIGS column")
+	}
+	if !strings.Contains(output, "[1/4 sync, 3 mismatch]") {
+		t.Errorf("expected [1/4 sync, 3 mismatch] in output, got: %s", output)
+	}
+	if !strings.Contains(
+		output,
+		"ConfigReference mismatch: addondeploymentconfigs.addon.open-cluster-management.io open-cluster-management-observability/multicluster-observability-addon (desiredHash: dcce1379, appliedHash: 78c764d7)",
+	) {
+		t.Errorf("expected addondeploymentconfig mismatch detail in output, got: %s", output)
+	}
+	if !strings.Contains(output, "ConfigReference mismatch: scrapeconfigs.monitoring.rhobs open-cluster-management-observability/platform-metrics (desiredHash: <empty>, appliedHash: 0fe88872)") {
+		t.Errorf("expected scrapeconfigs mismatch detail in output, got: %s", output)
+	}
+	if !strings.Contains(output, "ConfigReference mismatch: unnamedconfigs.custom.io <unnamed> (desiredHash: abcdef12, applied: <none>)") {
+		t.Errorf("expected unnamed configReference mismatch detail in output, got: %s", output)
+	}
+	if !strings.Contains(output, "[ManifestApplied=False (AddonManifestAppliedFailed): failed to apply the manifests of addon]") {
+		t.Errorf("expected ManifestApplied=False condition in output, got: %s", output)
+	}
+	if !strings.Contains(output, "[HookManifestCompleted=False (HookManifestIsNotCompleted): hook manifestWork addon-multicluster-observability-addon-pre-delete is not completed.]") {
+		t.Errorf("expected HookManifestCompleted=False condition in output, got: %s", output)
+	}
+	if !strings.Contains(output, "[Available=Unknown (NoProbeResult): Probe results are not returned]") {
+		t.Errorf("expected Available=Unknown condition in output, got: %s", output)
+	}
+}
+
+func TestShortHash(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{name: "empty", input: "", expected: "<empty>"},
+		{name: "short", input: "abc", expected: "abc"},
+		{name: "exact-8", input: "12345678", expected: "12345678"},
+		{name: "long-sha256", input: "dcce13790009ad6fae8113d6d4c63a0b4233408726095cf6199d60e76ef3090a", expected: "dcce1379"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := shortHash(tc.input)
+			if got != tc.expected {
+				t.Errorf("shortHash(%q) = %q, expected %q", tc.input, got, tc.expected)
+			}
+		})
+	}
 }
 
 func TestPrintManifestWorks(t *testing.T) {
@@ -779,6 +926,26 @@ func TestPrintManifestWorks(t *testing.T) {
 				"namespace": "cluster1",
 			},
 		},
+	}
+
+	out := formatManifestWorks([]unstructured.Unstructured{mwTerminating, mwLegacy, mwOther})
+	if !strings.Contains(out, "addon-multicluster-observability-addon-deploy-0") {
+		t.Errorf("expected addon-multicluster-observability-addon-deploy-0 in output, got:\n%s", out)
+	}
+	if !strings.Contains(out, "cluster1-observability") {
+		t.Errorf("expected cluster1-observability in output, got:\n%s", out)
+	}
+	if strings.Contains(out, "klusterlet-crds") {
+		t.Errorf("expected non-observability ManifestWork klusterlet-crds to be filtered out, got:\n%s", out)
+	}
+	if !strings.Contains(out, "Terminating with finalizers [cluster.open-cluster-management.io/manifest-work-cleanup]") {
+		t.Errorf("expected terminating finalizer detail in output, got:\n%s", out)
+	}
+	if !strings.Contains(out, "AppliedManifestWorkFailed") {
+		t.Errorf("expected AppliedManifestWorkFailed in output, got:\n%s", out)
+	}
+	if !strings.Contains(out, "ImagePullBackOff: failed to pull image") {
+		t.Errorf("expected manifest-level ImagePullBackOff error in output, got:\n%s", out)
 	}
 
 	client := &mockDynamicClient{
@@ -1547,7 +1714,7 @@ func TestFormatContainerLogs(t *testing.T) {
 
 	t.Run("long line truncation", func(t *testing.T) {
 		t1 := now.Add(-1 * time.Minute).Format(time.RFC3339)
-		longMsg := strings.Repeat("a", 600)
+		longMsg := strings.Repeat("a", 1200)
 		raw := fmt.Sprintf("%s E0909 10:00:00.000000 1 main.go:10] error: %s\n", t1, longMsg)
 		lines, _ := formatContainerLogs(raw, cutoff)
 		if len(lines) != 1 {
@@ -1798,14 +1965,14 @@ func TestSanitizeManifestError(t *testing.T) {
 		t.Fatalf("expected short message unchanged, got: %s", sanitizeManifestError(shortMsg))
 	}
 
-	longMsg := strings.Repeat("A", 500)
+	longMsg := strings.Repeat("A", 800)
 	sanitized := sanitizeManifestError(longMsg)
-	if len(sanitized) > 320 || !strings.HasSuffix(sanitized, "... [truncated]") {
+	if len(sanitized) > 620 || !strings.HasSuffix(sanitized, "... [truncated]") {
 		t.Fatalf("expected truncated message, got len %d: %s", len(sanitized), sanitized)
 	}
 
 	// Multi-byte UTF-8 straddle verification
-	multiBytePrefix := strings.Repeat("a", 299) + "€€€"
+	multiBytePrefix := strings.Repeat("a", 599) + "€€€"
 	multiByteSanitized := sanitizeManifestError(multiBytePrefix)
 	if !utf8.ValidString(multiByteSanitized) {
 		t.Errorf("expected valid utf-8 string, got invalid bytes: %q", multiByteSanitized)
@@ -1846,8 +2013,28 @@ func TestCheckJobsInNamespace(t *testing.T) {
 			Completions: &one,
 		},
 	}
+	jobWithFailedPods := &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:              "observability-addon-prune",
+			Namespace:         MCO_AGENT_ADDON_NAMESPACE,
+			CreationTimestamp: metav1.NewTime(time.Now().Add(-2 * time.Minute)),
+		},
+		Spec: batchv1.JobSpec{
+			Completions: &one,
+		},
+		Status: batchv1.JobStatus{
+			Succeeded: 0,
+			Failed:    2,
+			Conditions: []batchv1.JobCondition{
+				{
+					Type:   batchv1.JobSuspended,
+					Status: corev1.ConditionTrue,
+				},
+			},
+		},
+	}
 
-	client := kubefake.NewSimpleClientset(jobCleanup, jobOther)
+	client := kubefake.NewSimpleClientset(jobCleanup, jobOther, jobWithFailedPods)
 
 	// Verify CheckJobsInNamespace filters out non-observability jobs and runs cleanly
 	CheckJobsInNamespace(client, MCO_AGENT_ADDON_NAMESPACE)
@@ -1866,4 +2053,240 @@ func TestCheckJobsInNamespace(t *testing.T) {
 	if !strings.Contains(out, "Failed") {
 		t.Errorf("expected Failed condition in output, got: %s", out)
 	}
+	if !strings.Contains(out, "DeadlineExceeded") {
+		t.Errorf("expected DeadlineExceeded in output, got: %s", out)
+	}
+	if !strings.Contains(out, "Job was active longer than specified deadline") {
+		t.Errorf("expected condition message in output, got: %s", out)
+	}
+	if !strings.Contains(out, "[Failed pods: 2]") {
+		t.Errorf("expected [Failed pods: 2] for job with non-failure condition, got: %s", out)
+	}
+}
+
+func TestFormatRecentWarningEvents(t *testing.T) {
+	now := time.Now()
+	event1 := &corev1.Event{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "event-1",
+			Namespace: MCO_AGENT_ADDON_NAMESPACE,
+		},
+		InvolvedObject: corev1.ObjectReference{
+			Kind: "Pod",
+			Name: "observability-monitoring-cleanup-abcde",
+		},
+		Type:          corev1.EventTypeWarning,
+		Reason:        "FailedScheduling",
+		Message:       "0/1 nodes are available: 1 node(s) had untolerated taint {node.kubernetes.io/disk-pressure: }",
+		Count:         4,
+		LastTimestamp: metav1.NewTime(now.Add(-2 * time.Minute)),
+	}
+	eventNormal := &corev1.Event{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "event-normal",
+			Namespace: MCO_AGENT_ADDON_NAMESPACE,
+		},
+		Type:          corev1.EventTypeNormal,
+		Reason:        "Scheduled",
+		LastTimestamp: metav1.NewTime(now.Add(-1 * time.Minute)),
+	}
+	eventOld := &corev1.Event{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "event-old",
+			Namespace: MCO_AGENT_ADDON_NAMESPACE,
+		},
+		Type:          corev1.EventTypeWarning,
+		Reason:        "FailedScheduling",
+		Message:       "Old event",
+		LastTimestamp: metav1.NewTime(now.Add(-30 * time.Minute)),
+	}
+	eventSeries := &corev1.Event{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "event-series",
+			Namespace: MCO_AGENT_ADDON_NAMESPACE,
+		},
+		InvolvedObject: corev1.ObjectReference{
+			Kind: "Pod",
+			Name: "observability-monitoring-series-pod",
+		},
+		Type:    corev1.EventTypeWarning,
+		Reason:  "BackOff",
+		Message: "Back-off restarting failed container",
+		Series: &corev1.EventSeries{
+			Count:            3,
+			LastObservedTime: metav1.NewMicroTime(now.Add(-1 * time.Minute)),
+		},
+	}
+
+	client := kubefake.NewSimpleClientset(event1, eventNormal, eventOld, eventSeries)
+
+	out, err := formatRecentWarningEvents(client, []string{MCO_AGENT_ADDON_NAMESPACE}, 10*time.Minute, 15)
+	if err != nil {
+		t.Fatalf("unexpected error formatting warning events: %v", err)
+	}
+
+	if !strings.Contains(out, "FailedScheduling (x4)") {
+		t.Errorf("expected FailedScheduling with count in output, got:\n%s", out)
+	}
+	if !strings.Contains(out, "Pod/observability-monitoring-cleanup-abcde") {
+		t.Errorf("expected object kind/name in output, got:\n%s", out)
+	}
+	if !strings.Contains(out, "disk-pressure") {
+		t.Errorf("expected disk-pressure message in output, got:\n%s", out)
+	}
+	if !strings.Contains(out, "BackOff (x3)") {
+		t.Errorf("expected BackOff (x3) from series, got:\n%s", out)
+	}
+	if !strings.Contains(out, "Pod/observability-monitoring-series-pod") {
+		t.Errorf("expected series pod in output, got:\n%s", out)
+	}
+	if strings.Contains(out, "Old event") {
+		t.Errorf("expected old event beyond window to be excluded, got:\n%s", out)
+	}
+	if strings.Contains(out, "Scheduled") {
+		t.Errorf("expected Normal event to be excluded, got:\n%s", out)
+	}
+
+	// Test when no events match
+	emptyClient := kubefake.NewSimpleClientset()
+	emptyOut, err := formatRecentWarningEvents(emptyClient, []string{MCO_AGENT_ADDON_NAMESPACE}, 10*time.Minute, 15)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(emptyOut, "No recent Warning events found") {
+		t.Errorf("expected empty message, got: %s", emptyOut)
+	}
+}
+
+func TestGetPodWorkloadKey(t *testing.T) {
+	isController := true
+	podWithController := corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "metrics-collector-deployment-bf4cc564f-62jjd",
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					Kind:       "ReplicaSet",
+					Name:       "metrics-collector-deployment-bf4cc564f",
+					Controller: &isController,
+				},
+			},
+		},
+	}
+	if key := getPodWorkloadKey(podWithController); key != "metrics-collector-deployment-bf4cc564f" {
+		t.Errorf("expected controller name, got %q", key)
+	}
+
+	podWithoutController := corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "my-custom-workload-abcde",
+		},
+	}
+	if key := getPodWorkloadKey(podWithoutController); key != "my-custom-workload" {
+		t.Errorf("expected stripped suffix prefix, got %q", key)
+	}
+
+	podBare := corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "standalone",
+		},
+	}
+	if key := getPodWorkloadKey(podBare); key != "standalone" {
+		t.Errorf("expected full pod name, got %q", key)
+	}
+}
+
+func TestFormatRecentWarningEvents_Consolidation(t *testing.T) {
+	now := time.Now()
+	event1 := &corev1.Event{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "evicted-1",
+			Namespace: "open-cluster-management-observability",
+		},
+		InvolvedObject: corev1.ObjectReference{
+			Kind: "Pod",
+			Name: "metrics-collector-deployment-bf4cc564f-62jjd",
+		},
+		Type:          corev1.EventTypeWarning,
+		Reason:        "Evicted",
+		Message:       "The node had condition: [DiskPressure].",
+		Count:         1,
+		LastTimestamp: metav1.NewTime(now.Add(-5 * time.Minute)),
+	}
+	event2 := &corev1.Event{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "evicted-2",
+			Namespace: "open-cluster-management-observability",
+		},
+		InvolvedObject: corev1.ObjectReference{
+			Kind: "Pod",
+			Name: "metrics-collector-deployment-bf4cc564f-696h5",
+		},
+		Type:          corev1.EventTypeWarning,
+		Reason:        "Evicted",
+		Message:       "The node had condition: [DiskPressure].",
+		Count:         1,
+		LastTimestamp: metav1.NewTime(now.Add(-4 * time.Minute)),
+	}
+	event3 := &corev1.Event{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "failed-scheduling",
+			Namespace: "open-cluster-management-observability",
+		},
+		InvolvedObject: corev1.ObjectReference{
+			Kind: "Pod",
+			Name: "metrics-collector-deployment-bf4cc564f-8c52l",
+		},
+		Type:          corev1.EventTypeWarning,
+		Reason:        "FailedScheduling",
+		Message:       "0/1 nodes are available: untolerated taint",
+		Count:         1,
+		LastTimestamp: metav1.NewTime(now.Add(-3 * time.Minute)),
+	}
+
+	client := kubefake.NewSimpleClientset(event1, event2, event3)
+	out, err := formatRecentWarningEvents(client, []string{"open-cluster-management-observability"}, 20*time.Minute, 10)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !strings.Contains(out, "Evicted (x2)") {
+		t.Errorf("expected Evicted (x2) consolidation, got:\n%s", out)
+	}
+	if !strings.Contains(out, "Pod/metrics-collector-deployment-bf4cc564f-*") {
+		t.Errorf("expected wildcard object name, got:\n%s", out)
+	}
+	if !strings.Contains(out, "FailedScheduling") {
+		t.Errorf("expected FailedScheduling event, got:\n%s", out)
+	}
+}
+
+func TestCheckPodsInNamespace_WorkloadCapping(t *testing.T) {
+	isController := true
+	now := metav1.Now()
+	var pods []runtime.Object
+	for i := 1; i <= 5; i++ {
+		pod := &corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:              fmt.Sprintf("metrics-collector-deployment-bf4cc564f-%d", i),
+				Namespace:         "test-ns",
+				CreationTimestamp: now,
+				OwnerReferences: []metav1.OwnerReference{
+					{
+						Kind:       "ReplicaSet",
+						Name:       "metrics-collector-deployment-bf4cc564f",
+						Controller: &isController,
+					},
+				},
+			},
+			Status: corev1.PodStatus{
+				Phase:  corev1.PodFailed,
+				Reason: "Evicted",
+			},
+		}
+		pods = append(pods, pod)
+	}
+
+	client := kubefake.NewSimpleClientset(pods...)
+	// Calling CheckPodsInNamespace should execute cleanly with duplicate failed pods capped
+	CheckPodsInNamespace(client, "test-ns", nil, nil)
 }

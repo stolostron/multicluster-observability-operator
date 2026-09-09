@@ -162,7 +162,7 @@ func CheckDeploymentAvailability(cluster Cluster, name, namespace string, should
 				return fmt.Errorf("failed to get deployment %s/%s: %w", namespace, name, err)
 			}
 			return FormatDeploymentStillExistsError(dep, namespace, name)
-		}, 300, 5).Should(gomega.Succeed())
+		}, 120, 5).Should(gomega.Succeed())
 	}
 }
 

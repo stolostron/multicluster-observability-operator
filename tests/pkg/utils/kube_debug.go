@@ -37,7 +37,7 @@ var (
 )
 
 const (
-	maxContainerLogLineLength     = 500
+	maxContainerLogLineLength     = 1000
 	maxTailLines                  = 20
 	maxPrecedingErrorLines        = 30
 	DebugDumpStartMarker          = "==================== [DEBUG DUMP START] ===================="
@@ -50,6 +50,7 @@ const (
 	SectionAddOnDeploymentConfigs = "---------- [SECTION: AddOnDeploymentConfigs] ----------"
 	SectionHubWorkloads           = "---------- [SECTION: Hub Workloads & Pods] ----------"
 	SectionSpokeWorkloads         = "---------- [SECTION: Spoke Workloads & Pods] ----------"
+	SectionWarningEvents          = "---------- [SECTION: Recent Warning Events] ----------"
 	statusUnknown                 = "Unknown"
 	statusTrue                    = "True"
 	statusFalse                   = "False"
@@ -247,7 +248,15 @@ func LogFailingTestStandardDebugInfo(opt TestOptions, isMCOA bool) {
 		printMCOACustomResources(hubDynClient, MCO_AGENT_ADDON_NAMESPACE)
 	}
 
-	// Section 5: Spoke Clusters
+	// Section 5: Recent Warning Events
+	klog.Info(SectionWarningEvents)
+	warningNamespaces := []string{"open-cluster-management", MCO_NAMESPACE}
+	if isMCOA {
+		warningNamespaces = append(warningNamespaces, MCO_AGENT_ADDON_NAMESPACE)
+	}
+	printRecentWarningEvents(hubClient, warningNamespaces, 20*time.Minute, 20)
+
+	// Section 6: Spoke Clusters
 	inspectedClusters := make(map[string]bool)
 	inspectedClusters["local-cluster"] = true
 
@@ -341,6 +350,21 @@ func isPodAncientFailure(pod corev1.Pod, maxAge time.Duration) bool {
 	return true
 }
 
+// getPodWorkloadKey returns the controller name or workload prefix of a pod to identify
+// duplicate replica failures (e.g. "metrics-collector-deployment-bf4cc564f").
+func getPodWorkloadKey(pod corev1.Pod) string {
+	for _, ref := range pod.OwnerReferences {
+		if ref.Controller != nil && *ref.Controller {
+			return ref.Name
+		}
+	}
+	// Fallback to stripping the random suffix if the pod name matches standard K8s naming (<workload>-<random>)
+	if idx := strings.LastIndex(pod.Name, "-"); idx > 0 {
+		return pod.Name[:idx]
+	}
+	return pod.Name
+}
+
 // CheckPodsInNamespace lists pods in a namespace and logs debug info (status, events, logs) for pods not running.
 func CheckPodsInNamespace(client kubernetes.Interface, ns string, forcePodNamesLog []string, podLabels map[string]string) {
 	listOptions := metav1.ListOptions{}
@@ -373,9 +397,12 @@ func CheckPodsInNamespace(client kubernetes.Interface, ns string, forcePodNamesL
 	klog.V(1).Infof("Checking %d pods in namespace %q", len(pods.Items), ns)
 	printPodsStatuses(pods.Items)
 
+	const maxFailedPodsPerWorkload = 2
 	notRunningPodsCount := 0
 	skippedAncientPodsCount := 0
 	forcedPodsLogged := make(map[string]bool)
+	failedPodsLoggedPerWorkload := make(map[string]int)
+	skippedFailedPodsCount := make(map[string]int)
 
 	for _, pod := range pods.Items {
 		force := false
@@ -402,6 +429,15 @@ func CheckPodsInNamespace(client kubernetes.Interface, ns string, forcePodNamesL
 				continue
 			}
 			notRunningPodsCount++
+
+			if !force {
+				workloadKey := getPodWorkloadKey(pod)
+				if failedPodsLoggedPerWorkload[workloadKey] >= maxFailedPodsPerWorkload {
+					skippedFailedPodsCount[workloadKey]++
+					continue
+				}
+				failedPodsLoggedPerWorkload[workloadKey]++
+			}
 		}
 
 		// For forced pods that are already running, track if we already logged them to avoid duplicates
@@ -435,6 +471,18 @@ func CheckPodsInNamespace(client kubernetes.Interface, ns string, forcePodNamesL
 		} else if force {
 			// Running pod forced for logging: do NOT dump static spec or events, only check recent error logs or tail
 			LogPodLogs(client, ns, pod)
+		}
+	}
+
+	if len(skippedFailedPodsCount) > 0 {
+		workloads := make([]string, 0, len(skippedFailedPodsCount))
+		for w := range skippedFailedPodsCount {
+			workloads = append(workloads, w)
+		}
+		slices.Sort(workloads)
+		for _, w := range workloads {
+			klog.Infof("Skipped deep diagnostics for %d additional failed/evicted pod(s) belonging to %q (already logged %d sample(s))",
+				skippedFailedPodsCount[w], w, maxFailedPodsPerWorkload)
 		}
 	}
 
@@ -1091,19 +1139,24 @@ func LogManagedClusters(client dynamic.Interface) {
 	klog.Info(sb.String())
 }
 
-// LogManagedClusterAddOns lists and displays status of ManagedClusterAddOn resources across all clusters.
-func LogManagedClusterAddOns(client dynamic.Interface) {
-	gvr := NewMCOManagedClusterAddonsGVR()
-	objs, err := client.Resource(gvr).Namespace("").List(context.TODO(), metav1.ListOptions{})
-	if err != nil {
-		klog.Errorf("Failed to list ManagedClusterAddOns: %v", err)
-		return
+// shortHash returns a truncated 8-character hash representation, or "<empty>" if hash is empty.
+func shortHash(h string) string {
+	if h == "" {
+		return "<empty>"
 	}
+	if len(h) > 8 {
+		return h[:8]
+	}
+	return h
+}
 
+// formatManagedClusterAddOns formats the ManagedClusterAddOn resources table and degraded details,
+// including abnormal conditions and individual mismatched configReferences.
+func formatManagedClusterAddOns(items []unstructured.Unstructured) string {
 	var sb strings.Builder
 	sb.WriteString("ManagedClusterAddOns:\n")
 	writer := tabwriter.NewWriter(&sb, 0, 0, 2, ' ', 0)
-	_, _ = fmt.Fprintln(writer, "CLUSTER\tADDON\tAVAILABLE\tDEGRADED\tPROGRESSING\tDELETING\tFINALIZERS")
+	_, _ = fmt.Fprintln(writer, "CLUSTER\tADDON\tAVAILABLE\tDEGRADED\tPROGRESSING\tDELETING\tFINALIZERS\tCONFIGS")
 
 	type degradedAddon struct {
 		cluster string
@@ -1111,12 +1164,14 @@ func LogManagedClusterAddOns(client dynamic.Interface) {
 		detail  string
 	}
 	var degraded []degradedAddon
+	count := 0
 
-	for _, obj := range objs.Items {
+	for _, obj := range items {
 		name := obj.GetName()
 		if !strings.Contains(name, "observability") {
 			continue
 		}
+		count++
 		cluster := obj.GetNamespace()
 		deleting := statusNo
 		if obj.GetDeletionTimestamp() != nil {
@@ -1158,8 +1213,9 @@ func LogManagedClusterAddOns(client dynamic.Interface) {
 				}
 
 				if (cType == conditionDegraded && cStatus == statusTrue) ||
-					(cType == conditionAvailable && cStatus == statusFalse) ||
-					(cType == conditionProgressing && deleting == statusYes && cMsg != "") {
+					(cType == conditionAvailable && (cStatus == statusFalse || cStatus == statusUnknown)) ||
+					(cType == conditionProgressing && cStatus == statusTrue && !strings.Contains(cMsg, "completed with no errors")) ||
+					(cStatus == statusFalse && cType != conditionProgressing && cType != conditionDegraded) {
 					degraded = append(degraded, degradedAddon{
 						cluster: cluster,
 						addon:   name,
@@ -1169,7 +1225,87 @@ func LogManagedClusterAddOns(client dynamic.Interface) {
 			}
 		}
 
-		_, _ = fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\t%s\t[%s]\n",
+		// Inspect individual status.configReferences
+		configRefs, foundConfigs, _ := unstructured.NestedSlice(obj.Object, "status", "configReferences")
+		var configMismatches []string
+		totalConfigs := len(configRefs)
+		if foundConfigs && totalConfigs > 0 {
+			for _, cr := range configRefs {
+				crMap, ok := cr.(map[string]any)
+				if !ok {
+					continue
+				}
+				group, _, _ := unstructured.NestedString(crMap, "group")
+				resource, _, _ := unstructured.NestedString(crMap, "resource")
+				resIdentifier := resource
+				if group != "" {
+					resIdentifier = resource + "." + group
+				}
+
+				desired, hasDesired, _ := unstructured.NestedMap(crMap, "desiredConfig")
+				applied, hasApplied, _ := unstructured.NestedMap(crMap, "lastAppliedConfig")
+
+				desName, _, _ := unstructured.NestedString(desired, "name")
+				desNs, _, _ := unstructured.NestedString(desired, "namespace")
+				desHash, _, _ := unstructured.NestedString(desired, "specHash")
+
+				appldName, _, _ := unstructured.NestedString(applied, "name")
+				appldNs, _, _ := unstructured.NestedString(applied, "namespace")
+				appldHash, _, _ := unstructured.NestedString(applied, "specHash")
+
+				resName := desName
+				if resName == "" {
+					resName = appldName
+				}
+				resNs := desNs
+				if resNs == "" {
+					resNs = appldNs
+				}
+				target := resName
+				if resNs != "" {
+					target = fmt.Sprintf("%s/%s", resNs, resName)
+				}
+				if target == "" {
+					target = "<unnamed>"
+				}
+
+				switch {
+				case !hasDesired && !hasApplied:
+					// nothing to compare
+				case hasDesired && !hasApplied:
+					detail := fmt.Sprintf("ConfigReference mismatch: %s %s (desiredHash: %s, applied: <none>)",
+						resIdentifier, target, shortHash(desHash))
+					configMismatches = append(configMismatches, detail)
+					degraded = append(degraded, degradedAddon{cluster: cluster, addon: name, detail: detail})
+				case !hasDesired && hasApplied:
+					detail := fmt.Sprintf("ConfigReference mismatch: %s %s (desired: <none>, appliedHash: %s)",
+						resIdentifier, target, shortHash(appldHash))
+					configMismatches = append(configMismatches, detail)
+					degraded = append(degraded, degradedAddon{cluster: cluster, addon: name, detail: detail})
+				case desName != appldName || desNs != appldNs:
+					detail := fmt.Sprintf("ConfigReference mismatch: %s (desired: %s/%s, applied: %s/%s)",
+						resIdentifier, desNs, desName, appldNs, appldName)
+					configMismatches = append(configMismatches, detail)
+					degraded = append(degraded, degradedAddon{cluster: cluster, addon: name, detail: detail})
+				case desHash != appldHash:
+					detail := fmt.Sprintf("ConfigReference mismatch: %s %s (desiredHash: %s, appliedHash: %s)",
+						resIdentifier, target, shortHash(desHash), shortHash(appldHash))
+					configMismatches = append(configMismatches, detail)
+					degraded = append(degraded, degradedAddon{cluster: cluster, addon: name, detail: detail})
+				}
+			}
+		}
+
+		configsSummary := "-"
+		if totalConfigs > 0 {
+			if len(configMismatches) > 0 {
+				configsSummary = fmt.Sprintf("[%d/%d sync, %d mismatch]", totalConfigs-len(configMismatches), totalConfigs, len(configMismatches))
+			} else {
+				configsSummary = fmt.Sprintf("[%d/%d sync]", totalConfigs, totalConfigs)
+			}
+		}
+
+		_, _ = fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\t%s\t[%s]\t%s\n",
 			cluster,
 			name,
 			avail,
@@ -1177,9 +1313,14 @@ func LogManagedClusterAddOns(client dynamic.Interface) {
 			prog,
 			deleting,
 			finalizers,
+			configsSummary,
 		)
 	}
 	_ = writer.Flush()
+
+	if count == 0 {
+		return ""
+	}
 
 	if len(degraded) > 0 {
 		sb.WriteString("\nDegraded or Terminating ManagedClusterAddOns Details:\n")
@@ -1189,7 +1330,24 @@ func LogManagedClusterAddOns(client dynamic.Interface) {
 		}
 	}
 
-	klog.Info(sb.String())
+	return sb.String()
+}
+
+// LogManagedClusterAddOns lists and displays status of ManagedClusterAddOn resources across all clusters.
+func LogManagedClusterAddOns(client dynamic.Interface) {
+	gvr := NewMCOManagedClusterAddonsGVR()
+	objs, err := client.Resource(gvr).Namespace("").List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		klog.Errorf("Failed to list ManagedClusterAddOns: %v", err)
+		return
+	}
+
+	output := formatManagedClusterAddOns(objs.Items)
+	if output == "" {
+		klog.V(1).Info("No observability ManagedClusterAddOns found")
+		return
+	}
+	klog.Info(output)
 }
 
 // LogClusterManagementAddOn logs the status and install strategy of ClusterManagementAddOn.
@@ -1370,6 +1528,9 @@ func printDaemonSetsStatuses(clientset kubernetes.Interface, namespace string) {
 }
 
 func formatJobsStatuses(clientset kubernetes.Interface, namespace string) (string, error) {
+	if clientset == nil {
+		return "", fmt.Errorf("clientset is nil")
+	}
 	jobsClient := clientset.BatchV1().Jobs(namespace)
 	jobs, err := jobsClient.List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
@@ -1379,6 +1540,13 @@ func formatJobsStatuses(clientset kubernetes.Interface, namespace string) (strin
 	var sb strings.Builder
 	writer := tabwriter.NewWriter(&sb, 0, 0, 2, ' ', 0)
 	_, _ = fmt.Fprintln(writer, "NAME\tCOMPLETIONS\tDURATION\tAGE\tCONDITIONS")
+
+	type failedJob struct {
+		name   string
+		detail string
+	}
+	var failedJobs []failedJob
+
 	for _, job := range jobs.Items {
 		if namespace == MCO_AGENT_ADDON_NAMESPACE && !isObservabilityWorkloadInSharedNamespace(job.Name) {
 			continue
@@ -1398,10 +1566,36 @@ func formatJobsStatuses(clientset kubernetes.Interface, namespace string) (strin
 			}
 		}
 		var conds []string
+		hasFailureCond := false
 		for _, c := range job.Status.Conditions {
 			if c.Status == corev1.ConditionTrue {
 				conds = append(conds, string(c.Type))
+				if c.Type == batchv1.JobFailed || c.Type == batchv1.JobFailureTarget {
+					hasFailureCond = true
+					reason := c.Reason
+					if reason == "" {
+						reason = "Unknown"
+					}
+					msg := strings.TrimSpace(c.Message)
+					if msg != "" {
+						failedJobs = append(failedJobs, failedJob{
+							name:   job.Name,
+							detail: fmt.Sprintf("[%s (%s): %s]", c.Type, reason, msg),
+						})
+					} else {
+						failedJobs = append(failedJobs, failedJob{
+							name:   job.Name,
+							detail: fmt.Sprintf("[%s (%s)]", c.Type, reason),
+						})
+					}
+				}
 			}
+		}
+		if job.Status.Failed > 0 && !hasFailureCond {
+			failedJobs = append(failedJobs, failedJob{
+				name:   job.Name,
+				detail: fmt.Sprintf("[Failed pods: %d]", job.Status.Failed),
+			})
 		}
 		condStr := strings.Join(conds, ",")
 		if condStr == "" {
@@ -1415,6 +1609,14 @@ func formatJobsStatuses(clientset kubernetes.Interface, namespace string) (strin
 			condStr)
 	}
 	_ = writer.Flush()
+
+	if len(failedJobs) > 0 {
+		sb.WriteString("\nFailed or Degraded Jobs Details:\n")
+		for _, fj := range failedJobs {
+			detail := truncateLogLine(fj.detail, 400)
+			sb.WriteString(fmt.Sprintf("  - %s/%s: %s\n", namespace, fj.name, detail))
+		}
+	}
 	return sb.String(), nil
 }
 
@@ -1525,6 +1727,166 @@ func LogNodes(clientset kubernetes.Interface, contextLabel string) {
 	out, err := formatNodesStatuses(clientset)
 	if err != nil {
 		klog.V(2).Infof("Could not list nodes for %s: %v", contextLabel, err)
+		return
+	}
+	klog.Info(out)
+}
+
+// getInvolvedObjectWorkloadKey returns a group key for event consolidation (e.g. "Pod/metrics-collector-deployment-bf4cc564f")
+// and a wildcard name for display when multiple pods share the same event (e.g. "Pod/metrics-collector-deployment-bf4cc564f-*").
+func getInvolvedObjectWorkloadKey(kind, name string) (groupKey, wildcardName string) {
+	if kind == "Pod" && name != "" {
+		if idx := strings.LastIndex(name, "-"); idx > 0 {
+			prefix := name[:idx]
+			return fmt.Sprintf("Pod/%s", prefix), fmt.Sprintf("Pod/%s-*", prefix)
+		}
+	}
+	desc := kind
+	if name != "" {
+		desc = fmt.Sprintf("%s/%s", kind, name)
+	}
+	return desc, desc
+}
+
+// formatRecentWarningEvents queries and formats recent Warning events in the specified namespaces.
+func formatRecentWarningEvents(clientset kubernetes.Interface, namespaces []string, window time.Duration, maxEvents int) (string, error) {
+	if clientset == nil {
+		return "", fmt.Errorf("clientset is nil")
+	}
+
+	type eventEntry struct {
+		eventTime time.Time
+		namespace string
+		reason    string
+		object    string
+		message   string
+		count     int32
+	}
+
+	eventMap := make(map[string]*eventEntry)
+	now := time.Now()
+
+	for _, ns := range namespaces {
+		eventList, err := clientset.CoreV1().Events(ns).List(context.TODO(), metav1.ListOptions{})
+		if err != nil {
+			if !apierrors.IsNotFound(err) {
+				klog.V(2).Infof("Could not list events in namespace %s: %v", ns, err)
+			}
+			continue
+		}
+
+		for _, e := range eventList.Items {
+			if e.Type != corev1.EventTypeWarning {
+				continue
+			}
+
+			var t time.Time
+			switch {
+			case !e.LastTimestamp.IsZero():
+				t = e.LastTimestamp.Time
+			case !e.EventTime.IsZero():
+				t = e.EventTime.Time
+			case !e.FirstTimestamp.IsZero():
+				t = e.FirstTimestamp.Time
+			case e.Series != nil && !e.Series.LastObservedTime.IsZero():
+				t = e.Series.LastObservedTime.Time
+			}
+
+			if window > 0 && !t.IsZero() && now.Sub(t) > window {
+				continue
+			}
+
+			groupKey, wildcardName := getInvolvedObjectWorkloadKey(e.InvolvedObject.Kind, e.InvolvedObject.Name)
+			objDesc := e.InvolvedObject.Kind
+			if e.InvolvedObject.Name != "" {
+				objDesc = fmt.Sprintf("%s/%s", e.InvolvedObject.Kind, e.InvolvedObject.Name)
+			}
+
+			count := e.Count
+			if count == 0 && e.Series != nil && e.Series.Count > 0 {
+				count = e.Series.Count
+			}
+			if count == 0 {
+				count = 1
+			}
+
+			mapKey := fmt.Sprintf("%s|%s|%s|%s", ns, e.Reason, strings.TrimSpace(e.Message), groupKey)
+			if existing, found := eventMap[mapKey]; found {
+				existing.count += count
+				if t.After(existing.eventTime) {
+					existing.eventTime = t
+				}
+				existing.object = wildcardName
+				continue
+			}
+
+			eventMap[mapKey] = &eventEntry{
+				eventTime: t,
+				namespace: ns,
+				reason:    e.Reason,
+				object:    objDesc,
+				message:   e.Message,
+				count:     count,
+			}
+		}
+	}
+
+	if len(eventMap) == 0 {
+		return fmt.Sprintf("No recent Warning events found in namespaces: %s", strings.Join(namespaces, ", ")), nil
+	}
+
+	allEvents := make([]eventEntry, 0, len(eventMap))
+	for _, entry := range eventMap {
+		allEvents = append(allEvents, *entry)
+	}
+
+	slices.SortFunc(allEvents, func(a, b eventEntry) int {
+		if a.eventTime.Equal(b.eventTime) {
+			return 0
+		}
+		if a.eventTime.After(b.eventTime) {
+			return -1
+		}
+		return 1
+	})
+
+	if maxEvents > 0 && len(allEvents) > maxEvents {
+		allEvents = allEvents[:maxEvents]
+	}
+
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("Recent Warning Events (last %s, max %d):\n", window, maxEvents))
+	writer := tabwriter.NewWriter(&sb, 0, 0, 2, ' ', 0)
+	_, _ = fmt.Fprintln(writer, "AGE\tNAMESPACE\tREASON\tOBJECT\tMESSAGE")
+
+	for _, e := range allEvents {
+		age := "-"
+		if !e.eventTime.IsZero() {
+			age = time.Since(e.eventTime).Round(time.Second).String()
+		}
+
+		reason := e.reason
+		if e.count > 1 {
+			reason = fmt.Sprintf("%s (x%d)", e.reason, e.count)
+		}
+
+		msg := truncateLogLine(strings.TrimSpace(e.message), 300)
+		_, _ = fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\n",
+			age,
+			e.namespace,
+			reason,
+			e.object,
+			msg,
+		)
+	}
+	_ = writer.Flush()
+	return sb.String(), nil
+}
+
+func printRecentWarningEvents(clientset kubernetes.Interface, namespaces []string, window time.Duration, maxEvents int) {
+	out, err := formatRecentWarningEvents(clientset, namespaces, window, maxEvents)
+	if err != nil {
+		klog.Errorf("Failed to format recent warning events: %v", err)
 		return
 	}
 	klog.Info(out)
@@ -1679,17 +2041,10 @@ func printAddonDeploymentConfigs(client dynamic.Interface, ns string) {
 }
 
 func sanitizeManifestError(msg string) string {
-	return truncateLogLine(strings.TrimSpace(msg), 300)
+	return truncateLogLine(strings.TrimSpace(msg), 600)
 }
 
-func printManifestWorks(client dynamic.Interface) {
-	gvr := NewOCMManifestworksGVR()
-	objs, err := client.Resource(gvr).Namespace("").List(context.TODO(), metav1.ListOptions{})
-	if err != nil {
-		klog.Errorf("failed to list ManifestWorks: %v", err)
-		return
-	}
-
+func formatManifestWorks(items []unstructured.Unstructured) string {
 	var sb strings.Builder
 	sb.WriteString("Observability ManifestWorks:\n")
 	writer := tabwriter.NewWriter(&sb, 0, 0, 2, ' ', 0)
@@ -1703,7 +2058,7 @@ func printManifestWorks(client dynamic.Interface) {
 	var degraded []degradedMW
 	count := 0
 
-	for _, obj := range objs.Items {
+	for _, obj := range items {
 		name := obj.GetName()
 		labels := obj.GetLabels()
 
@@ -1843,19 +2198,34 @@ func printManifestWorks(client dynamic.Interface) {
 	_ = writer.Flush()
 
 	if count == 0 {
-		klog.V(1).Info("No observability ManifestWorks found")
-		return
+		return ""
 	}
 
 	if len(degraded) > 0 {
 		sb.WriteString("\nDegraded or Terminating ManifestWorks Details:\n")
 		for _, d := range degraded {
-			detail := truncateLogLine(d.detail, 400)
+			detail := truncateLogLine(d.detail, 700)
 			sb.WriteString(fmt.Sprintf("  - %s/%s: %s\n", d.ns, d.name, detail))
 		}
 	}
 
-	klog.Info(sb.String())
+	return sb.String()
+}
+
+func printManifestWorks(client dynamic.Interface) {
+	gvr := NewOCMManifestworksGVR()
+	objs, err := client.Resource(gvr).Namespace("").List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		klog.Errorf("failed to list ManifestWorks: %v", err)
+		return
+	}
+
+	out := formatManifestWorks(objs.Items)
+	if out == "" {
+		klog.V(1).Info("No observability ManifestWorks found")
+		return
+	}
+	klog.Info(out)
 }
 
 // GetDiscoveredManagedClusterNames queries the Hub's ManagedCluster resources and returns their names.
@@ -2071,6 +2441,7 @@ func logSpokeClusterDebugInfo(
 		CheckPodsInNamespace(spokeClient, MCO_AGENT_ADDON_NAMESPACE, []string{"endpoint-monitoring-operator", "prom-agent", "observability-monitoring-cleanup"}, map[string]string{})
 		printMCOACustomResources(spokeDynClient, MCO_AGENT_ADDON_NAMESPACE)
 		logClusterMonitoringConfigStatus(spokeClient, clusterName)
+		printRecentWarningEvents(spokeClient, []string{MCO_AGENT_ADDON_NAMESPACE}, 20*time.Minute, 15)
 	} else {
 		klog.Infof("%s (Legacy: %s)", SectionSpokeWorkloads, clusterName)
 		LogNodes(spokeClient, clusterName)
@@ -2083,5 +2454,6 @@ func logSpokeClusterDebugInfo(
 		printConfigMapsInNamespace(spokeClient, MCO_ADDON_NAMESPACE)
 		printSecretsInNamespace(spokeClient, MCO_ADDON_NAMESPACE)
 		logClusterMonitoringConfigStatus(spokeClient, clusterName)
+		printRecentWarningEvents(spokeClient, []string{MCO_ADDON_NAMESPACE}, 20*time.Minute, 15)
 	}
 }
