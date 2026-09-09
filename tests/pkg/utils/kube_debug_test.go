@@ -533,3 +533,172 @@ func TestLogClusterManagementAddOn(t *testing.T) {
 
 	LogClusterManagementAddOn(client)
 }
+
+func TestGetDiscoveredManagedClusterNames(t *testing.T) {
+	gvr := NewOCMManagedClustersGVR()
+	c1 := unstructured.Unstructured{
+		Object: map[string]any{
+			"metadata": map[string]any{
+				"name": "local-cluster",
+			},
+		},
+	}
+	c2 := unstructured.Unstructured{
+		Object: map[string]any{
+			"metadata": map[string]any{
+				"name": "spoke1",
+			},
+		},
+	}
+
+	client := &mockDynamicClient{
+		itemsByGVR: map[schema.GroupVersionResource][]unstructured.Unstructured{
+			gvr: {c1, c2},
+		},
+	}
+
+	names, err := GetDiscoveredManagedClusterNames(context.Background(), client)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(names) != 2 || names[0] != "local-cluster" || names[1] != "spoke1" {
+		t.Errorf("unexpected discovered names: %v", names)
+	}
+}
+
+func TestResolveSpokeClientsFromHub(t *testing.T) {
+	validKubeconfig := `apiVersion: v1
+clusters:
+- cluster:
+    server: https://127.0.0.1:6443
+  name: spoke
+contexts:
+- context:
+    cluster: spoke
+    user: admin
+  name: spoke
+current-context: spoke
+kind: Config
+users:
+- name: admin
+  user:
+    token: dummy
+`
+
+	t.Run("resolves via Hive ClusterDeployment", func(t *testing.T) {
+		cdGVR := NewHiveClusterDeploymentGVR()
+		cd := unstructured.Unstructured{
+			Object: map[string]any{
+				"apiVersion": "hive.openshift.io/v1",
+				"kind":       "ClusterDeployment",
+				"metadata": map[string]any{
+					"name":      "spoke-hive",
+					"namespace": "spoke-hive",
+				},
+				"spec": map[string]any{
+					"clusterMetadata": map[string]any{
+						"adminKubeconfigSecretRef": map[string]any{
+							"name": "custom-hive-secret",
+						},
+					},
+				},
+			},
+		}
+
+		dynClient := &mockDynamicClient{
+			itemsByGVR: map[schema.GroupVersionResource][]unstructured.Unstructured{
+				cdGVR: {cd},
+			},
+		}
+
+		kubeClient := kubefake.NewSimpleClientset(
+			&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "custom-hive-secret",
+					Namespace: "spoke-hive",
+				},
+				Data: map[string][]byte{
+					"kubeconfig": []byte(validKubeconfig),
+				},
+			},
+		)
+
+		spokeKube, spokeDyn, err := resolveSpokeClientsFromHub(context.Background(), kubeClient, dynClient, "spoke-hive")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if spokeKube == nil || spokeDyn == nil {
+			t.Errorf("expected non-nil spoke clients, got spokeKube=%v, spokeDyn=%v", spokeKube, spokeDyn)
+		}
+	})
+
+	t.Run("resolves via standard admin kubeconfig naming convention", func(t *testing.T) {
+		dynClient := &mockDynamicClient{
+			itemsByGVR: map[schema.GroupVersionResource][]unstructured.Unstructured{},
+		}
+
+		kubeClient := kubefake.NewSimpleClientset(
+			&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "spoke-std-admin-kubeconfig",
+					Namespace: "spoke-std",
+				},
+				Data: map[string][]byte{
+					"kubeconfig": []byte(validKubeconfig),
+				},
+			},
+		)
+
+		spokeKube, spokeDyn, err := resolveSpokeClientsFromHub(context.Background(), kubeClient, dynClient, "spoke-std")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if spokeKube == nil || spokeDyn == nil {
+			t.Errorf("expected non-nil spoke clients, got spokeKube=%v, spokeDyn=%v", spokeKube, spokeDyn)
+		}
+	})
+
+	t.Run("resolves via hive secret-type label", func(t *testing.T) {
+		dynClient := &mockDynamicClient{
+			itemsByGVR: map[schema.GroupVersionResource][]unstructured.Unstructured{},
+		}
+
+		kubeClient := kubefake.NewSimpleClientset(
+			&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "some-auto-generated-name",
+					Namespace: "spoke-labeled",
+					Labels: map[string]string{
+						"hive.openshift.io/secret-type": "kubeconfig",
+					},
+				},
+				Data: map[string][]byte{
+					"kubeconfig": []byte(validKubeconfig),
+				},
+			},
+		)
+
+		spokeKube, spokeDyn, err := resolveSpokeClientsFromHub(context.Background(), kubeClient, dynClient, "spoke-labeled")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if spokeKube == nil || spokeDyn == nil {
+			t.Errorf("expected non-nil spoke clients, got spokeKube=%v, spokeDyn=%v", spokeKube, spokeDyn)
+		}
+	})
+
+	t.Run("returns error when no admin kubeconfig secret found", func(t *testing.T) {
+		dynClient := &mockDynamicClient{
+			itemsByGVR: map[schema.GroupVersionResource][]unstructured.Unstructured{},
+		}
+		kubeClient := kubefake.NewSimpleClientset()
+
+		_, _, err := resolveSpokeClientsFromHub(context.Background(), kubeClient, dynClient, "unknown-cluster")
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+		if !strings.Contains(err.Error(), "no admin kubeconfig secret found") {
+			t.Errorf("expected 'no admin kubeconfig secret found' error, got: %v", err)
+		}
+	})
+}
