@@ -54,6 +54,18 @@ func TestIsErrorLine(t *testing.T) {
 		{"timestamped klog info containing 'error' in message", "2026-09-09T11:49:27.999120911Z I0909 11:49:27.999008 1 controller.go:100] Reconcile finished with error handled", false},
 		{"timestamped zap info containing 'failed'", "2026-09-09T10:00:00Z INFO Controller checking failed jobs", false},
 		{"timestamped zap debug containing 'error'", "2026-09-09T10:00:00Z DEBUG Skipping ignored error on cleanup", false},
+		{"logfmt info containing error in key/val", `caller=main.go:50 level=info msg="sync complete" error_count=0`, false},
+		{"logfmt debug containing failed in key/val", `caller=main.go:50 level=debug msg="evaluation status" failed=false`, false},
+		{"logfmt quoted info containing error", `caller=main.go:50 level="info" msg="handled error gracefully"`, false},
+		{"logfmt quoted debug containing failed", `caller=main.go:50 level="debug" msg="failed condition handled"`, false},
+		{"json info containing error in message", `{"level":"info","ts":"2026-09-09T10:00:00Z","msg":"recovered from error"}`, false},
+		{"json debug containing failed in message", `{"level":"debug","ts":"2026-09-09T10:00:00Z","msg":"no failed jobs"}`, false},
+		{
+			"prom benign out of order samples warning",
+			`ts=2026-09-09T13:12:00Z caller=scrape.go:1712 level=warn component="scrape manager" msg="Error on ingesting out-of-order samples" num_dropped=1`,
+			false,
+		},
+		{"logfmt warn containing genuine error", `ts=2026-09-09T13:12:00Z level=warn component="remote-write" msg="failed to send batch"`, true},
 		{"klog info containing panic is still caught", "I0904 13:16:22.123456 reconciler.go:42] Caught panic during handler", true},
 	}
 
@@ -1340,4 +1352,158 @@ func TestFormatContainerLogs(t *testing.T) {
 			t.Errorf("did not expect omitted notice when all lines fit, got %q", lines[0])
 		}
 	})
+
+	t.Run("long line truncation", func(t *testing.T) {
+		t1 := now.Add(-1 * time.Minute).Format(time.RFC3339)
+		longMsg := strings.Repeat("a", 600)
+		raw := fmt.Sprintf("%s E0909 10:00:00.000000 1 main.go:10] error: %s\n", t1, longMsg)
+		lines, _ := formatContainerLogs(raw, cutoff)
+		if len(lines) != 1 {
+			t.Fatalf("expected 1 line, got %d", len(lines))
+		}
+		expectedLen := maxContainerLogLineLength + len(" ... [truncated]")
+		if len(lines[0]) != expectedLen {
+			t.Errorf("expected line length %d, got %d", expectedLen, len(lines[0]))
+		}
+		if !strings.HasSuffix(lines[0], " ... [truncated]") {
+			t.Errorf("expected line to end with truncation suffix, got %q", lines[0])
+		}
+	})
+}
+
+func TestTruncateLogLine(t *testing.T) {
+	testCases := []struct {
+		name     string
+		input    string
+		maxLen   int
+		expected string
+	}{
+		{"short line", "hello world", 20, "hello world"},
+		{"exact length", "12345", 5, "12345"},
+		{"truncated line", "1234567890", 5, "12345 ... [truncated]"},
+		{"utf8 multi-byte straddle", "hello \u20ac world", 8, "hello  ... [truncated]"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			actual := truncateLogLine(tc.input, tc.maxLen)
+			if actual != tc.expected {
+				t.Errorf("truncateLogLine(%q, %d) = %q; want %q", tc.input, tc.maxLen, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func TestFormatContainerState(t *testing.T) {
+	startTime := metav1.Date(2026, 9, 9, 10, 30, 0, 0, time.UTC)
+
+	runningState := corev1.ContainerState{
+		Running: &corev1.ContainerStateRunning{
+			StartedAt: startTime,
+		},
+	}
+	if got := formatContainerState(runningState); got != "Running (started 2026-09-09 10:30:00)" {
+		t.Errorf("formatContainerState(running) = %q; want %q", got, "Running (started 2026-09-09 10:30:00)")
+	}
+
+	waitingState := corev1.ContainerState{
+		Waiting: &corev1.ContainerStateWaiting{
+			Reason:  "CrashLoopBackOff",
+			Message: "back-off 5m0s restarting failed container",
+		},
+	}
+	if got := formatContainerState(waitingState); got != "Waiting (CrashLoopBackOff: back-off 5m0s restarting failed container)" {
+		t.Errorf("formatContainerState(waiting) = %q; want %q", got, "Waiting (CrashLoopBackOff: back-off 5m0s restarting failed container)")
+	}
+
+	terminatedState := corev1.ContainerState{
+		Terminated: &corev1.ContainerStateTerminated{
+			ExitCode: 137,
+			Reason:   "ContainerStatusUnknown",
+			Message:  "The container could not be located",
+		},
+	}
+	if got := formatContainerState(terminatedState); got != "Terminated (exit code 137, reason: ContainerStatusUnknown: The container could not be located)" {
+		t.Errorf("formatContainerState(terminated) = %q; want %q", got, "Terminated (exit code 137, reason: ContainerStatusUnknown: The container could not be located)")
+	}
+}
+
+func TestFormatAddOnDeploymentConfig(t *testing.T) {
+	adc := &unstructured.Unstructured{
+		Object: map[string]any{
+			"metadata": map[string]any{
+				"name":       "multicluster-observability-addon",
+				"generation": int64(3),
+			},
+			"spec": map[string]any{
+				"agentInstallNamespace": "open-cluster-management-agent-addon",
+				"customizedVariables": []any{
+					map[string]any{
+						"name":  "COLLECTOR_IMAGE",
+						"value": "quay.io/stolostron/metrics-collector:latest",
+					},
+				},
+				"proxyConfig": map[string]any{
+					"noProxy":    "localhost",
+					"httpsProxy": "https://proxy.example.com:8443",
+					"httpProxy":  "http://proxy.example.com:8080",
+				},
+			},
+		},
+	}
+
+	output := formatAddOnDeploymentConfig(adc)
+	if !strings.Contains(output, "multicluster-observability-addon (generation 3)") {
+		t.Errorf("expected name and generation in output, got: %s", output)
+	}
+	if !strings.Contains(output, "agentInstallNamespace: open-cluster-management-agent-addon") {
+		t.Errorf("expected agentInstallNamespace in output, got: %s", output)
+	}
+	if !strings.Contains(output, "COLLECTOR_IMAGE: quay.io/stolostron/metrics-collector:latest") {
+		t.Errorf("expected customizedVariable in output, got: %s", output)
+	}
+	expectedProxy := "      proxyConfig:\n        httpProxy: http://proxy.example.com:8080\n        httpsProxy: https://proxy.example.com:8443\n        noProxy: localhost\n"
+	if !strings.Contains(output, expectedProxy) {
+		t.Errorf("expected sorted proxyConfig in output, got: %s", output)
+	}
+}
+
+func TestLogClusterMonitoringConfigStatus(t *testing.T) {
+	cmoCM := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "cluster-monitoring-config",
+			Namespace: "openshift-monitoring",
+		},
+		Data: map[string]string{
+			"config.yaml": `enableUserWorkload: true
+prometheusK8s:
+  additionalAlertmanagerConfigs:
+  - scheme: https
+    pathPrefix: /
+`,
+		},
+	}
+	uwmCM := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "user-workload-monitoring-config",
+			Namespace: "openshift-user-workload-monitoring",
+		},
+		Data: map[string]string{
+			"config.yaml": `prometheus:
+  logLevel: info
+`,
+		},
+	}
+
+	client := kubefake.NewClientset(cmoCM, uwmCM)
+	// Should execute cleanly without error or panic
+	logClusterMonitoringConfigStatus(client, "Hub")
+}
+
+func TestDefensiveNilClientGuards(t *testing.T) {
+	// None of these should panic when passed nil clients
+	printMCOACustomResources(nil, "some-ns")
+	logClusterMonitoringConfigStatus(nil, "Hub")
+	logSpokeClusterDebugInfo(nil, nil, "cluster1", true)
+	logSpokeClusterDebugInfo(nil, nil, "cluster1", false)
 }
