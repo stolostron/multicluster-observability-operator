@@ -140,6 +140,7 @@ func LogFailingTestStandardDebugInfo(opt TestOptions, isMCOA bool) {
 
 	// Section 4: Hub Workloads & Pods
 	klog.Info(SectionHubWorkloads)
+	LogNodes(hubClient, "Hub")
 	CheckPodsInNamespace(hubClient, "open-cluster-management", []string{"multicluster-observability-operator"}, map[string]string{
 		"name": "multicluster-observability-operator",
 	})
@@ -200,6 +201,58 @@ func LogFailingTestStandardDebugInfo(opt TestOptions, isMCOA bool) {
 	klog.Info(DebugDumpEndMarker)
 }
 
+// isObservabilityPodInSharedNamespace returns true if a pod in MCO_AGENT_ADDON_NAMESPACE
+// belongs to observability or monitoring workloads.
+func isObservabilityPodInSharedNamespace(podName string) bool {
+	for _, prefix := range []string{
+		"endpoint-monitoring-operator",
+		"observability-monitoring-cleanup",
+		"observability-addon",
+		"prom-agent-",
+		"prometheus-",
+		"alertmanager-",
+		"metrics-collector-",
+		"uwl-metrics-collector-",
+	} {
+		if strings.HasPrefix(podName, prefix) || strings.Contains(podName, prefix) {
+			return true
+		}
+	}
+	return false
+}
+
+// isPodAncientFailure returns true if a non-running pod failed or terminated long before
+// the current test execution window (e.g., > 4 hours ago).
+func isPodAncientFailure(pod corev1.Pod, maxAge time.Duration) bool {
+	if pod.CreationTimestamp.IsZero() {
+		return false
+	}
+	if time.Since(pod.CreationTimestamp.Time) < maxAge {
+		return false
+	}
+
+	for _, cond := range pod.Status.Conditions {
+		if !cond.LastTransitionTime.IsZero() && time.Since(cond.LastTransitionTime.Time) < maxAge {
+			return false
+		}
+	}
+
+	for _, cs := range pod.Status.ContainerStatuses {
+		if cs.State.Terminated != nil && !cs.State.Terminated.FinishedAt.IsZero() {
+			if time.Since(cs.State.Terminated.FinishedAt.Time) < maxAge {
+				return false
+			}
+		}
+		if cs.LastTerminationState.Terminated != nil && !cs.LastTerminationState.Terminated.FinishedAt.IsZero() {
+			if time.Since(cs.LastTerminationState.Terminated.FinishedAt.Time) < maxAge {
+				return false
+			}
+		}
+	}
+
+	return true
+}
+
 // CheckPodsInNamespace lists pods in a namespace and logs debug info (status, events, logs) for pods not running.
 func CheckPodsInNamespace(client kubernetes.Interface, ns string, forcePodNamesLog []string, podLabels map[string]string) {
 	listOptions := metav1.ListOptions{}
@@ -224,23 +277,45 @@ func CheckPodsInNamespace(client kubernetes.Interface, ns string, forcePodNamesL
 	forcedPodsLogged := make(map[string]bool)
 
 	for _, pod := range pods.Items {
+		force := false
+		for _, forcePodName := range forcePodNamesLog {
+			if strings.Contains(pod.Name, forcePodName) {
+				force = true
+				break
+			}
+		}
+
+		// In shared agent namespace, skip deep inspection of pods belonging to other ACM addons unless forced
+		if ns == MCO_AGENT_ADDON_NAMESPACE && !isObservabilityPodInSharedNamespace(pod.Name) && !force {
+			continue
+		}
+
 		isRunningOrSucceeded := pod.Status.Phase == corev1.PodRunning || pod.Status.Phase == corev1.PodSucceeded
 		if !isRunningOrSucceeded {
 			notRunningPodsCount++
 		}
 
-		force := false
-		for _, forcePodName := range forcePodNamesLog {
-			if strings.Contains(pod.Name, forcePodName) {
-				if isRunningOrSucceeded {
-					if !forcedPodsLogged[forcePodName] {
-						force = true
+		// Skip deep diagnostics for ancient dead pods (> 4h) from previous runs
+		if !isRunningOrSucceeded && isPodAncientFailure(pod, 4*time.Hour) && !force {
+			klog.V(2).Infof("Skipping deep diagnostics for ancient failed pod %s/%s", ns, pod.Name)
+			continue
+		}
+
+		// For forced pods that are already running, track if we already logged them to avoid duplicates
+		if force && isRunningOrSucceeded {
+			alreadyLogged := false
+			for _, forcePodName := range forcePodNamesLog {
+				if strings.Contains(pod.Name, forcePodName) {
+					if forcedPodsLogged[forcePodName] {
+						alreadyLogged = true
+					} else {
 						forcedPodsLogged[forcePodName] = true
 					}
-				} else {
-					force = true
+					break
 				}
-				break
+			}
+			if alreadyLogged {
+				force = false
 			}
 		}
 
@@ -302,6 +377,15 @@ func isErrorLine(line string) bool {
 }
 
 func LogPodLogs(client kubernetes.Interface, ns string, pod corev1.Pod) {
+	if pod.Status.Phase == corev1.PodPending {
+		// Containers have not started; logs are not available
+		return
+	}
+	if pod.Status.Reason == "Evicted" {
+		klog.V(2).Infof("Pod %s was evicted, container logs are not available", pod.Name)
+		return
+	}
+
 	for _, container := range pod.Spec.Containers {
 		sinceSeconds := int64(360)
 		limitBytes := int64(5 * 1024 * 1024)
@@ -313,13 +397,29 @@ func LogPodLogs(client kubernetes.Interface, ns string, pod corev1.Pod) {
 		}).Do(context.Background())
 
 		if logsRes.Error() != nil {
-			klog.Errorf("Failed to get logs for pod %q container %q: %s", pod.Name, container.Name, logsRes.Error())
+			errStr := logsRes.Error().Error()
+			if strings.Contains(errStr, "is terminated") ||
+				strings.Contains(errStr, "waiting to start") ||
+				strings.Contains(errStr, "ContainerCreating") ||
+				strings.Contains(errStr, "not found") {
+				klog.V(2).Infof("Logs unavailable for pod %q container %q: %s", pod.Name, container.Name, errStr)
+			} else {
+				klog.Errorf("Failed to get logs for pod %q container %q: %s", pod.Name, container.Name, errStr)
+			}
 			continue
 		}
 
 		logs, err := logsRes.Raw()
 		if err != nil {
-			klog.Errorf("Failed to get logs for pod %q container %q: %s", pod.Name, container.Name, err.Error())
+			errStr := err.Error()
+			if strings.Contains(errStr, "is terminated") ||
+				strings.Contains(errStr, "waiting to start") ||
+				strings.Contains(errStr, "ContainerCreating") ||
+				strings.Contains(errStr, "not found") {
+				klog.V(2).Infof("Logs unavailable for pod %q container %q: %s", pod.Name, container.Name, errStr)
+			} else {
+				klog.Errorf("Failed to get logs for pod %q container %q: %s", pod.Name, container.Name, errStr)
+			}
 			continue
 		}
 
@@ -827,6 +927,109 @@ func printDaemonSetsStatuses(clientset kubernetes.Interface, namespace string) {
 	klog.Info(out)
 }
 
+func formatNodesStatuses(clientset kubernetes.Interface) (string, error) {
+	nodes, err := clientset.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		return "", fmt.Errorf("failed to list nodes: %w", err)
+	}
+	if len(nodes.Items) == 0 {
+		return "No nodes found", nil
+	}
+
+	var sb strings.Builder
+	writer := tabwriter.NewWriter(&sb, 0, 0, 2, ' ', 0)
+	_, _ = fmt.Fprintln(writer, "NAME\tSTATUS\tROLES\tAGE\tPRESSURE/ISSUES")
+
+	var issues []string
+	for _, node := range nodes.Items {
+		age := time.Since(node.CreationTimestamp.Time).Round(time.Second)
+
+		var roles []string
+		for label := range node.Labels {
+			if role, found := strings.CutPrefix(label, "node-role.kubernetes.io/"); found && role != "" {
+				roles = append(roles, role)
+			}
+		}
+		if len(roles) == 0 {
+			roles = []string{"<none>"}
+		}
+		slices.Sort(roles)
+
+		status := "NotReady"
+		var nodeProblems []string
+
+		for _, cond := range node.Status.Conditions {
+			switch cond.Type {
+			case corev1.NodeReady:
+				if cond.Status == corev1.ConditionTrue {
+					status = "Ready"
+				} else {
+					status = string(cond.Status)
+					nodeProblems = append(nodeProblems, fmt.Sprintf("Ready=%s", cond.Status))
+					issues = append(issues, fmt.Sprintf("  - %s: Ready=%s (%s: %s)", node.Name, cond.Status, cond.Reason, cond.Message))
+				}
+			case corev1.NodeDiskPressure:
+				if cond.Status == corev1.ConditionTrue {
+					nodeProblems = append(nodeProblems, "DiskPressure")
+					issues = append(issues, fmt.Sprintf("  - %s: DiskPressure=True (%s: %s)", node.Name, cond.Reason, cond.Message))
+				}
+			case corev1.NodeMemoryPressure:
+				if cond.Status == corev1.ConditionTrue {
+					nodeProblems = append(nodeProblems, "MemoryPressure")
+					issues = append(issues, fmt.Sprintf("  - %s: MemoryPressure=True (%s: %s)", node.Name, cond.Reason, cond.Message))
+				}
+			case corev1.NodePIDPressure:
+				if cond.Status == corev1.ConditionTrue {
+					nodeProblems = append(nodeProblems, "PIDPressure")
+					issues = append(issues, fmt.Sprintf("  - %s: PIDPressure=True (%s: %s)", node.Name, cond.Reason, cond.Message))
+				}
+			case corev1.NodeNetworkUnavailable:
+				if cond.Status == corev1.ConditionTrue {
+					nodeProblems = append(nodeProblems, "NetworkUnavailable")
+					issues = append(issues, fmt.Sprintf("  - %s: NetworkUnavailable=True (%s: %s)", node.Name, cond.Reason, cond.Message))
+				}
+			}
+		}
+
+		for _, taint := range node.Spec.Taints {
+			if taint.Effect == corev1.TaintEffectNoSchedule || taint.Effect == corev1.TaintEffectNoExecute {
+				nodeProblems = append(nodeProblems, fmt.Sprintf("Taint:%s", taint.Key))
+				issues = append(issues, fmt.Sprintf("  - %s: Untolerated Taint %s=%s:%s", node.Name, taint.Key, taint.Value, taint.Effect))
+			}
+		}
+
+		problemsStr := "None"
+		if len(nodeProblems) > 0 {
+			problemsStr = strings.Join(nodeProblems, ",")
+		}
+
+		_, _ = fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\n",
+			node.Name,
+			status,
+			strings.Join(roles, ","),
+			age,
+			problemsStr,
+		)
+	}
+	_ = writer.Flush()
+
+	out := "Nodes:\n" + sb.String()
+	if len(issues) > 0 {
+		out += "\nNode Issues / Taints:\n" + strings.Join(issues, "\n")
+	}
+	return out, nil
+}
+
+// LogNodes logs a structured overview of node health, pressure conditions, and taints.
+func LogNodes(clientset kubernetes.Interface, contextLabel string) {
+	out, err := formatNodesStatuses(clientset)
+	if err != nil {
+		klog.V(2).Infof("Could not list nodes for %s: %v", contextLabel, err)
+		return
+	}
+	klog.Info(out)
+}
+
 func printConfigMapsInNamespace(client kubernetes.Interface, ns string) {
 	configMaps, err := client.CoreV1().ConfigMaps(ns).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
@@ -1195,11 +1398,13 @@ func logSpokeClusterDebugInfo(
 
 	if isMCOA {
 		klog.Infof("%s (MCOA: %s)", SectionSpokeWorkloads, clusterName)
+		LogNodes(spokeClient, clusterName)
 		CheckDeploymentsInNamespace(spokeClient, MCO_AGENT_ADDON_NAMESPACE)
 		CheckStatefulSetsInNamespace(spokeClient, MCO_AGENT_ADDON_NAMESPACE)
 		CheckPodsInNamespace(spokeClient, MCO_AGENT_ADDON_NAMESPACE, []string{}, map[string]string{})
 	} else {
 		klog.Infof("%s (Legacy: %s)", SectionSpokeWorkloads, clusterName)
+		LogNodes(spokeClient, clusterName)
 		PrintObject(context.TODO(), spokeDynClient, NewMCOAddonGVR(), MCO_ADDON_NAMESPACE, "observability-addon")
 		CheckDeploymentsInNamespace(spokeClient, MCO_ADDON_NAMESPACE)
 		CheckStatefulSetsInNamespace(spokeClient, MCO_ADDON_NAMESPACE)
