@@ -27,7 +27,10 @@ import (
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
 )
 
-var klogSeverityPattern = regexp.MustCompile(`^[EFW]\d{4} \d{2}:\d{2}:\d{2}`)
+var (
+	klogSeverityPattern = regexp.MustCompile(`^(?:\S+\s+)?[EFW]\d{4} \d{2}:\d{2}:\d{2}`)
+	klogInfoPattern     = regexp.MustCompile(`^(?:\S+\s+)?(?:I\d{4} \d{2}:\d{2}:\d{2}|INFO\s|DEBUG\s)`)
+)
 
 const (
 	DebugDumpStartMarker          = "==================== [DEBUG DUMP START] ===================="
@@ -157,7 +160,7 @@ func LogFailingTestStandardDebugInfo(opt TestOptions, isMCOA bool) {
 	if isMCOA {
 		CheckDeploymentsInNamespace(hubClient, MCO_AGENT_ADDON_NAMESPACE)
 		CheckStatefulSetsInNamespace(hubClient, MCO_AGENT_ADDON_NAMESPACE)
-		CheckPodsInNamespace(hubClient, MCO_AGENT_ADDON_NAMESPACE, []string{"endpoint-monitoring-operator", "observability-monitoring-cleanup"}, map[string]string{})
+		CheckPodsInNamespace(hubClient, MCO_AGENT_ADDON_NAMESPACE, []string{"endpoint-monitoring-operator", "prom-agent", "observability-monitoring-cleanup"}, map[string]string{})
 	}
 
 	// Section 5: Spoke Clusters
@@ -201,20 +204,21 @@ func LogFailingTestStandardDebugInfo(opt TestOptions, isMCOA bool) {
 	klog.Info(DebugDumpEndMarker)
 }
 
-// isObservabilityPodInSharedNamespace returns true if a pod in MCO_AGENT_ADDON_NAMESPACE
-// belongs to observability or monitoring workloads.
-func isObservabilityPodInSharedNamespace(podName string) bool {
+// isObservabilityWorkloadInSharedNamespace returns true if a workload (pod, deployment, statefulset, daemonset)
+// in MCO_AGENT_ADDON_NAMESPACE belongs to observability or monitoring workloads.
+func isObservabilityWorkloadInSharedNamespace(workloadName string) bool {
 	for _, prefix := range []string{
 		"endpoint-monitoring-operator",
 		"observability-monitoring-cleanup",
 		"observability-addon",
-		"prom-agent-",
-		"prometheus-",
-		"alertmanager-",
-		"metrics-collector-",
-		"uwl-metrics-collector-",
+		"prom-agent",
+		"prometheus",
+		"alertmanager",
+		"metrics-collector",
+		"uwl-metrics-collector",
+		"node-exporter",
 	} {
-		if strings.HasPrefix(podName, prefix) || strings.Contains(podName, prefix) {
+		if strings.HasPrefix(workloadName, prefix) || strings.Contains(workloadName, prefix) {
 			return true
 		}
 	}
@@ -265,6 +269,18 @@ func CheckPodsInNamespace(client kubernetes.Interface, ns string, forcePodNamesL
 		return
 	}
 
+	// In shared agent namespace, filter to observability workloads only to avoid noise
+	// from unrelated agent addons (e.g. hypershift-addon-agent, cluster-proxy, klusterlet).
+	if ns == MCO_AGENT_ADDON_NAMESPACE {
+		var scopedPods []corev1.Pod
+		for _, pod := range pods.Items {
+			if isObservabilityWorkloadInSharedNamespace(pod.Name) {
+				scopedPods = append(scopedPods, pod)
+			}
+		}
+		pods.Items = scopedPods
+	}
+
 	if len(pods.Items) == 0 {
 		klog.V(1).Infof("No pods found in namespace %s", ns)
 		return
@@ -286,19 +302,20 @@ func CheckPodsInNamespace(client kubernetes.Interface, ns string, forcePodNamesL
 		}
 
 		// In shared agent namespace, skip deep inspection of pods belonging to other ACM addons unless forced
-		if ns == MCO_AGENT_ADDON_NAMESPACE && !isObservabilityPodInSharedNamespace(pod.Name) && !force {
+		if ns == MCO_AGENT_ADDON_NAMESPACE && !isObservabilityWorkloadInSharedNamespace(pod.Name) && !force {
 			continue
 		}
 
 		isRunningOrSucceeded := pod.Status.Phase == corev1.PodRunning || pod.Status.Phase == corev1.PodSucceeded
-		if !isRunningOrSucceeded {
-			notRunningPodsCount++
-		}
 
-		// Skip deep diagnostics for ancient dead pods (> 4h) from previous runs
-		if !isRunningOrSucceeded && isPodAncientFailure(pod, 4*time.Hour) && !force {
-			klog.V(2).Infof("Skipping deep diagnostics for ancient failed pod %s/%s", ns, pod.Name)
-			continue
+		if !isRunningOrSucceeded {
+			// Skip deep diagnostics and failure counting for ancient dead pods (> 4h) from previous runs.
+			// Ancient failures should never be dumped or counted against current test runs, even if matching forcePodNamesLog.
+			if isPodAncientFailure(pod, 4*time.Hour) {
+				klog.V(2).Infof("Skipping deep diagnostics for ancient failed pod %s/%s", ns, pod.Name)
+				continue
+			}
+			notRunningPodsCount++
 		}
 
 		// For forced pods that are already running, track if we already logged them to avoid duplicates
@@ -364,9 +381,17 @@ func LogPodStatus(podList corev1.Pod) {
 // isErrorLine identifies error, fatal, panic, failure, or timeout signatures.
 func isErrorLine(line string) bool {
 	lower := strings.ToLower(line)
+	// Panic signatures always take precedence regardless of logger prefix
+	if strings.Contains(lower, "panic") {
+		return true
+	}
+	// Suppress explicit info/debug lines (e.g. klog I0909 or Zap INFO) that may contain words
+	// like "failed" or "error" in routine condition/status updates.
+	if klogInfoPattern.MatchString(line) {
+		return false
+	}
 	if strings.Contains(lower, "error") ||
 		strings.Contains(lower, "fatal") ||
-		strings.Contains(lower, "panic") ||
 		strings.Contains(lower, "failed") ||
 		strings.Contains(lower, "exception") ||
 		strings.Contains(lower, "timeout") ||
@@ -423,58 +448,8 @@ func LogPodLogs(client kubernetes.Interface, ns string, pod corev1.Pod) {
 			continue
 		}
 
-		// Aggregate error/warning logs from the past 6 minutes
-		var errorLines []string
-		var windowLines []string
-		lines := strings.Split(string(logs), "\n")
 		cutoffTime := time.Now().Add(-6 * time.Minute)
-		unparseableCount := 0
-
-		for i := len(lines) - 1; i >= 0; i-- {
-			line := lines[i]
-			if line == "" {
-				continue
-			}
-
-			// Try to parse timestamp at the beginning of the line
-			timestampParsed := false
-			fields := strings.Fields(line)
-			if len(fields) > 0 {
-				if t, err := time.Parse(time.RFC3339, fields[0]); err == nil {
-					timestampParsed = true
-					if t.Before(cutoffTime) {
-						break
-					}
-				}
-			}
-
-			if !timestampParsed {
-				if unparseableCount >= 100 {
-					continue
-				}
-				unparseableCount++
-			}
-
-			windowLines = append(windowLines, line)
-			if isErrorLine(line) {
-				errorLines = append(errorLines, line)
-			}
-		}
-
-		var displayLines []string
-		msg := "recent errors and warnings from the past 6 minutes"
-		if len(errorLines) > 0 {
-			count := min(50, len(errorLines))
-			displayLines = errorLines[:count]
-			msg = fmt.Sprintf("%d error/warning lines from the past 6 minutes", count)
-		} else if len(windowLines) > 0 {
-			count := min(20, len(windowLines))
-			displayLines = windowLines[:count]
-			msg = fmt.Sprintf("last %d log lines (no errors detected in 6m window)", count)
-		}
-
-		// Reverse the lines to restore chronological order
-		slices.Reverse(displayLines)
+		displayLines, msg := formatContainerLogs(string(logs), cutoffTime)
 
 		if len(displayLines) > 0 {
 			delimitedLogs := fmt.Sprintf(">>>>>>>>>> container logs: %s/%s >>>>>>>>>>\n%s\n<<<<<<<<<< container logs: %s/%s <<<<<<<<<<",
@@ -484,11 +459,99 @@ func LogPodLogs(client kubernetes.Interface, ns string, pod corev1.Pod) {
 	}
 }
 
+// formatContainerLogs parses raw container logs, extracts recent error/warning lines
+// within the cutoff window, caps the output, and prepends an omitted lines note if lines were filtered.
+func formatContainerLogs(rawLogs string, cutoffTime time.Time) ([]string, string) {
+	var errorLines []string
+	var windowLines []string
+	lines := strings.Split(rawLogs, "\n")
+	unparseableCount := 0
+
+	for i := len(lines) - 1; i >= 0; i-- {
+		line := lines[i]
+		if line == "" {
+			continue
+		}
+
+		// Try to parse timestamp at the beginning of the line
+		timestampParsed := false
+		fields := strings.Fields(line)
+		if len(fields) > 0 {
+			if t, err := time.Parse(time.RFC3339, fields[0]); err == nil {
+				timestampParsed = true
+				if t.Before(cutoffTime) {
+					break
+				}
+			}
+		}
+
+		if !timestampParsed {
+			if unparseableCount >= 100 {
+				continue
+			}
+			unparseableCount++
+		}
+
+		windowLines = append(windowLines, line)
+		if isErrorLine(line) {
+			errorLines = append(errorLines, line)
+		}
+	}
+
+	var displayLines []string
+	msg := "recent errors and warnings from the past 6 minutes"
+	if len(errorLines) > 0 {
+		count := min(50, len(errorLines))
+		displayLines = errorLines[:count]
+		msg = fmt.Sprintf("%d error/warning lines from the past 6 minutes", count)
+	} else if len(windowLines) > 0 {
+		count := min(20, len(windowLines))
+		displayLines = windowLines[:count]
+		msg = fmt.Sprintf("last %d log lines (no errors detected in 6m window)", count)
+	}
+
+	// Reverse the lines to restore chronological order
+	slices.Reverse(displayLines)
+
+	var omittedMsg string
+	if len(errorLines) > 0 {
+		omittedErrors := len(errorLines) - len(displayLines)
+		omittedNonErrors := len(windowLines) - len(errorLines)
+		switch {
+		case omittedErrors > 0 && omittedNonErrors > 0:
+			omittedMsg = fmt.Sprintf("  (+ %d older error lines and %d non-error lines omitted for brevity)", omittedErrors, omittedNonErrors)
+		case omittedErrors > 0:
+			omittedMsg = fmt.Sprintf("  (+ %d older error lines omitted for brevity)", omittedErrors)
+		case omittedNonErrors > 0:
+			omittedMsg = fmt.Sprintf("  (+ %d non-error log lines omitted for brevity)", omittedNonErrors)
+		}
+	} else if len(windowLines) > len(displayLines) {
+		omittedLines := len(windowLines) - len(displayLines)
+		omittedMsg = fmt.Sprintf("  (+ %d older log lines omitted for brevity)", omittedLines)
+	}
+
+	if omittedMsg != "" {
+		displayLines = slices.Insert(displayLines, 0, omittedMsg)
+	}
+
+	return displayLines, msg
+}
+
 func CheckDeploymentsInNamespace(client kubernetes.Interface, ns string) {
 	deployments, err := client.AppsV1().Deployments(ns).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		klog.Errorf("Failed to get deployments in namespace %s: %v", ns, err)
 		return
+	}
+
+	if ns == MCO_AGENT_ADDON_NAMESPACE {
+		var scoped []appsv1.Deployment
+		for _, dep := range deployments.Items {
+			if isObservabilityWorkloadInSharedNamespace(dep.Name) {
+				scoped = append(scoped, dep)
+			}
+		}
+		deployments.Items = scoped
 	}
 
 	if len(deployments.Items) == 0 {
@@ -500,6 +563,11 @@ func CheckDeploymentsInNamespace(client kubernetes.Interface, ns string) {
 	printDeploymentsStatuses(client, ns)
 
 	for _, deployment := range deployments.Items {
+		// In shared agent namespace, skip deep inspection of deployments belonging to other ACM addons
+		if ns == MCO_AGENT_ADDON_NAMESPACE && !isObservabilityWorkloadInSharedNamespace(deployment.Name) {
+			continue
+		}
+
 		desired := int32(1)
 		if deployment.Spec.Replicas != nil {
 			desired = *deployment.Spec.Replicas
@@ -538,6 +606,16 @@ func CheckStatefulSetsInNamespace(client kubernetes.Interface, ns string) {
 		return
 	}
 
+	if ns == MCO_AGENT_ADDON_NAMESPACE {
+		var scoped []appsv1.StatefulSet
+		for _, ss := range statefulSets.Items {
+			if isObservabilityWorkloadInSharedNamespace(ss.Name) {
+				scoped = append(scoped, ss)
+			}
+		}
+		statefulSets.Items = scoped
+	}
+
 	if len(statefulSets.Items) == 0 {
 		klog.V(1).Infof("No statefulsets found in namespace %q", ns)
 		return
@@ -547,6 +625,11 @@ func CheckStatefulSetsInNamespace(client kubernetes.Interface, ns string) {
 	printStatefulSetsStatuses(client, ns)
 
 	for _, statefulSet := range statefulSets.Items {
+		// In shared agent namespace, skip deep inspection of statefulsets belonging to other ACM addons
+		if ns == MCO_AGENT_ADDON_NAMESPACE && !isObservabilityWorkloadInSharedNamespace(statefulSet.Name) {
+			continue
+		}
+
 		desired := int32(1)
 		if statefulSet.Spec.Replicas != nil {
 			desired = *statefulSet.Spec.Replicas
@@ -568,6 +651,16 @@ func CheckDaemonSetsInNamespace(client kubernetes.Interface, ns string) {
 		return
 	}
 
+	if ns == MCO_AGENT_ADDON_NAMESPACE {
+		var scoped []appsv1.DaemonSet
+		for _, ds := range daemonSets.Items {
+			if isObservabilityWorkloadInSharedNamespace(ds.Name) {
+				scoped = append(scoped, ds)
+			}
+		}
+		daemonSets.Items = scoped
+	}
+
 	if len(daemonSets.Items) == 0 {
 		klog.V(1).Infof("No daemonsets found in namespace %q", ns)
 		return
@@ -577,6 +670,10 @@ func CheckDaemonSetsInNamespace(client kubernetes.Interface, ns string) {
 	printDaemonSetsStatuses(client, ns)
 
 	for _, daemonSet := range daemonSets.Items {
+		// In shared agent namespace, skip deep inspection of daemonsets belonging to other ACM addons
+		if ns == MCO_AGENT_ADDON_NAMESPACE && !isObservabilityWorkloadInSharedNamespace(daemonSet.Name) {
+			continue
+		}
 		if daemonSet.Status.NumberReady == daemonSet.Status.DesiredNumberScheduled &&
 			daemonSet.Status.UpdatedNumberScheduled == daemonSet.Status.DesiredNumberScheduled {
 			continue
@@ -584,6 +681,60 @@ func CheckDaemonSetsInNamespace(client kubernetes.Interface, ns string) {
 
 		LogObjectEvents(client, ns, "DaemonSet", daemonSet.Name)
 	}
+}
+
+func getEventTimestamp(event corev1.Event) time.Time {
+	if !event.LastTimestamp.IsZero() {
+		return event.LastTimestamp.Time
+	}
+	if !event.EventTime.IsZero() {
+		return event.EventTime.Time
+	}
+	if !event.FirstTimestamp.IsZero() {
+		return event.FirstTimestamp.Time
+	}
+	return time.Time{}
+}
+
+func formatObjectEvents(kind string, events []corev1.Event) string {
+	if len(events) == 0 {
+		return ""
+	}
+
+	// Sort events chronologically by last timestamp / event time
+	sortedEvents := make([]corev1.Event, len(events))
+	copy(sortedEvents, events)
+	slices.SortFunc(sortedEvents, func(a, b corev1.Event) int {
+		ta := getEventTimestamp(a)
+		tb := getEventTimestamp(b)
+		return ta.Compare(tb)
+	})
+
+	const maxEventsToDisplay = 25
+	itemsToDisplay := sortedEvents
+	omittedCount := 0
+	if len(sortedEvents) > maxEventsToDisplay {
+		omittedCount = len(sortedEvents) - maxEventsToDisplay
+		itemsToDisplay = sortedEvents[omittedCount:]
+	}
+
+	objectEvents := make([]string, 0, len(itemsToDisplay)+1)
+	if omittedCount > 0 {
+		objectEvents = append(objectEvents, fmt.Sprintf("  (+ %d older events omitted for brevity)", omittedCount))
+	}
+	for _, event := range itemsToDisplay {
+		ts := getEventTimestamp(event)
+		tsStr := "unknown"
+		if !ts.IsZero() {
+			tsStr = ts.Format("2006-01-02 15:04:05 -0700 MST")
+		}
+		count := event.Count
+		if count == 0 {
+			count = 1
+		}
+		objectEvents = append(objectEvents, fmt.Sprintf("%s %s (%d): %s", event.Reason, tsStr, count, event.Message))
+	}
+	return fmt.Sprintf(">>>>>>>>>> %s events >>>>>>>>>>\n%s\n<<<<<<<<<< %s events <<<<<<<<<<", kind, strings.Join(objectEvents, "\n"), kind)
 }
 
 func LogObjectEvents(client kubernetes.Interface, ns string, kind string, name string) {
@@ -596,11 +747,11 @@ func LogObjectEvents(client kubernetes.Interface, ns string, kind string, name s
 		return
 	}
 
-	objectEvents := make([]string, 0, len(events.Items))
-	for _, event := range events.Items {
-		objectEvents = append(objectEvents, fmt.Sprintf("%s %s (%d): %s", event.Reason, event.LastTimestamp, event.Count, event.Message))
+	if len(events.Items) == 0 {
+		return
 	}
-	formattedEvents := fmt.Sprintf(">>>>>>>>>> %s events >>>>>>>>>>\n%s\n<<<<<<<<<< %s events <<<<<<<<<<", kind, strings.Join(objectEvents, "\n"), kind)
+
+	formattedEvents := formatObjectEvents(kind, events.Items)
 	klog.V(1).Infof("%s %q events: \n%s", kind, name, formattedEvents)
 }
 
@@ -834,6 +985,9 @@ func formatDeploymentsStatuses(clientset kubernetes.Interface, namespace string)
 	writer := tabwriter.NewWriter(&sb, 0, 0, 2, ' ', 0)
 	_, _ = fmt.Fprintln(writer, "NAME\tREADY\tUP-TO-DATE\tAVAILABLE\tAGE")
 	for _, deployment := range deployments.Items {
+		if namespace == MCO_AGENT_ADDON_NAMESPACE && !isObservabilityWorkloadInSharedNamespace(deployment.Name) {
+			continue
+		}
 		desired := int32(1)
 		if deployment.Spec.Replicas != nil {
 			desired = *deployment.Spec.Replicas
@@ -871,6 +1025,9 @@ func formatStatefulSetsStatuses(clientset kubernetes.Interface, namespace string
 	writer := tabwriter.NewWriter(&sb, 0, 0, 2, ' ', 0)
 	_, _ = fmt.Fprintln(writer, "NAME\tREADY\tAGE")
 	for _, statefulSet := range statefulSets.Items {
+		if namespace == MCO_AGENT_ADDON_NAMESPACE && !isObservabilityWorkloadInSharedNamespace(statefulSet.Name) {
+			continue
+		}
 		desired := int32(1)
 		if statefulSet.Spec.Replicas != nil {
 			desired = *statefulSet.Spec.Replicas
@@ -906,6 +1063,9 @@ func formatDaemonSetsStatuses(clientset kubernetes.Interface, namespace string) 
 	writer := tabwriter.NewWriter(&sb, 0, 0, 2, ' ', 0)
 	_, _ = fmt.Fprintln(writer, "NAME\tDESIRED\tCURRENT\tREADY\tAGE")
 	for _, daemonSet := range daemonSets.Items {
+		if namespace == MCO_AGENT_ADDON_NAMESPACE && !isObservabilityWorkloadInSharedNamespace(daemonSet.Name) {
+			continue
+		}
 		age := time.Since(daemonSet.CreationTimestamp.Time).Round(time.Second)
 		_, _ = fmt.Fprintf(writer, "%s\t%d\t%d\t%d\t%s\n",
 			daemonSet.Name,
@@ -994,7 +1154,7 @@ func formatNodesStatuses(clientset kubernetes.Interface) (string, error) {
 		for _, taint := range node.Spec.Taints {
 			if taint.Effect == corev1.TaintEffectNoSchedule || taint.Effect == corev1.TaintEffectNoExecute {
 				nodeProblems = append(nodeProblems, fmt.Sprintf("Taint:%s", taint.Key))
-				issues = append(issues, fmt.Sprintf("  - %s: Untolerated Taint %s=%s:%s", node.Name, taint.Key, taint.Value, taint.Effect))
+				issues = append(issues, fmt.Sprintf("  - %s: Scheduling taint %s=%s:%s", node.Name, taint.Key, taint.Value, taint.Effect))
 			}
 		}
 
@@ -1066,6 +1226,45 @@ func printConfigMapsInNamespace(client kubernetes.Interface, ns string) {
 	klog.Info(sb.String())
 }
 
+// isInternalServiceAccountSecret returns true if the secret is an internal OpenShift/Kubernetes
+// service account dockercfg or token secret.
+func isInternalServiceAccountSecret(secret corev1.Secret) bool {
+	if secret.Type == corev1.SecretTypeDockercfg || secret.Type == corev1.SecretTypeServiceAccountToken {
+		return true
+	}
+	if secret.Type == corev1.SecretTypeDockerConfigJson && strings.Contains(secret.Name, "-dockercfg-") {
+		return true
+	}
+	return false
+}
+
+// formatSecretsStatuses formats a compact summary table of secrets in a namespace, omitting internal SA dockercfg/token secrets.
+func formatSecretsStatuses(secrets []corev1.Secret, ns string) string {
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("Secrets in namespace %s (total: %d):\n", ns, len(secrets)))
+	writer := tabwriter.NewWriter(&sb, 0, 0, 2, ' ', 0)
+	_, _ = fmt.Fprintln(writer, "NAME\tTYPE\tDATA\tAGE")
+
+	saSecretCount := 0
+	for _, secret := range secrets {
+		if isInternalServiceAccountSecret(secret) {
+			saSecretCount++
+			continue
+		}
+		age := time.Since(secret.CreationTimestamp.Time).Round(time.Second)
+		_, _ = fmt.Fprintf(writer, "%s\t%s\t%d\t%s\n",
+			secret.Name,
+			secret.Type,
+			len(secret.Data),
+			age)
+	}
+	_ = writer.Flush()
+	if saSecretCount > 0 {
+		sb.WriteString(fmt.Sprintf("  (+ %d service account dockercfg/token Secrets omitted for brevity)\n", saSecretCount))
+	}
+	return sb.String()
+}
+
 func printSecretsInNamespace(client kubernetes.Interface, ns string) {
 	secrets, err := client.CoreV1().Secrets(ns).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
@@ -1078,20 +1277,7 @@ func printSecretsInNamespace(client kubernetes.Interface, ns string) {
 		return
 	}
 
-	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("Secrets in namespace %s (total: %d):\n", ns, len(secrets.Items)))
-	writer := tabwriter.NewWriter(&sb, 0, 0, 2, ' ', 0)
-	_, _ = fmt.Fprintln(writer, "NAME\tTYPE\tDATA\tAGE")
-	for _, secret := range secrets.Items {
-		age := time.Since(secret.CreationTimestamp.Time).Round(time.Second)
-		_, _ = fmt.Fprintf(writer, "%s\t%s\t%d\t%s\n",
-			secret.Name,
-			secret.Type,
-			len(secret.Data),
-			age)
-	}
-	_ = writer.Flush()
-	klog.Info(sb.String())
+	klog.Info(formatSecretsStatuses(secrets.Items, ns))
 }
 
 func printAddonDeploymentConfigs(client dynamic.Interface, ns string) {
@@ -1401,7 +1587,7 @@ func logSpokeClusterDebugInfo(
 		LogNodes(spokeClient, clusterName)
 		CheckDeploymentsInNamespace(spokeClient, MCO_AGENT_ADDON_NAMESPACE)
 		CheckStatefulSetsInNamespace(spokeClient, MCO_AGENT_ADDON_NAMESPACE)
-		CheckPodsInNamespace(spokeClient, MCO_AGENT_ADDON_NAMESPACE, []string{}, map[string]string{})
+		CheckPodsInNamespace(spokeClient, MCO_AGENT_ADDON_NAMESPACE, []string{"endpoint-monitoring-operator", "prom-agent", "observability-monitoring-cleanup"}, map[string]string{})
 	} else {
 		klog.Infof("%s (Legacy: %s)", SectionSpokeWorkloads, clusterName)
 		LogNodes(spokeClient, clusterName)
