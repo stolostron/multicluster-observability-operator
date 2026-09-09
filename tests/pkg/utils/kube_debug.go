@@ -35,6 +35,12 @@ const (
 	SectionHubWorkloads           = "--- [SECTION: Hub Workloads & Pods] ---"
 	SectionSpokeWorkloads         = "--- [SECTION: Spoke Workloads & Pods] ---"
 	statusUnknown                 = "Unknown"
+	statusTrue                    = "True"
+	statusFalse                   = "False"
+	conditionAvailable            = "Available"
+	conditionDegraded             = "Degraded"
+	conditionApplied              = "Applied"
+	conditionProgressing          = "Progressing"
 )
 
 // cleanUnstructuredForLogging strips managedFields and bulky annotations (e.g. kubectl last-applied)
@@ -109,17 +115,19 @@ func LogFailingTestStandardDebugInfo(opt TestOptions, isMCOA bool) {
 	klog.Info(SectionManagedClusters)
 	LogManagedClusters(hubDynClient)
 
-	// Section 3: Addon Management (MCOA)
-	if isMCOA {
-		klog.Info(SectionManagedClusterAddOns)
-		LogManagedClusterAddOns(hubDynClient)
+	// Section 3: Addon Management & ManifestWorks (Hub-Side Spoke Diagnostics)
+	klog.Info(SectionManagedClusterAddOns)
+	LogManagedClusterAddOns(hubDynClient)
 
+	if isMCOA {
 		klog.Info(SectionClusterManagementAddOn)
 		LogClusterManagementAddOn(hubDynClient)
+	}
 
-		klog.Info(SectionManifestWorks)
-		printManifestWorks(hubDynClient)
+	klog.Info(SectionManifestWorks)
+	printManifestWorks(hubDynClient)
 
+	if isMCOA {
 		klog.Info(SectionAddOnDeploymentConfigs)
 		printAddonDeploymentConfigs(hubDynClient, MCO_NAMESPACE)
 	}
@@ -604,16 +612,16 @@ func LogManagedClusterAddOns(client dynamic.Interface) {
 				cReason, _ := cMap["reason"].(string)
 
 				switch cType {
-				case "Available":
+				case conditionAvailable:
 					avail = cStatus
-				case "Degraded":
+				case conditionDegraded:
 					degradedCond = cStatus
-				case "Progressing":
+				case conditionProgressing:
 					prog = cStatus
 				}
 
-				if (cType == "Degraded" && cStatus == "True") ||
-					(cType == "Available" && cStatus == "False") {
+				if (cType == conditionDegraded && cStatus == statusTrue) ||
+					(cType == conditionAvailable && cStatus == statusFalse) {
 					degraded = append(degraded, degradedAddon{
 						cluster: cluster,
 						addon:   name,
@@ -912,9 +920,25 @@ func printManifestWorks(client dynamic.Interface) {
 	for _, obj := range objs.Items {
 		name := obj.GetName()
 		labels := obj.GetLabels()
-		isLegacy := (name == "endpoint-observability-work")
+
+		addonLabel := ""
+		if labels != nil {
+			if val, ok := labels["addon.open-cluster-management.io/addon-name"]; ok {
+				addonLabel = val
+			} else if val, ok := labels["open-cluster-management.io/addon-name"]; ok {
+				addonLabel = val
+			}
+		}
+
 		isMCOA := strings.Contains(name, "multicluster-observability-addon") ||
-			(labels != nil && labels["addon.open-cluster-management.io/addon-name"] == "multicluster-observability-addon")
+			addonLabel == "multicluster-observability-addon"
+
+		isLegacy := strings.HasSuffix(name, "-observability") ||
+			name == "endpoint-observability-work" ||
+			strings.Contains(name, "observability-controller") ||
+			strings.Contains(name, "observability-addon") ||
+			strings.Contains(addonLabel, "observability") ||
+			(!isMCOA && strings.Contains(name, "observability"))
 
 		if !isLegacy && !isMCOA {
 			continue
@@ -952,22 +976,60 @@ func printManifestWorks(client dynamic.Interface) {
 				cReason, _ := cMap["reason"].(string)
 
 				switch cType {
-				case "Applied":
+				case conditionApplied:
 					applied = cStatus
-				case "Available":
+				case conditionAvailable:
 					available = cStatus
-				case "Degraded":
+				case conditionDegraded:
 					degradedCond = cStatus
 				}
 
-				if (cType == "Degraded" && cStatus == "True") ||
-					(cType == "Applied" && cStatus == "False") ||
-					(cType == "Available" && cStatus == "False") {
+				if (cType == conditionDegraded && cStatus == statusTrue) ||
+					(cType == conditionApplied && cStatus == statusFalse) ||
+					(cType == conditionAvailable && cStatus == statusFalse) {
 					degraded = append(degraded, degradedMW{
 						ns:     ns,
 						name:   name,
 						detail: fmt.Sprintf("[%s=%s (%s): %s]", cType, cStatus, cReason, cMsg),
 					})
+				}
+			}
+		}
+
+		manifests, foundRes, _ := unstructured.NestedSlice(obj.Object, "status", "resourceStatus", "manifests")
+		if foundRes {
+			for _, m := range manifests {
+				mMap, ok := m.(map[string]any)
+				if !ok {
+					continue
+				}
+				resMeta, _, _ := unstructured.NestedMap(mMap, "resourceMeta")
+				kind, _, _ := unstructured.NestedString(resMeta, "kind")
+				resName, _, _ := unstructured.NestedString(resMeta, "name")
+				resNs, _, _ := unstructured.NestedString(resMeta, "namespace")
+
+				mConditions, foundConds, _ := unstructured.NestedSlice(mMap, "conditions")
+				if foundConds {
+					for _, mc := range mConditions {
+						mcMap, ok := mc.(map[string]any)
+						if !ok {
+							continue
+						}
+						mType, _ := mcMap["type"].(string)
+						mStatus, _ := mcMap["status"].(string)
+						mMsg, _ := mcMap["message"].(string)
+						mReason, _ := mcMap["reason"].(string)
+
+						if (mType == conditionApplied && mStatus == statusFalse) ||
+							(mType == conditionAvailable && mStatus == statusFalse) ||
+							(mType == conditionDegraded && mStatus == statusTrue) {
+							degraded = append(degraded, degradedMW{
+								ns:     ns,
+								name:   name,
+								detail: fmt.Sprintf("Manifest %s %s/%s [%s=%s (%s): %s]", kind, resNs, resName, mType, mStatus, mReason, mMsg),
+							})
+						}
+					}
 				}
 			}
 		}
