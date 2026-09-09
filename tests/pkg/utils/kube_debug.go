@@ -8,11 +8,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"regexp"
 	"slices"
 	"strings"
 	"text/tabwriter"
 	"time"
+	"unicode/utf8"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -30,9 +32,11 @@ import (
 var (
 	klogSeverityPattern = regexp.MustCompile(`^(?:\S+\s+)?[EFW]\d{4} \d{2}:\d{2}:\d{2}`)
 	klogInfoPattern     = regexp.MustCompile(`^(?:\S+\s+)?(?:I\d{4} \d{2}:\d{2}:\d{2}|INFO\s|DEBUG\s)`)
+	logLevelInfoPattern = regexp.MustCompile(`(?i)(?:\blevel=(?:info|debug)\b|\blevel="(?:info|debug)"|"level"\s*:\s*"(?:info|debug)")`)
 )
 
 const (
+	maxContainerLogLineLength     = 500
 	DebugDumpStartMarker          = "==================== [DEBUG DUMP START] ===================="
 	DebugDumpEndMarker            = "==================== [DEBUG DUMP END] ======================"
 	SectionMCOCR                  = "---------- [SECTION: MCO CR] ----------"
@@ -85,6 +89,13 @@ func logMCOStatus(client dynamic.Interface) {
 		sb.WriteString(fmt.Sprintf("  Capabilities: %s\n", string(capJSON)))
 	}
 
+	storageConfig, found, _ := unstructured.NestedMap(obj.Object, "spec", "storageConfig")
+	if found {
+		if mos, ok := storageConfig["metricObjectStorage"].(map[string]any); ok {
+			sb.WriteString(fmt.Sprintf("  StorageConfig: metricObjectStorage=%s/%s\n", mos["name"], mos["key"]))
+		}
+	}
+
 	conditions, found, _ := unstructured.NestedSlice(obj.Object, "status", "conditions")
 	if found {
 		sb.WriteString("  Conditions:\n")
@@ -118,7 +129,6 @@ func LogFailingTestStandardDebugInfo(opt TestOptions, isMCOA bool) {
 	// Section 1: MCO CR
 	klog.Info(SectionMCOCR)
 	logMCOStatus(hubDynClient)
-	PrintObject(context.TODO(), hubDynClient, NewMCOGVRV1BETA2(), "", MCO_CR_NAME)
 
 	// Section 2: Managed Clusters
 	klog.Info(SectionManagedClusters)
@@ -147,20 +157,19 @@ func LogFailingTestStandardDebugInfo(opt TestOptions, isMCOA bool) {
 	CheckPodsInNamespace(hubClient, "open-cluster-management", []string{"multicluster-observability-operator"}, map[string]string{
 		"name": "multicluster-observability-operator",
 	})
-	CheckPodsInNamespace(hubClient, MCO_NAMESPACE, []string{"multicluster-observability-addon-manager"}, map[string]string{
-		"app": "multicluster-observability-addon-manager",
-	})
 	CheckDeploymentsInNamespace(hubClient, MCO_NAMESPACE)
 	CheckStatefulSetsInNamespace(hubClient, MCO_NAMESPACE)
 	CheckDaemonSetsInNamespace(hubClient, MCO_NAMESPACE)
-	CheckPodsInNamespace(hubClient, MCO_NAMESPACE, []string{}, map[string]string{})
+	CheckPodsInNamespace(hubClient, MCO_NAMESPACE, []string{"multicluster-observability-addon-manager"}, map[string]string{})
 	printConfigMapsInNamespace(hubClient, MCO_NAMESPACE)
 	printSecretsInNamespace(hubClient, MCO_NAMESPACE)
+	logClusterMonitoringConfigStatus(hubClient, "Hub")
 
 	if isMCOA {
 		CheckDeploymentsInNamespace(hubClient, MCO_AGENT_ADDON_NAMESPACE)
 		CheckStatefulSetsInNamespace(hubClient, MCO_AGENT_ADDON_NAMESPACE)
 		CheckPodsInNamespace(hubClient, MCO_AGENT_ADDON_NAMESPACE, []string{"endpoint-monitoring-operator", "prom-agent", "observability-monitoring-cleanup"}, map[string]string{})
+		printMCOACustomResources(hubDynClient, MCO_AGENT_ADDON_NAMESPACE)
 	}
 
 	// Section 5: Spoke Clusters
@@ -218,7 +227,7 @@ func isObservabilityWorkloadInSharedNamespace(workloadName string) bool {
 		"uwl-metrics-collector",
 		"node-exporter",
 	} {
-		if strings.HasPrefix(workloadName, prefix) || strings.Contains(workloadName, prefix) {
+		if strings.Contains(workloadName, prefix) {
 			return true
 		}
 	}
@@ -359,23 +368,68 @@ func CheckPodsInNamespace(client kubernetes.Interface, ns string, forcePodNamesL
 	}
 }
 
-func LogPodStatus(podList corev1.Pod) {
+func formatContainerState(state corev1.ContainerState) string {
+	if state.Running != nil {
+		if !state.Running.StartedAt.IsZero() {
+			return fmt.Sprintf("Running (started %s)", state.Running.StartedAt.Format("2006-01-02 15:04:05"))
+		}
+		return "Running"
+	}
+	if state.Waiting != nil {
+		if state.Waiting.Message != "" {
+			return fmt.Sprintf("Waiting (%s: %s)", state.Waiting.Reason, state.Waiting.Message)
+		}
+		if state.Waiting.Reason != "" {
+			return fmt.Sprintf("Waiting (%s)", state.Waiting.Reason)
+		}
+		return "Waiting"
+	}
+	if state.Terminated != nil {
+		return formatTerminatedState(state.Terminated)
+	}
+	return "Unknown"
+}
+
+func formatTerminatedState(term *corev1.ContainerStateTerminated) string {
+	msg := ""
+	if term.Message != "" {
+		msg = fmt.Sprintf(": %s", term.Message)
+	}
+	return fmt.Sprintf("Terminated (exit code %d, reason: %s%s)", term.ExitCode, term.Reason, msg)
+}
+
+func LogPodStatus(pod corev1.Pod) {
 	var podStatus strings.Builder
 	podStatus.WriteString(">>>>>>>>>> pod status >>>>>>>>>>\n")
 	podStatus.WriteString("Conditions:\n")
-	for _, condition := range podList.Status.Conditions {
+	for _, condition := range pod.Status.Conditions {
 		podStatus.WriteString(fmt.Sprintf("\t%s: %s %v\n", condition.Type, condition.Status, condition.LastTransitionTime.Time))
 	}
-	podStatus.WriteString("ContainerStatuses:\n")
-	for _, containerStatus := range podList.Status.ContainerStatuses {
-		podStatus.WriteString(fmt.Sprintf("\t%s: %t %d %v\n", containerStatus.Name, containerStatus.Ready, containerStatus.RestartCount, containerStatus.State))
-		if containerStatus.LastTerminationState.Terminated != nil {
-			podStatus.WriteString(fmt.Sprintf("\t\tlastTerminated: %v\n", containerStatus.LastTerminationState.Terminated))
+	if len(pod.Status.ContainerStatuses) > 0 {
+		podStatus.WriteString("ContainerStatuses:\n")
+		for _, cs := range pod.Status.ContainerStatuses {
+			podStatus.WriteString(fmt.Sprintf("\t- %s: Ready=%t, Restarts=%d, State: %s\n",
+				cs.Name, cs.Ready, cs.RestartCount, formatContainerState(cs.State)))
+			if cs.LastTerminationState.Terminated != nil {
+				podStatus.WriteString(fmt.Sprintf("\t  Last State: %s\n",
+					formatTerminatedState(cs.LastTerminationState.Terminated)))
+			}
+		}
+	}
+	if len(pod.Status.InitContainerStatuses) > 0 {
+		podStatus.WriteString("InitContainerStatuses:\n")
+		for _, cs := range pod.Status.InitContainerStatuses {
+			podStatus.WriteString(fmt.Sprintf("\t- %s: Ready=%t, Restarts=%d, State: %s\n",
+				cs.Name, cs.Ready, cs.RestartCount, formatContainerState(cs.State)))
+			if cs.LastTerminationState.Terminated != nil {
+				podStatus.WriteString(fmt.Sprintf("\t  Last State: %s\n",
+					formatTerminatedState(cs.LastTerminationState.Terminated)))
+			}
 		}
 	}
 	podStatus.WriteString("<<<<<<<<<< pod status <<<<<<<<<<")
 
-	klog.V(1).Infof("Pod %q is in phase %q and status: \n%s", podList.Name, podList.Status.Phase, podStatus.String())
+	klog.V(1).Infof("Pod %q is in phase %q and status: \n%s", pod.Name, pod.Status.Phase, podStatus.String())
 }
 
 // isErrorLine identifies error, fatal, panic, failure, or timeout signatures.
@@ -385,9 +439,13 @@ func isErrorLine(line string) bool {
 	if strings.Contains(lower, "panic") {
 		return true
 	}
-	// Suppress explicit info/debug lines (e.g. klog I0909 or Zap INFO) that may contain words
-	// like "failed" or "error" in routine condition/status updates.
-	if klogInfoPattern.MatchString(line) {
+	// Suppress explicit info/debug lines (e.g. klog I0909, Zap INFO, or logfmt/JSON level=info/debug)
+	// that may contain words like "failed" or "error" in routine condition/status updates.
+	if klogInfoPattern.MatchString(line) || logLevelInfoPattern.MatchString(line) {
+		return false
+	}
+	// Suppress routine Prometheus federate scrape warnings
+	if strings.Contains(lower, "error on ingesting out-of-order samples") {
 		return false
 	}
 	if strings.Contains(lower, "error") ||
@@ -459,6 +517,19 @@ func LogPodLogs(client kubernetes.Interface, ns string, pod corev1.Pod) {
 	}
 }
 
+// truncateLogLine caps individual log lines to maxLen characters to prevent massive query
+// URLs (e.g. Prometheus federate scrape parameters) from overwhelming debug logs.
+// It ensures truncation occurs on a valid UTF-8 rune boundary.
+func truncateLogLine(line string, maxLen int) string {
+	if len(line) <= maxLen {
+		return line
+	}
+	for maxLen > 0 && !utf8.RuneStart(line[maxLen]) {
+		maxLen--
+	}
+	return line[:maxLen] + " ... [truncated]"
+}
+
 // formatContainerLogs parses raw container logs, extracts recent error/warning lines
 // within the cutoff window, caps the output, and prepends an omitted lines note if lines were filtered.
 func formatContainerLogs(rawLogs string, cutoffTime time.Time) ([]string, string) {
@@ -512,6 +583,10 @@ func formatContainerLogs(rawLogs string, cutoffTime time.Time) ([]string, string
 
 	// Reverse the lines to restore chronological order
 	slices.Reverse(displayLines)
+
+	for i, l := range displayLines {
+		displayLines[i] = truncateLogLine(l, maxContainerLogLineLength)
+	}
 
 	var omittedMsg string
 	if len(errorLines) > 0 {
@@ -1280,6 +1355,43 @@ func printSecretsInNamespace(client kubernetes.Interface, ns string) {
 	klog.Info(formatSecretsStatuses(secrets.Items, ns))
 }
 
+// formatAddOnDeploymentConfig generates a concise, human-readable summary of an AddOnDeploymentConfig.
+func formatAddOnDeploymentConfig(obj *unstructured.Unstructured) string {
+	var sb strings.Builder
+	name := obj.GetName()
+	gen := obj.GetGeneration()
+	sb.WriteString(fmt.Sprintf("  - %s (generation %d):\n", name, gen))
+
+	installNS, found, _ := unstructured.NestedString(obj.Object, "spec", "agentInstallNamespace")
+	if found && installNS != "" {
+		sb.WriteString(fmt.Sprintf("      agentInstallNamespace: %s\n", installNS))
+	}
+
+	customVars, found, _ := unstructured.NestedSlice(obj.Object, "spec", "customizedVariables")
+	if found && len(customVars) > 0 {
+		sb.WriteString("      customizedVariables:\n")
+		for _, cv := range customVars {
+			if cvMap, ok := cv.(map[string]any); ok {
+				varName := cvMap["name"]
+				varVal := cvMap["value"]
+				sb.WriteString(fmt.Sprintf("        %v: %v\n", varName, varVal))
+			}
+		}
+	}
+
+	proxyConfig, found, _ := unstructured.NestedMap(obj.Object, "spec", "proxyConfig")
+	if found && len(proxyConfig) > 0 {
+		sb.WriteString("      proxyConfig:\n")
+		for _, k := range slices.Sorted(maps.Keys(proxyConfig)) {
+			if strVal, ok := proxyConfig[k].(string); ok && strVal != "" {
+				sb.WriteString(fmt.Sprintf("        %s: %s\n", k, strVal))
+			}
+		}
+	}
+
+	return sb.String()
+}
+
 func printAddonDeploymentConfigs(client dynamic.Interface, ns string) {
 	gvr := NewMCOAddOnDeploymentConfigGVR()
 	objs, err := client.Resource(gvr).Namespace(ns).List(context.TODO(), metav1.ListOptions{})
@@ -1296,8 +1408,7 @@ func printAddonDeploymentConfigs(client dynamic.Interface, ns string) {
 	var adcInfo strings.Builder
 	adcInfo.WriteString(fmt.Sprintf("AddOnDeploymentConfigs in namespace %s:\n", ns))
 	for _, obj := range objs.Items {
-		cleanUnstructuredForLogging(&obj)
-		adcInfo.WriteString(ToCompactJSON(obj.Object, "", 0, 3) + "\n")
+		adcInfo.WriteString(formatAddOnDeploymentConfig(&obj))
 	}
 	klog.Info(adcInfo.String())
 }
@@ -1565,6 +1676,82 @@ func resolveSpokeClientsFromHub(
 	return spokeClient, spokeDynClient, nil
 }
 
+// printMCOACustomResources lists PrometheusAgent and ScrapeConfig custom resources in the namespace.
+func printMCOACustomResources(client dynamic.Interface, ns string) {
+	if client == nil {
+		return
+	}
+	paGVR := NewPrometheusAgentGVR()
+	paList, err := client.Resource(paGVR).Namespace(ns).List(context.TODO(), metav1.ListOptions{})
+	if err == nil && len(paList.Items) > 0 {
+		names := make([]string, 0, len(paList.Items))
+		for _, item := range paList.Items {
+			names = append(names, item.GetName())
+		}
+		klog.Infof("PrometheusAgents in %s (%d): %s", ns, len(names), strings.Join(names, ", "))
+	}
+
+	scGVR := NewScrapeConfigGVR()
+	scList, err := client.Resource(scGVR).Namespace(ns).List(context.TODO(), metav1.ListOptions{})
+	if err == nil && len(scList.Items) > 0 {
+		names := make([]string, 0, len(scList.Items))
+		for _, item := range scList.Items {
+			names = append(names, item.GetName())
+		}
+		klog.Infof("ScrapeConfigs in %s (%d): %s", ns, len(names), strings.Join(names, ", "))
+	}
+}
+
+// logClusterMonitoringConfigStatus summarizes the state of OpenShift cluster monitoring
+// ConfigMaps (CMO / UWM) which control Prometheus in-cluster alert forwarding.
+func logClusterMonitoringConfigStatus(client kubernetes.Interface, clusterLabel string) {
+	if client == nil {
+		return
+	}
+	cmTargets := []struct {
+		ns   string
+		name string
+	}{
+		{ns: "openshift-monitoring", name: "cluster-monitoring-config"},
+		{ns: "openshift-user-workload-monitoring", name: "user-workload-monitoring-config"},
+	}
+
+	for _, target := range cmTargets {
+		cm, err := client.CoreV1().ConfigMaps(target.ns).Get(context.TODO(), target.name, metav1.GetOptions{})
+		if err != nil {
+			if !apierrors.IsNotFound(err) {
+				klog.V(2).Infof("Could not get ConfigMap %s/%s on %s: %v", target.ns, target.name, clusterLabel, err)
+			}
+			continue
+		}
+
+		configData, ok := cm.Data["config.yaml"]
+		if !ok || strings.TrimSpace(configData) == "" {
+			klog.Infof("ConfigMap %s/%s on %s: exists (empty config.yaml)", target.ns, target.name, clusterLabel)
+			continue
+		}
+
+		hasAlertmanager := strings.Contains(configData, "additionalAlertmanagerConfigs:")
+		hasUWM := strings.Contains(configData, "enableUserWorkload: true")
+
+		var flags []string
+		if hasAlertmanager {
+			flags = append(flags, "additionalAlertmanagerConfigs=present")
+		} else {
+			flags = append(flags, "additionalAlertmanagerConfigs=absent")
+		}
+		if target.ns == "openshift-monitoring" {
+			if hasUWM {
+				flags = append(flags, "enableUserWorkload=true")
+			} else {
+				flags = append(flags, "enableUserWorkload=false/unspecified")
+			}
+		}
+
+		klog.Infof("ConfigMap %s/%s on %s: %s", target.ns, target.name, clusterLabel, strings.Join(flags, ", "))
+	}
+}
+
 // logSpokeClusterDebugInfo runs diagnostics on the spoke cluster's observability workloads.
 func logSpokeClusterDebugInfo(
 	spokeClient kubernetes.Interface,
@@ -1572,6 +1759,9 @@ func logSpokeClusterDebugInfo(
 	clusterName string,
 	isMCOA bool,
 ) {
+	if spokeClient == nil || spokeDynClient == nil {
+		return
+	}
 	// Probe spoke reachability before issuing multiple sequential API calls to avoid wasting timeouts.
 	probeNS := MCO_ADDON_NAMESPACE
 	if isMCOA {
@@ -1588,6 +1778,8 @@ func logSpokeClusterDebugInfo(
 		CheckDeploymentsInNamespace(spokeClient, MCO_AGENT_ADDON_NAMESPACE)
 		CheckStatefulSetsInNamespace(spokeClient, MCO_AGENT_ADDON_NAMESPACE)
 		CheckPodsInNamespace(spokeClient, MCO_AGENT_ADDON_NAMESPACE, []string{"endpoint-monitoring-operator", "prom-agent", "observability-monitoring-cleanup"}, map[string]string{})
+		printMCOACustomResources(spokeDynClient, MCO_AGENT_ADDON_NAMESPACE)
+		logClusterMonitoringConfigStatus(spokeClient, clusterName)
 	} else {
 		klog.Infof("%s (Legacy: %s)", SectionSpokeWorkloads, clusterName)
 		LogNodes(spokeClient, clusterName)
@@ -1598,5 +1790,6 @@ func logSpokeClusterDebugInfo(
 		CheckPodsInNamespace(spokeClient, MCO_ADDON_NAMESPACE, []string{"observability-addon"}, map[string]string{})
 		printConfigMapsInNamespace(spokeClient, MCO_ADDON_NAMESPACE)
 		printSecretsInNamespace(spokeClient, MCO_ADDON_NAMESPACE)
+		logClusterMonitoringConfigStatus(spokeClient, clusterName)
 	}
 }
