@@ -8,12 +8,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"regexp"
+	"slices"
 	"strings"
 	"text/tabwriter"
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -24,17 +27,19 @@ import (
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
 )
 
+var klogSeverityPattern = regexp.MustCompile(`^[EFW]\d{4} \d{2}:\d{2}:\d{2}`)
+
 const (
 	DebugDumpStartMarker          = "==================== [DEBUG DUMP START] ===================="
-	DebugDumpEndMarker            = "==================== [DEBUG DUMP END] ===================="
-	SectionMCOCR                  = "--- [SECTION: MCO CR] ---"
-	SectionManagedClusters        = "--- [SECTION: ManagedClusters] ---"
-	SectionManagedClusterAddOns   = "--- [SECTION: ManagedClusterAddOns] ---"
-	SectionClusterManagementAddOn = "--- [SECTION: ClusterManagementAddOn] ---"
-	SectionManifestWorks          = "--- [SECTION: Observability ManifestWorks] ---"
-	SectionAddOnDeploymentConfigs = "--- [SECTION: AddOnDeploymentConfigs] ---"
-	SectionHubWorkloads           = "--- [SECTION: Hub Workloads & Pods] ---"
-	SectionSpokeWorkloads         = "--- [SECTION: Spoke Workloads & Pods] ---"
+	DebugDumpEndMarker            = "==================== [DEBUG DUMP END] ======================"
+	SectionMCOCR                  = "---------- [SECTION: MCO CR] ----------"
+	SectionManagedClusters        = "---------- [SECTION: ManagedClusters] ----------"
+	SectionManagedClusterAddOns   = "---------- [SECTION: ManagedClusterAddOns] ----------"
+	SectionClusterManagementAddOn = "---------- [SECTION: ClusterManagementAddOn] ----------"
+	SectionManifestWorks          = "---------- [SECTION: Observability ManifestWorks] ----------"
+	SectionAddOnDeploymentConfigs = "---------- [SECTION: AddOnDeploymentConfigs] ----------"
+	SectionHubWorkloads           = "---------- [SECTION: Hub Workloads & Pods] ----------"
+	SectionSpokeWorkloads         = "---------- [SECTION: Spoke Workloads & Pods] ----------"
 	statusUnknown                 = "Unknown"
 	statusTrue                    = "True"
 	statusFalse                   = "False"
@@ -47,10 +52,10 @@ const (
 // cleanUnstructuredForLogging strips managedFields and bulky annotations (e.g. kubectl last-applied)
 // to prevent massive token bloat when logging Kubernetes objects.
 func cleanUnstructuredForLogging(obj *unstructured.Unstructured) {
-	if obj == nil {
+	if obj == nil || obj.Object == nil {
 		return
 	}
-	obj.SetManagedFields(nil)
+	unstructured.RemoveNestedField(obj.Object, "metadata", "managedFields")
 	annotations := obj.GetAnnotations()
 	if annotations != nil {
 		delete(annotations, "kubectl.kubernetes.io/last-applied-configuration")
@@ -293,16 +298,18 @@ func isErrorLine(line string) bool {
 		strings.Contains(lower, "timed out") {
 		return true
 	}
-	if len(line) > 0 && (line[0] == 'E' || line[0] == 'F' || line[0] == 'W') {
-		return true
-	}
-	return false
+	return klogSeverityPattern.MatchString(line)
 }
 
 func LogPodLogs(client kubernetes.Interface, ns string, pod corev1.Pod) {
 	for _, container := range pod.Spec.Containers {
+		sinceSeconds := int64(360)
+		limitBytes := int64(5 * 1024 * 1024)
 		logsRes := client.CoreV1().Pods(ns).GetLogs(pod.Name, &corev1.PodLogOptions{
-			Container: container.Name,
+			Container:    container.Name,
+			Timestamps:   true,
+			SinceSeconds: &sinceSeconds,
+			LimitBytes:   &limitBytes,
 		}).Do(context.Background())
 
 		if logsRes.Error() != nil {
@@ -367,9 +374,7 @@ func LogPodLogs(client kubernetes.Interface, ns string, pod corev1.Pod) {
 		}
 
 		// Reverse the lines to restore chronological order
-		for i, j := 0, len(displayLines)-1; i < j; i, j = i+1, j-1 {
-			displayLines[i], displayLines[j] = displayLines[j], displayLines[i]
-		}
+		slices.Reverse(displayLines)
 
 		if len(displayLines) > 0 {
 			delimitedLogs := fmt.Sprintf(">>>>>>>>>> container logs: %s/%s >>>>>>>>>>\n%s\n<<<<<<<<<< container logs: %s/%s <<<<<<<<<<",
@@ -1178,6 +1183,16 @@ func logSpokeClusterDebugInfo(
 	clusterName string,
 	isMCOA bool,
 ) {
+	// Probe spoke reachability before issuing multiple sequential API calls to avoid wasting timeouts.
+	probeNS := MCO_ADDON_NAMESPACE
+	if isMCOA {
+		probeNS = MCO_AGENT_ADDON_NAMESPACE
+	}
+	if _, err := spokeClient.CoreV1().Namespaces().Get(context.TODO(), probeNS, metav1.GetOptions{}); err != nil && !apierrors.IsNotFound(err) {
+		klog.Warningf("Spoke cluster %s apiserver is not reachable (%v), skipping spoke diagnostics", clusterName, err)
+		return
+	}
+
 	if isMCOA {
 		klog.Infof("%s (MCOA: %s)", SectionSpokeWorkloads, clusterName)
 		CheckDeploymentsInNamespace(spokeClient, MCO_AGENT_ADDON_NAMESPACE)
