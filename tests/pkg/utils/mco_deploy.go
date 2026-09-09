@@ -295,6 +295,7 @@ func PrintObject(ctx context.Context, client dynamic.Interface, gvr schema.Group
 		return
 	}
 
+	cleanUnstructuredForLogging(obj)
 	klog.V(1).Infof("Object %s/%s/%s:\n%s", ns, gvr.Resource, name, ToCompactJSON(obj.Object, "", 0, 3))
 }
 
