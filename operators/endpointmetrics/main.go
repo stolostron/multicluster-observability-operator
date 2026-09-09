@@ -326,7 +326,7 @@ func runMCOA(args []string) {
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "mcoa-cmo-config.open-cluster-management.io",
-		Cache:                  mcoa.GetCacheOptions(),
+		Cache:                  mcoa.GetCacheOptions(namespace),
 		WebhookServer: ctrlwebhook.NewServer(ctrlwebhook.Options{
 			Port:    9443,
 			TLSOpts: []func(*tls.Config){tlsConfig},

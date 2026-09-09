@@ -13,19 +13,26 @@ import (
 )
 
 // GetCacheOptions returns the cache options for the MCOA controller.
-// It whitelists only the specific ConfigMaps required for Alertmanager configuration injection.
-func GetCacheOptions() cache.Options {
+// It whitelists only the specific ConfigMaps required for Alertmanager configuration injection
+// and COO status reporting.
+func GetCacheOptions(addonNamespace string) cache.Options {
+	namespaces := map[string]cache.Config{
+		operatorconfig.OCPClusterMonitoringNamespace: {
+			FieldSelector: fields.OneTermEqualSelector("metadata.name", operatorconfig.OCPClusterMonitoringConfigMapName),
+		},
+		operatorconfig.OCPUserWorkloadMonitoringNamespace: {
+			FieldSelector: fields.OneTermEqualSelector("metadata.name", operatorconfig.OCPUserWorkloadMonitoringConfigMap),
+		},
+	}
+	if addonNamespace != "" {
+		namespaces[addonNamespace] = cache.Config{
+			FieldSelector: fields.OneTermEqualSelector("metadata.name", cooStatusConfigMap),
+		}
+	}
 	return cache.Options{
 		ByObject: map[client.Object]cache.ByObject{
 			&corev1.ConfigMap{}: {
-				Namespaces: map[string]cache.Config{
-					operatorconfig.OCPClusterMonitoringNamespace: {
-						FieldSelector: fields.OneTermEqualSelector("metadata.name", operatorconfig.OCPClusterMonitoringConfigMapName),
-					},
-					operatorconfig.OCPUserWorkloadMonitoringNamespace: {
-						FieldSelector: fields.OneTermEqualSelector("metadata.name", operatorconfig.OCPUserWorkloadMonitoringConfigMap),
-					},
-				},
+				Namespaces: namespaces,
 			},
 		},
 	}
