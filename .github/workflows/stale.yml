@@ -11,7 +11,7 @@ jobs:
       pull-requests: write
 
     steps:
-      - uses: actions/stale@v3
+      - uses: actions/stale@v11
         with:
           close-pr-label: 'no-pr-activity'
           close-pr-message: 'Closing pull-request due to lack of activity.'
