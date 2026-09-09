@@ -30,7 +30,7 @@ func GetStatefulSetWithCluster(cluster Cluster, name string,
 	namespace string,
 ) (*appv1.StatefulSet, error) {
 	clientKube := GetKubeClientWithCluster(cluster)
-	klog.V(1).Infof("Get statefulset <%v> in namespace <%v> on cluster <%v>", name, namespace, cluster.Name)
+	klog.V(3).Infof("Get statefulset <%v> in namespace <%v> on cluster <%v>", name, namespace, cluster.Name)
 	return clientKube.AppsV1().StatefulSets(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 }
 
@@ -48,31 +48,50 @@ func GetStatefulSetWithLabel(opt TestOptions, isHub bool, label string,
 	return sts, nil
 }
 
+// FormatStatefulSetStillExistsError formats an informative error message when a statefulset
+// unexpectedly still exists, including termination state, finalizers, and replica details.
+func FormatStatefulSetStillExistsError(sts *appv1.StatefulSet, namespace, name string) error {
+	if sts == nil {
+		return fmt.Errorf("statefulset %s/%s is nil", namespace, name)
+	}
+	if sts.DeletionTimestamp != nil {
+		return fmt.Errorf("statefulset %s/%s still exists (terminating since %v, finalizers: %v)",
+			namespace, name, sts.DeletionTimestamp.Time, sts.Finalizers)
+	}
+	expectedReplicas := int32(1)
+	if sts.Spec.Replicas != nil {
+		expectedReplicas = *sts.Spec.Replicas
+	}
+	return fmt.Errorf("statefulset %s/%s still exists (replicas: %d/%d, generation: %d, observedGeneration: %d)",
+		namespace, name, sts.Status.ReadyReplicas, expectedReplicas, sts.Generation, sts.Status.ObservedGeneration)
+}
+
 func CheckStatefulSetAvailability(cluster Cluster, name, namespace string, shouldExist bool) {
 	if shouldExist {
 		gomega.Eventually(func() error {
 			sts, err := GetStatefulSetWithCluster(cluster, name, namespace)
 			if err != nil {
-				klog.Errorf("Failed to get statefulset %s/%s: %v", name, namespace, err)
 				return fmt.Errorf("failed to get statefulset %s/%s: %w", name, namespace, err)
 			}
-			if sts.Status.ReadyReplicas != *sts.Spec.Replicas {
-				klog.Errorf("Statefulset %s/%s is not ready: %d/%d", namespace, name, sts.Status.ReadyReplicas, *sts.Spec.Replicas)
-				return fmt.Errorf("statefulset %s/%s is not ready: %d/%d", namespace, name, sts.Status.ReadyReplicas, *sts.Spec.Replicas)
+			expectedReplicas := int32(1)
+			if sts.Spec.Replicas != nil {
+				expectedReplicas = *sts.Spec.Replicas
+			}
+			if sts.Status.ReadyReplicas != expectedReplicas {
+				return fmt.Errorf("statefulset %s/%s is not ready: %d/%d ready replicas", namespace, name, sts.Status.ReadyReplicas, expectedReplicas)
 			}
 			return nil
 		}, 300, 5).Should(gomega.Succeed())
 	} else {
 		gomega.Eventually(func() error {
-			_, err := GetStatefulSetWithCluster(cluster, name, namespace)
+			sts, err := GetStatefulSetWithCluster(cluster, name, namespace)
 			if apierrors.IsNotFound(err) {
 				return nil
 			}
 			if err != nil {
-				klog.Errorf("Failed to get statefulset %s/%s: %v", name, namespace, err)
 				return fmt.Errorf("failed to get statefulset %s/%s: %w", name, namespace, err)
 			}
-			return fmt.Errorf("statefulset %s/%s still exists", namespace, name)
+			return FormatStatefulSetStillExistsError(sts, namespace, name)
 		}, 300, 5).Should(gomega.Succeed())
 	}
 }
