@@ -714,3 +714,232 @@ users:
 		}
 	})
 }
+
+func TestIsObservabilityPodInSharedNamespace(t *testing.T) {
+	testCases := []struct {
+		podName  string
+		expected bool
+	}{
+		{"prom-agent-platform-metrics-collector-0", true},
+		{"prometheus-k8s-0", true},
+		{"endpoint-monitoring-operator-6486c75d7c-mldpd", true},
+		{"observability-monitoring-cleanup-1234", true},
+		{"observability-addon-abcde", true},
+		{"alertmanager-alertmanager-0", true},
+		{"metrics-collector-deployment-123", true},
+		{"uwl-metrics-collector-456", true},
+		{"hypershift-addon-agent-6c94cf7f58-6s9qz", false},
+		{"cluster-proxy-proxy-agent-bbc99f777-gpb28", false},
+		{"klusterlet-addon-workmgr-68f844fbfd-qknkh", false},
+		{"managed-serviceaccount-addon-agent-8699975dd-bcgl2", false},
+	}
+
+	for _, tc := range testCases {
+		actual := isObservabilityPodInSharedNamespace(tc.podName)
+		if actual != tc.expected {
+			t.Errorf("isObservabilityPodInSharedNamespace(%q) = %v; want %v", tc.podName, actual, tc.expected)
+		}
+	}
+}
+
+func TestIsPodAncientFailure(t *testing.T) {
+	now := time.Now()
+
+	t.Run("fresh pod created 10m ago", func(t *testing.T) {
+		pod := corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:              "fresh-pod",
+				CreationTimestamp: metav1.NewTime(now.Add(-10 * time.Minute)),
+			},
+		}
+		if isPodAncientFailure(pod, 4*time.Hour) {
+			t.Errorf("expected fresh pod not to be ancient")
+		}
+	})
+
+	t.Run("ancient pod created 24h ago with conditions 24h ago", func(t *testing.T) {
+		pod := corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:              "ancient-pod",
+				CreationTimestamp: metav1.NewTime(now.Add(-24 * time.Hour)),
+			},
+			Status: corev1.PodStatus{
+				Conditions: []corev1.PodCondition{
+					{
+						Type:               corev1.PodReady,
+						Status:             corev1.ConditionFalse,
+						LastTransitionTime: metav1.NewTime(now.Add(-20 * time.Hour)),
+					},
+				},
+				ContainerStatuses: []corev1.ContainerStatus{
+					{
+						Name: "container-1",
+						State: corev1.ContainerState{
+							Terminated: &corev1.ContainerStateTerminated{
+								FinishedAt: metav1.NewTime(now.Add(-20 * time.Hour)),
+							},
+						},
+					},
+				},
+			},
+		}
+		if !isPodAncientFailure(pod, 4*time.Hour) {
+			t.Errorf("expected ancient pod to be ancient")
+		}
+	})
+
+	t.Run("old pod created 10h ago with condition transitioned 30m ago", func(t *testing.T) {
+		pod := corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:              "recently-failed-old-pod",
+				CreationTimestamp: metav1.NewTime(now.Add(-10 * time.Hour)),
+			},
+			Status: corev1.PodStatus{
+				Conditions: []corev1.PodCondition{
+					{
+						Type:               corev1.PodReady,
+						Status:             corev1.ConditionFalse,
+						LastTransitionTime: metav1.NewTime(now.Add(-30 * time.Minute)),
+					},
+				},
+			},
+		}
+		if isPodAncientFailure(pod, 4*time.Hour) {
+			t.Errorf("expected recently transitioned pod not to be ancient")
+		}
+	})
+
+	t.Run("pod with zero creationTimestamp is not ancient", func(t *testing.T) {
+		pod := corev1.Pod{}
+		if isPodAncientFailure(pod, 4*time.Hour) {
+			t.Errorf("expected pod with zero timestamp not to be ancient")
+		}
+	})
+}
+
+func TestFormatNodesStatuses(t *testing.T) {
+	t.Run("empty nodes", func(t *testing.T) {
+		client := kubefake.NewSimpleClientset()
+		out, err := formatNodesStatuses(client)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if !strings.Contains(out, "No nodes found") {
+			t.Errorf("expected 'No nodes found', got: %s", out)
+		}
+	})
+
+	t.Run("healthy node", func(t *testing.T) {
+		node := &corev1.Node{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:              "worker-1",
+				CreationTimestamp: metav1.NewTime(time.Now().Add(-2 * time.Hour)),
+				Labels: map[string]string{
+					"node-role.kubernetes.io/worker": "",
+				},
+			},
+			Status: corev1.NodeStatus{
+				Conditions: []corev1.NodeCondition{
+					{
+						Type:   corev1.NodeReady,
+						Status: corev1.ConditionTrue,
+					},
+					{
+						Type:   corev1.NodeDiskPressure,
+						Status: corev1.ConditionFalse,
+					},
+				},
+			},
+		}
+		client := kubefake.NewSimpleClientset(node)
+		out, err := formatNodesStatuses(client)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if !strings.Contains(out, "worker-1") || !strings.Contains(out, "Ready") || !strings.Contains(out, "None") {
+			t.Errorf("expected healthy node summary, got:\n%s", out)
+		}
+		if strings.Contains(out, "Node Issues / Taints:") {
+			t.Errorf("did not expect issues block for healthy node, got:\n%s", out)
+		}
+	})
+
+	t.Run("node with disk pressure and taints", func(t *testing.T) {
+		node := &corev1.Node{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:              "master-1",
+				CreationTimestamp: metav1.NewTime(time.Now().Add(-5 * 24 * time.Hour)),
+				Labels: map[string]string{
+					"node-role.kubernetes.io/control-plane": "",
+					"node-role.kubernetes.io/master":        "",
+				},
+			},
+			Spec: corev1.NodeSpec{
+				Taints: []corev1.Taint{
+					{
+						Key:    "node.kubernetes.io/disk-pressure",
+						Value:  "",
+						Effect: corev1.TaintEffectNoSchedule,
+					},
+				},
+			},
+			Status: corev1.NodeStatus{
+				Conditions: []corev1.NodeCondition{
+					{
+						Type:    corev1.NodeReady,
+						Status:  corev1.ConditionTrue,
+						Reason:  "KubeletReady",
+						Message: "kubelet is posting ready status",
+					},
+					{
+						Type:    corev1.NodeDiskPressure,
+						Status:  corev1.ConditionTrue,
+						Reason:  "KubeletHasDiskPressure",
+						Message: "The node had condition: [DiskPressure]",
+					},
+				},
+			},
+		}
+		client := kubefake.NewSimpleClientset(node)
+		out, err := formatNodesStatuses(client)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if !strings.Contains(out, "DiskPressure") {
+			t.Errorf("expected DiskPressure in table, got:\n%s", out)
+		}
+		if !strings.Contains(out, "Taint:node.kubernetes.io/disk-pressure") {
+			t.Errorf("expected Taint in table, got:\n%s", out)
+		}
+		if !strings.Contains(out, "Node Issues / Taints:") {
+			t.Errorf("expected issues block, got:\n%s", out)
+		}
+		if !strings.Contains(out, "KubeletHasDiskPressure") {
+			t.Errorf("expected KubeletHasDiskPressure reason in details, got:\n%s", out)
+		}
+	})
+}
+
+func TestLogPodLogs_EarlyReturn(t *testing.T) {
+	client := kubefake.NewSimpleClientset()
+
+	// Should not panic or make requests for pending pod
+	pendingPod := corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Name: "pending-pod", Namespace: "default"},
+		Status:     corev1.PodStatus{Phase: corev1.PodPending},
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{{Name: "c1"}},
+		},
+	}
+	LogPodLogs(client, "default", pendingPod)
+
+	// Should not panic or make requests for evicted pod
+	evictedPod := corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Name: "evicted-pod", Namespace: "default"},
+		Status:     corev1.PodStatus{Phase: corev1.PodFailed, Reason: "Evicted"},
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{{Name: "c1"}},
+		},
+	}
+	LogPodLogs(client, "default", evictedPod)
+}
