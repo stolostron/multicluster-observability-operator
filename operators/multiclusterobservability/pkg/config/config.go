@@ -286,6 +286,27 @@ const (
 	// cert-manager is ready. MCOA's logging default stack uses cert-manager Certificate/
 	// Issuer/ClusterIssuer CRs to issue mTLS certs for log collection/storage.
 	CertManagerCertificateCRDName = "certificates.cert-manager.io"
+
+	// CertManagerNamespace is the fixed operand namespace the cert-manager Operator for Red
+	// Hat OpenShift deploys the cert-manager controllers into. It's enforced by the operator
+	// and can't be changed, so the namespaced cert-manager resources MCO manages (the
+	// self-signed Issuer and root CA Certificate below) must live here too.
+	CertManagerNamespace = "cert-manager"
+
+	// MCOARootCAIssuerName is the self-signed Issuer MCO creates to mint the MCOA root CA
+	// Certificate below. It only ever issues that one Certificate, so it's not meant to be
+	// referenced by anything else.
+	MCOARootCAIssuerName = "mcoa-root-ca"
+
+	// MCOARootCertificateName is the root CA Certificate (and the Secret it's written to, same
+	// name) that backs MCOARootClusterIssuerName. It's what actually signs the leaf
+	// certificates MCOA's logging default stack uses for mTLS.
+	MCOARootCertificateName = "mcoa-root-cert"
+
+	// MCOARootClusterIssuerName is the cluster-scoped Issuer, backed by MCOARootCertificateName's
+	// Secret, that MCOA-rendered Certificates request their mTLS leaf certs from for log
+	// collection/storage.
+	MCOARootClusterIssuerName = "mcoa-root-issuer"
 )
 
 var (

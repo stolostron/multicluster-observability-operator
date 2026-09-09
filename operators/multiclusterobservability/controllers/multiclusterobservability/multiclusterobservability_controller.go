@@ -307,6 +307,13 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 			}
 			return ctrl.Result{RequeueAfter: dependencyOperatorRequeueInterval}, nil
 		}
+
+		// The Certificate CRD (and its sibling Issuer/ClusterIssuer CRDs) are now established,
+		// so it's safe to create the root CA Issuer/Certificate/ClusterIssuer that MCOA's
+		// logging default stack issues its mTLS certs from.
+		if err := dependencies.EnsureMCOARootCertificatesInstalled(ctx, r.Client); err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to install MCOA root certificate resources: %w", err)
+		}
 	}
 
 	// Build render options
