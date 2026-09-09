@@ -111,6 +111,14 @@ func NewMCOMObservatoriumGVR() schema.GroupVersionResource {
 	}
 }
 
+func NewHiveClusterDeploymentGVR() schema.GroupVersionResource {
+	return schema.GroupVersionResource{
+		Group:    "hive.openshift.io",
+		Version:  "v1",
+		Resource: "clusterdeployments",
+	}
+}
+
 func NewOCMMultiClusterHubGVR() schema.GroupVersionResource {
 	return schema.GroupVersionResource{
 		Group:    "operator.open-cluster-management.io",

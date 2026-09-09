@@ -19,6 +19,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/klog/v2"
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
 )
@@ -154,30 +155,41 @@ func LogFailingTestStandardDebugInfo(opt TestOptions, isMCOA bool) {
 	}
 
 	// Section 5: Spoke Clusters
+	inspectedClusters := make(map[string]bool)
+	inspectedClusters["local-cluster"] = true
+
+	// 5A: Explicitly configured managed clusters in TestOptions
 	for _, mc := range opt.ManagedClusters {
-		if mc.Name == "local-cluster" {
-			// Skip local-cluster as same namespace as hub, and already checked
+		if inspectedClusters[mc.Name] {
 			continue
 		}
+		inspectedClusters[mc.Name] = true
 
 		spokeDynClient := NewKubeClientDynamic(mc.ClusterServerURL, mc.KubeConfig, mc.KubeContext)
 		spokeClient := NewKubeClient(mc.ClusterServerURL, mc.KubeConfig, mc.KubeContext)
+		logSpokeClusterDebugInfo(spokeClient, spokeDynClient, mc.Name, isMCOA)
+	}
 
-		if isMCOA {
-			klog.Infof("%s (MCOA: %s)", SectionSpokeWorkloads, mc.Name)
-			CheckDeploymentsInNamespace(spokeClient, MCO_AGENT_ADDON_NAMESPACE)
-			CheckStatefulSetsInNamespace(spokeClient, MCO_AGENT_ADDON_NAMESPACE)
-			CheckPodsInNamespace(spokeClient, MCO_AGENT_ADDON_NAMESPACE, []string{}, map[string]string{})
-		} else {
-			klog.Infof("%s (Legacy: %s)", SectionSpokeWorkloads, mc.Name)
-			PrintObject(context.TODO(), spokeDynClient, NewMCOAddonGVR(), MCO_ADDON_NAMESPACE, "observability-addon")
-			CheckDeploymentsInNamespace(spokeClient, MCO_ADDON_NAMESPACE)
-			CheckStatefulSetsInNamespace(spokeClient, MCO_ADDON_NAMESPACE)
-			CheckDaemonSetsInNamespace(spokeClient, MCO_ADDON_NAMESPACE)
-			CheckPodsInNamespace(spokeClient, MCO_ADDON_NAMESPACE, []string{"observability-addon"}, map[string]string{})
-			printConfigMapsInNamespace(spokeClient, MCO_ADDON_NAMESPACE)
-			printSecretsInNamespace(spokeClient, MCO_ADDON_NAMESPACE)
+	// 5B: Dynamic Spoke Kubeconfig Resolution (for regression environments where opt.ManagedClusters is empty)
+	discoveredClusters, err := GetDiscoveredManagedClusterNames(context.TODO(), hubDynClient)
+	if err == nil {
+		for _, clusterName := range discoveredClusters {
+			if inspectedClusters[clusterName] {
+				continue
+			}
+			inspectedClusters[clusterName] = true
+
+			spokeClient, spokeDynClient, err := resolveSpokeClientsFromHub(context.TODO(), hubClient, hubDynClient, clusterName)
+			if err != nil {
+				klog.V(2).Infof("Could not dynamically resolve credentials for spoke cluster %s: %v", clusterName, err)
+				continue
+			}
+
+			klog.Infof("Dynamically resolved spoke credentials for cluster %s from Hub", clusterName)
+			logSpokeClusterDebugInfo(spokeClient, spokeDynClient, clusterName, isMCOA)
 		}
+	} else {
+		klog.V(2).Infof("Failed to discover managed clusters on Hub: %v", err)
 	}
 
 	klog.Info(DebugDumpEndMarker)
@@ -1059,4 +1071,126 @@ func printManifestWorks(client dynamic.Interface) {
 	}
 
 	klog.Info(sb.String())
+}
+
+// GetDiscoveredManagedClusterNames queries the Hub's ManagedCluster resources and returns their names.
+func GetDiscoveredManagedClusterNames(ctx context.Context, client dynamic.Interface) ([]string, error) {
+	objs, err := client.Resource(NewOCMManagedClustersGVR()).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list managed clusters: %w", err)
+	}
+	names := make([]string, 0, len(objs.Items))
+	for _, obj := range objs.Items {
+		names = append(names, obj.GetName())
+	}
+	return names, nil
+}
+
+func extractKubeconfigFromSecret(s *corev1.Secret) []byte {
+	if s == nil || s.Data == nil {
+		return nil
+	}
+	return s.Data["kubeconfig"]
+}
+
+// resolveSpokeClientsFromHub attempts to find an admin kubeconfig secret on the Hub for a managed cluster
+// and constructs Kubernetes client interfaces for inspecting the spoke.
+func resolveSpokeClientsFromHub(
+	ctx context.Context,
+	hubClient kubernetes.Interface,
+	hubDynClient dynamic.Interface,
+	clusterName string,
+) (kubernetes.Interface, dynamic.Interface, error) {
+	var kubeconfigBytes []byte
+
+	// 1. Check Hive ClusterDeployment for explicit adminKubeconfigSecretRef
+	cdGVR := NewHiveClusterDeploymentGVR()
+	if cdObj, err := hubDynClient.Resource(cdGVR).Namespace(clusterName).Get(ctx, clusterName, metav1.GetOptions{}); err == nil {
+		secretName, found, _ := unstructured.NestedString(cdObj.Object, "spec", "clusterMetadata", "adminKubeconfigSecretRef", "name")
+		if found && secretName != "" {
+			if s, err := hubClient.CoreV1().Secrets(clusterName).Get(ctx, secretName, metav1.GetOptions{}); err == nil {
+				kubeconfigBytes = extractKubeconfigFromSecret(s)
+			}
+		}
+	}
+
+	// 2. Check standard admin kubeconfig secret names in cluster namespace
+	if len(kubeconfigBytes) == 0 {
+		candidates := []string{
+			fmt.Sprintf("%s-admin-kubeconfig", clusterName),
+			"admin-kubeconfig",
+		}
+		for _, name := range candidates {
+			if s, err := hubClient.CoreV1().Secrets(clusterName).Get(ctx, name, metav1.GetOptions{}); err == nil {
+				kubeconfigBytes = extractKubeconfigFromSecret(s)
+				if len(kubeconfigBytes) > 0 {
+					break
+				}
+			}
+		}
+	}
+
+	// 3. Check secrets with hive.openshift.io/secret-type=kubeconfig label or ending with -admin-kubeconfig
+	if len(kubeconfigBytes) == 0 {
+		if list, err := hubClient.CoreV1().Secrets(clusterName).List(ctx, metav1.ListOptions{}); err == nil {
+			for i := range list.Items {
+				s := &list.Items[i]
+				if (s.Labels != nil && s.Labels["hive.openshift.io/secret-type"] == "kubeconfig") ||
+					strings.HasSuffix(s.Name, "-admin-kubeconfig") {
+					kubeconfigBytes = extractKubeconfigFromSecret(s)
+					if len(kubeconfigBytes) > 0 {
+						break
+					}
+				}
+			}
+		}
+	}
+
+	if len(kubeconfigBytes) == 0 {
+		return nil, nil, fmt.Errorf("no admin kubeconfig secret found on hub for cluster %s", clusterName)
+	}
+
+	restConfig, err := clientcmd.RESTConfigFromKubeConfig(kubeconfigBytes)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to build REST config from kubeconfig for cluster %s: %w", clusterName, err)
+	}
+
+	// Enforce strict timeout so unresponsive spokes don't hang e2e logging
+	restConfig.Timeout = 10 * time.Second
+
+	spokeClient, err := kubernetes.NewForConfig(restConfig)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to create kubernetes client for cluster %s: %w", clusterName, err)
+	}
+
+	spokeDynClient, err := dynamic.NewForConfig(restConfig)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to create dynamic client for cluster %s: %w", clusterName, err)
+	}
+
+	return spokeClient, spokeDynClient, nil
+}
+
+// logSpokeClusterDebugInfo runs diagnostics on the spoke cluster's observability workloads.
+func logSpokeClusterDebugInfo(
+	spokeClient kubernetes.Interface,
+	spokeDynClient dynamic.Interface,
+	clusterName string,
+	isMCOA bool,
+) {
+	if isMCOA {
+		klog.Infof("%s (MCOA: %s)", SectionSpokeWorkloads, clusterName)
+		CheckDeploymentsInNamespace(spokeClient, MCO_AGENT_ADDON_NAMESPACE)
+		CheckStatefulSetsInNamespace(spokeClient, MCO_AGENT_ADDON_NAMESPACE)
+		CheckPodsInNamespace(spokeClient, MCO_AGENT_ADDON_NAMESPACE, []string{}, map[string]string{})
+	} else {
+		klog.Infof("%s (Legacy: %s)", SectionSpokeWorkloads, clusterName)
+		PrintObject(context.TODO(), spokeDynClient, NewMCOAddonGVR(), MCO_ADDON_NAMESPACE, "observability-addon")
+		CheckDeploymentsInNamespace(spokeClient, MCO_ADDON_NAMESPACE)
+		CheckStatefulSetsInNamespace(spokeClient, MCO_ADDON_NAMESPACE)
+		CheckDaemonSetsInNamespace(spokeClient, MCO_ADDON_NAMESPACE)
+		CheckPodsInNamespace(spokeClient, MCO_ADDON_NAMESPACE, []string{"observability-addon"}, map[string]string{})
+		printConfigMapsInNamespace(spokeClient, MCO_ADDON_NAMESPACE)
+		printSecretsInNamespace(spokeClient, MCO_ADDON_NAMESPACE)
+	}
 }
