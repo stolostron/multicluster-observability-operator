@@ -17,6 +17,7 @@ import (
 	"unicode/utf8"
 
 	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -37,6 +38,8 @@ var (
 
 const (
 	maxContainerLogLineLength     = 500
+	maxTailLines                  = 20
+	maxPrecedingErrorLines        = 30
 	DebugDumpStartMarker          = "==================== [DEBUG DUMP START] ===================="
 	DebugDumpEndMarker            = "==================== [DEBUG DUMP END] ======================"
 	SectionMCOCR                  = "---------- [SECTION: MCO CR] ----------"
@@ -50,6 +53,8 @@ const (
 	statusUnknown                 = "Unknown"
 	statusTrue                    = "True"
 	statusFalse                   = "False"
+	statusYes                     = "YES"
+	statusNo                      = "No"
 	conditionAvailable            = "Available"
 	conditionDegraded             = "Degraded"
 	conditionApplied              = "Applied"
@@ -85,8 +90,7 @@ func logMCOStatus(client dynamic.Interface) {
 
 	capabilities, found, _ := unstructured.NestedMap(obj.Object, "spec", "capabilities")
 	if found {
-		capJSON, _ := json.Marshal(capabilities)
-		sb.WriteString(fmt.Sprintf("  Capabilities: %s\n", string(capJSON)))
+		sb.WriteString(formatMCOCapabilities(capabilities))
 	}
 
 	storageConfig, found, _ := unstructured.NestedMap(obj.Object, "spec", "storageConfig")
@@ -107,6 +111,75 @@ func logMCOStatus(client dynamic.Interface) {
 		}
 	}
 	klog.Info(sb.String())
+}
+
+// formatMCOCapabilities formats the MCO capabilities spec into clean human-readable lines.
+func formatMCOCapabilities(capabilities map[string]any) string {
+	var sb strings.Builder
+	sb.WriteString("  Capabilities:\n")
+
+	// Platform capabilities
+	if platform, ok := capabilities["platform"].(map[string]any); ok {
+		var parts []string
+		if metrics, ok := platform["metrics"].(map[string]any); ok {
+			if def, ok := metrics["default"].(map[string]any); ok {
+				if enabled, ok := def["enabled"].(bool); ok {
+					parts = append(parts, fmt.Sprintf("metrics=%t", enabled))
+				}
+			}
+			if alerts, ok := metrics["alerts"].(map[string]any); ok {
+				if enabled, ok := alerts["enabled"].(bool); ok {
+					parts = append(parts, fmt.Sprintf("alerts=%t", enabled))
+				}
+			}
+		}
+		if analytics, ok := platform["analytics"].(map[string]any); ok {
+			var rs []string
+			if ns, ok := analytics["namespaceRightSizingRecommendation"].(map[string]any); ok {
+				if enabled, ok := ns["enabled"].(bool); ok {
+					rs = append(rs, fmt.Sprintf("ns=%t", enabled))
+				}
+			}
+			if virt, ok := analytics["virtualizationRightSizingRecommendation"].(map[string]any); ok {
+				if enabled, ok := virt["enabled"].(bool); ok {
+					rs = append(rs, fmt.Sprintf("virt=%t", enabled))
+				}
+			}
+			if len(rs) > 0 {
+				parts = append(parts, fmt.Sprintf("rightSizing(%s)", strings.Join(rs, ", ")))
+			}
+		}
+		if len(parts) > 0 {
+			sb.WriteString(fmt.Sprintf("    Platform: %s\n", strings.Join(parts, ", ")))
+		}
+	}
+
+	// UserWorkload capabilities
+	if uwl, ok := capabilities["userWorkloads"].(map[string]any); ok {
+		var parts []string
+		if metrics, ok := uwl["metrics"].(map[string]any); ok {
+			if def, ok := metrics["default"].(map[string]any); ok {
+				if enabled, ok := def["enabled"].(bool); ok {
+					parts = append(parts, fmt.Sprintf("metrics=%t", enabled))
+				}
+			}
+			if alerts, ok := metrics["alerts"].(map[string]any); ok {
+				if enabled, ok := alerts["enabled"].(bool); ok {
+					parts = append(parts, fmt.Sprintf("alerts=%t", enabled))
+				}
+			}
+		}
+		if len(parts) > 0 {
+			sb.WriteString(fmt.Sprintf("    UserWorkloads: %s\n", strings.Join(parts, ", ")))
+		}
+	}
+
+	// Fallback to compact JSON if structure did not yield readable parts
+	if sb.Len() == len("  Capabilities:\n") {
+		capJSON, _ := json.Marshal(capabilities)
+		return fmt.Sprintf("  Capabilities: %s\n", string(capJSON))
+	}
+	return sb.String()
 }
 
 // LogFailingTestStandardDebugInfo logs standard debug info for failing tests.
@@ -160,6 +233,7 @@ func LogFailingTestStandardDebugInfo(opt TestOptions, isMCOA bool) {
 	CheckDeploymentsInNamespace(hubClient, MCO_NAMESPACE)
 	CheckStatefulSetsInNamespace(hubClient, MCO_NAMESPACE)
 	CheckDaemonSetsInNamespace(hubClient, MCO_NAMESPACE)
+	CheckJobsInNamespace(hubClient, MCO_NAMESPACE)
 	CheckPodsInNamespace(hubClient, MCO_NAMESPACE, []string{"multicluster-observability-addon-manager"}, map[string]string{})
 	printConfigMapsInNamespace(hubClient, MCO_NAMESPACE)
 	printSecretsInNamespace(hubClient, MCO_NAMESPACE)
@@ -168,6 +242,7 @@ func LogFailingTestStandardDebugInfo(opt TestOptions, isMCOA bool) {
 	if isMCOA {
 		CheckDeploymentsInNamespace(hubClient, MCO_AGENT_ADDON_NAMESPACE)
 		CheckStatefulSetsInNamespace(hubClient, MCO_AGENT_ADDON_NAMESPACE)
+		CheckJobsInNamespace(hubClient, MCO_AGENT_ADDON_NAMESPACE)
 		CheckPodsInNamespace(hubClient, MCO_AGENT_ADDON_NAMESPACE, []string{"endpoint-monitoring-operator", "prom-agent", "observability-monitoring-cleanup"}, map[string]string{})
 		printMCOACustomResources(hubDynClient, MCO_AGENT_ADDON_NAMESPACE)
 	}
@@ -235,7 +310,7 @@ func isObservabilityWorkloadInSharedNamespace(workloadName string) bool {
 }
 
 // isPodAncientFailure returns true if a non-running pod failed or terminated long before
-// the current test execution window (e.g., > 4 hours ago).
+// the current test execution window (e.g., > 1 hour ago).
 func isPodAncientFailure(pod corev1.Pod, maxAge time.Duration) bool {
 	if pod.CreationTimestamp.IsZero() {
 		return false
@@ -299,6 +374,7 @@ func CheckPodsInNamespace(client kubernetes.Interface, ns string, forcePodNamesL
 	printPodsStatuses(pods.Items)
 
 	notRunningPodsCount := 0
+	skippedAncientPodsCount := 0
 	forcedPodsLogged := make(map[string]bool)
 
 	for _, pod := range pods.Items {
@@ -318,10 +394,11 @@ func CheckPodsInNamespace(client kubernetes.Interface, ns string, forcePodNamesL
 		isRunningOrSucceeded := pod.Status.Phase == corev1.PodRunning || pod.Status.Phase == corev1.PodSucceeded
 
 		if !isRunningOrSucceeded {
-			// Skip deep diagnostics and failure counting for ancient dead pods (> 4h) from previous runs.
+			// Skip deep diagnostics and failure counting for ancient dead pods (> 1h) from previous runs.
 			// Ancient failures should never be dumped or counted against current test runs, even if matching forcePodNamesLog.
-			if isPodAncientFailure(pod, 4*time.Hour) {
+			if isPodAncientFailure(pod, 1*time.Hour) {
 				klog.V(2).Infof("Skipping deep diagnostics for ancient failed pod %s/%s", ns, pod.Name)
+				skippedAncientPodsCount++
 				continue
 			}
 			notRunningPodsCount++
@@ -362,7 +439,11 @@ func CheckPodsInNamespace(client kubernetes.Interface, ns string, forcePodNamesL
 	}
 
 	if notRunningPodsCount == 0 {
-		klog.V(1).Infof("All pods are running in namespace %q", ns)
+		if skippedAncientPodsCount > 0 {
+			klog.V(1).Infof("All active pods are healthy in namespace %q (%d ancient failed pod(s) skipped)", ns, skippedAncientPodsCount)
+		} else {
+			klog.V(1).Infof("All pods are running in namespace %q", ns)
+		}
 	} else {
 		klog.Errorf("Found %d pods not running in namespace %q", notRunningPodsCount, ns)
 	}
@@ -398,12 +479,21 @@ func formatTerminatedState(term *corev1.ContainerStateTerminated) string {
 	return fmt.Sprintf("Terminated (exit code %d, reason: %s%s)", term.ExitCode, term.Reason, msg)
 }
 
-func LogPodStatus(pod corev1.Pod) {
+func formatPodStatus(pod corev1.Pod) string {
 	var podStatus strings.Builder
 	podStatus.WriteString(">>>>>>>>>> pod status >>>>>>>>>>\n")
 	podStatus.WriteString("Conditions:\n")
 	for _, condition := range pod.Status.Conditions {
-		podStatus.WriteString(fmt.Sprintf("\t%s: %s %v\n", condition.Type, condition.Status, condition.LastTransitionTime.Time))
+		details := ""
+		switch {
+		case condition.Reason != "" && condition.Message != "":
+			details = fmt.Sprintf(" (%s: %s)", condition.Reason, condition.Message)
+		case condition.Reason != "":
+			details = fmt.Sprintf(" (%s)", condition.Reason)
+		case condition.Message != "":
+			details = fmt.Sprintf(" (%s)", condition.Message)
+		}
+		podStatus.WriteString(fmt.Sprintf("\t%s: %s%s %v\n", condition.Type, condition.Status, details, condition.LastTransitionTime.Time))
 	}
 	if len(pod.Status.ContainerStatuses) > 0 {
 		podStatus.WriteString("ContainerStatuses:\n")
@@ -428,8 +518,11 @@ func LogPodStatus(pod corev1.Pod) {
 		}
 	}
 	podStatus.WriteString("<<<<<<<<<< pod status <<<<<<<<<<")
+	return podStatus.String()
+}
 
-	klog.V(1).Infof("Pod %q is in phase %q and status: \n%s", pod.Name, pod.Status.Phase, podStatus.String())
+func LogPodStatus(pod corev1.Pod) {
+	klog.V(1).Infof("Pod %q is in phase %q and status: \n%s", pod.Name, pod.Status.Phase, formatPodStatus(pod))
 }
 
 // isErrorLine identifies error, fatal, panic, failure, or timeout signatures.
@@ -446,6 +539,12 @@ func isErrorLine(line string) bool {
 	}
 	// Suppress routine Prometheus federate scrape warnings
 	if strings.Contains(lower, "error on ingesting out-of-order samples") {
+		return false
+	}
+	// Suppress standard client-go and controller-runtime in-cluster startup warnings
+	if strings.Contains(lower, "neither --kubeconfig nor --master was specified") ||
+		strings.Contains(lower, "authorization is disabled") ||
+		strings.Contains(lower, "authentication is disabled") {
 		return false
 	}
 	if strings.Contains(lower, "error") ||
@@ -470,6 +569,8 @@ func LogPodLogs(client kubernetes.Interface, ns string, pod corev1.Pod) {
 	}
 
 	for _, container := range pod.Spec.Containers {
+		// Most e2e tests have a 5-minute timeout; a 6-minute window ensures we capture
+		// all relevant logs and errors from the failing test assertion window.
 		sinceSeconds := int64(360)
 		limitBytes := int64(5 * 1024 * 1024)
 		logsRes := client.CoreV1().Pods(ns).GetLogs(pod.Name, &corev1.PodLogOptions{
@@ -530,12 +631,12 @@ func truncateLogLine(line string, maxLen int) string {
 	return line[:maxLen] + " ... [truncated]"
 }
 
-// formatContainerLogs parses raw container logs, extracts recent error/warning lines
-// within the cutoff window, caps the output, and prepends an omitted lines note if lines were filtered.
+// formatContainerLogs parses raw container logs, captures the most recent tail lines
+// (last 20 lines) plus any preceding error/warning lines within the cutoff window (past 6m),
+// and prepends omission notices if earlier lines were filtered.
 func formatContainerLogs(rawLogs string, cutoffTime time.Time) ([]string, string) {
-	var errorLines []string
-	var windowLines []string
 	lines := strings.Split(rawLogs, "\n")
+	var windowLines []string
 	unparseableCount := 0
 
 	for i := len(lines) - 1; i >= 0; i-- {
@@ -564,49 +665,71 @@ func formatContainerLogs(rawLogs string, cutoffTime time.Time) ([]string, string
 		}
 
 		windowLines = append(windowLines, line)
-		if isErrorLine(line) {
-			errorLines = append(errorLines, line)
+	}
+
+	if len(windowLines) == 0 {
+		return nil, "no logs found in 6m window"
+	}
+
+	// Reverse windowLines so they are in chronological order (oldest to newest)
+	slices.Reverse(windowLines)
+
+	for i, l := range windowLines {
+		windowLines[i] = truncateLogLine(l, maxContainerLogLineLength)
+	}
+
+	// If all lines fit within the tail limit, return them all directly
+	if len(windowLines) <= maxTailLines {
+		msg := fmt.Sprintf("all %d log lines from past 6 minutes", len(windowLines))
+		return windowLines, msg
+	}
+
+	// Split into preceding lines and tail lines
+	splitIdx := len(windowLines) - maxTailLines
+	precedingLines := windowLines[:splitIdx]
+	tailLines := windowLines[splitIdx:]
+
+	// Extract error lines from preceding lines
+	var precedingErrors []string
+	for _, l := range precedingLines {
+		if isErrorLine(l) {
+			precedingErrors = append(precedingErrors, l)
 		}
 	}
 
 	var displayLines []string
-	msg := "recent errors and warnings from the past 6 minutes"
-	if len(errorLines) > 0 {
-		count := min(50, len(errorLines))
-		displayLines = errorLines[:count]
-		msg = fmt.Sprintf("%d error/warning lines from the past 6 minutes", count)
-	} else if len(windowLines) > 0 {
-		count := min(20, len(windowLines))
-		displayLines = windowLines[:count]
-		msg = fmt.Sprintf("last %d log lines (no errors detected in 6m window)", count)
-	}
+	var msg string
 
-	// Reverse the lines to restore chronological order
-	slices.Reverse(displayLines)
-
-	for i, l := range displayLines {
-		displayLines[i] = truncateLogLine(l, maxContainerLogLineLength)
-	}
-
-	var omittedMsg string
-	if len(errorLines) > 0 {
-		omittedErrors := len(errorLines) - len(displayLines)
-		omittedNonErrors := len(windowLines) - len(errorLines)
-		switch {
-		case omittedErrors > 0 && omittedNonErrors > 0:
-			omittedMsg = fmt.Sprintf("  (+ %d older error lines and %d non-error lines omitted for brevity)", omittedErrors, omittedNonErrors)
-		case omittedErrors > 0:
-			omittedMsg = fmt.Sprintf("  (+ %d older error lines omitted for brevity)", omittedErrors)
-		case omittedNonErrors > 0:
-			omittedMsg = fmt.Sprintf("  (+ %d non-error log lines omitted for brevity)", omittedNonErrors)
+	if len(precedingErrors) > 0 {
+		omittedPrecedingErrors := 0
+		if len(precedingErrors) > maxPrecedingErrorLines {
+			omittedPrecedingErrors = len(precedingErrors) - maxPrecedingErrorLines
+			precedingErrors = precedingErrors[omittedPrecedingErrors:]
 		}
-	} else if len(windowLines) > len(displayLines) {
-		omittedLines := len(windowLines) - len(displayLines)
-		omittedMsg = fmt.Sprintf("  (+ %d older log lines omitted for brevity)", omittedLines)
-	}
+		omittedNonErrors := len(precedingLines) - (len(precedingErrors) + omittedPrecedingErrors)
 
-	if omittedMsg != "" {
-		displayLines = slices.Insert(displayLines, 0, omittedMsg)
+		var notice string
+		switch {
+		case omittedPrecedingErrors > 0 && omittedNonErrors > 0:
+			notice = fmt.Sprintf("  (+ %d older error lines and %d non-error lines omitted for brevity)", omittedPrecedingErrors, omittedNonErrors)
+		case omittedPrecedingErrors > 0:
+			notice = fmt.Sprintf("  (+ %d older error lines omitted for brevity)", omittedPrecedingErrors)
+		case omittedNonErrors > 0:
+			notice = fmt.Sprintf("  (+ %d earlier non-error lines omitted for brevity)", omittedNonErrors)
+		}
+
+		if notice != "" {
+			displayLines = append(displayLines, notice)
+		}
+		displayLines = append(displayLines, precedingErrors...)
+		displayLines = append(displayLines, "  --- [tail: last 20 log lines] ---")
+		displayLines = append(displayLines, tailLines...)
+		msg = fmt.Sprintf("last %d log lines + %d preceding error/warning line(s) from past 6 minutes", len(tailLines), len(precedingErrors))
+	} else {
+		notice := fmt.Sprintf("  (+ %d older log lines omitted for brevity; no errors detected in preceding 6m window)", len(precedingLines))
+		displayLines = append(displayLines, notice)
+		displayLines = append(displayLines, tailLines...)
+		msg = fmt.Sprintf("last %d log lines (no preceding errors detected in 6m window)", len(tailLines))
 	}
 
 	return displayLines, msg
@@ -758,6 +881,57 @@ func CheckDaemonSetsInNamespace(client kubernetes.Interface, ns string) {
 	}
 }
 
+func CheckJobsInNamespace(client kubernetes.Interface, ns string) {
+	if client == nil {
+		return
+	}
+	jobs, err := client.BatchV1().Jobs(ns).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		if !apierrors.IsNotFound(err) {
+			klog.Errorf("Failed to get jobs in namespace %s: %v", ns, err)
+		}
+		return
+	}
+
+	if ns == MCO_AGENT_ADDON_NAMESPACE {
+		var scoped []batchv1.Job
+		for _, j := range jobs.Items {
+			if isObservabilityWorkloadInSharedNamespace(j.Name) {
+				scoped = append(scoped, j)
+			}
+		}
+		jobs.Items = scoped
+	}
+
+	if len(jobs.Items) == 0 {
+		klog.V(1).Infof("No jobs found in namespace %q", ns)
+		return
+	}
+
+	klog.V(1).Infof("Jobs in namespace %s:\n", ns)
+	printJobsStatuses(client, ns)
+
+	for _, job := range jobs.Items {
+		// In shared agent namespace, skip deep inspection of jobs belonging to other ACM addons
+		if ns == MCO_AGENT_ADDON_NAMESPACE && !isObservabilityWorkloadInSharedNamespace(job.Name) {
+			continue
+		}
+
+		isComplete := false
+		for _, c := range job.Status.Conditions {
+			if c.Type == batchv1.JobComplete && c.Status == corev1.ConditionTrue {
+				isComplete = true
+				break
+			}
+		}
+		if isComplete {
+			continue
+		}
+
+		LogObjectEvents(client, ns, "Job", job.Name)
+	}
+}
+
 func getEventTimestamp(event corev1.Event) time.Time {
 	if !event.LastTimestamp.IsZero() {
 		return event.LastTimestamp.Time
@@ -785,12 +959,29 @@ func formatObjectEvents(kind string, events []corev1.Event) string {
 		return ta.Compare(tb)
 	})
 
+	// Filter out events older than 1 hour to keep diagnostics relevant to recent test activity
+	cutoff := time.Now().Add(-1 * time.Hour)
+	recentEvents := make([]corev1.Event, 0, len(sortedEvents))
+	staleEventsCount := 0
+	for _, event := range sortedEvents {
+		ts := getEventTimestamp(event)
+		if !ts.IsZero() && ts.Before(cutoff) {
+			staleEventsCount++
+			continue
+		}
+		recentEvents = append(recentEvents, event)
+	}
+
+	if len(recentEvents) == 0 {
+		return ""
+	}
+
 	const maxEventsToDisplay = 25
-	itemsToDisplay := sortedEvents
-	omittedCount := 0
-	if len(sortedEvents) > maxEventsToDisplay {
-		omittedCount = len(sortedEvents) - maxEventsToDisplay
-		itemsToDisplay = sortedEvents[omittedCount:]
+	itemsToDisplay := recentEvents
+	omittedCount := staleEventsCount
+	if len(recentEvents) > maxEventsToDisplay {
+		omittedCount += len(recentEvents) - maxEventsToDisplay
+		itemsToDisplay = recentEvents[len(recentEvents)-maxEventsToDisplay:]
 	}
 
 	objectEvents := make([]string, 0, len(itemsToDisplay)+1)
@@ -827,6 +1018,9 @@ func LogObjectEvents(client kubernetes.Interface, ns string, kind string, name s
 	}
 
 	formattedEvents := formatObjectEvents(kind, events.Items)
+	if formattedEvents == "" {
+		return
+	}
 	klog.V(1).Infof("%s %q events: \n%s", kind, name, formattedEvents)
 }
 
@@ -924,9 +1118,9 @@ func LogManagedClusterAddOns(client dynamic.Interface) {
 			continue
 		}
 		cluster := obj.GetNamespace()
-		deleting := "No"
+		deleting := statusNo
 		if obj.GetDeletionTimestamp() != nil {
-			deleting = "YES"
+			deleting = statusYes
 		}
 		finalizers := strings.Join(obj.GetFinalizers(), ",")
 
@@ -934,7 +1128,7 @@ func LogManagedClusterAddOns(client dynamic.Interface) {
 		degradedCond := statusUnknown
 		prog := statusUnknown
 
-		if deleting == "YES" {
+		if deleting == statusYes {
 			degraded = append(degraded, degradedAddon{
 				cluster: cluster,
 				addon:   name,
@@ -964,7 +1158,8 @@ func LogManagedClusterAddOns(client dynamic.Interface) {
 				}
 
 				if (cType == conditionDegraded && cStatus == statusTrue) ||
-					(cType == conditionAvailable && cStatus == statusFalse) {
+					(cType == conditionAvailable && cStatus == statusFalse) ||
+					(cType == conditionProgressing && deleting == statusYes && cMsg != "") {
 					degraded = append(degraded, degradedAddon{
 						cluster: cluster,
 						addon:   name,
@@ -989,7 +1184,8 @@ func LogManagedClusterAddOns(client dynamic.Interface) {
 	if len(degraded) > 0 {
 		sb.WriteString("\nDegraded or Terminating ManagedClusterAddOns Details:\n")
 		for _, d := range degraded {
-			sb.WriteString(fmt.Sprintf("  - %s/%s: %s\n", d.cluster, d.addon, d.detail))
+			detail := truncateLogLine(d.detail, 400)
+			sb.WriteString(fmt.Sprintf("  - %s/%s: %s\n", d.cluster, d.addon, detail))
 		}
 	}
 
@@ -1029,10 +1225,18 @@ func formatPodsStatuses(pods []corev1.Pod) string {
 	var sb strings.Builder
 	writer := tabwriter.NewWriter(&sb, 0, 0, 2, ' ', 0)
 	_, _ = fmt.Fprintln(writer, "NAME\tSTATUS\tRESTARTS\tAGE")
+	ancientSucceededCount := 0
 	for _, pod := range pods {
+		if pod.Status.Phase == corev1.PodSucceeded && !pod.CreationTimestamp.IsZero() && time.Since(pod.CreationTimestamp.Time) > 1*time.Hour {
+			ancientSucceededCount++
+			continue
+		}
 		var restartCount int32
-		if len(pod.Status.ContainerStatuses) > 0 {
-			restartCount = pod.Status.ContainerStatuses[0].RestartCount
+		for _, cs := range pod.Status.ContainerStatuses {
+			restartCount += cs.RestartCount
+		}
+		for _, ics := range pod.Status.InitContainerStatuses {
+			restartCount += ics.RestartCount
 		}
 		age := time.Since(pod.CreationTimestamp.Time).Round(time.Second)
 		_, _ = fmt.Fprintf(writer, "%s\t%s\t%d\t%s\n",
@@ -1042,6 +1246,9 @@ func formatPodsStatuses(pods []corev1.Pod) string {
 			age)
 	}
 	_ = writer.Flush()
+	if ancientSucceededCount > 0 {
+		_, _ = fmt.Fprintf(&sb, "  (+ %d ancient Succeeded pods omitted for brevity)\n", ancientSucceededCount)
+	}
 	return sb.String()
 }
 
@@ -1155,6 +1362,64 @@ func formatDaemonSetsStatuses(clientset kubernetes.Interface, namespace string) 
 
 func printDaemonSetsStatuses(clientset kubernetes.Interface, namespace string) {
 	out, err := formatDaemonSetsStatuses(clientset, namespace)
+	if err != nil {
+		klog.Errorf("%v", err)
+		return
+	}
+	klog.Info(out)
+}
+
+func formatJobsStatuses(clientset kubernetes.Interface, namespace string) (string, error) {
+	jobsClient := clientset.BatchV1().Jobs(namespace)
+	jobs, err := jobsClient.List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		return "", fmt.Errorf("failed to list jobs in namespace %s: %w", namespace, err)
+	}
+
+	var sb strings.Builder
+	writer := tabwriter.NewWriter(&sb, 0, 0, 2, ' ', 0)
+	_, _ = fmt.Fprintln(writer, "NAME\tCOMPLETIONS\tDURATION\tAGE\tCONDITIONS")
+	for _, job := range jobs.Items {
+		if namespace == MCO_AGENT_ADDON_NAMESPACE && !isObservabilityWorkloadInSharedNamespace(job.Name) {
+			continue
+		}
+		age := time.Since(job.CreationTimestamp.Time).Round(time.Second)
+		completionsNeeded := int32(1)
+		if job.Spec.Completions != nil {
+			completionsNeeded = *job.Spec.Completions
+		}
+		completions := fmt.Sprintf("%d/%d", job.Status.Succeeded, completionsNeeded)
+		duration := "-"
+		if job.Status.StartTime != nil {
+			if job.Status.CompletionTime != nil {
+				duration = job.Status.CompletionTime.Sub(job.Status.StartTime.Time).Round(time.Second).String()
+			} else {
+				duration = time.Since(job.Status.StartTime.Time).Round(time.Second).String()
+			}
+		}
+		var conds []string
+		for _, c := range job.Status.Conditions {
+			if c.Status == corev1.ConditionTrue {
+				conds = append(conds, string(c.Type))
+			}
+		}
+		condStr := strings.Join(conds, ",")
+		if condStr == "" {
+			condStr = "-"
+		}
+		_, _ = fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\n",
+			job.Name,
+			completions,
+			duration,
+			age,
+			condStr)
+	}
+	_ = writer.Flush()
+	return sb.String(), nil
+}
+
+func printJobsStatuses(clientset kubernetes.Interface, namespace string) {
+	out, err := formatJobsStatuses(clientset, namespace)
 	if err != nil {
 		klog.Errorf("%v", err)
 		return
@@ -1413,6 +1678,10 @@ func printAddonDeploymentConfigs(client dynamic.Interface, ns string) {
 	klog.Info(adcInfo.String())
 }
 
+func sanitizeManifestError(msg string) string {
+	return truncateLogLine(strings.TrimSpace(msg), 300)
+}
+
 func printManifestWorks(client dynamic.Interface) {
 	gvr := NewOCMManifestworksGVR()
 	objs, err := client.Resource(gvr).Namespace("").List(context.TODO(), metav1.ListOptions{})
@@ -1424,7 +1693,7 @@ func printManifestWorks(client dynamic.Interface) {
 	var sb strings.Builder
 	sb.WriteString("Observability ManifestWorks:\n")
 	writer := tabwriter.NewWriter(&sb, 0, 0, 2, ' ', 0)
-	_, _ = fmt.Fprintln(writer, "NAMESPACE\tNAME\tAPPLIED\tAVAILABLE\tDEGRADED\tDELETING\tFINALIZERS")
+	_, _ = fmt.Fprintln(writer, "NAMESPACE\tNAME\tAPPLIED\tAVAILABLE\tDEGRADED\tDELETING\tFINALIZERS\tMANIFESTS")
 
 	type degradedMW struct {
 		ns     string
@@ -1462,9 +1731,9 @@ func printManifestWorks(client dynamic.Interface) {
 		}
 		count++
 		ns := obj.GetNamespace()
-		deleting := "No"
+		deleting := statusNo
 		if obj.GetDeletionTimestamp() != nil {
-			deleting = "YES"
+			deleting = statusYes
 		}
 		finalizers := strings.Join(obj.GetFinalizers(), ",")
 
@@ -1472,7 +1741,7 @@ func printManifestWorks(client dynamic.Interface) {
 		available := statusUnknown
 		degradedCond := statusUnknown
 
-		if deleting == "YES" {
+		if deleting == statusYes {
 			degraded = append(degraded, degradedMW{
 				ns:     ns,
 				name:   name,
@@ -1513,6 +1782,7 @@ func printManifestWorks(client dynamic.Interface) {
 			}
 		}
 
+		var manifestKinds []string
 		manifests, foundRes, _ := unstructured.NestedSlice(obj.Object, "status", "resourceStatus", "manifests")
 		if foundRes {
 			for _, m := range manifests {
@@ -1524,6 +1794,9 @@ func printManifestWorks(client dynamic.Interface) {
 				kind, _, _ := unstructured.NestedString(resMeta, "kind")
 				resName, _, _ := unstructured.NestedString(resMeta, "name")
 				resNs, _, _ := unstructured.NestedString(resMeta, "namespace")
+				if kind != "" && !slices.Contains(manifestKinds, kind) {
+					manifestKinds = append(manifestKinds, kind)
+				}
 
 				mConditions, foundConds, _ := unstructured.NestedSlice(mMap, "conditions")
 				if foundConds {
@@ -1543,7 +1816,7 @@ func printManifestWorks(client dynamic.Interface) {
 							degraded = append(degraded, degradedMW{
 								ns:     ns,
 								name:   name,
-								detail: fmt.Sprintf("Manifest %s %s/%s [%s=%s (%s): %s]", kind, resNs, resName, mType, mStatus, mReason, mMsg),
+								detail: fmt.Sprintf("Manifest %s %s/%s [%s=%s (%s): %s]", kind, resNs, resName, mType, mStatus, mReason, sanitizeManifestError(mMsg)),
 							})
 						}
 					}
@@ -1551,7 +1824,12 @@ func printManifestWorks(client dynamic.Interface) {
 			}
 		}
 
-		_, _ = fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\t%s\t[%s]\n",
+		manifestsSummary := "-"
+		if len(manifestKinds) > 0 {
+			manifestsSummary = fmt.Sprintf("[%s]", strings.Join(manifestKinds, ","))
+		}
+
+		_, _ = fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\t%s\t[%s]\t%s\n",
 			ns,
 			name,
 			applied,
@@ -1559,6 +1837,7 @@ func printManifestWorks(client dynamic.Interface) {
 			degradedCond,
 			deleting,
 			finalizers,
+			manifestsSummary,
 		)
 	}
 	_ = writer.Flush()
@@ -1571,7 +1850,8 @@ func printManifestWorks(client dynamic.Interface) {
 	if len(degraded) > 0 {
 		sb.WriteString("\nDegraded or Terminating ManifestWorks Details:\n")
 		for _, d := range degraded {
-			sb.WriteString(fmt.Sprintf("  - %s/%s: %s\n", d.ns, d.name, d.detail))
+			detail := truncateLogLine(d.detail, 400)
+			sb.WriteString(fmt.Sprintf("  - %s/%s: %s\n", d.ns, d.name, detail))
 		}
 	}
 
@@ -1700,6 +1980,16 @@ func printMCOACustomResources(client dynamic.Interface, ns string) {
 		}
 		klog.Infof("ScrapeConfigs in %s (%d): %s", ns, len(names), strings.Join(names, ", "))
 	}
+
+	prGVR := NewPrometheusRuleGVR()
+	prList, err := client.Resource(prGVR).Namespace(ns).List(context.TODO(), metav1.ListOptions{})
+	if err == nil && len(prList.Items) > 0 {
+		names := make([]string, 0, len(prList.Items))
+		for _, item := range prList.Items {
+			names = append(names, item.GetName())
+		}
+		klog.Infof("PrometheusRules in %s (%d): %s", ns, len(names), strings.Join(names, ", "))
+	}
 }
 
 // logClusterMonitoringConfigStatus summarizes the state of OpenShift cluster monitoring
@@ -1777,6 +2067,7 @@ func logSpokeClusterDebugInfo(
 		LogNodes(spokeClient, clusterName)
 		CheckDeploymentsInNamespace(spokeClient, MCO_AGENT_ADDON_NAMESPACE)
 		CheckStatefulSetsInNamespace(spokeClient, MCO_AGENT_ADDON_NAMESPACE)
+		CheckJobsInNamespace(spokeClient, MCO_AGENT_ADDON_NAMESPACE)
 		CheckPodsInNamespace(spokeClient, MCO_AGENT_ADDON_NAMESPACE, []string{"endpoint-monitoring-operator", "prom-agent", "observability-monitoring-cleanup"}, map[string]string{})
 		printMCOACustomResources(spokeDynClient, MCO_AGENT_ADDON_NAMESPACE)
 		logClusterMonitoringConfigStatus(spokeClient, clusterName)
@@ -1787,6 +2078,7 @@ func logSpokeClusterDebugInfo(
 		CheckDeploymentsInNamespace(spokeClient, MCO_ADDON_NAMESPACE)
 		CheckStatefulSetsInNamespace(spokeClient, MCO_ADDON_NAMESPACE)
 		CheckDaemonSetsInNamespace(spokeClient, MCO_ADDON_NAMESPACE)
+		CheckJobsInNamespace(spokeClient, MCO_ADDON_NAMESPACE)
 		CheckPodsInNamespace(spokeClient, MCO_ADDON_NAMESPACE, []string{"observability-addon"}, map[string]string{})
 		printConfigMapsInNamespace(spokeClient, MCO_ADDON_NAMESPACE)
 		printSecretsInNamespace(spokeClient, MCO_ADDON_NAMESPACE)

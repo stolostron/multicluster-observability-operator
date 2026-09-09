@@ -11,8 +11,10 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -67,6 +69,31 @@ func TestIsErrorLine(t *testing.T) {
 		},
 		{"logfmt warn containing genuine error", `ts=2026-09-09T13:12:00Z level=warn component="remote-write" msg="failed to send batch"`, true},
 		{"klog info containing panic is still caught", "I0904 13:16:22.123456 reconciler.go:42] Caught panic during handler", true},
+		{
+			"client-go benign inClusterConfig warning",
+			"2026-09-09T13:48:39.485786389Z W0909 13:48:39.485663       1 client_config.go:682] Neither --kubeconfig nor --master was specified.  Using the inClusterConfig.  This might not work.",
+			false,
+		},
+		{
+			"controller-runtime benign authorization disabled warning",
+			"2026-09-09T13:48:32.729619491Z W0909 13:48:32.729570       1 authorization.go:59] Authorization is disabled",
+			false,
+		},
+		{
+			"controller-runtime benign authentication disabled warning",
+			"2026-09-09T13:48:32.729652612Z W0909 13:48:32.729618       1 authentication.go:52] Authentication is disabled",
+			false,
+		},
+		{
+			"controller blocking clusters info log is treated as info by isErrorLine (captured via tail)",
+			`2026-09-09T14:45:10.630088826Z I0909 14:45:10.630051 1 multiclusterobservability_controller.go:1251] "Waiting for MCOA ManifestWorks and ManagedClusterAddOns to be deleted" logger="controller_multiclustermonitoring" Request.Namespace="" Request.Name="observability" blockingClusters=["local-cluster"]`,
+			false,
+		},
+		{
+			"controller waiting for mcoa cleanup is treated as info by isErrorLine (captured via tail)",
+			`I0909 14:45:10.630051 1 multiclusterobservability_controller.go:1251] Waiting for MCOA teardown to complete`,
+			false,
+		},
 	}
 
 	for _, tc := range testCases {
@@ -164,6 +191,40 @@ func TestFormatPodsStatuses(t *testing.T) {
 				},
 			},
 		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:              "pod-multicontainer-restarts",
+				CreationTimestamp: metav1.NewTime(now.Add(-20 * time.Minute)),
+			},
+			Status: corev1.PodStatus{
+				Phase: corev1.PodRunning,
+				ContainerStatuses: []corev1.ContainerStatus{
+					{Name: "c1", Ready: true, RestartCount: 2},
+					{Name: "c2", Ready: true, RestartCount: 3},
+				},
+				InitContainerStatuses: []corev1.ContainerStatus{
+					{Name: "init", Ready: true, RestartCount: 1},
+				},
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:              "pod-ancient-succeeded",
+				CreationTimestamp: metav1.NewTime(now.Add(-3 * time.Hour)),
+			},
+			Status: corev1.PodStatus{
+				Phase: corev1.PodSucceeded,
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:              "pod-recent-succeeded",
+				CreationTimestamp: metav1.NewTime(now.Add(-15 * time.Minute)),
+			},
+			Status: corev1.PodStatus{
+				Phase: corev1.PodSucceeded,
+			},
+		},
 	}
 
 	out := formatPodsStatuses(pods)
@@ -176,6 +237,21 @@ func TestFormatPodsStatuses(t *testing.T) {
 	}
 	if !strings.Contains(out, "pod-crashloop") || !strings.Contains(out, "Failed") || !strings.Contains(out, "15") {
 		t.Errorf("formatPodsStatuses missing crashlooping pod info, got:\n%s", out)
+	}
+	// Verify multi-container restart count is summed (2 + 3 + 1 = 6)
+	if !strings.Contains(out, "pod-multicontainer-restarts") || !strings.Contains(out, " 6 ") {
+		t.Errorf("formatPodsStatuses missing summed restarts (expected 6), got:\n%s", out)
+	}
+	// Verify ancient succeeded pod is omitted and summarized
+	if strings.Contains(out, "pod-ancient-succeeded") {
+		t.Errorf("formatPodsStatuses should have omitted pod-ancient-succeeded, got:\n%s", out)
+	}
+	if !strings.Contains(out, "(+ 1 ancient Succeeded pods omitted for brevity)") {
+		t.Errorf("formatPodsStatuses missing ancient succeeded summary line, got:\n%s", out)
+	}
+	// Verify recent succeeded pod is kept in table
+	if !strings.Contains(out, "pod-recent-succeeded") {
+		t.Errorf("formatPodsStatuses should keep recent succeeded pod in table, got:\n%s", out)
 	}
 }
 
@@ -451,6 +527,44 @@ func TestFormatObjectEvents(t *testing.T) {
 	}
 	if !strings.Contains(cappedOut, "Reason34") {
 		t.Errorf("expected latest event Reason34 to be present in:\n%s", cappedOut)
+	}
+
+	// 4. Stale events (> 1h) filtering
+	staleEvents := []corev1.Event{
+		{
+			Reason:        "AncientEvent",
+			Message:       "Happened 2 hours ago",
+			Count:         1,
+			LastTimestamp: metav1.NewTime(time.Now().Add(-2 * time.Hour)),
+		},
+	}
+	if out := formatObjectEvents("Pod", staleEvents); out != "" {
+		t.Errorf("expected empty string when all events are older than 1 hour, got:\n%s", out)
+	}
+
+	mixedEvents := []corev1.Event{
+		{
+			Reason:        "AncientEvent",
+			Message:       "Happened 2 hours ago",
+			Count:         1,
+			LastTimestamp: metav1.NewTime(time.Now().Add(-2 * time.Hour)),
+		},
+		{
+			Reason:        "RecentEvent",
+			Message:       "Happened 5 minutes ago",
+			Count:         1,
+			LastTimestamp: metav1.NewTime(time.Now().Add(-5 * time.Minute)),
+		},
+	}
+	mixedOut := formatObjectEvents("Pod", mixedEvents)
+	if strings.Contains(mixedOut, "AncientEvent") {
+		t.Errorf("expected ancient event to be filtered out, got:\n%s", mixedOut)
+	}
+	if !strings.Contains(mixedOut, "RecentEvent") {
+		t.Errorf("expected recent event to be present, got:\n%s", mixedOut)
+	}
+	if !strings.Contains(mixedOut, "(+ 1 older events omitted for brevity)") {
+		t.Errorf("expected omitted note for 1 older event, got:\n%s", mixedOut)
 	}
 }
 
@@ -956,6 +1070,27 @@ func TestIsPodAncientFailure(t *testing.T) {
 			t.Errorf("expected pod with zero timestamp not to be ancient")
 		}
 	})
+
+	t.Run("pod evicted 2h40m ago is ancient with 1h cutoff", func(t *testing.T) {
+		pod := corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:              "evicted-pod",
+				CreationTimestamp: metav1.NewTime(now.Add(-5 * time.Hour)),
+			},
+			Status: corev1.PodStatus{
+				Conditions: []corev1.PodCondition{
+					{
+						Type:               corev1.DisruptionTarget,
+						Status:             corev1.ConditionTrue,
+						LastTransitionTime: metav1.NewTime(now.Add(-160 * time.Minute)),
+					},
+				},
+			},
+		}
+		if !isPodAncientFailure(pod, 1*time.Hour) {
+			t.Errorf("expected pod evicted 2h40m ago to be ancient with 1h cutoff")
+		}
+	})
 }
 
 func TestFormatNodesStatuses(t *testing.T) {
@@ -1274,7 +1409,7 @@ func TestFormatContainerLogs(t *testing.T) {
 		}
 	})
 
-	t.Run("non-error lines omitted when errors present", func(t *testing.T) {
+	t.Run("all lines fit within tail limit without omission", func(t *testing.T) {
 		t1 := now.Add(-3 * time.Minute).Format(time.RFC3339)
 		t2 := now.Add(-2 * time.Minute).Format(time.RFC3339)
 		t3 := now.Add(-1 * time.Minute).Format(time.RFC3339)
@@ -1285,42 +1420,99 @@ func TestFormatContainerLogs(t *testing.T) {
 			t1, t2, t2, t3)
 
 		lines, msg := formatContainerLogs(raw, cutoff)
-		if len(lines) != 3 { // 1 omitted notice + 2 errors
-			t.Fatalf("expected 3 lines, got %d: %v", len(lines), lines)
+		if len(lines) != 4 {
+			t.Fatalf("expected 4 lines without omission, got %d: %v", len(lines), lines)
 		}
-		expectedNotice := "  (+ 2 non-error log lines omitted for brevity)"
-		if lines[0] != expectedNotice {
-			t.Errorf("expected notice %q, got %q", expectedNotice, lines[0])
+		if !strings.Contains(lines[0], "starting server") {
+			t.Errorf("expected first line in lines[0], got %q", lines[0])
 		}
 		if !strings.Contains(lines[1], "failed to connect") {
-			t.Errorf("expected first error in lines[1], got %q", lines[1])
+			t.Errorf("expected error in lines[1], got %q", lines[1])
 		}
-		if !strings.Contains(lines[2], "connection refused") {
-			t.Errorf("expected second error in lines[2], got %q", lines[2])
+		if !strings.Contains(lines[3], "connection refused") {
+			t.Errorf("expected second error in lines[3], got %q", lines[3])
 		}
-		if !strings.Contains(msg, "2 error/warning lines") {
-			t.Errorf("expected msg to mention 2 error/warning lines, got %q", msg)
+		if !strings.Contains(msg, "all 4 log lines") {
+			t.Errorf("expected msg to mention all 4 log lines, got %q", msg)
 		}
 	})
 
-	t.Run("capped error lines and non-error lines omitted", func(t *testing.T) {
+	t.Run("preceding errors and tail lines captured including reconciler status", func(t *testing.T) {
 		var rawBuilder strings.Builder
-		for i := 0; i < 60; i++ {
-			ts := now.Add(-time.Duration(60-i) * time.Second).Format(time.RFC3339)
+		// 5 older errors
+		for i := 0; i < 5; i++ {
+			ts := now.Add(-time.Duration(180-i) * time.Second).Format(time.RFC3339)
+			rawBuilder.WriteString(fmt.Sprintf("%s E0909 10:00:00.000000 1 main.go:10] preceding error %d\n", ts, i))
+		}
+		// 15 older routine info lines
+		for i := 0; i < 15; i++ {
+			ts := now.Add(-time.Duration(120-i) * time.Second).Format(time.RFC3339)
+			rawBuilder.WriteString(fmt.Sprintf("%s I0909 10:00:00.000000 1 main.go:10] routine info %d\n", ts, i))
+		}
+		// 19 tail routine info lines
+		for i := 0; i < 19; i++ {
+			ts := now.Add(-time.Duration(40-i) * time.Second).Format(time.RFC3339)
+			rawBuilder.WriteString(fmt.Sprintf("%s I0909 10:00:00.000000 1 main.go:10] tail line %d\n", ts, i))
+		}
+		// Final tail line: MCO controller waiting on blockingClusters
+		tsFinal := now.Add(-1 * time.Second).Format(time.RFC3339)
+		rawBuilder.WriteString(
+			fmt.Sprintf(
+				"%s I0909 10:00:00.000000 1 multiclusterobservability_controller.go:1251] \"Waiting for MCOA ManifestWorks and ManagedClusterAddOns to be deleted\" blockingClusters=[\"local-cluster\"]\n",
+				tsFinal,
+			),
+		)
+
+		lines, msg := formatContainerLogs(rawBuilder.String(), cutoff)
+		// Expected: 1 notice + 5 preceding errors + 1 tail divider + 20 tail lines = 27 lines
+		if len(lines) != 27 {
+			t.Fatalf("expected 27 lines, got %d: %v", len(lines), lines)
+		}
+		expectedNotice := "  (+ 15 earlier non-error lines omitted for brevity)"
+		if lines[0] != expectedNotice {
+			t.Errorf("expected notice %q, got %q", expectedNotice, lines[0])
+		}
+		if !strings.Contains(lines[1], "preceding error 0") {
+			t.Errorf("expected first error at lines[1], got %q", lines[1])
+		}
+		if lines[6] != "  --- [tail: last 20 log lines] ---" {
+			t.Errorf("expected tail divider at lines[6], got %q", lines[6])
+		}
+		// Last line must be the controller blockingClusters signal
+		if !strings.Contains(lines[26], "blockingClusters=[\"local-cluster\"]") {
+			t.Errorf("expected controller blocking signal preserved at tail, got %q", lines[26])
+		}
+		if !strings.Contains(msg, "last 20 log lines + 5 preceding error/warning line(s)") {
+			t.Errorf("expected msg to mention 20 tail lines and 5 preceding errors, got %q", msg)
+		}
+	})
+
+	t.Run("capped preceding errors and non-error lines omitted", func(t *testing.T) {
+		var rawBuilder strings.Builder
+		for i := 0; i < 45; i++ {
+			ts := now.Add(-time.Duration(120-i) * time.Second).Format(time.RFC3339)
 			rawBuilder.WriteString(fmt.Sprintf("%s E0909 10:00:00.000000 1 main.go:10] error event %d\n", ts, i))
 		}
 		for i := 0; i < 10; i++ {
-			ts := now.Add(-time.Duration(10-i) * time.Second).Format(time.RFC3339)
+			ts := now.Add(-time.Duration(50-i) * time.Second).Format(time.RFC3339)
 			rawBuilder.WriteString(fmt.Sprintf("%s I0909 10:00:00.000000 1 main.go:10] info event %d\n", ts, i))
+		}
+		for i := 0; i < 20; i++ {
+			ts := now.Add(-time.Duration(20-i) * time.Second).Format(time.RFC3339)
+			rawBuilder.WriteString(fmt.Sprintf("%s I0909 10:00:00.000000 1 main.go:10] tail event %d\n", ts, i))
 		}
 
 		lines, _ := formatContainerLogs(rawBuilder.String(), cutoff)
-		if len(lines) != 51 { // 1 omitted notice + 50 capped errors
-			t.Fatalf("expected 51 lines (1 notice + 50 errors), got %d", len(lines))
+		// Expected: 1 notice + 30 capped preceding errors + 1 divider + 20 tail lines = 52 lines
+		if len(lines) != 52 {
+			t.Fatalf("expected 52 lines (1 notice + 30 errors + 1 divider + 20 tail), got %d", len(lines))
 		}
-		expectedNotice := "  (+ 10 older error lines and 10 non-error lines omitted for brevity)"
+		expectedNotice := "  (+ 15 older error lines and 10 non-error lines omitted for brevity)"
 		if lines[0] != expectedNotice {
 			t.Errorf("expected notice %q, got %q", expectedNotice, lines[0])
+		}
+		if lines[31] != "  --- [tail: last 20 log lines] ---" {
+			t.Errorf("expected tail divider at lines[31], got %q", lines[31])
 		}
 	})
 
@@ -1332,10 +1524,10 @@ func TestFormatContainerLogs(t *testing.T) {
 		}
 
 		lines, _ := formatContainerLogs(rawBuilder.String(), cutoff)
-		if len(lines) != 21 { // 1 omitted notice + 20 capped window lines
+		if len(lines) != 21 { // 1 omitted notice + 20 capped tail lines
 			t.Fatalf("expected 21 lines, got %d", len(lines))
 		}
-		expectedNotice := "  (+ 5 older log lines omitted for brevity)"
+		expectedNotice := "  (+ 5 older log lines omitted for brevity; no errors detected in preceding 6m window)"
 		if lines[0] != expectedNotice {
 			t.Errorf("expected notice %q, got %q", expectedNotice, lines[0])
 		}
@@ -1506,4 +1698,172 @@ func TestDefensiveNilClientGuards(t *testing.T) {
 	logClusterMonitoringConfigStatus(nil, "Hub")
 	logSpokeClusterDebugInfo(nil, nil, "cluster1", true)
 	logSpokeClusterDebugInfo(nil, nil, "cluster1", false)
+}
+
+func TestFormatMCOCapabilities(t *testing.T) {
+	capabilities := map[string]any{
+		"platform": map[string]any{
+			"analytics": map[string]any{
+				"namespaceRightSizingRecommendation":      map[string]any{"enabled": true},
+				"virtualizationRightSizingRecommendation": map[string]any{"enabled": true},
+			},
+			"metrics": map[string]any{
+				"alerts":  map[string]any{"enabled": false},
+				"default": map[string]any{"enabled": true},
+			},
+		},
+		"userWorkloads": map[string]any{
+			"metrics": map[string]any{
+				"alerts":  map[string]any{"enabled": false},
+				"default": map[string]any{"enabled": false},
+			},
+		},
+	}
+	out := formatMCOCapabilities(capabilities)
+	expectedPlatform := "    Platform: metrics=true, alerts=false, rightSizing(ns=true, virt=true)\n"
+	if !strings.Contains(out, expectedPlatform) {
+		t.Errorf("expected platform capabilities summary %q, got:\n%s", expectedPlatform, out)
+	}
+	expectedUWL := "    UserWorkloads: metrics=false, alerts=false\n"
+	if !strings.Contains(out, expectedUWL) {
+		t.Errorf("expected userWorkloads capabilities summary %q, got:\n%s", expectedUWL, out)
+	}
+
+	// Fallback to compact JSON on unrecognized structure
+	unknownCap := map[string]any{"custom": "value"}
+	fallbackOut := formatMCOCapabilities(unknownCap)
+	if !strings.Contains(fallbackOut, `Capabilities: {"custom":"value"}`) {
+		t.Errorf("expected compact JSON fallback, got:\n%s", fallbackOut)
+	}
+}
+
+func TestFormatPodStatus(t *testing.T) {
+	pod := corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-pod",
+		},
+		Status: corev1.PodStatus{
+			Phase: corev1.PodPending,
+			Conditions: []corev1.PodCondition{
+				{
+					Type:    corev1.PodScheduled,
+					Status:  corev1.ConditionFalse,
+					Reason:  "Unschedulable",
+					Message: "0/1 nodes available: untolerated taint",
+				},
+				{
+					Type:   corev1.PodReady,
+					Status: corev1.ConditionFalse,
+					Reason: "ContainersNotReady",
+				},
+				{
+					Type:   corev1.PodInitialized,
+					Status: corev1.ConditionTrue,
+				},
+			},
+			ContainerStatuses: []corev1.ContainerStatus{
+				{
+					Name:         "container-1",
+					Ready:        false,
+					RestartCount: 2,
+					State: corev1.ContainerState{
+						Waiting: &corev1.ContainerStateWaiting{
+							Reason:  "CrashLoopBackOff",
+							Message: "back-off 5m0s restarting failed container",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	out := formatPodStatus(pod)
+	if !strings.Contains(out, "PodScheduled: False (Unschedulable: 0/1 nodes available: untolerated taint)") {
+		t.Errorf("expected condition with reason and message, got:\n%s", out)
+	}
+	if !strings.Contains(out, "Ready: False (ContainersNotReady)") {
+		t.Errorf("expected condition with reason only, got:\n%s", out)
+	}
+	if !strings.Contains(out, "Initialized: True") {
+		t.Errorf("expected condition with status only, got:\n%s", out)
+	}
+	if !strings.Contains(out, "container-1: Ready=false, Restarts=2, State: Waiting (CrashLoopBackOff: back-off 5m0s restarting failed container)") {
+		t.Errorf("expected waiting container state, got:\n%s", out)
+	}
+}
+
+func TestSanitizeManifestError(t *testing.T) {
+	shortMsg := "Failed to apply manifest: Job is invalid"
+	if sanitizeManifestError(shortMsg) != shortMsg {
+		t.Fatalf("expected short message unchanged, got: %s", sanitizeManifestError(shortMsg))
+	}
+
+	longMsg := strings.Repeat("A", 500)
+	sanitized := sanitizeManifestError(longMsg)
+	if len(sanitized) > 320 || !strings.HasSuffix(sanitized, "... [truncated]") {
+		t.Fatalf("expected truncated message, got len %d: %s", len(sanitized), sanitized)
+	}
+
+	// Multi-byte UTF-8 straddle verification
+	multiBytePrefix := strings.Repeat("a", 299) + "€€€"
+	multiByteSanitized := sanitizeManifestError(multiBytePrefix)
+	if !utf8.ValidString(multiByteSanitized) {
+		t.Errorf("expected valid utf-8 string, got invalid bytes: %q", multiByteSanitized)
+	}
+}
+
+func TestCheckJobsInNamespace(t *testing.T) {
+	one := int32(1)
+	jobCleanup := &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:              "observability-monitoring-cleanup",
+			Namespace:         MCO_AGENT_ADDON_NAMESPACE,
+			CreationTimestamp: metav1.NewTime(time.Now().Add(-10 * time.Minute)),
+		},
+		Spec: batchv1.JobSpec{
+			Completions: &one,
+		},
+		Status: batchv1.JobStatus{
+			Succeeded: 0,
+			Failed:    1,
+			Conditions: []batchv1.JobCondition{
+				{
+					Type:    batchv1.JobFailed,
+					Status:  corev1.ConditionTrue,
+					Reason:  "DeadlineExceeded",
+					Message: "Job was active longer than specified deadline",
+				},
+			},
+		},
+	}
+	jobOther := &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:              "submariner-cleanup",
+			Namespace:         MCO_AGENT_ADDON_NAMESPACE,
+			CreationTimestamp: metav1.NewTime(time.Now().Add(-5 * time.Minute)),
+		},
+		Spec: batchv1.JobSpec{
+			Completions: &one,
+		},
+	}
+
+	client := kubefake.NewSimpleClientset(jobCleanup, jobOther)
+
+	// Verify CheckJobsInNamespace filters out non-observability jobs and runs cleanly
+	CheckJobsInNamespace(client, MCO_AGENT_ADDON_NAMESPACE)
+
+	// Test formatJobsStatuses directly
+	out, err := formatJobsStatuses(client, MCO_AGENT_ADDON_NAMESPACE)
+	if err != nil {
+		t.Fatalf("unexpected error formatting jobs: %v", err)
+	}
+	if !strings.Contains(out, "observability-monitoring-cleanup") {
+		t.Errorf("expected observability-monitoring-cleanup in output, got: %s", out)
+	}
+	if strings.Contains(out, "submariner-cleanup") {
+		t.Errorf("expected non-observability job submariner-cleanup to be filtered out, got: %s", out)
+	}
+	if !strings.Contains(out, "Failed") {
+		t.Errorf("expected Failed condition in output, got: %s", out)
+	}
 }
