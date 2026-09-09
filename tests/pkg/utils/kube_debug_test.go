@@ -430,6 +430,52 @@ func TestPrintManifestWorks(t *testing.T) {
 		},
 	}
 
+	mwLegacy := unstructured.Unstructured{
+		Object: map[string]any{
+			"apiVersion": "work.open-cluster-management.io/v1",
+			"kind":       "ManifestWork",
+			"metadata": map[string]any{
+				"name":      "cluster1-observability",
+				"namespace": "cluster1",
+			},
+			"status": map[string]any{
+				"conditions": []any{
+					map[string]any{
+						"type":    "Applied",
+						"status":  "False",
+						"reason":  "AppliedManifestWorkFailed",
+						"message": "failed to apply manifest",
+					},
+					map[string]any{
+						"type":    "Available",
+						"status":  "False",
+						"reason":  "ResourceNotAvailable",
+						"message": "not all resources available",
+					},
+				},
+				"resourceStatus": map[string]any{
+					"manifests": []any{
+						map[string]any{
+							"resourceMeta": map[string]any{
+								"kind":      "Deployment",
+								"name":      "endpoint-observability-operator",
+								"namespace": "open-cluster-management-addon-observability",
+							},
+							"conditions": []any{
+								map[string]any{
+									"type":    "Applied",
+									"status":  "False",
+									"reason":  "ApplyFailed",
+									"message": "ImagePullBackOff: failed to pull image",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
 	mwOther := unstructured.Unstructured{
 		Object: map[string]any{
 			"apiVersion": "work.open-cluster-management.io/v1",
@@ -443,7 +489,7 @@ func TestPrintManifestWorks(t *testing.T) {
 
 	client := &mockDynamicClient{
 		itemsByGVR: map[schema.GroupVersionResource][]unstructured.Unstructured{
-			gvr: {mwTerminating, mwOther},
+			gvr: {mwTerminating, mwLegacy, mwOther},
 		},
 	}
 
