@@ -42,6 +42,19 @@ func TestIsErrorLine(t *testing.T) {
 		{"word starting with W not klog", "Waiting for endpoint to be available...", false},
 		{"word starting with E not klog", "Every reconciliation loop took 10ms", false},
 		{"word starting with F not klog", "Finished sync of all resources", false},
+		{"timestamped klog info header", "2026-09-09T13:16:22.123456789Z I0904 13:16:22.123456 client.go:100] Successfully synced", false},
+		{"timestamped klog error header", "2026-09-09T13:16:22.123456789Z E0904 13:16:22.123456 client.go:100] Connection refused", true},
+		{"timestamped klog warning header", "2026-09-09T13:16:22.123456789Z W0904 13:16:22.123456 client.go:100] Retrying request", true},
+		{"timestamped klog fatal header", "2026-09-09T13:16:22.123456789Z F0904 13:16:22.123456 main.go:20] Unable to start server", true},
+		{
+			"timestamped klog info containing 'failed' condition name",
+			`2026-09-09T11:49:27.999120911Z I0909 11:49:27.999008 1 status_controller.go:145] "Updating MCO status conditions" logger="controllers.MultiClusterObservabilityStatus" Request.Namespace="" Request.Name="observability" changes=["Added: Failed (Status: True, Reason: DeploymentNotReady)"]`,
+			false,
+		},
+		{"timestamped klog info containing 'error' in message", "2026-09-09T11:49:27.999120911Z I0909 11:49:27.999008 1 controller.go:100] Reconcile finished with error handled", false},
+		{"timestamped zap info containing 'failed'", "2026-09-09T10:00:00Z INFO Controller checking failed jobs", false},
+		{"timestamped zap debug containing 'error'", "2026-09-09T10:00:00Z DEBUG Skipping ignored error on cleanup", false},
+		{"klog info containing panic is still caught", "I0904 13:16:22.123456 reconciler.go:42] Caught panic during handler", true},
 	}
 
 	for _, tc := range testCases {
@@ -221,6 +234,32 @@ func TestFormatDeploymentsStatuses(t *testing.T) {
 	if !strings.Contains(out, "dep-nil-replicas") || !strings.Contains(out, "1/1") {
 		t.Errorf("expected dep-nil-replicas safely formatted as 1/1, got:\n%s", out)
 	}
+
+	// Verify filtering in shared agent namespace
+	sharedClient := kubefake.NewSimpleClientset(
+		&appsv1.Deployment{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "endpoint-monitoring-operator",
+				Namespace: MCO_AGENT_ADDON_NAMESPACE,
+			},
+		},
+		&appsv1.Deployment{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "hypershift-addon-agent",
+				Namespace: MCO_AGENT_ADDON_NAMESPACE,
+			},
+		},
+	)
+	sharedOut, err := formatDeploymentsStatuses(sharedClient, MCO_AGENT_ADDON_NAMESPACE)
+	if err != nil {
+		t.Fatalf("unexpected error formatting shared deployments: %v", err)
+	}
+	if !strings.Contains(sharedOut, "endpoint-monitoring-operator") {
+		t.Errorf("expected endpoint-monitoring-operator in shared namespace, got:\n%s", sharedOut)
+	}
+	if strings.Contains(sharedOut, "hypershift-addon-agent") {
+		t.Errorf("expected hypershift-addon-agent to be filtered out in shared namespace, got:\n%s", sharedOut)
+	}
 }
 
 func TestFormatStatefulSetsStatuses(t *testing.T) {
@@ -251,6 +290,32 @@ func TestFormatStatefulSetsStatuses(t *testing.T) {
 
 	if !strings.Contains(out, "thanos-receive-default") || !strings.Contains(out, "2/2") {
 		t.Errorf("expected thanos-receive-default 2/2, got:\n%s", out)
+	}
+
+	// Verify filtering in shared agent namespace
+	sharedClient := kubefake.NewSimpleClientset(
+		&appsv1.StatefulSet{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "prom-agent-platform-metrics-collector",
+				Namespace: MCO_AGENT_ADDON_NAMESPACE,
+			},
+		},
+		&appsv1.StatefulSet{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "unrelated-addon-statefulset",
+				Namespace: MCO_AGENT_ADDON_NAMESPACE,
+			},
+		},
+	)
+	sharedOut, err := formatStatefulSetsStatuses(sharedClient, MCO_AGENT_ADDON_NAMESPACE)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(sharedOut, "prom-agent-platform-metrics-collector") {
+		t.Errorf("expected prom-agent-platform-metrics-collector in shared namespace, got:\n%s", sharedOut)
+	}
+	if strings.Contains(sharedOut, "unrelated-addon-statefulset") {
+		t.Errorf("expected unrelated-addon-statefulset to be filtered out, got:\n%s", sharedOut)
 	}
 }
 
@@ -283,6 +348,97 @@ func TestFormatDaemonSetsStatuses(t *testing.T) {
 	// DESIRED, CURRENT, READY columns must all report 5.
 	if !regexp.MustCompile(`node-exporter\s+5\s+5\s+5\s`).MatchString(out) {
 		t.Errorf("expected node-exporter 5/5/5 counts, got:\n%s", out)
+	}
+
+	// Verify filtering in shared agent namespace
+	sharedClient := kubefake.NewSimpleClientset(
+		&appsv1.DaemonSet{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "node-exporter",
+				Namespace: MCO_AGENT_ADDON_NAMESPACE,
+			},
+		},
+		&appsv1.DaemonSet{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "unrelated-daemonset",
+				Namespace: MCO_AGENT_ADDON_NAMESPACE,
+			},
+		},
+	)
+	sharedOut, err := formatDaemonSetsStatuses(sharedClient, MCO_AGENT_ADDON_NAMESPACE)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(sharedOut, "node-exporter") {
+		t.Errorf("expected node-exporter in shared namespace, got:\n%s", sharedOut)
+	}
+	if strings.Contains(sharedOut, "unrelated-daemonset") {
+		t.Errorf("expected unrelated-daemonset to be filtered out, got:\n%s", sharedOut)
+	}
+}
+
+func TestFormatObjectEvents(t *testing.T) {
+	// 1. Empty events
+	if out := formatObjectEvents("Pod", nil); out != "" {
+		t.Errorf("expected empty string for empty events, got %q", out)
+	}
+
+	// 2. Sorting chronologically
+	t0 := time.Now().Add(-10 * time.Minute)
+	t1 := time.Now().Add(-5 * time.Minute)
+	t2 := time.Now().Add(-1 * time.Minute)
+	events := []corev1.Event{
+		{
+			Reason:        "FailedScheduling",
+			Message:       "0/1 nodes available",
+			Count:         2,
+			LastTimestamp: metav1.NewTime(t1),
+		},
+		{
+			Reason:        "Scheduled",
+			Message:       "Assigned to node-1",
+			Count:         1,
+			LastTimestamp: metav1.NewTime(t0),
+		},
+		{
+			Reason:        "Evicted",
+			Message:       "The node was low on resource: ephemeral-storage",
+			Count:         1,
+			LastTimestamp: metav1.NewTime(t2),
+		},
+	}
+
+	out := formatObjectEvents("Pod", events)
+	schedIdx := strings.Index(out, "Scheduled")
+	failedIdx := strings.Index(out, "FailedScheduling")
+	evictedIdx := strings.Index(out, "Evicted")
+
+	if schedIdx == -1 || failedIdx == -1 || evictedIdx == -1 {
+		t.Fatalf("expected all events to be present, got:\n%s", out)
+	}
+	if !(schedIdx < failedIdx && failedIdx < evictedIdx) {
+		t.Errorf("expected events to be chronologically ordered (Scheduled < FailedScheduling < Evicted), got indices %d, %d, %d", schedIdx, failedIdx, evictedIdx)
+	}
+
+	// 3. Capping at 25 events with omitted summary
+	var manyEvents []corev1.Event
+	for i := 0; i < 35; i++ {
+		manyEvents = append(manyEvents, corev1.Event{
+			Reason:        fmt.Sprintf("Reason%02d", i),
+			Message:       fmt.Sprintf("Message %d", i),
+			Count:         1,
+			LastTimestamp: metav1.NewTime(t0.Add(time.Duration(i) * time.Minute)),
+		})
+	}
+	cappedOut := formatObjectEvents("Pod", manyEvents)
+	if !strings.Contains(cappedOut, "(+ 10 older events omitted for brevity)") {
+		t.Errorf("expected '(+ 10 older events omitted for brevity)' in output, got:\n%s", cappedOut)
+	}
+	if strings.Contains(cappedOut, "Reason00") {
+		t.Errorf("expected earliest event Reason00 to be omitted, but it was found in:\n%s", cappedOut)
+	}
+	if !strings.Contains(cappedOut, "Reason34") {
+		t.Errorf("expected latest event Reason34 to be present in:\n%s", cappedOut)
 	}
 }
 
@@ -715,33 +871,6 @@ users:
 	})
 }
 
-func TestIsObservabilityPodInSharedNamespace(t *testing.T) {
-	testCases := []struct {
-		podName  string
-		expected bool
-	}{
-		{"prom-agent-platform-metrics-collector-0", true},
-		{"prometheus-k8s-0", true},
-		{"endpoint-monitoring-operator-6486c75d7c-mldpd", true},
-		{"observability-monitoring-cleanup-1234", true},
-		{"observability-addon-abcde", true},
-		{"alertmanager-alertmanager-0", true},
-		{"metrics-collector-deployment-123", true},
-		{"uwl-metrics-collector-456", true},
-		{"hypershift-addon-agent-6c94cf7f58-6s9qz", false},
-		{"cluster-proxy-proxy-agent-bbc99f777-gpb28", false},
-		{"klusterlet-addon-workmgr-68f844fbfd-qknkh", false},
-		{"managed-serviceaccount-addon-agent-8699975dd-bcgl2", false},
-	}
-
-	for _, tc := range testCases {
-		actual := isObservabilityPodInSharedNamespace(tc.podName)
-		if actual != tc.expected {
-			t.Errorf("isObservabilityPodInSharedNamespace(%q) = %v; want %v", tc.podName, actual, tc.expected)
-		}
-	}
-}
-
 func TestIsPodAncientFailure(t *testing.T) {
 	now := time.Now()
 
@@ -856,8 +985,21 @@ func TestFormatNodesStatuses(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if !strings.Contains(out, "worker-1") || !strings.Contains(out, "Ready") || !strings.Contains(out, "None") {
-			t.Errorf("expected healthy node summary, got:\n%s", out)
+		var foundRow bool
+		for _, line := range strings.Split(out, "\n") {
+			fields := strings.Fields(line)
+			if len(fields) >= 5 && fields[0] == "worker-1" {
+				foundRow = true
+				if fields[1] != "Ready" {
+					t.Errorf("expected worker-1 status to be Ready, got: %s", fields[1])
+				}
+				if fields[len(fields)-1] != "None" {
+					t.Errorf("expected worker-1 issues to be None, got: %s", fields[len(fields)-1])
+				}
+			}
+		}
+		if !foundRow {
+			t.Errorf("expected worker-1 row in output, got:\n%s", out)
 		}
 		if strings.Contains(out, "Node Issues / Taints:") {
 			t.Errorf("did not expect issues block for healthy node, got:\n%s", out)
@@ -914,6 +1056,9 @@ func TestFormatNodesStatuses(t *testing.T) {
 		if !strings.Contains(out, "Node Issues / Taints:") {
 			t.Errorf("expected issues block, got:\n%s", out)
 		}
+		if !strings.Contains(out, "Scheduling taint") {
+			t.Errorf("expected Scheduling taint in details, got:\n%s", out)
+		}
 		if !strings.Contains(out, "KubeletHasDiskPressure") {
 			t.Errorf("expected KubeletHasDiskPressure reason in details, got:\n%s", out)
 		}
@@ -942,4 +1087,257 @@ func TestLogPodLogs_EarlyReturn(t *testing.T) {
 		},
 	}
 	LogPodLogs(client, "default", evictedPod)
+}
+
+func TestIsObservabilityWorkloadInSharedNamespace(t *testing.T) {
+	testCases := []struct {
+		name     string
+		expected bool
+	}{
+		{"endpoint-monitoring-operator", true},
+		{"endpoint-monitoring-operator-6486c75d7c-mldpd", true},
+		{"observability-monitoring-cleanup", true},
+		{"observability-monitoring-cleanup-1234", true},
+		{"observability-addon", true},
+		{"observability-addon-abcde", true},
+		{"prom-agent-platform-metrics-collector", true},
+		{"prom-agent-platform-metrics-collector-0", true},
+		{"prometheus-k8s", true},
+		{"prometheus-k8s-0", true},
+		{"alertmanager-canary", true},
+		{"alertmanager-alertmanager-0", true},
+		{"metrics-collector", true},
+		{"metrics-collector-deployment-123", true},
+		{"uwl-metrics-collector", true},
+		{"uwl-metrics-collector-456", true},
+		{"cluster-proxy-proxy-agent", false},
+		{"cluster-proxy-proxy-agent-bbc99f777-gpb28", false},
+		{"hypershift-addon-agent", false},
+		{"hypershift-addon-agent-6c94cf7f58-6s9qz", false},
+		{"klusterlet-addon-workmgr", false},
+		{"klusterlet-addon-workmgr-68f844fbfd-qknkh", false},
+		{"managed-serviceaccount-addon-agent", false},
+		{"managed-serviceaccount-addon-agent-8699975dd-bcgl2", false},
+	}
+
+	for _, tc := range testCases {
+		actual := isObservabilityWorkloadInSharedNamespace(tc.name)
+		if actual != tc.expected {
+			t.Errorf("isObservabilityWorkloadInSharedNamespace(%q) = %v; want %v", tc.name, actual, tc.expected)
+		}
+	}
+}
+
+func TestFormatSecretsStatuses(t *testing.T) {
+	now := time.Now()
+	secrets := []corev1.Secret{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:              "thanos-object-storage",
+				CreationTimestamp: metav1.NewTime(now.Add(-10 * time.Minute)),
+			},
+			Type: corev1.SecretTypeOpaque,
+			Data: map[string][]byte{"thanos.yaml": []byte("config")},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:              "observability-server-certs",
+				CreationTimestamp: metav1.NewTime(now.Add(-2 * time.Hour)),
+			},
+			Type: corev1.SecretTypeTLS,
+			Data: map[string][]byte{"tls.crt": []byte("cert"), "tls.key": []byte("key")},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:              "multiclusterhub-operator-pull-secret",
+				CreationTimestamp: metav1.NewTime(now.Add(-5 * time.Hour)),
+			},
+			Type: corev1.SecretTypeDockerConfigJson,
+			Data: map[string][]byte{corev1.DockerConfigJsonKey: []byte("{}")},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:              "alertmanager-dockercfg-c9gxj",
+				CreationTimestamp: metav1.NewTime(now.Add(-24 * time.Hour)),
+			},
+			Type: corev1.SecretTypeDockercfg,
+			Data: map[string][]byte{corev1.DockerConfigKey: []byte("{}")},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:              "default-token-xyz12",
+				CreationTimestamp: metav1.NewTime(now.Add(-48 * time.Hour)),
+			},
+			Type: corev1.SecretTypeServiceAccountToken,
+			Data: map[string][]byte{"token": []byte("token")},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:              "thanos-dockercfg-98765",
+				CreationTimestamp: metav1.NewTime(now.Add(-48 * time.Hour)),
+			},
+			Type: corev1.SecretTypeDockerConfigJson,
+			Data: map[string][]byte{corev1.DockerConfigJsonKey: []byte("{}")},
+		},
+	}
+
+	out := formatSecretsStatuses(secrets, "open-cluster-management-observability")
+
+	// Must include real application secrets
+	if !strings.Contains(out, "thanos-object-storage") {
+		t.Errorf("expected thanos-object-storage in output, got:\n%s", out)
+	}
+	if !strings.Contains(out, "observability-server-certs") {
+		t.Errorf("expected observability-server-certs in output, got:\n%s", out)
+	}
+	if !strings.Contains(out, "multiclusterhub-operator-pull-secret") {
+		t.Errorf("expected multiclusterhub-operator-pull-secret in output, got:\n%s", out)
+	}
+
+	// Must omit internal service account secrets
+	if strings.Contains(out, "alertmanager-dockercfg-c9gxj") {
+		t.Errorf("expected alertmanager-dockercfg-c9gxj to be omitted, got:\n%s", out)
+	}
+	if strings.Contains(out, "default-token-xyz12") {
+		t.Errorf("expected default-token-xyz12 to be omitted, got:\n%s", out)
+	}
+	if strings.Contains(out, "thanos-dockercfg-98765") {
+		t.Errorf("expected thanos-dockercfg-98765 to be omitted, got:\n%s", out)
+	}
+
+	// Must contain the summary line
+	expectedSummary := "(+ 3 service account dockercfg/token Secrets omitted for brevity)"
+	if !strings.Contains(out, expectedSummary) {
+		t.Errorf("expected summary %q in output, got:\n%s", expectedSummary, out)
+	}
+}
+
+func TestCheckDeploymentsInNamespace_SharedNamespaceScoping(t *testing.T) {
+	replicas := int32(1)
+	unreadyProxyDeployment := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "cluster-proxy-proxy-agent",
+			Namespace: MCO_AGENT_ADDON_NAMESPACE,
+		},
+		Spec: appsv1.DeploymentSpec{
+			Replicas: &replicas,
+		},
+		Status: appsv1.DeploymentStatus{
+			ReadyReplicas:     0,
+			AvailableReplicas: 0,
+			UpdatedReplicas:   1,
+		},
+	}
+	readyEndpointOperator := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "endpoint-monitoring-operator",
+			Namespace: MCO_AGENT_ADDON_NAMESPACE,
+		},
+		Spec: appsv1.DeploymentSpec{
+			Replicas: &replicas,
+		},
+		Status: appsv1.DeploymentStatus{
+			ReadyReplicas:     1,
+			AvailableReplicas: 1,
+			UpdatedReplicas:   1,
+		},
+	}
+
+	client := kubefake.NewSimpleClientset(unreadyProxyDeployment, readyEndpointOperator)
+	// Should not panic or dump unready non-observability deployments
+	CheckDeploymentsInNamespace(client, MCO_AGENT_ADDON_NAMESPACE)
+}
+
+func TestFormatContainerLogs(t *testing.T) {
+	now := time.Now()
+	cutoff := now.Add(-6 * time.Minute)
+
+	t.Run("empty logs", func(t *testing.T) {
+		lines, msg := formatContainerLogs("", cutoff)
+		if len(lines) != 0 {
+			t.Errorf("expected 0 lines, got %d", len(lines))
+		}
+		if msg == "" {
+			t.Error("expected non-empty message")
+		}
+	})
+
+	t.Run("non-error lines omitted when errors present", func(t *testing.T) {
+		t1 := now.Add(-3 * time.Minute).Format(time.RFC3339)
+		t2 := now.Add(-2 * time.Minute).Format(time.RFC3339)
+		t3 := now.Add(-1 * time.Minute).Format(time.RFC3339)
+		raw := fmt.Sprintf("%s I0909 10:00:00.000000 1 main.go:10] starting server\n"+
+			"%s E0909 10:01:00.000000 1 main.go:20] failed to connect to database\n"+
+			"%s I0909 10:02:00.000000 1 main.go:30] retrying connection\n"+
+			"%s E0909 10:03:00.000000 1 main.go:40] fatal error: connection refused\n",
+			t1, t2, t2, t3)
+
+		lines, msg := formatContainerLogs(raw, cutoff)
+		if len(lines) != 3 { // 1 omitted notice + 2 errors
+			t.Fatalf("expected 3 lines, got %d: %v", len(lines), lines)
+		}
+		expectedNotice := "  (+ 2 non-error log lines omitted for brevity)"
+		if lines[0] != expectedNotice {
+			t.Errorf("expected notice %q, got %q", expectedNotice, lines[0])
+		}
+		if !strings.Contains(lines[1], "failed to connect") {
+			t.Errorf("expected first error in lines[1], got %q", lines[1])
+		}
+		if !strings.Contains(lines[2], "connection refused") {
+			t.Errorf("expected second error in lines[2], got %q", lines[2])
+		}
+		if !strings.Contains(msg, "2 error/warning lines") {
+			t.Errorf("expected msg to mention 2 error/warning lines, got %q", msg)
+		}
+	})
+
+	t.Run("capped error lines and non-error lines omitted", func(t *testing.T) {
+		var rawBuilder strings.Builder
+		for i := 0; i < 60; i++ {
+			ts := now.Add(-time.Duration(60-i) * time.Second).Format(time.RFC3339)
+			rawBuilder.WriteString(fmt.Sprintf("%s E0909 10:00:00.000000 1 main.go:10] error event %d\n", ts, i))
+		}
+		for i := 0; i < 10; i++ {
+			ts := now.Add(-time.Duration(10-i) * time.Second).Format(time.RFC3339)
+			rawBuilder.WriteString(fmt.Sprintf("%s I0909 10:00:00.000000 1 main.go:10] info event %d\n", ts, i))
+		}
+
+		lines, _ := formatContainerLogs(rawBuilder.String(), cutoff)
+		if len(lines) != 51 { // 1 omitted notice + 50 capped errors
+			t.Fatalf("expected 51 lines (1 notice + 50 errors), got %d", len(lines))
+		}
+		expectedNotice := "  (+ 10 older error lines and 10 non-error lines omitted for brevity)"
+		if lines[0] != expectedNotice {
+			t.Errorf("expected notice %q, got %q", expectedNotice, lines[0])
+		}
+	})
+
+	t.Run("no errors with capped window lines", func(t *testing.T) {
+		var rawBuilder strings.Builder
+		for i := 0; i < 25; i++ {
+			ts := now.Add(-time.Duration(25-i) * time.Second).Format(time.RFC3339)
+			rawBuilder.WriteString(fmt.Sprintf("%s I0909 10:00:00.000000 1 main.go:10] routine line %d\n", ts, i))
+		}
+
+		lines, _ := formatContainerLogs(rawBuilder.String(), cutoff)
+		if len(lines) != 21 { // 1 omitted notice + 20 capped window lines
+			t.Fatalf("expected 21 lines, got %d", len(lines))
+		}
+		expectedNotice := "  (+ 5 older log lines omitted for brevity)"
+		if lines[0] != expectedNotice {
+			t.Errorf("expected notice %q, got %q", expectedNotice, lines[0])
+		}
+	})
+
+	t.Run("no omitted notice when all lines fit", func(t *testing.T) {
+		t1 := now.Add(-1 * time.Minute).Format(time.RFC3339)
+		raw := fmt.Sprintf("%s E0909 10:00:00.000000 1 main.go:10] error line 1\n%s E0909 10:00:01.000000 1 main.go:11] error line 2\n", t1, t1)
+		lines, _ := formatContainerLogs(raw, cutoff)
+		if len(lines) != 2 {
+			t.Fatalf("expected 2 lines without notice, got %d: %v", len(lines), lines)
+		}
+		if strings.HasPrefix(lines[0], "  (+ ") {
+			t.Errorf("did not expect omitted notice when all lines fit, got %q", lines[0])
+		}
+	})
 }
