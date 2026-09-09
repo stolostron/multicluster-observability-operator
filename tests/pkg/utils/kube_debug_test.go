@@ -7,6 +7,7 @@ package utils
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -38,6 +39,9 @@ func TestIsErrorLine(t *testing.T) {
 		{"keyword panic", "panic: runtime error: invalid memory address or nil pointer dereference", true},
 		{"keyword fatal", "FATAL: shutdown initiated", true},
 		{"keyword exception", "Unhandled exception in collector thread", true},
+		{"word starting with W not klog", "Waiting for endpoint to be available...", false},
+		{"word starting with E not klog", "Every reconciliation loop took 10ms", false},
+		{"word starting with F not klog", "Finished sync of all resources", false},
 	}
 
 	for _, tc := range testCases {
@@ -79,6 +83,10 @@ func TestCleanUnstructuredForLogging(t *testing.T) {
 	// Verify managedFields are stripped
 	if obj.GetManagedFields() != nil {
 		t.Errorf("expected managedFields to be stripped, but found: %+v", obj.GetManagedFields())
+	}
+	metadata, _, _ := unstructured.NestedMap(obj.Object, "metadata")
+	if _, ok := metadata["managedFields"]; ok {
+		t.Errorf("expected managedFields key to be completely removed from metadata map, but found: %+v", metadata["managedFields"])
 	}
 
 	// Verify kubectl last-applied is stripped
@@ -269,8 +277,12 @@ func TestFormatDaemonSetsStatuses(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if !strings.Contains(out, "node-exporter") || !strings.Contains(out, "5") {
-		t.Errorf("expected node-exporter with 5 ready, got:\n%s", out)
+	if !strings.Contains(out, "node-exporter") {
+		t.Fatalf("expected node-exporter row, got:\n%s", out)
+	}
+	// DESIRED, CURRENT, READY columns must all report 5.
+	if !regexp.MustCompile(`node-exporter\s+5\s+5\s+5\s`).MatchString(out) {
+		t.Errorf("expected node-exporter 5/5/5 counts, got:\n%s", out)
 	}
 }
 
