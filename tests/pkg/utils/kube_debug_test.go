@@ -2264,6 +2264,7 @@ func TestCheckPodsInNamespace_WorkloadCapping(t *testing.T) {
 	isController := true
 	now := metav1.Now()
 	var pods []runtime.Object
+	// 5 evicted failed pods
 	for i := 1; i <= 5; i++ {
 		pod := &corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
@@ -2285,8 +2286,190 @@ func TestCheckPodsInNamespace_WorkloadCapping(t *testing.T) {
 		}
 		pods = append(pods, pod)
 	}
+	// 1 running pod for the same workload (active replacement)
+	pods = append(pods, &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:              "metrics-collector-deployment-bf4cc564f-running",
+			Namespace:         "test-ns",
+			CreationTimestamp: now,
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					Kind:       "ReplicaSet",
+					Name:       "metrics-collector-deployment-bf4cc564f",
+					Controller: &isController,
+				},
+			},
+		},
+		Status: corev1.PodStatus{
+			Phase: corev1.PodRunning,
+		},
+	})
 
 	client := kubefake.NewSimpleClientset(pods...)
 	// Calling CheckPodsInNamespace should execute cleanly with duplicate failed pods capped
+	// and recognize that the workload has an active running replacement.
 	CheckPodsInNamespace(client, "test-ns", nil, nil)
+}
+
+func TestFormatPodsStatuses_WorkloadCapping(t *testing.T) {
+	isController := true
+	now := metav1.Now()
+	var pods []corev1.Pod
+
+	// 5 failed pods for workload-a
+	for i := 1; i <= 5; i++ {
+		pods = append(pods, corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:              fmt.Sprintf("workload-a-replica-%d", i),
+				CreationTimestamp: now,
+				OwnerReferences: []metav1.OwnerReference{
+					{
+						Kind:       "ReplicaSet",
+						Name:       "workload-a-rs",
+						Controller: &isController,
+					},
+				},
+			},
+			Status: corev1.PodStatus{
+				Phase: corev1.PodFailed,
+			},
+		})
+	}
+
+	// 3 failed pods for workload-b (no controller ownerRef, suffix stripped)
+	for i := 1; i <= 3; i++ {
+		pods = append(pods, corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:              fmt.Sprintf("workload-b-%d", i),
+				CreationTimestamp: now,
+			},
+			Status: corev1.PodStatus{
+				Phase: corev1.PodFailed,
+			},
+		})
+	}
+
+	// 1 running pod for workload-a
+	pods = append(pods, corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:              "workload-a-active",
+			CreationTimestamp: now,
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					Kind:       "ReplicaSet",
+					Name:       "workload-a-rs",
+					Controller: &isController,
+				},
+			},
+		},
+		Status: corev1.PodStatus{
+			Phase: corev1.PodRunning,
+		},
+	})
+
+	out := formatPodsStatuses(pods)
+
+	// Verify workload-a only has 2 sample failed rows + 1 running row
+	if !strings.Contains(out, "workload-a-replica-1") || !strings.Contains(out, "workload-a-replica-2") {
+		t.Errorf("expected first 2 failed samples for workload-a, got:\n%s", out)
+	}
+	if strings.Contains(out, "workload-a-replica-3") || strings.Contains(out, "workload-a-replica-4") || strings.Contains(out, "workload-a-replica-5") {
+		t.Errorf("expected failed samples 3-5 for workload-a to be omitted, got:\n%s", out)
+	}
+	if !strings.Contains(out, "workload-a-active") {
+		t.Errorf("expected running pod to be present, got:\n%s", out)
+	}
+	if !strings.Contains(out, `(+ 3 additional non-running pod(s) for "workload-a-rs" omitted for brevity)`) {
+		t.Errorf("expected workload-a omitted summary, got:\n%s", out)
+	}
+
+	// Verify workload-b only has 2 sample failed rows
+	if !strings.Contains(out, "workload-b-1") || !strings.Contains(out, "workload-b-2") {
+		t.Errorf("expected first 2 failed samples for workload-b, got:\n%s", out)
+	}
+	if strings.Contains(out, "workload-b-3") {
+		t.Errorf("expected failed sample 3 for workload-b to be omitted, got:\n%s", out)
+	}
+	if !strings.Contains(out, `(+ 1 additional non-running pod(s) for "workload-b" omitted for brevity)`) {
+		t.Errorf("expected workload-b omitted summary, got:\n%s", out)
+	}
+}
+
+func TestFormatNamespacePodHealthSummary(t *testing.T) {
+	tests := []struct {
+		name                 string
+		ns                   string
+		notRunningCount      int
+		activeUnhealthyCount int
+		skippedAncientCount  int
+		wantSummary          string
+		wantError            bool
+	}{
+		{
+			name:                 "active unhealthy pods present without running replicas",
+			ns:                   "test-ns",
+			notRunningCount:      3,
+			activeUnhealthyCount: 2,
+			skippedAncientCount:  0,
+			wantSummary:          `Found 2 active unhealthy pod(s) without running replicas in namespace "test-ns"`,
+			wantError:            true,
+		},
+		{
+			name:                 "active unhealthy pods with ancient pods skipped",
+			ns:                   "test-ns",
+			notRunningCount:      3,
+			activeUnhealthyCount: 2,
+			skippedAncientCount:  1,
+			wantSummary:          `Found 2 active unhealthy pod(s) without running replicas in namespace "test-ns" (1 ancient failed pod(s) skipped)`,
+			wantError:            true,
+		},
+		{
+			name:                 "all workloads running with historical evicted replicas",
+			ns:                   "open-cluster-management-observability",
+			notRunningCount:      38,
+			activeUnhealthyCount: 0,
+			skippedAncientCount:  0,
+			wantSummary:          `All active workloads are running in namespace "open-cluster-management-observability" (38 historical evicted/failed pod(s) with active replacements)`,
+			wantError:            false,
+		},
+		{
+			name:                 "all workloads running with historical evicted replicas and ancient skipped",
+			ns:                   "open-cluster-management-observability",
+			notRunningCount:      38,
+			activeUnhealthyCount: 0,
+			skippedAncientCount:  2,
+			wantSummary:          `All active workloads are running in namespace "open-cluster-management-observability" (38 historical evicted/failed pod(s) with active replacements, 2 ancient failed pod(s) skipped)`,
+			wantError:            false,
+		},
+		{
+			name:                 "only ancient pods skipped",
+			ns:                   "open-cluster-management",
+			notRunningCount:      0,
+			activeUnhealthyCount: 0,
+			skippedAncientCount:  1,
+			wantSummary:          `All active pods are healthy in namespace "open-cluster-management" (1 ancient failed pod(s) skipped)`,
+			wantError:            false,
+		},
+		{
+			name:                 "completely healthy namespace",
+			ns:                   "open-cluster-management",
+			notRunningCount:      0,
+			activeUnhealthyCount: 0,
+			skippedAncientCount:  0,
+			wantSummary:          `All pods are running in namespace "open-cluster-management"`,
+			wantError:            false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotSummary, gotError := formatNamespacePodHealthSummary(tt.ns, tt.notRunningCount, tt.activeUnhealthyCount, tt.skippedAncientCount)
+			if gotSummary != tt.wantSummary {
+				t.Errorf("formatNamespacePodHealthSummary() gotSummary = %q, want %q", gotSummary, tt.wantSummary)
+			}
+			if gotError != tt.wantError {
+				t.Errorf("formatNamespacePodHealthSummary() gotError = %v, want %v", gotError, tt.wantError)
+			}
+		})
+	}
 }

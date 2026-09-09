@@ -399,10 +399,18 @@ func CheckPodsInNamespace(client kubernetes.Interface, ns string, forcePodNamesL
 
 	const maxFailedPodsPerWorkload = 2
 	notRunningPodsCount := 0
+	activeUnhealthyPodsCount := 0
 	skippedAncientPodsCount := 0
 	forcedPodsLogged := make(map[string]bool)
 	failedPodsLoggedPerWorkload := make(map[string]int)
 	skippedFailedPodsCount := make(map[string]int)
+
+	workloadHasRunningPod := make(map[string]bool)
+	for _, pod := range pods.Items {
+		if pod.Status.Phase == corev1.PodRunning {
+			workloadHasRunningPod[getPodWorkloadKey(pod)] = true
+		}
+	}
 
 	for _, pod := range pods.Items {
 		force := false
@@ -430,8 +438,12 @@ func CheckPodsInNamespace(client kubernetes.Interface, ns string, forcePodNamesL
 			}
 			notRunningPodsCount++
 
+			workloadKey := getPodWorkloadKey(pod)
+			if !workloadHasRunningPod[workloadKey] {
+				activeUnhealthyPodsCount++
+			}
+
 			if !force {
-				workloadKey := getPodWorkloadKey(pod)
 				if failedPodsLoggedPerWorkload[workloadKey] >= maxFailedPodsPerWorkload {
 					skippedFailedPodsCount[workloadKey]++
 					continue
@@ -486,15 +498,39 @@ func CheckPodsInNamespace(client kubernetes.Interface, ns string, forcePodNamesL
 		}
 	}
 
-	if notRunningPodsCount == 0 {
-		if skippedAncientPodsCount > 0 {
-			klog.V(1).Infof("All active pods are healthy in namespace %q (%d ancient failed pod(s) skipped)", ns, skippedAncientPodsCount)
-		} else {
-			klog.V(1).Infof("All pods are running in namespace %q", ns)
-		}
-	} else {
-		klog.Errorf("Found %d pods not running in namespace %q", notRunningPodsCount, ns)
+	summary, isError := formatNamespacePodHealthSummary(ns, notRunningPodsCount, activeUnhealthyPodsCount, skippedAncientPodsCount)
+	switch {
+	case isError:
+		klog.Error(summary)
+	case notRunningPodsCount > 0:
+		klog.Info(summary)
+	default:
+		klog.V(1).Info(summary)
 	}
+}
+
+// formatNamespacePodHealthSummary produces an informative health message for pods in a namespace,
+// differentiating between active workload outages (no running replicas) and historical evicted/terminated pods.
+func formatNamespacePodHealthSummary(ns string, notRunningCount, activeUnhealthyCount, skippedAncientCount int) (string, bool) {
+	if activeUnhealthyCount > 0 {
+		if skippedAncientCount > 0 {
+			return fmt.Sprintf("Found %d active unhealthy pod(s) without running replicas in namespace %q (%d ancient failed pod(s) skipped)",
+				activeUnhealthyCount, ns, skippedAncientCount), true
+		}
+		return fmt.Sprintf("Found %d active unhealthy pod(s) without running replicas in namespace %q", activeUnhealthyCount, ns), true
+	}
+	if notRunningCount > 0 {
+		if skippedAncientCount > 0 {
+			return fmt.Sprintf("All active workloads are running in namespace %q (%d historical evicted/failed pod(s) with active replacements, %d ancient failed pod(s) skipped)",
+				ns, notRunningCount, skippedAncientCount), false
+		}
+		return fmt.Sprintf("All active workloads are running in namespace %q (%d historical evicted/failed pod(s) with active replacements)",
+			ns, notRunningCount), false
+	}
+	if skippedAncientCount > 0 {
+		return fmt.Sprintf("All active pods are healthy in namespace %q (%d ancient failed pod(s) skipped)", ns, skippedAncientCount), false
+	}
+	return fmt.Sprintf("All pods are running in namespace %q", ns), false
 }
 
 func formatContainerState(state corev1.ContainerState) string {
@@ -1384,11 +1420,25 @@ func formatPodsStatuses(pods []corev1.Pod) string {
 	writer := tabwriter.NewWriter(&sb, 0, 0, 2, ' ', 0)
 	_, _ = fmt.Fprintln(writer, "NAME\tSTATUS\tRESTARTS\tAGE")
 	ancientSucceededCount := 0
+	const maxFailedRowsPerWorkload = 2
+	failedRowsLoggedPerWorkload := make(map[string]int)
+	omittedFailedPodsPerWorkload := make(map[string]int)
+
 	for _, pod := range pods {
 		if pod.Status.Phase == corev1.PodSucceeded && !pod.CreationTimestamp.IsZero() && time.Since(pod.CreationTimestamp.Time) > 1*time.Hour {
 			ancientSucceededCount++
 			continue
 		}
+
+		if pod.Status.Phase != corev1.PodRunning && pod.Status.Phase != corev1.PodSucceeded {
+			wKey := getPodWorkloadKey(pod)
+			if failedRowsLoggedPerWorkload[wKey] >= maxFailedRowsPerWorkload {
+				omittedFailedPodsPerWorkload[wKey]++
+				continue
+			}
+			failedRowsLoggedPerWorkload[wKey]++
+		}
+
 		var restartCount int32
 		for _, cs := range pod.Status.ContainerStatuses {
 			restartCount += cs.RestartCount
@@ -1406,6 +1456,13 @@ func formatPodsStatuses(pods []corev1.Pod) string {
 	_ = writer.Flush()
 	if ancientSucceededCount > 0 {
 		_, _ = fmt.Fprintf(&sb, "  (+ %d ancient Succeeded pods omitted for brevity)\n", ancientSucceededCount)
+	}
+	if len(omittedFailedPodsPerWorkload) > 0 {
+		workloads := slices.Sorted(maps.Keys(omittedFailedPodsPerWorkload))
+		for _, w := range workloads {
+			_, _ = fmt.Fprintf(&sb, "  (+ %d additional non-running pod(s) for %q omitted for brevity)\n",
+				omittedFailedPodsPerWorkload[w], w)
+		}
 	}
 	return sb.String()
 }
