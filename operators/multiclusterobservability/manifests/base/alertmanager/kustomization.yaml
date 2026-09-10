@@ -1,7 +1,6 @@
 resources:
 - alertmanager-serviceaccount.yaml
 - alertmanager-config.yaml
-- alertmanager-proxy.yaml
 - alertmanager-statefulset.yaml
 - alertmanager-operated.yaml
 - alertmanager-service.yaml
@@ -9,6 +8,9 @@ resources:
 - alertmanager-servicemonitor.yaml
 - alertmanager-clientca-metric.yaml
 - alertmanager-kube-rbac-proxy-metric.yaml
+- alertmanager-role.yaml
+- alertmanager-rolebinding.yaml
+- alertmanager-kube-rbac-proxy-web.yaml
 - alert_rules.yaml
 - alertmanager-cabundle.yaml
 - alertmanager-clusterrole.yaml
