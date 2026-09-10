@@ -17,6 +17,8 @@ import (
 
 	ocinfrav1 "github.com/openshift/api/config/v1"
 	cmomanifests "github.com/openshift/cluster-monitoring-operator/pkg/manifests"
+	hyperv1 "github.com/openshift/hypershift/api/hypershift/v1beta1"
+	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	prometheusv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/controllers/observabilityendpoint"
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
@@ -49,6 +51,9 @@ var (
 )
 
 func TestMain(m *testing.M) {
+	// Skip IsHypershiftCluster CRD check.
+	os.Setenv("UNIT_TEST", "true")
+
 	opts := zap.Options{
 		Development: true,
 	}
@@ -58,6 +63,8 @@ func TestMain(m *testing.M) {
 		filepath.Join("..", "observabilityendpoint", "testdata", "crd", "clusterversions-crd.yaml"),
 		filepath.Join("crds", "monitoring.rhobs_scrapeconfigs.yaml"),
 		filepath.Join("crds", "monitoring.rhobs_prometheusagents.yaml"),
+		filepath.Join("..", "..", "manifests", "prometheus", "crd", "servicemonitor_crd_0_53_1.yaml"),
+		filepath.Join("..", "observabilityendpoint", "testdata", "crd", "hostedclusters.hypershift.yaml"),
 	)
 
 	testEnv = &envtest.Environment{
@@ -109,6 +116,9 @@ func TestMCOAAgentIntegration(t *testing.T) {
 	require.NoError(t, kubescheme.AddToScheme(s))
 	require.NoError(t, ocinfrav1.AddToScheme(s))
 	require.NoError(t, apiextensionsv1.AddToScheme(s))
+
+	require.NoError(t, promv1.AddToScheme(s))
+	require.NoError(t, hyperv1.AddToScheme(s))
 
 	// Register ScrapeConfig for the custom monitoring.rhobs/v1alpha1 API Group
 	addRhobsToScheme(t, s)

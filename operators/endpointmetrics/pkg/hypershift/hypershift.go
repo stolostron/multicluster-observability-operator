@@ -48,7 +48,7 @@ func ReconcileHostedClustersServiceMonitors(ctx context.Context, c client.Client
 		// In case hypershift's etcd ServiceMonitor is not created yet,
 		// we can skip this cluster and wait for the next reconciliation loop
 		if err == nil {
-			if err := createOrUpdateSM(ctx, c, etcdSMDesired); err != nil {
+			if err := CreateOrUpdateServiceMonitor(ctx, c, etcdSMDesired); err != nil {
 				return reconciledHCsCount, fmt.Errorf("failed to create/update etcd ServiceMonitor %s/%s: %w", etcdSMDesired.GetNamespace(), etcdSMDesired.GetName(), err)
 			}
 			reconciledSMsCount++
@@ -58,7 +58,7 @@ func ReconcileHostedClustersServiceMonitors(ctx context.Context, c client.Client
 
 		apiServerSMDesired, err := getKubeServiceMonitor(ctx, c, namespace, cluster.Spec.ClusterID, cluster.Name)
 		if err == nil {
-			if err := createOrUpdateSM(ctx, c, apiServerSMDesired); err != nil {
+			if err := CreateOrUpdateServiceMonitor(ctx, c, apiServerSMDesired); err != nil {
 				return reconciledHCsCount, fmt.Errorf("failed to create/update api-server ServiceMonitor %s/%s: %w", apiServerSMDesired.GetNamespace(), apiServerSMDesired.GetName(), err)
 			}
 			reconciledSMsCount++
@@ -83,11 +83,11 @@ func DeleteServiceMonitors(ctx context.Context, c client.Client) error {
 
 	for _, cluster := range hList.Items {
 		namespace := HostedClusterNamespace(&cluster)
-		if err := deleteServiceMonitor(ctx, c, AcmEtcdSmName, namespace); err != nil {
+		if err := DeleteServiceMonitor(ctx, c, AcmEtcdSmName, namespace); err != nil {
 			return fmt.Errorf("failed to delete ServiceMonitor %s/%s: %w", namespace, AcmEtcdSmName, err)
 		}
 
-		if err := deleteServiceMonitor(ctx, c, AcmApiServerSmName, namespace); err != nil {
+		if err := DeleteServiceMonitor(ctx, c, AcmApiServerSmName, namespace); err != nil {
 			return fmt.Errorf("failed to delete ServiceMonitor %s/%s: %w", namespace, AcmApiServerSmName, err)
 		}
 	}
@@ -118,7 +118,7 @@ func IsHypershiftCluster() (bool, error) {
 	return isHypershift, nil
 }
 
-func createOrUpdateSM(ctx context.Context, c client.Client, smDesired *promv1.ServiceMonitor) error {
+func CreateOrUpdateServiceMonitor(ctx context.Context, c client.Client, smDesired *promv1.ServiceMonitor) error {
 	smCurrent := &promv1.ServiceMonitor{}
 	if err := c.Get(ctx, types.NamespacedName{Name: smDesired.GetName(), Namespace: smDesired.GetNamespace()}, smCurrent); err != nil {
 		if !errors.IsNotFound(err) {
@@ -316,7 +316,7 @@ func getKubeServiceMonitor(ctx context.Context, c client.Client, namespace, clus
 	}, nil
 }
 
-func deleteServiceMonitor(ctx context.Context, c client.Client, name, namespace string) error {
+func DeleteServiceMonitor(ctx context.Context, c client.Client, name, namespace string) error {
 	sm := &promv1.ServiceMonitor{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
