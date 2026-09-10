@@ -71,7 +71,7 @@ func CheckStatefulSetAvailability(cluster Cluster, name, namespace string, shoul
 		gomega.Eventually(func() error {
 			sts, err := GetStatefulSetWithCluster(cluster, name, namespace)
 			if err != nil {
-				return fmt.Errorf("failed to get statefulset %s/%s: %w", name, namespace, err)
+				return fmt.Errorf("failed to get statefulset %s/%s: %w", namespace, name, err)
 			}
 			expectedReplicas := int32(1)
 			if sts.Spec.Replicas != nil {
@@ -89,7 +89,7 @@ func CheckStatefulSetAvailability(cluster Cluster, name, namespace string, shoul
 				return nil
 			}
 			if err != nil {
-				return fmt.Errorf("failed to get statefulset %s/%s: %w", name, namespace, err)
+				return fmt.Errorf("failed to get statefulset %s/%s: %w", namespace, name, err)
 			}
 			return FormatStatefulSetStillExistsError(sts, namespace, name)
 		}, 120, 5).Should(gomega.Succeed())
