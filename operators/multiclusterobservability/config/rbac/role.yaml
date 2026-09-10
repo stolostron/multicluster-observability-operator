@@ -8,31 +8,6 @@ rules:
   - observability.open-cluster-management.io
   resources:
   - multiclusterobservabilities
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - observability.open-cluster-management.io
-  resources:
-  - multiclusterobservabilities/finalizers
-  verbs:
-  - update
-- apiGroups:
-  - observability.open-cluster-management.io
-  resources:
-  - multiclusterobservabilities/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - observability.open-cluster-management.io
-  resources:
   - placementrules
   verbs:
   - create
@@ -45,12 +20,14 @@ rules:
 - apiGroups:
   - observability.open-cluster-management.io
   resources:
+  - multiclusterobservabilities/finalizers
   - placementrules/finalizers
   verbs:
   - update
 - apiGroups:
   - observability.open-cluster-management.io
   resources:
+  - multiclusterobservabilities/status
   - placementrules/status
   verbs:
   - get
