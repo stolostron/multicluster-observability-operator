@@ -89,6 +89,7 @@ func GetOCPClusters(opt TestOptions) ([]Cluster, error) {
 	var ocpClusters []Cluster
 	for _, mc := range availableManagedClusters {
 		if !isOpenshiftVendor(mc) {
+			klog.Infof("Skip cluster %s: vendor %q is not OpenShift", mc.Name, mc.GetLabels()["vendor"])
 			continue
 		}
 
