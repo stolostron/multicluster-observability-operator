@@ -443,3 +443,16 @@ rules:
   - get
   - list
   - watch
+# Needed to create the MCOA root CA Issuer/Certificate/ClusterIssuer that MCOA's logging
+# default stack issues its mTLS certs from, once cert-manager's Certificate CRD is present.
+- apiGroups:
+  - cert-manager.io
+  resources:
+  - issuers
+  - certificates
+  - clusterissuers
+  verbs:
+  - create
+  - get
+  - list
+  - watch
