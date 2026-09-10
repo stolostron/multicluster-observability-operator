@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/onsi/gomega"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -303,4 +304,19 @@ func RemoveConfigFromPlacementInClusterManagementAddon(
 
 		return nil
 	})
+}
+
+// CheckClusterManagementAddonDeleted waits for the ClusterManagementAddon to be deleted.
+func CheckClusterManagementAddonDeleted(opt TestOptions, name string) {
+	clientDynamic := GetKubeClientDynamic(opt, true)
+	gomega.Eventually(func() error {
+		_, err := clientDynamic.Resource(clusterManagementAddonGVR).Get(context.TODO(), name, metav1.GetOptions{})
+		if apierrors.IsNotFound(err) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		return fmt.Errorf("ClusterManagementAddon %s still exists", name)
+	}, 300, 5).Should(gomega.Succeed())
 }

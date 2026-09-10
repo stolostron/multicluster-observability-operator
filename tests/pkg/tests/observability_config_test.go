@@ -17,6 +17,7 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/kustomize"
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/utils"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/util/retry"
 	"k8s.io/klog/v2"
 )
 
@@ -406,28 +407,31 @@ var _ = Describe("", func() {
 				return false
 			}, EventuallyTimeoutMinute*2, EventuallyIntervalSecond*10).Should(BeTrue())
 
-			mcoRes, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).
-				Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
-			if err != nil {
-				panic(err.Error())
-			}
+			err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
+				mcoRes, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).
+					Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+				if err != nil {
+					return err
+				}
 
-			// Update the MCO CR to change the log level for thanos-compact
-			spec := mcoRes.Object["spec"].(map[string]any)
-			advancedSpec, _ := spec["advanced"].(map[string]any)
-			if containers, ok := advancedSpec["compact"].(map[string]any)["containers"].([]any); ok {
-				if args, ok := containers[0].(map[string]any)["args"].([]any); ok {
-					for i, arg := range args {
-						if strings.HasPrefix(arg.(string), "--log.level=") {
-							args[i] = "--log.level=info"
-							break
+				// Update the MCO CR to change the log level for thanos-compact
+				spec := mcoRes.Object["spec"].(map[string]any)
+				advancedSpec, _ := spec["advanced"].(map[string]any)
+				if containers, ok := advancedSpec["compact"].(map[string]any)["containers"].([]any); ok {
+					if args, ok := containers[0].(map[string]any)["args"].([]any); ok {
+						for i, arg := range args {
+							if strings.HasPrefix(arg.(string), "--log.level=") {
+								args[i] = "--log.level=info"
+								break
+							}
 						}
 					}
 				}
-			}
 
-			_, err = dynClient.Resource(utils.NewMCOGVRV1BETA2()).
-				Update(context.TODO(), mcoRes, metav1.UpdateOptions{})
+				_, err = dynClient.Resource(utils.NewMCOGVRV1BETA2()).
+					Update(context.TODO(), mcoRes, metav1.UpdateOptions{})
+				return err
+			})
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Check the value is effect in the sts observability-thanos-compact")
@@ -480,29 +484,34 @@ var _ = Describe("", func() {
 		"ACM-34594: Observability: Verify Thanos Compact debug tuning in MCO CR - [P2][Sev2][Observability][Integration]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release (config/g0)",
 		func() {
 			By("Updating MCO CR with compact debug settings")
-			mcoRes, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).
-				Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
-			Expect(err).NotTo(HaveOccurred())
+			err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+				mcoRes, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).
+					Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+				if err != nil {
+					return err
+				}
 
-			spec := mcoRes.Object["spec"].(map[string]any)
-			advancedSpec, ok := spec["advanced"].(map[string]any)
-			if !ok {
-				Skip("Skip the case since the MCO CR did not have advanced spec configured")
-			}
-			compactSpec, ok := advancedSpec["compact"].(map[string]any)
-			if !ok {
-				compactSpec = map[string]any{}
-				advancedSpec["compact"] = compactSpec
-			}
-			compactSpec["debug"] = map[string]any{
-				"logLevel":                  "debug",
-				"waitInterval":              "5m",
-				"blockMetaFetchConcurrency": int64(64),
-				"downsampleConcurrency":     int64(4),
-			}
+				spec := mcoRes.Object["spec"].(map[string]any)
+				advancedSpec, ok := spec["advanced"].(map[string]any)
+				if !ok {
+					Skip("Skip the case since the MCO CR did not have advanced spec configured")
+				}
+				compactSpec, ok := advancedSpec["compact"].(map[string]any)
+				if !ok {
+					compactSpec = map[string]any{}
+					advancedSpec["compact"] = compactSpec
+				}
+				compactSpec["debug"] = map[string]any{
+					"logLevel":                  "debug",
+					"waitInterval":              "5m",
+					"blockMetaFetchConcurrency": int64(64),
+					"downsampleConcurrency":     int64(4),
+				}
 
-			_, err = dynClient.Resource(utils.NewMCOGVRV1BETA2()).
-				Update(context.TODO(), mcoRes, metav1.UpdateOptions{})
+				_, err = dynClient.Resource(utils.NewMCOGVRV1BETA2()).
+					Update(context.TODO(), mcoRes, metav1.UpdateOptions{})
+				return err
+			})
 			Expect(err).NotTo(HaveOccurred())
 
 			expectedCompactDebugArgs := []string{
@@ -536,20 +545,25 @@ var _ = Describe("", func() {
 			}, EventuallyTimeoutMinute*2, EventuallyIntervalSecond*10).Should(Succeed())
 
 			By("Updating wait interval above 5m adds web disable flag")
-			mcoRes, err = dynClient.Resource(utils.NewMCOGVRV1BETA2()).
-				Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
-			Expect(err).NotTo(HaveOccurred())
+			err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
+				mcoRes, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).
+					Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+				if err != nil {
+					return err
+				}
 
-			spec = mcoRes.Object["spec"].(map[string]any)
-			advancedSpec = spec["advanced"].(map[string]any)
-			compactSpec = advancedSpec["compact"].(map[string]any)
-			compactSpec["debug"] = map[string]any{
-				"waitInterval":              "10m",
-				"blockMetaFetchConcurrency": int64(32),
-			}
+				spec := mcoRes.Object["spec"].(map[string]any)
+				advancedSpec := spec["advanced"].(map[string]any)
+				compactSpec := advancedSpec["compact"].(map[string]any)
+				compactSpec["debug"] = map[string]any{
+					"waitInterval":              "10m",
+					"blockMetaFetchConcurrency": int64(32),
+				}
 
-			_, err = dynClient.Resource(utils.NewMCOGVRV1BETA2()).
-				Update(context.TODO(), mcoRes, metav1.UpdateOptions{})
+				_, err = dynClient.Resource(utils.NewMCOGVRV1BETA2()).
+					Update(context.TODO(), mcoRes, metav1.UpdateOptions{})
+				return err
+			})
 			Expect(err).NotTo(HaveOccurred())
 
 			Eventually(func() error {
@@ -581,26 +595,31 @@ var _ = Describe("", func() {
 		"Observability: Verify Thanos Receive debug tuning in MCO CR - [P2][Sev2][Observability][Integration]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release (config/g0)",
 		func() {
 			By("Updating MCO CR with receive debug settings")
-			mcoRes, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).
-				Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
-			Expect(err).NotTo(HaveOccurred())
+			err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+				mcoRes, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).
+					Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+				if err != nil {
+					return err
+				}
 
-			spec := mcoRes.Object["spec"].(map[string]any)
-			advancedSpec, ok := spec["advanced"].(map[string]any)
-			if !ok {
-				Skip("Skip the case since the MCO CR did not have advanced spec configured")
-			}
-			receiveSpec, ok := advancedSpec["receive"].(map[string]any)
-			if !ok {
-				receiveSpec = map[string]any{}
-				advancedSpec["receive"] = receiveSpec
-			}
-			receiveSpec["debug"] = map[string]any{
-				"logLevel": "debug",
-			}
+				spec := mcoRes.Object["spec"].(map[string]any)
+				advancedSpec, ok := spec["advanced"].(map[string]any)
+				if !ok {
+					Skip("Skip the case since the MCO CR did not have advanced spec configured")
+				}
+				receiveSpec, ok := advancedSpec["receive"].(map[string]any)
+				if !ok {
+					receiveSpec = map[string]any{}
+					advancedSpec["receive"] = receiveSpec
+				}
+				receiveSpec["debug"] = map[string]any{
+					"logLevel": "debug",
+				}
 
-			_, err = dynClient.Resource(utils.NewMCOGVRV1BETA2()).
-				Update(context.TODO(), mcoRes, metav1.UpdateOptions{})
+				_, err = dynClient.Resource(utils.NewMCOGVRV1BETA2()).
+					Update(context.TODO(), mcoRes, metav1.UpdateOptions{})
+				return err
+			})
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Checking receive logLevel is set on Observatorium CR")
@@ -629,19 +648,31 @@ var _ = Describe("", func() {
 			}, EventuallyTimeoutMinute*2, EventuallyIntervalSecond*10).Should(Succeed())
 
 			By("Updating receive debug log level to info")
-			mcoRes, err = dynClient.Resource(utils.NewMCOGVRV1BETA2()).
-				Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
-			Expect(err).NotTo(HaveOccurred())
+			err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
+				mcoRes, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).
+					Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+				if err != nil {
+					return err
+				}
 
-			spec = mcoRes.Object["spec"].(map[string]any)
-			advancedSpec = spec["advanced"].(map[string]any)
-			receiveSpec = advancedSpec["receive"].(map[string]any)
-			receiveSpec["debug"] = map[string]any{
-				"logLevel": "info",
-			}
+				spec := mcoRes.Object["spec"].(map[string]any)
+				advancedSpec, ok := spec["advanced"].(map[string]any)
+				if !ok {
+					return fmt.Errorf("spec.advanced is not a map")
+				}
+				receiveSpec, ok := advancedSpec["receive"].(map[string]any)
+				if !ok {
+					receiveSpec = map[string]any{}
+					advancedSpec["receive"] = receiveSpec
+				}
+				receiveSpec["debug"] = map[string]any{
+					"logLevel": "info",
+				}
 
-			_, err = dynClient.Resource(utils.NewMCOGVRV1BETA2()).
-				Update(context.TODO(), mcoRes, metav1.UpdateOptions{})
+				_, err = dynClient.Resource(utils.NewMCOGVRV1BETA2()).
+					Update(context.TODO(), mcoRes, metav1.UpdateOptions{})
+				return err
+			})
 			Expect(err).NotTo(HaveOccurred())
 
 			Eventually(func() error {
@@ -712,20 +743,25 @@ var _ = Describe("", func() {
 			}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*10).Should(Succeed())
 
 			By("Setting both queryTimeout and writeTimeout in MCO CR")
-			mcoRes, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).
-				Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
-			Expect(err).NotTo(HaveOccurred())
+			err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+				mcoRes, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).
+					Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+				if err != nil {
+					return err
+				}
 
-			spec := mcoRes.Object["spec"].(map[string]any)
-			advancedSpec, ok := spec["advanced"].(map[string]any)
-			if !ok {
-				Skip("Skip the case since the MCO CR did not have advanced spec configured")
-			}
-			advancedSpec["queryTimeout"] = "10m"
-			advancedSpec["writeTimeout"] = "15m"
+				spec := mcoRes.Object["spec"].(map[string]any)
+				advancedSpec, ok := spec["advanced"].(map[string]any)
+				if !ok {
+					Skip("Skip the case since the MCO CR did not have advanced spec configured")
+				}
+				advancedSpec["queryTimeout"] = "10m"
+				advancedSpec["writeTimeout"] = "15m"
 
-			_, err = dynClient.Resource(utils.NewMCOGVRV1BETA2()).
-				Update(context.TODO(), mcoRes, metav1.UpdateOptions{})
+				_, err = dynClient.Resource(utils.NewMCOGVRV1BETA2()).
+					Update(context.TODO(), mcoRes, metav1.UpdateOptions{})
+				return err
+			})
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Checking Observatorium CR carries both timeout values")
@@ -773,17 +809,23 @@ var _ = Describe("", func() {
 			}, EventuallyTimeoutMinute*2, EventuallyIntervalSecond*10).Should(Succeed())
 
 			By("Reverting MCO CR timeouts to defaults")
-			mcoRes, err = dynClient.Resource(utils.NewMCOGVRV1BETA2()).
-				Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
-			Expect(err).NotTo(HaveOccurred())
+			err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
+				mcoRes, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).
+					Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+				if err != nil {
+					return err
+				}
 
-			spec = mcoRes.Object["spec"].(map[string]any)
-			advancedSpec = spec["advanced"].(map[string]any)
-			delete(advancedSpec, "queryTimeout")
-			delete(advancedSpec, "writeTimeout")
+				spec := mcoRes.Object["spec"].(map[string]any)
+				if advancedSpec, ok := spec["advanced"].(map[string]any); ok {
+					delete(advancedSpec, "queryTimeout")
+					delete(advancedSpec, "writeTimeout")
+				}
 
-			_, err = dynClient.Resource(utils.NewMCOGVRV1BETA2()).
-				Update(context.TODO(), mcoRes, metav1.UpdateOptions{})
+				_, err = dynClient.Resource(utils.NewMCOGVRV1BETA2()).
+					Update(context.TODO(), mcoRes, metav1.UpdateOptions{})
+				return err
+			})
 			Expect(err).NotTo(HaveOccurred())
 		},
 	)

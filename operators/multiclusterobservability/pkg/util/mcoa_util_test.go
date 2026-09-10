@@ -168,3 +168,164 @@ func TestHasMCOAManifestWorks(t *testing.T) {
 		assert.Contains(t, blocking, "test-cluster")
 	})
 }
+
+func TestHasRemainingMCOAResources(t *testing.T) {
+	s := scheme.Scheme
+	_ = addonv1beta1.Install(s)
+	_ = clusterv1.Install(s)
+	_ = workv1.Install(s)
+
+	t.Run("returns blocking namespaces when healthy cluster has ManifestWork with PrometheusAgent", func(t *testing.T) {
+		mw := &workv1.ManifestWork{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "addon-multicluster-observability-addon-deploy-0",
+				Namespace: "healthy-cluster",
+				Labels: map[string]string{
+					addonv1beta1.AddonLabelKey: config.MultiClusterObservabilityAddon,
+				},
+			},
+			Spec: workv1.ManifestWorkSpec{
+				Workload: workv1.ManifestsTemplate{
+					Manifests: []workv1.Manifest{prometheusAgentManifest()},
+				},
+			},
+		}
+		mc := &clusterv1.ManagedCluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "healthy-cluster",
+			},
+			Status: clusterv1.ManagedClusterStatus{
+				Conditions: []metav1.Condition{
+					{
+						Type:   clusterv1.ManagedClusterConditionAvailable,
+						Status: metav1.ConditionTrue,
+					},
+				},
+			},
+		}
+
+		cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(mw, mc).Build()
+		blocking, err := HasRemainingMCOAResources(context.Background(), cl)
+		assert.NoError(t, err)
+		assert.Contains(t, blocking, "healthy-cluster")
+	})
+
+	t.Run("RS-only ManifestWorks (PrometheusRule) block teardown until completely removed", func(t *testing.T) {
+		mw := &workv1.ManifestWork{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "addon-multicluster-observability-addon-deploy-0",
+				Namespace: "healthy-cluster",
+				Labels: map[string]string{
+					addonv1beta1.AddonLabelKey: config.MultiClusterObservabilityAddon,
+				},
+			},
+			Spec: workv1.ManifestWorkSpec{
+				Workload: workv1.ManifestsTemplate{
+					Manifests: []workv1.Manifest{prometheusRuleManifest()},
+				},
+			},
+		}
+		mc := &clusterv1.ManagedCluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "healthy-cluster",
+			},
+			Status: clusterv1.ManagedClusterStatus{
+				Conditions: []metav1.Condition{
+					{
+						Type:   clusterv1.ManagedClusterConditionAvailable,
+						Status: metav1.ConditionTrue,
+					},
+				},
+			},
+		}
+
+		cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(mw, mc).Build()
+		blocking, err := HasRemainingMCOAResources(context.Background(), cl)
+		assert.NoError(t, err)
+		assert.Contains(t, blocking, "healthy-cluster", "RS-only ManifestWorks must block MCOA manager undeployment during cleanup")
+	})
+
+	t.Run("ManagedClusterAddOn blocks teardown even when ManifestWork is deleted", func(t *testing.T) {
+		mca := &addonv1beta1.ManagedClusterAddOn{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      config.MultiClusterObservabilityAddon,
+				Namespace: "healthy-cluster",
+			},
+		}
+		mc := &clusterv1.ManagedCluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "healthy-cluster",
+			},
+			Status: clusterv1.ManagedClusterStatus{
+				Conditions: []metav1.Condition{
+					{
+						Type:   clusterv1.ManagedClusterConditionAvailable,
+						Status: metav1.ConditionTrue,
+					},
+				},
+			},
+		}
+
+		cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(mca, mc).Build()
+		blocking, err := HasRemainingMCOAResources(context.Background(), cl)
+		assert.NoError(t, err)
+		assert.Contains(t, blocking, "healthy-cluster", "ManagedClusterAddOn must block MCOA manager undeployment so pre-delete hooks can finish")
+	})
+
+	t.Run("returns empty slice when ManifestWork and ManagedClusterAddOn are in a disconnected/offline cluster", func(t *testing.T) {
+		mw := &workv1.ManifestWork{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "addon-multicluster-observability-addon-deploy-0",
+				Namespace: "offline-cluster",
+				Labels: map[string]string{
+					addonv1beta1.AddonLabelKey: config.MultiClusterObservabilityAddon,
+				},
+			},
+		}
+		mca := &addonv1beta1.ManagedClusterAddOn{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      config.MultiClusterObservabilityAddon,
+				Namespace: "offline-cluster",
+			},
+		}
+		mc := &clusterv1.ManagedCluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "offline-cluster",
+			},
+			Status: clusterv1.ManagedClusterStatus{
+				Conditions: []metav1.Condition{
+					{
+						Type:   clusterv1.ManagedClusterConditionAvailable,
+						Status: metav1.ConditionFalse,
+					},
+				},
+			},
+		}
+
+		cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(mw, mca, mc).Build()
+		blocking, err := HasRemainingMCOAResources(context.Background(), cl)
+		assert.NoError(t, err)
+		assert.Empty(t, blocking)
+	})
+
+	t.Run("returns empty slice when all ManifestWorks and ManagedClusterAddOns are gone", func(t *testing.T) {
+		mc := &clusterv1.ManagedCluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "healthy-cluster",
+			},
+			Status: clusterv1.ManagedClusterStatus{
+				Conditions: []metav1.Condition{
+					{
+						Type:   clusterv1.ManagedClusterConditionAvailable,
+						Status: metav1.ConditionTrue,
+					},
+				},
+			},
+		}
+
+		cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(mc).Build()
+		blocking, err := HasRemainingMCOAResources(context.Background(), cl)
+		assert.NoError(t, err)
+		assert.Empty(t, blocking)
+	})
+}
