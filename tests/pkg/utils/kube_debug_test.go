@@ -22,6 +22,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
 	kubefake "k8s.io/client-go/kubernetes/fake"
+	clusterv1 "open-cluster-management.io/api/cluster/v1"
 )
 
 func TestIsErrorLine(t *testing.T) {
@@ -928,7 +929,93 @@ func TestPrintManifestWorks(t *testing.T) {
 		},
 	}
 
-	out := formatManifestWorks([]unstructured.Unstructured{mwTerminating, mwLegacy, mwOther})
+	mwWithFeedback := unstructured.Unstructured{
+		Object: map[string]any{
+			"apiVersion": "work.open-cluster-management.io/v1",
+			"kind":       "ManifestWork",
+			"metadata": map[string]any{
+				"name":      "addon-multicluster-observability-addon-deploy-0",
+				"namespace": "cluster2",
+				"labels": map[string]any{
+					"addon.open-cluster-management.io/addon-name": "multicluster-observability-addon",
+				},
+			},
+			"status": map[string]any{
+				"conditions": []any{
+					map[string]any{
+						"type":    "Applied",
+						"status":  "True",
+						"reason":  "AppliedManifestWorkComplete",
+						"message": "Apply manifest work complete",
+					},
+				},
+				"resourceStatus": map[string]any{
+					"manifests": []any{
+						map[string]any{
+							"resourceMeta": map[string]any{
+								"kind": "CustomResourceDefinition",
+								"name": "prometheusagents.monitoring.rhobs",
+							},
+							"conditions": []any{
+								map[string]any{
+									"type":    "StatusFeedbackSynced",
+									"status":  "True",
+									"reason":  "StatusFeedbackSynced",
+									"message": "",
+								},
+							},
+							"statusFeedback": map[string]any{
+								"values": []any{
+									map[string]any{
+										"name": "Established",
+										"fieldValue": map[string]any{
+											"type":   "String",
+											"string": "True",
+										},
+									},
+								},
+							},
+						},
+						map[string]any{
+							"resourceMeta": map[string]any{
+								"kind":      "Alertmanager",
+								"namespace": "open-cluster-management-observability",
+								"name":      "observability",
+							},
+							"conditions": []any{
+								map[string]any{
+									"type":    "StatusFeedbackSynced",
+									"status":  "False",
+									"reason":  "StatusFeedbackSyncFailed",
+									"message": "failed to extract jsonpath",
+								},
+							},
+							"statusFeedback": map[string]any{
+								"values": []any{
+									map[string]any{
+										"name": "isOLMManaged",
+										"fieldValue": map[string]any{
+											"type":    "Boolean",
+											"boolean": false,
+										},
+									},
+									map[string]any{
+										"name": "replicas",
+										"fieldValue": map[string]any{
+											"type":    "Integer",
+											"integer": int64(2),
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	out := formatManifestWorks([]unstructured.Unstructured{mwTerminating, mwLegacy, mwOther, mwWithFeedback})
 	if !strings.Contains(out, "addon-multicluster-observability-addon-deploy-0") {
 		t.Errorf("expected addon-multicluster-observability-addon-deploy-0 in output, got:\n%s", out)
 	}
@@ -947,15 +1034,113 @@ func TestPrintManifestWorks(t *testing.T) {
 	if !strings.Contains(out, "ImagePullBackOff: failed to pull image") {
 		t.Errorf("expected manifest-level ImagePullBackOff error in output, got:\n%s", out)
 	}
+	if !strings.Contains(out, "StatusFeedbackSynced=False (StatusFeedbackSyncFailed): failed to extract jsonpath") {
+		t.Errorf("expected StatusFeedbackSynced failure in degraded output, got:\n%s", out)
+	}
+	if !strings.Contains(out, "ManifestWork Feedback Rules Status:") {
+		t.Errorf("expected feedback rules status section in output, got:\n%s", out)
+	}
+	if !strings.Contains(out, "CustomResourceDefinition prometheusagents.monitoring.rhobs: Established=True") {
+		t.Errorf("expected CRD feedback in output, got:\n%s", out)
+	}
+	if !strings.Contains(out, "Alertmanager open-cluster-management-observability/observability: isOLMManaged=false, replicas=2") {
+		t.Errorf("expected Alertmanager feedbacks in output, got:\n%s", out)
+	}
 
 	client := &mockDynamicClient{
 		itemsByGVR: map[schema.GroupVersionResource][]unstructured.Unstructured{
-			gvr: {mwTerminating, mwLegacy, mwOther},
+			gvr: {mwTerminating, mwLegacy, mwOther, mwWithFeedback},
 		},
 	}
 
 	// Verify executing printManifestWorks runs cleanly without error or panic
 	printManifestWorks(client)
+}
+
+func TestFormatFeedbackValue(t *testing.T) {
+	testCases := []struct {
+		name     string
+		input    map[string]any
+		expected string
+	}{
+		{
+			name:     "empty input",
+			input:    map[string]any{},
+			expected: "",
+		},
+		{
+			name: "string type",
+			input: map[string]any{
+				"name": "Established",
+				"fieldValue": map[string]any{
+					"type":   "String",
+					"string": "True",
+				},
+			},
+			expected: "Established=True",
+		},
+		{
+			name: "integer type",
+			input: map[string]any{
+				"name": "replicas",
+				"fieldValue": map[string]any{
+					"type":    "Integer",
+					"integer": int64(3),
+				},
+			},
+			expected: "replicas=3",
+		},
+		{
+			name: "boolean type true",
+			input: map[string]any{
+				"name": "ready",
+				"fieldValue": map[string]any{
+					"type":    "Boolean",
+					"boolean": true,
+				},
+			},
+			expected: "ready=true",
+		},
+		{
+			name: "boolean type false",
+			input: map[string]any{
+				"name": "isOLMManaged",
+				"fieldValue": map[string]any{
+					"type":    "Boolean",
+					"boolean": false,
+				},
+			},
+			expected: "isOLMManaged=false",
+		},
+		{
+			name: "jsonraw type",
+			input: map[string]any{
+				"name": "config",
+				"fieldValue": map[string]any{
+					"type":    "JsonRaw",
+					"jsonRaw": `{"key":"val"}`,
+				},
+			},
+			expected: `config={"key":"val"}`,
+		},
+		{
+			name: "direct value fallback",
+			input: map[string]any{
+				"name":  "customProp",
+				"value": "directVal",
+			},
+			expected: "customProp=directVal",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := formatFeedbackValue(tc.input)
+			if got != tc.expected {
+				t.Errorf("formatFeedbackValue() = %q, want %q", got, tc.expected)
+			}
+		})
+	}
 }
 
 func TestLogClusterManagementAddOn(t *testing.T) {
@@ -2472,4 +2657,112 @@ func TestFormatNamespacePodHealthSummary(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestFormatManagedClusters(t *testing.T) {
+	t.Run("empty list", func(t *testing.T) {
+		got := formatManagedClusters(nil)
+		if got != "" {
+			t.Errorf("formatManagedClusters(nil) = %q, want empty string", got)
+		}
+	})
+
+	t.Run("clusters with various vendors and overrides", func(t *testing.T) {
+		clusters := []clusterv1.ManagedCluster{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "local-cluster",
+					Labels: map[string]string{
+						"vendor": "OpenShift",
+					},
+				},
+				Spec: clusterv1.ManagedClusterSpec{
+					ManagedClusterClientConfigs: []clusterv1.ClientConfig{
+						{URL: "https://api.ocp.example.com:6443"},
+					},
+				},
+				Status: clusterv1.ManagedClusterStatus{
+					Conditions: []metav1.Condition{
+						{Type: clusterv1.ManagedClusterConditionAvailable, Status: metav1.ConditionTrue},
+						{Type: clusterv1.ManagedClusterConditionJoined, Status: metav1.ConditionTrue},
+						{Type: clusterv1.ManagedClusterConditionHubAccepted, Status: metav1.ConditionTrue},
+					},
+					ClusterClaims: []clusterv1.ManagedClusterClaim{
+						{Name: "version.openshift.io", Value: "4.16.0"},
+					},
+				},
+			},
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "eks-cluster",
+					Labels: map[string]string{
+						"vendor": "EKS",
+					},
+				},
+				Spec: clusterv1.ManagedClusterSpec{
+					ManagedClusterClientConfigs: []clusterv1.ClientConfig{
+						{URL: "https://api.eks.example.com:6443"},
+					},
+				},
+				Status: clusterv1.ManagedClusterStatus{
+					Conditions: []metav1.Condition{
+						{Type: clusterv1.ManagedClusterConditionAvailable, Status: metav1.ConditionTrue},
+						{Type: clusterv1.ManagedClusterConditionJoined, Status: metav1.ConditionTrue},
+						{Type: clusterv1.ManagedClusterConditionHubAccepted, Status: metav1.ConditionTrue},
+					},
+					ClusterClaims: []clusterv1.ManagedClusterClaim{
+						{Name: "platform.open-cluster-management.io", Value: "EKS"},
+					},
+				},
+			},
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "override-cluster",
+					Labels: map[string]string{
+						"vendor": "OpenShift",
+					},
+					Annotations: map[string]string{
+						"mcoa-override-vendor": "Other",
+					},
+				},
+				Status: clusterv1.ManagedClusterStatus{
+					Conditions: []metav1.Condition{
+						{Type: clusterv1.ManagedClusterConditionAvailable, Status: metav1.ConditionTrue},
+					},
+				},
+			},
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "unknown-vendor-cluster",
+				},
+			},
+		}
+
+		out := formatManagedClusters(clusters)
+
+		// Check header has VENDOR column
+		if !strings.Contains(out, "VENDOR") {
+			t.Errorf("formatManagedClusters output missing VENDOR column header. Got:\n%s", out)
+		}
+
+		// Check local-cluster row has OpenShift vendor
+		if !regexp.MustCompile(`local-cluster\s+True\s+True\s+True\s+OpenShift\s+4\.16\.0`).MatchString(out) {
+			t.Errorf("formatManagedClusters output missing expected row for local-cluster. Got:\n%s", out)
+		}
+
+		// Check eks-cluster row has EKS vendor
+		if !regexp.MustCompile(`eks-cluster\s+True\s+True\s+True\s+EKS\s+EKS`).MatchString(out) {
+			t.Errorf("formatManagedClusters output missing expected row for eks-cluster. Got:\n%s", out)
+		}
+
+		// Check override-cluster row shows override
+		if !strings.Contains(out, "OpenShift (override: Other)") {
+			t.Errorf("formatManagedClusters output missing expected override for override-cluster. Got:\n%s", out)
+		}
+
+		// Check unknown-vendor-cluster row shows Unknown vendor
+		if !regexp.MustCompile(`unknown-vendor-cluster\s+Unknown\s+Unknown\s+Unknown\s+Unknown\s+Unknown`).MatchString(out) {
+			t.Errorf("formatManagedClusters output missing expected Unknown row for unknown-vendor-cluster. Got:\n%s", out)
+		}
+	})
 }

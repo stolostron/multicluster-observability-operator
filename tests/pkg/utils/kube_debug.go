@@ -1108,25 +1108,18 @@ func LogObjectEvents(client kubernetes.Interface, ns string, kind string, name s
 	klog.V(1).Infof("%s %q events: \n%s", kind, name, formattedEvents)
 }
 
-func LogManagedClusters(client dynamic.Interface) {
-	objs, err := client.Resource(NewOCMManagedClustersGVR()).List(context.TODO(), metav1.ListOptions{})
-	if err != nil {
-		klog.Errorf("Failed to list ManagedClusters: %v", err)
-		return
+// formatManagedClusters formats a list of ManagedCluster objects into a tabular string.
+func formatManagedClusters(clusters []clusterv1.ManagedCluster) string {
+	if len(clusters) == 0 {
+		return ""
 	}
 
 	var sb strings.Builder
 	sb.WriteString("Managed Clusters:\n")
 	writer := tabwriter.NewWriter(&sb, 0, 0, 2, ' ', 0)
-	_, _ = fmt.Fprintln(writer, "NAME\tAVAILABLE\tJOINED\tHUB-ACCEPTED\tVERSION\tURL")
+	_, _ = fmt.Fprintln(writer, "NAME\tAVAILABLE\tJOINED\tHUB-ACCEPTED\tVENDOR\tVERSION\tURL")
 
-	for _, obj := range objs.Items {
-		managedCluster := &clusterv1.ManagedCluster{}
-		if err := runtime.DefaultUnstructuredConverter.FromUnstructured(obj.Object, managedCluster); err != nil {
-			klog.Errorf("Failed to convert unstructured to ManagedCluster %s: %v", obj.GetName(), err)
-			continue
-		}
-
+	for _, managedCluster := range clusters {
 		avail := statusUnknown
 		joined := statusUnknown
 		hubAccepted := statusUnknown
@@ -1139,6 +1132,14 @@ func LogManagedClusters(client dynamic.Interface) {
 			case clusterv1.ManagedClusterConditionHubAccepted:
 				hubAccepted = string(cond.Status)
 			}
+		}
+
+		vendor := managedCluster.GetLabels()["vendor"]
+		if vendor == "" {
+			vendor = statusUnknown
+		}
+		if override := managedCluster.GetAnnotations()["mcoa-override-vendor"]; override != "" {
+			vendor = fmt.Sprintf("%s (override: %s)", vendor, override)
 		}
 
 		version := statusUnknown
@@ -1162,17 +1163,43 @@ func LogManagedClusters(client dynamic.Interface) {
 			serverURL = managedCluster.Spec.ManagedClusterClientConfigs[0].URL
 		}
 
-		_, _ = fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\t%s\n",
+		_, _ = fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
 			managedCluster.Name,
 			avail,
 			joined,
 			hubAccepted,
+			vendor,
 			version,
 			serverURL,
 		)
 	}
 	_ = writer.Flush()
-	klog.Info(sb.String())
+	return sb.String()
+}
+
+func LogManagedClusters(client dynamic.Interface) {
+	objs, err := client.Resource(NewOCMManagedClustersGVR()).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		klog.Errorf("Failed to list ManagedClusters: %v", err)
+		return
+	}
+
+	clusters := make([]clusterv1.ManagedCluster, 0, len(objs.Items))
+	for _, obj := range objs.Items {
+		var managedCluster clusterv1.ManagedCluster
+		if err := runtime.DefaultUnstructuredConverter.FromUnstructured(obj.Object, &managedCluster); err != nil {
+			klog.Errorf("Failed to convert unstructured to ManagedCluster %s: %v", obj.GetName(), err)
+			continue
+		}
+		clusters = append(clusters, managedCluster)
+	}
+
+	out := formatManagedClusters(clusters)
+	if out == "" {
+		klog.Info("No ManagedClusters found")
+		return
+	}
+	klog.Info(out)
 }
 
 // shortHash returns a truncated 8-character hash representation, or "<empty>" if hash is empty.
@@ -2101,6 +2128,84 @@ func sanitizeManifestError(msg string) string {
 	return truncateLogLine(strings.TrimSpace(msg), 600)
 }
 
+func formatFeedbackValue(valMap map[string]any) string {
+	name, _, _ := unstructured.NestedString(valMap, "name")
+	if name == "" {
+		return ""
+	}
+
+	fieldVal, ok, _ := unstructured.NestedMap(valMap, "fieldValue")
+	if !ok {
+		if v, ok := valMap["value"]; ok {
+			return fmt.Sprintf("%s=%v", name, v)
+		}
+		return name
+	}
+
+	valType, _, _ := unstructured.NestedString(fieldVal, "type")
+	switch strings.ToLower(valType) {
+	case "string":
+		if s, ok, _ := unstructured.NestedString(fieldVal, "string"); ok {
+			return fmt.Sprintf("%s=%s", name, s)
+		}
+	case "integer":
+		if i, ok, _ := unstructured.NestedInt64(fieldVal, "integer"); ok {
+			return fmt.Sprintf("%s=%d", name, i)
+		}
+	case "boolean":
+		if b, ok, _ := unstructured.NestedBool(fieldVal, "boolean"); ok {
+			return fmt.Sprintf("%s=%t", name, b)
+		}
+	case "jsonraw":
+		if raw, ok, _ := unstructured.NestedString(fieldVal, "jsonRaw"); ok {
+			return fmt.Sprintf("%s=%s", name, raw)
+		}
+	}
+
+	// Fallback to whichever field is populated
+	if s, ok, _ := unstructured.NestedString(fieldVal, "string"); ok && s != "" {
+		return fmt.Sprintf("%s=%s", name, s)
+	}
+	if i, ok, _ := unstructured.NestedInt64(fieldVal, "integer"); ok {
+		return fmt.Sprintf("%s=%d", name, i)
+	}
+	if b, ok, _ := unstructured.NestedBool(fieldVal, "boolean"); ok {
+		return fmt.Sprintf("%s=%t", name, b)
+	}
+	if raw, ok, _ := unstructured.NestedString(fieldVal, "jsonRaw"); ok && raw != "" {
+		return fmt.Sprintf("%s=%s", name, raw)
+	}
+
+	return name
+}
+
+func extractStatusFeedbackValues(mMap map[string]any) []string {
+	feedbackMap, found, _ := unstructured.NestedMap(mMap, "statusFeedback")
+	if !found {
+		feedbackMap, found, _ = unstructured.NestedMap(mMap, "statusFeedbacks")
+	}
+	if !found {
+		return nil
+	}
+
+	rawValues, foundVals, _ := unstructured.NestedSlice(feedbackMap, "values")
+	if !foundVals || len(rawValues) == 0 {
+		return nil
+	}
+
+	var results []string
+	for _, rv := range rawValues {
+		valMap, ok := rv.(map[string]any)
+		if !ok {
+			continue
+		}
+		if formatted := formatFeedbackValue(valMap); formatted != "" {
+			results = append(results, formatted)
+		}
+	}
+	return results
+}
+
 func formatManifestWorks(items []unstructured.Unstructured) string {
 	var sb strings.Builder
 	sb.WriteString("Observability ManifestWorks:\n")
@@ -2112,7 +2217,17 @@ func formatManifestWorks(items []unstructured.Unstructured) string {
 		name   string
 		detail string
 	}
+	type manifestFeedbackItem struct {
+		manifest  string
+		feedbacks []string
+	}
+	type mwFeedbackItem struct {
+		ns    string
+		name  string
+		items []manifestFeedbackItem
+	}
 	var degraded []degradedMW
+	var allFeedbacks []mwFeedbackItem
 	count := 0
 
 	for _, obj := range items {
@@ -2194,6 +2309,7 @@ func formatManifestWorks(items []unstructured.Unstructured) string {
 			}
 		}
 
+		var mwFeedbacks []manifestFeedbackItem
 		var manifestKinds []string
 		manifests, foundRes, _ := unstructured.NestedSlice(obj.Object, "status", "resourceStatus", "manifests")
 		if foundRes {
@@ -2224,7 +2340,8 @@ func formatManifestWorks(items []unstructured.Unstructured) string {
 
 						if (mType == conditionApplied && mStatus == statusFalse) ||
 							(mType == conditionAvailable && mStatus == statusFalse) ||
-							(mType == conditionDegraded && mStatus == statusTrue) {
+							(mType == conditionDegraded && mStatus == statusTrue) ||
+							(mType == "StatusFeedbackSynced" && mStatus == statusFalse) {
 							degraded = append(degraded, degradedMW{
 								ns:     ns,
 								name:   name,
@@ -2233,7 +2350,29 @@ func formatManifestWorks(items []unstructured.Unstructured) string {
 						}
 					}
 				}
+
+				feedbackList := extractStatusFeedbackValues(mMap)
+				if len(feedbackList) > 0 {
+					ident := kind
+					if resNs != "" && resName != "" {
+						ident = fmt.Sprintf("%s %s/%s", kind, resNs, resName)
+					} else if resName != "" {
+						ident = fmt.Sprintf("%s %s", kind, resName)
+					}
+					mwFeedbacks = append(mwFeedbacks, manifestFeedbackItem{
+						manifest:  ident,
+						feedbacks: feedbackList,
+					})
+				}
 			}
+		}
+
+		if len(mwFeedbacks) > 0 {
+			allFeedbacks = append(allFeedbacks, mwFeedbackItem{
+				ns:    ns,
+				name:  name,
+				items: mwFeedbacks,
+			})
 		}
 
 		manifestsSummary := "-"
@@ -2263,6 +2402,16 @@ func formatManifestWorks(items []unstructured.Unstructured) string {
 		for _, d := range degraded {
 			detail := truncateLogLine(d.detail, 700)
 			sb.WriteString(fmt.Sprintf("  - %s/%s: %s\n", d.ns, d.name, detail))
+		}
+	}
+
+	if len(allFeedbacks) > 0 {
+		sb.WriteString("\nManifestWork Feedback Rules Status:\n")
+		for _, mwf := range allFeedbacks {
+			sb.WriteString(fmt.Sprintf("  - %s/%s:\n", mwf.ns, mwf.name))
+			for _, item := range mwf.items {
+				sb.WriteString(fmt.Sprintf("    - %s: %s\n", item.manifest, strings.Join(item.feedbacks, ", ")))
+			}
 		}
 	}
 
