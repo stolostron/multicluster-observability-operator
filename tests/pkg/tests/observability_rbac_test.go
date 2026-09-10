@@ -31,6 +31,13 @@ var _ = Describe("", Ordered, func() {
 			Skip("Skipping RBAC test on QE Jenkins test-run")
 		}
 
+		topologyCmd := exec.Command("oc", "get", "infrastructure", "cluster",
+			"-o", "jsonpath={.status.controlPlaneTopology}")
+		topologyOut, topologyErr := topologyCmd.Output()
+		if topologyErr == nil && string(topologyOut) == "External" {
+			Skip("Skipping RBAC test on HyperShift — OAuth HTPasswd identity provider is not supported")
+		}
+
 		cmd := exec.Command("../../setup_rbac_test.sh")
 		var out bytes.Buffer
 		cmd.Stdout = &out
