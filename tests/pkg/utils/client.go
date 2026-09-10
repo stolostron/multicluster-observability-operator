@@ -20,7 +20,7 @@ func GetKubeClient(opt TestOptions, isHub bool) kubernetes.Interface {
 			opt.ManagedClusters[0].ClusterServerURL,
 			opt.ManagedClusters[0].KubeConfig,
 			opt.ManagedClusters[0].KubeContext)
-		klog.V(1).Infof("New kubeclient for managedcluster <%v>", opt.ManagedClusters[0].Name)
+		klog.V(3).Infof("New kubeclient for managedcluster <%v>", opt.ManagedClusters[0].Name)
 	}
 	return clientKube
 }
@@ -53,7 +53,7 @@ func GetKubeClientWithCluster(cluster Cluster) kubernetes.Interface {
 		cluster.ClusterServerURL,
 		cluster.KubeConfig,
 		cluster.KubeContext)
-	klog.V(1).Infof("New kubeclient for cluster <%v>", cluster.Name)
+	klog.V(3).Infof("New kubeclient for cluster <%v>", cluster.Name)
 	return clientKube
 }
 

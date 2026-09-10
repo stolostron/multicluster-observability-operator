@@ -111,6 +111,14 @@ func NewMCOMObservatoriumGVR() schema.GroupVersionResource {
 	}
 }
 
+func NewHiveClusterDeploymentGVR() schema.GroupVersionResource {
+	return schema.GroupVersionResource{
+		Group:    "hive.openshift.io",
+		Version:  "v1",
+		Resource: "clusterdeployments",
+	}
+}
+
 func NewOCMMultiClusterHubGVR() schema.GroupVersionResource {
 	return schema.GroupVersionResource{
 		Group:    "operator.open-cluster-management.io",
@@ -295,6 +303,7 @@ func PrintObject(ctx context.Context, client dynamic.Interface, gvr schema.Group
 		return
 	}
 
+	cleanUnstructuredForLogging(obj)
 	klog.V(1).Infof("Object %s/%s/%s:\n%s", ns, gvr.Resource, name, ToCompactJSON(obj.Object, "", 0, 3))
 }
 
