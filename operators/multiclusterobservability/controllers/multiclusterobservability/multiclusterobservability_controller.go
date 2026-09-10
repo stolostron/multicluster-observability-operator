@@ -256,7 +256,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		}
 	}
 
-	obsAPIURL, err := config.GetObsAPIExternalURL(ctx, r.Client, config.GetDefaultNamespace())
+	obsAPIURL, err := config.GetObsAPIExternalURL(ctx, r.Client, config.ObsAPIGateway, config.GetDefaultNamespace())
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to get the Observatorium API URL: %w", err) // Already wrapped
 	}

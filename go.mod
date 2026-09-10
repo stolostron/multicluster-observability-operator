@@ -1,6 +1,6 @@
 module github.com/stolostron/multicluster-observability-operator
 
-go 1.25.0
+go 1.25.1
 
 require (
 	github.com/IBM/controller-filtered-cache v0.3.6
