@@ -1562,6 +1562,33 @@ func TestFormatNodesStatuses(t *testing.T) {
 			t.Errorf("expected KubeletHasDiskPressure reason in details, got:\n%s", out)
 		}
 	})
+
+	t.Run("with cluster context label", func(t *testing.T) {
+		node := &corev1.Node{
+			ObjectMeta: metav1.ObjectMeta{Name: "spoke-node-1"},
+			Status: corev1.NodeStatus{
+				Conditions: []corev1.NodeCondition{
+					{
+						Type:    corev1.NodeDiskPressure,
+						Status:  corev1.ConditionTrue,
+						Reason:  "KubeletHasDiskPressure",
+						Message: "disk pressure",
+					},
+				},
+			},
+		}
+		client := kubefake.NewSimpleClientset(node)
+		out, err := formatNodesStatuses(client, "spoke-cluster-1")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if !strings.HasPrefix(out, "Nodes (spoke-cluster-1):\n") {
+			t.Errorf("expected header 'Nodes (spoke-cluster-1):', got:\n%s", out)
+		}
+		if !strings.Contains(out, "Node Issues / Taints (spoke-cluster-1):") {
+			t.Errorf("expected issues header 'Node Issues / Taints (spoke-cluster-1):', got:\n%s", out)
+		}
+	})
 }
 
 func TestLogPodLogs_EarlyReturn(t *testing.T) {
@@ -2330,6 +2357,15 @@ func TestFormatRecentWarningEvents(t *testing.T) {
 	}
 	if strings.Contains(out, "Scheduled") {
 		t.Errorf("expected Normal event to be excluded, got:\n%s", out)
+	}
+
+	// Test with cluster context label
+	labeledOut, err := formatRecentWarningEvents(client, []string{MCO_AGENT_ADDON_NAMESPACE}, 10*time.Minute, 15, "spoke-cluster-1")
+	if err != nil {
+		t.Fatalf("unexpected error formatting warning events: %v", err)
+	}
+	if !strings.HasPrefix(labeledOut, "Recent Warning Events on spoke-cluster-1 (last 10m0s, max 15):\n") {
+		t.Errorf("expected header with cluster label, got:\n%s", labeledOut)
 	}
 
 	// Test when no events match
