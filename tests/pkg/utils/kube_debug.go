@@ -254,7 +254,7 @@ func LogFailingTestStandardDebugInfo(opt TestOptions, isMCOA bool) {
 	if isMCOA {
 		warningNamespaces = append(warningNamespaces, MCO_AGENT_ADDON_NAMESPACE)
 	}
-	printRecentWarningEvents(hubClient, warningNamespaces, 20*time.Minute, 20)
+	printRecentWarningEvents(hubClient, "Hub", warningNamespaces, 20*time.Minute, 20)
 
 	// Section 6: Spoke Clusters
 	inspectedClusters := make(map[string]bool)
@@ -1713,7 +1713,7 @@ func printJobsStatuses(clientset kubernetes.Interface, namespace string) {
 	klog.Info(out)
 }
 
-func formatNodesStatuses(clientset kubernetes.Interface) (string, error) {
+func formatNodesStatuses(clientset kubernetes.Interface, contextLabel ...string) (string, error) {
 	nodes, err := clientset.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return "", fmt.Errorf("failed to list nodes: %w", err)
@@ -1799,16 +1799,23 @@ func formatNodesStatuses(clientset kubernetes.Interface) (string, error) {
 	}
 	_ = writer.Flush()
 
-	out := "Nodes:\n" + sb.String()
+	title := "Nodes:\n"
+	issuesTitle := "\nNode Issues / Taints:\n"
+	if len(contextLabel) > 0 && contextLabel[0] != "" {
+		title = fmt.Sprintf("Nodes (%s):\n", contextLabel[0])
+		issuesTitle = fmt.Sprintf("\nNode Issues / Taints (%s):\n", contextLabel[0])
+	}
+
+	out := title + sb.String()
 	if len(issues) > 0 {
-		out += "\nNode Issues / Taints:\n" + strings.Join(issues, "\n")
+		out += issuesTitle + strings.Join(issues, "\n")
 	}
 	return out, nil
 }
 
 // LogNodes logs a structured overview of node health, pressure conditions, and taints.
 func LogNodes(clientset kubernetes.Interface, contextLabel string) {
-	out, err := formatNodesStatuses(clientset)
+	out, err := formatNodesStatuses(clientset, contextLabel)
 	if err != nil {
 		klog.V(2).Infof("Could not list nodes for %s: %v", contextLabel, err)
 		return
@@ -1833,7 +1840,7 @@ func getInvolvedObjectWorkloadKey(kind, name string) (groupKey, wildcardName str
 }
 
 // formatRecentWarningEvents queries and formats recent Warning events in the specified namespaces.
-func formatRecentWarningEvents(clientset kubernetes.Interface, namespaces []string, window time.Duration, maxEvents int) (string, error) {
+func formatRecentWarningEvents(clientset kubernetes.Interface, namespaces []string, window time.Duration, maxEvents int, contextLabel ...string) (string, error) {
 	if clientset == nil {
 		return "", fmt.Errorf("clientset is nil")
 	}
@@ -1938,8 +1945,13 @@ func formatRecentWarningEvents(clientset kubernetes.Interface, namespaces []stri
 		allEvents = allEvents[:maxEvents]
 	}
 
+	title := fmt.Sprintf("Recent Warning Events (last %s, max %d):\n", window, maxEvents)
+	if len(contextLabel) > 0 && contextLabel[0] != "" {
+		title = fmt.Sprintf("Recent Warning Events on %s (last %s, max %d):\n", contextLabel[0], window, maxEvents)
+	}
+
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("Recent Warning Events (last %s, max %d):\n", window, maxEvents))
+	sb.WriteString(title)
 	writer := tabwriter.NewWriter(&sb, 0, 0, 2, ' ', 0)
 	_, _ = fmt.Fprintln(writer, "AGE\tNAMESPACE\tREASON\tOBJECT\tMESSAGE")
 
@@ -1967,10 +1979,10 @@ func formatRecentWarningEvents(clientset kubernetes.Interface, namespaces []stri
 	return sb.String(), nil
 }
 
-func printRecentWarningEvents(clientset kubernetes.Interface, namespaces []string, window time.Duration, maxEvents int) {
-	out, err := formatRecentWarningEvents(clientset, namespaces, window, maxEvents)
+func printRecentWarningEvents(clientset kubernetes.Interface, contextLabel string, namespaces []string, window time.Duration, maxEvents int) {
+	out, err := formatRecentWarningEvents(clientset, namespaces, window, maxEvents, contextLabel)
 	if err != nil {
-		klog.Errorf("Failed to format recent warning events: %v", err)
+		klog.Errorf("Failed to format recent warning events for %s: %v", contextLabel, err)
 		return
 	}
 	klog.Info(out)
@@ -2647,7 +2659,7 @@ func logSpokeClusterDebugInfo(
 		CheckPodsInNamespace(spokeClient, MCO_AGENT_ADDON_NAMESPACE, []string{"endpoint-monitoring-operator", "prom-agent", "observability-monitoring-cleanup"}, map[string]string{})
 		printMCOACustomResources(spokeDynClient, MCO_AGENT_ADDON_NAMESPACE)
 		logClusterMonitoringConfigStatus(spokeClient, clusterName)
-		printRecentWarningEvents(spokeClient, []string{MCO_AGENT_ADDON_NAMESPACE}, 20*time.Minute, 15)
+		printRecentWarningEvents(spokeClient, clusterName, []string{MCO_AGENT_ADDON_NAMESPACE}, 20*time.Minute, 15)
 	} else {
 		klog.Infof("%s (Legacy: %s)", SectionSpokeWorkloads, clusterName)
 		LogNodes(spokeClient, clusterName)
@@ -2660,6 +2672,6 @@ func logSpokeClusterDebugInfo(
 		printConfigMapsInNamespace(spokeClient, MCO_ADDON_NAMESPACE)
 		printSecretsInNamespace(spokeClient, MCO_ADDON_NAMESPACE)
 		logClusterMonitoringConfigStatus(spokeClient, clusterName)
-		printRecentWarningEvents(spokeClient, []string{MCO_ADDON_NAMESPACE}, 20*time.Minute, 15)
+		printRecentWarningEvents(spokeClient, clusterName, []string{MCO_ADDON_NAMESPACE}, 20*time.Minute, 15)
 	}
 }
