@@ -37,6 +37,7 @@ func getPred(name string, namespace string,
 			return false
 		}
 	}
+
 	if update {
 		updateFunc = func(e event.UpdateEvent) bool {
 			if e.ObjectNew.GetName() == name &&

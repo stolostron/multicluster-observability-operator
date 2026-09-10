@@ -58,6 +58,7 @@ func TestMain(m *testing.M) {
 		filepath.Join("..", "observabilityendpoint", "testdata", "crd", "clusterversions-crd.yaml"),
 		filepath.Join("crds", "monitoring.rhobs_scrapeconfigs.yaml"),
 		filepath.Join("crds", "monitoring.rhobs_prometheusagents.yaml"),
+		filepath.Join("..", "observabilityendpoint", "testdata", "crd", "operators.coreos.com_subscriptions.yaml"),
 	)
 
 	testEnv = &envtest.Environment{
@@ -121,7 +122,7 @@ func TestMCOAAgentIntegration(t *testing.T) {
 	// Initialize Manager with surgical filtered cache configuration identical to main.go
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
 		Scheme: s,
-		Cache:  GetCacheOptions(),
+		Cache:  GetCacheOptions("open-cluster-management-agent-addon"),
 	})
 	require.NoError(t, err)
 
@@ -422,7 +423,7 @@ func TestMCOAAgentIntegration(t *testing.T) {
 	// Disable the metrics server to avoid a port conflict with the first manager.
 	mgr2, err := ctrl.NewManager(cfg, ctrl.Options{
 		Scheme:  s,
-		Cache:   GetCacheOptions(),
+		Cache:   GetCacheOptions("open-cluster-management-agent-addon"),
 		Metrics: metricsserver.Options{BindAddress: "0"},
 		// Controller name "configmap" is already registered in the process-global metrics
 		// registry by the first manager; skip re-registration validation.
