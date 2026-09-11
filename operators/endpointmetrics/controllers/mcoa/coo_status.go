@@ -22,54 +22,44 @@ const (
 	cooSubscriptionName = "cluster-observability-operator"
 	mcoaReleaseLabel    = "release"
 	mcoaReleaseName     = "multicluster-observability-addon"
-	managedByMCOA       = "mcoa"
-	managedByExternal   = "external"
 
-	CooInstalledClaimName = "coo-installed.observability.open-cluster-management.io"
-	CooManagedByClaimName = "coo-managed-by.observability.open-cluster-management.io"
+	CooStatusClaimName = "coo.observability.open-cluster-management.io"
+
+	CooStatusNotInstalled = "not-installed"
+	CooStatusMCOA         = "mcoa"
+	CooStatusExternal     = "external"
 )
 
 // WriteCOOStatus checks whether a COO Subscription exists on the spoke and
-// writes the result as ClusterClaims. The OCM registration agent automatically
-// syncs these to ManagedCluster.Status.ClusterClaims on the hub.
+// writes the result as a single ClusterClaim. The OCM registration agent
+// automatically syncs it to ManagedCluster.Status.ClusterClaims on the hub.
 // On non-OCP clusters (OLMAvailable=false), this is a no-op.
 func (r *MCOAAgentReconciler) WriteCOOStatus(ctx context.Context) error {
 	if !r.OLMAvailable {
 		return nil
 	}
 
-	installed, managedBy, err := getCOOSubscriptionStatus(ctx, r.Client)
+	status, err := getCOOSubscriptionStatus(ctx, r.Client)
 	if err != nil {
 		return fmt.Errorf("failed to check COO subscription: %w", err)
 	}
 
-	if err := ensureClusterClaim(ctx, r.Client, CooInstalledClaimName, installed); err != nil {
-		return fmt.Errorf("failed to ensure ClusterClaim %s: %w", CooInstalledClaimName, err)
+	claim := &clusterv1alpha1.ClusterClaim{
+		ObjectMeta: metav1.ObjectMeta{Name: CooStatusClaimName},
+	}
+	_, err = controllerutil.CreateOrUpdate(ctx, r.Client, claim, func() error {
+		claim.Spec.Value = status
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("failed to ensure ClusterClaim %s: %w", CooStatusClaimName, err)
 	}
 
-	if managedBy == "" {
-		managedBy = "none"
-	}
-	if err := ensureClusterClaim(ctx, r.Client, CooManagedByClaimName, managedBy); err != nil {
-		return fmt.Errorf("failed to ensure ClusterClaim %s: %w", CooManagedByClaimName, err)
-	}
-
-	r.Log.V(1).Info("COO status ClusterClaims updated", "installed", installed, "managedBy", managedBy)
+	r.Log.V(1).Info("COO status ClusterClaim updated", "status", status)
 	return nil
 }
 
-func ensureClusterClaim(ctx context.Context, c client.Client, name, value string) error {
-	claim := &clusterv1alpha1.ClusterClaim{
-		ObjectMeta: metav1.ObjectMeta{Name: name},
-	}
-	_, err := controllerutil.CreateOrUpdate(ctx, c, claim, func() error {
-		claim.Spec.Value = value
-		return nil
-	})
-	return err
-}
-
-func getCOOSubscriptionStatus(ctx context.Context, c client.Client) (installed string, managedBy string, err error) {
+func getCOOSubscriptionStatus(ctx context.Context, c client.Client) (string, error) {
 	subList := &unstructured.UnstructuredList{}
 	subList.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "operators.coreos.com",
@@ -79,22 +69,30 @@ func getCOOSubscriptionStatus(ctx context.Context, c client.Client) (installed s
 
 	if err := c.List(ctx, subList); err != nil {
 		if errors.IsNotFound(err) || meta.IsNoMatchError(err) {
-			return "false", "", nil
+			return CooStatusNotInstalled, nil
 		}
-		return "", "", fmt.Errorf("failed to list subscriptions: %w", err)
+		return "", fmt.Errorf("failed to list subscriptions: %w", err)
 	}
 
+	allMCOA := true
+	found := false
 	for _, sub := range subList.Items {
 		specName, _, _ := unstructured.NestedString(sub.Object, "spec", "name")
-		if specName == cooSubscriptionName {
-			managedBy := managedByExternal
-			labels := sub.GetLabels()
-			if labels != nil && labels[mcoaReleaseLabel] == mcoaReleaseName {
-				managedBy = managedByMCOA
-			}
-			return "true", managedBy, nil
+		if specName != cooSubscriptionName {
+			continue
+		}
+		found = true
+		labels := sub.GetLabels()
+		if labels == nil || labels[mcoaReleaseLabel] != mcoaReleaseName {
+			allMCOA = false
 		}
 	}
 
-	return "false", "", nil
+	if !found {
+		return CooStatusNotInstalled, nil
+	}
+	if allMCOA {
+		return CooStatusMCOA, nil
+	}
+	return CooStatusExternal, nil
 }

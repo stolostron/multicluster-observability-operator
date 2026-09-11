@@ -56,23 +56,21 @@ func getClaimValue(t *testing.T, c client.Client, name string) string {
 
 func TestWriteCOOStatus(t *testing.T) {
 	tests := []struct {
-		name              string
-		olmAvailable      bool
-		objects           []client.Object
-		expectedInstalled string
-		expectedManagedBy string
-		expectNoClaims    bool
+		name           string
+		olmAvailable   bool
+		objects        []client.Object
+		expectedStatus string
+		expectNoClaim  bool
 	}{
 		{
-			name:           "OLM not available: no-op",
-			olmAvailable:   false,
-			expectNoClaims: true,
+			name:          "OLM not available: no-op",
+			olmAvailable:  false,
+			expectNoClaim: true,
 		},
 		{
-			name:              "no subscriptions: COO not installed",
-			olmAvailable:      true,
-			expectedInstalled: "false",
-			expectedManagedBy: "none",
+			name:           "no subscriptions: not installed",
+			olmAvailable:   true,
+			expectedStatus: CooStatusNotInstalled,
 		},
 		{
 			name:         "COO installed by external party",
@@ -80,8 +78,7 @@ func TestWriteCOOStatus(t *testing.T) {
 			objects: []client.Object{
 				newCOOSubscription("my-coo", "openshift-operators", nil),
 			},
-			expectedInstalled: "true",
-			expectedManagedBy: "external",
+			expectedStatus: CooStatusExternal,
 		},
 		{
 			name:         "COO installed by MCOA",
@@ -91,15 +88,14 @@ func TestWriteCOOStatus(t *testing.T) {
 					mcoaReleaseLabel: mcoaReleaseName,
 				}),
 			},
-			expectedInstalled: "true",
-			expectedManagedBy: "mcoa",
+			expectedStatus: CooStatusMCOA,
 		},
 		{
-			name:         "unrelated subscription: COO not installed",
+			name:         "unrelated subscription: not installed",
 			olmAvailable: true,
 			objects: []client.Object{
 				func() *unstructured.Unstructured {
-					sub := &unstructured.Unstructured{
+					return &unstructured.Unstructured{
 						Object: map[string]any{
 							"apiVersion": "operators.coreos.com/v1alpha1",
 							"kind":       "Subscription",
@@ -112,27 +108,31 @@ func TestWriteCOOStatus(t *testing.T) {
 							},
 						},
 					}
-					return sub
 				}(),
 			},
-			expectedInstalled: "false",
-			expectedManagedBy: "none",
+			expectedStatus: CooStatusNotInstalled,
 		},
 		{
-			name:         "updates existing claims",
+			name:         "updates existing claim",
 			olmAvailable: true,
 			objects: []client.Object{
 				&clusterv1alpha1.ClusterClaim{
-					ObjectMeta: metav1.ObjectMeta{Name: CooInstalledClaimName},
-					Spec:       clusterv1alpha1.ClusterClaimSpec{Value: "true"},
-				},
-				&clusterv1alpha1.ClusterClaim{
-					ObjectMeta: metav1.ObjectMeta{Name: CooManagedByClaimName},
-					Spec:       clusterv1alpha1.ClusterClaimSpec{Value: "mcoa"},
+					ObjectMeta: metav1.ObjectMeta{Name: CooStatusClaimName},
+					Spec:       clusterv1alpha1.ClusterClaimSpec{Value: CooStatusMCOA},
 				},
 			},
-			expectedInstalled: "false",
-			expectedManagedBy: "none",
+			expectedStatus: CooStatusNotInstalled,
+		},
+		{
+			name:         "multiple subscriptions with one external: external wins",
+			olmAvailable: true,
+			objects: []client.Object{
+				newCOOSubscription("coo-mcoa", "openshift-operators", map[string]string{
+					mcoaReleaseLabel: mcoaReleaseName,
+				}),
+				newCOOSubscription("coo-admin", "other-namespace", nil),
+			},
+			expectedStatus: CooStatusExternal,
 		},
 	}
 
@@ -150,37 +150,33 @@ func TestWriteCOOStatus(t *testing.T) {
 			err := r.WriteCOOStatus(context.Background())
 			require.NoError(t, err)
 
-			if tc.expectNoClaims {
+			if tc.expectNoClaim {
 				claim := &clusterv1alpha1.ClusterClaim{}
-				assert.Error(t, c.Get(context.Background(), client.ObjectKey{Name: CooInstalledClaimName}, claim))
+				assert.Error(t, c.Get(context.Background(), client.ObjectKey{Name: CooStatusClaimName}, claim))
 				return
 			}
 
-			assert.Equal(t, tc.expectedInstalled, getClaimValue(t, c, CooInstalledClaimName))
-			assert.Equal(t, tc.expectedManagedBy, getClaimValue(t, c, CooManagedByClaimName))
+			assert.Equal(t, tc.expectedStatus, getClaimValue(t, c, CooStatusClaimName))
 		})
 	}
 }
 
 func TestGetCOOSubscriptionStatus(t *testing.T) {
 	tests := []struct {
-		name              string
-		objects           []client.Object
-		expectedInstalled string
-		expectedManagedBy string
+		name           string
+		objects        []client.Object
+		expectedStatus string
 	}{
 		{
-			name:              "no subscriptions",
-			expectedInstalled: "false",
-			expectedManagedBy: "",
+			name:           "no subscriptions",
+			expectedStatus: CooStatusNotInstalled,
 		},
 		{
 			name: "COO subscription without MCOA label",
 			objects: []client.Object{
 				newCOOSubscription("coo", "openshift-operators", nil),
 			},
-			expectedInstalled: "true",
-			expectedManagedBy: "external",
+			expectedStatus: CooStatusExternal,
 		},
 		{
 			name: "COO subscription with MCOA label",
@@ -189,8 +185,23 @@ func TestGetCOOSubscriptionStatus(t *testing.T) {
 					mcoaReleaseLabel: mcoaReleaseName,
 				}),
 			},
-			expectedInstalled: "true",
-			expectedManagedBy: "mcoa",
+			expectedStatus: CooStatusMCOA,
+		},
+		{
+			name: "multiple COO subscriptions all MCOA",
+			objects: []client.Object{
+				newCOOSubscription("coo-1", "ns-1", map[string]string{mcoaReleaseLabel: mcoaReleaseName}),
+				newCOOSubscription("coo-2", "ns-2", map[string]string{mcoaReleaseLabel: mcoaReleaseName}),
+			},
+			expectedStatus: CooStatusMCOA,
+		},
+		{
+			name: "multiple COO subscriptions one external",
+			objects: []client.Object{
+				newCOOSubscription("coo-mcoa", "ns-1", map[string]string{mcoaReleaseLabel: mcoaReleaseName}),
+				newCOOSubscription("coo-admin", "ns-2", nil),
+			},
+			expectedStatus: CooStatusExternal,
 		},
 	}
 
@@ -199,10 +210,9 @@ func TestGetCOOSubscriptionStatus(t *testing.T) {
 			s := newTestScheme(t)
 			c := fake.NewClientBuilder().WithScheme(s).WithObjects(tc.objects...).Build()
 
-			installed, managedBy, err := getCOOSubscriptionStatus(context.Background(), c)
+			status, err := getCOOSubscriptionStatus(context.Background(), c)
 			require.NoError(t, err)
-			assert.Equal(t, tc.expectedInstalled, installed)
-			assert.Equal(t, tc.expectedManagedBy, managedBy)
+			assert.Equal(t, tc.expectedStatus, status)
 		})
 	}
 }

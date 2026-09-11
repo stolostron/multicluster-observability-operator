@@ -99,7 +99,7 @@ func (r *MCOAAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			return ctrl.Result{}, fmt.Errorf("failed to restore OBO CRDs after event on %s: %w", req.Name, err)
 		}
 
-	case req.Name == CooInstalledClaimName:
+	case req.Name == CooStatusClaimName:
 		if err := r.WriteCOOStatus(ctx); err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to update COO status ClusterClaims: %w", err)
 		}
@@ -151,7 +151,7 @@ func (r *MCOAAgentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			subscriptionUnstructured(),
 			handler.EnqueueRequestsFromMapFunc(func(_ context.Context, _ client.Object) []reconcile.Request {
 				return []reconcile.Request{{NamespacedName: client.ObjectKey{
-					Name:      CooInstalledClaimName,
+					Name:      CooStatusClaimName,
 					Namespace: "",
 				}}}
 			}),
