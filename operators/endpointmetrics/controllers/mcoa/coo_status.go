@@ -16,6 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	clusterv1alpha1 "open-cluster-management.io/api/cluster/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 const (
@@ -54,23 +55,14 @@ func WriteCOOStatus(ctx context.Context, c client.Client, log logr.Logger) error
 }
 
 func ensureClusterClaim(ctx context.Context, c client.Client, name, value string) error {
-	claim := &clusterv1alpha1.ClusterClaim{}
-	err := c.Get(ctx, client.ObjectKey{Name: name}, claim)
-	if errors.IsNotFound(err) {
-		claim = &clusterv1alpha1.ClusterClaim{
-			ObjectMeta: metav1.ObjectMeta{Name: name},
-			Spec:       clusterv1alpha1.ClusterClaimSpec{Value: value},
-		}
-		return c.Create(ctx, claim)
+	claim := &clusterv1alpha1.ClusterClaim{
+		ObjectMeta: metav1.ObjectMeta{Name: name},
 	}
-	if err != nil {
-		return err
-	}
-	if claim.Spec.Value != value {
+	_, err := controllerutil.CreateOrUpdate(ctx, c, claim, func() error {
 		claim.Spec.Value = value
-		return c.Update(ctx, claim)
-	}
-	return nil
+		return nil
+	})
+	return err
 }
 
 func getCOOSubscriptionStatus(ctx context.Context, c client.Client) (installed string, managedBy string, err error) {
