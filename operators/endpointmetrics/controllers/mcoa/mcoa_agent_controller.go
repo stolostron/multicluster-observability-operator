@@ -83,12 +83,9 @@ func NewMCOAAgentReconciler(
 func (r *MCOAAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	r.Log.V(1).Info("Reconciling MCOA Agent", "name", req.Name, "namespace", req.Namespace)
 
-	var cooStatusErr error
-	if r.OLMAvailable {
-		cooStatusErr = WriteCOOStatus(ctx, r.Client, r.Log)
-		if cooStatusErr != nil {
-			r.Log.Error(cooStatusErr, "failed to update COO status ClusterClaims")
-		}
+	cooStatusErr := r.WriteCOOStatus(ctx)
+	if cooStatusErr != nil {
+		r.Log.Error(cooStatusErr, "failed to update COO status ClusterClaims")
 	}
 
 	switch {

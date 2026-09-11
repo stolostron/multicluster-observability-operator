@@ -8,7 +8,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -33,24 +32,29 @@ const (
 // WriteCOOStatus checks whether a COO Subscription exists on the spoke and
 // writes the result as ClusterClaims. The OCM registration agent automatically
 // syncs these to ManagedCluster.Status.ClusterClaims on the hub.
-func WriteCOOStatus(ctx context.Context, c client.Client, log logr.Logger) error {
-	installed, managedBy, err := getCOOSubscriptionStatus(ctx, c)
+// On non-OCP clusters (OLMAvailable=false), this is a no-op.
+func (r *MCOAAgentReconciler) WriteCOOStatus(ctx context.Context) error {
+	if !r.OLMAvailable {
+		return nil
+	}
+
+	installed, managedBy, err := getCOOSubscriptionStatus(ctx, r.Client)
 	if err != nil {
 		return fmt.Errorf("failed to check COO subscription: %w", err)
 	}
 
-	if err := ensureClusterClaim(ctx, c, CooInstalledClaimName, installed); err != nil {
+	if err := ensureClusterClaim(ctx, r.Client, CooInstalledClaimName, installed); err != nil {
 		return fmt.Errorf("failed to ensure ClusterClaim %s: %w", CooInstalledClaimName, err)
 	}
 
 	if managedBy == "" {
 		managedBy = "none"
 	}
-	if err := ensureClusterClaim(ctx, c, CooManagedByClaimName, managedBy); err != nil {
+	if err := ensureClusterClaim(ctx, r.Client, CooManagedByClaimName, managedBy); err != nil {
 		return fmt.Errorf("failed to ensure ClusterClaim %s: %w", CooManagedByClaimName, err)
 	}
 
-	log.V(1).Info("COO status ClusterClaims updated", "installed", installed, "managedBy", managedBy)
+	r.Log.V(1).Info("COO status ClusterClaims updated", "installed", installed, "managedBy", managedBy)
 	return nil
 }
 
