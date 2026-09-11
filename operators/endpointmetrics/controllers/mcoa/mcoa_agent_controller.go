@@ -83,11 +83,6 @@ func NewMCOAAgentReconciler(
 func (r *MCOAAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	r.Log.V(1).Info("Reconciling MCOA Agent", "name", req.Name, "namespace", req.Namespace)
 
-	cooStatusErr := r.WriteCOOStatus(ctx)
-	if cooStatusErr != nil {
-		r.Log.Error(cooStatusErr, "failed to update COO status ClusterClaims")
-	}
-
 	switch {
 	case req.Name == operatorconfig.OCPClusterMonitoringConfigMapName && req.Namespace == operatorconfig.OCPClusterMonitoringNamespace:
 		if err := r.ReconcileCMOPlatformConfig(ctx); err != nil {
@@ -104,13 +99,15 @@ func (r *MCOAAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			return ctrl.Result{}, fmt.Errorf("failed to restore OBO CRDs after event on %s: %w", req.Name, err)
 		}
 
+	case req.Name == CooInstalledClaimName:
+		if err := r.WriteCOOStatus(ctx); err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to update COO status ClusterClaims: %w", err)
+		}
+
 	default:
 		r.Log.V(1).Info("Ignoring event for unmanaged resource", "name", req.Name, "namespace", req.Namespace)
 	}
 
-	if cooStatusErr != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to update COO status ClusterClaims: %w", cooStatusErr)
-	}
 	return ctrl.Result{}, nil
 }
 
