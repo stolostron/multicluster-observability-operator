@@ -14,7 +14,9 @@ import (
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/tools/events"
 	ctrl "sigs.k8s.io/controller-runtime"
 	ctrlbuilder "sigs.k8s.io/controller-runtime/pkg/builder"
@@ -40,6 +42,7 @@ type MCOAAgentReconciler struct {
 	AccessorSecret                string
 	EnablePlatformAlertForwarding bool
 	EnableUWLAlertForwarding      bool
+	OLMAvailable                  bool
 }
 
 // NewMCOAAgentReconciler creates a new MCOAAgentReconciler.
@@ -57,6 +60,7 @@ func NewMCOAAgentReconciler(
 	accessorSecret string,
 	enablePlatformAlertForwarding bool,
 	enableUWLAlertForwarding bool,
+	olmAvailable bool,
 ) *MCOAAgentReconciler {
 	return &MCOAAgentReconciler{
 		Client:                        client,
@@ -72,6 +76,7 @@ func NewMCOAAgentReconciler(
 		AccessorSecret:                accessorSecret,
 		EnablePlatformAlertForwarding: enablePlatformAlertForwarding,
 		EnableUWLAlertForwarding:      enableUWLAlertForwarding,
+		OLMAvailable:                  olmAvailable,
 	}
 }
 
@@ -83,39 +88,33 @@ func (r *MCOAAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		if err := r.ReconcileCMOPlatformConfig(ctx); err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to reconcile CMO config: %w", err)
 		}
-		return ctrl.Result{}, nil
 	case req.Name == operatorconfig.OCPUserWorkloadMonitoringConfigMap && req.Namespace == operatorconfig.OCPUserWorkloadMonitoringNamespace:
 		if err := r.ReconcileCMOUWLConfig(ctx); err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to reconcile UWL config: %w", err)
 		}
-		return ctrl.Result{}, nil
 
 	case isManagedCRDName(req.Name) && req.Namespace == "":
-		// The predicate already filters by name; the empty-namespace guard here
-		// disambiguates from any future watch source that might use the same name
-		// with a namespace (e.g. a ConfigMap named like a CRD).
 		r.Log.Info("OBO CRD event, re-applying all managed CRDs", "crd", req.Name)
 		if err := DeployCRDs(ctx, r.Client); err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to restore OBO CRDs after event on %s: %w", req.Name, err)
 		}
-		return ctrl.Result{}, nil
+
+	case req.Name == CooStatusClaimName:
+		if err := r.WriteCOOStatus(ctx); err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to update COO status ClusterClaims: %w", err)
+		}
 
 	default:
 		r.Log.V(1).Info("Ignoring event for unmanaged resource", "name", req.Name, "namespace", req.Namespace)
-		return ctrl.Result{}, nil
 	}
+
+	return ctrl.Result{}, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *MCOAAgentReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewControllerManagedBy(mgr).
-		// Watch ConfigMaps we manage across multiple namespaces.
-		// The cache FieldSelectors already limit this to exactly the CMs we need.
+	b := ctrl.NewControllerManagedBy(mgr).
 		For(&corev1.ConfigMap{}, ctrlbuilder.WithPredicates(observabilityendpoint.ConfigMapDataChangedPredicate("", ""))).
-		// Watch OBO CRDs with metadata-only to avoid caching large OpenAPI validation schemas.
-		// CRDs are cluster-scoped so EnqueueRequestForObject produces the correct name-only key.
-		// Only Delete events are relevant: Create/Update events from DeployCRDs's own SSA calls
-		// would otherwise feed back into the reconciler and cause an O(N²) event storm.
 		WatchesMetadata(
 			&apiextensionsv1.CustomResourceDefinition{},
 			&handler.EnqueueRequestForObject{},
@@ -144,8 +143,34 @@ func (r *MCOAAgentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				platformMetricsCollectorComponent,
 				userWorkloadMetricsCollectorComponent,
 			)),
-		).
-		Complete(r)
+		)
+
+	if r.OLMAvailable {
+		r.Log.Info("OLM detected, watching Subscriptions for COO status")
+		b = b.Watches(
+			subscriptionUnstructured(),
+			handler.EnqueueRequestsFromMapFunc(func(_ context.Context, _ client.Object) []reconcile.Request {
+				return []reconcile.Request{{NamespacedName: client.ObjectKey{
+					Name:      CooStatusClaimName,
+					Namespace: "",
+				}}}
+			}),
+			ctrlbuilder.WithPredicates(predicate.Funcs{
+				CreateFunc: func(e event.CreateEvent) bool {
+					return isCOOSubscriptionObject(e.Object)
+				},
+				DeleteFunc: func(e event.DeleteEvent) bool {
+					return isCOOSubscriptionObject(e.Object)
+				},
+				UpdateFunc:  func(_ event.UpdateEvent) bool { return false },
+				GenericFunc: func(_ event.GenericEvent) bool { return false },
+			}),
+		)
+	} else {
+		r.Log.Info("OLM not detected, skipping Subscription watch for COO status")
+	}
+
+	return b.Complete(r)
 }
 
 func (r *MCOAAgentReconciler) mapComponentLabelToRequests(
@@ -182,4 +207,26 @@ func (r *MCOAAgentReconciler) mapComponentLabelToRequests(
 		}
 		return nil
 	}
+}
+
+func subscriptionUnstructured() *unstructured.Unstructured {
+	obj := &unstructured.Unstructured{}
+	obj.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "operators.coreos.com",
+		Version: "v1alpha1",
+		Kind:    "Subscription",
+	})
+	return obj
+}
+
+func isCOOSubscriptionObject(obj client.Object) bool {
+	if obj == nil {
+		return false
+	}
+	u, ok := obj.(*unstructured.Unstructured)
+	if !ok {
+		return obj.GetName() == cooSubscriptionName
+	}
+	specName, _, _ := unstructured.NestedString(u.Object, "spec", "name")
+	return specName == cooSubscriptionName
 }

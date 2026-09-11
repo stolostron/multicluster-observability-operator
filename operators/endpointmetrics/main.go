@@ -47,6 +47,7 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/klog/v2"
+	clusterv1alpha1 "open-cluster-management.io/api/cluster/v1alpha1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
@@ -67,6 +68,7 @@ func init() {
 	utilruntime.Must(prometheusv1.AddToScheme(scheme))
 	utilruntime.Must(hyperv1.AddToScheme(scheme))
 	utilruntime.Must(apiextensionsv1.AddToScheme(scheme))
+	utilruntime.Must(clusterv1alpha1.Install(scheme))
 
 	// Register ScrapeConfig and PrometheusAgent for the custom monitoring.rhobs/v1alpha1 API Group used by MCOA on spoke clusters
 	rhobsGroupVersion := schema.GroupVersion{Group: "monitoring.rhobs", Version: "v1alpha1"}
@@ -171,6 +173,7 @@ func doCleanup(args []string) error {
 		"",
 		false, // false forces Platform Alertmanager config removal
 		false, // false forces UWL Alertmanager config removal
+		false, // OLM not needed during cleanup
 	)
 
 	var wg sync.WaitGroup
@@ -352,6 +355,15 @@ func runMCOA(args []string) {
 		os.Exit(1)
 	}
 
+	_, olmErr := mgr.GetRESTMapper().RESTMapping(
+		schema.GroupKind{Group: "operators.coreos.com", Kind: "Subscription"},
+		"v1alpha1",
+	)
+	olmAvailable := olmErr == nil
+	if !olmAvailable {
+		setupLog.Info("OLM not detected, skipping COO status reporting")
+	}
+
 	if err = mcoa.NewMCOAAgentReconciler(
 		mgr.GetClient(),
 		ctrl.Log.WithName("controllers").WithName("mcoa-endpoint-controller"),
@@ -366,6 +378,7 @@ func runMCOA(args []string) {
 		hubAmAccessorSecret,
 		enablePlatformAlertForwarding,
 		enableUWLAlertForwarding,
+		olmAvailable,
 	).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "mcoa-endpoint-controller")
 		os.Exit(1)

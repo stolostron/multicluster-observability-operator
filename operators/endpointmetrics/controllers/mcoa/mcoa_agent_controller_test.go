@@ -24,6 +24,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/events"
+	clusterv1alpha1 "open-cluster-management.io/api/cluster/v1alpha1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -36,6 +37,7 @@ func TestMCOAAgentReconciler_Reconcile(t *testing.T) {
 	s := runtime.NewScheme()
 	require.NoError(t, corev1.AddToScheme(s))
 	require.NoError(t, ocinfrav1.AddToScheme(s))
+	require.NoError(t, clusterv1alpha1.AddToScheme(s))
 
 	// Register ScrapeConfig for the custom monitoring.rhobs/v1alpha1 API Group
 	addRhobsToScheme(t, s)
@@ -318,6 +320,7 @@ func TestMCOAAgentReconciler_Reconcile(t *testing.T) {
 				"observability-alertmanager-accessor",
 				tt.alertmanagerEndpoint != "", // enablePlatformAlertForwarding
 				!tt.disableUWLAlertForwarding,
+				true, // olmAvailable
 			)
 
 			result, err := r.Reconcile(context.Background(), tt.req)
