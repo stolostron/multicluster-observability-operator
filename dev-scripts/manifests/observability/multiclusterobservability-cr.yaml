@@ -3,6 +3,7 @@ kind: MultiClusterObservability
 metadata:
   name: observability
 spec:
+  instanceSize: minimal
   observabilityAddonSpec: {}
   capabilities:
     platform:
