@@ -18,7 +18,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: minio
-          image: docker.io/minio/minio:RELEASE.2025-09-07T16-13-09Z-cpuv1
+          image: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z-cpuv1
           imagePullPolicy: IfNotPresent
           command: ["/bin/bash", "-c"]
           args:
