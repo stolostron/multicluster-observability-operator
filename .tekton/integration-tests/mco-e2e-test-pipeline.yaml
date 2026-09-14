@@ -80,7 +80,7 @@ spec:
                   value: stepactions/eaas-get-latest-openshift-version-by-prefix/0.1/eaas-get-latest-openshift-version-by-prefix.yaml
             params:
               - name: prefix
-                value: "5.0."
+                value: "4.21."
           - name: create-cluster
             ref:
               resolver: git
@@ -145,7 +145,7 @@ spec:
                   value: stepactions/eaas-get-latest-openshift-version-by-prefix/0.1/eaas-get-latest-openshift-version-by-prefix.yaml
             params:
               - name: prefix
-                value: "5.0."
+                value: "4.21."
           - name: create-cluster
             ref:
               resolver: git
