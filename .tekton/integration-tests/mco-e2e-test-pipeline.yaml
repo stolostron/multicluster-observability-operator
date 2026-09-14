@@ -22,10 +22,10 @@ spec:
       default: 'mco-e2e-tests'
     - name: ACM_VERSION
       description: 'ACM release version for downstream dev catalog channel'
-      default: '5.0'
+      default: '5.1'
     - name: MCE_VERSION
       description: 'MCE release version for downstream dev catalog channel'
-      default: '5.0'
+      default: '5.1'
     - name: DEBUG_DUMP_CREDENTIALS
       description: 'When "true", print hub/managed cluster kubeconfigs and admin passwords to the pipeline logs for manual debugging. ⚠️ SECURITY: Pipeline logs may be accessible to unauthorized users. Only enable for ephemeral test failures where clusters are destroyed within 2h.'
       default: 'false'
@@ -80,7 +80,7 @@ spec:
                   value: stepactions/eaas-get-latest-openshift-version-by-prefix/0.1/eaas-get-latest-openshift-version-by-prefix.yaml
             params:
               - name: prefix
-                value: "4.21."
+                value: "5.0."
           - name: create-cluster
             ref:
               resolver: git
@@ -145,7 +145,7 @@ spec:
                   value: stepactions/eaas-get-latest-openshift-version-by-prefix/0.1/eaas-get-latest-openshift-version-by-prefix.yaml
             params:
               - name: prefix
-                value: "4.21."
+                value: "5.0."
           - name: create-cluster
             ref:
               resolver: git
