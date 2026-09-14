@@ -13,3 +13,7 @@ spec:
     metricObjectStorage:
       name: thanos-object-storage
       key: thanos.yaml
+    compactStorageSize: 1Gi
+    receiveStorageSize: 1Gi
+    ruleStorageSize: 1Gi
+    storeStorageSize: 1Gi
