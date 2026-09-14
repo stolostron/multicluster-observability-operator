@@ -1,0 +1,645 @@
+---
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  annotations:
+    pipelinesascode.tekton.dev/task: "[mco-install, mco-e2e-tests]"
+  name: mco-e2e-tests-pipeline
+spec:
+  description: |
+    This pipeline automates the process of running end-to-end tests for MCO
+    using HyperShift-based ephemeral clusters. The pipeline provisions a hub and
+    a managed cluster, installs OCM hub/spoke core and the MCO operator via the
+    existing setup scripts, imports the managed cluster, then runs the Ginkgo e2e
+    test suite via the existing run-e2e-tests.sh script.
+  params:
+    - name: SNAPSHOT
+      description: 'The JSON string representing the snapshot of the application under test.'
+      default: '{"components": [{"name":"test-app", "containerImage": "quay.io/example/repo:latest"}]}'
+      type: string
+    - name: test-name
+      description: 'The name of the test corresponding to a defined Konflux integration test.'
+      default: 'mco-e2e-tests'
+    - name: namespace
+      description: 'Namespace for MCO observability components'
+      default: 'open-cluster-management-observability'
+    - name: ACM_VERSION
+      description: 'ACM release version for downstream dev catalog channel'
+      default: '5.0'
+    - name: MCE_VERSION
+      description: 'MCE release version for downstream dev catalog channel'
+      default: '5.0'
+    - name: DEBUG_DUMP_CREDENTIALS
+      description: 'When "true", print hub/managed cluster kubeconfigs and admin passwords to the pipeline logs for manual debugging. Clusters are destroyed when the run ends (or after 2h), so this is the only window to grab them.'
+      default: 'false'
+  tasks:
+    - name: eaas-provision-space
+      taskRef:
+        resolver: git
+        params:
+          - name: url
+            value: https://github.com/konflux-ci/build-definitions.git
+          - name: revision
+            value: main
+          - name: pathInRepo
+            value: task/eaas-provision-space/0.1/eaas-provision-space.yaml
+      params:
+        - name: ownerKind
+          value: PipelineRun
+        - name: ownerName
+          value: $(context.pipelineRun.name)
+        - name: ownerUid
+          value: $(context.pipelineRun.uid)
+    - name: provision-hub
+      runAfter:
+        - eaas-provision-space
+      taskSpec:
+        results:
+          - name: clusterName
+            value: "$(steps.create-cluster.results.clusterName)"
+        steps:
+          - name: get-supported-versions
+            ref:
+              resolver: git
+              params:
+                - name: url
+                  value: https://github.com/konflux-ci/build-definitions.git
+                - name: revision
+                  value: main
+                - name: pathInRepo
+                  value: stepactions/eaas-get-supported-ephemeral-cluster-versions/0.1/eaas-get-supported-ephemeral-cluster-versions.yaml
+            params:
+              - name: eaasSpaceSecretRef
+                value: $(tasks.eaas-provision-space.results.secretRef)
+          - name: pick-version
+            ref:
+              resolver: git
+              params:
+                - name: url
+                  value: https://github.com/konflux-ci/build-definitions.git
+                - name: revision
+                  value: main
+                - name: pathInRepo
+                  value: stepactions/eaas-get-latest-openshift-version-by-prefix/0.1/eaas-get-latest-openshift-version-by-prefix.yaml
+            params:
+              - name: prefix
+                value: "4.21."
+          - name: create-cluster
+            ref:
+              resolver: git
+              params:
+                - name: url
+                  value: https://github.com/konflux-ci/build-definitions.git
+                - name: revision
+                  value: main
+                - name: pathInRepo
+                  value: stepactions/eaas-create-ephemeral-cluster-hypershift-aws/0.1/eaas-create-ephemeral-cluster-hypershift-aws.yaml
+            params:
+              - name: eaasSpaceSecretRef
+                value: $(tasks.eaas-provision-space.results.secretRef)
+              - name: version
+                value: "$(steps.pick-version.results.version)"
+              - name: instanceType
+                value: "m5.2xlarge"
+              - name: timeout
+                value: "40m"
+              - name: imageContentSources
+                value: |
+                  - source: registry.redhat.io/rhacm2
+                    mirrors:
+                      - quay.io:443/acm-d
+                      - quay.io/redhat-user-workloads/crt-redhat-acm-tenant
+                  - source: registry.redhat.io/multicluster-engine
+                    mirrors:
+                      - quay.io:443/acm-d
+                  - source: registry.access.redhat.com/openshift4/ose-oauth-proxy
+                    mirrors:
+                      - registry.redhat.io/openshift4/ose-oauth-proxy
+    - name: provision-managed
+      runAfter:
+        - eaas-provision-space
+      taskSpec:
+        results:
+          - name: clusterName
+            value: "$(steps.create-cluster.results.clusterName)"
+        steps:
+          - name: get-supported-versions
+            ref:
+              resolver: git
+              params:
+                - name: url
+                  value: https://github.com/konflux-ci/build-definitions.git
+                - name: revision
+                  value: main
+                - name: pathInRepo
+                  value: stepactions/eaas-get-supported-ephemeral-cluster-versions/0.1/eaas-get-supported-ephemeral-cluster-versions.yaml
+            params:
+              - name: eaasSpaceSecretRef
+                value: $(tasks.eaas-provision-space.results.secretRef)
+          - name: pick-version
+            ref:
+              resolver: git
+              params:
+                - name: url
+                  value: https://github.com/konflux-ci/build-definitions.git
+                - name: revision
+                  value: main
+                - name: pathInRepo
+                  value: stepactions/eaas-get-latest-openshift-version-by-prefix/0.1/eaas-get-latest-openshift-version-by-prefix.yaml
+            params:
+              - name: prefix
+                value: "4.21."
+          - name: create-cluster
+            ref:
+              resolver: git
+              params:
+                - name: url
+                  value: https://github.com/konflux-ci/build-definitions.git
+                - name: revision
+                  value: main
+                - name: pathInRepo
+                  value: stepactions/eaas-create-ephemeral-cluster-hypershift-aws/0.1/eaas-create-ephemeral-cluster-hypershift-aws.yaml
+            params:
+              - name: eaasSpaceSecretRef
+                value: $(tasks.eaas-provision-space.results.secretRef)
+              - name: version
+                value: "$(steps.pick-version.results.version)"
+              - name: instanceType
+                value: "m5.xlarge"
+              - name: timeout
+                value: "40m"
+              - name: imageContentSources
+                value: |
+                  - source: registry.redhat.io/rhacm2
+                    mirrors:
+                      - quay.io:443/acm-d
+                      - quay.io/redhat-user-workloads/crt-redhat-acm-tenant
+                  - source: registry.redhat.io/multicluster-engine
+                    mirrors:
+                      - quay.io:443/acm-d
+                  - source: registry.access.redhat.com/openshift4/ose-oauth-proxy
+                    mirrors:
+                      - registry.redhat.io/openshift4/ose-oauth-proxy
+    - name: mco-install
+      description: Install ACM via downstream dev catalog, MCO operator, and import managed cluster
+      runAfter:
+        - provision-hub
+        - provision-managed
+      params:
+        - name: SNAPSHOT
+          value: $(params.SNAPSHOT)
+        - name: namespace
+          value: "$(params.namespace)"
+        - name: ACM_VERSION
+          value: "$(params.ACM_VERSION)"
+        - name: MCE_VERSION
+          value: "$(params.MCE_VERSION)"
+        - name: DEBUG_DUMP_CREDENTIALS
+          value: "$(params.DEBUG_DUMP_CREDENTIALS)"
+      taskSpec:
+        params:
+          - name: SNAPSHOT
+          - name: namespace
+            type: string
+          - name: ACM_VERSION
+            type: string
+          - name: MCE_VERSION
+            type: string
+          - name: DEBUG_DUMP_CREDENTIALS
+            type: string
+        volumes:
+          - name: credentials
+            emptyDir: {}
+        steps:
+          - name: get-hub-kubeconfig
+            ref:
+              resolver: git
+              params:
+                - name: url
+                  value: https://github.com/konflux-ci/build-definitions.git
+                - name: revision
+                  value: main
+                - name: pathInRepo
+                  value: stepactions/eaas-get-ephemeral-cluster-credentials/0.1/eaas-get-ephemeral-cluster-credentials.yaml
+            params:
+              - name: eaasSpaceSecretRef
+                value: $(tasks.eaas-provision-space.results.secretRef)
+              - name: clusterName
+                value: "$(tasks.provision-hub.results.clusterName)"
+              - name: credentials
+                value: credentials
+          - name: copy-pull-secret
+            ref:
+              resolver: git
+              params:
+                - name: url
+                  value: https://github.com/konflux-ci/build-definitions.git
+                - name: revision
+                  value: main
+                - name: pathInRepo
+                  value: stepactions/eaas-copy-secrets-to-ephemeral-cluster/0.1/eaas-copy-secrets-to-ephemeral-cluster.yaml
+            params:
+              - name: credentials
+                value: credentials
+              - name: kubeconfig
+                value: "$(steps.get-hub-kubeconfig.results.kubeconfig)"
+              - name: namespace
+                value: openshift-marketplace
+              - name: labelSelector
+                value: "konflux-copy=acm-d-pull-secret"
+          - name: get-managed-kubeconfig
+            ref:
+              resolver: git
+              params:
+                - name: url
+                  value: https://github.com/konflux-ci/build-definitions.git
+                - name: revision
+                  value: main
+                - name: pathInRepo
+                  value: stepactions/eaas-get-ephemeral-cluster-credentials/0.1/eaas-get-ephemeral-cluster-credentials.yaml
+            params:
+              - name: eaasSpaceSecretRef
+                value: $(tasks.eaas-provision-space.results.secretRef)
+              - name: clusterName
+                value: "$(tasks.provision-managed.results.clusterName)"
+              - name: credentials
+                value: credentials
+          - name: copy-pull-secret-to-managed
+            env:
+              - name: HUB_KUBECONFIG
+                value: "/credentials/$(steps.get-hub-kubeconfig.results.kubeconfig)"
+              - name: MANAGED_KUBECONFIG
+                value: "/credentials/$(steps.get-managed-kubeconfig.results.kubeconfig)"
+            volumeMounts:
+              - name: credentials
+                mountPath: /credentials
+            image: registry.redhat.io/openshift4/ose-cli:latest
+            script: |
+              #!/usr/bin/env bash
+              set -exo pipefail
+
+              echo "=== Setting up pull secret for managed cluster using HyperShift Global Pull Secret ==="
+
+              # Install jq
+              dnf -y install jq
+
+              # Extract quay.io credentials from hub cluster's acm-mco-konflux-e2e secret
+              QUAY_AUTH=$(oc --kubeconfig="${HUB_KUBECONFIG}" get secret acm-mco-konflux-e2e \
+                -n openshift-marketplace -o jsonpath='{.data.\.dockerconfigjson}' | \
+                base64 -d | jq -r '.auths["quay.io:443"].auth // .auths["quay.io"].auth // empty')
+
+              if [[ -z "$QUAY_AUTH" ]]; then
+                echo "ERROR: No quay.io auth found in acm-mco-konflux-e2e secret"
+                exit 1
+              fi
+
+              # Create pull secret with only quay.io credentials
+              jq -n --arg auth "${QUAY_AUTH}" \
+                '{"auths": {"quay.io:443": {"auth": $auth, "email": ""}}}' \
+                > /tmp/pull-secret.json
+
+              # Create additional-pull-secret in kube-system (HyperShift Global Pull Secret feature)
+              echo "Creating additional-pull-secret in kube-system..."
+              oc --kubeconfig="${MANAGED_KUBECONFIG}" create secret generic additional-pull-secret \
+                -n kube-system \
+                --from-file=.dockerconfigjson=/tmp/pull-secret.json \
+                --type=kubernetes.io/dockerconfigjson \
+                --dry-run=client -o yaml | \
+                oc --kubeconfig="${MANAGED_KUBECONFIG}" apply -f -
+
+              # Label nodes to enable global-pull-secret sync
+              echo "Labeling nodes for global-pull-secret sync..."
+              oc --kubeconfig="${MANAGED_KUBECONFIG}" label nodes --all \
+                hypershift.openshift.io/nodepool-globalps-enabled=true --overwrite 2>/dev/null || true
+
+              # Wait for HCCO to create global-pull-secret
+              echo "Waiting for global-pull-secret to be created by HCCO..."
+              for i in $(seq 1 30); do
+                if oc --kubeconfig="${MANAGED_KUBECONFIG}" get secret global-pull-secret -n kube-system &>/dev/null; then
+                  echo "global-pull-secret created successfully"
+                  break
+                fi
+                if [[ $i -eq 30 ]]; then
+                  echo "WARNING: global-pull-secret did not appear after 5 minutes"
+                fi
+                sleep 10
+              done
+
+              echo "Done. global-pull-secret-syncer will sync credentials to nodes."
+          - name: dump-credentials
+            env:
+              - name: DEBUG_DUMP_CREDENTIALS
+                value: "$(params.DEBUG_DUMP_CREDENTIALS)"
+              - name: HUB_API_SERVER_URL
+                value: "$(steps.get-hub-kubeconfig.results.apiServerURL)"
+              - name: HUB_CONSOLE_URL
+                value: "$(steps.get-hub-kubeconfig.results.consoleURL)"
+              - name: HUB_USERNAME
+                value: "$(steps.get-hub-kubeconfig.results.username)"
+              - name: HUB_PASSWORD_PATH
+                value: "$(steps.get-hub-kubeconfig.results.passwordPath)"
+              - name: HUB_KUBECONFIG_PATH
+                value: "$(steps.get-hub-kubeconfig.results.kubeconfig)"
+              - name: MANAGED_API_SERVER_URL
+                value: "$(steps.get-managed-kubeconfig.results.apiServerURL)"
+              - name: MANAGED_CONSOLE_URL
+                value: "$(steps.get-managed-kubeconfig.results.consoleURL)"
+              - name: MANAGED_USERNAME
+                value: "$(steps.get-managed-kubeconfig.results.username)"
+              - name: MANAGED_PASSWORD_PATH
+                value: "$(steps.get-managed-kubeconfig.results.passwordPath)"
+              - name: MANAGED_KUBECONFIG_PATH
+                value: "$(steps.get-managed-kubeconfig.results.kubeconfig)"
+            volumeMounts:
+              - name: credentials
+                mountPath: /credentials
+            image: registry.redhat.io/openshift4/ose-cli:latest
+            script: |
+              #!/usr/bin/env bash
+              set -euo pipefail
+
+              if [[ "${DEBUG_DUMP_CREDENTIALS}" != "true" ]]; then
+                echo "DEBUG_DUMP_CREDENTIALS is not 'true' — skipping credential dump."
+                exit 0
+              fi
+
+              echo "############################################################"
+              echo "# WARNING: cluster admin credentials follow. Ephemeral      #"
+              echo "# clusters are destroyed when this run ends (or after 2h)   #"
+              echo "# — copy what you need now.                                 #"
+              echo "############################################################"
+
+              echo "=== HUB CLUSTER ==="
+              echo "API Server:  ${HUB_API_SERVER_URL}"
+              echo "Console:     ${HUB_CONSOLE_URL}"
+              echo "Username:    ${HUB_USERNAME}"
+              echo "--- HUB password ---"
+              cat "/credentials/${HUB_PASSWORD_PATH}"; echo
+              echo "--- HUB kubeconfig (base64 — decode with: base64 -d) ---"
+              base64 -w0 "/credentials/${HUB_KUBECONFIG_PATH}"; echo
+
+              echo "=== MANAGED CLUSTER ==="
+              echo "API Server:  ${MANAGED_API_SERVER_URL}"
+              echo "Console:     ${MANAGED_CONSOLE_URL}"
+              echo "Username:    ${MANAGED_USERNAME}"
+              echo "--- MANAGED password ---"
+              cat "/credentials/${MANAGED_PASSWORD_PATH}"; echo
+              echo "--- MANAGED kubeconfig (base64 — decode with: base64 -d) ---"
+              base64 -w0 "/credentials/${MANAGED_KUBECONFIG_PATH}"; echo
+          - name: install
+            env:
+              - name: SNAPSHOT
+                value: $(params.SNAPSHOT)
+              - name: KUBECONFIG
+                value: "/credentials/$(steps.get-hub-kubeconfig.results.kubeconfig)"
+              - name: MANAGED_KUBECONFIG
+                value: "/credentials/$(steps.get-managed-kubeconfig.results.kubeconfig)"
+              - name: ACM_VERSION
+                value: $(params.ACM_VERSION)
+              - name: MCE_VERSION
+                value: $(params.MCE_VERSION)
+            volumeMounts:
+              - name: credentials
+                mountPath: /credentials
+            image: registry.redhat.io/openshift4/ose-cli:latest
+            script: |
+              #!/usr/bin/env bash
+              set -exo pipefail
+
+              echo "=== Installing dependencies ==="
+              dnf -y install jq git gettext
+
+              echo "=== Cloning MCO repository at PR revision ==="
+              GIT_URL=$(echo "${SNAPSHOT}" | jq -r '[.components[] | select(.name | test("^multicluster-observability-operator-acm-"))] | .[0].source.git.url')
+              GIT_REVISION=$(echo "${SNAPSHOT}" | jq -r '[.components[] | select(.name | test("^multicluster-observability-operator-acm-"))] | .[0].source.git.revision')
+              echo "Source: ${GIT_URL} @ ${GIT_REVISION}"
+              git clone "${GIT_URL}" /tmp/mco
+              cd /tmp/mco
+              git checkout "${GIT_REVISION}"
+
+              echo "=== Extracting component images from SNAPSHOT ==="
+              snapshot_image() {
+                echo "${SNAPSHOT}" | jq -r "[.components[] | select(.name | test(\"^${1}-acm-\"))] | .[0].containerImage"
+              }
+
+              export MCO_IMAGE=$(snapshot_image "multicluster-observability-operator")
+              export ENDPOINT_IMAGE=$(snapshot_image "endpoint-monitoring-operator")
+              export METRICS_COLLECTOR_IMAGE=$(snapshot_image "metrics-collector")
+              export RBAC_QUERY_PROXY_IMAGE=$(snapshot_image "rbac-query-proxy")
+              export GRAFANA_DASHBOARD_LOADER_IMAGE=$(snapshot_image "grafana-dashboard-loader")
+
+              echo "MCO operator image: ${MCO_IMAGE}"
+              echo "Endpoint monitoring image: ${ENDPOINT_IMAGE}"
+              echo "Metrics collector image: ${METRICS_COLLECTOR_IMAGE}"
+              echo "RBAC query proxy image: ${RBAC_QUERY_PROXY_IMAGE}"
+              echo "Grafana dashboard loader image: ${GRAFANA_DASHBOARD_LOADER_IMAGE}"
+
+              echo "=== Injecting quay.io:443 pull credentials ==="
+              ./dev-scripts/add-pull-secret.sh
+
+              echo "=== Installing ACM via downstream dev catalog ==="
+              ./dev-scripts/setup-downstream-catalog.sh
+
+              echo "=== Applying Konflux image overrides ==="
+              ./dev-scripts/image-override.sh
+
+              echo "=== Waiting for MCO operator rollout ==="
+              TIMEOUT=600
+              ELAPSED=0
+              echo "Waiting for deployment image to update to: ${MCO_IMAGE}"
+              while true; do
+                CURRENT_IMAGE=$(oc get deploy multicluster-observability-operator \
+                  -n open-cluster-management \
+                  -o jsonpath='{.spec.template.spec.containers[0].image}' 2>/dev/null || echo "")
+                if [[ "$CURRENT_IMAGE" == "$MCO_IMAGE" ]]; then
+                  echo "Deployment image updated, waiting for rollout..."
+                  oc rollout status deploy/multicluster-observability-operator \
+                    -n open-cluster-management --timeout=300s || true
+                  break
+                fi
+                if [[ "$ELAPSED" -ge "$TIMEOUT" ]]; then
+                  echo "WARNING: Timed out waiting for deployment image update"
+                  echo "Expected: ${MCO_IMAGE}"
+                  echo "Current:  ${CURRENT_IMAGE}"
+                  oc get pods -n open-cluster-management -l name=multicluster-observability-operator -o wide
+                  break
+                fi
+                echo "Waiting for MCH to process image override... (${ELAPSED}s elapsed)"
+                sleep 15
+                ELAPSED=$((ELAPSED + 15))
+              done
+              echo "MCO pods after rollout:"
+              oc get pods -n open-cluster-management -l name=multicluster-observability-operator -o wide
+
+              echo "=== Importing managed cluster into hub ==="
+              oc create namespace managed --dry-run=client -o yaml | oc apply -f -
+
+              cat <<MCEOF | oc apply -f -
+              apiVersion: cluster.open-cluster-management.io/v1
+              kind: ManagedCluster
+              metadata:
+                name: managed
+                labels:
+                  cloud: auto-detect
+                  vendor: auto-detect
+              spec:
+                hubAcceptsClient: true
+              MCEOF
+
+              oc create secret generic auto-import-secret \
+                -n managed \
+                --from-file=kubeconfig="${MANAGED_KUBECONFIG}" \
+                --dry-run=client -o yaml | oc apply -f -
+
+              oc wait managedcluster managed \
+                --for=condition=ManagedClusterConditionAvailable=True \
+                --timeout=300s || {
+                echo "=== managedcluster did not become Available — dumping debug info ==="
+                echo "--- ManagedCluster status (hub) ---"
+                oc get managedcluster managed -o yaml
+                echo "--- Pods in managed namespace (hub) ---"
+                oc get pods -n managed -o wide
+                echo "--- Import controller logs (hub) ---"
+                oc logs -n multicluster-engine -l app=managedcluster-import-controller-v2 --tail=200 || true
+                echo "--- Events in managed namespace (hub) ---"
+                oc get events -n managed --sort-by='.lastTimestamp' | tail -40
+                echo "--- Klusterlet agent pods on the managed cluster itself ---"
+                oc --kubeconfig="${MANAGED_KUBECONFIG}" get pods -n open-cluster-management-agent -o wide || true
+                oc --kubeconfig="${MANAGED_KUBECONFIG}" get pods -n open-cluster-management-agent-addon -o wide || true
+                echo "--- Klusterlet resource on the managed cluster itself ---"
+                oc --kubeconfig="${MANAGED_KUBECONFIG}" get klusterlet -o yaml || true
+                exit 1
+              }
+
+              echo "=== Verifying managed cluster registration ==="
+              oc get managedcluster
+
+              echo "=== Deploying observability ==="
+              ./dev-scripts/setup-observability.sh || {
+                echo "=== MCO deployment failed — debugging ==="
+                oc get pods -n open-cluster-management -o wide
+                oc get pods -n open-cluster-management-observability -o wide
+                oc describe pods -n open-cluster-management -l name=multicluster-observability-operator
+                oc get multiclusterobservability observability -o yaml
+                exit 1
+              }
+
+              echo "=== Verifying MCO is using Konflux images ==="
+              oc get deploy multicluster-observability-operator -n open-cluster-management -o jsonpath='{.spec.template.spec.containers[*].image}' && echo
+
+              echo "=== MCO installation complete ==="
+    - name: mco-e2e-tests
+      description: Run MCO Ginkgo e2e test suite using existing run-e2e-tests.sh
+      runAfter:
+        - mco-install
+      params:
+        - name: SNAPSHOT
+          value: $(params.SNAPSHOT)
+        - name: namespace
+          value: "$(params.namespace)"
+      taskSpec:
+        params:
+          - name: SNAPSHOT
+          - name: namespace
+            type: string
+        volumes:
+          - name: credentials
+            emptyDir: {}
+        steps:
+          - name: get-hub-kubeconfig
+            ref:
+              resolver: git
+              params:
+                - name: url
+                  value: https://github.com/konflux-ci/build-definitions.git
+                - name: revision
+                  value: main
+                - name: pathInRepo
+                  value: stepactions/eaas-get-ephemeral-cluster-credentials/0.1/eaas-get-ephemeral-cluster-credentials.yaml
+            params:
+              - name: eaasSpaceSecretRef
+                value: $(tasks.eaas-provision-space.results.secretRef)
+              - name: clusterName
+                value: "$(tasks.provision-hub.results.clusterName)"
+              - name: credentials
+                value: credentials
+          - name: get-managed-kubeconfig
+            ref:
+              resolver: git
+              params:
+                - name: url
+                  value: https://github.com/konflux-ci/build-definitions.git
+                - name: revision
+                  value: main
+                - name: pathInRepo
+                  value: stepactions/eaas-get-ephemeral-cluster-credentials/0.1/eaas-get-ephemeral-cluster-credentials.yaml
+            params:
+              - name: eaasSpaceSecretRef
+                value: $(tasks.eaas-provision-space.results.secretRef)
+              - name: clusterName
+                value: "$(tasks.provision-managed.results.clusterName)"
+              - name: credentials
+                value: credentials
+          - name: run-e2e-tests
+            resources:
+              requests:
+                memory: 4Gi
+                cpu: "4"
+              limits:
+                memory: 8Gi
+                cpu: "8"
+            volumeMounts:
+              - name: credentials
+                mountPath: /credentials
+            env:
+              - name: SNAPSHOT
+                value: $(params.SNAPSHOT)
+              - name: KUBECONFIG
+                value: "/credentials/$(steps.get-hub-kubeconfig.results.kubeconfig)"
+              - name: MANAGED_KUBECONFIG
+                value: "/credentials/$(steps.get-managed-kubeconfig.results.kubeconfig)"
+            image: registry.redhat.io/openshift4/ose-cli:latest
+            script: |
+              #!/usr/bin/env bash
+              set -exo pipefail
+
+              echo "=== Installing dependencies ==="
+              dnf -y install jq vim unzip git make wget
+
+              echo "=== Installing Go ==="
+              curl -Lo /go.tar.gz https://go.dev/dl/go1.24.9.linux-amd64.tar.gz
+              tar -C /usr/local -xzf /go.tar.gz
+              export PATH=$PATH:/usr/local/go/bin
+              export GOPATH=/tmp/go
+              export GOBIN=/tmp/go/bin
+              export GOCACHE=/tmp/.cache/go-build
+              export PATH=$PATH:/tmp/go/bin
+              mkdir -p /tmp/go/bin $GOCACHE
+              chmod -R 777 /tmp/go/bin $GOPATH $GOCACHE
+              go version
+
+              echo "=== Cloning MCO repository at PR revision ==="
+              GIT_URL=$(echo "${SNAPSHOT}" | jq -r '[.components[] | select(.name | test("^multicluster-observability-operator-acm-"))] | .[0].source.git.url')
+              GIT_REVISION=$(echo "${SNAPSHOT}" | jq -r '[.components[] | select(.name | test("^multicluster-observability-operator-acm-"))] | .[0].source.git.revision')
+              echo "Source: ${GIT_URL} @ ${GIT_REVISION}"
+              git clone "${GIT_URL}" /tmp/mco
+              cd /tmp/mco
+              git checkout "${GIT_REVISION}"
+
+              echo "=== Extracting component images from SNAPSHOT ==="
+              export MULTICLUSTER_OBSERVABILITY_OPERATOR_IMAGE_REF=$(echo "${SNAPSHOT}" | jq -r '[.components[] | select(.name | test("^multicluster-observability-operator-acm-"))] | .[0].containerImage')
+              export ENDPOINT_MONITORING_OPERATOR_IMAGE_REF=$(echo "${SNAPSHOT}" | jq -r '[.components[] | select(.name | test("^endpoint-monitoring-operator-acm-"))] | .[0].containerImage')
+              export METRICS_COLLECTOR_IMAGE_REF=$(echo "${SNAPSHOT}" | jq -r '[.components[] | select(.name | test("^metrics-collector-acm-"))] | .[0].containerImage')
+              export RBAC_QUERY_PROXY_IMAGE_REF=$(echo "${SNAPSHOT}" | jq -r '[.components[] | select(.name | test("^rbac-query-proxy-acm-"))] | .[0].containerImage')
+              export GRAFANA_DASHBOARD_LOADER_IMAGE_REF=$(echo "${SNAPSHOT}" | jq -r '[.components[] | select(.name | test("^grafana-dashboard-loader-acm-"))] | .[0].containerImage')
+
+              echo "=== Setting up SHARED_DIR with cluster kubeconfigs ==="
+              export SHARED_DIR=/tmp/shared
+              mkdir -p "${SHARED_DIR}"
+              cp "${KUBECONFIG}" "${SHARED_DIR}/hub-1.kc"
+              cp "${MANAGED_KUBECONFIG}" "${SHARED_DIR}/managed-1.kc"
+
+              echo "=== Running run-e2e-tests.sh ==="
+              ./cicd-scripts/run-e2e-tests.sh
+
+              echo "=== All e2e tests passed ==="
