@@ -43,6 +43,16 @@ fi
 export ACM_CATALOG_TAG="${ACM_CATALOG_TAG:-latest-${ACM_VERSION}}"
 export MCE_CATALOG_TAG="${MCE_CATALOG_TAG:-latest-${MCE_VERSION}}"
 
+# ACM 5.x uses stable- channels; older versions use release-.
+major="${ACM_VERSION%%.*}"
+if [[ "$major" -ge 5 ]]; then
+  export ACM_CHANNEL="${ACM_CHANNEL:-stable-${ACM_VERSION}}"
+  export MCE_CHANNEL="${MCE_CHANNEL:-stable-${MCE_VERSION}}"
+else
+  export ACM_CHANNEL="${ACM_CHANNEL:-release-${ACM_VERSION}}"
+  export MCE_CHANNEL="${MCE_CHANNEL:-stable-${MCE_VERSION}}"
+fi
+
 require_tool envsubst "Install gettext: brew install gettext (macOS) / dnf install gettext (Fedora)"
 
 MANIFESTS="${SCRIPT_DIR}/manifests/catalog/downstream"

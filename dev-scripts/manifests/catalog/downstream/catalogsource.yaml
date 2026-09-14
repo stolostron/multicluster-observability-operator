@@ -45,7 +45,7 @@ metadata:
   name: acm-sub
   namespace: open-cluster-management
 spec:
-  channel: release-${ACM_VERSION}
+  channel: ${ACM_CHANNEL}
   installPlanApproval: Automatic
   name: advanced-cluster-management
   source: acm-custom-registry
@@ -85,7 +85,7 @@ metadata:
   name: mce-sub
   namespace: multicluster-engine
 spec:
-  channel: stable-${MCE_VERSION}
+  channel: ${MCE_CHANNEL}
   installPlanApproval: Automatic
   name: multicluster-engine
   source: multiclusterengine-catalog
