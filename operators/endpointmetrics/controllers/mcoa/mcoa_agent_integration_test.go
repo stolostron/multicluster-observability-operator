@@ -32,6 +32,7 @@ import (
 	kubescheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/utils/ptr"
+	clusterv1alpha1 "open-cluster-management.io/api/cluster/v1alpha1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/config"
@@ -56,6 +57,8 @@ func TestMain(m *testing.M) {
 
 	cvCRD := readCRDFiles(
 		filepath.Join("..", "observabilityendpoint", "testdata", "crd", "clusterversions-crd.yaml"),
+		filepath.Join("..", "observabilityendpoint", "testdata", "crd", "clusterclaims-crd.yaml"),
+		filepath.Join("..", "observabilityendpoint", "testdata", "crd", "operators.coreos.com_subscriptions.yaml"),
 		filepath.Join("crds", "monitoring.rhobs_scrapeconfigs.yaml"),
 		filepath.Join("crds", "monitoring.rhobs_prometheusagents.yaml"),
 	)
@@ -109,6 +112,7 @@ func TestMCOAAgentIntegration(t *testing.T) {
 	require.NoError(t, kubescheme.AddToScheme(s))
 	require.NoError(t, ocinfrav1.AddToScheme(s))
 	require.NoError(t, apiextensionsv1.AddToScheme(s))
+	require.NoError(t, clusterv1alpha1.AddToScheme(s))
 
 	// Register ScrapeConfig for the custom monitoring.rhobs/v1alpha1 API Group
 	addRhobsToScheme(t, s)
@@ -145,6 +149,7 @@ func TestMCOAAgentIntegration(t *testing.T) {
 		"observability-alertmanager-accessor",
 		true, // enablePlatformAlertForwarding
 		true, // enableUWLAlertForwarding
+		true, // olmAvailable
 	)
 	err = reconciler.SetupWithManager(mgr)
 	require.NoError(t, err)
@@ -341,6 +346,7 @@ func TestMCOAAgentIntegration(t *testing.T) {
 			"observability-alertmanager-accessor",
 			false, // enablePlatformAlertForwarding
 			false, // enableUWLAlertForwarding
+			true,  // olmAvailable
 		)
 
 		// Trigger reconcile by directly calling the Reconcile method on this private reconciler
@@ -393,6 +399,7 @@ func TestMCOAAgentIntegration(t *testing.T) {
 			"observability-alertmanager-accessor",
 			true,  // enablePlatformAlertForwarding
 			false, // disabled UWL alert forwarding
+			true,  // olmAvailable
 		)
 
 		// Trigger reconcile by directly calling the Reconcile method on this private reconciler
@@ -443,6 +450,7 @@ func TestMCOAAgentIntegration(t *testing.T) {
 		"observability-alertmanager-accessor",
 		true, // enablePlatformAlertForwarding
 		true, // enableUWLAlertForwarding
+		true, // olmAvailable
 	).SetupWithManager(mgr2))
 	go func() {
 		if err := mgr2.Start(ctx); err != nil && ctx.Err() == nil {
