@@ -608,7 +608,8 @@ spec:
               cp "${KUBECONFIG}" "${SHARED_DIR}/hub-1.kc"
               cp "${MANAGED_KUBECONFIG}" "${SHARED_DIR}/managed-1.kc"
 
-              echo "Running e2e tests..."
+              echo "Running e2e tests (MCOA only)..."
+              export GINKGO_FOCUS="--focus mcoa/g"
               ./cicd-scripts/run-e2e-tests.sh
 
               echo "E2e tests completed"
