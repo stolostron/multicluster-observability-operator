@@ -3,6 +3,7 @@ kind: MultiClusterObservability
 metadata:
   name: observability
 spec:
+  instanceSize: minimal
   observabilityAddonSpec: {}
   capabilities:
     platform:
@@ -13,3 +14,7 @@ spec:
     metricObjectStorage:
       name: thanos-object-storage
       key: thanos.yaml
+    compactStorageSize: 10Gi
+    receiveStorageSize: 10Gi
+    ruleStorageSize: 10Gi
+    storeStorageSize: 10Gi
