@@ -14,10 +14,12 @@ import (
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/tools/events"
+	clusterv1alpha1 "open-cluster-management.io/api/cluster/v1alpha1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	ctrlbuilder "sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -25,6 +27,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
 // MCOAAgentReconciler reconciles the MCOA components on the managed cluster.
@@ -144,6 +147,16 @@ func (r *MCOAAgentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				userWorkloadMetricsCollectorComponent,
 			)),
 		)
+
+	initCh := make(chan event.GenericEvent, 1)
+	initCh <- event.GenericEvent{
+		Object: &clusterv1alpha1.ClusterClaim{
+			ObjectMeta: metav1.ObjectMeta{Name: CooStatusClaimName},
+		},
+	}
+	b = b.WatchesRawSource(
+		source.Channel(initCh, &handler.EnqueueRequestForObject{}),
+	)
 
 	if r.OLMAvailable {
 		r.Log.Info("OLM detected, watching Subscriptions for COO status")
