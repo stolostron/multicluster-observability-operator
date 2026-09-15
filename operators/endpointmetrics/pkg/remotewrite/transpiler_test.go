@@ -511,3 +511,130 @@ func TestTranspile_MultipleRemoteWrites(t *testing.T) {
 		t.Errorf("Shared slice leakage: second spec's source label was mutated")
 	}
 }
+
+func TestTranspile_SkipsFederationRelabelConfigsAndPreservesNativeJobInstance(t *testing.T) {
+	// Replicates the exact real-world scenario from MCOA platform-metrics where
+	// process_resident_memory_bytes{job="apiserver"} stopped being collected because
+	// PrometheusAgent's federation un-mangling rules (exported_job -> job) were copied
+	// into in-cluster Prometheus remoteWrite, wiping out native job and instance labels.
+	scrapeConfig := &monitoringv1alpha1.ScrapeConfig{
+		Spec: monitoringv1alpha1.ScrapeConfigSpec{
+			Params: map[string][]string{
+				"match[]": {
+					`{__name__="process_resident_memory_bytes",job=~"apiserver|etcd"}`,
+				},
+			},
+		},
+	}
+
+	agent := &monitoringv1alpha1.PrometheusAgent{
+		Spec: monitoringv1alpha1.PrometheusAgentSpec{
+			CommonPrometheusFields: monitoringv1.CommonPrometheusFields{
+				RemoteWrite: []monitoringv1.RemoteWriteSpec{
+					{
+						Name: ptr.To("acm-observability"),
+						URL:  "https://hub.example.com/api/v1/receive",
+						WriteRelabelConfigs: []monitoringv1.RelabelConfig{
+							{
+								Action:      "replace",
+								Replacement: ptr.To("local-cluster"),
+								TargetLabel: "cluster",
+							},
+							{
+								Action:      "replace",
+								Replacement: ptr.To("cc983d7a-2cd2-4171-b55c-d978e587a978"),
+								TargetLabel: "clusterID",
+							},
+							// Federation normalization rules present on PrometheusAgent in MCOA:
+							{
+								Action:       "replace",
+								SourceLabels: []monitoringv1.LabelName{"exported_job"},
+								TargetLabel:  "job",
+							},
+							{
+								Action:       "replace",
+								SourceLabels: []monitoringv1.LabelName{"exported_instance"},
+								TargetLabel:  "instance",
+							},
+							{
+								Action: "labeldrop",
+								Regex:  "exported_job|exported_instance",
+							},
+							// An unrelated labeldrop with an exported_ prefix that must NOT be dropped
+							{
+								Action: "labeldrop",
+								Regex:  "exported_namespace",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	gotList, err := Transpile(scrapeConfig, agent)
+	if err != nil {
+		t.Fatalf("Transpile returned error: %v", err)
+	}
+	if len(gotList) != 1 {
+		t.Fatalf("Expected exactly 1 transpiled spec, got %d", len(gotList))
+	}
+
+	rwSpec := gotList[0]
+
+	// Verify that none of the federation un-mangling configs leaked into transpiled WriteRelabelConfigs
+	for _, cfg := range rwSpec.WriteRelabelConfigs {
+		for _, sl := range cfg.SourceLabels {
+			if sl == "exported_job" || sl == "exported_instance" {
+				t.Fatalf("Leaked federation source label %q into transpiled WriteRelabelConfigs", sl)
+			}
+		}
+		if cfg.Regex == "exported_job|exported_instance" {
+			t.Fatalf("Leaked federation labeldrop regex %q into transpiled WriteRelabelConfigs", cfg.Regex)
+		}
+	}
+
+	foundCustomLabelDrop := false
+	for _, cfg := range rwSpec.WriteRelabelConfigs {
+		if cfg.Regex == "exported_namespace" && strings.EqualFold(cfg.Action, "labeldrop") {
+			foundCustomLabelDrop = true
+			break
+		}
+	}
+	if !foundCustomLabelDrop {
+		t.Fatal("Expected unrelated labeldrop rule with regex 'exported_namespace' to be preserved")
+	}
+
+	// Verify relabeling behavior against a native metric from in-cluster prometheus-k8s
+	promCfgs := convertToPromRelabel(rwSpec.WriteRelabelConfigs)
+	input := labels.FromMap(map[string]string{
+		"__name__":           "process_resident_memory_bytes",
+		"job":                "apiserver",
+		"instance":           "10.0.25.89:6443",
+		"apiserver":          "kube-apiserver",
+		"namespace":          "default",
+		"exported_namespace": "test",
+	})
+	lb := labels.NewBuilder(input)
+	keep := relabel.ProcessBuilder(lb, promCfgs...)
+	if !keep {
+		t.Fatal("Expected process_resident_memory_bytes metric to be kept")
+	}
+
+	res := lb.Labels()
+	if v := res.Get("job"); v != "apiserver" {
+		t.Errorf("Native job label must be preserved, got %q", v)
+	}
+	if v := res.Get("instance"); v != "10.0.25.89:6443" {
+		t.Errorf("Native instance label must be preserved, got %q", v)
+	}
+	if v := res.Get("cluster"); v != "local-cluster" {
+		t.Errorf("Cluster identification label must be 'local-cluster', got %q", v)
+	}
+	if v := res.Get("clusterID"); v != "cc983d7a-2cd2-4171-b55c-d978e587a978" {
+		t.Errorf("ClusterID identification label must be 'cc983d7a-2cd2-4171-b55c-d978e587a978', got %q", v)
+	}
+	if v := res.Get("exported_namespace"); v != "" {
+		t.Errorf("Unrelated labeldrop should drop 'exported_namespace', got %q", v)
+	}
+}

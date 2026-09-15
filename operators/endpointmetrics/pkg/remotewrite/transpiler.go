@@ -178,7 +178,13 @@ func Transpile(scrapeConfig *monitoringv1alpha1.ScrapeConfig, agent *monitoringv
 
 		// Append identification relabel configs from the original agent remoteWrite
 		// (e.g. cluster/clusterID label assignments) after our filtering rules.
+		// Federation-specific relabel rules (exported_job/exported_instance) from
+		// PrometheusAgent are skipped because native in-cluster Prometheus already
+		// retains its original job and instance labels.
 		for _, cfg := range agentRw.WriteRelabelConfigs {
+			if isFederationRelabelConfig(cfg) {
+				continue
+			}
 			relabelConfigsCopy = append(relabelConfigsCopy, *cfg.DeepCopy())
 		}
 
@@ -224,4 +230,28 @@ func Transpile(scrapeConfig *monitoringv1alpha1.ScrapeConfig, agent *monitoringv
 	}
 
 	return specs, nil
+}
+
+// isFederationRelabelConfig returns true if a relabel config is designed to restore
+// job and instance labels that were prefixed with "exported_" during PrometheusAgent's
+// federated scraping (/federate).
+//
+// In raw metrics collection, metrics originate natively from the cluster's Prometheus
+// (e.g. prometheus-k8s) and already retain their true "job" and "instance" labels.
+// Propagating these rules into in-cluster remote_write configs causes Prometheus
+// to overwrite and delete the native job and instance labels when "exported_job"
+// is absent (since default replace regex is "(.*)" which matches empty strings).
+func isFederationRelabelConfig(cfg monitoringv1.RelabelConfig) bool {
+	for _, sl := range cfg.SourceLabels {
+		if sl == "exported_job" || sl == "exported_instance" {
+			return true
+		}
+	}
+	if cfg.TargetLabel == "exported_job" || cfg.TargetLabel == "exported_instance" {
+		return true
+	}
+	if strings.EqualFold(cfg.Action, "labeldrop") && (cfg.Regex == "exported_job|exported_instance" || cfg.Regex == "exported_instance|exported_job") {
+		return true
+	}
+	return false
 }
