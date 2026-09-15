@@ -45,7 +45,7 @@ export MCE_CATALOG_TAG="${MCE_CATALOG_TAG:-latest-${MCE_VERSION}}"
 
 # ACM 5.x uses stable- channels; older versions use release-.
 major="${ACM_VERSION%%.*}"
-if [[ "$major" -ge 5 ]]; then
+if [[ $major -ge 5 ]]; then
   export ACM_CHANNEL="${ACM_CHANNEL:-stable-${ACM_VERSION}}"
   export MCE_CHANNEL="${MCE_CHANNEL:-stable-${MCE_VERSION}}"
 else
