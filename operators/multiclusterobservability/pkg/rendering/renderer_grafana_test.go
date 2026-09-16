@@ -22,9 +22,11 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util/tlstesting"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 func TestRenderGrafana(t *testing.T) {
@@ -179,6 +181,18 @@ func TestRenderGrafana(t *testing.T) {
 					continue
 				}
 				assert.Equal(t, namespace, r.GetNamespace(), fmt.Sprintf(" resource %s/%s", r.GetKind(), r.GetName()))
+			}
+
+			// Verify TLS args on grafana oauth-proxy sidecar (container[2])
+			for _, obj := range grafanaResources {
+				if obj.GetKind() != "Deployment" {
+					continue
+				}
+				dep := &appsv1.Deployment{}
+				require.NoError(t, runtime.DefaultUnstructuredConverter.FromUnstructured(obj.Object, dep))
+				if len(dep.Spec.Template.Spec.Containers) >= 3 {
+					assertHasTLSArgs(t, dep.Spec.Template.Spec.Containers[2].Args, "grafana oauth-proxy")
+				}
 			}
 
 			tc.expect(t, grafanaResources)

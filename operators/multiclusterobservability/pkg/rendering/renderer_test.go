@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"strings"
 	"testing"
 
 	imagev1 "github.com/openshift/api/image/v1"
@@ -20,9 +21,11 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util/tlstesting"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
@@ -94,9 +97,25 @@ func TestRender(t *testing.T) {
 	}
 
 	renderer := NewMCORenderer(mchcr, kubeClient, imageClient)
-	_, err = renderer.Render(t.Context())
+	resources, err := renderer.Render(t.Context())
 	if err != nil {
 		t.Fatalf("failed to render MultiClusterObservability: %v", err)
+	}
+
+	// Verify TLS args are set on the rbac-query-proxy oauth-proxy sidecar
+	for _, obj := range resources {
+		if obj.GetKind() != "Deployment" {
+			continue
+		}
+		dep := &appsv1.Deployment{}
+		require.NoError(t, runtime.DefaultUnstructuredConverter.FromUnstructured(obj.Object, dep))
+		if !strings.Contains(dep.Name, "rbac-query-proxy") {
+			continue
+		}
+		// container[0] = rbac-query-proxy, container[1] = oauth-proxy
+		require.GreaterOrEqual(t, len(dep.Spec.Template.Spec.Containers), 2)
+		assertHasTLSArgs(t, dep.Spec.Template.Spec.Containers[0].Args, "rbac-query-proxy")
+		assertHasTLSArgs(t, dep.Spec.Template.Spec.Containers[1].Args, "rbac-query-proxy oauth-proxy")
 	}
 }
 
