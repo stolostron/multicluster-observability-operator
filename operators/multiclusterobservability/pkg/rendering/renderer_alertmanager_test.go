@@ -14,6 +14,7 @@ import (
 	"strings"
 	"testing"
 
+	ocinfrav1 "github.com/openshift/api/config/v1"
 	imagev1 "github.com/openshift/api/image/v1"
 	fakeimageclient "github.com/openshift/client-go/image/clientset/versioned/fake"
 	fakeimagev1client "github.com/openshift/client-go/image/clientset/versioned/typed/image/v1/fake"
@@ -66,9 +67,16 @@ func TestAlertManagerRenderer(t *testing.T) {
 		},
 	}
 
+	clusterVersion := &ocinfrav1.ClusterVersion{
+		ObjectMeta: metav1.ObjectMeta{Name: "version"},
+		Status: ocinfrav1.ClusterVersionStatus{
+			Desired: ocinfrav1.Release{Version: "5.0.0"},
+		},
+	}
 	kubeClient := tlstesting.NewFakeTLSClientBuilder().
 		WithScheme(corev1.AddToScheme).
-		WithObjects(clientCa, mchImageManifest).
+		WithScheme(ocinfrav1.AddToScheme).
+		WithObjects(clientCa, mchImageManifest, clusterVersion).
 		Build(t)
 
 	alertResources := renderTemplates(t, kubeClient, makeBaseMco())
@@ -292,9 +300,16 @@ func TestAlertManagerRendererMCOConfig(t *testing.T) {
 					"client-ca-file": "test",
 				},
 			}
+			cv := &ocinfrav1.ClusterVersion{
+				ObjectMeta: metav1.ObjectMeta{Name: "version"},
+				Status: ocinfrav1.ClusterVersionStatus{
+					Desired: ocinfrav1.Release{Version: "5.0.0"},
+				},
+			}
 			kubeClient := tlstesting.NewFakeTLSClientBuilder().
 				WithScheme(corev1.AddToScheme).
-				WithObjects(clientCa).
+				WithScheme(ocinfrav1.AddToScheme).
+				WithObjects(clientCa, cv).
 				Build(t)
 
 			alertResources := renderTemplates(t, kubeClient, tc.mco())
@@ -372,6 +387,10 @@ func makeBaseMco() *mcov1beta2.MultiClusterObservability {
 }
 
 func renderTemplates(t *testing.T, kubeClient client.Client, mco *mcov1beta2.MultiClusterObservability) []*unstructured.Unstructured {
+	return renderTemplatesWithVersion(t, kubeClient, mco, "5.0.0")
+}
+
+func renderTemplatesWithVersion(t *testing.T, kubeClient client.Client, mco *mcov1beta2.MultiClusterObservability, ocpVersion string) []*unstructured.Unstructured {
 	wd, err := os.Getwd()
 	assert.NoError(t, err)
 	templatesPath := filepath.Join(wd, "..", "..", "manifests")

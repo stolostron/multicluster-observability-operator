@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	ocinfrav1 "github.com/openshift/api/config/v1"
 	imagev1 "github.com/openshift/api/image/v1"
 	fakeimageclient "github.com/openshift/client-go/image/clientset/versioned/fake"
 	fakeimagev1client "github.com/openshift/client-go/image/clientset/versioned/typed/image/v1/fake"
@@ -39,9 +40,16 @@ func TestRender(t *testing.T) {
 			"client-ca-file": "test",
 		},
 	}
+	clusterVersion := &ocinfrav1.ClusterVersion{
+		ObjectMeta: metav1.ObjectMeta{Name: "version"},
+		Status: ocinfrav1.ClusterVersionStatus{
+			Desired: ocinfrav1.Release{Version: "5.0.0"},
+		},
+	}
 	kubeClient := tlstesting.NewFakeTLSClientBuilder().
 		WithScheme(corev1.AddToScheme).
-		WithObjects(clientCa).
+		WithScheme(ocinfrav1.AddToScheme).
+		WithObjects(clientCa, clusterVersion).
 		Build(t)
 
 	wd, err := os.Getwd()

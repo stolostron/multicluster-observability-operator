@@ -8,11 +8,13 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"strconv"
 	"strings"
 
 	ocinfrav1 "github.com/openshift/api/config/v1"
 	tlsutil "github.com/openshift/controller-runtime-common/pkg/tls"
 	libgocrypto "github.com/openshift/library-go/pkg/crypto"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -182,6 +184,52 @@ func filterConfigurableCiphers(ianaCiphers []string) []string {
 		}
 	}
 	return filtered
+}
+
+// IsOAuthProxyTLSSupported checks whether the cluster's oauth-proxy supports
+// --tls-cipher-suites and --tls-min-version flags. These flags were added in
+// OCP 5.0; older versions will crash if they receive unrecognized flags.
+func IsOAuthProxyTLSSupported(ctx context.Context, c client.Client) bool {
+	cv := &ocinfrav1.ClusterVersion{}
+	if err := c.Get(ctx, types.NamespacedName{Name: "version"}, cv); err != nil {
+		log.Error(err, "unable to get ClusterVersion, skipping oauth-proxy TLS flags")
+		return false
+	}
+
+	version := ""
+	if cv.Status.Desired.Version != "" {
+		version = cv.Status.Desired.Version
+	} else if len(cv.Status.History) > 0 {
+		version = cv.Status.History[0].Version
+	}
+	if version == "" {
+		log.Info("ClusterVersion has no version, skipping oauth-proxy TLS flags")
+		return false
+	}
+
+	major, _, ok := parseMajorMinor(version)
+	if !ok {
+		log.Info("unable to parse ClusterVersion", "version", version)
+		return false
+	}
+
+	return major >= 5
+}
+
+func parseMajorMinor(version string) (major, minor int, ok bool) {
+	parts := strings.SplitN(version, ".", 3)
+	if len(parts) < 2 {
+		return 0, 0, false
+	}
+	major, err := strconv.Atoi(parts[0])
+	if err != nil {
+		return 0, 0, false
+	}
+	minor, err = strconv.Atoi(parts[1])
+	if err != nil {
+		return 0, 0, false
+	}
+	return major, minor, true
 }
 
 // normalizeCipherName strips the _SHA256 suffix that Go 1.22+ appends to
