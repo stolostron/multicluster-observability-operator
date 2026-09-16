@@ -139,9 +139,11 @@ func (r *MCORenderer) renderAlertManagerStatefulSet(ctx context.Context, res *re
 		return nil, fmt.Errorf("failed to get OAuth image for alertmanager")
 	}
 	oauthProxyContainer.ImagePullPolicy = imagePullPolicy
-	oauthProxyContainer.Args, err = util.SetTLSSecurityConfiguration(ctx, oauthProxyContainer.Args, "--tls-cipher-suites=", "--tls-min-version=")
-	if err != nil {
-		return nil, err
+	if util.IsOAuthProxyTLSSupported(ctx, r.kubeClient) {
+		oauthProxyContainer.Args, err = util.SetTLSSecurityConfiguration(ctx, oauthProxyContainer.Args, "--tls-cipher-suites=", "--tls-min-version=")
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	if ok, image := mcoconfig.ReplaceImage(r.cr.Annotations, mcoconfig.DefaultImgRepository+"/"+mcoconfig.KubeRBACProxyImgName, mcoconfig.KubeRBACProxyKey); ok {

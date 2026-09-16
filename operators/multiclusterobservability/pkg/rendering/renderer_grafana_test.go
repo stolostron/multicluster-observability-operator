@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	ocinfrav1 "github.com/openshift/api/config/v1"
 	imagev1 "github.com/openshift/api/image/v1"
 	fakeimageclient "github.com/openshift/client-go/image/clientset/versioned/fake"
 	fakeimagev1client "github.com/openshift/client-go/image/clientset/versioned/typed/image/v1/fake"
@@ -30,7 +31,16 @@ import (
 )
 
 func TestRenderGrafana(t *testing.T) {
-	tlstesting.NewFakeTLSClientBuilder().Build(t)
+	clusterVersion := &ocinfrav1.ClusterVersion{
+		ObjectMeta: metav1.ObjectMeta{Name: "version"},
+		Status: ocinfrav1.ClusterVersionStatus{
+			Desired: ocinfrav1.Release{Version: "5.0.0"},
+		},
+	}
+	kubeClient := tlstesting.NewFakeTLSClientBuilder().
+		WithScheme(ocinfrav1.AddToScheme).
+		WithObjects(clusterVersion).
+		Build(t)
 
 	wd, err := os.Getwd()
 	assert.NoError(t, err)
@@ -169,6 +179,7 @@ func TestRenderGrafana(t *testing.T) {
 			mcoRenderer := &MCORenderer{
 				renderer:    rendererutil.NewRenderer(),
 				cr:          &tc.mco,
+				kubeClient:  kubeClient,
 				imageClient: imageClient,
 			}
 

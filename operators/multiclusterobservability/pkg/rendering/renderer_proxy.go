@@ -87,9 +87,11 @@ func (r *MCORenderer) renderProxyDeployment(ctx context.Context, res *resource.R
 	for idx := range args1 {
 		args1[idx] = strings.Replace(args1[idx], "{{MCO_NAMESPACE}}", mcoconfig.GetDefaultNamespace(), 1)
 	}
-	args1, err = util.SetTLSSecurityConfiguration(ctx, args1, "--tls-cipher-suites=", "--tls-min-version=")
-	if err != nil {
-		return nil, err
+	if util.IsOAuthProxyTLSSupported(ctx, r.kubeClient) {
+		args1, err = util.SetTLSSecurityConfiguration(ctx, args1, "--tls-cipher-suites=", "--tls-min-version=")
+		if err != nil {
+			return nil, err
+		}
 	}
 	spec.Containers[1].Args = args1
 	spec.NodeSelector = r.cr.Spec.NodeSelector
