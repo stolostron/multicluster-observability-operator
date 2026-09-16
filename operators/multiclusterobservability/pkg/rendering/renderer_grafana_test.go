@@ -19,6 +19,7 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering/templates"
 	rendererutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering"
 	templatesutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering/templates"
+	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util/tlstesting"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -27,6 +28,8 @@ import (
 )
 
 func TestRenderGrafana(t *testing.T) {
+	tlstesting.NewFakeTLSClientBuilder().Build(t)
+
 	wd, err := os.Getwd()
 	assert.NoError(t, err)
 	templatesPath := filepath.Join(wd, "..", "..", "manifests")
