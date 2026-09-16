@@ -93,6 +93,10 @@ func (r *MCORenderer) renderGrafanaDeployments(
 		return nil, fmt.Errorf("failed to get OAuth image for alertmanager")
 	}
 	spec.Containers[2].ImagePullPolicy = imagePullPolicy
+	spec.Containers[2].Args, err = util.SetTLSSecurityConfiguration(ctx, spec.Containers[2].Args, "--tls-cipher-suites=", "--tls-min-version=")
+	if err != nil {
+		return nil, err
+	}
 
 	unstructuredObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
 	if err != nil {
