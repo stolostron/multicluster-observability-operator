@@ -31,7 +31,7 @@ func (r *MCORenderer) newAlertManagerRenderer() {
 		"ConfigMap":             r.renderAlertManagerConfigMap,
 		"ClusterRole":           r.renderer.RenderClusterRole,
 		"ClusterRoleBinding":    r.renderer.RenderClusterRoleBinding,
-		"Secret":                r.renderAlertManagerSecret,
+		"Secret":                r.renderer.RenderNamespace,
 		"Role":                  r.renderer.RenderNamespace,
 		"RoleBinding":           r.renderer.RenderNamespace,
 		"Ingress":               r.renderer.RenderNamespace,
@@ -74,7 +74,7 @@ func (r *MCORenderer) renderAlertManagerStatefulSet(ctx context.Context, res *re
 	// set the container names for readability
 	alertManagerContainer := &spec.Containers[0]
 	configReloaderContainer := &spec.Containers[1]
-	oauthProxyContainer := &spec.Containers[2]
+	kubeRbacProxyWebContainer := &spec.Containers[2]
 	kubeRbacProxyContainer := &spec.Containers[3]
 
 	alertManagerContainer.ImagePullPolicy = imagePullPolicy
@@ -129,28 +129,21 @@ func (r *MCORenderer) renderAlertManagerStatefulSet(ctx context.Context, res *re
 		configReloaderContainer.Image = image
 	}
 
-	// If we're on OCP and has imagestreams, we always want the oauth image
-	// from the imagestream, and fail the reconcile if we don't find it.
-	// If we're on non-OCP (tests) we use the base template image
-	found, image = mcoconfig.GetOauthProxyImage(r.imageClient)
-	if found {
-		oauthProxyContainer.Image = image
-	} else if r.HasImagestream() {
-		return nil, fmt.Errorf("failed to get OAuth image for alertmanager")
-	}
-	oauthProxyContainer.ImagePullPolicy = imagePullPolicy
-	// TODO(guidonguido): oauth-proxy upstream doesn't support --tls-cipher-suites/--tls-min-version flags
-	// oauthProxyContainer.Args = util.SetTLSSecurityConfiguration(ctx, oauthProxyContainer.Args, "--tls-cipher-suites=", "--tls-min-version=")
-
+	kubeRbacProxies := []*corev1.Container{kubeRbacProxyContainer, kubeRbacProxyWebContainer}
 	if ok, image := mcoconfig.ReplaceImage(r.cr.Annotations, mcoconfig.DefaultImgRepository+"/"+mcoconfig.KubeRBACProxyImgName, mcoconfig.KubeRBACProxyKey); ok {
-		kubeRbacProxyContainer.Image = image
+		for _, container := range kubeRbacProxies {
+			container.Image = image
+		}
 	}
-	kubeRbacProxyContainer.ImagePullPolicy = imagePullPolicy
-	args, err := util.SetTLSSecurityConfiguration(ctx, kubeRbacProxyContainer.Args, "--tls-cipher-suites=", "--tls-min-version=")
-	if err != nil {
-		return nil, err
+	// TLS config should be different for each kube-rbac-poxy-container
+	for _, container := range kubeRbacProxies {
+		container.ImagePullPolicy = imagePullPolicy
+		args, err := util.SetTLSSecurityConfiguration(ctx, container.Args, "--tls-cipher-suites=", "--tls-min-version=")
+		if err != nil {
+			return nil, err
+		}
+		container.Args = args
 	}
-	kubeRbacProxyContainer.Args = args
 
 	// Compute hash of the client CA to trigger a rolling restart when the CA rotates.
 	// kube-rbac-proxy reads --client-ca-file only at startup; without this, a CA
@@ -193,36 +186,6 @@ func (r *MCORenderer) getClientCAHash(ctx context.Context) (string, error) {
 
 	hash := sha256.Sum256([]byte(caData))
 	return hex.EncodeToString(hash[:]), nil
-}
-
-func (r *MCORenderer) renderAlertManagerSecret(ctx context.Context, res *resource.Resource,
-	namespace string, labels map[string]string,
-) (*unstructured.Unstructured, error) {
-	u, err := r.renderer.RenderNamespace(ctx, res, namespace, labels)
-	if err != nil {
-		return nil, err
-	}
-
-	if u.GetName() == "alertmanager-proxy" {
-		obj := util.GetK8sObj(u.GetKind())
-		err = runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, obj)
-		if err != nil {
-			return nil, err
-		}
-		srt := obj.(*corev1.Secret)
-		p, err := util.GeneratePassword(43)
-		if err != nil {
-			return nil, err
-		}
-		srt.Data["session_secret"] = []byte(p)
-		unstructuredObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
-		if err != nil {
-			return nil, err
-		}
-		return &unstructured.Unstructured{Object: unstructuredObj}, nil
-	}
-
-	return u, nil
 }
 
 func (r *MCORenderer) renderAlertManagerConfigMap(ctx context.Context, res *resource.Resource,
