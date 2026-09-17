@@ -2789,6 +2789,7 @@ func TestFormatManagedClusters(t *testing.T) {
 						{Type: clusterv1.ManagedClusterConditionHubAccepted, Status: metav1.ConditionTrue},
 					},
 					ClusterClaims: []clusterv1.ManagedClusterClaim{
+						{Name: "id.k8s.io", Value: "c2c16b3d-4951-46bb-b7b5-226e6ef36611"},
 						{Name: "version.openshift.io", Value: "4.16.0"},
 					},
 				},
@@ -2841,18 +2842,18 @@ func TestFormatManagedClusters(t *testing.T) {
 
 		out := formatManagedClusters(clusters)
 
-		// Check header has VENDOR column
-		if !strings.Contains(out, "VENDOR") {
-			t.Errorf("formatManagedClusters output missing VENDOR column header. Got:\n%s", out)
+		// Check header has CLUSTER-ID and VENDOR columns
+		if !strings.Contains(out, "CLUSTER-ID") || !strings.Contains(out, "VENDOR") {
+			t.Errorf("formatManagedClusters output missing CLUSTER-ID or VENDOR column header. Got:\n%s", out)
 		}
 
-		// Check local-cluster row has OpenShift vendor
-		if !regexp.MustCompile(`local-cluster\s+True\s+True\s+True\s+OpenShift\s+4\.16\.0`).MatchString(out) {
+		// Check local-cluster row has UUID and OpenShift vendor
+		if !regexp.MustCompile(`local-cluster\s+c2c16b3d-4951-46bb-b7b5-226e6ef36611\s+True\s+True\s+True\s+OpenShift\s+4\.16\.0`).MatchString(out) {
 			t.Errorf("formatManagedClusters output missing expected row for local-cluster. Got:\n%s", out)
 		}
 
-		// Check eks-cluster row has EKS vendor
-		if !regexp.MustCompile(`eks-cluster\s+True\s+True\s+True\s+EKS\s+EKS`).MatchString(out) {
+		// Check eks-cluster row has Unknown cluster-id and EKS vendor
+		if !regexp.MustCompile(`eks-cluster\s+Unknown\s+True\s+True\s+True\s+EKS\s+EKS`).MatchString(out) {
 			t.Errorf("formatManagedClusters output missing expected row for eks-cluster. Got:\n%s", out)
 		}
 
@@ -2862,8 +2863,131 @@ func TestFormatManagedClusters(t *testing.T) {
 		}
 
 		// Check unknown-vendor-cluster row shows Unknown vendor
-		if !regexp.MustCompile(`unknown-vendor-cluster\s+Unknown\s+Unknown\s+Unknown\s+Unknown\s+Unknown`).MatchString(out) {
+		if !regexp.MustCompile(`unknown-vendor-cluster\s+Unknown\s+Unknown\s+Unknown\s+Unknown\s+Unknown\s+Unknown`).MatchString(out) {
 			t.Errorf("formatManagedClusters output missing expected Unknown row for unknown-vendor-cluster. Got:\n%s", out)
+		}
+	})
+}
+
+func TestFormatRoutesStatuses(t *testing.T) {
+	t.Run("empty list", func(t *testing.T) {
+		got := formatRoutesStatuses(nil, "test-ns")
+		if !strings.Contains(got, "No routes found in namespace \"test-ns\"") {
+			t.Errorf("formatRoutesStatuses(nil) = %q, want No routes found message", got)
+		}
+	})
+
+	t.Run("valid routes", func(t *testing.T) {
+		routes := []unstructured.Unstructured{
+			{
+				Object: map[string]any{
+					"metadata": map[string]any{
+						"name": "observatorium-api",
+					},
+					"spec": map[string]any{
+						"host": "observatorium-api.apps.example.com",
+						"tls": map[string]any{
+							"termination": "reencrypt",
+						},
+					},
+					"status": map[string]any{
+						"ingress": []any{
+							map[string]any{
+								"conditions": []any{
+									map[string]any{
+										"type":   "Admitted",
+										"status": "True",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			{
+				Object: map[string]any{
+					"metadata": map[string]any{
+						"name": "unadmitted-route",
+					},
+					"spec": map[string]any{
+						"host": "unadmitted.apps.example.com",
+					},
+				},
+			},
+		}
+
+		out := formatRoutesStatuses(routes, "open-cluster-management-observability")
+		if !strings.Contains(out, "NAME") || !strings.Contains(out, "HOST") || !strings.Contains(out, "TERMINATION") || !strings.Contains(out, "ADMITTED") {
+			t.Errorf("formatRoutesStatuses missing headers. Got:\n%s", out)
+		}
+		if !strings.Contains(out, "observatorium-api") || !strings.Contains(out, "reencrypt") || !strings.Contains(out, "True") {
+			t.Errorf("formatRoutesStatuses missing observatorium-api details. Got:\n%s", out)
+		}
+		if !strings.Contains(out, "unadmitted-route") || !strings.Contains(out, "none") || !strings.Contains(out, "Unknown") {
+			t.Errorf("formatRoutesStatuses missing unadmitted-route details. Got:\n%s", out)
+		}
+	})
+}
+
+func TestFormatPrometheusAgentSummary(t *testing.T) {
+	t.Run("defaults replicas to 1 when spec.replicas is omitted", func(t *testing.T) {
+		item := unstructured.Unstructured{
+			Object: map[string]any{
+				"metadata": map[string]any{
+					"name": "prom-agent",
+				},
+				"spec": map[string]any{
+					"paused": false,
+					"remoteWrite": []any{
+						map[string]any{"url": "https://hub.example.com/api/v1/receive"},
+					},
+				},
+				"status": map[string]any{
+					"conditions": []any{
+						map[string]any{
+							"type":   "Available",
+							"status": "True",
+							"reason": "AsExpected",
+						},
+					},
+				},
+			},
+		}
+
+		got := formatPrometheusAgentSummary("open-cluster-management-agent-addon", item)
+		if !strings.Contains(got, "replicas=1") {
+			t.Errorf("formatPrometheusAgentSummary should default omitted replicas to 1, got: %s", got)
+		}
+		if !strings.Contains(got, "paused=false") {
+			t.Errorf("formatPrometheusAgentSummary missing paused=false, got: %s", got)
+		}
+		if !strings.Contains(got, "https://hub.example.com/api/v1/receive") {
+			t.Errorf("formatPrometheusAgentSummary missing remoteWrite URL, got: %s", got)
+		}
+		if !strings.Contains(got, "Available=True(AsExpected)") {
+			t.Errorf("formatPrometheusAgentSummary missing condition summary, got: %s", got)
+		}
+	})
+
+	t.Run("preserves explicit spec.replicas", func(t *testing.T) {
+		item := unstructured.Unstructured{
+			Object: map[string]any{
+				"metadata": map[string]any{
+					"name": "prom-agent-custom",
+				},
+				"spec": map[string]any{
+					"replicas": int64(2),
+					"paused":   true,
+				},
+			},
+		}
+
+		got := formatPrometheusAgentSummary("test-ns", item)
+		if !strings.Contains(got, "replicas=2") {
+			t.Errorf("formatPrometheusAgentSummary should preserve explicit replicas=2, got: %s", got)
+		}
+		if !strings.Contains(got, "paused=true") {
+			t.Errorf("formatPrometheusAgentSummary missing paused=true, got: %s", got)
 		}
 	})
 }

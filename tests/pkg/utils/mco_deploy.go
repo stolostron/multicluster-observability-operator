@@ -178,6 +178,15 @@ func NewPlacementBindingGVR() schema.GroupVersionResource {
 	}
 }
 
+// NewRouteGVR returns the GVR for OpenShift Route resources.
+func NewRouteGVR() schema.GroupVersionResource {
+	return schema.GroupVersionResource{
+		Group:    "route.openshift.io",
+		Version:  "v1",
+		Resource: "routes",
+	}
+}
+
 // VerifyRSResourcesCleanedUp checks that all right-sizing resources have been deleted.
 // Uses both label-based discovery (catches resources in any namespace) and name-based
 // checks (catches old unlabeled resources) to ensure nothing is left behind.

@@ -240,6 +240,7 @@ func LogFailingTestStandardDebugInfo(opt TestOptions, isMCOA bool) {
 	CheckPodsInNamespace(hubClient, MCO_NAMESPACE, []string{"multicluster-observability-addon-manager", "metrics-collector-deployment"}, map[string]string{})
 	printConfigMapsInNamespace(hubClient, MCO_NAMESPACE)
 	printSecretsInNamespace(hubClient, MCO_NAMESPACE)
+	printRoutesInNamespace(hubDynClient, MCO_NAMESPACE)
 	logClusterMonitoringConfigStatus(hubClient, "Hub")
 
 	if isMCOA {
@@ -1119,7 +1120,7 @@ func formatManagedClusters(clusters []clusterv1.ManagedCluster) string {
 	var sb strings.Builder
 	sb.WriteString("Managed Clusters:\n")
 	writer := tabwriter.NewWriter(&sb, 0, 0, 2, ' ', 0)
-	_, _ = fmt.Fprintln(writer, "NAME\tAVAILABLE\tJOINED\tHUB-ACCEPTED\tVENDOR\tVERSION\tURL")
+	_, _ = fmt.Fprintln(writer, "NAME\tCLUSTER-ID\tAVAILABLE\tJOINED\tHUB-ACCEPTED\tVENDOR\tVERSION\tURL")
 
 	for _, managedCluster := range clusters {
 		avail := statusUnknown
@@ -1133,6 +1134,14 @@ func formatManagedClusters(clusters []clusterv1.ManagedCluster) string {
 				joined = string(cond.Status)
 			case clusterv1.ManagedClusterConditionHubAccepted:
 				hubAccepted = string(cond.Status)
+			}
+		}
+
+		clusterID := statusUnknown
+		for _, claim := range managedCluster.Status.ClusterClaims {
+			if claim.Name == "id.k8s.io" {
+				clusterID = claim.Value
+				break
 			}
 		}
 
@@ -1165,8 +1174,9 @@ func formatManagedClusters(clusters []clusterv1.ManagedCluster) string {
 			serverURL = managedCluster.Spec.ManagedClusterClientConfigs[0].URL
 		}
 
-		_, _ = fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+		_, _ = fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
 			managedCluster.Name,
+			clusterID,
 			avail,
 			joined,
 			hubAccepted,
@@ -2123,6 +2133,65 @@ func logHubInfoSecrets(secrets []corev1.Secret, ns string) {
 	}
 }
 
+// formatRoutesStatuses formats OpenShift Route resources into a table.
+func formatRoutesStatuses(routes []unstructured.Unstructured, ns string) string {
+	if len(routes) == 0 {
+		return fmt.Sprintf("No routes found in namespace %q\n", ns)
+	}
+
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("Routes in namespace %s (total: %d):\n", ns, len(routes)))
+	writer := tabwriter.NewWriter(&sb, 0, 0, 2, ' ', 0)
+	_, _ = fmt.Fprintln(writer, "NAME\tHOST\tTERMINATION\tADMITTED")
+
+	for _, r := range routes {
+		name := r.GetName()
+		host, _, _ := unstructured.NestedString(r.Object, "spec", "host")
+		termination, _, _ := unstructured.NestedString(r.Object, "spec", "tls", "termination")
+		if termination == "" {
+			termination = "none"
+		}
+		admitted := statusUnknown
+		ingresses, found, _ := unstructured.NestedSlice(r.Object, "status", "ingress")
+		if found && len(ingresses) > 0 {
+			if ingMap, ok := ingresses[0].(map[string]any); ok {
+				conditions, condFound, _ := unstructured.NestedSlice(ingMap, "conditions")
+				if condFound {
+					for _, c := range conditions {
+						if cMap, ok := c.(map[string]any); ok {
+							if cMap["type"] == "Admitted" {
+								admitted = fmt.Sprintf("%v", cMap["status"])
+								break
+							}
+						}
+					}
+				}
+			}
+		}
+		_, _ = fmt.Fprintf(writer, "%s\t%s\t%s\t%s\n", name, host, termination, admitted)
+	}
+	_ = writer.Flush()
+	return sb.String()
+}
+
+// printRoutesInNamespace logs OpenShift Route resources in the given namespace.
+func printRoutesInNamespace(dynClient dynamic.Interface, ns string) {
+	if dynClient == nil {
+		return
+	}
+	routeList, err := dynClient.Resource(NewRouteGVR()).Namespace(ns).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		if !apierrors.IsNotFound(err) {
+			klog.V(1).Infof("Failed to list routes in namespace %s: %v", ns, err)
+		}
+		return
+	}
+	if len(routeList.Items) == 0 {
+		return
+	}
+	klog.Info(formatRoutesStatuses(routeList.Items, ns))
+}
+
 // formatAddOnDeploymentConfig generates a concise, human-readable summary of an AddOnDeploymentConfig.
 func formatAddOnDeploymentConfig(obj *unstructured.Unstructured) string {
 	var sb strings.Builder
@@ -2589,7 +2658,7 @@ func resolveSpokeClientsFromHub(
 	return spokeClient, spokeDynClient, nil
 }
 
-// printMCOACustomResources lists PrometheusAgent and ScrapeConfig custom resources in the namespace.
+// printMCOACustomResources lists PrometheusAgent, ScrapeConfig, and PrometheusRule custom resources in the namespace.
 func printMCOACustomResources(client dynamic.Interface, ns string) {
 	if client == nil {
 		return
@@ -2597,11 +2666,9 @@ func printMCOACustomResources(client dynamic.Interface, ns string) {
 	paGVR := NewPrometheusAgentGVR()
 	paList, err := client.Resource(paGVR).Namespace(ns).List(context.TODO(), metav1.ListOptions{})
 	if err == nil && len(paList.Items) > 0 {
-		names := make([]string, 0, len(paList.Items))
 		for _, item := range paList.Items {
-			names = append(names, item.GetName())
+			klog.Info(formatPrometheusAgentSummary(ns, item))
 		}
-		klog.Infof("PrometheusAgents in %s (%d): %s", ns, len(names), strings.Join(names, ", "))
 	}
 
 	scGVR := NewScrapeConfigGVR()
@@ -2623,6 +2690,38 @@ func printMCOACustomResources(client dynamic.Interface, ns string) {
 		}
 		klog.Infof("PrometheusRules in %s (%d): %s", ns, len(names), strings.Join(names, ", "))
 	}
+}
+
+func formatPrometheusAgentSummary(ns string, item unstructured.Unstructured) string {
+	name := item.GetName()
+	paused, _, _ := unstructured.NestedBool(item.Object, "spec", "paused")
+	replicas, found, _ := unstructured.NestedInt64(item.Object, "spec", "replicas")
+	if !found {
+		replicas = 1
+	}
+	remoteWrites, _, _ := unstructured.NestedSlice(item.Object, "spec", "remoteWrite")
+	var rwURLs []string
+	for _, rw := range remoteWrites {
+		if rwMap, ok := rw.(map[string]any); ok {
+			if u, ok := rwMap["url"].(string); ok {
+				rwURLs = append(rwURLs, u)
+			}
+		}
+	}
+	conditions, _, _ := unstructured.NestedSlice(item.Object, "status", "conditions")
+	var condSummaries []string
+	for _, c := range conditions {
+		if cMap, ok := c.(map[string]any); ok {
+			cType, _ := cMap["type"].(string)
+			cStatus, _ := cMap["status"].(string)
+			cReason, _ := cMap["reason"].(string)
+			if cType != "" {
+				condSummaries = append(condSummaries, fmt.Sprintf("%s=%s(%s)", cType, cStatus, cReason))
+			}
+		}
+	}
+	return fmt.Sprintf("PrometheusAgent %s/%s: replicas=%d, paused=%t, remoteWrite=%v, conditions=[%s]",
+		ns, name, replicas, paused, rwURLs, strings.Join(condSummaries, ", "))
 }
 
 // logClusterMonitoringConfigStatus summarizes the state of OpenShift cluster monitoring
@@ -2776,6 +2875,8 @@ func logSpokeClusterDebugInfo(
 		CheckJobsInNamespace(spokeClient, MCO_AGENT_ADDON_NAMESPACE)
 		CheckPodsInNamespace(spokeClient, MCO_AGENT_ADDON_NAMESPACE, []string{"endpoint-monitoring-operator", "prom-agent", "observability-monitoring-cleanup"}, map[string]string{})
 		printMCOACustomResources(spokeDynClient, MCO_AGENT_ADDON_NAMESPACE)
+		printConfigMapsInNamespace(spokeClient, MCO_AGENT_ADDON_NAMESPACE)
+		printSecretsInNamespace(spokeClient, MCO_AGENT_ADDON_NAMESPACE)
 		logClusterMonitoringConfigStatus(spokeClient, clusterName)
 		printRecentWarningEvents(spokeClient, clusterName, []string{MCO_AGENT_ADDON_NAMESPACE}, 20*time.Minute, 15)
 	} else {

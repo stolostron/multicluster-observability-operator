@@ -491,6 +491,7 @@ var _ = Describe("", func() {
 				return utils.CheckAllOBAsEnabled(testOptions)
 			}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*10).Should(Succeed())
 
+			var lastLoggedMissing string
 			By("Checking Watchdog alerts are forwarded to the hub")
 			Eventually(func() error {
 				resp, err := client.Do(alertGetReq)
@@ -535,7 +536,13 @@ var _ = Describe("", func() {
 				}
 
 				if len(missingClusters) != 0 {
-					klog.Infof("Watchdog alerts are still missing from these clusters: %v. Retrying...", formatClusterIDs(missingClusters))
+					currentMissingStr := fmt.Sprintf("%v", formatClusterIDs(missingClusters))
+					if currentMissingStr != lastLoggedMissing {
+						klog.Infof("Watchdog alerts are still missing from these clusters: %s. Retrying...", currentMissingStr)
+						lastLoggedMissing = currentMissingStr
+					} else {
+						klog.V(2).Infof("Watchdog alerts are still missing from these clusters: %s. Retrying...", currentMissingStr)
+					}
 					return fmt.Errorf(
 						"Not all managedclusters forward Watchdog alert to hub cluster. Found following clusters in alerts: %v. Following clusters are still missing: %v. Full list of expected clusters was: %v",
 						formatClusterIDs(clusterIDsInAlerts),
