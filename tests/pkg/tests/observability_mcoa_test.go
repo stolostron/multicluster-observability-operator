@@ -1209,6 +1209,11 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 			// Wait for the metrics collector to be up to avoid race conditions with other tests setups
 			utils.CheckDeploymentAvailability(testOptions.HubCluster, metricsCollectorDeploymentName, utils.MCO_NAMESPACE, true)
 			utils.CheckDeploymentAvailabilityOnClusters(managedClusters, metricsCollectorDeploymentName, utils.MCO_ADDON_NAMESPACE, true)
+
+			By("Waiting for ObservabilityAddon to be available and healthy on managed clusters")
+			Eventually(func() error {
+				return utils.CheckAllOBAsEnabled(testOptions)
+			}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*10).Should(Succeed(), "ObservabilityAddon should become available and healthy on all managed clusters after MCOA teardown")
 		})
 	})
 })

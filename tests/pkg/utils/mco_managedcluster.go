@@ -243,3 +243,22 @@ func HasManagedClusters(opt TestOptions) bool {
 	}
 	return false
 }
+
+// GetManagedClusterIDToNameMap returns a mapping of cluster ID (from id.k8s.io cluster claim)
+// to cluster name for all managed clusters.
+func GetManagedClusterIDToNameMap(opt TestOptions) (map[string]string, error) {
+	managedClusters, err := GetManagedClusters(opt)
+	if err != nil {
+		return nil, err
+	}
+	idToName := make(map[string]string, len(managedClusters))
+	for _, mc := range managedClusters {
+		for _, cc := range mc.Status.ClusterClaims {
+			if cc.Name == idClusterClaim {
+				idToName[cc.Value] = mc.Name
+				break
+			}
+		}
+	}
+	return idToName, nil
+}
