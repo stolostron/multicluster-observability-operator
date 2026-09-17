@@ -67,6 +67,10 @@ func CheckOBAStatus(opt TestOptions, namespace string) error {
 		return fmt.Errorf("failed to convert unstructured to ManagedClusterAddOn: %w", err)
 	}
 
+	if meta.IsStatusConditionTrue(mca.Status.Conditions, "Degraded") {
+		return fmt.Errorf("ManagedClusterAddOn observability-controller is degraded in %s, conditions: %+v", namespace, mca.Status.Conditions)
+	}
+
 	if !meta.IsStatusConditionTrue(mca.Status.Conditions, "Available") {
 		return fmt.Errorf("ManagedClusterAddOn observability-controller is not available in %s, conditions: %+v", namespace, mca.Status.Conditions)
 	}
@@ -86,8 +90,26 @@ func CheckOBAStatus(opt TestOptions, namespace string) error {
 		return fmt.Errorf("failed to convert unstructured to ObservabilityAddon: %w", err)
 	}
 
-	if !meta.IsStatusConditionTrue(oba.Status.Conditions, "MetricsCollector") {
-		return fmt.Errorf("ObservabilityAddon MetricsCollector is not ready for managed cluster %q, conditions: %+v", namespace, oba.Status.Conditions)
+	if meta.IsStatusConditionTrue(oba.Status.Conditions, "Degraded") {
+		return fmt.Errorf("ObservabilityAddon is degraded for managed cluster %q, conditions: %+v", namespace, oba.Status.Conditions)
+	}
+
+	if !meta.IsStatusConditionTrue(oba.Status.Conditions, "Available") {
+		return fmt.Errorf("ObservabilityAddon is not available for managed cluster %q, conditions: %+v", namespace, oba.Status.Conditions)
+	}
+
+	mcCond := meta.FindStatusCondition(oba.Status.Conditions, "MetricsCollector")
+	if mcCond == nil {
+		return fmt.Errorf("ObservabilityAddon MetricsCollector condition not found for managed cluster %q, conditions: %+v", namespace, oba.Status.Conditions)
+	}
+	if mcCond.Reason != "ForwardSuccessful" {
+		return fmt.Errorf(
+			"ObservabilityAddon MetricsCollector is not forwarding successfully (reason: %s, message: %s) for managed cluster %q, conditions: %+v",
+			mcCond.Reason,
+			mcCond.Message,
+			namespace,
+			oba.Status.Conditions,
+		)
 	}
 
 	return nil

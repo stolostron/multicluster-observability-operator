@@ -2071,6 +2071,71 @@ prometheusK8s:
 	logClusterMonitoringConfigStatus(client, "Hub")
 }
 
+func TestLogHubInfoSecrets(t *testing.T) {
+	validHubInfoYAML := `cluster-name: managed-spoke
+observatorium-api-endpoint: https://observatorium-api.example.com/api/metrics/v1/default/api/v1/receive
+alertmanager-endpoint: https://alertmanager.example.com
+hub-alerts-forwarding-route: https://alertmanager-route.example.com
+alertmanager-router-ca: "-----BEGIN CERTIFICATE-----\nMIIB...\n-----END CERTIFICATE-----"
+hub-cluster-id: 58dccb40-23a5-4849-aeb5-31ecfe188275
+uwm-alerting-disabled: false
+`
+	secrets := []corev1.Secret{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "hub-info-secret",
+				Namespace: "open-cluster-management-addon-observability",
+			},
+			Data: map[string][]byte{
+				"hub-info.yaml": []byte(validHubInfoYAML),
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "hub-info-secret-parent-hub-2",
+				Namespace: "open-cluster-management-addon-observability",
+			},
+			Data: map[string][]byte{
+				"hub-info.yaml": []byte(`hub-cluster-id: parent-2-id`),
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "hub-info-secret-empty",
+				Namespace: "open-cluster-management-addon-observability",
+			},
+			Data: map[string][]byte{},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "hub-info-secret-bad-yaml",
+				Namespace: "open-cluster-management-addon-observability",
+			},
+			Data: map[string][]byte{
+				"hub-info.yaml": []byte(`: invalid yaml`),
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "other-secret",
+				Namespace: "open-cluster-management-addon-observability",
+			},
+			Data: map[string][]byte{
+				"token": []byte("some-token"),
+			},
+		},
+	}
+
+	// Direct invocation should handle all cases gracefully
+	logHubInfoSecrets(secrets, "open-cluster-management-addon-observability")
+
+	// Integration through printSecretsInNamespace
+	client := kubefake.NewClientset(
+		&secrets[0], &secrets[1], &secrets[2], &secrets[3], &secrets[4],
+	)
+	printSecretsInNamespace(client, "open-cluster-management-addon-observability")
+}
+
 func TestDefensiveNilClientGuards(t *testing.T) {
 	// None of these should panic when passed nil clients
 	printMCOACustomResources(nil, "some-ns")

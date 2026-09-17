@@ -16,6 +16,8 @@ import (
 	"time"
 	"unicode/utf8"
 
+	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
+	goyaml "gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -235,7 +237,7 @@ func LogFailingTestStandardDebugInfo(opt TestOptions, isMCOA bool) {
 	CheckStatefulSetsInNamespace(hubClient, MCO_NAMESPACE)
 	CheckDaemonSetsInNamespace(hubClient, MCO_NAMESPACE)
 	CheckJobsInNamespace(hubClient, MCO_NAMESPACE)
-	CheckPodsInNamespace(hubClient, MCO_NAMESPACE, []string{"multicluster-observability-addon-manager"}, map[string]string{})
+	CheckPodsInNamespace(hubClient, MCO_NAMESPACE, []string{"multicluster-observability-addon-manager", "metrics-collector-deployment"}, map[string]string{})
 	printConfigMapsInNamespace(hubClient, MCO_NAMESPACE)
 	printSecretsInNamespace(hubClient, MCO_NAMESPACE)
 	logClusterMonitoringConfigStatus(hubClient, "Hub")
@@ -2076,6 +2078,49 @@ func printSecretsInNamespace(client kubernetes.Interface, ns string) {
 	}
 
 	klog.Info(formatSecretsStatuses(secrets.Items, ns))
+	logHubInfoSecrets(secrets.Items, ns)
+}
+
+// logHubInfoSecrets logs a sanitized configuration summary of any hub-info-secret instances found in a namespace.
+// Sensitive data (certificates/tokens) is sanitized or summarized by byte length.
+func logHubInfoSecrets(secrets []corev1.Secret, ns string) {
+	for _, secret := range secrets {
+		if !strings.HasPrefix(secret.Name, operatorconfig.HubInfoSecretName) {
+			continue
+		}
+		payload, ok := secret.Data[operatorconfig.HubInfoSecretKey]
+		if !ok || len(payload) == 0 {
+			klog.Infof("Secret %s/%s: %s key is missing or empty", ns, secret.Name, operatorconfig.HubInfoSecretKey)
+			continue
+		}
+
+		hubInfo := &operatorconfig.HubInfo{}
+		if err := goyaml.Unmarshal(payload, hubInfo); err != nil {
+			klog.Warningf("Secret %s/%s: failed to unmarshal %s: %v", ns, secret.Name, operatorconfig.HubInfoSecretKey, err)
+			continue
+		}
+
+		caStatus := "absent"
+		if len(strings.TrimSpace(hubInfo.AlertmanagerRouterCA)) > 0 {
+			caStatus = fmt.Sprintf("present (%d bytes)", len(hubInfo.AlertmanagerRouterCA))
+		}
+
+		var sb strings.Builder
+		sb.WriteString(fmt.Sprintf("Secret %s/%s (%s summary):\n", ns, secret.Name, operatorconfig.HubInfoSecretKey))
+		if hubInfo.ClusterName != "" {
+			sb.WriteString(fmt.Sprintf("    cluster-name:                %s\n", hubInfo.ClusterName))
+		}
+		sb.WriteString(fmt.Sprintf("    observatorium-api-endpoint:  %s\n", hubInfo.ObservatoriumAPIEndpoint))
+		sb.WriteString(fmt.Sprintf("    alertmanager-endpoint:       %s\n", hubInfo.AlertmanagerEndpoint))
+		if hubInfo.HubAlertsForwardingRoute != "" {
+			sb.WriteString(fmt.Sprintf("    hub-alerts-forwarding-route: %s\n", hubInfo.HubAlertsForwardingRoute))
+		}
+		sb.WriteString(fmt.Sprintf("    hub-cluster-id:              %s\n", hubInfo.HubClusterID))
+		sb.WriteString(fmt.Sprintf("    alertmanager-router-ca:      %s\n", caStatus))
+		sb.WriteString(fmt.Sprintf("    uwm-alerting-disabled:       %t", hubInfo.UWMAlertingDisabled))
+
+		klog.Info(sb.String())
+	}
 }
 
 // formatAddOnDeploymentConfig generates a concise, human-readable summary of an AddOnDeploymentConfig.
@@ -2627,7 +2672,80 @@ func logClusterMonitoringConfigStatus(client kubernetes.Interface, clusterLabel 
 		}
 
 		klog.Infof("ConfigMap %s/%s on %s: %s", target.ns, target.name, clusterLabel, strings.Join(flags, ", "))
+
+		if hasAlertmanager {
+			logAdditionalAlertmanagerConfigs(configData, target.ns, target.name, clusterLabel)
+		}
 	}
+}
+
+// logAdditionalAlertmanagerConfigs extracts and logs the additionalAlertmanagerConfigs block
+// from a cluster monitoring ConfigMap to facilitate diagnosing alert-forwarding issues.
+func logAdditionalAlertmanagerConfigs(configData, ns, name, clusterLabel string) {
+	var parsed map[string]any
+	if err := goyaml.Unmarshal([]byte(configData), &parsed); err == nil {
+		var alertmanagerConfigs any
+		for _, key := range []string{"prometheusK8s", "prometheus"} {
+			if promSection, ok := parsed[key].(map[any]any); ok {
+				if cfg, found := promSection["additionalAlertmanagerConfigs"]; found {
+					alertmanagerConfigs = cfg
+					break
+				}
+			} else if promSection, ok := parsed[key].(map[string]any); ok {
+				if cfg, found := promSection["additionalAlertmanagerConfigs"]; found {
+					alertmanagerConfigs = cfg
+					break
+				}
+			}
+		}
+		if alertmanagerConfigs != nil {
+			if out, err := goyaml.Marshal(alertmanagerConfigs); err == nil {
+				klog.Infof("ConfigMap %s/%s on %s (additionalAlertmanagerConfigs):\n%s",
+					ns, name, clusterLabel, indentLines(strings.TrimRight(string(out), "\n"), "  "))
+				return
+			}
+		}
+	}
+
+	// Fallback: extract the lines textually if structured unmarshal didn't match the expected layout
+	lines := strings.Split(configData, "\n")
+	var captured []string
+	recording := false
+	baseIndent := -1
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if !recording {
+			if strings.HasPrefix(trimmed, "additionalAlertmanagerConfigs:") {
+				recording = true
+				captured = append(captured, line)
+				baseIndent = len(line) - len(strings.TrimLeft(line, " "))
+			}
+		} else {
+			if trimmed == "" {
+				captured = append(captured, line)
+				continue
+			}
+			currIndent := len(line) - len(strings.TrimLeft(line, " "))
+			if currIndent <= baseIndent {
+				break
+			}
+			captured = append(captured, line)
+		}
+	}
+	if len(captured) > 0 {
+		klog.Infof("ConfigMap %s/%s on %s (additionalAlertmanagerConfigs raw):\n%s",
+			ns, name, clusterLabel, indentLines(strings.Join(captured, "\n"), "  "))
+	}
+}
+
+func indentLines(s, indent string) string {
+	lines := strings.Split(s, "\n")
+	for i, line := range lines {
+		if strings.TrimSpace(line) != "" {
+			lines[i] = indent + line
+		}
+	}
+	return strings.Join(lines, "\n")
 }
 
 // logSpokeClusterDebugInfo runs diagnostics on the spoke cluster's observability workloads.
@@ -2668,7 +2786,7 @@ func logSpokeClusterDebugInfo(
 		CheckStatefulSetsInNamespace(spokeClient, MCO_ADDON_NAMESPACE)
 		CheckDaemonSetsInNamespace(spokeClient, MCO_ADDON_NAMESPACE)
 		CheckJobsInNamespace(spokeClient, MCO_ADDON_NAMESPACE)
-		CheckPodsInNamespace(spokeClient, MCO_ADDON_NAMESPACE, []string{"observability-addon"}, map[string]string{})
+		CheckPodsInNamespace(spokeClient, MCO_ADDON_NAMESPACE, []string{"endpoint-observability-operator", "metrics-collector-deployment"}, map[string]string{})
 		printConfigMapsInNamespace(spokeClient, MCO_ADDON_NAMESPACE)
 		printSecretsInNamespace(spokeClient, MCO_ADDON_NAMESPACE)
 		logClusterMonitoringConfigStatus(spokeClient, clusterName)
