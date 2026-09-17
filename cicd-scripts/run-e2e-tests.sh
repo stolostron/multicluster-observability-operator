@@ -51,7 +51,7 @@ fi
 # apply network policies in case they changed
 # to make sure we do not cause breakage
 if [[ -z ${IS_KIND_ENV} ]]; then
-  oc create namespace open-cluster-management-observability
+  oc create namespace open-cluster-management-observability --dry-run=client -o yaml | oc apply -f -
   oc apply -f ${ROOTDIR}/operators/multiclusterobservability/config/networkpolicies
 fi
 
