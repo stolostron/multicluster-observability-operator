@@ -10775,6 +10775,23 @@ spec:
                             type: object
                         type: object
                     type: object
+                  catalogSource:
+                    description: |-
+                      CatalogSource selects the OLM catalog used when MCOA installs Cluster Observability Operator
+                      on managed clusters. Leave unset to use redhat-operators in openshift-marketplace.
+                      Required in disconnected environments whose CatalogSource name is not redhat-operators.
+                    properties:
+                      name:
+                        description: Name is the CatalogSource name on the managed
+                          cluster (Subscription.spec.source).
+                        type: string
+                      namespace:
+                        default: openshift-marketplace
+                        description: |-
+                          Namespace is the CatalogSource namespace (Subscription.spec.sourceNamespace).
+                          Defaults to openshift-marketplace when empty.
+                        type: string
+                    type: object
                   platform:
                     description: |-
                       Platform defines the spec for platform observability capabilities managed by the addon.
