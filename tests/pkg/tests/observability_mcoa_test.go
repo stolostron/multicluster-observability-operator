@@ -1193,9 +1193,8 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 							// our specific endpoint operator management label.
 							labels := crdObj.GetLabels()
 							if labels != nil && labels[mcoa.ManagedByLabelKey] == mcoa.ManagedByLabelValue {
-								GinkgoWriter.Printf("Waiting for MCOA-managed CRD %s to be cleaned up on cluster %s (deletionTimestamp: %v, finalizers: %v)\n",
-									crd, cluster.Name, crdObj.GetDeletionTimestamp(), crdObj.GetFinalizers())
-								return fmt.Errorf("OBO CRD %s managed by MCOA was not cleaned up on cluster %s after addon was disabled", crd, cluster.Name)
+								return fmt.Errorf("OBO CRD %s managed by MCOA (deletionTimestamp: %v, finalizers: %v) was not cleaned up on cluster %s after addon was disabled",
+									crd, crdObj.GetDeletionTimestamp(), crdObj.GetFinalizers(), cluster.Name)
 							}
 						}
 						return nil

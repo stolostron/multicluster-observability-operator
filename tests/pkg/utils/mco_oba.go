@@ -75,7 +75,7 @@ func CheckOBAStatus(opt TestOptions, namespace string) error {
 		return fmt.Errorf("ManagedClusterAddOn observability-controller is not available in %s, conditions: %+v", namespace, mca.Status.Conditions)
 	}
 
-	// Step 2: Check ObservabilityAddon for "MetricsCollector" condition (set by MCOA status controller)
+	// Step 2: Check ObservabilityAddon for "MetricsCollector" condition (set by legacy endpoint-observability-operator)
 	obaObj, err := dynClient.Resource(NewMCOAddonGVR()).
 		Namespace(namespace).
 		Get(context.TODO(), "observability-addon", metav1.GetOptions{})
@@ -116,7 +116,7 @@ func CheckOBAStatus(opt TestOptions, namespace string) error {
 }
 
 func CheckOBADeleted(opt TestOptions, cluster ClustersInfo) error {
-	klog.V(1).Infof("Checking observability-addon deleted for managed cluster %s", cluster.Name)
+	klog.V(2).Infof("Checking observability-addon deleted for managed cluster %s", cluster.Name)
 	dynClient := NewKubeClientDynamic(
 		opt.HubCluster.ClusterServerURL,
 		opt.KubeConfig,
@@ -124,11 +124,11 @@ func CheckOBADeleted(opt TestOptions, cluster ClustersInfo) error {
 
 	_, err := dynClient.Resource(NewMCOAddonGVR()).Namespace(cluster.Name).Get(context.TODO(), "observability-addon", metav1.GetOptions{})
 	if err == nil {
-		klog.Errorf("observability-addon still exists for managed cluster %s", cluster.Name)
+		klog.V(2).Infof("observability-addon still exists for managed cluster %s", cluster.Name)
 		return fmt.Errorf("observability-addon still exists for managed cluster %s", cluster.Name)
 	}
 	if !errors.IsNotFound(err) {
-		klog.Errorf("failed to get observability-addon for managed cluster %s: %v", cluster.Name, err)
+		klog.V(2).Infof("failed to get observability-addon for managed cluster %s: %v", cluster.Name, err)
 		return fmt.Errorf("failed to get observability-addon for managed cluster %s: %w", cluster.Name, err)
 	}
 	return nil
@@ -139,17 +139,17 @@ func CheckAllOBAsEnabled(opt TestOptions) error {
 	if err != nil {
 		return err
 	}
-	klog.V(1).Infof("Check OBA status for managedclusters: %v", clusters)
+	klog.V(2).Infof("Check OBA status for managedclusters: %v", clusters)
 
 	for _, cluster := range clusters {
 		// skip the check for local-cluster
 		if cluster.IsLocalCluster {
-			klog.V(1).Infof("Skip OBA status for managedcluster: %v", cluster.Name)
+			klog.V(2).Infof("Skip OBA status for managedcluster: %v", cluster.Name)
 			continue
 		}
 		err = CheckOBAStatus(opt, cluster.Name)
 		if err != nil {
-			klog.V(1).Infof("Error checking OBA status for cluster %q: %v", cluster.Name, err)
+			klog.V(2).Infof("Error checking OBA status for cluster %q: %v", cluster.Name, err)
 			return err
 		}
 	}
