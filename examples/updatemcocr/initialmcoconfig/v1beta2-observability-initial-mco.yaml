@@ -105,7 +105,7 @@ spec:
     scrapeSizeLimitBytes: 1073741824
     enableMetrics: true
     workers: 1
-    interval: 300
+    interval: 120
     resources:
       limits:
         cpu: 200m

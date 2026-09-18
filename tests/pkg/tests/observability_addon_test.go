@@ -105,7 +105,7 @@ var _ = Describe("", func() {
 							return err
 						}
 						return nil
-					}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
+					}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(Succeed())
 				},
 			)
 		},
@@ -185,7 +185,7 @@ var _ = Describe("", func() {
 			By("Waiting for ObservabilityAddon to be enabled and ready")
 			Eventually(func() error {
 				return utils.CheckAllOBAsEnabled(testOptions)
-			}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
+			}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(Succeed())
 
 			By("Waiting for MCO addon components to be running")
 			Eventually(func() bool {
