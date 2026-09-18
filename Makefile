@@ -132,7 +132,7 @@ download-crds: ## Download OBO CRDs.
 	@./tools/download-rhobs-crds.sh
 
 .PHONY: unit-tests ## Run all unit tests.
-unit-tests: unit-tests-operators unit-tests-loaders unit-tests-proxy unit-tests-collectors
+unit-tests: unit-tests-operators unit-tests-loaders unit-tests-proxy unit-tests-collectors unit-tests-utils
 
 .PHONY: unit-tests-operators
 unit-tests-operators: ## Run operators unit tests only.
@@ -149,6 +149,10 @@ unit-tests-proxy: ## Run proxy uni tests only.
 .PHONY: unit-tests-collectors
 unit-tests-collectors: ## Run collectors unit tests only. 
 	go test -race ${VERBOSE} `go list ./collectors/... | $(GREP) -v test`
+
+.PHONY: unit-tests-utils
+unit-tests-utils: ## Run test utility unit tests only.
+	go test -race ${VERBOSE} ./tests/pkg/utils/...
 
 .PHONY: integration-test-operators
 integration-test-operators: ## Run operators integration tests.

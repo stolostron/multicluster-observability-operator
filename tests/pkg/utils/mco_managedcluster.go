@@ -32,6 +32,7 @@ var openshiftLabelSelector = labels.SelectorFromValidatedSet(map[string]string{
 type ClustersInfo struct {
 	Name           string
 	IsLocalCluster bool
+	Vendor         string
 }
 
 func UpdateObservabilityFromManagedCluster(opt TestOptions, enableObservability bool) error {
@@ -98,15 +99,22 @@ func ListManagedClusters(opt TestOptions) ([]ClustersInfo, error) {
 			}
 		}
 
+		labelsMap, _ := metadata["labels"].(map[string]any)
+		vendor, _ := labelsMap["vendor"].(string)
+		if vendor == "" {
+			vendor = statusUnknown
+		}
+
 		// Only add clusters with ManagedClusterConditionAvailable status == True
 		if available {
-			klog.Infof("Add cluster %s to the list", name)
+			klog.Infof("Add cluster %s (vendor: %s) to the list", name, vendor)
 			clusters = append(clusters, ClustersInfo{
 				Name:           name,
-				IsLocalCluster: metadata["labels"].(map[string]any)["local-cluster"] == "true",
+				IsLocalCluster: labelsMap["local-cluster"] == "true",
+				Vendor:         vendor,
 			})
 		} else {
-			klog.Infof("Skip cluster %s: ManagedClusterConditionAvailable is not True", name)
+			klog.Infof("Skip cluster %s (vendor: %s): ManagedClusterConditionAvailable is not True", name, vendor)
 		}
 	}
 
@@ -234,4 +242,23 @@ func HasManagedClusters(opt TestOptions) bool {
 		}
 	}
 	return false
+}
+
+// GetManagedClusterIDToNameMap returns a mapping of cluster ID (from id.k8s.io cluster claim)
+// to cluster name for all managed clusters.
+func GetManagedClusterIDToNameMap(opt TestOptions) (map[string]string, error) {
+	managedClusters, err := GetManagedClusters(opt)
+	if err != nil {
+		return nil, err
+	}
+	idToName := make(map[string]string, len(managedClusters))
+	for _, mc := range managedClusters {
+		for _, cc := range mc.Status.ClusterClaims {
+			if cc.Name == idClusterClaim {
+				idToName[cc.Value] = mc.Name
+				break
+			}
+		}
+	}
+	return idToName, nil
 }

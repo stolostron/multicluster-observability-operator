@@ -153,6 +153,12 @@ var _ = BeforeSuite(func() {
 	installMCO()
 })
 
+var _ = ReportAfterEach(func(report SpecReport) {
+	if report.Failed() {
+		testFailed = true
+	}
+})
+
 var _ = AfterSuite(func() {
 	if !testFailed {
 		uninstallMCO()
