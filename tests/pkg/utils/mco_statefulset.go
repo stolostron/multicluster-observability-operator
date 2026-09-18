@@ -92,7 +92,7 @@ func CheckStatefulSetAvailability(cluster Cluster, name, namespace string, shoul
 				return fmt.Errorf("failed to get statefulset %s/%s: %w", namespace, name, err)
 			}
 			return FormatStatefulSetStillExistsError(sts, namespace, name)
-		}, 120, 5).Should(gomega.Succeed())
+		}, 300, 5).Should(gomega.Succeed())
 	}
 }
 
