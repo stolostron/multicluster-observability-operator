@@ -62,10 +62,14 @@ func (r *MCORenderer) renderProxyDeployment(ctx context.Context, res *resource.R
 	args0 := spec.Containers[0].Args
 	for idx := range args0 {
 		args0[idx] = strings.Replace(args0[idx], "{{MCO_NAMESPACE}}", mcoconfig.GetDefaultNamespace(), 1)
+		observatoriumName := mcoconfig.GetOperandName(mcoconfig.Observatorium)
+		if mcoconfig.IsMcoaObsAPIEnabled(ctx, r.kubeClient) {
+			observatoriumName = "mcoa-observability"
+		}
 		args0[idx] = strings.Replace(
 			args0[idx],
 			"{{OBSERVATORIUM_NAME}}",
-			mcoconfig.GetOperandName(mcoconfig.Observatorium),
+			observatoriumName,
 			1,
 		)
 	}

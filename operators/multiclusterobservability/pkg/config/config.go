@@ -33,6 +33,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/uuid"
+	addonv1beta1 "open-cluster-management.io/api/addon/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
@@ -40,7 +41,9 @@ import (
 const (
 	crLabelKey                        = "observability.open-cluster-management.io/name"
 	clusterNameLabelKey               = "cluster"
-	obsAPIGateway                     = "observatorium-api"
+	ObsAPIGateway                     = "observatorium-api"
+	McoaObsAPIGateway                 = "mcoa-observatorium-api"
+	McoaObsAPIAnnotation              = "mcoa-obs-api"
 	infrastructureConfigName          = "cluster"
 	defaultMCONamespace               = "open-cluster-management"
 	defaultNamespace                  = "open-cluster-management-observability"
@@ -425,12 +428,24 @@ func GetDefaultTenantName() string {
 // GetObsAPIRouteHost is used to Route's host for Observatorium API. This doesn't take into consideration
 // the `advanced.customObservabilityHubURL` configuration.
 func GetObsAPIRouteHost(ctx context.Context, client client.Client, namespace string) (string, error) {
-	return GetRouteHost(ctx, client, obsAPIGateway, namespace)
+	return GetRouteHost(ctx, client, ObsAPIGateway, namespace)
+}
+
+// IsMcoaObsAPIEnabled checks the AddOnDeploymentConfig for the mcoa-obs-api annotation.
+func IsMcoaObsAPIEnabled(ctx context.Context, c client.Client) bool {
+	aodc := &addonv1beta1.AddOnDeploymentConfig{}
+	if err := c.Get(ctx, types.NamespacedName{
+		Name:      MultiClusterObservabilityAddon,
+		Namespace: GetDefaultNamespace(),
+	}, aodc); err != nil {
+		return false
+	}
+	return aodc.GetAnnotations()[McoaObsAPIAnnotation] == "true"
 }
 
 // GetObsAPIExternalURL is used to get the frontend URL that should be used to reach the Observatorium API instance.
 // This takes into consideration the `advanced.customObservabilityHubURL` configuration.
-func GetObsAPIExternalURL(ctx context.Context, client client.Client, namespace string) (*url.URL, error) {
+func GetObsAPIExternalURL(ctx context.Context, client client.Client, obsapi string, namespace string) (*url.URL, error) {
 	mco := &observabilityv1beta2.MultiClusterObservability{}
 	err := client.Get(ctx,
 		types.NamespacedName{
@@ -448,7 +463,7 @@ func GetObsAPIExternalURL(ctx context.Context, client client.Client, namespace s
 		}
 		return obsURL, nil
 	}
-	routeHost, err := GetRouteHost(ctx, client, obsAPIGateway, namespace)
+	routeHost, err := GetRouteHost(ctx, client, obsapi, namespace)
 	if err != nil {
 		return nil, err
 	}

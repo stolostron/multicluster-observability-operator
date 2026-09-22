@@ -256,7 +256,13 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		}
 	}
 
-	obsAPIURL, err := config.GetObsAPIExternalURL(ctx, r.Client, config.GetDefaultNamespace())
+	// Use the MCOA obs-api route when the user sets mcoa-obs-api: "true" on the AODC.
+	obsAPIGateway := config.ObsAPIGateway
+	if config.IsMcoaObsAPIEnabled(ctx, r.Client) {
+		obsAPIGateway = config.McoaObsAPIGateway
+	}
+
+	obsAPIURL, err := config.GetObsAPIExternalURL(ctx, r.Client, obsAPIGateway, config.GetDefaultNamespace())
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to get the Observatorium API URL: %w", err) // Already wrapped
 	}
