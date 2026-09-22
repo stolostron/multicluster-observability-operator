@@ -467,26 +467,26 @@ func pemEncode(cert []byte, key []byte) (*bytes.Buffer, *bytes.Buffer) {
 
 func getHosts(c client.Client, ingressCtlCrdExists bool) ([]string, error) {
 	hosts := []string{config.GetObsAPISvc(config.GetOperandName(config.Observatorium))}
-	hosts = append(hosts, config.GetObsAPISvc("mcoa-"+config.GetOperandName(config.Observatorium)))
 
 	customHostURL, err := config.GetObsAPIExternalURL(context.TODO(), c, config.ObsAPIGateway, config.GetDefaultNamespace())
 	if err != nil {
 		return nil, err
 	}
-	// The config.GetObsAPIExternalURL call is already doing URL parsing under the hood to ensure it's valid,
-	// so we don't need to check the error of url.Parse again.
 	customHost := customHostURL.Hostname()
 	if customHost != "" {
 		hosts = append(hosts, customHost)
 	}
-	// MCOA
-	mcoaCustomHostURL, err := config.GetObsAPIExternalURL(context.TODO(), c, config.McoaObsAPIGateway, config.GetDefaultNamespace())
-	if err != nil {
-		return nil, err
-	}
-	mcoaCustomHost := mcoaCustomHostURL.Hostname()
-	if mcoaCustomHost != "" {
-		hosts = append(hosts, mcoaCustomHost)
+
+	if config.IsMcoaObsAPIEnabled(context.TODO(), c) {
+		hosts = append(hosts, config.GetObsAPISvc("mcoa-"+config.GetOperandName(config.Observatorium)))
+		mcoaCustomHostURL, err := config.GetObsAPIExternalURL(context.TODO(), c, config.McoaObsAPIGateway, config.GetDefaultNamespace())
+		if err != nil {
+			return nil, err
+		}
+		mcoaCustomHost := mcoaCustomHostURL.Hostname()
+		if mcoaCustomHost != "" {
+			hosts = append(hosts, mcoaCustomHost)
+		}
 	}
 
 	if ingressCtlCrdExists {

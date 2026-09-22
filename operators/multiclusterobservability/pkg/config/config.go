@@ -33,6 +33,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/uuid"
+	addonv1beta1 "open-cluster-management.io/api/addon/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
@@ -42,6 +43,7 @@ const (
 	clusterNameLabelKey               = "cluster"
 	ObsAPIGateway                     = "observatorium-api"
 	McoaObsAPIGateway                 = "mcoa-observatorium-api"
+	McoaObsAPIAnnotation              = "mcoa-obs-api"
 	infrastructureConfigName          = "cluster"
 	defaultMCONamespace               = "open-cluster-management"
 	defaultNamespace                  = "open-cluster-management-observability"
@@ -427,6 +429,18 @@ func GetDefaultTenantName() string {
 // the `advanced.customObservabilityHubURL` configuration.
 func GetObsAPIRouteHost(ctx context.Context, client client.Client, namespace string) (string, error) {
 	return GetRouteHost(ctx, client, ObsAPIGateway, namespace)
+}
+
+// IsMcoaObsAPIEnabled checks the AddOnDeploymentConfig for the mcoa-obs-api annotation.
+func IsMcoaObsAPIEnabled(ctx context.Context, c client.Client) bool {
+	aodc := &addonv1beta1.AddOnDeploymentConfig{}
+	if err := c.Get(ctx, types.NamespacedName{
+		Name:      MultiClusterObservabilityAddon,
+		Namespace: GetDefaultNamespace(),
+	}, aodc); err != nil {
+		return false
+	}
+	return aodc.GetAnnotations()[McoaObsAPIAnnotation] == "true"
 }
 
 // GetObsAPIExternalURL is used to get the frontend URL that should be used to reach the Observatorium API instance.
