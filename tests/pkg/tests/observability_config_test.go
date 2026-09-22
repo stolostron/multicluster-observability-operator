@@ -112,7 +112,7 @@ var _ = Describe("", func() {
 			}
 			observabilityAddonSpec := mcoRes.Object["spec"].(map[string]any)["observabilityAddonSpec"].(map[string]any)
 			Expect(observabilityAddonSpec["enableMetrics"]).To(Equal(true))
-			Expect(observabilityAddonSpec["interval"]).To(Equal(int64(300)))
+			Expect(observabilityAddonSpec["interval"]).To(Equal(int64(120)))
 		},
 	)
 
