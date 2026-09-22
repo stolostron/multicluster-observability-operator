@@ -119,13 +119,26 @@ func (d *Deployer) Deploy(ctx context.Context, obj *unstructured.Unstructured) e
 }
 
 func (d *Deployer) updateDeployment(ctx context.Context, desiredObj, runtimeObj *unstructured.Unstructured) error {
-	desiredDeploy, runtimeDepoly, err := unstructuredPairToTyped[appsv1.Deployment](desiredObj, runtimeObj)
+	desiredDeploy, runtimeDeploy, err := unstructuredPairToTyped[appsv1.Deployment](desiredObj, runtimeObj)
 	if err != nil {
 		return err
 	}
 
-	if !equality.Semantic.DeepDerivative(desiredDeploy.Spec, runtimeDepoly.Spec) {
+	// Compare using unstructured maps for the Spec field.
+	// Typed Go structs zero-initialize missing fields (e.g., timeoutSeconds: 0),
+	// which causes DeepDerivative to fail against cluster-side defaults (e.g., timeoutSeconds: 1).
+	// Unstructured maps preserve the "missing key" state, allowing DeepDerivative to correctly
+	// ignore defaulted fields that aren't explicitly set in our manifest.
+	if !equality.Semantic.DeepDerivative(desiredObj.Object["spec"], runtimeObj.Object["spec"]) ||
+		!isMapSubset(runtimeObj.GetLabels(), desiredObj.GetLabels()) ||
+		!isMapSubset(runtimeObj.GetAnnotations(), desiredObj.GetAnnotations()) {
 		logUpdateInfo(runtimeObj)
+		// Merge desired labels/annotations into runtime to preserve user-added entries.
+		desiredDeploy.Labels, desiredDeploy.Annotations = mergeMetadata(
+			runtimeDeploy.Labels, runtimeDeploy.Annotations,
+			desiredDeploy.Labels, desiredDeploy.Annotations,
+		)
+		desiredDeploy.ResourceVersion = runtimeDeploy.ResourceVersion
 		return d.client.Update(ctx, desiredDeploy)
 	}
 
@@ -133,17 +146,36 @@ func (d *Deployer) updateDeployment(ctx context.Context, desiredObj, runtimeObj 
 }
 
 func (d *Deployer) updateStatefulSet(ctx context.Context, desiredObj, runtimeObj *unstructured.Unstructured) error {
-	desiredDepoly, runtimeDepoly, err := unstructuredPairToTyped[appsv1.StatefulSet](desiredObj, runtimeObj)
+	desiredSTS, runtimeSTS, err := unstructuredPairToTyped[appsv1.StatefulSet](desiredObj, runtimeObj)
 	if err != nil {
 		return err
 	}
 
-	if !equality.Semantic.DeepDerivative(desiredDepoly.Spec.Template, runtimeDepoly.Spec.Template) ||
-		!equality.Semantic.DeepDerivative(desiredDepoly.Spec.Replicas, runtimeDepoly.Spec.Replicas) {
+	// volumeClaimTemplates is immutable in StatefulSets; storage-size changes are handled
+	// separately by HandleStorageSizeChange (PVC resize + STS delete/recreate). Exclude it
+	// from the comparison to avoid triggering an Update that Kubernetes will reject or silently ignore.
+	desiredSpec := maps.Clone(desiredObj.Object["spec"].(map[string]any))
+	runtimeSpec := maps.Clone(runtimeObj.Object["spec"].(map[string]any))
+	delete(desiredSpec, "volumeClaimTemplates")
+	delete(runtimeSpec, "volumeClaimTemplates")
+
+	if !equality.Semantic.DeepDerivative(desiredSpec, runtimeSpec) ||
+		!isMapSubset(runtimeObj.GetLabels(), desiredObj.GetLabels()) ||
+		!isMapSubset(runtimeObj.GetAnnotations(), desiredObj.GetAnnotations()) {
 		logUpdateInfo(runtimeObj)
-		runtimeDepoly.Spec.Replicas = desiredDepoly.Spec.Replicas
-		runtimeDepoly.Spec.Template = desiredDepoly.Spec.Template
-		return d.client.Update(ctx, runtimeDepoly)
+		// Merge desired labels/annotations into runtime to preserve user-added entries.
+		runtimeSTS.Labels, runtimeSTS.Annotations = mergeMetadata(
+			runtimeSTS.Labels, runtimeSTS.Annotations,
+			desiredSTS.Labels, desiredSTS.Annotations,
+		)
+		// Only update the mutable Spec fields; volumeClaimTemplates is immutable.
+		runtimeSTS.Spec.Replicas = desiredSTS.Spec.Replicas
+		runtimeSTS.Spec.Template = desiredSTS.Spec.Template
+		runtimeSTS.Spec.UpdateStrategy = desiredSTS.Spec.UpdateStrategy
+		runtimeSTS.Spec.MinReadySeconds = desiredSTS.Spec.MinReadySeconds
+		runtimeSTS.Spec.PersistentVolumeClaimRetentionPolicy = desiredSTS.Spec.PersistentVolumeClaimRetentionPolicy
+		runtimeSTS.Spec.Ordinals = desiredSTS.Spec.Ordinals
+		return d.client.Update(ctx, runtimeSTS)
 	}
 
 	return nil
@@ -155,9 +187,13 @@ func (d *Deployer) updateService(ctx context.Context, desiredObj, runtimeObj *un
 		return err
 	}
 
-	if !equality.Semantic.DeepDerivative(desiredService.Spec, runtimeService.Spec) {
+	// Use unstructured Spec comparison to avoid Go zero-value conflicts with cluster defaults.
+	if !equality.Semantic.DeepDerivative(desiredObj.Object["spec"], runtimeObj.Object["spec"]) ||
+		!isMapSubset(runtimeObj.GetLabels(), desiredObj.GetLabels()) ||
+		!isMapSubset(runtimeObj.GetAnnotations(), desiredObj.GetAnnotations()) {
 		desiredService.ResourceVersion = runtimeService.ResourceVersion
 		desiredService.Spec.ClusterIP = runtimeService.Spec.ClusterIP
+		desiredService.Spec.ClusterIPs = runtimeService.Spec.ClusterIPs
 		logUpdateInfo(runtimeObj)
 		return d.client.Update(ctx, desiredService)
 	}
@@ -187,9 +223,24 @@ func (d *Deployer) updateSecret(ctx context.Context, desiredObj, runtimeObj *uns
 		return err
 	}
 
-	if desiredSecret.Data == nil ||
-		!equality.Semantic.DeepDerivative(desiredSecret.Data, runtimeSecret.Data) {
+	// Handle StringData by converting it to Data for comparison.
+	// This prevents an infinite loop where the operator constantly tries to update secrets
+	// defined with StringData because the Kube API converts it to Data on the server side,
+	// causing DeepDerivative(nil, runtime.Data) to return true (if ignoring nil).
+	if len(desiredSecret.StringData) > 0 {
+		if desiredSecret.Data == nil {
+			desiredSecret.Data = make(map[string][]byte)
+		}
+		for k, v := range desiredSecret.StringData {
+			desiredSecret.Data[k] = []byte(v)
+		}
+	}
+
+	// Changes to Secret.Type are not handled here (they typically require delete/recreate),
+	// so only Data is compared.
+	if !equality.Semantic.DeepDerivative(desiredSecret.Data, runtimeSecret.Data) {
 		logUpdateInfo(desiredObj)
+		desiredSecret.ResourceVersion = runtimeSecret.ResourceVersion
 		return d.client.Update(ctx, desiredSecret)
 	}
 	return nil
@@ -600,4 +651,22 @@ func isControllerOwner(ownerRefs []metav1.OwnerReference, obj client.Object) boo
 	}
 
 	return false
+}
+
+// mergeMetadata returns merged label and annotation maps where desired values override
+// runtime values on conflict, but runtime-only entries (user additions) are preserved.
+func mergeMetadata(runtimeLabels, runtimeAnnotations, desiredLabels, desiredAnnotations map[string]string) (map[string]string, map[string]string) {
+	merged := maps.Clone(runtimeLabels)
+	if merged == nil {
+		merged = make(map[string]string)
+	}
+	maps.Copy(merged, desiredLabels)
+
+	mergedAnnotations := maps.Clone(runtimeAnnotations)
+	if mergedAnnotations == nil {
+		mergedAnnotations = make(map[string]string)
+	}
+	maps.Copy(mergedAnnotations, desiredAnnotations)
+
+	return merged, mergedAnnotations
 }
