@@ -606,16 +606,16 @@ func GetPullSecret(opt TestOptions) (string, error) {
 		newSecret := &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "multiclusterhub-operator-pull-secret",
-				Namespace: "open-cluster-management",
+				Namespace: mchNs,
 			},
 			Type: corev1.SecretTypeDockerConfigJson,
 			Data: map[string][]byte{
 				".dockerconfigjson": secret.Data[".dockerconfigjson"],
 			},
 		}
-		_, err = clientKube.CoreV1().Secrets("open-cluster-management").Create(context.TODO(), newSecret, metav1.CreateOptions{})
+		_, err = clientKube.CoreV1().Secrets(mchNs).Create(context.TODO(), newSecret, metav1.CreateOptions{})
 		if err != nil && !k8sErrors.IsAlreadyExists(err) {
-			return "", fmt.Errorf("failed to create pull-secret in open-cluster-management %v", err)
+			return "", fmt.Errorf("failed to create pull-secret in ns: %s. %w", mchNs, err)
 		}
 		return newSecret.Name, nil
 	}
