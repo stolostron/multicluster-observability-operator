@@ -466,27 +466,22 @@ func pemEncode(cert []byte, key []byte) (*bytes.Buffer, *bytes.Buffer) {
 }
 
 func getHosts(c client.Client, ingressCtlCrdExists bool) ([]string, error) {
-	hosts := []string{config.GetObsAPISvc(config.GetOperandName(config.Observatorium))}
+	obsAPIGateway := config.ObsAPIGateway
+	svcName := config.GetOperandName(config.Observatorium)
+	if config.IsMcoaObsAPIEnabled(context.TODO(), c) {
+		obsAPIGateway = config.McoaObsAPIGateway
+		svcName = "mcoa-" + svcName
+	}
 
-	customHostURL, err := config.GetObsAPIExternalURL(context.TODO(), c, config.ObsAPIGateway, config.GetDefaultNamespace())
+	hosts := []string{config.GetObsAPISvc(svcName)}
+
+	customHostURL, err := config.GetObsAPIExternalURL(context.TODO(), c, obsAPIGateway, config.GetDefaultNamespace())
 	if err != nil {
 		return nil, err
 	}
 	customHost := customHostURL.Hostname()
 	if customHost != "" {
 		hosts = append(hosts, customHost)
-	}
-
-	if config.IsMcoaObsAPIEnabled(context.TODO(), c) {
-		hosts = append(hosts, config.GetObsAPISvc("mcoa-"+config.GetOperandName(config.Observatorium)))
-		mcoaCustomHostURL, err := config.GetObsAPIExternalURL(context.TODO(), c, config.McoaObsAPIGateway, config.GetDefaultNamespace())
-		if err != nil {
-			return nil, err
-		}
-		mcoaCustomHost := mcoaCustomHostURL.Hostname()
-		if mcoaCustomHost != "" {
-			hosts = append(hosts, mcoaCustomHost)
-		}
 	}
 
 	if ingressCtlCrdExists {
