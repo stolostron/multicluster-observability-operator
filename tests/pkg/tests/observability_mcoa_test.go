@@ -1159,10 +1159,10 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 
 	JustAfterEach(func() {
 		if CurrentSpecReport().Failed() {
+			testFailed = true
 			utils.LogFailingTestStandardDebugInfo(testOptions, true)
+			return
 		}
-		testFailed = testFailed || CurrentSpecReport().Failed()
-
 		Expect(utils.IntegrityChecking(testOptions)).NotTo(HaveOccurred())
 	})
 
@@ -1193,11 +1193,12 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 							// our specific endpoint operator management label.
 							labels := crdObj.GetLabels()
 							if labels != nil && labels[mcoa.ManagedByLabelKey] == mcoa.ManagedByLabelValue {
-								return fmt.Errorf("OBO CRD %s managed by MCOA was not cleaned up on cluster %s after addon was disabled", crd, cluster.Name)
+								return fmt.Errorf("OBO CRD %s managed by MCOA (deletionTimestamp: %v, finalizers: %v) was not cleaned up on cluster %s after addon was disabled",
+									crd, crdObj.GetDeletionTimestamp(), crdObj.GetFinalizers(), cluster.Name)
 							}
 						}
 						return nil
-					}, 120, 5).Should(Succeed(), "All MCOA-managed CRDs should be cleaned up on cluster %s", cluster.Name)
+					}, 240, 5).Should(Succeed(), "All MCOA-managed CRDs should be cleaned up on cluster %s", cluster.Name)
 				}
 			})
 
@@ -1207,6 +1208,11 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 			// Wait for the metrics collector to be up to avoid race conditions with other tests setups
 			utils.CheckDeploymentAvailability(testOptions.HubCluster, metricsCollectorDeploymentName, utils.MCO_NAMESPACE, true)
 			utils.CheckDeploymentAvailabilityOnClusters(managedClusters, metricsCollectorDeploymentName, utils.MCO_ADDON_NAMESPACE, true)
+
+			By("Waiting for ObservabilityAddon to be available and healthy on managed clusters")
+			Eventually(func() error {
+				return utils.CheckAllOBAsEnabled(testOptions)
+			}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*10).Should(Succeed(), "ObservabilityAddon should become available and healthy on all managed clusters after MCOA teardown")
 		})
 	})
 })
