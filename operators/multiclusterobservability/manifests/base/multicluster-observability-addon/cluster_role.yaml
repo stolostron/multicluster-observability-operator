@@ -91,7 +91,7 @@
       verbs: ["get", "list", "watch", "create", "update", "delete", "patch"]
     - apiGroups: ["loki.grafana.com"]
       resources: ["lokistacks"]
-      verbs: ["get", "list", "watch"]
+      verbs: ["get", "list", "watch", "create", "update", "delete", "patch"]
     - apiGroups: ["cert-manager.io"]
       resources: ["certificates"]
       verbs: ["get", "list", "watch", "create", "update", "delete", "patch"]
