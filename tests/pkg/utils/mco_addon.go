@@ -9,6 +9,7 @@ import (
 	"fmt"
 
 	"github.com/onsi/gomega"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -85,4 +86,25 @@ func GetManagedClusterAddon(opt TestOptions, name, namespace string) (*addonv1be
 	}
 
 	return mca, nil
+}
+
+// CheckManagedClusterAddonDeleted checks that the ManagedClusterAddon is removed from all managed clusters.
+func CheckManagedClusterAddonDeleted(opt TestOptions, name string) {
+	gomega.Eventually(func() error {
+		managedClusters, err := GetAvailableManagedClusters(opt)
+		if err != nil {
+			return err
+		}
+
+		for _, cluster := range managedClusters {
+			_, err := GetManagedClusterAddon(opt, name, cluster.Name)
+			if err == nil {
+				return fmt.Errorf("ManagedClusterAddon %s on cluster %s still exists", name, cluster.Name)
+			}
+			if !apierrors.IsNotFound(err) {
+				return err
+			}
+		}
+		return nil
+	}, 300, 5).Should(gomega.Succeed())
 }
