@@ -14,23 +14,19 @@ spec:
     spec:
       securityContext:
         runAsNonRoot: true
-        # fsGroup grants write access to the emptyDir under whatever arbitrary
-        # UID OpenShift assigns, since this image's entrypoint only self-fixes
-        # /data ownership when started as root (which restricted SCCs disallow).
-        # Deliberately omitted here (rather than hardcoded, e.g. to 1000): the
-        # restricted SCC's fsGroup strategy is MustRunAs, constrained to a
-        # per-namespace allocated range that a hardcoded value is very unlikely
-        # to fall within, which would get the pod rejected at admission time.
-        # Leaving it unset lets OpenShift auto-inject a value from that range,
-        # and the kubelet grants the container the same GID as a supplemental
-        # group on both the volume and the process, so the actual number
-        # doesn't need to match anything baked into the image.
         seccompProfile:
           type: RuntimeDefault
       containers:
         - name: seaweedfs
-          # Default CMD is `mini -dir=/data`, which runs a single-process
-          # master+volume+filer+S3 gateway — no custom command/args needed.
+          # Override args (not command) so the image's default entrypoint still
+          # dispatches to `mini`. Disables the WebDAV, Iceberg, and Lance
+          # listeners that `mini` starts by default — none are used here
+          args:
+            - mini
+            - -dir=/data
+            - -webdav=false
+            - -s3.port.iceberg=0
+            - -s3.port.lance=0
           image: chrislusf/seaweedfs:4.29
           imagePullPolicy: IfNotPresent
           env:

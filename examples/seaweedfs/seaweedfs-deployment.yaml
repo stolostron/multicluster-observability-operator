@@ -18,9 +18,16 @@ spec:
         app.kubernetes.io/name: seaweedfs
     spec:
       containers:
-      # Default image CMD is `mini -dir=/data`, a single-process
-      # master+volume+filer+S3 gateway — no custom command needed.
-      - env:
+      # Override args (not command) so the image's default entrypoint still
+      # dispatches to `mini`. Disables the WebDAV, Iceberg, and Lance
+      # listeners that `mini` starts by default — none are used here
+      - args:
+        - mini
+        - -dir=/data
+        - -webdav=false
+        - -s3.port.iceberg=0
+        - -s3.port.lance=0
+        env:
         - name: AWS_ACCESS_KEY_ID
           value: seaweedfsadmin
         - name: AWS_SECRET_ACCESS_KEY

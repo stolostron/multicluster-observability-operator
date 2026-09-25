@@ -7,8 +7,12 @@ metadata:
     app.kubernetes.io/name: seaweedfs
   annotations: {}
 spec:
-  # SeaweedFS has no dedicated bucket-browsing console; the Filer UI is the
-  # closest equivalent (browsable file/bucket tree at the container's /buckets path).
+  # SeaweedFS does ship a dedicated bucket-browsing console (the Admin UI's
+  # File Browser, via `weed admin`), but that's a separate process pointed at
+  # the master server(s) — it isn't bundled into the `mini` all-in-one command
+  # this deployment runs. So we route to the Filer's own directory listing
+  # instead (browsable file/bucket tree at the container's /buckets path),
+  # since that's what's actually running here.
   port:
     targetPort: filer
   tls:
