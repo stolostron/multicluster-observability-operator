@@ -28,7 +28,7 @@ if $mco_exists; then
   oc delete multiclusterobservability observability
 fi
 
-log_info "Deleting MinIO (ephemeral storage deployed by setup-observability.sh)..."
+log_info "Deleting SeaweedFS (ephemeral storage deployed by setup-observability.sh)..."
 oc delete -f "${SCRIPT_DIR}/manifests/storage/minio-route.yaml" --ignore-not-found
 oc delete -f "${SCRIPT_DIR}/manifests/storage/minio-service.yaml" --ignore-not-found
 oc delete -f "${SCRIPT_DIR}/manifests/storage/minio-deployment.yaml" --ignore-not-found

@@ -27,7 +27,7 @@ pipeline {
         string(name:'SKIP_INSTALL_STEP', defaultValue: 'false', description: 'Skip Observability installation')
         string(name:'SKIP_UNINSTALL_STEP', defaultValue: 'true', description: 'Skip Observability uninstallation')
         string(name:'TAGGING', defaultValue: '', description: 'with tagging value to run the specific test cases')
-        string(name:'USE_MINIO', defaultValue: 'false', description: 'If no AWS S3 bucket, you could use minio as object storage to instead')
+        string(name:'USE_SEAWEEDFS', defaultValue: 'false', description: 'If no AWS S3 bucket, you could use SeaweedFS as object storage to instead')
     }
     environment {
         CI = 'true'
@@ -62,7 +62,7 @@ pipeline {
                 export SKIP_INSTALL_STEP="${params.SKIP_INSTALL_STEP}"
                 export SKIP_UNINSTALL_STEP="${params.SKIP_UNINSTALL_STEP}"
                 export TAGGING="${params.TAGGING}"
-                export USE_MINIO="${params.USE_MINIO}"
+                export USE_SEAWEEDFS="${params.USE_SEAWEEDFS}"
                 export IS_CANARY_ENV=true
                 
                 if [[ -n "${params.AWS_ACCESS_KEY_ID}" ]]; then
@@ -73,7 +73,7 @@ pipeline {
                     export AWS_SECRET_ACCESS_KEY="${params.AWS_SECRET_ACCESS_KEY}"
                 fi
                 
-                if [[ "${params.USE_MINIO}" == true ]]; then
+                if [[ "${params.USE_SEAWEEDFS}" == true ]]; then
                   export IS_CANARY_ENV=false
                 fi                 
                 if [[ -z "${OC_CLUSTER_USER}" || -z "${OC_HUB_CLUSTER_PASS}" || -z "${OC_HUB_CLUSTER_API_URL}" ]]; then

@@ -5,9 +5,9 @@
 package main
 
 /*
-How to generate minio certs:
+How to generate SeaweedFS certs:
 1. run `go run gen.go` to re-generate certs.
-2. run `oc create secret generic minio-tls-secret --from-file=ca.crt=./minio-tls/certs/ca.crt --from-file=public.crt=./minio-tls/certs/public.crt --from-file=private.key=./minio-tls/certs/private.key --dry-run='client' -oyaml --namespace=open-cluster-management-observability > ./minio-tls/minio-tls-secret.yaml` to generate minio-tls-secret.yaml
+2. run `oc create secret generic SeaweedFS-tls-secret --from-file=ca.crt=./minio-tls/certs/ca.crt --from-file=public.crt=./minio-tls/certs/public.crt --from-file=private.key=./minio-tls/certs/private.key --dry-run='client' -oyaml --namespace=open-cluster-management-observability > ./minio-tls/minio-tls-secret.yaml` to generate minio-tls-secret.yaml
 */
 
 import (

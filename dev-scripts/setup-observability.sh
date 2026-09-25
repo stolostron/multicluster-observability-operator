@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Deploys ACM Observability with MinIO as the object storage backend.
+# Deploys ACM Observability with SeaweedFS as the object storage backend.
 #
 # Prerequisites:
 #   - ACM (MultiClusterHub) must be installed and in Running state.
@@ -31,12 +31,12 @@ oc create secret generic multiclusterhub-operator-pull-secret \
   --type=kubernetes.io/dockerconfigjson \
   --dry-run=client -o yaml | oc apply -f -
 
-log_info "Deploying MinIO (ephemeral storage — data is lost on pod restart)..."
+log_info "Deploying SeaweedFS (ephemeral storage — data is lost on pod restart)..."
 oc apply -f "${MANIFESTS}/storage/minio-deployment.yaml"
 oc apply -f "${MANIFESTS}/storage/minio-service.yaml"
 oc apply -f "${MANIFESTS}/storage/minio-route.yaml"
 
-log_info "Waiting for MinIO to be ready..."
+log_info "Waiting for SeaweedFS to be ready..."
 oc rollout status deployment/minio -n "${MCO_NS}" --timeout=120s
 
 log_info "Creating Thanos object storage secret..."
