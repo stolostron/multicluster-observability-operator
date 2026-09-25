@@ -82,7 +82,7 @@ jobs:
           git status
 
       - name: Create pull request for updated node modules versions
-        uses: peter-evans/create-pull-request@v3
+        uses: peter-evans/create-pull-request@v8
         with:
           add-paths: .
           body: |
