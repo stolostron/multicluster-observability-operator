@@ -19,14 +19,14 @@ spec:
       containers:
         - name: seaweedfs
           # Override args (not command) so the image's default entrypoint still
-          # dispatches to `mini`. Disables the WebDAV, Iceberg, and Lance
-          # listeners that `mini` starts by default — none are used here
+          # dispatches to `mini`. Disables the WebDAV and Iceberg listeners
+          # that `mini` starts by default — neither is used here, and leaving
+          # them off reduces the container's exposed surface.
           args:
             - mini
             - -dir=/data
             - -webdav=false
             - -s3.port.iceberg=0
-            - -s3.port.lance=0
           image: chrislusf/seaweedfs:4.29
           imagePullPolicy: IfNotPresent
           env:

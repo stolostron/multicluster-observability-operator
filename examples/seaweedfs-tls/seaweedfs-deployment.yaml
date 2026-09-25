@@ -22,8 +22,9 @@ spec:
       # dispatches to `mini`, just with TLS enabled on the S3 gateway. Providing
       # -s3.cert.file/-s3.key.file with no -s3.port.https flips the default S3
       # port (8333) to HTTPS in place, per weed/command/s3.go. Also disables
-      # the WebDAV, Iceberg, and Lance listeners that `mini` starts by
-      # default — none are used here
+      # the WebDAV and Iceberg listeners that `mini` starts by default —
+      # neither is used here, and leaving them off reduces the container's
+      # exposed surface.
       - args:
         - mini
         - -dir=/data
@@ -31,7 +32,6 @@ spec:
         - -s3.key.file=/etc/seaweedfs/certs/private.key
         - -webdav=false
         - -s3.port.iceberg=0
-        - -s3.port.lance=0
         env:
         - name: AWS_ACCESS_KEY_ID
           value: seaweedfsadmin
