@@ -1,0 +1,5 @@
+resources:
+- seaweedfs-deployment.yaml
+- seaweedfs-pvc.yaml
+- seaweedfs-secret.yaml
+- seaweedfs-service.yaml
