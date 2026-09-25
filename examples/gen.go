@@ -5,9 +5,9 @@
 package main
 
 /*
-How to generate minio certs:
+How to generate SeaweedFS certs:
 1. run `go run gen.go` to re-generate certs.
-2. run `oc create secret generic minio-tls-secret --from-file=ca.crt=./minio-tls/certs/ca.crt --from-file=public.crt=./minio-tls/certs/public.crt --from-file=private.key=./minio-tls/certs/private.key --dry-run='client' -oyaml --namespace=open-cluster-management-observability > ./minio-tls/minio-tls-secret.yaml` to generate minio-tls-secret.yaml
+2. run `oc create secret generic seaweedfs-tls-secret --from-file=ca.crt=./seaweedfs-tls/certs/ca.crt --from-file=public.crt=./seaweedfs-tls/certs/public.crt --from-file=private.key=./seaweedfs-tls/certs/private.key --dry-run='client' -oyaml --namespace=open-cluster-management-observability > ./seaweedfs-tls/seaweedfs-tls-secret.yaml` to generate seaweedfs-tls-secret.yaml
 */
 
 import (
@@ -23,10 +23,10 @@ import (
 )
 
 func main() {
-	certPath := "./minio/certs/public.crt"
-	privkeyPath := "./minio/certs/private.key"
-	caPath := "./minio/certs/ca.crt"
-	serverName := "minio"
+	certPath := "./seaweedfs-tls/certs/public.crt"
+	privkeyPath := "./seaweedfs-tls/certs/private.key"
+	caPath := "./seaweedfs-tls/certs/ca.crt"
+	serverName := "seaweedfs"
 	caRoot := &x509.Certificate{
 		SerialNumber:          big.NewInt(2019),
 		NotAfter:              time.Now().AddDate(10, 0, 0),
