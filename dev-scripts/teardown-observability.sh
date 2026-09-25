@@ -10,15 +10,15 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib/common.sh"
 
 mco_exists=false
-minio_exists=false
+seaweedfs_exists=false
 mco_ns_exists=false
 addon_ns_exists=false
 oc get multiclusterobservability observability &>/dev/null && mco_exists=true
-oc get deployment minio -n "${MCO_NS}" &>/dev/null && minio_exists=true
+oc get deployment seaweedfs -n "${MCO_NS}" &>/dev/null && seaweedfs_exists=true
 oc get namespace "${MCO_NS}" &>/dev/null && mco_ns_exists=true
 oc get namespace open-cluster-management-addon-observability &>/dev/null && addon_ns_exists=true
 
-if ! $mco_exists && ! $minio_exists && ! $mco_ns_exists && ! $addon_ns_exists; then
+if ! $mco_exists && ! $seaweedfs_exists && ! $mco_ns_exists && ! $addon_ns_exists; then
   log_info "Nothing to tear down."
   exit 0
 fi
@@ -28,10 +28,10 @@ if $mco_exists; then
   oc delete multiclusterobservability observability
 fi
 
-log_info "Deleting MinIO (ephemeral storage deployed by setup-observability.sh)..."
-oc delete -f "${SCRIPT_DIR}/manifests/storage/minio-route.yaml" --ignore-not-found
-oc delete -f "${SCRIPT_DIR}/manifests/storage/minio-service.yaml" --ignore-not-found
-oc delete -f "${SCRIPT_DIR}/manifests/storage/minio-deployment.yaml" --ignore-not-found
+log_info "Deleting SeaweedFS (ephemeral storage deployed by setup-observability.sh)..."
+oc delete -f "${SCRIPT_DIR}/manifests/storage/seaweedfs-route.yaml" --ignore-not-found
+oc delete -f "${SCRIPT_DIR}/manifests/storage/seaweedfs-service.yaml" --ignore-not-found
+oc delete -f "${SCRIPT_DIR}/manifests/storage/seaweedfs-deployment.yaml" --ignore-not-found
 oc delete -f "${SCRIPT_DIR}/manifests/storage/thanos-storage-secret.yaml" --ignore-not-found
 
 wait_for_no_pods_in_namespace "${MCO_NS}" 300

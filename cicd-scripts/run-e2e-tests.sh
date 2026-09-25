@@ -17,8 +17,8 @@ GINKGO_FOCUS="$(cat /tmp/ginkgo_focus)"
 
 # need to modify sc for KinD
 if [[ -n ${IS_KIND_ENV} ]]; then
-  "${SED_COMMAND[@]}" "s~gp3-csi$~standard~g" ${ROOTDIR}/examples/minio/minio-pvc.yaml
-  "${SED_COMMAND[@]}" "s~gp3-csi$~standard~g" ${ROOTDIR}/examples/minio-tls/minio-pvc.yaml
+  "${SED_COMMAND[@]}" "s~gp3-csi$~standard~g" ${ROOTDIR}/examples/seaweedfs/seaweedfs-pvc.yaml
+  "${SED_COMMAND[@]}" "s~gp3-csi$~standard~g" ${ROOTDIR}/examples/seaweedfs-tls/seaweedfs-pvc.yaml
 fi
 
 kubeconfig_hub_path=""

@@ -282,7 +282,7 @@ func GetAllMCOPods(opt TestOptions) ([]corev1.Pod, error) {
 			continue
 		}
 
-		if strings.Contains(p.GetName(), "minio") {
+		if strings.Contains(p.GetName(), "seaweedfs") {
 			continue
 		}
 

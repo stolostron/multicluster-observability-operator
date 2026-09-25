@@ -119,8 +119,8 @@ spec:
     metricObjectStorage:
       key: thanos.yaml
       name: thanos-object-storage
-      tlsSecretMountPath: /etc/minio/certs
-      tlsSecretName: minio-tls-secret
+      tlsSecretMountPath: /etc/seaweedfs/certs
+      tlsSecretName: seaweedfs-tls-secret
     receiveStorageSize: 10Gi
     ruleStorageSize: 1Gi
     storeStorageSize: 1Gi

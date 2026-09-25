@@ -319,7 +319,7 @@ Results are written to `tests/pkg/tests/results.xml`.
 
 ## Notes
 
-- **MinIO storage is ephemeral** — all Thanos data is lost if the MinIO pod restarts.
+- **SeaweedFS storage is ephemeral** — all Thanos data is lost if the SeaweedFS pod restarts.
   This is intentional for dev clusters where persistence is not needed.
-- MinIO credentials: `minioadmin` / `minioadmin`
-- The MinIO console URL is printed at the end of `setup-observability.sh`
+- SeaweedFS S3 credentials: `seaweedfsadmin` / `seaweedfsadmin`
+- The SeaweedFS Filer UI URL is printed at the end of `setup-observability.sh`
