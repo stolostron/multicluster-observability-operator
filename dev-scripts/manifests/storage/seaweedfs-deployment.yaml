@@ -14,11 +14,17 @@ spec:
     spec:
       securityContext:
         runAsNonRoot: true
-        # fsGroup grants the arbitrary UID OpenShift assigns write access to the
-        # emptyDir via the "seaweed" group (gid 1000 baked into the image), since
-        # this image's entrypoint only self-fixes /data ownership when started as
-        # root (which restricted SCCs disallow).
-        fsGroup: 1000
+        # fsGroup grants write access to the emptyDir under whatever arbitrary
+        # UID OpenShift assigns, since this image's entrypoint only self-fixes
+        # /data ownership when started as root (which restricted SCCs disallow).
+        # Deliberately omitted here (rather than hardcoded, e.g. to 1000): the
+        # restricted SCC's fsGroup strategy is MustRunAs, constrained to a
+        # per-namespace allocated range that a hardcoded value is very unlikely
+        # to fall within, which would get the pod rejected at admission time.
+        # Leaving it unset lets OpenShift auto-inject a value from that range,
+        # and the kubelet grants the container the same GID as a supplemental
+        # group on both the volume and the process, so the actual number
+        # doesn't need to match anything baked into the image.
         seccompProfile:
           type: RuntimeDefault
       containers:
