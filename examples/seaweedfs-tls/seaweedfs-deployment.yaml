@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: seaweedfs
+  namespace: open-cluster-management-observability
+  labels:
+    app.kubernetes.io/name: seaweedfs
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: seaweedfs
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: seaweedfs
+    spec:
+      containers:
+      # Override args (not command) so the image's default entrypoint still
+      # dispatches to `mini`, just with TLS enabled on the S3 gateway. Providing
+      # -s3.cert.file/-s3.key.file with no -s3.port.https flips the default S3
+      # port (8333) to HTTPS in place, per weed/command/s3.go.
+      - args:
+        - mini
+        - -dir=/data
+        - -s3.cert.file=/etc/seaweedfs/certs/public.crt
+        - -s3.key.file=/etc/seaweedfs/certs/private.key
+        env:
+        - name: AWS_ACCESS_KEY_ID
+          value: seaweedfsadmin
+        - name: AWS_SECRET_ACCESS_KEY
+          value: seaweedfsadmin
+        - name: S3_BUCKET
+          value: thanos
+        image: chrislusf/seaweedfs:4.29
+        name: seaweedfs
+        ports:
+        - containerPort: 8333
+          protocol: TCP
+        volumeMounts:
+        - mountPath: /data
+          name: storage
+        - mountPath: /etc/seaweedfs/certs
+          name: tls-certs
+      volumes:
+      - name: storage
+        persistentVolumeClaim:
+          claimName: seaweedfs
+      - name: tls-certs
+        secret:
+          items:
+          - key: ca.crt
+            path: ca.crt
+          - key: public.crt
+            path: public.crt
+          - key: private.key
+            path: private.key
+          secretName: seaweedfs-tls-secret

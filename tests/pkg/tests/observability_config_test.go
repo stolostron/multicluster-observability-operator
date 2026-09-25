@@ -153,8 +153,8 @@ var _ = Describe("", func() {
 					return err
 				}
 				for _, pvc := range pvcList.Items {
-					// for KinD cluster, we use minio as object storage. the size is 1Gi.
-					if pvc.GetName() != "minio" {
+					// for KinD cluster, we use SeaweedFS as object storage. the size is 1Gi.
+					if pvc.GetName() != "seaweedfs" {
 						scName := *pvc.Spec.StorageClassName
 						statusPhase := pvc.Status.Phase
 						if scName != expectedSC || statusPhase != "Bound" {

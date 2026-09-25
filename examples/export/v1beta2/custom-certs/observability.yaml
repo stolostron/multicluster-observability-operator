@@ -117,8 +117,8 @@ spec:
     metricObjectStorage:
       key: thanos.yaml
       name: thanos-object-storage
-      tlsSecretMountPath: /etc/minio/certs
-      tlsSecretName: minio-tls-secret
+      tlsSecretMountPath: /etc/seaweedfs/certs
+      tlsSecretName: seaweedfs-tls-secret
     writeStorage:
     - key: ep.yaml
       name: victoriametrics      

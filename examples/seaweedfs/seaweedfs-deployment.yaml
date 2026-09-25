@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: seaweedfs
+  namespace: open-cluster-management-observability
+  labels:
+    app.kubernetes.io/name: seaweedfs
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: seaweedfs
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: seaweedfs
+    spec:
+      containers:
+      # Default image CMD is `mini -dir=/data`, a single-process
+      # master+volume+filer+S3 gateway — no custom command needed.
+      - env:
+        - name: AWS_ACCESS_KEY_ID
+          value: seaweedfsadmin
+        - name: AWS_SECRET_ACCESS_KEY
+          value: seaweedfsadmin
+        - name: S3_BUCKET
+          value: thanos
+        image: chrislusf/seaweedfs:4.29
+        name: seaweedfs
+        ports:
+        - containerPort: 8333
+          protocol: TCP
+        volumeMounts:
+        - mountPath: /data
+          name: storage
+      volumes:
+      - name: storage
+        persistentVolumeClaim:
+          claimName: seaweedfs

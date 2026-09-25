@@ -34,7 +34,7 @@ type Config struct {
 	ServiceAccount string `yaml:"service_account"`
 }
 
-// HTTPConfig stores the http.Transport configuration for the s3 SeaweedFS client.
+// HTTPConfig stores the http.Transport configuration for the S3-compatible client.
 type HTTPConfig struct {
 	IdleConnTimeout       model.Duration `yaml:"idle_conn_timeout"`
 	ResponseHeaderTimeout model.Duration `yaml:"response_header_timeout"`

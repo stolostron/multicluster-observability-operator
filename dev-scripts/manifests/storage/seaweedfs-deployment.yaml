@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: seaweedfs
+  namespace: open-cluster-management-observability
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: seaweedfs
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: seaweedfs
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        # fsGroup grants the arbitrary UID OpenShift assigns write access to the
+        # emptyDir via the "seaweed" group (gid 1000 baked into the image), since
+        # this image's entrypoint only self-fixes /data ownership when started as
+        # root (which restricted SCCs disallow).
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: seaweedfs
+          # Default CMD is `mini -dir=/data`, which runs a single-process
+          # master+volume+filer+S3 gateway — no custom command/args needed.
+          image: chrislusf/seaweedfs:4.29
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: AWS_ACCESS_KEY_ID
+              value: seaweedfsadmin
+            - name: AWS_SECRET_ACCESS_KEY
+              value: seaweedfsadmin
+            - name: S3_BUCKET
+              value: acm-observability-thanostore
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          ports:
+            - name: s3
+              containerPort: 8333
+              protocol: TCP
+            - name: filer
+              containerPort: 8888
+              protocol: TCP
+          volumeMounts:
+            - name: storage
+              mountPath: /data
+      volumes:
+        # emptyDir is intentional: this is a dev-only setup, persistence is not needed.
+        - name: storage
+          emptyDir: {}

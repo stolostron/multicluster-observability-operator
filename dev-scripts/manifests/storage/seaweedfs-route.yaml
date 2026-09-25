@@ -1,0 +1,19 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: seaweedfs
+  namespace: open-cluster-management-observability
+  labels:
+    app.kubernetes.io/name: seaweedfs
+  annotations: {}
+spec:
+  # SeaweedFS has no dedicated bucket-browsing console; the Filer UI is the
+  # closest equivalent (browsable file/bucket tree at the container's /buckets path).
+  port:
+    targetPort: filer
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+  to:
+    kind: Service
+    name: seaweedfs

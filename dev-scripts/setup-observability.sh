@@ -32,12 +32,12 @@ oc create secret generic multiclusterhub-operator-pull-secret \
   --dry-run=client -o yaml | oc apply -f -
 
 log_info "Deploying SeaweedFS (ephemeral storage — data is lost on pod restart)..."
-oc apply -f "${MANIFESTS}/storage/minio-deployment.yaml"
-oc apply -f "${MANIFESTS}/storage/minio-service.yaml"
-oc apply -f "${MANIFESTS}/storage/minio-route.yaml"
+oc apply -f "${MANIFESTS}/storage/seaweedfs-deployment.yaml"
+oc apply -f "${MANIFESTS}/storage/seaweedfs-service.yaml"
+oc apply -f "${MANIFESTS}/storage/seaweedfs-route.yaml"
 
 log_info "Waiting for SeaweedFS to be ready..."
-oc rollout status deployment/minio -n "${MCO_NS}" --timeout=120s
+oc rollout status deployment/seaweedfs -n "${MCO_NS}" --timeout=120s
 
 log_info "Creating Thanos object storage secret..."
 oc apply -f "${MANIFESTS}/storage/thanos-storage-secret.yaml"
@@ -47,7 +47,7 @@ oc apply -f "${MANIFESTS}/observability/multiclusterobservability-cr.yaml"
 
 wait_for_mco_ready 600
 
-MINIO_ROUTE=$(oc get route minio -n "${MCO_NS}" -o jsonpath='{.spec.host}' 2>/dev/null || true)
+SEAWEEDFS_ROUTE=$(oc get route seaweedfs -n "${MCO_NS}" -o jsonpath='{.spec.host}' 2>/dev/null || true)
 log_info "Setup complete!"
-log_info "  MinIO console: https://${MINIO_ROUTE} (admin: minioadmin / minioadmin)"
+log_info "  SeaweedFS Filer UI: https://${SEAWEEDFS_ROUTE} (S3 access key: seaweedfsadmin / secret: seaweedfsadmin)"
 log_info "  To enable MCOA user-workload metrics, run: ./enable-mcoa-uwl.sh"
