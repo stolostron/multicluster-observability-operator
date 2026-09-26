@@ -209,6 +209,15 @@ func CreateCOOSubscription(clusters []Cluster) error {
 			return fmt.Errorf("failed to find latest CSV for %s in stable channel", packageName)
 		}
 
+		catalogSource := "redhat-operators"
+		catalogSourceNamespace := "openshift-marketplace"
+		if cs, ok := status["catalogSource"].(string); ok && cs != "" {
+			catalogSource = cs
+		}
+		if csn, ok := status["catalogSourceNamespace"].(string); ok && csn != "" {
+			catalogSourceNamespace = csn
+		}
+
 		// Clean up existing CSV if it exists
 		err = clientDynamic.Resource(NewClusterServiceVersionGVR()).Namespace(cooSubscriptionNamespace).Delete(context.TODO(), latestCSV, metav1.DeleteOptions{})
 		if err != nil && !errors.IsNotFound(err) {
@@ -240,8 +249,8 @@ func CreateCOOSubscription(clusters []Cluster) error {
 					"channel":             "stable",
 					"installPlanApproval": "Automatic",
 					"name":                cooSubscriptionName,
-					"source":              "redhat-operators",
-					"sourceNamespace":     "openshift-marketplace",
+					"source":              catalogSource,
+					"sourceNamespace":     catalogSourceNamespace,
 					"startingCSV":         latestCSV,
 				},
 			},

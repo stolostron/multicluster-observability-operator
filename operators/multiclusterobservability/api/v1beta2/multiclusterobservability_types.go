@@ -366,6 +366,32 @@ type CapabilitiesSpec struct {
 	// +optional
 	// +kubebuilder:validation:Optional
 	AddonManager *AddonManagerSpec `json:"addonManager,omitempty"`
+
+	// CatalogSource selects the OLM catalog used when MCOA installs Cluster Observability Operator
+	// on managed clusters. Leave unset to use redhat-operators in openshift-marketplace.
+	// Required in disconnected environments whose CatalogSource name is not redhat-operators.
+	//
+	// +optional
+	// +kubebuilder:validation:Optional
+	CatalogSource *CatalogSourceSpec `json:"catalogSource,omitempty"`
+}
+
+// CatalogSourceSpec identifies an OLM CatalogSource used for operator subscriptions
+// that MCOA creates on managed clusters.
+type CatalogSourceSpec struct {
+	// Name is the CatalogSource name on the managed cluster (Subscription.spec.source).
+	//
+	// +optional
+	// +kubebuilder:validation:Optional
+	Name string `json:"name,omitempty"`
+
+	// Namespace is the CatalogSource namespace (Subscription.spec.sourceNamespace).
+	// Defaults to openshift-marketplace when empty.
+	//
+	// +optional
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:default:="openshift-marketplace"
+	Namespace string `json:"namespace,omitempty"`
 }
 
 type AdvancedConfig struct {
