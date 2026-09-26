@@ -14,6 +14,7 @@ import (
 	"strings"
 	"testing"
 
+	ocinfrav1 "github.com/openshift/api/config/v1"
 	imagev1 "github.com/openshift/api/image/v1"
 	fakeimageclient "github.com/openshift/client-go/image/clientset/versioned/fake"
 	fakeimagev1client "github.com/openshift/client-go/image/clientset/versioned/typed/image/v1/fake"
@@ -66,9 +67,16 @@ func TestAlertManagerRenderer(t *testing.T) {
 		},
 	}
 
+	clusterVersion := &ocinfrav1.ClusterVersion{
+		ObjectMeta: metav1.ObjectMeta{Name: "version"},
+		Status: ocinfrav1.ClusterVersionStatus{
+			Desired: ocinfrav1.Release{Version: "5.0.0"},
+		},
+	}
 	kubeClient := tlstesting.NewFakeTLSClientBuilder().
 		WithScheme(corev1.AddToScheme).
-		WithObjects(clientCa, mchImageManifest).
+		WithScheme(ocinfrav1.AddToScheme).
+		WithObjects(clientCa, mchImageManifest, clusterVersion).
 		Build(t)
 
 	alertResources := renderTemplates(t, kubeClient, makeBaseMco())
@@ -115,6 +123,12 @@ func TestAlertManagerRenderer(t *testing.T) {
 	// alertmanager-proxy must have the secret value generated
 	proxy := getResource[*corev1.Secret](alertResources, "alertmanager-proxy")
 	assert.True(t, len(proxy.Data["session_secret"]) > 0)
+
+	// oauth-proxy (alertmanager-proxy) and kube-rbac-proxy must have TLS args
+	oauthArgs := sts.Spec.Template.Spec.Containers[2].Args
+	assertHasTLSArgs(t, oauthArgs, "alertmanager-proxy (oauth-proxy)")
+	kubeRbacArgs := sts.Spec.Template.Spec.Containers[3].Args
+	assertHasTLSArgs(t, kubeRbacArgs, "kube-rbac-proxy")
 }
 
 func TestAlertManagerRendererMCOConfig(t *testing.T) {
@@ -286,9 +300,16 @@ func TestAlertManagerRendererMCOConfig(t *testing.T) {
 					"client-ca-file": "test",
 				},
 			}
+			cv := &ocinfrav1.ClusterVersion{
+				ObjectMeta: metav1.ObjectMeta{Name: "version"},
+				Status: ocinfrav1.ClusterVersionStatus{
+					Desired: ocinfrav1.Release{Version: "5.0.0"},
+				},
+			}
 			kubeClient := tlstesting.NewFakeTLSClientBuilder().
 				WithScheme(corev1.AddToScheme).
-				WithObjects(clientCa).
+				WithScheme(ocinfrav1.AddToScheme).
+				WithObjects(clientCa, cv).
 				Build(t)
 
 			alertResources := renderTemplates(t, kubeClient, tc.mco())
@@ -330,6 +351,24 @@ func TestAlertManagerClientCAHashRotation(t *testing.T) {
 	assert.NotEqual(t, hash1, hash2, "hash must change when CA data changes")
 }
 
+func assertHasTLSArgs(t *testing.T, args []string, containerName string) {
+	t.Helper()
+	hasCiphers := false
+	hasMinVersion := false
+	for _, arg := range args {
+		if strings.HasPrefix(arg, "--tls-cipher-suites=") {
+			hasCiphers = true
+			assert.NotEqual(t, "--tls-cipher-suites=", arg, "%s: --tls-cipher-suites must have a value", containerName)
+		}
+		if strings.HasPrefix(arg, "--tls-min-version=") {
+			hasMinVersion = true
+			assert.NotEqual(t, "--tls-min-version=", arg, "%s: --tls-min-version must have a value", containerName)
+		}
+	}
+	assert.True(t, hasCiphers, "%s: missing --tls-cipher-suites arg", containerName)
+	assert.True(t, hasMinVersion, "%s: missing --tls-min-version arg", containerName)
+}
+
 func makeBaseMco() *mcov1beta2.MultiClusterObservability {
 	return &mcov1beta2.MultiClusterObservability{
 		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterObservability"},
@@ -348,6 +387,10 @@ func makeBaseMco() *mcov1beta2.MultiClusterObservability {
 }
 
 func renderTemplates(t *testing.T, kubeClient client.Client, mco *mcov1beta2.MultiClusterObservability) []*unstructured.Unstructured {
+	return renderTemplatesWithVersion(t, kubeClient, mco, "5.0.0")
+}
+
+func renderTemplatesWithVersion(t *testing.T, kubeClient client.Client, mco *mcov1beta2.MultiClusterObservability, ocpVersion string) []*unstructured.Unstructured {
 	wd, err := os.Getwd()
 	assert.NoError(t, err)
 	templatesPath := filepath.Join(wd, "..", "..", "manifests")
