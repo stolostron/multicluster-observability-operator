@@ -226,7 +226,7 @@ func TestRenderGrafanaMCOATemplatesForRemoval(t *testing.T) {
 					kindCounts[kind]++
 				}
 
-				assert.Equal(t, 7, kindCounts["ScrapeConfig"])
+				assert.Equal(t, 6, kindCounts["ScrapeConfig"])
 				assert.Equal(t, 3, kindCounts["PrometheusRule"])
 			},
 		},
