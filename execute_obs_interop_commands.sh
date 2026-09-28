@@ -28,7 +28,7 @@ export MANAGED_CLUSTER_PASS=${MANAGED_CLUSTER_PASS:-}
 export MANAGED_CLUSTER_API_URL=${MANAGED_CLUSTER_API_URL}
 export BUCKET=${BUCKET:-'obs-v1'}
 export REGION=${REGION:-'us-east-1'}
-export USE_MINIO=${USE_MINIO:-'false'}
+export USE_SEAWEEDFS=${USE_SEAWEEDFS:-'false'}
 export SKIP_INSTALL_STEP=${SKIP_INSTALL_STEP:-'false'}
 export SKIP_UNINSTALL_STEP=${SKIP_UNINSTALL_STEP:-'true'}
 export TAGGING=${TAGGING:-}
@@ -41,7 +41,7 @@ if [[ -n ${PARAM_AWS_SECRET_ACCESS_KEY} ]]; then
   export AWS_SECRET_ACCESS_KEY=${PARAM_AWS_SECRET_ACCESS_KEY}
 fi
 
-# if [[ ${!USE_MINIO} == "false" ]]; then
+# if [[ ${!USE_SEAWEEDFS} == "false" ]]; then
 #     export IS_CANARY_ENV=true
 # fi
 
