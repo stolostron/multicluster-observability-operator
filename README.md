@@ -204,10 +204,10 @@ make docker-build docker-push IMG=quay.io/<YOUR_USERNAME_IN_QUAY>/multicluster-o
 kubectl create ns open-cluster-management-observability
 ```
 
-2. Deploy the minio service which acts as storage service of the multicluster observability:
+2. Deploy the SeaweedFS service which acts as storage service of the multicluster observability:
 
 ```bash
-kubectl -n open-cluster-management-observability apply -k examples/minio
+kubectl -n open-cluster-management-observability apply -k examples/seaweedfs
 ```
 
 3. Replace the operator image and deploy the multicluster-observability-operator:
@@ -280,10 +280,10 @@ kubectl -n open-cluster-management-observability delete -f operators/multicluste
 make undeploy
 ```
 
-3. Delete the minio service:
+3. Delete the SeaweedFS service:
 
 ```bash
-kubectl -n open-cluster-management-observability delete -k examples/minio
+kubectl -n open-cluster-management-observability delete -k examples/seaweedfs
 ```
 
 4. Delete the `open-cluster-management-observability` namespace:
