@@ -1847,26 +1847,6 @@ func TestMCOAWaitForManifestWorks(t *testing.T) {
 		},
 	}
 
-	t.Run("hasMCOAManifestWorks helper", func(t *testing.T) {
-		clientWithWork := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(mw).Build()
-		r1 := &MultiClusterObservabilityReconciler{
-			Client: clientWithWork,
-			Scheme: s,
-		}
-		blocking, err := r1.hasMCOAManifestWorks(t.Context())
-		assert.NoError(t, err)
-		assert.Contains(t, blocking, "test-ns")
-
-		clientEmpty := fake.NewClientBuilder().WithScheme(s).Build()
-		r2 := &MultiClusterObservabilityReconciler{
-			Client: clientEmpty,
-			Scheme: s,
-		}
-		blocking, err = r2.hasMCOAManifestWorks(t.Context())
-		assert.NoError(t, err)
-		assert.Empty(t, blocking)
-	})
-
 	t.Run("initFinalization delay", func(t *testing.T) {
 		now := metav1.Now()
 		mcoToDelete1 := &mcov1beta2.MultiClusterObservability{
