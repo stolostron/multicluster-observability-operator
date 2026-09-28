@@ -338,15 +338,13 @@ var _ = Describe("Observability:", func() {
 		Expect(err).NotTo(HaveOccurred())
 		expectedKSClusterNames, err := utils.ListKSManagedClusterNames(testOptions)
 		Expect(err).NotTo(HaveOccurred())
-		var expectClusterIdentifiers []string
-		expectClusterIdentifiers = append(expectClusterIdentifiers, expectedOCPClusterIDs...)
+		expectClusterIdentifiers := append(expectedOCPClusterIDs, expectedKSClusterNames...)
 
 		// install watchdog PrometheusRule to *KS clusters
 		watchDogRuleKustomizationPath := "../../../examples/alerts/watchdog_rule"
 		yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: watchDogRuleKustomizationPath})
 		Expect(err).NotTo(HaveOccurred())
 		for _, ks := range expectedKSClusterNames {
-			promRuleAdded := false
 			for idx, mc := range testOptions.ManagedClusters {
 				if mc.Name == ks {
 					err = utils.Apply(
@@ -355,21 +353,10 @@ var _ = Describe("Observability:", func() {
 						testOptions.ManagedClusters[idx].KubeContext,
 						yamlB,
 					)
-					promRuleAdded = true
-					expectClusterIdentifiers = append(expectClusterIdentifiers, ks)
 					Expect(err).NotTo(HaveOccurred())
 				}
 			}
-			// If we couldn't find the credentials for the cluster and therefore
-			// unable to add the Prometheus rule, we skip the checking the cluster
-			if !promRuleAdded {
-				klog.Infof("WARNING: Credentials for cluster %s not found, not adding to the list of expected clusters", ks)
-			}
 		}
-
-		klog.Infof("List of cluster IDs expected to send the alert is: %s", expectClusterIdentifiers)
-		// Ensure we have at least a managedCluster
-		Expect(expectClusterIdentifiers).To(Not(BeEmpty()))
 
 		By("Checking Watchdog alerts are forwarded to the hub")
 		Eventually(func() error {
