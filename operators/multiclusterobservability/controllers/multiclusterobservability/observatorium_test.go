@@ -631,9 +631,9 @@ config:
   insecure: true
   http_config:
     tls_config:
-      ca_file: /etc/minio/certs/ca.crt
-      cert_file: /etc/minio/certs/public.crt
-      key_file: /etc/minio/certs/private.key
+      ca_file: /etc/seaweedfs/certs/ca.crt
+      cert_file: /etc/seaweedfs/certs/public.crt
+      key_file: /etc/seaweedfs/certs/private.key
       insecure_skip_verify: true
 `),
 				},
@@ -642,7 +642,7 @@ config:
 				Key:  "thanos.yaml",
 				Name: "test-1",
 			},
-			"/etc/minio/certs",
+			"/etc/seaweedfs/certs",
 		},
 		{
 			"has tls config defined in root path",
@@ -661,8 +661,8 @@ config:
   http_config:
     tls_config:
       ca_file: /ca.crt
-      cert_file: /etc/minio/certs/public.crt
-      key_file: /etc/minio/certs/private.key
+      cert_file: /etc/seaweedfs/certs/public.crt
+      key_file: /etc/seaweedfs/certs/private.key
       insecure_skip_verify: true
 `),
 				},
