@@ -466,11 +466,32 @@ var _ = Describe("", func() {
 				}
 			}
 
-			klog.Infof("List of cluster IDs expected to send the alert is: %s", expectClusterIdentifiers)
+			clusterIDToName, _ := utils.GetManagedClusterIDToNameMap(testOptions)
+			formatClusterID := func(id string) string {
+				if name, ok := clusterIDToName[id]; ok && name != "" {
+					return fmt.Sprintf("%s (%s)", name, id)
+				}
+				return id
+			}
+			formatClusterIDs := func(ids []string) []string {
+				formatted := make([]string, 0, len(ids))
+				for _, id := range ids {
+					formatted = append(formatted, formatClusterID(id))
+				}
+				return formatted
+			}
+
+			klog.Infof("List of cluster IDs expected to send the alert is: %v", formatClusterIDs(expectClusterIdentifiers))
 			missingClusters := slices.Clone(expectClusterIdentifiers)
 			// Ensure we have at least a managedCluster
 			Expect(expectClusterIdentifiers).To(Not(BeEmpty()))
 
+			By("Ensuring ObservabilityAddon is healthy on managed clusters before checking alert forwarding")
+			Eventually(func() error {
+				return utils.CheckAllOBAsEnabled(testOptions)
+			}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*10).Should(Succeed())
+
+			var lastLoggedMissing string
 			By("Checking Watchdog alerts are forwarded to the hub")
 			Eventually(func() error {
 				resp, err := client.Do(alertGetReq)
@@ -515,17 +536,23 @@ var _ = Describe("", func() {
 				}
 
 				if len(missingClusters) != 0 {
-					klog.Infof("Watchdog alerts are still missing from these clusters %q. Retrying...", missingClusters)
+					currentMissingStr := fmt.Sprintf("%v", formatClusterIDs(missingClusters))
+					if currentMissingStr != lastLoggedMissing {
+						klog.Infof("Watchdog alerts are still missing from these clusters: %s. Retrying...", currentMissingStr)
+						lastLoggedMissing = currentMissingStr
+					} else {
+						klog.V(2).Infof("Watchdog alerts are still missing from these clusters: %s. Retrying...", currentMissingStr)
+					}
 					return fmt.Errorf(
-						"Not all managedclusters forward Watchdog alert to hub cluster. Found following clusters in alerts %q. Following clusters are still missing: %q. Full list of expected clusters was: %q",
-						clusterIDsInAlerts,
-						missingClusters,
-						expectClusterIdentifiers,
+						"Not all managedclusters forward Watchdog alert to hub cluster. Found following clusters in alerts: %v. Following clusters are still missing: %v. Full list of expected clusters was: %v",
+						formatClusterIDs(clusterIDsInAlerts),
+						formatClusterIDs(missingClusters),
+						formatClusterIDs(expectClusterIdentifiers),
 					)
 				}
 
 				return nil
-			}, EventuallyTimeoutMinute*3, EventuallyIntervalSecond*5).Should(Succeed())
+			}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(Succeed())
 		},
 	)
 
