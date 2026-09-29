@@ -65,6 +65,9 @@ const (
 	// deprecated one.
 	certFinalizer              = "observability.open-cluster-management.io/cert-cleanup"
 	mcoaCleanupRequeueInterval = 5 * time.Second
+	// rightSizingScrapeConfigName is the right-sizing ScrapeConfig earlier MCO versions deployed.
+	// MCOA renders it now; see deleteVestigialRightSizingScrapeConfig.
+	rightSizingScrapeConfigName = "platform-metrics-right-sizing"
 )
 
 const (
@@ -325,6 +328,11 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 			}
 			return ctrl.Result{}, fmt.Errorf("failed to deploy %s %s/%s: %w", res.GetKind(), resNS, res.GetName(), err)
 		}
+	}
+	// MCOA renders the right-sizing ScrapeConfig; remove the copy earlier MCO versions deployed.
+	// A leftover is harmless because MCOA ignores it, so a failure must not block the reconcile.
+	if err := r.deleteVestigialRightSizingScrapeConfig(ctx, instance, deployer); err != nil {
+		reqLogger.Error(err, "Failed to delete the vestigial right-sizing ScrapeConfig")
 	}
 	if !rendering.MCOAPlatformMetricsEnabled(instance) {
 		if err := r.undeployMCOAGrafanaResources(ctx, instance, renderer, deployer); err != nil {
@@ -1085,6 +1093,28 @@ func (r *MultiClusterObservabilityReconciler) undeployMCOAGrafanaResources(
 	}
 
 	return nil
+}
+
+// deleteVestigialRightSizingScrapeConfig removes the right-sizing ScrapeConfig that MCO no longer
+// renders. MCOA renders its own ScrapeConfig under the same name and ignores this one. It runs on
+// every reconcile rather than once: nothing prunes removed templates, and a hub restore can bring
+// the object back. Only an object controlled by this MCO CR is deleted.
+func (r *MultiClusterObservabilityReconciler) deleteVestigialRightSizingScrapeConfig(
+	ctx context.Context,
+	instance *mcov1beta2.MultiClusterObservability,
+	deployer *deploying.Deployer,
+) error {
+	sc := &unstructured.Unstructured{}
+	sc.SetGroupVersionKind(schema.GroupVersionKind{Group: "monitoring.rhobs", Version: "v1alpha1", Kind: "ScrapeConfig"})
+	sc.SetName(rightSizingScrapeConfigName)
+	sc.SetNamespace(config.GetDefaultNamespace())
+
+	err := deployer.Undeploy(ctx, sc, instance)
+	if err == nil || apierrors.IsNotFound(err) || meta.IsNoMatchError(err) {
+		// NoMatch: the ScrapeConfig CRD is not installed, so there is nothing to remove.
+		return nil
+	}
+	return fmt.Errorf("failed to delete ScrapeConfig %s/%s: %w", sc.GetNamespace(), sc.GetName(), err)
 }
 
 // deleteVestigialProxyIngress removes the rbac-query-proxy-ingress Ingress that is no longer

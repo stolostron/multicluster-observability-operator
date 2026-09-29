@@ -578,12 +578,26 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 		}
 	}
 
+	// The right-sizing ScrapeConfig deployed by earlier MCO versions is removed on reconcile.
+	vestigialRSScrapeConfig := &unstructured.Unstructured{}
+	vestigialRSScrapeConfig.SetAPIVersion("monitoring.rhobs/v1alpha1")
+	vestigialRSScrapeConfig.SetKind("ScrapeConfig")
+	vestigialRSScrapeConfig.SetName(rightSizingScrapeConfigName)
+	vestigialRSScrapeConfig.SetNamespace(namespace)
+	vestigialRSScrapeConfig.SetOwnerReferences([]metav1.OwnerReference{
+		*metav1.NewControllerRef(updatedMCO, mcov1beta2.GroupVersion.WithKind("MultiClusterObservability")),
+	})
+	require.NoError(t, cl.Create(t.Context(), vestigialRSScrapeConfig))
+
 	_, err = r.Reconcile(t.Context(), req)
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)
 	}
 	// wait for update status
 	_, _ = sr.Reconcile(t.Context(), req)
+
+	err = cl.Get(t.Context(), types.NamespacedName{Name: rightSizingScrapeConfigName, Namespace: namespace}, vestigialRSScrapeConfig)
+	assert.True(t, errors.IsNotFound(err), "the vestigial right-sizing ScrapeConfig should be deleted, got %v", err)
 
 	updatedMCO = &mcov1beta2.MultiClusterObservability{}
 	err = r.Client.Get(t.Context(), req.NamespacedName, updatedMCO)
@@ -2080,6 +2094,86 @@ func TestMCOACleanupADCPreservation(t *testing.T) {
 			} else {
 				assert.True(t, errors.IsNotFound(err),
 					"AddOnDeploymentConfig should be undeployed when capabilities were never configured")
+			}
+		})
+	}
+}
+
+func TestDeleteVestigialRightSizingScrapeConfig(t *testing.T) {
+	defer setupTest(t)()
+
+	mco := &mcov1beta2.MultiClusterObservability{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: mcov1beta2.GroupVersion.String(),
+			Kind:       "MultiClusterObservability",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "monitoring",
+			UID:  types.UID("mco-uid-test"),
+		},
+	}
+
+	s := runtime.NewScheme()
+	require.NoError(t, scheme.AddToScheme(s))
+	require.NoError(t, mcov1beta2.AddToScheme(s))
+
+	newScrapeConfig := func(owners ...metav1.OwnerReference) *unstructured.Unstructured {
+		sc := &unstructured.Unstructured{}
+		sc.SetAPIVersion("monitoring.rhobs/v1alpha1")
+		sc.SetKind("ScrapeConfig")
+		sc.SetName(rightSizingScrapeConfigName)
+		sc.SetNamespace(config.GetDefaultNamespace())
+		sc.SetOwnerReferences(owners)
+		return sc
+	}
+	controllerRef := metav1.NewControllerRef(mco, mcov1beta2.GroupVersion.WithKind("MultiClusterObservability"))
+
+	tests := []struct {
+		name          string
+		existingObjs  []runtime.Object
+		crdMissing    bool
+		expectPresent bool
+	}{
+		{
+			name:         "deletes the ScrapeConfig controlled by the MCO CR",
+			existingObjs: []runtime.Object{mco, newScrapeConfig(*controllerRef)},
+		},
+		{
+			name:          "keeps a ScrapeConfig not controlled by the MCO CR",
+			existingObjs:  []runtime.Object{mco, newScrapeConfig()},
+			expectPresent: true,
+		},
+		{
+			name:         "no-op when the ScrapeConfig does not exist",
+			existingObjs: []runtime.Object{mco},
+		},
+		{
+			name:         "no-op when the ScrapeConfig CRD is not installed",
+			existingObjs: []runtime.Object{mco},
+			crdMissing:   true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var c client.Client = fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(tt.existingObjs...).Build()
+			if tt.crdMissing {
+				c = &noMatchScrapeConfigClient{Client: c}
+			}
+			r := &MultiClusterObservabilityReconciler{Client: c, Scheme: s}
+
+			err := r.deleteVestigialRightSizingScrapeConfig(t.Context(), mco, deploying.NewDeployer(c, mco.Name))
+			require.NoError(t, err)
+
+			if tt.crdMissing {
+				return
+			}
+			got := newScrapeConfig()
+			err = c.Get(t.Context(), types.NamespacedName{Name: rightSizingScrapeConfigName, Namespace: config.GetDefaultNamespace()}, got)
+			if tt.expectPresent {
+				require.NoError(t, err, "ScrapeConfig should still exist")
+			} else {
+				assert.True(t, errors.IsNotFound(err), "ScrapeConfig should not exist")
 			}
 		})
 	}
