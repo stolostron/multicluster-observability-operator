@@ -23,7 +23,7 @@ const (
 	mcoaEndpointManagedByLabelValue = "mcoa-endpoint-operator"
 )
 
-func DeleteMonitoringCRDs(opt TestOptions, clusters []Cluster) error {
+func DeleteMonitoringCRDs(ctx context.Context, clusters []Cluster) error {
 	for _, cluster := range clusters {
 		apiExtensionsClient := NewKubeClientAPIExtension(cluster.ClusterServerURL, cluster.KubeConfig, cluster.KubeContext)
 

@@ -607,25 +607,24 @@ func ModifyMCOCR(opt TestOptions) error {
 		opt.HubCluster.ClusterServerURL,
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext)
-	mco, getErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
-	if getErr != nil {
-		return getErr
-	}
-	spec := mco.Object["spec"].(map[string]any)
-	storageConfig := spec["storageConfig"].(map[string]any)
-	storageConfig["alertmanagerStorageSize"] = "3Gi"
+	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		mco, getErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+		if getErr != nil {
+			return getErr
+		}
+		spec := mco.Object["spec"].(map[string]any)
+		storageConfig := spec["storageConfig"].(map[string]any)
+		storageConfig["alertmanagerStorageSize"] = "3Gi"
 
-	advRetentionCon, _ := CheckAdvRetentionConfig(opt)
-	if advRetentionCon {
-		retentionConfig := spec["advanced"].(map[string]any)["retentionConfig"].(map[string]any)
-		retentionConfig["retentionResolutionRaw"] = "3d"
-	}
+		advRetentionCon, _ := CheckAdvRetentionConfig(opt)
+		if advRetentionCon {
+			retentionConfig := spec["advanced"].(map[string]any)["retentionConfig"].(map[string]any)
+			retentionConfig["retentionResolutionRaw"] = "3d"
+		}
 
-	_, updateErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Update(context.TODO(), mco, metav1.UpdateOptions{})
-	if updateErr != nil {
+		_, updateErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Update(context.TODO(), mco, metav1.UpdateOptions{})
 		return updateErr
-	}
-	return nil
+	})
 }
 
 // SetLegacyAlertForwardingDisabled sets or clears the mco-disable-alerting annotation on the MCO CR.
@@ -773,6 +772,58 @@ func SetMCOAAllCapabilities(opt TestOptions, platformMetrics, platformAlerts, us
 	})
 }
 
+// ResetMCOACapabilities explicitly disables all MCOA capabilities (metrics, alerts,
+// right-sizing/analytics, logs, and traces) in the MCO CR.
+// Setting right-sizing flags to false rather than removing them prevents
+// the analytics controller from re-defaulting them to true (fresh-install behavior).
+func ResetMCOACapabilities(opt TestOptions) error {
+	clientDynamic := NewKubeClientDynamic(
+		opt.HubCluster.ClusterServerURL,
+		opt.KubeConfig,
+		opt.HubCluster.KubeContext)
+
+	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		mco, getErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+		if getErr != nil {
+			return getErr
+		}
+
+		if err := setRSEnabled(mco, false); err != nil {
+			return err
+		}
+		if err := unstructured.SetNestedField(mco.Object, false, "spec", "capabilities", "platform", "metrics", "default", "enabled"); err != nil {
+			return err
+		}
+		if err := unstructured.SetNestedField(mco.Object, false, "spec", "capabilities", "platform", "metrics", "alerts", "enabled"); err != nil {
+			return err
+		}
+		if err := unstructured.SetNestedField(mco.Object, false, "spec", "capabilities", "platform", "logs", "collection", "enabled"); err != nil {
+			return err
+		}
+		if err := unstructured.SetNestedField(mco.Object, false, "spec", "capabilities", "platform", "analytics", "incidentDetection", "enabled"); err != nil {
+			return err
+		}
+		if err := unstructured.SetNestedField(mco.Object, false, "spec", "capabilities", "userWorkloads", "metrics", "default", "enabled"); err != nil {
+			return err
+		}
+		if err := unstructured.SetNestedField(mco.Object, false, "spec", "capabilities", "userWorkloads", "metrics", "alerts", "enabled"); err != nil {
+			return err
+		}
+		if err := unstructured.SetNestedField(mco.Object, false, "spec", "capabilities", "userWorkloads", "traces", "collection", "collector", "enabled"); err != nil {
+			return err
+		}
+		if err := unstructured.SetNestedField(mco.Object, false, "spec", "capabilities", "userWorkloads", "traces", "collection", "instrumentation", "enabled"); err != nil {
+			return err
+		}
+		if err := unstructured.SetNestedField(mco.Object, false, "spec", "capabilities", "userWorkloads", "logs", "collection", "clusterLogForwarder", "enabled"); err != nil {
+			return err
+		}
+
+		_, updateErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Update(context.TODO(), mco, metav1.UpdateOptions{})
+		return updateErr
+	})
+}
+
 func SetNetworkPoliciesEnabled(opt TestOptions, enabled bool) error {
 	clientDynamic := NewKubeClientDynamic(
 		opt.HubCluster.ClusterServerURL,
@@ -836,19 +887,22 @@ func RevertMCOCRModification(opt TestOptions) error {
 		opt.HubCluster.ClusterServerURL,
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext)
-	mco, getErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
-	if getErr != nil {
-		return getErr
-	}
-	spec := mco.Object["spec"].(map[string]any)
-	advRetentionCon, _ := CheckAdvRetentionConfig(opt)
-	if advRetentionCon {
-		retentionConfig := spec["advanced"].(map[string]any)["retentionConfig"].(map[string]any)
-		retentionConfig["retentionResolutionRaw"] = "6d"
-	}
-	_, updateErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Update(context.TODO(), mco, metav1.UpdateOptions{})
-	if updateErr != nil {
+	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		mco, getErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+		if getErr != nil {
+			return getErr
+		}
+		spec := mco.Object["spec"].(map[string]any)
+		advRetentionCon, _ := CheckAdvRetentionConfig(opt)
+		if advRetentionCon {
+			retentionConfig := spec["advanced"].(map[string]any)["retentionConfig"].(map[string]any)
+			retentionConfig["retentionResolutionRaw"] = "6d"
+		}
+		_, updateErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Update(context.TODO(), mco, metav1.UpdateOptions{})
 		return updateErr
+	})
+	if err != nil {
+		return err
 	}
 
 	// we delete the statefulset so it comes up again with the correct size
@@ -856,7 +910,7 @@ func RevertMCOCRModification(opt TestOptions) error {
 		opt.HubCluster.ClusterServerURL,
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext)
-	err := kubeClient.AppsV1().StatefulSets(MCO_NAMESPACE).Delete(context.TODO(), "observability-alertmanager", metav1.DeleteOptions{})
+	err = kubeClient.AppsV1().StatefulSets(MCO_NAMESPACE).Delete(context.TODO(), "observability-alertmanager", metav1.DeleteOptions{})
 	if err != nil {
 		return err
 	}
