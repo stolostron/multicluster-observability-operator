@@ -32,7 +32,6 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func TestAlertManagerRenderer(t *testing.T) {
@@ -334,8 +333,20 @@ func TestAlertManagerClientCAHashRotation(t *testing.T) {
 		}
 	}
 
-	client1 := fake.NewClientBuilder().WithObjects(makeCA("old-ca-bundle")).Build()
-	client2 := fake.NewClientBuilder().WithObjects(makeCA("new-ca-bundle")).Build()
+	cv := &ocinfrav1.ClusterVersion{
+		ObjectMeta: metav1.ObjectMeta{Name: "version"},
+		Status:     ocinfrav1.ClusterVersionStatus{Desired: ocinfrav1.Release{Version: "5.0.0"}},
+	}
+	client1 := tlstesting.NewFakeTLSClientBuilder().
+		WithScheme(corev1.AddToScheme).
+		WithScheme(ocinfrav1.AddToScheme).
+		WithObjects(makeCA("old-ca-bundle"), cv).
+		Build(t)
+	client2 := tlstesting.NewFakeTLSClientBuilder().
+		WithScheme(corev1.AddToScheme).
+		WithScheme(ocinfrav1.AddToScheme).
+		WithObjects(makeCA("new-ca-bundle"), cv.DeepCopy()).
+		Build(t)
 
 	resources1 := renderTemplates(t, client1, makeBaseMco())
 	resources2 := renderTemplates(t, client2, makeBaseMco())
