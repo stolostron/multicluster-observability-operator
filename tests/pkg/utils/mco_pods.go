@@ -22,7 +22,7 @@ func GetPodList(opt TestOptions, isHub bool, namespace string, labelSelector str
 		cluster = opt.ManagedClusters[0].BaseDomain
 	}
 
-	klog.Info("Get pod list in namespace ", namespace, " using labelselector ", labelSelector, " on cluster: ", cluster)
+	klog.V(2).Info("Get pod list in namespace ", namespace, " using labelselector ", labelSelector, " on cluster: ", cluster)
 	if labelSelector != "" {
 		listOption.LabelSelector = labelSelector
 	}
@@ -37,7 +37,7 @@ func GetPodList(opt TestOptions, isHub bool, namespace string, labelSelector str
 		return podList, err
 	}
 	if podList != nil && len(podList.Items) == 0 {
-		klog.V(1).Infof("No pod found for labelselector %s namespace %s", labelSelector, namespace)
+		klog.V(2).Infof("No pod found for labelselector %s namespace %s", labelSelector, namespace)
 	}
 	return podList, nil
 }

@@ -89,6 +89,7 @@ func GetOCPClusters(opt TestOptions) ([]Cluster, error) {
 	var ocpClusters []Cluster
 	for _, mc := range availableManagedClusters {
 		if !isOpenshiftVendor(mc) {
+			klog.Infof("Skip cluster %s: vendor %q is not OpenShift", mc.Name, mc.GetLabels()["vendor"])
 			continue
 		}
 
@@ -218,7 +219,7 @@ func CreateCOOSubscription(clusters []Cluster) error {
 		err = wait.PollUntilContextTimeout(context.Background(), 1*time.Second, 1*time.Minute, true, func(ctx context.Context) (bool, error) {
 			_, errGet := clientDynamic.Resource(NewClusterServiceVersionGVR()).Namespace(cooSubscriptionNamespace).Get(ctx, latestCSV, metav1.GetOptions{})
 			if errors.IsNotFound(errGet) {
-				klog.Infof("Orphaned CSV %s is deleted on cluster %s", latestCSV, cluster.Name)
+				klog.V(1).Infof("Orphaned CSV %s is deleted on cluster %s", latestCSV, cluster.Name)
 				return true, nil
 			}
 			return false, nil
@@ -312,7 +313,7 @@ func DeleteCOOSubscription(clusters []Cluster) error {
 		err = wait.PollUntilContextTimeout(context.Background(), 1*time.Second, 1*time.Minute, true, func(ctx context.Context) (bool, error) {
 			_, err := clientDynamic.Resource(NewSubscriptionGVR()).Namespace(cooSubscriptionNamespace).Get(ctx, cooSubscriptionName, metav1.GetOptions{})
 			if errors.IsNotFound(err) {
-				klog.Infof("Subscription %s is deleted on cluster %s", cooSubscriptionName, cluster.Name)
+				klog.V(1).Infof("Subscription %s is deleted on cluster %s", cooSubscriptionName, cluster.Name)
 				return true, nil
 			}
 			return false, nil
@@ -336,7 +337,7 @@ func DeleteCOOSubscription(clusters []Cluster) error {
 					err = wait.PollUntilContextTimeout(context.Background(), 1*time.Second, 2*time.Minute, true, func(ctx context.Context) (bool, error) {
 						_, err := clientDynamic.Resource(NewClusterServiceVersionGVR()).Namespace(cooSubscriptionNamespace).Get(ctx, installedCSV, metav1.GetOptions{})
 						if errors.IsNotFound(err) {
-							klog.Infof("CSV %s is deleted on cluster %s", installedCSV, cluster.Name)
+							klog.V(1).Infof("CSV %s is deleted on cluster %s", installedCSV, cluster.Name)
 							return true, nil
 						}
 						return false, nil
@@ -359,7 +360,7 @@ func DeleteCOOSubscription(clusters []Cluster) error {
 		err = wait.PollUntilContextTimeout(context.Background(), 1*time.Second, 1*time.Minute, true, func(ctx context.Context) (bool, error) {
 			_, errGet := clientDynamic.Resource(NewConsolePluginGVR()).Get(ctx, consolePluginName, metav1.GetOptions{})
 			if errors.IsNotFound(errGet) {
-				klog.Infof("ConsolePlugin %s is deleted on cluster %s", consolePluginName, cluster.Name)
+				klog.V(1).Infof("ConsolePlugin %s is deleted on cluster %s", consolePluginName, cluster.Name)
 				return true, nil
 			}
 			return false, nil
@@ -406,7 +407,7 @@ func DeleteCOOSubscription(clusters []Cluster) error {
 		err = wait.PollUntilContextTimeout(context.Background(), 1*time.Second, 1*time.Minute, true, func(ctx context.Context) (bool, error) {
 			_, errGet := clientDynamic.Resource(NewOperatorGroupGVR()).Namespace(cooSubscriptionNamespace).Get(ctx, cooOperatorGroupName, metav1.GetOptions{})
 			if errors.IsNotFound(errGet) {
-				klog.Infof("OperatorGroup %s is deleted on cluster %s", cooOperatorGroupName, cluster.Name)
+				klog.V(1).Infof("OperatorGroup %s is deleted on cluster %s", cooOperatorGroupName, cluster.Name)
 				return true, nil
 			}
 			return false, nil
@@ -431,7 +432,7 @@ func DeleteCOOSubscription(clusters []Cluster) error {
 		err = wait.PollUntilContextTimeout(context.Background(), 1*time.Second, 2*time.Minute, true, func(ctx context.Context) (bool, error) {
 			_, errGet := clientKube.CoreV1().Namespaces().Get(ctx, cooSubscriptionNamespace, metav1.GetOptions{})
 			if errors.IsNotFound(errGet) {
-				klog.Infof("Namespace %s is deleted on cluster %s", cooSubscriptionNamespace, cluster.Name)
+				klog.V(1).Infof("Namespace %s is deleted on cluster %s", cooSubscriptionNamespace, cluster.Name)
 				return true, nil
 			}
 			return false, errGet

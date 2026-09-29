@@ -48,11 +48,11 @@ func AddConfigToPlacementInClusterManagementAddon(
 ) error {
 	clientDynamic := GetKubeClientDynamic(opt, true)
 	backoffConfig := wait.Backoff{
-		Steps:    11,
-		Duration: 10 * time.Millisecond,
-		Factor:   2.0,
+		Steps:    20,
+		Duration: 100 * time.Millisecond,
+		Factor:   1.5,
 		Jitter:   0.1,
-		// Cap:      10 * time.Second,
+		Cap:      2 * time.Second,
 	}
 	retryErr := retry.RetryOnConflict(backoffConfig, func() error {
 		cma, err := clientDynamic.Resource(clusterManagementAddonGVR).Get(ctx, name, metav1.GetOptions{})
@@ -70,18 +70,35 @@ func AddConfigToPlacementInClusterManagementAddon(
 			return fmt.Errorf("failed to get placements from installStrategy or it's not found: %w", err)
 		}
 
+		placementFound := false
 		for i, p := range placements {
 			placement, ok := p.(map[string]any)
 			if !ok {
 				continue
 			}
 			if placement["name"] == placementName {
+				placementFound = true
 				configs, found, err := unstructured.NestedSlice(placement, "configs")
 				if err != nil {
 					return fmt.Errorf("failed to get configs from placement %s: %w", placementName, err)
 				}
 				if !found {
 					configs = []any{}
+				}
+
+				for _, config := range configs {
+					configMap, ok := config.(map[string]any)
+					if !ok {
+						continue
+					}
+					ns, _ := configMap["namespace"].(string)
+					if configMap["group"] == configGVR.Group &&
+						configMap["resource"] == configGVR.Resource &&
+						configMap["name"] == configName &&
+						ns == configNamespace {
+						// Already present, no need to update
+						return nil
+					}
 				}
 
 				newConfig := map[string]any{
@@ -100,6 +117,10 @@ func AddConfigToPlacementInClusterManagementAddon(
 				placements[i] = placement
 				break
 			}
+		}
+
+		if !placementFound {
+			return fmt.Errorf("placement %s not found in installStrategy", placementName)
 		}
 
 		if err := unstructured.SetNestedSlice(installStrategy, placements, "placements"); err != nil {
@@ -235,11 +256,11 @@ func RemoveConfigFromPlacementInClusterManagementAddon(
 ) error {
 	clientDynamic := GetKubeClientDynamic(opt, true)
 	backoffConfig := wait.Backoff{
-		Steps:    11,
-		Duration: 10 * time.Millisecond,
-		Factor:   2.0,
+		Steps:    20,
+		Duration: 100 * time.Millisecond,
+		Factor:   1.5,
 		Jitter:   0.1,
-		// Cap:      500 * time.Millisecond,
+		Cap:      2 * time.Second,
 	}
 	return retry.RetryOnConflict(backoffConfig, func() error {
 		cma, err := clientDynamic.Resource(clusterManagementAddonGVR).Get(ctx, name, metav1.GetOptions{})
@@ -257,29 +278,40 @@ func RemoveConfigFromPlacementInClusterManagementAddon(
 			return fmt.Errorf("failed to get placements from installStrategy or it's not found: %w", err)
 		}
 
+		placementFound := false
 		for i, p := range placements {
 			placement, ok := p.(map[string]any)
 			if !ok {
 				continue
 			}
 			if placement["name"] == placementName {
+				placementFound = true
 				configs, found, err := unstructured.NestedSlice(placement, "configs")
 				if err != nil || !found {
 					return fmt.Errorf("failed to get configs from placement %s or it's not found: %w", placementName, err)
 				}
 
 				newConfigs := []any{}
+				configFound := false
 				for _, config := range configs {
 					configMap, ok := config.(map[string]any)
 					if !ok {
 						continue
 					}
-					if configMap["group"] != configGVR.Group ||
-						configMap["resource"] != configGVR.Resource ||
-						configMap["name"] != configName ||
-						configMap["namespace"] != configNamespace {
-						newConfigs = append(newConfigs, config)
+					ns, _ := configMap["namespace"].(string)
+					if configMap["group"] == configGVR.Group &&
+						configMap["resource"] == configGVR.Resource &&
+						configMap["name"] == configName &&
+						ns == configNamespace {
+						configFound = true
+						continue
 					}
+					newConfigs = append(newConfigs, config)
+				}
+
+				if !configFound {
+					// Config is already absent, nothing to remove
+					return nil
 				}
 
 				if err := unstructured.SetNestedSlice(placement, newConfigs, "configs"); err != nil {
@@ -288,6 +320,10 @@ func RemoveConfigFromPlacementInClusterManagementAddon(
 				placements[i] = placement
 				break
 			}
+		}
+
+		if !placementFound {
+			return fmt.Errorf("placement %s not found in installStrategy", placementName)
 		}
 
 		if err := unstructured.SetNestedSlice(installStrategy, placements, "placements"); err != nil {
