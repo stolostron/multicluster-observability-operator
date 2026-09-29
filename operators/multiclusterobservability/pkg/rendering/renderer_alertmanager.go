@@ -139,7 +139,9 @@ func (r *MCORenderer) renderAlertManagerStatefulSet(ctx context.Context, res *re
 		return nil, fmt.Errorf("failed to get OAuth image for alertmanager")
 	}
 	oauthProxyContainer.ImagePullPolicy = imagePullPolicy
-	if util.IsOAuthProxyTLSSupported(ctx, r.kubeClient) {
+	if supported, tlsErr := util.IsOAuthProxyTLSSupported(ctx, r.kubeClient); tlsErr != nil {
+		return nil, tlsErr
+	} else if supported {
 		oauthProxyContainer.Args, err = util.SetTLSSecurityConfiguration(ctx, oauthProxyContainer.Args, "--tls-cipher-suites=", "--tls-min-version=")
 		if err != nil {
 			return nil, err
