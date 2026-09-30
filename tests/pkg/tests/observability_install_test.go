@@ -135,9 +135,9 @@ func installMCO() {
 		Expect(utils.CreatePullSecret(testOptions, mcoNs)).NotTo(HaveOccurred())
 		Expect(utils.CreateObjSecret(testOptions)).NotTo(HaveOccurred())
 	} else {
-		By("Creating Minio as object storage")
+		By("Creating SeaweedFS as object storage")
 		// set resource quota and limit range for canary environment to avoid destruct the node
-		yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: "../../../examples/minio"})
+		yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: "../../../examples/seaweedfs"})
 		Expect(err).NotTo(HaveOccurred())
 		Expect(utils.ApplyRetryOnConflict(testOptions.HubCluster.ClusterServerURL, testOptions.KubeConfig, testOptions.HubCluster.KubeContext, yamlB)).NotTo(HaveOccurred())
 	}
@@ -157,9 +157,9 @@ func installMCO() {
 	Expect(utils.CreateMCOTestingRBAC(testOptions)).NotTo(HaveOccurred())
 
 	if os.Getenv("IS_CANARY_ENV") != trueStr {
-		By("Recreating Minio-tls as object storage")
+		By("Recreating SeaweedFS-tls as object storage")
 		// set resource quota and limit range for canary environment to avoid destruct the node
-		yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: "../../../examples/minio-tls"})
+		yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: "../../../examples/seaweedfs-tls"})
 		Expect(err).NotTo(HaveOccurred())
 		Expect(utils.ApplyRetryOnConflict(testOptions.HubCluster.ClusterServerURL, testOptions.KubeConfig, testOptions.HubCluster.KubeContext, yamlB)).NotTo(HaveOccurred())
 

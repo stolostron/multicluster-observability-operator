@@ -44,11 +44,11 @@ func DeleteMonitoringCRDs(ctx context.Context, clusters []Cluster) error {
 		}
 
 		for _, crdName := range crdsToDelete {
-			klog.Infof("Waiting for CRD %s to be deleted on cluster %s", crdName, cluster.Name)
+			klog.V(1).Infof("Waiting for CRD %s to be deleted on cluster %s", crdName, cluster.Name)
 			err := wait.PollUntilContextTimeout(context.Background(), 1*time.Second, 2*time.Minute, true, func(ctx context.Context) (bool, error) {
 				crd, err := apiExtensionsClient.ApiextensionsV1().CustomResourceDefinitions().Get(ctx, crdName, metav1.GetOptions{})
 				if errors.IsNotFound(err) {
-					klog.Infof("CRD %s is deleted on cluster %s", crdName, cluster.Name)
+					klog.V(1).Infof("CRD %s is deleted on cluster %s", crdName, cluster.Name)
 					return true, nil
 				}
 				if err != nil {

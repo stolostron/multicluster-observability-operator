@@ -105,7 +105,7 @@ spec:
     scrapeSizeLimitBytes: 1073741824
     enableMetrics: true
     workers: 1
-    interval: 300
+    interval: 120
     resources:
       limits:
         cpu: 200m
@@ -119,8 +119,8 @@ spec:
     metricObjectStorage:
       key: thanos.yaml
       name: thanos-object-storage
-      tlsSecretMountPath: /etc/minio/certs
-      tlsSecretName: minio-tls-secret
+      tlsSecretMountPath: /etc/seaweedfs/certs
+      tlsSecretName: seaweedfs-tls-secret
     receiveStorageSize: 10Gi
     ruleStorageSize: 1Gi
     storeStorageSize: 1Gi

@@ -111,6 +111,14 @@ func NewMCOMObservatoriumGVR() schema.GroupVersionResource {
 	}
 }
 
+func NewHiveClusterDeploymentGVR() schema.GroupVersionResource {
+	return schema.GroupVersionResource{
+		Group:    "hive.openshift.io",
+		Version:  "v1",
+		Resource: "clusterdeployments",
+	}
+}
+
 func NewOCMMultiClusterHubGVR() schema.GroupVersionResource {
 	return schema.GroupVersionResource{
 		Group:    "operator.open-cluster-management.io",
@@ -167,6 +175,15 @@ func NewPlacementBindingGVR() schema.GroupVersionResource {
 		Group:    OCM_POLICY_GROUP,
 		Version:  "v1",
 		Resource: "placementbindings",
+	}
+}
+
+// NewRouteGVR returns the GVR for OpenShift Route resources.
+func NewRouteGVR() schema.GroupVersionResource {
+	return schema.GroupVersionResource{
+		Group:    "route.openshift.io",
+		Version:  "v1",
+		Resource: "routes",
 	}
 }
 
@@ -265,7 +282,7 @@ func GetAllMCOPods(opt TestOptions) ([]corev1.Pod, error) {
 			continue
 		}
 
-		if strings.Contains(p.GetName(), "minio") {
+		if strings.Contains(p.GetName(), "seaweedfs") {
 			continue
 		}
 
@@ -295,6 +312,7 @@ func PrintObject(ctx context.Context, client dynamic.Interface, gvr schema.Group
 		return
 	}
 
+	cleanUnstructuredForLogging(obj)
 	klog.V(1).Infof("Object %s/%s/%s:\n%s", ns, gvr.Resource, name, ToCompactJSON(obj.Object, "", 0, 3))
 }
 

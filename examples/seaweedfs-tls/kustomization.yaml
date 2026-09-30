@@ -1,0 +1,6 @@
+resources:
+- seaweedfs-deployment.yaml
+- seaweedfs-pvc.yaml
+- seaweedfs-tls-secret.yaml
+- seaweedfs-service.yaml
+- thanos-object-storage.yaml
