@@ -15,6 +15,7 @@ import (
 	imagev1 "github.com/openshift/api/image/v1"
 	fakeimageclient "github.com/openshift/client-go/image/clientset/versioned/fake"
 	fakeimagev1client "github.com/openshift/client-go/image/clientset/versioned/typed/image/v1/fake"
+	mcoshared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
 	obv1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering/templates"
@@ -28,6 +29,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/utils/ptr"
 )
 
 func TestRenderGrafana(t *testing.T) {
@@ -83,7 +85,7 @@ func TestRenderGrafana(t *testing.T) {
 						Platform: &obv1beta2.PlatformCapabilitiesSpec{
 							Metrics: obv1beta2.PlatformMetricsSpec{
 								Default: obv1beta2.PlatformMetricsDefaultSpec{
-									Enabled: true,
+									Enabled: ptr.To(true),
 								},
 							},
 						},
@@ -135,7 +137,13 @@ func TestRenderGrafana(t *testing.T) {
 			},
 		},
 		"MCOA for metrics is disabled": {
-			mco: obv1beta2.MultiClusterObservability{},
+			mco: obv1beta2.MultiClusterObservability{
+				Spec: obv1beta2.MultiClusterObservabilitySpec{
+					ObservabilityAddonSpec: &mcoshared.ObservabilityAddonSpec{
+						EnableMetrics: true,
+					},
+				},
+			},
 			expect: func(t *testing.T, templates []*unstructured.Unstructured) {
 				assert.Greater(t, len(templates), 1)
 				forbiddenTypes := []string{"ScrapeConfig", "PrometheusRule"}
@@ -230,7 +238,7 @@ func TestRenderGrafanaMCOATemplatesForRemoval(t *testing.T) {
 						Platform: &obv1beta2.PlatformCapabilitiesSpec{
 							Metrics: obv1beta2.PlatformMetricsSpec{
 								Default: obv1beta2.PlatformMetricsDefaultSpec{
-									Enabled: true,
+									Enabled: ptr.To(true),
 								},
 							},
 						},
@@ -242,7 +250,13 @@ func TestRenderGrafanaMCOATemplatesForRemoval(t *testing.T) {
 			},
 		},
 		"MCOA for metrics is disabled": {
-			mco: obv1beta2.MultiClusterObservability{},
+			mco: obv1beta2.MultiClusterObservability{
+				Spec: obv1beta2.MultiClusterObservabilitySpec{
+					ObservabilityAddonSpec: &mcoshared.ObservabilityAddonSpec{
+						EnableMetrics: true,
+					},
+				},
+			},
 			expect: func(t *testing.T, resources []*unstructured.Unstructured) {
 				assert.NotEmpty(t, resources)
 
