@@ -1,3 +1,7 @@
+# CI reference for the right-sizing dashboard metrics. Not deployed: it is not listed in
+# kustomization.yaml, and MCOA renders the real platform-metrics-right-sizing ScrapeConfig
+# (ACM-47086). `make check-metrics` (check-analytics-metrics in cicd-scripts/metrics/Makefile)
+# checks the dashboards in this directory against it.
 apiVersion: monitoring.rhobs/v1alpha1
 kind: ScrapeConfig
 metadata:

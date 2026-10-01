@@ -3,4 +3,3 @@ resources:
 - dash-acm-right-sizing-virtualization.yaml
 - dash-acm-right-sizing-virtualization-overestimation.yaml
 - dash-acm-right-sizing-virtualization-underestimation.yaml
-- scrape-config.yaml
