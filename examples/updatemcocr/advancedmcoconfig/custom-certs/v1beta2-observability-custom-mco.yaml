@@ -157,5 +157,4 @@ spec:
       tlsSecretName: seaweedfs-tls-secret
     receiveStorageSize: 10Gi
     ruleStorageSize: 1Gi
-    storageClass: gp2
     storeStorageSize: 1Gi
