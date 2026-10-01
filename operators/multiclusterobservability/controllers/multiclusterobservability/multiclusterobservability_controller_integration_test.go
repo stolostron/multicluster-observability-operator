@@ -237,7 +237,8 @@ func newMCO(ns, storageSecretName, storageSecretKey string) *mcov1beta2.MultiClu
 				},
 			},
 			ObservabilityAddonSpec: &observabilityshared.ObservabilityAddonSpec{
-				Interval: 44,
+				EnableMetrics: true,
+				Interval:      44,
 				Resources: &corev1.ResourceRequirements{
 					Limits: corev1.ResourceList{
 						corev1.ResourceCPU:    resource.MustParse("100m"),
