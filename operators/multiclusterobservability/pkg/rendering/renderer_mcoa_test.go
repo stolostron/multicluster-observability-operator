@@ -15,11 +15,14 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering/templates"
 	mcoutil "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
 	templatesutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering/templates"
+	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util/tlstesting"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/ptr"
 	addonv1beta1 "open-cluster-management.io/api/addon/v1beta1"
@@ -28,6 +31,8 @@ import (
 )
 
 func TestRenderMCOADeployment(t *testing.T) {
+	tlstesting.NewFakeTLSClientBuilder().Build(t)
+
 	wd, err := os.Getwd()
 	assert.NoError(t, err)
 	templatesPath := filepath.Join(wd, "..", "..", "manifests")
@@ -94,13 +99,59 @@ func TestRenderMCOADeployment(t *testing.T) {
 	// Assert pod spec values
 	assert.Equal(t, mco.Spec.AdvancedConfig.MultiClusterObservabilityAddon.Replicas, got.Spec.Replicas)
 
-	container := got.Spec.Template.Spec.Containers[0]
-	assert.Contains(t, container.Image, mcoconfig.MultiClusterObservabilityAddonImgRepo)
-	assert.Contains(t, container.Image, mcoconfig.MultiClusterObservabilityAddonImgName)
-	assert.Contains(t, container.Image, mcoconfig.MultiClusterObservabilityAddonImgTagSuffix)
-	assert.Equal(t, corev1.PullIfNotPresent, container.ImagePullPolicy)
-	assert.Equal(t, *mco.Spec.AdvancedConfig.MultiClusterObservabilityAddon.Resources, container.Resources)
-	assert.True(t, *container.SecurityContext.RunAsNonRoot)
+	var managerContainer, kubeRbacProxyContainer *corev1.Container
+	for i := range got.Spec.Template.Spec.Containers {
+		switch got.Spec.Template.Spec.Containers[i].Name {
+		case "manager":
+			managerContainer = &got.Spec.Template.Spec.Containers[i]
+		case "kube-rbac-proxy":
+			kubeRbacProxyContainer = &got.Spec.Template.Spec.Containers[i]
+		}
+	}
+	require.NotNil(t, managerContainer, "manager container should be present")
+	assert.Contains(t, managerContainer.Image, mcoconfig.MultiClusterObservabilityAddonImgRepo)
+	assert.Contains(t, managerContainer.Image, mcoconfig.MultiClusterObservabilityAddonImgName)
+	assert.Contains(t, managerContainer.Image, mcoconfig.MultiClusterObservabilityAddonImgTagSuffix)
+	assert.Equal(t, corev1.PullIfNotPresent, managerContainer.ImagePullPolicy)
+	assert.Equal(t, *mco.Spec.AdvancedConfig.MultiClusterObservabilityAddon.Resources, managerContainer.Resources)
+	assert.True(t, *managerContainer.SecurityContext.RunAsNonRoot)
+	assert.Contains(t, managerContainer.Args, "--metrics-bind-address=127.0.0.1:8080")
+	assert.NotContains(t, managerContainer.Args, "--metrics-cert-dir")
+	assert.Empty(t, managerContainer.Ports)
+
+	require.NotNil(t, kubeRbacProxyContainer, "kube-rbac-proxy container should be present")
+	assert.Equal(t, corev1.PullIfNotPresent, kubeRbacProxyContainer.ImagePullPolicy)
+	assert.Contains(t, kubeRbacProxyContainer.Args, "--secure-listen-address=0.0.0.0:8443")
+	assert.Contains(t, kubeRbacProxyContainer.Args, "--upstream=http://127.0.0.1:8080")
+	assert.Contains(t, kubeRbacProxyContainer.Args, "--tls-cert-file=/etc/tls/private/tls.crt")
+	assert.Contains(t, kubeRbacProxyContainer.Args, "--tls-private-key-file=/etc/tls/private/tls.key")
+	assert.Contains(t, kubeRbacProxyContainer.Args, "--logtostderr=true")
+	assert.Contains(t, kubeRbacProxyContainer.Args, "--allow-paths=/metrics")
+	assert.Contains(t, kubeRbacProxyContainer.Ports, corev1.ContainerPort{
+		Name:          "https-metrics",
+		ContainerPort: 8443,
+		Protocol:      corev1.ProtocolTCP,
+	})
+	assert.Contains(t, kubeRbacProxyContainer.VolumeMounts, corev1.VolumeMount{
+		Name:      "sa-token",
+		MountPath: "/var/run/secrets/kubernetes.io/serviceaccount",
+		ReadOnly:  true,
+	})
+	assert.Contains(t, kubeRbacProxyContainer.VolumeMounts, corev1.VolumeMount{
+		Name:      "metrics-certs",
+		MountPath: "/etc/tls/private",
+		ReadOnly:  true,
+	})
+
+	var foundMetricsVolume bool
+	for _, vol := range got.Spec.Template.Spec.Volumes {
+		if vol.Name == "metrics-certs" {
+			foundMetricsVolume = true
+			require.NotNil(t, vol.Secret)
+			assert.Equal(t, "multicluster-observability-addon-manager-metrics-certs", vol.Secret.SecretName)
+		}
+	}
+	assert.True(t, foundMetricsVolume, "metrics-certs volume should be present in pod spec")
 
 	// Test with AddonManager resources and logVerbosity overrides
 	mco.Spec.Capabilities = &mcov1beta2.CapabilitiesSpec{
@@ -118,10 +169,36 @@ func TestRenderMCOADeployment(t *testing.T) {
 	assert.NoError(t, err)
 	err = runtime.DefaultUnstructuredConverter.FromUnstructured(uobj.Object, got)
 	assert.NoError(t, err)
-	container = got.Spec.Template.Spec.Containers[0]
-	assert.Equal(t, *mco.Spec.Capabilities.AddonManager.Resources, container.Resources)
-	assert.Contains(t, container.Args, "--log-verbosity=5")
-	assert.Contains(t, container.Args, "controller")
+	managerContainer = nil
+	for i := range got.Spec.Template.Spec.Containers {
+		if got.Spec.Template.Spec.Containers[i].Name == "manager" {
+			managerContainer = &got.Spec.Template.Spec.Containers[i]
+			break
+		}
+	}
+	require.NotNil(t, managerContainer)
+	assert.Equal(t, *mco.Spec.Capabilities.AddonManager.Resources, managerContainer.Resources)
+	assert.Contains(t, managerContainer.Args, "--log-verbosity=5")
+	assert.Contains(t, managerContainer.Args, "controller")
+	assert.Contains(t, managerContainer.Args, "--metrics-bind-address=127.0.0.1:8080")
+
+	// Test kube-rbac-proxy image replacement via annotation
+	mco.SetAnnotations(map[string]string{
+		"mco-kube_rbac_proxy-image": "quay.io/custom/kube-rbac-proxy:custom",
+	})
+	uobj, err = renderer.renderMCOADeployment(t.Context(), dp, "test", map[string]string{"key": "value"})
+	assert.NoError(t, err)
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(uobj.Object, got)
+	assert.NoError(t, err)
+	kubeRbacProxyContainer = nil
+	for i := range got.Spec.Template.Spec.Containers {
+		if got.Spec.Template.Spec.Containers[i].Name == "kube-rbac-proxy" {
+			kubeRbacProxyContainer = &got.Spec.Template.Spec.Containers[i]
+			break
+		}
+	}
+	require.NotNil(t, kubeRbacProxyContainer)
+	assert.Equal(t, "quay.io/custom/kube-rbac-proxy:custom", kubeRbacProxyContainer.Image)
 }
 
 func TestRenderAddonDeploymentConfig(t *testing.T) {
@@ -465,6 +542,8 @@ func TestMCOAEnabled(t *testing.T) {
 }
 
 func TestRenderMCOATemplates(t *testing.T) {
+	tlstesting.NewFakeTLSClientBuilder().Build(t)
+
 	wd, err := os.Getwd()
 	assert.NoError(t, err)
 	templatesPath := filepath.Join(wd, "..", "..", "manifests")
@@ -725,4 +804,84 @@ func TestRightSizingConfigured(t *testing.T) {
 			assert.Equal(t, tt.expected, RightSizingConfigured(tt.cr))
 		})
 	}
+}
+
+// TestRenderMCOAMetricsServiceAndServiceMonitor verifies that MCOA metrics Service
+// and ServiceMonitor resources are rendered and have namespace dynamically injected.
+func TestRenderMCOAMetricsServiceAndServiceMonitor(t *testing.T) {
+	tlstesting.NewFakeTLSClientBuilder().Build(t)
+
+	wd, err := os.Getwd()
+	require.NoError(t, err)
+	templatesPath := filepath.Join(wd, "..", "..", "manifests")
+	t.Setenv(templatesutil.TemplatesPathEnvVar, templatesPath)
+
+	tmplRenderer := templatesutil.NewTemplateRenderer(templatesPath)
+	mcoaTemplates, err := templates.GetOrLoadMCOATemplates(tmplRenderer)
+	require.NoError(t, err)
+
+	mco := &mcov1beta2.MultiClusterObservability{
+		ObjectMeta: metav1.ObjectMeta{
+			Labels: map[string]string{
+				"cr-key": "cr-value",
+			},
+			Name: "multicluster-observability",
+		},
+	}
+	renderer := NewMCORenderer(mco, nil, nil)
+	targetNamespace := "test-observability"
+	labels := map[string]string{"app": "test"}
+
+	uobjs, err := renderer.renderMCOATemplates(t.Context(), mcoaTemplates, targetNamespace, labels)
+	require.NoError(t, err)
+	require.NotEmpty(t, uobjs)
+
+	var serviceObj, serviceMonitorObj *unstructured.Unstructured
+	for _, uobj := range uobjs {
+		if uobj.GetKind() == "Service" && uobj.GetName() == "multicluster-observability-addon-manager-metrics" {
+			serviceObj = uobj
+		}
+		if uobj.GetKind() == "ServiceMonitor" && uobj.GetName() == "multicluster-observability-addon-manager" {
+			serviceMonitorObj = uobj
+		}
+	}
+
+	require.NotNil(t, serviceObj, "Service multicluster-observability-addon-manager-metrics should be rendered")
+	assert.Equal(t, targetNamespace, serviceObj.GetNamespace())
+	assert.Equal(t, "multicluster-observability-addon-manager-metrics-certs",
+		serviceObj.GetAnnotations()["service.beta.openshift.io/serving-cert-secret-name"])
+
+	spec, ok := serviceObj.Object["spec"].(map[string]any)
+	require.True(t, ok)
+	ports, ok := spec["ports"].([]any)
+	require.True(t, ok)
+	require.Len(t, ports, 1)
+	portMap, ok := ports[0].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, "https-metrics", portMap["name"])
+	assert.Equal(t, 8443, portMap["port"])
+	assert.Equal(t, "https-metrics", portMap["targetPort"])
+
+	require.NotNil(t, serviceMonitorObj, "ServiceMonitor multicluster-observability-addon-manager should be rendered")
+	assert.Equal(t, targetNamespace, serviceMonitorObj.GetNamespace())
+
+	smSpec, ok := serviceMonitorObj.Object["spec"].(map[string]any)
+	require.True(t, ok)
+	endpoints, ok := smSpec["endpoints"].([]any)
+	require.True(t, ok)
+	require.Len(t, endpoints, 1)
+
+	endpoint, ok := endpoints[0].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, "https-metrics", endpoint["port"])
+	assert.Equal(t, "https", endpoint["scheme"])
+	assert.Equal(t, "/metrics", endpoint["path"])
+	assert.Equal(t, "30s", endpoint["interval"])
+	assert.Equal(t, "10s", endpoint["scrapeTimeout"])
+	assert.Equal(t, "/var/run/secrets/kubernetes.io/serviceaccount/token", endpoint["bearerTokenFile"])
+
+	tlsConfig, ok := endpoint["tlsConfig"].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, "/etc/prometheus/configmaps/serving-certs-ca-bundle/service-ca.crt", tlsConfig["caFile"])
+	assert.Equal(t, "multicluster-observability-addon-manager-metrics.open-cluster-management-observability.svc", tlsConfig["serverName"])
 }
