@@ -6,6 +6,7 @@ package config
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 
 	"gopkg.in/yaml.v2"
@@ -15,6 +16,17 @@ func validateS3(conf Config) error {
 
 	if conf.Bucket == "" {
 		return errors.New("no s3 bucket in config file")
+	}
+
+	// Validate bucket name length according to S3 specification
+	// S3 bucket names must be between 3 and 63 characters long
+	bucketLen := len(conf.Bucket)
+	if bucketLen > 63 {
+		return fmt.Errorf("bucket name '%s' is too long (%d characters). S3 bucket names must be 63 characters or less", conf.Bucket, bucketLen)
+	}
+
+	if bucketLen < 3 {
+		return fmt.Errorf("bucket name '%s' is too short (%d characters). S3 bucket names must be at least 3 characters", conf.Bucket, bucketLen)
 	}
 
 	if conf.Endpoint == "" {
