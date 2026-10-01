@@ -19,6 +19,7 @@ import (
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	cert_controller "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/certificates"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering/templates"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
@@ -133,7 +134,7 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 
 	// When MCOA is enabled, additionnally clean the hub resources as they are deployed wihtout the addon resource,
 	// and thus are not removed by the cleanResources function.
-	if mcoaForMetricsIsEnabled(mco) {
+	if !mcoIsNotFound && mcoaForMetricsIsEnabled(mco) {
 		reqLogger.Info("Ensuring MCOA resources on the hub")
 		if err := r.ensureMCOAResources(ctx, mco); err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to ensure MCOA resources: %w", err)
@@ -154,7 +155,7 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		} else if requeue {
 			return ctrl.Result{RequeueAfter: 30 * time.Second}, nil
 		}
-		if mcoIsNotFound || metricsAreDisabled {
+		if mcoIsNotFound || (metricsAreDisabled && !mcoaForMetricsIsEnabled(mco)) {
 			if err := DeleteHubMetricsCollectionDeployments(ctx, r.Client); err != nil {
 				return ctrl.Result{}, fmt.Errorf("failed to delete hub metrics collection deployments and resources: %w", err)
 			}
@@ -1322,15 +1323,12 @@ func isReconcileRequired(request ctrl.Request, managedCluster string) bool {
 }
 
 func mcoaForMetricsIsEnabled(mco *mcov1beta2.MultiClusterObservability) bool {
-	if mco.Spec.Capabilities == nil {
-		return false
-	}
-
-	if mco.Spec.Capabilities.Platform != nil && mco.Spec.Capabilities.Platform.Metrics.Default.Enabled {
+	if rendering.MCOAPlatformMetricsEnabled(mco) {
 		return true
 	}
 
-	if mco.Spec.Capabilities.UserWorkloads != nil && mco.Spec.Capabilities.UserWorkloads.Metrics.Default.Enabled {
+	if mco.Spec.Capabilities != nil && mco.Spec.Capabilities.UserWorkloads != nil &&
+		mco.Spec.Capabilities.UserWorkloads.Metrics.Default.Enabled {
 		return true
 	}
 

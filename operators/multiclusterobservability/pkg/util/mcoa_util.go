@@ -22,13 +22,20 @@ import (
 
 // IsMCOAEnabled returns true if any MCOA capability is enabled.
 func IsMCOAEnabled(mco *mcov1beta2.MultiClusterObservability) bool {
-	if mco == nil || mco.Spec.Capabilities == nil {
+	if mco == nil {
+		return false
+	}
+
+	if platformMetricsEnabled(mco) {
+		return true
+	}
+
+	if mco.Spec.Capabilities == nil {
 		return false
 	}
 
 	if mco.Spec.Capabilities.Platform != nil {
 		if mco.Spec.Capabilities.Platform.Logs.Collection.Enabled ||
-			mco.Spec.Capabilities.Platform.Metrics.Default.Enabled ||
 			mco.Spec.Capabilities.Platform.Analytics.IncidentDetection.Enabled {
 			return true
 		}
@@ -42,6 +49,16 @@ func IsMCOAEnabled(mco *mcov1beta2.MultiClusterObservability) bool {
 	}
 
 	return false
+}
+
+// platformMetricsEnabled mirrors the defaulting logic from rendering.MCOAPlatformMetricsEnabled
+// to avoid a circular import (util → rendering).
+func platformMetricsEnabled(mco *mcov1beta2.MultiClusterObservability) bool {
+	if mco.Spec.Capabilities != nil && mco.Spec.Capabilities.Platform != nil &&
+		mco.Spec.Capabilities.Platform.Metrics.Default.Enabled != nil {
+		return *mco.Spec.Capabilities.Platform.Metrics.Default.Enabled
+	}
+	return mco.Spec.ObservabilityAddonSpec == nil || !mco.Spec.ObservabilityAddonSpec.EnableMetrics
 }
 
 // HasMCOAManifestWorks checks for remaining MCOA ManifestWorks that contain metrics-specific
