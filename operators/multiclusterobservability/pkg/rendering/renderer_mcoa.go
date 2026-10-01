@@ -21,6 +21,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	addonv1beta1 "open-cluster-management.io/api/addon/v1beta1"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/kustomize/api/resource"
 )
 
@@ -207,19 +208,17 @@ func (r *MCORenderer) renderClusterManagementAddOn(
 	// the legacy "observability-controller" CMA already provides the Grafana link.
 	if MCOAPlatformMetricsEnabled(r.cr) {
 		host, err := mcoconfig.GetRouteHost(ctx, r.kubeClient, mcoconfig.GrafanaRouteName, mcoconfig.GetDefaultNamespace())
-		if err != nil {
-			return nil, fmt.Errorf("failed to get host route: %w", err)
+		if err != nil || host == "" {
+			ctrl.LoggerFrom(ctx).Info("Grafana route not yet available, deferring launch link annotation on CMA")
+		} else {
+			grafanaUrl := url.URL{
+				Scheme: "https",
+				Host:   host,
+				Path:   grafanaLink,
+			}
+			annotations[mcoutil.GrafanaLaunchLinkKey] = grafanaUrl.String()
+			annotations[mcoutil.GrafanaLaunchLinkTextKey] = "Grafana"
 		}
-		if host == "" {
-			return nil, fmt.Errorf("grafana route host is empty, cannot construct launch link")
-		}
-		grafanaUrl := url.URL{
-			Scheme: "https",
-			Host:   host,
-			Path:   grafanaLink,
-		}
-		annotations[mcoutil.GrafanaLaunchLinkKey] = grafanaUrl.String()
-		annotations[mcoutil.GrafanaLaunchLinkTextKey] = "Grafana"
 	}
 	u.SetAnnotations(annotations)
 
