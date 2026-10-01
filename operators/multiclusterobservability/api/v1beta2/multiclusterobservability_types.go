@@ -71,10 +71,11 @@ type PlatformLogsCollectionSpec struct {
 // from fleet managed clusters.
 type PlatformMetricsDefaultSpec struct {
 	// Enabled defines a flag to enable/disable the platform metrics collection.
+	// When nil, the controller defaults based on ObservabilityAddonSpec.EnableMetrics:
+	// enableMetrics=false (new install) implies MCOA enabled; enableMetrics=true (legacy) implies MCOA disabled.
 	//
 	// +optional
-	// +kubebuilder:validation:Optional
-	Enabled bool `json:"enabled,omitempty"`
+	Enabled *bool `json:"enabled,omitempty"`
 }
 
 // UIConfig defines the spec for the addon to expose the metrics UI through COO

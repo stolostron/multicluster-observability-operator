@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	routev1 "github.com/openshift/api/route/v1"
+	mcoshared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering/templates"
@@ -237,7 +238,7 @@ func TestRenderAddonDeploymentConfig(t *testing.T) {
 					},
 					Metrics: mcov1beta2.PlatformMetricsSpec{
 						Default: mcov1beta2.PlatformMetricsDefaultSpec{
-							Enabled: true,
+							Enabled: ptr.To(true),
 						},
 						UI: mcov1beta2.UIConfig{
 							Enabled: true,
@@ -341,7 +342,7 @@ func TestRenderAddonDeploymentConfig_AlertsEnabled(t *testing.T) {
 				Platform: &mcov1beta2.PlatformCapabilitiesSpec{
 					Metrics: mcov1beta2.PlatformMetricsSpec{
 						Default: mcov1beta2.PlatformMetricsDefaultSpec{
-							Enabled: true,
+							Enabled: ptr.To(true),
 						},
 						Alerts: mcov1beta2.MetricsAlertsSpec{
 							Enabled: true,
@@ -387,13 +388,28 @@ func TestMCOAEnabled(t *testing.T) {
 		expected bool
 	}{
 		{
-			name: "Capabilities not set",
+			name: "Legacy CR: capabilities nil, enableMetrics true → disabled",
 			cr: &mcov1beta2.MultiClusterObservability{
 				Spec: mcov1beta2.MultiClusterObservabilitySpec{
+					ObservabilityAddonSpec: &mcoshared.ObservabilityAddonSpec{
+						EnableMetrics: true,
+					},
 					Capabilities: nil,
 				},
 			},
 			expected: false,
+		},
+		{
+			name: "New install: capabilities nil, enableMetrics false → enabled via defaulting",
+			cr: &mcov1beta2.MultiClusterObservability{
+				Spec: mcov1beta2.MultiClusterObservabilitySpec{
+					ObservabilityAddonSpec: &mcoshared.ObservabilityAddonSpec{
+						EnableMetrics: false,
+					},
+					Capabilities: nil,
+				},
+			},
+			expected: true,
 		},
 		{
 			name: "Platform logs collection enabled",
@@ -439,7 +455,7 @@ func TestMCOAEnabled(t *testing.T) {
 						Platform: &mcov1beta2.PlatformCapabilitiesSpec{
 							Metrics: mcov1beta2.PlatformMetricsSpec{
 								Default: mcov1beta2.PlatformMetricsDefaultSpec{
-									Enabled: true,
+									Enabled: ptr.To(true),
 								},
 							},
 						},
@@ -500,7 +516,7 @@ func TestMCOAEnabled(t *testing.T) {
 							},
 							Metrics: mcov1beta2.PlatformMetricsSpec{
 								Default: mcov1beta2.PlatformMetricsDefaultSpec{
-									Enabled: false,
+									Enabled: ptr.To(false),
 								},
 							},
 						},
@@ -686,13 +702,18 @@ func TestRenderClusterManagementAddOn(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "multicluster-observability",
 				},
+				Spec: mcov1beta2.MultiClusterObservabilitySpec{
+					ObservabilityAddonSpec: &mcoshared.ObservabilityAddonSpec{
+						EnableMetrics: true,
+					},
+				},
 			}
 			if tt.metricsEnabled {
 				mco.Spec.Capabilities = &mcov1beta2.CapabilitiesSpec{
 					Platform: &mcov1beta2.PlatformCapabilitiesSpec{
 						Metrics: mcov1beta2.PlatformMetricsSpec{
 							Default: mcov1beta2.PlatformMetricsDefaultSpec{
-								Enabled: true,
+								Enabled: ptr.To(true),
 							},
 						},
 					},
@@ -723,9 +744,10 @@ func TestRenderClusterManagementAddOn(t *testing.T) {
 	}
 }
 
-// TestRenderClusterManagementAddOnNilCapabilities verifies that a nil Capabilities
-// spec does not attempt a Grafana route lookup and produces no launch-link annotation.
-func TestRenderClusterManagementAddOnNilCapabilities(t *testing.T) {
+// TestRenderClusterManagementAddOnLegacyNilCapabilities verifies that a legacy CR
+// (enableMetrics=true, capabilities nil) does not attempt a Grafana route lookup
+// and produces no launch-link annotation.
+func TestRenderClusterManagementAddOnLegacyNilCapabilities(t *testing.T) {
 	wd, err := os.Getwd()
 	assert.NoError(t, err)
 	templatesPath := filepath.Join(wd, "..", "..", "manifests")
@@ -745,9 +767,14 @@ func TestRenderClusterManagementAddOnNilCapabilities(t *testing.T) {
 
 	mco := &mcov1beta2.MultiClusterObservability{
 		ObjectMeta: metav1.ObjectMeta{Name: "multicluster-observability"},
+		Spec: mcov1beta2.MultiClusterObservabilitySpec{
+			ObservabilityAddonSpec: &mcoshared.ObservabilityAddonSpec{
+				EnableMetrics: true,
+			},
+		},
 	}
 
-	// kubeClient intentionally nil: with nil Capabilities, no route fetch should occur
+	// kubeClient intentionally nil: with legacy CR (enableMetrics=true), no route fetch should occur
 	renderer := &MCORenderer{cr: mco}
 	uobj, err := renderer.renderClusterManagementAddOn(t.Context(), cmaTemplate.DeepCopy(), "test", map[string]string{"key": "value"})
 	assert.NoError(t, err)
@@ -808,8 +835,6 @@ func TestRightSizingConfigured(t *testing.T) {
 	}
 }
 
-// TestRenderMCOAMetricsServiceAndServiceMonitor verifies that MCOA metrics Service
-// and ServiceMonitor resources are rendered and have namespace dynamically injected.
 func TestRenderMCOAMetricsServiceAndServiceMonitor(t *testing.T) {
 	tlstesting.NewFakeTLSClientBuilder().Build(t)
 
@@ -992,4 +1017,127 @@ func TestRenderMCOAPrometheusRule(t *testing.T) {
 
 	assert.Equal(t, "warning", alertsByName["MCOAHighManifestRenderLatency"]["labels"].(map[string]any)["severity"])
 	assert.Equal(t, "10m", alertsByName["MCOAHighManifestRenderLatency"]["for"])
+}
+
+func TestMCOAPlatformMetricsEnabled_Defaulting(t *testing.T) {
+	tests := []struct {
+		name     string
+		cr       *mcov1beta2.MultiClusterObservability
+		expected bool
+	}{
+		{
+			name: "new install: capabilities nil, enableMetrics false → MCOA enabled",
+			cr: &mcov1beta2.MultiClusterObservability{
+				Spec: mcov1beta2.MultiClusterObservabilitySpec{
+					ObservabilityAddonSpec: &mcoshared.ObservabilityAddonSpec{
+						EnableMetrics: false,
+					},
+				},
+			},
+			expected: true,
+		},
+		{
+			name: "legacy upgrade: capabilities nil, enableMetrics true → MCOA disabled",
+			cr: &mcov1beta2.MultiClusterObservability{
+				Spec: mcov1beta2.MultiClusterObservabilitySpec{
+					ObservabilityAddonSpec: &mcoshared.ObservabilityAddonSpec{
+						EnableMetrics: true,
+					},
+				},
+			},
+			expected: false,
+		},
+		{
+			name: "explicit enable: Enabled=true regardless of enableMetrics",
+			cr: &mcov1beta2.MultiClusterObservability{
+				Spec: mcov1beta2.MultiClusterObservabilitySpec{
+					ObservabilityAddonSpec: &mcoshared.ObservabilityAddonSpec{
+						EnableMetrics: true,
+					},
+					Capabilities: &mcov1beta2.CapabilitiesSpec{
+						Platform: &mcov1beta2.PlatformCapabilitiesSpec{
+							Metrics: mcov1beta2.PlatformMetricsSpec{
+								Default: mcov1beta2.PlatformMetricsDefaultSpec{
+									Enabled: ptr.To(true),
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: true,
+		},
+		{
+			name: "explicit disable: Enabled=false regardless of enableMetrics",
+			cr: &mcov1beta2.MultiClusterObservability{
+				Spec: mcov1beta2.MultiClusterObservabilitySpec{
+					ObservabilityAddonSpec: &mcoshared.ObservabilityAddonSpec{
+						EnableMetrics: false,
+					},
+					Capabilities: &mcov1beta2.CapabilitiesSpec{
+						Platform: &mcov1beta2.PlatformCapabilitiesSpec{
+							Metrics: mcov1beta2.PlatformMetricsSpec{
+								Default: mcov1beta2.PlatformMetricsDefaultSpec{
+									Enabled: ptr.To(false),
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: false,
+		},
+		{
+			name: "analytics controller side-effect: capabilities/platform set but Enabled nil, enableMetrics false → MCOA enabled",
+			cr: &mcov1beta2.MultiClusterObservability{
+				Spec: mcov1beta2.MultiClusterObservabilitySpec{
+					ObservabilityAddonSpec: &mcoshared.ObservabilityAddonSpec{
+						EnableMetrics: false,
+					},
+					Capabilities: &mcov1beta2.CapabilitiesSpec{
+						Platform: &mcov1beta2.PlatformCapabilitiesSpec{
+							Analytics: mcov1beta2.PlatformAnalyticsSpec{
+								NamespaceRightSizingRecommendation: mcov1beta2.PlatformRightSizingRecommendationSpec{
+									Enabled: true,
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: true,
+		},
+		{
+			name: "analytics controller side-effect: capabilities/platform set but Enabled nil, enableMetrics true → MCOA disabled",
+			cr: &mcov1beta2.MultiClusterObservability{
+				Spec: mcov1beta2.MultiClusterObservabilitySpec{
+					ObservabilityAddonSpec: &mcoshared.ObservabilityAddonSpec{
+						EnableMetrics: true,
+					},
+					Capabilities: &mcov1beta2.CapabilitiesSpec{
+						Platform: &mcov1beta2.PlatformCapabilitiesSpec{
+							Analytics: mcov1beta2.PlatformAnalyticsSpec{
+								NamespaceRightSizingRecommendation: mcov1beta2.PlatformRightSizingRecommendationSpec{
+									Enabled: true,
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: false,
+		},
+		{
+			name: "nil ObservabilityAddonSpec → MCOA enabled (defensive)",
+			cr: &mcov1beta2.MultiClusterObservability{
+				Spec: mcov1beta2.MultiClusterObservabilitySpec{},
+			},
+			expected: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, MCOAPlatformMetricsEnabled(tt.cr))
+		})
+	}
 }
