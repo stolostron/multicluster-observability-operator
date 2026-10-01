@@ -45,7 +45,7 @@ spec:
           image: quay.io/stolostron/kube-rbac-proxy:latest
           imagePullPolicy: IfNotPresent
           args:
-            - --secure-listen-address=0.0.0.0:8443
+            - --secure-listen-address=0.0.0.0:8444
             - --upstream=http://127.0.0.1:8080
             - --tls-cert-file=/etc/tls/private/tls.crt
             - --tls-private-key-file=/etc/tls/private/tls.key
@@ -53,7 +53,7 @@ spec:
             - --allow-paths=/metrics
           ports:
             - name: https-metrics
-              containerPort: 8443
+              containerPort: 8444
               protocol: TCP
           resources:
             requests:

@@ -13,7 +13,7 @@ spec:
   type: ClusterIP
   ports:
     - name: https-metrics
-      port: 8443
+      port: 8444
       targetPort: https-metrics
       protocol: TCP
   selector:
