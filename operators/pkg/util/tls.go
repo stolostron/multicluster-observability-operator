@@ -8,11 +8,14 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"strconv"
 	"strings"
 
 	ocinfrav1 "github.com/openshift/api/config/v1"
 	tlsutil "github.com/openshift/controller-runtime-common/pkg/tls"
 	libgocrypto "github.com/openshift/library-go/pkg/crypto"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -130,6 +133,10 @@ func GetTLSSecurityConfiguration(ctx context.Context) (minTLSVersion, cipherSuit
 	}
 
 	ianaCiphers := filterConfigurableCiphers(libgocrypto.OpenSSLToIANACipherSuites(tlsProfileSpec.Ciphers))
+	// Normalize for consumers (like observatorium-api) that only accept pre-Go 1.22 cipher names.
+	for i, c := range ianaCiphers {
+		ianaCiphers[i] = normalizeCipherName(c)
+	}
 	cipherSuites = strings.Join(ianaCiphers, ",")
 	minTLSVersion = string(tlsProfileSpec.MinTLSVersion)
 	return
@@ -178,18 +185,68 @@ func filterConfigurableCiphers(ianaCiphers []string) []string {
 	var filtered []string
 	for _, c := range ianaCiphers {
 		if _, ok := configurable[c]; ok {
-			filtered = append(filtered, normalizeCipherName(c))
+			filtered = append(filtered, c)
 		}
 	}
 	return filtered
 }
 
 // normalizeCipherName strips the _SHA256 suffix that Go 1.22+ appends to
-// CHACHA20_POLY1305 cipher names so they match the shorter form accepted by
-// k8s.io/component-base/cli/flag.TLSCipherSuites() across all versions.
+// CHACHA20_POLY1305 cipher names. Some consumers (like observatorium-api)
+// only accept the pre-Go 1.22 short names.
 func normalizeCipherName(name string) string {
 	if strings.HasSuffix(name, "CHACHA20_POLY1305_SHA256") {
 		return strings.TrimSuffix(name, "_SHA256")
 	}
 	return name
+}
+
+// IsOAuthProxyTLSSupported checks whether the cluster's oauth-proxy supports
+// --tls-cipher-suites and --tls-min-version flags. These flags were added in
+// OCP 5.0; older versions will crash if they receive unrecognized flags.
+// Returns (false, nil) on non-OCP clusters where ClusterVersion does not exist.
+// Returns an error for transient failures so the caller can retry.
+func IsOAuthProxyTLSSupported(ctx context.Context, c client.Client) (bool, error) {
+	cv := &ocinfrav1.ClusterVersion{}
+	if err := c.Get(ctx, types.NamespacedName{Name: "version"}, cv); err != nil {
+		if apierrors.IsNotFound(err) {
+			return false, nil
+		}
+		return false, fmt.Errorf("unable to get ClusterVersion: %w", err)
+	}
+
+	version := ""
+	if cv.Status.Desired.Version != "" {
+		version = cv.Status.Desired.Version
+	} else if len(cv.Status.History) > 0 {
+		version = cv.Status.History[0].Version
+	}
+	if version == "" {
+		log.Info("ClusterVersion has no version, skipping oauth-proxy TLS flags")
+		return false, nil
+	}
+
+	major, _, ok := parseMajorMinor(version)
+	if !ok {
+		log.Info("unable to parse ClusterVersion", "version", version)
+		return false, nil
+	}
+
+	return major >= 5, nil
+}
+
+func parseMajorMinor(version string) (major, minor int, ok bool) {
+	parts := strings.SplitN(version, ".", 3)
+	if len(parts) < 2 {
+		return 0, 0, false
+	}
+	major, err := strconv.Atoi(parts[0])
+	if err != nil {
+		return 0, 0, false
+	}
+	minor, err = strconv.Atoi(parts[1])
+	if err != nil {
+		return 0, 0, false
+	}
+	return major, minor, true
 }

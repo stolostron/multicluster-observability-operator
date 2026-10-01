@@ -93,6 +93,14 @@ func (r *MCORenderer) renderGrafanaDeployments(
 		return nil, fmt.Errorf("failed to get OAuth image for alertmanager")
 	}
 	spec.Containers[2].ImagePullPolicy = imagePullPolicy
+	if supported, tlsErr := util.IsOAuthProxyTLSSupported(ctx, r.kubeClient); tlsErr != nil {
+		return nil, tlsErr
+	} else if supported {
+		spec.Containers[2].Args, err = util.SetTLSSecurityConfiguration(ctx, spec.Containers[2].Args, "--tls-cipher-suites=", "--tls-min-version=")
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	unstructuredObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
 	if err != nil {
