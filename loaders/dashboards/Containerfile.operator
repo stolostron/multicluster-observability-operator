@@ -7,7 +7,7 @@ WORKDIR /workspace
 COPY go.sum go.mod ./loaders/dashboards ./
 COPY ./loaders/dashboards ./loaders/dashboards
 
-RUN CGO_ENABLED=1 GOFLAGS="" go build -a -installsuffix cgo -v -o main loaders/dashboards/cmd/main.go
+RUN CGO_ENABLED=1 GOEXPERIMENT=strictfipsruntime GOFLAGS="" go build -a -installsuffix cgo -v -o main loaders/dashboards/cmd/main.go
 
 # IMPORTANT: When changing base image RHEL version (ubi9 → ubi10):
 # 1. Update FROM statement below
