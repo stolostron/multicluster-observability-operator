@@ -74,6 +74,7 @@ func TestIntegrationMCO_HubRules(t *testing.T) {
 		newNamespace(hubNamespace),
 		newStorageSecret(storageSecretName, hubNamespace, storageSecretKey),
 		newObservatoriumApiRoute(hubNamespace),
+		newGrafanaRoute(hubNamespace),
 		newMCO(hubNamespace, storageSecretName, storageSecretKey),
 	}
 	err = createResources(k8sHubClient, resources...)
@@ -198,6 +199,21 @@ func newStorageSecret(name, ns, key string) *corev1.Secret {
 		},
 		Data: map[string][]byte{
 			key: []byte(""),
+		},
+	}
+}
+
+func newGrafanaRoute(ns string) *routev1.Route {
+	return &routev1.Route{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      config.GrafanaRouteName,
+			Namespace: ns,
+		},
+		Spec: routev1.RouteSpec{
+			Host: "grafana.example.com",
+			To: routev1.RouteTargetReference{
+				Name: "grafana",
+			},
 		},
 	}
 }
