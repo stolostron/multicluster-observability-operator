@@ -966,7 +966,7 @@ data:
               "step": 10
             },
             {
-              "expr": "namespace_workload_pod:kube_pod_owner:relabel:avg{cluster=\"$cluster\"}",
+              "expr": "sum(namespace_workload_pod:kube_pod_owner:relabel:avg{cluster=\"$cluster\"}) by (namespace)",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -977,7 +977,7 @@ data:
               "step": 10
             },
             {
-              "expr": "node_namespace_pod_container:container_cpu_usage_seconds_total:sum{cluster=\"$cluster\"}",
+              "expr": "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum{cluster=\"$cluster\"}) by (namespace)",
               "format": "table",
               "instant": true,
               "intervalFactor": 2,
