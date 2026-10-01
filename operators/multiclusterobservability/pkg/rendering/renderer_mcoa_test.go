@@ -121,7 +121,7 @@ func TestRenderMCOADeployment(t *testing.T) {
 
 	require.NotNil(t, kubeRbacProxyContainer, "kube-rbac-proxy container should be present")
 	assert.Equal(t, corev1.PullIfNotPresent, kubeRbacProxyContainer.ImagePullPolicy)
-	assert.Contains(t, kubeRbacProxyContainer.Args, "--secure-listen-address=0.0.0.0:8443")
+	assert.Contains(t, kubeRbacProxyContainer.Args, "--secure-listen-address=0.0.0.0:8444")
 	assert.Contains(t, kubeRbacProxyContainer.Args, "--upstream=http://127.0.0.1:8080")
 	assert.Contains(t, kubeRbacProxyContainer.Args, "--tls-cert-file=/etc/tls/private/tls.crt")
 	assert.Contains(t, kubeRbacProxyContainer.Args, "--tls-private-key-file=/etc/tls/private/tls.key")
@@ -129,7 +129,7 @@ func TestRenderMCOADeployment(t *testing.T) {
 	assert.Contains(t, kubeRbacProxyContainer.Args, "--allow-paths=/metrics")
 	assert.Contains(t, kubeRbacProxyContainer.Ports, corev1.ContainerPort{
 		Name:          "https-metrics",
-		ContainerPort: 8443,
+		ContainerPort: 8444,
 		Protocol:      corev1.ProtocolTCP,
 	})
 	assert.Contains(t, kubeRbacProxyContainer.VolumeMounts, corev1.VolumeMount{
@@ -859,7 +859,7 @@ func TestRenderMCOAMetricsServiceAndServiceMonitor(t *testing.T) {
 	portMap, ok := ports[0].(map[string]any)
 	require.True(t, ok)
 	assert.Equal(t, "https-metrics", portMap["name"])
-	assert.Equal(t, 8443, portMap["port"])
+	assert.Equal(t, 8444, portMap["port"])
 	assert.Equal(t, "https-metrics", portMap["targetPort"])
 
 	require.NotNil(t, serviceMonitorObj, "ServiceMonitor multicluster-observability-addon-manager should be rendered")
