@@ -17,14 +17,14 @@ spec:
             -
             (
               (
-                sum by (cluster) (rate(apiserver_request_duration_seconds_bucket{component="apiserver",verb=~"LIST|GET",scope=~"resource|",le="1"}[1d]))
+                sum by (cluster) (rate(apiserver_request_duration_seconds_bucket{component="apiserver",verb=~"LIST|GET",scope=~"resource|",le=~"1|1\.0"}[1d]))
                 or
                 vector(0)
               )
               +
-              sum by (cluster) (rate(apiserver_request_duration_seconds_bucket{component="apiserver",verb=~"LIST|GET",scope="namespace",le="5"}[1d]))
+              sum by (cluster) (rate(apiserver_request_duration_seconds_bucket{component="apiserver",verb=~"LIST|GET",scope="namespace",le=~"5|5\.0"}[1d]))
               +
-              sum by (cluster) (rate(apiserver_request_duration_seconds_bucket{component="apiserver",verb=~"LIST|GET",scope="cluster",le="40"}[1d]))
+              sum by (cluster) (rate(apiserver_request_duration_seconds_bucket{component="apiserver",verb=~"LIST|GET",scope="cluster",le=~"40|40\.0"}[1d]))
             )
           )
           +
@@ -44,14 +44,14 @@ spec:
             -
             (
               (
-                sum by (cluster) (rate(apiserver_request_duration_seconds_bucket{component="apiserver",verb=~"LIST|GET",scope=~"resource|",le="1"}[1h]))
+                sum by (cluster) (rate(apiserver_request_duration_seconds_bucket{component="apiserver",verb=~"LIST|GET",scope=~"resource|",le=~"1|1\.0"}[1h]))
                 or
                 vector(0)
               )
               +
-              sum by (cluster) (rate(apiserver_request_duration_seconds_bucket{component="apiserver",verb=~"LIST|GET",scope="namespace",le="5"}[1h]))
+              sum by (cluster) (rate(apiserver_request_duration_seconds_bucket{component="apiserver",verb=~"LIST|GET",scope="namespace",le=~"5|5\.0"}[1h]))
               +
-              sum by (cluster) (rate(apiserver_request_duration_seconds_bucket{component="apiserver",verb=~"LIST|GET",scope="cluster",le="40"}[1h]))
+              sum by (cluster) (rate(apiserver_request_duration_seconds_bucket{component="apiserver",verb=~"LIST|GET",scope="cluster",le=~"40|40\.0"}[1h]))
             )
           )
           +
@@ -71,14 +71,14 @@ spec:
             -
             (
               (
-                sum by (cluster) (rate(apiserver_request_duration_seconds_bucket{component="apiserver",verb=~"LIST|GET",scope=~"resource|",le="1"}[2h]))
+                sum by (cluster) (rate(apiserver_request_duration_seconds_bucket{component="apiserver",verb=~"LIST|GET",scope=~"resource|",le=~"1|1\.0"}[2h]))
                 or
                 vector(0)
               )
               +
-              sum by (cluster) (rate(apiserver_request_duration_seconds_bucket{component="apiserver",verb=~"LIST|GET",scope="namespace",le="5"}[2h]))
+              sum by (cluster) (rate(apiserver_request_duration_seconds_bucket{component="apiserver",verb=~"LIST|GET",scope="namespace",le=~"5|5\.0"}[2h]))
               +
-              sum by (cluster) (rate(apiserver_request_duration_seconds_bucket{component="apiserver",verb=~"LIST|GET",scope="cluster",le="40"}[2h]))
+              sum by (cluster) (rate(apiserver_request_duration_seconds_bucket{component="apiserver",verb=~"LIST|GET",scope="cluster",le=~"40|40\.0"}[2h]))
             )
           )
           +
@@ -98,14 +98,14 @@ spec:
             -
             (
               (
-                sum by (cluster) (rate(apiserver_request_duration_seconds_bucket{component="apiserver",verb=~"LIST|GET",scope=~"resource|",le="1"}[30m]))
+                sum by (cluster) (rate(apiserver_request_duration_seconds_bucket{component="apiserver",verb=~"LIST|GET",scope=~"resource|",le=~"1|1\.0"}[30m]))
                 or
                 vector(0)
               )
               +
-              sum by (cluster) (rate(apiserver_request_duration_seconds_bucket{component="apiserver",verb=~"LIST|GET",scope="namespace",le="5"}[30m]))
+              sum by (cluster) (rate(apiserver_request_duration_seconds_bucket{component="apiserver",verb=~"LIST|GET",scope="namespace",le=~"5|5\.0"}[30m]))
               +
-              sum by (cluster) (rate(apiserver_request_duration_seconds_bucket{component="apiserver",verb=~"LIST|GET",scope="cluster",le="40"}[30m]))
+              sum by (cluster) (rate(apiserver_request_duration_seconds_bucket{component="apiserver",verb=~"LIST|GET",scope="cluster",le=~"40|40\.0"}[30m]))
             )
           )
           +
@@ -125,14 +125,14 @@ spec:
             -
             (
               (
-                sum by (cluster) (rate(apiserver_request_duration_seconds_bucket{component="apiserver",verb=~"LIST|GET",scope=~"resource|",le="1"}[3d]))
+                sum by (cluster) (rate(apiserver_request_duration_seconds_bucket{component="apiserver",verb=~"LIST|GET",scope=~"resource|",le=~"1|1\.0"}[3d]))
                 or
                 vector(0)
               )
               +
-              sum by (cluster) (rate(apiserver_request_duration_seconds_bucket{component="apiserver",verb=~"LIST|GET",scope="namespace",le="5"}[3d]))
+              sum by (cluster) (rate(apiserver_request_duration_seconds_bucket{component="apiserver",verb=~"LIST|GET",scope="namespace",le=~"5|5\.0"}[3d]))
               +
-              sum by (cluster) (rate(apiserver_request_duration_seconds_bucket{component="apiserver",verb=~"LIST|GET",scope="cluster",le="40"}[3d]))
+              sum by (cluster) (rate(apiserver_request_duration_seconds_bucket{component="apiserver",verb=~"LIST|GET",scope="cluster",le=~"40|40\.0"}[3d]))
             )
           )
           +
@@ -152,14 +152,14 @@ spec:
             -
             (
               (
-                sum by (cluster) (rate(apiserver_request_duration_seconds_bucket{component="apiserver",verb=~"LIST|GET",scope=~"resource|",le="1"}[5m]))
+                sum by (cluster) (rate(apiserver_request_duration_seconds_bucket{component="apiserver",verb=~"LIST|GET",scope=~"resource|",le=~"1|1\.0"}[5m]))
                 or
                 vector(0)
               )
               +
-              sum by (cluster) (rate(apiserver_request_duration_seconds_bucket{component="apiserver",verb=~"LIST|GET",scope="namespace",le="5"}[5m]))
+              sum by (cluster) (rate(apiserver_request_duration_seconds_bucket{component="apiserver",verb=~"LIST|GET",scope="namespace",le=~"5|5\.0"}[5m]))
               +
-              sum by (cluster) (rate(apiserver_request_duration_seconds_bucket{component="apiserver",verb=~"LIST|GET",scope="cluster",le="40"}[5m]))
+              sum by (cluster) (rate(apiserver_request_duration_seconds_bucket{component="apiserver",verb=~"LIST|GET",scope="cluster",le=~"40|40\.0"}[5m]))
             )
           )
           +
@@ -179,14 +179,14 @@ spec:
             -
             (
               (
-                sum by (cluster) (rate(apiserver_request_duration_seconds_bucket{component="apiserver",verb=~"LIST|GET",scope=~"resource|",le="1"}[6h]))
+                sum by (cluster) (rate(apiserver_request_duration_seconds_bucket{component="apiserver",verb=~"LIST|GET",scope=~"resource|",le=~"1|1\.0"}[6h]))
                 or
                 vector(0)
               )
               +
-              sum by (cluster) (rate(apiserver_request_duration_seconds_bucket{component="apiserver",verb=~"LIST|GET",scope="namespace",le="5"}[6h]))
+              sum by (cluster) (rate(apiserver_request_duration_seconds_bucket{component="apiserver",verb=~"LIST|GET",scope="namespace",le=~"5|5\.0"}[6h]))
               +
-              sum by (cluster) (rate(apiserver_request_duration_seconds_bucket{component="apiserver",verb=~"LIST|GET",scope="cluster",le="40"}[6h]))
+              sum by (cluster) (rate(apiserver_request_duration_seconds_bucket{component="apiserver",verb=~"LIST|GET",scope="cluster",le=~"40|40\.0"}[6h]))
             )
           )
           +
@@ -204,7 +204,7 @@ spec:
             # too slow
             sum by (cluster) (rate(apiserver_request_duration_seconds_count{component="apiserver",service="kubernetes",verb=~"POST|PUT|PATCH|DELETE"}[1d]))
             -
-            sum by (cluster) (rate(apiserver_request_duration_seconds_bucket{component="apiserver",verb=~"POST|PUT|PATCH|DELETE",le="1"}[1d]))
+            sum by (cluster) (rate(apiserver_request_duration_seconds_bucket{component="apiserver",verb=~"POST|PUT|PATCH|DELETE",le=~"1|1\.0"}[1d]))
           )
           +
           sum by (cluster) (rate(apiserver_request_total{component="apiserver",service="kubernetes",verb=~"POST|PUT|PATCH|DELETE",code=~"5.."}[1d]))
@@ -220,7 +220,7 @@ spec:
             # too slow
             sum by (cluster) (rate(apiserver_request_duration_seconds_count{component="apiserver",service="kubernetes",verb=~"POST|PUT|PATCH|DELETE"}[1h]))
             -
-            sum by (cluster) (rate(apiserver_request_duration_seconds_bucket{component="apiserver",verb=~"POST|PUT|PATCH|DELETE",le="1"}[1h]))
+            sum by (cluster) (rate(apiserver_request_duration_seconds_bucket{component="apiserver",verb=~"POST|PUT|PATCH|DELETE",le=~"1|1\.0"}[1h]))
           )
           +
           sum by (cluster) (rate(apiserver_request_total{component="apiserver",service="kubernetes",verb=~"POST|PUT|PATCH|DELETE",code=~"5.."}[1h]))
@@ -236,7 +236,7 @@ spec:
             # too slow
             sum by (cluster) (rate(apiserver_request_duration_seconds_count{component="apiserver",service="kubernetes",verb=~"POST|PUT|PATCH|DELETE"}[2h]))
             -
-            sum by (cluster) (rate(apiserver_request_duration_seconds_bucket{component="apiserver",verb=~"POST|PUT|PATCH|DELETE",le="1"}[2h]))
+            sum by (cluster) (rate(apiserver_request_duration_seconds_bucket{component="apiserver",verb=~"POST|PUT|PATCH|DELETE",le=~"1|1\.0"}[2h]))
           )
           +
           sum by (cluster) (rate(apiserver_request_total{component="apiserver",service="kubernetes",verb=~"POST|PUT|PATCH|DELETE",code=~"5.."}[2h]))
@@ -252,7 +252,7 @@ spec:
             # too slow
             sum by (cluster) (rate(apiserver_request_duration_seconds_count{component="apiserver",service="kubernetes",verb=~"POST|PUT|PATCH|DELETE"}[30m]))
             -
-            sum by (cluster) (rate(apiserver_request_duration_seconds_bucket{component="apiserver",verb=~"POST|PUT|PATCH|DELETE",le="1"}[30m]))
+            sum by (cluster) (rate(apiserver_request_duration_seconds_bucket{component="apiserver",verb=~"POST|PUT|PATCH|DELETE",le=~"1|1\.0"}[30m]))
           )
           +
           sum by (cluster) (rate(apiserver_request_total{component="apiserver",service="kubernetes",verb=~"POST|PUT|PATCH|DELETE",code=~"5.."}[30m]))
@@ -268,7 +268,7 @@ spec:
             # too slow
             sum by (cluster) (rate(apiserver_request_duration_seconds_count{component="apiserver",service="kubernetes",verb=~"POST|PUT|PATCH|DELETE"}[3d]))
             -
-            sum by (cluster) (rate(apiserver_request_duration_seconds_bucket{component="apiserver",verb=~"POST|PUT|PATCH|DELETE",le="1"}[3d]))
+            sum by (cluster) (rate(apiserver_request_duration_seconds_bucket{component="apiserver",verb=~"POST|PUT|PATCH|DELETE",le=~"1|1\.0"}[3d]))
           )
           +
           sum by (cluster) (rate(apiserver_request_total{component="apiserver",service="kubernetes",verb=~"POST|PUT|PATCH|DELETE",code=~"5.."}[3d]))
@@ -284,7 +284,7 @@ spec:
             # too slow
             sum by (cluster) (rate(apiserver_request_duration_seconds_count{component="apiserver",service="kubernetes",verb=~"POST|PUT|PATCH|DELETE"}[5m]))
             -
-            sum by (cluster) (rate(apiserver_request_duration_seconds_bucket{component="apiserver",verb=~"POST|PUT|PATCH|DELETE",le="1"}[5m]))
+            sum by (cluster) (rate(apiserver_request_duration_seconds_bucket{component="apiserver",verb=~"POST|PUT|PATCH|DELETE",le=~"1|1\.0"}[5m]))
           )
           +
           sum by (cluster) (rate(apiserver_request_total{component="apiserver",service="kubernetes",verb=~"POST|PUT|PATCH|DELETE",code=~"5.."}[5m]))
@@ -300,7 +300,7 @@ spec:
             # too slow
             sum by (cluster) (rate(apiserver_request_duration_seconds_count{component="apiserver",service="kubernetes",verb=~"POST|PUT|PATCH|DELETE"}[6h]))
             -
-            sum by (cluster) (rate(apiserver_request_duration_seconds_bucket{component="apiserver",verb=~"POST|PUT|PATCH|DELETE",le="1"}[6h]))
+            sum by (cluster) (rate(apiserver_request_duration_seconds_bucket{component="apiserver",verb=~"POST|PUT|PATCH|DELETE",le=~"1|1\.0"}[6h]))
           )
           +
           sum by (cluster) (rate(apiserver_request_total{component="apiserver",service="kubernetes",verb=~"POST|PUT|PATCH|DELETE",code=~"5.."}[6h]))
