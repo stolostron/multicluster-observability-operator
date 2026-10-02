@@ -11001,6 +11001,7 @@ spec:
                 description: Spec of NodeSelector
                 type: object
               observabilityAddonSpec:
+                default: {}
                 description: |-
                   The ObservabilityAddonSpec defines the global settings for all managed
                   clusters which have observability add-on enabled.
@@ -11235,7 +11236,6 @@ spec:
                   type: object
                 type: array
             required:
-            - observabilityAddonSpec
             - storageConfig
             type: object
           status:
