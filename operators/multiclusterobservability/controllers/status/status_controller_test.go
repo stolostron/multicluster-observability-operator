@@ -23,6 +23,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -493,9 +494,12 @@ func TestUpdateMCOAStatus(t *testing.T) {
 		expectedStatus *mcoshared.Condition
 	}{
 		{
-			name: "Capabilities not set",
+			name: "Capabilities not set (legacy CR)",
 			instance: &mcov1beta2.MultiClusterObservability{
 				Spec: mcov1beta2.MultiClusterObservabilitySpec{
+					ObservabilityAddonSpec: &mcoshared.ObservabilityAddonSpec{
+						EnableMetrics: true,
+					},
 					Capabilities: nil,
 				},
 			},
@@ -509,7 +513,7 @@ func TestUpdateMCOAStatus(t *testing.T) {
 						Platform: &mcov1beta2.PlatformCapabilitiesSpec{
 							Metrics: mcov1beta2.PlatformMetricsSpec{
 								Default: mcov1beta2.PlatformMetricsDefaultSpec{
-									Enabled: true,
+									Enabled: ptr.To(true),
 								},
 							},
 						},
@@ -529,7 +533,7 @@ func TestUpdateMCOAStatus(t *testing.T) {
 						Platform: &mcov1beta2.PlatformCapabilitiesSpec{
 							Metrics: mcov1beta2.PlatformMetricsSpec{
 								Default: mcov1beta2.PlatformMetricsDefaultSpec{
-									Enabled: true,
+									Enabled: ptr.To(true),
 								},
 							},
 						},
@@ -589,9 +593,12 @@ func TestUpdateMCOAStatus(t *testing.T) {
 			expectedStatus: nil,
 		},
 		{
-			name: "Capabilities enabled but none selected",
+			name: "Capabilities enabled but none selected (legacy CR)",
 			instance: &mcov1beta2.MultiClusterObservability{
 				Spec: mcov1beta2.MultiClusterObservabilitySpec{
+					ObservabilityAddonSpec: &mcoshared.ObservabilityAddonSpec{
+						EnableMetrics: true,
+					},
 					Capabilities: &mcov1beta2.CapabilitiesSpec{
 						Platform: &mcov1beta2.PlatformCapabilitiesSpec{},
 					},
@@ -631,7 +638,7 @@ func TestUpdateMCOAStatus(t *testing.T) {
 						Platform: &mcov1beta2.PlatformCapabilitiesSpec{
 							Metrics: mcov1beta2.PlatformMetricsSpec{
 								Default: mcov1beta2.PlatformMetricsDefaultSpec{
-									Enabled: true,
+									Enabled: ptr.To(true),
 								},
 							},
 						},

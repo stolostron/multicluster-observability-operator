@@ -55,6 +55,7 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"k8s.io/client-go/util/workqueue"
+	"k8s.io/utils/ptr"
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	addonv1beta1 "open-cluster-management.io/api/addon/v1beta1"
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
@@ -356,7 +357,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 				StoreStorageSize:        "1Gi",
 			},
 			ObservabilityAddonSpec: &mcoshared.ObservabilityAddonSpec{
-				EnableMetrics: false,
+				EnableMetrics: true,
 			},
 		},
 	}
@@ -397,7 +398,6 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 		},
 	}
 	gp2StorageClass := newStorageClass("gp2", true)
-
 	objs := []runtime.Object{
 		mco, svc, serverCACerts, clientCACerts, proxyRouteBYOCACerts, grafanaCert, serverCert,
 		proxyRouteBYOCert, clustermgmtAddon, extensionApiserverAuthenticationCM,
@@ -647,11 +647,10 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	}
 
 	status = mcostatusctrl.FindStatusCondition(updatedMCO.Status.Conditions, mcostatusctrl.ConditionTypeMetricsDisabled)
-	if status == nil || status.Reason != mcostatusctrl.ConditionTypeMetricsDisabled {
-		t.Errorf("Failed to get correct MCO status, expect MetricsDisabled")
+	if status != nil {
+		t.Errorf("Expected no MetricsDisabled condition when EnableMetrics is true, got: %v", status)
 	}
 
-	// test MetricsDisabled status
 	err = cl.Delete(t.Context(), mco)
 	if err != nil {
 		t.Fatalf("Failed to delete mco: (%v)", err)
@@ -843,7 +842,7 @@ func TestImageReplaceForMCO(t *testing.T) {
 				StoreStorageSize:        "1Gi",
 			},
 			ObservabilityAddonSpec: &mcoshared.ObservabilityAddonSpec{
-				EnableMetrics: false,
+				EnableMetrics: true,
 			},
 		},
 	}
@@ -1457,6 +1456,11 @@ func TestUndeployMCOAGrafanaResources(t *testing.T) {
 			Name: mcoName,
 			UID:  mcoUID,
 		},
+		Spec: mcov1beta2.MultiClusterObservabilitySpec{
+			ObservabilityAddonSpec: &mcoshared.ObservabilityAddonSpec{
+				EnableMetrics: true,
+			},
+		},
 	}
 	mcoWithPlatformMetrics := &mcov1beta2.MultiClusterObservability{
 		TypeMeta:   mco.TypeMeta,
@@ -1466,7 +1470,7 @@ func TestUndeployMCOAGrafanaResources(t *testing.T) {
 				Platform: &mcov1beta2.PlatformCapabilitiesSpec{
 					Metrics: mcov1beta2.PlatformMetricsSpec{
 						Default: mcov1beta2.PlatformMetricsDefaultSpec{
-							Enabled: true,
+							Enabled: ptr.To(true),
 						},
 					},
 				},
@@ -1784,13 +1788,18 @@ func TestSyncMCOACMAGrafanaLink(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			mco := &mcov1beta2.MultiClusterObservability{
 				ObjectMeta: metav1.ObjectMeta{Name: "test-mco"},
+				Spec: mcov1beta2.MultiClusterObservabilitySpec{
+					ObservabilityAddonSpec: &mcoshared.ObservabilityAddonSpec{
+						EnableMetrics: true,
+					},
+				},
 			}
 			if tt.metricsEnabled {
 				mco.Spec.Capabilities = &mcov1beta2.CapabilitiesSpec{
 					Platform: &mcov1beta2.PlatformCapabilitiesSpec{
 						Metrics: mcov1beta2.PlatformMetricsSpec{
 							Default: mcov1beta2.PlatformMetricsDefaultSpec{
-								Enabled: true,
+								Enabled: ptr.To(true),
 							},
 						},
 					},
@@ -1931,7 +1940,7 @@ func TestMCOACleanupADCPreservation(t *testing.T) {
 		mcoUID    = types.UID("mco-uid-adc-cleanup-test")
 	)
 
-	newMCO := func(caps *mcov1beta2.CapabilitiesSpec) *mcov1beta2.MultiClusterObservability {
+	newMCO := func(caps *mcov1beta2.CapabilitiesSpec, enableMetrics bool) *mcov1beta2.MultiClusterObservability {
 		return &mcov1beta2.MultiClusterObservability{
 			TypeMeta: metav1.TypeMeta{
 				APIVersion: mcov1beta2.GroupVersion.String(),
@@ -1956,30 +1965,34 @@ func TestMCOACleanupADCPreservation(t *testing.T) {
 					StoreStorageSize:        "1Gi",
 				},
 				ObservabilityAddonSpec: &mcoshared.ObservabilityAddonSpec{
-					EnableMetrics: false,
+					EnableMetrics: enableMetrics,
 				},
 			},
 		}
 	}
 
 	tests := []struct {
-		name         string
-		capabilities *mcov1beta2.CapabilitiesSpec
-		expectADC    bool
+		name          string
+		capabilities  *mcov1beta2.CapabilitiesSpec
+		enableMetrics bool
+		expectADC     bool
 	}{
 		{
-			name: "ADC preserved when right-sizing configured but both features disabled",
-			// Platform != nil => RightSizingConfigured == true; every feature false
-			// => MCOAEnabled == false && RightSizingEnabled == false => cleanup runs.
+			name: "ADC preserved when right-sizing configured but all features disabled",
+			// Platform != nil, Enabled nil, enableMetrics true (legacy) → platform metrics
+			// disabled via defaulting, but RightSizingConfigured == true → ADC preserved.
 			capabilities: &mcov1beta2.CapabilitiesSpec{
 				Platform: &mcov1beta2.PlatformCapabilitiesSpec{},
 			},
-			expectADC: true,
+			enableMetrics: true,
+			expectADC:     true,
 		},
 		{
-			name:         "ADC undeployed when capabilities never configured",
-			capabilities: nil,
-			expectADC:    false,
+			name: "ADC undeployed on legacy upgrade with no capabilities",
+			// enableMetrics true (legacy) + capabilities nil → MCOAEnabled == false.
+			capabilities:  nil,
+			enableMetrics: true,
+			expectADC:     false,
 		},
 	}
 
@@ -1988,7 +2001,7 @@ func TestMCOACleanupADCPreservation(t *testing.T) {
 			defer setupTest(t)()
 			tlstesting.NewFakeTLSClientBuilder().Build(t)
 
-			mco := newMCO(tt.capabilities)
+			mco := newMCO(tt.capabilities, tt.enableMetrics)
 
 			// Seed the ADC exactly as the operator deploys it: rendered from
 			// manifests/base/multicluster-observability-addon (v1alpha1 GVK) and

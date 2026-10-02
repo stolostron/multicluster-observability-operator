@@ -49,8 +49,9 @@ type MultiClusterObservabilitySpec struct {
 	StorageConfig *StorageConfig `json:"storageConfig"`
 	// The ObservabilityAddonSpec defines the global settings for all managed
 	// clusters which have observability add-on enabled.
-	// +required
-	ObservabilityAddonSpec *observabilityshared.ObservabilityAddonSpec `json:"observabilityAddonSpec"`
+	// +optional
+	// +kubebuilder:default:={}
+	ObservabilityAddonSpec *observabilityshared.ObservabilityAddonSpec `json:"observabilityAddonSpec,omitempty"`
 }
 
 // T Shirt size class for a particular o11y resource.
@@ -71,10 +72,11 @@ type PlatformLogsCollectionSpec struct {
 // from fleet managed clusters.
 type PlatformMetricsDefaultSpec struct {
 	// Enabled defines a flag to enable/disable the platform metrics collection.
+	// When nil, the controller defaults based on ObservabilityAddonSpec.EnableMetrics:
+	// enableMetrics=false (new install) implies MCOA enabled; enableMetrics=true (legacy) implies MCOA disabled.
 	//
 	// +optional
-	// +kubebuilder:validation:Optional
-	Enabled bool `json:"enabled,omitempty"`
+	Enabled *bool `json:"enabled,omitempty"`
 }
 
 // UIConfig defines the spec for the addon to expose the metrics UI through COO

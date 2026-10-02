@@ -6,6 +6,7 @@ package multiclusterobservability
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/url"
@@ -200,6 +201,11 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	if config.IsPaused(instance.GetAnnotations()) {
 		reqLogger.Info("MCO reconciliation is paused. Nothing more to do.")
 		return ctrl.Result{}, nil
+	}
+
+	instance, err = r.ensurePlatformMetricsDefault(ctx, instance)
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to ensure platform metrics default: %w", err)
 	}
 
 	if _, ok := config.BackupResourceMap[instance.Spec.StorageConfig.MetricObjectStorage.Name]; !ok {
@@ -1201,6 +1207,73 @@ func newMCOACRDEventHandler(c client.Client) handler.EventHandler {
 	)
 }
 
+// ensurePlatformMetricsDefault persists the MCOA platform metrics default into the CR
+// when Enabled was never explicitly set. This makes the effective state visible in the
+// CR rather than being purely implicit controller logic.
+//
+// On new installs (enableMetrics=false), this patches capabilities.platform.metrics.default.enabled=true.
+// On legacy upgrades (enableMetrics=true), no patch is applied.
+func (r *MultiClusterObservabilityReconciler) ensurePlatformMetricsDefault(
+	ctx context.Context,
+	instance *mcov1beta2.MultiClusterObservability,
+) (*mcov1beta2.MultiClusterObservability, error) {
+	u := &unstructured.Unstructured{}
+	u.SetGroupVersionKind(mcov1beta2.GroupVersion.WithKind("MultiClusterObservability"))
+	key := types.NamespacedName{Name: instance.GetName()}
+
+	if err := r.Client.Get(ctx, key, u); err != nil {
+		if apierrors.IsNotFound(err) {
+			return instance, nil
+		}
+		return instance, fmt.Errorf("ensurePlatformMetricsDefault: failed to get MCO CR: %w", err)
+	}
+
+	_, found, _ := unstructured.NestedBool(u.Object,
+		"spec", "capabilities", "platform", "metrics", "default", "enabled")
+	if found {
+		return instance, nil
+	}
+
+	if instance.Spec.ObservabilityAddonSpec != nil && instance.Spec.ObservabilityAddonSpec.EnableMetrics {
+		return instance, nil
+	}
+
+	patchData := map[string]any{
+		"spec": map[string]any{
+			"capabilities": map[string]any{
+				"platform": map[string]any{
+					"metrics": map[string]any{
+						"default": map[string]any{
+							"enabled": true,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	patchBytes, err := json.Marshal(patchData)
+	if err != nil {
+		return instance, fmt.Errorf("failed to marshal patch data: %w", err)
+	}
+
+	if err := r.Client.Patch(ctx, u, client.RawPatch(types.MergePatchType, patchBytes)); err != nil {
+		return instance, fmt.Errorf("failed to persist platform metrics default: %w", err)
+	}
+	log.Info("Defaulted platform metrics enabled to true (new install)")
+
+	if instance.Spec.Capabilities == nil {
+		instance.Spec.Capabilities = &mcov1beta2.CapabilitiesSpec{}
+	}
+	if instance.Spec.Capabilities.Platform == nil {
+		instance.Spec.Capabilities.Platform = &mcov1beta2.PlatformCapabilitiesSpec{}
+	}
+	enabled := true
+	instance.Spec.Capabilities.Platform.Metrics.Default.Enabled = &enabled
+
+	return instance, nil
+}
+
 // syncMCOACMAGrafanaLink ensures the MCOA ClusterManagementAddOn's Grafana launch-link
 // annotation is present only when platform metrics are enabled via MCOA. This runs
 // independently of the render pipeline because DisableCMAORender skips re-rendering
@@ -1217,11 +1290,9 @@ func syncMCOACMAGrafanaLink(
 
 	if metricsEnabled && !hasLink {
 		host, err := config.GetRouteHost(ctx, c, config.GrafanaRouteName, config.GetDefaultNamespace())
-		if err != nil {
-			return fmt.Errorf("failed to get Grafana route host: %w", err)
-		}
-		if host == "" {
-			return fmt.Errorf("grafana route host is empty, cannot construct launch link")
+		if err != nil || host == "" {
+			ctrl.LoggerFrom(ctx).Info("Grafana route not yet available, deferring launch link annotation")
+			return nil
 		}
 		grafanaURL := url.URL{
 			Scheme: "https",
