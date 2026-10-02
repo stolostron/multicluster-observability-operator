@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	ocinfrav1 "github.com/openshift/api/config/v1"
 	operatorv1 "github.com/openshift/api/operator/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	imagev1client "github.com/openshift/client-go/image/clientset/versioned/typed/image/v1"
@@ -75,6 +76,10 @@ func TestIntegrationMCO_HubRules(t *testing.T) {
 		newStorageSecret(storageSecretName, hubNamespace, storageSecretKey),
 		newObservatoriumApiRoute(hubNamespace),
 		newMCO(hubNamespace, storageSecretName, storageSecretKey),
+		&ocinfrav1.ClusterVersion{
+			ObjectMeta: metav1.ObjectMeta{Name: "version"},
+			Status:     ocinfrav1.ClusterVersionStatus{Desired: ocinfrav1.Release{Version: "5.0.0"}},
+		},
 	}
 	err = createResources(k8sHubClient, resources...)
 	require.NoError(t, err)
@@ -165,6 +170,7 @@ func createBaseScheme(t *testing.T) *runtime.Scheme {
 	require.NoError(t, promv1.AddToScheme(scheme))
 	require.NoError(t, promv1alpha1.AddToScheme(scheme))
 	require.NoError(t, routev1.AddToScheme(scheme))
+	require.NoError(t, ocinfrav1.AddToScheme(scheme))
 	require.NoError(t, addonapiv1beta1.Install(scheme))
 	require.NoError(t, addonapiv1beta1.AddToScheme(scheme))
 	require.NoError(t, operatorv1.AddToScheme(scheme))
