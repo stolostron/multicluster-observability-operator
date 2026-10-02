@@ -132,9 +132,9 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		reqLogger.Info("Failed to update status", "error", err.Error())
 	}
 
-	// When MCOA is enabled, additionnally clean the hub resources as they are deployed wihtout the addon resource,
-	// and thus are not removed by the cleanResources function.
-	if !mcoIsNotFound && mcoaForMetricsIsEnabled(mco) {
+	// When any MCOA capability is active (metrics, right-sizing, etc.), ensure hub resources
+	// like images-list, mTLS certs, and alertmanager tokens exist.
+	if !mcoIsNotFound && (mcoaForMetricsIsEnabled(mco) || rendering.RightSizingConfigured(mco)) {
 		reqLogger.Info("Ensuring MCOA resources on the hub")
 		if err := r.ensureMCOAResources(ctx, mco); err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to ensure MCOA resources: %w", err)
