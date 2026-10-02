@@ -1217,11 +1217,9 @@ func syncMCOACMAGrafanaLink(
 
 	if metricsEnabled && !hasLink {
 		host, err := config.GetRouteHost(ctx, c, config.GrafanaRouteName, config.GetDefaultNamespace())
-		if err != nil {
-			return fmt.Errorf("failed to get Grafana route host: %w", err)
-		}
-		if host == "" {
-			return fmt.Errorf("grafana route host is empty, cannot construct launch link")
+		if err != nil || host == "" {
+			ctrl.LoggerFrom(ctx).Info("Grafana route not yet available, deferring launch link annotation")
+			return nil
 		}
 		grafanaURL := url.URL{
 			Scheme: "https",

@@ -20,7 +20,7 @@ type MultiClusterObservabilitySpec struct {
 	//   - An AddonDeploymentConfig managing the addon feature gates for activated capabilities.
 	//
 	// +optional
-	// +kubebuilder:validation:Optional
+	// +kubebuilder:default:={}
 	Capabilities *CapabilitiesSpec `json:"capabilities,omitempty"`
 	// Advanced configurations for observability
 	// +optional
@@ -49,8 +49,9 @@ type MultiClusterObservabilitySpec struct {
 	StorageConfig *StorageConfig `json:"storageConfig"`
 	// The ObservabilityAddonSpec defines the global settings for all managed
 	// clusters which have observability add-on enabled.
-	// +required
-	ObservabilityAddonSpec *observabilityshared.ObservabilityAddonSpec `json:"observabilityAddonSpec"`
+	// +optional
+	// +kubebuilder:default:={}
+	ObservabilityAddonSpec *observabilityshared.ObservabilityAddonSpec `json:"observabilityAddonSpec,omitempty"`
 }
 
 // T Shirt size class for a particular o11y resource.
@@ -73,8 +74,8 @@ type PlatformMetricsDefaultSpec struct {
 	// Enabled defines a flag to enable/disable the platform metrics collection.
 	//
 	// +optional
-	// +kubebuilder:validation:Optional
-	Enabled bool `json:"enabled,omitempty"`
+	// +kubebuilder:default:=true
+	Enabled bool `json:"enabled"`
 }
 
 // UIConfig defines the spec for the addon to expose the metrics UI through COO
@@ -113,7 +114,7 @@ type PlatformMetricsSpec struct {
 	// from fleet managed clusters.
 	//
 	// +optional
-	// +kubebuilder:validation:Optional
+	// +kubebuilder:default:={}
 	Default PlatformMetricsDefaultSpec `json:"default,omitempty"`
 	// UI defines the spec for the addon to enable UI through COO on the hub
 	//
@@ -142,7 +143,7 @@ type PlatformCapabilitiesSpec struct {
 	// platform components running on fleet managed clusters.
 	//
 	// +optional
-	// +kubebuilder:validation:Optional
+	// +kubebuilder:default:={}
 	Metrics PlatformMetricsSpec `json:"metrics,omitempty"`
 
 	// Analytics provides the configuration for the analytics features
@@ -351,7 +352,7 @@ type CapabilitiesSpec struct {
 	//   - default
 	//
 	// +optional
-	// +kubebuilder:validation:Optional
+	// +kubebuilder:default:={}
 	Platform *PlatformCapabilitiesSpec `json:"platform,omitempty"`
 	// UserWorkloads defines the spec for user workloads observability capabilities managed by the addon.
 	// As user workloads are defined any containers hosted on spoke clusters and execute any task unrelated

@@ -34,7 +34,7 @@ func (u URL) URL() (*url.URL, error) {
 type ObservabilityAddonSpec struct {
 	// When false, the managed cluster addon stops pushing metrics to the hub.
 	// +optional
-	// +kubebuilder:default:=true
+	// +kubebuilder:default:=false
 	EnableMetrics bool `json:"enableMetrics"`
 
 	// Interval in seconds at which the observability addon on each managed cluster
