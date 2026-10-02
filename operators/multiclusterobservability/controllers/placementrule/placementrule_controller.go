@@ -139,7 +139,10 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		if err := r.ensureMCOAResources(ctx, mco); err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to ensure MCOA resources: %w", err)
 		}
-		// Force regeneration of the hubInfo secret to ensure MCOA settings are up to date
+	}
+
+	// Only delete legacy hub collector resources when MCOA metrics is taking over.
+	if !mcoIsNotFound && mcoaForMetricsIsEnabled(mco) {
 		if err := DeleteHubMetricsCollectorResourcesNotNeededForMCOA(ctx, r.Client); err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to delete hub metrics collection resources: %w", err)
 		}
