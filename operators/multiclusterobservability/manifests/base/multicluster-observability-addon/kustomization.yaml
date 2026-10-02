@@ -4,6 +4,9 @@ resources:
 - cluster_role_binding.yaml
 - cluster_role.yaml
 - deployment.yaml
+- service.yaml
+- service_monitor.yaml
+- prometheus_rule.yaml
 - service_account.yaml
 - monitoring.rhobs_prometheusagents.yaml
 - monitoring.rhobs_prometheusrules.yaml

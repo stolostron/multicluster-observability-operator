@@ -34,6 +34,7 @@ const (
 	platformPrometheusAgentStatefulSetName = "prom-agent-platform-metrics-collector"
 	uwlPrometheusAgentStatefulSetName      = "prom-agent-user-workload-metrics-collector"
 	oboPrometheusOperatorDeploymentName    = "obo-prometheus-operator"
+	prometheusOperatorDeploymentName       = "prometheus-operator"
 	metricsCollectorDeploymentName         = "metrics-collector-deployment"
 	mcoaAddonName                          = "multicluster-observability-addon"
 	globalPlacementName                    = "global"
@@ -115,6 +116,9 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 				By("The user workload prometheus agent should NOT be running", func() {
 					utils.CheckStatefulSetAvailabilityOnClusters(managedClustersWithHub, uwlPrometheusAgentStatefulSetName, utils.MCO_AGENT_ADDON_NAMESPACE, false)
 				})
+				By("The prometheus operator should be running", func() {
+					utils.CheckDeploymentAvailabilityOnClusters(managedClustersWithHub, prometheusOperatorDeploymentName, utils.MCO_AGENT_ADDON_NAMESPACE, true)
+				})
 				By("The addon status should be Available", func() {
 					utils.CheckManagedClusterAddonStatus(testOptions, mcoaAddonName)
 				})
@@ -131,6 +135,55 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 					}
 					return res.CheckMetricFromAllClusters(managedClustersWithHub)
 				}, 300, 2).Should(Not(HaveOccurred()))
+			})
+
+			It("should monitor MCOA components and forward their up metrics to Thanos", func() {
+				components := []struct {
+					service  string
+					clusters []utils.Cluster
+				}{
+					{
+						service:  "multicluster-observability-addon-manager-metrics",
+						clusters: []utils.Cluster{testOptions.HubCluster},
+					},
+					{
+						service:  "platform-metrics-collector",
+						clusters: managedClustersWithHub,
+					},
+					{
+						service:  "endpoint-monitoring-operator-metrics",
+						clusters: managedClustersWithHub,
+					},
+					{
+						service:  "prometheus-operator",
+						clusters: managedClustersWithHub,
+					},
+				}
+
+				By("Verifying all MCOA components are monitored and reporting up=1 in Thanos", func() {
+					for _, c := range components {
+						Eventually(func() error {
+							query := fmt.Sprintf(`up{service="%s"} == 1`, c.service)
+							res, err := utils.QueryGrafana(testOptions, query)
+							if err != nil {
+								return err
+							}
+							if len(res.Data.Result) == 0 {
+								return fmt.Errorf("service %s is not reporting up=1 in Thanos", c.service)
+							}
+							var clustersToCheck []utils.Cluster
+							for _, cl := range c.clusters {
+								if cl.Name != "" {
+									clustersToCheck = append(clustersToCheck, cl)
+								}
+							}
+							if len(clustersToCheck) > 0 {
+								return res.CheckMetricFromAllClusters(clustersToCheck)
+							}
+							return nil
+						}, 300, 5).Should(Succeed(), fmt.Sprintf("service %s should report up=1 in Thanos", c.service))
+					}
+				})
 			})
 
 			It("should configure hub Thanos components with the correct CLI arguments", func() {

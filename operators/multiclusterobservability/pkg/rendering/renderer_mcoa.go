@@ -15,6 +15,7 @@ import (
 	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	mcoutil "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
 	rendererutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering"
+	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -59,6 +60,9 @@ func (r *MCORenderer) newMCOARenderer() {
 		"AddOnDeploymentConfig":  r.renderAddonDeploymentConfig,
 		"ClusterManagementAddOn": r.renderClusterManagementAddOn,
 		"Deployment":             r.renderMCOADeployment,
+		"Service":                r.renderer.RenderNamespace,
+		"ServiceMonitor":         r.renderer.RenderNamespace,
+		"PrometheusRule":         r.renderer.RenderNamespace,
 		"ServiceAccount":         r.renderer.RenderNamespace,
 		"ClusterRole":            r.renderer.RenderClusterRole,
 		"ClusterRoleBinding":     r.renderer.RenderClusterRoleBinding,
@@ -159,20 +163,42 @@ func (r *MCORenderer) renderMCOADeployment(
 		Resources:       mcoaResources,
 	}
 
+	var managerContainer *corev1.Container
+	var kubeRbacProxyContainer *corev1.Container
+	for i := range obj.Spec.Template.Spec.Containers {
+		switch obj.Spec.Template.Spec.Containers[i].Name {
+		case "manager":
+			managerContainer = &obj.Spec.Template.Spec.Containers[i]
+		case "kube-rbac-proxy":
+			kubeRbacProxyContainer = &obj.Spec.Template.Spec.Containers[i]
+		}
+	}
+	if managerContainer == nil {
+		return nil, fmt.Errorf("no manager container found in the addon-manager deployment template")
+	}
+
 	if r.cr.Spec.Capabilities != nil && r.cr.Spec.Capabilities.AddonManager != nil {
 		if r.cr.Spec.Capabilities.AddonManager.LogVerbosity != nil {
-			if len(obj.Spec.Template.Spec.Containers) > 0 {
-				obj.Spec.Template.Spec.Containers[0].Args = append(obj.Spec.Template.Spec.Containers[0].Args, fmt.Sprintf("--log-verbosity=%d", *r.cr.Spec.Capabilities.AddonManager.LogVerbosity))
-			}
+			managerContainer.Args = append(managerContainer.Args, fmt.Sprintf("--log-verbosity=%d", *r.cr.Spec.Capabilities.AddonManager.LogVerbosity))
 		}
 	}
 
-	if len(obj.Spec.Template.Spec.Containers) > 0 {
-		if err := mergo.Merge(&obj.Spec.Template.Spec.Containers[0], patchContainer, mergo.WithOverride); err != nil {
+	if err := mergo.Merge(managerContainer, patchContainer, mergo.WithOverride); err != nil {
+		return nil, err
+	}
+
+	if kubeRbacProxyContainer != nil {
+		if ok, image := mcoconfig.ReplaceImage(r.cr.Annotations, mcoconfig.DefaultImgRepository+"/"+mcoconfig.KubeRBACProxyImgName, mcoconfig.KubeRBACProxyKey); ok {
+			kubeRbacProxyContainer.Image = image
+		}
+		kubeRbacProxyContainer.ImagePullPolicy = mcoconfig.GetImagePullPolicy(r.cr.Spec)
+
+		// Inject OpenShift cluster TLS profile (cipher suites & min TLS version)
+		args, err := util.SetTLSSecurityConfiguration(ctx, kubeRbacProxyContainer.Args, "--tls-cipher-suites=", "--tls-min-version=")
+		if err != nil {
 			return nil, err
 		}
-	} else {
-		return nil, fmt.Errorf("no containers found in the addon-manager deployment template")
+		kubeRbacProxyContainer.Args = args
 	}
 
 	uObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
