@@ -61,8 +61,6 @@ func HasMCOAManifestWorks(ctx context.Context, c client.Client) ([]string, error
 		return nil, fmt.Errorf("failed to list ManagedClusters: %w", err)
 	}
 
-	ignoredNamespaces := getUnavailableClusterNamespaces(clusterList)
-
 	workList := &workv1.ManifestWorkList{}
 	opts := []client.ListOption{
 		client.MatchingLabels{
@@ -72,6 +70,8 @@ func HasMCOAManifestWorks(ctx context.Context, c client.Client) ([]string, error
 	if err := c.List(ctx, workList, opts...); err != nil {
 		return nil, fmt.Errorf("failed to list ManifestWorks: %w", err)
 	}
+
+	ignoredNamespaces := getUnavailableClusterNamespaces(clusterList, workList)
 
 	blockingMap := make(map[string]struct{})
 	for _, work := range workList.Items {
@@ -111,12 +111,27 @@ func containsPrometheusAgent(work workv1.ManifestWork) bool {
 
 // getUnavailableClusterNamespaces returns a set of cluster namespaces where the ManagedCluster
 // is currently not available/connected.
-func getUnavailableClusterNamespaces(clusterList *clusterv1.ManagedClusterList) map[string]struct{} {
+func getUnavailableClusterNamespaces(clusterList *clusterv1.ManagedClusterList, workList *workv1.ManifestWorkList) map[string]struct{} {
 	ignored := make(map[string]struct{})
-	for _, mc := range clusterList.Items {
-		isAvailable := meta.IsStatusConditionTrue(mc.Status.Conditions, clusterv1.ManagedClusterConditionAvailable)
-		if !isAvailable {
-			ignored[mc.Name] = struct{}{}
+	for _, work := range workList.Items {
+		// the clusterlist is already filtered to not show clusters
+		// with obs disabled, and which are not yet imported.
+		// So if the namespace is not in the clusterlist, we can ignore it
+		found := false
+		for _, mc := range clusterList.Items {
+			if mc.Name == work.Namespace {
+				found = true
+
+				isAvailable := meta.IsStatusConditionTrue(mc.Status.Conditions, clusterv1.ManagedClusterConditionAvailable)
+				if !isAvailable {
+					ignored[mc.Name] = struct{}{}
+				}
+
+				break
+			}
+		}
+		if !found {
+			ignored[work.Namespace] = struct{}{}
 		}
 	}
 	return ignored
@@ -138,8 +153,6 @@ func HasRemainingMCOAResources(ctx context.Context, c client.Client) ([]string, 
 		return nil, fmt.Errorf("failed to list ManagedClusters: %w", err)
 	}
 
-	ignoredNamespaces := getUnavailableClusterNamespaces(clusterList)
-
 	blockingMap := make(map[string]struct{})
 
 	workList := &workv1.ManifestWorkList{}
@@ -151,6 +164,8 @@ func HasRemainingMCOAResources(ctx context.Context, c client.Client) ([]string, 
 	if err := c.List(ctx, workList, opts...); err != nil {
 		return nil, fmt.Errorf("failed to list ManifestWorks: %w", err)
 	}
+
+	ignoredNamespaces := getUnavailableClusterNamespaces(clusterList, workList)
 
 	for _, work := range workList.Items {
 		if _, ignored := ignoredNamespaces[work.Namespace]; ignored {
