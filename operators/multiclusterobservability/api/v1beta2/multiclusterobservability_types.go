@@ -49,8 +49,9 @@ type MultiClusterObservabilitySpec struct {
 	StorageConfig *StorageConfig `json:"storageConfig"`
 	// The ObservabilityAddonSpec defines the global settings for all managed
 	// clusters which have observability add-on enabled.
-	// +required
-	ObservabilityAddonSpec *observabilityshared.ObservabilityAddonSpec `json:"observabilityAddonSpec"`
+	// +optional
+	// +kubebuilder:default:={}
+	ObservabilityAddonSpec *observabilityshared.ObservabilityAddonSpec `json:"observabilityAddonSpec,omitempty"`
 }
 
 // T Shirt size class for a particular o11y resource.
