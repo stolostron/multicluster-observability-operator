@@ -62,6 +62,7 @@ func (r *MCORenderer) newMCOARenderer() {
 		"Deployment":             r.renderMCOADeployment,
 		"Service":                r.renderer.RenderNamespace,
 		"ServiceMonitor":         r.renderer.RenderNamespace,
+		"PrometheusRule":         r.renderer.RenderNamespace,
 		"ServiceAccount":         r.renderer.RenderNamespace,
 		"ClusterRole":            r.renderer.RenderClusterRole,
 		"ClusterRoleBinding":     r.renderer.RenderClusterRoleBinding,

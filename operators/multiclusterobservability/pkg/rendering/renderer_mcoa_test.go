@@ -885,3 +885,109 @@ func TestRenderMCOAMetricsServiceAndServiceMonitor(t *testing.T) {
 	assert.Equal(t, "/etc/prometheus/configmaps/serving-certs-ca-bundle/service-ca.crt", tlsConfig["caFile"])
 	assert.Equal(t, "multicluster-observability-addon-manager-metrics.open-cluster-management-observability.svc", tlsConfig["serverName"])
 }
+
+// TestRenderMCOAPrometheusRule verifies that the MCOA PrometheusRule alerting resource
+// is rendered, has the target namespace injected, and includes the expected SRE alert rules.
+func TestRenderMCOAPrometheusRule(t *testing.T) {
+	tlstesting.NewFakeTLSClientBuilder().Build(t)
+
+	wd, err := os.Getwd()
+	require.NoError(t, err)
+	templatesPath := filepath.Join(wd, "..", "..", "manifests")
+	t.Setenv(templatesutil.TemplatesPathEnvVar, templatesPath)
+
+	tmplRenderer := templatesutil.NewTemplateRenderer(templatesPath)
+	mcoaTemplates, err := templates.GetOrLoadMCOATemplates(tmplRenderer)
+	require.NoError(t, err)
+
+	mco := &mcov1beta2.MultiClusterObservability{
+		ObjectMeta: metav1.ObjectMeta{
+			Labels: map[string]string{
+				"cr-key": "cr-value",
+			},
+			Name: "multicluster-observability",
+		},
+	}
+	renderer := NewMCORenderer(mco, nil, nil)
+	targetNamespace := "test-observability"
+	labels := map[string]string{"app": "test"}
+
+	uobjs, err := renderer.renderMCOATemplates(t.Context(), mcoaTemplates, targetNamespace, labels)
+	require.NoError(t, err)
+	require.NotEmpty(t, uobjs)
+
+	var promRuleObj *unstructured.Unstructured
+	for _, uobj := range uobjs {
+		if uobj.GetKind() == "PrometheusRule" && uobj.GetName() == "multicluster-observability-addon-alert-rules" {
+			promRuleObj = uobj
+			break
+		}
+	}
+
+	require.NotNil(t, promRuleObj, "PrometheusRule multicluster-observability-addon-alert-rules should be rendered")
+	assert.Equal(t, targetNamespace, promRuleObj.GetNamespace())
+	assert.Equal(t, "multicluster-observability-addon", promRuleObj.GetLabels()["app.kubernetes.io/part-of"])
+
+	spec, ok := promRuleObj.Object["spec"].(map[string]any)
+	require.True(t, ok)
+	groups, ok := spec["groups"].([]any)
+	require.True(t, ok)
+	require.Len(t, groups, 1)
+
+	groupMap, ok := groups[0].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, "multicluster-observability-addon.rules", groupMap["name"])
+
+	rules, ok := groupMap["rules"].([]any)
+	require.True(t, ok)
+	require.Len(t, rules, 5)
+
+	alertsByName := make(map[string]map[string]any)
+	for _, r := range rules {
+		ruleMap, ok := r.(map[string]any)
+		require.True(t, ok)
+		alertName, ok := ruleMap["alert"].(string)
+		require.True(t, ok)
+		alertsByName[alertName] = ruleMap
+	}
+
+	expectedAlerts := []string{
+		"MCOAManifestReconciliationsFailing",
+		"MCOAManifestReconciliationsCriticallyFailing",
+		"MCOAClusterReconciliationStorm",
+		"MCOAManagedClusterCollectorDegraded",
+		"MCOAHighManifestRenderLatency",
+	}
+
+	for _, alertName := range expectedAlerts {
+		alertRule, exists := alertsByName[alertName]
+		require.True(t, exists, "Expected alert rule %s to be present", alertName)
+		assert.NotEmpty(t, alertRule["expr"])
+		assert.NotEmpty(t, alertRule["for"])
+
+		labelsMap, ok := alertRule["labels"].(map[string]any)
+		require.True(t, ok, "Expected labels map for %s", alertName)
+		assert.NotEmpty(t, labelsMap["severity"])
+
+		annotationsMap, ok := alertRule["annotations"].(map[string]any)
+		require.True(t, ok, "Expected annotations map for %s", alertName)
+		assert.NotEmpty(t, annotationsMap["summary"])
+		assert.NotEmpty(t, annotationsMap["description"])
+	}
+
+	// Verify specific alert severities and durations
+	assert.Equal(t, "warning", alertsByName["MCOAManifestReconciliationsFailing"]["labels"].(map[string]any)["severity"])
+	assert.Equal(t, "15m", alertsByName["MCOAManifestReconciliationsFailing"]["for"])
+
+	assert.Equal(t, "critical", alertsByName["MCOAManifestReconciliationsCriticallyFailing"]["labels"].(map[string]any)["severity"])
+	assert.Equal(t, "5m", alertsByName["MCOAManifestReconciliationsCriticallyFailing"]["for"])
+
+	assert.Equal(t, "warning", alertsByName["MCOAClusterReconciliationStorm"]["labels"].(map[string]any)["severity"])
+	assert.Equal(t, "10m", alertsByName["MCOAClusterReconciliationStorm"]["for"])
+
+	assert.Equal(t, "warning", alertsByName["MCOAManagedClusterCollectorDegraded"]["labels"].(map[string]any)["severity"])
+	assert.Equal(t, "15m", alertsByName["MCOAManagedClusterCollectorDegraded"]["for"])
+
+	assert.Equal(t, "warning", alertsByName["MCOAHighManifestRenderLatency"]["labels"].(map[string]any)["severity"])
+	assert.Equal(t, "10m", alertsByName["MCOAHighManifestRenderLatency"]["for"])
+}
