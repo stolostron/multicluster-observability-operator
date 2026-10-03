@@ -17,26 +17,36 @@ import (
 )
 
 const (
-	RouterCertsSecretName = "router-certs-default"
-	amMtlsCertPrefix      = "obs-alertmanager-mtls-cert-"
-	amMtlsCAPrefix        = "obs-alertmanager-mtls-ca-"
-	promNamespace         = "openshift-monitoring"
+	RouterCertsSecretName   = "router-certs-default"
+	DefaultIngressCertName  = "default-ingress-cert"
+	IngressSecretsNamespace = "openshift-ingress"
+	amMtlsCertPrefix        = "obs-alertmanager-mtls-cert-"
+	amMtlsCAPrefix          = "obs-alertmanager-mtls-ca-"
+	promNamespace           = "openshift-monitoring"
 )
 
 func GetRouterCA(cli kubernetes.Interface) ([]byte, error) {
-	var caCrt []byte
 	caSecret, err := cli.CoreV1().
-		Secrets("openshift-ingress").
+		Secrets(IngressSecretsNamespace).
 		Get(context.TODO(), RouterCertsSecretName, metav1.GetOptions{})
-	if err != nil {
-		klog.Errorf("Failed to get router certificate secret %s due to %v", RouterCertsSecretName, err)
-		return caCrt, err
+	if err == nil {
+		if caCrt, ok := caSecret.Data["tls.crt"]; ok {
+			return caCrt, nil
+		}
 	}
-	caCrt, ok := caSecret.Data["tls.crt"]
-	if ok {
+	klog.V(1).Infof("%s not found in %s, trying %s", RouterCertsSecretName, IngressSecretsNamespace, DefaultIngressCertName)
+
+	caSecret, err = cli.CoreV1().
+		Secrets(IngressSecretsNamespace).
+		Get(context.TODO(), DefaultIngressCertName, metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get ingress CA from both %s and %s in %s: %w",
+			RouterCertsSecretName, DefaultIngressCertName, IngressSecretsNamespace, err)
+	}
+	if caCrt, ok := caSecret.Data["tls.crt"]; ok {
 		return caCrt, nil
 	}
-	return caCrt, fmt.Errorf("failed to get tls.crt from %s secret", RouterCertsSecretName)
+	return nil, fmt.Errorf("tls.crt not found in %s secret", DefaultIngressCertName)
 }
 
 func GetHubClusterID(cli kubernetes.Interface) (string, error) {
