@@ -1157,6 +1157,56 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 		},
 	)
 
+	Context(
+		"when the managed log store is enabled for MCOA [P1][Sev1][Observability][Stable]@ocpInterop (mcoa_logs/g0)",
+		func() {
+			BeforeAll(func() {
+				By("Enabling platform metrics (required to keep MCOA alive) and platform logs collection", func() {
+					Expect(utils.SetMCOACapabilities(testOptions, true, false)).NotTo(HaveOccurred())
+					Expect(utils.SetMCOAPlatformLogsCapability(testOptions, true)).NotTo(HaveOccurred())
+				})
+			})
+
+			AfterAll(func() {
+				By("Disabling platform logs collection", func() {
+					Expect(utils.SetMCOAPlatformLogsCapability(testOptions, false)).NotTo(HaveOccurred())
+				})
+			})
+
+			It("should install Loki Operator and the LokiStack CRD on the hub", SpecTimeout(5*time.Minute), func(ctx context.Context) {
+				By("Waiting for the Loki Operator subscription to appear on the hub", func() {
+					Eventually(func() error {
+						return utils.CheckLokiOperatorSubscriptionExists(testOptions.HubCluster)
+					}, 120, 5).Should(Not(HaveOccurred()))
+				})
+
+				By("Waiting for the LokiStack CRD to become Established on the hub", func() {
+					Eventually(func() error {
+						return utils.CheckLokiStackCRDEstablished(testOptions.HubCluster)
+					}, 180, 5).Should(Not(HaveOccurred()))
+				})
+			})
+
+			It("should provision the MCOA root CA used to secure log collection", func(ctx context.Context) {
+				By("Checking the mcoa-root-ca Issuer, mcoa-root-cert Certificate and mcoa-root-issuer ClusterIssuer exist on the hub", func() {
+					Eventually(func() error {
+						return utils.CheckMCOARootCertificateResourcesExist(testOptions.HubCluster)
+					}, 120, 5).Should(Not(HaveOccurred()))
+				})
+			})
+
+			It("should deploy a ClusterLogForwarder to collect platform logs on managed clusters", SpecTimeout(10*time.Minute), func(ctx context.Context) {
+				By("Checking a ClusterLogForwarder is reconciled on every managed cluster", func() {
+					for _, cluster := range managedClustersWithHub {
+						Eventually(func() error {
+							return utils.CheckClusterLogForwarderExists(cluster, utils.MCO_AGENT_ADDON_NAMESPACE)
+						}, 300, 5).Should(Not(HaveOccurred()), "cluster %s should have a ClusterLogForwarder", cluster.Name)
+					}
+				})
+			})
+		},
+	)
+
 	JustAfterEach(func() {
 		if CurrentSpecReport().Failed() {
 			testFailed = true
