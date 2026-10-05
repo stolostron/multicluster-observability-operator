@@ -1861,6 +1861,20 @@ func TestMCOAWaitForManifestWorks(t *testing.T) {
 		},
 	}
 
+	mc := &clusterv1.ManagedCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-ns",
+		},
+		Status: clusterv1.ManagedClusterStatus{
+			Conditions: []metav1.Condition{
+				{
+					Type:   clusterv1.ManagedClusterConditionAvailable,
+					Status: metav1.ConditionTrue,
+				},
+			},
+		},
+	}
+
 	t.Run("initFinalization delay", func(t *testing.T) {
 		now := metav1.Now()
 		mcoToDelete1 := &mcov1beta2.MultiClusterObservability{
@@ -1875,7 +1889,7 @@ func TestMCOAWaitForManifestWorks(t *testing.T) {
 			},
 		}
 
-		clientWithWork := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(mw, mcoToDelete1).Build()
+		clientWithWork := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(mw, mc, mcoToDelete1).Build()
 		r1 := &MultiClusterObservabilityReconciler{
 			Client: clientWithWork,
 			Scheme: s,

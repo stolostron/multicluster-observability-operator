@@ -146,26 +146,42 @@ func TestHasMCOAManifestWorks(t *testing.T) {
 		assert.Empty(t, blocking, "RS-only ManifestWorks should not block legacy addon deployment")
 	})
 
-	t.Run("returns blocking namespaces when ManifestWork with PrometheusAgent exists but no ManagedCluster exists", func(t *testing.T) {
+	t.Run("Pending cluster do not block", func(t *testing.T) {
 		mw := &workv1.ManifestWork{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "addon-multicluster-observability-addon-deploy-0",
-				Namespace: "test-cluster",
+				Namespace: "pending-cluster",
 				Labels: map[string]string{
 					addonv1beta1.AddonLabelKey: config.MultiClusterObservabilityAddon,
 				},
 			},
 			Spec: workv1.ManifestWorkSpec{
 				Workload: workv1.ManifestsTemplate{
-					Manifests: []workv1.Manifest{prometheusAgentManifest()},
+					Manifests: []workv1.Manifest{prometheusRuleManifest()},
+				},
+			},
+		}
+		mc := &clusterv1.ManagedCluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "healthy-cluster",
+				Labels: map[string]string{
+					"vendor": "auto-detect",
+				},
+			},
+			Status: clusterv1.ManagedClusterStatus{
+				Conditions: []metav1.Condition{
+					{
+						Type:   clusterv1.ManagedClusterConditionAvailable,
+						Status: metav1.ConditionUnknown,
+					},
 				},
 			},
 		}
 
-		cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(mw).Build()
+		cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(mw, mc).Build()
 		blocking, err := HasMCOAManifestWorks(context.Background(), cl)
 		assert.NoError(t, err)
-		assert.Contains(t, blocking, "test-cluster")
+		assert.Empty(t, blocking, "Pending cluster should not block cleanup")
 	})
 }
 
