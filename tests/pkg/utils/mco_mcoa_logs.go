@@ -12,6 +12,8 @@ import (
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/client-go/util/retry"
 	"k8s.io/klog/v2"
 )
 
@@ -109,4 +111,156 @@ func CheckClusterLogForwarderExists(cluster Cluster, namespace string) error {
 	}
 	klog.V(1).Infof("Found ClusterLogForwarder(s) %v in namespace %s on cluster %s", names, namespace, cluster.Name)
 	return nil
+}
+
+// mcoaLoggingObjectStorageSecretYAML is the object storage secret the managed (MCOA-provisioned)
+// LokiStack uses as its log store backend. It points at the same SeaweedFS instance the test
+// environment already deploys for Thanos's object storage (examples/seaweedfs /
+// examples/seaweedfs-tls), under a dedicated bucket so logs and metrics data don't collide.
+const mcoaLoggingObjectStorageSecretYAML = `apiVersion: v1
+kind: Secret
+metadata:
+  name: mcoa-logging-managed-storage-objstorage
+  namespace: open-cluster-management-observability
+type: Opaque
+stringData:
+  # SeaweedFS access key, set via AWS_ACCESS_KEY_ID on the seaweedfs Deployment
+  access_key_id: seaweedfsadmin
+  # SeaweedFS secret key, set via AWS_SECRET_ACCESS_KEY on the seaweedfs Deployment
+  access_key_secret: seaweedfsadmin
+  # Pre-created bucket name (single name or comma-separated list)
+  bucketnames: acm-observability-logs
+  # SeaweedFS's S3 gateway listens on 8333 (not MinIO's 9000), on the
+  # "seaweedfs" Service in this namespace
+  endpoint: http://seaweedfs:8333
+  # Still required — SeaweedFS is also a non-AWS S3-compatible store
+  forcepathstyle: "true"
+`
+
+// CreateMCOALoggingObjectStorageSecret ensures the mcoa-logging-managed-storage-objstorage
+// Secret exists on the hub (creating it if absent, updating it in place if it already exists),
+// so the managed log store use case has an object storage target to provision the LokiStack
+// against. Safe to call repeatedly / idempotently.
+func CreateMCOALoggingObjectStorageSecret(opt TestOptions) error {
+	return Apply(
+		opt.HubCluster.ClusterServerURL,
+		opt.KubeConfig,
+		opt.HubCluster.KubeContext,
+		[]byte(mcoaLoggingObjectStorageSecretYAML),
+	)
+}
+
+// SetAddOnDeploymentConfigCustomizedVariable adds or updates a single named CustomizedVariable
+// on the MCOA AddOnDeploymentConfig (open-cluster-management-observability/
+// multicluster-observability-addon).
+//
+// This exists for variables the addon-manager consumes (e.g. "platformLogsDefault", which
+// selects the managed-log-store use case) that MCO's own renderer doesn't yet set from the MCO
+// CR's capabilities spec. It reads the live object, updates only the named list item (by its
+// "name" key), and writes the whole object back — the same read-modify-write pattern the
+// analytics controller uses to sync right-sizing variables — so it never disturbs any other
+// CustomizedVariable entry MCO or the addon-manager itself owns.
+//
+// The AddOnDeploymentConfig is only rendered once MCOA is enabled (SetMCOACapabilities /
+// SetMCOAPlatformLogsCapability), so this should typically be called from inside an Eventually()
+// to tolerate the brief window before MCO's controller creates it.
+func SetAddOnDeploymentConfigCustomizedVariable(opt TestOptions, name, value string) error {
+	clientDynamic := NewKubeClientDynamic(
+		opt.HubCluster.ClusterServerURL,
+		opt.KubeConfig,
+		opt.HubCluster.KubeContext)
+
+	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		aodc, err := clientDynamic.Resource(NewMCOAddOnDeploymentConfigGVR()).
+			Namespace(MCO_NAMESPACE).
+			Get(context.TODO(), MCOA_CLUSTER_MANAGEMENT_ADDON_NAME, metav1.GetOptions{})
+		if err != nil {
+			return fmt.Errorf("failed to get AddOnDeploymentConfig %s/%s: %w", MCO_NAMESPACE, MCOA_CLUSTER_MANAGEMENT_ADDON_NAME, err)
+		}
+
+		vars, _, err := unstructured.NestedSlice(aodc.Object, "spec", "customizedVariables")
+		if err != nil {
+			return fmt.Errorf("failed to read customizedVariables from AddOnDeploymentConfig: %w", err)
+		}
+
+		found := false
+		for i, v := range vars {
+			varMap, ok := v.(map[string]any)
+			if !ok {
+				continue
+			}
+			if varMap["name"] == name {
+				varMap["value"] = value
+				vars[i] = varMap
+				found = true
+				break
+			}
+		}
+		if !found {
+			vars = append(vars, map[string]any{"name": name, "value": value})
+		}
+
+		if err := unstructured.SetNestedSlice(aodc.Object, vars, "spec", "customizedVariables"); err != nil {
+			return fmt.Errorf("failed to set customizedVariables on AddOnDeploymentConfig: %w", err)
+		}
+
+		_, err = clientDynamic.Resource(NewMCOAddOnDeploymentConfigGVR()).
+			Namespace(MCO_NAMESPACE).
+			Update(context.TODO(), aodc, metav1.UpdateOptions{})
+		return err
+	})
+}
+
+// RemoveAddOnDeploymentConfigCustomizedVariable removes a single named CustomizedVariable from
+// the MCOA AddOnDeploymentConfig, if present. It's a no-op (returns nil) if the
+// AddOnDeploymentConfig doesn't exist or doesn't carry that key, so it's safe to call
+// unconditionally during test cleanup.
+func RemoveAddOnDeploymentConfigCustomizedVariable(opt TestOptions, name string) error {
+	clientDynamic := NewKubeClientDynamic(
+		opt.HubCluster.ClusterServerURL,
+		opt.KubeConfig,
+		opt.HubCluster.KubeContext)
+
+	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		aodc, err := clientDynamic.Resource(NewMCOAddOnDeploymentConfigGVR()).
+			Namespace(MCO_NAMESPACE).
+			Get(context.TODO(), MCOA_CLUSTER_MANAGEMENT_ADDON_NAME, metav1.GetOptions{})
+		if err != nil {
+			if apierrors.IsNotFound(err) {
+				return nil
+			}
+			return fmt.Errorf("failed to get AddOnDeploymentConfig %s/%s: %w", MCO_NAMESPACE, MCOA_CLUSTER_MANAGEMENT_ADDON_NAME, err)
+		}
+
+		vars, found, err := unstructured.NestedSlice(aodc.Object, "spec", "customizedVariables")
+		if err != nil {
+			return fmt.Errorf("failed to read customizedVariables from AddOnDeploymentConfig: %w", err)
+		}
+		if !found {
+			return nil
+		}
+
+		newVars := make([]any, 0, len(vars))
+		changed := false
+		for _, v := range vars {
+			varMap, ok := v.(map[string]any)
+			if ok && varMap["name"] == name {
+				changed = true
+				continue
+			}
+			newVars = append(newVars, v)
+		}
+		if !changed {
+			return nil
+		}
+
+		if err := unstructured.SetNestedSlice(aodc.Object, newVars, "spec", "customizedVariables"); err != nil {
+			return fmt.Errorf("failed to set customizedVariables on AddOnDeploymentConfig: %w", err)
+		}
+
+		_, err = clientDynamic.Resource(NewMCOAddOnDeploymentConfigGVR()).
+			Namespace(MCO_NAMESPACE).
+			Update(context.TODO(), aodc, metav1.UpdateOptions{})
+		return err
+	})
 }

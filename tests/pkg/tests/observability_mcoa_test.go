@@ -1161,6 +1161,10 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 		"when the managed log store is enabled for MCOA [P1][Sev1][Observability][Stable]@ocpInterop (mcoa_logs/g0)",
 		func() {
 			BeforeAll(func() {
+				By("Deploying the object storage secret for the managed log store's LokiStack", func() {
+					Expect(utils.CreateMCOALoggingObjectStorageSecret(testOptions)).NotTo(HaveOccurred())
+				})
+
 				By("Enabling platform metrics (required to keep MCOA alive) and platform logs collection", func() {
 					Expect(utils.SetMCOACapabilities(testOptions, true, false)).NotTo(HaveOccurred())
 					Expect(utils.SetMCOAPlatformLogsCapability(testOptions, true)).NotTo(HaveOccurred())
@@ -1168,6 +1172,9 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 			})
 
 			AfterAll(func() {
+				By("Disabling the managed log store on the AddOnDeploymentConfig", func() {
+					Expect(utils.RemoveAddOnDeploymentConfigCustomizedVariable(testOptions, "platformLogsDefault")).NotTo(HaveOccurred())
+				})
 				By("Disabling platform logs collection", func() {
 					Expect(utils.SetMCOAPlatformLogsCapability(testOptions, false)).NotTo(HaveOccurred())
 				})
@@ -1184,6 +1191,18 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 					Eventually(func() error {
 						return utils.CheckLokiStackCRDEstablished(testOptions.HubCluster)
 					}, 180, 5).Should(Not(HaveOccurred()))
+				})
+
+				// platformLogsDefault isn't a capability MCO's own renderer sets from the MCO CR
+				// today, but the addon-manager needs it to pick the managed (MCOA-provisioned)
+				// LokiStack as the log store. Apply it directly on the AddOnDeploymentConfig here,
+				// test-side only, until that becomes a real capability field. Only do this once
+				// Loki Operator and the LokiStack CRD are actually in place, so the addon-manager
+				// has somewhere to provision the managed LokiStack against.
+				By("Enabling the managed log store on the AddOnDeploymentConfig", func() {
+					Eventually(func() error {
+						return utils.SetAddOnDeploymentConfigCustomizedVariable(testOptions, "platformLogsDefault", "true")
+					}, 120, 5).Should(Not(HaveOccurred()))
 				})
 			})
 
