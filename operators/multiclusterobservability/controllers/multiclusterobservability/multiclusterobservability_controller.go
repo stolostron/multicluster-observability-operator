@@ -72,7 +72,7 @@ const (
 	// lokiOperatorRequeueInterval controls how often we recheck for the LokiStack CRD while
 	// waiting for Loki Operator's OLM install to complete. TODO: replace this polling with an
 	// event-driven trigger (e.g. a dedicated CRD watch) once the approach is finalized.
-	lokiOperatorRequeueInterval = 10 * time.Second
+	// lokiOperatorRequeueInterval = 10 * time.Second
 	// dependencyOperatorRequeueInterval controls how often we recheck for a dependency
 	// operator's CRD (e.g. LokiStack, cert-manager's Certificate) while waiting for its OLM
 	// install to complete. TODO: replace this polling with an event-driven trigger (e.g. a
