@@ -53,7 +53,7 @@ func CheckLokiOperatorSubscriptionExists(cluster Cluster) error {
 		Get(context.TODO(), mcoconfig.LokiOperatorPackageName, metav1.GetOptions{})
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			return fmt.Errorf("Loki Operator subscription %s/%s does not exist yet on cluster %s", mcoconfig.LokiOperatorNamespace, mcoconfig.LokiOperatorPackageName, cluster.Name)
+			return fmt.Errorf("loki operator subscription %s/%s does not exist yet on cluster %s", mcoconfig.LokiOperatorNamespace, mcoconfig.LokiOperatorPackageName, cluster.Name)
 		}
 		return fmt.Errorf("failed to get Loki Operator subscription on cluster %s: %w", cluster.Name, err)
 	}
