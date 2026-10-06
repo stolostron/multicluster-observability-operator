@@ -75,6 +75,26 @@ func NewClusterOperatorGVR() schema.GroupVersionResource {
 	}
 }
 
+func NewUIPluginGVR() schema.GroupVersionResource {
+	return schema.GroupVersionResource{
+		Group:    "observability.openshift.io",
+		Version:  "v1alpha1",
+		Resource: "uiplugins",
+	}
+}
+
+// NewPersesGVR returns the GVR for the Perses CR that COO's UIPlugin controller
+// creates to back its dashboard UI. Only used for diagnostic logging when tearing
+// down UIPlugins, to confirm a given UIPlugin is actually the owner of a stuck
+// Perses instance before we delete it.
+func NewPersesGVR() schema.GroupVersionResource {
+	return schema.GroupVersionResource{
+		Group:    "perses.dev",
+		Version:  "v1alpha2",
+		Resource: "perses",
+	}
+}
+
 func GetOCPClusters(opt TestOptions) ([]Cluster, error) {
 	availableManagedClusters, err := GetAvailableManagedClusters(opt)
 	if err != nil {
@@ -281,6 +301,61 @@ func DeleteCOOSubscription(clusters []Cluster) error {
 			cluster.ClusterServerURL,
 			cluster.KubeConfig,
 			cluster.KubeContext)
+
+		// Delete any UIPlugin CRs first, while COO's controller is still running.
+		// UIPlugins own cascading children (e.g. a Perses CR backing the dashboard
+		// UI) that carry their own finalizers. If the CSV is deleted first (below),
+		// COO's controller is killed before it can process those finalizers, and
+		// any UIPlugin/child deleted afterward (e.g. via namespace GC) gets stuck
+		// forever, leaving the namespace stuck in Terminating.
+		uiPlugins, err := clientDynamic.Resource(NewUIPluginGVR()).List(context.TODO(), metav1.ListOptions{})
+		if err != nil && !errors.IsNotFound(err) {
+			return fmt.Errorf("failed to list UIPlugins on cluster %s: %w", cluster.Name, err)
+		}
+		if uiPlugins != nil && len(uiPlugins.Items) > 0 {
+			// Diagnostic-only: confirm, via a real ownerReference match, which Perses
+			// instances (COO's dashboard backend CR) each UIPlugin actually owns before
+			// we delete it. This is not required for correctness (uiplugins.observability.openshift.io
+			// is exclusively COO's own CRD, so any instance found here is COO's to begin
+			// with), but it gives CI logs direct evidence tying this cleanup step to the
+			// specific resource/finalizer that causes the namespace to get stuck.
+			perses, persesErr := clientDynamic.Resource(NewPersesGVR()).Namespace(cooSubscriptionNamespace).List(context.TODO(), metav1.ListOptions{})
+			if persesErr != nil {
+				klog.V(1).Infof("Could not list Perses resources on cluster %s (CRD may not be installed): %v", cluster.Name, persesErr)
+			}
+
+			for _, uiPlugin := range uiPlugins.Items {
+				if perses != nil {
+					for _, p := range perses.Items {
+						for _, owner := range p.GetOwnerReferences() {
+							if owner.UID == uiPlugin.GetUID() && owner.Kind == "UIPlugin" {
+								klog.Infof("UIPlugin %s on cluster %s owns Perses %s/%s (finalizers: %v) which COO's controller must clear before the namespace can terminate",
+									uiPlugin.GetName(), cluster.Name, p.GetNamespace(), p.GetName(), p.GetFinalizers())
+							}
+						}
+					}
+				}
+
+				klog.Infof("Deleting UIPlugin %s on cluster %s", uiPlugin.GetName(), cluster.Name)
+				if err := clientDynamic.Resource(NewUIPluginGVR()).Delete(context.TODO(), uiPlugin.GetName(), metav1.DeleteOptions{}); err != nil && !errors.IsNotFound(err) {
+					return fmt.Errorf("failed to delete UIPlugin %s on cluster %s: %w", uiPlugin.GetName(), cluster.Name, err)
+				}
+			}
+
+			// Wait for all UIPlugins (and their cascaded owned resources, e.g. Perses)
+			// to be fully deleted while COO's controller is still alive to clear finalizers.
+			klog.Infof("Waiting for UIPlugins to be deleted on cluster %s", cluster.Name)
+			err = wait.PollUntilContextTimeout(context.Background(), 2*time.Second, 2*time.Minute, true, func(ctx context.Context) (bool, error) {
+				remaining, err := clientDynamic.Resource(NewUIPluginGVR()).List(ctx, metav1.ListOptions{})
+				if err != nil {
+					return false, err
+				}
+				return len(remaining.Items) == 0, nil
+			})
+			if err != nil {
+				return fmt.Errorf("failed to wait for UIPlugins to be deleted on cluster %s: %w", cluster.Name, err)
+			}
+		}
 
 		// Get the subscription to find the installed CSV
 		sub, err := clientDynamic.Resource(NewSubscriptionGVR()).Namespace(cooSubscriptionNamespace).Get(context.TODO(), cooSubscriptionName, metav1.GetOptions{})
