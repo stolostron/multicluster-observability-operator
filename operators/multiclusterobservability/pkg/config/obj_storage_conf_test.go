@@ -166,6 +166,103 @@ config:
 			name:     "no conf",
 			expected: false,
 		},
+
+		// Bucket name length validation tests
+		{
+			conf: []byte(`type: s3
+config:
+  bucket: thanos-s3-open-cluster-management-observability-ran-samsung-bos2-lab-a1b2c3d4
+  endpoint: endpoint
+  insecure: true
+  access_key: access_key
+  secret_key: secret_key`),
+			name:     "s3 bucket name too long (80 chars)",
+			expected: false,
+		},
+
+		{
+			conf: []byte(`type: s3
+config:
+  bucket: a1234567890123456789012345678901234567890123456789012345678901234
+  endpoint: endpoint
+  insecure: true
+  access_key: access_key
+  secret_key: secret_key`),
+			name:     "s3 bucket name too long (64 chars)",
+			expected: false,
+		},
+
+		{
+			conf: []byte(`type: s3
+config:
+  bucket: a12345678901234567890123456789012345678901234567890123456789012
+  endpoint: endpoint
+  insecure: true
+  access_key: access_key
+  secret_key: secret_key`),
+			name:     "s3 bucket name at limit (63 chars)",
+			expected: true,
+		},
+
+		{
+			conf: []byte(`type: s3
+config:
+  bucket: ab
+  endpoint: endpoint
+  insecure: true
+  access_key: access_key
+  secret_key: secret_key`),
+			name:     "s3 bucket name too short (2 chars)",
+			expected: false,
+		},
+
+		{
+			conf: []byte(`type: s3
+config:
+  bucket: abc
+  endpoint: endpoint
+  insecure: true
+  access_key: access_key
+  secret_key: secret_key`),
+			name:     "s3 bucket name minimum length (3 chars)",
+			expected: true,
+		},
+
+		{
+			conf: []byte(`type: gcs
+config:
+  bucket: thanos-s3-open-cluster-management-observability-ran-samsung-bos2-lab-a1b2c3d4
+  service_account: service_account`),
+			name:     "gcs bucket name too long (80 chars)",
+			expected: false,
+		},
+
+		{
+			conf: []byte(`type: gcs
+config:
+  bucket: a12345678901234567890123456789012345678901234567890123456789012
+  service_account: service_account`),
+			name:     "gcs bucket name at limit (63 chars)",
+			expected: true,
+		},
+
+		{
+			conf: []byte(`type: gcs
+config:
+  bucket: ab
+  service_account: service_account`),
+			name:     "gcs bucket name too short (2 chars)",
+			expected: false,
+		},
+
+		{
+			conf: []byte(`type: gcs
+config:
+  bucket: abc
+  service_account: service_account`),
+			name:     "gcs bucket name minimum length (3 chars)",
+			expected: true,
+		},
 	}
 
 	for _, c := range caseList {
