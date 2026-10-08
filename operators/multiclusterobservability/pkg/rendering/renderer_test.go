@@ -27,6 +27,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
@@ -66,6 +67,9 @@ func TestRender(t *testing.T) {
 		Spec: mcov1beta2.MultiClusterObservabilitySpec{
 			ImagePullPolicy: "IfNotPresent",
 			ImagePullSecret: "test",
+			ObservabilityAddonSpec: &mcoshared.ObservabilityAddonSpec{
+				EnableMetrics: true,
+			},
 			StorageConfig: &mcov1beta2.StorageConfig{
 				MetricObjectStorage: &mcoshared.PreConfiguredStorage{
 					Key:  "test",
@@ -176,7 +180,7 @@ func TestMCOAGrafanaResourcesForRemoval(t *testing.T) {
 						Platform: &mcov1beta2.PlatformCapabilitiesSpec{
 							Metrics: mcov1beta2.PlatformMetricsSpec{
 								Default: mcov1beta2.PlatformMetricsDefaultSpec{
-									Enabled: true,
+									Enabled: ptr.To(true),
 								},
 							},
 						},
@@ -188,7 +192,13 @@ func TestMCOAGrafanaResourcesForRemoval(t *testing.T) {
 			},
 		},
 		"MCOA for metrics is disabled": {
-			mco: mcov1beta2.MultiClusterObservability{},
+			mco: mcov1beta2.MultiClusterObservability{
+				Spec: mcov1beta2.MultiClusterObservabilitySpec{
+					ObservabilityAddonSpec: &mcoshared.ObservabilityAddonSpec{
+						EnableMetrics: true,
+					},
+				},
+			},
 			expect: func(t *testing.T, resources []*unstructured.Unstructured) {
 				assert.NotEmpty(t, resources)
 
