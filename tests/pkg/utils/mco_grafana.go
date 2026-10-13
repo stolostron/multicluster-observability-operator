@@ -42,7 +42,7 @@ func GetGrafanaHost(opt TestOptions) string {
 	}
 
 	if opt.HubCluster.GrafanaURL != "" {
-		if u, err := url.Parse(opt.HubCluster.GrafanaURL); err == nil && u.Host != "" {
+		if u, err := url.Parse(opt.HubCluster.GrafanaURL); err == nil && (u.Scheme == "http" || u.Scheme == "https") && u.Host != "" {
 			return u.Host
 		}
 	}
@@ -82,11 +82,13 @@ func GetGrafanaHost(opt TestOptions) string {
 }
 
 // GetGrafanaURL resolves the base URL for accessing Grafana.
-// If opt.HubCluster.GrafanaURL is set, it is returned directly.
+// If opt.HubCluster.GrafanaURL is set and valid (with http:// or https:// scheme), it is returned directly.
 // Otherwise, it constructs an https URL from the resolved Grafana host.
 func GetGrafanaURL(opt TestOptions) string {
 	if opt.HubCluster.GrafanaURL != "" {
-		return opt.HubCluster.GrafanaURL
+		if u, err := url.Parse(opt.HubCluster.GrafanaURL); err == nil && (u.Scheme == "http" || u.Scheme == "https") && u.Host != "" {
+			return opt.HubCluster.GrafanaURL
+		}
 	}
 	host := GetGrafanaHost(opt)
 	if host != "" {
