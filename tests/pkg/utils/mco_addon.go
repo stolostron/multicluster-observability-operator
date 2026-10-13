@@ -7,6 +7,7 @@ package utils
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/onsi/gomega"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -17,32 +18,44 @@ import (
 	addonv1beta1 "open-cluster-management.io/api/addon/v1beta1"
 )
 
-func CheckManagedClusterAddonStatus(opt TestOptions, name string) {
-	gomega.Eventually(func() error {
-		klog.V(1).Infof("Checking ManagedClusterAddon %s status", name)
-		managedClusters, err := GetAvailableManagedClusters(opt)
+// VerifyManagedClusterAddonStatus checks that the ManagedClusterAddon is available across all available managed clusters.
+func VerifyManagedClusterAddonStatus(opt TestOptions, name string) error {
+	klog.V(1).Infof("Checking ManagedClusterAddon %s status", name)
+	managedClusters, err := GetAvailableManagedClusters(opt)
+	if err != nil {
+		klog.Errorf("Error getting available managed clusters: %v", err)
+		return err
+	}
+
+	for _, cluster := range managedClusters {
+		klog.V(1).Infof("Checking ManagedClusterAddon %s on cluster %s", name, cluster.Name)
+		addon, err := GetManagedClusterAddon(opt, name, cluster.Name)
 		if err != nil {
-			klog.Errorf("Error getting available managed clusters: %v", err)
+			klog.Errorf("Error getting ManagedClusterAddon %s/%s: %v", cluster.Name, name, err)
 			return err
 		}
 
-		for _, cluster := range managedClusters {
-			klog.V(1).Infof("Checking ManagedClusterAddon %s on cluster %s", name, cluster.Name)
-			addon, err := GetManagedClusterAddon(opt, name, cluster.Name)
-			if err != nil {
-				klog.Errorf("Error getting ManagedClusterAddon %s/%s: %v", cluster.Name, name, err)
-				return err
-			}
-
-			if !meta.IsStatusConditionTrue(addon.Status.Conditions, "Available") {
-				err := fmt.Errorf("ManagedClusterAddon %s on cluster %s is not available. Conditions: %v", name, cluster.Name, addon.Status.Conditions)
-				klog.V(1).Infof("%v", err)
-				return err
-			}
-			klog.V(1).Infof("ManagedClusterAddon %s on cluster %s is available", name, cluster.Name)
+		if !meta.IsStatusConditionTrue(addon.Status.Conditions, "Available") {
+			err := fmt.Errorf("ManagedClusterAddon %s on cluster %s is not available. Conditions: %v", name, cluster.Name, addon.Status.Conditions)
+			klog.V(1).Infof("%v", err)
+			return err
 		}
-		return nil
+		klog.V(1).Infof("ManagedClusterAddon %s on cluster %s is available", name, cluster.Name)
+	}
+	return nil
+}
+
+func CheckManagedClusterAddonStatus(opt TestOptions, name string) {
+	gomega.Eventually(func() error {
+		return VerifyManagedClusterAddonStatus(opt, name)
 	}, 300, 5).Should(gomega.Not(gomega.HaveOccurred()))
+}
+
+// CheckManagedClusterAddonStatusConsistently checks that the ManagedClusterAddon remains available across all available managed clusters for the specified duration.
+func CheckManagedClusterAddonStatusConsistently(opt TestOptions, name string, duration, interval time.Duration) {
+	gomega.Consistently(func() error {
+		return VerifyManagedClusterAddonStatus(opt, name)
+	}, duration, interval).Should(gomega.Succeed())
 }
 
 // GetAvailableManagedClustersAsClusters returns a list of available managed clusters.

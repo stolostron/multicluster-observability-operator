@@ -37,6 +37,7 @@ const (
 	metricsCollectorDeploymentName         = "metrics-collector-deployment"
 	mcoaAddonName                          = "multicluster-observability-addon"
 	globalPlacementName                    = "global"
+	kubeStateMetricsDeploymentName         = "kube-state-metrics"
 )
 
 var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
@@ -283,6 +284,58 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 						),
 					).NotTo(HaveOccurred())
 					Expect(utils.DeleteScrapeConfig(testOptions, scrapeConfigName)).NotTo(HaveOccurred())
+				})
+			})
+
+			It("should deploy the monitoring stack and collect metrics for a non-OCP managed cluster", SpecTimeout(10*time.Minute), func(ctx SpecContext) {
+				hubClusterName := testOptions.HubCluster.Name
+				vendorOverrideAnno := "mcoa-override-vendor"
+				vendorOverrideTriggerLabel := "mcoa-vendor-override-trigger"
+
+				DeferCleanup(func(cleanupCtx context.Context) {
+					By(fmt.Sprintf("Restoring cluster %s to default OCP vendor", hubClusterName), func() {
+						Expect(utils.RemoveManagedClusterAnnotation(cleanupCtx, testOptions, hubClusterName, vendorOverrideAnno)).To(Succeed())
+						Expect(utils.RemoveManagedClusterLabel(cleanupCtx, testOptions, hubClusterName, vendorOverrideTriggerLabel)).To(Succeed())
+
+						By("Waiting for non-OCP monitoring stack to be undeployed", func() {
+							utils.CheckDeploymentAvailability(testOptions.HubCluster, kubeStateMetricsDeploymentName, utils.MCO_AGENT_ADDON_NAMESPACE, false)
+						})
+
+						By(fmt.Sprintf("Waiting for ManagedClusterAddOn %s to become Available after restore", mcoaAddonName), func() {
+							utils.CheckManagedClusterAddonStatus(testOptions, mcoaAddonName)
+						})
+					})
+				})
+
+				By(fmt.Sprintf("Configuring cluster %s as non-OCP via %s annotation", hubClusterName, vendorOverrideAnno), func() {
+					Expect(utils.SetManagedClusterAnnotation(ctx, testOptions, hubClusterName, vendorOverrideAnno, "Other")).To(Succeed())
+					Expect(utils.SetManagedClusterLabel(ctx, testOptions, hubClusterName, vendorOverrideTriggerLabel, "true")).To(Succeed())
+				})
+
+				By("Waiting for non-OCP monitoring stack to be deployed", func() {
+					utils.CheckDeploymentAvailability(testOptions.HubCluster, kubeStateMetricsDeploymentName, utils.MCO_AGENT_ADDON_NAMESPACE, true)
+				})
+
+				By(fmt.Sprintf("Waiting for ManagedClusterAddOn %s to become Available", mcoaAddonName), func() {
+					utils.CheckManagedClusterAddonStatus(testOptions, mcoaAddonName)
+				})
+
+				By(fmt.Sprintf("Verifying ManagedClusterAddOn %s remains Available for 30s without flapping", mcoaAddonName), func() {
+					utils.CheckManagedClusterAddonStatusConsistently(testOptions, mcoaAddonName, 30*time.Second, 5*time.Second)
+				})
+
+				By(fmt.Sprintf("Verifying metrics from non-OCP cluster %s are received in Thanos", hubClusterName), func() {
+					Eventually(func() error {
+						query := fmt.Sprintf("up{cluster=%q}", hubClusterName)
+						res, err := utils.QueryGrafana(testOptions, query)
+						if err != nil {
+							return err
+						}
+						if len(res.Data.Result) == 0 {
+							return fmt.Errorf("no results found for query %q in Thanos", query)
+						}
+						return nil
+					}, 5*time.Minute, 5*time.Second).Should(Succeed(), "Metrics from non-OCP cluster not received in Thanos")
 				})
 			})
 		},

@@ -14,6 +14,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"time"
 
 	"gopkg.in/yaml.v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -86,7 +87,7 @@ func QueryGrafana(opt TestOptions, query string) (*GrafanaResponse, error) {
 		return nil, err
 	}
 
-	client := &http.Client{}
+	client := &http.Client{Timeout: 30 * time.Second}
 	if os.Getenv("IS_KIND_ENV") != "true" {
 		tr := &http.Transport{
 			Proxy: http.ProxyFromEnvironment,
@@ -94,7 +95,10 @@ func QueryGrafana(opt TestOptions, query string) (*GrafanaResponse, error) {
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 		}
 
-		client = &http.Client{Transport: tr}
+		client = &http.Client{
+			Transport: tr,
+			Timeout:   30 * time.Second,
+		}
 		if os.Getenv("USER_TOKEN") != "" {
 			req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", strings.TrimSpace(os.Getenv("USER_TOKEN"))))
 		} else {
@@ -107,7 +111,9 @@ func QueryGrafana(opt TestOptions, query string) (*GrafanaResponse, error) {
 				req.Header.Set("Authorization", "Bearer "+token)
 			}
 		}
-		req.Host = opt.HubCluster.GrafanaHost
+		if host := GetGrafanaHost(opt); host != "" {
+			req.Host = host
+		}
 	}
 
 	resp, err := client.Do(req)
