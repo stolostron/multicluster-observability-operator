@@ -40,7 +40,7 @@ type ClustersInfo struct {
 func UpdateObservabilityFromManagedCluster(opt TestOptions, enableObservability bool) error {
 	clusterName := GetManagedClusterName(opt)
 	if clusterName == "" {
-		return nil
+		return errors.New("no managed cluster found")
 	}
 	if !enableObservability {
 		return SetManagedClusterLabel(context.TODO(), opt, clusterName, "observability", "disabled")
@@ -186,6 +186,21 @@ func GetManagedClusters(opt TestOptions) ([]*clusterv1.ManagedCluster, error) {
 	}
 
 	return ret, nil
+}
+
+// GetManagedCluster retrieves a specific ManagedCluster by name.
+func GetManagedCluster(ctx context.Context, opt TestOptions, clusterName string) (*clusterv1.ManagedCluster, error) {
+	clientDynamic := GetKubeClientDynamic(opt, true)
+	obj, err := clientDynamic.Resource(NewOCMManagedClustersGVR()).Get(ctx, clusterName, metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get ManagedCluster %s: %w", clusterName, err)
+	}
+
+	mc := &clusterv1.ManagedCluster{}
+	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(obj.Object, mc); err != nil {
+		return nil, fmt.Errorf("failed to convert Unstructured to ManagedCluster: %w", err)
+	}
+	return mc, nil
 }
 
 // GetHubClusterName queries the ManagedCluster API and returns the name of the hub cluster
