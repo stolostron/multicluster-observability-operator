@@ -10814,6 +10814,16 @@ spec:
                                   The default namespace is `open-cluster-management-global-set
                                 type: string
                             type: object
+                          podRightSizingRecommendation:
+                            description: |-
+                              PodRightSizingRecommendation controls pod right-sizing, including pods without a workload.
+                              Enabled by default when omitted.
+                            properties:
+                              enabled:
+                                description: Enabled controls this right-sizing feature.
+                                  Defaults to true when omitted.
+                                type: boolean
+                            type: object
                           virtualizationRightSizingRecommendation:
                             description: Feature to enable virtualization right-sizing
                               recommendation capabilities for the Analytics.
@@ -10827,6 +10837,31 @@ spec:
                                   NamespaceBinding defines the namespace where all the required resources are created.
                                   The default namespace is `open-cluster-management-global-set
                                 type: string
+                            type: object
+                          workloadPodRightSizingRecommendation:
+                            description: |-
+                              Deprecated: use workloadRightSizingRecommendation and podRightSizingRecommendation.
+                              Existing values are migrated to the separate switches when those are absent.
+                            properties:
+                              enabled:
+                                description: Enabled defines a flag to enable/disable
+                                  the right-sizing feature for the Analytics.
+                                type: boolean
+                              namespaceBinding:
+                                description: |-
+                                  NamespaceBinding defines the namespace where all the required resources are created.
+                                  The default namespace is `open-cluster-management-global-set
+                                type: string
+                            type: object
+                          workloadRightSizingRecommendation:
+                            description: |-
+                              WorkloadRightSizingRecommendation controls workload right-sizing independently of pod right-sizing.
+                              Enabled by default when omitted.
+                            properties:
+                              enabled:
+                                description: Enabled controls this right-sizing feature.
+                                  Defaults to true when omitted.
+                                type: boolean
                             type: object
                         type: object
                       logs:

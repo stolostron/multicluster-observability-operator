@@ -55,6 +55,7 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"k8s.io/client-go/util/workqueue"
+	"k8s.io/utils/ptr"
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	addonv1beta1 "open-cluster-management.io/api/addon/v1beta1"
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
@@ -1982,11 +1983,16 @@ func TestMCOACleanupADCPreservation(t *testing.T) {
 		expectADC    bool
 	}{
 		{
-			name: "ADC preserved when right-sizing configured but both features disabled",
+			name: "ADC preserved when right-sizing configured but all features disabled",
 			// Platform != nil => RightSizingConfigured == true; every feature false
 			// => MCOAEnabled == false && RightSizingEnabled == false => cleanup runs.
 			capabilities: &mcov1beta2.CapabilitiesSpec{
-				Platform: &mcov1beta2.PlatformCapabilitiesSpec{},
+				Platform: &mcov1beta2.PlatformCapabilitiesSpec{
+					Analytics: mcov1beta2.PlatformAnalyticsSpec{
+						WorkloadRightSizingRecommendation: mcov1beta2.DefaultEnabledRightSizingRecommendationSpec{Enabled: ptr.To(false)},
+						PodRightSizingRecommendation:      mcov1beta2.DefaultEnabledRightSizingRecommendationSpec{Enabled: ptr.To(false)},
+					},
+				},
 			},
 			expectADC: true,
 		},
