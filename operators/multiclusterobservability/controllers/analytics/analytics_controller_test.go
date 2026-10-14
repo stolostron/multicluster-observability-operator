@@ -315,8 +315,6 @@ func TestAnalyticsReconciler_DeletionCleansUp(t *testing.T) {
 	require.Equal(t, "disabled", adcVars[util.ADCKeyPlatformVirtualizationRightSizing])
 	require.Equal(t, "disabled", adcVars[util.ADCKeyPlatformWorkloadRightSizing])
 	require.Equal(t, "disabled", adcVars[util.ADCKeyPlatformPodRightSizing])
-	_, hasRetired := adcVars["platformWorkloadPodRightSizing"]
-	require.False(t, hasRetired, "retired platformWorkloadPodRightSizing must be removed from ADC")
 
 	// Simulate stabilization window elapsed
 	r.cleanupAt = time.Now().Add(-(analyticsStabilizationWindow + time.Second))
@@ -450,8 +448,6 @@ func TestReconcile_MigrationSetsFlag(t *testing.T) {
 	require.Equal(t, "enabled", adcVars[util.ADCKeyPlatformVirtualizationRightSizing])
 	require.Equal(t, "enabled", adcVars[util.ADCKeyPlatformWorkloadRightSizing])
 	require.Equal(t, "enabled", adcVars[util.ADCKeyPlatformPodRightSizing])
-	_, hasRetired := adcVars["platformWorkloadPodRightSizing"]
-	require.False(t, hasRetired)
 }
 
 func TestSyncRightSizingStateToADC_DelegatingEnabled(t *testing.T) {
@@ -470,7 +466,6 @@ func TestSyncRightSizingStateToADC_DelegatingEnabled(t *testing.T) {
 			CustomizedVariables: []addonv1beta1.CustomizedVariable{
 				{Name: util.ADCKeyPlatformNamespaceRightSizing, Value: "disabled"},
 				{Name: util.ADCKeyPlatformVirtualizationRightSizing, Value: "disabled"},
-				{Name: "platformWorkloadPodRightSizing", Value: "enabled"},
 			},
 		},
 	}
@@ -509,8 +504,6 @@ func TestSyncRightSizingStateToADC_DelegatingEnabled(t *testing.T) {
 		}
 	}
 	require.True(t, foundDelegated, "missing customized variable %q", util.ADCKeyRightSizingDelegated)
-	_, hasRetired := adcVars["platformWorkloadPodRightSizing"]
-	require.False(t, hasRetired, "retired platformWorkloadPodRightSizing must be removed from ADC")
 }
 
 func TestSyncRightSizingStateToADC_BothEnabled(t *testing.T) {
@@ -652,7 +645,6 @@ func TestSyncRightSizingStateToADC_DeletionForcesDisabled(t *testing.T) {
 				{Name: util.ADCKeyPlatformVirtualizationRightSizing, Value: "enabled"},
 				{Name: util.ADCKeyPlatformWorkloadRightSizing, Value: "enabled"},
 				{Name: util.ADCKeyPlatformPodRightSizing, Value: "enabled"},
-				{Name: "platformWorkloadPodRightSizing", Value: "enabled"},
 			},
 		},
 	}
@@ -687,8 +679,6 @@ func TestSyncRightSizingStateToADC_DeletionForcesDisabled(t *testing.T) {
 			require.Equal(t, "disabled", cv.Value, "deletion must set pod RS to disabled")
 		}
 	}
-	_, hasRetired := adcVars["platformWorkloadPodRightSizing"]
-	require.False(t, hasRetired, "retired platformWorkloadPodRightSizing must be removed on deletion sync")
 }
 
 func TestReconcile_MigrationRunsOnce(t *testing.T) {
