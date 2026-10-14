@@ -148,6 +148,16 @@ func formatMCOCapabilities(capabilities map[string]any) string {
 					rs = append(rs, fmt.Sprintf("virt=%t", enabled))
 				}
 			}
+			if wl, ok := analytics["workloadRightSizingRecommendation"].(map[string]any); ok {
+				if enabled, ok := wl["enabled"].(bool); ok {
+					rs = append(rs, fmt.Sprintf("wl=%t", enabled))
+				}
+			}
+			if pod, ok := analytics["podRightSizingRecommendation"].(map[string]any); ok {
+				if enabled, ok := pod["enabled"].(bool); ok {
+					rs = append(rs, fmt.Sprintf("pod=%t", enabled))
+				}
+			}
 			if len(rs) > 0 {
 				parts = append(parts, fmt.Sprintf("rightSizing(%s)", strings.Join(rs, ", ")))
 			}

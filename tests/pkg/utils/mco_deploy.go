@@ -231,6 +231,10 @@ func VerifyRSResourcesCleanedUp(ctx context.Context, dynClient dynamic.Interface
 		{NewPlacementBindingGVR(), "rs-virt-policyset-binding", MCO_GLOBAL_SET_NAMESPACE},
 		{configMapGVR, "rs-namespace-config", MCO_NAMESPACE},
 		{configMapGVR, "rs-virt-config", MCO_NAMESPACE},
+		{configMapGVR, "rs-workload-config", MCO_NAMESPACE},
+		{configMapGVR, "rs-pod-config", MCO_NAMESPACE},
+		{schema.GroupVersionResource{Group: "monitoring.coreos.com", Version: "v1", Resource: "prometheusrules"}, "acm-rs-workload-prometheus-rules", "openshift-monitoring"},
+		{schema.GroupVersionResource{Group: "monitoring.coreos.com", Version: "v1", Resource: "prometheusrules"}, "acm-rs-pod-prometheus-rules", "openshift-monitoring"},
 	}
 
 	for _, r := range rsResources {
@@ -686,15 +690,22 @@ func SetLegacyAlertForwardingDisabled(opt TestOptions, disabled bool) error {
 	})
 }
 
-// setRSEnabled sets both right-sizing feature flags on the MCO CR.
-// In ACM 5.0, RS keeps the MCOA stack alive independently of metrics capabilities.
+// setRSEnabled sets all right-sizing flags (namespace, virtualization, workload, pod)
+// on the MCO CR. In ACM 5.0, RS keeps the MCOA stack alive independently of metrics
+// capabilities, so every switch must be covered to allow fully disabling MCOA.
 func setRSEnabled(mco *unstructured.Unstructured, enabled bool) error {
-	if err := unstructured.SetNestedField(mco.Object, enabled,
-		"spec", "capabilities", "platform", "analytics", "namespaceRightSizingRecommendation", "enabled"); err != nil {
-		return err
+	for _, field := range []string{
+		"namespaceRightSizingRecommendation",
+		"virtualizationRightSizingRecommendation",
+		"workloadRightSizingRecommendation",
+		"podRightSizingRecommendation",
+	} {
+		if err := unstructured.SetNestedField(mco.Object, enabled,
+			"spec", "capabilities", "platform", "analytics", field, "enabled"); err != nil {
+			return err
+		}
 	}
-	return unstructured.SetNestedField(mco.Object, enabled,
-		"spec", "capabilities", "platform", "analytics", "virtualizationRightSizingRecommendation", "enabled")
+	return nil
 }
 
 func SetMCOACapabilities(opt TestOptions, platformMetrics, userWorkloadMetrics bool) error {

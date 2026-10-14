@@ -1993,10 +1993,16 @@ func TestMCOACleanupADCPreservation(t *testing.T) {
 	}{
 		{
 			name: "ADC preserved when right-sizing configured but all features disabled",
-			// Platform != nil, Enabled nil, enableMetrics true (legacy) → platform metrics
-			// disabled via defaulting, but RightSizingConfigured == true → ADC preserved.
+			// Platform != nil => RightSizingConfigured == true; every feature false
+			// => MCOAEnabled == false && RightSizingEnabled == false => cleanup runs.
+			// ADC is preserved so the analytics controller can still sync disabled state.
 			capabilities: &mcov1beta2.CapabilitiesSpec{
-				Platform: &mcov1beta2.PlatformCapabilitiesSpec{},
+				Platform: &mcov1beta2.PlatformCapabilitiesSpec{
+					Analytics: mcov1beta2.PlatformAnalyticsSpec{
+						WorkloadRightSizingRecommendation: mcov1beta2.DefaultEnabledRightSizingRecommendationSpec{Enabled: ptr.To(false)},
+						PodRightSizingRecommendation:      mcov1beta2.DefaultEnabledRightSizingRecommendationSpec{Enabled: ptr.To(false)},
+					},
+				},
 			},
 			enableMetrics: true,
 			expectADC:     true,
