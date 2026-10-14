@@ -174,6 +174,35 @@ type PlatformAnalyticsSpec struct {
 	// +optional
 	// +kubebuilder:validation:Optional
 	VirtualizationRightSizingRecommendation PlatformRightSizingRecommendationSpec `json:"virtualizationRightSizingRecommendation,omitempty"`
+
+	// WorkloadRightSizingRecommendation controls workload right-sizing independently of pod right-sizing.
+	// When omitted, inherits from namespace right-sizing.
+	// +optional
+	WorkloadRightSizingRecommendation DefaultEnabledRightSizingRecommendationSpec `json:"workloadRightSizingRecommendation,omitempty"`
+
+	// PodRightSizingRecommendation controls pod right-sizing, including pods without a workload.
+	// When omitted, inherits from namespace right-sizing.
+	// +optional
+	PodRightSizingRecommendation DefaultEnabledRightSizingRecommendationSpec `json:"podRightSizingRecommendation,omitempty"`
+}
+
+// DefaultEnabledRightSizingRecommendationSpec is a pointer-based switch so the
+// analytics controller can distinguish an omitted flag from an explicit false.
+// When omitted, workload and pod right-sizing inherit their default from
+// namespace right-sizing. The controller persists the resolved value on first
+// reconcile.
+type DefaultEnabledRightSizingRecommendationSpec struct {
+	// Enabled controls this right-sizing feature. When omitted, the value is
+	// inherited from namespace right-sizing.
+	// +optional
+	Enabled *bool `json:"enabled,omitempty"`
+}
+
+// IsEnabled reports whether the feature is explicitly enabled. An omitted flag
+// is treated as disabled until the analytics controller resolves and persists
+// the inherited default.
+func (s DefaultEnabledRightSizingRecommendationSpec) IsEnabled() bool {
+	return s.Enabled != nil && *s.Enabled
 }
 
 type PlatformIncidentDetectionSpec struct {

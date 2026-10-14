@@ -10799,6 +10799,17 @@ spec:
                                   The default namespace is `open-cluster-management-global-set
                                 type: string
                             type: object
+                          podRightSizingRecommendation:
+                            description: |-
+                              PodRightSizingRecommendation controls pod right-sizing, including pods without a workload.
+                              When omitted, inherits from namespace right-sizing.
+                            properties:
+                              enabled:
+                                description: |-
+                                  Enabled controls this right-sizing feature. When omitted, the value is
+                                  inherited from namespace right-sizing.
+                                type: boolean
+                            type: object
                           virtualizationRightSizingRecommendation:
                             description: Feature to enable virtualization right-sizing
                               recommendation capabilities for the Analytics.
@@ -10812,6 +10823,17 @@ spec:
                                   NamespaceBinding defines the namespace where all the required resources are created.
                                   The default namespace is `open-cluster-management-global-set
                                 type: string
+                            type: object
+                          workloadRightSizingRecommendation:
+                            description: |-
+                              WorkloadRightSizingRecommendation controls workload right-sizing independently of pod right-sizing.
+                              When omitted, inherits from namespace right-sizing.
+                            properties:
+                              enabled:
+                                description: |-
+                                  Enabled controls this right-sizing feature. When omitted, the value is
+                                  inherited from namespace right-sizing.
+                                type: boolean
                             type: object
                         type: object
                       logs:
