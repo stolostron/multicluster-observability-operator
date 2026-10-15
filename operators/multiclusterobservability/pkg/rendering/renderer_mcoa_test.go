@@ -220,7 +220,7 @@ func TestRenderAddonDeploymentConfig(t *testing.T) {
 	promV1alpha1 := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.PrometheusAgentCRDName)
 
 	assert.Len(t, got.Spec.CustomizedVariables, 15)
-	assert.Contains(t, got.Spec.CustomizedVariables, addonv1beta1.CustomizedVariable{Name: nameInstanceSize, Value: "small"})
+	assert.Contains(t, got.Spec.CustomizedVariables, addonv1beta1.CustomizedVariable{Name: nameMetricsStorageInstanceSize, Value: "small"})
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1beta1.CustomizedVariable{Name: nameUserWorkloadLogsCollection, Value: clfV1})
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1beta1.CustomizedVariable{Name: namePlatformIncidentDetection, Value: uipluginsCRDFQDN})
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1beta1.CustomizedVariable{Name: namePlatformLogsCollection, Value: clfV1})

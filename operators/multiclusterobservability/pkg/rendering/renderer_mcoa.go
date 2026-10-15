@@ -46,7 +46,7 @@ const (
 	nameUserWorkloadMetricsAlerts     = "userWorkloadMetricsAlerts"
 	nameMetricsHubHostname            = "metricsHubHostname"
 	namePLatformMetricsUI             = "platformMetricsUI"
-	nameInstanceSize                  = "instanceSize"
+	nameMetricsStorageInstanceSize    = "metricsStorageInstanceSize"
 )
 
 type MCOARendererOptions struct {
@@ -320,7 +320,7 @@ func (r *MCORenderer) renderAddonDeploymentConfig(
 		}
 
 		if r.cr.Spec.InstanceSize != "" {
-			appendCustomVar(aodc, nameInstanceSize, string(r.cr.Spec.InstanceSize))
+			appendCustomVar(aodc, nameMetricsStorageInstanceSize, string(r.cr.Spec.InstanceSize))
 		}
 
 		if (cs.Platform != nil && cs.Platform.Metrics.Default.Enabled) ||
