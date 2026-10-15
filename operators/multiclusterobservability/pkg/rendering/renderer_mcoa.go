@@ -21,6 +21,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	addonv1beta1 "open-cluster-management.io/api/addon/v1beta1"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/kustomize/api/resource"
 )
 
@@ -207,19 +208,17 @@ func (r *MCORenderer) renderClusterManagementAddOn(
 	// the legacy "observability-controller" CMA already provides the Grafana link.
 	if MCOAPlatformMetricsEnabled(r.cr) {
 		host, err := mcoconfig.GetRouteHost(ctx, r.kubeClient, mcoconfig.GrafanaRouteName, mcoconfig.GetDefaultNamespace())
-		if err != nil {
-			return nil, fmt.Errorf("failed to get host route: %w", err)
+		if err != nil || host == "" {
+			ctrl.LoggerFrom(ctx).Info("Grafana route not yet available, deferring launch link annotation on CMA")
+		} else {
+			grafanaUrl := url.URL{
+				Scheme: "https",
+				Host:   host,
+				Path:   grafanaLink,
+			}
+			annotations[mcoutil.GrafanaLaunchLinkKey] = grafanaUrl.String()
+			annotations[mcoutil.GrafanaLaunchLinkTextKey] = "Grafana"
 		}
-		if host == "" {
-			return nil, fmt.Errorf("grafana route host is empty, cannot construct launch link")
-		}
-		grafanaUrl := url.URL{
-			Scheme: "https",
-			Host:   host,
-			Path:   grafanaLink,
-		}
-		annotations[mcoutil.GrafanaLaunchLinkKey] = grafanaUrl.String()
-		annotations[mcoutil.GrafanaLaunchLinkTextKey] = "Grafana"
 	}
 	u.SetAnnotations(annotations)
 
@@ -245,35 +244,43 @@ func (r *MCORenderer) renderAddonDeploymentConfig(
 		return nil, err
 	}
 
-	if cs := r.cr.Spec.Capabilities; cs != nil {
-		aodc := &addonv1beta1.AddOnDeploymentConfig{}
-		if err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, aodc); err != nil {
-			return nil, err
-		}
+	aodc := &addonv1beta1.AddOnDeploymentConfig{}
+	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, aodc); err != nil {
+		return nil, err
+	}
 
-		appendCustomVar := func(aodc *addonv1beta1.AddOnDeploymentConfig, name, value string) {
-			aodc.Spec.CustomizedVariables = append(
-				aodc.Spec.CustomizedVariables,
-				addonv1beta1.CustomizedVariable{Name: name, Value: value},
-			)
-		}
+	appendCustomVar := func(aodc *addonv1beta1.AddOnDeploymentConfig, name, value string) {
+		aodc.Spec.CustomizedVariables = append(
+			aodc.Spec.CustomizedVariables,
+			addonv1beta1.CustomizedVariable{Name: name, Value: value},
+		)
+	}
 
+	cs := r.cr.Spec.Capabilities
+
+	// Platform metrics uses controller-side defaulting — can be enabled even when cs is nil.
+	if MCOAPlatformMetricsEnabled(r.cr) {
+		fqdn := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.PrometheusAgentCRDName)
+		appendCustomVar(aodc, namePlatformMetricsCollection, fqdn)
+		if cs != nil && cs.Platform != nil {
+			if cs.Platform.Metrics.UI.Enabled {
+				appendCustomVar(aodc, namePLatformMetricsUI, uipluginsCRDFQDN)
+			}
+			if cs.Platform.Metrics.Alerts.Enabled {
+				appendCustomVar(aodc, namePlatformMetricsAlerts, "enabled")
+			} else {
+				appendCustomVar(aodc, namePlatformMetricsAlerts, "disabled")
+			}
+		} else {
+			appendCustomVar(aodc, namePlatformMetricsAlerts, "disabled")
+		}
+	}
+
+	if cs != nil {
 		if cs.Platform != nil {
 			if cs.Platform.Logs.Collection.Enabled {
 				fqdn := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.ClusterLogForwarderCRDName)
 				appendCustomVar(aodc, namePlatformLogsCollection, fqdn)
-			}
-			if cs.Platform.Metrics.Default.Enabled {
-				fqdn := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.PrometheusAgentCRDName)
-				appendCustomVar(aodc, namePlatformMetricsCollection, fqdn)
-				if cs.Platform.Metrics.UI.Enabled {
-					appendCustomVar(aodc, namePLatformMetricsUI, uipluginsCRDFQDN)
-				}
-				if cs.Platform.Metrics.Alerts.Enabled {
-					appendCustomVar(aodc, namePlatformMetricsAlerts, "enabled")
-				} else {
-					appendCustomVar(aodc, namePlatformMetricsAlerts, "disabled")
-				}
 			}
 			if cs.Platform.Analytics.IncidentDetection.Enabled {
 				appendCustomVar(aodc, namePlatformIncidentDetection, uipluginsCRDFQDN)
@@ -317,27 +324,27 @@ func (r *MCORenderer) renderAddonDeploymentConfig(
 				appendCustomVar(aodc, nameUserWorkloadInstrumentation, fqdn)
 			}
 		}
-
-		if (cs.Platform != nil && cs.Platform.Metrics.Default.Enabled) ||
-			(cs.UserWorkloads != nil && cs.UserWorkloads.Metrics.Default.Enabled) {
-			if r.rendererOptions == nil {
-				return nil, fmt.Errorf("rendererOptions is nil")
-			}
-
-			metricsHubHostname := r.rendererOptions.MCOAOptions.MetricsHubHostname
-			if metricsHubHostname == "" {
-				return nil, fmt.Errorf("MetricsHubHostname (%q) is required when metrics collection is enabled",
-					metricsHubHostname)
-			}
-			appendCustomVar(aodc, nameMetricsHubHostname, metricsHubHostname)
-		}
-
-		renderedSpec, err := runtime.DefaultUnstructuredConverter.ToUnstructured(&aodc.Spec)
-		if err != nil {
-			return nil, err
-		}
-		u.Object["spec"] = renderedSpec
 	}
+
+	userWorkloadMetrics := cs != nil && cs.UserWorkloads != nil && cs.UserWorkloads.Metrics.Default.Enabled
+	if MCOAPlatformMetricsEnabled(r.cr) || userWorkloadMetrics {
+		if r.rendererOptions == nil {
+			return nil, fmt.Errorf("rendererOptions is nil")
+		}
+
+		metricsHubHostname := r.rendererOptions.MCOAOptions.MetricsHubHostname
+		if metricsHubHostname == "" {
+			return nil, fmt.Errorf("MetricsHubHostname (%q) is required when metrics collection is enabled",
+				metricsHubHostname)
+		}
+		appendCustomVar(aodc, nameMetricsHubHostname, metricsHubHostname)
+	}
+
+	renderedSpec, err := runtime.DefaultUnstructuredConverter.ToUnstructured(&aodc.Spec)
+	if err != nil {
+		return nil, err
+	}
+	u.Object["spec"] = renderedSpec
 
 	cLabels := u.GetLabels()
 	if cLabels == nil {
@@ -403,6 +410,10 @@ func RightSizingEnabled(cr *obv1beta2.MultiClusterObservability) bool {
 // In ACM 5.0 GA, right-sizing is always MCOA-based — use RightSizingEnabled
 // separately to check whether the RS feature itself is active.
 func MCOAEnabled(cr *obv1beta2.MultiClusterObservability) bool {
+	if MCOAPlatformMetricsEnabled(cr) {
+		return true
+	}
+
 	if cr.Spec.Capabilities == nil {
 		return false
 	}
@@ -410,7 +421,6 @@ func MCOAEnabled(cr *obv1beta2.MultiClusterObservability) bool {
 	if cr.Spec.Capabilities.Platform != nil {
 		mcoaEnabled = mcoaEnabled ||
 			cr.Spec.Capabilities.Platform.Logs.Collection.Enabled ||
-			cr.Spec.Capabilities.Platform.Metrics.Default.Enabled ||
 			cr.Spec.Capabilities.Platform.Analytics.IncidentDetection.Enabled
 	}
 	if cr.Spec.Capabilities.UserWorkloads != nil {
@@ -440,12 +450,14 @@ func RightSizingConfigured(cr *obv1beta2.MultiClusterObservability) bool {
 }
 
 // MCOAPlatformMetricsEnabled checks if platform metrics collection is enabled in the MCO CR capabilities.
+// When Enabled is explicitly set, that value is used directly. When it is nil (never configured),
+// the controller defaults based on EnableMetrics as a migration signal:
+// enableMetrics=true (legacy CR) → MCOA disabled; enableMetrics=false (new install) → MCOA enabled.
 func MCOAPlatformMetricsEnabled(cr *obv1beta2.MultiClusterObservability) bool {
-	if cr.Spec.Capabilities == nil {
-		return false
+	if cr.Spec.Capabilities != nil && cr.Spec.Capabilities.Platform != nil &&
+		cr.Spec.Capabilities.Platform.Metrics.Default.Enabled != nil {
+		return *cr.Spec.Capabilities.Platform.Metrics.Default.Enabled
 	}
-	if cr.Spec.Capabilities.Platform != nil && cr.Spec.Capabilities.Platform.Metrics.Default.Enabled {
-		return true
-	}
-	return false
+
+	return cr.Spec.ObservabilityAddonSpec == nil || !cr.Spec.ObservabilityAddonSpec.EnableMetrics
 }
