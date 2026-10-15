@@ -46,6 +46,7 @@ const (
 	nameUserWorkloadMetricsAlerts     = "userWorkloadMetricsAlerts"
 	nameMetricsHubHostname            = "metricsHubHostname"
 	namePLatformMetricsUI             = "platformMetricsUI"
+	nameInstanceSize                  = "instanceSize"
 )
 
 type MCOARendererOptions struct {
@@ -316,6 +317,10 @@ func (r *MCORenderer) renderAddonDeploymentConfig(
 				fqdn := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.InstrumentationCRDName)
 				appendCustomVar(aodc, nameUserWorkloadInstrumentation, fqdn)
 			}
+		}
+
+		if r.cr.Spec.InstanceSize != "" {
+			appendCustomVar(aodc, nameInstanceSize, string(r.cr.Spec.InstanceSize))
 		}
 
 		if (cs.Platform != nil && cs.Platform.Metrics.Default.Enabled) ||
