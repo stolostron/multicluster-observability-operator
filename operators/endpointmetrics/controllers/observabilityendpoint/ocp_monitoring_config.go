@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net/url"
 	"reflect"
+	"slices"
 	"strings"
 
 	cmomanifests "github.com/openshift/cluster-monitoring-operator/pkg/manifests"
@@ -34,6 +35,8 @@ const (
 	clusterMonitoringRevertedName  = "cluster-monitoring-reverted"
 	ClusterMonitoringConfigDataKey = "config.yaml"
 	EndpointMonitoringOperatorMgr  = "endpoint-monitoring-operator"
+	ConfigCleanedAnnotationKey     = "observability.open-cluster-management.io/alertmanager-config-cleaned"
+	ConfigCleanedAnnotationValue   = "true"
 )
 
 var (
@@ -458,11 +461,11 @@ func createOrUpdateClusterMonitoringConfig(
 
 // RevertClusterMonitoringConfig reverts the configmap cluster-monitoring-config and relevant resources
 // (observability-alertmanager-accessor and hub-alertmanager-router-ca) for the openshift cluster monitoring stack.
-func RevertClusterMonitoringConfig(ctx context.Context, client client.Client, caSecret string, clusterName string) error {
+func RevertClusterMonitoringConfig(ctx context.Context, c client.Client, caSecret string, clusterName string) error {
 	log.Info("RevertClusterMonitoringConfig called")
 
 	found := &corev1.ConfigMap{}
-	err := client.Get(ctx, types.NamespacedName{Name: clusterMonitoringConfigName, Namespace: promNamespace}, found)
+	err := c.Get(ctx, types.NamespacedName{Name: clusterMonitoringConfigName, Namespace: promNamespace}, found)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			log.Info("configmap not found, no need action", "name", clusterMonitoringConfigName)
@@ -473,6 +476,10 @@ func RevertClusterMonitoringConfig(ctx context.Context, client client.Client, ca
 
 	log.Info("checking if cluster monitoring config needs revert", "name", clusterMonitoringConfigName)
 	found = found.DeepCopy()
+	if IsConfigCleaned(found) {
+		log.Info("configmap already marked as cleaned, skipping revert", "name", clusterMonitoringConfigName)
+		return nil
+	}
 
 	foundClusterMonitoringConfigurationYAML, ok := HasClusterMonitoringConfigData(found)
 	if !ok {
@@ -522,7 +529,7 @@ func RevertClusterMonitoringConfig(ctx context.Context, client client.Client, ca
 	// check if the foundClusterMonitoringConfiguration is empty ClusterMonitoringConfiguration
 	if reflect.DeepEqual(*foundClusterMonitoringConfiguration, cmomanifests.ClusterMonitoringConfiguration{}) {
 		log.Info("empty ClusterMonitoringConfiguration, deleting configmap if it still exists", "name", clusterMonitoringConfigName)
-		err = client.Delete(ctx, found)
+		err = c.Delete(ctx, found)
 		if err != nil && !errors.IsNotFound(err) {
 			return fmt.Errorf("failed to delete configmap %s: %w", clusterMonitoringConfigName, err)
 		}
@@ -535,7 +542,11 @@ func RevertClusterMonitoringConfig(ctx context.Context, client client.Client, ca
 	}
 
 	found.Data[ClusterMonitoringConfigDataKey] = string(updatedClusterMonitoringConfigurationYAMLBytes)
-	return updateClusterMonitoringConfig(ctx, client, found)
+	if foundClusterMonitoringConfiguration.PrometheusK8sConfig == nil ||
+		!hasAnyManagedAlertmanagerConfig(foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs) {
+		SetConfigCleanedAnnotation(found)
+	}
+	return updateClusterMonitoringConfig(ctx, c, found)
 }
 
 // CreateOrUpdateCMOConfig encapsulates logic to create or update the cluster-monitoring-config configmap.
@@ -593,7 +604,12 @@ func CreateOrUpdateCMOConfig(
 
 	currentYAML, ok := HasClusterMonitoringConfigData(found)
 	if !ok {
-		found.Data[ClusterMonitoringConfigDataKey] = string(yamlBytes)
+		if found.Data == nil {
+			found.Data = map[string]string{ClusterMonitoringConfigDataKey: string(yamlBytes)}
+		} else {
+			found.Data[ClusterMonitoringConfigDataKey] = string(yamlBytes)
+		}
+		RemoveConfigCleanedAnnotation(found)
 		return true, updateClusterMonitoringConfigAndUnset(ctx, client, found, namespace)
 	}
 
@@ -644,7 +660,8 @@ func CreateOrUpdateCMOConfig(
 		return false, err
 	}
 
-	if equality.Semantic.DeepEqual(*existingCfg, *updatedCMOCfg) {
+	annotationUpdated := RemoveConfigCleanedAnnotation(found)
+	if equality.Semantic.DeepEqual(*existingCfg, *updatedCMOCfg) && !annotationUpdated {
 		return false, nil
 	}
 
@@ -693,7 +710,7 @@ func CreateOrUpdateUserWorkloadMonitoringConfig(
 			Data: map[string]string{"config.yaml": string(yamlBytes)},
 		}
 		log.Info("user workload monitoring configmap not found, creating it", "name", operatorconfig.OCPUserWorkloadMonitoringConfigMap)
-		return c.Create(ctx, newCM)
+		return c.Create(ctx, newCM, client.FieldOwner(EndpointMonitoringOperatorMgr))
 	} else if err != nil {
 		return fmt.Errorf("failed to retrieve user workload monitoring configmap: %w", err)
 	}
@@ -705,8 +722,9 @@ func CreateOrUpdateUserWorkloadMonitoringConfig(
 		} else {
 			existing.Data["config.yaml"] = string(yamlBytes)
 		}
+		RemoveConfigCleanedAnnotation(existing)
 		log.Info("user workload monitoring configmap missing config.yaml, updating")
-		return c.Update(ctx, existing)
+		return c.Update(ctx, existing, client.FieldOwner(EndpointMonitoringOperatorMgr))
 	}
 
 	parsed := &cmomanifests.UserWorkloadConfiguration{}
@@ -737,7 +755,8 @@ func CreateOrUpdateUserWorkloadMonitoringConfig(
 		return fmt.Errorf("failed to marshal updated user workload monitoring config: %w", err)
 	}
 
-	if string(updatedYAMLBytes) == existingYAML {
+	annotationUpdated := RemoveConfigCleanedAnnotation(existing)
+	if string(updatedYAMLBytes) == existingYAML && !annotationUpdated {
 		return nil
 	}
 
@@ -837,6 +856,57 @@ func IsManaged(amc cmomanifests.AdditionalAlertmanagerConfig, caSecret string) b
 	return false
 }
 
+// SetConfigCleanedAnnotation marks the ConfigMap as cleaned once all operator-managed alertmanager configs
+// have been reverted, so subsequent revert passes skip it until alert forwarding is re-enabled.
+func SetConfigCleanedAnnotation(cm *corev1.ConfigMap) bool {
+	if cm.Annotations == nil {
+		cm.Annotations = make(map[string]string)
+	}
+	if cm.Annotations[ConfigCleanedAnnotationKey] == ConfigCleanedAnnotationValue {
+		return false
+	}
+	cm.Annotations[ConfigCleanedAnnotationKey] = ConfigCleanedAnnotationValue
+	return true
+}
+
+// RemoveConfigCleanedAnnotation removes the alertmanager-config-cleaned annotation from the ConfigMap when
+// alert forwarding is enabled and endpoint-monitoring-operator configures it again.
+func RemoveConfigCleanedAnnotation(cm *corev1.ConfigMap) bool {
+	if cm.Annotations == nil {
+		return false
+	}
+	if _, ok := cm.Annotations[ConfigCleanedAnnotationKey]; !ok {
+		return false
+	}
+	delete(cm.Annotations, ConfigCleanedAnnotationKey)
+	if len(cm.Annotations) == 0 {
+		cm.Annotations = nil
+	}
+	return true
+}
+
+// IsConfigCleaned checks if the ConfigMap has been marked with the alertmanager-config-cleaned annotation
+// (either after being cleaned once by endpoint-monitoring-operator, or preemptively by an external
+// controller such as an ACM Policy to prevent conflicting updates).
+func IsConfigCleaned(cm *corev1.ConfigMap) bool {
+	return cm.Annotations != nil && cm.Annotations[ConfigCleanedAnnotationKey] == ConfigCleanedAnnotationValue
+}
+
+func hasAnyManagedAlertmanagerConfig(configs []cmomanifests.AdditionalAlertmanagerConfig) bool {
+	return slices.ContainsFunc(configs, func(amc cmomanifests.AdditionalAlertmanagerConfig) bool {
+		if amc.TLSConfig.CA == nil {
+			return false
+		}
+		caName := amc.TLSConfig.CA.Name
+		return caName == HubAmRouterCASecretName ||
+			caName == amMtlsCaName ||
+			caName == HubMtlsCASecretName ||
+			strings.HasPrefix(caName, HubAmRouterCASecretName+"-") ||
+			strings.HasPrefix(caName, amMtlsCaName+"-") ||
+			strings.HasPrefix(caName, HubMtlsCASecretName+"-")
+	})
+}
+
 // HasClusterMonitoringConfigData checks if the configmap has the required key and logs if not
 func HasClusterMonitoringConfigData(cm *corev1.ConfigMap) (string, bool) {
 	data, ok := cm.Data[ClusterMonitoringConfigDataKey]
@@ -854,11 +924,11 @@ func HasClusterMonitoringConfigData(cm *corev1.ConfigMap) (string, bool) {
 
 // RevertUserWorkloadMonitoringConfig reverts the configmap user-workload-monitoring-config
 // in the openshift-user-workload-monitoring namespace.
-func RevertUserWorkloadMonitoringConfig(ctx context.Context, client client.Client, caSecret string) error {
+func RevertUserWorkloadMonitoringConfig(ctx context.Context, c client.Client, caSecret string) error {
 	log.Info("RevertUserWorkloadMonitoringConfig called")
 
 	found := &corev1.ConfigMap{}
-	err := client.Get(ctx, types.NamespacedName{
+	err := c.Get(ctx, types.NamespacedName{
 		Name:      operatorconfig.OCPUserWorkloadMonitoringConfigMap,
 		Namespace: operatorconfig.OCPUserWorkloadMonitoringNamespace,
 	}, found)
@@ -872,6 +942,10 @@ func RevertUserWorkloadMonitoringConfig(ctx context.Context, client client.Clien
 
 	log.Info("checking if user workload monitoring config needs revert", "name", operatorconfig.OCPUserWorkloadMonitoringConfigMap)
 	found = found.DeepCopy()
+	if IsConfigCleaned(found) {
+		log.Info("configmap already marked as cleaned, skipping revert", "name", operatorconfig.OCPUserWorkloadMonitoringConfigMap)
+		return nil
+	}
 
 	existingYAML, ok := found.Data["config.yaml"]
 	if !ok {
@@ -909,7 +983,7 @@ func RevertUserWorkloadMonitoringConfig(ctx context.Context, client client.Clien
 	// check if the parsed is empty UserWorkloadConfiguration
 	if equality.Semantic.DeepEqual(*parsed, cmomanifests.UserWorkloadConfiguration{}) {
 		log.Info("empty UserWorkloadConfiguration, deleting configmap if it still exists", "name", operatorconfig.OCPUserWorkloadMonitoringConfigMap)
-		err = client.Delete(ctx, found)
+		err = c.Delete(ctx, found)
 		if err != nil && !errors.IsNotFound(err) {
 			return fmt.Errorf("failed to delete configmap %s: %w", operatorconfig.OCPUserWorkloadMonitoringConfigMap, err)
 		}
@@ -922,7 +996,10 @@ func RevertUserWorkloadMonitoringConfig(ctx context.Context, client client.Clien
 	}
 
 	found.Data["config.yaml"] = string(updatedYAMLBytes)
-	return client.Update(ctx, found)
+	if parsed.Prometheus == nil || !hasAnyManagedAlertmanagerConfig(parsed.Prometheus.AlertmanagerConfigs) {
+		SetConfigCleanedAnnotation(found)
+	}
+	return c.Update(ctx, found, client.FieldOwner(EndpointMonitoringOperatorMgr))
 }
 
 func CreateMtlsSecretInNamespace(ctx context.Context, c client.Client, sourceNamespace, targetNamespace, secretName string, secretRename string, hubInfo *operatorconfig.HubInfo) error {

@@ -242,7 +242,7 @@ func TestClusterMonitoringConfigAlertsDisabled(t *testing.T) {
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&zap.Options{Development: true})))
 	ctx := context.TODO()
 
-	hubInfo := &operatorconfig.HubInfo{}
+	hubInfo := &operatorconfig.HubInfo{HubClusterID: "1a9af6dc0801433cb28a200af81"}
 	err := yaml.Unmarshal([]byte(hubInfoYAMLAlertsDisabled), &hubInfo)
 	if err != nil {
 		t.Fatalf("Failed to unmarshal hubInfo: (%v)", err)
@@ -255,15 +255,117 @@ func TestClusterMonitoringConfigAlertsDisabled(t *testing.T) {
 	//   Disable alert forwarding
 	//   clusterMonitoringRevertedName should be created
 	//   cluster-monitoring-config should be removed
-	cmc := newClusterMonitoringConfigCM(clusterMonitoringConfigDataYaml, "endpoint-monitoring-operator")
+	cmc := newClusterMonitoringConfigCM(clusterMonitoringConfigDataYaml, EndpointMonitoringOperatorMgr)
 	objs := []runtime.Object{hubInfoObj, amAccessSrt, cmc}
 	objs = append(objs, newMtlsTestSecrets(testNamespace)...)
 	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 
+	t.Run("Disable alert forwarding when managed by endpoint-monitoring-operator", func(t *testing.T) {
+		wasUpdated, err := createOrUpdateClusterMonitoringConfig(ctx, hubInfo, testClusterID, c, false, testNamespace)
+		if err != nil {
+			t.Fatalf("Failed to create or update the cluster-monitoring-config configmap: (%v)", err)
+		}
+		assert.False(t, wasUpdated)
+
+		foundclusterMonitoringRevertedCM := &corev1.ConfigMap{}
+		err = c.Get(ctx, types.NamespacedName{
+			Name:      clusterMonitoringRevertedName,
+			Namespace: testNamespace,
+		}, foundclusterMonitoringRevertedCM)
+		if err != nil {
+			t.Fatalf("configmap %s not created after disabling alerts: %v", clusterMonitoringRevertedName, err)
+		}
+
+		foundClusterMonitoringConfigMap := &corev1.ConfigMap{}
+		err = c.Get(ctx, types.NamespacedName{
+			Name:      clusterMonitoringConfigName,
+			Namespace: promNamespace,
+		}, foundClusterMonitoringConfigMap)
+		if !errors.IsNotFound(err) {
+			t.Fatalf("configmap %s should have been deleted when empty after revert, got err: %v", clusterMonitoringConfigName, err)
+		}
+	})
+
+	// Scenario 2:
+	//   create cluster-monitoring-config configmap managed by an external ACM policy with the
+	//   preemptive config-cleaned annotation and containing additionalAlertmanagerConfigs referencing
+	//   the hub's mTLS secrets and externalLabels.managed_cluster.
+	//   Ensure clusterMonitoringRevertedName is removed first so revert is attempted.
+	//   cluster-monitoring-config should NOT be reverted, keeping the policy compliant.
+	t.Run("Do not revert cluster-monitoring-config when preemptively marked config-cleaned by ACM policy", func(t *testing.T) {
+		err := unsetConfigReverted(ctx, c, testNamespace)
+		if err != nil {
+			t.Fatalf("failed to unset config reverted: %v", err)
+		}
+
+		policyConfigYAML := `alertmanagerMain:
+  enabled: false
+telemeterClient:
+  enabled: false
+nodeExporter:
+  collectors:
+    buddyinfo: {}
+    cpufreq: {}
+    ksmd: {}
+    mountstats: {}
+    netclass: {}
+    netdev: {}
+    processes: {}
+    systemd: {}
+    tcpstat: {}
+prometheusK8s:
+  additionalAlertmanagerConfigs:
+  - apiVersion: v2
+    bearerToken:
+      key: token
+      name: observability-alertmanager-accessor-95ff48de5b0f4e23bcc
+    pathPrefix: /api/alertmanager/v2/default
+    scheme: https
+    staticConfigs: [observatorium-api-open-cluster-management-observability.apps.acm-gigantic.rdu2.scalelab.redhat.com]
+    tlsConfig:
+      ca:
+        key: ca.crt
+        name: obs-alertmanager-mtls-ca-95ff48de5b0f4e23bcc
+      cert:
+        key: tls.crt
+        name: obs-alertmanager-mtls-cert-95ff48de5b0f4e23bcc
+      key:
+        key: tls.key
+        name: obs-alertmanager-mtls-cert-95ff48de5b0f4e23bcc
+      insecureSkipVerify: false
+  externalLabels:
+    managed_cluster: 8607339a-ffa8-459b-8a77-69e89995205a
+  retention: 24h
+`
+		policyCM := newClusterMonitoringConfigCM(policyConfigYAML, "config-policy-controller")
+		SetConfigCleanedAnnotation(policyCM)
+		if err := c.Create(ctx, policyCM); err != nil {
+			t.Fatalf("failed to create policy-managed cluster-monitoring-config: %v", err)
+		}
+
+		policyHubInfo := &operatorconfig.HubInfo{
+			ClusterName:          "8607339a-ffa8-459b-8a77-69e89995205a",
+			HubClusterID:         "95ff48de5b0f4e23bcc",
+			AlertmanagerEndpoint: "",
+		}
+		wasUpdated, err := createOrUpdateClusterMonitoringConfig(ctx, policyHubInfo, "8607339a-ffa8-459b-8a77-69e89995205a", c, false, testNamespace)
+		if err != nil {
+			t.Fatalf("Failed to run createOrUpdateClusterMonitoringConfig for policy-managed configmap: %v", err)
+		}
+		assert.False(t, wasUpdated)
+
+		foundCM := &corev1.ConfigMap{}
+		if err := c.Get(ctx, types.NamespacedName{Name: clusterMonitoringConfigName, Namespace: promNamespace}, foundCM); err != nil {
+			t.Fatalf("could not retrieve policy-managed configmap: %v", err)
+		}
+		assert.Equal(t, policyConfigYAML, foundCM.Data[ClusterMonitoringConfigDataKey], "ACM policy config.yaml should remain untouched")
+		assert.Equal(t, ConfigCleanedAnnotationValue, foundCM.Annotations[ConfigCleanedAnnotationKey])
+	})
+
 	// Scenario 3:
-	//   Reenable alert forwarding.
+	//   Reenable alert forwarding on the ConfigMap that had ConfigCleanedAnnotationKey.
 	//   verify clusterMonitoringRevertedName is deleted
-	//   cluster-monitoring-config restored
+	//   cluster-monitoring-config restored and ConfigCleanedAnnotationKey is removed
 	err = c.Delete(ctx, hubInfoObj)
 	if err != nil {
 		t.Fatalf("could not delete existing hubInfoObj")
@@ -272,12 +374,13 @@ func TestClusterMonitoringConfigAlertsDisabled(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to unmarshal hubInfo: (%v)", err)
 	}
+	hubInfo.HubClusterID = "1a9af6dc0801433cb28a200af81"
 	hubInfoObj = newHubInfoSecret([]byte(hubInfoYAML), testNamespace)
 	err = c.Create(ctx, hubInfoObj)
 	if err != nil {
 		t.Fatalf("could not recreate hubInfoObject to enable alerts again")
 	}
-	t.Run("Reenable alert forwarding", func(t *testing.T) {
+	t.Run("Reenable alert forwarding removes config-cleaned annotation", func(t *testing.T) {
 		wasUpdated, err := createOrUpdateClusterMonitoringConfig(ctx, hubInfo, testClusterID, c, false, testNamespace)
 		if err != nil {
 			t.Fatalf("Failed to create or update the cluster-monitoring-config configmap: (%v)", err)
@@ -301,6 +404,7 @@ func TestClusterMonitoringConfigAlertsDisabled(t *testing.T) {
 		if err != nil {
 			t.Fatalf("could not retrieve configmap %s: %v", clusterMonitoringConfigName, err)
 		}
+		assert.Empty(t, foundCusterMonitoringConfigMap.Annotations[ConfigCleanedAnnotationKey], "config-cleaned annotation should be removed when alert forwarding is re-enabled")
 
 		foundClusterMonitoringConfigurationYAML, ok := foundCusterMonitoringConfigMap.Data[ClusterMonitoringConfigDataKey]
 		if !ok {
@@ -332,6 +436,49 @@ func TestClusterMonitoringConfigAlertsDisabled(t *testing.T) {
 		if foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs == nil {
 			t.Fatalf("AlertmanagerConfigs is nil after reenabling alerts")
 		}
+	})
+
+	// Scenario 4:
+	//   Revert cleans an unannotated ConfigMap once, stamps ConfigCleanedAnnotationKey,
+	//   and subsequent RevertClusterMonitoringConfig calls skip it even if an ACM policy adds back alertmanager config.
+	t.Run("Revert cleans once, stamps config-cleaned annotation, and skips subsequent reverts", func(t *testing.T) {
+		disabledHubInfo := &operatorconfig.HubInfo{HubClusterID: "1a9af6dc0801433cb28a200af81"}
+		if err := yaml.Unmarshal([]byte(hubInfoYAMLAlertsDisabled), &disabledHubInfo); err != nil {
+			t.Fatalf("failed to unmarshal disabledHubInfo: %v", err)
+		}
+		// Clean up the 95ff48de5b0f4e23bcc stanza from Scenario 2 as well so only 1a9af6dc0801433cb28a200af81 is tested
+		caSecretOther := AppendHubClusterID(amMtlsCaName, "95ff48de5b0f4e23bcc")
+		if err := RevertClusterMonitoringConfig(ctx, c, caSecretOther, ""); err != nil {
+			t.Fatalf("failed to revert other hub stanza: %v", err)
+		}
+
+		_, err := createOrUpdateClusterMonitoringConfig(ctx, disabledHubInfo, testClusterID, c, false, testNamespace)
+		if err != nil {
+			t.Fatalf("failed to revert cluster-monitoring-config: %v", err)
+		}
+
+		revertedCM := &corev1.ConfigMap{}
+		if err := c.Get(ctx, types.NamespacedName{Name: clusterMonitoringConfigName, Namespace: promNamespace}, revertedCM); err != nil {
+			t.Fatalf("expected cluster-monitoring-config to remain with non-empty settings, got err: %v", err)
+		}
+		assert.Equal(t, ConfigCleanedAnnotationValue, revertedCM.Annotations[ConfigCleanedAnnotationKey], "config-cleaned annotation should be set after cleaning once")
+
+		// Now simulate an ACM policy re-adding additionalAlertmanagerConfigs while config-cleaned is set
+		revertedCM.Data[ClusterMonitoringConfigDataKey] = clusterMonitoringConfigDataYaml
+		if err := c.Update(ctx, revertedCM); err != nil {
+			t.Fatalf("failed to simulate policy update: %v", err)
+		}
+
+		caSecret := AppendHubClusterID(amMtlsCaName, disabledHubInfo.HubClusterID)
+		if err := RevertClusterMonitoringConfig(ctx, c, caSecret, ""); err != nil {
+			t.Fatalf("unexpected error on second revert: %v", err)
+		}
+
+		afterSecondRevert := &corev1.ConfigMap{}
+		if err := c.Get(ctx, types.NamespacedName{Name: clusterMonitoringConfigName, Namespace: promNamespace}, afterSecondRevert); err != nil {
+			t.Fatalf("expected configmap to still exist: %v", err)
+		}
+		assert.Equal(t, clusterMonitoringConfigDataYaml, afterSecondRevert.Data[ClusterMonitoringConfigDataKey], "second revert should be skipped because config-cleaned annotation is present")
 	})
 }
 
@@ -982,15 +1129,7 @@ prometheus:
       insecureSkipVerify: true
 `
 
-	uwlConfigMap := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      operatorconfig.OCPUserWorkloadMonitoringConfigMap,
-			Namespace: operatorconfig.OCPUserWorkloadMonitoringNamespace,
-		},
-		Data: map[string]string{
-			"config.yaml": uwlConfigYAML,
-		},
-	}
+	uwlConfigMap := newUserWorkloadMonitoringConfigCM(uwlConfigYAML, EndpointMonitoringOperatorMgr)
 
 	// Create CMO configmap with UWL disabled
 	cmoConfigYAML := `
@@ -1382,6 +1521,151 @@ func TestIsManaged(t *testing.T) {
 			}
 			result := IsManaged(amc, tt.caSecret)
 			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestIsConfigCleaned(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		cm       *corev1.ConfigMap
+		expected bool
+	}{
+		{
+			name: "Marked as cleaned via ConfigCleanedAnnotationKey",
+			cm: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ConfigCleanedAnnotationKey: ConfigCleanedAnnotationValue,
+					},
+				},
+			},
+			expected: true,
+		},
+		{
+			name: "Different value in ConfigCleanedAnnotationKey",
+			cm: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ConfigCleanedAnnotationKey: "false",
+					},
+				},
+			},
+			expected: false,
+		},
+		{
+			name: "Unannotated legacy ConfigMap (should be cleaned once)",
+			cm: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					ManagedFields: []metav1.ManagedFieldsEntry{
+						{Manager: EndpointMonitoringOperatorMgr},
+					},
+				},
+			},
+			expected: false,
+		},
+		{
+			name:     "Empty ConfigMap metadata",
+			cm:       &corev1.ConfigMap{},
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, IsConfigCleaned(tt.cm))
+		})
+	}
+}
+
+func TestHasAnyManagedAlertmanagerConfig(t *testing.T) {
+	t.Parallel()
+
+	withCA := func(caName string) cmomanifests.AdditionalAlertmanagerConfig {
+		var amc cmomanifests.AdditionalAlertmanagerConfig
+		if caName != "" {
+			amc.TLSConfig.CA = &corev1.SecretKeySelector{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: caName,
+				},
+			}
+		}
+		return amc
+	}
+
+	tests := []struct {
+		name     string
+		configs  []cmomanifests.AdditionalAlertmanagerConfig
+		expected bool
+	}{
+		{
+			name:     "Nil slice",
+			configs:  nil,
+			expected: false,
+		},
+		{
+			name:     "Empty slice",
+			configs:  []cmomanifests.AdditionalAlertmanagerConfig{},
+			expected: false,
+		},
+		{
+			name:     "Config with nil CA",
+			configs:  []cmomanifests.AdditionalAlertmanagerConfig{withCA("")},
+			expected: false,
+		},
+		{
+			name:     "Bare legacy router CA secret name",
+			configs:  []cmomanifests.AdditionalAlertmanagerConfig{withCA(HubAmRouterCASecretName)},
+			expected: true,
+		},
+		{
+			name:     "Bare mTLS CA secret name",
+			configs:  []cmomanifests.AdditionalAlertmanagerConfig{withCA(amMtlsCaName)},
+			expected: true,
+		},
+		{
+			name:     "Bare MCOA hub-mtls-ca secret name",
+			configs:  []cmomanifests.AdditionalAlertmanagerConfig{withCA(HubMtlsCASecretName)},
+			expected: true,
+		},
+		{
+			name:     "Hub-suffixed legacy router CA secret name",
+			configs:  []cmomanifests.AdditionalAlertmanagerConfig{withCA(HubAmRouterCASecretName + "-AAAA")},
+			expected: true,
+		},
+		{
+			name:     "Hub-suffixed mTLS CA secret name",
+			configs:  []cmomanifests.AdditionalAlertmanagerConfig{withCA(amMtlsCaName + "-AAAA")},
+			expected: true,
+		},
+		{
+			name:     "Hub-suffixed MCOA hub-mtls-ca secret name",
+			configs:  []cmomanifests.AdditionalAlertmanagerConfig{withCA(HubMtlsCASecretName + "-AAAA")},
+			expected: true,
+		},
+		{
+			name: "Unrelated secret names",
+			configs: []cmomanifests.AdditionalAlertmanagerConfig{
+				withCA("custom-alertmanager-ca"),
+				withCA("some-other-secret-ca-AAAA"),
+			},
+			expected: false,
+		},
+		{
+			name: "Mixed unrelated and managed CA secret names",
+			configs: []cmomanifests.AdditionalAlertmanagerConfig{
+				withCA("custom-alertmanager-ca"),
+				withCA(amMtlsCaName + "-BBBB"),
+			},
+			expected: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, hasAnyManagedAlertmanagerConfig(tt.configs))
 		})
 	}
 }
