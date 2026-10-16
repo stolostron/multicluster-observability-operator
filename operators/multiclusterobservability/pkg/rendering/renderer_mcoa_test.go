@@ -235,6 +235,59 @@ func TestRenderAddonDeploymentConfig(t *testing.T) {
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1beta1.CustomizedVariable{Name: mcoutil.ADCKeyPlatformVirtualizationRightSizing, Value: "disabled"})
 }
 
+func TestRenderAddonDeploymentConfig_CustomCOOCatalogSource(t *testing.T) {
+	wd, err := os.Getwd()
+	assert.NoError(t, err)
+	templatesPath := filepath.Join(wd, "..", "..", "manifests")
+	t.Setenv(templatesutil.TemplatesPathEnvVar, templatesPath)
+
+	tmplRenderer := templatesutil.NewTemplateRenderer(templatesPath)
+	mcoaTemplates, err := templates.GetOrLoadMCOATemplates(tmplRenderer)
+	assert.NoError(t, err)
+
+	var aodc *kustomizeres.Resource
+	for _, template := range mcoaTemplates {
+		if template.GetKind() == "AddOnDeploymentConfig" {
+			aodc = template.DeepCopy()
+			break
+		}
+	}
+
+	mco := &mcov1beta2.MultiClusterObservability{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "multicluster-observability",
+		},
+		Spec: mcov1beta2.MultiClusterObservabilitySpec{
+			Capabilities: &mcov1beta2.CapabilitiesSpec{
+				Platform: &mcov1beta2.PlatformCapabilitiesSpec{
+					Analytics: mcov1beta2.PlatformAnalyticsSpec{
+						IncidentDetection: mcov1beta2.PlatformIncidentDetectionSpec{
+							Enabled: true,
+						},
+					},
+				},
+				CatalogSource: &mcov1beta2.CatalogSourceSpec{
+					Name:      "cs-redhat-operator-index-v4-20",
+					Namespace: "openshift-marketplace",
+				},
+			},
+		},
+	}
+
+	renderer := &MCORenderer{cr: mco}
+
+	uobj, err := renderer.renderAddonDeploymentConfig(t.Context(), aodc, "test", map[string]string{"key": "value"})
+	assert.NoError(t, err)
+	assert.NotNil(t, uobj)
+
+	got := &addonv1beta1.AddOnDeploymentConfig{}
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(uobj.Object, got)
+	assert.NoError(t, err)
+
+	assert.Contains(t, got.Spec.CustomizedVariables, addonv1beta1.CustomizedVariable{Name: nameCOOCatalogSource, Value: "cs-redhat-operator-index-v4-20"})
+	assert.Contains(t, got.Spec.CustomizedVariables, addonv1beta1.CustomizedVariable{Name: nameCOOCatalogSourceNamespace, Value: "openshift-marketplace"})
+}
+
 func TestRenderAddonDeploymentConfig_AlertsEnabled(t *testing.T) {
 	wd, err := os.Getwd()
 	assert.NoError(t, err)
