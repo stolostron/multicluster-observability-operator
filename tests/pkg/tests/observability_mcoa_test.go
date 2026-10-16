@@ -1248,6 +1248,8 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 			Expect(utils.ResetMCOACapabilities(testOptions)).NotTo(HaveOccurred())
 			utils.CheckStatefulSetAvailabilityOnClusters(managedClustersWithHub, platformPrometheusAgentStatefulSetName, utils.MCO_AGENT_ADDON_NAMESPACE, false)
 			utils.CheckDeploymentAvailability(testOptions.HubCluster, mcoaManagerDeploymentName, utils.MCO_NAMESPACE, false)
+			utils.CheckClusterManagementAddonDeleted(testOptions, utils.MCOA_CLUSTER_MANAGEMENT_ADDON_NAME)
+			utils.CheckManagedClusterAddonDeleted(testOptions, utils.MCOA_CLUSTER_MANAGEMENT_ADDON_NAME)
 
 			By("Checking that OBO/COO CRDs are deleted from managed clusters when addon is disabled", func() {
 				expectedCRDs := mcoa.GetManagedCRDNames()
