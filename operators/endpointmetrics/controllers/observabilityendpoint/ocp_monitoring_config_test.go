@@ -346,7 +346,7 @@ prometheusK8s:
 			t.Fatalf("failed to create unmanaged cluster-monitoring-config: %v", err)
 		}
 
-		// 2a. Alert forwarding disabled -> RevertClusterMonitoringConfig should skip
+		// 2a. Alert forwarding disabled -> RevertClusterMonitoringConfig should skip and NOT set cluster-monitoring-reverted
 		disabledHubInfo := &operatorconfig.HubInfo{
 			ClusterName:          "8607339a-ffa8-459b-8a77-69e89995205a",
 			HubClusterID:         "95ff48de5b0f4e23bcc",
@@ -357,6 +357,10 @@ prometheusK8s:
 			t.Fatalf("Failed to run createOrUpdateClusterMonitoringConfig (revert) for unmanaged configmap: %v", err)
 		}
 		assert.False(t, wasUpdated)
+
+		revertedCM := &corev1.ConfigMap{}
+		err = c.Get(ctx, types.NamespacedName{Name: clusterMonitoringRevertedName, Namespace: testNamespace}, revertedCM)
+		assert.True(t, errors.IsNotFound(err), "cluster-monitoring-reverted should not be created while ConfigMap is unmanaged")
 
 		foundCM := &corev1.ConfigMap{}
 		if err := c.Get(ctx, types.NamespacedName{Name: clusterMonitoringConfigName, Namespace: promNamespace}, foundCM); err != nil {
@@ -382,6 +386,44 @@ prometheusK8s:
 		}
 		assert.Equal(t, unmanagedConfigYAML, foundCM.Data[ClusterMonitoringConfigDataKey], "unmanaged config.yaml should remain untouched on update")
 		assert.Equal(t, UnmanagedAnnotationValue, foundCM.Annotations[UnmanagedAnnotationKey])
+
+		// 2c. Removing the unmanaged annotation while alert forwarding is still disabled must revert ACM config
+		delete(foundCM.Annotations, UnmanagedAnnotationKey)
+		if err := c.Update(ctx, foundCM); err != nil {
+			t.Fatalf("failed to remove unmanaged annotation: %v", err)
+		}
+		wasUpdated, err = createOrUpdateClusterMonitoringConfig(ctx, disabledHubInfo, "8607339a-ffa8-459b-8a77-69e89995205a", c, false, testNamespace)
+		if err != nil {
+			t.Fatalf("Failed to run createOrUpdateClusterMonitoringConfig after removing unmanaged annotation: %v", err)
+		}
+		assert.False(t, wasUpdated)
+
+		if err := c.Get(ctx, types.NamespacedName{Name: clusterMonitoringRevertedName, Namespace: testNamespace}, revertedCM); err != nil {
+			t.Fatalf("cluster-monitoring-reverted should be created after managed revert completes: %v", err)
+		}
+		if err := c.Get(ctx, types.NamespacedName{Name: clusterMonitoringConfigName, Namespace: promNamespace}, foundCM); err != nil {
+			t.Fatalf("could not retrieve reverted configmap: %v", err)
+		}
+		assert.NotContains(t, foundCM.Data[ClusterMonitoringConfigDataKey], "obs-alertmanager-mtls-ca-95ff48de5b0f4e23bcc")
+		assert.Contains(t, foundCM.Data[ClusterMonitoringConfigDataKey], "retention: 24h")
+
+		// Calling RevertClusterMonitoringConfig again when no ACM stanzas exist must not update the ConfigMap
+		rvBefore := foundCM.ResourceVersion
+		if err := RevertClusterMonitoringConfig(ctx, c, AppendHubClusterID(amMtlsCaName, disabledHubInfo.HubClusterID), ""); err != nil {
+			t.Fatalf("unexpected error on second RevertClusterMonitoringConfig: %v", err)
+		}
+		if err := c.Get(ctx, types.NamespacedName{Name: clusterMonitoringConfigName, Namespace: promNamespace}, foundCM); err != nil {
+			t.Fatalf("could not retrieve configmap: %v", err)
+		}
+		assert.Equal(t, rvBefore, foundCM.ResourceVersion, "RevertClusterMonitoringConfig should not call Update when no ACM config was modified")
+
+		// Restore unmanaged annotation for Scenario 3
+		foundCM.Annotations = map[string]string{
+			UnmanagedAnnotationKey: UnmanagedAnnotationValue,
+		}
+		if err := c.Update(ctx, foundCM); err != nil {
+			t.Fatalf("failed to restore unmanaged annotation: %v", err)
+		}
 	})
 
 	// Scenario 3:
@@ -514,6 +556,29 @@ prometheusK8s:
 			t.Fatalf("could not retrieve user-workload-monitoring-config: %v", err)
 		}
 		assert.Equal(t, uwmUnmanagedYAML, foundUWM.Data["config.yaml"], "unmanaged user-workload-monitoring-config should remain untouched on revert")
+
+		// 4c. When unmanaged is removed and no ACM stanza is present, RevertUserWorkloadMonitoringConfig must not call Update
+		delete(foundUWM.Annotations, UnmanagedAnnotationKey)
+		if err := c.Update(ctx, foundUWM); err != nil {
+			t.Fatalf("failed to remove unmanaged annotation from UWM configmap: %v", err)
+		}
+		if err := c.Get(ctx, types.NamespacedName{
+			Name:      operatorconfig.OCPUserWorkloadMonitoringConfigMap,
+			Namespace: operatorconfig.OCPUserWorkloadMonitoringNamespace,
+		}, foundUWM); err != nil {
+			t.Fatalf("could not retrieve user-workload-monitoring-config: %v", err)
+		}
+		rvBefore := foundUWM.ResourceVersion
+		if err := RevertUserWorkloadMonitoringConfig(ctx, c, caSecret); err != nil {
+			t.Fatalf("unexpected error in RevertUserWorkloadMonitoringConfig when no ACM config present: %v", err)
+		}
+		if err := c.Get(ctx, types.NamespacedName{
+			Name:      operatorconfig.OCPUserWorkloadMonitoringConfigMap,
+			Namespace: operatorconfig.OCPUserWorkloadMonitoringNamespace,
+		}, foundUWM); err != nil {
+			t.Fatalf("could not retrieve user-workload-monitoring-config: %v", err)
+		}
+		assert.Equal(t, rvBefore, foundUWM.ResourceVersion, "RevertUserWorkloadMonitoringConfig should not call Update when no ACM config was modified")
 	})
 }
 

@@ -375,10 +375,35 @@ func createOrUpdateClusterMonitoringConfig(
 	// handle the case when alert forwarding is disabled
 	if hubInfo.AlertmanagerEndpoint == "" {
 		log.Info("request to disable alert forwarding")
+		cmoUnmanaged, err := isConfigMapUnmanaged(ctx, client, clusterMonitoringConfigName, promNamespace)
+		if err != nil {
+			return false, err
+		}
+		uwmUnmanaged := false
+		if nsExists {
+			uwmUnmanaged, err = isConfigMapUnmanaged(
+				ctx,
+				client,
+				operatorconfig.OCPUserWorkloadMonitoringConfigMap,
+				operatorconfig.OCPUserWorkloadMonitoringNamespace,
+			)
+			if err != nil {
+				return false, err
+			}
+		}
+
 		// only revert (once) if not done already and remember state
 		revertedAlready, err := isRevertedAlready(ctx, client, namespace)
 		if err != nil {
 			return false, err
+		}
+		if cmoUnmanaged || uwmUnmanaged {
+			// If a ConfigMap is marked unmanaged while alert forwarding is disabled, clear the
+			// reverted marker so removing the unmanaged annotation later will trigger a revert.
+			if err = unset(ctx, client, namespace); err != nil {
+				return false, err
+			}
+			revertedAlready = false
 		}
 		if !revertedAlready {
 			caSecret := AppendHubClusterID(amMtlsCaName, hubInfo.HubClusterID)
@@ -390,8 +415,10 @@ func createOrUpdateClusterMonitoringConfig(
 					return false, err
 				}
 			}
-			if err = setConfigReverted(ctx, client, namespace); err != nil {
-				return false, err
+			if !cmoUnmanaged && !uwmUnmanaged {
+				if err = setConfigReverted(ctx, client, namespace); err != nil {
+					return false, err
+				}
 			}
 		} else {
 			log.Info("configuration reverted, nothing to do")
@@ -495,11 +522,19 @@ func RevertClusterMonitoringConfig(ctx context.Context, c client.Client, caSecre
 		log.Info("configmap data doesn't contain 'prometheusK8s', no need action", "name", clusterMonitoringConfigName)
 		return nil
 	}
+
+	modified := false
 	// check if externalLabels exists
 	if foundClusterMonitoringConfiguration.PrometheusK8sConfig.ExternalLabels != nil {
-		delete(foundClusterMonitoringConfiguration.PrometheusK8sConfig.ExternalLabels, operatorconfig.ClusterLabelKeyForAlerts)
+		if _, ok := foundClusterMonitoringConfiguration.PrometheusK8sConfig.ExternalLabels[operatorconfig.ClusterLabelKeyForAlerts]; ok {
+			delete(foundClusterMonitoringConfiguration.PrometheusK8sConfig.ExternalLabels, operatorconfig.ClusterLabelKeyForAlerts)
+			modified = true
+		}
 		if clusterName != "" {
-			delete(foundClusterMonitoringConfiguration.PrometheusK8sConfig.ExternalLabels, operatorconfig.ClusterNameLabelKeyForAlerts)
+			if _, ok := foundClusterMonitoringConfiguration.PrometheusK8sConfig.ExternalLabels[operatorconfig.ClusterNameLabelKeyForAlerts]; ok {
+				delete(foundClusterMonitoringConfiguration.PrometheusK8sConfig.ExternalLabels, operatorconfig.ClusterNameLabelKeyForAlerts)
+				modified = true
+			}
 		}
 
 		if len(foundClusterMonitoringConfiguration.PrometheusK8sConfig.ExternalLabels) == 0 {
@@ -511,7 +546,9 @@ func RevertClusterMonitoringConfig(ctx context.Context, c client.Client, caSecre
 	if foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs != nil {
 		copiedAlertmanagerConfigs := make([]cmomanifests.AdditionalAlertmanagerConfig, 0)
 		for _, v := range foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs {
-			if !IsManaged(v, caSecret) {
+			if IsManaged(v, caSecret) {
+				modified = true
+			} else {
 				copiedAlertmanagerConfigs = append(copiedAlertmanagerConfigs, v)
 			}
 		}
@@ -519,10 +556,16 @@ func RevertClusterMonitoringConfig(ctx context.Context, c client.Client, caSecre
 		foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs = copiedAlertmanagerConfigs
 		if len(copiedAlertmanagerConfigs) == 0 {
 			foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs = nil
-			if reflect.DeepEqual(*foundClusterMonitoringConfiguration.PrometheusK8sConfig, cmomanifests.PrometheusK8sConfig{}) {
-				foundClusterMonitoringConfiguration.PrometheusK8sConfig = nil
-			}
 		}
+	}
+
+	if !modified {
+		log.Info("cluster monitoring config has no managed configuration to revert, no need action", "name", clusterMonitoringConfigName)
+		return nil
+	}
+
+	if reflect.DeepEqual(*foundClusterMonitoringConfiguration.PrometheusK8sConfig, cmomanifests.PrometheusK8sConfig{}) {
+		foundClusterMonitoringConfiguration.PrometheusK8sConfig = nil
 	}
 
 	// check if the foundClusterMonitoringConfiguration is empty ClusterMonitoringConfiguration
@@ -599,7 +642,7 @@ func CreateOrUpdateCMOConfig(
 
 	if IsUnmanaged(found) {
 		log.Info("configmap marked as unmanaged, skipping update", "name", clusterMonitoringConfigName)
-		return false, nil
+		return false, unset(ctx, client, namespace)
 	}
 
 	currentYAML, ok := HasClusterMonitoringConfigData(found)
@@ -660,7 +703,7 @@ func CreateOrUpdateCMOConfig(
 	}
 
 	if equality.Semantic.DeepEqual(*existingCfg, *updatedCMOCfg) {
-		return false, nil
+		return false, unset(ctx, client, namespace)
 	}
 
 	found.Data[ClusterMonitoringConfigDataKey] = string(updatedYAML)
@@ -863,6 +906,17 @@ func IsUnmanaged(cm *corev1.ConfigMap) bool {
 	return cm.Annotations != nil && cm.Annotations[UnmanagedAnnotationKey] == UnmanagedAnnotationValue
 }
 
+func isConfigMapUnmanaged(ctx context.Context, c client.Client, name, namespace string) (bool, error) {
+	cm := &corev1.ConfigMap{}
+	if err := c.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, cm); err != nil {
+		if errors.IsNotFound(err) {
+			return false, nil
+		}
+		return false, fmt.Errorf("failed to check configmap %s/%s: %w", namespace, name, err)
+	}
+	return IsUnmanaged(cm), nil
+}
+
 // HasClusterMonitoringConfigData checks if the configmap has the required key and logs if not
 func HasClusterMonitoringConfigData(cm *corev1.ConfigMap) (string, bool) {
 	data, ok := cm.Data[ClusterMonitoringConfigDataKey]
@@ -918,11 +972,14 @@ func RevertUserWorkloadMonitoringConfig(ctx context.Context, c client.Client, ca
 		return nil
 	}
 
+	modified := false
 	// check if alertmanagerConfigs exists
 	if parsed.Prometheus.AlertmanagerConfigs != nil {
 		copiedAlertmanagerConfigs := make([]cmomanifests.AdditionalAlertmanagerConfig, 0)
 		for _, v := range parsed.Prometheus.AlertmanagerConfigs {
-			if !IsManaged(v, caSecret) {
+			if IsManaged(v, caSecret) {
+				modified = true
+			} else {
 				copiedAlertmanagerConfigs = append(copiedAlertmanagerConfigs, v)
 			}
 		}
@@ -930,10 +987,16 @@ func RevertUserWorkloadMonitoringConfig(ctx context.Context, c client.Client, ca
 		parsed.Prometheus.AlertmanagerConfigs = copiedAlertmanagerConfigs
 		if len(copiedAlertmanagerConfigs) == 0 {
 			parsed.Prometheus.AlertmanagerConfigs = nil
-			if equality.Semantic.DeepEqual(*parsed.Prometheus, cmomanifests.PrometheusRestrictedConfig{}) {
-				parsed.Prometheus = nil
-			}
 		}
+	}
+
+	if !modified {
+		log.Info("user workload monitoring config has no managed configuration to revert, no need action", "name", operatorconfig.OCPUserWorkloadMonitoringConfigMap)
+		return nil
+	}
+
+	if equality.Semantic.DeepEqual(*parsed.Prometheus, cmomanifests.PrometheusRestrictedConfig{}) {
+		parsed.Prometheus = nil
 	}
 
 	// check if the parsed is empty UserWorkloadConfiguration
