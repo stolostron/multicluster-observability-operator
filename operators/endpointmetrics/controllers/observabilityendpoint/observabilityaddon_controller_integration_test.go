@@ -383,6 +383,9 @@ func TestIntegrationCMOConfigDisableAlertForwarding(t *testing.T) {
 		_ = k8sClient.Delete(context.Background(), &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{Name: clusterMonitoringConfigName, Namespace: promNamespace},
 		})
+		_ = k8sClient.Delete(context.Background(), &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{Name: operatorconfig.OCPUserWorkloadMonitoringConfigMap, Namespace: operatorconfig.OCPUserWorkloadMonitoringNamespace},
+		})
 		_ = unsetConfigReverted(context.Background(), k8sClient, namespace)
 		persistedRevertStateRead = false
 		_ = k8sClient.Delete(t.Context(), makeNamespace(namespace))
@@ -392,6 +395,7 @@ func TestIntegrationCMOConfigDisableAlertForwarding(t *testing.T) {
 	// with non-ACM configuration so reverting updates rather than deletes the ConfigMap.
 	resourcesDeps := []client.Object{
 		makeNamespace(promNamespace),
+		makeNamespace(operatorconfig.OCPUserWorkloadMonitoringNamespace),
 		makeNamespace(namespace),
 		&corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
@@ -477,10 +481,14 @@ alertmanager-router-ca: |
 	require.NoError(t, reconciler.SetupWithManager(mgr))
 
 	ctx, cancel := context.WithCancel(t.Context())
-	defer cancel()
-
+	mgrDone := make(chan struct{})
 	go func() {
-		require.NoError(t, mgr.Start(ctx))
+		defer close(mgrDone)
+		assert.NoError(t, mgr.Start(ctx))
+	}()
+	defer func() {
+		cancel()
+		<-mgrDone
 	}()
 
 	// 1. Wait for Alertmanager config to be populated on start alongside existing retention config
@@ -507,33 +515,34 @@ alertmanager-endpoint: ""
 	hubInfoSecret.Data[operatorconfig.HubInfoSecretKey] = updatedHubInfoBytes
 	require.NoError(t, k8sClient.Update(ctx, hubInfoSecret))
 
-	// 3. Wait for the controller to reconcile, revert the ACM Alertmanager config, and preserve retention.
+	// 3. Wait for the controller to reconcile, revert the ACM Alertmanager config, preserve retention,
+	// and create the cluster-monitoring-reverted ConfigMap.
+	revertedMarkerKey := types.NamespacedName{Namespace: namespace, Name: clusterMonitoringRevertedName}
 	require.Eventually(t, func() bool {
 		foundCM := &corev1.ConfigMap{}
-		err := k8sClient.Get(ctx, types.NamespacedName{Namespace: promNamespace, Name: clusterMonitoringConfigName}, foundCM)
-		if err != nil {
+		if err := k8sClient.Get(ctx, types.NamespacedName{Namespace: promNamespace, Name: clusterMonitoringConfigName}, foundCM); err != nil {
+			return false
+		}
+		if err := k8sClient.Get(ctx, revertedMarkerKey, &corev1.ConfigMap{}); err != nil {
 			return false
 		}
 		data := foundCM.Data[ClusterMonitoringConfigDataKey]
 		return !strings.Contains(data, "obs-alertmanager-mtls-ca") &&
 			!strings.Contains(data, "test-alertamanger-endpoint") &&
 			strings.Contains(data, "retention: 24h")
-	}, time.Minute, 1*time.Second)
+	}, time.Minute, 100*time.Millisecond)
 
-	// 4. Clear the legacy cluster-monitoring-reverted ConfigMap and in-memory state, then mark
-	// cluster-monitoring-config with observability.open-cluster-management.io/unmanaged="true"
-	// and custom additionalAlertmanagerConfigs.
-	// RevertClusterMonitoringConfig must skip the unmanaged ConfigMap and preserve its config.
-	require.NoError(t, unsetConfigReverted(ctx, k8sClient, namespace))
-	persistedRevertStateRead = false
-
+	// 4a. Mark cluster-monitoring-config with observability.open-cluster-management.io/unmanaged="true"
+	// and custom additionalAlertmanagerConfigs while alert forwarding is disabled.
+	// The controller must clear cluster-monitoring-reverted and skip reverting cluster-monitoring-config.
 	cmoCM := &corev1.ConfigMap{}
 	require.NoError(t, k8sClient.Get(ctx, types.NamespacedName{Namespace: promNamespace, Name: clusterMonitoringConfigName}, cmoCM))
 	if cmoCM.Annotations == nil {
 		cmoCM.Annotations = make(map[string]string)
 	}
 	cmoCM.Annotations[UnmanagedAnnotationKey] = UnmanagedAnnotationValue
-	unmanagedData := `prometheusK8s:
+	unmanagedData := `enableUserWorkload: true
+prometheusK8s:
   retention: 24h
   additionalAlertmanagerConfigs:
   - scheme: https
@@ -547,17 +556,50 @@ alertmanager-endpoint: ""
 	cmoCM.Data[ClusterMonitoringConfigDataKey] = unmanagedData
 	require.NoError(t, k8sClient.Update(ctx, cmoCM))
 
-	// Wait for the triggered reconcile to run RevertClusterMonitoringConfig + setConfigReverted,
-	// and confirm the unmanaged cluster-monitoring-config is preserved rather than wiped.
+	// Wait for the reconcile triggered by cmoCM to delete cluster-monitoring-reverted,
+	// then confirm the unmanaged cluster-monitoring-config was preserved rather than reverted.
 	require.Eventually(t, func() bool {
-		return clusterMonitoringConfigReverted
+		err := k8sClient.Get(ctx, revertedMarkerKey, &corev1.ConfigMap{})
+		return errors.IsNotFound(err)
 	}, time.Minute, 100*time.Millisecond)
 
 	require.NoError(t, k8sClient.Get(ctx, types.NamespacedName{Namespace: promNamespace, Name: clusterMonitoringConfigName}, cmoCM))
 	require.Equal(t, unmanagedData, cmoCM.Data[ClusterMonitoringConfigDataKey])
 	require.Equal(t, UnmanagedAnnotationValue, cmoCM.Annotations[UnmanagedAnnotationKey])
 
-	// 5. Re-enable alert forwarding while unmanaged="true" is still present -> CreateOrUpdateCMOConfig must also skip.
+	// 4b. Remove the unmanaged annotation without changing .Data while alert forwarding is still disabled.
+	// The watch predicate must trigger a reconcile and RevertClusterMonitoringConfig must revert the config.
+	delete(cmoCM.Annotations, UnmanagedAnnotationKey)
+	require.NoError(t, k8sClient.Update(ctx, cmoCM))
+
+	require.Eventually(t, func() bool {
+		foundCM := &corev1.ConfigMap{}
+		if err := k8sClient.Get(ctx, types.NamespacedName{Namespace: promNamespace, Name: clusterMonitoringConfigName}, foundCM); err != nil {
+			return false
+		}
+		if err := k8sClient.Get(ctx, revertedMarkerKey, &corev1.ConfigMap{}); err != nil {
+			return false
+		}
+		data := foundCM.Data[ClusterMonitoringConfigDataKey]
+		return !strings.Contains(data, "custom-am.example.com:9093") &&
+			strings.Contains(data, "retention: 24h")
+	}, time.Minute, 100*time.Millisecond)
+
+	// 5a. Mark cluster-monitoring-config unmanaged again and re-enable alert forwarding.
+	// CreateOrUpdateCMOConfig must skip updating cluster-monitoring-config while still reconciling UWM.
+	require.NoError(t, k8sClient.Get(ctx, types.NamespacedName{Namespace: promNamespace, Name: clusterMonitoringConfigName}, cmoCM))
+	if cmoCM.Annotations == nil {
+		cmoCM.Annotations = make(map[string]string)
+	}
+	cmoCM.Annotations[UnmanagedAnnotationKey] = UnmanagedAnnotationValue
+	cmoCM.Data[ClusterMonitoringConfigDataKey] = unmanagedData
+	require.NoError(t, k8sClient.Update(ctx, cmoCM))
+
+	require.Eventually(t, func() bool {
+		err := k8sClient.Get(ctx, revertedMarkerKey, &corev1.ConfigMap{})
+		return errors.IsNotFound(err)
+	}, time.Minute, 100*time.Millisecond)
+
 	require.NoError(t, k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: operatorconfig.HubInfoSecretName}, hubInfoSecret))
 	reenabledHubInfoBytes := []byte(`
 endpoint: "http://test-endpoint"
@@ -571,9 +613,21 @@ alertmanager-router-ca: |
 	hubInfoSecret.Data[operatorconfig.HubInfoSecretKey] = reenabledHubInfoBytes
 	require.NoError(t, k8sClient.Update(ctx, hubInfoSecret))
 
-	// Remove the unmanaged annotation and verify the controller reconciles the ACM Alertmanager config.
+	// Wait for user-workload-monitoring-config (which is reconciled after CreateOrUpdateCMOConfig)
+	// to be created, proving the hubInfoSecret reconcile completed while cmoCM remained unmanaged.
+	uwmCMKey := types.NamespacedName{
+		Namespace: operatorconfig.OCPUserWorkloadMonitoringNamespace,
+		Name:      operatorconfig.OCPUserWorkloadMonitoringConfigMap,
+	}
+	require.Eventually(t, func() bool {
+		return k8sClient.Get(ctx, uwmCMKey, &corev1.ConfigMap{}) == nil
+	}, time.Minute, 100*time.Millisecond)
+
 	require.NoError(t, k8sClient.Get(ctx, types.NamespacedName{Namespace: promNamespace, Name: clusterMonitoringConfigName}, cmoCM))
 	require.Equal(t, unmanagedData, cmoCM.Data[ClusterMonitoringConfigDataKey])
+
+	// 5b. Remove the unmanaged annotation without changing .Data and verify the controller reconciles
+	// the ACM Alertmanager config into cluster-monitoring-config.
 	delete(cmoCM.Annotations, UnmanagedAnnotationKey)
 	require.NoError(t, k8sClient.Update(ctx, cmoCM))
 
@@ -585,8 +639,9 @@ alertmanager-router-ca: |
 		}
 		data := foundCM.Data[ClusterMonitoringConfigDataKey]
 		return strings.Contains(data, "test-alertamanger-endpoint") &&
+			!strings.Contains(data, "custom-am.example.com:9093") &&
 			strings.Contains(data, "retention: 24h")
-	}, time.Minute, 1*time.Second)
+	}, time.Minute, 100*time.Millisecond)
 }
 
 // TestIntegrationReconcileHypershiftOnHub tests the reconcile function for hypershift CRDs on a Hub cluster.
