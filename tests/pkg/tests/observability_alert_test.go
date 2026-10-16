@@ -659,21 +659,6 @@ var _ = Describe("", func() {
 			return err
 		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*5).Should(Succeed())
 
-		By("Checking that cluster-monitoring-config is cleaned and annotated with alertmanager-config-cleaned")
-		Eventually(func() error {
-			cm, err := hubClient.CoreV1().ConfigMaps("openshift-monitoring").Get(context.TODO(), "cluster-monitoring-config", metav1.GetOptions{})
-			if err != nil {
-				return err
-			}
-			if cm.Annotations["observability.open-cluster-management.io/alertmanager-config-cleaned"] != "true" {
-				return fmt.Errorf("expected annotation observability.open-cluster-management.io/alertmanager-config-cleaned=true, got annotations: %v", cm.Annotations)
-			}
-			if strings.Contains(cm.Data["config.yaml"], "additionalAlertmanagerConfigs:") {
-				return fmt.Errorf("expected additionalAlertmanagerConfigs to be removed from config.yaml, got: %s", cm.Data["config.yaml"])
-			}
-			return nil
-		}, EventuallyTimeoutMinute*2, EventuallyIntervalSecond*5).Should(Succeed())
-
 		By("Checking Watchdog alerts is not forwarded to the hub")
 		Eventually(func() bool {
 			resp, err := client.Do(alertGetReq)
@@ -725,14 +710,11 @@ var _ = Describe("", func() {
 			return err
 		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*5).Should(Succeed())
 
-		By("Waiting for alertmanager-config-cleaned annotation to be removed and additionalAlertmanagerConfigs restored")
+		By("Waiting for additionalAlertmanagerConfigs to be restored in cluster-monitoring-config")
 		Eventually(func() error {
 			cm, err := hubClient.CoreV1().ConfigMaps("openshift-monitoring").Get(context.TODO(), "cluster-monitoring-config", metav1.GetOptions{})
 			if err != nil {
 				return err
-			}
-			if _, exists := cm.Annotations["observability.open-cluster-management.io/alertmanager-config-cleaned"]; exists {
-				return fmt.Errorf("expected annotation observability.open-cluster-management.io/alertmanager-config-cleaned to be removed, got annotations: %v", cm.Annotations)
 			}
 			if !strings.Contains(cm.Data["config.yaml"], "additionalAlertmanagerConfigs:") {
 				return fmt.Errorf("expected additionalAlertmanagerConfigs to be restored in config.yaml, got: %s", cm.Data["config.yaml"])
