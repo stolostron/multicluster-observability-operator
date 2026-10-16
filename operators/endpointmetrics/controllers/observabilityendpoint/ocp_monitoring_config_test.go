@@ -253,7 +253,6 @@ func TestClusterMonitoringConfigAlertsDisabled(t *testing.T) {
 	// Scenario 1:
 	//   create cluster-monitoring-config configmap with "manager: endpoint-monitoring-operator"
 	//   Disable alert forwarding
-	//   clusterMonitoringRevertedName should be created
 	//   cluster-monitoring-config should be removed
 	cmc := newClusterMonitoringConfigCM(clusterMonitoringConfigDataYaml, EndpointMonitoringOperatorMgr)
 	objs := []runtime.Object{hubInfoObj, amAccessSrt, cmc}
@@ -266,15 +265,6 @@ func TestClusterMonitoringConfigAlertsDisabled(t *testing.T) {
 			t.Fatalf("Failed to create or update the cluster-monitoring-config configmap: (%v)", err)
 		}
 		assert.False(t, wasUpdated)
-
-		foundclusterMonitoringRevertedCM := &corev1.ConfigMap{}
-		err = c.Get(ctx, types.NamespacedName{
-			Name:      clusterMonitoringRevertedName,
-			Namespace: testNamespace,
-		}, foundclusterMonitoringRevertedCM)
-		if err != nil {
-			t.Fatalf("configmap %s not created after disabling alerts: %v", clusterMonitoringRevertedName, err)
-		}
 
 		foundClusterMonitoringConfigMap := &corev1.ConfigMap{}
 		err = c.Get(ctx, types.NamespacedName{
@@ -290,15 +280,9 @@ func TestClusterMonitoringConfigAlertsDisabled(t *testing.T) {
 	//   create cluster-monitoring-config configmap with the
 	//   observability.open-cluster-management.io/unmanaged="true" annotation and containing
 	//   additionalAlertmanagerConfigs referencing the hub's mTLS secrets and externalLabels.managed_cluster.
-	//   Ensure clusterMonitoringRevertedName is removed first so revert is attempted.
 	//   Both RevertClusterMonitoringConfig (when alerts are disabled) and CreateOrUpdateCMOConfig
 	//   (when alerts are enabled) should skip the ConfigMap.
 	t.Run("Skip both revert and update when cluster-monitoring-config is marked unmanaged", func(t *testing.T) {
-		err := unsetConfigReverted(ctx, c, testNamespace)
-		if err != nil {
-			t.Fatalf("failed to unset config reverted: %v", err)
-		}
-
 		unmanagedConfigYAML := `alertmanagerMain:
   enabled: false
 telemeterClient:
@@ -346,7 +330,7 @@ prometheusK8s:
 			t.Fatalf("failed to create unmanaged cluster-monitoring-config: %v", err)
 		}
 
-		// 2a. Alert forwarding disabled -> RevertClusterMonitoringConfig should skip and NOT set cluster-monitoring-reverted
+		// 2a. Alert forwarding disabled -> RevertClusterMonitoringConfig should skip
 		disabledHubInfo := &operatorconfig.HubInfo{
 			ClusterName:          "8607339a-ffa8-459b-8a77-69e89995205a",
 			HubClusterID:         "95ff48de5b0f4e23bcc",
@@ -357,10 +341,6 @@ prometheusK8s:
 			t.Fatalf("Failed to run createOrUpdateClusterMonitoringConfig (revert) for unmanaged configmap: %v", err)
 		}
 		assert.False(t, wasUpdated)
-
-		revertedCM := &corev1.ConfigMap{}
-		err = c.Get(ctx, types.NamespacedName{Name: clusterMonitoringRevertedName, Namespace: testNamespace}, revertedCM)
-		assert.True(t, errors.IsNotFound(err), "cluster-monitoring-reverted should not be created while ConfigMap is unmanaged")
 
 		foundCM := &corev1.ConfigMap{}
 		if err := c.Get(ctx, types.NamespacedName{Name: clusterMonitoringConfigName, Namespace: promNamespace}, foundCM); err != nil {
@@ -398,9 +378,6 @@ prometheusK8s:
 		}
 		assert.False(t, wasUpdated)
 
-		if err := c.Get(ctx, types.NamespacedName{Name: clusterMonitoringRevertedName, Namespace: testNamespace}, revertedCM); err != nil {
-			t.Fatalf("cluster-monitoring-reverted should be created after managed revert completes: %v", err)
-		}
 		if err := c.Get(ctx, types.NamespacedName{Name: clusterMonitoringConfigName, Namespace: promNamespace}, foundCM); err != nil {
 			t.Fatalf("could not retrieve reverted configmap: %v", err)
 		}
@@ -428,7 +405,7 @@ prometheusK8s:
 
 	// Scenario 3:
 	//   Remove the unmanaged annotation and reenable alert forwarding.
-	//   verify clusterMonitoringRevertedName is deleted and cluster-monitoring-config is reconciled.
+	//   verify cluster-monitoring-config is reconciled.
 	err = c.Delete(ctx, hubInfoObj)
 	if err != nil {
 		t.Fatalf("could not delete existing hubInfoObj")
@@ -458,15 +435,6 @@ prometheusK8s:
 			t.Fatalf("Failed to create or update the cluster-monitoring-config configmap: (%v)", err)
 		}
 		assert.True(t, wasUpdated)
-
-		foundclusterMonitoringRevertedCM := &corev1.ConfigMap{}
-		err = c.Get(ctx, types.NamespacedName{
-			Name:      clusterMonitoringRevertedName,
-			Namespace: testNamespace,
-		}, foundclusterMonitoringRevertedCM)
-		if err == nil {
-			t.Fatalf("configmap %s still present after reenabling alerts", clusterMonitoringRevertedName)
-		}
 
 		foundCusterMonitoringConfigMap := &corev1.ConfigMap{}
 		err = c.Get(ctx, types.NamespacedName{
@@ -1356,9 +1324,6 @@ enableUserWorkload: true
 	objs := []runtime.Object{uwlNamespace, cmoConfigMap, alertmanagerAccessorSecret}
 	objs = append(objs, newMtlsTestSecrets("test-ns")...)
 	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
-
-	// Reset the revert state to ensure clean test environment
-	unsetConfigReverted(ctx, c, "test-ns")
 
 	// Execute the UWL monitoring configuration logic
 	// This simulates the scenario where UWL monitoring is enabled and alerts are enabled
