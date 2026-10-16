@@ -59,6 +59,11 @@ linters:
 
   exclusions:
     rules:
+      # Keep emitting the legacy ADC switch during upgrades to the independent switches.
+      - path: operators/multiclusterobservability/(controllers/analytics/analytics_controller|pkg/rendering/renderer_mcoa)\.go
+        linters:
+          - staticcheck
+        text: 'SA1019: .*WorkloadPodRightSizingRecommendation is deprecated'
       - path: tests/
         linters:
           - gosec
@@ -82,4 +87,3 @@ formatters:
   exclusions:
     paths:
       - "vendor/.*"
-

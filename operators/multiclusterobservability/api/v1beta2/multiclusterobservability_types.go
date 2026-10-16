@@ -172,6 +172,35 @@ type PlatformAnalyticsSpec struct {
 	// +optional
 	// +kubebuilder:validation:Optional
 	VirtualizationRightSizingRecommendation PlatformRightSizingRecommendationSpec `json:"virtualizationRightSizingRecommendation,omitempty"`
+
+	// Deprecated: use workloadRightSizingRecommendation and podRightSizingRecommendation.
+	// Existing values are migrated to the separate switches when those are absent.
+	//
+	// +optional
+	// +kubebuilder:validation:Optional
+	WorkloadPodRightSizingRecommendation PlatformRightSizingRecommendationSpec `json:"workloadPodRightSizingRecommendation,omitempty"`
+
+	// WorkloadRightSizingRecommendation controls workload right-sizing independently of pod right-sizing.
+	// Enabled by default when omitted.
+	// +optional
+	WorkloadRightSizingRecommendation DefaultEnabledRightSizingRecommendationSpec `json:"workloadRightSizingRecommendation,omitempty"`
+
+	// PodRightSizingRecommendation controls pod right-sizing, including pods without a workload.
+	// Enabled by default when omitted.
+	// +optional
+	PodRightSizingRecommendation DefaultEnabledRightSizingRecommendationSpec `json:"podRightSizingRecommendation,omitempty"`
+}
+
+// DefaultEnabledRightSizingRecommendationSpec preserves explicit false values
+// while allowing omitted flags to default to true.
+type DefaultEnabledRightSizingRecommendationSpec struct {
+	// Enabled controls this right-sizing feature. Defaults to true when omitted.
+	// +optional
+	Enabled *bool `json:"enabled,omitempty"`
+}
+
+func (s DefaultEnabledRightSizingRecommendationSpec) IsEnabled() bool {
+	return s.Enabled == nil || *s.Enabled
 }
 
 type PlatformIncidentDetectionSpec struct {
