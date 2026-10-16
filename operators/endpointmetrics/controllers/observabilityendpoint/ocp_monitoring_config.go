@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"net/url"
 	"reflect"
-	"slices"
 	"strings"
 
 	cmomanifests "github.com/openshift/cluster-monitoring-operator/pkg/manifests"
@@ -35,8 +34,8 @@ const (
 	clusterMonitoringRevertedName  = "cluster-monitoring-reverted"
 	ClusterMonitoringConfigDataKey = "config.yaml"
 	EndpointMonitoringOperatorMgr  = "endpoint-monitoring-operator"
-	ConfigCleanedAnnotationKey     = "observability.open-cluster-management.io/alertmanager-config-cleaned"
-	ConfigCleanedAnnotationValue   = "true"
+	UnmanagedAnnotationKey         = "observability.open-cluster-management.io/unmanaged"
+	UnmanagedAnnotationValue       = "true"
 )
 
 var (
@@ -476,8 +475,8 @@ func RevertClusterMonitoringConfig(ctx context.Context, c client.Client, caSecre
 
 	log.Info("checking if cluster monitoring config needs revert", "name", clusterMonitoringConfigName)
 	found = found.DeepCopy()
-	if IsConfigCleaned(found) {
-		log.Info("configmap already marked as cleaned, skipping revert", "name", clusterMonitoringConfigName)
+	if IsUnmanaged(found) {
+		log.Info("configmap marked as unmanaged, skipping revert", "name", clusterMonitoringConfigName)
 		return nil
 	}
 
@@ -542,10 +541,6 @@ func RevertClusterMonitoringConfig(ctx context.Context, c client.Client, caSecre
 	}
 
 	found.Data[ClusterMonitoringConfigDataKey] = string(updatedClusterMonitoringConfigurationYAMLBytes)
-	if foundClusterMonitoringConfiguration.PrometheusK8sConfig == nil ||
-		!hasAnyManagedAlertmanagerConfig(foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs) {
-		SetConfigCleanedAnnotation(found)
-	}
 	return updateClusterMonitoringConfig(ctx, c, found)
 }
 
@@ -602,6 +597,11 @@ func CreateOrUpdateCMOConfig(
 		return false, fmt.Errorf("failed to check configmap %s: %w", clusterMonitoringConfigName, err)
 	}
 
+	if IsUnmanaged(found) {
+		log.Info("configmap marked as unmanaged, skipping update", "name", clusterMonitoringConfigName)
+		return false, nil
+	}
+
 	currentYAML, ok := HasClusterMonitoringConfigData(found)
 	if !ok {
 		if found.Data == nil {
@@ -609,7 +609,6 @@ func CreateOrUpdateCMOConfig(
 		} else {
 			found.Data[ClusterMonitoringConfigDataKey] = string(yamlBytes)
 		}
-		RemoveConfigCleanedAnnotation(found)
 		return true, updateClusterMonitoringConfigAndUnset(ctx, client, found, namespace)
 	}
 
@@ -660,8 +659,7 @@ func CreateOrUpdateCMOConfig(
 		return false, err
 	}
 
-	annotationUpdated := RemoveConfigCleanedAnnotation(found)
-	if equality.Semantic.DeepEqual(*existingCfg, *updatedCMOCfg) && !annotationUpdated {
+	if equality.Semantic.DeepEqual(*existingCfg, *updatedCMOCfg) {
 		return false, nil
 	}
 
@@ -715,6 +713,11 @@ func CreateOrUpdateUserWorkloadMonitoringConfig(
 		return fmt.Errorf("failed to retrieve user workload monitoring configmap: %w", err)
 	}
 
+	if IsUnmanaged(existing) {
+		log.Info("configmap marked as unmanaged, skipping update", "name", operatorconfig.OCPUserWorkloadMonitoringConfigMap)
+		return nil
+	}
+
 	existingYAML, ok := existing.Data["config.yaml"]
 	if !ok {
 		if existing.Data == nil {
@@ -722,7 +725,6 @@ func CreateOrUpdateUserWorkloadMonitoringConfig(
 		} else {
 			existing.Data["config.yaml"] = string(yamlBytes)
 		}
-		RemoveConfigCleanedAnnotation(existing)
 		log.Info("user workload monitoring configmap missing config.yaml, updating")
 		return c.Update(ctx, existing, client.FieldOwner(EndpointMonitoringOperatorMgr))
 	}
@@ -755,8 +757,7 @@ func CreateOrUpdateUserWorkloadMonitoringConfig(
 		return fmt.Errorf("failed to marshal updated user workload monitoring config: %w", err)
 	}
 
-	annotationUpdated := RemoveConfigCleanedAnnotation(existing)
-	if string(updatedYAMLBytes) == existingYAML && !annotationUpdated {
+	if string(updatedYAMLBytes) == existingYAML {
 		return nil
 	}
 
@@ -856,55 +857,10 @@ func IsManaged(amc cmomanifests.AdditionalAlertmanagerConfig, caSecret string) b
 	return false
 }
 
-// SetConfigCleanedAnnotation marks the ConfigMap as cleaned once all operator-managed alertmanager configs
-// have been reverted, so subsequent revert passes skip it until alert forwarding is re-enabled.
-func SetConfigCleanedAnnotation(cm *corev1.ConfigMap) bool {
-	if cm.Annotations == nil {
-		cm.Annotations = make(map[string]string)
-	}
-	if cm.Annotations[ConfigCleanedAnnotationKey] == ConfigCleanedAnnotationValue {
-		return false
-	}
-	cm.Annotations[ConfigCleanedAnnotationKey] = ConfigCleanedAnnotationValue
-	return true
-}
-
-// RemoveConfigCleanedAnnotation removes the alertmanager-config-cleaned annotation from the ConfigMap when
-// alert forwarding is enabled and endpoint-monitoring-operator configures it again.
-func RemoveConfigCleanedAnnotation(cm *corev1.ConfigMap) bool {
-	if cm.Annotations == nil {
-		return false
-	}
-	if _, ok := cm.Annotations[ConfigCleanedAnnotationKey]; !ok {
-		return false
-	}
-	delete(cm.Annotations, ConfigCleanedAnnotationKey)
-	if len(cm.Annotations) == 0 {
-		cm.Annotations = nil
-	}
-	return true
-}
-
-// IsConfigCleaned checks if the ConfigMap has been marked with the alertmanager-config-cleaned annotation
-// (either after being cleaned once by endpoint-monitoring-operator, or preemptively by an external
-// controller such as an ACM Policy to prevent conflicting updates).
-func IsConfigCleaned(cm *corev1.ConfigMap) bool {
-	return cm.Annotations != nil && cm.Annotations[ConfigCleanedAnnotationKey] == ConfigCleanedAnnotationValue
-}
-
-func hasAnyManagedAlertmanagerConfig(configs []cmomanifests.AdditionalAlertmanagerConfig) bool {
-	return slices.ContainsFunc(configs, func(amc cmomanifests.AdditionalAlertmanagerConfig) bool {
-		if amc.TLSConfig.CA == nil {
-			return false
-		}
-		caName := amc.TLSConfig.CA.Name
-		return caName == HubAmRouterCASecretName ||
-			caName == amMtlsCaName ||
-			caName == HubMtlsCASecretName ||
-			strings.HasPrefix(caName, HubAmRouterCASecretName+"-") ||
-			strings.HasPrefix(caName, amMtlsCaName+"-") ||
-			strings.HasPrefix(caName, HubMtlsCASecretName+"-")
-	})
+// IsUnmanaged checks if the ConfigMap is marked with the observability.open-cluster-management.io/unmanaged="true"
+// annotation to opt out of reconciliation by endpoint-monitoring-operator (e.g. when managed by an ACM Policy).
+func IsUnmanaged(cm *corev1.ConfigMap) bool {
+	return cm.Annotations != nil && cm.Annotations[UnmanagedAnnotationKey] == UnmanagedAnnotationValue
 }
 
 // HasClusterMonitoringConfigData checks if the configmap has the required key and logs if not
@@ -942,8 +898,8 @@ func RevertUserWorkloadMonitoringConfig(ctx context.Context, c client.Client, ca
 
 	log.Info("checking if user workload monitoring config needs revert", "name", operatorconfig.OCPUserWorkloadMonitoringConfigMap)
 	found = found.DeepCopy()
-	if IsConfigCleaned(found) {
-		log.Info("configmap already marked as cleaned, skipping revert", "name", operatorconfig.OCPUserWorkloadMonitoringConfigMap)
+	if IsUnmanaged(found) {
+		log.Info("configmap marked as unmanaged, skipping revert", "name", operatorconfig.OCPUserWorkloadMonitoringConfigMap)
 		return nil
 	}
 
@@ -996,9 +952,6 @@ func RevertUserWorkloadMonitoringConfig(ctx context.Context, c client.Client, ca
 	}
 
 	found.Data["config.yaml"] = string(updatedYAMLBytes)
-	if parsed.Prometheus == nil || !hasAnyManagedAlertmanagerConfig(parsed.Prometheus.AlertmanagerConfigs) {
-		SetConfigCleanedAnnotation(found)
-	}
 	return c.Update(ctx, found, client.FieldOwner(EndpointMonitoringOperatorMgr))
 }
 
