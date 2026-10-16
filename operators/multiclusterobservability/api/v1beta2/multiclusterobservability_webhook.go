@@ -241,12 +241,12 @@ func (mco *MultiClusterObservability) validateUpdateMultiClusterObservabilitySto
 		return append(errs, field.InternalError(nil, err))
 	}
 
-	selectedSC, err := getSelectedStorageClassForMultiClusterObservability(kubeClient, oldMCO)
+	selectedSC, err := GetSelectedStorageClassForMultiClusterObservability(kubeClient, oldMCO)
 	if err != nil {
 		return append(errs, field.InternalError(nil, err))
 	}
 
-	selectedSCAllowResize, err := storageClassAllowVolumeExpansion(kubeClient, selectedSC)
+	selectedSCAllowResize, err := StorageClassAllowVolumeExpansion(kubeClient, selectedSC)
 	if err != nil {
 		return append(errs, field.InternalError(nil, err))
 	}
@@ -309,8 +309,8 @@ func createOrGetKubeClient() (kubernetes.Interface, error) {
 	return kubeClient, nil
 }
 
-// getSelectedStorageClassForMultiClusterObservability get secected for the MultiClusterObservability CR.
-func getSelectedStorageClassForMultiClusterObservability(
+// GetSelectedStorageClassForMultiClusterObservability gets the selected storage class for the MCO CR.
+func GetSelectedStorageClassForMultiClusterObservability(
 	c kubernetes.Interface,
 	mco *MultiClusterObservability,
 ) (string, error) {
@@ -346,8 +346,8 @@ func getSelectedStorageClassForMultiClusterObservability(
 	return expectedSC, nil
 }
 
-// storageClassAllowVolumeExpansion check if the storageclass allow volume expansion.
-func storageClassAllowVolumeExpansion(c kubernetes.Interface, name string) (bool, error) {
+// StorageClassAllowVolumeExpansion checks if a storage class allows volume expansion.
+func StorageClassAllowVolumeExpansion(c kubernetes.Interface, name string) (bool, error) {
 	sc, err := c.StorageV1().StorageClasses().Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
 		return false, err

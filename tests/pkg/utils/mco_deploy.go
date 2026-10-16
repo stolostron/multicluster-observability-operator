@@ -621,6 +621,11 @@ func CheckStatefulSetPodReady(opt TestOptions, stsName string) error {
 
 // ModifyMCOCR modifies the MCO CR for reconciling. modify multiple parameter to save running time
 func ModifyMCOCR(opt TestOptions) error {
+	allowExpand, err := StorageClassAllowsExpansion(opt)
+	if err != nil {
+		return err
+	}
+
 	clientDynamic := NewKubeClientDynamic(
 		opt.HubCluster.ClusterServerURL,
 		opt.KubeConfig,
@@ -632,7 +637,10 @@ func ModifyMCOCR(opt TestOptions) error {
 		}
 		spec := mco.Object["spec"].(map[string]any)
 		storageConfig := spec["storageConfig"].(map[string]any)
-		storageConfig["alertmanagerStorageSize"] = "3Gi"
+
+		if allowExpand {
+			storageConfig["alertmanagerStorageSize"] = "3Gi"
+		}
 
 		advRetentionCon, _ := CheckAdvRetentionConfig(opt)
 		if advRetentionCon {
@@ -1212,4 +1220,32 @@ func UninstallMCO(opt TestOptions) error {
 	}
 
 	return nil
+}
+
+// StorageClassAllowsExpansion reports whether the storage class selected for the
+// MCO CR (spec.storageConfig.storageClass, or the default storage class when
+// unset) has allowVolumeExpansion enabled.
+func StorageClassAllowsExpansion(opt TestOptions) (bool, error) {
+	client := GetKubeClient(opt, true)
+	dynClient := GetKubeClientDynamic(opt, true)
+
+	u, err := dynClient.Resource(NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+	if err != nil {
+		return false, err
+	}
+
+	mco := &mcov1beta2.MultiClusterObservability{}
+	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, mco); err != nil {
+		return false, fmt.Errorf("failed to convert unstructured to MCO: %w", err)
+	}
+
+	selectedSC, err := mcov1beta2.GetSelectedStorageClassForMultiClusterObservability(client, mco)
+	if err != nil {
+		return false, err
+	}
+	if selectedSC == "" {
+		return false, fmt.Errorf("no storage class specified in MCO CR and no default storage class found")
+	}
+
+	return mcov1beta2.StorageClassAllowVolumeExpansion(client, selectedSC)
 }

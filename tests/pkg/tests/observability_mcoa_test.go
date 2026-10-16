@@ -787,7 +787,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 	)
 
 	Context(
-		"when raw resolution (DDR) is enabled for MCOA [P1][Sev1][Observability][Stable]@ocpInterop (mcoa_ddr/g0)",
+		"when raw resolution (DDR) is enabled for MCOA [P1][Sev1][Observability][Stable]@ocpInterop @e2e (mcoa_ddr/g0)",
 		func() {
 			var hubClient kubernetes.Interface
 			cooMonitoringStackNamespace := "default"
