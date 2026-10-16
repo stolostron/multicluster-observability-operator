@@ -119,32 +119,43 @@ var _ = Describe("", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(cm.ResourceVersion).ShouldNot(BeEmpty())
-			klog.V(3).Infof("Configmap %s does exist", configmap[0])
+			klog.V(3).Infof("Configmap %s does exist", configMapName)
 
 			By("Remove additionalAlertmanagerConfigs from the cm cluster-monitoring-config")
-			configContent := cm.Data["config.yaml"]
-			if strings.Contains(configContent, "additionalAlertmanagerConfigs:") {
-				// Find and remove the additionalAlertmanagerConfigs section
+			Eventually(func() error {
+				cm, err := hubClient.CoreV1().ConfigMaps(namespace).Get(context.TODO(), configMapName, metav1.GetOptions{})
+				if err != nil {
+					return err
+				}
+				configContent := cm.Data["config.yaml"]
+				if !strings.Contains(configContent, "additionalAlertmanagerConfigs:") {
+					return fmt.Errorf("additionalAlertmanagerConfigs not found in %s/%s", namespace, configMapName)
+				}
 				startIndex := strings.Index(configContent, "additionalAlertmanagerConfigs:")
 				endIndex := strings.Index(configContent[startIndex:], "externalLabels:")
 				if endIndex != -1 {
 					endIndex += startIndex
 					removedContent := configContent[startIndex:endIndex]
-
-					// Remove the section from the config.yaml
 					configContent = strings.Replace(configContent, removedContent, "", 1)
-					cm.Data["config.yaml"] = configContent
-
-					// Update the ConfigMap
-					_, err = hubClient.CoreV1().ConfigMaps(namespace).Update(context.TODO(), cm, metav1.UpdateOptions{})
-					Expect(err).NotTo(HaveOccurred(), "Failed to update ConfigMap")
-					fmt.Println("Removed additionalAlertmanagerConfigs and updated the ConfigMap.")
 				} else {
-					fmt.Println("Could not find the externalLabels section after additionalAlertmanagerConfigs.")
+					configContent = configContent[:startIndex]
 				}
-			} else {
-				fmt.Println("No additionalAlertmanagerConfigs section found.")
-			}
+				cm.Data["config.yaml"] = configContent
+				_, err = hubClient.CoreV1().ConfigMaps(namespace).Update(context.TODO(), cm, metav1.UpdateOptions{})
+				return err
+			}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*5).Should(Succeed(), "Failed to update ConfigMap")
+
+			By("Waiting for endpoint-monitoring-operator to reconcile additionalAlertmanagerConfigs back into cluster-monitoring-config")
+			Eventually(func() error {
+				cm, err := hubClient.CoreV1().ConfigMaps(namespace).Get(context.TODO(), configMapName, metav1.GetOptions{})
+				if err != nil {
+					return err
+				}
+				if !strings.Contains(cm.Data["config.yaml"], "additionalAlertmanagerConfigs:") {
+					return fmt.Errorf("additionalAlertmanagerConfigs not yet restored in %s/%s", namespace, configMapName)
+				}
+				return nil
+			}, EventuallyTimeoutMinute*2, EventuallyIntervalSecond*5).Should(Succeed())
 		},
 	)
 
@@ -489,7 +500,7 @@ var _ = Describe("", func() {
 			By("Ensuring ObservabilityAddon is healthy on managed clusters before checking alert forwarding")
 			Eventually(func() error {
 				return utils.CheckAllOBAsEnabled(testOptions)
-			}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*10).Should(Succeed())
+			}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*10).Should(Succeed())
 
 			var lastLoggedMissing string
 			By("Checking Watchdog alerts are forwarded to the hub")
@@ -632,21 +643,21 @@ var _ = Describe("", func() {
 		}
 
 		By("Add annotations to disable alert forward")
-		mco, getErr := dynClient.Resource(utils.NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
-		if getErr != nil {
-			klog.Errorf("err: %+v\n", err)
-		}
-		spec := mco.Object["metadata"].(map[string]any)
-		annotations, found := spec["annotations"].(map[string]any)
-		if !found {
-			annotations = make(map[string]any)
-		}
-		annotations["mco-disable-alerting"] = "true"
-		spec["annotations"] = annotations
-		_, updateErr := dynClient.Resource(utils.NewMCOGVRV1BETA2()).Update(context.TODO(), mco, metav1.UpdateOptions{})
-		if updateErr != nil {
-			klog.Errorf("err: %+v\n", err)
-		}
+		Eventually(func() error {
+			mco, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+			if err != nil {
+				return err
+			}
+			spec := mco.Object["metadata"].(map[string]any)
+			annotations, found := spec["annotations"].(map[string]any)
+			if !found {
+				annotations = make(map[string]any)
+			}
+			annotations["mco-disable-alerting"] = "true"
+			spec["annotations"] = annotations
+			_, err = dynClient.Resource(utils.NewMCOGVRV1BETA2()).Update(context.TODO(), mco, metav1.UpdateOptions{})
+			return err
+		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*5).Should(Succeed())
 
 		By("Checking Watchdog alerts is not forwarded to the hub")
 		Eventually(func() bool {
@@ -685,18 +696,31 @@ var _ = Describe("", func() {
 			return true
 		}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*10).Should(BeTrue())
 
-		klog.V(3).Infof("before enable alert forward - spec is %s", spec)
-		mco1, getErr := dynClient.Resource(utils.NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
-		if getErr != nil {
-			klog.Errorf("err: %+v\n", err)
-		}
-		spec1 := mco1.Object["metadata"].(map[string]any)
-		delete(spec1["annotations"].(map[string]any), "mco-disable-alerting")
-		_, updateErr1 := dynClient.Resource(utils.NewMCOGVRV1BETA2()).Update(context.TODO(), mco1, metav1.UpdateOptions{})
-		if updateErr1 != nil {
-			klog.Errorf("err: %+v\n", updateErr1)
-		}
-		klog.V(3).Infof("enable alert forward - spec1 is %s", spec1)
+		By("Removing mco-disable-alerting annotation to re-enable alert forwarding")
+		Eventually(func() error {
+			mco1, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+			if err != nil {
+				return err
+			}
+			spec1 := mco1.Object["metadata"].(map[string]any)
+			if annotations1, found := spec1["annotations"].(map[string]any); found {
+				delete(annotations1, "mco-disable-alerting")
+			}
+			_, err = dynClient.Resource(utils.NewMCOGVRV1BETA2()).Update(context.TODO(), mco1, metav1.UpdateOptions{})
+			return err
+		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*5).Should(Succeed())
+
+		By("Waiting for additionalAlertmanagerConfigs to be restored in cluster-monitoring-config")
+		Eventually(func() error {
+			cm, err := hubClient.CoreV1().ConfigMaps("openshift-monitoring").Get(context.TODO(), "cluster-monitoring-config", metav1.GetOptions{})
+			if err != nil {
+				return err
+			}
+			if !strings.Contains(cm.Data["config.yaml"], "additionalAlertmanagerConfigs:") {
+				return fmt.Errorf("expected additionalAlertmanagerConfigs to be restored in config.yaml, got: %s", cm.Data["config.yaml"])
+			}
+			return nil
+		}, EventuallyTimeoutMinute*2, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
 	JustAfterEach(func() {

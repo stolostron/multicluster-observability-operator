@@ -1003,22 +1003,21 @@ func ModifyMCOAddonSpecInterval(opt TestOptions, interval int64) error {
 		opt.HubCluster.ClusterServerURL,
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext)
-	mco, getErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
-	if getErr != nil {
-		return getErr
-	}
+	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		mco, getErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+		if getErr != nil {
+			return getErr
+		}
 
-	observabilityAddonSpec := mco.Object["spec"].(map[string]any)["observabilityAddonSpec"].(map[string]any)
-	if interval == 0 {
-		observabilityAddonSpec["interval"] = nil
-	} else {
-		observabilityAddonSpec["interval"] = interval
-	}
-	_, updateErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Update(context.TODO(), mco, metav1.UpdateOptions{})
-	if updateErr != nil {
+		observabilityAddonSpec := mco.Object["spec"].(map[string]any)["observabilityAddonSpec"].(map[string]any)
+		if interval == 0 {
+			observabilityAddonSpec["interval"] = nil
+		} else {
+			observabilityAddonSpec["interval"] = interval
+		}
+		_, updateErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Update(context.TODO(), mco, metav1.UpdateOptions{})
 		return updateErr
-	}
-	return nil
+	})
 }
 
 func GetMCOAddonSpecResources(opt TestOptions) (map[string]any, error) {
