@@ -187,6 +187,55 @@ func NewRouteGVR() schema.GroupVersionResource {
 	}
 }
 
+// NewLokiStackGVR returns the GVR for Loki Operator's LokiStack resources, used by MCOA as the
+// default managed log store for platform log collection.
+func NewLokiStackGVR() schema.GroupVersionResource {
+	return schema.GroupVersionResource{
+		Group:    "loki.grafana.com",
+		Version:  "v1",
+		Resource: "lokistacks",
+	}
+}
+
+// NewClusterLogForwarderGVR returns the GVR for ClusterLogForwarder resources, used by MCOA to
+// collect and forward platform/user workload logs to the managed log store.
+func NewClusterLogForwarderGVR() schema.GroupVersionResource {
+	return schema.GroupVersionResource{
+		Group:    "observability.openshift.io",
+		Version:  "v1",
+		Resource: "clusterlogforwarders",
+	}
+}
+
+// NewCertManagerIssuerGVR returns the GVR for cert-manager's namespaced Issuer resources.
+func NewCertManagerIssuerGVR() schema.GroupVersionResource {
+	return schema.GroupVersionResource{
+		Group:    "cert-manager.io",
+		Version:  "v1",
+		Resource: "issuers",
+	}
+}
+
+// NewCertManagerClusterIssuerGVR returns the GVR for cert-manager's cluster-scoped
+// ClusterIssuer resources.
+func NewCertManagerClusterIssuerGVR() schema.GroupVersionResource {
+	return schema.GroupVersionResource{
+		Group:    "cert-manager.io",
+		Version:  "v1",
+		Resource: "clusterissuers",
+	}
+}
+
+// NewCertManagerCertificateGVR returns the GVR for cert-manager's namespaced Certificate
+// resources.
+func NewCertManagerCertificateGVR() schema.GroupVersionResource {
+	return schema.GroupVersionResource{
+		Group:    "cert-manager.io",
+		Version:  "v1",
+		Resource: "certificates",
+	}
+}
+
 // VerifyRSResourcesCleanedUp checks that all right-sizing resources have been deleted.
 // Uses both label-based discovery (catches resources in any namespace) and name-based
 // checks (catches old unlabeled resources) to ensure nothing is left behind.
@@ -745,6 +794,31 @@ func SetMCOAAlertForwardingCapabilities(opt TestOptions, platformAlerts, userWor
 			return err
 		}
 		if err := unstructured.SetNestedField(mco.Object, userWorkloadAlerts, "spec", "capabilities", "userWorkloads", "metrics", "alerts", "enabled"); err != nil {
+			return err
+		}
+
+		_, updateErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Update(context.TODO(), mco, metav1.UpdateOptions{})
+		return updateErr
+	})
+}
+
+// SetMCOAPlatformLogsCapability enables/disables the MCOA platform logs collection capability
+// (the "managed log store" use case). When enabled, MCO installs Loki Operator and cert-manager
+// as dependencies, provisions the MCOA root CA, and the addon manager deploys a
+// ClusterLogForwarder to collect platform logs into the default managed LokiStack.
+func SetMCOAPlatformLogsCapability(opt TestOptions, enabled bool) error {
+	clientDynamic := NewKubeClientDynamic(
+		opt.HubCluster.ClusterServerURL,
+		opt.KubeConfig,
+		opt.HubCluster.KubeContext)
+
+	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		mco, getErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+		if getErr != nil {
+			return getErr
+		}
+
+		if err := unstructured.SetNestedField(mco.Object, enabled, "spec", "capabilities", "platform", "logs", "collection", "enabled"); err != nil {
 			return err
 		}
 

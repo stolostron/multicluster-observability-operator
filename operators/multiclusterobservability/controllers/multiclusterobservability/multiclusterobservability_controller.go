@@ -26,6 +26,7 @@ import (
 	placementctrl "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/placementrule"
 	certctrl "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/certificates"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/dependencies"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering"
 	smctrl "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/servicemonitor"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
@@ -68,6 +69,15 @@ const (
 	// rightSizingScrapeConfigName is the right-sizing ScrapeConfig earlier MCO versions deployed.
 	// MCOA renders it now; see deleteVestigialRightSizingScrapeConfig.
 	rightSizingScrapeConfigName = "platform-metrics-right-sizing"
+	// lokiOperatorRequeueInterval controls how often we recheck for the LokiStack CRD while
+	// waiting for Loki Operator's OLM install to complete. TODO: replace this polling with an
+	// event-driven trigger (e.g. a dedicated CRD watch) once the approach is finalized.
+	// lokiOperatorRequeueInterval = 10 * time.Second
+	// dependencyOperatorRequeueInterval controls how often we recheck for a dependency
+	// operator's CRD (e.g. LokiStack, cert-manager's Certificate) while waiting for its OLM
+	// install to complete. TODO: replace this polling with an event-driven trigger (e.g. a
+	// dedicated CRD watch) once the approach is finalized.
+	dependencyOperatorRequeueInterval = 10 * time.Second
 )
 
 const (
@@ -268,6 +278,55 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	obsAPIURL, err := config.GetObsAPIExternalURL(ctx, r.Client, obsAPIGateway, config.GetDefaultNamespace())
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to get the Observatorium API URL: %w", err) // Already wrapped
+	}
+
+	// MCOA's platform log collection capability relies on Loki Operator's LokiStack CRD as the
+	// default log store, and on cert-manager's Certificate/Issuer/ClusterIssuer CRDs to issue
+	// the mTLS certs used for log collection/storage. Only install these ourselves when MCOA is
+	// enabled and that capability is enabled; otherwise leave any existing/manual install alone.
+	// (platformLogsEnabled already implies MCOAEnabled, but we check both explicitly for clarity.)
+	//
+	// If a CRD isn't present yet, requeue immediately rather than rendering/deploying anything
+	// else this pass, and keep requeuing every reconcile until it appears (OLM installs are
+	// asynchronous and can take a while). This is deliberately simple polling for now, rather
+	// than an event-driven trigger, to keep the change safe/easy to reason about; can be
+	// optimized later.
+	platformLogsEnabled := instance.Spec.Capabilities != nil &&
+		instance.Spec.Capabilities.Platform != nil &&
+		instance.Spec.Capabilities.Platform.Logs.Collection.Enabled
+	if rendering.MCOAEnabled(instance) && platformLogsEnabled {
+		lokiStackCRD := &apiextensionsv1.CustomResourceDefinition{}
+		err = r.Client.Get(ctx, types.NamespacedName{Name: config.LokiStackCRDName}, lokiStackCRD)
+		if err != nil && !apierrors.IsNotFound(err) {
+			return ctrl.Result{}, fmt.Errorf("failed to check for LokiStack CRD %s: %w", config.LokiStackCRDName, err)
+		}
+		if apierrors.IsNotFound(err) {
+			reqLogger.Info("LokiStack CRD not found, installing Loki Operator", "crd", config.LokiStackCRDName)
+			if err := dependencies.EnsureLokiOperatorInstalled(ctx, r.Client); err != nil {
+				return ctrl.Result{}, fmt.Errorf("failed to install Loki Operator: %w", err)
+			}
+			return ctrl.Result{RequeueAfter: dependencyOperatorRequeueInterval}, nil
+		}
+
+		certManagerCRD := &apiextensionsv1.CustomResourceDefinition{}
+		err = r.Client.Get(ctx, types.NamespacedName{Name: config.CertManagerCertificateCRDName}, certManagerCRD)
+		if err != nil && !apierrors.IsNotFound(err) {
+			return ctrl.Result{}, fmt.Errorf("failed to check for cert-manager Certificate CRD %s: %w", config.CertManagerCertificateCRDName, err)
+		}
+		if apierrors.IsNotFound(err) {
+			reqLogger.Info("cert-manager Certificate CRD not found, installing cert-manager Operator", "crd", config.CertManagerCertificateCRDName)
+			if err := dependencies.EnsureCertManagerOperatorInstalled(ctx, r.Client); err != nil {
+				return ctrl.Result{}, fmt.Errorf("failed to install cert-manager Operator: %w", err)
+			}
+			return ctrl.Result{RequeueAfter: dependencyOperatorRequeueInterval}, nil
+		}
+
+		// The Certificate CRD (and its sibling Issuer/ClusterIssuer CRDs) are now established,
+		// so it's safe to create the root CA Issuer/Certificate/ClusterIssuer that MCOA's
+		// logging default stack issues its mTLS certs from.
+		if err := dependencies.EnsureMCOARootCertificatesInstalled(ctx, r.Client); err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to install MCOA root certificate resources: %w", err)
+		}
 	}
 
 	// Build render options
