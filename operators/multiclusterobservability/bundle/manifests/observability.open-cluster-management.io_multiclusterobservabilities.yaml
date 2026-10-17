@@ -100,7 +100,7 @@ spec:
                   clusters which have observability add-on enabled.
                 properties:
                   enableMetrics:
-                    default: true
+                    default: false
                     description: When false, the managed cluster addon stops pushing
                       metrics to the hub.
                     type: boolean
@@ -10699,6 +10699,7 @@ spec:
                     type: string
                 type: object
               capabilities:
+                default: {}
                 description: |-
                   Capabilities defines the platform and user workload observabilities capabilities
                   managed exclusively by the multicluster-observability-addon. Enabling any of these
@@ -10776,6 +10777,7 @@ spec:
                         type: object
                     type: object
                   platform:
+                    default: {}
                     description: |-
                       Platform defines the spec for platform observability capabilities managed by the addon.
                       The platform is defined as the ACM/OCM/OCP components running on managed clusters to run,
@@ -10846,6 +10848,7 @@ spec:
                             type: object
                         type: object
                       metrics:
+                        default: {}
                         description: |-
                           Metrics defines the configuration spec for collecting and storing metrics from
                           platform components running on fleet managed clusters.
@@ -10860,11 +10863,13 @@ spec:
                                 type: boolean
                             type: object
                           default:
+                            default: {}
                             description: |-
                               Default defines the spec for the addon to collect and forward metrics
                               from fleet managed clusters.
                             properties:
                               enabled:
+                                default: true
                                 description: Enabled defines a flag to enable/disable
                                   the platform metrics collection.
                                 type: boolean
@@ -10999,12 +11004,13 @@ spec:
                 description: Spec of NodeSelector
                 type: object
               observabilityAddonSpec:
+                default: {}
                 description: |-
                   The ObservabilityAddonSpec defines the global settings for all managed
                   clusters which have observability add-on enabled.
                 properties:
                   enableMetrics:
-                    default: true
+                    default: false
                     description: When false, the managed cluster addon stops pushing
                       metrics to the hub.
                     type: boolean
@@ -11233,7 +11239,6 @@ spec:
                   type: object
                 type: array
             required:
-            - observabilityAddonSpec
             - storageConfig
             type: object
           status:

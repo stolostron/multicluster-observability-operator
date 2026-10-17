@@ -154,7 +154,7 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		} else if requeue {
 			return ctrl.Result{RequeueAfter: 30 * time.Second}, nil
 		}
-		if mcoIsNotFound || metricsAreDisabled {
+		if mcoIsNotFound || (metricsAreDisabled && !mcoaForMetricsIsEnabled(mco)) {
 			if err := DeleteHubMetricsCollectionDeployments(ctx, r.Client); err != nil {
 				return ctrl.Result{}, fmt.Errorf("failed to delete hub metrics collection deployments and resources: %w", err)
 			}
