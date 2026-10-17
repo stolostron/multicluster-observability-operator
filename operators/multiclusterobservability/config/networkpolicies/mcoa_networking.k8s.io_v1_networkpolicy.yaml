@@ -8,7 +8,10 @@ spec:
   podSelector:
     matchLabels:
       app: multicluster-observability-addon-manager
-  ingress: []
+  ingress:
+    - ports:
+        - protocol: TCP
+          port: 8444
   egress:
     - {}
   policyTypes:
