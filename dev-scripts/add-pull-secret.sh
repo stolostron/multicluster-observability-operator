@@ -9,7 +9,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib/common.sh"
 
-require_env QUAY_USER QUAY_TOKEN
+require_env REGISTRY_USER REGISTRY_TOKEN REGISTRY_HOST
 
 WORK_DIR=$(mktemp -d)
 trap 'rm -rf "$WORK_DIR"' EXIT
@@ -19,10 +19,10 @@ oc get secret pull-secret -n openshift-config \
   -o jsonpath='{.data.\.dockerconfigjson}' |
   base64 -d >"${WORK_DIR}/pull-secret.json"
 
-log_info "Merging quay.io credentials for user ${QUAY_USER}..."
+log_info "Merging {$REGISTRY_HOST} credentials for user ${REGISTRY_USER}..."
 oc registry login \
-  --registry="quay.io:443" \
-  --auth-basic="${QUAY_USER}:${QUAY_TOKEN}" \
+  --registry="${REGISTRY_HOST}" \
+  --auth-basic="${REGISTRY_USER}:${REGISTRY_TOKEN}" \
   --to="${WORK_DIR}/pull-secret.json"
 
 log_info "Updating cluster pull secret..."
