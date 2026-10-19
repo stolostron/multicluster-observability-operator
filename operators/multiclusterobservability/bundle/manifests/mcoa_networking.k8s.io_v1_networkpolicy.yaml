@@ -9,7 +9,15 @@ spec:
     matchLabels:
       app: multicluster-observability-addon-manager
   ingress:
-    - ports:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: openshift-monitoring
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
+              app.kubernetes.io/part-of: openshift-monitoring
+      ports:
         - protocol: TCP
           port: 8444
   egress:
