@@ -55,8 +55,8 @@ installed_csv=$(jq -r '.status.installedCSV // empty' <<<"$subscription_json")
 channel=$(jq -r '.spec.channel // empty' <<<"$subscription_json")
 approval=$(jq -r '.spec.installPlanApproval // "Automatic"' <<<"$subscription_json")
 
-if [[ -z $installed_csv || $channel != "$EXPECTED_ACM_CHANNEL" || $approval != Automatic ]]; then
-  log_error "ACM subscription ${subscription_name} must have an installed CSV, channel ${EXPECTED_ACM_CHANNEL}, and Automatic approval"
+if [[ -z $installed_csv || $approval != Automatic || ( -n $channel && $channel != "$EXPECTED_ACM_CHANNEL" ) ]]; then
+  log_error "ACM subscription ${subscription_name} must have an installed CSV, an empty or ${EXPECTED_ACM_CHANNEL} channel, and Automatic approval"
   log_error "Found installedCSV=${installed_csv:-<empty>}, channel=${channel:-<empty>}, approval=${approval}"
   exit 1
 fi
@@ -74,6 +74,13 @@ fi
 log_info "Preserving MCO operator image: ${mco_image}"
 
 catalog_image=$(oc get catalogsource "$CATALOG_NAME" -n "$CATALOG_NS" -o jsonpath='{.spec.image}')
+if [[ -z $channel ]]; then
+  # Prow leaves the channel empty, which makes OLM use the catalog default.
+  # Select the channel containing our custom bundle before swapping catalogs.
+  log_info "Setting ACM subscription ${subscription_name} channel to ${EXPECTED_ACM_CHANNEL}"
+  channel_patch=$(jq -nc --arg channel "$EXPECTED_ACM_CHANNEL" '{spec:{channel:$channel}}')
+  oc patch subscription.operators.coreos.com "$subscription_name" -n "$ACM_NS" --type=merge -p "$channel_patch"
+fi
 if [[ $catalog_image != "$CUSTOM_ACM_CATALOG_IMAGE" ]]; then
   log_info "Changing CatalogSource ${CATALOG_NS}/${CATALOG_NAME} to ${CUSTOM_ACM_CATALOG_IMAGE}"
   image_patch=$(jq -nc --arg image "$CUSTOM_ACM_CATALOG_IMAGE" '{spec:{image:$image}}')
