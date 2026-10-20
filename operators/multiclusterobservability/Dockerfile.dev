@@ -2,7 +2,7 @@
 # Build from the repository root: podman build -f operators/multiclusterobservability/Dockerfile.dev -t <image> .
 
 # Builder always runs on the host platform so Go cross-compilation is native (no emulation).
-FROM --platform=$BUILDPLATFORM golang:1.25 AS builder
+FROM --platform=$BUILDPLATFORM golang:1.27 AS builder
 
 ARG TARGETOS=linux
 ARG TARGETARCH=amd64
