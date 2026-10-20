@@ -34,12 +34,21 @@ if ! [[ $UPGRADE_TIMEOUT =~ ^[0-9]+$ ]] || ((UPGRADE_TIMEOUT < POLL_INTERVAL)); 
   exit 1
 fi
 
-subscription_json=$(oc get subscriptions -n "$ACM_NS" -o json)
-subscription_json=$(jq -ce --arg package "$ACM_PACKAGE" --arg source "$CATALOG_NAME" \
+# ACM also installs the OCM application Subscription API. Qualify the OLM API
+# so oc does not select the other resource with the same kind/plural name.
+subscriptions_json=$(oc get subscriptions.operators.coreos.com -n "$ACM_NS" -o json)
+log_info "OLM subscriptions JSON in ${ACM_NS}:"
+printf '%s\n' "$subscriptions_json"
+subscription_matches=$(jq -c --arg package "$ACM_PACKAGE" --arg source "$CATALOG_NAME" \
   --arg namespace "$CATALOG_NS" \
-  '[.items[] | select(.spec.name == $package and .spec.source == $source and .spec.sourceNamespace == $namespace)] |
-   if length == 1 then .[0] else error("expected exactly one ACM subscription using acm-custom-registry") end' \
-  <<<"$subscription_json")
+  '[.items[] | select(.spec.name == $package and .spec.source == $source and .spec.sourceNamespace == $namespace)]' \
+  <<<"$subscriptions_json")
+match_count=$(jq 'length' <<<"$subscription_matches")
+if ((match_count != 1)); then
+  log_error "Expected one OLM ACM subscription using ${CATALOG_NAME}; found ${match_count}"
+  exit 1
+fi
+subscription_json=$(jq -c '.[0]' <<<"$subscription_matches")
 
 subscription_name=$(jq -r '.metadata.name' <<<"$subscription_json")
 installed_csv=$(jq -r '.status.installedCSV // empty' <<<"$subscription_json")
@@ -85,7 +94,7 @@ if ! csv_has_expected_mch_image "$installed_csv"; then
   log_info "Waiting for ACM to upgrade from ${installed_csv} (timeout: ${UPGRADE_TIMEOUT}s)..."
   elapsed=0
   while ((elapsed < UPGRADE_TIMEOUT)); do
-    new_csv=$(oc get subscription "$subscription_name" -n "$ACM_NS" \
+    new_csv=$(oc get subscription.operators.coreos.com "$subscription_name" -n "$ACM_NS" \
       -o jsonpath='{.status.installedCSV}')
     if [[ -n $new_csv && $new_csv != "$installed_csv" ]]; then
       break
@@ -95,7 +104,7 @@ if ! csv_has_expected_mch_image "$installed_csv"; then
   done
   if [[ -z $new_csv || $new_csv == "$installed_csv" ]]; then
     log_error "ACM did not upgrade. Confirm the new catalog's ${EXPECTED_ACM_CHANNEL} channel replaces ${installed_csv}."
-    oc describe subscription "$subscription_name" -n "$ACM_NS" || true
+    oc describe subscription.operators.coreos.com "$subscription_name" -n "$ACM_NS" || true
     oc get installplans -n "$ACM_NS" || true
     exit 1
   fi
