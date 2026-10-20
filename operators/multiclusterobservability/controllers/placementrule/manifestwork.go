@@ -547,6 +547,9 @@ func createManifestWorks(
 			customPullSecret.Name = config.GetImagePullSecret(mco.Spec)
 			customPullSecret.Namespace = spokeNameSpace
 			manifests = injectIntoWork(manifests, customPullSecret)
+		} else if pullSecret != nil {
+			log.Info("Custom registry has no pull secret, falling back to default", "cluster", cluster.Name)
+			manifests = injectIntoWork(manifests, pullSecret)
 		}
 
 		log.Info("Replace the image list configmap with custom image", "cluster", cluster.Name)
