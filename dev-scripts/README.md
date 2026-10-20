@@ -46,6 +46,9 @@ export KUBECONFIG=/path/to/hub.kubeconfig
 make e2e-tests
 ```
 
+Prow leaves the ACM Subscription channel empty, so the script first sets it to
+`release-2.17` before switching catalogs.
+
 The Makefile defaults can be overridden with `CUSTOM_ACM_CATALOG_IMAGE` and
 `EXPECTED_MCH_OPERATOR_IMAGE`. Set `CUSTOM_ACM_CATALOG_IMAGE=` to skip the
 catalog switch. In Prow, `make e2e-tests` uses `${SHARED_DIR}/hub-1.kc` when no
