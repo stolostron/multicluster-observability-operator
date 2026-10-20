@@ -86,6 +86,9 @@ func (c *DefaultClient) PullSecret() (*corev1.Secret, error) {
 	if err != nil {
 		return nil, err
 	}
+	if imageRegistries.PullSecret == "" {
+		return nil, nil
+	}
 	segs := strings.Split(imageRegistries.PullSecret, ".")
 	if len(segs) != 2 {
 		return nil, fmt.Errorf("wrong pullSecret format %v in the annotation %s",
