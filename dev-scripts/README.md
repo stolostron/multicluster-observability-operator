@@ -34,6 +34,32 @@ See `.env.example` for all supported variables.
 
 ---
 
+## Run E2E against a custom ACM catalog
+
+If ACM is already installed, `make e2e-tests` switches its existing
+`acm-custom-registry` CatalogSource to the temporary managed log store catalog
+configured in the Makefile, waits for OLM to upgrade the ACM CSV, and verifies
+the MCH operator image before starting the tests:
+
+```bash
+export KUBECONFIG=/path/to/hub.kubeconfig
+make e2e-tests
+```
+
+The Makefile defaults can be overridden with `CUSTOM_ACM_CATALOG_IMAGE` and
+`EXPECTED_MCH_OPERATOR_IMAGE`. Set `CUSTOM_ACM_CATALOG_IMAGE=` to skip the
+catalog switch. In Prow, `make e2e-tests` uses `${SHARED_DIR}/hub-1.kc` when no
+`KUBECONFIG` is set. The bundle image is selected by the catalog and is not an
+input to this script.
+
+The custom catalog must contain a new CSV in the subscribed channel with an
+upgrade path from the CSV already installed on the cluster. The script fails if
+OLM does not perform that upgrade or if the running MCH or MCO operator image
+does not match the expected image. The cluster must be able to pull the custom
+catalog and bundle images.
+
+---
+
 ## Path A — Fresh install from the standard OLM catalog
 
 Use this on a bare cluster with no ACM installed, when you don't need downstream dev builds.
