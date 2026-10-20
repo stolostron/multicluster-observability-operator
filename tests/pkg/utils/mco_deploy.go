@@ -726,12 +726,6 @@ func SetMCOACapabilities(opt TestOptions, platformMetrics, userWorkloadMetrics b
 			}
 		}
 
-		// In ACM 5.0, right-sizing keeps the MCOA stack alive even when metrics are disabled.
-		// Sync RS state: disable when fully disabling MCOA, re-enable when restoring capabilities.
-		if err := setRSEnabled(mco, platformMetrics || userWorkloadMetrics); err != nil {
-			return err
-		}
-
 		_, updateErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Update(context.TODO(), mco, metav1.UpdateOptions{})
 		return updateErr
 	})
@@ -783,13 +777,6 @@ func SetMCOAAllCapabilities(opt TestOptions, platformMetrics, platformAlerts, us
 			return err
 		}
 		if err := unstructured.SetNestedField(mco.Object, userWorkloadAlerts, "spec", "capabilities", "userWorkloads", "metrics", "alerts", "enabled"); err != nil {
-			return err
-		}
-
-		// In ACM 5.0, right-sizing keeps the MCOA stack alive even when metrics are disabled.
-		// Sync RS state: disable when fully disabling MCOA, re-enable when restoring capabilities.
-		// Only metrics (not alerts) independently keep MCOA alive per MCOAEnabled().
-		if err := setRSEnabled(mco, platformMetrics || userWorkloadMetrics); err != nil {
 			return err
 		}
 
