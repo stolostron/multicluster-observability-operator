@@ -136,6 +136,7 @@ data:
       - kubelet_runtime_operations_duration_seconds_sum
       - kubelet_volume_stats_available_bytes
       - kubelet_volume_stats_capacity_bytes
+      - kubevirt_hco_memory_overcommit_percentage
       - kubevirt_hco_system_health_status
       - kubevirt_hyperconverged_operator_health_status
       - kubevirt_vm_cpu_usage_seconds_total
@@ -155,6 +156,7 @@ data:
       - kubevirt_vmi_launcher_memory_overhead_bytes
       - kubevirt_vmi_memory_available_bytes
       - kubevirt_vmi_memory_cached_bytes
+      - kubevirt_vmi_memory_domain_bytes
       - kubevirt_vmi_memory_swap_in_traffic_bytes
       - kubevirt_vmi_memory_swap_out_traffic_bytes
       - kubevirt_vmi_memory_unused_bytes
