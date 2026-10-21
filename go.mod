@@ -1,6 +1,6 @@
 module github.com/stolostron/multicluster-observability-operator
 
-go 1.25.0
+go 1.26.0
 
 require (
 	github.com/IBM/controller-filtered-cache v0.3.6
@@ -156,7 +156,7 @@ require (
 	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/goleak v1.3.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/crypto v0.55.0 // indirect
+	golang.org/x/crypto v0.56.0 // indirect
 	golang.org/x/mod v0.38.0 // indirect
 	golang.org/x/net v0.58.0 // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect
