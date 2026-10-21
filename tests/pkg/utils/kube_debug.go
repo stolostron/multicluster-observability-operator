@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"slices"
 	"strings"
 	"text/tabwriter"
 	"time"
@@ -136,13 +137,13 @@ func LogPodStatus(podList corev1.Pod) {
 	podStatus.WriteString(">>>>>>>>>> pod status >>>>>>>>>>\n")
 	podStatus.WriteString("Conditions:\n")
 	for _, condition := range podList.Status.Conditions {
-		podStatus.WriteString(fmt.Sprintf("\t%s: %s %v\n", condition.Type, condition.Status, condition.LastTransitionTime.Time))
+		fmt.Fprintf(&podStatus, "\t%s: %s %v\n", condition.Type, condition.Status, condition.LastTransitionTime.Time)
 	}
 	podStatus.WriteString("ContainerStatuses:\n")
 	for _, containerStatus := range podList.Status.ContainerStatuses {
-		podStatus.WriteString(fmt.Sprintf("\t%s: %t %d %v\n", containerStatus.Name, containerStatus.Ready, containerStatus.RestartCount, containerStatus.State))
+		fmt.Fprintf(&podStatus, "\t%s: %t %d %v\n", containerStatus.Name, containerStatus.Ready, containerStatus.RestartCount, containerStatus.State)
 		if containerStatus.LastTerminationState.Terminated != nil {
-			podStatus.WriteString(fmt.Sprintf("\t\tlastTerminated: %v\n", containerStatus.LastTerminationState.Terminated))
+			fmt.Fprintf(&podStatus, "\t\tlastTerminated: %v\n", containerStatus.LastTerminationState.Terminated)
 		}
 	}
 	podStatus.WriteString("<<<<<<<<<< pod status <<<<<<<<<<")
@@ -173,8 +174,8 @@ func LogPodLogs(client kubernetes.Interface, ns string, pod corev1.Pod) {
 		cutoffTime := time.Now().Add(-6 * time.Minute)
 		unparseableCount := 0
 
-		for i := len(lines) - 1; i >= 0; i-- {
-			line := lines[i]
+		for _, line := range slices.Backward(lines) {
+
 			if line == "" {
 				continue
 			}
@@ -250,12 +251,12 @@ func CheckDeploymentsInNamespace(client kubernetes.Interface, ns string) {
 func LogDeploymentStatus(deployment appsv1.Deployment) {
 	var deploymentStatus strings.Builder
 	deploymentStatus.WriteString(">>>>>>>>>> deployment status >>>>>>>>>>\n")
-	deploymentStatus.WriteString(fmt.Sprintf("ReadyReplicas: %d\n", deployment.Status.ReadyReplicas))
-	deploymentStatus.WriteString(fmt.Sprintf("UpdatedReplicas: %d\n", deployment.Status.UpdatedReplicas))
-	deploymentStatus.WriteString(fmt.Sprintf("AvailableReplicas: %d\n", deployment.Status.AvailableReplicas))
+	fmt.Fprintf(&deploymentStatus, "ReadyReplicas: %d\n", deployment.Status.ReadyReplicas)
+	fmt.Fprintf(&deploymentStatus, "UpdatedReplicas: %d\n", deployment.Status.UpdatedReplicas)
+	fmt.Fprintf(&deploymentStatus, "AvailableReplicas: %d\n", deployment.Status.AvailableReplicas)
 	deploymentStatus.WriteString("Conditions:\n")
 	for _, condition := range deployment.Status.Conditions {
-		deploymentStatus.WriteString(fmt.Sprintf("\t%s: %s %v \n\t\t%s %s\n", condition.Type, condition.Status, condition.LastTransitionTime, condition.Message, condition.Reason))
+		fmt.Fprintf(&deploymentStatus, "\t%s: %s %v \n\t\t%s %s\n", condition.Type, condition.Status, condition.LastTransitionTime, condition.Message, condition.Reason)
 	}
 	deploymentStatus.WriteString("<<<<<<<<<< deployment status <<<<<<<<<<")
 
