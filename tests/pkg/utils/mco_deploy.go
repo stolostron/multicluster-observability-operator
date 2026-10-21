@@ -296,7 +296,7 @@ func ToCompactJSON(v any, prefix string, depth int, maxDepth int) string {
 
 	// If v is a struct or pointer to struct, convert to unstructured
 	rv := reflect.ValueOf(v)
-	if rv.Kind() == reflect.Ptr {
+	if rv.Kind() == reflect.Pointer {
 		if rv.IsNil() {
 			return "null"
 		}
@@ -335,7 +335,7 @@ func ToCompactJSON(v any, prefix string, depth int, maxDepth int) string {
 				sb.WriteString(",\n")
 			}
 			subV := rv.MapIndex(k).Interface()
-			sb.WriteString(fmt.Sprintf("%s  %q: %s", prefix, k.String(), ToCompactJSON(subV, prefix+"  ", depth+1, maxDepth)))
+			fmt.Fprintf(&sb, "%s  %q: %s", prefix, k.String(), ToCompactJSON(subV, prefix+"  ", depth+1, maxDepth))
 		}
 		if len(keys) > 0 {
 			sb.WriteString("\n")
@@ -352,7 +352,7 @@ func ToCompactJSON(v any, prefix string, depth int, maxDepth int) string {
 				sb.WriteString(",\n")
 			}
 			subV := rv.Index(i).Interface()
-			sb.WriteString(fmt.Sprintf("%s  %s", prefix, ToCompactJSON(subV, prefix+"  ", depth+1, maxDepth)))
+			fmt.Fprintf(&sb, "%s  %s", prefix, ToCompactJSON(subV, prefix+"  ", depth+1, maxDepth))
 		}
 		if rv.Len() > 0 {
 			sb.WriteString("\n")

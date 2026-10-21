@@ -663,8 +663,7 @@ func (c *GrafanaDashboardController) updateDashboard(ctx context.Context, newObj
 
 		id, err := c.grafana.CreateOrUpdateDashboard(ctx, dashboard, folderID)
 		if err != nil {
-			var gErr *GrafanaError
-			if errors.As(err, &gErr) {
+			if gErr, ok := errors.AsType[*GrafanaError](err); ok {
 				if gErr.IsNameExists() {
 					errs = append(errs, fmt.Errorf("the dashboard name already existed"))
 					continue
