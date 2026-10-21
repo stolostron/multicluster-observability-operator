@@ -187,7 +187,6 @@ func LogPodLogs(client kubernetes.Interface, ns string, pod corev1.Pod) {
 		unparseableCount := 0
 
 		for _, line := range slices.Backward(lines) {
-
 			if line == "" {
 				continue
 			}
