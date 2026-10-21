@@ -65,11 +65,11 @@ func (r GrafanaResponse) CheckMetricFromAllClusters(clusters []Cluster) error {
 
 func (r GrafanaResponse) String() string {
 	var ret strings.Builder
-	ret.WriteString(fmt.Sprintf("Status: %s\n", r.Status))
-	ret.WriteString(fmt.Sprintf("ResultType: %s\n", r.Data.ResultType))
+	fmt.Fprintf(&ret, "Status: %s\n", r.Status)
+	fmt.Fprintf(&ret, "ResultType: %s\n", r.Data.ResultType)
 	ret.WriteString("Result:\n")
 	for _, result := range r.Data.Result {
-		ret.WriteString(fmt.Sprintf("%v %v\n", result.Metric, result.Value))
+		fmt.Fprintf(&ret, "%v %v\n", result.Metric, result.Value)
 	}
 	return ret.String()
 }

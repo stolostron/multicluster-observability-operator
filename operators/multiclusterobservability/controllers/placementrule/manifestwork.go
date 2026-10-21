@@ -38,7 +38,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/util/retry"
-	"k8s.io/utils/ptr"
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	workv1 "open-cluster-management.io/api/work/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -900,7 +899,7 @@ func generateAmAccessorTokenSecret(cl client.Client, kubeClient kubernetes.Inter
 	// This is used to verify incoming alertmanager connetions from prometheus.
 	tokenRequest, err := kubeClient.CoreV1().ServiceAccounts(config.GetDefaultNamespace()).CreateToken(context.TODO(), config.AlertmanagerAccessorSAName, &authv1.TokenRequest{
 		Spec: authv1.TokenRequestSpec{
-			ExpirationSeconds: ptr.To(int64(8640 * 3600)), // expires in 364 days
+			ExpirationSeconds: new(int64(8640 * 3600)), // expires in 364 days
 		},
 	}, metav1.CreateOptions{})
 	if err != nil {
