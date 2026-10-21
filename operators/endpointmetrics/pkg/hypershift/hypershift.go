@@ -323,8 +323,3 @@ func deleteServiceMonitor(ctx context.Context, c client.Client, name, namespace 
 
 	return nil
 }
-
-//go:fix inline
-func stringPtr(s string) *string {
-	return new(s)
-}
