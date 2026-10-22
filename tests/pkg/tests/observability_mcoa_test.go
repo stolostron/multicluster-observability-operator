@@ -30,15 +30,16 @@ import (
 )
 
 const (
-	mcoaManagerDeploymentName              = "multicluster-observability-addon-manager"
-	platformPrometheusAgentStatefulSetName = "prom-agent-platform-metrics-collector"
-	uwlPrometheusAgentStatefulSetName      = "prom-agent-user-workload-metrics-collector"
-	oboPrometheusOperatorDeploymentName    = "obo-prometheus-operator"
-	prometheusOperatorDeploymentName       = "prometheus-operator"
-	metricsCollectorDeploymentName         = "metrics-collector-deployment"
-	mcoaAddonName                          = "multicluster-observability-addon"
-	globalPlacementName                    = "global"
-	kubeStateMetricsDeploymentName         = "kube-state-metrics"
+	mcoaManagerDeploymentName                = "multicluster-observability-addon-manager"
+	platformPrometheusAgentStatefulSetName   = "prom-agent-platform-metrics-collector"
+	uwlPrometheusAgentStatefulSetName        = "prom-agent-user-workload-metrics-collector"
+	oboPrometheusOperatorDeploymentName      = "obo-prometheus-operator"
+	prometheusOperatorDeploymentName         = "prometheus-operator"
+	endpointMonitoringOperatorDeploymentName = "endpoint-monitoring-operator"
+	metricsCollectorDeploymentName           = "metrics-collector-deployment"
+	mcoaAddonName                            = "multicluster-observability-addon"
+	globalPlacementName                      = "global"
+	kubeStateMetricsDeploymentName           = "kube-state-metrics"
 )
 
 var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
@@ -1054,15 +1055,10 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 				})
 			})
 
-			AfterAll(func() {
-				By("Re-enabling legacy alert forwarding after MCOA alert forwarding tests", func() {
-					Expect(utils.SetLegacyAlertForwardingDisabled(testOptions, false)).NotTo(HaveOccurred())
-				})
-			})
-
 			It("should allow enabling and forwarding alerts to the hub", SpecTimeout(10*time.Minute), func(ctx SpecContext) {
 				By("Enabling platform and user workload metrics with alert forwarding for MCOA", func() {
 					Expect(utils.SetMCOAAllCapabilities(testOptions, true, true, true, true)).NotTo(HaveOccurred())
+					waitForEndpointMonitoringOperatorRollout(managedClustersWithHub, true)
 				})
 
 				By("Configuring the platform and user workload scrape intervals to 10s", func() {
@@ -1179,6 +1175,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 			It("should stop forwarding alerts and clean up config when alert forwarding or MCOA is disabled", SpecTimeout(10*time.Minute), func(ctx SpecContext) {
 				By("Disabling alert forwarding for MCOA", func() {
 					Expect(utils.SetMCOAAlertForwardingCapabilities(testOptions, false, false)).NotTo(HaveOccurred())
+					waitForEndpointMonitoringOperatorRollout(managedClustersWithHub, false)
 				})
 
 				By("Checking that CMO ConfigMap is cleaned of additional alert forwarding config on disable", func() {
@@ -1223,6 +1220,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 
 				By("Configuring alert forwarding back to enabled first", func() {
 					Expect(utils.SetMCOAAlertForwardingCapabilities(testOptions, true, true)).NotTo(HaveOccurred())
+					waitForEndpointMonitoringOperatorRollout(managedClustersWithHub, true)
 				})
 
 				By("Waiting for additional alert forwarding config to be recreated in CMO's Platform and UWL ConfigMaps", func() {
@@ -1302,6 +1300,13 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 	})
 
 	AfterAll(func() {
+		afterAllFailed := true
+		defer func() {
+			if afterAllFailed {
+				testFailed = true
+				utils.LogFailingTestStandardDebugInfo(testOptions, true)
+			}
+		}()
 		By("Disabling MCOA", func() {
 			Expect(utils.ResetMCOACapabilities(testOptions)).NotTo(HaveOccurred())
 			utils.CheckStatefulSetAvailabilityOnClusters(managedClustersWithHub, platformPrometheusAgentStatefulSetName, utils.MCO_AGENT_ADDON_NAMESPACE, false)
@@ -1341,6 +1346,9 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 				}
 			})
 
+			// Re-enable legacy alert forwarding after MCOA teardown and CRD cleanup complete
+			Expect(utils.SetLegacyAlertForwardingDisabled(testOptions, false)).NotTo(HaveOccurred())
+
 			// Wait for the metrics collector to be up to avoid race conditions with other tests setups
 			utils.CheckDeploymentAvailability(testOptions.HubCluster, metricsCollectorDeploymentName, utils.MCO_NAMESPACE, true)
 			utils.CheckDeploymentAvailabilityOnClusters(managedClusters, metricsCollectorDeploymentName, utils.MCO_ADDON_NAMESPACE, true)
@@ -1350,5 +1358,48 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 				return utils.CheckAllOBAsEnabled(testOptions)
 			}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*10).Should(Succeed(), "ObservabilityAddon should become available and healthy on all managed clusters after MCOA teardown")
 		})
+		afterAllFailed = false
 	})
 })
+
+func waitForEndpointMonitoringOperatorRollout(clusters []utils.Cluster, platformAlertsEnabled bool) {
+	expectedArg := fmt.Sprintf("--enable-platform-alert-forwarding=%t", platformAlertsEnabled)
+	for _, cluster := range clusters {
+		Eventually(func() error {
+			dep, err := utils.GetDeploymentWithCluster(cluster, endpointMonitoringOperatorDeploymentName, utils.MCO_AGENT_ADDON_NAMESPACE)
+			if err != nil {
+				return fmt.Errorf("failed to get deployment %s/%s on cluster %s: %w",
+					utils.MCO_AGENT_ADDON_NAMESPACE, endpointMonitoringOperatorDeploymentName, cluster.Name, err)
+			}
+			argFound := false
+			for _, container := range dep.Spec.Template.Spec.Containers {
+				if container.Name == endpointMonitoringOperatorDeploymentName && slices.Contains(container.Args, expectedArg) {
+					argFound = true
+					break
+				}
+			}
+			if !argFound {
+				return fmt.Errorf("deployment %s/%s on cluster %s does not have arg %q yet",
+					utils.MCO_AGENT_ADDON_NAMESPACE, endpointMonitoringOperatorDeploymentName, cluster.Name, expectedArg)
+			}
+			expectedReplicas := int32(1)
+			if dep.Spec.Replicas != nil {
+				expectedReplicas = *dep.Spec.Replicas
+			}
+			if dep.Status.ObservedGeneration < dep.Generation ||
+				dep.Status.UpdatedReplicas != expectedReplicas ||
+				dep.Status.ReadyReplicas != expectedReplicas ||
+				dep.Status.AvailableReplicas != expectedReplicas ||
+				dep.Status.UnavailableReplicas != 0 {
+				return fmt.Errorf("deployment %s/%s on cluster %s rollout not complete (generation: %d/%d, updated: %d/%d, ready: %d/%d, available: %d/%d, unavailable: %d)",
+					utils.MCO_AGENT_ADDON_NAMESPACE, endpointMonitoringOperatorDeploymentName, cluster.Name,
+					dep.Status.ObservedGeneration, dep.Generation,
+					dep.Status.UpdatedReplicas, expectedReplicas,
+					dep.Status.ReadyReplicas, expectedReplicas,
+					dep.Status.AvailableReplicas, expectedReplicas,
+					dep.Status.UnavailableReplicas)
+			}
+			return nil
+		}, 300, 5).Should(Succeed())
+	}
+}
