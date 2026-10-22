@@ -384,7 +384,7 @@ func CreateClusterSpecificAddOnDeploymentConfig(
 	return nil
 }
 
-// DeleteAddOnDeploymentConfig deletes an AddOnDeploymentConfig.
+// DeleteAddOnDeploymentConfig deletes an AddOnDeploymentConfig if it exists.
 func DeleteAddOnDeploymentConfig(opt TestOptions, name, namespace string) error {
 	dynClient := NewKubeClientDynamic(
 		opt.HubCluster.ClusterServerURL,
@@ -393,7 +393,7 @@ func DeleteAddOnDeploymentConfig(opt TestOptions, name, namespace string) error 
 
 	gvr := NewMCOAddOnDeploymentConfigGVR()
 	err := dynClient.Resource(gvr).Namespace(namespace).Delete(context.TODO(), name, metav1.DeleteOptions{})
-	if err != nil {
+	if err != nil && !errors.IsNotFound(err) {
 		return fmt.Errorf("failed to delete AddOnDeploymentConfig: %w", err)
 	}
 
