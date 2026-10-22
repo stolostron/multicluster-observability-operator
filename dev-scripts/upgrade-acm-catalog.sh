@@ -55,7 +55,7 @@ installed_csv=$(jq -r '.status.installedCSV // empty' <<<"$subscription_json")
 channel=$(jq -r '.spec.channel // empty' <<<"$subscription_json")
 approval=$(jq -r '.spec.installPlanApproval // "Automatic"' <<<"$subscription_json")
 
-if [[ -z $installed_csv || $approval != Automatic || ( -n $channel && $channel != "$EXPECTED_ACM_CHANNEL" ) ]]; then
+if [[ -z $installed_csv || $approval != Automatic || (-n $channel && $channel != "$EXPECTED_ACM_CHANNEL") ]]; then
   log_error "ACM subscription ${subscription_name} must have an installed CSV, an empty or ${EXPECTED_ACM_CHANNEL} channel, and Automatic approval"
   log_error "Found installedCSV=${installed_csv:-<empty>}, channel=${channel:-<empty>}, approval=${approval}"
   exit 1
