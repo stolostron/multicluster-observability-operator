@@ -111,10 +111,27 @@ fi
 # 3. Purge Evicted and ContainerStatusUnknown Pods
 # -----------------------------------------------------------------------------
 log_info "--- Checking for Evicted & ContainerStatusUnknown pods ---"
-evicted_pods=$(oc get pods -A -o jsonpath='{range .items[?(@.status.phase=="Failed")]}{.metadata.namespace}{"\t"}{.metadata.name}{"\t"}{.status.reason}{"\n"}{end}' 2>/dev/null || true)
-unknown_pods=$(oc get pods -A -o jsonpath='{range .items[*]}{range .status.containerStatuses[?(@.state.waiting.reason=="ContainerStatusUnknown")]}{$.metadata.namespace}{"\t"}{$.metadata.name}{"\tContainerStatusUnknown\n"}{end}{end}' 2>/dev/null || true)
+if command -v jq &>/dev/null; then
+  pods_json=$(oc get pods -A -o json 2>/dev/null || true)
+  if [[ -z $pods_json ]]; then
+    log_warn "Failed to list pods cluster-wide or no pods returned."
+    dead_pods=""
+  else
+    dead_pods=$(echo "$pods_json" | jq -r '
+      .items[] |
+      select(
+        (.status.reason? == "Evicted") or
+        (.status.containerStatuses[]?.state.waiting?.reason? == "ContainerStatusUnknown")
+      ) |
+      "\(.metadata.namespace)\t\(.metadata.name)\t\(.status.reason // "ContainerStatusUnknown")"
+    ' || true)
+  fi
+else
+  # Fallback when jq is not available: filter specifically for Evicted pods
+  dead_pods=$(oc get pods -A -o jsonpath='{range .items[?(@.status.reason=="Evicted")]}{.metadata.namespace}{"\t"}{.metadata.name}{"\tEvicted\n"}{end}' 2>/dev/null || true)
+fi
 
-dead_pods=$(printf "%s\n%s" "$evicted_pods" "$unknown_pods" | sed '/^[[:space:]]*$/d' | sort -u || true)
+dead_pods=$(echo "$dead_pods" | sed '/^[[:space:]]*$/d' | sort -u || true)
 
 if [[ -n $dead_pods ]]; then
   count=$(echo "$dead_pods" | wc -l | tr -d ' ')
@@ -173,7 +190,7 @@ for node in $nodes; do
     log_info "[DRY-RUN] Would run 'crictl rmi --prune' on node ${node}"
   else
     log_info "Vacuuming journal to 500M on node ${node}..."
-    exec_on_node "$node" journalctl --vacuum-size=500M 2>&1 | tail -n 2 || true
+    exec_on_node "$node" journalctl --rotate --vacuum-size=500M 2>&1 | tail -n 2 || true
 
     log_info "Pruning unused images via crictl on node ${node}..."
     exec_on_node "$node" crictl rmi --prune 2>&1 || true
