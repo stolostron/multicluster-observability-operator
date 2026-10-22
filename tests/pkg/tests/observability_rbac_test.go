@@ -7,11 +7,15 @@ package tests
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"os/exec"
+	"sync"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/ginkgo/v2/types"
@@ -24,6 +28,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
+const rbacTestLabelKey = "observability.open-cluster-management.io/e2e-rbac-test"
+
 var (
 	ocpUserGVR = schema.GroupVersionResource{
 		Group:    "user.openshift.io",
@@ -35,11 +41,26 @@ var (
 		Version:  "v1",
 		Resource: "oauthaccesstokens",
 	}
-	rbacTestUsers = []string{"admin", "user1", "user2"}
+	rbacTestUsers  = []string{"admin", "user1", "user2"}
+	rbacTokensLock sync.Mutex
+	rbacUserTokens = make(map[string]string)
 )
 
 func rbacRawTokenForUser(username string) string {
-	return fmt.Sprintf("mco-e2e-rbac-test-token-%s-0123456789abcdef", username)
+	rbacTokensLock.Lock()
+	defer rbacTokensLock.Unlock()
+	if token, ok := rbacUserTokens[username]; ok {
+		return token
+	}
+	b := make([]byte, 16)
+	if _, err := rand.Read(b); err != nil {
+		token := fmt.Sprintf("mco-e2e-rbac-test-token-%s-%d", username, time.Now().UnixNano())
+		rbacUserTokens[username] = token
+		return token
+	}
+	token := fmt.Sprintf("mco-e2e-rbac-test-token-%s-%s", username, hex.EncodeToString(b))
+	rbacUserTokens[username] = token
+	return token
 }
 
 func rbacTokenObjectName(rawToken string) string {
@@ -61,14 +82,31 @@ func cleanupRBACTestResources(ctx context.Context) {
 		testOptions.KubeConfig,
 		testOptions.HubCluster.KubeContext)
 
-	_ = hubClient.RbacV1().ClusterRoleBindings().Delete(ctx, "cluster-manager-admin-binding", metav1.DeleteOptions{})
-	_ = hubClient.RbacV1().RoleBindings("local-cluster").Delete(ctx, "view-binding-user1", metav1.DeleteOptions{})
+	if crb, err := hubClient.RbacV1().ClusterRoleBindings().Get(ctx, "cluster-manager-admin-binding", metav1.GetOptions{}); err == nil {
+		if crb.Labels != nil && crb.Labels[rbacTestLabelKey] == "true" {
+			_ = hubClient.RbacV1().ClusterRoleBindings().Delete(ctx, "cluster-manager-admin-binding", metav1.DeleteOptions{})
+		}
+	}
+	if rb, err := hubClient.RbacV1().RoleBindings("local-cluster").Get(ctx, "view-binding-user1", metav1.GetOptions{}); err == nil {
+		if rb.Labels != nil && rb.Labels[rbacTestLabelKey] == "true" {
+			_ = hubClient.RbacV1().RoleBindings("local-cluster").Delete(ctx, "view-binding-user1", metav1.DeleteOptions{})
+		}
+	}
 
 	for _, username := range rbacTestUsers {
 		tokenName := rbacTokenObjectName(rbacRawTokenForUser(username))
 		_ = dynClient.Resource(ocpOAuthAccessTokenGVR).Delete(ctx, tokenName, metav1.DeleteOptions{})
-		_ = dynClient.Resource(ocpUserGVR).Delete(ctx, username, metav1.DeleteOptions{})
+
+		if userObj, err := dynClient.Resource(ocpUserGVR).Get(ctx, username, metav1.GetOptions{}); err == nil {
+			if labels := userObj.GetLabels(); labels != nil && labels[rbacTestLabelKey] == "true" {
+				_ = dynClient.Resource(ocpUserGVR).Delete(ctx, username, metav1.DeleteOptions{})
+			}
+		}
 	}
+
+	rbacTokensLock.Lock()
+	clear(rbacUserTokens)
+	rbacTokensLock.Unlock()
 }
 
 func setupRBACTestResources(ctx context.Context) error {
@@ -90,6 +128,9 @@ func setupRBACTestResources(ctx context.Context) error {
 				"kind":       "User",
 				"metadata": map[string]any{
 					"name": username,
+					"labels": map[string]any{
+						rbacTestLabelKey: "true",
+					},
 				},
 			},
 		}
@@ -112,6 +153,9 @@ func setupRBACTestResources(ctx context.Context) error {
 				"kind":       "OAuthAccessToken",
 				"metadata": map[string]any{
 					"name": tokenName,
+					"labels": map[string]any{
+						rbacTestLabelKey: "true",
+					},
 				},
 				"clientName":  "openshift-challenging-client",
 				"expiresIn":   int64(86400),
@@ -137,6 +181,9 @@ func setupRBACTestResources(ctx context.Context) error {
 	crb := &rbacv1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "cluster-manager-admin-binding",
+			Labels: map[string]string{
+				rbacTestLabelKey: "true",
+			},
 		},
 		RoleRef: rbacv1.RoleRef{
 			APIGroup: rbacv1.GroupName,
@@ -159,6 +206,9 @@ func setupRBACTestResources(ctx context.Context) error {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "view-binding-user1",
 			Namespace: "local-cluster",
+			Labels: map[string]string{
+				rbacTestLabelKey: "true",
+			},
 		},
 		RoleRef: rbacv1.RoleRef{
 			APIGroup: rbacv1.GroupName,
@@ -182,11 +232,11 @@ func setupRBACTestResources(ctx context.Context) error {
 
 var _ = Describe("", Ordered, func() {
 	BeforeAll(func(ctx SpecContext) {
-		Expect(setupRBACTestResources(ctx)).To(Succeed())
 		DeferCleanup(func(cleanupCtx SpecContext) {
 			os.Unsetenv("USER_TOKEN")
 			cleanupRBACTestResources(cleanupCtx)
 		})
+		Expect(setupRBACTestResources(ctx)).To(Succeed())
 	})
 
 	It(
