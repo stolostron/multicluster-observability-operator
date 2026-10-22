@@ -6,50 +6,245 @@ package tests
 
 import (
 	"bytes"
+	"context"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/base64"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"os/exec"
-	"strings"
+	"sync"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/ginkgo/v2/types"
 	. "github.com/onsi/gomega"
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/utils"
-	"k8s.io/klog/v2"
+	rbacv1 "k8s.io/api/rbac/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
-var _ = Describe("", Ordered, func() {
-	BeforeAll(func() {
-		// This test is currently not working well on shared enviroments
-		// as the test setup script does not take into account that
-		// others might add similar htaccess identity providers.
-		// Therefore we skip it for now on the QE test envs which
-		// are shared with other teams.
-		cloudProvider := strings.ToLower(os.Getenv("CLOUD_PROVIDER"))
-		if len(cloudProvider) > 0 {
-			Skip("Skipping RBAC test on QE Jenkins test-run")
+const rbacTestLabelKey = "observability.open-cluster-management.io/e2e-rbac-test"
+
+var (
+	ocpUserGVR = schema.GroupVersionResource{
+		Group:    "user.openshift.io",
+		Version:  "v1",
+		Resource: "users",
+	}
+	ocpOAuthAccessTokenGVR = schema.GroupVersionResource{
+		Group:    "oauth.openshift.io",
+		Version:  "v1",
+		Resource: "oauthaccesstokens",
+	}
+	rbacTestUsers  = []string{"admin", "user1", "user2"}
+	rbacTokensLock sync.Mutex
+	rbacUserTokens = make(map[string]string)
+)
+
+func rbacRawTokenForUser(username string) string {
+	rbacTokensLock.Lock()
+	defer rbacTokensLock.Unlock()
+	if token, ok := rbacUserTokens[username]; ok {
+		return token
+	}
+	b := make([]byte, 16)
+	if _, err := rand.Read(b); err != nil {
+		token := fmt.Sprintf("mco-e2e-rbac-test-token-%s-%d", username, time.Now().UnixNano())
+		rbacUserTokens[username] = token
+		return token
+	}
+	token := fmt.Sprintf("mco-e2e-rbac-test-token-%s-%s", username, hex.EncodeToString(b))
+	rbacUserTokens[username] = token
+	return token
+}
+
+func rbacTokenObjectName(rawToken string) string {
+	sum := sha256.Sum256([]byte(rawToken))
+	return "sha256~" + base64.RawURLEncoding.EncodeToString(sum[:])
+}
+
+func rbacBearerTokenForUser(username string) string {
+	return "sha256~" + rbacRawTokenForUser(username)
+}
+
+func cleanupRBACTestResources(ctx context.Context) {
+	hubClient := utils.NewKubeClient(
+		testOptions.HubCluster.ClusterServerURL,
+		testOptions.KubeConfig,
+		testOptions.HubCluster.KubeContext)
+	dynClient := utils.NewKubeClientDynamic(
+		testOptions.HubCluster.ClusterServerURL,
+		testOptions.KubeConfig,
+		testOptions.HubCluster.KubeContext)
+
+	if crb, err := hubClient.RbacV1().ClusterRoleBindings().Get(ctx, "cluster-manager-admin-binding", metav1.GetOptions{}); err == nil {
+		if crb.Labels != nil && crb.Labels[rbacTestLabelKey] == "true" {
+			_ = hubClient.RbacV1().ClusterRoleBindings().Delete(ctx, "cluster-manager-admin-binding", metav1.DeleteOptions{})
+		}
+	}
+	if rb, err := hubClient.RbacV1().RoleBindings("local-cluster").Get(ctx, "view-binding-user1", metav1.GetOptions{}); err == nil {
+		if rb.Labels != nil && rb.Labels[rbacTestLabelKey] == "true" {
+			_ = hubClient.RbacV1().RoleBindings("local-cluster").Delete(ctx, "view-binding-user1", metav1.DeleteOptions{})
+		}
+	}
+
+	for _, username := range rbacTestUsers {
+		tokenName := rbacTokenObjectName(rbacRawTokenForUser(username))
+		_ = dynClient.Resource(ocpOAuthAccessTokenGVR).Delete(ctx, tokenName, metav1.DeleteOptions{})
+
+		if userObj, err := dynClient.Resource(ocpUserGVR).Get(ctx, username, metav1.GetOptions{}); err == nil {
+			if labels := userObj.GetLabels(); labels != nil && labels[rbacTestLabelKey] == "true" {
+				_ = dynClient.Resource(ocpUserGVR).Delete(ctx, username, metav1.DeleteOptions{})
+			}
+		}
+	}
+
+	rbacTokensLock.Lock()
+	clear(rbacUserTokens)
+	rbacTokensLock.Unlock()
+}
+
+func setupRBACTestResources(ctx context.Context) error {
+	cleanupRBACTestResources(ctx)
+
+	hubClient := utils.NewKubeClient(
+		testOptions.HubCluster.ClusterServerURL,
+		testOptions.KubeConfig,
+		testOptions.HubCluster.KubeContext)
+	dynClient := utils.NewKubeClientDynamic(
+		testOptions.HubCluster.ClusterServerURL,
+		testOptions.KubeConfig,
+		testOptions.HubCluster.KubeContext)
+
+	for _, username := range rbacTestUsers {
+		userObj := &unstructured.Unstructured{
+			Object: map[string]any{
+				"apiVersion": "user.openshift.io/v1",
+				"kind":       "User",
+				"metadata": map[string]any{
+					"name": username,
+					"labels": map[string]any{
+						rbacTestLabelKey: "true",
+					},
+				},
+			},
+		}
+		createdUser, err := dynClient.Resource(ocpUserGVR).Create(ctx, userObj, metav1.CreateOptions{})
+		if err != nil && !apierrors.IsAlreadyExists(err) {
+			return fmt.Errorf("failed to create OpenShift User %s: %w", username, err)
+		}
+		if apierrors.IsAlreadyExists(err) {
+			createdUser, err = dynClient.Resource(ocpUserGVR).Get(ctx, username, metav1.GetOptions{})
+			if err != nil {
+				return fmt.Errorf("failed to get existing OpenShift User %s: %w", username, err)
+			}
 		}
 
-		cmd := exec.Command("../../setup_rbac_test.sh")
-		var out bytes.Buffer
-		cmd.Stdout = &out
-		err = cmd.Run()
-		klog.V(1).Infof("the output of setup_rbac_test.sh: %v", out.String())
-		Expect(err).To(BeNil())
-		time.Sleep(2 * time.Minute)
+		rawToken := rbacRawTokenForUser(username)
+		tokenName := rbacTokenObjectName(rawToken)
+		tokenObj := &unstructured.Unstructured{
+			Object: map[string]any{
+				"apiVersion": "oauth.openshift.io/v1",
+				"kind":       "OAuthAccessToken",
+				"metadata": map[string]any{
+					"name": tokenName,
+					"labels": map[string]any{
+						rbacTestLabelKey: "true",
+					},
+				},
+				"clientName":  "openshift-challenging-client",
+				"expiresIn":   int64(86400),
+				"scopes":      []any{"user:full"},
+				"userName":    username,
+				"userUID":     string(createdUser.GetUID()),
+				"redirectURI": "https://127.0.0.1:12000/oauth/token/implicit",
+			},
+		}
+		if _, err := dynClient.Resource(ocpOAuthAccessTokenGVR).Create(ctx, tokenObj, metav1.CreateOptions{}); err != nil {
+			if !apierrors.IsAlreadyExists(err) {
+				return fmt.Errorf("failed to create OAuthAccessToken for user %s: %w", username, err)
+			}
+			if err := dynClient.Resource(ocpOAuthAccessTokenGVR).Delete(ctx, tokenName, metav1.DeleteOptions{}); err != nil && !apierrors.IsNotFound(err) {
+				return fmt.Errorf("failed to delete stale OAuthAccessToken for user %s: %w", username, err)
+			}
+			if _, err := dynClient.Resource(ocpOAuthAccessTokenGVR).Create(ctx, tokenObj, metav1.CreateOptions{}); err != nil {
+				return fmt.Errorf("failed to recreate OAuthAccessToken for user %s: %w", username, err)
+			}
+		}
+	}
+
+	crb := &rbacv1.ClusterRoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "cluster-manager-admin-binding",
+			Labels: map[string]string{
+				rbacTestLabelKey: "true",
+			},
+		},
+		RoleRef: rbacv1.RoleRef{
+			APIGroup: rbacv1.GroupName,
+			Kind:     "ClusterRole",
+			Name:     "open-cluster-management:cluster-manager-admin",
+		},
+		Subjects: []rbacv1.Subject{
+			{
+				APIGroup: rbacv1.GroupName,
+				Kind:     rbacv1.UserKind,
+				Name:     "admin",
+			},
+		},
+	}
+	if _, err := hubClient.RbacV1().ClusterRoleBindings().Create(ctx, crb, metav1.CreateOptions{}); err != nil && !apierrors.IsAlreadyExists(err) {
+		return fmt.Errorf("failed to create cluster-manager-admin-binding: %w", err)
+	}
+
+	rb := &rbacv1.RoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "view-binding-user1",
+			Namespace: "local-cluster",
+			Labels: map[string]string{
+				rbacTestLabelKey: "true",
+			},
+		},
+		RoleRef: rbacv1.RoleRef{
+			APIGroup: rbacv1.GroupName,
+			Kind:     "ClusterRole",
+			Name:     "view",
+		},
+		Subjects: []rbacv1.Subject{
+			{
+				APIGroup: rbacv1.GroupName,
+				Kind:     rbacv1.UserKind,
+				Name:     "user1",
+			},
+		},
+	}
+	if _, err := hubClient.RbacV1().RoleBindings("local-cluster").Create(ctx, rb, metav1.CreateOptions{}); err != nil && !apierrors.IsAlreadyExists(err) {
+		return fmt.Errorf("failed to create view-binding-user1: %w", err)
+	}
+
+	return nil
+}
+
+var _ = Describe("", Ordered, func() {
+	BeforeAll(func(ctx SpecContext) {
+		DeferCleanup(func(cleanupCtx SpecContext) {
+			os.Unsetenv("USER_TOKEN")
+			cleanupRBACTestResources(cleanupCtx)
+		})
+		Expect(setupRBACTestResources(ctx)).To(Succeed())
 	})
+
 	It(
 		"RHACM4K-1406 - Observability - RBAC - only authorized user could query managed cluster metrics data [Observability][Integration]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release (requires-ocp/g0) (obs_rbac/g0)",
 		func() {
-			By("Logging in as admin and querying managed cluster metrics data", func() {
+			By("Querying managed cluster metrics data as admin", func() {
+				Expect(os.Setenv("USER_TOKEN", rbacBearerTokenForUser("admin"))).To(Succeed())
 				Eventually(func() error {
-					err = utils.LoginOCUser(testOptions, "admin", "admin")
-					if err != nil {
-						klog.Errorf("Failed to login as admin: %v", err)
-						return err
-					}
-
 					res, err := utils.QueryGrafana(testOptions, "node_memory_MemAvailable_bytes")
 					if err != nil {
 						return err
@@ -60,14 +255,9 @@ var _ = Describe("", Ordered, func() {
 					return nil
 				}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
 			})
-			By("Logging in as user1 with view role in local-cluster ns and querying metrics data", func() {
+			By("Querying metrics data as user1 with view role in local-cluster ns", func() {
+				Expect(os.Setenv("USER_TOKEN", rbacBearerTokenForUser("user1"))).To(Succeed())
 				Eventually(func() error {
-					err = utils.LoginOCUser(testOptions, "user1", "user1")
-					if err != nil {
-						klog.Errorf("Failed to login as user1: %v", err)
-						return err
-					}
-
 					res, err := utils.QueryGrafana(testOptions, "node_memory_MemAvailable_bytes{cluster=\"local-cluster\"}")
 					if err != nil {
 						return err
@@ -78,13 +268,9 @@ var _ = Describe("", Ordered, func() {
 					return nil
 				}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
 			})
-			By("Logging in as user2 with no role binding to access managed cluster metrics data", func() {
+			By("Querying managed cluster metrics data as user2 with no role binding", func() {
+				Expect(os.Setenv("USER_TOKEN", rbacBearerTokenForUser("user2"))).To(Succeed())
 				Eventually(func() error {
-					err = utils.LoginOCUser(testOptions, "user2", "user2")
-					if err != nil {
-						klog.Errorf("Failed to login as user2: %v", err)
-						return err
-					}
 					res, err := utils.QueryGrafana(testOptions, "node_memory_MemAvailable_bytes{cluster=\"local-cluster\"}")
 					if err != nil {
 						return err
@@ -101,22 +287,8 @@ var _ = Describe("", Ordered, func() {
 	It(
 		"RHACM4K-1439 - Observability - RBAC - Verify only cluster-manager-admin role can deploy MCO CR [Observability][Integration]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @post-release (requires-ocp/g0) (obs_rbac/g0)",
 		func() {
-			By("Logging as kube:admin checking if MCO can be deleted by user1 and admin", func() {
+			By("Checking if MCO can be deleted by user1 and admin", func() {
 				Eventually(func() error {
-					if len(testOptions.HubCluster.KubeContext) > 0 {
-						_, err = exec.Command("oc", "config", "use-context", testOptions.HubCluster.KubeContext).CombinedOutput()
-						if err != nil {
-							return fmt.Errorf("Unable to log in as kube:admin after rbac test using kube-context: %v", err)
-						}
-					} else {
-						user := os.Getenv("OC_CLUSTER_USER")
-						password := os.Getenv("OC_HUB_CLUSTER_PASS")
-						err = utils.LoginOCUser(testOptions, user, password)
-						if err != nil {
-							return fmt.Errorf("Unable to log in as kube:admin after rbac test using username/pw: %v", err)
-						}
-					}
-
 					cmd := exec.Command("oc", "policy", "who-can", "delete", "mco")
 					var out bytes.Buffer
 					cmd.Stdout = &out
@@ -140,21 +312,6 @@ var _ = Describe("", Ordered, func() {
 		if CurrentSpecReport().State.Is(types.SpecStateSkipped) {
 			return
 		}
-		// make sure we login as kube admin again
-		if len(testOptions.HubCluster.KubeContext) > 0 {
-			_, err = exec.Command("oc", "config", "use-context", testOptions.HubCluster.KubeContext).CombinedOutput()
-			if err != nil {
-				klog.Error("Unable to log in as kube:admin after rbac test using kube-context", err)
-			}
-		} else {
-			user := os.Getenv("OC_CLUSTER_USER")
-			password := os.Getenv("OC_HUB_CLUSTER_PASS")
-			err = utils.LoginOCUser(testOptions, user, password)
-			if err != nil {
-				klog.Error("Unable to log in as kube:admin after rbac test using username/pw", err)
-			}
-		}
-
 		os.Unsetenv("USER_TOKEN")
 		if CurrentSpecReport().Failed() {
 			utils.LogFailingTestStandardDebugInfo(testOptions, false)

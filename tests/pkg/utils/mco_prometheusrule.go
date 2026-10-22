@@ -23,6 +23,7 @@ func createPrometheusRuleGeneric(ctx context.Context, opt TestOptions, name, nam
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext)
 
+	evalInterval := prometheusv1.Duration("5s")
 	rule := &prometheusv1.PrometheusRule{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: apiVersion,
@@ -38,7 +39,8 @@ func createPrometheusRuleGeneric(ctx context.Context, opt TestOptions, name, nam
 		Spec: prometheusv1.PrometheusRuleSpec{
 			Groups: []prometheusv1.RuleGroup{
 				{
-					Name: "test-rules",
+					Name:     "test-rules",
+					Interval: &evalInterval,
 					Rules: []prometheusv1.Rule{
 						{
 							Record: metricName,

@@ -43,6 +43,9 @@ func UpdatePrometheusAgentScrapeInterval(opt TestOptions, labelSelector string, 
 	if err := unstructured.SetNestedField(pa.Object, interval, "spec", "scrapeInterval"); err != nil {
 		return fmt.Errorf("failed to set scrapeInterval on PrometheusAgent: %w", err)
 	}
+	if err := unstructured.SetNestedField(pa.Object, interval, "spec", "scrapeTimeout"); err != nil {
+		return fmt.Errorf("failed to set scrapeTimeout on PrometheusAgent: %w", err)
+	}
 
 	_, err = clientDynamic.Resource(NewPrometheusAgentGVR()).Namespace(MCO_NAMESPACE).Update(context.TODO(), &pa, metav1.UpdateOptions{})
 	if err != nil {
