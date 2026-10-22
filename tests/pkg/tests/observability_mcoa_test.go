@@ -1301,6 +1301,12 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 
 	AfterAll(func() {
 		afterAllFailed := true
+		legacyAlertForwardingRestored := false
+		defer func() {
+			if !legacyAlertForwardingRestored {
+				_ = utils.SetLegacyAlertForwardingDisabled(testOptions, false)
+			}
+		}()
 		defer func() {
 			if afterAllFailed {
 				testFailed = true
@@ -1348,6 +1354,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 
 			// Re-enable legacy alert forwarding after MCOA teardown and CRD cleanup complete
 			Expect(utils.SetLegacyAlertForwardingDisabled(testOptions, false)).NotTo(HaveOccurred())
+			legacyAlertForwardingRestored = true
 
 			// Wait for the metrics collector to be up to avoid race conditions with other tests setups
 			utils.CheckDeploymentAvailability(testOptions.HubCluster, metricsCollectorDeploymentName, utils.MCO_NAMESPACE, true)

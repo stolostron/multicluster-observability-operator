@@ -93,6 +93,14 @@ func cleanupRBACTestResources(ctx context.Context) {
 		}
 	}
 
+	if tokenList, err := dynClient.Resource(ocpOAuthAccessTokenGVR).List(ctx, metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("%s=true", rbacTestLabelKey),
+	}); err == nil {
+		for _, item := range tokenList.Items {
+			_ = dynClient.Resource(ocpOAuthAccessTokenGVR).Delete(ctx, item.GetName(), metav1.DeleteOptions{})
+		}
+	}
+
 	for _, username := range rbacTestUsers {
 		tokenName := rbacTokenObjectName(rbacRawTokenForUser(username))
 		_ = dynClient.Resource(ocpOAuthAccessTokenGVR).Delete(ctx, tokenName, metav1.DeleteOptions{})
