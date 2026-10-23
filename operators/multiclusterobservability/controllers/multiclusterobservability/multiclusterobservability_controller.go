@@ -1217,20 +1217,9 @@ func (r *MultiClusterObservabilityReconciler) ensurePlatformMetricsDefault(
 	ctx context.Context,
 	instance *mcov1beta2.MultiClusterObservability,
 ) (*mcov1beta2.MultiClusterObservability, error) {
-	u := &unstructured.Unstructured{}
-	u.SetGroupVersionKind(mcov1beta2.GroupVersion.WithKind("MultiClusterObservability"))
-	key := types.NamespacedName{Name: instance.GetName()}
-
-	if err := r.Client.Get(ctx, key, u); err != nil {
-		if apierrors.IsNotFound(err) {
-			return instance, nil
-		}
-		return instance, fmt.Errorf("ensurePlatformMetricsDefault: failed to get MCO CR: %w", err)
-	}
-
-	_, found, _ := unstructured.NestedBool(u.Object,
-		"spec", "capabilities", "platform", "metrics", "default", "enabled")
-	if found {
+	if instance.Spec.Capabilities != nil &&
+		instance.Spec.Capabilities.Platform != nil &&
+		instance.Spec.Capabilities.Platform.Metrics.Default.Enabled != nil {
 		return instance, nil
 	}
 
@@ -1256,6 +1245,10 @@ func (r *MultiClusterObservabilityReconciler) ensurePlatformMetricsDefault(
 	if err != nil {
 		return instance, fmt.Errorf("failed to marshal patch data: %w", err)
 	}
+
+	u := &unstructured.Unstructured{}
+	u.SetGroupVersionKind(mcov1beta2.GroupVersion.WithKind("MultiClusterObservability"))
+	u.SetName(instance.GetName())
 
 	if err := r.Client.Patch(ctx, u, client.RawPatch(types.MergePatchType, patchBytes)); err != nil {
 		return instance, fmt.Errorf("failed to persist platform metrics default: %w", err)
