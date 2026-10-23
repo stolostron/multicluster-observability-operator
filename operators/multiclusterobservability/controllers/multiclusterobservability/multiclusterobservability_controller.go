@@ -6,7 +6,6 @@ package multiclusterobservability
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/url"
@@ -1227,33 +1226,7 @@ func (r *MultiClusterObservabilityReconciler) ensurePlatformMetricsDefault(
 		return instance, nil
 	}
 
-	patchData := map[string]any{
-		"spec": map[string]any{
-			"capabilities": map[string]any{
-				"platform": map[string]any{
-					"metrics": map[string]any{
-						"default": map[string]any{
-							"enabled": true,
-						},
-					},
-				},
-			},
-		},
-	}
-
-	patchBytes, err := json.Marshal(patchData)
-	if err != nil {
-		return instance, fmt.Errorf("failed to marshal patch data: %w", err)
-	}
-
-	u := &unstructured.Unstructured{}
-	u.SetGroupVersionKind(mcov1beta2.GroupVersion.WithKind("MultiClusterObservability"))
-	u.SetName(instance.GetName())
-
-	if err := r.Client.Patch(ctx, u, client.RawPatch(types.MergePatchType, patchBytes)); err != nil {
-		return instance, fmt.Errorf("failed to persist platform metrics default: %w", err)
-	}
-	log.Info("Defaulted platform metrics enabled to true (new install)")
+	old := instance.DeepCopy()
 
 	if instance.Spec.Capabilities == nil {
 		instance.Spec.Capabilities = &mcov1beta2.CapabilitiesSpec{}
@@ -1263,6 +1236,11 @@ func (r *MultiClusterObservabilityReconciler) ensurePlatformMetricsDefault(
 	}
 	enabled := true
 	instance.Spec.Capabilities.Platform.Metrics.Default.Enabled = &enabled
+
+	if err := r.Client.Patch(ctx, instance, client.MergeFrom(old)); err != nil {
+		return instance, fmt.Errorf("failed to persist platform metrics default: %w", err)
+	}
+	log.Info("Defaulted platform metrics enabled to true (new install)")
 
 	return instance, nil
 }
