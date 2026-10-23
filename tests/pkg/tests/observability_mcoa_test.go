@@ -1245,7 +1245,29 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 	Context(
 		"when the managed log store is enabled for MCOA [P1][Sev1][Observability][Stable]@ocpInterop (mcoa_logs/g0)",
 		func() {
-			BeforeAll(func() {
+			BeforeAll(func(ctx SpecContext) {
+				By("Pausing MultiClusterHub and granting the MCO operator managed log store permissions", func() {
+					rbacOverride, err := utils.NewManagedLogStoreRBACOverride(ctx, testOptions)
+					Expect(err).NotTo(HaveOccurred())
+
+					// Register cleanup before changing the cluster, including when setup fails.
+					DeferCleanup(func(ctx SpecContext) {
+						By("Restoring the MCO ClusterRole and resuming MultiClusterHub reconciliation", func() {
+							restoreErr := rbacOverride.Restore(ctx)
+							Eventually(func() error {
+								return rbacOverride.CheckPaused(ctx, false)
+							}, 3*time.Minute, 5*time.Second).Should(Succeed())
+							Expect(restoreErr).NotTo(HaveOccurred())
+						})
+					})
+
+					Expect(rbacOverride.Pause(ctx)).To(Succeed())
+					Eventually(func() error {
+						return rbacOverride.CheckPaused(ctx, true)
+					}, 3*time.Minute, 5*time.Second).Should(Succeed())
+					Expect(rbacOverride.ApplyRBAC(ctx)).To(Succeed())
+				})
+
 				By("Deploying the object storage secret for the managed log store's LokiStack", func() {
 					Expect(utils.CreateMCOALoggingObjectStorageSecret(testOptions)).NotTo(HaveOccurred())
 				})
