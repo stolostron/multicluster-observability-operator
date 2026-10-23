@@ -21,14 +21,17 @@ import (
 )
 
 // IsMCOAEnabled returns true if any MCOA capability is enabled.
+// This relies on ensurePlatformMetricsDefault having already persisted
+// an explicit Enabled value into the CR before reconciliation proceeds.
 func IsMCOAEnabled(mco *mcov1beta2.MultiClusterObservability) bool {
 	if mco == nil || mco.Spec.Capabilities == nil {
 		return false
 	}
 
 	if mco.Spec.Capabilities.Platform != nil {
-		if mco.Spec.Capabilities.Platform.Logs.Collection.Enabled ||
-			mco.Spec.Capabilities.Platform.Metrics.Default.Enabled ||
+		if (mco.Spec.Capabilities.Platform.Metrics.Default.Enabled != nil &&
+			*mco.Spec.Capabilities.Platform.Metrics.Default.Enabled) ||
+			mco.Spec.Capabilities.Platform.Logs.Collection.Enabled ||
 			mco.Spec.Capabilities.Platform.Analytics.IncidentDetection.Enabled {
 			return true
 		}
