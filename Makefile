@@ -169,9 +169,13 @@ integration-test-loaders: ## Run loaders integration tests.
 .PHONY: integration-test
 integration-test: integration-test-operators integration-test-proxy integration-test-loaders ## Run all integration tests.
 
+# Temporary catalog upgrade hook, disabled while the managed log store test applies RBAC directly.
 .PHONY: e2e-tests
 e2e-tests: tools ## Run E2E tests.
 	@echo "Running e2e tests ..."
+#	@CUSTOM_ACM_CATALOG_IMAGE="$${CUSTOM_ACM_CATALOG_IMAGE-quay.io/cameronmwall/acm-dev-catalog:managed-logstore-test}" \
+#	 EXPECTED_MCH_OPERATOR_IMAGE="$${EXPECTED_MCH_OPERATOR_IMAGE-quay.io/cameronmwall/multiclusterhub-operator:managed-logstore-test}" \
+#	 ./dev-scripts/upgrade-acm-catalog.sh
 	@./cicd-scripts/run-e2e-tests.sh
 
 .PHONY: e2e-tests-in-kind
