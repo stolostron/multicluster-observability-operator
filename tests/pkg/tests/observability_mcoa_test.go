@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/exec"
 	"slices"
 	"strings"
 	"time"
@@ -318,6 +319,36 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 						} else {
 							Expect(utils.RemoveManagedClusterLabel(cleanupCtx, testOptions, hubClusterName, vendorOverrideTriggerLabel)).To(Succeed())
 						}
+
+						By("Sleeping 10s to let addon process vendor change before capturing logs", func() {
+							time.Sleep(10 * time.Second)
+						})
+
+						By("Dumping addon logs during vendor restore", func() {
+							// Dump addon pod logs from the managed cluster addon namespace
+							cmd := exec.Command("kubectl", "logs", "-n", utils.MCO_AGENT_ADDON_NAMESPACE,
+								"deploy/"+mcoaAddonName, "--all-containers", "--tail=500",
+								"--kubeconfig", testOptions.KubeConfig,
+								"--context", testOptions.HubCluster.KubeContext)
+							output, err := cmd.CombinedOutput()
+							if err != nil {
+								GinkgoWriter.Printf("WARNING: Failed to get addon logs: %v\n", err)
+							} else {
+								GinkgoWriter.Printf("=== ADDON LOGS DURING VENDOR RESTORE ===\n%s\n=== END ADDON LOGS ===\n", string(output))
+							}
+
+							// Dump addon-manager logs from the hub observability namespace
+							cmd = exec.Command("kubectl", "logs", "-n", utils.MCO_NAMESPACE,
+								"deploy/"+mcoaManagerDeploymentName, "--all-containers", "--tail=500",
+								"--kubeconfig", testOptions.KubeConfig,
+								"--context", testOptions.HubCluster.KubeContext)
+							output, err = cmd.CombinedOutput()
+							if err != nil {
+								GinkgoWriter.Printf("WARNING: Failed to get addon-manager logs: %v\n", err)
+							} else {
+								GinkgoWriter.Printf("=== ADDON-MANAGER LOGS DURING VENDOR RESTORE ===\n%s\n=== END ADDON-MANAGER LOGS ===\n", string(output))
+							}
+						})
 
 						By("Waiting for non-OCP monitoring stack to be undeployed", func() {
 							utils.CheckDeploymentAvailability(testOptions.HubCluster, kubeStateMetricsDeploymentName, utils.MCO_AGENT_ADDON_NAMESPACE, false)
