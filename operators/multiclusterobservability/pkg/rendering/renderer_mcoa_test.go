@@ -854,8 +854,13 @@ func TestRenderMCOAMetricsServiceAndServiceMonitor(t *testing.T) {
 			},
 			Name: "multicluster-observability",
 		},
+		Spec: mcov1beta2.MultiClusterObservabilitySpec{
+			ObservabilityAddonSpec: &mcoshared.ObservabilityAddonSpec{
+				EnableMetrics: true,
+			},
+		},
 	}
-	renderer := NewMCORenderer(mco, nil, nil)
+	renderer := NewMCORenderer(mco, nil, nil).WithRendererOptions(&RendererOptions{})
 	targetNamespace := "test-observability"
 	labels := map[string]string{"app": "test"}
 
@@ -934,8 +939,13 @@ func TestRenderMCOAPrometheusRule(t *testing.T) {
 			},
 			Name: "multicluster-observability",
 		},
+		Spec: mcov1beta2.MultiClusterObservabilitySpec{
+			ObservabilityAddonSpec: &mcoshared.ObservabilityAddonSpec{
+				EnableMetrics: true,
+			},
+		},
 	}
-	renderer := NewMCORenderer(mco, nil, nil)
+	renderer := NewMCORenderer(mco, nil, nil).WithRendererOptions(&RendererOptions{})
 	targetNamespace := "test-observability"
 	labels := map[string]string{"app": "test"}
 
