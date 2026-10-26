@@ -236,7 +236,11 @@ func (r *MCORenderer) renderClusterManagementAddOn(
 	if MCOAPlatformMetricsEnabled(r.cr) {
 		host, err := mcoconfig.GetRouteHost(ctx, r.kubeClient, mcoconfig.GrafanaRouteName, mcoconfig.GetDefaultNamespace())
 		if err != nil || host == "" {
-			ctrl.LoggerFrom(ctx).Info("Grafana route not yet available, deferring launch link annotation on CMA")
+			// Not an error: the Grafana route is created later in the reconcile loop,
+			// so it may not exist on the first pass. syncMCOACMAGrafanaLink patches
+			// the annotation once the route appears. Returning an error here would
+			// block CMA rendering and stall the entire reconciliation.
+			ctrl.LoggerFrom(ctx).Info("Grafana route not yet available, deferring launch link annotation on CMA", "err", err)
 		} else {
 			grafanaUrl := url.URL{
 				Scheme: "https",

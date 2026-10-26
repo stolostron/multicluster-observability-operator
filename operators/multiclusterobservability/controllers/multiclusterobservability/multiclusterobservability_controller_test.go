@@ -2205,3 +2205,109 @@ func TestDeleteVestigialRightSizingScrapeConfig(t *testing.T) {
 		})
 	}
 }
+
+func TestEnsurePlatformMetricsDefault(t *testing.T) {
+	s := scheme.Scheme
+	require.NoError(t, mcov1beta2.SchemeBuilder.AddToScheme(s))
+
+	tests := []struct {
+		name            string
+		mco             *mcov1beta2.MultiClusterObservability
+		expectEnabledTo *bool
+	}{
+		{
+			name: "new install: capabilities nil, enableMetrics false → patches enabled=true",
+			mco: &mcov1beta2.MultiClusterObservability{
+				ObjectMeta: metav1.ObjectMeta{Name: "test"},
+				Spec: mcov1beta2.MultiClusterObservabilitySpec{
+					ObservabilityAddonSpec: &mcoshared.ObservabilityAddonSpec{
+						EnableMetrics: false,
+					},
+				},
+			},
+			expectEnabledTo: ptr.To(true),
+		},
+		{
+			name: "legacy upgrade: enableMetrics true → no patch",
+			mco: &mcov1beta2.MultiClusterObservability{
+				ObjectMeta: metav1.ObjectMeta{Name: "test"},
+				Spec: mcov1beta2.MultiClusterObservabilitySpec{
+					ObservabilityAddonSpec: &mcoshared.ObservabilityAddonSpec{
+						EnableMetrics: true,
+					},
+				},
+			},
+			expectEnabledTo: nil,
+		},
+		{
+			name: "explicit enable already set → no patch",
+			mco: &mcov1beta2.MultiClusterObservability{
+				ObjectMeta: metav1.ObjectMeta{Name: "test"},
+				Spec: mcov1beta2.MultiClusterObservabilitySpec{
+					Capabilities: &mcov1beta2.CapabilitiesSpec{
+						Platform: &mcov1beta2.PlatformCapabilitiesSpec{
+							Metrics: mcov1beta2.PlatformMetricsSpec{
+								Default: mcov1beta2.PlatformMetricsDefaultSpec{
+									Enabled: ptr.To(true),
+								},
+							},
+						},
+					},
+				},
+			},
+			expectEnabledTo: ptr.To(true),
+		},
+		{
+			name: "explicit disable already set → no patch",
+			mco: &mcov1beta2.MultiClusterObservability{
+				ObjectMeta: metav1.ObjectMeta{Name: "test"},
+				Spec: mcov1beta2.MultiClusterObservabilitySpec{
+					Capabilities: &mcov1beta2.CapabilitiesSpec{
+						Platform: &mcov1beta2.PlatformCapabilitiesSpec{
+							Metrics: mcov1beta2.PlatformMetricsSpec{
+								Default: mcov1beta2.PlatformMetricsDefaultSpec{
+									Enabled: ptr.To(false),
+								},
+							},
+						},
+					},
+				},
+			},
+			expectEnabledTo: ptr.To(false),
+		},
+		{
+			name: "nil ObservabilityAddonSpec → patches enabled=true",
+			mco: &mcov1beta2.MultiClusterObservability{
+				ObjectMeta: metav1.ObjectMeta{Name: "test"},
+				Spec:       mcov1beta2.MultiClusterObservabilitySpec{},
+			},
+			expectEnabledTo: ptr.To(true),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(tt.mco).Build()
+			r := &MultiClusterObservabilityReconciler{Client: cl, Scheme: s}
+
+			result, err := r.ensurePlatformMetricsDefault(t.Context(), tt.mco)
+			require.NoError(t, err)
+
+			persisted := &mcov1beta2.MultiClusterObservability{}
+			require.NoError(t, cl.Get(t.Context(), types.NamespacedName{Name: "test"}, persisted))
+
+			if tt.expectEnabledTo == nil {
+				if persisted.Spec.Capabilities == nil || persisted.Spec.Capabilities.Platform == nil {
+					return
+				}
+				assert.Nil(t, persisted.Spec.Capabilities.Platform.Metrics.Default.Enabled)
+			} else {
+				require.NotNil(t, persisted.Spec.Capabilities)
+				require.NotNil(t, persisted.Spec.Capabilities.Platform)
+				require.NotNil(t, persisted.Spec.Capabilities.Platform.Metrics.Default.Enabled)
+				assert.Equal(t, *tt.expectEnabledTo, *persisted.Spec.Capabilities.Platform.Metrics.Default.Enabled)
+				assert.Equal(t, *tt.expectEnabledTo, *result.Spec.Capabilities.Platform.Metrics.Default.Enabled)
+			}
+		})
+	}
+}
