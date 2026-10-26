@@ -751,6 +751,7 @@ func TestUpdateAllManagedClusterLabelNames(t *testing.T) {
 			// The label list does not appear to be deterministically sorted
 			// Sorting here in order to ensure the test can pass reliably.
 			slices.Sort(syncLabelList.RegexLabelList)
+			slices.Sort(expectedRegexList)
 			if !reflect.DeepEqual(syncLabelList.RegexLabelList, expectedRegexList) {
 				t.Errorf("syncLabelList.RegexLabelList = %v, want %v", syncLabelList.RegexLabelList, expectedRegexList)
 			}
