@@ -45,12 +45,12 @@ func SimulateMetrics(logger log.Logger) []*clientmodel.MetricFamily {
 	timestamp := time.Now().UnixNano() / int64(time.Millisecond)
 	var sb strings.Builder
 	for i := range metrisNumber {
-		sb.WriteString(fmt.Sprintf("%s_%d{", metricsNamePrefix, i/1000))
+		fmt.Fprintf(&sb, "%s_%d{", metricsNamePrefix, i/1000)
 		for j := range labelNumber {
 			if j == 0 {
-				sb.WriteString(fmt.Sprintf("%s_%d=\"%s-%d--%d\"", labelPrefix, j, labelValuePrefix, i/10, i%10))
+				fmt.Fprintf(&sb, "%s_%d=\"%s-%d--%d\"", labelPrefix, j, labelValuePrefix, i/10, i%10)
 			} else {
-				sb.WriteString(fmt.Sprintf("%s_%d=\"%s-%d\"", labelPrefix, j, labelValuePrefix, i%10))
+				fmt.Fprintf(&sb, "%s_%d=\"%s-%d\"", labelPrefix, j, labelValuePrefix, i%10)
 			}
 
 			if j != labelNumber-1 {
@@ -58,7 +58,7 @@ func SimulateMetrics(logger log.Logger) []*clientmodel.MetricFamily {
 			}
 		}
 		sb.WriteString("} ")
-		sb.WriteString(fmt.Sprintf("%f %d", randFloat64(), timestamp))
+		fmt.Fprintf(&sb, "%f %d", randFloat64(), timestamp)
 		sb.WriteString("\n")
 	}
 	// rlogger.Log(logger, rlogger.Error, "data", sb.String())
