@@ -25,6 +25,7 @@ spec:
           imagePullPolicy: IfNotPresent
           args:
             - "controller"
+            - "--metrics-bind-address=127.0.0.1:8080"
           resources:
             requests:
               cpu: 100m
@@ -40,6 +41,41 @@ spec:
             - name: sa-token
               mountPath: /var/run/secrets/kubernetes.io/serviceaccount
               readOnly: true
+        - name: kube-rbac-proxy
+          image: quay.io/stolostron/kube-rbac-proxy:latest
+          imagePullPolicy: IfNotPresent
+          args:
+            - --secure-listen-address=0.0.0.0:8444
+            - --upstream=http://127.0.0.1:8080
+            - --tls-cert-file=/etc/tls/private/tls.crt
+            - --tls-private-key-file=/etc/tls/private/tls.key
+            - --logtostderr=true
+            - --allow-paths=/metrics
+          ports:
+            - name: https-metrics
+              containerPort: 8444
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 10m
+              memory: 20Mi
+            limits:
+              memory: 40Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            privileged: false
+            runAsNonRoot: true
+            readOnlyRootFilesystem: true
+          volumeMounts:
+            - name: sa-token
+              mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+              readOnly: true
+            - name: metrics-certs
+              mountPath: /etc/tls/private
+              readOnly: true
       volumes:
         - name: sa-token
           projected:
@@ -51,3 +87,6 @@ spec:
                   items:
                     - key: ca.crt
                       path: ca.crt
+        - name: metrics-certs
+          secret:
+            secretName: multicluster-observability-addon-manager-metrics-certs
