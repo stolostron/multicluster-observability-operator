@@ -252,17 +252,25 @@ const (
 
 const (
 	// LokiOperatorNamespace is the namespace Loki Operator is installed into via OLM. Loki
-	// Operator is a global (cluster-scoped) operator, so it follows the same convention as
-	// other Red Hat cluster-scoped operators and lives in openshift-operators-redhat.
-	LokiOperatorNamespace = "openshift-operators-redhat"
+	// Operator is a global (cluster-scoped) operator, so it gets its own dedicated namespace
+	// rather than reusing an app namespace, following the same convention OLM examples use for
+	// community-catalog operators.
+	LokiOperatorNamespace = "kubernetes-operators"
 
 	// LokiOperatorPackageName is the OLM package/Subscription name for Loki Operator.
 	LokiOperatorPackageName = "loki-operator"
 
-	// LokiOperatorCatalogSource and LokiOperatorCatalogSourceNamespace point at the default
-	// Red Hat operator catalog.
-	LokiOperatorCatalogSource          = "redhat-operators"
+	// LokiOperatorCatalogSource and LokiOperatorCatalogSourceNamespace point at the
+	// community-operators catalog (rather than redhat-operators), since the Red Hat catalog
+	// isn't available on every cluster we need to install Loki Operator on.
+	LokiOperatorCatalogSource          = "community-operators"
 	LokiOperatorCatalogSourceNamespace = "openshift-marketplace"
+
+	// LokiOperatorChannel is the Subscription channel used for the community-operators catalog.
+	// Unlike redhat-operators (which uses versioned channels such as stable-6.3 that get pruned
+	// over time), community-operators publishes loki-operator on a single flat "alpha" channel,
+	// so hardcoding it here doesn't carry the same risk of eventually resolving to nothing.
+	LokiOperatorChannel = "alpha"
 
 	// LokiStackCRDName is the CustomResourceDefinition Loki Operator registers once installed.
 	// MCO waits for this CRD to exist before assuming Loki Operator is ready.

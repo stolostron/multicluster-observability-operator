@@ -26,6 +26,7 @@ func TestBuildLokiOperatorResources(t *testing.T) {
 	ns, ok := objs[0].(*corev1.Namespace)
 	require.True(t, ok, "first object should be a Namespace")
 	require.Equal(t, mcoconfig.LokiOperatorNamespace, ns.GetName())
+	require.Equal(t, "true", ns.GetLabels()["openshift.io/cluster-monitoring"])
 
 	og, ok := objs[1].(*unstructured.Unstructured)
 	require.True(t, ok, "second object should be an unstructured OperatorGroup")
@@ -39,11 +40,12 @@ func TestBuildLokiOperatorResources(t *testing.T) {
 	require.Equal(t, mcoconfig.LokiOperatorPackageName, sub.GetName())
 	require.Equal(t, mcoconfig.LokiOperatorNamespace, sub.GetNamespace())
 
-	// channel is deliberately left unset so OLM tracks the package's default channel; see the
-	// comment in BuildLokiOperatorResources for why.
-	_, found, err := unstructured.NestedString(sub.Object, "spec", "channel")
+	// community-operators publishes loki-operator on a single flat "alpha" channel, so (unlike
+	// redhat-operators) we pin it explicitly; see LokiOperatorChannel's doc comment for why.
+	channel, found, err := unstructured.NestedString(sub.Object, "spec", "channel")
 	require.NoError(t, err)
-	require.False(t, found)
+	require.True(t, found)
+	require.Equal(t, mcoconfig.LokiOperatorChannel, channel)
 
 	name, found, err := unstructured.NestedString(sub.Object, "spec", "name")
 	require.NoError(t, err)
