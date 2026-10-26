@@ -34,6 +34,8 @@ func BuildLokiOperatorResources() []client.Object {
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name: mcoconfig.LokiOperatorNamespace,
+			// Lets cluster-monitoring scrape Loki Operator's own metrics from this namespace.
+			Labels: map[string]string{"openshift.io/cluster-monitoring": "true"},
 		},
 	}
 
@@ -45,6 +47,9 @@ func BuildLokiOperatorResources() []client.Object {
 	})
 	og.SetName(mcoconfig.LokiOperatorPackageName)
 	og.SetNamespace(mcoconfig.LokiOperatorNamespace)
+	og.Object["spec"] = map[string]any{
+		"upgradeStrategy": "Default",
+	}
 
 	sub := &unstructured.Unstructured{}
 	sub.SetGroupVersionKind(schema.GroupVersionKind{
@@ -55,11 +60,10 @@ func BuildLokiOperatorResources() []client.Object {
 	sub.SetName(mcoconfig.LokiOperatorPackageName)
 	sub.SetNamespace(mcoconfig.LokiOperatorNamespace)
 	sub.Object["spec"] = map[string]any{
-		// channel is deliberately omitted: it's an optional field on the Subscription CRD, and
-		// leaving it unset tells OLM to track the package's current default channel. Loki
-		// Operator's channels are versioned (e.g. stable-6.3, stable-6.5, ...) and old ones get
-		// dropped from the catalog over time, so hardcoding one here would eventually resolve to
-		// nothing (ConstraintsNotSatisfiable) and silently stop installing.
+		// Unlike redhat-operators, community-operators publishes loki-operator on a single flat
+		// "alpha" channel (not versioned ones that get pruned over time), so hardcoding it here
+		// is safe; see the LokiOperatorChannel doc comment.
+		"channel":             mcoconfig.LokiOperatorChannel,
 		"name":                mcoconfig.LokiOperatorPackageName,
 		"source":              mcoconfig.LokiOperatorCatalogSource,
 		"sourceNamespace":     mcoconfig.LokiOperatorCatalogSourceNamespace,
