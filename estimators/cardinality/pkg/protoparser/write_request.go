@@ -168,13 +168,14 @@ func unmarshalTimeSeriesLabels(
 			dst = append(dst, prompb.Label{})
 		}
 		lbl := &dst[len(dst)-1]
-		if err := unmarshalLabel(lbl, payload); err != nil {
+		valueBytes, err := unmarshalLabel(lbl, payload)
+		if err != nil {
 			return dst, hashesDst, fmt.Errorf("cannot unmarshal Label: %w", err)
 		}
 
 		_, _ = tsD.Write(payload)
 		if hashEachLabel {
-			hashesDst = append(hashesDst, xxhash.Sum64(payload))
+			hashesDst = append(hashesDst, xxhash.Sum64(valueBytes))
 		}
 	}
 
@@ -184,41 +185,43 @@ func unmarshalTimeSeriesLabels(
 	return dst, hashesDst, nil
 }
 
-func unmarshalLabel(dst *prompb.Label, src []byte) error {
+func unmarshalLabel(dst *prompb.Label, src []byte) ([]byte, error) {
 	// message Label {
 	//   string name = 1;
 	//   string value = 2;
 	// }
 	dst.Name = ""
 	dst.Value = ""
+	var valueBytes []byte
 	offset := 0
 	for offset < len(src) {
 		fieldNum, wireType, n := consumeTag(src[offset:])
 		if n <= 0 {
-			return fmt.Errorf("cannot read Label tag")
+			return nil, fmt.Errorf("cannot read Label tag")
 		}
 		offset += n
 
 		payload, m := consumeField(src[offset:], wireType)
 		if m <= 0 {
-			return fmt.Errorf("cannot read Label field %d", fieldNum)
+			return nil, fmt.Errorf("cannot read Label field %d", fieldNum)
 		}
 		offset += m
 
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("unexpected wireType %d for Label.name", wireType)
+				return nil, fmt.Errorf("unexpected wireType %d for Label.name", wireType)
 			}
 			dst.Name = unsafeBytesToString(payload)
 		case 2:
 			if wireType != 2 {
-				return fmt.Errorf("unexpected wireType %d for Label.value", wireType)
+				return nil, fmt.Errorf("unexpected wireType %d for Label.value", wireType)
 			}
+			valueBytes = payload
 			dst.Value = unsafeBytesToString(payload)
 		}
 	}
-	return nil
+	return valueBytes, nil
 }
 
 func consumeTag(src []byte) (fieldNum uint32, wireType uint8, n int) {
