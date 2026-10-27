@@ -988,6 +988,14 @@ func ModifyMCOAddonSpecMetrics(opt TestOptions, enable bool) error {
 			return err
 		}
 
+		// Explicitly disable MCOA platform metrics so that the controller-side
+		// defaulting does not treat enableMetrics=false as a new install and
+		// auto-enable MCOA, which would block the legacy metrics-collector.
+		if err := unstructured.SetNestedField(mco.Object, false,
+			"spec", "capabilities", "platform", "metrics", "default", "enabled"); err != nil {
+			return err
+		}
+
 		_, updateErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Update(context.TODO(), mco, metav1.UpdateOptions{})
 		return updateErr
 	})
