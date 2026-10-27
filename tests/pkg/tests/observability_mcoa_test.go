@@ -21,6 +21,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/prometheus/alertmanager/api/v2/models"
+	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/controllers/mcoa"
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/utils"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -1321,8 +1322,41 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 			Expect(utils.DeleteAddOnDeploymentConfig(testOptions, utils.MCOA_CLUSTER_MANAGEMENT_ADDON_NAME, utils.MCO_NAMESPACE)).NotTo(HaveOccurred())
 			Expect(utils.DisableUWLMonitoringOnManagedClusters(testOptions, accessibleOCPClusters)).NotTo(HaveOccurred())
 
-			By("Deleting COO subscription if it exists and cleaning up CRDs", func() {
+			By("Deleting COO subscription if it exists", func() {
 				Expect(utils.DeleteCOOSubscription(accessibleOCPClusters)).NotTo(HaveOccurred())
+			})
+
+			By("Checking that OBO/COO CRDs are deleted from managed clusters when addon is disabled", func() {
+				expectedCRDs := mcoa.GetManagedCRDNames()
+				for _, cluster := range accessibleOCPClusters {
+					clientAPIExtension := utils.NewKubeClientAPIExtension(cluster.ClusterServerURL, cluster.KubeConfig, cluster.KubeContext)
+					clientAPIExtensionV1 := clientAPIExtension.ApiextensionsV1()
+					Eventually(func() error {
+						for _, crd := range expectedCRDs {
+							getRequestCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+							crdObj, err := clientAPIExtensionV1.CustomResourceDefinitions().Get(getRequestCtx, crd, metav1.GetOptions{})
+							cancel()
+							if err != nil {
+								if apierrors.IsNotFound(err) {
+									continue
+								}
+								return err
+							}
+							// On clusters like the Hub, some OBO/COO CRDs are installed and managed by other
+							// controllers (e.g., MCO). We should only fail if a CRD remains and carries
+							// our specific endpoint operator management label.
+							labels := crdObj.GetLabels()
+							if labels != nil && labels[mcoa.ManagedByLabelKey] == mcoa.ManagedByLabelValue {
+								return fmt.Errorf("OBO CRD %s managed by MCOA (deletionTimestamp: %v, finalizers: %v) was not cleaned up on cluster %s after addon was disabled",
+									crd, crdObj.GetDeletionTimestamp(), crdObj.GetFinalizers(), cluster.Name)
+							}
+						}
+						return nil
+					}, 240, 5).Should(Succeed(), "All MCOA-managed CRDs should be cleaned up on cluster %s", cluster.Name)
+				}
+			})
+
+			By("Cleaning up any remaining monitoring CRDs", func() {
 				Expect(utils.DeleteMonitoringCRDs(context.Background(), accessibleOCPClusters)).NotTo(HaveOccurred())
 			})
 
