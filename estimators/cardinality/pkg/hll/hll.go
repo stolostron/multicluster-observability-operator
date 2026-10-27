@@ -96,6 +96,19 @@ func (s *Sketch) Release() {
 	s.sparseList = nil
 }
 
+// Reset clears the sketch back to empty sparse state while retaining its sparse slice capacity.
+func (s *Sketch) Reset() {
+	if s == nil {
+		return
+	}
+	if s.regs != nil {
+		putRegisters(s.precision, s.regs)
+		s.regs = nil
+	}
+	s.sparseList = s.sparseList[:0]
+	s.sparse = true
+}
+
 // Clone returns a deep copy of the Sketch.
 func (s *Sketch) Clone() *Sketch {
 	if s == nil {

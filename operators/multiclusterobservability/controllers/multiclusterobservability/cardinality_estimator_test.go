@@ -8,6 +8,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stolostron/multicluster-observability-operator/estimators/cardinality/pkg/estimator"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	mcoutil "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
@@ -69,6 +70,13 @@ func TestGenerateCardinalityEstimatorResources(t *testing.T) {
 	}
 	if cm.Data[cardinalityEstimatorConfigFileKey] == "" {
 		t.Errorf("expected non-empty %s in ConfigMap", cardinalityEstimatorConfigFileKey)
+	}
+	parsedCfg, err := estimator.ParseConfig([]byte(cm.Data[cardinalityEstimatorConfigFileKey]))
+	if err != nil {
+		t.Fatalf("ConfigMap YAML failed estimator.ParseConfig validation: %v", err)
+	}
+	if len(parsedCfg.Streams) != 4 {
+		t.Fatalf("expected 4 configured cardinality streams, got %d", len(parsedCfg.Streams))
 	}
 
 	// Verify Service.

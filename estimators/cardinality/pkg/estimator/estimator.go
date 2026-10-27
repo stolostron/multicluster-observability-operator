@@ -130,7 +130,8 @@ func (e *Estimator) InsertMany(tss []protoparser.TimeSeries) {
 	if e.hasLabelKeyword {
 		groupByKeys = e.cfg.GroupBy[:len(e.cfg.GroupBy)-1]
 	}
-	groupValues := make([]string, len(e.cfg.GroupBy))
+	var groupValuesBuf [maxGroupBy]string
+	groupValues := groupValuesBuf[:len(e.cfg.GroupBy)]
 
 	d := getDigest()
 	defer putDigest(d)
@@ -241,6 +242,8 @@ func (e *Estimator) SnapshotAt(now time.Time) Snapshot {
 
 	const batchSize = 1000
 	keys := make([]uint64, 0, batchSize)
+	resSK := hll.MustNewByPrecision(e.cfg.HLLPrecision)
+	defer resSK.Release()
 
 	for _, eb := range e.buckets {
 		eb.mu.Lock()
@@ -271,15 +274,24 @@ func (e *Estimator) SnapshotAt(now time.Time) Snapshot {
 					values = prevGSK.values
 				}
 
-				resSK := hll.MustNewByPrecision(e.cfg.HLLPrecision)
-				mergeInto(resSK, gsk.Sketch, prevGSK.Sketch)
-				est := resSK.Estimate()
+				var activeSK *hll.Sketch
+				switch {
+				case gsk.Sketch != nil && prevGSK.Sketch == nil:
+					activeSK = gsk.Sketch
+				case gsk.Sketch == nil && prevGSK.Sketch != nil:
+					activeSK = prevGSK.Sketch
+				default:
+					resSK.Reset()
+					mergeInto(resSK, gsk.Sketch, prevGSK.Sketch)
+					activeSK = resSK
+				}
+
+				est := activeSK.Estimate()
 
 				var churnRate float64
 				if e.churn != nil {
-					churnRate = e.churn.updateAndRate(key, resSK, now)
+					churnRate = e.churn.updateAndRate(key, activeSK, now)
 				}
-				resSK.Release()
 
 				if est < e.cfg.MinCardinality {
 					snap.DroppedCount++
@@ -599,10 +611,14 @@ func (eng *Engine) Ingest(tss []protoparser.TimeSeries) {
 
 	for _, p := range eng.pipelines {
 		// Filter out series already seen in this interval's Bloom filter.
-		filtered := make([]protoparser.TimeSeries, 0, len(tss)/4+1)
+		// Lazily allocate filtered so steady-state duplicate batches make 0 heap allocations.
+		var filtered []protoparser.TimeSeries
 		var deduped uint64
 		for i := range tss {
 			if p.dedup.CheckAndAdd(tss[i].Hash) {
+				if filtered == nil {
+					filtered = make([]protoparser.TimeSeries, 0, len(tss)/4+1)
+				}
 				filtered = append(filtered, tss[i])
 			} else {
 				deduped++

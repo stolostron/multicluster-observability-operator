@@ -40,30 +40,32 @@ const (
 
 // defaultCardinalityEstimatorConfigYAML defines the 4 deterministic cardinality streams
 // sized for up to 2,600 managed clusters and 150-200 active namespaces per cluster.
-const defaultCardinalityEstimatorConfigYAML = `intervals:
+const defaultCardinalityEstimatorConfigYAML = `max_items_per_interval: 15000000
+streams:
   - interval: 10m
-    deduplicator_expected_items: 15000000
-    specs:
-      - group_by: [cluster]
-        hll_precision: 14
-        calculate_churn: true
-        group_limit: 5000
-        min_cardinality: 0
-      - group_by: [__name__]
-        hll_precision: 14
-        calculate_churn: true
-        group_limit: 10000
-        min_cardinality: 0
-      - group_by: [cluster, namespace]
-        hll_precision: 12
-        calculate_churn: true
-        group_limit: 500000
-        min_cardinality: 25
-      - group_by: [cluster, __name__]
-        hll_precision: 12
-        calculate_churn: false
-        group_limit: 650000
-        min_cardinality: 25
+    group_by: [cluster]
+    hll_precision: 14
+    calculate_churn: true
+    group_limit: 5000
+    min_cardinality: 0
+  - interval: 10m
+    group_by: [__name__]
+    hll_precision: 14
+    calculate_churn: true
+    group_limit: 10000
+    min_cardinality: 0
+  - interval: 10m
+    group_by: [cluster, namespace]
+    hll_precision: 12
+    calculate_churn: true
+    group_limit: 500000
+    min_cardinality: 25
+  - interval: 10m
+    group_by: [cluster, __name__]
+    hll_precision: 12
+    calculate_churn: false
+    group_limit: 650000
+    min_cardinality: 25
 `
 
 // CardinalityEstimatorWriteURL returns the internal cluster-local URL used by observatorium-api's

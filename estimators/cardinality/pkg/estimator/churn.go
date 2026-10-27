@@ -69,32 +69,38 @@ func (ct *churnTracker) updateAndRate(groupKey uint64, sk *hll.Sketch, now time.
 	ct.mu.Lock()
 	defer ct.mu.Unlock()
 
-	cloned := sk.Clone()
 	e, ok := ct.entries[groupKey]
 	if !ok {
 		ct.entries[groupKey] = &churnEntry{
 			prevAddedAt: now,
 			prevSketch:  nil,
 			currAddedAt: now,
-			currSketch:  cloned,
+			currSketch:  sk.Clone(),
 		}
 		return 0
 	}
 
 	if !e.prevAddedAt.After(now.Add(-ct.interval)) {
-		if e.prevSketch != nil {
-			e.prevSketch.Release()
+		// Reuse the old prevSketch buffer as the new currSketch if available to avoid heap allocations.
+		nextCurr := e.prevSketch
+		if nextCurr != nil {
+			nextCurr.Reset()
+			_ = nextCurr.Merge(sk)
+		} else {
+			nextCurr = sk.Clone()
 		}
 		e.prevAddedAt = now
 		e.prevSketch = e.currSketch
 		e.currAddedAt = now
-		e.currSketch = cloned
+		e.currSketch = nextCurr
 	} else {
-		if e.currSketch != nil {
-			e.currSketch.Release()
-		}
 		e.currAddedAt = now
-		e.currSketch = cloned
+		if e.currSketch != nil {
+			e.currSketch.Reset()
+			_ = e.currSketch.Merge(sk)
+		} else {
+			e.currSketch = sk.Clone()
+		}
 	}
 
 	return CalculateChurnRatio(e.currSketch, e.prevSketch)
