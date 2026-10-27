@@ -52,7 +52,7 @@ data:
                   "showLineNumbers": false,
                   "showMiniMap": false
                 },
-                "content": "### **📝 Managing Monitoring Cardinality**\n\nThis dashboard helps you visualize the metric cardinality ingested from all managed clusters. Understanding and controlling cardinality is crucial, as the number of unique metrics directly correlates with the CPU, memory, and storage resources required by the Thanos monitoring platform.\n\n#### **⚠️ Important: Dashboard Prerequisites**\n\nFor this dashboard to display any data, a specific set of Prometheus recording rules must be configured on the hub. These rules perform the heavy cardinality calculations in the background and save the results as new, efficient metrics, such as cluster\\_name:cardinality.\n\nThese rules run at a **30-minute interval** to protect system performance. Therefore, the data on this dashboard will update every half hour.\n\nIf the panels are empty, the rules are likely not configured. Refer to the [ACM Dev Preview Documentation](https://github.com/stolostron/stolostron/blob/main/dev-preview/README.md) for complete setup instructions.\n\n#### **🤔 What is Cardinality?**\n\n**Cardinality** refers to the total number of unique **time series** in our monitoring system. A time series is a unique combination of a **metric name** and its descriptive **labels**.\n\nAdding a label with thousands of unique values (like a request\\_id) causes a \"cardinality explosion,\" which severely degrades system performance.\n\n#### **🔥 Why It Matters**\n\nHigh cardinality is the primary cause of performance issues in the Thanos-based monitoring system. It directly leads to:\n\n* **High CPU and Memory Usage:** The system struggles to ingest, index, and query the massive number of series.  \n* **Slow Dashboards and Alerts:** Queries take longer to complete, making dashboards slow and alerts unreliable.  \n* **Increased Storage Costs:** More unique series consume more disk space.\n\n#### **🔍 How to Use These Dashboards**\n\nThis overview uses the pre-calculated metrics to help you investigate issues without overloading the system:\n\n1. **Cardinality Outliers:** The top row of the dashboard automatically identifies clusters and metrics with a disproportionately high cardinality. It flags any item with a value greater than three times the standard deviation from the average. This allows you to spot the most significant contributors at a glance.\n2. **Cardinality by Cluster Name:** This graph shows the total number of series sent by each managed cluster. If you see a cluster with unusually high or spiking cardinality, click on it to drill down into a detailed dashboard. There, you can see the breakdown by namespace and pod to find the specific workload responsible.  \n3. **Cardinality by Metric Name:** This graph shows the highest-cardinality metrics across all clusters. If a metric has an unexpectedly high series count, click on it to drill down. The detailed view will show you which cluster, namespace, and pod are contributing the most series to that specific metric.\n\n#### **🚧 Limitations & Scope**\n\nThis dashboard provides a high-level overview, not a real-time, granular analysis tool. Please be aware of the following limitations:\n\n* **Data Latency:** The data is based on recording rules that run every 30 minutes. As a result, all panels have a data latency of up to half an hour and are not suitable for real-time monitoring.  \n* **Churn Rate is Not Visible:** The panels track standing cardinality (the total number of active series). They are perfect for spotting long-term growth but may not detect high **churn rates** (i.e., a large number of short-lived metrics), which also puts a significant load on the system.  \n* **Root Cause Labels are Not Shown:** This overview will identify a metric with high cardinality (the \"what\") but not the specific label causing it (the \"why\"). For example, it will flag http\\_requests\\_total as problematic but won't show that a pod\\_uuid label is the root cause. This level of analysis requires using the drill-down dashboards.\n\n#### **✅ Best Practices for Reducing Cardinality**\n\nOnce you've identified a problematic application, the primary method for reducing cardinality at the hub is to use recording rules on the managed clusters:\n\n* **Federate Aggregated Metrics via Recording Rules:** Instead of federating raw, high-cardinality metrics, the best practice is to push Prometheus recording rules to the managed cluster. These rules can pre-aggregate the data (e.g., by summing requests per namespace while dropping pod-level details). Then, configure federation to scrape *only the aggregated results* of these rules. This is the most effective way to prevent high-cardinality data from ever reaching the hub.  \n* **Be Selective About What You Federate:** Not every metric from a managed cluster needs to be centralized. Only federate the results of rules or raw metrics that are truly essential for global dashboards and alerting.\n* **Drop Unneeded Labels:** When writing your recording rules, ensure you drop any unnecessary, high-cardinality labels. Your goal is to preserve the essential dimensions for hub-level analysis while discarding volatile labels like pod, instance, or pod\\_uuid.  ",
+                "content": "### **📝 Managing Monitoring Cardinality**\n\nThis dashboard helps you visualize the metric cardinality and series churn ingested from all managed clusters. Understanding and controlling cardinality is crucial, as the number of unique metrics directly correlates with the CPU, memory, and storage resources required by the Thanos monitoring platform.\n\n#### **⚡ Real-Time Probabilistic Estimation (HyperLogLog)**\n\nCardinality and series churn are computed continuously on the Hub by the `observability-cardinality-estimator` service using **Time-Sliced Bloom Filters** and **Sliding-Window HyperLogLog (HLL)** sketches over a 10-minute sliding window, pushed to Thanos every **60 seconds**.\n\n#### **🤔 What is Cardinality & Churn?**\n\n* **Cardinality (`cardinality_estimate`):** The total number of unique **time series** active over the 10-minute window. A time series is a unique combination of a **metric name** and its descriptive **labels**.\n* **Series Churn Ratio (`cardinality_churn_ratio`):** The ratio (`0.0` to `1.0`) of short-lived or newly created series entering the window relative to the active series count. High churn puts heavy pressure on the TSDB head block and index even when standing cardinality appears stable.\n\n#### **🔍 How to Use These Dashboards**\n\n1. **Cardinality Outliers:** Automatically identifies clusters and metrics whose cardinality exceeds 3 standard deviations above the fleet average.\n2. **Series Churn Ratio (10m Window):** Expand the second row to inspect the top clusters and metrics generating high series churn.\n3. **Cluster Cardinality:** Shows the total number of series sent by each managed cluster. Click on a cluster to drill down by namespace and pod.\n4. **Metric Cardinality:** Shows the highest-cardinality metrics across all clusters. Click on a metric to drill down by cluster, namespace, and pod.",
                 "mode": "markdown"
               },
               "pluginVersion": "11.6.1",
@@ -129,7 +129,7 @@ data:
                 {
                   "editorMode": "code",
                   "exemplar": false,
-                  "expr": "count(group by (cluster) (up) unless (group by (cluster) (last_over_time(cluster:cardinality[35m]))))",
+                  "expr": "max(last_over_time(cardinality_churn_ratio{group_by_keys=\"cluster\"}[15m]))",
                   "format": "table",
                   "instant": true,
                   "legendFormat": "__auto",
@@ -137,7 +137,7 @@ data:
                   "refId": "A"
                 }
               ],
-              "title": "Excluded Clusters",
+              "title": "Max Cluster Churn Ratio",
               "type": "stat"
             },
             {
@@ -166,7 +166,7 @@ data:
                       },
                       {
                         "color": "red",
-                        "value": 80
+                        "value": 0.5
                       }
                     ]
                   }
@@ -197,7 +197,7 @@ data:
                 {
                   "editorMode": "code",
                   "exemplar": false,
-                  "expr": "group by (cluster) (up) unless (group by (cluster) (last_over_time(cluster:cardinality[35m])))",
+                  "expr": "topk(10, label_replace(last_over_time(cardinality_churn_ratio{group_by_keys=\"cluster\"}[15m]), \"cluster\", \"$1\", \"by_cluster\", \"(.*)\"))",
                   "format": "table",
                   "hide": false,
                   "instant": true,
@@ -207,14 +207,15 @@ data:
                   "refId": "A"
                 }
               ],
-              "title": "Cluster List",
+              "title": "Top Churning Clusters (10m Window)",
               "transformations": [
                 {
                   "id": "filterFieldsByName",
                   "options": {
                     "include": {
                       "names": [
-                        "cluster"
+                        "cluster",
+                        "Value"
                       ]
                     }
                   }
@@ -240,15 +241,15 @@ data:
                   "showLineNumbers": false,
                   "showMiniMap": false
                 },
-                "content": "#### **Important Note on Data Coverage & Sharding**\n\nThis section helps you verify that all your managed clusters are correctly included in the cardinality analysis performed on this dashboard.\n\nThe recording rules that power these dashboards use a technique called **sharding** to distribute the high computational load. This sharding relies on the clusterID label, which is present in all metrics sent by a managed cluster.\n\nThe clusterID for OpenShift clusters is a UUID (e.g., a1b2c3d4-...), which is ideal for balanced sharding because its characters are randomly distributed. In contrast, other cluster types might use the cluster name as the clusterID. Since names often follow predictable patterns, this can cause two potential issues:\n\n1. **Exclusion:** If a cluster name contains characters outside the expected set (hexadecimal characters), the sharding rules may ignore its metrics entirely, excluding it from the analysis.  \n2. **Skew:** If many cluster names start with the same character (e.g., all Azure clusters starting with aks-), the sharding can become unbalanced, leading to performance degradation of the monitoring system.\n\n**Your Action:** Please review the table in this section. If any of your managed clusters are listed here, or are missing from the main dashboards below, please refer to the **ACM Documentation** for instructions on how to configure them correctly.",
+                "content": "#### **Understanding Series Churn Ratio**\n\nThe `cardinality_churn_ratio` metric measures the fraction (`0.0` to `1.0`) of time series in the 10-minute sliding window that were newly created rather than continuously active across sub-windows.\n\n* **`0.0`:** Zero churn — the exact same set of time series remained stable throughout the window.\n* **`> 0.3`:** Moderate to high churn — e.g., frequent pod restarts, CronJobs, or ephemeral labels (`pod_uuid`, `request_id`, `container_id`) creating short-lived series.",
                 "mode": "markdown"
               },
               "pluginVersion": "11.6.1",
-              "title": "Note on Data Coverage",
+              "title": "Note on Series Churn",
               "type": "text"
             }
           ],
-          "title": "Clusters Excluded from Analysis",
+          "title": "Series Churn Ratio (10m Window)",
           "type": "row"
         },
         {
@@ -320,10 +321,10 @@ data:
             {
               "editorMode": "code",
               "exemplar": false,
-              "expr": "count(last_over_time(cluster:cardinality[35m]) > ignoring(cluster) group_left avg(last_over_time(cluster:cardinality[35m])) + 3 * stddev(last_over_time(cluster:cardinality[35m])))",
+              "expr": "count(label_replace(last_over_time(cardinality_estimate{group_by_keys=\"cluster\"}[15m]), \"cluster\", \"$1\", \"by_cluster\", \"(.*)\") > ignoring(cluster, by_cluster) group_left avg(last_over_time(cardinality_estimate{group_by_keys=\"cluster\"}[15m])) + 3 * stddev(last_over_time(cardinality_estimate{group_by_keys=\"cluster\"}[15m])))",
               "format": "table",
               "instant": true,
-              "interval": "10m",
+              "interval": "1m",
               "legendFormat": "__auto",
               "range": false,
               "refId": "A"
@@ -413,7 +414,7 @@ data:
             {
               "editorMode": "code",
               "exemplar": false,
-              "expr": "last_over_time(cluster:cardinality[35m]) > ignoring(cluster) group_left avg(last_over_time(cluster:cardinality[35m])) + 3 * stddev(last_over_time(cluster:cardinality[35m]))",
+              "expr": "label_replace(last_over_time(cardinality_estimate{group_by_keys=\"cluster\"}[15m]), \"cluster\", \"$1\", \"by_cluster\", \"(.*)\") > ignoring(cluster, by_cluster) group_left avg(last_over_time(cardinality_estimate{group_by_keys=\"cluster\"}[15m])) + 3 * stddev(last_over_time(cardinality_estimate{group_by_keys=\"cluster\"}[15m]))",
               "format": "table",
               "instant": true,
               "interval": "",
@@ -428,7 +429,7 @@ data:
               },
               "editorMode": "code",
               "exemplar": false,
-              "expr": "sum(last_over_time(cluster:cardinality[35m]))",
+              "expr": "sum(last_over_time(cardinality_estimate{group_by_keys=\"cluster\"}[15m]))",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -584,10 +585,10 @@ data:
             {
               "editorMode": "code",
               "exemplar": false,
-              "expr": "count(last_over_time(name:cardinality[35m]) > ignoring(metric_name) group_left avg(last_over_time(name:cardinality[35m])) + 3 * stddev(last_over_time(name:cardinality[35m])))",
+              "expr": "count(label_replace(last_over_time(cardinality_estimate{group_by_keys=\"__name__\"}[15m]), \"metric_name\", \"$1\", \"by__name__\", \"(.*)\") > ignoring(metric_name, by__name__) group_left avg(last_over_time(cardinality_estimate{group_by_keys=\"__name__\"}[15m])) + 3 * stddev(last_over_time(cardinality_estimate{group_by_keys=\"__name__\"}[15m])))",
               "format": "table",
               "instant": true,
-              "interval": "10m",
+              "interval": "1m",
               "legendFormat": "__auto",
               "range": false,
               "refId": "A"
@@ -677,10 +678,10 @@ data:
             {
               "editorMode": "code",
               "exemplar": false,
-              "expr": "last_over_time(name:cardinality[35m]) > ignoring(metric_name) group_left avg(last_over_time(name:cardinality[35m])) + 3 * stddev(last_over_time(name:cardinality[35m]))",
+              "expr": "label_replace(last_over_time(cardinality_estimate{group_by_keys=\"__name__\"}[15m]), \"metric_name\", \"$1\", \"by__name__\", \"(.*)\") > ignoring(metric_name, by__name__) group_left avg(last_over_time(cardinality_estimate{group_by_keys=\"__name__\"}[15m])) + 3 * stddev(last_over_time(cardinality_estimate{group_by_keys=\"__name__\"}[15m]))",
               "format": "table",
               "instant": true,
-              "interval": "10m",
+              "interval": "1m",
               "legendFormat": "__auto",
               "range": false,
               "refId": "Cluster Cardinality"
@@ -692,7 +693,7 @@ data:
               },
               "editorMode": "code",
               "exemplar": false,
-              "expr": "sum(last_over_time(name:cardinality[35m]))",
+              "expr": "sum(last_over_time(cardinality_estimate{group_by_keys=\"__name__\"}[15m]))",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -878,9 +879,9 @@ data:
                 "uid": "000000001"
               },
               "editorMode": "code",
-              "expr": "topk(8, cluster:cardinality)",
+              "expr": "topk(8, label_replace(cardinality_estimate{group_by_keys=\"cluster\"}, \"cluster\", \"$1\", \"by_cluster\", \"(.*)\"))",
               "instant": false,
-              "interval": "30m",
+              "interval": "1m",
               "legendFormat": "{{cluster}}",
               "range": true,
               "refId": "A"
@@ -1036,7 +1037,7 @@ data:
               },
               "editorMode": "code",
               "exemplar": false,
-              "expr": "last_over_time(cluster:cardinality[35m])",
+              "expr": "label_replace(last_over_time(cardinality_estimate{group_by_keys=\"cluster\"}[15m]), \"cluster\", \"$1\", \"by_cluster\", \"(.*)\")",
               "format": "table",
               "instant": true,
               "interval": "",
@@ -1051,7 +1052,7 @@ data:
               },
               "editorMode": "code",
               "exemplar": false,
-              "expr": "last_over_time(cluster:cardinality[35m] offset 7d)",
+              "expr": "label_replace(last_over_time(cardinality_estimate{group_by_keys=\"cluster\"}[15m] offset 7d), \"cluster\", \"$1\", \"by_cluster\", \"(.*)\")",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -1066,7 +1067,7 @@ data:
               },
               "editorMode": "code",
               "exemplar": false,
-              "expr": "last_over_time(cluster:cardinality[35m] offset 30d)",
+              "expr": "label_replace(last_over_time(cardinality_estimate{group_by_keys=\"cluster\"}[15m] offset 30d), \"cluster\", \"$1\", \"by_cluster\", \"(.*)\")",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -1082,7 +1083,7 @@ data:
               },
               "editorMode": "code",
               "exemplar": false,
-              "expr": "sum(last_over_time(cluster:cardinality[35m]))",
+              "expr": "sum(last_over_time(cardinality_estimate{group_by_keys=\"cluster\"}[15m]))",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -1453,9 +1454,9 @@ data:
                 "uid": "000000001"
               },
               "editorMode": "code",
-              "expr": "topk(8, name:cardinality)",
+              "expr": "topk(8, label_replace(cardinality_estimate{group_by_keys=\"__name__\"}, \"metric_name\", \"$1\", \"by__name__\", \"(.*)\"))",
               "instant": false,
-              "interval": "30m",
+              "interval": "1m",
               "legendFormat": "{{metric_name}}",
               "range": true,
               "refId": "A"
@@ -1596,7 +1597,7 @@ data:
               },
               "editorMode": "code",
               "exemplar": false,
-              "expr": "last_over_time(name:cardinality[35m])",
+              "expr": "label_replace(last_over_time(cardinality_estimate{group_by_keys=\"__name__\"}[15m]), \"metric_name\", \"$1\", \"by__name__\", \"(.*)\")",
               "format": "table",
               "instant": true,
               "legendFormat": "__auto",
@@ -1610,7 +1611,7 @@ data:
               },
               "editorMode": "code",
               "exemplar": false,
-              "expr": "last_over_time(name:cardinality[35m] offset 7d)",
+              "expr": "label_replace(last_over_time(cardinality_estimate{group_by_keys=\"__name__\"}[15m] offset 7d), \"metric_name\", \"$1\", \"by__name__\", \"(.*)\")",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -1625,7 +1626,7 @@ data:
               },
               "editorMode": "code",
               "exemplar": false,
-              "expr": "last_over_time(name:cardinality[35m]  offset 30d)",
+              "expr": "label_replace(last_over_time(cardinality_estimate{group_by_keys=\"__name__\"}[15m] offset 30d), \"metric_name\", \"$1\", \"by__name__\", \"(.*)\")",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -1640,7 +1641,7 @@ data:
               },
               "editorMode": "code",
               "exemplar": false,
-              "expr": "sum(last_over_time(name:cardinality[35m]))",
+              "expr": "sum(last_over_time(cardinality_estimate{group_by_keys=\"__name__\"}[15m]))",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -2577,8 +2578,8 @@ data:
               "targets": [
                 {
                   "editorMode": "code",
-                  "expr": "sum(cluster:cardinality) + sum(name:no_cluster:cardinality)",
-                  "interval": "30m",
+                  "expr": "sum(cardinality_estimate{group_by_keys=\"cluster\"})",
+                  "interval": "1m",
                   "legendFormat": "Total Cardinality",
                   "range": true,
                   "refId": "A"

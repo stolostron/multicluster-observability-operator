@@ -125,9 +125,9 @@ data:
                 "uid": "000000001"
               },
               "editorMode": "code",
-              "expr": "sum(last_over_time(cluster_name:cardinality{metric_name=\"$metric_name\"}[35m])) by (cluster)",
+              "expr": "sum(label_replace(last_over_time(cardinality_estimate{group_by_keys=\"cluster,__name__\", by__name__=\"$metric_name\"}[15m]), \"cluster\", \"$1\", \"by_cluster\", \"(.*)\")) by (cluster)",
               "instant": false,
-              "interval": "30m",
+              "interval": "1m",
               "legendFormat": "__auto",
               "range": true,
               "refId": "A"
@@ -222,7 +222,7 @@ data:
               },
               "editorMode": "code",
               "exemplar": false,
-              "expr": "sum(last_over_time(cluster_name:cardinality{metric_name=\"$metric_name\"}[35m])) by (cluster)",
+              "expr": "sum(label_replace(last_over_time(cardinality_estimate{group_by_keys=\"cluster,__name__\", by__name__=\"$metric_name\"}[15m]), \"cluster\", \"$1\", \"by_cluster\", \"(.*)\")) by (cluster)",
               "format": "table",
               "instant": true,
               "legendFormat": "__auto",
@@ -236,7 +236,7 @@ data:
               },
               "editorMode": "code",
               "exemplar": false,
-              "expr": "sum(last_over_time(cluster_name:cardinality{metric_name=\"$metric_name\"}[35m])) ",
+              "expr": "sum(last_over_time(cardinality_estimate{group_by_keys=\"cluster,__name__\", by__name__=\"$metric_name\"}[15m]))",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -1057,14 +1057,14 @@ data:
               "type": "prometheus",
               "uid": "000000001"
             },
-            "definition": "label_values(cluster_name:cardinality,metric_name)",
+            "definition": "label_values(cardinality_estimate{group_by_keys=\"__name__\"},by__name__)",
             "includeAll": false,
             "label": "Metric name",
             "name": "metric_name",
             "options": [],
             "query": {
               "qryType": 1,
-              "query": "label_values(cluster_name:cardinality,metric_name)",
+              "query": "label_values(cardinality_estimate{group_by_keys=\"__name__\"},by__name__)",
               "refId": "PrometheusVariableQueryEditor-VariableQuery"
             },
             "refresh": 2,
@@ -1077,14 +1077,14 @@ data:
               "type": "prometheus",
               "uid": "000000001"
             },
-            "definition": "label_values(cluster_name:cardinality{metric_name=\"$metric_name\"},cluster)",
+            "definition": "label_values(cardinality_estimate{group_by_keys=\"cluster,__name__\", by__name__=\"$metric_name\"},by_cluster)",
             "includeAll": false,
             "label": "Cluster",
             "name": "cluster",
             "options": [],
             "query": {
               "qryType": 1,
-              "query": "label_values(cluster_name:cardinality{metric_name=\"$metric_name\"},cluster)",
+              "query": "label_values(cardinality_estimate{group_by_keys=\"cluster,__name__\", by__name__=\"$metric_name\"},by_cluster)",
               "refId": "PrometheusVariableQueryEditor-VariableQuery"
             },
             "refresh": 2,
@@ -1097,14 +1097,14 @@ data:
               "type": "prometheus",
               "uid": "000000001"
             },
-            "definition": "label_values(cluster_namespace:cardinality{cluster=\"$cluster\"},namespace)",
+            "definition": "label_values(cardinality_estimate{group_by_keys=\"cluster,namespace\", by_cluster=\"$cluster\"},by_namespace)",
             "includeAll": false,
             "label": "Namespace",
             "name": "namespace",
             "options": [],
             "query": {
               "qryType": 1,
-              "query": "label_values(cluster_namespace:cardinality{cluster=\"$cluster\"},namespace)",
+              "query": "label_values(cardinality_estimate{group_by_keys=\"cluster,namespace\", by_cluster=\"$cluster\"},by_namespace)",
               "refId": "PrometheusVariableQueryEditor-VariableQuery"
             },
             "refresh": 1,
