@@ -427,6 +427,12 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		return ctrl.Result{}, fmt.Errorf("failed to create observability certs: %w", err)
 	}
 
+	// reconcile the Hub cardinality estimator ConfigMap, Service, and Deployment
+	result, err = GenerateCardinalityEstimatorResources(ctx, r.Client, r.Scheme, instance)
+	if result != nil {
+		return *result, fmt.Errorf("failed to generate cardinality estimator resources: %w", err)
+	}
+
 	// create an Observatorium CR
 	result, err = GenerateObservatoriumCR(ctx, r.Client, r.Scheme, instance)
 	if result != nil {

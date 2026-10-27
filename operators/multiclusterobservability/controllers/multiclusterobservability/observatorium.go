@@ -569,9 +569,9 @@ func newAPISpec(c client.Client, mco *mcov1beta2.MultiClusterObservability, tlsP
 			}
 		}
 	}
-	if mco.Spec.StorageConfig.WriteStorage != nil {
-		var eps []mcoutil.RemoteWriteEndpointWithSecret
-		var mountSecrets []string
+	var eps []mcoutil.RemoteWriteEndpointWithSecret
+	var mountSecrets []string
+	if mco.Spec.StorageConfig != nil && mco.Spec.StorageConfig.WriteStorage != nil {
 		for _, storageConfig := range mco.Spec.StorageConfig.WriteStorage {
 			storageSecret := &v1.Secret{}
 			err := c.Get(context.TODO(), types.NamespacedName{
@@ -627,19 +627,21 @@ func newAPISpec(c client.Client, mco *mcov1beta2.MultiClusterObservability, tlsP
 				eps = append(eps, *newEp)
 			}
 		}
+	}
 
-		err := applyEndpointsSecret(c, eps)
-		if err != nil {
-			return apiSpec, err
+	// Always replicate incoming Remote Write payloads to the Hub cardinality estimator service.
+	eps = append(eps, CardinalityEstimatorWriteEndpoint())
+
+	if err := applyEndpointsSecret(c, eps); err != nil {
+		return apiSpec, err
+	}
+	if len(eps) > 0 {
+		apiSpec.AdditionalWriteEndpoints = &obsv1alpha1.EndpointsConfig{
+			EndpointsConfigSecret: endpointsConfigName,
 		}
-		if len(eps) > 0 {
-			apiSpec.AdditionalWriteEndpoints = &obsv1alpha1.EndpointsConfig{
-				EndpointsConfigSecret: endpointsConfigName,
-			}
-			if len(mountSecrets) > 0 {
-				apiSpec.AdditionalWriteEndpoints.MountSecrets = mountSecrets
-				apiSpec.AdditionalWriteEndpoints.MountPath = mcoutil.MountPath
-			}
+		if len(mountSecrets) > 0 {
+			apiSpec.AdditionalWriteEndpoints.MountSecrets = mountSecrets
+			apiSpec.AdditionalWriteEndpoints.MountPath = mcoutil.MountPath
 		}
 	}
 

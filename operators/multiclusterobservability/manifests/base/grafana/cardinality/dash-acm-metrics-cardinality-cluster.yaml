@@ -150,9 +150,9 @@ data:
                 "uid": "000000001"
               },
               "editorMode": "code",
-              "expr": "topk(8, sum(last_over_time(cluster_namespace:cardinality{cluster=\"$cluster\",namespace!=\"\"}[35m])) by (namespace))",
+              "expr": "topk(8, sum(label_replace(last_over_time(cardinality_estimate{group_by_keys=\"cluster,namespace\", by_cluster=\"$cluster\", by_namespace!=\"\"}[15m]), \"namespace\", \"$1\", \"by_namespace\", \"(.*)\")) by (namespace))",
               "instant": false,
-              "interval": "30m",
+              "interval": "1m",
               "legendFormat": "{{namespace}}",
               "range": true,
               "refId": "A"
@@ -163,10 +163,10 @@ data:
                 "uid": "000000001"
               },
               "editorMode": "code",
-              "expr": "sum(last_over_time(cluster_namespace:cardinality{cluster=\"$cluster\",namespace=\"\"}[35m]))",
+              "expr": "sum(last_over_time(cardinality_estimate{group_by_keys=\"cluster,namespace\", by_cluster=\"$cluster\", by_namespace=\"\"}[15m]))",
               "hide": false,
               "instant": false,
-              "interval": "30m",
+              "interval": "1m",
               "legendFormat": "Non Namespaced",
               "range": true,
               "refId": "B"
@@ -284,7 +284,7 @@ data:
               },
               "editorMode": "code",
               "exemplar": false,
-              "expr": "sum(last_over_time(cluster_namespace:cardinality{cluster=\"$cluster\"}[35m])) by (namespace)",
+              "expr": "sum(label_replace(last_over_time(cardinality_estimate{group_by_keys=\"cluster,namespace\", by_cluster=\"$cluster\"}[15m]), \"namespace\", \"$1\", \"by_namespace\", \"(.*)\")) by (namespace)",
               "format": "table",
               "instant": true,
               "legendFormat": "__auto",
@@ -298,7 +298,7 @@ data:
               },
               "editorMode": "code",
               "exemplar": false,
-              "expr": "sum(last_over_time(cluster_namespace:cardinality{cluster=\"$cluster\"}[35m]))",
+              "expr": "sum(last_over_time(cardinality_estimate{group_by_keys=\"cluster,namespace\", by_cluster=\"$cluster\"}[15m]))",
               "format": "table",
               "hide": false,
               "instant": true,

@@ -170,6 +170,11 @@ const (
 	RBACQueryProxyImgName = "rbac-query-proxy"
 	RBACQueryProxyKey     = "rbac_query_proxy"
 
+	CardinalityEstimatorImgName       = "cardinality-estimator"
+	CardinalityEstimatorKey           = "cardinality_estimator"
+	CardinalityEstimatorServiceName   = "observability-cardinality-estimator"
+	CardinalityEstimatorConfigMapName = "observability-cardinality-estimator-config"
+
 	DefaultQueryTimeout = "300s"
 
 	ObservatoriumAPI               = "observatorium-api"
@@ -190,6 +195,7 @@ const (
 	MetricsCollector               = "metrics-collector"
 	Observatorium                  = "observatorium"
 	MultiClusterObservabilityAddon = "multicluster-observability-addon"
+	CardinalityEstimator           = "cardinality-estimator"
 	ManagedClusterAddonName        = "observability-controller"
 
 	RetentionResolutionRaw = "365d"
@@ -715,6 +721,7 @@ func SetOperandNames(c client.Client) error {
 	operandNames[Observatorium] = GetDefaultCRName()
 	operandNames[ObservatoriumAPI] = GetOperandNamePrefix() + ObservatoriumAPI
 	operandNames[MultiClusterObservabilityAddon] = GetOperandNamePrefix() + MultiClusterObservabilityAddon
+	operandNames[CardinalityEstimator] = GetOperandNamePrefix() + CardinalityEstimator
 
 	// Check if the Observatorium CR already exists
 	opts := &client.ListOptions{
@@ -739,6 +746,7 @@ func SetOperandNames(c client.Client) error {
 						operandNames[Observatorium] = observatorium.Name
 						operandNames[ObservatoriumAPI] = observatorium.Name + "-" + ObservatoriumAPI
 						operandNames[MultiClusterObservabilityAddon] = MultiClusterObservabilityAddon
+						operandNames[CardinalityEstimator] = CardinalityEstimator
 					}
 					break
 				}
