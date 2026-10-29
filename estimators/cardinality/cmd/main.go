@@ -36,6 +36,7 @@ func main() {
 func run() int {
 	var (
 		configFile     = flag.String("config.file", "/etc/cardinality-estimator/config.yaml", "Path to the cardinality estimator YAML configuration file.")
+		windowInterval = flag.Duration("estimator.interval", estimator.DefaultInterval, "Default sliding window interval for cardinality streams when not specified in config.yaml.")
 		listenAddr     = flag.String("web.listen-address", ":8490", "Address to listen on for Remote Write ingestion and operational metrics.")
 		remoteWriteURL = flag.String("remote-write.url", "", "Thanos Receive Remote Write v1 endpoint URL for periodic snapshot flushing.")
 		flushInterval  = flag.Duration("remote-write.interval", remotewrite.DefaultFlushInterval, "Interval between Remote Write snapshot flushes.")
@@ -49,7 +50,7 @@ func run() int {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
 	slog.SetDefault(logger)
 
-	cfg, err := estimator.LoadConfig(*configFile)
+	cfg, err := estimator.LoadConfigWithInterval(*configFile, *windowInterval)
 	if err != nil {
 		logger.Error("failed to load initial estimator configuration", "file", *configFile, "err", err)
 		return 1
@@ -97,7 +98,7 @@ func run() int {
 				return
 			case <-sighupCh:
 				logger.Info("received SIGHUP; reloading estimator configuration", "file", *configFile)
-				newCfg, err := estimator.LoadConfig(*configFile)
+				newCfg, err := estimator.LoadConfigWithInterval(*configFile, *windowInterval)
 				if err != nil {
 					metrics.configErrorsTotal.Add(1)
 					logger.Error("failed to parse reloaded configuration", "file", *configFile, "err", err)

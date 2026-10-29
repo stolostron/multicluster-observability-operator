@@ -40,28 +40,25 @@ const (
 
 // defaultCardinalityEstimatorConfigYAML defines the 4 deterministic cardinality streams
 // sized for up to 2,600 managed clusters and 150-200 active namespaces per cluster.
+// The sliding window interval is controlled via the --estimator.interval CLI flag (15m default).
 const defaultCardinalityEstimatorConfigYAML = `max_items_per_interval: 15000000
 streams:
-  - interval: 10m
-    group_by: [cluster]
+  - group_by: [cluster]
     hll_precision: 14
     calculate_churn: true
     group_limit: 5000
     min_cardinality: 0
-  - interval: 10m
-    group_by: [__name__]
+  - group_by: [__name__]
     hll_precision: 14
     calculate_churn: true
     group_limit: 10000
     min_cardinality: 0
-  - interval: 10m
-    group_by: [cluster, namespace]
+  - group_by: [cluster, namespace]
     hll_precision: 12
     calculate_churn: true
     group_limit: 500000
     min_cardinality: 25
-  - interval: 10m
-    group_by: [cluster, __name__]
+  - group_by: [cluster, __name__]
     hll_precision: 12
     calculate_churn: false
     group_limit: 650000
@@ -298,6 +295,7 @@ func reconcileCardinalityEstimatorDeployment(
 							ImagePullPolicy: mcoconfig.GetImagePullPolicy(mco.Spec),
 							Args: []string{
 								fmt.Sprintf("--config.file=%s/%s", cardinalityEstimatorMountPath, cardinalityEstimatorConfigFileKey),
+								"--estimator.interval=15m",
 								fmt.Sprintf("--web.listen-address=:%d", cardinalityEstimatorPort),
 								fmt.Sprintf("--remote-write.url=%s", receiveWriteURL),
 								fmt.Sprintf("--remote-write.tenant=%s", mcoconfig.GetTenantUID()),

@@ -17,6 +17,9 @@ import (
 )
 
 const (
+	// DefaultInterval is the default sliding window duration for cardinality estimation streams.
+	DefaultInterval = 15 * time.Minute
+
 	minInterval     = time.Minute
 	maxGroupBy      = 5
 	defaultBuckets  = 15
@@ -49,18 +52,37 @@ type StreamConfig struct {
 
 // LoadConfig reads and validates a cardinality estimator YAML configuration file.
 func LoadConfig(path string) (*Config, error) {
+	return LoadConfigWithInterval(path, DefaultInterval)
+}
+
+// LoadConfigWithInterval reads and validates a cardinality estimator YAML configuration file,
+// applying defaultInterval to any stream that does not specify an explicit interval.
+func LoadConfigWithInterval(path string, defaultInterval time.Duration) (*Config, error) {
 	data, err := os.ReadFile(path) // #nosec G304 -- Configuration file path is controlled by operator CLI flag.
 	if err != nil {
 		return nil, fmt.Errorf("cannot read config file %q: %w", path, err)
 	}
-	return ParseConfig(data)
+	return ParseConfigWithInterval(data, defaultInterval)
 }
 
 // ParseConfig unmarshals and validates a cardinality estimator YAML configuration.
 func ParseConfig(data []byte) (*Config, error) {
+	return ParseConfigWithInterval(data, DefaultInterval)
+}
+
+// ParseConfigWithInterval unmarshals and validates a cardinality estimator YAML configuration,
+// applying defaultInterval to any stream that does not specify an explicit interval.
+func ParseConfigWithInterval(data []byte, defaultInterval time.Duration) (*Config, error) {
 	var cfg Config
 	if err := yaml.UnmarshalStrict(data, &cfg); err != nil {
 		return nil, fmt.Errorf("cannot unmarshal estimator config: %w", err)
+	}
+	if defaultInterval > 0 {
+		for i := range cfg.Streams {
+			if cfg.Streams[i].Interval == 0 {
+				cfg.Streams[i].Interval = defaultInterval
+			}
+		}
 	}
 	if err := cfg.Validate(); err != nil {
 		return nil, err
@@ -85,6 +107,9 @@ func (c *Config) Validate() error {
 }
 
 func (sc *StreamConfig) validate() error {
+	if sc.Interval == 0 {
+		sc.Interval = DefaultInterval
+	}
 	if sc.Interval < minInterval {
 		return fmt.Errorf("interval must be >= %s, got %s", minInterval, sc.Interval)
 	}

@@ -52,6 +52,27 @@ streams:
 	if !cfg.HasLabelKeyword() {
 		t.Fatalf("expected HasLabelKeyword() to be true")
 	}
+
+	// Verify streams without an explicit interval inherit ParseConfigWithInterval / DefaultInterval (15m).
+	defaultIntervalYAML := `
+streams:
+  - group_by: [cluster]
+`
+	cfgDefault, err := ParseConfig([]byte(defaultIntervalYAML))
+	if err != nil {
+		t.Fatalf("unexpected ParseConfig error for omitted interval: %v", err)
+	}
+	if cfgDefault.Streams[0].Interval != DefaultInterval {
+		t.Fatalf("expected default interval %s, got %s", DefaultInterval, cfgDefault.Streams[0].Interval)
+	}
+
+	cfgCustom, err := ParseConfigWithInterval([]byte(defaultIntervalYAML), 20*time.Minute)
+	if err != nil {
+		t.Fatalf("unexpected ParseConfigWithInterval error: %v", err)
+	}
+	if cfgCustom.Streams[0].Interval != 20*time.Minute {
+		t.Fatalf("expected custom interval 20m, got %s", cfgCustom.Streams[0].Interval)
+	}
 }
 
 func TestDeduplicator(t *testing.T) {

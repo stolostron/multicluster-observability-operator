@@ -8,6 +8,7 @@ import (
 	"context"
 	"slices"
 	"testing"
+	"time"
 
 	"github.com/stolostron/multicluster-observability-operator/estimators/cardinality/pkg/estimator"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
@@ -79,6 +80,11 @@ func TestGenerateCardinalityEstimatorResources(t *testing.T) {
 	if len(parsedCfg.Streams) != 4 {
 		t.Fatalf("expected 4 configured cardinality streams, got %d", len(parsedCfg.Streams))
 	}
+	for i, s := range parsedCfg.Streams {
+		if s.Interval != 15*time.Minute {
+			t.Errorf("stream[%d] Interval = %s, want 15m", i, s.Interval)
+		}
+	}
 
 	// Verify Service.
 	svc := &corev1.Service{}
@@ -113,6 +119,9 @@ func TestGenerateCardinalityEstimatorResources(t *testing.T) {
 	}
 	if container.Resources.Requests.Memory().String() != "2Gi" {
 		t.Errorf("expected Large memory request 2Gi, got %s", container.Resources.Requests.Memory().String())
+	}
+	if !slices.Contains(container.Args, "--estimator.interval=15m") {
+		t.Errorf("expected --estimator.interval=15m in container args, got %v", container.Args)
 	}
 	if !slices.Contains(container.Args, "--remote-write.initial-delay=5m") {
 		t.Errorf("expected --remote-write.initial-delay=5m in container args, got %v", container.Args)
