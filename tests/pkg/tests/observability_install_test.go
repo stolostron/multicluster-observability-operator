@@ -8,7 +8,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -134,12 +133,6 @@ func installMCO() {
 	if os.Getenv("IS_CANARY_ENV") == trueStr {
 		Expect(utils.CreatePullSecret(testOptions, mcoNs)).NotTo(HaveOccurred())
 		Expect(utils.CreateObjSecret(testOptions)).NotTo(HaveOccurred())
-	} else {
-		By("Creating SeaweedFS as object storage")
-		// set resource quota and limit range for canary environment to avoid destruct the node
-		yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: "../../../examples/seaweedfs"})
-		Expect(err).NotTo(HaveOccurred())
-		Expect(utils.ApplyRetryOnConflict(testOptions.HubCluster.ClusterServerURL, testOptions.KubeConfig, testOptions.HubCluster.KubeContext, yamlB)).NotTo(HaveOccurred())
 	}
 
 	// set resource quota and limit range for canary environment to avoid destruct the node
@@ -157,7 +150,7 @@ func installMCO() {
 	Expect(utils.CreateMCOTestingRBAC(testOptions)).NotTo(HaveOccurred())
 
 	if os.Getenv("IS_CANARY_ENV") != trueStr {
-		By("Recreating SeaweedFS-tls as object storage")
+		By("Creating SeaweedFS-tls as object storage")
 		// set resource quota and limit range for canary environment to avoid destruct the node
 		yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: "../../../examples/seaweedfs-tls"})
 		Expect(err).NotTo(HaveOccurred())
@@ -197,8 +190,6 @@ func installMCO() {
 			)
 		}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*10).Should(Succeed())
 	}
-	// wait for pod restarting
-	time.Sleep(60 * time.Second)
 
 	mcoTestFailed := false
 	defer func() {

@@ -78,3 +78,45 @@ func EnableUWLMonitoringOnManagedClusters(opt TestOptions, ocpClusters []Cluster
 	}
 	return nil
 }
+
+// DisableUWLMonitoringOnManagedClusters disables user workload monitoring on all managed OpenShift clusters.
+func DisableUWLMonitoringOnManagedClusters(opt TestOptions, ocpClusters []Cluster) error {
+	for _, cluster := range ocpClusters {
+		kubeClient := NewKubeClient(
+			cluster.ClusterServerURL,
+			cluster.KubeConfig,
+			cluster.KubeContext)
+
+		err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+			cm, err := kubeClient.CoreV1().ConfigMaps(openshiftMonitoringNamespace).Get(context.TODO(), clusterMonitoringConfigMapName, metav1.GetOptions{})
+			if err != nil {
+				if errors.IsNotFound(err) {
+					return nil
+				}
+				return err
+			}
+
+			config := make(map[string]any)
+			if cm.Data != nil && cm.Data[configKey] != "" {
+				if err = yaml.Unmarshal([]byte(cm.Data[configKey]), &config); err != nil {
+					return err
+				}
+			}
+			delete(config, "enableUserWorkload")
+			yamlData, err := yaml.Marshal(config)
+			if err != nil {
+				return err
+			}
+			if cm.Data == nil {
+				cm.Data = make(map[string]string)
+			}
+			cm.Data[configKey] = string(yamlData)
+			_, updateErr := kubeClient.CoreV1().ConfigMaps(openshiftMonitoringNamespace).Update(context.TODO(), cm, metav1.UpdateOptions{})
+			return updateErr
+		})
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}

@@ -800,6 +800,7 @@ func ResetMCOACapabilities(opt TestOptions) error {
 		if getErr != nil {
 			return getErr
 		}
+		original := mco.DeepCopy()
 
 		if err := setRSEnabled(mco, false); err != nil {
 			return err
@@ -830,6 +831,10 @@ func ResetMCOACapabilities(opt TestOptions) error {
 		}
 		if err := unstructured.SetNestedField(mco.Object, false, "spec", "capabilities", "userWorkloads", "logs", "collection", "clusterLogForwarder", "enabled"); err != nil {
 			return err
+		}
+
+		if reflect.DeepEqual(original.Object["spec"], mco.Object["spec"]) {
+			return nil
 		}
 
 		_, updateErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Update(context.TODO(), mco, metav1.UpdateOptions{})
