@@ -6,6 +6,7 @@ package multiclusterobservability
 
 import (
 	"context"
+	"slices"
 	"testing"
 
 	"github.com/stolostron/multicluster-observability-operator/estimators/cardinality/pkg/estimator"
@@ -112,6 +113,9 @@ func TestGenerateCardinalityEstimatorResources(t *testing.T) {
 	}
 	if container.Resources.Requests.Memory().String() != "2Gi" {
 		t.Errorf("expected Large memory request 2Gi, got %s", container.Resources.Requests.Memory().String())
+	}
+	if !slices.Contains(container.Args, "--remote-write.initial-delay=5m") {
+		t.Errorf("expected --remote-write.initial-delay=5m in container args, got %v", container.Args)
 	}
 
 	// Second reconcile: idempotent update when TShirtSize changes.

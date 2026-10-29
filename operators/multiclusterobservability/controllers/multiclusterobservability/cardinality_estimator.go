@@ -302,6 +302,7 @@ func reconcileCardinalityEstimatorDeployment(
 								fmt.Sprintf("--remote-write.url=%s", receiveWriteURL),
 								fmt.Sprintf("--remote-write.tenant=%s", mcoconfig.GetTenantUID()),
 								"--remote-write.interval=60s",
+								"--remote-write.initial-delay=5m",
 							},
 							Ports: []corev1.ContainerPort{
 								{

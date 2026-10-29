@@ -39,6 +39,7 @@ func run() int {
 		listenAddr     = flag.String("web.listen-address", ":8490", "Address to listen on for Remote Write ingestion and operational metrics.")
 		remoteWriteURL = flag.String("remote-write.url", "", "Thanos Receive Remote Write v1 endpoint URL for periodic snapshot flushing.")
 		flushInterval  = flag.Duration("remote-write.interval", remotewrite.DefaultFlushInterval, "Interval between Remote Write snapshot flushes.")
+		initialDelay   = flag.Duration("remote-write.initial-delay", remotewrite.DefaultInitialDelay, "Initial warm-up delay after startup before pushing the first Remote Write snapshot.")
 		tenantHeader   = flag.String("remote-write.tenant-header", remotewrite.DefaultTenantHeader, "HTTP header name used to propagate the Thanos tenant ID.")
 		tenantID       = flag.String("remote-write.tenant", remotewrite.DefaultTenantID, "Fallback Thanos tenant ID before any incoming write header is observed.")
 		maxRequestSize = flag.Int64("max-request-size", protoparser.DefaultMaxWriteRequestSize, "Maximum uncompressed Remote Write payload size in bytes.")
@@ -64,6 +65,7 @@ func run() int {
 	pusher := remotewrite.NewPusher(remotewrite.PusherConfig{
 		Endpoint:      *remoteWriteURL,
 		FlushInterval: *flushInterval,
+		InitialDelay:  *initialDelay,
 		TenantHeader:  *tenantHeader,
 		TenantID:      *tenantID,
 		Logger:        logger,

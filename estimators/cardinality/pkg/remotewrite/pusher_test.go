@@ -117,3 +117,66 @@ streams:
 		t.Fatalf("expected PushSuccessTotal()=2 batches, got %d", pusher.PushSuccessTotal())
 	}
 }
+
+func TestPusherRunInitialDelay(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer srv.Close()
+
+	cfg, err := estimator.ParseConfig([]byte(`
+streams:
+  - interval: 15m
+    group_by: [cluster]
+    hll_precision: 14
+`))
+	if err != nil {
+		t.Fatalf("ParseConfig failed: %v", err)
+	}
+	eng, err := estimator.NewEngine(cfg)
+	if err != nil {
+		t.Fatalf("NewEngine failed: %v", err)
+	}
+	defer eng.Stop()
+
+	eng.Ingest([]protoparser.TimeSeries{
+		{
+			Hash: xxhash.Sum64([]byte("cls1|up")),
+			Labels: []prompb.Label{
+				{Name: "__name__", Value: "up"},
+				{Name: "cluster", Value: "cls1"},
+			},
+		},
+	})
+
+	pusher := NewPusher(PusherConfig{
+		Endpoint:      srv.URL,
+		InitialDelay:  80 * time.Millisecond,
+		FlushInterval: 1 * time.Hour,
+	}, eng)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		pusher.Run(ctx)
+	}()
+
+	time.Sleep(25 * time.Millisecond)
+	if got := pusher.PushSuccessTotal(); got != 0 {
+		cancel()
+		<-done
+		t.Fatalf("expected 0 pushes before InitialDelay elapsed, got %d", got)
+	}
+
+	deadline := time.Now().Add(500 * time.Millisecond)
+	for pusher.PushSuccessTotal() == 0 && time.Now().Before(deadline) {
+		time.Sleep(10 * time.Millisecond)
+	}
+	cancel()
+	<-done
+
+	if got := pusher.PushSuccessTotal(); got != 1 {
+		t.Fatalf("expected 1 push immediately after InitialDelay elapsed, got %d", got)
+	}
+}

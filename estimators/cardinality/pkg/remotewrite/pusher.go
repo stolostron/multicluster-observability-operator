@@ -22,6 +22,7 @@ import (
 
 const (
 	DefaultFlushInterval = 60 * time.Second
+	DefaultInitialDelay  = 5 * time.Minute
 	DefaultBatchSize     = 10000
 	DefaultTimeout       = 30 * time.Second
 	DefaultTenantHeader  = "THANOS-TENANT"
@@ -32,11 +33,17 @@ const (
 type PusherConfig struct {
 	Endpoint      string
 	FlushInterval time.Duration
-	BatchSize     int
-	Timeout       time.Duration
-	TenantHeader  string
-	TenantID      string
-	Logger        *slog.Logger
+	// InitialDelay specifies an optional warm-up duration before the first
+	// Remote Write snapshot is pushed after startup. This allows all managed
+	// clusters (including Legacy metrics-collector with a 5m interval) to report
+	// at least once after a Pod restart before overwriting fleet-wide aggregates
+	// in Thanos Receive.
+	InitialDelay time.Duration
+	BatchSize    int
+	Timeout      time.Duration
+	TenantHeader string
+	TenantID     string
+	Logger       *slog.Logger
 }
 
 // Pusher periodically evaluates snapshots from an estimator.Engine and pushes
@@ -117,13 +124,27 @@ func (p *Pusher) Run(ctx context.Context) {
 		return
 	}
 
-	ticker := time.NewTicker(p.cfg.FlushInterval)
-	defer ticker.Stop()
-
 	p.cfg.Logger.Info("started remote-write snapshot pusher",
 		"endpoint", p.cfg.Endpoint,
 		"interval", p.cfg.FlushInterval.String(),
+		"initial_delay", p.cfg.InitialDelay.String(),
 	)
+
+	if p.cfg.InitialDelay > 0 {
+		timer := time.NewTimer(p.cfg.InitialDelay)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return
+		case now := <-timer.C:
+			if err := p.FlushAt(ctx, now); err != nil {
+				p.cfg.Logger.Error("failed to push initial cardinality snapshots", "err", err)
+			}
+		}
+	}
+
+	ticker := time.NewTicker(p.cfg.FlushInterval)
+	defer ticker.Stop()
 
 	for {
 		select {
