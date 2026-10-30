@@ -184,6 +184,8 @@ MCO_TAG=2.17.0-SNAPSHOT-<YOUR_TAG> ./dev-scripts/image-override.sh
 ```
 
 See [`dev-scripts/README.md`](dev-scripts/README.md) for the full reference.
+For upgrade testing with a custom ACM bundle, see
+[`Building a custom ACM bundle for upgrade testing`](dev-scripts/README.md#building-a-custom-acm-bundle-for-upgrade-testing).
 
 ---
 
