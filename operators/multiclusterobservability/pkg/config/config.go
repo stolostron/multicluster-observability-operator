@@ -216,6 +216,7 @@ const (
 	MCOCrdName                     = "multiclusterobservabilities.observability.open-cluster-management.io"
 	StorageVersionMigrationCrdName = "storageversionmigrations.migration.k8s.io"
 	MCGHCrdName                    = "multiclusterglobalhubs.operator.open-cluster-management.io"
+	MCOHubClaimName                = "hub.observability.open-cluster-management.io"
 )
 
 var PrometheusScrapeConfigsCrdName = fmt.Sprintf("%s.%s", monitoring.GroupName, prometheusv1alpha1.ScrapeConfigName)
