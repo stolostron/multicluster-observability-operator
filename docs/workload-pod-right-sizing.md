@@ -39,15 +39,10 @@ dashboards.
 | Pod | `platformPodRightSizing` | `rs-pod-config` | `acm-rs-pod-prometheus-rules` |
 
 The operator manages the ADC variables as `enabled` or `disabled`; configure the
-MCO resource rather than editing the managed ADC. When both switches are omitted,
-each inherits its one-time default from namespace right-sizing (enabled by
+MCO resource rather than editing the managed ADC. When either switch is omitted,
+it inherits its one-time default from namespace right-sizing (enabled by
 default). A hub that previously disabled namespace right-sizing will not get
 workload or pod right-sizing enabled unexpectedly.
-
-When deploying custom images, also install the updated CRD at
-`operators/multiclusterobservability/config/crd/bases/observability.open-cluster-management.io_multiclusterobservabilities.yaml`.
-Updating the operator image alone does not update the API-server schema; an older
-CRD can prune the new fields. Both the base CRD and OLM bundle CRD include the new fields.
 
 Legacy metrics collection forwards the 16 profiled workload/pod request, limit,
 usage, and recommendation metrics plus `acm_rs:pod:info` through the default metrics allowlist. Pod

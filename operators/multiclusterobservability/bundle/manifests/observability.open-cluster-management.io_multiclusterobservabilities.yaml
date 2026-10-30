@@ -10817,12 +10817,14 @@ spec:
                           podRightSizingRecommendation:
                             description: |-
                               PodRightSizingRecommendation controls pod right-sizing, including pods without a workload.
-                              When omitted, inherits from namespace right-sizing.
+                              When omitted, defaults once to the namespace right-sizing value on first reconcile.
+                              Later namespace changes do not affect this switch.
                             properties:
                               enabled:
                                 description: |-
-                                  Enabled controls this right-sizing feature. When omitted, the value is
-                                  inherited from namespace right-sizing.
+                                  Enabled controls this right-sizing feature. When omitted, the controller
+                                  persists the namespace right-sizing value on first reconcile. Later namespace
+                                  changes do not affect this switch.
                                 type: boolean
                             type: object
                           virtualizationRightSizingRecommendation:
@@ -10842,12 +10844,14 @@ spec:
                           workloadRightSizingRecommendation:
                             description: |-
                               WorkloadRightSizingRecommendation controls workload right-sizing independently of pod right-sizing.
-                              When omitted, inherits from namespace right-sizing.
+                              When omitted, defaults once to the namespace right-sizing value on first reconcile.
+                              Later namespace changes do not affect this switch.
                             properties:
                               enabled:
                                 description: |-
-                                  Enabled controls this right-sizing feature. When omitted, the value is
-                                  inherited from namespace right-sizing.
+                                  Enabled controls this right-sizing feature. When omitted, the controller
+                                  persists the namespace right-sizing value on first reconcile. Later namespace
+                                  changes do not affect this switch.
                                 type: boolean
                             type: object
                         type: object

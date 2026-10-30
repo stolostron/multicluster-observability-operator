@@ -6,6 +6,7 @@ package analytics
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
@@ -40,6 +41,7 @@ func TestIndependentRightSizingDefaultsAndADC(t *testing.T) {
 
 		// Explicit per-feature overrides.
 		{"ns disabled but workload explicit on", ptr.To(false), ptr.To(true), nil, true, false},
+		{"ns disabled but pod explicit on", ptr.To(false), nil, ptr.To(true), false, true},
 		{"workload disabled", nil, ptr.To(false), nil, false, true},
 		{"pod disabled", nil, nil, ptr.To(false), true, false},
 		{"both disabled", nil, ptr.To(false), ptr.To(false), false, false},
@@ -80,30 +82,48 @@ func TestIndependentRightSizingDefaultsAndADC(t *testing.T) {
 			r := &AnalyticsReconciler{Client: c, Log: ctrl.Log.WithName("test")}
 			instance := &mcov1beta2.MultiClusterObservability{}
 			require.NoError(t, c.Get(t.Context(), types.NamespacedName{Name: mco.GetName()}, instance))
-			for range 2 {
-				updated, err := r.ensureRightSizingDefaults(t.Context(), instance, r.Log)
-				require.NoError(t, err)
-				require.Equal(t, tt.wantWorkload, updated.Spec.Capabilities.Platform.Analytics.WorkloadRightSizingRecommendation.IsEnabled())
-				require.Equal(t, tt.wantPod, updated.Spec.Capabilities.Platform.Analytics.PodRightSizingRecommendation.IsEnabled())
-				require.NoError(t, c.Get(t.Context(), types.NamespacedName{Name: mco.GetName()}, instance))
-				require.Equal(t, ptr.To(tt.wantWorkload), instance.Spec.Capabilities.Platform.Analytics.WorkloadRightSizingRecommendation.Enabled)
-				require.Equal(t, ptr.To(tt.wantPod), instance.Spec.Capabilities.Platform.Analytics.PodRightSizingRecommendation.Enabled)
-			}
-			for _, delegated := range []bool{true, false} {
-				require.NoError(t, r.syncRightSizingStateToADC(t.Context(), instance, delegated, r.Log))
-				require.NoError(t, c.Get(t.Context(), types.NamespacedName{Name: adc.Name, Namespace: adc.Namespace}, adc))
-				values := map[string]string{}
-				for _, v := range adc.Spec.CustomizedVariables {
-					values[v.Name] = v.Value
+			checkDefaultsAndADC := func(t *testing.T) {
+				t.Helper()
+				for range 2 {
+					updated, err := r.ensureRightSizingDefaults(t.Context(), instance, r.Log)
+					require.NoError(t, err)
+					require.Equal(t, tt.wantWorkload, updated.Spec.Capabilities.Platform.Analytics.WorkloadRightSizingRecommendation.IsEnabled())
+					require.Equal(t, tt.wantPod, updated.Spec.Capabilities.Platform.Analytics.PodRightSizingRecommendation.IsEnabled())
+					require.NoError(t, c.Get(t.Context(), types.NamespacedName{Name: mco.GetName()}, instance))
+					require.Equal(t, ptr.To(tt.wantWorkload), instance.Spec.Capabilities.Platform.Analytics.WorkloadRightSizingRecommendation.Enabled)
+					require.Equal(t, ptr.To(tt.wantPod), instance.Spec.Capabilities.Platform.Analytics.PodRightSizingRecommendation.Enabled)
 				}
-				for key, enabled := range map[string]bool{util.ADCKeyPlatformWorkloadRightSizing: tt.wantWorkload, util.ADCKeyPlatformPodRightSizing: tt.wantPod} {
-					want := "disabled"
-					if delegated && enabled {
-						want = "enabled"
+				for _, delegated := range []bool{true, false} {
+					require.NoError(t, r.syncRightSizingStateToADC(t.Context(), instance, delegated, r.Log))
+					require.NoError(t, c.Get(t.Context(), types.NamespacedName{Name: adc.Name, Namespace: adc.Namespace}, adc))
+					values := map[string]string{}
+					for _, v := range adc.Spec.CustomizedVariables {
+						values[v.Name] = v.Value
 					}
-					require.Equal(t, want, values[key])
+					for key, enabled := range map[string]bool{
+						util.ADCKeyPlatformNamespaceRightSizing: tt.ns == nil || *tt.ns,
+						util.ADCKeyPlatformWorkloadRightSizing:  tt.wantWorkload,
+						util.ADCKeyPlatformPodRightSizing:       tt.wantPod,
+					} {
+						want := "disabled"
+						if delegated && enabled {
+							want = "enabled"
+						}
+						require.Equal(t, want, values[key])
+					}
 				}
 			}
+			checkDefaultsAndADC(t)
+
+			t.Run("defaults survive namespace toggle", func(t *testing.T) {
+				// Omitted namespace right-sizing starts enabled. Toggle it after
+				// defaulting to verify that persisted workload/pod values stay independent.
+				tt.ns = ptr.To(tt.ns != nil && !*tt.ns)
+				patch := fmt.Appendf(nil, `{"spec":{"capabilities":{"platform":{"analytics":{"namespaceRightSizingRecommendation":{"enabled":%t}}}}}}`, *tt.ns)
+				require.NoError(t, c.Patch(t.Context(), instance, client.RawPatch(types.MergePatchType, patch)))
+				require.NoError(t, c.Get(t.Context(), types.NamespacedName{Name: mco.GetName()}, instance))
+				checkDefaultsAndADC(t)
+			})
 		})
 	}
 }

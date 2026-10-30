@@ -176,12 +176,14 @@ type PlatformAnalyticsSpec struct {
 	VirtualizationRightSizingRecommendation PlatformRightSizingRecommendationSpec `json:"virtualizationRightSizingRecommendation,omitempty"`
 
 	// WorkloadRightSizingRecommendation controls workload right-sizing independently of pod right-sizing.
-	// When omitted, inherits from namespace right-sizing.
+	// When omitted, defaults once to the namespace right-sizing value on first reconcile.
+	// Later namespace changes do not affect this switch.
 	// +optional
 	WorkloadRightSizingRecommendation DefaultEnabledRightSizingRecommendationSpec `json:"workloadRightSizingRecommendation,omitempty"`
 
 	// PodRightSizingRecommendation controls pod right-sizing, including pods without a workload.
-	// When omitted, inherits from namespace right-sizing.
+	// When omitted, defaults once to the namespace right-sizing value on first reconcile.
+	// Later namespace changes do not affect this switch.
 	// +optional
 	PodRightSizingRecommendation DefaultEnabledRightSizingRecommendationSpec `json:"podRightSizingRecommendation,omitempty"`
 }
@@ -192,8 +194,9 @@ type PlatformAnalyticsSpec struct {
 // namespace right-sizing. The controller persists the resolved value on first
 // reconcile.
 type DefaultEnabledRightSizingRecommendationSpec struct {
-	// Enabled controls this right-sizing feature. When omitted, the value is
-	// inherited from namespace right-sizing.
+	// Enabled controls this right-sizing feature. When omitted, the controller
+	// persists the namespace right-sizing value on first reconcile. Later namespace
+	// changes do not affect this switch.
 	// +optional
 	Enabled *bool `json:"enabled,omitempty"`
 }
