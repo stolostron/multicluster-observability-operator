@@ -45,6 +45,7 @@ import (
 	"k8s.io/klog/v2"
 	addonv1beta1 "open-cluster-management.io/api/addon/v1beta1"
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
+	clusterv1alpha1 "open-cluster-management.io/api/cluster/v1alpha1"
 	clusterv1beta1 "open-cluster-management.io/api/cluster/v1beta1"
 	workv1 "open-cluster-management.io/api/work/v1"
 	policyv1 "open-cluster-management.io/governance-policy-propagator/api/v1"
@@ -76,6 +77,7 @@ func init() {
 	utilruntime.Must(apiextensionsv1.AddToScheme(scheme))
 	utilruntime.Must(monitoringv1alpha1.AddToScheme(scheme))
 	utilruntime.Must(operatorv1.AddToScheme(scheme))
+	utilruntime.Must(clusterv1alpha1.Install(scheme))
 	// +kubebuilder:scaffold:scheme
 }
 
