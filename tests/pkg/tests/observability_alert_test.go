@@ -59,12 +59,7 @@ var _ = Describe("", func() {
 			Eventually(func() error {
 				_, err := dynClient.Resource(utils.NewPrometheusRuleGVR()).Namespace(MCO_NAMESPACE).
 					Get(context.TODO(), "acm-observability-alert-rules", metav1.GetOptions{})
-				if err != nil {
-					testFailed = true
-					return err
-				}
-				testFailed = false
-				return nil
+				return err
 			}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*10).Should(Succeed())
 		},
 	)
