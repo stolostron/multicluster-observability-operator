@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stolostron/multicluster-observability-operator/estimators/cardinality/pkg/estimator"
+	"github.com/stolostron/multicluster-observability-operator/metrics-inspector/pkg/estimator"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	mcoutil "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
@@ -25,7 +25,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-func TestGenerateCardinalityEstimatorResources(t *testing.T) {
+func TestGenerateMetricsInspectorResources(t *testing.T) {
 	ctx := context.Background()
 	s := runtime.NewScheme()
 	if err := scheme.AddToScheme(s); err != nil {
@@ -58,22 +58,22 @@ func TestGenerateCardinalityEstimatorResources(t *testing.T) {
 	}
 
 	// First reconcile: creates ConfigMap, Service, and Deployment.
-	if _, err := GenerateCardinalityEstimatorResources(ctx, cl, s, mco); err != nil {
-		t.Fatalf("GenerateCardinalityEstimatorResources failed: %v", err)
+	if _, err := GenerateMetricsInspectorResources(ctx, cl, s, mco); err != nil {
+		t.Fatalf("GenerateMetricsInspectorResources failed: %v", err)
 	}
 
 	// Verify ConfigMap.
 	cm := &corev1.ConfigMap{}
 	if err := cl.Get(ctx, types.NamespacedName{
-		Name:      mcoconfig.CardinalityEstimatorConfigMapName,
+		Name:      mcoconfig.MetricsInspectorConfigMapName,
 		Namespace: mcoconfig.GetDefaultNamespace(),
 	}, cm); err != nil {
 		t.Fatalf("failed to get ConfigMap: %v", err)
 	}
-	if cm.Data[cardinalityEstimatorConfigFileKey] == "" {
-		t.Errorf("expected non-empty %s in ConfigMap", cardinalityEstimatorConfigFileKey)
+	if cm.Data[metricsInspectorConfigFileKey] == "" {
+		t.Errorf("expected non-empty %s in ConfigMap", metricsInspectorConfigFileKey)
 	}
-	parsedCfg, err := estimator.ParseConfig([]byte(cm.Data[cardinalityEstimatorConfigFileKey]))
+	parsedCfg, err := estimator.ParseConfig([]byte(cm.Data[metricsInspectorConfigFileKey]))
 	if err != nil {
 		t.Fatalf("ConfigMap YAML failed estimator.ParseConfig validation: %v", err)
 	}
@@ -89,19 +89,19 @@ func TestGenerateCardinalityEstimatorResources(t *testing.T) {
 	// Verify Service.
 	svc := &corev1.Service{}
 	if err := cl.Get(ctx, types.NamespacedName{
-		Name:      mcoconfig.CardinalityEstimatorServiceName,
+		Name:      mcoconfig.MetricsInspectorServiceName,
 		Namespace: mcoconfig.GetDefaultNamespace(),
 	}, svc); err != nil {
 		t.Fatalf("failed to get Service: %v", err)
 	}
-	if len(svc.Spec.Ports) != 1 || svc.Spec.Ports[0].Port != cardinalityEstimatorPort {
+	if len(svc.Spec.Ports) != 1 || svc.Spec.Ports[0].Port != metricsInspectorPort {
 		t.Errorf("unexpected Service ports: %+v", svc.Spec.Ports)
 	}
 
 	// Verify Deployment.
 	deploy := &appsv1.Deployment{}
 	if err := cl.Get(ctx, types.NamespacedName{
-		Name:      mcoconfig.GetOperandName(mcoconfig.CardinalityEstimator),
+		Name:      mcoconfig.GetOperandName(mcoconfig.MetricsInspector),
 		Namespace: mcoconfig.GetDefaultNamespace(),
 	}, deploy); err != nil {
 		t.Fatalf("failed to get Deployment: %v", err)
@@ -113,7 +113,7 @@ func TestGenerateCardinalityEstimatorResources(t *testing.T) {
 		t.Fatalf("expected 1 container, got %d", len(deploy.Spec.Template.Spec.Containers))
 	}
 	container := deploy.Spec.Template.Spec.Containers[0]
-	wantImg := "quay.io/stolostron/cardinality-estimator:test-tag"
+	wantImg := "quay.io/stolostron/metrics-inspector:test-tag"
 	if container.Image != wantImg {
 		t.Errorf("container image = %q, want %q", container.Image, wantImg)
 	}
@@ -129,11 +129,11 @@ func TestGenerateCardinalityEstimatorResources(t *testing.T) {
 
 	// Second reconcile: idempotent update when TShirtSize changes.
 	mco.Spec.InstanceSize = mcoconfig.TwoXLarge
-	if _, err := GenerateCardinalityEstimatorResources(ctx, cl, s, mco); err != nil {
-		t.Fatalf("second GenerateCardinalityEstimatorResources failed: %v", err)
+	if _, err := GenerateMetricsInspectorResources(ctx, cl, s, mco); err != nil {
+		t.Fatalf("second GenerateMetricsInspectorResources failed: %v", err)
 	}
 	if err := cl.Get(ctx, types.NamespacedName{
-		Name:      mcoconfig.GetOperandName(mcoconfig.CardinalityEstimator),
+		Name:      mcoconfig.GetOperandName(mcoconfig.MetricsInspector),
 		Namespace: mcoconfig.GetDefaultNamespace(),
 	}, deploy); err != nil {
 		t.Fatalf("failed to get updated Deployment: %v", err)
@@ -142,7 +142,7 @@ func TestGenerateCardinalityEstimatorResources(t *testing.T) {
 		t.Errorf("expected 2xlarge memory request 3Gi, got %s", deploy.Spec.Template.Spec.Containers[0].Resources.Requests.Memory().String())
 	}
 
-	// Verify newAPISpec always wires CardinalityEstimator into AdditionalWriteEndpoints even when WriteStorage is nil.
+	// Verify newAPISpec always wires MetricsInspector into AdditionalWriteEndpoints even when WriteStorage is nil.
 	mcoNoWriteStorage := newBaseMCO()
 	mcoNoWriteStorage.Spec.StorageConfig.WriteStorage = nil
 	apiSpec, err := newAPISpec(cl, mcoNoWriteStorage, observatoriumv1alpha1.TLSProfileSpec{})
@@ -163,7 +163,7 @@ func TestGenerateCardinalityEstimatorResources(t *testing.T) {
 	if err := yaml.Unmarshal(epSecret.Data[endpointsKey], &eps); err != nil {
 		t.Fatalf("failed to unmarshal endpoints.yaml: %v", err)
 	}
-	if len(eps) != 1 || eps[0].Name != mcoconfig.CardinalityEstimator || eps[0].URL.String() != CardinalityEstimatorWriteURL() {
+	if len(eps) != 1 || eps[0].Name != mcoconfig.MetricsInspector || eps[0].URL.String() != MetricsInspectorWriteURL() {
 		t.Errorf("unexpected endpoints: %+v", eps)
 	}
 }

@@ -629,8 +629,8 @@ func newAPISpec(c client.Client, mco *mcov1beta2.MultiClusterObservability, tlsP
 		}
 	}
 
-	// Always replicate incoming Remote Write payloads to the Hub cardinality estimator service.
-	eps = append(eps, CardinalityEstimatorWriteEndpoint())
+	// Always replicate incoming Remote Write payloads to the Hub metrics inspector service.
+	eps = append(eps, MetricsInspectorWriteEndpoint())
 
 	if err := applyEndpointsSecret(c, eps); err != nil {
 		return apiSpec, err

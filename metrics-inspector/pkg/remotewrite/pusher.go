@@ -17,7 +17,7 @@ import (
 
 	"github.com/golang/snappy"
 	"github.com/prometheus/prometheus/prompb"
-	"github.com/stolostron/multicluster-observability-operator/estimators/cardinality/pkg/estimator"
+	"github.com/stolostron/multicluster-observability-operator/metrics-inspector/pkg/estimator"
 )
 
 const (

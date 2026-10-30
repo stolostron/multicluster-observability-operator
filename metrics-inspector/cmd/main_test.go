@@ -15,9 +15,9 @@ import (
 
 	"github.com/golang/snappy"
 	"github.com/prometheus/prometheus/prompb"
-	"github.com/stolostron/multicluster-observability-operator/estimators/cardinality/pkg/estimator"
-	"github.com/stolostron/multicluster-observability-operator/estimators/cardinality/pkg/protoparser"
-	"github.com/stolostron/multicluster-observability-operator/estimators/cardinality/pkg/remotewrite"
+	"github.com/stolostron/multicluster-observability-operator/metrics-inspector/pkg/estimator"
+	"github.com/stolostron/multicluster-observability-operator/metrics-inspector/pkg/protoparser"
+	"github.com/stolostron/multicluster-observability-operator/metrics-inspector/pkg/remotewrite"
 )
 
 func TestServerMuxEndToEnd(t *testing.T) {

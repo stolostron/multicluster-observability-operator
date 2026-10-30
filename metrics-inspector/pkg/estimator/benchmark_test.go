@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/prometheus/prometheus/prompb"
-	"github.com/stolostron/multicluster-observability-operator/estimators/cardinality/pkg/protoparser"
+	"github.com/stolostron/multicluster-observability-operator/metrics-inspector/pkg/protoparser"
 )
 
 const prodStreamsYAML = `max_items_per_interval: 15000000

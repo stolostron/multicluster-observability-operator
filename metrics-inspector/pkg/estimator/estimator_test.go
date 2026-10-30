@@ -15,8 +15,8 @@ import (
 
 	"github.com/cespare/xxhash/v2"
 	"github.com/prometheus/prometheus/prompb"
-	"github.com/stolostron/multicluster-observability-operator/estimators/cardinality/pkg/hll"
-	"github.com/stolostron/multicluster-observability-operator/estimators/cardinality/pkg/protoparser"
+	"github.com/stolostron/multicluster-observability-operator/metrics-inspector/pkg/hll"
+	"github.com/stolostron/multicluster-observability-operator/metrics-inspector/pkg/protoparser"
 )
 
 func TestParseConfig(t *testing.T) {

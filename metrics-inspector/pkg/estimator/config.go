@@ -12,7 +12,7 @@ import (
 
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/promql/parser"
-	"github.com/stolostron/multicluster-observability-operator/estimators/cardinality/pkg/hll"
+	"github.com/stolostron/multicluster-observability-operator/metrics-inspector/pkg/hll"
 	"gopkg.in/yaml.v2"
 )
 

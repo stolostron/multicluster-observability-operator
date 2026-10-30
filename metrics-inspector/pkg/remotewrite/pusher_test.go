@@ -17,8 +17,8 @@ import (
 	"github.com/cespare/xxhash/v2"
 	"github.com/golang/snappy"
 	"github.com/prometheus/prometheus/prompb"
-	"github.com/stolostron/multicluster-observability-operator/estimators/cardinality/pkg/estimator"
-	"github.com/stolostron/multicluster-observability-operator/estimators/cardinality/pkg/protoparser"
+	"github.com/stolostron/multicluster-observability-operator/metrics-inspector/pkg/estimator"
+	"github.com/stolostron/multicluster-observability-operator/metrics-inspector/pkg/protoparser"
 )
 
 func TestPusherFlushAt(t *testing.T) {

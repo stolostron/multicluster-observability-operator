@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/stolostron/multicluster-observability-operator/estimators/cardinality/pkg/hll"
+	"github.com/stolostron/multicluster-observability-operator/metrics-inspector/pkg/hll"
 )
 
 // CalculateChurnRatio computes the symmetric churn rate in [0, 1] between two

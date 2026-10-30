@@ -170,10 +170,10 @@ const (
 	RBACQueryProxyImgName = "rbac-query-proxy"
 	RBACQueryProxyKey     = "rbac_query_proxy"
 
-	CardinalityEstimatorImgName       = "cardinality-estimator"
-	CardinalityEstimatorKey           = "cardinality_estimator"
-	CardinalityEstimatorServiceName   = "observability-cardinality-estimator"
-	CardinalityEstimatorConfigMapName = "observability-cardinality-estimator-config"
+	MetricsInspectorImgName       = "metrics-inspector"
+	MetricsInspectorKey           = "metrics_inspector"
+	MetricsInspectorServiceName   = "observability-metrics-inspector"
+	MetricsInspectorConfigMapName = "observability-metrics-inspector-config"
 
 	DefaultQueryTimeout = "300s"
 
@@ -195,7 +195,7 @@ const (
 	MetricsCollector               = "metrics-collector"
 	Observatorium                  = "observatorium"
 	MultiClusterObservabilityAddon = "multicluster-observability-addon"
-	CardinalityEstimator           = "cardinality-estimator"
+	MetricsInspector               = "metrics-inspector"
 	ManagedClusterAddonName        = "observability-controller"
 
 	RetentionResolutionRaw = "365d"
@@ -721,7 +721,7 @@ func SetOperandNames(c client.Client) error {
 	operandNames[Observatorium] = GetDefaultCRName()
 	operandNames[ObservatoriumAPI] = GetOperandNamePrefix() + ObservatoriumAPI
 	operandNames[MultiClusterObservabilityAddon] = GetOperandNamePrefix() + MultiClusterObservabilityAddon
-	operandNames[CardinalityEstimator] = GetOperandNamePrefix() + CardinalityEstimator
+	operandNames[MetricsInspector] = GetOperandNamePrefix() + MetricsInspector
 
 	// Check if the Observatorium CR already exists
 	opts := &client.ListOptions{
@@ -746,7 +746,7 @@ func SetOperandNames(c client.Client) error {
 						operandNames[Observatorium] = observatorium.Name
 						operandNames[ObservatoriumAPI] = observatorium.Name + "-" + ObservatoriumAPI
 						operandNames[MultiClusterObservabilityAddon] = MultiClusterObservabilityAddon
-						operandNames[CardinalityEstimator] = CardinalityEstimator
+						operandNames[MetricsInspector] = MetricsInspector
 					}
 					break
 				}

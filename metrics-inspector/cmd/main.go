@@ -17,9 +17,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/stolostron/multicluster-observability-operator/estimators/cardinality/pkg/estimator"
-	"github.com/stolostron/multicluster-observability-operator/estimators/cardinality/pkg/protoparser"
-	"github.com/stolostron/multicluster-observability-operator/estimators/cardinality/pkg/remotewrite"
+	"github.com/stolostron/multicluster-observability-operator/metrics-inspector/pkg/estimator"
+	"github.com/stolostron/multicluster-observability-operator/metrics-inspector/pkg/protoparser"
+	"github.com/stolostron/multicluster-observability-operator/metrics-inspector/pkg/remotewrite"
 )
 
 type serverMetrics struct {
@@ -35,7 +35,7 @@ func main() {
 
 func run() int {
 	var (
-		configFile     = flag.String("config.file", "/etc/cardinality-estimator/config.yaml", "Path to the cardinality estimator YAML configuration file.")
+		configFile     = flag.String("config.file", "/etc/metrics-inspector/config.yaml", "Path to the metrics inspector YAML configuration file.")
 		windowInterval = flag.Duration("estimator.interval", estimator.DefaultInterval, "Default sliding window interval for cardinality streams when not specified in config.yaml.")
 		listenAddr     = flag.String("web.listen-address", ":8490", "Address to listen on for Remote Write ingestion and operational metrics.")
 		remoteWriteURL = flag.String("remote-write.url", "", "Thanos Receive Remote Write v1 endpoint URL for periodic snapshot flushing.")

@@ -383,7 +383,7 @@ var (
 		FourXLarge: "1Gi",
 	}
 
-	CardinalityEstimatorCPURequest ResourceSizeMap = map[observabilityv1beta2.TShirtSize]string{
+	MetricsInspectorCPURequest ResourceSizeMap = map[observabilityv1beta2.TShirtSize]string{
 		Minimal:    "100m",
 		Default:    "100m",
 		Small:      "250m",
@@ -393,7 +393,7 @@ var (
 		TwoXLarge:  "2",
 		FourXLarge: "2",
 	}
-	CardinalityEstimatorMemoryRequest ResourceSizeMap = map[observabilityv1beta2.TShirtSize]string{
+	MetricsInspectorMemoryRequest ResourceSizeMap = map[observabilityv1beta2.TShirtSize]string{
 		Minimal:    "256Mi",
 		Default:    "512Mi",
 		Small:      "1Gi",
@@ -544,7 +544,7 @@ var (
 			TwoXLarge:  intptr(1),
 			FourXLarge: intptr(1),
 		},
-		CardinalityEstimator: {
+		MetricsInspector: {
 			Minimal:    intptr(1),
 			Default:    intptr(1),
 			Small:      intptr(1),
