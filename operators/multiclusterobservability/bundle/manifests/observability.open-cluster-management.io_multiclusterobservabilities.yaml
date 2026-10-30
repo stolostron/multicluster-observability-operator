@@ -10814,6 +10814,19 @@ spec:
                                   The default namespace is `open-cluster-management-global-set
                                 type: string
                             type: object
+                          podRightSizingRecommendation:
+                            description: |-
+                              PodRightSizingRecommendation controls pod right-sizing, including pods without a workload.
+                              When omitted, defaults once to the namespace right-sizing value on first reconcile.
+                              Later namespace changes do not affect this switch.
+                            properties:
+                              enabled:
+                                description: |-
+                                  Enabled controls this right-sizing feature. When omitted, the controller
+                                  persists the namespace right-sizing value on first reconcile. Later namespace
+                                  changes do not affect this switch.
+                                type: boolean
+                            type: object
                           virtualizationRightSizingRecommendation:
                             description: Feature to enable virtualization right-sizing
                               recommendation capabilities for the Analytics.
@@ -10827,6 +10840,19 @@ spec:
                                   NamespaceBinding defines the namespace where all the required resources are created.
                                   The default namespace is `open-cluster-management-global-set
                                 type: string
+                            type: object
+                          workloadRightSizingRecommendation:
+                            description: |-
+                              WorkloadRightSizingRecommendation controls workload right-sizing independently of pod right-sizing.
+                              When omitted, defaults once to the namespace right-sizing value on first reconcile.
+                              Later namespace changes do not affect this switch.
+                            properties:
+                              enabled:
+                                description: |-
+                                  Enabled controls this right-sizing feature. When omitted, the controller
+                                  persists the namespace right-sizing value on first reconcile. Later namespace
+                                  changes do not affect this switch.
+                                type: boolean
                             type: object
                         type: object
                       logs:

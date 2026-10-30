@@ -20,6 +20,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/ptr"
 	addonv1beta1 "open-cluster-management.io/api/addon/v1beta1"
 	clusterv1beta1 "open-cluster-management.io/api/cluster/v1beta1"
 	policyv1 "open-cluster-management.io/governance-policy-propagator/api/v1"
@@ -106,12 +107,16 @@ func TestEnsureRightSizingDefaultsAddsMissingFlags(t *testing.T) {
 	analytics := updated.Spec.Capabilities.Platform.Analytics
 	require.True(t, analytics.NamespaceRightSizingRecommendation.Enabled)
 	require.True(t, analytics.VirtualizationRightSizingRecommendation.Enabled)
+	require.True(t, analytics.WorkloadRightSizingRecommendation.IsEnabled())
+	require.True(t, analytics.PodRightSizingRecommendation.IsEnabled())
 
 	persisted := &mcov1beta2.MultiClusterObservability{}
 	err = c.Get(context.TODO(), types.NamespacedName{Name: mco.GetName()}, persisted)
 	require.NoError(t, err)
 	require.True(t, persisted.Spec.Capabilities.Platform.Analytics.NamespaceRightSizingRecommendation.Enabled)
 	require.True(t, persisted.Spec.Capabilities.Platform.Analytics.VirtualizationRightSizingRecommendation.Enabled)
+	require.True(t, persisted.Spec.Capabilities.Platform.Analytics.WorkloadRightSizingRecommendation.IsEnabled())
+	require.True(t, persisted.Spec.Capabilities.Platform.Analytics.PodRightSizingRecommendation.IsEnabled())
 }
 
 func TestEnsureRightSizingDefaultsPreservesExistingValue(t *testing.T) {
@@ -142,6 +147,8 @@ func TestEnsureRightSizingDefaultsPreservesExistingValue(t *testing.T) {
 	// Virtualization RS must default to true (was absent)
 	require.True(t, updated.Spec.Capabilities.Platform.Analytics.VirtualizationRightSizingRecommendation.Enabled,
 		"absent field must default to true")
+	require.True(t, updated.Spec.Capabilities.Platform.Analytics.WorkloadRightSizingRecommendation.IsEnabled())
+	require.True(t, updated.Spec.Capabilities.Platform.Analytics.PodRightSizingRecommendation.IsEnabled())
 }
 
 func TestAnalyticsReconciler_FeatureEnabled(t *testing.T) {
@@ -306,6 +313,8 @@ func TestAnalyticsReconciler_DeletionCleansUp(t *testing.T) {
 	require.Equal(t, "false", adcVars[util.ADCKeyRightSizingDelegated])
 	require.Equal(t, "disabled", adcVars[util.ADCKeyPlatformNamespaceRightSizing])
 	require.Equal(t, "disabled", adcVars[util.ADCKeyPlatformVirtualizationRightSizing])
+	require.Equal(t, "disabled", adcVars[util.ADCKeyPlatformWorkloadRightSizing])
+	require.Equal(t, "disabled", adcVars[util.ADCKeyPlatformPodRightSizing])
 
 	// Simulate stabilization window elapsed
 	r.cleanupAt = time.Now().Add(-(analyticsStabilizationWindow + time.Second))
@@ -405,6 +414,8 @@ func TestAnalyticsReconciler_DeletionSkipsWithoutFinalizer(t *testing.T) {
 func TestReconcile_MigrationSetsFlag(t *testing.T) {
 	scheme := setupTestScheme(t)
 	mco := newTestMCOWithBothRS(true, true)
+	mco.Spec.Capabilities.Platform.Analytics.WorkloadRightSizingRecommendation.Enabled = ptr.To(true)
+	mco.Spec.Capabilities.Platform.Analytics.PodRightSizingRecommendation.Enabled = ptr.To(true)
 	mco.Finalizers = []string{analyticsFinalizer}
 
 	adc := &addonv1beta1.AddOnDeploymentConfig{
@@ -415,12 +426,37 @@ func TestReconcile_MigrationSetsFlag(t *testing.T) {
 	}
 
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(mco, adc).Build()
+	// MCO delegates rule generation to MCOA and must preserve each feature's
+	// interval settings during migration and subsequent reconciles.
+	configMaps := []*corev1.ConfigMap{}
+	for name, ruleConfig := range map[string]string{
+		"rs-workload-config": "evaluationInterval: 10m\nevaluationInterval1d: 1h\n",
+		"rs-pod-config":      "evaluationInterval: 20m\nevaluationInterval1d: 2h\n",
+	} {
+		cm := &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: config.GetDefaultNamespace(),
+				Labels:    map[string]string{"observability.open-cluster-management.io/managed-by": "analytics-rightsizing"},
+			},
+			Data: map[string]string{"prometheusRuleConfig": ruleConfig},
+		}
+		require.NoError(t, c.Create(t.Context(), cm))
+		configMaps = append(configMaps, cm)
+	}
 	r := &AnalyticsReconciler{Client: c, Log: ctrl.Log.WithName("test")}
 
 	require.False(t, r.migrationDone)
-	_, err := r.Reconcile(context.TODO(), ctrl.Request{})
-	require.NoError(t, err)
-	require.True(t, r.migrationDone, "migrationDone should be true after first successful reconcile")
+	for range 2 {
+		_, err := r.Reconcile(t.Context(), ctrl.Request{})
+		require.NoError(t, err)
+		require.True(t, r.migrationDone, "migrationDone should be true after first successful reconcile")
+		for _, cm := range configMaps {
+			var stored corev1.ConfigMap
+			require.NoError(t, c.Get(t.Context(), types.NamespacedName{Name: cm.Name, Namespace: cm.Namespace}, &stored))
+			require.Equal(t, cm.Data, stored.Data, "MCO must preserve interval settings in %s", cm.Name)
+		}
+	}
 
 	// Verify ADC was synced with delegation enabled
 	updatedADC := &addonv1beta1.AddOnDeploymentConfig{}
@@ -435,11 +471,15 @@ func TestReconcile_MigrationSetsFlag(t *testing.T) {
 	require.Equal(t, "true", adcVars[util.ADCKeyRightSizingDelegated])
 	require.Equal(t, "enabled", adcVars[util.ADCKeyPlatformNamespaceRightSizing])
 	require.Equal(t, "enabled", adcVars[util.ADCKeyPlatformVirtualizationRightSizing])
+	require.Equal(t, "enabled", adcVars[util.ADCKeyPlatformWorkloadRightSizing])
+	require.Equal(t, "enabled", adcVars[util.ADCKeyPlatformPodRightSizing])
 }
 
 func TestSyncRightSizingStateToADC_DelegatingEnabled(t *testing.T) {
 	scheme := setupTestScheme(t)
 	mco := newTestMCO("", true, false)
+	mco.Spec.Capabilities.Platform.Analytics.WorkloadRightSizingRecommendation.Enabled = ptr.To(false)
+	mco.Spec.Capabilities.Platform.Analytics.PodRightSizingRecommendation.Enabled = ptr.To(false)
 
 	// Create ADC with stale "disabled" values (simulates MCO → MCOA transition)
 	adc := &addonv1beta1.AddOnDeploymentConfig{
@@ -470,7 +510,9 @@ func TestSyncRightSizingStateToADC_DelegatingEnabled(t *testing.T) {
 	require.NoError(t, err)
 
 	foundDelegated := false
+	adcVars := make(map[string]string)
 	for _, cv := range updated.Spec.CustomizedVariables {
+		adcVars[cv.Name] = cv.Value
 		switch cv.Name {
 		case util.ADCKeyRightSizingDelegated:
 			foundDelegated = true
@@ -480,6 +522,10 @@ func TestSyncRightSizingStateToADC_DelegatingEnabled(t *testing.T) {
 		case util.ADCKeyPlatformVirtualizationRightSizing:
 			// virtualization was not set in newTestMCO, so it defaults to disabled
 			require.Equal(t, "disabled", cv.Value)
+		case util.ADCKeyPlatformWorkloadRightSizing:
+			require.Equal(t, "disabled", cv.Value)
+		case util.ADCKeyPlatformPodRightSizing:
+			require.Equal(t, "disabled", cv.Value)
 		}
 	}
 	require.True(t, foundDelegated, "missing customized variable %q", util.ADCKeyRightSizingDelegated)
@@ -488,6 +534,8 @@ func TestSyncRightSizingStateToADC_DelegatingEnabled(t *testing.T) {
 func TestSyncRightSizingStateToADC_BothEnabled(t *testing.T) {
 	scheme := setupTestScheme(t)
 	mco := newTestMCOWithBothRS(true, true)
+	mco.Spec.Capabilities.Platform.Analytics.WorkloadRightSizingRecommendation.Enabled = ptr.To(true)
+	mco.Spec.Capabilities.Platform.Analytics.PodRightSizingRecommendation.Enabled = ptr.To(true)
 
 	adc := &addonv1beta1.AddOnDeploymentConfig{
 		ObjectMeta: metav1.ObjectMeta{
@@ -525,6 +573,10 @@ func TestSyncRightSizingStateToADC_BothEnabled(t *testing.T) {
 			require.Equal(t, "enabled", cv.Value)
 		case util.ADCKeyPlatformVirtualizationRightSizing:
 			require.Equal(t, "enabled", cv.Value)
+		case util.ADCKeyPlatformWorkloadRightSizing:
+			require.Equal(t, "enabled", cv.Value)
+		case util.ADCKeyPlatformPodRightSizing:
+			require.Equal(t, "enabled", cv.Value)
 		}
 	}
 	require.True(t, foundDelegated, "missing customized variable %q", util.ADCKeyRightSizingDelegated)
@@ -545,6 +597,8 @@ func TestSyncRightSizingStateToADC_ADCNotFound(t *testing.T) {
 func TestSyncRightSizingStateToADC_NoUpdateWhenValuesMatch(t *testing.T) {
 	scheme := setupTestScheme(t)
 	mco := newTestMCOWithBothRS(true, false)
+	mco.Spec.Capabilities.Platform.Analytics.WorkloadRightSizingRecommendation.Enabled = ptr.To(false)
+	mco.Spec.Capabilities.Platform.Analytics.PodRightSizingRecommendation.Enabled = ptr.To(false)
 
 	// ADC already has correct values — should not trigger an update
 	adc := &addonv1beta1.AddOnDeploymentConfig{
@@ -557,6 +611,8 @@ func TestSyncRightSizingStateToADC_NoUpdateWhenValuesMatch(t *testing.T) {
 				{Name: util.ADCKeyRightSizingDelegated, Value: "true"},
 				{Name: util.ADCKeyPlatformNamespaceRightSizing, Value: "enabled"},
 				{Name: util.ADCKeyPlatformVirtualizationRightSizing, Value: "disabled"},
+				{Name: util.ADCKeyPlatformWorkloadRightSizing, Value: "disabled"},
+				{Name: util.ADCKeyPlatformPodRightSizing, Value: "disabled"},
 			},
 		},
 	}
@@ -585,6 +641,10 @@ func TestSyncRightSizingStateToADC_NoUpdateWhenValuesMatch(t *testing.T) {
 			require.Equal(t, "enabled", cv.Value)
 		case util.ADCKeyPlatformVirtualizationRightSizing:
 			require.Equal(t, "disabled", cv.Value)
+		case util.ADCKeyPlatformWorkloadRightSizing:
+			require.Equal(t, "disabled", cv.Value)
+		case util.ADCKeyPlatformPodRightSizing:
+			require.Equal(t, "disabled", cv.Value)
 		}
 	}
 	require.True(t, foundDelegated, "missing customized variable %q", util.ADCKeyRightSizingDelegated)
@@ -594,6 +654,8 @@ func TestSyncRightSizingStateToADC_DeletionForcesDisabled(t *testing.T) {
 	scheme := setupTestScheme(t)
 	// MCO CR with both RS features enabled — deletion path must override to "disabled".
 	mco := newTestMCOWithBothRS(true, true)
+	mco.Spec.Capabilities.Platform.Analytics.WorkloadRightSizingRecommendation.Enabled = ptr.To(true)
+	mco.Spec.Capabilities.Platform.Analytics.PodRightSizingRecommendation.Enabled = ptr.To(true)
 
 	// Pre-create ADC with "enabled" values simulating an active MCOA deployment.
 	adc := &addonv1beta1.AddOnDeploymentConfig{
@@ -606,6 +668,8 @@ func TestSyncRightSizingStateToADC_DeletionForcesDisabled(t *testing.T) {
 				{Name: util.ADCKeyRightSizingDelegated, Value: "true"},
 				{Name: util.ADCKeyPlatformNamespaceRightSizing, Value: "enabled"},
 				{Name: util.ADCKeyPlatformVirtualizationRightSizing, Value: "enabled"},
+				{Name: util.ADCKeyPlatformWorkloadRightSizing, Value: "enabled"},
+				{Name: util.ADCKeyPlatformPodRightSizing, Value: "enabled"},
 			},
 		},
 	}
@@ -624,7 +688,9 @@ func TestSyncRightSizingStateToADC_DeletionForcesDisabled(t *testing.T) {
 	}, updated)
 	require.NoError(t, err)
 
+	adcVars := make(map[string]string)
 	for _, cv := range updated.Spec.CustomizedVariables {
+		adcVars[cv.Name] = cv.Value
 		switch cv.Name {
 		case util.ADCKeyRightSizingDelegated:
 			require.Equal(t, "false", cv.Value, "deletion must set delegated=false")
@@ -632,6 +698,10 @@ func TestSyncRightSizingStateToADC_DeletionForcesDisabled(t *testing.T) {
 			require.Equal(t, "disabled", cv.Value, "deletion must set namespace RS to disabled")
 		case util.ADCKeyPlatformVirtualizationRightSizing:
 			require.Equal(t, "disabled", cv.Value, "deletion must set virt RS to disabled")
+		case util.ADCKeyPlatformWorkloadRightSizing:
+			require.Equal(t, "disabled", cv.Value, "deletion must set workload RS to disabled")
+		case util.ADCKeyPlatformPodRightSizing:
+			require.Equal(t, "disabled", cv.Value, "deletion must set pod RS to disabled")
 		}
 	}
 }

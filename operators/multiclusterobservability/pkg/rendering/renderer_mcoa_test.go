@@ -248,6 +248,12 @@ func TestRenderAddonDeploymentConfig(t *testing.T) {
 						IncidentDetection: mcov1beta2.PlatformIncidentDetectionSpec{
 							Enabled: true,
 						},
+						WorkloadRightSizingRecommendation: mcov1beta2.DefaultEnabledRightSizingRecommendationSpec{
+							Enabled: ptr.To(true),
+						},
+						PodRightSizingRecommendation: mcov1beta2.DefaultEnabledRightSizingRecommendationSpec{
+							Enabled: ptr.To(true),
+						},
 					},
 				},
 				UserWorkloads: &mcov1beta2.UserWorkloadCapabilitiesSpec{
@@ -297,7 +303,7 @@ func TestRenderAddonDeploymentConfig(t *testing.T) {
 	instrV1alpha1 := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.InstrumentationCRDName)
 	promV1alpha1 := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.PrometheusAgentCRDName)
 
-	assert.Len(t, got.Spec.CustomizedVariables, 15)
+	assert.Len(t, got.Spec.CustomizedVariables, 17)
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1beta1.CustomizedVariable{Name: nameMetricsStorageInstanceSize, Value: "small"})
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1beta1.CustomizedVariable{Name: nameUserWorkloadLogsCollection, Value: clfV1})
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1beta1.CustomizedVariable{Name: namePlatformIncidentDetection, Value: uipluginsCRDFQDN})
@@ -313,6 +319,27 @@ func TestRenderAddonDeploymentConfig(t *testing.T) {
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1beta1.CustomizedVariable{Name: mcoutil.ADCKeyRightSizingDelegated, Value: "true"})
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1beta1.CustomizedVariable{Name: mcoutil.ADCKeyPlatformNamespaceRightSizing, Value: "disabled"})
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1beta1.CustomizedVariable{Name: mcoutil.ADCKeyPlatformVirtualizationRightSizing, Value: "disabled"})
+	assert.Contains(t, got.Spec.CustomizedVariables, addonv1beta1.CustomizedVariable{Name: mcoutil.ADCKeyPlatformWorkloadRightSizing, Value: "enabled"})
+	assert.Contains(t, got.Spec.CustomizedVariables, addonv1beta1.CustomizedVariable{Name: mcoutil.ADCKeyPlatformPodRightSizing, Value: "enabled"})
+
+	for _, workload := range []bool{false, true} {
+		for _, pod := range []bool{false, true} {
+			mco.Spec.Capabilities.Platform.Analytics.WorkloadRightSizingRecommendation.Enabled = ptr.To(workload)
+			mco.Spec.Capabilities.Platform.Analytics.PodRightSizingRecommendation.Enabled = ptr.To(pod)
+			uobj, err = renderer.renderAddonDeploymentConfig(t.Context(), aodc, "test", map[string]string{"key": "value"})
+			assert.NoError(t, err)
+			got = &addonv1beta1.AddOnDeploymentConfig{}
+			assert.NoError(t, runtime.DefaultUnstructuredConverter.FromUnstructured(uobj.Object, got))
+			for key, enabled := range map[string]bool{mcoutil.ADCKeyPlatformWorkloadRightSizing: workload, mcoutil.ADCKeyPlatformPodRightSizing: pod} {
+				value := "disabled"
+				if enabled {
+					value = "enabled"
+				}
+				assert.Contains(t, got.Spec.CustomizedVariables, addonv1beta1.CustomizedVariable{Name: key, Value: value})
+			}
+			assert.Equal(t, workload || pod, RightSizingEnabled(mco))
+		}
+	}
 }
 
 func TestRenderAddonDeploymentConfig_AlertsEnabled(t *testing.T) {
@@ -1150,4 +1177,31 @@ func TestMCOAPlatformMetricsEnabled_Defaulting(t *testing.T) {
 			assert.Equal(t, tt.expected, MCOAPlatformMetricsEnabled(tt.cr))
 		})
 	}
+}
+
+func TestRightSizingEnabledIncludesWorkloadAndPod(t *testing.T) {
+	cr := &mcov1beta2.MultiClusterObservability{
+		Spec: mcov1beta2.MultiClusterObservabilitySpec{
+			Capabilities: &mcov1beta2.CapabilitiesSpec{
+				Platform: &mcov1beta2.PlatformCapabilitiesSpec{
+					Analytics: mcov1beta2.PlatformAnalyticsSpec{
+						WorkloadRightSizingRecommendation: mcov1beta2.DefaultEnabledRightSizingRecommendationSpec{
+							Enabled: ptr.To(true),
+						},
+						PodRightSizingRecommendation: mcov1beta2.DefaultEnabledRightSizingRecommendationSpec{
+							Enabled: ptr.To(false),
+						},
+					},
+				},
+			},
+		},
+	}
+
+	assert.True(t, RightSizingEnabled(cr))
+
+	cr.Spec.Capabilities.Platform.Analytics.WorkloadRightSizingRecommendation.Enabled = ptr.To(false)
+	assert.False(t, RightSizingEnabled(cr))
+
+	cr.Spec.Capabilities.Platform.Analytics.PodRightSizingRecommendation.Enabled = ptr.To(true)
+	assert.True(t, RightSizingEnabled(cr))
 }
