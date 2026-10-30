@@ -426,12 +426,37 @@ func TestReconcile_MigrationSetsFlag(t *testing.T) {
 	}
 
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(mco, adc).Build()
+	// MCO delegates rule generation to MCOA and must preserve each feature's
+	// interval settings during migration and subsequent reconciles.
+	configMaps := []*corev1.ConfigMap{}
+	for name, ruleConfig := range map[string]string{
+		"rs-workload-config": "evaluationInterval: 10m\nevaluationInterval1d: 1h\n",
+		"rs-pod-config":      "evaluationInterval: 20m\nevaluationInterval1d: 2h\n",
+	} {
+		cm := &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: config.GetDefaultNamespace(),
+				Labels:    map[string]string{"observability.open-cluster-management.io/managed-by": "analytics-rightsizing"},
+			},
+			Data: map[string]string{"prometheusRuleConfig": ruleConfig},
+		}
+		require.NoError(t, c.Create(t.Context(), cm))
+		configMaps = append(configMaps, cm)
+	}
 	r := &AnalyticsReconciler{Client: c, Log: ctrl.Log.WithName("test")}
 
 	require.False(t, r.migrationDone)
-	_, err := r.Reconcile(context.TODO(), ctrl.Request{})
-	require.NoError(t, err)
-	require.True(t, r.migrationDone, "migrationDone should be true after first successful reconcile")
+	for range 2 {
+		_, err := r.Reconcile(t.Context(), ctrl.Request{})
+		require.NoError(t, err)
+		require.True(t, r.migrationDone, "migrationDone should be true after first successful reconcile")
+		for _, cm := range configMaps {
+			var stored corev1.ConfigMap
+			require.NoError(t, c.Get(t.Context(), types.NamespacedName{Name: cm.Name, Namespace: cm.Namespace}, &stored))
+			require.Equal(t, cm.Data, stored.Data, "MCO must preserve interval settings in %s", cm.Name)
+		}
+	}
 
 	// Verify ADC was synced with delegation enabled
 	updatedADC := &addonv1beta1.AddOnDeploymentConfig{}

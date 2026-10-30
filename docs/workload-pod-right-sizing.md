@@ -44,6 +44,32 @@ it inherits its one-time default from namespace right-sizing (enabled by
 default). A hub that previously disabled namespace right-sizing will not get
 workload or pod right-sizing enabled unexpectedly.
 
+Workload and pod right-sizing support the same configurable evaluation intervals
+as namespace and virtualization right-sizing. Edit `prometheusRuleConfig` in
+`rs-workload-config` or `rs-pod-config` in the hub's
+`open-cluster-management-observability` namespace, preserving the other settings:
+
+```yaml
+evaluationInterval: 10m
+evaluationInterval1d: 30m
+```
+
+Each ConfigMap controls its feature independently. `evaluationInterval` sets both
+the rolling rule group's evaluation cadence and its lookback window. It defaults
+to `5m` and accepts single-unit durations from `5m` through `1h`.
+`evaluationInterval1d` sets how often daily aggregates are refreshed, defaults to
+`15m`, and accepts single-unit durations from `15m` through `6h`; the aggregation
+window remains one day. Recorded metric names, including their `:5m` suffixes,
+remain unchanged when the intervals change.
+
+MCO delegates rule generation and ConfigMap validation to MCOA, including when
+using legacy metrics collection. MCOA applies interval edits during reconciliation.
+Missing keys use the defaults without rewriting existing ConfigMaps. Invalid
+values are restored to their last valid value, or to the default if no previous
+value is cached. As with other right-sizing features, changing the rolling
+interval changes the samples used by percentile profiles; allow a day for the
+daily window to contain only samples recorded at the new interval.
+
 Legacy metrics collection forwards the 16 profiled workload/pod request, limit,
 usage, and recommendation metrics plus `acm_rs:pod:info` through the default metrics allowlist. Pod
 inventory preserves table rows and selectors even without resource measurements;
