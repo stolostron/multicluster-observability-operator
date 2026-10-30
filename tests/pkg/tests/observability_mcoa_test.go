@@ -1292,6 +1292,12 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 						}
 						return nil
 					}, 120, 5).Should(Succeed())
+				})
+			})
+		},
+	)
+
+	Context(
 		"when the managed log store is enabled for MCOA [P1][Sev1][Observability][Stable]@ocpInterop (mcoa_logs/g0)",
 		func() {
 			BeforeAll(func(ctx SpecContext) {
