@@ -170,7 +170,12 @@ func (r *AnalyticsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	return ctrl.Result{}, nil
 }
 
-// ensureRightSizingDefaults persists default right-sizing flags when absent and returns the (possibly updated) instance.
+// ensureRightSizingDefaults persists omitted right-sizing enablement flags on the MCO CR.
+// Namespace and virtualization default to true when absent. Workload and pod take a
+// one-time default from the effective namespace value (or true when namespace is also
+// omitted), then the resolved values are written into the CR so later namespace
+// toggles do not silently change them. Explicit false values are never overwritten.
+// Returns the in-memory instance with defaults applied so callers do not wait on cache.
 func (r *AnalyticsReconciler) ensureRightSizingDefaults(ctx context.Context, instance *mcov1beta2.MultiClusterObservability, reqLogger logr.Logger) (*mcov1beta2.MultiClusterObservability, error) {
 	// Persist defaults without overwriting explicit false values.
 	u := &unstructured.Unstructured{}
@@ -264,9 +269,12 @@ func (r *AnalyticsReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-// syncRightSizingStateToADC syncs right-sizing state to AddOnDeploymentConfig.
-// When delegatingToMCOA=true: syncs the MCO CR's actual enabled/disabled state so MCOA knows what to deploy.
-// When delegatingToMCOA=false: forces "disabled" to prevent MCOA from deploying PrometheusRules during MCO deletion.
+// syncRightSizingStateToADC writes namespace, virtualization, workload, and pod
+// right-sizing ADC variables (plus rightSizingDelegated) onto the managed
+// AddOnDeploymentConfig so MCOA can gate spoke-side resources.
+// When delegatingToMCOA is true, each key mirrors the MCO CR enabled state.
+// When false (deletion / cleanup), every feature key is forced to "disabled"
+// so MCOA tears down before MCO removes remaining objects.
 func (r *AnalyticsReconciler) syncRightSizingStateToADC(ctx context.Context, instance *mcov1beta2.MultiClusterObservability, delegatingToMCOA bool, reqLogger logr.Logger) error {
 	const (
 		valueEnabled  = "enabled"

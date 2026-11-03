@@ -755,6 +755,9 @@ func TestReconcile_MigrationRunsOnce(t *testing.T) {
 	require.True(t, r.migrationDone, "migrationDone should remain true on subsequent reconciles")
 }
 
+// TestIndependentRightSizingDefaultsAndADC covers workload/pod one-time
+// defaults from namespace RS, explicit overrides, ADC sync for both delegated
+// modes, and that persisted workload/pod values survive a later namespace toggle.
 func TestIndependentRightSizingDefaultsAndADC(t *testing.T) {
 	for _, tt := range []struct {
 		name                  string

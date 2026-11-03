@@ -690,9 +690,10 @@ func SetLegacyAlertForwardingDisabled(opt TestOptions, disabled bool) error {
 	})
 }
 
-// setRSEnabled sets all right-sizing flags (namespace, virtualization, workload, pod)
-// on the MCO CR. In ACM 5.0, RS keeps the MCOA stack alive independently of metrics
-// capabilities, so every switch must be covered to allow fully disabling MCOA.
+// setRSEnabled sets namespace, virtualization, workload, and pod right-sizing
+// enablement on the MCO CR to the same value. All four switches must be covered
+// because RightSizingEnabled ORs them; leaving workload/pod on keeps MCOA alive
+// and blocks teardown helpers such as ResetMCOACapabilities.
 func setRSEnabled(mco *unstructured.Unstructured, enabled bool) error {
 	for _, field := range []string{
 		"namespaceRightSizingRecommendation",

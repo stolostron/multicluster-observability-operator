@@ -263,7 +263,10 @@ func (r *MCORenderer) renderClusterManagementAddOn(
 	return u, nil
 }
 
-// renderAddonDeploymentConfig renders the ADC with platform metrics, right-sizing, and incident detection variables.
+// renderAddonDeploymentConfig renders the AddOnDeploymentConfig template and
+// injects customized variables for platform metrics, incident detection, and
+// each right-sizing feature (namespace, virtualization, workload, pod) so MCOA
+// can enable or disable spoke resources independently.
 func (r *MCORenderer) renderAddonDeploymentConfig(
 	ctx context.Context,
 	res *resource.Resource,
@@ -442,8 +445,9 @@ func (r *MCORenderer) renderMCOATemplates(
 	return uobjs, nil
 }
 
-// RightSizingEnabled returns true if at least one right-sizing feature
-// (namespace, virtualization, or workload/pod) is enabled in the MCO CR spec.
+// RightSizingEnabled reports whether any right-sizing feature is active.
+// It ORs namespace, virtualization, workload, and pod switches so MCOA stays
+// deployed when only an independent workload or pod recommendation is on.
 func RightSizingEnabled(cr *obv1beta2.MultiClusterObservability) bool {
 	if cr.Spec.Capabilities == nil || cr.Spec.Capabilities.Platform == nil {
 		return false
