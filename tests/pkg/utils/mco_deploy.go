@@ -17,6 +17,7 @@ import (
 	"strings"
 
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
+	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -816,10 +817,8 @@ func SetMCOAAlertForwardingCapabilities(opt TestOptions, platformAlerts, userWor
 	})
 }
 
-// SetMCOAPlatformLogsCapability enables/disables the MCOA platform logs collection capability
-// (the "managed log store" use case). When enabled, MCO installs Loki Operator and cert-manager
-// as dependencies, provisions the MCOA root CA, and the addon manager deploys a
-// ClusterLogForwarder to collect platform logs into the default managed LokiStack.
+// SetMCOAPlatformLogsCapability enables/disables the existing user-defined
+// ClusterLogForwarder path. The managed log store is selected by the MCO annotation.
 func SetMCOAPlatformLogsCapability(opt TestOptions, enabled bool) error {
 	clientDynamic := NewKubeClientDynamic(
 		opt.HubCluster.ClusterServerURL,
@@ -838,6 +837,35 @@ func SetMCOAPlatformLogsCapability(opt TestOptions, enabled bool) error {
 
 		_, updateErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Update(context.TODO(), mco, metav1.UpdateOptions{})
 		return updateErr
+	})
+}
+
+// SetMCOAManagedLogging selects MCOA's managed LokiStack through the MCO CR.
+func SetMCOAManagedLogging(opt TestOptions, enabled bool) error {
+	clientDynamic := NewKubeClientDynamic(
+		opt.HubCluster.ClusterServerURL,
+		opt.KubeConfig,
+		opt.HubCluster.KubeContext)
+
+	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		mco, err := clientDynamic.Resource(NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+
+		annotations := mco.GetAnnotations()
+		if enabled {
+			if annotations == nil {
+				annotations = make(map[string]string)
+			}
+			annotations[mcoconfig.AnnotationMCOManagedLogging] = "true"
+		} else {
+			delete(annotations, mcoconfig.AnnotationMCOManagedLogging)
+		}
+		mco.SetAnnotations(annotations)
+
+		_, err = clientDynamic.Resource(NewMCOGVRV1BETA2()).Update(context.TODO(), mco, metav1.UpdateOptions{})
+		return err
 	})
 }
 
@@ -918,8 +946,12 @@ func ResetMCOACapabilities(opt TestOptions) error {
 		if err := unstructured.SetNestedField(mco.Object, false, "spec", "capabilities", "userWorkloads", "logs", "collection", "clusterLogForwarder", "enabled"); err != nil {
 			return err
 		}
+		annotations := mco.GetAnnotations()
+		delete(annotations, mcoconfig.AnnotationMCOManagedLogging)
+		mco.SetAnnotations(annotations)
 
-		if reflect.DeepEqual(original.Object["spec"], mco.Object["spec"]) {
+		if reflect.DeepEqual(original.Object["spec"], mco.Object["spec"]) &&
+			reflect.DeepEqual(original.GetAnnotations(), mco.GetAnnotations()) {
 			return nil
 		}
 

@@ -1327,18 +1327,15 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 					Expect(utils.CreateMCOALoggingObjectStorageSecret(testOptions)).NotTo(HaveOccurred())
 				})
 
-				By("Enabling platform metrics (required to keep MCOA alive) and platform logs collection", func() {
+				By("Enabling platform metrics and managed logging through the MCO CR", func() {
 					Expect(utils.SetMCOACapabilities(testOptions, true, false)).NotTo(HaveOccurred())
-					Expect(utils.SetMCOAPlatformLogsCapability(testOptions, true)).NotTo(HaveOccurred())
+					Expect(utils.SetMCOAManagedLogging(testOptions, true)).NotTo(HaveOccurred())
 				})
 			})
 
 			AfterAll(func() {
-				By("Disabling the managed log store on the AddOnDeploymentConfig", func() {
-					Expect(utils.RemoveAddOnDeploymentConfigCustomizedVariable(testOptions, "platformLogsDefault")).NotTo(HaveOccurred())
-				})
-				By("Disabling platform logs collection", func() {
-					Expect(utils.SetMCOAPlatformLogsCapability(testOptions, false)).NotTo(HaveOccurred())
+				By("Disabling managed logging on the MCO CR", func() {
+					Expect(utils.SetMCOAManagedLogging(testOptions, false)).NotTo(HaveOccurred())
 				})
 			})
 
@@ -1354,18 +1351,12 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 						return utils.CheckLokiStackCRDEstablished(testOptions.HubCluster)
 					}, 180, 5).Should(Not(HaveOccurred()))
 				})
+			})
 
-				// platformLogsDefault isn't a capability MCO's own renderer sets from the MCO CR
-				// today, but the addon-manager needs it to pick the managed (MCOA-provisioned)
-				// LokiStack as the log store. Apply it directly on the AddOnDeploymentConfig here,
-				// test-side only, until that becomes a real capability field. Only do this once
-				// Loki Operator and the LokiStack CRD are actually in place, so the addon-manager
-				// has somewhere to provision the managed LokiStack against.
-				By("Enabling the managed log store on the AddOnDeploymentConfig", func() {
-					Eventually(func() error {
-						return utils.SetAddOnDeploymentConfigCustomizedVariable(testOptions, "platformLogsDefault", "true")
-					}, 120, 5).Should(Not(HaveOccurred()))
-				})
+			It("should select managed logging without a user-defined platform ClusterLogForwarder", SpecTimeout(10*time.Minute), func(ctx context.Context) {
+				Eventually(func() error {
+					return utils.CheckMCOAManagedLoggingAODC(testOptions)
+				}, 300, 5).Should(Succeed())
 			})
 
 			It("should provision the MCOA root CA used to secure log collection", func(ctx context.Context) {
