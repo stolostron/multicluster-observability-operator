@@ -37,6 +37,7 @@ const (
 	metricsCollectorDeploymentName         = "metrics-collector-deployment"
 	mcoaAddonName                          = "multicluster-observability-addon"
 	globalPlacementName                    = "global"
+	kubeStateMetricsDeploymentName         = "kube-state-metrics"
 )
 
 var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
@@ -283,6 +284,82 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 						),
 					).NotTo(HaveOccurred())
 					Expect(utils.DeleteScrapeConfig(testOptions, scrapeConfigName)).NotTo(HaveOccurred())
+				})
+			})
+
+			It("should deploy the monitoring stack and collect metrics for a non-OCP managed cluster", SpecTimeout(10*time.Minute), func(ctx SpecContext) {
+				hubClusterName := testOptions.HubCluster.Name
+				vendorOverrideAnno := "mcoa-override-vendor"
+				vendorOverrideTriggerLabel := "mcoa-vendor-override-trigger"
+
+				// Record original annotation and label values to ensure full restoration after the test
+				mc, err := utils.GetManagedCluster(ctx, testOptions, hubClusterName)
+				Expect(err).NotTo(HaveOccurred(), "failed to retrieve ManagedCluster %s", hubClusterName)
+				origAnnoVal, hadAnno := mc.Annotations[vendorOverrideAnno]
+				origLabelVal, hadLabel := mc.Labels[vendorOverrideTriggerLabel]
+
+				DeferCleanup(func(cleanupCtx context.Context) {
+					By(fmt.Sprintf("Restoring cluster %s to original vendor configuration", hubClusterName), func() {
+						if hadAnno {
+							Expect(utils.SetManagedClusterAnnotation(cleanupCtx, testOptions, hubClusterName, vendorOverrideAnno, origAnnoVal)).To(Succeed())
+						} else {
+							Expect(utils.RemoveManagedClusterAnnotation(cleanupCtx, testOptions, hubClusterName, vendorOverrideAnno)).To(Succeed())
+						}
+						if hadLabel {
+							Expect(utils.SetManagedClusterLabel(cleanupCtx, testOptions, hubClusterName, vendorOverrideTriggerLabel, origLabelVal)).To(Succeed())
+						} else {
+							Expect(utils.RemoveManagedClusterLabel(cleanupCtx, testOptions, hubClusterName, vendorOverrideTriggerLabel)).To(Succeed())
+						}
+
+						By("Waiting for non-OCP monitoring stack to be undeployed", func() {
+							utils.CheckDeploymentAvailability(testOptions.HubCluster, kubeStateMetricsDeploymentName, utils.MCO_AGENT_ADDON_NAMESPACE, false)
+						})
+
+						By(fmt.Sprintf("Waiting for ManagedClusterAddOn %s to become Available after restore", mcoaAddonName), func() {
+							utils.CheckManagedClusterAddonStatus(testOptions, mcoaAddonName)
+						})
+					})
+				})
+
+				By(fmt.Sprintf("Configuring cluster %s as non-OCP via %s annotation", hubClusterName, vendorOverrideAnno), func() {
+					Expect(utils.SetManagedClusterAnnotation(ctx, testOptions, hubClusterName, vendorOverrideAnno, "Other")).To(Succeed())
+					Expect(utils.SetManagedClusterLabel(ctx, testOptions, hubClusterName, vendorOverrideTriggerLabel, "true")).To(Succeed())
+				})
+
+				By("Waiting for non-OCP monitoring stack to be deployed", func() {
+					utils.CheckDeploymentAvailability(testOptions.HubCluster, kubeStateMetricsDeploymentName, utils.MCO_AGENT_ADDON_NAMESPACE, true)
+				})
+
+				// Record deployment time to ensure we only accept metrics generated after the non-OCP stack was deployed
+				startTime := time.Now().Unix()
+
+				By(fmt.Sprintf("Waiting for ManagedClusterAddOn %s to become Available", mcoaAddonName), func() {
+					utils.CheckManagedClusterAddonStatus(testOptions, mcoaAddonName)
+				})
+
+				By(fmt.Sprintf("Verifying ManagedClusterAddOn %s remains Available for 30s without flapping", mcoaAddonName), func() {
+					utils.CheckManagedClusterAddonStatusConsistently(testOptions, mcoaAddonName, 30*time.Second, 5*time.Second)
+				})
+
+				By(fmt.Sprintf("Verifying metrics from non-OCP cluster %s are received in Thanos", hubClusterName), func() {
+					Eventually(func() error {
+						query := fmt.Sprintf("up{cluster=%q, namespace=%q}", hubClusterName, utils.MCO_AGENT_ADDON_NAMESPACE)
+						res, err := utils.QueryGrafana(testOptions, query)
+						if err != nil {
+							return err
+						}
+						if len(res.Data.Result) == 0 {
+							return fmt.Errorf("no results found for query %q in Thanos", query)
+						}
+						for _, r := range res.Data.Result {
+							if len(r.Value) >= 2 {
+								if ts, ok := r.Value[0].(float64); ok && int64(ts) >= startTime {
+									return nil
+								}
+							}
+						}
+						return fmt.Errorf("results found for query %q, but no sample timestamp >= %d", query, startTime)
+					}, 5*time.Minute, 5*time.Second).Should(Succeed(), "Metrics from non-OCP cluster not received in Thanos")
 				})
 			})
 		},
