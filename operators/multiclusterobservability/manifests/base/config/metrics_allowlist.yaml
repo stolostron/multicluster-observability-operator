@@ -218,6 +218,30 @@ data:
       - policyreport_info
       - prometheus_operator_reconcile_errors_total
       - prometheus_operator_reconcile_operations_total
+      - thanos_bucket_blocks
+      - thanos_bucket_cached_blocks
+      - thanos_bucket_chunks
+      - thanos_bucket_configured_retention_seconds
+      - thanos_bucket_last_sync_duration_seconds
+      - thanos_bucket_last_sync_timestamp_seconds
+      - thanos_bucket_newest_block_timestamp_seconds
+      - thanos_bucket_oldest_block_timestamp_seconds
+      - thanos_bucket_recent_block_series
+      - thanos_bucket_samples
+      - thanos_bucket_spanned_seconds
+      - thanos_bucket_storage_bytes
+      - thanos_bucket_sync_errors_total
+      - thanos_bucket_syncs_total
+      - cardinality_estimator_config_reload_errors_total
+      - cardinality_estimator_config_reloads_total
+      - cardinality_estimator_deduplicated_series_total
+      - cardinality_estimator_ingested_series_total
+      - cardinality_estimator_last_push_timestamp_seconds
+      - cardinality_estimator_push_errors_total
+      - cardinality_estimator_push_success_total
+      - cardinality_estimator_pushed_series_total
+      - cardinality_estimator_write_errors_total
+      - cardinality_estimator_write_requests_total
       - up
 
     matches:

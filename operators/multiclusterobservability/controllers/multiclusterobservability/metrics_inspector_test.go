@@ -10,7 +10,9 @@ import (
 	"testing"
 	"time"
 
+	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/stolostron/multicluster-observability-operator/metrics-inspector/pkg/estimator"
+	mcoshared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	mcoutil "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
@@ -37,6 +39,28 @@ func TestGenerateMetricsInspectorResources(t *testing.T) {
 	if err := observatoriumv1alpha1.SchemeBuilder.AddToScheme(s); err != nil {
 		t.Fatalf("AddToScheme observatorium: %v", err)
 	}
+	if err := monitoringv1.AddToScheme(s); err != nil {
+		t.Fatalf("AddToScheme monitoringv1: %v", err)
+	}
+
+	objSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "thanos-object-storage",
+			Namespace: mcoconfig.GetDefaultNamespace(),
+		},
+		Data: map[string][]byte{
+			"thanos.yaml": []byte("type: S3\nconfig:\n  bucket: test-bucket\n  endpoint: s3.amazonaws.com\n  http_config:\n    tls_config:\n      ca_file: /etc/minio/certs/ca.crt\n"),
+		},
+	}
+	tlsSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "thanos-objstore-tls",
+			Namespace: mcoconfig.GetDefaultNamespace(),
+		},
+		Data: map[string][]byte{
+			"ca.crt": []byte("fake-ca"),
+		},
+	}
 
 	mco := &mcov1beta2.MultiClusterObservability{
 		ObjectMeta: metav1.ObjectMeta{
@@ -48,10 +72,30 @@ func TestGenerateMetricsInspectorResources(t *testing.T) {
 		},
 		Spec: mcov1beta2.MultiClusterObservabilitySpec{
 			InstanceSize: mcoconfig.Large,
+			StorageConfig: &mcov1beta2.StorageConfig{
+				MetricObjectStorage: &mcoshared.PreConfiguredStorage{
+					Name:                     "thanos-object-storage",
+					Key:                      "thanos.yaml",
+					TLSSecretName:            "thanos-objstore-tls",
+					ServiceAccountProjection: true,
+				},
+			},
+			AdvancedConfig: &mcov1beta2.AdvancedConfig{
+				Store: &mcov1beta2.StoreSpec{
+					ServiceAccountAnnotations: map[string]string{
+						"eks.amazonaws.com/role-arn": "arn:aws:iam::123456789012:role/thanos-s3-role",
+					},
+				},
+				RetentionConfig: &mcov1beta2.RetentionConfig{
+					RetentionResolutionRaw: "14d",
+					RetentionResolution5m:  "90d",
+					RetentionResolution1h:  "180d",
+				},
+			},
 		},
 	}
 
-	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(mco, alertmanagerCABundleConfigMap()).Build()
+	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(mco, objSecret, tlsSecret, alertmanagerCABundleConfigMap()).Build()
 	mcoconfig.CleanUpOperandNames()
 	if err := mcoconfig.SetOperandNames(cl); err != nil {
 		t.Fatalf("SetOperandNames: %v", err)
@@ -86,6 +130,18 @@ func TestGenerateMetricsInspectorResources(t *testing.T) {
 		}
 	}
 
+	// Verify ServiceAccount.
+	sa := &corev1.ServiceAccount{}
+	if err := cl.Get(ctx, types.NamespacedName{
+		Name:      mcoconfig.MetricsInspectorServiceName,
+		Namespace: mcoconfig.GetDefaultNamespace(),
+	}, sa); err != nil {
+		t.Fatalf("failed to get ServiceAccount: %v", err)
+	}
+	if sa.Annotations["eks.amazonaws.com/role-arn"] != "arn:aws:iam::123456789012:role/thanos-s3-role" {
+		t.Errorf("unexpected ServiceAccount annotations: %+v", sa.Annotations)
+	}
+
 	// Verify Service.
 	svc := &corev1.Service{}
 	if err := cl.Get(ctx, types.NamespacedName{
@@ -98,6 +154,18 @@ func TestGenerateMetricsInspectorResources(t *testing.T) {
 		t.Errorf("unexpected Service ports: %+v", svc.Spec.Ports)
 	}
 
+	// Verify ServiceMonitor.
+	sm := &monitoringv1.ServiceMonitor{}
+	if err := cl.Get(ctx, types.NamespacedName{
+		Name:      mcoconfig.MetricsInspectorServiceName,
+		Namespace: mcoconfig.GetDefaultNamespace(),
+	}, sm); err != nil {
+		t.Fatalf("failed to get ServiceMonitor: %v", err)
+	}
+	if len(sm.Spec.Endpoints) != 1 || sm.Spec.Endpoints[0].Port != "http" || sm.Spec.Endpoints[0].Path != "/metrics" {
+		t.Errorf("unexpected ServiceMonitor endpoints: %+v", sm.Spec.Endpoints)
+	}
+
 	// Verify Deployment.
 	deploy := &appsv1.Deployment{}
 	if err := cl.Get(ctx, types.NamespacedName{
@@ -108,6 +176,9 @@ func TestGenerateMetricsInspectorResources(t *testing.T) {
 	}
 	if deploy.Spec.Replicas == nil || *deploy.Spec.Replicas != 1 {
 		t.Errorf("expected 1 replica, got %v", deploy.Spec.Replicas)
+	}
+	if deploy.Spec.Template.Spec.ServiceAccountName != mcoconfig.MetricsInspectorServiceName {
+		t.Errorf("ServiceAccountName = %q, want %q", deploy.Spec.Template.Spec.ServiceAccountName, mcoconfig.MetricsInspectorServiceName)
 	}
 	if len(deploy.Spec.Template.Spec.Containers) != 1 {
 		t.Fatalf("expected 1 container, got %d", len(deploy.Spec.Template.Spec.Containers))
@@ -126,8 +197,38 @@ func TestGenerateMetricsInspectorResources(t *testing.T) {
 	if !slices.Contains(container.Args, "--remote-write.initial-delay=5m") {
 		t.Errorf("expected --remote-write.initial-delay=5m in container args, got %v", container.Args)
 	}
+	for _, wantArg := range []string{
+		"--objstore.config-file=/etc/metrics-inspector/objstore/thanos.yaml",
+		"--bucket-inspect.interval=15m",
+		"--retention.resolution-raw=14d",
+		"--retention.resolution-5m=90d",
+		"--retention.resolution-1h=180d",
+	} {
+		if !slices.Contains(container.Args, wantArg) {
+			t.Errorf("expected %q in container args, got %v", wantArg, container.Args)
+		}
+	}
+	if len(container.VolumeMounts) != 4 {
+		t.Fatalf("expected 4 volume mounts (config, objstore-secret, objstore-tls-secret, bound-sa-token), got %+v", container.VolumeMounts)
+	}
+	if container.VolumeMounts[2].MountPath != "/etc/minio/certs" {
+		t.Errorf("expected derived TLS mount path /etc/minio/certs, got %q", container.VolumeMounts[2].MountPath)
+	}
+	if container.VolumeMounts[3].Name != "bound-sa-token" || container.VolumeMounts[3].MountPath != metricsInspectorSATokenMountPath {
+		t.Errorf("unexpected projected SA token volume mount: %+v", container.VolumeMounts[3])
+	}
+	initialHash := deploy.Spec.Template.Annotations[metricsInspectorConfigHashKey]
+	if initialHash == "" {
+		t.Fatalf("expected non-empty %s annotation", metricsInspectorConfigHashKey)
+	}
 
-	// Second reconcile: idempotent update when TShirtSize changes.
+	// Verify Secret rotation updates config hash annotation on Deployment.
+	objSecret.Data["thanos.yaml"] = []byte("type: S3\nconfig:\n  bucket: rotated-bucket\n  endpoint: s3.amazonaws.com\n")
+	if err := cl.Update(ctx, objSecret); err != nil {
+		t.Fatalf("Update objSecret failed: %v", err)
+	}
+
+	// Second reconcile: idempotent update when TShirtSize and Secret data change.
 	mco.Spec.InstanceSize = mcoconfig.TwoXLarge
 	if _, err := GenerateMetricsInspectorResources(ctx, cl, s, mco); err != nil {
 		t.Fatalf("second GenerateMetricsInspectorResources failed: %v", err)
@@ -140,6 +241,10 @@ func TestGenerateMetricsInspectorResources(t *testing.T) {
 	}
 	if deploy.Spec.Template.Spec.Containers[0].Resources.Requests.Memory().String() != "3Gi" {
 		t.Errorf("expected 2xlarge memory request 3Gi, got %s", deploy.Spec.Template.Spec.Containers[0].Resources.Requests.Memory().String())
+	}
+	rotatedHash := deploy.Spec.Template.Annotations[metricsInspectorConfigHashKey]
+	if rotatedHash == initialHash {
+		t.Errorf("expected config hash annotation to change after Secret rotation, stayed %q", rotatedHash)
 	}
 
 	// Verify newAPISpec always wires MetricsInspector into AdditionalWriteEndpoints even when WriteStorage is nil.

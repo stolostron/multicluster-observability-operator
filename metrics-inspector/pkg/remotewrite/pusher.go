@@ -206,7 +206,7 @@ func (p *Pusher) sendBatch(ctx context.Context, series []prompb.TimeSeries) erro
 	req.Header.Set("Content-Encoding", "snappy")
 	req.Header.Set("Content-Type", "application/x-protobuf")
 	req.Header.Set("X-Prometheus-Remote-Write-Version", "0.1.0")
-	req.Header.Set("User-Agent", "acm-cardinality-estimator/1.0")
+	req.Header.Set("User-Agent", "acm-metrics-inspector/1.0")
 	if tenant := p.getTenantID(); tenant != "" {
 		req.Header.Set(p.cfg.TenantHeader, tenant)
 	}
