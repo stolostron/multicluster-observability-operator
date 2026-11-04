@@ -15,6 +15,7 @@ import (
 
 	"github.com/golang/snappy"
 	"github.com/prometheus/prometheus/prompb"
+	"github.com/stolostron/multicluster-observability-operator/metrics-inspector/pkg/bucketinspect"
 	"github.com/stolostron/multicluster-observability-operator/metrics-inspector/pkg/estimator"
 	"github.com/stolostron/multicluster-observability-operator/metrics-inspector/pkg/protoparser"
 	"github.com/stolostron/multicluster-observability-operator/metrics-inspector/pkg/remotewrite"
@@ -38,8 +39,9 @@ streams:
 	defer eng.Stop()
 
 	pusher := remotewrite.NewPusher(remotewrite.PusherConfig{}, eng)
+	inspector := bucketinspect.NewInspector(nil, bucketinspect.InspectorConfig{})
 	metrics := &serverMetrics{}
-	mux := newServerMux(eng, pusher, metrics, remotewrite.DefaultTenantHeader, protoparser.DefaultMaxWriteRequestSize, slog.Default())
+	mux := newServerMux(eng, pusher, inspector, metrics, remotewrite.DefaultTenantHeader, protoparser.DefaultMaxWriteRequestSize, slog.Default())
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
 
@@ -112,5 +114,11 @@ streams:
 	_ = mResp.Body.Close()
 	if !strings.Contains(string(mBody), "cardinality_estimator_ingested_series_total 2") {
 		t.Fatalf("expected ingested_series_total=2, got:\n%s", string(mBody))
+	}
+	if !strings.Contains(string(mBody), "thanos_bucket_syncs_total 0") {
+		t.Fatalf("expected thanos_bucket_syncs_total in /metrics output, got:\n%s", string(mBody))
+	}
+	if !strings.Contains(string(mBody), `thanos_bucket_configured_retention_seconds{resolution="raw"}`) {
+		t.Fatalf("expected thanos_bucket_configured_retention_seconds in /metrics output, got:\n%s", string(mBody))
 	}
 }

@@ -11,12 +11,16 @@ import (
 	"fmt"
 	"maps"
 	"net/url"
+	"os"
 	"reflect"
+	"slices"
 
+	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	promconfig "github.com/prometheus/common/config"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	mcoutil "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
+	commonutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -32,10 +36,13 @@ import (
 )
 
 const (
-	metricsInspectorPort          = 8490
-	metricsInspectorConfigFileKey = "config.yaml"
-	metricsInspectorMountPath     = "/etc/metrics-inspector"
-	metricsInspectorConfigHashKey = "observability.open-cluster-management.io/config-hash"
+	metricsInspectorPort                = 8490
+	metricsInspectorConfigFileKey       = "config.yaml"
+	metricsInspectorMountPath           = "/etc/metrics-inspector"
+	metricsInspectorObjstoreMountPath   = "/etc/metrics-inspector/objstore"
+	metricsInspectorDefaultTLSMountPath = "/etc/thanos/secrets"
+	metricsInspectorSATokenMountPath    = "/var/run/secrets/openshift/serviceaccount"
+	metricsInspectorConfigHashKey       = "observability.open-cluster-management.io/config-hash"
 )
 
 // defaultMetricsInspectorConfigYAML defines the 4 deterministic cardinality streams
@@ -85,7 +92,7 @@ func MetricsInspectorWriteEndpoint() mcoutil.RemoteWriteEndpointWithSecret {
 	}
 }
 
-// GenerateMetricsInspectorResources reconciles the ConfigMap, Service, and 1-replica Deployment
+// GenerateMetricsInspectorResources reconciles the ConfigMap, ServiceAccount, Service, ServiceMonitor, and 1-replica Deployment
 // for the Hub metrics inspector.
 func GenerateMetricsInspectorResources(
 	ctx context.Context,
@@ -98,8 +105,16 @@ func GenerateMetricsInspectorResources(
 		return &ctrl.Result{}, fmt.Errorf("failed to reconcile metrics inspector configmap: %w", err)
 	}
 
+	if err := reconcileMetricsInspectorServiceAccount(ctx, c, scheme, mco); err != nil {
+		return &ctrl.Result{}, fmt.Errorf("failed to reconcile metrics inspector serviceaccount: %w", err)
+	}
+
 	if err := reconcileMetricsInspectorService(ctx, c, scheme, mco); err != nil {
 		return &ctrl.Result{}, fmt.Errorf("failed to reconcile metrics inspector service: %w", err)
+	}
+
+	if err := reconcileMetricsInspectorServiceMonitor(ctx, c, scheme, mco); err != nil {
+		return &ctrl.Result{}, fmt.Errorf("failed to reconcile metrics inspector servicemonitor: %w", err)
 	}
 
 	if err := reconcileMetricsInspectorDeployment(ctx, c, scheme, mco, configHash); err != nil {
@@ -168,6 +183,62 @@ func reconcileMetricsInspectorConfigMap(
 	return configHash, nil
 }
 
+func resolveMetricsInspectorServiceAccountAnnotations(mco *mcov1beta2.MultiClusterObservability) map[string]string {
+	if mco.Spec.AdvancedConfig == nil {
+		return nil
+	}
+	if mco.Spec.AdvancedConfig.Store != nil && len(mco.Spec.AdvancedConfig.Store.ServiceAccountAnnotations) > 0 {
+		return maps.Clone(mco.Spec.AdvancedConfig.Store.ServiceAccountAnnotations)
+	}
+	if mco.Spec.AdvancedConfig.Compact != nil && len(mco.Spec.AdvancedConfig.Compact.ServiceAccountAnnotations) > 0 {
+		return maps.Clone(mco.Spec.AdvancedConfig.Compact.ServiceAccountAnnotations)
+	}
+	if mco.Spec.AdvancedConfig.Receive != nil && len(mco.Spec.AdvancedConfig.Receive.ServiceAccountAnnotations) > 0 {
+		return maps.Clone(mco.Spec.AdvancedConfig.Receive.ServiceAccountAnnotations)
+	}
+	return nil
+}
+
+func reconcileMetricsInspectorServiceAccount(
+	ctx context.Context,
+	c client.Client,
+	scheme *runtime.Scheme,
+	mco *mcov1beta2.MultiClusterObservability,
+) error {
+	sa := &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        mcoconfig.MetricsInspectorServiceName,
+			Namespace:   mcoconfig.GetDefaultNamespace(),
+			Labels:      metricsInspectorLabels(mco),
+			Annotations: resolveMetricsInspectorServiceAccountAnnotations(mco),
+		},
+	}
+
+	if err := controllerutil.SetControllerReference(mco, sa, scheme); err != nil {
+		return err
+	}
+
+	found := &corev1.ServiceAccount{}
+	err := c.Get(ctx, types.NamespacedName{Name: sa.Name, Namespace: sa.Namespace}, found)
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			log.Info("Creating metrics inspector ServiceAccount", "name", sa.Name, "namespace", sa.Namespace)
+			return c.Create(ctx, sa)
+		}
+		return err
+	}
+
+	if !maps.Equal(found.Labels, sa.Labels) || !maps.Equal(found.Annotations, sa.Annotations) {
+		log.Info("Updating metrics inspector ServiceAccount", "name", sa.Name, "namespace", sa.Namespace)
+		updated := found.DeepCopy()
+		updated.Labels = sa.Labels
+		updated.Annotations = sa.Annotations
+		return c.Update(ctx, updated)
+	}
+
+	return nil
+}
+
 func reconcileMetricsInspectorService(
 	ctx context.Context,
 	c client.Client,
@@ -213,7 +284,7 @@ func reconcileMetricsInspectorService(
 		return err
 	}
 
-	if !maps.Equal(found.Spec.Selector, svc.Spec.Selector) || !reflect.DeepEqual(found.Spec.Ports, svc.Spec.Ports) {
+	if !maps.Equal(found.Labels, svc.Labels) || !maps.Equal(found.Spec.Selector, svc.Spec.Selector) || !reflect.DeepEqual(found.Spec.Ports, svc.Spec.Ports) {
 		log.Info("Updating metrics inspector Service", "name", svc.Name, "namespace", svc.Namespace)
 		updated := found.DeepCopy()
 		updated.Labels = svc.Labels
@@ -223,6 +294,202 @@ func reconcileMetricsInspectorService(
 	}
 
 	return nil
+}
+
+func reconcileMetricsInspectorServiceMonitor(
+	ctx context.Context,
+	c client.Client,
+	scheme *runtime.Scheme,
+	mco *mcov1beta2.MultiClusterObservability,
+) error {
+	if _, _, err := scheme.ObjectKinds(&monitoringv1.ServiceMonitor{}); err != nil {
+		return nil
+	}
+
+	labels := metricsInspectorLabels(mco)
+	selectorLabels := map[string]string{
+		"app.kubernetes.io/component": mcoconfig.MetricsInspector,
+		"app.kubernetes.io/name":      mcoconfig.MetricsInspectorServiceName,
+	}
+
+	sm := &monitoringv1.ServiceMonitor{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      mcoconfig.MetricsInspectorServiceName,
+			Namespace: mcoconfig.GetDefaultNamespace(),
+			Labels:    labels,
+		},
+		Spec: monitoringv1.ServiceMonitorSpec{
+			Selector: metav1.LabelSelector{
+				MatchLabels: selectorLabels,
+			},
+			NamespaceSelector: monitoringv1.NamespaceSelector{
+				MatchNames: []string{mcoconfig.GetDefaultNamespace()},
+			},
+			Endpoints: []monitoringv1.Endpoint{
+				{
+					Port:     "http",
+					Path:     "/metrics",
+					Interval: monitoringv1.Duration("60s"),
+				},
+			},
+		},
+	}
+
+	if err := controllerutil.SetControllerReference(mco, sm, scheme); err != nil {
+		return err
+	}
+
+	found := &monitoringv1.ServiceMonitor{}
+	err := c.Get(ctx, types.NamespacedName{Name: sm.Name, Namespace: sm.Namespace}, found)
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			log.Info("Creating metrics inspector ServiceMonitor", "name", sm.Name, "namespace", sm.Namespace)
+			return c.Create(ctx, sm)
+		}
+		return err
+	}
+
+	if !equality.Semantic.DeepEqual(found.Spec, sm.Spec) || !maps.Equal(found.Labels, sm.Labels) {
+		log.Info("Updating metrics inspector ServiceMonitor", "name", sm.Name, "namespace", sm.Namespace)
+		updated := found.DeepCopy()
+		updated.Labels = sm.Labels
+		updated.Spec = sm.Spec
+		return c.Update(ctx, updated)
+	}
+
+	return nil
+}
+
+func resolveMetricsInspectorRetentionArgs(mco *mcov1beta2.MultiClusterObservability) []string {
+	retentionRaw := mcoconfig.RetentionResolutionRaw
+	retention5m := mcoconfig.RetentionResolution5m
+	retention1h := mcoconfig.RetentionResolution1h
+	if mco.Spec.AdvancedConfig != nil && mco.Spec.AdvancedConfig.RetentionConfig != nil {
+		rc := mco.Spec.AdvancedConfig.RetentionConfig
+		if rc.RetentionResolutionRaw != "" {
+			retentionRaw = rc.RetentionResolutionRaw
+		}
+		if rc.RetentionResolution5m != "" {
+			retention5m = rc.RetentionResolution5m
+		}
+		if rc.RetentionResolution1h != "" {
+			retention1h = rc.RetentionResolution1h
+		}
+	}
+	return []string{
+		fmt.Sprintf("--retention.resolution-raw=%s", retentionRaw),
+		fmt.Sprintf("--retention.resolution-5m=%s", retention5m),
+		fmt.Sprintf("--retention.resolution-1h=%s", retention1h),
+	}
+}
+
+func resolveMetricsInspectorObjectStorage(
+	ctx context.Context,
+	c client.Client,
+	mco *mcov1beta2.MultiClusterObservability,
+	baseConfigHash string,
+) ([]string, []corev1.VolumeMount, []corev1.Volume, string) {
+	hasher := sha256.New()
+	hasher.Write([]byte(baseConfigHash))
+
+	if mco.Spec.StorageConfig == nil || mco.Spec.StorageConfig.MetricObjectStorage == nil {
+		return nil, nil, nil, baseConfigHash
+	}
+
+	objStorage := mco.Spec.StorageConfig.MetricObjectStorage
+	if objStorage.Name == "" || objStorage.Key == "" {
+		return nil, nil, nil, baseConfigHash
+	}
+
+	extraArgs := []string{
+		fmt.Sprintf("--objstore.config-file=%s/%s", metricsInspectorObjstoreMountPath, objStorage.Key),
+		"--bucket-inspect.interval=15m",
+	}
+	extraMounts := make([]corev1.VolumeMount, 0, 3)
+	extraMounts = append(extraMounts, corev1.VolumeMount{
+		Name:      "objstore-secret",
+		MountPath: metricsInspectorObjstoreMountPath,
+		ReadOnly:  true,
+	})
+	extraVolumes := make([]corev1.Volume, 0, 3)
+	extraVolumes = append(extraVolumes, corev1.Volume{
+		Name: "objstore-secret",
+		VolumeSource: corev1.VolumeSource{
+			Secret: &corev1.SecretVolumeSource{
+				SecretName: objStorage.Name,
+			},
+		},
+	})
+	hashSecretData(ctx, c, objStorage.Name, hasher)
+
+	if objStorage.TLSSecretName != "" {
+		tlsMountPath := objStorage.TLSSecretMountPath
+		if tlsMountPath == "" {
+			if derivedPath, err := getTLSSecretMountPath(c, objStorage); err == nil && derivedPath != "" {
+				tlsMountPath = derivedPath
+			}
+		}
+		if tlsMountPath == "" {
+			tlsMountPath = fmt.Sprintf("%s/%s", metricsInspectorDefaultTLSMountPath, objStorage.TLSSecretName)
+		}
+		extraMounts = append(extraMounts, corev1.VolumeMount{
+			Name:      "objstore-tls-secret",
+			MountPath: tlsMountPath,
+			ReadOnly:  true,
+		})
+		extraVolumes = append(extraVolumes, corev1.Volume{
+			Name: "objstore-tls-secret",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: objStorage.TLSSecretName,
+				},
+			},
+		})
+		hashSecretData(ctx, c, objStorage.TLSSecretName, hasher)
+	}
+
+	if objStorage.ServiceAccountProjection {
+		extraMounts = append(extraMounts, corev1.VolumeMount{
+			Name:      "bound-sa-token",
+			MountPath: metricsInspectorSATokenMountPath,
+			ReadOnly:  true,
+		})
+		extraVolumes = append(extraVolumes, corev1.Volume{
+			Name: "bound-sa-token",
+			VolumeSource: corev1.VolumeSource{
+				Projected: &corev1.ProjectedVolumeSource{
+					Sources: []corev1.VolumeProjection{
+						{
+							ServiceAccountToken: &corev1.ServiceAccountTokenProjection{
+								Path:              "token",
+								Audience:          "openshift",
+								ExpirationSeconds: ptr.To(int64(3600)),
+							},
+						},
+					},
+				},
+			},
+		})
+	}
+
+	sum := hasher.Sum(nil)
+	return extraArgs, extraMounts, extraVolumes, hex.EncodeToString(sum)
+}
+
+func hashSecretData(ctx context.Context, c client.Client, secretName string, hasher interface{ Write([]byte) (int, error) }) {
+	secret := &corev1.Secret{}
+	err := c.Get(ctx, types.NamespacedName{
+		Name:      secretName,
+		Namespace: mcoconfig.GetDefaultNamespace(),
+	}, secret)
+	if err != nil {
+		return
+	}
+	keys := slices.Sorted(maps.Keys(secret.Data))
+	for _, k := range keys {
+		_, _ = hasher.Write([]byte(k))
+		_, _ = hasher.Write(secret.Data[k])
+	}
 }
 
 func reconcileMetricsInspectorDeployment(
@@ -261,6 +528,52 @@ func reconcileMetricsInspectorDeployment(
 		mcoconfig.GetDefaultNamespace(),
 	)
 
+	retArgs := resolveMetricsInspectorRetentionArgs(mco)
+	objArgs, objMounts, objVolumes, combinedHash := resolveMetricsInspectorObjectStorage(ctx, c, mco, configHash)
+
+	args := make([]string, 0, 7+len(retArgs)+len(objArgs))
+	args = append(args,
+		fmt.Sprintf("--config.file=%s/%s", metricsInspectorMountPath, metricsInspectorConfigFileKey),
+		"--estimator.interval=15m",
+		fmt.Sprintf("--web.listen-address=:%d", metricsInspectorPort),
+		fmt.Sprintf("--remote-write.url=%s", receiveWriteURL),
+		fmt.Sprintf("--remote-write.tenant=%s", mcoconfig.GetTenantUID()),
+		"--remote-write.interval=60s",
+		"--remote-write.initial-delay=5m",
+	)
+	args = append(args, retArgs...)
+	args = append(args, objArgs...)
+
+	volumeMounts := make([]corev1.VolumeMount, 0, 1+len(objMounts))
+	volumeMounts = append(volumeMounts, corev1.VolumeMount{
+		Name:      "config",
+		MountPath: metricsInspectorMountPath,
+		ReadOnly:  true,
+	})
+	volumeMounts = append(volumeMounts, objMounts...)
+
+	volumes := make([]corev1.Volume, 0, 1+len(objVolumes))
+	volumes = append(volumes, corev1.Volume{
+		Name: "config",
+		VolumeSource: corev1.VolumeSource{
+			ConfigMap: &corev1.ConfigMapVolumeSource{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: mcoconfig.MetricsInspectorConfigMapName,
+				},
+			},
+		},
+	})
+	volumes = append(volumes, objVolumes...)
+
+	var envVars []corev1.EnvVar
+	if commonutil.ProxyEnvVarsAreSet() {
+		envVars = []corev1.EnvVar{
+			{Name: "HTTP_PROXY", Value: os.Getenv("HTTP_PROXY")},
+			{Name: "HTTPS_PROXY", Value: os.Getenv("HTTPS_PROXY")},
+			{Name: "NO_PROXY", Value: os.Getenv("NO_PROXY")},
+		}
+	}
+
 	deploy := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      deployName,
@@ -276,12 +589,13 @@ func reconcileMetricsInspectorDeployment(
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: labels,
 					Annotations: map[string]string{
-						metricsInspectorConfigHashKey: configHash,
+						metricsInspectorConfigHashKey: combinedHash,
 					},
 				},
 				Spec: corev1.PodSpec{
-					NodeSelector: mco.Spec.NodeSelector,
-					Tolerations:  mco.Spec.Tolerations,
+					ServiceAccountName: mcoconfig.MetricsInspectorServiceName,
+					NodeSelector:       mco.Spec.NodeSelector,
+					Tolerations:        mco.Spec.Tolerations,
 					ImagePullSecrets: []corev1.LocalObjectReference{
 						{Name: mcoconfig.GetImagePullSecret(mco.Spec)},
 					},
@@ -293,15 +607,8 @@ func reconcileMetricsInspectorDeployment(
 							Name:            mcoconfig.MetricsInspector,
 							Image:           defaultImg,
 							ImagePullPolicy: mcoconfig.GetImagePullPolicy(mco.Spec),
-							Args: []string{
-								fmt.Sprintf("--config.file=%s/%s", metricsInspectorMountPath, metricsInspectorConfigFileKey),
-								"--estimator.interval=15m",
-								fmt.Sprintf("--web.listen-address=:%d", metricsInspectorPort),
-								fmt.Sprintf("--remote-write.url=%s", receiveWriteURL),
-								fmt.Sprintf("--remote-write.tenant=%s", mcoconfig.GetTenantUID()),
-								"--remote-write.interval=60s",
-								"--remote-write.initial-delay=5m",
-							},
+							Args:            args,
+							Env:             envVars,
 							Ports: []corev1.ContainerPort{
 								{
 									Name:          "http",
@@ -309,14 +616,8 @@ func reconcileMetricsInspectorDeployment(
 									Protocol:      corev1.ProtocolTCP,
 								},
 							},
-							Resources: resources,
-							VolumeMounts: []corev1.VolumeMount{
-								{
-									Name:      "config",
-									MountPath: metricsInspectorMountPath,
-									ReadOnly:  true,
-								},
-							},
+							Resources:    resources,
+							VolumeMounts: volumeMounts,
 							LivenessProbe: &corev1.Probe{
 								ProbeHandler: corev1.ProbeHandler{
 									HTTPGet: &corev1.HTTPGetAction{
@@ -347,18 +648,7 @@ func reconcileMetricsInspectorDeployment(
 							},
 						},
 					},
-					Volumes: []corev1.Volume{
-						{
-							Name: "config",
-							VolumeSource: corev1.VolumeSource{
-								ConfigMap: &corev1.ConfigMapVolumeSource{
-									LocalObjectReference: corev1.LocalObjectReference{
-										Name: mcoconfig.MetricsInspectorConfigMapName,
-									},
-								},
-							},
-						},
-					},
+					Volumes: volumes,
 				},
 			},
 		},

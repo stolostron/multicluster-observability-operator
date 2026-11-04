@@ -8,26 +8,20 @@ import (
 	"context"
 	"errors"
 	"flag"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
-	"sync/atomic"
 	"syscall"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/stolostron/multicluster-observability-operator/metrics-inspector/pkg/bucketinspect"
 	"github.com/stolostron/multicluster-observability-operator/metrics-inspector/pkg/estimator"
 	"github.com/stolostron/multicluster-observability-operator/metrics-inspector/pkg/protoparser"
 	"github.com/stolostron/multicluster-observability-operator/metrics-inspector/pkg/remotewrite"
 )
-
-type serverMetrics struct {
-	writeRequestsTotal atomic.Uint64
-	writeErrorsTotal   atomic.Uint64
-	configReloadsTotal atomic.Uint64
-	configErrorsTotal  atomic.Uint64
-}
 
 func main() {
 	os.Exit(run())
@@ -35,15 +29,20 @@ func main() {
 
 func run() int {
 	var (
-		configFile     = flag.String("config.file", "/etc/metrics-inspector/config.yaml", "Path to the metrics inspector YAML configuration file.")
-		windowInterval = flag.Duration("estimator.interval", estimator.DefaultInterval, "Default sliding window interval for cardinality streams when not specified in config.yaml.")
-		listenAddr     = flag.String("web.listen-address", ":8490", "Address to listen on for Remote Write ingestion and operational metrics.")
-		remoteWriteURL = flag.String("remote-write.url", "", "Thanos Receive Remote Write v1 endpoint URL for periodic snapshot flushing.")
-		flushInterval  = flag.Duration("remote-write.interval", remotewrite.DefaultFlushInterval, "Interval between Remote Write snapshot flushes.")
-		initialDelay   = flag.Duration("remote-write.initial-delay", remotewrite.DefaultInitialDelay, "Initial warm-up delay after startup before pushing the first Remote Write snapshot.")
-		tenantHeader   = flag.String("remote-write.tenant-header", remotewrite.DefaultTenantHeader, "HTTP header name used to propagate the Thanos tenant ID.")
-		tenantID       = flag.String("remote-write.tenant", remotewrite.DefaultTenantID, "Fallback Thanos tenant ID before any incoming write header is observed.")
-		maxRequestSize = flag.Int64("max-request-size", protoparser.DefaultMaxWriteRequestSize, "Maximum uncompressed Remote Write payload size in bytes.")
+		configFile         = flag.String("config.file", "/etc/metrics-inspector/config.yaml", "Path to the metrics inspector YAML configuration file.")
+		windowInterval     = flag.Duration("estimator.interval", estimator.DefaultInterval, "Default sliding window interval for cardinality streams when not specified in config.yaml.")
+		listenAddr         = flag.String("web.listen-address", ":8490", "Address to listen on for Remote Write ingestion and operational metrics.")
+		remoteWriteURL     = flag.String("remote-write.url", "", "Thanos Receive Remote Write v1 endpoint URL for periodic snapshot flushing.")
+		flushInterval      = flag.Duration("remote-write.interval", remotewrite.DefaultFlushInterval, "Interval between Remote Write snapshot flushes.")
+		initialDelay       = flag.Duration("remote-write.initial-delay", remotewrite.DefaultInitialDelay, "Initial warm-up delay after startup before pushing the first Remote Write snapshot.")
+		tenantHeader       = flag.String("remote-write.tenant-header", remotewrite.DefaultTenantHeader, "HTTP header name used to propagate the Thanos tenant ID.")
+		tenantID           = flag.String("remote-write.tenant", remotewrite.DefaultTenantID, "Fallback Thanos tenant ID before any incoming write header is observed.")
+		maxRequestSize     = flag.Int64("max-request-size", protoparser.DefaultMaxWriteRequestSize, "Maximum uncompressed Remote Write payload size in bytes.")
+		objstoreConfigFile = flag.String("objstore.config-file", "", "Optional path to Thanos object storage configuration YAML file for bucket inspection.")
+		bucketSyncInterval = flag.Duration("bucket-inspect.interval", bucketinspect.DefaultSyncInterval, "Interval between background Thanos object storage bucket inspection sweeps.")
+		retentionRaw       = flag.String("retention.resolution-raw", bucketinspect.DefaultRetentionDuration, "Configured Thanos retention duration for raw (0s) resolution blocks.")
+		retention5m        = flag.String("retention.resolution-5m", bucketinspect.DefaultRetentionDuration, "Configured Thanos retention duration for 5m downsampled blocks.")
+		retention1h        = flag.String("retention.resolution-1h", bucketinspect.DefaultRetentionDuration, "Configured Thanos retention duration for 1h downsampled blocks.")
 	)
 	flag.Parse()
 
@@ -72,8 +71,21 @@ func run() int {
 		Logger:        logger,
 	}, eng)
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	inspector := initBucketInspector(
+		ctx,
+		*objstoreConfigFile,
+		*bucketSyncInterval,
+		*retentionRaw,
+		*retention5m,
+		*retention1h,
+		logger,
+	)
+
 	metrics := &serverMetrics{}
-	mux := newServerMux(eng, pusher, metrics, *tenantHeader, *maxRequestSize, logger)
+	mux := newServerMux(eng, pusher, inspector, metrics, *tenantHeader, *maxRequestSize, logger)
 
 	srv := &http.Server{
 		Addr:              *listenAddr,
@@ -83,9 +95,6 @@ func run() int {
 		WriteTimeout:      30 * time.Second,
 		IdleTimeout:       120 * time.Second,
 	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
 	go pusher.Run(ctx)
 
@@ -126,7 +135,7 @@ func run() int {
 		_ = srv.Shutdown(shutdownCtx)
 	}()
 
-	logger.Info("starting ACM cardinality estimator", "listen", *listenAddr)
+	logger.Info("starting ACM metrics inspector", "listen", *listenAddr)
 	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		logger.Error("HTTP server terminated with error", "err", err)
 		return 1
@@ -134,9 +143,45 @@ func run() int {
 	return 0
 }
 
+func initBucketInspector(
+	ctx context.Context,
+	objstoreConfigFile string,
+	syncInterval time.Duration,
+	retentionRaw, retention5m, retention1h string,
+	logger *slog.Logger,
+) *bucketinspect.Inspector {
+	if objstoreConfigFile == "" {
+		return nil
+	}
+
+	bkt, err := bucketinspect.NewBucketFromFile(objstoreConfigFile)
+	if err != nil {
+		logger.Error("failed to initialize object storage bucket client; bucket inspection disabled", "file", objstoreConfigFile, "err", err)
+		return nil
+	}
+
+	retCfg, err := bucketinspect.ParseRetentionConfig(retentionRaw, retention5m, retention1h)
+	if err != nil {
+		logger.Warn("failed to parse configured retention durations; falling back to defaults", "err", err)
+		retCfg = bucketinspect.DefaultRetentionConfig()
+	}
+
+	inspector := bucketinspect.NewInspector(bkt, bucketinspect.InspectorConfig{
+		SyncInterval: syncInterval,
+		Retention:    retCfg,
+		Logger:       logger,
+	})
+	go func() {
+		defer func() { _ = bkt.Close() }()
+		inspector.Run(ctx)
+	}()
+	return inspector
+}
+
 func newServerMux(
 	eng *estimator.Engine,
 	pusher *remotewrite.Pusher,
+	inspector *bucketinspect.Inspector,
 	m *serverMetrics,
 	tenantHeader string,
 	maxRequestSize int64,
@@ -180,19 +225,12 @@ func newServerMux(
 		}
 	})
 
-	mux.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
-		_, _ = fmt.Fprintf(w, "cardinality_estimator_write_requests_total %d\n", m.writeRequestsTotal.Load())
-		_, _ = fmt.Fprintf(w, "cardinality_estimator_write_errors_total %d\n", m.writeErrorsTotal.Load())
-		_, _ = fmt.Fprintf(w, "cardinality_estimator_ingested_series_total %d\n", eng.IngestedSeriesTotal())
-		_, _ = fmt.Fprintf(w, "cardinality_estimator_deduplicated_series_total %d\n", eng.DeduplicatedSeriesTotal())
-		_, _ = fmt.Fprintf(w, "cardinality_estimator_pushed_series_total %d\n", pusher.PushedSeriesTotal())
-		_, _ = fmt.Fprintf(w, "cardinality_estimator_push_success_total %d\n", pusher.PushSuccessTotal())
-		_, _ = fmt.Fprintf(w, "cardinality_estimator_push_errors_total %d\n", pusher.PushErrorsTotal())
-		_, _ = fmt.Fprintf(w, "cardinality_estimator_last_push_timestamp_seconds %d\n", pusher.LastPushTimestampSeconds())
-		_, _ = fmt.Fprintf(w, "cardinality_estimator_config_reloads_total %d\n", m.configReloadsTotal.Load())
-		_, _ = fmt.Fprintf(w, "cardinality_estimator_config_reload_errors_total %d\n", m.configErrorsTotal.Load())
-	})
+	reg := prometheus.NewRegistry()
+	reg.MustRegister(operationalCollector{eng: eng, pusher: pusher, m: m})
+	if inspector != nil {
+		reg.MustRegister(inspector)
+	}
+	mux.Handle("/metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{}))
 
 	healthHandler := func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
