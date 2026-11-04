@@ -542,12 +542,18 @@ func createManifestWorks(
 	if hasCustomRegistry {
 		log.Info("Replace the default pull secret to custom pull secret", "cluster", cluster.Name)
 		customPullSecret, err := imageRegistryClient.Cluster(cluster.Name).PullSecret()
-		if err == nil && customPullSecret != nil {
+		switch {
+		case err != nil:
+			// Do not fall back to the default secret on a lookup error: it would mask the error
+			// and is unlikely to authenticate against the custom registry.
+			log.Error(err, "Failed to get custom pull secret, skipping pull secret injection", "cluster", cluster.Name)
+		case customPullSecret != nil:
 			customPullSecret.ResourceVersion = ""
 			customPullSecret.Name = config.GetImagePullSecret(mco.Spec)
 			customPullSecret.Namespace = spokeNameSpace
 			manifests = injectIntoWork(manifests, customPullSecret)
-		} else if pullSecret != nil {
+		case pullSecret != nil:
+			// Custom registry configured without a pull secret: fall back to the default.
 			log.Info("Custom registry has no pull secret, falling back to default", "cluster", cluster.Name)
 			manifests = injectIntoWork(manifests, pullSecret)
 		}
