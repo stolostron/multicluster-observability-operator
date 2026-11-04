@@ -782,6 +782,124 @@ func TestManifestWork(t *testing.T) {
 	}
 }
 
+// TestCreateManifestWorksPullSecret verifies the pull secret handling for clusters using a
+// custom image registry: a configured custom secret is used, an omitted one falls back to the
+// default hub secret, and a lookup failure injects no pull secret instead of masking the error.
+func TestCreateManifestWorksPullSecret(t *testing.T) {
+	initSchema(t)
+	setupTest(t)
+
+	defaultPullSecret := newPullSecret("multiclusterhub-operator-pull-secret", namespace, []byte("default"))
+	registries := []Registry{{Source: "quay.io/stolostron", Mirror: "registry_server/stolostron"}}
+
+	testCases := []struct {
+		name         string
+		cluster      *clusterv1.ManagedCluster
+		customSecret *corev1.Secret
+		expectSecret string // pull secret name expected in the manifestwork, empty if none
+	}{
+		{
+			name: "custom registry with pull secret uses the custom secret",
+			cluster: newCluster(clusterName, map[string]string{
+				ClusterImageRegistriesAnnotation: newAnnotationRegistries(registries, namespace+".custom_pull_secret"),
+			}),
+			customSecret: newPullSecret("custom_pull_secret", namespace, []byte("custom")),
+			expectSecret: pullSecretName, // custom secret is renamed to mco.Spec.ImagePullSecret
+		},
+		{
+			name: "custom registry without pull secret falls back to default",
+			cluster: newCluster(clusterName, map[string]string{
+				ClusterImageRegistriesAnnotation: newAnnotationRegistries(registries, ""),
+			}),
+			expectSecret: "multiclusterhub-operator-pull-secret",
+		},
+		{
+			name: "custom registry with unresolvable pull secret injects no secret",
+			cluster: newCluster(clusterName, map[string]string{
+				ClusterImageRegistriesAnnotation: newAnnotationRegistries(registries, namespace+".missing_pull_secret"),
+			}),
+			expectSecret: "",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			objs := []runtime.Object{
+				newTestObsApiRoute(),
+				newTestIngressController(),
+				newTestRouteCASecret(),
+				newCASecret(),
+				newCertSecret(mcoNamespace),
+				NewMetricsAllowListCM(),
+				NewMetricsCustomAllowListCM(),
+				NewAmAccessorSA(),
+				tc.cluster,
+			}
+			if tc.customSecret != nil {
+				objs = append(objs, tc.customSecret)
+			}
+			c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
+
+			// Mark the cluster as using a custom registry so the fallback branch is exercised.
+			managedClusterImageRegistryMutex.Lock()
+			managedClusterImageRegistry[clusterName] = ClusterImageRegistriesAnnotation
+			managedClusterImageRegistryMutex.Unlock()
+			t.Cleanup(func() {
+				managedClusterImageRegistryMutex.Lock()
+				delete(managedClusterImageRegistry, clusterName)
+				managedClusterImageRegistryMutex.Unlock()
+			})
+
+			pullSecret = defaultPullSecret
+
+			mco := newTestMCO()
+			works, crdWork, err := generateGlobalManifestResources(context.Background(), c, mco, newMockKubeClient())
+			if err != nil {
+				t.Fatalf("Failed to generate global manifest resources: %v", err)
+			}
+			crdMap := map[string]bool{config.IngressControllerCRD: true}
+			hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, crdMap, config.IsUWMAlertingDisabledInSpec(mco))
+			if err != nil {
+				t.Fatalf("Failed to generate hubInfo secret: %v", err)
+			}
+
+			manWork, err := createManifestWorks(
+				context.Background(),
+				c,
+				namespace,
+				managedClusterInfo{Name: clusterName, IsLocalCluster: false},
+				mco,
+				works,
+				metricsAllowlistConfigMap,
+				crdWork,
+				endpointMetricsOperatorDeploy,
+				hubInfoSecret,
+				&addonv1beta1.AddOnDeploymentConfig{},
+				false,
+			)
+			if err != nil {
+				t.Fatalf("createManifestWorks returned an unexpected error: %v", err)
+			}
+
+			injectedSecrets := map[string]bool{}
+			for _, manifest := range manWork.Spec.Workload.Manifests {
+				if secret, ok := manifest.Object.(*corev1.Secret); ok {
+					injectedSecrets[secret.Name] = true
+				}
+			}
+
+			switch {
+			case tc.expectSecret == "":
+				if injectedSecrets["multiclusterhub-operator-pull-secret"] || injectedSecrets[pullSecretName] {
+					t.Errorf("expected no pull secret to be injected, but found: %v", injectedSecrets)
+				}
+			case !injectedSecrets[tc.expectSecret]:
+				t.Errorf("expected pull secret %q in the manifestwork, found secrets: %v", tc.expectSecret, injectedSecrets)
+			}
+		})
+	}
+}
+
 func TestLogSizeErrorDetails(t *testing.T) {
 	logSizeErrorDetails("the size of manifests is 600000", &workv1.ManifestWork{
 		Spec: workv1.ManifestWorkSpec{
