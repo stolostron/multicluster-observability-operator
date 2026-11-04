@@ -8,7 +8,6 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -73,8 +72,6 @@ var _ = Describe("", func() {
 			It(
 				"RHACM4K-1418: Observability: Verify clustermanagementaddon CR for Observability - Modifying MCO cr to enable observabilityaddon [P2][Sev2][Stable][Observability]@ocpInterop @non-ui-post-restore @non-ui-post-release @non-ui-pre-upgrade @non-ui-post-upgrade @post-upgrade @post-restore @e2e @pre-upgrade (addon/g0)",
 				func() {
-					By("Waiting for 1 minute to make sure the registration controller correctly takes into account the changes")
-					time.Sleep(60 * time.Second)
 					Eventually(func() error {
 						return utils.ModifyMCOAddonSpecMetrics(testOptions, true)
 					}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*5).Should(Succeed())

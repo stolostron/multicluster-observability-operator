@@ -317,6 +317,27 @@ Results are written to `tests/pkg/tests/results.xml`.
 
 ---
 
+## Reclaiming cluster disk space
+
+Long-running dev / collective SNO clusters frequently run into node `DiskPressure` evictions (e.g., MCO metrics collector pods evicted in a loop).
+
+`clean-cluster-disk.sh` automates the remediation of the top space hogs:
+1. **Recycles leaking `openshift-console/downloads` pods**: Each container restart leaks ~3.1 GB of oc binaries in `emptyDir` (`/tmp`) without cleaning up.
+2. **Purges dead/evicted pods**: Removes lingering `Evicted` and `ContainerStatusUnknown` pods so CRI-O can release writable container layers.
+3. **Deletes stale completed pods**: Cleans up old `openshift-insights` and `openshift-kube-apiserver` installer/pruner pods holding logs in `/var/log/pods`.
+4. **Vacuums systemd journals**: Trims `/var/log/journal` to 500 MB.
+5. **Prunes unused CRI-O images**: Runs `crictl rmi --prune` on the nodes via `machine-config-daemon`.
+
+```bash
+# Preview what would be cleaned without modifying anything
+./dev-scripts/clean-cluster-disk.sh --dry-run
+
+# Run full cleanup and verify node DiskPressure clears
+./dev-scripts/clean-cluster-disk.sh
+```
+
+---
+
 ## Notes
 
 - **SeaweedFS storage is ephemeral** — all Thanos data is lost if the SeaweedFS pod restarts.

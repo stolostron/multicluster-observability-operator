@@ -7,10 +7,11 @@ data:
   custom_rules.yaml: |
     groups:
     - name: node-health
+      interval: 5s
       rules:
       - alert: NodeOutOfMemory
         expr: instance:node_memory_utilisation:ratio * 100 > 0
-        for: 1m
+        for: 5s
         labels:
           instance: "{{ $labels.instance }}"
           cluster: "{{ $labels.cluster }}"

@@ -11,9 +11,11 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/klog/v2"
 )
@@ -84,9 +86,9 @@ func NewUIPluginGVR() schema.GroupVersionResource {
 }
 
 // NewPersesGVR returns the GVR for the Perses CR that COO's UIPlugin controller
-// creates to back its dashboard UI. Only used for diagnostic logging when tearing
-// down UIPlugins, to confirm a given UIPlugin is actually the owner of a stuck
-// Perses instance before we delete it.
+// creates to back its dashboard UI. Used during teardown to ensure all Perses
+// resources are explicitly deleted and their finalizers cleared before COO's
+// operator and CSV are removed.
 func NewPersesGVR() schema.GroupVersionResource {
 	return schema.GroupVersionResource{
 		Group:    "perses.dev",
@@ -309,51 +311,79 @@ func DeleteCOOSubscription(clusters []Cluster) error {
 		// any UIPlugin/child deleted afterward (e.g. via namespace GC) gets stuck
 		// forever, leaving the namespace stuck in Terminating.
 		uiPlugins, err := clientDynamic.Resource(NewUIPluginGVR()).List(context.TODO(), metav1.ListOptions{})
-		if err != nil && !errors.IsNotFound(err) {
+		if err != nil && !errors.IsNotFound(err) && !meta.IsNoMatchError(err) {
 			return fmt.Errorf("failed to list UIPlugins on cluster %s: %w", cluster.Name, err)
 		}
 		if uiPlugins != nil && len(uiPlugins.Items) > 0 {
-			// Diagnostic-only: confirm, via a real ownerReference match, which Perses
-			// instances (COO's dashboard backend CR) each UIPlugin actually owns before
-			// we delete it. This is not required for correctness (uiplugins.observability.openshift.io
-			// is exclusively COO's own CRD, so any instance found here is COO's to begin
-			// with), but it gives CI logs direct evidence tying this cleanup step to the
-			// specific resource/finalizer that causes the namespace to get stuck.
-			perses, persesErr := clientDynamic.Resource(NewPersesGVR()).Namespace(cooSubscriptionNamespace).List(context.TODO(), metav1.ListOptions{})
-			if persesErr != nil {
-				klog.V(1).Infof("Could not list Perses resources on cluster %s (CRD may not be installed): %v", cluster.Name, persesErr)
-			}
-
 			for _, uiPlugin := range uiPlugins.Items {
-				if perses != nil {
-					for _, p := range perses.Items {
-						for _, owner := range p.GetOwnerReferences() {
-							if owner.UID == uiPlugin.GetUID() && owner.Kind == "UIPlugin" {
-								klog.Infof("UIPlugin %s on cluster %s owns Perses %s/%s (finalizers: %v) which COO's controller must clear before the namespace can terminate",
-									uiPlugin.GetName(), cluster.Name, p.GetNamespace(), p.GetName(), p.GetFinalizers())
-							}
-						}
-					}
-				}
-
 				klog.Infof("Deleting UIPlugin %s on cluster %s", uiPlugin.GetName(), cluster.Name)
 				if err := clientDynamic.Resource(NewUIPluginGVR()).Delete(context.TODO(), uiPlugin.GetName(), metav1.DeleteOptions{}); err != nil && !errors.IsNotFound(err) {
 					return fmt.Errorf("failed to delete UIPlugin %s on cluster %s: %w", uiPlugin.GetName(), cluster.Name, err)
 				}
 			}
 
-			// Wait for all UIPlugins (and their cascaded owned resources, e.g. Perses)
-			// to be fully deleted while COO's controller is still alive to clear finalizers.
+			// Wait for all UIPlugins to be fully deleted while COO's controller is still alive.
 			klog.Infof("Waiting for UIPlugins to be deleted on cluster %s", cluster.Name)
 			err = wait.PollUntilContextTimeout(context.Background(), 2*time.Second, 2*time.Minute, true, func(ctx context.Context) (bool, error) {
 				remaining, err := clientDynamic.Resource(NewUIPluginGVR()).List(ctx, metav1.ListOptions{})
 				if err != nil {
+					if errors.IsNotFound(err) || meta.IsNoMatchError(err) {
+						return true, nil
+					}
 					return false, err
 				}
 				return len(remaining.Items) == 0, nil
 			})
 			if err != nil {
 				return fmt.Errorf("failed to wait for UIPlugins to be deleted on cluster %s: %w", cluster.Name, err)
+			}
+		}
+
+		// Explicitly delete and wait for any Perses CRs in cooSubscriptionNamespace
+		// while COO's controller is still running to clear perses.dev/finalizer.
+		// Even after UIPlugins are deleted, cascading Perses deletion is asynchronous.
+		// If the CSV is deleted before Perses completes finalization, Perses is orphaned
+		// with perses.dev/finalizer and permanently blocks namespace deletion.
+		persesList, err := clientDynamic.Resource(NewPersesGVR()).Namespace(cooSubscriptionNamespace).List(context.TODO(), metav1.ListOptions{})
+		if err != nil && !errors.IsNotFound(err) && !meta.IsNoMatchError(err) {
+			klog.Warningf("Failed to list Perses resources in %s on cluster %s: %v", cooSubscriptionNamespace, cluster.Name, err)
+		}
+		if err == nil && persesList != nil && len(persesList.Items) > 0 {
+			for _, p := range persesList.Items {
+				klog.Infof("Deleting Perses %s in %s on cluster %s (finalizers: %v)", p.GetName(), cooSubscriptionNamespace, cluster.Name, p.GetFinalizers())
+				if err := clientDynamic.Resource(NewPersesGVR()).
+					Namespace(cooSubscriptionNamespace).
+					Delete(context.TODO(), p.GetName(), metav1.DeleteOptions{}); err != nil &&
+					!errors.IsNotFound(err) {
+					klog.Warningf("Failed to delete Perses %s on cluster %s: %v", p.GetName(), cluster.Name, err)
+				}
+			}
+
+			klog.Infof("Waiting for Perses resources to be deleted in %s on cluster %s", cooSubscriptionNamespace, cluster.Name)
+			err = wait.PollUntilContextTimeout(context.Background(), 2*time.Second, 1*time.Minute, true, func(ctx context.Context) (bool, error) {
+				remaining, err := clientDynamic.Resource(NewPersesGVR()).Namespace(cooSubscriptionNamespace).List(ctx, metav1.ListOptions{})
+				if err != nil {
+					if errors.IsNotFound(err) || meta.IsNoMatchError(err) {
+						return true, nil
+					}
+					return false, err
+				}
+				return len(remaining.Items) == 0, nil
+			})
+			if err != nil {
+				klog.Warningf("Perses resources still remain on %s after waiting: %v. Stripping finalizers as fallback", cluster.Name, err)
+				remaining, listErr := clientDynamic.Resource(NewPersesGVR()).Namespace(cooSubscriptionNamespace).List(context.TODO(), metav1.ListOptions{})
+				if listErr == nil && remaining != nil {
+					patchBytes := []byte(`{"metadata":{"finalizers":null}}`)
+					for _, p := range remaining.Items {
+						_, patchErr := clientDynamic.Resource(NewPersesGVR()).
+							Namespace(cooSubscriptionNamespace).
+							Patch(context.TODO(), p.GetName(), types.MergePatchType, patchBytes, metav1.PatchOptions{})
+						if patchErr != nil && !errors.IsNotFound(patchErr) {
+							klog.Warningf("Failed to strip finalizer from Perses %s on cluster %s: %v", p.GetName(), cluster.Name, patchErr)
+						}
+					}
+				}
 			}
 		}
 
@@ -513,7 +543,37 @@ func DeleteCOOSubscription(clusters []Cluster) error {
 			return false, errGet
 		})
 		if err != nil {
-			return fmt.Errorf("failed to wait for namespace %s to be deleted on cluster %s: %w", cooSubscriptionNamespace, cluster.Name, err)
+			var nsConditions []corev1.NamespaceCondition
+			if ns, getErr := clientKube.CoreV1().Namespaces().Get(context.TODO(), cooSubscriptionNamespace, metav1.GetOptions{}); getErr == nil {
+				nsConditions = ns.Status.Conditions
+				klog.Warningf("Namespace %s deletion timed out on %s; status conditions: %+v", cooSubscriptionNamespace, cluster.Name, nsConditions)
+			}
+			// Attempt to unblock namespace deletion by stripping finalizers on any remaining Perses CRs
+			if remainingPerses, listErr := clientDynamic.Resource(NewPersesGVR()).
+				Namespace(cooSubscriptionNamespace).
+				List(context.TODO(), metav1.ListOptions{}); listErr == nil && remainingPerses != nil &&
+				len(remainingPerses.Items) > 0 {
+				patchBytes := []byte(`{"metadata":{"finalizers":null}}`)
+				for _, p := range remainingPerses.Items {
+					klog.Warningf("Force-stripping finalizers from remaining Perses %s/%s on %s (finalizers: %v)", p.GetNamespace(), p.GetName(), cluster.Name, p.GetFinalizers())
+					_, patchErr := clientDynamic.Resource(NewPersesGVR()).
+						Namespace(cooSubscriptionNamespace).
+						Patch(context.TODO(), p.GetName(), types.MergePatchType, patchBytes, metav1.PatchOptions{})
+					if patchErr != nil && !errors.IsNotFound(patchErr) {
+						klog.Warningf("Failed to force-strip finalizer from Perses %s/%s on %s: %v", p.GetNamespace(), p.GetName(), cluster.Name, patchErr)
+					}
+				}
+				// Retry waiting for namespace deletion for up to 30s
+				errRetry := wait.PollUntilContextTimeout(context.Background(), 1*time.Second, 30*time.Second, true, func(ctx context.Context) (bool, error) {
+					_, errGet := clientKube.CoreV1().Namespaces().Get(ctx, cooSubscriptionNamespace, metav1.GetOptions{})
+					return errors.IsNotFound(errGet), nil
+				})
+				if errRetry == nil {
+					klog.Infof("Namespace %s successfully deleted after stripping Perses finalizers on %s", cooSubscriptionNamespace, cluster.Name)
+					continue
+				}
+			}
+			return fmt.Errorf("failed to wait for namespace %s to be deleted on cluster %s (conditions: %+v): %w", cooSubscriptionNamespace, cluster.Name, nsConditions, err)
 		}
 	}
 	return nil

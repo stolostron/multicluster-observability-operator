@@ -13,6 +13,11 @@
     - apiGroups: ["coordination.k8s.io"]
       resources: ["leases"]
       verbs: ["get", "list", "watch", "create", "update", "patch"]
+    # kube-rbac-proxy sidecar authentication (validates Prometheus scraper Bearer token via TokenReview)
+    - apiGroups: ["authentication.k8s.io"]
+      resources: ["tokenreviews"]
+      verbs: ["create"]
+    # kube-rbac-proxy sidecar authorization
     - apiGroups: ["authorization.k8s.io"]
       resources: ["subjectaccessreviews"]
       verbs: ["get", "create"]

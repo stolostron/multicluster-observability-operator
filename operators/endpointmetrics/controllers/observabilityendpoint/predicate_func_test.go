@@ -240,6 +240,66 @@ func TestConfigMapDataChangedPredicate(t *testing.T) {
 			expCreate: false,
 			expDelete: false,
 		},
+		{
+			name:     "Unmanaged annotation added without data change",
+			predName: name,
+			predNS:   namespace,
+			oldCM: &v1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
+				Data:       map[string]string{"foo": "bar"},
+			},
+			newCM: &v1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        name,
+					Namespace:   namespace,
+					Annotations: map[string]string{UnmanagedAnnotationKey: UnmanagedAnnotationValue},
+				},
+				Data: map[string]string{"foo": "bar"},
+			},
+			expUpdate: true,
+			expCreate: true,
+			expDelete: true,
+		},
+		{
+			name:     "Unmanaged annotation removed without data change",
+			predName: name,
+			predNS:   namespace,
+			oldCM: &v1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        name,
+					Namespace:   namespace,
+					Annotations: map[string]string{UnmanagedAnnotationKey: UnmanagedAnnotationValue},
+				},
+				Data: map[string]string{"foo": "bar"},
+			},
+			newCM: &v1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
+				Data:       map[string]string{"foo": "bar"},
+			},
+			expUpdate: true,
+			expCreate: true,
+			expDelete: true,
+		},
+		{
+			name:     "Unrelated annotation changed without data change",
+			predName: name,
+			predNS:   namespace,
+			oldCM: &v1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
+				Data:       map[string]string{"foo": "bar"},
+			},
+			newCM: &v1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        name,
+					Namespace:   namespace,
+					Annotations: map[string]string{"other-annotation": "true"},
+				},
+				Data: map[string]string{"foo": "bar"},
+			},
+			expUpdate: false,
+			expCreate: true,
+			expDelete: true,
+		},
 	}
 
 	for _, tt := range tests {

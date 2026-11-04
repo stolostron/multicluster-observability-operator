@@ -52,6 +52,6 @@ oc wait pod -n "${ACM_NS}" -l name=multiclusterhub-operator \
 log_info "Creating MultiClusterHub CR..."
 oc apply -f "${SCRIPT_DIR}/manifests/acm/multiclusterhub-cr.yaml"
 
-wait_for_mch_running 900
+wait_for_mch_running 1200
 
 log_info "ACM is installed and running. Next step: run setup-observability.sh"

@@ -621,6 +621,11 @@ func CheckStatefulSetPodReady(opt TestOptions, stsName string) error {
 
 // ModifyMCOCR modifies the MCO CR for reconciling. modify multiple parameter to save running time
 func ModifyMCOCR(opt TestOptions) error {
+	allowExpand, err := StorageClassAllowsExpansion(opt)
+	if err != nil {
+		return err
+	}
+
 	clientDynamic := NewKubeClientDynamic(
 		opt.HubCluster.ClusterServerURL,
 		opt.KubeConfig,
@@ -632,7 +637,10 @@ func ModifyMCOCR(opt TestOptions) error {
 		}
 		spec := mco.Object["spec"].(map[string]any)
 		storageConfig := spec["storageConfig"].(map[string]any)
-		storageConfig["alertmanagerStorageSize"] = "3Gi"
+
+		if allowExpand {
+			storageConfig["alertmanagerStorageSize"] = "3Gi"
+		}
 
 		advRetentionCon, _ := CheckAdvRetentionConfig(opt)
 		if advRetentionCon {
@@ -718,12 +726,6 @@ func SetMCOACapabilities(opt TestOptions, platformMetrics, userWorkloadMetrics b
 			}
 		}
 
-		// In ACM 5.0, right-sizing keeps the MCOA stack alive even when metrics are disabled.
-		// Sync RS state: disable when fully disabling MCOA, re-enable when restoring capabilities.
-		if err := setRSEnabled(mco, platformMetrics || userWorkloadMetrics); err != nil {
-			return err
-		}
-
 		_, updateErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Update(context.TODO(), mco, metav1.UpdateOptions{})
 		return updateErr
 	})
@@ -778,13 +780,6 @@ func SetMCOAAllCapabilities(opt TestOptions, platformMetrics, platformAlerts, us
 			return err
 		}
 
-		// In ACM 5.0, right-sizing keeps the MCOA stack alive even when metrics are disabled.
-		// Sync RS state: disable when fully disabling MCOA, re-enable when restoring capabilities.
-		// Only metrics (not alerts) independently keep MCOA alive per MCOAEnabled().
-		if err := setRSEnabled(mco, platformMetrics || userWorkloadMetrics); err != nil {
-			return err
-		}
-
 		_, updateErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Update(context.TODO(), mco, metav1.UpdateOptions{})
 		return updateErr
 	})
@@ -805,6 +800,7 @@ func ResetMCOACapabilities(opt TestOptions) error {
 		if getErr != nil {
 			return getErr
 		}
+		original := mco.DeepCopy()
 
 		if err := setRSEnabled(mco, false); err != nil {
 			return err
@@ -835,6 +831,10 @@ func ResetMCOACapabilities(opt TestOptions) error {
 		}
 		if err := unstructured.SetNestedField(mco.Object, false, "spec", "capabilities", "userWorkloads", "logs", "collection", "clusterLogForwarder", "enabled"); err != nil {
 			return err
+		}
+
+		if reflect.DeepEqual(original.Object["spec"], mco.Object["spec"]) {
+			return nil
 		}
 
 		_, updateErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Update(context.TODO(), mco, metav1.UpdateOptions{})
@@ -993,6 +993,14 @@ func ModifyMCOAddonSpecMetrics(opt TestOptions, enable bool) error {
 			return err
 		}
 
+		// Explicitly disable MCOA platform metrics so that the controller-side
+		// defaulting does not treat enableMetrics=false as a new install and
+		// auto-enable MCOA, which would block the legacy metrics-collector.
+		if err := unstructured.SetNestedField(mco.Object, false,
+			"spec", "capabilities", "platform", "metrics", "default", "enabled"); err != nil {
+			return err
+		}
+
 		_, updateErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Update(context.TODO(), mco, metav1.UpdateOptions{})
 		return updateErr
 	})
@@ -1003,22 +1011,21 @@ func ModifyMCOAddonSpecInterval(opt TestOptions, interval int64) error {
 		opt.HubCluster.ClusterServerURL,
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext)
-	mco, getErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
-	if getErr != nil {
-		return getErr
-	}
+	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		mco, getErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+		if getErr != nil {
+			return getErr
+		}
 
-	observabilityAddonSpec := mco.Object["spec"].(map[string]any)["observabilityAddonSpec"].(map[string]any)
-	if interval == 0 {
-		observabilityAddonSpec["interval"] = nil
-	} else {
-		observabilityAddonSpec["interval"] = interval
-	}
-	_, updateErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Update(context.TODO(), mco, metav1.UpdateOptions{})
-	if updateErr != nil {
+		observabilityAddonSpec := mco.Object["spec"].(map[string]any)["observabilityAddonSpec"].(map[string]any)
+		if interval == 0 {
+			observabilityAddonSpec["interval"] = nil
+		} else {
+			observabilityAddonSpec["interval"] = interval
+		}
+		_, updateErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Update(context.TODO(), mco, metav1.UpdateOptions{})
 		return updateErr
-	}
-	return nil
+	})
 }
 
 func GetMCOAddonSpecResources(opt TestOptions) (map[string]any, error) {
@@ -1213,4 +1220,32 @@ func UninstallMCO(opt TestOptions) error {
 	}
 
 	return nil
+}
+
+// StorageClassAllowsExpansion reports whether the storage class selected for the
+// MCO CR (spec.storageConfig.storageClass, or the default storage class when
+// unset) has allowVolumeExpansion enabled.
+func StorageClassAllowsExpansion(opt TestOptions) (bool, error) {
+	client := GetKubeClient(opt, true)
+	dynClient := GetKubeClientDynamic(opt, true)
+
+	u, err := dynClient.Resource(NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+	if err != nil {
+		return false, err
+	}
+
+	mco := &mcov1beta2.MultiClusterObservability{}
+	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, mco); err != nil {
+		return false, fmt.Errorf("failed to convert unstructured to MCO: %w", err)
+	}
+
+	selectedSC, err := mcov1beta2.GetSelectedStorageClassForMultiClusterObservability(client, mco)
+	if err != nil {
+		return false, err
+	}
+	if selectedSC == "" {
+		return false, fmt.Errorf("no storage class specified in MCO CR and no default storage class found")
+	}
+
+	return mcov1beta2.StorageClassAllowVolumeExpansion(client, selectedSC)
 }

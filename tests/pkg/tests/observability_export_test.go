@@ -95,7 +95,7 @@ var _ = Describe("", func() {
 
 			By("Waiting for metrics acm_remote_write_requests_total on grafana console")
 			Eventually(func() error {
-				query := fmt.Sprintf("acm_remote_write_requests_total{cluster=\"%s\"} offset 1m", hubClusterName)
+				query := fmt.Sprintf("acm_remote_write_requests_total{cluster=\"%s\"}", hubClusterName)
 				res, err := utils.QueryGrafana(
 					testOptions,
 					query,

@@ -35,24 +35,13 @@ var _ = Describe("", func() {
 		func() {
 			By("Check MCO in ready status")
 			Eventually(func() error {
-				err = utils.CheckMCOComponents(testOptions)
-				if err != nil {
-					testFailed = true
-					return err
-				}
-				testFailed = false
-				return nil
+				return utils.CheckMCOComponents(testOptions)
 			}, EventuallyTimeoutMinute*25, EventuallyIntervalSecond*10).Should(Succeed())
 
 			By("Check clustermanagementaddon CR is created")
 			Eventually(func() error {
 				_, err := dynClient.Resource(utils.NewMCOClusterManagementAddonsGVR()).Get(context.TODO(), "observability-controller", metav1.GetOptions{})
-				if err != nil {
-					testFailed = true
-					return err
-				}
-				testFailed = false
-				return nil
+				return err
 			}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
 		},
 	)

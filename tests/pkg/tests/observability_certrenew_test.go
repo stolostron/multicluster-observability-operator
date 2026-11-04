@@ -7,7 +7,6 @@ package tests
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -37,8 +36,6 @@ var _ = Describe("", func() {
 			}
 
 			By("Waiting for pods ready: observability-observatorium-api, observability-rbac-query-proxy, metrics-collector-deployment")
-			// sleep 30s to wait for installation is ready
-			time.Sleep(30 * time.Second)
 			collectorPodNameSpoke := ""
 			collectorPodNameHub := ""
 			hubPodsName := []string{}
@@ -105,11 +102,6 @@ var _ = Describe("", func() {
 			By("Deleting certificate secret to simulate certificate renew")
 			err := utils.DeleteCertSecret(testOptions)
 			Expect(err).ToNot(HaveOccurred())
-
-			// Wait for 40s to ensure the rbac-query-proxy readiness probe has had enough time to fail if it was going to.
-			// The readiness probe has a period of 10s and a failure threshold of 3, so it takes 30s to fail.
-			By("Waiting 40s for readiness probes to settle")
-			time.Sleep(40 * time.Second)
 
 			By("Waiting for observatorium-api pods to be recreated and rbac-query-proxy to be ready")
 			Eventually(func() bool {

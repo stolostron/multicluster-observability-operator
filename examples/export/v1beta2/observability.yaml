@@ -103,7 +103,7 @@ spec:
     kubernetes.io/os: linux
   observabilityAddonSpec:
     enableMetrics: true
-    interval: 30
+    interval: 15
     resources:
       limits:
         cpu: 200m

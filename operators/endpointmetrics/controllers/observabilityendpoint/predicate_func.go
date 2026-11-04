@@ -108,10 +108,18 @@ func DataChangedPredicate[T client.Object](name, namespace string, getData func(
 	}
 }
 
-// ConfigMapDataChangedPredicate returns a predicate that filters for ConfigMap data changes.
+type configMapWatchState struct {
+	data      map[string]string
+	unmanaged bool
+}
+
+// ConfigMapDataChangedPredicate returns a predicate that filters for ConfigMap data or unmanaged annotation changes.
 func ConfigMapDataChangedPredicate(name, namespace string) predicate.Funcs {
 	return DataChangedPredicate(name, namespace, func(cm *corev1.ConfigMap) any {
-		return cm.Data
+		return configMapWatchState{
+			data:      cm.Data,
+			unmanaged: IsUnmanaged(cm),
+		}
 	})
 }
 

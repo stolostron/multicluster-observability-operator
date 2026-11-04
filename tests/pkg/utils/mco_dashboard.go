@@ -16,6 +16,7 @@ import (
 	"os/exec"
 	"strings"
 	"sync"
+	"time"
 
 	"k8s.io/klog/v2"
 )
@@ -41,7 +42,7 @@ type DashboardMeta struct {
 }
 
 func getGrafanaHttpClient(opt TestOptions) (*http.Client, string, bool, error) {
-	client := &http.Client{}
+	client := &http.Client{Timeout: 30 * time.Second}
 	token := ""
 	isKind := os.Getenv("IS_KIND_ENV") == trueStr
 
@@ -52,7 +53,10 @@ func getGrafanaHttpClient(opt TestOptions) (*http.Client, string, bool, error) {
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 		}
 
-		client = &http.Client{Transport: tr}
+		client = &http.Client{
+			Transport: tr,
+			Timeout:   30 * time.Second,
+		}
 		var err error
 		token, err = FetchBearerToken(opt)
 		if err != nil {
@@ -88,8 +92,8 @@ func doGrafanaGet(ctx context.Context, opt TestOptions, path string) (*http.Resp
 
 	if isKind {
 		req.Header.Set("X-Forwarded-User", getAdminBypassHeader(isKind))
-	} else {
-		req.Host = opt.HubCluster.GrafanaHost
+	} else if host := GetGrafanaHost(opt); host != "" {
+		req.Host = host
 	}
 
 	return client.Do(req)

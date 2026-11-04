@@ -1,0 +1,23 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: multicluster-observability-addon-manager
+  labels:
+    app.kubernetes.io/component: multicluster-observability-addon-manager
+    app.kubernetes.io/name: multicluster-observability-addon-manager
+    app.kubernetes.io/part-of: multicluster-observability-addon
+    app: multicluster-observability-addon-manager
+spec:
+  endpoints:
+    - port: https-metrics
+      scheme: https
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s
+      tlsConfig:
+        caFile: /etc/prometheus/configmaps/serving-certs-ca-bundle/service-ca.crt
+        serverName: multicluster-observability-addon-manager-metrics.open-cluster-management-observability.svc
+      bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+  selector:
+    matchLabels:
+      app: multicluster-observability-addon-manager

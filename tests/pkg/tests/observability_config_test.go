@@ -10,7 +10,6 @@ import (
 	"os"
 	"slices"
 	"strings"
-	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -55,8 +54,6 @@ var _ = Describe("", func() {
 					testOptions.HubCluster.KubeContext,
 					yamlB,
 				)).NotTo(HaveOccurred())
-
-			time.Sleep(60 * time.Second)
 
 			By("Check the value is effect in the sts observability-thanos-store-shard-0")
 			Eventually(func() bool {
@@ -112,7 +109,7 @@ var _ = Describe("", func() {
 			}
 			observabilityAddonSpec := mcoRes.Object["spec"].(map[string]any)["observabilityAddonSpec"].(map[string]any)
 			Expect(observabilityAddonSpec["enableMetrics"]).To(Equal(true))
-			Expect(observabilityAddonSpec["interval"]).To(Equal(int64(120)))
+			Expect(observabilityAddonSpec["interval"]).To(Equal(int64(15)))
 		},
 	)
 
@@ -390,8 +387,6 @@ var _ = Describe("", func() {
 					yamlB,
 				)).NotTo(HaveOccurred())
 
-			time.Sleep(60 * time.Second)
-
 			By("Check the value is effect in the observability-thanos-compact and rule")
 			Eventually(func() bool {
 				for _, component := range []string{THANOS_COMPACT_LABEL, THANOS_RULE_LABEL} {
@@ -476,7 +471,18 @@ var _ = Describe("", func() {
 					yamlB,
 				)).NotTo(HaveOccurred())
 
-			time.Sleep(60 * time.Second)
+			Eventually(func() bool {
+				deploys, err := utils.GetStatefulSetWithLabel(testOptions, true, THANOS_RULE_LABEL, MCO_NAMESPACE)
+				if err != nil || len(deploys.Items) == 0 {
+					return false
+				}
+				for _, deployInfo := range deploys.Items {
+					if slices.Contains(deployInfo.Spec.Template.Spec.Containers[0].Args, "--log.level=debug") {
+						return false
+					}
+				}
+				return true
+			}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*5).Should(BeTrue())
 		},
 	)
 

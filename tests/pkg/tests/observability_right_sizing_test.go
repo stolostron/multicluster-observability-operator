@@ -168,12 +168,10 @@ var _ = Describe("RHACM4K-55205: Enable and teardown namespace right-sizing reco
 	})
 
 	It("Should NOT create any Policy resources (always-MCOA mode)", func() {
-		Consistently(func() bool {
-			_, err := dynClient.Resource(policyGVR).
-				Namespace("open-cluster-management-global-set").
-				Get(context.TODO(), "rs-prom-rules-policy", metav1.GetOptions{})
-			return apierrors.IsNotFound(err)
-		}, 30*time.Second, 5*time.Second).Should(BeTrue(), "rs-prom-rules-policy should NOT exist in always-MCOA mode")
+		_, err := dynClient.Resource(policyGVR).
+			Namespace("open-cluster-management-global-set").
+			Get(context.TODO(), "rs-prom-rules-policy", metav1.GetOptions{})
+		Expect(apierrors.IsNotFound(err)).To(BeTrue(), "rs-prom-rules-policy should NOT exist in always-MCOA mode")
 	})
 
 	It("Should create the ConfigMap 'rs-namespace-config' in namespace 'open-cluster-management-observability'", func() {
@@ -395,12 +393,10 @@ var _ = Describe("RHACM4K-58751: Enable and teardown virtualization right-sizing
 	})
 
 	It("Should NOT create any Policy resources (always-MCOA mode)", func() {
-		Consistently(func() bool {
-			_, err := dynClient.Resource(policyGVR).
-				Namespace("open-cluster-management-global-set").
-				Get(context.TODO(), "rs-virt-prom-rules-policy", metav1.GetOptions{})
-			return apierrors.IsNotFound(err)
-		}, 30*time.Second, 5*time.Second).Should(BeTrue(), "rs-virt-prom-rules-policy should NOT exist in always-MCOA mode")
+		_, err := dynClient.Resource(policyGVR).
+			Namespace("open-cluster-management-global-set").
+			Get(context.TODO(), "rs-virt-prom-rules-policy", metav1.GetOptions{})
+		Expect(apierrors.IsNotFound(err)).To(BeTrue(), "rs-virt-prom-rules-policy should NOT exist in always-MCOA mode")
 	})
 
 	It("Should create the ConfigMap 'rs-virt-config' in namespace 'open-cluster-management-observability'", func() {
@@ -660,12 +656,10 @@ var _ = Describe("Always-MCOA right-sizing: ADC reflects CR spec state (rightsiz
 		})
 
 		It("Should NOT create any Policy resources", func() {
-			Consistently(func() bool {
-				_, err := dynClient.Resource(policyGVR).
-					Namespace(MCO_GLOBAL_SET_NAMESPACE).
-					Get(context.TODO(), "rs-prom-rules-policy", metav1.GetOptions{})
-				return apierrors.IsNotFound(err)
-			}, 30*time.Second, 5*time.Second).Should(BeTrue(), "rs-prom-rules-policy should NOT exist")
+			_, err := dynClient.Resource(policyGVR).
+				Namespace(MCO_GLOBAL_SET_NAMESPACE).
+				Get(context.TODO(), "rs-prom-rules-policy", metav1.GetOptions{})
+			Expect(apierrors.IsNotFound(err)).To(BeTrue(), "rs-prom-rules-policy should NOT exist")
 		})
 	})
 

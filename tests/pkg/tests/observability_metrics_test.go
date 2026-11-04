@@ -64,7 +64,7 @@ var _ = Describe("", func() {
 			By("Waiting for new added metrics on grafana console")
 			Eventually(func() error {
 				for _, cluster := range clusters {
-					query := fmt.Sprintf("node_memory_Active_bytes{cluster=\"%s\"} offset 1m", cluster.Name)
+					query := fmt.Sprintf("node_memory_Active_bytes{cluster=\"%s\"}", cluster.Name)
 					res, err := utils.QueryGrafana(
 						testOptions,
 						query,
@@ -88,9 +88,12 @@ var _ = Describe("", func() {
 			By("Waiting for deleted metrics disappear on grafana console")
 			Eventually(func() error {
 				for _, cluster := range clusters {
+					// PromQL instant queries have a 5m lookback window, so a removed metric keeps returning its
+					// last sample for 5m. Checking "time() - timestamp(m) < 30" (2x the 15s collection interval)
+					// verifies that no fresh sample has been ingested in the last 30s without requiring 1m of
+					// prior history (which would cause "offset 1m" to return an empty vector on recently added metrics).
 					query := fmt.Sprintf(
-						"timestamp(instance:node_num_cpu:sum{cluster=\"%s\"}) - timestamp(instance:node_num_cpu:sum{cluster=\"%s\"} offset 1m) > 59",
-						cluster.Name,
+						"time() - timestamp(instance:node_num_cpu:sum{cluster=\"%s\"}) < 30",
 						cluster.Name,
 					)
 					res, err := utils.QueryGrafana(testOptions, query)
@@ -113,9 +116,9 @@ var _ = Describe("", func() {
 			By("Waiting for deleted metrics disappear on grafana console")
 			Eventually(func() error {
 				for _, cluster := range clusters {
+					// Verify no fresh sample has been ingested within the last 30s (2x the 15s collection interval).
 					query := fmt.Sprintf(
-						"timestamp(go_goroutines{cluster=\"%s\"}) - timestamp(go_goroutines{cluster=\"%s\"} offset 1m) > 59",
-						cluster.Name,
+						"time() - timestamp(go_goroutines{cluster=\"%s\"}) < 30",
 						cluster.Name,
 					)
 					res, err := utils.QueryGrafana(testOptions, query)
@@ -145,9 +148,11 @@ var _ = Describe("", func() {
 			By("Waiting for new added metrics disappear on grafana console")
 			Eventually(func() error {
 				for _, cluster := range clusters {
+					// Use "time() - timestamp(m) < 30" instead of "timestamp(m) - timestamp(m offset 1m) > 59":
+					// if node_memory_Active_bytes existed for < 1m before the custom allowlist was deleted,
+					// "m offset 1m" would evaluate to an empty vector and pass vacuously before scraping stops.
 					query := fmt.Sprintf(
-						"timestamp(node_memory_Active_bytes{cluster=\"%s\"}) - timestamp(node_memory_Active_bytes{cluster=\"%s\"} offset 1m) > 59",
-						cluster.Name,
+						"time() - timestamp(node_memory_Active_bytes{cluster=\"%s\"}) < 30",
 						cluster.Name,
 					)
 					res, err := utils.QueryGrafana(testOptions, query)

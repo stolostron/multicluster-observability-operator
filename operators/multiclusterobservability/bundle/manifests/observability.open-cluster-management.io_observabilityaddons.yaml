@@ -42,7 +42,7 @@ spec:
             description: ObservabilityAddonSpec is the spec of observability addon.
             properties:
               enableMetrics:
-                default: true
+                default: false
                 description: When false, the managed cluster addon stops pushing metrics
                   to the hub.
                 type: boolean

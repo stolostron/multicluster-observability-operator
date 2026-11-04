@@ -961,7 +961,7 @@ func TestNewRuleSpec(t *testing.T) {
 					Platform: &mcov1beta2.PlatformCapabilitiesSpec{
 						Metrics: mcov1beta2.PlatformMetricsSpec{
 							Default: mcov1beta2.PlatformMetricsDefaultSpec{
-								Enabled: true,
+								Enabled: ptr.To(true),
 							},
 						},
 					},
@@ -1049,6 +1049,9 @@ func TestNewReceiversSpec(t *testing.T) {
 			mco := &mcov1beta2.MultiClusterObservability{
 				Spec: mcov1beta2.MultiClusterObservabilitySpec{
 					InstanceSize: mcoconfig.Default,
+					ObservabilityAddonSpec: &mcoshared.ObservabilityAddonSpec{
+						EnableMetrics: true,
+					},
 					StorageConfig: &mcov1beta2.StorageConfig{
 						ReceiveStorageSize: "1Gi",
 					},
@@ -1060,7 +1063,7 @@ func TestNewReceiversSpec(t *testing.T) {
 					Platform: &mcov1beta2.PlatformCapabilitiesSpec{
 						Metrics: mcov1beta2.PlatformMetricsSpec{
 							Default: mcov1beta2.PlatformMetricsDefaultSpec{
-								Enabled: true,
+								Enabled: ptr.To(true),
 							},
 						},
 					},
@@ -1175,6 +1178,9 @@ func TestNewCompactSpec(t *testing.T) {
 			mco := &mcov1beta2.MultiClusterObservability{
 				Spec: mcov1beta2.MultiClusterObservabilitySpec{
 					InstanceSize: mcoconfig.Default,
+					ObservabilityAddonSpec: &mcoshared.ObservabilityAddonSpec{
+						EnableMetrics: true,
+					},
 					StorageConfig: &mcov1beta2.StorageConfig{
 						CompactStorageSize: "1Gi",
 					},
@@ -1186,7 +1192,7 @@ func TestNewCompactSpec(t *testing.T) {
 					Platform: &mcov1beta2.PlatformCapabilitiesSpec{
 						Metrics: mcov1beta2.PlatformMetricsSpec{
 							Default: mcov1beta2.PlatformMetricsDefaultSpec{
-								Enabled: true,
+								Enabled: ptr.To(true),
 							},
 						},
 					},

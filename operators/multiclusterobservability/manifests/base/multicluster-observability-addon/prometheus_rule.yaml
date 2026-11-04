@@ -1,0 +1,70 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: multicluster-observability-addon-alert-rules
+  labels:
+    app.kubernetes.io/component: multicluster-observability-addon-manager
+    app.kubernetes.io/name: multicluster-observability-addon-manager
+    app.kubernetes.io/part-of: multicluster-observability-addon
+    app: multicluster-observability-addon-manager
+spec:
+  groups:
+    - name: multicluster-observability-addon.rules
+      rules:
+        - alert: MCOAManifestReconciliationsFailing
+          expr: |
+            (
+              sum(rate(mcoa_manifest_render_duration_seconds_count{result="error"}[5m]))
+                /
+              sum(rate(mcoa_manifest_render_duration_seconds_count[5m]))
+            ) > 0.05
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "MCOA is failing manifest reconciliations"
+            description: "MCOA has experienced a {{ $value | humanizePercentage }} failure rate rendering manifests over the last 15 minutes."
+
+        - alert: MCOAManifestReconciliationsCriticallyFailing
+          expr: |
+            (
+              sum(rate(mcoa_manifest_render_duration_seconds_count{result="error"}[5m]))
+                /
+              sum(rate(mcoa_manifest_render_duration_seconds_count[5m]))
+            ) >= 0.99
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "MCOA manifest rendering is completely failing"
+            description: "Almost 100% of manifest rendering attempts in MCOA are failing. No managed cluster observability manifests can be deployed."
+
+        - alert: MCOAClusterReconciliationStorm
+          expr: |
+            sum by (cluster) (rate(mcoa_cluster_reconcile_total[5m])) > 2
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Managed cluster is causing an MCOA reconciliation storm"
+            description: "Managed cluster '{{ $labels.cluster }}' is reconciling at {{ $value | humanize }} reconciliations/second for over 10 minutes, indicating an infinite loop or rapid resource oscillations."
+
+        - alert: MCOAManagedClusterCollectorDegraded
+          expr: |
+            mcoa_health_check_status{subsystem="overall"} == 0
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Observability collector workload degraded on managed cluster"
+            description: "Observability agent probe has failed on managed cluster '{{ $labels.cluster }}' for more than 15 minutes."
+
+        - alert: MCOAHighManifestRenderLatency
+          expr: |
+            histogram_quantile(0.99, sum by (le) (rate(mcoa_manifest_render_duration_seconds_bucket[5m]))) > 5
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "High manifest rendering latency in MCOA"
+            description: "The 99th percentile manifest rendering time is {{ $value | humanizeDuration }}, exceeding the 5s threshold."

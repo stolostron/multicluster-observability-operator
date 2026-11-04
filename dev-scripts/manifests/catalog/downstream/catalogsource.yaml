@@ -84,6 +84,8 @@ kind: Subscription
 metadata:
   name: mce-sub
   namespace: multicluster-engine
+  labels:
+    multiclusterhubs.operator.open-cluster-management.io/managed-by: "true"
 spec:
   channel: stable-${MCE_VERSION}
   installPlanApproval: Automatic
