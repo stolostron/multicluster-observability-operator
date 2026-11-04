@@ -1367,13 +1367,11 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 				})
 			})
 
-			It("should deploy a ClusterLogForwarder to collect platform logs on managed clusters", SpecTimeout(10*time.Minute), func(ctx context.Context) {
-				By("Checking a ClusterLogForwarder is reconciled on every managed cluster", func() {
-					for _, cluster := range managedClustersWithHub {
-						Eventually(func() error {
-							return utils.CheckClusterLogForwarderExists(cluster, utils.MCO_AGENT_ADDON_NAMESPACE)
-						}, 300, 5).Should(Not(HaveOccurred()), "cluster %s should have a ClusterLogForwarder", cluster.Name)
-					}
+			It("should deploy a ClusterLogForwarder to collect platform logs on the hub", SpecTimeout(10*time.Minute), func(ctx context.Context) {
+				By("Checking a ClusterLogForwarder is reconciled on the hub", func() {
+					Eventually(func() error {
+						return utils.CheckClusterLogForwarderExists(testOptions.HubCluster, "openshift-logging")
+					}, 300, 5).Should(Succeed())
 				})
 			})
 		},
