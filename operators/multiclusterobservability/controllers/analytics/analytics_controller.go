@@ -170,10 +170,14 @@ func (r *AnalyticsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	return ctrl.Result{}, nil
 }
 
-// ensureRightSizingDefaults persists default right-sizing flags when absent and returns the (possibly updated) instance.
+// ensureRightSizingDefaults persists omitted right-sizing enablement flags on the MCO CR.
+// Namespace and virtualization default to true when absent. Workload and pod take a
+// one-time default from the effective namespace value (or true when namespace is also
+// omitted), then the resolved values are written into the CR so later namespace
+// toggles do not silently change them. Explicit false values are never overwritten.
+// Returns the in-memory instance with defaults applied so callers do not wait on cache.
 func (r *AnalyticsReconciler) ensureRightSizingDefaults(ctx context.Context, instance *mcov1beta2.MultiClusterObservability, reqLogger logr.Logger) (*mcov1beta2.MultiClusterObservability, error) {
-	// Default-enable analytics right-sizing flags ONLY when absent on fresh installs.
-	// Persist defaults back to the MCO spec so users can later override to true/false explicitly.
+	// Persist defaults without overwriting explicit false values.
 	u := &unstructured.Unstructured{}
 	u.SetGroupVersionKind(mcoGVK)
 	key := types.NamespacedName{Name: instance.GetName()}
@@ -189,13 +193,31 @@ func (r *AnalyticsReconciler) ensureRightSizingDefaults(ctx context.Context, ins
 		"spec", "capabilities", "platform", "analytics", "namespaceRightSizingRecommendation", "enabled")
 	virtEnabled, virtFound, _ := unstructured.NestedBool(u.Object,
 		"spec", "capabilities", "platform", "analytics", "virtualizationRightSizingRecommendation", "enabled")
+	workloadEnabled, workloadFound, _ := unstructured.NestedBool(u.Object,
+		"spec", "capabilities", "platform", "analytics", "workloadRightSizingRecommendation", "enabled")
+	podEnabled, podFound, _ := unstructured.NestedBool(u.Object,
+		"spec", "capabilities", "platform", "analytics", "podRightSizingRecommendation", "enabled")
+	// Workload and pod right-sizing inherit their one-time default from namespace
+	// RS when not explicitly configured. This keeps a hub that disabled namespace
+	// RS from getting workload/pod enabled unexpectedly, while fresh installs
+	// still enable everything.
+	nsEffective := !nsFound || nsEnabled
+	if !workloadFound {
+		workloadEnabled = nsEffective
+	}
+	if !podFound {
+		podEnabled = nsEffective
+	}
 
 	// Only patch if at least one field is missing
-	if !nsFound || !virtFound {
-		// Set true if not present, else preserve existing value.
+	if !nsFound || !virtFound || !workloadFound || !podFound {
+		// Namespace and virtualization default to true; workload and pod use the
+		// values resolved above (inherited from namespace).
 		analytics := map[string]any{
 			"namespaceRightSizingRecommendation":      map[string]any{"enabled": !nsFound || nsEnabled},
 			"virtualizationRightSizingRecommendation": map[string]any{"enabled": !virtFound || virtEnabled},
+			"workloadRightSizingRecommendation":       map[string]any{"enabled": workloadEnabled},
+			"podRightSizingRecommendation":            map[string]any{"enabled": podEnabled},
 		}
 		patchData := map[string]any{
 			"spec": map[string]any{
@@ -215,7 +237,8 @@ func (r *AnalyticsReconciler) ensureRightSizingDefaults(ctx context.Context, ins
 		if err := r.Client.Patch(ctx, u, client.RawPatch(types.MergePatchType, patchBytes)); err != nil {
 			return instance, fmt.Errorf("failed to persist default analytics right-sizing flags: %w", err)
 		}
-		reqLogger.Info("Defaulted analytics right-sizing flags to true (fresh install)")
+		reqLogger.Info("Persisted missing right-sizing defaults",
+			"workload", workloadEnabled, "pod", podEnabled)
 
 		// Apply defaults directly to the in-memory instance so downstream callers
 		// see updated values even if the informer cache is stale.
@@ -231,6 +254,8 @@ func (r *AnalyticsReconciler) ensureRightSizingDefaults(ctx context.Context, ins
 		if !virtFound {
 			instance.Spec.Capabilities.Platform.Analytics.VirtualizationRightSizingRecommendation.Enabled = true
 		}
+		instance.Spec.Capabilities.Platform.Analytics.WorkloadRightSizingRecommendation.Enabled = workloadEnabled
+		instance.Spec.Capabilities.Platform.Analytics.PodRightSizingRecommendation.Enabled = podEnabled
 	}
 	return instance, nil
 }
@@ -244,9 +269,12 @@ func (r *AnalyticsReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-// syncRightSizingStateToADC syncs right-sizing state to AddOnDeploymentConfig.
-// When delegatingToMCOA=true: syncs the MCO CR's actual enabled/disabled state so MCOA knows what to deploy.
-// When delegatingToMCOA=false: forces "disabled" to prevent MCOA from deploying PrometheusRules during MCO deletion.
+// syncRightSizingStateToADC writes namespace, virtualization, workload, and pod
+// right-sizing ADC variables (plus rightSizingDelegated) onto the managed
+// AddOnDeploymentConfig so MCOA can gate spoke-side resources.
+// When delegatingToMCOA is true, each key mirrors the MCO CR enabled state.
+// When false (deletion / cleanup), every feature key is forced to "disabled"
+// so MCOA tears down before MCO removes remaining objects.
 func (r *AnalyticsReconciler) syncRightSizingStateToADC(ctx context.Context, instance *mcov1beta2.MultiClusterObservability, delegatingToMCOA bool, reqLogger logr.Logger) error {
 	const (
 		valueEnabled  = "enabled"
@@ -257,6 +285,8 @@ func (r *AnalyticsReconciler) syncRightSizingStateToADC(ctx context.Context, ins
 	delegatedValue := "false"
 	nsValue := valueDisabled
 	virtValue := valueDisabled
+	workloadValue := valueDisabled
+	podValue := valueDisabled
 	if delegatingToMCOA {
 		delegatedValue = "true"
 		// When delegating to MCOA, sync the MCO CR's actual right-sizing state
@@ -266,6 +296,12 @@ func (r *AnalyticsReconciler) syncRightSizingStateToADC(ctx context.Context, ins
 			}
 			if instance.Spec.Capabilities.Platform.Analytics.VirtualizationRightSizingRecommendation.Enabled {
 				virtValue = valueEnabled
+			}
+			if instance.Spec.Capabilities.Platform.Analytics.WorkloadRightSizingRecommendation.Enabled {
+				workloadValue = valueEnabled
+			}
+			if instance.Spec.Capabilities.Platform.Analytics.PodRightSizingRecommendation.Enabled {
+				podValue = valueEnabled
 			}
 		}
 	}
@@ -283,57 +319,37 @@ func (r *AnalyticsReconciler) syncRightSizingStateToADC(ctx context.Context, ins
 		return fmt.Errorf("failed to get AddOnDeploymentConfig: %w", err)
 	}
 
-	// Single-pass: find indices and track if update needed
-	delegatedIdx, nsIdx, virtIdx := -1, -1, -1
+	desiredVars := []addonv1beta1.CustomizedVariable{
+		{Name: util.ADCKeyRightSizingDelegated, Value: delegatedValue},
+		{Name: util.ADCKeyPlatformNamespaceRightSizing, Value: nsValue},
+		{Name: util.ADCKeyPlatformVirtualizationRightSizing, Value: virtValue},
+		{Name: util.ADCKeyPlatformWorkloadRightSizing, Value: workloadValue},
+		{Name: util.ADCKeyPlatformPodRightSizing, Value: podValue},
+	}
+
 	needsUpdate := false
-
-	for i, cv := range adc.Spec.CustomizedVariables {
-		switch cv.Name {
-		case util.ADCKeyRightSizingDelegated:
-			delegatedIdx = i
-			if cv.Value != delegatedValue {
-				adc.Spec.CustomizedVariables[i].Value = delegatedValue
-				needsUpdate = true
-			}
-		case util.ADCKeyPlatformNamespaceRightSizing:
-			nsIdx = i
-			if cv.Value != nsValue {
-				adc.Spec.CustomizedVariables[i].Value = nsValue
-				needsUpdate = true
-			}
-		case util.ADCKeyPlatformVirtualizationRightSizing:
-			virtIdx = i
-			if cv.Value != virtValue {
-				adc.Spec.CustomizedVariables[i].Value = virtValue
-				needsUpdate = true
-			}
+	for _, desired := range desiredVars {
+		idx := slices.IndexFunc(adc.Spec.CustomizedVariables, func(cv addonv1beta1.CustomizedVariable) bool {
+			return cv.Name == desired.Name
+		})
+		if idx == -1 {
+			adc.Spec.CustomizedVariables = append(adc.Spec.CustomizedVariables, desired)
+			needsUpdate = true
+		} else if adc.Spec.CustomizedVariables[idx].Value != desired.Value {
+			adc.Spec.CustomizedVariables[idx] = desired
+			needsUpdate = true
 		}
-	}
-
-	// Append if not found
-	if delegatedIdx == -1 {
-		adc.Spec.CustomizedVariables = append(adc.Spec.CustomizedVariables,
-			addonv1beta1.CustomizedVariable{Name: util.ADCKeyRightSizingDelegated, Value: delegatedValue})
-		needsUpdate = true
-	}
-	if nsIdx == -1 {
-		adc.Spec.CustomizedVariables = append(adc.Spec.CustomizedVariables,
-			addonv1beta1.CustomizedVariable{Name: util.ADCKeyPlatformNamespaceRightSizing, Value: nsValue})
-		needsUpdate = true
-	}
-	if virtIdx == -1 {
-		adc.Spec.CustomizedVariables = append(adc.Spec.CustomizedVariables,
-			addonv1beta1.CustomizedVariable{Name: util.ADCKeyPlatformVirtualizationRightSizing, Value: virtValue})
-		needsUpdate = true
 	}
 
 	if needsUpdate {
 		if delegatingToMCOA {
 			reqLogger.Info("rs - syncing right-sizing state to ADC for MCOA delegation",
-				"delegated", delegatedValue, "namespace", nsValue, "virtualization", virtValue)
+				"delegated", delegatedValue, "namespace", nsValue, "virtualization", virtValue,
+				"workload", workloadValue, "pod", podValue)
 		} else {
 			reqLogger.V(1).Info("rs - syncing disabled state to ADC before MCO cleanup",
-				"delegated", delegatedValue, "namespace", nsValue, "virtualization", virtValue)
+				"delegated", delegatedValue, "namespace", nsValue, "virtualization", virtValue,
+				"workload", workloadValue, "pod", podValue)
 		}
 		if err := r.Client.Update(ctx, adc); err != nil {
 			return fmt.Errorf("failed to update AddOnDeploymentConfig: %w", err)

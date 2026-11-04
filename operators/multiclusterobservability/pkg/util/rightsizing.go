@@ -8,5 +8,7 @@ const (
 	// Right-sizing ADC key names — must match Key* constants in MCOA repo.
 	ADCKeyPlatformNamespaceRightSizing      = "platformNamespaceRightSizing"
 	ADCKeyPlatformVirtualizationRightSizing = "platformVirtualizationRightSizing"
+	ADCKeyPlatformWorkloadRightSizing       = "platformWorkloadRightSizing"
+	ADCKeyPlatformPodRightSizing            = "platformPodRightSizing"
 	ADCKeyRightSizingDelegated              = "rightSizingDelegated"
 )

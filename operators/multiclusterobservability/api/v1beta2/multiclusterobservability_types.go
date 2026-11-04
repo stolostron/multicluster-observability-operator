@@ -174,6 +174,20 @@ type PlatformAnalyticsSpec struct {
 	// +optional
 	// +kubebuilder:validation:Optional
 	VirtualizationRightSizingRecommendation PlatformRightSizingRecommendationSpec `json:"virtualizationRightSizingRecommendation,omitempty"`
+
+	// WorkloadRightSizingRecommendation controls workload right-sizing independently of pod right-sizing.
+	// When omitted, the controller persists the namespace right-sizing value on first reconcile.
+	//
+	// +optional
+	// +kubebuilder:validation:Optional
+	WorkloadRightSizingRecommendation PlatformRightSizingRecommendationSpec `json:"workloadRightSizingRecommendation,omitempty"`
+
+	// PodRightSizingRecommendation controls pod right-sizing, including pods without a workload.
+	// When omitted, the controller persists the namespace right-sizing value on first reconcile.
+	//
+	// +optional
+	// +kubebuilder:validation:Optional
+	PodRightSizingRecommendation PlatformRightSizingRecommendationSpec `json:"podRightSizingRecommendation,omitempty"`
 }
 
 type PlatformIncidentDetectionSpec struct {

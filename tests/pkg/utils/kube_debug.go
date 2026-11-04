@@ -116,7 +116,9 @@ func logMCOStatus(client dynamic.Interface) {
 	klog.Info(sb.String())
 }
 
-// formatMCOCapabilities formats the MCO capabilities spec into clean human-readable lines.
+// formatMCOCapabilities formats the MCO capabilities spec into compact
+// human-readable lines for failure dumps, including independent right-sizing
+// switches (ns, virt, wl, pod) when present.
 func formatMCOCapabilities(capabilities map[string]any) string {
 	var sb strings.Builder
 	sb.WriteString("  Capabilities:\n")
@@ -146,6 +148,16 @@ func formatMCOCapabilities(capabilities map[string]any) string {
 			if virt, ok := analytics["virtualizationRightSizingRecommendation"].(map[string]any); ok {
 				if enabled, ok := virt["enabled"].(bool); ok {
 					rs = append(rs, fmt.Sprintf("virt=%t", enabled))
+				}
+			}
+			if wl, ok := analytics["workloadRightSizingRecommendation"].(map[string]any); ok {
+				if enabled, ok := wl["enabled"].(bool); ok {
+					rs = append(rs, fmt.Sprintf("wl=%t", enabled))
+				}
+			}
+			if pod, ok := analytics["podRightSizingRecommendation"].(map[string]any); ok {
+				if enabled, ok := pod["enabled"].(bool); ok {
+					rs = append(rs, fmt.Sprintf("pod=%t", enabled))
 				}
 			}
 			if len(rs) > 0 {
