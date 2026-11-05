@@ -388,6 +388,13 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 				// Record deployment time to ensure we only accept metrics generated after the non-OCP stack was deployed
 				startTime := time.Now().Unix()
 
+				By("Waiting for non-OCP PrometheusAgent rollout to become ready", func() {
+					Eventually(func() error {
+						return utils.CheckNonOCPPrometheusAgentReady(ctx, testOptions.HubCluster,
+							"platform-metrics-collector", platformPrometheusAgentStatefulSetName)
+					}, 3*time.Minute, 2*time.Second).Should(Succeed())
+				})
+
 				By(fmt.Sprintf("Waiting for ManagedClusterAddOn %s to become Available", mcoaAddonName), func() {
 					utils.CheckManagedClusterAddonStatus(testOptions, mcoaAddonName)
 				})
