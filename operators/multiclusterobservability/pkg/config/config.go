@@ -62,6 +62,8 @@ const (
 	AnnotationCertDuration       = "mco-cert-duration"
 	AnnotationDisableMCOAlerting = "mco-disable-alerting"
 	AnnotationDisableUWMAlerting = "mco-disable-uwl-alerting"
+	// AnnotationMCOManagedLogging selects MCOA's managed LokiStack and log forwarder.
+	AnnotationMCOManagedLogging = "mco-managed-logging"
 
 	MCHUpdatedRequestName               = "mch-updated-request"
 	MCOUpdatedRequestName               = "mco-updated-request"
@@ -694,6 +696,22 @@ func IsPaused(annotations map[string]string) bool {
 	}
 
 	return false
+}
+
+// IsManagedLoggingEnabled returns true when the MCO CR selects MCOA's managed log store.
+func IsManagedLoggingEnabled(annotations map[string]string) bool {
+	return annotations[AnnotationMCOManagedLogging] == "true"
+}
+
+// MCOALoggingEnabled reports whether managed logging or the existing platform
+// ClusterLogForwarder path needs MCOA's logging dependencies.
+func MCOALoggingEnabled(mco *observabilityv1beta2.MultiClusterObservability) bool {
+	if mco == nil {
+		return false
+	}
+	return IsManagedLoggingEnabled(mco.Annotations) ||
+		(mco.Spec.Capabilities != nil && mco.Spec.Capabilities.Platform != nil &&
+			mco.Spec.Capabilities.Platform.Logs.Collection.Enabled)
 }
 
 // GetTenantUID returns tenant uid.
