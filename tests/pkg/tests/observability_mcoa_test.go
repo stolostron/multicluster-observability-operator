@@ -1381,6 +1381,24 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 					}, 300, 5).Should(Succeed())
 				})
 			})
+
+			It("should deploy a ClusterLogForwarder to collect platform logs on OpenShift managed clusters", SpecTimeout(10*time.Minute), func(ctx context.Context) {
+				By("Checking a ClusterLogForwarder is reconciled on every accessible OpenShift managed cluster", func() {
+					if len(accessibleOCPClusters) == 1 {
+						Skip("no OpenShift managed clusters with API access")
+					}
+
+					for _, cluster := range accessibleOCPClusters {
+						if cluster.Name == testOptions.HubCluster.Name {
+							continue
+						}
+
+						Eventually(func() error {
+							return utils.CheckClusterLogForwarderExists(cluster, "openshift-logging")
+						}, 300, 5).Should(Succeed(), "cluster %s should have a ClusterLogForwarder", cluster.Name)
+					}
+				})
+			})
 		},
 	)
 
