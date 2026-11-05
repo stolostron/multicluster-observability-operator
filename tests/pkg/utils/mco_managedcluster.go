@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"slices"
 
 	"github.com/onsi/ginkgo/v2"
@@ -15,6 +16,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/util/retry"
 	"k8s.io/klog/v2"
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
 )
@@ -37,31 +39,13 @@ type ClustersInfo struct {
 
 func UpdateObservabilityFromManagedCluster(opt TestOptions, enableObservability bool) error {
 	clusterName := GetManagedClusterName(opt)
-	if clusterName != "" {
-		clientDynamic := GetKubeClientDynamic(opt, true)
-		cluster, err := clientDynamic.Resource(NewOCMManagedClustersGVR()).
-			Get(context.TODO(), clusterName, metav1.GetOptions{})
-		if err != nil {
-			return err
-		}
-		labels, ok := cluster.Object["metadata"].(map[string]any)["labels"].(map[string]any)
-		if !ok {
-			cluster.Object["metadata"].(map[string]any)["labels"] = map[string]any{}
-			labels = cluster.Object["metadata"].(map[string]any)["labels"].(map[string]any)
-		}
-
-		if !enableObservability {
-			labels["observability"] = "disabled"
-		} else {
-			delete(labels, "observability")
-		}
-		_, updateErr := clientDynamic.Resource(NewOCMManagedClustersGVR()).
-			Update(context.TODO(), cluster, metav1.UpdateOptions{})
-		if updateErr != nil {
-			return updateErr
-		}
+	if clusterName == "" {
+		return errors.New("no managed cluster found")
 	}
-	return nil
+	if !enableObservability {
+		return SetManagedClusterLabel(context.TODO(), opt, clusterName, "observability", "disabled")
+	}
+	return RemoveManagedClusterLabel(context.TODO(), opt, clusterName, "observability")
 }
 
 func ListManagedClusters(opt TestOptions) ([]ClustersInfo, error) {
@@ -204,6 +188,21 @@ func GetManagedClusters(opt TestOptions) ([]*clusterv1.ManagedCluster, error) {
 	return ret, nil
 }
 
+// GetManagedCluster retrieves a specific ManagedCluster by name.
+func GetManagedCluster(ctx context.Context, opt TestOptions, clusterName string) (*clusterv1.ManagedCluster, error) {
+	clientDynamic := GetKubeClientDynamic(opt, true)
+	obj, err := clientDynamic.Resource(NewOCMManagedClustersGVR()).Get(ctx, clusterName, metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get ManagedCluster %s: %w", clusterName, err)
+	}
+
+	mc := &clusterv1.ManagedCluster{}
+	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(obj.Object, mc); err != nil {
+		return nil, fmt.Errorf("failed to convert Unstructured to ManagedCluster: %w", err)
+	}
+	return mc, nil
+}
+
 // GetHubClusterName queries the ManagedCluster API and returns the name of the hub cluster
 // (identified by the "local-cluster=true" label). Falls back to "local-cluster" if not found.
 func GetHubClusterName(opt TestOptions) (string, error) {
@@ -261,4 +260,108 @@ func GetManagedClusterIDToNameMap(opt TestOptions) (map[string]string, error) {
 		}
 	}
 	return idToName, nil
+}
+
+// mutateManagedCluster modifies a ManagedCluster using a mutator function and retry.RetryOnConflict.
+// If mutate returns false, the object was not changed and the API update is skipped.
+func mutateManagedCluster(ctx context.Context, opt TestOptions, clusterName string, mutate func(cluster metav1.Object) bool) error {
+	clientDynamic := GetKubeClientDynamic(opt, true)
+	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		cluster, err := clientDynamic.Resource(NewOCMManagedClustersGVR()).Get(ctx, clusterName, metav1.GetOptions{})
+		if err != nil {
+			return fmt.Errorf("failed to get ManagedCluster %s: %w", clusterName, err)
+		}
+		if !mutate(cluster) {
+			return nil
+		}
+		_, err = clientDynamic.Resource(NewOCMManagedClustersGVR()).Update(ctx, cluster, metav1.UpdateOptions{})
+		if err != nil {
+			return fmt.Errorf("failed to update ManagedCluster %s: %w", clusterName, err)
+		}
+		return nil
+	})
+}
+
+func setAnnotation(obj metav1.Object, key, value string) bool {
+	annotations := obj.GetAnnotations()
+	if annotations != nil && annotations[key] == value {
+		return false
+	}
+	newAnnotations := maps.Clone(annotations)
+	if newAnnotations == nil {
+		newAnnotations = make(map[string]string)
+	}
+	newAnnotations[key] = value
+	obj.SetAnnotations(newAnnotations)
+	return true
+}
+
+func removeAnnotation(obj metav1.Object, key string) bool {
+	annotations := obj.GetAnnotations()
+	if annotations == nil {
+		return false
+	}
+	if _, exists := annotations[key]; !exists {
+		return false
+	}
+	newAnnotations := maps.Clone(annotations)
+	delete(newAnnotations, key)
+	obj.SetAnnotations(newAnnotations)
+	return true
+}
+
+func setLabel(obj metav1.Object, key, value string) bool {
+	labelsMap := obj.GetLabels()
+	if labelsMap != nil && labelsMap[key] == value {
+		return false
+	}
+	newLabels := maps.Clone(labelsMap)
+	if newLabels == nil {
+		newLabels = make(map[string]string)
+	}
+	newLabels[key] = value
+	obj.SetLabels(newLabels)
+	return true
+}
+
+func removeLabel(obj metav1.Object, key string) bool {
+	labelsMap := obj.GetLabels()
+	if labelsMap == nil {
+		return false
+	}
+	if _, exists := labelsMap[key]; !exists {
+		return false
+	}
+	newLabels := maps.Clone(labelsMap)
+	delete(newLabels, key)
+	obj.SetLabels(newLabels)
+	return true
+}
+
+// SetManagedClusterAnnotation sets an annotation on the specified ManagedCluster with retry on conflict.
+func SetManagedClusterAnnotation(ctx context.Context, opt TestOptions, clusterName, key, value string) error {
+	return mutateManagedCluster(ctx, opt, clusterName, func(cluster metav1.Object) bool {
+		return setAnnotation(cluster, key, value)
+	})
+}
+
+// RemoveManagedClusterAnnotation removes an annotation from the specified ManagedCluster with retry on conflict.
+func RemoveManagedClusterAnnotation(ctx context.Context, opt TestOptions, clusterName, key string) error {
+	return mutateManagedCluster(ctx, opt, clusterName, func(cluster metav1.Object) bool {
+		return removeAnnotation(cluster, key)
+	})
+}
+
+// SetManagedClusterLabel sets a label on the specified ManagedCluster with retry on conflict.
+func SetManagedClusterLabel(ctx context.Context, opt TestOptions, clusterName, key, value string) error {
+	return mutateManagedCluster(ctx, opt, clusterName, func(cluster metav1.Object) bool {
+		return setLabel(cluster, key, value)
+	})
+}
+
+// RemoveManagedClusterLabel removes a label from the specified ManagedCluster with retry on conflict.
+func RemoveManagedClusterLabel(ctx context.Context, opt TestOptions, clusterName, key string) error {
+	return mutateManagedCluster(ctx, opt, clusterName, func(cluster metav1.Object) bool {
+		return removeLabel(cluster, key)
+	})
 }
