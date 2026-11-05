@@ -285,10 +285,11 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		return ctrl.Result{}, fmt.Errorf("failed to get the Observatorium API URL: %w", err) // Already wrapped
 	}
 
-	// MCOA's platform log collection capability relies on Loki Operator's LokiStack CRD as the
-	// default log store, and on cert-manager's Certificate/Issuer/ClusterIssuer CRDs to issue
+	// MCOA logging relies on Loki Operator's LokiStack CRD as the default log store,
+	// and on cert-manager's Certificate/Issuer/ClusterIssuer CRDs to issue
 	// the mTLS certs used for log collection/storage. Only install these ourselves when MCOA is
-	// enabled and that capability is enabled; otherwise leave any existing/manual install alone.
+	// enabled and either managed logging or platform log collection is enabled;
+	// otherwise leave any existing/manual install alone.
 	// (platformLogsEnabled already implies MCOAEnabled, but we check both explicitly for clarity.)
 	//
 	// If a CRD isn't present yet, requeue immediately rather than rendering/deploying anything
@@ -296,9 +297,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	// asynchronous and can take a while). This is deliberately simple polling for now, rather
 	// than an event-driven trigger, to keep the change safe/easy to reason about; can be
 	// optimized later.
-	platformLogsEnabled := instance.Spec.Capabilities != nil &&
-		instance.Spec.Capabilities.Platform != nil &&
-		instance.Spec.Capabilities.Platform.Logs.Collection.Enabled
+	platformLogsEnabled := config.MCOALoggingEnabled(instance)
 	if rendering.MCOAEnabled(instance) && platformLogsEnabled {
 		lokiStackCRD := &apiextensionsv1.CustomResourceDefinition{}
 		err = r.Client.Get(ctx, types.NamespacedName{Name: config.LokiStackCRDName}, lokiStackCRD)

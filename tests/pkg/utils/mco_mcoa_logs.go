@@ -13,7 +13,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/client-go/util/retry"
 	"k8s.io/klog/v2"
 )
 
@@ -150,117 +149,40 @@ func CreateMCOALoggingObjectStorageSecret(opt TestOptions) error {
 	)
 }
 
-// SetAddOnDeploymentConfigCustomizedVariable adds or updates a single named CustomizedVariable
-// on the MCOA AddOnDeploymentConfig (open-cluster-management-observability/
-// multicluster-observability-addon).
-//
-// This exists for variables the addon-manager consumes (e.g. "platformLogsDefault", which
-// selects the managed-log-store use case) that MCO's own renderer doesn't yet set from the MCO
-// CR's capabilities spec. It reads the live object, updates only the named list item (by its
-// "name" key), and writes the whole object back — the same read-modify-write pattern the
-// analytics controller uses to sync right-sizing variables — so it never disturbs any other
-// CustomizedVariable entry MCO or the addon-manager itself owns.
-//
-// The AddOnDeploymentConfig is only rendered once MCOA is enabled (SetMCOACapabilities /
-// SetMCOAPlatformLogsCapability), so this should typically be called from inside an Eventually()
-// to tolerate the brief window before MCO's controller creates it.
-func SetAddOnDeploymentConfigCustomizedVariable(opt TestOptions, name, value string) error {
+// CheckMCOAManagedLoggingAODC verifies that the MCO CR selected the managed
+// logging path without leaving the user-defined platform CLF path enabled.
+func CheckMCOAManagedLoggingAODC(opt TestOptions) error {
 	clientDynamic := NewKubeClientDynamic(
 		opt.HubCluster.ClusterServerURL,
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext)
+	aodc, err := clientDynamic.Resource(NewMCOAddOnDeploymentConfigGVR()).
+		Namespace(MCO_NAMESPACE).
+		Get(context.TODO(), MCOA_CLUSTER_MANAGEMENT_ADDON_NAME, metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to get managed logging AddOnDeploymentConfig: %w", err)
+	}
 
-	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		aodc, err := clientDynamic.Resource(NewMCOAddOnDeploymentConfigGVR()).
-			Namespace(MCO_NAMESPACE).
-			Get(context.TODO(), MCOA_CLUSTER_MANAGEMENT_ADDON_NAME, metav1.GetOptions{})
-		if err != nil {
-			return fmt.Errorf("failed to get AddOnDeploymentConfig %s/%s: %w", MCO_NAMESPACE, MCOA_CLUSTER_MANAGEMENT_ADDON_NAME, err)
-		}
+	vars, _, err := unstructured.NestedSlice(aodc.Object, "spec", "customizedVariables")
+	if err != nil {
+		return fmt.Errorf("failed to read managed logging customizedVariables: %w", err)
+	}
 
-		vars, _, err := unstructured.NestedSlice(aodc.Object, "spec", "customizedVariables")
-		if err != nil {
-			return fmt.Errorf("failed to read customizedVariables from AddOnDeploymentConfig: %w", err)
+	managedLoggingFound := false
+	for _, item := range vars {
+		variable, ok := item.(map[string]any)
+		if !ok {
+			continue
 		}
-
-		found := false
-		for i, v := range vars {
-			varMap, ok := v.(map[string]any)
-			if !ok {
-				continue
-			}
-			if varMap["name"] == name {
-				varMap["value"] = value
-				vars[i] = varMap
-				found = true
-				break
-			}
+		switch variable["name"] {
+		case "platformLogsDefault":
+			managedLoggingFound = variable["value"] == "true"
+		case "platformLogsCollection":
+			return fmt.Errorf("user-defined platform ClusterLogForwarder is still enabled in the AddOnDeploymentConfig")
 		}
-		if !found {
-			vars = append(vars, map[string]any{"name": name, "value": value})
-		}
-
-		if err := unstructured.SetNestedSlice(aodc.Object, vars, "spec", "customizedVariables"); err != nil {
-			return fmt.Errorf("failed to set customizedVariables on AddOnDeploymentConfig: %w", err)
-		}
-
-		_, err = clientDynamic.Resource(NewMCOAddOnDeploymentConfigGVR()).
-			Namespace(MCO_NAMESPACE).
-			Update(context.TODO(), aodc, metav1.UpdateOptions{})
-		return err
-	})
-}
-
-// RemoveAddOnDeploymentConfigCustomizedVariable removes a single named CustomizedVariable from
-// the MCOA AddOnDeploymentConfig, if present. It's a no-op (returns nil) if the
-// AddOnDeploymentConfig doesn't exist or doesn't carry that key, so it's safe to call
-// unconditionally during test cleanup.
-func RemoveAddOnDeploymentConfigCustomizedVariable(opt TestOptions, name string) error {
-	clientDynamic := NewKubeClientDynamic(
-		opt.HubCluster.ClusterServerURL,
-		opt.KubeConfig,
-		opt.HubCluster.KubeContext)
-
-	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		aodc, err := clientDynamic.Resource(NewMCOAddOnDeploymentConfigGVR()).
-			Namespace(MCO_NAMESPACE).
-			Get(context.TODO(), MCOA_CLUSTER_MANAGEMENT_ADDON_NAME, metav1.GetOptions{})
-		if err != nil {
-			if apierrors.IsNotFound(err) {
-				return nil
-			}
-			return fmt.Errorf("failed to get AddOnDeploymentConfig %s/%s: %w", MCO_NAMESPACE, MCOA_CLUSTER_MANAGEMENT_ADDON_NAME, err)
-		}
-
-		vars, found, err := unstructured.NestedSlice(aodc.Object, "spec", "customizedVariables")
-		if err != nil {
-			return fmt.Errorf("failed to read customizedVariables from AddOnDeploymentConfig: %w", err)
-		}
-		if !found {
-			return nil
-		}
-
-		newVars := make([]any, 0, len(vars))
-		changed := false
-		for _, v := range vars {
-			varMap, ok := v.(map[string]any)
-			if ok && varMap["name"] == name {
-				changed = true
-				continue
-			}
-			newVars = append(newVars, v)
-		}
-		if !changed {
-			return nil
-		}
-
-		if err := unstructured.SetNestedSlice(aodc.Object, newVars, "spec", "customizedVariables"); err != nil {
-			return fmt.Errorf("failed to set customizedVariables on AddOnDeploymentConfig: %w", err)
-		}
-
-		_, err = clientDynamic.Resource(NewMCOAddOnDeploymentConfigGVR()).
-			Namespace(MCO_NAMESPACE).
-			Update(context.TODO(), aodc, metav1.UpdateOptions{})
-		return err
-	})
+	}
+	if !managedLoggingFound {
+		return fmt.Errorf("managed logging is not enabled in the AddOnDeploymentConfig")
+	}
+	return nil
 }
