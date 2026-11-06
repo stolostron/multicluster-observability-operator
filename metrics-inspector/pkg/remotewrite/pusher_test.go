@@ -110,6 +110,17 @@ streams:
 	if len(receivedSeries) != 4 {
 		t.Fatalf("expected 4 pushed series, got %d", len(receivedSeries))
 	}
+	// Verify Thanos Receive invariant: all labels are sorted lexicographically and no label has an empty name or value.
+	for _, ts := range receivedSeries {
+		for idx, l := range ts.Labels {
+			if l.Name == "" || l.Value == "" {
+				t.Fatalf("series contains empty label name or value: %+v", ts.Labels)
+			}
+			if idx > 0 && ts.Labels[idx-1].Name >= l.Name {
+				t.Fatalf("series labels not strictly sorted: %+v", ts.Labels)
+			}
+		}
+	}
 	if pusher.PushedSeriesTotal() != 4 {
 		t.Fatalf("expected PushedSeriesTotal()=4, got %d", pusher.PushedSeriesTotal())
 	}
