@@ -110,8 +110,8 @@ github.com/prometheus/client_golang/prometheus.{NewCounter,NewCounterVec,NewCoun
 NewHistorgram,NewHistogramVec,NewSummary,NewSummaryVec}=github.com/prometheus/client_golang/prometheus/promauto.{NewCounter,\
 NewCounterVec,NewCounterVec,NewGauge,NewGaugeVec,NewGaugeFunc,NewHistorgram,NewHistogramVec,NewSummary,NewSummaryVec},\
 github.com/NYTimes/gziphandler.{GzipHandler}=github.com/klauspost/compress/gzhttp.{GzipHandler},\
-io/ioutil.{Discard,NopCloser,ReadAll,ReadDir,ReadFile,TempDir,TempFile,Writefile}" ./operators/... ./collectors/... ./loaders/... ./proxy/...
-	@$(FAILLINT) -paths "fmt.{Print,Println}" -ignore-tests ./operators/... ./collectors/... ./loaders/... ./proxy/...
+io/ioutil.{Discard,NopCloser,ReadAll,ReadDir,ReadFile,TempDir,TempFile,Writefile}" ./operators/... ./collectors/... ./metrics-inspector/... ./loaders/... ./proxy/...
+	@$(FAILLINT) -paths "fmt.{Print,Println}" -ignore-tests ./operators/... ./collectors/... ./metrics-inspector/... ./loaders/... ./proxy/...
 	@echo ">> examining all of the Go files"
 	@go vet -stdmethods=false ./...
 	@echo ">> linting all of the Go files GOGC=${GOGC}"
@@ -132,7 +132,7 @@ download-crds: ## Download OBO CRDs.
 	@./tools/download-rhobs-crds.sh
 
 .PHONY: unit-tests ## Run all unit tests.
-unit-tests: unit-tests-operators unit-tests-loaders unit-tests-proxy unit-tests-collectors unit-tests-utils
+unit-tests: unit-tests-operators unit-tests-loaders unit-tests-proxy unit-tests-collectors unit-tests-metrics-inspector unit-tests-utils
 
 .PHONY: unit-tests-operators
 unit-tests-operators: ## Run operators unit tests only.
@@ -149,6 +149,10 @@ unit-tests-proxy: ## Run proxy uni tests only.
 .PHONY: unit-tests-collectors
 unit-tests-collectors: ## Run collectors unit tests only. 
 	go test -race ${VERBOSE} `go list ./collectors/... | $(GREP) -v test`
+
+.PHONY: unit-tests-metrics-inspector
+unit-tests-metrics-inspector: ## Run metrics-inspector unit tests only.
+	go test -race ${VERBOSE} `go list ./metrics-inspector/... | $(GREP) -v test`
 
 .PHONY: unit-tests-utils
 unit-tests-utils: ## Run test utility unit tests only.
@@ -323,11 +327,22 @@ docker-push-dev-dashboard-loader: ## Push Grafana dashboard loader dev image.
 .PHONY: docker-build-push-dev-dashboard-loader
 docker-build-push-dev-dashboard-loader: docker-build-dev-dashboard-loader docker-push-dev-dashboard-loader ## Build and push Grafana dashboard loader dev image.
 
+.PHONY: docker-build-dev-metrics-inspector
+docker-build-dev-metrics-inspector: ## Build metrics inspector dev image.
+	$(call _dev_build,metrics-inspector/Dockerfile.dev,metrics-inspector)
+
+.PHONY: docker-push-dev-metrics-inspector
+docker-push-dev-metrics-inspector: ## Push metrics inspector dev image.
+	$(call _dev_push,metrics-inspector)
+
+.PHONY: docker-build-push-dev-metrics-inspector
+docker-build-push-dev-metrics-inspector: docker-build-dev-metrics-inspector docker-push-dev-metrics-inspector ## Build and push metrics inspector dev image.
+
 .PHONY: docker-build-dev-all
-docker-build-dev-all: docker-build-dev-mco docker-build-dev-endpoint docker-build-dev-metrics-collector docker-build-dev-rbac-proxy docker-build-dev-dashboard-loader ## Build all component dev images.
+docker-build-dev-all: docker-build-dev-mco docker-build-dev-endpoint docker-build-dev-metrics-collector docker-build-dev-rbac-proxy docker-build-dev-dashboard-loader docker-build-dev-metrics-inspector ## Build all component dev images.
 
 .PHONY: docker-push-dev-all
-docker-push-dev-all: docker-push-dev-mco docker-push-dev-endpoint docker-push-dev-metrics-collector docker-push-dev-rbac-proxy docker-push-dev-dashboard-loader ## Push all component dev images.
+docker-push-dev-all: docker-push-dev-mco docker-push-dev-endpoint docker-push-dev-metrics-collector docker-push-dev-rbac-proxy docker-push-dev-dashboard-loader docker-push-dev-metrics-inspector ## Push all component dev images.
 
 .PHONY: docker-build-push-dev-all
 docker-build-push-dev-all: docker-build-dev-all docker-push-dev-all ## Build and push all component dev images.

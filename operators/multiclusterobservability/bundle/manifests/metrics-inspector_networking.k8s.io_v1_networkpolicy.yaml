@@ -1,0 +1,38 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: metrics-inspector
+  namespace: open-cluster-management-observability
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: metrics-inspector
+      app.kubernetes.io/name: observability-metrics-inspector
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: openshift-monitoring
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
+              app.kubernetes.io/part-of: openshift-monitoring
+      ports:
+        - protocol: TCP
+          port: 8444
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: api
+              app.kubernetes.io/instance: observability
+              app.kubernetes.io/name: observatorium-api
+              app.kubernetes.io/part-of: observatorium
+      ports:
+        - protocol: TCP
+          port: 8490
+  egress:
+    - {}
+  policyTypes:
+    - Ingress
+    - Egress

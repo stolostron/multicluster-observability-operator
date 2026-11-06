@@ -1,0 +1,16 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: observability-metrics-inspector
+  labels:
+    app.kubernetes.io/component: metrics-inspector
+    app.kubernetes.io/name: observability-metrics-inspector
+    app.kubernetes.io/part-of: multicluster-observability-operator
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: observability-metrics-inspector
+subjects:
+  - kind: ServiceAccount
+    name: observability-metrics-inspector
+    namespace: open-cluster-management-observability

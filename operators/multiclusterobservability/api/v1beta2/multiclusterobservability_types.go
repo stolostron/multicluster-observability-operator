@@ -108,6 +108,15 @@ type MetricsAlertsSpec struct {
 	Enabled bool `json:"enabled,omitempty"`
 }
 
+// MetricsInspectorSpec defines the spec for the hub metrics cardinality and bucket store inspector.
+type MetricsInspectorSpec struct {
+	// Enabled defines a flag to enable/disable the hub metrics inspector.
+	//
+	// +optional
+	// +kubebuilder:validation:Optional
+	Enabled bool `json:"enabled,omitempty"`
+}
+
 // PlatformMetricsSpec defines the spec for the addon to collect, forward and store metrics
 // from fleet managed clusters.
 type PlatformMetricsSpec struct {
@@ -128,6 +137,11 @@ type PlatformMetricsSpec struct {
 	// +optional
 	// +kubebuilder:validation:Optional
 	Alerts MetricsAlertsSpec `json:"alerts,omitempty"`
+	// Inspector defines the spec for the hub metrics cardinality and bucket store inspector.
+	//
+	// +optional
+	// +kubebuilder:validation:Optional
+	Inspector MetricsInspectorSpec `json:"inspector,omitempty"`
 }
 
 // PlatformCapabilitiesSpec defines the observability capabilities managed by the addon

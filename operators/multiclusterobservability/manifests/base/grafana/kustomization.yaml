@@ -12,4 +12,3 @@ resources:
 - platform
 - platform-mcoa
 - virtualization
-- cardinality

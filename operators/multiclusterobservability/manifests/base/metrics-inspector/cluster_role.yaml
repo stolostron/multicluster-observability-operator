@@ -1,0 +1,17 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: observability-metrics-inspector
+  labels:
+    app.kubernetes.io/component: metrics-inspector
+    app.kubernetes.io/name: observability-metrics-inspector
+    app.kubernetes.io/part-of: multicluster-observability-operator
+rules:
+  # kube-rbac-proxy sidecar authentication (validates Prometheus scraper Bearer token via TokenReview)
+  - apiGroups: ["authentication.k8s.io"]
+    resources: ["tokenreviews"]
+    verbs: ["create"]
+  # kube-rbac-proxy sidecar authorization
+  - apiGroups: ["authorization.k8s.io"]
+    resources: ["subjectaccessreviews"]
+    verbs: ["get", "create"]

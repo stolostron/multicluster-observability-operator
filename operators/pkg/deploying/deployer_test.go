@@ -674,6 +674,56 @@ func TestDeploy(t *testing.T) {
 			},
 		},
 		{
+			name: "serviceaccount annotation update preserves runtime secrets and merges annotations",
+			createObj: &corev1.ServiceAccount{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "v1",
+					Kind:       "ServiceAccount",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-sa-annotations",
+					Namespace: "ns1",
+					Annotations: map[string]string{
+						"openshift.io/internal-registry-pull-secret-ref": "test-sa-dockercfg-12345",
+					},
+				},
+				ImagePullSecrets: []corev1.LocalObjectReference{
+					{Name: "test-sa-dockercfg-12345"},
+				},
+			},
+			updateObj: &corev1.ServiceAccount{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "v1",
+					Kind:       "ServiceAccount",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-sa-annotations",
+					Namespace: "ns1",
+					Annotations: map[string]string{
+						"eks.amazonaws.com/role-arn": "arn:aws:iam::123456789012:role/thanos-s3-role",
+					},
+				},
+			},
+			validateResults: func(client client.Client) {
+				namespacedName := types.NamespacedName{
+					Name:      "test-sa-annotations",
+					Namespace: "ns1",
+				}
+				obj := &corev1.ServiceAccount{}
+				client.Get(context.Background(), namespacedName, obj)
+
+				if obj.Annotations["eks.amazonaws.com/role-arn"] != "arn:aws:iam::123456789012:role/thanos-s3-role" {
+					t.Fatalf("expected desired annotation to be applied, got: %v", obj.Annotations)
+				}
+				if obj.Annotations["openshift.io/internal-registry-pull-secret-ref"] != "test-sa-dockercfg-12345" {
+					t.Fatalf("expected runtime annotation to be preserved, got: %v", obj.Annotations)
+				}
+				if len(obj.ImagePullSecrets) != 1 || obj.ImagePullSecrets[0].Name != "test-sa-dockercfg-12345" {
+					t.Fatalf("expected runtime ImagePullSecrets to be preserved, got: %v", obj.ImagePullSecrets)
+				}
+			},
+		},
+		{
 			name: "create and update the prometheus",
 			createObj: &prometheusv1.Prometheus{
 				TypeMeta: metav1.TypeMeta{
