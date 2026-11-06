@@ -51,9 +51,75 @@ If ACM is already installed and running, skip straight to:
 
 ---
 
-## Path B — Downstream dev builds
+## Path B — ART Builds
+
+Use this when you need to test against internal ART built images. These are the closest
+to release images (for release streams onboarded onto ART).
+
+### 0. Prerequisites
+
+You must have access to registry.stage.redhat.io. If you do not yet have an account one
+be created used `ETHEL`. Please follow the first step of the guide below (RH-Internal):
+https://docs.google.com/document/d/1-Qw1Y9-r-As0k9Rn0e4cl0hZZbURsVDjupjBdbEUfcI/edit?usp=sharing
+
+### 1. Add registry credentials to the cluster pull secret
+
+For accessing registry.stage.redhat.io you need to add the pull secret. You can do so using
+the username/password created in `ETEHL`. 
+
+Add your credentials to `dev-scripts/.env` (gitignored, never commit it):
+
+```bash
+# If you haven't created .env yet:
+cp dev-scripts/.env.example dev-scripts/.env
+# edit dev-scripts/.env and fill in REGISTRY_USER, REGISTRY_TOKEN and REGISTRY_URL (registry.stage.redhat.io)
+```
+
+Then run:
+
+```bash
+./dev-scripts/add-pull-secret.sh
+```
+
+Or pass them inline without the file:
+
+```bash
+REGISTRY_USER=your-ethel-username REGISTRY_TOKEN=your-ethel-password REGISTRY_HOST=registry.stage.redhat.io ./dev-scripts/add-pull-secret.sh
+```
+
+### 2. Install dev catalog sources and ACM
+
+Latest dev snapshot:
+
+```bash
+ACM_VERSION=5.0 MCE_VERSION=5.0 ./dev-scripts/setup-art-catalog.sh
+```
+
+This applies an `ImageDigestMirrorSet` (no node reboots required, unlike the legacy `ImageContentSourcePolicy`),
+installs the OLM catalog sources, and creates + waits for the `MultiClusterHub` CR.
+
+### 3. Deploy observability
+
+```bash
+./dev-scripts/setup-observability.sh
+```
+
+### 4. Install `ImageDigestMirrorSet` on managed clusters
+
+Any managed clusters will also need an ImageDigestMirrorSet configured. This can be done with
+the below command (make sure to login to the spoke first):
+
+```bash
+ACM_VERSION=5.0 MCE_VERSION=5.0 SPOKE=1 ./dev-scripts/setup-art-catalog.sh
+```
+You also need to add the pull secret on the managed cluster. Follow the same steps as the hub
+as described in step 1.
+
+---
+## Path C — Downstream dev builds
 
 Use this when you need to test against internal dev images from `quay.io:443/acm-d`.
+Prefer path B unless ART builds are not ready for this release.
 
 ### 1. Add quay.io credentials to the cluster pull secret
 
@@ -66,7 +132,7 @@ Add your credentials to `dev-scripts/.env` (gitignored, never commit it):
 ```bash
 # If you haven't created .env yet:
 cp dev-scripts/.env.example dev-scripts/.env
-# edit dev-scripts/.env and fill in QUAY_USER and QUAY_TOKEN
+# edit dev-scripts/.env and fill in REGISTRY_USER, REGISTRY_TOKEN, and REGISTRY_HOST (quay.io:443)
 ```
 
 Then run:
@@ -78,7 +144,7 @@ Then run:
 Or pass them inline without the file:
 
 ```bash
-QUAY_USER=rh-ee-you QUAY_TOKEN=<your-cli-token> ./dev-scripts/add-pull-secret.sh
+REGISTRY_USER=rh-ee-you REGISTRY_TOKEN=<your-cli-token> REGISTRY_HOST='quay.io:443' ./dev-scripts/add-pull-secret.sh
 ```
 
 ### 2. Install dev catalog sources and ACM

@@ -1,0 +1,79 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: CatalogSource
+metadata:
+  name: acm-art
+  namespace: openshift-marketplace
+spec:
+  displayName: acm-art
+  image: 'quay.io/redhat-user-workloads/ocp-art-tenant/art-fbc:${ACM_CATALOG_TAG}'
+  publisher: grpc
+  sourceType: grpc
+  updateStrategy:
+    registryPoll:
+      interval: 10m
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: open-cluster-management
+---
+apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata:
+  name: default
+  namespace: open-cluster-management
+spec:
+  targetNamespaces:
+    - open-cluster-management
+---
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: acm-sub
+  namespace: open-cluster-management
+spec:
+  channel: release-${ACM_VERSION}
+  installPlanApproval: Automatic
+  name: advanced-cluster-management
+  source: acm-art
+  sourceNamespace: openshift-marketplace
+---
+apiVersion: operators.coreos.com/v1alpha1
+kind: CatalogSource
+metadata:
+  name: mce-art
+  namespace: openshift-marketplace
+spec:
+  displayName: mce-art
+  image: "quay.io/redhat-user-workloads/ocp-art-tenant/art-fbc:${MCE_CATALOG_TAG}"
+  publisher: grpc
+  sourceType: grpc
+  updateStrategy:
+    registryPoll:
+      interval: 10m
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: multicluster-engine
+---
+apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata:
+  name: default
+  namespace: multicluster-engine
+spec:
+  targetNamespaces:
+    - multicluster-engine
+---
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: mce-sub
+  namespace: multicluster-engine
+spec:
+  channel: stable-${MCE_VERSION}
+  installPlanApproval: Automatic
+  name: multicluster-engine
+  source: mce-art
+  sourceNamespace: openshift-marketplace
