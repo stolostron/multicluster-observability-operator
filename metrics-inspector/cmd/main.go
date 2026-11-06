@@ -26,6 +26,7 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/metrics-inspector/pkg/estimator"
 	"github.com/stolostron/multicluster-observability-operator/metrics-inspector/pkg/protoparser"
 	"github.com/stolostron/multicluster-observability-operator/metrics-inspector/pkg/remotewrite"
+	k8sapiflag "k8s.io/component-base/cli/flag"
 )
 
 func main() {
@@ -41,6 +42,8 @@ func run() int {
 		tlsServerCertFile  = flag.String("tls.server.cert-file", "", "Optional path to the server TLS certificate file for the Remote Write listener.")
 		tlsServerKeyFile   = flag.String("tls.server.key-file", "", "Optional path to the server TLS private key file for the Remote Write listener.")
 		tlsClientCAFile    = flag.String("tls.client-ca-file", "", "Optional path to the client CA certificate bundle for mTLS verification on the Remote Write listener.")
+		tlsMinVersion      = flag.String("tls-min-version", "VersionTLS12", "Minimum TLS version supported by the Remote Write listener (e.g. VersionTLS12, VersionTLS13).")
+		tlsCipherSuites    = flag.String("tls-cipher-suites", "", "Comma-separated list of TLS cipher suite names for the Remote Write listener. If omitted, Go defaults are used.")
 		remoteWriteURL     = flag.String("remote-write.url", "", "Thanos Receive Remote Write v1 endpoint URL for periodic snapshot flushing.")
 		flushInterval      = flag.Duration("remote-write.interval", remotewrite.DefaultFlushInterval, "Interval between Remote Write snapshot flushes.")
 		initialDelay       = flag.Duration("remote-write.initial-delay", remotewrite.DefaultInitialDelay, "Initial warm-up delay after startup before pushing the first Remote Write snapshot.")
@@ -134,7 +137,7 @@ func run() int {
 
 	useTLS := *tlsServerCertFile != "" || *tlsServerKeyFile != ""
 	if useTLS {
-		tlsCfg, err := buildTLSConfig(*tlsServerCertFile, *tlsServerKeyFile, *tlsClientCAFile)
+		tlsCfg, err := buildTLSConfig(*tlsServerCertFile, *tlsServerKeyFile, *tlsClientCAFile, *tlsMinVersion, *tlsCipherSuites)
 		if err != nil {
 			logger.Error("failed to configure TLS for Remote Write server", "err", err)
 			return 1
@@ -249,25 +252,47 @@ func parseLogLevel(level string) (slog.Level, error) {
 	}
 }
 
-func buildTLSConfig(certFile, keyFile, clientCAFile string) (*tls.Config, error) {
-	if _, err := loadHandshakeTLSConfig(certFile, keyFile, clientCAFile); err != nil {
+func buildTLSConfig(certFile, keyFile, clientCAFile, minVersionStr, cipherSuitesStr string) (*tls.Config, error) {
+	if minVersionStr == "" {
+		minVersionStr = "VersionTLS12"
+	}
+	minVersion, err := k8sapiflag.TLSVersion(minVersionStr)
+	if err != nil {
+		return nil, fmt.Errorf("invalid TLS min version %q: %w", minVersionStr, err)
+	}
+
+	var cipherSuites []uint16
+	if trimmed := strings.TrimSpace(cipherSuitesStr); trimmed != "" {
+		parts := strings.Split(trimmed, ",")
+		for i := range parts {
+			parts[i] = strings.TrimSpace(parts[i])
+		}
+		cipherSuites, err = k8sapiflag.TLSCipherSuites(parts)
+		if err != nil {
+			return nil, fmt.Errorf("invalid TLS cipher suites %q: %w", cipherSuitesStr, err)
+		}
+	}
+
+	if _, err := loadHandshakeTLSConfig(certFile, keyFile, clientCAFile, minVersion, cipherSuites); err != nil {
 		return nil, err
 	}
-	return &tls.Config{
-		MinVersion: tls.VersionTLS12,
+	return &tls.Config{ //nolint:gosec // TLS min version and cipher suites are configured dynamically from the cluster TLS security profile
+		MinVersion:   minVersion,
+		CipherSuites: cipherSuites,
 		GetConfigForClient: func(*tls.ClientHelloInfo) (*tls.Config, error) {
-			return loadHandshakeTLSConfig(certFile, keyFile, clientCAFile)
+			return loadHandshakeTLSConfig(certFile, keyFile, clientCAFile, minVersion, cipherSuites)
 		},
 	}, nil
 }
 
-func loadHandshakeTLSConfig(certFile, keyFile, clientCAFile string) (*tls.Config, error) {
+func loadHandshakeTLSConfig(certFile, keyFile, clientCAFile string, minVersion uint16, cipherSuites []uint16) (*tls.Config, error) {
 	cert, err := tls.LoadX509KeyPair(certFile, keyFile)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load server TLS key pair: %w", err)
 	}
-	cfg := &tls.Config{
-		MinVersion:   tls.VersionTLS12,
+	cfg := &tls.Config{ //nolint:gosec // TLS min version and cipher suites are configured dynamically from the cluster TLS security profile
+		MinVersion:   minVersion,
+		CipherSuites: cipherSuites,
 		Certificates: []tls.Certificate{cert},
 	}
 	if clientCAFile != "" {
