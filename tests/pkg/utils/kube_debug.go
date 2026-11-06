@@ -43,6 +43,7 @@ const (
 	maxContainerLogLineLength     = 1000
 	maxTailLines                  = 20
 	maxPrecedingErrorLines        = 30
+	localWorkAgentNamespace       = "open-cluster-management-agent"
 	DebugDumpStartMarker          = "==================== [DEBUG DUMP START] ===================="
 	DebugDumpEndMarker            = "==================== [DEBUG DUMP END] ======================"
 	SectionMCOCR                  = "---------- [SECTION: MCO CR] ----------"
@@ -50,8 +51,10 @@ const (
 	SectionManagedClusterAddOns   = "---------- [SECTION: ManagedClusterAddOns] ----------"
 	SectionClusterManagementAddOn = "---------- [SECTION: ClusterManagementAddOn] ----------"
 	SectionManifestWorks          = "---------- [SECTION: Observability ManifestWorks] ----------"
+	SectionAppliedManifestWorks   = "---------- [SECTION: Observability AppliedManifestWorks] ----------"
 	SectionAddOnDeploymentConfigs = "---------- [SECTION: AddOnDeploymentConfigs] ----------"
 	SectionHubWorkloads           = "---------- [SECTION: Hub Workloads & Pods] ----------"
+	SectionLocalWorkAgent         = "---------- [SECTION: Local-Cluster Work Agent] ----------"
 	SectionSpokeWorkloads         = "---------- [SECTION: Spoke Workloads & Pods] ----------"
 	SectionWarningEvents          = "---------- [SECTION: Recent Warning Events] ----------"
 	statusUnknown                 = "Unknown"
@@ -234,6 +237,9 @@ func LogFailingTestStandardDebugInfo(opt TestOptions, isMCOA bool) {
 
 	klog.Info(SectionManifestWorks)
 	printManifestWorks(hubDynClient)
+	// local-cluster applies its ManifestWorks on the hub, so its AppliedManifestWorks are here too.
+	klog.Info(SectionAppliedManifestWorks)
+	printAppliedManifestWorks(hubDynClient)
 
 	if isMCOA {
 		klog.Info(SectionAddOnDeploymentConfigs)
@@ -262,6 +268,9 @@ func LogFailingTestStandardDebugInfo(opt TestOptions, isMCOA bool) {
 		CheckJobsInNamespace(hubClient, MCO_AGENT_ADDON_NAMESPACE)
 		CheckPodsInNamespace(hubClient, MCO_AGENT_ADDON_NAMESPACE, []string{"endpoint-monitoring-operator", "prom-agent", "observability-monitoring-cleanup"}, map[string]string{})
 		printMCOACustomResources(hubDynClient, MCO_AGENT_ADDON_NAMESPACE)
+		// The local-cluster work agent finalizes addon ManifestWorks after their resources are removed.
+		klog.Info(SectionLocalWorkAgent)
+		logLocalWorkAgentPods(hubClient)
 	}
 
 	// Section 5: Recent Warning Events
@@ -2571,6 +2580,98 @@ func printManifestWorks(client dynamic.Interface) {
 		return
 	}
 	klog.Info(out)
+}
+
+func formatAppliedManifestWorks(items []unstructured.Unstructured) string {
+	var sb strings.Builder
+	for _, obj := range items {
+		workName, _, _ := unstructured.NestedString(obj.Object, "spec", "manifestWorkName")
+		if !strings.Contains(workName, "observability") {
+			continue
+		}
+
+		if sb.Len() == 0 {
+			sb.WriteString("Observability AppliedManifestWorks:\n")
+		}
+		deleting := statusNo
+		deletionTimestamp := "-"
+		if ts := obj.GetDeletionTimestamp(); ts != nil {
+			deleting = statusYes
+			deletionTimestamp = ts.Format(time.RFC3339)
+		}
+		// OCM removes entries from appliedResources as deletion completes, so remaining entries
+		// identify the resources the work agent is still tracking during finalization.
+		resources, _, _ := unstructured.NestedSlice(obj.Object, "status", "appliedResources")
+		_, _ = fmt.Fprintf(&sb, "  - %s: ManifestWork=%s, deleting=%s (%s), finalizers=%v, status.appliedResources=%d\n",
+			obj.GetName(), workName, deleting, deletionTimestamp, obj.GetFinalizers(), len(resources))
+
+		for _, resource := range resources {
+			meta, ok := resource.(map[string]any)
+			if !ok {
+				continue
+			}
+			group, _, _ := unstructured.NestedString(meta, "group")
+			version, _, _ := unstructured.NestedString(meta, "version")
+			resourceName, _, _ := unstructured.NestedString(meta, "resource")
+			namespace, _, _ := unstructured.NestedString(meta, "namespace")
+			name, _, _ := unstructured.NestedString(meta, "name")
+			uid, _, _ := unstructured.NestedString(meta, "uid")
+			if group == "" {
+				group = "core"
+			}
+			if namespace == "" {
+				namespace = "<cluster>"
+			}
+			_, _ = fmt.Fprintf(&sb, "      %s/%s %s %s/%s (uid=%s)\n",
+				group, version, resourceName, namespace, name, uid)
+		}
+	}
+	return sb.String()
+}
+
+func printAppliedManifestWorks(client dynamic.Interface) {
+	objs, err := client.Resource(NewOCMAppliedManifestworksGVR()).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		klog.Errorf("failed to list AppliedManifestWorks on the hub: %v", err)
+		return
+	}
+
+	out := formatAppliedManifestWorks(objs.Items)
+	if out == "" {
+		klog.V(1).Info("No observability AppliedManifestWorks found on the hub")
+		return
+	}
+	klog.Info(out)
+}
+
+func selectWorkAgentPods(pods []corev1.Pod) []corev1.Pod {
+	workAgentPods := make([]corev1.Pod, 0)
+	for _, pod := range pods {
+		if strings.Contains(pod.Name, "work-agent") {
+			workAgentPods = append(workAgentPods, pod)
+		}
+	}
+	slices.SortFunc(workAgentPods, func(a, b corev1.Pod) int { return strings.Compare(a.Name, b.Name) })
+	return workAgentPods
+}
+
+func logLocalWorkAgentPods(client kubernetes.Interface) {
+	pods, err := client.CoreV1().Pods(localWorkAgentNamespace).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		klog.Errorf("failed to list local-cluster work-agent pods in namespace %s: %v", localWorkAgentNamespace, err)
+		return
+	}
+
+	workAgentPods := selectWorkAgentPods(pods.Items)
+	if len(workAgentPods) == 0 {
+		klog.V(1).Infof("No local-cluster work-agent pods found in namespace %s", localWorkAgentNamespace)
+		return
+	}
+
+	printPodsStatuses(workAgentPods)
+	for _, pod := range workAgentPods {
+		LogPodLogs(client, localWorkAgentNamespace, pod)
+	}
 }
 
 // GetDiscoveredManagedClusterNames queries the Hub's ManagedCluster resources and returns their names.
