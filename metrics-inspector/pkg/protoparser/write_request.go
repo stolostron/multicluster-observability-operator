@@ -5,12 +5,12 @@
 package protoparser
 
 import (
-	"encoding/binary"
 	"fmt"
 	"unsafe"
 
 	"github.com/cespare/xxhash/v2"
 	"github.com/prometheus/prometheus/prompb"
+	"google.golang.org/protobuf/encoding/protowire"
 )
 
 // DefaultMaxWriteRequestSize is the default maximum uncompressed Remote Write payload size (64 MiB).
@@ -80,24 +80,28 @@ func (wr *WriteRequest) UnmarshalWriteRequest(src []byte, hashEachLabel bool) er
 	// }
 	offset := 0
 	for offset < len(src) {
-		fieldNum, wireType, n := consumeTag(src[offset:])
-		if n <= 0 {
+		fieldNum, wireType, n := protowire.ConsumeTag(src[offset:])
+		if n < 0 {
 			return fmt.Errorf("cannot read WriteRequest field tag at offset %d", offset)
 		}
 		offset += n
 
-		payload, m := consumeField(src[offset:], wireType)
-		if m <= 0 {
+		if fieldNum != 1 {
+			m := protowire.ConsumeFieldValue(fieldNum, wireType, src[offset:])
+			if m < 0 {
+				return fmt.Errorf("cannot read WriteRequest field %d payload at offset %d", fieldNum, offset)
+			}
+			offset += m
+			continue
+		}
+		if wireType != protowire.BytesType {
+			return fmt.Errorf("unexpected wireType %d for TimeSeries field", wireType)
+		}
+		payload, m := protowire.ConsumeBytes(src[offset:])
+		if m < 0 {
 			return fmt.Errorf("cannot read WriteRequest field %d payload at offset %d", fieldNum, offset)
 		}
 		offset += m
-
-		if fieldNum != 1 {
-			continue
-		}
-		if wireType != 2 {
-			return fmt.Errorf("unexpected wireType %d for TimeSeries field", wireType)
-		}
 
 		if cap(tms) > len(tms) {
 			tms = tms[:len(tms)+1]
@@ -142,25 +146,29 @@ func unmarshalTimeSeriesLabels(
 	hashesDstLen := len(hashesDst)
 	offset := 0
 	for offset < len(src) {
-		fieldNum, wireType, n := consumeTag(src[offset:])
-		if n <= 0 {
+		fieldNum, wireType, n := protowire.ConsumeTag(src[offset:])
+		if n < 0 {
 			return dst, hashesDst, fmt.Errorf("cannot read TimeSeries field tag")
 		}
 		offset += n
 
-		payload, m := consumeField(src[offset:], wireType)
-		if m <= 0 {
+		if fieldNum != 1 {
+			// Skip Samples, Exemplars, Histograms.
+			m := protowire.ConsumeFieldValue(fieldNum, wireType, src[offset:])
+			if m < 0 {
+				return dst, hashesDst, fmt.Errorf("cannot read TimeSeries field %d payload", fieldNum)
+			}
+			offset += m
+			continue
+		}
+		if wireType != protowire.BytesType {
+			return dst, hashesDst, fmt.Errorf("unexpected wireType %d for Label field", wireType)
+		}
+		payload, m := protowire.ConsumeBytes(src[offset:])
+		if m < 0 {
 			return dst, hashesDst, fmt.Errorf("cannot read TimeSeries field %d payload", fieldNum)
 		}
 		offset += m
-
-		if fieldNum != 1 {
-			// Skip Samples, Exemplars, Histograms.
-			continue
-		}
-		if wireType != 2 {
-			return dst, hashesDst, fmt.Errorf("unexpected wireType %d for Label field", wireType)
-		}
 
 		if cap(dst) > len(dst) {
 			dst = dst[:len(dst)+1]
@@ -195,74 +203,43 @@ func unmarshalLabel(dst *prompb.Label, src []byte) ([]byte, error) {
 	var valueBytes []byte
 	offset := 0
 	for offset < len(src) {
-		fieldNum, wireType, n := consumeTag(src[offset:])
-		if n <= 0 {
+		fieldNum, wireType, n := protowire.ConsumeTag(src[offset:])
+		if n < 0 {
 			return nil, fmt.Errorf("cannot read Label tag")
 		}
 		offset += n
 
-		payload, m := consumeField(src[offset:], wireType)
-		if m <= 0 {
-			return nil, fmt.Errorf("cannot read Label field %d", fieldNum)
-		}
-		offset += m
-
 		switch fieldNum {
 		case 1:
-			if wireType != 2 {
+			if wireType != protowire.BytesType {
 				return nil, fmt.Errorf("unexpected wireType %d for Label.name", wireType)
 			}
+			payload, m := protowire.ConsumeBytes(src[offset:])
+			if m < 0 {
+				return nil, fmt.Errorf("cannot read Label field %d", fieldNum)
+			}
+			offset += m
 			dst.Name = unsafeBytesToString(payload)
 		case 2:
-			if wireType != 2 {
+			if wireType != protowire.BytesType {
 				return nil, fmt.Errorf("unexpected wireType %d for Label.value", wireType)
 			}
+			payload, m := protowire.ConsumeBytes(src[offset:])
+			if m < 0 {
+				return nil, fmt.Errorf("cannot read Label field %d", fieldNum)
+			}
+			offset += m
 			valueBytes = payload
 			dst.Value = unsafeBytesToString(payload)
+		default:
+			m := protowire.ConsumeFieldValue(fieldNum, wireType, src[offset:])
+			if m < 0 {
+				return nil, fmt.Errorf("cannot read Label field %d", fieldNum)
+			}
+			offset += m
 		}
 	}
 	return valueBytes, nil
-}
-
-func consumeTag(src []byte) (fieldNum uint32, wireType uint8, n int) {
-	v, n := binary.Uvarint(src)
-	if n <= 0 || (v>>3) > 0x1fffffff {
-		return 0, 0, 0
-	}
-	return uint32(v >> 3), uint8(v & 7), n //nolint:gosec // bounded by protobuf max field number check above
-}
-
-func consumeField(src []byte, wireType uint8) (payload []byte, n int) {
-	switch wireType {
-	case 0: // Varint
-		_, n = binary.Uvarint(src)
-		if n <= 0 {
-			return nil, 0
-		}
-		return src[:n], n
-	case 1: // 64-bit
-		if len(src) < 8 {
-			return nil, 0
-		}
-		return src[:8], 8
-	case 2: // Length-delimited
-		length, m := binary.Uvarint(src)
-		if m <= 0 {
-			return nil, 0
-		}
-		total := uint64(m) + length
-		if total > uint64(len(src)) || total < uint64(m) {
-			return nil, 0
-		}
-		return src[m:total], int(total) //nolint:gosec // total <= len(src) verified above
-	case 5: // 32-bit
-		if len(src) < 4 {
-			return nil, 0
-		}
-		return src[:4], 4
-	default:
-		return nil, 0
-	}
 }
 
 func unsafeBytesToString(b []byte) string {

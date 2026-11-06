@@ -160,6 +160,7 @@ func (p *Pusher) Run(ctx context.Context) {
 
 // FlushAt evaluates all stream snapshots at now and pushes them to the configured Remote Write endpoint.
 func (p *Pusher) FlushAt(ctx context.Context, now time.Time) error {
+	flushStart := time.Now()
 	snaps := p.engine.Snapshots(now)
 	tsMs := now.UnixMilli()
 
@@ -186,6 +187,10 @@ func (p *Pusher) FlushAt(ctx context.Context, now time.Time) error {
 	}
 
 	p.lastPushTimestampS.Store(now.Unix())
+	p.cfg.Logger.Debug("pushed cardinality snapshots",
+		"series_count", len(allSeries),
+		"duration_ms", time.Since(flushStart).Milliseconds(),
+	)
 	return nil
 }
 

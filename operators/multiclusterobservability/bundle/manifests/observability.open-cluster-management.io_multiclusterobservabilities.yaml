@@ -10869,6 +10869,15 @@ spec:
                                   the platform metrics collection.
                                 type: boolean
                             type: object
+                          inspector:
+                            description: Inspector defines the spec for the hub metrics
+                              cardinality and bucket store inspector.
+                            properties:
+                              enabled:
+                                description: Enabled defines a flag to enable/disable
+                                  the hub metrics inspector.
+                                type: boolean
+                            type: object
                           ui:
                             description: UI defines the spec for the addon to enable
                               UI through COO on the hub

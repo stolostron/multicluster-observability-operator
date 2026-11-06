@@ -15,8 +15,6 @@ import (
 type serverMetrics struct {
 	writeRequestsTotal atomic.Uint64
 	writeErrorsTotal   atomic.Uint64
-	configReloadsTotal atomic.Uint64
-	configErrorsTotal  atomic.Uint64
 }
 
 var (
@@ -60,16 +58,6 @@ var (
 		"Unix timestamp in seconds of the last successful Remote Write snapshot flush.",
 		nil, nil,
 	)
-	descConfigReloadsTotal = prometheus.NewDesc(
-		"cardinality_estimator_config_reloads_total",
-		"Total number of successful SIGHUP configuration reloads.",
-		nil, nil,
-	)
-	descConfigReloadErrorsTotal = prometheus.NewDesc(
-		"cardinality_estimator_config_reload_errors_total",
-		"Total number of failed SIGHUP configuration reloads.",
-		nil, nil,
-	)
 )
 
 type operationalCollector struct {
@@ -87,8 +75,6 @@ func (c operationalCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- descPushSuccessTotal
 	ch <- descPushErrorsTotal
 	ch <- descLastPushTimestampSecs
-	ch <- descConfigReloadsTotal
-	ch <- descConfigReloadErrorsTotal
 }
 
 func (c operationalCollector) Collect(ch chan<- prometheus.Metric) {
@@ -100,6 +86,4 @@ func (c operationalCollector) Collect(ch chan<- prometheus.Metric) {
 	ch <- prometheus.MustNewConstMetric(descPushSuccessTotal, prometheus.CounterValue, float64(c.pusher.PushSuccessTotal()))
 	ch <- prometheus.MustNewConstMetric(descPushErrorsTotal, prometheus.CounterValue, float64(c.pusher.PushErrorsTotal()))
 	ch <- prometheus.MustNewConstMetric(descLastPushTimestampSecs, prometheus.GaugeValue, float64(c.pusher.LastPushTimestampSeconds()))
-	ch <- prometheus.MustNewConstMetric(descConfigReloadsTotal, prometheus.CounterValue, float64(c.m.configReloadsTotal.Load()))
-	ch <- prometheus.MustNewConstMetric(descConfigReloadErrorsTotal, prometheus.CounterValue, float64(c.m.configErrorsTotal.Load()))
 }

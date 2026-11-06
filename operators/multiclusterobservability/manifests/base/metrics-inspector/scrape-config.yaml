@@ -27,8 +27,6 @@ spec:
     - '{__name__="thanos_bucket_storage_bytes"}'
     - '{__name__="thanos_bucket_sync_errors_total"}'
     - '{__name__="thanos_bucket_syncs_total"}'
-    - '{__name__="cardinality_estimator_config_reload_errors_total"}'
-    - '{__name__="cardinality_estimator_config_reloads_total"}'
     - '{__name__="cardinality_estimator_deduplicated_series_total"}'
     - '{__name__="cardinality_estimator_ingested_series_total"}'
     - '{__name__="cardinality_estimator_last_push_timestamp_seconds"}'

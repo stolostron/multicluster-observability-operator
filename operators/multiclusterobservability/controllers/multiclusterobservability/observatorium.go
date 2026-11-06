@@ -629,11 +629,20 @@ func newAPISpec(c client.Client, mco *mcov1beta2.MultiClusterObservability, tlsP
 		}
 	}
 
-	// Always replicate incoming Remote Write payloads to the Hub metrics inspector service.
-	eps = append(eps, MetricsInspectorWriteEndpoint())
+	if rendering.MetricsInspectorEnabled(mco) {
+		ep, secrets := rendering.MetricsInspectorWriteEndpoint()
+		for _, s := range secrets {
+			if !slices.Contains(mountSecrets, s) {
+				mountSecrets = append(mountSecrets, s)
+			}
+		}
+		eps = append(eps, ep)
+	}
 
-	if err := applyEndpointsSecret(c, eps); err != nil {
-		return apiSpec, err
+	if len(eps) > 0 || (mco.Spec.StorageConfig != nil && mco.Spec.StorageConfig.WriteStorage != nil) {
+		if err := applyEndpointsSecret(c, eps); err != nil {
+			return apiSpec, err
+		}
 	}
 	if len(eps) > 0 {
 		apiSpec.AdditionalWriteEndpoints = &obsv1alpha1.EndpointsConfig{

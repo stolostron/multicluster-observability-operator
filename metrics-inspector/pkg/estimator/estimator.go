@@ -499,7 +499,7 @@ func (gs *groupSize) totalSize() int64 {
 			}
 		}
 		gs.rejectMu.Unlock()
-		size += int64(rejectSize) //nolint:gosec // HLL estimate is bounded well below math.MaxInt64
+		size += int64(rejectSize)
 	}
 	return size
 }
@@ -513,9 +513,9 @@ type intervalPipeline struct {
 
 // Engine coordinates Bloom filter deduplication and HLL estimation across all configured streams.
 type Engine struct {
-	mu          sync.RWMutex
 	pipelines   []*intervalPipeline
 	fingerprint bool
+	stopped     atomic.Bool
 
 	ingestedSeriesTotal     atomic.Uint64
 	deduplicatedSeriesTotal atomic.Uint64
@@ -523,17 +523,8 @@ type Engine struct {
 
 // NewEngine creates and starts an Engine from the validated Config.
 func NewEngine(cfg *Config) (*Engine, error) {
-	eng := &Engine{}
-	if err := eng.Reload(cfg); err != nil {
-		return nil, err
-	}
-	return eng, nil
-}
-
-// Reload atomically replaces the active pipelines with those defined in cfg.
-func (eng *Engine) Reload(cfg *Config) error {
 	if err := cfg.Validate(); err != nil {
-		return err
+		return nil, err
 	}
 
 	byInterval := make(map[time.Duration][]*Estimator)
@@ -546,7 +537,7 @@ func (eng *Engine) Reload(cfg *Config) error {
 					created.Stop()
 				}
 			}
-			return err
+			return nil, err
 		}
 		if _, exists := byInterval[sc.Interval]; !exists {
 			intervals = append(intervals, sc.Interval)
@@ -554,33 +545,27 @@ func (eng *Engine) Reload(cfg *Config) error {
 		byInterval[sc.Interval] = append(byInterval[sc.Interval], est)
 	}
 
-	newPipelines := make([]*intervalPipeline, 0, len(intervals))
+	pipelines := make([]*intervalPipeline, 0, len(intervals))
 	for _, iv := range intervals {
-		newPipelines = append(newPipelines, &intervalPipeline{
+		pipelines = append(pipelines, &intervalPipeline{
 			interval:   iv,
 			dedup:      NewDeduplicator(iv, cfg.MaxItemsPerInterval),
 			estimators: byInterval[iv],
 		})
 	}
 
-	eng.mu.Lock()
-	oldPipelines := eng.pipelines
-	eng.pipelines = newPipelines
-	eng.fingerprint = cfg.HasLabelKeyword()
-	eng.mu.Unlock()
-
-	stopPipelines(oldPipelines)
-	return nil
+	return &Engine{
+		pipelines:   pipelines,
+		fingerprint: cfg.HasLabelKeyword(),
+	}, nil
 }
 
 // Stop halts all active Deduplicators and Estimators.
 func (eng *Engine) Stop() {
-	eng.mu.Lock()
-	old := eng.pipelines
-	eng.pipelines = nil
-	eng.mu.Unlock()
-
-	stopPipelines(old)
+	if !eng.stopped.CompareAndSwap(false, true) {
+		return
+	}
+	stopPipelines(eng.pipelines)
 }
 
 func stopPipelines(pipelines []*intervalPipeline) {
@@ -594,8 +579,6 @@ func stopPipelines(pipelines []*intervalPipeline) {
 
 // FingerprintLabels reports whether the parser should compute individual label fingerprints.
 func (eng *Engine) FingerprintLabels() bool {
-	eng.mu.RLock()
-	defer eng.mu.RUnlock()
 	return eng.fingerprint
 }
 
@@ -605,9 +588,6 @@ func (eng *Engine) Ingest(tss []protoparser.TimeSeries) {
 		return
 	}
 	eng.ingestedSeriesTotal.Add(uint64(len(tss)))
-
-	eng.mu.RLock()
-	defer eng.mu.RUnlock()
 
 	for _, p := range eng.pipelines {
 		// Filter out series already seen in this interval's Bloom filter.
@@ -636,9 +616,6 @@ func (eng *Engine) Ingest(tss []protoparser.TimeSeries) {
 
 // Snapshots evaluates and returns point-in-time Snapshots for all active streams.
 func (eng *Engine) Snapshots(now time.Time) []Snapshot {
-	eng.mu.RLock()
-	defer eng.mu.RUnlock()
-
 	total := 0
 	for _, p := range eng.pipelines {
 		total += len(p.estimators)

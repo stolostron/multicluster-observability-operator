@@ -163,7 +163,7 @@ func (s *Sketch) insertSparse(idx uint32, rho uint8) {
 		return 0
 	})
 	if found {
-		oldRho := uint8(s.sparseList[pos] & 0x3f) //nolint:gosec // masked to 6 bits
+		oldRho := uint8(s.sparseList[pos] & 0x3f)
 		if rho > oldRho {
 			s.sparseList[pos] = entry
 		}
@@ -184,7 +184,7 @@ func (s *Sketch) promoteToDense() {
 	regs := getRegisters(s.precision)
 	for _, entry := range s.sparseList {
 		idx := entry >> 6
-		rho := uint8(entry & 0x3f) //nolint:gosec // masked to 6 bits
+		rho := uint8(entry & 0x3f)
 		if rho > regs[idx] {
 			regs[idx] = rho
 		}
@@ -206,7 +206,7 @@ func (s *Sketch) Merge(other *Sketch) error {
 	if other.sparse {
 		for _, entry := range other.sparseList {
 			idx := entry >> 6
-			rho := uint8(entry & 0x3f) //nolint:gosec // masked to 6 bits
+			rho := uint8(entry & 0x3f)
 			if s.sparse {
 				s.insertSparse(idx, rho)
 			} else if rho > s.regs[idx] {
@@ -301,90 +301,4 @@ func tau(x float64) float64 {
 		}
 	}
 	return z / 3.0
-}
-
-type gobSketch struct {
-	Precision  uint8
-	Sparse     bool
-	SparseList []uint32
-	Regs       []uint8
-}
-
-// GobEncode implements gob.GobEncoder for snapshot serialization.
-func (s *Sketch) GobEncode() ([]byte, error) {
-	gs := gobSketch{
-		Precision:  s.precision,
-		Sparse:     s.sparse,
-		SparseList: s.sparseList,
-		Regs:       s.regs,
-	}
-	return encodeGobSketch(gs)
-}
-
-// GobDecode implements gob.GobDecoder for snapshot deserialization.
-func (s *Sketch) GobDecode(data []byte) error {
-	gs, err := decodeGobSketch(data)
-	if err != nil {
-		return err
-	}
-	s.precision = gs.Precision
-	s.sparse = gs.Sparse
-	s.sparseList = gs.SparseList
-	s.regs = gs.Regs
-	return nil
-}
-
-func encodeGobSketch(gs gobSketch) ([]byte, error) {
-	// Compact binary encoding: [precision(1B), sparse(1B), payload...]
-	if gs.Sparse {
-		out := make([]byte, 2+len(gs.SparseList)*4)
-		out[0] = gs.Precision
-		out[1] = 1
-		for i, v := range gs.SparseList {
-			offset := 2 + i*4
-			out[offset] = byte(v >> 24)
-			out[offset+1] = byte(v >> 16)
-			out[offset+2] = byte(v >> 8)
-			out[offset+3] = byte(v)
-		}
-		return out, nil
-	}
-	out := make([]byte, 2+len(gs.Regs))
-	out[0] = gs.Precision
-	out[1] = 0
-	copy(out[2:], gs.Regs)
-	return out, nil
-}
-
-func decodeGobSketch(data []byte) (gobSketch, error) {
-	if len(data) < 2 {
-		return gobSketch{}, fmt.Errorf("invalid sketch binary data: length %d", len(data))
-	}
-	gs := gobSketch{
-		Precision: data[0],
-		Sparse:    data[1] == 1,
-	}
-	payload := data[2:]
-	if gs.Sparse {
-		if len(payload)%4 != 0 {
-			return gobSketch{}, fmt.Errorf("invalid sparse sketch payload length: %d", len(payload))
-		}
-		n := len(payload) / 4
-		gs.SparseList = make([]uint32, n)
-		for i := range n {
-			offset := i * 4
-			gs.SparseList[i] = (uint32(payload[offset]) << 24) |
-				(uint32(payload[offset+1]) << 16) |
-				(uint32(payload[offset+2]) << 8) |
-				uint32(payload[offset+3])
-		}
-		return gs, nil
-	}
-	expected := 1 << gs.Precision
-	if len(payload) != expected {
-		return gobSketch{}, fmt.Errorf("invalid dense sketch payload length: got %d, want %d", len(payload), expected)
-	}
-	gs.Regs = getRegisters(gs.Precision)
-	copy(gs.Regs, payload)
-	return gs, nil
 }

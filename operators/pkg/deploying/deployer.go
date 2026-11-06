@@ -446,7 +446,8 @@ func (d *Deployer) updateServiceAccount(ctx context.Context, desiredObj, runtime
 	}
 
 	if !equality.Semantic.DeepDerivative(desiredServiceAccount.ImagePullSecrets, runtimeServiceAccount.ImagePullSecrets) ||
-		!equality.Semantic.DeepDerivative(desiredServiceAccount.Secrets, runtimeServiceAccount.Secrets) {
+		!equality.Semantic.DeepDerivative(desiredServiceAccount.Secrets, runtimeServiceAccount.Secrets) ||
+		!isMapSubset(runtimeServiceAccount.Annotations, desiredServiceAccount.Annotations) {
 		logUpdateInfo(runtimeObj)
 		return d.client.Update(ctx, desiredServiceAccount)
 	}

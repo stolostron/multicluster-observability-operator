@@ -282,6 +282,11 @@ func (ins *Inspector) Sync(ctx context.Context) error {
 				fetchMu.Lock()
 				fetched[ulidStr] = summary
 				fetchMu.Unlock()
+				ins.logger.Debug("fetched thanos block meta.json",
+					"ulid", ulidStr,
+					"resolution", summary.Resolution,
+					"producer", summary.Producer,
+				)
 			}(u)
 		}
 		wg.Wait()
