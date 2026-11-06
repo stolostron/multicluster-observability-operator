@@ -41,7 +41,7 @@ const (
 	metricsInspectorMountPath           = "/etc/metrics-inspector"
 	metricsInspectorObjstoreMountPath   = "/etc/metrics-inspector/objstore"
 	metricsInspectorDefaultTLSMountPath = "/etc/thanos/secrets"
-	metricsInspectorSATokenMountPath    = "/var/run/secrets/openshift/serviceaccount"
+	metricsInspectorSATokenMountPath    = "/var/run/secrets/openshift/serviceaccount" // #nosec G101 -- Mount path for bound service account token, not a credential.
 	metricsInspectorConfigHashKey       = "observability.open-cluster-management.io/config-hash"
 )
 
@@ -522,9 +522,8 @@ func reconcileMetricsInspectorDeployment(
 
 	replicas := mcoconfig.GetReplicas(mcoconfig.MetricsInspector, mco.Spec.InstanceSize, mco.Spec.AdvancedConfig)
 	receiveWriteURL := fmt.Sprintf(
-		"http://%s%s.%s.svc:19291/api/v1/receive",
+		"http://%sthanos-receive.%s.svc:19291/api/v1/receive",
 		mcoconfig.GetOperandNamePrefix(),
-		mcoconfig.ThanosReceive,
 		mcoconfig.GetDefaultNamespace(),
 	)
 

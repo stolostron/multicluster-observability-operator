@@ -179,11 +179,17 @@ func (s *Snapshot) ToTimeSeries(timestampMs int64) []prompb.TimeSeries {
 }
 
 func newTimeSeries(lbls []prompb.Label, val float64, timestampMs int64) prompb.TimeSeries {
-	slices.SortFunc(lbls, func(a, b prompb.Label) int {
+	filtered := lbls[:0]
+	for _, l := range lbls {
+		if l.Name != "" && l.Value != "" {
+			filtered = append(filtered, l)
+		}
+	}
+	slices.SortFunc(filtered, func(a, b prompb.Label) int {
 		return cmp.Compare(a.Name, b.Name)
 	})
 	return prompb.TimeSeries{
-		Labels: lbls,
+		Labels: filtered,
 		Samples: []prompb.Sample{
 			{
 				Value:     val,
