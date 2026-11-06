@@ -457,14 +457,17 @@ func TestRenderAddonDeploymentConfig_ManagedLogging(t *testing.T) {
 			require.NoError(t, runtime.DefaultUnstructuredConverter.FromUnstructured(uobj.Object, got))
 
 			managedDefault := addonv1beta1.CustomizedVariable{Name: namePlatformLogsDefault, Value: "true"}
+			loggingChannel := addonv1beta1.CustomizedVariable{Name: nameOpenShiftLoggingChannel, Value: "stable-6.7"}
 			userDefinedCLF := addonv1beta1.CustomizedVariable{
 				Name:  namePlatformLogsCollection,
 				Value: mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.ClusterLogForwarderCRDName),
 			}
 			if tc.wantManagedDefault {
 				assert.Contains(t, got.Spec.CustomizedVariables, managedDefault)
+				assert.Contains(t, got.Spec.CustomizedVariables, loggingChannel)
 			} else {
 				assert.NotContains(t, got.Spec.CustomizedVariables, managedDefault)
+				assert.NotContains(t, got.Spec.CustomizedVariables, loggingChannel)
 			}
 			if tc.wantUserDefinedCLF {
 				assert.Contains(t, got.Spec.CustomizedVariables, userDefinedCLF)
