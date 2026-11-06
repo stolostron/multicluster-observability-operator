@@ -270,7 +270,7 @@ func LogFailingTestStandardDebugInfo(opt TestOptions, isMCOA bool) {
 	if isMCOA {
 		warningNamespaces = append(warningNamespaces, MCO_AGENT_ADDON_NAMESPACE)
 	}
-	printRecentWarningEvents(hubClient, "Hub", warningNamespaces, 20*time.Minute, 20)
+	printRecentWarningEvents(hubClient, "Hub", warningNamespaces, 20)
 
 	// Section 6: Spoke Clusters
 	inspectedClusters := make(map[string]bool)
@@ -2004,8 +2004,8 @@ func formatRecentWarningEvents(clientset kubernetes.Interface, namespaces []stri
 	return sb.String(), nil
 }
 
-func printRecentWarningEvents(clientset kubernetes.Interface, contextLabel string, namespaces []string, window time.Duration, maxEvents int) {
-	out, err := formatRecentWarningEvents(clientset, namespaces, window, maxEvents, contextLabel)
+func printRecentWarningEvents(clientset kubernetes.Interface, contextLabel string, namespaces []string, maxEvents int) {
+	out, err := formatRecentWarningEvents(clientset, namespaces, 20*time.Minute, maxEvents, contextLabel)
 	if err != nil {
 		klog.Errorf("Failed to format recent warning events for %s: %v", contextLabel, err)
 		return
@@ -3006,7 +3006,7 @@ func logSpokeClusterDebugInfo(
 		printConfigMapsInNamespace(spokeClient, MCO_AGENT_ADDON_NAMESPACE)
 		printSecretsInNamespace(spokeClient, MCO_AGENT_ADDON_NAMESPACE)
 		logClusterMonitoringConfigStatus(spokeClient, clusterName)
-		printRecentWarningEvents(spokeClient, clusterName, []string{MCO_AGENT_ADDON_NAMESPACE}, 20*time.Minute, 15)
+		printRecentWarningEvents(spokeClient, clusterName, []string{MCO_AGENT_ADDON_NAMESPACE}, 15)
 		logSpokeLoggingDebugInfo(spokeClient, spokeDynClient, clusterName)
 	} else {
 		klog.Infof("%s (Legacy: %s)", SectionSpokeWorkloads, clusterName)
@@ -3020,7 +3020,7 @@ func logSpokeClusterDebugInfo(
 		printConfigMapsInNamespace(spokeClient, MCO_ADDON_NAMESPACE)
 		printSecretsInNamespace(spokeClient, MCO_ADDON_NAMESPACE)
 		logClusterMonitoringConfigStatus(spokeClient, clusterName)
-		printRecentWarningEvents(spokeClient, clusterName, []string{MCO_ADDON_NAMESPACE}, 20*time.Minute, 15)
+		printRecentWarningEvents(spokeClient, clusterName, []string{MCO_ADDON_NAMESPACE}, 15)
 	}
 }
 
@@ -3033,7 +3033,7 @@ func logSpokeLoggingDebugInfo(spokeClient kubernetes.Interface, spokeDynClient d
 	} else {
 		CheckDeploymentsInNamespace(spokeClient, namespace)
 		CheckPodsInNamespace(spokeClient, namespace, []string{"cluster-logging-operator"}, map[string]string{})
-		printRecentWarningEvents(spokeClient, clusterName, []string{namespace}, 20*time.Minute, 15)
+		printRecentWarningEvents(spokeClient, clusterName, []string{namespace}, 15)
 	}
 	klog.Info(formatSpokeLoggingResources(spokeDynClient, clusterName))
 }
