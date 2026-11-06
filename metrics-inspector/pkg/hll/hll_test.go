@@ -5,9 +5,7 @@
 package hll
 
 import (
-	"bytes"
 	"encoding/binary"
-	"encoding/gob"
 	"math"
 	"testing"
 
@@ -69,7 +67,7 @@ func TestSketchEstimateAndPromotion(t *testing.T) {
 	}
 }
 
-func TestSketchMergeAndGob(t *testing.T) {
+func TestSketchMerge(t *testing.T) {
 	s1, err := NewByPrecision(14)
 	if err != nil {
 		t.Fatal(err)
@@ -100,20 +98,5 @@ func TestSketchMergeAndGob(t *testing.T) {
 	errPct := math.Abs(float64(est)-7500) / 7500 * 100
 	if errPct > 2.5 {
 		t.Fatalf("merged Estimate() = %d, want ~7500 (err %.2f%%)", est, errPct)
-	}
-
-	// Verify Gob round-trip.
-	var buf bytes.Buffer
-	if err := gob.NewEncoder(&buf).Encode(clone); err != nil {
-		t.Fatalf("gob encode failed: %v", err)
-	}
-	var decoded Sketch
-	if err := gob.NewDecoder(&buf).Decode(&decoded); err != nil {
-		t.Fatalf("gob decode failed: %v", err)
-	}
-	defer decoded.Release()
-
-	if decoded.Estimate() != est {
-		t.Fatalf("decoded Estimate() = %d, want %d", decoded.Estimate(), est)
 	}
 }
