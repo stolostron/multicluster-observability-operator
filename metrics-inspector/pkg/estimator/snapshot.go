@@ -5,14 +5,13 @@
 package estimator
 
 import (
-	"cmp"
 	"fmt"
 	"io"
-	"slices"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/prompb"
 )
 
@@ -60,34 +59,37 @@ func ByLabelName(key string) string {
 	}
 }
 
-// ToTimeSeries converts the Snapshot into Prometheus Remote Write TimeSeries with
-// lexicographically sorted label names as required by Thanos Receive.
-func (s *Snapshot) ToTimeSeries(timestampMs int64) []prompb.TimeSeries {
+type seriesPoint struct {
+	labels labels.Labels
+	value  float64
+	isInt  bool
+	intVal int64
+}
+
+func (s *Snapshot) collectSeries() []seriesPoint {
 	intervalStr := s.Interval.String()
+	b := labels.NewBuilder(labels.EmptyLabels())
 
 	if len(s.GroupBy) == 0 {
-		out := make([]prompb.TimeSeries, 0, 2)
-		out = append(out, newTimeSeries(
-			[]prompb.Label{
-				{Name: "__name__", Value: MetricCardinalityEstimate},
-				{Name: "filter", Value: s.Filter},
-				{Name: "group_by_keys", Value: globalKeyword},
-				{Name: "interval", Value: intervalStr},
-			},
-			float64(s.GlobalEstimate),
-			timestampMs,
-		))
+		out := make([]seriesPoint, 0, 2)
+		b.Reset(labels.EmptyLabels())
+		b.Set(labels.MetricName, MetricCardinalityEstimate)
+		b.Set("filter", s.Filter)
+		b.Set("group_by_keys", globalKeyword)
+		b.Set("interval", intervalStr)
+		out = append(out, seriesPoint{
+			labels: b.Labels(),
+			value:  float64(s.GlobalEstimate),
+			isInt:  true,
+			intVal: int64(s.GlobalEstimate), //nolint:gosec // HLL estimate is bounded well below math.MaxInt64
+		})
+
 		if s.CalculateChurn {
-			out = append(out, newTimeSeries(
-				[]prompb.Label{
-					{Name: "__name__", Value: MetricCardinalityChurn},
-					{Name: "filter", Value: s.Filter},
-					{Name: "group_by_keys", Value: globalKeyword},
-					{Name: "interval", Value: intervalStr},
-				},
-				s.GlobalChurn,
-				timestampMs,
-			))
+			b.Set(labels.MetricName, MetricCardinalityChurn)
+			out = append(out, seriesPoint{
+				labels: b.Labels(),
+				value:  s.GlobalChurn,
+			})
 		}
 		return out
 	}
@@ -102,160 +104,127 @@ func (s *Snapshot) ToTimeSeries(timestampMs int64) []prompb.TimeSeries {
 	if s.CalculateChurn {
 		capacity += len(s.Groups)
 	}
-	out := make([]prompb.TimeSeries, 0, capacity)
+	out := make([]seriesPoint, 0, capacity)
 
 	for _, g := range s.Groups {
 		groupValues := strings.Join(g.Values, ",")
 
-		estLabels := make([]prompb.Label, 0, 5+len(s.GroupBy))
-		estLabels = append(estLabels,
-			prompb.Label{Name: "__name__", Value: MetricCardinalityEstimate},
-			prompb.Label{Name: "filter", Value: s.Filter},
-			prompb.Label{Name: "group_by_keys", Value: groupByKeys},
-			prompb.Label{Name: "group_by_values", Value: groupValues},
-			prompb.Label{Name: "interval", Value: intervalStr},
-		)
+		b.Reset(labels.EmptyLabels())
+		b.Set(labels.MetricName, MetricCardinalityEstimate)
+		b.Set("filter", s.Filter)
+		b.Set("group_by_keys", groupByKeys)
+		b.Set("group_by_values", groupValues)
+		b.Set("interval", intervalStr)
 		for i, val := range g.Values {
-			estLabels = append(estLabels, prompb.Label{Name: byLabelNames[i], Value: val})
+			b.Set(byLabelNames[i], val)
 		}
-		out = append(out, newTimeSeries(estLabels, float64(g.Estimate), timestampMs))
+		out = append(out, seriesPoint{
+			labels: b.Labels(),
+			value:  float64(g.Estimate),
+			isInt:  true,
+			intVal: int64(g.Estimate), //nolint:gosec // HLL estimate is bounded well below math.MaxInt64
+		})
 
 		if s.CalculateChurn {
-			churnLabels := make([]prompb.Label, 0, 5+len(s.GroupBy))
-			churnLabels = append(churnLabels,
-				prompb.Label{Name: "__name__", Value: MetricCardinalityChurn},
-				prompb.Label{Name: "filter", Value: s.Filter},
-				prompb.Label{Name: "group_by_keys", Value: groupByKeys},
-				prompb.Label{Name: "group_by_values", Value: groupValues},
-				prompb.Label{Name: "interval", Value: intervalStr},
-			)
-			for i, val := range g.Values {
-				churnLabels = append(churnLabels, prompb.Label{Name: byLabelNames[i], Value: val})
-			}
-			out = append(out, newTimeSeries(churnLabels, g.ChurnRatio, timestampMs))
+			b.Set(labels.MetricName, MetricCardinalityChurn)
+			out = append(out, seriesPoint{
+				labels: b.Labels(),
+				value:  g.ChurnRatio,
+			})
 		}
 	}
 
 	// Emit group size metadata series: cardinality_estimate{group_by_keys="__group__", group_by_values="<keys>"}
-	out = append(out, newTimeSeries(
-		[]prompb.Label{
-			{Name: "__name__", Value: MetricCardinalityEstimate},
-			{Name: "filter", Value: s.Filter},
-			{Name: "group_by_keys", Value: groupKeyword},
-			{Name: "group_by_values", Value: groupByKeys},
-			{Name: "interval", Value: intervalStr},
-		},
-		float64(s.GroupSize),
-		timestampMs,
-	))
+	b.Reset(labels.EmptyLabels())
+	b.Set(labels.MetricName, MetricCardinalityEstimate)
+	b.Set("filter", s.Filter)
+	b.Set("group_by_keys", groupKeyword)
+	b.Set("group_by_values", groupByKeys)
+	b.Set("interval", intervalStr)
+	out = append(out, seriesPoint{
+		labels: b.Labels(),
+		value:  float64(s.GroupSize),
+		isInt:  true,
+		intVal: s.GroupSize,
+	})
 
 	// Emit group limit series
-	out = append(out, newTimeSeries(
-		[]prompb.Label{
-			{Name: "__name__", Value: MetricGroupLimit},
-			{Name: "filter", Value: s.Filter},
-			{Name: "group_by_keys", Value: groupKeyword},
-			{Name: "group_by_values", Value: groupByKeys},
-			{Name: "interval", Value: intervalStr},
-		},
-		float64(s.GroupLimit),
-		timestampMs,
-	))
+	b.Set(labels.MetricName, MetricGroupLimit)
+	out = append(out, seriesPoint{
+		labels: b.Labels(),
+		value:  float64(s.GroupLimit),
+		isInt:  true,
+		intVal: s.GroupLimit,
+	})
 
 	if s.DroppedCount > 0 {
-		out = append(out, newTimeSeries(
-			[]prompb.Label{
-				{Name: "__name__", Value: MetricEstimatesDropped},
-				{Name: "filter", Value: s.Filter},
-				{Name: "group_by_keys", Value: groupByKeys},
-				{Name: "interval", Value: intervalStr},
-			},
-			float64(s.DroppedCount),
-			timestampMs,
-		))
+		b.Reset(labels.EmptyLabels())
+		b.Set(labels.MetricName, MetricEstimatesDropped)
+		b.Set("filter", s.Filter)
+		b.Set("group_by_keys", groupByKeys)
+		b.Set("interval", intervalStr)
+		out = append(out, seriesPoint{
+			labels: b.Labels(),
+			value:  float64(s.DroppedCount),
+			isInt:  true,
+			intVal: int64(s.DroppedCount), //nolint:gosec // dropped group count fits in int64
+		})
 	}
 
 	return out
 }
 
-func newTimeSeries(lbls []prompb.Label, val float64, timestampMs int64) prompb.TimeSeries {
-	filtered := lbls[:0]
-	for _, l := range lbls {
-		if l.Name != "" && l.Value != "" {
-			filtered = append(filtered, l)
+// ToTimeSeries converts the Snapshot into Prometheus Remote Write TimeSeries using
+// upstream Prometheus labels.Builder and prompb.FromLabels to guarantee canonical
+// label sorting, deduplication, and empty-label omission.
+func (s *Snapshot) ToTimeSeries(timestampMs int64) []prompb.TimeSeries {
+	points := s.collectSeries()
+	out := make([]prompb.TimeSeries, len(points))
+	for i, pt := range points {
+		out[i] = prompb.TimeSeries{
+			Labels: prompb.FromLabels(pt.labels, nil),
+			Samples: []prompb.Sample{
+				{
+					Value:     pt.value,
+					Timestamp: timestampMs,
+				},
+			},
 		}
 	}
-	slices.SortFunc(filtered, func(a, b prompb.Label) int {
-		return cmp.Compare(a.Name, b.Name)
-	})
-	return prompb.TimeSeries{
-		Labels: filtered,
-		Samples: []prompb.Sample{
-			{
-				Value:     val,
-				Timestamp: timestampMs,
-			},
-		},
-	}
+	return out
 }
 
-// WritePrometheusText formats the Snapshot in Prometheus text exposition format.
+// WritePrometheusText formats the Snapshot in Prometheus text exposition format
+// from the canonical labels.Labels set.
 func (s *Snapshot) WritePrometheusText(w io.Writer) error {
+	points := s.collectSeries()
 	var b strings.Builder
-	intervalQ := strconv.Quote(s.Interval.String())
-	filterQ := strconv.Quote(s.Filter)
-
-	if len(s.GroupBy) == 0 {
-		fmt.Fprintf(&b, "%s{interval=%s,filter=%s,group_by_keys=%q} %d\n",
-			MetricCardinalityEstimate, intervalQ, filterQ, globalKeyword, s.GlobalEstimate)
-		if s.CalculateChurn {
-			fmt.Fprintf(&b, "%s{interval=%s,filter=%s,group_by_keys=%q} %.4f\n",
-				MetricCardinalityChurn, intervalQ, filterQ, globalKeyword, s.GlobalChurn)
-		}
-		_, err := io.WriteString(w, b.String())
-		return err
-	}
-
-	groupByKeys := strings.Join(s.GroupBy, ",")
-	groupByKeysQ := strconv.Quote(groupByKeys)
-	byLabelNames := make([]string, len(s.GroupBy))
-	for i, k := range s.GroupBy {
-		byLabelNames[i] = ByLabelName(k)
-	}
-
-	for _, g := range s.Groups {
-		groupValuesQ := strconv.Quote(strings.Join(g.Values, ","))
+	for _, pt := range points {
 		b.Reset()
-		fmt.Fprintf(&b, "%s{interval=%s,filter=%s,group_by_keys=%s,group_by_values=%s",
-			MetricCardinalityEstimate, intervalQ, filterQ, groupByKeysQ, groupValuesQ)
-		for i, val := range g.Values {
-			fmt.Fprintf(&b, ",%s=%s", byLabelNames[i], strconv.Quote(val))
-		}
-		fmt.Fprintf(&b, "} %d\n", g.Estimate)
-
-		if s.CalculateChurn {
-			fmt.Fprintf(&b, "%s{interval=%s,filter=%s,group_by_keys=%s,group_by_values=%s",
-				MetricCardinalityChurn, intervalQ, filterQ, groupByKeysQ, groupValuesQ)
-			for i, val := range g.Values {
-				fmt.Fprintf(&b, ",%s=%s", byLabelNames[i], strconv.Quote(val))
+		b.WriteString(pt.labels.Get(labels.MetricName))
+		b.WriteByte('{')
+		first := true
+		pt.labels.Range(func(l labels.Label) {
+			if l.Name == labels.MetricName {
+				return
 			}
-			fmt.Fprintf(&b, "} %.4f\n", g.ChurnRatio)
+			if !first {
+				b.WriteByte(',')
+			}
+			first = false
+			b.WriteString(l.Name)
+			b.WriteByte('=')
+			b.WriteString(strconv.Quote(l.Value))
+		})
+		b.WriteString("} ")
+		if pt.isInt {
+			fmt.Fprintf(&b, "%d\n", pt.intVal)
+		} else {
+			fmt.Fprintf(&b, "%.4f\n", pt.value)
 		}
-
 		if _, err := io.WriteString(w, b.String()); err != nil {
 			return err
 		}
 	}
-
-	b.Reset()
-	fmt.Fprintf(&b, "%s{interval=%s,filter=%s,group_by_keys=%q,group_by_values=%s} %d\n",
-		MetricCardinalityEstimate, intervalQ, filterQ, groupKeyword, groupByKeysQ, s.GroupSize)
-	fmt.Fprintf(&b, "%s{interval=%s,filter=%s,group_by_keys=%q,group_by_values=%s} %d\n",
-		MetricGroupLimit, intervalQ, filterQ, groupKeyword, groupByKeysQ, s.GroupLimit)
-	if s.DroppedCount > 0 {
-		fmt.Fprintf(&b, "%s{interval=%s,filter=%s,group_by_keys=%s} %d\n",
-			MetricEstimatesDropped, intervalQ, filterQ, groupByKeysQ, s.DroppedCount)
-	}
-	_, err := io.WriteString(w, b.String())
-	return err
+	return nil
 }

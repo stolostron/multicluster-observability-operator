@@ -402,7 +402,7 @@ func TestEstimatorFilterAndGlobalStream(t *testing.T) {
 	if err := snap.WritePrometheusText(&buf); err != nil {
 		t.Fatalf("WritePrometheusText failed: %v", err)
 	}
-	if !strings.Contains(buf.String(), `cardinality_estimate{interval="1h0m0s",filter="{__name__=~\"apiserver_.*\", verb!=\"WATCH\", cluster=\"hub\"}",group_by_keys="__global__"} 1`) {
+	if !strings.Contains(buf.String(), `cardinality_estimate{filter="{__name__=~\"apiserver_.*\", verb!=\"WATCH\", cluster=\"hub\"}",group_by_keys="__global__",interval="1h0m0s"} 1`) {
 		t.Fatalf("unexpected Prometheus output for global filtered stream:\n%s", buf.String())
 	}
 }

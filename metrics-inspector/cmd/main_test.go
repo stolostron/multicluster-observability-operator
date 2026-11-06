@@ -101,7 +101,7 @@ streams:
 	}
 	cBody, _ := io.ReadAll(cResp.Body)
 	_ = cResp.Body.Close()
-	if !strings.Contains(string(cBody), `by_cluster="managed-1"} 2`) {
+	if !strings.Contains(string(cBody), `cardinality_estimate{by_cluster="managed-1",group_by_keys="cluster",group_by_values="managed-1",interval="15m0s"} 2`) {
 		t.Fatalf("expected cardinality_estimate for managed-1 = 2, got:\n%s", string(cBody))
 	}
 
